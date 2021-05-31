@@ -104,7 +104,7 @@
 
 <style scoped>
 .bg-img {
-  background-image: url('~@/assets/img/background.png');
+  background-image: url('~@/assets/img/background.jpg');
   background-repeat: no-repeat;
   background-position: center;
   background-size: cover;
