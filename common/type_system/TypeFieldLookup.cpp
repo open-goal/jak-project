@@ -289,15 +289,7 @@ bool TypeSystem::try_reverse_lookup_inline_array(const FieldReverseLookupInput& 
   assert(di.can_deref);
   assert(!di.mem_deref);  // if we make integer arrays allowed to be inline-array, this will break.
 
-  if (input.stride) {
-    if (input.stride != di.stride) {
-      return false;
-    }
-
-    if (input.offset >= di.stride) {
-      return false;
-    }
-
+  if (input.stride && input.stride == di.stride && input.offset < di.stride) {
     // variable lookup.
     FieldReverseLookupOutput::Token token;
     token.kind = FieldReverseLookupOutput::Token::Kind::VAR_IDX;
@@ -315,40 +307,40 @@ bool TypeSystem::try_reverse_lookup_inline_array(const FieldReverseLookupInput& 
     next_input.offset = input.offset;
     next_input.base_type = di.result_type;
     return try_reverse_lookup(next_input, path, addr_of, result_type);
-  } else {
-    // constant lookup, or accessing within the first one
-    // which element we are in
-    int elt_idx = input.offset / di.stride;
-    // how many bytes into the element we look
-    int offset_into_elt = input.offset - (elt_idx * di.stride);
-    // the expected number of bytes into the element we would look to grab a ref to the elt.
-    int expected_offset_into_elt = lookup_type(di.result_type)->get_offset();
-
-    FieldReverseLookupOutput::Token token;
-    token.kind = FieldReverseLookupOutput::Token::Kind::CONSTANT_IDX;
-    token.idx = elt_idx;
-
-    if (offset_into_elt == expected_offset_into_elt && !input.deref.has_value()) {
-      // just get an element (possibly zero, and we want to include the 0 if so)
-      // for the degenerate inline-array case, it seems more likely that we get the zeroth object
-      // rather than the array?  Either way, this code should be compatible with both approaches.
-      path->push_back(token);
-      *addr_of = false;
-      *result_type = di.result_type;
-      return true;
-    }
-
-    // otherwise access within the element
-    path->push_back(token);
-
-    FieldReverseLookupInput next_input;
-    next_input.deref = input.deref;
-    next_input.stride = 0;
-    // try_reverse_lookup expects "offset_into_field - boxed_offset"
-    next_input.offset = offset_into_elt - expected_offset_into_elt;
-    next_input.base_type = di.result_type;
-    return try_reverse_lookup(next_input, path, addr_of, result_type);
   }
+
+  // constant lookup, or accessing within the first one
+  // which element we are in
+  int elt_idx = input.offset / di.stride;
+  // how many bytes into the element we look
+  int offset_into_elt = input.offset - (elt_idx * di.stride);
+  // the expected number of bytes into the element we would look to grab a ref to the elt.
+  int expected_offset_into_elt = lookup_type(di.result_type)->get_offset();
+
+  FieldReverseLookupOutput::Token token;
+  token.kind = FieldReverseLookupOutput::Token::Kind::CONSTANT_IDX;
+  token.idx = elt_idx;
+
+  if (offset_into_elt == expected_offset_into_elt && !input.deref.has_value()) {
+    // just get an element (possibly zero, and we want to include the 0 if so)
+    // for the degenerate inline-array case, it seems more likely that we get the zeroth object
+    // rather than the array?  Either way, this code should be compatible with both approaches.
+    path->push_back(token);
+    *addr_of = false;
+    *result_type = di.result_type;
+    return true;
+  }
+
+  // otherwise access within the element
+  path->push_back(token);
+
+  FieldReverseLookupInput next_input;
+  next_input.deref = input.deref;
+  next_input.stride = input.stride;
+  // try_reverse_lookup expects "offset_into_field - boxed_offset"
+  next_input.offset = offset_into_elt - expected_offset_into_elt;
+  next_input.base_type = di.result_type;
+  return try_reverse_lookup(next_input, path, addr_of, result_type);
 }
 
 /*!

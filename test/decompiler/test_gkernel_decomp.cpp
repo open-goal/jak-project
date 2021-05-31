@@ -337,7 +337,7 @@ TEST_F(FormRegressionTest, ExprMethod0Thread) {
   std::string expected =
       "(let ((obj (the-as cpu-thread (cond\n"
       "                              ((-> arg2 top-thread)\n"
-      "                               (&+ arg5 -7164)\n"
+      "                               (the-as cpu-thread (&+ arg5 -7164))\n"
       "                               )\n"
       "                              (else\n"
       "                               (let\n"
@@ -350,9 +350,12 @@ TEST_F(FormRegressionTest, ExprMethod0Thread) {
       "                                 )\n"
       "                                (set!\n"
       "                                 (-> arg2 heap-cur)\n"
-      "                                 (&+ (&+ v1-2 (-> arg1 size)) arg4)\n"
+      "                                 (the-as\n"
+      "                                  pointer\n"
+      "                                  (+ (+ v1-2 (the-as int (-> arg1 size))) arg4)\n"
+      "                                  )\n"
       "                                 )\n"
-      "                                (&+ v1-2 4)\n"
+      "                                (the-as cpu-thread (+ v1-2 4))\n"
       "                                )\n"
       "                               )\n"
       "                              )\n"
@@ -369,7 +372,7 @@ TEST_F(FormRegressionTest, ExprMethod0Thread) {
       "  (set! (-> obj suspend-hook) (method-of-object obj thread-suspend))\n"
       "  (set! (-> obj resume-hook) (method-of-object obj thread-resume))\n"
       "  (set! (-> obj stack-size) arg4)\n"
-      "  (the-as cpu-thread (the-as pointer obj))\n"
+      "  (the-as cpu-thread (the-as object obj))\n"
       "  )";
   test_with_expr(func, type, expected, false, "cpu-thread", {},
                  "[[[13, 28], \"v0\", \"cpu-thread\"]]",
@@ -1111,7 +1114,7 @@ TEST_F(FormRegressionTest, ExprMethod14DeadPool) {
       "                      )\n"
       "                     (-> arg0 name)\n"
       "                     )\n"
-      "                    #f\n"
+      "                    (the-as process #f)\n"
       "                    )\n"
       "                   )\n"
       "   )\n"

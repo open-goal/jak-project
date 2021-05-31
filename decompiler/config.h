@@ -53,6 +53,7 @@ struct DecompileHacks {
   std::unordered_set<std::string> asm_functions_by_name;
   std::unordered_set<std::string> pair_functions_by_name;
   std::unordered_map<std::string, CondWithElseLengthHack> cond_with_else_len_by_func_name;
+  std::unordered_set<std::string> reject_cond_to_value;
 };
 
 struct Config {
@@ -77,6 +78,8 @@ struct Config {
   bool hexdump_data = false;
   bool dump_objs = false;
   bool print_cfgs = false;
+
+  bool generate_symbol_definition_map = false;
 
   std::unordered_set<std::string> allowed_objects;
   std::unordered_map<std::string, std::unordered_map<int, std::vector<TypeCast>>>

@@ -72,7 +72,7 @@ RegVal* Compiler::compile_get_method_of_object(const goos::Object& form,
   auto fe = get_parent_env_of_type<FunctionEnv>(env);
 
   RegVal* runtime_type = nullptr;
-  if (is_basic(compile_time_type)) {
+  if (m_ts.should_use_virtual_methods(compile_time_type)) {
     runtime_type = fe->make_gpr(m_ts.make_typespec("type"));
     MemLoadInfo info;
     info.size = 4;

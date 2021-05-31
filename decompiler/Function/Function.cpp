@@ -674,6 +674,7 @@ void Function::find_type_defs(LinkedObjectFile& file, DecompilerTypeSystem& dts)
         flag_label.offset += 4;
         u64 word2 = file.read_data_word(flag_label);
         word |= (word2 << 32);
+        types_defined.push_back(type_name);
         dts.add_type_flags(type_name, word);
         //        fmt::print("Flags are 0x{:x}\n", word);
         state = 0;

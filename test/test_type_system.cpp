@@ -40,6 +40,71 @@ TEST(TypeSystem, DefaultMethods) {
   ts.assert_method_id("function", "mem-usage", GOAL_MEMUSAGE_METHOD);
 }
 
+TEST(TypeSystemReverse, NestedInlineWeird) {
+  // tests the case where we're accessing nested inline arrays, with a dynamic inner access
+  // and constant outer access, which will be constant propagated by the GOAL compiler.
+  TypeSystem ts;
+  ts.add_builtin_types();
+  goos::Reader reader;
+  auto add_type = [&](const std::string& str) {
+    auto in = reader.read_from_string(str).as_pair()->cdr.as_pair()->car.as_pair()->cdr;
+    parse_deftype(in, &ts);
+  };
+
+  add_type(
+      "(deftype rgba (uint32)\n"
+      "  ((r uint8 :offset 0)\n"
+      "   (g uint8 :offset 8)\n"
+      "   (b uint8 :offset 16)\n"
+      "   (a uint8 :offset 24)\n"
+      "   )\n"
+      "  :flag-assert #x900000004\n"
+      "  )");
+
+  add_type(
+      "(deftype char-color (structure)\n"
+      "  ((color rgba 4 :offset-assert 0)\n"
+      "   )\n"
+      "  :method-count-assert 9\n"
+      "  :size-assert         #x10\n"
+      "  :flag-assert         #x900000010\n"
+      "  )");
+
+  add_type(
+      "(deftype font-work (structure)\n"
+      "  (\n"
+      "   (color-table        char-color       64  :inline    :offset 1984)\n"
+      "   (last-color         uint64                 :offset-assert 3008)\n"
+      "   (save-last-color    uint64                 :offset-assert 3016)\n"
+      "   (buf                basic                  :offset-assert 3024)\n"
+      "   (str-ptr            uint32                 :offset-assert 3028)\n"
+      "   (flags              uint32                 :offset-assert 3032)\n"
+      "   (reg-save           uint32        5       :offset-assert 3036)\n"
+      "   )\n"
+      "  :method-count-assert 9\n"
+      "  :size-assert         #xbf0\n"
+      "  :flag-assert         #x900000bf0\n"
+      "  )");
+
+  FieldReverseLookupInput input;
+  input.stride = 4;
+  input.base_type = ts.make_typespec("font-work");
+  input.offset = 2496;
+  DerefKind dk;
+  dk.size = 4;
+  dk.sign_extend = false;
+  dk.is_store = false;
+  dk.reg_kind = RegClass::GPR_64;
+  input.deref = dk;
+  auto result = ts.reverse_field_lookup(input);
+  EXPECT_TRUE(result.success);
+
+  EXPECT_EQ(result.tokens.at(0).print(), "color-table");
+  EXPECT_EQ(result.tokens.at(1).print(), "32");  // 32 * 16 + 1984 = 2496
+  EXPECT_EQ(result.tokens.at(2).print(), "color");
+  EXPECT_EQ(result.tokens.at(3).kind, FieldReverseLookupOutput::Token::Kind::VAR_IDX);
+}
+
 TEST(TypeSystem, TypeSpec) {
   TypeSystem ts;
   ts.add_builtin_types();

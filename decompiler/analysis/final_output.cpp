@@ -173,6 +173,15 @@ std::string write_from_top_level(const Function& top_level,
   }
 
   std::string result;
+  // local vars:
+  int var_count = 0;
+  auto var_dec = env.local_var_type_list(top_level.ir2.top_form, 0, &var_count);
+  if (var_count > 0) {
+    result += pretty_print::to_string(var_dec);
+    result += '\n';
+    result += '\n';
+  }
+
   // look for the whole thing being in a (when *debug-segment* ....)
   bool in_debug_only_file = false;
   if (forms.size() == 1) {
@@ -338,6 +347,15 @@ std::string write_from_top_level(const Function& top_level,
             fmt::format("define-perm {} {}", sym_name, symbol_type.print()),
             define_perm_match_result.maps.forms.at(3)->to_form(env)));
         result += "\n\n";
+      }
+    }
+
+    if (!something_matched) {
+      auto empty = dynamic_cast<EmptyElement*>(x);
+      if (empty) {
+        something_matched = true;
+      } else if (!x->active()) {
+        something_matched = true;
       }
     }
 
