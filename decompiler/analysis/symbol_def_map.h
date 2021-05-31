@@ -6,7 +6,7 @@
 
 namespace decompiler {
 
-class ObjectFileData;
+struct ObjectFileData;
 class Function;
 
 class SymbolMapBuilder {
