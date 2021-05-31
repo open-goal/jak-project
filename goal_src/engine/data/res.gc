@@ -73,6 +73,7 @@
 
 (defmethod get-tag-index-data res-lump ((obj res-lump) (n int))
   "get the data address of the n'th tag."
+  (declare (inline))
 
   (&+ (-> obj data-base)
       (-> obj tag n data-offset))
@@ -80,6 +81,7 @@
 
 (defmethod get-tag-data res-lump ((obj res-lump) (tag res-tag))
   "get the data address of the specified tag."
+  (declare (inline))
 
   (&+ (-> obj data-base)
       (-> tag data-offset))
@@ -126,10 +128,10 @@
   (dotimes (i (-> obj length))
     (format #t "~T  [~D] " i)
     (print (-> (-> obj tag) i))
-    (format #t " @ #x~X" (&+ (-> obj data-base) (-> obj tag i data-offset)))
+    (format #t " @ #x~X" (get-tag-index-data obj i))
     (cond
       ((res-ref? (-> obj tag i))
-        (format #t " = ~A~%" (deref basic (&+ (-> obj data-base) (-> obj tag i data-offset))))
+        (format #t " = ~A~%" (deref basic (get-tag-index-data obj i)))
         )
       (else
         (format #t "~%")
@@ -341,19 +343,19 @@
          )
     (cond
       ((res-ref? tag-lo)
-       (&+ (-> obj data-base) (-> tag-lo data-offset))
+       (get-tag-data obj tag-lo)
        )
       ((or (not buf)
            (= (-> tag-pair lo) (-> tag-pair hi))
            (!= elt-count (-> tag-hi elt-count))
            (!= (-> tag-lo elt-type) (-> tag-hi elt-type)))
-       (&+ (-> obj data-base) (-> tag-lo data-offset))
+       (get-tag-data obj tag-lo)
        )
       (else
         (let ((interp (/ (- time (-> tag-lo key-frame))
                          (- (-> tag-hi key-frame) (-> tag-lo key-frame)))) ;; DBZ
-              (src-lo (&+ (-> obj data-base) (-> tag-lo data-offset)))
-              (src-hi (&+ (-> obj data-base) (-> tag-hi data-offset)))
+              (src-lo (get-tag-data obj tag-lo))
+              (src-hi (get-tag-data obj tag-hi))
               )
           (case (-> tag-lo elt-type symbol)
             (('float)
@@ -405,7 +407,7 @@
               buf
               )
             (else
-              (&+ (-> obj data-base) (-> tag-lo data-offset))
+              (get-tag-data obj tag-lo)
               )
             )
           )
