@@ -288,6 +288,7 @@ class BasicType : public StructureType {
   bool final() const { return m_final; }
   void set_final() { m_final = true; }
   ~BasicType() = default;
+  bool operator==(const Type& other) const override;
 
  protected:
   bool m_final = false;

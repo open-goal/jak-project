@@ -630,6 +630,23 @@ int BasicType::get_inline_array_start_alignment() const {
   }
 }
 
+bool BasicType::operator==(const Type& other) const {
+  if (typeid(*this) != typeid(other)) {
+    return false;
+  }
+
+  auto* p_other = dynamic_cast<const BasicType*>(&other);
+  // clang-format off
+  return other.is_equal(*this) &&
+         m_fields == p_other->m_fields &&
+         m_dynamic == p_other->m_dynamic &&
+         m_size_in_mem == p_other->m_size_in_mem &&
+         m_pack == p_other->m_pack &&
+         m_allow_misalign == p_other->m_allow_misalign &&
+         m_final == p_other->m_final;
+  // clang-format on
+}
+
 /////////////////
 // Bitfield
 /////////////////
