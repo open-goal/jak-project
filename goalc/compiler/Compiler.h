@@ -16,7 +16,7 @@
 #include "goalc/compiler/SymbolInfo.h"
 #include "common/goos/ReplUtils.h"
 
-enum MathMode { MATH_INT, MATH_BINT, MATH_FLOAT, MATH_POINTER, MATH_INVALID };
+enum MathMode { MATH_INT, MATH_BINT, MATH_FLOAT, MATH_INVALID };
 
 enum class ReplStatus { OK, WANT_EXIT, WANT_RELOAD };
 
