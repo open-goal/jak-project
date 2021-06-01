@@ -121,7 +121,7 @@ std::string disassemble_x86_function(u8* data,
 
       std::string line;
 
-      line += fmt::format("{:c} [0x{:x}] ", prefix, base_addr);
+      line += fmt::format("{:c} [0x{:X}] ", prefix, base_addr);
       ZydisFormatterFormatInstruction(&formatter, &instr, print_buff, print_buff_size, base_addr);
       line += print_buff;
 

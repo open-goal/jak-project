@@ -81,6 +81,7 @@ Val* Compiler::compile_asm_file(const goos::Object& form, const goos::Object& re
   (void)env;
   int i = 0;
   std::string filename;
+  std::string disasm_filename = "";
   bool load = false;
   bool color = false;
   bool write = false;
@@ -91,7 +92,16 @@ Val* Compiler::compile_asm_file(const goos::Object& form, const goos::Object& re
   Timer total_timer;
 
   // parse arguments
+  bool last_was_disasm = false;
   for_each_in_list(rest, [&](const goos::Object& o) {
+    if (last_was_disasm) {
+      last_was_disasm = false;
+      if (o.type == goos::ObjectType::STRING) {
+        disasm_filename = as_string(o);
+        i++;
+        return;
+      }
+    }
     if (i == 0) {
       filename = as_string(o);
     } else {
@@ -106,6 +116,7 @@ Val* Compiler::compile_asm_file(const goos::Object& form, const goos::Object& re
         no_code = true;
       } else if (setting == ":disassemble") {
         disassemble = true;
+        last_was_disasm = true;
       } else {
         throw_compiler_error(form, "The option {} was not recognized for asm-file.", setting);
       }
@@ -146,7 +157,11 @@ Val* Compiler::compile_asm_file(const goos::Object& form, const goos::Object& re
     std::string disasm;
     if (disassemble) {
       codegen_and_disassemble_object_file(obj_file, &data, &disasm);
-      printf("%s\n", disasm.c_str());
+      if (disasm_filename == "") {
+        printf("%s\n", disasm.c_str());
+      } else {
+        file_util::write_text_file(disasm_filename, disasm);
+      }
     } else {
       data = codegen_object_file(obj_file);
     }

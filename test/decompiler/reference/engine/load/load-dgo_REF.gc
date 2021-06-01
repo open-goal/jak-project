@@ -320,77 +320,43 @@
   )
 
 ;; definition for function find-temp-buffer
-;; INFO: Return type mismatch int vs pointer.
 (defun find-temp-buffer ((size int))
   (let ((qwc (+ (/ size 16) 2)))
-   (the-as pointer (cond
-                    ((<
-                      (the-as uint qwc)
-                      (the-as
-                       uint
-                       (dma-buffer-free
-                        (->
-                         *display*
-                         frames
-                         (-> *display* on-screen)
-                         frame
-                         global-buf
-                         )
-                        )
-                       )
-                      )
-                     (logand
-                      -16
-                      (the-as
-                       int
-                       (&+
-                        (->
-                         *display*
-                         frames
-                         (-> *display* on-screen)
-                         frame
-                         global-buf
-                         base
-                         )
-                        15
-                        )
-                       )
-                      )
-                     )
-                    ((<
-                      (the-as uint qwc)
-                      (the-as
-                       uint
-                       (dma-buffer-free
-                        (->
-                         *display*
-                         frames
-                         (-> *display* on-screen)
-                         frame
-                         global-buf
-                         )
-                        )
-                       )
-                      )
-                     (logand
-                      -16
-                      (the-as
-                       int
-                       (&+
-                        (->
-                         *display*
-                         frames
-                         (-> *display* on-screen)
-                         frame
-                         global-buf
-                         base
-                         )
-                        15
-                        )
-                       )
-                      )
-                     )
-                    )
+   (cond
+    ((<
+      (the-as uint qwc)
+      (the-as
+       uint
+       (dma-buffer-free
+        (-> *display* frames (-> *display* on-screen) frame global-buf)
+        )
+       )
+      )
+     (logand
+      -16
+      (&+
+       (-> *display* frames (-> *display* on-screen) frame global-buf base)
+       15
+       )
+      )
+     )
+    ((<
+      (the-as uint qwc)
+      (the-as
+       uint
+       (dma-buffer-free
+        (-> *display* frames (-> *display* on-screen) frame global-buf)
+        )
+       )
+      )
+     (logand
+      -16
+      (&+
+       (-> *display* frames (-> *display* on-screen) frame global-buf base)
+       15
+       )
+      )
+     )
     )
    )
   )

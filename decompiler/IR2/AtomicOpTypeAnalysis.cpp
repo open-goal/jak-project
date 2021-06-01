@@ -503,6 +503,14 @@ TP_Type SimpleExpression::get_type_int2(const TypeState& input,
   }
 
   if (m_kind == Kind::AND) {
+    if (arg0_type.typespec().base_type() == "pointer" && tc(dts, TypeSpec("integer"), arg1_type)) {
+      // pointer logand integer = pointer
+      return TP_Type::make_from_ts(arg0_type.typespec());
+    } else if (arg1_type.typespec().base_type() == "pointer" &&
+               tc(dts, TypeSpec("integer"), arg0_type)) {
+      // integer logand pointer = pointer
+      return TP_Type::make_from_ts(arg1_type.typespec());
+    }
     // base case for and. Just get an integer.
     return TP_Type::make_from_ts(TypeSpec("int"));
   }
