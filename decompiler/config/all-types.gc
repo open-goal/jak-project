@@ -172,7 +172,7 @@
 ;; has issues:
 (define-extern breakpoint-range-set! (function uint uint uint int))
 
-(defenum kernel-process-mask
+(defenum process-mask
     :bitfield #t :type uint32
     (execute         0) ;; 1
     (draw            1) ;; 2
@@ -203,9 +203,9 @@
 
 ;; gkernel-h
 (deftype kernel-context (basic)
-  ((prevent-from-run   kernel-process-mask  :offset-assert 4)
-   (require-for-run    kernel-process-mask  :offset-assert 8)
-   (allow-to-run       kernel-process-mask  :offset-assert 12)
+  ((prevent-from-run   process-mask  :offset-assert 4)
+   (require-for-run    process-mask  :offset-assert 8)
+   (allow-to-run       process-mask  :offset-assert 12)
    (next-pid           int32         :offset-assert 16)
    (fast-stack-top     pointer       :offset-assert 20)
    (current-process    basic         :offset-assert 24)
@@ -251,6 +251,10 @@
   :flag-assert         #xc00000028
   )
 
+
+;;(define-extern quad-copy! UNKNOWN)
+;;(define-extern mc-handle UNKNOWN)
+
 ;; gkernel-h
 (deftype cpu-thread (thread)
   (
@@ -276,7 +280,7 @@
 ;; gkernel-h
 (deftype process-tree (basic)
   ((name basic :offset-assert 4)
-   (mask kernel-process-mask :offset-assert 8)
+   (mask process-mask :offset-assert 8)
    (parent (pointer process-tree) :offset-assert 12)
    (brother (pointer process-tree) :offset-assert 16)
    (child (pointer process-tree) :offset-assert 20)
@@ -3256,9 +3260,6 @@
 (define-extern close-gif-packet (function gif-packet int gif-packet))
 
 
-;;;;;;;;;;;;;;;
-;; display-h
-;;;;;;;;;;;;;;;
 
 (deftype display-env (structure)
   ((pmode   gs-pmode      :offset-assert 0)
@@ -3602,9 +3603,6 @@
 (define-extern make-vfile-name (function file-kind string string))
 (define-extern file-info-correct-version? (function file-info file-kind int symbol))
 
-;;;;;;;;;;;;;;;
-;; loader-h
-;;;;;;;;;;;;;;;
 
 (deftype load-dir (basic)
   ((unknown basic)
@@ -3704,9 +3702,6 @@
     )
   )
 
-;;;;;;;;;;;;;;
-;; texture-h
-;;;;;;;;;;;;;;
 
 (define-extern *texture-enable-user-menu* int)
 (define-extern *texture-enable-user* int)
@@ -3936,9 +3931,6 @@
 (define-extern *ocean-base-block* int)
 (define-extern *ocean-base-page* int)
 
-;;;;;;;;;;;;;;
-;; level-h
-;;;;;;;;;;;;;;
 
 ;; level-h
 (deftype level-vis-info (basic)
@@ -4138,9 +4130,6 @@
 
 (define-extern *level* level-group)
 
-;;;;;;;;;;;;;;;;;;
-;; math-camera-h
-;;;;;;;;;;;;;;;;;;
 
 (deftype vis-gif-tag (structure)
   ((fog0  uint32  :offset-assert 0)
@@ -4442,9 +4431,6 @@
     )
   )
 
-;;;;;;;;;;;;;;;;
-;; text-h
-;;;;;;;;;;;;;;;;
 
 (deftype game-text (structure)
   ((id   uint32  :offset-assert 0)
@@ -4473,9 +4459,6 @@
 (define-extern *text-group-names* (array string))
 (define-extern *common-text-heap* kheap)
 (define-extern *common-text* symbol)
-;;;;;;;;;;;;;;;;
-;; settings-h
-;;;;;;;;;;;;;;;;
 
 ;; settings-h
 ;; was manually done
@@ -4565,9 +4548,6 @@
 
 (define-extern *setting-control* setting-control)
 
-;;;;;;;;;;;;;;;;;
-;; capture
-;;;;;;;;;;;;;;;;;
 
 (deftype gs-store-image-packet (structure)
   ((vifcode        vif-tag 4 :offset-assert 0)
@@ -4595,9 +4575,6 @@
 (define-extern file-stream-close (function file-stream file-stream))
 (define-extern file-stream-write (function file-stream pointer uint uint))
 
-;;;;;;;;;;;;;;;;;;
-;; memory-usage-h
-;;;;;;;;;;;;;;;;;;
 
 (deftype memory-usage-info (structure)
   ((name  basic  :offset-assert 0)
@@ -4629,9 +4606,6 @@
 (define-extern *dma-mem-usage* memory-usage-block)
 (define-extern *temp-mem-usage* symbol)
 
-;;;;;;;;;;;;;;
-;; texture
-;;;;;;;;;;;;;;
 
 (define-extern loado (function string kheap object))
 
@@ -4714,24 +4688,6 @@
 
 
 (define-extern *font-texture* texture)
-
-
-;; texture
-; (deftype texture-page-dir (basic)
-;   ((length int32)
-;    (pad uint8 12))
-;   :method-count-assert 10
-;   :size-assert         #x14
-;   :flag-assert         #xa00000014
-;   ;;  not enough basic ops
-;   (:methods
-;     (dummy-9 () none 9)
-;     )
-;   )
-
-;;;;;;;;;;;;;;
-;; main-h
-;;;;;;;;;;;;;;
 
 (deftype frame-stats (structure)
   ((field-time uint64 2 :offset-assert 0)
@@ -4851,9 +4807,6 @@
 (define-extern *dproc* process)
 (define-extern *display-strip-lines* int)
 
-;;;;;;;;;;;;;;
-;; mspace-h
-;;;;;;;;;;;;;;
 
 (deftype joint (basic)
   ((name      basic          :offset-assert 4)
@@ -4926,9 +4879,6 @@
   :flag-assert         #x900000010
   )
 
-;;;;;;;;;;;;;;;
-;; drawable-h
-;;;;;;;;;;;;;;;
 
 ;; drawable-h
 (deftype drawable (basic)
@@ -4971,9 +4921,6 @@
     )
   )
 
-;;;;;;;;;;;;;;;;;;;;;
-;; drawable-group-h
-;;;;;;;;;;;;;;;;;;;;;
 
 (deftype drawable-group (drawable)
   ((pad uint8 4))
@@ -4982,9 +4929,6 @@
 
 (define-extern *collide-nodes* int)
 
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;; drawable-inline-array-h
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 (deftype drawable-inline-array (drawable)
   ((length  int16          :offset 6) ;; this is kinda weird.
@@ -5005,9 +4949,6 @@
     )
   )
 
-;;;;;;;;;;;;;;;
-;; draw-node-h
-;;;;;;;;;;;;;;;
 
 (deftype draw-node (drawable)
   ((child-count uint8          :offset 6)
@@ -5052,9 +4993,6 @@
   :flag-assert #x1200000024
   )
 
-;;;;;;;;;;;;;;;;;;;;;
-;; drawable-actor-h
-;;;;;;;;;;;;;;;;;;;;;
 
 (deftype drawable-actor (drawable)
   ((actor   basic          :offset 8)
@@ -5085,9 +5023,6 @@
   :flag-assert #x1200000044
   )
 
-;;;;;;;;;;;;;;;;;;;;;;
-;; drawable-ambient-h
-;;;;;;;;;;;;;;;;;;;;;;
 
 ;; drawable-ambient-h
 (deftype drawable-ambient (drawable)
@@ -5154,9 +5089,6 @@
   :flag-assert         #x900002004
   )
 
-;;;;;;;;;;;;;;;;;;
-;; hint-control-h
-;;;;;;;;;;;;;;;;;;
 
 ;; hint-control-h
 (deftype level-hint-control (structure)
@@ -5193,10 +5125,6 @@
   :flag-assert         #x900000004
   )
 
-
-;;;;;;;;;;;;;;;;
-;; generic-h
-;;;;;;;;;;;;;;;;
 
 (deftype gsf-vertex (structure)
   ((data uint32   8       :offset-assert 0)
@@ -5459,9 +5387,6 @@
 
 (define-extern *gsf-buffer* gsf-buffer)
 
-;;;;;;;;;;;;;
-;; lights-h
-;;;;;;;;;;;;;
 
 ;; lights-h
 (deftype vu-lights (structure)
@@ -5558,15 +5483,6 @@
   :size-assert         #xc0
   :flag-assert         #x9000000c0
   )
-
-;; lights
-
-
-
-
-;;;;;;;;;;;
-;; ocean-h
-;;;;;;;;;;;
 
 ;; ocean-h
 (deftype ocean-corner (structure)
@@ -8549,7 +8465,7 @@
   :flag-assert         #x90000004c
   )
 
-(defenum fact-pickup-type
+(defenum pickup-type
   (none)
   (eco-yellow)
   (eco-red)
@@ -8561,12 +8477,12 @@
   (buzzer)
   (eco-pill-random)
   )
-(define-extern pickup-type->string (function fact-pickup-type string))
+(define-extern pickup-type->string (function pickup-type string))
 
 ;; fact-h
 (deftype fact-info (basic)
   ((process             process :offset-assert 4)
-   (pickup-type         fact-pickup-type   :offset-assert 8)
+   (pickup-type         pickup-type   :offset-assert 8)
    (pickup-amount       float   :offset-assert 12)
    (pickup-spawn-amount float   :offset-assert 16)
    (options             uint64  :offset-assert 24)
@@ -8576,7 +8492,7 @@
   :size-assert         #x28
   :flag-assert         #xc00000028
   (:methods
-    (new (symbol type process fact-pickup-type float) _type_ 0)
+    (new (symbol type process pickup-type float) _type_ 0)
     (dummy-9 () none 9)
     (dummy-10 (_type_ symbol) none 10)
     (dummy-11 (_type_) float 11)
@@ -8607,7 +8523,7 @@
   :size-assert         #x90
   :flag-assert         #xc00000090
   (:methods
-    (new (symbol type process fact-pickup-type float) _type_ 0)
+    (new (symbol type process pickup-type float) _type_ 0)
     )
   )
 
@@ -8625,7 +8541,7 @@
   :size-assert         #x44
   :flag-assert         #xc00000044
   (:methods
-    (new (symbol type process fact-pickup-type float) _type_ 0)
+    (new (symbol type process pickup-type float) _type_ 0)
     )
   )
 
@@ -13063,38 +12979,6 @@
 ;   :flag-assert         #x900000508
 ;   )
 
-; ;; joint
-; (deftype art-joint-anim (art-element)
-;   ()
-;   :method-count-assert 13
-;   :size-assert         #x30
-;   :flag-assert         #xd00000030
-;   ;;  too many basic blocks
-;   (:methods
-;     (dummy-9 () none 9)
-;     (dummy-10 () none 10)
-;     (dummy-11 () none 11)
-;     (dummy-12 () none 12)
-;     )
-;   )
-
-; ;; joint
-; (deftype art-group (art)
-;   ()
-;   :method-count-assert 15
-;   :size-assert         #x20
-;   :flag-assert         #xf00000020
-;   ;;  too many basic blocks
-;   (:methods
-;     (dummy-9 () none 9)
-;     (dummy-10 () none 10)
-;     (dummy-11 () none 11)
-;     (dummy-12 () none 12)
-;     (dummy-13 () none 13)
-;     (dummy-14 () none 14)
-;     )
-;   )
-
 ; ;; cylinder
 ; (deftype cylinder-verts (structure)
 ;   ((vert UNKNOWN 24 :offset-assert 0)
@@ -13759,19 +13643,6 @@
 ;   :method-count-assert 9
 ;   :size-assert         #x19b0
 ;   :flag-assert         #x9000019b0
-;   )
-
-; ;; loader
-; (deftype load-dir (basic)
-;   ()
-;   :method-count-assert 11
-;   :size-assert         #x10
-;   :flag-assert         #xb00000010
-;   ;;  too many basic blocks
-;   (:methods
-;     (dummy-9 () none 9)
-;     (dummy-10 () none 10)
-;     )
 ;   )
 
 ;; task-control-h
@@ -15303,26 +15174,6 @@
 ;   :method-count-assert 9
 ;   :size-assert         #x64
 ;   :flag-assert         #x900000064
-;   )
-
-; ;; drawable-group
-; (deftype drawable-group (drawable)
-;   ()
-;   :method-count-assert 18
-;   :size-assert         #x24
-;   :flag-assert         #x1200000024
-;   ;;  too many basic blocks
-;   (:methods
-;     (dummy-9 () none 9)
-;     (dummy-10 () none 10)
-;     (dummy-11 () none 11)
-;     (dummy-12 () none 12)
-;     (dummy-13 () none 13)
-;     (dummy-14 () none 14)
-;     (dummy-15 () none 15)
-;     (dummy-16 () none 16)
-;     (dummy-17 () none 17)
-;     )
 ;   )
 
 ; ;; collide-cache
@@ -33151,27 +33002,6 @@
 
 
 
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;; SYMBOLS
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-
-
-
-;; KERNEL
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 (define-extern *level-load-list* pair)
 (define-extern training level-load-info)
 (define-extern village1 level-load-info)
@@ -33407,7 +33237,6 @@
 ;;(define-extern *global-attack-id* object) ;; unknown type
 ;;(define-extern ground-tween-info object) ;; unknown type
 ;;(define-extern process-drawable-reserved object) ;; unknown type
-;;(define-extern manipy object) ;; unknown type
 (define-extern swingpole type)
 ;;(define-extern part-tracker object) ;; unknown type
 ;;(define-extern trajectory object) ;; unknown type
@@ -33469,7 +33298,6 @@
 (define-extern collide-fragment type)
 ;;(define-extern collide-frag-vertex object) ;; unknown type
 (define-extern drawable-tree-collide-fragment type)
-;;(define-extern projectile-blue object) ;; unknown type
 (define-extern bsp-header type)
 (define-extern inspect-bsp-tree function)
 (define-extern map-bsp-tree function)
@@ -33557,7 +33385,6 @@
 ;;(define-extern sprite-vec-data-2d object) ;; unknown type
 (define-extern eye-control-array type)
 (define-extern *eye-control-array* eye-control-array) ;; unknown type
-;;(define-extern eye-work object) ;; unknown type
 (define-extern sparticle-launcher type)
 (define-extern sparticle-launch-group type)
 ;;(define-extern sparticle-launch-control object) ;; unknown type
@@ -34782,7 +34609,6 @@
 ;;(define-extern death-jungle-snake object) ;; unknown type
 ;;(define-extern warpgate-tele object) ;; unknown type
 ;;(define-extern temp-enemy-die object) ;; unknown type
-;;(define-extern water-control object) ;; unknown type
 (define-extern cam-state-from-entity function)
 (define-extern parameter-ease-sqrt-clamp function)
 (define-extern third-power function)
