@@ -174,6 +174,9 @@ class TypeSystem {
                              int offset,
                              int field_size);
 
+  bool should_use_virtual_methods(const Type* type) const;
+  bool should_use_virtual_methods(const TypeSpec& type) const;
+
   /*!
    * Get a type by name and cast to a child class of Type*. Must succeed.
    */

@@ -30,6 +30,7 @@ add_executable(goalc-test
         ${CMAKE_CURRENT_LIST_DIR}/decompiler/test_math_decomp.cpp
         ${CMAKE_CURRENT_LIST_DIR}/decompiler/test_DataParser.cpp
         ${CMAKE_CURRENT_LIST_DIR}/decompiler/test_DisasmVifDecompile.cpp
+        ${CMAKE_CURRENT_LIST_DIR}/decompiler/test_VuDisasm.cpp
         ${GOALC_TEST_FRAMEWORK_SOURCES}
         ${GOALC_TEST_CASES})
 

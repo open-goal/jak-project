@@ -40,11 +40,7 @@ TEST_F(FormRegressionTest, MatrixPMult) {
   std::string type = "(function matrix matrix matrix matrix)";
   std::string expected =
       "(begin\n"
-      "  (let ((s5-0 (new (quote stack-no-clear) (quote matrix))))\n"
-      "   (set! (-> s5-0 vector 0 quad) (the-as uint128 0))\n"
-      "   (set! (-> s5-0 vector 1 quad) (the-as uint128 0))\n"
-      "   (set! (-> s5-0 vector 2 quad) (the-as uint128 0))\n"
-      "   (set! (-> s5-0 vector 3 quad) (the-as uint128 0))\n"
+      "  (let ((s5-0 (new-stack-matrix0)))\n"
       "   (matrix*! s5-0 arg1 arg2)\n"
       "   (set! (-> arg0 vector 0 quad) (-> s5-0 vector 0 quad))\n"
       "   (set! (-> arg0 vector 1 quad) (-> s5-0 vector 1 quad))\n"
@@ -93,11 +89,7 @@ TEST_F(FormRegressionTest, VectorXQuaternionWithCast) {
   std::string type = "(function quaternion quaternion quaternion)";
   std::string expected =
       "(begin\n"
-      "  (let ((s5-0 (new (quote stack-no-clear) (quote matrix))))\n"
-      "   (set! (-> s5-0 vector 0 quad) (the-as uint128 0))\n"
-      "   (set! (-> s5-0 vector 1 quad) (the-as uint128 0))\n"
-      "   (set! (-> s5-0 vector 2 quad) (the-as uint128 0))\n"
-      "   (set! (-> s5-0 vector 3 quad) (the-as uint128 0))\n"
+      "  (let ((s5-0 (new-stack-matrix0)))\n"
       "   (quaternion->matrix s5-0 arg1)\n"
       "   (set! (-> arg0 vec quad) (-> (the-as (pointer uint128) (-> s5-0 data)) 0))\n"
       "   )\n"

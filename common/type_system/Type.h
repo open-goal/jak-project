@@ -107,7 +107,6 @@ class Type {
   bool m_allow_in_runtime = true;
   std::string m_runtime_name;
   bool m_is_boxed = false;  // does this have runtime type information?
-
   int m_heap_base = 0;
 };
 
@@ -286,7 +285,13 @@ class BasicType : public StructureType {
   int get_offset() const override;
   int get_inline_array_start_alignment() const override;
   std::string print() const override;
+  bool final() const { return m_final; }
+  void set_final() { m_final = true; }
   ~BasicType() = default;
+  bool operator==(const Type& other) const override;
+
+ protected:
+  bool m_final = false;
 };
 
 class BitField {

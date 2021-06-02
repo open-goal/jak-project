@@ -208,6 +208,7 @@ struct StructureDefResult {
   bool generate_runtime_type = true;
   bool pack_me = false;
   bool allow_misaligned = false;
+  bool final = false;
 };
 
 StructureDefResult parse_structure_def(StructureType* type,
@@ -271,6 +272,8 @@ StructureDefResult parse_structure_def(StructureType* type,
         flags.heap_base = hb;
       } else if (opt_name == ":allow-misaligned") {
         result.allow_misaligned = true;
+      } else if (opt_name == ":final") {
+        result.final = true;
       } else {
         throw std::runtime_error("Invalid option in field specification: " + opt_name);
       }
@@ -436,6 +439,11 @@ DeftypeResult parse_deftype(const goos::Object& deftype, TypeSystem* ts) {
     auto new_type = std::make_unique<BasicType>(parent_type_name, name, false, 0);
     auto pto = dynamic_cast<BasicType*>(ts->lookup_type(parent_type));
     assert(pto);
+    if (pto->final()) {
+      throw std::runtime_error(
+          fmt::format("[TypeSystem] Cannot make a child type {} of final basic type {}", name,
+                      parent_type_name));
+    }
     new_type->inherit(pto);
     ts->forward_declare_type_as_basic(name);
     auto sr = parse_structure_def(new_type.get(), ts, field_list_obj, options_obj);
@@ -452,6 +460,9 @@ DeftypeResult parse_deftype(const goos::Object& deftype, TypeSystem* ts) {
       throw std::runtime_error("invalid pack option on basic");
     }
     new_type->set_heap_base(result.flags.heap_base);
+    if (sr.final) {
+      new_type->set_final();
+    }
     ts->add_type(name, std::move(new_type));
   } else if (is_type("structure", parent_type, ts)) {
     auto new_type = std::make_unique<StructureType>(parent_type_name, name, false, false, false, 0);
@@ -467,6 +478,10 @@ DeftypeResult parse_deftype(const goos::Object& deftype, TypeSystem* ts) {
     }
     if (sr.allow_misaligned) {
       new_type->set_allow_misalign(true);
+    }
+    if (sr.final) {
+      throw std::runtime_error(
+          fmt::format("[TypeSystem] :final option cannot be used on structure type {}", name));
     }
     new_type->set_heap_base(result.flags.heap_base);
     ts->add_type(name, std::move(new_type));

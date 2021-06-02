@@ -42,7 +42,7 @@ class FormStack {
                 int begin_idx = -1);
   FormElement* pop_back(FormPool& pool);
   bool is_single_expression();
-  std::vector<FormElement*> rewrite(FormPool& pool, const Env& env);
+  std::vector<FormElement*> rewrite(FormPool& pool, const Env& env) const;
   std::string print(const Env& env);
   bool is_root() const { return m_is_root_stack; }
 

@@ -49,6 +49,8 @@ Config read_config_file(const std::string& path_to_config_file) {
   config.hexdump_code = cfg.at("hexdump_code").get<bool>();
   config.hexdump_data = cfg.at("hexdump_data").get<bool>();
   config.dump_objs = cfg.at("dump_objs").get<bool>();
+  config.print_cfgs = cfg.at("print_cfgs").get<bool>();
+  config.generate_symbol_definition_map = cfg.at("generate_symbol_definition_map").get<bool>();
 
   auto allowed = cfg.at("allowed_objects").get<std::vector<std::string>>();
   for (const auto& x : allowed) {
@@ -142,6 +144,16 @@ Config read_config_file(const std::string& path_to_config_file) {
       hacks_json.at("no_type_analysis_functions_by_name").get<std::unordered_set<std::string>>();
   config.hacks.types_with_bad_inspect_methods =
       hacks_json.at("types_with_bad_inspect_methods").get<std::unordered_set<std::string>>();
+  config.hacks.reject_cond_to_value = hacks_json.at("aggressively_reject_cond_to_value_rewrite")
+                                          .get<std::unordered_set<std::string>>();
+
+  for (auto& entry : hacks_json.at("cond_with_else_max_lengths")) {
+    auto func_name = entry.at(0).get<std::string>();
+    auto cond_name = entry.at(1).get<std::string>();
+    auto max_len = entry.at(2).get<int>();
+    config.hacks.cond_with_else_len_by_func_name[func_name].max_length_by_start_block[cond_name] =
+        max_len;
+  }
   return config;
 }
 

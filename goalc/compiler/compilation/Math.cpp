@@ -572,13 +572,18 @@ Val* Compiler::compile_logand(const goos::Object& form, const goos::Object& rest
   va_check(form, args, {{}, {}}, {});
   auto first = compile_error_guard(args.unnamed.at(0), env)->to_gpr(env);
   auto second = compile_error_guard(args.unnamed.at(1), env)->to_gpr(env);
-  if (get_math_mode(first->type()) != MathMode::MATH_INT ||
-      get_math_mode(second->type()) != MathMode::MATH_INT) {
+  auto math_1 = get_math_mode(first->type());
+  auto math_2 = get_math_mode(second->type());
+  if (!((math_1 == MathMode::MATH_INT && math_2 == MathMode::MATH_INT) ||
+        (math_1 == MathMode::MATH_INT && m_ts.tc(TypeSpec("pointer"), second->type())) ||
+        (m_ts.tc(TypeSpec("pointer"), first->type()) && math_2 == MathMode::MATH_INT))) {
     throw_compiler_error(form, "Cannot logand a {} by a {}.", first->type().print(),
                          second->type().print());
   }
 
-  auto result = env->make_gpr(first->type());
+  // kind of a hack, but make (logand int pointer) return pointer.
+  auto result =
+      env->make_gpr(m_ts.tc(TypeSpec("pointer"), second->type()) ? second->type() : first->type());
   env->emit(std::make_unique<IR_RegSet>(result, first));
   env->emit(std::make_unique<IR_IntegerMath>(IntegerMathKind::AND_64, result, second));
   return result;

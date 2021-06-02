@@ -19,6 +19,7 @@
 #include "decompiler/analysis/inline_asm_rewrite.h"
 #include "decompiler/analysis/stack_spill.h"
 #include "decompiler/analysis/anonymous_function_def.h"
+#include "decompiler/analysis/symbol_def_map.h"
 #include "common/goos/PrettyPrinter.h"
 #include "decompiler/IR2/Form.h"
 
@@ -34,11 +35,17 @@ void ObjectFileDB::analyze_functions_ir2(const std::string& output_dir, const Co
   lg::info("Processing top-level functions...");
   ir2_top_level_pass(config);
   lg::info("Processing basic blocks and control flow graph...");
-  ir2_basic_block_pass();
+  ir2_basic_block_pass(config);
   lg::info("Finding stack spills...");
   ir2_stack_spill_slot_pass();
   lg::info("Converting to atomic ops...");
   ir2_atomic_op_pass(config);
+
+  if (config.generate_symbol_definition_map) {
+    lg::info("Generating symbol definition map...");
+    ir2_symbol_definition_map(output_dir);
+  }
+
   lg::info("Running type analysis...");
   ir2_type_analysis_pass(config);
   lg::info("Register usage analysis...");
@@ -63,7 +70,7 @@ void ObjectFileDB::analyze_functions_ir2(const std::string& output_dir, const Co
 
   if (!output_dir.empty()) {
     lg::info("Writing results...");
-    ir2_write_results(output_dir);
+    ir2_write_results(output_dir, config);
   }
 }
 
@@ -168,7 +175,7 @@ void ObjectFileDB::ir2_top_level_pass(const Config& config) {
  * - Analyze prologue and epilogue
  * - Build control flow graph
  */
-void ObjectFileDB::ir2_basic_block_pass() {
+void ObjectFileDB::ir2_basic_block_pass(const Config& config) {
   Timer timer;
   // Main Pass over each function...
   int total_basic_blocks = 0;
@@ -206,7 +213,13 @@ void ObjectFileDB::ir2_basic_block_pass() {
       // run analysis
 
       // build a control flow graph, just looking at branch instructions.
-      func.cfg = build_cfg(data.linked_data, segment_id, func);
+      CondWithElseLengthHack hack;
+      auto lookup =
+          config.hacks.cond_with_else_len_by_func_name.find(func.guessed_name.to_string());
+      if (lookup != config.hacks.cond_with_else_len_by_func_name.end()) {
+        hack = lookup->second;
+      }
+      func.cfg = build_cfg(data.linked_data, segment_id, func, hack);
       if (!func.cfg->is_fully_resolved()) {
         lg::warn("Function {} from {} failed to build control flow graph!",
                  func.guessed_name.to_string(), data.to_unique_name());
@@ -242,13 +255,17 @@ void ObjectFileDB::ir2_stack_spill_slot_pass() {
     if (!func.cfg_ok) {
       return;
     }
-    auto spill_map = build_spill_map(func.instructions, {func.prologue_end, func.epilogue_start});
-    auto map_size = spill_map.size();
-    if (map_size) {
-      functions_with_spills++;
-      total_slots += map_size;
+    try {
+      auto spill_map = build_spill_map(func.instructions, {func.prologue_end, func.epilogue_start});
+      auto map_size = spill_map.size();
+      if (map_size) {
+        functions_with_spills++;
+        total_slots += map_size;
+      }
+      func.ir2.env.set_stack_spills(spill_map);
+    } catch (std::exception& e) {
+      func.warnings.general_warning("stack spill failed: {}", e.what());
     }
-    func.ir2.env.set_stack_spills(spill_map);
   });
   lg::info("Analyzed stack spills: found {} functions with spills (total {} vars), took {:.2f} ms",
            functions_with_spills, total_slots, timer.getMs());
@@ -296,6 +313,18 @@ void ObjectFileDB::ir2_atomic_op_pass(const Config& config) {
            100.f * attempted / total_functions, 100.f * successful / attempted);
 }
 
+void ObjectFileDB::ir2_symbol_definition_map(const std::string& output_dir) {
+  Timer timer;
+  SymbolMapBuilder map_builder;
+  for_each_obj([&](ObjectFileData& data) { map_builder.add_object(data); });
+  map_builder.build_map();
+  std::string result = map_builder.convert_to_json();
+  auto file_name = file_util::combine_path(output_dir, "symbol_map.json");
+  file_util::write_text_file(file_name, result);
+
+  lg::info("Built symbol map in {:.2f} ms", timer.getMs());
+}
+
 template <typename Key, typename Value>
 Value try_lookup(const std::unordered_map<Key, Value>& map, const Key& key) {
   auto lookup = map.find(key);
@@ -338,6 +367,11 @@ void ObjectFileDB::ir2_type_analysis_pass(const Config& config) {
         if (config.hacks.pair_functions_by_name.find(func_name) !=
             config.hacks.pair_functions_by_name.end()) {
           func.ir2.env.set_sloppy_pair_typing();
+        }
+
+        if (config.hacks.reject_cond_to_value.find(func_name) !=
+            config.hacks.reject_cond_to_value.end()) {
+          func.ir2.env.aggressively_reject_cond_to_value_rewrite = true;
         }
         func.ir2.env.set_stack_var_hints(try_lookup(config.stack_var_hints_by_function, func_name));
         if (run_type_analysis_ir2(ts, dts, func)) {
@@ -539,7 +573,7 @@ void ObjectFileDB::ir2_insert_anonymous_functions() {
   lg::info("Inserted {} anonymous functions in {:.2f} ms\n", total, timer.getMs());
 }
 
-void ObjectFileDB::ir2_write_results(const std::string& output_dir) {
+void ObjectFileDB::ir2_write_results(const std::string& output_dir, const Config& config) {
   Timer timer;
   lg::info("Writing IR2 results to file...");
   int total_files = 0;
@@ -548,7 +582,7 @@ void ObjectFileDB::ir2_write_results(const std::string& output_dir) {
     if (obj.linked_data.has_any_functions()) {
       // todo
       total_files++;
-      auto file_text = ir2_to_file(obj);
+      auto file_text = ir2_to_file(obj, config);
       total_bytes += file_text.length();
       auto file_name = file_util::combine_path(output_dir, obj.to_unique_name() + "_ir2.asm");
       file_util::write_text_file(file_name, file_text);
@@ -562,7 +596,7 @@ void ObjectFileDB::ir2_write_results(const std::string& output_dir) {
            timer.getMs());
 }
 
-std::string ObjectFileDB::ir2_to_file(ObjectFileData& data) {
+std::string ObjectFileDB::ir2_to_file(ObjectFileData& data, const Config& config) {
   std::string result;
 
   const char* segment_names[] = {"main segment", "debug segment", "top-level segment"};
@@ -621,6 +655,12 @@ std::string ObjectFileDB::ir2_to_file(ObjectFileData& data) {
           // print instruction
           result += fmt::format("  {}\n", op->to_string(func.ir2.env));
         }
+      }
+
+      // print if it exists, even if it's not okay.
+      if (config.print_cfgs && func.cfg) {
+        result += fmt::format("Control Flow Graph:\n{}\n\n",
+                              pretty_print::to_string(func.cfg->to_form()));
       }
 
       if (false && func.ir2.print_debug_forms) {

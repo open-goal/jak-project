@@ -192,6 +192,32 @@ void clean_up_break(FormPool& pool, BreakElement* ir) {
   }
 }
 
+void clean_up_break_final(const Function& f, BreakElement* ir) {
+  SetVarElement* dead = dynamic_cast<SetVarElement*>(ir->dead_code->try_as_single_element());
+  if (!dead) {
+    dead = dynamic_cast<SetVarElement*>(ir->dead_code->elts().front());
+    for (int i = 1; i < ir->dead_code->size(); i++) {
+      if (!dynamic_cast<EmptyElement*>(ir->dead_code->at(i))) {
+        dead = nullptr;
+        break;
+      }
+    }
+  }
+
+  if (!dead) {
+    lg::error("failed to recognize dead code after break, got {}",
+              ir->dead_code->to_string(f.ir2.env));
+    throw std::runtime_error("failed to recognize dead code");
+  }
+  assert(dead);
+  auto src = dynamic_cast<SimpleExpressionElement*>(dead->src()->try_as_single_element());
+  assert(src);
+  if (src->expr().is_identity() && src->expr().get_arg(0).is_int() &&
+      src->expr().get_arg(0).get_int() == 0) {
+    ir->dead_code = nullptr;
+  }
+}
+
 /*!
  * Does the instruction in the delay slot set a register to false?
  * Note. a beql s7, x followed by a or y, x, r0 will count as this. I don't know why but
@@ -1412,10 +1438,16 @@ void insert_cfg_into_list(FormPool& pool,
   auto as_block = dynamic_cast<const BlockVtx*>(vtx);
   if (as_sequence) {
     // inline the sequence.
+    if (as_sequence->needs_label) {
+      output->push_back(pool.alloc_element<LabelElement>(vtx->get_first_block_id()));
+    }
     for (auto& x : as_sequence->seq) {
       insert_cfg_into_list(pool, f, x, output);
     }
   } else if (as_block) {
+    if (as_block->needs_label) {
+      output->push_back(pool.alloc_element<LabelElement>(vtx->get_first_block_id()));
+    }
     convert_and_inline(pool, f, as_block, output);
   } else {
     auto ir = cfg_to_ir(pool, f, vtx);
@@ -1425,7 +1457,7 @@ void insert_cfg_into_list(FormPool& pool,
   }
 }
 
-Form* cfg_to_ir(FormPool& pool, Function& f, const CfgVtx* vtx) {
+Form* cfg_to_ir_helper(FormPool& pool, Function& f, const CfgVtx* vtx) {
   if (dynamic_cast<const BlockVtx*>(vtx)) {
     auto* bv = dynamic_cast<const BlockVtx*>(vtx);
     Form* output = pool.alloc_empty_form();
@@ -1588,7 +1620,8 @@ Form* cfg_to_ir(FormPool& pool, Function& f, const CfgVtx* vtx) {
   } else if (dynamic_cast<const Break*>(vtx)) {
     auto* cvtx = dynamic_cast<const Break*>(vtx);
     auto result = pool.alloc_single_element_form<BreakElement>(
-        nullptr, cfg_to_ir(pool, f, cvtx->body), cfg_to_ir(pool, f, cvtx->unreachable_block));
+        nullptr, cfg_to_ir(pool, f, cvtx->body), cfg_to_ir(pool, f, cvtx->unreachable_block),
+        cvtx->dest_block_id);
     clean_up_break(pool, dynamic_cast<BreakElement*>(result->try_as_single_element()));
     return result;
   } else if (dynamic_cast<const EmptyVtx*>(vtx)) {
@@ -1597,6 +1630,15 @@ Form* cfg_to_ir(FormPool& pool, Function& f, const CfgVtx* vtx) {
 
   throw std::runtime_error("not yet implemented IR conversion.");
   return nullptr;
+}
+
+Form* cfg_to_ir(FormPool& pool, Function& f, const CfgVtx* vtx) {
+  Form* result = cfg_to_ir_helper(pool, f, vtx);
+  if (vtx->needs_label) {
+    result->elts().insert(result->elts().begin(),
+                          pool.alloc_element<LabelElement>(vtx->get_first_block_id()));
+  }
+  return result;
 }
 
 /*!
@@ -1665,6 +1707,11 @@ void build_initial_forms(Function& function) {
       auto as_return = dynamic_cast<ReturnElement*>(form);
       if (as_return) {
         clean_up_return_final(function, as_return);
+      }
+
+      auto as_break = dynamic_cast<BreakElement*>(form);
+      if (as_break) {
+        clean_up_break_final(function, as_break);
       }
     });
 

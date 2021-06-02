@@ -20,9 +20,9 @@
   `(asm-file ,file :color :write)
   )
 
-(defmacro md (file)
+(defmacro md (file &rest path)
   "Make Debug: make + print disassembly for a file"
-  `(asm-file ,file :color :write :disassemble)
+  `(asm-file ,file :color :write :disassemble ,@path)
   )
 
 (defmacro ml (file)
@@ -358,9 +358,33 @@
    else can be used as the default case, but it must be the last one."
 
   (with-gensyms (sw)
+    ;; save the switch to a variable (only evaluated once)
     `(let ((sw ,switch))
+        ;; build the cond construct with each case
         (cond ,@(apply
-                  (lambda (x) `(,@(if (eq? (first x) 'else) `(else ,@(rest x)) `((= sw ,(first x)) ,@(rest x)))))
+                  (lambda (x) `(
+                      ;; each case is of format ((cond cond cond...) body)
+                      ,@(let ((conditions (first x)) ;; list of conditions, OR just else
+                              (body (rest x))) ;; the body
+
+                        (cond
+                          ;; if the condition is just 'else'
+                          ( (eq? conditions 'else)
+                            `(else ,@body)
+                            )
+                          ;; if the list is made up of a single condition
+                          ( (= (length conditions) 1)
+                            `((= sw ,(first conditions)) ,@body)
+                            )
+                          ;; otherwise it is made up of multiple conditions, or them together!
+                          (#t
+                            `((or ,@(apply (lambda (c) `(= sw ,c)) conditions)) ,@body)
+                            )
+                          )
+
+                        )
+                      )
+                    )
                    cases)
                    )
         )
@@ -429,6 +453,14 @@
 
 (defmacro logand! (place amount)
   `(set! ,place (logand ,place ,amount))
+  )
+
+(defmacro deref (t addr &rest fields)
+  `(-> (the-as (pointer ,t) ,addr) ,@fields)
+  )
+
+(defmacro &deref (t addr &rest fields)
+  `(&-> (the-as (pointer ,t) ,addr) ,@fields)
   )
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;

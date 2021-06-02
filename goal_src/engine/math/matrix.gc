@@ -177,12 +177,7 @@
   "Set dst = src1 * src2. NOTE: this function is a wrapper around matrix*!
    that adds no additional functionality. It seems to be a leftover from
    a time when matrix*! wasn't safe to use in place. This is unused."
-  (let ((temp-mat (new 'stack-no-clear 'matrix)))
-    (set! (-> temp-mat vector 0 quad) (the-as uint128 0))
-    (set! (-> temp-mat vector 1 quad) (the-as uint128 0))
-    (set! (-> temp-mat vector 2 quad) (the-as uint128 0))
-    (set! (-> temp-mat vector 3 quad) (the-as uint128 0))
-    ;; if matrix*! was unsafe to use in place, this would make sense.
+  (let ((temp-mat (new-stack-matrix0)))
     (matrix*! temp-mat src1 src2)
     (set! (-> dst vector 0 quad) (-> temp-mat vector 0 quad))
     (set! (-> dst vector 1 quad) (-> temp-mat vector 1 quad))
@@ -251,9 +246,8 @@
 (defun vector3s-matrix*! ((dst vector3s) (vec vector3s) (mat matrix))
   "Set dst to be ([src 1.0] * mat).xyz.  Doesn't touch the w of dst.
    dst and vec can be the same memory"
-  (let ((temp-vec3 (new 'stack-no-clear 'vector)))
+  (let ((temp-vec3 (new-stack-vector0)))
     ;; create a temporary vec with [x, y, z, 1.0]
-    (set! (-> temp-vec3 quad) (the-as uint128 0))
     (let ((v1-0 temp-vec3))
       (set! (-> v1-0 data 0) (-> vec data 0))
       (set! (-> v1-0 data 1) (-> vec data 1))
@@ -272,8 +266,7 @@
 (defun vector3s-rotate*! ((dst vector3s) (vec vector3s) (mat matrix))
   "Set dst to vec rotated by the rotation in the homogeneous transform mat.
    mat should not have a scale/shear (the upper 3x3 should be a pure rotation)."
-  (let ((temp-vec3 (new 'stack-no-clear 'vector)))
-    (set! (-> temp-vec3 quad) (the-as uint128 0))
+  (let ((temp-vec3 (new-stack-vector0)))
     (let ((v1-0 temp-vec3))
       (set! (-> v1-0 data 0) (-> vec data 0))
       (set! (-> v1-0 data 1) (-> vec data 1))
@@ -717,114 +710,69 @@
 
 (defun matrix-rotate-zyx! ((dst matrix) (rot-xyz-deg vector))
   "Rotate in z,y,x order."
-  (let ((temp-mat (new 'stack-no-clear 'matrix)))
-    (set! (-> temp-mat vector 0 quad) (the-as uint128 0))
-    (set! (-> temp-mat vector 1 quad) (the-as uint128 0))
-    (set! (-> temp-mat vector 2 quad) (the-as uint128 0))
-    (set! (-> temp-mat vector 3 quad) (the-as uint128 0))
-    (let ((rot-mat (new 'stack-no-clear 'matrix)))
-      (set! (-> rot-mat vector 0 quad) (the-as uint128 0))
-      (set! (-> rot-mat vector 1 quad) (the-as uint128 0))
-      (set! (-> rot-mat vector 2 quad) (the-as uint128 0))
-      (set! (-> rot-mat vector 3 quad) (the-as uint128 0))
-      ;; x-rot
-      (matrix-rotate-x! dst (-> rot-xyz-deg data 0))
-      ;; y-rot
-      (matrix-rotate-y! temp-mat (-> rot-xyz-deg data 1))
-      ;; rot-mat = yx
-      (matrix*! rot-mat temp-mat dst)
-      (matrix-rotate-z! temp-mat (-> rot-xyz-deg data 2))
-      ;; dst = z*yz
-      (matrix*! dst temp-mat rot-mat)
-      )
+  (let ((temp-mat (new-stack-matrix0))
+        (rot-mat (new-stack-matrix0)))
+    ;; x-rot
+    (matrix-rotate-x! dst (-> rot-xyz-deg data 0))
+    ;; y-rot
+    (matrix-rotate-y! temp-mat (-> rot-xyz-deg data 1))
+    ;; rot-mat = yx
+    (matrix*! rot-mat temp-mat dst)
+    (matrix-rotate-z! temp-mat (-> rot-xyz-deg data 2))
+    ;; dst = z*yz
+    (matrix*! dst temp-mat rot-mat)
     )
   dst
   )
 
 (defun matrix-rotate-xyz! ((dst matrix) (rot-xyz-deg vector))
-  "Rotate in x,y,z order" 
-  (let ((temp-mat (new 'stack-no-clear 'matrix)))
-    (set! (-> temp-mat vector 0 quad) (the-as uint128 0))
-    (set! (-> temp-mat vector 1 quad) (the-as uint128 0))
-    (set! (-> temp-mat vector 2 quad) (the-as uint128 0))
-    (set! (-> temp-mat vector 3 quad) (the-as uint128 0))
-    (let ((rot-mat (new 'stack-no-clear 'matrix)))
-      (set! (-> rot-mat vector 0 quad) (the-as uint128 0))
-      (set! (-> rot-mat vector 1 quad) (the-as uint128 0))
-      (set! (-> rot-mat vector 2 quad) (the-as uint128 0))
-      (set! (-> rot-mat vector 3 quad) (the-as uint128 0))
-      (matrix-rotate-z! dst (-> rot-xyz-deg data 2))
-      (matrix-rotate-y! temp-mat (-> rot-xyz-deg data 1))
-      (matrix*! rot-mat temp-mat dst)
-      (matrix-rotate-x! temp-mat (-> rot-xyz-deg data 0))
-      (matrix*! dst temp-mat rot-mat)
-      )
+  "Rotate in x,y,z order"
+  (let ((temp-mat (new-stack-matrix0))
+        (rot-mat (new-stack-matrix0)))
+    (matrix-rotate-z! dst (-> rot-xyz-deg data 2))
+    (matrix-rotate-y! temp-mat (-> rot-xyz-deg data 1))
+    (matrix*! rot-mat temp-mat dst)
+    (matrix-rotate-x! temp-mat (-> rot-xyz-deg data 0))
+    (matrix*! dst temp-mat rot-mat)
     )
   dst
   )
 
 (defun matrix-rotate-zxy! ((dst matrix) (rot-xyz-deg vector))
   "Rotate in z,x,y order"
-  (let ((temp-mat (new 'stack-no-clear 'matrix)))
-    (set! (-> temp-mat vector 0 quad) (the-as uint128 0))
-    (set! (-> temp-mat vector 1 quad) (the-as uint128 0))
-    (set! (-> temp-mat vector 2 quad) (the-as uint128 0))
-    (set! (-> temp-mat vector 3 quad) (the-as uint128 0))
-    (let ((rot-mat (new 'stack-no-clear 'matrix)))
-      (set! (-> rot-mat vector 0 quad) (the-as uint128 0))
-      (set! (-> rot-mat vector 1 quad) (the-as uint128 0))
-      (set! (-> rot-mat vector 2 quad) (the-as uint128 0))
-      (set! (-> rot-mat vector 3 quad) (the-as uint128 0))
-      (matrix-rotate-y! dst (-> rot-xyz-deg data 1))
-      (matrix-rotate-x! temp-mat (-> rot-xyz-deg data 0))
-      (matrix*! rot-mat temp-mat dst)
-      (matrix-rotate-z! temp-mat (-> rot-xyz-deg data 2))
-      (matrix*! dst temp-mat rot-mat)
-      )
+  (let ((temp-mat (new-stack-matrix0))
+        (rot-mat (new-stack-matrix0)))
+    (matrix-rotate-y! dst (-> rot-xyz-deg data 1))
+    (matrix-rotate-x! temp-mat (-> rot-xyz-deg data 0))
+    (matrix*! rot-mat temp-mat dst)
+    (matrix-rotate-z! temp-mat (-> rot-xyz-deg data 2))
+    (matrix*! dst temp-mat rot-mat)
     )
   dst
   )
 
 (defun matrix-rotate-yxz! ((dst matrix) (rot-xyz-deg vector))
   "Rotate in y,x,z order."
-  (let ((temp-mat (new 'stack-no-clear 'matrix)))
-    (set! (-> temp-mat vector 0 quad) (the-as uint128 0))
-    (set! (-> temp-mat vector 1 quad) (the-as uint128 0))
-    (set! (-> temp-mat vector 2 quad) (the-as uint128 0))
-    (set! (-> temp-mat vector 3 quad) (the-as uint128 0))
-    (let ((rot-mat (new 'stack-no-clear 'matrix)))
-      (set! (-> rot-mat vector 0 quad) (the-as uint128 0))
-      (set! (-> rot-mat vector 1 quad) (the-as uint128 0))
-      (set! (-> rot-mat vector 2 quad) (the-as uint128 0))
-      (set! (-> rot-mat vector 3 quad) (the-as uint128 0))
-      (matrix-rotate-z! dst (-> rot-xyz-deg data 2))
-      (matrix-rotate-x! temp-mat (-> rot-xyz-deg data 0))
-      (matrix*! rot-mat temp-mat dst)
-      (matrix-rotate-y! temp-mat (-> rot-xyz-deg data 1))
-      (matrix*! dst temp-mat rot-mat)
-      )
+  (let ((temp-mat (new-stack-matrix0))
+        (rot-mat (new-stack-matrix0)))
+    (matrix-rotate-z! dst (-> rot-xyz-deg data 2))
+    (matrix-rotate-x! temp-mat (-> rot-xyz-deg data 0))
+    (matrix*! rot-mat temp-mat dst)
+    (matrix-rotate-y! temp-mat (-> rot-xyz-deg data 1))
+    (matrix*! dst temp-mat rot-mat)
     )
   dst
   )
 
 (defun matrix-rotate-yzx! ((dst matrix) (rot-xyz-deg vector))
   "Rotate in y,z,x order"
-  (let ((temp-mat (new 'stack-no-clear 'matrix)))
-    (set! (-> temp-mat vector 0 quad) (the-as uint128 0))
-    (set! (-> temp-mat vector 1 quad) (the-as uint128 0))
-    (set! (-> temp-mat vector 2 quad) (the-as uint128 0))
-    (set! (-> temp-mat vector 3 quad) (the-as uint128 0))
-    (let ((rot-mat (new 'stack-no-clear 'matrix)))
-      (set! (-> rot-mat vector 0 quad) (the-as uint128 0))
-      (set! (-> rot-mat vector 1 quad) (the-as uint128 0))
-      (set! (-> rot-mat vector 2 quad) (the-as uint128 0))
-      (set! (-> rot-mat vector 3 quad) (the-as uint128 0))
-      (matrix-rotate-z! dst (-> rot-xyz-deg data 0))
-      (matrix-rotate-x! temp-mat (-> rot-xyz-deg data 2))
-      (matrix*! rot-mat temp-mat dst)
-      (matrix-rotate-y! temp-mat (-> rot-xyz-deg data 1))
-      (matrix*! dst temp-mat rot-mat)
-      )
+  (let ((temp-mat (new-stack-matrix0))
+        (rot-mat (new-stack-matrix0)))
+    (matrix-rotate-z! dst (-> rot-xyz-deg data 0))
+    (matrix-rotate-x! temp-mat (-> rot-xyz-deg data 2))
+    (matrix*! rot-mat temp-mat dst)
+    (matrix-rotate-y! temp-mat (-> rot-xyz-deg data 1))
+    (matrix*! dst temp-mat rot-mat)
     )
   dst
   )
@@ -880,17 +828,7 @@
   (matrix-rotate-y! dst rot-y-deg)
   ;; this is weird. probably there is an inlined ctor in a new 'stack expression, used directly
   ;; in an argument. like (matrix-rotate-x! (new 'stack-with-ctor 'matrix) ...)
-  (let ((t9-1 matrix-rotate-x!)
-        (a0-2 (new 'stack-no-clear 'matrix))
-        )
-   (set! (-> a0-2 vector 0 quad) (the-as uint128 0))
-   (set! (-> a0-2 vector 1 quad) (the-as uint128 0))
-   (set! (-> a0-2 vector 2 quad) (the-as uint128 0))
-   (set! (-> a0-2 vector 3 quad) (the-as uint128 0))
-   (let ((a1-2 (t9-1 a0-2 rot-x-deg)))
-    (matrix*! dst a1-2 dst)
-    )
-   )
+  (matrix*! dst (matrix-rotate-x! (new-stack-matrix0) rot-x-deg) dst)
   dst
   )
 

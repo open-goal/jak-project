@@ -317,6 +317,14 @@ goos::Object SetVarElement::to_form_internal(const Env& env) const {
   return pretty_print::build_list("set!", m_dst.to_form(env), m_src->to_form(env));
 }
 
+std::optional<TypeSpec> SetVarElement::required_cast(const Env& env) const {
+  auto expected_type = env.get_variable_type(m_dst, true);
+  if (!env.dts->ts.tc(expected_type, m_src_type)) {
+    return expected_type;
+  }
+  return std::nullopt;
+}
+
 void SetVarElement::apply(const std::function<void(FormElement*)>& f) {
   f(this);
   m_src->apply(f);
@@ -767,41 +775,56 @@ void ReturnElement::get_modified_regs(RegSet& regs) const {
 // BreakElement
 /////////////////////////////
 
-BreakElement::BreakElement(Form* _return_code, Form* _dead_code)
-    : return_code(_return_code), dead_code(_dead_code) {
+BreakElement::BreakElement(Form* _return_code, Form* _dead_code, int _lid)
+    : return_code(_return_code), dead_code(_dead_code), lid(_lid) {
   return_code->parent_element = this;
-  dead_code->parent_element = this;
+  if (dead_code) {
+    dead_code->parent_element = this;
+  }
 }
 
 goos::Object BreakElement::to_form_internal(const Env& env) const {
   std::vector<goos::Object> forms;
-  forms.push_back(pretty_print::to_symbol("break"));
-  forms.push_back(pretty_print::build_list(return_code->to_form(env)));
-  forms.push_back(pretty_print::build_list(dead_code->to_form(env)));
+  if (dead_code) {
+    forms.push_back(pretty_print::to_symbol("break"));
+    forms.push_back(pretty_print::build_list(return_code->to_form(env)));
+    forms.push_back(pretty_print::build_list(dead_code->to_form(env)));
+  } else {
+    forms.push_back(pretty_print::to_symbol("begin"));
+    return_code->inline_forms(forms, env);
+    forms.push_back(pretty_print::build_list(fmt::format("goto cfg-{}", lid)));
+  }
   return pretty_print::build_list(forms);
 }
 
 void BreakElement::apply(const std::function<void(FormElement*)>& f) {
   f(this);
   return_code->apply(f);
-  dead_code->apply(f);
+  if (dead_code) {
+    dead_code->apply(f);
+  }
 }
 
 void BreakElement::apply_form(const std::function<void(Form*)>& f) {
   return_code->apply_form(f);
-  dead_code->apply_form(f);
+  if (dead_code) {
+    dead_code->apply_form(f);
+  }
 }
 
 void BreakElement::collect_vars(RegAccessSet& vars, bool recursive) const {
   if (recursive) {
     return_code->collect_vars(vars, recursive);
-    dead_code->collect_vars(vars, recursive);
+    if (dead_code) {
+      dead_code->collect_vars(vars, recursive);
+    }
   }
 }
 
 void BreakElement::get_modified_regs(RegSet& regs) const {
-  for (auto x : {return_code, dead_code}) {
-    x->get_modified_regs(regs);
+  return_code->get_modified_regs(regs);
+  if (dead_code) {
+    dead_code->get_modified_regs(regs);
   }
 }
 
@@ -920,7 +943,7 @@ void RLetElement::apply(const std::function<void(FormElement*)>& f) {
   body->apply(f);
 }
 
-goos::Object RLetElement::to_form_internal(const Env& env) const {
+goos::Object RLetElement::reg_list() const {
   std::vector<goos::Object> regs;
   for (auto& reg : sorted_regs) {
     if (reg.get_kind() == Reg::RegisterKind::VF ||
@@ -930,16 +953,26 @@ goos::Object RLetElement::to_form_internal(const Env& env) const {
           pretty_print::build_list(pretty_print::to_symbol(fmt::format("{} :class vf", reg_name))));
     }
   }
+  return pretty_print::build_list(regs);
+}
 
-  std::vector<goos::Object> rletForm;
-  rletForm.push_back(pretty_print::to_symbol("rlet"));
-  rletForm.push_back(pretty_print::build_list(regs));
-
-  // NOTE - initialize any relevant registers in the body first
+bool RLetElement::needs_vf0_init() const {
   for (auto& reg : sorted_regs) {
     if (reg.get_kind() == Reg::RegisterKind::VF && reg.to_string() == "vf0") {
-      rletForm.push_back(pretty_print::to_symbol("(init-vf0-vector)"));  // Defined in vector-h.gc
+      return true;
     }
+  }
+  return false;
+}
+
+goos::Object RLetElement::to_form_internal(const Env& env) const {
+  std::vector<goos::Object> rletForm;
+  rletForm.push_back(pretty_print::to_symbol("rlet"));
+  rletForm.push_back(reg_list());
+
+  // NOTE - initialize any relevant registers in the body first
+  if (needs_vf0_init()) {
+    rletForm.push_back(pretty_print::to_symbol("(init-vf0-vector)"));  // Defined in vector-h.gc
   }
 
   body->inline_forms(rletForm, env);
@@ -1503,6 +1536,8 @@ std::string fixed_operator_to_string(FixedOperatorKind kind) {
       return "none";
     case FixedOperatorKind::PCPYLD:
       return "make-u128";
+    case FixedOperatorKind::SYMBOL_TO_STRING:
+      return "symbol->string";
     default:
       assert(false);
       return "";
@@ -2370,22 +2405,75 @@ void MethodOfTypeElement::collect_vars(RegAccessSet& vars, bool) const {
 void MethodOfTypeElement::get_modified_regs(RegSet&) const {}
 
 ////////////////////////////////
+// LabelElement
+///////////////////////////////
+
+LabelElement::LabelElement(int lid) : m_lid(lid) {}
+
+goos::Object LabelElement::to_form_internal(const Env&) const {
+  return pretty_print::build_list(fmt::format("label cfg-{}", m_lid));
+}
+
+void LabelElement::apply(const std::function<void(FormElement*)>& f) {
+  f(this);
+}
+
+void LabelElement::apply_form(const std::function<void(Form*)>&) {}
+void LabelElement::collect_vars(RegAccessSet&, bool) const {}
+void LabelElement::get_modified_regs(RegSet&) const {}
+
+////////////////////////////////
+// GetSymbolStringPointer
+//////////////////////////////
+
+GetSymbolStringPointer::GetSymbolStringPointer(Form* src) : m_src(src) {
+  m_src->parent_element = this;
+}
+
+goos::Object GetSymbolStringPointer::to_form_internal(const Env& env) const {
+  return pretty_print::build_list("sym->str-ptr", m_src->to_form(env));
+}
+
+void GetSymbolStringPointer::apply(const std::function<void(FormElement*)>& f) {
+  f(this);
+  m_src->apply(f);
+}
+
+void GetSymbolStringPointer::apply_form(const std::function<void(Form*)>& f) {
+  m_src->apply_form(f);
+}
+
+void GetSymbolStringPointer::collect_vars(RegAccessSet& vars, bool recursive) const {
+  if (recursive) {
+    m_src->collect_vars(vars, recursive);
+  }
+}
+
+void GetSymbolStringPointer::get_modified_regs(RegSet& regs) const {
+  return m_src->get_modified_regs(regs);
+}
+
+////////////////////////////////
 // Utilities
 ////////////////////////////////
 
-std::optional<SimpleAtom> form_as_atom(const Form* f) {
-  auto as_single = f->try_as_single_element();
-  auto as_atom = dynamic_cast<SimpleAtomElement*>(as_single);
+std::optional<SimpleAtom> form_element_as_atom(const FormElement* f) {
+  auto as_atom = dynamic_cast<const SimpleAtomElement*>(f);
   if (as_atom) {
     return as_atom->atom();
   }
 
-  auto as_se = dynamic_cast<SimpleExpressionElement*>(as_single);
+  auto as_se = dynamic_cast<const SimpleExpressionElement*>(f);
   if (as_se && as_se->expr().is_identity()) {
     return as_se->expr().get_arg(0);
   }
 
   return {};
+}
+
+std::optional<SimpleAtom> form_as_atom(const Form* f) {
+  auto as_single = f->try_as_single_element();
+  return form_element_as_atom(as_single);
 }
 
 FormElement* make_cast_using_existing(FormElement* elt, const TypeSpec& type, FormPool& pool) {

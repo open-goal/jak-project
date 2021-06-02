@@ -191,6 +191,9 @@ class Env {
 
   const std::unordered_map<std::string, std::string>& var_remap_map() const { return m_var_remap; }
 
+  // hacks:
+  bool aggressively_reject_cond_to_value_rewrite = false;
+
  private:
   RegisterAccess m_end_var;
 

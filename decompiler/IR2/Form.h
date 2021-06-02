@@ -304,6 +304,8 @@ class SetVarElement : public FormElement {
   const SetVarInfo& info() const { return m_var_info; }
   const TypeSpec src_type() const { return m_src_type; }
 
+  std::optional<TypeSpec> required_cast(const Env& env) const;
+
  private:
   RegisterAccess m_dst;
   Form* m_src = nullptr;
@@ -590,12 +592,14 @@ class BreakElement : public FormElement {
  public:
   Form* return_code = nullptr;
   Form* dead_code = nullptr;
-  BreakElement(Form* _return_code, Form* _dead_code);
+  int lid = -1;
+  BreakElement(Form* _return_code, Form* _dead_code, int _lid);
   goos::Object to_form_internal(const Env& env) const override;
   void apply(const std::function<void(FormElement*)>& f) override;
   void apply_form(const std::function<void(Form*)>& f) override;
   void collect_vars(RegAccessSet& vars, bool recursive) const override;
   void get_modified_regs(RegSet& regs) const override;
+  void push_to_stack(const Env& env, FormPool& pool, FormStack& stack) override;
 };
 
 /*!
@@ -661,6 +665,8 @@ class RLetElement : public FormElement {
 
   explicit RLetElement(Form* _body, RegSet _regs);
   goos::Object to_form_internal(const Env& env) const override;
+  goos::Object reg_list() const;
+  bool needs_vf0_init() const;
   void apply(const std::function<void(FormElement*)>& f) override;
   void apply_form(const std::function<void(Form*)>& f) override;
   void collect_vars(RegAccessSet& vars, bool recursive) const override;
@@ -1015,6 +1021,8 @@ class DerefToken {
     return m_kind == Kind::FIELD_NAME && m_name == name;
   }
 
+  bool is_int(int x) const { return m_kind == Kind::INTEGER_CONSTANT && m_int_constant == x; }
+
   Kind kind() const { return m_kind; }
   const std::string& field_name() const {
     assert(m_kind == Kind::FIELD_NAME);
@@ -1323,6 +1331,7 @@ class StackVarDefElement : public FormElement {
                          FormStack& stack,
                          std::vector<FormElement*>* result,
                          bool allow_side_effects) override;
+  const TypeSpec& type() const { return m_entry.ref_type; }
 
  private:
   StackVarEntry m_entry;
@@ -1407,6 +1416,39 @@ class MethodOfTypeElement : public FormElement {
   RegisterAccess m_type_reg;
   TypeSpec m_type_at_decompile;
   MethodInfo m_method_info;
+};
+
+class LabelElement : public FormElement {
+ public:
+  LabelElement(int lid);
+  goos::Object to_form_internal(const Env& env) const override;
+  void apply(const std::function<void(FormElement*)>& f) override;
+  void apply_form(const std::function<void(Form*)>& f) override;
+  void collect_vars(RegAccessSet& vars, bool recursive) const override;
+  void get_modified_regs(RegSet& regs) const override;
+  void push_to_stack(const Env& env, FormPool& pool, FormStack& stack) override;
+
+ private:
+  int m_lid = -1;
+};
+
+class GetSymbolStringPointer : public FormElement {
+ public:
+  GetSymbolStringPointer(Form* src);
+  goos::Object to_form_internal(const Env& env) const override;
+  void apply(const std::function<void(FormElement*)>& f) override;
+  void apply_form(const std::function<void(Form*)>& f) override;
+  void collect_vars(RegAccessSet& vars, bool recursive) const override;
+  void get_modified_regs(RegSet& regs) const override;
+  void update_from_stack(const Env& env,
+                         FormPool& pool,
+                         FormStack& stack,
+                         std::vector<FormElement*>* result,
+                         bool allow_side_effects) override;
+  Form* src() { return m_src; }
+
+ private:
+  Form* m_src = nullptr;
 };
 
 /*!
@@ -1599,6 +1641,7 @@ class FormPool {
   std::vector<FormElement*> m_elements;
 };
 
+std::optional<SimpleAtom> form_element_as_atom(const FormElement* f);
 std::optional<SimpleAtom> form_as_atom(const Form* f);
 FormElement* make_cast_using_existing(Form* form, const TypeSpec& type, FormPool& pool);
 FormElement* make_cast_using_existing(FormElement* elt, const TypeSpec& type, FormPool& pool);
