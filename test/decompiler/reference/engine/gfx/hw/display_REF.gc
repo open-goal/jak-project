@@ -506,32 +506,21 @@
 (defun
   draw-sprite2d-xy
   ((buf dma-buffer) (x int) (y int) (w int) (h int) (color rgba))
-  (let*
-   ((context
-     ((method-of-type draw-context new)
-      (the-as symbol (new 'stack-no-clear 'draw-context))
-      draw-context
-      x
-      y
-      w
-      h
-      color
-      )
-     )
-    (draw-x (max 1792 (min 2304 (+ (-> context orgx) 1792))))
-    (draw-y
-     (max
-      (min
-       (+ (-> context orgy) (-> *video-parms* screen-miny))
-       (-> *video-parms* screen-maxy)
-       )
-      (-> *video-parms* screen-miny)
-      )
-     )
-    (draw-w (-> context width))
-    (draw-h (-> context height))
-    (end-dma (the-as dma-packet (-> buf base)))
-    )
+  (let* ((context (new 'stack 'draw-context x y w h color))
+         (draw-x (max 1792 (min 2304 (+ (-> context orgx) 1792))))
+         (draw-y
+          (max
+           (min
+            (+ (-> context orgy) (-> *video-parms* screen-miny))
+            (-> *video-parms* screen-maxy)
+            )
+           (-> *video-parms* screen-miny)
+           )
+          )
+         (draw-w (-> context width))
+         (draw-h (-> context height))
+         (end-dma (the-as dma-packet (-> buf base)))
+         )
    (let* ((a2-2 buf)
           (dma (the-as dma-packet (-> a2-2 base)))
           )
@@ -742,19 +731,7 @@
 (defun
   screen-gradient
   ((arg0 dma-buffer) (arg1 rgba) (arg2 rgba) (arg3 rgba) (arg4 rgba))
-  (let
-   ((a1-2
-     ((method-of-type draw-context new)
-      (the-as symbol (new 'stack-no-clear 'draw-context))
-      draw-context
-      0
-      0
-      512
-      224
-      (new 'static 'rgba)
-      )
-     )
-    )
+  (let ((a1-2 (new 'stack 'draw-context 0 0 512 224 (new 'static 'rgba))))
    (set! (-> a1-2 color 0) arg1)
    (set! (-> a1-2 color 1) arg2)
    (set! (-> a1-2 color 2) arg3)

@@ -304,6 +304,8 @@ class SetVarElement : public FormElement {
   const SetVarInfo& info() const { return m_var_info; }
   const TypeSpec src_type() const { return m_src_type; }
 
+  std::optional<TypeSpec> required_cast(const Env& env) const;
+
  private:
   RegisterAccess m_dst;
   Form* m_src = nullptr;
@@ -663,6 +665,8 @@ class RLetElement : public FormElement {
 
   explicit RLetElement(Form* _body, RegSet _regs);
   goos::Object to_form_internal(const Env& env) const override;
+  goos::Object reg_list() const;
+  bool needs_vf0_init() const;
   void apply(const std::function<void(FormElement*)>& f) override;
   void apply_form(const std::function<void(Form*)>& f) override;
   void collect_vars(RegAccessSet& vars, bool recursive) const override;
@@ -1327,6 +1331,7 @@ class StackVarDefElement : public FormElement {
                          FormStack& stack,
                          std::vector<FormElement*>* result,
                          bool allow_side_effects) override;
+  const TypeSpec& type() const { return m_entry.ref_type; }
 
  private:
   StackVarEntry m_entry;
@@ -1636,6 +1641,7 @@ class FormPool {
   std::vector<FormElement*> m_elements;
 };
 
+std::optional<SimpleAtom> form_element_as_atom(const FormElement* f);
 std::optional<SimpleAtom> form_as_atom(const Form* f);
 FormElement* make_cast_using_existing(Form* form, const TypeSpec& type, FormPool& pool);
 FormElement* make_cast_using_existing(FormElement* elt, const TypeSpec& type, FormPool& pool);

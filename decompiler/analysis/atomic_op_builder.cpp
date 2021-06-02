@@ -66,15 +66,18 @@ RegisterAccess make_dst_var(const Instruction& i, int idx) {
 // Atom Helpers
 ////////////////////////
 
+SimpleAtom false_sym() {
+  return SimpleAtom::make_sym_val("#f");
+}
+
 SimpleAtom make_src_atom(Register reg, int idx) {
   if (reg == Register(Reg::GPR, Reg::R0)) {
     return SimpleAtom::make_int_constant(0);
   }
+  if (reg == Register(Reg::GPR, Reg::S7)) {
+    return false_sym();
+  }
   return SimpleAtom::make_var(make_src_var(reg, idx));
-}
-
-SimpleAtom false_sym() {
-  return SimpleAtom::make_sym_val("#f");
 }
 
 ////////////////////////

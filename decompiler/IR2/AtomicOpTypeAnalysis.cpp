@@ -503,6 +503,14 @@ TP_Type SimpleExpression::get_type_int2(const TypeState& input,
   }
 
   if (m_kind == Kind::AND) {
+    if (arg0_type.typespec().base_type() == "pointer" && tc(dts, TypeSpec("integer"), arg1_type)) {
+      // pointer logand integer = pointer
+      return TP_Type::make_from_ts(arg0_type.typespec());
+    } else if (arg1_type.typespec().base_type() == "pointer" &&
+               tc(dts, TypeSpec("integer"), arg0_type)) {
+      // integer logand pointer = pointer
+      return TP_Type::make_from_ts(arg1_type.typespec());
+    }
     // base case for and. Just get an integer.
     return TP_Type::make_from_ts(TypeSpec("int"));
   }
@@ -726,9 +734,9 @@ TP_Type LoadVarOp::get_src_type(const TypeState& input,
       if (method_id == GOAL_NEW_METHOD) {
         return TP_Type::make_from_ts(method_type);
       } else if (input_type.kind == TP_Type::Kind::TYPE_OF_TYPE_NO_VIRTUAL) {
-        return TP_Type::make_non_virtual_method(method_type);
+        return TP_Type::make_non_virtual_method(method_type, TypeSpec(type_name));
       } else {
-        return TP_Type::make_virtual_method(method_type);
+        return TP_Type::make_virtual_method(method_type, TypeSpec(type_name));
       }
     }
 
@@ -740,7 +748,7 @@ TP_Type LoadVarOp::get_src_type(const TypeState& input,
       if (method_id != GOAL_NEW_METHOD && method_id != GOAL_RELOC_METHOD) {
         // this can get us the wrong thing for `new` methods.  And maybe relocate?
         return TP_Type::make_non_virtual_method(
-            method_info.type.substitute_for_method_call("object"));
+            method_info.type.substitute_for_method_call("object"), TypeSpec("object"));
       }
     }
 

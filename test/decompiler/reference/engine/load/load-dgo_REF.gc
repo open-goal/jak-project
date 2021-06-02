@@ -116,7 +116,6 @@
   )
 
 ;; definition for function str-load-status
-;; INFO: Return type mismatch structure vs symbol.
 (defun str-load-status ((length-out (pointer int32)))
   (if (check-busy *load-str-rpc*)
    (return 'busy)
@@ -127,12 +126,9 @@
    (if (= (-> response result) (load-msg-result error))
     (return 'error)
     )
-   (set!
-    (-> length-out 0)
-    (the-as int (the-as load-chunk-msg (-> response maxlen)))
-    )
+   (set! (-> length-out 0) (the-as int (-> response maxlen)))
    )
-  (the-as symbol 'complete)
+  'complete
   )
 
 ;; definition for function str-load-cancel
@@ -324,77 +320,43 @@
   )
 
 ;; definition for function find-temp-buffer
-;; INFO: Return type mismatch int vs pointer.
 (defun find-temp-buffer ((size int))
   (let ((qwc (+ (/ size 16) 2)))
-   (the-as pointer (cond
-                    ((<
-                      (the-as uint qwc)
-                      (the-as
-                       uint
-                       (dma-buffer-free
-                        (->
-                         *display*
-                         frames
-                         (-> *display* on-screen)
-                         frame
-                         global-buf
-                         )
-                        )
-                       )
-                      )
-                     (logand
-                      -16
-                      (the-as
-                       int
-                       (&+
-                        (->
-                         *display*
-                         frames
-                         (-> *display* on-screen)
-                         frame
-                         global-buf
-                         base
-                         )
-                        15
-                        )
-                       )
-                      )
-                     )
-                    ((<
-                      (the-as uint qwc)
-                      (the-as
-                       uint
-                       (dma-buffer-free
-                        (->
-                         *display*
-                         frames
-                         (-> *display* on-screen)
-                         frame
-                         global-buf
-                         )
-                        )
-                       )
-                      )
-                     (logand
-                      -16
-                      (the-as
-                       int
-                       (&+
-                        (->
-                         *display*
-                         frames
-                         (-> *display* on-screen)
-                         frame
-                         global-buf
-                         base
-                         )
-                        15
-                        )
-                       )
-                      )
-                     )
-                    )
+   (cond
+    ((<
+      (the-as uint qwc)
+      (the-as
+       uint
+       (dma-buffer-free
+        (-> *display* frames (-> *display* on-screen) frame global-buf)
+        )
+       )
+      )
+     (logand
+      -16
+      (&+
+       (-> *display* frames (-> *display* on-screen) frame global-buf base)
+       15
+       )
+      )
+     )
+    ((<
+      (the-as uint qwc)
+      (the-as
+       uint
+       (dma-buffer-free
+        (-> *display* frames (-> *display* on-screen) frame global-buf)
+        )
+       )
+      )
+     (logand
+      -16
+      (&+
+       (-> *display* frames (-> *display* on-screen) frame global-buf base)
+       15
+       )
+      )
+     )
     )
    )
   )

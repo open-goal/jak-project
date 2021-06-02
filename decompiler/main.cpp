@@ -85,7 +85,7 @@ int main(int argc, char** argv) {
     db.analyze_functions_ir2(out_folder, config);
   }
 
-  // write out all symbols TODO - organize by file
+  // write out all symbols
   file_util::write_text_file(file_util::combine_path(out_folder, "all-syms.gc"),
                              db.dts.dump_symbol_types());
 

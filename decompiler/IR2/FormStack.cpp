@@ -2,6 +2,7 @@
 #include "FormStack.h"
 #include "Form.h"
 #include "GenericElementMatcher.h"
+#include "decompiler/Function/Function.h"
 
 namespace decompiler {
 std::string FormStack::StackEntry::print(const Env& env) const {
@@ -285,7 +286,7 @@ FormElement* try_rewrites_in_place(SetVarElement* in, const Env& env, FormPool& 
 }
 }  // namespace
 
-std::vector<FormElement*> FormStack::rewrite(FormPool& pool, const Env& env) {
+std::vector<FormElement*> FormStack::rewrite(FormPool& pool, const Env& env) const {
   std::vector<FormElement*> result;
 
   for (auto& e : m_stack) {
@@ -340,7 +341,7 @@ std::vector<FormElement*> FormStack::rewrite(FormPool& pool, const Env& env) {
 void rewrite_to_get_var(std::vector<FormElement*>& default_result,
                         FormPool& pool,
                         const RegisterAccess& var,
-                        const Env&) {
+                        const Env& env) {
   bool keep_going = true;
   RegisterAccess var_to_get = var;
 
@@ -361,7 +362,18 @@ void rewrite_to_get_var(std::vector<FormElement*>& default_result,
         var_to_get = as_one->expr().var();
       }
 
-      result = last_op_as_set->src()->elts();
+      auto cast = last_op_as_set->required_cast(env);
+      if (cast && cast == TypeSpec("none")) {
+        env.func->warnings.general_warning(
+            "rewrite_to_get_var got a none typed variable. Is there unreachable code?");
+        cast = std::nullopt;
+      }
+      if (cast) {
+        result = {pool.alloc_element<CastElement>(
+            *cast, pool.alloc_sequence_form(nullptr, last_op_as_set->src()->elts()))};
+      } else {
+        result = last_op_as_set->src()->elts();
+      }
     }
     first = false;
   }

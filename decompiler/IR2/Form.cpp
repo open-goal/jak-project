@@ -317,6 +317,14 @@ goos::Object SetVarElement::to_form_internal(const Env& env) const {
   return pretty_print::build_list("set!", m_dst.to_form(env), m_src->to_form(env));
 }
 
+std::optional<TypeSpec> SetVarElement::required_cast(const Env& env) const {
+  auto expected_type = env.get_variable_type(m_dst, true);
+  if (!env.dts->ts.tc(expected_type, m_src_type)) {
+    return expected_type;
+  }
+  return std::nullopt;
+}
+
 void SetVarElement::apply(const std::function<void(FormElement*)>& f) {
   f(this);
   m_src->apply(f);
@@ -935,7 +943,7 @@ void RLetElement::apply(const std::function<void(FormElement*)>& f) {
   body->apply(f);
 }
 
-goos::Object RLetElement::to_form_internal(const Env& env) const {
+goos::Object RLetElement::reg_list() const {
   std::vector<goos::Object> regs;
   for (auto& reg : sorted_regs) {
     if (reg.get_kind() == Reg::RegisterKind::VF ||
@@ -945,16 +953,26 @@ goos::Object RLetElement::to_form_internal(const Env& env) const {
           pretty_print::build_list(pretty_print::to_symbol(fmt::format("{} :class vf", reg_name))));
     }
   }
+  return pretty_print::build_list(regs);
+}
 
-  std::vector<goos::Object> rletForm;
-  rletForm.push_back(pretty_print::to_symbol("rlet"));
-  rletForm.push_back(pretty_print::build_list(regs));
-
-  // NOTE - initialize any relevant registers in the body first
+bool RLetElement::needs_vf0_init() const {
   for (auto& reg : sorted_regs) {
     if (reg.get_kind() == Reg::RegisterKind::VF && reg.to_string() == "vf0") {
-      rletForm.push_back(pretty_print::to_symbol("(init-vf0-vector)"));  // Defined in vector-h.gc
+      return true;
     }
+  }
+  return false;
+}
+
+goos::Object RLetElement::to_form_internal(const Env& env) const {
+  std::vector<goos::Object> rletForm;
+  rletForm.push_back(pretty_print::to_symbol("rlet"));
+  rletForm.push_back(reg_list());
+
+  // NOTE - initialize any relevant registers in the body first
+  if (needs_vf0_init()) {
+    rletForm.push_back(pretty_print::to_symbol("(init-vf0-vector)"));  // Defined in vector-h.gc
   }
 
   body->inline_forms(rletForm, env);
@@ -2439,19 +2457,23 @@ void GetSymbolStringPointer::get_modified_regs(RegSet& regs) const {
 // Utilities
 ////////////////////////////////
 
-std::optional<SimpleAtom> form_as_atom(const Form* f) {
-  auto as_single = f->try_as_single_element();
-  auto as_atom = dynamic_cast<SimpleAtomElement*>(as_single);
+std::optional<SimpleAtom> form_element_as_atom(const FormElement* f) {
+  auto as_atom = dynamic_cast<const SimpleAtomElement*>(f);
   if (as_atom) {
     return as_atom->atom();
   }
 
-  auto as_se = dynamic_cast<SimpleExpressionElement*>(as_single);
+  auto as_se = dynamic_cast<const SimpleExpressionElement*>(f);
   if (as_se && as_se->expr().is_identity()) {
     return as_se->expr().get_arg(0);
   }
 
   return {};
+}
+
+std::optional<SimpleAtom> form_as_atom(const Form* f) {
+  auto as_single = f->try_as_single_element();
+  return form_element_as_atom(as_single);
 }
 
 FormElement* make_cast_using_existing(FormElement* elt, const TypeSpec& type, FormPool& pool) {

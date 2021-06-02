@@ -1,4 +1,5 @@
-file_list = [["gcommon",                               "gcommon",                     3, ["KERNEL"], "kernel"],
+file_list = [\
+["gcommon",                               "gcommon",                     3, ["KERNEL"], "kernel"],
 ["gstring-h",                             "gstring-h",                   3, ["KERNEL"], "kernel"],
 ["gkernel-h",                             "gkernel-h",                   3, ["KERNEL"], "kernel"],
 ["gkernel",                               "gkernel",                     3, ["KERNEL"], "kernel"],

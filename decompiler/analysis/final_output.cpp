@@ -141,6 +141,26 @@ std::string careful_function_to_string(
 }
 }  // namespace
 
+std::string add_indent(const std::string& in, int indent, bool indent_first_line) {
+  if (in.empty()) {
+    return in;
+  }
+
+  std::string indent_str(indent, ' ');
+  std::string result;
+
+  char prev_char = indent_first_line ? '\n' : ' ';
+  for (char c : in) {
+    if (prev_char == '\n') {
+      result += indent_str;
+    }
+    result += c;
+    prev_char = c;
+  }
+
+  return result;
+}
+
 std::string write_from_top_level(const Function& top_level,
                                  const DecompilerTypeSystem& dts,
                                  const LinkedObjectFile& file,
@@ -173,6 +193,15 @@ std::string write_from_top_level(const Function& top_level,
   }
 
   std::string result;
+  // local vars:
+  int var_count = 0;
+  auto var_dec = env.local_var_type_list(top_level.ir2.top_form, 0, &var_count);
+  if (var_count > 0) {
+    result += pretty_print::to_string(var_dec);
+    result += '\n';
+    result += '\n';
+  }
+
   // look for the whole thing being in a (when *debug-segment* ....)
   bool in_debug_only_file = false;
   if (forms.size() == 1) {
@@ -186,6 +215,23 @@ std::string write_from_top_level(const Function& top_level,
         result += "(when *debug-segment*\n";
         in_debug_only_file = true;
       }
+    }
+  }
+
+  // look for the whole thing being in an rlet
+  bool in_rlet = false;
+  if (forms.size() == 1) {
+    auto as_rlet = dynamic_cast<RLetElement*>(forms.at(0));
+    if (as_rlet) {
+      forms = as_rlet->body->elts();
+      in_rlet = true;
+      result += "(rlet ";
+      result += add_indent(pretty_print::to_string(as_rlet->reg_list()), 6, false);
+      result += '\n';
+      if (as_rlet->needs_vf0_init()) {
+        result += "(init-vf0-vector)\n";
+      }
+      result += '\n';
     }
   }
 
@@ -342,6 +388,15 @@ std::string write_from_top_level(const Function& top_level,
     }
 
     if (!something_matched) {
+      auto empty = dynamic_cast<EmptyElement*>(x);
+      if (empty) {
+        something_matched = true;
+      } else if (!x->active()) {
+        something_matched = true;
+      }
+    }
+
+    if (!something_matched) {
       result += ";; failed to figure out what this is:\n";
       result += pretty_print::to_string(x->to_form(env));
       result += "\n\n";
@@ -349,6 +404,10 @@ std::string write_from_top_level(const Function& top_level,
   }
 
   if (in_debug_only_file) {
+    result += ")\n";
+  }
+
+  if (in_rlet) {
     result += ")\n";
   }
 

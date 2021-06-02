@@ -95,15 +95,17 @@ MatchResult match(const Matcher& spec, Form* input);
 class DerefTokenMatcher {
  public:
   static DerefTokenMatcher string(const std::string& str);
+  static DerefTokenMatcher integer(int value);
   static DerefTokenMatcher any_string(int match_id = -1);
 
-  enum class Kind { STRING, ANY_STRING, INVALID };
+  enum class Kind { STRING, ANY_STRING, CONSTANT_INTEGER, INVALID };
 
   bool do_match(const DerefToken& input, MatchResult::Maps* maps_out) const;
 
  private:
   Kind m_kind = Kind::INVALID;
   std::string m_str;
+  int m_int = -1;
   int m_str_out_id = -1;
 };
 

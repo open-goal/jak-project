@@ -724,6 +724,7 @@ void TypeSystem::add_builtin_types() {
   auto symbol_type = add_builtin_basic("basic", "symbol");
   auto type_type = add_builtin_basic("basic", "type");
   auto string_type = add_builtin_basic("basic", "string");
+  string_type->set_final();  // no virtual calls used on string.
   auto function_type = add_builtin_basic("basic", "function");
   auto vu_function_type = add_builtin_structure("structure", "vu-function");
   auto link_block_type = add_builtin_basic("basic", "link-block");
@@ -1538,4 +1539,17 @@ std::string TypeSystem::generate_deftype(const Type* type) const {
   return fmt::format(
       ";; cannot generate deftype for {}, it is not a structure, basic, or bitfield (parent {})\n",
       type->get_name(), type->get_parent());
+}
+
+bool TypeSystem::should_use_virtual_methods(const Type* type) const {
+  auto as_basic = dynamic_cast<const BasicType*>(type);
+  if (as_basic && !as_basic->final()) {
+    return true;
+  } else {
+    return false;
+  }
+}
+
+bool TypeSystem::should_use_virtual_methods(const TypeSpec& type) const {
+  return should_use_virtual_methods(lookup_type(type));
 }

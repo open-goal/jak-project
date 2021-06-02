@@ -20,9 +20,9 @@
   `(asm-file ,file :color :write)
   )
 
-(defmacro md (file)
+(defmacro md (file &rest path)
   "Make Debug: make + print disassembly for a file"
-  `(asm-file ,file :color :write :disassemble)
+  `(asm-file ,file :color :write :disassemble ,@path)
   )
 
 (defmacro ml (file)
@@ -364,21 +364,21 @@
         (cond ,@(apply
                   (lambda (x) `(
                       ;; each case is of format ((cond cond cond...) body)
-                      ,@(let ((cond-list (first x)) ;; list of conds, OR just else
+                      ,@(let ((conditions (first x)) ;; list of conditions, OR just else
                               (body (rest x))) ;; the body
 
                         (cond
-                          ;; if the cond is just 'else'
-                          ( (eq? cond-list 'else)
+                          ;; if the condition is just 'else'
+                          ( (eq? conditions 'else)
                             `(else ,@body)
                             )
-                          ;; if the list is made up of a single cond
-                          ( (= (length cond-list) 1)
-                            `((= sw ,(first cond-list)) ,@body)
+                          ;; if the list is made up of a single condition
+                          ( (= (length conditions) 1)
+                            `((= sw ,(first conditions)) ,@body)
                             )
-                          ;; otherwise it is made up of multiple conds, or them together!
+                          ;; otherwise it is made up of multiple conditions, or them together!
                           (#t
-                            `((or ,@(apply (lambda (c) `(= sw ,c)) cond-list)) ,@body)
+                            `((or ,@(apply (lambda (c) `(= sw ,c)) conditions)) ,@body)
                             )
                           )
 

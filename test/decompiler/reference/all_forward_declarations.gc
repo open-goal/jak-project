@@ -678,6 +678,47 @@
   `(-> (the-as (pointer string) (+ SYM_TO_STRING_OFFSET (the-as int ,sym))))
   )
 
+;; TODO - from generic-obs-h
+(deftype gui-query (structure)
+  ((x-position        int32  :offset-assert 0)
+   (y-position        int32  :offset-assert 4)
+   (message           basic  :offset-assert 8)
+   (decision          basic  :offset-assert 12)
+   (only-allow-cancel basic  :offset-assert 16)
+   (no-msg            basic  :offset-assert 20)
+   (message-space     int32  :offset-assert 24)
+   )
+  :pack-me
+  :method-count-assert 11
+  :size-assert         #x1c
+  :flag-assert         #xb0000001c
+  (:methods
+    (dummy-9 () none 9)
+    (dummy-10 () none 10)
+    )
+  )
+
+(defmacro new-stack-matrix0 ()
+  "Get a new matrix on the stack that's set to zero."
+  `(let ((mat (new 'stack-no-clear 'matrix)))
+     (set! (-> mat quad 0) (the-as uint128 0))
+     (set! (-> mat quad 1) (the-as uint128 0))
+     (set! (-> mat quad 2) (the-as uint128 0))
+     (set! (-> mat quad 3) (the-as uint128 0))
+     mat
+     )
+  )
+
+(defmacro new-stack-vector0 ()
+  "Get a stack vector that's set to 0.
+   This is more efficient than (new 'stack 'vector) because
+   this doesn't call the constructor."
+  `(let ((vec (new 'stack-no-clear 'vector)))
+     (set! (-> vec quad) (the-as uint128 0))
+     vec
+     )
+  )
+
 ;; TODO - for entity-h
 (define-extern entity-nav-login function)
 (deftype res-tag (uint128)
