@@ -89,13 +89,6 @@ int main(int argc, char** argv) {
   file_util::write_text_file(file_util::combine_path(out_folder, "all-syms.gc"),
                              db.dts.dump_symbol_types());
 
-  // write out all symbols : file-name mapping
-  // only done if we are doing a complete disassembly/decompilation
-  if (config.allowed_objects.size() == 0) {
-    file_util::write_text_file(file_util::combine_path(out_folder, "symbol-mapping.json"),
-                               db.dts.dump_symbol_mapping());
-  }
-
   if (config.hexdump_code || config.hexdump_data) {
     db.write_object_file_words(out_folder, config.hexdump_data, config.hexdump_code);
   }
