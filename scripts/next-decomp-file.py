@@ -3,14 +3,9 @@ from jak1_file_list import file_list
 
 import argparse
 parser = argparse.ArgumentParser()
-parser.add_argument("--skip", type=int)
 parser.add_argument("--file")
 parser.add_argument("--list", type=int)
 args = parser.parse_args()
-
-skip_count = 0
-if args.skip:
-  skip_count = args.skip
 
 def update_file(file):
   new_file_contents = []
@@ -34,20 +29,25 @@ if args.file:
     if file[0] == args.file:
       update_file(file)
 else:
-  list_of_eligible = []
+  list_eligible = []
   for file in file_list:
-    with open("goal_src/" + file[4] + "/" + file[0] + ".gc") as f:
+    if file[2] != 3:
+      continue
+    if len(list_eligible) > args.list:
+      break
+    src_path = "goal_src/" + file[4] + "/" + file[0] + ".gc"
+    with open(src_path) as f:
       lines = f.readlines()
-      if skip_count <= 0 and len(lines) <= 7:
-        if args.list:
-          list_of_eligible.append(file[0])
-          if len(list_of_eligible) >= args.list:
-            break
-        else:
-          update_file(file)
-          break
-      elif not args.list and len(lines) <= 7:
-        skip_count = skip_count - 1
-  if len(list_of_eligible) > 0:
-    print("The next 10 files that need to be decompiled:")
-    print(*list_of_eligible, sep = "\n")
+      if len(lines) <= 7:
+        list_eligible.append("{} - Empty".format(file[0]))
+      else:
+        # Check for TODOs
+        count_todos = 0
+        for line in lines:
+          if "TODO" in line:
+            count_todos = count_todos + 1
+        if count_todos > 0:
+          list_eligible.append("{} - {} TODOs - {}".format(file[0], count_todos, src_path))
+  if len(list_eligible) > 0:
+    print("The next {} files that need to be addressed:".format(args.list))
+    print(*list_eligible, sep = "\n")
