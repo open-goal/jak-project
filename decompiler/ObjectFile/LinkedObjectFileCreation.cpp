@@ -380,7 +380,8 @@ static void link_v2_or_v4(LinkedObjectFile& f,
 
       link_ptr_offset += strlen(s_name) + 1;
       f.stats.total_v2_symbol_count++;
-      link_ptr_offset = c_symlink2(f, data, code_offset, link_ptr_offset, kind, s_name, 0, dts, name);
+      link_ptr_offset =
+          c_symlink2(f, data, code_offset, link_ptr_offset, kind, s_name, 0, dts, name);
       if (data.at(link_ptr_offset) == 0)
         break;
     }

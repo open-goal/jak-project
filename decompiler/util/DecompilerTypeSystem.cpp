@@ -102,8 +102,6 @@ TypeSpec DecompilerTypeSystem::parse_type_spec(const std::string& str) const {
   return parse_typespec(&ts, car(data));
 }
 
-
-
 std::string DecompilerTypeSystem::dump_symbol_types() {
   assert(symbol_add_order.size() == symbols.size());
   std::string result;
