@@ -49,12 +49,13 @@
     )
   )
 
+(defconstant COLLIDE_MESH_CACHE_SIZE #xa000)
+
 (deftype collide-mesh-cache (basic)
   ((used-size uint32        :offset-assert 4)
    (max-size  uint32        :offset-assert 8)
    (id        uint64        :offset-assert 16)
-   (pad uint8 8) ;; added
-   (data      uint8 40960 :offset-assert 32)
+   (data      uint8 #xa000  :offset 32)
    )
   :method-count-assert 12
   :size-assert         #xa020
@@ -105,12 +106,9 @@
   )
 
 ;; only allocate if we don't have an existing one.
-(define-extern *collide-mesh-cache* collide-mesh-cache)
-(if (or (not *collide-mesh-cache*) (zero? *collide-mesh-cache*))
- (set! *collide-mesh-cache* (new 'global 'collide-mesh-cache))
- )
+(define-perm *collide-mesh-cache* collide-mesh-cache (new 'global 'collide-mesh-cache))
 
 ;; in all cases, re-init.
 (set! (-> *collide-mesh-cache* id) 1)
 (set! (-> *collide-mesh-cache* used-size) 0)
-(set! (-> *collide-mesh-cache* max-size) #xa000)
+(set! (-> *collide-mesh-cache* max-size) COLLIDE_MESH_CACHE_SIZE)
