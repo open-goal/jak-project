@@ -751,7 +751,6 @@
 ;; - Types
 
 (declare-type connectable structure)
-(declare-type entity basic)
 (define-extern process type) ; deftype provided by C Kernel
 (deftype process (process-tree)
   ((pool dead-pool :offset-assert #x20)
@@ -8881,13 +8880,12 @@
    (data-base        pointer            :offset-assert 12)
    (data-top         pointer            :offset-assert 16)
    (data-size        int32              :offset-assert 20)
-   (extra            basic              :offset-assert 24)
+   (extra            basic              :offset-assert 24) ;; NOTE - can be anything it seems
    (tag              (pointer res-tag)  :offset-assert 28)
    )
   :method-count-assert 22
   :size-assert         #x20
   :flag-assert         #x1600000020
-  ;; field extra is a basic loaded with a signed load
   (:methods
     (new (symbol type int int) _type_ 0)
     (get-property-data (_type_ symbol symbol float pointer (pointer res-tag) pointer) pointer 9)
@@ -12471,113 +12469,83 @@
     )
   )
 
-; (deftype entity-perm-array (inline-array-class)
-;   ((length           int32            :offset-assert 4)
-;    (allocated-length int32            :offset-assert 8)
-;    (data             UNKNOWN :dynamic :offset-assert 16)
-;    )
-;   :method-count-assert 9
-;   :size-assert         #x10
-;   :flag-assert         #x900000010
-;   )
+(deftype entity-perm-array (inline-array-class)
+  ()
+  :method-count-assert 9
+  :size-assert         #x10
+  :flag-assert         #x900000010
+  )
 
-; (deftype entity-links-array (inline-array-class)
-;   ((length           int32            :offset-assert 4)
-;    (allocated-length int32            :offset-assert 8)
-;    (data             UNKNOWN :dynamic :offset-assert 16)
-;    )
-;   :method-count-assert 9
-;   :size-assert         #x10
-;   :flag-assert         #x900000010
-;   )
+(deftype entity-links-array (inline-array-class)
+  ()
+  :method-count-assert 9
+  :size-assert         #x10
+  :flag-assert         #x900000010
+  )
 
-; (deftype entity (res-lump)
-;   ()
-;   :method-count-assert 27
-;   :size-assert         #x34
-;   :flag-assert         #x1b00000034
-;   ;; unrecognized get op: (set! t9 find-parent-method) parent was res-lump
-;   (:methods
-;     (dummy-9 () none 9)
-;     (dummy-10 () none 10)
-;     (dummy-11 () none 11)
-;     (dummy-12 () none 12)
-;     (dummy-13 () none 13)
-;     (dummy-14 () none 14)
-;     (dummy-15 () none 15)
-;     (dummy-16 () none 16)
-;     (dummy-17 () none 17)
-;     (dummy-18 () none 18)
-;     (dummy-19 () none 19)
-;     (dummy-20 () none 20)
-;     (dummy-21 () none 21)
-;     (dummy-22 () none 22)
-;     (dummy-23 () none 23)
-;     (dummy-24 () none 24)
-;     (dummy-25 () none 25)
-;     (dummy-26 () none 26)
-;     )
-;   )
+(deftype entity (res-lump)
+  (
+    (trans vector :inline :offset-assert 32)
+    (aid uint32 :offset-assert 48) ; prints with ~A but other entity types use uint32 :shrug: for now
+   )
+  :method-count-assert 27
+  :size-assert         #x34
+  :flag-assert         #x1b00000034
+  ;; unrecognized get op: (set! t9 find-parent-method) parent was res-lump
+  (:methods
+    (dummy-22 () none 22)
+    (dummy-23 () none 23)
+    (dummy-24 () none 24)
+    (dummy-25 () none 25)
+    (dummy-26 () none 26)
+    )
+  )
 
-; (deftype entity-ambient-data (structure)
-;   ((user-object UNKNOWN 3  :offset-assert 0)
-;    (function    basic      :offset-assert 12)
-;    (quad        uint128    :offset-assert 0)
-;    (user-uint64 UNKNOWN 1  :offset-assert 0)
-;    (user-float  UNKNOWN 3  :offset-assert 0)
-;    (user-int32  UNKNOWN 3  :offset-assert 0)
-;    (user-uint32 UNKNOWN 3  :offset-assert 0)
-;    (user-int16  UNKNOWN 6  :offset-assert 0)
-;    (user-uint16 UNKNOWN 6  :offset-assert 0)
-;    (user-int8   UNKNOWN 12 :offset-assert 0)
-;    (user-uint8  UNKNOWN 12 :offset-assert 0)
-;    )
-;   :method-count-assert 9
-;   :size-assert         #x10
-;   :flag-assert         #x900000010
-;   )
+(deftype entity-ambient-data (structure)
+  ((user-object object 3  :offset-assert 0)
+   (function    basic      :offset-assert 12)
+   (quad        uint128    :offset 0)
+   (user-uint64 uint64 1  :offset 0)
+   (user-float  float 3  :offset 0)
+   (user-int32  int32 3  :offset 0)
+   (user-uint32 uint32 3  :offset 0)
+   (user-int16  int16 6  :offset 0)
+   (user-uint16 uint16 6  :offset 0)
+   (user-int8   int8 12 :offset 0)
+   (user-uint8  uint8 12 :offset 0)
+   )
+  :method-count-assert 9
+  :size-assert         #x10
+  :flag-assert         #x900000010
+  )
 
-; (deftype entity-ambient-data-array (inline-array-class)
-;   ((length           int32            :offset-assert 4)
-;    (allocated-length int32            :offset-assert 8)
-;    (data             UNKNOWN :dynamic :offset-assert 16)
-;    )
-;   :method-count-assert 9
-;   :size-assert         #x10
-;   :flag-assert         #x900000010
-;   )
+(deftype entity-ambient-data-array (inline-array-class)
+  ()
+  :method-count-assert 9
+  :size-assert         #x10
+  :flag-assert         #x900000010
+  )
 
-; (deftype entity-actor (entity)
-;   ()
-;   :method-count-assert 31
-;   :size-assert         #x50
-;   :flag-assert         #x1f00000050
-;   ;; unrecognized get op: (set! t9 find-parent-method) parent was entity
-;   (:methods
-;     (dummy-9 () none 9)
-;     (dummy-10 () none 10)
-;     (dummy-11 () none 11)
-;     (dummy-12 () none 12)
-;     (dummy-13 () none 13)
-;     (dummy-14 () none 14)
-;     (dummy-15 () none 15)
-;     (dummy-16 () none 16)
-;     (dummy-17 () none 17)
-;     (dummy-18 () none 18)
-;     (dummy-19 () none 19)
-;     (dummy-20 () none 20)
-;     (dummy-21 () none 21)
-;     (dummy-22 () none 22)
-;     (dummy-23 () none 23)
-;     (dummy-24 () none 24)
-;     (dummy-25 () none 25)
-;     (dummy-26 () none 26)
-;     (dummy-27 () none 27)
-;     (dummy-28 () none 28)
-;     (dummy-29 () none 29)
-;     (dummy-30 () none 30)
-;     )
-;   )
+(declare-type nav-mesh basic)
+(deftype entity-actor (entity)
+  (
+    (nav-mesh nav-mesh :offset-assert 52)
+    (etype basic :offset-assert 56)
+    (task uint8 :offset-assert 60)
+    (vis-id uint16 :offset-assert 62)
+    (quat quaternion :inline :offset-assert 64)
+  )
+  :method-count-assert 31
+  :size-assert         #x50
+  :flag-assert         #x1f00000050
+  ;; unrecognized get op: (set! t9 find-parent-method) parent was entity
+  (:methods
+    (dummy-27 () none 27)
+    (dummy-28 () none 28)
+    (dummy-29 () none 29)
+    (dummy-30 () none 30)
+    )
+  )
 
 (deftype entity-info (basic)
   ((ptype     basic  :offset-assert 4)
@@ -12601,18 +12569,35 @@
   :flag-assert         #x900000010
   )
 
+(deftype entity-ambient (entity)
+  ()
+  :method-count-assert 29
+  :size-assert #x34
+  :flag-assert #x1d00000034
+  (:methods
+    (dummy-27 () none 27)
+    (dummy-28 () none 28)
+    )
+  )
+
+(deftype entity-camera (entity)
+  (
+    (connect connectable :inline :offset-assert 64)
+  )
+  :method-count-assert 27
+  :size-assert #x50
+  :flag-assert #x1b00000050
+  (:methods
+    )
+  )
+
 ;; - Symbols
 
-(define-extern entity-nav-login function)
-(define-extern entity-camera type)
-(define-extern entity-ambient type)
-
-;; - Unknowns
-
-;;(define-extern *generate-actor-vis* object) ;; unknown type
-;;(define-extern *generate-actor-vis-start* object) ;; unknown type
-;;(define-extern *generate-actor-vis-output* object) ;; unknown type
-;;(define-extern *ACTOR-bank* object) ;; unknown type
+(define-extern entity-nav-login function) ;; only called in `level` in an asm function...tough, returns nothing
+(define-extern *generate-actor-vis-start* symbol)
+(define-extern *ACTOR-bank* actor-bank)
+(define-extern *generate-actor-vis-output* symbol)
+(define-extern *generate-actor-vis* symbol)
 
 
 ;; ----------------------
@@ -13044,12 +13029,15 @@
 ;; - Symbols
 
 (define-extern entity-actor-count function)
-(define-extern entity-actor-lookup function)
 (define-extern entity-by-name function)
 (define-extern entity-by-aid function)
 (define-extern actor-link-subtask-complete-hook function)
 (define-extern actor-link-dead-hook function)
 (define-extern alt-actor-list-subtask-incomplete-count function)
+
+;; - Functions
+
+(define-extern entity-actor-lookup (function entity symbol int process-drawable)) ;; NOTE - return value is not confirmed
 
 
 ;; ----------------------
@@ -13060,22 +13048,22 @@
 
 ;; - Types
 
-; (deftype camera-bank (basic)
-;   ((collide-move-rad        float   :offset-assert 4)
-;    (joypad                  uint32  :offset-assert 8)
-;    (min-detectable-velocity float   :offset-assert 12)
-;    (attack-timeout          uint64  :offset-assert 16)
-;    (default-string-max-y    meters  :offset-assert 24)
-;    (default-string-min-y    meters  :offset-assert 28)
-;    (default-string-max-z    meters  :offset-assert 32)
-;    (default-string-min-z    meters  :offset-assert 36)
-;    (default-string-push-z   meters  :offset-assert 40)
-;    (default-tilt-adjust     deg     :offset-assert 44)
-;    )
-;   :method-count-assert 9
-;   :size-assert         #x30
-;   :flag-assert         #x900000030
-;   )
+(deftype camera-bank (basic)
+  ((collide-move-rad        float   :offset-assert 4)
+   (joypad                  uint32  :offset-assert 8)
+   (min-detectable-velocity float   :offset-assert 12)
+   (attack-timeout          uint64  :offset-assert 16)
+   (default-string-max-y    float  :offset-assert 24) ; meters
+   (default-string-min-y    float  :offset-assert 28) ; meters
+   (default-string-max-z    float  :offset-assert 32) ; meters
+   (default-string-min-z    float  :offset-assert 36) ; meters
+   (default-string-push-z   float  :offset-assert 40) ; meters
+   (default-tilt-adjust     float     :offset-assert 44) ; deg
+   )
+  :method-count-assert 9
+  :size-assert         #x30
+  :flag-assert         #x900000030
+  )
 
 (deftype cam-index (structure)
   ((flags uint32    :offset-assert 0)
@@ -13162,10 +13150,10 @@
   :size-assert         #x18
   :flag-assert         #xd00000018
   (:methods
-    (dummy-9 () none 9)
-    (dummy-10 () none 10)
-    (dummy-11 () none 11)
-    (dummy-12 () none 12)
+    (init-cam-float-seeker (_type_ float float float float) none 9)
+    (copy-cam-float-seeker (_type_ _type_) none 10)
+    (TODO-RENAME-11 (_type_ float) none 11)
+    (TODO-RENAME-12 (_type_ float) float 12)
     )
   )
 
@@ -13181,8 +13169,8 @@
   :size-assert         #x3c
   :flag-assert         #xb0000003c
   (:methods
-    (dummy-9 () none 9)
-    (dummy-10 () none 10)
+    (TODO-RENAME-9 (_type_ vector float float float) none 9)
+    (TODO-RENAME-10 (_type_ vector) none 10)
     )
   )
 
@@ -13204,18 +13192,18 @@
   )
 
 (deftype camera-combiner (process)
-  ((~Ttrans             vector               :inline :offset-assert 112)
-   (~Tinv-camera-rot    matrix               :inline :offset-assert 128)
-   (~Tfov               float                        :offset-assert 192)
-   (~Tinterp-val        float                        :offset-assert 196)
-   (~Tinterp-step       float                        :offset-assert 200)
-   (~Tdist-from-src     float                        :offset-assert 204)
-   (~Tdist-from-dest    float                        :offset-assert 208)
-   (~Tflip-control-axis vector               :inline :offset-assert 224)
-   (~Tvelocity          vector               :inline :offset-assert 240)
-   (~Ttracking-status   uint64                       :offset-assert 256)
-   (~Ttracking-options  int32                        :offset-assert 264)
-   (~Ttracking          cam-rotation-tracker :inline :offset-assert 272)
+  ((trans             vector               :inline :offset-assert 112)
+   (inv-camera-rot    matrix               :inline :offset-assert 128)
+   (fov               float                        :offset-assert 192)
+   (interp-val        float                        :offset-assert 196)
+   (interp-step       float                        :offset-assert 200)
+   (dist-from-src     float                        :offset-assert 204)
+   (dist-from-dest    float                        :offset-assert 208)
+   (flip-control-axis vector               :inline :offset-assert 224)
+   (velocity          vector               :inline :offset-assert 240)
+   (tracking-status   uint64                       :offset-assert 256)
+   (tracking-options  int32                        :offset-assert 264)
+   (tracking          cam-rotation-tracker :inline :offset-assert 272)
    )
   :heap-base #x170
   :method-count-assert 14
@@ -13225,56 +13213,56 @@
   )
 
 (deftype camera-slave (process)
-  ((~Ttrans                         vector               :inline :offset-assert 112)
-   (~Tfov                           float                        :offset-assert 128)
-   (~Tfov0                          float                        :offset-assert 132)
-   (~Tfov1                          float                        :offset-assert 136)
-   (~Tfov-index                     cam-index            :inline :offset-assert 144)
-   (~Ttracking                      cam-rotation-tracker :inline :offset-assert 192)
-   (~Tview-off-param                float                        :offset-assert 400)
-   (~Tview-off                      vector               :inline :offset-assert 416)
-   (~Tmin-z-override                float                        :offset-assert 432)
-   (~Tview-flat                     vector               :inline :offset-assert 448)
-   (~Tstring-vel-dir                uint32                       :offset-assert 464)
-   (~Tstring-trans                  vector               :inline :offset-assert 480)
-   (~Tposition-spline               tracking-spline      :inline :offset-assert 496)
-   (~Tpivot-pt                      vector               :inline :offset-assert 2144)
-   (~Tpivot-rad                     float                        :offset-assert 2160)
-   (~Tcircular-follow               vector               :inline :offset-assert 2176)
-   (~Tmax-angle-offset              float                        :offset-assert 2192)
-   (~Tmax-angle-curr                float                        :offset-assert 2196)
-   (~Toptions                       uint32                       :offset-assert 2200)
-   (~Tcam-entity                    basic                        :offset-assert 2204)
-   (~Tvelocity                      vector               :inline :offset-assert 2208)
-   (~Tdesired-pos                   vector               :inline :offset-assert 2224)
-   (~Ttime-dist-too-far             uint32                       :offset-assert 2240)
-   (~Tlos-state                     uint32                       :offset-assert 2244)
-   (~Tgood-point                    vector               :inline :offset-assert 2256)
-   (~Tlos-tgt-spline-pt             int32                        :offset-assert 2272)
-   (~Tlos-tgt-spline-pt-incarnation int32                        :offset-assert 2276)
-   (~Tlos-last-pos                  vector               :inline :offset-assert 2288)
-   (~Tintro-curve                   curve                :inline :offset-assert 2304)
-   (~Tintro-offset                  vector               :inline :offset-assert 2336)
-   (~Tintro-t                       float                        :offset-assert 2352)
-   (~Tintro-t-step                  float                        :offset-assert 2356)
-   (~Toutro-exit-value              float                        :offset-assert 2360)
-   (~Tspline-exists                 basic                        :offset-assert 2364)
-   (~Tspline-curve                  curve                :inline :offset-assert 2368)
-   (~Tspline-offset                 vector               :inline :offset-assert 2400)
-   (~Tindex                         cam-index            :inline :offset-assert 2416)
-   (~Tsaved-pt                      vector               :inline :offset-assert 2464)
-   (~Tspline-tt                     float                        :offset-assert 2480)
-   (~Tspline-follow-dist            float                        :offset-assert 2484)
-   (~Tchange-event-from             uint32                       :offset-assert 2488)
-   (~Tenter-has-run                 basic                        :offset-assert 2492)
-   (~Tblend-from-type               uint64                       :offset-assert 2496)
-   (~Tblend-to-type                 uint64                       :offset-assert 2504)
-   (~Thave-phony-joystick           basic                        :offset-assert 2512)
-   (~Tphony-joystick-x              float                        :offset-assert 2516)
-   (~Tphony-joystick-y              float                        :offset-assert 2520)
-   (~Tstring-min-val                vector               :inline :offset-assert 2528)
-   (~Tstring-max-val                vector               :inline :offset-assert 2544)
-   (~Tstring-val-locked             basic                        :offset-assert 2560)
+  ((trans                         vector               :inline :offset-assert 112)
+   (fov                           float                        :offset-assert 128)
+   (fov0                          float                        :offset-assert 132)
+   (fov1                          float                        :offset-assert 136)
+   (fov-index                     cam-index            :inline :offset-assert 144)
+   (tracking                      cam-rotation-tracker :inline :offset-assert 192)
+   (view-off-param                float                        :offset-assert 400)
+   (view-off                      vector               :inline :offset-assert 416)
+   (min-z-override                float                        :offset-assert 432)
+   (view-flat                     vector               :inline :offset-assert 448)
+   (string-vel-dir                uint32                       :offset-assert 464)
+   (string-trans                  vector               :inline :offset-assert 480)
+   (position-spline               tracking-spline      :inline :offset-assert 496)
+   (pivot-pt                      vector               :inline :offset-assert 2144)
+   (pivot-rad                     float                        :offset-assert 2160)
+   (circular-follow               vector               :inline :offset-assert 2176)
+   (max-angle-offset              float                        :offset-assert 2192)
+   (max-angle-curr                float                        :offset-assert 2196)
+   (options                       uint32                       :offset-assert 2200)
+   (cam-entity                    basic                        :offset-assert 2204)
+   (velocity                      vector               :inline :offset-assert 2208)
+   (desired-pos                   vector               :inline :offset-assert 2224)
+   (time-dist-too-far             uint32                       :offset-assert 2240)
+   (los-state                     uint32                       :offset-assert 2244)
+   (good-point                    vector               :inline :offset-assert 2256)
+   (los-tgt-spline-pt             int32                        :offset-assert 2272)
+   (los-tgt-spline-pt-incarnation int32                        :offset-assert 2276)
+   (los-last-pos                  vector               :inline :offset-assert 2288)
+   (intro-curve                   curve                :inline :offset-assert 2304)
+   (intro-offset                  vector               :inline :offset-assert 2336)
+   (intro-t                       float                        :offset-assert 2352)
+   (intro-t-step                  float                        :offset-assert 2356)
+   (outro-exit-value              float                        :offset-assert 2360)
+   (spline-exists                 basic                        :offset-assert 2364)
+   (spline-curve                  curve                :inline :offset-assert 2368)
+   (spline-offset                 vector               :inline :offset-assert 2400)
+   (index                         cam-index            :inline :offset-assert 2416)
+   (saved-pt                      vector               :inline :offset-assert 2464)
+   (spline-tt                     float                        :offset-assert 2480)
+   (spline-follow-dist            float                        :offset-assert 2484)
+   (change-event-from             uint32                       :offset-assert 2488)
+   (enter-has-run                 basic                        :offset-assert 2492)
+   (blend-from-type               uint64                       :offset-assert 2496)
+   (blend-to-type                 uint64                       :offset-assert 2504)
+   (have-phony-joystick           basic                        :offset-assert 2512)
+   (phony-joystick-x              float                        :offset-assert 2516)
+   (phony-joystick-y              float                        :offset-assert 2520)
+   (string-min-val                vector               :inline :offset-assert 2528)
+   (string-max-val                vector               :inline :offset-assert 2544)
+   (string-val-locked             basic                        :offset-assert 2560)
    )
   :heap-base #x9a0
   :method-count-assert 14
@@ -13284,59 +13272,59 @@
   )
 
 (deftype camera-master (process)
-  ((~Tmaster-options      uint32                    :offset-assert 112)
-   (~Tnum-slaves          int32                     :offset-assert 116)
-   (~Tslave               basic           2       :offset-assert 120)
-   (~Tslave-options       uint32                    :offset-assert 128)
-   (~Tview-off-param-save float                     :offset-assert 132)
-   (~Tchanger             uint32                    :offset-assert 136)
-   (~Tcam-entity          basic                     :offset-assert 140)
-   (~TstringMinLength     float                     :offset-assert 144)
-   (~TstringMaxLength     float                     :offset-assert 148)
-   (~TstringMinHeight     float                     :offset-assert 152)
-   (~TstringMaxHeight     float                     :offset-assert 156)
-   (~Tstring-min          cam-vector-seeker :inline :offset-assert 160)
-   (~Tstring-max          cam-vector-seeker :inline :offset-assert 224)
-   (~Tstring-push-z       float                     :offset-assert 284)
-   (~TstringCliffHeight   float                     :offset-assert 288)
-   (~Tno-intro            uint32                    :offset-assert 292)
-   (~Tforce-blend         uint32                    :offset-assert 296)
-   (~Tforce-blend-time    uint32                    :offset-assert 300)
-   (~Tlocal-down          vector            :inline :offset-assert 304)
-   (~Tdrawable-target     uint64                    :offset-assert 320)
-   (~Twhich-bone          int32                     :offset-assert 328)
-   (~Tpov-handle          uint64                    :offset-assert 336)
-   (~Tpov-bone            int32                     :offset-assert 344)
-   (~Tbeing-attacked      basic                     :offset-assert 348)
-   (~Tattack-start        uint64                    :offset-assert 352)
-   (~Ton-ground           basic                     :offset-assert 360)
-   (~Tunder-water         int32                     :offset-assert 364)
-   (~Ton-pole             basic                     :offset-assert 368)
-   (~Ttgt-rot-mat         matrix            :inline :offset-assert 384)
-   (~Ttgt-face-mat        matrix            :inline :offset-assert 448)
-   (~Ttpos-old            vector            :inline :offset-assert 512)
-   (~Ttpos-curr           vector            :inline :offset-assert 528)
-   (~Ttarget-height       float                     :offset-assert 544)
-   (~Ttpos-old-adj        vector            :inline :offset-assert 560)
-   (~Ttpos-curr-adj       vector            :inline :offset-assert 576)
-   (~Ttpos-tgt            vector            :inline :offset-assert 592)
-   (~Tupspeed             float                     :offset-assert 608)
-   (~Tpitch-off           vector            :inline :offset-assert 624)
-   (~Tfoot-offset         float                     :offset-assert 640)
-   (~Thead-offset         float                     :offset-assert 644)
-   (~Ttarget-spline       tracking-spline   :inline :offset-assert 656)
-   (~Tease-from           vector            :inline :offset-assert 2304)
-   (~Tease-t              float                     :offset-assert 2320)
-   (~Tease-step           float                     :offset-assert 2324)
-   (~Tease-to             vector            :inline :offset-assert 2336)
-   (~Toutro-curve         curve             :inline :offset-assert 2352)
-   (~Toutro-t             float                     :offset-assert 2372)
-   (~Toutro-t-step        float                     :offset-assert 2376)
-   (~Toutro-exit-value    float                     :offset-assert 2380)
-   (~Twater-drip-time     uint64                    :offset-assert 2384)
-   (~Twater-drip          basic                     :offset-assert 2392)
-   (~Twater-drip-mult     float                     :offset-assert 2396)
-   (~Twater-drip-speed    float                     :offset-assert 2400)
+  ((master-options      uint32                    :offset-assert 112)
+   (num-slaves          int32                     :offset-assert 116)
+   (slave               basic           2       :offset-assert 120)
+   (slave-options       uint32                    :offset-assert 128)
+   (view-off-param-save float                     :offset-assert 132)
+   (changer             uint32                    :offset-assert 136)
+   (cam-entity          basic                     :offset-assert 140)
+   (stringMinLength     float                     :offset-assert 144)
+   (stringMaxLength     float                     :offset-assert 148)
+   (stringMinHeight     float                     :offset-assert 152)
+   (stringMaxHeight     float                     :offset-assert 156)
+   (string-min          cam-vector-seeker :inline :offset-assert 160)
+   (string-max          cam-vector-seeker :inline :offset-assert 224)
+   (string-push-z       float                     :offset-assert 284)
+   (stringCliffHeight   float                     :offset-assert 288)
+   (no-intro            uint32                    :offset-assert 292)
+   (force-blend         uint32                    :offset-assert 296)
+   (force-blend-time    uint32                    :offset-assert 300)
+   (local-down          vector            :inline :offset-assert 304)
+   (drawable-target     uint64                    :offset-assert 320)
+   (which-bone          int32                     :offset-assert 328)
+   (pov-handle          uint64                    :offset-assert 336)
+   (pov-bone            int32                     :offset-assert 344)
+   (being-attacked      basic                     :offset-assert 348)
+   (attack-start        uint64                    :offset-assert 352)
+   (on-ground           basic                     :offset-assert 360)
+   (under-water         int32                     :offset-assert 364)
+   (on-pole             basic                     :offset-assert 368)
+   (tgt-rot-mat         matrix            :inline :offset-assert 384)
+   (tgt-face-mat        matrix            :inline :offset-assert 448)
+   (tpos-old            vector            :inline :offset-assert 512)
+   (tpos-curr           vector            :inline :offset-assert 528)
+   (target-height       float                     :offset-assert 544)
+   (tpos-old-adj        vector            :inline :offset-assert 560)
+   (tpos-curr-adj       vector            :inline :offset-assert 576)
+   (tpos-tgt            vector            :inline :offset-assert 592)
+   (upspeed             float                     :offset-assert 608)
+   (pitch-off           vector            :inline :offset-assert 624)
+   (foot-offset         float                     :offset-assert 640)
+   (head-offset         float                     :offset-assert 644)
+   (target-spline       tracking-spline   :inline :offset-assert 656)
+   (ease-from           vector            :inline :offset-assert 2304)
+   (ease-t              float                     :offset-assert 2320)
+   (ease-step           float                     :offset-assert 2324)
+   (ease-to             vector            :inline :offset-assert 2336)
+   (outro-curve         curve             :inline :offset-assert 2352)
+   (outro-t             float                     :offset-assert 2372)
+   (outro-t-step        float                     :offset-assert 2376)
+   (outro-exit-value    float                     :offset-assert 2380)
+   (water-drip-time     uint64                    :offset-assert 2384)
+   (water-drip          basic                     :offset-assert 2392)
+   (water-drip-mult     float                     :offset-assert 2396)
+   (water-drip-speed    float                     :offset-assert 2400)
    )
   :heap-base #x900
   :method-count-assert 14
@@ -13345,9 +13333,9 @@
   ;; inherited inspect of process
   )
 
-;; - Unknowns
+;; - Symbols
 
-;;(define-extern *CAMERA-bank* object) ;; unknown type
+(define-extern *CAMERA-bank* camera-bank)
 
 
 ;; ----------------------
@@ -13390,15 +13378,15 @@
 ;; Containing DGOs - ['GAME', 'ENGINE']
 ;; Version - 3
 
-;; - Unknowns
+;; - Symbols
 
-;;(define-extern *camera-read-analog* object) ;; unknown type
-;;(define-extern *camera-read-buttons* object) ;; unknown type
-;;(define-extern *cam-free-move-along-z* object) ;; unknown type
-;;(define-extern *camera-init-mat* object) ;; unknown type
-;;(define-extern *camera* object) ;; unknown type
-;;(define-extern *camera-combiner* object) ;; unknown type
-;;(define-extern *camera-orbit-target* object) ;; unknown type
+(define-extern *camera-read-analog* symbol)
+(define-extern *camera-read-buttons* symbol)
+(define-extern *cam-free-move-along-z* symbol)
+(define-extern *camera-init-mat* matrix)
+(define-extern *camera* camera-master)
+(define-extern *camera-combiner* camera-combiner)
+(define-extern *camera-orbit-target* process-drawable)
 
 
 ;; ----------------------
@@ -14292,9 +14280,7 @@
 
 ;; - Symbols
 
-(define-extern math-camera-pos function)
 (define-extern target-pos function)
-(define-extern camera-pos function)
 (define-extern new-sound-id function)
 (define-extern get-sound-buffer-entry function)
 (define-extern sound-trans-convert function)
@@ -14340,6 +14326,11 @@
 (define-extern show-iop-memory function)
 (define-extern make-sqrt-table function)
 (define-extern flava-lookup function)
+
+;; - Functions
+
+(define-extern math-camera-pos (function vector))
+(define-extern camera-pos (function vector))
 
 ;; - Unknowns
 
@@ -16021,6 +16012,7 @@
 
 ;; - Functions
 
+(define-extern position-in-front-of-camera! (function vector float float vector))
 (define-extern set-blackout-frames (function int int))
 (define-extern set-master-mode (function symbol none))
 (define-extern stop (function int)) ;; logic-target
@@ -16036,7 +16028,6 @@
 (define-extern *kernel-boot-message* symbol)
 (define-extern reset-actors function)
 (define-extern start function)
-(define-extern position-in-front-of-camera! function)
 (define-extern *level-load-list* pair)
 (define-extern game-task->string function)
 (define-extern trsq->continue-point function)
@@ -16586,12 +16577,15 @@
 
 ;; - Symbols
 
-(define-extern matrix-local->world function)
 (define-extern update-snow function)
 (define-extern check-drop-level-rain function)
 (define-extern update-rain function)
 (define-extern cam-master-effect function)
 (define-extern sparticle-track-sun function)
+
+;; - Functions
+
+(define-extern matrix-local->world (function symbol matrix))
 
 ;; - Unknowns
 
@@ -17356,15 +17350,15 @@
 ;; Containing DGOs - ['GAME', 'ENGINE']
 ;; Version - 3
 
+;; - Functions
+
+(define-extern camera-teleport-to-entity (function entity-actor none))
+(define-extern matrix-world->local (function matrix))
+(define-extern camera-angle (function float))
+
 ;; - Symbols
 
-(define-extern matrix-world->local function)
-(define-extern camera-angle function)
-(define-extern camera-teleport-to-entity function)
-
-;; - Unknowns
-
-;;(define-extern *camera-dummy-vector* object) ;; unknown type
+(define-extern *camera-dummy-vector* vector)
 
 
 ;; ----------------------
