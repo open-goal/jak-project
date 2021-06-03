@@ -159,3 +159,5 @@
 - 128-bit values may now be used in function arguments and return values.
 - Fixed a bug where reader errors in `goal-lib.gc` or any error in `goos-lib.gs` would cause a crash
 - Fixed a bug where `''a` or similar repeated reader macros would generate a reader error.
+- Fixed a bug where reader macros without a following form would trigger an assert.
+- It is now possible to take the address of a lexical variable. The variable will be spilled to the stack automatically.
