@@ -28,9 +28,9 @@ struct LocalVarOverride {
 };
 
 /*!
- * Information about a variable pointing to some data on the stack.
+ * Information about a structure on the stack.
  */
-struct StackVariableHint {
+struct StackStructureHint {
   std::string element_type;  // type of the thing stored
   // todo - is boxed array on the stack supported?
   enum class ContainerType {
@@ -90,7 +90,8 @@ struct Config {
   std::unordered_map<std::string, std::unordered_map<std::string, LocalVarOverride>>
       function_var_overrides;
   std::unordered_map<std::string, std::unordered_map<std::string, LabelType>> label_types;
-  std::unordered_map<std::string, std::vector<StackVariableHint>> stack_var_hints_by_function;
+  std::unordered_map<std::string, std::vector<StackStructureHint>>
+      stack_structure_hints_by_function;
 
   DecompileHacks hacks;
 };

@@ -49,10 +49,10 @@ TEST_F(FormRegressionTest, MatrixPMult) {
       "   )\n"
       "  arg0\n"
       "  )";
-  test_with_stack_vars(func, type, expected,
-                       "[\n"
-                       "        [16, \"matrix\"]\n"
-                       "    ]");
+  test_with_stack_structures(func, type, expected,
+                             "[\n"
+                             "        [16, \"matrix\"]\n"
+                             "    ]");
 }
 
 // TODO- this should also work without the cast, but be uglier.
@@ -95,11 +95,11 @@ TEST_F(FormRegressionTest, VectorXQuaternionWithCast) {
       "   )\n"
       "  arg0\n"
       "  )";
-  test_with_stack_vars(func, type, expected,
-                       "[\n"
-                       "        [16, \"matrix\"]\n"
-                       "    ]",
-                       "[[10, \"v1\", \"(pointer uint128)\"]]");
+  test_with_stack_structures(func, type, expected,
+                             "[\n"
+                             "        [16, \"matrix\"]\n"
+                             "    ]",
+                             "[[10, \"v1\", \"(pointer uint128)\"]]");
 }
 
 TEST_F(FormRegressionTest, EliminateFloatDeadSet) {
@@ -226,7 +226,7 @@ TEST_F(FormRegressionTest, EliminateFloatDeadSet) {
       "    )\n"
       "   )\n"
       "  )";
-  test_with_stack_vars(func, type, expected, "[]");
+  test_with_stack_structures(func, type, expected, "[]");
 }
 
 TEST_F(FormRegressionTest, IterateProcessTree) {
@@ -317,7 +317,7 @@ TEST_F(FormRegressionTest, IterateProcessTree) {
       "   )\n"
       "  s4-0\n"
       "  )";
-  test_with_stack_vars(func, type, expected, "[]");
+  test_with_stack_structures(func, type, expected, "[]");
 }
 
 TEST_F(FormRegressionTest, InspectVifStatBitfield) {

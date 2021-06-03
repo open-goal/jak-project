@@ -2024,7 +2024,7 @@ void FunctionCallElement::update_from_stack(const Env& env,
         }
 
         if (got_stack_new) {
-          auto new_op = first_cast->source()->try_as_element<StackVarDefElement>();
+          auto new_op = first_cast->source()->try_as_element<StackStructureDefElement>();
           if (!new_op || new_op->type().base_type() != type_source_form->to_string(env)) {
             got_stack_new = false;
           }
@@ -3566,11 +3566,11 @@ void ConstantFloatElement::update_from_stack(const Env&,
   result->push_back(this);
 }
 
-void StackVarDefElement::update_from_stack(const Env&,
-                                           FormPool&,
-                                           FormStack&,
-                                           std::vector<FormElement*>* result,
-                                           bool) {
+void StackStructureDefElement::update_from_stack(const Env&,
+                                                 FormPool&,
+                                                 FormStack&,
+                                                 std::vector<FormElement*>* result,
+                                                 bool) {
   mark_popped();
   result->push_back(this);
 }

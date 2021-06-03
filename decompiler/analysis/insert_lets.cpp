@@ -276,7 +276,7 @@ FormElement* fix_up_vector_inline_zero(LetElement* in, const Env& env, FormPool&
   }
 
   Form* src = in->entries().at(0).src;
-  auto src_as_stackvar = src->try_as_element<StackVarDefElement>();
+  auto src_as_stackvar = src->try_as_element<StackStructureDefElement>();
   if (!src_as_stackvar) {
     return nullptr;
   }

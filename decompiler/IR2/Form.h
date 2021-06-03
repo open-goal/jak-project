@@ -1318,9 +1318,9 @@ class LambdaDefinitionElement : public FormElement {
   goos::Object m_def;
 };
 
-class StackVarDefElement : public FormElement {
+class StackStructureDefElement : public FormElement {
  public:
-  StackVarDefElement(const StackVarEntry& entry);
+  StackStructureDefElement(const StackStructureEntry& entry);
   goos::Object to_form_internal(const Env& env) const override;
   void apply(const std::function<void(FormElement*)>& f) override;
   void apply_form(const std::function<void(Form*)>& f) override;
@@ -1334,7 +1334,7 @@ class StackVarDefElement : public FormElement {
   const TypeSpec& type() const { return m_entry.ref_type; }
 
  private:
-  StackVarEntry m_entry;
+  StackStructureEntry m_entry;
 };
 
 class VectorFloatLoadStoreElement : public FormElement {

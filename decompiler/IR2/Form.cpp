@@ -1538,6 +1538,8 @@ std::string fixed_operator_to_string(FixedOperatorKind kind) {
       return "make-u128";
     case FixedOperatorKind::SYMBOL_TO_STRING:
       return "symbol->string";
+    case FixedOperatorKind::ADDRESS_OF:
+      return "&";
     default:
       assert(false);
       return "";
@@ -2265,11 +2267,12 @@ void LambdaDefinitionElement::get_modified_regs(RegSet&) const {}
 // StackVarDefElement
 /////////////////////////////
 
-StackVarDefElement::StackVarDefElement(const StackVarEntry& entry) : m_entry(entry) {}
+StackStructureDefElement::StackStructureDefElement(const StackStructureEntry& entry)
+    : m_entry(entry) {}
 
-goos::Object StackVarDefElement::to_form_internal(const Env&) const {
+goos::Object StackStructureDefElement::to_form_internal(const Env&) const {
   switch (m_entry.hint.container_type) {
-    case StackVariableHint::ContainerType::NONE:
+    case StackStructureHint::ContainerType::NONE:
       return pretty_print::build_list(
           fmt::format("new 'stack-no-clear '{}", m_entry.ref_type.print()));
     default:
@@ -2277,15 +2280,15 @@ goos::Object StackVarDefElement::to_form_internal(const Env&) const {
   }
 }
 
-void StackVarDefElement::apply_form(const std::function<void(Form*)>&) {}
+void StackStructureDefElement::apply_form(const std::function<void(Form*)>&) {}
 
-void StackVarDefElement::apply(const std::function<void(FormElement*)>& f) {
+void StackStructureDefElement::apply(const std::function<void(FormElement*)>& f) {
   f(this);
 }
 
-void StackVarDefElement::collect_vars(RegAccessSet&, bool) const {}
+void StackStructureDefElement::collect_vars(RegAccessSet&, bool) const {}
 
-void StackVarDefElement::get_modified_regs(RegSet&) const {}
+void StackStructureDefElement::get_modified_regs(RegSet&) const {}
 
 ////////////////////////////////
 // VectorFloatLoadStoreElement

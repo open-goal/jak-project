@@ -126,11 +126,12 @@ Config read_config_file(const std::string& path_to_config_file) {
     }
   }
 
-  auto stack_vars_json = read_json_file_from_config(cfg, "stack_vars_file");
-  for (auto& kv : stack_vars_json.items()) {
+  auto stack_structures_json = read_json_file_from_config(cfg, "stack_structures_file");
+  for (auto& kv : stack_structures_json.items()) {
     auto& func_name = kv.key();
-    auto& stack_vars = kv.value();
-    config.stack_var_hints_by_function[func_name] = parse_stack_var_hints(stack_vars);
+    auto& stack_structures = kv.value();
+    config.stack_structure_hints_by_function[func_name] =
+        parse_stack_structure_hints(stack_structures);
   }
 
   auto hacks_json = read_json_file_from_config(cfg, "hacks_file");
