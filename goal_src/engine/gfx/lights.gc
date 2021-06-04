@@ -7,6 +7,7 @@
 
 (defun light-slerp ((out light) (a light) (b light) (alpha float))
   "Linearly interpolate between two light's vectors. Alpha is clamped between 0 - 1."
+
   (let ((clamped-alpha (fmax 0.0 (fmin 1.0 alpha))))
    (vector-lerp! (-> out color) (-> a color) (-> b color) clamped-alpha)
    (vector-deg-slerp
@@ -27,6 +28,7 @@
 (defun light-group-slerp ((out light-group) (a light-group) (b light-group) (alpha float))
   "Linearly interpolate between each of the 4 vectors of two light-groups.
    Alpha is clamped between 0 - 1."
+
   (dotimes (vec-index 4)
    (light-slerp
     (-> out lights vec-index)
@@ -50,51 +52,20 @@
   (none)
   )
 
-(define *default-lights* (the-as vu-lights (new 'global 'vu-lights)))
+(define *default-lights* (new 'global 'vu-lights))
 
 (defun vu-lights-default! ((lights vu-lights))
   "Initialize a lights object with default values"
-  (let ((ambient-light (-> lights ambient)))
-   (set! (-> ambient-light x) 0.3)
-   (set! (-> ambient-light y) 0.3)
-   (set! (-> ambient-light z) 0.3)
-   (set! (-> ambient-light w) 1.0)
-   )
-  (let ((red (-> lights color)))
-   (set! (-> red 0 x) 1.0)
-   (set! (-> red 0 y) 1.0)
-   (set! (-> red 0 z) 1.0)
-   (set! (-> red 0 w) 1.0)
-   )
-  (let ((green (-> lights color 1)))
-   (set! (-> green x) 0.2)
-   (set! (-> green y) 0.2)
-   (set! (-> green z) 0.2)
-   (set! (-> green w) 1.0)
-   )
-  (let ((blue (-> lights color 2)))
-   (set! (-> blue x) 0.0)
-   (set! (-> blue y) 0.0)
-   (set! (-> blue z) 0.0)
-   (set! (-> blue w) 1.0)
-   )
-  (let ((dir-light-x (-> lights direction)))
-   (set! (-> dir-light-x 0 x) 1.0)
-   (set! (-> dir-light-x 0 y) 0.0)
-   (set! (-> dir-light-x 0 z) 0.0)
-   (set! (-> dir-light-x 0 w) 1.0)
-   )
-  (let ((dir-light-y (-> lights direction 1)))
-   (set! (-> dir-light-y x) 0.0)
-   (set! (-> dir-light-y y) 1.0)
-   (set! (-> dir-light-y z) 0.0)
-   (set! (-> dir-light-y w) 1.0)
-   )
-  (let ((dir-light-z (-> lights direction 2)))
-   (set! (-> dir-light-z x) 0.0)
-   (set! (-> dir-light-z y) 0.0)
-   (set! (-> dir-light-z z) 1.0)
-   (set! (-> dir-light-z w) 1.0)
-   )
+
+  (set-vector! (-> lights ambient) 0.3 0.3 0.3 1.0)
+
+  (set-vector! (-> lights color 0) 1.0 1.0 1.0 1.0)
+  (set-vector! (-> lights color 1) 0.2 0.2 0.2 1.0)
+  (set-vector! (-> lights color 2) 0.0 0.0 0.0 1.0)
+
+  (set-vector! (-> lights direction 0) 1.0 0.0 0.0 1.0)
+  (set-vector! (-> lights direction 1) 0.0 1.0 0.0 1.0)
+  (set-vector! (-> lights direction 2) 0.0 0.0 1.0 1.0)
+
   lights
   )
