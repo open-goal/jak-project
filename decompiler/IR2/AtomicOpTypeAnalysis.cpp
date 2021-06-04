@@ -274,7 +274,7 @@ TP_Type get_stack_type_at_constant_offset(int offset,
   // look for a stack variable
   auto kv = types.spill_slots.find(offset);
   if (kv != types.spill_slots.end()) {
-    return kv->second;
+    return TP_Type::make_from_ts(TypeSpec("pointer", {kv->second.typespec()}));
   }
 
   throw std::runtime_error(

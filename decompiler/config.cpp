@@ -62,13 +62,28 @@ Config read_config_file(const std::string& path_to_config_file) {
     auto& function_name = kv.key();
     auto& casts = kv.value();
     for (auto& cast : casts) {
-      auto idx_range = parse_json_optional_integer_range(cast.at(0));
-      for (auto idx : idx_range) {
-        TypeCast type_cast;
-        type_cast.atomic_op_idx = idx;
-        type_cast.reg = Register(cast.at(1));
-        type_cast.type_name = cast.at(2).get<std::string>();
-        config.type_casts_by_function_by_atomic_op_idx[function_name][idx].push_back(type_cast);
+      if (cast.at(0).is_string()) {
+        auto cast_name = cast.at(0).get<std::string>();
+        if (cast_name == "_stack_") {
+          // it's a stack var cast
+          StackTypeCast stack_cast;
+          stack_cast.stack_offset = cast.at(1).get<int>();
+          stack_cast.type_name = cast.at(2).get<std::string>();
+          config.stack_type_casts_by_function_by_stack_offset[function_name]
+                                                             [stack_cast.stack_offset] = stack_cast;
+        } else {
+          throw std::runtime_error(fmt::format("Unknown cast type: {}", cast_name));
+        }
+      } else {
+        auto idx_range = parse_json_optional_integer_range(cast.at(0));
+        for (auto idx : idx_range) {
+          RegisterTypeCast type_cast;
+          type_cast.atomic_op_idx = idx;
+          type_cast.reg = Register(cast.at(1));
+          type_cast.type_name = cast.at(2).get<std::string>();
+          config.register_type_casts_by_function_by_atomic_op_idx[function_name][idx].push_back(
+              type_cast);
+        }
       }
     }
   }

@@ -8,7 +8,7 @@
 #include "decompiler/ObjectFile/LinkedObjectFile.h"
 
 namespace decompiler {
-struct TypeCast;
+struct RegisterTypeCast;
 }
 
 struct TestSettings {

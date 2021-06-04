@@ -8,9 +8,14 @@
 #include "decompiler/Disasm/Register.h"
 
 namespace decompiler {
-struct TypeCast {
+struct RegisterTypeCast {
   int atomic_op_idx = -1;
   Register reg;
+  std::string type_name;
+};
+
+struct StackTypeCast {
+  int stack_offset = -1;
   std::string type_name;
 };
 
@@ -82,8 +87,10 @@ struct Config {
   bool generate_symbol_definition_map = false;
 
   std::unordered_set<std::string> allowed_objects;
-  std::unordered_map<std::string, std::unordered_map<int, std::vector<TypeCast>>>
-      type_casts_by_function_by_atomic_op_idx;
+  std::unordered_map<std::string, std::unordered_map<int, std::vector<RegisterTypeCast>>>
+      register_type_casts_by_function_by_atomic_op_idx;
+  std::unordered_map<std::string, std::unordered_map<int, StackTypeCast>>
+      stack_type_casts_by_function_by_stack_offset;
   std::unordered_map<std::string, std::unordered_map<int, std::string>>
       anon_function_types_by_obj_by_id;
   std::unordered_map<std::string, std::vector<std::string>> function_arg_names;

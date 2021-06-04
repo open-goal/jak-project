@@ -31,14 +31,14 @@ std::vector<StackStructureHint> parse_stack_structure_hints(const nlohmann::json
   return result;
 }
 
-std::unordered_map<int, std::vector<decompiler::TypeCast>> parse_cast_hints(
+std::unordered_map<int, std::vector<decompiler::RegisterTypeCast>> parse_cast_hints(
     const nlohmann::json& casts) {
-  std::unordered_map<int, std::vector<decompiler::TypeCast>> out;
+  std::unordered_map<int, std::vector<decompiler::RegisterTypeCast>> out;
 
   for (auto& cast : casts) {
     auto idx_range = parse_json_optional_integer_range(cast.at(0));
     for (auto idx : idx_range) {
-      TypeCast type_cast;
+      RegisterTypeCast type_cast;
       type_cast.atomic_op_idx = idx;
       type_cast.reg = Register(cast.at(1));
       type_cast.type_name = cast.at(2).get<std::string>();

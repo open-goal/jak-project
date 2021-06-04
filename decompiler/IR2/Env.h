@@ -131,11 +131,18 @@ class Env {
 
   bool allow_sloppy_pair_typing() const { return m_allow_sloppy_pair_typing; }
   void set_sloppy_pair_typing() { m_allow_sloppy_pair_typing = true; }
-  void set_type_casts(const std::unordered_map<int, std::vector<TypeCast>>& casts) {
+  void set_type_casts(const std::unordered_map<int, std::vector<RegisterTypeCast>>& casts) {
     m_typecasts = casts;
   }
+  const std::unordered_map<int, std::vector<RegisterTypeCast>>& casts() const {
+    return m_typecasts;
+  }
 
-  const std::unordered_map<int, std::vector<TypeCast>>& casts() const { return m_typecasts; }
+  void set_stack_casts(const std::unordered_map<int, StackTypeCast>& casts) {
+    m_stack_typecasts = casts;
+  }
+
+  const std::unordered_map<int, StackTypeCast>& stack_casts() const { return m_stack_typecasts; }
 
   void set_remap_for_function(int nargs);
   void set_remap_for_method(int nargs);
@@ -212,7 +219,8 @@ class Env {
 
   bool m_allow_sloppy_pair_typing = false;
 
-  std::unordered_map<int, std::vector<TypeCast>> m_typecasts;
+  std::unordered_map<int, std::vector<RegisterTypeCast>> m_typecasts;
+  std::unordered_map<int, StackTypeCast> m_stack_typecasts;
   std::vector<StackStructureEntry> m_stack_structures;
   std::unordered_map<std::string, std::string> m_var_remap;
   std::unordered_map<std::string, TypeSpec> m_var_retype;
