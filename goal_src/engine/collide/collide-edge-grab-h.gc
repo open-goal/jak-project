@@ -41,7 +41,7 @@
 (deftype collide-edge-edge (structure)
   ((ignore        basic                    :offset-assert 0)
    (etri          collide-edge-tri         :offset-assert 4)
-   (vertex-ptr    vector         2       :offset-assert 8)
+   (vertex-ptr    vector           2       :offset-assert 8)
    (outward       vector           :inline :offset-assert 16)
    (edge-vec-norm vector           :inline :offset-assert 32)
    )
@@ -64,11 +64,11 @@
   )
 
 (deftype collide-edge-hold-list (structure)
-  ((num-allocs   uint32                    :offset-assert 0)
-   (num-attempts uint32                    :offset-assert 4)
-   (head         collide-edge-hold-item    :offset-assert 8)
-   (items        collide-edge-hold-item  32 :inline :offset-assert 16)
-   (attempts     qword   32 :inline :offset-assert 1552)
+  ((num-allocs   uint32                            :offset-assert 0)
+   (num-attempts uint32                            :offset-assert 4)
+   (head         collide-edge-hold-item            :offset-assert 8)
+   (items        collide-edge-hold-item 32 :inline :offset-assert 16)
+   (attempts     qword                  32 :inline :offset-assert 1552)
    )
   :method-count-assert 11
   :size-assert         #x810
@@ -80,32 +80,32 @@
   )
 
 (deftype collide-edge-work (structure)
-  ((ccache                       basic                          :offset-assert 0)
-   (cshape                       basic                          :offset-assert 4)
-   (num-verts                    uint32                         :offset-assert 8)
-   (num-edges                    uint32                         :offset-assert 12)
-   (num-tris                     uint32                         :offset-assert 16)
-   (cache-fill-box               bounding-box           :inline :offset-assert 32)
-   (within-reach-box             bounding-box           :inline :offset-assert 64)
-   (within-reach-box4w           bounding-box4w         :inline :offset-assert 96)
-   (search-pt                    vector                 :inline :offset-assert 128)
-   (search-dir-vec               vector                 :inline :offset-assert 144)
-   (max-dist-sqrd-to-outward-pt  float                          :offset-assert 160)
-   (max-dir-cosa-delta           float                          :offset-assert 164)
-   (split-dists                  float                2       :offset-assert 168)
-   (outward-offset               vector                 :inline :offset-assert 176)
-   (local-cache-fill-box         bounding-box           :inline :offset-assert 192)
-   (local-within-reach-box       bounding-box           :inline :offset-assert 224)
-   (local-player-spheres         sphere   12   :inline   :offset-assert 256)
-   (world-player-spheres         sphere                12  :inline    :offset-assert 448)
-   (local-player-hanging-spheres sphere                6   :inline    :offset 256)
-   (world-player-hanging-spheres sphere                6    :inline   :offset 448)
-   (local-player-leap-up-spheres sphere                6    :inline   :offset 352)
-   (world-player-leap-up-spheres sphere                6    :inline   :offset 544)
-   (verts                        vector      64 :inline     :offset-assert 640)
-   (edges                        collide-edge-edge     96  :inline    :offset-assert 1664)
-   (tris                         collide-edge-tri    48  :inline    :offset-assert 6272)
-   (hold-list                    collide-edge-hold-list :inline :offset-assert 7808)
+  ((ccache                       basic                                        :offset-assert 0)
+   (cshape                       basic                                        :offset-assert 4)
+   (num-verts                    uint32                                       :offset-assert 8)
+   (num-edges                    uint32                                       :offset-assert 12)
+   (num-tris                     uint32                                       :offset-assert 16)
+   (cache-fill-box               bounding-box           :inline               :offset-assert 32)
+   (within-reach-box             bounding-box           :inline               :offset-assert 64)
+   (within-reach-box4w           bounding-box4w         :inline               :offset-assert 96)
+   (search-pt                    vector                 :inline               :offset-assert 128)
+   (search-dir-vec               vector                 :inline               :offset-assert 144)
+   (max-dist-sqrd-to-outward-pt  float                                        :offset-assert 160)
+   (max-dir-cosa-delta           float                                        :offset-assert 164)
+   (split-dists                  float                  2                     :offset-assert 168)
+   (outward-offset               vector                 :inline               :offset-assert 176)
+   (local-cache-fill-box         bounding-box           :inline               :offset-assert 192)
+   (local-within-reach-box       bounding-box           :inline               :offset-assert 224)
+   (local-player-spheres         sphere                 12 :inline            :offset-assert 256)
+   (world-player-spheres         sphere                 12 :inline            :offset-assert 448)
+   (local-player-hanging-spheres sphere                 6 :inline :offset 256)
+   (world-player-hanging-spheres sphere                 6 :inline :offset 448)
+   (local-player-leap-up-spheres sphere                 6 :inline :offset 352)
+   (world-player-leap-up-spheres sphere                 6 :inline :offset 544)
+   (verts                        vector                 64 :inline            :offset-assert 640)
+   (edges                        collide-edge-edge      96 :inline            :offset-assert 1664)
+   (tris                         collide-edge-tri       48 :inline            :offset-assert 6272)
+   (hold-list                    collide-edge-hold-list :inline               :offset-assert 7808)
    )
   :method-count-assert 20
   :size-assert         #x2690
@@ -125,107 +125,34 @@
     )
   )
 
-(define *collide-edge-work*
-    (new 'static 'collide-edge-work
-         :max-dist-sqrd-to-outward-pt 37748736.000000
-         :max-dir-cosa-delta (the-as float #x3f19999a)
-         :split-dists (new 'static 'array float 2 1024.000000 (the-as float #x44b33333))
-         :outward-offset (new 'static 'vector
-                              :x (the-as float #x443126e9)
-                              :y 13312.000000
-                              :w 1.000000
-                              )
-         :local-cache-fill-box (new 'static 'bounding-box
-                                    :min (new 'static 'vector
-                                              :x -8192.000000
-                                              :y (the-as float #xc62ccccd)
-                                              :z -8192.000000
-                                              :w 1.000000
-                                              )
-                                    :max (new 'static 'vector
-                                              :x 8192.000000
-                                              :y 24576.000000
-                                              :z 8192.000000
-                                              :w 1.000000
-                                              )
+(define *collide-edge-work* (new 'static 'collide-edge-work
+                                :max-dist-sqrd-to-outward-pt 37748736.0
+                                :max-dir-cosa-delta 0.6
+                                :split-dists (new 'static 'array float 2 1024.0 1433.6)
+                                :outward-offset (new 'static 'vector :x 708.608 :y 13312.0 :w 1.0)
+                                :local-cache-fill-box (new 'static 'bounding-box
+                                    :min (new 'static 'vector :x -8192.0 :y -11059.2 :z -8192.0 :w 1.0)
+                                    :max (new 'static 'vector :x 8192.0 :y 24576.0 :z 8192.0 :w 1.0)
                                     )
-         :local-within-reach-box (new 'static 'bounding-box
-                                      :min (new 'static 'vector
-                                                :x -6144.000000
-                                                :y (the-as float #x45a66666)
-                                                :z -6144.000000
-                                                :w 1.000000
-                                                )
-                                      :max (new 'static 'vector
-                                                :x 6144.000000
-                                                :y (the-as float #x462ccccd)
-                                                :z 6144.000000
-                                                :w 1.000000
-                                                )
-                                      )
-         :local-player-spheres (new 'static 'inline-array sphere 12
-                                    (new 'static 'sphere
-                                         :x (the-as float #x44d70a3d)
-                                         :y (the-as float #xc44ccccd)
-                                         :w (the-as float #x44b33333)
-                                         )
-                                    (new 'static 'sphere
-                                         :x (the-as float #x450f5c29)
-                                         :y (the-as float #xc54ccccd)
-                                         :w (the-as float #x44eb851f)
-                                         )
-                                    (new 'static 'sphere
-                                         :x (the-as float #x44f5c28f)
-                                         :y -6144.000000
-                                         :w (the-as float #x44c28f5c)
-                                         )
-                                    (new 'static 'sphere
-                                         :x (the-as float #x44f5c28f)
-                                         :y (the-as float #xc6066666)
-                                         :w (the-as float #x44c28f5c)
-                                         )
-                                    (new 'static 'sphere
-                                         :x (the-as float #x44dc28f6)
-                                         :y (the-as float #xc62ccccd)
-                                         :w (the-as float #x44a8f5c3)
-                                         )
-                                    (new 'static 'sphere
-                                         :x (the-as float #x44d1eb85)
-                                         :y -13312.000000
-                                         :w (the-as float #x449eb852)
-                                         )
-                                    (new 'static 'sphere
-                                         :x (the-as float #xc43851ec)
-                                         :y 4096.000000
-                                         :w 3072.000000
-                                         )
-                                    (new 'static 'sphere
-                                         :x (the-as float #xc43851ec)
-                                         :y (the-as float #x45cccccd)
-                                         :w 3072.000000
-                                         )
-                                    (new 'static 'sphere
-                                         :x (the-as float #xc43851ec)
-                                         :y (the-as float #x46133333)
-                                         :w 3072.000000
-                                         )
-                                    (new 'static 'sphere
-                                         :x (the-as float #x44d70a3d)
-                                         :y (the-as float #x45666666)
-                                         :w (the-as float #x453851ec)
-                                         )
-                                    (new 'static 'sphere
-                                         :x (the-as float #x44d70a3d)
-                                         :y (the-as float #x45b33333)
-                                         :w (the-as float #x453851ec)
-                                         )
-                                    (new 'static 'sphere
-                                         :x (the-as float #x44d70a3d)
-                                         :y (the-as float #x46066666)
-                                         :w (the-as float #x453851ec)
-                                         )
+                                :local-within-reach-box (new 'static 'bounding-box
+                                    :min (new 'static 'vector :x -6144.0 :y 5324.8 :z -6144.0 :w 1.0)
+                                    :max (new 'static 'vector :x 6144.0 :y 11059.2 :z 6144.0 :w 1.0)
                                     )
-         )
+                                :local-player-spheres (new 'static 'inline-array sphere 12
+                                    (new 'static 'sphere :x 1720.32 :y -819.2 :w 1433.6)
+                                    (new 'static 'sphere :x 2293.76 :y -3276.8 :w 1884.16)
+                                    (new 'static 'sphere :x 1966.08 :y -6144.0 :w 1556.48)
+                                    (new 'static 'sphere :x 1966.08 :y -8601.6 :w 1556.48)
+                                    (new 'static 'sphere :x 1761.28 :y -11059.2 :w 1351.68)
+                                    (new 'static 'sphere :x 1679.36 :y -13312.0 :w 1269.76)
+                                    (new 'static 'sphere :x -737.28 :y 4096.0 :w 3072.0)
+                                    (new 'static 'sphere :x -737.28 :y 6553.6 :w 3072.0)
+                                    (new 'static 'sphere :x -737.28 :y 9420.8 :w 3072.0)
+                                    (new 'static 'sphere :x 1720.32 :y 3686.4 :w 2949.12)
+                                    (new 'static 'sphere :x 1720.32 :y 5734.4 :w 2949.12)
+                                    (new 'static 'sphere :x 1720.32 :y 8601.6 :w 2949.12)
+                                    )
+                                )
   )
 
 (define-perm *edge-grab-info* edge-grab-info (new 'global 'edge-grab-info))
