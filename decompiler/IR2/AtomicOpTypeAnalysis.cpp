@@ -746,9 +746,9 @@ TP_Type LoadVarOp::get_src_type(const TypeState& input,
       if (method_id == GOAL_NEW_METHOD) {
         return TP_Type::make_from_ts(method_type);
       } else if (input_type.kind == TP_Type::Kind::TYPE_OF_TYPE_NO_VIRTUAL) {
-        return TP_Type::make_non_virtual_method(method_type, TypeSpec(type_name));
+        return TP_Type::make_non_virtual_method(method_type, TypeSpec(type_name), method_id);
       } else {
-        return TP_Type::make_virtual_method(method_type, TypeSpec(type_name));
+        return TP_Type::make_virtual_method(method_type, TypeSpec(type_name), method_id);
       }
     }
 
@@ -760,7 +760,7 @@ TP_Type LoadVarOp::get_src_type(const TypeState& input,
       if (method_id != GOAL_NEW_METHOD && method_id != GOAL_RELOC_METHOD) {
         // this can get us the wrong thing for `new` methods.  And maybe relocate?
         return TP_Type::make_non_virtual_method(
-            method_info.type.substitute_for_method_call("object"), TypeSpec("object"));
+            method_info.type.substitute_for_method_call("object"), TypeSpec("object"), method_id);
       }
     }
 

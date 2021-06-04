@@ -5,7 +5,8 @@
 ;; name in dgo: fact-h
 ;; dgos: GAME, ENGINE
 
-;; NOT FINISHED
+;; The fact bank is a single static object containing health/eco parameters
+;; All game code should reference *FACT-bank* to determine these parameters
 
 (deftype fact-bank (basic)
   ((eco-level-max        float   :offset-assert 4)
@@ -76,12 +77,16 @@
     )
   )
 
+;; Each individual enemy and pickup process will allocate a fact-info on its process heap
+;; The settings may be different per object - for example some eco pickups may have different
+;; amounts or timings
+;; The fact-info class stores data that is common to all fact-infos.
 (deftype fact-info (basic)
-  ((process             process :offset-assert 4)
+  ((process             process :offset-assert 4)       ;; the process that this info is for
    (pickup-type         pickup-type   :offset-assert 8)
-   (pickup-amount       float   :offset-assert 12)
+   (pickup-amount       float   :offset-assert 12)      ;; eco increment on pickup
    (pickup-spawn-amount float   :offset-assert 16)
-   (options             uint64  :offset-assert 24)
+   (options             uint64  :offset-assert 24)      ;; actually bitfield enum
    (fade-time           uint64  :offset-assert 32)
    )
   :method-count-assert 12
@@ -139,8 +144,93 @@
     )
   )
 
+(defmethod new fact-info ((allocation symbol) (type-to-make type) (proc process) (pkup-type pickup-type) (pkup-amount float))
+  "Create information about a pickup.  This should be called from a process which is a pickup.  This will read settings from
+   the entity of the process automatically. Will attempt to read pickup-type and amount from the entity, but if this
+   fails will use the values in the arguments"
+  (local-vars (tag res-tag))
+  (with-pp
+    ;; allocate.
+    (let ((obj (object-new allocation type-to-make (the-as int (-> type-to-make size)))))
+      (let ((ent (the res-lump (-> proc entity))))
+        ;; confirm that we allocated successfully
+        (when (zero? obj)
+          (go process-drawable-art-error "memory")
+          ;; this is already true...
+          (set! obj (the-as fact-info 0))
+          (goto cfg-10)
+          )
+
+        ;; remember who we belong to
+        (set! (-> obj process) proc)
+
+        ;; eco may override the pickup type and amount, so try to get this.
+        (let ((v1-6 (res-lump-data ent 'eco-info (pointer int32) :tag-ptr (& tag))))
+          (cond
+            (v1-6
+             ;; eco-info lookup succeeded,
+             (let ((a0-6 (-> tag elt-count)))
+               ;; first thing is pickup type, it's always there
+               (set! (-> obj pickup-type) (the-as pickup-type (-> v1-6 0)))
+               ;; pickup amount is optional.
+               (set! pkup-amount (if (< (the-as uint 1) (the-as uint a0-6))
+                                     (the float (-> v1-6 1))
+                                     pkup-amount
+                                     )
+                     )
+               )
+             (set! (-> obj pickup-amount) pkup-amount)
+             )
+            (else
+             ;; no eco-info, use stuff from args
+             (set! (-> obj pickup-type) pkup-type)
+             (set! (-> obj pickup-amount) pkup-amount)
+             )
+            )
+          )
+
+        ;; read the options
+        (set! (-> obj options) (res-lump-value ent 'options uint))
+
+        ;; TODO - some enum bitfield here.
+        (if (nonzero? (logand #x80200 (the-as int (-> obj options))))
+            (set! (-> obj fade-time) (the-as uint (the int (* 300.0 (res-lump-float ent 'timeout)))))
+            )
+        )
+
+      (label cfg-10)
+      obj
+      )
+    )
+  )
+
 (defmethod dummy-11 fact-info ((obj fact-info))
   0.0
   )
 
+(defmethod new fact-info-enemy ((allocation symbol) (type-to-make type) (proc process) (kind pickup-type) (amount float))
+  "Create information about an enemy. Possibly includes what the enemy will drop when it is killed?"
+  ;; base class ctor
+  (let ((obj (the-as fact-info-enemy ((method-of-type fact-info new) allocation type-to-make proc kind amount))))
+    ;; read values from the process entity
+    (let ((entity (the res-lump (-> obj process entity))))
+      (set! (-> obj speed) (res-lump-float entity 'speed :default 1.0))
+      (set! (-> obj idle-distance) (res-lump-float entity 'idle-distance :default 327680.0))
+      (set! (-> obj notice-top) (res-lump-float entity 'notice-top :default 4096000.0))
+      (set! (-> obj notice-bottom) (res-lump-float entity 'notice-bottom :default 4096000.0))
+      (set! (-> obj cam-horz) (res-lump-float entity 'cam-horz))
+      (set! (-> obj cam-vert) (res-lump-float entity 'cam-vert))
+      (set! (-> obj cam-notice-dist) (res-lump-float entity 'cam-notice-dist :default -4096.0))
+      )
+    obj
+    )
+  )
 
+(defmethod new fact-info-target ((allocation symbol) (type-to-make type) (arg0 process) (arg1 pickup-type) (arg2 float))
+  "Create information about target. Not sure why this has stuff like pickup-type."
+  (let ((obj (the-as fact-info-target ((method-of-type fact-info new) allocation type-to-make arg0 arg1 arg2))))
+    (set! (-> obj eco-source) (the-as uint #f))
+    (dummy-10 obj #f)
+    obj
+    )
+  )

@@ -72,7 +72,7 @@ RegVal* Compiler::compile_get_method_of_object(const goos::Object& form,
   auto fe = get_parent_env_of_type<FunctionEnv>(env);
 
   RegVal* runtime_type = nullptr;
-  if (m_ts.should_use_virtual_methods(compile_time_type)) {
+  if (m_ts.should_use_virtual_methods(compile_time_type, method_info.id)) {
     runtime_type = fe->make_gpr(m_ts.make_typespec("type"));
     MemLoadInfo info;
     info.size = 4;
@@ -496,8 +496,7 @@ Val* Compiler::compile_defmethod(const goos::Object& form, const goos::Object& _
 
   m_symbol_info.add_method(symbol_string(method_name), symbol_string(type_name), form);
 
-  auto info =
-      m_ts.add_method(symbol_string(type_name), symbol_string(method_name), lambda_ts, false);
+  auto info = m_ts.define_method(symbol_string(type_name), symbol_string(method_name), lambda_ts);
   auto type_obj = compile_get_symbol_value(form, symbol_string(type_name), env)->to_gpr(env);
   auto id_val = compile_integer(info.id, env)->to_gpr(env);
   auto method_val = place->to_gpr(env);

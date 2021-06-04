@@ -439,6 +439,20 @@
   default
   )
 
+(defmacro res-lump-data (lump name type &key (tag-ptr (the-as (pointer res-tag) #f)))
+  "Helper macro to get data from a res-lump without interpolation."
+  `(the-as ,type ((method-of-type res-lump get-property-data)
+                  ,lump
+                  ,name
+                  'interp
+                  0.0
+                  (the-as pointer #f)
+                  ,tag-ptr
+                  *res-static-buf*
+                  )
+           )
+  )
+
 (defmethod get-property-struct res-lump ((obj res-lump) (name symbol) (mode symbol) (time float) (default structure) (tag-addr (pointer res-tag)) (buf-addr pointer))
   "Returns a given struct property's value at a specific time stamp, or default on error.
    name is the name of the property you want, mode is its lookup mode ('interp 'base 'exact), time is the timestamp.
@@ -521,6 +535,20 @@
   default
   )
 
+(defmacro res-lump-value (lump name type &key (tag-ptr (the-as (pointer res-tag) #f)))
+  "Helper macro to get a value from a res-lump with no interpolation."
+  `(the-as ,type ((method-of-type res-lump get-property-value)
+                  ,lump
+                  ,name
+                  'interp
+                  -1000000000.0
+                  (the-as uint128 0)
+                  ,tag-ptr
+                  *res-static-buf*
+                  )
+           )
+  )
+
 (defmethod get-property-value2 res-lump ((obj res-lump) (name symbol) (mode symbol) (time float) (default uint128) (tag-addr (pointer res-tag)) (buf-addr pointer))
   "same as get-property-value but float type is checked first?"
 
@@ -568,6 +596,20 @@
         )
       )
   default
+  )
+
+(defmacro res-lump-float (lump name &key (tag-ptr (the-as (pointer res-tag) #f)) &key (default 0.0))
+  "Helper macro to get a float from a res-lump with no interpolation."
+  `(the-as float ((method-of-type res-lump get-property-value2)
+                  ,lump
+                  ,name
+                  'interp
+                  -1000000000.0
+                  (the-as uint128 ,default)
+                  ,tag-ptr
+                  *res-static-buf*
+                  )
+           )
   )
 
 (defmethod sort! res-lump ((obj res-lump))
