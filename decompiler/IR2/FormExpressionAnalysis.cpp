@@ -1081,7 +1081,6 @@ void SimpleExpressionElement::update_from_stack_logor_or_logand(const Env& env,
       // this is an ugly hack to make (logand (lognot (enum-bitfield xxxx)) work.
       // I have only one example for this, so I think this unlikely to work in all cases.
       if (m_expr.get_arg(1).is_var()) {
-        auto arg1_type = env.get_variable_type(m_expr.get_arg(1).var(), true);
         auto eti = env.dts->ts.try_enum_lookup(arg1_type.base_type());
         if (eti) {
           auto integer = get_goal_integer_constant(args.at(0), env);
@@ -2025,7 +2024,7 @@ void FunctionCallElement::update_from_stack(const Env& env,
         }
 
         if (got_stack_new) {
-          auto new_op = first_cast->source()->try_as_element<StackVarDefElement>();
+          auto new_op = first_cast->source()->try_as_element<StackStructureDefElement>();
           if (!new_op || new_op->type().base_type() != type_source_form->to_string(env)) {
             got_stack_new = false;
           }
@@ -3567,11 +3566,11 @@ void ConstantFloatElement::update_from_stack(const Env&,
   result->push_back(this);
 }
 
-void StackVarDefElement::update_from_stack(const Env&,
-                                           FormPool&,
-                                           FormStack&,
-                                           std::vector<FormElement*>* result,
-                                           bool) {
+void StackStructureDefElement::update_from_stack(const Env&,
+                                                 FormPool&,
+                                                 FormStack&,
+                                                 std::vector<FormElement*>* result,
+                                                 bool) {
   mark_popped();
   result->push_back(this);
 }

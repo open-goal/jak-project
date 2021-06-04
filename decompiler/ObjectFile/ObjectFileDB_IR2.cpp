@@ -360,10 +360,14 @@ void ObjectFileDB::ir2_type_analysis_pass(const Config& config) {
         attempted_functions++;
         // try type analysis here.
         auto func_name = func.guessed_name.to_string();
-        auto casts = try_lookup(config.type_casts_by_function_by_atomic_op_idx, func_name);
+        auto register_casts =
+            try_lookup(config.register_type_casts_by_function_by_atomic_op_idx, func_name);
+        func.ir2.env.set_type_casts(register_casts);
         auto label_types = try_lookup(config.label_types, data.to_unique_name());
-        func.ir2.env.set_type_casts(casts);
         func.ir2.env.set_label_types(label_types);
+        auto stack_casts =
+            try_lookup(config.stack_type_casts_by_function_by_stack_offset, func_name);
+        func.ir2.env.set_stack_casts(stack_casts);
         if (config.hacks.pair_functions_by_name.find(func_name) !=
             config.hacks.pair_functions_by_name.end()) {
           func.ir2.env.set_sloppy_pair_typing();
@@ -373,7 +377,8 @@ void ObjectFileDB::ir2_type_analysis_pass(const Config& config) {
             config.hacks.reject_cond_to_value.end()) {
           func.ir2.env.aggressively_reject_cond_to_value_rewrite = true;
         }
-        func.ir2.env.set_stack_var_hints(try_lookup(config.stack_var_hints_by_function, func_name));
+        func.ir2.env.set_stack_structure_hints(
+            try_lookup(config.stack_structure_hints_by_function, func_name));
         if (run_type_analysis_ir2(ts, dts, func)) {
           successful_functions++;
           func.ir2.env.types_succeeded = true;

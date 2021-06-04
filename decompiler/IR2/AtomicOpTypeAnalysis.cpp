@@ -234,17 +234,21 @@ namespace {
  */
 TP_Type get_stack_type_at_constant_offset(int offset,
                                           const Env& env,
-                                          const DecompilerTypeSystem& dts) {
+                                          const DecompilerTypeSystem& dts,
+                                          const TypeState& types) {
   (void)dts;
-  for (auto& var : env.stack_var_hints()) {
-    if (offset < var.hint.stack_offset || offset >= (var.hint.stack_offset + var.size)) {
+
+  // first look for a stack structure
+  for (auto& structure : env.stack_structure_hints()) {
+    if (offset < structure.hint.stack_offset ||
+        offset >= (structure.hint.stack_offset + structure.size)) {
       continue;  // reject, it isn't in this variable
     }
 
-    if (offset == var.hint.stack_offset) {
+    if (offset == structure.hint.stack_offset) {
       // special case just getting the variable
-      if (var.hint.container_type == StackVariableHint::ContainerType::NONE) {
-        return TP_Type::make_from_ts(coerce_to_reg_type(var.ref_type));
+      if (structure.hint.container_type == StackStructureHint::ContainerType::NONE) {
+        return TP_Type::make_from_ts(coerce_to_reg_type(structure.ref_type));
       }
     }
 
@@ -266,7 +270,15 @@ TP_Type get_stack_type_at_constant_offset(int offset,
      */
     // if we fail, keep trying others. This lets us have overlays in stack memory.
   }
-  throw std::runtime_error(fmt::format("Failed to find a stack variable at offset {}", offset));
+
+  // look for a stack variable
+  auto kv = types.spill_slots.find(offset);
+  if (kv != types.spill_slots.end()) {
+    return TP_Type::make_from_ts(TypeSpec("pointer", {kv->second.typespec()}));
+  }
+
+  throw std::runtime_error(
+      fmt::format("Failed to find a stack variable or structure at offset {}", offset));
 }
 }  // namespace
 
@@ -373,7 +385,7 @@ TP_Type SimpleExpression::get_type_int2(const TypeState& input,
       // get stack address:
       if (m_args[0].is_var() && m_args[0].var().reg() == Register(Reg::GPR, Reg::SP) &&
           m_args[1].is_int()) {
-        return get_stack_type_at_constant_offset(m_args[1].get_int(), env, dts);
+        return get_stack_type_at_constant_offset(m_args[1].get_int(), env, dts, input);
       }
 
       if (arg0_type.is_product_with(4) && tc(dts, TypeSpec("type"), arg1_type)) {

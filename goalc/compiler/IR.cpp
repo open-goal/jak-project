@@ -34,6 +34,19 @@ Register get_reg(const RegVal* rv, const AllocationResult& allocs, emitter::IR_R
   }
 }
 
+int get_stack_offset(const RegVal* rv, const AllocationResult& allocs) {
+  if (rv->rlet_constraint().has_value()) {
+    // should be impossible. Can't take the address of an inline assembly form register.
+    assert(false);
+  } else {
+    assert(rv->forced_on_stack());
+    auto& ass = allocs.ass_as_ranges.at(rv->ireg().id);
+    auto stack_slot = ass.assignment.at(0).stack_slot;
+    assert(stack_slot >= 0);
+    return stack_slot * 8;
+  }
+}
+
 Register get_no_color_reg(const RegVal* rv) {
   if (!rv->rlet_constraint().has_value()) {
     throw std::runtime_error(
@@ -48,6 +61,7 @@ Register get_reg_asm(const RegVal* rv,
                      bool use_coloring) {
   return use_coloring ? get_reg(rv, allocs, irec) : get_no_color_reg(rv);
 }
+
 void load_constant(u64 value,
                    emitter::ObjectGenerator* gen,
                    emitter::IR_Record irec,
@@ -427,6 +441,34 @@ void IR_FunctionCall::do_codegen(emitter::ObjectGenerator* gen,
   gen->add_instr(IGen::add_gpr64_gpr64(freg, emitter::gRegInfo.get_offset_reg()), irec);
   gen->add_instr(IGen::call_r64(freg), irec);
   // todo, can we do a sub to undo the modification to the register? does that actually work?
+}
+
+/////////////////////
+// RegValAddr
+/////////////////////
+
+IR_RegValAddr::IR_RegValAddr(const RegVal* dest, const RegVal* src) : m_dest(dest), m_src(src) {}
+
+std::string IR_RegValAddr::print() {
+  return fmt::format("mov {}, &{}", m_dest->print(), m_src->print());
+}
+
+RegAllocInstr IR_RegValAddr::to_rai() {
+  RegAllocInstr rai;
+  rai.write.push_back(m_dest->ireg());
+  // we don't actually read the value in m_src, so we don't need to add it here.
+  return rai;
+}
+
+void IR_RegValAddr::do_codegen(emitter::ObjectGenerator* gen,
+                               const AllocationResult& allocs,
+                               emitter::IR_Record irec) {
+  int stack_offset = get_stack_offset(m_src, allocs);
+  auto dst = get_reg(m_dest, allocs, irec);
+  // x86 pointer to var
+  gen->add_instr(IGen::lea_reg_plus_off(dst, RSP, stack_offset), irec);
+  // x86 -> GOAL pointer
+  gen->add_instr(IGen::sub_gpr64_gpr64(dst, emitter::gRegInfo.get_offset_reg()), irec);
 }
 
 /////////////////////

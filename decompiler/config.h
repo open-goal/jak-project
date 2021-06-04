@@ -8,9 +8,14 @@
 #include "decompiler/Disasm/Register.h"
 
 namespace decompiler {
-struct TypeCast {
+struct RegisterTypeCast {
   int atomic_op_idx = -1;
   Register reg;
+  std::string type_name;
+};
+
+struct StackTypeCast {
+  int stack_offset = -1;
   std::string type_name;
 };
 
@@ -28,9 +33,9 @@ struct LocalVarOverride {
 };
 
 /*!
- * Information about a variable pointing to some data on the stack.
+ * Information about a structure on the stack.
  */
-struct StackVariableHint {
+struct StackStructureHint {
   std::string element_type;  // type of the thing stored
   // todo - is boxed array on the stack supported?
   enum class ContainerType {
@@ -82,15 +87,18 @@ struct Config {
   bool generate_symbol_definition_map = false;
 
   std::unordered_set<std::string> allowed_objects;
-  std::unordered_map<std::string, std::unordered_map<int, std::vector<TypeCast>>>
-      type_casts_by_function_by_atomic_op_idx;
+  std::unordered_map<std::string, std::unordered_map<int, std::vector<RegisterTypeCast>>>
+      register_type_casts_by_function_by_atomic_op_idx;
+  std::unordered_map<std::string, std::unordered_map<int, StackTypeCast>>
+      stack_type_casts_by_function_by_stack_offset;
   std::unordered_map<std::string, std::unordered_map<int, std::string>>
       anon_function_types_by_obj_by_id;
   std::unordered_map<std::string, std::vector<std::string>> function_arg_names;
   std::unordered_map<std::string, std::unordered_map<std::string, LocalVarOverride>>
       function_var_overrides;
   std::unordered_map<std::string, std::unordered_map<std::string, LabelType>> label_types;
-  std::unordered_map<std::string, std::vector<StackVariableHint>> stack_var_hints_by_function;
+  std::unordered_map<std::string, std::vector<StackStructureHint>>
+      stack_structure_hints_by_function;
 
   DecompileHacks hacks;
 };

@@ -499,16 +499,16 @@ void Env::disable_use(const RegisterAccess& access) {
  * Set the stack hints. This must be done before type analysis.
  * This actually parses the types, so it should be done after the dts is set up.
  */
-void Env::set_stack_var_hints(const std::vector<StackVariableHint>& hints) {
+void Env::set_stack_structure_hints(const std::vector<StackStructureHint>& hints) {
   for (auto& hint : hints) {
-    StackVarEntry entry;
+    StackStructureEntry entry;
     entry.hint = hint;
     // parse the type spec.
     TypeSpec base_typespec = dts->parse_type_spec(hint.element_type);
     auto type_info = dts->ts.lookup_type(base_typespec);
 
     switch (hint.container_type) {
-      case StackVariableHint::ContainerType::NONE:
+      case StackStructureHint::ContainerType::NONE:
         // just a plain object on the stack.
         if (!type_info->is_reference()) {
           throw std::runtime_error(
@@ -531,7 +531,7 @@ void Env::set_stack_var_hints(const std::vector<StackVariableHint>& hints) {
         assert(false);
     }
 
-    m_stack_vars.push_back(entry);
+    m_stack_structures.push_back(entry);
   }
 }
 

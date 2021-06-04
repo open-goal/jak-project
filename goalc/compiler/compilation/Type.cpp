@@ -712,6 +712,16 @@ Val* Compiler::compile_deref(const goos::Object& form, const goos::Object& _rest
   return result;
 }
 
+TypeSpec coerce_to_stack_spill_type(const TypeSpec& in) {
+  if (in == TypeSpec("int")) {
+    return TypeSpec("int64");
+  } else if (in == TypeSpec("uint")) {
+    return TypeSpec("uint64");
+  } else {
+    return in;
+  }
+}
+
 /*!
  * Compile the (& x) form.
  */
@@ -720,10 +730,27 @@ Val* Compiler::compile_addr_of(const goos::Object& form, const goos::Object& res
   va_check(form, args, {{}}, {});
   auto loc = compile_error_guard(args.unnamed.at(0), env);
   auto as_mem_deref = dynamic_cast<MemoryDerefVal*>(loc);
-  if (!as_mem_deref) {
-    throw_compiler_error(form, "Cannot take the address of {}.", loc->print());
+  if (as_mem_deref) {
+    return as_mem_deref->base;
   }
-  return as_mem_deref->base;
+
+  // for now, we will only allow taking the address for something that's already in a register,
+  // like a function parameter or a lexical variable (declared in a let).
+  // This avoids weird things like taking the address of a constant or some other weird temporary -
+  // we could spill it to the stack and let you do this, but most of the time it's probably not what
+  // you wanted to do.
+  auto as_reg = dynamic_cast<RegVal*>(loc);
+  if (as_reg) {
+    // so we can take the address
+    as_reg->force_on_stack();
+    auto result =
+        env->make_gpr(m_ts.make_pointer_typespec(coerce_to_stack_spill_type(as_reg->type())));
+    env->emit_ir<IR_RegValAddr>(result, as_reg);
+    return result;
+  }
+
+  throw_compiler_error(form, "Cannot take the address of {}.", loc->print());
+  return nullptr;
 }
 
 /*!
