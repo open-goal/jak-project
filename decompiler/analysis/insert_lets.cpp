@@ -1,5 +1,6 @@
 #include <algorithm>
 #include <limits>
+#include <array>
 
 #include "insert_lets.h"
 #include "decompiler/IR2/GenericElementMatcher.h"
