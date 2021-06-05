@@ -308,7 +308,7 @@ Val* Compiler::compile_bitfield_definition(const goos::Object& form,
     auto field_size = field_info.size;
     assert(field_offset + field_size <= type_info->get_load_size() * 8);
 
-    if (is_integer(field_info.result_type)) {
+    if (is_integer(field_info.result_type) || field_info.result_type.base_type() == "pointer") {
       // first, try as a constant
       s64 value = 0;
       if (!try_getting_constant_integer(field_value, &value, env)) {

@@ -1540,6 +1540,8 @@ std::string fixed_operator_to_string(FixedOperatorKind kind) {
       return "symbol->string";
     case FixedOperatorKind::ADDRESS_OF:
       return "&";
+    case FixedOperatorKind::ASM_SLLV_R0:
+      return ".asm.sllv.r0";
     default:
       assert(false);
       return "";
