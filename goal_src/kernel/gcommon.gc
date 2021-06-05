@@ -666,8 +666,9 @@
 (deftype inline-array-class (basic)
   ((length           int32  :offset-assert 4)
    (allocated-length int32  :offset-assert 8)
-   (data             uint8  :dynamic :offset-assert 12) ;; might not be here...
-   (_pad             uint8 4) ;; ???
+   ;; this is 16-byte aligned.
+   ;; children of inline-array-class should define their own data which overlays this one.
+   (_data            uint8  :dynamic :offset 16)
    )
   
   (:methods (new (symbol type int) _type_ 0))
@@ -1422,4 +1423,10 @@
      (.pcpyld result upper-xmm lower-xmm)
      (the-as uint result)
      )
+  )
+
+(defmacro as-type (obj type)
+  `(if (and (nonzero? ,obj) (type-type? (-> ,obj type) ,type))
+       (the-as ,type ,obj)
+       )
   )

@@ -638,6 +638,9 @@ void SimpleExpressionElement::update_from_stack_add_i(const Env& env,
       return;
     }
 
+    auto addition_matcher =
+        GenericOpMatcher::or_match({GenericOpMatcher::fixed(FixedOperatorKind::ADDITION),
+                                    GenericOpMatcher::fixed(FixedOperatorKind::ADDITION_PTR)});
     if (arg0_type.kind == TP_Type::Kind::INTEGER_CONSTANT_PLUS_VAR) {
       // try to see if this is valid, from the type system.
       FieldReverseLookupInput input;
@@ -648,8 +651,9 @@ void SimpleExpressionElement::update_from_stack_add_i(const Env& env,
       if (out.success) {
         // it is. now we have to modify things
         // first, look for the index
-        auto arg0_matcher = Matcher::op(GenericOpMatcher::fixed(FixedOperatorKind::ADDITION),
-                                        {Matcher::any(0), Matcher::integer(input.offset)});
+
+        auto arg0_matcher =
+            Matcher::op(addition_matcher, {Matcher::any(0), Matcher::integer(input.offset)});
         auto match_result = match(arg0_matcher, args.at(0));
         if (match_result.matched) {
           bool used_index = false;
@@ -683,7 +687,7 @@ void SimpleExpressionElement::update_from_stack_add_i(const Env& env,
         if (is_power_of_two(input.stride, &p2)) {
           // (+ (shl (-> a0-0 reg-count) 3) 28)
           auto arg0_matcher =
-              Matcher::op(GenericOpMatcher::fixed(FixedOperatorKind::ADDITION),
+              Matcher::op(addition_matcher,
                           {Matcher::op(GenericOpMatcher::fixed(FixedOperatorKind::MULTIPLICATION),
                                        {Matcher::any(0), Matcher::integer(input.stride)}),
                            Matcher::integer(input.offset)});
@@ -709,7 +713,7 @@ void SimpleExpressionElement::update_from_stack_add_i(const Env& env,
           }
         } else {
           auto arg0_matcher =
-              Matcher::op(GenericOpMatcher::fixed(FixedOperatorKind::ADDITION),
+              Matcher::op(addition_matcher,
                           {Matcher::op(GenericOpMatcher::fixed(FixedOperatorKind::MULTIPLICATION),
                                        {Matcher::integer(input.stride), Matcher::any(0)}),
                            Matcher::integer(input.offset)});
@@ -733,6 +737,38 @@ void SimpleExpressionElement::update_from_stack_add_i(const Env& env,
                 fmt::format("Failed to match for stride (non power 2 {}) with add: {}",
                             input.stride, args.at(0)->to_string(env)));
           }
+        }
+      }
+    } else if (arg1_type.kind == TP_Type::Kind::PRODUCT_WITH_CONSTANT &&
+               arg0_type.kind == TP_Type::Kind::TYPESPEC &&
+               arg0_type.typespec().base_type() == "inline-array") {
+      FieldReverseLookupInput rd_in;
+      rd_in.deref = std::nullopt;
+      rd_in.stride = arg1_type.get_multiplier();
+      rd_in.offset = 0;
+      rd_in.base_type = arg0_type.typespec();
+      auto rd = env.dts->ts.reverse_field_lookup(rd_in);
+
+      if (rd.success) {
+        auto arg1_matcher = Matcher::op(GenericOpMatcher::fixed(FixedOperatorKind::MULTIPLICATION),
+                                        {Matcher::any(0), Matcher::integer(rd_in.stride)});
+        auto match_result = match(arg1_matcher, args.at(1));
+        if (match_result.matched) {
+          bool used_index = false;
+          std::vector<DerefToken> tokens;
+          for (auto& tok : rd.tokens) {
+            if (tok.kind == FieldReverseLookupOutput::Token::Kind::VAR_IDX) {
+              assert(!used_index);
+              used_index = true;
+              tokens.push_back(DerefToken::make_int_expr(match_result.maps.forms.at(0)));
+            } else {
+              tokens.push_back(to_token(tok));
+            }
+          }
+          result->push_back(pool.alloc_element<DerefElement>(args.at(0), rd.addr_of, tokens));
+          return;
+        } else {
+          throw std::runtime_error("Failed to match product_with_constant inline array access.");
         }
       }
     }
@@ -2991,13 +3027,20 @@ void push_asm_sllv_to_stack(const AsmOp* op,
       auto src_var = pop_to_forms({*var}, env, pool, stack, true).at(0);
       auto as_ba = src_var->try_as_element<BitfieldAccessElement>();
       if (as_ba) {
+        // part of existing chain.
         BitfieldManip step(BitfieldManip::Kind::SLLV_SEXT, 0);
         auto other = as_ba->push_step(step, env.dts->ts, pool, env);
         assert(other);  // should immediately get a field.
         stack.push_value_to_reg(*dst, pool.alloc_single_form(nullptr, other), true,
                                 env.get_variable_type(*dst, true));
       } else {
-        throw std::runtime_error("Got invalid bitfield manip for sllv");
+        // push it to a weird looking form for initial bitfield setting.
+        // these are lazily converted at the destination.
+        stack.push_value_to_reg(
+            *dst,
+            pool.alloc_single_element_form<GenericElement>(
+                nullptr, GenericOperator::make_fixed(FixedOperatorKind::ASM_SLLV_R0), src_var),
+            true, env.get_variable_type(*dst, true));
       }
     }
   } else {

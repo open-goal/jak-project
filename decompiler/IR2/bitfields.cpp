@@ -289,6 +289,21 @@ std::optional<BitFieldDef> get_bitfield_initial_set(Form* form,
     return def;
   }
 
+  auto matcher_sllv =
+      Matcher::op(GenericOpMatcher::fixed(FixedOperatorKind::ASM_SLLV_R0), {Matcher::any(0)});
+  auto mr_sllv = match(matcher_sllv, strip_int_or_uint_cast(form));
+  if (mr_sllv.matched) {
+    auto value = mr_sllv.maps.forms.at(0);
+    int size = 32;
+    int offset = 0;
+    auto& f = find_field(ts, type, offset, size, {});
+    BitFieldDef def;
+    def.value = value;
+    def.field_name = f.name();
+    def.is_signed = false;
+    return def;
+  }
+
   return {};
 }
 

@@ -474,6 +474,22 @@ TP_Type SimpleExpression::get_type_int2(const TypeState& input,
     }
   }
 
+  // access with just product and no offset.
+  if (m_kind == Kind::ADD && arg0_type.kind == TP_Type::Kind::TYPESPEC &&
+      arg0_type.typespec().base_type() == "inline-array" &&
+      arg1_type.kind == TP_Type::Kind::PRODUCT_WITH_CONSTANT) {
+    FieldReverseLookupInput rd_in;
+    rd_in.deref = std::nullopt;
+    rd_in.stride = arg1_type.get_multiplier();
+    rd_in.offset = 0;
+    rd_in.base_type = arg0_type.typespec();
+    auto rd = dts.ts.reverse_field_lookup(rd_in);
+
+    if (rd.success) {
+      return TP_Type::make_from_ts(coerce_to_reg_type(rd.result_type));
+    }
+  }
+
   if (m_kind == Kind::ADD && arg0_type.is_product() && arg1_type.kind == TP_Type::Kind::TYPESPEC) {
     return TP_Type::make_object_plus_product(arg1_type.typespec(), arg0_type.get_multiplier());
   }

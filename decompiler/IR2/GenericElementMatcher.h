@@ -114,8 +114,9 @@ class GenericOpMatcher {
   static GenericOpMatcher fixed(FixedOperatorKind kind);
   static GenericOpMatcher func(const Matcher& func_matcher);
   static GenericOpMatcher condition(IR2_Condition::Kind condition);
+  static GenericOpMatcher or_match(const std::vector<GenericOpMatcher>& matchers);
 
-  enum class Kind { FIXED, FUNC, CONDITION, INVALID };
+  enum class Kind { FIXED, FUNC, CONDITION, OR, INVALID };
 
   bool do_match(GenericOperator& input, MatchResult::Maps* maps_out) const;
 
@@ -123,6 +124,7 @@ class GenericOpMatcher {
   Kind m_kind = Kind::INVALID;
   FixedOperatorKind m_fixed_kind = FixedOperatorKind::INVALID;
   IR2_Condition::Kind m_condition_kind = IR2_Condition::Kind::INVALID;
+  std::vector<GenericOpMatcher> m_sub_matchers;
   Matcher m_func_matcher;
 };
 

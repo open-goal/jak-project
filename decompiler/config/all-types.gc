@@ -28,8 +28,9 @@
 (deftype inline-array-class (basic)
   ((length           int32  :offset-assert 4)
    (allocated-length int32  :offset-assert 8)
-   (data             uint8  :dynamic :offset-assert 12) ;; might not be here...
-   (_pad             uint8 4) ;; ???
+   ;; this is 16-byte aligned.
+   ;; children of inline-array-class should define their own data which overlays this one.
+   (_data            uint8  :dynamic :offset 16)
    )
   (:methods (new (symbol type int) _type_ 0))
   :method-count-assert 9
@@ -492,6 +493,45 @@
   (aborted 3)
   (invalid 666)
   )
+
+(defenum bucket-id
+    :type uint32
+    :bitfield #f
+    
+    (tfrag-tex0 5)
+    ;; merc0 10
+    ;; generic0 11
+    
+    (tfrag-tex1 12)
+    ;; merc1 17
+    ;; generic1 18
+    
+    (shrub-tex0 19)
+    
+    (shrub-tex1 25)
+    
+    (alpha-tex0 31)
+    
+    (alpha-tex1 38)
+    
+    (pris-tex0 48)
+    ;; merc0 49
+    ;; generic0 50
+    
+    (pris-tex1 51)
+    ;; merc1 52
+    ;; generic1 53
+    
+    (water-tex0 57)
+    ;; merc0 58     (+ default)
+    ;; generic0 59  (+ default)
+    
+    (water-tex1 60)
+    ;; merc1 61
+    ;; generic1 62
+    ;; debug text 68
+    (debug-draw 68)
+    )
 
 (define-extern sinteger type)
 
@@ -5326,7 +5366,9 @@
   )
 
 (deftype cspace-array (inline-array-class)
-  ()
+  (
+   (data cspace :inline :dynamic :offset-assert 16)
+   )
   :method-count-assert 9
   :size-assert         #x10
   :flag-assert         #x900000010
@@ -9271,7 +9313,7 @@
 
 (deftype process-drawable (process)
   ((root        trsqv   :offset-assert 112)
-   (node-list   basic   :offset-assert 116)
+   (node-list   cspace-array   :offset-assert 116)
    (draw        draw-control   :offset-assert 120)
    (skel        basic   :offset-assert 124)
    (nav         basic   :offset-assert 128)
@@ -9392,9 +9434,9 @@
   )
 
 
-;; - Unknowns
+;; - Symbols
 
-;;(define-extern *global-attack-id* object) ;; unknown type
+(define-extern *global-attack-id* int)
 
 
 ;; ----------------------
@@ -9902,45 +9944,61 @@
 ;; Containing DGOs - ['GAME', 'ENGINE']
 ;; Version - 3
 
+;; - Enums
+
+(defenum joint-mod-handler-mode
+  :bitfield #t
+  :type uint32
+  (flex-blend 0)    ;; 1
+  (look-at 1)       ;; 2
+  (world-look-at 2) ;; 4
+  (rotate 3)        ;; 8
+  (joint-set 4)     ;; 16
+  (joint-set* 5)    ;; 32
+  ;; ??             ;; 64
+  (reset 7)         ;; 128
+  )
+
 ;; - Types
 
 (deftype joint-mod (basic)
-  ((mode            uint32             :offset-assert 4)
-   (process         basic              :offset-assert 8)
-   (joint           cspace             :offset-assert 12)
-   (target          vector     :inline :offset-assert 16)
-   (twist           vector     :inline :offset-assert 32)
-   (twist-max       vector     :inline :offset-assert 48)
-   (trans           vector     :inline :offset-assert 64)
-   (quat            quaternion :inline :offset-assert 80)
-   (scale           vector     :inline :offset-assert 96)
-   (notice-time     uint64             :offset-assert 112)
-   (flex-blend      float              :offset-assert 120)
-   (blend           float              :offset-assert 124)
-   (max-dist        float             :offset-assert 128) ;; meters
-   (ignore-angle    float                :offset-assert 132) ;; deg
-   (up              uint8              :offset-assert 136)
-   (nose            uint8              :offset-assert 137)
-   (ear             uint8              :offset-assert 138)
-   (shutting-down?  basic              :offset-assert 140)
-   (parented-scale? basic              :offset 128)
+  ((mode            joint-mod-handler-mode :offset-assert 4)
+   (process         process-drawable       :offset-assert 8)
+   (joint           cspace                 :offset-assert 12)
+   (target          vector     :inline     :offset-assert 16)
+   (twist           vector     :inline     :offset-assert 32)
+   (twist-max       vector     :inline     :offset-assert 48)
+   (trans           vector     :inline     :offset-assert 64)
+   (quat            quaternion :inline     :offset-assert 80)
+   (scale           vector     :inline     :offset-assert 96)
+   (notice-time     uint64                 :offset-assert 112)
+   (flex-blend      float                  :offset-assert 120)
+   (blend           float                  :offset-assert 124)
+   (max-dist        float                  :offset-assert 128) ;; meters
+   (ignore-angle    float                  :offset-assert 132) ;; deg
+   (up              uint8                  :offset-assert 136)
+   (nose            uint8                  :offset-assert 137)
+   (ear             uint8                  :offset-assert 138)
+   (shutting-down?  basic                  :offset-assert 140)
+   (parented-scale? basic                  :offset 128)
    )
   :method-count-assert 16
   :size-assert         #x90
   :flag-assert         #x1000000090
   (:methods
-    (dummy-9 () none 9)
-    (dummy-10 () none 10)
-    (dummy-11 () none 11)
-    (dummy-12 () none 12)
-    (dummy-13 () none 13)
-    (dummy-14 () none 14)
-    (dummy-15 () none 15)
+    (new (symbol type joint-mod-handler-mode process-drawable int) _type_ 0)
+    (set-mode! (_type_ joint-mod-handler-mode) _type_ 9)
+    (set-target! (_type_ vector) none 10)
+    (look-at-enemy! (_type_ vector symbol process) none 11)
+    (reset-blend! (_type_) _type_ 12)
+    (set-twist! (_type_ float float float) vector 13)
+    (set-trs! (_type_ vector quaternion vector) none 14)
+    (shut-down! (_type_) float 15)
     )
   )
 
 (deftype try-to-look-at-info (basic)
-  ((who  uint64  :offset-assert 8)
+  ((who  handle  :offset-assert 8)
    (horz float   :offset-assert 16)
    (vert float   :offset-assert 20)
    )
@@ -9950,12 +10008,15 @@
   )
 
 (deftype joint-mod-wheel (basic)
-  ((last-position vector :inline :offset-assert 16)
-   (angle         float          :offset-assert 32)
-   (process       basic          :offset-assert 36)
-   (wheel-radius  float          :offset-assert 40)
-   (wheel-axis    int8           :offset-assert 44)
+  ((last-position vector :inline   :offset-assert 16)
+   (angle         float            :offset-assert 32)
+   (process       process-drawable :offset-assert 36)
+   (wheel-radius  float            :offset-assert 40)
+   (wheel-axis    int8             :offset-assert 44)
    )
+  (:methods
+    (new (symbol type process-drawable int float int) _type_)
+    )
   :method-count-assert 9
   :size-assert         #x2d
   :flag-assert         #x90000002d
@@ -9968,6 +10029,9 @@
    (set-translation basic              :offset-assert 72)
    (enable          basic              :offset-assert 76)
    )
+  (:methods
+    (new (symbol type process-drawable int basic basic basic) _type_)
+    )
   :method-count-assert 9
   :size-assert         #x50
   :flag-assert         #x900000050
@@ -9978,6 +10042,9 @@
    (node-index int32              :offset-assert 64)
    (enable     basic              :offset-assert 68)
    )
+  (:methods
+    (new (symbol type process-drawable int basic) _type_)
+    )
   :method-count-assert 9
   :size-assert         #x48
   :flag-assert         #x900000048
@@ -9990,6 +10057,9 @@
    (blend           float              :offset-assert 116)
    (enable          basic              :offset-assert 120)
    )
+  (:methods
+    (new (symbol type process-drawable int basic) _type_)
+    )
   :method-count-assert 9
   :size-assert         #x7c
   :flag-assert         #x90000007c
@@ -10001,6 +10071,9 @@
    (spin-rate float          :offset-assert 36)
    (enable    basic          :offset-assert 40)
    )
+  (:methods
+    (new (symbol type process-drawable int vector float) _type_)
+    )
   :method-count-assert 9
   :size-assert         #x2c
   :flag-assert         #x90000002c
@@ -10008,31 +10081,29 @@
 
 ;; - Functions
 
-(define-extern joint-mod-blend-local-callback (function joint-mod-blend-local vector none)) ;; first arg is something WITh a joint-mod, no idea yet!
-(define-extern joint-mod-look-at-handler (function cspace none)) ;; TODO
+(define-extern joint-mod-blend-local-callback (function cspace transformq none))
+(define-extern joint-mod-look-at-handler (function cspace transformq none))
+(define-extern joint-mod-world-look-at-handler (function cspace transformq none))
+(define-extern joint-mod-rotate-handler (function cspace transformq none))
+(define-extern joint-mod-joint-set-handler (function cspace transformq none))
+(define-extern joint-mod-joint-set*-handler (function cspace transformq none))
+(define-extern joint-mod-wheel-callback (function cspace transformq none))
+(define-extern joint-mod-set-local-callback (function cspace transformq none))
+(define-extern joint-mod-set-world-callback (function cspace transformq none))
+(define-extern joint-mod-spinner-callback (function cspace transformq none))
 
 ;; - Symbols
+(define-extern cspace<-parented-transformq-joint! (function cspace transformq none))
+(define-extern cspace<-transformq! (function cspace transformq matrix))
+(define-extern vector<-cspace! (function vector cspace vector))
+(define-extern add-debug-text-sphere (function symbol bucket-id vector float string rgba none))
 
-(define-extern joint-mod-spinner-callback function)
-(define-extern cspace<-parented-transformq-joint! function)
-(define-extern joint-mod-set-world-callback function)
-(define-extern cspace<-transformq! function)
-(define-extern joint-mod-set-local-callback function)
-(define-extern joint-mod-wheel-callback function)
-(define-extern vector<-cspace! function)
-(define-extern add-debug-text-sphere function)
-(define-extern joint-mod-world-look-at-handler function)
-(define-extern joint-mod-rotate-handler function)
-(define-extern joint-mod-joint-set-handler function)
-(define-extern joint-mod-joint-set*-handler function)
-(define-extern add-debug-matrix function)
-(define-extern joint-mod-debug-draw function)
+(define-extern add-debug-matrix (function symbol bucket-id matrix none))
+(define-extern joint-mod-debug-draw (function joint-mod none))
+(define-extern last-try-to-look-at-data try-to-look-at-info)
+(define-extern *joint-axis-vectors* (inline-array vector)) 
 
 ;; - Unknowns
-
-;;(define-extern *joint-axis-vectors* object) ;; unknown type
-;;(define-extern last-try-to-look-at-data object) ;; unknown type
-
 
 ;; ----------------------
 ;; File - collide-func-h
