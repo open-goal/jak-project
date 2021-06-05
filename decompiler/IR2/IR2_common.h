@@ -147,6 +147,7 @@ enum class FixedOperatorKind {
   SYMBOL_TO_STRING,
   ADDRESS_OF,
   ASM_SLLV_R0,
+  ASM_MADDS,
   INVALID
 };
 

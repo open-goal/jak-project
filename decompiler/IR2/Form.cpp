@@ -1542,6 +1542,8 @@ std::string fixed_operator_to_string(FixedOperatorKind kind) {
       return "&";
     case FixedOperatorKind::ASM_SLLV_R0:
       return ".asm.sllv.r0";
+    case FixedOperatorKind::ASM_MADDS:
+      return ".asm.madd.s";
     default:
       assert(false);
       return "";
@@ -2491,6 +2493,18 @@ FormElement* make_cast_using_existing(FormElement* elt, const TypeSpec& type, Fo
   } else {
     return pool.alloc_element<CastElement>(type, pool.alloc_single_form(nullptr, elt));
   }
+}
+
+GenericElement* alloc_generic_token_op(const std::string& name,
+                                       const std::vector<Form*>& args,
+                                       FormPool& pool) {
+  auto op = GenericOperator::make_function(
+      pool.alloc_single_element_form<ConstantTokenElement>(nullptr, name));
+  return pool.alloc_element<GenericElement>(op, args);
+}
+
+Form* alloc_var_form(const RegisterAccess& var, FormPool& pool) {
+  return pool.alloc_single_element_form<SimpleAtomElement>(nullptr, SimpleAtom::make_var(var));
 }
 
 }  // namespace decompiler
