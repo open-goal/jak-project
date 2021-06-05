@@ -120,7 +120,7 @@ const std::unordered_set<std::string> g_functions_to_skip_compiling = {
     "vector4-dot",        // fpu acc
 
     // quaternion
-    "matrix-with-scale->quaternion", // fpu-acc
+    "matrix-with-scale->quaternion",  // fpu-acc
 
     "(method 3 profile-frame)",  // double definition.
 
