@@ -111,19 +111,25 @@ class TP_Type {
 
   static TP_Type make_from_ts(const std::string& ts) { return make_from_ts(TypeSpec(ts)); }
 
-  static TP_Type make_virtual_method(const TypeSpec& method_type, const TypeSpec& obj_type) {
+  static TP_Type make_virtual_method(const TypeSpec& method_type,
+                                     const TypeSpec& obj_type,
+                                     int method_id) {
     TP_Type result;
     result.kind = Kind::VIRTUAL_METHOD;
     result.m_ts = method_type;
     result.m_method_from_type = obj_type;
+    result.m_method_id = method_id;
     return result;
   }
 
-  static TP_Type make_non_virtual_method(const TypeSpec& method_type, const TypeSpec& obj_type) {
+  static TP_Type make_non_virtual_method(const TypeSpec& method_type,
+                                         const TypeSpec& obj_type,
+                                         int method_id) {
     TP_Type result;
     result.kind = Kind::NON_VIRTUAL_METHOD;
     result.m_method_from_type = obj_type;
     result.m_ts = method_type;
+    result.m_method_id = method_id;
     return result;
   }
 
@@ -295,9 +301,15 @@ class TP_Type {
     return m_method_from_type;
   }
 
+  int method_id() const {
+    assert(kind == Kind::VIRTUAL_METHOD || kind == Kind::NON_VIRTUAL_METHOD);
+    return m_method_id;
+  }
+
  private:
   TypeSpec m_ts;
   TypeSpec m_method_from_type;
+  int m_method_id = -1;
   std::string m_str;
   int64_t m_int = 0;
   bool m_pcpyud = false;  // have we extracted the top doubleword of a bitfield?

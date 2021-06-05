@@ -1790,12 +1790,20 @@ void FunctionCallElement::update_from_stack(const Env& env,
     function_type = tp_type.typespec();
   }
 
+  bool swap_function = tp_type.kind == TP_Type::Kind::NON_VIRTUAL_METHOD && true;
   if (tp_type.kind == TP_Type::Kind::NON_VIRTUAL_METHOD) {
+    // this is a hack to make some weird macro for calling res-lump methods work
+    if (env.dts->ts.tc(TypeSpec("res-lump"), tp_type.method_from_type())) {
+      swap_function = false;
+    }
+  }
+
+  if (swap_function) {
     std::swap(all_pop_vars.at(0), all_pop_vars.at(1));
   }
 
   auto unstacked = pop_to_forms(all_pop_vars, env, pool, stack, allow_side_effects);
-  if (tp_type.kind == TP_Type::Kind::NON_VIRTUAL_METHOD) {
+  if (swap_function) {
     std::swap(unstacked.at(0), unstacked.at(1));
     std::swap(all_pop_vars.at(0), all_pop_vars.at(1));
   }
@@ -1848,10 +1856,11 @@ void FunctionCallElement::update_from_stack(const Env& env,
               "type.");
         }
 
-        if (!env.dts->ts.should_use_virtual_methods(tp_type.method_from_type())) {
+        if (!env.dts->ts.should_use_virtual_methods(tp_type.method_from_type(),
+                                                    tp_type.method_id())) {
           throw std::runtime_error(
-              fmt::format("Method call on {} used a virtual call unexpectedly.",
-                          tp_type.method_from_type().print()));
+              fmt::format("Method call on {} id {} used a virtual call unexpectedly.",
+                          tp_type.method_from_type().print(), tp_type.method_id()));
         }
         // fmt::print("STACK\n{}\n\n", stack.print(env));
         auto pop =
@@ -1994,11 +2003,12 @@ void FunctionCallElement::update_from_stack(const Env& env,
               tp_type.print()));
         }
 
-        if (env.dts->ts.should_use_virtual_methods(tp_type.method_from_type())) {
-          throw std::runtime_error(
-              fmt::format("Expected type {} to use virtual methods, but it didn't.  Set option "
-                          ":final in the deftype to disable virtual method calls",
-                          tp_type.method_from_type().print()));
+        if (env.dts->ts.should_use_virtual_methods(tp_type.method_from_type(),
+                                                   tp_type.method_id())) {
+          throw std::runtime_error(fmt::format(
+              "Expected type {} method id {} to use virtual methods, but it didn't.  Set option "
+              ":final in the deftype to disable virtual method calls",
+              tp_type.method_from_type().print(), tp_type.method_id()));
         }
       }
 

@@ -1,0 +1,69 @@
+;;-*-Lisp-*-
+(in-package goal)
+
+;; definition of type res-tag
+(deftype res-tag (uint128)
+  ((name        symbol :offset   0 :size  32)
+   (key-frame   float  :offset  32 :size  32)
+   (elt-type    type   :offset  64 :size  32)
+   (data-offset uint16 :offset  96 :size  16)
+   (elt-count   uint32 :offset 112 :size  15)
+   (inlined?    uint8  :offset 127 :size   1)
+   )
+  :method-count-assert 9
+  :size-assert         #x10
+  :flag-assert         #x900000010
+  )
+
+;; definition of type res-lump
+(deftype res-lump (basic)
+  ((length           int32              :offset-assert 4)
+   (allocated-length int32              :offset-assert 8)
+   (data-base        pointer            :offset-assert 12)
+   (data-top         pointer            :offset-assert 16)
+   (data-size        int32              :offset-assert 20)
+   (extra            basic              :offset-assert 24)
+   (tag              (pointer res-tag)  :offset-assert 28)
+   )
+  :method-count-assert 22
+  :size-assert         #x20
+  :flag-assert         #x1600000020
+  (:methods
+    (new (symbol type int int) _type_ 0)
+    (get-property-data (_type_ symbol symbol float pointer (pointer res-tag) pointer) pointer 9)
+    (get-property-struct (_type_ symbol symbol float structure (pointer res-tag) pointer) structure 10)
+    (get-property-value (_type_ symbol symbol float uint128 (pointer res-tag) pointer) uint128 11)
+    (get-property-value2 (_type_ symbol symbol float uint128 (pointer res-tag) pointer) uint128 12)
+    (get-tag-index-data (_type_ int) pointer 13)
+    (get-tag-data (_type_ res-tag) pointer 14)
+    (dummy-15 (_type_ res-tag) res-tag 15)
+    (sort! (_type_) _type_ 16)
+    (dummy-17 (_type_ res-tag pointer) res-lump 17)
+    (dummy-18 (_type_ res-tag res-tag) res-lump 18)
+    (lookup-tag-idx (_type_ symbol symbol float) res-tag-pair 19)
+    (make-property-data (_type_ float res-tag-pair pointer) pointer 20)
+    (dummy-21 (_type_ pointer symbol symbol float) symbol 21)
+    )
+  )
+
+;; definition for method 3 of type res-lump
+(defmethod inspect res-lump ((obj res-lump))
+  (format #t "[~8x] ~A~%" obj (-> obj type))
+  (format #t "~Tlength: ~D~%" (-> obj length))
+  (format #t "~Tallocated-length: ~D~%" (-> obj allocated-length))
+  (format #t "~Tdata-base: #x~X~%" (-> obj data-base))
+  (format #t "~Tdata-top: #x~X~%" (-> obj data-top))
+  (format #t "~Tdata-size: ~D~%" (-> obj data-size))
+  (format #t "~Textra: ~A~%" (-> obj extra))
+  (format #t "~Ttag: #x~X~%" (-> obj tag))
+  obj
+  )
+
+;; definition for symbol *res-key-string*, type string
+(define *res-key-string* (new 'global 'string 64 (the-as string #f)))
+
+;; failed to figure out what this is:
+(let ((v0-3 0))
+  )
+
+

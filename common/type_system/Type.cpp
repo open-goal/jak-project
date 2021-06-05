@@ -32,7 +32,7 @@ std::string reg_kind_to_string(RegClass kind) {
  */
 bool MethodInfo::operator==(const MethodInfo& other) const {
   return id == other.id && name == other.name && type == other.type &&
-         defined_in_type == other.defined_in_type;
+         defined_in_type == other.defined_in_type && other.no_virtual == no_virtual;
 }
 
 /*!
