@@ -134,15 +134,15 @@ std::unique_ptr<FunctionEnv> Compiler::compile_top_level_function(const std::str
                                                                   Env* env) {
   auto fe = std::make_unique<FunctionEnv>(env, name);
   fe->set_segment(TOP_LEVEL_SEGMENT);
- 
+
   auto result = compile_error_guard(code, fe.get());
- 
+
   // only move to return register if we actually got a result
   if (!dynamic_cast<const None*>(result)) {
     fe->emit(std::make_unique<IR_Return>(fe->make_gpr(result->type()), result->to_gpr(fe.get()),
                                          emitter::gRegInfo.get_gpr_ret_reg()));
   }
- 
+
   if (!fe->code().empty()) {
     fe->emit_ir<IR_Null>();  // add this line
   }
