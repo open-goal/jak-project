@@ -5,3 +5,49 @@
 ;; name in dgo: effect-control-h
 ;; dgos: GAME, ENGINE
 
+(deftype effect-control (basic)
+  ((process          process-drawable  :offset-assert 4)
+   (flags            uint32            :offset-assert 8)
+   (last-frame-group art-joint-anim    :offset-assert 12)
+   (last-frame-num   float             :offset-assert 16)
+   (channel-offset   int32             :offset-assert 20)
+   (res              res-lump          :offset-assert 24)
+   (name             uint32            :offset-assert 28)
+   (param            uint32            :offset-assert 32)
+   )
+  :method-count-assert 15
+  :size-assert         #x24
+  :flag-assert         #xf00000024
+  (:methods
+    (new (symbol type process-drawable) _type_ 0)
+    (dummy-9 () none 9)
+    (dummy-10 () none 10)
+    (dummy-11 () none 11)
+    (dummy-12 () none 12)
+    (set-channel-offset! (_type_ int) none 13)
+    (dummy-14 () none 14)
+    )
+  )
+
+(defmethod new effect-control ((allocation symbol) (type-to-make type) (arg0 process-drawable))
+  (cond
+    ;; for some reason, we check if we have an effect-name struct.
+    ((res-lump-struct (the res-lump (-> arg0 draw jgeo extra)) 'effect-name object)
+     (let ((v0-1 (object-new allocation type-to-make (the-as int (-> type-to-make size)))))
+       (set! (-> v0-1 process) arg0)
+       (set! (-> v0-1 last-frame-group) #f)
+       v0-1
+       )
+     )
+    (else
+     (the-as effect-control #f)
+     )
+    )
+  )
+
+;; definition for method 13 of type effect-control
+;; INFO: Return type mismatch int vs none.
+(defmethod set-channel-offset! effect-control ((obj effect-control) (arg0 int))
+  (set! (-> obj channel-offset) arg0)
+  (none)
+  )
