@@ -1645,4 +1645,8 @@ std::optional<SimpleAtom> form_element_as_atom(const FormElement* f);
 std::optional<SimpleAtom> form_as_atom(const Form* f);
 FormElement* make_cast_using_existing(Form* form, const TypeSpec& type, FormPool& pool);
 FormElement* make_cast_using_existing(FormElement* elt, const TypeSpec& type, FormPool& pool);
+GenericElement* alloc_generic_token_op(const std::string& name,
+                                       const std::vector<Form*>& args,
+                                       FormPool& pool);
+Form* alloc_var_form(const RegisterAccess& var, FormPool& pool);
 }  // namespace decompiler

@@ -91,7 +91,7 @@ TEST_F(FormRegressionTest, VectorXQuaternionWithCast) {
       "(begin\n"
       "  (let ((s5-0 (new-stack-matrix0)))\n"
       "   (quaternion->matrix s5-0 arg1)\n"
-      "   (set! (-> arg0 vec quad) (-> (the-as (pointer uint128) (-> s5-0 data)) 0))\n"
+      "   (set! (-> arg0 vec quad) (-> (the-as (pointer uint128) (-> s5-0 vector)) 0))\n"
       "   )\n"
       "  arg0\n"
       "  )";

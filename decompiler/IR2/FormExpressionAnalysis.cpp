@@ -3110,6 +3110,29 @@ void push_asm_pextuw_to_stack(const AsmOp* op,
   }
 }
 
+void push_asm_madds_to_stack(const AsmOp* op,
+                             FormElement* /*form_elt*/,
+                             const Env& env,
+                             FormPool& pool,
+                             FormStack& stack) {
+  auto src0 = op->src(0);
+  assert(src0.has_value());
+
+  auto src1 = op->src(1);
+  assert(src1.has_value());
+
+  auto dst = op->dst();
+  assert(dst.has_value());
+
+  auto vars = pop_to_forms({*src0, *src1}, env, pool, stack, true);
+
+  stack.push_value_to_reg(
+      *dst,
+      pool.alloc_single_element_form<GenericElement>(
+          nullptr, GenericOperator::make_fixed(FixedOperatorKind::ASM_MADDS), vars),
+      true, env.get_variable_type(*dst, true));
+}
+
 void push_asm_to_stack(const AsmOp* op,
                        FormElement* form_elt,
                        const Env& env,
@@ -3128,6 +3151,11 @@ void push_asm_to_stack(const AsmOp* op,
     case InstructionKind::PEXTUW:
       push_asm_pextuw_to_stack(op, form_elt, env, pool, stack);
       break;
+      /*
+    case InstructionKind::MADDS:
+      push_asm_madds_to_stack(op, form_elt, env, pool, stack);
+      break;
+       */
     default:
       stack.push_form_element(form_elt, true);
       break;

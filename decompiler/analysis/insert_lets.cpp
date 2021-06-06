@@ -1,5 +1,6 @@
 #include <algorithm>
 #include <limits>
+#include <array>
 
 #include "insert_lets.h"
 #include "decompiler/IR2/GenericElementMatcher.h"
@@ -383,6 +384,105 @@ FormElement* rewrite_let(LetElement* in, const Env& env, FormPool& pool) {
   return nullptr;
 }
 
+FormElement* rewrite_multi_let_as_vector_dot(LetElement* in, const Env& env, FormPool& pool) {
+  if (in->body()->size() != 3) {
+    return nullptr;
+  }
+
+  /* The body:
+      (.mula.s f1-11 f4-0)
+      (.madda.s f2-1 f5-0)
+      (.madd.s f1-12 f3-0 f6-0)
+   */
+
+  // get asm ops
+  std::array<RegisterAccess[2], 3> vars;
+  std::array<InstructionKind, 3> kinds = {InstructionKind::MULAS, InstructionKind::MADDAS,
+                                          InstructionKind::MADDS};
+  for (int i = 0; i < 3; i++) {
+    auto as_op = dynamic_cast<AsmOpElement*>(in->body()->at(i));
+    if (!as_op) {
+      return nullptr;
+    }
+    if (as_op->op()->instruction().kind != kinds[i]) {
+      return nullptr;
+    }
+    for (int j = 0; j < 2; j++) {
+      assert(as_op->op()->src(j).has_value());
+      vars[i][j] = *as_op->op()->src(j);
+    }
+  }
+
+  RegisterAccess output = *dynamic_cast<AsmOpElement*>(in->body()->at(2))->op()->dst();
+  int start_idx = in->entries().size() - 6;
+
+  std::optional<RegisterAccess> in_vars[2];
+  for (int in_var = 0; in_var < 2; in_var++) {
+    for (int axis = 0; axis < 3; axis++) {
+      int idx = start_idx + in_var * 3 + axis;
+      std::string axis_name(1, "xyz"[axis]);
+      auto matcher =
+          Matcher::deref(Matcher::any_reg(0), false, {DerefTokenMatcher::string(axis_name)});
+      auto mr = match(matcher, in->entries().at(idx).src);
+      if (!mr.matched) {
+        return nullptr;
+      }
+      auto this_var = mr.maps.regs.at(0);
+      assert(this_var.has_value());
+      if (in_vars[in_var].has_value()) {
+        // seen it before
+        if (env.get_variable_name(*this_var) != env.get_variable_name(*in_vars[in_var])) {
+          return nullptr;
+        }
+      } else {
+        assert(axis == 0);
+        // first time seeing it.
+        in_vars[in_var] = this_var;
+      }
+
+      if (env.get_variable_name(vars[axis][in_var]) !=
+          env.get_variable_name(in->entries().at(idx).dest)) {
+        return nullptr;
+      }
+    }
+  }
+
+  // don't inline in the actual function...
+  if (env.func->guessed_name.to_string() == "vector-dot") {
+    return nullptr;
+  }
+
+  auto dot_op = alloc_generic_token_op(
+      "vector-dot", {alloc_var_form(*in_vars[0], pool), alloc_var_form(*in_vars[1], pool)}, pool);
+  auto dot_set = pool.alloc_element<SetVarElement>(output, pool.alloc_single_form(nullptr, dot_op),
+                                                   true, TypeSpec("float"));
+
+  // remove let forms:
+  for (int i = 0; i < 6; i++) {
+    in->entries().pop_back();
+  }
+
+  if (in->entries().empty()) {
+    dot_set->parent_form = in->parent_form;
+    return dot_set;
+  }
+  // replace body:
+  in->body()->elts().clear();
+  in->body()->push_back(dot_set);
+  return in;
+}
+
+FormElement* rewrite_multi_let(LetElement* in, const Env& env, FormPool& pool) {
+  if (in->entries().size() >= 6) {
+    auto as_vector_dot = rewrite_multi_let_as_vector_dot(in, env, pool);
+    if (as_vector_dot) {
+      return as_vector_dot;
+    }
+  }
+
+  return in;
+}
+
 Form* insert_cast_for_let(RegisterAccess dst,
                           const TypeSpec& src_type,
                           Form* src,
@@ -668,37 +768,44 @@ LetStats insert_lets(const Function& func, Env& env, FormPool& pool, Form* top_l
   bool changed = true;
   while (changed) {
     changed = false;
-    top_level_form->apply([&](FormElement* f) {
-      auto as_let = dynamic_cast<LetElement*>(f);
-      if (!as_let) {
-        return;
-      }
+    top_level_form->apply_form([&](Form* form) {
+      for (int idx = 0; idx < form->size(); idx++) {
+        auto* f = form->at(idx);
+        auto as_let = dynamic_cast<LetElement*>(f);
+        if (!as_let) {
+          continue;
+        }
 
-      auto inner_let = dynamic_cast<LetElement*>(as_let->body()->try_as_single_element());
-      if (!inner_let) {
-        return;
-      }
+        auto inner_let = dynamic_cast<LetElement*>(as_let->body()->try_as_single_element());
+        if (!inner_let) {
+          continue;
+        }
 
-      for (auto& e : inner_let->entries()) {
-        if (!as_let->is_star()) {
-          RegAccessSet used;
-          e.src->collect_vars(used, true);
-          std::unordered_set<std::string> used_by_name;
-          for (auto used_var : used) {
-            used_by_name.insert(env.get_variable_name(used_var));
-          }
-          for (auto& old_entry : as_let->entries()) {
-            if (used_by_name.find(env.get_variable_name(old_entry.dest)) != used_by_name.end()) {
-              as_let->make_let_star();
-              break;
+        for (auto& e : inner_let->entries()) {
+          if (!as_let->is_star()) {
+            RegAccessSet used;
+            e.src->collect_vars(used, true);
+            std::unordered_set<std::string> used_by_name;
+            for (auto used_var : used) {
+              used_by_name.insert(env.get_variable_name(used_var));
+            }
+            for (auto& old_entry : as_let->entries()) {
+              if (used_by_name.find(env.get_variable_name(old_entry.dest)) != used_by_name.end()) {
+                as_let->make_let_star();
+                break;
+              }
             }
           }
+          as_let->add_entry(e);
         }
-        as_let->add_entry(e);
-      }
 
-      as_let->set_body(inner_let->body());
-      changed = true;
+        as_let->set_body(inner_let->body());
+
+        // rewrite:
+        form->at(idx) = rewrite_multi_let(as_let, env, pool);
+        assert(form->at(idx)->parent_form == form);
+        changed = true;
+      }
     });
   }
 
