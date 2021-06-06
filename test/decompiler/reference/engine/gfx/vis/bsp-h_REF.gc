@@ -1,12 +1,7 @@
 ;;-*-Lisp-*-
 (in-package goal)
 
-;; name: bsp-h.gc
-;; name in dgo: bsp-h
-;; dgos: GAME, ENGINE
-
-(declare-type entity-camera basic)
-
+;; definition of type bsp-node
 (deftype bsp-node (structure)
   ((front       int32          :offset-assert 0)
    (back        int32          :offset-assert 4)
@@ -19,6 +14,18 @@
   :flag-assert         #x900000020
   )
 
+;; definition for method 3 of type bsp-node
+(defmethod inspect bsp-node ((obj bsp-node))
+  (format #t "[~8x] ~A~%" obj 'bsp-node)
+  (format #t "~Tfront: ~D~%" (-> obj front))
+  (format #t "~Tback: ~D~%" (-> obj back))
+  (format #t "~Tfront-flags: ~D~%" (-> obj front-flags))
+  (format #t "~Tback-flags: ~D~%" (-> obj back-flags))
+  (format #t "~Tplane: #<vector @ #x~X>~%" (-> obj plane))
+  obj
+  )
+
+;; definition of type bsp-header
 (deftype bsp-header (drawable)
   ((info                file-info                     :offset   4)
    (all-visible-list    (pointer uint16)                          :offset-assert 32)
@@ -58,6 +65,7 @@
     )
   )
 
+;; definition of type game-level
 (deftype game-level (basic)
   ((master-bsp basic  :offset-assert 4)
    )
@@ -66,6 +74,14 @@
   :flag-assert         #x900000008
   )
 
+;; definition for method 3 of type game-level
+(defmethod inspect game-level ((obj game-level))
+  (format #t "[~8x] ~A~%" obj (-> obj type))
+  (format #t "~Tmaster-bsp: ~A~%" (-> obj master-bsp))
+  obj
+  )
+
+;; definition of type view-frustum
 (deftype view-frustum (structure)
   ((hither-top-left     vector :inline :offset-assert 0)
    (hither-top-right    vector :inline :offset-assert 16)
@@ -80,8 +96,30 @@
   :size-assert         #x80
   :flag-assert         #x900000080
   )
-(define-extern inspect-bsp-tree (function bsp-header bsp-node none))
 
+;; definition for method 3 of type view-frustum
+(defmethod inspect view-frustum ((obj view-frustum))
+  (format #t "[~8x] ~A~%" obj 'view-frustum)
+  (format #t "~Thither-top-left: #<vector @ #x~X>~%" (-> obj hither-top-left))
+  (format #t "~Thither-top-right: #<vector @ #x~X>~%" (-> obj hither-top-right))
+  (format
+   #t
+   "~Thither-bottom-left: #<vector @ #x~X>~%"
+   (-> obj hither-bottom-left)
+   )
+  (format
+   #t
+   "~Thither-bottom-right: #<vector @ #x~X>~%"
+   (-> obj hither-bottom-right)
+   )
+  (format #t "~Tyon-top-left: #<vector @ #x~X>~%" (-> obj yon-top-left))
+  (format #t "~Tyon-top-right: #<vector @ #x~X>~%" (-> obj yon-top-right))
+  (format #t "~Tyon-bottom-left: #<vector @ #x~X>~%" (-> obj yon-bottom-left))
+  (format #t "~Tyon-bottom-right: #<vector @ #x~X>~%" (-> obj yon-bottom-right))
+  obj
+  )
+
+;; definition for method 3 of type bsp-header
 (defmethod inspect bsp-header ((obj bsp-header))
   (format #t "[~8x] ~A~%" obj (-> obj type))
   (format #t "~Tall-visible-list: #x~X~%" (-> obj all-visible-list))
@@ -93,18 +131,21 @@
   obj
   )
 
+;; definition (debug) for function inspect-bsp-tree
+;; INFO: Return type mismatch bsp-header vs none.
 (defun-debug inspect-bsp-tree ((arg0 bsp-header) (arg1 bsp-node))
   (cond
    ((zero? arg1)
     )
    (else
     (format #t "_#x~X________________~%" arg1)
-    (inspect arg1)
-    (let ((s4-0 *print-column*))
-     (set! *print-column* (+ *print-column* 8))
+    (let ((v0-1 (the-as object (inspect arg1)))
+          (s4-0 *print-column*)
+          )
+     (set! *print-column* (+ *print-column* (the-as uint 64)))
      (if (> (-> arg1 front) 0)
       (inspect-bsp-tree arg0 (the-as bsp-node (-> arg1 front)))
-      (format #t "_#x~X________________~%" arg1)
+      (set! v0-1 (format #t "_#x~X________________~%" arg1))
       )
      (if (> (-> arg1 back) 0)
       (inspect-bsp-tree arg0 (the-as bsp-node (-> arg1 back)))
@@ -117,8 +158,11 @@
   (none)
   )
 
-(define-extern map-bsp-tree (function (function bsp-node none) bsp-header bsp-node none))
-(defun map-bsp-tree ((arg0 (function bsp-node none)) (arg1 bsp-header) (arg2 bsp-node))
+;; definition for function map-bsp-tree
+;; INFO: Return type mismatch bsp-header vs none.
+(defun
+  map-bsp-tree
+  ((arg0 (function bsp-node none)) (arg1 bsp-header) (arg2 bsp-node))
   (cond
    ((zero? arg2)
     )
@@ -136,6 +180,7 @@
   (none)
   )
 
+;; definition of type cl-stat
 (deftype cl-stat (structure)
   ((fragments uint32  :offset-assert 0)
    (tris      uint32  :offset-assert 4)
@@ -147,6 +192,16 @@
   :flag-assert         #x90000000c
   )
 
+;; definition for method 3 of type cl-stat
+(defmethod inspect cl-stat ((obj cl-stat))
+  (format #t "[~8x] ~A~%" obj 'cl-stat)
+  (format #t "~Tfragments: ~D~%" (-> obj fragments))
+  (format #t "~Ttris: ~D~%" (-> obj tris))
+  (format #t "~Toutput: ~D~%" (-> obj output))
+  obj
+  )
+
+;; definition of type collide-stats
 (deftype collide-stats (structure)
   ((other             cl-stat   :inline :offset-assert 0)
    (total             cl-stat   :inline :offset-assert 12)
@@ -161,3 +216,32 @@
   :size-assert         #x80
   :flag-assert         #x900000080
   )
+
+;; definition for method 3 of type collide-stats
+(defmethod inspect collide-stats ((obj collide-stats))
+  (format #t "[~8x] ~A~%" obj 'collide-stats)
+  (format #t "~Tother: #<cl-stat @ #x~X>~%" (-> obj other))
+  (format #t "~Ttotal: #<cl-stat @ #x~X>~%" (-> obj total))
+  (format #t "~Tnodes: ~D~%" (-> obj nodes))
+  (format #t "~Tcalls: ~D~%" (-> obj calls))
+  (format #t "~Ttotal-target: #<stopwatch @ #x~X>~%" (-> obj total-target))
+  (format
+   #t
+   "~Ttarget-cache-fill: #<stopwatch @ #x~X>~%"
+   (-> obj target-cache-fill)
+   )
+  (format
+   #t
+   "~Ttarget-ray-poly: #<stopwatch @ #x~X>~%"
+   (-> obj target-ray-poly)
+   )
+  obj
+  )
+
+;; failed to figure out what this is:
+(let ((v0-6 0))
+  )
+
+
+
+
