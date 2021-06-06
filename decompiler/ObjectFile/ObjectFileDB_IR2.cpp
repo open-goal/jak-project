@@ -464,7 +464,12 @@ void ObjectFileDB::ir2_cfg_build_pass() {
     total++;
     if (!func.suspected_asm && func.ir2.atomic_ops_succeeded && func.cfg->is_fully_resolved()) {
       attempted++;
-      build_initial_forms(func);
+      try {
+        build_initial_forms(func);
+      } catch (std::exception& e) {
+        func.warnings.general_warning("Failed to structure");
+        func.ir2.top_form = nullptr;
+      }
     }
 
     if (func.ir2.top_form) {

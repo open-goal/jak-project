@@ -7057,8 +7057,16 @@
   )
 
 (deftype art-joint-anim (art-element)
-  ((pad2 uint8 16))
-  ;; inspect in join
+  ;; figured out manually from custom inspect.
+  ((speed float :offset 20)
+   (artist-base float :offset 24)
+   (artiest-step float :offset 28)
+   (master-art-group-name basic :offset 32)
+   (master-art-group-index int32 :offset 36)
+   (frames pointer :offset 44)
+   (data joint-anim-compressed :dynamic)
+   )
+  ;; inspect in joint
   :method-count-assert 13
   :size-assert         #x30
   :flag-assert         #xd00000030
@@ -8661,12 +8669,12 @@
 ;; Version - 3
 
 ;; - Types
-
+(declare-type joint-control basic)
 (deftype joint-control-channel (structure)
-  ((parent           basic     :offset-assert 0)
+  ((parent           joint-control     :offset-assert 0)
    (command          basic     :offset-assert 4)
    (frame-interp     float     :offset-assert 8)
-   (frame-group      basic     :offset-assert 12)
+   (frame-group      art-joint-anim     :offset-assert 12)
    (frame-num        float     :offset-assert 16)
    (num-func         basic     :offset-assert 20)
    (param            uint32  2 :offset-assert 24)
@@ -10195,7 +10203,7 @@
 
 ;; - Symbols
 
-(define-extern *collide-mesh-cache* collide-mesh-cache) ;; unknown type
+(define-extern *collide-mesh-cache* collide-mesh-cache)
 
 
 ;; ----------------------
@@ -10568,16 +10576,12 @@
 
 ;; - Symbols
 
-(define-extern *collide-hit-by-player-list* engine) ;; unknown type
-(define-extern *collide-usually-hit-by-player-list* engine) ;; unknown type
-(define-extern *collide-hit-by-others-list* engine) ;; unknown type
-(define-extern *collide-player-list* engine) ;; unknown type
-
-;; - Unknowns
-
-;;(define-extern *collide-shape-prim-backgnd* object) ;; unknown type
-;;(define-extern *collide-shape-prim-water* object) ;; unknown type
-
+(define-extern *collide-hit-by-player-list* engine)
+(define-extern *collide-usually-hit-by-player-list* engine)
+(define-extern *collide-hit-by-others-list* engine)
+(define-extern *collide-player-list* engine)
+(define-extern *collide-shape-prim-backgnd* collide-shape-prim-mesh)
+(define-extern *collide-shape-prim-water* collide-shape-prim-mesh)
 
 ;; ----------------------
 ;; File - collide-target-h
@@ -10603,13 +10607,22 @@
   :size-assert         #x78
   :flag-assert         #xa00000078
   (:methods
-    (dummy-9 () none 9)
+    (update! (_type_ collide-shape-moving vector vector vector) _type_ 9)
     )
   )
 
-;; - Unknowns
+(deftype control-info (collide-shape-moving)
+  (
+   ;; these were determined from racer-collision-reaction.
+   (array-size int16 :offset 2490)
+   (history-array collide-history 128 :inline :offset-assert 2496)
+   (pad uint32 27)
+   )
 
-;;(define-extern control-info object) ;; unknown type
+  :size-assert #x4a2c
+  :method-count-assert 65
+  :flag-assert #x4100004a2c
+  )
 
 
 ;; ----------------------
@@ -10709,8 +10722,8 @@
 
 ;; - Symbols
 
-(define-extern *touching-prims-entry-pool* touching-prims-entry-pool) ;; unknown type
-(define-extern *touching-list* touching-list) ;; unknown type
+(define-extern *touching-prims-entry-pool* touching-prims-entry-pool)
+(define-extern *touching-list* touching-list)
 
 
 ;; ----------------------
@@ -10843,11 +10856,8 @@
 
 ;; - Symbols
 
-(define-extern *edge-grab-info* edge-grab-info) ;; unknown type
-
-;; - Unknowns
-
-;;(define-extern *collide-edge-work* object) ;; unknown type
+(define-extern *edge-grab-info* edge-grab-info)
+(define-extern *collide-edge-work* collide-edge-work)
 
 
 ;; ----------------------
@@ -10858,19 +10868,19 @@
 
 ;; - Symbols
 
-(define-extern joint-control-reset! function)
-(define-extern cspace-index-by-name function)
-(define-extern cspace-by-name function)
-(define-extern cspace-by-name-no-fail function)
-(define-extern cspace-index-by-name-no-fail function)
-(define-extern num-func-none function)
-(define-extern num-func-+! function)
-(define-extern num-func--! function)
-(define-extern num-func-loop! function)
-(define-extern num-func-seek! function)
-(define-extern num-func-blend-in! function)
-(define-extern num-func-chan function)
-(define-extern num-func-identity function)
+(define-extern joint-control-reset! (function joint-control joint-control-channel none))
+(define-extern cspace-index-by-name (function process-drawable string int))
+(define-extern cspace-by-name (function process-drawable string cspace))
+(define-extern cspace-by-name-no-fail (function process-drawable string cspace))
+(define-extern cspace-index-by-name-no-fail (function process-drawable string int))
+(define-extern num-func-none (function joint-control-channel float))
+(define-extern num-func-+! (function joint-control-channel float float))
+(define-extern num-func--! (function joint-control-channel float float))
+(define-extern num-func-loop! (function joint-control-channel float float))
+(define-extern num-func-seek! (function joint-control-channel float float float))
+(define-extern num-func-blend-in! (function joint-control-channel float float))
+(define-extern num-func-chan (function joint-control-channel float float))
+(define-extern num-func-identity (function joint-control-channel float))
 
 
 ;; ----------------------
@@ -10881,28 +10891,29 @@
 
 ;; - Types
 
-; (deftype effect-control (basic)
-;   ((process          basic   :offset-assert 4)
-;    (flags            uint32  :offset-assert 8)
-;    (last-frame-group basic   :offset-assert 12)
-;    (last-frame-num   float   :offset-assert 16)
-;    (channel-offset   int32   :offset-assert 20)
-;    (res              basic   :offset-assert 24)
-;    (name             uint32  :offset-assert 28)
-;    (param            uint32  :offset-assert 32)
-;    )
-;   :method-count-assert 15
-;   :size-assert         #x24
-;   :flag-assert         #xf00000024
-;   (:methods
-;     (dummy-9 () none 9)
-;     (dummy-10 () none 10)
-;     (dummy-11 () none 11)
-;     (dummy-12 () none 12)
-;     (dummy-13 () none 13)
-;     (dummy-14 () none 14)
-;     )
-;   )
+(deftype effect-control (basic)
+  ((process          process-drawable   :offset-assert 4)
+   (flags            uint32  :offset-assert 8)
+   (last-frame-group art-joint-anim   :offset-assert 12)
+   (last-frame-num   float   :offset-assert 16)
+   (channel-offset   int32   :offset-assert 20)
+   (res              res-lump   :offset-assert 24)
+   (name             uint32  :offset-assert 28)
+   (param            uint32  :offset-assert 32)
+   )
+  :method-count-assert 15
+  :size-assert         #x24
+  :flag-assert         #xf00000024
+  (:methods
+    (new (symbol type process-drawable) _type_)
+    (dummy-9 () none 9)
+    (dummy-10 () none 10)
+    (dummy-11 () none 11)
+    (dummy-12 () none 12)
+    (set-channel-offset! (_type_ int) none 13)
+    (dummy-14 () none 14)
+    )
+  )
 
 
 

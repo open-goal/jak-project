@@ -1715,7 +1715,14 @@ void StorePlainDeref::push_to_stack(const Env& env, FormPool& pool, FormStack& s
   if (m_expr.is_var()) {
     // this matches the order in Compiler::compile_set
     auto vars = std::vector<RegisterAccess>({m_expr.var(), m_base_var});
+    // for 16-byte stores, the order is backward. Why????
+    if (size() == 16) {
+      std::swap(vars.at(0), vars.at(1));
+    }
     auto popped = pop_to_forms(vars, env, pool, stack, true);
+    if (size() == 16) {
+      std::swap(popped.at(0), popped.at(1));
+    }
     m_dst->set_base(make_optional_cast(m_dst_cast_type, popped.at(1), pool, env));
     m_dst->mark_popped();
     m_dst->inline_nested();

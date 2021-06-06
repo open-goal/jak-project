@@ -71,6 +71,9 @@ const std::unordered_set<std::string> g_functions_expected_to_reject = {
     "(method 15 sync-info)",         // needs *res-static-buf*
     "(method 15 sync-info-eased)",   // needs *res-static-buf*
     "(method 15 sync-info-paused)",  // needs *res-static-buf*
+
+    // collide-mesh-h
+    "(method 11 collide-mesh-cache)",  // asm
 };
 
 const std::unordered_set<std::string> g_functions_to_skip_compiling = {

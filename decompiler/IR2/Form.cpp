@@ -2017,13 +2017,15 @@ StorePlainDeref::StorePlainDeref(DerefElement* dst,
                                  int my_idx,
                                  RegisterAccess base_var,
                                  std::optional<TypeSpec> dst_cast_type,
-                                 std::optional<TypeSpec> src_cast_type)
+                                 std::optional<TypeSpec> src_cast_type,
+                                 int size)
     : m_dst(dst),
       m_expr(std::move(expr)),
       m_my_idx(my_idx),
       m_base_var(base_var),
       m_dst_cast_type(std::move(dst_cast_type)),
-      m_src_cast_type(std::move(src_cast_type)) {}
+      m_src_cast_type(std::move(src_cast_type)),
+      m_size(size) {}
 
 goos::Object StorePlainDeref::to_form_internal(const Env& env) const {
   std::vector<goos::Object> lst = {pretty_print::to_symbol("set!")};
