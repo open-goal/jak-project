@@ -1204,7 +1204,8 @@ class StorePlainDeref : public FormElement {
                   int my_idx,
                   RegisterAccess base_var,
                   std::optional<TypeSpec> dst_cast_type,
-                  std::optional<TypeSpec> src_cast_type);
+                  std::optional<TypeSpec> src_cast_type,
+                  int size);
 
   goos::Object to_form_internal(const Env& env) const override;
   void apply(const std::function<void(FormElement*)>& f) override;
@@ -1212,6 +1213,7 @@ class StorePlainDeref : public FormElement {
   void collect_vars(RegAccessSet& vars, bool recursive) const override;
   void get_modified_regs(RegSet& regs) const override;
   void push_to_stack(const Env& env, FormPool& pool, FormStack& stack) override;
+  int size() const { return m_size; }
 
  private:
   DerefElement* m_dst = nullptr;
@@ -1219,6 +1221,7 @@ class StorePlainDeref : public FormElement {
   int m_my_idx = -1;
   RegisterAccess m_base_var;
   std::optional<TypeSpec> m_dst_cast_type, m_src_cast_type;
+  int m_size = -1;
 };
 
 class StoreArrayAccess : public FormElement {
@@ -1318,9 +1321,9 @@ class LambdaDefinitionElement : public FormElement {
   goos::Object m_def;
 };
 
-class StackVarDefElement : public FormElement {
+class StackStructureDefElement : public FormElement {
  public:
-  StackVarDefElement(const StackVarEntry& entry);
+  StackStructureDefElement(const StackStructureEntry& entry);
   goos::Object to_form_internal(const Env& env) const override;
   void apply(const std::function<void(FormElement*)>& f) override;
   void apply_form(const std::function<void(Form*)>& f) override;
@@ -1334,7 +1337,7 @@ class StackVarDefElement : public FormElement {
   const TypeSpec& type() const { return m_entry.ref_type; }
 
  private:
-  StackVarEntry m_entry;
+  StackStructureEntry m_entry;
 };
 
 class VectorFloatLoadStoreElement : public FormElement {
@@ -1645,4 +1648,8 @@ std::optional<SimpleAtom> form_element_as_atom(const FormElement* f);
 std::optional<SimpleAtom> form_as_atom(const Form* f);
 FormElement* make_cast_using_existing(Form* form, const TypeSpec& type, FormPool& pool);
 FormElement* make_cast_using_existing(FormElement* elt, const TypeSpec& type, FormPool& pool);
+GenericElement* alloc_generic_token_op(const std::string& name,
+                                       const std::vector<Form*>& args,
+                                       FormPool& pool);
+Form* alloc_var_form(const RegisterAccess& var, FormPool& pool);
 }  // namespace decompiler

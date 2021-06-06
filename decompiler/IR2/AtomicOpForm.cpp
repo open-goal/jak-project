@@ -43,14 +43,25 @@ FormElement* SetVarOp::get_as_form(FormPool& pool, const Env& env) const {
   if (env.has_type_analysis() && m_src.args() == 2 && m_src.get_arg(1).is_int() &&
       m_src.get_arg(0).is_var() && m_src.kind() == SimpleExpression::Kind::ADD) {
     if (m_src.get_arg(0).var().reg() == Register(Reg::GPR, Reg::SP)) {
-      // get a stack variable.
-      for (auto& var : env.stack_var_hints()) {
-        if (var.hint.stack_offset == m_src.get_arg(1).get_int()) {
+      // get a stack structure.
+      int offset = m_src.get_arg(1).get_int();
+      for (auto& structure : env.stack_structure_hints()) {
+        if (structure.hint.stack_offset == offset) {
           // match!
           return pool.alloc_element<SetVarElement>(
-              m_dst, pool.alloc_single_element_form<StackVarDefElement>(nullptr, var), true,
-              var.ref_type);
+              m_dst, pool.alloc_single_element_form<StackStructureDefElement>(nullptr, structure),
+              true, structure.ref_type);
         }
+      }
+      // get a stack variable
+      auto& spill_map = env.stack_spills().map();
+      if (spill_map.find(offset) != spill_map.end()) {
+        return pool.alloc_element<SetVarElement>(
+            m_dst,
+            pool.alloc_single_element_form<GenericElement>(
+                nullptr, GenericOperator::make_fixed(FixedOperatorKind::ADDRESS_OF),
+                pool.alloc_single_element_form<StackSpillValueElement>(nullptr, -1, offset, false)),
+            true, env.stack_slot_entries.at(offset).typespec);
       }
     } else {
       // access a field
@@ -231,7 +242,6 @@ FormElement* StoreOp::get_vf_store_as_form(FormPool& pool, const Env& env) const
         }
         assert(!rd.addr_of);  // we'll change this to true because .svf uses an address.
         auto addr = pool.alloc_single_element_form<DerefElement>(nullptr, source, true, tokens);
-
         return pool.alloc_element<VectorFloatLoadStoreElement>(m_value.var().reg(), addr, false);
       } else {
         // try again with no deref.
@@ -250,7 +260,6 @@ FormElement* StoreOp::get_vf_store_as_form(FormPool& pool, const Env& env) const
           // some sketchy type stuff going on.
           addr = pool.alloc_single_element_form<CastElement>(
               nullptr, TypeSpec("pointer", {TypeSpec("uint128")}), addr);
-
           return pool.alloc_element<VectorFloatLoadStoreElement>(m_value.var().reg(), addr, false);
         }
       }
@@ -410,7 +419,8 @@ FormElement* StoreOp::get_as_form(FormPool& pool, const Env& env) const {
 
         return pool.alloc_element<StorePlainDeref>(
             addr, m_value.as_expr(), m_my_idx, ro.var, std::nullopt,
-            get_typecast_for_atom(m_value, env, coerce_to_reg_type(rd.result_type), m_my_idx));
+            get_typecast_for_atom(m_value, env, coerce_to_reg_type(rd.result_type), m_my_idx),
+            m_size);
       }
 
       std::string cast_type;
@@ -455,7 +465,7 @@ FormElement* StoreOp::get_as_form(FormPool& pool, const Env& env) const {
             pool.alloc_element<DerefElement>(cast_source, false, std::vector<DerefToken>());
         return pool.alloc_element<StorePlainDeref>(deref, m_value.as_expr(), m_my_idx, ro.var,
                                                    TypeSpec("pointer", {TypeSpec(cast_type)}),
-                                                   std::nullopt);
+                                                   std::nullopt, m_size);
       }
     }
   }

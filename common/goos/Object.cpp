@@ -213,6 +213,10 @@ bool Object::operator==(const Object& other) const {
   }
 }
 
+bool Object::is_symbol(const std::string& name) const {
+  return is_symbol() && as_symbol()->name == name;
+}
+
 template <>
 Object Object::make_number(FloatType value) {
   return Object::make_float(value);

@@ -9,10 +9,8 @@
  * allocate_registers algorithm.
  */
 
-#ifndef JAK_ALLOCATE_H
-#define JAK_ALLOCATE_H
-
 #include <vector>
+#include <unordered_set>
 #include "goalc/emitter/Register.h"
 #include "IRegister.h"
 #include "allocate_common.h"
@@ -94,6 +92,7 @@ struct AllocationResult {
 struct AllocationInput {
   std::vector<RegAllocInstr> instructions;           // all instructions in the function
   std::vector<IRegConstraint> constraints;           // all register constraints
+  std::unordered_set<int> force_on_stack_regs;       // registers which must be on the stack
   int max_vars = -1;                                 // maximum register id.
   std::vector<std::string> debug_instruction_names;  // optional, for debug prints
   int stack_slots_for_stack_vars = 0;
@@ -117,5 +116,3 @@ struct AllocationInput {
 };
 
 AllocationResult allocate_registers(const AllocationInput& input);
-
-#endif  // JAK_ALLOCATE_H

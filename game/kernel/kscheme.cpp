@@ -1136,7 +1136,6 @@ u64 call_method_of_type(u32 arg, Ptr<Type> type, u32 method_id) {
     }
   }
   printf("[ERROR] call_method_of_type failed!\n");
-  assert(false);
   return arg;
 }
 

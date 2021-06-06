@@ -28,7 +28,7 @@ TypeState construct_initial_typestate(const TypeSpec& f_ts, const Env& env) {
  * Modify the the given type state based on the given casts.
  */
 void modify_input_types_for_casts(
-    const std::vector<TypeCast>& casts,
+    const std::vector<RegisterTypeCast>& casts,
     TypeState* state,
     std::unordered_map<Register, TP_Type, Register::hash>* changed_types,
     DecompilerTypeSystem& dts) {
@@ -56,7 +56,8 @@ void modify_input_types_for_casts(
 
 void try_modify_input_types_for_casts(
     int idx,
-    const std::unordered_map<int, std::vector<TypeCast>>& casts,
+    const std::unordered_map<int, std::vector<RegisterTypeCast>>& casts,
+    const std::unordered_map<int, StackTypeCast>& stack_casts,
     TypeState* state,
     std::unordered_map<Register, TP_Type, Register::hash>* changed_types,
     DecompilerTypeSystem& dts) {
@@ -64,6 +65,15 @@ void try_modify_input_types_for_casts(
   if (kv != casts.end()) {
     // fmt::print("at idx {}, casting:\n", idx);
     modify_input_types_for_casts(kv->second, state, changed_types, dts);
+  }
+
+  for (const auto& [offset, cast] : stack_casts) {
+    auto stack_kv = state->spill_slots.find(offset);
+    if (stack_kv == state->spill_slots.end()) {
+      throw std::runtime_error(
+          fmt::format("Got a stack cast at offset {}, but didn't find a variable there.", offset));
+    }
+    state->spill_slots[offset] = TP_Type::make_from_ts(dts.parse_type_spec(cast.type_name));
   }
 }
 }  // namespace
@@ -106,8 +116,8 @@ bool run_type_analysis_ir2(const TypeSpec& my_type, DecompilerTypeSystem& dts, F
       for (int op_id = aop->block_id_to_first_atomic_op.at(block_id);
            op_id < aop->block_id_to_end_atomic_op.at(block_id); op_id++) {
         std::unordered_map<Register, TP_Type, Register::hash> restore_cast_types;
-        try_modify_input_types_for_casts(op_id, func.ir2.env.casts(), init_types,
-                                         &restore_cast_types, dts);
+        try_modify_input_types_for_casts(op_id, func.ir2.env.casts(), func.ir2.env.stack_casts(),
+                                         init_types, &restore_cast_types, dts);
 
         auto& op = aop->ops.at(op_id);
 
@@ -159,11 +169,11 @@ bool run_type_analysis_ir2(const TypeSpec& my_type, DecompilerTypeSystem& dts, F
     for (int op_id = aop->block_id_to_first_atomic_op.at(block_id);
          op_id < aop->block_id_to_end_atomic_op.at(block_id); op_id++) {
       if (op_id == aop->block_id_to_first_atomic_op.at(block_id)) {
-        try_modify_input_types_for_casts(op_id, func.ir2.env.casts(),
+        try_modify_input_types_for_casts(op_id, func.ir2.env.casts(), func.ir2.env.stack_casts(),
                                          &block_init_types.at(block_id), nullptr, dts);
       } else {
-        try_modify_input_types_for_casts(op_id, func.ir2.env.casts(), &op_types.at(op_id - 1),
-                                         nullptr, dts);
+        try_modify_input_types_for_casts(op_id, func.ir2.env.casts(), func.ir2.env.stack_casts(),
+                                         &op_types.at(op_id - 1), nullptr, dts);
       }
     }
   }

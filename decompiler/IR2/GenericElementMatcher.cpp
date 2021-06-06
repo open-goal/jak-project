@@ -606,6 +606,13 @@ GenericOpMatcher GenericOpMatcher::condition(IR2_Condition::Kind condition) {
   return m;
 }
 
+GenericOpMatcher GenericOpMatcher::or_match(const std::vector<GenericOpMatcher>& matchers) {
+  GenericOpMatcher m;
+  m.m_kind = Kind::OR;
+  m.m_sub_matchers = matchers;
+  return m;
+}
+
 bool GenericOpMatcher::do_match(GenericOperator& input, MatchResult::Maps* maps_out) const {
   switch (m_kind) {
     case Kind::FIXED:
@@ -621,6 +628,13 @@ bool GenericOpMatcher::do_match(GenericOperator& input, MatchResult::Maps* maps_
     case Kind::CONDITION:
       if (input.kind() == GenericOperator::Kind::CONDITION_OPERATOR) {
         return input.condition_kind() == m_condition_kind;
+      }
+      return false;
+    case Kind::OR:
+      for (auto& m : m_sub_matchers) {
+        if (m.do_match(input, maps_out)) {
+          return true;
+        }
       }
       return false;
     default:

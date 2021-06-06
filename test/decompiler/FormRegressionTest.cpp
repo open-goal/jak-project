@@ -178,9 +178,10 @@ std::unique_ptr<FormRegressionTest::TestData> FormRegressionTest::make_function(
     test->func.ir2.env.set_sloppy_pair_typing();
   }
 
-  if (!settings.stack_var_json.empty()) {
-    auto stack_hints = parse_stack_var_hints(nlohmann::json::parse(settings.stack_var_json));
-    test->func.ir2.env.set_stack_var_hints(stack_hints);
+  if (!settings.stack_structure_json.empty()) {
+    auto stack_hints =
+        parse_stack_structure_hints(nlohmann::json::parse(settings.stack_structure_json));
+    test->func.ir2.env.set_stack_structure_hints(stack_hints);
   }
 
   // analyze types
@@ -293,15 +294,15 @@ void FormRegressionTest::test_final_function(
   EXPECT_TRUE(expected_form == actual_form);
 }
 
-void FormRegressionTest::test_with_stack_vars(const std::string& code,
-                                              const std::string& type,
-                                              const std::string& expected,
-                                              const std::string& stack_map_json,
-                                              const std::string& cast_json,
-                                              const std::string& var_map_json) {
+void FormRegressionTest::test_with_stack_structures(const std::string& code,
+                                                    const std::string& type,
+                                                    const std::string& expected,
+                                                    const std::string& stack_map_json,
+                                                    const std::string& cast_json,
+                                                    const std::string& var_map_json) {
   TestSettings settings;
   settings.do_expressions = true;
-  settings.stack_var_json = stack_map_json;
+  settings.stack_structure_json = stack_map_json;
   settings.var_map_json = var_map_json;
   settings.casts_json = cast_json;
   test(code, type, expected, settings);

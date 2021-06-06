@@ -8,7 +8,7 @@
 #include "decompiler/ObjectFile/LinkedObjectFile.h"
 
 namespace decompiler {
-struct TypeCast;
+struct RegisterTypeCast;
 }
 
 struct TestSettings {
@@ -18,7 +18,7 @@ struct TestSettings {
   std::vector<std::pair<std::string, std::string>> strings;
   std::string casts_json;
   std::string var_map_json;
-  std::string stack_var_json;
+  std::string stack_structure_json;
 };
 
 class FormRegressionTest : public ::testing::Test {
@@ -90,10 +90,10 @@ class FormRegressionTest : public ::testing::Test {
     test(code, type, expected, settings);
   }
 
-  void test_with_stack_vars(const std::string& code,
-                            const std::string& type,
-                            const std::string& expected,
-                            const std::string& stack_map_json,
-                            const std::string& cast_json = "",
-                            const std::string& var_map_json = "");
+  void test_with_stack_structures(const std::string& code,
+                                  const std::string& type,
+                                  const std::string& expected,
+                                  const std::string& stack_map_json,
+                                  const std::string& cast_json = "",
+                                  const std::string& var_map_json = "");
 };

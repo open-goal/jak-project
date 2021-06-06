@@ -29,6 +29,7 @@ int insert_anonymous_functions(Form* top_level_form,
 
             f->clear();
             f->push_back(pool.alloc_element<LambdaDefinitionElement>(result));
+            replaced++;
           }
         }
       }
