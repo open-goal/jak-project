@@ -750,8 +750,11 @@ void SimpleExpressionElement::update_from_stack_add_i(const Env& env,
       auto rd = env.dts->ts.reverse_field_lookup(rd_in);
 
       if (rd.success) {
-        auto arg1_matcher = Matcher::op(GenericOpMatcher::fixed(FixedOperatorKind::MULTIPLICATION),
-                                        {Matcher::any(0), Matcher::integer(rd_in.stride)});
+        auto arg1_matcher = Matcher::match_or(
+            {Matcher::op(GenericOpMatcher::fixed(FixedOperatorKind::MULTIPLICATION),
+                         {Matcher::any(0), Matcher::integer(rd_in.stride)}),
+             Matcher::op(GenericOpMatcher::fixed(FixedOperatorKind::MULTIPLICATION),
+                         {Matcher::integer(rd_in.stride), Matcher::any(0)})});
         auto match_result = match(arg1_matcher, args.at(1));
         if (match_result.matched) {
           bool used_index = false;
