@@ -1,15 +1,7 @@
 ;;-*-Lisp-*-
 (in-package goal)
 
-;; name: collide-target-h.gc
-;; name in dgo: collide-target-h
-;; dgos: GAME, ENGINE
-
-;;-*-Lisp-*-
-(in-package goal)
-
-;; We believe that target's control-info may contain an array of these.
-;; Each collide-history is a record of a single collision event.
+;; definition of type collide-history
 (deftype collide-history (structure)
   ((intersect      vector :inline :offset-assert 0)
    (trans          vector :inline :offset-assert 16)
@@ -30,22 +22,44 @@
     )
   )
 
-(deftype control-info (collide-shape-moving)
-  (
-   ;; these were determined from racer-collision-reaction.
-   (array-size int16 :offset 2490)
-   (history-array collide-history 128 :inline :offset-assert 2496)
-   ;; what's on the end?
-   (pad uint32 27)
-   )
-
-  :size-assert #x4a2c
-  :method-count-assert 65
-  :flag-assert #x4100004a2c
+;; definition for method 3 of type collide-history
+(defmethod inspect collide-history ((obj collide-history))
+  (format #t "[~8x] ~A~%" obj 'collide-history)
+  (format #t "~Tintersect: ~`vector`P~%" (-> obj intersect))
+  (format #t "~Ttrans: ~`vector`P~%" (-> obj trans))
+  (format #t "~Ttransv: ~`vector`P~%" (-> obj transv))
+  (format #t "~Ttransv-out: ~`vector`P~%" (-> obj transv-out))
+  (format #t "~Tlocal-normal: ~`vector`P~%" (-> obj local-normal))
+  (format #t "~Tsurface-normal: ~`vector`P~%" (-> obj surface-normal))
+  (format #t "~Ttime: ~D~%" (-> obj time))
+  (format #t "~Tstatus: ~D~%" (-> obj status))
+  (format #t "~Tpat: ~D~%" (-> obj pat))
+  (format #t "~Treaction-flag: ~D~%" (-> obj reaction-flag))
+  obj
   )
 
-(defmethod update! collide-history ((obj collide-history) (cshape collide-shape-moving) (xs vector) (transv vector) (transv-out vector))
-  "Update the collide-history element."
+;; definition of type control-info
+(deftype control-info (collide-shape-moving)
+  ((array-size    int16           :offset 2490)
+   (history-array collide-history 128 :inline :offset-assert 2496)
+   (pad           uint32          27          :offset-assert 18880)
+   )
+  :method-count-assert 65
+  :size-assert         #x4a2c
+  :flag-assert         #x4100004a2c
+  )
+
+;; definition for method 9 of type collide-history
+;; Used lq/sq
+(defmethod
+  update!
+  collide-history
+  ((obj collide-history)
+   (cshape collide-shape-moving)
+   (xs vector)
+   (transv vector)
+   (transv-out vector)
+   )
   (set! (-> obj intersect quad) (-> xs quad))
   (set! (-> obj transv quad) (-> transv quad))
   (set! (-> obj transv-out quad) (-> transv-out quad))
@@ -58,3 +72,7 @@
   (set! (-> obj pat) (-> cshape cur-pat))
   obj
   )
+
+
+
+

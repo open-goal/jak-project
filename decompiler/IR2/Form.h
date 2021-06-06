@@ -1204,7 +1204,8 @@ class StorePlainDeref : public FormElement {
                   int my_idx,
                   RegisterAccess base_var,
                   std::optional<TypeSpec> dst_cast_type,
-                  std::optional<TypeSpec> src_cast_type);
+                  std::optional<TypeSpec> src_cast_type,
+                  int size);
 
   goos::Object to_form_internal(const Env& env) const override;
   void apply(const std::function<void(FormElement*)>& f) override;
@@ -1212,6 +1213,7 @@ class StorePlainDeref : public FormElement {
   void collect_vars(RegAccessSet& vars, bool recursive) const override;
   void get_modified_regs(RegSet& regs) const override;
   void push_to_stack(const Env& env, FormPool& pool, FormStack& stack) override;
+  int size() const { return m_size; }
 
  private:
   DerefElement* m_dst = nullptr;
@@ -1219,6 +1221,7 @@ class StorePlainDeref : public FormElement {
   int m_my_idx = -1;
   RegisterAccess m_base_var;
   std::optional<TypeSpec> m_dst_cast_type, m_src_cast_type;
+  int m_size = -1;
 };
 
 class StoreArrayAccess : public FormElement {

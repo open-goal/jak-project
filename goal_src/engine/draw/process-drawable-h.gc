@@ -5,3 +5,146 @@
 ;; name in dgo: process-drawable-h
 ;; dgos: GAME, ENGINE
 
+(define-extern cspace-index-by-name (function process-drawable string int))
+(define-extern cspace-by-name (function process-drawable string cspace))
+(define-extern joint-control-reset! (function joint-control joint-control-channel none))
+
+(defun cspace-by-name-no-fail ((arg0 process-drawable) (arg1 string))
+  "Get a cspace by name from the given process-drawable. If it fails, print an error and return the first one"
+  (let ((result (cspace-by-name arg0 arg1)))
+    (cond
+      (result
+       result
+       )
+      (else
+       (format 0 "no cspace (~A)~%" arg1)
+       (-> arg0 node-list data 0)
+       )
+      )
+    )
+  )
+
+(defun cspace-index-by-name-no-fail ((arg0 process-drawable) (arg1 string))
+  "Get the index of a cspace by name from the given process drawable. If it fails, print an error and return 0."
+  (let ((v0-0 (cspace-index-by-name arg0 arg1)))
+    (cond
+      ((< v0-0 0)
+       (format 0 "no cspace[ndx] (~A)~%" arg1)
+       0
+       )
+      (else
+       v0-0
+       )
+      )
+    )
+  )
+
+;; The following functions can be applied to a joint-control-channel to change the frame number.
+;; They return the resulting frame number as well.
+
+(defun num-func-none ((arg0 joint-control-channel))
+  "Don't change anything."
+  (-> arg0 frame-num)
+  )
+
+(defun num-func-+! ((arg0 joint-control-channel) (arg1 float))
+  "Increment the frame number, taking into account the animation speed and current game rate."
+  (let ((f0-1
+         (+ (-> arg0 frame-num)
+            (* arg1 (* (-> arg0 frame-group speed) (-> *display* time-adjust-ratio)))
+            )
+          )
+        )
+    (set! (-> arg0 frame-num) f0-1)
+    f0-1
+    )
+  )
+
+(defun num-func--! ((arg0 joint-control-channel) (arg1 float))
+  "Decrement the frame number, taking into account the animation speed and current game rate."
+  (let ((f0-1
+         (- (-> arg0 frame-num)
+            (* arg1 (* (-> arg0 frame-group speed) (-> *display* time-adjust-ratio)))
+            )
+          )
+        )
+    (set! (-> arg0 frame-num) f0-1)
+    f0-1
+    )
+  )
+
+(defun num-func-loop! ((chan joint-control-channel) (inc float))
+  "Like num-func-+!, but will wrap to 0 after going past the end."
+
+  ;; get the duration from the joint-animation-compressed.
+  (let* ((duration (the float (+ (-> chan frame-group data 0 length) -1)))
+         ;; increment (also add a full duration to it, I guess to avoid issues if inc is negative and we're near the start.)
+         (after-inc (+ (+ (-> chan frame-num) duration)
+           (* inc (* (-> chan frame-group speed) (-> *display* time-adjust-ratio)))
+           )
+           )
+         ;; wrap.
+         (wrapped (- after-inc (* (the float (the int (/ after-inc duration))) duration)))
+         )
+   (set! (-> chan frame-num) wrapped)
+   wrapped
+   )
+  )
+
+(defun num-func-seek! ((arg0 joint-control-channel) (arg1 float) (arg2 float))
+  "Seek toward arg1 by at most arg2 (taking into account speed etc)"
+  (let ((f0-3 (seek
+               (-> arg0 frame-num)
+               arg1
+               (* arg2 (* (-> arg0 frame-group speed) (-> *display* time-adjust-ratio)))
+               )
+          )
+        )
+    ;; set it twice, just to make sure.
+    (set! (-> arg0 frame-num) f0-3)
+    (set! (-> arg0 frame-num) f0-3)
+    f0-3
+    )
+  )
+
+(defun num-func-blend-in! ((arg0 joint-control-channel) (arg1 float))
+  "Seek frame-interp toward 1. Once its there, do a joint-control-reset."
+  (let* ((v0-0 (seek (-> arg0 frame-interp) 1.0 (* arg1 (-> *display* time-adjust-ratio))))
+         (f30-0 (the-as float v0-0))
+         )
+    (set! (-> arg0 frame-interp) f30-0)
+    (set! (-> arg0 frame-interp) f30-0)
+    (if (= f30-0 1.0)
+        (joint-control-reset! (-> arg0 parent) arg0)
+        )
+    f30-0
+    )
+  )
+
+(defun num-func-chan ((arg0 joint-control-channel) (arg1 float))
+  "Copies the frame number from the channel arg1."
+  ;; this is a super hack.
+  ;; we know that we're in an inline-array of joint-control-channels
+  ;; and the group-sub-index is our index in our array
+  ;; so we can compute the offset of the arg1-th index from this.
+  (let ((f0-2 (-> (the-as joint-control-channel
+                          (+ (the-as uint arg0)
+                             (the-as uint
+                                     ;; 48 * (difference in indices)
+                                     (* 48 (- (the int arg1) (-> arg0 group-sub-index))))
+                             )
+                          )
+                frame-num
+                )
+          )
+        )
+    (set! (-> arg0 frame-num) f0-2)
+    f0-2
+    )
+  )
+
+(defun num-func-identity ((arg0 joint-control-channel))
+  "seems to be the same thing as none."
+  (-> arg0 frame-num)
+  )
+
