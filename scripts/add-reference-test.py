@@ -1,6 +1,4 @@
 # Decompiles and adds the file to the reference test folder
-
-import sys
 from jak1_file_list import file_list
 
 import argparse
