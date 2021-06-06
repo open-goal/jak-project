@@ -692,7 +692,7 @@ bool try_spill_coloring(int var, RegAllocCache* cache, const AllocationInput& in
     StackOp::Op bonus;
     bonus.reg_class = cache->iregs.at(var).reg_class;
 
-    // we may have a constaint in here
+    // we may have a constraint in here
     auto& current_assignment = lr.assignment.at(instr - lr.min);
 
     auto& op = in.instructions.at(instr);
@@ -718,6 +718,7 @@ bool try_spill_coloring(int var, RegAllocCache* cache, const AllocationInput& in
 
       // flag it as spilled, but currently in a GPR.
       current_assignment.spilled = true;
+      current_assignment.stack_slot = get_stack_slot_for_var(var, cache);
       bonus.reg = current_assignment.reg;
     } else {
       // not assigned.
@@ -775,21 +776,6 @@ bool try_spill_coloring(int var, RegAllocCache* cache, const AllocationInput& in
         if (spill_assignment.reg == -1) {
           printf("SPILLING FAILED BECAUSE WE COULDN'T FIND A TEMP REGISTER!\n");
           assert(false);
-          //          std::vector<bool> can_try_spilling;
-          //          for(uint32_t other_spill = 0; other_spill < was_colored.size(); other_spill++)
-          //          {
-          //            if((int)other_spill != var && was_colored.at(other_spill)) {
-          //              LOG("TRY SPILL %d?\n", other_spill);
-          //              if(try_spill_coloring(other_spill)) {
-          //                LOG("SPILL OK.\n");
-          //                if(try_spill_coloring(var)) {
-          //                  return true;
-          //                }
-          //              } else {
-          //                LOG("SPILL %d failed.\n", other_spill);
-          //              }
-          //            }
-          //          }
           return false;
         }
 
@@ -826,50 +812,54 @@ bool do_allocation_for_var(int var,
                            RegAllocCache* cache,
                            const AllocationInput& in,
                            int debug_trace) {
-  // first, let's see if there's a hint...
-  auto& lr = cache->live_ranges.at(var);
+  bool can_be_in_register = in.force_on_stack_regs.find(var) == in.force_on_stack_regs.end();
   bool colored = false;
-  if (lr.best_hint.is_assigned()) {
-    colored = try_assignment_for_var(var, lr.best_hint, cache, in, debug_trace);
-    if (debug_trace >= 2) {
-      printf("var %d reg %s ? %d\n", var, lr.best_hint.to_string().c_str(), colored);
-    }
-  }
 
-  auto reg_order = get_default_alloc_order_for_var(var, cache, false);
-  auto& all_reg_order = get_default_alloc_order_for_var(var, cache, true);
-
-  // todo, try other regs..
-  if (!colored && move_eliminator) {
-    auto& first_instr = in.instructions.at(lr.min);
-    auto& last_instr = in.instructions.at(lr.max);
-
-    if (!colored && last_instr.is_move) {
-      auto& possible_coloring = cache->live_ranges.at(last_instr.write.front().id).get(lr.max);
-      if (possible_coloring.is_assigned() && in_vec(all_reg_order, possible_coloring.reg)) {
-        colored = try_assignment_for_var(var, possible_coloring, cache, in, debug_trace);
+  if (can_be_in_register) {
+    // first, let's see if there's a hint...
+    auto& lr = cache->live_ranges.at(var);
+    if (lr.best_hint.is_assigned()) {
+      colored = try_assignment_for_var(var, lr.best_hint, cache, in, debug_trace);
+      if (debug_trace >= 2) {
+        printf("var %d reg %s ? %d\n", var, lr.best_hint.to_string().c_str(), colored);
       }
     }
 
-    if (!colored && first_instr.is_move) {
-      auto& possible_coloring = cache->live_ranges.at(first_instr.read.front().id).get(lr.min);
-      if (possible_coloring.is_assigned() && in_vec(all_reg_order, possible_coloring.reg)) {
-        colored = try_assignment_for_var(var, possible_coloring, cache, in, debug_trace);
+    auto reg_order = get_default_alloc_order_for_var(var, cache, false);
+    auto& all_reg_order = get_default_alloc_order_for_var(var, cache, true);
+
+    // todo, try other regs..
+    if (!colored && move_eliminator) {
+      auto& first_instr = in.instructions.at(lr.min);
+      auto& last_instr = in.instructions.at(lr.max);
+
+      if (!colored && last_instr.is_move) {
+        auto& possible_coloring = cache->live_ranges.at(last_instr.write.front().id).get(lr.max);
+        if (possible_coloring.is_assigned() && in_vec(all_reg_order, possible_coloring.reg)) {
+          colored = try_assignment_for_var(var, possible_coloring, cache, in, debug_trace);
+        }
+      }
+
+      if (!colored && first_instr.is_move) {
+        auto& possible_coloring = cache->live_ranges.at(first_instr.read.front().id).get(lr.min);
+        if (possible_coloring.is_assigned() && in_vec(all_reg_order, possible_coloring.reg)) {
+          colored = try_assignment_for_var(var, possible_coloring, cache, in, debug_trace);
+        }
       }
     }
-  }
 
-  // auto reg_order = get_default_reg_alloc_order();
+    // auto reg_order = get_default_reg_alloc_order();
 
-  for (auto reg : reg_order) {
-    if (colored)
-      break;
-    Assignment ass;
-    ass.kind = Assignment::Kind::REGISTER;
-    ass.reg = reg;
-    colored = try_assignment_for_var(var, ass, cache, in, debug_trace);
-    if (debug_trace >= 1) {
-      printf("var %d reg %s ? %d\n", var, ass.to_string().c_str(), colored);
+    for (auto reg : reg_order) {
+      if (colored)
+        break;
+      Assignment ass;
+      ass.kind = Assignment::Kind::REGISTER;
+      ass.reg = reg;
+      colored = try_assignment_for_var(var, ass, cache, in, debug_trace);
+      if (debug_trace >= 1) {
+        printf("var %d reg %s ? %d\n", var, ass.to_string().c_str(), colored);
+      }
     }
   }
 

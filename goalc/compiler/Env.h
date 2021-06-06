@@ -206,6 +206,8 @@ class FunctionEnv : public DeclareEnv {
     return (T*)m_envs.back().get();
   }
 
+  const std::vector<std::unique_ptr<RegVal>>& reg_vals() const { return m_iregs; }
+
   int segment = -1;
   std::string method_of_type_name = "#f";
   bool is_asm_func = false;

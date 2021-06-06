@@ -72,7 +72,7 @@ RegVal* Compiler::compile_get_method_of_object(const goos::Object& form,
   auto fe = get_parent_env_of_type<FunctionEnv>(env);
 
   RegVal* runtime_type = nullptr;
-  if (m_ts.should_use_virtual_methods(compile_time_type)) {
+  if (m_ts.should_use_virtual_methods(compile_time_type, method_info.id)) {
     runtime_type = fe->make_gpr(m_ts.make_typespec("type"));
     MemLoadInfo info;
     info.size = 4;
@@ -496,8 +496,7 @@ Val* Compiler::compile_defmethod(const goos::Object& form, const goos::Object& _
 
   m_symbol_info.add_method(symbol_string(method_name), symbol_string(type_name), form);
 
-  auto info =
-      m_ts.add_method(symbol_string(type_name), symbol_string(method_name), lambda_ts, false);
+  auto info = m_ts.define_method(symbol_string(type_name), symbol_string(method_name), lambda_ts);
   auto type_obj = compile_get_symbol_value(form, symbol_string(type_name), env)->to_gpr(env);
   auto id_val = compile_integer(info.id, env)->to_gpr(env);
   auto method_val = place->to_gpr(env);
@@ -712,6 +711,16 @@ Val* Compiler::compile_deref(const goos::Object& form, const goos::Object& _rest
   return result;
 }
 
+TypeSpec coerce_to_stack_spill_type(const TypeSpec& in) {
+  if (in == TypeSpec("int")) {
+    return TypeSpec("int64");
+  } else if (in == TypeSpec("uint")) {
+    return TypeSpec("uint64");
+  } else {
+    return in;
+  }
+}
+
 /*!
  * Compile the (& x) form.
  */
@@ -720,10 +729,27 @@ Val* Compiler::compile_addr_of(const goos::Object& form, const goos::Object& res
   va_check(form, args, {{}}, {});
   auto loc = compile_error_guard(args.unnamed.at(0), env);
   auto as_mem_deref = dynamic_cast<MemoryDerefVal*>(loc);
-  if (!as_mem_deref) {
-    throw_compiler_error(form, "Cannot take the address of {}.", loc->print());
+  if (as_mem_deref) {
+    return as_mem_deref->base;
   }
-  return as_mem_deref->base;
+
+  // for now, we will only allow taking the address for something that's already in a register,
+  // like a function parameter or a lexical variable (declared in a let).
+  // This avoids weird things like taking the address of a constant or some other weird temporary -
+  // we could spill it to the stack and let you do this, but most of the time it's probably not what
+  // you wanted to do.
+  auto as_reg = dynamic_cast<RegVal*>(loc);
+  if (as_reg) {
+    // so we can take the address
+    as_reg->force_on_stack();
+    auto result =
+        env->make_gpr(m_ts.make_pointer_typespec(coerce_to_stack_spill_type(as_reg->type())));
+    env->emit_ir<IR_RegValAddr>(result, as_reg);
+    return result;
+  }
+
+  throw_compiler_error(form, "Cannot take the address of {}.", loc->print());
+  return nullptr;
 }
 
 /*!

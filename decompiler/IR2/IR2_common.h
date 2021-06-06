@@ -145,6 +145,9 @@ enum class FixedOperatorKind {
   NONE,
   PCPYLD,
   SYMBOL_TO_STRING,
+  ADDRESS_OF,
+  ASM_SLLV_R0,
+  ASM_MADDS,
   INVALID
 };
 

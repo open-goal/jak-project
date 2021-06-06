@@ -325,6 +325,7 @@ class Object {
   bool is_float() const { return type == ObjectType::FLOAT; }
   bool is_char() const { return type == ObjectType::CHAR; }
   bool is_symbol() const { return type == ObjectType::SYMBOL; }
+  bool is_symbol(const std::string& name) const;
   bool is_string() const { return type == ObjectType::STRING; }
   bool is_pair() const { return type == ObjectType::PAIR; }
   bool is_array() const { return type == ObjectType::ARRAY; }

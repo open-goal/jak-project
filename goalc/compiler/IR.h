@@ -1,8 +1,5 @@
 #pragma once
 
-#ifndef JAK_IR_H
-#define JAK_IR_H
-
 #include <string>
 #include "CodeGenerator.h"
 #include "goalc/regalloc/allocate.h"
@@ -23,12 +20,6 @@ class IR {
   }
   virtual ~IR() = default;
 };
-
-// class IR_Set : public IR {
-// public:
-//  std::string print() override;
-//  RegAllocInstr to_rai() override;
-//};
 
 class IR_Return : public IR {
  public:
@@ -138,6 +129,20 @@ class IR_FunctionCall : public IR {
   std::vector<RegVal*> m_args;
   std::vector<emitter::Register> m_arg_regs;
   std::optional<emitter::Register> m_ret_reg;
+};
+
+class IR_RegValAddr : public IR {
+ public:
+  IR_RegValAddr(const RegVal* dest, const RegVal* src);
+  std::string print() override;
+  RegAllocInstr to_rai() override;
+  void do_codegen(emitter::ObjectGenerator* gen,
+                  const AllocationResult& allocs,
+                  emitter::IR_Record irec) override;
+
+ protected:
+  const RegVal* m_dest = nullptr;
+  const RegVal* m_src = nullptr;
 };
 
 class IR_StaticVarAddr : public IR {
@@ -675,4 +680,3 @@ class IR_SqrtVF : public IR_Asm {
   const RegVal* m_dst = nullptr;
   const RegVal* m_src = nullptr;
 };
-#endif  // JAK_IR_H

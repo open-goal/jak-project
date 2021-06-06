@@ -328,11 +328,11 @@ Type* TypeSystem::lookup_type_allow_partial_def(const std::string& name) const {
   throw_typesystem_error("The type {} is unknown.\n", name);
 }
 
-MethodInfo TypeSystem::add_method(const std::string& type_name,
-                                  const std::string& method_name,
-                                  const TypeSpec& ts,
-                                  bool allow_new_method) {
-  return add_method(lookup_type(make_typespec(type_name)), method_name, ts, allow_new_method);
+MethodInfo TypeSystem::declare_method(const std::string& type_name,
+                                      const std::string& method_name,
+                                      bool no_virtual,
+                                      const TypeSpec& ts) {
+  return declare_method(lookup_type(make_typespec(type_name)), method_name, no_virtual, ts);
 }
 
 /*!
@@ -344,32 +344,74 @@ MethodInfo TypeSystem::add_method(const std::string& type_name,
  * is overriding the "new" method - the TypeSystem will track that because overridden new methods
  * may have different arguments.
  */
-MethodInfo TypeSystem::add_method(Type* type,
-                                  const std::string& method_name,
-                                  const TypeSpec& ts,
-                                  bool allow_new_method) {
+MethodInfo TypeSystem::declare_method(Type* type,
+                                      const std::string& method_name,
+                                      bool no_virtual,
+                                      const TypeSpec& ts) {
   if (method_name == "new") {
     return add_new_method(type, ts);
   }
 
   // look up the method
   MethodInfo existing_info;
-  bool got_existing = false;
-  auto* iter_type = type;
+  bool got_existing = try_lookup_method(type, method_name, &existing_info);
 
-  while (true) {
-    if (iter_type->get_my_method(method_name, &existing_info)) {
-      got_existing = true;
-      break;
+  if (got_existing) {
+    // make sure we aren't changing anything.
+    if (!existing_info.type.is_compatible_child_method(ts, type->get_name())) {
+      throw_typesystem_error(
+          "The method {} of type {} was originally declared as {}, but has been "
+          "redeclared as {}\n",
+          method_name, type->get_name(), existing_info.type.print(), ts.print());
     }
 
-    if (iter_type->has_parent()) {
-      iter_type = lookup_type(iter_type->get_parent());
-    } else {
-      // couldn't find method.
-      break;
+    if ((existing_info.no_virtual || no_virtual) &&
+        existing_info.defined_in_type != type->get_name()) {
+      throw_typesystem_error(
+          "Cannot define method {} in type {} when it was defined as no_virtual in parent type {}",
+          method_name, type->get_name(), existing_info.defined_in_type);
     }
+
+    if (no_virtual != existing_info.no_virtual) {
+      throw_typesystem_error(
+          "The method {} of type {} was originally declared with no_virtual = {}, but has been "
+          "redeclared as {}",
+          method_name, type->get_name(), existing_info.no_virtual, no_virtual);
+    }
+
+    return existing_info;
+  } else {
+    // add a new method!
+    return type->add_method(
+        {get_next_method_id(type), method_name, ts, type->get_name(), no_virtual});
   }
+}
+
+MethodInfo TypeSystem::define_method(const std::string& type_name,
+                                     const std::string& method_name,
+                                     const TypeSpec& ts) {
+  return define_method(lookup_type(make_typespec(type_name)), method_name, ts);
+}
+
+/*!
+ * Add a method, if it doesn't exist. If the method already exists (possibly in a parent), checks to
+ * see if this is an identical definition.  If not, it's an error, and if so, nothing happens.
+ * Returns the info of either the existing or newly created method.
+ *
+ * This is not used to override methods, but instead to create truly new methods.  The one exception
+ * is overriding the "new" method - the TypeSystem will track that because overridden new methods
+ * may have different arguments.
+ */
+MethodInfo TypeSystem::define_method(Type* type,
+                                     const std::string& method_name,
+                                     const TypeSpec& ts) {
+  if (method_name == "new") {
+    return add_new_method(type, ts);
+  }
+
+  // look up the method
+  MethodInfo existing_info;
+  bool got_existing = try_lookup_method(type, method_name, &existing_info);
 
   if (got_existing) {
     // make sure we aren't changing anything.
@@ -382,12 +424,8 @@ MethodInfo TypeSystem::add_method(Type* type,
 
     return existing_info;
   } else {
-    if (!allow_new_method) {
-      throw_typesystem_error("Cannot add method {} to type {} because it was not declared.\n",
-                             method_name, type->get_name());
-    }
-    // add a new method!
-    return type->add_method({get_next_method_id(type), method_name, ts, type->get_name()});
+    throw_typesystem_error("Cannot add method {} to type {} because it was not declared.\n",
+                           method_name, type->get_name());
   }
 }
 
@@ -454,27 +492,7 @@ bool TypeSystem::try_lookup_method(const std::string& type_name,
     return false;
   }
 
-  auto* iter_type = kv->second.get();
-  // look up the method
-  while (true) {
-    if (method_name == "new") {
-      if (iter_type->get_my_new_method(info)) {
-        return true;
-      }
-    } else {
-      if (iter_type->get_my_method(method_name, info)) {
-        return true;
-      }
-    }
-
-    if (iter_type->has_parent()) {
-      iter_type = lookup_type(iter_type->get_parent());
-    } else {
-      // couldn't find method.
-      break;
-    }
-  }
-  return false;
+  return try_lookup_method(kv->second.get(), method_name, info);
 }
 
 /*!
@@ -503,6 +521,31 @@ bool TypeSystem::try_lookup_method(const std::string& type_name,
 
     if (iter_type->has_parent()) {
       iter_type = lookup_type(iter_type->get_parent());
+    } else {
+      // couldn't find method.
+      break;
+    }
+  }
+  return false;
+}
+
+bool TypeSystem::try_lookup_method(const Type* type,
+                                   const std::string& method_name,
+                                   MethodInfo* info) const {
+  // look up the method
+  while (true) {
+    if (method_name == "new") {
+      if (type->get_my_new_method(info)) {
+        return true;
+      }
+    } else {
+      if (type->get_my_method(method_name, info)) {
+        return true;
+      }
+    }
+
+    if (type->has_parent()) {
+      type = lookup_type(type->get_parent());
     } else {
       // couldn't find method.
       break;
@@ -763,22 +806,24 @@ void TypeSystem::add_builtin_types() {
   forward_declare_type_as_structure("memory-usage-block");
 
   // OBJECT
-  add_method(obj_type, "new", make_function_typespec({"symbol", "type", "int"}, "_type_"));
-  add_method(obj_type, "delete", make_function_typespec({"_type_"}, "none"));
-  add_method(obj_type, "print", make_function_typespec({"_type_"}, "_type_"));
-  add_method(obj_type, "inspect", make_function_typespec({"_type_"}, "_type_"));
-  add_method(obj_type, "length",
-             make_function_typespec({"_type_"}, "int"));  // todo - this integer type?
-  add_method(obj_type, "asize-of", make_function_typespec({"_type_"}, "int"));
-  add_method(obj_type, "copy", make_function_typespec({"_type_", "symbol"}, "_type_"));
-  add_method(obj_type, "relocate", make_function_typespec({"_type_", "int"}, "_type_"));
-  add_method(obj_type, "mem-usage",
-             make_function_typespec({"_type_", "memory-usage-block"}, "_type_"));
+  declare_method(obj_type, "new", false,
+                 make_function_typespec({"symbol", "type", "int"}, "_type_"));
+  declare_method(obj_type, "delete", false, make_function_typespec({"_type_"}, "none"));
+  declare_method(obj_type, "print", false, make_function_typespec({"_type_"}, "_type_"));
+  declare_method(obj_type, "inspect", false, make_function_typespec({"_type_"}, "_type_"));
+  declare_method(obj_type, "length", false,
+                 make_function_typespec({"_type_"}, "int"));  // todo - this integer type?
+  declare_method(obj_type, "asize-of", false, make_function_typespec({"_type_"}, "int"));
+  declare_method(obj_type, "copy", false, make_function_typespec({"_type_", "symbol"}, "_type_"));
+  declare_method(obj_type, "relocate", false, make_function_typespec({"_type_", "int"}, "_type_"));
+  declare_method(obj_type, "mem-usage", false,
+                 make_function_typespec({"_type_", "memory-usage-block"}, "_type_"));
 
   // STRUCTURE
   // structure new doesn't support dynamic sizing, which is kinda weird - it grabs the size from
   // the type.  Dynamic structures use new-dynamic-structure, which is used exactly once ever.
-  add_method(structure_type, "new", make_function_typespec({"symbol", "type"}, "_type_"));
+  declare_method(structure_type, "new", false,
+                 make_function_typespec({"symbol", "type"}, "_type_"));
   // structure_type is a field-less StructureType, so we have to do this to match the runtime.
   //  structure_type->override_size_in_memory(4);
 
@@ -787,17 +832,18 @@ void TypeSystem::add_builtin_types() {
   add_field_to_type(basic_type, "type", make_typespec("type"));
   // the default new basic doesn't support dynamic sizing. anything dynamic will override this
   // and then call (method object new) to do the dynamically-sized allocation.
-  add_method(basic_type, "new", make_function_typespec({"symbol", "type"}, "_type_"));
+  declare_method(basic_type, "new", false, make_function_typespec({"symbol", "type"}, "_type_"));
 
   // SYMBOL
   builtin_structure_inherit(symbol_type);
   add_field_to_type(symbol_type, "value", make_typespec("object"));
   // a new method which returns type none means new is illegal.
-  add_method(symbol_type, "new", make_function_typespec({}, "none"));
+  declare_method(symbol_type, "new", false, make_function_typespec({}, "none"));
 
   // TYPE
   builtin_structure_inherit(type_type);
-  add_method(type_type, "new", make_function_typespec({"symbol", "type", "int"}, "_type_"));
+  declare_method(type_type, "new", false,
+                 make_function_typespec({"symbol", "type", "int"}, "_type_"));
   add_field_to_type(type_type, "symbol", make_typespec("symbol"));
   add_field_to_type(type_type, "parent", make_typespec("type"));
   add_field_to_type(type_type, "size", make_typespec("uint16"));  // actually u16
@@ -813,8 +859,8 @@ void TypeSystem::add_builtin_types() {
   add_field_to_type(string_type, "data", make_typespec("uint8"), false, true);  // todo integer type
   // string is never deftype'd for the decompiler, so we need to manually give the constructor
   // type here.
-  add_method(string_type, "new",
-             make_function_typespec({"symbol", "type", "int", "string"}, "_type_"));
+  declare_method(string_type, "new", false,
+                 make_function_typespec({"symbol", "type", "int", "string"}, "_type_"));
 
   // FUNCTION
   builtin_structure_inherit(function_type);
@@ -842,8 +888,8 @@ void TypeSystem::add_builtin_types() {
 
   // todo
   builtin_structure_inherit(array_type);
-  add_method(array_type, "new",
-             make_function_typespec({"symbol", "type", "type", "int"}, "_type_"));
+  declare_method(array_type, "new", false,
+                 make_function_typespec({"symbol", "type", "type", "int"}, "_type_"));
   // array has: number, number, type
   add_field_to_type(array_type, "length", make_typespec("int32"));
   add_field_to_type(array_type, "allocated-length", make_typespec("int32"));
@@ -852,8 +898,8 @@ void TypeSystem::add_builtin_types() {
 
   // pair
   pair_type->override_offset(2);
-  add_method(pair_type, "new",
-             make_function_typespec({"symbol", "type", "object", "object"}, "_type_"));
+  declare_method(pair_type, "new", false,
+                 make_function_typespec({"symbol", "type", "object", "object"}, "_type_"));
   add_field_to_type(pair_type, "car", make_typespec("object"));
   add_field_to_type(pair_type, "cdr", make_typespec("object"));
 
@@ -870,8 +916,8 @@ void TypeSystem::add_builtin_types() {
   add_field_to_type(file_stream_type, "mode", make_typespec("basic"));
   add_field_to_type(file_stream_type, "name", make_typespec("string"));
   add_field_to_type(file_stream_type, "file", make_typespec("uint32"));
-  add_method(file_stream_type, "new",
-             make_function_typespec({"symbol", "type", "string", "basic"}, "_type_"));
+  declare_method(file_stream_type, "new", false,
+                 make_function_typespec({"symbol", "type", "string", "basic"}, "_type_"));
 }
 
 /*!
@@ -1541,15 +1587,15 @@ std::string TypeSystem::generate_deftype(const Type* type) const {
       type->get_name(), type->get_parent());
 }
 
-bool TypeSystem::should_use_virtual_methods(const Type* type) const {
+bool TypeSystem::should_use_virtual_methods(const Type* type, int method_id) const {
   auto as_basic = dynamic_cast<const BasicType*>(type);
-  if (as_basic && !as_basic->final()) {
+  if (as_basic && !as_basic->final() && !lookup_method(type->get_name(), method_id).no_virtual) {
     return true;
   } else {
     return false;
   }
 }
 
-bool TypeSystem::should_use_virtual_methods(const TypeSpec& type) const {
-  return should_use_virtual_methods(lookup_type(type));
+bool TypeSystem::should_use_virtual_methods(const TypeSpec& type, int method_id) const {
+  return should_use_virtual_methods(lookup_type(type), method_id);
 }

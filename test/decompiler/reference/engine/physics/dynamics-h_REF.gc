@@ -1,0 +1,72 @@
+;;-*-Lisp-*-
+(in-package goal)
+
+;; definition of type dynamics
+(deftype dynamics (basic)
+  ((name           basic          :offset-assert 4)
+   (gravity-max    float          :offset-assert 8)
+   (gravity-length float          :offset-assert 12)
+   (gravity        vector :inline :offset-assert 16)
+   (gravity-normal vector :inline :offset-assert 32)
+   (walk-distance  float          :offset-assert 48)
+   (run-distance   float          :offset-assert 52)
+   )
+  :method-count-assert 9
+  :size-assert         #x38
+  :flag-assert         #x900000038
+  )
+
+;; definition for method 3 of type dynamics
+(defmethod inspect dynamics ((obj dynamics))
+  (format #t "[~8x] ~A~%" obj (-> obj type))
+  (format #t "~Tname: ~A~%" (-> obj name))
+  (format #t "~Tgravity-max: (meters ~m)~%" (-> obj gravity-max))
+  (format #t "~Tgravity-length: (meters ~m)~%" (-> obj gravity-length))
+  (format #t "~Tgravity: ~`vector`P~%" (-> obj gravity))
+  (format #t "~Tgravity-normal: ~`vector`P~%" (-> obj gravity-normal))
+  (format #t "~Twalk-distance: (meters ~m)~%" (-> obj walk-distance))
+  (format #t "~Trun-distance: (meters ~m)~%" (-> obj run-distance))
+  obj
+  )
+
+;; definition for function time-to-apex
+(defun time-to-apex ((arg0 float) (arg1 float))
+  (the int (/ arg0 (- (* 0.0033333334 arg1))))
+  )
+
+;; definition for function time-to-ground
+(defun time-to-ground ((arg0 float) (arg1 float) (arg2 float))
+  (let ((f0-0 0.0)
+        (v0-0 0)
+        )
+   (while (< (- arg2) f0-0)
+    (set! arg0 (- arg0 (* 0.0033333334 arg1)))
+    (+! f0-0 (* 0.0033333334 arg0))
+    (+! v0-0 1)
+    )
+   v0-0
+   )
+  )
+
+;; definition for symbol *standard-dynamics*, type dynamics
+(define
+  *standard-dynamics*
+  (new 'static 'dynamics
+   :name 'standard
+   :gravity-max 163840.0
+   :gravity-length 245760.0
+   :gravity
+   (new 'static 'vector :y 245760.0 :w 1.0)
+   :gravity-normal (new 'static 'vector :y 1.0 :w 1.0)
+   :walk-distance 8192.0
+   :run-distance 20480.0
+   )
+  )
+
+;; failed to figure out what this is:
+(let ((v0-1 0))
+  )
+
+
+
+

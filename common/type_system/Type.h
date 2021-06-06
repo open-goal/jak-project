@@ -20,6 +20,7 @@ struct MethodInfo {
   std::string name;
   TypeSpec type;
   std::string defined_in_type;
+  bool no_virtual = false;
 
   bool operator==(const MethodInfo& other) const;
   std::string print_one_line() const;
