@@ -694,19 +694,18 @@ goos::Object decompile_boxed_array(const DecompilerLabel& label,
     throw std::runtime_error("Invalid size in decompile_boxed_array");
   }
 
-  if (size_word_1.data != size_word_2.data) {
-    throw std::runtime_error("Inconsistent size in decompile_boxed_array");
-  }
-
   int array_length = size_word_1.data;
+  int array_allocated_length = size_word_2.data;
 
   auto content_type_info = ts.lookup_type(content_type);
   if (content_type_info->is_reference()) {
     // easy, stride of 4.
     std::vector<goos::Object> result = {
         pretty_print::to_symbol("new"), pretty_print::to_symbol("'static"),
-        pretty_print::to_symbol("'boxed-array"), pretty_print::to_symbol(content_type.print()),
-        pretty_print::to_symbol(fmt::format("{}", array_length))};
+        pretty_print::to_symbol("'boxed-array"),
+        pretty_print::to_symbol(fmt::format(":type {} :length {} :allocated-length {}",
+                                            content_type.print(), array_length,
+                                            array_allocated_length))};
 
     for (int elt = 0; elt < array_length; elt++) {
       auto& word = words.at(label.target_segment).at(first_elt_word_idx + elt);
@@ -727,8 +726,10 @@ goos::Object decompile_boxed_array(const DecompilerLabel& label,
     // value array
     std::vector<goos::Object> result = {
         pretty_print::to_symbol("new"), pretty_print::to_symbol("'static"),
-        pretty_print::to_symbol("'boxed-array"), pretty_print::to_symbol(content_type.print()),
-        pretty_print::to_symbol(fmt::format("{}", array_length))};
+        pretty_print::to_symbol("'boxed-array"),
+        pretty_print::to_symbol(fmt::format(":type {} :length {} :allocated-length {}",
+                                            content_type.print(), array_length,
+                                            array_allocated_length))};
 
     auto stride = content_type_info->get_size_in_memory();
     for (int i = 0; i < array_length; i++) {

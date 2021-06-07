@@ -195,10 +195,11 @@ class Compiler {
                          Env* env,
                          bool call_constructor);
 
-  StaticResult fill_static_array(const goos::Object& form,
-                                 const goos::Object& rest,
-                                 bool boxed,
-                                 Env* env);
+  StaticResult fill_static_array(const goos::Object& form, const goos::Object& rest, Env* env);
+
+  StaticResult fill_static_boxed_array(const goos::Object& form,
+                                       const goos::Object& rest,
+                                       Env* env);
 
   StaticResult fill_static_inline_array(const goos::Object& form,
                                         const goos::Object& rest,
@@ -212,7 +213,8 @@ class Compiler {
                                        Env* env);
   void fill_static_array_inline(const goos::Object& form,
                                 const TypeSpec& content_type,
-                                const std::vector<goos::Object>& args,
+                                goos::Object* args_array,
+                                int args_array_length,
                                 StaticStructure* structure,
                                 int offset,
                                 Env* env);
