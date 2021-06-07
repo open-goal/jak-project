@@ -832,3 +832,73 @@
 (define-extern *camera-look-through-other* int)
 (define-extern *camera-other-trans* vector)
 (define-extern *camera-other-root* vector)
+
+(declare-type bsp-header basic)
+(declare-type bsp-node structure)
+(define-extern inspect-bsp-tree (function bsp-header bsp-node none))
+(declare-type entity-camera basic)
+(define-extern map-bsp-tree (function (function bsp-node none) bsp-header bsp-node none))
+
+
+(deftype vif-tag (uint32)
+  ((imm uint16  :offset 0 :size 16)
+   (num uint8   :offset 16 :size 8)
+   (cmd vif-cmd :offset 24 :size 7)
+   (irq uint8   :offset 31 :size 1)
+   (msk uint8   :offset 28 :size 1)
+   )
+  :method-count-assert 9
+  :size-assert         #x4
+  :flag-assert         #x900000004
+  )
+
+(deftype dma-tag (uint64)
+  ((qwc uint16    :offset 0)          ;; quadword count
+   (pce uint8     :offset 26 :size 2)  ;; priority (source mode)
+   (id dma-tag-id :offset 28 :size 3)   ;; ID (what the tag means)
+   (irq uint8     :offset 31 :size 1)  ;; interrupt at the end?
+   (addr uint32   :offset 32 :size 31) ;; address (31 bits)
+   (spr uint8     :offset 63 :size 1)    ;; spr or not flag.
+   )
+  :method-count-assert 9
+  :size-assert         #x8
+  :flag-assert         #x900000008
+  )
+
+(deftype dma-packet (structure)
+  ((dma  dma-tag   :offset-assert 0)
+   (vif0 vif-tag   :offset-assert 8)
+   (vif1 vif-tag   :offset-assert 12)
+   (quad uint128  :offset 0)
+   )
+  :method-count-assert 9
+  :size-assert         #x10
+  :flag-assert         #x900000010
+  )
+
+(deftype shadow-data (structure)
+  ((texoffset           vector     :inline :offset-assert 0)
+   (texscale            vector     :inline :offset-assert 16)
+   (clrs                uint128    2       :offset-assert 32)
+   (dma-unpack-template dma-packet :inline :offset-assert 64)
+   (dma-cnt             uint64             :offset-assert 80)
+   (vif-nop             uint32             :offset-assert 88)
+   (vif-unpack-v4-8     uint32             :offset-assert 92)
+   (pdc                 basic              :offset-assert 96)
+   (dist                float              :offset-assert 100)
+   (oddeven             uint8              :offset-assert 104)
+   (waits               uint32             :offset-assert 108)
+   )
+  :method-count-assert 9
+  :size-assert         #x70
+  :flag-assert         #x900000070
+  )
+
+(deftype shadow-work (structure)
+  ((shadow-data shadow-data :inline :offset-assert 0)
+   (inbuf       uint128     600     :offset-assert 112)
+   )
+  :method-count-assert 9
+  :size-assert         #x25f0
+  :flag-assert         #x9000025f0
+  )

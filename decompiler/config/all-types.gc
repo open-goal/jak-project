@@ -4250,7 +4250,7 @@
   )
 
 (deftype adgif-shader (structure)
-  ((quad       uint128 5  :offset 0)
+  ((quad       qword  5 :inline  :offset 0)
    (prims      uint64 10  :offset 0)
    (tex0       uint64     :offset 0)
    (tex1       uint64     :offset 16)
@@ -4371,6 +4371,8 @@
   :flag-assert         #x900000050
   )
 
+(declare-type bsp-header basic)
+
 (deftype level (basic)
   ((name                      basic           :offset-assert 4)
    (load-name                 basic           :offset-assert 8)
@@ -4379,7 +4381,7 @@
    (status                    basic           :offset-assert 20)
    (other                     basic           :offset-assert 24)
    (heap                      kheap   :inline :offset-assert 32)
-   (bsp                       basic           :offset-assert 48)
+   (bsp                       bsp-header      :offset-assert 48)
    (art-group                 basic           :offset-assert 52)
    (info                      basic           :offset-assert 56)
    (texture-page              texture-page 9       :offset-assert 60)
@@ -5159,8 +5161,8 @@
 (define-extern *shader-list* pair) ;; unknown type
 (define-extern *edit-shader* int) ;; unknown type
 (define-extern adgif-shader-update! function)
-(define-extern adgif-shader-login function)
-(define-extern adgif-shader-login-no-remap function)
+(define-extern adgif-shader-login (function adgif-shader none))
+(define-extern adgif-shader-login-no-remap (function adgif-shader none))
 (define-extern adgif-shader-login-fast function)
 (define-extern adgif-shader-login-no-remap-fast function)
 ;;;; unknown type
@@ -5391,7 +5393,7 @@
   :size-assert         #x20
   :flag-assert         #x1200000020
   (:methods
-    (dummy-9 () none 9)
+    (dummy-9 (_type_) _type_ 9) ;; probably login or init.
     (dummy-10 (_type_) int 10)
     (dummy-11 () none 11)
     (dummy-12 () none 12)
@@ -5410,7 +5412,6 @@
   :size-assert         #x24
   :flag-assert         #x1200000024
   (:methods
-    (dummy-9 () none 9)
     (dummy-10 (_type_) int 10)
     (dummy-11 () none 11)
     (dummy-12 () none 12)
@@ -5456,7 +5457,6 @@
   :size-assert         #x20
   :flag-assert         #x1200000020
   (:methods
-    (dummy-9 () none 9)
     (dummy-10 (_type_) int 10)
     (dummy-11 () none 11)
     (dummy-12 () none 12)
@@ -5488,7 +5488,6 @@
   :flag-assert         #x1200000020
   ;; field distance is a float printed as hex?
   (:methods
-    (dummy-9 () none 9)
     (dummy-10 (_type_) int 10)
     (dummy-11 () none 11)
     (dummy-12 () none 12)
@@ -5563,7 +5562,6 @@
   :size-assert         #x20
   :flag-assert         #x1200000020
   (:methods
-    (dummy-9 () none 9)
     (dummy-10 (_type_) int 10)
     (dummy-11 () none 11)
     (dummy-12 () none 12)
@@ -5581,7 +5579,8 @@
   )
 
 (deftype drawable-inline-array-actor (drawable-inline-array)
-  ((paid uint8 36))
+  ((data drawable-actor 1 :inline)
+   (pad uint8 4))
   :flag-assert #x1200000044
   )
 
@@ -5601,7 +5600,6 @@
   :size-assert         #x20
   :flag-assert         #x1300000020
   (:methods
-    (dummy-9 () none 9)
     (dummy-10 (_type_) int 10)
     (dummy-11 () none 11)
     (dummy-12 () none 12)
@@ -5620,7 +5618,8 @@
   )
 
 (deftype drawable-inline-array-ambient (drawable-inline-array)
-  ((paid uint8 36))
+  ((data drawable-ambient 1 :inline)
+   (pad uint8 4))
   :flag-assert #x1200000044
   )
 
@@ -7060,7 +7059,7 @@
   ;; figured out manually from custom inspect.
   ((speed float :offset 20)
    (artist-base float :offset 24)
-   (artiest-step float :offset 28)
+   (artist-step float :offset 28)
    (master-art-group-name basic :offset 32)
    (master-art-group-index int32 :offset 36)
    (frames pointer :offset 44)
@@ -8649,7 +8648,6 @@
   :size-assert         #x40
   :flag-assert         #x1200000040
   (:methods
-    (dummy-9 () none 9)
     (dummy-10 (_type_) int 10)
     (dummy-11 () none 11)
     (dummy-12 () none 12)
@@ -10938,6 +10936,7 @@
    (strip-data-len  uint16         :offset-assert 12)
    (poly-count      uint16         :offset-assert 14)
    (base-trans      vector :inline :offset-assert 16)
+   ;; these go in the w of the vector above.
    (vertex-count    uint8          :offset 28)
    (vertex-data-qwc uint8          :offset 29)
    (total-qwc       uint8          :offset 30)
@@ -10955,7 +10954,6 @@
   :size-assert         #x20
   :flag-assert         #x1200000020
   (:methods
-    (dummy-9 () none 9)
     (dummy-11 () none 11)
     (dummy-12 () none 12)
     (dummy-13 () none 13)
@@ -10973,7 +10971,6 @@
   :size-assert         #x44
   :flag-assert         #x1200000044
   (:methods
-    (dummy-9 () none 9)
     (dummy-11 () none 11)
     (dummy-12 () none 12)
     (dummy-13 () none 13)
@@ -10985,9 +10982,10 @@
 
 (deftype drawable-tree-collide-fragment (drawable-tree)
   ()
-  :flag-assert         #x1200000024
+  :method-count-assert #x12
+  :size-assert #x24
+  :flag-assert #x1200000024
   )
-
 
 ;; ----------------------
 ;; File - projectiles-h
@@ -11254,30 +11252,59 @@
   :flag-assert         #x900000020
   )
 
-; (deftype bsp-header (drawable)
-;   ((all-visible-list pointer :offset-assert 32)
-;    (visible-list-length int32 :offset-assert 36)
-;    (drawable-trees basic :offset-assert 40)
-;    (pat uint32 :offset-assert 44)
-;    (pat-length int32 :offset-asert 48)
-;    )
-;   :method-count-assert 20
-;   :size-assert         #x190
-;   :flag-assert         #x1400000190
-;   (:methods
-;     (dummy-9 () none 9)
-;     (dummy-10 (_type_) int 10)
-;     (dummy-11 () none 11)
-;     (dummy-12 () none 12)
-;     (dummy-13 () none 13)
-;     (dummy-14 () none 14)
-;     (dummy-15 () none 15)
-;     (dummy-16 () none 16)
-;     (dummy-17 () none 17)
-;     (dummy-18 () none 18)
-;     (dummy-19 () none 19)
-;     )
-;   )
+
+(declare-type entity-camera basic)
+
+(deftype bsp-header (drawable)
+  (
+   (info file-info :offset 4)
+   (all-visible-list (pointer uint16) :offset-assert 32)
+   (visible-list-length int32 :offset-assert 36)
+   (drawable-trees drawable-tree-array :offset-assert 40)
+   (pat pointer :offset-assert 44)
+   (pat-length int32 :offset-assert 48)
+   
+   ;; not sure what this is
+   (unk-data-0 pointer :offset-assert 52)
+   (unk-data-0-len int32 :offset-assert 56)
+   
+   (unk-data-1 pointer :offset-assert 60)
+   (unk-data-1-len int32 :offset-assert 64)
+   
+   (unk-zero-0 uint32 :offset-assert 68)
+   
+   (name symbol :offset-assert 72)
+   (nickname symbol :offset-assert 76)
+   (vis-info level-vis-info 8 :offset-assert 80)
+   (actors drawable-inline-array-actor :offset-assert 112)
+   (cameras (array entity-camera) :offset-assert 116)
+   (nodes (inline-array bsp-node) :offset-assert 120)
+   
+   (level level :offset-assert 124)
+   (unk-data-2 uint32 5 :offset-assert 128)
+   
+   (boxes box8s-array :offset-assert 148)
+   (unk-data-3 uint32 :offset-assert 152)
+   (ambients drawable-inline-array-ambient :offset-assert 156)
+   (unk-data-4 uint32 :offset-assert 160)
+   (unk-data-5 uint32 :offset-assert 164)
+   (adgifs adgif-shader-array :offset-assert 168)
+   (unk-data-6 pointer :offset-assert 172)
+   (unk-data-7 pointer :offset-assert 176)
+   (unk-data-8 uint32 55 :offset-assert 180)
+   
+
+   )
+  :method-count-assert 20
+  :size-assert         #x190
+  :flag-assert         #x1400000190
+  (:methods
+    (relocate (_type_ int) _type_ 7)
+    (dummy-17 () none 17)
+    (dummy-18 () none 18)
+    (dummy-19 () none 19)
+    )
+  )
 
 (deftype game-level (basic)
   ((master-bsp basic  :offset-assert 4)
@@ -11313,25 +11340,26 @@
   :flag-assert         #x90000000c
   )
 
-; (deftype collide-stats (structure)
-;   ((other             cl-stat   :inline :offset-assert 0)
-;    (total             cl-stat   :inline :offset-assert 12)
-;    (nodes             uint32            :offset-assert 24)
-;    (calls             uint32            :offset-assert 28)
-;    (total-target      stopwatch :inline :offset-assert 36)
-;    (target-cache-fill stopwatch :inline :offset-assert 68)
-;    (target-ray-poly   stopwatch :inline :offset-assert 100)
-;    )
-;   :method-count-assert 9
-;   :size-assert         #x80
-;   :flag-assert         #x900000080
-;   )
+(deftype collide-stats (structure)
+  ((other             cl-stat   :inline :offset-assert 0)
+   (total             cl-stat   :inline :offset-assert 12)
+   (nodes             uint32            :offset-assert 24)
+   (calls             uint32            :offset-assert 28)
+   (total-target      stopwatch :inline :offset-assert 32)
+   (target-cache-fill stopwatch :inline :offset-assert 64)
+   (target-ray-poly   stopwatch :inline :offset-assert 96)
+   (pad uint32) ;; end with inline basic
+   )
+  :method-count-assert 9
+  :size-assert         #x80
+  :flag-assert         #x900000080
+  )
 
 
-;; - Symbols
+;; - Functions
 
-(define-extern map-bsp-tree function)
-(define-extern inspect-bsp-tree function)
+(define-extern map-bsp-tree (function (function bsp-node none) bsp-header bsp-node none))
+(define-extern inspect-bsp-tree (function bsp-header bsp-node none))
 
 
 ;; ----------------------
@@ -11511,9 +11539,9 @@
 ;; Containing DGOs - ['GAME', 'ENGINE']
 ;; Version - 3
 
-;; - Unknowns
+;; - Symbols
 
-;;(define-extern *collide-test-flag* object) ;; unknown type
+(define-extern *collide-test-flag* symbol)
 
 
 ;; ----------------------
@@ -11531,7 +11559,6 @@
   :size-assert         #x70
   :flag-assert         #x1200000070
   (:methods
-    (dummy-9 () none 9)
     (dummy-10 (_type_) int 10)
     (dummy-11 () none 11)
     (dummy-12 () none 12)
@@ -11543,27 +11570,27 @@
     )
   )
 
-; (deftype shrub-view-data (structure)
-;   ((data           UNKNOWN 3       :offset-assert 0)
-;    (texture-giftag qword   :inline :offset-assert 0)
-;    (consts         vector  :inline :offset-assert 16)
-;    (fog-clamp      vector  :inline :offset-assert 32)
-;    (tex-start-ptr  int32           :offset-assert 16)
-;    (gifbufsum      float           :offset-assert 16)
-;    (mtx-buf-ptr    int32           :offset-assert 20)
-;    (exp23          float           :offset-assert 20)
-;    (fog-0          float           :offset-assert 24)
-;    (fog-1          float           :offset-assert 28)
-;    (fog-min        float           :offset-assert 32)
-;    (fog-max        float           :offset-assert 36)
-;    )
-;   :method-count-assert 9
-;   :size-assert         #x30
-;   :flag-assert         #x900000030
-;   )
+(deftype shrub-view-data (structure)
+  ((data           uint128 3       :offset-assert 0)
+   (texture-giftag qword   :inline :offset 0)
+   (consts         vector  :inline :offset 16)
+   (fog-clamp      vector  :inline :offset 32)
+   (tex-start-ptr  int32           :offset 16)
+   (gifbufsum      float           :offset 16)
+   (mtx-buf-ptr    int32           :offset 20)
+   (exp23          float           :offset 20)
+   (fog-0          float           :offset 24)
+   (fog-1          float           :offset 28)
+   (fog-min        float           :offset 32)
+   (fog-max        float           :offset 36)
+   )
+  :method-count-assert 9
+  :size-assert         #x30
+  :flag-assert         #x900000030
+  )
 
 (deftype shrubbery (drawable)
-  ((textures uint32         :offset 4)
+  ((textures (inline-array adgif-shader)         :offset 4)
    (header   qword          :offset 8)
    (obj-qwc  uint8          :offset 12)
    (vtx-qwc  uint8          :offset 13)
@@ -11578,7 +11605,6 @@
   :size-assert         #x20
   :flag-assert         #x1200000020
   (:methods
-    (dummy-9 () none 9)
     (dummy-10 (_type_) int 10)
     (dummy-11 () none 11)
     (dummy-12 () none 12)
@@ -11599,7 +11625,6 @@
   :size-assert         #x50
   :flag-assert         #x1200000050
   (:methods
-    (dummy-9 () none 9)
     (dummy-10 (_type_) int 10)
     (dummy-11 () none 11)
     (dummy-12 () none 12)
@@ -11611,8 +11636,17 @@
     )
   )
 
+(deftype drawable-inline-array-instance-shrub (drawable-inline-array)
+  ((data instance-shrubbery 1 :inline :offset-assert 32)
+   (pad uint32)
+   )
+  :method-count-assert #x12
+  :size-assert #x74
+  :flag-assert #x1200000074
+  )
+
 (deftype generic-shrub-fragment (drawable)
-  ((textures uint32         :offset 4)
+  ((textures (inline-array adgif-shader)         :offset 4)
    (vtx-cnt  uint32         :offset 8)
    (cnt-qwc  uint8          :offset 12)
    (vtx-qwc  uint8          :offset 13)
@@ -11627,7 +11661,7 @@
   :size-assert         #x20
   :flag-assert         #x1200000020
   (:methods
-    (dummy-9 () none 9)
+    
     (dummy-10 (_type_) int 10)
     (dummy-11 () none 11)
     (dummy-12 () none 12)
@@ -11639,24 +11673,35 @@
     )
   )
 
-; (deftype prototype-shrubbery (drawable-inline-array)
-;   ()
-;   :method-count-assert 18
-;   :size-assert         #x44
-;   :flag-assert         #x1200000044
-;   ;;  too many basic blocks
-;   (:methods
-;     (dummy-9 () none 9)
-;     (dummy-10 () none 10)
-;     (dummy-11 () none 11)
-;     (dummy-12 () none 12)
-;     (dummy-13 () none 13)
-;     (dummy-14 () none 14)
-;     (dummy-15 () none 15)
-;     (dummy-16 () none 16)
-;     (dummy-17 () none 17)
-;     )
-;   )
+(deftype prototype-shrubbery (drawable-inline-array)
+  ((data generic-shrub-fragment 1 :inline :offset-assert 32)
+   (pad uint32)
+   )
+  :method-count-assert 18
+  :size-assert         #x44
+  :flag-assert         #x1200000044
+  )
+
+(deftype prototype-trans-shrubbery (prototype-shrubbery)
+  ()
+  :method-count-assert #x12
+  :size-assert #x44
+  :flag-assert #x1200000044
+  )
+
+(deftype prototype-generic-shrub (drawable-group)
+  ()
+  :method-count-assert #x12
+  :size-assert #x24
+  :flag-assert #x1200000024
+  )
+
+(deftype drawable-tree-instance-shrub (drawable-tree)
+  ()
+  :method-count-assert #x12
+  :size-assert #x24
+  :flag-assert #x1200000024
+  )
 
 (deftype shrubbery-matrix (structure)
   ((mat   matrix :inline :offset-assert 0)
@@ -11667,114 +11712,110 @@
   :flag-assert         #x900000050
   )
 
-; (deftype shrub-near-packet (structure)
-;   ((matrix-tmpl dma-packet :inline :offset-assert 0)
-;    (header-tmpl dma-packet :inline :offset-assert 16)
-;    (stq-tmpl    dma-packet :inline :offset-assert 32)
-;    (color-tmpl  dma-packet :inline :offset-assert 48)
-;    (vertex-tmpl dma-packet :inline :offset-assert 64)
-;    (mscal-tmpl  dma-packet :inline :offset-assert 80)
-;    (init-tmpl   dma-packet :inline :offset-assert 96)
-;    (init-data   UNKNOWN    8       :offset-assert 112)
-;    )
-;   :method-count-assert 9
-;   :size-assert         #x90
-;   :flag-assert         #x900000090
-;   )
+(deftype shrub-near-packet (structure)
+  ((matrix-tmpl dma-packet :inline :offset-assert 0)
+   (header-tmpl dma-packet :inline :offset-assert 16)
+   (stq-tmpl    dma-packet :inline :offset-assert 32)
+   (color-tmpl  dma-packet :inline :offset-assert 48)
+   (vertex-tmpl dma-packet :inline :offset-assert 64)
+   (mscal-tmpl  dma-packet :inline :offset-assert 80)
+   (init-tmpl   dma-packet :inline :offset-assert 96)
+   (init-data   uint32    8       :offset-assert 112)
+   )
+  :method-count-assert 9
+  :size-assert         #x90
+  :flag-assert         #x900000090
+  )
 
-; (deftype instance-shrub-work (structure)
-;   ((dummy                     UNKNOWN        3       :offset-assert 0)
-;    (chaina                    UNKNOWN        8       :offset-assert 48)
-;    (chainb                    UNKNOWN        8       :offset-assert 176)
-;    (colors                    UNKNOWN        1024    :offset-assert 304)
-;    (matrix-tmpl               UNKNOWN        20      :offset-assert 4400)
-;    (count-tmpl                UNKNOWN        20      :offset-assert 4720)
-;    (mscalf-tmpl               dma-packet     :inline :offset-assert 5040)
-;    (mscalf-ret-tmpl           dma-packet     :inline :offset-assert 5056)
-;    (adgif-tmpl                dma-gif-packet :inline :offset-assert 5072)
-;    (billboard-tmpl            dma-gif-packet :inline :offset-assert 5104)
-;    (billboard-const           vector         :inline :offset-assert 5136)
-;    (shrub-near-packets        UNKNOWN        6       :offset-assert 5152)
-;    (dma-ref                   dma-packet     :inline :offset-assert 6016)
-;    (dma-end                   dma-packet     :inline :offset-assert 6032)
-;    (wind-const                vector         :inline :offset-assert 6048)
-;    (constants                 vector         :inline :offset-assert 6064)
-;    (color-constant            vector4w       :inline :offset-assert 6080)
-;    (hmge-d                    vector         :inline :offset-assert 6096)
-;    (hvdf-offset               vector         :inline :offset-assert 6112)
-;    (wind-force                vector         :inline :offset-assert 6128)
-;    (color                     vector         :inline :offset-assert 6144)
-;    (bb-color                  vector         :inline :offset-assert 6160)
-;    (min-dist                  vector         :inline :offset-assert 6176)
-;    (temp-vec                  vector         :inline :offset-assert 6192)
-;    (guard-plane               UNKNOWN        4       :offset-assert 6208)
-;    (plane                     UNKNOWN        4       :offset-assert 6272)
-;    (last                      UNKNOWN        4       :offset-assert 6336)
-;    (next                      UNKNOWN        4       :offset-assert 6352)
-;    (count                     UNKNOWN        4       :offset-assert 6368)
-;    (mod-count                 UNKNOWN        4       :offset-assert 6376)
-;    (wind-vectors              uint32                 :offset-assert 6384)
-;    (instance-ptr              uint32                 :offset-assert 6388)
-;    (chain-ptr                 uint32                 :offset-assert 6392)
-;    (chain-ptr-next            uint32                 :offset-assert 6396)
-;    (stack-ptr                 uint32                 :offset-assert 6400)
-;    (bucket-ptr                uint32                 :offset-assert 6404)
-;    (src-ptr                   uint32                 :offset-assert 6408)
-;    (to-spr                    uint32                 :offset-assert 6412)
-;    (from-spr                  uint32                 :offset-assert 6416)
-;    (shrub-count               uint32                 :offset-assert 6420)
-;    (stack-ptr                 uint32                 :offset-assert 6400)
-;    (node                      UNKNOWN        6       :offset-assert 6428)
-;    (length                    UNKNOWN        6       :offset-assert 6452)
-;    (prototypes                uint32                 :offset-assert 6476)
-;    (bucket-ptr                uint32                 :offset-assert 6404)
-;    (start-bank                UNKNOWN        20      :offset-assert 6484)
-;    (buffer-index              uint32                 :offset-assert 6504)
-;    (current-spr               uint32                 :offset-assert 6508)
-;    (current-mem               uint32                 :offset-assert 6512)
-;    (current-shrub-near-packet uint32                 :offset-assert 6516)
-;    (to-spr                    uint32                 :offset-assert 6412)
-;    (dma-buffer                basic                  :offset-assert 6524)
-;    (near-last                 uint32                 :offset-assert 6528)
-;    (near-next                 uint32                 :offset-assert 6532)
-;    (near-count                uint32                 :offset-assert 6536)
-;    (last-shrubs               uint32                 :offset-assert 6540)
-;    (chains                    uint32                 :offset-assert 6544)
-;    (flags                     uint32                 :offset-assert 6548)
-;    (paused                    basic                  :offset-assert 6552)
-;    (node-count                uint32                 :offset-assert 6556)
-;    (inst-count                uint32                 :offset-assert 6560)
-;    (wait-from-spr             uint32                 :offset-assert 6564)
-;    (wait-to-spr               uint32                 :offset-assert 6568)
-;    )
-;   :method-count-assert 9
-;   :size-assert         #x19ac
-;   :flag-assert         #x9000019ac
-;   )
+(deftype instance-shrub-work (structure)
+  ((dummy                     uint128        3       :offset-assert 0)
+   (chaina                    uint128        8       :offset-assert 48)
+   (chainb                    uint128        8       :offset-assert 176)
+   (colors                    rgba           1024    :offset-assert 304)
+   (matrix-tmpl               uint128        20      :offset-assert 4400)
+   (count-tmpl                uint128        20      :offset-assert 4720)
+   (mscalf-tmpl               dma-packet     :inline :offset-assert 5040)
+   (mscalf-ret-tmpl           dma-packet     :inline :offset-assert 5056)
+   (adgif-tmpl                dma-gif-packet :inline :offset-assert 5072)
+   (billboard-tmpl            dma-gif-packet :inline :offset-assert 5104)
+   (billboard-const           vector         :inline :offset-assert 5136)
+   (shrub-near-packets        shrub-near-packet 6 :inline      :offset-assert 5152)
+   (dma-ref                   dma-packet     :inline :offset-assert 6016)
+   (dma-end                   dma-packet     :inline :offset-assert 6032)
+   (wind-const                vector         :inline :offset-assert 6048)
+   (constants                 vector         :inline :offset-assert 6064)
+   (color-constant            vector4w       :inline :offset-assert 6080)
+   (hmge-d                    vector         :inline :offset-assert 6096)
+   (hvdf-offset               vector         :inline :offset-assert 6112)
+   (wind-force                vector         :inline :offset-assert 6128)
+   (color                     vector         :inline :offset-assert 6144)
+   (bb-color                  vector         :inline :offset-assert 6160)
+   (min-dist                  vector         :inline :offset-assert 6176)
+   (temp-vec                  vector         :inline :offset-assert 6192)
+   (guard-plane               plane 4 :inline      :offset-assert 6208)
+   (plane                     plane 4 :inline      :offset-assert 6272)
+   (last                      uint32        4       :offset-assert 6336)
+   (next                      uint32        4       :offset-assert 6352)
+   (count                     uint16        4       :offset-assert 6368)
+   (mod-count                 uint16        4       :offset-assert 6376)
+   (wind-vectors              uint32                 :offset-assert 6384)
+   (instance-ptr              uint32                 :offset-assert 6388)
+   (chain-ptr                 uint32                 :offset-assert 6392)
+   (chain-ptr-next            uint32                 :offset-assert 6396)
+   (stack-ptr                 uint32                 :offset-assert 6400)
+   (bucket-ptr                uint32                 :offset-assert 6404)
+   (src-ptr                   uint32                 :offset-assert 6408)
+   (to-spr                    uint32                 :offset-assert 6412)
+   (from-spr                  uint32                 :offset-assert 6416)
+   (shrub-count               uint32                 :offset-assert 6420)
+   ;;(stack-ptr               uint32                 :offset-assert 6400) ;; this field appears twice?
+   (node                      uint32        6       :offset 6428)
+   (length                    uint32        6       :offset-assert 6452)
+   (prototypes                uint32                 :offset-assert 6476)
+   ;;(bucket-ptr                uint32                 :offset-assert 6404) appears twice
+   
+   (start-bank                uint8        20        :offset 6484)
+   (buffer-index              uint32                 :offset-assert 6504)
+   (current-spr               uint32                 :offset-assert 6508)
+   (current-mem               uint32                 :offset-assert 6512)
+   (current-shrub-near-packet uint32                 :offset-assert 6516)
+   ;;(to-spr                    uint32                 :offset-assert 6412)
+   (dma-buffer                basic                  :offset 6524)
+   (near-last                 uint32                 :offset-assert 6528)
+   (near-next                 uint32                 :offset-assert 6532)
+   (near-count                uint32                 :offset-assert 6536)
+   (last-shrubs               uint32                 :offset-assert 6540)
+   (chains                    uint32                 :offset-assert 6544)
+   (flags                     uint32                 :offset-assert 6548)
+   (paused                    basic                  :offset-assert 6552)
+   (node-count                uint32                 :offset-assert 6556)
+   (inst-count                uint32                 :offset-assert 6560)
+   (wait-from-spr             uint32                 :offset-assert 6564)
+   (wait-to-spr               uint32                 :offset-assert 6568)
+   )
+  :method-count-assert 9
+  :size-assert         #x19ac
+  :flag-assert         #x9000019ac
+  )
 
-; (deftype instance-shrub-dma (structure)
-;   ((instancea UNKNOWN 325 :offset-assert 0)
-;    (instanceb UNKNOWN 325 :offset-assert 5200)
-;    (outa      UNKNOWN 128 :offset-assert 10400)
-;    (outb      UNKNOWN 128 :offset-assert 12448)
-;    )
-;   :method-count-assert 9
-;   :size-assert         #x38a0
-;   :flag-assert         #x9000038a0
-;   )
+(deftype instance-shrub-dma (structure)
+  ((instancea uint128 325 :offset-assert 0)
+   (instanceb uint128 325 :offset-assert 5200)
+   (outa      uint128 128 :offset-assert 10400)
+   (outb      uint128 128 :offset-assert 12448)
+   )
+  :method-count-assert 9
+  :size-assert         #x38a0
+  :flag-assert         #x9000038a0
+  )
 
+;; - Functions
+
+(define-extern shrubbery-login-post-texture (function shrubbery none))
 
 ;; - Symbols
 
-(define-extern shrubbery-login-post-texture function)
-(define-extern drawable-inline-array-instance-shrub type)
-(define-extern drawable-tree-instance-shrub type)
-(define-extern prototype-trans-shrubbery type)
-(define-extern prototype-generic-shrub type)
-
-;; - Unknowns
-
-;;(define-extern *shrub-state* object) ;; unknown type
+(define-extern *shrub-state* int)
 
 
 ;; ----------------------
@@ -11785,245 +11826,225 @@
 
 ;; - Types
 
-; (deftype tie-fragment (drawable)
-;   ((id            int16          :offset-assert 4)
-;    (bsphere       vector :inline :offset-assert 16)
-;    (gif-ref       uint32         :offset-assert 4)
-;    (point-ref     uint32         :offset-assert 8)
-;    (color-index   uint16         :offset-assert 12)
-;    (base-colors   uint8          :offset-assert 14)
-;    (tex-count     uint16         :offset-assert 32)
-;    (gif-count     uint16         :offset-assert 34)
-;    (vertex-count  uint16         :offset-assert 36)
-;    (color-count   uint16         :offset-assert 38)
-;    (num-tris      uint16         :offset-assert 40)
-;    (num-dverts    uint16         :offset-assert 42)
-;    (dp-ref        uint32         :offset-assert 44)
-;    (dp-qwc        uint32         :offset-assert 48)
-;    (generic-ref   uint32         :offset-assert 52)
-;    (generic-count uint32         :offset-assert 56)
-;    (debug-lines   basic          :offset-assert 60)
-;    )
-;   :method-count-assert 18
-;   :size-assert         #x40
-;   :flag-assert         #x1200000040
-;   (:methods
-;     (dummy-9 () none 9)
-;     (dummy-10 () none 10)
-;     (dummy-11 () none 11)
-;     (dummy-12 () none 12)
-;     (dummy-13 () none 13)
-;     (dummy-14 () none 14)
-;     (dummy-15 () none 15)
-;     (dummy-16 () none 16)
-;     (dummy-17 () none 17)
-;     )
-;   )
+(deftype tie-fragment (drawable)
+  ((gif-ref       uint32         :offset 4)
+   (point-ref     uint32         :offset 8)
+   (color-index   uint16         :offset 12)
+   (base-colors   uint8          :offset 14)
+   (tex-count     uint16         :offset-assert 32)
+   (gif-count     uint16         :offset-assert 34)
+   (vertex-count  uint16         :offset-assert 36)
+   (color-count   uint16         :offset-assert 38)
+   (num-tris      uint16         :offset-assert 40)
+   (num-dverts    uint16         :offset-assert 42)
+   (dp-ref        uint32         :offset-assert 44)
+   (dp-qwc        uint32         :offset-assert 48)
+   (generic-ref   uint32         :offset-assert 52)
+   (generic-count uint32         :offset-assert 56)
+   (debug-lines   basic          :offset-assert 60)
+   )
+  :method-count-assert 18
+  :size-assert         #x40
+  :flag-assert         #x1200000040
+  (:methods
+    (dummy-11 () none 11)
+    (dummy-12 () none 12)
+    (dummy-13 () none 13)
+    (dummy-14 () none 14)
+    (dummy-15 () none 15)
+    (dummy-17 () none 17)
+    )
+  )
 
-; (deftype instance-tie (instance)
-;   ((id            int16            :offset-assert 4)
-;    (bsphere       vector   :inline :offset-assert 16)
-;    (bucket-index  uint16           :offset-assert 6)
-;    (origin        matrix4h :inline :offset-assert 32)
-;    (wind-index    uint16           :offset-assert 62)
-;    (color-indices uint32           :offset-assert 8)
-;    (bucket-ptr    basic            :offset-assert 12)
-;    (max-scale     uint16           :offset-assert 38)
-;    (flags         uint16           :offset-assert 46)
-;    )
-;   :method-count-assert 18
-;   :size-assert         #x40
-;   :flag-assert         #x1200000040
-;   (:methods
-;     (dummy-9 () none 9)
-;     (dummy-10 () none 10)
-;     (dummy-11 () none 11)
-;     (dummy-12 () none 12)
-;     (dummy-13 () none 13)
-;     (dummy-14 () none 14)
-;     (dummy-15 () none 15)
-;     (dummy-16 () none 16)
-;     (dummy-17 () none 17)
-;     )
-;   )
+(deftype instance-tie (instance)
+  ((color-indices uint32           :offset 8)
+   (bucket-ptr    basic            :offset 12)
+   (max-scale     uint16           :offset 38)
+   (flags         uint16           :offset 46)
+   )
+  :method-count-assert 18
+  :size-assert         #x40
+  :flag-assert         #x1200000040
+  (:methods
+    (dummy-11 () none 11)
+    (dummy-12 () none 12)
+    (dummy-13 () none 13)
+    (dummy-14 () none 14)
+    (dummy-15 () none 15)
+    (dummy-17 () none 17)
+    )
+  )
 
-; (deftype drawable-inline-array-instance-tie (drawable-inline-array)
-;   ()
-;   :method-count-assert 18
-;   :size-assert         #x64
-;   :flag-assert         #x1200000064
-;   ;;  too many basic blocks
-;   (:methods
-;     (dummy-9 () none 9)
-;     (dummy-10 () none 10)
-;     (dummy-11 () none 11)
-;     (dummy-12 () none 12)
-;     (dummy-13 () none 13)
-;     (dummy-14 () none 14)
-;     (dummy-15 () none 15)
-;     (dummy-16 () none 16)
-;     (dummy-17 () none 17)
-;     )
-;   )
+(deftype drawable-inline-array-instance-tie (drawable-inline-array)
+  ((data instance-tie 1 :inline :offset-assert 32)  ;; not sure on type here
+   (pad uint32)
+   )
+  :method-count-assert 18
+  :size-assert         #x64
+  :flag-assert         #x1200000064
+  (:methods
+    (dummy-11 () none 11)
+    (dummy-12 () none 12)
+    (dummy-13 () none 13)
+    (dummy-14 () none 14)
+    (dummy-15 () none 15)
+    (dummy-17 () none 17)
+    )
+  )
 
-; (deftype drawable-tree-instance-tie (drawable-tree)
-;   ((id         int16           :offset-assert 4)
-;    (bsphere    vector  :inline :offset-assert 16)
-;    (length     int16           :offset-assert 6)
-;    (data       UNKNOWN 1       :offset-assert 32)
-;    (prototypes basic           :offset-assert 8)
-;    )
-;   :method-count-assert 18
-;   :size-assert         #x24
-;   :flag-assert         #x1200000024
-;   (:methods
-;     (dummy-9 () none 9)
-;     (dummy-10 () none 10)
-;     (dummy-11 () none 11)
-;     (dummy-12 () none 12)
-;     (dummy-13 () none 13)
-;     (dummy-14 () none 14)
-;     (dummy-15 () none 15)
-;     (dummy-16 () none 16)
-;     (dummy-17 () none 17)
-;     )
-;   )
+(deftype drawable-tree-instance-tie (drawable-tree)
+  ((length int16               :offset 6)
+   (prototypes basic           :offset 8)
+   )
+  :method-count-assert 18
+  :size-assert         #x24
+  :flag-assert         #x1200000024
+  (:methods
+    (dummy-11 () none 11)
+    (dummy-12 () none 12)
+    (dummy-13 () none 13)
+    (dummy-14 () none 14)
+    (dummy-15 () none 15)
+    (dummy-17 () none 17)
+    )
+  )
 
-; (deftype prototype-tie (drawable-inline-array)
-;   ()
-;   :method-count-assert 18
-;   :size-assert         #x64
-;   :flag-assert         #x1200000064
-;   ;;  too many basic blocks
-;   (:methods
-;     (dummy-9 () none 9)
-;     (dummy-10 () none 10)
-;     (dummy-11 () none 11)
-;     (dummy-12 () none 12)
-;     (dummy-13 () none 13)
-;     (dummy-14 () none 14)
-;     (dummy-15 () none 15)
-;     (dummy-16 () none 16)
-;     (dummy-17 () none 17)
-;     )
-;   )
+(deftype prototype-tie (drawable-inline-array)
+  ((data instance-tie 1 :inline :offset-assert 32) ;; not sure on type here
+   (pad uint32)
+   )
+  :method-count-assert 18
+  :size-assert         #x64
+  :flag-assert         #x1200000064
+  (:methods
+    (dummy-11 () none 11)
+    (dummy-12 () none 12)
+    (dummy-13 () none 13)
+    (dummy-14 () none 14)
+    (dummy-15 () none 15)
+    (dummy-17 () none 17)
+    )
+  )
 
-; (deftype tie-matrix (structure)
-;   ((mat   matrix :inline :offset-assert 0)
-;    (morph qword  :inline :offset-assert 64)
-;    (fog   qword  :inline :offset-assert 80)
-;    )
-;   :method-count-assert 9
-;   :size-assert         #x60
-;   :flag-assert         #x900000060
-;   )
+(deftype tie-matrix (structure)
+  ((mat   matrix :inline :offset-assert 0)
+   (morph qword  :inline :offset-assert 64)
+   (fog   qword  :inline :offset-assert 80)
+   )
+  :method-count-assert 9
+  :size-assert         #x60
+  :flag-assert         #x900000060
+  )
 
-; (deftype instance-tie-work (structure)
-;   ((wind-const                  vector     :inline :offset-assert 0)
-;    (hmge-d                      vector     :inline :offset-assert 16)
-;    (hvdf-offset                 vector     :inline :offset-assert 32)
-;    (wind-force                  vector     :inline :offset-assert 48)
-;    (constant                    vector     :inline :offset-assert 64)
-;    (far-morph                   vector     :inline :offset-assert 80)
-;    (dist-test                   vector     :inline :offset-assert 96)
-;    (min-dist                    vector     :inline :offset-assert 112)
-;    (guard-plane                 UNKNOWN    4       :offset-assert 128)
-;    (upload-color-0              dma-packet :inline :offset-assert 192)
-;    (upload-color-1              dma-packet :inline :offset-assert 208)
-;    (upload-color-2              dma-packet :inline :offset-assert 224)
-;    (upload-color-ret            dma-packet :inline :offset-assert 240)
-;    (upload-color-temp           dma-packet :inline :offset-assert 256)
-;    (generic-color-0             dma-packet :inline :offset-assert 272)
-;    (generic-color-1             dma-packet :inline :offset-assert 288)
-;    (generic-color-end           dma-packet :inline :offset-assert 304)
-;    (tie-near-perspective-matrix matrix     :inline :offset-assert 320)
-;    (wind-vectors                uint32             :offset-assert 384)
-;    (test-id                     uint32             :offset-assert 388)
-;    (test-id2                    uint32             :offset-assert 392)
-;    (dma-buffer                  basic              :offset-assert 396)
-;    (to-spr                      uint32             :offset-assert 400)
-;    (from-spr                    uint32             :offset-assert 404)
-;    (wind-work                   uint32             :offset-assert 408)
-;    (cur-vis-bits                uint32             :offset-assert 412)
-;    (end-vis-bits                uint32             :offset-assert 416)
-;    (first-generic-prototype     uint32             :offset-assert 420)
-;    (refl-fade-fac               float              :offset-assert 424)
-;    (refl-fade-end               float              :offset-assert 428)
-;    (flags                       uint32             :offset-assert 432)
-;    (paused                      basic              :offset-assert 436)
-;    (wait-from-spr               uint32             :offset-assert 440)
-;    (wait-to-spr                 uint32             :offset-assert 444)
-;    )
-;   :method-count-assert 9
-;   :size-assert         #x1c0
-;   :flag-assert         #x9000001c0
-;   )
+(deftype instance-tie-work (structure)
+  ((wind-const                  vector     :inline :offset-assert 0)
+   (hmge-d                      vector     :inline :offset-assert 16)
+   (hvdf-offset                 vector     :inline :offset-assert 32)
+   (wind-force                  vector     :inline :offset-assert 48)
+   (constant                    vector     :inline :offset-assert 64)
+   (far-morph                   vector     :inline :offset-assert 80)
+   (dist-test                   vector     :inline :offset-assert 96)
+   (min-dist                    vector     :inline :offset-assert 112)
+   (guard-plane                 plane 4    :inline :offset-assert 128)
+   (upload-color-0              dma-packet :inline :offset-assert 192)
+   (upload-color-1              dma-packet :inline :offset-assert 208)
+   (upload-color-2              dma-packet :inline :offset-assert 224)
+   (upload-color-ret            dma-packet :inline :offset-assert 240)
+   (upload-color-temp           dma-packet :inline :offset-assert 256)
+   (generic-color-0             dma-packet :inline :offset-assert 272)
+   (generic-color-1             dma-packet :inline :offset-assert 288)
+   (generic-color-end           dma-packet :inline :offset-assert 304)
+   (tie-near-perspective-matrix matrix     :inline :offset-assert 320)
+   (wind-vectors                uint32             :offset-assert 384)
+   (test-id                     uint32             :offset-assert 388)
+   (test-id2                    uint32             :offset-assert 392)
+   (dma-buffer                  basic              :offset-assert 396)
+   (to-spr                      uint32             :offset-assert 400)
+   (from-spr                    uint32             :offset-assert 404)
+   (wind-work                   uint32             :offset-assert 408)
+   (cur-vis-bits                uint32             :offset-assert 412)
+   (end-vis-bits                uint32             :offset-assert 416)
+   (first-generic-prototype     uint32             :offset-assert 420)
+   (refl-fade-fac               float              :offset-assert 424)
+   (refl-fade-end               float              :offset-assert 428)
+   (flags                       uint32             :offset-assert 432)
+   (paused                      basic              :offset-assert 436)
+   (wait-from-spr               uint32             :offset-assert 440)
+   (wait-to-spr                 uint32             :offset-assert 444)
+   )
+  :method-count-assert 9
+  :size-assert         #x1c0
+  :flag-assert         #x9000001c0
+  )
 
-; (deftype instance-tie-dma (structure)
-;   ((banka UNKNOWN           32  :offset-assert 4)
-;    (bankb UNKNOWN           32  :offset-assert 2052)
-;    (outa  UNKNOWN           256 :offset-assert 4096)
-;    (outb  UNKNOWN           256 :offset-assert 8192)
-;    (work  instance-tie-work     :offset-assert 12288)
-;    )
-;   :method-count-assert 9
-;   :size-assert         #x3000
-;   :flag-assert         #x900003000
-;   )
+(deftype instance-tie-dma (structure)
+  ((banka instance-tie 32 :inline :offset-assert 0)
+   (bankb instance-tie 32 :inline :offset-assert 2048)
+   (outa  uint128           256 :offset-assert 4096)
+   (outb  uint128           256 :offset-assert 8192)
+   ;; this is outside the type????
+   (work  instance-tie-work :dynamic  :offset-assert 12288)
+   )
+  :method-count-assert 9
+  :size-assert         #x3000
+  :flag-assert         #x900003000
+  )
 
-; (deftype prototype-tie-work (structure)
-;   ((upload-palette-0      dma-packet :inline :offset-assert 0)
-;    (upload-palette-1      dma-packet :inline :offset-assert 16)
-;    (upload-model-0        dma-packet :inline :offset-assert 32)
-;    (upload-model-1        dma-packet :inline :offset-assert 48)
-;    (upload-model-2        dma-packet :inline :offset-assert 64)
-;    (upload-model-3        dma-packet :inline :offset-assert 80)
-;    (upload-model-near-0   dma-packet :inline :offset-assert 96)
-;    (upload-model-near-1   dma-packet :inline :offset-assert 112)
-;    (upload-model-near-2   dma-packet :inline :offset-assert 128)
-;    (upload-model-near-3   dma-packet :inline :offset-assert 144)
-;    (upload-model-near-4   dma-packet :inline :offset-assert 160)
-;    (generic-envmap-shader dma-packet :inline :offset-assert 176)
-;    (generic-palette       dma-packet :inline :offset-assert 192)
-;    (generic-model-0       dma-packet :inline :offset-assert 208)
-;    (generic-model-1       dma-packet :inline :offset-assert 224)
-;    (generic-model-2       dma-packet :inline :offset-assert 240)
-;    (generic-model-next    dma-packet :inline :offset-assert 256)
-;    (clamp                 uint64             :offset-assert 272)
-;    (prototype-array       basic              :offset-assert 280)
-;    (generic-wait-from-spr uint32             :offset-assert 284)
-;    (generic-wait-to-spr   uint32             :offset-assert 288)
-;    (wait-from-spr         uint32             :offset-assert 292)
-;    (wait-to-spr           uint32             :offset-assert 296)
-;    (near-wait-from-spr    uint32             :offset-assert 300)
-;    (near-wait-to-spr      uint32             :offset-assert 304)
-;    )
-;   :method-count-assert 9
-;   :size-assert         #x134
-;   :flag-assert         #x900000134
-;   )
+(deftype prototype-tie-work (structure)
+  ((upload-palette-0      dma-packet :inline :offset-assert 0)
+   (upload-palette-1      dma-packet :inline :offset-assert 16)
+   (upload-model-0        dma-packet :inline :offset-assert 32)
+   (upload-model-1        dma-packet :inline :offset-assert 48)
+   (upload-model-2        dma-packet :inline :offset-assert 64)
+   (upload-model-3        dma-packet :inline :offset-assert 80)
+   (upload-model-near-0   dma-packet :inline :offset-assert 96)
+   (upload-model-near-1   dma-packet :inline :offset-assert 112)
+   (upload-model-near-2   dma-packet :inline :offset-assert 128)
+   (upload-model-near-3   dma-packet :inline :offset-assert 144)
+   (upload-model-near-4   dma-packet :inline :offset-assert 160)
+   (generic-envmap-shader dma-packet :inline :offset-assert 176)
+   (generic-palette       dma-packet :inline :offset-assert 192)
+   (generic-model-0       dma-packet :inline :offset-assert 208)
+   (generic-model-1       dma-packet :inline :offset-assert 224)
+   (generic-model-2       dma-packet :inline :offset-assert 240)
+   (generic-model-next    dma-packet :inline :offset-assert 256)
+   (clamp                 uint64             :offset-assert 272)
+   (prototype-array       basic              :offset-assert 280)
+   (generic-wait-from-spr uint32             :offset-assert 284)
+   (generic-wait-to-spr   uint32             :offset-assert 288)
+   (wait-from-spr         uint32             :offset-assert 292)
+   (wait-to-spr           uint32             :offset-assert 296)
+   (near-wait-from-spr    uint32             :offset-assert 300)
+   (near-wait-to-spr      uint32             :offset-assert 304)
+   )
+  :method-count-assert 9
+  :size-assert         #x134
+  :flag-assert         #x900000134
+  )
 
-; (deftype prototype-tie-dma (structure)
-;   ((colora          UNKNOWN 256 :offset-assert 0)
-;    (colorb          UNKNOWN 256 :offset-assert 1024)
-;    (outa            UNKNOWN 256 :offset-assert 2048)
-;    (outb            UNKNOWN 256 :offset-assert 6144)
-;    (length          uint32      :offset-assert 10240)
-;    (dma-buffer      basic       :offset-assert 10244)
-;    (this-frag-count uint32      :offset-assert 10248)
-;    (next            UNKNOWN 4   :offset-assert 10256)
-;    (geometry        UNKNOWN 4   :offset-assert 10272)
-;    (frag-count      UNKNOWN 4   :offset-assert 10288)
-;    )
-;   :method-count-assert 9
-;   :size-assert         #x2834
-;   :flag-assert         #x900002834
-;   )
+(deftype prototype-tie-dma (structure)
+  ((colora          rgba 256 :offset-assert 0)
+   (colorb          rgba 256 :offset-assert 1024)
+   (outa            uint128 256 :offset-assert 2048)
+   (outb            uint128 256 :offset-assert 6144)
+   (length          uint32      :offset-assert 10240)
+   (dma-buffer      basic       :offset-assert 10244)
+   (this-frag-count uint32      :offset-assert 10248)
+   
+   (next            uint32 4   :offset 10256)
+   
+   (geometry        uint32 4   :offset-assert 10272)
+   (frag-count      uint8 4   :offset-assert 10288)
+   )
+  :method-count-assert 9
+  :size-assert         #x2834
+  :flag-assert         #x900002834
+  )
 
 
-;; - Unknowns
+;; - Symbols
 
-;;(define-extern *instance-tie-work-copy* object) ;; unknown type
+(define-extern *instance-tie-work-copy* basic)
 
 
 ;; ----------------------
@@ -12034,123 +12055,167 @@
 
 ;; - Types
 
-; (deftype tfragment-stats (structure)
-;   ((num-tris   UNKNOWN 4 :offset-assert 0)
-;    (num-dverts UNKNOWN 4 :offset-assert 8)
-;    )
-;   :method-count-assert 9
-;   :size-assert         #x10
-;   :flag-assert         #x900000010
-;   )
+(deftype tfragment-stats (structure)
+  ((num-tris   uint16 4 :offset-assert 0)
+   (num-dverts uint16 4 :offset-assert 8)
+   )
+  :method-count-assert 9
+  :size-assert         #x10
+  :flag-assert         #x900000010
+  )
 
-; (deftype tfragment-debug-data (structure)
-;   ((stats       tfragment-stats :inline :offset-assert 0)
-;    (debug-lines basic                   :offset-assert 16)
-;    )
-;   :method-count-assert 9
-;   :size-assert         #x14
-;   :flag-assert         #x900000014
-;   )
+(deftype tfragment-debug-data (structure)
+  ((stats       tfragment-stats :inline :offset-assert 0)
+   (debug-lines basic                   :offset-assert 16)
+   )
+  :method-count-assert 9
+  :size-assert         #x14
+  :flag-assert         #x900000014
+  )
 
-; (deftype generic-tfragment (structure)
-;   ((dummy int32  :offset-assert 0)
-;    )
-;   :method-count-assert 9
-;   :size-assert         #x4
-;   :flag-assert         #x900000004
-;   )
+(deftype generic-tfragment (structure)
+  ((dummy int32  :offset-assert 0)
+   )
+  :method-count-assert 9
+  :size-assert         #x4
+  :flag-assert         #x900000004
+  )
 
-; (deftype tfragment (drawable)
-;   ((id                int16                        :offset-assert 4)
-;    (bsphere           vector               :inline :offset-assert 16)
-;    (color-index       uint16                       :offset-assert 6)
-;    (debug-data        tfragment-debug-data         :offset-assert 8)
-;    (color-indices     uint32                       :offset-assert 12)
-;    (colors            uint32                       :offset-assert 12)
-;    (dma-chain         UNKNOWN              3       :offset-assert 32)
-;    (dma-common        uint32                       :offset-assert 32)
-;    (dma-level-0       uint32                       :offset-assert 32)
-;    (dma-base          uint32                       :offset-assert 36)
-;    (dma-level-1       uint32                       :offset-assert 40)
-;    (dma-qwc           UNKNOWN              4       :offset-assert 44)
-;    (shader            uint32                       :offset-assert 48)
-;    (num-shaders       uint8                        :offset-assert 52)
-;    (num-base-colors   uint8                        :offset-assert 53)
-;    (num-level0-colors uint8                        :offset-assert 54)
-;    (num-level1-colors uint8                        :offset-assert 55)
-;    (color-offset      uint8                        :offset-assert 56)
-;    (color-count       uint8                        :offset-assert 57)
-;    (pad0              uint8                        :offset-assert 58)
-;    (pad1              uint8                        :offset-assert 59)
-;    (generic           generic-tfragment            :offset-assert 60)
-;    )
-;   :method-count-assert 18
-;   :size-assert         #x40
-;   :flag-assert         #x1200000040
-;   (:methods
-;     (dummy-9 () none 9)
-;     (dummy-10 () none 10)
-;     (dummy-11 () none 11)
-;     (dummy-12 () none 12)
-;     (dummy-13 () none 13)
-;     (dummy-14 () none 14)
-;     (dummy-15 () none 15)
-;     (dummy-16 () none 16)
-;     (dummy-17 () none 17)
-;     )
-;   )
+(deftype tfragment (drawable)
+  (
+   (color-index       uint16                       :offset 6)
+   (debug-data        tfragment-debug-data         :offset 8)
+   (color-indices     uint32                       :offset 12)
+   (colors            uint32                       :offset 12)
+   (dma-chain         uint32              3       :offset-assert 32)
+   (dma-common        uint32                       :offset 32)
+   (dma-level-0       uint32                       :offset 32)
+   (dma-base          uint32                       :offset 36)
+   (dma-level-1       uint32                       :offset 40)
+   (dma-qwc           uint32              4       :offset-assert 44)
+   (shader            uint32                       :offset 48)
+   (num-shaders       uint8                        :offset 52)
+   (num-base-colors   uint8                        :offset 53)
+   (num-level0-colors uint8                        :offset 54)
+   (num-level1-colors uint8                        :offset 55)
+   (color-offset      uint8                        :offset 56)
+   (color-count       uint8                        :offset 57)
+   (pad0              uint8                        :offset 58)
+   (pad1              uint8                        :offset 59)
+   (generic           generic-tfragment            :offset-assert 60)
+   )
+  :method-count-assert 18
+  :size-assert         #x40
+  :flag-assert         #x1200000040
+  (:methods
+    (dummy-11 () none 11)
+    (dummy-12 () none 12)
+    (dummy-13 () none 13)
+    (dummy-14 () none 14)
+    (dummy-15 () none 15)
+    (dummy-17 () none 17)
+    )
+  )
 
-; (deftype drawable-inline-array-tfrag (drawable-inline-array)
-;   ()
-;   :method-count-assert 18
-;   :size-assert         #x64
-;   :flag-assert         #x1200000064
-;   ;;  too many basic blocks
-;   (:methods
-;     (dummy-9 () none 9)
-;     (dummy-10 () none 10)
-;     (dummy-11 () none 11)
-;     (dummy-12 () none 12)
-;     (dummy-13 () none 13)
-;     (dummy-14 () none 14)
-;     (dummy-15 () none 15)
-;     (dummy-16 () none 16)
-;     (dummy-17 () none 17)
-;     )
-;   )
+(deftype drawable-inline-array-tfrag (drawable-inline-array)
+  ((data tfragment 1 :inline :offset-assert 32)
+   (pad uint32))
+  :method-count-assert 18
+  :size-assert         #x64
+  :flag-assert         #x1200000064
+  (:methods
+    (dummy-11 () none 11)
+    (dummy-12 () none 12)
+    (dummy-13 () none 13)
+    (dummy-14 () none 14)
+    (dummy-15 () none 15)
+    (dummy-17 () none 17)
+    )
+  )
 
-; (deftype tfrag-dists (structure)
-;   ((data   UNKNOWN 16 :offset-assert 0)
-;    (vector UNKNOWN 4  :offset-assert 0)
-;    (k0s    UNKNOWN 2  :offset-assert 0)
-;    (k1s    UNKNOWN 2  :offset-assert 32)
-;    )
-;   :method-count-assert 9
-;   :size-assert         #x40
-;   :flag-assert         #x900000040
-;   )
+(deftype drawable-inline-array-trans-tfrag (drawable-inline-array-tfrag)
+  ;; I think this is a bug.
+  ((data2 tfragment 1 :inline :offset-assert 112)
+   (pad2 uint32))
+  :method-count-assert #x12
+  :size-assert #xb4
+  :flag-assert #x12000000b4
+  )
 
-; (deftype tfrag-data (structure)
-;   ((data        UNKNOWN     56      :offset-assert 0)
-;    (vector      UNKNOWN     14      :offset-assert 0)
-;    (fog         vector      :inline :offset-assert 0)
-;    (val         vector      :inline :offset-assert 16)
-;    (strgif      qword       :inline :offset-assert 32)
-;    (fangif      qword       :inline :offset-assert 48)
-;    (adgif       qword       :inline :offset-assert 64)
-;    (hvdf-offset vector      :inline :offset-assert 80)
-;    (hmge-scale  vector      :inline :offset-assert 96)
-;    (invh-scale  vector      :inline :offset-assert 112)
-;    (ambient     vector      :inline :offset-assert 128)
-;    (guard       vector      :inline :offset-assert 144)
-;    (dists       tfrag-dists :inline :offset-assert 160)
-;    (k0s         UNKNOWN     2       :offset-assert 160)
-;    (k1s         UNKNOWN     2       :offset-assert 192)
-;    )
-;   :method-count-assert 9
-;   :size-assert         #xe0
-;   :flag-assert         #x9000000e0
-;   )
+(deftype drawable-tree-tfrag (drawable-tree)
+  ()
+  :method-count-assert #x12
+  :size-assert #x24
+  :flag-assert #x1200000024
+  )
+
+(deftype drawable-tree-trans-tfrag (drawable-tree-tfrag)
+  ()
+  :method-count-assert #x12
+  :size-assert #x24
+  :flag-assert #x1200000024
+  )
+
+(deftype drawable-tree-dirt-tfrag (drawable-tree-tfrag)
+  ()
+  :method-count-assert #x12
+  :size-assert #x24
+  :flag-assert #x1200000024
+  )
+
+(deftype drawable-tree-ice-tfrag (drawable-tree-tfrag)
+  ()
+  :method-count-assert #x12
+  :size-assert #x24
+  :flag-assert #x1200000024
+  )
+
+(deftype drawable-tree-lowres-tfrag (drawable-tree-tfrag)
+  ()
+  :method-count-assert #x12
+  :size-assert #x24
+  :flag-assert #x1200000024
+  )
+
+(deftype drawable-tree-lowres-trans-tfrag (drawable-tree-trans-tfrag)
+  ()
+  :method-count-assert #x12
+  :size-assert #x24
+  :flag-assert #x1200000024
+  )
+
+(deftype tfrag-dists (structure)
+  ((data   uint32 16 :offset-assert 0)
+   (vector vector 4 :inline  :offset 0)
+   (k0s    uint128 2  :offset 0)
+   (k1s    uint128 2  :offset 32)
+   )
+  :method-count-assert 9
+  :size-assert         #x40
+  :flag-assert         #x900000040
+  )
+
+(deftype tfrag-data (structure)
+  ((data        uint32     56      :offset 0)
+   (vector      vector 14 :inline      :offset 0)
+   (fog         vector      :inline :offset 0)
+   (val         vector      :inline :offset 16)
+   (strgif      qword       :inline :offset 32)
+   (fangif      qword       :inline :offset 48)
+   (adgif       qword       :inline :offset 64)
+   (hvdf-offset vector      :inline :offset 80)
+   (hmge-scale  vector      :inline :offset 96)
+   (invh-scale  vector      :inline :offset 112)
+   (ambient     vector      :inline :offset 128)
+   (guard       vector      :inline :offset 144)
+   (dists       tfrag-dists :inline :offset 160)
+   (k0s         uint128     2       :offset 160)
+   (k1s         uint128     2       :offset 192)
+   )
+  :method-count-assert 9
+  :size-assert         #xe0
+  :flag-assert         #x9000000e0
+  )
 
 (deftype tfrag-control (structure)
   ((num-base-points           uint32  :offset-assert 0)
@@ -12202,13 +12267,13 @@
   :flag-assert         #x900000040
   )
 
-; (deftype tfrag-packet (structure)
-;   ((tag UNKNOWN 2 :offset-assert 0)
-;    )
-;   :method-count-assert 9
-;   :size-assert         #x20
-;   :flag-assert         #x900000020
-;   )
+(deftype tfrag-packet (structure)
+  ((tag uint128 2 :offset-assert 0)
+   )
+  :method-count-assert 9
+  :size-assert         #x20
+  :flag-assert         #x900000020
+  )
 
 (deftype tfrag-work (structure)
   ((base-tmpl             dma-packet :inline :offset-assert 0)
@@ -12240,31 +12305,17 @@
   :flag-assert         #x9000000c8
   )
 
-; (deftype tfrag-dma (structure)
-;   ((banka  UNKNOWN 16   :offset-assert 4)
-;    (bankb  UNKNOWN 16   :offset-assert 1028)
-;    (outa   UNKNOWN 128  :offset-assert 2048)
-;    (outb   UNKNOWN 128  :offset-assert 4096)
-;    (colors UNKNOWN 2048 :offset-assert 6144)
-;    )
-;   :method-count-assert 9
-;   :size-assert         #x37fc
-;   :flag-assert         #x9000037fc
-;   )
-
-
-;; - Symbols
-
-(define-extern drawable-inline-array-trans-tfrag type)
-(define-extern drawable-tree-tfrag type)
-(define-extern drawable-tree-trans-tfrag type)
-(define-extern drawable-tree-dirt-tfrag type)
-(define-extern drawable-tree-ice-tfrag type)
-(define-extern drawable-tree-lowres-tfrag type)
-
-;; - Unknowns
-
-;;(define-extern drawable-tree-lowres-trans-tfrag object) ;; unknown type
+(deftype tfrag-dma (structure)
+  ((banka  tfragment 16 :inline   :offset-assert 0)
+   (bankb  tfragment 16 :inline  :offset-assert 1024)
+   (outa   uint128 128  :offset-assert 2048)
+   (outb   uint128 128  :offset-assert 4096)
+   (colors rgba 2047 :offset-assert 6144) ;; why is this one short!!!
+   )
+  :method-count-assert 9
+  :size-assert         #x37fc
+  :flag-assert         #x9000037fc
+  )
 
 
 ;; ----------------------
@@ -12275,38 +12326,38 @@
 
 ;; - Types
 
-; (deftype background-work (basic)
-;   ((tfrag-tree-count              int32     :offset-assert 4)
-;    (tfrag-trees                   UNKNOWN 8 :offset-assert 8)
-;    (tfrag-levels                  UNKNOWN 8 :offset-assert 40)
-;    (trans-tfrag-tree-count        int32     :offset-assert 72)
-;    (trans-tfrag-trees             UNKNOWN 8 :offset-assert 76)
-;    (trans-tfrag-levels            UNKNOWN 8 :offset-assert 108)
-;    (dirt-tfrag-tree-count         int32     :offset-assert 140)
-;    (dirt-tfrag-trees              UNKNOWN 8 :offset-assert 144)
-;    (dirt-tfrag-levels             UNKNOWN 8 :offset-assert 176)
-;    (ice-tfrag-tree-count          int32     :offset-assert 208)
-;    (ice-tfrag-trees               UNKNOWN 8 :offset-assert 212)
-;    (ice-tfrag-levels              UNKNOWN 8 :offset-assert 244)
-;    (lowres-tfrag-tree-count       int32     :offset-assert 276)
-;    (lowres-tfrag-trees            UNKNOWN 8 :offset-assert 280)
-;    (lowres-tfrag-levels           UNKNOWN 8 :offset-assert 312)
-;    (lowres-trans-tfrag-tree-count int32     :offset-assert 344)
-;    (lowres-trans-tfrag-trees      UNKNOWN 8 :offset-assert 348)
-;    (lowres-trans-tfrag-levels     UNKNOWN 8 :offset-assert 380)
-;    (shrub-tree-count              int32     :offset-assert 412)
-;    (shrub-trees                   UNKNOWN 8 :offset-assert 416)
-;    (shrub-levels                  UNKNOWN 8 :offset-assert 448)
-;    (tie-tree-count                int32     :offset-assert 480)
-;    (tie-trees                     UNKNOWN 8 :offset-assert 484)
-;    (tie-levels                    UNKNOWN 8 :offset-assert 516)
-;    (tie-generic                   UNKNOWN 8 :offset-assert 548)
-;    (wait-to-vu0                   uint32    :offset-assert 580)
-;    )
-;   :method-count-assert 9
-;   :size-assert         #x248
-;   :flag-assert         #x900000248
-;   )
+(deftype background-work (basic)
+  ((tfrag-tree-count              int32     :offset-assert 4)
+   (tfrag-trees                   drawable-tree-tfrag 8 :offset-assert 8)
+   (tfrag-levels                  level 8 :offset-assert 40)
+   (trans-tfrag-tree-count        int32     :offset-assert 72)
+   (trans-tfrag-trees             drawable-tree-trans-tfrag 8 :offset-assert 76)
+   (trans-tfrag-levels            level 8 :offset-assert 108)
+   (dirt-tfrag-tree-count         int32     :offset-assert 140)
+   (dirt-tfrag-trees              drawable-tree-dirt-tfrag 8 :offset-assert 144)
+   (dirt-tfrag-levels             level 8 :offset-assert 176)
+   (ice-tfrag-tree-count          int32     :offset-assert 208)
+   (ice-tfrag-trees               drawable-tree-ice-tfrag 8 :offset-assert 212)
+   (ice-tfrag-levels              level 8 :offset-assert 244)
+   (lowres-tfrag-tree-count       int32     :offset-assert 276)
+   (lowres-tfrag-trees            drawable-tree-lowres-tfrag 8 :offset-assert 280)
+   (lowres-tfrag-levels           level 8 :offset-assert 312)
+   (lowres-trans-tfrag-tree-count int32     :offset-assert 344)
+   (lowres-trans-tfrag-trees      drawable-tree-trans-tfrag 8 :offset-assert 348)
+   (lowres-trans-tfrag-levels     level 8 :offset-assert 380)
+   (shrub-tree-count              int32     :offset-assert 412)
+   (shrub-trees                   drawable-tree-instance-shrub 8 :offset-assert 416)
+   (shrub-levels                  level 8 :offset-assert 448)
+   (tie-tree-count                int32     :offset-assert 480)
+   (tie-trees                     drawable-tree-instance-tie 8 :offset-assert 484)
+   (tie-levels                    level 8 :offset-assert 516)
+   (tie-generic                   basic 8 :offset-assert 548)
+   (wait-to-vu0                   uint32    :offset-assert 580)
+   )
+  :method-count-assert 9
+  :size-assert         #x248
+  :flag-assert         #x900000248
+  )
 
 
 
@@ -12318,82 +12369,86 @@
 
 ;; - Types
 
-; (deftype subdivide-settings (basic)
-;   ((dist   UNKNOWN 5 :offset-assert 4)
-;    (meters UNKNOWN 5 :offset-assert 24)
-;    (close  UNKNOWN 4 :offset-assert 44)
-;    (far    UNKNOWN 4 :offset-assert 60)
-;    )
-;   :method-count-assert 9
-;   :size-assert         #x4c
-;   :flag-assert         #x90000004c
-;   )
+(deftype subdivide-settings (basic)
+  ;; guess on these being floats
+  ((dist   float 5 :offset-assert 4)
+   (meters float 5 :offset-assert 24)
+   (close  float 4 :offset-assert 44)
+   (far    float 4 :offset-assert 60)
+   )
+  (:methods
+    (new (symbol type float float) _type_)
+    )
+  :method-count-assert 9
+  :size-assert         #x4c
+  :flag-assert         #x90000004c
+  )
 
-; (deftype subdivide-dists (structure)
-;   ((data   UNKNOWN 32 :offset-assert 0)
-;    (vector UNKNOWN 8  :offset-assert 0)
-;    (k0s    UNKNOWN 4  :offset-assert 0)
-;    (k1s    UNKNOWN 4  :offset-assert 64)
-;    )
-;   :method-count-assert 9
-;   :size-assert         #x80
-;   :flag-assert         #x900000080
-;   )
+(deftype subdivide-dists (structure)
+  ((data   uint32 32 :offset 0)
+   (vector vector 8 :inline  :offset 0)
+   (k0s    uint128 4  :offset 0)
+   (k1s    uint128 4  :offset 64)
+   )
+  :method-count-assert 9
+  :size-assert         #x80
+  :flag-assert         #x900000080
+  )
 
-; (deftype gs-packed-rgba (structure)
-;   ((data  UNKNOWN 4 :offset-assert 0)
-;    (red   int32     :offset-assert 0)
-;    (green int32     :offset-assert 4)
-;    (blue  int32     :offset-assert 8)
-;    (alpha int32     :offset-assert 12)
-;    )
-;   :method-count-assert 9
-;   :size-assert         #x10
-;   :flag-assert         #x900000010
-;   )
+(deftype gs-packed-rgba (structure)
+  ((data  int32 4 :offset-assert 0)
+   (red   int32     :offset 0)
+   (green int32     :offset 4)
+   (blue  int32     :offset 8)
+   (alpha int32     :offset 12)
+   )
+  :method-count-assert 9
+  :size-assert         #x10
+  :flag-assert         #x900000010
+  )
 
-; (deftype gs-packed-xyzw (structure)
-;   ((data UNKNOWN 4 :offset-assert 0)
-;    (x    int32     :offset-assert 0)
-;    (y    int32     :offset-assert 4)
-;    (z    int32     :offset-assert 8)
-;    (w    int32     :offset-assert 12)
-;    (quad uint128   :offset-assert 0)
-;    )
-;   :method-count-assert 9
-;   :size-assert         #x10
-;   :flag-assert         #x900000010
-;   )
+(deftype gs-packed-xyzw (structure)
+  ((data int32 4 :offset-assert 0)
+   (x    int32     :offset 0)
+   (y    int32     :offset 4)
+   (z    int32     :offset 8)
+   (w    int32     :offset 12)
+   (quad uint128   :offset 0)
+   )
+  :method-count-assert 9
+  :size-assert         #x10
+  :flag-assert         #x900000010
+  )
 
-; (deftype gs-packed-stq (structure)
-;   ((data  UNKNOWN 4 :offset-assert 0)
-;    (tex-s float     :offset-assert 0)
-;    (tex-t float     :offset-assert 4)
-;    (tex-q float     :offset-assert 8)
-;    (quad  uint128   :offset-assert 0)
-;    )
-;   :method-count-assert 9
-;   :size-assert         #x10
-;   :flag-assert         #x900000010
-;   )
+(deftype gs-packed-stq (structure)
+  ((data  float 4 :offset-assert 0)
+   (tex-s float     :offset 0)
+   (tex-t float     :offset 4)
+   (tex-q float     :offset 8)
+   (quad  uint128   :offset 0)
+   )
+  :method-count-assert 9
+  :size-assert         #x10
+  :flag-assert         #x900000010
+  )
 
-; (deftype gs-packed-gt (structure)
-;   ((stq  gs-packed-stq  :inline :offset-assert 0)
-;    (rgba gs-packed-rgba :inline :offset-assert 16)
-;    (xyzw gs-packed-xyzw :inline :offset-assert 32)
-;    )
-;   :method-count-assert 9
-;   :size-assert         #x30
-;   :flag-assert         #x900000030
-;   )
+(deftype gs-packed-gt (structure)
+  ((stq  gs-packed-stq  :inline :offset-assert 0)
+   (rgba gs-packed-rgba :inline :offset-assert 16)
+   (xyzw gs-packed-xyzw :inline :offset-assert 32)
+   )
+  :method-count-assert 9
+  :size-assert         #x30
+  :flag-assert         #x900000030
+  )
 
-; (deftype gs-packed-gt4 (structure)
-;   ((data UNKNOWN 4 :offset-assert 0)
-;    )
-;   :method-count-assert 9
-;   :size-assert         #xc0
-;   :flag-assert         #x9000000c0
-;   )
+(deftype gs-packed-gt4 (structure)
+  ((data gs-packed-gt 4 :inline :offset-assert 0)
+   )
+  :method-count-assert 9
+  :size-assert         #xc0
+  :flag-assert         #x9000000c0
+  )
 
 (deftype terrain-bsp (structure)
   ((lev-index int32  :offset-assert 0)
@@ -12427,73 +12482,73 @@
   :flag-assert         #x900000100
   )
 
-; (deftype dma-area (structure)
-;   ((draw-node-dma      draw-node-dma      :inline :offset-assert 0)
-;    (tfrag-dma          tfrag-dma          :inline :offset-assert 0)
-;    (instance-shrub-dma instance-shrub-dma :inline :offset-assert 0)
-;    (instance-tie-dma   instance-tie-dma   :inline :offset-assert 0)
-;    (prototype-tie-dma  prototype-tie-dma  :inline :offset-assert 0)
-;    (time-of-day-dma    time-of-day-dma    :inline :offset-assert 0)
-;    (decomp-work        decomp-work        :inline :offset-assert 0)
-;    (ocean-vertex       UNKNOWN            4       :offset-assert 0)
-;    )
-;   :method-count-assert 9
-;   :size-assert         #x38a0
-;   :flag-assert         #x9000038a0
-;   )
+(deftype dma-area (structure)
+  ((draw-node-dma      draw-node-dma      :inline :offset 0)
+   (tfrag-dma          tfrag-dma          :inline :offset 0)
+   (instance-shrub-dma instance-shrub-dma :inline :offset 0)
+   (instance-tie-dma   instance-tie-dma   :inline :offset 0)
+   (prototype-tie-dma  prototype-tie-dma  :inline :offset 0)
+   (time-of-day-dma    time-of-day-dma    :inline :offset 0)
+   (decomp-work        decomp-work        :inline :offset 0)
+   (ocean-vertex       ocean-vertex   4   :inline :offset 0)
+   )
+  :method-count-assert 9
+  :size-assert         #x38a0
+  :flag-assert         #x9000038a0
+  )
 
-; (deftype background-area (structure)
-;   ((dma-area dma-area :inline :offset-assert 0)
-;    (vis-list UNKNOWN  2048    :offset-assert 14496)
-;    )
-;   :method-count-assert 9
-;   :size-assert         #x40a0
-;   :flag-assert         #x9000040a0
-;   )
+(deftype background-area (structure)
+  ((dma-area dma-area :inline :offset-assert 0)
+   (vis-list uint8  2048    :offset-assert 14496)
+   )
+  :method-count-assert 9
+  :size-assert         #x40a0
+  :flag-assert         #x9000040a0
+  )
 
-; (deftype foreground-area (structure)
-;   ((joint-work   joint-work   :inline :offset-assert 0)
-;    (generic-work generic-work :inline :offset-assert 0)
-;    (bone-mem     bone-memory  :inline :offset-assert 0)
-;    (shadow-work  shadow-work  :inline :offset-assert 0)
-;    )
-;   :method-count-assert 9
-;   :size-assert         #x3fd0
-;   :flag-assert         #x900003fd0
-;   )
+(deftype foreground-area (structure)
+  ((joint-work   joint-work   :inline :offset-assert 0)
+   (generic-work generic-work :inline :offset 0)
+   (bone-mem     bone-memory  :inline :offset 0)
+   (shadow-work  shadow-work  :inline :offset 0)
+   )
+  :method-count-assert 9
+  :size-assert         #x3fd0
+  :flag-assert         #x900003fd0
+  )
 
-; (deftype ambient-area (structure)
-;   ((ambient-list ambient-list :inline :offset-assert 0)
-;    )
-;   :method-count-assert 9
-;   :size-assert         #x2004
-;   :flag-assert         #x900002004
-;   )
+(deftype ambient-area (structure)
+  ((ambient-list ambient-list :inline :offset-assert 0)
+   )
+  :method-count-assert 9
+  :size-assert         #x2004
+  :flag-assert         #x900002004
+  )
 
-; (deftype work-area (structure)
-;   ((background background-area :inline :offset-assert 0)
-;    (foreground foreground-area :inline :offset-assert 0)
-;    (ambient    ambient-area    :inline :offset-assert 0)
-;    )
-;   :method-count-assert 9
-;   :size-assert         #x40a0
-;   :flag-assert         #x9000040a0
-;   )
+(deftype work-area (structure)
+  ((background background-area :inline :offset-assert 0)
+   (foreground foreground-area :inline :offset 0)
+   (ambient    ambient-area    :inline :offset 0)
+   )
+  :method-count-assert 9
+  :size-assert         #x40a0
+  :flag-assert         #x9000040a0
+  )
 
-; (deftype terrain-context (structure)
-;   ((bsp  terrain-bsp :inline :offset-assert 0)
-;    (work work-area   :inline :offset-assert 16)
-;    )
-;   :method-count-assert 9
-;   :size-assert         #x40b0
-;   :flag-assert         #x9000040b0
-;   )
+(deftype terrain-context (structure)
+  ((bsp  terrain-bsp :inline :offset-assert 0)
+   (work work-area   :inline :offset-assert 16)
+   )
+  :method-count-assert 9
+  :size-assert         #x40b0
+  :flag-assert         #x9000040b0
+  )
 
 
-;; - Unknowns
+;; - Symbols
 
-;;(define-extern *terrain-stats* object) ;; unknown type
-;;(define-extern *collide-stats* object) ;; unknown type
+(define-extern *terrain-stats* terrain-stats)
+(define-extern *collide-stats* collide-stats)
 
 
 ;; ----------------------
@@ -12621,8 +12676,8 @@
   :flag-assert         #x1f00000050
   ;; unrecognized get op: (set! t9 find-parent-method) parent was entity
   (:methods
-    (dummy-27 () none 27)
-    (dummy-28 () none 28)
+    (next-actor (_type_) entity-actor 27)
+    (prev-actor (_type_) entity-actor 28)
     (dummy-29 () none 29)
     (dummy-30 () none 30)
     )
@@ -12689,83 +12744,83 @@
 
 ;; - Types
 
-; (deftype sprite-vec-data-2d (structure)
-;   ((x-y-z-sx    vector   :inline :offset-assert 0)
-;    (flag-rot-sy vector   :inline :offset-assert 16)
-;    (r-g-b-a     vector   :inline :offset-assert 32)
-;    (x           float            :offset-assert 0)
-;    (y           float            :offset-assert 4)
-;    (z           float            :offset-assert 8)
-;    (sx          float            :offset-assert 12)
-;    (sy          float            :offset-assert 28)
-;    (rot         float            :offset-assert 24)
-;    (flag        int32            :offset-assert 16)
-;    (matrix      int32            :offset-assert 20)
-;    (warp-turns  int32            :offset-assert 16)
-;    (r           float            :offset-assert 32)
-;    (g           float            :offset-assert 36)
-;    (b           float            :offset-assert 40)
-;    (a           float            :offset-assert 44)
-;    (trans       vector3s :inline :offset-assert 0)
-;    (color       rgbaf    :inline :offset-assert 32)
-;    (data        UNKNOWN  1       :offset-assert 0)
-;    (data64      UNKNOWN  6       :offset-assert 0)
-;    )
-;   :method-count-assert 9
-;   :size-assert         #x30
-;   :flag-assert         #x900000030
-;   )
+(deftype sprite-vec-data-2d (structure)
+  ((x-y-z-sx    vector   :inline :offset-assert 0)
+   (flag-rot-sy vector   :inline :offset-assert 16)
+   (r-g-b-a     vector   :inline :offset-assert 32)
+   (x           float            :offset 0)
+   (y           float            :offset 4)
+   (z           float            :offset 8)
+   (sx          float            :offset 12)
+   (sy          float            :offset 28)
+   (rot         float            :offset 24)
+   (flag        int32            :offset 16)
+   (matrix      int32            :offset 20)
+   (warp-turns  int32            :offset 16)
+   (r           float            :offset 32)
+   (g           float            :offset 36)
+   (b           float            :offset 40)
+   (a           float            :offset 44)
+   (trans       vector3s :inline :offset 0)
+   (color       rgbaf    :inline :offset 32)
+   (data        uint128  1       :offset 0)
+   (data64      uint64  6       :offset 0)
+   )
+  :method-count-assert 9
+  :size-assert         #x30
+  :flag-assert         #x900000030
+  )
 
-; (deftype sprite-array-2d (basic)
-;   ((num-sprites UNKNOWN 2 :offset-assert 4)
-;    (num-valid   UNKNOWN 2 :offset-assert 12)
-;    (vec-data    uint32    :offset-assert 20)
-;    (adgif-data  uint32    :offset-assert 24)
-;    (pad         UNKNOWN 4 :offset-assert 32)
-;    (data        UNKNOWN 1 :offset-assert 96)
-;    )
-;   :method-count-assert 9
-;   :size-assert         #x70
-;   :flag-assert         #x900000070
-;   )
+(deftype sprite-array-2d (basic)
+  ((num-sprites uint32 2 :offset-assert 4)
+   (num-valid   uint32 2 :offset-assert 12)
+   (vec-data    uint32    :offset-assert 20)
+   (adgif-data  uint32    :offset-assert 24)
+   (pad         uint128 4 :offset-assert 32)
+   (data        uint128 1 :offset-assert 96)
+   )
+  :method-count-assert 9
+  :size-assert         #x70
+  :flag-assert         #x900000070
+  )
 
-; (deftype sprite-vec-data-3d (structure)
-;   ((x-y-z-sx    vector   :inline :offset-assert 0)
-;    (qx-qy-qz-sy vector   :inline :offset-assert 16)
-;    (r-g-b-a     vector   :inline :offset-assert 32)
-;    (x           float            :offset-assert 0)
-;    (y           float            :offset-assert 4)
-;    (z           float            :offset-assert 8)
-;    (sx          float            :offset-assert 12)
-;    (sy          float            :offset-assert 28)
-;    (qx          float            :offset-assert 16)
-;    (qy          float            :offset-assert 20)
-;    (qz          float            :offset-assert 24)
-;    (r           float            :offset-assert 32)
-;    (g           float            :offset-assert 36)
-;    (b           float            :offset-assert 40)
-;    (a           float            :offset-assert 44)
-;    (trans       vector3s :inline :offset-assert 0)
-;    (rot         vector3s :inline :offset-assert 16)
-;    (color       rgbaf    :inline :offset-assert 32)
-;    (data        UNKNOWN  1       :offset-assert 0)
-;    )
-;   :method-count-assert 9
-;   :size-assert         #x30
-;   :flag-assert         #x900000030
-;   )
+(deftype sprite-vec-data-3d (structure)
+  ((x-y-z-sx    vector   :inline :offset-assert 0)
+   (qx-qy-qz-sy vector   :inline :offset-assert 16)
+   (r-g-b-a     vector   :inline :offset-assert 32)
+   (x           float            :offset 0)
+   (y           float            :offset 4)
+   (z           float            :offset 8)
+   (sx          float            :offset 12)
+   (sy          float            :offset 28)
+   (qx          float            :offset 16)
+   (qy          float            :offset 20)
+   (qz          float            :offset 24)
+   (r           float            :offset 32)
+   (g           float            :offset 36)
+   (b           float            :offset 40)
+   (a           float            :offset 44)
+   (trans       vector3s :inline :offset 0)
+   (rot         vector3s :inline :offset 16)
+   (color       rgbaf    :inline :offset 32)
+   (data        uint128  1       :offset 0)
+   )
+  :method-count-assert 9
+  :size-assert         #x30
+  :flag-assert         #x900000030
+  )
 
-; (deftype sprite-array-3d (basic)
-;   ((num-sprites UNKNOWN 2 :offset-assert 4)
-;    (num-valid   UNKNOWN 2 :offset-assert 12)
-;    (vec-data    uint32    :offset-assert 20)
-;    (adgif-data  uint32    :offset-assert 24)
-;    (data        UNKNOWN 1 :offset-assert 32)
-;    )
-;   :method-count-assert 9
-;   :size-assert         #x30
-;   :flag-assert         #x900000030
-;   )
+(deftype sprite-array-3d (basic)
+  ((num-sprites uint32 2 :offset-assert 4)
+   (num-valid   uint32 2 :offset-assert 12)
+   (vec-data    uint32    :offset-assert 20)
+   (adgif-data  uint32    :offset-assert 24)
+   (data        uint128 1 :offset-assert 32)
+   )
+  :method-count-assert 9
+  :size-assert         #x30
+  :flag-assert         #x900000030
+  )
 
 
 
@@ -12866,7 +12921,7 @@
 
 ;; - Symbols
 
-(define-extern *eye-control-array* eye-control-array) ;; unknown type
+(define-extern *eye-control-array* eye-control-array)
 
 
 ;; ----------------------
@@ -12923,26 +12978,26 @@
   :flag-assert         #x90000001c
   )
 
-; (deftype sparticle-launch-state (structure)
-;   ((group-item sparticle-group-item  :offset-assert 0)
-;    (flags      uint16                :offset-assert 4)
-;    (randomize  uint16                :offset-assert 6)
-;    (origin     vector                :offset-assert 8)
-;    (sprite3d   sprite-vec-data-3d    :offset-assert 12)
-;    (sprite     basic                 :offset-assert 16)
-;    (offset     uint32                :offset-assert 20)
-;    (accum      float                 :offset-assert 24)
-;    (spawn-time uint32                :offset-assert 28)
-;    (swarm      basic                 :offset-assert 20)
-;    (seed       uint32                :offset-assert 24)
-;    (time       uint32                :offset-assert 28)
-;    (spec       basic                 :offset-assert 16)
-;    (id         uint32                :offset-assert 12)
-;    )
-;   :method-count-assert 9
-;   :size-assert         #x20
-;   :flag-assert         #x900000020
-;   )
+(deftype sparticle-launch-state (structure)
+  ((group-item sparticle-group-item  :offset-assert 0)
+   (flags      uint16                :offset-assert 4)
+   (randomize  uint16                :offset-assert 6)
+   (origin     vector                :offset-assert 8)
+   (sprite3d   sprite-vec-data-3d    :offset-assert 12)
+   (sprite     basic                 :offset-assert 16)
+   (offset     uint32                :offset-assert 20)
+   (accum      float                 :offset-assert 24)
+   (spawn-time uint32                :offset-assert 28)
+   (swarm      basic                 :offset 20)
+   (seed       uint32                :offset 24)
+   (time       uint32                :offset 28)
+   (spec       basic                 :offset 16)
+   (id         uint32                :offset 12)
+   )
+  :method-count-assert 9
+  :size-assert         #x20
+  :flag-assert         #x900000020
+  )
 
 (deftype sparticle-launch-group (basic)
   ((length          int16          :offset-assert 4)
@@ -12961,30 +13016,30 @@
     )
   )
 
-; (deftype sparticle-launch-control (inline-array-class)
-;   ((length           int32            :offset-assert 4)
-;    (allocated-length int32            :offset-assert 8)
-;    (group            basic            :offset-assert 16)
-;    (proc             basic            :offset-assert 20)
-;    (local-clock      int32            :offset-assert 24)
-;    (fade             float            :offset-assert 28)
-;    (matrix           int32            :offset-assert 32)
-;    (last-spawn-frame int32            :offset-assert 36)
-;    (last-spawn-time  int32            :offset-assert 40)
-;    (center           vector  :inline  :offset-assert 48)
-;    (data             UNKNOWN :dynamic :offset-assert 64)
-;    )
-;   :method-count-assert 14
-;   :size-assert         #x40
-;   :flag-assert         #xe00000040
-;   (:methods
-;     (dummy-9 () none 9)
-;     (dummy-10 () none 10)
-;     (dummy-11 () none 11)
-;     (dummy-12 () none 12)
-;     (dummy-13 () none 13)
-;     )
-;   )
+(deftype sparticle-launch-control (inline-array-class)
+  ((group            basic            :offset-assert 16)
+   (proc             basic            :offset-assert 20)
+   (local-clock      int32            :offset-assert 24)
+   (fade             float            :offset-assert 28)
+   (matrix           int32            :offset-assert 32)
+   (last-spawn-frame int32            :offset-assert 36)
+   (last-spawn-time  int32            :offset-assert 40)
+   (center           vector  :inline  :offset-assert 48)
+   ;; todo - what's the real type?
+   ;; maybe its sparticle-launch-state based on heap-base.
+   (data             uint8 :dynamic :offset-assert 64)
+   )
+  :method-count-assert 14
+  :size-assert         #x40
+  :flag-assert         #xe00000040
+  (:methods
+    (dummy-9 () none 9)
+    (dummy-10 () none 10)
+    (dummy-11 () none 11)
+    (dummy-12 () none 12)
+    (dummy-13 () none 13)
+    )
+  )
 
 
 
@@ -12996,78 +13051,78 @@
 
 ;; - Types
 
-; (deftype sparticle-cpuinfo (structure)
-;   ((sprite        sprite-vec-data-2d             :offset-assert 0)
-;    (adgif         adgif-shader                   :offset-assert 4)
-;    (radius        float                          :offset-assert 8)
-;    (omega         float                          :offset-assert 12)
-;    (vel-sxvel     vector                 :inline :offset-assert 16)
-;    (rot-syvel     vector                 :inline :offset-assert 32)
-;    (fade          rgbaf                  :inline :offset-assert 48)
-;    (acc           vector                 :inline :offset-assert 64)
-;    (rotvel3d      quaternion             :inline :offset-assert 80)
-;    (vel           vector3s               :inline :offset-assert 16)
-;    (accel         vector3s               :inline :offset-assert 64)
-;    (scalevelx     float                          :offset-assert 28)
-;    (scalevely     float                          :offset-assert 44)
-;    (friction      float                          :offset-assert 96)
-;    (timer         int32                          :offset-assert 100)
-;    (flags         uint32                         :offset-assert 104)
-;    (user-int32    int32                          :offset-assert 108)
-;    (user-uint32   uint32                         :offset-assert 108)
-;    (user-float    float                          :offset-assert 108)
-;    (user-pntr     uint32                         :offset-assert 108)
-;    (user-sprite   sprite-vec-data-2d             :offset-assert 108)
-;    (func          basic                          :offset-assert 112)
-;    (next-time     uint32                         :offset-assert 116)
-;    (next-launcher basic                          :offset-assert 120)
-;    (cache-alpha   float                          :offset-assert 124)
-;    (valid         basic                          :offset-assert 128)
-;    (key           basic                          :offset-assert 132)
-;    (binding       sparticle-launch-state         :offset-assert 136)
-;    (data          UNKNOWN                1       :offset-assert 12)
-;    (dataf         UNKNOWN                1       :offset-assert 12)
-;    (datac         UNKNOWN                1       :offset-assert 12)
-;    )
-;   :method-count-assert 9
-;   :size-assert         #x8c
-;   :flag-assert         #x90000008c
-;   ;; field key is a basic loaded with a signed load
-;   )
+(deftype sparticle-cpuinfo (structure)
+  ((sprite        sprite-vec-data-2d             :offset-assert 0)
+   (adgif         adgif-shader                   :offset-assert 4)
+   (radius        float                          :offset-assert 8)
+   (omega         float                          :offset-assert 12)
+   (vel-sxvel     vector                 :inline :offset-assert 16)
+   (rot-syvel     vector                 :inline :offset-assert 32)
+   (fade          rgbaf                  :inline :offset-assert 48)
+   (acc           vector                 :inline :offset-assert 64)
+   (rotvel3d      quaternion             :inline :offset-assert 80)
+   (vel           vector3s               :inline :offset 16)
+   (accel         vector3s               :inline :offset 64)
+   (scalevelx     float                          :offset 28)
+   (scalevely     float                          :offset 44)
+   (friction      float                          :offset-assert 96)
+   (timer         int32                          :offset-assert 100)
+   (flags         uint32                         :offset-assert 104)
+   (user-int32    int32                          :offset-assert 108)
+   (user-uint32   uint32                         :offset 108)
+   (user-float    float                          :offset 108)
+   (user-pntr     uint32                         :offset 108)
+   (user-sprite   sprite-vec-data-2d             :offset 108)
+   (func          basic                          :offset-assert 112)
+   (next-time     uint32                         :offset-assert 116)
+   (next-launcher basic                          :offset-assert 120)
+   (cache-alpha   float                          :offset-assert 124)
+   (valid         basic                          :offset-assert 128)
+   (key           basic                          :offset-assert 132)
+   (binding       sparticle-launch-state         :offset-assert 136)
+   (data          uint32                 1       :offset 12)
+   (dataf         float                  1       :offset 12)
+   (datac         uint8                  1       :offset 12)
+   )
+  :method-count-assert 9
+  :size-assert         #x8c
+  :flag-assert         #x90000008c
+  ;; field key is a basic loaded with a signed load
+  )
 
-; (deftype sparticle-launchinfo (structure)
-;   ((launchrot  vector  :inline :offset-assert 0)
-;    (conerot    vector  :inline :offset-assert 16)
-;    (coneradius float           :offset-assert 32)
-;    (rotate-y   float           :offset-assert 36)
-;    (data       UNKNOWN 1       :offset-assert 0)
-;    )
-;   :method-count-assert 9
-;   :size-assert         #x28
-;   :flag-assert         #x900000028
-;   )
+(deftype sparticle-launchinfo (structure)
+  ((launchrot  vector  :inline :offset-assert 0)
+   (conerot    vector  :inline :offset-assert 16)
+   (coneradius float           :offset-assert 32)
+   (rotate-y   float           :offset-assert 36)
+   (data       uint8 1       :offset 0)
+   )
+  :method-count-assert 9
+  :size-assert         #x28
+  :flag-assert         #x900000028
+  )
 
-; (deftype sparticle-system (basic)
-;   ((blocks          UNKNOWN 2 :offset-assert 4)
-;    (length          UNKNOWN 2 :offset-assert 12)
-;    (num-alloc       UNKNOWN 2 :offset-assert 20)
-;    (is-3d           basic     :offset-assert 28)
-;    (flags           uint32    :offset-assert 32)
-;    (alloc-table     uint32    :offset-assert 36)
-;    (cpuinfo-table   uint32    :offset-assert 40)
-;    (vecdata-table   uint32    :offset-assert 44)
-;    (adgifdata-table uint32    :offset-assert 48)
-;    )
-;   :method-count-assert 9
-;   :size-assert         #x34
-;   :flag-assert         #x900000034
-;   )
+(deftype sparticle-system (basic)
+  ((blocks          uint32 2 :offset-assert 4)
+   (length          uint32 2 :offset-assert 12)
+   (num-alloc       uint32 2 :offset-assert 20)
+   (is-3d           basic     :offset-assert 28)
+   (flags           uint32    :offset-assert 32)
+   (alloc-table     uint32    :offset-assert 36)
+   (cpuinfo-table   uint32    :offset-assert 40)
+   (vecdata-table   uint32    :offset-assert 44)
+   (adgifdata-table uint32    :offset-assert 48)
+   )
+  :method-count-assert 9
+  :size-assert         #x34
+  :flag-assert         #x900000034
+  )
 
 
-;; - Unknowns
+;; - Symbols
 
-;;(define-extern *sp-frame-time* object) ;; unknown type
-;;(define-extern *sp-60-hz* object) ;; unknown type
+(define-extern *sp-frame-time* vector)
+(define-extern *sp-60-hz* symbol)
 
 
 ;; ----------------------
@@ -13080,19 +13135,21 @@
 
 (deftype actor-link-info (basic)
   ((process basic  :offset-assert 4)
-   (next    basic  :offset-assert 8)
-   (prev    basic  :offset-assert 12)
+   (next    entity-actor  :offset-assert 8)
+   ;; prev is a guess here.
+   (prev    entity-actor  :offset-assert 12)
    )
   :method-count-assert 26
   :size-assert         #x10
   :flag-assert         #x1a00000010
   (:methods
+    (new (symbol type process) _type_)
     (dummy-9 () none 9)
     (dummy-10 () none 10)
     (dummy-11 () none 11)
-    (dummy-12 () none 12)
-    (dummy-13 () none 13)
-    (dummy-14 () none 14)
+    (get-next (_type_) entity-actor 12)
+    (get-prev (_type_) entity-actor 13)
+    (dummy-14 (_type_) none 14) ;; decompiler broken...
     (dummy-15 () none 15)
     (dummy-16 () none 16)
     (dummy-17 () none 17)
@@ -13110,15 +13167,15 @@
 ;; - Symbols
 
 (define-extern entity-actor-count (function res-lump symbol int))
-(define-extern entity-by-name function)
-(define-extern entity-by-aid function)
+(define-extern entity-by-name (function string entity))
+(define-extern entity-by-aid (function int entity))
 (define-extern actor-link-subtask-complete-hook function)
 (define-extern actor-link-dead-hook function)
 (define-extern alt-actor-list-subtask-incomplete-count function)
 
 ;; - Functions
 
-(define-extern entity-actor-lookup (function entity symbol int process-drawable)) ;; NOTE - return value is not confirmed
+(define-extern entity-actor-lookup (function res-lump symbol int entity-actor)) ;; NOTE - return value is not confirmed
 
 
 ;; ----------------------

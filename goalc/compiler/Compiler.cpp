@@ -144,8 +144,9 @@ std::unique_ptr<FunctionEnv> Compiler::compile_top_level_function(const std::str
   }
 
   if (!fe->code().empty()) {
-    fe->emit_ir<IR_Null>();  // add this line
+    fe->emit_ir<IR_Null>();
   }
+
   fe->finish();
   return fe;
 }

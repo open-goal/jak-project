@@ -5,3 +5,267 @@
 ;; name in dgo: shrubbery-h
 ;; dgos: GAME, ENGINE
 
+(deftype billboard (drawable)
+  ((flat adgif-shader :inline :offset-assert 32)
+   )
+  :method-count-assert 18
+  :size-assert         #x70
+  :flag-assert         #x1200000070
+  )
+
+(deftype shrub-view-data (structure)
+  ((data           uint128 3                   :offset-assert 0)
+   (texture-giftag qword   :inline :offset   0)
+   (consts         vector  :inline :offset  16)
+   (fog-clamp      vector  :inline :offset  32)
+   (tex-start-ptr  int32   :offset  16)
+   (gifbufsum      float   :offset  16)
+   (mtx-buf-ptr    int32   :offset  20)
+   (exp23          float   :offset  20)
+   (fog-0          float   :offset  24)
+   (fog-1          float   :offset  28)
+   (fog-min        float   :offset  32)
+   (fog-max        float   :offset  36)
+   )
+  :method-count-assert 9
+  :size-assert         #x30
+  :flag-assert         #x900000030
+  )
+
+(deftype shrubbery (drawable)
+  ((textures (inline-array adgif-shader) :offset   4)
+   (header   qword                       :offset   8)
+   (obj-qwc  uint8                       :offset  12)
+   (vtx-qwc  uint8                       :offset  13)
+   (col-qwc  uint8                       :offset  14)
+   (stq-qwc  uint8                       :offset  15)
+   (obj      uint32                      :offset  16)
+   (vtx      uint32                      :offset  20)
+   (col      uint32                      :offset  24)
+   (stq      uint32                      :offset  28)
+   )
+  :method-count-assert 18
+  :size-assert         #x20
+  :flag-assert         #x1200000020
+  )
+
+(deftype instance-shrubbery (instance)
+  ((flat-normal vector :inline     :offset-assert 64)
+   (flat-hwidth float  :offset  76)
+   (color       uint32 :offset   8)
+   )
+  :method-count-assert 18
+  :size-assert         #x50
+  :flag-assert         #x1200000050
+  )
+
+(deftype drawable-inline-array-instance-shrub (drawable-inline-array)
+  ((data instance-shrubbery 1 :inline :offset-assert 32)
+   (pad  uint32                       :offset-assert 112)
+   )
+  :method-count-assert 18
+  :size-assert         #x74
+  :flag-assert         #x1200000074
+  )
+
+(deftype drawable-tree-instance-shrub (drawable-tree)
+  ()
+  :method-count-assert 18
+  :size-assert         #x24
+  :flag-assert         #x1200000024
+  )
+
+(deftype generic-shrub-fragment (drawable)
+  ((textures (inline-array adgif-shader) :offset   4)
+   (vtx-cnt  uint32                      :offset   8)
+   (cnt-qwc  uint8                       :offset  12)
+   (vtx-qwc  uint8                       :offset  13)
+   (col-qwc  uint8                       :offset  14)
+   (stq-qwc  uint8                       :offset  15)
+   (cnt      uint32                      :offset  16)
+   (vtx      uint32                      :offset  20)
+   (col      uint32                      :offset  24)
+   (stq      uint32                      :offset  28)
+   )
+  :method-count-assert 18
+  :size-assert         #x20
+  :flag-assert         #x1200000020
+  )
+
+(deftype prototype-shrubbery (drawable-inline-array)
+  ((data generic-shrub-fragment 1 :inline :offset-assert 32)
+   (pad  uint32                           :offset-assert 64)
+   )
+  :method-count-assert 18
+  :size-assert         #x44
+  :flag-assert         #x1200000044
+  )
+
+(deftype prototype-trans-shrubbery (prototype-shrubbery)
+  ()
+  :method-count-assert 18
+  :size-assert         #x44
+  :flag-assert         #x1200000044
+  )
+
+(deftype prototype-generic-shrub (drawable-group)
+  ()
+  :method-count-assert 18
+  :size-assert         #x24
+  :flag-assert         #x1200000024
+  )
+
+(deftype shrubbery-matrix (structure)
+  ((mat   matrix :inline :offset-assert 0)
+   (color qword  :inline :offset-assert 64)
+   )
+  :method-count-assert 9
+  :size-assert         #x50
+  :flag-assert         #x900000050
+  )
+
+(defun shrubbery-login-post-texture ((obj shrubbery))
+  "Copies adgif shader crap to somewhere"
+  ;; total number of adgif shaders for this shrubbery object.
+  (let* ((shader-count (-> obj header data 0))
+         ;; one destination to place the data.
+         (dst (the-as qword
+                      (+ (the-as uint (-> obj header))
+                         (the-as uint (* (+ (-> obj header data 1) 1) 16))
+                         )
+                      )
+           )
+         ;; the second destination to place the data
+         (tex-dst (the-as qword (+ (the-as int dst) (the-as int (* shader-count 64)))))
+         ;; the input data (adgif shaders, each is 0x50 bytes, or 5 quads)
+         (src (the-as qword (-> obj textures)))
+         )
+    ;; iterate over all shaders
+    (dotimes (a0-1 (the-as int shader-count))
+      ;; copy the first quadword directly to the second destination
+      (set! (-> tex-dst quad) (-> src quad))
+      ;; advance dst and src
+      (let ((text-dst2 (the-as qword (+ (the-as int tex-dst) 16)))
+            (src-2 (the-as qword (&+ (the-as pointer src) 16)))
+            )
+        ;; copy second quadword, but only the first three words
+        (set! (-> dst data 0) (-> src-2 data 0))
+        (set! (-> dst data 1) (-> src-2 data 1))
+        (set! (-> dst data 2) (-> src-2 data 2))
+        ;; advance dst and src
+        (set! dst (the-as qword (+ (the-as int dst) 16)))
+        (let ((src-3 (the-as qword (&+ (the-as pointer src-2) 16))))
+          ;; copy 3rd, 4th, and 5th quadwords
+          (dotimes (t0-4 3)
+            (set! (-> dst quad) (-> src-3 quad))
+            (set! dst (the-as qword (+ (the-as int dst) 16)))
+            (set! src-3 (the-as qword (&+ (the-as pointer src-3) 16)))
+            )
+          ;; more texture data (isn't this reading off of the end of the source?)
+          (set! (-> text-dst2 quad) (-> src-3 quad))
+          (set! tex-dst (the-as qword (+ (the-as int text-dst2) 16)))
+
+          ;; advance to next source
+          (set! src (the-as qword (&+ (the-as pointer src-3) 80)))
+          )
+        )
+      )
+    )
+  (none)
+  )
+
+(define *shrub-state* 0)
+
+(deftype shrub-near-packet (structure)
+  ((matrix-tmpl dma-packet :inline :offset-assert 0)
+   (header-tmpl dma-packet :inline :offset-assert 16)
+   (stq-tmpl    dma-packet :inline :offset-assert 32)
+   (color-tmpl  dma-packet :inline :offset-assert 48)
+   (vertex-tmpl dma-packet :inline :offset-assert 64)
+   (mscal-tmpl  dma-packet :inline :offset-assert 80)
+   (init-tmpl   dma-packet :inline :offset-assert 96)
+   (init-data   uint32     8       :offset-assert 112)
+   )
+  :method-count-assert 9
+  :size-assert         #x90
+  :flag-assert         #x900000090
+  )
+
+(deftype instance-shrub-work (structure)
+  ((dummy                     uint128           3              :offset-assert 0)
+   (chaina                    uint128           8              :offset-assert 48)
+   (chainb                    uint128           8              :offset-assert 176)
+   (colors                    rgba              1024           :offset-assert 304)
+   (matrix-tmpl               uint128           20             :offset-assert 4400)
+   (count-tmpl                uint128           20             :offset-assert 4720)
+   (mscalf-tmpl               dma-packet        :inline        :offset-assert 5040)
+   (mscalf-ret-tmpl           dma-packet        :inline        :offset-assert 5056)
+   (adgif-tmpl                dma-gif-packet    :inline        :offset-assert 5072)
+   (billboard-tmpl            dma-gif-packet    :inline        :offset-assert 5104)
+   (billboard-const           vector            :inline        :offset-assert 5136)
+   (shrub-near-packets        shrub-near-packet 6 :inline      :offset-assert 5152)
+   (dma-ref                   dma-packet        :inline        :offset-assert 6016)
+   (dma-end                   dma-packet        :inline        :offset-assert 6032)
+   (wind-const                vector            :inline        :offset-assert 6048)
+   (constants                 vector            :inline        :offset-assert 6064)
+   (color-constant            vector4w          :inline        :offset-assert 6080)
+   (hmge-d                    vector            :inline        :offset-assert 6096)
+   (hvdf-offset               vector            :inline        :offset-assert 6112)
+   (wind-force                vector            :inline        :offset-assert 6128)
+   (color                     vector            :inline        :offset-assert 6144)
+   (bb-color                  vector            :inline        :offset-assert 6160)
+   (min-dist                  vector            :inline        :offset-assert 6176)
+   (temp-vec                  vector            :inline        :offset-assert 6192)
+   (guard-plane               plane             4 :inline      :offset-assert 6208)
+   (plane                     plane             4 :inline      :offset-assert 6272)
+   (last                      uint32            4              :offset-assert 6336)
+   (next                      uint32            4              :offset-assert 6352)
+   (count                     uint16            4              :offset-assert 6368)
+   (mod-count                 uint16            4              :offset-assert 6376)
+   (wind-vectors              uint32                           :offset-assert 6384)
+   (instance-ptr              uint32                           :offset-assert 6388)
+   (chain-ptr                 uint32                           :offset-assert 6392)
+   (chain-ptr-next            uint32                           :offset-assert 6396)
+   (stack-ptr                 uint32                           :offset-assert 6400)
+   (bucket-ptr                uint32                           :offset-assert 6404)
+   (src-ptr                   uint32                           :offset-assert 6408)
+   (to-spr                    uint32                           :offset-assert 6412)
+   (from-spr                  uint32                           :offset-assert 6416)
+   (shrub-count               uint32                           :offset-assert 6420)
+   (node                      uint32            6 :offset 6428)
+   (length                    uint32            6              :offset-assert 6452)
+   (prototypes                uint32                           :offset-assert 6476)
+   (start-bank                uint8             20 :offset 6484)
+   (buffer-index              uint32                           :offset-assert 6504)
+   (current-spr               uint32                           :offset-assert 6508)
+   (current-mem               uint32                           :offset-assert 6512)
+   (current-shrub-near-packet uint32                           :offset-assert 6516)
+   (dma-buffer                basic             :offset 6524)
+   (near-last                 uint32                           :offset-assert 6528)
+   (near-next                 uint32                           :offset-assert 6532)
+   (near-count                uint32                           :offset-assert 6536)
+   (last-shrubs               uint32                           :offset-assert 6540)
+   (chains                    uint32                           :offset-assert 6544)
+   (flags                     uint32                           :offset-assert 6548)
+   (paused                    basic                            :offset-assert 6552)
+   (node-count                uint32                           :offset-assert 6556)
+   (inst-count                uint32                           :offset-assert 6560)
+   (wait-from-spr             uint32                           :offset-assert 6564)
+   (wait-to-spr               uint32                           :offset-assert 6568)
+   )
+  :method-count-assert 9
+  :size-assert         #x19ac
+  :flag-assert         #x9000019ac
+  )
+
+(deftype instance-shrub-dma (structure)
+  ((instancea uint128 325 :offset-assert 0)
+   (instanceb uint128 325 :offset-assert 5200)
+   (outa      uint128 128 :offset-assert 10400)
+   (outb      uint128 128 :offset-assert 12448)
+   )
+  :method-count-assert 9
+  :size-assert         #x38a0
+  :flag-assert         #x9000038a0
+  )
+
