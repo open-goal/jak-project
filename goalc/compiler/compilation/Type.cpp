@@ -1260,3 +1260,7 @@ int Compiler::get_size_for_size_of(const goos::Object& form, const goos::Object&
 Val* Compiler::compile_size_of(const goos::Object& form, const goos::Object& rest, Env* env) {
   return compile_integer(get_size_for_size_of(form, rest), env);
 }
+
+Val* Compiler::compile_psize_of(const goos::Object& form, const goos::Object& rest, Env* env) {
+  return compile_integer((get_size_for_size_of(form, rest) + 0xf) & ~0xf, env);
+}
