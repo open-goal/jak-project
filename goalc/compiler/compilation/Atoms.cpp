@@ -174,6 +174,7 @@ const std::unordered_map<
         {"declare-type", &Compiler::compile_declare_type},
         {"none", &Compiler::compile_none},
         {"size-of", &Compiler::compile_size_of},
+        {"psize-of", &Compiler::compile_psize_of},
 
         // LAMBDA
         {"lambda", &Compiler::compile_lambda},
