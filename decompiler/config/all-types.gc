@@ -1423,8 +1423,8 @@
   :size-assert         #x28
   :flag-assert         #xb00000028
   (:methods
-    (dummy-9 () none 9)
-    (dummy-10 () none 10)
+    (TODO-RENAME-HUGE-9 (_type_ vector) none 9)
+    (TODO-RENAME-10 (_type_ vector vector) float 10)
     )
   )
 
@@ -1438,8 +1438,8 @@
   :size-assert         #x28
   :flag-assert         #xb00000028
   (:methods
-    (dummy-9 () none 9)
-    (dummy-10 () none 10)
+    (TODO-RENAME-HUGE-9 (_type_ vector) none 9)
+    (TODO-RENAME-10 (_type_ vector vector) float 10)
     )
   )
 
@@ -7023,7 +7023,7 @@
 (deftype art (basic)
   ((name   basic  :offset 8)
    (length int32  :offset-assert 12)
-   (extra  basic  :offset-assert 16)
+   (extra  basic  :offset-assert 16) ; possible types: [res-lump]
    )
   :method-count-assert 13
   :size-assert         #x14
@@ -10925,82 +10925,68 @@
 
 ;; - Types
 
-; (deftype collide-frag-vertex (vector)
-;   ((data UNKNOWN 4 :offset-assert 0)
-;    (x    float     :offset-assert 0)
-;    (y    float     :offset-assert 4)
-;    (z    float     :offset-assert 8)
-;    (w    float     :offset-assert 12)
-;    (quad uint128   :offset-assert 0)
-;    )
-;   :method-count-assert 9
-;   :size-assert         #x10
-;   :flag-assert         #x900000010
-;   )
+(deftype collide-frag-vertex (vector)
+  ()
+  :method-count-assert 9
+  :size-assert         #x10
+  :flag-assert         #x900000010
+  )
 
-; (deftype collide-frag-mesh (basic)
-;   ((packed-data     uint32         :offset-assert 4)
-;    (pat-array       uint32         :offset-assert 8)
-;    (strip-data-len  uint16         :offset-assert 12)
-;    (poly-count      uint16         :offset-assert 14)
-;    (base-trans      vector :inline :offset-assert 16)
-;    (vertex-count    uint8          :offset-assert 28)
-;    (vertex-data-qwc uint8          :offset-assert 29)
-;    (total-qwc       uint8          :offset-assert 30)
-;    (unused          uint8          :offset-assert 31)
-;    )
-;   :method-count-assert 9
-;   :size-assert         #x20
-;   :flag-assert         #x900000020
-;   )
+(deftype collide-frag-mesh (basic)
+  ((packed-data     uint32         :offset-assert 4)
+   (pat-array       uint32         :offset-assert 8)
+   (strip-data-len  uint16         :offset-assert 12)
+   (poly-count      uint16         :offset-assert 14)
+   (base-trans      vector :inline :offset-assert 16)
+   (vertex-count    uint8          :offset 28)
+   (vertex-data-qwc uint8          :offset 29)
+   (total-qwc       uint8          :offset 30)
+   (unused          uint8          :offset 31)
+   )
+  :method-count-assert 9
+  :size-assert         #x20
+  :flag-assert         #x900000020
+  )
 
-; (deftype collide-fragment (drawable)
-;   ((id      int16          :offset-assert 4)
-;    (bsphere vector :inline :offset-assert 16)
-;    (mesh    basic          :offset-assert 8)
-;    )
-;   :method-count-assert 18
-;   :size-assert         #x20
-;   :flag-assert         #x1200000020
-;   (:methods
-;     (dummy-9 () none 9)
-;     (dummy-10 () none 10)
-;     (dummy-11 () none 11)
-;     (dummy-12 () none 12)
-;     (dummy-13 () none 13)
-;     (dummy-14 () none 14)
-;     (dummy-15 () none 15)
-;     (dummy-16 () none 16)
-;     (dummy-17 () none 17)
-;     )
-;   )
+(deftype collide-fragment (drawable)
+  ((mesh    collide-frag-mesh          :offset 8)
+   )
+  :method-count-assert 18
+  :size-assert         #x20
+  :flag-assert         #x1200000020
+  (:methods
+    (dummy-9 () none 9)
+    (dummy-11 () none 11)
+    (dummy-12 () none 12)
+    (dummy-13 () none 13)
+    (dummy-14 () none 14)
+    (dummy-15 () none 15)
+    (dummy-17 () none 17)
+    )
+  )
 
-; (deftype drawable-inline-array-collide-fragment (drawable-inline-array)
-;   ((id      int16           :offset-assert 4)
-;    (bsphere vector  :inline :offset-assert 16)
-;    (length  int16           :offset-assert 6)
-;    (data    UNKNOWN 1       :offset-assert 36)
-;    )
-;   :method-count-assert 18
-;   :size-assert         #x44
-;   :flag-assert         #x1200000044
-;   (:methods
-;     (dummy-9 () none 9)
-;     (dummy-10 () none 10)
-;     (dummy-11 () none 11)
-;     (dummy-12 () none 12)
-;     (dummy-13 () none 13)
-;     (dummy-14 () none 14)
-;     (dummy-15 () none 15)
-;     (dummy-16 () none 16)
-;     (dummy-17 () none 17)
-;     )
-;   )
+(deftype drawable-inline-array-collide-fragment (drawable-inline-array)
+  ((data    collide-fragment 1 :inline      :offset-assert 32)
+   (pad     uint32) ;; ending in inline basic always results in 4 byte pad.
+   )
+  :method-count-assert 18
+  :size-assert         #x44
+  :flag-assert         #x1200000044
+  (:methods
+    (dummy-9 () none 9)
+    (dummy-11 () none 11)
+    (dummy-12 () none 12)
+    (dummy-13 () none 13)
+    (dummy-14 () none 14)
+    (dummy-15 () none 15)
+    (dummy-17 () none 17)
+    )
+  )
 
-
-;; - Symbols
-
-(define-extern drawable-tree-collide-fragment type)
+(deftype drawable-tree-collide-fragment (drawable-tree)
+  ()
+  :flag-assert         #x1200000024
+  )
 
 
 ;; ----------------------
@@ -13490,16 +13476,16 @@
 ;; Containing DGOs - ['GAME', 'ENGINE']
 ;; Version - 3
 
-;; - Unknowns
+;; - Symbols
 
-;;(define-extern *external-cam-options* object) ;; unknown type
-;;(define-extern *external-cam-mode* object) ;; unknown type
-;;(define-extern *camera-look-through-other* object) ;; unknown type
-;;(define-extern *camera-other-fov* object) ;; unknown type
-;;(define-extern *camera-other-trans* object) ;; unknown type
-;;(define-extern *camera-other-matrix* object) ;; unknown type
-;;(define-extern *camera-smush-control* object) ;; unknown type
-;;(define-extern *camera-other-root* object) ;; unknown type
+(define-extern *camera-other-trans* vector)
+(define-extern *camera-other-root* vector)
+(define-extern *camera-look-through-other* int)
+(define-extern *camera-other-fov* bfloat)
+(define-extern *camera-other-matrix* matrix)
+(define-extern *camera-smush-control* smush-control)
+(define-extern *external-cam-options* int)
+(define-extern *external-cam-mode* symbol)
 
 
 ;; ----------------------
@@ -14463,16 +14449,15 @@
 
 ;; - Symbols
 
-(define-extern ray-sphere-intersect function)
-(define-extern raw-ray-sphere-intersect function)
-(define-extern ray-circle-intersect function)
-(define-extern ray-cylinder-intersect function)
-(define-extern ray-plane-intersect function)
-(define-extern ray-triangle-intersect function)
-(define-extern collide-do-primitives function)
-(define-extern moving-sphere-triangle-intersect function)
-(define-extern moving-sphere-sphere-intersect function)
-(define-extern moving-sphere-moving-sphere-intersect function)
+(define-extern ray-circle-intersect (function vector vector vector vector float))
+(define-extern moving-sphere-moving-sphere-intersect (function vector vector vector vector float))
+(define-extern ray-sphere-intersect (function vector vector vector vector float))
+(define-extern raw-ray-sphere-intersect (function vector float))
+(define-extern collide-do-primitives (function float)) ;; NOTE - didn't bother to check input args
+(define-extern ray-triangle-intersect (function vector)) ;; NOTE - didn't bother to check input args
+(define-extern ray-plane-intersect (function vector vector vector vector vector vector vector float))
+(define-extern ray-cylinder-intersect (function vector vector vector vector float float vector float))
+(define-extern moving-sphere-sphere-intersect (function vector vector vector vector float))
 
 
 ;; ----------------------
@@ -14525,27 +14510,28 @@
 
 ;; - Types
 
-; (deftype cylinder-verts (structure)
-;   ((vert UNKNOWN 24 :offset-assert 0)
-;    )
-;   :method-count-assert 9
-;   :size-assert         #x180
-;   :flag-assert         #x900000180
-;   )
+(deftype cylinder-verts (structure)
+  ((vert vector 24 :inline :offset-assert 0)
+   )
+  :method-count-assert 9
+  :size-assert         #x180
+  :flag-assert         #x900000180
+  )
 
-; (deftype cylinder-flat-verts (structure)
-;   ((vert UNKNOWN 10 :offset-assert 0)
-;    )
-;   :method-count-assert 9
-;   :size-assert         #xa0
-;   :flag-assert         #x9000000a0
-;   )
+(deftype cylinder-flat-verts (structure)
+  ((vert vector 10 :inline :offset-assert 0)
+   )
+  :method-count-assert 9
+  :size-assert         #xa0
+  :flag-assert         #x9000000a0
+  )
 
 
-;; - Symbols
+;; - Functions
 
-(define-extern ray-arbitrary-circle-intersect function)
-(define-extern camera-line function)
+;; TODO - not decompiling correctly due to vector-dot-product again i believe
+(define-extern ray-arbitrary-circle-intersect (function vector vector vector vector float float))
+(define-extern camera-line (function vector vector vector none))
 
 
 ;; ----------------------
@@ -14769,27 +14755,23 @@
 
 ;; - Types
 
-; (deftype debug-sphere-table (basic)
-;   ((point UNKNOWN 300 :offset-assert 16)
-;    )
-;   :method-count-assert 9
-;   :size-assert         #x12d0
-;   :flag-assert         #x9000012d0
-;   )
-
+(deftype debug-sphere-table (basic)
+  ((point vector 300 :inline :offset-assert 16)
+   )
+  :method-count-assert 9
+  :size-assert         #x12d0
+  :flag-assert         #x9000012d0
+  )
 
 ;; - Functions
 
+(define-extern make-debug-sphere-table (function debug-sphere-table none))
+(define-extern add-debug-sphere-from-table (function int vector vector rgba none))
 (define-extern add-debug-line (function symbol int vector vector rgba symbol int int))
 
 ;; - Symbols
 
-(define-extern make-debug-sphere-table function)
-(define-extern add-debug-sphere-from-table function)
-
-;; - Unknowns
-
-;;(define-extern *debug-sphere-table* object) ;; unknown type
+(define-extern *debug-sphere-table* debug-sphere-table) ;; unknown type
 
 
 ;; ----------------------
@@ -15173,16 +15155,16 @@
 ;; Containing DGOs - ['GAME', 'ENGINE']
 ;; Version - 3
 
+;; - Functions
+
+(define-extern generic-sink (function int generic-dma-foreground-sink))
+(define-extern generic-dma-foreground-sink-init (function generic-dma-foreground-sink none))
+(define-extern generic-init-buffers (function symbol))
+(define-extern generic-init-buf (function dma-buffer int uint none))
+
 ;; - Symbols
 
-(define-extern generic-init-buf function)
-(define-extern generic-dma-foreground-sink-init function)
-(define-extern generic-init-buffers function)
-(define-extern generic-sink function)
-
-;; - Unknowns
-
-;;(define-extern *generic-foreground-sinks* object) ;; unknown type
+(define-extern *generic-foreground-sinks* (array generic-dma-foreground-sink)) ;; unknown type
 
 
 ;; ----------------------
@@ -17905,6 +17887,10 @@
 ;   )
 
 
+;; - Functions
+
+(define-extern camera-line-setup (function vector none))
+
 ;; - Symbols
 
 (define-extern cam-layout-stop function)
@@ -17952,7 +17938,6 @@
 (define-extern interp-test function)
 (define-extern v-slrp! function)
 (define-extern interp-test-deg function)
-(define-extern camera-line-setup function)
 (define-extern camera-line-draw function)
 (define-extern cam-layout-intersect-dist function)
 (define-extern clmf-button-test function)

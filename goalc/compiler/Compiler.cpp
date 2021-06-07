@@ -143,6 +143,9 @@ std::unique_ptr<FunctionEnv> Compiler::compile_top_level_function(const std::str
                                          emitter::gRegInfo.get_gpr_ret_reg()));
   }
 
+  if (!fe->code().empty()) {
+    fe->emit_ir<IR_Null>();  // add this line
+  }
   fe->finish();
   return fe;
 }
