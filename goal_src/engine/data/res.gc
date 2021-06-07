@@ -7,25 +7,30 @@
 
 ;; TODO! Needs a lot of 128-bit type support for res-tag
 
-;; res is a generic storage system for values, used for the game entities.
-;; The types of values it can store as follows: int8, int16, int32, int64, uint8, uint16, uint32, uint64, float, vector
-;; The data itself can also be sorted as a single value or an array.
-;;
-;; A res-lump stores and is used to access all of the data for a single "resource".
-;; This is similar to a C++ map or C# dictionary. The key is a res-tag and the value is the corresponding binary data.
-;;
-;; A res-tag is a tag that contains information about a particular property of this resource.
-;; For example, information about an array of vectors that make up a path - for a moving platform - or an integer to store its entity ID.
-;;
-;; Keyframes are used to specify when/where the data is relevant.
-;; For example (this is made-up), say you have a camera spline, and you want the FOV to change at three specific points:
-;; when it starts, somewhere in the middle, and at the end.
-;; You would store an array of three FOV values. The key-frame field could then be used to say at which point in the spline
-;; the FOV should be at that value. If the camera is somewhere between those points, the result could then be interpolated.
-;;
-;; Properties are looked up from a res-lump using their name, stored as a symbol. This can return an index to a tag.
-;;
-;; This is updated from the entity system used in Crash 2, which had most of these features and worked very similarly!
+#|
+res is a generic storage system for not very large data, used mostly for the game entities.
+These res files store collections of data, which can be as values (int8, int16, int32, int64, uint8, uint16, uint32, uint64, float, vector), or any structure (as references), which are tagged and identified with a res-tag.
+The data is stored similar to an unboxed inline-array, the type of the data is stored in the res-tag.
+
+A res-lump stores and is used to access all of the data for a single "resource", a collection of varying data.
+This is similar to a C++ map or C# dictionary. The key is a res-tag and the value is the corresponding binary data.
+
+A res-tag is a tag that contains information about a particular property of this resource, such as type, name, and amount of elements.
+For example, information about an array of vectors that make up a path - for a moving platform - or an integer to store its entity ID.
+
+Keyframes are used to specify when/where the data is relevant.
+For example (this is made-up), say you have a camera spline, and you want the FOV to change at three specific points:
+when it starts, somewhere in the middle, and at the end.
+You would store an array of three FOV values. The key-frame field could then be used to say at which point in the spline
+the FOV should be at that value. If the camera is somewhere between those points, the result could then be interpolated.
+
+Properties are looked up from a res-lump using their name (a symbol).
+You can look up the data of the property you want directly using the various get-property methods.
+Curves can be quickly filled in using the get-curve-data! method.
+
+
+This is updated from the entity system used in Crash 2, which had most of these features and worked very similarly!
+|#
 
 (defmacro res-ref? (tag)
   "Checks resource tag, and returns #t if resource data is a reference type, #f if it is inlined."
@@ -656,10 +661,44 @@
   obj
   )
 
+(defmethod get-curve-data! res-lump ((obj res-lump) (curve-target curve) (points-name symbol) (knots-name symbol) (time float))
+  "Read curve data and write it to curve-target. Return #t if both control points and knots data was succesfully read, #f otherwise."
+
+  (let ((result #f))
+      ;; there's some macro here
+      (let* ((points-tag (new 'static 'res-tag))
+             (curve-data (get-property-data obj points-name 'exact time (the pointer #f) (& points-tag) *res-static-buf*)))
+
+          (when curve-data
+            (set! (-> curve-target cverts) (the uint curve-data))
+            (set! (-> curve-target num-cverts) (the int (-> points-tag elt-count)))
+
+            (when (< MAX_CURVE_CONTROL_POINTS (-> curve-target num-cverts))
+              (format 0 "ERROR<GMJ>: curve has ~D control points--only ~D are allowed. Increase MAX-CURVE-CONTROL-POINTS or shorten the curve.~%"
+                        (-> curve-target num-cverts)
+                        MAX_CURVE_CONTROL_POINTS
+                        )
+              (set! (-> curve-target num-cverts) MAX_CURVE_CONTROL_POINTS)
+              )
+
+            (let ((knots-tag (new 'static 'res-tag)))
+                (set! curve-data (get-property-data obj knots-name 'exact time (the pointer #f) (& knots-tag) *res-static-buf*))
+
+                (when curve-data
+                  (set! (-> curve-target knots) (the uint curve-data))
+                  (set! (-> curve-target num-knots) (the int (-> knots-tag elt-count)))
+                  (set! result #t)
+                  )
+                )
+            )
+          )
+      result
+      )
+  )
+
 ;; method 15 res-lump
 ;; method 17 res-lump
 ;; method 18 res-lump
-;; method 21 res-lump
 ;; mem-usage res-lump
 
 

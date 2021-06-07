@@ -17,12 +17,6 @@ tasks:
     cmds:
       - rm ./decompiler_out/**/*.asm
       - rm ./decompiler_out/**/*disasm.gc
-  decomp-next:
-    cmds:
-      - python ./scripts/next-decomp-file.py --skip "{{.SKIP}}"
-      - task: decomp
-    vars:
-      SKIP: '{{default "0" .SKIP}}'
   decomp-file:
     cmds:
       - python ./scripts/next-decomp-file.py --file "{{.FILE}}"
@@ -50,9 +44,15 @@ tasks:
   offline-tests:
     cmds:
       - ./out/build/Release/bin/offline-test.exe "./iso_data/jak1"
+  add-reference-test:
+    cmds:
+      - task: decomp-file
+      - python ./scripts/add-reference-test.py --file "{{.FILE}}"
+      - task: offline-tests
   update-reference-tests:
     cmds:
-      - ./out/build/Release/bin/offline-test.exe "./iso_data/jak1" --dump-mode
-      - python .\scripts\update_decomp_reference.py .\failures\ .\test\decompiler\reference\
+      - cmd: ./out/build/Release/bin/offline-test.exe "./iso_data/jak1" --dump-mode
+        ignore_error: true
+      - python ./scripts/update_decomp_reference.py ./failures\ ./test/decompiler/reference/
       - task: offline-tests
 

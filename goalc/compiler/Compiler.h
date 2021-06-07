@@ -557,6 +557,7 @@ class Compiler {
   Val* compile_none(const goos::Object& form, const goos::Object& rest, Env* env);
   Val* compile_defenum(const goos::Object& form, const goos::Object& rest, Env* env);
   Val* compile_size_of(const goos::Object& form, const goos::Object& rest, Env* env);
+  Val* compile_psize_of(const goos::Object& form, const goos::Object& rest, Env* env);
 };
 
 extern const std::unordered_map<
