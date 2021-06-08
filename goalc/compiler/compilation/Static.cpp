@@ -116,8 +116,8 @@ void Compiler::compile_static_structure_inline(const goos::Object& form,
         fill_static_inline_array_inline(field_value, field_info.field.type(), arg_list, structure,
                                         field_offset, env);
       } else {
-        fill_static_array_inline(field_value, field_info.field.type(), arg_list, structure,
-                                 field_offset, env);
+        fill_static_array_inline(field_value, field_info.field.type(), arg_list.data() + 4,
+                                 (int)arg_list.size() - 4, structure, field_offset, env);
       }
 
     } else if (is_integer(field_info.type)) {
@@ -615,9 +615,9 @@ StaticResult Compiler::compile_static(const goos::Object& form_before_macro, Env
       }
 
       if (unquote(args.at(1)).as_symbol()->name == "boxed-array") {
-        return fill_static_array(form, rest, true, env);
+        return fill_static_boxed_array(form, rest, env);
       } else if (unquote(args.at(1)).as_symbol()->name == "array") {
-        return fill_static_array(form, rest, false, env);
+        return fill_static_array(form, rest, env);
       } else if (unquote(args.at(1)).as_symbol()->name == "inline-array") {
         return fill_static_inline_array(form, rest, env);
       } else {
@@ -684,7 +684,8 @@ StaticResult Compiler::compile_static(const goos::Object& form_before_macro, Env
 
 void Compiler::fill_static_array_inline(const goos::Object& form,
                                         const TypeSpec& content_type,
-                                        const std::vector<goos::Object>& args,
+                                        goos::Object* args_array,
+                                        int args_array_length,
                                         StaticStructure* structure,
                                         int offset,
                                         Env* env) {
@@ -692,10 +693,9 @@ void Compiler::fill_static_array_inline(const goos::Object& form,
   auto deref_info = m_ts.get_deref_info(pointer_type);
   assert(deref_info.can_deref);
   assert(deref_info.mem_deref);
-  for (size_t i = 4; i < args.size(); i++) {
-    int arg_idx = i - 4;
+  for (int arg_idx = 0; arg_idx < args_array_length; arg_idx++) {
     int elt_offset = offset + arg_idx * deref_info.stride;
-    auto sr = compile_static(args.at(i), env);
+    auto sr = compile_static(args_array[arg_idx], env);
     if (is_integer(content_type)) {
       typecheck(form, TypeSpec("integer"), sr.typespec());
     } else {
@@ -723,7 +723,6 @@ void Compiler::fill_static_array_inline(const goos::Object& form,
 
 StaticResult Compiler::fill_static_array(const goos::Object& form,
                                          const goos::Object& rest,
-                                         bool boxed,
                                          Env* env) {
   auto fie = get_parent_env_of_type<FileEnv>(env);
   // (new 'static 'boxed-array ...)
@@ -746,35 +745,98 @@ StaticResult Compiler::fill_static_array(const goos::Object& form,
   auto array_data_size_bytes = length * deref_info.stride;
   // todo, segments
   std::unique_ptr<StaticStructure> obj;
-  if (boxed) {
-    obj = std::make_unique<StaticBasic>(MAIN_SEGMENT, "array");
-  } else {
-    obj = std::make_unique<StaticStructure>(MAIN_SEGMENT);
-  }
 
-  int array_header_size = boxed ? 16 : 0;
-  obj->data.resize(array_header_size + array_data_size_bytes);
+  obj = std::make_unique<StaticStructure>(MAIN_SEGMENT);
 
-  if (boxed) {
-    // 0 - 4 : type tag (set automatically)
-    // 4 - 8 : length
-    memcpy(obj->data.data() + 4, &length, 4);
-    // 8 - 12 allocated length
-    memcpy(obj->data.data() + 8, &length, 4);
-    // 12 - 16 content type
-    auto runtime_type = m_ts.lookup_type(content_type.base_type())->get_runtime_name();
-    obj->add_type_record(runtime_type, 12);
-  }
+  obj->data.resize(array_data_size_bytes);
 
   // now add arguments:
-  fill_static_array_inline(form, content_type, args, obj.get(), array_header_size, env);
+  fill_static_array_inline(form, content_type, args.data() + 4, args.size() - 4, obj.get(), 0, env);
 
   TypeSpec result_type;
-  if (boxed) {
-    result_type = m_ts.make_array_typespec(content_type);
-  } else {
-    result_type = m_ts.make_pointer_typespec(content_type);
+  result_type = m_ts.make_pointer_typespec(content_type);
+  auto result = StaticResult::make_structure_reference(obj.get(), result_type);
+  fie->add_static(std::move(obj));
+  return result;
+}
+
+StaticResult Compiler::fill_static_boxed_array(const goos::Object& form,
+                                               const goos::Object& rest,
+                                               Env* env) {
+  auto fie = get_parent_env_of_type<FileEnv>(env);
+  // (new 'static 'boxed-array ...)
+  // get all arguments now
+  // auto args = get_list_as_vector(rest);
+  auto args = get_va(form, rest);
+
+  if (args.unnamed.size() < 2) {
+    throw_compiler_error(form, "new static boxed array must have type and min-size arguments");
   }
+
+  if (!args.has_named("type")) {
+    throw_compiler_error(form, "boxed array must have type");
+  }
+  auto content_type = parse_typespec(args.get_named("type"));
+
+  if (!args.has_named("length")) {
+    throw_compiler_error(form, "boxed array must have length");
+  }
+  s64 length;
+  if (!try_getting_constant_integer(args.get_named("length"), &length, env)) {
+    throw_compiler_error(form, "boxed array has invalid length");
+  }
+
+  s64 allocated_length;
+  if (args.has_named("allocated-length")) {
+    if (!try_getting_constant_integer(args.get_named("allocated-length"), &allocated_length, env)) {
+      throw_compiler_error(form, "boxed array has invalid allocated-length");
+    }
+  } else {
+    allocated_length = length;
+  }
+
+  s64 initialized_count = args.unnamed.size() - 2;
+
+  if (initialized_count > length) {
+    throw_compiler_error(form, "Initialized {} elements, but length was {}", initialized_count,
+                         length);
+  }
+
+  if (length > allocated_length) {
+    throw_compiler_error(form, "Length {} is longer than the allocated-length {}", length,
+                         allocated_length);
+  }
+
+  // todo - generalize this array stuff if we ever need other types of static arrays.
+  auto pointer_type = m_ts.make_pointer_typespec(content_type);
+  auto deref_info = m_ts.get_deref_info(pointer_type);
+  assert(deref_info.can_deref);
+  assert(deref_info.mem_deref);
+  auto array_data_size_bytes = length * deref_info.stride;
+  // todo, segments
+  std::unique_ptr<StaticStructure> obj;
+  obj = std::make_unique<StaticBasic>(MAIN_SEGMENT, "array");
+
+  int array_header_size = 16;
+  obj->data.resize(array_header_size + array_data_size_bytes);
+
+  // 0 - 4 : type tag (set automatically)
+  // 4 - 8 : length
+  memcpy(obj->data.data() + 4, &length, 4);
+  // 8 - 12 allocated length
+  memcpy(obj->data.data() + 8, &allocated_length, 4);
+  // 12 - 16 content type
+  auto runtime_type = m_ts.lookup_type(content_type.base_type())->get_runtime_name();
+  obj->add_type_record(runtime_type, 12);
+
+  // now add arguments:
+  fill_static_array_inline(form, content_type, args.unnamed.data() + 2, args.unnamed.size() - 2,
+                           obj.get(), array_header_size, env);
+
+  TypeSpec result_type;
+
+  result_type = m_ts.make_array_typespec(content_type);
+
   auto result = StaticResult::make_structure_reference(obj.get(), result_type);
   fie->add_static(std::move(obj));
   return result;
