@@ -3359,10 +3359,10 @@ void ArrayFieldAccess::update_with_val(Form* new_val,
     if (m_expected_stride == 1) {
       // reg0 is idx
       auto reg0_matcher =
-          Matcher::match_or({Matcher::any(0), Matcher::cast("int", Matcher::any_reg(0))});
+          Matcher::match_or({Matcher::cast("int", Matcher::any(0)), Matcher::any(0)});
       // reg1 is base
       auto reg1_matcher =
-          Matcher::match_or({Matcher::any_reg(1), Matcher::cast("int", Matcher::any_reg(1))});
+          Matcher::match_or({Matcher::cast("int", Matcher::any(1)), Matcher::any(1)});
       auto matcher = Matcher::fixed_op(FixedOperatorKind::ADDITION, {reg0_matcher, reg1_matcher});
       auto match_result = match(matcher, new_val);
       if (!match_result.matched) {
@@ -3370,8 +3370,8 @@ void ArrayFieldAccess::update_with_val(Form* new_val,
                                  new_val->to_string(env));
       }
       auto idx = match_result.maps.forms.at(0);
-      auto base = match_result.maps.regs.at(1);
-      assert(idx && base.has_value());
+      auto base = match_result.maps.forms.at(1);
+      assert(idx && base);
 
       std::vector<DerefToken> tokens = m_deref_tokens;
       for (auto& x : tokens) {
@@ -3381,7 +3381,7 @@ void ArrayFieldAccess::update_with_val(Form* new_val,
       }
       // tokens.push_back(DerefToken::make_int_expr(var_to_form(idx.value(), pool)));
 
-      auto deref = pool.alloc_element<DerefElement>(var_to_form(base.value(), pool), false, tokens);
+      auto deref = pool.alloc_element<DerefElement>(base, false, tokens);
       result->push_back(deref);
     } else if (is_power_of_two(m_expected_stride, &power_of_two)) {
       // (+ (sll (the-as uint a1-0) 2) (the-as int a0-0))
