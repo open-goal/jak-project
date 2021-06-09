@@ -633,7 +633,7 @@ void merge_infos(
     const DecompilerTypeSystem& dts) {
   for (auto& [reg, infos] : info1) {
     auto other = info2.find(reg);
-    if (other != info1.end()) {
+    if (other != info2.end()) {
       for (size_t i = 0; i < std::min(other->second.size(), infos.size()); i++) {
         merge_infos(&infos.at(i), &other->second.at(i), dts);
       }
