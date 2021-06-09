@@ -363,7 +363,7 @@ TEST_F(FormRegressionTest, ExprMethod0Thread) {
       "  (set! (-> obj suspend-hook) (method-of-object obj thread-suspend))\n"
       "  (set! (-> obj resume-hook) (method-of-object obj thread-resume))\n"
       "  (set! (-> obj stack-size) arg4)\n"
-      "  (the-as cpu-thread (the-as pointer obj))\n"
+      "  (the-as cpu-thread obj)\n"
       "  )";
   test_with_expr(func, type, expected, false, "cpu-thread", {},
                  "[[[13, 28], \"v0\", \"cpu-thread\"]]",
@@ -1080,7 +1080,7 @@ TEST_F(FormRegressionTest, ExprMethod14DeadPool) {
       "empty.~%\"\n"
       "           )\n"
       "          (a2-1 arg1)\n"
-      "          (v1-6 (the-as process s4-0))\n"
+      "          (v1-6 (the-as object s4-0))\n"
       "          )\n"
       "     (t9-1 a0-2 a1-2 a2-1 (if (the-as process v1-6)\n"
       "                           (-> (the-as (pointer process) v1-6) 0 self)\n"

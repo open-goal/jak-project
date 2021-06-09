@@ -3131,8 +3131,9 @@ void push_asm_pextuw_to_stack(const AsmOp* op,
   }
 }
 
+/*
 void push_asm_madds_to_stack(const AsmOp* op,
-                             FormElement* /*form_elt*/,
+                             FormElement* form_elt,
                              const Env& env,
                              FormPool& pool,
                              FormStack& stack) {
@@ -3153,6 +3154,7 @@ void push_asm_madds_to_stack(const AsmOp* op,
           nullptr, GenericOperator::make_fixed(FixedOperatorKind::ASM_MADDS), vars),
       true, env.get_variable_type(*dst, true));
 }
+*/
 
 void push_asm_to_stack(const AsmOp* op,
                        FormElement* form_elt,

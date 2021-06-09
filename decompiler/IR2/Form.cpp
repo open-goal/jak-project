@@ -1645,6 +1645,12 @@ CastElement::CastElement(TypeSpec type, Form* source, bool numeric)
 }
 
 goos::Object CastElement::to_form_internal(const Env& env) const {
+  auto atom = form_as_atom(m_source);
+  if (atom && atom->is_var()) {
+    return pretty_print::build_list(
+        m_numeric ? "the" : "the-as", m_type.print(),
+        atom->var().to_form(env, RegisterAccess::Print::AS_VARIABLE_NO_CAST));
+  }
   return pretty_print::build_list(m_numeric ? "the" : "the-as", m_type.print(),
                                   m_source->to_form(env));
 }
