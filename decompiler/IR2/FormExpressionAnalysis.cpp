@@ -2614,9 +2614,20 @@ FormElement* ConditionElement::make_nonzero_check_generic(const Env& env,
 
   if (bitfield_compare) {
     return bitfield_compare;
-  } else {
-    return pool.alloc_element<GenericElement>(GenericOperator::make_compare(m_kind), source_forms);
   }
+
+  auto mr = match(Matcher::op(GenericOpMatcher::fixed(FixedOperatorKind::ADDITION),
+                              {Matcher::any(0), Matcher::any_integer(1)}),
+                  source_forms.at(0));
+  if (mr.matched) {
+    s64 value = -mr.maps.ints.at(1);
+    auto value_form = pool.alloc_single_element_form<SimpleAtomElement>(
+        nullptr, SimpleAtom::make_int_constant(value));
+    return pool.alloc_element<GenericElement>(GenericOperator::make_fixed(FixedOperatorKind::NEQ),
+                                              std::vector<Form*>{mr.maps.forms.at(0), value_form});
+  }
+
+  return pool.alloc_element<GenericElement>(GenericOperator::make_compare(m_kind), source_forms);
 }
 
 FormElement* ConditionElement::make_equal_check_generic(const Env& env,
