@@ -188,7 +188,7 @@
    (set! (-> obj suspend-hook) (method-of-object obj thread-suspend))
    (set! (-> obj resume-hook) (method-of-object obj thread-resume))
    (set! (-> obj stack-size) arg2)
-   (the-as cpu-thread (the-as pointer obj))
+   (the-as cpu-thread obj)
    )
   )
 
@@ -590,7 +590,7 @@
             "WARNING: ~A ~A had to be allocated from the debug pool, because ~A was empty.~%"
             )
            (a2-1 arg0)
-           (v1-6 (the-as process s4-0))
+           (v1-6 (the-as object s4-0))
            )
       (t9-1 a0-2 a1-2 a2-1 (if (the-as process v1-6)
                             (-> (the-as (pointer process) v1-6) 0 self)
@@ -1139,20 +1139,28 @@
 (define *global-search-count* 0)
 
 ;; definition for function process-by-name
+;; INFO: Return type mismatch process-tree vs process.
 (defun process-by-name ((arg0 object) (arg1 process-tree))
   (set! *global-search-name* (the-as basic arg0))
-  (search-process-tree
-   arg1
-   (lambda ((a0-0 process)) (name= (-> a0-0 name) *global-search-name*))
+  (the-as
+   process
+   (search-process-tree
+    arg1
+    (lambda ((a0-0 process)) (name= (-> a0-0 name) *global-search-name*))
+    )
    )
   )
 
 ;; definition for function process-not-name
+;; INFO: Return type mismatch process-tree vs process.
 (defun process-not-name ((arg0 object) (arg1 process-tree))
   (set! *global-search-name* (the-as basic arg0))
-  (search-process-tree
-   arg1
-   (lambda ((a0-0 process)) (not (name= (-> a0-0 name) *global-search-name*)))
+  (the-as
+   process
+   (search-process-tree
+    arg1
+    (lambda ((a0-0 process)) (not (name= (-> a0-0 name) *global-search-name*)))
+    )
    )
   )
 
@@ -1175,9 +1183,7 @@
 (defun kill-by-name ((arg0 object) (arg1 process-tree))
   (local-vars (a0-1 process))
   (while (begin
-          (let ((v0-0 (process-by-name arg0 arg1)))
-           (set! a0-1 (the-as process v0-0))
-           )
+          (set! a0-1 (process-by-name arg0 arg1))
           a0-1
           )
    (deactivate a0-1)
@@ -1187,18 +1193,15 @@
 
 ;; definition for function kill-by-type
 (defun kill-by-type ((arg0 object) (arg1 process-tree))
-  (local-vars (a0-1 process))
+  (local-vars (a0-1 process-tree))
   (set! *global-search-name* (the-as basic arg0))
   (while (begin
-          (let
-           ((v0-0
-             (search-process-tree
-              arg1
-              (lambda ((a0-0 process)) (= (-> a0-0 type) *global-search-name*))
-              )
-             )
+          (set!
+           a0-1
+           (search-process-tree
+            arg1
+            (lambda ((a0-0 process)) (= (-> a0-0 type) *global-search-name*))
             )
-           (set! a0-1 (the-as process v0-0))
            )
           a0-1
           )
@@ -1211,9 +1214,7 @@
 (defun kill-not-name ((arg0 object) (arg1 process-tree))
   (local-vars (a0-1 process))
   (while (begin
-          (let ((v0-0 (process-not-name arg0 arg1)))
-           (set! a0-1 (the-as process v0-0))
-           )
+          (set! a0-1 (process-not-name arg0 arg1))
           a0-1
           )
    (deactivate a0-1)
@@ -1223,18 +1224,15 @@
 
 ;; definition for function kill-not-type
 (defun kill-not-type ((arg0 object) (arg1 process-tree))
-  (local-vars (a0-1 process))
+  (local-vars (a0-1 process-tree))
   (set! *global-search-name* (the-as basic arg0))
   (while (begin
-          (let
-           ((v0-0
-             (search-process-tree
-              arg1
-              (lambda ((a0-0 process)) (!= (-> a0-0 type) *global-search-name*))
-              )
-             )
+          (set!
+           a0-1
+           (search-process-tree
+            arg1
+            (lambda ((a0-0 process)) (!= (-> a0-0 type) *global-search-name*))
             )
-           (set! a0-1 (the-as process v0-0))
            )
           a0-1
           )
@@ -1315,7 +1313,6 @@
   )
 
 ;; definition for function search-process-tree
-;; INFO: Return type mismatch process-tree vs process.
 (defun
   search-process-tree
   ((arg0 process-tree) (arg1 (function process-tree object)))
@@ -1336,7 +1333,7 @@
      )
     )
    )
-  (the-as process (the-as process-tree #f))
+  (the-as process-tree #f)
   )
 
 ;; definition for function kernel-dispatcher
@@ -1388,12 +1385,7 @@
                                     )
                                    )
                                   )
-                                 (let
-                                  ((v0-1
-                                    (reset-and-call s4-0 (-> a0-0 trans-hook))
-                                    )
-                                   )
-                                  )
+                                 (reset-and-call s4-0 (-> a0-0 trans-hook))
                                  (delete s4-0)
                                  )
                                 (if (= (-> a0-0 status) 'dead)
@@ -1524,13 +1516,13 @@
   protect-frame
   ((allocation symbol) (type-to-make type) (arg0 (function object)))
   (local-vars (pp process))
-  (let ((v0-0 (the-as protect-frame (+ (the-as int allocation) 4))))
+  (let ((v0-0 (the-as object (+ (the-as int allocation) 4))))
    (set! (-> (the-as protect-frame v0-0) type) type-to-make)
    (set! (-> (the-as protect-frame v0-0) name) 'protect-frame)
    (set! (-> (the-as protect-frame v0-0) exit) arg0)
    (set! (-> (the-as protect-frame v0-0) next) (-> pp stack-frame-top))
    (set! (-> pp stack-frame-top) (the-as protect-frame v0-0))
-   (the-as protect-frame (the-as int v0-0))
+   (the-as protect-frame v0-0)
    )
   )
 
@@ -1822,70 +1814,65 @@
 ;; WARN: Unsupported inline assembly instruction kind - [lw ra, return-from-thread(s7)]
 ;; WARN: Unsupported inline assembly instruction kind - [jr ra]
 (defmethod deactivate process ((obj process))
-  (let ((v0-0 (when (!= (-> obj status) 'dead)
-               (set! (-> obj next-state) dead-state)
-               (if (-> obj entity)
-                (entity-deactivate-handler obj (-> obj entity))
-                )
-               (let ((s5-0 pp))
-                (let ((s4-0 (-> obj stack-frame-top)))
-                 (while (the-as protect-frame s4-0)
-                  (let ((v1-5 (-> s4-0 type)))
-                   (if (or (= v1-5 protect-frame) (= v1-5 state))
-                    ((-> (the-as protect-frame s4-0) exit))
-                    )
-                   )
-                  (set!
-                   (the-as protect-frame s4-0)
-                   (-> (the-as protect-frame s4-0) next)
-                   )
-                  )
-                 )
-                (let ((s6-2 s5-0))
-                 )
-                )
-               (let ((v0-2 (process-disconnect obj)))
-                )
-               (let ((v1-11 (-> obj child)))
-                (while v1-11
-                 (let ((s5-1 (-> v1-11 0 brother)))
-                  (deactivate (-> v1-11 0))
-                  (set! v1-11 s5-1)
-                  )
-                 )
-                )
-               (return-process (-> obj pool) obj)
-               (set! (-> obj state) #f)
-               (set! (-> obj next-state) #f)
-               (set! (-> obj entity) #f)
-               (set! (-> obj pid) 0)
-               (cond
-                ((= (-> *kernel-context* current-process) obj)
-                 (set! (-> obj status) 'dead)
-                 (.lw ra-0 return-from-thread s7-0)
-                 (.jr ra-0)
-                 (nop!)
-                 (let ((v1-21 0))
-                  )
-                 )
-                ((= (-> obj status) 'initialize)
-                 (set! (-> obj status) 'dead)
-                 (throw 'initialize #f)
-                 )
-                )
-               (set! (-> obj status) 'dead)
-               0
-               )
-         )
+  (local-vars (pp process) (s7-0 none) (ra-0 int))
+  (when (!= (-> obj status) 'dead)
+   (set! (-> obj next-state) dead-state)
+   (if (-> obj entity)
+    (entity-deactivate-handler obj (-> obj entity))
+    )
+   (let ((s5-0 pp))
+    (let ((s4-0 (-> obj stack-frame-top)))
+     (while (the-as protect-frame s4-0)
+      (let ((v1-5 (-> s4-0 type)))
+       (if (or (= v1-5 protect-frame) (= v1-5 state))
+        ((-> (the-as protect-frame s4-0) exit))
         )
+       )
+      (set! (the-as protect-frame s4-0) (-> (the-as protect-frame s4-0) next))
+      )
+     )
+    (let ((s6-2 s5-0))
+     )
+    )
+   (process-disconnect obj)
+   (let ((v1-11 (-> obj child)))
+    (while v1-11
+     (let ((s5-1 (-> v1-11 0 brother)))
+      (deactivate (-> v1-11 0))
+      (set! v1-11 s5-1)
+      )
+     )
+    )
+   (return-process (-> obj pool) obj)
+   (set! (-> obj state) #f)
+   (set! (-> obj next-state) #f)
+   (set! (-> obj entity) #f)
+   (set! (-> obj pid) 0)
+   (cond
+    ((= (-> *kernel-context* current-process) obj)
+     (set! (-> obj status) 'dead)
+     (.lw ra-0 return-from-thread s7-0)
+     (.jr ra-0)
+     (nop!)
+     (let ((v1-21 0))
+      )
+     )
+    ((= (-> obj status) 'initialize)
+     (set! (-> obj status) 'dead)
+     (throw 'initialize #f)
+     )
+    )
+   (set! (-> obj status) 'dead)
+   (let ((v0-7 0))
+    )
    )
   (none)
   )
 
 ;; failed to figure out what this is:
-(let ((v0-1 (new 'global 'process 'listener 2048)))
-  (set! *listener-process* v0-1)
-  (let ((gp-0 v0-1))
+(let ((v0-40 (new 'global 'process 'listener 2048)))
+  (set! *listener-process* v0-40)
+  (let ((gp-0 v0-40))
    (set! (-> gp-0 status) 'ready)
    (set! (-> gp-0 pid) 1)
    (set!
@@ -1952,10 +1939,10 @@
 
 ;; failed to figure out what this is:
 (let ((gp-1 change-parent)
-     (v0-13 (new 'global 'process-tree 'display-pool))
+     (v0-52 (new 'global 'process-tree 'display-pool))
      )
-  (set! *display-pool* v0-13)
-  (gp-1 v0-13 *active-pool*)
+  (set! *display-pool* v0-52)
+  (gp-1 v0-52 *active-pool*)
   )
 
 ;; failed to figure out what this is:

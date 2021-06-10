@@ -858,27 +858,25 @@ TP_Type LoadVarOp::get_src_type(const TypeState& input,
       // of method 0.
       return TP_Type::make_from_ts(TypeSpec("function"));
     }
-    // Assume we're accessing a field of an object.
-    FieldReverseLookupInput rd_in;
-    DerefKind dk;
-    dk.is_store = false;
-    dk.reg_kind = get_reg_kind(ro.reg);
-    dk.sign_extend = m_kind == Kind::SIGNED;
-    dk.size = m_size;
-    rd_in.deref = dk;
-    rd_in.base_type = input_type.typespec();
-    rd_in.stride = 0;
-    rd_in.offset = ro.offset;
-    auto rd = dts.ts.reverse_field_lookup(rd_in);
 
-    if (rd.success) {
-      //      load_path_set = true;
-      //      load_path_addr_of = rd.addr_of;
-      //      load_path_base = ro.reg_ir;
-      //      for (auto& x : rd.tokens) {
-      //        load_path.push_back(x.print());
-      //      }
-      return TP_Type::make_from_ts(coerce_to_reg_type(rd.result_type));
+    // Assume we're accessing a field of an object.
+    // if we are a pair with sloppy typing, don't use this and instead use the case down below.
+    if (input_type.typespec() != TypeSpec("pair") || !env.allow_sloppy_pair_typing()) {
+      FieldReverseLookupInput rd_in;
+      DerefKind dk;
+      dk.is_store = false;
+      dk.reg_kind = get_reg_kind(ro.reg);
+      dk.sign_extend = m_kind == Kind::SIGNED;
+      dk.size = m_size;
+      rd_in.deref = dk;
+      rd_in.base_type = input_type.typespec();
+      rd_in.stride = 0;
+      rd_in.offset = ro.offset;
+      auto rd = dts.ts.reverse_field_lookup(rd_in);
+
+      if (rd.success) {
+        return TP_Type::make_from_ts(coerce_to_reg_type(rd.result_type));
+      }
     }
 
     if (input_type.typespec() == TypeSpec("pointer") ||
@@ -1087,10 +1085,10 @@ TypeState CallOp::propagate_types_internal(const TypeState& input,
     m_arg_vars.push_back(RegisterAccess(AccessMode::READ, m_read_regs.back(), m_my_idx));
   }
 
+  // _always_ write the v0 register, even if the function returns none.
+  // GOAL seems to insert coloring moves even on functions returning none.
   m_write_regs.clear();
-  if (in_type.last_arg() != TypeSpec("none")) {
-    m_write_regs.emplace_back(Reg::GPR, Reg::V0);
-  }
+  m_write_regs.emplace_back(Reg::GPR, Reg::V0);
 
   return end_types;
 }

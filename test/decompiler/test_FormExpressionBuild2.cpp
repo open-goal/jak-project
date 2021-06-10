@@ -939,7 +939,7 @@ TEST_F(FormRegressionTest, DmaBufferAddVuFunction) {
       "   (while (> a3-0 0)\n"
       "    (let ((t0-1 (min 127 a3-0)))\n"
       "     (let* ((t1-1 arg0)\n"
-      "            (t2-0 (the-as dma-packet (-> t1-1 base)))\n"
+      "            (t2-0 (the-as object (-> t1-1 base)))\n"
       "            )\n"
       "      (set!\n"
       "       (-> (the-as dma-packet t2-0) dma)\n"
