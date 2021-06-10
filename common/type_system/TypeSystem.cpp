@@ -817,7 +817,7 @@ void TypeSystem::add_builtin_types() {
   declare_method(obj_type, "copy", false, make_function_typespec({"_type_", "symbol"}, "_type_"));
   declare_method(obj_type, "relocate", false, make_function_typespec({"_type_", "int"}, "_type_"));
   declare_method(obj_type, "mem-usage", false,
-                 make_function_typespec({"_type_", "memory-usage-block"}, "_type_"));
+                 make_function_typespec({"_type_", "memory-usage-block", "int"}, "_type_"));
 
   // STRUCTURE
   // structure new doesn't support dynamic sizing, which is kinda weird - it grabs the size from
