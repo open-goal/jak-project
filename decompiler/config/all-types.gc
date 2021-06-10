@@ -791,6 +791,7 @@
 ;; - Types
 
 (declare-type connectable structure)
+(declare-type res-lump basic)
 (define-extern process type) ; deftype provided by C Kernel
 (deftype process (process-tree)
   ((pool dead-pool :offset-assert #x20)
@@ -798,7 +799,7 @@
    (pid int32 :offset-assert #x28)
    (main-thread cpu-thread :offset-assert #x2c)
    (top-thread thread :offset-assert #x30)
-   (entity basic :offset-assert #x34) ;; entity
+   (entity res-lump :offset-assert #x34) ;; entity
    (state state :offset-assert #x38)
    (trans-hook function :offset-assert #x3c)
    (post-hook function :offset-assert #x40)
@@ -17816,6 +17817,7 @@
    (num-planes   int32   :offset-assert 16)
    (plane        uint32  :offset-assert 20)
    )
+  :pack-me
   :method-count-assert 12
   :size-assert         #x18
   :flag-assert         #xc00000018
@@ -17826,25 +17828,26 @@
     )
   )
 
-; (deftype vol-control (basic)
-;   ((flags         uint32     :offset-assert 4)
-;    (process       basic      :offset-assert 8)
-;    (pos-vol-count int32      :offset-assert 12)
-;    (pos-vol       UNKNOWN 32 :offset-assert 16)
-;    (neg-vol-count int32      :offset-assert 784)
-;    (neg-vol       UNKNOWN 32 :offset-assert 788)
-;    (debug-point   basic      :offset-assert 1556)
-;    (debug-normal  basic      :offset-assert 1560)
-;    )
-;   :method-count-assert 12
-;   :size-assert         #x61c
-;   :flag-assert         #xc0000061c
-;   (:methods
-;     (dummy-9 () none 9)
-;     (dummy-10 () none 10)
-;     (dummy-11 () none 11)
-;     )
-;   )
+(deftype vol-control (basic)
+  ((flags         uint32     :offset-assert 4)
+   (process       process-drawable      :offset-assert 8)
+   (pos-vol-count int32      :offset-assert 12)
+   (pos-vol       plane-volume 32 :inline :offset-assert 16)
+   (neg-vol-count int32      :offset-assert 784)
+   (neg-vol       plane-volume 32 :inline :offset-assert 788)
+   (debug-point   basic      :offset-assert 1556)
+   (debug-normal  basic      :offset-assert 1560)
+   )
+  :method-count-assert 12
+  :size-assert         #x61c
+  :flag-assert         #xc0000061c
+  (:methods
+    (new (symbol type process-drawable) _type_ 0)
+    (dummy-9 () none 9)
+    (dummy-10 () none 10)
+    (dummy-11 (_type_) symbol 11)
+    )
+  )
 
 
 
