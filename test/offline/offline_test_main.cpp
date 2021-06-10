@@ -102,8 +102,7 @@ const std::unordered_set<std::string> g_functions_to_skip_compiling = {
     "(method 10 process)",
 
     /// GSTATE
-    "enter-state",          // stack pointer asm
-    "send-event-function",  // pp asm (eventually we should make this work)
+    "enter-state",  // stack pointer asm
 
     /// MATH
     "rand-vu-init",

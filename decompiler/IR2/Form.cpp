@@ -2179,6 +2179,9 @@ void LetElement::apply_form(const std::function<void(Form*)>& f) {
 void LetElement::collect_vars(RegAccessSet& vars, bool recursive) const {
   for (auto& entry : m_entries) {
     vars.insert(entry.dest);
+    if (recursive) {
+      entry.src->collect_vars(vars, recursive);
+    }
   }
   m_body->collect_vars(vars, recursive);
 }
