@@ -3091,7 +3091,7 @@ void push_asm_pcpyud_to_stack(const AsmOp* op,
   if (bitfield_info && possible_r0->reg() == Register(Reg::GPR, Reg::R0)) {
     auto base = pop_to_forms({*var}, env, pool, stack, true).at(0);
     auto read_elt = pool.alloc_element<BitfieldAccessElement>(base, arg0_type);
-    read_elt->push_pcpyud();
+    read_elt->push_pcpyud(env.dts->ts, pool, env);
     stack.push_value_to_reg(*dst, pool.alloc_single_form(nullptr, read_elt), true,
                             env.get_variable_type(*dst, true));
   } else {

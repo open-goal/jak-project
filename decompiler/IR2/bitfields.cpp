@@ -144,6 +144,9 @@ BitfieldAccessElement::BitfieldAccessElement(Form* base_value, const TypeSpec& t
 }
 
 goos::Object BitfieldAccessElement::to_form_internal(const Env& env) const {
+  if (m_current_result) {
+    return m_current_result->to_form(env);
+  }
   return pretty_print::build_list("incomplete-bitfield-access", m_base->to_form(env));
 }
 
@@ -164,11 +167,11 @@ void BitfieldAccessElement::get_modified_regs(RegSet& regs) const {
   m_base->get_modified_regs(regs);
 }
 
-const BitField& find_field(const TypeSystem& ts,
-                           const BitFieldType* type,
-                           int start_bit,
-                           int size,
-                           std::optional<bool> looking_for_unsigned) {
+std::optional<BitField> try_find_field(const TypeSystem& ts,
+                                       const BitFieldType* type,
+                                       int start_bit,
+                                       int size,
+                                       std::optional<bool> looking_for_unsigned) {
   for (auto& field : type->fields()) {
     if (field.size() == size && field.offset() == start_bit) {
       // the GOAL compiler sign extended floats.
@@ -195,9 +198,22 @@ const BitField& find_field(const TypeSystem& ts,
       }
     }
   }
-  throw std::runtime_error(
-      fmt::format("Unmatched field: start bit {}, size {}, signed? {}, type {}", start_bit, size,
-                  !looking_for_unsigned, type->get_name()));
+  return {};
+}
+
+BitField find_field(const TypeSystem& ts,
+                    const BitFieldType* type,
+                    int start_bit,
+                    int size,
+                    std::optional<bool> looking_for_unsigned) {
+  auto result = try_find_field(ts, type, start_bit, size, looking_for_unsigned);
+  if (!result) {
+    throw std::runtime_error(
+        fmt::format("Unmatched field: start bit {}, size {}, signed? {}, type {}", start_bit, size,
+                    !looking_for_unsigned, type->get_name()));
+  } else {
+    return *result;
+  }
 }
 
 namespace {
@@ -238,7 +254,7 @@ std::optional<BitFieldDef> get_bitfield_initial_set(Form* form,
       int right = mr.maps.ints.at(2);
       int size = 64 - left;
       int offset = left - right;
-      auto& f = find_field(ts, type, offset, size, {});
+      auto f = find_field(ts, type, offset, size, {});
       BitFieldDef def;
       def.value = value;
       def.field_name = f.name();
@@ -261,7 +277,7 @@ std::optional<BitFieldDef> get_bitfield_initial_set(Form* form,
         int right = *power_of_two;
         int size = 64 - left;
         int offset = left - right;
-        auto& f = find_field(ts, type, offset, size, {});
+        auto f = find_field(ts, type, offset, size, {});
         BitFieldDef def;
         def.value = value;
         def.field_name = f.name();
@@ -281,7 +297,7 @@ std::optional<BitFieldDef> get_bitfield_initial_set(Form* form,
     int right = 0;
     int size = 64 - left;
     int offset = left - right;
-    auto& f = find_field(ts, type, offset, size, {});
+    auto f = find_field(ts, type, offset, size, {});
     BitFieldDef def;
     def.value = value;
     def.field_name = f.name();
@@ -296,7 +312,7 @@ std::optional<BitFieldDef> get_bitfield_initial_set(Form* form,
     auto value = mr_sllv.maps.forms.at(0);
     int size = 32;
     int offset = 0;
-    auto& f = find_field(ts, type, offset, size, {});
+    auto f = find_field(ts, type, offset, size, {});
     BitFieldDef def;
     def.value = value;
     def.field_name = f.name();
@@ -309,11 +325,23 @@ std::optional<BitFieldDef> get_bitfield_initial_set(Form* form,
 
 }  // namespace
 
-void BitfieldAccessElement::push_pcpyud() {
+void BitfieldAccessElement::push_pcpyud(const TypeSystem& ts, FormPool& pool, const Env& /*env*/) {
   if (!m_steps.empty()) {
     throw std::runtime_error("Unexpected pcpyud!");
   }
   m_got_pcpyud = true;
+
+  // look for a 64-bit field
+  auto type = ts.lookup_type(m_type);
+  auto as_bitfield = dynamic_cast<BitFieldType*>(type);
+  assert(as_bitfield);
+  auto field = try_find_field(ts, as_bitfield, 64, 64, true);
+  if (field) {
+    auto result =
+        pool.alloc_element<DerefElement>(m_base, false, DerefToken::make_field_name(field->name()));
+    result->inline_nested();
+    m_current_result = pool.alloc_single_form(this, result);
+  }
 }
 
 /*!
