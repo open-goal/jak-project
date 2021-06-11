@@ -14,6 +14,12 @@
 ;; definition for symbol *generate-actor-vis-output*, type symbol
 (define *generate-actor-vis-output* #f)
 
+(defenum entity-perm-status
+  :bitfield #t
+  :type uint16
+  (dead 2)
+  (complete 6))
+
 ;; definition of type entity-perm
 (deftype entity-perm (structure)
   ((user-object object  2             :offset-assert 0)
@@ -25,7 +31,7 @@
    (user-uint16 uint16  4 :offset   0)
    (user-int8   int8    8 :offset   0)
    (user-uint8  uint8   8 :offset   0)
-   (status      uint16                :offset-assert 8)
+   (status      entity-perm-status    :offset-assert 8)
    (dummy       uint8   1             :offset-assert 10)
    (task        uint8                 :offset-assert 11)
    (aid         uint32                :offset-assert 12)
@@ -45,7 +51,7 @@
   ((prev-link entity-links             :offset-assert 0)
    (next-link entity-links             :offset-assert 4)
    (entity    basic                    :offset-assert 8)
-   (process   basic                    :offset-assert 12)
+   (process   process                  :offset-assert 12)
    (level     basic                    :offset-assert 16)
    (vis-id    int32                    :offset-assert 20)
    (trans     vector       :inline     :offset-assert 32)
@@ -208,3 +214,6 @@
          :birth-max 10
          )
   )
+
+(defun-extern entity-by-name string entity)
+(defun-extern entity-by-aid uint entity)

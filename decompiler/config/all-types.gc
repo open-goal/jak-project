@@ -8928,7 +8928,7 @@
    (data-base        pointer            :offset-assert 12)
    (data-top         pointer            :offset-assert 16)
    (data-size        int32              :offset-assert 20)
-   (extra            basic              :offset-assert 24) ;; NOTE - can be anything it seems
+   (extra            basic              :offset-assert 24) ;; NOTE - can be anything it seems - have seen entity-links
    (tag              (pointer res-tag)  :offset-assert 28)
    )
   :method-count-assert 22
@@ -12559,6 +12559,12 @@
 
 ;; - Types
 
+(defenum entity-perm-status
+  :bitfield #t
+  :type uint16
+  (dead 2)
+  (complete 6))
+
 (deftype entity-perm (structure)
   ((user-object object 2 :offset-assert 0)
    (user-uint64 uint64    :offset 0)
@@ -12569,7 +12575,7 @@
    (user-uint16 uint16 4 :offset 0)
    (user-int8   int8 8 :offset 0)
    (user-uint8  uint8 8 :offset 0)
-   (status      uint16    :offset-assert 8)
+   (status      entity-perm-status    :offset-assert 8)
    (dummy       uint8 1 :offset-assert 10)
    (task        uint8     :offset-assert 11)
    (aid         uint32    :offset-assert 12)
@@ -12588,7 +12594,7 @@
   ((prev-link entity-links         :offset-assert 0)
    (next-link entity-links         :offset-assert 4)
    (entity    basic                :offset-assert 8)
-   (process   basic                :offset-assert 12)
+   (process   process              :offset-assert 12)
    (level     basic                :offset-assert 16)
    (vis-id    int32                :offset-assert 20)
    (trans     vector       :inline :offset-assert 32)
@@ -12666,7 +12672,7 @@
 (deftype entity-actor (entity)
   (
     (nav-mesh nav-mesh :offset-assert 52)
-    (etype basic :offset-assert 56)
+    (etype basic :offset-assert 56) ;; probably type
     (task uint8 :offset-assert 60)
     (vis-id uint16 :offset-assert 62)
     (quat quaternion :inline :offset-assert 64)
@@ -13134,9 +13140,8 @@
 ;; - Types
 
 (deftype actor-link-info (basic)
-  ((process basic  :offset-assert 4)
+  ((process process  :offset-assert 4)
    (next    entity-actor  :offset-assert 8)
-   ;; prev is a guess here.
    (prev    entity-actor  :offset-assert 12)
    )
   :method-count-assert 26
@@ -13144,23 +13149,23 @@
   :flag-assert         #x1a00000010
   (:methods
     (new (symbol type process) _type_)
-    (dummy-9 () none 9)
-    (dummy-10 () none 10)
-    (dummy-11 () none 11)
+    (get-matching-actor-type-mask (_type_ type) int 9)
+    (actor-count-before (_type_) int 10)
+    (link (_type_) entity-actor 11)
     (get-next (_type_) entity-actor 12)
     (get-prev (_type_) entity-actor 13)
-    (dummy-14 (_type_) none 14) ;; decompiler broken...
-    (dummy-15 () none 15)
-    (dummy-16 () none 16)
-    (dummy-17 () none 17)
-    (dummy-18 () none 18)
-    (dummy-19 () none 19)
-    (dummy-20 () none 20)
-    (dummy-21 () none 21)
-    (dummy-22 () none 22)
-    (dummy-23 () none 23)
-    (dummy-24 () none 24)
-    (dummy-25 () none 25)
+    (get-next-process (_type_) process 14)
+    (get-prev-process (_type_) process 15)
+    (apply-function-forward (_type_ (function entity-actor object object) object) int 16)
+    (apply-function-reverse (_type_ (function entity-actor object object) object) int 17)
+    (apply-all (_type_ (function entity-actor object object) object) int 18)
+    (dummy-19 (_type_ object) none 19)
+    (dummy-20 (_type_ object) none 20) ;; weird sc error
+    (dummy-21 (_type_ object) none 21) ;; weird sc error
+    (send-to-next-and-prev (_type_ object) none 22)
+    (send-to-next (_type_ object) none 23)
+    (send-to-prev (_type_ object) none 24)
+    (actor-count (_type_) int 25)
     )
   )
 
@@ -13168,10 +13173,10 @@
 
 (define-extern entity-actor-count (function res-lump symbol int))
 (define-extern entity-by-name (function string entity))
-(define-extern entity-by-aid (function int entity))
-(define-extern actor-link-subtask-complete-hook function)
-(define-extern actor-link-dead-hook function)
-(define-extern alt-actor-list-subtask-incomplete-count function)
+(define-extern entity-by-aid (function uint entity))
+(define-extern actor-link-subtask-complete-hook (function entity-actor (pointer symbol) symbol))
+(define-extern actor-link-dead-hook (function entity-actor (pointer symbol) symbol))
+(define-extern alt-actor-list-subtask-incomplete-count (function process-drawable int))
 
 ;; - Functions
 

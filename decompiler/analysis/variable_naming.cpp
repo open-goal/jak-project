@@ -414,15 +414,40 @@ SSA make_rc_ssa(const Function& function, const RegUsageInfo& rui, const Functio
     }
 
     // process succs:
-    auto& end_op_info = rui.op.at(end_op - 1);
+    // auto& end_op_info = rui.op.at(end_op - 1);
     for (auto succ : {block.succ_branch, block.succ_ft}) {
       if (succ != -1) {
+        auto first_op_in_succ_id = ops.block_id_to_first_atomic_op.at(succ);
+        const auto& first_op_info = rui.op.at(first_op_in_succ_id);
+        const auto& first_op = ops.ops.at(first_op_in_succ_id);
+        // these are the registers that will actually be used in the successor block.
+        RegSet regs;
+        for (auto& reg : first_op->read_regs()) {
+          regs.insert(reg);
+        }
+
+        for (auto& reg : first_op_info.live) {
+          if (std::find(first_op->write_regs().begin(), first_op->write_regs().end(), reg) ==
+              first_op->write_regs().end()) {
+            regs.insert(reg);
+          }
+        }
+
+        for (auto reg : regs) {
+          // only update phis for variables that are actually live at the next block.
+          if (reg.get_kind() == Reg::FPR || reg.get_kind() == Reg::GPR) {
+            ssa.add_source_to_phi(succ, reg, current_regs.at(reg));
+          }
+        }
+
+        /*
         for (auto reg : end_op_info.live) {
           // only update phis for variables that are actually live at the next block.
           if (reg.get_kind() == Reg::FPR || reg.get_kind() == Reg::GPR) {
             ssa.add_source_to_phi(succ, reg, current_regs.at(reg));
           }
         }
+         */
       }
     }
   }
