@@ -5,6 +5,15 @@
 ;; name in dgo: rpc-h
 ;; dgos: GAME, ENGINE
 
+;; RPC channels.
+;; these should match XXX_RPC_CHANNEL in the game/common/xxx_rpc_types.h
+(defconstant RPC-SOUND-PLAYER 0) ;; called player in IOP code
+(defconstant RPC-SOUND-LOADER 1) ;; called loader in IOP code
+(defconstant RPC-RAMDISK 2) ;; called server in IOP code, sometimes
+(defconstant RPC-DGO 3)
+(defconstant RPC-LOAD-STR 4) ;; called STR in IOP code
+(defconstant RPC-PLAY-STR 5) ;; called PLAY in IOP code
+
 ;; an RPC buffer is a container of elements to send to the IOP.
 ;; each element is size elt-size, and there are maximum of elt-count elements
 ;; it is possible to use fewer elements than elt-count.
@@ -136,7 +145,7 @@
   "Call an RPC. This is an async RPC. Use check-busy or sync to see if it's done."
   (when (!= 0 (-> obj current elt-used))
     ;; when we have used elements
-    (format 0 "call rpc-buffer-pair with ~D elts~%" (-> obj current elt-used))
+    ;; (format 0 "call rpc-buffer-pair with ~D elts~%" (-> obj current elt-used))
     
     ;; make sure the previous buffer is done
     (let ((active-buffer (if (= (-> obj buffer 0) (-> obj current))
@@ -145,25 +154,21 @@
       (when (-> active-buffer busy)
         ;; we think the active buffer may be busy.
         ;; first lets just do a simple check
-        (cond 
-          ((!= 0 (rpc-busy? (-> obj rpc-port)))
-           ;; busy! print an error and stall!
-           (format 0 "STALL: waiting for IOP on RPC port #~D~%" (-> obj rpc-port))
-           (while (!= 0 (rpc-busy? (-> obj rpc-port)))
-             (+ 1 2 3)
-             )
-           )
-          (else
-            ;; not busy.
-            (set! (-> active-buffer busy) '#f)
-            (set! (-> active-buffer elt-used) 0)
+        (when (!= 0 (rpc-busy? (-> obj rpc-port)))
+          ;; busy! print an error and stall!
+          (format 0 "STALL: waiting for IOP on RPC port #~D~%" (-> obj rpc-port))
+          (while (!= 0 (rpc-busy? (-> obj rpc-port)))
+            (+ 1 2 3)
             )
           )
+        ;; not busy.
+        (set! (-> active-buffer busy) '#f)
+        (set! (-> active-buffer elt-used) 0)
         )
       ;; now we've cleared the last RPC call, we can do another
       (let ((current-buffer (-> obj current)))
         ;; rpc_channel, fno, async, send_buff, send_size, recv_buff, recv_size
-        (format 0 "recv-size is ~D~%" recv-size)
+        ;; (format 0 "recv-size is ~D~%" recv-size)
         (rpc-call (-> obj rpc-port)
                   fno
                   (the uint 1)

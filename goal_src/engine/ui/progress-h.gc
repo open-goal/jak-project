@@ -5,7 +5,6 @@
 ;; name in dgo: progress-h
 ;; dgos: GAME, ENGINE
 
-;; progress-h
 (deftype count-info (structure)
   ((money-count  int32  :offset-assert 0)
    (buzzer-count int32  :offset-assert 4)
@@ -16,9 +15,8 @@
   :flag-assert         #x900000008
   )
 
-;; progress-h
 (deftype game-count-info (basic)
-  ((length int32            :offset-assert 4)
+  ((length int32                       :offset-assert 4)
    (data   count-info :inline :dynamic :offset-assert 8)
    )
   :method-count-assert 9
@@ -26,7 +24,42 @@
   :flag-assert         #x900000008
   )
 
-;; TODO - for video
+(deftype task-info-data (basic)
+  ((task-id                  uint8    :offset-assert 4)
+   (task-name                symbol 4 :offset-assert 8)
+   (text-index-when-resolved int32    :offset-assert 24)
+   )
+  :method-count-assert 9
+  :size-assert         #x1c
+  :flag-assert         #x90000001c
+  )
+
+(deftype level-tasks-info (basic)
+  ((level-name-id     uint32           :offset-assert 4)
+   (text-group-index  int32            :offset-assert 8)
+   (nb-of-tasks       int32            :offset-assert 12)
+   (buzzer-task-index int32            :offset-assert 16)
+   (task-info         task-info-data 8 :offset-assert 20)
+   )
+  :method-count-assert 9
+  :size-assert         #x34
+  :flag-assert         #x900000034
+  )
+
+(deftype game-option (basic)
+  ((option-type     uint64  :offset-assert 8)
+   (name            uint32  :offset-assert 16)
+   (scale           basic   :offset-assert 20)
+   (param1          float   :offset-assert 24)
+   (param2          float   :offset-assert 28)
+   (param3          int32   :offset-assert 32)
+   (value-to-modify uint32  :offset-assert 36)
+   )
+  :method-count-assert 9
+  :size-assert         #x28
+  :flag-assert         #x900000028
+  )
+
 (deftype progress (process)
   ((current-debug-string         int32           :offset-assert 112)
    (current-debug-language       int32           :offset-assert 116)
@@ -73,21 +106,19 @@
    (card-info                    mc-slot-info    :offset-assert 292)
    (last-option-index-change     uint64          :offset-assert 296)
    (video-mode-timeout           uint64          :offset-assert 304)
-   (pad uint8 :offset 731)
-   ; (display-state-stack          UNKNOWN      5  :offset-assert 312)
-   ; (option-index-stack           UNKNOWN      5  :offset-assert 352)
-   ; (display-state-pos            int32           :offset-assert 372)
-   ; (nb-of-icons                  int32           :offset-assert 376)
-   ; (icons                        UNKNOWN      6  :offset-assert 380)
-   ; (max-nb-of-particles          int32           :offset-assert 404)
-   ; (nb-of-particles              int32           :offset-assert 408)
-   ; (particles                    UNKNOWN      40 :offset-assert 412)
-   ; (particle-state               UNKNOWN      40 :offset-assert 572)
+   (display-state-stack          uint64       5  :offset-assert 312)
+   (option-index-stack           uint32       5  :offset-assert 352)
+   (display-state-pos            int32           :offset-assert 372)
+   (nb-of-icons                  int32           :offset-assert 376)
+   (icons                        uint32       6  :offset-assert 380)
+   (max-nb-of-particles          int32           :offset-assert 404)
+   (nb-of-particles              int32           :offset-assert 408)
+   (particles                    uint32       40 :offset-assert 412)
+   (particle-state               uint32       40 :offset-assert 572)
    )
   :method-count-assert 59
   :size-assert         #x2dc
   :flag-assert         #x3b000002dc
-  ;; inherited inspect of process
   (:methods
     (dummy-14 () none 14)
     (dummy-15 () none 15)
@@ -136,4 +167,9 @@
     (dummy-58 () none 58)
     )
   )
-(define-extern *progress-process* (pointer progress))
+
+(define *progress-process* (the (pointer progress) #f))
+(define *progress-last-task-index* 0)
+
+(defun-extern activate-progress process int int)
+

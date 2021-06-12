@@ -23,6 +23,10 @@
   `(cond (,clause ,true) (#t ,false))
   )
 
+(defsmacro when (clause &rest body)
+  `(if ,clause (begin ,@body) #f)
+  )
+
 (defsmacro not (x)
   `(if ,x #f #t)
   )
@@ -33,6 +37,14 @@
 	    (* x (factorial (- x 1)))
 	    )
 	)
+
+(defsmacro max (a b)
+  `(if (> a b) a b)
+  )
+
+(defsmacro min (a b)
+  `(if (< a b) a b)
+  )
 
 (defsmacro caar (x)
   `(car (car ,x)))
@@ -94,6 +106,16 @@
 	,(car (cdar bindings))
 	)
       )
+  )
+
+(defsmacro dotimes (var &rest body)
+  `(let (( ,(first var) 0))
+     (while (< ,(first var) ,(second var))
+            ,@body
+            (set! ,(first var) (+ ,(first var) 1))
+            )
+     ,@(cddr var)
+     )
   )
 
 (desfun repeated-list (obj count)
@@ -167,6 +189,14 @@
 ;; goal macro to define a goos function
 (defgmacro desfun (name args &rest body)
   `(seval (desfun ,name ,args ,@body))
+  )
+
+
+
+
+;; shortcut to quit GOOS
+(defsmacro e ()
+  `(exit)
   )
 
 ;; this is checked in a test to see if this file is loaded.

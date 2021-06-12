@@ -144,6 +144,9 @@ BitfieldAccessElement::BitfieldAccessElement(Form* base_value, const TypeSpec& t
 }
 
 goos::Object BitfieldAccessElement::to_form_internal(const Env& env) const {
+  if (m_current_result) {
+    return m_current_result->to_form(env);
+  }
   return pretty_print::build_list("incomplete-bitfield-access", m_base->to_form(env));
 }
 
@@ -164,11 +167,11 @@ void BitfieldAccessElement::get_modified_regs(RegSet& regs) const {
   m_base->get_modified_regs(regs);
 }
 
-const BitField& find_field(const TypeSystem& ts,
-                           const BitFieldType* type,
-                           int start_bit,
-                           int size,
-                           std::optional<bool> looking_for_unsigned) {
+std::optional<BitField> try_find_field(const TypeSystem& ts,
+                                       const BitFieldType* type,
+                                       int start_bit,
+                                       int size,
+                                       std::optional<bool> looking_for_unsigned) {
   for (auto& field : type->fields()) {
     if (field.size() == size && field.offset() == start_bit) {
       // the GOAL compiler sign extended floats.
@@ -195,9 +198,22 @@ const BitField& find_field(const TypeSystem& ts,
       }
     }
   }
-  throw std::runtime_error(
-      fmt::format("Unmatched field: start bit {}, size {}, signed? {}, type {}", start_bit, size,
-                  !looking_for_unsigned, type->get_name()));
+  return {};
+}
+
+BitField find_field(const TypeSystem& ts,
+                    const BitFieldType* type,
+                    int start_bit,
+                    int size,
+                    std::optional<bool> looking_for_unsigned) {
+  auto result = try_find_field(ts, type, start_bit, size, looking_for_unsigned);
+  if (!result) {
+    throw std::runtime_error(
+        fmt::format("Unmatched field: start bit {}, size {}, signed? {}, type {}", start_bit, size,
+                    !looking_for_unsigned, type->get_name()));
+  } else {
+    return *result;
+  }
 }
 
 namespace {
@@ -238,7 +254,7 @@ std::optional<BitFieldDef> get_bitfield_initial_set(Form* form,
       int right = mr.maps.ints.at(2);
       int size = 64 - left;
       int offset = left - right;
-      auto& f = find_field(ts, type, offset, size, {});
+      auto f = find_field(ts, type, offset, size, {});
       BitFieldDef def;
       def.value = value;
       def.field_name = f.name();
@@ -261,7 +277,7 @@ std::optional<BitFieldDef> get_bitfield_initial_set(Form* form,
         int right = *power_of_two;
         int size = 64 - left;
         int offset = left - right;
-        auto& f = find_field(ts, type, offset, size, {});
+        auto f = find_field(ts, type, offset, size, {});
         BitFieldDef def;
         def.value = value;
         def.field_name = f.name();
@@ -281,7 +297,7 @@ std::optional<BitFieldDef> get_bitfield_initial_set(Form* form,
     int right = 0;
     int size = 64 - left;
     int offset = left - right;
-    auto& f = find_field(ts, type, offset, size, {});
+    auto f = find_field(ts, type, offset, size, {});
     BitFieldDef def;
     def.value = value;
     def.field_name = f.name();
@@ -296,7 +312,7 @@ std::optional<BitFieldDef> get_bitfield_initial_set(Form* form,
     auto value = mr_sllv.maps.forms.at(0);
     int size = 32;
     int offset = 0;
-    auto& f = find_field(ts, type, offset, size, {});
+    auto f = find_field(ts, type, offset, size, {});
     BitFieldDef def;
     def.value = value;
     def.field_name = f.name();
@@ -309,11 +325,23 @@ std::optional<BitFieldDef> get_bitfield_initial_set(Form* form,
 
 }  // namespace
 
-void BitfieldAccessElement::push_pcpyud() {
+void BitfieldAccessElement::push_pcpyud(const TypeSystem& ts, FormPool& pool, const Env& /*env*/) {
   if (!m_steps.empty()) {
     throw std::runtime_error("Unexpected pcpyud!");
   }
   m_got_pcpyud = true;
+
+  // look for a 64-bit field
+  auto type = ts.lookup_type(m_type);
+  auto as_bitfield = dynamic_cast<BitFieldType*>(type);
+  assert(as_bitfield);
+  auto field = try_find_field(ts, as_bitfield, 64, 64, true);
+  if (field) {
+    auto result =
+        pool.alloc_element<DerefElement>(m_base, false, DerefToken::make_field_name(field->name()));
+    result->inline_nested();
+    m_current_result = pool.alloc_single_form(this, result);
+  }
 }
 
 /*!
@@ -571,6 +599,45 @@ BitFieldDef BitFieldDef::from_constant(const BitFieldConstantDef& constant, Form
   return bfd;
 }
 
+namespace {
+Form* cast_sound_name(FormPool& pool, const Env& env, Form* in) {
+  auto matcher = Matcher::op(GenericOpMatcher::fixed(FixedOperatorKind::PCPYLD),
+                             {Matcher::any(1), Matcher::any(0)});
+  auto mr = match(matcher, in);
+  if (!mr.matched) {
+    return nullptr;
+  }
+
+  auto hi = mr.maps.forms.at(1);
+  auto lo = mr.maps.forms.at(0);
+
+  auto hi_int = get_goal_integer_constant(hi, env);
+  auto lo_int = get_goal_integer_constant(lo, env);
+  if (!hi_int || !lo_int) {
+    return nullptr;
+  }
+
+  char name[17];
+  memcpy(name, &lo_int.value(), 8);
+  memcpy(name + 8, &hi_int.value(), 8);
+  name[16] = '\0';
+
+  bool got_zero = false;
+  for (int i = 0; i < 16; i++) {
+    if (name[i] == 0) {
+      got_zero = true;
+    } else {
+      if (got_zero) {
+        return nullptr;
+      }
+    }
+  }
+
+  return pool.alloc_single_element_form<ConstantTokenElement>(
+      nullptr, fmt::format("(static-sound-name \"{}\")", name));
+}
+}  // namespace
+
 /*!
  * Cast the given form to a bitfield.
  * If the form could have been a (new 'static 'bitfieldtype ...) it will attempt to generate this.
@@ -581,6 +648,15 @@ Form* cast_to_bitfield(const BitFieldType* type_info,
                        const Env& env,
                        Form* in) {
   in = strip_int_or_uint_cast(in);
+
+  if (type_info->get_name() == "sound-name") {
+    auto as_sound_name = cast_sound_name(pool, env, in);
+    if (as_sound_name) {
+      return as_sound_name;
+    }
+    // just do a normal cast if that failed.
+    return pool.alloc_single_element_form<CastElement>(nullptr, typespec, in);
+  }
   // check if it's just a constant:
   auto in_as_atom = form_as_atom(in);
   if (in_as_atom && in_as_atom->is_int()) {
