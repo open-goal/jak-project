@@ -1,6 +1,8 @@
 #include "iso_api.h"
 #include "game/sce/iop.h"
 #include "common/log/log.h"
+#include "common/util/assert.h"
+#include "sbank.h"
 
 using namespace iop;
 
@@ -64,4 +66,21 @@ s32 LoadISOFileChunkToEE(FileRecord* file, uint32_t dest_addr, uint32_t length, 
     cmd.length_to_copy = 0;
   }
   return cmd.length_to_copy;
+}
+
+/*!
+ * Send a command to the ISO thread to load a sound bank. This will sleep the calling thread
+ * until the load has completed.
+ */
+void LoadSoundBank(const char* bank_name, SoundBank* bank) {
+  (void)bank;
+  assert(strlen(bank_name) < 16);
+  SoundBankLoadCommand cmd;
+  cmd.cmd_id = LOAD_SOUND_BANK;
+  cmd.messagebox_to_reply = 0;
+  cmd.thread_id = GetThreadId();
+  strcpy(cmd.bank_name, bank_name);
+  cmd.bank = bank;
+  SendMbx(iso_mbx, &cmd);
+  SleepThread();  // wait for finish.
 }

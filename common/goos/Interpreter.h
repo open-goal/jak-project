@@ -186,6 +186,15 @@ class Interpreter {
   Object eval_error(const Object& form,
                     Arguments& args,
                     const std::shared_ptr<EnvironmentObject>& env);
+  Object eval_string_ref(const Object& form,
+                         Arguments& args,
+                         const std::shared_ptr<EnvironmentObject>& env);
+  Object eval_string_length(const Object& form,
+                            Arguments& args,
+                            const std::shared_ptr<EnvironmentObject>& env);
+  Object eval_ash(const Object& form,
+                  Arguments& args,
+                  const std::shared_ptr<EnvironmentObject>& env);
 
   // specials
   Object eval_define(const Object& form,

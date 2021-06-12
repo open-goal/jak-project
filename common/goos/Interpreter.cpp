@@ -68,7 +68,10 @@ Interpreter::Interpreter() {
                    {"type?", &Interpreter::eval_type},
                    {"current-method-type", &Interpreter::eval_current_method_type},
                    {"fmt", &Interpreter::eval_format},
-                   {"error", &Interpreter::eval_error}};
+                   {"error", &Interpreter::eval_error},
+                   {"string-ref", &Interpreter::eval_string_ref},
+                   {"string-length", &Interpreter::eval_string_length},
+                   {"ash", &Interpreter::eval_ash}};
 
   string_to_type = {{"empty-list", ObjectType::EMPTY_LIST},
                     {"integer", ObjectType::INTEGER},
@@ -1042,6 +1045,8 @@ IntType Interpreter::number_to_integer(const Object& obj) {
       return obj.integer_obj.value;
     case ObjectType::FLOAT:
       return (int64_t)obj.float_obj.value;
+    case ObjectType::CHAR:
+      return (int8_t)obj.char_obj.value;
     default:
       throw_eval_error(obj, "object cannot be interpreted as a number!");
   }
@@ -1526,5 +1531,45 @@ Object Interpreter::eval_error(const Object& form,
   vararg_check(form, args, {ObjectType::STRING}, {});
   throw_eval_error(form, "Error: " + args.unnamed.at(0).as_string()->data);
   return EmptyListObject::make_new();
+}
+
+Object Interpreter::eval_string_ref(const Object& form,
+                                    Arguments& args,
+                                    const std::shared_ptr<EnvironmentObject>& env) {
+  (void)env;
+  vararg_check(form, args, {ObjectType::STRING, ObjectType::INTEGER}, {});
+  auto str = args.unnamed.at(0).as_string();
+  auto idx = args.unnamed.at(1).as_int();
+  if ((size_t)idx >= str->data.size()) {
+    throw_eval_error(form, fmt::format("String index {} out of range for string of size {}", idx,
+                                       str->data.size()));
+  }
+  return Object::make_char(str->data.at(idx));
+}
+
+Object Interpreter::eval_string_length(const Object& form,
+                                       Arguments& args,
+                                       const std::shared_ptr<EnvironmentObject>& env) {
+  (void)env;
+  vararg_check(form, args, {ObjectType::STRING}, {});
+  auto str = args.unnamed.at(0).as_string();
+  return Object::make_integer(str->data.length());
+}
+
+Object Interpreter::eval_ash(const Object& form,
+                             Arguments& args,
+                             const std::shared_ptr<EnvironmentObject>& env) {
+  (void)env;
+  vararg_check(form, args, {{}, {}}, {});
+  auto val = number_to_integer(args.unnamed.at(0));
+  auto sa = number_to_integer(args.unnamed.at(1));
+  if (sa >= 0 && sa < 64) {
+    return Object::make_integer(val << sa);
+  } else if (sa > -64) {
+    return Object::make_integer(val >> sa);
+  } else {
+    throw_eval_error(form, fmt::format("Shift amount {} is out of range", sa));
+    return EmptyListObject::make_new();
+  }
 }
 }  // namespace goos

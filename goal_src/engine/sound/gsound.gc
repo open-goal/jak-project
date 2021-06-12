@@ -6,8 +6,8 @@
 ;; dgos: GAME, ENGINE
 
 
-(define *sound-player-rpc* (new 'global 'rpc-buffer-pair (the-as uint 80) (the-as uint 128) 0))
-(define *sound-loader-rpc* (new 'global 'rpc-buffer-pair (the-as uint 80) (the-as uint 1) 1))
+(define *sound-player-rpc* (new 'global 'rpc-buffer-pair (the-as uint 80) (the-as uint 128) RPC-SOUND-PLAYER))
+(define *sound-loader-rpc* (new 'global 'rpc-buffer-pair (the-as uint 80) (the-as uint 1) RPC-SOUND-LOADER))
 
 (defun sound-name= ((arg0 sound-name) (arg1 sound-name))
   "Return #t if both are the same name"
@@ -101,8 +101,7 @@
   0
   )
 
-;; TODO rpc 1 unimplemented
-;(check-irx-version)
+(check-irx-version)
 
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -146,10 +145,10 @@
   0
   )
 
-;; TODO rpc 1 unimplemented
-;(sound-bank-load (new 'static 'sound-name :lo #x6e6f6d6d6f63 :hi 0)) ;; common
-;(sound-bank-load (new 'static 'sound-name :lo #x317974706d65 :hi 0)) ;; empty1
-;(sound-bank-load (new 'static 'sound-name :lo #x327974706d65 :hi 0)) ;; empty2
+(sound-bank-load (static-sound-name "common"))
+(sound-bank-load (static-sound-name "empty1"))
+(sound-bank-load (static-sound-name "empty2"))
+
 (define *sound-bank-1* 'empty1)
 (define *sound-bank-2* 'empty2)
 
@@ -302,22 +301,20 @@
 
 (defun string->sound-name ((str string))
   (let ((snd-name (new 'stack-no-clear 'qword)))
-   (set! (-> snd-name quad) (the-as uint128 0))
-   (let ((out-ptr (the-as (pointer uint8) snd-name))
-         (in-ptr (-> str data))
-         )
-    (while
-     (and
-      (nonzero? (-> in-ptr 0))
-      (< (&- in-ptr (the-as uint (-> str data))) 15)
+    (set! (-> snd-name quad) (the-as uint128 0))
+    (let ((out-ptr (the-as (pointer uint8) snd-name))
+          (in-ptr (-> str data))
+          )
+      (while (and (nonzero? (-> in-ptr 0))
+                  (< (&- in-ptr (the-as uint (-> str data))) 15)
+                  )
+        (set! (-> out-ptr 0) (-> in-ptr 0))
+        (set! out-ptr (&-> out-ptr 1))
+        (set! in-ptr (&-> in-ptr 1))
+        )
       )
-     (set! (-> out-ptr 0) (-> in-ptr 0))
-     (set! out-ptr (&-> out-ptr 1))
-     (set! in-ptr (&-> in-ptr 1))
-     )
+    (the-as sound-name (-> snd-name quad))
     )
-   (the-as sound-name (-> snd-name quad))
-   )
   )
 
 (defun sound-set-volume ((group uint) (volume float))

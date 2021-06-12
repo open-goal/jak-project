@@ -1,8 +1,5 @@
 #pragma once
 
-#ifndef JAK_V2_ISO_QUEUE_H
-#define JAK_V2_ISO_QUEUE_H
-
 #include "common/common_types.h"
 #include "isocommon.h"
 
@@ -15,5 +12,4 @@ void UnqueueMessage(IsoMessage* cmd);
 IsoMessage* GetMessage();
 void ProcessMessageData();
 void ReturnMessage(IsoMessage* cmd);
-
-#endif  // JAK_V2_ISO_QUEUE_H
+IsoBufferHeader* TryAllocateBuffer(uint32_t size);
