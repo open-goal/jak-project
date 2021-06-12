@@ -444,12 +444,26 @@ This is updated from the entity system used in Crash 2, which had most of these 
   default
   )
 
-(defmacro res-lump-data (lump name type &key (tag-ptr (the-as (pointer res-tag) #f)))
+(defmacro res-lump-data (lump name type &key (tag-ptr (the-as (pointer res-tag) #f)) &key (time -1000000000.0))
   "Helper macro to get data from a res-lump without interpolation."
   `(the-as ,type ((method-of-type res-lump get-property-data)
                   ,lump
                   ,name
                   'interp
+                  ,time
+                  (the-as pointer #f)
+                  ,tag-ptr
+                  *res-static-buf*
+                  )
+           )
+  )
+
+(defmacro res-lump-data-exact (lump name type &key (tag-ptr (the-as (pointer res-tag) #f)))
+  "Helper macro to get start of data from a res-lump."
+  `(the-as ,type ((method-of-type res-lump get-property-data)
+                  ,lump
+                  ,name
+                  'exact
                   0.0
                   (the-as pointer #f)
                   ,tag-ptr
@@ -493,6 +507,19 @@ This is updated from the entity system used in Crash 2, which had most of these 
                   ,name
                   'interp
                   -1000000000.0
+                  (the-as structure #f)
+                  ,tag-ptr
+                  *res-static-buf*
+                  )
+           )
+  )
+
+(defmacro res-lump-struct-exact (lump name type &key (tag-ptr (the-as (pointer res-tag) #f)))
+  `(the-as ,type ((method-of-type res-lump get-property-struct)
+                  ,lump
+                  ,name
+                  'exact
+                  0.0
                   (the-as structure #f)
                   ,tag-ptr
                   *res-static-buf*

@@ -22,7 +22,9 @@
 
 ;; definition of type sound-name
 (deftype sound-name (uint128)
-  ()
+  ((lo uint64 :offset   0 :size  64)
+   (hi uint64 :offset  64 :size  64)
+   )
   :method-count-assert 9
   :size-assert         #x10
   :flag-assert         #x900000010
@@ -30,8 +32,8 @@
 
 ;; definition of type sound-rpc-cmd
 (deftype sound-rpc-cmd (structure)
-  ((rsvd1   uint16  :offset-assert 0)
-   (command uint16  :offset-assert 2)
+  ((rsvd1   uint16         :offset-assert 0)
+   (command sound-command  :offset-assert 2)
    )
   :method-count-assert 9
   :size-assert         #x4
@@ -48,16 +50,16 @@
 
 ;; definition of type sound-play-parms
 (deftype sound-play-parms (structure)
-  ((mask      uint16   :offset-assert 0)
-   (pitch-mod int16    :offset-assert 2)
-   (bend      int16    :offset-assert 4)
-   (fo-min    int16    :offset-assert 6)
-   (fo-max    int16    :offset-assert 8)
-   (fo-curve  int8     :offset-assert 10)
-   (priority  int8     :offset-assert 11)
-   (volume    int32    :offset-assert 12)
-   (trans     float  3 :offset-assert 16)
-   (group     uint8    :offset-assert 28)
+  ((mask      uint16           :offset-assert 0)
+   (pitch-mod int16            :offset-assert 2)
+   (bend      int16            :offset-assert 4)
+   (fo-min    int16            :offset-assert 6)
+   (fo-max    int16            :offset-assert 8)
+   (fo-curve  int8             :offset-assert 10)
+   (priority  int8             :offset-assert 11)
+   (volume    int32            :offset-assert 12)
+   (trans     vector3w :inline :offset-assert 16)
+   (group     uint8            :offset-assert 28)
    )
   :pack-me
   :method-count-assert 9
@@ -83,7 +85,7 @@
 
 ;; definition of type sound-rpc-bank-cmd
 (deftype sound-rpc-bank-cmd (sound-rpc-cmd)
-  ((bank-name uint128  :offset-assert 16)
+  ((bank-name sound-name  :offset-assert 16)
    )
   :method-count-assert 9
   :size-assert         #x20
@@ -102,7 +104,7 @@
 
 ;; definition of type sound-rpc-sound-cmd
 (deftype sound-rpc-sound-cmd (sound-rpc-cmd)
-  ((id uint32  :offset-assert 4)
+  ((id sound-id  :offset-assert 4)
    )
   :method-count-assert 9
   :size-assert         #x8
@@ -192,7 +194,7 @@
 
 ;; definition of type sound-rpc-play
 (deftype sound-rpc-play (sound-rpc-sound-cmd)
-  ((name  uint128                  :offset-assert 16)
+  ((name  sound-name               :offset-assert 16)
    (parms sound-play-parms :inline :offset-assert 32)
    )
   :method-count-assert 9
@@ -361,9 +363,9 @@
 
 ;; definition of type sound-rpc-get-irx-version
 (deftype sound-rpc-get-irx-version (sound-rpc-cmd)
-  ((major   uint32  :offset-assert 4)
-   (minor   uint32  :offset-assert 8)
-   (ee-addr uint32  :offset-assert 12)
+  ((major   uint32   :offset-assert 4)
+   (minor   uint32   :offset-assert 8)
+   (ee-addr pointer  :offset-assert 12)
    )
   :method-count-assert 9
   :size-assert         #x10
@@ -426,10 +428,10 @@
 
 ;; definition of type sound-rpc-set-sound-falloff
 (deftype sound-rpc-set-sound-falloff (sound-rpc-cmd)
-  ((name  uint128  :offset-assert 16)
-   (curve int32    :offset-assert 32)
-   (min   int32    :offset-assert 36)
-   (max   int32    :offset-assert 40)
+  ((name  sound-name  :offset-assert 16)
+   (curve int32       :offset-assert 32)
+   (min   int32       :offset-assert 36)
+   (max   int32       :offset-assert 40)
    )
   :method-count-assert 9
   :size-assert         #x2c
@@ -494,9 +496,9 @@
 
 ;; definition of type sound-rpc-set-ear-trans
 (deftype sound-rpc-set-ear-trans (sound-rpc-cmd)
-  ((ear-trans float 3 :offset-assert 4)
-   (cam-trans float 3 :offset-assert 16)
-   (cam-angle int32   :offset-assert 28)
+  ((ear-trans vector3w :inline :offset-assert 4)
+   (cam-trans vector3w :inline :offset-assert 16)
+   (cam-angle int32            :offset-assert 28)
    )
   :method-count-assert 9
   :size-assert         #x20
@@ -678,21 +680,21 @@
 
 ;; definition of type sound-spec
 (deftype sound-spec (basic)
-  ((mask            uint16                 :offset-assert 4)
-   (num             float                  :offset-assert 8)
-   (group           uint8                  :offset-assert 12)
-   (sound-name-char uint8   16 :offset  16)
-   (sound-name      uint128 :offset  16)
-   (trans           float   4              :offset-assert 32)
-   (volume          int32                  :offset-assert 48)
-   (pitch-mod       int32                  :offset-assert 52)
-   (bend            int32                  :offset-assert 56)
-   (fo-min          int16                  :offset-assert 60)
-   (fo-max          int16                  :offset-assert 62)
-   (fo-curve        int8                   :offset-assert 64)
-   (priority        int8                   :offset-assert 65)
-   (auto-time       int32                  :offset-assert 68)
-   (auto-from       int32                  :offset-assert 72)
+  ((mask            uint16                    :offset-assert 4)
+   (num             float                     :offset-assert 8)
+   (group           uint8                     :offset-assert 12)
+   (sound-name-char uint8      16 :offset  16)
+   (sound-name      sound-name :offset  16)
+   (trans           float      4              :offset-assert 32)
+   (volume          int32                     :offset-assert 48)
+   (pitch-mod       int32                     :offset-assert 52)
+   (bend            int32                     :offset-assert 56)
+   (fo-min          int16                     :offset-assert 60)
+   (fo-max          int16                     :offset-assert 62)
+   (fo-curve        int8                      :offset-assert 64)
+   (priority        int8                      :offset-assert 65)
+   (auto-time       int32                     :offset-assert 68)
+   (auto-from       int32                     :offset-assert 72)
    )
   :method-count-assert 9
   :size-assert         #x4c
@@ -726,32 +728,33 @@
 
 ;; definition of type ambient-sound
 (deftype ambient-sound (basic)
-  ((spec         basic           :offset-assert 4)
-   (playing-id   uint32          :offset-assert 8)
-   (trans        vector  :inline :offset-assert 16)
-   (name         uint128         :offset-assert 32)
-   (play-time    uint64          :offset-assert 48)
-   (time-base    uint64          :offset-assert 56)
-   (time-random  uint64          :offset-assert 64)
-   (volume       int32           :offset-assert 72)
-   (pitch        int32           :offset-assert 76)
-   (falloff-near int32           :offset-assert 80)
-   (falloff-far  int32           :offset-assert 84)
-   (falloff-mode int32           :offset-assert 88)
-   (params       uint32          :offset-assert 92)
-   (param-count  int32           :offset-assert 96)
-   (entity       basic           :offset-assert 100)
-   (sound-count  int32           :offset-assert 104)
+  ((spec         sound-spec               :offset-assert 4)
+   (playing-id   sound-id                 :offset-assert 8)
+   (trans        vector           :inline :offset-assert 16)
+   (name         sound-name               :offset-assert 32)
+   (play-time    uint64                   :offset-assert 48)
+   (time-base    uint64                   :offset-assert 56)
+   (time-random  uint64                   :offset-assert 64)
+   (volume       int32                    :offset-assert 72)
+   (pitch        int32                    :offset-assert 76)
+   (falloff-near int32                    :offset-assert 80)
+   (falloff-far  int32                    :offset-assert 84)
+   (falloff-mode int32                    :offset-assert 88)
+   (params       sound-play-parms         :offset-assert 92)
+   (param-count  int32                    :offset-assert 96)
+   (entity       entity                   :offset-assert 100)
+   (sound-count  int32                    :offset-assert 104)
    )
   :method-count-assert 14
   :size-assert         #x6c
   :flag-assert         #xe0000006c
   (:methods
-    (dummy-9 () none 9)
-    (dummy-10 () none 10)
-    (dummy-11 () none 11)
-    (dummy-12 () none 12)
-    (dummy-13 () none 13)
+    (new (symbol type basic vector) _type_ 0)
+    (dummy-9 (_type_) int 9)
+    (dummy-10 (_type_ sound-name) int 10)
+    (dummy-11 (_type_ vector) int 11)
+    (dummy-12 (_type_ int) int 12)
+    (stop! (_type_) int 13)
     )
   )
 
@@ -787,3 +790,7 @@
 ;; failed to figure out what this is:
 (let ((v0-65 0))
   )
+
+
+
+
