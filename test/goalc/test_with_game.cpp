@@ -753,6 +753,12 @@ TEST_F(WithGameTests, AddrOfVar) {
                           "0\n"});
 }
 
+TEST_F(WithGameTests, SoundName) {
+  runner.run_static_test(env, testCategory, "test-sound-name.gc",
+                         {"#t #f #f\n"
+                          "0\n"});
+}
+
 TEST(TypeConsistency, TypeConsistency) {
   Compiler compiler;
   compiler.enable_throw_on_redefines();

@@ -318,39 +318,44 @@ u64 make_string_from_c(const char* c_str) {
   return mem;
 }
 
+extern "C" {
+void _arg_call_linux();
+}
+
 /*!
  * This creates an OpenGOAL function from a C++ function. Only 6 arguments can be accepted.
- * But calling this function is very fast and doesn't use the stack.
+ * But calling this function is fast. It used to be really fast but wrong.
  */
 Ptr<Function> make_function_from_c_linux(void* func) {
-  // allocate a function object on the global heap
   auto mem = Ptr<u8>(
       alloc_heap_object(s7.offset + FIX_SYM_GLOBAL_HEAP, *(s7 + FIX_SYM_FUNCTION_TYPE), 0x40));
   auto f = (uint64_t)func;
-  auto fp = (u8*)&f;
+  auto target_function = (u8*)&f;
+  auto trampoline_function_addr = _arg_call_linux;
+  auto trampoline = (u8*)&trampoline_function_addr;
 
-  int i = 0;
-  // we will put the function address in RAX with a movabs rax, imm8
-  mem.c()[i++] = 0x48;
-  mem.c()[i++] = 0xb8;
-  for (int j = 0; j < 8; j++) {
-    mem.c()[i++] = fp[j];
+  // movabs rax, target_function
+  int offset = 0;
+  mem.c()[offset++] = 0x48;
+  mem.c()[offset++] = 0xb8;
+  for (int i = 0; i < 8; i++) {
+    mem.c()[offset++] = target_function[i];
   }
 
-  // push r10
-  // push r11
-  // sub rsp, 8
-  // call rax
-  // add rsp, 8
-  // pop r11
-  // pop r10
-  // ret
-  for (auto x : {0x41, 0x52, 0x41, 0x53, 0x48, 0x83, 0xEC, 0x08, 0xFF, 0xD0, 0x48, 0x83, 0xC4, 0x08,
-                 0x41, 0x5B, 0x41, 0x5A, 0xC3}) {
-    mem.c()[i++] = x;
+  // push rax
+  mem.c()[offset++] = 0x50;
+
+  // movabs rax, trampoline
+  mem.c()[offset++] = 0x48;
+  mem.c()[offset++] = 0xb8;
+  for (int i = 0; i < 8; i++) {
+    mem.c()[offset++] = trampoline[i];
   }
 
-  // the C function's ret will return to the caller of this trampoline.
+  // jmp rax
+  mem.c()[offset++] = 0xff;
+  mem.c()[offset++] = 0xe0;
+  // the asm function's ret will return to the caller of this (GOAL code) directlyz.
 
   // CacheFlush(mem, 0x34);
 
@@ -402,8 +407,6 @@ ret
         0x83, 0xEC, 0x28, 0xFF, 0xD0, 0x48, 0x83, 0xC4, 0x28, 0x41, 0x5B, 0x41, 0x5A, 0xC3}) {
     mem.c()[i++] = x;
   }
-
-  // the C function's ret will return to the caller of this trampoline.
 
   // CacheFlush(mem, 0x34);
 

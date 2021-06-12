@@ -599,6 +599,45 @@ BitFieldDef BitFieldDef::from_constant(const BitFieldConstantDef& constant, Form
   return bfd;
 }
 
+namespace {
+Form* cast_sound_name(FormPool& pool, const Env& env, Form* in) {
+  auto matcher = Matcher::op(GenericOpMatcher::fixed(FixedOperatorKind::PCPYLD),
+                             {Matcher::any(1), Matcher::any(0)});
+  auto mr = match(matcher, in);
+  if (!mr.matched) {
+    return nullptr;
+  }
+
+  auto hi = mr.maps.forms.at(1);
+  auto lo = mr.maps.forms.at(0);
+
+  auto hi_int = get_goal_integer_constant(hi, env);
+  auto lo_int = get_goal_integer_constant(lo, env);
+  if (!hi_int || !lo_int) {
+    return nullptr;
+  }
+
+  char name[17];
+  memcpy(name, &lo_int.value(), 8);
+  memcpy(name + 8, &hi_int.value(), 8);
+  name[16] = '\0';
+
+  bool got_zero = false;
+  for (int i = 0; i < 16; i++) {
+    if (name[i] == 0) {
+      got_zero = true;
+    } else {
+      if (got_zero) {
+        return nullptr;
+      }
+    }
+  }
+
+  return pool.alloc_single_element_form<ConstantTokenElement>(
+      nullptr, fmt::format("(static-sound-name \"{}\")", name));
+}
+}  // namespace
+
 /*!
  * Cast the given form to a bitfield.
  * If the form could have been a (new 'static 'bitfieldtype ...) it will attempt to generate this.
@@ -609,6 +648,15 @@ Form* cast_to_bitfield(const BitFieldType* type_info,
                        const Env& env,
                        Form* in) {
   in = strip_int_or_uint_cast(in);
+
+  if (type_info->get_name() == "sound-name") {
+    auto as_sound_name = cast_sound_name(pool, env, in);
+    if (as_sound_name) {
+      return as_sound_name;
+    }
+    // just do a normal cast if that failed.
+    return pool.alloc_single_element_form<CastElement>(nullptr, typespec, in);
+  }
   // check if it's just a constant:
   auto in_as_atom = form_as_atom(in);
   if (in_as_atom && in_as_atom->is_int()) {

@@ -161,3 +161,5 @@
 - Fixed a bug where `''a` or similar repeated reader macros would generate a reader error.
 - Fixed a bug where reader macros without a following form would trigger an assert.
 - It is now possible to take the address of a lexical variable. The variable will be spilled to the stack automatically.
+- GOOS supports `string-ref`, `string-length`, `ash`, and characters can now be treated as a signed 8-bit number
+- Fixed a bug where saved xmm registers might be clobbered when calling a C++ function that wasn't `format`.
