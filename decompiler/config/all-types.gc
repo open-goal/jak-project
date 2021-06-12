@@ -1241,11 +1241,12 @@
   )
 
 (deftype vector3w (structure)
-  ((data int32 3 :offset-assert 0)
+  ((data int32 3 :do-not-decompile :offset-assert 0)
    (x    int32     :offset 0)
    (y    int32     :offset 4)
    (z    int32     :offset 8)
    )
+  :allow-misaligned
   :method-count-assert 9
   :size-assert         #xc
   :flag-assert         #x90000000c
@@ -2112,13 +2113,42 @@
   )
 
 (deftype sound-name (uint128)
-  ()
+  ((lo  uint64  :offset 0)
+   (hi  uint64  :offset 64)
+   )
   :flag-assert #x900000010
+  )
+
+(defenum sound-command
+  :type uint16
+  (load-bank)
+  (load-music)
+  (unload-bank)
+  (play)
+  (pause-sound)
+  (stop-sound)
+  (continue-sound)
+  (set-param)
+  (set-master-volume)
+  (pause-group)
+  (stop-group)
+  (continue-group)
+  (get-irx-version)
+  (set-falloff-curve)
+  (set-sound-falloff)
+  (reload-info)
+  (set-language)
+  (set-flava)
+  (set-reverb)
+  (set-ear-trans)
+  (shutdown)
+  (list-sounds)
+  (unload-music)
   )
 
 (deftype sound-rpc-cmd (structure)
   ((rsvd1   uint16  :offset-assert 0)
-   (command uint16  :offset-assert 2)
+   (command sound-command  :offset-assert 2)
    )
   :method-count-assert 9
   :size-assert         #x4
@@ -2134,7 +2164,7 @@
    (fo-curve  int8      :offset-assert 10)
    (priority  int8      :offset-assert 11)
    (volume    int32     :offset-assert 12)
-   (trans     float 3 :offset-assert 16) ;; guess on type here
+   (trans     vector3w  :inline :offset-assert 16)
    (group     uint8     :offset-assert 28)
    )
   :pack-me
@@ -2144,7 +2174,7 @@
   )
 
 (deftype sound-rpc-bank-cmd (sound-rpc-cmd)
-  ((bank-name uint128  :offset-assert 16)
+  ((bank-name sound-name  :offset-assert 16)
    )
   :method-count-assert 9
   :size-assert         #x20
@@ -2152,7 +2182,7 @@
   )
 
 (deftype sound-rpc-sound-cmd (sound-rpc-cmd)
-  ((id      uint32  :offset-assert 4)
+  ((id      sound-id  :offset-assert 4)
    )
   :method-count-assert 9
   :size-assert         #x8
@@ -2189,7 +2219,7 @@
   )
 
 (deftype sound-rpc-play (sound-rpc-sound-cmd)
-  ((name    uint128                  :offset-assert 16)
+  ((name    sound-name               :offset-assert 16)
    (parms   sound-play-parms :inline :offset-assert 32)
    )
   :method-count-assert 9
@@ -2260,7 +2290,7 @@
 (deftype sound-rpc-get-irx-version (sound-rpc-cmd)
   ((major   uint32  :offset-assert 4)
    (minor   uint32  :offset-assert 8)
-   (ee-addr uint32  :offset-assert 12)
+   (ee-addr pointer :offset-assert 12)
    )
   :method-count-assert 9
   :size-assert         #x10
@@ -2286,7 +2316,7 @@
   )
 
 (deftype sound-rpc-set-sound-falloff (sound-rpc-cmd)
-  ((name    uint128  :offset-assert 16)
+  ((name    sound-name  :offset-assert 16)
    (curve   int32    :offset-assert 32)
    (min     int32    :offset-assert 36)
    (max     int32    :offset-assert 40)
@@ -2315,8 +2345,8 @@
   )
 
 (deftype sound-rpc-set-ear-trans (sound-rpc-cmd)
-  ((ear-trans float 3 :offset-assert 4) ;; guess on float, may be fixed point
-   (cam-trans float 3 :offset-assert 16)
+  ((ear-trans vector3w :inline :offset-assert 4)
+   (cam-trans vector3w :inline :offset-assert 16)
    (cam-angle int32     :offset-assert 28)
    )
   :method-count-assert 9
@@ -2388,7 +2418,7 @@
    (num             float      :offset-assert 8)
    (group           uint8      :offset-assert 12)
    (sound-name-char uint8 16 :offset 16)
-   (sound-name      uint128    :offset 16)
+   (sound-name      sound-name    :offset 16)
    (trans           float 4  :offset-assert 32) ;; guess
    (volume          int32      :offset-assert 48)
    (pitch-mod       int32      :offset-assert 52)
@@ -2405,33 +2435,35 @@
   :flag-assert         #x90000004c
   )
 
+(declare-type entity basic)
 (deftype ambient-sound (basic)
-  ((spec         basic           :offset-assert 4)
-   (playing-id   uint32          :offset-assert 8)
-   (trans        vector  :inline :offset-assert 16)
-   (name         uint128         :offset-assert 32)
-   (play-time    uint64          :offset-assert 48)
-   (time-base    uint64          :offset-assert 56)
-   (time-random  uint64          :offset-assert 64)
-   (volume       int32           :offset-assert 72)
-   (pitch        int32           :offset-assert 76)
-   (falloff-near int32           :offset-assert 80)
-   (falloff-far  int32           :offset-assert 84)
-   (falloff-mode int32           :offset-assert 88)
-   (params       uint32          :offset-assert 92)
-   (param-count  int32           :offset-assert 96)
-   (entity       basic           :offset-assert 100)
-   (sound-count  int32           :offset-assert 104)
+  ((spec         sound-spec       :offset-assert 4)
+   (playing-id   sound-id         :offset-assert 8)
+   (trans        vector   :inline :offset-assert 16)
+   (name         sound-name       :offset-assert 32)
+   (play-time    uint64           :offset-assert 48)
+   (time-base    uint64           :offset-assert 56)
+   (time-random  uint64           :offset-assert 64)
+   (volume       int32            :offset-assert 72)
+   (pitch        int32            :offset-assert 76)
+   (falloff-near int32            :offset-assert 80)
+   (falloff-far  int32            :offset-assert 84)
+   (falloff-mode int32            :offset-assert 88)
+   (params       sound-play-parms :offset-assert 92)
+   (param-count  int32            :offset-assert 96)
+   (entity       entity           :offset-assert 100)
+   (sound-count  int32            :offset-assert 104)
    )
   :method-count-assert 14
   :size-assert         #x6c
   :flag-assert         #xe0000006c
   (:methods
-    (dummy-9 () none 9)
-    (dummy-10 () none 10)
-    (dummy-11 () none 11)
-    (dummy-12 () none 12)
-    (dummy-13 () none 13)
+    (new (symbol type basic vector) _type_ 0)
+    (dummy-9 (_type_) int 9)
+    (dummy-10 (_type_ sound-name) int 10)
+    (dummy-11 (_type_ vector) int 11)
+    (dummy-12 (_type_ int) int 12)
+    (stop! (_type_) int 13)
     )
   )
 
@@ -4998,7 +5030,7 @@
   (:methods
     (new (symbol type int) _type_ 0)
     (dummy-9 () none 9)
-    (dummy-10 () none 10)
+    (dummy-10 (_type_ process symbol symbol float int) none 10)
     (dummy-11 () none 11)
     (dummy-12 () none 12)
     (dummy-13 () none 13)
@@ -5624,15 +5656,15 @@
   )
 
 (deftype level-hint (process)
-  ((text-id-to-display uint32  :offset-assert 112)
-   (sound-to-play      basic   :offset-assert 116)
-   (trans              vector  :offset-assert 120)
-   (sound-id           uint32  :offset-assert 124)
-   (mode               basic   :offset-assert 128)
-   (total-time         uint64  :offset-assert 136)
-   (total-off-time     uint64  :offset-assert 144)
-   (last-time          uint64  :offset-assert 152)
-   (voicebox           uint64  :offset-assert 160)
+  ((text-id-to-display uint32    :offset-assert 112)
+   (sound-to-play      basic     :offset-assert 116)
+   (trans              vector    :offset-assert 120)
+   (sound-id           sound-id  :offset-assert 124)
+   (mode               basic     :offset-assert 128)
+   (total-time         uint64    :offset-assert 136)
+   (total-off-time     uint64    :offset-assert 144)
+   (last-time          uint64    :offset-assert 152)
+   (voicebox           uint64    :offset-assert 160)
    )
   :heap-base #x40
   :method-count-assert 16
@@ -11017,7 +11049,7 @@
    (update-velocity basic           :offset-assert 396)
    (counter         int32           :offset-assert 400)
    (target-count    int32           :offset-assert 404)
-   (sound-id        uint32          :offset-assert 408)
+   (sound-id        sound-id        :offset-assert 408)
    )
   :heap-base #x130
   :method-count-assert 29
@@ -13708,27 +13740,27 @@
   :flag-assert         #x900000008
   )
 
-; (deftype task-info-data (basic)
-;   ((task-id                  uint8     :offset-assert 4)
-;    (task-name                UNKNOWN 4 :offset-assert 8)
-;    (text-index-when-resolved int32     :offset-assert 24)
-;    )
-;   :method-count-assert 9
-;   :size-assert         #x1c
-;   :flag-assert         #x90000001c
-;   )
+(deftype task-info-data (basic)
+  ((task-id                  uint8     :offset-assert 4)
+   (task-name                symbol  4 :offset-assert 8)
+   (text-index-when-resolved int32     :offset-assert 24)
+   )
+  :method-count-assert 9
+  :size-assert         #x1c
+  :flag-assert         #x90000001c
+  )
 
-; (deftype level-tasks-info (basic)
-;   ((level-name-id     uint32    :offset-assert 4)
-;    (text-group-index  int32     :offset-assert 8)
-;    (nb-of-tasks       int32     :offset-assert 12)
-;    (buzzer-task-index int32     :offset-assert 16)
-;    (task-info         UNKNOWN 8 :offset-assert 20)
-;    )
-;   :method-count-assert 9
-;   :size-assert         #x34
-;   :flag-assert         #x900000034
-;   )
+(deftype level-tasks-info (basic)
+  ((level-name-id     uint32    :offset-assert 4)
+   (text-group-index  int32     :offset-assert 8)
+   (nb-of-tasks       int32     :offset-assert 12)
+   (buzzer-task-index int32     :offset-assert 16)
+   (task-info         task-info-data 8 :offset-assert 20)
+   )
+  :method-count-assert 9
+  :size-assert         #x34
+  :flag-assert         #x900000034
+  )
 
 (deftype game-option (basic)
   ((option-type     uint64  :offset-assert 8)
@@ -13790,16 +13822,15 @@
    (card-info                    mc-slot-info    :offset-assert 292)
    (last-option-index-change     uint64          :offset-assert 296)
    (video-mode-timeout           uint64          :offset-assert 304)
-   (pad uint8 :offset 731)
-   ; (display-state-stack          UNKNOWN      5  :offset-assert 312)
-   ; (option-index-stack           UNKNOWN      5  :offset-assert 352)
-   ; (display-state-pos            int32           :offset-assert 372)
-   ; (nb-of-icons                  int32           :offset-assert 376)
-   ; (icons                        UNKNOWN      6  :offset-assert 380)
-   ; (max-nb-of-particles          int32           :offset-assert 404)
-   ; (nb-of-particles              int32           :offset-assert 408)
-   ; (particles                    UNKNOWN      40 :offset-assert 412)
-   ; (particle-state               UNKNOWN      40 :offset-assert 572)
+   (display-state-stack          uint64       5  :offset-assert 312)
+   (option-index-stack           uint32       5  :offset-assert 352)
+   (display-state-pos            int32           :offset-assert 372)
+   (nb-of-icons                  int32           :offset-assert 376)
+   (icons                        uint32       6  :offset-assert 380)
+   (max-nb-of-particles          int32           :offset-assert 404)
+   (nb-of-particles              int32           :offset-assert 408)
+   (particles                    uint32       40 :offset-assert 412)
+   (particle-state               uint32       40 :offset-assert 572)
    )
   :method-count-assert 59
   :size-assert         #x2dc
@@ -13856,11 +13887,11 @@
 
 ;; - Symbols
 
-(define-extern *progress-process* process) ;; unknown type
+(define-extern *progress-process* (pointer progress))
 
 ;; - Unknowns
 
-;;(define-extern *progress-last-task-index* object) ;; unknown type
+(define-extern *progress-last-task-index* int)
 
 
 ;; ----------------------
@@ -14291,7 +14322,6 @@
 ;; - Functions
 
 (define-extern link-begin (function pointer (pointer uint8) int kheap link-flag int))
-(define-extern string->sound-name (function string sound-name))
 (define-extern str-load (function string int pointer int symbol))
 (define-extern str-load-status (function (pointer int32) symbol))
 (define-extern str-load-cancel (function none))
@@ -14381,94 +14411,96 @@
 
 ;; - Types
 
-; (deftype sound-iop-info (basic)
-;   ((frame       uint32     :offset-assert 16)
-;    (strpos      int32      :offset-assert 20)
-;    (str-id      uint32     :offset-assert 24)
-;    (str-id-sign int32      :offset-assert 24)
-;    (freemem     uint32     :offset-assert 28)
-;    (chinfo      UNKNOWN 48 :offset-assert 32)
-;    (freemem2    uint32     :offset-assert 80)
-;    (nocd        uint32     :offset-assert 84)
-;    (dirtycd     uint32     :offset-assert 88)
-;    (diskspeed   UNKNOWN 2  :offset-assert 92)
-;    (lastspeed   uint32     :offset-assert 100)
-;    (dupseg      int32      :offset-assert 104)
-;    (times       UNKNOWN 41 :offset-assert 108)
-;    (times-seq   uint32     :offset-assert 272)
-;    )
-;   :method-count-assert 9
-;   :size-assert         #x114
-;   :flag-assert         #x900000114
-;   )
+(deftype sound-iop-info (basic)
+  ((frame       uint32     :offset 16)
+   (strpos      int32      :offset-assert 20)
+   (str-id      uint32     :offset-assert 24)
+   (str-id-sign int32      :offset 24)
+   (freemem     uint32     :offset-assert 28)
+   (chinfo      uint8   48 :offset-assert 32)
+   (freemem2    uint32     :offset-assert 80)
+   (nocd        uint32     :offset-assert 84)
+   (dirtycd     uint32     :offset-assert 88)
+   (diskspeed   uint32  2  :offset-assert 92)
+   (lastspeed   uint32     :offset-assert 100)
+   (dupseg      int32      :offset-assert 104)
+   (times       uint32  41 :offset-assert 108)
+   (times-seq   uint32     :offset-assert 272)
+   )
+  :method-count-assert 9
+  :size-assert         #x114
+  :flag-assert         #x900000114
+  )
 
-; (deftype flava-table-row (structure)
-;   ((music basic      :offset-assert 0)
-;    (flava UNKNOWN 50 :offset-assert 4)
-;    )
-;   :method-count-assert 9
-;   :size-assert         #x36
-;   :flag-assert         #x900000036
-;   )
+(deftype flava-table-row (structure)
+  ((music symbol     :offset-assert 0)
+   (flava uint8   50 :offset-assert 4)
+   )
+  :allow-misaligned
+  :method-count-assert 9
+  :size-assert         #x36
+  :flag-assert         #x900000036
+  )
 
-; (deftype flava-table (basic)
-;   ((row   UNKNOWN 20 :offset-assert 4)
-;    (count int32      :offset-assert 1284)
-;    )
-;   :method-count-assert 9
-;   :size-assert         #x508
-;   :flag-assert         #x900000508
-;   )
+(deftype flava-table (basic)
+  ((row   flava-table-row 20 :inline :offset-assert 4)
+   (count int32      :offset-assert 1284)
+   )
+  :method-count-assert 9
+  :size-assert         #x508
+  :flag-assert         #x900000508
+  )
 
 
 ;; - Symbols
 
-(define-extern target-pos function)
-(define-extern new-sound-id function)
-(define-extern get-sound-buffer-entry function)
-(define-extern sound-trans-convert function)
-(define-extern sound-stop function)
-(define-extern effect-param->sound-spec function)
-(define-extern ear-trans function)
-(define-extern sound-play-by-spec function)
-(define-extern sound-play-by-name function)
+(define-extern target-pos (function int vector))
+(define-extern new-sound-id (function sound-id))
+(define-extern get-sound-buffer-entry (function pointer))
+(define-extern sound-trans-convert (function vector3w vector int))
+(define-extern sound-stop (function sound-id int))
+(define-extern effect-param->sound-spec (function sound-spec sound-play-parms int sound-spec))
+(define-extern ear-trans (function vector))
+(define-extern sound-play-by-spec (function sound-spec sound-id vector sound-id))
+(define-extern sound-play-by-name (function sound-name sound-id int int int uint vector sound-id))
 (define-extern *setting-control* setting-control)
-(define-extern sound-angle-convert function)
-(define-extern sound-set-ear-trans function)
-(define-extern activate-progress function)
-(define-extern sound-command->string function)
-(define-extern sound-name= function)
-(define-extern str-is-playing? function)
-(define-extern current-str-id function)
-(define-extern current-str-pos function)
-(define-extern is-cd-in? function)
-(define-extern check-irx-version function)
-(define-extern sound-bank-load function)
-(define-extern sound-bank-unload function)
-(define-extern sound-music-load function)
-(define-extern sound-music-unload function)
-(define-extern sound-reload-info function)
-(define-extern set-language function)
-(define-extern list-sounds function)
-(define-extern sound-buffer-dump function)
-(define-extern swap-sound-buffers function)
-(define-extern free-last-sound-buffer-entry function)
+(define-extern sound-angle-convert (function float int))
+(define-extern sound-set-ear-trans (function vector vector float int))
+(define-extern activate-progress (function process int int))
+(define-extern sound-command->string (function sound-command string))
+(define-extern sound-name= (function sound-name sound-name symbol))
+(define-extern str-is-playing? (function symbol))
+(define-extern current-str-id (function int))
+(define-extern current-str-pos (function int int))
+(define-extern is-cd-in? (function symbol))
+(define-extern check-irx-version (function int))
+(define-extern sound-bank-load (function sound-name sound-id))
+(define-extern sound-bank-unload (function sound-name int))
+(define-extern sound-music-load (function sound-name int))
+(define-extern sound-music-unload (function int))
+(define-extern sound-reload-info (function int))
+(define-extern set-language (function int int))
+(define-extern list-sounds (function int))
+(define-extern sound-buffer-dump (function int))
+(define-extern swap-sound-buffers (function vector vector float int))
+(define-extern free-last-sound-buffer-entry (function int))
 (define-extern sound-basic-cb function)
-(define-extern sound-set-volume function)
-(define-extern sound-set-reverb function)
-(define-extern sound-pause function)
-(define-extern sound-continue function)
-(define-extern sound-group-pause function)
-(define-extern sound-group-stop function)
-(define-extern sound-group-continue function)
-(define-extern sound-set-falloff-curve function)
-(define-extern sound-set-sound-falloff function)
-(define-extern sound-set-flava function)
-(define-extern sound-volume-off function)
-(define-extern show-iop-info function)
-(define-extern show-iop-memory function)
-(define-extern make-sqrt-table function)
-(define-extern flava-lookup function)
+(define-extern string->sound-name (function string sound-name))
+(define-extern sound-set-volume (function uint float int))
+(define-extern sound-set-reverb (function int float float uint int))
+(define-extern sound-pause (function sound-id int))
+(define-extern sound-continue (function sound-id int))
+(define-extern sound-group-pause (function uint int))
+(define-extern sound-group-stop (function uint int))
+(define-extern sound-group-continue (function uint int))
+(define-extern sound-set-falloff-curve (function int float float int))
+(define-extern sound-set-sound-falloff (function sound-name int int int int))
+(define-extern sound-set-flava (function uint int))
+(define-extern sound-volume-off (function int))
+(define-extern show-iop-info (function dma-buffer int))
+(define-extern show-iop-memory (function dma-buffer int))
+(define-extern make-sqrt-table (function int))
+(define-extern flava-lookup (function symbol int integer))
 
 ;; - Functions
 
@@ -14477,14 +14509,14 @@
 
 ;; - Unknowns
 
-;;(define-extern *flava-table* object) ;; unknown type
-;;(define-extern *sound-iop-info* object) ;; unknown type
-;;(define-extern *ambient-spec* object) ;; unknown type
-;;(define-extern *debug-effect-control* object) ;; unknown type
-;;(define-extern *sound-player-enable* object) ;; unknown type
-;;(define-extern *sound-player-rpc* object) ;; unknown type
-;;(define-extern *sound-loader-rpc* object) ;; unknown type
-;;(define-extern kset-language object) ;; unknown type
+(define-extern *flava-table* flava-table) ;; unknown type
+(define-extern *sound-iop-info* sound-iop-info) ;; unknown type
+(define-extern *ambient-spec* sound-spec) ;; unknown type
+(define-extern *debug-effect-control* symbol) ;; unknown type
+(define-extern *sound-player-enable* symbol) ;; unknown type
+(define-extern *sound-player-rpc* rpc-buffer-pair) ;; unknown type
+(define-extern *sound-loader-rpc* rpc-buffer-pair) ;; unknown type
+(define-extern kset-language (function int int)) ;; unknown type
 
 
 ;; ----------------------
@@ -18438,7 +18470,7 @@
 ;    (active-distance float          :offset-assert 184)
 ;    (seek-time       uint64         :offset-assert 192)
 ;    (dest            vector :inline :offset-assert 208)
-;    (sound-id        uint32         :offset-assert 224)
+;    (sound-id        sound-id       :offset-assert 224)
 ;    )
 ;   :method-count-assert 20
 ;   :size-assert         #xe4
@@ -22386,7 +22418,7 @@
 ;    (spawn-distance    meters         :offset-assert 472)
 ;    (chase-speed       meters         :offset-assert 476)
 ;    (y-speed           meters         :offset-assert 480)
-;    (sound-id          uint32         :offset-assert 484)
+;    (sound-id          sound-id       :offset-assert 484)
 ;    (enable-patrol     basic          :offset-assert 488)
 ;    )
 ;   :method-count-assert 76
@@ -22546,7 +22578,7 @@
 ; (deftype plat (baseplat)
 ;   ((path-pos float                   :offset-assert 228)
 ;    (sync     sync-info-eased :inline :offset-assert 232)
-;    (sound-id uint32                  :offset-assert 260)
+;    (sound-id sound-id                :offset-assert 260)
 ;    )
 ;   :method-count-assert 33
 ;   :size-assert         #x108
@@ -22603,7 +22635,7 @@
 ;    (path-pos                float          :offset-assert 188)
 ;    (bidirectional?          basic          :offset-assert 192)
 ;    (allow-auto-kill         basic          :offset-assert 196)
-;    (sound-id                uint32         :offset-assert 200)
+;    (sound-id                sound-id       :offset-assert 200)
 ;    (trans-off               vector :inline :offset-assert 208)
 ;    (spawn-pos               vector :inline :offset-assert 224)
 ;    )
@@ -22918,8 +22950,8 @@
 ;    (at-point               vector        :inline :offset-assert 336)
 ;    (accuracy-range         float                 :offset-assert 352)
 ;    (target-theta           float                 :offset-assert 356)
-;    (sound-id               uint32                :offset-assert 360)
-;    (aim-sound-id           uint32                :offset-assert 364)
+;    (sound-id               sound-id              :offset-assert 360)
+;    (aim-sound-id           sound-id              :offset-assert 364)
 ;    (player-touching-grips? basic                 :offset-assert 368)
 ;    )
 ;   :method-count-assert 24
@@ -23231,7 +23263,7 @@
 ;; - Types
 
 ; (deftype windmill-one (process-drawable)
-;   ((sound-id uint32  :offset-assert 176)
+;   ((sound-id sound-id  :offset-assert 176)
 ;    )
 ;   :method-count-assert 20
 ;   :size-assert         #xb4
@@ -26101,7 +26133,7 @@
 ;    (beam-on           basic          :offset-assert 468)
 ;    (resolution-anim   basic          :offset-assert 472)
 ;    (sound-name        basic          :offset-assert 476)
-;    (sound-id          uint32         :offset-assert 480)
+;    (sound-id          sound-id       :offset-assert 480)
 ;    (alt-actor         basic          :offset-assert 484)
 ;    )
 ;   :method-count-assert 53
@@ -28985,8 +29017,8 @@
 ;; - Types
 
 ; (deftype eggtop (process-drawable)
-;   ((cam-tracker uint64  :offset-assert 176)
-;    (sound-id    uint32  :offset-assert 184)
+;   ((cam-tracker uint64   :offset-assert 176)
+;    (sound-id    sound-id :offset-assert 184)
 ;    )
 ;   :method-count-assert 20
 ;   :size-assert         #xbc
@@ -30165,9 +30197,9 @@
 ;    (raised?                basic          :offset-assert 356)
 ;    (player-touching-grips? basic          :offset-assert 360)
 ;    (grips-moving?          basic          :offset-assert 364)
-;    (sound-id               uint32         :offset-assert 368)
-;    (rise-sound-id          uint32         :offset-assert 372)
-;    (grips-sound-id         uint32         :offset-assert 376)
+;    (sound-id               sound-id       :offset-assert 368)
+;    (rise-sound-id          sound-id       :offset-assert 372)
+;    (grips-sound-id         sound-id       :offset-assert 376)
 ;    (grips                  basic          :offset-assert 380)
 ;    (part-aligned           basic          :offset-assert 384)
 ;    )
@@ -31051,8 +31083,8 @@
 ;    (hop-start-y         float                 :offset-assert 468)
 ;    (bounce              int32                 :offset-assert 472)
 ;    (bounce-hit          float                 :offset-assert 476)
-;    (engine-sound-id     uint32                :offset-assert 480)
-;    (boost-sound-id      uint32                :offset-assert 484)
+;    (engine-sound-id     sound-id              :offset-assert 480)
+;    (boost-sound-id      sound-id              :offset-assert 484)
 ;    (engine-sound-pitch  float                 :offset-assert 488)
 ;    (turn-anim-targ      float                 :offset-assert 492)
 ;    (turn-anim-frame     float                 :offset-assert 496)
@@ -31067,7 +31099,7 @@
 ;    (heavy               basic                 :offset-assert 536)
 ;    (unstuck-time        uint64                :offset-assert 544)
 ;    (stuck-count         int32                 :offset-assert 552)
-;    (scrape-sound-id     uint32                :offset-assert 556)
+;    (scrape-sound-id     sound-id              :offset-assert 556)
 ;    (heat-sound-time     uint64                :offset-assert 560)
 ;    )
 ;   :method-count-assert 9
@@ -31668,7 +31700,7 @@
 ;; - Types
 
 ; (deftype assistant (process-taskable)
-;   ((sound-id uint32  :offset-assert 380)
+;   ((sound-id sound-id  :offset-assert 380)
 ;    )
 ;   :method-count-assert 53
 ;   :size-assert         #x180
@@ -32470,7 +32502,7 @@
 ;    (cam-tracker             uint64                     :offset-assert 1064)
 ;    (player-attack-id        int32                      :offset-assert 696)
 ;    (kill-player             basic                      :offset-assert 1076)
-;    (engine-sound-id         uint32                     :offset-assert 1080)
+;    (engine-sound-id         sound-id                   :offset-assert 1080)
 ;    (engine-sound-envelope   float                      :offset-assert 1084)
 ;    (debug-draw              basic                      :offset-assert 1088)
 ;    (debug-path-record       basic                      :offset-assert 1092)
@@ -33353,7 +33385,7 @@
 ;    (path-position       vector        :inline :offset-assert 192)
 ;    (shadow-enable-plane vector        :inline :offset-assert 208)
 ;    (smush               smush-control :inline :offset-assert 224)
-;    (sound-id            uint32                :offset-assert 256)
+;    (sound-id            sound-id              :offset-assert 256)
 ;    )
 ;   :method-count-assert 20
 ;   :size-assert         #x104
@@ -33857,8 +33889,8 @@
 ;    (auto-pilot               basic           :offset-assert 852)
 ;    (dead                     basic           :offset-assert 856)
 ;    (anim-frame               float           :offset-assert 860)
-;    (engine-sound-id          uint32          :offset-assert 864)
-;    (pedal-sound-id           uint32          :offset-assert 868)
+;    (engine-sound-id          sound-id        :offset-assert 864)
+;    (pedal-sound-id           sound-id        :offset-assert 868)
 ;    (frame-count              int8            :offset-assert 872)
 ;    )
 ;   :method-count-assert 35
@@ -35000,7 +35032,7 @@
 ;; - Types
 
 ; (deftype assistant-bluehut (process-taskable)
-;   ((sound-id   uint32  :offset-assert 380)
+;   ((sound-id   sound-id  :offset-assert 380)
 ;    (jaws       uint64  :offset-assert 384)
 ;    (sage       basic   :offset-assert 392)
 ;    (im-talking basic   :offset-assert 396)
@@ -35993,7 +36025,7 @@
 ;   )
 
 ; (deftype kermit-pulse (process-drawable)
-;   ((sound-id uint32  :offset-assert 176)
+;   ((sound-id sound-id  :offset-assert 176)
 ;    )
 ;   :method-count-assert 20
 ;   :size-assert         #xb4
@@ -36022,7 +36054,7 @@
 ;    (tongue-pulse-pos float          :offset-assert 428)
 ;    (miss-count       int8           :offset-assert 432)
 ;    (charged-up       basic          :offset-assert 436)
-;    (sound-id         uint32         :offset-assert 440)
+;    (sound-id         sound-id       :offset-assert 440)
 ;    )
 ;   :method-count-assert 76
 ;   :size-assert         #x1bc
@@ -37543,7 +37575,7 @@
 ;    (turn-anim-targ  float          :offset-assert 128)
 ;    (turn-anim-frame float          :offset-assert 132)
 ;    (turn-anim-vel   float          :offset-assert 136)
-;    (tube-sound-id   uint32         :offset-assert 140)
+;    (tube-sound-id   sound-id       :offset-assert 140)
 ;    (tube-sound-vol  float          :offset-assert 144)
 ;    )
 ;   :method-count-assert 9
@@ -41874,7 +41906,7 @@
 ;    (path-coming-out-u      float                       :offset-assert 196)
 ;    (path-faded-up-u        float                       :offset-assert 200)
 ;    (delay-til-bounce       int32                       :offset-assert 204)
-;    (rolling-sound-id       uint32                      :offset-assert 208)
+;    (rolling-sound-id       sound-id                    :offset-assert 208)
 ;    (rolling-sound-enabled? basic                       :offset-assert 212)
 ;    (last-bounce-time       uint64                      :offset-assert 216)
 ;    (hit-player-time        uint64                      :offset-assert 224)
@@ -42517,7 +42549,7 @@
 ;   ((part2           basic          :offset-assert 412)
 ;    (launched?       basic          :offset-assert 416)
 ;    (growth          float          :offset-assert 420)
-;    (charge-sound-id uint32         :offset-assert 424)
+;    (charge-sound-id sound-id       :offset-assert 424)
 ;    (launch-time     uint64         :offset-assert 432)
 ;    (facing-dir      vector :inline :offset-assert 448)
 ;    )
