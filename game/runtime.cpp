@@ -46,6 +46,7 @@
 #include "game/overlord/overlord.h"
 #include "game/overlord/srpc.h"
 #include "game/overlord/stream.h"
+#include "game/overlord/sbank.h"
 
 #include "game/graphics/opengl.h"
 #include "game/graphics/gfx.h"
@@ -191,7 +192,7 @@ void iop_runner(SystemThreadInterface& iface) {
   // isocommon
   // overlord
   ramdisk_init_globals();
-  // sbank
+  sbank_init_globals();
   // soundcommon
   srpc_init_globals();
   // ssound

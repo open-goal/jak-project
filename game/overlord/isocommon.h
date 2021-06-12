@@ -30,6 +30,7 @@ constexpr int LOAD_TO_EE_CMD_ID = 0x100;         // command to load file to ee
 constexpr int LOAD_TO_IOP_CMD_ID = 0x101;        // command to load to iop
 constexpr int LOAD_TO_EE_OFFSET_CMD_ID = 0x102;  // command to load file to ee with offset.
 constexpr int LOAD_DGO_CMD_ID = 0x200;           // command to load DGO
+constexpr int LOAD_SOUND_BANK = 0x300;           // Command to load a sound bank
 
 constexpr int MAX_ISO_FILES = 350;  // maximum files on FS
 constexpr int MAX_OPEN_FILES = 16;  // maximum number of open files at a time.
@@ -117,6 +118,13 @@ struct VagCommand : public IsoMessage {
   // 0x6c max
 };
 
+struct SoundBank;
+
+struct SoundBankLoadCommand : public IsoMessage {
+  char bank_name[16];
+  SoundBank* bank;
+};
+
 /*!
  * DGO Load State Machine states.
  */
@@ -167,16 +175,16 @@ struct PriStackEntry {
  * API to access files. There are debug modes + reading from an ISO filesystem.
  */
 struct IsoFs {
-  int (*init)(u8*);
-  FileRecord* (*find)(const char*);
-  FileRecord* (*find_in)(const char*);
-  uint32_t (*get_length)(FileRecord*);
-  LoadStackEntry* (*open)(FileRecord*, int32_t);
-  LoadStackEntry* (*open_wad)(FileRecord*, int32_t);
-  void (*close)(LoadStackEntry*);
-  uint32_t (*begin_read)(LoadStackEntry*, void*, int32_t);
-  uint32_t (*sync_read)();
-  uint32_t (*load_sound_bank)(char*, void*);
+  int (*init)(u8*);                                         // 0
+  FileRecord* (*find)(const char*);                         // 4
+  FileRecord* (*find_in)(const char*);                      // 8
+  uint32_t (*get_length)(FileRecord*);                      // c
+  LoadStackEntry* (*open)(FileRecord*, int32_t);            // 10
+  LoadStackEntry* (*open_wad)(FileRecord*, int32_t);        // 14
+  void (*close)(LoadStackEntry*);                           // 18
+  uint32_t (*begin_read)(LoadStackEntry*, void*, int32_t);  // 1c
+  uint32_t (*sync_read)();                                  // 20
+  uint32_t (*load_sound_bank)(char*, void*);                // 24
   uint32_t (*load_music)(char*, void*);
   void (*poll_drive)();
 };

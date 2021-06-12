@@ -270,6 +270,8 @@ u32 ISOThread() {
   InitDriver(temp_buffer->get_data());  // unblocks InitISOFS's WaitMbx
   FreeBuffer(temp_buffer);
 
+  VagCommand* in_progress_vag_command = nullptr;
+
   // main CD/DVD read loop
   for (;;) {
     /////////////////////////////////////
@@ -358,7 +360,27 @@ u32 ISOThread() {
             load_single_cmd->callback_function = RunDGOStateMachine;
           }
         }
-      } else {
+      } else if (msg_from_mbx->cmd_id == LOAD_SOUND_BANK) {
+        // if there's an in progress vag command, try again.
+        if (!in_progress_vag_command || !in_progress_vag_command->field_0x3c) {
+          auto buff = TryAllocateBuffer(BUFFER_PAGE_SIZE);
+          if (!buff) {
+            // no buffers, try again.
+            SendMbx(iso_mbx, msg_from_mbx);
+          } else {
+            // todo - actual load here
+            auto* cmd = (SoundBankLoadCommand*)msg_from_mbx;
+            printf("Ignoring request to load sound bank %s\n", cmd->bank_name);
+            FreeBuffer(buff);
+            ReturnMessage(msg_from_mbx);
+          }
+        } else {
+          // just try again...
+          SendMbx(iso_mbx, msg_from_mbx);
+        }
+      }
+
+      else {
         printf("[OVERLORD] Unknown ISOThread message id 0x%x\n", msg_from_mbx->cmd_id);
       }
 

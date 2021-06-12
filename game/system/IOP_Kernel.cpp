@@ -210,6 +210,9 @@ void IOP_Kernel::sif_rpc(s32 rpcChannel,
       rec = &e;
     }
   }
+  if (!rec) {
+    printf("Failed to find handler for sif channel 0x%x\n", rpcChannel);
+  }
   assert(rec);
 
   // step 2 - check entry is safe to give command to
