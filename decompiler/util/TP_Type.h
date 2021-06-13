@@ -34,6 +34,7 @@ class TP_Type {
     NON_VIRTUAL_METHOD,
     PCPYUD_BITFIELD,
     LEFT_SHIFTED_BITFIELD,  // (bitfield << some-constant)
+    LABEL_ADDR,
     INVALID
   } kind = Kind::UNINITIALIZED;
   TP_Type() = default;
@@ -61,6 +62,7 @@ class TP_Type {
       case Kind::NON_VIRTUAL_METHOD:
       case Kind::LEFT_SHIFTED_BITFIELD:
       case Kind::PCPYUD_BITFIELD:
+      case Kind::LABEL_ADDR:
         return false;
       case Kind::UNINITIALIZED:
       case Kind::OBJECT_NEW_METHOD:
@@ -235,6 +237,12 @@ class TP_Type {
     result.kind = Kind::PCPYUD_BITFIELD;
     result.m_ts = ts;
     result.m_pcpyud = true;
+    return result;
+  }
+
+  static TP_Type make_label_addr() {
+    TP_Type result;
+    result.kind = Kind::LABEL_ADDR;
     return result;
   }
 

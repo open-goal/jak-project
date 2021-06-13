@@ -13,6 +13,16 @@ void StackSpillMap::add_access(const StackSpillSlot& access) {
   auto existing = m_slot_map.find(access.offset);
   if (existing != m_slot_map.end()) {
     if (access != existing->second) {
+      // the GOAL float -> GPR loads are just totally wrong.
+      if (existing->second.size == 16 && access.size == 4) {
+        existing->second.size = 4;
+        return;
+      }
+
+      if (existing->second.size == 4 && access.size == 16) {
+        return;
+      }
+
       throw std::runtime_error(fmt::format("Inconsistent stack access:\n{}\n{}\n",
                                            existing->second.print(), access.print()));
     }
