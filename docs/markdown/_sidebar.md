@@ -7,6 +7,7 @@
   - [The Reader](/reader.md)
   - [Macro Support](/goos.md)
   - [Object File Formats](/object_file_formats.md)
+  - [Process and State System](/process_and_state.md)
 
 - Working with OpenGOAL
   - [The REPL](/repl.md)

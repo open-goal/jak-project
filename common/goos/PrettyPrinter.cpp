@@ -645,7 +645,8 @@ void insertSpecialBreaks(NodePool& pool, PrettyPrinterNode* node) {
           auto open_paren = node->prev;
           if (open_paren && open_paren->tok->kind == FormToken::TokenKind::OPEN_PAREN) {
             // insertNewlineBefore(pool, open_paren, 0);
-            if (open_paren->prev) {
+            if (open_paren->prev && open_paren->prev->paren->tok &&
+                open_paren->prev->paren->tok->kind == FormToken::TokenKind::OPEN_PAREN) {
               breakList(pool, open_paren->prev->paren, open_paren);
             }
           }
