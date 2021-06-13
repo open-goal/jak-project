@@ -798,7 +798,7 @@
    (pid int32 :offset-assert #x28)
    (main-thread cpu-thread :offset-assert #x2c)
    (top-thread thread :offset-assert #x30)
-   (entity basic :offset-assert #x34) ;; entity
+   (entity basic :offset-assert #x34) ;; likely a res-lump
    (state state :offset-assert #x38)
    (trans-hook function :offset-assert #x3c)
    (post-hook function :offset-assert #x40)
@@ -4987,8 +4987,8 @@
    (spooling (pointer process) :offset-assert 56) ;; special print
    (hint (pointer process) :offset-assert 60) ;; special print
    (ambient (pointer process) :offset-assert 64) ;; special print
-   (video-mode basic :offset-assert 68)
-   (aspect-ratio basic :offset-assert 72)
+   (video-mode symbol :offset-assert 68)
+   (aspect-ratio symbol :offset-assert 72) ;; a guess but, anything besides this doesnt make sense
    (sound-flava uint8 :offset-assert 76)
    (auto-save basic :offset-assert 80)
    (music-volume-movie float :offset-assert 84)
@@ -8581,7 +8581,7 @@
    (flags         uint32          :offset-assert 8)
    (in-level      uint16          :offset-assert 12)
    (utextures     uint16          :offset-assert 14)
-   (geometry      uint32 4        :offset-assert 16)
+   (geometry      drawable 4        :offset-assert 16)
    (dists         vector  :inline :offset-assert 32)
    (rdists        vector  :inline :offset-assert 48)
    (next          uint32 4        :offset-assert 64)
@@ -8624,7 +8624,7 @@
 
 (deftype prototype-array-shrub-info (basic)
   ((prototype-inline-array-shrub basic   :offset-assert 4)
-   (wind-vectors                 uint32  :offset-assert 8)
+   (wind-vectors                 uint32  :offset-assert 8) ; likely a pointer
    )
   :method-count-assert 9
   :size-assert         #xc
@@ -8653,18 +8653,19 @@
   )
 
 (deftype prototype-array-tie (array)
-  ()
+  ((array-data prototype-bucket-tie :dynamic :offset 16) ;; NOTE - field added, not 100% positive on the type
+   )
   :method-count-assert 10
   :size-assert         #x10
   :flag-assert         #xa00000010
   (:methods
-    (dummy-9 () none 9)
+    (TODO-RENAME-9 (_type_) none 9)
     )
   )
 
 (deftype proxy-prototype-array-tie (basic)
   ((prototype-array-tie basic   :offset-assert 4)
-   (wind-vectors        uint32  :offset-assert 8)
+   (wind-vectors        uint32  :offset-assert 8) ; likely a pointer
    )
   :method-count-assert 9
   :size-assert         #xc
@@ -13846,7 +13847,7 @@
     (dummy-20 () none 20)
     (dummy-21 () none 21)
     (dummy-22 () none 22)
-    (dummy-23 () none 23)
+    (TODO-RENAME-23 (_type_ symbol symbol) none 23)
     (dummy-24 () none 24)
     (dummy-25 () none 25)
     (dummy-26 () none 26)
@@ -15450,7 +15451,7 @@
 ;; - Unknowns
 
 ;;(define-extern shadow-vu0-block object) ;; unknown type
-;;(define-extern *shadow-data* object) ;; unknown type
+(define-extern *shadow-data* shadow-data)
 
 
 ;; ----------------------
@@ -16311,7 +16312,7 @@
 
 (define-extern auto-save-command function)
 (define-extern auto-save-init-by-other function)
-(define-extern get-aspect-ratio function)
+(define-extern get-aspect-ratio (function symbol))
 (define-extern get-task-status function)
 (define-extern calculate-completion function)
 (define-extern game-save-elt->string function)
@@ -16334,8 +16335,8 @@
 
 ;; - Symbols
 
-(define-extern set-aspect-ratio function)
-(define-extern set-video-mode function)
+(define-extern set-aspect-ratio (function symbol none))
+(define-extern set-video-mode (function symbol none))
 
 ;; - Unknowns
 
@@ -17852,6 +17853,7 @@
    (num-planes   int32   :offset-assert 16)
    (plane        uint32  :offset-assert 20)
    )
+  :pack-me
   :method-count-assert 12
   :size-assert         #x18
   :flag-assert         #xc00000018
@@ -17862,25 +17864,26 @@
     )
   )
 
-; (deftype vol-control (basic)
-;   ((flags         uint32     :offset-assert 4)
-;    (process       basic      :offset-assert 8)
-;    (pos-vol-count int32      :offset-assert 12)
-;    (pos-vol       UNKNOWN 32 :offset-assert 16)
-;    (neg-vol-count int32      :offset-assert 784)
-;    (neg-vol       UNKNOWN 32 :offset-assert 788)
-;    (debug-point   basic      :offset-assert 1556)
-;    (debug-normal  basic      :offset-assert 1560)
-;    )
-;   :method-count-assert 12
-;   :size-assert         #x61c
-;   :flag-assert         #xc0000061c
-;   (:methods
-;     (dummy-9 () none 9)
-;     (dummy-10 () none 10)
-;     (dummy-11 () none 11)
-;     )
-;   )
+(deftype vol-control (basic)
+  ((flags         uint32     :offset-assert 4)
+   (process       process-drawable      :offset-assert 8)
+   (pos-vol-count int32      :offset-assert 12)
+   (pos-vol       plane-volume 32 :inline :offset-assert 16)
+   (neg-vol-count int32      :offset-assert 784)
+   (neg-vol       plane-volume 32 :inline :offset-assert 788)
+   (debug-point   basic      :offset-assert 1556)
+   (debug-normal  basic      :offset-assert 1560)
+   )
+  :method-count-assert 12
+  :size-assert         #x61c
+  :flag-assert         #xc0000061c
+  (:methods
+    (new (symbol type process-drawable) _type_ 0)
+    (dummy-9 () none 9)
+    (dummy-10 () none 10)
+    (TODO-RENAME-11 (_type_) symbol 11)
+    )
+  )
 
 
 
@@ -19318,7 +19321,7 @@
 
 ;; - Symbols
 
-(define-extern set-hud-aspect-ratio function)
+(define-extern set-hud-aspect-ratio (function symbol symbol none)) ;; TODO return type not validated yet
 
 
 ;; ----------------------
@@ -21416,57 +21419,57 @@
 
 ;; - Types
 
-; (deftype rigid-body (structure)
-;   ((mass                        float              :offset-assert 0)
-;    (inv-mass                    float              :offset-assert 4)
-;    (lin-momentum-damping-factor float              :offset-assert 8)
-;    (ang-momentum-damping-factor float              :offset-assert 12)
-;    (inertial-tensor             matrix     :inline :offset-assert 16)
-;    (inv-inertial-tensor         matrix     :inline :offset-assert 80)
-;    (cm-offset-joint             vector     :inline :offset-assert 144)
-;    (position                    vector     :inline :offset-assert 160)
-;    (rotation                    quaternion :inline :offset-assert 176)
-;    (lin-momentum                vector     :inline :offset-assert 192)
-;    (ang-momentum                vector     :inline :offset-assert 208)
-;    (lin-velocity                vector     :inline :offset-assert 224)
-;    (ang-velocity                vector     :inline :offset-assert 240)
-;    (inv-i-world                 matrix     :inline :offset-assert 256)
-;    (matrix                      matrix     :inline :offset-assert 320)
-;    (force                       vector     :inline :offset-assert 384)
-;    (torque                      vector     :inline :offset-assert 400)
-;    (max-ang-momentum            float              :offset-assert 416)
-;    (max-ang-velocity            float              :offset-assert 420)
-;    )
-;   :method-count-assert 23
-;   :size-assert         #x1a8
-;   :flag-assert         #x17000001a8
-;   (:methods
-;     (dummy-9 () none 9)
-;     (dummy-10 () none 10)
-;     (dummy-11 () none 11)
-;     (dummy-12 () none 12)
-;     (dummy-13 () none 13)
-;     (dummy-14 () none 14)
-;     (dummy-15 () none 15)
-;     (dummy-16 () none 16)
-;     (dummy-17 () none 17)
-;     (dummy-18 () none 18)
-;     (dummy-19 () none 19)
-;     (dummy-20 () none 20)
-;     (dummy-21 () none 21)
-;     (dummy-22 () none 22)
-;     )
-;   )
+(deftype rigid-body (structure)
+  ((mass                        float              :offset-assert 0)
+   (inv-mass                    float              :offset-assert 4)
+   (lin-momentum-damping-factor float              :offset-assert 8)
+   (ang-momentum-damping-factor float              :offset-assert 12)
+   (inertial-tensor             matrix     :inline :offset-assert 16)
+   (inv-inertial-tensor         matrix     :inline :offset-assert 80)
+   (cm-offset-joint             vector     :inline :offset-assert 144)
+   (position                    vector     :inline :offset-assert 160)
+   (rotation                    quaternion :inline :offset-assert 176)
+   (lin-momentum                vector     :inline :offset-assert 192)
+   (ang-momentum                vector     :inline :offset-assert 208)
+   (lin-velocity                vector     :inline :offset-assert 224)
+   (ang-velocity                vector     :inline :offset-assert 240)
+   (inv-i-world                 matrix     :inline :offset-assert 256)
+   (matrix                      matrix     :inline :offset-assert 320)
+   (force                       vector     :inline :offset-assert 384)
+   (torque                      vector     :inline :offset-assert 400)
+   (max-ang-momentum            float              :offset-assert 416)
+   (max-ang-velocity            float              :offset-assert 420)
+   )
+  :method-count-assert 23
+  :size-assert         #x1a8
+  :flag-assert         #x17000001a8
+  (:methods
+    (dummy-9 () none 9)
+    (dummy-10 () none 10)
+    (dummy-11 () none 11)
+    (dummy-12 () none 12)
+    (dummy-13 () none 13)
+    (dummy-14 () none 14)
+    (dummy-15 () none 15)
+    (dummy-16 () none 16)
+    (dummy-17 () none 17)
+    (dummy-18 () none 18)
+    (dummy-19 () none 19)
+    (dummy-20 () none 20)
+    (dummy-21 () none 21)
+    (dummy-22 () none 22)
+    )
+  )
 
-; (deftype rigid-body-control-point (structure)
-;   ((local-pos vector :inline :offset-assert 0)
-;    (world-pos vector :inline :offset-assert 16)
-;    (velocity  vector :inline :offset-assert 32)
-;    )
-;   :method-count-assert 9
-;   :size-assert         #x30
-;   :flag-assert         #x900000030
-;   )
+(deftype rigid-body-control-point (structure)
+  ((local-pos vector :inline :offset-assert 0)
+   (world-pos vector :inline :offset-assert 16)
+   (velocity  vector :inline :offset-assert 32)
+   )
+  :method-count-assert 9
+  :size-assert         #x30
+  :flag-assert         #x900000030
+  )
 
 
 
@@ -21744,164 +21747,154 @@
 
 ;; - Types
 
-; (deftype nav-enemy-info (basic)
-;   ((idle-anim                 int32     :offset-assert 4)
-;    (walk-anim                 int32     :offset-assert 8)
-;    (turn-anim                 int32     :offset-assert 12)
-;    (notice-anim               int32     :offset-assert 16)
-;    (run-anim                  int32     :offset-assert 20)
-;    (jump-anim                 int32     :offset-assert 24)
-;    (jump-land-anim            int32     :offset-assert 28)
-;    (victory-anim              int32     :offset-assert 32)
-;    (taunt-anim                int32     :offset-assert 36)
-;    (die-anim                  int32     :offset-assert 40)
-;    (neck-joint                int32     :offset-assert 44)
-;    (player-look-at-joint      int32     :offset-assert 48)
-;    (run-travel-speed          meters    :offset-assert 52)
-;    (run-rotate-speed          deg       :offset-assert 56)
-;    (run-acceleration          meters    :offset-assert 60)
-;    (run-turn-time             useconds  :offset-assert 64)
-;    (walk-travel-speed         meters    :offset-assert 72)
-;    (walk-rotate-speed         deg       :offset-assert 76)
-;    (walk-acceleration         meters    :offset-assert 80)
-;    (walk-turn-time            useconds  :offset-assert 88)
-;    (attack-shove-back         meters    :offset-assert 96)
-;    (attack-shove-up           meters    :offset-assert 100)
-;    (shadow-size               meters    :offset-assert 104)
-;    (notice-nav-radius         meters    :offset-assert 108)
-;    (nav-nearest-y-threshold   meters    :offset-assert 112)
-;    (notice-distance           meters    :offset-assert 116)
-;    (proximity-notice-distance meters    :offset-assert 120)
-;    (stop-chase-distance       meters    :offset-assert 124)
-;    (frustration-distance      meters    :offset-assert 128)
-;    (frustration-time          uint64    :offset-assert 136)
-;    (die-anim-hold-frame       float     :offset-assert 144)
-;    (jump-anim-start-frame     float     :offset-assert 148)
-;    (jump-land-anim-end-frame  float     :offset-assert 152)
-;    (jump-height-min           meters    :offset-assert 156)
-;    (jump-height-factor        float     :offset-assert 160)
-;    (jump-start-anim-speed     float     :offset-assert 164)
-;    (shadow-max-y              meters    :offset-assert 168)
-;    (shadow-min-y              meters    :offset-assert 172)
-;    (shadow-locus-dist         meters    :offset-assert 176)
-;    (use-align                 basic     :offset-assert 180)
-;    (draw-shadow               basic     :offset-assert 184)
-;    (move-to-ground            basic     :offset-assert 188)
-;    (hover-if-no-ground        basic     :offset-assert 192)
-;    (use-momentum              basic     :offset-assert 196)
-;    (use-flee                  basic     :offset-assert 200)
-;    (use-proximity-notice      basic     :offset-assert 204)
-;    (use-jump-blocked          basic     :offset-assert 208)
-;    (use-jump-patrol           basic     :offset-assert 212)
-;    (gnd-collide-with          uint64    :offset-assert 216)
-;    (debug-draw-neck           basic     :offset-assert 224)
-;    (debug-draw-jump           basic     :offset-assert 228)
-;    )
-;   :method-count-assert 9
-;   :size-assert         #xe8
-;   :flag-assert         #x9000000e8
-;   )
+(deftype nav-enemy-info (basic)
+  ((idle-anim                 int32     :offset-assert 4)
+   (walk-anim                 int32     :offset-assert 8)
+   (turn-anim                 int32     :offset-assert 12)
+   (notice-anim               int32     :offset-assert 16)
+   (run-anim                  int32     :offset-assert 20)
+   (jump-anim                 int32     :offset-assert 24)
+   (jump-land-anim            int32     :offset-assert 28)
+   (victory-anim              int32     :offset-assert 32)
+   (taunt-anim                int32     :offset-assert 36)
+   (die-anim                  int32     :offset-assert 40)
+   (neck-joint                int32     :offset-assert 44)
+   (player-look-at-joint      int32     :offset-assert 48)
+   (run-travel-speed          float    :offset-assert 52) ; meters
+   (run-rotate-speed          float       :offset-assert 56) ; deg
+   (run-acceleration          float    :offset-assert 60) ; meters
+   (run-turn-time             uint64  :offset-assert 64) ; seconds
+   (walk-travel-speed         float    :offset-assert 72) ; meters
+   (walk-rotate-speed         float       :offset-assert 76) ; deg
+   (walk-acceleration         float    :offset-assert 80) ; meters
+   (walk-turn-time            uint64  :offset-assert 88) ; seconds
+   (attack-shove-back         float    :offset-assert 96) ; meters
+   (attack-shove-up           float    :offset-assert 100) ; meters
+   (shadow-size               float    :offset-assert 104) ; meters
+   (notice-nav-radius         float    :offset-assert 108) ; meters
+   (nav-nearest-y-threshold   float    :offset-assert 112) ; meters
+   (notice-distance           float    :offset-assert 116) ; meters
+   (proximity-notice-distance float    :offset-assert 120) ; meters
+   (stop-chase-distance       float    :offset-assert 124) ; meters
+   (frustration-distance      float    :offset-assert 128) ; meters
+   (frustration-time          uint64    :offset-assert 136)
+   (die-anim-hold-frame       float     :offset-assert 144)
+   (jump-anim-start-frame     float     :offset-assert 148)
+   (jump-land-anim-end-frame  float     :offset-assert 152)
+   (jump-height-min           float    :offset-assert 156) ; meters
+   (jump-height-factor        float     :offset-assert 160)
+   (jump-start-anim-speed     float     :offset-assert 164)
+   (shadow-max-y              float    :offset-assert 168) ; meters
+   (shadow-min-y              float    :offset-assert 172) ; meters
+   (shadow-locus-dist         float    :offset-assert 176) ; meters
+   (use-align                 basic     :offset-assert 180)
+   (draw-shadow               basic     :offset-assert 184)
+   (move-to-ground            basic     :offset-assert 188)
+   (hover-if-no-ground        basic     :offset-assert 192)
+   (use-momentum              basic     :offset-assert 196)
+   (use-flee                  basic     :offset-assert 200)
+   (use-proximity-notice      basic     :offset-assert 204)
+   (use-jump-blocked          basic     :offset-assert 208)
+   (use-jump-patrol           basic     :offset-assert 212)
+   (gnd-collide-with          uint64    :offset-assert 216)
+   (debug-draw-neck           basic     :offset-assert 224)
+   (debug-draw-jump           basic     :offset-assert 228)
+   )
+  :method-count-assert 9
+  :size-assert         #xe8
+  :flag-assert         #x9000000e8
+  )
 
-; (deftype nav-enemy (process-drawable)
-;   ((hit-from-dir        vector     :inline :offset-assert 176)
-;    (event-param-point   vector     :inline :offset-assert 192)
-;    (frustration-point   vector     :inline :offset-assert 208)
-;    (jump-dest           vector     :inline :offset-assert 224)
-;    (jump-trajectory     trajectory :inline :offset-assert 240)
-;    (jump-time           uint64             :offset-assert 280)
-;    (nav-info            basic              :offset-assert 288)
-;    (target-speed        float              :offset-assert 292)
-;    (momentum-speed      float              :offset-assert 296)
-;    (acceleration        float              :offset-assert 300)
-;    (rotate-speed        float              :offset-assert 304)
-;    (turn-time           uint64             :offset-assert 312)
-;    (frustration-time    uint64             :offset-assert 320)
-;    (speed-scale         float              :offset-assert 328)
-;    (neck                basic              :offset-assert 332)
-;    (reaction-time       uint64             :offset-assert 336)
-;    (notice-time         uint64             :offset-assert 344)
-;    (state-timeout       uint64             :offset-assert 352)
-;    (free-time           uint64             :offset-assert 360)
-;    (touch-time          uint64             :offset-assert 368)
-;    (nav-enemy-flags     uint32             :offset-assert 376)
-;    (incomming-attack-id uint64             :offset-assert 384)
-;    (jump-return-state   basic              :offset-assert 392)
-;    (rand-gen            basic              :offset-assert 396)
-;    )
-;   :method-count-assert 76
-;   :size-assert         #x190
-;   :flag-assert         #x4c01200190
-;   ;; inherited inspect of process-drawable
-;   (:methods
-;     (dummy-9 () none 9)
-;     (dummy-10 () none 10)
-;     (dummy-11 () none 11)
-;     (dummy-12 () none 12)
-;     (dummy-13 () none 13)
-;     (dummy-14 () none 14)
-;     (dummy-15 () none 15)
-;     (dummy-16 () none 16)
-;     (dummy-17 () none 17)
-;     (dummy-18 () none 18)
-;     (dummy-19 () none 19)
-;     (dummy-20 () none 20)
-;     (dummy-21 () none 21)
-;     (dummy-22 () none 22)
-;     (dummy-23 () none 23)
-;     (dummy-24 () none 24)
-;     (dummy-25 () none 25)
-;     (dummy-26 () none 26)
-;     (dummy-27 () none 27)
-;     (dummy-28 () none 28)
-;     (dummy-29 () none 29)
-;     (dummy-30 () none 30)
-;     (dummy-31 () none 31)
-;     (dummy-32 () none 32)
-;     (dummy-33 () none 33)
-;     (dummy-34 () none 34)
-;     (dummy-35 () none 35)
-;     (dummy-36 () none 36)
-;     (dummy-37 () none 37)
-;     (dummy-38 () none 38)
-;     (dummy-39 () none 39)
-;     (dummy-40 () none 40)
-;     (dummy-41 () none 41)
-;     (dummy-42 () none 42)
-;     (dummy-43 () none 43)
-;     (dummy-44 () none 44)
-;     (dummy-45 () none 45)
-;     (dummy-46 () none 46)
-;     (dummy-47 () none 47)
-;     (dummy-48 () none 48)
-;     (dummy-49 () none 49)
-;     (dummy-50 () none 50)
-;     (dummy-51 () none 51)
-;     (dummy-52 () none 52)
-;     (dummy-53 () none 53)
-;     (dummy-54 () none 54)
-;     (dummy-55 () none 55)
-;     (dummy-56 () none 56)
-;     (dummy-57 () none 57)
-;     (dummy-58 () none 58)
-;     (dummy-59 () none 59)
-;     (dummy-60 () none 60)
-;     (dummy-61 () none 61)
-;     (dummy-62 () none 62)
-;     (dummy-63 () none 63)
-;     (dummy-64 () none 64)
-;     (dummy-65 () none 65)
-;     (dummy-66 () none 66)
-;     (dummy-67 () none 67)
-;     (dummy-68 () none 68)
-;     (dummy-69 () none 69)
-;     (dummy-70 () none 70)
-;     (dummy-71 () none 71)
-;     (dummy-72 () none 72)
-;     (dummy-73 () none 73)
-;     (dummy-74 () none 74)
-;     (dummy-75 () none 75)
-;     )
-;   )
+(deftype nav-enemy (process-drawable)
+  ((hit-from-dir        vector     :inline :offset-assert 176)
+   (event-param-point   vector     :inline :offset-assert 192)
+   (frustration-point   vector     :inline :offset-assert 208)
+   (jump-dest           vector     :inline :offset-assert 224)
+   (jump-trajectory     trajectory :inline :offset-assert 240)
+   (jump-time           uint64             :offset-assert 280)
+   (nav-info            basic              :offset-assert 288)
+   (target-speed        float              :offset-assert 292)
+   (momentum-speed      float              :offset-assert 296)
+   (acceleration        float              :offset-assert 300)
+   (rotate-speed        float              :offset-assert 304)
+   (turn-time           uint64             :offset-assert 312)
+   (frustration-time    uint64             :offset-assert 320)
+   (speed-scale         float              :offset-assert 328)
+   (neck                basic              :offset-assert 332)
+   (reaction-time       uint64             :offset-assert 336)
+   (notice-time         uint64             :offset-assert 344)
+   (state-timeout       uint64             :offset-assert 352)
+   (free-time           uint64             :offset-assert 360)
+   (touch-time          uint64             :offset-assert 368)
+   (nav-enemy-flags     uint32             :offset-assert 376)
+   (incomming-attack-id uint64             :offset-assert 384)
+   (jump-return-state   basic              :offset-assert 392)
+   (rand-gen            basic              :offset-assert 396)
+   )
+  :heap-base #x120
+  :method-count-assert 76
+  :size-assert         #x190
+  :flag-assert         #x4c01200190
+  ;; inherited inspect of process-drawable
+  (:methods
+    (dummy-20 () none 20)
+    (dummy-21 () none 21)
+    (dummy-22 () none 22)
+    (dummy-23 () none 23)
+    (dummy-24 () none 24)
+    (dummy-25 () none 25)
+    (dummy-26 () none 26)
+    (dummy-27 () none 27)
+    (dummy-28 () none 28)
+    (dummy-29 () none 29)
+    (dummy-30 () none 30)
+    (dummy-31 () none 31)
+    (dummy-32 () none 32)
+    (dummy-33 () none 33)
+    (dummy-34 () none 34)
+    (dummy-35 () none 35)
+    (dummy-36 () none 36)
+    (dummy-37 () none 37)
+    (dummy-38 () none 38)
+    (dummy-39 () none 39)
+    (dummy-40 () none 40)
+    (dummy-41 () none 41)
+    (dummy-42 () none 42)
+    (dummy-43 () none 43)
+    (dummy-44 () none 44)
+    (dummy-45 () none 45)
+    (dummy-46 () none 46)
+    (dummy-47 () none 47)
+    (dummy-48 () none 48)
+    (dummy-49 () none 49)
+    (dummy-50 () none 50)
+    (dummy-51 () none 51)
+    (dummy-52 () none 52)
+    (dummy-53 () none 53)
+    (dummy-54 () none 54)
+    (dummy-55 () none 55)
+    (dummy-56 () none 56)
+    (dummy-57 () none 57)
+    (dummy-58 () none 58)
+    (dummy-59 () none 59)
+    (dummy-60 () none 60)
+    (dummy-61 () none 61)
+    (dummy-62 () none 62)
+    (dummy-63 () none 63)
+    (dummy-64 () none 64)
+    (dummy-65 () none 65)
+    (dummy-66 () none 66)
+    (dummy-67 () none 67)
+    (dummy-68 () none 68)
+    (dummy-69 () none 69)
+    (dummy-70 () none 70)
+    (dummy-71 () none 71)
+    (dummy-72 () none 72)
+    (dummy-73 () none 73)
+    (dummy-74 () none 74)
+    (dummy-75 () none 75)
+    )
+  )
 
 
 
@@ -23147,26 +23140,26 @@
 
 ;; - Types
 
-; (deftype air-box (structure)
-;   ((vecs         UNKNOWN 2 :offset-assert 0)
-;    (x-pos        float     :offset-assert 0)
-;    (height-level float     :offset-assert 4)
-;    (z-pos        float     :offset-assert 8)
-;    (cos-angle    float     :offset-assert 12)
-;    (x-length     float     :offset-assert 16)
-;    (z-length     float     :offset-assert 24)
-;    (sin-angle    float     :offset-assert 28)
-;    )
-;   :method-count-assert 9
-;   :size-assert         #x20
-;   :flag-assert         #x900000020
-;   )
+(deftype air-box (structure)
+  ((vecs         vector 2 :inline :offset-assert 0)
+   (x-pos        float     :offset 0)
+   (height-level float     :offset 4)
+   (z-pos        float     :offset 8)
+   (cos-angle    float     :offset 12)
+   (x-length     float     :offset 16)
+   (z-length     float     :offset 24)
+   (sin-angle    float     :offset 28)
+   )
+  :method-count-assert 9
+  :size-assert         #x20
+  :flag-assert         #x900000020
+  )
 
 
 ;; - Symbols
 
-(define-extern point-in-air-box-area? function)
-(define-extern point-in-air-box? function)
+(define-extern point-in-air-box-area? (function float float air-box symbol))
+(define-extern point-in-air-box? (function vector air-box symbol))
 
 
 ;; ----------------------
