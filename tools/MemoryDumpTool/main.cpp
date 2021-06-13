@@ -206,10 +206,6 @@ void inspect_basics(const Ram& ram,
     nlohmann::json type_results;
     if (results.contains(name)) {
       type_results = results.at(name);
-      if (name == "crate-bank") {
-        std::string wat = type_results.dump();
-        int i = 0;
-      }
       type_results["__metadata"]["occurences"] =
           type_results["__metadata"]["occurences"].get<int>() + basics.at(name).size();
     } else {
@@ -319,7 +315,7 @@ static bool ends_with(const std::string& str, const std::string& suffix) {
 int main(int argc, char** argv) {
   fmt::print("MemoryDumpTool\n");
 
-  if (argc != 2) {
+  if (argc != 2 && argc != 3) {
     fmt::print("usage: memory_dump_tool <ee_ram.bin|savestate.p2s> [output folder]\n");
     return 1;
   }
@@ -329,11 +325,13 @@ int main(int argc, char** argv) {
   dts.parse_type_defs({"decompiler", "config", "all-types.gc"});
 
   std::string file_name = argv[1];
-  fs::path output_folder = argv[2];
+  fs::path output_folder;
 
-  if (!fs::exists(output_folder) || argc != 3) {
+  if (!fs::exists(output_folder) || argc < 3) {
     fmt::print("Output folder not found, defaulting to current directory");
     output_folder = ".";
+  } else {
+    output_folder = argv[2];
   }
 
   // If it's a PCSX2 savestate, lets extract the ee memory automatically
