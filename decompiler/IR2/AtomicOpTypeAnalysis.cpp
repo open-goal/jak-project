@@ -131,9 +131,9 @@ TP_Type SimpleAtom::get_type(const TypeState& input,
       if (hint_kv != env.label_types().end()) {
         return TP_Type::make_from_ts(dts.parse_type_spec(hint_kv->second.type_name));
       }
-      // throw std::runtime_error("IR_StaticAddress could not figure out the type: " + label.name);
-      lg::error("IR_StaticAddress does not know the type of {}", label.name);
-      return TP_Type::make_from_ts("object");
+      // todo: should we take out this warning?
+      lg::warn("IR_StaticAddress does not know the type of {}", label.name);
+      return TP_Type::make_label_addr();
     }
     case Kind::INVALID:
     default:
