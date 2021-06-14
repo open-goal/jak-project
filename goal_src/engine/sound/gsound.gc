@@ -6,8 +6,8 @@
 ;; dgos: GAME, ENGINE
 
 
-(define *sound-player-rpc* (new 'global 'rpc-buffer-pair (the-as uint 80) (the-as uint 128) RPC-SOUND-PLAYER))
-(define *sound-loader-rpc* (new 'global 'rpc-buffer-pair (the-as uint 80) (the-as uint 1) RPC-SOUND-LOADER))
+(define *sound-player-rpc* (new 'global 'rpc-buffer-pair (the uint (size-of sound-rpc-union)) (the-as uint 128) RPC-SOUND-PLAYER))
+(define *sound-loader-rpc* (new 'global 'rpc-buffer-pair (the uint (size-of sound-rpc-union)) (the-as uint 1) RPC-SOUND-LOADER))
 
 (defun sound-name= ((arg0 sound-name) (arg1 sound-name))
   "Return #t if both are the same name"
@@ -87,7 +87,7 @@
   (let ((cmd (the sound-rpc-get-irx-version (add-element *sound-loader-rpc*))))
    (set! (-> cmd command) (sound-command get-irx-version))
    (set! (-> cmd ee-addr) (&-> *sound-iop-info* frame))
-   (call *sound-loader-rpc* (the-as uint 0) (the-as pointer cmd) (the-as uint 80))
+   (call *sound-loader-rpc* (the-as uint 0) (the-as pointer cmd) (the uint (size-of sound-rpc-union)))
    (sync *sound-loader-rpc* #f)
 
    (format 0 "IRX version ~D.~D~%" (-> cmd major) (-> cmd minor))
@@ -529,10 +529,10 @@
            (set! name (string->sound-name (symbol->string bc)))
            (set! sound-times (res-lump-data (the entity src) 'cycle-speed (pointer float)))
            (set! spec *ambient-spec*)
-           (let ((sv-64 (new 'static 'res-tag)))
-               (swhen (res-lump-data-exact (the entity src) 'effect-param sound-play-parms :tag-ptr (& sv-64))
+           (let ((tag (new 'static 'res-tag)))
+               (swhen (res-lump-data-exact (the entity src) 'effect-param sound-play-parms :tag-ptr (& tag))
                  (set! params bc)
-                 (set! param-count (the int (-> sv-64 elt-count)))
+                 (set! param-count (the int (-> tag elt-count)))
                  )
                )
            )
@@ -634,7 +634,7 @@
                           (-> pp name)
                           (-> spec sound-name-char))
                (format #t "volume: ~f  pitch-mod: ~f~%"
-                          (* 0.09765625 (the float (-> spec volume)))
+                          (* (1/ 10.24) (the float (-> spec volume)))
                           (* 0.000656168 (the float (-> spec pitch-mod))))
                )
              )
