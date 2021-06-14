@@ -46,23 +46,35 @@ const std::unordered_set<std::string> g_functions_expected_to_reject = {
     "(method 9 bounding-box)",   // handwritten asm loop
     "(method 14 bounding-box)",  // handwritten asm loop
     // trig
-    "exp", "atan0", "sincos!", "sincos-rad!",
+    "exp",
+    "atan0",
+    "sincos!",
+    "sincos-rad!",
     // matrix
     "(method 9 matrix)",  // handwritten asm loop
-    "matrix-axis-sin-cos!", "matrix-axis-sin-cos-vu!",
+    "matrix-axis-sin-cos!",
+    "matrix-axis-sin-cos-vu!",
     // dma-h
     "dma-count-until-done",  // dma asm loop
-    "dma-sync-with-count", "dma-send-no-scratch", "dma-sync-fast",
+    "dma-sync-with-count",
+    "dma-send-no-scratch",
+    "dma-sync-fast",
     // dma
-    "symlink2", "symlink3", "dma-sync-hang",  // handwritten asm
-    "vector=",                                // asm branching
+    "symlink2",
+    "symlink3",
+    "dma-sync-hang",  // handwritten asm
+    "vector=",        // asm branching
     // display
     "vblank-handler",  // asm
-    "vif1-handler", "vif1-handler-debug",
+    "vif1-handler",
+    "vif1-handler-debug",
     // stats-h
-    "(method 11 perf-stat)", "(method 12 perf-stat)",
+    "(method 11 perf-stat)",
+    "(method 12 perf-stat)",
     // ripple - asm
-    "ripple-execute-init", "ripple-create-wave-table", "ripple-apply-wave-table",
+    "ripple-execute-init",
+    "ripple-create-wave-table",
+    "ripple-apply-wave-table",
     "ripple-matrix-scale",
     // ripple - calls an asm function
     "ripple-execute",
@@ -74,6 +86,10 @@ const std::unordered_set<std::string> g_functions_expected_to_reject = {
 
     // collide-mesh-h
     "(method 11 collide-mesh-cache)",  // asm
+
+    // actor-link-h
+    "(method 21 actor-link-info)",  // BUG: sc cfg / cfg-ir bug
+    "(method 20 actor-link-info)",
 };
 
 const std::unordered_set<std::string> g_functions_to_skip_compiling = {
