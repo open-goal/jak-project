@@ -42,6 +42,12 @@ struct StackSpillEntry {
   }
 };
 
+struct FunctionVariableDefinitions {
+  std::optional<goos::Object> local_vars;
+  bool had_pp = false;
+  int count = 0;
+};
+
 /*!
  * An "environment" for a single function.
  * This contains data for an entire function, like which registers are live when, the types of
@@ -122,9 +128,8 @@ class Env {
 
   std::vector<VariableNames::VarInfo> extract_visible_variables(const Form* top_level_form) const;
   std::string print_local_var_types(const Form* top_level_form) const;
-  goos::Object local_var_type_list(const Form* top_level_form,
-                                   int nargs_to_ignore,
-                                   int* count_out) const;
+  FunctionVariableDefinitions local_var_type_list(const Form* top_level_form,
+                                                  int nargs_to_ignore) const;
 
   std::unordered_set<RegId, RegId::hash> get_ssa_var(const RegAccessSet& vars) const;
   RegId get_program_var_id(const RegisterAccess& var) const;

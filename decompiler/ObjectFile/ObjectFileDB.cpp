@@ -187,7 +187,6 @@ void ObjectFileDB::load_map_file(const std::string& map_data) {
   }
 }
 
-constexpr int MAX_CHUNK_SIZE = 0x8000;
 /*!
  * Load the objects stored in the given DGO into the ObjectFileDB
  */

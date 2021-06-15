@@ -417,18 +417,23 @@ std::vector<VariableNames::VarInfo> Env::extract_visible_variables(
   return entries;
 }
 
-goos::Object Env::local_var_type_list(const Form* top_level_form,
-                                      int nargs_to_ignore,
-                                      int* count_out) const {
+FunctionVariableDefinitions Env::local_var_type_list(const Form* top_level_form,
+                                                     int nargs_to_ignore) const {
   assert(nargs_to_ignore <= 8);
   auto vars = extract_visible_variables(top_level_form);
 
+  FunctionVariableDefinitions result;
   std::vector<goos::Object> elts;
   elts.push_back(pretty_print::to_symbol("local-vars"));
   int count = 0;
   for (auto& x : vars) {
     if (x.reg_id.reg.get_kind() == Reg::GPR && x.reg_id.reg.get_gpr() < Reg::A0 + nargs_to_ignore &&
         x.reg_id.reg.get_gpr() >= Reg::A0 && x.reg_id.id == 0) {
+      continue;
+    }
+
+    if (x.reg_id.reg == Register(Reg::GPR, Reg::S6)) {
+      result.had_pp = true;
       continue;
     }
 
@@ -459,10 +464,11 @@ goos::Object Env::local_var_type_list(const Form* top_level_form,
     count++;
   }
 
-  if (count_out) {
-    *count_out = count;
+  result.count = count;
+  if (count > 0) {
+    result.local_vars = pretty_print::build_list(elts);
   }
-  return pretty_print::build_list(elts);
+  return result;
 }
 
 std::unordered_set<RegId, RegId::hash> Env::get_ssa_var(const RegAccessSet& vars) const {

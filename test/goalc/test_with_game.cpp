@@ -835,6 +835,8 @@ struct VectorFloatTestCase {
 
   virtual VectorFloatRegister getExpectedResult() = 0;
   virtual void setJson(nlohmann::json& data, std::string func) = 0;
+
+  virtual ~VectorFloatTestCase() = default;
 };
 
 struct VectorFloatTestCase_TwoOperand : VectorFloatTestCase {

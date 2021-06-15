@@ -1039,7 +1039,8 @@ Val* Compiler::compile_new(const goos::Object& form, const goos::Object& _rest, 
   auto type = pair_car(*rest);
   rest = &pair_cdr(*rest);
 
-  if (allocation == "global" || allocation == "debug" || allocation == "process") {
+  if (allocation == "global" || allocation == "debug" || allocation == "process" ||
+      allocation == "process-level-heap") {
     // allocate on a named heap
     return compile_heap_new(form, allocation, type, rest, env);
   } else if (allocation == "static") {

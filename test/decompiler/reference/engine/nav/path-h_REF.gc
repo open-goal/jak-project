@@ -1,0 +1,230 @@
+;;-*-Lisp-*-
+(in-package goal)
+
+;; definition of type path-control
+(deftype path-control (basic)
+  ((flags      path-control-flag             :offset-assert 4)
+   (name       basic                         :offset-assert 8)
+   (process    basic                         :offset-assert 12)
+   (curve      curve             :inline     :offset-assert 16)
+   (num-cverts int32             :offset  20)
+   (cverts     pointer           :offset  16)
+   )
+  :method-count-assert 21
+  :size-assert         #x24
+  :flag-assert         #x1500000024
+  (:methods
+    (new (symbol type process symbol float) _type_ 0)
+    (dummy-9 () none 9)
+    (dummy-10 () none 10)
+    (dummy-11 () none 11)
+    (dummy-12 () none 12)
+    (dummy-13 () none 13)
+    (dummy-14 () none 14)
+    (length-as-float (_type_) float 15)
+    (dummy-16 () none 16)
+    (get-num-verts (_type_) int 17)
+    (should-display? (_type_) symbol 18)
+    (dummy-19 () none 19)
+    (dummy-20 () none 20)
+    )
+  )
+
+;; definition for method 3 of type path-control
+(defmethod inspect path-control ((obj path-control))
+  (format #t "[~8x] ~A~%" obj (-> obj type))
+  (format #t "~Tflags: #x~X~%" (-> obj flags))
+  (format #t "~Tname: ~A~%" (-> obj name))
+  (format #t "~Tprocess: ~A~%" (-> obj process))
+  (format #t "~Tcurve: #<curve @ #x~X>~%" (-> obj curve))
+  (format #t "~Tnum-cverts: ~D~%" (-> obj curve num-cverts))
+  (format #t "~Tcverts: #x~X~%" (-> obj curve cverts))
+  obj
+  )
+
+;; definition of type curve-control
+(deftype curve-control (path-control)
+  ()
+  :method-count-assert 21
+  :size-assert         #x24
+  :flag-assert         #x1500000024
+  (:methods
+    (new (symbol type process symbol float) _type_ 0)
+    )
+  )
+
+;; definition for method 3 of type curve-control
+(defmethod inspect curve-control ((obj curve-control))
+  (format #t "[~8x] ~A~%" obj (-> obj type))
+  (format #t "~Tflags: #x~X~%" (-> obj flags))
+  (format #t "~Tname: ~A~%" (-> obj name))
+  (format #t "~Tprocess: ~A~%" (-> obj process))
+  (format #t "~Tcurve: #<curve @ #x~X>~%" (-> obj curve))
+  (format #t "~Tnum-cverts: ~D~%" (-> obj curve num-cverts))
+  (format #t "~Tcverts: #x~X~%" (-> obj curve cverts))
+  obj
+  )
+
+;; definition for method 0 of type path-control
+;; INFO: Return type mismatch object vs path-control.
+;; Used lq/sq
+(defmethod
+  new
+  path-control
+  ((allocation symbol)
+   (type-to-make type)
+   (proc process)
+   (name symbol)
+   (time float)
+   )
+  (local-vars (tag res-tag))
+  (with-pp
+   (let
+    ((obj
+      (object-new allocation type-to-make (the-as int (-> type-to-make size)))
+      )
+     )
+    (if (zero? obj)
+     (begin
+      (let ((t9-1 (the-as function enter-state))
+            (a0-1 "memory")
+            )
+       (set! (-> pp next-state) process-drawable-art-error)
+       ((the-as (function string none) t9-1) a0-1)
+       )
+      (set! obj (the-as path-control 0))
+      (goto cfg-9)
+      )
+     )
+    (set! (-> obj process) proc)
+    (set! (-> obj name) name)
+    (let ((ent (-> proc entity)))
+     (when (= name 'path)
+      (let
+       ((lookup-entity
+         (entity-actor-lookup (the-as res-lump ent) 'path-actor 0)
+         )
+        )
+       (if lookup-entity
+        (set! ent lookup-entity)
+        )
+       )
+      )
+     (set! tag (new 'static 'res-tag))
+     (let
+      ((data
+        ((method-of-type res-lump get-property-data)
+         (the-as res-lump ent)
+         name
+         'interp
+         time
+         (the-as pointer #f)
+         (& tag)
+         *res-static-buf*
+         )
+        )
+       )
+      (cond
+       (data
+        (set! (-> obj curve cverts) data)
+        (set! (-> obj curve num-cverts) (the-as int (-> tag elt-count)))
+        )
+       (else
+        (set!
+         (-> obj flags)
+         (logior (-> obj flags) (path-control-flag not-found))
+         )
+        (set! (-> obj curve cverts) (the-as pointer #f))
+        (set! (-> obj curve num-cverts) 0)
+        (let ((v1-16 0))
+         )
+        )
+       )
+      )
+     )
+    (label cfg-9)
+    (the-as path-control obj)
+    )
+   )
+  )
+
+;; definition for method 18 of type path-control
+(defmethod should-display? path-control ((obj path-control))
+  (and
+   *display-path-marks*
+   (nonzero? (logand (-> obj flags) (path-control-flag display)))
+   )
+  )
+
+;; definition for method 15 of type path-control
+(defmethod length-as-float path-control ((obj path-control))
+  (the float (+ (-> obj curve num-cverts) -1))
+  )
+
+;; definition for method 17 of type path-control
+(defmethod get-num-verts path-control ((obj path-control))
+  (-> obj curve num-cverts)
+  )
+
+;; definition for method 0 of type curve-control
+(defmethod
+  new
+  curve-control
+  ((allocation symbol)
+   (type-to-make type)
+   (proc process)
+   (name symbol)
+   (time float)
+   )
+  (let
+   ((obj
+     (object-new allocation type-to-make (the-as int (-> type-to-make size)))
+     )
+    )
+   (set! (-> obj process) proc)
+   (set! (-> obj name) name)
+   (let* ((ent (the-as entity (-> proc entity)))
+          (v1-2 name)
+          (s2-0 (cond
+                 ((= v1-2 'path)
+                  'path-k
+                  )
+                 (else
+                  (let ((s2-1 string->symbol))
+                   (format (clear *temp-string*) "~A-k" name)
+                   (s2-1 *temp-string*)
+                   )
+                  )
+                 )
+           )
+          )
+    (let ((lookup-entity (entity-actor-lookup ent 'path-actor 0)))
+     (if lookup-entity
+      (set! ent lookup-entity)
+      )
+     )
+    (when (not (get-curve-data! ent (-> obj curve) name s2-0 time))
+     (cond
+      ((> (-> obj curve num-cverts) 0)
+       (set! (-> obj type) path-control)
+       )
+      (else
+       (set!
+        (-> obj flags)
+        (logior (-> obj flags) (path-control-flag not-found))
+        )
+       (set! (-> obj curve cverts) (the-as pointer #f))
+       (set! (-> obj curve num-cverts) 0)
+       (let ((v1-11 0))
+        )
+       )
+      )
+     )
+    )
+   obj
+   )
+  )
+
+;; failed to figure out what this is:
+(let ((v0-9 0))
+  )

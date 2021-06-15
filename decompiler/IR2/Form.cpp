@@ -314,7 +314,8 @@ goos::Object SetVarElement::to_form_internal(const Env& env) const {
     }
   }
 
-  return pretty_print::build_list("set!", m_dst.to_form(env), m_src->to_form(env));
+  return pretty_print::build_list(
+      "set!", m_dst.to_form(env, RegisterAccess::Print::AS_VARIABLE_NO_CAST), m_src->to_form(env));
 }
 
 std::optional<TypeSpec> SetVarElement::required_cast(const Env& env) const {

@@ -467,7 +467,7 @@ void ObjectFileDB::ir2_cfg_build_pass() {
       try {
         build_initial_forms(func);
       } catch (std::exception& e) {
-        func.warnings.general_warning("Failed to structure");
+        func.warnings.general_warning("Failed to structure: {}", e.what());
         func.ir2.top_form = nullptr;
       }
     }

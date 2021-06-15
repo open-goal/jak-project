@@ -244,100 +244,102 @@
    (pkup-type pickup-type)
    (pkup-amount float)
    )
-  (local-vars (pp process) (tag res-tag))
-  (let
-   ((obj
-     (object-new allocation type-to-make (the-as int (-> type-to-make size)))
-     )
-    )
-   (let ((ent (-> proc entity)))
-    (if (zero? obj)
-     (begin
-      (let ((go-func (the-as (function string none) enter-state))
-            (a0-1 "memory")
-            )
-       (set! (-> pp next-state) process-drawable-art-error)
-       (go-func a0-1)
-       )
-      (set! obj (the-as fact-info 0))
-      (goto cfg-10)
+  (local-vars (tag res-tag))
+  (with-pp
+   (let
+    ((obj
+      (object-new allocation type-to-make (the-as int (-> type-to-make size)))
       )
      )
-    (set! (-> obj process) proc)
-    (set! tag (new 'static 'res-tag))
-    (let
-     ((v1-6
-       (the-as
-        (pointer int32)
-        ((method-of-type res-lump get-property-data)
-         (the-as res-lump ent)
-         'eco-info
-         'interp
-         0.0
-         (the-as pointer #f)
-         (& tag)
-         *res-static-buf*
+    (let ((ent (-> proc entity)))
+     (if (zero? obj)
+      (begin
+       (let ((go-func (the-as (function string none) enter-state))
+             (a0-1 "memory")
+             )
+        (set! (-> pp next-state) process-drawable-art-error)
+        (go-func a0-1)
+        )
+       (set! obj (the-as fact-info 0))
+       (goto cfg-10)
+       )
+      )
+     (set! (-> obj process) proc)
+     (set! tag (new 'static 'res-tag))
+     (let
+      ((v1-6
+        (the-as
+         (pointer int32)
+         ((method-of-type res-lump get-property-data)
+          (the-as res-lump ent)
+          'eco-info
+          'interp
+          0.0
+          (the-as pointer #f)
+          (& tag)
+          *res-static-buf*
+          )
          )
         )
        )
-      )
-     (cond
-      (v1-6
-       (let ((a0-6 (-> tag elt-count)))
-        (set! (-> obj pickup-type) (the-as pickup-type (-> v1-6 0)))
-        (set! pkup-amount (cond
-                           ((< (the-as uint 1) (the-as uint a0-6))
-                            (the float (-> v1-6 1))
+      (cond
+       (v1-6
+        (let ((a0-6 (-> tag elt-count)))
+         (set! (-> obj pickup-type) (the-as pickup-type (-> v1-6 0)))
+         (set! pkup-amount (cond
+                            ((< (the-as uint 1) (the-as uint a0-6))
+                             (the float (-> v1-6 1))
+                             )
+                            (else
+                             (empty)
+                             pkup-amount
+                             )
                             )
-                           (else
-                            (empty)
-                            pkup-amount
-                            )
-                           )
+          )
          )
+        (set! (-> obj pickup-amount) pkup-amount)
         )
-       (set! (-> obj pickup-amount) pkup-amount)
-       )
-      (else
-       (set! (-> obj pickup-type) pkup-type)
-       (set! (-> obj pickup-amount) pkup-amount)
-       )
-      )
-     )
-    (set!
-     (-> obj options)
-     (the-as
-      uint
-      ((method-of-type res-lump get-property-value)
-       (the-as res-lump ent)
-       'options
-       'interp
-       -1000000000.0
-       (the-as uint128 0)
-       (the-as (pointer res-tag) #f)
-       *res-static-buf*
+       (else
+        (set! (-> obj pickup-type) pkup-type)
+        (set! (-> obj pickup-amount) pkup-amount)
+        )
        )
       )
-     )
-    (if (nonzero? (logand #x80200 (the-as int (-> obj options))))
      (set!
-      (-> obj fade-time)
+      (-> obj options)
       (the-as
        uint
-       (the
-        int
-        (*
-         300.0
-         (the-as
-          float
-          ((method-of-type res-lump get-property-value2)
-           (the-as res-lump ent)
-           'timeout
-           'interp
-           -1000000000.0
-           (the-as uint128 0.0)
-           (the-as (pointer res-tag) #f)
-           *res-static-buf*
+       ((method-of-type res-lump get-property-value)
+        (the-as res-lump ent)
+        'options
+        'interp
+        -1000000000.0
+        (the-as uint128 0)
+        (the-as (pointer res-tag) #f)
+        *res-static-buf*
+        )
+       )
+      )
+     (if (nonzero? (logand #x80200 (the-as int (-> obj options))))
+      (set!
+       (-> obj fade-time)
+       (the-as
+        uint
+        (the
+         int
+         (*
+          300.0
+          (the-as
+           float
+           ((method-of-type res-lump get-property-value-float)
+            (the-as res-lump ent)
+            'timeout
+            'interp
+            -1000000000.0
+            0.0
+            (the-as (pointer res-tag) #f)
+            *res-static-buf*
+            )
            )
           )
          )
@@ -345,9 +347,9 @@
        )
       )
      )
+    (label cfg-10)
+    obj
     )
-   (label cfg-10)
-   obj
    )
   )
 
@@ -379,12 +381,12 @@
      (-> obj speed)
      (the-as
       float
-      ((method-of-type res-lump get-property-value2)
+      ((method-of-type res-lump get-property-value-float)
        (the-as res-lump entity)
        'speed
        'interp
        -1000000000.0
-       (the-as uint128 1.0)
+       1.0
        (the-as (pointer res-tag) #f)
        *res-static-buf*
        )
@@ -394,12 +396,12 @@
      (-> obj idle-distance)
      (the-as
       float
-      ((method-of-type res-lump get-property-value2)
+      ((method-of-type res-lump get-property-value-float)
        (the-as res-lump entity)
        'idle-distance
        'interp
        -1000000000.0
-       (the-as uint128 327680.0)
+       327680.0
        (the-as (pointer res-tag) #f)
        *res-static-buf*
        )
@@ -409,12 +411,12 @@
      (-> obj notice-top)
      (the-as
       float
-      ((method-of-type res-lump get-property-value2)
+      ((method-of-type res-lump get-property-value-float)
        (the-as res-lump entity)
        'notice-top
        'interp
        -1000000000.0
-       (the-as uint128 4096000.0)
+       4096000.0
        (the-as (pointer res-tag) #f)
        *res-static-buf*
        )
@@ -424,12 +426,12 @@
      (-> obj notice-bottom)
      (the-as
       float
-      ((method-of-type res-lump get-property-value2)
+      ((method-of-type res-lump get-property-value-float)
        (the-as res-lump entity)
        'notice-bottom
        'interp
        -1000000000.0
-       (the-as uint128 4096000.0)
+       4096000.0
        (the-as (pointer res-tag) #f)
        *res-static-buf*
        )
@@ -439,12 +441,12 @@
      (-> obj cam-horz)
      (the-as
       float
-      ((method-of-type res-lump get-property-value2)
+      ((method-of-type res-lump get-property-value-float)
        (the-as res-lump entity)
        'cam-horz
        'interp
        -1000000000.0
-       (the-as uint128 0.0)
+       0.0
        (the-as (pointer res-tag) #f)
        *res-static-buf*
        )
@@ -454,12 +456,12 @@
      (-> obj cam-vert)
      (the-as
       float
-      ((method-of-type res-lump get-property-value2)
+      ((method-of-type res-lump get-property-value-float)
        (the-as res-lump entity)
        'cam-vert
        'interp
        -1000000000.0
-       (the-as uint128 0.0)
+       0.0
        (the-as (pointer res-tag) #f)
        *res-static-buf*
        )
@@ -469,12 +471,12 @@
      (-> obj cam-notice-dist)
      (the-as
       float
-      ((method-of-type res-lump get-property-value2)
+      ((method-of-type res-lump get-property-value-float)
        (the-as res-lump entity)
        'cam-notice-dist
        'interp
        -1000000000.0
-       (the-as uint128 -4096.0)
+       -4096.0
        (the-as (pointer res-tag) #f)
        *res-static-buf*
        )

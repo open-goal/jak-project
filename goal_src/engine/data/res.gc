@@ -594,7 +594,7 @@ This is updated from the entity system used in Crash 2, which had most of these 
            )
   )
 
-(defmethod get-property-value2 res-lump ((obj res-lump) (name symbol) (mode symbol) (time float) (default uint128) (tag-addr (pointer res-tag)) (buf-addr pointer))
+(defmethod get-property-value-float res-lump ((obj res-lump) (name symbol) (mode symbol) (time float) (default float) (tag-addr (pointer res-tag)) (buf-addr pointer))
   "same as get-property-value but float type is checked first?"
 
   (let ((tag-pair (lookup-tag-idx obj name mode time)))
@@ -612,24 +612,24 @@ This is updated from the entity system used in Crash 2, which had most of these 
                 )
               (cond
                 ((type-type? tag-type float)
-                 (set! default (the-as uint128 (deref float data)))
+                 (set! default (deref float data))
                  )
                 ((type-type? tag-type uinteger)
                  (case (-> tag elt-type size)
-                   ((1) (set! default (the-as uint128 (deref uint8 data))))
-                   ((2) (set! default (the-as uint128 (deref uint16 data))))
-                   ((4) (set! default (the-as uint128 (deref uint32 data))))
-                   ((16) (set! default (the-as uint128 (deref uint128 data))))
-                   (else (set! default (the-as uint128 (deref uint64 data))))
+                   ((1) (set! default (the float (deref uint8 data))))
+                   ((2) (set! default (the float (deref uint16 data))))
+                   ((4) (set! default (the float (deref uint32 data))))
+                   ((16) (set! default (the float (deref uint128 data))))
+                   (else (set! default (the float (deref uint64 data))))
                    )
                  )
                 ((type-type? tag-type integer)
                  (case (-> tag elt-type size)
-                   ((1) (set! default (the-as uint128 (deref int8 data))))
-                   ((2) (set! default (the-as uint128 (deref int16 data))))
-                   ((4) (set! default (the-as uint128 (deref int32 data))))
-                   ((16) (set! default (the-as uint128 (deref uint128 data))))
-                   (else (set! default (the-as uint128 (deref uint64 data))))
+                   ((1) (set! default (the float (deref int8 data))))
+                   ((2) (set! default (the float (deref int16 data))))
+                   ((4) (set! default (the float (deref int32 data))))
+                   ((16) (set! default (the float (deref uint128 data))))
+                   (else (set! default (the float (deref uint64 data))))
                    )
                  )
                 (else
@@ -645,16 +645,15 @@ This is updated from the entity system used in Crash 2, which had most of these 
 
 (defmacro res-lump-float (lump name &key (tag-ptr (the-as (pointer res-tag) #f)) &key (default 0.0))
   "Helper macro to get a float from a res-lump with no interpolation."
-  `(the-as float ((method-of-type res-lump get-property-value2)
+  `((method-of-type res-lump get-property-value-float)
                   ,lump
                   ,name
                   'interp
                   -1000000000.0
-                  (the-as uint128 ,default)
+                  ,default
                   ,tag-ptr
                   *res-static-buf*
                   )
-           )
   )
 
 (defmethod sort! res-lump ((obj res-lump))
@@ -697,7 +696,7 @@ This is updated from the entity system used in Crash 2, which had most of these 
              (curve-data (get-property-data obj points-name 'exact time (the pointer #f) (& points-tag) *res-static-buf*)))
 
           (when curve-data
-            (set! (-> curve-target cverts) (the uint curve-data))
+            (set! (-> curve-target cverts) curve-data)
             (set! (-> curve-target num-cverts) (the int (-> points-tag elt-count)))
 
             (when (< MAX_CURVE_CONTROL_POINTS (-> curve-target num-cverts))
@@ -712,7 +711,7 @@ This is updated from the entity system used in Crash 2, which had most of these 
                 (set! curve-data (get-property-data obj knots-name 'exact time (the pointer #f) (& knots-tag) *res-static-buf*))
 
                 (when curve-data
-                  (set! (-> curve-target knots) (the uint curve-data))
+                  (set! (-> curve-target knots) curve-data)
                   (set! (-> curve-target num-knots) (the int (-> knots-tag elt-count)))
                   (set! result #t)
                   )

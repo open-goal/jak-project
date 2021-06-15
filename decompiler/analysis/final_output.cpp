@@ -19,6 +19,26 @@ goos::Object get_arg_list_for_function(const Function& func, const Env& env) {
   return pretty_print::build_list(argument_elts);
 }
 
+namespace {
+void append_to_body(goos::Object* top_form,
+                    const std::vector<goos::Object>& inline_body,
+                    const FunctionVariableDefinitions& var_dec) {
+  if (var_dec.local_vars) {
+    pretty_print::append(*top_form, pretty_print::build_list(*var_dec.local_vars));
+  }
+
+  if (var_dec.had_pp) {
+    std::vector<goos::Object> body_with_pp;
+    body_with_pp.push_back(pretty_print::to_symbol("with-pp"));
+    body_with_pp.insert(body_with_pp.end(), inline_body.begin(), inline_body.end());
+    pretty_print::append(*top_form,
+                         pretty_print::build_list(pretty_print::build_list(body_with_pp)));
+  } else {
+    pretty_print::append(*top_form, pretty_print::build_list(inline_body));
+  }
+}
+}  // namespace
+
 std::string final_defun_out(const Function& func,
                             const Env& env,
                             const DecompilerTypeSystem& dts,
@@ -31,8 +51,8 @@ std::string final_defun_out(const Function& func,
     return e.what();
   }
 
-  int var_count = 0;
-  auto var_dec = env.local_var_type_list(func.ir2.top_form, func.type.arg_count() - 1, &var_count);
+  // int var_count = 0;
+  auto var_dec = env.local_var_type_list(func.ir2.top_form, func.type.arg_count() - 1);
   auto arguments = get_arg_list_for_function(func, env);
 
   if (func.guessed_name.kind == FunctionName::FunctionKind::GLOBAL) {
@@ -48,11 +68,7 @@ std::string final_defun_out(const Function& func,
     top.push_back(arguments);
     auto top_form = pretty_print::build_list(top);
 
-    if (var_count > 0) {
-      append(top_form, pretty_print::build_list(var_dec));
-    }
-
-    append(top_form, pretty_print::build_list(inline_body));
+    append_to_body(&top_form, inline_body, var_dec);
     return pretty_print::to_string(top_form);
   }
 
@@ -67,11 +83,7 @@ std::string final_defun_out(const Function& func,
     top.push_back(arguments);
     auto top_form = pretty_print::build_list(top);
 
-    if (var_count > 0) {
-      append(top_form, pretty_print::build_list(var_dec));
-    }
-
-    append(top_form, pretty_print::build_list(inline_body));
+    append_to_body(&top_form, inline_body, var_dec);
     return pretty_print::to_string(top_form);
   }
 
@@ -82,11 +94,7 @@ std::string final_defun_out(const Function& func,
     top.push_back(arguments);
     auto top_form = pretty_print::build_list(top);
 
-    if (var_count > 0) {
-      append(top_form, pretty_print::build_list(var_dec));
-    }
-
-    append(top_form, pretty_print::build_list(inline_body));
+    append_to_body(&top_form, inline_body, var_dec);
     return pretty_print::to_string(top_form);
   }
 
@@ -99,11 +107,7 @@ std::string final_defun_out(const Function& func,
     top.push_back(arguments);
     auto top_form = pretty_print::build_list(top);
 
-    if (var_count > 0) {
-      append(top_form, pretty_print::build_list(var_dec));
-    }
-
-    append(top_form, pretty_print::build_list(inline_body));
+    append_to_body(&top_form, inline_body, var_dec);
     return pretty_print::to_string(top_form);
   }
   return "nyi";
@@ -194,10 +198,9 @@ std::string write_from_top_level(const Function& top_level,
 
   std::string result;
   // local vars:
-  int var_count = 0;
-  auto var_dec = env.local_var_type_list(top_level.ir2.top_form, 0, &var_count);
-  if (var_count > 0) {
-    result += pretty_print::to_string(var_dec);
+  auto var_dec = env.local_var_type_list(top_level.ir2.top_form, 0);
+  if (var_dec.local_vars) {
+    result += pretty_print::to_string(*var_dec.local_vars);
     result += '\n';
     result += '\n';
   }
