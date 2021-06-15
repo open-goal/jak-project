@@ -3,9 +3,9 @@
 
 ;; definition of type joint-anim
 (deftype joint-anim (basic)
-  ((name   basic  :offset-assert 4)
-   (number int16  :offset-assert 8)
-   (length int16  :offset-assert 10)
+  ((name   string  :offset-assert 4)
+   (number int16   :offset-assert 8)
+   (length int16   :offset-assert 10)
    )
   :method-count-assert 9
   :size-assert         #xc
@@ -23,7 +23,7 @@
 
 ;; definition of type joint-anim-matrix
 (deftype joint-anim-matrix (joint-anim)
-  ((matrix matrix  :offset-assert 12)
+  ((data matrix :inline :dynamic :offset  16)
    )
   :method-count-assert 9
   :size-assert         #x10
@@ -32,7 +32,7 @@
 
 ;; definition of type joint-anim-transformq
 (deftype joint-anim-transformq (joint-anim)
-  ((transformq transformq  :offset-assert 12)
+  ((data transformq :inline :dynamic :offset  16)
    )
   :method-count-assert 9
   :size-assert         #x10
@@ -41,7 +41,7 @@
 
 ;; definition of type joint-anim-drawable
 (deftype joint-anim-drawable (joint-anim)
-  ((data uint32 :inline :dynamic :offset-assert 12)
+  ((data drawable :dynamic :offset-assert 12)
    )
   :method-count-assert 9
   :size-assert         #xc
@@ -60,7 +60,8 @@
 
 ;; definition of type joint-anim-compressed
 (deftype joint-anim-compressed (joint-anim)
-  ()
+  ((data joint-anim-compressed-hdr :dynamic :offset-assert 12)
+   )
   :method-count-assert 9
   :size-assert         #xc
   :flag-assert         #x90000000c
@@ -219,18 +220,18 @@
 
 ;; definition of type art
 (deftype art (basic)
-  ((name   basic :offset   8)
-   (length int32             :offset-assert 12)
-   (extra  basic             :offset-assert 16)
+  ((name   string :offset   8)
+   (length int32              :offset-assert 12)
+   (extra  entity             :offset-assert 16)
    )
   :method-count-assert 13
   :size-assert         #x14
   :flag-assert         #xd00000014
   (:methods
-    (dummy-9 () none 9)
-    (dummy-10 () none 10)
-    (dummy-11 () none 11)
-    (dummy-12 () none 12)
+    (dummy-9 (_type_) _type_ 9)
+    (dummy-10 (_type_ string type) art-element 10)
+    (dummy-11 (_type_ string type) int 11)
+    (dummy-12 (_type_) symbol 12)
     )
   )
 
@@ -271,10 +272,11 @@
 
 ;; definition of type art-joint-anim
 (deftype art-joint-anim (art-element)
-  ((speed                  float                 :offset  20)
+  ((_unknown               (pointer int16)       :offset   4)
+   (speed                  float                 :offset  20)
    (artist-base            float                 :offset  24)
    (artist-step            float                 :offset  28)
-   (master-art-group-name  basic                 :offset  32)
+   (master-art-group-name  string                :offset  32)
    (master-art-group-index int32                 :offset  36)
    (frames                 pointer               :offset  44)
    (data                   joint-anim-compressed :dynamic    :offset-assert 48)
@@ -286,7 +288,8 @@
 
 ;; definition of type art-group
 (deftype art-group (art)
-  ((pad2 uint8 12 :offset-assert 20)
+  ((info file-info   :offset   4)
+   (data art-element :dynamic :offset  32)
    )
   :method-count-assert 15
   :size-assert         #x20
@@ -299,7 +302,8 @@
 
 ;; definition of type art-mesh-geo
 (deftype art-mesh-geo (art-element)
-  ()
+  ((data basic :dynamic :offset-assert 32)
+   )
   :method-count-assert 13
   :size-assert         #x20
   :flag-assert         #xd00000020
@@ -307,7 +311,8 @@
 
 ;; definition of type art-joint-geo
 (deftype art-joint-geo (art-element)
-  ()
+  ((data joint :dynamic :offset-assert 32)
+   )
   :method-count-assert 13
   :size-assert         #x20
   :flag-assert         #xd00000020
@@ -403,7 +408,7 @@
    (global-effect            uint8                                           :offset-assert 7)
    (art-group                art-group                                       :offset-assert 8)
    (jgeo                     art-joint-geo                                   :offset-assert 12)
-   (mgeo                     art-mesh-geo                                    :offset-assert 16)
+   (mgeo                     merc-ctrl                                       :offset-assert 16)
    (dma-add-func             function                                        :offset-assert 20)
    (skeleton                 skeleton-group                                  :offset-assert 24)
    (lod-set                  lod-set                   :inline               :offset-assert 28)

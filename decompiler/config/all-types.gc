@@ -4406,7 +4406,7 @@
   )
 
 (declare-type bsp-header basic)
-
+(declare-type art-group basic)
 (deftype level (basic)
   ((name                      basic           :offset-assert 4)
    (load-name                 basic           :offset-assert 8)
@@ -4416,7 +4416,7 @@
    (other                     basic           :offset-assert 24)
    (heap                      kheap   :inline :offset-assert 32)
    (bsp                       bsp-header      :offset-assert 48)
-   (art-group                 basic           :offset-assert 52)
+   (art-group                 art-group       :offset-assert 52)
    (info                      basic           :offset-assert 56)
    (texture-page              texture-page 9       :offset-assert 60)
    (loaded-texture-page       basic 16      :offset-assert 96)
@@ -5101,7 +5101,7 @@
 ;; - Types
 
 (deftype memory-usage-info (structure)
-  ((name  basic  :offset-assert 0)
+  ((name  string :offset-assert 0)
    (count int32  :offset-assert 4)
    (used  int32  :offset-assert 8)
    (total int32  :offset-assert 12)
@@ -5383,21 +5383,22 @@
   )
 
 (deftype cspace (structure)
-  ((parent    cspace  :offset-assert 0)
-   (joint     joint   :offset-assert 4)
-   (joint-num int16   :offset-assert 8)
-   (geo       basic   :offset-assert 12)
-   (bone      bone    :offset-assert 16)
-   (param0    basic   :offset-assert 20)
-   (param1    basic   :offset-assert 24)
-   (param2    basic   :offset-assert 28)
+  ((parent    cspace    :offset-assert 0)
+   (joint     joint     :offset-assert 4)
+   (joint-num int16     :offset-assert 8)
+   (geo       basic     :offset-assert 12)
+   (bone      bone      :offset-assert 16)
+   (param0    function  :offset-assert 20)
+   (param1    basic     :offset-assert 24)
+   (param2    basic     :offset-assert 28)
    )
   :method-count-assert 10
   :size-assert         #x20
   :flag-assert         #xa00000020
   ;; field param1 is a basic loaded with a signed load field param2 is a basic loaded with a signed load
   (:methods
-    (dummy-9 () none 9)
+    (new (symbol type basic) _type_ 0)
+    (dummy-9 (_type_ basic) _type_ 9)
     )
   )
 
@@ -6953,7 +6954,7 @@
 ;; - Types
 
 (deftype joint-anim (basic)
-  ((name   basic  :offset-assert 4)
+  ((name   string :offset-assert 4)
    (number int16  :offset-assert 8)
    (length int16  :offset-assert 10)
    )
@@ -6963,32 +6964,33 @@
   )
 
 (deftype joint-anim-matrix (joint-anim)
-  ((matrix matrix :offset-assert 12)) ;; guess
-  ;; inspect in joint
+  ((data  matrix :inline :dynamic :offset 16)
+   )
   :method-count-assert 9
   :size-assert         #x10
   :flag-assert         #x900000010
   )
 
 (deftype joint-anim-transformq (joint-anim)
-  ((transformq transformq :offset-assert 12)) ;; guess
-  ;; inspect in joint
+  ((data  transformq :inline :dynamic :offset 16)
+   )
   :method-count-assert 9
   :size-assert         #x10
   :flag-assert         #x900000010
-  ;;  too many basic blocks
   )
 
 (deftype joint-anim-drawable (joint-anim)
-  ((data   uint32 :inline :dynamic :offset-assert 12) ;; guess
+  ((data   drawable :dynamic :offset-assert 12) ;; guess
    )
   :method-count-assert 9
   :size-assert         #xc
   :flag-assert         #x90000000c
   )
 
+(declare-type joint-anim-compressed-hdr structure)
 (deftype joint-anim-compressed (joint-anim)
-  ()
+  ((data  joint-anim-compressed-hdr :dynamic :offset-assert 12) ;; guess
+   )
   :method-count-assert 9
   :size-assert         #xc
   :flag-assert         #x90000000c
@@ -7053,19 +7055,22 @@
   :flag-assert         #x900000014
   )
 
+(declare-type res-lump basic)
+(declare-type art-element basic)
 (deftype art (basic)
-  ((name   basic  :offset 8)
-   (length int32  :offset-assert 12)
-   (extra  basic  :offset-assert 16) ; possible types: [res-lump]
+  ((name   string  :offset 8)
+   (length int32   :offset-assert 12)
+   (extra  entity  :offset-assert 16) ; possible types: [res-lump]
+                                      ; this field is very strange
    )
   :method-count-assert 13
   :size-assert         #x14
   :flag-assert         #xd00000014
   (:methods
-    (dummy-9 () none 9)
-    (dummy-10 () none 10)
-    (dummy-11 () none 11)
-    (dummy-12 () none 12)
+    (dummy-9 (_type_) _type_ 9)
+    (dummy-10 (_type_ string type) art-element 10)
+    (dummy-11 (_type_ string type) int 11)
+    (dummy-12 (_type_) symbol 12)
     )
   )
 
@@ -7075,10 +7080,10 @@
   :size-assert         #x20
   :flag-assert         #xd00000020
   (:methods
-    (dummy-9 () none 9)
-    (dummy-10 () none 10)
-    (dummy-11 () none 11)
-    (dummy-12 () none 12)
+    (dummy-9 (_type_) _type_ 9)
+    (dummy-10 (_type_ string type) art-element 10)
+    (dummy-11 (_type_ string type) int 11)
+    (dummy-12 (_type_) symbol 12)
     )
   )
 
@@ -7091,45 +7096,48 @@
 
 (deftype art-joint-anim (art-element)
   ;; figured out manually from custom inspect.
-  ((speed float :offset 20)
+  ((_unknown (pointer int16) :offset 4) ;; no clue. used in mem-usage
+   (speed float :offset 20)
    (artist-base float :offset 24)
    (artist-step float :offset 28)
-   (master-art-group-name basic :offset 32)
+   (master-art-group-name string :offset 32)
    (master-art-group-index int32 :offset 36)
-   (frames pointer :offset 44)
-   (data joint-anim-compressed :dynamic)
+   (frames pointer :offset 44) ;; this structure doesn't exist? it's a structure with an array of joint-anim-compressed-hdr starting at offset 12
+   (data joint-anim-compressed :dynamic :offset-assert 48)
    )
-  ;; inspect in joint
   :method-count-assert 13
   :size-assert         #x30
   :flag-assert         #xd00000030
   )
 
 (deftype art-group (art)
-  ((pad2 uint8 12))
-  ;; inspect in join
+  ((info  file-info    :offset 4)
+   (data  art-element  :dynamic :offset 32)
+   )
   :method-count-assert 15
   :size-assert         #x20
   :flag-assert         #xf00000020
   (:methods
-    (dummy-9 () none 9)
-    (dummy-10 () none 10)
-    (dummy-11 () none 11)
-    (dummy-12 () none 12)
+    (dummy-9 (_type_) _type_ 9)
+    (dummy-10 (_type_ string type) art-element 10)
+    (dummy-11 (_type_ string type) int 11)
+    (dummy-12 (_type_) symbol 12)
     (dummy-13 () none 13)
     (dummy-14 () none 14)
     )
   )
 
 (deftype art-mesh-geo (art-element)
-  ()
+  ((data  basic  :dynamic :offset-assert 32)
+   )
   :method-count-assert 13
   :size-assert         #x20
   :flag-assert         #xd00000020
   )
 
 (deftype art-joint-geo (art-element)
-  ()
+  ((data  joint  :dynamic :offset-assert 32)
+   )
   :method-count-assert 13
   :size-assert         #x20
   :flag-assert         #xd00000020
@@ -7190,7 +7198,7 @@
    (global-effect            uint8           :offset-assert 7)
    (art-group                art-group       :offset-assert 8)
    (jgeo                     art-joint-geo   :offset-assert 12)
-   (mgeo                     art-mesh-geo    :offset-assert 16)
+   (mgeo                     merc-ctrl       :offset-assert 16)
    (dma-add-func             function        :offset-assert 20)
    (skeleton                 skeleton-group  :offset-assert 24)
    (lod-set                  lod-set :inline :offset-assert 28)
@@ -7574,12 +7582,6 @@
   :method-count-assert 13
   :size-assert         #x70
   :flag-assert         #xd00000070
-  (:methods
-    (dummy-9 () none 9)
-    (dummy-10 () none 10)
-    (dummy-11 () none 11)
-    (dummy-12 () none 12)
-    )
   )
 
 (deftype merc-vu1-low-mem (structure)
@@ -8705,12 +8707,12 @@
 (declare-type joint-control basic)
 (deftype joint-control-channel (structure)
   ((parent           joint-control     :offset-assert 0)
-   (command          basic     :offset-assert 4)
+   (command          symbol    :offset-assert 4)
    (frame-interp     float     :offset-assert 8)
    (frame-group      art-joint-anim     :offset-assert 12)
    (frame-num        float     :offset-assert 16)
-   (num-func         basic     :offset-assert 20)
-   (param            uint32  2 :offset-assert 24)
+   (num-func         (function joint-control-channel float float float)  :offset-assert 20)
+   (param            float  2  :offset-assert 24)
    (group-sub-index  int16     :offset-assert 32)
    (group-size       int16     :offset-assert 34)
    (dist             float     :offset-assert 36) ;; meters
@@ -8721,14 +8723,14 @@
   :size-assert         #x30
   :flag-assert         #xa00000030
   (:methods
-    (dummy-9 () none 9)
+    (dummy-9 (_type_) _type_ 9)
     )
   )
 
 (deftype joint-control (basic)
   ((status                  uint16           :offset-assert 4)
    (allocated-length        int16            :offset-assert 6)
-   (root-channel            uint32           :offset 16)
+   (root-channel            joint-control-channel :offset 16)
    (blend-index             int32            :offset-assert 20)
    (active-channels         int32            :offset-assert 24)
    (generate-frame-function basic            :offset-assert 28)
@@ -8736,13 +8738,13 @@
    (postbind-function       basic            :offset-assert 36)
    (effect                  basic            :offset-assert 40)
    (channel                 joint-control-channel 3 :inline :offset-assert 48) ;; actually dynamic?
-   (frame-group0            basic            :offset 60)
+   (frame-group0            art-joint-anim   :offset 60)
    (frame-num0              float            :offset 64)
    (frame-interp0           float            :offset 56)
-   (frame-group1            basic            :offset 108)
+   (frame-group1            art-joint-anim   :offset 108)
    (frame-num1              float            :offset 112)
    (frame-interp1           float            :offset 104)
-   (frame-group2            basic            :offset 156)
+   (frame-group2            art-joint-anim   :offset 156)
    (frame-num2              float            :offset 160)
    (frame-interp2           float            :offset 152)
    )
@@ -8750,8 +8752,9 @@
   :size-assert         #xc0
   :flag-assert         #xb000000c0
   (:methods
+    (new (symbol type int) _type_ 0)
     (dummy-9 () none 9)
-    (dummy-10 () none 10)
+    (dummy-10 (_type_ symbol) int 10)
     )
   )
 
@@ -8781,9 +8784,9 @@
 (deftype joint-work (structure)
   ((temp-mtx       matrix                      :inline :offset-assert 0)
    (joint-stack    matrix-stack                :inline :offset-assert 64)
-   (fix-jmp-table  uint32                      16      :offset-assert 1616)
-   (frm-jmp-table  uint32                      16      :offset-assert 1680)
-   (pair-jmp-table uint32                      16      :offset-assert 1744)
+   (fix-jmp-table  (function none)             16      :offset-assert 1616)
+   (frm-jmp-table  (function none)             16      :offset-assert 1680)
+   (pair-jmp-table (function none)             16      :offset-assert 1744)
    (uploads        channel-upload-info      24 :inline :offset-assert 1808)
    (num-uploads    int32                               :offset-assert 2384)
    (mtx-acc        matrix                    2 :inline :offset-assert 2400)
@@ -9352,20 +9355,21 @@
 
 ;; - Types
 
+(declare-type water-control basic)
 (deftype process-drawable (process)
   ((root        trsqv   :offset-assert 112)
-   (node-list   cspace-array   :offset-assert 116)
-   (draw        draw-control   :offset-assert 120)
-   (skel        basic   :offset-assert 124)
+   (node-list   cspace-array    :offset-assert 116)
+   (draw        draw-control    :offset-assert 120)
+   (skel        joint-control   :offset-assert 124)
    (nav         basic   :offset-assert 128)
-   (align       basic   :offset-assert 132)
+   (align       align-control   :offset-assert 132)
    (path        basic   :offset-assert 136)
    (vol         basic   :offset-assert 140)
-   (fact        basic   :offset-assert 144)
+   (fact        fact-info       :offset-assert 144)
    (link        basic   :offset-assert 148)
    (part        basic   :offset-assert 152)
-   (water       basic   :offset-assert 156)
-   (sound       basic   :offset-assert 160)
+   (water       water-control   :offset-assert 156)
+   (sound       ambient-sound   :offset-assert 160)
    (state-flags uint32  :offset-assert 164)
    (state-time  uint64  :offset-assert 168)
    )
@@ -14562,36 +14566,36 @@
 
 ;; - Symbols
 
-(define-extern flatten-joint-control-to-spr function)
-(define-extern make-joint-jump-tables function)
-(define-extern calc-animation-from-spr function)
-(define-extern decompress-fixed-data-to-accumulator function)
-(define-extern decompress-frame-data-to-accumulator function)
-(define-extern decompress-frame-data-pair-to-accumulator function)
-(define-extern matrix-from-control! function)
-(define-extern matrix-from-control-channel! function)
-(define-extern matrix-from-control-pair! function)
-(define-extern matrix-from-joint-anim-frame function)
-(define-extern create-interpolated-joint-animation-frame function)
-(define-extern mem-size function)
-(define-extern jacc-mem-usage function)
-(define-extern joint-anim-inspect-elt function)
-(define-extern joint-anim-login function)
-(define-extern joint-control-channel-eval function)
-(define-extern joint-control-channel-eval! function)
-(define-extern joint-control-channel-group-eval! function)
-(define-extern joint-control-channel-group! function)
-(define-extern joint-control-copy! function)
-(define-extern joint-control-remap! function)
-(define-extern cspace<-cspace! function)
-(define-extern cspace<-rot-yxy! function)
-(define-extern cspace<-transform-yxy! function)
-(define-extern cspace<-transformq+trans! function)
-(define-extern cspace<-transformq+world-trans! function)
-(define-extern cspace-calc-total-matrix! function)
-(define-extern cspace<-matrix-no-push-joint! function)
-(define-extern cspace<-matrix-joint! function)
-(define-extern cspace<-parented-matrix-joint! function)
+(define-extern flatten-joint-control-to-spr (function joint-control int))
+(define-extern make-joint-jump-tables (function int))
+(define-extern calc-animation-from-spr (function joint-control int int))
+(define-extern decompress-fixed-data-to-accumulator (function none))
+(define-extern decompress-frame-data-to-accumulator (function none))
+(define-extern decompress-frame-data-pair-to-accumulator (function none))
+(define-extern matrix-from-control! (function matrix-stack joint matrix symbol matrix))
+(define-extern matrix-from-control-channel! (function matrix joint joint-control-channel matrix))
+(define-extern matrix-from-control-pair! (function matrix matrix joint matrix))
+(define-extern matrix-from-joint-anim-frame (function pointer int int matrix)) ;; ???
+(define-extern create-interpolated-joint-animation-frame (function joint-control int process-drawable int))
+(define-extern mem-size (function basic symbol int int))
+(define-extern jacc-mem-usage (function pointer memory-usage-block int int))
+(define-extern joint-anim-inspect-elt (function joint-anim float int))
+(define-extern joint-anim-login (function joint-anim-drawable joint-anim-drawable))
+(define-extern joint-control-channel-eval (function joint-control-channel float))
+(define-extern joint-control-channel-eval! (function joint-control-channel (function joint-control-channel float float float) float))
+(define-extern joint-control-channel-group-eval! (function joint-control-channel art-joint-anim (function joint-control-channel float float float) int))
+(define-extern joint-control-channel-group! (function joint-control-channel art-joint-anim (function joint-control-channel float float float) int))
+(define-extern joint-control-copy! (function joint-control joint-control joint-control))
+(define-extern joint-control-remap! (function joint-control art-group art-group pair int string object))
+(define-extern cspace<-cspace! (function cspace cspace matrix))
+(define-extern cspace<-rot-yxy! function) ;; unused
+(define-extern cspace<-transform-yxy! function) ;; unused
+(define-extern cspace<-transformq+trans! (function cspace transformq vector matrix))
+(define-extern cspace<-transformq+world-trans! (function cspace transformq vector matrix))
+(define-extern cspace-calc-total-matrix! (function cspace matrix matrix))
+(define-extern cspace<-matrix-no-push-joint! (function cspace matrix matrix))
+(define-extern cspace<-matrix-joint! (function cspace matrix matrix))
+(define-extern cspace<-parented-matrix-joint! (function cspace matrix matrix))
 (define-extern clear-frame-accumulator function)
 (define-extern normalize-frame-quaternions function)
 
