@@ -5,3 +5,168 @@
 ;; name in dgo: path-h
 ;; dgos: GAME, ENGINE
 
+(defenum path-control-flag
+    :bitfield #t
+    :type uint32
+    (display 0)
+    (not-found 4)
+    )
+
+;; A path-control is a curve that can be loaded from res-lump/entities.
+(deftype path-control (basic)
+  ((flags      path-control-flag             :offset-assert 4)
+   (name       basic                         :offset-assert 8)
+   (process    basic                         :offset-assert 12)
+   (curve      curve             :inline     :offset-assert 16)
+   (num-cverts int32             :offset  20)
+   (cverts     pointer           :offset  16)
+   )
+  :method-count-assert 21
+  :size-assert         #x24
+  :flag-assert         #x1500000024
+  (:methods
+   (new (symbol type process symbol float) _type_ 0)
+   (dummy-9 () none 9)
+   (dummy-10 () none 10)
+   (dummy-11 () none 11)
+   (dummy-12 () none 12)
+   (dummy-13 () none 13)
+   (dummy-14 () none 14)
+   (length-as-float (_type_) float 15)
+   (dummy-16 () none 16)
+   (get-num-verts (_type_) int 17)
+   (should-display? (_type_) symbol 18)
+   (dummy-19 () none 19)
+   (dummy-20 () none 20)
+   )
+  )
+
+;; A curve-control is very similar, but also gets knots.
+(deftype curve-control (path-control)
+  ()
+  :method-count-assert 21
+  :size-assert         #x24
+  :flag-assert         #x1500000024
+  (:methods
+   (new (symbol type process symbol float) _type_ 0)
+   )
+  )
+
+(defmethod new path-control ((allocation symbol) (type-to-make type) (proc process) (name symbol) (time float))
+  (local-vars (tag res-tag))
+  (let ((obj (object-new allocation type-to-make (the-as int (-> type-to-make size)))))
+
+    (when (zero? obj)
+      ;; allocation failed.
+      (go process-drawable-art-error "memory")
+      (set! obj (the-as path-control 0))
+      (goto cfg-9)
+      )
+
+    (set! (-> obj process) proc)
+    (set! (-> obj name) name)
+    (let ((ent (-> proc entity)))
+      (when (= name 'path)
+        ;; if we are a path, try to look up the path-actor.
+        (let ((lookup-entity (entity-actor-lookup (the-as res-lump ent) 'path-actor 0)))
+          (if lookup-entity
+              (set! ent lookup-entity)
+              )
+          )
+        )
+
+      ;; look up the curve data
+      (set! tag (new 'static 'res-tag))
+      (let ((data ((method-of-type res-lump get-property-data)
+                   (the-as res-lump ent)
+                   name
+                   'interp
+                   time
+                   (the-as pointer #f)
+                   (& tag)
+                   *res-static-buf*
+                   )
+              )
+            )
+
+        (cond
+          (data
+           ;; success, we got some data
+           (set! (-> obj curve cverts) data)
+           (set! (-> obj curve num-cverts) (the-as int (-> tag elt-count)))
+           )
+          (else
+           ;; did not find the data. Set flags and zero stuff
+           (set! (-> obj flags) (logior (-> obj flags) (path-control-flag not-found)))
+           (set! (-> obj curve cverts) (the-as pointer #f))
+           (set! (-> obj curve num-cverts) 0)
+           )
+          )
+        )
+      )
+    (label cfg-9)
+    (the-as path-control obj)
+    )
+  )
+
+(defmethod should-display? path-control ((obj path-control))
+  "Should we display path marks?"
+  (and *display-path-marks*
+       (nonzero? (logand (-> obj flags) (path-control-flag display)))
+       )
+  )
+
+(defmethod length-as-float path-control ((obj path-control))
+  "Get the number of edges as a float"
+  (the float (+ (-> obj curve num-cverts) -1))
+  )
+
+(defmethod get-num-verts path-control ((obj path-control))
+  "Get the number of vertices"
+  (-> obj curve num-cverts)
+  )
+
+(defmethod new curve-control ((allocation symbol) (type-to-make type) (proc process) (name symbol) (time float))
+  (let ((obj (object-new allocation type-to-make (the-as int (-> type-to-make size)))))
+    (set! (-> obj process) proc)
+    (set! (-> obj name) name)
+    (let* ((ent (the-as entity (-> proc entity)))
+           (v1-2 name)
+           (s2-0 (cond
+                   ((= v1-2 'path)
+                    'path-k ;; for knots?
+                    )
+                   (else
+                    ;; appends a -k to the symbol name.
+                    (let ((s2-1 string->symbol))
+                      (format (clear *temp-string*) "~A-k" name)
+                      (s2-1 *temp-string*)
+                      )
+                    )
+                   )
+             )
+           )
+      (let ((lookup-entity (entity-actor-lookup ent 'path-actor 0)))
+        (if lookup-entity
+            (set! ent lookup-entity)
+            )
+        )
+      (when (not (get-curve-data! ent (-> obj curve) name s2-0 time))
+        (cond
+          ((> (-> obj curve num-cverts) 0)
+           ;; downgrade us to a path-control, we got cverts but no knots.
+           (set! (-> obj type) path-control)
+           )
+          (else
+           ;; couldn't get anything, mark as bad.
+           (set! (-> obj flags) (logior (-> obj flags) (path-control-flag not-found)))
+           (set! (-> obj curve cverts) (the-as pointer #f))
+           (set! (-> obj curve num-cverts) 0)
+           )
+          )
+        )
+      )
+    obj
+    )
+  )
+

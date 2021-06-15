@@ -65,6 +65,16 @@ Run tests:
 ./test.sh
 ```
 
+Note: we have found that `clang` and `lld` are significantly faster to compile and link than `gcc`, generate faster code, and have better warning messages.  To install these:
+```
+sudo apt install lld clang
+```
+and run `cmake` (in a fresh build directory) with:
+```
+cmake -DCMAKE_SHARED_LINKER_FLAGS="-fuse-ld=lld" -DCMAKE_EXE_LINKER_FLAGS="-fuse-ld=lld" -DCMAKE_C_COMPILER=clang -DCMAKE_CXX_COMPILER=clang++ ..
+```
+this decreases the compile and link time from ~10 seconds to ~4 seconds.
+
 ## Getting Started - Linux (Arch)
 
 Install packages and init repository:

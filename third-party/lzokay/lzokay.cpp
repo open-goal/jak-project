@@ -70,19 +70,19 @@ constexpr std::size_t Max255Count = std::size_t(~0) / 255 - 2;
 constexpr uint32_t M1MaxOffset = 0x0400;
 constexpr uint32_t M2MaxOffset = 0x0800;
 constexpr uint32_t M3MaxOffset = 0x4000;
-constexpr uint32_t M4MaxOffset = 0xbfff;
+//constexpr uint32_t M4MaxOffset = 0xbfff;
 
-constexpr uint32_t M1MinLen = 2;
-constexpr uint32_t M1MaxLen = 2;
+//constexpr uint32_t M1MinLen = 2;
+//constexpr uint32_t M1MaxLen = 2;
 constexpr uint32_t M2MinLen = 3;
 constexpr uint32_t M2MaxLen = 8;
-constexpr uint32_t M3MinLen = 3;
+//constexpr uint32_t M3MinLen = 3;
 constexpr uint32_t M3MaxLen = 33;
-constexpr uint32_t M4MinLen = 3;
+//constexpr uint32_t M4MinLen = 3;
 constexpr uint32_t M4MaxLen = 9;
 
 constexpr uint32_t M1Marker = 0x0;
-constexpr uint32_t M2Marker = 0x40;
+//constexpr uint32_t M2Marker = 0x40;
 constexpr uint32_t M3Marker = 0x20;
 constexpr uint32_t M4Marker = 0x10;
 

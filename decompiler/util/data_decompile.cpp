@@ -967,10 +967,10 @@ std::vector<std::string> decompile_bitfield_enum_from_int(const TypeSpec& type,
   }
 
   if (reconstructed != value) {
-    throw std::runtime_error(
-        fmt::format("Failed to decompile bitfield enum. Original value is 0x{:x} but we could only "
-                    "make 0x{:x} using the available fields.",
-                    value, reconstructed));
+    throw std::runtime_error(fmt::format(
+        "Failed to decompile bitfield enum {}. Original value is 0x{:x} but we could only "
+        "make 0x{:x} using the available fields.",
+        type.print(), value, reconstructed));
   }
 
   // unordered map will give us these fields in a weird order, let's order them explicitly.

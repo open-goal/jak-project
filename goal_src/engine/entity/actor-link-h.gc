@@ -84,9 +84,9 @@
    (apply-function-forward (_type_ (function entity-actor object object) object) int 16)
    (apply-function-reverse (_type_ (function entity-actor object object) object) int 17)
    (apply-all (_type_ (function entity-actor object object) object) int 18)
-   (dummy-19 (_type_ object) none 19)
-   (dummy-20 (_type_ object) none 20)
-   (dummy-21 (_type_ object) none 21)
+   (send-to-all (_type_ object) none 19)
+   (send-to-all-after (_type_ object) object 20)
+   (send-to-all-before (_type_ object) object 21)
    (send-to-next-and-prev (_type_ object) none 22)
    (send-to-next (_type_ object) none 23)
    (send-to-prev (_type_ object) none 24)
@@ -221,7 +221,56 @@
   0
   )
 
-;; TODO: 20 and 21 don't decompile yet
+;; method 20
+(defmethod send-to-all-after actor-link-info ((obj actor-link-info) (message object))
+  (with-pp
+    (let ((iter (-> obj next))
+          (result (the object #f)))
+      (while iter
+        (let ((proc (-> (the entity-links (-> iter extra)) process)))
+          (when proc
+            (let ((msg-block (new 'stack-no-clear 'event-message-block)))
+              (set! (-> msg-block from) pp)
+              (set! (-> msg-block num-params) 0)
+              (set! (-> msg-block message) (the basic message))
+
+              (let ((send-result (send-event-function (the process proc) msg-block)))
+                (set! result (and result send-result))
+                )
+              )
+            )
+          (set! iter (entity-actor-lookup iter 'next-actor 0))
+          )
+        )
+      result
+      )
+    )
+  )
+
+(defmethod send-to-all-before actor-link-info ((obj actor-link-info) (message object))
+  (with-pp
+    (let ((iter (-> obj prev))
+          (result (the object #f)))
+      (while iter
+        (let ((proc (-> (the entity-links (-> iter extra)) process)))
+          (when proc
+            (let ((msg-block (new 'stack-no-clear 'event-message-block)))
+              (set! (-> msg-block from) pp)
+              (set! (-> msg-block num-params) 0)
+              (set! (-> msg-block message) (the basic message))
+
+              (let ((send-result (send-event-function (the process proc) msg-block)))
+                (set! result (and result send-result))
+                )
+              )
+            )
+          (set! iter (entity-actor-lookup iter 'prev-actor 0))
+          )
+        )
+      result
+      )
+    )
+  )
 
 (defmethod send-to-next actor-link-info ((obj actor-link-info) (arg0 object))
   "Send event arg0 to the next actor's process"
@@ -277,9 +326,9 @@
   (none)
   )
 
-(defmethod dummy-19 actor-link-info ((obj actor-link-info) (arg0 object))
-  (dummy-20 obj arg0)
-  (dummy-21 obj arg0)
+(defmethod send-to-all actor-link-info ((obj actor-link-info) (arg0 object))
+  (send-to-all-after obj arg0)
+  (send-to-all-before obj arg0)
   (none)
   )
 

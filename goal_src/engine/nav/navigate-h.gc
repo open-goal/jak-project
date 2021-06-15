@@ -5,3 +5,427 @@
 ;; name in dgo: navigate-h
 ;; dgos: GAME, ENGINE
 
+(defenum nav-control-flags
+  :bitfield #t
+  :type uint32
+  (display-marks 0)
+  (bit8 8)
+  (bit13 13)
+  )
+
+(deftype nav-poly (structure)
+  ((id       uint8   :offset-assert 0)
+   (vertex   uint8 3 :offset-assert 1)
+   (adj-poly uint8 3 :offset-assert 4)
+   (pat      uint8   :offset-assert 7) ;; pat-material, mode, event?
+   )
+  :method-count-assert 9
+  :size-assert         #x8
+  :flag-assert         #x900000008
+  )
+
+(deftype nav-vertex (vector)
+  ()
+  :method-count-assert 9
+  :size-assert         #x10
+  :flag-assert         #x900000010
+  )
+
+(deftype nav-sphere (structure)
+  ((trans sphere :inline :offset-assert 0)
+   )
+  :method-count-assert 9
+  :size-assert         #x10
+  :flag-assert         #x900000010
+  )
+
+(deftype nav-ray (structure)
+  ((current-pos  vector   :inline :offset-assert 0)
+   (dir          vector   :inline :offset-assert 16)
+   (dest-pos     vector   :inline :offset-assert 32)
+   (current-poly nav-poly         :offset-assert 48)
+   (next-poly    nav-poly         :offset-assert 52)
+   (len          float            :offset-assert 56)
+   (last-edge    int8             :offset-assert 60)
+   (terminated   basic            :offset-assert 64)
+   (reached-dest basic            :offset-assert 68)
+   (hit-boundary basic            :offset-assert 72)
+   (hit-gap      basic            :offset-assert 76)
+   )
+  :method-count-assert 9
+  :size-assert         #x50
+  :flag-assert         #x900000050
+  )
+
+(deftype nav-route-portal (structure)
+  ((next-poly  nav-poly     :offset-assert 0)
+   (vertex     nav-vertex 2 :offset-assert 4)
+   (edge-index int8         :offset-assert 12)
+   )
+  :method-count-assert 9
+  :size-assert         #xd
+  :flag-assert         #x90000000d
+  )
+
+
+(deftype clip-travel-vector-to-mesh-return-info (structure)
+  ((found-boundary  basic            :offset-assert 0)
+   (intersection    vector   :inline :offset-assert 16)
+   (boundary-normal vector   :inline :offset-assert 32)
+   (prev-normal     vector   :inline :offset-assert 48)
+   (next-normal     vector   :inline :offset-assert 64)
+   (poly            nav-poly         :offset-assert 80)
+   (gap-poly        nav-poly         :offset-assert 84)
+   (edge            int32            :offset-assert 88)
+   (vert-prev       vector   :inline :offset-assert 96)
+   (vert-0          vector   :inline :offset-assert 112)
+   (vert-1          vector   :inline :offset-assert 128)
+   (vert-next       vector   :inline :offset-assert 144)
+   )
+  :method-count-assert 9
+  :size-assert         #xa0
+  :flag-assert         #x9000000a0
+  )
+
+(deftype nav-node (structure)
+  ((center-x      float                      :offset-assert 0)
+   (center-y      float                      :offset-assert 4)
+   (center-z      float                      :offset-assert 8)
+   (type          uint16                     :offset-assert 12)
+   (parent-offset uint16                     :offset-assert 14)
+   (center        vector :inline :offset   0)
+   (radius-x      float                      :offset-assert 16)
+   (radius-y      float                      :offset-assert 20)
+   (radius-z      float                      :offset-assert 24)
+   (left-offset   uint16                     :offset-assert 28)
+   (right-offset  uint16                     :offset-assert 30)
+   (num-tris      uint32 :offset  28)
+   (radius        vector :inline :offset  16)
+   (scale-x       float                      :offset-assert 32)
+   (first-tris    uint8  4                   :offset-assert 36)
+   (scale-z       float                      :offset-assert 40)
+   (last-tris     uint8  4                   :offset-assert 44)
+   (scale         vector :inline :offset  32)
+   )
+  :method-count-assert 9
+  :size-assert         #x30
+  :flag-assert         #x900000030
+  )
+
+(deftype nav-lookup-elem (structure)
+  ((vec         vector :inline     :offset-assert 0)
+   (y-thresh    float  :offset  12)
+   (time        uint32             :offset-assert 16)
+   (node-offset uint32             :offset-assert 20)
+   (lookup-type uint8              :offset-assert 24)
+   (poly-ind    uint8              :offset-assert 25)
+   (dummy0      uint16             :offset-assert 26)
+   (dummy       uint32             :offset-assert 28)
+   )
+  :method-count-assert 9
+  :size-assert         #x20
+  :flag-assert         #x900000020
+  )
+
+(deftype nav-mesh (basic)
+  ((user-list           engine                    :offset-assert 4)
+   (poly-lookup-history uint8           2         :offset-assert 8)
+   (debug-time          uint8                     :offset-assert 10)
+   (static-sphere-count uint8                     :offset-assert 11)
+   (static-sphere       uint32                    :offset-assert 12)
+   (bounds              sphere          :inline   :offset-assert 16)
+   (origin              vector          :inline   :offset-assert 32)
+   (cache               nav-lookup-elem 4 :inline :offset-assert 48)
+   (node-count          int32                     :offset-assert 176)
+   (nodes               uint32                    :offset-assert 180)
+   (vertex-count        int32                     :offset-assert 184)
+   (vertex              uint32                    :offset-assert 188)
+   (poly-count          int32                     :offset-assert 192)
+   (poly                uint32                    :offset-assert 196)
+   (route               uint32                    :offset-assert 200)
+   )
+  :method-count-assert 30
+  :size-assert         #xcc
+  :flag-assert         #x1e000000cc
+  (:methods
+    (dummy-9 () none 9)
+    (dummy-10 () none 10)
+    (dummy-11 () none 11)
+    (dummy-12 () none 12)
+    (dummy-13 (_type_) none 13)
+    (dummy-14 () none 14)
+    (dummy-15 () none 15)
+    (dummy-16 () none 16)
+    (dummy-17 (_type_) none 17)
+    (dummy-18 () none 18)
+    (dummy-19 () none 19)
+    (dummy-20 () none 20)
+    (dummy-21 () none 21)
+    (dummy-22 () none 22)
+    (dummy-23 () none 23)
+    (dummy-24 () none 24)
+    (dummy-25 () none 25)
+    (dummy-26 () none 26)
+    (dummy-27 () none 27)
+    (dummy-28 () none 28)
+    (dummy-29 () none 29)
+    )
+  )
+
+(define-extern *default-nav-mesh* nav-mesh)
+
+(deftype check-vector-collision-with-nav-spheres-info (structure)
+  ((u         float          :offset-assert 0)
+   (intersect vector :inline :offset-assert 16)
+   (normal    vector :inline :offset-assert 32)
+   )
+  :method-count-assert 9
+  :size-assert         #x30
+  :flag-assert         #x900000030
+  )
+
+(deftype nav-gap-info (structure)
+  ((dest vector   :inline :offset-assert 0)
+   (poly nav-poly         :offset-assert 16)
+   )
+  :method-count-assert 9
+  :size-assert         #x14
+  :flag-assert         #x900000014
+  )
+
+(deftype nav-control (basic)
+  ((flags               nav-control-flags                  :offset-assert 4)
+   (process             basic                              :offset-assert 8)
+   (shape               collide-shape                      :offset-assert 12)
+   (mesh                nav-mesh                           :offset-assert 16)
+   (gap-event           basic                              :offset-assert 20)
+   (block-event         basic                              :offset-assert 24)
+   (current-poly        nav-poly                           :offset-assert 28)
+   (next-poly           nav-poly                           :offset-assert 32)
+   (target-poly         nav-poly                           :offset-assert 36)
+   (portal              nav-route-portal  2                :offset-assert 40)
+   (nearest-y-threshold float                              :offset-assert 48)
+   (event-temp          vector            :inline          :offset-assert 64)
+   (old-travel          vector            :inline          :offset-assert 80)
+   (blocked-travel      vector            :inline          :offset-assert 96)
+   (prev-pos            vector            :inline          :offset-assert 112)
+   (extra-nav-sphere    vector            :inline          :offset-assert 128)
+   (travel              vector            :inline          :offset-assert 144)
+   (target-pos          vector            :inline          :offset-assert 160)
+   (destination-pos     vector            :inline          :offset-assert 176)
+   (block-time          uint64                             :offset-assert 192)
+   (block-count         float                              :offset-assert 200)
+   (user-poly           nav-poly                           :offset-assert 204)
+   (nav-cull-radius     float                              :offset-assert 208)
+   (num-spheres         int16                              :offset-assert 212)
+   (max-spheres         int16                              :offset-assert 214)
+   (sphere              sphere            :inline :dynamic :offset-assert 224)
+   )
+  :method-count-assert 36
+  :size-assert         #xe0
+  :flag-assert         #x24000000e0
+  (:methods
+    (new (symbol type collide-shape int float) _type_ 0)
+    (dummy-9 () none 9)
+    (point-in-bounds? (_type_ vector) symbol 10)
+    (dummy-11 () none 11)
+    (dummy-12 () none 12)
+    (dummy-13 () none 13)
+    (dummy-14 () none 14)
+    (set-target-pos! (_type_ vector) none 15)
+    (dummy-16 () none 16)
+    (dummy-17 () none 17)
+    (dummy-18 () none 18)
+    (dummy-19 () none 19)
+    (dummy-20 () none 20)
+    (dummy-21 () none 21)
+    (dummy-22 () none 22)
+    (dummy-23 () none 23)
+    (dummy-24 () none 24)
+    (dummy-25 () none 25)
+    (dummy-26 () none 26)
+    (dummy-27 () none 27)
+    (dummy-28 () none 28)
+    (should-display? (_type_) symbol 29)
+    (dummy-30 () none 30)
+    (dummy-31 () none 31)
+    (dummy-32 () none 32)
+    (dummy-33 () none 33)
+    (dummy-34 () none 34)
+    (dummy-35 () none 35)
+    )
+  )
+
+(defun nav-mesh-connect ((proc process) (trans trsqv) (nav-cont nav-control))
+  (with-pp
+    ;; try to find an entity with a nav-mesh, first from the given process
+    (let ((ent (-> proc entity)))
+      (when (zero? (-> (the-as entity-actor ent) nav-mesh))
+        ;; and if that doesn't have one already, lookup from the res-lump
+        (let ((lookup-entity (entity-actor-lookup (the-as res-lump ent) 'nav-mesh-actor 0)))
+          (if lookup-entity
+              (set! ent lookup-entity)
+              )
+          )
+        )
+
+      ;; now, look at the nav-mesh from the entity
+      (let ((entity-nav-mesh (-> (the-as entity-actor ent) nav-mesh)))
+        (cond
+          ((nonzero? entity-nav-mesh)
+           ;; we have a nav mesh mesh already
+           (when (zero? (-> entity-nav-mesh user-list))
+             ;; but, no engine, maybe because this is the first time we're doing this for the level.
+
+             ;; this seems like a bit of a hack. We'd like to allocate the engine on a level heap.
+             ;; but I guess we can't assume that process-level-heap is set correctly here.
+             ;; so we grab the entity-links from the current pp's entity, and look at that level.
+             ;; I'm not sure why we do this on the current pp instead of the proc we were given...
+             (set! process-level-heap
+                   (-> (the-as entity-links (-> (the-as entity (-> pp entity)) extra)) level heap)
+                   )
+
+             ;; now construct the engine, looking up the size from the res-lump.
+             (set! (-> entity-nav-mesh user-list)
+                   (new 'process-level-heap 'engine 'nav-engine
+                        (the int ((method-of-type res-lump get-property-value)
+                                  (the-as res-lump ent)
+                                  'nav-max-users
+                                  'interp
+                                  -1000000000.0
+                                  (the-as uint128 32)
+                                  (the-as (pointer res-tag) #f)
+                                  *res-static-buf*
+                                  )
+                             )
+                        )
+                   )
+
+             ;; do some setup
+             (dummy-13 entity-nav-mesh)
+             (dummy-17 entity-nav-mesh)
+             )
+
+           ;; in all cases, do the connection
+           ;; connect the nav-mesh engine:
+           (add-connection (-> entity-nav-mesh user-list)
+                           proc ;; to the given process
+                           (the-as (function object object object object object) nothing) ;; no function
+                           ;; and some weird parameters.
+                           proc
+                           nav-cont
+                           trans
+                           )
+           )
+          (else
+           ;; we couldn't find a nav-mesh.  Set a bit.
+           (if (and nav-cont (-> proc entity))
+               (set! (-> (the-as entity-links (-> (the-as entity (-> proc entity)) extra)) perm status)
+                     (logior (-> (the-as entity-links (-> (the-as entity (-> proc entity)) extra)) perm status)
+                             (entity-perm-status bit-1)
+                             )
+                     )
+               )
+           ;; no nav-mesh, so give us a default-nav-mesh.
+           (set! entity-nav-mesh *default-nav-mesh*)
+           )
+          )
+        entity-nav-mesh
+        )
+      )
+    )
+  )
+
+;; todo fix up this
+(defmethod new nav-control ((allocation symbol) (type-to-make type) (shape collide-shape) (sphere-count int) (nearest-y-threshold-default float))
+  (with-pp
+    (let ((obj (object-new allocation type-to-make
+                           (the-as int (+ (-> type-to-make size) (* sphere-count 16)))
+                           )
+            )
+          )
+      ;; check for alloc fail.
+      (when (zero? obj)
+        (go process-drawable-art-error "memory")
+        (set! obj (the-as nav-control 0))
+        (goto cfg-4)
+        )
+      ;; set up fields
+      (set! (-> obj max-spheres) sphere-count)
+      (set! (-> obj flags) (nav-control-flags bit8 bit13))
+      ;; connect things
+      (set! (-> obj mesh) (nav-mesh-connect (-> shape process) shape obj))
+
+      ;; get the nearest-y-threshold
+      (let ((ent (-> shape process entity)))
+        (set! (-> obj nearest-y-threshold)
+              ((method-of-type res-lump get-property-value-float)
+               (the-as res-lump ent)
+               'nearest-y-threshold
+               'interp
+               -1000000000.0
+               nearest-y-threshold-default
+               (the-as (pointer res-tag) #f)
+               *res-static-buf*
+               )
+              )
+        )
+      (set! (-> obj shape) shape)
+      (set! (-> obj process) (-> shape process))
+      (set! (-> obj gap-event) #f)
+      (set! (-> obj current-poly) #f)
+      (set! (-> obj next-poly) #f)
+      (set! (-> obj target-poly) #f)
+      (set! (-> obj user-poly) #f)
+      (set! (-> obj portal 0) #f)
+      (set! (-> obj portal 1) #f)
+      (set! (-> obj nav-cull-radius) 40960.0)
+      (label cfg-4)
+      (the-as nav-control obj)
+      )
+    )
+  )
+
+
+;; definition for method 29 of type nav-control
+(defmethod should-display? nav-control ((obj nav-control))
+  (and
+   *display-nav-marks*
+   (nonzero? (logand (-> obj flags) (nav-control-flags display-marks)))
+   )
+  )
+
+(defmethod point-in-bounds? nav-control ((obj nav-control) (arg0 vector))
+  "Is the point in bounds?"
+  (let ((v1-1 (-> obj mesh bounds)))
+    ;; w is the sphere radius
+    (>= (-> v1-1 w) (vector-vector-distance arg0 v1-1))
+    )
+  )
+
+(defmethod set-target-pos! nav-control ((obj nav-control) (arg0 vector))
+  (set! (-> obj target-pos quad) (-> arg0 quad))
+  (none)
+  )
+
+;; definition for function has-nav-mesh?
+;; INFO: Return type mismatch structure vs symbol.
+(defun has-nav-mesh? ((arg0 entity-actor))
+  "Does the actor have a nav mesh? Either loaded an in the nav-mesh field, or in
+   the res-lump."
+  (the-as
+   symbol
+   (or (-> arg0 nav-mesh) ;; has it loaded already
+       ;; has it in the res-lump
+       ((method-of-type res-lump get-property-struct)
+        arg0
+        'nav-mesh-actor
+        'interp
+        -1000000000.0
+        #f
+        (the-as (pointer res-tag) #f)
+        *res-static-buf*
+        )
+       )
+   )
+  )

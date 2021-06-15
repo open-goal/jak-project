@@ -541,6 +541,8 @@
 
 (define-extern lavaspoutdrip type)
 
+(define-extern string->symbol (function string symbol))
+
 
 ;; ----------------------
 ;; File - gstring-h
@@ -1700,9 +1702,9 @@
 ;; - Types
 
 (deftype curve (structure)
-  ((cverts     uint32  :offset-assert 0)
+  ((cverts     pointer  :offset-assert 0)
    (num-cverts int32   :offset-assert 4)
-   (knots      uint32  :offset-assert 8)
+   (knots      pointer  :offset-assert 8)
    (num-knots  int32   :offset-assert 12)
    (length     float   :offset-assert 16)
    )
@@ -8973,7 +8975,7 @@
     (get-property-data (_type_ symbol symbol float pointer (pointer res-tag) pointer) pointer :no-virtual 9)
     (get-property-struct (_type_ symbol symbol float structure (pointer res-tag) pointer) structure :no-virtual 10)
     (get-property-value (_type_ symbol symbol float uint128 (pointer res-tag) pointer) uint128 :no-virtual 11)
-    (get-property-value2 (_type_ symbol symbol float uint128 (pointer res-tag) pointer) uint128 :no-virtual 12)
+    (get-property-value-float (_type_ symbol symbol float float (pointer res-tag) pointer) float :no-virtual 12)
     (get-tag-index-data (_type_ int) pointer 13)
     (get-tag-data (_type_ res-tag) pointer 14)
     (dummy-15 (_type_ res-tag) res-tag 15)
@@ -10484,7 +10486,7 @@
   )
 
 (deftype collide-shape (trsqv)
-  ((process               basic              :offset-assert 140)
+  ((process               process            :offset-assert 140)
    (max-iteration-count   uint8              :offset-assert 144)
    (nav-flags             uint8              :offset-assert 145)
    (pad-byte              uint8      2       :offset-assert 146)
@@ -12595,6 +12597,7 @@
 (defenum entity-perm-status
   :bitfield #t
   :type uint16
+  (bit-1 1)
   (dead 2)
   (complete 6))
 
@@ -12628,7 +12631,7 @@
    (next-link entity-links         :offset-assert 4)
    (entity    basic                :offset-assert 8)
    (process   process              :offset-assert 12)
-   (level     basic                :offset-assert 16)
+   (level     level                :offset-assert 16)
    (vis-id    int32                :offset-assert 20)
    (trans     vector       :inline :offset-assert 32)
    (perm      entity-perm  :inline :offset-assert 48)
@@ -13192,9 +13195,9 @@
     (apply-function-forward (_type_ (function entity-actor object object) object) int 16)
     (apply-function-reverse (_type_ (function entity-actor object object) object) int 17)
     (apply-all (_type_ (function entity-actor object object) object) int 18)
-    (dummy-19 (_type_ object) none 19)
-    (dummy-20 (_type_ object) none 20) ;; weird sc error
-    (dummy-21 (_type_ object) none 21) ;; weird sc error
+    (send-to-all (_type_ object) none 19)
+    (send-to-all-after (_type_ object) object 20)
+    (send-to-all-before (_type_ object) object 21)
     (send-to-next-and-prev (_type_ object) none 22)
     (send-to-next (_type_ object) none 23)
     (send-to-prev (_type_ object) none 24)
@@ -13522,30 +13525,30 @@
 
 ;; - Symbols
 
-(define-extern float-save-redline function)
-(define-extern float-lookup-redline function)
-(define-extern float-save-blueline function)
-(define-extern float-lookup-blueline function)
-(define-extern float-save-greenline function)
-(define-extern float-lookup-greenline function)
-(define-extern float-save-yellowline function)
-(define-extern float-lookup-yellowline function)
-(define-extern float-save-timeplot function)
-(define-extern float-lookup-timeplot function)
+(define-extern float-save-redline (function float none))
+(define-extern float-lookup-redline (function float float))
+(define-extern float-save-blueline (function float none))
+(define-extern float-lookup-blueline (function float float))
+(define-extern float-save-greenline (function float none))
+(define-extern float-lookup-greenline (function float float))
+(define-extern float-save-yellowline (function float none))
+(define-extern float-lookup-yellowline (function float float))
+(define-extern float-save-timeplot (function float none))
+(define-extern float-lookup-timeplot (function float float))
 
 ;; - Unknowns
 
-;;(define-extern *timeplot-index* object) ;; unknown type
-;;(define-extern *timeplot-table* object) ;; unknown type
-;;(define-extern *yellowline-index* object) ;; unknown type
-;;(define-extern *yellowline-table* object) ;; unknown type
-;;(define-extern *greenline-index* object) ;; unknown type
-;;(define-extern *greenline-table* object) ;; unknown type
-;;(define-extern *blueline-index* object) ;; unknown type
-;;(define-extern *blueline-table* object) ;; unknown type
-;;(define-extern *redline-index* object) ;; unknown type
-;;(define-extern *redline-table* object) ;; unknown type
-;;(define-extern *cam-layout* object) ;; unknown type
+(define-extern *timeplot-index* int)
+(define-extern *timeplot-table* (pointer float))
+(define-extern *yellowline-index* int)
+(define-extern *yellowline-table* (pointer float))
+(define-extern *greenline-index* int)
+(define-extern *greenline-table* (pointer float))
+(define-extern *blueline-index* int)
+(define-extern *blueline-table* (pointer float))
+(define-extern *redline-index* int)
+(define-extern *redline-table* (pointer float))
+(define-extern *cam-layout* symbol)
 
 
 ;; ----------------------
@@ -13953,64 +13956,51 @@
 
 ;; - Types
 
-; (deftype path-control (basic)
-;   ((flags      uint32         :offset-assert 4)
-;    (name       basic          :offset-assert 8)
-;    (process    basic          :offset-assert 12)
-;    (curve      curve  :inline :offset-assert 16)
-;    (num-cverts int32          :offset-assert 20)
-;    (cverts     uint32         :offset-assert 16)
-;    )
-;   :method-count-assert 21
-;   :size-assert         #x24
-;   :flag-assert         #x1500000024
-;   (:methods
-;     (dummy-9 () none 9)
-;     (dummy-10 () none 10)
-;     (dummy-11 () none 11)
-;     (dummy-12 () none 12)
-;     (dummy-13 () none 13)
-;     (dummy-14 () none 14)
-;     (dummy-15 () none 15)
-;     (dummy-16 () none 16)
-;     (dummy-17 () none 17)
-;     (dummy-18 () none 18)
-;     (dummy-19 () none 19)
-;     (dummy-20 () none 20)
-;     )
-;   )
+(defenum path-control-flag
+  :bitfield #t
+  :type uint32
+  (display 0)
+  (not-found 4)
+  )
 
-; (deftype curve-control (path-control)
-;   ((flags      uint32         :offset-assert 4)
-;    (name       basic          :offset-assert 8)
-;    (process    basic          :offset-assert 12)
-;    (curve      curve  :inline :offset-assert 16)
-;    (num-cverts int32          :offset-assert 20)
-;    (cverts     uint32         :offset-assert 16)
-;    )
-;   :method-count-assert 21
-;   :size-assert         #x24
-;   :flag-assert         #x1500000024
-;   (:methods
-;     (dummy-9 () none 9)
-;     (dummy-10 () none 10)
-;     (dummy-11 () none 11)
-;     (dummy-12 () none 12)
-;     (dummy-13 () none 13)
-;     (dummy-14 () none 14)
-;     (dummy-15 () none 15)
-;     (dummy-16 () none 16)
-;     (dummy-17 () none 17)
-;     (dummy-18 () none 18)
-;     (dummy-19 () none 19)
-;     (dummy-20 () none 20)
-;     )
-;   )
+(deftype path-control (basic)
+  ((flags      path-control-flag         :offset-assert 4)
+   (name       basic          :offset-assert 8)
+   (process    basic          :offset-assert 12)
+   (curve      curve  :inline :offset-assert 16)
+   (num-cverts int32          :offset 20)
+   (cverts     pointer         :offset 16)
+   )
+  :method-count-assert 21
+  :size-assert         #x24
+  :flag-assert         #x1500000024
+  (:methods
+    (new (symbol type process symbol float) _type_)
+    (dummy-9 () none 9)
+    (dummy-10 () none 10)
+    (dummy-11 () none 11)
+    (dummy-12 () none 12)
+    (dummy-13 () none 13)
+    (dummy-14 () none 14)
+    (length-as-float (_type_) float 15)
+    (dummy-16 () none 16)
+    (get-num-verts (_type_) int 17)
+    (should-display? (_type_) symbol 18)
+    (dummy-19 () none 19)
+    (dummy-20 () none 20)
+    )
+  )
 
-
-;; - Unknowns
-
-;;(define-extern string->symbol object) ;; unknown type
+(deftype curve-control (path-control)
+  ()
+  
+  (:methods
+    (new (symbol type process symbol float) _type_)
+    )
+  :method-count-assert 21
+  :size-assert         #x24
+  :flag-assert         #x1500000024
+  )
 
 
 ;; ----------------------
@@ -14065,15 +14055,15 @@
   :flag-assert         #x900000050
   )
 
-; (deftype nav-route-portal (structure)
-;   ((next-poly  nav-poly   :offset-assert 0)
-;    (vertex     UNKNOWN  2 :offset-assert 4)
-;    (edge-index int8       :offset-assert 12)
-;    )
-;   :method-count-assert 9
-;   :size-assert         #xd
-;   :flag-assert         #x90000000d
-;   )
+(deftype nav-route-portal (structure)
+  ((next-poly  nav-poly   :offset-assert 0)
+   (vertex     nav-vertex 2 :offset-assert 4)
+   (edge-index int8       :offset-assert 12)
+   )
+  :method-count-assert 9
+  :size-assert         #xd
+  :flag-assert         #x90000000d
+  )
 
 (deftype clip-travel-vector-to-mesh-return-info (structure)
   ((found-boundary  basic            :offset-assert 0)
@@ -14094,30 +14084,30 @@
   :flag-assert         #x9000000a0
   )
 
-; (deftype nav-node (structure)
-;   ((center-x      float           :offset-assert 0)
-;    (center-y      float           :offset-assert 4)
-;    (center-z      float           :offset-assert 8)
-;    (type          uint16          :offset-assert 12)
-;    (parent-offset uint16          :offset-assert 14)
-;    (center        vector  :inline :offset-assert 0)
-;    (radius-x      float           :offset-assert 16)
-;    (radius-y      float           :offset-assert 20)
-;    (radius-z      float           :offset-assert 24)
-;    (left-offset   uint16          :offset-assert 28)
-;    (right-offset  uint16          :offset-assert 30)
-;    (num-tris      uint32          :offset-assert 28)
-;    (radius        vector  :inline :offset-assert 16)
-;    (scale-x       float           :offset-assert 32)
-;    (first-tris    UNKNOWN 4       :offset-assert 36)
-;    (scale-z       float           :offset-assert 40)
-;    (last-tris     UNKNOWN 4       :offset-assert 44)
-;    (scale         vector  :inline :offset-assert 32)
-;    )
-;   :method-count-assert 9
-;   :size-assert         #x30
-;   :flag-assert         #x900000030
-;   )
+(deftype nav-node (structure)
+  ((center-x      float           :offset-assert 0)
+   (center-y      float           :offset-assert 4)
+   (center-z      float           :offset-assert 8)
+   (type          uint16          :offset-assert 12)
+   (parent-offset uint16          :offset-assert 14)
+   (center        vector  :inline :offset 0)
+   (radius-x      float           :offset-assert 16)
+   (radius-y      float           :offset-assert 20)
+   (radius-z      float           :offset-assert 24)
+   (left-offset   uint16          :offset-assert 28)
+   (right-offset  uint16          :offset-assert 30)
+   (num-tris      uint32          :offset 28)
+   (radius        vector  :inline :offset 16)
+   (scale-x       float           :offset-assert 32)
+   (first-tris    uint8 4         :offset-assert 36)
+   (scale-z       float           :offset-assert 40)
+   (last-tris     uint8 4         :offset-assert 44)
+   (scale         vector  :inline :offset 32)
+   )
+  :method-count-assert 9
+  :size-assert         #x30
+  :flag-assert         #x900000030
+  )
 
 (deftype nav-lookup-elem (structure)
   ((vec         vector :inline :offset-assert 0)
@@ -14134,50 +14124,50 @@
   :flag-assert         #x900000020
   )
 
-; (deftype nav-mesh (basic)
-;   ((user-list           basic           :offset-assert 4)
-;    (poly-lookup-history UNKNOWN 2       :offset-assert 8)
-;    (debug-time          uint8           :offset-assert 10)
-;    (static-sphere-count uint8           :offset-assert 11)
-;    (static-sphere       uint32          :offset-assert 12)
-;    (bounds              sphere  :inline :offset-assert 16)
-;    (origin              vector  :inline :offset-assert 32)
-;    (cache               UNKNOWN 4       :offset-assert 48)
-;    (node-count          int32           :offset-assert 176)
-;    (nodes               uint32          :offset-assert 180)
-;    (vertex-count        int32           :offset-assert 184)
-;    (vertex              uint32          :offset-assert 188)
-;    (poly-count          int32           :offset-assert 192)
-;    (poly                uint32          :offset-assert 196)
-;    (route               uint32          :offset-assert 200)
-;    )
-;   :method-count-assert 30
-;   :size-assert         #xcc
-;   :flag-assert         #x1e000000cc
-;   (:methods
-;     (dummy-9 () none 9)
-;     (dummy-10 () none 10)
-;     (dummy-11 () none 11)
-;     (dummy-12 () none 12)
-;     (dummy-13 () none 13)
-;     (dummy-14 () none 14)
-;     (dummy-15 () none 15)
-;     (dummy-16 () none 16)
-;     (dummy-17 () none 17)
-;     (dummy-18 () none 18)
-;     (dummy-19 () none 19)
-;     (dummy-20 () none 20)
-;     (dummy-21 () none 21)
-;     (dummy-22 () none 22)
-;     (dummy-23 () none 23)
-;     (dummy-24 () none 24)
-;     (dummy-25 () none 25)
-;     (dummy-26 () none 26)
-;     (dummy-27 () none 27)
-;     (dummy-28 () none 28)
-;     (dummy-29 () none 29)
-;     )
-;   )
+(deftype nav-mesh (basic)
+  ((user-list           engine           :offset-assert 4)
+   (poly-lookup-history uint8 2       :offset-assert 8)
+   (debug-time          uint8           :offset-assert 10)
+   (static-sphere-count uint8           :offset-assert 11)
+   (static-sphere       uint32          :offset-assert 12)
+   (bounds              sphere  :inline :offset-assert 16)
+   (origin              vector  :inline :offset-assert 32)
+   (cache               nav-lookup-elem 4 :inline :offset-assert 48) ;; guess on type
+   (node-count          int32           :offset-assert 176)
+   (nodes               uint32          :offset-assert 180)
+   (vertex-count        int32           :offset-assert 184)
+   (vertex              uint32          :offset-assert 188)
+   (poly-count          int32           :offset-assert 192)
+   (poly                uint32          :offset-assert 196)
+   (route               uint32          :offset-assert 200)
+   )
+  :method-count-assert 30
+  :size-assert         #xcc
+  :flag-assert         #x1e000000cc
+  (:methods
+    (dummy-9 () none 9)
+    (dummy-10 () none 10)
+    (dummy-11 () none 11)
+    (dummy-12 () none 12)
+    (dummy-13 (_type_) none 13)
+    (dummy-14 () none 14)
+    (dummy-15 () none 15)
+    (dummy-16 () none 16)
+    (dummy-17 (_type_) none 17)
+    (dummy-18 () none 18)
+    (dummy-19 () none 19)
+    (dummy-20 () none 20)
+    (dummy-21 () none 21)
+    (dummy-22 () none 22)
+    (dummy-23 () none 23)
+    (dummy-24 () none 24)
+    (dummy-25 () none 25)
+    (dummy-26 () none 26)
+    (dummy-27 () none 27)
+    (dummy-28 () none 28)
+    (dummy-29 () none 29)
+    )
+  )
 
 (deftype check-vector-collision-with-nav-spheres-info (structure)
   ((u         float          :offset-assert 0)
@@ -14198,78 +14188,87 @@
   :flag-assert         #x900000014
   )
 
-; (deftype nav-control (basic)
-;   ((flags               uint32            :offset-assert 4)
-;    (process             basic             :offset-assert 8)
-;    (shape               basic             :offset-assert 12)
-;    (mesh                basic             :offset-assert 16)
-;    (gap-event           basic             :offset-assert 20)
-;    (block-event         basic             :offset-assert 24)
-;    (current-poly        nav-poly          :offset-assert 28)
-;    (next-poly           nav-poly          :offset-assert 32)
-;    (target-poly         nav-poly          :offset-assert 36)
-;    (portal              UNKNOWN  2        :offset-assert 40)
-;    (nearest-y-threshold meters            :offset-assert 48)
-;    (event-temp          vector   :inline  :offset-assert 64)
-;    (old-travel          vector   :inline  :offset-assert 80)
-;    (blocked-travel      vector   :inline  :offset-assert 96)
-;    (prev-pos            vector   :inline  :offset-assert 112)
-;    (extra-nav-sphere    vector   :inline  :offset-assert 128)
-;    (travel              vector   :inline  :offset-assert 144)
-;    (target-pos          vector   :inline  :offset-assert 160)
-;    (destination-pos     vector   :inline  :offset-assert 176)
-;    (block-time          uint64            :offset-assert 192)
-;    (block-count         float             :offset-assert 200)
-;    (user-poly           nav-poly          :offset-assert 204)
-;    (nav-cull-radius     float             :offset-assert 208)
-;    (num-spheres         int16             :offset-assert 212)
-;    (max-spheres         int16             :offset-assert 214)
-;    (sphere              UNKNOWN  :dynamic :offset-assert 224)
-;    )
-;   :method-count-assert 36
-;   :size-assert         #xe0
-;   :flag-assert         #x24000000e0
-;   (:methods
-;     (dummy-9 () none 9)
-;     (dummy-10 () none 10)
-;     (dummy-11 () none 11)
-;     (dummy-12 () none 12)
-;     (dummy-13 () none 13)
-;     (dummy-14 () none 14)
-;     (dummy-15 () none 15)
-;     (dummy-16 () none 16)
-;     (dummy-17 () none 17)
-;     (dummy-18 () none 18)
-;     (dummy-19 () none 19)
-;     (dummy-20 () none 20)
-;     (dummy-21 () none 21)
-;     (dummy-22 () none 22)
-;     (dummy-23 () none 23)
-;     (dummy-24 () none 24)
-;     (dummy-25 () none 25)
-;     (dummy-26 () none 26)
-;     (dummy-27 () none 27)
-;     (dummy-28 () none 28)
-;     (dummy-29 () none 29)
-;     (dummy-30 () none 30)
-;     (dummy-31 () none 31)
-;     (dummy-32 () none 32)
-;     (dummy-33 () none 33)
-;     (dummy-34 () none 34)
-;     (dummy-35 () none 35)
-;     )
-;   )
+(defenum nav-control-flags
+  :bitfield #t
+  :type uint32
+  (display-marks 0)
+  (bit8 8)
+  (bit13 13)
+  )
+
+(deftype nav-control (basic)
+  ((flags               nav-control-flags :offset-assert 4)
+   (process             basic             :offset-assert 8)
+   (shape               collide-shape     :offset-assert 12)
+   (mesh                nav-mesh          :offset-assert 16)
+   (gap-event           basic             :offset-assert 20)
+   (block-event         basic             :offset-assert 24)
+   (current-poly        nav-poly          :offset-assert 28)
+   (next-poly           nav-poly          :offset-assert 32)
+   (target-poly         nav-poly          :offset-assert 36)
+   (portal              nav-route-portal  2        :offset-assert 40) ;; guess
+   (nearest-y-threshold float            :offset-assert 48) ;; meters
+   (event-temp          vector   :inline  :offset-assert 64)
+   (old-travel          vector   :inline  :offset-assert 80)
+   (blocked-travel      vector   :inline  :offset-assert 96)
+   (prev-pos            vector   :inline  :offset-assert 112)
+   (extra-nav-sphere    vector   :inline  :offset-assert 128)
+   (travel              vector   :inline  :offset-assert 144)
+   (target-pos          vector   :inline  :offset-assert 160)
+   (destination-pos     vector   :inline  :offset-assert 176)
+   (block-time          uint64            :offset-assert 192)
+   (block-count         float             :offset-assert 200)
+   (user-poly           nav-poly          :offset-assert 204)
+   (nav-cull-radius     float             :offset-assert 208)
+   (num-spheres         int16             :offset-assert 212)
+   (max-spheres         int16             :offset-assert 214)
+   (sphere              sphere :inline  :dynamic :offset-assert 224) ;; guess
+   )
+  :method-count-assert 36
+  :size-assert         #xe0
+  :flag-assert         #x24000000e0
+  (:methods
+    (new (symbol type collide-shape int float) _type_)
+    (dummy-9 () none 9)
+    (point-in-bounds? (_type_ vector) symbol 10)
+    (dummy-11 () none 11)
+    (dummy-12 () none 12)
+    (dummy-13 () none 13)
+    (dummy-14 () none 14)
+    (set-target-pos! (_type_ vector) none 15)
+    (dummy-16 () none 16)
+    (dummy-17 () none 17)
+    (dummy-18 () none 18)
+    (dummy-19 () none 19)
+    (dummy-20 () none 20)
+    (dummy-21 () none 21)
+    (dummy-22 () none 22)
+    (dummy-23 () none 23)
+    (dummy-24 () none 24)
+    (dummy-25 () none 25)
+    (dummy-26 () none 26)
+    (dummy-27 () none 27)
+    (dummy-28 () none 28)
+    (should-display? (_type_) symbol 29)
+    (dummy-30 () none 30)
+    (dummy-31 () none 31)
+    (dummy-32 () none 32)
+    (dummy-33 () none 33)
+    (dummy-34 () none 34)
+    (dummy-35 () none 35)
+    )
+  )
 
 
 ;; - Symbols
 
-(define-extern nav-mesh-connect function)
-(define-extern has-nav-mesh? function)
+(define-extern nav-mesh-connect (function process trsqv nav-control nav-mesh))
+(define-extern has-nav-mesh? (function entity-actor symbol))
 
 ;; - Unknowns
 
-;;(define-extern process-level-heap object) ;; unknown type
-;;(define-extern *default-nav-mesh* object) ;; unknown type
+(define-extern process-level-heap kheap) ;; unknown type
+(define-extern *default-nav-mesh* nav-mesh) ;; unknown type
 
 
 ;; ----------------------
