@@ -77,70 +77,74 @@
    (name symbol)
    (time float)
    )
-  (local-vars (pp process) (tag res-tag))
-  (let
-   ((obj
-     (object-new allocation type-to-make (the-as int (-> type-to-make size)))
-     )
-    )
-   (if (zero? obj)
-    (begin
-     (let ((t9-1 (the-as function enter-state))
-           (a0-1 "memory")
-           )
-      (set! (-> pp next-state) process-drawable-art-error)
-      ((the-as (function string none) t9-1) a0-1)
+  (local-vars (tag res-tag))
+  (with-pp
+   (let
+    ((obj
+      (object-new allocation type-to-make (the-as int (-> type-to-make size)))
       )
-     (set! obj (the-as path-control 0))
-     (goto cfg-9)
      )
-    )
-   (set! (-> obj process) proc)
-   (set! (-> obj name) name)
-   (let ((ent (-> proc entity)))
-    (when (= name 'path)
+    (if (zero? obj)
+     (begin
+      (let ((t9-1 (the-as function enter-state))
+            (a0-1 "memory")
+            )
+       (set! (-> pp next-state) process-drawable-art-error)
+       ((the-as (function string none) t9-1) a0-1)
+       )
+      (set! obj (the-as path-control 0))
+      (goto cfg-9)
+      )
+     )
+    (set! (-> obj process) proc)
+    (set! (-> obj name) name)
+    (let ((ent (-> proc entity)))
+     (when (= name 'path)
+      (let
+       ((lookup-entity
+         (entity-actor-lookup (the-as res-lump ent) 'path-actor 0)
+         )
+        )
+       (if lookup-entity
+        (set! ent lookup-entity)
+        )
+       )
+      )
+     (set! tag (new 'static 'res-tag))
      (let
-      ((lookup-entity (entity-actor-lookup (the-as res-lump ent) 'path-actor 0))
-       )
-      (if lookup-entity
-       (set! ent lookup-entity)
-       )
-      )
-     )
-    (set! tag (new 'static 'res-tag))
-    (let
-     ((data
-       ((method-of-type res-lump get-property-data)
-        (the-as res-lump ent)
-        name
-        'interp
-        time
-        (the-as pointer #f)
-        (& tag)
-        *res-static-buf*
+      ((data
+        ((method-of-type res-lump get-property-data)
+         (the-as res-lump ent)
+         name
+         'interp
+         time
+         (the-as pointer #f)
+         (& tag)
+         *res-static-buf*
+         )
         )
        )
-      )
-     (cond
-      (data
-       (set! (-> obj curve cverts) data)
-       (set! (-> obj curve num-cverts) (the-as int (-> tag elt-count)))
-       )
-      (else
-       (set!
-        (-> obj flags)
-        (logior (-> obj flags) (path-control-flag not-found))
+      (cond
+       (data
+        (set! (-> obj curve cverts) data)
+        (set! (-> obj curve num-cverts) (the-as int (-> tag elt-count)))
         )
-       (set! (-> obj curve cverts) (the-as pointer #f))
-       (set! (-> obj curve num-cverts) 0)
-       (let ((v1-16 0))
+       (else
+        (set!
+         (-> obj flags)
+         (logior (-> obj flags) (path-control-flag not-found))
+         )
+        (set! (-> obj curve cverts) (the-as pointer #f))
+        (set! (-> obj curve num-cverts) 0)
+        (let ((v1-16 0))
+         )
         )
        )
       )
      )
+    (label cfg-9)
+    (the-as path-control obj)
     )
-   (label cfg-9)
-   (the-as path-control obj)
    )
   )
 
@@ -224,7 +228,3 @@
 ;; failed to figure out what this is:
 (let ((v0-9 0))
   )
-
-
-
-
