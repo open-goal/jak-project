@@ -1126,13 +1126,7 @@ Val* Compiler::compile_declare_type(const goos::Object& form, const goos::Object
   auto kind = symbol_string(args.unnamed.at(1));
   auto type_name = symbol_string(args.unnamed.at(0));
 
-  if (kind == "basic") {
-    m_ts.forward_declare_type_as_basic(type_name);
-  } else if (kind == "structure") {
-    m_ts.forward_declare_type_as_structure(type_name);
-  } else {
-    throw_compiler_error(form, "Invalid declare-type form: unrecognized option {}.", kind);
-  }
+  m_ts.forward_declare_type_as(type_name, kind);
 
   auto existing_type = m_symbol_types.find(type_name);
   if (existing_type != m_symbol_types.end() && existing_type->second != TypeSpec("type")) {
