@@ -23,7 +23,9 @@ struct MethodInfo {
   bool no_virtual = false;
 
   bool operator==(const MethodInfo& other) const;
+  bool operator!=(const MethodInfo& other) const { return !((*this) == other); }
   std::string print_one_line() const;
+  std::string diff(const MethodInfo& other) const;
 };
 
 /*!
@@ -57,13 +59,15 @@ class Type {
   virtual int get_inline_array_start_alignment() const = 0;
 
   virtual bool operator==(const Type& other) const = 0;
+  std::string diff(const Type& other) const;
 
   // print some information for debugging
   virtual std::string print() const = 0;
 
   bool operator!=(const Type& other) const { return !(*this == other); }
 
-  bool is_equal(const Type& other) const;
+  bool common_type_info_equal(const Type& other) const;
+  std::string common_type_info_diff(const Type& other) const;
   bool has_parent() const;
 
   std::string get_name() const;
@@ -98,6 +102,8 @@ class Type {
 
  protected:
   Type(std::string parent, std::string name, bool is_boxed, int heap_base);
+  virtual std::string diff_impl(const Type& other) const = 0;
+  std::string incompatible_diff(const Type& other) const;
 
   std::vector<MethodInfo> m_methods;
   MethodInfo m_new_method_info;
@@ -129,6 +135,7 @@ class NullType : public Type {
   int get_in_memory_alignment() const override;
   std::string print() const override;
   bool operator==(const Type& other) const override;
+  std::string diff_impl(const Type& other) const override;
   ~NullType() = default;
 };
 
@@ -155,11 +162,11 @@ class ValueType : public Type {
   int get_inline_array_start_alignment() const override;
   std::string print() const override;
   bool operator==(const Type& other) const override;
+  std::string diff_impl(const Type& other) const override;
   ~ValueType() = default;
-
   void inherit(const ValueType* parent);
 
- private:
+ protected:
   friend class TypeSystem;
   void set_offset(int offset);
   int m_size = -1;
@@ -202,6 +209,8 @@ class Field {
   bool skip_in_decomp() const { return m_skip_in_static_decomp; }
   bool user_placed() const { return m_placed_by_user; }
   bool operator==(const Field& other) const;
+  bool operator!=(const Field& other) const { return !((*this) == other); }
+  std::string diff(const Field& other) const;
 
   int alignment() const {
     assert(m_alignment != -1);
@@ -244,6 +253,8 @@ class StructureType : public ReferenceType {
   void inherit(StructureType* parent);
   const std::vector<Field>& fields() const { return m_fields; }
   bool operator==(const Type& other) const override;
+  std::string diff_impl(const Type& other) const override;
+  std::string diff_structure_common(const StructureType& other) const;
   int get_size_in_memory() const override;
   int get_offset() const override;
   int get_in_memory_alignment() const override;
@@ -290,6 +301,7 @@ class BasicType : public StructureType {
   void set_final() { m_final = true; }
   ~BasicType() = default;
   bool operator==(const Type& other) const override;
+  std::string diff_impl(const Type& other) const override;
 
  protected:
   bool m_final = false;
@@ -304,6 +316,8 @@ class BitField {
   int size() const { return m_size; }
   const TypeSpec& type() const { return m_type; }
   bool operator==(const BitField& other) const;
+  bool operator!=(const BitField& other) const { return !((*this) == other); }
+  std::string diff(const BitField& other) const;
   std::string print() const;
 
  private:
@@ -320,6 +334,7 @@ class BitFieldType : public ValueType {
   std::string print() const override;
   bool operator==(const Type& other) const override;
   const std::vector<BitField>& fields() const { return m_fields; }
+  std::string diff_impl(const Type& other) const override;
 
  private:
   friend class TypeSystem;
@@ -336,6 +351,7 @@ class EnumType : public ValueType {
   bool operator==(const Type& other) const override;
   const std::unordered_map<std::string, s64>& entries() const { return m_entries; }
   bool is_bitfield() const { return m_is_bitfield; }
+  std::string diff_impl(const Type& other) const override;
 
  private:
   friend class TypeSystem;

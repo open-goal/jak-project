@@ -57,8 +57,9 @@ Type* TypeSystem::add_type(const std::string& name, std::unique_ptr<Type> type) 
         m_types[name] = std::move(type);
       } else {
         throw_typesystem_error(
-            "Inconsistent type definition. Type {} was originally\n{}\nand is redefined as\n{}\n",
-            kv->second->get_name(), kv->second->print(), type->print());
+            "Inconsistent type definition. Type {} was originally\n{}\nand is redefined "
+            "as\n{}\nDiff:\n{}\n",
+            kv->second->get_name(), kv->second->print(), type->print(), kv->second->diff(*type));
       }
     }
   } else {

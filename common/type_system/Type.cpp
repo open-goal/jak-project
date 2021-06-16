@@ -35,6 +35,30 @@ bool MethodInfo::operator==(const MethodInfo& other) const {
          defined_in_type == other.defined_in_type && other.no_virtual == no_virtual;
 }
 
+std::string MethodInfo::diff(const MethodInfo& other) const {
+  std::string result;
+  if (id != other.id) {
+    result += fmt::format("id: {} vs. {}\n", id, other.id);
+  }
+
+  if (name != other.name) {
+    result += fmt::format("name: {} vs. {}\n", name, other.name);
+  }
+
+  if (type != other.type) {
+    result += fmt::format("type: {} vs. {}\n", type.print(), other.type.print());
+  }
+
+  if (defined_in_type != other.defined_in_type) {
+    result += fmt::format("defined_in_type: {} vs. {}\n", defined_in_type, other.defined_in_type);
+  }
+
+  if (no_virtual != other.no_virtual) {
+    result += fmt::format("no_virtual: {} vs. {}\n", no_virtual, other.no_virtual);
+  }
+  return result;
+}
+
 /*!
  * Print a one-line description of a method (name and type)
  */
@@ -97,6 +121,48 @@ bool Field::operator==(const Field& other) const {
   // clang-format on
 }
 
+std::string Field::diff(const Field& other) const {
+  std::string result;
+  if (m_name != other.m_name) {
+    result += fmt::format("name: {} vs. {}\n", m_name, other.m_name);
+  }
+
+  if (m_type != other.m_type) {
+    result += fmt::format("type: {} vs. {}\n", m_type.print(), other.m_type.print());
+  }
+
+  if (m_offset != other.m_offset) {
+    result += fmt::format("offset: {} vs. {}\n", m_offset, other.m_offset);
+  }
+
+  if (m_inline != other.m_inline) {
+    result += fmt::format("inline: {} vs. {}\n", m_inline, other.m_inline);
+  }
+
+  if (m_dynamic != other.m_dynamic) {
+    result += fmt::format("dynamic: {} vs. {}\n", m_dynamic, other.m_dynamic);
+  }
+
+  if (m_array != other.m_array) {
+    result += fmt::format("array: {} vs. {}\n", m_array, other.m_array);
+  }
+
+  if (m_array_size != other.m_array_size) {
+    result += fmt::format("array_size: {} vs. {}\n", m_array_size, other.m_array_size);
+  }
+
+  if (m_alignment != other.m_alignment) {
+    result += fmt::format("alignment: {} vs. {}\n", m_alignment, other.m_alignment);
+  }
+
+  if (m_skip_in_static_decomp != other.m_skip_in_static_decomp) {
+    result += fmt::format("skip_in_static_decomp: {} vs. {}\n", m_skip_in_static_decomp,
+                          other.m_skip_in_static_decomp);
+  }
+
+  return result;
+}
+
 /////////////
 // Type
 /////////////
@@ -143,11 +209,64 @@ std::string Type::get_parent() const {
  * Compare the name/parent/method info for equality.  The more complete operator== should be used
  * to check if two types are really identical.
  */
-bool Type::is_equal(const Type& other) const {
-  return m_parent == other.m_parent && m_name == other.m_name && m_is_boxed == other.m_is_boxed &&
-         m_methods == other.m_methods && m_new_method_info == other.m_new_method_info &&
+bool Type::common_type_info_equal(const Type& other) const {
+  // clang-format off
+  return m_methods == other.m_methods &&
+         m_new_method_info == other.m_new_method_info &&
          m_new_method_info_defined == other.m_new_method_info_defined &&
+         m_parent == other.m_parent &&
+         m_name == other.m_name &&
+         m_allow_in_runtime == other.m_allow_in_runtime &&
+         m_runtime_name == other.m_runtime_name &&
+         m_is_boxed == other.m_is_boxed &&
          m_heap_base == other.m_heap_base;
+  // clang-format on
+}
+
+std::string Type::common_type_info_diff(const Type& other) const {
+  std::string result;
+  if (m_methods != other.m_methods) {
+    if (m_methods.size() != other.m_methods.size()) {
+      result += fmt::format("Number of additional methods {} vs. {}\n", m_methods.size(),
+                            other.m_methods.size());
+    }
+
+    for (size_t i = 0; i < std::min(m_methods.size(), other.m_methods.size()); i++) {
+      if (m_methods.at(i) != other.m_methods.at(i)) {
+        result += fmt::format("Method def {} ({}/{}):\n", i, m_methods.at(i).name,
+                              other.m_methods.at(i).name);
+        result += m_methods.at(i).diff(other.m_methods.at(i));
+        result += "\n";
+      }
+    }
+  }
+  if (m_new_method_info != other.m_new_method_info) {
+    result += m_new_method_info.diff(other.m_new_method_info);
+  }
+  if (m_new_method_info_defined != other.m_new_method_info_defined) {
+    result += fmt::format("new_method_info_defined: {} vs. {}\n", m_new_method_info_defined,
+                          other.m_new_method_info_defined);
+  }
+  if (m_parent != other.m_parent) {
+    result += fmt::format("parent: {} vs. {}\n", m_parent, other.m_parent);
+  }
+  if (m_name != other.m_name) {
+    result += fmt::format("name: {} vs. {}\n", m_name, other.m_name);
+  }
+  if (m_allow_in_runtime != other.m_allow_in_runtime) {
+    result +=
+        fmt::format("allow_in_runtime: {} vs. {}\n", m_allow_in_runtime, other.m_allow_in_runtime);
+  }
+  if (m_runtime_name != other.m_runtime_name) {
+    result += fmt::format("runtime_name: {} vs. {}\n", m_runtime_name, other.m_runtime_name);
+  }
+  if (m_is_boxed != other.m_is_boxed) {
+    result += fmt::format("is_boxed: {} vs. {}\n", m_is_boxed, other.m_is_boxed);
+  }
+  if (m_heap_base != other.m_heap_base) {
+    result += fmt::format("heap_base: {} vs. {}\n", m_heap_base, other.m_heap_base);
+  }
+  return result;
 }
 
 /*!
@@ -250,6 +369,18 @@ std::string Type::print_method_info() const {
   return result;
 }
 
+std::string Type::incompatible_diff(const Type& other) const {
+  return fmt::format("diff is not implemented between {} and {}\n", typeid((*this)).name(),
+                     typeid(other).name());
+}
+
+std::string Type::diff(const Type& other) const {
+  std::string result;
+  result += common_type_info_diff(other);
+  result += diff_impl(other);
+  return result;
+}
+
 /////////////
 // NullType
 /////////////
@@ -303,6 +434,14 @@ bool NullType::operator==(const Type& other) const {
   // any redefinition by the user should be invalid, so this will always return false unless
   // you're calling it on the same object.
   return this == &other;
+}
+
+std::string NullType::diff_impl(const Type& other) const {
+  if ((*this) != other) {
+    return "NullType error";
+  } else {
+    return "";
+  }
 }
 
 /////////////
@@ -419,12 +558,35 @@ bool ValueType::operator==(const Type& other) const {
 
   auto* p_other = dynamic_cast<const ValueType*>(&other);
   // clang-format off
-  return other.is_equal(*this) &&
+  return other.common_type_info_equal(*this) &&
          m_size == p_other->m_size &&
          m_sign_extend == p_other->m_sign_extend &&
          m_reg_kind == p_other->m_reg_kind &&
          m_offset == p_other->m_offset;
   // clang-format on
+}
+
+std::string ValueType::diff_impl(const Type& other_) const {
+  if (typeid(ValueType) != typeid(other_)) {
+    return Type::incompatible_diff(other_);
+  }
+
+  std::string result;
+  auto& other = *dynamic_cast<const ValueType*>(&other_);
+
+  if (m_size != other.m_size) {
+    result += fmt::format("size: {} vs. {}\n", m_size, other.m_size);
+  }
+  if (m_offset != other.m_offset) {
+    result += fmt::format("offset: {} vs. {}\n", m_offset, other.m_offset);
+  }
+  if (m_sign_extend != other.m_sign_extend) {
+    result += fmt::format("sign_extend: {} vs. {}\n", m_sign_extend, other.m_sign_extend);
+  }
+  if (m_reg_kind != other.m_reg_kind) {
+    result += fmt::format("reg_kind: {} vs. {}\n", (int)m_reg_kind, (int)other.m_reg_kind);
+  }
+  return result;
 }
 
 /////////////////
@@ -515,13 +677,69 @@ bool StructureType::operator==(const Type& other) const {
 
   auto* p_other = dynamic_cast<const StructureType*>(&other);
   // clang-format off
-  return other.is_equal(*this) &&
+  return other.common_type_info_equal(*this) &&
          m_fields == p_other->m_fields &&
          m_dynamic == p_other->m_dynamic &&
          m_size_in_mem == p_other->m_size_in_mem &&
          m_pack == p_other->m_pack &&
-         m_allow_misalign == p_other->m_allow_misalign;
+         m_allow_misalign == p_other->m_allow_misalign &&
+         m_offset == p_other->m_offset &&
+         m_idx_of_first_unique_field == p_other->m_idx_of_first_unique_field;
   // clang-format on
+}
+
+std::string StructureType::diff_impl(const Type& other_) const {
+  if (typeid(*this) != typeid(other_)) {
+    return incompatible_diff(other_);
+  }
+
+  auto& other = *dynamic_cast<const StructureType*>(&other_);
+  return diff_structure_common(other);
+}
+
+std::string StructureType::diff_structure_common(const StructureType& other) const {
+  std::string result;
+  if (m_fields != other.m_fields) {
+    if (m_fields.size() != other.m_fields.size()) {
+      result += fmt::format("Number of fields {} vs. {}\n", m_fields.size(), other.m_fields.size());
+    }
+
+    for (size_t i = 0; i < std::min(m_fields.size(), other.m_fields.size()); i++) {
+      if (m_fields.at(i) != other.m_fields.at(i)) {
+        result += fmt::format("field {} ({}/{}):\n", i, m_fields.at(i).name(),
+                              other.m_fields.at(i).name());
+        result += m_fields.at(i).diff(other.m_fields.at(i));
+        result += "\n";
+      }
+    }
+  }
+
+  if (m_dynamic != other.m_dynamic) {
+    result += fmt::format("dynamic: {} vs. {}\n", m_dynamic, other.m_dynamic);
+  }
+
+  if (m_size_in_mem != other.m_size_in_mem) {
+    result += fmt::format("size_in_mem: {} vs. {}\n", m_size_in_mem, other.m_size_in_mem);
+  }
+
+  if (m_pack != other.m_pack) {
+    result += fmt::format("pack: {} vs. {}\n", m_pack, other.m_pack);
+  }
+
+  if (m_allow_misalign != other.m_allow_misalign) {
+    result += fmt::format("allow_misalign: {} vs. {}\n", m_allow_misalign, other.m_allow_misalign);
+  }
+
+  if (m_offset != other.m_offset) {
+    result += fmt::format("offset: {} vs. {}\n", m_offset, other.m_offset);
+  }
+
+  if (m_idx_of_first_unique_field != other.m_idx_of_first_unique_field) {
+    result += fmt::format("idx_of_first_unique_field: {} vs. {}\n", m_idx_of_first_unique_field,
+                          other.m_idx_of_first_unique_field);
+  }
+
+  return result;
 }
 
 int StructureType::get_size_in_memory() const {
@@ -637,14 +855,31 @@ bool BasicType::operator==(const Type& other) const {
 
   auto* p_other = dynamic_cast<const BasicType*>(&other);
   // clang-format off
-  return other.is_equal(*this) &&
+  return other.common_type_info_equal(*this) &&
          m_fields == p_other->m_fields &&
          m_dynamic == p_other->m_dynamic &&
          m_size_in_mem == p_other->m_size_in_mem &&
          m_pack == p_other->m_pack &&
          m_allow_misalign == p_other->m_allow_misalign &&
+         m_offset == p_other->m_offset &&
+         m_idx_of_first_unique_field == p_other->m_idx_of_first_unique_field &&
          m_final == p_other->m_final;
   // clang-format on
+}
+
+std::string BasicType::diff_impl(const Type& other_) const {
+  if (typeid(*this) != typeid(other_)) {
+    return incompatible_diff(other_);
+  }
+
+  auto& other = *dynamic_cast<const BasicType*>(&other_);
+  std::string result = diff_structure_common(other);
+
+  if (m_final != other.m_final) {
+    result += fmt::format("final: {} vs. {}\n", m_final, other.m_final);
+  }
+
+  return result;
 }
 
 /////////////////
@@ -657,6 +892,28 @@ BitField::BitField(TypeSpec type, std::string name, int offset, int size)
 bool BitField::operator==(const BitField& other) const {
   return m_type == other.m_type && m_name == other.m_name && m_offset == other.m_offset &&
          other.m_size == m_size;
+}
+
+std::string BitField::diff(const BitField& other) const {
+  std::string result;
+
+  if (m_type != other.m_type) {
+    result += fmt::format("type: {} vs. {}\n", m_type.print(), other.m_type.print());
+  }
+
+  if (m_name != other.m_name) {
+    result += fmt::format("name: {} vs. {}\n", m_name, other.m_name);
+  }
+
+  if (m_offset != other.m_offset) {
+    result += fmt::format("offset: {} vs. {}\n", m_offset, other.m_offset);
+  }
+
+  if (m_size != other.m_size) {
+    result += fmt::format("size: {} vs. {}\n", m_size, other.m_size);
+  }
+
+  return result;
 }
 
 BitFieldType::BitFieldType(std::string parent, std::string name, int size, bool sign_extend)
@@ -693,7 +950,45 @@ bool BitFieldType::operator==(const Type& other) const {
   }
 
   auto* p_other = dynamic_cast<const BitFieldType*>(&other);
-  return other.is_equal(*this) && m_fields == p_other->m_fields;
+  return other.common_type_info_equal(*this) && m_fields == p_other->m_fields;
+}
+
+std::string BitFieldType::diff_impl(const Type& other_) const {
+  if (typeid(BitFieldType) != typeid(other_)) {
+    return Type::incompatible_diff(other_);
+  }
+
+  std::string result;
+  auto& other = *dynamic_cast<const BitFieldType*>(&other_);
+
+  if (m_size != other.m_size) {
+    result += fmt::format("size: {} vs. {}\n", m_size, other.m_size);
+  }
+  if (m_offset != other.m_offset) {
+    result += fmt::format("offset: {} vs. {}\n", m_offset, other.m_offset);
+  }
+  if (m_sign_extend != other.m_sign_extend) {
+    result += fmt::format("sign_extend: {} vs. {}\n", m_sign_extend, other.m_sign_extend);
+  }
+  if (m_reg_kind != other.m_reg_kind) {
+    result += fmt::format("reg_kind: {} vs. {}\n", (int)m_reg_kind, (int)other.m_reg_kind);
+  }
+
+  if (m_fields != other.m_fields) {
+    if (m_fields.size() != other.m_fields.size()) {
+      result += fmt::format("Number of fields {} vs. {}\n", m_fields.size(), other.m_fields.size());
+    }
+
+    for (size_t i = 0; i < std::min(m_fields.size(), other.m_fields.size()); i++) {
+      if (m_fields.at(i) != other.m_fields.at(i)) {
+        result += fmt::format("field {} ({}/{}):\n", i, m_fields.at(i).name(),
+                              other.m_fields.at(i).name());
+        result += m_fields.at(i).diff(other.m_fields.at(i));
+        result += "\n";
+      }
+    }
+  }
+  return result;
 }
 
 /////////////////
@@ -723,6 +1018,25 @@ bool EnumType::operator==(const Type& other) const {
   }
 
   auto* p_other = dynamic_cast<const EnumType*>(&other);
-  return other.is_equal(*this) && (m_entries == p_other->m_entries) &&
+  return other.common_type_info_equal(*this) && (m_entries == p_other->m_entries) &&
          (m_is_bitfield == p_other->m_is_bitfield);
+}
+
+std::string EnumType::diff_impl(const Type& other_) const {
+  if (typeid(EnumType) != typeid(other_)) {
+    return Type::incompatible_diff(other_);
+  }
+
+  std::string result;
+  auto& other = *dynamic_cast<const EnumType*>(&other_);
+
+  if (m_is_bitfield != other.m_is_bitfield) {
+    result += fmt::format("is_bitfield: {} vs. {}\n", m_is_bitfield, other.m_is_bitfield);
+  }
+
+  if (m_entries != other.m_entries) {
+    result += "Entries are different.\n";
+  }
+
+  return result;
 }
