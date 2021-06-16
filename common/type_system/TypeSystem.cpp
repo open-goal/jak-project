@@ -57,8 +57,9 @@ Type* TypeSystem::add_type(const std::string& name, std::unique_ptr<Type> type) 
         m_types[name] = std::move(type);
       } else {
         throw_typesystem_error(
-            "Inconsistent type definition. Type {} was originally\n{}\nand is redefined as\n{}\n",
-            kv->second->get_name(), kv->second->print(), type->print());
+            "Inconsistent type definition. Type {} was originally\n{}\nand is redefined "
+            "as\n{}\nDiff:\n{}\n",
+            kv->second->get_name(), kv->second->print(), type->print(), kv->second->diff(*type));
       }
     }
   } else {
@@ -79,6 +80,14 @@ Type* TypeSystem::add_type(const std::string& name, std::unique_ptr<Type> type) 
     }
 
     m_types[name] = std::move(type);
+    auto fwd_it = m_forward_declared_types.find(name);
+    if (fwd_it != m_forward_declared_types.end()) {
+      // need to check parent is correct.
+      if (!tc(TypeSpec(fwd_it->second), TypeSpec(name))) {
+        throw_typesystem_error("Type {} was original declared as a child of {}, but is not.\n",
+                               name, fwd_it->second);
+      }
+    }
     m_forward_declared_types.erase(name);
   }
 
@@ -90,9 +99,19 @@ Type* TypeSystem::add_type(const std::string& name, std::unique_ptr<Type> type) 
  * This will allow the type system to generate TypeSpecs for this type, but not access detailed
  * information, or know the exact size.
  */
-void TypeSystem::forward_declare_type(const std::string& name) {
-  if (m_types.find(name) == m_types.end()) {
-    m_forward_declared_types[name] = TYPE;
+void TypeSystem::forward_declare_type_as_type(const std::string& name) {
+  auto type_it = m_types.find(name);
+  if (type_it != m_types.end()) {
+    return;
+  }
+
+  auto it = m_forward_declared_types.find(name);
+  if (it == m_forward_declared_types.end()) {
+    m_forward_declared_types[name] = "object";
+  } else {
+    throw_typesystem_error(
+        "Tried to forward declare {} as a type multiple times.  Previous: {} Current: object", name,
+        it->second);
   }
 }
 
@@ -101,20 +120,60 @@ void TypeSystem::forward_declare_type(const std::string& name) {
  * This allows the type to be used in a few specific places. For instance a basic can have
  * a field where an element is the same type.
  */
-void TypeSystem::forward_declare_type_as_basic(const std::string& name) {
-  if (m_types.find(name) == m_types.end()) {
-    m_forward_declared_types[name] = BASIC;
-  }
-}
+void TypeSystem::forward_declare_type_as(const std::string& new_type,
+                                         const std::string& parent_type) {
+  auto type_it = m_types.find(new_type);
+  if (type_it != m_types.end()) {
+    auto parent_it = m_types.find(parent_type);
+    if (parent_it == m_types.end()) {
+      throw_typesystem_error(
+          "Got a forward declaration for known type {} where the parent {} is unknown", new_type,
+          parent_type);
+    }
 
-/*!
- * Inform the type system that there will eventually be a type named "name" and that it's a
- * structure. This allows the type to be used in a few specific places. For instance a structure can
- * have a field where an element is the same type.
- */
-void TypeSystem::forward_declare_type_as_structure(const std::string& name) {
-  if (m_types.find(name) == m_types.end()) {
-    m_forward_declared_types[name] = STRUCTURE;
+    if (!tc(TypeSpec(parent_type), TypeSpec(new_type))) {
+      throw_typesystem_error(
+          "Got a forward definition that type {} is a {} which disagrees with existing "
+          "fully-defined types.",
+          new_type, parent_type);
+    }
+
+    // ignore forward declaration
+    return;
+  }
+
+  auto fwd_it = m_forward_declared_types.find(new_type);
+  if (fwd_it == m_forward_declared_types.end()) {
+    m_forward_declared_types[new_type] = parent_type;
+  } else {
+    if (fwd_it->second != parent_type) {
+      auto old_parent_it = m_types.find(fwd_it->second);
+      auto new_parent_it = m_types.find(parent_type);
+
+      auto old_ts = TypeSpec(old_parent_it->second->get_name());
+      auto new_ts = TypeSpec(new_parent_it->second->get_name());
+
+      if (old_parent_it != m_types.end() && new_parent_it != m_types.end()) {
+        if (tc(old_ts, new_ts)) {
+          // new is more specific or equal to old:
+          m_forward_declared_types[new_type] = new_ts.base_type();
+        } else if (tc(new_ts, old_ts)) {
+          // old is more specific or equal to new:
+        } else {
+          throw_typesystem_error(
+              "Got a forward declaration that type {} is a {}, which disagrees with a previous "
+              "forward declaration that it was a {} (incompatible types)\n",
+              new_type, parent_type, fwd_it->second);
+        }
+      } else {
+        // not enough info to know if this is safe or not!.
+        throw_typesystem_error(
+            "Got a forward declaration that type {} is a {}, which disagrees with a previous "
+            "forward declaration that it was a {} (not enough information to know this is okay, "
+            "forward declare more types to resolve this)\n",
+            new_type, parent_type, fwd_it->second);
+      }
+    }
   }
 }
 
@@ -312,20 +371,28 @@ Type* TypeSystem::lookup_type_allow_partial_def(const std::string& name) const {
     return kv->second.get();
   }
 
-  auto fwd_dec = m_forward_declared_types.find(name);
-  if (fwd_dec != m_forward_declared_types.end()) {
-    if (fwd_dec->second == STRUCTURE) {
-      return lookup_type("structure");
-    } else if (fwd_dec->second == BASIC) {
-      return lookup_type("basic");
-    } else {
-      throw_typesystem_error(
-          "The type {} is known to be a type, but has not been defined with deftype "
-          "or properly forward declared with declare-type\n",
-          name);
+  Type* result = nullptr;
+  std::string current_name = name;
+
+  while (!result) {
+    auto fwd_dec = m_forward_declared_types.find(current_name);
+    if (fwd_dec == m_forward_declared_types.end()) {
+      if (current_name == name) {
+        throw_typesystem_error("The type {} is unknown (2).\n", name);
+      } else {
+        throw_typesystem_error("When looking up forward defined type {}, could not find a type {}.",
+                               name, current_name);
+      }
+    }
+    current_name = fwd_dec->second;
+
+    auto type_lookup = m_types.find(current_name);
+    if (type_lookup != m_types.end()) {
+      result = type_lookup->second.get();
     }
   }
-  throw_typesystem_error("The type {} is unknown.\n", name);
+
+  return result;
 }
 
 MethodInfo TypeSystem::declare_method(const std::string& type_name,
@@ -803,7 +870,7 @@ void TypeSystem::add_builtin_types() {
   uint_type->disallow_in_runtime();
 
   // Methods and Fields
-  forward_declare_type_as_structure("memory-usage-block");
+  forward_declare_type_as("memory-usage-block", "basic");
 
   // OBJECT
   declare_method(obj_type, "new", false,

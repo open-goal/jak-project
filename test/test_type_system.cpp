@@ -169,7 +169,7 @@ TEST(TypeSystem, ForwardDeclaration) {
   EXPECT_ANY_THROW(ts.make_typespec("test-type"));
 
   // after forward declaring, we should be able to create typespec, but not do a full lookup
-  ts.forward_declare_type("test-type");
+  ts.forward_declare_type_as_type("test-type");
 
   EXPECT_TRUE(ts.make_typespec("test-type").print() == "test-type");
   EXPECT_ANY_THROW(ts.lookup_type("test-type"));

@@ -91,9 +91,8 @@ class TypeSystem {
   TypeSystem();
 
   Type* add_type(const std::string& name, std::unique_ptr<Type> type);
-  void forward_declare_type(const std::string& name);
-  void forward_declare_type_as_basic(const std::string& name);
-  void forward_declare_type_as_structure(const std::string& name);
+  void forward_declare_type_as_type(const std::string& name);
+  void forward_declare_type_as(const std::string& new_type, const std::string& parent_type);
   std::string get_runtime_type(const TypeSpec& ts);
 
   DerefInfo get_deref_info(const TypeSpec& ts) const;
@@ -241,10 +240,8 @@ class TypeSystem {
                                     RegClass reg = RegClass::GPR_64);
   void builtin_structure_inherit(StructureType* st);
 
-  enum ForwardDeclareKind { TYPE, STRUCTURE, BASIC };
-
   std::unordered_map<std::string, std::unique_ptr<Type>> m_types;
-  std::unordered_map<std::string, ForwardDeclareKind> m_forward_declared_types;
+  std::unordered_map<std::string, std::string> m_forward_declared_types;
   std::vector<std::unique_ptr<Type>> m_old_types;
 
   bool m_allow_redefinition = false;

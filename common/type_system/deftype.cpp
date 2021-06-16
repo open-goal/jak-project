@@ -464,7 +464,7 @@ DeftypeResult parse_deftype(const goos::Object& deftype, TypeSystem* ts) {
                       parent_type_name));
     }
     new_type->inherit(pto);
-    ts->forward_declare_type_as_basic(name);
+    ts->forward_declare_type_as(name, "basic");
     auto sr = parse_structure_def(new_type.get(), ts, field_list_obj, options_obj);
     result.flags = sr.flags;
     result.create_runtime_type = sr.generate_runtime_type;
@@ -488,7 +488,7 @@ DeftypeResult parse_deftype(const goos::Object& deftype, TypeSystem* ts) {
     auto pto = dynamic_cast<StructureType*>(ts->lookup_type(parent_type));
     assert(pto);
     new_type->inherit(pto);
-    ts->forward_declare_type_as_structure(name);
+    ts->forward_declare_type_as(name, "structure");
     auto sr = parse_structure_def(new_type.get(), ts, field_list_obj, options_obj);
     result.flags = sr.flags;
     result.create_runtime_type = sr.generate_runtime_type;
