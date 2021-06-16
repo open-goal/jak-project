@@ -74,13 +74,7 @@ void DecompilerTypeSystem::parse_type_defs(const std::vector<std::string>& file_
         if (!cdr(*rest).is_empty_list()) {
           throw std::runtime_error("malformed declare-type");
         }
-        if (type_kind.as_symbol()->name == "basic") {
-          ts.forward_declare_type_as_basic(type_name.as_symbol()->name);
-        } else if (type_kind.as_symbol()->name == "structure") {
-          ts.forward_declare_type_as_structure(type_name.as_symbol()->name);
-        } else {
-          throw std::runtime_error("bad declare-type");
-        }
+        ts.forward_declare_type_as(type_name.as_symbol()->name, type_kind.as_symbol()->name);
       } else if (car(o).as_symbol()->name == "defenum") {
         parse_defenum(cdr(o), &ts);
         // so far, enums are never runtime types so there's no symbol for them.
@@ -295,6 +289,10 @@ TP_Type DecompilerTypeSystem::tp_lca(const TP_Type& existing,
         *changed = true;
         return TP_Type::make_from_ts(
             ts.lowest_common_ancestor(existing.typespec(), add.typespec()));
+
+      case TP_Type::Kind::LABEL_ADDR:
+        *changed = false;
+        return existing;
 
       case TP_Type::Kind::FALSE_AS_NULL:
       case TP_Type::Kind::UNINITIALIZED:

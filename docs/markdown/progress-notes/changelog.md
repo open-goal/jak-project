@@ -159,3 +159,9 @@
 - 128-bit values may now be used in function arguments and return values.
 - Fixed a bug where reader errors in `goal-lib.gc` or any error in `goos-lib.gs` would cause a crash
 - Fixed a bug where `''a` or similar repeated reader macros would generate a reader error.
+- Fixed a bug where reader macros without a following form would trigger an assert.
+- It is now possible to take the address of a lexical variable. The variable will be spilled to the stack automatically.
+- GOOS supports `string-ref`, `string-length`, `ash`, and characters can now be treated as a signed 8-bit number
+- Fixed a bug where saved xmm registers might be clobbered when calling a C++ function that wasn't `format`.
+- The `declare-type` form now supports any parent type. The type system will do a better job of trying to make things work out when only part of the type hierarchy is defined, and you can now chain type forward declarations. The compiler is stricter and will not accept forward declarations that are possibly incompatible. Instead, forward declare enough types and their parents for the compiler to be able to figure it out.  
+- The `deftype` form is more strict and will throw an error if the type definition is in any way incompatible with existing forward declarations of types.

@@ -131,9 +131,9 @@ TP_Type SimpleAtom::get_type(const TypeState& input,
       if (hint_kv != env.label_types().end()) {
         return TP_Type::make_from_ts(dts.parse_type_spec(hint_kv->second.type_name));
       }
-      // throw std::runtime_error("IR_StaticAddress could not figure out the type: " + label.name);
-      lg::error("IR_StaticAddress does not know the type of {}", label.name);
-      return TP_Type::make_from_ts("object");
+      // todo: should we take out this warning?
+      lg::warn("IR_StaticAddress does not know the type of {}", label.name);
+      return TP_Type::make_label_addr();
     }
     case Kind::INVALID:
     default:
@@ -234,17 +234,21 @@ namespace {
  */
 TP_Type get_stack_type_at_constant_offset(int offset,
                                           const Env& env,
-                                          const DecompilerTypeSystem& dts) {
+                                          const DecompilerTypeSystem& dts,
+                                          const TypeState& types) {
   (void)dts;
-  for (auto& var : env.stack_var_hints()) {
-    if (offset < var.hint.stack_offset || offset >= (var.hint.stack_offset + var.size)) {
+
+  // first look for a stack structure
+  for (auto& structure : env.stack_structure_hints()) {
+    if (offset < structure.hint.stack_offset ||
+        offset >= (structure.hint.stack_offset + structure.size)) {
       continue;  // reject, it isn't in this variable
     }
 
-    if (offset == var.hint.stack_offset) {
+    if (offset == structure.hint.stack_offset) {
       // special case just getting the variable
-      if (var.hint.container_type == StackVariableHint::ContainerType::NONE) {
-        return TP_Type::make_from_ts(coerce_to_reg_type(var.ref_type));
+      if (structure.hint.container_type == StackStructureHint::ContainerType::NONE) {
+        return TP_Type::make_from_ts(coerce_to_reg_type(structure.ref_type));
       }
     }
 
@@ -266,7 +270,15 @@ TP_Type get_stack_type_at_constant_offset(int offset,
      */
     // if we fail, keep trying others. This lets us have overlays in stack memory.
   }
-  throw std::runtime_error(fmt::format("Failed to find a stack variable at offset {}", offset));
+
+  // look for a stack variable
+  auto kv = types.spill_slots.find(offset);
+  if (kv != types.spill_slots.end()) {
+    return TP_Type::make_from_ts(TypeSpec("pointer", {kv->second.typespec()}));
+  }
+
+  throw std::runtime_error(
+      fmt::format("Failed to find a stack variable or structure at offset {}", offset));
 }
 }  // namespace
 
@@ -373,7 +385,7 @@ TP_Type SimpleExpression::get_type_int2(const TypeState& input,
       // get stack address:
       if (m_args[0].is_var() && m_args[0].var().reg() == Register(Reg::GPR, Reg::SP) &&
           m_args[1].is_int()) {
-        return get_stack_type_at_constant_offset(m_args[1].get_int(), env, dts);
+        return get_stack_type_at_constant_offset(m_args[1].get_int(), env, dts, input);
       }
 
       if (arg0_type.is_product_with(4) && tc(dts, TypeSpec("type"), arg1_type)) {
@@ -454,6 +466,22 @@ TP_Type SimpleExpression::get_type_int2(const TypeState& input,
     rd_in.deref = std::nullopt;
     rd_in.stride = 0;
     rd_in.offset = m_args[1].get_int();
+    rd_in.base_type = arg0_type.typespec();
+    auto rd = dts.ts.reverse_field_lookup(rd_in);
+
+    if (rd.success) {
+      return TP_Type::make_from_ts(coerce_to_reg_type(rd.result_type));
+    }
+  }
+
+  // access with just product and no offset.
+  if (m_kind == Kind::ADD && arg0_type.kind == TP_Type::Kind::TYPESPEC &&
+      arg0_type.typespec().base_type() == "inline-array" &&
+      arg1_type.kind == TP_Type::Kind::PRODUCT_WITH_CONSTANT) {
+    FieldReverseLookupInput rd_in;
+    rd_in.deref = std::nullopt;
+    rd_in.stride = arg1_type.get_multiplier();
+    rd_in.offset = 0;
     rd_in.base_type = arg0_type.typespec();
     auto rd = dts.ts.reverse_field_lookup(rd_in);
 
@@ -734,9 +762,9 @@ TP_Type LoadVarOp::get_src_type(const TypeState& input,
       if (method_id == GOAL_NEW_METHOD) {
         return TP_Type::make_from_ts(method_type);
       } else if (input_type.kind == TP_Type::Kind::TYPE_OF_TYPE_NO_VIRTUAL) {
-        return TP_Type::make_non_virtual_method(method_type, TypeSpec(type_name));
+        return TP_Type::make_non_virtual_method(method_type, TypeSpec(type_name), method_id);
       } else {
-        return TP_Type::make_virtual_method(method_type, TypeSpec(type_name));
+        return TP_Type::make_virtual_method(method_type, TypeSpec(type_name), method_id);
       }
     }
 
@@ -748,7 +776,7 @@ TP_Type LoadVarOp::get_src_type(const TypeState& input,
       if (method_id != GOAL_NEW_METHOD && method_id != GOAL_RELOC_METHOD) {
         // this can get us the wrong thing for `new` methods.  And maybe relocate?
         return TP_Type::make_non_virtual_method(
-            method_info.type.substitute_for_method_call("object"), TypeSpec("object"));
+            method_info.type.substitute_for_method_call("object"), TypeSpec("object"), method_id);
       }
     }
 
@@ -830,27 +858,25 @@ TP_Type LoadVarOp::get_src_type(const TypeState& input,
       // of method 0.
       return TP_Type::make_from_ts(TypeSpec("function"));
     }
-    // Assume we're accessing a field of an object.
-    FieldReverseLookupInput rd_in;
-    DerefKind dk;
-    dk.is_store = false;
-    dk.reg_kind = get_reg_kind(ro.reg);
-    dk.sign_extend = m_kind == Kind::SIGNED;
-    dk.size = m_size;
-    rd_in.deref = dk;
-    rd_in.base_type = input_type.typespec();
-    rd_in.stride = 0;
-    rd_in.offset = ro.offset;
-    auto rd = dts.ts.reverse_field_lookup(rd_in);
 
-    if (rd.success) {
-      //      load_path_set = true;
-      //      load_path_addr_of = rd.addr_of;
-      //      load_path_base = ro.reg_ir;
-      //      for (auto& x : rd.tokens) {
-      //        load_path.push_back(x.print());
-      //      }
-      return TP_Type::make_from_ts(coerce_to_reg_type(rd.result_type));
+    // Assume we're accessing a field of an object.
+    // if we are a pair with sloppy typing, don't use this and instead use the case down below.
+    if (input_type.typespec() != TypeSpec("pair") || !env.allow_sloppy_pair_typing()) {
+      FieldReverseLookupInput rd_in;
+      DerefKind dk;
+      dk.is_store = false;
+      dk.reg_kind = get_reg_kind(ro.reg);
+      dk.sign_extend = m_kind == Kind::SIGNED;
+      dk.size = m_size;
+      rd_in.deref = dk;
+      rd_in.base_type = input_type.typespec();
+      rd_in.stride = 0;
+      rd_in.offset = ro.offset;
+      auto rd = dts.ts.reverse_field_lookup(rd_in);
+
+      if (rd.success) {
+        return TP_Type::make_from_ts(coerce_to_reg_type(rd.result_type));
+      }
     }
 
     if (input_type.typespec() == TypeSpec("pointer") ||
@@ -1059,10 +1085,10 @@ TypeState CallOp::propagate_types_internal(const TypeState& input,
     m_arg_vars.push_back(RegisterAccess(AccessMode::READ, m_read_regs.back(), m_my_idx));
   }
 
+  // _always_ write the v0 register, even if the function returns none.
+  // GOAL seems to insert coloring moves even on functions returning none.
   m_write_regs.clear();
-  if (in_type.last_arg() != TypeSpec("none")) {
-    m_write_regs.emplace_back(Reg::GPR, Reg::V0);
-  }
+  m_write_regs.emplace_back(Reg::GPR, Reg::V0);
 
   return end_types;
 }

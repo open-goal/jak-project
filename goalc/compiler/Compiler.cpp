@@ -143,6 +143,10 @@ std::unique_ptr<FunctionEnv> Compiler::compile_top_level_function(const std::str
                                          emitter::gRegInfo.get_gpr_ret_reg()));
   }
 
+  if (!fe->code().empty()) {
+    fe->emit_ir<IR_Null>();
+  }
+
   fe->finish();
   return fe;
 }
@@ -196,6 +200,12 @@ void Compiler::color_object_file(FileEnv* env) {
     for (auto& i : f->code()) {
       input.instructions.push_back(i->to_rai());
       input.debug_instruction_names.push_back(i->print());
+    }
+
+    for (auto& reg_val : f->reg_vals()) {
+      if (reg_val->forced_on_stack()) {
+        input.force_on_stack_regs.insert(reg_val->ireg().id);
+      }
     }
 
     input.max_vars = f->max_vars();

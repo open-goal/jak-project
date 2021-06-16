@@ -100,11 +100,15 @@ class BitfieldAccessElement : public FormElement {
                          const TypeSystem& ts,
                          FormPool& pool,
                          const Env& env);
-  void push_pcpyud();
+  void push_pcpyud(const TypeSystem& ts, FormPool& pool, const Env& env);
 
  private:
   bool m_got_pcpyud = false;
   Form* m_base = nullptr;
+
+  // if we aren't sure if we are done or not, store the result here.
+  Form* m_current_result = nullptr;
+
   TypeSpec m_type;
   std::vector<BitfieldManip> m_steps;
 };
@@ -190,9 +194,9 @@ Form* cast_to_bitfield_enum(const EnumType* type_info, FormPool& pool, const Env
 
 std::optional<u64> get_goal_integer_constant(Form* in, const Env&);
 
-const BitField& find_field(const TypeSystem& ts,
-                           const BitFieldType* type,
-                           int start_bit,
-                           int size,
-                           std::optional<bool> looking_for_unsigned);
+BitField find_field(const TypeSystem& ts,
+                    const BitFieldType* type,
+                    int start_bit,
+                    int size,
+                    std::optional<bool> looking_for_unsigned);
 }  // namespace decompiler

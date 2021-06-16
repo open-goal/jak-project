@@ -5,3 +5,175 @@
 ;; name in dgo: vol-h
 ;; dgos: GAME, ENGINE
 
+;; definition of type plane-volume
+(deftype plane-volume (structure)
+  ((volume-type  basic   :offset-assert 0)
+   (point-count  int16   :offset-assert 4)
+   (normal-count int16   :offset-assert 6)
+   (first-point  vector  :offset-assert 8)
+   (first-normal vector  :offset-assert 12)
+   (num-planes   int32   :offset-assert 16)
+   (plane        uint32  :offset-assert 20)
+   )
+  :pack-me
+  :method-count-assert 12
+  :size-assert         #x18
+  :flag-assert         #xc00000018
+  (:methods
+    (dummy-9 () none 9)
+    (dummy-10 () none 10)
+    (dummy-11 () none 11)
+    )
+  )
+
+;; definition of type vol-control
+(deftype vol-control (basic)
+  ((flags         uint32                      :offset-assert 4)
+   (process       process-drawable            :offset-assert 8)
+   (pos-vol-count int32                       :offset-assert 12)
+   (pos-vol       plane-volume     32 :inline :offset-assert 16)
+   (neg-vol-count int32                       :offset-assert 784)
+   (neg-vol       plane-volume     32 :inline :offset-assert 788)
+   (debug-point   basic                       :offset-assert 1556)
+   (debug-normal  basic                       :offset-assert 1560)
+   )
+  :method-count-assert 12
+  :size-assert         #x61c
+  :flag-assert         #xc0000061c
+  (:methods
+    (new (symbol type process-drawable) _type_ 0)
+    (dummy-9 () none 9)
+    (dummy-10 () none 10)
+    (TODO-RENAME-11 (_type_) symbol 11)
+    )
+  )
+
+;; definition for method 0 of type vol-control
+;; INFO: Return type mismatch object vs vol-control.
+;; Used lq/sq
+(defmethod new vol-control ((allocation symbol) (type-to-make type) (arg0 process-drawable))
+  (with-pp
+    (let ((gp-0 (the-as object (object-new allocation type-to-make (the-as int (-> type-to-make size))))))
+      (if (zero? (the-as vol-control gp-0))
+          (begin
+           (let ((t9-1 (the-as (function object object) enter-state))
+                 (a0-1 "memory")
+                 )
+             (set! (-> pp next-state) process-drawable-art-error)
+             (t9-1 a0-1)
+             )
+           (set! gp-0 0)
+           (goto cfg-13)
+           )
+          )
+      (set! (-> (the-as vol-control gp-0) process) arg0)
+      (let* ((s5-1 (-> (the-as vol-control gp-0) process entity))
+             (s4-0
+              (->
+                  ((method-of-type res-lump lookup-tag-idx)
+                   (the-as res-lump s5-1)
+                   'vol
+                   'exact
+                   0.0
+                   )
+                lo
+                )
+               )
+             )
+        (when (>= s4-0 0)
+          (let ((s3-0 s4-0)
+                (s2-0 (-> (-> (the-as res-lump s5-1) tag) s4-0))
+                )
+            (let ((v1-10 0))
+              )
+            (while (= (-> s2-0 name) (-> (-> (the-as res-lump s5-1) tag) s4-0 name))
+              (let
+                  ((v1-12
+                    (make-property-data
+                     (the-as res-lump s5-1)
+                     0.0
+                     (the-as res-tag-pair s3-0)
+                     (the-as pointer #f)
+                     )
+                     )
+                   (a0-8
+                    (->
+                        (the-as vol-control gp-0)
+                      pos-vol
+                      (-> (the-as vol-control gp-0) pos-vol-count)
+                      )
+                     )
+                   )
+                (set! (-> a0-8 num-planes) (the-as int (-> s2-0 elt-count)))
+                (set! (-> a0-8 plane) (the-as uint v1-12))
+                )
+              (set!
+               (-> (the-as vol-control gp-0) pos-vol-count)
+               (+ (-> (the-as vol-control gp-0) pos-vol-count) 1)
+               )
+              (+! s3-0 1)
+              (set! s2-0 (-> (-> (the-as res-lump s5-1) tag) s3-0))
+              )
+            )
+          )
+        )
+      (let* ((s5-2 (-> (the-as vol-control gp-0) process entity))
+             (s4-1
+              (->
+                  ((method-of-type res-lump lookup-tag-idx)
+                   (the-as res-lump s5-2)
+                   'cutoutvol
+                   'exact
+                   0.0
+                   )
+                lo
+                )
+               )
+             )
+        (when (>= s4-1 0)
+          (let ((s3-1 s4-1)
+                (s2-1 (-> (-> (the-as res-lump s5-2) tag) s4-1))
+                )
+            (let ((v1-29 0))
+              )
+            (while (= (-> s2-1 name) (-> (-> (the-as res-lump s5-2) tag) s4-1 name))
+              (let
+                  ((v1-31
+                    (make-property-data
+                     (the-as res-lump s5-2)
+                     0.0
+                     (the-as res-tag-pair s3-1)
+                     (the-as pointer #f)
+                     )
+                     )
+                   (a0-19
+                    (->
+                        (the-as vol-control gp-0)
+                      neg-vol
+                      (-> (the-as vol-control gp-0) neg-vol-count)
+                      )
+                     )
+                   )
+                (set! (-> a0-19 num-planes) (the-as int (-> s2-1 elt-count)))
+                (set! (-> a0-19 plane) (the-as uint v1-31))
+                )
+              (set!
+               (-> (the-as vol-control gp-0) neg-vol-count)
+               (+ (-> (the-as vol-control gp-0) neg-vol-count) 1)
+               )
+              (+! s3-1 1)
+              (set! s2-1 (-> (-> (the-as res-lump s5-2) tag) s3-1))
+              )
+            )
+          )
+        )
+      (label cfg-13)
+      (the-as vol-control gp-0)
+      )
+    )
+  )
+
+;; definition for method 11 of type vol-control
+(defmethod TODO-RENAME-11 vol-control ((obj vol-control))
+  (and *display-vol-marks* (nonzero? (logand (-> obj flags) 1)))
+  )

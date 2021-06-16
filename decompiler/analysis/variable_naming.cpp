@@ -414,15 +414,40 @@ SSA make_rc_ssa(const Function& function, const RegUsageInfo& rui, const Functio
     }
 
     // process succs:
-    auto& end_op_info = rui.op.at(end_op - 1);
+    // auto& end_op_info = rui.op.at(end_op - 1);
     for (auto succ : {block.succ_branch, block.succ_ft}) {
       if (succ != -1) {
+        auto first_op_in_succ_id = ops.block_id_to_first_atomic_op.at(succ);
+        const auto& first_op_info = rui.op.at(first_op_in_succ_id);
+        const auto& first_op = ops.ops.at(first_op_in_succ_id);
+        // these are the registers that will actually be used in the successor block.
+        RegSet regs;
+        for (auto& reg : first_op->read_regs()) {
+          regs.insert(reg);
+        }
+
+        for (auto& reg : first_op_info.live) {
+          if (std::find(first_op->write_regs().begin(), first_op->write_regs().end(), reg) ==
+              first_op->write_regs().end()) {
+            regs.insert(reg);
+          }
+        }
+
+        for (auto reg : regs) {
+          // only update phis for variables that are actually live at the next block.
+          if (reg.get_kind() == Reg::FPR || reg.get_kind() == Reg::GPR) {
+            ssa.add_source_to_phi(succ, reg, current_regs.at(reg));
+          }
+        }
+
+        /*
         for (auto reg : end_op_info.live) {
           // only update phis for variables that are actually live at the next block.
           if (reg.get_kind() == Reg::FPR || reg.get_kind() == Reg::GPR) {
             ssa.add_source_to_phi(succ, reg, current_regs.at(reg));
           }
         }
+         */
       }
     }
   }
@@ -590,16 +615,54 @@ void update_var_info(VariableNames::VarInfo* info,
                      const TypeState& ts,
                      int var_id,
                      const DecompilerTypeSystem& dts) {
+  auto& type = ts.get(reg);
   if (info->initialized) {
     assert(info->reg_id.id == var_id);
     assert(info->reg_id.reg == reg);
+
     bool changed;
-    info->type = dts.tp_lca(info->type, ts.get(reg), &changed);
+    info->type = dts.tp_lca(info->type, type, &changed);
+
   } else {
     info->reg_id.id = var_id;
     info->reg_id.reg = reg;
-    info->type = ts.get(reg);
+
+    info->type = type;
+
     info->initialized = true;
+  }
+}
+
+bool merge_infos(VariableNames::VarInfo* info1,
+                 VariableNames::VarInfo* info2,
+                 const DecompilerTypeSystem& dts) {
+  if (info1->initialized && info2->initialized) {
+    bool changed;
+    auto new_type = dts.tp_lca(info1->type, info2->type, &changed);
+    if (changed) {
+      //      fmt::print("changed new to {} from {} {} ({} {})\n", new_type.print(),
+      //      info1->type.print(),
+      //                 info2->type.print(), info1->reg_id.print(), info2->reg_id.print());
+      info1->type = new_type;
+      info2->type = new_type;
+
+      return true;
+    }
+  }
+  return false;
+}
+
+void merge_infos(
+    std::unordered_map<Register, std::vector<VariableNames::VarInfo>, Register::hash>& info1,
+    std::unordered_map<Register, std::vector<VariableNames::VarInfo>, Register::hash>& info2,
+    const DecompilerTypeSystem& dts) {
+  for (auto& [reg, infos] : info1) {
+    auto other = info2.find(reg);
+    if (other != info2.end()) {
+      for (size_t i = 0; i < std::min(other->second.size(), infos.size()); i++) {
+        merge_infos(&infos.at(i), &other->second.at(i), dts);
+      }
+    }
   }
 }
 }  // namespace
@@ -613,6 +676,7 @@ void SSA::make_vars(const Function& function, const DecompilerTypeSystem& dts) {
     const TypeState* init_types = &function.ir2.env.get_types_at_block_entry(block_id);
     for (auto& instr : block.ins) {
       auto op_id = instr.op_id;
+
       const TypeState* end_types = &function.ir2.env.get_types_after_op(op_id);
 
       if (instr.dst.has_value()) {
@@ -644,6 +708,8 @@ void SSA::make_vars(const Function& function, const DecompilerTypeSystem& dts) {
           TP_Type::make_from_ts(function.type.get_arg(arg_idx));
     }
   }
+
+  merge_infos(program_write_vars, program_read_vars, dts);
 
   // copy types from input argument coloring moves:
   for (auto& instr : blocks.at(0).ins) {

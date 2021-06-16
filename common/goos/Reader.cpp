@@ -382,6 +382,9 @@ Object Reader::read_list(TextStream& ts, bool expect_close_paren) {
       while (kv != reader_macros.end()) {
         // build a stack of reader macros to apply to this form.
         reader_macro_string_stack.push_back(kv->second);
+        if (!ts.text_remains()) {
+          throw_reader_error(ts, "Something must follow a reader macro", 0);
+        }
         tok = get_next_token(ts);
         kv = reader_macros.find(tok.text);
       }

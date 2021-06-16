@@ -1,7 +1,9 @@
 #include <string>
 #include <cassert>
+#include <fstream>
 #include "third-party/fmt/core.h"
 #include "third-party/11zip/include/elzip/elzip.hpp"
+#include "third-party/json.hpp"
 
 #include "common/util/FileUtil.h"
 #include "common/goal_constants.h"
@@ -188,7 +190,8 @@ void inspect_basics(const Ram& ram,
                     const std::unordered_map<std::string, std::vector<u32>>& basics,
                     const std::unordered_map<u32, std::string>& types,
                     const SymbolMap& symbols,
-                    const TypeSystem& type_system) {
+                    const TypeSystem& type_system,
+                    nlohmann::json& results) {
   std::vector<std::string> sorted_type_names;
   for (auto& x : basics) {
     sorted_type_names.emplace_back(x.first);
@@ -200,54 +203,80 @@ void inspect_basics(const Ram& ram,
   for (const auto& name : sorted_type_names) {
     fmt::print("TYPE {} (count {})\n", name, basics.at(name).size());
 
+    nlohmann::json type_results;
+    if (results.contains(name)) {
+      type_results = results.at(name);
+      type_results["__metadata"]["occurences"] =
+          type_results["__metadata"]["occurences"].get<int>() + basics.at(name).size();
+    } else {
+      type_results["__metadata"]["unknown?"] = false;
+      type_results["__metadata"]["failedToCast?"] = false;
+      type_results["__metadata"]["occurences"] = basics.at(name).size();
+    }
+
     // first, try looking up the type.
     if (!type_system.fully_defined_type_exists(name)) {
       fmt::print("-----Type is unknown!\n\n");
+      std::string wat = type_results.dump();
+      type_results["__metadata"]["unknown?"] = true;
+      results[name] = type_results;
       continue;
     }
 
     auto type = dynamic_cast<BasicType*>(type_system.lookup_type(name));
     if (!type) {
       fmt::print("Could not cast Type! Skipping!!");
+      type_results["__metadata"]["failedToCast?"] = true;
+      results[name] = type_results;
       continue;
     }
 
     for (auto& field : type->fields()) {
-      if (!field.is_array() && !field.is_inline() && !field.is_dynamic() &&
+      if (!field.is_inline() && !field.is_dynamic() &&
           (field.type() == TypeSpec("basic") || field.type() == TypeSpec("object") ||
            field.type() == TypeSpec("uint32"))) {
+        int array_size = field.is_array() ? field.array_size() : 1;
         fmt::print("  field {}\n", field.name());
+
+        nlohmann::json field_results;
+        if (type_results.contains(field.name())) {
+          field_results = type_results.at(field.name());
+        } else {
+          field_results = {};
+        }
 
         std::unordered_map<std::string, int> type_frequency;
 
         for (auto base_addr : basics.at(name)) {
-          int field_addr = base_addr + field.offset();
-          if (ram.word_in_memory(field_addr)) {
-            auto field_val = ram.word(field_addr);
-            if ((field_val & 0x7) == 4 && ram.word_in_memory(field_val - 4)) {
-              auto type_tag = ram.word(field_val - 4);
-              auto iter = types.find(type_tag);
-              if (iter != types.end()) {
-                if (iter->second == "symbol") {
-                  auto sym_iter = symbols.addr_to_name.find(field_val);
-                  if (sym_iter != symbols.addr_to_name.end()) {
-                    type_frequency[fmt::format("(symbol {})", sym_iter->second)]++;
+          for (int elt_idx = 0; elt_idx < array_size; elt_idx++) {
+            int field_addr = base_addr + field.offset() + 4 * elt_idx;
+            if (ram.word_in_memory(field_addr)) {
+              auto field_val = ram.word(field_addr);
+              if ((field_val & 0x7) == 4 && ram.word_in_memory(field_val - 4)) {
+                auto type_tag = ram.word(field_val - 4);
+                auto iter = types.find(type_tag);
+                if (iter != types.end()) {
+                  if (iter->second == "symbol") {
+                    auto sym_iter = symbols.addr_to_name.find(field_val);
+                    if (sym_iter != symbols.addr_to_name.end()) {
+                      type_frequency[fmt::format("(symbol {})", sym_iter->second)]++;
+                    } else {
+                      type_frequency[iter->second]++;
+                    }
                   } else {
                     type_frequency[iter->second]++;
                   }
                 } else {
-                  type_frequency[iter->second]++;
+                  type_frequency["_bad-type"]++;
                 }
+              } else if (field_val == 0) {
+                type_frequency["0"]++;
               } else {
-                type_frequency["_bad-type"]++;
+                type_frequency["_not-basic-ptr"]++;
               }
-            } else if (field_val == 0) {
-              type_frequency["0"]++;
             } else {
-              type_frequency["_not-basic-ptr"]++;
+              type_frequency["_bad-field-memory"]++;
             }
-          } else {
-            type_frequency["_bad-field-memory"]++;
           }
         }
 
@@ -261,10 +290,20 @@ void inspect_basics(const Ram& ram,
                   });
 
         for (const auto& field_type : sorted_field_types) {
+          int freq = type_frequency.at(field_type);
+          if (field_results.contains(field_type)) {
+            field_results[field_type] = field_results[field_type].get<int>() + freq;
+          } else {
+            field_results[field_type] = freq;
+          }
           fmt::print("     [{}] {}\n", type_frequency.at(field_type), field_type);
         }
+
+        type_results[field.name()] = field_results;
       }
     }
+
+    results[name] = type_results;
   }
 }
 
@@ -276,8 +315,8 @@ static bool ends_with(const std::string& str, const std::string& suffix) {
 int main(int argc, char** argv) {
   fmt::print("MemoryDumpTool\n");
 
-  if (argc != 2) {
-    fmt::print("usage: memory_dump_tool <ee_ram.bin|savestate.p2s>\n");
+  if (argc != 2 && argc != 3) {
+    fmt::print("usage: memory_dump_tool <ee_ram.bin|savestate.p2s> [output folder]\n");
     return 1;
   }
 
@@ -286,6 +325,14 @@ int main(int argc, char** argv) {
   dts.parse_type_defs({"decompiler", "config", "all-types.gc"});
 
   std::string file_name = argv[1];
+  fs::path output_folder;
+
+  if (!fs::exists(output_folder) || argc < 3) {
+    fmt::print("Output folder not found, defaulting to current directory");
+    output_folder = ".";
+  } else {
+    output_folder = argv[2];
+  }
 
   // If it's a PCSX2 savestate, lets extract the ee memory automatically
   if (ends_with(file_name, "p2s")) {
@@ -326,11 +373,24 @@ int main(int argc, char** argv) {
     return 1;
   }
 
+  nlohmann::json results;
+  if (fs::exists(output_folder / "ee-results.json")) {
+    fmt::print("Found existing result file, appending results to it!\n");
+    std::ifstream i(output_folder / "ee-results.json");
+    i >> results;
+  }
+
   auto symbol_map = build_symbol_map(ram, s7);
   auto types = build_type_map(ram, symbol_map, s7);
   auto basics = find_basics(ram, types);
 
-  inspect_basics(ram, basics, types, symbol_map, dts.ts);
+  inspect_basics(ram, basics, types, symbol_map, dts.ts, results);
+
+  if (fs::exists(output_folder / "ee-results.json")) {
+    fs::remove(output_folder / "ee-results.json");
+  }
+  std::ofstream o(output_folder / "ee-results.json");
+  o << std::setw(2) << results << std::endl;
 
   return 0;
 }

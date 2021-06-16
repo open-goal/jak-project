@@ -1,0 +1,310 @@
+;;-*-Lisp-*-
+(in-package goal)
+
+;; definition of type collide-using-spheres-params
+(deftype collide-using-spheres-params (structure)
+  ((spheres      uint32  :offset-assert 0)
+   (num-spheres  uint32  :offset-assert 4)
+   (collide-with uint64  :offset-assert 8)
+   (proc         basic   :offset-assert 16)
+   (ignore-pat   uint32  :offset-assert 20)
+   (solid-only   basic   :offset-assert 24)
+   )
+  :method-count-assert 9
+  :size-assert         #x1c
+  :flag-assert         #x90000001c
+  )
+
+;; definition for method 3 of type collide-using-spheres-params
+(defmethod
+  inspect
+  collide-using-spheres-params
+  ((obj collide-using-spheres-params))
+  (format #t "[~8x] ~A~%" obj 'collide-using-spheres-params)
+  (format #t "~Tspheres: #x~X~%" (-> obj spheres))
+  (format #t "~Tnum-spheres: ~D~%" (-> obj num-spheres))
+  (format #t "~Tcollide-with: ~D~%" (-> obj collide-with))
+  (format #t "~Tproc: ~A~%" (-> obj proc))
+  (format #t "~Tignore-pat: ~D~%" (-> obj ignore-pat))
+  (format #t "~Tsolid-only: ~A~%" (-> obj solid-only))
+  obj
+  )
+
+;; definition of type collide-puss-sphere
+(deftype collide-puss-sphere (structure)
+  ((bsphere sphere         :inline :offset-assert 0)
+   (bbox4w  bounding-box4w :inline :offset-assert 16)
+   )
+  :method-count-assert 9
+  :size-assert         #x30
+  :flag-assert         #x900000030
+  )
+
+;; definition for method 3 of type collide-puss-sphere
+(defmethod inspect collide-puss-sphere ((obj collide-puss-sphere))
+  (format #t "[~8x] ~A~%" obj 'collide-puss-sphere)
+  (format #t "~Tbsphere: #<sphere @ #x~X>~%" (-> obj bsphere))
+  (format #t "~Tbbox4w: #<bounding-box4w @ #x~X>~%" (-> obj bbox4w))
+  obj
+  )
+
+;; definition of type collide-puss-work
+(deftype collide-puss-work (structure)
+  ((closest-pt     vector              :inline    :offset-assert 0)
+   (tri-normal     vector              :inline    :offset-assert 16)
+   (tri-bbox4w     bounding-box4w      :inline    :offset-assert 32)
+   (spheres-bbox4w bounding-box4w      :inline    :offset-assert 64)
+   (spheres        collide-puss-sphere 64 :inline :offset-assert 96)
+   )
+  :method-count-assert 11
+  :size-assert         #xc60
+  :flag-assert         #xb00000c60
+  (:methods
+    (dummy-9 () none 9)
+    (dummy-10 () none 10)
+    )
+  )
+
+;; definition for method 3 of type collide-puss-work
+(defmethod inspect collide-puss-work ((obj collide-puss-work))
+  (format #t "[~8x] ~A~%" obj 'collide-puss-work)
+  (format #t "~Tclosest-pt: #<vector @ #x~X>~%" (-> obj closest-pt))
+  (format #t "~Ttri-normal: #<vector @ #x~X>~%" (-> obj tri-normal))
+  (format #t "~Ttri-bbox4w: #<bounding-box4w @ #x~X>~%" (-> obj tri-bbox4w))
+  (format
+   #t
+   "~Tspheres-bbox4w: #<bounding-box4w @ #x~X>~%"
+   (-> obj spheres-bbox4w)
+   )
+  (format #t "~Tspheres[64] @ #x~X~%" (-> obj spheres))
+  obj
+  )
+
+;; definition of type collide-puyp-work
+(deftype collide-puyp-work (structure)
+  ((best-u     float                      :offset-assert 0)
+   (ignore-pat uint32                     :offset-assert 4)
+   (tri-out    collide-tri-result         :offset-assert 8)
+   (start-pos  vector             :inline :offset-assert 16)
+   (move-dist  vector             :inline :offset-assert 32)
+   )
+  :method-count-assert 9
+  :size-assert         #x30
+  :flag-assert         #x900000030
+  )
+
+;; definition for method 3 of type collide-puyp-work
+(defmethod inspect collide-puyp-work ((obj collide-puyp-work))
+  (format #t "[~8x] ~A~%" obj 'collide-puyp-work)
+  (format #t "~Tbest-u: ~f~%" (-> obj best-u))
+  (format #t "~Tignore-pat: ~D~%" (-> obj ignore-pat))
+  (format #t "~Ttri-out: #<collide-tri-result @ #x~X>~%" (-> obj tri-out))
+  (format #t "~Tstart-pos: #<vector @ #x~X>~%" (-> obj start-pos))
+  (format #t "~Tmove-dist: #<vector @ #x~X>~%" (-> obj move-dist))
+  obj
+  )
+
+;; definition of type collide-cache-tri
+(deftype collide-cache-tri (structure)
+  ((vertex     vector 3 :inline :offset-assert 0)
+   (pat        uint32           :offset-assert 48)
+   (prim-index uint16           :offset-assert 52)
+   (user16     uint16           :offset-assert 54)
+   (user32     uint32 2         :offset-assert 56)
+   )
+  :method-count-assert 9
+  :size-assert         #x40
+  :flag-assert         #x900000040
+  )
+
+;; definition for method 3 of type collide-cache-tri
+(defmethod inspect collide-cache-tri ((obj collide-cache-tri))
+  (format #t "[~8x] ~A~%" obj 'collide-cache-tri)
+  (format #t "~Tvertex[3] @ #x~X~%" (-> obj vertex))
+  (format #t "~Textra-quad[16] @ #x~X~%" (&-> obj pat))
+  (format #t "~Tpat: ~D~%" (-> obj pat))
+  (format #t "~Tprim-index: ~D~%" (-> obj prim-index))
+  (format #t "~Tuser16: ~D~%" (-> obj user16))
+  (format #t "~Tuser32[2] @ #x~X~%" (-> obj user32))
+  obj
+  )
+
+;; definition of type collide-cache-prim
+(deftype collide-cache-prim (structure)
+  ((prim-core    collide-prim-core :inline             :offset-assert 0)
+   (ccache       basic                                 :offset-assert 32)
+   (prim         basic                                 :offset-assert 36)
+   (first-tri    uint16                                :offset-assert 40)
+   (num-tris     uint16                                :offset-assert 42)
+   (unused       uint8             4                   :offset-assert 44)
+   (world-sphere vector            :inline :offset   0)
+   (collide-as   uint64            :offset  16)
+   (action       uint32            :offset  24)
+   (offense      int8              :offset  28)
+   (prim-type    int8              :offset  29)
+   )
+  :method-count-assert 11
+  :size-assert         #x30
+  :flag-assert         #xb00000030
+  (:methods
+    (dummy-9 () none 9)
+    (dummy-10 () none 10)
+    )
+  )
+
+;; definition for method 3 of type collide-cache-prim
+(defmethod inspect collide-cache-prim ((obj collide-cache-prim))
+  (format #t "[~8x] ~A~%" obj 'collide-cache-prim)
+  (format #t "~Tprim-core: #<collide-prim-core @ #x~X>~%" (-> obj prim-core))
+  (format #t "~Textra-quad[16] @ #x~X~%" (&-> obj ccache))
+  (format #t "~Tccache: ~A~%" (-> obj ccache))
+  (format #t "~Tprim: ~A~%" (-> obj prim))
+  (format #t "~Tfirst-tri: ~D~%" (-> obj first-tri))
+  (format #t "~Tnum-tris: ~D~%" (-> obj num-tris))
+  (format #t "~Tunused[4] @ #x~X~%" (-> obj unused))
+  (format #t "~Tworld-sphere: ~`vector`P~%" (-> obj prim-core))
+  (format #t "~Tcollide-as: ~D~%" (-> obj prim-core collide-as))
+  (format #t "~Taction: ~D~%" (-> obj prim-core action))
+  (format #t "~Toffense: ~D~%" (-> obj prim-core offense))
+  (format #t "~Tprim-type: ~D~%" (-> obj prim-core prim-type))
+  obj
+  )
+
+;; definition of type collide-cache
+(deftype collide-cache (basic)
+  ((num-tris      int32                          :offset-assert 4)
+   (num-prims     int32                          :offset-assert 8)
+   (ignore-mask   uint32                         :offset-assert 12)
+   (proc          basic                          :offset-assert 16)
+   (collide-box   bounding-box       :inline     :offset-assert 32)
+   (collide-box4w bounding-box4w     :inline     :offset-assert 64)
+   (collide-with  uint64                         :offset-assert 96)
+   (prims         collide-cache-prim 100 :inline :offset-assert 112)
+   (tris          collide-cache-tri  461 :inline :offset-assert 4912)
+   )
+  :method-count-assert 33
+  :size-assert         #x8670
+  :flag-assert         #x2100008670
+  (:methods
+    (dummy-9 () none 9)
+    (dummy-10 () none 10)
+    (dummy-11 () none 11)
+    (dummy-12 () none 12)
+    (dummy-13 () none 13)
+    (dummy-14 () none 14)
+    (dummy-15 () none 15)
+    (dummy-16 () none 16)
+    (dummy-17 () none 17)
+    (dummy-18 () none 18)
+    (dummy-19 () none 19)
+    (dummy-20 () none 20)
+    (dummy-21 () none 21)
+    (dummy-22 () none 22)
+    (dummy-23 () none 23)
+    (dummy-24 () none 24)
+    (dummy-25 () none 25)
+    (dummy-26 () none 26)
+    (dummy-27 () none 27)
+    (dummy-28 () none 28)
+    (dummy-29 () none 29)
+    (dummy-30 () none 30)
+    (dummy-31 () none 31)
+    (dummy-32 () none 32)
+    )
+  )
+
+;; definition for method 3 of type collide-cache
+(defmethod inspect collide-cache ((obj collide-cache))
+  (format #t "[~8x] ~A~%" obj (-> obj type))
+  (format #t "~Tnum-tris: ~D~%" (-> obj num-tris))
+  (format #t "~Tnum-prims: ~D~%" (-> obj num-prims))
+  (format #t "~Tignore-mask: ~D~%" (-> obj ignore-mask))
+  (format #t "~Tproc: ~A~%" (-> obj proc))
+  (format #t "~Tcollide-box: #<bounding-box @ #x~X>~%" (-> obj collide-box))
+  (format
+   #t
+   "~Tcollide-box4w: #<bounding-box4w @ #x~X>~%"
+   (-> obj collide-box4w)
+   )
+  (format #t "~Tcollide-with: ~D~%" (-> obj collide-with))
+  (format #t "~Tprims[100] @ #x~X~%" (-> obj prims))
+  (format #t "~Ttris[461] @ #x~X~%" (-> obj tris))
+  obj
+  )
+
+;; definition of type collide-list-item
+(deftype collide-list-item (structure)
+  ((mesh basic  :offset-assert 0)
+   (inst basic  :offset-assert 4)
+   )
+  :method-count-assert 9
+  :size-assert         #x8
+  :flag-assert         #x900000008
+  )
+
+;; definition for method 3 of type collide-list-item
+(defmethod inspect collide-list-item ((obj collide-list-item))
+  (format #t "[~8x] ~A~%" obj 'collide-list-item)
+  (format #t "~Tmesh: ~A~%" (-> obj mesh))
+  (format #t "~Tinst: ~A~%" (-> obj inst))
+  obj
+  )
+
+;; definition of type collide-list
+(deftype collide-list (structure)
+  ((num-items int32                         :offset-assert 0)
+   (items     collide-list-item 256 :inline :offset-assert 16)
+   )
+  :method-count-assert 9
+  :size-assert         #x1010
+  :flag-assert         #x900001010
+  )
+
+;; definition for method 3 of type collide-list
+(defmethod inspect collide-list ((obj collide-list))
+  (format #t "[~8x] ~A~%" obj 'collide-list)
+  (format #t "~Tnum-items: ~D~%" (-> obj num-items))
+  (format #t "~Titems[256] @ #x~X~%" (-> obj items))
+  obj
+  )
+
+;; definition of type collide-work
+(deftype collide-work (structure)
+  ((collide-sphere-neg-r sphere         :inline :offset-assert 0)
+   (collide-box4w        bounding-box4w :inline :offset-assert 16)
+   (inv-mat              matrix         :inline :offset-assert 48)
+   )
+  :method-count-assert 9
+  :size-assert         #x70
+  :flag-assert         #x900000070
+  )
+
+;; definition for method 3 of type collide-work
+(defmethod inspect collide-work ((obj collide-work))
+  (format #t "[~8x] ~A~%" obj 'collide-work)
+  (format
+   #t
+   "~Tcollide-sphere-neg-r: #<sphere @ #x~X>~%"
+   (-> obj collide-sphere-neg-r)
+   )
+  (format
+   #t
+   "~Tcollide-box4w: #<bounding-box4w @ #x~X>~%"
+   (-> obj collide-box4w)
+   )
+  (format #t "~Tinv-mat: #<matrix @ #x~X>~%" (-> obj inv-mat))
+  obj
+  )
+
+;; definition (perm) for symbol *collide-work*, type collide-work
+(define-perm *collide-work* collide-work (new 'global 'collide-work))
+
+;; definition (perm) for symbol *collide-cache*, type collide-cache
+(define-perm *collide-cache* collide-cache (new 'global 'collide-cache))
+
+;; definition (perm) for symbol *collide-list*, type collide-list
+(define-perm *collide-list* collide-list (new 'global 'collide-list))
+
+
+
+

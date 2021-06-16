@@ -417,18 +417,23 @@ std::vector<VariableNames::VarInfo> Env::extract_visible_variables(
   return entries;
 }
 
-goos::Object Env::local_var_type_list(const Form* top_level_form,
-                                      int nargs_to_ignore,
-                                      int* count_out) const {
+FunctionVariableDefinitions Env::local_var_type_list(const Form* top_level_form,
+                                                     int nargs_to_ignore) const {
   assert(nargs_to_ignore <= 8);
   auto vars = extract_visible_variables(top_level_form);
 
+  FunctionVariableDefinitions result;
   std::vector<goos::Object> elts;
   elts.push_back(pretty_print::to_symbol("local-vars"));
   int count = 0;
   for (auto& x : vars) {
     if (x.reg_id.reg.get_kind() == Reg::GPR && x.reg_id.reg.get_gpr() < Reg::A0 + nargs_to_ignore &&
         x.reg_id.reg.get_gpr() >= Reg::A0 && x.reg_id.id == 0) {
+      continue;
+    }
+
+    if (x.reg_id.reg == Register(Reg::GPR, Reg::S6)) {
+      result.had_pp = true;
       continue;
     }
 
@@ -459,10 +464,11 @@ goos::Object Env::local_var_type_list(const Form* top_level_form,
     count++;
   }
 
-  if (count_out) {
-    *count_out = count;
+  result.count = count;
+  if (count > 0) {
+    result.local_vars = pretty_print::build_list(elts);
   }
-  return pretty_print::build_list(elts);
+  return result;
 }
 
 std::unordered_set<RegId, RegId::hash> Env::get_ssa_var(const RegAccessSet& vars) const {
@@ -499,16 +505,16 @@ void Env::disable_use(const RegisterAccess& access) {
  * Set the stack hints. This must be done before type analysis.
  * This actually parses the types, so it should be done after the dts is set up.
  */
-void Env::set_stack_var_hints(const std::vector<StackVariableHint>& hints) {
+void Env::set_stack_structure_hints(const std::vector<StackStructureHint>& hints) {
   for (auto& hint : hints) {
-    StackVarEntry entry;
+    StackStructureEntry entry;
     entry.hint = hint;
     // parse the type spec.
     TypeSpec base_typespec = dts->parse_type_spec(hint.element_type);
     auto type_info = dts->ts.lookup_type(base_typespec);
 
     switch (hint.container_type) {
-      case StackVariableHint::ContainerType::NONE:
+      case StackStructureHint::ContainerType::NONE:
         // just a plain object on the stack.
         if (!type_info->is_reference()) {
           throw std::runtime_error(
@@ -531,7 +537,7 @@ void Env::set_stack_var_hints(const std::vector<StackVariableHint>& hints) {
         assert(false);
     }
 
-    m_stack_vars.push_back(entry);
+    m_stack_structures.push_back(entry);
   }
 }
 

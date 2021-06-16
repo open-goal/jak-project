@@ -49,10 +49,10 @@ TEST_F(FormRegressionTest, MatrixPMult) {
       "   )\n"
       "  arg0\n"
       "  )";
-  test_with_stack_vars(func, type, expected,
-                       "[\n"
-                       "        [16, \"matrix\"]\n"
-                       "    ]");
+  test_with_stack_structures(func, type, expected,
+                             "[\n"
+                             "        [16, \"matrix\"]\n"
+                             "    ]");
 }
 
 // TODO- this should also work without the cast, but be uglier.
@@ -91,15 +91,15 @@ TEST_F(FormRegressionTest, VectorXQuaternionWithCast) {
       "(begin\n"
       "  (let ((s5-0 (new-stack-matrix0)))\n"
       "   (quaternion->matrix s5-0 arg1)\n"
-      "   (set! (-> arg0 vec quad) (-> (the-as (pointer uint128) (-> s5-0 data)) 0))\n"
+      "   (set! (-> arg0 vec quad) (-> (the-as (pointer uint128) (-> s5-0 vector)) 0))\n"
       "   )\n"
       "  arg0\n"
       "  )";
-  test_with_stack_vars(func, type, expected,
-                       "[\n"
-                       "        [16, \"matrix\"]\n"
-                       "    ]",
-                       "[[10, \"v1\", \"(pointer uint128)\"]]");
+  test_with_stack_structures(func, type, expected,
+                             "[\n"
+                             "        [16, \"matrix\"]\n"
+                             "    ]",
+                             "[[10, \"v1\", \"(pointer uint128)\"]]");
 }
 
 TEST_F(FormRegressionTest, EliminateFloatDeadSet) {
@@ -226,7 +226,7 @@ TEST_F(FormRegressionTest, EliminateFloatDeadSet) {
       "    )\n"
       "   )\n"
       "  )";
-  test_with_stack_vars(func, type, expected, "[]");
+  test_with_stack_structures(func, type, expected, "[]");
 }
 
 TEST_F(FormRegressionTest, IterateProcessTree) {
@@ -317,7 +317,7 @@ TEST_F(FormRegressionTest, IterateProcessTree) {
       "   )\n"
       "  s4-0\n"
       "  )";
-  test_with_stack_vars(func, type, expected, "[]");
+  test_with_stack_structures(func, type, expected, "[]");
 }
 
 TEST_F(FormRegressionTest, InspectVifStatBitfield) {
@@ -939,7 +939,7 @@ TEST_F(FormRegressionTest, DmaBufferAddVuFunction) {
       "   (while (> a3-0 0)\n"
       "    (let ((t0-1 (min 127 a3-0)))\n"
       "     (let* ((t1-1 arg0)\n"
-      "            (t2-0 (the-as dma-packet (-> t1-1 base)))\n"
+      "            (t2-0 (the-as object (-> t1-1 base)))\n"
       "            )\n"
       "      (set!\n"
       "       (-> (the-as dma-packet t2-0) dma)\n"
@@ -1174,6 +1174,83 @@ TEST_F(FormRegressionTest, Method4ResTag) {
   test_with_expr(func, type, expected);
 }
 
+TEST_F(FormRegressionTest, MakeSqrtTable) {
+  std::string func =
+      "sll r0, r0, 0\n"
+      "L149:\n"
+      "    daddiu sp, sp, -32\n"
+      "    sd ra, 0(sp)\n"
+      "    sd fp, 8(sp)\n"
+      "    or fp, t9, r0\n"
+      "    sq gp, 16(sp)\n"
+      "    lw t9, format(s7)\n"
+      "    daddiu a0, s7, #t\n"
+      "    daddiu a1, fp, L190\n"
+      "    jalr ra, t9\n"
+      "    sll v0, ra, 0\n"
+      "    addiu gp, r0, 0\n"
+      "    beq r0, r0, L151\n"
+      "    sll r0, r0, 0\n"
+      "L150:\n"
+      //"    lwc1 f0, L232(fp)\n"
+      "    mtc1 f0, r0\n"
+      "    mtc1 f1, gp\n"
+      "    cvt.s.w f1, f1\n"
+      "    mul.s f0, f0, f1\n"
+      "    sqrt.s f0, f0\n"
+      //"    lwc1 f1, L233(fp)\n"
+      "    mtc1 f1, r0\n"
+      "    add.s f0, f1, f0\n"
+      "    cvt.w.s f0, f0\n"
+      "    mfc1 a2, f0\n"
+      "    lw t9, format(s7)\n"
+      "    daddiu a0, s7, #t\n"
+      "    daddiu a1, fp, L189\n"
+      "    jalr ra, t9\n"
+      "    sll v0, ra, 0\n"
+      "    or v1, v0, r0\n"
+      "    daddiu gp, gp, 1\n"
+      "L151:\n"
+      "    slti v1, gp, 256\n"
+      "    bne v1, r0, L150\n"
+      "    sll r0, r0, 0\n"
+
+      "    or v1, s7, r0\n"
+      "    or v1, s7, r0\n"
+      "    lw t9, format(s7)\n"
+      "    daddiu a0, s7, #t\n"
+      "    daddiu a1, fp, L188\n"
+      "    jalr ra, t9\n"
+      "    sll v0, ra, 0\n"
+      "    or v0, r0, r0\n"
+      "    ld ra, 0(sp)\n"
+      "    ld fp, 8(sp)\n"
+      "    lq gp, 16(sp)\n"
+      "    jr ra\n"
+      "    daddiu sp, sp, 32\n"
+      "    sll r0, r0, 0\n"
+      "    sll r0, r0, 0";
+  std::string type = "(function none)";
+  std::string expected =
+      "(begin\n"
+      "  (format #t \"static int sqrt_table[256] =~%{~%\")\n"
+      "  (dotimes (gp-0 256)\n"
+      "   (let* ((f0-2 (sqrtf (* 0.0 (the float gp-0))))\n"
+      "          (a2-0 (the int (+ 0.0 f0-2)))\n"
+      "          )\n"
+      "    (format #t \"~D,~%\" a2-0)\n"
+      "    )\n"
+      "   )\n"
+      "  (format #t \"};~%\")\n"
+      "  (let ((v0-3 0))\n"
+      "   )\n"
+      "  (none)\n"
+      "  )";
+  test_with_expr(
+      func, type, expected, false, "",
+      {{"L190", "static int sqrt_table[256] =~%{~%"}, {"L189", "~D,~%"}, {"L188", "};~%"}});
+}
+
 TEST_F(FormRegressionTest, Method2Vec4s) {
   std::string func =
       "sll r0, r0, 0\n"
@@ -1218,4 +1295,25 @@ TEST_F(FormRegressionTest, Method2Vec4s) {
       "  arg0\n"
       "  )";
   test_with_expr(func, type, expected, false, "", {{"L344", "#<vector ~F ~F ~F ~F @ #x~X>"}});
+}
+
+TEST_F(FormRegressionTest, SoundNameEqual) {
+  std::string func =
+      "sll r0, r0, 0\n"
+      "    dsubu v1, a0, a1\n"
+      "    daddiu a2, s7, 8\n"
+      "    movn a2, s7, v1\n"
+      "    beql s7, a2, L125\n"
+      "    or v0, a2, r0\n"
+      "    pcpyud v1, a0, r0\n"
+      "    pcpyud a0, a1, r0\n"
+      "    dsubu v1, v1, a0\n"
+      "    daddiu v0, s7, 8\n"
+      "    movn v0, s7, v1\n"
+      "L125:\n"
+      "    jr ra\n"
+      "    daddu sp, sp, r0";
+  std::string type = "(function sound-name sound-name symbol)";
+  std::string expected = "(and (= arg0 arg1) (= (-> arg0 hi) (-> arg1 hi)))";
+  test_with_expr(func, type, expected);
 }

@@ -78,10 +78,13 @@ class RegVal : public Val {
   RegVal* to_xmm128(Env* fe) override;
   void set_rlet_constraint(emitter::Register reg);
   const std::optional<emitter::Register>& rlet_constraint() const;
+  void force_on_stack() { m_on_stack = true; }
+  bool forced_on_stack() const { return m_on_stack; }
 
  protected:
   IRegister m_ireg;
   std::optional<emitter::Register> m_rlet_constraint = std::nullopt;
+  bool m_on_stack = false;  // this should be spilled onto the stack always
 };
 
 /*!

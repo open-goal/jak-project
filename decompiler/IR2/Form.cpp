@@ -314,7 +314,8 @@ goos::Object SetVarElement::to_form_internal(const Env& env) const {
     }
   }
 
-  return pretty_print::build_list("set!", m_dst.to_form(env), m_src->to_form(env));
+  return pretty_print::build_list(
+      "set!", m_dst.to_form(env, RegisterAccess::Print::AS_VARIABLE_NO_CAST), m_src->to_form(env));
 }
 
 std::optional<TypeSpec> SetVarElement::required_cast(const Env& env) const {
@@ -1538,6 +1539,12 @@ std::string fixed_operator_to_string(FixedOperatorKind kind) {
       return "make-u128";
     case FixedOperatorKind::SYMBOL_TO_STRING:
       return "symbol->string";
+    case FixedOperatorKind::ADDRESS_OF:
+      return "&";
+    case FixedOperatorKind::ASM_SLLV_R0:
+      return ".asm.sllv.r0";
+    case FixedOperatorKind::ASM_MADDS:
+      return ".asm.madd.s";
     default:
       assert(false);
       return "";
@@ -1639,6 +1646,12 @@ CastElement::CastElement(TypeSpec type, Form* source, bool numeric)
 }
 
 goos::Object CastElement::to_form_internal(const Env& env) const {
+  auto atom = form_as_atom(m_source);
+  if (atom && atom->is_var()) {
+    return pretty_print::build_list(
+        m_numeric ? "the" : "the-as", m_type.print(),
+        atom->var().to_form(env, RegisterAccess::Print::AS_VARIABLE_NO_CAST));
+  }
   return pretty_print::build_list(m_numeric ? "the" : "the-as", m_type.print(),
                                   m_source->to_form(env));
 }
@@ -2011,13 +2024,15 @@ StorePlainDeref::StorePlainDeref(DerefElement* dst,
                                  int my_idx,
                                  RegisterAccess base_var,
                                  std::optional<TypeSpec> dst_cast_type,
-                                 std::optional<TypeSpec> src_cast_type)
+                                 std::optional<TypeSpec> src_cast_type,
+                                 int size)
     : m_dst(dst),
       m_expr(std::move(expr)),
       m_my_idx(my_idx),
       m_base_var(base_var),
       m_dst_cast_type(std::move(dst_cast_type)),
-      m_src_cast_type(std::move(src_cast_type)) {}
+      m_src_cast_type(std::move(src_cast_type)),
+      m_size(size) {}
 
 goos::Object StorePlainDeref::to_form_internal(const Env& env) const {
   std::vector<goos::Object> lst = {pretty_print::to_symbol("set!")};
@@ -2165,6 +2180,9 @@ void LetElement::apply_form(const std::function<void(Form*)>& f) {
 void LetElement::collect_vars(RegAccessSet& vars, bool recursive) const {
   for (auto& entry : m_entries) {
     vars.insert(entry.dest);
+    if (recursive) {
+      entry.src->collect_vars(vars, recursive);
+    }
   }
   m_body->collect_vars(vars, recursive);
 }
@@ -2265,11 +2283,12 @@ void LambdaDefinitionElement::get_modified_regs(RegSet&) const {}
 // StackVarDefElement
 /////////////////////////////
 
-StackVarDefElement::StackVarDefElement(const StackVarEntry& entry) : m_entry(entry) {}
+StackStructureDefElement::StackStructureDefElement(const StackStructureEntry& entry)
+    : m_entry(entry) {}
 
-goos::Object StackVarDefElement::to_form_internal(const Env&) const {
+goos::Object StackStructureDefElement::to_form_internal(const Env&) const {
   switch (m_entry.hint.container_type) {
-    case StackVariableHint::ContainerType::NONE:
+    case StackStructureHint::ContainerType::NONE:
       return pretty_print::build_list(
           fmt::format("new 'stack-no-clear '{}", m_entry.ref_type.print()));
     default:
@@ -2277,15 +2296,15 @@ goos::Object StackVarDefElement::to_form_internal(const Env&) const {
   }
 }
 
-void StackVarDefElement::apply_form(const std::function<void(Form*)>&) {}
+void StackStructureDefElement::apply_form(const std::function<void(Form*)>&) {}
 
-void StackVarDefElement::apply(const std::function<void(FormElement*)>& f) {
+void StackStructureDefElement::apply(const std::function<void(FormElement*)>& f) {
   f(this);
 }
 
-void StackVarDefElement::collect_vars(RegAccessSet&, bool) const {}
+void StackStructureDefElement::collect_vars(RegAccessSet&, bool) const {}
 
-void StackVarDefElement::get_modified_regs(RegSet&) const {}
+void StackStructureDefElement::get_modified_regs(RegSet&) const {}
 
 ////////////////////////////////
 // VectorFloatLoadStoreElement
@@ -2486,6 +2505,18 @@ FormElement* make_cast_using_existing(FormElement* elt, const TypeSpec& type, Fo
   } else {
     return pool.alloc_element<CastElement>(type, pool.alloc_single_form(nullptr, elt));
   }
+}
+
+GenericElement* alloc_generic_token_op(const std::string& name,
+                                       const std::vector<Form*>& args,
+                                       FormPool& pool) {
+  auto op = GenericOperator::make_function(
+      pool.alloc_single_element_form<ConstantTokenElement>(nullptr, name));
+  return pool.alloc_element<GenericElement>(op, args);
+}
+
+Form* alloc_var_form(const RegisterAccess& var, FormPool& pool) {
+  return pool.alloc_single_element_form<SimpleAtomElement>(nullptr, SimpleAtom::make_var(var));
 }
 
 }  // namespace decompiler

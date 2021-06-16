@@ -90,10 +90,6 @@ Val* Compiler::compile_define_extern(const goos::Object& form, const goos::Objec
     }
   }
 
-  if (new_type == m_ts.make_typespec("type")) {
-    m_ts.forward_declare_type(symbol_string(sym));
-  }
-
   m_symbol_types[symbol_string(sym)] = new_type;
   m_symbol_info.add_fwd_dec(symbol_string(sym), form);
   return get_none();

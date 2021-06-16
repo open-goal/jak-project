@@ -746,6 +746,19 @@ TEST_F(WithGameTests, Function128) {
        "0\n"});
 }
 
+TEST_F(WithGameTests, AddrOfVar) {
+  runner.run_static_test(env, testCategory, "test-addr-of-var.gc",
+                         {"x: 25 y: 35 z: 35\n"
+                          "x: 13 y: 35 z: 15\n"
+                          "0\n"});
+}
+
+TEST_F(WithGameTests, SoundName) {
+  runner.run_static_test(env, testCategory, "test-sound-name.gc",
+                         {"#t #f #f\n"
+                          "0\n"});
+}
+
 TEST(TypeConsistency, TypeConsistency) {
   Compiler compiler;
   compiler.enable_throw_on_redefines();
@@ -822,6 +835,8 @@ struct VectorFloatTestCase {
 
   virtual VectorFloatRegister getExpectedResult() = 0;
   virtual void setJson(nlohmann::json& data, std::string func) = 0;
+
+  virtual ~VectorFloatTestCase() = default;
 };
 
 struct VectorFloatTestCase_TwoOperand : VectorFloatTestCase {

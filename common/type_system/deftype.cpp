@@ -166,20 +166,30 @@ void add_bitfield(BitFieldType* bitfield_type, TypeSystem* ts, const goos::Objec
 void declare_method(Type* type, TypeSystem* type_system, const goos::Object& def) {
   for_each_in_list(def, [&](const goos::Object& _obj) {
     auto obj = &_obj;
-    // (name args return-type [id])
+    // (name args return-type [:no-virtual] [id])
     auto method_name = symbol_string(car(obj));
     obj = cdr(obj);
     auto& args = car(obj);
     obj = cdr(obj);
     auto& return_type = car(obj);
     obj = cdr(obj);
+
+    bool no_virtual = false;
+
+    if (!obj->is_empty_list() && car(obj).is_symbol(":no-virtual")) {
+      obj = cdr(obj);
+      no_virtual = true;
+    }
+
     int id = -1;
-    if (!obj->is_empty_list()) {
+    if (!obj->is_empty_list() && car(obj).is_int()) {
       auto& id_obj = car(obj);
       id = get_int(id_obj);
-      if (!cdr(obj)->is_empty_list()) {
-        throw std::runtime_error("too many things in method def: " + def.print());
-      }
+      obj = cdr(obj);
+    }
+
+    if (!obj->is_empty_list()) {
+      throw std::runtime_error("too many things in method def: " + def.print());
     }
 
     TypeSpec function_typespec("function");
@@ -189,7 +199,7 @@ void declare_method(Type* type, TypeSystem* type_system, const goos::Object& def
     });
     function_typespec.add_arg(parse_typespec(type_system, return_type));
 
-    auto info = type_system->add_method(type, method_name, function_typespec);
+    auto info = type_system->declare_method(type, method_name, no_virtual, function_typespec);
 
     // check the method assert
     if (id != -1) {
@@ -298,6 +308,15 @@ StructureDefResult parse_structure_def(StructureType* type,
     throw std::runtime_error(
         fmt::format("Type {} has flag 0x{:x} but flag-assert was set to 0x{:x}", type->get_name(),
                     flags.flag, flag_assert));
+  }
+
+  if (result.flags.heap_base) {
+    int heap_start_1 = 112 + result.flags.heap_base;
+    int heap_start_2 = (result.flags.size + 15) & (~15);
+    if (heap_start_1 != heap_start_2) {
+      throw std::runtime_error(fmt::format("Heap base bad on {}: {} vs {}\n", type->get_name(),
+                                           heap_start_1, heap_start_2));
+    }
   }
 
   result.flags = flags;
@@ -445,7 +464,7 @@ DeftypeResult parse_deftype(const goos::Object& deftype, TypeSystem* ts) {
                       parent_type_name));
     }
     new_type->inherit(pto);
-    ts->forward_declare_type_as_basic(name);
+    ts->forward_declare_type_as(name, "basic");
     auto sr = parse_structure_def(new_type.get(), ts, field_list_obj, options_obj);
     result.flags = sr.flags;
     result.create_runtime_type = sr.generate_runtime_type;
@@ -469,7 +488,7 @@ DeftypeResult parse_deftype(const goos::Object& deftype, TypeSystem* ts) {
     auto pto = dynamic_cast<StructureType*>(ts->lookup_type(parent_type));
     assert(pto);
     new_type->inherit(pto);
-    ts->forward_declare_type_as_structure(name);
+    ts->forward_declare_type_as(name, "structure");
     auto sr = parse_structure_def(new_type.get(), ts, field_list_obj, options_obj);
     result.flags = sr.flags;
     result.create_runtime_type = sr.generate_runtime_type;

@@ -14,9 +14,8 @@
   (set! (-> obj period) arg0)
   (let* ((f0-1 (the float arg0))
          (f1-1 (* arg1 f0-1))
-         (f0-3 (- f1-1 (* (the float (the int (/ f1-1 f0-1))) f0-1)))
          )
-   (set! (-> obj offset) f0-3)
+   (set! (-> obj offset) (- f1-1 (* (the float (the int (/ f1-1 f0-1))) f0-1)))
    )
   0
   )
@@ -29,9 +28,8 @@
   (set! (-> obj period) arg0)
   (let* ((f0-1 (the float arg0))
          (f1-1 (* arg1 f0-1))
-         (f0-3 (- f1-1 (* (the float (the int (/ f1-1 f0-1))) f0-1)))
          )
-   (set! (-> obj offset) f0-3)
+   (set! (-> obj offset) (- f1-1 (* (the float (the int (/ f1-1 f0-1))) f0-1)))
    )
   (if (< arg2 0.0)
    (set! arg2 0.0)
@@ -76,9 +74,8 @@
   (set! (-> obj period) arg0)
   (let* ((f0-1 (the float arg0))
          (f1-1 (* arg1 f0-1))
-         (f0-3 (- f1-1 (* (the float (the int (/ f1-1 f0-1))) f0-1)))
          )
-   (set! (-> obj offset) f0-3)
+   (set! (-> obj offset) (- f1-1 (* (the float (the int (/ f1-1 f0-1))) f0-1)))
    )
   (cond
    ((< arg2 0.0)
@@ -102,22 +99,13 @@
   )
 
 ;; definition for method 15 of type sync-info
-;; WARN: Type Propagation failed: Could not get type of load: (set! a0 (l.wu (+ a1 48))). 
-;; WARN: Type Propagation failed: Type analysis failed
-;; WARN: Unsupported inline assembly instruction kind - [sq r0, 16(sp)]
-;; Used lq/sq
+;; ERROR: function was not converted to expressions. Cannot decompile.
 
 ;; definition for method 15 of type sync-info-eased
-;; WARN: Type Propagation failed: Could not get type of load: (set! a0 (l.wu (+ a1 48))). 
-;; WARN: Type Propagation failed: Type analysis failed
-;; WARN: Unsupported inline assembly instruction kind - [sq r0, 16(sp)]
-;; Used lq/sq
+;; ERROR: function was not converted to expressions. Cannot decompile.
 
 ;; definition for method 15 of type sync-info-paused
-;; WARN: Type Propagation failed: Could not get type of load: (set! a0 (l.wu (+ a1 48))). 
-;; WARN: Type Propagation failed: Type analysis failed
-;; WARN: Unsupported inline assembly instruction kind - [sq r0, 16(sp)]
-;; Used lq/sq
+;; ERROR: function was not converted to expressions. Cannot decompile.
 
 ;; definition for method 10 of type sync-info
 (defmethod dummy-10 sync-info ((obj sync-info))
@@ -213,7 +201,7 @@
 
 ;; definition for method 9 of type sync-info-paused
 (defmethod dummy-9 sync-info-paused ((obj sync-info-paused) (arg0 float))
-  (* ((method-of-type sync-info-paused dummy-11) obj) arg0)
+  (* (dummy-11 obj) arg0)
   )
 
 ;; definition for method 13 of type sync-info
@@ -354,12 +342,12 @@
 
 ;; definition for method 12 of type sync-info-eased
 (defmethod dummy-12 sync-info-eased ((obj sync-info-eased) (arg0 float))
-  (* ((method-of-type sync-info-eased dummy-13) obj) arg0)
+  (* (dummy-13 obj) arg0)
   )
 
 ;; definition for method 12 of type sync-info-paused
 (defmethod dummy-12 sync-info-paused ((obj sync-info-paused) (arg0 float))
-  (* ((method-of-type sync-info-paused dummy-13) obj) arg0)
+  (* (dummy-13 obj) arg0)
   )
 
 ;; definition for method 9 of type delayed-rand-float
@@ -385,8 +373,9 @@
     )
    (set! (-> obj start-time) (-> *display* base-frame-counter))
    (set! (-> obj timer) (rand-vu-int-range (-> obj min-time) (-> obj max-time)))
-   (let ((f0-3 (rand-vu-float-range (- (-> obj max-val)) (-> obj max-val))))
-    (set! (-> obj value) f0-3)
+   (set!
+    (-> obj value)
+    (rand-vu-float-range (- (-> obj max-val)) (-> obj max-val))
     )
    )
   (-> obj value)
@@ -423,10 +412,9 @@
    (fmin (-> obj max-vel) (fmax (- (-> obj max-vel)) (-> obj vel)))
    )
   (set! (-> obj vel) (* (-> obj vel) (-> obj damping)))
-  (let
-   ((f0-10 (+ (-> obj value) (* (-> obj vel) (-> *display* time-adjust-ratio))))
-    )
-   (set! (-> obj value) f0-10)
+  (set!
+   (-> obj value)
+   (+ (-> obj value) (* (-> obj vel) (-> *display* time-adjust-ratio)))
    )
   (-> obj value)
   )
@@ -444,7 +432,7 @@
    (arg5 float)
    (arg6 float)
    )
-  ((method-of-type oscillating-float dummy-9) (-> obj osc) arg0 arg4 arg5 arg6)
+  (dummy-9 (-> obj osc) arg0 arg4 arg5 arg6)
   (set! (-> obj max-value) arg1)
   (set! (-> obj min-value) arg2)
   (set! (-> obj elasticity) arg3)
@@ -454,23 +442,19 @@
 
 ;; definition for method 10 of type bouncing-float
 (defmethod dummy-10 bouncing-float ((obj bouncing-float) (arg0 float))
-  ((method-of-type oscillating-float dummy-10) (-> obj osc) arg0)
+  (dummy-10 (-> obj osc) arg0)
   (set! (-> obj state) 0)
   (when (>= (-> obj osc value) (-> obj max-value))
    (set! (-> obj osc value) (-> obj max-value))
    (if (< 0.0 (-> obj osc vel))
-    (let ((f0-4 (* (-> obj osc vel) (- (-> obj elasticity)))))
-     (set! (-> obj osc vel) f0-4)
-     )
+    (set! (-> obj osc vel) (* (-> obj osc vel) (- (-> obj elasticity))))
     )
    (set! (-> obj state) 1)
    )
   (when (>= (-> obj min-value) (-> obj osc value))
    (set! (-> obj osc value) (-> obj min-value))
    (if (< (-> obj osc vel) 0.0)
-    (let ((f0-9 (* (-> obj osc vel) (- (-> obj elasticity)))))
-     (set! (-> obj osc vel) f0-9)
-     )
+    (set! (-> obj osc vel) (* (-> obj osc vel) (- (-> obj elasticity))))
     )
    (set! (-> obj state) -1)
    )
@@ -500,9 +484,7 @@
    (set! (-> obj y-max) (* 0.5 arg3))
    (set! (-> obj start-time) (the-as uint 0))
    (set! (-> obj timer) 0)
-   (let ((v1-0 (-> obj value)))
-    (.svf (&-> v1-0 quad) vf0)
-    )
+   (.svf (&-> (-> obj value) quad) vf0)
    (-> obj value)
    )
   )
@@ -512,15 +494,15 @@
   (set! (-> obj start-time) (-> *display* base-frame-counter))
   (set! (-> obj timer) (rand-vu-int-range (-> obj min-time) (-> obj max-time)))
   (set!
-   (-> obj value data 0)
+   (-> obj value x)
    (rand-vu-float-range (- (-> obj xz-max)) (-> obj xz-max))
    )
   (set!
-   (-> obj value data 1)
+   (-> obj value y)
    (rand-vu-float-range (- (-> obj y-max)) (-> obj y-max))
    )
   (set!
-   (-> obj value data 2)
+   (-> obj value z)
    (rand-vu-float-range (- (-> obj xz-max)) (-> obj xz-max))
    )
   (-> obj value)
@@ -533,7 +515,7 @@
     (the-as int (- (-> *display* base-frame-counter) (-> obj start-time)))
     (-> obj timer)
     )
-   ((method-of-type delayed-rand-vector dummy-10) obj)
+   (dummy-10 obj)
    )
   (-> obj value)
   )
@@ -547,10 +529,8 @@
      (the-as int (- (-> *display* base-frame-counter) (-> obj start-time)))
      (-> obj timer)
      )
-    ((method-of-type delayed-rand-vector dummy-10) obj)
-    (let ((v1-5 (-> obj value)))
-     (.svf (&-> v1-5 quad) vf0)
-     )
+    (dummy-10 obj)
+    (.svf (&-> (-> obj value) quad) vf0)
     )
    (-> obj value)
    )
@@ -579,17 +559,11 @@
       )
      )
     (else
-     (let ((v1-2 (-> obj value)))
-      (.svf (&-> v1-2 quad) vf0)
-      )
-     (let ((v1-3 (-> obj target)))
-      (.svf (&-> v1-3 quad) vf0)
-      )
+     (.svf (&-> (-> obj value) quad) vf0)
+     (.svf (&-> (-> obj target) quad) vf0)
      )
     )
-   (let ((v1-4 (-> obj vel)))
-    (.svf (&-> v1-4 quad) vf0)
-    )
+   (.svf (&-> (-> obj vel) quad) vf0)
    (set! (-> obj max-vel) arg2)
    (set! (-> obj damping) arg3)
    (set! (-> obj accel) arg1)
@@ -607,7 +581,7 @@
          (vf6 :class vf)
          )
    (init-vf0-vector)
-   (let ((s5-0 (new 'stack 'vector)))
+   (let ((s5-0 (new 'stack-no-clear 'vector)))
     (cond
      (arg0
       (let ((a0-1 s5-0))
@@ -670,7 +644,7 @@
      (.svf (&-> a1-4 quad) vf6)
      )
     (let ((f0-2 (vector-length (-> obj vel))))
-     (if (< (-> obj max-vel) f0-2)
+     (when (< (-> obj max-vel) f0-2)
       (let ((v1-6 (-> obj vel)))
        (let ((a0-8 (-> obj vel))
              (f0-3 (/ (-> obj max-vel) f0-2))

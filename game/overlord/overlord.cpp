@@ -5,6 +5,7 @@
 #include "iso.h"
 #include "ssound.h"
 #include "sbank.h"
+#include "srpc.h"
 
 using namespace iop;
 
@@ -44,21 +45,22 @@ int start_overlord(int argc, const char* const* argv) {
   //    return 1;
   //  }
   //
-  //  thread_param.attr = TH_C;
-  //  thread_param.initPriority = 99;
-  //  thread_param.stackSize = 0x1000;
-  //  thread_param.option = 0;
-  //  thread_param.entry = Thread_Loader;
-  //  auto thread_loader = CreateThread(&thread_param);
-  //  if(thread_loader <= 0) {
-  //    return 1;
-  //  }
+  thread_param.attr = TH_C;
+  thread_param.initPriority = 99;
+  thread_param.stackSize = 0x1000;
+  thread_param.option = 0;
+  thread_param.entry = (void*)Thread_Loader;
+  strcpy(thread_param.name, "Loader");  // added for debug
+  auto thread_loader = CreateThread(&thread_param);
+  if (thread_loader <= 0) {
+    return 1;
+  }
 
   InitISOFS(argv[1], argv[2]);
   StartThread(thread_server, 0);
 
   //  StartThread(thread_player, 0);
-  //  StartThread(thread_loader, 0);
+  StartThread(thread_loader, 0);
   return 0;
 }
 

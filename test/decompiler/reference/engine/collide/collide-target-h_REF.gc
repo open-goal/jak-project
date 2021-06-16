@@ -1,0 +1,78 @@
+;;-*-Lisp-*-
+(in-package goal)
+
+;; definition of type collide-history
+(deftype collide-history (structure)
+  ((intersect      vector :inline :offset-assert 0)
+   (trans          vector :inline :offset-assert 16)
+   (transv         vector :inline :offset-assert 32)
+   (transv-out     vector :inline :offset-assert 48)
+   (local-normal   vector :inline :offset-assert 64)
+   (surface-normal vector :inline :offset-assert 80)
+   (time           uint64         :offset-assert 96)
+   (status         uint64         :offset-assert 104)
+   (pat            uint32         :offset-assert 112)
+   (reaction-flag  uint32         :offset-assert 116)
+   )
+  :method-count-assert 10
+  :size-assert         #x78
+  :flag-assert         #xa00000078
+  (:methods
+    (update! (_type_ collide-shape-moving vector vector vector) _type_ 9)
+    )
+  )
+
+;; definition for method 3 of type collide-history
+(defmethod inspect collide-history ((obj collide-history))
+  (format #t "[~8x] ~A~%" obj 'collide-history)
+  (format #t "~Tintersect: ~`vector`P~%" (-> obj intersect))
+  (format #t "~Ttrans: ~`vector`P~%" (-> obj trans))
+  (format #t "~Ttransv: ~`vector`P~%" (-> obj transv))
+  (format #t "~Ttransv-out: ~`vector`P~%" (-> obj transv-out))
+  (format #t "~Tlocal-normal: ~`vector`P~%" (-> obj local-normal))
+  (format #t "~Tsurface-normal: ~`vector`P~%" (-> obj surface-normal))
+  (format #t "~Ttime: ~D~%" (-> obj time))
+  (format #t "~Tstatus: ~D~%" (-> obj status))
+  (format #t "~Tpat: ~D~%" (-> obj pat))
+  (format #t "~Treaction-flag: ~D~%" (-> obj reaction-flag))
+  obj
+  )
+
+;; definition of type control-info
+(deftype control-info (collide-shape-moving)
+  ((array-size    int16           :offset 2490)
+   (history-array collide-history 128 :inline :offset-assert 2496)
+   (pad           uint32          27          :offset-assert 18880)
+   )
+  :method-count-assert 65
+  :size-assert         #x4a2c
+  :flag-assert         #x4100004a2c
+  )
+
+;; definition for method 9 of type collide-history
+;; Used lq/sq
+(defmethod
+  update!
+  collide-history
+  ((obj collide-history)
+   (cshape collide-shape-moving)
+   (xs vector)
+   (transv vector)
+   (transv-out vector)
+   )
+  (set! (-> obj intersect quad) (-> xs quad))
+  (set! (-> obj transv quad) (-> transv quad))
+  (set! (-> obj transv-out quad) (-> transv-out quad))
+  (set! (-> obj trans quad) (-> cshape trans quad))
+  (set! (-> obj local-normal quad) (-> cshape local-normal quad))
+  (set! (-> obj surface-normal quad) (-> cshape surface-normal quad))
+  (set! (-> obj time) (-> *display* base-frame-counter))
+  (set! (-> obj status) (-> cshape status))
+  (set! (-> obj reaction-flag) (-> cshape reaction-flag))
+  (set! (-> obj pat) (-> cshape cur-pat))
+  obj
+  )
+
+
+
+

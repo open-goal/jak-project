@@ -22,8 +22,8 @@ struct VariableWithCast {
   std::optional<TypeSpec> cast;
 };
 
-struct StackVarEntry {
-  StackVariableHint hint;
+struct StackStructureEntry {
+  StackStructureHint hint;
   TypeSpec ref_type;  // the actual type of the address.
   int size = -1;
 };
@@ -40,6 +40,12 @@ struct StackSpillEntry {
       return fmt::format("sv-{}", offset);
     }
   }
+};
+
+struct FunctionVariableDefinitions {
+  std::optional<goos::Object> local_vars;
+  bool had_pp = false;
+  int count = 0;
 };
 
 /*!
@@ -122,20 +128,26 @@ class Env {
 
   std::vector<VariableNames::VarInfo> extract_visible_variables(const Form* top_level_form) const;
   std::string print_local_var_types(const Form* top_level_form) const;
-  goos::Object local_var_type_list(const Form* top_level_form,
-                                   int nargs_to_ignore,
-                                   int* count_out) const;
+  FunctionVariableDefinitions local_var_type_list(const Form* top_level_form,
+                                                  int nargs_to_ignore) const;
 
   std::unordered_set<RegId, RegId::hash> get_ssa_var(const RegAccessSet& vars) const;
   RegId get_program_var_id(const RegisterAccess& var) const;
 
   bool allow_sloppy_pair_typing() const { return m_allow_sloppy_pair_typing; }
   void set_sloppy_pair_typing() { m_allow_sloppy_pair_typing = true; }
-  void set_type_casts(const std::unordered_map<int, std::vector<TypeCast>>& casts) {
+  void set_type_casts(const std::unordered_map<int, std::vector<RegisterTypeCast>>& casts) {
     m_typecasts = casts;
   }
+  const std::unordered_map<int, std::vector<RegisterTypeCast>>& casts() const {
+    return m_typecasts;
+  }
 
-  const std::unordered_map<int, std::vector<TypeCast>>& casts() const { return m_typecasts; }
+  void set_stack_casts(const std::unordered_map<int, StackTypeCast>& casts) {
+    m_stack_typecasts = casts;
+  }
+
+  const std::unordered_map<int, StackTypeCast>& stack_casts() const { return m_stack_typecasts; }
 
   void set_remap_for_function(int nargs);
   void set_remap_for_method(int nargs);
@@ -158,8 +170,10 @@ class Env {
     m_label_types = types;
   }
 
-  void set_stack_var_hints(const std::vector<StackVariableHint>& hints);
-  const std::vector<StackVarEntry>& stack_var_hints() const { return m_stack_vars; }
+  void set_stack_structure_hints(const std::vector<StackStructureHint>& hints);
+  const std::vector<StackStructureEntry>& stack_structure_hints() const {
+    return m_stack_structures;
+  }
 
   const UseDefInfo& get_use_def_info(const RegisterAccess& ra) const;
   void disable_use(const RegisterAccess& access);
@@ -210,8 +224,9 @@ class Env {
 
   bool m_allow_sloppy_pair_typing = false;
 
-  std::unordered_map<int, std::vector<TypeCast>> m_typecasts;
-  std::vector<StackVarEntry> m_stack_vars;
+  std::unordered_map<int, std::vector<RegisterTypeCast>> m_typecasts;
+  std::unordered_map<int, StackTypeCast> m_stack_typecasts;
+  std::vector<StackStructureEntry> m_stack_structures;
   std::unordered_map<std::string, std::string> m_var_remap;
   std::unordered_map<std::string, TypeSpec> m_var_retype;
   std::unordered_map<std::string, LabelType> m_label_types;

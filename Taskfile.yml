@@ -35,7 +35,7 @@ tasks:
       - python ./scripts/cleanup-all-types.py
   analyze-ee-memory:
     cmds:
-      - ./out/build/Debug/bin/memory_dump_tool.exe "{{.FILE}}" > ee-analysis.log
+      - ./out/build/Debug/bin/memory_dump_tool.exe "{{.FILE}}" ./ > ee-analysis.log
   watch-pcsx2:
     cmds:
       - watchmedo shell-command --drop --patterns="*.p2s" --recursive --command='task analyze-ee-memory FILE="${watch_src_path}"' "{{.SAVESTATE_DIR}}"
@@ -44,9 +44,15 @@ tasks:
   offline-tests:
     cmds:
       - ./out/build/Release/bin/offline-test.exe "./iso_data/jak1"
+  add-reference-test:
+    cmds:
+      - task: decomp-file
+      - python ./scripts/add-reference-test.py --file "{{.FILE}}"
+      - task: offline-tests
   update-reference-tests:
     cmds:
-      - ./out/build/Debug/bin/offline-test.exe "./iso_data/jak1" --dump-mode
-      - python .\scripts\update_decomp_reference.py .\failures\ .\test\decompiler\reference\
+      - cmd: ./out/build/Release/bin/offline-test.exe "./iso_data/jak1" --dump-mode
+        ignore_error: true
+      - python ./scripts/update_decomp_reference.py ./failures ./test/decompiler/reference/
       - task: offline-tests
 

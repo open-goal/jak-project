@@ -5,3 +5,178 @@
 ;; name in dgo: tie-h
 ;; dgos: GAME, ENGINE
 
+(deftype tie-fragment (drawable)
+  ((gif-ref       uint32 :offset   4)
+   (point-ref     uint32 :offset   8)
+   (color-index   uint16 :offset  12)
+   (base-colors   uint8  :offset  14)
+   (tex-count     uint16             :offset-assert 32)
+   (gif-count     uint16             :offset-assert 34)
+   (vertex-count  uint16             :offset-assert 36)
+   (color-count   uint16             :offset-assert 38)
+   (num-tris      uint16             :offset-assert 40)
+   (num-dverts    uint16             :offset-assert 42)
+   (dp-ref        uint32             :offset-assert 44)
+   (dp-qwc        uint32             :offset-assert 48)
+   (generic-ref   uint32             :offset-assert 52)
+   (generic-count uint32             :offset-assert 56)
+   (debug-lines   basic              :offset-assert 60)
+   )
+  :method-count-assert 18
+  :size-assert         #x40
+  :flag-assert         #x1200000040
+  )
+
+(deftype instance-tie (instance)
+  ((color-indices uint32 :offset   8)
+   (bucket-ptr    basic  :offset  12)
+   (max-scale     uint16 :offset  38)
+   (flags         uint16 :offset  46)
+   )
+  :method-count-assert 18
+  :size-assert         #x40
+  :flag-assert         #x1200000040
+  )
+
+(deftype drawable-inline-array-instance-tie (drawable-inline-array)
+  ((data instance-tie 1 :inline :offset-assert 32)
+   (pad  uint32                 :offset-assert 96)
+   )
+  :method-count-assert 18
+  :size-assert         #x64
+  :flag-assert         #x1200000064
+  )
+
+(deftype drawable-tree-instance-tie (drawable-tree)
+  ((length     int16 :offset   6)
+   (prototypes basic :offset   8)
+   ;; todo - maybe another data field
+   )
+  :method-count-assert 18
+  :size-assert         #x24
+  :flag-assert         #x1200000024
+  )
+
+(deftype prototype-tie (drawable-inline-array)
+  ((data instance-tie 1 :inline :offset-assert 32)
+   (pad  uint32                 :offset-assert 96)
+   )
+  :method-count-assert 18
+  :size-assert         #x64
+  :flag-assert         #x1200000064
+  )
+
+(deftype tie-matrix (structure)
+  ((mat   matrix :inline :offset-assert 0)
+   (morph qword  :inline :offset-assert 64)
+   (fog   qword  :inline :offset-assert 80)
+   )
+  :method-count-assert 9
+  :size-assert         #x60
+  :flag-assert         #x900000060
+  )
+
+(deftype instance-tie-work (structure)
+  ((wind-const                  vector     :inline   :offset-assert 0)
+   (hmge-d                      vector     :inline   :offset-assert 16)
+   (hvdf-offset                 vector     :inline   :offset-assert 32)
+   (wind-force                  vector     :inline   :offset-assert 48)
+   (constant                    vector     :inline   :offset-assert 64)
+   (far-morph                   vector     :inline   :offset-assert 80)
+   (dist-test                   vector     :inline   :offset-assert 96)
+   (min-dist                    vector     :inline   :offset-assert 112)
+   (guard-plane                 plane      4 :inline :offset-assert 128)
+   (upload-color-0              dma-packet :inline   :offset-assert 192)
+   (upload-color-1              dma-packet :inline   :offset-assert 208)
+   (upload-color-2              dma-packet :inline   :offset-assert 224)
+   (upload-color-ret            dma-packet :inline   :offset-assert 240)
+   (upload-color-temp           dma-packet :inline   :offset-assert 256)
+   (generic-color-0             dma-packet :inline   :offset-assert 272)
+   (generic-color-1             dma-packet :inline   :offset-assert 288)
+   (generic-color-end           dma-packet :inline   :offset-assert 304)
+   (tie-near-perspective-matrix matrix     :inline   :offset-assert 320)
+   (wind-vectors                uint32               :offset-assert 384)
+   (test-id                     uint32               :offset-assert 388)
+   (test-id2                    uint32               :offset-assert 392)
+   (dma-buffer                  basic                :offset-assert 396)
+   (to-spr                      uint32               :offset-assert 400)
+   (from-spr                    uint32               :offset-assert 404)
+   (wind-work                   uint32               :offset-assert 408)
+   (cur-vis-bits                uint32               :offset-assert 412)
+   (end-vis-bits                uint32               :offset-assert 416)
+   (first-generic-prototype     uint32               :offset-assert 420)
+   (refl-fade-fac               float                :offset-assert 424)
+   (refl-fade-end               float                :offset-assert 428)
+   (flags                       uint32               :offset-assert 432)
+   (paused                      basic                :offset-assert 436)
+   (wait-from-spr               uint32               :offset-assert 440)
+   (wait-to-spr                 uint32               :offset-assert 444)
+   )
+  :method-count-assert 9
+  :size-assert         #x1c0
+  :flag-assert         #x9000001c0
+  )
+
+(deftype instance-tie-dma (structure)
+  ((banka instance-tie      32 :inline :offset-assert 0)
+   (bankb instance-tie      32 :inline :offset-assert 2048)
+   (outa  uint128           256        :offset-assert 4096)
+   (outb  uint128           256        :offset-assert 8192)
+   (work  instance-tie-work :dynamic   :offset-assert 12288) ;; something weird here, this falls off the end of the type.
+   )
+  :method-count-assert 9
+  :size-assert         #x3000
+  :flag-assert         #x900003000
+  )
+
+(deftype prototype-tie-work (structure)
+  ((upload-palette-0      dma-packet :inline :offset-assert 0)
+   (upload-palette-1      dma-packet :inline :offset-assert 16)
+   (upload-model-0        dma-packet :inline :offset-assert 32)
+   (upload-model-1        dma-packet :inline :offset-assert 48)
+   (upload-model-2        dma-packet :inline :offset-assert 64)
+   (upload-model-3        dma-packet :inline :offset-assert 80)
+   (upload-model-near-0   dma-packet :inline :offset-assert 96)
+   (upload-model-near-1   dma-packet :inline :offset-assert 112)
+   (upload-model-near-2   dma-packet :inline :offset-assert 128)
+   (upload-model-near-3   dma-packet :inline :offset-assert 144)
+   (upload-model-near-4   dma-packet :inline :offset-assert 160)
+   (generic-envmap-shader dma-packet :inline :offset-assert 176)
+   (generic-palette       dma-packet :inline :offset-assert 192)
+   (generic-model-0       dma-packet :inline :offset-assert 208)
+   (generic-model-1       dma-packet :inline :offset-assert 224)
+   (generic-model-2       dma-packet :inline :offset-assert 240)
+   (generic-model-next    dma-packet :inline :offset-assert 256)
+   (clamp                 uint64             :offset-assert 272)
+   (prototype-array       basic              :offset-assert 280)
+   (generic-wait-from-spr uint32             :offset-assert 284)
+   (generic-wait-to-spr   uint32             :offset-assert 288)
+   (wait-from-spr         uint32             :offset-assert 292)
+   (wait-to-spr           uint32             :offset-assert 296)
+   (near-wait-from-spr    uint32             :offset-assert 300)
+   (near-wait-to-spr      uint32             :offset-assert 304)
+   )
+  :method-count-assert 9
+  :size-assert         #x134
+  :flag-assert         #x900000134
+  )
+
+(deftype prototype-tie-dma (structure)
+  ((colora          rgba    256           :offset-assert 0)
+   (colorb          rgba    256           :offset-assert 1024)
+   (outa            uint128 256           :offset-assert 2048)
+   (outb            uint128 256           :offset-assert 6144)
+   (length          uint32                :offset-assert 10240)
+   (dma-buffer      basic                 :offset-assert 10244)
+   (this-frag-count uint32                :offset-assert 10248)
+   (next            uint32  4 :offset 10256)
+   (geometry        uint32  4             :offset-assert 10272)
+   (frag-count      uint8   4             :offset-assert 10288)
+   )
+  :method-count-assert 9
+  :size-assert         #x2834
+  :flag-assert         #x900002834
+  )
+
+;; probably a more specific type.
+(define *instance-tie-work-copy* (the-as basic #f))

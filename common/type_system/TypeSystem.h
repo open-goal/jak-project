@@ -91,9 +91,8 @@ class TypeSystem {
   TypeSystem();
 
   Type* add_type(const std::string& name, std::unique_ptr<Type> type);
-  void forward_declare_type(const std::string& name);
-  void forward_declare_type_as_basic(const std::string& name);
-  void forward_declare_type_as_structure(const std::string& name);
+  void forward_declare_type_as_type(const std::string& name);
+  void forward_declare_type_as(const std::string& new_type, const std::string& parent_type);
   std::string get_runtime_type(const TypeSpec& ts);
 
   DerefInfo get_deref_info(const TypeSpec& ts) const;
@@ -118,17 +117,23 @@ class TypeSystem {
   Type* lookup_type_allow_partial_def(const TypeSpec& ts) const;
   Type* lookup_type_allow_partial_def(const std::string& name) const;
 
-  MethodInfo add_method(const std::string& type_name,
-                        const std::string& method_name,
-                        const TypeSpec& ts,
-                        bool allow_new_method = true);
-  MethodInfo add_method(Type* type,
-                        const std::string& method_name,
-                        const TypeSpec& ts,
-                        bool allow_new_method = true);
+  MethodInfo declare_method(const std::string& type_name,
+                            const std::string& method_name,
+                            bool no_virtual,
+                            const TypeSpec& ts);
+  MethodInfo declare_method(Type* type,
+                            const std::string& method_name,
+                            bool no_virtual,
+                            const TypeSpec& ts);
+
+  MethodInfo define_method(const std::string& type_name,
+                           const std::string& method_name,
+                           const TypeSpec& ts);
+  MethodInfo define_method(Type* type, const std::string& method_name, const TypeSpec& ts);
   MethodInfo add_new_method(Type* type, const TypeSpec& ts);
   MethodInfo lookup_method(const std::string& type_name, const std::string& method_name) const;
   MethodInfo lookup_method(const std::string& type_name, int method_id) const;
+  bool try_lookup_method(const Type* type, const std::string& method_name, MethodInfo* info) const;
   bool try_lookup_method(const std::string& type_name,
                          const std::string& method_name,
                          MethodInfo* info) const;
@@ -174,8 +179,8 @@ class TypeSystem {
                              int offset,
                              int field_size);
 
-  bool should_use_virtual_methods(const Type* type) const;
-  bool should_use_virtual_methods(const TypeSpec& type) const;
+  bool should_use_virtual_methods(const Type* type, int method_id) const;
+  bool should_use_virtual_methods(const TypeSpec& type, int method_id) const;
 
   /*!
    * Get a type by name and cast to a child class of Type*. Must succeed.
@@ -235,10 +240,8 @@ class TypeSystem {
                                     RegClass reg = RegClass::GPR_64);
   void builtin_structure_inherit(StructureType* st);
 
-  enum ForwardDeclareKind { TYPE, STRUCTURE, BASIC };
-
   std::unordered_map<std::string, std::unique_ptr<Type>> m_types;
-  std::unordered_map<std::string, ForwardDeclareKind> m_forward_declared_types;
+  std::unordered_map<std::string, std::string> m_forward_declared_types;
   std::vector<std::unique_ptr<Type>> m_old_types;
 
   bool m_allow_redefinition = false;

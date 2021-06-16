@@ -638,6 +638,9 @@ void SimpleExpressionElement::update_from_stack_add_i(const Env& env,
       return;
     }
 
+    auto addition_matcher =
+        GenericOpMatcher::or_match({GenericOpMatcher::fixed(FixedOperatorKind::ADDITION),
+                                    GenericOpMatcher::fixed(FixedOperatorKind::ADDITION_PTR)});
     if (arg0_type.kind == TP_Type::Kind::INTEGER_CONSTANT_PLUS_VAR) {
       // try to see if this is valid, from the type system.
       FieldReverseLookupInput input;
@@ -648,8 +651,9 @@ void SimpleExpressionElement::update_from_stack_add_i(const Env& env,
       if (out.success) {
         // it is. now we have to modify things
         // first, look for the index
-        auto arg0_matcher = Matcher::op(GenericOpMatcher::fixed(FixedOperatorKind::ADDITION),
-                                        {Matcher::any(0), Matcher::integer(input.offset)});
+
+        auto arg0_matcher =
+            Matcher::op(addition_matcher, {Matcher::any(0), Matcher::integer(input.offset)});
         auto match_result = match(arg0_matcher, args.at(0));
         if (match_result.matched) {
           bool used_index = false;
@@ -683,7 +687,7 @@ void SimpleExpressionElement::update_from_stack_add_i(const Env& env,
         if (is_power_of_two(input.stride, &p2)) {
           // (+ (shl (-> a0-0 reg-count) 3) 28)
           auto arg0_matcher =
-              Matcher::op(GenericOpMatcher::fixed(FixedOperatorKind::ADDITION),
+              Matcher::op(addition_matcher,
                           {Matcher::op(GenericOpMatcher::fixed(FixedOperatorKind::MULTIPLICATION),
                                        {Matcher::any(0), Matcher::integer(input.stride)}),
                            Matcher::integer(input.offset)});
@@ -709,7 +713,7 @@ void SimpleExpressionElement::update_from_stack_add_i(const Env& env,
           }
         } else {
           auto arg0_matcher =
-              Matcher::op(GenericOpMatcher::fixed(FixedOperatorKind::ADDITION),
+              Matcher::op(addition_matcher,
                           {Matcher::op(GenericOpMatcher::fixed(FixedOperatorKind::MULTIPLICATION),
                                        {Matcher::integer(input.stride), Matcher::any(0)}),
                            Matcher::integer(input.offset)});
@@ -733,6 +737,41 @@ void SimpleExpressionElement::update_from_stack_add_i(const Env& env,
                 fmt::format("Failed to match for stride (non power 2 {}) with add: {}",
                             input.stride, args.at(0)->to_string(env)));
           }
+        }
+      }
+    } else if (arg1_type.kind == TP_Type::Kind::PRODUCT_WITH_CONSTANT &&
+               arg0_type.kind == TP_Type::Kind::TYPESPEC &&
+               arg0_type.typespec().base_type() == "inline-array") {
+      FieldReverseLookupInput rd_in;
+      rd_in.deref = std::nullopt;
+      rd_in.stride = arg1_type.get_multiplier();
+      rd_in.offset = 0;
+      rd_in.base_type = arg0_type.typespec();
+      auto rd = env.dts->ts.reverse_field_lookup(rd_in);
+
+      if (rd.success) {
+        auto arg1_matcher = Matcher::match_or(
+            {Matcher::op(GenericOpMatcher::fixed(FixedOperatorKind::MULTIPLICATION),
+                         {Matcher::any(0), Matcher::integer(rd_in.stride)}),
+             Matcher::op(GenericOpMatcher::fixed(FixedOperatorKind::MULTIPLICATION),
+                         {Matcher::integer(rd_in.stride), Matcher::any(0)})});
+        auto match_result = match(arg1_matcher, args.at(1));
+        if (match_result.matched) {
+          bool used_index = false;
+          std::vector<DerefToken> tokens;
+          for (auto& tok : rd.tokens) {
+            if (tok.kind == FieldReverseLookupOutput::Token::Kind::VAR_IDX) {
+              assert(!used_index);
+              used_index = true;
+              tokens.push_back(DerefToken::make_int_expr(match_result.maps.forms.at(0)));
+            } else {
+              tokens.push_back(to_token(tok));
+            }
+          }
+          result->push_back(pool.alloc_element<DerefElement>(args.at(0), rd.addr_of, tokens));
+          return;
+        } else {
+          throw std::runtime_error("Failed to match product_with_constant inline array access.");
         }
       }
     }
@@ -1081,7 +1120,6 @@ void SimpleExpressionElement::update_from_stack_logor_or_logand(const Env& env,
       // this is an ugly hack to make (logand (lognot (enum-bitfield xxxx)) work.
       // I have only one example for this, so I think this unlikely to work in all cases.
       if (m_expr.get_arg(1).is_var()) {
-        auto arg1_type = env.get_variable_type(m_expr.get_arg(1).var(), true);
         auto eti = env.dts->ts.try_enum_lookup(arg1_type.base_type());
         if (eti) {
           auto integer = get_goal_integer_constant(args.at(0), env);
@@ -1680,7 +1718,14 @@ void StorePlainDeref::push_to_stack(const Env& env, FormPool& pool, FormStack& s
   if (m_expr.is_var()) {
     // this matches the order in Compiler::compile_set
     auto vars = std::vector<RegisterAccess>({m_expr.var(), m_base_var});
+    // for 16-byte stores, the order is backward. Why????
+    if (size() == 16) {
+      std::swap(vars.at(0), vars.at(1));
+    }
     auto popped = pop_to_forms(vars, env, pool, stack, true);
+    if (size() == 16) {
+      std::swap(popped.at(0), popped.at(1));
+    }
     m_dst->set_base(make_optional_cast(m_dst_cast_type, popped.at(1), pool, env));
     m_dst->mark_popped();
     m_dst->inline_nested();
@@ -1791,12 +1836,20 @@ void FunctionCallElement::update_from_stack(const Env& env,
     function_type = tp_type.typespec();
   }
 
+  bool swap_function = tp_type.kind == TP_Type::Kind::NON_VIRTUAL_METHOD && true;
   if (tp_type.kind == TP_Type::Kind::NON_VIRTUAL_METHOD) {
+    // this is a hack to make some weird macro for calling res-lump methods work
+    if (env.dts->ts.tc(TypeSpec("res-lump"), tp_type.method_from_type())) {
+      swap_function = false;
+    }
+  }
+
+  if (swap_function) {
     std::swap(all_pop_vars.at(0), all_pop_vars.at(1));
   }
 
   auto unstacked = pop_to_forms(all_pop_vars, env, pool, stack, allow_side_effects);
-  if (tp_type.kind == TP_Type::Kind::NON_VIRTUAL_METHOD) {
+  if (swap_function) {
     std::swap(unstacked.at(0), unstacked.at(1));
     std::swap(all_pop_vars.at(0), all_pop_vars.at(1));
   }
@@ -1849,10 +1902,11 @@ void FunctionCallElement::update_from_stack(const Env& env,
               "type.");
         }
 
-        if (!env.dts->ts.should_use_virtual_methods(tp_type.method_from_type())) {
+        if (!env.dts->ts.should_use_virtual_methods(tp_type.method_from_type(),
+                                                    tp_type.method_id())) {
           throw std::runtime_error(
-              fmt::format("Method call on {} used a virtual call unexpectedly.",
-                          tp_type.method_from_type().print()));
+              fmt::format("Method call on {} id {} used a virtual call unexpectedly.",
+                          tp_type.method_from_type().print(), tp_type.method_id()));
         }
         // fmt::print("STACK\n{}\n\n", stack.print(env));
         auto pop =
@@ -1995,11 +2049,12 @@ void FunctionCallElement::update_from_stack(const Env& env,
               tp_type.print()));
         }
 
-        if (env.dts->ts.should_use_virtual_methods(tp_type.method_from_type())) {
-          throw std::runtime_error(
-              fmt::format("Expected type {} to use virtual methods, but it didn't.  Set option "
-                          ":final in the deftype to disable virtual method calls",
-                          tp_type.method_from_type().print()));
+        if (env.dts->ts.should_use_virtual_methods(tp_type.method_from_type(),
+                                                   tp_type.method_id())) {
+          throw std::runtime_error(fmt::format(
+              "Expected type {} method id {} to use virtual methods, but it didn't.  Set option "
+              ":final in the deftype to disable virtual method calls",
+              tp_type.method_from_type().print(), tp_type.method_id()));
         }
       }
 
@@ -2025,7 +2080,7 @@ void FunctionCallElement::update_from_stack(const Env& env,
         }
 
         if (got_stack_new) {
-          auto new_op = first_cast->source()->try_as_element<StackVarDefElement>();
+          auto new_op = first_cast->source()->try_as_element<StackStructureDefElement>();
           if (!new_op || new_op->type().base_type() != type_source_form->to_string(env)) {
             got_stack_new = false;
           }
@@ -2559,9 +2614,20 @@ FormElement* ConditionElement::make_nonzero_check_generic(const Env& env,
 
   if (bitfield_compare) {
     return bitfield_compare;
-  } else {
-    return pool.alloc_element<GenericElement>(GenericOperator::make_compare(m_kind), source_forms);
   }
+
+  auto mr = match(Matcher::op(GenericOpMatcher::fixed(FixedOperatorKind::ADDITION),
+                              {Matcher::any(0), Matcher::any_integer(1)}),
+                  source_forms.at(0));
+  if (mr.matched) {
+    s64 value = -mr.maps.ints.at(1);
+    auto value_form = pool.alloc_single_element_form<SimpleAtomElement>(
+        nullptr, SimpleAtom::make_int_constant(value));
+    return pool.alloc_element<GenericElement>(GenericOperator::make_fixed(FixedOperatorKind::NEQ),
+                                              std::vector<Form*>{mr.maps.forms.at(0), value_form});
+  }
+
+  return pool.alloc_element<GenericElement>(GenericOperator::make_compare(m_kind), source_forms);
 }
 
 FormElement* ConditionElement::make_equal_check_generic(const Env& env,
@@ -2982,13 +3048,20 @@ void push_asm_sllv_to_stack(const AsmOp* op,
       auto src_var = pop_to_forms({*var}, env, pool, stack, true).at(0);
       auto as_ba = src_var->try_as_element<BitfieldAccessElement>();
       if (as_ba) {
+        // part of existing chain.
         BitfieldManip step(BitfieldManip::Kind::SLLV_SEXT, 0);
         auto other = as_ba->push_step(step, env.dts->ts, pool, env);
         assert(other);  // should immediately get a field.
         stack.push_value_to_reg(*dst, pool.alloc_single_form(nullptr, other), true,
                                 env.get_variable_type(*dst, true));
       } else {
-        throw std::runtime_error("Got invalid bitfield manip for sllv");
+        // push it to a weird looking form for initial bitfield setting.
+        // these are lazily converted at the destination.
+        stack.push_value_to_reg(
+            *dst,
+            pool.alloc_single_element_form<GenericElement>(
+                nullptr, GenericOperator::make_fixed(FixedOperatorKind::ASM_SLLV_R0), src_var),
+            true, env.get_variable_type(*dst, true));
       }
     }
   } else {
@@ -3018,7 +3091,7 @@ void push_asm_pcpyud_to_stack(const AsmOp* op,
   if (bitfield_info && possible_r0->reg() == Register(Reg::GPR, Reg::R0)) {
     auto base = pop_to_forms({*var}, env, pool, stack, true).at(0);
     auto read_elt = pool.alloc_element<BitfieldAccessElement>(base, arg0_type);
-    read_elt->push_pcpyud();
+    read_elt->push_pcpyud(env.dts->ts, pool, env);
     stack.push_value_to_reg(*dst, pool.alloc_single_form(nullptr, read_elt), true,
                             env.get_variable_type(*dst, true));
   } else {
@@ -3058,6 +3131,31 @@ void push_asm_pextuw_to_stack(const AsmOp* op,
   }
 }
 
+/*
+void push_asm_madds_to_stack(const AsmOp* op,
+                             FormElement* form_elt,
+                             const Env& env,
+                             FormPool& pool,
+                             FormStack& stack) {
+  auto src0 = op->src(0);
+  assert(src0.has_value());
+
+  auto src1 = op->src(1);
+  assert(src1.has_value());
+
+  auto dst = op->dst();
+  assert(dst.has_value());
+
+  auto vars = pop_to_forms({*src0, *src1}, env, pool, stack, true);
+
+  stack.push_value_to_reg(
+      *dst,
+      pool.alloc_single_element_form<GenericElement>(
+          nullptr, GenericOperator::make_fixed(FixedOperatorKind::ASM_MADDS), vars),
+      true, env.get_variable_type(*dst, true));
+}
+*/
+
 void push_asm_to_stack(const AsmOp* op,
                        FormElement* form_elt,
                        const Env& env,
@@ -3076,6 +3174,11 @@ void push_asm_to_stack(const AsmOp* op,
     case InstructionKind::PEXTUW:
       push_asm_pextuw_to_stack(op, form_elt, env, pool, stack);
       break;
+      /*
+    case InstructionKind::MADDS:
+      push_asm_madds_to_stack(op, form_elt, env, pool, stack);
+      break;
+       */
     default:
       stack.push_form_element(form_elt, true);
       break;
@@ -3269,10 +3372,10 @@ void ArrayFieldAccess::update_with_val(Form* new_val,
     if (m_expected_stride == 1) {
       // reg0 is idx
       auto reg0_matcher =
-          Matcher::match_or({Matcher::any(0), Matcher::cast("int", Matcher::any_reg(0))});
+          Matcher::match_or({Matcher::cast("int", Matcher::any(0)), Matcher::any(0)});
       // reg1 is base
       auto reg1_matcher =
-          Matcher::match_or({Matcher::any_reg(1), Matcher::cast("int", Matcher::any_reg(1))});
+          Matcher::match_or({Matcher::cast("int", Matcher::any(1)), Matcher::any(1)});
       auto matcher = Matcher::fixed_op(FixedOperatorKind::ADDITION, {reg0_matcher, reg1_matcher});
       auto match_result = match(matcher, new_val);
       if (!match_result.matched) {
@@ -3280,8 +3383,8 @@ void ArrayFieldAccess::update_with_val(Form* new_val,
                                  new_val->to_string(env));
       }
       auto idx = match_result.maps.forms.at(0);
-      auto base = match_result.maps.regs.at(1);
-      assert(idx && base.has_value());
+      auto base = match_result.maps.forms.at(1);
+      assert(idx && base);
 
       std::vector<DerefToken> tokens = m_deref_tokens;
       for (auto& x : tokens) {
@@ -3291,7 +3394,7 @@ void ArrayFieldAccess::update_with_val(Form* new_val,
       }
       // tokens.push_back(DerefToken::make_int_expr(var_to_form(idx.value(), pool)));
 
-      auto deref = pool.alloc_element<DerefElement>(var_to_form(base.value(), pool), false, tokens);
+      auto deref = pool.alloc_element<DerefElement>(base, false, tokens);
       result->push_back(deref);
     } else if (is_power_of_two(m_expected_stride, &power_of_two)) {
       // (+ (sll (the-as uint a1-0) 2) (the-as int a0-0))
@@ -3567,11 +3670,11 @@ void ConstantFloatElement::update_from_stack(const Env&,
   result->push_back(this);
 }
 
-void StackVarDefElement::update_from_stack(const Env&,
-                                           FormPool&,
-                                           FormStack&,
-                                           std::vector<FormElement*>* result,
-                                           bool) {
+void StackStructureDefElement::update_from_stack(const Env&,
+                                                 FormPool&,
+                                                 FormStack&,
+                                                 std::vector<FormElement*>* result,
+                                                 bool) {
   mark_popped();
   result->push_back(this);
 }
