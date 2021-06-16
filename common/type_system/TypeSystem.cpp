@@ -391,10 +391,8 @@ Type* TypeSystem::lookup_type_allow_partial_def(const std::string& name) const {
       result = type_lookup->second.get();
     }
   }
-  if (result) {
-    return result;
-  }
-  throw_typesystem_error("The type {} is unknown (3).\n", name);
+
+  return result;
 }
 
 MethodInfo TypeSystem::declare_method(const std::string& type_name,
