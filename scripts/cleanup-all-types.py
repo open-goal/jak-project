@@ -356,9 +356,9 @@ with open("./decompiler/config/all-types-test.gc") as f:
     earliest_usage = usage_info["used_on_lines"][0]
     if declaration_line > earliest_usage or usage_info["commented_out_type"]:
       if usage_info["first_symbol_usage"] not in forward_declarations:
-        forward_declarations[usage_info["first_symbol_usage"]] = ["(declare-type {} {})\n".format(symbol, get_root_parent_type(usage_info))]
+        forward_declarations[usage_info["first_symbol_usage"]] = ["(declare-type {} {})\n".format(symbol, usage_info["parent_type"])]
       else:
-        forward_declarations[usage_info["first_symbol_usage"]].append("(declare-type {} {})\n".format(symbol, get_root_parent_type(usage_info)))
+        forward_declarations[usage_info["first_symbol_usage"]].append("(declare-type {} {})\n".format(symbol, usage_info["parent_type"]))
 
   # FINALLY - add the forward declarations\
   skip_next = False
