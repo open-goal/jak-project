@@ -280,8 +280,8 @@ if len(cleaned_unknown_symbol_defs) > 0:
     if definition[0].startswith(";;(define-extern"):
       new_file.append("".join(definition).rstrip() + "\n")
 
-os.remove("./decompiler/config/all-types-test.gc")
-with open("./decompiler/config/all-types-test.gc", "w") as f:
+os.remove("./decompiler/config/all-types.gc")
+with open("./decompiler/config/all-types.gc", "w") as f:
   f.writelines(new_file)
 
 
@@ -299,6 +299,15 @@ def get_root_parent_type(t):
     return t["parent_type"]
   return get_root_parent_type(type_usages[t["parent_type"]])
 
+def get_safe_parent_type(current_type, all_types, earliest_usage_line):
+  parent_type_name = current_type["parent_type"]
+  if parent_type_name in ["basic", "structure", "type"]:
+    return parent_type_name
+  parent_type = all_types[parent_type_name]
+  if parent_type["declared_on_line"] < earliest_usage_line:
+    return parent_type["type_name"]
+  return get_root_parent_type(current_type)
+
 def symbol_usage(line, sym):
   if line.strip().startswith(";"):
     return False
@@ -311,7 +320,7 @@ def symbol_usage(line, sym):
 
 new_file = []
 print("Third Pass - Adding Forward Type Declarations")
-with open("./decompiler/config/all-types-test.gc") as f:
+with open("./decompiler/config/all-types.gc") as f:
   lines = f.readlines()
   # Get the types
   for i, line in enumerate(lines):
@@ -356,9 +365,9 @@ with open("./decompiler/config/all-types-test.gc") as f:
     earliest_usage = usage_info["used_on_lines"][0]
     if declaration_line > earliest_usage or usage_info["commented_out_type"]:
       if usage_info["first_symbol_usage"] not in forward_declarations:
-        forward_declarations[usage_info["first_symbol_usage"]] = ["(declare-type {} {})\n".format(symbol, usage_info["parent_type"])]
+        forward_declarations[usage_info["first_symbol_usage"]] = ["(declare-type {} {})\n".format(symbol, get_safe_parent_type(usage_info, type_usages, earliest_usage))]
       else:
-        forward_declarations[usage_info["first_symbol_usage"]].append("(declare-type {} {})\n".format(symbol, usage_info["parent_type"]))
+        forward_declarations[usage_info["first_symbol_usage"]].append("(declare-type {} {})\n".format(symbol, get_safe_parent_type(usage_info, type_usages, earliest_usage)))
 
   # FINALLY - add the forward declarations\
   skip_next = False
@@ -375,7 +384,7 @@ with open("./decompiler/config/all-types-test.gc") as f:
         new_file.append("".join(forward_declarations[current_symbol]))
     new_file.append(line)
 
-os.remove("./decompiler/config/all-types-test.gc")
-with open("./decompiler/config/all-types-test.gc", "w") as f:
+os.remove("./decompiler/config/all-types.gc")
+with open("./decompiler/config/all-types.gc", "w") as f:
   f.writelines(new_file)
 
