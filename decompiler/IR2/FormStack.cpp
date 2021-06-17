@@ -3,6 +3,7 @@
 #include "Form.h"
 #include "GenericElementMatcher.h"
 #include "decompiler/Function/Function.h"
+#include "decompiler/util/DecompilerTypeSystem.h"
 
 namespace decompiler {
 std::string FormStack::StackEntry::print(const Env& env) const {
@@ -321,8 +322,19 @@ std::vector<FormElement*> FormStack::rewrite(FormPool& pool, const Env& env) con
         }
       }
 
+      auto type = e.set_type;
+      auto expected_type = env.get_variable_type(*e.destination, true);
+      if (!env.dts->ts.tc(expected_type, e.set_type)) {
+        // we would cast. let's see if we can simplify the source to avoid this.
+        auto casted = try_cast_simplify(simplified_source, expected_type, pool, env);
+        if (casted) {
+          simplified_source = casted;
+          type = expected_type;
+        }
+      }
+
       auto elt = pool.alloc_element<SetVarElement>(*e.destination, simplified_source,
-                                                   e.sequence_point, e.set_type, e.set_info);
+                                                   e.sequence_point, type, e.set_info);
       e.source->parent_element = elt;
 
       auto final_elt = try_rewrites_in_place(elt, env, pool);

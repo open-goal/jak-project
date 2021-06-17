@@ -1168,7 +1168,7 @@ TEST_F(FormRegressionTest, Method4ResTag) {
   std::string expected =
       "(the-as int (if (zero? (-> arg0 inlined?))\n"
       "            (* (-> arg0 elt-count) 4)\n"
-      "            (* (the-as uint (-> arg0 elt-count)) (-> arg0 elt-type size))\n"
+      "            (* (-> arg0 elt-count) (-> arg0 elt-type size))\n"
       "            )\n"
       "  )";
   test_with_expr(func, type, expected);

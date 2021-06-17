@@ -899,9 +899,11 @@ goos::Object decompile_bitfield(const TypeSpec& type,
   return bitfield_defs_print(type, defs);
 }
 
-std::vector<BitFieldConstantDef> decompile_bitfield_from_int(const TypeSpec& type,
-                                                             const TypeSystem& ts,
-                                                             u64 value) {
+std::optional<std::vector<BitFieldConstantDef>> try_decompile_bitfield_from_int(
+    const TypeSpec& type,
+    const TypeSystem& ts,
+    u64 value,
+    bool require_success) {
   u64 touched_bits = 0;
   std::vector<BitFieldConstantDef> result;
 
@@ -941,12 +943,21 @@ std::vector<BitFieldConstantDef> decompile_bitfield_from_int(const TypeSpec& typ
   u64 untouched_but_set = value & (~touched_bits);
 
   if (untouched_but_set) {
-    throw std::runtime_error(
-        fmt::format("Failed to decompile static bitfield of type {}. Original value is 0x{:x} but "
-                    "we didn't touch",
-                    type.print(), value, untouched_but_set));
+    if (require_success) {
+      throw std::runtime_error(fmt::format(
+          "Failed to decompile static bitfield of type {}. Original value is 0x{:x} but "
+          "we didn't touch",
+          type.print(), value, untouched_but_set));
+    }
+    return {};
   }
   return result;
+}
+
+std::vector<BitFieldConstantDef> decompile_bitfield_from_int(const TypeSpec& type,
+                                                             const TypeSystem& ts,
+                                                             u64 value) {
+  return *try_decompile_bitfield_from_int(type, ts, value, true);
 }
 
 std::vector<std::string> decompile_bitfield_enum_from_int(const TypeSpec& type,

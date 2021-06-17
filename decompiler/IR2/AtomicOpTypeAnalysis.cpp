@@ -328,8 +328,7 @@ TP_Type SimpleExpression::get_type_int2(const TypeState& input,
           int size = shift_size - m_args[1].get_int();
           int start_bit = shift_size - size;
           auto field = find_field(dts.ts, bf, start_bit, size, is_unsigned);
-          return TP_Type::make_from_ts(field.type());
-          // auto field = find_field(arg0_type.typespec(), bf, 64)
+          return TP_Type::make_from_ts(coerce_to_reg_type(field.type()));
         }
       }
 
@@ -350,7 +349,7 @@ TP_Type SimpleExpression::get_type_int2(const TypeState& input,
         auto as_bitfield = dynamic_cast<BitFieldType*>(type);
         assert(as_bitfield);
         auto field = find_field(dts.ts, as_bitfield, start_bit, size, is_unsigned);
-        return TP_Type::make_from_ts(field.type());
+        return TP_Type::make_from_ts(coerce_to_reg_type(field.type()));
       }
 
       if (m_kind == Kind::RIGHT_SHIFT_ARITH) {
@@ -1138,12 +1137,12 @@ TypeState StackSpillLoadOp::propagate_types_internal(const TypeState& input,
   // stack slot load
   auto info = env.stack_spills().lookup(m_offset);
   if (info.size != m_size) {
-    throw std::runtime_error(fmt::format(
-        "Stack slot load mismatch: defined as size {}, got size {}\n", info.size, m_size));
+    env.func->warnings.general_warning(
+        "Stack slot load mismatch: defined as size {}, got size {}\n", info.size, m_size);
   }
 
   if (info.is_signed != m_is_signed) {
-    throw std::runtime_error("Stack slot signed mismatch");
+    env.func->warnings.general_warning("Stack slot offset {} signed mismatch", m_offset);
   }
 
   auto& loaded_type = input.get_slot(m_offset);
@@ -1157,8 +1156,8 @@ TypeState StackSpillStoreOp::propagate_types_internal(const TypeState& input,
                                                       DecompilerTypeSystem& dts) {
   auto info = env.stack_spills().lookup(m_offset);
   if (info.size != m_size) {
-    throw std::runtime_error(fmt::format(
-        "Stack slot load mismatch: defined as size {}, got size {}\n", info.size, m_size));
+    env.func->warnings.general_warning(
+        "Stack slot store mismatch: defined as size {}, got size {}\n", info.size, m_size);
   }
 
   auto stored_type = m_value.get_type(input, env, dts);
