@@ -39,6 +39,22 @@ with open("./decompiler/config/all-types.gc", "w") as f:
 from jak1_file_list import file_list
 import json
 
+script_comments = [
+  ";; ----------------------",
+  ";; File -",
+  ";; Source Path -",
+  ";; Containing DGOs -",
+  ";; Version -",
+  ";; - Types",
+  ";; - Functions",
+  ";; - Symbols",
+  ";; - Unknowns",
+  ";; NO FILE",
+  ";; Unknowns / Built-Ins / Non-Original Types",
+  ";; - Nothing Defined in This File!",
+  ";; Unknowns with No Definition"
+]
+
 def is_filename_comment(line):
   if not line.startswith(";"):
     return False
@@ -72,14 +88,23 @@ def strip_trailing_new_lines(definition):
       new_definition.insert(0, line)
     else:
       cleaned_line = line.strip()
-      if len(line) != 0:
+      if len(cleaned_line) != 0:
         found_content = True
         new_definition.insert(0, line)
+  # Check if the last line has a new-line or not, if it doesn't add one
+  if not new_definition[len(new_definition)-1].endswith("\n"):
+    new_definition[len(new_definition)-1].append("\n")
   return new_definition
 
 symbol_definitions = {}
 # Anything that is custom / not part of the game, I'll place at the top of the file because I have no idea where it should go
 unknown_symbol_definitions = []
+
+def is_script_comment(line):
+  for comment in script_comments:
+    if line.startswith(comment):
+      return True
+  return False
 
 print("Second Pass - Re-Organizing File")
 with open("./decompiler/config/all-types.gc") as f:
@@ -94,13 +119,13 @@ with open("./decompiler/config/all-types.gc") as f:
     # - empty lines
     # - file name comments
     # - comments i generate
-    if is_filename_comment(line) or (commented_type is False and ("declare-type" in line or (line == "\n" and i != len(lines) - 1) or line.startswith(";; File -") or line.startswith(";; Source Path -") or line.startswith(";; Containing DGOs -") or line.startswith(";; Version -") or line.startswith(";; Types") or line.startswith(";; Functions") or line.startswith(";; Unknowns") or line.startswith(";; NO FILE"))):
+    if is_filename_comment(line) or is_script_comment(line) or (commented_type is False and ("declare-type" in line or (line == "\n" and i != len(lines) - 1))):
       continue
 
     # Handle the first line of the file properly
     if len(current_symbol_definition) == 0: # The only time this variable should be empty, is at the beginning, after that it should always be in use
-      current_symbol_definition.append(line)
       if line.startswith("(deftype") or line.startswith("(define-extern") or line.startswith(";;(define-extern") or line.startswith("(defenum"):
+        current_symbol_definition.append(line)
         current_symbol = line.split(" ")[1].rstrip("\n")
       continue
 
@@ -142,6 +167,16 @@ with open("./decompiler/config/all-types.gc") as f:
         current_symbol_definition += comment_buffer
         comment_buffer.clear()
         current_symbol_definition.append(line)
+      elif line.startswith("(deftype") or line.startswith("; (deftype") or line.startswith("(define-extern") or line.startswith(";;(define-extern") or line.startswith("(defenum"):
+        if line.startswith("; (deftype"):
+          current_symbol = line.split(" ")[2].rstrip("\n")
+        else:
+          current_symbol = line.split(" ")[1].rstrip("\n")
+        current_symbol_definition.clear()
+        current_symbol_definition += comment_buffer
+        comment_buffer.clear()
+        current_symbol_definition.append(line)
+        symbol_definitions[current_symbol] = strip_trailing_new_lines(current_symbol_definition.copy())
     else:
       current_symbol_definition.append(line)
       if len(comment_buffer) > 0:
@@ -168,6 +203,8 @@ def first_relevant_line(definition):
 def was_previous_definition_multi_line(definition):
   line_count = 0
   for line in definition:
+    if "; (deftype" in line:
+      return True
     if not line.strip().startswith(";"):
       line_count = line_count + 1
   return line_count > 1
@@ -217,7 +254,7 @@ for item in file_list:
         symbol_definition = symbol_definitions[symbol]
         if ";;(define-extern" in first_relevant_line(symbol_definition):
           unknowns.append(symbol_definition)
-        elif "(function" in first_relevant_line(symbol_definition):
+        elif "(function" in first_relevant_line(symbol_definition) or "function)" in first_relevant_line(symbol_definition):
           functions.append(symbol_definition)
         elif "deftype" in first_relevant_line(symbol_definition):
           types.append(symbol_definition)
@@ -228,19 +265,23 @@ for item in file_list:
 
   print_definition_blocks(new_file, types, functions, symbols, unknowns)
 
+  cleaned_unknown_symbol_defs = []
   if file_name == "gcommon":
     new_file.append("\n;; ----------------------\n;; NO FILE\n;; Unknowns / Built-Ins / Non-Original Types\n\n")
     for definition in unknown_symbol_definitions:
       if not definition[0].startswith(";;(define-extern"):
         new_file.append("".join(definition) + "\n")
+      else:
+        cleaned_unknown_symbol_defs.append(definition)
 
-new_file.append("\n;; ----------------------\n;; NO FILE\n;; Unknowns with No Definition\n\n")
-for definition in unknown_symbol_definitions:
-  if definition[0].startswith(";;(define-extern"):
-    new_file.append("".join(definition).rstrip() + "\n")
+if len(cleaned_unknown_symbol_defs) > 0:
+  new_file.append("\n;; ----------------------\n;; NO FILE\n;; Unknowns with No Definition\n\n")
+  for definition in cleaned_unknown_symbol_defs:
+    if definition[0].startswith(";;(define-extern"):
+      new_file.append("".join(definition).rstrip() + "\n")
 
-os.remove("./decompiler/config/all-types-test.gc")
-with open("./decompiler/config/all-types-test.gc", "w") as f:
+os.remove("./decompiler/config/all-types.gc")
+with open("./decompiler/config/all-types.gc", "w") as f:
   f.writelines(new_file)
 
 
@@ -258,6 +299,15 @@ def get_root_parent_type(t):
     return t["parent_type"]
   return get_root_parent_type(type_usages[t["parent_type"]])
 
+def get_safe_parent_type(current_type, all_types, earliest_usage_line):
+  parent_type_name = current_type["parent_type"]
+  if parent_type_name in ["basic", "structure", "type"]:
+    return parent_type_name
+  parent_type = all_types[parent_type_name]
+  if parent_type["declared_on_line"] < earliest_usage_line:
+    return parent_type["type_name"]
+  return get_root_parent_type(current_type)
+
 def symbol_usage(line, sym):
   if line.strip().startswith(";"):
     return False
@@ -270,7 +320,7 @@ def symbol_usage(line, sym):
 
 new_file = []
 print("Third Pass - Adding Forward Type Declarations")
-with open("./decompiler/config/all-types-test.gc") as f:
+with open("./decompiler/config/all-types.gc") as f:
   lines = f.readlines()
   # Get the types
   for i, line in enumerate(lines):
@@ -315,9 +365,9 @@ with open("./decompiler/config/all-types-test.gc") as f:
     earliest_usage = usage_info["used_on_lines"][0]
     if declaration_line > earliest_usage or usage_info["commented_out_type"]:
       if usage_info["first_symbol_usage"] not in forward_declarations:
-        forward_declarations[usage_info["first_symbol_usage"]] = ["(declare-type {} {})\n".format(symbol, get_root_parent_type(usage_info))]
+        forward_declarations[usage_info["first_symbol_usage"]] = ["(declare-type {} {})\n".format(symbol, get_safe_parent_type(usage_info, type_usages, earliest_usage))]
       else:
-        forward_declarations[usage_info["first_symbol_usage"]].append("(declare-type {} {})\n".format(symbol, get_root_parent_type(usage_info)))
+        forward_declarations[usage_info["first_symbol_usage"]].append("(declare-type {} {})\n".format(symbol, get_safe_parent_type(usage_info, type_usages, earliest_usage)))
 
   # FINALLY - add the forward declarations\
   skip_next = False
@@ -334,7 +384,7 @@ with open("./decompiler/config/all-types-test.gc") as f:
         new_file.append("".join(forward_declarations[current_symbol]))
     new_file.append(line)
 
-os.remove("./decompiler/config/all-types-test.gc")
-with open("./decompiler/config/all-types-test.gc", "w") as f:
+os.remove("./decompiler/config/all-types.gc")
+with open("./decompiler/config/all-types.gc", "w") as f:
   f.writelines(new_file)
 
