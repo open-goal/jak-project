@@ -200,7 +200,7 @@
     (next 2)      ;; addr=after tag, next-tag=ADDR
     (ref 3)       ;; addr=ADDR, next-tag=after tag
     (refs 4)      ;; ref, but stall controled
-    (call 5)      ;;  
+    (call 5)      ;;
     (ret 6)       ;;
     (end 7)       ;; next, but ends.
     )
@@ -497,35 +497,35 @@
 (defenum bucket-id
     :type uint32
     :bitfield #f
-    
+
     (tfrag-tex0 5)
     ;; merc0 10
     ;; generic0 11
-    
+
     (tfrag-tex1 12)
     ;; merc1 17
     ;; generic1 18
-    
+
     (shrub-tex0 19)
-    
+
     (shrub-tex1 25)
-    
+
     (alpha-tex0 31)
-    
+
     (alpha-tex1 38)
-    
+
     (pris-tex0 48)
     ;; merc0 49
     ;; generic0 50
-    
+
     (pris-tex1 51)
     ;; merc1 52
     ;; generic1 53
-    
+
     (water-tex0 57)
     ;; merc0 58     (+ default)
     ;; generic0 59  (+ default)
-    
+
     (water-tex1 60)
     ;; merc1 61
     ;; generic1 62
@@ -541,7 +541,75 @@
 
 (define-extern lavaspoutdrip type)
 
-(define-extern string->symbol (function string symbol))
+(defenum sound-command
+  :type uint16
+  (load-bank)
+  (load-music)
+  (unload-bank)
+  (play)
+  (pause-sound)
+  (stop-sound)
+  (continue-sound)
+  (set-param)
+  (set-master-volume)
+  (pause-group)
+  (stop-group)
+  (continue-group)
+  (get-irx-version)
+  (set-falloff-curve)
+  (set-sound-falloff)
+  (reload-info)
+  (set-language)
+  (set-flava)
+  (set-reverb)
+  (set-ear-trans)
+  (shutdown)
+  (list-sounds)
+  (unload-music)
+  )
+
+;; - Enums
+(defenum joint-mod-handler-mode
+  :bitfield #t
+  :type uint32
+  (flex-blend 0)    ;; 1
+  (look-at 1)       ;; 2
+  (world-look-at 2) ;; 4
+  (rotate 3)        ;; 8
+  (joint-set 4)     ;; 16
+  (joint-set* 5)    ;; 32
+  ;; ??             ;; 64
+  (reset 7)         ;; 128
+  )
+
+(defenum collide-list-enum
+  (hit-by-player)
+  (usually-hit-by-player)
+  (hit-by-others)
+  (player)
+  )
+
+(defenum entity-perm-status
+  :bitfield #t
+  :type uint16
+  (bit-1 1)
+  (dead 2)
+  (complete 6))
+
+(defenum path-control-flag
+  :bitfield #t
+  :type uint32
+  (display 0)
+  (not-found 4)
+  )
+
+(defenum nav-control-flags
+  :bitfield #t
+  :type uint32
+  (display-marks 0)
+  (bit8 8)
+  (bit13 13)
+  )
 
 
 ;; ----------------------
@@ -611,8 +679,8 @@
   :flag-assert         #x900000030
   )
 
-(declare-type cpu-thread basic)
-(declare-type process basic)
+(declare-type cpu-thread thread)
+(declare-type process process-tree)
 (deftype thread (basic)
   ((name         basic   :offset-assert 4)
    (process      process :offset-assert 8)
@@ -793,6 +861,7 @@
 ;; - Types
 
 (declare-type connectable structure)
+(declare-type res-lump basic)
 (define-extern process type) ; deftype provided by C Kernel
 (deftype process (process-tree)
   ((pool dead-pool :offset-assert #x20)
@@ -1985,7 +2054,10 @@
 
 ;; - Functions
 
+(define-extern curve-length function)
+(define-extern curve-get-pos! function)
 (define-extern vector-vector-distance-squared (function vector vector float))
+(define-extern curve-evaluate! function)
 (define-extern vector-vector-distance (function vector vector float))
 (define-extern circle-circle-xz-intersect (function vector vector vector vector int))
 (define-extern vector-normalize-copy! (function vector vector float vector))
@@ -2019,19 +2091,13 @@
 (define-extern quaternion-seek (function quaternion quaternion quaternion float quaternion))
 (define-extern vector-deg-seek (function vector vector vector none))
 (define-extern vector-deg-slerp (function vector vector vector float vector))
+(define-extern vector-vector-deg-slerp! function) ;; stack spills!
 (define-extern normal-of-plane (function vector vector vector vector vector))
 (define-extern vector-3pt-cross! (function vector vector vector vector))
+(define-extern closest-pt-in-triangle function) ;; asm branches
 (define-extern point-in-triangle-cross (function vector vector vector vector vector symbol))
 (define-extern point-in-plane-<-point+normal! (function vector vector vector vector))
 (define-extern circle-test (function none))
-
-;; - Symbols
-
-(define-extern curve-length function)
-(define-extern curve-get-pos! function)
-(define-extern curve-evaluate! function)
-(define-extern vector-vector-deg-slerp! function) ;; stack spills!
-(define-extern closest-pt-in-triangle function) ;; asm branches
 (define-extern vector-circle-tangent-new function)
 (define-extern vector-circle-tangent function)
 (define-extern find-knot-span function)
@@ -2119,33 +2185,6 @@
    (hi  uint64  :offset 64)
    )
   :flag-assert #x900000010
-  )
-
-(defenum sound-command
-  :type uint16
-  (load-bank)
-  (load-music)
-  (unload-bank)
-  (play)
-  (pause-sound)
-  (stop-sound)
-  (continue-sound)
-  (set-param)
-  (set-master-volume)
-  (pause-group)
-  (stop-group)
-  (continue-group)
-  (get-irx-version)
-  (set-falloff-curve)
-  (set-sound-falloff)
-  (reload-info)
-  (set-language)
-  (set-flava)
-  (set-reverb)
-  (set-ear-trans)
-  (shutdown)
-  (list-sounds)
-  (unload-music)
   )
 
 (deftype sound-rpc-cmd (structure)
@@ -3697,10 +3736,10 @@
 
 (deftype gs-gif-tag (structure)
   ((qword uint128   :offset-assert 0) ;; is "qword" and inline? in game
-   
+
    (tag   gif-tag64    :offset 0)
    (regs  gif-tag-regs :offset 8)
-   
+
    (dword uint64 2     :offset 0)
    (word  uint32 4     :offset 0)
    )
@@ -3711,7 +3750,7 @@
 
 (deftype gif-packet (basic)
   ((reg-count int32     :offset-assert 4)
-   
+
    (gif-tag   gs-gif-tag :inline :offset-assert 16) ;; note- added
    (gif-tag0  uint128   :offset 16)
    (args      uint64 1 :offset-assert 32)
@@ -3809,8 +3848,8 @@
    (global-buf   dma-buffer    :offset 40)
    (bucket-group dma-bucket    :offset 44)
    (buffer       uint32    11  :offset 4) ;; for debugging?
-   
-   
+
+
    (profile-bar  profile-bar 2 :offset 48)
    (run-time     uint64        :offset 56)
    )
@@ -4147,12 +4186,12 @@
    (cur              int32                        :offset-assert 8)
    (allocate-func    (function texture-pool texture-page kheap int texture-page)                        :offset-assert 12)
    (font-palette     int32                        :offset-assert 16) ;; vram word idx
-   
+
    ;; these were reordered
    (segment-near     texture-pool-segment :inline :offset-assert 20)
    (segment-common   texture-pool-segment :inline :offset-assert 28)
    (segment          texture-pool-segment 4 :inline :offset 20)
-   
+
    (common-page      texture-page              32      :offset-assert 52)
    (common-page-mask int32                        :offset-assert 180)
    (ids              uint32              126     :offset-assert 184)
@@ -4406,8 +4445,8 @@
   :flag-assert         #x900000050
   )
 
-(declare-type bsp-header basic)
 (declare-type art-group basic)
+(declare-type bsp-header basic)
 (deftype level (basic)
   ((name                      basic           :offset-assert 4)
    (load-name                 basic           :offset-assert 8)
@@ -5142,6 +5181,9 @@
 
 ;; - Functions
 
+(define-extern adgif-shader<-texture! function)
+(define-extern adgif-shader<-texture-with-update! function)
+(define-extern level-remap-texture function)
 (define-extern link-texture-by-id (function adgif-shader texture-id int))
 (define-extern lookup-texture-by-id (function texture-id texture))
 (define-extern texture-page-login (function texture-id function kheap texture-page-dir-entry))
@@ -5174,12 +5216,16 @@
 (define-extern texture-page-common-boot-allocate (function texture-pool texture-page kheap int texture-page))
 (define-extern texture-page-level-allocate (function texture-pool texture-page kheap int texture-page))
 (define-extern relocate-later (function none))
+(define-extern adgif-shader-update! function)
+(define-extern adgif-shader-login (function adgif-shader none))
+(define-extern adgif-shader-login-no-remap (function adgif-shader none))
+(define-extern adgif-shader-login-fast function)
+(define-extern adgif-shader-login-no-remap-fast function)
+;;;; unknown type
+(define-extern adgif-shader<-texture-simple! function)
 
 ;; - Symbols
 
-(define-extern adgif-shader<-texture! function)
-(define-extern adgif-shader<-texture-with-update! function)
-(define-extern level-remap-texture function)
 (define-extern loading-level kheap)
 (define-extern *texture-pool* texture-pool)
 (define-extern *font-texture* texture)
@@ -5195,13 +5241,6 @@
 (define-extern mt4-block-table (array int32))
 (define-extern *shader-list* pair) ;; unknown type
 (define-extern *edit-shader* int) ;; unknown type
-(define-extern adgif-shader-update! function)
-(define-extern adgif-shader-login (function adgif-shader none))
-(define-extern adgif-shader-login-no-remap (function adgif-shader none))
-(define-extern adgif-shader-login-fast function)
-(define-extern adgif-shader-login-no-remap-fast function)
-;;;; unknown type
-(define-extern adgif-shader<-texture-simple! function)
 
 
 ;; ----------------------
@@ -7056,8 +7095,7 @@
   :flag-assert         #x900000014
   )
 
-(declare-type res-lump basic)
-(declare-type art-element basic)
+(declare-type art-element art)
 (deftype art (basic)
   ((name   string  :offset 8)
    (length int32   :offset-assert 12)
@@ -7165,7 +7203,7 @@
   :flag-assert         #x900000048
   )
 
-(declare-type merc-ctrl basic)
+(declare-type merc-ctrl art-element)
 (deftype lod-group (structure)
   ((geo  merc-ctrl   :offset-assert 0)
    (dist float  :offset-assert 4) ;; meters
@@ -7191,7 +7229,7 @@
 
 (declare-type ripple-control basic)
 (declare-type shadow-control basic)
-(declare-type shadow-geo basic)
+(declare-type shadow-geo art-element)
 (deftype draw-control (basic)
   ((status                   uint8           :offset-assert 4)
    (matrix-type              uint8           :offset-assert 5)
@@ -8705,6 +8743,7 @@
 ;; Version - 3
 
 ;; - Types
+
 (declare-type joint-control basic)
 (deftype joint-control-channel (structure)
   ((parent           joint-control     :offset-assert 0)
@@ -8816,7 +8855,7 @@
   ((joint  joint-anim-compressed-hdr 16 :inline :offset-assert 0) ;; might be something else
    (bone   bone 16 :inline :offset-assert 1024)
    ;(output UNKNOWN 16 :offset-assert 2560) no clue either :-(
-   
+
    (_pad uint8 #x800)
    )
   :method-count-assert 9
@@ -9003,11 +9042,14 @@
 ;; Containing DGOs - ['GAME', 'ENGINE']
 ;; Version - 3
 
+;; - Functions
+
+(define-extern part-group-pointer? function)
+
 ;; - Symbols
 
 (define-extern *res-static-buf* pointer)
 (define-extern uinteger type)
-(define-extern part-group-pointer? function)
 
 
 ;; ----------------------
@@ -9479,7 +9521,6 @@
   :flag-assert         #x900000024
   )
 
-
 ;; - Symbols
 
 (define-extern *global-attack-id* int)
@@ -9675,10 +9716,6 @@
     (dummy-14 () none 14)
     )
   )
-
-;; - Unknowns
-
-;;(define-extern part-tracker object) ;; unknown type
 
 
 ;; ----------------------
@@ -9990,21 +10027,6 @@
 ;; Containing DGOs - ['GAME', 'ENGINE']
 ;; Version - 3
 
-;; - Enums
-
-(defenum joint-mod-handler-mode
-  :bitfield #t
-  :type uint32
-  (flex-blend 0)    ;; 1
-  (look-at 1)       ;; 2
-  (world-look-at 2) ;; 4
-  (rotate 3)        ;; 8
-  (joint-set 4)     ;; 16
-  (joint-set* 5)    ;; 32
-  ;; ??             ;; 64
-  (reset 7)         ;; 128
-  )
-
 ;; - Types
 
 (deftype joint-mod (basic)
@@ -10127,29 +10149,28 @@
 
 ;; - Functions
 
+(define-extern joint-mod-spinner-callback (function cspace transformq none))
+(define-extern cspace<-parented-transformq-joint! (function cspace transformq none))
 (define-extern joint-mod-blend-local-callback (function cspace transformq none))
+(define-extern joint-mod-set-world-callback (function cspace transformq none))
+(define-extern cspace<-transformq! (function cspace transformq matrix))
+(define-extern joint-mod-set-local-callback (function cspace transformq none))
+(define-extern joint-mod-wheel-callback (function cspace transformq none))
+(define-extern vector<-cspace! (function vector cspace vector))
+(define-extern add-debug-text-sphere (function symbol bucket-id vector float string rgba none))
 (define-extern joint-mod-look-at-handler (function cspace transformq none))
 (define-extern joint-mod-world-look-at-handler (function cspace transformq none))
 (define-extern joint-mod-rotate-handler (function cspace transformq none))
 (define-extern joint-mod-joint-set-handler (function cspace transformq none))
 (define-extern joint-mod-joint-set*-handler (function cspace transformq none))
-(define-extern joint-mod-wheel-callback (function cspace transformq none))
-(define-extern joint-mod-set-local-callback (function cspace transformq none))
-(define-extern joint-mod-set-world-callback (function cspace transformq none))
-(define-extern joint-mod-spinner-callback (function cspace transformq none))
-
-;; - Symbols
-(define-extern cspace<-parented-transformq-joint! (function cspace transformq none))
-(define-extern cspace<-transformq! (function cspace transformq matrix))
-(define-extern vector<-cspace! (function vector cspace vector))
-(define-extern add-debug-text-sphere (function symbol bucket-id vector float string rgba none))
-
 (define-extern add-debug-matrix (function symbol bucket-id matrix none))
 (define-extern joint-mod-debug-draw (function joint-mod none))
-(define-extern last-try-to-look-at-data try-to-look-at-info)
-(define-extern *joint-axis-vectors* (inline-array vector)) 
 
-;; - Unknowns
+;; - Symbols
+
+(define-extern *joint-axis-vectors* (inline-array vector))
+(define-extern last-try-to-look-at-data try-to-look-at-info)
+
 
 ;; ----------------------
 ;; File - collide-func-h
@@ -10483,13 +10504,6 @@
     )
   )
 
-(defenum collide-list-enum
-  (hit-by-player)
-  (usually-hit-by-player)
-  (hit-by-others)
-  (player)
-  )
-
 (deftype collide-shape (trsqv)
   ((process               process            :offset-assert 140)
    (max-iteration-count   uint8              :offset-assert 144)
@@ -10621,6 +10635,7 @@
 (define-extern *collide-shape-prim-backgnd* collide-shape-prim-mesh)
 (define-extern *collide-shape-prim-water* collide-shape-prim-mesh)
 
+
 ;; ----------------------
 ;; File - collide-target-h
 ;; Source Path - engine/collide/collide-target-h.gc
@@ -10656,7 +10671,6 @@
    (history-array collide-history 128 :inline :offset-assert 2496)
    (pad uint32 27)
    )
-
   :size-assert #x4a2c
   :method-count-assert 65
   :flag-assert #x4100004a2c
@@ -10894,8 +10908,8 @@
 
 ;; - Symbols
 
-(define-extern *edge-grab-info* edge-grab-info)
 (define-extern *collide-edge-work* collide-edge-work)
+(define-extern *edge-grab-info* edge-grab-info)
 
 
 ;; ----------------------
@@ -10904,7 +10918,7 @@
 ;; Containing DGOs - ['GAME', 'ENGINE']
 ;; Version - 3
 
-;; - Symbols
+;; - Functions
 
 (define-extern joint-control-reset! (function joint-control joint-control-channel none))
 (define-extern cspace-index-by-name (function process-drawable string int))
@@ -10952,7 +10966,6 @@
     (dummy-14 () none 14)
     )
   )
-
 
 
 ;; ----------------------
@@ -11026,6 +11039,7 @@
   :size-assert #x24
   :flag-assert #x1200000024
   )
+
 
 ;; ----------------------
 ;; File - projectiles-h
@@ -11292,9 +11306,7 @@
   :flag-assert         #x900000020
   )
 
-
 (declare-type entity-camera basic)
-
 (deftype bsp-header (drawable)
   (
    (info file-info :offset 4)
@@ -11303,26 +11315,26 @@
    (drawable-trees drawable-tree-array :offset-assert 40)
    (pat pointer :offset-assert 44)
    (pat-length int32 :offset-assert 48)
-   
+
    ;; not sure what this is
    (unk-data-0 pointer :offset-assert 52)
    (unk-data-0-len int32 :offset-assert 56)
-   
+
    (unk-data-1 pointer :offset-assert 60)
    (unk-data-1-len int32 :offset-assert 64)
-   
+
    (unk-zero-0 uint32 :offset-assert 68)
-   
+
    (name symbol :offset-assert 72)
    (nickname symbol :offset-assert 76)
    (vis-info level-vis-info 8 :offset-assert 80)
    (actors drawable-inline-array-actor :offset-assert 112)
    (cameras (array entity-camera) :offset-assert 116)
    (nodes (inline-array bsp-node) :offset-assert 120)
-   
+
    (level level :offset-assert 124)
    (unk-data-2 uint32 5 :offset-assert 128)
-   
+
    (boxes box8s-array :offset-assert 148)
    (unk-data-3 uint32 :offset-assert 152)
    (ambients drawable-inline-array-ambient :offset-assert 156)
@@ -11332,7 +11344,6 @@
    (unk-data-6 pointer :offset-assert 172)
    (unk-data-7 pointer :offset-assert 176)
    (unk-data-8 uint32 55 :offset-assert 180)
-   
 
    )
   :method-count-assert 20
@@ -11394,7 +11405,6 @@
   :size-assert         #x80
   :flag-assert         #x900000080
   )
-
 
 ;; - Functions
 
@@ -11685,6 +11695,13 @@
   :flag-assert #x1200000074
   )
 
+(deftype drawable-tree-instance-shrub (drawable-tree)
+  ()
+  :method-count-assert #x12
+  :size-assert #x24
+  :flag-assert #x1200000024
+  )
+
 (deftype generic-shrub-fragment (drawable)
   ((textures (inline-array adgif-shader)         :offset 4)
    (vtx-cnt  uint32         :offset 8)
@@ -11701,7 +11718,7 @@
   :size-assert         #x20
   :flag-assert         #x1200000020
   (:methods
-    
+
     (dummy-10 (_type_) int 10)
     (dummy-11 () none 11)
     (dummy-12 () none 12)
@@ -11730,13 +11747,6 @@
   )
 
 (deftype prototype-generic-shrub (drawable-group)
-  ()
-  :method-count-assert #x12
-  :size-assert #x24
-  :flag-assert #x1200000024
-  )
-
-(deftype drawable-tree-instance-shrub (drawable-tree)
   ()
   :method-count-assert #x12
   :size-assert #x24
@@ -11813,7 +11823,7 @@
    (length                    uint32        6       :offset-assert 6452)
    (prototypes                uint32                 :offset-assert 6476)
    ;;(bucket-ptr                uint32                 :offset-assert 6404) appears twice
-   
+
    (start-bank                uint8        20        :offset 6484)
    (buffer-index              uint32                 :offset-assert 6504)
    (current-spr               uint32                 :offset-assert 6508)
@@ -12070,9 +12080,9 @@
    (length          uint32      :offset-assert 10240)
    (dma-buffer      basic       :offset-assert 10244)
    (this-frag-count uint32      :offset-assert 10248)
-   
+
    (next            uint32 4   :offset 10256)
-   
+
    (geometry        uint32 4   :offset-assert 10272)
    (frag-count      uint8 4   :offset-assert 10288)
    )
@@ -12080,7 +12090,6 @@
   :size-assert         #x2834
   :flag-assert         #x900002834
   )
-
 
 ;; - Symbols
 
@@ -12400,7 +12409,6 @@
   )
 
 
-
 ;; ----------------------
 ;; File - subdivide-h
 ;; Source Path - engine/gfx/tfrag/subdivide-h.gc
@@ -12584,7 +12592,6 @@
   :flag-assert         #x9000040b0
   )
 
-
 ;; - Symbols
 
 (define-extern *terrain-stats* terrain-stats)
@@ -12598,13 +12605,6 @@
 ;; Version - 3
 
 ;; - Types
-
-(defenum entity-perm-status
-  :bitfield #t
-  :type uint16
-  (bit-1 1)
-  (dead 2)
-  (complete 6))
 
 (deftype entity-perm (structure)
   ((user-object object 2 :offset-assert 0)
@@ -12684,6 +12684,17 @@
     )
   )
 
+(deftype entity-camera (entity)
+  (
+    (connect connectable :inline :offset-assert 64)
+  )
+  :method-count-assert 27
+  :size-assert #x50
+  :flag-assert #x1b00000050
+  (:methods
+    )
+  )
+
 (deftype entity-ambient-data (structure)
   ((user-object object 3  :offset-assert 0)
    (function    basic      :offset-assert 12)
@@ -12707,6 +12718,17 @@
   :method-count-assert 9
   :size-assert         #x10
   :flag-assert         #x900000010
+  )
+
+(deftype entity-ambient (entity)
+  ()
+  :method-count-assert 29
+  :size-assert #x34
+  :flag-assert #x1d00000034
+  (:methods
+    (dummy-27 () none 27)
+    (dummy-28 () none 28)
+    )
   )
 
 (declare-type nav-mesh basic)
@@ -12752,35 +12774,16 @@
   :flag-assert         #x900000010
   )
 
-(deftype entity-ambient (entity)
-  ()
-  :method-count-assert 29
-  :size-assert #x34
-  :flag-assert #x1d00000034
-  (:methods
-    (dummy-27 () none 27)
-    (dummy-28 () none 28)
-    )
-  )
+;; - Functions
 
-(deftype entity-camera (entity)
-  (
-    (connect connectable :inline :offset-assert 64)
-  )
-  :method-count-assert 27
-  :size-assert #x50
-  :flag-assert #x1b00000050
-  (:methods
-    )
-  )
+(define-extern entity-nav-login function) ;; only called in `level` in an asm function...tough, returns nothing
 
 ;; - Symbols
 
-(define-extern entity-nav-login function) ;; only called in `level` in an asm function...tough, returns nothing
-(define-extern *generate-actor-vis-start* symbol)
-(define-extern *ACTOR-bank* actor-bank)
-(define-extern *generate-actor-vis-output* symbol)
 (define-extern *generate-actor-vis* symbol)
+(define-extern *generate-actor-vis-start* symbol)
+(define-extern *generate-actor-vis-output* symbol)
+(define-extern *ACTOR-bank* actor-bank)
 
 
 ;; ----------------------
@@ -12868,7 +12871,6 @@
   :size-assert         #x30
   :flag-assert         #x900000030
   )
-
 
 
 ;; ----------------------
@@ -13089,7 +13091,6 @@
   )
 
 
-
 ;; ----------------------
 ;; File - sparticle-h
 ;; Source Path - engine/sparticle/sparticle-h.gc
@@ -13165,7 +13166,6 @@
   :flag-assert         #x900000034
   )
 
-
 ;; - Symbols
 
 (define-extern *sp-frame-time* vector)
@@ -13210,18 +13210,15 @@
     )
   )
 
-;; - Symbols
+;; - Functions
 
 (define-extern entity-actor-count (function res-lump symbol int))
+(define-extern entity-actor-lookup (function res-lump symbol int entity-actor)) ;; NOTE - return value is not confirmed
 (define-extern entity-by-name (function string entity))
 (define-extern entity-by-aid (function uint entity))
 (define-extern actor-link-subtask-complete-hook (function entity-actor (pointer symbol) symbol))
 (define-extern actor-link-dead-hook (function entity-actor (pointer symbol) symbol))
 (define-extern alt-actor-list-subtask-incomplete-count (function process-drawable int))
-
-;; - Functions
-
-(define-extern entity-actor-lookup (function res-lump symbol int entity-actor)) ;; NOTE - return value is not confirmed
 
 
 ;; ----------------------
@@ -13528,7 +13525,7 @@
 ;; Containing DGOs - ['GAME', 'ENGINE']
 ;; Version - 3
 
-;; - Symbols
+;; - Functions
 
 (define-extern float-save-redline (function float none))
 (define-extern float-lookup-redline (function float float))
@@ -13541,7 +13538,7 @@
 (define-extern float-save-timeplot (function float none))
 (define-extern float-lookup-timeplot (function float float))
 
-;; - Unknowns
+;; - Symbols
 
 (define-extern *timeplot-index* int)
 (define-extern *timeplot-table* (pointer float))
@@ -13581,14 +13578,14 @@
 
 ;; - Symbols
 
-(define-extern *camera-other-trans* vector)
-(define-extern *camera-other-root* vector)
-(define-extern *camera-look-through-other* int)
-(define-extern *camera-other-fov* bfloat)
-(define-extern *camera-other-matrix* matrix)
-(define-extern *camera-smush-control* smush-control)
 (define-extern *external-cam-options* int)
 (define-extern *external-cam-mode* symbol)
+(define-extern *camera-look-through-other* int)
+(define-extern *camera-other-fov* bfloat)
+(define-extern *camera-other-trans* vector)
+(define-extern *camera-other-matrix* matrix)
+(define-extern *camera-smush-control* smush-control)
+(define-extern *camera-other-root* vector)
 
 
 ;; ----------------------
@@ -13897,9 +13894,6 @@
 ;; - Symbols
 
 (define-extern *progress-process* (pointer progress))
-
-;; - Unknowns
-
 (define-extern *progress-last-task-index* int)
 
 
@@ -13961,13 +13955,6 @@
 
 ;; - Types
 
-(defenum path-control-flag
-  :bitfield #t
-  :type uint32
-  (display 0)
-  (not-found 4)
-  )
-
 (deftype path-control (basic)
   ((flags      path-control-flag         :offset-assert 4)
    (name       basic          :offset-assert 8)
@@ -13998,7 +13985,7 @@
 
 (deftype curve-control (path-control)
   ()
-  
+
   (:methods
     (new (symbol type process symbol float) _type_)
     )
@@ -14006,6 +13993,10 @@
   :size-assert         #x24
   :flag-assert         #x1500000024
   )
+
+;; - Functions
+
+(define-extern string->symbol (function string symbol))
 
 
 ;; ----------------------
@@ -14193,14 +14184,6 @@
   :flag-assert         #x900000014
   )
 
-(defenum nav-control-flags
-  :bitfield #t
-  :type uint32
-  (display-marks 0)
-  (bit8 8)
-  (bit13 13)
-  )
-
 (deftype nav-control (basic)
   ((flags               nav-control-flags :offset-assert 4)
    (process             basic             :offset-assert 8)
@@ -14264,13 +14247,12 @@
     )
   )
 
-
-;; - Symbols
+;; - Functions
 
 (define-extern nav-mesh-connect (function process trsqv nav-control nav-mesh))
 (define-extern has-nav-mesh? (function entity-actor symbol))
 
-;; - Unknowns
+;; - Symbols
 
 (define-extern process-level-heap kheap) ;; unknown type
 (define-extern *default-nav-mesh* nav-mesh) ;; unknown type
@@ -14327,6 +14309,7 @@
 ;; - Functions
 
 (define-extern link-begin (function pointer (pointer uint8) int kheap link-flag int))
+(define-extern string->sound-name (function string sound-name))
 (define-extern str-load (function string int pointer int symbol))
 (define-extern str-load-status (function (pointer int32) symbol))
 (define-extern str-load-cancel (function none))
@@ -14456,10 +14439,11 @@
   :flag-assert         #x900000508
   )
 
+;; - Functions
 
-;; - Symbols
-
+(define-extern math-camera-pos (function vector))
 (define-extern target-pos (function int vector))
+(define-extern camera-pos (function vector))
 (define-extern new-sound-id (function sound-id))
 (define-extern get-sound-buffer-entry (function pointer))
 (define-extern sound-trans-convert (function vector3w vector int))
@@ -14468,10 +14452,10 @@
 (define-extern ear-trans (function vector))
 (define-extern sound-play-by-spec (function sound-spec sound-id vector sound-id))
 (define-extern sound-play-by-name (function sound-name sound-id int int int uint vector sound-id))
-(define-extern *setting-control* setting-control)
 (define-extern sound-angle-convert (function float int))
 (define-extern sound-set-ear-trans (function vector vector float int))
 (define-extern activate-progress (function process int int))
+(define-extern kset-language (function int int)) ;; unknown type
 (define-extern sound-command->string (function sound-command string))
 (define-extern sound-name= (function sound-name sound-name symbol))
 (define-extern str-is-playing? (function symbol))
@@ -14490,7 +14474,6 @@
 (define-extern swap-sound-buffers (function vector vector float int))
 (define-extern free-last-sound-buffer-entry (function int))
 (define-extern sound-basic-cb function)
-(define-extern string->sound-name (function string sound-name))
 (define-extern sound-set-volume (function uint float int))
 (define-extern sound-set-reverb (function int float float uint int))
 (define-extern sound-pause (function sound-id int))
@@ -14507,21 +14490,16 @@
 (define-extern make-sqrt-table (function int))
 (define-extern flava-lookup (function symbol int integer))
 
-;; - Functions
-
-(define-extern math-camera-pos (function vector))
-(define-extern camera-pos (function vector))
-
-;; - Unknowns
+;; - Symbols
 
 (define-extern *flava-table* flava-table) ;; unknown type
 (define-extern *sound-iop-info* sound-iop-info) ;; unknown type
 (define-extern *ambient-spec* sound-spec) ;; unknown type
 (define-extern *debug-effect-control* symbol) ;; unknown type
+(define-extern *setting-control* setting-control)
 (define-extern *sound-player-enable* symbol) ;; unknown type
 (define-extern *sound-player-rpc* rpc-buffer-pair) ;; unknown type
 (define-extern *sound-loader-rpc* rpc-buffer-pair) ;; unknown type
-(define-extern kset-language (function int int)) ;; unknown type
 
 
 ;; ----------------------
@@ -14546,17 +14524,17 @@
 ;; Containing DGOs - ['GAME', 'ENGINE']
 ;; Version - 3
 
-;; - Symbols
+;; - Functions
 
-(define-extern ray-circle-intersect (function vector vector vector vector float))
-(define-extern moving-sphere-moving-sphere-intersect (function vector vector vector vector float))
 (define-extern ray-sphere-intersect (function vector vector vector vector float))
 (define-extern raw-ray-sphere-intersect (function vector float))
-(define-extern collide-do-primitives (function float)) ;; NOTE - didn't bother to check input args
-(define-extern ray-triangle-intersect (function vector)) ;; NOTE - didn't bother to check input args
-(define-extern ray-plane-intersect (function vector vector vector vector vector vector vector float))
+(define-extern ray-circle-intersect (function vector vector vector vector float))
 (define-extern ray-cylinder-intersect (function vector vector vector vector float float vector float))
+(define-extern ray-plane-intersect (function vector vector vector vector vector vector vector float))
+(define-extern ray-triangle-intersect (function vector)) ;; NOTE - didn't bother to check input args
+(define-extern collide-do-primitives (function float)) ;; NOTE - didn't bother to check input args
 (define-extern moving-sphere-sphere-intersect (function vector vector vector vector float))
+(define-extern moving-sphere-moving-sphere-intersect (function vector vector vector vector float))
 
 
 ;; ----------------------
@@ -14565,7 +14543,7 @@
 ;; Containing DGOs - ['GAME', 'ENGINE']
 ;; Version - 3
 
-;; - Symbols
+;; - Functions
 
 (define-extern flatten-joint-control-to-spr (function joint-control int))
 (define-extern make-joint-jump-tables (function int))
@@ -14625,7 +14603,6 @@
   :flag-assert         #x9000000a0
   )
 
-
 ;; - Functions
 
 ;; TODO - not decompiling correctly due to vector-dot-product again i believe
@@ -14650,7 +14627,7 @@
 ;; Containing DGOs - ['GAME', 'ENGINE']
 ;; Version - 3
 
-;; - Symbols
+;; - Functions
 
 (define-extern print-cl-stat function)
 (define-extern clear-cl-stat function)
@@ -14669,7 +14646,7 @@
 ;; Containing DGOs - ['GAME', 'ENGINE']
 ;; Version - 3
 
-;; - Symbols
+;; - Functions
 
 (define-extern perf-stat-bucket->string function)
 (define-extern print-tr-stat function)
@@ -14783,8 +14760,7 @@
 ;   :flag-assert         #x900000290
 ;   )
 
-
-;; - Symbols
+;; - Functions
 
 (define-extern sprite-init-distorter function)
 (define-extern sprite-draw-distorters function)
@@ -14795,7 +14771,6 @@
 (define-extern sprite-add-shadow-all function)
 (define-extern sprite-add-shadow-chunk function)
 (define-extern sprite-setup-header function)
-(define-extern *shadow-middot-texture* texture) ;; unknown type
 (define-extern sprite-add-3d-chunk function)
 (define-extern sprite-add-2d-chunk function)
 (define-extern sprite-setup-frame-data function)
@@ -14807,6 +14782,10 @@
 (define-extern sprite-allocate-user-hvdf function)
 (define-extern sprite-release-user-hvdf function)
 (define-extern sprite-get-user-hvdf function)
+
+;; - Symbols
+
+(define-extern *shadow-middot-texture* texture) ;; unknown type
 
 ;; - Unknowns
 
@@ -14839,7 +14818,6 @@
 ;   :flag-assert         #x9000008c0
 ;   )
 
-
 ;; - Unknowns
 
 ;;(define-extern *sprite-distorter-sine-tables* object) ;; unknown type
@@ -14864,9 +14842,9 @@
 
 ;; - Functions
 
+(define-extern add-debug-line (function symbol int vector vector rgba symbol int int))
 (define-extern make-debug-sphere-table (function debug-sphere-table none))
 (define-extern add-debug-sphere-from-table (function int vector vector rgba none))
-(define-extern add-debug-line (function symbol int vector vector rgba symbol int int))
 
 ;; - Symbols
 
@@ -14919,16 +14897,13 @@
 
 ;; - Functions
 
-(define-extern add-debug-sphere (function symbol int vector float int int))
-
-;; - Symbols
-
 (define-extern debug-set-camera-pos-rot! function)
 (define-extern drawable-frag-count function)
 (define-extern add-debug-light function)
 (define-extern add-debug-text-3d function)
 (define-extern add-debug-x function)
 (define-extern add-debug-curve function)
+(define-extern add-debug-sphere (function symbol int vector float int int))
 (define-extern get-debug-text-3d function)
 (define-extern internal-draw-debug-text-3d function)
 (define-extern get-debug-line function)
@@ -15040,8 +15015,7 @@
 ;   :flag-assert         #x900002370
 ;   )
 
-
-;; - Symbols
+;; - Functions
 
 (define-extern setup-blerc-chains-for-one-fragment function)
 (define-extern setup-blerc-chains function)
@@ -15065,7 +15039,7 @@
 ;; Containing DGOs - ['GAME', 'ENGINE']
 ;; Version - 3
 
-;; - Symbols
+;; - Functions
 
 (define-extern merc-vu1-init-buffer function)
 (define-extern merc-vu1-initialize-chain function)
@@ -15117,13 +15091,13 @@
 (define-extern ripple-apply-wave-table (function merc-effect symbol))
 (define-extern ripple-make-request (function ripple-wave merc-effect none))
 (define-extern ripple-execute (function none))
+(define-extern ripple-matrix-scale function)
 (define-extern ripple-add-debug-sphere (function process-drawable vector float float none)) ; TODO - this could be a child type of process-drawable instead
 (define-extern ripple-find-height (function process-drawable basic vector float))
 
 ;; - Symbols
 
 (define-extern *ripple-globals* ripple-globals)
-(define-extern ripple-matrix-scale function)
 
 
 ;; ----------------------
@@ -15196,13 +15170,9 @@
 ;   :flag-assert         #x9000000fc
 ;   )
 
-
 ;; - Functions
 
 (define-extern paused? (function symbol))
-
-;; - Symbols
-
 (define-extern dump-mem function)
 (define-extern bone-list-init function)
 (define-extern texscroll-make-request function)
@@ -15256,10 +15226,10 @@
 
 ;; - Functions
 
-(define-extern generic-sink (function int generic-dma-foreground-sink))
+(define-extern generic-init-buf (function dma-buffer int uint none))
 (define-extern generic-dma-foreground-sink-init (function generic-dma-foreground-sink none))
 (define-extern generic-init-buffers (function symbol))
-(define-extern generic-init-buf (function dma-buffer int uint none))
+(define-extern generic-sink (function int generic-dma-foreground-sink))
 
 ;; - Symbols
 
@@ -15272,7 +15242,7 @@
 ;; Containing DGOs - ['GAME', 'ENGINE']
 ;; Version - 3
 
-;; - Symbols
+;; - Functions
 
 (define-extern generic-add-constants function)
 (define-extern generic-setup-constants function)
@@ -15289,12 +15259,11 @@
 ;; Containing DGOs - ['GAME', 'ENGINE']
 ;; Version - 3
 
-;; - Symbols
+;; - Functions
 
 (define-extern generic-work-init function)
 (define-extern generic-upload-vu0 function)
 (define-extern upload-vu0-program function)
-(define-extern *generic-envmap-texture* texture) ;; unknown type
 (define-extern generic-initialize-without-sink function)
 (define-extern generic-initialize function)
 (define-extern generic-wrapup function)
@@ -15317,6 +15286,10 @@
 (define-extern generic-none-dma-wait function)
 (define-extern generic-debug-light-proc function)
 (define-extern generic-post-debug function)
+
+;; - Symbols
+
+(define-extern *generic-envmap-texture* texture) ;; unknown type
 
 ;; - Unknowns
 
@@ -15342,7 +15315,7 @@
   :flag-assert         #x900000004
   )
 
-;; - Symbols
+;; - Functions
 
 (define-extern generic-merc-init-asm function)
 (define-extern mercneric-matrix-asm function)
@@ -15366,7 +15339,7 @@
 ;; Containing DGOs - ['GAME', 'ENGINE']
 ;; Version - 3
 
-;; - Symbols
+;; - Functions
 
 (define-extern generic-tie-dma-to-spad function)
 (define-extern generic-tie-dma-to-spad-sync function)
@@ -15429,7 +15402,7 @@
   :flag-assert         #x9000000a0
   )
 
-;; - Symbols
+;; - Functions
 
 (define-extern shadow-vu0-upload function)
 (define-extern shadow-vu1-init-buffer function)
@@ -15452,10 +15425,13 @@
 (define-extern shadow-add-double-edges function)
 (define-extern shadow-execute-all function)
 
+;; - Symbols
+
+(define-extern *shadow-data* shadow-data)
+
 ;; - Unknowns
 
 ;;(define-extern shadow-vu0-block object) ;; unknown type
-(define-extern *shadow-data* shadow-data)
 
 
 ;; ----------------------
@@ -15497,8 +15473,7 @@
 ;   :flag-assert         #x900000050
 ;   )
 
-
-;; - Symbols
+;; - Functions
 
 (define-extern shadow-vu1-add-constants function)
 (define-extern shadow-vu1-add-matrix function)
@@ -15515,7 +15490,7 @@
 ;; Containing DGOs - ['GAME', 'ENGINE']
 ;; Version - 3
 
-;; - Symbols
+;; - Functions
 
 (define-extern depth-cue-draw-front function)
 (define-extern depth-cue-set-stencil function)
@@ -15534,7 +15509,7 @@
 ;; Containing DGOs - ['GAME', 'ENGINE']
 ;; Version - 3
 
-;; - Symbols
+;; - Functions
 
 (define-extern get-string-length function)
 (define-extern draw-string-adv function)
@@ -15562,7 +15537,7 @@
   :flag-assert         #x900000004
   )
 
-;; - Symbols
+;; - Functions
 
 (define-extern unpack-comp-rle function)
 (define-extern unpack-comp-huf function)
@@ -15574,7 +15549,7 @@
 ;; Containing DGOs - ['GAME', 'ENGINE']
 ;; Version - 3
 
-;; - Symbols
+;; - Functions
 
 (define-extern background-upload-vu0 function)
 (define-extern time-of-day-interp-colors function)
@@ -15604,7 +15579,7 @@
 ;; Containing DGOs - ['GAME', 'ENGINE']
 ;; Version - 3
 
-;; - Symbols
+;; - Functions
 
 (define-extern collide-cache-using-line-sphere-test function)
 (define-extern collide-cache-using-y-probe-test function)
@@ -15618,7 +15593,7 @@
 ;; Containing DGOs - ['GAME', 'ENGINE']
 ;; Version - 3
 
-;; - Symbols
+;; - Functions
 
 (define-extern upload-generic-shrub function)
 (define-extern shrub-num-tris function)
@@ -15655,7 +15630,7 @@
 ;; Containing DGOs - ['GAME', 'ENGINE']
 ;; Version - 3
 
-;; - Symbols
+;; - Functions
 
 (define-extern tfrag-details function)
 (define-extern clip-restore function)
@@ -15671,7 +15646,7 @@
 ;; Containing DGOs - ['GAME', 'ENGINE']
 ;; Version - 3
 
-;; - Symbols
+;; - Functions
 
 (define-extern add-tfrag-mtx-0 function)
 (define-extern add-tfrag-mtx-1 function)
@@ -15699,7 +15674,7 @@
 ;; Containing DGOs - ['GAME', 'ENGINE']
 ;; Version - 3
 
-;; - Symbols
+;; - Functions
 
 (define-extern edge-debug-lines function)
 (define-extern vis-cull function)
@@ -15742,8 +15717,7 @@
 ;   :flag-assert         #x900000090
 ;   )
 
-
-;; - Symbols
+;; - Functions
 
 (define-extern tie-init-consts function)
 (define-extern tie-float-reg function)
@@ -15785,8 +15759,7 @@
 ;   :flag-assert         #x9000000b0
 ;   )
 
-
-;; - Symbols
+;; - Functions
 
 (define-extern tie-near-init-consts function)
 (define-extern tie-near-init-engine function)
@@ -15827,7 +15800,7 @@
   :flag-assert         #x900000008
   )
 
-;; - Symbols
+;; - Functions
 
 (define-extern tie-init-buffers function)
 (define-extern tie-debug-between function)
@@ -15918,8 +15891,7 @@
 ;   :flag-assert         #x9000019b0
 ;   )
 
-
-;; - Symbols
+;; - Functions
 
 (define-extern sphere-in-view-frustum? function)
 (define-extern kill-all-particles-with-key function)
@@ -15966,7 +15938,7 @@
 ;; Containing DGOs - ['GAME', 'ENGINE']
 ;; Version - 3
 
-;; - Symbols
+;; - Functions
 
 (define-extern all-particles-60-to-50 function)
 (define-extern all-particles-50-to-60 function)
@@ -16009,7 +15981,7 @@
 ;; Containing DGOs - ['GAME', 'ENGINE']
 ;; Version - 3
 
-;; - Symbols
+;; - Functions
 
 (define-extern entity-info-lookup function)
 
@@ -16024,20 +15996,23 @@
 ;; Containing DGOs - ['GAME', 'ENGINE']
 ;; Version - 3
 
-;; - Symbols
+;; - Functions
 
-(define-extern *load-state* load-state)
 (define-extern ja-channel-push! function)
 (define-extern ja-channel-set! function)
 (define-extern kill-current-level-hint function)
 (define-extern level-hint-surpress! function)
 (define-extern ja-aframe-num function)
 (define-extern ja-abort-spooled-anim function)
-(define-extern *kernel-sp* pointer)
 (define-extern art-group-load-check function)
 (define-extern drawable-load function)
 (define-extern art-load function)
 (define-extern ja-play-spooled-anim function)
+
+;; - Symbols
+
+(define-extern *load-state* load-state)
+(define-extern *kernel-sp* pointer)
 
 ;; - Unknowns
 
@@ -16188,25 +16163,25 @@
 
 ;; - Functions
 
-(define-extern position-in-front-of-camera! (function vector float float vector))
-(define-extern set-blackout-frames (function int int))
-(define-extern set-master-mode (function symbol none))
-(define-extern stop (function int)) ;; logic-target
-
-;; - Symbols
-
 (define-extern get-task-control function)
 (define-extern level-hint-spawn function)
 (define-extern get-game-count function)
 (define-extern activate-orb-all function)
 (define-extern close-specific-task! function)
 (define-extern reset-all-hint-controls function)
-(define-extern *kernel-boot-message* symbol)
 (define-extern reset-actors function)
+(define-extern set-blackout-frames (function int int))
+(define-extern set-master-mode (function symbol none))
+(define-extern stop (function int)) ;; logic-target
 (define-extern start function)
-(define-extern *level-load-list* pair)
+(define-extern position-in-front-of-camera! (function vector float float vector))
 (define-extern game-task->string function)
 (define-extern trsq->continue-point function)
+
+;; - Symbols
+
+(define-extern *kernel-boot-message* symbol)
+(define-extern *level-load-list* pair)
 
 ;; - Unknowns
 
@@ -16308,16 +16283,13 @@
 
 ;; - Functions
 
-(define-extern progress-allowed? (function symbol))
-(define-extern lookup-level-info (function symbol level-load-info))
-(define-extern print-game-text (function string font-context symbol int int float)) ; TODO decomp error, this seems correct though
-
-;; - Symbols
-
 (define-extern auto-save-command function)
 (define-extern auto-save-init-by-other function)
+(define-extern progress-allowed? (function symbol))
+(define-extern print-game-text (function string font-context symbol int int float)) ; TODO decomp error, this seems correct though
 (define-extern get-aspect-ratio (function symbol))
 (define-extern get-task-status function)
+(define-extern lookup-level-info (function symbol level-load-info))
 (define-extern calculate-completion function)
 (define-extern game-save-elt->string function)
 (define-extern progress-level-index->string function)
@@ -16337,7 +16309,7 @@
 ;; Containing DGOs - ['GAME', 'ENGINE']
 ;; Version - 3
 
-;; - Symbols
+;; - Functions
 
 (define-extern set-aspect-ratio (function symbol none))
 (define-extern set-video-mode (function symbol none))
@@ -16674,19 +16646,15 @@
 
 ;; - Functions
 
-(define-extern update-mood-fog (function mood-fog mood-lights-table none))
-
-;; - Symbols
-
 (define-extern clear-mood-times function)
 (define-extern update-mood-quick function)
 (define-extern update-mood-flames function)
 (define-extern update-mood-light function)
 (define-extern target-joint-pos function)
 (define-extern update-mood-itimes function)
+(define-extern update-mood-fog (function mood-fog mood-lights-table none))
 (define-extern update-mood-sky-texture function)
 (define-extern update-mood-palette function)
-(define-extern *time-of-day-proc* time-of-day-proc)
 (define-extern update-mood-interp function)
 (define-extern update-mood-lightning function)
 (define-extern update-mood-lava function)
@@ -16715,6 +16683,10 @@
 (define-extern update-mood-ogre function)
 (define-extern update-mood-finalboss function)
 (define-extern update-mood-citadel function)
+
+;; - Symbols
+
+(define-extern *time-of-day-proc* time-of-day-proc)
 
 ;; - Unknowns
 
@@ -16751,17 +16723,14 @@
 ;; Containing DGOs - ['GAME', 'ENGINE']
 ;; Version - 3
 
-;; - Symbols
+;; - Functions
 
+(define-extern matrix-local->world (function symbol matrix))
 (define-extern update-snow function)
 (define-extern check-drop-level-rain function)
 (define-extern update-rain function)
 (define-extern cam-master-effect function)
 (define-extern sparticle-track-sun function)
-
-;; - Functions
-
-(define-extern matrix-local->world (function symbol matrix))
 
 ;; - Unknowns
 
@@ -16774,7 +16743,7 @@
 ;; Containing DGOs - ['GAME', 'ENGINE']
 ;; Version - 3
 
-;; - Symbols
+;; - Functions
 
 (define-extern make-sky-textures function)
 (define-extern init-time-of-day function)
@@ -16839,8 +16808,7 @@
 ;   :flag-assert         #x900000120
 ;   )
 
-
-;; - Symbols
+;; - Functions
 
 (define-extern sky-add-frame-data function)
 (define-extern sky-make-sun-data function)
@@ -16861,7 +16829,7 @@
 ;; Containing DGOs - ['GAME', 'ENGINE']
 ;; Version - 3
 
-;; - Symbols
+;; - Functions
 
 (define-extern copy-sky-texture function)
 (define-extern copy-cloud-texture function)
@@ -16975,14 +16943,11 @@
 
 ;; - Functions
 
+(define-extern check-closed-boundary function)
+(define-extern check-open-boundary function)
 (define-extern load-state-want-vis (function int none))
 (define-extern load-state-want-levels (function int int none))
 (define-extern load-state-want-display-level (function int int none))
-
-;; - Symbols
-
-(define-extern check-closed-boundary function)
-(define-extern check-open-boundary function)
 (define-extern load-state-want-force-vis function)
 (define-extern command-get-param function)
 (define-extern entity-birth-no-kill function)
@@ -17096,19 +17061,19 @@
 
 ;; - Functions
 
-(define-extern remap-level-name (function level-load-info object))
-(define-extern play (function none))
-
-;; - Symbols
-
 (define-extern update-sound-banks function)
 (define-extern load-vis-info function)
-(define-extern *print-login* symbol) ;; unknown type
 (define-extern on function)
 (define-extern level-update-after-load function)
 (define-extern add-bsp-drawable function)
+(define-extern remap-level-name (function level-load-info object))
 (define-extern bg function)
+(define-extern play (function none))
 (define-extern show-level function)
+
+;; - Symbols
+
+(define-extern *print-login* symbol) ;; unknown type
 
 ;; - Unknowns
 
@@ -17123,7 +17088,7 @@
 ;; Containing DGOs - ['GAME', 'ENGINE']
 ;; Version - 3
 
-;; - Symbols
+;; - Functions
 
 (define-extern set-font-color-alpha function)
 (define-extern load-game-text-info function)
@@ -17166,7 +17131,7 @@
   :flag-assert         #x900004000
   )
 
-;; - Symbols
+;; - Functions
 
 (define-extern misty-ambush-height function)
 (define-extern distc function)
@@ -17201,7 +17166,7 @@
 ;; Containing DGOs - ['GAME', 'ENGINE']
 ;; Version - 3
 
-;; - Symbols
+;; - Functions
 
 (define-extern sphere-cull function)
 
@@ -17260,7 +17225,6 @@
 ;   )
 
 
-
 ;; ----------------------
 ;; File - collide-edge-grab
 ;; Source Path - engine/collide/collide-edge-grab.gc
@@ -17280,7 +17244,6 @@
 ;   :flag-assert         #x900000030
 ;   )
 
-
 ;; - Unknowns
 
 ;;(define-extern *rotate-surface* object) ;; unknown type
@@ -17293,7 +17256,7 @@
 ;; Containing DGOs - ['GAME', 'ENGINE']
 ;; Version - 3
 
-;; - Symbols
+;; - Functions
 
 (define-extern target-attack-up function)
 (define-extern find-ground-point function)
@@ -17336,7 +17299,7 @@
 ;; Containing DGOs - ['GAME', 'ENGINE']
 ;; Version - 3
 
-;; - Symbols
+;; - Functions
 
 (define-extern camera-bounding-box-draw function)
 (define-extern collide-planes-test0 function)
@@ -17366,7 +17329,7 @@
   :flag-assert         #x900000010
   )
 
-;; - Symbols
+;; - Functions
 
 (define-extern birth-func-death-sparks function)
 (define-extern merc-death-spawn function)
@@ -17476,7 +17439,7 @@
 ;; Containing DGOs - ['GAME', 'ENGINE']
 ;; Version - 3
 
-;; - Symbols
+;; - Functions
 
 (define-extern vector-into-frustum-nosmooth! function)
 (define-extern slave-matrix-blend-2 function)
@@ -17528,9 +17491,9 @@
 
 ;; - Functions
 
-(define-extern camera-teleport-to-entity (function entity-actor none))
 (define-extern matrix-world->local (function matrix))
 (define-extern camera-angle (function float))
+(define-extern camera-teleport-to-entity (function entity-actor none))
 
 ;; - Symbols
 
@@ -17570,7 +17533,7 @@
   ;; inherited inspect of process
   )
 
-;; - Symbols
+;; - Functions
 
 (define-extern list-keeper-init function)
 (define-extern master-track-target function)
@@ -17672,8 +17635,7 @@
 ;   ;; bad get label
 ;   )
 
-
-;; - Symbols
+;; - Functions
 
 (define-extern cam-bike-code function)
 (define-extern cam-calc-bike-follow! function)
@@ -17786,7 +17748,7 @@
   :flag-assert         #x900000014
   )
 
-;; - Symbols
+;; - Functions
 
 (define-extern cam-free-floating-move function)
 (define-extern cam-free-floating-input function)
@@ -17807,7 +17769,7 @@
 ;; Containing DGOs - ['GAME', 'ENGINE']
 ;; Version - 3
 
-;; - Symbols
+;; - Functions
 
 (define-extern cam-combiner-init function)
 
@@ -17822,7 +17784,7 @@
 ;; Containing DGOs - ['GAME', 'ENGINE']
 ;; Version - 3
 
-;; - Symbols
+;; - Functions
 
 (define-extern move-camera-from-pad function)
 (define-extern update-view-planes function)
@@ -17888,7 +17850,6 @@
     (TODO-RENAME-11 (_type_) symbol 11)
     )
   )
-
 
 
 ;; ----------------------
@@ -17987,12 +17948,7 @@
 ;   ;; bad get label
 ;   )
 
-
 ;; - Functions
-
-(define-extern camera-line-setup (function vector none))
-
-;; - Symbols
 
 (define-extern cam-layout-stop function)
 (define-extern cam-layout-start function)
@@ -18004,7 +17960,6 @@
 (define-extern cam-layout-print function)
 (define-extern cam-layout-function-call function)
 (define-extern cam-layout-do-action function)
-(define-extern function type)
 (define-extern clmf-save-single function)
 (define-extern cam-layout-save-cam-rot function)
 (define-extern cam-layout-save-cam-trans function)
@@ -18039,6 +17994,7 @@
 (define-extern interp-test function)
 (define-extern v-slrp! function)
 (define-extern interp-test-deg function)
+(define-extern camera-line-setup (function vector none))
 (define-extern camera-line-draw function)
 (define-extern cam-layout-intersect-dist function)
 (define-extern clmf-button-test function)
@@ -18068,6 +18024,10 @@
 (define-extern clmf-cam-float function)
 (define-extern clmf-cam-string function)
 (define-extern cam-layout-restart function)
+
+;; - Symbols
+
+(define-extern function type)
 
 ;; - Unknowns
 
@@ -18169,8 +18129,7 @@
 ;   :flag-assert         #x900000010
 ;   )
 
-
-;; - Symbols
+;; - Functions
 
 (define-extern cam-collision-record-draw function)
 (define-extern master-draw-coordinates function)
@@ -18212,7 +18171,7 @@
 ;; Containing DGOs - ['GAME', 'ENGINE']
 ;; Version - 3
 
-;; - Symbols
+;; - Functions
 
 (define-extern cam-stop function)
 (define-extern reset-cameras function)
@@ -18225,10 +18184,7 @@
 ;; Containing DGOs - ['GAME', 'ENGINE']
 ;; Version - 3
 
-;; - Types
-
-
-;; - Symbols
+;; - Functions
 
 (define-extern process-entity-status! function)
 (define-extern process-grab? function)
@@ -18277,7 +18233,7 @@
 ;; Containing DGOs - ['GAME', 'ENGINE']
 ;; Version - 3
 
-;; - Symbols
+;; - Functions
 
 (define-extern find-hint-control-index function)
 (define-extern start-hint-timer function)
@@ -18296,7 +18252,7 @@
 ;; Containing DGOs - ['GAME', 'ENGINE']
 ;; Version - 3
 
-;; - Symbols
+;; - Functions
 
 (define-extern ambient-type-error function)
 (define-extern ambient-type-sound function)
@@ -18490,8 +18446,7 @@
 ;     )
 ;   )
 
-
-;; - Symbols
+;; - Functions
 
 (define-extern line-in-view-frustum? function)
 (define-extern process-drawable-random-point! function)
@@ -18637,8 +18592,7 @@
 ;   :flag-assert         #x900000258
 ;   )
 
-
-;; - Symbols
+;; - Functions
 
 (define-extern target-height-above-ground function)
 (define-extern target-align-vel-z-adjust function)
@@ -18683,7 +18637,7 @@
 ;; Containing DGOs - ['GAME', 'ENGINE']
 ;; Version - 3
 
-;; - Symbols
+;; - Functions
 
 (define-extern birth-func-copy-target-y-rot function)
 (define-extern birth-func-ground-orient function)
@@ -18699,7 +18653,7 @@
 ;; Containing DGOs - ['GAME', 'ENGINE']
 ;; Version - 3
 
-;; - Symbols
+;; - Functions
 
 (define-extern collide-shape-moving-angle-set! function)
 (define-extern target-collision-low-coverage function)
@@ -18714,7 +18668,7 @@
 ;; Containing DGOs - ['GAME', 'ENGINE']
 ;; Version - 3
 
-;; - Symbols
+;; - Functions
 
 (define-extern init-target function)
 (define-extern target-print-stats function)
@@ -18770,7 +18724,7 @@
 ;; Containing DGOs - ['GAME', 'ENGINE']
 ;; Version - 3
 
-;; - Symbols
+;; - Functions
 
 (define-extern cspace<-cspace+quaternion! function)
 (define-extern starts function)
@@ -18834,8 +18788,7 @@
 ;     )
 ;   )
 
-
-;; - Symbols
+;; - Functions
 
 (define-extern voicebox-init-by-other function)
 (define-extern voicebox-track function)
@@ -18853,7 +18806,7 @@
 ;; Containing DGOs - ['GAME', 'ENGINE']
 ;; Version - 3
 
-;; - Symbols
+;; - Functions
 
 (define-extern target-bonk-event-handler function)
 (define-extern target-standard-event-handler function)
@@ -18899,7 +18852,7 @@
 ;; Containing DGOs - ['GAME', 'ENGINE']
 ;; Version - 3
 
-;; - Symbols
+;; - Functions
 
 (define-extern target-land-effect function)
 (define-extern target-hit-ground-anim function)
@@ -18959,8 +18912,7 @@
 ;   ;; unrecognized get op: (set! v1 process) parent was UNKNOWN
 ;   )
 
-
-;; - Symbols
+;; - Functions
 
 (define-extern target-swim-tilt function)
 (define-extern projectile-init-by-other function)
@@ -19000,7 +18952,7 @@
 ;; Containing DGOs - ['GAME', 'ENGINE']
 ;; Version - 3
 
-;; - Symbols
+;; - Functions
 
 (define-extern target-death-anim function)
 (define-extern death-movie-remap function)
@@ -19168,8 +19120,7 @@
 ;   :flag-assert         #x900000064
 ;   )
 
-
-;; - Symbols
+;; - Functions
 
 (define-extern debug-menus-active function)
 (define-extern debug-menus-default-joypad-func function)
@@ -19216,7 +19167,7 @@
 ;; Containing DGOs - ['GAME', 'ENGINE']
 ;; Version - 3
 
-;; - Symbols
+;; - Functions
 
 (define-extern display-frame-finish function)
 (define-extern display-sync function)
@@ -19302,7 +19253,7 @@
 ;; Containing DGOs - ['GAME', 'ENGINE']
 ;; Version - 3
 
-;; - Symbols
+;; - Functions
 
 (define-extern drawable-sphere-box-intersect? function)
 (define-extern instance-sphere-box-intersect? function)
@@ -19315,7 +19266,7 @@
 ;; Containing DGOs - ['GAME', 'ENGINE']
 ;; Version - 3
 
-;; - Symbols
+;; - Functions
 
 (define-extern set-hud-aspect-ratio (function symbol symbol none)) ;; TODO return type not validated yet
 
@@ -19328,25 +19279,25 @@
 
 ;; - Functions
 
+(define-extern display-loop function)
+(define-extern entity-by-type function)
+(define-extern scf-get-territory (function int))
+(define-extern pause-allowed? function)
+(define-extern menu-respond-to-pause function)
+(define-extern hide-progress-screen function)
 (define-extern set-letterbox-frames (function uint none))
 (define-extern letterbox (function none))
 (define-extern blackout (function none))
-(define-extern scf-get-territory (function int))
+(define-extern main-cheats function)
+(define-extern off function)
 
 ;; - Symbols
 
-(define-extern display-loop function)
-(define-extern entity-by-type function)
 (define-extern *cheat-temp* pointer)
 (define-extern *progress-cheat* symbol)
 (define-extern *master-exit* symbol)
 (define-extern *last-master-mode* symbol)
-(define-extern pause-allowed? function)
-(define-extern menu-respond-to-pause function)
-(define-extern hide-progress-screen function)
 (define-extern *screen-filter* screen-filter)
-(define-extern main-cheats function)
-(define-extern off function)
 
 ;; - Unknowns
 
@@ -19385,8 +19336,7 @@
 ;   :flag-assert         #x900000064
 ;   )
 
-
-;; - Symbols
+;; - Functions
 
 (define-extern make-collide-list-using-line-sphere-inst-test function)
 (define-extern test-closest-pt-in-triangle function)
@@ -19422,7 +19372,7 @@
 ;; Containing DGOs - ['GAME', 'ENGINE']
 ;; Version - 3
 
-;; - Symbols
+;; - Functions
 
 (define-extern task-control-reset function)
 (define-extern init-entity function)
@@ -19459,7 +19409,7 @@
 ;; Containing DGOs - ['GAME', 'ENGINE']
 ;; Version - 3
 
-;; - Symbols
+;; - Functions
 
 (define-extern plane-volume-intersect-dist function)
 
@@ -19527,8 +19477,7 @@
 ;   :flag-assert         #x9000000c0
 ;   )
 
-
-;; - Symbols
+;; - Functions
 
 (define-extern test-xz-point-on-line-segment? function)
 (define-extern ray-ccw-line-segment-intersection? function)
@@ -19633,7 +19582,7 @@
 ;; Containing DGOs - ['GAME', 'ENGINE']
 ;; Version - 3
 
-;; - Symbols
+;; - Functions
 
 (define-extern sound-name-with-material function)
 
@@ -19648,7 +19597,7 @@
 ;; Containing DGOs - ['GAME', 'ENGINE']
 ;; Version - 3
 
-;; - Symbols
+;; - Functions
 
 (define-extern splash-spawn function)
 (define-extern part-water-splash-callback function)
@@ -19667,7 +19616,7 @@
 ;; Containing DGOs - ['GAME', 'ENGINE']
 ;; Version - 3
 
-;; - Symbols
+;; - Functions
 
 (define-extern eco-fadeout function)
 (define-extern eco-track-root-prim-fadeout function)
@@ -19702,17 +19651,16 @@
    (pickup-handle   handle         :offset-assert 304) ;; not sure it's a handle
    (actor-pause     basic          :offset-assert 312)
    )
-  
+
   (:methods
     (dummy-20 () none 20)
     (dummy-21 () none 21)
     )
   :heap-base #xd0
-  
+
   :method-count-assert 22
   :size-assert         #x13c
   :flag-assert         #x1600d0013c
-
   )
 
 ;; L729
@@ -19729,7 +19677,7 @@
    (speed               vector :inline :offset-assert 384)
    (movie-pos-index     int32          :offset-assert 400)
    )
-  
+
   (:methods
     (dummy-22 () none 22)
     (dummy-23 () none 23)
@@ -19741,7 +19689,7 @@
     (dummy-29 () none 29)
     (dummy-30 () none 30)
     )
-  
+
   :heap-base #x130
   :method-count-assert 31
   :size-assert         #x194
@@ -19818,7 +19766,7 @@
 ;; L732
 (deftype buzzer (eco-collectable)
   ((victory-anim basic :offset-assert 404))
-  
+
   :heap-base #x130
   :method-count-assert 31
   :size-assert         #x198
@@ -19845,11 +19793,11 @@
    (blocker             basic  :offset-assert 200)
    (block-func          basic  :offset-assert 204)
    (pickup-handle       handle :offset-assert 208)) ;; not sure handle
-  
+
   (:methods
     (dummy-20 () none 20)
     )
-  
+
   :heap-base #x70
   :method-count-assert 21
   :size-assert         #xd8
@@ -19888,8 +19836,7 @@
   :flag-assert         #x15007000d8
   )
 
-
-;; - Symbols
+;; - Functions
 
 (define-extern vent-standard-event-handler function)
 (define-extern ecovalve-init-by-other function)
@@ -19907,7 +19854,7 @@
 (define-extern fuel-cell-init-as-clone function)
 (define-extern buzzer-init-by-other function)
 
-;; - Unknowns
+;; - Symbols
 
 (define-extern vent-wait-for-touch state) ;; unknown type
 (define-extern vent-pickup state) ;; unknown type
@@ -19928,7 +19875,7 @@
 ;; Containing DGOs - ['GAME', 'ENGINE']
 ;; Version - 3
 
-;; - Symbols
+;; - Functions
 
 (define-extern task-status->string function)
 (define-extern open-specific-task! function)
@@ -19963,7 +19910,7 @@
 ;; Containing DGOs - ['GAME', 'ENGINE']
 ;; Version - 3
 
-;; - Symbols
+;; - Functions
 
 (define-extern othercam-calc function)
 (define-extern vector-for-ambient function)
@@ -19990,7 +19937,7 @@
 ;; Containing DGOs - ['GAME', 'ENGINE']
 ;; Version - 3
 
-;; - Symbols
+;; - Functions
 
 (define-extern pov-camera-play-and-reposition function)
 
@@ -20001,7 +19948,7 @@
 ;; Containing DGOs - ['GAME', 'ENGINE']
 ;; Version - 3
 
-;; - Symbols
+;; - Functions
 
 (define-extern eco-blue-glow function)
 (define-extern cloud-track function)
@@ -20189,8 +20136,7 @@
 ;     )
 ;   )
 
-
-;; - Symbols
+;; - Functions
 
 (define-extern crate-post function)
 (define-extern crate-standard-event-handler function)
@@ -20213,11 +20159,14 @@
 ;; Containing DGOs - ['GAME', 'ENGINE']
 ;; Version - 3
 
-;; - Symbols
+;; - Functions
 
 (define-extern send-hud-increment-event function)
-(define-extern hud-arriving state) ;; unknown type
 (define-extern hud-init-by-other function)
+
+;; - Symbols
+
+(define-extern hud-arriving state) ;; unknown type
 
 ;; - Unknowns
 
@@ -20453,8 +20402,7 @@
 ;     )
 ;   )
 
-
-;; - Symbols
+;; - Functions
 
 (define-extern calculate-rotation-and-color-for-slice function)
 (define-extern part-hud-health-01-func function)
@@ -20513,7 +20461,7 @@
 ;; Containing DGOs - ['GAME', 'ENGINE']
 ;; Version - 3
 
-;; - Symbols
+;; - Functions
 
 (define-extern part-progress-hud-left-func function)
 (define-extern part-progress-hud-right-func function)
@@ -20536,7 +20484,7 @@
 ;; Containing DGOs - ['GAME', 'ENGINE']
 ;; Version - 3
 
-;; - Symbols
+;; - Functions
 
 (define-extern adjust-pos function)
 (define-extern draw-percent-bar function)
@@ -20560,8 +20508,7 @@
 ;   ;; bad get label
 ;   )
 
-
-;; - Symbols
+;; - Functions
 
 (define-extern get-next-task-up function)
 (define-extern get-next-level-up function)
@@ -20591,17 +20538,16 @@
 ;; Containing DGOs - ['GAME', 'ENGINE']
 ;; Version - 3
 
-;; - Symbols
+;; - Functions
 
-(define-extern draw-title-credits (function float none))
 (define-extern set-credits-font-color (function float none))
+(define-extern draw-title-credits (function float none))
 (define-extern draw-end-credits (function int symbol))
 
+;; - Symbols
 
-;; - Unknowns
-
-(define-extern *title-credits-spacing* (array int32))
 (define-extern *title-credits-scale* (array float))
+(define-extern *title-credits-spacing* (array int32))
 
 
 ;; ----------------------
@@ -20630,10 +20576,7 @@
 ;   :flag-assert         #x900000054
 ;   )
 
-
-
-
-;; - Symbols
+;; - Functions
 
 (define-extern projectile-collision-reaction function)
 (define-extern projectile-update-velocity-space-wars function)
@@ -20652,7 +20595,7 @@
 ;; Containing DGOs - ['GAME', 'ENGINE']
 ;; Version - 3
 
-;; - Symbols
+;; - Functions
 
 (define-extern ocean-interp-wave function)
 (define-extern ocean-generate-verts function)
@@ -20693,7 +20636,7 @@
 ;; Containing DGOs - ['GAME', 'ENGINE']
 ;; Version - 3
 
-;; - Symbols
+;; - Functions
 
 (define-extern ocean-texture-add-constants function)
 (define-extern ocean-texture-add-envmap function)
@@ -20716,7 +20659,7 @@
 ;; Containing DGOs - ['GAME', 'ENGINE']
 ;; Version - 3
 
-;; - Symbols
+;; - Functions
 
 (define-extern ocean-mid-add-constants function)
 (define-extern ocean-mid-add-call function)
@@ -20749,7 +20692,7 @@
 ;; Containing DGOs - ['GAME', 'ENGINE']
 ;; Version - 3
 
-;; - Symbols
+;; - Functions
 
 (define-extern ocean-make-trans-camera-masks function)
 (define-extern ocean-trans-add-upload-strip function)
@@ -20769,7 +20712,7 @@
 ;; Containing DGOs - ['GAME', 'ENGINE']
 ;; Version - 3
 
-;; - Symbols
+;; - Functions
 
 (define-extern ocean-near-add-constants function)
 (define-extern ocean-near-add-heights function)
@@ -20790,7 +20733,7 @@
 ;; Containing DGOs - ['GAME', 'ENGINE']
 ;; Version - 3
 
-;; - Symbols
+;; - Functions
 
 (define-extern compute-and-draw-shadow function)
 (define-extern draw-shadow function)
@@ -20804,7 +20747,7 @@
 ;; Containing DGOs - ['GAME', 'ENGINE']
 ;; Version - 3
 
-;; - Symbols
+;; - Functions
 
 (define-extern convert-eye-data function)
 (define-extern render-eyes function)
@@ -20926,6 +20869,7 @@
 ;   :flag-assert         #x0
 ;   ;; bad get label
 ;   )
+
 ; (deftype list-field (UNKNOWN)
 ;   ()
 ;   :method-count-assert 0
@@ -20933,6 +20877,7 @@
 ;   :flag-assert         #x0
 ;   ;; bad get label
 ;   )
+
 ; (deftype DISP_LIST-bank (UNKNOWN)
 ;   ()
 ;   :method-count-assert 0
@@ -20957,12 +20902,7 @@
 ;   ;; bad get label
 ;   )
 
-
 ;; - Functions
-
-(define-extern anim-tester-num-print (function symbol float none))
-
-;; - Symbols
 
 (define-extern anim-test-edit-sequence-list-handler function)
 (define-extern anim-test-seq-mark-as-edited function)
@@ -20971,6 +20911,7 @@
 (define-extern anim-tester-stop function)
 (define-extern initialize-anim-tester function)
 (define-extern anim-tester-save-object-seqs function)
+(define-extern anim-tester-num-print (function symbol float none))
 (define-extern anim-test-obj-list-handler function)
 (define-extern anim-tester-standard-event-handler function)
 (define-extern anim-tester-reset function)
@@ -21038,8 +20979,7 @@
 ;     )
 ;   )
 
-
-;; - Symbols
+;; - Functions
 
 (define-extern init-viewer-for-other function)
 (define-extern actor-get-arg! function)
@@ -21073,9 +21013,7 @@
 ;   ;; unrecognized get op: (set! v1 process) parent was UNKNOWN
 ;   )
 
-
-
-;; - Symbols
+;; - Functions
 
 (define-extern part-tester-init-by-other function)
 (define-extern start-part function)
@@ -21094,7 +21032,7 @@
 ;; Containing DGOs - ['GAME', 'ENGINE']
 ;; Version - 3
 
-;; - Symbols
+;; - Functions
 
 (define-extern build-continue-menu function)
 (define-extern debug-menu-make-camera-menu function)
@@ -21540,7 +21478,6 @@
   )
 
 
-
 ;; ----------------------
 ;; File - water-anim
 ;; Source Path - levels/common/water-anim.gc
@@ -21591,7 +21528,6 @@
 ;   :size-assert         #xc
 ;   :flag-assert         #x90000000c
 ;   )
-
 
 ;; - Unknowns
 
@@ -21684,7 +21620,6 @@
 ;     (dummy-29 () none 29)
 ;     )
 ;   )
-
 
 ;; - Unknowns
 
@@ -21795,8 +21730,7 @@
 ;     )
 ;   )
 
-
-;; - Symbols
+;; - Functions
 
 (define-extern matrix-3x3-triple-transpose-product function)
 (define-extern rigid-body-platform-event-handler function)
@@ -21965,14 +21899,13 @@
   )
 
 
-
 ;; ----------------------
 ;; File - nav-enemy
 ;; Source Path - levels/common/nav-enemy.gc
 ;; Containing DGOs - ['GAME', 'COMMON', 'L1']
 ;; Version - 3
 
-;; - Symbols
+;; - Functions
 
 (define-extern nav-enemy-rnd-int-range function)
 (define-extern nav-enemy-initialize-jump function)
@@ -22105,8 +22038,7 @@
 ;     )
 ;   )
 
-
-;; - Symbols
+;; - Functions
 
 (define-extern plat-code function)
 (define-extern plat-trans function)
@@ -22198,8 +22130,7 @@
 ;     )
 ;   )
 
-
-;; - Symbols
+;; - Functions
 
 (define-extern basebutton-init-by-other function)
 
@@ -22235,7 +22166,6 @@
 ;     (dummy-10 () none 10)
 ;     )
 ;   )
-
 
 
 ;; ----------------------
@@ -22354,8 +22284,7 @@
 ;     )
 ;   )
 
-
-;; - Symbols
+;; - Functions
 
 (define-extern joint-exploder-joint-callback function)
 (define-extern joint-exploder-init-by-other function)
@@ -22449,7 +22378,6 @@
 ;     (dummy-75 () none 75)
 ;     )
 ;   )
-
 
 ;; - Unknowns
 
@@ -22557,8 +22485,7 @@
 ;     )
 ;   )
 
-
-;; - Symbols
+;; - Functions
 
 (define-extern sharkey-get-player-position function)
 (define-extern sharkey-follow-trajectory function)
@@ -22619,7 +22546,6 @@
 ;     )
 ;   )
 
-
 ;; - Unknowns
 
 ;;(define-extern *orb-cache-top-sg* object) ;; unknown type
@@ -22672,7 +22598,6 @@
 ;     (dummy-32 () none 32)
 ;     )
 ;   )
-
 
 ;; - Unknowns
 
@@ -22732,8 +22657,7 @@
 ;     )
 ;   )
 
-
-;; - Symbols
+;; - Functions
 
 (define-extern plat-button-camera-off function)
 (define-extern plat-button-camera-on function)
@@ -22791,7 +22715,6 @@
 ;     (dummy-32 () none 32)
 ;     )
 ;   )
-
 
 ;; - Unknowns
 
@@ -22886,8 +22809,7 @@
 ;     )
 ;   )
 
-
-;; - Symbols
+;; - Functions
 
 (define-extern ropebridge-joint-callback function)
 
@@ -22930,8 +22852,6 @@
 ;     (dummy-11 () none 11)
 ;     )
 ;   )
-
-
 
 
 ;; ----------------------
@@ -23060,8 +22980,7 @@
 ;   :flag-assert         #x900000018
 ;   )
 
-
-;; - Symbols
+;; - Functions
 
 (define-extern mistycannon-prebind-function function)
 (define-extern mistycannon-postbind-function function)
@@ -23182,8 +23101,7 @@
 ;     )
 ;   )
 
-
-;; - Symbols
+;; - Functions
 
 (define-extern beachcam-spawn function)
 (define-extern mistycam-spawn function)
@@ -23223,8 +23141,7 @@
   :flag-assert         #x900000020
   )
 
-
-;; - Symbols
+;; - Functions
 
 (define-extern point-in-air-box-area? (function float float air-box symbol))
 (define-extern point-in-air-box? (function vector air-box symbol))
@@ -23236,7 +23153,7 @@
 ;; Containing DGOs - ['BEA', 'L1']
 ;; Version - 3
 
-;; - Symbols
+;; - Functions
 
 (define-extern point-in-air? function)
 (define-extern points-in-air? function)
@@ -23270,7 +23187,6 @@
 ;     (dummy-12 () none 12)
 ;     )
 ;   )
-
 
 
 ;; ----------------------
@@ -23312,7 +23228,6 @@
 ;     (dummy-12 () none 12)
 ;     )
 ;   )
-
 
 
 ;; ----------------------
@@ -23531,8 +23446,7 @@
 ;     )
 ;   )
 
-
-;; - Symbols
+;; - Functions
 
 (define-extern flutflutegg-hit-sounds function)
 (define-extern bladeassm-prebind-function function)
@@ -23631,7 +23545,6 @@
 ;     )
 ;   )
 
-
 ;; - Unknowns
 
 ;;(define-extern *bird-lady-sg* object) ;; unknown type
@@ -23701,7 +23614,6 @@
 ;     )
 ;   )
 
-
 ;; - Unknowns
 
 ;;(define-extern *bird-lady-beach-sg* object) ;; unknown type
@@ -23769,8 +23681,7 @@
 ;     )
 ;   )
 
-
-;; - Symbols
+;; - Functions
 
 (define-extern mayor-lurkerm-reward-speech function)
 
@@ -23842,8 +23753,7 @@
 ;     )
 ;   )
 
-
-;; - Symbols
+;; - Functions
 
 (define-extern muse-to-idle function)
 
@@ -23922,8 +23832,7 @@
 ;     )
 ;   )
 
-
-;; - Symbols
+;; - Functions
 
 (define-extern pelican-fly function)
 (define-extern pelican-path-update function)
@@ -23982,8 +23891,7 @@
 ;     )
 ;   )
 
-
-;; - Symbols
+;; - Functions
 
 (define-extern lurkerworm-prebind-function function)
 (define-extern lurkerworm-joint-callback function)
@@ -24088,8 +23996,7 @@
 ;     )
 ;   )
 
-
-;; - Symbols
+;; - Functions
 
 (define-extern lurkercrab-vulnerable function)
 (define-extern lurkercrab-invulnerable function)
@@ -24186,7 +24093,6 @@
 ;     )
 ;   )
 
-
 ;; - Unknowns
 
 ;;(define-extern *lurkerpuppy-sg* object) ;; unknown type
@@ -24255,7 +24161,6 @@
 ;     (dummy-23 () none 23)
 ;     )
 ;   )
-
 
 ;; - Unknowns
 
@@ -24345,8 +24250,7 @@
 ;     )
 ;   )
 
-
-;; - Symbols
+;; - Functions
 
 (define-extern seagull-init-by-other function)
 (define-extern seagull-reaction function)
@@ -24397,8 +24301,6 @@
 ;     (dummy-20 () none 20)
 ;     )
 ;   )
-
-
 
 ;; - Unknowns
 
@@ -24896,8 +24798,7 @@
 ;     )
 ;   )
 
-
-;; - Symbols
+;; - Functions
 
 (define-extern warp-gate-init-by-other function)
 (define-extern get-next-slot-up function)
@@ -24975,7 +24876,6 @@
 ;     (dummy-52 () none 52)
 ;     )
 ;   )
-
 
 ;; - Unknowns
 
@@ -25066,8 +24966,7 @@
 ;     )
 ;   )
 
-
-;; - Symbols
+;; - Functions
 
 (define-extern battlecontroller-task-completed? function)
 (define-extern battlecontroller-off function)
@@ -25106,8 +25005,7 @@
 ;   ;;  not enough basic ops
 ;   )
 
-
-;; - Symbols
+;; - Functions
 
 (define-extern check-drop-level-firehose-pops function)
 (define-extern birth-func-random-rot function)
@@ -25743,8 +25641,7 @@
 ;     )
 ;   )
 
-
-;; - Symbols
+;; - Functions
 
 (define-extern citb-generator-trigger-others function)
 (define-extern citb-hose-event-handler function)
@@ -26118,8 +26015,7 @@
 ;     )
 ;   )
 
-
-;; - Symbols
+;; - Functions
 
 (define-extern citb-exit-plat-move-player function)
 (define-extern citb-firehose-blast-particles function)
@@ -26470,8 +26366,7 @@
 ;     )
 ;   )
 
-
-;; - Symbols
+;; - Functions
 
 (define-extern citb-sage-draw-beam function)
 (define-extern citb-sagecage-init-by-other function)
@@ -26609,8 +26504,7 @@
 ;   :flag-assert         #x900000030
 ;   )
 
-
-;; - Symbols
+;; - Functions
 
 (define-extern snow-bunny-execute-jump function)
 (define-extern snow-bunny-initialize-jump function)
@@ -26709,7 +26603,6 @@
 ;     )
 ;   )
 
-
 ;; - Unknowns
 
 ;;(define-extern *citb-bunny-nav-enemy-info* object) ;; unknown type
@@ -26798,8 +26691,7 @@
 ;     )
 ;   )
 
-
-;; - Symbols
+;; - Functions
 
 (define-extern citb-drop-plat-spawn-children function)
 (define-extern citb-drop-plat-drop-children function)
@@ -26893,7 +26785,6 @@
 ;     (dummy-52 () none 52)
 ;     )
 ;   )
-
 
 ;; - Unknowns
 
@@ -27306,7 +27197,6 @@
 ;     )
 ;   )
 
-
 ;; - Unknowns
 
 ;;(define-extern *cavecrystal-sg* object) ;; unknown type
@@ -27501,7 +27391,7 @@
 ;; Containing DGOs - ['DEM', 'L1']
 ;; Version - 3
 
-;; - Symbols
+;; - Functions
 
 (define-extern static-screen-spawn function)
 
@@ -27640,8 +27530,7 @@
 ;     )
 ;   )
 
-
-;; - Symbols
+;; - Functions
 
 (define-extern static-screen-init-by-other function)
 
@@ -27697,8 +27586,7 @@
 ;   ;; unrecognized get op: (set! v1 process-drawable) parent was UNKNOWN
 ;   )
 
-
-;; - Symbols
+;; - Functions
 
 (define-extern target-has-all-the-cells? function)
 
@@ -27718,7 +27606,7 @@
 ;; Containing DGOs - ['FIN', 'L1']
 ;; Version - 3
 
-;; - Symbols
+;; - Functions
 
 (define-extern check-drop-level-eichar-lighteco-pops function)
 (define-extern check-drop-level-bigdoor-open-pops function)
@@ -27790,8 +27678,7 @@
 ;     )
 ;   )
 
-
-;; - Symbols
+;; - Functions
 
 (define-extern light-eco-child-init-by-other function)
 (define-extern check-drop-level-lighteco-big-pops function)
@@ -27969,8 +27856,7 @@
 ;     )
 ;   )
 
-
-;; - Symbols
+;; - Functions
 
 (define-extern arcing-shot-setup function)
 (define-extern arcing-shot-calculate function)
@@ -28121,8 +28007,7 @@
 ;     )
 ;   )
 
-
-;; - Symbols
+;; - Functions
 
 (define-extern robotboss-manipy-trans-hook function)
 (define-extern ecoclaw-beam-particle-callback function)
@@ -28253,8 +28138,7 @@
 ;     )
 ;   )
 
-
-;; - Symbols
+;; - Functions
 
 (define-extern green-eco-lurker-init-by-other function)
 (define-extern green-eco-lurker-gen-init-by-other function)
@@ -28294,8 +28178,7 @@
 ;   ;; bad get label
 ;   )
 
-
-;; - Symbols
+;; - Functions
 
 (define-extern robotboss-always-trans function)
 (define-extern robotboss-shooting-trans function)
@@ -28492,8 +28375,7 @@
 ;     )
 ;   )
 
-
-;; - Symbols
+;; - Functions
 
 (define-extern powercellalt-init-by-other function)
 
@@ -28631,8 +28513,7 @@
 ;     )
 ;   )
 
-
-;; - Symbols
+;; - Functions
 
 (define-extern sage-finalboss-extra-enter function)
 (define-extern sage-finalboss-extra-trans function)
@@ -28999,7 +28880,6 @@
 ;     )
 ;   )
 
-
 ;; - Unknowns
 
 ;;(define-extern *evilsis-intro-sg* object) ;; unknown type
@@ -29128,7 +29008,6 @@
 ;     )
 ;   )
 
-
 ;; - Unknowns
 
 ;;(define-extern *jng-iris-door-sg* object) ;; unknown type
@@ -29174,7 +29053,6 @@
 ;     (dummy-19 () none 19)
 ;     )
 ;   )
-
 
 ;; - Unknowns
 
@@ -29277,8 +29155,7 @@
 ;     )
 ;   )
 
-
-;; - Symbols
+;; - Functions
 
 (define-extern aphid-invulnerable function)
 (define-extern aphid-vulnerable function)
@@ -29322,8 +29199,7 @@
 ;   ;; unrecognized get op: (set! v1 process-drawable) parent was UNKNOWN
 ;   )
 
-
-;; - Symbols
+;; - Functions
 
 (define-extern plant-boss-arm-init function)
 (define-extern plant-boss-back-arms-init function)
@@ -29573,7 +29449,6 @@
 ;   )
 
 
-
 ;; ----------------------
 ;; File - bouncer
 ;; Source Path - levels/jungle/bouncer.gc
@@ -29604,7 +29479,6 @@
 ;     (dummy-19 () none 19)
 ;     )
 ;   )
-
 
 ;; - Unknowns
 
@@ -29701,8 +29575,7 @@
 ;     )
 ;   )
 
-
-;; - Symbols
+;; - Functions
 
 (define-extern hopper-do-jump function)
 (define-extern hopper-jump-to function)
@@ -29779,8 +29652,7 @@
 ;     )
 ;   )
 
-
-;; - Symbols
+;; - Functions
 
 (define-extern junglesnake-joint-callback function)
 (define-extern junglesnake-default-event-handler function)
@@ -29833,8 +29705,7 @@
 ;     )
 ;   )
 
-
-;; - Symbols
+;; - Functions
 
 (define-extern darkvine-event-handler function)
 
@@ -30200,7 +30071,6 @@
 ;     )
 ;   )
 
-
 ;; - Unknowns
 
 ;;(define-extern ripple-for-jungle-water object) ;; unknown type
@@ -30352,8 +30222,7 @@
 ;     )
 ;   )
 
-
-;; - Symbols
+;; - Functions
 
 (define-extern peri-beamcam-init-by-other function)
 (define-extern draw-power-beam function)
@@ -30476,7 +30345,6 @@
 ;     (dummy-75 () none 75)
 ;     )
 ;   )
-
 
 ;; - Unknowns
 
@@ -30623,8 +30491,7 @@
 ;     )
 ;   )
 
-
-;; - Symbols
+;; - Functions
 
 (define-extern fisher-fish-water function)
 (define-extern fisher-game-update function)
@@ -30689,7 +30556,6 @@
 ;   )
 
 
-
 ;; ----------------------
 ;; File - launcherdoor
 ;; Source Path - levels/common/launcherdoor.gc
@@ -30723,7 +30589,6 @@
 ;     (dummy-19 () none 19)
 ;     )
 ;   )
-
 
 ;; - Unknowns
 
@@ -31193,7 +31058,6 @@
 ;   :flag-assert         #x900000058
 ;   )
 
-
 ;; - Unknowns
 
 ;;(define-extern *RACER-bank* object) ;; unknown type
@@ -31273,8 +31137,7 @@
 ;     )
 ;   )
 
-
-;; - Symbols
+;; - Functions
 
 (define-extern zoomer-heat-slice-color function)
 (define-extern part-hud-racer-speed-func function)
@@ -31325,8 +31188,7 @@
 ;     )
 ;   )
 
-
-;; - Symbols
+;; - Functions
 
 (define-extern blocking-plane-spawn function)
 (define-extern racer-effect function)
@@ -31345,7 +31207,7 @@
 ;; Containing DGOs - ['L1', 'RACERP']
 ;; Version - 3
 
-;; - Symbols
+;; - Functions
 
 (define-extern racer-collision-reaction function)
 (define-extern racer-service-slide function)
@@ -31389,7 +31251,7 @@
 ;; Containing DGOs - ['L1', 'RACERP']
 ;; Version - 3
 
-;; - Symbols
+;; - Functions
 
 (define-extern target-racing-smack-check function)
 
@@ -31474,8 +31336,7 @@
 ;     )
 ;   )
 
-
-;; - Symbols
+;; - Functions
 
 (define-extern blocking-plane-init-by-other function)
 
@@ -31535,8 +31396,7 @@
 ;     )
 ;   )
 
-
-;; - Symbols
+;; - Functions
 
 (define-extern flutflut-effect function)
 
@@ -31570,8 +31430,7 @@
 ;   ;; bad get label
 ;   )
 
-
-;; - Symbols
+;; - Functions
 
 (define-extern target-flut-post-post function)
 (define-extern target-flut-falling-anim-trans function)
@@ -31678,7 +31537,6 @@
 ;     )
 ;   )
 
-
 ;; - Unknowns
 
 ;;(define-extern *farmer-sg* object) ;; unknown type
@@ -31745,7 +31603,6 @@
 ;     (dummy-52 () none 52)
 ;     )
 ;   )
-
 
 ;; - Unknowns
 
@@ -31815,8 +31672,7 @@
 ;     )
 ;   )
 
-
-;; - Symbols
+;; - Functions
 
 (define-extern check-drop-level-assistant function)
 
@@ -31888,7 +31744,6 @@
 ;     (dummy-52 () none 52)
 ;     )
 ;   )
-
 
 ;; - Unknowns
 
@@ -31973,8 +31828,7 @@
 ;     )
 ;   )
 
-
-;; - Symbols
+;; - Functions
 
 (define-extern yakow-task-complete? function)
 (define-extern yakow-facing-player? function)
@@ -32423,8 +32277,7 @@
 ;     )
 ;   )
 
-
-;; - Symbols
+;; - Functions
 
 (define-extern set-period function)
 (define-extern update-clock function)
@@ -32609,8 +32462,7 @@
 ;     )
 ;   )
 
-
-;; - Symbols
+;; - Functions
 
 (define-extern fishermans-boat-spawn-particles function)
 (define-extern fishermans-boat-play-sounds function)
@@ -32660,8 +32512,7 @@
 ;   ;;  not enough basic ops
 ;   )
 
-
-;; - Symbols
+;; - Functions
 
 (define-extern bird-bob-func function)
 (define-extern sparticle-seagull-moon function)
@@ -32675,7 +32526,7 @@
 ;; Containing DGOs - ['L1', 'VI1']
 ;; Version - 3
 
-;; - Symbols
+;; - Functions
 
 (define-extern check-drop-level-sagehut function)
 
@@ -32744,8 +32595,7 @@
 ;     )
 ;   )
 
-
-;; - Symbols
+;; - Functions
 
 (define-extern sequenceA-village1-init-by-other function)
 (define-extern sequenceA-village1-trans-hook function)
@@ -32929,7 +32779,6 @@
 ;     )
 ;   )
 
-
 ;; - Unknowns
 
 ;;(define-extern *scarecrow-b-sg* object) ;; unknown type
@@ -32973,8 +32822,7 @@
 ;     )
 ;   )
 
-
-;; - Symbols
+;; - Functions
 
 (define-extern check-drop-level-training-mist function)
 (define-extern check-drop-level-training-spout-rain function)
@@ -33281,8 +33129,7 @@
 ;     )
 ;   )
 
-
-;; - Symbols
+;; - Functions
 
 (define-extern mis-bone-bridge-event-handler function)
 (define-extern actor-wait-for-period function)
@@ -33372,8 +33219,7 @@
 ;     )
 ;   )
 
-
-;; - Symbols
+;; - Functions
 
 (define-extern misty-camera-view function)
 
@@ -33467,8 +33313,7 @@
 ;     )
 ;   )
 
-
-;; - Symbols
+;; - Functions
 
 (define-extern keg-conveyor-paddle-init-by-other function)
 (define-extern keg-conveyor-spawn-keg function)
@@ -33532,7 +33377,6 @@
 ;     (dummy-29 () none 29)
 ;     )
 ;   )
-
 
 ;; - Unknowns
 
@@ -33649,8 +33493,7 @@
 ;   :flag-assert         #x90000005c
 ;   )
 
-
-;; - Symbols
+;; - Functions
 
 (define-extern muse-check-dest-point function)
 (define-extern analyze-point-on-path-segment function)
@@ -33750,8 +33593,7 @@
 ;     )
 ;   )
 
-
-;; - Symbols
+;; - Functions
 
 (define-extern bonelurker-set-small-bounds-sphere function)
 (define-extern bonelurker-set-large-bounds-sphere function)
@@ -33830,8 +33672,7 @@
 ;     )
 ;   )
 
-
-;; - Symbols
+;; - Functions
 
 (define-extern orient-to-face-target function)
 (define-extern quicksandlurker-spit function)
@@ -33892,8 +33733,7 @@
 ;     )
 ;   )
 
-
-;; - Symbols
+;; - Functions
 
 (define-extern target-on-end-of-teetertotter? function)
 
@@ -34011,8 +33851,7 @@
 ;     )
 ;   )
 
-
-;; - Symbols
+;; - Functions
 
 (define-extern balloonlurker-pilot-init-by-other function)
 (define-extern balloonlurker-find-nearest-path-point function)
@@ -34069,7 +33908,6 @@
 ;   )
 
 
-
 ;; ----------------------
 ;; File - sidekick-human
 ;; Source Path - levels/misty/sidekick-human.gc
@@ -34110,8 +33948,7 @@
 ;   ;; bad get label
 ;   )
 
-
-;; - Symbols
+;; - Functions
 
 (define-extern sequenceC-trans-hook function)
 (define-extern sequenceC-can-trans-hook function)
@@ -34157,7 +33994,6 @@
 ;     (dummy-20 () none 20)
 ;     )
 ;   )
-
 
 
 ;; ----------------------
@@ -34222,7 +34058,6 @@
 ;     )
 ;   )
 
-
 ;; - Unknowns
 
 ;;(define-extern *assistant-firecanyon-sg* object) ;; unknown type
@@ -34244,8 +34079,7 @@
 ;   ;;  not enough basic ops
 ;   )
 
-
-;; - Symbols
+;; - Functions
 
 (define-extern check-drop-level-sagehut2 function)
 
@@ -34565,8 +34399,7 @@
 ;     )
 ;   )
 
-
-;; - Symbols
+;; - Functions
 
 (define-extern boulder1-trans function)
 (define-extern boulder2-trans function)
@@ -34681,7 +34514,6 @@
 ;     )
 ;   )
 
-
 ;; - Unknowns
 
 ;;(define-extern *gambler-sg* object) ;; unknown type
@@ -34749,7 +34581,6 @@
 ;     )
 ;   )
 
-
 ;; - Unknowns
 
 ;;(define-extern *warrior-sg* object) ;; unknown type
@@ -34816,7 +34647,6 @@
 ;     (dummy-52 () none 52)
 ;     )
 ;   )
-
 
 ;; - Unknowns
 
@@ -35048,8 +34878,7 @@
 ;     )
 ;   )
 
-
-;; - Symbols
+;; - Functions
 
 (define-extern swamp-rope-init-by-other function)
 (define-extern swamp-blimp-setup function)
@@ -35206,7 +35035,6 @@
 ;     )
 ;   )
 
-
 ;; - Unknowns
 
 ;;(define-extern *sage-bluehut-sg* object) ;; unknown type
@@ -35273,7 +35101,6 @@
 ;     (dummy-52 () none 52)
 ;     )
 ;   )
-
 
 ;; - Unknowns
 
@@ -35344,8 +35171,7 @@
 ;     )
 ;   )
 
-
-;; - Symbols
+;; - Functions
 
 (define-extern assistant-levitator-blue-glow function)
 (define-extern assistant-levitator-blue-beam function)
@@ -35402,7 +35228,6 @@
 ;     (dummy-32 () none 32)
 ;     )
 ;   )
-
 
 ;; - Unknowns
 
@@ -35652,8 +35477,7 @@
 ;     )
 ;   )
 
-
-;; - Symbols
+;; - Functions
 
 (define-extern swamp-spike-set-particle-rotation-callback function)
 (define-extern swamp-spike-default-event-handler function)
@@ -35757,8 +35581,7 @@
 ;     )
 ;   )
 
-
-;; - Symbols
+;; - Functions
 
 (define-extern swamp-bat-make-path-select-plane function)
 (define-extern swamp-bat-setup-new-path function)
@@ -35881,8 +35704,7 @@
 ;     )
 ;   )
 
-
-;; - Symbols
+;; - Functions
 
 (define-extern swamp-rat-update-wiggle-target function)
 (define-extern swamp-rat-update-wiggle-params function)
@@ -36033,8 +35855,7 @@
 ;     )
 ;   )
 
-
-;; - Symbols
+;; - Functions
 
 (define-extern swamp-rat-nest-check-dummy function)
 (define-extern swamp-rat-nest-spawn-rat function)
@@ -36192,8 +36013,7 @@
 ;     )
 ;   )
 
-
-;; - Symbols
+;; - Functions
 
 (define-extern kermit-get-tongue-target-callback function)
 (define-extern kermit-disable-tongue function)
@@ -36264,7 +36084,6 @@
 ;     (dummy-20 () none 20)
 ;     )
 ;   )
-
 
 
 ;; ----------------------
@@ -36446,8 +36265,7 @@
 ;     )
 ;   )
 
-
-;; - Symbols
+;; - Functions
 
 (define-extern billy-kill-all-but-farthy function)
 (define-extern billy-game-update function)
@@ -36510,8 +36328,7 @@
 ;     )
 ;   )
 
-
-;; - Symbols
+;; - Functions
 
 (define-extern cavecrystal-light-control-default-callback function)
 
@@ -36740,8 +36557,7 @@
 ;     )
 ;   )
 
-
-;; - Symbols
+;; - Functions
 
 (define-extern caveelevator-joint-callback function)
 (define-extern cavecrystal-light-control-caveelevator-callback function)
@@ -36819,8 +36635,7 @@
 ;     )
 ;   )
 
-
-;; - Symbols
+;; - Functions
 
 (define-extern check-drop-level-maincave-drip function)
 
@@ -36855,8 +36670,7 @@
 ;     )
 ;   )
 
-
-;; - Symbols
+;; - Functions
 
 (define-extern spiderwebs-default-event-handler function)
 
@@ -36905,7 +36719,6 @@
 ;     (dummy-21 () none 21)
 ;     )
 ;   )
-
 
 ;; - Unknowns
 
@@ -37038,8 +36851,7 @@
 ;     )
 ;   )
 
-
-;; - Symbols
+;; - Functions
 
 (define-extern baby-spider-default-event-handler function)
 (define-extern baby-spider-init-by-other function)
@@ -37201,7 +37013,6 @@
 ;   )
 
 
-
 ;; ----------------------
 ;; File - mother-spider-egg
 ;; Source Path - levels/maincave/mother-spider-egg.gc
@@ -37241,8 +37052,7 @@
 ;     )
 ;   )
 
-
-;; - Symbols
+;; - Functions
 
 (define-extern mother-spider-egg-init-by-other function)
 
@@ -37297,8 +37107,7 @@
 ;     )
 ;   )
 
-
-;; - Symbols
+;; - Functions
 
 (define-extern mother-spider-proj-update-velocity function)
 
@@ -37309,7 +37118,7 @@
 ;; Containing DGOs - ['L1', 'MAI', 'MAINCAVE']
 ;; Version - 3
 
-;; - Symbols
+;; - Functions
 
 (define-extern mother-spider-leg-init-by-other function)
 (define-extern mother-spider-full-joint-callback function)
@@ -37458,8 +37267,7 @@
 ;     )
 ;   )
 
-
-;; - Symbols
+;; - Functions
 
 (define-extern gnawer-falling-segment-init-by-other function)
 (define-extern gnawer-joint-callback function)
@@ -37540,8 +37348,7 @@
 ;     )
 ;   )
 
-
-;; - Symbols
+;; - Functions
 
 (define-extern driller-lurker-default-event-handler function)
 
@@ -37574,7 +37381,6 @@
 ;   :flag-assert         #x0
 ;   ;;  not enough basic ops
 ;   )
-
 
 
 ;; ----------------------
@@ -37679,8 +37485,7 @@
 ;     )
 ;   )
 
-
-;; - Symbols
+;; - Functions
 
 (define-extern find-target-point function)
 (define-extern distance-from-tangent function)
@@ -37858,7 +37663,6 @@
 ;     )
 ;   )
 
-
 ;; - Unknowns
 
 ;;(define-extern *seaweed-sg* object) ;; unknown type
@@ -37897,7 +37701,6 @@
 ;     (dummy-19 () none 19)
 ;     )
 ;   )
-
 
 ;; - Unknowns
 
@@ -38016,7 +37819,6 @@
 ;     )
 ;   )
 
-
 ;; - Unknowns
 
 ;;(define-extern square-platform-master-idle object) ;; unknown type
@@ -38069,8 +37871,7 @@
 ;     )
 ;   )
 
-
-;; - Symbols
+;; - Functions
 
 (define-extern sun-iris-door-init-by-other function)
 
@@ -38151,8 +37952,7 @@
 ;     )
 ;   )
 
-
-;; - Symbols
+;; - Functions
 
 (define-extern orbit-plat-bottom-init-by-other function)
 (define-extern get-rotate-point! function)
@@ -38259,7 +38059,6 @@
 ;     )
 ;   )
 
-
 ;; - Unknowns
 
 ;;(define-extern *wedge-plat-sg* object) ;; unknown type
@@ -38304,7 +38103,6 @@
 ;     (dummy-19 () none 19)
 ;     )
 ;   )
-
 
 ;; - Unknowns
 
@@ -38419,8 +38217,7 @@
 ;     )
 ;   )
 
-
-;; - Symbols
+;; - Functions
 
 (define-extern qbert-plat-on-init-by-other function)
 (define-extern qbert-plat-event-handler function)
@@ -38488,7 +38285,6 @@
 ;     (dummy-21 () none 21)
 ;     )
 ;   )
-
 
 ;; - Unknowns
 
@@ -38637,8 +38433,7 @@
 ;     )
 ;   )
 
-
-;; - Symbols
+;; - Functions
 
 (define-extern exit-chamber-button-init-by-other function)
 (define-extern blue-eco-charger-orb-init-by-other function)
@@ -38700,7 +38495,6 @@
 ;     )
 ;   )
 
-
 ;; - Unknowns
 
 ;;(define-extern *floating-launcher-sg* object) ;; unknown type
@@ -38758,7 +38552,6 @@
 ;     )
 ;   )
 
-
 ;; - Unknowns
 
 ;;(define-extern ripple-for-sunken-water object) ;; unknown type
@@ -38797,7 +38590,6 @@
 ;     (dummy-20 () none 20)
 ;     )
 ;   )
-
 
 ;; - Unknowns
 
@@ -38895,8 +38687,7 @@
 ;     )
 ;   )
 
-
-;; - Symbols
+;; - Functions
 
 (define-extern sunken-pipegame-button-init-by-other function)
 
@@ -38973,8 +38764,7 @@
 ;     )
 ;   )
 
-
-;; - Symbols
+;; - Functions
 
 (define-extern bully-broken-cage-init-by-other function)
 (define-extern bully-default-event-handler function)
@@ -39161,8 +38951,7 @@
 ;     )
 ;   )
 
-
-;; - Symbols
+;; - Functions
 
 (define-extern double-lurker-top-init-by-other function)
 (define-extern double-lurker-default-event-handler function)
@@ -39302,7 +39091,6 @@
 ;     )
 ;   )
 
-
 ;; - Unknowns
 
 ;;(define-extern *helix-water* object) ;; unknown type
@@ -39403,8 +39191,7 @@
 ;   :flag-assert         #x900000050
 ;   )
 
-
-;; - Symbols
+;; - Functions
 
 (define-extern puffer-default-event-handler function)
 (define-extern puffer-post function)
@@ -39470,8 +39257,7 @@
 ;     )
 ;   )
 
-
-;; - Symbols
+;; - Functions
 
 (define-extern sunkenfisha-init-by-other function)
 
@@ -39823,8 +39609,7 @@
 ;     )
 ;   )
 
-
-;; - Symbols
+;; - Functions
 
 (define-extern gorge-init function)
 (define-extern gorge-in-front function)
@@ -40095,8 +39880,7 @@
 ;     )
 ;   )
 
-
-;; - Symbols
+;; - Functions
 
 (define-extern lightning-mole-task-complete? function)
 (define-extern fleeing-nav-enemy-clip-travel function)
@@ -40173,8 +39957,7 @@
 ;     )
 ;   )
 
-
-;; - Symbols
+;; - Functions
 
 (define-extern robber-find-ground function)
 (define-extern robber-move function)
@@ -40238,8 +40021,7 @@
 ;     )
 ;   )
 
-
-;; - Symbols
+;; - Functions
 
 (define-extern first-ring? function)
 (define-extern last-ring? function)
@@ -40328,7 +40110,6 @@
 ;     )
 ;   )
 
-
 ;; - Unknowns
 
 ;;(define-extern *crate-darkeco-cluster-sg* object) ;; unknown type
@@ -40355,7 +40136,6 @@
 ;   :flag-assert         #x0
 ;   ;;  not enough basic ops
 ;   )
-
 
 
 ;; ----------------------
@@ -40406,8 +40186,7 @@
 ;   ;; unrecognized get op: (set! v1 process-drawable) parent was UNKNOWN
 ;   )
 
-
-;; - Symbols
+;; - Functions
 
 (define-extern ogreboss-get-targets function)
 (define-extern ogreboss-reset-camera function)
@@ -40972,8 +40751,7 @@
 ;     )
 ;   )
 
-
-;; - Symbols
+;; - Functions
 
 (define-extern ogre-bridge-update-joints function)
 
@@ -41077,8 +40855,7 @@
 ;     )
 ;   )
 
-
-;; - Symbols
+;; - Functions
 
 (define-extern play-movie? function)
 (define-extern flying-lurker-move function)
@@ -41122,7 +40899,6 @@
 ;   :flag-assert         #x0
 ;   ;;  not enough basic ops
 ;   )
-
 
 
 ;; ----------------------
@@ -41235,7 +41011,6 @@
 ;     )
 ;   )
 
-
 ;; - Unknowns
 
 ;;(define-extern *gondolacables-sg* object) ;; unknown type
@@ -41281,8 +41056,7 @@
 ;     )
 ;   )
 
-
-;; - Symbols
+;; - Functions
 
 (define-extern minecartsteel-initialize-by-other function)
 
@@ -41430,8 +41204,7 @@
 ;     )
 ;   )
 
-
-;; - Symbols
+;; - Functions
 
 (define-extern minershort-trans-hook function)
 (define-extern miners-anim-loop function)
@@ -41505,7 +41278,6 @@
 ;     )
 ;   )
 
-
 ;; - Unknowns
 
 ;;(define-extern *assistant-village3-sg* object) ;; unknown type
@@ -41575,7 +41347,6 @@
 ;     (dummy-52 () none 52)
 ;     )
 ;   )
-
 
 ;; - Unknowns
 
@@ -41658,8 +41429,7 @@
 ;   :flag-assert         #x900000040
 ;   )
 
-
-;; - Symbols
+;; - Functions
 
 (define-extern cave-trap-default-event-handler function)
 
@@ -41702,7 +41472,6 @@
 ;     )
 ;   )
 
-
 ;; - Unknowns
 
 ;;(define-extern *spider-egg-unbroken-sg* object) ;; unknown type
@@ -41743,7 +41512,6 @@
 ;   )
 
 
-
 ;; ----------------------
 ;; File - target-snowball
 ;; Source Path - levels/snow/target-snowball.gc
@@ -41767,8 +41535,7 @@
 ;   :flag-assert         #x900000004
 ;   )
 
-
-;; - Symbols
+;; - Functions
 
 (define-extern target-snowball-post function)
 
@@ -41888,8 +41655,7 @@
 ;     )
 ;   )
 
-
-;; - Symbols
+;; - Functions
 
 (define-extern ice-cube-default-event-handler function)
 
@@ -42018,8 +41784,7 @@
 ;     )
 ;   )
 
-
-;; - Symbols
+;; - Functions
 
 (define-extern snow-ball-roller-init-by-other function)
 (define-extern snow-ball-shadow-init-by-other function)
@@ -42270,8 +42035,7 @@
 ;     )
 ;   )
 
-
-;; - Symbols
+;; - Functions
 
 (define-extern snow-switch-event-handler function)
 (define-extern snow-log-button-event-handler function)
@@ -42492,7 +42256,6 @@
 ;     )
 ;   )
 
-
 ;; - Unknowns
 
 ;;(define-extern *flutflut-plat-large-sg* object) ;; unknown type
@@ -42547,7 +42310,6 @@
 ;     )
 ;   )
 
-
 ;; - Unknowns
 
 ;;(define-extern *snow-bumper-sg* object) ;; unknown type
@@ -42595,7 +42357,6 @@
 ;     (dummy-22 () none 22)
 ;     )
 ;   )
-
 
 
 ;; ----------------------
@@ -42733,8 +42494,7 @@
 ;     )
 ;   )
 
-
-;; - Symbols
+;; - Functions
 
 (define-extern snow-ram-proj-update-velocity function)
 (define-extern ram-boss-on-ground-event-handler function)
@@ -42805,8 +42565,7 @@
 ;     )
 ;   )
 
-
-;; - Symbols
+;; - Functions
 
 (define-extern snow-bird-bob-func function)
 (define-extern sparticle-snow-birds-moon function)
@@ -42926,8 +42685,7 @@
 ;     )
 ;   )
 
-
-;; - Symbols
+;; - Functions
 
 (define-extern yeti-slave-init-by-other function)
 (define-extern yeti-slave-default-event-handler function)
@@ -43284,8 +43042,7 @@
 ;     )
 ;   )
 
-
-;; - Symbols
+;; - Functions
 
 (define-extern darkecobarrel-base-init function)
 (define-extern darkecobarrel-base-time function)
@@ -43472,8 +43229,7 @@
 ;     )
 ;   )
 
-
-;; - Symbols
+;; - Functions
 
 (define-extern energyarm-init-by-other function)
 (define-extern energyhub-set-lava-height function)
@@ -43528,7 +43284,6 @@
 ;   :flag-assert         #x0
 ;   ;;  not enough basic ops
 ;   )
-
 
 
 ;; ----------------------
@@ -43592,7 +43347,6 @@
 ;     (dummy-52 () none 52)
 ;     )
 ;   )
-
 
 ;; - Unknowns
 
@@ -45544,7 +45298,7 @@
     )
   )
 
-;; - Symbols
+;; - Functions
 
 (define-extern logo-slave-init-by-other function)
 (define-extern logo-init-by-other function)
@@ -46688,4 +46442,4 @@
 ;     (dummy-26 () none 26)
 ;     (dummy-27 () none 27)
 ;     )
-;   )
+
