@@ -660,8 +660,12 @@ Form* cast_to_bitfield(const BitFieldType* type_info,
   // check if it's just a constant:
   auto in_as_atom = form_as_atom(in);
   if (in_as_atom && in_as_atom->is_int()) {
-    auto fields = decompile_bitfield_from_int(typespec, env.dts->ts, in_as_atom->get_int());
-    return pool.alloc_single_element_form<BitfieldStaticDefElement>(nullptr, typespec, fields,
+    auto fields =
+        try_decompile_bitfield_from_int(typespec, env.dts->ts, in_as_atom->get_int(), false);
+    if (!fields) {
+      return pool.alloc_single_element_form<CastElement>(nullptr, typespec, in);
+    }
+    return pool.alloc_single_element_form<BitfieldStaticDefElement>(nullptr, typespec, *fields,
                                                                     pool);
   }
 
@@ -679,8 +683,12 @@ Form* cast_to_bitfield(const BitFieldType* type_info,
     for (auto it = args.begin(); it != args.end(); it++) {
       auto constant = get_goal_integer_constant(*it, env);
       if (constant) {
-        auto constant_defs = decompile_bitfield_from_int(typespec, env.dts->ts, *constant);
-        for (auto& x : constant_defs) {
+        auto constant_defs =
+            try_decompile_bitfield_from_int(typespec, env.dts->ts, *constant, false);
+        if (!constant_defs) {
+          return pool.alloc_single_element_form<CastElement>(nullptr, typespec, in);
+        }
+        for (auto& x : *constant_defs) {
           field_defs.push_back(BitFieldDef::from_constant(x, pool));
         }
 

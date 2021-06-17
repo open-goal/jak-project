@@ -1652,4 +1652,5 @@ GenericElement* alloc_generic_token_op(const std::string& name,
                                        const std::vector<Form*>& args,
                                        FormPool& pool);
 Form* alloc_var_form(const RegisterAccess& var, FormPool& pool);
+Form* try_cast_simplify(Form* in, const TypeSpec& new_type, FormPool& pool, const Env& env);
 }  // namespace decompiler

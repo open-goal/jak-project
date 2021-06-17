@@ -53,6 +53,47 @@
 
 namespace decompiler {
 
+namespace {
+Form* strip_pcypld_64(Form* in) {
+  auto m = match(Matcher::op(GenericOpMatcher::fixed(FixedOperatorKind::PCPYLD),
+                             {Matcher::integer(0), Matcher::any(0)}),
+                 in);
+  if (m.matched) {
+    return m.maps.forms.at(0);
+  } else {
+    return in;
+  }
+}
+}  // namespace
+
+Form* try_cast_simplify(Form* in, const TypeSpec& new_type, FormPool& pool, const Env& env) {
+  auto in_as_cast = dynamic_cast<CastElement*>(in->try_as_single_element());
+  if (in_as_cast && in_as_cast->type() == new_type) {
+    return in;  // no need to cast again, it already has it!
+  }
+
+  auto type_info = env.dts->ts.lookup_type(new_type);
+  auto bitfield_info = dynamic_cast<BitFieldType*>(type_info);
+  if (bitfield_info) {
+    // todo remove this.
+    if (bitfield_info->get_load_size() == 8) {
+      in = strip_pcypld_64(in);
+    }
+    return cast_to_bitfield(bitfield_info, new_type, pool, env, in);
+  }
+
+  auto enum_info = dynamic_cast<EnumType*>(type_info);
+  if (enum_info) {
+    if (enum_info->is_bitfield()) {
+      return cast_to_bitfield_enum(enum_info, new_type, pool, env, in);
+    } else {
+      return cast_to_int_enum(enum_info, new_type, pool, env, in);
+    }
+  }
+
+  return nullptr;
+}
+
 bool Form::has_side_effects() {
   bool has_side_effect = false;
   apply([&](FormElement* elt) {
@@ -209,44 +250,13 @@ void pop_helper(const std::vector<RegisterAccess>& vars,
   }
 }
 
-namespace {
-Form* strip_pcypld_64(Form* in) {
-  auto m = match(Matcher::op(GenericOpMatcher::fixed(FixedOperatorKind::PCPYLD),
-                             {Matcher::integer(0), Matcher::any(0)}),
-                 in);
-  if (m.matched) {
-    return m.maps.forms.at(0);
-  } else {
-    return in;
-  }
-}
-}  // namespace
-
 /*!
  * This should be used to generate all casts.
  */
 Form* cast_form(Form* in, const TypeSpec& new_type, FormPool& pool, const Env& env) {
-  auto in_as_cast = dynamic_cast<CastElement*>(in->try_as_single_element());
-  if (in_as_cast && in_as_cast->type() == new_type) {
-    return in;
-  }
-
-  auto type_info = env.dts->ts.lookup_type(new_type);
-  auto bitfield_info = dynamic_cast<BitFieldType*>(type_info);
-  if (bitfield_info) {
-    if (bitfield_info->get_load_size() == 8) {
-      in = strip_pcypld_64(in);
-    }
-    return cast_to_bitfield(bitfield_info, new_type, pool, env, in);
-  }
-
-  auto enum_info = dynamic_cast<EnumType*>(type_info);
-  if (enum_info) {
-    if (enum_info->is_bitfield()) {
-      return cast_to_bitfield_enum(enum_info, new_type, pool, env, in);
-    } else {
-      return cast_to_int_enum(enum_info, new_type, pool, env, in);
-    }
+  auto result = try_cast_simplify(in, new_type, pool, env);
+  if (result) {
+    return result;
   }
 
   return pool.alloc_single_element_form<CastElement>(nullptr, new_type, in);
@@ -3439,9 +3449,13 @@ void ArrayFieldAccess::update_with_val(Form* new_val,
       // (+ v0-0 (the-as uint (* 12 (+ a3-0 -1))))
       auto mult_matcher = Matcher::op(GenericOpMatcher::fixed(FixedOperatorKind::MULTIPLICATION),
                                       {Matcher::integer(m_expected_stride), Matcher::any(0)});
-      mult_matcher = Matcher::match_or({Matcher::cast("uint", mult_matcher), mult_matcher});
+      mult_matcher = Matcher::match_or(
+          {Matcher::cast("uint", mult_matcher), Matcher::cast("int", mult_matcher), mult_matcher});
       auto add_matcher = Matcher::op(GenericOpMatcher::fixed(FixedOperatorKind::ADDITION),
                                      {Matcher::any(1), mult_matcher});
+      add_matcher = Matcher::match_or(
+          {add_matcher, Matcher::op(GenericOpMatcher::fixed(FixedOperatorKind::ADDITION),
+                                    {mult_matcher, Matcher::any(1)})});
 
       auto mr = match(add_matcher, new_val);
       if (!mr.matched) {
