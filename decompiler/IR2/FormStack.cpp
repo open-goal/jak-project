@@ -322,7 +322,6 @@ std::vector<FormElement*> FormStack::rewrite(FormPool& pool, const Env& env) con
         }
       }
 
-
       auto type = e.set_type;
       auto expected_type = env.get_variable_type(*e.destination, true);
       if (!env.dts->ts.tc(expected_type, e.set_type)) {
