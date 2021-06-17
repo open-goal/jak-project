@@ -581,6 +581,19 @@ std::optional<u64> get_goal_integer_constant(Form* in, const Env&) {
       return result;
     }
   }
+
+  // also (shl <something> 16)
+  matcher = Matcher::op(GenericOpMatcher::fixed(FixedOperatorKind::SHL),
+                        {Matcher::any(1), Matcher::integer(16)});
+  mr = match(matcher, in);
+  if (mr.matched) {
+    auto arg_as_atom = form_as_atom(mr.maps.forms.at(1));
+    if (arg_as_atom && arg_as_atom->is_int()) {
+      u64 result = arg_as_atom->get_int();
+      result <<= 16ull;
+      return result;
+    }
+  }
   return {};
 }
 
