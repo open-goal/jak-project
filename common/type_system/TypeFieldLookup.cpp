@@ -3,6 +3,7 @@
  * Reverse field lookup used in the decompiler.
  */
 
+#include <algorithm>
 #include "third-party/fmt/core.h"
 #include "TypeSystem.h"
 
@@ -190,6 +191,7 @@ void try_reverse_lookup_array_like(const FieldReverseLookupInput& input,
           auto vec = parent->to_vector();
           FieldReverseLookupOutput::Token tok;
           tok.kind = FieldReverseLookupOutput::Token::Kind::FIELD;
+          tok.field_score = 0.0;  // don't bother
           tok.name = "data";
           vec.push_back(tok);
           output->results.emplace_back(false, array_data_type, vec);
@@ -338,6 +340,7 @@ void try_reverse_lookup_other(const FieldReverseLookupInput& input,
       FieldReverseLookupOutput::Token token;
       token.kind = FieldReverseLookupOutput::Token::Kind::FIELD;
       token.name = field.name();
+      token.field_score = field.field_score();
 
       if (field_deref.needs_deref) {
         if (offset_into_field == 0) {
@@ -452,12 +455,27 @@ void try_reverse_lookup(const FieldReverseLookupInput& input,
 FieldReverseLookupOutput TypeSystem::reverse_field_lookup(
     const FieldReverseLookupInput& input) const {
   // just use the multi-lookup set to 1 and grab the first result.
-  auto multi_result = reverse_field_multi_lookup(input, 1);
+  auto multi_result = reverse_field_multi_lookup(input, 100);
 
-  if (debug_reverse_lookup && multi_result.results.size() > 1) {
+  for (auto& result : multi_result.results) {
+    // compute the score.
+    result.total_score = 0;
+    for (auto& tok : result.tokens) {
+      result.total_score += tok.score();
+    }
+  }
+
+  // use stable sort to make sure we break ties by being first in the order.
+  std::stable_sort(multi_result.results.begin(), multi_result.results.end(),
+                   [](const FieldReverseLookupOutput& a, const FieldReverseLookupOutput& b) {
+                     return a.total_score > b.total_score;
+                   });
+
+  /*
+  if (multi_result.results.size() > 1) {
     fmt::print("Multiple:\n");
     for (auto& result : multi_result.results) {
-      fmt::print("  [{}] ", result.result_type.print());
+      fmt::print("  [{}] [{}] ", result.total_score, result.result_type.print());
       for (auto& tok : result.tokens) {
         fmt::print("{} ", tok.print());
       }
@@ -465,6 +483,7 @@ FieldReverseLookupOutput TypeSystem::reverse_field_lookup(
     }
     fmt::print("\n\n\n");
   }
+   */
 
   FieldReverseLookupOutput result;
   if (multi_result.success) {

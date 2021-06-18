@@ -767,7 +767,8 @@ int TypeSystem::add_field_to_type(StructureType* type,
                                   bool is_dynamic,
                                   int array_size,
                                   int offset_override,
-                                  bool skip_in_static_decomp) {
+                                  bool skip_in_static_decomp,
+                                  double score) {
   if (type->lookup_field(field_name, nullptr)) {
     throw_typesystem_error("Type {} already has a field named {}\n", type->get_name(), field_name);
   }
@@ -807,6 +808,7 @@ int TypeSystem::add_field_to_type(StructureType* type,
   if (skip_in_static_decomp) {
     field.set_skip_in_static_decomp();
   }
+  field.set_field_score(score);
 
   int after_field = offset + get_size_in_type(field);
   if (type->get_size_in_memory() < after_field) {
