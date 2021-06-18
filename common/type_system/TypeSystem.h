@@ -75,15 +75,32 @@ struct FieldReverseLookupOutput {
   struct Token {
     enum class Kind { FIELD, CONSTANT_IDX, VAR_IDX } kind;
     std::string name;
-    int idx;
+    int idx = -1;
 
     std::string print() const;
   };
 
+  FieldReverseLookupOutput() = default;
+  FieldReverseLookupOutput(bool addr, TypeSpec type, std::vector<Token> tok)
+      : success(true), addr_of(addr), result_type(std::move(type)), tokens(std::move(tok)) {}
+
   bool success = false;
   bool addr_of = false;  // do we take the address of this result?
+  double field_scores = 0.;
   TypeSpec result_type;
   std::vector<Token> tokens;
+};
+
+struct FieldReverseMultiLookupOutput {
+  std::vector<FieldReverseLookupOutput> results;
+  bool success = false;
+};
+
+struct ReverseLookupNode {
+  const ReverseLookupNode* prev = nullptr;
+  FieldReverseLookupOutput::Token token;
+
+  std::vector<FieldReverseLookupOutput::Token> to_vector() const;
 };
 
 class TypeSystem {
@@ -97,6 +114,8 @@ class TypeSystem {
 
   DerefInfo get_deref_info(const TypeSpec& ts) const;
   FieldReverseLookupOutput reverse_field_lookup(const FieldReverseLookupInput& input) const;
+  FieldReverseMultiLookupOutput reverse_field_multi_lookup(const FieldReverseLookupInput& input,
+                                                           int max_count = 100) const;
 
   bool fully_defined_type_exists(const std::string& name) const;
   bool fully_defined_type_exists(const TypeSpec& type) const;
@@ -204,6 +223,7 @@ class TypeSystem {
   int get_size_in_type(const Field& field) const;
 
  private:
+  /*
   bool try_reverse_lookup(const FieldReverseLookupInput& input,
                           std::vector<FieldReverseLookupOutput::Token>* path,
                           bool* addr_of,
@@ -224,6 +244,7 @@ class TypeSystem {
                                 std::vector<FieldReverseLookupOutput::Token>* path,
                                 bool* addr_of,
                                 TypeSpec* result_type) const;
+                                */
   std::string lca_base(const std::string& a, const std::string& b) const;
   bool typecheck_base_types(const std::string& expected, const std::string& actual) const;
   int get_alignment_in_type(const Field& field);
