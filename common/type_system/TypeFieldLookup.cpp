@@ -3,6 +3,7 @@
  * Reverse field lookup used in the decompiler.
  */
 
+#include <algorithm>
 #include "third-party/fmt/core.h"
 #include "TypeSystem.h"
 
@@ -32,6 +33,24 @@ bool deref_matches(const DerefInfo& expected,
 }  // namespace
 
 /*!
+ * Convert the linked list to a vector of tokens.
+ */
+std::vector<FieldReverseLookupOutput::Token> ReverseLookupNode::to_vector() const {
+  std::vector<const ReverseLookupNode*> nodes_reversed = {};
+  std::vector<FieldReverseLookupOutput::Token> result;
+  const ReverseLookupNode* node = this;
+  while (node) {
+    nodes_reversed.push_back(node);
+    node = node->prev;
+  }
+
+  for (auto it = nodes_reversed.rbegin(); it != nodes_reversed.rend(); it++) {
+    result.push_back((*it)->token);
+  }
+  return result;
+}
+
+/*!
  * Convert a Token in a field path to a string for debugging.
  */
 std::string FieldReverseLookupOutput::Token::print() const {
@@ -48,227 +67,140 @@ std::string FieldReverseLookupOutput::Token::print() const {
   }
 }
 
-/*!
- * Main reverse lookup. Check the success field of the result to see if it was successful.
- * Will return the type of result as well as the path taken to get there.
- * The path can be arbitrarily long because we could be looking through nested inline structures.
- * The result is _always_ an actual dereference and there is no way for this to return "no deref".
- * The "offset" should always be the actual memory offset in the load instruction.
- * This is the "offset into memory" - "boxed offset"
- */
-FieldReverseLookupOutput TypeSystem::reverse_field_lookup(
-    const FieldReverseLookupInput& input) const {
-  if (debug_reverse_lookup) {
-    fmt::print("reverse_field_lookup on {} offset {} deref {} stride {}\n", input.base_type.print(),
-               input.offset, input.deref.has_value(), input.stride);
-  }
-  FieldReverseLookupOutput result;
-  result.success = try_reverse_lookup(input, &result.tokens, &result.addr_of, &result.result_type);
-  // todo check for only one var lookup.
-  return result;
-}
+namespace {
+
+void try_reverse_lookup(const FieldReverseLookupInput& input,
+                        const TypeSystem& ts,
+                        const ReverseLookupNode* parent,
+                        FieldReverseMultiLookupOutput* output,
+                        int max_count);
+
+void try_reverse_lookup_other(const FieldReverseLookupInput& input,
+                              const TypeSystem& ts,
+                              const ReverseLookupNode* parent,
+                              FieldReverseMultiLookupOutput* output,
+                              int max_count);
 
 /*!
- * Reverse lookup helper. Returns true if successful. It's okay to call this an have it fail.
- * Will set path/addr_of/result_type if successful.
- */
-bool TypeSystem::try_reverse_lookup(const FieldReverseLookupInput& input,
-                                    std::vector<FieldReverseLookupOutput::Token>* path,
-                                    bool* addr_of,
-                                    TypeSpec* result_type) const {
-  if (debug_reverse_lookup) {
-    fmt::print(" try_reverse_lookup on {} offset {} deref {} stride {}\n", input.base_type.print(),
-               input.offset, input.deref.has_value(), input.stride);
-  }
-
-  auto base_input_type = input.base_type.base_type();
-  if (base_input_type == "pointer") {
-    return try_reverse_lookup_pointer(input, path, addr_of, result_type);
-  } else if (base_input_type == "inline-array") {
-    return try_reverse_lookup_inline_array(input, path, addr_of, result_type);
-  } else if (base_input_type == "array" && input.base_type.has_single_arg()) {
-    return try_reverse_lookup_array(input, path, addr_of, result_type);
-  } else {
-    return try_reverse_lookup_other(input, path, addr_of, result_type);
-  }
-  return false;
-}
-
-/*!
- * Handle a dereference of a pointer. This can be:
+ * Handle a dereference of a pointer/boxed array. This can be:
  * - just dereferencing a pointer
  * - accessing a variable element of a pointer-style array
  * - getting the address of a variable element of a pointer-style array
  * - accessing a constant element of a pointer-style array
  * - getting the address of a constant element of a pointer-style array
  */
-bool TypeSystem::try_reverse_lookup_pointer(const FieldReverseLookupInput& input,
-                                            std::vector<FieldReverseLookupOutput::Token>* path,
-                                            bool* addr_of,
-                                            TypeSpec* result_type) const {
-  if (!input.base_type.has_single_arg()) {
-    return false;
+void try_reverse_lookup_array_like(const FieldReverseLookupInput& input,
+                                   const TypeSystem& ts,
+                                   const ReverseLookupNode* parent,
+                                   FieldReverseMultiLookupOutput* output,
+                                   int max_count,
+                                   bool boxed_array) {
+  if ((int)output->results.size() >= max_count) {
+    return;
   }
-  auto di = get_deref_info(input.base_type);
-  bool is_integer = tc(TypeSpec("integer"), input.base_type.get_single_arg());
-  bool is_basic = tc(TypeSpec("basic"), input.base_type.get_single_arg());
+
+  if (!input.base_type.has_single_arg()) {
+    // not a typed pointer.
+    return;
+  }
+
+  if (boxed_array && input.offset < ARRAY_DATA_OFFSET) {
+    // we are accessing a field in an array so we can treat this like any other structure.
+    // this will add the basic offset, so we can pass in the input unchanged.
+    try_reverse_lookup_other(input, ts, parent, output, max_count);
+    return;
+  }
+
+  auto array_data_type =
+      boxed_array ? ts.make_pointer_typespec(input.base_type.get_single_arg()) : input.base_type;
+  auto di = ts.get_deref_info(array_data_type);
+  bool is_integer = ts.tc(TypeSpec("integer"), input.base_type.get_single_arg());
+  bool is_basic = ts.tc(TypeSpec("basic"), input.base_type.get_single_arg());
   assert(di.mem_deref);  // it's accessing a pointer.
   auto elt_type = di.result_type;
+
   if (input.stride) {
     // variable access to the array.
+    // this is an array of values, nothing inline, so we must get an _exact_ match for this to work.
     if (input.stride != di.stride) {
       // mismatched array strides, fail!
-      return false;
-    }
-    if (input.offset != 0) {
-      // can't access within an element of a pointer array.
-      // todo - this could be some sort of constant folding for the next operation.
-      return false;
+      return;
     }
 
-    FieldReverseLookupOutput::Token token;
-    token.kind = FieldReverseLookupOutput::Token::Kind::VAR_IDX;
-    path->push_back(token);
+    if (input.offset != (boxed_array ? ARRAY_DATA_OFFSET : 0)) {
+      // can't access within an element of a pointer array.
+      // todo - this could be some sort of constant folding for the next operation.
+      // for example, something like (&+ (&-> array-of-uint32s 3) 1)
+      return;
+    }
+
+    // add this to our path.
+    ReverseLookupNode variable_node;
+    variable_node.prev = parent;
+    variable_node.token.kind = FieldReverseLookupOutput::Token::Kind::VAR_IDX;
+
     if (input.deref.has_value()) {
+      // input did a load or store, we need to check the size/signed/kind.
       if (deref_matches(di, input.deref.value(), is_integer, is_basic)) {
         // access element of array
-        *addr_of = false;
-        *result_type = elt_type;
-        return true;
+        // success!
+        output->results.emplace_back(false, elt_type, variable_node.to_vector());
+        // no other way to access an array with the given type.
+        return;
       } else {
-        // this isn't the right type of dereference.
-        return false;
+        // this isn't the right type of dereference, no way to make this work.
+        return;
       }
     } else {
       // get the address of a variable indexed element of a pointer-style array
-      *addr_of = true;
-      *result_type = make_pointer_typespec(elt_type);
-      return true;
+      output->results.emplace_back(true, ts.make_pointer_typespec(elt_type),
+                                   variable_node.to_vector());
+      return;
     }
   } else {
     // either access array or just plain deref a pointer.
-    int elt_idx = input.offset / di.stride;
-    int offset_into_elt = input.offset - (elt_idx * di.stride);
+    int offset = input.offset - (boxed_array ? ARRAY_DATA_OFFSET : 0);
+    int elt_idx = offset / di.stride;
+    int offset_into_elt = offset - (elt_idx * di.stride);
     if (offset_into_elt) {
-      // should line up correctly.
-      return false;
+      // shouldn't have a weird offset.
+      return;
     }
 
-    FieldReverseLookupOutput::Token token;
-    token.kind = FieldReverseLookupOutput::Token::Kind::CONSTANT_IDX;
-    token.idx = elt_idx;
+    ReverseLookupNode constant_node;
+    constant_node.prev = parent;
+    constant_node.token.kind = FieldReverseLookupOutput::Token::Kind::CONSTANT_IDX;
+    constant_node.token.idx = elt_idx;
     if (input.deref.has_value()) {
       if (!deref_matches(di, input.deref.value(), is_integer, is_basic)) {
         // this isn't the right type of dereference
-        return false;
+        return;
       }
 
       // always push back an index so we're never ambiguous.
-      path->push_back(token);
-
-      // access constant idx element of array
-      *addr_of = false;
-      *result_type = elt_type;
-      return true;
+      output->results.emplace_back(false, elt_type, constant_node.to_vector());
+      return;
     } else {
       // we want (&-> arr 0)
-      path->push_back(token);
-      // get address of constant idx element of array
-      *addr_of = true;
-      *result_type = make_pointer_typespec(elt_type);
-      return true;
-    }
-  }
-}
+      output->results.emplace_back(true, ts.make_pointer_typespec(elt_type),
+                                   constant_node.to_vector());
 
-/*!
- * Handle a dereference with an "array" type.
- * This has two cases:
- * - accessing a field of the array class, not including the array data. Like any other structure.
- * - accessing the data array part of the array class, very similar to the pointer-style array.
- */
-bool TypeSystem::try_reverse_lookup_array(const FieldReverseLookupInput& input,
-                                          std::vector<FieldReverseLookupOutput::Token>* path,
-                                          bool* addr_of,
-                                          TypeSpec* result_type) const {
-  // type should be (array elt-type)
-  if (!input.base_type.has_single_arg()) {
-    return false;
-  }
-
-  if (input.offset < ARRAY_DATA_OFFSET) {
-    // we are accessing a field in an array so we can treat this like any other structure.
-    // this will add the basic offset, so we can pass in the input unchanged.
-    return try_reverse_lookup_other(input, path, addr_of, result_type);
-  }
-
-  // this is the data type - (pointer elt-type). this is stored at an offset of ARRAY_DATA_OFFSET.
-  auto array_data_type = make_pointer_typespec(input.base_type.get_single_arg());
-  auto di = get_deref_info(array_data_type);
-  bool is_integer = tc(TypeSpec("integer"), input.base_type.get_single_arg());
-  bool is_basic = tc(TypeSpec("basic"), input.base_type.get_single_arg());
-  assert(di.mem_deref);  // it's accessing a pointer.
-  auto elt_type = di.result_type;
-  if (input.stride) {
-    if (input.offset != ARRAY_DATA_OFFSET) {
-      // might be constant propagated other offsets here?
-      return false;
-    }
-
-    // variable access to the array.
-    if (input.stride != di.stride) {
-      // mismatched array strides, fail!
-      return false;
-    }
-
-    FieldReverseLookupOutput::Token token;
-    token.kind = FieldReverseLookupOutput::Token::Kind::VAR_IDX;
-    path->push_back(token);
-    if (input.deref.has_value()) {
-      if (deref_matches(di, input.deref.value(), is_integer, is_basic)) {
-        // access element of array
-        *addr_of = false;
-        *result_type = elt_type;
-        return true;
-      } else {
-        // this isn't the right type of dereference.
-        return false;
-      }
-    } else {
-      // get the address of a variable indexed element of a pointer-style array
-      *addr_of = true;
-      *result_type = make_pointer_typespec(elt_type);
-      return true;
-    }
-  } else {
-    // either access array or just plain deref a pointer.
-    int elt_idx = (input.offset - ARRAY_DATA_OFFSET) / di.stride;
-    int offset_into_elt = (input.offset - ARRAY_DATA_OFFSET) - (elt_idx * di.stride);
-    if (offset_into_elt) {
-      // should line up correctly.
-      return false;
-    }
-
-    FieldReverseLookupOutput::Token token;
-    token.kind = FieldReverseLookupOutput::Token::Kind::CONSTANT_IDX;
-    token.idx = elt_idx;
-    // always put array index, even if it's zero.
-    path->push_back(token);
-    if (input.deref.has_value()) {
-      if (!deref_matches(di, input.deref.value(), is_integer, is_basic)) {
-        // this isn't the right type of dereference
-        return false;
+      // also just return the array
+      if (elt_idx == 0) {
+        if (boxed_array) {
+          auto vec = parent->to_vector();
+          FieldReverseLookupOutput::Token tok;
+          tok.kind = FieldReverseLookupOutput::Token::Kind::FIELD;
+          tok.field_score = 0.0;  // don't bother
+          tok.name = "data";
+          vec.push_back(tok);
+          output->results.emplace_back(false, array_data_type, vec);
+        } else {
+          output->results.emplace_back(false, input.base_type, parent->to_vector());
+        }
       }
 
-      // access constant idx element of array
-      *addr_of = false;
-      *result_type = elt_type;
-      return true;
-    } else {
-      // get address of constant idx element of array
-      *addr_of = true;
-      *result_type = make_pointer_typespec(elt_type);
-      return true;
+      return;
     }
   }
 }
@@ -281,24 +213,33 @@ bool TypeSystem::try_reverse_lookup_array(const FieldReverseLookupInput& input,
  * - get a constant idx reference object (we pick this over just getting the array for idx = 0)
  * - get something inside a constant idx reference object
  */
-bool TypeSystem::try_reverse_lookup_inline_array(const FieldReverseLookupInput& input,
-                                                 std::vector<FieldReverseLookupOutput::Token>* path,
-                                                 bool* addr_of,
-                                                 TypeSpec* result_type) const {
-  auto di = get_deref_info(input.base_type);
+void try_reverse_lookup_inline_array(const FieldReverseLookupInput& input,
+                                     const TypeSystem& ts,
+                                     const ReverseLookupNode* parent,
+                                     FieldReverseMultiLookupOutput* output,
+                                     int max_count) {
+  if ((int)output->results.size() >= max_count) {
+    return;
+  }
+  auto di = ts.get_deref_info(input.base_type);
   assert(di.can_deref);
-  assert(!di.mem_deref);  // if we make integer arrays allowed to be inline-array, this will break.
+  assert(!di.mem_deref);
 
   if (input.stride && input.stride == di.stride && input.offset < di.stride) {
     // variable lookup.
-    FieldReverseLookupOutput::Token token;
-    token.kind = FieldReverseLookupOutput::Token::Kind::VAR_IDX;
-    path->push_back(token);
+    ReverseLookupNode var_idx_node;
+    var_idx_node.prev = parent;
+
+    var_idx_node.token.kind = FieldReverseLookupOutput::Token::Kind::VAR_IDX;
 
     if (input.offset == 0 && !input.deref.has_value()) {
-      *addr_of = false;
-      *result_type = di.result_type;
-      return true;
+      // put the element first, to match the old behavior.
+      output->results.emplace_back(false, di.result_type, var_idx_node.to_vector());
+      // keep trying!
+    }
+
+    if ((int)output->results.size() >= max_count) {
+      return;
     }
 
     FieldReverseLookupInput next_input;
@@ -306,7 +247,8 @@ bool TypeSystem::try_reverse_lookup_inline_array(const FieldReverseLookupInput& 
     next_input.stride = 0;
     next_input.offset = input.offset;
     next_input.base_type = di.result_type;
-    return try_reverse_lookup(next_input, path, addr_of, result_type);
+    try_reverse_lookup(next_input, ts, &var_idx_node, output, max_count);
+    return;
   }
 
   // constant lookup, or accessing within the first one
@@ -315,24 +257,33 @@ bool TypeSystem::try_reverse_lookup_inline_array(const FieldReverseLookupInput& 
   // how many bytes into the element we look
   int offset_into_elt = input.offset - (elt_idx * di.stride);
   // the expected number of bytes into the element we would look to grab a ref to the elt.
-  int expected_offset_into_elt = lookup_type(di.result_type)->get_offset();
+  int expected_offset_into_elt = ts.lookup_type(di.result_type)->get_offset();
 
-  FieldReverseLookupOutput::Token token;
-  token.kind = FieldReverseLookupOutput::Token::Kind::CONSTANT_IDX;
-  token.idx = elt_idx;
+  ReverseLookupNode const_idx_node;
+  const_idx_node.prev = parent;
+  const_idx_node.token.kind = FieldReverseLookupOutput::Token::Kind::CONSTANT_IDX;
+  const_idx_node.token.idx = elt_idx;
 
   if (offset_into_elt == expected_offset_into_elt && !input.deref.has_value()) {
     // just get an element (possibly zero, and we want to include the 0 if so)
     // for the degenerate inline-array case, it seems more likely that we get the zeroth object
-    // rather than the array?  Either way, this code should be compatible with both approaches.
-    path->push_back(token);
-    *addr_of = false;
-    *result_type = di.result_type;
-    return true;
+    // rather than the array, so this goes before that case.
+    output->results.emplace_back(false, di.result_type, const_idx_node.to_vector());
+    if ((int)output->results.size() >= max_count) {
+      return;
+    }
+    // keep trying more stuff.
+  }
+
+  // can we just return the array?
+  if (expected_offset_into_elt == offset_into_elt && !input.deref.has_value() && elt_idx == 0) {
+    output->results.emplace_back(false, input.base_type, parent->to_vector());
+    if ((int)output->results.size() >= max_count) {
+      return;
+    }
   }
 
   // otherwise access within the element
-  path->push_back(token);
 
   FieldReverseLookupInput next_input;
   next_input.deref = input.deref;
@@ -340,7 +291,7 @@ bool TypeSystem::try_reverse_lookup_inline_array(const FieldReverseLookupInput& 
   // try_reverse_lookup expects "offset_into_field - boxed_offset"
   next_input.offset = offset_into_elt - expected_offset_into_elt;
   next_input.base_type = di.result_type;
-  return try_reverse_lookup(next_input, path, addr_of, result_type);
+  try_reverse_lookup(next_input, ts, &const_idx_node, output, max_count);
 }
 
 /*!
@@ -348,24 +299,30 @@ bool TypeSystem::try_reverse_lookup_inline_array(const FieldReverseLookupInput& 
  * - Access a field which requires mem deref.
  * - Get address of a field which requires mem deref.
  */
-bool TypeSystem::try_reverse_lookup_other(const FieldReverseLookupInput& input,
-                                          std::vector<FieldReverseLookupOutput::Token>* path,
-                                          bool* addr_of,
-                                          TypeSpec* result_type) const {
-  auto type_info = lookup_type(input.base_type);
+void try_reverse_lookup_other(const FieldReverseLookupInput& input,
+                              const TypeSystem& ts,
+                              const ReverseLookupNode* parent,
+                              FieldReverseMultiLookupOutput* output,
+                              int max_count) {
+  auto type_info = ts.lookup_type(input.base_type);
   auto structure_type = dynamic_cast<StructureType*>(type_info);
   if (!structure_type) {
-    return false;
+    return;
   }
 
   auto corrected_offset = input.offset + type_info->get_offset();
   // loop over fields. We may need to try multiple fields.
   for (auto& field : structure_type->fields()) {
+    // todo, remove this and replace with score.
     if (field.skip_in_decomp()) {
       continue;
     }
 
-    auto field_deref = lookup_field_info(type_info->get_name(), field.name());
+    if ((int)output->results.size() >= max_count) {
+      return;
+    }
+
+    auto field_deref = ts.lookup_field_info(type_info->get_name(), field.name());
 
     // how many bytes do we look at? In the case where we're just getting an address, we assume
     // one byte, so we'll always pass the size check.
@@ -375,7 +332,7 @@ bool TypeSystem::try_reverse_lookup_other(const FieldReverseLookupInput& input,
     }
 
     if (corrected_offset >= field.offset() &&
-        (corrected_offset + effective_load_size <= field.offset() + get_size_in_type(field) ||
+        (corrected_offset + effective_load_size <= field.offset() + ts.get_size_in_type(field) ||
          field.is_dynamic())) {
       // the field size looks okay.
       int offset_into_field = corrected_offset - field.offset();
@@ -383,6 +340,7 @@ bool TypeSystem::try_reverse_lookup_other(const FieldReverseLookupInput& input,
       FieldReverseLookupOutput::Token token;
       token.kind = FieldReverseLookupOutput::Token::Kind::FIELD;
       token.name = field.name();
+      token.field_score = field.field_score();
 
       if (field_deref.needs_deref) {
         if (offset_into_field == 0) {
@@ -390,10 +348,10 @@ bool TypeSystem::try_reverse_lookup_other(const FieldReverseLookupInput& input,
             // needs deref, offset is 0, did a deref.
             // Check the deref is right...
             // (pointer <field-type>)
-            TypeSpec loc_type = make_pointer_typespec(field_deref.type);
-            auto di = get_deref_info(loc_type);
-            bool is_integer = tc(TypeSpec("integer"), field_deref.type);
-            bool is_basic = tc(TypeSpec("basic"), field_deref.type);
+            TypeSpec loc_type = ts.make_pointer_typespec(field_deref.type);
+            auto di = ts.get_deref_info(loc_type);
+            bool is_integer = ts.tc(TypeSpec("integer"), field_deref.type);
+            bool is_basic = ts.tc(TypeSpec("basic"), field_deref.type);
             if (!deref_matches(di, input.deref.value(), is_integer, is_basic)) {
               continue;  // try another field!
             }
@@ -401,20 +359,23 @@ bool TypeSystem::try_reverse_lookup_other(const FieldReverseLookupInput& input,
             if (input.stride) {
               continue;
             }
-            path->push_back(token);
-            *addr_of = false;
-            *result_type = field_deref.type;
-            return true;
+            ReverseLookupNode node;
+            node.prev = parent;
+            node.token = token;
+            output->results.emplace_back(false, field_deref.type, node.to_vector());
+            continue;  // try more!
           } else {
             // needs a deref, offset is 0, didn't do a deref.
             // we're taking the address
             if (input.stride) {
               continue;
             }
-            path->push_back(token);
-            *addr_of = true;
-            *result_type = make_pointer_typespec(field_deref.type);
-            return true;
+            ReverseLookupNode node;
+            node.prev = parent;
+            node.token = token;
+            output->results.emplace_back(true, ts.make_pointer_typespec(field_deref.type),
+                                         node.to_vector());
+            continue;  // try more!
           }
         } else {
           if (input.deref.has_value()) {
@@ -431,32 +392,121 @@ bool TypeSystem::try_reverse_lookup_other(const FieldReverseLookupInput& input,
         // no deref needed
         int expected_offset_into_field = 0;
         if (field.is_inline()) {
-          expected_offset_into_field = lookup_type(field.type())->get_offset();
+          expected_offset_into_field = ts.lookup_type(field.type())->get_offset();
         }
         if (offset_into_field == expected_offset_into_field && !input.deref.has_value() &&
             !input.stride) {
-          // get the inline field exactly
-          path->push_back(token);
-          *result_type = field_deref.type;
-          *addr_of = false;
-          return true;
+          ReverseLookupNode node;
+          node.prev = parent;
+          node.token = token;
+          output->results.emplace_back(false, field_deref.type, node.to_vector());
+          continue;  // try more!
         } else {
           FieldReverseLookupInput next_input;
           next_input.deref = input.deref;
           next_input.offset = offset_into_field - expected_offset_into_field;
           next_input.stride = input.stride;
           next_input.base_type = field_deref.type;
-          auto old_path = *path;
-          path->push_back(token);
-          if (try_reverse_lookup(next_input, path, addr_of, result_type)) {
-            return true;
-          } else {
-            *path = old_path;
-            continue;
-          }
+          ReverseLookupNode node;
+          node.prev = parent;
+          node.token = token;
+          try_reverse_lookup(next_input, ts, &node, output, max_count);
         }
       }
     }
   }
-  return false;
+}
+
+/*!
+ * Reverse lookup helper. Returns true if successful. It's okay to call this an have it fail.
+ * Will set path/addr_of/result_type if successful.
+ */
+void try_reverse_lookup(const FieldReverseLookupInput& input,
+                        const TypeSystem& ts,
+                        const ReverseLookupNode* parent,
+                        FieldReverseMultiLookupOutput* output,
+                        int max_count) {
+  if (debug_reverse_lookup) {
+    fmt::print(" try_reverse_lookup on {} offset {} deref {} stride {}\n", input.base_type.print(),
+               input.offset, input.deref.has_value(), input.stride);
+  }
+
+  auto base_input_type = input.base_type.base_type();
+  if (base_input_type == "pointer") {
+    try_reverse_lookup_array_like(input, ts, parent, output, max_count, false);
+  } else if (base_input_type == "inline-array") {
+    return try_reverse_lookup_inline_array(input, ts, parent, output, max_count);
+  } else if (base_input_type == "array" && input.base_type.has_single_arg()) {
+    try_reverse_lookup_array_like(input, ts, parent, output, max_count, true);
+  } else {
+    return try_reverse_lookup_other(input, ts, parent, output, max_count);
+  }
+}
+}  // namespace
+
+/*!
+ * Old single reverse lookup. Check the success field of the result to see if it was successful.
+ * Will return the type of result as well as the path taken to get there.
+ * The path can be arbitrarily long because we could be looking through nested inline structures.
+ * The result is _always_ an actual dereference and there is no way for this to return "no deref".
+ * The "offset" should always be the actual memory offset in the load instruction.
+ * This is the "offset into memory" - "boxed offset"
+ */
+FieldReverseLookupOutput TypeSystem::reverse_field_lookup(
+    const FieldReverseLookupInput& input) const {
+  // just use the multi-lookup set to 1 and grab the first result.
+  auto multi_result = reverse_field_multi_lookup(input, 100);
+
+  for (auto& result : multi_result.results) {
+    // compute the score.
+    result.total_score = 0;
+    for (auto& tok : result.tokens) {
+      result.total_score += tok.score();
+    }
+  }
+
+  // use stable sort to make sure we break ties by being first in the order.
+  std::stable_sort(multi_result.results.begin(), multi_result.results.end(),
+                   [](const FieldReverseLookupOutput& a, const FieldReverseLookupOutput& b) {
+                     return a.total_score > b.total_score;
+                   });
+
+  /*
+  if (multi_result.results.size() > 1) {
+    fmt::print("Multiple:\n");
+    for (auto& result : multi_result.results) {
+      fmt::print("  [{}] [{}] ", result.total_score, result.result_type.print());
+      for (auto& tok : result.tokens) {
+        fmt::print("{} ", tok.print());
+      }
+      fmt::print("\n");
+    }
+    fmt::print("\n\n\n");
+  }
+   */
+
+  FieldReverseLookupOutput result;
+  if (multi_result.success) {
+    result = multi_result.results.at(0);
+    result.success = true;
+  } else {
+    result.success = false;
+  }
+  return result;
+}
+
+FieldReverseMultiLookupOutput TypeSystem::reverse_field_multi_lookup(
+    const FieldReverseLookupInput& input,
+    int max_count) const {
+  if (debug_reverse_lookup) {
+    fmt::print("reverse_field_lookup on {} offset {} deref {} stride {}\n", input.base_type.print(),
+               input.offset, input.deref.has_value(), input.stride);
+  }
+
+  FieldReverseMultiLookupOutput result;
+  try_reverse_lookup(input, *this, nullptr, &result, max_count);
+  if (!result.results.empty()) {
+    result.success = true;
+  }
+  return result;
 }

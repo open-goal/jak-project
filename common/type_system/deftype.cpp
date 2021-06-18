@@ -71,6 +71,15 @@ int64_t get_int(const goos::Object& obj) {
   throw std::runtime_error(obj.print() + " was supposed to be an integer, but isn't");
 }
 
+double get_float(const goos::Object& obj) {
+  if (obj.is_int()) {
+    return obj.integer_obj.value;
+  } else if (obj.is_float()) {
+    return obj.float_obj.value;
+  }
+  throw std::runtime_error(obj.print() + " was supposed to be an number, but isn't");
+}
+
 void add_field(StructureType* structure, TypeSystem* ts, const goos::Object& def) {
   auto rest = &def;
 
@@ -85,6 +94,7 @@ void add_field(StructureType* structure, TypeSystem* ts, const goos::Object& def
   bool is_dynamic = false;
   int offset_override = -1;
   int offset_assert = -1;
+  double score = 0;
   bool skip_in_decomp = false;
 
   if (!rest->is_empty_list()) {
@@ -104,6 +114,9 @@ void add_field(StructureType* structure, TypeSystem* ts, const goos::Object& def
       } else if (opt_name == ":offset") {
         offset_override = get_int(car(rest));
         rest = cdr(rest);
+      } else if (opt_name == ":score") {
+        score = get_float(car(rest));
+        rest = cdr(rest);
       } else if (opt_name == ":offset-assert") {
         offset_assert = get_int(car(rest));
         if (offset_assert == -1) {
@@ -119,7 +132,7 @@ void add_field(StructureType* structure, TypeSystem* ts, const goos::Object& def
   }
 
   int actual_offset = ts->add_field_to_type(structure, name, type, is_inline, is_dynamic,
-                                            array_size, offset_override, skip_in_decomp);
+                                            array_size, offset_override, skip_in_decomp, score);
   if (offset_assert != -1 && actual_offset != offset_assert) {
     throw std::runtime_error("Field " + name + " was placed at " + std::to_string(actual_offset) +
                              " but offset-assert was set to " + std::to_string(offset_assert));

@@ -71,19 +71,51 @@ struct FieldReverseLookupInput {
   TypeSpec base_type;                             // the type of the thing we're accessing
 };
 
+constexpr double CONSTANT_INDEX_SCORE = -10.0;
+
 struct FieldReverseLookupOutput {
   struct Token {
     enum class Kind { FIELD, CONSTANT_IDX, VAR_IDX } kind;
     std::string name;
-    int idx;
+    int idx = -1;
+    double field_score = 0.0;
+
+    double score() {
+      switch (kind) {
+        case Kind::FIELD:
+          return field_score;
+        case Kind::CONSTANT_IDX:
+          return CONSTANT_INDEX_SCORE;
+        case Kind::VAR_IDX:  // this is unavoidable, so don't bother with a score.
+        default:
+          return 0.;
+      }
+    }
 
     std::string print() const;
   };
 
+  FieldReverseLookupOutput() = default;
+  FieldReverseLookupOutput(bool addr, TypeSpec type, std::vector<Token> tok)
+      : success(true), addr_of(addr), result_type(std::move(type)), tokens(std::move(tok)) {}
+
   bool success = false;
   bool addr_of = false;  // do we take the address of this result?
+  double total_score = 0.;
   TypeSpec result_type;
   std::vector<Token> tokens;
+};
+
+struct FieldReverseMultiLookupOutput {
+  std::vector<FieldReverseLookupOutput> results;
+  bool success = false;
+};
+
+struct ReverseLookupNode {
+  const ReverseLookupNode* prev = nullptr;
+  FieldReverseLookupOutput::Token token;
+
+  std::vector<FieldReverseLookupOutput::Token> to_vector() const;
 };
 
 class TypeSystem {
@@ -97,6 +129,8 @@ class TypeSystem {
 
   DerefInfo get_deref_info(const TypeSpec& ts) const;
   FieldReverseLookupOutput reverse_field_lookup(const FieldReverseLookupInput& input) const;
+  FieldReverseMultiLookupOutput reverse_field_multi_lookup(const FieldReverseLookupInput& input,
+                                                           int max_count = 100) const;
 
   bool fully_defined_type_exists(const std::string& name) const;
   bool fully_defined_type_exists(const TypeSpec& type) const;
@@ -158,7 +192,8 @@ class TypeSystem {
                         bool is_dynamic = false,
                         int array_size = -1,
                         int offset_override = -1,
-                        bool skip_in_static_decomp = false);
+                        bool skip_in_static_decomp = false,
+                        double score = 0.0);
 
   void add_builtin_types();
 
@@ -204,26 +239,6 @@ class TypeSystem {
   int get_size_in_type(const Field& field) const;
 
  private:
-  bool try_reverse_lookup(const FieldReverseLookupInput& input,
-                          std::vector<FieldReverseLookupOutput::Token>* path,
-                          bool* addr_of,
-                          TypeSpec* result_type) const;
-  bool try_reverse_lookup_pointer(const FieldReverseLookupInput& input,
-                                  std::vector<FieldReverseLookupOutput::Token>* path,
-                                  bool* addr_of,
-                                  TypeSpec* result_type) const;
-  bool try_reverse_lookup_inline_array(const FieldReverseLookupInput& input,
-                                       std::vector<FieldReverseLookupOutput::Token>* path,
-                                       bool* addr_of,
-                                       TypeSpec* result_type) const;
-  bool try_reverse_lookup_array(const FieldReverseLookupInput& input,
-                                std::vector<FieldReverseLookupOutput::Token>* path,
-                                bool* addr_of,
-                                TypeSpec* result_type) const;
-  bool try_reverse_lookup_other(const FieldReverseLookupInput& input,
-                                std::vector<FieldReverseLookupOutput::Token>* path,
-                                bool* addr_of,
-                                TypeSpec* result_type) const;
   std::string lca_base(const std::string& a, const std::string& b) const;
   bool typecheck_base_types(const std::string& expected, const std::string& actual) const;
   int get_alignment_in_type(const Field& field);

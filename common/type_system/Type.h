@@ -222,6 +222,9 @@ class Field {
     return m_array_size;
   }
 
+  double field_score() const { return m_field_score; }
+  void set_field_score(double value) { m_field_score = value; }
+
  private:
   friend class TypeSystem;
   void set_alignment(int alignment) { m_alignment = alignment; }
@@ -239,6 +242,8 @@ class Field {
   int m_alignment = -1;
   bool m_skip_in_static_decomp = false;
   bool m_placed_by_user = false;  // was this field placed manually by the user?
+
+  double m_field_score = 0.;
 };
 
 class StructureType : public ReferenceType {
