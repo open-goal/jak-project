@@ -573,20 +573,20 @@ void AsmOp::update_register_info() {
   if (m_instr.kind >= FIRST_COP2_MACRO && m_instr.kind <= LAST_COP2_MACRO) {
     switch (m_instr.kind) {
       case InstructionKind::VMSUBQ:
-        m_read_regs.push_back(Register(Reg::COP2_MACRO_SPECIAL, Reg::MACRO_Q));
-        m_read_regs.push_back(Register(Reg::COP2_MACRO_SPECIAL, Reg::MACRO_ACC));
+        m_read_regs.push_back(Register(Reg::SPECIAL, Reg::MACRO_Q));
+        m_read_regs.push_back(Register(Reg::SPECIAL, Reg::MACRO_ACC));
         break;
 
       case InstructionKind::VMULAQ:
-        m_read_regs.push_back(Register(Reg::COP2_MACRO_SPECIAL, Reg::MACRO_Q));
-        m_write_regs.push_back(Register(Reg::COP2_MACRO_SPECIAL, Reg::MACRO_ACC));
+        m_read_regs.push_back(Register(Reg::SPECIAL, Reg::MACRO_Q));
+        m_write_regs.push_back(Register(Reg::SPECIAL, Reg::MACRO_ACC));
         break;
 
         // Read Q register
       case InstructionKind::VADDQ:
       case InstructionKind::VSUBQ:
       case InstructionKind::VMULQ:
-        m_read_regs.push_back(Register(Reg::COP2_MACRO_SPECIAL, Reg::MACRO_Q));
+        m_read_regs.push_back(Register(Reg::SPECIAL, Reg::MACRO_Q));
         break;
 
         // Write ACC register
@@ -595,14 +595,14 @@ void AsmOp::update_register_info() {
       case InstructionKind::VMULA:
       case InstructionKind::VMULA_BC:
       case InstructionKind::VOPMULA:
-        m_write_regs.push_back(Register(Reg::COP2_MACRO_SPECIAL, Reg::MACRO_ACC));
+        m_write_regs.push_back(Register(Reg::SPECIAL, Reg::MACRO_ACC));
         break;
 
         // Write Q register
       case InstructionKind::VDIV:
       case InstructionKind::VSQRT:
       case InstructionKind::VRSQRT:
-        m_write_regs.push_back(Register(Reg::COP2_MACRO_SPECIAL, Reg::MACRO_Q));
+        m_write_regs.push_back(Register(Reg::SPECIAL, Reg::MACRO_Q));
         break;
 
         // Read acc register
@@ -610,18 +610,18 @@ void AsmOp::update_register_info() {
       case InstructionKind::VMADD_BC:
       case InstructionKind::VMSUB:
       case InstructionKind::VMSUB_BC:
-        m_read_regs.push_back(Register(Reg::COP2_MACRO_SPECIAL, Reg::MACRO_ACC));
+        m_read_regs.push_back(Register(Reg::SPECIAL, Reg::MACRO_ACC));
         break;
       case InstructionKind::VOPMSUB:
-        m_read_regs.push_back(Register(Reg::COP2_MACRO_SPECIAL, Reg::MACRO_ACC));
+        m_read_regs.push_back(Register(Reg::SPECIAL, Reg::MACRO_ACC));
         break;
 
         // Read/Write acc register
       case InstructionKind::VMADDA:
       case InstructionKind::VMADDA_BC:
       case InstructionKind::VMSUBA_BC:
-        m_write_regs.push_back(Register(Reg::COP2_MACRO_SPECIAL, Reg::MACRO_ACC));
-        m_read_regs.push_back(Register(Reg::COP2_MACRO_SPECIAL, Reg::MACRO_ACC));
+        m_write_regs.push_back(Register(Reg::SPECIAL, Reg::MACRO_ACC));
+        m_read_regs.push_back(Register(Reg::SPECIAL, Reg::MACRO_ACC));
         break;
 
       case InstructionKind::VMOVE:

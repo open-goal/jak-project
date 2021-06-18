@@ -56,9 +56,7 @@ const static char* vi_names[32] = {
     "Status",   "MAC",      "Clipping", "INVALID3", "vi_R",  "vi_I",     "vi_Q",      "INVALID7",
     "INVALID8", "INVALID9", "TPC",      "CMSAR0",   "FBRST", "VPU-STAT", "INVALID14", "CMSAR1"};
 
-const static char* pcr_names[2] = {"pcr0", "pcr1"};
-
-const static char* cop2_macro_special[2] = {"Q", "ACC"};
+const static char* special_names[Reg::MAX_SPECIAL] = {"pcr0", "pcr1", "Q", "ACC"};
 
 /////////////////////////////
 // Register Names Conversion
@@ -90,14 +88,9 @@ const char* vi_to_charp(uint32_t vi) {
   return vi_names[vi];
 }
 
-const char* pcr_to_charp(uint32_t pcr) {
-  assert(pcr < 2);
-  return pcr_names[pcr];
-}
-
-const char* cop2_macro_special_to_charp(uint32_t reg) {
-  assert(reg < 2);
-  return cop2_macro_special[reg];
+const char* special_to_charp(uint32_t special) {
+  assert(special < Reg::MAX_SPECIAL);
+  return special_names[special];
 }
 }  // namespace
 
@@ -111,11 +104,17 @@ const char* cop2_macro_special_to_charp(uint32_t reg) {
 // Note: VI / COP2 are separate "kinds" of registers, each with 16 registers.
 // It might make sense to make this a single "kind" instead?
 
+namespace {
+constexpr int REG_CATEGORY_SHIFT = 5;
+constexpr int REG_IDX_MASK = 0b11111;
+}  // namespace
+
 /*!
  * Create a register. The kind and num must both be valid.
  */
 Register::Register(Reg::RegisterKind kind, uint32_t num) {
-  id = (kind << 8) | num;
+  // 32 regs/category at most.
+  id = (kind << REG_CATEGORY_SHIFT) | num;
 
   // check range:
   switch (kind) {
@@ -126,9 +125,8 @@ Register::Register(Reg::RegisterKind kind, uint32_t num) {
     case Reg::VI:
       assert(num < 32);
       break;
-    case Reg::PCR:
-    case Reg::COP2_MACRO_SPECIAL:
-      assert(num < 2);
+    case Reg::SPECIAL:
+      assert(num < Reg::MAX_SPECIAL);
       break;
     default:
       assert(false);
@@ -139,7 +137,7 @@ Register::Register(const std::string& name) {
   // first try gprs,
   for (int i = 0; i < Reg::MAX_GPR; i++) {
     if (name == gpr_names[i]) {
-      id = (Reg::GPR << 8) | i;
+      id = (Reg::GPR << REG_CATEGORY_SHIFT) | i;
       return;
     }
   }
@@ -147,7 +145,7 @@ Register::Register(const std::string& name) {
   // next fprs
   for (int i = 0; i < 32; i++) {
     if (name == fpr_names[i]) {
-      id = (Reg::FPR << 8) | i;
+      id = (Reg::FPR << REG_CATEGORY_SHIFT) | i;
       return;
     }
   }
@@ -170,10 +168,8 @@ const char* Register::to_charp() const {
       return vi_to_charp(get_vi());
     case Reg::COP0:
       return cop0_to_charp(get_cop0());
-    case Reg::PCR:
-      return pcr_to_charp(get_pcr());
-    case Reg::COP2_MACRO_SPECIAL:
-      return cop2_macro_special_to_charp(get_cop2_macro_special());
+    case Reg::SPECIAL:
+      return special_to_charp(get_special());
     default:
       throw std::runtime_error("Unsupported Register");
   }
@@ -190,7 +186,7 @@ std::string Register::to_string() const {
  * Get the register kind.
  */
 Reg::RegisterKind Register::get_kind() const {
-  uint16_t kind = id >> 8;
+  uint16_t kind = id >> REG_CATEGORY_SHIFT;
   assert(kind < Reg::MAX_KIND);
   return (Reg::RegisterKind)kind;
 }
@@ -200,7 +196,7 @@ Reg::RegisterKind Register::get_kind() const {
  */
 Reg::Gpr Register::get_gpr() const {
   assert(get_kind() == Reg::GPR);
-  uint16_t kind = id & 0xff;
+  uint16_t kind = id & REG_IDX_MASK;
   assert(kind < Reg::MAX_GPR);
   return (Reg::Gpr)(kind);
 }
@@ -210,7 +206,7 @@ Reg::Gpr Register::get_gpr() const {
  */
 uint32_t Register::get_fpr() const {
   assert(get_kind() == Reg::FPR);
-  uint16_t kind = id & 0xff;
+  uint16_t kind = id & REG_IDX_MASK;
   assert(kind < 32);
   return kind;
 }
@@ -220,7 +216,7 @@ uint32_t Register::get_fpr() const {
  */
 uint32_t Register::get_vf() const {
   assert(get_kind() == Reg::VF);
-  uint16_t kind = id & 0xff;
+  uint16_t kind = id & REG_IDX_MASK;
   assert(kind < 32);
   return kind;
 }
@@ -230,7 +226,7 @@ uint32_t Register::get_vf() const {
  */
 uint32_t Register::get_vi() const {
   assert(get_kind() == Reg::VI);
-  uint16_t kind = id & 0xff;
+  uint16_t kind = id & REG_IDX_MASK;
   assert(kind < 32);
   return kind;
 }
@@ -240,7 +236,7 @@ uint32_t Register::get_vi() const {
  */
 Reg::Cop0 Register::get_cop0() const {
   assert(get_kind() == Reg::COP0);
-  uint16_t kind = id & 0xff;
+  uint16_t kind = id & REG_IDX_MASK;
   assert(kind < Reg::MAX_COP0);
   return (Reg::Cop0)(kind);
 }
@@ -248,18 +244,11 @@ Reg::Cop0 Register::get_cop0() const {
 /*!
  * Get the PCR number. Must be a PCR.
  */
-uint32_t Register::get_pcr() const {
-  assert(get_kind() == Reg::PCR);
-  uint16_t kind = id & 0xff;
-  assert(kind < 2);
+uint32_t Register::get_special() const {
+  assert(get_kind() == Reg::SPECIAL);
+  uint16_t kind = id & REG_IDX_MASK;
+  assert(kind < Reg::MAX_SPECIAL);
   return kind;
-}
-
-Reg::Cop2MacroSpecial Register::get_cop2_macro_special() const {
-  assert(get_kind() == Reg::COP2_MACRO_SPECIAL);
-  uint16_t k = id & 0xff;
-  assert(k < 2);
-  return (Reg::Cop2MacroSpecial)k;
 }
 
 bool Register::operator==(const Register& other) const {

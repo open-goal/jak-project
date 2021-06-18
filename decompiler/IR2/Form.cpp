@@ -571,22 +571,19 @@ void OpenGoalAsmOpElement::collect_vars(RegAccessSet& vars, bool) const {
 
 void OpenGoalAsmOpElement::collect_vf_regs(RegSet& regs) const {
   for (auto r : m_op->read_regs()) {
-    if (r.get_kind() == Reg::RegisterKind::VF ||
-        r.get_kind() == Reg::RegisterKind::COP2_MACRO_SPECIAL) {
+    if (r.is_vu_float()) {
       regs.insert(r);
     }
   }
 
   for (auto r : m_op->write_regs()) {
-    if (r.get_kind() == Reg::RegisterKind::VF ||
-        r.get_kind() == Reg::RegisterKind::COP2_MACRO_SPECIAL) {
+    if (r.is_vu_float()) {
       regs.insert(r);
     }
   }
 
   for (auto r : m_op->clobber_regs()) {
-    if (r.get_kind() == Reg::RegisterKind::VF ||
-        r.get_kind() == Reg::RegisterKind::COP2_MACRO_SPECIAL) {
+    if (r.is_vu_float()) {
       regs.insert(r);
     }
   }
@@ -947,8 +944,7 @@ void RLetElement::apply(const std::function<void(FormElement*)>& f) {
 goos::Object RLetElement::reg_list() const {
   std::vector<goos::Object> regs;
   for (auto& reg : sorted_regs) {
-    if (reg.get_kind() == Reg::RegisterKind::VF ||
-        reg.get_kind() == Reg::RegisterKind::COP2_MACRO_SPECIAL) {
+    if (reg.is_vu_float()) {
       std::string reg_name = reg.to_string() == "ACC" ? "acc" : reg.to_string();
       regs.push_back(
           pretty_print::build_list(pretty_print::to_symbol(fmt::format("{} :class vf", reg_name))));

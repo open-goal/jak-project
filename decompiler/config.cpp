@@ -79,7 +79,7 @@ Config read_config_file(const std::string& path_to_config_file) {
         for (auto idx : idx_range) {
           RegisterTypeCast type_cast;
           type_cast.atomic_op_idx = idx;
-          type_cast.reg = Register(cast.at(1));
+          type_cast.reg = Register(cast.at(1).get<std::string>());
           type_cast.type_name = cast.at(2).get<std::string>();
           config.register_type_casts_by_function_by_atomic_op_idx[function_name][idx].push_back(
               type_cast);
