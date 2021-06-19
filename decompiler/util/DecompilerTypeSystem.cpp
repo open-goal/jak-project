@@ -387,12 +387,21 @@ int DecompilerTypeSystem::get_format_arg_count(const std::string& str) const {
   if (str == "ERROR: dma tag has data in reserved bits ~X~%") {
     return 0;
   }
+
+  if (str == "#<surface f0:~m f1:~f tf+:~f tf-:~f sf:~f tvv:~m") {
+    return 5;
+  }
   int arg_count = 0;
   for (size_t i = 0; i < str.length(); i++) {
     if (str.at(i) == '~') {
       i++;  // also eat the next character.
-      if (i < str.length() && (str.at(i) == '%' || str.at(i) == 'T' || str.at(i) == '0')) {
+      if (i < str.length() && (str.at(i) == '%' || str.at(i) == 'T')) {
         // newline (~%) or tab (~T) don't take an argument.
+        continue;
+      }
+
+      // ~3L, ~0L do'nt seem to take arguments either.
+      if (i + 1 < str.length() && (str.at(i) == '0' || str.at(i) == '3') && str.at(i + 1) == 'L') {
         continue;
       }
       arg_count++;

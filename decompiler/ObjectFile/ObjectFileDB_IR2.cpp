@@ -410,15 +410,41 @@ void ObjectFileDB::ir2_register_usage_pass() {
       func.ir2.env.set_reg_use(analyze_ir2_register_usage(func));
 
       auto block_0_start = func.ir2.env.reg_use().block.at(0).input;
+      std::vector<Register> dep_regs;
       for (auto x : block_0_start) {
-        if (x.get_kind() == Reg::VF && x.get_vf() != 0) {
-          lg::error("Bad vf dependency on {} in {}", x.to_charp(), func.guessed_name.to_string());
-          func.warnings.bad_vf_dependency("{}", x.to_string());
+        dep_regs.push_back(x);
+      }
+
+      if (!dep_regs.empty()) {
+        std::sort(dep_regs.begin(), dep_regs.end(),
+                  [](const Register& a, const Register& b) { return a.reg_id() < b.reg_id(); });
+
+        int end_valid_argument = Register(Reg::GPR, Reg::T3).reg_id() + 1;
+        if (func.type.arg_count() > 0) {
+          // end_valid_argument = Register::get_arg_reg(func.type.arg_count() - 1).reg_id();
+          end_valid_argument = Register(Reg::GPR, Reg::A0).reg_id() + func.type.arg_count() - 1;
         }
 
-        if (x.get_kind() == Reg::SPECIAL) {
-          lg::error("Bad vf dependency on {} in {}", x.to_charp(), func.guessed_name.to_string());
-          func.warnings.bad_vf_dependency("{}", x.to_string());
+        for (auto& x : dep_regs) {
+          if ((x.get_kind() == Reg::VF && x.get_vf() != 0) || x.get_kind() == Reg::SPECIAL) {
+            lg::error("Bad vf dependency on {} in {}", x.to_charp(), func.guessed_name.to_string());
+            func.warnings.bad_vf_dependency("{}", x.to_string());
+            continue;
+          }
+
+          if (x == Register(Reg::GPR, Reg::S6) || x == Register(Reg::GPR, Reg::S7) ||
+              x == Register(Reg::GPR, Reg::SP) || x == Register(Reg::VF, 0)) {
+            continue;
+          }
+
+          if (x.reg_id() < end_valid_argument) {
+            continue;
+          }
+
+          lg::error("Bad register dependency on {} in {}", x.to_charp(),
+                    func.guessed_name.to_string());
+          func.warnings.general_warning("Function may read a register that is not set: {}",
+                                        x.to_string());
         }
       }
     }

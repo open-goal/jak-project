@@ -319,7 +319,8 @@ TEST_F(OfflineDecompilation, CheckBasicDecode) {
 
 /*!
  * Not a super great test, but check that we find functions, methods, and logins.
- * This is a test of ir2_top_level_pass, which isn't tested as part of the normal decompiler tests.
+ * This is a test of ir2_top_level_pass, which isn't tested as part of the normal decompiler
+ tests.
  */
 TEST_F(OfflineDecompilation, FunctionDetect) {
   int function_count = 0;  // global functions
@@ -535,8 +536,8 @@ int line_count(const std::string& str) {
 TEST_F(OfflineDecompilation, Compile) {
   Compiler compiler;
 
-  compiler.run_front_end_on_file(
-      {"test", "decompiler", "reference", "all_forward_declarations.gc"});
+  compiler.run_front_end_on_file({"decompiler", "config", "all-types.gc"});
+  compiler.run_front_end_on_file({"test", "decompiler", "reference", "decompiler-macros.gc"});
 
   Timer timer;
   int total_lines = 0;

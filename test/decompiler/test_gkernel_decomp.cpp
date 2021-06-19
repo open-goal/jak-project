@@ -2578,7 +2578,7 @@ TEST_F(FormRegressionTest, ExprMethod16DeadPoolHeap) {
       "    ((< f0-2 (l.f L346))\n"
       "     (set! arg1 1000)\n"
       "     (if (and *debug-segment* (-> *kernel-context* low-memory-message))\n"
-      "      (format *stdcon* \"~3LLow Actor Memory~%~0L\" a2-0)\n"
+      "      (format *stdcon* \"~3LLow Actor Memory~%~0L\")\n"
       "      )\n"
       "     )\n"
       "    ((< f0-2 (l.f L347))\n"
