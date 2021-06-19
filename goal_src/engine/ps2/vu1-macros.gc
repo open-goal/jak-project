@@ -61,3 +61,103 @@
       )
     )
   )
+
+
+;; In the original game, init-for-transform stashed a bunch of stuff in registers, to be used by other functions.
+;; In OpenGOAL, this seems risky so we're going to back up this manually.
+;; This does mean this file now has code, but it's not a big deal:
+(deftype transform-regs (structure)
+  ;; Eventually we might want to actually name some of these fields to be more comprehensible?
+  (;; vf0 not included!
+   (vf1 uint128)
+   (vf2 uint128)
+   (vf3 uint128)
+   (vf4 uint128)
+   (vf5 uint128)
+   (vf6 uint128)
+   (vf7 uint128)
+   (vf8 uint128)
+   (vf9 uint128)
+   (vf10 uint128)
+   (vf11 uint128)
+   (vf12 uint128)
+   (vf13 uint128)
+   (vf14 uint128)
+   (vf15 uint128)
+   (vf16 uint128)
+   (vf17 uint128)
+   (vf18 uint128)
+   (vf19 uint128)
+   (vf20 uint128)
+   (vf21 uint128)
+   (vf22 uint128)
+   (vf23 uint128)
+   (vf24 uint128)
+   (vf25 uint128)
+   (vf26 uint128)
+   (vf27 uint128)
+   (vf28 uint128)
+   (vf29 uint128)
+   (vf30 uint128)
+   (vf31 uint128)
+   )
+  )
+
+(define *transform-regs* (new 'static 'transform-regs))
+
+(defmacro init-vf0-vector ()
+  "Initializes the VF0 vector which is a constant vector in the VU set to <0,0,0,1>"
+  `(.lvf vf0 (new 'static 'vector :x 0.0 :y 0.0 :z 0.0 :w 1.0))
+  )
+
+(defmacro with-vf0 (&rest body)
+  "Macro for using the ps2-style vf0 register."
+
+  `(rlet ((vf0 :class vf))
+      (init-vf0-vector)
+      ,@body
+      )
+  )
+
+(defmacro load-vf (reg)
+  "Load a vf from the preserved vf registers"
+  `(.lvf ,reg (&-> *transform-regs* ,reg))
+  )
+
+(defmacro save-vf (reg)
+  "Save a vf to the preserved vf registers"
+  `(.svf (&-> *transform-regs* ,reg) ,reg)
+  )
+
+(defmacro with-vf (regs &key (rw 'read) &rest body)
+  "Macro for using the specified ps2-style vf registers. These are preserved in *transform-regs*
+   Each register name in regs must be a valid vf register name. vf0 CANNOT be used! Use with-vf0 for that instead.
+   rw specifies the read/write mode:
+     'read means the registers will be read from the preserved registers. This is the default
+     'write means the registers will be written to the preserved registers at the end
+     'readwrite (or 'rw) means both
+     #f means neither, turning this into a fancy macro around rlet."
+
+  `(rlet (,@(apply (lambda (x) `(,x :class vf)) regs))
+
+      ,@(if (or (eq? rw ''read) (eq? rw ''readwrite) (eq? rw ''rw))
+        (apply (lambda (y)
+          `(load-vf ,y)
+          ) regs)
+        '()
+        )
+
+      ,@body
+
+      ;; this will mess up the return value!
+      ,@(if (or (eq? rw ''write) (eq? rw ''readwrite) (eq? rw ''rw))
+        (apply (lambda (y)
+          `(save-vf ,y)
+          ) regs)
+        '()
+        )
+
+      )
+  )
+
+
