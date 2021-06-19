@@ -416,7 +416,7 @@ void ObjectFileDB::ir2_register_usage_pass() {
           func.warnings.bad_vf_dependency("{}", x.to_string());
         }
 
-        if (x.get_kind() == Reg::COP2_MACRO_SPECIAL) {
+        if (x.get_kind() == Reg::SPECIAL) {
           lg::error("Bad vf dependency on {} in {}", x.to_charp(), func.guessed_name.to_string());
           func.warnings.bad_vf_dependency("{}", x.to_string());
         }

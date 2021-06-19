@@ -40,7 +40,7 @@ std::unordered_map<int, std::vector<decompiler::RegisterTypeCast>> parse_cast_hi
     for (auto idx : idx_range) {
       RegisterTypeCast type_cast;
       type_cast.atomic_op_idx = idx;
-      type_cast.reg = Register(cast.at(1));
+      type_cast.reg = Register(cast.at(1).get<std::string>());
       type_cast.type_name = cast.at(2).get<std::string>();
       out[idx].push_back(type_cast);
     }

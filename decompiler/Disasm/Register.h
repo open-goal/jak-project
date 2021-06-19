@@ -11,17 +11,22 @@
 
 namespace decompiler {
 // Namespace for register name constants
+
+// Note on registers:
+// Registers are assigned a unique Register ID as an integer from 0 to 164 (not including 164).
+// Don't change these enums without updating the indexing scheme.
+// It is important that each register is a unique register ID, and that we don't have gaps.
+
 namespace Reg {
 enum RegisterKind {
-  GPR = 0,  // EE General purpose registers, these have nicknames.
-  FPR = 1,  // EE Floating point registers, just called f0 - f31
-  VF = 2,   // VU0 Floating point vector registers from EE, just called vf0 - vf31
-  VI =
-      3,  // VU0 Integer registers from EE, the first 16 are vi00 - vi15, the rest are control regs.
-  COP0 = 4,                // EE COP0 Control Registers: full of fancy names (there are 32 of them)
-  PCR = 5,                 // Performance Counter registers (PCR0, PCR1)
-  COP2_MACRO_SPECIAL = 6,  // COP2 Q, ACC accessed from macro mode instructions.
-  MAX_KIND = 7
+  GPR = 0,      // EE General purpose registers, these have nicknames (32 regs)
+  FPR = 1,      // EE Floating point registers, just called f0 - f31 (32 regs)
+  VF = 2,       // VU0 Floating point vector registers from EE, just called vf0 - vf31 (32 regs)
+  VI = 3,       // VU0 Integer registers from EE, the first 16 are vi00 - vi15, the rest are control
+                // regs.  (32 regs)
+  COP0 = 4,     // EE COP0 Control Registers: full of fancy names (there are 32 of them) (32 regs)
+  SPECIAL = 5,  // COP2 Q, ACC accessed from macro mode instructions and PCR
+  MAX_KIND = 6
 };
 
 // nicknames for GPRs
@@ -121,35 +126,52 @@ enum Vi {
   MAX_COP2 = 32
 };
 
-enum Cop2MacroSpecial {
-  MACRO_Q = 0,
-  MACRO_ACC = 1,
+enum SpecialRegisters {
+  PCR0 = 0,
+  PCR1 = 1,
+  MACRO_Q = 2,
+  MACRO_ACC = 3,
+  MAX_SPECIAL = 4,
 };
 
 const extern bool allowed_local_gprs[Reg::MAX_GPR];
 
+constexpr int MAX_REG_ID = 32 * 5 + MAX_SPECIAL;
+constexpr int MAX_VAR_REG_ID = 32 * 2;  // gprs/fprs.
+
 }  // namespace Reg
 
-// Representation of a register.  Uses a 32-bit integer internally.
+// Representation of a register.  Uses a 16-bit integer internally.
 class Register {
  public:
   Register() = default;
   Register(Reg::RegisterKind kind, uint32_t num);
+  explicit Register(int reg_id) {
+    assert(reg_id < Reg::MAX_REG_ID);
+    id = reg_id;
+  }
+
   Register(const std::string& name);
   static Register get_arg_reg(int idx) {
     assert(idx >= 0 && idx < 8);
     return Register(Reg::GPR, Reg::A0 + idx);
   }
+
+  uint16_t reg_id() const { return id; }
   const char* to_charp() const;
   std::string to_string() const;
   Reg::RegisterKind get_kind() const;
+  bool is_vu_float() const {
+    return get_kind() == Reg::VF ||
+           (get_kind() == Reg::SPECIAL &&
+            (get_special() == Reg::MACRO_Q || get_special() == Reg::MACRO_ACC));
+  }
   Reg::Gpr get_gpr() const;
   uint32_t get_fpr() const;
   uint32_t get_vf() const;
   uint32_t get_vi() const;
   Reg::Cop0 get_cop0() const;
-  uint32_t get_pcr() const;
-  Reg::Cop2MacroSpecial get_cop2_macro_special() const;
+  uint32_t get_special() const;
   bool allowed_local_gpr() const;
 
   bool operator==(const Register& other) const;

@@ -11,6 +11,7 @@
 #include "common/util/Range.h"
 #include "third-party/fmt/core.h"
 #include "common/util/print_float.h"
+#include "common/util/CopyOnWrite.h"
 
 TEST(CommonUtil, get_file_path) {
   std::vector<std::string> test = {"cabbage", "banana", "apple"};
@@ -140,4 +141,45 @@ TEST(CommonUtil, PowerOfTwo) {
   EXPECT_EQ(get_power_of_two(3), std::nullopt);
   EXPECT_EQ(get_power_of_two(4), 2);
   EXPECT_EQ(get_power_of_two(u64(1) << 63), 63);
+}
+
+TEST(CommonUtil, CopyOnWrite) {
+  CopyOnWrite<int> x(2);
+
+  EXPECT_EQ(*x, 2);
+  *x.mut() = 3;
+  EXPECT_EQ(*x, 3);
+
+  CopyOnWrite<int> y = x;
+  EXPECT_EQ(*x, 3);
+  EXPECT_EQ(*y, 3);
+  EXPECT_EQ(x.get(), y.get());
+
+  *x.mut() = 12;
+  EXPECT_EQ(*x, 12);
+  EXPECT_EQ(*y, 3);
+
+  x = y;
+  EXPECT_EQ(*x, 3);
+  EXPECT_EQ(*y, 3);
+  EXPECT_EQ(x.get(), y.get());
+
+  y = x;
+  EXPECT_EQ(*x, 3);
+  EXPECT_EQ(*y, 3);
+  EXPECT_EQ(x.get(), y.get());
+
+  EXPECT_TRUE(x);
+  EXPECT_TRUE(y);
+
+  CopyOnWrite<int> z;
+  EXPECT_FALSE(z);
+
+  z = x;
+  EXPECT_TRUE(z);
+  EXPECT_EQ(x.get(), z.get());
+  *z.mut() = 15;
+  EXPECT_EQ(*x, 3);
+  EXPECT_EQ(*y, 3);
+  EXPECT_EQ(*z, 15);
 }

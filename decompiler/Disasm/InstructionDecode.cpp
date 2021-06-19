@@ -1086,7 +1086,7 @@ Instruction decode_instruction(LinkedWord& word, LinkedObjectFile& file, int seg
         atom.set_reg(Register(Reg::COP0, value));
         break;
       case DecodeType::PCR:
-        atom.set_reg(Register(Reg::PCR, value));
+        atom.set_reg(Register(Reg::SPECIAL, Reg::PCR0 + value));
         break;
       case DecodeType::IMM:
         atom.set_imm(value);

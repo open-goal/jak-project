@@ -196,7 +196,10 @@ void try_reverse_lookup_array_like(const FieldReverseLookupInput& input,
           vec.push_back(tok);
           output->results.emplace_back(false, array_data_type, vec);
         } else {
-          output->results.emplace_back(false, input.base_type, parent->to_vector());
+          auto parent_vector = parent->to_vector();
+          if (!parent_vector.empty()) {
+            output->results.emplace_back(false, input.base_type, parent_vector);
+          }
         }
       }
 
@@ -277,7 +280,11 @@ void try_reverse_lookup_inline_array(const FieldReverseLookupInput& input,
 
   // can we just return the array?
   if (expected_offset_into_elt == offset_into_elt && !input.deref.has_value() && elt_idx == 0) {
-    output->results.emplace_back(false, input.base_type, parent->to_vector());
+    auto parent_vec = parent->to_vector();
+    if (!parent_vec.empty()) {
+      output->results.emplace_back(false, input.base_type, parent->to_vector());
+    }
+
     if ((int)output->results.size() >= max_count) {
       return;
     }
