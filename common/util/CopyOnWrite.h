@@ -1,3 +1,5 @@
+#pragma once
+
 #include <utility>
 #include "common/util/assert.h"
 
@@ -46,9 +48,11 @@ class CopyOnWrite {
    * Construct a new object.
    */
   template <typename... Args>
-  explicit CopyOnWrite(Args&&... args) {
+  static CopyOnWrite<T> make_cow(Args&&... args) {
+    CopyOnWrite<T> result;
     auto obj = new ObjectAndCount(std::forward<Args>(args)...);
-    acquire_object(obj);
+    result.acquire_object(obj);
+    return result;
   }
 
   /*!
@@ -112,3 +116,8 @@ class CopyOnWrite {
 
   ObjectAndCount* m_data = nullptr;
 };
+
+template <typename T, typename... Args>
+CopyOnWrite<T> make_cow(Args&&... args) {
+  return CopyOnWrite<T>::make_cow(std::forward<Args>(args)...);
+}

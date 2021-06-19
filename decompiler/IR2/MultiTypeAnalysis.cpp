@@ -189,16 +189,17 @@ namespace {
  * Create a register type state with no parent and the given typespec.
  */
 RegState make_typespec_parent_regstate(const TypeSpec& typespec) {
-  RegState result = make_cow
+  return make_cow<RegisterTypeState>(TP_Type::make_from_ts(typespec));
 }
 
 /*!
  * Create an instruction type state for the first instruction of a function.
  */
 InstrTypeState construct_initial_typestate(const TypeSpec& function_type,
+                                           const TypeSpec& behavior_type,
                                            const Env& env,
                                            const RegState& uninitialized) {
-  // start with everything unintialized
+  // start with everything uninitialized
   InstrTypeState result(uninitialized);
   assert(function_type.base_type() == "function");
   assert(function_type.arg_count() >= 1);      // must know the function type.
@@ -207,9 +208,20 @@ InstrTypeState construct_initial_typestate(const TypeSpec& function_type,
   for (int i = 0; i < int(function_type.arg_count()) - 1; i++) {
     auto reg_id = Register::get_arg_reg(i);
     const auto& reg_type = function_type.get_arg(i);
-    result.get(Register(Reg::GPR, reg_id)) = TP_Type::make_from_ts(reg_type);
+    result.get(reg_id) = make_cow<RegisterTypeState>(TP_Type::make_from_ts(reg_type));
   }
 
+  if (behavior_type != TypeSpec("none")) {
+    result.get(Register(Reg::GPR, Reg::S6)) =
+        make_cow<RegisterTypeState>(TP_Type::make_from_ts(behavior_type));
+  }
+
+  // set stack slots as uninitialized too.
+  for (auto slot_info : env.stack_spills().map()) {
+    result.add_stack_slot(slot_info.first, uninitialized);
+  }
+
+  return result;
 }
 
 }  // namespace

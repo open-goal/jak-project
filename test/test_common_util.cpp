@@ -144,7 +144,7 @@ TEST(CommonUtil, PowerOfTwo) {
 }
 
 TEST(CommonUtil, CopyOnWrite) {
-  CopyOnWrite<int> x(2);
+  CopyOnWrite<int> x = make_cow<int>(2);
 
   EXPECT_EQ(*x, 2);
   *x.mut() = 3;
