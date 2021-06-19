@@ -108,6 +108,7 @@ void Field::set_inline() {
  * Compare field definitions for equality. Used to determine if redefinition would change the type.
  */
 bool Field::operator==(const Field& other) const {
+  // we don't check the score and the do-not-decompile here.
   // clang-format off
   return m_name == other.m_name &&
          m_type == other.m_type &&
@@ -116,8 +117,7 @@ bool Field::operator==(const Field& other) const {
          m_dynamic == other.m_dynamic &&
          m_array == other.m_array &&
          m_array_size == other.m_array_size &&
-         m_alignment == other.m_alignment &&
-         m_skip_in_static_decomp == other.m_skip_in_static_decomp;
+         m_alignment == other.m_alignment;
   // clang-format on
 }
 
