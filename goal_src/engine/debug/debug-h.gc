@@ -7,7 +7,7 @@
 
 
 (deftype pos-history (structure)
-  ((points     uint32  :offset-assert 0)
+  ((points     (inline-array vector)  :offset-assert 0)
    (num-points int32   :offset-assert 4)
    (h-first    int32   :offset-assert 8)
    (h-last     int32   :offset-assert 12)
@@ -28,7 +28,6 @@
   :flag-assert         #x900000020
   )
 
-
 (deftype debug-vertex-stats (basic)
   ((length    int32                    :offset-assert 4)
    (pos-count int32                    :offset-assert 8)
@@ -37,11 +36,12 @@
   :method-count-assert 9
   :size-assert         #x4b10
   :flag-assert         #x900004b10
-  ;; inspect method is overriden in debug.gc
   )
 
 
-(define-extern add-debug-matrix (function symbol bucket-id matrix none))
-(define-extern add-debug-text-sphere (function symbol bucket-id vector float string rgba none))
+(define-extern add-debug-matrix (function symbol bucket-id matrix matrix))
+(define-extern add-debug-text-sphere (function symbol bucket-id vector float string rgba symbol))
 ;; TODO - for trajectory.gc
-(define-extern add-debug-line (function symbol int vector vector rgba symbol int int))
+(define-extern add-debug-line (function symbol bucket-id vector vector rgba symbol rgba symbol))
+
+(defun-extern add-debug-sphere symbol bucket-id vector float rgba symbol)
