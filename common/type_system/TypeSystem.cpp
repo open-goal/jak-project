@@ -151,9 +151,9 @@ void TypeSystem::forward_declare_type_as(const std::string& new_type,
       auto new_parent_it = m_types.find(parent_type);
 
       auto old_ts = TypeSpec(old_parent_it->second->get_name());
-      auto new_ts = TypeSpec(new_parent_it->second->get_name());
 
       if (old_parent_it != m_types.end() && new_parent_it != m_types.end()) {
+        auto new_ts = TypeSpec(new_parent_it->second->get_name());
         if (tc(old_ts, new_ts)) {
           // new is more specific or equal to old:
           m_forward_declared_types[new_type] = new_ts.base_type();
@@ -1505,8 +1505,14 @@ std::string TypeSystem::generate_deftype_footer(const Type* type) const {
         methods_string.push_back(' ');
       }
     }
-    methods_string.append(fmt::format(
-        ") {} {})\n    ", info.type.get_arg(info.type.arg_count() - 1).print(), info.id));
+    methods_string.append(
+        fmt::format(") {} ", info.type.get_arg(info.type.arg_count() - 1).print()));
+
+    if (info.no_virtual) {
+      methods_string.append(":no-virtual ");
+    }
+
+    methods_string.append(fmt::format("{})\n    ", info.id));
   }
 
   if (!methods_string.empty()) {
@@ -1530,6 +1536,7 @@ std::string TypeSystem::generate_deftype_for_structure(const StructureType* st) 
   const std::string inline_string = ":inline";
   const std::string dynamic_string = ":dynamic";
   const std::string user_offset_string = ":offset xxx";
+  bool has_offset_assert = false;
 
   for (size_t i = st->first_unique_field_idx(); i < st->fields().size(); i++) {
     const auto& field = st->fields().at(i);
@@ -1556,11 +1563,8 @@ std::string TypeSystem::generate_deftype_for_structure(const StructureType* st) 
       mods += dynamic_string.size();
     }
 
-    if (field.user_placed()) {
-      if (mods) {
-        mods++;
-      }
-      mods += user_offset_string.size();
+    if (!field.user_placed()) {
+      has_offset_assert = true;
     }
     longest_mods = std::max(longest_mods, mods);
   }
@@ -1589,17 +1593,20 @@ std::string TypeSystem::generate_deftype_for_structure(const StructureType* st) 
       mods += " ";
     }
 
-    if (field.user_placed()) {
-      mods += fmt::format(":offset {:3d}", field.offset());
-    }
     result.append(mods);
+    result.append(longest_mods - int(mods.size() - 1), ' ');
 
     if (!field.user_placed()) {
-      result.append(longest_mods - int(mods.size() - 1), ' ');
       result.append(":offset-assert ");
-      result.append(std::to_string(field.offset()));
+    } else {
+      if (has_offset_assert) {
+        result.append(":offset        ");
+      } else {
+        result.append(":offset ");
+      }
     }
 
+    result.append(fmt::format("{:3d}", field.offset()));
     result.append(")\n   ");
   }
 

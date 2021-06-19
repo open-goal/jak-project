@@ -1,0 +1,81 @@
+;; This file should contain an implementation for all macros that the decompiler uses in its output.
+
+(defun ash ((value int) (shift-amount int))
+  "Arithmetic shift value by shift-amount.
+  A positive shift-amount will shift to the left and a negative will shift to the right.
+  "
+  ;; OpenGOAL does not support ash in the compiler, so we implement it here as an inline function.
+  (declare (inline))
+  (if (> shift-amount 0)
+      (shl value shift-amount)
+      (sar value (- shift-amount))
+      )
+  )
+
+(defmacro suspend()
+  '(none)
+  )
+
+(defmacro empty-form ()
+  '(none)
+  )
+
+(defmacro .sync.l ()
+  `(none))
+
+(defmacro make-u128 (upper lower)
+  `(rlet ((result :class i128)
+          (upper-xmm :class i128)
+          (lower-xmm :class i128))
+     (.mov upper-xmm ,upper)
+     (.mov lower-xmm ,lower)
+     (.pcpyld result upper-xmm lower-xmm)
+     (the uint result)
+     )
+  )
+
+(defmacro init-vf0-vector ()
+  "Initializes the VF0 vector which is a constant vector in the VU set to <0,0,0,1>"
+  `(.lvf vf0 (new 'static 'vector :x 0.0 :y 0.0 :z 0.0 :w 1.0))
+  )
+
+(defconstant SYM_TO_STRING_OFFSET #xff38)
+(defmacro symbol->string (sym)
+  "Convert a symbol to a goal string."
+  `(-> (the-as (pointer string) (+ SYM_TO_STRING_OFFSET (the-as int ,sym))))
+  )
+
+(defmacro new-stack-matrix0 ()
+  "Get a new matrix on the stack that's set to zero."
+  `(let ((mat (new 'stack-no-clear 'matrix)))
+     (set! (-> mat quad 0) (the-as uint128 0))
+     (set! (-> mat quad 1) (the-as uint128 0))
+     (set! (-> mat quad 2) (the-as uint128 0))
+     (set! (-> mat quad 3) (the-as uint128 0))
+     mat
+     )
+  )
+
+(defmacro new-stack-vector0 ()
+  "Get a stack vector that's set to 0.
+   This is more efficient than (new 'stack 'vector) because
+   this doesn't call the constructor."
+  `(let ((vec (new 'stack-no-clear 'vector)))
+     (set! (-> vec quad) (the-as uint128 0))
+     vec
+     )
+  )
+
+(defmacro with-pp (&rest body)
+  `(rlet ((pp :reg r13 :reset-here #t :type process))
+         ,@body)
+  )
+
+(defmacro fabs (x)
+  `(if (< (the float ,x) 0)
+       (- (the float ,x))
+       (the float ,x))
+  )
+
+(defconstant PI (the-as float #x40490fda))
+(defconstant MINUS_PI (the-as float #xc0490fda))
