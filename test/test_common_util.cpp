@@ -159,7 +159,6 @@ TEST(CommonUtil, CopyOnWrite) {
   EXPECT_EQ(*x, 12);
   EXPECT_EQ(*y, 3);
 
-
   x = y;
   EXPECT_EQ(*x, 3);
   EXPECT_EQ(*y, 3);
