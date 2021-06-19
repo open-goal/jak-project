@@ -141,11 +141,42 @@ constexpr int MAX_VAR_REG_ID = 32 * 2;  // gprs/fprs.
 
 }  // namespace Reg
 
-// Representation of a register.  Uses a 16-bit integer internally.
+/////////////////////////////
+// Register Class
+/////////////////////////////
+// A register is stored as a 16-bit integer, with the top 8 bits indicating the "kind" and the lower
+// 8 bits representing the register id within that kind.  If the integer is -1, it is a special
+// "invalid" register used to represent an uninitialized Register.
+
+// Note: VI / COP2 are separate "kinds" of registers, each with 16 registers.
+// It might make sense to make this a single "kind" instead?
 class Register {
+ private:
+  static constexpr int REG_CATEGORY_SHIFT = 5;
+  static constexpr int REG_IDX_MASK = 0b11111;
+
  public:
   Register() = default;
-  Register(Reg::RegisterKind kind, uint32_t num);
+  Register(Reg::RegisterKind kind, uint32_t num) {
+    // 32 regs/category at most.
+    id = (kind << REG_CATEGORY_SHIFT) | num;
+
+    // check range:
+    switch (kind) {
+      case Reg::GPR:
+      case Reg::FPR:
+      case Reg::VF:
+      case Reg::COP0:
+      case Reg::VI:
+        assert(num < 32);
+        break;
+      case Reg::SPECIAL:
+        assert(num < Reg::MAX_SPECIAL);
+        break;
+      default:
+        assert(false);
+    }
+  }
   explicit Register(int reg_id) {
     assert(reg_id < Reg::MAX_REG_ID);
     id = reg_id;
@@ -160,22 +191,66 @@ class Register {
   uint16_t reg_id() const { return id; }
   const char* to_charp() const;
   std::string to_string() const;
-  Reg::RegisterKind get_kind() const;
+  /*!
+   * Get the register kind.
+   */
+  Reg::RegisterKind get_kind() const {
+    uint16_t kind = id >> REG_CATEGORY_SHIFT;
+    assert(kind < Reg::MAX_KIND);
+    return (Reg::RegisterKind)kind;
+  }
   bool is_vu_float() const {
     return get_kind() == Reg::VF ||
            (get_kind() == Reg::SPECIAL &&
             (get_special() == Reg::MACRO_Q || get_special() == Reg::MACRO_ACC));
   }
-  Reg::Gpr get_gpr() const;
-  uint32_t get_fpr() const;
-  uint32_t get_vf() const;
-  uint32_t get_vi() const;
-  Reg::Cop0 get_cop0() const;
-  uint32_t get_special() const;
-  bool allowed_local_gpr() const;
+  bool is_gpr() const { return get_kind() == Reg::GPR; }
+  Reg::Gpr get_gpr() const {
+    assert(get_kind() == Reg::GPR);
+    uint16_t kind = id & REG_IDX_MASK;
+    assert(kind < Reg::MAX_GPR);
+    return (Reg::Gpr)(kind);
+  }
 
-  bool operator==(const Register& other) const;
-  bool operator!=(const Register& other) const;
+  uint32_t get_fpr() const {
+    assert(get_kind() == Reg::FPR);
+    uint16_t kind = id & REG_IDX_MASK;
+    assert(kind < 32);
+    return kind;
+  }
+  uint32_t get_vf() const {
+    assert(get_kind() == Reg::VF);
+    uint16_t kind = id & REG_IDX_MASK;
+    assert(kind < 32);
+    return kind;
+  }
+  uint32_t get_vi() const {
+    assert(get_kind() == Reg::VI);
+    uint16_t kind = id & REG_IDX_MASK;
+    assert(kind < 32);
+    return kind;
+  }
+  Reg::Cop0 get_cop0() const {
+    assert(get_kind() == Reg::COP0);
+    uint16_t kind = id & REG_IDX_MASK;
+    assert(kind < Reg::MAX_COP0);
+    return (Reg::Cop0)(kind);
+  }
+  uint32_t get_special() const {
+    assert(get_kind() == Reg::SPECIAL);
+    uint16_t kind = id & REG_IDX_MASK;
+    assert(kind < Reg::MAX_SPECIAL);
+    return kind;
+  }
+  bool allowed_local_gpr() const {
+    if (get_kind() != Reg::GPR) {
+      return false;
+    }
+    return Reg::allowed_local_gprs[get_gpr()];
+  }
+
+  bool operator==(const Register& other) const { return id == other.id; }
+  bool operator!=(const Register& other) const { return id != other.id; }
   bool operator<(const Register& other) const { return id < other.id; }
 
   struct hash {

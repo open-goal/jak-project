@@ -1,6 +1,7 @@
 #pragma once
 
 #include <vector>
+#include <array>
 #include <unordered_map>
 #include <string>
 #include "common/type_system/TypeSpec.h"
@@ -10,4 +11,5 @@
 
 namespace decompiler {
 bool run_type_analysis_ir2(const TypeSpec& my_type, DecompilerTypeSystem& dts, Function& func);
-}
+
+}  // namespace decompiler

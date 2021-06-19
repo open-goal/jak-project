@@ -98,6 +98,7 @@ struct FieldReverseLookupOutput {
   FieldReverseLookupOutput() = default;
   FieldReverseLookupOutput(bool addr, TypeSpec type, std::vector<Token> tok)
       : success(true), addr_of(addr), result_type(std::move(type)), tokens(std::move(tok)) {}
+  std::string print() const;
 
   bool success = false;
   bool addr_of = false;  // do we take the address of this result?

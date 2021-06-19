@@ -44,6 +44,7 @@ add_library(
         IR2/FormExpressionAnalysis.cpp
         IR2/FormStack.cpp
         IR2/GenericElementMatcher.cpp
+        IR2/MultiTypeAnalysis.cpp
         IR2/OpenGoalMapping.cpp
 
         ObjectFile/LinkedObjectFile.cpp

@@ -67,6 +67,18 @@ std::string FieldReverseLookupOutput::Token::print() const {
   }
 }
 
+std::string FieldReverseLookupOutput::print() const {
+  std::string result = fmt::format("[{}] {} ", result_type.print(), total_score);
+  if (addr_of) {
+    result += '&';
+  }
+  for (const auto& tok : tokens) {
+    result += tok.print();
+    result += ' ';
+  }
+  return result;
+}
+
 namespace {
 
 void try_reverse_lookup(const FieldReverseLookupInput& input,

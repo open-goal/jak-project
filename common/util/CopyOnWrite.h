@@ -1,14 +1,6 @@
 #include <utility>
 #include "common/util/assert.h"
 
-/*
-template<typename T, typename... Args>
-std::unique_ptr<T> make_unique(Args&&... args)
-{
-    return std::unique_ptr<T>(new T(std::forward<Args>(args)...));
-}
- */
-
 /*!
  * The CopyOnWrite class acts like a value, but internally uses references to avoid copying
  * when it is possible to avoid it.
