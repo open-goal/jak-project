@@ -50,7 +50,7 @@ Val* Compiler::compile_seval(const goos::Object& form, const goos::Object& rest,
       m_goos.eval_with_rewind(o, m_goos.global_environment.as_env());
     });
   } catch (std::runtime_error& e) {
-    throw_compiler_error(form, "Error while evaluating GOOS: ", e.what());
+    throw_compiler_error(form, "Error while evaluating GOOS: {}", e.what());
   }
   return get_none();
 }

@@ -2,6 +2,7 @@
 #include "decompiler/ObjectFile/LinkedObjectFile.h"
 #include "common/log/log.h"
 #include "AtomicOp.h"
+#include "decompiler/util/TP_Type.h"
 #include "decompiler/util/DecompilerTypeSystem.h"
 #include "decompiler/IR2/bitfields.h"
 

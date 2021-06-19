@@ -73,7 +73,8 @@ goos::Object decompile_at_label_with_hint(const LabelType& hint,
   }
 
   throw std::runtime_error(
-      fmt::format("Type {} is not yet supported by the data decompiler.", hint.type_name));
+      fmt::format("Type `{}` with length {} is not yet supported by the data decompiler.",
+                  hint.type_name, *hint.array_size));
 }
 
 /*!
