@@ -101,13 +101,13 @@ class StaticResult {
   static StaticResult make_constant_data(const ConstantValue& data, TypeSpec ts);
   static StaticResult make_constant_data(u64 data, const TypeSpec& ts);
   static StaticResult make_symbol(const std::string& name);
-
-  std::string print() const;
+  static StaticResult make_type_ref(const std::string& type_name, int method_count);
 
   const TypeSpec& typespec() const { return m_ts; }
   bool is_reference() const { return m_kind == Kind::STRUCTURE_REFERENCE; }
   bool is_constant_data() const { return m_kind == Kind::CONSTANT_DATA; }
   bool is_symbol() const { return m_kind == Kind::SYMBOL; }
+  bool is_type() const { return m_kind == Kind::TYPE; }
 
   StaticStructure* reference() const {
     assert(is_reference());
@@ -121,8 +121,13 @@ class StaticResult {
   }
 
   const std::string& symbol_name() const {
-    assert(is_symbol());
+    assert(is_symbol() || is_type());
     return m_symbol;
+  }
+
+  int method_count() const {
+    assert(is_type());
+    return m_method_count;
   }
 
   u64 constant_u64() const {
@@ -145,10 +150,19 @@ class StaticResult {
   // used for only constant data
   std::optional<ConstantValue> m_constant_data;
 
-  // used for only symbol
+  // used for only symbol and type
   std::string m_symbol;
 
-  enum class Kind { STRUCTURE_REFERENCE, CONSTANT_DATA, SYMBOL, INVALID } m_kind = Kind::INVALID;
+  // used only for type
+  int m_method_count = -1;
+
+  enum class Kind {
+    STRUCTURE_REFERENCE,
+    CONSTANT_DATA,
+    SYMBOL,
+    TYPE,
+    INVALID
+  } m_kind = Kind::INVALID;
 };
 
 class StaticPair : public StaticStructure {

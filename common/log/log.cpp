@@ -103,20 +103,35 @@ void initialize() {
   assert(!gLogger.initialized);
 
 #ifdef _WIN32
-  // Always enable VIRTUAL_TERMINAL_PROCESSING, this console mode allows the console (stdout) to
-  // support ANSI colors in the outputted text, which are used by the logging tool.
-  // This mode may not be enabled by default, and changing that involves modifying the registry,
-  // so it seems like a better solution would be enabling it ourselves.
+  // Enable some console terminal flags. Some of these may not be enabled by default, unless
+  // the user edits their registry. This is clearly unwanted, so we just set them here ourselves.
+
+  // VIRTUAL_TERMINAL_PROCESSING enables support for ANSI colors in the stdout text, used by the
+  // logging tool.
+  // ENABLE_QUICK_EDIT_MODE enables various mouse-related stdin functions, such as right-click for
+  // copy-paste, scroll wheel to - shocker - scroll, etc.
 
   // Get handle to stdout
   HANDLE hStdOut = GetStdHandle(STD_OUTPUT_HANDLE);
   // get current stdout mode
   DWORD modeStdOut;
   GetConsoleMode(hStdOut, &modeStdOut);
-  // enable VIRTUAL_TERMINAL_PROCESSING. As a bitwise OR it will not do anything if it is
-  // already set
+  // printf("stdout mode is: %08x", modeStdOut);
+
+  // Get handle to stdin
+  HANDLE hStdIn = GetStdHandle(STD_INPUT_HANDLE);
+  // get current stdin mode
+  DWORD modeStdIn;
+  GetConsoleMode(hStdIn, &modeStdIn);
+  // printf("stdin mode is: %08x", modeStdIn);
+
+  // enable VIRTUAL_TERMINAL_PROCESSING on stdout
   modeStdOut |= ENABLE_VIRTUAL_TERMINAL_PROCESSING;
   SetConsoleMode(hStdOut, modeStdOut);
+
+  // enable ENABLE_QUICK_EDIT_MODE on stdin
+  modeStdIn |= ENABLE_QUICK_EDIT_MODE;
+  SetConsoleMode(hStdIn, modeStdIn);
 #endif
 
   gLogger.initialized = true;
