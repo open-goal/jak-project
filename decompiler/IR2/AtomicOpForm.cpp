@@ -642,8 +642,10 @@ Form* LoadVarOp::get_load_src(FormPool& pool, const Env& env) const {
           u64 value;
           memcpy(&value, &word0.data, 4);
           memcpy(((u8*)&value) + 4, &word1.data, 4);
-          return pool.alloc_single_element_form<SimpleAtomElement>(
-              nullptr, SimpleAtom::make_int_constant(value));
+          return pool.alloc_single_element_form<CastElement>(
+              nullptr, TypeSpec("uint"),
+              pool.alloc_single_element_form<SimpleAtomElement>(
+                  nullptr, SimpleAtom::make_int_constant(value)));
         }
 
         // is it a constant bitfield?
