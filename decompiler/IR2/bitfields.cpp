@@ -547,7 +547,7 @@ std::vector<Form*> compact_nested_logiors(GenericElement* input, const Env&) {
   while (next) {
     assert(next->elts().size() == 2);
     result.push_back(next->elts().at(1));
-    auto next_next = next->elts().at(0);
+    auto next_next = strip_int_or_uint_cast(next->elts().at(0));
     next = next_next->try_as_element<GenericElement>();
     if (!next || !next->op().is_fixed(FixedOperatorKind::LOGIOR)) {
       result.push_back(next_next);
