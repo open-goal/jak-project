@@ -38,6 +38,16 @@ TypeSystem::TypeSystem() {
  * throw_on_redefine is set. The type should be fully set up (fields, etc) before running this.
  */
 Type* TypeSystem::add_type(const std::string& name, std::unique_ptr<Type> type) {
+  auto method_kv = m_forward_declared_method_counts.find(name);
+  if (method_kv != m_forward_declared_method_counts.end()) {
+    int method_count = get_next_method_id(type.get());
+    if (method_count != method_kv->second) {
+      throw_typesystem_error(
+          "Type {} was defined with {} methods, but was forward declared with {}\n", name,
+          method_count, method_kv->second);
+    }
+  }
+
   auto kv = m_types.find(name);
   if (kv != m_types.end()) {
     // exists already
@@ -175,6 +185,53 @@ void TypeSystem::forward_declare_type_as(const std::string& new_type,
       }
     }
   }
+}
+
+void TypeSystem::forward_declare_type_method_count(const std::string& name, int num_methods) {
+  auto existing_fwd = m_forward_declared_method_counts.find(name);
+  if (existing_fwd != m_forward_declared_method_counts.end() &&
+      existing_fwd->second != num_methods) {
+    throw_typesystem_error(
+        "Type {} was originally forward declared with {} methods and is now being forward declared "
+        "with {} methods",
+        name, existing_fwd->second, num_methods);
+  }
+
+  auto existing_type = m_types.find(name);
+  if (existing_type != m_types.end()) {
+    int existing_count = get_next_method_id(existing_type->second.get());
+    if (existing_count != num_methods) {
+      throw_typesystem_error(
+          "Type {} was defined with {} methods and is now being forward declared with {} methods",
+          name, existing_fwd->second, num_methods);
+    }
+  }
+
+  m_forward_declared_method_counts[name] = num_methods;
+}
+
+int TypeSystem::get_type_method_count(const std::string& name) const {
+  auto result = try_get_type_method_count(name);
+  if (result) {
+    return *result;
+  }
+  throw_typesystem_error("Tried to find the number of methods on type {}, but it is not defined.",
+                         name);
+  return -1;
+}
+
+std::optional<int> TypeSystem::try_get_type_method_count(const std::string& name) const {
+  auto type_it = m_types.find(name);
+  if (type_it != m_types.end()) {
+    return get_next_method_id(type_it->second.get());
+  }
+
+  auto fwd_it = m_forward_declared_method_counts.find(name);
+  if (fwd_it != m_forward_declared_method_counts.end()) {
+    return fwd_it->second;
+  }
+
+  return {};
 }
 
 /*!

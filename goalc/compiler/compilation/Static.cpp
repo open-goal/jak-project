@@ -205,6 +205,12 @@ void Compiler::compile_static_structure_inline(const goos::Object& form,
           typecheck(form, field_info.type, sr.typespec());
           structure->add_pointer_record(field_offset, sr.reference(),
                                         sr.reference()->get_addr_offset());
+        } else if (sr.is_type()) {
+          if (field_info.type != TypeSpec("type")) {
+            throw_compiler_error(form, "Cannot put a type reference in a field with type {}",
+                                 field_info.type.print());
+          }
+          structure->add_type_record(sr.symbol_name(), field_offset);
         } else {
           throw_compiler_error(form, "Unsupported field value {}.", field_value.print());
         }
@@ -669,6 +675,37 @@ StaticResult Compiler::compile_static(const goos::Object& form_before_macro, Env
           }
         }
       }
+    } else if (first.is_symbol("type-ref")) {
+      auto args = get_va(form, rest);
+      va_check(form, args, {goos::ObjectType::SYMBOL},
+               {{{"method-count", {false, goos::ObjectType::INTEGER}}}});
+
+      auto type_name = args.unnamed.at(0).as_symbol()->name;
+
+      std::optional<int> expected_method_count = m_ts.try_get_type_method_count(type_name);
+      int method_count = -1;
+
+      if (args.has_named("method-count")) {
+        method_count = args.get_named("method-count").as_int();
+        if (expected_method_count && (method_count != *expected_method_count)) {
+          throw_compiler_error(
+              form, "type-ref wanted {} methods for type {}, but the type system thinks it has {}",
+              method_count, type_name, *expected_method_count);
+        }
+      } else {
+        if (!expected_method_count) {
+          throw_compiler_error(
+              form,
+              "Cannot create a static type reference for type {}. The type-ref form did not have a "
+              ":method-count argument and the type system does not know how many methods it has.",
+              type_name);
+        }
+        method_count = *expected_method_count;
+      }
+
+      m_ts.forward_declare_type_method_count(type_name, method_count);
+
+      return StaticResult::make_type_ref(type_name, method_count);
     } else {
       // maybe an enum
       s64 int_out;

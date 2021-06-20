@@ -124,7 +124,7 @@ void Compiler::generate_field_description(const goos::Object& form,
                                           const Field& f) {
   std::string str_template;
   std::vector<RegVal*> format_args = {};
-  if (m_ts.tc(m_ts.make_typespec("type"), f.type())) {
+  if (f.name() == "type" && f.offset() == 0) {
     // type
     return;
   } else if (f.is_array() && !f.is_dynamic()) {

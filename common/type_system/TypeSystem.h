@@ -125,6 +125,9 @@ class TypeSystem {
   Type* add_type(const std::string& name, std::unique_ptr<Type> type);
   void forward_declare_type_as_type(const std::string& name);
   void forward_declare_type_as(const std::string& new_type, const std::string& parent_type);
+  void forward_declare_type_method_count(const std::string& name, int num_methods);
+  int get_type_method_count(const std::string& name) const;
+  std::optional<int> try_get_type_method_count(const std::string& name) const;
   std::string get_runtime_type(const TypeSpec& ts);
 
   DerefInfo get_deref_info(const TypeSpec& ts) const;
@@ -257,6 +260,8 @@ class TypeSystem {
 
   std::unordered_map<std::string, std::unique_ptr<Type>> m_types;
   std::unordered_map<std::string, std::string> m_forward_declared_types;
+  std::unordered_map<std::string, int> m_forward_declared_method_counts;
+
   std::vector<std::unique_ptr<Type>> m_old_types;
 
   bool m_allow_redefinition = false;
