@@ -116,14 +116,14 @@ void initialize() {
   // get current stdout mode
   DWORD modeStdOut;
   GetConsoleMode(hStdOut, &modeStdOut);
-  //printf("stdout mode is: %08x", modeStdOut);
+  // printf("stdout mode is: %08x", modeStdOut);
 
   // Get handle to stdin
   HANDLE hStdIn = GetStdHandle(STD_INPUT_HANDLE);
   // get current stdin mode
   DWORD modeStdIn;
   GetConsoleMode(hStdIn, &modeStdIn);
-  //printf("stdin mode is: %08x", modeStdIn);
+  // printf("stdin mode is: %08x", modeStdIn);
 
   // enable VIRTUAL_TERMINAL_PROCESSING on stdout
   modeStdOut |= ENABLE_VIRTUAL_TERMINAL_PROCESSING;
