@@ -2,6 +2,7 @@
 
 #include "data_decompile.h"
 #include "third-party/fmt/core.h"
+#include "common/type_system/Type.h"
 #include "common/goos/PrettyPrinter.h"
 #include "common/util/math_util.h"
 #include "common/log/log.h"
