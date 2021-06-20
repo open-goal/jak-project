@@ -2,7 +2,7 @@
 
 #include <vector>
 #include <array>
-#include "common/util/CopyOnWrite.h"
+#include "decompiler/Function/BasicBlocks.h"
 #include "decompiler/Disasm/Register.h"
 #include "decompiler/util/TP_Type.h"
 #include "common/type_system/TypeSystem.h"
@@ -12,6 +12,7 @@ namespace decompiler {
 class InstrTypeState;
 class DecompWarnings;
 struct PossibleType;
+struct RegisterTypeState;
 
 struct DerefHint {
   struct Token {
@@ -28,12 +29,9 @@ struct DerefHint {
 /*!
  * Represents a reference to a type decision made on a previous instruction.
  */
-struct TypeDecisionParent {
-  InstrTypeState* instruction = nullptr;
-  Register reg;
-  int type_index = -1;
-
-  const PossibleType& get() const;
+struct TypeChoiceParent {
+  RegisterTypeState* reg_type = nullptr;
+  int idx_in_parent = -1;
 };
 
 /*!
@@ -42,11 +40,18 @@ struct TypeDecisionParent {
  * Use is_valid to check that it hasn't been eliminated.
  */
 struct PossibleType {
-  TP_Type type;                                        // the actual type.
-  std::optional<FieldReverseLookupOutput> deref_path;  // the field accessed to get here
-  double deref_score = 0.;
-  TypeDecisionParent parent;  // the decision we made to allow this.
-  void eliminate() { m_valid_cache = false; }
+  TP_Type type;  // the actual type.
+  std::optional<FieldReverseLookupOutput>
+      deref_path;     // the field accessed to get here, assuming we did a deref.
+  double score = 0.;  // the sum of scores of all derefs to get here.
+
+  // if we are a child, 0.
+  // otherwise, the number of children who have a reference to us.
+  int child_count = 0;
+
+  TypeChoiceParent parent;  // the type we used to get this type.
+
+  void eliminate();       // if possible, prune to avoid using this type.
   bool is_valid() const;  // true, unless we were eliminated.
 
   PossibleType(const TP_Type& tp_type) : type(tp_type) {}
@@ -59,58 +64,106 @@ struct PossibleType {
  * The set of all possible types in a register.
  */
 struct RegisterTypeState {
-  std::optional<TypeSpec> override_type;  // this is just for printing errors.
-  std::optional<int> single_type_cache;
+  // this is just for printing errors, and isn't used by the analysis
+  std::optional<TypeSpec> override_type;
+
+  // if we're simplified to a single type, this will hold in the index in the possible types vector.
+
+  // the types we can be.
   std::vector<PossibleType> possible_types;
 
-  RegisterTypeState() = delete;
+  RegisterTypeState() = default;
   RegisterTypeState(const PossibleType& single_type) : possible_types({single_type}) {}
-  void reduce_to_single_type(DecompWarnings* warnings, int op_idx, const DerefHint* hint);
+  void reduce_to_single_best_type(DecompWarnings* warnings, int op_idx, const DerefHint* hint);
+  bool is_single_type() const;
   const PossibleType& get_single_type_decision() const;
   const TP_Type& get_single_tp_type() const;
-  void try_elimination(const TypeSpec& desired_types, const TypeSystem& ts);
+
+  bool try_elimination(const TypeSpec& desired_types, const TypeSystem& ts);
+  bool can_eliminate_to_get(const TypeSpec& desired_types, const TypeSystem& ts) const;
+
+ private:
+  mutable std::optional<int> single_type_cache;
+};
+
+/*!
+ * During setup, this contains a alloc flag and a uid.
+ * While it's running, it contains a pointer.
+ */
+/*
+struct RegisterNode {
+ RegisterTypeState* ptr() { return (RegisterTypeState*)data; }
+ bool alloc() { return data & 1; }
+ u64 uid() { return data >> 32; }
+ void set_alloc() { data |= 1; }
+ void set_uid(u64 uid) { data |= (uid << 32); }
+
+private:
+ uintptr_t data = 0;
+ static_assert(sizeof(uintptr_t) == 8);
+};
+ */
+
+struct RegisterNode {
+  RegisterTypeState* ptr() { return m_ptr; }
+  void set_ptr(RegisterTypeState* ptr) { m_ptr = ptr; }
+  bool alloc() const { return !!m_ptr; }
+  void set_alloc(RegisterTypeState* state) {
+    m_ptr = state;
+    m_alloc_point = true;
+  }
+  bool is_alloc_point() const { return m_alloc_point; }
+  s64 uid() const { return m_uid; }
+  void set_uid(s64 val) { m_uid = val; }
+
+ private:
+  RegisterTypeState* m_ptr = nullptr;
+  s32 m_uid = 0;
+  bool m_alloc_point = false;
 };
 
 class InstrTypeState {
  public:
-  explicit InstrTypeState(const CopyOnWrite<RegisterTypeState>& default_value) {
-    m_regs.fill(default_value);
+  void add_stack_slot(int offset) { m_stack_slots.emplace_back(offset, RegisterNode()); }
+  int stack_slot_count() const { return m_stack_slots.size(); }
+  std::array<RegisterNode, Reg::MAX_VAR_REG_ID>& regs() { return m_regs; }
+  std::vector<std::pair<int, RegisterNode>>& slots() { return m_stack_slots; }
+
+  RegisterNode& get_slot(int offset) {
+    for(auto& s : m_stack_slots) {
+      if (s.first == offset) {
+        return s.second;
+      }
+    }
+    assert(false);
   }
 
-  const RegisterTypeState& get_const(const Register& reg) const {
-    assert(reg.reg_id() < Reg::MAX_VAR_REG_ID);
-    return *m_regs[reg.reg_id()];
-  }
-
-  CopyOnWrite<RegisterTypeState>& get(const Register& reg) {
+  RegisterNode& get(const Register& reg) {
     assert(reg.reg_id() < Reg::MAX_VAR_REG_ID);
     return m_regs[reg.reg_id()];
   }
 
-  CopyOnWrite<RegisterTypeState>& get_stack_slot(int offset) {
-    for (auto& slot : m_stack_slots) {
-      if (slot.first == offset) {
-        return slot.second;
-      }
-    }
-    assert(false);
-  }
-
-  const RegisterTypeState& get_stack_slot_const(int offset) const {
-    for (auto& slot : m_stack_slots) {
-      if (slot.first == offset) {
-        return *slot.second;
-      }
-    }
-    assert(false);
-  }
-
-  void add_stack_slot(int offset, const CopyOnWrite<RegisterTypeState>& value) {
-    m_stack_slots.emplace_back(offset, value);
-  }
-
  private:
-  std::array<CopyOnWrite<RegisterTypeState>, Reg::MAX_VAR_REG_ID> m_regs;
-  std::vector<std::pair<int, CopyOnWrite<RegisterTypeState>>> m_stack_slots;
+  std::array<RegisterNode, Reg::MAX_VAR_REG_ID> m_regs;
+  std::vector<std::pair<int, RegisterNode>> m_stack_slots;
 };
+
+struct TypeAnalysisGraph {
+  std::vector<InstrTypeState> after_op_types;
+  std::vector<InstrTypeState> block_start_types;
+
+  BlockTopologicalSort topo_sort;
+
+  RegisterTypeState* alloc_regstate();
+
+  std::vector<std::unique_ptr<RegisterTypeState>> node_pool;
+};
+
+class Function;
+class DecompilerTypeSystem;
+TypeAnalysisGraph make_analysis_graph(const TypeSpec& my_type,
+                                      DecompilerTypeSystem& dts,
+                                      Function& func,
+                                      bool verbose);
+
 }  // namespace decompiler

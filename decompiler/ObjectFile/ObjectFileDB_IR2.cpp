@@ -22,6 +22,7 @@
 #include "decompiler/analysis/symbol_def_map.h"
 #include "common/goos/PrettyPrinter.h"
 #include "decompiler/IR2/Form.h"
+#include "decompiler/IR2/MultiTypeAnalysis.h"
 
 namespace decompiler {
 
@@ -379,6 +380,10 @@ void ObjectFileDB::ir2_type_analysis_pass(const Config& config) {
         }
         func.ir2.env.set_stack_structure_hints(
             try_lookup(config.stack_structure_hints_by_function, func_name));
+
+        // experimental multi-type pass, for debugging.
+        auto tg = make_analysis_graph(ts, dts, func, true);
+
         if (run_type_analysis_ir2(ts, dts, func)) {
           successful_functions++;
           func.ir2.env.types_succeeded = true;

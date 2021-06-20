@@ -40,7 +40,7 @@ void modify_input_types_for_casts(
       // type_from_cast.print());
       if (original_type != type_from_cast) {
         // the cast will have an effect on types. If we are removing the original type, remember it
-        if (changed_types && changed_types->find(cast.reg) == changed_types->end()) {
+        if (changed_types) {
           (*changed_types)[cast.reg] = original_type;
         }
 

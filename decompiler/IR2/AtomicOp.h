@@ -9,12 +9,15 @@
 #include "decompiler/Disasm/Instruction.h"
 #include "decompiler/IR2/IR2_common.h"
 #include "Env.h"
+#include "common/util/CopyOnWrite.h"
 
 namespace decompiler {
 class FormElement;
 class ConditionElement;
 class FormPool;
 class DecompilerTypeSystem;
+struct RegisterTypeState;
+class InstrTypeState;
 
 /*!
  * An atomic operation represents a single operation from the point of view of the IR2 system.
@@ -733,6 +736,7 @@ class StackSpillStoreOp : public AtomicOp {
                                      const Env& env,
                                      DecompilerTypeSystem& dts) override;
   void collect_vars(RegAccessSet& vars) const override;
+  int offset() const { return m_offset; }
 
  private:
   SimpleAtom m_value;
