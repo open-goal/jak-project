@@ -621,6 +621,12 @@ TEST_F(WithGameTests, StaticArrayField) {
                           "0\n"});
 }
 
+TEST_F(WithGameTests, TypeReference) {
+  runner.run_static_test(env, testCategory, "test-type-ref.gc",
+                         {"string #t basic some-unknown-type 20 0\n"
+                          "0\n"});
+}
+
 TEST_F(WithGameTests, StaticFieldInlineArray) {
   runner.run_static_test(env, testCategory, "test-static-field-inline-arrays.gc",
                          {"\"second\" \"first\"\n"

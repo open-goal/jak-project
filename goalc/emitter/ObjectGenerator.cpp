@@ -458,7 +458,7 @@ void ObjectGenerator::emit_link_type_pointer(int seg, const TypeSystem* ts) {
     out.push_back(0);
 
     // method count
-    out.push_back(ts->get_next_method_id(ts->lookup_type(rec.first)));
+    out.push_back(ts->get_type_method_count(rec.first));
 
     // number of links
     push_data<u32>(size, out);

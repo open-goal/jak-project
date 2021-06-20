@@ -1,0 +1,24 @@
+
+;; define a type with fields that hold a type.
+(deftype test-type-with-type-field (basic)
+  ((name string)
+   (some-type-1 type)
+   (some-type-2 type))
+  )
+
+(let ((obj (new 'static 'test-type-with-type-field
+                :name "test"
+                :some-type-2 (type-ref some-unknown-type :method-count 20)
+                :some-type-1 (type-ref string :method-count 9)))
+      (old-string string))
+  (format #t "~A ~A ~A ~A ~D ~D~%"
+          (-> obj some-type-1 symbol)
+          (= (-> obj some-type-1) old-string) ;; should not reallocate string
+          (-> obj some-type-1 parent)
+          (-> obj some-type-2 symbol) ;; should fill out type symbol
+          (-> obj some-type-2 allocated-length) ;; and method length
+          (-> obj some-type-2 parent) ;; but other stuff should be 0's
+          )
+  )
+
+
