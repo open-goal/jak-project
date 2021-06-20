@@ -270,15 +270,12 @@ goos::Object decompile_structure(const TypeSpec& type,
 
   // check alignment
   auto offset_location = label.offset - type_info->get_offset();
-  //  if ((offset_location % 8) == 2) {
-  //    // TEMP HACK
-  //    lg::error("Data decompile was looking for a structure, but it looks like a pair instead.");
-  //    return decompile_pair(label, labels, words, ts);
-  //  }
   if (offset_location % 8) {
-    throw std::runtime_error(
-        fmt::format("Structure type {} (type offset {}) has alignment {}, which is not valid.",
-                    type_info->get_name(), type_info->get_offset(), (offset_location % 8)));
+    throw std::runtime_error(fmt::format(
+        "Tried to decompile a structure with type type {} (type offset {}) at label {}, but it has "
+        "alignment {}, which is not valid. {}",
+        type_info->get_name(), type_info->get_offset(), label.name, (offset_location % 8),
+        (offset_location & 0b10) ? "Maybe it is actually a pair?" : ""));
   }
 
   // check enough room
@@ -518,6 +515,17 @@ goos::Object decompile_structure(const TypeSpec& type,
           }
         } else if (word.kind == LinkedWord::EMPTY_PTR) {
           field_defs_out.emplace_back(field.name(), pretty_print::to_symbol("'()"));
+        } else if (word.kind == LinkedWord::TYPE_PTR) {
+          if (field.type() != TypeSpec("type")) {
+            throw std::runtime_error(
+                fmt::format("Field {} in type {} offset {} had a reference to type {}, but the "
+                            "type of the field is not type.",
+                            field.name(), actual_type.print(), field.offset(), word.symbol_name));
+          }
+          int method_count = ts.get_type_method_count(word.symbol_name);
+          field_defs_out.emplace_back(
+              field.name(), pretty_print::to_symbol(fmt::format("(type-ref {} :method-count {})",
+                                                                word.symbol_name, method_count)));
         } else {
           throw std::runtime_error(
               fmt::format("Field {} in type {} offset {} did not have a proper reference",

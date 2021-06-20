@@ -216,3 +216,12 @@ StaticResult StaticResult::make_symbol(const std::string& name) {
   result.m_ts = TypeSpec("symbol");
   return result;
 }
+
+StaticResult StaticResult::make_type_ref(const std::string& type_name, int method_count) {
+  StaticResult result;
+  result.m_kind = Kind::TYPE;
+  result.m_symbol = type_name;
+  result.m_method_count = method_count;
+  result.m_ts = TypeSpec("type");
+  return result;
+}

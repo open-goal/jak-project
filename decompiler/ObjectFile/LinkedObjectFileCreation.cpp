@@ -760,10 +760,8 @@ static void link_v3(LinkedObjectFile& f,
         link_ptr--;
         s_name = (const char*)(&data.at(link_ptr));
       } else {
-        // methods todo
-
         s_name = (const char*)(&data.at(link_ptr));
-        // get_type_info().inform_type_method_count(s_name, reloc & 0x7f); todo
+        dts.ts.forward_declare_type_method_count(s_name, reloc & 0x7f);
         kind = SymbolLinkKind::TYPE;
       }
 
