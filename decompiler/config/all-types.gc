@@ -3847,9 +3847,7 @@
    (debug-buf    dma-buffer    :offset 36)
    (global-buf   dma-buffer    :offset 40)
    (bucket-group dma-bucket    :offset 44)
-   (buffer       uint32    11  :offset 4) ;; for debugging?
-
-
+   (buffer       dma-buffer    11  :offset 4)
    (profile-bar  profile-bar 2 :offset 48)
    (run-time     uint64        :offset 56)
    )
@@ -6580,7 +6578,7 @@
 (define-extern *ocean-trans-up-left-table* (pointer float)) ;; unknown type
 (define-extern *ocean-trans-corner-table* (pointer float)) ;; unknown type
 (define-extern *ocean-trans-strip-array* (pointer float)) ;; unknown type
-(define-extern *ocean-trans-st-table* (pointer float)) ;; unknown type
+(define-extern *ocean-trans-st-table* (inline-array vector))
 
 
 ;; ----------------------
@@ -20601,21 +20599,24 @@
 (define-extern ocean-interp-wave function)
 (define-extern ocean-generate-verts function)
 (define-extern draw-ocean-texture function)
-(define-extern ocean-init-buffer function)
-(define-extern draw-ocean-far function)
-(define-extern draw-ocean-mid function)
-(define-extern ocean-end-buffer function)
+(define-extern ocean-init-buffer (function dma-buffer none)) ; not confirmed
+(define-extern draw-ocean-far (function dma-buffer none)) ; not confirmed
+(define-extern draw-ocean-mid (function dma-buffer none)) ; not confirmed
+(define-extern ocean-end-buffer (function dma-buffer none)) ; not confirmed
 (define-extern draw-ocean-near function)
 (define-extern init-ocean-far-regs function)
 (define-extern render-ocean-far function)
 (define-extern render-ocean-quad function)
 (define-extern draw-large-polygon-ocean function)
-(define-extern draw-ocean function)
+(define-extern draw-ocean (function none)) ; not confirmed
 (define-extern update-ocean function)
+
+;; - Symbols
+
+(define-extern *ocean-map* ocean-map)
 
 ;; - Unknowns
 
-;;(define-extern *ocean-map* object) ;; unknown type
 ;;(define-extern *swamp-low-ocean-marker* object) ;; unknown type
 
 
@@ -20663,10 +20664,10 @@
 ;; - Functions
 
 (define-extern ocean-mid-add-constants function)
-(define-extern ocean-mid-add-call function)
+(define-extern ocean-mid-add-call (function ocean-wave-info int none))
 (define-extern ocean-mid-add-upload function)
 (define-extern ocean-mid-add-call-flush function)
-(define-extern draw-ocean-transition function)
+(define-extern draw-ocean-transition (function dma-buffer none))
 (define-extern draw-ocean-mid-seams function)
 (define-extern ocean-seams-add-constants function)
 (define-extern ocean-mid-add-upload-top function)
@@ -20676,7 +20677,7 @@
 (define-extern ocean-mid-mask-ptrs-bit? function)
 (define-extern ocean-mid-add-upload-table function)
 (define-extern ocean-mid-camera-masks-set! function)
-(define-extern ocean-mid-add-matrices function)
+(define-extern ocean-mid-add-matrices (function dma-buffer none)) ;; not verified
 (define-extern ocean-mid-check function)
 (define-extern ocean-matrix*! function)
 (define-extern ocean-mid-setup-constants function)
@@ -20695,16 +20696,16 @@
 
 ;; - Functions
 
-(define-extern ocean-make-trans-camera-masks function)
-(define-extern ocean-trans-add-upload-strip function)
-(define-extern ocean-trans-add-constants function)
-(define-extern draw-ocean-transition-seams function)
-(define-extern ocean-trans-camera-masks-bit? (function int int int symbol))
-(define-extern ocean-trans-add-upload function)
+(define-extern ocean-make-trans-camera-masks (function int int uint8 uint8 symbol)) ;; the first two args are casted to floats but...only bytes are passed in
+(define-extern ocean-trans-add-upload-strip (function dma-buffer int int uint8 uint8 int none)) ;; second and third arg is actually a uint8
+(define-extern ocean-trans-add-constants (function dma-buffer pointer))
+(define-extern draw-ocean-transition-seams (function dma-buffer none))
+(define-extern ocean-trans-camera-masks-bit? (function uint8 uint8 symbol))
+(define-extern ocean-trans-add-upload (function int int int none))
 (define-extern ocean-trans-mask-ptrs-bit? (function int int symbol))
-(define-extern ocean-trans-add-upload-table (function int int int none))
-(define-extern ocean-transition-check function)
-(define-extern ocean-trans-mask-ptrs-set! (function int int none))
+(define-extern ocean-trans-add-upload-table (function dma-buffer int int (pointer float) int symbol none))
+(define-extern ocean-transition-check (function ocean-trans-mask int int vector symbol))
+(define-extern ocean-trans-mask-ptrs-set! (function int int symbol))
 
 
 ;; ----------------------
