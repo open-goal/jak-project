@@ -4401,19 +4401,19 @@
   )
 
 (deftype level-load-info (basic)
-  ((name-list         basic 3   :offset-assert 4)
+  ((name-list         symbol 3   :offset-assert 4)
    (index             int32     :offset-assert 16)
-   (name              basic     :offset 4)
-   (visname           basic     :offset 8)
-   (nickname          basic     :offset 12)
+   (name              symbol     :offset 4)
+   (visname           symbol    :offset 8)
+   (nickname          symbol    :offset 12)
    (packages          pair      :offset-assert 20)
    (sound-banks       pair      :offset-assert 24)
-   (music-bank        basic     :offset-assert 28)
+   (music-bank        symbol     :offset-assert 28)
    (ambient-sounds    pair      :offset-assert 32)
-   (mood              basic     :offset-assert 36)
-   (mood-func         basic     :offset-assert 40)
-   (ocean             basic     :offset-assert 44)
-   (sky               basic     :offset-assert 48)
+   (mood              symbol    :offset-assert 36)
+   (mood-func         symbol    :offset-assert 40)
+   (ocean             symbol    :offset-assert 44)
+   (sky               symbol    :offset-assert 48)
    (sun-fade          float     :offset-assert 52)
    (continues         pair      :offset-assert 56)
    (tasks             pair      :offset-assert 60)
@@ -4427,7 +4427,7 @@
    (run-packages      pair      :offset-assert 100)
    (prev-level        basic     :offset-assert 104)
    (next-level        basic     :offset-assert 108)
-   (wait-for-load     basic     :offset-assert 112)
+   (wait-for-load     symbol    :offset-assert 112)
    )
   :method-count-assert 9
   :size-assert         #x74
@@ -4445,20 +4445,23 @@
   :flag-assert         #x900000050
   )
 
-(declare-type art-group basic)
 (declare-type bsp-header basic)
+(declare-type engine basic)
+(declare-type entity-links-array basic)
+(declare-type entity-ambient-data-array basic)
+(declare-type mood-context basic)
 (deftype level (basic)
-  ((name                      basic           :offset-assert 4)
-   (load-name                 basic           :offset-assert 8)
-   (nickname                  basic           :offset-assert 12)
+  ((name                      symbol          :offset-assert 4)
+   (load-name                 symbol          :offset-assert 8)
+   (nickname                  symbol          :offset-assert 12)
    (index                     int32           :offset-assert 16)
-   (status                    basic           :offset-assert 20)
-   (other                     basic           :offset-assert 24)
+   (status                    symbol          :offset-assert 20)
+   (other                     level           :offset-assert 24)
    (heap                      kheap   :inline :offset-assert 32)
    (bsp                       bsp-header      :offset-assert 48)
-   (art-group                 art-group       :offset-assert 52)
-   (info                      basic           :offset-assert 56)
-   (texture-page              texture-page 9       :offset-assert 60)
+   (art-group                 load-dir-art-group  :offset-assert 52)
+   (info                      level-load-info     :offset-assert 56)
+   (texture-page              texture-page 9      :offset-assert 60)
    (loaded-texture-page       basic 16      :offset-assert 96)
    (loaded-texture-page-count int32           :offset-assert 160)
    ; (foreground-sink-group-0   dma-foreground-sink-group :inline :offset-assert 176)
@@ -4466,21 +4469,21 @@
    ; (foreground-sink-group-2   dma-foreground-sink-group :inline :offset-assert 240)
    ; (array-pad uint8 12)
    (foreground-sink-group     dma-foreground-sink-group 3 :inline :offset-assert 176) ;; inline basic
-   (foreground-draw-engine    basic 3       :offset-assert 272)
-   (entity                    basic           :offset-assert 284)
-   (ambient                   basic           :offset-assert 288)
+   (foreground-draw-engine    engine 3       :offset-assert 272)
+   (entity                    entity-links-array           :offset-assert 284)
+   (ambient                   entity-ambient-data-array           :offset-assert 288)
    (closest-object            float 9       :offset-assert 292)
    (upload-size               int32 9       :offset-assert 328)
    (level-distance            float          :offset-assert 364) ; meters
-   (inside-sphere?            basic           :offset-assert 368)
-   (inside-boxes?             basic           :offset-assert 372)
-   (display?                  basic           :offset-assert 376)
-   (meta-inside?              basic           :offset-assert 380)
-   (mood                      basic           :offset-assert 384)
-   (mood-func                 basic           :offset-assert 388)
+   (inside-sphere?            symbol          :offset-assert 368)
+   (inside-boxes?             symbol          :offset-assert 372)
+   (display?                  symbol          :offset-assert 376)
+   (meta-inside?              symbol          :offset-assert 380)
+   (mood                      mood-context          :offset-assert 384)
+   (mood-func                 function           :offset-assert 388)
    (vis-bits                  uint32          :offset-assert 392)
-   (all-visible?              basic           :offset-assert 396)
-   (force-all-visible?        basic           :offset-assert 400)
+   (all-visible?              symbol        :offset-assert 396)
+   (force-all-visible?        symbol          :offset-assert 400)
    (linking                   basic           :offset-assert 404)
    (vis-info                  level-vis-info 8       :offset-assert 408)
    (vis-self-index            int32           :offset-assert 440)
@@ -4491,7 +4494,7 @@
    (code-memory-start         uint32          :offset-assert 2504)
    (code-memory-end           uint32          :offset-assert 2508)
    (texture-mask              uint32 9       :offset-assert 2512)
-   (force-inside?             basic           :offset-assert 2548)
+   (force-inside?             symbol          :offset-assert 2548)
    (pad                       uint8 56)
    )
   :method-count-assert 29
@@ -4512,7 +4515,7 @@
     (dummy-20 () none 20)
     (dummy-21 () none 21)
     (dummy-22 () none 22)
-    (dummy-23 () none 23)
+    (dummy-23 (_type_ symbol) none 23)
     (dummy-24 () none 24)
     (dummy-25 () none 25)
     (dummy-26 () none 26)
@@ -4548,17 +4551,17 @@
   :size-assert         #x1ef4
   :flag-assert         #x1b00001ef4
   (:methods
-    (dummy-9 () none 9)
-    (dummy-10 () none 10)
-    (dummy-11 () none 11)
-    (dummy-12 () none 12)
+    (dummy-9 (_type_ symbol) level 9)
+    (dummy-10 (_type_ symbol) symbol 10)
+    (dummy-11 (_type_ symbol symbol) _type_ 11)
+    (dummy-12 (_type_) none 12)
     (dummy-13 () none 13)
     (dummy-14 () none 14)
     (dummy-15 () none 15)
     (dummy-16 () none 16)
-    (dummy-17 () none 17)
-    (dummy-18 () none 18)
-    (dummy-19 () none 19)
+    (dummy-17 (_type_) none 17)
+    (dummy-18 (_type_ symbol) none 18)
+    (dummy-19 (_type_ pair) none 19)
     (dummy-20 () none 20)
     (dummy-21 () none 21)
     (dummy-22 () none 22)
@@ -8495,58 +8498,59 @@
     )
   )
 
+(declare-type entity-perm-array basic)
 (deftype game-info (basic)
-  ((mode                  basic      :offset-assert 4)
-   (save-name             basic      :offset-assert 8)
-   (life                  float      :offset-assert 12)
-   (life-max              float      :offset-assert 16)
-   (money                 float      :offset-assert 20)
-   (money-total           float      :offset-assert 24)
-   (money-per-level       uint8 32 :offset-assert 28)
-   (deaths-per-level      uint8 32 :offset-assert 60)
-   (buzzer-total          float      :offset-assert 92)
-   (fuel                  float      :offset-assert 96)
-   (perm-list             basic      :offset-assert 100)
-   (task-perm-list        basic      :offset-assert 104)
-   (current-continue      basic      :offset-assert 108)
-   (text-ids-seen         basic      :offset-assert 112)
-   (level-opened          uint8 32 :offset-assert 116)
-   (hint-control          basic      :offset-assert 148)
-   (task-hint-control     basic      :offset-assert 152)
-   (total-deaths          int32      :offset-assert 156)
-   (continue-deaths       int32      :offset-assert 160)
-   (fuel-cell-deaths      int32      :offset-assert 164)
-   (game-start-time       uint64     :offset-assert 168)
-   (continue-time         uint64     :offset-assert 176)
-   (death-time            uint64     :offset-assert 184)
-   (hit-time              uint64     :offset-assert 192)
-   (fuel-cell-pickup-time uint64     :offset-assert 200)
-   (fuel-cell-time        basic      :offset-assert 208)
-   (enter-level-time      basic      :offset-assert 212)
-   (in-level-time         basic      :offset-assert 216)
-   (blackout-time         uint64     :offset-assert 224)
-   (letterbox-time        uint64     :offset-assert 232)
-   (hint-play-time        uint64     :offset-assert 240)
-   (display-text-time     uint64     :offset-assert 248)
-   (display-text-handle   uint64     :offset-assert 256)
-   (death-movie-tick      int32      :offset-assert 264)
-   (want-auto-save        basic      :offset-assert 268)
-   (auto-save-proc        uint64     :offset-assert 272)
-   (auto-save-status      uint32     :offset-assert 280)
-   (auto-save-card        int32      :offset-assert 284)
-   (auto-save-which       int32      :offset-assert 288)
-   (pov-camera-handle     uint64     :offset-assert 296)
-   (other-camera-handle   uint64     :offset-assert 304)
-   (death-pos             basic      :offset-assert 312)
-   (dummy                 basic      :offset-assert 316)
-   (auto-save-count       int32      :offset-assert 320)
+  ((mode                  symbol     :offset-assert 4)
+   (save-name             basic     :offset-assert 8)
+   (life                  float     :offset-assert 12)
+   (life-max              float     :offset-assert 16)
+   (money                 float     :offset-assert 20)
+   (money-total           float     :offset-assert 24)
+   (money-per-level       uint8  32 :offset-assert 28)
+   (deaths-per-level      uint8  32 :offset-assert 60)
+   (buzzer-total          float     :offset-assert 92)
+   (fuel                  float     :offset-assert 96)
+   (perm-list             entity-perm-array     :offset-assert 100)
+   (task-perm-list        entity-perm-array     :offset-assert 104)
+   (current-continue      continue-point     :offset-assert 108)
+   (text-ids-seen         bit-array     :offset-assert 112)
+   (level-opened          uint8  32 :offset-assert 116)
+   (hint-control          array     :offset-assert 148)
+   (task-hint-control     array     :offset-assert 152)
+   (total-deaths          int32     :offset-assert 156)
+   (continue-deaths       int32     :offset-assert 160)
+   (fuel-cell-deaths      int32     :offset-assert 164)
+   (game-start-time       uint64    :offset-assert 168)
+   (continue-time         uint64    :offset-assert 176)
+   (death-time            uint64    :offset-assert 184)
+   (hit-time              uint64    :offset-assert 192)
+   (fuel-cell-pickup-time uint64    :offset-assert 200)
+   (fuel-cell-time        array     :offset-assert 208)
+   (enter-level-time      array     :offset-assert 212)
+   (in-level-time         array     :offset-assert 216)
+   (blackout-time         uint64    :offset-assert 224)
+   (letterbox-time        uint64    :offset-assert 232)
+   (hint-play-time        uint64    :offset-assert 240)
+   (display-text-time     uint64    :offset-assert 248)
+   (display-text-handle   uint64    :offset-assert 256)
+   (death-movie-tick      int32     :offset-assert 264)
+   (want-auto-save        symbol     :offset-assert 268)
+   (auto-save-proc        uint64    :offset-assert 272)
+   (auto-save-status      uint32    :offset-assert 280)
+   (auto-save-card        int32     :offset-assert 284)
+   (auto-save-which       int32     :offset-assert 288)
+   (pov-camera-handle     uint64    :offset-assert 296)
+   (other-camera-handle   uint64    :offset-assert 304)
+   (death-pos             vector-array     :offset-assert 312)
+   (dummy                 basic     :offset-assert 316)
+   (auto-save-count       int32     :offset-assert 320)
    )
   :method-count-assert 29
   :size-assert         #x144
   :flag-assert         #x1d00000144
   ;; field dummy is a basic loaded with a signed load
   (:methods
-    (dummy-9 () none 9)
+    (dummy-9 (_type_ symbol symbol string) none 9)
     (dummy-10 () none 10)
     (dummy-11 () none 11)
     (dummy-12 () none 12)
@@ -8554,7 +8558,7 @@
     (dummy-14 () none 14)
     (dummy-15 () none 15)
     (dummy-16 () none 16)
-    (dummy-17 () none 17)
+    (dummy-17 (_type_) none 17)
     (dummy-18 () none 18)
     (dummy-19 () none 19)
     (dummy-20 () none 20)
@@ -16171,10 +16175,10 @@
 (define-extern close-specific-task! function)
 (define-extern reset-all-hint-controls function)
 (define-extern reset-actors function)
-(define-extern set-blackout-frames (function int int))
+(define-extern set-blackout-frames (function int uint))
 (define-extern set-master-mode (function symbol none))
-(define-extern stop (function int)) ;; logic-target
-(define-extern start function)
+(define-extern stop (function symbol int)) ;; logic-target
+(define-extern start (function symbol symbol int))
 (define-extern position-in-front-of-camera! (function vector float float vector))
 (define-extern game-task->string function)
 (define-extern trsq->continue-point function)
@@ -16187,8 +16191,8 @@
 ;; - Unknowns
 
 ;;(define-extern *level-task-data-remap* object) ;; unknown type
-;;(define-extern *spawn-actors* object) ;; unknown type
-;;(define-extern *default-continue* object) ;; unknown type
+(define-extern *spawn-actors* symbol)
+(define-extern *default-continue* symbol)
 
 
 ;; ----------------------
@@ -16687,7 +16691,7 @@
 
 ;; - Symbols
 
-(define-extern *time-of-day-proc* time-of-day-proc)
+(define-extern *time-of-day-proc* (pointer time-of-day-proc))
 
 ;; - Unknowns
 
@@ -16750,7 +16754,7 @@
 (define-extern init-time-of-day function)
 (define-extern update-sky-tng-data function)
 (define-extern time-of-day-update function)
-(define-extern start-time-of-day function)
+(define-extern start-time-of-day (function int))
 (define-extern time-of-day-setup function)
 (define-extern set-time-of-day function)
 (define-extern init-time-of-day-context function)
@@ -16946,9 +16950,9 @@
 
 (define-extern check-closed-boundary function)
 (define-extern check-open-boundary function)
-(define-extern load-state-want-vis (function int none))
-(define-extern load-state-want-levels (function int int none))
-(define-extern load-state-want-display-level (function int int none))
+(define-extern load-state-want-vis (function symbol none))
+(define-extern load-state-want-levels (function symbol symbol none))
+(define-extern load-state-want-display-level (function symbol symbol none))
 (define-extern load-state-want-force-vis function)
 (define-extern command-get-param function)
 (define-extern entity-birth-no-kill function)
@@ -17064,12 +17068,12 @@
 
 (define-extern update-sound-banks function)
 (define-extern load-vis-info function)
-(define-extern on function)
+(define-extern on (function symbol process))
 (define-extern level-update-after-load function)
 (define-extern add-bsp-drawable function)
 (define-extern remap-level-name (function level-load-info object))
-(define-extern bg function)
-(define-extern play (function none))
+(define-extern bg (function symbol symbol))
+(define-extern play (function symbol symbol int))
 (define-extern show-level function)
 
 ;; - Symbols
@@ -17079,7 +17083,7 @@
 ;; - Unknowns
 
 ;;(define-extern unload object) ;; unknown type
-;;(define-extern *login-state* object) ;; unknown type
+(define-extern *login-state* login-state)
 ;;(define-extern link-resume object) ;; unknown type
 
 
@@ -18355,46 +18359,12 @@
 ;     )
 ;   )
 
-; (deftype camera-start (process-hidden)
-;   ((name             basic                 :offset-assert 4)
-;    (mask             uint32                :offset-assert 8)
-;    (parent           uint32                :offset-assert 12)
-;    (brother          uint32                :offset-assert 16)
-;    (child            uint32                :offset-assert 20)
-;    (ppointer         uint32                :offset-assert 24)
-;    (self             basic                 :offset-assert 28)
-;    (pool             basic                 :offset-assert 32)
-;    (status           basic                 :offset-assert 36)
-;    (pid              int32                 :offset-assert 40)
-;    (main-thread      basic                 :offset-assert 44)
-;    (top-thread       basic                 :offset-assert 48)
-;    (entity           basic                 :offset-assert 52)
-;    (state            basic                 :offset-assert 56)
-;    (trans-hook       basic                 :offset-assert 60)
-;    (post-hook        basic                 :offset-assert 64)
-;    (event-hook       basic                 :offset-assert 68)
-;    (allocated-length int32                 :offset-assert 72)
-;    (next-state       basic                 :offset-assert 76)
-;    (heap-base        uint32                :offset-assert 80)
-;    (heap-top         uint32                :offset-assert 84)
-;    (heap-cur         uint32                :offset-assert 88)
-;    (stack-frame-top  basic                 :offset-assert 92)
-;    (heap             kheap        :inline  :offset-assert 80)
-;    (connection-list  'connectable :inline  :offset-assert 96)
-;    (stack            UNKNOWN      :dynamic :offset-assert 112)
-;    )
-;   :method-count-assert 15
-;   :size-assert         #x70
-;   :flag-assert         #xf00000070
-;   (:methods
-;     (dummy-9 () none 9)
-;     (dummy-10 () none 10)
-;     (dummy-11 () none 11)
-;     (dummy-12 () none 12)
-;     (dummy-13 () none 13)
-;     (dummy-14 () none 14)
-;     )
-;   )
+(deftype camera-start (process-hidden)
+  ()
+  :method-count-assert 15
+  :size-assert         #x70
+  :flag-assert         #xf00000070
+  )
 
 ; (deftype med-res-level (process-drawable)
 ;   ((level     basic  :offset-assert 176)
@@ -19174,7 +19144,7 @@
 (define-extern display-sync function)
 (define-extern determine-pause-mode function)
 (define-extern display-frame-start function)
-(define-extern toggle-pause function)
+(define-extern toggle-pause (function int))
 (define-extern deactivate-progress function)
 (define-extern debug-init-buffer function)
 (define-extern real-main-draw-hook function)
@@ -19280,21 +19250,21 @@
 
 ;; - Functions
 
-(define-extern display-loop function)
-(define-extern entity-by-type function)
+(define-extern display-loop (function int))
+(define-extern entity-by-type (function type entity))
 (define-extern scf-get-territory (function int))
-(define-extern pause-allowed? function)
-(define-extern menu-respond-to-pause function)
-(define-extern hide-progress-screen function)
-(define-extern set-letterbox-frames (function uint none))
+(define-extern pause-allowed? (function symbol))
+(define-extern menu-respond-to-pause (function int))
+(define-extern hide-progress-screen (function int))
+(define-extern set-letterbox-frames (function uint uint))
 (define-extern letterbox (function none))
 (define-extern blackout (function none))
-(define-extern main-cheats function)
-(define-extern off function)
+(define-extern main-cheats (function int))
+(define-extern off (function int))
 
 ;; - Symbols
 
-(define-extern *cheat-temp* pointer)
+(define-extern *cheat-temp* (pointer int32))
 (define-extern *progress-cheat* symbol)
 (define-extern *master-exit* symbol)
 (define-extern *last-master-mode* symbol)
@@ -19302,9 +19272,9 @@
 
 ;; - Unknowns
 
-;;(define-extern scf-get-timeout object) ;; unknown type
-;;(define-extern scf-get-inactive-timeout object) ;; unknown type
-;;(define-extern kernel-shutdown object) ;; unknown type
+(define-extern scf-get-timeout (function int)) ;; unknown type
+(define-extern scf-get-inactive-timeout (function int)) ;; unknown type
+(define-extern kernel-shutdown (function none))
 
 
 ;; ----------------------
