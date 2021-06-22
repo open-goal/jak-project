@@ -65,6 +65,7 @@ FormElement* SetVarOp::get_as_form(FormPool& pool, const Env& env) const {
       }
     } else {
       // access a field
+      // TODO: rework for new type pass.
       auto arg0_type = env.get_types_before_op(m_my_idx).get(m_src.get_arg(0).var().reg());
       if (arg0_type.kind == TP_Type::Kind::TYPESPEC) {
         FieldReverseLookupInput rd_in;
@@ -93,6 +94,7 @@ FormElement* SetVarOp::get_as_form(FormPool& pool, const Env& env) const {
 
   // create element
   auto source = pool.alloc_single_element_form<SimpleExpressionElement>(nullptr, m_src, m_my_idx);
+  // TODO: rework m_source_type for new type pass.
   auto result = pool.alloc_element<SetVarElement>(m_dst, source, is_sequence_point(),
                                                   m_source_type.value_or(TypeSpec("object")));
 

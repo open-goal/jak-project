@@ -81,9 +81,15 @@ struct RegisterTypeState {
   bool is_temp_node = false;
 
   RegisterTypeState() = default;
-  RegisterTypeState(const PossibleType& single_type) : possible_types({single_type}) {
+  explicit RegisterTypeState(const PossibleType& single_type) : possible_types({single_type}) {
     single_type_cache = 0;
   }
+  explicit RegisterTypeState(const TP_Type& single_type)
+      : RegisterTypeState(PossibleType(single_type)) {}
+  explicit RegisterTypeState(const TypeSpec& type)
+      : RegisterTypeState(TP_Type::make_from_ts(type)) {}
+  explicit RegisterTypeState(const std::string& type)
+      : RegisterTypeState(TP_Type::make_from_ts(type)) {}
   void reduce_to_single_best_type(DecompWarnings* warnings, int op_idx, const DerefHint* hint);
   bool is_single_type() const;
   const PossibleType& get_single_type_decision() const;
@@ -119,6 +125,7 @@ struct RegisterNode {
   }
   bool is_alloc_point() const { return m_flags & FLAG_ALLOC_POINT; }
   bool is_clobber() const { return m_flags & FLAG_CLOBBER; }
+  bool is_cast() const { return m_flags & FLAG_CAST_TEMP; }
   s64 uid() const { return m_uid; }
   void set_uid(s64 val) { m_uid = val; }
 

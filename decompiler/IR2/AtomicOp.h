@@ -175,6 +175,9 @@ class SimpleAtom {
   void get_regs(std::vector<Register>* out) const;
   SimpleExpression as_expr() const;
   TP_Type get_type(const TypeState& input, const Env& env, const DecompilerTypeSystem& dts) const;
+  RegisterTypeState get_type(InstrTypeState& input,
+                             const Env& env,
+                             const DecompilerTypeSystem& dts) const;
   const std::string& get_str() const {
     assert(is_sym_ptr() || is_sym_val());
     return m_string;
@@ -259,6 +262,10 @@ class SimpleExpression {
   }
   void get_regs(std::vector<Register>* out) const;
   TP_Type get_type(const TypeState& input, const Env& env, const DecompilerTypeSystem& dts) const;
+  RegisterTypeState get_type(InstrTypeState& input,
+                             const Env& env,
+                             const DecompilerTypeSystem& dts) const;
+
   TP_Type get_type_int2(const TypeState& input,
                         const Env& env,
                         const DecompilerTypeSystem& dts) const;
@@ -298,10 +305,18 @@ class SetVarOp : public AtomicOp {
   const RegisterAccess& dst() const { return m_dst; }
   const SimpleExpression& src() const { return m_src; }
 
+  void multi_types_internal(InstrTypeState* output,
+                            InstrTypeState& input,
+                            const Env& env,
+                            DecompilerTypeSystem& dts) override;
+
  private:
   RegisterAccess m_dst;
   SimpleExpression m_src;
+
+  // depending on if we use the new or old type pass.
   std::optional<TypeSpec> m_source_type;
+  RegisterTypeState* m_source_type_new = nullptr;
 };
 
 /*!
@@ -724,6 +739,11 @@ class FunctionEndOp : public AtomicOp {
     assert(m_function_has_return_value);
     return m_return_reg;
   }
+
+  void multi_types_internal(InstrTypeState* output,
+                            InstrTypeState& input,
+                            const Env& env,
+                            DecompilerTypeSystem& dts) override;
 
  private:
   bool m_function_has_return_value = true;

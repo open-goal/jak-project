@@ -4,6 +4,8 @@
  * register, due to overlapping fields in types.  When it encounters a function call, set, or
  * certain math operation, it will attempt to prune the decision tree to remove incompatible types.
  *
+ * Compared to
+ *
  * When there are multiple ways to get the same type, or the type is ambiguous, it will use the one
  * with the highest score.
  *
@@ -614,7 +616,6 @@ std::vector<TypeState> convert_to_old_format(const std::vector<InstrTypeState>& 
   return result;
 }
 
-
 bool dbg_types = true;
 }  // namespace
 
@@ -806,5 +807,61 @@ void AtomicOp::multi_types_internal(InstrTypeState*,
   throw std::runtime_error(
       fmt::format("multi_type_internal not yet implemented for {}", typeid(*this).name()));
 }
+
+RegisterTypeState SimpleAtom::get_type(InstrTypeState& input,
+                                       const Env& env,
+                                       const DecompilerTypeSystem& dts) const {
+  switch (m_kind) {
+    case Kind::VARIABLE:
+      // just get the type in the variable.
+      return input.get_state(var().reg());
+    default:
+      throw std::runtime_error("Simple atom cannot get_type (multi types): " + to_string(env));
+  }
+}
+
+RegisterTypeState SimpleExpression::get_type(InstrTypeState& input,
+                                             const Env& env,
+                                             const DecompilerTypeSystem& dts) const {
+  switch (m_kind) {
+    case Kind::IDENTITY:
+      // this expression is just an atom, so return the atom's type.
+      return m_args[0].get_type(input, env, dts);
+    default:
+      throw std::runtime_error("Simple expression cannot get_type (multi types): " +
+                               to_string(env));
+  }
+}
+
+void SetVarOp::multi_types_internal(InstrTypeState* output,
+                                    InstrTypeState& input,
+                                    const Env& env,
+                                    DecompilerTypeSystem& dts) {
+  // we have special cases where we can infer something about the source type from the dest
+
+  // GOAL will use mfc, fX, r0 to set a float to 0.
+  if (m_dst.reg().get_kind() == Reg::FPR && m_src.is_identity() && m_src.get_arg(0).is_int() &&
+      m_src.get_arg(0).get_int() == 0) {
+    output->assign(m_dst.reg(), RegisterTypeState("float"));
+  } else {
+    output->assign(m_dst.reg(), m_src.get_type(input, env, dts));
+  }
+
+  // it's safe to do this, though a little confusing.
+  // if this type is based on a cast, we can't have the possibility of referencing the temporary
+  // cast. Instead we copy the cast (or the result of using the temporary cast) to the output.
+  // If the next op casts this, it won't touch this because it will use its own temporary cast.
+
+  // In the final cast application, this is also okay because this node will be kept, but replaced
+  // in the main graph.  This will refer to the type without the cast, which is what we want.
+  auto& out_node = output->get(m_dst.reg());
+  assert(out_node.is_alloc_point() && !out_node.is_clobber() && !out_node.is_cast());
+  m_source_type_new = &output->get_state(m_dst.reg());
+}
+
+void FunctionEndOp::multi_types_internal(InstrTypeState*,
+                                         InstrTypeState&,
+                                         const Env&,
+                                         DecompilerTypeSystem&) {}
 
 }  // namespace decompiler
