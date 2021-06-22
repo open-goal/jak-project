@@ -10,6 +10,7 @@
 #include "decompiler/IR2/IR2_common.h"
 #include "decompiler/analysis/reg_usage.h"
 #include "decompiler/config.h"
+#include "decompiler/IR2/MultiTypeAnalysis.h"
 
 namespace decompiler {
 class LinkedObjectFile;
@@ -208,6 +209,18 @@ class Env {
   // hacks:
   bool aggressively_reject_cond_to_value_rewrite = false;
 
+  void set_type_graph(std::shared_ptr<TypeAnalysisGraph> tg) {
+    m_tg = std::move(tg);
+    m_has_new_types = true;
+  }
+
+  const TypeAnalysisGraph& type_graph() const {
+    assert(m_has_new_types);
+    return *m_tg;
+  }
+
+  bool has_type_graph() const { return m_has_new_types; }
+
  private:
   RegisterAccess m_end_var;
 
@@ -235,5 +248,8 @@ class Env {
   std::optional<TypeSpec> m_type_analysis_return_type;
 
   StackSpillMap m_stack_spill_map;
+
+  bool m_has_new_types = false;
+  std::shared_ptr<TypeAnalysisGraph> m_tg;
 };
 }  // namespace decompiler

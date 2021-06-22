@@ -382,7 +382,7 @@ void ObjectFileDB::ir2_type_analysis_pass(const Config& config) {
             try_lookup(config.stack_structure_hints_by_function, func_name));
 
         // experimental multi-type pass, for debugging.
-        auto tg = make_analysis_graph(ts, dts, func, true);
+        auto tg = allocate_analysis_graph(ts, dts, func, true);
 
         if (run_type_analysis_ir2(ts, dts, func)) {
           successful_functions++;
@@ -989,7 +989,7 @@ std::string ObjectFileDB::ir2_final_out(ObjectFileData& data,
     result += ";;-*-Lisp-*-\n";
     result += "(in-package goal)\n\n";
     assert(data.linked_data.functions_by_seg.at(TOP_LEVEL_SEGMENT).size() == 1);
-    auto top_level = data.linked_data.functions_by_seg.at(TOP_LEVEL_SEGMENT).at(0);
+    auto& top_level = data.linked_data.functions_by_seg.at(TOP_LEVEL_SEGMENT).at(0);
     result += write_from_top_level(top_level, dts, data.linked_data, skip_functions);
     result += "\n\n";
     return result;

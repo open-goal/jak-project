@@ -32,6 +32,9 @@ struct DerefHint {
 struct TypeChoiceParent {
   RegisterTypeState* reg_type = nullptr;
   int idx_in_parent = -1;
+  const PossibleType& get() const;
+  PossibleType& get();
+  void remove_ref();
 };
 
 /*!
@@ -41,9 +44,13 @@ struct TypeChoiceParent {
  */
 struct PossibleType {
   TP_Type type;  // the actual type.
-  std::optional<FieldReverseLookupOutput>
-      deref_path;     // the field accessed to get here, assuming we did a deref.
-  double score = 0.;  // the sum of scores of all derefs to get here.
+
+  // the field accessed to get here, assuming we did a deref.
+  std::optional<FieldReverseLookupOutput> deref_path;
+
+  // the sum of scores of all derefs to get here.
+  // this can be used to compare us to others in the same RegisterTypeState.
+  double score = 0.;
 
   // if we are a child, 0.
   // otherwise, the number of children who have a reference to us.
@@ -68,12 +75,15 @@ struct RegisterTypeState {
   std::optional<TypeSpec> override_type;
 
   // if we're simplified to a single type, this will hold in the index in the possible types vector.
-
   // the types we can be.
   std::vector<PossibleType> possible_types;
 
+  bool is_temp_node = false;
+
   RegisterTypeState() = default;
-  RegisterTypeState(const PossibleType& single_type) : possible_types({single_type}) {}
+  RegisterTypeState(const PossibleType& single_type) : possible_types({single_type}) {
+    single_type_cache = 0;
+  }
   void reduce_to_single_best_type(DecompWarnings* warnings, int op_idx, const DerefHint* hint);
   bool is_single_type() const;
   const PossibleType& get_single_type_decision() const;
@@ -90,36 +100,37 @@ struct RegisterTypeState {
  * During setup, this contains a alloc flag and a uid.
  * While it's running, it contains a pointer.
  */
-/*
-struct RegisterNode {
- RegisterTypeState* ptr() { return (RegisterTypeState*)data; }
- bool alloc() { return data & 1; }
- u64 uid() { return data >> 32; }
- void set_alloc() { data |= 1; }
- void set_uid(u64 uid) { data |= (uid << 32); }
-
-private:
- uintptr_t data = 0;
- static_assert(sizeof(uintptr_t) == 8);
-};
- */
 
 struct RegisterNode {
   RegisterTypeState* ptr() { return m_ptr; }
-  void set_ptr(RegisterTypeState* ptr) { m_ptr = ptr; }
+  const RegisterTypeState* ptr() const { return m_ptr; }
+  void set_cast_temp_ptr(RegisterTypeState* ptr) {
+    m_ptr = ptr;
+    m_flags |= FLAG_CAST_TEMP;
+  }
   bool alloc() const { return !!m_ptr; }
   void set_alloc(RegisterTypeState* state) {
     m_ptr = state;
-    m_alloc_point = true;
+    m_flags |= FLAG_ALLOC_POINT;
   }
-  bool is_alloc_point() const { return m_alloc_point; }
+  void set_clobber(RegisterTypeState* state) {
+    m_ptr = state;
+    m_flags |= FLAG_CLOBBER;
+  }
+  bool is_alloc_point() const { return m_flags & FLAG_ALLOC_POINT; }
+  bool is_clobber() const { return m_flags & FLAG_CLOBBER; }
   s64 uid() const { return m_uid; }
   void set_uid(s64 val) { m_uid = val; }
 
  private:
   RegisterTypeState* m_ptr = nullptr;
   s32 m_uid = 0;
-  bool m_alloc_point = false;
+
+  u8 m_flags = 0;
+  static constexpr u8 FLAG_ALLOC_POINT = 1;
+  static constexpr u8 FLAG_CLOBBER = 2;
+  static constexpr u8 FLAG_CAST_TEMP = 4;
+  static constexpr u8 FLAG_CAST_FINAL = 8;
 };
 
 class InstrTypeState {
@@ -128,9 +139,11 @@ class InstrTypeState {
   int stack_slot_count() const { return m_stack_slots.size(); }
   std::array<RegisterNode, Reg::MAX_VAR_REG_ID>& regs() { return m_regs; }
   std::vector<std::pair<int, RegisterNode>>& slots() { return m_stack_slots; }
+  const std::array<RegisterNode, Reg::MAX_VAR_REG_ID>& regs() const { return m_regs; }
+  const std::vector<std::pair<int, RegisterNode>>& slots() const { return m_stack_slots; }
 
   RegisterNode& get_slot(int offset) {
-    for(auto& s : m_stack_slots) {
+    for (auto& s : m_stack_slots) {
       if (s.first == offset) {
         return s.second;
       }
@@ -143,6 +156,10 @@ class InstrTypeState {
     return m_regs[reg.reg_id()];
   }
 
+  RegisterTypeState& get_state(const Register& reg) { return *get(reg).ptr(); }
+  RegisterTypeState& get_slot_state(int offset) { return *get_slot(offset).ptr(); }
+  void assign(const Register& reg, const RegisterTypeState& value);
+
  private:
   std::array<RegisterNode, Reg::MAX_VAR_REG_ID> m_regs;
   std::vector<std::pair<int, RegisterNode>> m_stack_slots;
@@ -151,6 +168,7 @@ class InstrTypeState {
 struct TypeAnalysisGraph {
   std::vector<InstrTypeState> after_op_types;
   std::vector<InstrTypeState> block_start_types;
+  std::vector<std::unique_ptr<RegisterTypeState>> final_cast_nodes;
 
   BlockTopologicalSort topo_sort;
 
@@ -161,9 +179,13 @@ struct TypeAnalysisGraph {
 
 class Function;
 class DecompilerTypeSystem;
-TypeAnalysisGraph make_analysis_graph(const TypeSpec& my_type,
-                                      DecompilerTypeSystem& dts,
-                                      Function& func,
-                                      bool verbose);
+std::shared_ptr<TypeAnalysisGraph> allocate_analysis_graph(const TypeSpec& my_type,
+                                                           DecompilerTypeSystem& dts,
+                                                           Function& func,
+                                                           bool verbose);
+bool run_multi_type_analysis(const TypeSpec& my_type,
+                             DecompilerTypeSystem& dts,
+                             Function& func,
+                             TypeAnalysisGraph& graph);
 
 }  // namespace decompiler

@@ -2822,6 +2822,15 @@ FormElement* ConditionElement::make_generic(const Env& env,
                                                 casted);
     }
 
+    case IR2_Condition::Kind::LESS_THAN_ZERO_UNSIGNED: {
+      auto casted = make_casts_if_needed(source_forms, types, TypeSpec("uint"), pool, env);
+      auto zero = pool.alloc_single_element_form<SimpleAtomElement>(
+          nullptr, SimpleAtom::make_int_constant(0));
+      casted.push_back(zero);
+      return pool.alloc_element<GenericElement>(GenericOperator::make_fixed(FixedOperatorKind::LT),
+                                                casted);
+    }
+
     case IR2_Condition::Kind::GREATER_THAN_ZERO_SIGNED: {
       auto casted = make_casts_if_needed(source_forms, types, TypeSpec("int"), pool, env);
       auto zero = pool.alloc_single_element_form<SimpleAtomElement>(

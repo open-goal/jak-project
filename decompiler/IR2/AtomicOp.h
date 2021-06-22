@@ -77,6 +77,11 @@ class AtomicOp {
 
   TypeState propagate_types(const TypeState& input, const Env& env, DecompilerTypeSystem& dts);
 
+  void multi_types(InstrTypeState* output,
+                   InstrTypeState& input,
+                   const Env& env,
+                   DecompilerTypeSystem& dts);
+
   int op_id() const { return m_my_idx; }
   const std::vector<Register>& read_regs() const { return m_read_regs; }
   const std::vector<Register>& write_regs() const { return m_write_regs; }
@@ -97,6 +102,11 @@ class AtomicOp {
   virtual TypeState propagate_types_internal(const TypeState& input,
                                              const Env& env,
                                              DecompilerTypeSystem& dts) = 0;
+
+  virtual void multi_types_internal(InstrTypeState* output,
+                                    InstrTypeState& input,
+                                    const Env& env,
+                                    DecompilerTypeSystem& dts);
   void clobber_temps();
 
   // the register values that are read (at the start of this op)

@@ -185,8 +185,12 @@ std::unique_ptr<FormRegressionTest::TestData> FormRegressionTest::make_function(
   }
 
   // analyze types
-  EXPECT_TRUE(run_type_analysis_ir2(function_type, *dts, test->func));
-  test->func.ir2.env.types_succeeded = true;
+  // EXPECT_TRUE(run_type_analysis_ir2(function_type, *dts, test->func));
+  auto tg = allocate_analysis_graph(function_type, *dts, test->func, true);
+  bool ok = run_multi_type_analysis(function_type, *dts, test->func, *tg);
+  EXPECT_TRUE(ok);
+  test->func.ir2.env.set_type_graph(tg);
+  test->func.ir2.env.types_succeeded = ok;
 
   // analyze registers
   test->func.ir2.env.set_reg_use(analyze_ir2_register_usage(test->func));
