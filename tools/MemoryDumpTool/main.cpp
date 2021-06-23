@@ -225,7 +225,7 @@ void inspect_basics(const Ram& ram,
 
     auto type = dynamic_cast<BasicType*>(type_system.lookup_type(name));
     if (!type) {
-      fmt::print("Could not cast Type! Skipping!!");
+      fmt::print("Could not cast Type! Skipping!!\n");
       type_results["__metadata"]["failedToCast?"] = true;
       results[name] = type_results;
       continue;
@@ -234,7 +234,8 @@ void inspect_basics(const Ram& ram,
     for (auto& field : type->fields()) {
       if (!field.is_inline() && !field.is_dynamic() &&
           (field.type() == TypeSpec("basic") || field.type() == TypeSpec("object") ||
-           field.type() == TypeSpec("uint32"))) {
+           field.type() == TypeSpec("uint32") ||
+           field.type() == TypeSpec("array", {TypeSpec("basic")}))) {
         int array_size = field.is_array() ? field.array_size() : 1;
         fmt::print("  field {}\n", field.name());
 
@@ -245,37 +246,111 @@ void inspect_basics(const Ram& ram,
           field_results = {};
         }
 
+        bool goal_array = field.type() == TypeSpec("array", {TypeSpec("basic")});
+
         std::unordered_map<std::string, int> type_frequency;
+        int array_max_elts = 0;
 
         for (auto base_addr : basics.at(name)) {
-          for (int elt_idx = 0; elt_idx < array_size; elt_idx++) {
-            int field_addr = base_addr + field.offset() + 4 * elt_idx;
+          if (goal_array) {
+            int field_addr = base_addr + field.offset();
             if (ram.word_in_memory(field_addr)) {
-              auto field_val = ram.word(field_addr);
-              if ((field_val & 0x7) == 4 && ram.word_in_memory(field_val - 4)) {
-                auto type_tag = ram.word(field_val - 4);
-                auto iter = types.find(type_tag);
-                if (iter != types.end()) {
-                  if (iter->second == "symbol") {
-                    auto sym_iter = symbols.addr_to_name.find(field_val);
-                    if (sym_iter != symbols.addr_to_name.end()) {
-                      type_frequency[fmt::format("(symbol {})", sym_iter->second)]++;
+              auto array_addr = ram.word(field_addr);
+              int array_length = ram.word(array_addr + 0);
+              if (array_length > array_max_elts)
+                array_max_elts = array_length;
+              for (int arr_elt_idx = 0; arr_elt_idx < array_length; ++arr_elt_idx) {
+                std::string arr_elt_str = fmt::format("{}", arr_elt_idx);
+                nlohmann::json arr_elt_results;
+                if (field_results.contains(arr_elt_str)) {
+                  arr_elt_results = field_results.at(arr_elt_str);
+                } else {
+                  arr_elt_results = {};
+                }
+
+                std::unordered_map<std::string, int> elt_type_frequency;
+
+                if (ram.word_in_memory(array_addr + 12 + 4 * arr_elt_idx)) {
+                  auto arr_elt_val = ram.word(array_addr + 12 + 4 * arr_elt_idx);
+                  if ((arr_elt_val & 0x7) == 4 && ram.word_in_memory(arr_elt_val - 4)) {
+                    auto type_tag = ram.word(arr_elt_val - 4);
+                    auto iter = types.find(type_tag);
+                    if (iter != types.end()) {
+                      if (iter->second == "symbol") {
+                        auto sym_iter = symbols.addr_to_name.find(arr_elt_val);
+                        if (sym_iter != symbols.addr_to_name.end()) {
+                          elt_type_frequency[fmt::format("(symbol {})", sym_iter->second)]++;
+                        } else {
+                          elt_type_frequency[iter->second]++;
+                        }
+                      } else {
+                        elt_type_frequency[iter->second]++;
+                      }
+                    } else {
+                      elt_type_frequency["_bad-type"]++;
+                    }
+                  } else if (arr_elt_val == 0) {
+                    elt_type_frequency["0"]++;
+                  } else {
+                    elt_type_frequency["_not-basic-ptr"]++;
+                  }
+                } else {
+                  elt_type_frequency["_bad-field-memory"]++;
+                }
+
+                std::vector<std::string> sorted_elt_types;
+                for (const auto& x : elt_type_frequency) {
+                  sorted_elt_types.push_back(x.first);
+                }
+                std::sort(sorted_elt_types.begin(), sorted_elt_types.end(),
+                          [&](const auto& a, const auto& b) {
+                            return elt_type_frequency.at(a) > elt_type_frequency.at(b);
+                          });
+
+                for (const auto& field_type : sorted_elt_types) {
+                  int freq = elt_type_frequency.at(field_type);
+                  if (arr_elt_results.contains(field_type)) {
+                    arr_elt_results[field_type] = arr_elt_results[field_type].get<int>() + freq;
+                  } else {
+                    arr_elt_results[field_type] = freq;
+                  }
+                  fmt::print("     {}: [{}] {}\n", arr_elt_str, elt_type_frequency.at(field_type),
+                             field_type);
+                }
+
+                field_results[arr_elt_str] = arr_elt_results;
+              }
+            }
+          } else {
+            for (int elt_idx = 0; elt_idx < array_size; elt_idx++) {
+              int field_addr = base_addr + field.offset() + 4 * elt_idx;
+              if (ram.word_in_memory(field_addr)) {
+                auto field_val = ram.word(field_addr);
+                if ((field_val & 0x7) == 4 && ram.word_in_memory(field_val - 4)) {
+                  auto type_tag = ram.word(field_val - 4);
+                  auto iter = types.find(type_tag);
+                  if (iter != types.end()) {
+                    if (iter->second == "symbol") {
+                      auto sym_iter = symbols.addr_to_name.find(field_val);
+                      if (sym_iter != symbols.addr_to_name.end()) {
+                        type_frequency[fmt::format("(symbol {})", sym_iter->second)]++;
+                      } else {
+                        type_frequency[iter->second]++;
+                      }
                     } else {
                       type_frequency[iter->second]++;
                     }
                   } else {
-                    type_frequency[iter->second]++;
+                    type_frequency["_bad-type"]++;
                   }
+                } else if (field_val == 0) {
+                  type_frequency["0"]++;
                 } else {
-                  type_frequency["_bad-type"]++;
+                  type_frequency["_not-basic-ptr"]++;
                 }
-              } else if (field_val == 0) {
-                type_frequency["0"]++;
               } else {
-                type_frequency["_not-basic-ptr"]++;
+                type_frequency["_bad-field-memory"]++;
               }
-            } else {
-              type_frequency["_bad-field-memory"]++;
             }
           }
         }
