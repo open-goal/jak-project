@@ -1104,7 +1104,7 @@ Instruction decode_instruction(LinkedWord& word, LinkedObjectFile& file, int seg
         atom.set_vu_q();
         break;
       case DecodeType::VCALLMS_TARGET:
-        atom.set_imm(value * 8);
+        atom.set_imm(value);
         break;
       case DecodeType::BRANCH_TARGET:
         atom.set_label(file.get_label_id_for(seg_id, (word_id + value + 1) * 4));

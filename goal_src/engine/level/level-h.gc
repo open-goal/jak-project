@@ -39,19 +39,19 @@
 ;; Per level information related to how to load the level.
 ;; These are stored in level-info.gc
 (deftype level-load-info (basic)
-  ((name-list         basic 3   :offset-assert 4)
+  ((name-list         symbol 3   :offset-assert 4)
    (index             int32     :offset-assert 16) ;; the level number (starting with 1?)
-   (name              basic     :offset 4)         ;; symbol with full name, like "misty"
-   (visname           basic     :offset 8)         ;; symbol with vis file name, like "misty-vis"
-   (nickname          basic     :offset 12)        ;; 3 letter name for DGO, like "mis"
+   (name              symbol     :offset 4)         ;; symbol with full name, like "misty"
+   (visname           symbol     :offset 8)         ;; symbol with vis file name, like "misty-vis"
+   (nickname          symbol     :offset 12)        ;; 3 letter name for DGO, like "mis"
    (packages          pair      :offset-assert 20) ;; list of symbols, usually empty or the level name
    (sound-banks       pair      :offset-assert 24) ;; require sound bank files (list of symbols)
-   (music-bank        basic     :offset-assert 28) ;; name of level music
+   (music-bank        symbol     :offset-assert 28) ;; name of level music
    (ambient-sounds    pair      :offset-assert 32) ;; always empty list.
-   (mood              basic     :offset-assert 36) ;; mood object name
-   (mood-func         basic     :offset-assert 40) ;; mood update function name
-   (ocean             basic     :offset-assert 44) ;; ocean map object
-   (sky               basic     :offset-assert 48) ;; boolean to enable sky
+   (mood              symbol     :offset-assert 36) ;; mood object name
+   (mood-func         symbol     :offset-assert 40) ;; mood update function name
+   (ocean             symbol     :offset-assert 44) ;; ocean map object
+   (sky               symbol     :offset-assert 48) ;; boolean to enable sky
    (sun-fade          float     :offset-assert 52) ;; sun/sky setting
    (continues         pair      :offset-assert 56) ;; list of checkpoints
    (tasks             pair      :offset-assert 60) ;; list of boxed integers for tasks
@@ -65,7 +65,7 @@
    (run-packages      pair      :offset-assert 100) ;; possibly unused?
    (prev-level        basic     :offset-assert 104)
    (next-level        basic     :offset-assert 108)
-   (wait-for-load     basic     :offset-assert 112)
+   (wait-for-load     symbol     :offset-assert 112)
    )
   :method-count-assert 9
   :size-assert         #x74
@@ -84,19 +84,22 @@
   )
 
 (declare-type bsp-header basic)
-(declare-type art-group basic)
+(declare-type engine basic)
+(declare-type entity-links-array basic)
+(declare-type entity-ambient-data-array basic)
+(declare-type mood-context basic)
 ;; Per level-buffer info about the current loaded level.
 (deftype level (basic)
-  ((name                      basic           :offset-assert 4)
-   (load-name                 basic           :offset-assert 8)
-   (nickname                  basic           :offset-assert 12)
+  ((name                      symbol           :offset-assert 4)
+   (load-name                 symbol           :offset-assert 8)
+   (nickname                  symbol           :offset-assert 12)
    (index                     int32           :offset-assert 16)
-   (status                    basic           :offset-assert 20)
-   (other                     basic           :offset-assert 24)
+   (status                    symbol           :offset-assert 20)
+   (other                     level           :offset-assert 24)
    (heap                      kheap   :inline :offset-assert 32)
    (bsp                       bsp-header      :offset-assert 48)
-   (art-group                 art-group       :offset-assert 52)
-   (info                      basic           :offset-assert 56)
+   (art-group                 load-dir-art-group       :offset-assert 52)
+   (info                      level-load-info           :offset-assert 56)
    (texture-page              texture-page 9  :offset-assert 60)
    (loaded-texture-page       basic 16        :offset-assert 96)
    (loaded-texture-page-count int32           :offset-assert 160)
@@ -105,21 +108,21 @@
    ; (foreground-sink-group-2   dma-foreground-sink-group :inline :offset-assert 240)
    ; (array-pad uint8 12)
    (foreground-sink-group     dma-foreground-sink-group 3 :inline :offset-assert 176) ;; inline basic
-   (foreground-draw-engine    basic 3         :offset-assert 272)
-   (entity                    basic           :offset-assert 284)
-   (ambient                   basic           :offset-assert 288)
+   (foreground-draw-engine    engine 3         :offset-assert 272)
+   (entity                    entity-links-array           :offset-assert 284)
+   (ambient                   entity-ambient-data-array           :offset-assert 288)
    (closest-object            float 9         :offset-assert 292)
    (upload-size               int32 9         :offset-assert 328)
    (level-distance            float           :offset-assert 364) ; meters
-   (inside-sphere?            basic           :offset-assert 368)
-   (inside-boxes?             basic           :offset-assert 372)
-   (display?                  basic           :offset-assert 376)
-   (meta-inside?              basic           :offset-assert 380)
-   (mood                      basic           :offset-assert 384)
-   (mood-func                 basic           :offset-assert 388)
+   (inside-sphere?            symbol           :offset-assert 368)
+   (inside-boxes?             symbol           :offset-assert 372)
+   (display?                  symbol           :offset-assert 376)
+   (meta-inside?              symbol           :offset-assert 380)
+   (mood                      mood-context           :offset-assert 384)
+   (mood-func                 function           :offset-assert 388)
    (vis-bits                  uint32          :offset-assert 392)
-   (all-visible?              basic           :offset-assert 396)
-   (force-all-visible?        basic           :offset-assert 400)
+   (all-visible?              symbol           :offset-assert 396)
+   (force-all-visible?        symbol           :offset-assert 400)
    (linking                   basic           :offset-assert 404)
    (vis-info                  level-vis-info 8       :offset-assert 408)
    (vis-self-index            int32           :offset-assert 440)
@@ -130,7 +133,7 @@
    (code-memory-start         uint32          :offset-assert 2504)
    (code-memory-end           uint32          :offset-assert 2508)
    (texture-mask              uint32 9        :offset-assert 2512)
-   (force-inside?             basic           :offset-assert 2548)
+   (force-inside?             symbol           :offset-assert 2548)
    (pad                       uint8 56)
    )
   :method-count-assert 29
@@ -151,7 +154,7 @@
     (dummy-20 () none 20)
     (dummy-21 () none 21)
     (dummy-22 () none 22)
-    (dummy-23 () none 23)
+    (dummy-23 (_type_ symbol) none 23)
     (dummy-24 () none 24)
     (dummy-25 () none 25)
     (dummy-26 () none 26)
@@ -192,17 +195,17 @@
   :size-assert         #x1ef4
   :flag-assert         #x1b00001ef4
   (:methods
-    (dummy-9 () none 9)
-    (dummy-10 () none 10)
-    (dummy-11 () none 11)
-    (dummy-12 () none 12)
+    (dummy-9 (_type_ symbol) level 9)
+    (dummy-10 (_type_ symbol) symbol 10)
+    (dummy-11 (_type_ symbol symbol) _type_ 11)
+    (dummy-12 (_type_) none 12)
     (dummy-13 () none 13)
     (dummy-14 () none 14)
     (dummy-15 () none 15)
     (dummy-16 () none 16)
-    (dummy-17 () none 17)
-    (dummy-18 () none 18)
-    (dummy-19 () none 19)
+    (dummy-17 (_type_) none 17)
+    (dummy-18 (_type_ symbol) none 18)
+    (dummy-19 (_type_ pair) none 19)
     (dummy-20 () none 20)
     (dummy-21 () none 21)
     (dummy-22 () none 22)
