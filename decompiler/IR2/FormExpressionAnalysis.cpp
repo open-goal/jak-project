@@ -2059,7 +2059,12 @@ void FunctionCallElement::update_from_stack(const Env& env,
               "type. Got {} instead.",
               tp_type.print()));
         }
+      }
 
+      auto type_source_form = match_result.maps.forms.at(type_source);
+
+      // if the type is the exact type of the argument, we want to build it into a method call
+      if (type_source_form->to_string(env) == first_arg_type.base_type() && name != "new") {
         if (env.dts->ts.should_use_virtual_methods(tp_type.method_from_type(),
                                                    tp_type.method_id())) {
           throw std::runtime_error(fmt::format(
@@ -2067,12 +2072,6 @@ void FunctionCallElement::update_from_stack(const Env& env,
               ":final in the deftype to disable virtual method calls",
               tp_type.method_from_type().print(), tp_type.method_id()));
         }
-      }
-
-      auto type_source_form = match_result.maps.forms.at(type_source);
-
-      // if the type is the exact type of the argument, we want to build it into a method call
-      if (type_source_form->to_string(env) == first_arg_type.base_type() && name != "new") {
         auto method_op = pool.alloc_single_element_form<ConstantTokenElement>(nullptr, name);
         auto gop = GenericOperator::make_function(method_op);
 
