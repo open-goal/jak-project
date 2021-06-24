@@ -400,8 +400,13 @@ int DecompilerTypeSystem::get_format_arg_count(const std::string& str) const {
         continue;
       }
 
-      // ~3L, ~0L do'nt seem to take arguments either.
+      // ~3L, ~0L don't seem to take arguments either.
       if (i + 1 < str.length() && (str.at(i) == '0' || str.at(i) == '3') && str.at(i + 1) == 'L') {
+        continue;
+      }
+
+      // ~1K
+      if (i + 1 < str.length() && (str.at(i) == '1') && str.at(i + 1) == 'K') {
         continue;
       }
       arg_count++;
