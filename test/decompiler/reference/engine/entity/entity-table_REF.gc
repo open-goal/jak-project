@@ -152,26 +152,31 @@
   )
 
 ;; definition for function entity-info-lookup
-(defun entity-info-lookup ((arg0 entity-actor))
-  (cond
-   ((nonzero? (-> arg0 quat z))
-    (-> arg0 quat z)
-    )
-   (else
-    (let ((v1-1 *entity-info*))
-     (dotimes (a1-0 (-> v1-1 length))
-      (if (= arg0 (-> v1-1 a1-0 ptype))
-       (return (begin
-                (set! (-> arg0 quat z) (the-as float (-> v1-1 a1-0)))
-                (-> v1-1 a1-0)
-                )
-        )
-       )
-      )
-     )
-    (set! (-> arg0 quat z) (the-as float #f))
-    #f
-    )
+;; INFO: Return type mismatch basic vs entity-info.
+(defun entity-info-lookup ((arg0 type))
+  (the-as entity-info (cond
+                       ((nonzero? (-> arg0 method-table 13))
+                        (-> arg0 method-table 13)
+                        )
+                       (else
+                        (let ((v1-1 *entity-info*))
+                         (dotimes (a1-0 (-> v1-1 length))
+                          (if (= arg0 (-> v1-1 a1-0 ptype))
+                           (return (begin
+                                    (set!
+                                     (-> arg0 method-table 13)
+                                     (the-as function (-> v1-1 a1-0))
+                                     )
+                                    (-> v1-1 a1-0)
+                                    )
+                            )
+                           )
+                          )
+                         )
+                        (set! (-> arg0 method-table 13) #f)
+                        #f
+                        )
+                       )
    )
   )
 
