@@ -1846,7 +1846,8 @@ void FunctionCallElement::update_from_stack(const Env& env,
     function_type = tp_type.typespec();
   }
 
-  bool swap_function = tp_type.kind == TP_Type::Kind::NON_VIRTUAL_METHOD && true;
+  bool swap_function =
+      tp_type.kind == TP_Type::Kind::NON_VIRTUAL_METHOD && all_pop_vars.size() >= 2;
   if (tp_type.kind == TP_Type::Kind::NON_VIRTUAL_METHOD) {
     // this is a hack to make some weird macro for calling res-lump methods work
     if (env.dts->ts.tc(TypeSpec("res-lump"), tp_type.method_from_type())) {

@@ -78,6 +78,8 @@ struct StackInstrInfo {
 constexpr StackInstrInfo stack_instrs[] = {{InstructionKind::SQ, false, 16, false},
                                            {InstructionKind::LQ, true, 16, false},
                                            {InstructionKind::SW, false, 4, false},
+                                           {InstructionKind::SB, false, 1, false},
+                                           {InstructionKind::LBU, true, 1, false},
                                            //{InstructionKind::LWU, true, 4, false}
                                            {InstructionKind::SD, false, 8, false},
                                            {InstructionKind::SWC1, false, 4, false},

@@ -912,7 +912,7 @@ bool ControlFlowGraph::find_goto_not_end() {
   return replaced;
 }
 
-bool ControlFlowGraph::is_sequence(CfgVtx* b0, CfgVtx* b1) {
+bool ControlFlowGraph::is_sequence(CfgVtx* b0, CfgVtx* b1, bool allow_self_loops) {
   if (!b0 || !b1)
     return false;
 
@@ -939,40 +939,49 @@ bool ControlFlowGraph::is_sequence(CfgVtx* b0, CfgVtx* b1) {
     return false;
   if (!b1->has_pred(b0))
     return false;
-  if (b1->succ_branch == b0)
+
+  if (!allow_self_loops && b1->succ_branch == b0)
     return false;
+
   return true;
 }
 
-bool ControlFlowGraph::is_sequence_of_non_sequences(CfgVtx* b0, CfgVtx* b1) {
+bool ControlFlowGraph::is_sequence_of_non_sequences(CfgVtx* b0, CfgVtx* b1, bool allow_self_loops) {
   if (!b0 || !b1)
     return false;
   if (dynamic_cast<SequenceVtx*>(b0) || dynamic_cast<SequenceVtx*>(b1))
     return false;
-  return is_sequence(b0, b1);
+
+  return is_sequence(b0, b1, allow_self_loops);
 }
 
-bool ControlFlowGraph::is_sequence_of_sequence_and_non_sequence(CfgVtx* b0, CfgVtx* b1) {
+bool ControlFlowGraph::is_sequence_of_sequence_and_non_sequence(CfgVtx* b0,
+                                                                CfgVtx* b1,
+                                                                bool allow_self_loops) {
   if (!b0 || !b1)
     return false;
   if (!dynamic_cast<SequenceVtx*>(b0))
     return false;
   if (dynamic_cast<SequenceVtx*>(b1))
     return false;
-  return is_sequence(b0, b1);
+  return is_sequence(b0, b1, allow_self_loops);
 }
 
-bool ControlFlowGraph::is_sequence_of_sequence_and_sequence(CfgVtx* b0, CfgVtx* b1) {
+bool ControlFlowGraph::is_sequence_of_sequence_and_sequence(CfgVtx* b0,
+                                                            CfgVtx* b1,
+                                                            bool allow_self_loops) {
   if (!b0 || !b1)
     return false;
   if (!dynamic_cast<SequenceVtx*>(b0))
     return false;
   if (!dynamic_cast<SequenceVtx*>(b1))
     return false;
-  return is_sequence(b0, b1);
+  return is_sequence(b0, b1, allow_self_loops);
 }
 
-bool ControlFlowGraph::is_sequence_of_non_sequence_and_sequence(CfgVtx* b0, CfgVtx* b1) {
+bool ControlFlowGraph::is_sequence_of_non_sequence_and_sequence(CfgVtx* b0,
+                                                                CfgVtx* b1,
+                                                                bool allow_self_loops) {
   if (!b0 || !b1) {
     return false;
   }
@@ -981,7 +990,7 @@ bool ControlFlowGraph::is_sequence_of_non_sequence_and_sequence(CfgVtx* b0, CfgV
     return false;
   if (!dynamic_cast<SequenceVtx*>(b1))
     return false;
-  return is_sequence(b0, b1);
+  return is_sequence(b0, b1, allow_self_loops);
 }
 
 /*!
@@ -989,13 +998,13 @@ bool ControlFlowGraph::is_sequence_of_non_sequence_and_sequence(CfgVtx* b0, CfgV
  * To generate more readable debug output, we should aim to run this as infrequent and as
  * late as possible, to avoid condition vertices with tons of extra junk packed in.
  */
-bool ControlFlowGraph::find_seq_top_level() {
+bool ControlFlowGraph::find_seq_top_level(bool allow_self_loops) {
   bool replaced = false;
   for_each_top_level_vtx([&](CfgVtx* vtx) {
     auto* b0 = vtx;
     auto* b1 = vtx->next;
 
-    if (is_sequence_of_non_sequences(b0, b1)) {  // todo, avoid nesting sequences.
+    if (is_sequence_of_non_sequences(b0, b1, allow_self_loops)) {  // todo, avoid nesting sequences.
       replaced = true;
 
       auto* new_seq = alloc<SequenceVtx>();
@@ -1028,7 +1037,7 @@ bool ControlFlowGraph::find_seq_top_level() {
       return false;
     }
 
-    if (is_sequence_of_sequence_and_non_sequence(b0, b1)) {
+    if (is_sequence_of_sequence_and_non_sequence(b0, b1, allow_self_loops)) {
       //      printf("make seq type 2 %s %s\n", b0->to_string().c_str(), b1->to_string().c_str());
       replaced = true;
       auto* seq = dynamic_cast<SequenceVtx*>(b0);
@@ -1051,7 +1060,7 @@ bool ControlFlowGraph::find_seq_top_level() {
       return false;
     }
 
-    if (is_sequence_of_non_sequence_and_sequence(b0, b1)) {
+    if (is_sequence_of_non_sequence_and_sequence(b0, b1, allow_self_loops)) {
       replaced = true;
       auto* seq = dynamic_cast<SequenceVtx*>(b1);
       assert(seq);
@@ -1070,7 +1079,7 @@ bool ControlFlowGraph::find_seq_top_level() {
       return false;
     }
 
-    if (is_sequence_of_sequence_and_sequence(b0, b1)) {
+    if (is_sequence_of_sequence_and_sequence(b0, b1, allow_self_loops)) {
       //      printf("make seq type 3 %s %s\n", b0->to_string().c_str(), b1->to_string().c_str());
       replaced = true;
       auto* seq = dynamic_cast<SequenceVtx*>(b0);
@@ -2134,7 +2143,7 @@ std::shared_ptr<ControlFlowGraph> build_cfg(const LinkedObjectFile& file,
     changed = changed || cfg->find_cond_w_else(cond_with_else_hack);
 
     changed = changed || cfg->find_while_loop_top_level();
-    changed = changed || cfg->find_seq_top_level();
+    changed = changed || cfg->find_seq_top_level(false);
     changed = changed || cfg->find_short_circuits();
     changed = changed || cfg->find_cond_n_else();
 
@@ -2144,6 +2153,10 @@ std::shared_ptr<ControlFlowGraph> build_cfg(const LinkedObjectFile& file,
       changed = changed || cfg->find_until1_loop();
       changed = changed || cfg->find_infinite_loop();
     };
+
+    if (!changed) {
+      changed = changed || cfg->find_seq_top_level(true);
+    }
 
     if (!changed) {
       changed = changed || cfg->find_goto_not_end();
