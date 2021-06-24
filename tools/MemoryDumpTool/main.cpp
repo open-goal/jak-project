@@ -252,80 +252,29 @@ void inspect_basics(const Ram& ram,
         int array_max_elts = 0;
 
         for (auto base_addr : basics.at(name)) {
-          if (goal_array) {
-            int field_addr = base_addr + field.offset();
+          for (int elt_idx = 0; elt_idx < array_size; elt_idx++) {
+            int field_addr = base_addr + field.offset() + 4 * elt_idx;
             if (ram.word_in_memory(field_addr)) {
-              auto array_addr = ram.word(field_addr);
-              int array_length = ram.word(array_addr + 0);
-              if (array_length > array_max_elts)
-                array_max_elts = array_length;
-              for (int arr_elt_idx = 0; arr_elt_idx < array_length; ++arr_elt_idx) {
-                std::string arr_elt_str = fmt::format("{}", arr_elt_idx);
-                nlohmann::json arr_elt_results;
-                if (field_results.contains(arr_elt_str)) {
-                  arr_elt_results = field_results.at(arr_elt_str);
+              auto field_val = ram.word(field_addr);
+              auto array_addr = field_val;
+              int goal_array_length = 1;
+              if (goal_array) {
+                if (ram.word_in_memory(field_val)) {
+                  goal_array_length = ram.word(field_val);
                 } else {
-                  arr_elt_results = {};
+                  array_addr = 0xBAADBEEF;
                 }
-
-                std::unordered_map<std::string, int> elt_type_frequency;
-
-                if (ram.word_in_memory(array_addr + 12 + 4 * arr_elt_idx)) {
-                  auto arr_elt_val = ram.word(array_addr + 12 + 4 * arr_elt_idx);
-                  if ((arr_elt_val & 0x7) == 4 && ram.word_in_memory(arr_elt_val - 4)) {
-                    auto type_tag = ram.word(arr_elt_val - 4);
-                    auto iter = types.find(type_tag);
-                    if (iter != types.end()) {
-                      if (iter->second == "symbol") {
-                        auto sym_iter = symbols.addr_to_name.find(arr_elt_val);
-                        if (sym_iter != symbols.addr_to_name.end()) {
-                          elt_type_frequency[fmt::format("(symbol {})", sym_iter->second)]++;
-                        } else {
-                          elt_type_frequency[iter->second]++;
-                        }
-                      } else {
-                        elt_type_frequency[iter->second]++;
-                      }
-                    } else {
-                      elt_type_frequency["_bad-type"]++;
-                    }
-                  } else if (arr_elt_val == 0) {
-                    elt_type_frequency["0"]++;
-                  } else {
-                    elt_type_frequency["_not-basic-ptr"]++;
-                  }
-                } else {
-                  elt_type_frequency["_bad-field-memory"]++;
-                }
-
-                std::vector<std::string> sorted_elt_types;
-                for (const auto& x : elt_type_frequency) {
-                  sorted_elt_types.push_back(x.first);
-                }
-                std::sort(sorted_elt_types.begin(), sorted_elt_types.end(),
-                          [&](const auto& a, const auto& b) {
-                            return elt_type_frequency.at(a) > elt_type_frequency.at(b);
-                          });
-
-                for (const auto& field_type : sorted_elt_types) {
-                  int freq = elt_type_frequency.at(field_type);
-                  if (arr_elt_results.contains(field_type)) {
-                    arr_elt_results[field_type] = arr_elt_results[field_type].get<int>() + freq;
-                  } else {
-                    arr_elt_results[field_type] = freq;
-                  }
-                  fmt::print("     {}: [{}] {}\n", arr_elt_str, elt_type_frequency.at(field_type),
-                             field_type);
-                }
-
-                field_results[arr_elt_str] = arr_elt_results;
               }
-            }
-          } else {
-            for (int elt_idx = 0; elt_idx < array_size; elt_idx++) {
-              int field_addr = base_addr + field.offset() + 4 * elt_idx;
-              if (ram.word_in_memory(field_addr)) {
-                auto field_val = ram.word(field_addr);
+              for (int arr_idx = 0; arr_idx < goal_array_length; ++arr_idx) {
+                if (goal_array) {
+                  field_val = array_addr + 12 + arr_idx * 4;
+                  if (ram.word_in_memory(field_val)) {
+                    field_val = ram.word(field_val);
+                  } else {
+                    field_val = 0xBAADBEEF;
+                  }
+                }
+
                 if ((field_val & 0x7) == 4 && ram.word_in_memory(field_val - 4)) {
                   auto type_tag = ram.word(field_val - 4);
                   auto iter = types.find(type_tag);
@@ -348,9 +297,12 @@ void inspect_basics(const Ram& ram,
                 } else {
                   type_frequency["_not-basic-ptr"]++;
                 }
-              } else {
-                type_frequency["_bad-field-memory"]++;
+
+                if (!goal_array)
+                  break;
               }
+            } else {
+              type_frequency["_bad-field-memory"]++;
             }
           }
         }
