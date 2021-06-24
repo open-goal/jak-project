@@ -322,7 +322,7 @@ class ControlFlowGraph {
   bool find_cond_n_else();
 
   //  bool find_if_else_top_level();
-  bool find_seq_top_level();
+  bool find_seq_top_level(bool allow_self_loops);
   bool find_while_loop_top_level();
   bool find_until_loop();
   bool find_until1_loop();
@@ -363,11 +363,11 @@ class ControlFlowGraph {
  private:
   //  bool compact_one_in_top_level();
   //  bool is_if_else(CfgVtx* b0, CfgVtx* b1, CfgVtx* b2, CfgVtx* b3);
-  bool is_sequence(CfgVtx* b0, CfgVtx* b1);
-  bool is_sequence_of_non_sequences(CfgVtx* b0, CfgVtx* b1);
-  bool is_sequence_of_sequence_and_non_sequence(CfgVtx* b0, CfgVtx* b1);
-  bool is_sequence_of_sequence_and_sequence(CfgVtx* b0, CfgVtx* b1);
-  bool is_sequence_of_non_sequence_and_sequence(CfgVtx* b0, CfgVtx* b1);
+  bool is_sequence(CfgVtx* b0, CfgVtx* b1, bool allow_self_loops);
+  bool is_sequence_of_non_sequences(CfgVtx* b0, CfgVtx* b1, bool allow_self_loops);
+  bool is_sequence_of_sequence_and_non_sequence(CfgVtx* b0, CfgVtx* b1, bool allow_self_loops);
+  bool is_sequence_of_sequence_and_sequence(CfgVtx* b0, CfgVtx* b1, bool allow_self_loops);
+  bool is_sequence_of_non_sequence_and_sequence(CfgVtx* b0, CfgVtx* b1, bool allow_self_loops);
   bool is_while_loop(CfgVtx* b0, CfgVtx* b1, CfgVtx* b2);
   bool is_until_loop(CfgVtx* b1, CfgVtx* b2);
   bool is_goto_end_and_unreachable(CfgVtx* b0, CfgVtx* b1);

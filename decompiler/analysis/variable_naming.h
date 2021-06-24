@@ -81,9 +81,10 @@ class VarMapSSA {
  private:
   int get_next_var_id(Register reg);
 
+  // var id's are per register.
   struct Entry {
-    int var_id = -1;
-    int entry_id = -1;
+    int var_id = -1;    // our ID as a program variable (used for output)
+    int entry_id = -1;  // our index in the entry list (used for remapping)
     Register reg;
   };
 
@@ -142,7 +143,7 @@ struct SSA {
 
   bool simplify();
   void merge_all_phis();
-  void remap();
+  void remap(int nargs);
   void make_vars(const Function& function, const DecompilerTypeSystem& dts);
   std::unordered_map<RegId, UseDefInfo, RegId::hash> get_use_def_info(
       const RegAccessMap<int>& ssa_info) const;
