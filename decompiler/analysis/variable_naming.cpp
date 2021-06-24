@@ -571,7 +571,7 @@ void SSA::merge_all_phis() {
  * Remaps all SSA variable ids to final variable IDs.
  * This forces you to have all positive, consecutive IDs, with 0 being the entry value.
  */
-void SSA::remap(int nargs) {
+void SSA::remap(int) {
   // this keeps the order of variable assignments in the instruction order, not var_id order.
   struct VarIdRecord {
     std::unordered_set<int> set;
@@ -909,9 +909,6 @@ std::optional<VariableNames> run_variable_renaming(const Function& function,
                                                    const FunctionAtomicOps& ops,
                                                    const DecompilerTypeSystem& dts,
                                                    bool debug_prints) {
-  if (function.guessed_name.to_string() == "test-function") {
-    //debug_prints = true;
-  }
   if (debug_prints) {
     std::string debug_in;
     for (int block_id = 0; block_id < rui.block_count(); block_id++) {
