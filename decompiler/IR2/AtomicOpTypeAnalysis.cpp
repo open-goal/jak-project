@@ -454,7 +454,8 @@ TP_Type SimpleExpression::get_type_int2(const TypeState& input,
   }
 
   // special cases for non-integers
-  if ((arg0_type.typespec() == TypeSpec("object") || arg0_type.typespec() == TypeSpec("pair")) &&
+  if ((arg0_type.typespec() == TypeSpec("object") || arg0_type.typespec() == TypeSpec("pair") ||
+       tc(dts, TypeSpec("basic"), arg0_type)) &&
       (arg1_type.is_integer_constant(62) || arg1_type.is_integer_constant(61))) {
     // boxed object tag trick.
     return TP_Type::make_from_ts("int");
