@@ -22,7 +22,8 @@ template <typename... Args>
     fmt::print(fg(fmt::color::yellow), str + '\n', std::forward<Args>(args)...);
   }
 
-  throw std::runtime_error("Type Error");
+  throw std::runtime_error(
+      fmt::format("Type Error: {}", fmt::format(str, std::forward<Args>(args)...)));
 }
 }  // namespace
 
