@@ -166,3 +166,5 @@
 - The `declare-type` form now supports any parent type. The type system will do a better job of trying to make things work out when only part of the type hierarchy is defined, and you can now chain type forward declarations. The compiler is stricter and will not accept forward declarations that are possibly incompatible. Instead, forward declare enough types and their parents for the compiler to be able to figure it out.  
 - The `deftype` form is more strict and will throw an error if the type definition is in any way incompatible with existing forward declarations of types.
 - Added a `type-ref` form to insert a reference to a type into a static structure and optionally forward declare the number of methods
+- The `method-of-type` form will now accept an expression returning a type instead of just a type name.  In this case, it will only allow you to access method of `object`.
+- Added a `defun-recursive` to make it easier to define recursive functions
