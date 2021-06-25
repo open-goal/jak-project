@@ -6,26 +6,22 @@
 ;; dgos: KERNEL
 
 ;; gcommon is the first file compiled and loaded.
-;; it's expected that this function will mostly be hand-decompiled
+;; it implements some features of built-in types
+;; and language constants
 
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;; Game constants
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-;; CONSTANTS
-(defconstant NEW_METHOD_ID 0)
-(defconstant DELETE_METHOD_ID 1)
-(defconstant PRINT_METHOD_ID 2)
-(defconstant INSPECT_METHOD_ID 3)
-(defconstant LENGTH_METHOD_ID 4)
-(defconstant ASIZE_METHOD_ID 5)
-(defconstant COPY_METHOD_ID 6)
-(defconstant RELOC_METHOD_ID 7) ;; or login?
-(defconstant MEM_USAGE_METHOD_ID 8)
-
+;; disable PS2 only code and enable PC-specific code
 (defglobalconstant PC_PORT #t)
+
+;; redirects access to EE memory mapped registers through get-vm-ptr to valid addresses that
+;; are monitored in the runtime for debugging.
 (defglobalconstant USE_VM #t)
 
 (defmacro get-vm-ptr (ptr)
   "Turn an EE register address into a valid PS2 VM address"
-
   `(#cond
      (USE_VM
       (vm-ptr ,ptr)
@@ -36,6 +32,21 @@
      )
   )
 
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;; GOAL language constants
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+;; GOAL built-in method IDs
+(defconstant NEW_METHOD_ID 0)
+(defconstant DELETE_METHOD_ID 1)
+(defconstant PRINT_METHOD_ID 2)
+(defconstant INSPECT_METHOD_ID 3)
+(defconstant LENGTH_METHOD_ID 4)
+(defconstant ASIZE_METHOD_ID 5)
+(defconstant COPY_METHOD_ID 6)
+(defconstant RELOC_METHOD_ID 7) ;; or login?
+(defconstant MEM_USAGE_METHOD_ID 8)
+
 ;; distance from a symbol pointer to a (pointer string)
 ;; this relies on the memory layout of the symbol table
 ;; this must match SYM_INFO_OFFSET in goal_constants.h + offset of the str field in struct SymUpper.
@@ -44,33 +55,42 @@
 ;; pointers larger than this are invalid by valid?
 (defconstant END_OF_MEMORY #x8000000)
 
-;; boxed object offset (16-byte alignement offsets)
+;; GOAL boxed offsets use the lower three bits to indicate if they are
+;; an integer (binteger), a pair, or a strucutre with type info (basic)
 (defconstant BINTEGER_OFFSET 0)
 (defconstant PAIR_OFFSET 2)
 (defconstant BASIC_OFFSET 4)
+
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;; GOAL language macros
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 (defmacro symbol->string (sym)
   "Convert a symbol to a goal string."
   `(-> (the-as (pointer string) (+ SYM_TO_STRING_OFFSET (the-as int ,sym))))
   )
 
-;; forward declarations.
-(define-extern name= (function basic basic symbol))
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;; Function versions of built-in forms
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+;; basic operations like +, - are handled by the compiler.
+;; these provide actual functions that wrap these common operations.
 
 (defun identity ((x object))
-  "Function which returns its input. The first function of the game!"
+  "Function which returns its input. The first function of the game!
+   This will not preserve the upper 64-bits of a 128-bit value."
   x
   )
 
 (defun 1/ ((x float))
   "Reciprocal floating point"
-  ;; likely inlined? nothing calls this.
   (declare (inline))
   (/ 1. x)
   )
 
-;; these next 4 functions are just function wrappers around the build in add/subtract/multiply/divide.
-;; this will let you use + as an operation on integers and also as a function pointer.
 (defun + ((x int) (y int))
   "Compute the sum of two integers"
   (+ x y)
@@ -196,6 +216,10 @@
   '#t
   )
 
+;;;;;;;;;;;;;;;;;;;;;;;;;;
+;; format
+;;;;;;;;;;;;;;;;;;;;;;;;;;
+
 ;; The C Kernel implements the format function and creates a trampoline function in the GOAL heap which jumps to
 ;; format.  (In OpenGOAL, there's actually two trampoline functions, to make the 8 arguments all work.)
 ;; For some reason, the C Kernel names this trampoline function _format. We need to set the value of format
@@ -205,8 +229,12 @@
 ;; or 128-bit arguments (unimplemented in C Kernel), but both of these were never finished.
 (define format _format)
 
-;; vec4s - this is present in the game as a 128-bit integer with 4 packed floats.
-;; this isn't used very much.
+;;;;;;;;;;;;;;;;;;;;;;;;;;
+;; numeric types
+;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+;; vec4s packs 4 floats into a single 128-bit integer register.
+;; This is not used very often.
 (deftype vec4s (uint128)
   ((x float :offset 0)
    (y float :offset 32)
@@ -244,6 +272,17 @@
      )
   )
 
+(defmacro make-u128 (upper lower)
+  "Make a i128 from two 64-bit values."
+  `(rlet ((result :class i128)
+          (upper-xmm :class i128)
+          (lower-xmm :class i128))
+     (.mov upper-xmm ,upper)
+     (.mov lower-xmm ,lower)
+     (.pcpyld result upper-xmm lower-xmm)
+     (the-as uint result)
+     )
+  )
 ;; A "boxed float" type. Simply a float with type information.
 (deftype bfloat (basic)
   ((data float :offset-assert 4))
@@ -272,100 +311,99 @@
   (align16 (+ 28 (* 4 (-> type allocated-length))))
   )
 
-
-
 (defun basic-type? ((obj basic) (parent-type type))
   "Is obj of type parent-type?
   Note: this will return #f if you put a parent-type of object.
   Only use this with types that are fully defined."
-  (local-vars (obj-type type) (end-type type))
-
-  ;; note - this was likely a "do" loop.
-  (set! obj-type (-> obj type))
-  (set! end-type object)
-  (until (begin
-          (set! obj-type (-> obj-type parent))
-          (= obj-type end-type)
-          )
-    (if (= obj-type parent-type)
-        (return '#t)
+  (let ((obj-type (-> obj type))
+        (end-type object)
         )
+    (until (begin
+            (set! obj-type (-> obj-type parent))
+            (= obj-type end-type)
+            )
+      (if (= obj-type parent-type)
+          (return #t)
+          )
+      )
     )
-  '#f
+  #f
   )
 
 (defun type-type? ((child-type type) (parent-type type))
   "Is child-type a child (or equal to) parent-type?
   It is safe to use this on a type that is not fully set up,
   but in this case it will return #f."
-  (local-vars (end-type type))
-  (set! end-type object)
-  (until (begin
-          (set! child-type (-> child-type parent))
-          (or (= child-type end-type) (zero? child-type))
+  (let ((end-type object))
+    (until (begin
+            (set! child-type (-> child-type parent))
+            (or (= child-type end-type) (zero? child-type))
+            )
+      (if (= child-type parent-type)
+          (return #t)
           )
-    (if (= child-type parent-type)
-        (return '#t)
-        )
+      )
     )
-  '#f
+  #f
   )
-
 
 (defun find-parent-method ((child-type type) (method-id int))
   "Search the type tree for a parent type with a different method
   from the child, for the given method ID.
   DANGER: only call this if you expect to find something.
-  There are method-table range checks, so it may run off the end
+  There are no method-table range checks, so it may run off the end
   of a method table and return junk"
-  (local-vars
-   (current-method function)
-   (original-method function)
-   )
-  (set! original-method (-> child-type method-table method-id))
-  (until (!= current-method original-method)
-    (if (= child-type object)
-        (return nothing)
-        )
-    (set! child-type (-> child-type parent))
-    (set! current-method (-> child-type method-table method-id))
-    (if (zero? current-method)
-        (return nothing)
-        )
+  (local-vars (current-method function))
+  (let ((original-method (-> child-type method-table method-id)))
+    (until (!= current-method original-method)
+      (if (= child-type object)
+          (return nothing)
+          )
+      (set! child-type (-> child-type parent))
+      (set! current-method (-> child-type method-table method-id))
+      (if (zero? current-method)
+          (return nothing)
+          )
+      )
     )
   current-method
   )
 
+(defmacro as-type (obj type)
+  "Macro to _safely_ convert to a different type, returning #f if the type doesn't match.
+   Does a runtime type check so it's expensive."
+  `(if (and (nonzero? ,obj) (type-type? (-> ,obj type) ,type))
+       (the-as ,type ,obj)
+       )
+  )
+;;;;;;;;;;;;;;;;;;;;;;;;;;
+;; pairs, lists, etc
+;;;;;;;;;;;;;;;;;;;;;;;;;;
+
 (defun ref ((lst object) (index int))
   "Get an entry in a proper list by index"
-  (let ((count 0))
-    (while (< count index)
-      ;; inserted by GOAL compiler for EE loop bug (short loop)
-      (nop!)
-      (nop!)
-      (set! lst (cdr lst))
-      (set! count (+ count 1))
-      )
-    (car lst)
+  (dotimes (count index)
+    (nop!)
+    (nop!)
+    (set! lst (cdr lst))
     )
+  (car lst)
   )
 
 (defmethod length pair ((obj pair))
   "Get the length of a proper list"
-  (local-vars (result int) (iter object))
+  (local-vars (result int))
   (cond
-    ((= obj '())
-     ;; length of empty list is 0
+    ((null? obj)
      (set! result 0)
      )
     (else
-     (set! iter (cdr obj))
-     (set! result 1)
-     (while (and (!= iter '())
-                 (pair? iter) ;; manually replaced.
-                 )
-       (set! result (+ result 1))
-       (set! iter (cdr iter))
+     (let ((iter (cdr obj)))
+       (set! result 1)
+       (while (and (not (null? iter)) (pair? iter))
+         (+! result 1)
+         (set! iter (cdr iter))
+         )
        )
      )
     )
@@ -382,43 +420,34 @@
 
 (defun last ((lst object))
   "Get the last element in a proper list"
-  (local-vars (iter object))
-  (set! iter lst)
-  (while (!= (cdr iter) '())
-    ;; for EE loop bug.
-    (nop!)
-    (nop!)
-    (set! iter (cdr iter))
+  (let ((iter lst))
+    (while (not (null? (cdr iter)))
+      (nop!)
+      (nop!)
+      (set! iter (cdr iter))
+      )
+    iter
     )
-  iter
   )
 
 (defun member ((obj object) (lst object))
   "Is obj in the list lst? Returns pair with obj as its car, or #f if not found."
-  (local-vars (iter object))
-  (set! iter lst)
-  ;; loop until we reach the end or the object
-  (while (not (or (= iter '())
-                  (= (car iter) obj)
-                  )
-              )
-    (set! iter (cdr iter))
-    )
-
-  (if (!= iter '())
-      ;; return the pair containing obj as its car.
-      iter
-      ;; #f is returned in the other case.
+  (let ((iter lst))
+    (while (not (or (null? iter) (= (car iter) obj)))
+      (set! iter (cdr iter))
       )
+    (if (not (null? iter))
+        iter
+        )
+    )
   )
 
+;; need to forward declare this, we haven't loaded the string library yet.
+(define-extern name= (function basic basic symbol))
 
 (defun nmember ((obj basic) (lst object))
   "Is obj in the list lst? Check with the name= function."
-  (while (not (or (= lst '())
-                  (name= (the-as basic (car lst)) obj)
-                  )
-              )
+  (while (not (or (= lst '()) (name= (the-as basic (car lst)) obj)))
     (set! lst (cdr lst))
     )
   (if (!= lst '())
@@ -429,17 +458,14 @@
 (defun assoc ((item object) (alist object))
   "Is item in the association list alist?
    Returns the key-value pair."
-  (local-vars (iter object))
-  (set! iter alist)
-  (while (not (or (= iter '())
-                  (= (car (car iter)) item)
-                  )
-              )
-    (set! iter (cdr iter))
-    )
-  (if (!= iter '())
-      (car iter)
+  (let ((iter alist))
+    (while (not (or (null? iter) (= (car (car iter)) item)))
+      (set! iter (cdr iter))
       )
+    (if (not (null? iter))
+        (car iter)
+        )
+    )
   )
 
 
@@ -447,41 +473,34 @@
   "Is there an entry with key item in the association list alist?
    Returns the key-value pair.
    Treats a key of 'else like an else case"
-  (local-vars (iter object))
-  (set! iter alist)
-  (while (not (or (= iter '())
-                  (= (car (car iter)) item)
-                  (= (car (car iter)) 'else)
-                  )
-              )
-    (set! iter (cdr iter))
-    )
-  (if (!= iter '())
-      (car iter)
+  (let ((iter alist))
+    (while (not (or (null? iter)
+                    (= (car (car iter)) item)
+                    (= (car (car iter)) 'else)))
+      (set! iter (cdr iter))
       )
+    (if (not (null? iter))
+        (car iter)
+        )
+    )
   )
 
 (defun nassoc ((item-name string) (alist object))
   "Is there an entry named item-name in the association list alist? 
    Checks name with nmember or name= so you can have multiple keys.
    Returns the ([key|(key..)] . value) pair."
-  (local-vars (key object))
-  (while (not (or
-               (= alist '())
-               (begin
-                (set! key (car (car alist)))
-                (if (pair? key)
-                    ;; multiple keys
-                    (nmember item-name key)
-                    ;; only one key
-                    (name= (the-as basic key) item-name)
+  (while (not (or (null? alist)
+                  (let ((key (car (car alist))))
+                    (if (pair? key)
+                        (nmember item-name key)
+                        (name= (the-as basic key) item-name)
+                        )
                     )
-                )
-               )
+                  )
               )
     (set! alist (cdr alist))
     )
-  (if (!= alist '())
+  (if (not (null? alist))
       (car alist)
       )
   )
@@ -490,49 +509,42 @@
   "Is there an entry named item-name in the association list alist?
    Checks name with nmember for multiple keys or name= for single.
    Allows else as a single key that always matches"
-  (local-vars (key object))
-  (while (not (or
-               (= alist '())
-               (begin
-                (set! key (car (car alist)))
-                (if (pair? key)
-                    ;; multiple keys      
-                    (nmember item-name key)
-                    ;; single key, try match or accept else.
-                    (or (name= (the-as basic key) item-name)
-                        (= key 'else)
+  (while (not (or (null? alist)
+                  (let ((key (car (car alist))))
+                    (if (pair? key)
+                        (nmember item-name key)
+                        (or
+                         (name= (the-as basic key) item-name)
+                         (= key 'else)
+                         )
                         )
                     )
-                )
-               )
+                  )
               )
     (set! alist (cdr alist))
     )
-  (if (!= alist '())
+  (if (not (null? alist))
       (car alist)
       )
   )
 
 (defun append! ((front object) (back object))
-  (local-vars (iter object))
+  "Append back to front, return the combined list."
   (cond
-    ((= front '())
-     ;; the first list was empty, just return the second one
+    ((null? front)
+     ;; can't append to '(), just return back.
      back
      )
     (else
-     ;; get to the back of the front list
-     (set! iter front)
-     (while (!= (cdr iter) '())
-       ;; for EE short loop bug.
-       (nop!)
-       (nop!)
-       (set! iter (cdr iter))
-       )
-
-     ;; this check seems not needed?
-     (when (!= iter '())
-       (set! (cdr iter) back)
+     (let ((iter front))
+       (while (not (null? (cdr iter)))
+         (nop!)
+         (nop!)
+         (set! iter (cdr iter))
+         )
+       (if (not (null? iter))
+           (set! (cdr iter) back)
+           )
        )
      front
      )
@@ -541,27 +553,23 @@
 
 (defun delete! ((item object) (lst object))
   "Remove the first occurance of item from lst (where item is actual a pair in the list)"
-  (local-vars (iter-prev object) (iter object))
   (the-as pair
           (cond
             ((= item (car lst))
-             ;; special case for lst starts with object.
              (cdr lst)
              )
             (else
-             ;; iterate until (car iter) = item (or we reach the end)
-             (set! iter-prev lst)
-             (set! iter (cdr lst))
-             (while (not (or (= iter '()) (= (car iter) item)))
-               (set! iter-prev iter)
-               (set! iter (cdr iter))
-               )
-
-             ;; splice out the element to delete!
-             (if (!= iter '())
-                 (set! (cdr iter-prev) (cdr iter))
+             (let ((iter-prev lst)
+                   (iter (cdr lst))
+                   )
+               (while (not (or (null? iter) (= (car iter) item)))
+                 (set! iter-prev iter)
+                 (set! iter (cdr iter))
                  )
-             ;; return original list.
+               (if (not (null? iter))
+                   (set! (cdr iter-prev) (cdr iter))
+                   )
+               )
              lst
              )
             )
@@ -570,37 +578,34 @@
 
 (defun delete-car! ((item object) (lst object))
   "Remove the first first occurance of an element from the list where (car elt) is item."
-  (local-vars (iter-prev object) (iter object))
-  (cond ((= item (car (car lst)))
-         ;; special case for removing the first item.
-         (cdr lst)
-         )
-        (else
-         ;; iterate until (car iter) is the thing we want to delete
-         (set! iter-prev lst)
-         (set! iter (cdr lst))
-         (while (not (or (= iter '()) (= (car (car iter)) item)))
-           (set! iter-prev iter)
-           (set! iter (cdr iter))
+  (cond
+    ((= item (car (car lst)))
+     (cdr lst)
+     )
+    (else
+     (let ((iter-prev lst)
+           (iter (cdr lst))
            )
-         ;; splice out element to delete, if we got it.
-         (if (!= iter '())
-             (set! (cdr iter-prev) (cdr iter))
-             )
-         lst
+       (while (not (or (null? iter) (= (car (car iter)) item)))
+         (set! iter-prev iter)
+         (set! iter (cdr iter))
          )
-        )
+       (if (not (null? iter))
+           (set! (cdr iter-prev) (cdr iter))
+           )
+       )
+     lst
+     )
+    )
   )
 
 (defun insert-cons! ((kv object) (alist object))
   "Update an association list to have the given (key . value) pair kv.
    If it already exists in the list, remove it.
    DANGER: this function allocates memory on the global heap."
-  (local-vars (updated-list object))
-  ;; possibly remove an existing entry
-  (set! updated-list (delete-car! (car kv) alist))
-  ;; and put a new one in!
-  (new 'global 'pair kv updated-list)
+  (let ((updated-list (delete-car! (car kv) alist)))
+    (cons kv updated-list)
+    )
   )
 
 (defun sort ((lst object) (compare-func (function object object object)))
@@ -611,54 +616,47 @@
   For booleans, you must explicitly use TRUE and not a truthy value.
   Ex: (sort my-list (lambda ((x int) (y int)) (< x y))) will sort ascending.
   NOTE: if you use an integer, don't accidentally return TRUE."
-  (local-vars
-   (compare-result object)
-   (second-elt object)
-   (first-elt object)
-   (iter object)
-   (unsorted-count int)
-   )
-
-  ;; number of out-of-orders encountered
-  (set! unsorted-count -1)
-
-  ;; loop until we have nothing unsorted
-  (while (nonzero? unsorted-count)
-    ;; assume sorted
-    (set! unsorted-count 0)
-    (set! iter lst)
-
-    ;; loop over list (excluding last element, so we can grab pairs of elements)
-    (while (not (or (= (cdr iter) '())
-                    ;; (>= (shl (the-as int (cdr iter)) 62) 0)
-                    (not-pair? (cdr iter))
-                    )
-                )
-
-      ;; get the two elements, and compare
-      (set! first-elt (car iter))
-      (set! second-elt (car (cdr iter)))
-      (set! compare-result (compare-func first-elt second-elt))
-      ;; the compare function can return a few possible things.
-      ;; we assume "unsorted" if compare-result is #f explicitly, or if it positive.
-      ;; HOWEVER, '#t itself is positive. So if we get #t, we assume sorted.
-      ;; there is possibly an ambiguity, if you happen to return a positive integer that
-      ;; happens to be a pointer to #t, 
-      (when (and
-             (or (not compare-result) (> (the-as int compare-result) 0))
-             (!= compare-result '#t)
-             )
-        ;; remember we hit an unsorted sequence
-        (set! unsorted-count (+ unsorted-count 1))
-        ;; swap!
-        (set! (car iter) second-elt)
-        (set! (car (cdr iter)) first-elt)
+  ;; the compare function can return a few possible things.
+  ;; we assume "unsorted" if compare-result is #f explicitly, or if it positive.
+  ;; HOWEVER, '#t itself is positive. So if we get #t, we assume sorted.
+  ;; there is possibly an ambiguity, if you happen to return a positive integer that
+  ;; happens to be a pointer to #t,
+  (let ((unsorted-count -1))
+    ;; loop, until unsorted count goes to 0.
+    (while (nonzero? unsorted-count)
+      ;; search for unsorted things...
+      (set! unsorted-count 0)
+      (let ((iter lst))
+        (while (not (or (null? (cdr iter)) (not (pair? (cdr iter)))))
+          (let* ((first-elt (car iter))
+                 (seoncd-elt (car (cdr iter)))
+                 (compare-result (compare-func first-elt seoncd-elt))
+                 )
+            ;; the compare function can return a few possible things.
+            ;; we assume "unsorted" if compare-result is #f explicitly, or if it positive.
+            ;; HOWEVER, '#t itself is positive. So if we get #t, we assume sorted.
+            ;; there is possibly an ambiguity, if you happen to return a positive integer that
+            ;; happens to be a pointer to #t,
+            (when (and
+                   (or (not compare-result) (> (the-as int compare-result) 0))
+                   (!= compare-result #t)
+                   )
+              (+! unsorted-count 1)
+              (set! (car iter) seoncd-elt)
+              (set! (car (cdr iter)) first-elt)
+              )
+            )
+          (set! iter (cdr iter))
+          )
         )
-      (set! iter (cdr iter))
       )
     )
   lst
   )
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;
+;; inline-array-class
+;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 ;; This is used as base class for boxed inline arrays.
 ;; The heap-base of the _type_ object will be used to store the stride
@@ -718,6 +716,18 @@
           )
   )
 
+;;;;;;;;;;;;;;;;;;;;;;;;;;
+;; array
+;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+;; the GOAL array type is a boxed array.
+;; it is a basic that knows its content type, currently used length, and allocated length.
+;; It can hold:
+;;   any boxed object (gets 4 bytes, so bintegers get clipped to 32-bits)
+;;   any structure/reference/pointer
+;;   any integer/float
+;; It cannot hold any inlined structures.
+
 (defmethod new array ((allocation symbol) (type-to-make type) (content-type type) (len int))
   "Allocate a new array to hold len elements of type content-type.
    The content should either be a numeric type (child of number)
@@ -745,251 +755,200 @@
 
 (defmethod print array ((obj array))
   "Print array."
-  (local-vars
-   (content-type-sym symbol)
-   (i int)
-   )
-  (format '#t "#(")
+  (format #t "#(")
   (cond
     ((type-type? (-> obj content-type) integer)
-     ;; PRINT INTEGER ARRAY
-     (set! content-type-sym (-> obj content-type symbol))
-     (cond
-       ((= content-type-sym 'int32)
-        (set! i 0)
-        (while (< i (-> obj length))
-          (format '#t (if (zero? i) "~D" " ~D") (-> (the-as (array int32) obj) i))
-          (set! i (+ i 1))
+     (let ((content-type-sym (-> obj content-type symbol)))
+       (cond
+         ((= content-type-sym 'int32)
+          (dotimes (s5-0 (-> obj length))
+            (format #t (if (zero? s5-0) "~D" " ~D")
+                    (-> (the-as (array int32) obj) s5-0)
+                    )
+            )
           )
-        )
-       ((= content-type-sym 'uint32)
-        (set! i 0)
-        (while (< i (-> obj length))
-          (format '#t (if (zero? i) "~D" " ~D") (-> (the-as (array uint32) obj) i))
-          (set! i (+ i 1))
+         ((= content-type-sym 'uint32)
+          (dotimes (s5-1 (-> obj length))
+            (format #t (if (zero? s5-1) "~D" " ~D")
+                    (-> (the-as (array uint32) obj) s5-1)
+                    )
+            )
           )
-        )
-       ((= content-type-sym 'int64)
-        (set! i 0)
-        (while (< i (-> obj length))
-          (format '#t (if (zero? i) "~D" " ~D") (-> (the-as (array int64) obj) i))
-          (set! i (+ i 1))
+         ((= content-type-sym 'int64)
+          (dotimes (s5-2 (-> obj length))
+            (format #t (if (zero? s5-2) "~D" " ~D")
+                    (-> (the-as (array int64) obj) s5-2)
+                    )
+            )
           )
-        )
-       ((= content-type-sym 'uint64)
-        (set! i 0)
-        (while (< i (-> obj length))
-          (format '#t (if (zero? i) "#x~X" " #x~X") (-> (the-as (array uint64) obj) i))
-          (set! i (+ i 1))
+         ((= content-type-sym 'uint64)
+          (dotimes (s5-3 (-> obj length))
+            (format #t (if (zero? s5-3) "#x~X" " #x~X")
+                    (-> (the-as (array uint64) obj) s5-3)
+                    )
+            )
           )
-        )
-       ((= content-type-sym 'int8)
-        (set! i 0)
-        (while (< i (-> obj length))
-          (format '#t (if (zero? i) "~D" " ~D") (-> (the-as (array int8) obj) i))
-          (set! i (+ i 1))
+         ((= content-type-sym 'int8)
+          (dotimes (s5-4 (-> obj length))
+            (format #t (if (zero? s5-4) "~D" " ~D")
+                    (-> (the-as (array int8) obj) s5-4)
+                    )
+            )
           )
-        )
-       ((= content-type-sym 'uint8)
-        (set! i 0)
-        (while (< i (-> obj length))
-          (format '#t (if (zero? i) "~D" " ~D") (-> (the-as (array uint8) obj) i))
-          (set! i (+ i 1))
+         ((= content-type-sym 'uint8)
+          (dotimes (s5-5 (-> obj length))
+            (format #t (if (zero? s5-5) "~D" " ~D")
+                    (-> (the-as (array uint8) obj) s5-5)
+                    )
+            )
           )
-        )
-       ((= content-type-sym 'int16)
-        (set! i 0)
-        (while (< i (-> obj length))
-          (format '#t (if (zero? i) "~D" " ~D") (-> (the-as (array int16) obj) i))
-          (set! i (+ i 1))
+         ((= content-type-sym 'int16)
+          (dotimes (s5-6 (-> obj length))
+            (format #t (if (zero? s5-6) "~D" " ~D")
+                    (-> (the-as (array int16) obj) s5-6)
+                    )
+            )
           )
-        )
-       ((= content-type-sym 'uint16)
-        (set! i 0)
-        (while (< i (-> obj length))
-          (format '#t (if (zero? i) "~D" " ~D") (-> (the-as (array uint16) obj) i))
-          (set! i (+ i 1))
+         ((= content-type-sym 'uint16)
+          (dotimes (s5-7 (-> obj length))
+            (format #t (if (zero? s5-7) "~D" " ~D")
+                    (-> (the-as (array uint16) obj) s5-7)
+                    )
+            )
           )
-        )
-       (else
-        ;; unhandled integer case.
-        ;; note, decompiler failed to put v1-40 here. I think condition "raising" happens at the wrong time.
-        (cond
-          ((or (= content-type-sym 'uint128) (= content-type-sym 'int128))
-           (set! i 0)
-           ;; REMOVED. GOAL never uses these type of array (and can't even print int128s)
-           ;; if we need/want it later we'll have to do something more creative
-           (while (< i (-> obj length))
-             (format #t (if (zero? i) "?" " ?"))
-             ;;(set! t9-10 format)
-             ;;(set! a0-21 '#t)
-             ;;(set! a1-11 (if (zero? i) "#x~X" " #x~X"))
-             ;;(set! v1-42 (+ (shl i 4) (the-as int (the-as (array uint128) obj))))
-             ;;(.lq a2-8 12 v1-42)
-             ;;(t9-10 a0-21 a1-11 a2-8)
-             (set! i (+ i 1))
+         (else
+          (cond
+            ((or (= content-type-sym 'uint128) (= content-type-sym 'int128))
+             (dotimes (s5-8 (-> obj length))
+               (format #t (if (zero? s5-8) "#x~X" " #x~X")
+                       (-> (the-as (array uint128) obj) s5-8)
+                       )
+               )
              )
-           )
-          (else
-           ;; unknown integer. treat as int32
-           (set! i 0)
-           (while (< i (-> obj length))
-             (format '#t (if (zero? i) "~D" " ~D") (-> (the-as (array int32) obj) i))
-             (set! i (+ i 1))
+            (else
+             (dotimes (s5-9 (-> obj length))
+               (format #t (if (zero? s5-9) "~D" " ~D")
+                       (-> (the-as (array int32) obj) s5-9)
+                       )
+               )
              )
-           )
+            )
           )
-        )
+         )
        )
      )
     (else
-     ;; Not an integer cases.
      (cond
        ((= (-> obj content-type) float)
-        (set! i 0)
-        (while (< i (-> obj length))
-          (if (zero? i)
-              (format '#t "~f" (-> (the-as (array float) obj) i))
-              (format '#t " ~f" (-> (the-as (array float) obj) i))
+        (dotimes (s5-10 (-> obj length))
+          (if (zero? s5-10)
+              (format #t "~f" (-> (the-as (array float) obj) s5-10))
+              (format #t " ~f" (-> (the-as (array float) obj) s5-10))
               )
-          (set! i (+ i 1))
           )
         )
        (else
-        ;; totally unknown, try printing as boxed.
-        (set! i 0)
-        (while (< i (-> obj length))
-          (if (zero? i)
-              (format '#t "~A" (-> (the-as (array basic) obj) i))
-              (format '#t " ~A" (-> (the-as (array basic) obj) i))
+        (dotimes (s5-11 (-> obj length))
+          (if (zero? s5-11)
+              (format #t "~A" (-> (the-as (array basic) obj) s5-11))
+              (format #t " ~A" (-> (the-as (array basic) obj) s5-11))
               )
-          (set! i (+ i 1))
           )
         )
        )
      )
     )
-  (format '#t ")")
+  (format #t ")")
   obj
   )
 
 ;; definition for method of type array
 (defmethod inspect array ((obj array))
   "Inspect an array"
-  (local-vars
-   (content-type-sym symbol)
-   (i int)
-   )
-  (format '#t "[~8x] ~A~%" obj (-> obj type))
-  (format '#t "~Tallocated-length: ~D~%" (-> obj allocated-length))
-  (format '#t "~Tlength: ~D~%" (-> obj length))
-  (format '#t "~Tcontent-type: ~A~%" (-> obj content-type))
-  (format '#t "~Tdata[~D]: @ #x~X~%" (-> obj allocated-length) (-> obj data))
+  (format #t "[~8x] ~A~%" obj (-> obj type))
+  (format #t "~Tallocated-length: ~D~%" (-> obj allocated-length))
+  (format #t "~Tlength: ~D~%" (-> obj length))
+  (format #t "~Tcontent-type: ~A~%" (-> obj content-type))
+  (format #t "~Tdata[~D]: @ #x~X~%" (-> obj allocated-length) (-> obj data))
   (cond
     ((type-type? (-> obj content-type) integer)
-     (set! content-type-sym (-> obj content-type symbol))
-     (cond
-       ((= content-type-sym 'int32)
-        (set! i 0)
-        (while (< i (-> obj length))
-          (format '#t "~T  [~D] ~D~%" i (-> (the-as (array int32) obj) i))
-          (set! i (+ i 1))
+     (let ((content-type-sym (-> obj content-type symbol)))
+       (cond
+         ((= content-type-sym 'int32)
+          (dotimes (s5-0 (-> obj length))
+            (format #t "~T  [~D] ~D~%" s5-0 (-> (the-as (array int32) obj) s5-0))
+            )
           )
-        )
-       ((= content-type-sym 'uint32)
-        (set! i 0)
-        (while (< i (-> obj length))
-          (format '#t "~T  [~D] ~D~%" i (-> (the-as (array uint32) obj) i))
-          (set! i (+ i 1))
+         ((= content-type-sym 'uint32)
+          (dotimes (s5-1 (-> obj length))
+            (format #t "~T  [~D] ~D~%" s5-1 (-> (the-as (array uint32) obj) s5-1))
+            )
           )
-        )
-       ((= content-type-sym 'int64)
-        (set! i 0)
-        (while (< i (-> obj length))
-          (format '#t "~T  [~D] ~D~%" i (-> (the-as (array int64) obj) i))
-          (set! i (+ i 1))
+         ((= content-type-sym 'int64)
+          (dotimes (s5-2 (-> obj length))
+            (format #t "~T  [~D] ~D~%" s5-2 (-> (the-as (array int64) obj) s5-2))
+            )
           )
-        )
-       ((= content-type-sym 'uint64)
-        (set! i 0)
-        (while (< i (-> obj length))
-          (format '#t "~T  [~D] #x~X~%" i (-> (the-as (array uint64) obj) i))
-          (set! i (+ i 1))
+         ((= content-type-sym 'uint64)
+          (dotimes (s5-3 (-> obj length))
+            (format #t "~T  [~D] #x~X~%" s5-3 (-> (the-as (array uint64) obj) s5-3))
+            )
           )
-        )
-       ((= content-type-sym 'int8)
-        (set! i 0)
-        (while (< i (-> obj length))
-          (format '#t "~T  [~D] ~D~%" i (-> (the-as (array int8) obj) i))
-          (set! i (+ i 1))
+         ((= content-type-sym 'int8)
+          (dotimes (s5-4 (-> obj length))
+            (format #t "~T  [~D] ~D~%" s5-4 (-> (the-as (array int8) obj) s5-4))
+            )
           )
-        )
-       ((= content-type-sym 'uint8)
-        (set! i 0)
-        (while (< i (-> obj length))
-          (format '#t "~T  [~D] ~D~%" i (-> (the-as (array int8) obj) i))
-          (set! i (+ i 1))
+         ((= content-type-sym 'uint8)
+          (dotimes (s5-5 (-> obj length))
+            (format #t "~T  [~D] ~D~%" s5-5 (-> (the-as (array int8) obj) s5-5))
+            )
           )
-        )
-       ((= content-type-sym 'int16)
-        (set! i 0)
-        (while (< i (-> obj length))
-          (format '#t "~T  [~D] ~D~%" i (-> (the-as (array int16) obj) i))
-          (set! i (+ i 1))
+         ((= content-type-sym 'int16)
+          (dotimes (s5-6 (-> obj length))
+            (format #t "~T  [~D] ~D~%" s5-6 (-> (the-as (array int16) obj) s5-6))
+            )
           )
-        )
-       ((= content-type-sym 'uint16)
-        (set! i 0)
-        (while (< i (-> obj length))
-          (format '#t "~T  [~D] ~D~%" i (-> (the-as (array uint16) obj) i))
-          (set! i (+ i 1))
+         ((= content-type-sym 'uint16)
+          (dotimes (s5-7 (-> obj length))
+            (format #t "~T  [~D] ~D~%" s5-7 (-> (the-as (array uint16) obj) s5-7))
+            )
           )
-        )
-       (else
-        ;; again, decompiler created a temp for the or here.
-        (cond
-          ((or (= content-type-sym 'int128) (= content-type-sym 'uint128))
-           ;; REMOVED: GOAL doesn't print int128's anyway.
-           (set! i 0)
-           (while (< i (-> obj length))
-             ;;(set! t9-14 format)
-             ;;(set! a0-25 '#t)
-             ;;(set! a1-15 "~T  [~D] #x~X~%")
-             (format #t "~T  [~D] ??~%" i)
-             ;;(set! a2-13 i)
-             ;;(set! v1-42 (+ (shl i 4) (the-as int obj)))
-             ;;(.lq a3-10 12 v1-42)
-             ;;(t9-14 a0-25 a1-15 a2-13 a3-10)
-             (set! i (+ i 1))
+         (else
+          (cond
+            ((or (= content-type-sym 'int128) (= content-type-sym 'uint128))
+             (dotimes (s5-8 (-> obj length))
+               (format
+                #t
+                "~T  [~D] #x~X~%"
+                s5-8
+                (-> (the-as (array uint128) obj) s5-8)
+                )
+               )
              )
-           )
-          (else
-           (set! i 0)
-           (while (< i (-> obj length))
-             (format '#t "~T  [~D] ~D~%" i (-> (the (array int32) obj) i))
-             (set! i (+ i 1))
+            (else
+             (dotimes (s5-9 (-> obj length))
+               (format #t "~T  [~D] ~D~%" s5-9 (-> (the-as (array int32) obj) s5-9))
+               )
              )
-           )
+            )
           )
-        )
+         )
        )
      )
     (else
-     (cond ((= (-> obj content-type) float)
-            (set! i 0)
-            (while (< i (-> obj length))
-              (format '#t "~T  [~D] ~f~%" i (-> (the (array float) obj) i))
-              (set! i (+ i 1))
-              )
-            )
-           (else
-            (set! i 0)
-            (while (< i (-> obj length))
-              (format '#t "~T  [~D] ~A~%" i (-> (the (array basic) obj) i))
-              (set! i (+ i 1))
-              )
-            )
-           )
+     (cond
+       ((= (-> obj content-type) float)
+        (dotimes (s5-10 (-> obj length))
+          (format #t "~T  [~D] ~f~%" s5-10 (-> (the-as (array float) obj) s5-10))
+          )
+        )
+       (else
+        (dotimes (s5-11 (-> obj length))
+          (format #t "~T  [~D] ~A~%" s5-11 (-> (the-as (array basic) obj) s5-11))
+          )
+        )
+       )
      )
     )
   obj
@@ -1013,21 +972,21 @@
           )
   )
 
+;;;;;;;;;;;;;;;;;;;;;;;;
+;; memory manipulation
+;;;;;;;;;;;;;;;;;;;;;;;;
+
 (defun mem-copy! ((dst pointer) (src pointer) (size int))
   "Memory copy. Not a very efficient optimization, but has no restrictions.
    Increasing address copy."
-  (local-vars (result pointer) (i int) (v1-1 symbol) (v1-2 symbol))
-  (set! result dst)
-  (set! i 0)
-  (while (< i size)
-    ;; copy
-    (set! (-> (the-as (pointer uint8) dst)) (-> (the-as (pointer uint8) src)))
-    ;; increment pointers and count
-    (set! dst (&+ dst (the-as uint 1)))
-    (set! src (&+ src (the-as uint 1)))
-    (set! i (+ i 1))
+  (let ((result dst))
+    (dotimes (i size)
+      (set! (-> (the-as (pointer uint8) dst)) (-> (the-as (pointer uint8) src)))
+      (&+! dst 1)
+      (&+! src 1)
+      )
+    result
     )
-  result
   )
 
 (defun qmem-copy<-! ((dst pointer) (src pointer) (size int))
@@ -1035,21 +994,20 @@
    - dst and src should be 16-byte aligned.
    - size in bytes will be rounded up to 16-bytes
    - Ascending address copy."
-  (local-vars (result pointer) (qwc int))
-  (set! result dst)
-  
-  ;; round up to nearest quadword count.
-  (set! qwc (sar (+ size 15) 4))
-  (while (nonzero? qwc)
-    (set! qwc (+ qwc -1))
-    ;; Use 128-bit OpenGOAL integers to do copy by quadword.
-    (set! (-> (the (pointer uint128) dst))
-          (-> (the (pointer uint128) src)))
-
-    (set! dst (&+ dst 16))
-    (set! src (&+ src 16))
+  (let ((result dst))
+    (let ((qwc (/ (+ size 15) 16)))
+      (while (nonzero? qwc)
+        (+! qwc -1)
+        (set!
+         (-> (the-as (pointer uint128) dst))
+         (-> (the-as (pointer uint128) src))
+         )
+        (&+! dst 16)
+        (&+! src 16)
+        )
+      )
+    result
     )
-  result
   )
 
 (defun qmem-copy->! ((dst pointer) (src pointer) (size int))
@@ -1057,61 +1015,56 @@
   - dst and src should be 16-byte aligned.
   - size in bytes will be rounding up to nearest 16-bytes
   - Descending address copy"
-  (local-vars
-   (result pointer)
-   (qwc int)
-   (src-ptr pointer)
-   (dst-ptr pointer)
-   )
-
-  (set! result dst)
-  (set! qwc (sar (+ size 15) 4))
-  ;; start at the end
-  (set! dst-ptr (&+ dst (the-as uint (shl qwc 4))))
-  (set! src-ptr (&+ src (the-as uint (shl qwc 4))))
-  (while (nonzero? qwc)
-    (set! qwc (+ qwc -1))
-    (set! src-ptr (&+ src-ptr (the-as uint -16)))
-    (set! dst-ptr (&+ dst-ptr (the-as uint -16)))
-
-    (set! (-> (the (pointer uint128) dst-ptr))
-          (-> (the (pointer uint128) src-ptr)))
+  (let ((result dst))
+    (let* ((qwc (/ (+ size 15) 16))
+           (dst-ptr (&+ dst (* qwc 16)))
+           (src-ptr (&+ src (* qwc 16)))
+           )
+      (while (nonzero? qwc)
+        (+! qwc -1)
+        (&+! dst-ptr -16)
+        (&+! src-ptr -16)
+        (set!
+         (-> (the-as (pointer uint128) dst-ptr))
+         (-> (the-as (pointer uint128) src-ptr))
+         )
+        )
+      )
+    result
     )
-  result
   )
 
 
 (defun mem-set32! ((dst pointer) (size int) (value int))
   "Normal memset, but by 32-bit word.
    NOTE: argument order is swapped from C"
-  (local-vars (result pointer) (i int))
-  (set! result dst)
-  (set! i 0)
-  (while (< i size)
-    (set! (-> (the-as (pointer int32) dst)) value)
-    (set! dst (&+ dst 4))
-    (nop!)
-    (set! i (+ i 1))
+  (let ((result dst))
+    (dotimes (i size)
+      (set! (-> (the-as (pointer int32) dst)) value)
+      (&+! dst 4)
+      (nop!)
+      )
+    result
     )
-  result
   )
 
 (defun mem-or! ((dst pointer) (src pointer) (size int))
   "Set the dst to (logior dst src) byte by byte.
    Not very efficient."
-  (local-vars (result pointer) (i int) (v1-1 symbol) (v1-2 symbol))
-  (set! result dst)
-  (set! i 0)
-  (while (< i size)
-    (set! (-> (the-as (pointer uint8) dst))
-          (logior (-> (the-as (pointer uint8) dst))
-                  (-> (the-as (pointer uint8) src)))
-          )
-    (set! dst (&+ dst 1))
-    (set! src (&+ src 1))
-    (set! i (+ i 1))
+  (let ((result dst))
+    (dotimes (i size)
+      (set!
+       (-> (the-as (pointer uint8) dst))
+       (logior
+        (-> (the-as (pointer uint8) dst))
+        (-> (the-as (pointer uint8) src))
+        )
+       )
+      (&+! dst 1)
+      (&+! src 1)
+      )
+    result
     )
-  result
   )
 
 
@@ -1121,56 +1074,55 @@
   0
   )
 
-;; we need to forward declare recursive functions so the compiler
-;; know their return type.
-(define-extern fact (function int int))
-(defun fact ((x int))
+(defun-recursive fact int ((x int))
   (if (= x 1)
       1
       (* x (fact (+ x -1))))
   )
 
-;; Print utilities.
+;;;;;;;;;;;;;;;;;;;;;;;;
+;; printing
+;;;;;;;;;;;;;;;;;;;;;;;;
+
+;; the column that will be printed to by format.
 (define *print-column* (the binteger 0))
 
-(defun print ((obj object))
+(defun print ((arg0 object))
   "Print out any boxed object. Does NOT insert a newline."
-  (let ((print-method (-> (rtype-of obj) method-table PRINT_METHOD_ID)))
-    ((the (function object object) print-method) obj)
-    )
+  ((method-of-type (rtype-of arg0) print) arg0)
   )
 
-(defun printl ((obj object))
+(defun printl ((arg0 object))
   "Print out any boxed object and a newline at the end."
-  (let ((print-method (-> (rtype-of obj) method-table PRINT_METHOD_ID)))
-    ((the (function object object) print-method) obj)
-    (format #t "~%")
-    obj)
+  (let ((a0-1 arg0))
+    ((method-of-type (rtype-of a0-1) print) a0-1)
+    )
+  (format #t "~%")
+  arg0
   )
 
-(defun inspect ((obj object))
+(defun inspect ((arg0 object))
   "Inspect any boxed object."
-  (let ((inspect-method (-> (rtype-of obj) method-table INSPECT_METHOD_ID)))
-    ((the (function object object) inspect-method) obj)
-    )
+  ((method-of-type (rtype-of arg0) inspect) arg0)
   )
+
+;;;;;;;;;;;;;;;;;;;;;
+;; debug utils
+;;;;;;;;;;;;;;;;;;;;;
 
 (defun-debug mem-print ((data (pointer uint32)) (word-count int))
   "Print memory to runtime stdout by quadword.
    Input count is in 32-bit words"
-  (local-vars (current-qword int))
-  (set! current-qword 0)
-  (while (< current-qword (sar word-count 2))
+  (dotimes (current-qword (/ word-count 4))
     (format 0 "~X: ~X ~X ~X ~X~%"
-            (+ (+ (shl (shl current-qword 2) 2) 0) (the-as int data))
-            (-> data (shl current-qword 2))
-            (-> data (+ (shl current-qword 2) 1))
-            (-> data (+ (shl current-qword 2) 2))
-            (-> data (+ (shl current-qword 2) 3))
+            (&-> data (* current-qword 4))
+            (-> data (* current-qword 4))
+            (-> data (+ (* current-qword 4) 1))
+            (-> data (+ (* current-qword 4) 2))
+            (-> data (+ (* current-qword 4) 3))
             )
-    (set! current-qword (+ current-qword 1))
     )
-  '#f
+  #f
   )
 
 ;; not sure what this is.
@@ -1178,25 +1130,26 @@
 
 (defun print-tree-bitmask ((bits int) (count int))
   "Print out a single entry for a process tree 'tree' diagram"
-  (local-vars (i int))
-  (set! i 0)
-  (while (< i count)
+  (dotimes (i count)
     (if (zero? (logand bits 1))
-        (format '#t "    ")
-        (format '#t "|   ")
+        (format #t "    ")
+        (format #t "|   ")
         )
     (set! bits (shr bits 1))
-    (set! i (+ i 1))
     )
-  '#f
+  #f
   )
 
 (defun breakpoint-range-set! ((a0 uint) (a1 uint) (a2 uint))
-  "Sets some debug register (COP0 Debug, dab, dabm)"
+  "Sets some debug register (COP0 Debug, dab, dabm) to break on memory access.
+   This is not supported in OpenGOAL."
   (format 0 "breakpoint-range-set! not supported in OpenGOAL~%")
   0
   )
 
+;;;;;;;;;;;;;;;;;;;;;;;
+;; valid
+;;;;;;;;;;;;;;;;;;;;;;;
 
 ;; these are not quite right, but it's close enough.
 (defmacro start-of-symbol-table ()
@@ -1237,6 +1190,7 @@
    )
 
   ;; first, check if we are even in valid memory. This is the start of the symbol table to the end of RAM.
+  ;; (note, this will fail stuff like the debug and global heap info objects, which aren't in GOAL heaps.)
   (set! in-goal-mem (and (>= (the-as uint obj) (start-of-symbol-table))
                          (< (the-as uint obj) END_OF_MEMORY)
                          )
@@ -1266,7 +1220,7 @@
     ((and allow-false (not obj))
      ;; we got a false, but its allowed!
      ;; note that we don't reject falses otherwise, as false is a perfectly valid symbol.
-     '#t)
+     #t)
     (else
      (cond
        ((= expected-type structure)
@@ -1401,6 +1355,9 @@
   )
 
 
+;;;;;;;;;;;;;;;;;;;;;;;
+;; PC Port asm macros
+;;;;;;;;;;;;;;;;;;;;;;;
 (#when PC_PORT
   ;; SYNC is an EE instruction that waits for various memory access and DMA to be completed
   ;; DMA will be instant in the PC port, so these are no longer necessary
@@ -1410,23 +1367,4 @@
   (fake-asm .mfc0 dest src)
   ;; Copies the contents of a gpr to a cop0 (system control) register
   (fake-asm .mtc0 dest src)
-  )
-
-
-(defmacro make-u128 (upper lower)
-  "Make a i128 from two 64-bit values."
-  `(rlet ((result :class i128)
-          (upper-xmm :class i128)
-          (lower-xmm :class i128))
-     (.mov upper-xmm ,upper)
-     (.mov lower-xmm ,lower)
-     (.pcpyld result upper-xmm lower-xmm)
-     (the-as uint result)
-     )
-  )
-
-(defmacro as-type (obj type)
-  `(if (and (nonzero? ,obj) (type-type? (-> ,obj type) ,type))
-       (the-as ,type ,obj)
-       )
   )
