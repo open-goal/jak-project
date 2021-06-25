@@ -92,6 +92,8 @@
 (define-extern inspect (function object object))
 (define-extern mem-print (function (pointer uint32) int symbol))
 (define-extern print-tree-bitmask (function int int symbol))
+;; instance in cam-update::update-visible
+(define-extern quad-copy! (function uint (pointer uint16) none))
 ;; has issues:
 (define-extern breakpoint-range-set! (function uint uint uint int))
 
@@ -115,11 +117,6 @@
 (define-extern *print-column* binteger)
 (define-extern *debug-segment* symbol)
 (define-extern *trace-list* pair)
-
-;; - Unknowns
-
-;;(define-extern quad-copy! UNKNOWN)
-
 
 ;; ----------------------
 ;; NO FILE
@@ -4380,10 +4377,11 @@
 
 ;; - Types
 
+(declare-type bsp-header basic)
 (deftype level-vis-info (basic)
-  ((level              basic            :offset-assert 4)
-   (from-level         basic            :offset-assert 8)
-   (from-bsp           basic            :offset-assert 12)
+  ((level              symbol            :offset-assert 4)
+   (from-level         symbol            :offset-assert 8)
+   (from-bsp           bsp-header            :offset-assert 12)
    (flags              uint32           :offset-assert 16)
    (length             uint32           :offset-assert 20)
    (allocated-length   uint32           :offset-assert 24)
@@ -4665,8 +4663,8 @@
    (pfog0                      float              :offset-assert 832)
    (pfog1                      float              :offset-assert 836)
    (trans                      vector     :inline :offset-assert 848)
-   (plane                      uint128    4       :offset-assert 864)
-   (guard-plane                uint128    4       :offset-assert 928)
+   (plane                      plane    4       :inline :offset-assert 864) ;; perhaps a 'plane' instead?
+   (guard-plane                plane    4       :inline :offset-assert 928) ;; perhaps a 'plane' instead?
    (shrub-mat                  matrix     :inline :offset-assert 992)
    (fov-correction-factor      float              :offset-assert 1056)
    )
@@ -11265,7 +11263,7 @@
    (nodes (inline-array bsp-node) :offset-assert 120)
 
    (level level :offset-assert 124)
-   (unk-data-2 uint32 5 :offset-assert 128)
+   (unk-data-2 uint16 10 :offset-assert 128) ;; Printed as leaf-index in cam-update
 
    (boxes box8s-array :offset-assert 148)
    (unk-data-3 uint32 :offset-assert 152)
@@ -14465,7 +14463,7 @@
 (define-extern print-cl-stat function)
 (define-extern clear-cl-stat function)
 (define-extern mem-usage-bsp-tree function)
-(define-extern bsp-camera-asm function)
+(define-extern bsp-camera-asm (function bsp-header vector none))
 (define-extern print-collide-stats function)
 
 ;; - Unknowns
@@ -15398,11 +15396,14 @@
 (define-extern init-background function)
 (define-extern finish-background function)
 
+;; - Symbols
+
+(define-extern *instance-tie-work* instance-tie-work)
+(define-extern *instance-shrub-work* instance-shrub-work)
+
 ;; - Unknowns
 
-;;(define-extern *instance-shrub-work* object) ;; unknown type
 ;;(define-extern *background-work* object) ;; unknown type
-;;(define-extern *instance-tie-work* object) ;; unknown type
 ;;(define-extern background-vu0-block object) ;; unknown type
 
 
@@ -17589,14 +17590,17 @@
 
 ;; - Functions
 
-(define-extern cam-free-floating-move function)
-(define-extern cam-free-floating-input function)
+(define-extern cam-free-floating-move (function matrix vector vector int int vector))
+(define-extern cam-free-floating-input (function vector vector symbol int int vector))
+
+;; - Symbols
+
+(define-extern *CAM_FREE-bank* cam-free-bank)
 
 ;; - Unknowns
 
 ;;(define-extern *camera-orbit-info* object) ;; unknown type
 ;;(define-extern *CAM_ORBIT-bank* object) ;; unknown type
-;;(define-extern *CAM_FREE-bank* object) ;; unknown type
 ;;(define-extern *CAM_POINT_WATCH-bank* object) ;; unknown type
 ;;(define-extern cam-point-watch object) ;; unknown type
 ;;(define-extern cam-orbit object) ;; unknown type
@@ -17625,20 +17629,20 @@
 
 ;; - Functions
 
-(define-extern move-camera-from-pad function)
-(define-extern update-view-planes function)
-(define-extern update-visible function)
-(define-extern set-point function)
-(define-extern plane-from-points function)
-(define-extern update-camera function)
+(define-extern move-camera-from-pad (function math-camera math-camera)) ;; supposed t0 for cam-states-dbg functions, but perhaps optional?
+(define-extern update-view-planes (function math-camera (inline-array plane) float float))
+(define-extern update-visible (function math-camera symbol)) ;; supposed a3 but doesn't really make sense
+(define-extern set-point (function vector float float float float))
+(define-extern plane-from-points (function (inline-array plane) vector vector vector int float)) ;; definitely passes in the array of planes but, im getting something wrong here
+(define-extern update-camera (function symbol))
 
-;; - Unknowns
+;; - Symbols
 
-;;(define-extern *start-timer* object) ;; unknown type
-;;(define-extern *timer-value* object) ;; unknown type
-;;(define-extern *start-pos* object) ;; unknown type
-;;(define-extern *save-camera-inv-rot* object) ;; unknown type
-;;(define-extern *update-leaf-when-outside-bsp* object) ;; unknown type
+(define-extern *start-timer* int)
+(define-extern *timer-value* int)
+(define-extern *start-pos* vector)
+(define-extern *save-camera-inv-rot* matrix)
+(define-extern *update-leaf-when-outside-bsp* symbol) ;; boolean
 
 
 ;; ----------------------
