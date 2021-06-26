@@ -1798,6 +1798,7 @@ DerefElement::DerefElement(Form* base, bool is_addr_of, DerefToken token)
       x.expr()->parent_element = this;
     }
   }
+  inline_nested();
 }
 
 DerefElement::DerefElement(Form* base, bool is_addr_of, std::vector<DerefToken> tokens)
@@ -1808,6 +1809,7 @@ DerefElement::DerefElement(Form* base, bool is_addr_of, std::vector<DerefToken> 
       x.expr()->parent_element = this;
     }
   }
+  inline_nested();
 }
 
 goos::Object DerefElement::to_form_internal(const Env& env) const {

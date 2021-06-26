@@ -537,6 +537,13 @@ bool try_splitting_nested_sc(FormPool& pool, Function& func, ShortCircuitElement
   assert(ir->entries.front().branch_delay.has_value());
   bool first_is_and = delay_slot_sets_false(first_branch.first, *ir->entries.front().branch_delay);
   bool first_is_or = delay_slot_sets_truthy(first_branch.first, *ir->entries.front().branch_delay);
+
+  if (first_is_and == first_is_or) {
+    throw std::runtime_error(fmt::format(
+        "Failed to split nested sc.  This may mean that abs/ash/type-of was misrecognized as "
+        "and/or:\n{}",
+        ir->to_string(func.ir2.env)));
+  }
   assert(first_is_and != first_is_or);  // one or the other but not both!
 
   int first_different = -1;  // the index of the first one that's different.

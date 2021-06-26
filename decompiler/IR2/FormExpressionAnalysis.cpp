@@ -3382,10 +3382,12 @@ void ArrayFieldAccess::update_with_val(Form* new_val,
     if (m_expected_stride == 1) {
       // reg0 is idx
       auto reg0_matcher =
-          Matcher::match_or({Matcher::cast("int", Matcher::any(0)), Matcher::any(0)});
+          Matcher::match_or({Matcher::cast("int", Matcher::any(0)),
+                             Matcher::cast("uint", Matcher::any(0)), Matcher::any(0)});
       // reg1 is base
       auto reg1_matcher =
-          Matcher::match_or({Matcher::cast("int", Matcher::any(1)), Matcher::any(1)});
+          Matcher::match_or({Matcher::cast("int", Matcher::any(1)),
+                             Matcher::cast("uint", Matcher::any(1)), Matcher::any(1)});
       auto matcher = Matcher::fixed_op(FixedOperatorKind::ADDITION, {reg0_matcher, reg1_matcher});
       auto match_result = match(matcher, new_val);
       if (!match_result.matched) {
