@@ -1526,7 +1526,7 @@
 
 (deftype vertical-planes-array (basic)
   ((length uint32           :offset-assert 4)
-   (data   vertical-planes :dynamic :offset 16) ;; todo, why is this here?
+   (data   vertical-planes :inline :dynamic :offset-assert 16)
    )
   :method-count-assert 9
   :size-assert         #x10
@@ -4055,10 +4055,11 @@
 
 ;; - Types
 
+(declare-type art-group basic)
 (deftype load-dir (basic)
   ((unknown basic)
    (string-array (array string))
-   (data-array (array basic)))
+   (data-array (array art-group)))
   :flag-assert #xb00000010
   (:methods
    (new (symbol type int basic) _type_ 0)
@@ -4066,6 +4067,7 @@
    (dummy-10 () none 10)
    )
   )
+
 
 (deftype load-dir-art-group (load-dir)
   ()
@@ -4434,11 +4436,12 @@
   :flag-assert         #x900000074
   )
 
+(declare-type drawable basic)
 (deftype login-state (basic)
   ((state int32      :offset-assert 4)
    (pos   uint32     :offset-assert 8)
    (elts  uint32     :offset-assert 12)
-   (elt   uint32 16 :offset-assert 16)
+   (elt   drawable 16 :offset-assert 16) ;; might be something more specific.
    )
   :method-count-assert 9
   :size-assert         #x50
@@ -8666,7 +8669,7 @@
   )
 
 (deftype proxy-prototype-array-tie (basic)
-  ((prototype-array-tie basic   :offset-assert 4)
+  ((prototype-array-tie prototype-array-tie   :offset-assert 4)
    (wind-vectors        uint32  :offset-assert 8) ; likely a pointer
    )
   :method-count-assert 9
@@ -11270,8 +11273,8 @@
    (boxes box8s-array :offset-assert 148)
    (unk-data-3 uint32 :offset-assert 152)
    (ambients drawable-inline-array-ambient :offset-assert 156)
-   (unk-data-4 uint32 :offset-assert 160)
-   (unk-data-5 uint32 :offset-assert 164)
+   (unk-data-4 float :offset-assert 160)
+   (unk-data-5 float :offset-assert 164)
    (adgifs adgif-shader-array :offset-assert 168)
    (unk-data-6 pointer :offset-assert 172)
    (unk-data-7 pointer :offset-assert 176)
@@ -11810,7 +11813,7 @@
   )
 
 (deftype drawable-tree-instance-tie (drawable-tree)
-  ((prototypes basic           :offset 8)
+  ((prototypes proxy-prototype-array-tie           :offset 8)
    )
   :method-count-assert 18
   :size-assert         #x24
@@ -12610,7 +12613,8 @@
 
 ;; - Functions
 
-(define-extern entity-nav-login function) ;; only called in `level` in an asm function...tough, returns nothing
+;; may be actor.
+(define-extern entity-nav-login (function basic none)) ;; only called in `level` in an asm function...tough, returns nothing
 
 ;; - Symbols
 
@@ -14494,7 +14498,7 @@
 
 ;; - Unknowns
 
-;;(define-extern *subdivide-settings* object) ;; unknown type
+(define-extern *subdivide-settings* subdivide-settings) ;; unknown type
 ;;(define-extern *tfrag-work* object) ;; unknown type
 ;;(define-extern *perf-stats* object) ;; unknown type
 ;;(define-extern *merc-global-stats* object) ;; unknown type
@@ -16899,7 +16903,7 @@
 (define-extern update-sound-banks function)
 (define-extern load-vis-info function)
 (define-extern on (function symbol process))
-(define-extern level-update-after-load function)
+(define-extern level-update-after-load (function level login-state none))
 (define-extern add-bsp-drawable function)
 (define-extern remap-level-name (function level-load-info object))
 (define-extern bg (function symbol symbol))

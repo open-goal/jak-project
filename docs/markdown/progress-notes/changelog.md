@@ -168,3 +168,4 @@
 - Added a `type-ref` form to insert a reference to a type into a static structure and optionally forward declare the number of methods
 - The `method-of-type` form will now accept an expression returning a type instead of just a type name.  In this case, it will only allow you to access method of `object`.
 - Added a `defun-recursive` to make it easier to define recursive functions
+- Forward declared basics can be used in more places

@@ -193,6 +193,12 @@ void clean_up_break(FormPool& pool, BreakElement* ir) {
 }
 
 void clean_up_break_final(const Function& f, BreakElement* ir) {
+  EmptyElement* dead_empty = dynamic_cast<EmptyElement*>(ir->dead_code->try_as_single_element());
+  if (dead_empty) {
+    ir->dead_code = nullptr;
+    return;
+  }
+
   SetVarElement* dead = dynamic_cast<SetVarElement*>(ir->dead_code->try_as_single_element());
   if (!dead) {
     dead = dynamic_cast<SetVarElement*>(ir->dead_code->elts().front());
@@ -1464,6 +1470,14 @@ void insert_cfg_into_list(FormPool& pool,
   }
 }
 
+Form* cfg_to_ir_allow_null(FormPool& pool, Function& f, const CfgVtx* vtx) {
+  if (vtx) {
+    return cfg_to_ir(pool, f, vtx);
+  } else {
+    return pool.alloc_single_element_form<EmptyElement>(nullptr);
+  }
+}
+
 Form* cfg_to_ir_helper(FormPool& pool, Function& f, const CfgVtx* vtx) {
   if (dynamic_cast<const BlockVtx*>(vtx)) {
     auto* bv = dynamic_cast<const BlockVtx*>(vtx);
@@ -1627,15 +1641,14 @@ Form* cfg_to_ir_helper(FormPool& pool, Function& f, const CfgVtx* vtx) {
   } else if (dynamic_cast<const Break*>(vtx)) {
     auto* cvtx = dynamic_cast<const Break*>(vtx);
     auto result = pool.alloc_single_element_form<BreakElement>(
-        nullptr, cfg_to_ir(pool, f, cvtx->body), cfg_to_ir(pool, f, cvtx->unreachable_block),
-        cvtx->dest_block_id);
+        nullptr, cfg_to_ir(pool, f, cvtx->body),
+        cfg_to_ir_allow_null(pool, f, cvtx->unreachable_block), cvtx->dest_block_id);
     clean_up_break(pool, dynamic_cast<BreakElement*>(result->try_as_single_element()));
     return result;
   } else if (dynamic_cast<const EmptyVtx*>(vtx)) {
     return pool.alloc_single_element_form<EmptyElement>(nullptr);
   }
 
-  throw std::runtime_error("not yet implemented IR conversion.");
   return nullptr;
 }
 
