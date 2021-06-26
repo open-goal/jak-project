@@ -1288,13 +1288,15 @@ class LetElement : public FormElement {
   bool m_star = false;
 };
 
-class DoTimesElement : public FormElement {
+class CounterLoopElement : public FormElement {
  public:
-  DoTimesElement(RegisterAccess var_init,
-                 RegisterAccess var_check,
-                 RegisterAccess var_inc,
-                 Form* check_value,
-                 Form* body);
+  enum class Kind { DOTIMES, COUNTDOWN, INVALID };
+  CounterLoopElement(Kind kind,
+                     RegisterAccess var_init,
+                     RegisterAccess var_check,
+                     RegisterAccess var_inc,
+                     Form* check_value,
+                     Form* body);
   goos::Object to_form_internal(const Env& env) const override;
   void apply(const std::function<void(FormElement*)>& f) override;
   void apply_form(const std::function<void(Form*)>& f) override;
@@ -1306,6 +1308,7 @@ class DoTimesElement : public FormElement {
   RegisterAccess m_var_init, m_var_check, m_var_inc;
   Form* m_check_value = nullptr;
   Form* m_body = nullptr;
+  Kind m_kind = Kind::INVALID;
 };
 
 class LambdaDefinitionElement : public FormElement {

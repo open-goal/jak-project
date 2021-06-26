@@ -162,8 +162,82 @@ FormElement* rewrite_as_dotimes(LetElement* in, const Env& env, FormPool& pool) 
   // first, remove the increment
   body->pop_back();
 
-  return pool.alloc_element<DoTimesElement>(in->entries().at(0).dest, *lt_var, *inc_var,
-                                            mr.maps.forms.at(1), body);
+  return pool.alloc_element<CounterLoopElement>(CounterLoopElement::Kind::DOTIMES,
+                                                in->entries().at(0).dest, *lt_var, *inc_var,
+                                                mr.maps.forms.at(1), body);
+}
+
+FormElement* rewrite_as_countdown(LetElement* in, const Env& env, FormPool& pool) {
+  // dotimes OpenGOAL:
+  /*
+    (defmacro countdown (var &rest body)
+      "Loop like for (int i = end; i-- > 0)"
+      `(let ((,(first var) ,(second var)))
+         (while (!= ,(first var) 0)
+           (set! ,(first var) (- ,(first var) 1))
+           ,@body
+           )
+         )
+      )
+   */
+
+  // should have this anyway, but double check so we don't throw this away.
+  if (in->entries().size() != 1) {
+    return nullptr;
+  }
+
+  // look for setting a var to the initial value.
+  auto ra = in->entries().at(0).dest;
+  auto idx_var = env.get_variable_name(ra);
+
+  // still have to check body for the increment and have to check that the lt operates on the right
+  // thing.
+  Matcher while_matcher = Matcher::while_loop(
+      Matcher::op(GenericOpMatcher::condition(IR2_Condition::Kind::NONZERO), {Matcher::any_reg(0)}),
+      Matcher::any(2));
+
+  auto mr = match(while_matcher, in->body());
+  if (!mr.matched) {
+    return nullptr;
+  }
+
+  // check the zero operation:
+  auto lt_var = mr.maps.regs.at(0);
+  assert(lt_var);
+  if (env.get_variable_name(*lt_var) != idx_var) {
+    return nullptr;  // wrong variable checked
+  }
+
+  // check the body
+  auto body = mr.maps.forms.at(2);
+  auto first_in_body = body->elts().front();
+
+  // kind hacky
+  Form fake_form;
+  fake_form.elts().push_back(first_in_body);
+  Matcher increment_matcher =
+      Matcher::op(GenericOpMatcher::fixed(FixedOperatorKind::ADDITION_IN_PLACE),
+                  {Matcher::any_reg(0), Matcher::integer(-1)});
+
+  auto int_mr = match(increment_matcher, &fake_form);
+  if (!int_mr.matched) {
+    return nullptr;
+  }
+
+  auto inc_var = int_mr.maps.regs.at(0);
+  assert(inc_var);
+  if (env.get_variable_name(*inc_var) != idx_var) {
+    return nullptr;  // wrong variable incremented
+  }
+
+  // success! here we commit to modifying this:
+
+  // first, remove the increment
+  body->elts().erase(body->elts().begin());
+
+  return pool.alloc_element<CounterLoopElement>(CounterLoopElement::Kind::COUNTDOWN,
+                                                in->entries().at(0).dest, *lt_var, *inc_var,
+                                                in->entries().at(0).src, body);
 }
 
 FormElement* fix_up_abs(LetElement* in, const Env& env, FormPool& pool) {
@@ -363,6 +437,11 @@ FormElement* rewrite_let(LetElement* in, const Env& env, FormPool& pool) {
   auto as_dotimes = rewrite_as_dotimes(in, env, pool);
   if (as_dotimes) {
     return as_dotimes;
+  }
+
+  auto as_countdown = rewrite_as_countdown(in, env, pool);
+  if (as_countdown) {
+    return as_countdown;
   }
 
   auto as_abs = fix_up_abs(in, env, pool);
