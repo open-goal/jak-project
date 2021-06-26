@@ -46,7 +46,6 @@ class FormStack {
   std::string print(const Env& env);
   bool is_root() const { return m_is_root_stack; }
 
- private:
   struct StackEntry {
     bool active = true;  // should this appear in the output?
     std::optional<RegisterAccess>
@@ -64,6 +63,45 @@ class FormStack {
 
     std::string print(const Env& env) const;
   };
+
+  std::optional<std::vector<StackEntry>> try_getting_active_stack_entries(
+      const std::vector<bool>& is_set) const {
+    if (is_set.size() > m_stack.size()) {
+      return {};
+    }
+
+    std::vector<StackEntry> entries;
+    size_t offset = m_stack.size() - is_set.size();
+    for (size_t i = 0; i < is_set.size(); i++) {
+      auto& my_entry = m_stack.at(i + offset);
+      if (my_entry.active) {
+        if (is_set.at(i)) {
+          if (!my_entry.destination) {
+            return {};
+          }
+          assert(my_entry.source && !my_entry.elt);
+        } else {
+          if (my_entry.destination) {
+            return {};
+          }
+          assert(my_entry.elt && !my_entry.source);
+        }
+        entries.push_back(my_entry);
+      } else {
+        return {};
+      }
+    }
+    return entries;
+  }
+
+  void pop(int count) {
+    for (int i = 0; i < count; i++) {
+      assert(!m_stack.empty());
+      m_stack.pop_back();
+    }
+  }
+
+ private:
   std::vector<StackEntry> m_stack;
   bool m_is_root_stack = false;
 };
