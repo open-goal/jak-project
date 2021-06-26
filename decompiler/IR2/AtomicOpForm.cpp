@@ -40,6 +40,15 @@ ConditionElement* IR2_Condition::get_as_form(FormPool& pool, const Env& env, int
 }
 
 FormElement* SetVarOp::get_as_form(FormPool& pool, const Env& env) const {
+  std::optional<TypeSpec> source_type;
+  if (m_source_type) {
+    source_type = m_source_type;
+  }
+
+  if (m_source_type_new) {
+    source_type = m_source_type_new->get_single_tp_type().typespec();
+  }
+
   if (env.has_type_analysis() && m_src.args() == 2 && m_src.get_arg(1).is_int() &&
       m_src.get_arg(0).is_var() && m_src.kind() == SimpleExpression::Kind::ADD) {
     if (m_src.get_arg(0).var().reg() == Register(Reg::GPR, Reg::SP)) {
@@ -86,7 +95,7 @@ FormElement* SetVarOp::get_as_form(FormPool& pool, const Env& env) const {
               pool.alloc_single_element_form<DerefElement>(nullptr, source, rd.addr_of, tokens);
 
           return pool.alloc_element<SetVarElement>(m_dst, load, true,
-                                                   m_source_type.value_or(TypeSpec("object")));
+                                                   source_type.value_or(TypeSpec("object")));
         }
       }
     }
@@ -96,7 +105,7 @@ FormElement* SetVarOp::get_as_form(FormPool& pool, const Env& env) const {
   auto source = pool.alloc_single_element_form<SimpleExpressionElement>(nullptr, m_src, m_my_idx);
   // TODO: rework m_source_type for new type pass.
   auto result = pool.alloc_element<SetVarElement>(m_dst, source, is_sequence_point(),
-                                                  m_source_type.value_or(TypeSpec("object")));
+                                                  source_type.value_or(TypeSpec("object")));
 
   // do some analysis to look for coloring moves which are already eliminated,
   // dead sets, and dead set falses.
@@ -718,7 +727,12 @@ FormElement* LoadVarOp::get_as_form(FormPool& pool, const Env& env) const {
 
   } else {
     assert(m_dst.reg().get_kind() != Reg::VF);
-    return pool.alloc_element<SetVarElement>(m_dst, src, true, m_type.value_or(TypeSpec("object")));
+    std::optional<TypeSpec> ts = m_type;
+    if (m_type_new) {
+      ts = m_type_new->get_single_tp_type().typespec();
+    }
+
+    return pool.alloc_element<SetVarElement>(m_dst, src, true, ts.value_or(TypeSpec("object")));
   }
 }
 

@@ -25,6 +25,7 @@
 #include "decompiler/IR2/Env.h"
 #include "decompiler/util/DecompilerTypeSystem.h"
 #include "decompiler/Function/Function.h"
+#include "decompiler/ObjectFile/LinkedObjectFile.h"
 
 namespace decompiler {
 
@@ -281,6 +282,26 @@ void PossibleType::eliminate() {
   }
 }
 
+std::string PossibleType::to_string() const {
+  std::string result = fmt::format("   TP_Type: {}\n  score: {}, children: {}\n", type.print(), score, child_count);
+  if (deref_path) {
+    result += fmt::format("   source deref: {}\n", deref_path->print());
+  }
+  return result;
+}
+
+std::string RegisterTypeState::to_string() const {
+  std::string result = fmt::format("RegisterState with {} possibilities:\n", possible_types.size());
+  for (auto& pos : possible_types) {
+    if (pos.is_valid()) {
+      result += fmt::format(" ELIM:\n{}", pos.to_string());
+    } else {
+      result += fmt::format(" LIVE:\n{}", pos.to_string());
+    }
+  }
+  return result;
+}
+
 /*!
  * If we have multiple types, pick the one with the highest deref path score.
  * If warnings is set, and we have to throw away a valid type, prints a warning that we made a
@@ -342,6 +363,36 @@ void RegisterTypeState::reduce_to_single_best_type(DecompWarnings* warnings,
   if (warnings && printed_first_warning) {
     warnings->general_warning(warning_string);
   }
+}
+
+bool RegisterTypeState::is_single_type() const {
+  if (single_type_cache) {
+    return true;
+  }
+  int count = 0;
+  int idx_of_best = -1;
+  for (size_t i = 0; i < possible_types.size(); i++) {
+    if (possible_types.at(i).is_valid()) {
+      count++;
+      idx_of_best = i;
+    }
+  }
+
+  if (count == 1) {
+    single_type_cache = idx_of_best;
+  }
+  return count == 1;
+}
+
+RegisterTypeState RegisterTypeState::copy_and_make_child() {
+  RegisterTypeState result = *this;
+  for (size_t i = 0; i < possible_types.size(); i++) {
+    auto& child = result.possible_types.at(i);
+    auto& mine = possible_types.at(i);
+    mine.child_count++;
+    child.parent = {this, (int)i};
+  }
+  return result;
 }
 
 /*!
@@ -685,7 +736,7 @@ bool run_multi_type_analysis(const TypeSpec& my_type,
 
         try {
           auto& dest = op_types.at(op_id);
-          dest = *preceding_types;
+          // dest = *preceding_types;
           if (stack_casts || user_casts) {
             std::vector<std::unique_ptr<RegisterTypeState>> temp_nodes;
             auto casted = get_input_types_with_user_casts(user_casts, stack_casts, *preceding_types,
@@ -822,11 +873,56 @@ RegisterTypeState SimpleAtom::get_type(InstrTypeState& input,
 
 RegisterTypeState SimpleExpression::get_type(InstrTypeState& input,
                                              const Env& env,
-                                             const DecompilerTypeSystem& dts) const {
+                                             const DecompilerTypeSystem& dts,
+                                             int my_idx) const {
   switch (m_kind) {
     case Kind::IDENTITY:
       // this expression is just an atom, so return the atom's type.
       return m_args[0].get_type(input, env, dts);
+    case Kind::GPR_TO_FPR: {
+      auto& in_type = input.get(get_arg(0).var().reg());
+      // see if we can just get a float here.
+      if (in_type.ptr()->try_elimination(TypeSpec("float"), dts.ts)) {
+        in_type.ptr()->reduce_to_single_best_type(&env.func->warnings, my_idx, nullptr);
+        return RegisterTypeState("float");
+      }
+
+      // no float. see if we have an integer constant zero
+      if (in_type.ptr()->is_single_type() &&
+          in_type.ptr()->get_single_tp_type().is_integer_constant(0)) {
+        // goal uses r0 as a floating point 0 constant.
+        return RegisterTypeState("float");
+      }
+
+      return in_type.ptr()->copy_and_make_child();
+    }
+    case Kind::FPR_TO_GPR:
+      return input.get(get_arg(0).var().reg()).ptr()->copy_and_make_child();
+
+    case Kind::DIV_S:
+    case Kind::SUB_S:
+    case Kind::MUL_S:
+    case Kind::ADD_S:
+      //    case Kind::SQRT_S:
+      //    case Kind::ABS_S:
+      //    case Kind::NEG_S:
+      //    case Kind::INT_TO_FLOAT:
+    case Kind::MIN_S:
+    case Kind::MAX_S: {
+      auto& in_type_0 = input.get(get_arg(0).var().reg());
+      auto& in_type_1 = input.get(get_arg(1).var().reg());
+      if (!in_type_0.ptr()->try_elimination(TypeSpec("float"), dts.ts)) {
+        env.func->warnings.general_warning(
+            "At op {}, floating point op {} arg 1 of 2 does not look like a float. Instead:\n{}",
+            my_idx, to_string(env), in_type_0.ptr()->to_string());
+      }
+
+      if (!in_type_1.ptr()->try_elimination(TypeSpec("float"), dts.ts)) {
+      }
+
+      return RegisterTypeState("float");
+    }
+
     default:
       throw std::runtime_error("Simple expression cannot get_type (multi types): " +
                                to_string(env));
@@ -844,7 +940,7 @@ void SetVarOp::multi_types_internal(InstrTypeState* output,
       m_src.get_arg(0).get_int() == 0) {
     output->assign(m_dst.reg(), RegisterTypeState("float"));
   } else {
-    output->assign(m_dst.reg(), m_src.get_type(input, env, dts));
+    output->assign(m_dst.reg(), m_src.get_type(input, env, dts, m_my_idx));
   }
 
   // it's safe to do this, though a little confusing.
@@ -857,6 +953,317 @@ void SetVarOp::multi_types_internal(InstrTypeState* output,
   auto& out_node = output->get(m_dst.reg());
   assert(out_node.is_alloc_point() && !out_node.is_clobber() && !out_node.is_cast());
   m_source_type_new = &output->get_state(m_dst.reg());
+}
+
+namespace {
+bool tc(const DecompilerTypeSystem& dts, const TypeSpec& expected, const TP_Type& actual) {
+  return dts.ts.tc(expected, actual.typespec());
+}
+
+bool is_int_or_uint(const DecompilerTypeSystem& dts, const TP_Type& type) {
+  return tc(dts, TypeSpec("integer"), type) || tc(dts, TypeSpec("uint"), type);
+}
+
+bool is_signed(const DecompilerTypeSystem& dts, const TP_Type& type) {
+  return tc(dts, TypeSpec("int"), type) && !tc(dts, TypeSpec("uint"), type);
+}
+
+RegClass get_reg_kind(const Register& r) {
+  switch (r.get_kind()) {
+    case Reg::GPR:
+      return RegClass::GPR_64;
+    case Reg::FPR:
+      return RegClass::FLOAT;
+    default:
+      assert(false);
+      return RegClass::INVALID;
+  }
+}
+
+}  // namespace
+
+void RegisterTypeState::add_possibility(TypeChoiceParent& parent,
+                                        const TP_Type& type,
+                                        double delta_score,
+                                        const std::optional<FieldReverseLookupOutput>& deref) {
+  assert(!is_temp_node);
+  parent.get().child_count++;
+  PossibleType new_type;
+  new_type.type = type;
+  new_type.deref_path = deref;
+  new_type.score = parent.get().score + delta_score;
+  possible_types.push_back(new_type);
+}
+
+// todo - this needs a cleanup to set m_type.
+void LoadVarOp::multi_types_internal(InstrTypeState* output,
+                                     InstrTypeState& input,
+                                     const Env& env,
+                                     DecompilerTypeSystem& dts) {
+  if (m_dst.reg().get_kind() != Reg::FPR && m_dst.reg().get_kind() != Reg::GPR) {
+    // do nothing, it's a VF and we don't track those.
+    return;
+  }
+
+  m_type_new = input.get(m_dst.reg()).ptr();
+
+  auto set_single_result = [&](const TypeSpec& ts) {
+    output->assign(m_dst.reg(), RegisterTypeState(ts));
+    // m_type = ts;
+  };
+
+  ///////////////////////////////////////
+  // Special Locations
+  ///////////////////////////////////////
+  if (m_src.is_identity()) {
+    auto& src = m_src.get_arg(0);
+    if (src.is_static_addr()) {
+      if (m_kind == Kind::FLOAT) {
+        // assume anything loaded from floating point will be a float.
+        set_single_result(TypeSpec("float"));
+        return;  // can just exit the whole thing.
+      }
+
+      auto label_name = env.file->labels.at(src.label()).name;
+      auto hint = env.label_types().find(label_name);
+      if (hint != env.label_types().end()) {
+        // got a label hint. use that as the only possible type
+        set_single_result(coerce_to_reg_type(env.dts->parse_type_spec(hint->second.type_name)));
+        return;
+      }
+
+      if (m_size == 8) {
+        // 8 byte integer constants are always loaded from a static pool
+        // loads from static basics are never constant propagated, so this is safe.
+        set_single_result(TypeSpec("uint"));
+        return;
+      }
+    }
+  }
+
+  ///////////////////////////////////////
+  // Register + offset (possibly zero)
+  ///////////////////////////////////////
+  IR2_RegOffset ro;
+  RegisterTypeState result;
+  auto dst_state = input.get(m_dst.reg()).ptr();
+  if (get_as_reg_offset(m_src, &ro)) {
+    // get possible types in the source.
+    auto src_state = input.get(ro.reg).ptr();
+    assert(input.get(m_dst.reg()).is_alloc_point());
+
+    // and loop over them.
+    // in here, we want to eliminate parents that don't have any possible solutions.
+    for (size_t parent_idx = 0; parent_idx < src_state->possible_types.size(); parent_idx++) {
+      // only consider valid ones.
+      auto& possibility = src_state->possible_types.at(parent_idx);
+      if (!possibility.is_valid()) {
+        continue;
+      }
+      auto& input_type = possibility.type;
+      TypeChoiceParent parent = {input.get(m_dst.reg()).ptr(), (int)parent_idx};
+
+      // see if we're accessing a type object for a known type, at a fixed offset into the
+      // method table
+      if ((input_type.kind == TP_Type::Kind::TYPE_OF_TYPE_OR_CHILD ||
+           input_type.kind == TP_Type::Kind::TYPE_OF_TYPE_NO_VIRTUAL) &&
+          ro.offset >= 16 && (ro.offset & 3) == 0 && m_size == 4 && m_kind == Kind::UNSIGNED) {
+        // look up method info
+        auto type_name = input_type.get_type_objects_typespec().base_type();
+        auto method_id = (ro.offset - 16) / 4;
+        auto method_info = dts.ts.lookup_method(type_name, method_id);
+        auto method_type = method_info.type.substitute_for_method_call(type_name);
+
+        if (type_name == "object" && method_id == GOAL_NEW_METHOD) {
+          // the new method of object is a special thing for (object-new ...)
+          dst_state->add_possibility(parent, TP_Type::make_object_new(method_type), 0, {});
+          continue;  // this is the only thing we want.
+        }
+
+        if (method_id == GOAL_NEW_METHOD) {
+          // new methods aren't really methods and are called like functions, so we just return
+          // the plain old function.
+          dst_state->add_possibility(parent, TP_Type::make_from_ts(method_type), 0, {});
+          continue;
+        } else if (input_type.kind == TP_Type::Kind::TYPE_OF_TYPE_NO_VIRTUAL) {
+          // acquired type directly, without accessing type field:
+          dst_state->add_possibility(
+              parent, TP_Type::make_non_virtual_method(method_type, TypeSpec(type_name), method_id),
+              0, {});
+          continue;
+        } else {
+          // used the type field of a basic, make it virtual.
+          dst_state->add_possibility(
+              parent, TP_Type::make_virtual_method(method_type, TypeSpec(type_name), method_id), 0,
+              {});
+          continue;
+        }
+      }  // end method table access of known type
+
+      // access method table of unknown type.
+      if (input_type.kind == TP_Type::Kind::TYPESPEC && input_type.typespec() == TypeSpec("type") &&
+          ro.offset >= 16 && (ro.offset & 3) == 0 && m_size == 4 && m_kind == Kind::UNSIGNED) {
+        // method get of an unknown type. We assume the most general "object" type, which has up to
+        // mem-usage.
+        auto method_id = (ro.offset - 16) / 4;
+        if (method_id <= (int)GOAL_MEMUSAGE_METHOD) {
+          auto method_info = dts.ts.lookup_method("object", method_id);
+          if (method_id != GOAL_NEW_METHOD && method_id != GOAL_RELOC_METHOD) {
+            dst_state->add_possibility(parent,
+                                       TP_Type::make_non_virtual_method(
+                                           method_info.type.substitute_for_method_call("object"),
+                                           TypeSpec("object"), method_id),
+                                       0, {});
+            continue;
+          }
+        }
+      }
+
+      if (input_type.kind == TP_Type::Kind::OBJECT_PLUS_PRODUCT_WITH_CONSTANT) {
+        FieldReverseLookupInput rd_in;
+        DerefKind dk;
+        dk.is_store = false;
+        dk.reg_kind = get_reg_kind(ro.reg);
+        dk.sign_extend = m_kind == Kind::SIGNED;
+        dk.size = m_size;
+        rd_in.deref = dk;
+        rd_in.base_type = input_type.get_obj_plus_const_mult_typespec();
+        rd_in.stride = input_type.get_multiplier();
+        rd_in.offset = ro.offset;
+        auto rd = dts.ts.reverse_field_multi_lookup(rd_in);
+
+        if (rd.success) {
+          for (auto& x : rd.results) {
+            dst_state->add_possibility(
+                parent, TP_Type::make_from_ts(coerce_to_reg_type(x.result_type)), x.total_score, x);
+          }
+        }
+      }
+
+      // todo - should this avoid integers?
+      if (input_type.kind == TP_Type::Kind::TYPESPEC && ro.offset == -4 &&
+          m_kind == Kind::UNSIGNED && m_size == 4 && ro.reg.get_kind() == Reg::GPR) {
+        // get type of basic likely, but misrecognized as an object.
+        // occurs often in typecase-like structures because other possible types are
+        // "stripped".
+
+        dst_state->add_possibility(
+            parent, TP_Type::make_type_allow_virtual_object(input_type.typespec().base_type()), 0,
+            {});
+        continue;
+      }
+
+      if (input_type.kind == TP_Type::Kind::DYNAMIC_METHOD_ACCESS && ro.offset == 16) {
+        // access method vtable. The input is type + (4 * method), and the 16 is the offset
+        // of method 0. This is special cased as DYNAMIC_METHOD_ACCESS so it won't work in the below
+        // check
+
+        dst_state->add_possibility(parent, TP_Type::make_from_ts(TypeSpec("function")), 0, {});
+        continue;
+      }
+
+      // Assume we're accessing a field of an object.
+      // if we are a pair with sloppy typing, don't use this and instead use the case down below.
+      if (input_type.typespec() != TypeSpec("pair") || !env.allow_sloppy_pair_typing()) {
+        FieldReverseLookupInput rd_in;
+        DerefKind dk;
+        dk.is_store = false;
+        dk.reg_kind = get_reg_kind(ro.reg);
+        dk.sign_extend = m_kind == Kind::SIGNED;
+        dk.size = m_size;
+        rd_in.deref = dk;
+        rd_in.base_type = input_type.typespec();
+        rd_in.stride = 0;
+        rd_in.offset = ro.offset;
+        auto rd = dts.ts.reverse_field_multi_lookup(rd_in);
+
+        if (rd.success) {
+          for (auto& x : rd.results) {
+            dst_state->add_possibility(
+                parent, TP_Type::make_from_ts(coerce_to_reg_type(x.result_type)), x.total_score, x);
+          }
+        }
+      }
+
+      if (input_type.typespec() == TypeSpec("pointer") ||
+          input_type.kind == TP_Type::Kind::OBJECT_PLUS_PRODUCT_WITH_CONSTANT) {
+        // we got a plain pointer. let's just assume we're loading an integer.
+        // perhaps we should disable this feature by default on 4-byte loads if we're getting
+        // lots of false positives for loading pointers from plain pointers.
+
+        switch (m_kind) {
+          case Kind::UNSIGNED:
+            switch (m_size) {
+              case 1:
+              case 2:
+              case 4:
+              case 8:
+                dst_state->add_possibility(parent, TP_Type::make_from_ts(TypeSpec("uint")), 0, {});
+                continue;
+              case 16:
+                dst_state->add_possibility(parent, TP_Type::make_from_ts(TypeSpec("uint128")), 0,
+                                           {});
+                continue;
+              default:
+                break;
+            }
+            break;
+          case Kind::SIGNED:
+            switch (m_size) {
+              case 1:
+              case 2:
+              case 4:
+              case 8:
+                dst_state->add_possibility(parent, TP_Type::make_from_ts(TypeSpec("int")), 0, {});
+                continue;
+              case 16:
+                dst_state->add_possibility(parent, TP_Type::make_from_ts(TypeSpec("int128")), 0,
+                                           {});
+                continue;
+              default:
+                break;
+            }
+            break;
+          case Kind::FLOAT:
+            dst_state->add_possibility(parent, TP_Type::make_from_ts(TypeSpec("float")), 0, {});
+            continue;
+          default:
+            assert(false);
+        }
+      }
+
+      // rd failed, try as pair.
+      if (env.allow_sloppy_pair_typing()) {
+        // we are strict here - only permit pair-type loads from object or pair.
+        // object is permitted for stuff like association lists where the car is also a pair.
+        if (m_kind == Kind::SIGNED && m_size == 4 &&
+            (input_type.typespec() == TypeSpec("object") ||
+             input_type.typespec() == TypeSpec("pair"))) {
+          // these rules are of course not always correct or the most specific, but it's the best
+          // we can do.
+          if (ro.offset == 2) {
+            // cdr = another pair.
+            dst_state->add_possibility(parent, TP_Type::make_from_ts(TypeSpec("pair")), 0, {});
+            continue;
+          } else if (ro.offset == -2) {
+            // car = some object.
+            dst_state->add_possibility(parent, TP_Type::make_from_ts(TypeSpec("object")), 0, {});
+            continue;
+          }
+        }
+      }
+      if (parent.get().child_count == 0) {
+        parent.get().eliminate();
+      }
+    }  // end for
+  }
+
+  if (dst_state->possible_types.empty()) {
+    throw std::runtime_error(
+        fmt::format("Could not get type of load: {}. ", to_form(env.file->labels, env).print()));
+  } else {
+    output->assign(m_dst.reg(), result);
+  }
 }
 
 void FunctionEndOp::multi_types_internal(InstrTypeState*,

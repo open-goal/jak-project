@@ -32,6 +32,7 @@ struct DerefHint {
 struct TypeChoiceParent {
   RegisterTypeState* reg_type = nullptr;
   int idx_in_parent = -1;
+
   const PossibleType& get() const;
   PossibleType& get();
   void remove_ref();
@@ -62,6 +63,9 @@ struct PossibleType {
   bool is_valid() const;  // true, unless we were eliminated.
 
   PossibleType(const TP_Type& tp_type) : type(tp_type) {}
+  PossibleType() = default;
+
+  std::string to_string() const;
 
  private:
   mutable bool m_valid_cache = true;
@@ -97,6 +101,15 @@ struct RegisterTypeState {
 
   bool try_elimination(const TypeSpec& desired_types, const TypeSystem& ts);
   bool can_eliminate_to_get(const TypeSpec& desired_types, const TypeSystem& ts) const;
+
+  void add_possibility(TypeChoiceParent& parent,
+                       const TP_Type& type,
+                       double delta_score,
+                       const std::optional<FieldReverseLookupOutput>& deref);
+
+  RegisterTypeState copy_and_make_child();
+
+  std::string to_string() const;
 
  private:
   mutable std::optional<int> single_type_cache;

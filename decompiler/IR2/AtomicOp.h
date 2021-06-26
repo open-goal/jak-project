@@ -264,7 +264,8 @@ class SimpleExpression {
   TP_Type get_type(const TypeState& input, const Env& env, const DecompilerTypeSystem& dts) const;
   RegisterTypeState get_type(InstrTypeState& input,
                              const Env& env,
-                             const DecompilerTypeSystem& dts) const;
+                             const DecompilerTypeSystem& dts,
+                             int my_idx) const;
 
   TP_Type get_type_int2(const TypeState& input,
                         const Env& env,
@@ -499,6 +500,10 @@ class LoadVarOp : public AtomicOp {
                                      DecompilerTypeSystem& dts) override;
   TP_Type get_src_type(const TypeState& input, const Env& env, DecompilerTypeSystem& dts) const;
   void collect_vars(RegAccessSet& vars) const override;
+  void multi_types_internal(InstrTypeState* output,
+                            InstrTypeState& input,
+                            const Env& env,
+                            DecompilerTypeSystem& dts) override;
 
  private:
   Kind m_kind;
@@ -506,6 +511,7 @@ class LoadVarOp : public AtomicOp {
   RegisterAccess m_dst;
   SimpleExpression m_src;
   std::optional<TypeSpec> m_type;
+  RegisterTypeState* m_type_new = nullptr;
 };
 
 /*!
