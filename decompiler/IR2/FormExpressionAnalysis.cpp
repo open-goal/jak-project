@@ -1721,10 +1721,140 @@ Form* make_optional_cast(const std::optional<TypeSpec>& cast_type,
     return in;
   }
 }
+
+bool try_to_rewrite_vector_inline_ctor(const Env& env,
+                                       FormPool& pool,
+                                       FormStack& stack,
+                                       const std::string& type_name) {
+  // now, let's check for a matrix initialization.
+  auto matrix_entries = stack.try_getting_active_stack_entries({true, false});
+  if (matrix_entries) {
+    // the (set! var (new 'stack-no-clear 'matrix))
+    if (matrix_entries->at(0).destination->reg() == Register(Reg::GPR, Reg::R0)) {
+      return false;
+    }
+    auto var_name = env.get_variable_name(*matrix_entries->at(0).destination);
+    auto src = matrix_entries->at(0).source->try_as_element<StackStructureDefElement>();
+    if (!src) {
+      return false;
+    }
+    if (src->type() != TypeSpec(type_name)) {
+      return false;
+    }
+
+    // zeroing the rows:
+    std::vector<RegisterAccess> write_vars;
+
+    auto elt = matrix_entries->at(1).elt;
+
+    std::vector<DerefTokenMatcher> token_matchers = {DerefTokenMatcher::string("vec"),
+                                                     DerefTokenMatcher::string("quad")};
+    if (type_name == "vector") {
+      token_matchers = {DerefTokenMatcher::string("quad")};
+    }
+
+    auto matcher = Matcher::set(Matcher::deref(Matcher::any_reg(0), false, token_matchers),
+                                Matcher::cast("uint128", Matcher::integer(0)));
+
+    Form hack;
+    hack.elts().push_back(elt);
+    auto mr = match(matcher, &hack);
+
+    if (mr.matched) {
+      if (var_name != env.get_variable_name(*mr.maps.regs.at(0))) {
+        return false;
+      }
+      write_vars.push_back(*mr.maps.regs.at(0));
+    } else {
+      return false;
+    }
+
+    // success!
+    for (auto& wv : write_vars) {
+      env.get_use_def_info(wv);
+      Env* menv = const_cast<Env*>(&env);
+      menv->disable_use(wv);
+    }
+    stack.pop(2);
+
+    stack.push_value_to_reg(
+        *matrix_entries->at(0).destination,
+        pool.alloc_single_element_form<GenericElement>(
+            nullptr,
+            GenericOperator::make_function(pool.alloc_single_element_form<ConstantTokenElement>(
+                nullptr, fmt::format("new-stack-{}0", type_name)))),
+        true, TypeSpec(type_name));
+    return true;
+  }
+  return false;
+}
+
+bool try_to_rewrite_matrix_inline_ctor(const Env& env, FormPool& pool, FormStack& stack) {
+  // now, let's check for a matrix initialization.
+  auto matrix_entries = stack.try_getting_active_stack_entries({true, false, false, false, false});
+  if (matrix_entries) {
+    // the (set! var (new 'stack-no-clear 'matrix))
+    if (matrix_entries->at(0).destination->reg() == Register(Reg::GPR, Reg::R0)) {
+      return false;
+    }
+    auto var_name = env.get_variable_name(*matrix_entries->at(0).destination);
+    auto src = matrix_entries->at(0).source->try_as_element<StackStructureDefElement>();
+    if (!src) {
+      return false;
+    }
+    if (src->type() != TypeSpec("matrix")) {
+      return false;
+    }
+
+    // zeroing the rows:
+    std::vector<RegisterAccess> write_vars;
+    for (int i = 0; i < 4; i++) {
+      auto elt = matrix_entries->at(i + 1).elt;
+
+      auto matcher = Matcher::set(
+          Matcher::deref(Matcher::any_reg(0), false,
+                         {DerefTokenMatcher::string("vector"), DerefTokenMatcher::integer(i),
+                          DerefTokenMatcher::string("quad")}),
+          Matcher::cast("uint128", Matcher::integer(0)));
+
+      Form hack;
+      hack.elts().push_back(elt);
+      auto mr = match(matcher, &hack);
+
+      if (mr.matched) {
+        if (var_name != env.get_variable_name(*mr.maps.regs.at(0))) {
+          return false;
+        }
+        write_vars.push_back(*mr.maps.regs.at(0));
+      } else {
+        return false;
+      }
+    }
+
+    // success!
+    for (auto& wv : write_vars) {
+      env.get_use_def_info(wv);
+      Env* menv = const_cast<Env*>(&env);
+      menv->disable_use(wv);
+    }
+    stack.pop(5);
+
+    stack.push_value_to_reg(*matrix_entries->at(0).destination,
+                            pool.alloc_single_element_form<GenericElement>(
+                                nullptr, GenericOperator::make_function(
+                                             pool.alloc_single_element_form<ConstantTokenElement>(
+                                                 nullptr, "new-stack-matrix0"))),
+                            true, TypeSpec("matrix"));
+    return true;
+  }
+  return false;
+}
+
 }  // namespace
 
 void StorePlainDeref::push_to_stack(const Env& env, FormPool& pool, FormStack& stack) {
   mark_popped();
+
   if (m_expr.is_var()) {
     // this matches the order in Compiler::compile_set
     auto vars = std::vector<RegisterAccess>({m_expr.var(), m_base_var});
@@ -1758,6 +1888,12 @@ void StorePlainDeref::push_to_stack(const Env& env, FormPool& pool, FormStack& s
                                                make_optional_cast(m_src_cast_type, val, pool, env));
     fr->mark_popped();
     stack.push_form_element(fr, true);
+  }
+
+  if (!try_to_rewrite_matrix_inline_ctor(env, pool, stack)) {
+    if (!try_to_rewrite_vector_inline_ctor(env, pool, stack, "vector")) {
+      try_to_rewrite_vector_inline_ctor(env, pool, stack, "quaternion");
+    }
   }
 }
 

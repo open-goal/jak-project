@@ -1383,3 +1383,123 @@ TEST_F(FormRegressionTest, DebugMenuFuncDecode) {
       "  )";
   test_with_expr(func, type, expected, false, "", {}, "[[13, \"a0\", \"symbol\"]]");
 }
+
+TEST_F(FormRegressionTest, MatrixNewInlineProp) {
+  std::string func =
+      "sll r0, r0, 0\n"
+      "    daddiu sp, sp, -112\n"
+      "    sd ra, 0(sp)\n"
+      "    sq s5, 80(sp)\n"
+      "    sq gp, 96(sp)\n"
+
+      "    or gp, a0, r0\n"
+      "    or s5, a2, r0\n"
+      "    lw t9, matrix-rotate-y!(s7)\n"
+      "    or a0, gp, r0\n"
+      "    jalr ra, t9\n"
+      "    sll v0, ra, 0\n"
+
+      "    lw t9, matrix-rotate-x!(s7)\n"
+      "    daddiu a0, sp, 16\n"
+      "    sq r0, 0(a0)\n"
+      "    sq r0, 16(a0)\n"
+      "    sq r0, 32(a0)\n"
+      "    sq r0, 48(a0)\n"
+      "    or a1, s5, r0\n"
+      "    jalr ra, t9\n"
+      "    sll v0, ra, 0\n"
+
+      "    or a1, v0, r0\n"
+      "    lw t9, matrix*!(s7)\n"
+      "    or a0, gp, r0\n"
+      "    or a2, gp, r0\n"
+      "    jalr ra, t9\n"
+      "    sll v0, ra, 0\n"
+
+      "    or v1, v0, r0\n"
+      "    or v0, gp, r0\n"
+      "    ld ra, 0(sp)\n"
+      "    lq gp, 96(sp)\n"
+      "    lq s5, 80(sp)\n"
+      "    jr ra\n"
+      "    daddiu sp, sp, 112\n"
+
+      "    sll r0, r0, 0\n"
+      "    sll r0, r0, 0\n"
+      "    sll r0, r0, 0\n";
+  std::string type = "(function matrix float float matrix)";
+  std::string expected =
+      "(begin\n"
+      "  (matrix-rotate-y! arg0 arg1)\n"
+      "  (let ((a1-2 (matrix-rotate-x! (new-stack-matrix0) arg2)))\n"
+      "   (matrix*! arg0 a1-2 arg0)\n"
+      "   )\n"
+      "  arg0\n"
+      "  )";
+  test_with_stack_structures(func, type, expected, R"([[16, "matrix"]])");
+}
+
+TEST_F(FormRegressionTest, VectorNewInlineProp) {
+  std::string func =
+      "sll r0, r0, 0\n"
+      "    daddiu sp, sp, -64\n"
+      "    sd ra, 0(sp)\n"
+      "    sd fp, 8(sp)\n"
+      "    or fp, t9, r0\n"
+      "    sq s5, 32(sp)\n"
+      "    sq gp, 48(sp)\n"
+      "    or gp, a0, r0\n"
+      "    daddiu s5, sp, 16\n"
+      "    sq r0, 0(s5)\n"
+      "    or v1, s5, r0\n"
+      "    lwc1 f0, 0(a1)\n"
+      "    swc1 f0, 0(v1)\n"
+      "    lwc1 f0, 4(a1)\n"
+      "    swc1 f0, 4(v1)\n"
+      "    lwc1 f0, 8(a1)\n"
+      "    swc1 f0, 8(v1)\n"
+      "    mtc1 f0, r0\n"
+      "    swc1 f0, 12(v1)\n"
+      "    lw t9, vector-matrix*!(s7)\n"
+      "    or a0, s5, r0\n"
+      "    or a1, s5, r0\n"
+      "    jalr ra, t9\n"
+      "    sll v0, ra, 0\n"
+
+      "    lwc1 f0, 0(s5)\n"
+      "    swc1 f0, 0(gp)\n"
+      "    lwc1 f0, 4(s5)\n"
+      "    swc1 f0, 4(gp)\n"
+      "    lwc1 f0, 8(s5)\n"
+      "    swc1 f0, 8(gp)\n"
+      "    or v1, gp, r0\n"
+      "    or v0, gp, r0\n"
+      "    ld ra, 0(sp)\n"
+      "    ld fp, 8(sp)\n"
+      "    lq gp, 48(sp)\n"
+      "    lq s5, 32(sp)\n"
+      "    jr ra\n"
+      "    daddiu sp, sp, 64\n"
+
+      "    sll r0, r0, 0\n"
+      "    sll r0, r0, 0\n"
+      "    sll r0, r0, 0\n";
+  std::string type = "(function vector3s vector3s matrix vector3s)";
+  std::string expected =
+      "(begin\n"
+      "  (let ((s5-0 (new-stack-vector0)))\n"
+      "   (let ((v1-0 s5-0))\n"
+      "    (set! (-> v1-0 x) (-> arg1 x))\n"
+      "    (set! (-> v1-0 y) (-> arg1 y))\n"
+      "    (set! (-> v1-0 z) (-> arg1 z))\n"
+      "    (set! (-> v1-0 w) 0.0)\n"
+      "    )\n"
+      "   (vector-matrix*! s5-0 s5-0 arg2)\n"
+      "   (set! (-> arg0 x) (-> s5-0 x))\n"
+      "   (set! (-> arg0 y) (-> s5-0 y))\n"
+      "   (set! (-> arg0 z) (-> s5-0 z))\n"
+      "   )\n"
+      "  arg0\n"
+      "  )";
+  test_with_stack_structures(func, type, expected, R"([[16, "vector"]])");
+}
