@@ -193,6 +193,12 @@ void clean_up_break(FormPool& pool, BreakElement* ir) {
 }
 
 void clean_up_break_final(const Function& f, BreakElement* ir) {
+  EmptyElement* dead_empty = dynamic_cast<EmptyElement*>(ir->dead_code->try_as_single_element());
+  if (dead_empty) {
+    ir->dead_code = nullptr;
+    return;
+  }
+
   SetVarElement* dead = dynamic_cast<SetVarElement*>(ir->dead_code->try_as_single_element());
   if (!dead) {
     dead = dynamic_cast<SetVarElement*>(ir->dead_code->elts().front());
@@ -537,6 +543,13 @@ bool try_splitting_nested_sc(FormPool& pool, Function& func, ShortCircuitElement
   assert(ir->entries.front().branch_delay.has_value());
   bool first_is_and = delay_slot_sets_false(first_branch.first, *ir->entries.front().branch_delay);
   bool first_is_or = delay_slot_sets_truthy(first_branch.first, *ir->entries.front().branch_delay);
+
+  if (first_is_and == first_is_or) {
+    throw std::runtime_error(fmt::format(
+        "Failed to split nested sc.  This may mean that abs/ash/type-of was misrecognized as "
+        "and/or:\n{}",
+        ir->to_string(func.ir2.env)));
+  }
   assert(first_is_and != first_is_or);  // one or the other but not both!
 
   int first_different = -1;  // the index of the first one that's different.
@@ -1457,6 +1470,14 @@ void insert_cfg_into_list(FormPool& pool,
   }
 }
 
+Form* cfg_to_ir_allow_null(FormPool& pool, Function& f, const CfgVtx* vtx) {
+  if (vtx) {
+    return cfg_to_ir(pool, f, vtx);
+  } else {
+    return pool.alloc_single_element_form<EmptyElement>(nullptr);
+  }
+}
+
 Form* cfg_to_ir_helper(FormPool& pool, Function& f, const CfgVtx* vtx) {
   if (dynamic_cast<const BlockVtx*>(vtx)) {
     auto* bv = dynamic_cast<const BlockVtx*>(vtx);
@@ -1620,24 +1641,31 @@ Form* cfg_to_ir_helper(FormPool& pool, Function& f, const CfgVtx* vtx) {
   } else if (dynamic_cast<const Break*>(vtx)) {
     auto* cvtx = dynamic_cast<const Break*>(vtx);
     auto result = pool.alloc_single_element_form<BreakElement>(
-        nullptr, cfg_to_ir(pool, f, cvtx->body), cfg_to_ir(pool, f, cvtx->unreachable_block),
-        cvtx->dest_block_id);
+        nullptr, cfg_to_ir(pool, f, cvtx->body),
+        cfg_to_ir_allow_null(pool, f, cvtx->unreachable_block), cvtx->dest_block_id);
     clean_up_break(pool, dynamic_cast<BreakElement*>(result->try_as_single_element()));
     return result;
   } else if (dynamic_cast<const EmptyVtx*>(vtx)) {
     return pool.alloc_single_element_form<EmptyElement>(nullptr);
   }
 
-  throw std::runtime_error("not yet implemented IR conversion.");
   return nullptr;
 }
 
 Form* cfg_to_ir(FormPool& pool, Function& f, const CfgVtx* vtx) {
+  // we cache these because some functions will do a conversion, give up, and throw away the result.
+  // converting multiple times means that env-modifications will happen multiple times.
+  auto cached = pool.lookup_cached_conversion(vtx);
+  if (cached) {
+    return cached;
+  }
   Form* result = cfg_to_ir_helper(pool, f, vtx);
   if (vtx->needs_label) {
     result->elts().insert(result->elts().begin(),
                           pool.alloc_element<LabelElement>(vtx->get_first_block_id()));
   }
+
+  pool.cache_conversion(vtx, result);
   return result;
 }
 

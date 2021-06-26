@@ -217,6 +217,23 @@
     )
   )
 
+;; the compiler can't figure out types of a recursive function without
+;; first knowing the return type, so we use this form to forward declare
+;; and define a function.
+(defmacro defun-recursive (name return-type bindings &rest body)
+  `(begin
+    (define-extern ,name
+        (function ,@(apply (lambda (x)
+                             (if (pair? x)
+                                 (second x)
+                                 'object)
+                             )
+                           bindings)
+                  ,return-type))
+    (defun ,name ,bindings ,@body)
+    )
+  )
+
 (defmacro defun-extern (function-name &rest type-info)
   `(define-extern ,function-name (function ,@type-info))
   )

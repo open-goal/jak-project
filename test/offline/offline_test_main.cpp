@@ -102,10 +102,6 @@ const std::unordered_set<std::string> g_functions_to_skip_compiling = {
     "lognor",
     // weird PS2 specific debug registers:
     "breakpoint-range-set!",
-    // does weird stuff with the type system.
-    "print",
-    "printl",
-    "inspect",
     // inline assembly
     "valid?",
 

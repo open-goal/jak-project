@@ -225,7 +225,7 @@ void inspect_basics(const Ram& ram,
 
     auto type = dynamic_cast<BasicType*>(type_system.lookup_type(name));
     if (!type) {
-      fmt::print("Could not cast Type! Skipping!!");
+      fmt::print("Could not cast Type! Skipping!!\n");
       type_results["__metadata"]["failedToCast?"] = true;
       results[name] = type_results;
       continue;
@@ -234,7 +234,8 @@ void inspect_basics(const Ram& ram,
     for (auto& field : type->fields()) {
       if (!field.is_inline() && !field.is_dynamic() &&
           (field.type() == TypeSpec("basic") || field.type() == TypeSpec("object") ||
-           field.type() == TypeSpec("uint32"))) {
+           field.type() == TypeSpec("uint32") ||
+           field.type() == TypeSpec("array", {TypeSpec("basic")}))) {
         int array_size = field.is_array() ? field.array_size() : 1;
         fmt::print("  field {}\n", field.name());
 
@@ -245,34 +246,60 @@ void inspect_basics(const Ram& ram,
           field_results = {};
         }
 
+        bool goal_array = field.type() == TypeSpec("array", {TypeSpec("basic")});
+
         std::unordered_map<std::string, int> type_frequency;
+        int array_max_elts = 0;
 
         for (auto base_addr : basics.at(name)) {
           for (int elt_idx = 0; elt_idx < array_size; elt_idx++) {
             int field_addr = base_addr + field.offset() + 4 * elt_idx;
             if (ram.word_in_memory(field_addr)) {
               auto field_val = ram.word(field_addr);
-              if ((field_val & 0x7) == 4 && ram.word_in_memory(field_val - 4)) {
-                auto type_tag = ram.word(field_val - 4);
-                auto iter = types.find(type_tag);
-                if (iter != types.end()) {
-                  if (iter->second == "symbol") {
-                    auto sym_iter = symbols.addr_to_name.find(field_val);
-                    if (sym_iter != symbols.addr_to_name.end()) {
-                      type_frequency[fmt::format("(symbol {})", sym_iter->second)]++;
+              auto array_addr = field_val;
+              int goal_array_length = 1;
+              if (goal_array) {
+                if (ram.word_in_memory(field_val)) {
+                  goal_array_length = ram.word(field_val);
+                } else {
+                  array_addr = 0xBAADBEEF;
+                }
+              }
+              for (int arr_idx = 0; arr_idx < goal_array_length; ++arr_idx) {
+                if (goal_array) {
+                  field_val = array_addr + 12 + arr_idx * 4;
+                  if (ram.word_in_memory(field_val)) {
+                    field_val = ram.word(field_val);
+                  } else {
+                    field_val = 0xBAADBEEF;
+                  }
+                }
+
+                if ((field_val & 0x7) == 4 && ram.word_in_memory(field_val - 4)) {
+                  auto type_tag = ram.word(field_val - 4);
+                  auto iter = types.find(type_tag);
+                  if (iter != types.end()) {
+                    if (iter->second == "symbol") {
+                      auto sym_iter = symbols.addr_to_name.find(field_val);
+                      if (sym_iter != symbols.addr_to_name.end()) {
+                        type_frequency[fmt::format("(symbol {})", sym_iter->second)]++;
+                      } else {
+                        type_frequency[iter->second]++;
+                      }
                     } else {
                       type_frequency[iter->second]++;
                     }
                   } else {
-                    type_frequency[iter->second]++;
+                    type_frequency["_bad-type"]++;
                   }
+                } else if (field_val == 0) {
+                  type_frequency["0"]++;
                 } else {
-                  type_frequency["_bad-type"]++;
+                  type_frequency["_not-basic-ptr"]++;
                 }
-              } else if (field_val == 0) {
-                type_frequency["0"]++;
-              } else {
-                type_frequency["_not-basic-ptr"]++;
+
+                if (!goal_array)
+                  break;
               }
             } else {
               type_frequency["_bad-field-memory"]++;

@@ -1721,10 +1721,140 @@ Form* make_optional_cast(const std::optional<TypeSpec>& cast_type,
     return in;
   }
 }
+
+bool try_to_rewrite_vector_inline_ctor(const Env& env,
+                                       FormPool& pool,
+                                       FormStack& stack,
+                                       const std::string& type_name) {
+  // now, let's check for a matrix initialization.
+  auto matrix_entries = stack.try_getting_active_stack_entries({true, false});
+  if (matrix_entries) {
+    // the (set! var (new 'stack-no-clear 'matrix))
+    if (matrix_entries->at(0).destination->reg() == Register(Reg::GPR, Reg::R0)) {
+      return false;
+    }
+    auto var_name = env.get_variable_name(*matrix_entries->at(0).destination);
+    auto src = matrix_entries->at(0).source->try_as_element<StackStructureDefElement>();
+    if (!src) {
+      return false;
+    }
+    if (src->type() != TypeSpec(type_name)) {
+      return false;
+    }
+
+    // zeroing the rows:
+    std::vector<RegisterAccess> write_vars;
+
+    auto elt = matrix_entries->at(1).elt;
+
+    std::vector<DerefTokenMatcher> token_matchers = {DerefTokenMatcher::string("vec"),
+                                                     DerefTokenMatcher::string("quad")};
+    if (type_name == "vector") {
+      token_matchers = {DerefTokenMatcher::string("quad")};
+    }
+
+    auto matcher = Matcher::set(Matcher::deref(Matcher::any_reg(0), false, token_matchers),
+                                Matcher::cast("uint128", Matcher::integer(0)));
+
+    Form hack;
+    hack.elts().push_back(elt);
+    auto mr = match(matcher, &hack);
+
+    if (mr.matched) {
+      if (var_name != env.get_variable_name(*mr.maps.regs.at(0))) {
+        return false;
+      }
+      write_vars.push_back(*mr.maps.regs.at(0));
+    } else {
+      return false;
+    }
+
+    // success!
+    for (auto& wv : write_vars) {
+      env.get_use_def_info(wv);
+      Env* menv = const_cast<Env*>(&env);
+      menv->disable_use(wv);
+    }
+    stack.pop(2);
+
+    stack.push_value_to_reg(
+        *matrix_entries->at(0).destination,
+        pool.alloc_single_element_form<GenericElement>(
+            nullptr,
+            GenericOperator::make_function(pool.alloc_single_element_form<ConstantTokenElement>(
+                nullptr, fmt::format("new-stack-{}0", type_name)))),
+        true, TypeSpec(type_name));
+    return true;
+  }
+  return false;
+}
+
+bool try_to_rewrite_matrix_inline_ctor(const Env& env, FormPool& pool, FormStack& stack) {
+  // now, let's check for a matrix initialization.
+  auto matrix_entries = stack.try_getting_active_stack_entries({true, false, false, false, false});
+  if (matrix_entries) {
+    // the (set! var (new 'stack-no-clear 'matrix))
+    if (matrix_entries->at(0).destination->reg() == Register(Reg::GPR, Reg::R0)) {
+      return false;
+    }
+    auto var_name = env.get_variable_name(*matrix_entries->at(0).destination);
+    auto src = matrix_entries->at(0).source->try_as_element<StackStructureDefElement>();
+    if (!src) {
+      return false;
+    }
+    if (src->type() != TypeSpec("matrix")) {
+      return false;
+    }
+
+    // zeroing the rows:
+    std::vector<RegisterAccess> write_vars;
+    for (int i = 0; i < 4; i++) {
+      auto elt = matrix_entries->at(i + 1).elt;
+
+      auto matcher = Matcher::set(
+          Matcher::deref(Matcher::any_reg(0), false,
+                         {DerefTokenMatcher::string("vector"), DerefTokenMatcher::integer(i),
+                          DerefTokenMatcher::string("quad")}),
+          Matcher::cast("uint128", Matcher::integer(0)));
+
+      Form hack;
+      hack.elts().push_back(elt);
+      auto mr = match(matcher, &hack);
+
+      if (mr.matched) {
+        if (var_name != env.get_variable_name(*mr.maps.regs.at(0))) {
+          return false;
+        }
+        write_vars.push_back(*mr.maps.regs.at(0));
+      } else {
+        return false;
+      }
+    }
+
+    // success!
+    for (auto& wv : write_vars) {
+      env.get_use_def_info(wv);
+      Env* menv = const_cast<Env*>(&env);
+      menv->disable_use(wv);
+    }
+    stack.pop(5);
+
+    stack.push_value_to_reg(*matrix_entries->at(0).destination,
+                            pool.alloc_single_element_form<GenericElement>(
+                                nullptr, GenericOperator::make_function(
+                                             pool.alloc_single_element_form<ConstantTokenElement>(
+                                                 nullptr, "new-stack-matrix0"))),
+                            true, TypeSpec("matrix"));
+    return true;
+  }
+  return false;
+}
+
 }  // namespace
 
 void StorePlainDeref::push_to_stack(const Env& env, FormPool& pool, FormStack& stack) {
   mark_popped();
+
   if (m_expr.is_var()) {
     // this matches the order in Compiler::compile_set
     auto vars = std::vector<RegisterAccess>({m_expr.var(), m_base_var});
@@ -1758,6 +1888,12 @@ void StorePlainDeref::push_to_stack(const Env& env, FormPool& pool, FormStack& s
                                                make_optional_cast(m_src_cast_type, val, pool, env));
     fr->mark_popped();
     stack.push_form_element(fr, true);
+  }
+
+  if (!try_to_rewrite_matrix_inline_ctor(env, pool, stack)) {
+    if (!try_to_rewrite_vector_inline_ctor(env, pool, stack, "vector")) {
+      try_to_rewrite_vector_inline_ctor(env, pool, stack, "quaternion");
+    }
   }
 }
 
@@ -1846,7 +1982,8 @@ void FunctionCallElement::update_from_stack(const Env& env,
     function_type = tp_type.typespec();
   }
 
-  bool swap_function = tp_type.kind == TP_Type::Kind::NON_VIRTUAL_METHOD && true;
+  bool swap_function =
+      tp_type.kind == TP_Type::Kind::NON_VIRTUAL_METHOD && all_pop_vars.size() >= 2;
   if (tp_type.kind == TP_Type::Kind::NON_VIRTUAL_METHOD) {
     // this is a hack to make some weird macro for calling res-lump methods work
     if (env.dts->ts.tc(TypeSpec("res-lump"), tp_type.method_from_type())) {
@@ -2058,7 +2195,12 @@ void FunctionCallElement::update_from_stack(const Env& env,
               "type. Got {} instead.",
               tp_type.print()));
         }
+      }
 
+      auto type_source_form = match_result.maps.forms.at(type_source);
+
+      // if the type is the exact type of the argument, we want to build it into a method call
+      if (type_source_form->to_string(env) == first_arg_type.base_type() && name != "new") {
         if (env.dts->ts.should_use_virtual_methods(tp_type.method_from_type(),
                                                    tp_type.method_id())) {
           throw std::runtime_error(fmt::format(
@@ -2066,12 +2208,6 @@ void FunctionCallElement::update_from_stack(const Env& env,
               ":final in the deftype to disable virtual method calls",
               tp_type.method_from_type().print(), tp_type.method_id()));
         }
-      }
-
-      auto type_source_form = match_result.maps.forms.at(type_source);
-
-      // if the type is the exact type of the argument, we want to build it into a method call
-      if (type_source_form->to_string(env) == first_arg_type.base_type() && name != "new") {
         auto method_op = pool.alloc_single_element_form<ConstantTokenElement>(nullptr, name);
         auto gop = GenericOperator::make_function(method_op);
 
@@ -2229,6 +2365,7 @@ void CondNoElseElement::push_to_stack(const Env& env, FormPool& pool, FormStack&
     x->push_to_stack(env, pool, stack);
   }
 
+  RegisterAccess write_as_value = final_destination;
   bool first = true;
   for (auto& entry : entries) {
     for (auto form : {entry.condition, entry.body}) {
@@ -2243,8 +2380,15 @@ void CondNoElseElement::push_to_stack(const Env& env, FormPool& pool, FormStack&
         }
 
         std::vector<FormElement*> new_entries;
+
         if (form == entry.body && used_as_value) {
-          new_entries = rewrite_to_get_var(temp_stack, pool, final_destination, env);
+          // try to advance us to the real write so we don't use the final_destination,
+          // which may contain the wrong variable, but right register.
+          std::optional<RegisterAccess> written_var;
+          new_entries = rewrite_to_get_var(temp_stack, pool, final_destination, env, &written_var);
+          if (written_var) {
+            write_as_value = *written_var;
+          }
         } else {
           new_entries = temp_stack.rewrite(pool, env);
         }
@@ -2259,7 +2403,7 @@ void CondNoElseElement::push_to_stack(const Env& env, FormPool& pool, FormStack&
 
   if (used_as_value) {
     // TODO - is this wrong?
-    stack.push_value_to_reg(final_destination, pool.alloc_single_form(nullptr, this), true,
+    stack.push_value_to_reg(write_as_value, pool.alloc_single_form(nullptr, this), true,
                             env.get_variable_type(final_destination, false));
   } else {
     stack.push_form_element(this, true);
@@ -2386,10 +2530,12 @@ void CondWithElseElement::push_to_stack(const Env& env, FormPool& pool, FormStac
   if (rewrite_as_set && !set_unused) {
     // might not be the same if a set is eliminated by a coloring move.
     // assert(dest_sets.size() == write_output_forms.size());
-    for (size_t i = 0; i < dest_sets.size() - 1; i++) {
-      auto var = dest_sets.at(i)->dst();
-      auto* env2 = const_cast<Env*>(&env);
-      env2->disable_def(var, env2->func->warnings);
+    if (!dest_sets.empty()) {
+      for (size_t i = 0; i < dest_sets.size() - 1; i++) {
+        auto var = dest_sets.at(i)->dst();
+        auto* env2 = const_cast<Env*>(&env);
+        env2->disable_def(var, env2->func->warnings);
+      }
     }
   }
 
@@ -3391,10 +3537,12 @@ void ArrayFieldAccess::update_with_val(Form* new_val,
     if (m_expected_stride == 1) {
       // reg0 is idx
       auto reg0_matcher =
-          Matcher::match_or({Matcher::cast("int", Matcher::any(0)), Matcher::any(0)});
+          Matcher::match_or({Matcher::cast("int", Matcher::any(0)),
+                             Matcher::cast("uint", Matcher::any(0)), Matcher::any(0)});
       // reg1 is base
       auto reg1_matcher =
-          Matcher::match_or({Matcher::cast("int", Matcher::any(1)), Matcher::any(1)});
+          Matcher::match_or({Matcher::cast("int", Matcher::any(1)),
+                             Matcher::cast("uint", Matcher::any(1)), Matcher::any(1)});
       auto matcher = Matcher::fixed_op(FixedOperatorKind::ADDITION, {reg0_matcher, reg1_matcher});
       auto match_result = match(matcher, new_val);
       if (!match_result.matched) {
