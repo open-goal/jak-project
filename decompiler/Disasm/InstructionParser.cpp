@@ -82,11 +82,9 @@ std::string get_instr_name(std::string& instr) {
     }
 
     // add.s should not stop at the .
-    if (instr.size() > (i + 1) && instr[i + 1] != 's' && instr[i + 1] != 'l' &&
-        instr[i + 1] != 'w' && instr[i + 1] != 'e' && instr[i] == '.') {
-      if (instr[0] == 'v') {
-        break;
-      }
+    if (instr.size() > (i + 1) && instr[0] == 'v' && instr[i + 1] != 's' && instr[i + 1] != 'l' &&
+        instr[i + 1] != 'e' && instr[i] == '.') {
+      break;
     }
   }
   auto name = instr.substr(0, i);

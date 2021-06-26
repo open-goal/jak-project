@@ -3468,6 +3468,10 @@ void ArrayFieldAccess::update_with_val(Form* new_val,
       auto base = match_result.maps.forms.at(0);
       assert(idx && base);
 
+      if (m_flipped) {
+        std::swap(idx, base);
+      }
+
       std::vector<DerefToken> tokens = m_deref_tokens;
       for (auto& x : tokens) {
         if (x.kind() == DerefToken::Kind::EXPRESSION_PLACEHOLDER) {
