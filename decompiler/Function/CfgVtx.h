@@ -110,7 +110,7 @@ class CfgVtx {
   /*!
    * Lazy function for getting all non-null succesors
    */
-  std::vector<CfgVtx*> succs() {
+  std::vector<CfgVtx*> succs() const {
     std::vector<CfgVtx*> result;
     if (succ_branch) {
       result.push_back(succ_branch);
