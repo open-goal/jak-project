@@ -1294,9 +1294,8 @@ bool TypeSystem::typecheck_and_throw(const TypeSpec& expected,
  */
 bool TypeSystem::typecheck_base_types(const std::string& expected,
                                       const std::string& actual) const {
-  // just to make sure it exists. (note - could there be a case when it just has to be forward
-  // declared, but not defined?)
-  lookup_type(expected);
+  // just to make sure it exists.
+  lookup_type_allow_partial_def(expected);
 
   if (expected == actual || expected == lookup_type_allow_partial_def(actual)->get_name()) {
     lookup_type_allow_partial_def(actual);  // make sure it exists
