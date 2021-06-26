@@ -158,7 +158,6 @@ Register::Register(const std::string& name) {
     }
   }
 
-
   throw std::runtime_error("Unknown register name: " + name);
 }
 

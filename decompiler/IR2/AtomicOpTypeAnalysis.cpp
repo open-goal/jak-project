@@ -492,11 +492,13 @@ TP_Type SimpleExpression::get_type_int2(const TypeState& input,
   }
 
   if (m_kind == Kind::ADD && arg0_type.is_product() && arg1_type.kind == TP_Type::Kind::TYPESPEC) {
-    return TP_Type::make_object_plus_product(arg1_type.typespec(), arg0_type.get_multiplier(), true);
+    return TP_Type::make_object_plus_product(arg1_type.typespec(), arg0_type.get_multiplier(),
+                                             true);
   }
 
   if (m_kind == Kind::ADD && arg1_type.is_product() && arg0_type.kind == TP_Type::Kind::TYPESPEC) {
-    return TP_Type::make_object_plus_product(arg0_type.typespec(), arg1_type.get_multiplier(), false);
+    return TP_Type::make_object_plus_product(arg0_type.typespec(), arg1_type.get_multiplier(),
+                                             false);
   }
 
   if ((m_kind == Kind::ADD || m_kind == Kind::SUB) &&
