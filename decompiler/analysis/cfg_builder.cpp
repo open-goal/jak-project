@@ -1653,11 +1653,19 @@ Form* cfg_to_ir_helper(FormPool& pool, Function& f, const CfgVtx* vtx) {
 }
 
 Form* cfg_to_ir(FormPool& pool, Function& f, const CfgVtx* vtx) {
+  // we cache these because some functions will do a conversion, give up, and throw away the result.
+  // converting multiple times means that env-modifications will happen multiple times.
+  auto cached = pool.lookup_cached_conversion(vtx);
+  if (cached) {
+    return cached;
+  }
   Form* result = cfg_to_ir_helper(pool, f, vtx);
   if (vtx->needs_label) {
     result->elts().insert(result->elts().begin(),
                           pool.alloc_element<LabelElement>(vtx->get_first_block_id()));
   }
+
+  pool.cache_conversion(vtx, result);
   return result;
 }
 

@@ -2229,6 +2229,7 @@ void CondNoElseElement::push_to_stack(const Env& env, FormPool& pool, FormStack&
     x->push_to_stack(env, pool, stack);
   }
 
+  RegisterAccess write_as_value = final_destination;
   bool first = true;
   for (auto& entry : entries) {
     for (auto form : {entry.condition, entry.body}) {
@@ -2243,8 +2244,15 @@ void CondNoElseElement::push_to_stack(const Env& env, FormPool& pool, FormStack&
         }
 
         std::vector<FormElement*> new_entries;
+
         if (form == entry.body && used_as_value) {
-          new_entries = rewrite_to_get_var(temp_stack, pool, final_destination, env);
+          // try to advance us to the real write so we don't use the final_destination,
+          // which may contain the wrong variable, but right register.
+          std::optional<RegisterAccess> written_var;
+          new_entries = rewrite_to_get_var(temp_stack, pool, final_destination, env, &written_var);
+          if (written_var) {
+            write_as_value = *written_var;
+          }
         } else {
           new_entries = temp_stack.rewrite(pool, env);
         }
@@ -2259,7 +2267,7 @@ void CondNoElseElement::push_to_stack(const Env& env, FormPool& pool, FormStack&
 
   if (used_as_value) {
     // TODO - is this wrong?
-    stack.push_value_to_reg(final_destination, pool.alloc_single_form(nullptr, this), true,
+    stack.push_value_to_reg(write_as_value, pool.alloc_single_form(nullptr, this), true,
                             env.get_variable_type(final_destination, false));
   } else {
     stack.push_form_element(this, true);
@@ -2386,10 +2394,12 @@ void CondWithElseElement::push_to_stack(const Env& env, FormPool& pool, FormStac
   if (rewrite_as_set && !set_unused) {
     // might not be the same if a set is eliminated by a coloring move.
     // assert(dest_sets.size() == write_output_forms.size());
-    for (size_t i = 0; i < dest_sets.size() - 1; i++) {
-      auto var = dest_sets.at(i)->dst();
-      auto* env2 = const_cast<Env*>(&env);
-      env2->disable_def(var, env2->func->warnings);
+    if (!dest_sets.empty()) {
+      for (size_t i = 0; i < dest_sets.size() - 1; i++) {
+        auto var = dest_sets.at(i)->dst();
+        auto* env2 = const_cast<Env*>(&env);
+        env2->disable_def(var, env2->func->warnings);
+      }
     }
   }
 

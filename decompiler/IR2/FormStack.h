@@ -68,12 +68,13 @@ class FormStack {
   bool m_is_root_stack = false;
 };
 
-void rewrite_to_get_var(std::vector<FormElement*>& default_result,
-                        FormPool& pool,
-                        const RegisterAccess& var,
-                        const Env& env);
+std::optional<RegisterAccess> rewrite_to_get_var(std::vector<FormElement*>& default_result,
+                                                 FormPool& pool,
+                                                 const RegisterAccess& var,
+                                                 const Env& env);
 std::vector<FormElement*> rewrite_to_get_var(FormStack& stack,
                                              FormPool& pool,
                                              const RegisterAccess& var,
-                                             const Env& env);
+                                             const Env& env,
+                                             std::optional<RegisterAccess>* used_var = nullptr);
 }  // namespace decompiler
