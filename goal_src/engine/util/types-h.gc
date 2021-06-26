@@ -18,12 +18,24 @@
   :flag-assert #x900000004
   )
 
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;; Common Units
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+;; in-game durations, distances, and rotations are stored in special formats.
+;; these macros/constants convert from literals to the correct format.
+;; for example, (meters 4.0) will give you a distance representing 4 in-game meters.
+
+;; meters are stored as (usually) a float, scaled by 4096.
+;; this gives you reasonable accuracy as an integer.
 (defglobalconstant METER_LENGTH 4096.0)
 
 (defmacro meters (x)
   "Convert number to meters.
    If the input is a constant float or integer, the result will be a
    compile time constant float. Otherwise, it will not be constant."
+
+  ;; we don't have enough constant propagation for the compiler to figure this out.
   (cond
     ((float? x)
      (* METER_LENGTH x)
@@ -37,6 +49,10 @@
     )
   )
 
+;; rotations are stored in 65,536ths of a full rotation.
+;; like with meters, you get a reasonable accuracy as an integer.
+;; additionally, it is a power-of-two, so wrapping rotations can be done
+;; quickly by converting to an int, masking, and back to float
 (defglobalconstant DEGREES_PER_ROT 65536.0)
 
 (defmacro degrees (x)
@@ -54,6 +70,10 @@
     )
   )
 
+;; times are stored in 300ths of a second.
+;; this divides evenly into frames at both 50 and 60 fps.
+;; typically these are stored as integers as more precision is not useful.
+;; an unsigned 32-bit integer can store about 150 days
 (defglobalconstant TICKS_PER_SECOND 300) ;; 5 t/frame @ 60fps, 6 t/frame @ 50fps
 
 (defmacro seconds (x)

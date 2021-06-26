@@ -454,7 +454,8 @@ TP_Type SimpleExpression::get_type_int2(const TypeState& input,
   }
 
   // special cases for non-integers
-  if ((arg0_type.typespec() == TypeSpec("object") || arg0_type.typespec() == TypeSpec("pair")) &&
+  if ((arg0_type.typespec() == TypeSpec("object") || arg0_type.typespec() == TypeSpec("pair") ||
+       tc(dts, TypeSpec("basic"), arg0_type)) &&
       (arg1_type.is_integer_constant(62) || arg1_type.is_integer_constant(61))) {
     // boxed object tag trick.
     return TP_Type::make_from_ts("int");
@@ -772,11 +773,13 @@ TP_Type LoadVarOp::get_src_type(const TypeState& input,
         ro.offset >= 16 && (ro.offset & 3) == 0 && m_size == 4 && m_kind == Kind::UNSIGNED) {
       // method get of an unknown type. We assume the most general "object" type.
       auto method_id = (ro.offset - 16) / 4;
-      auto method_info = dts.ts.lookup_method("object", method_id);
-      if (method_id != GOAL_NEW_METHOD && method_id != GOAL_RELOC_METHOD) {
-        // this can get us the wrong thing for `new` methods.  And maybe relocate?
-        return TP_Type::make_non_virtual_method(
-            method_info.type.substitute_for_method_call("object"), TypeSpec("object"), method_id);
+      if (method_id <= (int)GOAL_MEMUSAGE_METHOD) {
+        auto method_info = dts.ts.lookup_method("object", method_id);
+        if (method_id != GOAL_NEW_METHOD && method_id != GOAL_RELOC_METHOD) {
+          // this can get us the wrong thing for `new` methods.  And maybe relocate?
+          return TP_Type::make_non_virtual_method(
+              method_info.type.substitute_for_method_call("object"), TypeSpec("object"), method_id);
+        }
       }
     }
 

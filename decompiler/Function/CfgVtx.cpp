@@ -577,6 +577,19 @@ bool ControlFlowGraph::is_goto_not_end_and_unreachable(CfgVtx* b0, CfgVtx* b1) {
   return true;  // match!
 }
 
+bool ControlFlowGraph::is_infinite_continue(CfgVtx* b0) {
+  if (!b0) {
+    return false;
+  }
+
+  // end branch always.
+  if (!b0->end_branch.has_branch || !b0->end_branch.branch_always || b0->end_branch.branch_likely) {
+    return false;
+  }
+
+  return true;
+}
+
 bool ControlFlowGraph::is_goto_end_and_unreachable(CfgVtx* b0, CfgVtx* b1) {
   if (!b0 || !b1) {
     return false;
@@ -848,6 +861,98 @@ bool ControlFlowGraph::find_goto_end() {
   return replaced;
 }
 
+int get_prev_count(CfgVtx* start, CfgVtx* to_find) {
+  int result = 0;
+  while (start && start != to_find) {
+    result++;
+    start = start->prev;
+  }
+
+  if (start == to_find) {
+    return result;
+  }
+  return -1;
+}
+
+bool ControlFlowGraph::find_infinite_continue() {
+  bool replaced = false;
+
+  for_each_top_level_vtx([&](CfgVtx* vtx) {
+    auto* b0 = vtx;
+    if (is_infinite_continue(b0)) {
+      int my_block = b0->get_first_block_id();
+      int dest_block = b0->succ_branch->get_first_block_id();
+
+      fmt::print("Considering {} as an infinite continue:\n", b0->to_string());
+
+      if (dest_block >= my_block) {
+        fmt::print("  Rejecting because destination block {} comes after me {}\n", dest_block,
+                   my_block);
+        return true;
+      } else {
+        fmt::print("  Order OK {} -> {}\n", my_block, dest_block);
+      }
+
+      int prev_count = get_prev_count(b0, b0->succ_branch);
+      if (prev_count == -1) {
+        fmt::print(
+            "  Rejecting because we can't find the destination in the current ungrouped sequence.");
+        return true;
+      } else {
+        fmt::print("  Sequencing OK: {} prev's\n", prev_count);
+      }
+      replaced = true;
+
+      auto* new_goto = alloc<Break>();
+      m_has_break = true;
+      new_goto->body = b0;
+      new_goto->unreachable_block = nullptr;
+      new_goto->dest_block_id = b0->succ_branch->get_first_block_id();
+      m_blocks.at(new_goto->dest_block_id)->needs_label = true;
+
+      // patch up thing -> goto branches
+      for (auto* new_pred : b0->pred) {
+        new_pred->replace_succ_and_check(b0, new_goto);
+      }
+      new_goto->pred = b0->pred;
+
+      assert(b0->succs().size() == 1 && b0->succs().front() == b0->succ_branch);
+
+      // patch up next and prev.
+      new_goto->next = b0->next;
+      if (new_goto->next) {
+        assert(new_goto->next->prev == b0);
+        new_goto->next->prev = new_goto;
+      }
+      new_goto->prev = b0->prev;
+      if (new_goto->prev) {
+        assert(new_goto->prev->next == b0);
+        new_goto->prev->next = new_goto;
+      }
+
+      // now we want to make it look like the goto will fall through to next.
+      if (new_goto->next) {
+        // now we will fall through
+        new_goto->succ_ft = b0->next;
+        assert(!new_goto->succ_ft->has_pred(new_goto));
+        new_goto->succ_ft->pred.push_back(new_goto);
+        assert(!new_goto->succ_branch);
+      }
+
+      // break goto preds.
+      b0->succ_branch->replace_preds_with_and_check({b0}, nullptr);
+
+      b0->parent_claim(new_goto);
+      return false;
+    }
+
+    // keep looking
+    return true;
+  });
+
+  return replaced;
+}
+
 bool ControlFlowGraph::find_goto_not_end() {
   bool replaced = false;
 
@@ -912,7 +1017,7 @@ bool ControlFlowGraph::find_goto_not_end() {
   return replaced;
 }
 
-bool ControlFlowGraph::is_sequence(CfgVtx* b0, CfgVtx* b1) {
+bool ControlFlowGraph::is_sequence(CfgVtx* b0, CfgVtx* b1, bool allow_self_loops) {
   if (!b0 || !b1)
     return false;
 
@@ -939,40 +1044,49 @@ bool ControlFlowGraph::is_sequence(CfgVtx* b0, CfgVtx* b1) {
     return false;
   if (!b1->has_pred(b0))
     return false;
-  if (b1->succ_branch == b0)
+
+  if (!allow_self_loops && b1->succ_branch == b0)
     return false;
+
   return true;
 }
 
-bool ControlFlowGraph::is_sequence_of_non_sequences(CfgVtx* b0, CfgVtx* b1) {
+bool ControlFlowGraph::is_sequence_of_non_sequences(CfgVtx* b0, CfgVtx* b1, bool allow_self_loops) {
   if (!b0 || !b1)
     return false;
   if (dynamic_cast<SequenceVtx*>(b0) || dynamic_cast<SequenceVtx*>(b1))
     return false;
-  return is_sequence(b0, b1);
+
+  return is_sequence(b0, b1, allow_self_loops);
 }
 
-bool ControlFlowGraph::is_sequence_of_sequence_and_non_sequence(CfgVtx* b0, CfgVtx* b1) {
+bool ControlFlowGraph::is_sequence_of_sequence_and_non_sequence(CfgVtx* b0,
+                                                                CfgVtx* b1,
+                                                                bool allow_self_loops) {
   if (!b0 || !b1)
     return false;
   if (!dynamic_cast<SequenceVtx*>(b0))
     return false;
   if (dynamic_cast<SequenceVtx*>(b1))
     return false;
-  return is_sequence(b0, b1);
+  return is_sequence(b0, b1, allow_self_loops);
 }
 
-bool ControlFlowGraph::is_sequence_of_sequence_and_sequence(CfgVtx* b0, CfgVtx* b1) {
+bool ControlFlowGraph::is_sequence_of_sequence_and_sequence(CfgVtx* b0,
+                                                            CfgVtx* b1,
+                                                            bool allow_self_loops) {
   if (!b0 || !b1)
     return false;
   if (!dynamic_cast<SequenceVtx*>(b0))
     return false;
   if (!dynamic_cast<SequenceVtx*>(b1))
     return false;
-  return is_sequence(b0, b1);
+  return is_sequence(b0, b1, allow_self_loops);
 }
 
-bool ControlFlowGraph::is_sequence_of_non_sequence_and_sequence(CfgVtx* b0, CfgVtx* b1) {
+bool ControlFlowGraph::is_sequence_of_non_sequence_and_sequence(CfgVtx* b0,
+                                                                CfgVtx* b1,
+                                                                bool allow_self_loops) {
   if (!b0 || !b1) {
     return false;
   }
@@ -981,7 +1095,7 @@ bool ControlFlowGraph::is_sequence_of_non_sequence_and_sequence(CfgVtx* b0, CfgV
     return false;
   if (!dynamic_cast<SequenceVtx*>(b1))
     return false;
-  return is_sequence(b0, b1);
+  return is_sequence(b0, b1, allow_self_loops);
 }
 
 /*!
@@ -989,13 +1103,13 @@ bool ControlFlowGraph::is_sequence_of_non_sequence_and_sequence(CfgVtx* b0, CfgV
  * To generate more readable debug output, we should aim to run this as infrequent and as
  * late as possible, to avoid condition vertices with tons of extra junk packed in.
  */
-bool ControlFlowGraph::find_seq_top_level() {
+bool ControlFlowGraph::find_seq_top_level(bool allow_self_loops) {
   bool replaced = false;
   for_each_top_level_vtx([&](CfgVtx* vtx) {
     auto* b0 = vtx;
     auto* b1 = vtx->next;
 
-    if (is_sequence_of_non_sequences(b0, b1)) {  // todo, avoid nesting sequences.
+    if (is_sequence_of_non_sequences(b0, b1, allow_self_loops)) {  // todo, avoid nesting sequences.
       replaced = true;
 
       auto* new_seq = alloc<SequenceVtx>();
@@ -1028,7 +1142,7 @@ bool ControlFlowGraph::find_seq_top_level() {
       return false;
     }
 
-    if (is_sequence_of_sequence_and_non_sequence(b0, b1)) {
+    if (is_sequence_of_sequence_and_non_sequence(b0, b1, allow_self_loops)) {
       //      printf("make seq type 2 %s %s\n", b0->to_string().c_str(), b1->to_string().c_str());
       replaced = true;
       auto* seq = dynamic_cast<SequenceVtx*>(b0);
@@ -1051,7 +1165,7 @@ bool ControlFlowGraph::find_seq_top_level() {
       return false;
     }
 
-    if (is_sequence_of_non_sequence_and_sequence(b0, b1)) {
+    if (is_sequence_of_non_sequence_and_sequence(b0, b1, allow_self_loops)) {
       replaced = true;
       auto* seq = dynamic_cast<SequenceVtx*>(b1);
       assert(seq);
@@ -1070,7 +1184,7 @@ bool ControlFlowGraph::find_seq_top_level() {
       return false;
     }
 
-    if (is_sequence_of_sequence_and_sequence(b0, b1)) {
+    if (is_sequence_of_sequence_and_sequence(b0, b1, allow_self_loops)) {
       //      printf("make seq type 3 %s %s\n", b0->to_string().c_str(), b1->to_string().c_str());
       replaced = true;
       auto* seq = dynamic_cast<SequenceVtx*>(b0);
@@ -2123,6 +2237,7 @@ std::shared_ptr<ControlFlowGraph> build_cfg(const LinkedObjectFile& file,
   cfg->flag_early_exit(func.basic_blocks);
 
   bool changed = true;
+  bool complained_about_weird_gotos = false;
   while (changed) {
     changed = false;
     // note - we should prioritize finding short-circuiting expressions.
@@ -2134,7 +2249,7 @@ std::shared_ptr<ControlFlowGraph> build_cfg(const LinkedObjectFile& file,
     changed = changed || cfg->find_cond_w_else(cond_with_else_hack);
 
     changed = changed || cfg->find_while_loop_top_level();
-    changed = changed || cfg->find_seq_top_level();
+    changed = changed || cfg->find_seq_top_level(false);
     changed = changed || cfg->find_short_circuits();
     changed = changed || cfg->find_cond_n_else();
 
@@ -2146,12 +2261,23 @@ std::shared_ptr<ControlFlowGraph> build_cfg(const LinkedObjectFile& file,
     };
 
     if (!changed) {
+      changed = changed || cfg->find_seq_top_level(true);
+    }
+
+    if (!changed) {
       changed = changed || cfg->find_goto_not_end();
     }
 
     if (!changed) {
       changed = changed || cfg->find_cond_w_empty_else();
-      if (changed) {
+    }
+
+    if (!changed) {
+      changed = changed || cfg->find_infinite_continue();
+      if (changed && !complained_about_weird_gotos) {
+        complained_about_weird_gotos = true;
+        func.warnings.general_warning(
+            "Found some very strange gotos. Check result carefully, this is not well tested.");
       }
     }
   }
