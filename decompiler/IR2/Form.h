@@ -1593,6 +1593,8 @@ class Form {
   std::vector<FormElement*> m_elements;
 };
 
+class CfgVtx;
+
 /*!
  * A FormPool is used to allocate forms and form elements.
  * It will clean up everything when it is destroyed.
@@ -1640,11 +1642,25 @@ class FormPool {
     return form;
   }
 
+  Form* lookup_cached_conversion(const CfgVtx* vtx) const {
+    auto it = m_vtx_to_form_cache.find(vtx);
+    if (it == m_vtx_to_form_cache.end()) {
+      return nullptr;
+    }
+    return it->second;
+  }
+
+  void cache_conversion(const CfgVtx* vtx, Form* form) {
+    assert(m_vtx_to_form_cache.find(vtx) == m_vtx_to_form_cache.end());
+    m_vtx_to_form_cache[vtx] = form;
+  }
+
   ~FormPool();
 
  private:
   std::vector<Form*> m_forms;
   std::vector<FormElement*> m_elements;
+  std::unordered_map<const CfgVtx*, Form*> m_vtx_to_form_cache;
 };
 
 std::optional<SimpleAtom> form_element_as_atom(const FormElement* f);

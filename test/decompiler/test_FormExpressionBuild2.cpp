@@ -1317,3 +1317,69 @@ TEST_F(FormRegressionTest, SoundNameEqual) {
   std::string expected = "(and (= arg0 arg1) (= (-> arg0 hi) (-> arg1 hi)))";
   test_with_expr(func, type, expected);
 }
+
+TEST_F(FormRegressionTest, DebugMenuFuncDecode) {
+  std::string func =
+      "sll r0, r0, 0\n"
+      "    dsll32 v1, a0, 29\n"
+      "    beql v1, r0, L203\n"
+      "    lw v1, binteger(s7)\n"
+
+      "    bgtzl v1, L203\n"
+      "    lw v1, pair(s7)\n"
+
+      "    lwu v1, -4(a0)\n"
+
+      "L203:\n"
+      "    lw a1, symbol(s7)\n"
+      "    dsubu a1, v1, a1\n"
+      "    daddiu a2, s7, 8\n"
+      "    movn a2, s7, a1\n"
+      "    bnel s7, a2, L204\n"
+      "    or a1, a2, r0\n"
+
+      "    lw a1, type(s7)\n"
+      "    dsubu a2, v1, a1\n"
+      "    daddiu a1, s7, 8\n"
+      "    movn a1, s7, a2\n"
+      "L204:\n"
+      "    beq s7, a1, L205\n"
+      "    sll r0, r0, 0\n"
+
+      "    lw v0, 0(a0)\n"
+      "    beq r0, r0, L207\n"
+      "    sll r0, r0, 0\n"
+
+      "L205:\n"
+      "    lw a1, function(s7)\n"
+      "    bne v1, a1, L206\n"
+      "    sll r0, r0, 0\n"
+
+      "    or v0, a0, r0\n"
+      "    beq r0, r0, L207\n"
+      "    sll r0, r0, 0\n"
+
+      "L206:\n"
+      "    lw v0, nothing(s7)\n"
+
+      "L207:\n"
+      "    jr ra\n"
+      "    daddu sp, sp, r0";
+  std::string type = "(function object function)";
+  std::string expected =
+      "(let ((v1-1 (rtype-of arg0)))\n"
+      "  (the-as function (cond\n"
+      "                    ((or (= v1-1 symbol) (= v1-1 type))\n"
+      "                     (-> (the-as symbol arg0) value)\n"
+      "                     )\n"
+      "                    ((= v1-1 function)\n"
+      "                     arg0\n"
+      "                     )\n"
+      "                    (else\n"
+      "                     nothing\n"
+      "                     )\n"
+      "                    )\n"
+      "   )\n"
+      "  )";
+  test_with_expr(func, type, expected, false, "", {}, "[[13, \"a0\", \"symbol\"]]");
+}
