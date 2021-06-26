@@ -87,6 +87,8 @@ class FormStack {
           assert(my_entry.elt && !my_entry.source);
         }
         entries.push_back(my_entry);
+      } else {
+        return {};
       }
     }
     return entries;
