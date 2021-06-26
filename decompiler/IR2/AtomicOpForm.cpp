@@ -383,8 +383,9 @@ FormElement* StoreOp::get_as_form(FormPool& pool, const Env& env) const {
 
           // we pass along the register offset because code generation seems to be a bit
           // different in different cases.
-          auto source = pool.alloc_element<ArrayFieldAccess>(
-              ro.var, tokens, input_type.get_multiplier(), ro.offset);
+          auto source =
+              pool.alloc_element<ArrayFieldAccess>(ro.var, tokens, input_type.get_multiplier(),
+                                                   ro.offset, input_type.flipped_add_order());
 
           //          auto val = pool.alloc_single_element_form<SimpleExpressionElement>(
           //              nullptr, m_value.as_expr(), m_my_idx);
@@ -529,8 +530,8 @@ Form* LoadVarOp::get_load_src(FormPool& pool, const Env& env) const {
 
           // we pass along the register offset because code generation seems to be a bit
           // different in different cases.
-          return pool.alloc_single_element_form<ArrayFieldAccess>(nullptr, ro.var, tokens,
-                                                                  rd_in.stride, ro.offset);
+          return pool.alloc_single_element_form<ArrayFieldAccess>(
+              nullptr, ro.var, tokens, rd_in.stride, ro.offset, input_type.flipped_add_order());
         }
       }
 
