@@ -9,6 +9,8 @@
 ;; bit array
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
+;; the bit-array is a dynamically sized array that is bit addressable
+
 (deftype bit-array (basic)
   ((length           int32  :offset-assert 4)
    (allocated-length int32  :offset-assert 8)
@@ -102,6 +104,8 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; vector types (integer)
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+;; the GOAL vector types are structures, storing values in memory.
 
 ;; Vector of 4 unsigned bytes.
 (deftype vector4ub (structure)
@@ -363,6 +367,7 @@
   :flag-assert         #x900000010
   )
 
+;; ax + by + cz = d form
 (deftype plane (vector)
   ((a    float     :offset 0)
    (b    float     :offset 4)
@@ -374,14 +379,14 @@
   :flag-assert         #x900000010
   )
 
+;; x, y, z are the origin, replaces w with r, the radius
 (deftype sphere (vector)
-  ((r    float     :offset 12)
+  ((r    float     :offset 12 :score 10) ;; prefer over w
    )
   :method-count-assert 9
   :size-assert         #x10
   :flag-assert         #x900000010
   )
-
 
 (deftype isphere (vec4s)
   ()
@@ -452,7 +457,7 @@
 
 (deftype vertical-planes-array (basic)
   ((length uint32           :offset-assert 4)
-   (data   vertical-planes :dynamic :offset 16) ;; todo, why is this here?
+   (data   vertical-planes :inline :dynamic :offset-assert 16) ;; likely inline based on alignment
    )
   :method-count-assert 9
   :size-assert         #x10
@@ -485,7 +490,14 @@
   :flag-assert         #x90000000c
   )
 
+
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;; Macros and inline functions
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
 (defmacro set-vector! (v xv yv zv wv)
+  "Set all fields in a vector"
   (with-gensyms (vec)
      `(let ((vec ,v))
        (set! (-> vec x) ,xv)
@@ -545,6 +557,7 @@
   )
 
 (defmacro print-vf (vf &key (name #f))
+  "Print out a vf register as a vector."
   `(let ((temp (new 'stack 'vector)))
      (.svf temp ,vf)
      ,(if name
@@ -555,6 +568,7 @@
   )
 
 (defmacro print-vf-hex (vf)
+  "Print out a vf register as 4x 32-bit hexadecimal integers"
   `(let ((temp (new 'stack 'vector4w)))
      (.svf temp ,vf)
      (format #t "~`vector4w`P~%" temp)

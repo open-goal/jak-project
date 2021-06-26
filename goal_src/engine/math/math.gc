@@ -11,11 +11,13 @@
 ;;;; float macros
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-;; at some point, this could be more optimized.
-;; MIPS has an explicit abs.s instruction, but x86-64 doesn't.
-;; modern clang on O3 does a comiss/branch and this is probably pretty close.
 
 (defmacro fabs (x)
+  "Floating point absolute value"
+  ;; in GOAL this was implemented by the compiler.
+  ;; at some point, this could be more optimized.
+  ;; MIPS has an explicit abs.s instruction, but x86-64 doesn't.
+  ;; modern clang on O3 does a comiss/branch and this is probably pretty close.
   `(if (< (the float ,x) 0)
        (- (the float ,x))
        (the float ,x))
@@ -159,10 +161,12 @@
 ;;;; random vu hardware
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-;; added in OpenGOAL
+;; in the PS2 there is a R register for generating random numbers
+;; it is a "32-bit" register, but the upper bits are fixed so it always
+;; represents a float in (1, 2).
+;; we don't have this register on x86, so we add a special global: *_vu-reg-R_*
 (define *_vu-reg-R_* 0)
 
-;; TODO
 (defun rand-vu-init ((seed float))
   "Initialize the VU0 random generator"
   ;; (.ctc2.i R arg0)
@@ -173,6 +177,7 @@
   (the-as float *_vu-reg-R_*)
   )
 
+;; this is _almost_ sqrt(2) = 1.414
 (rand-vu-init 1.418091058731079)
 
 ;; rand-vu

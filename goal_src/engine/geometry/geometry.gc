@@ -5,6 +5,129 @@
 ;; name in dgo: geometry
 ;; dgos: GAME, ENGINE
 
+(defun vector-flatten! ((dst vector) (src vector) (plane-normal vector))
+  "Get the projection of src onto a plane with the given normal
+   The normal should have magnitude 1.0."
+  (rlet ((acc :class vf)
+         (vf0 :class vf)
+         (vf1 :class vf) ;; src
+         (vf2 :class vf) ;; normal
+         (vf3 :class vf)
+         )
+    (init-vf0-vector)
+    (.lvf vf1 (&-> src quad))
+    (.lvf vf2 (&-> plane-normal quad))
+    (.mov.vf vf3 vf0 :mask #b1000)
+    (.outer.product.vf vf3 vf1 vf2) ;; has the right magnitude, but rotation is off by 90 degrees
+    (.outer.product.vf vf3 vf2 vf3) ;; rotate by 90 about normal of plane
+    (.svf (&-> dst quad) vf3)
+    dst
+    )
+  )
+
+(defun vector-reflect! ((dst vector) (src vector) (plane-normal vector))
+  "Reflect a vector off of a plane."
+  (rlet ((acc :class vf)
+         (vf0 :class vf)
+         (vf1 :class vf)
+         (vf2 :class vf)
+         (vf3 :class vf)
+         )
+    ;; we want to split the vector into normal / tangent components.
+    ;; let src = T + N, where T dot plane-normal = 0.
+    ;; then the reflection is T - N = 2 * T - src.
+    ;; we can compute T from vector-flatten!'s trick
+    (init-vf0-vector)
+    (.lvf vf1 (&-> src quad))
+    (.lvf vf2 (&-> plane-normal quad))
+    (.mov.vf vf3 vf0 :mask #b1000)
+    (.outer.product.vf vf3 vf1 vf2)
+    (.outer.product.vf vf3 vf2 vf3) ;; vf3 is the projection on the plane
+    (.add.vf acc vf3 vf3 :mask #b111) ;; double that part
+    (.sub.mul.w.vf vf3 vf1 vf0 acc :mask #b111) ;; and subtract the original
+    (.svf (&-> dst quad) vf3)
+    dst
+    )
+  )
+
+(defun vector-reflect-flat! ((dst vector) (src vector) (plane-normal vector))
+  "This is a weird one. It doesn't care about the value of src dot normal
+   and it effectively replaces the component of src normal to the plane with
+   the plane's normal.  I think this requires src/normal to both be unit vectors
+   in order to make sense.
+   NOTE: src should point from positive halfspace to negative otherwise it
+   doesn't work."
+  (rlet ((acc :class vf)
+         (vf0 :class vf)
+         (vf1 :class vf)
+         (vf2 :class vf)
+         (vf3 :class vf)
+         )
+    (init-vf0-vector)
+    (.lvf vf1 (&-> src quad))
+    (.lvf vf2 (&-> plane-normal quad))
+    (.mov.vf vf3 vf0 :mask #b1000)
+    (.outer.product.vf vf3 vf1 vf2)
+    (.outer.product.vf vf3 vf2 vf3) ;; part on the plane (requires normal to be unit)
+    (.add.vf vf3 vf3 vf2 :mask #b111) ;; add normal to that.
+    (.svf (&-> dst quad) vf3)
+    dst
+    )
+  )
+
+(defun vector-reflect-true-flat! ((dst vector) (src vector) (plane-normal vector))
+  "Not really a reflect. Same as flatten"
+  (rlet ((acc :class vf)
+         (vf0 :class vf)
+         (vf1 :class vf)
+         (vf2 :class vf)
+         (vf3 :class vf)
+         )
+    (init-vf0-vector)
+    (.lvf vf1 (&-> src quad))
+    (.lvf vf2 (&-> plane-normal quad))
+    (.mov.vf vf3 vf0 :mask #b1000)
+    (.outer.product.vf vf3 vf1 vf2)
+    (.outer.product.vf vf3 vf2 vf3)
+    (.svf (&-> dst quad) vf3)
+    dst
+    )
+  )
+
+(defun vector-reflect-flat-above! ((dst vector) (src vector) (plane-normal vector))
+  "A hacked up version of reflect, probably to make their collision system work.
+   It is a less aggressive version of reflect that also has a limit to the output
+   normal component"
+  (rlet ((acc :class vf)
+         (vf0 :class vf)
+         (vf1 :class vf)
+         (vf2 :class vf)
+         (vf3 :class vf)
+         )
+    (init-vf0-vector)
+    (.lvf vf1 (&-> src quad))
+    (.lvf vf2 (&-> plane-normal quad))
+    (.mov.vf vf3 vf0 :mask #b1000)
+    (.outer.product.vf vf3 vf1 vf2)
+    (.outer.product.vf vf3 vf2 vf3)
+    (.svf (&-> dst quad) vf3)
+
+    ;; dst is now the normal part of src
+    (let ((f0-0 (vector-length dst))            ;; length of normal
+          (f1-1 (vector-dot dst plane-normal))) ;; ?? this is always zero.
+      (let* ((f1-2 f1-1)
+             ;; f1-3 = .02 * length of normal.  f1-2 is always zero here
+             (f1-3 (- (* 0.02 f0-0) f1-2))
+             )
+        ;; scale down and limit the normal component
+        (vector+float*! dst dst plane-normal (fmin 16384.0 (* 16.0 f1-3)))
+        )
+      )
+    )
+  )
+
+;; TODO vector-segment-distance-point!
+
 ;; TODO - temporary for lights.gc
 (define-extern vector-deg-slerp (function vector vector vector float vector))
 ;; TODO - temporary for transformq.gc
