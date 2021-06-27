@@ -380,174 +380,148 @@
 ;; Used lq/sq
 (defun joint-mod-look-at-handler ((csp cspace) (xform transformq))
   (local-vars (f1-12 float) (sv-48 vector) (sv-52 vector) (sv-56 vector))
-  (rlet ((vf0 :class vf)
-         (vf4 :class vf)
-         (vf5 :class vf)
-         (vf6 :class vf)
-         )
-   (init-vf0-vector)
-   (let ((gp-0 (the-as joint-mod (-> csp param1))))
-    (cspace<-parented-transformq-joint! csp xform)
-    (set!
-     sv-48
-     (vector-normalize-copy!
+  (let ((gp-0 (the-as joint-mod (-> csp param1))))
+   (cspace<-parented-transformq-joint! csp xform)
+   (set!
+    sv-48
+    (vector-normalize-copy!
+     (new 'stack-no-clear 'vector)
+     (-> gp-0 process node-list data 0 bone transform vector 1)
+     1.0
+     )
+    )
+   (set!
+    sv-52
+    (vector-normalize! (-> csp bone transform vector (-> gp-0 nose)) 1.0)
+    )
+   (set!
+    sv-56
+    (vector-normalize!
+     (vector-!
       (new 'stack-no-clear 'vector)
-      (-> gp-0 process node-list data 0 bone transform vector 1)
-      1.0
+      (-> gp-0 target)
+      (-> csp bone position)
       )
+     1.0
      )
-    (set!
-     sv-52
-     (vector-normalize! (-> csp bone transform vector (-> gp-0 nose)) 1.0)
-     )
-    (let ((t9-3 vector-normalize!)
-          (a0-5 (new 'stack-no-clear 'vector))
+    )
+   (let* ((f30-0 (vector-y-angle sv-52))
+          (a0-8 (vector-flatten! (new-stack-vector0) sv-56 sv-48))
+          (f0-0 (vector-y-angle a0-8))
+          (f0-1 (deg-diff f30-0 f0-0))
           )
-     (let ((v1-6 (-> gp-0 target))
-           (a1-5 (-> csp bone position))
-           )
-      (.lvf vf4 (&-> v1-6 quad))
-      (.lvf vf5 (&-> a1-5 quad))
-      )
-     (.mov.vf vf6 vf0 :mask #b1000)
-     (.sub.vf vf6 vf4 vf5 :mask #b111)
-     (.svf (&-> a0-5 quad) vf6)
-     (set! sv-56 (t9-3 a0-5 1.0))
+    (if (< (-> gp-0 ignore-angle) (fabs f0-1))
+     (set! f0-1 0.0)
      )
-    (let* ((f30-0 (vector-y-angle sv-52))
-           (a0-8 (vector-flatten! (new-stack-vector0) sv-56 sv-48))
-           (f0-0 (vector-y-angle a0-8))
-           (f0-1 (deg-diff f30-0 f0-0))
-           )
-     (if (< (-> gp-0 ignore-angle) (fabs f0-1))
-      (set! f0-1 0.0)
-      )
-     (let
-      ((f30-1
-        (fmax
-         (fmin
-          (* (* f0-1 (-> gp-0 blend)) (-> gp-0 flex-blend))
-          (-> gp-0 twist-max y)
-          )
-         (- (-> gp-0 twist-max y))
-         )
-        )
-       )
-      (if (and (-> gp-0 shutting-down?) (= (-> gp-0 twist y) f30-1))
-       (set-mode! gp-0 (joint-mod-handler-mode reset))
-       )
-      (set!
-       (-> gp-0 twist y)
-       (deg-seek
-        (-> gp-0 twist y)
-        f30-1
-        (* 0.1 (fabs (deg-diff f30-1 (-> gp-0 twist y))))
-        )
-       )
-      )
-     )
-    (let ((v1-15 (-> gp-0 up)))
-     (cond
-      ((zero? v1-15)
-       (quaternion-rotate-x!
-        (the-as quaternion (-> xform rot))
-        (the-as quaternion (-> xform rot))
-        (-> gp-0 twist y)
-        )
-       )
-      ((= v1-15 1)
-       (quaternion-rotate-local-y!
-        (the-as quaternion (-> xform rot))
-        (the-as quaternion (-> xform rot))
-        (-> gp-0 twist y)
-        )
-       )
-      (else
-       (quaternion-rotate-z!
-        (the-as quaternion (-> xform rot))
-        (the-as quaternion (-> xform rot))
-        (-> gp-0 twist y)
-        )
-       )
-      )
-     )
-    (let*
-     ((s3-1
-       (vector-normalize-copy!
-        (new 'stack-no-clear 'vector)
-        (the-as vector (-> gp-0 process node-list data 0 bone transform))
-        1.0
-        )
-       )
-      (f30-2 (vector-x-angle sv-52))
-      (s3-2 (vector-flatten! (new-stack-vector0) sv-56 s3-1))
-      (f0-15 (vector-x-angle s3-2))
-      (f0-21
+    (let
+     ((f30-1
        (fmax
         (fmin
-         (* (* (- (deg-diff f30-2 f0-15)) (-> gp-0 blend)) (-> gp-0 flex-blend))
-         (-> gp-0 twist-max x)
+         (* (* f0-1 (-> gp-0 blend)) (-> gp-0 flex-blend))
+         (-> gp-0 twist-max y)
          )
-        (- (-> gp-0 twist-max x))
+        (- (-> gp-0 twist-max y))
         )
        )
       )
-     (let* ((v1-22 sv-52))
-      (set! f1-12 (vector-dot s3-2 v1-22))
-      )
-     (if (< f1-12 0.1)
-      (set! f0-21 0.0)
+     (if (and (-> gp-0 shutting-down?) (= (-> gp-0 twist y) f30-1))
+      (set-mode! gp-0 (joint-mod-handler-mode reset))
       )
      (set!
-      (-> gp-0 twist x)
+      (-> gp-0 twist y)
       (deg-seek
+       (-> gp-0 twist y)
+       f30-1
+       (* 0.1 (fabs (deg-diff f30-1 (-> gp-0 twist y))))
+       )
+      )
+     )
+    )
+   (let ((v1-15 (-> gp-0 up)))
+    (cond
+     ((zero? v1-15)
+      (quaternion-rotate-x! (-> xform quat) (-> xform quat) (-> gp-0 twist y))
+      )
+     ((= v1-15 1)
+      (quaternion-rotate-local-y!
+       (-> xform quat)
+       (-> xform quat)
+       (-> gp-0 twist y)
+       )
+      )
+     (else
+      (quaternion-rotate-z! (-> xform quat) (-> xform quat) (-> gp-0 twist y))
+      )
+     )
+    )
+   (let*
+    ((s3-1
+      (vector-normalize-copy!
+       (new 'stack-no-clear 'vector)
+       (the-as vector (-> gp-0 process node-list data 0 bone transform))
+       1.0
+       )
+      )
+     (f30-2 (vector-x-angle sv-52))
+     (s3-2 (vector-flatten! (new-stack-vector0) sv-56 s3-1))
+     (f0-15 (vector-x-angle s3-2))
+     (f0-21
+      (fmax
+       (fmin
+        (* (* (- (deg-diff f30-2 f0-15)) (-> gp-0 blend)) (-> gp-0 flex-blend))
+        (-> gp-0 twist-max x)
+        )
+       (- (-> gp-0 twist-max x))
+       )
+      )
+     )
+    (let* ((v1-22 sv-52))
+     (set! f1-12 (vector-dot s3-2 v1-22))
+     )
+    (if (< f1-12 0.1)
+     (set! f0-21 0.0)
+     )
+    (set!
+     (-> gp-0 twist x)
+     (deg-seek
+      (-> gp-0 twist x)
+      f0-21
+      (* 0.1 (fabs (deg-diff f0-21 (-> gp-0 twist x))))
+      )
+     )
+    )
+   (let ((v1-27 (-> gp-0 ear)))
+    (cond
+     ((zero? v1-27)
+      (quaternion-rotate-x! (-> xform quat) (-> xform quat) (-> gp-0 twist x))
+      )
+     ((= v1-27 1)
+      (quaternion-rotate-local-y!
+       (-> xform quat)
+       (-> xform quat)
        (-> gp-0 twist x)
-       f0-21
-       (* 0.1 (fabs (deg-diff f0-21 (-> gp-0 twist x))))
        )
       )
-     )
-    (let ((v1-27 (-> gp-0 ear)))
-     (cond
-      ((zero? v1-27)
-       (quaternion-rotate-x!
-        (the-as quaternion (-> xform rot))
-        (the-as quaternion (-> xform rot))
-        (-> gp-0 twist x)
-        )
-       )
-      ((= v1-27 1)
-       (quaternion-rotate-local-y!
-        (the-as quaternion (-> xform rot))
-        (the-as quaternion (-> xform rot))
-        (-> gp-0 twist x)
-        )
-       )
-      (else
-       (quaternion-rotate-z!
-        (the-as quaternion (-> xform rot))
-        (the-as quaternion (-> xform rot))
-        (-> gp-0 twist x)
-        )
-       )
-      )
-     )
-    (cspace<-parented-transformq-joint! csp xform)
-    (if (and (= (-> gp-0 process type) target) (!= (-> gp-0 blend) 0.0))
-     (add-debug-text-sphere
-      *display-target-marks*
-      (bucket-id debug-draw1)
-      (-> gp-0 target)
-      819.2
-      "look"
-      (new 'static 'rgba :r #xff :g #xff :a #x80)
+     (else
+      (quaternion-rotate-z! (-> xform quat) (-> xform quat) (-> gp-0 twist x))
       )
      )
     )
-   (let ((v0-26 0))
+   (cspace<-parented-transformq-joint! csp xform)
+   (if (and (= (-> gp-0 process type) target) (!= (-> gp-0 blend) 0.0))
+    (add-debug-text-sphere
+     *display-target-marks*
+     (bucket-id debug-draw1)
+     (-> gp-0 target)
+     819.2
+     "look"
+     (new 'static 'rgba :r #xff :g #xff :a #x80)
+     )
     )
-   (none)
    )
+  (let ((v0-26 0))
+   )
+  (none)
   )
 
 ;; definition for function joint-mod-world-look-at-handler
@@ -558,153 +532,138 @@
 ;; Used lq/sq
 (defun joint-mod-world-look-at-handler ((arg0 cspace) (arg1 transformq))
   (local-vars (f1-14 float) (sv-48 vector) (sv-52 vector) (sv-56 vector))
-  (rlet ((vf0 :class vf)
-         (vf4 :class vf)
-         (vf5 :class vf)
-         (vf6 :class vf)
-         )
-   (init-vf0-vector)
-   (let ((gp-0 (the-as joint-mod (-> arg0 param1))))
-    (let ((s5-0 (-> arg0 bone transform)))
-     (cspace<-parented-transformq-joint! arg0 arg1)
-     (set!
-      sv-48
-      (vector-normalize-copy!
+  (let ((gp-0 (the-as joint-mod (-> arg0 param1))))
+   (let ((s5-0 (-> arg0 bone transform)))
+    (cspace<-parented-transformq-joint! arg0 arg1)
+    (set!
+     sv-48
+     (vector-normalize-copy!
+      (new 'stack-no-clear 'vector)
+      (-> gp-0 process node-list data 0 bone transform vector 1)
+      1.0
+      )
+     )
+    (set! sv-52 (vector-normalize! (-> s5-0 vector (-> gp-0 nose)) 1.0))
+    (set!
+     sv-56
+     (vector-normalize!
+      (vector-!
        (new 'stack-no-clear 'vector)
-       (-> gp-0 process node-list data 0 bone transform vector 1)
-       1.0
+       (-> gp-0 target)
+       (-> s5-0 vector 3)
        )
+      1.0
       )
-     (set! sv-52 (vector-normalize! (-> s5-0 vector (-> gp-0 nose)) 1.0))
-     (let ((t9-3 vector-normalize!)
-           (a0-3 (new 'stack-no-clear 'vector))
+     )
+    (let* ((f30-0 (vector-y-angle sv-52))
+           (a0-6 (vector-flatten! (new-stack-vector0) sv-56 sv-48))
+           (f0-0 (vector-y-angle a0-6))
+           (f0-1 (deg-diff f30-0 f0-0))
            )
-      (let ((v1-7 (-> gp-0 target))
-            (a1-3 (-> s5-0 vector 3))
-            )
-       (.lvf vf4 (&-> v1-7 quad))
-       (.lvf vf5 (&-> a1-3 quad))
-       )
-      (.mov.vf vf6 vf0 :mask #b1000)
-      (.sub.vf vf6 vf4 vf5 :mask #b111)
-      (.svf (&-> a0-3 quad) vf6)
-      (set! sv-56 (t9-3 a0-3 1.0))
+     (if (< (-> gp-0 ignore-angle) (fabs f0-1))
+      (set! f0-1 0.0)
       )
-     (let* ((f30-0 (vector-y-angle sv-52))
-            (a0-6 (vector-flatten! (new-stack-vector0) sv-56 sv-48))
-            (f0-0 (vector-y-angle a0-6))
-            (f0-1 (deg-diff f30-0 f0-0))
-            )
-      (if (< (-> gp-0 ignore-angle) (fabs f0-1))
-       (set! f0-1 0.0)
-       )
-      (let
-       ((f0-5
-         (fmax
-          (fmin
-           (* (* f0-1 (-> gp-0 blend)) (-> gp-0 flex-blend))
-           (-> gp-0 twist-max y)
-           )
-          (- (-> gp-0 twist-max y))
-          )
-         )
-        )
-       (set!
-        (-> gp-0 twist y)
-        (deg-seek
-         (-> gp-0 twist y)
-         f0-5
-         (fmax 1.0 (* 0.1 (fabs (deg-diff f0-5 (-> gp-0 twist y)))))
-         )
-        )
-       )
-      )
-     (when (!= (-> gp-0 twist y) 0.0)
-      (let
-       ((a2-3
-         (matrix-rotate-y! (new 'stack-no-clear 'matrix) (-> gp-0 twist y))
-         )
-        (s4-2 (-> s5-0 vector 3 quad))
-        )
-       (matrix*! s5-0 s5-0 a2-3)
-       (set! (-> s5-0 vector 3 quad) s4-2)
-       )
-      )
-     (let*
-      ((s4-3
-        (vector-normalize-copy!
-         (new 'stack-no-clear 'vector)
-         (the-as vector (-> gp-0 process node-list data 0 bone transform))
-         1.0
-         )
-        )
-       (f30-2 (vector-x-angle sv-52))
-       (s4-4 (vector-flatten! (new-stack-vector0) sv-56 s4-3))
-       (f0-14 (vector-x-angle s4-4))
-       (f0-20
+     (let
+      ((f0-5
         (fmax
          (fmin
-          (*
-           (* (- (deg-diff f30-2 f0-14)) (-> gp-0 blend))
-           (-> gp-0 flex-blend)
-           )
-          (-> gp-0 twist-max x)
+          (* (* f0-1 (-> gp-0 blend)) (-> gp-0 flex-blend))
+          (-> gp-0 twist-max y)
           )
-         (- (-> gp-0 twist-max x))
+         (- (-> gp-0 twist-max y))
          )
         )
        )
-      (let* ((v1-14 sv-52))
-       (set! f1-14 (vector-dot s4-4 v1-14))
-       )
-      (if (< f1-14 0.1)
-       (set! f0-20 0.0)
-       )
       (set!
-       (-> gp-0 twist x)
+       (-> gp-0 twist y)
        (deg-seek
-        (-> gp-0 twist x)
-        f0-20
-        (fmax 1.0 (* 0.1 (fabs (deg-diff f0-20 (-> gp-0 twist x)))))
+        (-> gp-0 twist y)
+        f0-5
+        (fmax 1.0 (* 0.1 (fabs (deg-diff f0-5 (-> gp-0 twist y)))))
         )
        )
       )
-     (when (!= (-> gp-0 twist x) 0.0)
-      (let* ((v1-20 (-> gp-0 ear))
-             (a1-17 ((cond
-                      ((zero? v1-20)
-                       matrix-rotate-x!
-                       )
-                      ((= v1-20 1)
-                       matrix-rotate-y!
-                       )
-                      (else
-                       matrix-rotate-z!
-                       )
-                      )
-                     (new 'stack-no-clear 'matrix) (-> gp-0 twist x)
-                     )
-              )
-             )
-       (matrix*! s5-0 a1-17 s5-0)
+     )
+    (when (!= (-> gp-0 twist y) 0.0)
+     (let
+      ((a2-3 (matrix-rotate-y! (new 'stack-no-clear 'matrix) (-> gp-0 twist y)))
+       (s4-2 (-> s5-0 vector 3 quad))
+       )
+      (matrix*! s5-0 s5-0 a2-3)
+      (set! (-> s5-0 vector 3 quad) s4-2)
+      )
+     )
+    (let*
+     ((s4-3
+       (vector-normalize-copy!
+        (new 'stack-no-clear 'vector)
+        (the-as vector (-> gp-0 process node-list data 0 bone transform))
+        1.0
+        )
+       )
+      (f30-2 (vector-x-angle sv-52))
+      (s4-4 (vector-flatten! (new-stack-vector0) sv-56 s4-3))
+      (f0-14 (vector-x-angle s4-4))
+      (f0-20
+       (fmax
+        (fmin
+         (* (* (- (deg-diff f30-2 f0-14)) (-> gp-0 blend)) (-> gp-0 flex-blend))
+         (-> gp-0 twist-max x)
+         )
+        (- (-> gp-0 twist-max x))
+        )
+       )
+      )
+     (let* ((v1-14 sv-52))
+      (set! f1-14 (vector-dot s4-4 v1-14))
+      )
+     (if (< f1-14 0.1)
+      (set! f0-20 0.0)
+      )
+     (set!
+      (-> gp-0 twist x)
+      (deg-seek
+       (-> gp-0 twist x)
+       f0-20
+       (fmax 1.0 (* 0.1 (fabs (deg-diff f0-20 (-> gp-0 twist x)))))
        )
       )
      )
-    (if (and (= (-> gp-0 process type) target) (!= (-> gp-0 blend) 0.0))
-     (add-debug-text-sphere
-      *display-target-marks*
-      (bucket-id debug-draw1)
-      (-> gp-0 target)
-      819.2
-      "look"
-      (new 'static 'rgba :r #xff :g #xff :a #x80)
+    (when (!= (-> gp-0 twist x) 0.0)
+     (let* ((v1-20 (-> gp-0 ear))
+            (a1-17 ((cond
+                     ((zero? v1-20)
+                      matrix-rotate-x!
+                      )
+                     ((= v1-20 1)
+                      matrix-rotate-y!
+                      )
+                     (else
+                      matrix-rotate-z!
+                      )
+                     )
+                    (new 'stack-no-clear 'matrix) (-> gp-0 twist x)
+                    )
+             )
+            )
+      (matrix*! s5-0 a1-17 s5-0)
       )
      )
     )
-   (let ((v0-22 0))
+   (if (and (= (-> gp-0 process type) target) (!= (-> gp-0 blend) 0.0))
+    (add-debug-text-sphere
+     *display-target-marks*
+     (bucket-id debug-draw1)
+     (-> gp-0 target)
+     819.2
+     "look"
+     (new 'static 'rgba :r #xff :g #xff :a #x80)
+     )
     )
-   (none)
    )
+  (let ((v0-22 0))
+   )
+  (none)
   )
 
 ;; definition for function joint-mod-rotate-handler
@@ -730,13 +689,7 @@
             )
            )
           )
-    (quaternion-normalize!
-     (quaternion*!
-      (the-as quaternion (-> arg1 rot))
-      a1-2
-      (the-as quaternion (-> arg1 rot))
-      )
-     )
+    (quaternion-normalize! (quaternion*! (-> arg1 quat) a1-2 (-> arg1 quat)))
     )
    (let* ((v1-6 (-> s3-0 (-> s4-0 up)))
           (a1-4
@@ -749,13 +702,7 @@
             )
            )
           )
-    (quaternion-normalize!
-     (quaternion*!
-      (the-as quaternion (-> arg1 rot))
-      a1-4
-      (the-as quaternion (-> arg1 rot))
-      )
-     )
+    (quaternion-normalize! (quaternion*! (-> arg1 quat) a1-4 (-> arg1 quat)))
     )
    (let* ((v1-10 (-> s3-0 (-> s4-0 nose)))
           (a1-6
@@ -768,13 +715,7 @@
             )
            )
           )
-    (quaternion-normalize!
-     (quaternion*!
-      (the-as quaternion (-> arg1 rot))
-      a1-6
-      (the-as quaternion (-> arg1 rot))
-      )
-     )
+    (quaternion-normalize! (quaternion*! (-> arg1 quat) a1-6 (-> arg1 quat)))
     )
    )
   (cspace<-parented-transformq-joint! arg0 arg1)
@@ -789,7 +730,7 @@
 (defun joint-mod-joint-set-handler ((arg0 cspace) (arg1 transformq))
   (let ((s4-0 (the-as joint-mod (-> arg0 param1))))
    (set! (-> arg1 trans quad) (-> s4-0 trans quad))
-   (quaternion-copy! (the-as quaternion (-> arg1 rot)) (-> s4-0 quat))
+   (quaternion-copy! (-> arg1 quat) (-> s4-0 quat))
    (set! (-> arg1 scale quad) (-> s4-0 scale quad))
    )
   (cspace<-parented-transformq-joint! arg0 arg1)
@@ -820,11 +761,7 @@
      (.svf (&-> a1-1 quad) vf6)
      )
     (quaternion-normalize!
-     (quaternion*!
-      (the-as quaternion (-> arg1 rot))
-      (the-as quaternion (-> arg1 rot))
-      (-> s5-0 quat)
-      )
+     (quaternion*! (-> arg1 quat) (-> arg1 quat) (-> s5-0 quat))
      )
     (vector*! (-> arg1 scale) (-> arg1 scale) (-> s5-0 scale))
     (cspace<-parented-transformq-joint! arg0 arg1)
@@ -890,54 +827,37 @@
 ;; Used lq/sq
 (defun joint-mod-wheel-callback ((arg0 cspace) (arg1 transformq))
   (local-vars (f0-3 float))
-  (rlet ((vf0 :class vf)
-         (vf4 :class vf)
-         (vf5 :class vf)
-         (vf6 :class vf)
+  (let ((s4-0 (the-as joint-mod-wheel (-> arg0 param1))))
+   (let ((v1-1 (-> s4-0 process root))
+         (s1-0 (new-stack-vector0))
+         (s3-0 (new-stack-vector0))
+         (s2-0 (new-stack-vector0))
          )
-   (init-vf0-vector)
-   (let ((s4-0 (the-as joint-mod-wheel (-> arg0 param1))))
-    (let ((v1-1 (-> s4-0 process root))
-          (s1-0 (new-stack-vector0))
-          (s3-0 (new-stack-vector0))
-          (s2-0 (new-stack-vector0))
-          )
-     (let ((f0-0 0.0))
-      )
-     (let ((f0-1 0.0))
-      )
-     (vector-z-quaternion! s2-0 (the-as quaternion (-> v1-1 rot)))
-     (vector<-cspace! s1-0 arg0)
-     (let ((a1-3 s3-0))
-      (let ((v1-2 s1-0)
-            (a0-3 (-> s4-0 last-position))
-            )
-       (.lvf vf4 (&-> v1-2 quad))
-       (.lvf vf5 (&-> a0-3 quad))
-       )
-      (.mov.vf vf6 vf0 :mask #b1000)
-      (.sub.vf vf6 vf4 vf5 :mask #b111)
-      (.svf (&-> a1-3 quad) vf6)
-      )
-     (set! (-> s4-0 last-position quad) (-> s1-0 quad))
-     (set! f0-3 (vector-dot s2-0 s3-0))
+    (let ((f0-0 0.0))
      )
-    (let* ((f0-4 f0-3)
-           (f1-1 65536.0)
-           (f2-2 (* 6.28318 (-> s4-0 wheel-radius)))
-           (f0-5 (* (* f1-1 (/ 1.0 f2-2)) f0-4))
-           )
-     (set! (-> s4-0 angle) (+ (-> s4-0 angle) f0-5))
+    (let ((f0-1 0.0))
      )
-    (quaternion-vector-angle!
-     (the-as quaternion (-> arg1 rot))
-     (-> *joint-axis-vectors* (-> s4-0 wheel-axis))
-     (-> s4-0 angle)
-     )
+    (vector-z-quaternion! s2-0 (-> v1-1 quat))
+    (vector<-cspace! s1-0 arg0)
+    (vector-! s3-0 s1-0 (-> s4-0 last-position))
+    (set! (-> s4-0 last-position quad) (-> s1-0 quad))
+    (set! f0-3 (vector-dot s2-0 s3-0))
     )
-   (cspace<-parented-transformq-joint! arg0 arg1)
-   (none)
+   (let* ((f0-4 f0-3)
+          (f1-1 65536.0)
+          (f2-2 (* 6.28318 (-> s4-0 wheel-radius)))
+          (f0-5 (* (* f1-1 (/ 1.0 f2-2)) f0-4))
+          )
+    (set! (-> s4-0 angle) (+ (-> s4-0 angle) f0-5))
+    )
+   (quaternion-vector-angle!
+    (-> arg1 quat)
+    (-> *joint-axis-vectors* (-> s4-0 wheel-axis))
+    (-> s4-0 angle)
+    )
    )
+  (cspace<-parented-transformq-joint! arg0 arg1)
+  (none)
   )
 
 ;; definition for method 0 of type joint-mod-wheel
@@ -1011,7 +931,7 @@
       (set! (-> v1-0 transform trans quad) (-> arg1 trans quad))
       )
      (if (not (-> v1-0 set-rotation))
-      (set! (-> v1-0 transform rot quad) (-> arg1 rot quad))
+      (set! (-> v1-0 transform quat vec quad) (-> arg1 quat vec quad))
       )
      (if (not (-> v1-0 set-scale))
       (set! (-> v1-0 transform scale quad) (-> arg1 scale quad))
@@ -1049,7 +969,7 @@
    (set! (-> v0-0 set-scale) arg4)
    (set! (-> v0-0 enable) #t)
    (set! (-> v0-0 transform trans quad) (-> *null-vector* quad))
-   (set! (-> v0-0 transform rot quad) (-> *null-vector* quad))
+   (set! (-> v0-0 transform quat vec quad) (-> *null-vector* quad))
    (set! (-> v0-0 transform scale quad) (-> *identity-vector* quad))
    (let ((v1-8 (-> arg0 node-list data arg1)))
     (set! (-> v1-8 param0) joint-mod-set-local-callback)
@@ -1112,7 +1032,7 @@
    (set! (-> v0-0 node-index) arg1)
    (set! (-> v0-0 enable) arg2)
    (set! (-> v0-0 transform trans quad) (-> *null-vector* quad))
-   (set! (-> v0-0 transform rot quad) (-> *null-vector* quad))
+   (set! (-> v0-0 transform quat vec quad) (-> *null-vector* quad))
    (set! (-> v0-0 transform scale quad) (-> *identity-vector* quad))
    (let ((v1-7 (-> arg0 node-list data arg1)))
     (set! (-> v1-7 param0) joint-mod-set-world-callback)
@@ -1171,9 +1091,9 @@
       (-> gp-0 blend)
       )
      (quaternion-slerp!
-      (the-as quaternion (-> gp-0 blend-transform rot))
-      (the-as quaternion (-> arg1 rot))
-      (the-as quaternion (-> gp-0 transform rot))
+      (-> gp-0 blend-transform quat)
+      (-> arg1 quat)
+      (-> gp-0 transform quat)
       (-> gp-0 blend)
       )
      (cspace<-parented-transformq-joint! arg0 (-> gp-0 blend-transform))
@@ -1206,7 +1126,7 @@
    (set! (-> v0-0 enable) arg2)
    (set! (-> v0-0 blend) 0.0)
    (set! (-> v0-0 transform trans quad) (-> *null-vector* quad))
-   (set! (-> v0-0 transform rot quad) (-> *null-vector* quad))
+   (set! (-> v0-0 transform quat vec quad) (-> *null-vector* quad))
    (set! (-> v0-0 transform scale quad) (-> *identity-vector* quad))
    (let ((v1-7 (-> arg0 node-list data arg1)))
     (set! (-> v1-7 param0) joint-mod-blend-local-callback)
@@ -1259,11 +1179,7 @@
      (if (< f30-0 -32768.0)
       (set! f30-0 (+ 65536.0 f30-0))
       )
-     (quaternion-vector-angle!
-      (the-as quaternion (-> arg1 rot))
-      (-> gp-0 spin-axis)
-      f30-0
-      )
+     (quaternion-vector-angle! (-> arg1 quat) (-> gp-0 spin-axis) f30-0)
      (set! (-> gp-0 angle) f30-0)
      )
     )

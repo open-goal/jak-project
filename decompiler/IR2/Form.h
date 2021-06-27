@@ -1349,7 +1349,7 @@ class StackStructureDefElement : public FormElement {
 
 class VectorFloatLoadStoreElement : public FormElement {
  public:
-  VectorFloatLoadStoreElement(Register vf_reg, Form* location, bool is_load);
+  VectorFloatLoadStoreElement(Register vf_reg, Form* location, bool is_load, int my_idx);
   goos::Object to_form_internal(const Env& env) const override;
   void apply(const std::function<void(FormElement*)>& f) override;
   void apply_form(const std::function<void(Form*)>& f) override;
@@ -1359,11 +1359,16 @@ class VectorFloatLoadStoreElement : public FormElement {
   void collect_vf_regs(RegSet& regs) const;
   bool is_load() const { return m_is_load; }
   Register vf_reg() const { return m_vf_reg; }
+  const std::optional<TypeSpec>& addr_type() const { return m_addr_type; }
+  Form* location() const { return m_location; }
+  int my_idx() const { return m_my_idx; }
 
  private:
   Register m_vf_reg;
   Form* m_location = nullptr;
   bool m_is_load = false;
+  std::optional<TypeSpec> m_addr_type;
+  int m_my_idx = -1;
 };
 
 class StackSpillStoreElement : public FormElement {
