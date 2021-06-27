@@ -242,7 +242,8 @@ FormElement* StoreOp::get_vf_store_as_form(FormPool& pool, const Env& env) const
         }
         assert(!rd.addr_of);  // we'll change this to true because .svf uses an address.
         auto addr = pool.alloc_single_element_form<DerefElement>(nullptr, source, true, tokens);
-        return pool.alloc_element<VectorFloatLoadStoreElement>(m_value.var().reg(), addr, false);
+        return pool.alloc_element<VectorFloatLoadStoreElement>(m_value.var().reg(), addr, false,
+                                                               m_my_idx);
       } else {
         // try again with no deref.
         rd_in.deref = {};
@@ -260,7 +261,8 @@ FormElement* StoreOp::get_vf_store_as_form(FormPool& pool, const Env& env) const
           // some sketchy type stuff going on.
           addr = pool.alloc_single_element_form<CastElement>(
               nullptr, TypeSpec("pointer", {TypeSpec("uint128")}), addr);
-          return pool.alloc_element<VectorFloatLoadStoreElement>(m_value.var().reg(), addr, false);
+          return pool.alloc_element<VectorFloatLoadStoreElement>(m_value.var().reg(), addr, false,
+                                                                 m_my_idx);
         }
       }
     }
@@ -704,13 +706,13 @@ FormElement* LoadVarOp::get_as_form(FormPool& pool, const Env& env) const {
     if (src_as_deref) {
       assert(!src_as_deref->is_addr_of());
       src_as_deref->set_addr_of(true);
-      return pool.alloc_element<VectorFloatLoadStoreElement>(m_dst.reg(), src, true);
+      return pool.alloc_element<VectorFloatLoadStoreElement>(m_dst.reg(), src, true, m_my_idx);
     }
 
     auto src_as_unrecognized = dynamic_cast<LoadSourceElement*>(src->try_as_single_element());
     if (src_as_unrecognized) {
-      return pool.alloc_element<VectorFloatLoadStoreElement>(m_dst.reg(),
-                                                             src_as_unrecognized->location(), true);
+      return pool.alloc_element<VectorFloatLoadStoreElement>(
+          m_dst.reg(), src_as_unrecognized->location(), true, m_my_idx);
     }
 
     throw std::runtime_error("VF unknown load");

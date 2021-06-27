@@ -2325,8 +2325,9 @@ void StackStructureDefElement::get_modified_regs(RegSet&) const {}
 
 VectorFloatLoadStoreElement::VectorFloatLoadStoreElement(Register vf_reg,
                                                          Form* location,
-                                                         bool is_load)
-    : m_vf_reg(vf_reg), m_location(location), m_is_load(is_load) {
+                                                         bool is_load,
+                                                         int my_idx)
+    : m_vf_reg(vf_reg), m_location(location), m_is_load(is_load), m_my_idx(my_idx) {
   location->parent_element = this;
 }
 
