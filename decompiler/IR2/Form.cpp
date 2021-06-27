@@ -1798,6 +1798,7 @@ DerefElement::DerefElement(Form* base, bool is_addr_of, DerefToken token)
       x.expr()->parent_element = this;
     }
   }
+  inline_nested();
 }
 
 DerefElement::DerefElement(Form* base, bool is_addr_of, std::vector<DerefToken> tokens)
@@ -1808,6 +1809,7 @@ DerefElement::DerefElement(Form* base, bool is_addr_of, std::vector<DerefToken> 
       x.expr()->parent_element = this;
     }
   }
+  inline_nested();
 }
 
 goos::Object DerefElement::to_form_internal(const Env& env) const {
@@ -1884,11 +1886,13 @@ void DynamicMethodAccess::get_modified_regs(RegSet&) const {}
 ArrayFieldAccess::ArrayFieldAccess(RegisterAccess source,
                                    const std::vector<DerefToken>& deref_tokens,
                                    int expected_stride,
-                                   int constant_offset)
+                                   int constant_offset,
+                                   bool flipped)
     : m_source(source),
       m_deref_tokens(deref_tokens),
       m_expected_stride(expected_stride),
-      m_constant_offset(constant_offset) {
+      m_constant_offset(constant_offset),
+      m_flipped(flipped) {
   for (auto& token : m_deref_tokens) {
     if (token.kind() == DerefToken::Kind::INTEGER_EXPRESSION) {
       token.expr()->parent_element = this;
@@ -2201,45 +2205,58 @@ void LetElement::set_body(Form* new_body) {
 }
 
 /////////////////////////////
-// DoTimesElement
+// CounterLoopElement
 /////////////////////////////
 
-DoTimesElement::DoTimesElement(RegisterAccess var_init,
-                               RegisterAccess var_check,
-                               RegisterAccess var_inc,
-                               Form* check_value,
-                               Form* body)
+CounterLoopElement::CounterLoopElement(Kind kind,
+                                       RegisterAccess var_init,
+                                       RegisterAccess var_check,
+                                       RegisterAccess var_inc,
+                                       Form* check_value,
+                                       Form* body)
     : m_var_init(var_init),
       m_var_check(var_check),
       m_var_inc(var_inc),
       m_check_value(check_value),
-      m_body(body) {
+      m_body(body),
+      m_kind(kind) {
   m_body->parent_element = this;
   m_check_value->parent_element = this;
   assert(m_var_inc.reg() == m_var_check.reg());
   assert(m_var_init.reg() == m_var_inc.reg());
 }
 
-goos::Object DoTimesElement::to_form_internal(const Env& env) const {
+goos::Object CounterLoopElement::to_form_internal(const Env& env) const {
+  std::string loop_name;
+  switch (m_kind) {
+    case Kind::DOTIMES:
+      loop_name = "dotimes";
+      break;
+    case Kind::COUNTDOWN:
+      loop_name = "countdown";
+      break;
+    default:
+      assert(false);
+  }
   std::vector<goos::Object> outer = {
-      pretty_print::to_symbol("dotimes"),
+      pretty_print::to_symbol(loop_name),
       pretty_print::build_list(m_var_init.to_form(env), m_check_value->to_form(env))};
   m_body->inline_forms(outer, env);
   return pretty_print::build_list(outer);
 }
 
-void DoTimesElement::apply(const std::function<void(FormElement*)>& f) {
+void CounterLoopElement::apply(const std::function<void(FormElement*)>& f) {
   f(this);
   m_check_value->apply(f);
   m_body->apply(f);
 }
 
-void DoTimesElement::apply_form(const std::function<void(Form*)>& f) {
+void CounterLoopElement::apply_form(const std::function<void(Form*)>& f) {
   m_check_value->apply_form(f);
   m_body->apply_form(f);
 }
 
-void DoTimesElement::collect_vars(RegAccessSet& vars, bool recursive) const {
+void CounterLoopElement::collect_vars(RegAccessSet& vars, bool recursive) const {
   vars.insert(m_var_init);
   vars.insert(m_var_check);
   vars.insert(m_var_inc);
@@ -2249,7 +2266,7 @@ void DoTimesElement::collect_vars(RegAccessSet& vars, bool recursive) const {
   }
 }
 
-void DoTimesElement::get_modified_regs(RegSet& regs) const {
+void CounterLoopElement::get_modified_regs(RegSet& regs) const {
   regs.insert(m_var_inc.reg());
   m_body->get_modified_regs(regs);
   m_check_value->get_modified_regs(regs);
@@ -2308,8 +2325,9 @@ void StackStructureDefElement::get_modified_regs(RegSet&) const {}
 
 VectorFloatLoadStoreElement::VectorFloatLoadStoreElement(Register vf_reg,
                                                          Form* location,
-                                                         bool is_load)
-    : m_vf_reg(vf_reg), m_location(location), m_is_load(is_load) {
+                                                         bool is_load,
+                                                         int my_idx)
+    : m_vf_reg(vf_reg), m_location(location), m_is_load(is_load), m_my_idx(my_idx) {
   location->parent_element = this;
 }
 

@@ -572,9 +572,8 @@ void breakList(NodePool& pool, PrettyPrinterNode* leftParen, PrettyPrinterNode* 
 }
 
 namespace {
-const std::unordered_set<std::string> control_flow_start_forms = {
-    "while", "dotimes", "until", "if", "when",
-};
+const std::unordered_set<std::string> control_flow_start_forms = {"while", "dotimes", "until",
+                                                                  "if",    "when",    "countdown"};
 }
 
 PrettyPrinterNode* seek_to_next_non_whitespace(PrettyPrinterNode* in) {
