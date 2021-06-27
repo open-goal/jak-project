@@ -5280,7 +5280,8 @@
 
 (define-extern *draw-hook* (function none))
 (define-extern *debug-hook* (function none))
-(define-extern *menu-hook* (function none))
+(declare-type debug-menu-context basic)
+(define-extern *menu-hook* (function debug-menu-context))
 (define-extern *progress-hook* (function none))
 (define-extern *dma-timeout-hook* (function none))
 
@@ -8511,7 +8512,7 @@
     (dummy-14 () none 14)
     (dummy-15 () none 15)
     (dummy-16 () none 16)
-    (dummy-17 (_type_) none 17) ;; TODO - this is wrong, it returns something, see default-menu::dm-current-continue
+    (dummy-17 (_type_) symbol 17) ;; TODO - unconfirmed
     (dummy-18 () none 18)
     (dummy-19 () none 19)
     (dummy-20 () none 20)
@@ -8678,7 +8679,7 @@
 (deftype instance (drawable)
   ((bucket-index uint16           :offset 6)
    (unknown uint32 :offset 8) ; TODO - from default-menu
-   (origin       matrix4h :inline :offset-assert 32)
+   (origin       matrix4h :inline :offset-assert 32) ; TODO - this can also be a float, default-menu::lambda_62
    (wind-index   uint16           :offset 62)
    )
   :method-count-assert 18
@@ -10616,6 +10617,7 @@
 
 (deftype control-info (collide-shape-moving)
   (
+   (some-quaternion quaternion :offset 496)
    ;; these were determined from racer-collision-reaction.
    (array-size int16 :offset 2490)
    (history-array collide-history 128 :inline :offset-assert 2496)
@@ -11066,7 +11068,7 @@
 ;; - Types
 
 (deftype target (process-drawable)
-  ((control             control-info               :offset 112)
+  ((control             control-info               :score 999 :offset 112)
    (skel2               basic               :offset-assert 176)
    (racer               basic               :offset-assert 180)
    (game                game-info               :offset-assert 184)
@@ -16000,20 +16002,20 @@
 
 ;; - Functions
 
-(define-extern get-task-control function)
+(define-extern get-task-control (function int task-control)) ;; TODO - not confirmed
 (define-extern level-hint-spawn function)
 (define-extern get-game-count function)
 (define-extern activate-orb-all function)
-(define-extern close-specific-task! function)
+(define-extern close-specific-task! (function int int none)) ;; TODO - not confirmed
 (define-extern reset-all-hint-controls (function none))
-(define-extern reset-actors function)
+(define-extern reset-actors (function symbol none)) ;; TODO - not confirmed
 (define-extern set-blackout-frames (function int uint))
 (define-extern set-master-mode (function symbol none))
 (define-extern stop (function symbol int)) ;; logic-target
 (define-extern start (function symbol symbol int))
 (define-extern position-in-front-of-camera! (function vector float float vector))
 (define-extern game-task->string function)
-(define-extern trsq->continue-point function)
+(define-extern trsq->continue-point (function trsq continue-point)) ;; TODO - not confirmed
 
 ;; - Symbols
 
@@ -16119,12 +16121,12 @@
 
 ;; - Functions
 
-(define-extern auto-save-command function)
+(define-extern auto-save-command (function symbol int int process-tree none)) ;; TODO - not confirmed
 (define-extern auto-save-init-by-other function)
 (define-extern progress-allowed? (function symbol))
 (define-extern print-game-text (function string font-context symbol int int float)) ; TODO decomp error, this seems correct though
 (define-extern get-aspect-ratio (function symbol))
-(define-extern get-task-status function)
+(define-extern get-task-status (function int uint64)) ;; TODO - not confirmed
 (define-extern lookup-level-info (function symbol level-load-info))
 (define-extern calculate-completion function)
 (define-extern game-save-elt->string function)
@@ -18769,7 +18771,7 @@
 (define-extern target-hit-push function)
 (define-extern velocity-set-to-target! function)
 (define-extern start-sequence-a function)
-(define-extern task-closed? function)
+(define-extern task-closed? (function int int symbol)) ;; TODO - not confirmed
 (define-extern next-level function)
 
 ;; - Unknowns
@@ -18856,7 +18858,7 @@
   )
 
 (deftype debug-menu-item-function (debug-menu-item)
-  ((activate-func (function int)  :offset-assert 24) ;; func is kinda a guess
+  ((activate-func (function int)  :offset-assert 24) ;; func is kinda a guess, might be 2 ints
    (hilite-timer  int8   :offset-assert 28)
    )
   :method-count-assert 9
@@ -18975,7 +18977,7 @@
 (define-extern prototype-bucket-type function)
 (define-extern guard-band-cull function)
 (define-extern find-instance-by-index function)
-(define-extern prototype-bucket-recalc-fields function)
+(define-extern prototype-bucket-recalc-fields (function instance none)) ;; TODO - ret not confirmed
 (define-extern dma-add-process-drawable-hud function)
 (define-extern foreground-engine-execute function)
 (define-extern main-debug-hook function)
@@ -19078,7 +19080,7 @@
 (define-extern entity-by-type (function type entity))
 (define-extern scf-get-territory (function int))
 (define-extern pause-allowed? (function symbol))
-(define-extern menu-respond-to-pause (function int))
+(define-extern menu-respond-to-pause (function symbol))
 (define-extern hide-progress-screen (function int))
 (define-extern set-letterbox-frames (function uint uint))
 (define-extern letterbox (function none))
@@ -19674,7 +19676,7 @@
 
 (define-extern task-status->string function)
 (define-extern open-specific-task! function)
-(define-extern task-exists? function)
+(define-extern task-exists? (function int symbol)) ;; TODO - not confirmed
 (define-extern sages-kidnapped? function)
 
 ;; - Unknowns
@@ -20829,30 +20831,30 @@
 
 ;; - Functions
 
-(define-extern build-continue-menu function)
-(define-extern debug-menu-make-camera-menu function)
-(define-extern debug-menu-make-shader-menu function)
-(define-extern debug-menu-make-instance-menu function)
-(define-extern debug-menu-make-task-menu function)
+(define-extern build-continue-menu (function debug-menu-context debug-menu-context)) ;; TODO - this is so simple...just iterating through a list of symbols...still confused though...
+(define-extern debug-menu-make-camera-menu (function debug-menu-context debug-menu-item-submenu))
+(define-extern debug-menu-make-shader-menu (function debug-menu-context debug-menu-item-submenu))
+(define-extern debug-menu-make-instance-menu (function debug-menu-context debug-menu-item-submenu))
+(define-extern debug-menu-make-task-menu (function debug-menu-context debug-menu-item-submenu))
 (define-extern dm-current-continue (function function int object)) ;; TODO - game-info::17
-(define-extern dm-task-get-money function)
-(define-extern dm-levitator-ready function)
-(define-extern dm-lavabike-ready function)
-(define-extern dm-give-all-cells function)
-(define-extern debug-menu-make-task-unknown-menu function)
-(define-extern debug-menu-make-task-need-hint-menu function)
-(define-extern debug-menu-make-task-need-introduction-menu function)
-(define-extern debug-menu-make-task-need-reminder-a-menu function)
-(define-extern debug-menu-make-task-need-reminder-menu function)
-(define-extern debug-menu-make-task-need-reward-speech-menu function)
-(define-extern debug-menu-make-task-need-resolution-menu function)
-(define-extern dm-give-cell function)
+(define-extern dm-task-get-money (function int int symbol))
+(define-extern dm-levitator-ready (function int int symbol))
+(define-extern dm-lavabike-ready (function int int symbol))
+(define-extern dm-give-all-cells (function int int symbol))
+(define-extern debug-menu-make-task-unknown-menu (function debug-menu-context debug-menu-context debug-menu-item))
+(define-extern debug-menu-make-task-need-hint-menu (function debug-menu-context debug-menu-context debug-menu-item))
+(define-extern debug-menu-make-task-need-introduction-menu (function debug-menu-context debug-menu-context debug-menu-item))
+(define-extern debug-menu-make-task-need-reminder-a-menu (function debug-menu-context debug-menu-context debug-menu-item))
+(define-extern debug-menu-make-task-need-reminder-menu (function debug-menu-context debug-menu-context debug-menu-item))
+(define-extern debug-menu-make-task-need-reward-speech-menu (function debug-menu-context debug-menu-context debug-menu-item))
+(define-extern debug-menu-make-task-need-resolution-menu (function debug-menu-context debug-menu-context debug-menu-item))
+(define-extern dm-give-cell (function int none))
 (define-extern build-instance-list (function none)) ;; TODO - drawable types aren't complete
 (define-extern dm-edit-instance-toggle-pick-func (function int int symbol))
 (define-extern dm-boolean-toggle-pick-func (function function int object)) ;; TODO
 (define-extern build-shader-list (function object))
 (define-extern all-texture-tweak-adjust (function texture-page-dir float object)) ;; TODO - texture related types
-(define-extern debug-menu-make-camera-mode-menu (function int int object))
+(define-extern debug-menu-make-camera-mode-menu (function int int object)) ;; TODO - depends on camera stuff yet merged
 (define-extern dm-cam-externalize (function symbol int symbol))
 (define-extern dm-cam-render-float (function int int float float float))
 (define-extern dm-cam-settings-func (function int int symbol))
@@ -20881,16 +20883,16 @@
 (define-extern dm-texture-user-set-pick-func (function int int symbol))
 (define-extern dm-strip-lines-toggle-pick-func (function int int symbol))
 (define-extern dm-strip-lines-set-pick-func (function int int symbol))
-(define-extern dm-task-unknown function)
-(define-extern dm-task-hint function)
-(define-extern dm-task-introduction function)
-(define-extern dm-task-reminder-a function)
-(define-extern dm-task-reminder function)
-(define-extern dm-task-reward-speech function)
-(define-extern dm-task-resolution function)
-(define-extern dm-anim-tester-flag-func function)
-(define-extern dm-anim-tester-func function)
-(define-extern debug-menu-context-make-default-menus (function debug-menu-context none))
+(define-extern dm-task-unknown (function int int symbol))
+(define-extern dm-task-hint (function int int symbol))
+(define-extern dm-task-introduction (function int int symbol))
+(define-extern dm-task-reminder-a (function int int symbol))
+(define-extern dm-task-reminder (function int int symbol))
+(define-extern dm-task-reward-speech (function int int symbol))
+(define-extern dm-task-resolution (function int int symbol))
+(define-extern dm-anim-tester-flag-func (function int int none)) ;; TODO - *anim-tester*
+(define-extern dm-anim-tester-func (function int none)) ;; TODO - *anim-tester*
+(define-extern debug-menu-context-make-default-menus (function debug-menu-context debug-menu-context))
 (define-extern popup-menu-context-make-default-menus (function debug-menu-context debug-menu-context))
 
 ;; - Unknowns
