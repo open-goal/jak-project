@@ -1097,7 +1097,8 @@ class ArrayFieldAccess : public FormElement {
   ArrayFieldAccess(RegisterAccess source,
                    const std::vector<DerefToken>& deref_tokens,
                    int expected_stride,
-                   int constant_offset);
+                   int constant_offset,
+                   bool flipped);
   goos::Object to_form_internal(const Env& env) const override;
   void apply(const std::function<void(FormElement*)>& f) override;
   void apply_form(const std::function<void(Form*)>& f) override;
@@ -1115,11 +1116,14 @@ class ArrayFieldAccess : public FormElement {
                        std::vector<FormElement*>* result,
                        bool allow_side_effects);
 
+  bool flipped() const { return m_flipped; }
+
  private:
   RegisterAccess m_source;
   std::vector<DerefToken> m_deref_tokens;
   int m_expected_stride = -1;
   int m_constant_offset = -1;
+  bool m_flipped = false;
 };
 
 class GetMethodElement : public FormElement {
@@ -1353,6 +1357,8 @@ class VectorFloatLoadStoreElement : public FormElement {
   void get_modified_regs(RegSet& regs) const override;
   void push_to_stack(const Env& env, FormPool& pool, FormStack& stack) override;
   void collect_vf_regs(RegSet& regs) const;
+  bool is_load() const { return m_is_load; }
+  Register vf_reg() const { return m_vf_reg; }
 
  private:
   Register m_vf_reg;

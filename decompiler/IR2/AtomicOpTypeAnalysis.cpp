@@ -492,17 +492,19 @@ TP_Type SimpleExpression::get_type_int2(const TypeState& input,
   }
 
   if (m_kind == Kind::ADD && arg0_type.is_product() && arg1_type.kind == TP_Type::Kind::TYPESPEC) {
-    return TP_Type::make_object_plus_product(arg1_type.typespec(), arg0_type.get_multiplier());
+    return TP_Type::make_object_plus_product(arg1_type.typespec(), arg0_type.get_multiplier(),
+                                             true);
   }
 
   if (m_kind == Kind::ADD && arg1_type.is_product() && arg0_type.kind == TP_Type::Kind::TYPESPEC) {
-    return TP_Type::make_object_plus_product(arg0_type.typespec(), arg1_type.get_multiplier());
+    return TP_Type::make_object_plus_product(arg0_type.typespec(), arg1_type.get_multiplier(),
+                                             false);
   }
 
   if ((m_kind == Kind::ADD || m_kind == Kind::SUB) &&
       arg0_type.typespec().base_type() == "pointer" && tc(dts, TypeSpec("integer"), arg1_type)) {
     if (m_kind == Kind::ADD && !m_args[1].is_int()) {
-      return TP_Type::make_object_plus_product(arg0_type.typespec(), 1);
+      return TP_Type::make_object_plus_product(arg0_type.typespec(), 1, false);
     }
     // plain pointer plus integer = plain pointer
     return TP_Type::make_from_ts(arg0_type.typespec());
@@ -527,7 +529,7 @@ TP_Type SimpleExpression::get_type_int2(const TypeState& input,
       // byte access of offset array field trick.
       // arg1 holds a structure.
       // arg0 is an integer in a register.
-      return TP_Type::make_object_plus_product(arg1_type.typespec(), 1);
+      return TP_Type::make_object_plus_product(arg1_type.typespec(), 1, true);
     }
   }
 
