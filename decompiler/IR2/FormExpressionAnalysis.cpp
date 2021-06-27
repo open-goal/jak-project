@@ -3955,39 +3955,52 @@ std::optional<RegisterAccess> form_as_ra(Form* form) {
 /*!
  * Handle an inlined call to vector-!
  */
-bool try_vector_sub_inline(const Env& env, FormPool& pool, FormStack& stack) {
+bool try_vector_add_sub_inline(const Env& env, FormPool& pool, FormStack& stack, bool is_add) {
   // we are looking for 5 ops, none are sets
   auto elts = stack.try_getting_active_stack_entries({false, false, false, false, false});
   if (!elts) {
     return false;
   }
 
+  int idx = 0;
+  if (is_add) {
+    // third (.vmove.w vf6 vf0)
+    if (!is_set_w_1(Register(Reg::VF, 6), elts->at(idx++).elt, env)) {
+      return false;
+    }
+  }
+
   // check first: (.lvf vf4 (&-> arg1 quad))
-  auto first = is_load_store_vector_to_reg(Register(Reg::VF, 4), elts->at(0).elt, true, nullptr);
+  auto first =
+      is_load_store_vector_to_reg(Register(Reg::VF, 4), elts->at(idx++).elt, true, nullptr);
   if (!first) {
     return false;
   }
 
   // second (.lvf vf5 (&-> a0-1 quad))
-  auto second = is_load_store_vector_to_reg(Register(Reg::VF, 5), elts->at(1).elt, true, nullptr);
+  auto second =
+      is_load_store_vector_to_reg(Register(Reg::VF, 5), elts->at(idx++).elt, true, nullptr);
   if (!second) {
     return false;
   }
 
-  // third (.vmove.w vf6 vf0)
-  if (!is_set_w_1(Register(Reg::VF, 6), elts->at(2).elt, env)) {
-    return false;
+  if (!is_add) {
+    // third (.vmove.w vf6 vf0)
+    if (!is_set_w_1(Register(Reg::VF, 6), elts->at(idx++).elt, env)) {
+      return false;
+    }
   }
 
   // 4th (.vsub.xyz vf6 vf4 vf5)
-  if (!is_vf_3op_dst(InstructionKind::VSUB, 14, vfr(6), vfr(4), vfr(5), elts->at(3).elt)) {
+  if (!is_vf_3op_dst(is_add ? InstructionKind::VADD : InstructionKind::VSUB, 14, vfr(6), vfr(4),
+                     vfr(5), elts->at(idx++).elt)) {
     return false;
   }
 
   // 5th (and remember the index)
   int store_idx = -1;
   auto store =
-      is_load_store_vector_to_reg(Register(Reg::VF, 6), elts->at(4).elt, false, &store_idx);
+      is_load_store_vector_to_reg(Register(Reg::VF, 6), elts->at(idx++).elt, false, &store_idx);
   if (!store) {
     return false;
   }
@@ -3997,7 +4010,7 @@ bool try_vector_sub_inline(const Env& env, FormPool& pool, FormStack& stack) {
   // the function that attempts the pop.
   auto store_var = form_as_ra(store);
   if (!store_var) {
-    env.func->warnings.general_warning("Almost found vector sub, but couldn't get store var.");
+    env.func->warnings.general_warning("Almost found vector add/sub, but couldn't get store var.");
     return false;
   }
 
@@ -4024,8 +4037,8 @@ bool try_vector_sub_inline(const Env& env, FormPool& pool, FormStack& stack) {
   // create the actual vector-! form
   Form* new_thing = pool.alloc_single_element_form<GenericElement>(
       nullptr,
-      GenericOperator::make_function(
-          pool.alloc_single_element_form<ConstantTokenElement>(nullptr, "vector-!")),
+      GenericOperator::make_function(pool.alloc_single_element_form<ConstantTokenElement>(
+          nullptr, is_add ? "vector+!" : "vector-!")),
       std::vector<Form*>{store, first, second});
 
   if (got_orig) {
@@ -4066,8 +4079,11 @@ void VectorFloatLoadStoreElement::push_to_stack(const Env& env, FormPool& pool, 
   stack.push_form_element(this, true);
 
   // don't find vector-! inside of vector-!.
-  if (!m_is_load && env.func->guessed_name.to_string() != "vector-!") {
-    try_vector_sub_inline(env, pool, stack);
+  if (!m_is_load && env.func->guessed_name.to_string() != "vector-!" &&
+      env.func->guessed_name.to_string() != "vector+!") {
+    if (!try_vector_add_sub_inline(env, pool, stack, true)) {
+      try_vector_add_sub_inline(env, pool, stack, false);
+    }
   }
 }
 
