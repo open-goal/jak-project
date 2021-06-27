@@ -336,12 +336,17 @@ FormElement* fix_up_abs_2(LetElement* in, const Env& env, FormPool& pool) {
   return in;
 }
 
-FormElement* rewrite_empty_let(LetElement* in, const Env& env, FormPool& pool) {
+FormElement* rewrite_empty_let(LetElement* in, const Env&, FormPool&) {
   if (in->entries().size() != 1) {
     return nullptr;
   }
 
   if (!in->body()->elts().empty()) {
+    return nullptr;
+  }
+
+  auto reg = in->entries().at(0).dest.reg();
+  if (reg.get_kind() == Reg::GPR && !reg.allowed_local_gpr()) {
     return nullptr;
   }
 

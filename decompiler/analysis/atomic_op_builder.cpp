@@ -1405,7 +1405,7 @@ std::unique_ptr<AtomicOp> convert_vector_plus(const Instruction& i0,
                                               int idx) {
   // vmove.w vf6, vf0
   if (i0.kind != InstructionKind::VMOVE || i0.get_src(0).get_reg() != make_vf(0) ||
-      i0.get_dst(0).get_reg() != make_vf(6)) {
+      i0.get_dst(0).get_reg() != make_vf(6) || i0.cop2_dest != 1) {
     return nullptr;
   }
 
@@ -1466,7 +1466,7 @@ std::unique_ptr<AtomicOp> convert_vector_minus(const Instruction& i0,
 
   // vmove.w vf6, vf0
   if (i2.kind != InstructionKind::VMOVE || i2.get_src(0).get_reg() != make_vf(0) ||
-      i2.get_dst(0).get_reg() != make_vf(6)) {
+      i2.get_dst(0).get_reg() != make_vf(6) || i2.cop2_dest != 1) {
     return nullptr;
   }
 
@@ -1483,8 +1483,6 @@ std::unique_ptr<AtomicOp> convert_vector_minus(const Instruction& i0,
     return nullptr;
   }
   Register dst = i4.get_src(2).get_reg();
-
-
 
   return std::make_unique<SetVarOp>(
       make_dst_var(dst, idx),
@@ -1523,6 +1521,76 @@ std::unique_ptr<AtomicOp> convert_5(const Instruction& i0,
   return nullptr;
 }
 
+std::unique_ptr<AtomicOp> convert_vector_float_product(const Instruction& i0,
+                                                       const Instruction& i1,
+                                                       const Instruction& i2,
+                                                       const Instruction& i3,
+                                                       const Instruction& i4,
+                                                       const Instruction& i5,
+                                                       int idx) {
+  // lqc2 vf1, 0(vect_in)
+  if (i0.kind != InstructionKind::LQC2 || i0.get_dst(0).get_reg() != make_vf(1) ||
+      !i0.get_src(0).is_imm(0)) {
+    return nullptr;
+  }
+  Register vec_src = i0.get_src(1).get_reg();
+
+  // mfc1 gpr_temp, float_in
+  if (i1.kind != InstructionKind::MFC1) {
+    return nullptr;
+  }
+  Register gpr_temp = i1.get_dst(0).get_reg();
+  Register float_src = i1.get_src(0).get_reg();
+
+  // qmtc2.i vf2, gpr_temp
+  if (i2.kind != InstructionKind::QMTC2 || i2.get_dst(0).get_reg() != make_vf(2) ||
+      i2.get_src(0).get_reg() != gpr_temp) {
+    return nullptr;
+  }
+
+  // vaddx.w vf1, vf0, vf0
+  if (i3.kind != InstructionKind::VADD_BC || i3.get_dst(0).get_reg() != make_vf(1) ||
+      i3.get_src(0).get_reg() != make_vf(0) || i3.get_src(1).get_reg() != make_vf(0) ||
+      i3.cop2_bc != 0 || i3.cop2_dest != 1) {
+    return nullptr;
+  }
+
+  // vmulx.xyz vf1, vf1, vf2
+  if (i4.kind != InstructionKind::VMUL_BC || i4.get_dst(0).get_reg() != make_vf(1) ||
+      i4.get_src(0).get_reg() != make_vf(1) || i4.get_src(1).get_reg() != make_vf(2) ||
+      i4.cop2_dest != 14 || i4.cop2_bc != 0) {
+    return nullptr;
+  }
+
+  // sqc2 vf1, 0(gE)
+  if (i5.kind != InstructionKind::SQC2 || i5.get_src(0).get_reg() != make_vf(1) ||
+      !i5.get_src(1).is_imm(0)) {
+    return nullptr;
+  }
+  Register dst = i5.get_src(2).get_reg();
+
+  return std::make_unique<SetVarOp>(
+      make_dst_var(dst, idx),
+      SimpleExpression(SimpleExpression::Kind::VECTOR_FLOAT_PRODUCT, make_src_atom(dst, idx),
+                       make_src_atom(vec_src, idx), make_src_atom(float_src, idx)),
+      idx);
+}
+
+std::unique_ptr<AtomicOp> convert_6(const Instruction& i0,
+                                    const Instruction& i1,
+                                    const Instruction& i2,
+                                    const Instruction& i3,
+                                    const Instruction& i4,
+                                    const Instruction& i5,
+                                    int idx) {
+  auto as_vector_float_product = convert_vector_float_product(i0, i1, i2, i3, i4, i5, idx);
+  if (as_vector_float_product) {
+    return as_vector_float_product;
+  }
+
+  return nullptr;
+}
+
 }  // namespace
 
 /*!
@@ -1555,7 +1623,16 @@ int convert_block_to_atomic_ops(int begin_idx,
       warnings.warn_sq_lq();
     }
 
-    if (n_instr >= 5) {
+    if (n_instr >= 6) {
+      // try 6 instructions
+      op = convert_6(instr[0], instr[1], instr[2], instr[3], instr[4], instr[5], op_idx);
+      if (op) {
+        converted = true;
+        length = 6;
+      }
+    }
+
+    if (!converted && n_instr >= 5) {
       // try 5 instructions
       op = convert_5(instr[0], instr[1], instr[2], instr[3], instr[4], op_idx);
       if (op) {

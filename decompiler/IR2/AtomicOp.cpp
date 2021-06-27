@@ -295,6 +295,8 @@ std::string get_simple_expression_op_name(SimpleExpression::Kind kind) {
       return "vector+!2";
     case SimpleExpression::Kind::VECTOR_MINUS:
       return "vector-!2";
+    case SimpleExpression::Kind::VECTOR_FLOAT_PRODUCT:
+      return "vector-float*!2";
     default:
       assert(false);
       return {};
@@ -348,6 +350,7 @@ int get_simple_expression_arg_count(SimpleExpression::Kind kind) {
       return 2;
     case SimpleExpression::Kind::VECTOR_PLUS:
     case SimpleExpression::Kind::VECTOR_MINUS:
+    case SimpleExpression::Kind::VECTOR_FLOAT_PRODUCT:
       return 3;
     default:
       assert(false);

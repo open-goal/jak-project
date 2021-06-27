@@ -224,7 +224,8 @@ class SimpleExpression {
     MAX_UNSIGNED,
     PCPYLD,
     VECTOR_PLUS,
-    VECTOR_MINUS
+    VECTOR_MINUS,
+    VECTOR_FLOAT_PRODUCT
   };
 
   // how many arguments?

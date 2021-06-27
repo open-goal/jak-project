@@ -198,6 +198,8 @@ TP_Type SimpleExpression::get_type(const TypeState& input,
     case Kind::VECTOR_PLUS:
     case Kind::VECTOR_MINUS:
       return TP_Type::make_from_ts("vector");
+    case Kind::VECTOR_FLOAT_PRODUCT:
+      return TP_Type::make_from_ts("vector");
     default:
       throw std::runtime_error("Simple expression cannot get_type: " +
                                to_form(env.file->labels, env).print());

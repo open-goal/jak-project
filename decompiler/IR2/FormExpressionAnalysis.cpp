@@ -961,7 +961,7 @@ void SimpleExpressionElement::update_from_stack_vector_plus_minus(bool is_add,
                    pool, stack, allow_side_effects);
 
   for (int i = 0; i < 3; i++) {
-    auto arg_type = env.get_types_before_op(m_my_idx).get(m_expr.get_arg(0).var().reg());
+    auto arg_type = env.get_types_before_op(m_my_idx).get(m_expr.get_arg(i).var().reg());
     if (arg_type.typespec() != TypeSpec("vector")) {
       popped_args.at(i) = cast_form(popped_args.at(i), TypeSpec("vector"), pool, env);
     }
@@ -970,6 +970,30 @@ void SimpleExpressionElement::update_from_stack_vector_plus_minus(bool is_add,
   auto new_form = pool.alloc_element<GenericElement>(
       GenericOperator::make_fixed(is_add ? FixedOperatorKind::VECTOR_PLUS
                                          : FixedOperatorKind::VECTOR_MINUS),
+      std::vector<Form*>{popped_args.at(0), popped_args.at(1), popped_args.at(2)});
+  result->push_back(new_form);
+}
+
+void SimpleExpressionElement::update_from_stack_vector_float_product(
+    const Env& env,
+    FormPool& pool,
+    FormStack& stack,
+    std::vector<FormElement*>* result,
+    bool allow_side_effects) {
+  std::vector<Form*> popped_args =
+      pop_to_forms({m_expr.get_arg(0).var(), m_expr.get_arg(1).var(), m_expr.get_arg(2).var()}, env,
+                   pool, stack, allow_side_effects);
+
+  for (int i = 0; i < 3; i++) {
+    auto arg_type = env.get_types_before_op(m_my_idx).get(m_expr.get_arg(i).var().reg());
+    TypeSpec desired_type(i == 2 ? "float" : "vector");
+    if (arg_type.typespec() != desired_type) {
+      popped_args.at(i) = cast_form(popped_args.at(i), desired_type, pool, env);
+    }
+  }
+
+  auto new_form = pool.alloc_element<GenericElement>(
+      GenericOperator::make_fixed(FixedOperatorKind::VECTOR_FLOAT_PRODUCT),
       std::vector<Form*>{popped_args.at(0), popped_args.at(1), popped_args.at(2)});
   result->push_back(new_form);
 }
@@ -1588,6 +1612,9 @@ void SimpleExpressionElement::update_from_stack(const Env& env,
       break;
     case SimpleExpression::Kind::VECTOR_MINUS:
       update_from_stack_vector_plus_minus(false, env, pool, stack, result, allow_side_effects);
+      break;
+    case SimpleExpression::Kind::VECTOR_FLOAT_PRODUCT:
+      update_from_stack_vector_float_product(env, pool, stack, result, allow_side_effects);
       break;
     default:
       throw std::runtime_error(
@@ -3814,110 +3841,6 @@ Form* is_load_store_vector_to_reg(const Register& reg,
 
   // got it!
   return mr.maps.forms.at(0);
-}
-
-/*!
- * try to convert to an assembly op, return nullptr if we can't.
- */
-const AsmOp* get_asm_op(FormElement* form) {
-  auto as_asm = dynamic_cast<OpenGoalAsmOpElement*>(form);
-  if (as_asm) {
-    return as_asm->op();
-  }
-
-  auto two = dynamic_cast<AsmOpElement*>(form);
-  if (two) {
-    return two->op();
-  }
-  return nullptr;
-}
-
-/*!
- * Is this vmove.w vfX, vf0? This is a common trick to set the w field.
- */
-bool is_set_w_1(const Register& reg, FormElement* form, const Env&) {
-  auto as_asm = get_asm_op(form);
-  if (!as_asm) {
-    return false;
-  }
-  auto instr = as_asm->instruction();
-
-  if (instr.kind != InstructionKind::VMOVE) {
-    return false;
-  }
-
-  if (instr.cop2_dest != 1) {
-    return false;
-  }
-
-  if (!instr.get_src(0).is_reg(Register(Reg::VF, 0))) {
-    return false;
-  }
-
-  if (!instr.get_dst(0).is_reg(reg)) {
-    return false;
-  }
-
-  return true;
-}
-
-/*!
- * Is this a COP2 op in the form vblah.mask vfX, vfY, vfZ?
- */
-bool is_vf_3op_dst(InstructionKind kind,
-                   u8 dest_mask,
-                   const Register& dst,
-                   const Register& src0,
-                   const Register& src1,
-
-                   FormElement* form) {
-  auto as_asm = get_asm_op(form);
-  if (!as_asm) {
-    return false;
-  }
-  auto instr = as_asm->instruction();
-
-  if (instr.kind != kind) {
-    return false;
-  }
-
-  if (instr.cop2_dest != dest_mask) {
-    return false;
-  }
-
-  if (!instr.get_src(0).is_reg(src0)) {
-    return false;
-  }
-
-  if (!instr.get_src(1).is_reg(src1)) {
-    return false;
-  }
-
-  if (!instr.get_dst(0).is_reg(dst)) {
-    return false;
-  }
-
-  return true;
-}
-
-/*!
- * Make a vf register.
- */
-Register vfr(int idx) {
-  return Register(Reg::VF, idx);
-}
-
-/*!
- * Try to pop a variable from the stack again. If we are detecting a macro that flips argument
- * evaluation order, we can use this to fix it up and remove temporaries.
- * If the previous pop succeeded, this does nothing.
- */
-Form* repop_arg(Form* in, FormStack& stack, const Env& env, FormPool& pool) {
-  auto as_atom = form_as_atom(in);
-  if (as_atom && as_atom->is_var()) {
-    return pop_to_forms({as_atom->var()}, env, pool, stack, true).at(0);
-  }
-  return in;
 }
 
 /*!

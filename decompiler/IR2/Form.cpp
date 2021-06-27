@@ -1545,6 +1545,8 @@ std::string fixed_operator_to_string(FixedOperatorKind kind) {
       return "vector-!";
     case FixedOperatorKind::VECTOR_PLUS:
       return "vector+!";
+    case FixedOperatorKind::VECTOR_FLOAT_PRODUCT:
+      return "vector-float*!";
     default:
       assert(false);
       return "";

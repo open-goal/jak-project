@@ -150,6 +150,7 @@ enum class FixedOperatorKind {
   ASM_MADDS,
   VECTOR_PLUS,
   VECTOR_MINUS,
+  VECTOR_FLOAT_PRODUCT,
   INVALID
 };
 

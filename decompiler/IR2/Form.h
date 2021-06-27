@@ -196,6 +196,11 @@ class SimpleExpressionElement : public FormElement {
                                            FormStack& stack,
                                            std::vector<FormElement*>* result,
                                            bool allow_side_effects);
+  void update_from_stack_vector_float_product(const Env& env,
+                                              FormPool& pool,
+                                              FormStack& stack,
+                                              std::vector<FormElement*>* result,
+                                              bool allow_side_effects);
 
   const SimpleExpression& expr() const { return m_expr; }
 
