@@ -223,6 +223,9 @@ class SimpleExpression {
     MIN_UNSIGNED,
     MAX_UNSIGNED,
     PCPYLD,
+    VECTOR_PLUS,
+    VECTOR_MINUS,
+    VECTOR_FLOAT_PRODUCT
   };
 
   // how many arguments?
@@ -235,6 +238,10 @@ class SimpleExpression {
   SimpleExpression() = default;
   SimpleExpression(Kind kind, const SimpleAtom& arg0);
   SimpleExpression(Kind kind, const SimpleAtom& arg0, const SimpleAtom& arg1);
+  SimpleExpression(Kind kind,
+                   const SimpleAtom& arg0,
+                   const SimpleAtom& arg1,
+                   const SimpleAtom& arg2);
   goos::Object to_form(const std::vector<DecompilerLabel>& labels, const Env& env) const;
   std::string to_string(const Env& env) const;
   bool operator==(const SimpleExpression& other) const;
@@ -256,7 +263,7 @@ class SimpleExpression {
 
  private:
   Kind m_kind = Kind::INVALID;
-  SimpleAtom m_args[2];
+  SimpleAtom m_args[3];
   s8 n_args = -1;
 };
 

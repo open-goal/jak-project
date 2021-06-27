@@ -1541,6 +1541,12 @@ std::string fixed_operator_to_string(FixedOperatorKind kind) {
       return ".asm.sllv.r0";
     case FixedOperatorKind::ASM_MADDS:
       return ".asm.madd.s";
+    case FixedOperatorKind::VECTOR_MINUS:
+      return "vector-!";
+    case FixedOperatorKind::VECTOR_PLUS:
+      return "vector+!";
+    case FixedOperatorKind::VECTOR_FLOAT_PRODUCT:
+      return "vector-float*!";
     default:
       assert(false);
       return "";

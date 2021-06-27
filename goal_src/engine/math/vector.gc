@@ -521,26 +521,8 @@
 
 (defun vector-v! ((arg0 vector))
   "Convert a velocity to a displacement per frame. The velocity should be in X/actual_second"
-  (rlet ((vf0 :class vf)
-         (vf1 :class vf)
-         (vf2 :class vf)
-         )
-    (init-vf0-vector)
-    (let ((v1-0 arg0))
-      (let ((a1-0 arg0)
-            (f0-0 (-> *display* seconds-per-frame))
-            )
-        (.lvf vf1 (&-> a1-0 quad))
-        (let ((a1-1 f0-0))
-          (.mov vf2 a1-1)
-          )
-        )
-      (.add.x.vf vf1 vf0 vf0 :mask #b1000)
-      (.mul.x.vf vf1 vf1 vf2 :mask #b111)
-      (.svf (&-> v1-0 quad) vf1)
-      )
-    arg0
-    )
+  (vector-float*! arg0 arg0 (-> *display* seconds-per-frame))
+  arg0
   )
 
 (defun vector-v+! ((result vector) (position vector) (velocity vector))
@@ -564,26 +546,7 @@
 
 (defun vector-v*float! ((delta-p vector) (velocity vector) (scale float))
   "Go from velocity to delta-p per frame, scaling by scale"
-  (rlet ((vf0 :class vf)
-         (vf1 :class vf)
-         (vf2 :class vf)
-         )
-    (init-vf0-vector)
-    (let ((v0-0 delta-p))
-      (let ((v1-0 velocity)
-            (f0-1 (* scale (-> *display* seconds-per-frame)))
-            )
-        (.lvf vf1 (&-> v1-0 quad))
-        (let ((v1-1 f0-1))
-          (.mov vf2 v1-1)
-          )
-        )
-      (.add.x.vf vf1 vf0 vf0 :mask #b1000)
-      (.mul.x.vf vf1 vf1 vf2 :mask #b111)
-      (.svf (&-> v0-0 quad) vf1)
-      v0-0
-      )
-    )
+  (vector-float*! delta-p velocity (* scale (-> *display* seconds-per-frame)))
   )
 
 (defun vector-v*float++! ((position vector) (velocity vector) (scale float))
