@@ -17,25 +17,28 @@ int get_offset_of_method(int id) {
 }  // namespace
 
 /*!
- * Given a type and method name (known at compile time), get the method.
- * This can be used for method calls where the type is unknown at run time (non-virtual method call)
+ * Given a type and method name (known at compile time), get the method, from the given type object.
+ * To do method lookup, the given type must be the same as, or a child of, the given compile time
+ * type.
  */
-RegVal* Compiler::compile_get_method_of_type(const goos::Object& form,
-                                             const TypeSpec& type,
+RegVal* Compiler::compile_get_method_of_type(const goos::Object& /*form*/,
+                                             const TypeSpec& compile_time_type,
+                                             RegVal* type,
                                              const std::string& method_name,
                                              Env* env) {
-  auto info = m_ts.lookup_method(type.base_type(), method_name);
-  info.type = info.type.substitute_for_method_call(type.base_type());
+  auto info = m_ts.lookup_method(compile_time_type.base_type(), method_name);
+  info.type = info.type.substitute_for_method_call(compile_time_type.base_type());
   auto offset_of_method = get_offset_of_method(info.id);
+  assert(type->type() == TypeSpec("type"));
 
   auto fe = get_parent_env_of_type<FunctionEnv>(env);
-  auto typ = compile_get_symbol_value(form, type.base_type(), env)->to_gpr(env);
+
   MemLoadInfo load_info;
   load_info.sign_extend = false;
   load_info.size = POINTER_SIZE;
 
   auto loc_type = m_ts.make_pointer_typespec(info.type);
-  auto loc = fe->alloc_val<MemoryOffsetConstantVal>(loc_type, typ, offset_of_method);
+  auto loc = fe->alloc_val<MemoryOffsetConstantVal>(loc_type, type, offset_of_method);
   auto di = m_ts.get_deref_info(loc_type);
   assert(di.can_deref);
   assert(di.mem_deref);
@@ -44,6 +47,19 @@ RegVal* Compiler::compile_get_method_of_type(const goos::Object& form,
 
   auto deref = fe->alloc_val<MemoryDerefVal>(di.result_type, loc, MemLoadInfo(di));
   return deref->to_reg(env);
+}
+
+/*!
+ * Look up a method from the type, with the type specified at compile time.
+ * This can be used for method calls where the type can't be found at run time, but is known at
+ * compile time. (non-virtual method call)
+ */
+RegVal* Compiler::compile_get_method_of_type(const goos::Object& form,
+                                             const TypeSpec& compile_time_type,
+                                             const std::string& method_name,
+                                             Env* env) {
+  auto typ = compile_get_symbol_value(form, compile_time_type.base_type(), env)->to_gpr(env);
+  return compile_get_method_of_type(form, compile_time_type, typ, method_name, env);
 }
 
 /*!
@@ -1091,6 +1107,8 @@ Val* Compiler::compile_method_of_type(const goos::Object& form,
   auto arg = args.unnamed.at(0);
   auto method_name = symbol_string(args.unnamed.at(1));
 
+  // in order to do proper method lookup, we peek at the symbol that the user provided and see if
+  // its a type name
   if (arg.is_symbol()) {
     if (m_ts.fully_defined_type_exists(symbol_string(arg))) {
       return compile_get_method_of_type(form, m_ts.make_typespec(symbol_string(arg)), method_name,
@@ -1099,6 +1117,15 @@ Val* Compiler::compile_method_of_type(const goos::Object& form,
       throw_compiler_error(form,
                            "The method form is ambiguous when used on a forward declared type.");
     }
+  }
+
+  // if the user didn't provide a symbol, but instead some expression that gives us a type, then use
+  // that, and do method lookup as if it was a plain object.
+  // this will let you do (method-of-type <something-complicated> inspect) and get the inspect
+  // method, with the proper type, from the given type's method table.
+  auto user_type = compile_error_guard(arg, env)->to_gpr(env);
+  if (user_type->type() == TypeSpec("type")) {
+    return compile_get_method_of_type(form, TypeSpec("object"), user_type, method_name, env);
   }
 
   throw_compiler_error(form, "Cannot get method of type {}: the type is invalid", arg.print());

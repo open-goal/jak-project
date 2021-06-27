@@ -44,7 +44,8 @@ InstructionParser::InstructionParser() {
                  InstructionKind::BGEZL,  InstructionKind::MTC1,   InstructionKind::MFC1,
                  InstructionKind::MFLO,   InstructionKind::MFHI,   InstructionKind::MTLO1,
                  InstructionKind::MFLO1,  InstructionKind::SYNCL,  InstructionKind::PCPYUD,
-                 InstructionKind::PEXTUW, InstructionKind::POR}) {
+                 InstructionKind::PEXTUW, InstructionKind::POR,    InstructionKind::VMOVE,
+                 InstructionKind::VSUB,   InstructionKind::LQC2,   InstructionKind::SQC2}) {
     auto& info = gOpcodeInfo[int(i)];
     if (info.defined) {
       m_opcode_name_lookup[info.name] = int(i);
@@ -60,6 +61,29 @@ std::string get_until_space(std::string& instr) {
   size_t i;
   for (i = 0; i < instr.length(); i++) {
     if (instr[i] == ' ') {
+      break;
+    }
+  }
+  auto name = instr.substr(0, i);
+  if (i == instr.length()) {
+    instr.clear();
+  } else {
+    instr = instr.substr(i + 1);
+  }
+  return name;
+}
+
+std::string get_instr_name(std::string& instr) {
+  assert(!instr.empty());
+  size_t i;
+  for (i = 0; i < instr.length(); i++) {
+    if (instr[i] == ' ') {
+      break;
+    }
+
+    // add.s should not stop at the .
+    if (instr.size() > (i + 1) && instr[0] == 'v' && instr[i + 1] != 's' && instr[i + 1] != 'l' &&
+        instr[i + 1] != 'e' && instr[i] == '.') {
       break;
     }
   }
@@ -149,12 +173,52 @@ std::vector<std::string> string_to_lines(const std::string& str) {
   }
 }
 
+u8 cop2_dst(const std::string& str) {
+  auto ptr = str.data();
+  u8 result = 0;
+  if (!*ptr) {
+    return result;
+  }
+  if (*ptr == 'x') {
+    result |= 8;
+    ptr++;
+  }
+
+  if (!*ptr) {
+    return result;
+  }
+  if (*ptr == 'y') {
+    result |= 4;
+    ptr++;
+  }
+
+  if (!*ptr) {
+    return result;
+  }
+  if (*ptr == 'z') {
+    result |= 2;
+    ptr++;
+  }
+
+  if (!*ptr) {
+    return result;
+  }
+  if (*ptr == 'w') {
+    result |= 1;
+    ptr++;
+  }
+
+  if (*ptr) {
+    assert(false);
+  }
+  return result;
+}
 }  // namespace
 
 Instruction InstructionParser::parse_single_instruction(
     std::string str,
     const std::vector<DecompilerLabel>& labels) {
-  auto name = get_until_space(str);
+  auto name = get_instr_name(str);
   auto lookup = m_opcode_name_lookup.find(name);
   if (lookup == m_opcode_name_lookup.end()) {
     throw std::runtime_error("InstructionParser cannot handle opcode " + name);
@@ -189,6 +253,19 @@ Instruction InstructionParser::parse_single_instruction(
         auto reg_name = get_comma_separated(str);
         Register reg(reg_name);
         assert(reg.get_kind() == Reg::FPR);
+        InstructionAtom atom;
+        atom.set_reg(reg);
+        if (step.is_src) {
+          instr.add_src(atom);
+        } else {
+          instr.add_dst(atom);
+        }
+      } break;
+
+      case DecodeType::VF: {
+        auto reg_name = get_comma_separated(str);
+        Register reg(reg_name);
+        assert(reg.get_kind() == Reg::VF);
         InstructionAtom atom;
         atom.set_reg(reg);
         if (step.is_src) {
@@ -248,6 +325,13 @@ Instruction InstructionParser::parse_single_instruction(
           instr.add_dst(atom);
         }
       } break;
+
+      case DecodeType::DEST: {
+        auto thing = get_until_space(str);
+        instr.cop2_dest = cop2_dst(thing);
+        break;
+      }
+
       default:
         assert(false);
     }

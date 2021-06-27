@@ -110,7 +110,7 @@ class CfgVtx {
   /*!
    * Lazy function for getting all non-null succesors
    */
-  std::vector<CfgVtx*> succs() {
+  std::vector<CfgVtx*> succs() const {
     std::vector<CfgVtx*> result;
     if (succ_branch) {
       result.push_back(succ_branch);
@@ -320,6 +320,7 @@ class ControlFlowGraph {
   bool find_cond_w_else(const CondWithElseLengthHack& hacks);
   bool find_cond_w_empty_else();
   bool find_cond_n_else();
+  bool find_infinite_continue();
 
   //  bool find_if_else_top_level();
   bool find_seq_top_level(bool allow_self_loops);
@@ -372,6 +373,7 @@ class ControlFlowGraph {
   bool is_until_loop(CfgVtx* b1, CfgVtx* b2);
   bool is_goto_end_and_unreachable(CfgVtx* b0, CfgVtx* b1);
   bool is_goto_not_end_and_unreachable(CfgVtx* b0, CfgVtx* b1);
+  bool is_infinite_continue(CfgVtx* b0);
   std::vector<BlockVtx*> m_blocks;   // all block nodes, in order.
   std::vector<CfgVtx*> m_node_pool;  // all nodes allocated
   EntryVtx* m_entry;                 // the entry vertex

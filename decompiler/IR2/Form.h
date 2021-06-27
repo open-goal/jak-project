@@ -1097,7 +1097,8 @@ class ArrayFieldAccess : public FormElement {
   ArrayFieldAccess(RegisterAccess source,
                    const std::vector<DerefToken>& deref_tokens,
                    int expected_stride,
-                   int constant_offset);
+                   int constant_offset,
+                   bool flipped);
   goos::Object to_form_internal(const Env& env) const override;
   void apply(const std::function<void(FormElement*)>& f) override;
   void apply_form(const std::function<void(Form*)>& f) override;
@@ -1115,11 +1116,14 @@ class ArrayFieldAccess : public FormElement {
                        std::vector<FormElement*>* result,
                        bool allow_side_effects);
 
+  bool flipped() const { return m_flipped; }
+
  private:
   RegisterAccess m_source;
   std::vector<DerefToken> m_deref_tokens;
   int m_expected_stride = -1;
   int m_constant_offset = -1;
+  bool m_flipped = false;
 };
 
 class GetMethodElement : public FormElement {
@@ -1288,13 +1292,15 @@ class LetElement : public FormElement {
   bool m_star = false;
 };
 
-class DoTimesElement : public FormElement {
+class CounterLoopElement : public FormElement {
  public:
-  DoTimesElement(RegisterAccess var_init,
-                 RegisterAccess var_check,
-                 RegisterAccess var_inc,
-                 Form* check_value,
-                 Form* body);
+  enum class Kind { DOTIMES, COUNTDOWN, INVALID };
+  CounterLoopElement(Kind kind,
+                     RegisterAccess var_init,
+                     RegisterAccess var_check,
+                     RegisterAccess var_inc,
+                     Form* check_value,
+                     Form* body);
   goos::Object to_form_internal(const Env& env) const override;
   void apply(const std::function<void(FormElement*)>& f) override;
   void apply_form(const std::function<void(Form*)>& f) override;
@@ -1306,6 +1312,7 @@ class DoTimesElement : public FormElement {
   RegisterAccess m_var_init, m_var_check, m_var_inc;
   Form* m_check_value = nullptr;
   Form* m_body = nullptr;
+  Kind m_kind = Kind::INVALID;
 };
 
 class LambdaDefinitionElement : public FormElement {
@@ -1350,6 +1357,8 @@ class VectorFloatLoadStoreElement : public FormElement {
   void get_modified_regs(RegSet& regs) const override;
   void push_to_stack(const Env& env, FormPool& pool, FormStack& stack) override;
   void collect_vf_regs(RegSet& regs) const;
+  bool is_load() const { return m_is_load; }
+  Register vf_reg() const { return m_vf_reg; }
 
  private:
   Register m_vf_reg;
@@ -1590,6 +1599,8 @@ class Form {
   std::vector<FormElement*> m_elements;
 };
 
+class CfgVtx;
+
 /*!
  * A FormPool is used to allocate forms and form elements.
  * It will clean up everything when it is destroyed.
@@ -1637,11 +1648,25 @@ class FormPool {
     return form;
   }
 
+  Form* lookup_cached_conversion(const CfgVtx* vtx) const {
+    auto it = m_vtx_to_form_cache.find(vtx);
+    if (it == m_vtx_to_form_cache.end()) {
+      return nullptr;
+    }
+    return it->second;
+  }
+
+  void cache_conversion(const CfgVtx* vtx, Form* form) {
+    assert(m_vtx_to_form_cache.find(vtx) == m_vtx_to_form_cache.end());
+    m_vtx_to_form_cache[vtx] = form;
+  }
+
   ~FormPool();
 
  private:
   std::vector<Form*> m_forms;
   std::vector<FormElement*> m_elements;
+  std::unordered_map<const CfgVtx*, Form*> m_vtx_to_form_cache;
 };
 
 std::optional<SimpleAtom> form_element_as_atom(const FormElement* f);

@@ -5,11 +5,20 @@
 ;; name in dgo: gstring
 ;; dgos: KERNEL
 
-;; Note on strings:
-;;  the allocated length does not include an extra byte on the end for the null terminator!
+
+;; The GOAL string type is like a C string plus a length field.
+;; The number of bytes stored is the length + 1 for the null terminator.
+;; Note that string is a bit of a special type, and the compiler assumes there is no
+;; child type of string ever created.
+
+
+
+;;;;;;;;;;;;;;;;;;;;;;;;;
+;; String methods
+;;;;;;;;;;;;;;;;;;;;;;;;;
 
 (defmethod length string ((obj string))
-  ; Get the length of a string. Like strlen
+  "Get the length of a string. Like strlen"
   (let ((str-ptr (-> obj data)))
     (while (!= 0 (-> str-ptr 0))
       (set! str-ptr (the (pointer uint8) (&+ str-ptr 1)))
@@ -19,9 +28,7 @@
   )
 
 (defmethod asize-of string ((obj string))
-  ;; get the size in bytes of a string.
-  ;; BUG - string should probably be (-> obj type), not that it matters, I don't think
-  ;;  anybody makes a subclass of string.
+  "get the size in bytes of a string."
   (+ (-> obj allocated-length) 1 (-> string size))
   )
 
@@ -60,39 +67,43 @@
     )
   )
 
+;;;;;;;;;;;;;;;;;;;;;;;;;
+;; String comparison
+;;;;;;;;;;;;;;;;;;;;;;;;;
+
 (defun string= ((str-a string) (str-b string))
   "Does str-a hold the same data as str-b?.
    If either string is null, returns #f."
-  (local-vars (b-ptr (pointer uint8)) (a-ptr (pointer uint8)))
-  (set! a-ptr (-> str-a data))
-  (set! b-ptr (-> str-b data))
-  (if (or (zero? str-a) (zero? str-b))
-      (return '#f)
-      )
-  ;; loop until we reach the end of one string
-  (while (and (nonzero? (-> a-ptr 0)) (nonzero? (-> b-ptr 0)))
-    (if (!= (-> a-ptr 0) (-> b-ptr 0))
-        (return '#f)
+  (let ((a-ptr (-> str-a data))
+        (b-ptr (-> str-b data))
         )
-   (set! a-ptr (&-> a-ptr 1))
-   (set! b-ptr (&-> b-ptr 1))
-   )
-  ;; only equal if both at the end.
-  (and (zero? (-> a-ptr 0)) (zero? (-> b-ptr 0)))
+    (if (or (zero? str-a) (zero? str-b))
+        (return #f)
+        )
+    (while (and (nonzero? (-> a-ptr 0)) (nonzero? (-> b-ptr 0)))
+      (if (!= (-> a-ptr 0) (-> b-ptr 0))
+          (return #f)
+          )
+      (set! a-ptr (&-> a-ptr 1))
+      (set! b-ptr (&-> b-ptr 1))
+      )
+    ;; only equal if both end here.
+    (and (zero? (-> a-ptr 0)) (zero? (-> b-ptr 0)))
+    )
   )
 
 (defun string-charp= ((str string) (charp (pointer uint8)))
   "Is the data in str equal to the C string charp?"
-  (local-vars (str-ptr (pointer uint8)))
-  (set! str-ptr (-> str data))
-  (while (and (nonzero? (-> str-ptr 0)) (nonzero? (-> charp 0)))
-    (if (!= (-> str-ptr 0) (-> charp 0))
-        (return '#f)
-        )
-   (set! str-ptr (&-> str-ptr 1))
-   (set! charp (&-> charp 1))
-   )
-  (and (zero? (-> str-ptr 0)) (zero? (-> charp 0)))
+  (let ((str-ptr (-> str data)))
+    (while (and (nonzero? (-> str-ptr 0)) (nonzero? (-> charp 0)))
+      (if (!= (-> str-ptr 0) (-> charp 0))
+          (return #f)
+          )
+      (set! str-ptr (&-> str-ptr 1))
+      (set! charp (&-> charp 1))
+      )
+    (and (zero? (-> str-ptr 0)) (zero? (-> charp 0)))
+    )
   )
 
 (defun name= ((arg0 basic) (arg1 basic))
@@ -100,8 +111,8 @@
    This can use either strings or symbols"
   (cond
     ((= arg0 arg1)
-     "Either same symbols, or same string objects, fast check pass!"
-     '#t)
+     ;; Either same symbols, or same string objects, fast check pass!
+     #t)
     ((and (= (-> arg0 type) string) (= (-> arg1 type) string))
      (string= (the-as string arg0) (the-as string arg1))
      )
@@ -111,35 +122,38 @@
     ((and (= (-> arg1 type) string) (= (-> arg0 type) symbol))
      (string= (the-as string arg1) (symbol->string arg0))
      )
+    ;; no need to check symbol - symbol, that would have passed the first check.
     )
   )
 
+;;;;;;;;;;;;;;;;;;;;;;;;;
+;; String copying
+;;;;;;;;;;;;;;;;;;;;;;;;;
+
 (defun copyn-string<-charp ((str string) (charp (pointer uint8)) (len int))
   "Copy data from a charp to a GOAL string. Copies len chars, plus a null."
-  (local-vars (str-ptr (pointer uint8)) (i int))
-  (set! str-ptr (-> str data))
-  (set! i 0)
-  (while (< i len)
-    (set! (-> str-ptr 0) (-> charp 0))
-    (set! str-ptr (&-> str-ptr 1))
-    (set! charp (&-> charp 1))
-    (set! i (+ i 1))
+  (let ((str-ptr (-> str data)))
+    (dotimes (i len)
+      (set! (-> str-ptr 0) (-> charp 0))
+      (set! str-ptr (&-> str-ptr 1))
+      (set! charp (&-> charp 1))
+      )
+    (set! (-> str-ptr 0) (the-as uint 0))
     )
-  (set! (-> str-ptr 0) 0)
   str
   )
 
 (defun string<-charp ((str string) (charp (pointer uint8)))
   "Copy all chars from a char* to a GOAL string.
    Does NO length checking."
-  (local-vars (str-ptr (pointer uint8)))
-  (set! str-ptr (-> str data))
-  (while (nonzero? (-> charp 0))
-    (set! (-> str-ptr 0) (-> charp 0))
-    (set! str-ptr (&-> str-ptr 1))
-    (set! charp (&-> charp 1))
+  (let ((str-ptr (-> str data)))
+    (while (nonzero? (-> charp 0))
+      (set! (-> str-ptr 0) (-> charp 0))
+      (set! str-ptr (&-> str-ptr 1))
+      (set! charp (&-> charp 1))
+      )
+    (set! (-> str-ptr 0) (the-as uint 0))
     )
-  (set! (-> str-ptr 0) 0)
   str
   )
 
@@ -169,47 +183,38 @@
 
 (defun cat-string<-string ((a string) (b string))
   "Append b to a. No length checks"
-  (local-vars (a-ptr (pointer uint8))  (b-ptr (pointer uint8)))
-  (set! a-ptr (-> a data))
-  (set! b-ptr (-> b data))
-  ;; seek to the end of a
-  (while (nonzero? (-> a-ptr 0))
-    (nop!)
-    (nop!)
-    (nop!)
-    (set! a-ptr (&-> a-ptr 1))
+  (let ((a-ptr (-> a data)))
+    (let ((b-ptr (-> b data)))
+      (while (nonzero? (-> a-ptr 0))
+        (nop!)
+        (nop!)
+        (nop!)
+        (set! a-ptr (&-> a-ptr 1))
+        )
+      (while (nonzero? (-> b-ptr 0))
+        (set! (-> a-ptr 0) (-> b-ptr 0))
+        (set! a-ptr (&-> a-ptr 1))
+        (set! b-ptr (&-> b-ptr 1))
+        )
+      )
+    (set! (-> a-ptr 0) (the-as uint 0))
     )
-  ;; append b
-  (while (nonzero? (-> b-ptr 0))
-    (set! (-> a-ptr 0) (-> b-ptr 0))
-    (set! a-ptr (&-> a-ptr 1))
-    (set! b-ptr (&-> b-ptr 1))
-    )
-  ;; null terminate
-  (set! (-> a-ptr 0) 0)
   a
   )
 
 (defun catn-string<-charp ((a string) (b (pointer uint8)) (len int))
   "Append b to a, exactly len chars"
-  (local-vars (a-ptr (pointer uint8)) (i int) )
-  (set! a-ptr (-> a data))
-  ;; seek to end of a
-  (while (nonzero? (-> a-ptr 0))
-    (nop!)
-    (nop!)
-    (nop!)
-    (set! a-ptr (&-> a-ptr 1))
+  (let ((a-ptr (-> a data)))
+    (while (nonzero? (-> a-ptr 0))
+      (set! a-ptr (&-> a-ptr 1))
+      )
+    (dotimes (i len)
+      (set! (-> a-ptr 0) (-> b 0))
+      (set! a-ptr (&-> a-ptr 1))
+      (set! b (&-> b 1))
+      )
+    (set! (-> a-ptr 0) (the-as uint 0))
     )
-  ;; append
-  (set! i 0)
-  (while (< i len)
-    (set! (-> a-ptr 0) (-> b 0))
-    (set! a-ptr (&-> a-ptr 1))
-    (set! b (&-> b 1))
-    (set! i (+ i 1))
-    )
-  (set! (-> a-ptr 0) 0)
   a
   )
 
@@ -254,6 +259,10 @@
     )
   )
 
+;;;;;;;;;;;;;;;;;;;;;;;;;
+;; String utilities
+;;;;;;;;;;;;;;;;;;;;;;;;;
+
 (defun charp-basename ((charp (pointer uint8)))
   "Like basename in C"
   (let ((ptr charp))
@@ -282,6 +291,10 @@
   )
 
 
+;;;;;;;;;;;;;;;;;;;;;;;;;
+;; String ordering
+;;;;;;;;;;;;;;;;;;;;;;;;;
+
 ;; NOTE: these string comparisons are a little broken.
 ;; ex: (string<? "asd" "asdf") = #f
 ;;     (string<? "asdf" "asd") = #f
@@ -289,76 +302,73 @@
 
 (defun string<? ((a string) (b string))
   "In dictionary order, is a < b?"
-  (local-vars (i int) (len int))
-
-  ;; get the minimum length.
-  ;; note - we don't do virtual calls here for some reason.
-  (set! len (min ((method-of-type string length) a)
-                 ((method-of-type string length) b)
-                 )
+  (let ((len (min (length a) (length b))))
+    (dotimes (i len)
+      (cond
+        ((< (-> a data i) (-> b data i))
+         (return #t)
+         )
+        ((< (-> b data i) (-> a data i))
+         (return #f)
+         )
         )
-
-  ;; loop through chars, up until the minimum length.
-  (set! i 0)
-  (while (< i len)
-   (cond
-    ((< (-> a data i) (-> b data i)) (return '#t))
-    ((< (-> b data i) (-> a data i)) (return '#f))
+      )
     )
-   (set! i (+ i 1))
-   )
-  '#f
+  #f
   )
 
 (defun string>? ((a string) (b string))
   "In dictionary order, is a > b?"
-  (local-vars (i int) (len int))
-  (set! len (min ((method-of-type string length) a)
-                 ((method-of-type string length) b))
+  (let ((len (min (length a) (length b))))
+    (dotimes (i len)
+      (cond
+        ((< (-> a data i) (-> b data i))
+         (return #f)
+         )
+        ((< (-> b data i) (-> a data i))
+         (return #t)
+         )
         )
-  (set! i 0)
-  (while (< i len)
-    (cond
-      ((< (-> a data i) (-> b data i)) (return '#f))
-      ((< (-> b data i) (-> a data i)) (return '#t))
       )
-    (set! i (+ i 1))
     )
-  '#f
+  #f
   )
 
 (defun string<=? ((a string) (b string))
-  (local-vars (i int) (len int))
-  (set! len (min ((method-of-type string length) a)
-                 ((method-of-type string length) b))
-   )
-  (set! i 0)
-  (while
-   (< i len)
-   (cond
-    ((< (-> a data i) (-> b data i)) (return '#t))
-    ((< (-> b data i) (-> a data i)) (return '#f))
+  (let ((len (min (length a) (length b))))
+    (dotimes (i len)
+      (cond
+        ((< (-> a data i) (-> b data i))
+         (return #t)
+         )
+        ((< (-> b data i) (-> a data i))
+         (return #f)
+         )
+        )
+      )
     )
-   (set! i (+ i 1))
-   )
-  '#t
+  #t
   )
 
 (defun string>=? ((a string) (b string))
-  (local-vars (i int) (len int))
-  (set! len (min ((method-of-type string length) a)
-                 ((method-of-type string length) b))
+  (let ((len (min (length a) (length b))))
+    (dotimes (i len)
+      (cond
+        ((< (-> a data i) (-> b data i))
+         (return #f)
+         )
+        ((< (-> b data i) (-> a data i))
+         (return #t)
+         )
         )
-  (set! i 0)
-  (while (< i len)
-    (cond
-      ((< (-> a data i) (-> b data i)) (return '#f))
-      ((< (-> b data i) (-> a data i)) (return '#t))
       )
-    (set! i (+ i 1))
     )
-  '#t
+  #t
   )
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;; String argument parsing
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 ;; temporary string for argument functions
 (define *string-tmp-str* (new 'global 'string 128 (the string #f)))
@@ -480,63 +490,56 @@
    The arguments can be in quotes or not.
    Removes argument from arg string, sucks up white space before the next one
    Outputs argument to a-str."
-  (local-vars
-   (arg-start (pointer uint8))
-   (v1-11 (pointer uint8))
-   (a0-6 symbol)
-   (a0-20 symbol)
-   (a1-3 (pointer uint8))
-   (a1-9 (pointer uint8))
-   (arg-word-start (pointer uint8))
-   (arg-end (pointer uint8))
-   )
-  ;; seek up the beginning of a word.
-  (set! arg-word-start (string-skip-whitespace (-> arg data)))
-  (cond
-    ((= (-> arg-word-start 0) 34) ;; starts with quote
-     ;; seek past quote to first char of name
-     (set! arg-end (&-> arg-word-start 1))
-     ;; now, find the end
-     (set! arg-start arg-end)
-     (while (and (nonzero? (-> arg-end 0))
-                 ;; (nonzero? (+ (-> arg-end 0) -34))
-                 (!= (-> arg-end 0) 34) ;; quote
+
+  ;; seek to first arg
+  (let ((arg-word-start (string-skip-whitespace (-> arg data))))
+    (cond
+      ((= (-> arg-word-start 0) 34) ;; starts with quote
+       ;; seek past quote
+       (let ((arg-end (&-> arg-word-start 1)))
+         ;; now find end
+         (let ((arg-start arg-end))
+           (while (and (nonzero? (-> arg-end 0)) (!= (-> arg-end 0) 34)) ;; close quote
+             (set! arg-end (&-> arg-end 1))
+             )
+           ;; copy to output
+           (copyn-string<-charp a-str arg-start (&- arg-end (the-as uint arg-start)))
+           )
+
+         ;; if we got a close quote, seek past it.
+         (if (= (-> arg-end 0) 34)
+             (set! arg-end (&-> arg-end 1))
+             )
+
+         ;; kill leading white space
+         (let ((a1-3 (string-skip-whitespace arg-end)))
+           (string-suck-up! arg a1-3)
+           )
+         )
+       (return #t)
+       )
+      ((nonzero? (-> arg-word-start 0))
+       (let ((v1-11 arg-word-start))
+         ;; find end
+         (while (and
+                 (nonzero? (-> arg-word-start 0))
+                 (!= (-> arg-word-start 0) 32)
+                 (!= (-> arg-word-start 0) 9)
+                 (!= (-> arg-word-start 0) 13)
+                 (!= (-> arg-word-start 0) 10)
                  )
-       (set! arg-end (&-> arg-end 1))
+           (set! arg-word-start (&-> arg-word-start 1))
+           )
+         (copyn-string<-charp a-str v1-11 (&- arg-word-start (the-as uint v1-11)))
+         )
+       (let ((a1-9 (string-skip-whitespace arg-word-start)))
+         (string-suck-up! arg a1-9)
+         )
+       (return #t)
        )
-
-     ;; copy to output.
-     (copyn-string<-charp a-str arg-start (- (the-as int arg-end) (the-as uint arg-start)))
-
-     ;; if we got a close quote
-     (when (= (-> arg-end 0) 34)
-       ;; seek past it
-       (set! arg-end (&-> arg-end 1))
-       )
-     (set! a1-3 (string-skip-whitespace arg-end))
-     (string-suck-up! arg a1-3)
-     (return '#t)
-     )
-    ((nonzero? (-> arg-word-start 0))
-
-     (set! v1-11 arg-word-start)
-     (while
-         (and
-          (nonzero? (-> arg-word-start 0))
-          (nonzero? (+ (-> arg-word-start 0) -32))
-          (nonzero? (+ (-> arg-word-start 0) -9))
-          (nonzero? (+ (-> arg-word-start 0) -13))
-          (nonzero? (+ (-> arg-word-start 0) -10))
-          )
-       (set! arg-word-start (&-> arg-word-start 1))
-       )
-     (copyn-string<-charp a-str v1-11 (- (the-as int arg-word-start) (the-as uint v1-11)))
-     (set! a1-9 (string-skip-whitespace arg-word-start))
-     (string-suck-up! arg a1-9)
-     (return '#t)
-     )
+      )
     )
-  '#f
+  #f
   )
 
 (defun string->int ((str string))

@@ -157,6 +157,10 @@
   `(type? 'integer ,x)
   )
 
+(defsmacro pair? (x)
+  `(type? 'pair ,x)
+  )
+
 (defsmacro ferror (&rest args)
   `(error (fmt #f ,@args))
   )
