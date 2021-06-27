@@ -318,35 +318,32 @@
 
 ;; definition for method 0 of type math-camera
 (defmethod new math-camera ((allocation symbol) (type-to-make type))
-  (rlet ((vf0 :class vf))
-   (init-vf0-vector)
-   (let
-    ((gp-0
-      (object-new allocation type-to-make (the-as int (-> type-to-make size)))
-      )
+  (let
+   ((gp-0
+     (object-new allocation type-to-make (the-as int (-> type-to-make size)))
      )
-    (set! (-> gp-0 d) 1024.0)
-    (set! (-> gp-0 f) 40960000.0)
-    (set! (-> gp-0 fov) 11650.845)
-    (set! (-> gp-0 x-pix) 256.0)
-    (set! (-> gp-0 x-clip) 1024.0)
-    (set! (-> gp-0 y-pix) 112.0)
-    (set! (-> gp-0 y-clip) 448.0)
-    (set! (-> gp-0 fog-start) 40960.0)
-    (set! (-> gp-0 fog-end) 819200.0)
-    (set! (-> gp-0 fog-max) 255.0)
-    (set! (-> gp-0 fog-min) 150.0)
-    (matrix-identity! (-> gp-0 inv-camera-rot))
-    (matrix-identity! (-> gp-0 camera-rot))
-    (.svf (&-> (-> gp-0 trans) quad) vf0)
-    (set! (-> gp-0 isometric vector 0 x) 1.0)
-    (set! (-> gp-0 isometric vector 1 y) 0.5)
-    (set! (-> gp-0 isometric vector 2 z) -1.0)
-    (set! (-> gp-0 reset) 1)
-    (set! (-> gp-0 smooth-step) 0.0)
-    (set! (-> gp-0 smooth-t) 0.0)
-    (update-math-camera gp-0 'ntsc 'aspect4x3)
     )
+   (set! (-> gp-0 d) 1024.0)
+   (set! (-> gp-0 f) 40960000.0)
+   (set! (-> gp-0 fov) 11650.845)
+   (set! (-> gp-0 x-pix) 256.0)
+   (set! (-> gp-0 x-clip) 1024.0)
+   (set! (-> gp-0 y-pix) 112.0)
+   (set! (-> gp-0 y-clip) 448.0)
+   (set! (-> gp-0 fog-start) 40960.0)
+   (set! (-> gp-0 fog-end) 819200.0)
+   (set! (-> gp-0 fog-max) 255.0)
+   (set! (-> gp-0 fog-min) 150.0)
+   (matrix-identity! (-> gp-0 inv-camera-rot))
+   (matrix-identity! (-> gp-0 camera-rot))
+   (vector-reset! (-> gp-0 trans))
+   (set! (-> gp-0 isometric vector 0 x) 1.0)
+   (set! (-> gp-0 isometric vector 1 y) 0.5)
+   (set! (-> gp-0 isometric vector 2 z) -1.0)
+   (set! (-> gp-0 reset) 1)
+   (set! (-> gp-0 smooth-step) 0.0)
+   (set! (-> gp-0 smooth-t) 0.0)
+   (update-math-camera gp-0 'ntsc 'aspect4x3)
    )
   )
 
@@ -366,118 +363,100 @@
 ;; definition for function move-target-from-pad
 ;; Used lq/sq
 (defun move-target-from-pad ((trans transform) (pad-idx int))
-  (rlet ((vf0 :class vf)
-         (vf4 :class vf)
-         (vf5 :class vf)
-         (vf6 :class vf)
+  (let ((local-trans (new-stack-vector0)))
+   (set! (-> local-trans x) (cond
+                             ((nonzero?
+                               (logand
+                                (-> *cpad-list* cpads pad-idx button0-abs 0)
+                                (pad-buttons circle)
+                                )
+                               )
+                              -80.0
+                              )
+                             ((nonzero?
+                               (logand
+                                (-> *cpad-list* cpads pad-idx button0-abs 0)
+                                (pad-buttons square)
+                                )
+                               )
+                              80.0
+                              )
+                             (else
+                              0.0
+                              )
+                             )
+    )
+   (set! (-> local-trans y) 0.0)
+   (set! (-> local-trans z) (cond
+                             ((nonzero?
+                               (logand
+                                (-> *cpad-list* cpads pad-idx button0-abs 0)
+                                (pad-buttons down)
+                                )
+                               )
+                              -80.0
+                              )
+                             ((nonzero?
+                               (logand
+                                (-> *cpad-list* cpads pad-idx button0-abs 0)
+                                (pad-buttons up)
+                                )
+                               )
+                              80.0
+                              )
+                             (else
+                              0.0
+                              )
+                             )
+    )
+   (set! (-> local-trans w) 1.0)
+   (let ((inv-cam-rot (new-stack-vector0))
+         (cam-rot-mat (new-stack-matrix0))
          )
-   (init-vf0-vector)
-   (let ((local-trans (new-stack-vector0)))
-    (set! (-> local-trans x) (cond
-                              ((nonzero?
-                                (logand
-                                 (-> *cpad-list* cpads pad-idx button0-abs 0)
-                                 (pad-buttons circle)
-                                 )
-                                )
-                               -80.0
-                               )
-                              ((nonzero?
-                                (logand
-                                 (-> *cpad-list* cpads pad-idx button0-abs 0)
-                                 (pad-buttons square)
-                                 )
-                                )
-                               80.0
-                               )
-                              (else
-                               0.0
-                               )
-                              )
-     )
-    (set! (-> local-trans y) 0.0)
-    (set! (-> local-trans z) (cond
-                              ((nonzero?
-                                (logand
-                                 (-> *cpad-list* cpads pad-idx button0-abs 0)
-                                 (pad-buttons down)
-                                 )
-                                )
-                               -80.0
-                               )
-                              ((nonzero?
-                                (logand
-                                 (-> *cpad-list* cpads pad-idx button0-abs 0)
-                                 (pad-buttons up)
-                                 )
-                                )
-                               80.0
-                               )
-                              (else
-                               0.0
-                               )
-                              )
-     )
-    (set! (-> local-trans w) 1.0)
-    (let ((inv-cam-rot (new-stack-vector0))
-          (cam-rot-mat (new-stack-matrix0))
-          )
-     (vector-negate! inv-cam-rot (-> trans rot))
-     (matrix-rotate-zyx! cam-rot-mat (-> trans rot))
-     (vector-matrix*! local-trans local-trans cam-rot-mat)
-     )
-    (let ((a0-8 (-> trans trans)))
-     (let ((v1-23 (-> trans trans)))
-      (.mov.vf vf6 vf0 :mask #b1000)
-      (.lvf vf4 (&-> v1-23 quad))
-      )
-     (.lvf vf5 (&-> local-trans quad))
-     (.add.vf vf6 vf4 vf5 :mask #b111)
-     (.svf (&-> a0-8 quad) vf6)
-     )
+    (vector-negate! inv-cam-rot (-> trans rot))
+    (matrix-rotate-zyx! cam-rot-mat (-> trans rot))
+    (vector-matrix*! local-trans local-trans cam-rot-mat)
     )
-   (set! (-> trans trans w) 1.0)
-   (if
-    (nonzero?
-     (logand (-> *cpad-list* cpads pad-idx button0-abs 0) (pad-buttons r1))
-     )
-    (set! (-> trans trans y) (+ 80.0 (-> trans trans y)))
-    )
-   (if
-    (nonzero?
-     (logand (-> *cpad-list* cpads pad-idx button0-abs 0) (pad-buttons r2))
-     )
-    (set! (-> trans trans y) (+ -80.0 (-> trans trans y)))
-    )
-   (if
-    (nonzero?
-     (logand (-> *cpad-list* cpads pad-idx button0-abs 0) (pad-buttons x))
-     )
-    (set! (-> trans rot x) (+ 546.13336 (-> trans rot x)))
-    )
-   (if
-    (nonzero?
-     (logand
-      (-> *cpad-list* cpads pad-idx button0-abs 0)
-      (pad-buttons triangle)
-      )
-     )
-    (set! (-> trans rot x) (+ -546.13336 (-> trans rot x)))
-    )
-   (if
-    (nonzero?
-     (logand (-> *cpad-list* cpads pad-idx button0-abs 0) (pad-buttons left))
-     )
-    (set! (-> trans rot y) (+ 546.13336 (-> trans rot y)))
-    )
-   (if
-    (nonzero?
-     (logand (-> *cpad-list* cpads pad-idx button0-abs 0) (pad-buttons right))
-     )
-    (set! (-> trans rot y) (+ -546.13336 (-> trans rot y)))
-    )
-   trans
+   (vector+! (-> trans trans) (-> trans trans) local-trans)
    )
+  (set! (-> trans trans w) 1.0)
+  (if
+   (nonzero?
+    (logand (-> *cpad-list* cpads pad-idx button0-abs 0) (pad-buttons r1))
+    )
+   (set! (-> trans trans y) (+ 80.0 (-> trans trans y)))
+   )
+  (if
+   (nonzero?
+    (logand (-> *cpad-list* cpads pad-idx button0-abs 0) (pad-buttons r2))
+    )
+   (set! (-> trans trans y) (+ -80.0 (-> trans trans y)))
+   )
+  (if
+   (nonzero?
+    (logand (-> *cpad-list* cpads pad-idx button0-abs 0) (pad-buttons x))
+    )
+   (set! (-> trans rot x) (+ 546.13336 (-> trans rot x)))
+   )
+  (if
+   (nonzero?
+    (logand (-> *cpad-list* cpads pad-idx button0-abs 0) (pad-buttons triangle))
+    )
+   (set! (-> trans rot x) (+ -546.13336 (-> trans rot x)))
+   )
+  (if
+   (nonzero?
+    (logand (-> *cpad-list* cpads pad-idx button0-abs 0) (pad-buttons left))
+    )
+   (set! (-> trans rot y) (+ 546.13336 (-> trans rot y)))
+   )
+  (if
+   (nonzero?
+    (logand (-> *cpad-list* cpads pad-idx button0-abs 0) (pad-buttons right))
+    )
+   (set! (-> trans rot y) (+ -546.13336 (-> trans rot y)))
+   )
+  trans
   )
 
 ;; definition for function transform-point-vector!

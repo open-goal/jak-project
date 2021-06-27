@@ -5,51 +5,31 @@
 ;; name in dgo: cam-interface
 ;; dgos: GAME, ENGINE
 
-(rlet ((vf0 :class vf))
-(init-vf0-vector)
 
 ;; definition for function position-in-front-of-camera!
 (defun position-in-front-of-camera! ((arg0 vector) (arg1 float) (arg2 float))
   (rlet ((vf0 :class vf)
          (vf1 :class vf)
          (vf2 :class vf)
-         (vf4 :class vf)
-         (vf5 :class vf)
-         (vf6 :class vf)
          )
-   (init-vf0-vector)
-   (let ((v1-0 arg0))
-    (let ((a0-2 (&-> *math-camera* inv-camera-rot data 8))
-          (f0-0 arg1)
+    (init-vf0-vector)
+    (let ((v1-0 arg0))
+      (let ((a0-2 (-> *math-camera* inv-camera-rot vector 2))
+            (f0-0 arg1)
+            )
+        (.lvf vf1 (&-> a0-2 quad))
+        (let ((a0-3 f0-0))
+          (.mov vf2 a0-3)
           )
-     (.lvf vf1 a0-2)
-     (let ((a0-3 f0-0))
-      (.mov vf2 a0-3)
+        )
+      (.add.x.vf vf1 vf0 vf0 :mask #b1000)
+      (.mul.x.vf vf1 vf1 vf2 :mask #b111)
+      (.svf (&-> v1-0 quad) vf1)
       )
-     )
-    (.add.x.vf vf1 vf0 vf0 :mask #b1000)
-    (.mul.x.vf vf1 vf1 vf2 :mask #b111)
-    (.svf (&-> v1-0 quad) vf1)
-    )
-   (vector+float*!
+    (vector+float*! arg0 arg0 (-> *math-camera* inv-camera-rot vector 1) arg2)
+    (vector+! arg0 arg0 (-> *math-camera* trans))
     arg0
-    arg0
-    (the-as vector (&-> *math-camera* inv-camera-rot data 4))
-    arg2
     )
-   (let ((a0-5 arg0))
-    (let ((v1-3 arg0)
-          (a1-3 (-> *math-camera* trans))
-          )
-     (.mov.vf vf6 vf0 :mask #b1000)
-     (.lvf vf4 (&-> v1-3 quad))
-     (.lvf vf5 (&-> a1-3 quad))
-     )
-    (.add.vf vf6 vf4 vf5 :mask #b111)
-    (.svf (&-> a0-5 quad) vf6)
-    )
-   arg0
-   )
   )
 
 ;; definition for function matrix-local->world
@@ -65,13 +45,7 @@
   (-> *math-camera* camera-rot)
   )
 
-;; failed to figure out what this is:
-(when (or (not *camera-dummy-vector*) (zero? *camera-dummy-vector*))
-  (let ((v1-8 (new 'global 'vector)))
-   (.svf (&-> v1-8 quad) vf0)
-   (set! *camera-dummy-vector* v1-8)
-   )
-  )
+(define-perm *camera-dummy-vector* vector (vector-reset! (new 'global 'vector)))
 
 ;; definition for function camera-pos
 ;; INFO: Return type mismatch object vs vector.
@@ -126,4 +100,3 @@
     (none)
     )
   )
-)

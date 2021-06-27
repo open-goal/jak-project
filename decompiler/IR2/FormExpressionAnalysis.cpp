@@ -3911,32 +3911,14 @@ Form* repop_arg(Form* in, FormStack& stack, const Env& env, FormPool& pool) {
  */
 Form* repop_passthrough_arg(Form* in,
                             FormStack& stack,
+                            const Env& env,
                             RegisterAccess* orig_out,
                             bool* found_orig_out) {
   *found_orig_out = false;
 
   auto as_atom = form_as_atom(in);
   if (as_atom && as_atom->is_var()) {
-    // get the last active thing on the stack and see if its what we want.
-    auto last_in_stack = stack.active_back();
-    if (!last_in_stack) {
-      return in;
-    }
-
-    if (!last_in_stack->destination) {
-      return in;
-    }
-
-    if (last_in_stack->destination->reg() != as_atom->var().reg()) {
-      return in;
-    }
-
-    // the x regaccess
-    *orig_out = *last_in_stack->destination;
-    auto val = last_in_stack->source;
-    *found_orig_out = true;
-    stack.pop_active_back();
-    return val;
+    return stack.pop_reg(as_atom->var().reg(), {}, env, true, -1, orig_out, found_orig_out);
   }
   return in;
 }
@@ -3955,39 +3937,56 @@ std::optional<RegisterAccess> form_as_ra(Form* form) {
 /*!
  * Handle an inlined call to vector-!
  */
-bool try_vector_sub_inline(const Env& env, FormPool& pool, FormStack& stack) {
-  // we are looking for 5 ops, none are sets
-  auto elts = stack.try_getting_active_stack_entries({false, false, false, false, false});
+bool try_vector_add_sub_inline(const Env& env,
+                               FormPool& pool,
+                               FormStack& stack,
+                               bool is_add,
+                               FormElement* store_element) {
+  // we are looking for 5 ops, none are sets, the store element is passed in separately, before
+  // propagating
+  auto elts = stack.try_getting_active_stack_entries({false, false, false, false});
   if (!elts) {
     return false;
   }
 
+  int idx = 0;
+  if (is_add) {
+    // third (.vmove.w vf6 vf0)
+    if (!is_set_w_1(Register(Reg::VF, 6), elts->at(idx++).elt, env)) {
+      return false;
+    }
+  }
+
   // check first: (.lvf vf4 (&-> arg1 quad))
-  auto first = is_load_store_vector_to_reg(Register(Reg::VF, 4), elts->at(0).elt, true, nullptr);
+  auto first =
+      is_load_store_vector_to_reg(Register(Reg::VF, 4), elts->at(idx++).elt, true, nullptr);
   if (!first) {
     return false;
   }
 
   // second (.lvf vf5 (&-> a0-1 quad))
-  auto second = is_load_store_vector_to_reg(Register(Reg::VF, 5), elts->at(1).elt, true, nullptr);
+  auto second =
+      is_load_store_vector_to_reg(Register(Reg::VF, 5), elts->at(idx++).elt, true, nullptr);
   if (!second) {
     return false;
   }
 
-  // third (.vmove.w vf6 vf0)
-  if (!is_set_w_1(Register(Reg::VF, 6), elts->at(2).elt, env)) {
-    return false;
+  if (!is_add) {
+    // third (.vmove.w vf6 vf0)
+    if (!is_set_w_1(Register(Reg::VF, 6), elts->at(idx++).elt, env)) {
+      return false;
+    }
   }
 
   // 4th (.vsub.xyz vf6 vf4 vf5)
-  if (!is_vf_3op_dst(InstructionKind::VSUB, 14, vfr(6), vfr(4), vfr(5), elts->at(3).elt)) {
+  if (!is_vf_3op_dst(is_add ? InstructionKind::VADD : InstructionKind::VSUB, 14, vfr(6), vfr(4),
+                     vfr(5), elts->at(idx++).elt)) {
     return false;
   }
 
   // 5th (and remember the index)
   int store_idx = -1;
-  auto store =
-      is_load_store_vector_to_reg(Register(Reg::VF, 6), elts->at(4).elt, false, &store_idx);
+  auto store = is_load_store_vector_to_reg(Register(Reg::VF, 6), store_element, false, &store_idx);
   if (!store) {
     return false;
   }
@@ -3997,12 +3996,12 @@ bool try_vector_sub_inline(const Env& env, FormPool& pool, FormStack& stack) {
   // the function that attempts the pop.
   auto store_var = form_as_ra(store);
   if (!store_var) {
-    env.func->warnings.general_warning("Almost found vector sub, but couldn't get store var.");
+    env.func->warnings.general_warning("Almost found vector add/sub, but couldn't get store var.");
     return false;
   }
 
   // remove these from the stack.
-  stack.pop(5);
+  stack.pop(4);
 
   // ignore the store as a use. This will allow the entire vector-! expression to be expression
   // propagated, if it is appropriate.
@@ -4019,13 +4018,14 @@ bool try_vector_sub_inline(const Env& env, FormPool& pool, FormStack& stack) {
   // now try to see if we can pop the first arg (destination vector).
   bool got_orig = false;
   RegisterAccess orig;
-  store = repop_passthrough_arg(store, stack, &orig, &got_orig);
+
+  store = repop_passthrough_arg(store, stack, env, &orig, &got_orig);
 
   // create the actual vector-! form
   Form* new_thing = pool.alloc_single_element_form<GenericElement>(
       nullptr,
-      GenericOperator::make_function(
-          pool.alloc_single_element_form<ConstantTokenElement>(nullptr, "vector-!")),
+      GenericOperator::make_function(pool.alloc_single_element_form<ConstantTokenElement>(
+          nullptr, is_add ? "vector+!" : "vector-!")),
       std::vector<Form*>{store, first, second});
 
   if (got_orig) {
@@ -4047,7 +4047,73 @@ bool try_vector_sub_inline(const Env& env, FormPool& pool, FormStack& stack) {
     stack.push_form_element(new_thing->elts().at(0), true);
   }
 
-  return false;
+  return true;
+}
+
+bool try_vector_reset_inline(const Env& env,
+                             FormPool& pool,
+                             FormStack& stack,
+                             FormElement* store_element) {
+  // the store
+  int store_idx = -1;
+  auto store = is_load_store_vector_to_reg(Register(Reg::VF, 0), store_element, false, &store_idx);
+  if (!store) {
+    return false;
+  }
+
+  // remove these from the stack.
+  // stack.pop(1);
+
+  // the store here _should_ have failed propagation and just given us a variable.
+  // if this is causing issues, we can run this check before propagating, as well call this from
+  // the function that attempts the pop.
+  auto store_var = form_as_ra(store);
+  if (!store_var) {
+    env.func->warnings.general_warning("Almost found vector reset, but couldn't get store var.");
+    // stack.push_form_element(new_thing->elts().at(0), true);
+    return false;
+  }
+
+  // ignore the store as a use. This will allow the entire vector-! expression to be expression
+  // propagated, if it is appropriate.
+  if (store_var) {
+    auto menv = const_cast<Env*>(&env);
+    menv->disable_use(*store_var);
+  }
+
+  // now try to see if we can pop the first arg (destination vector).
+  bool got_orig = false;
+  RegisterAccess orig;
+  store = repop_passthrough_arg(store, stack, env, &orig, &got_orig);
+
+  // create the actual  form
+  Form* new_thing = pool.alloc_single_element_form<GenericElement>(
+      nullptr,
+      GenericOperator::make_function(
+          pool.alloc_single_element_form<ConstantTokenElement>(nullptr, "vector-reset!")),
+      std::vector<Form*>{store});
+
+  if (got_orig) {
+    // we got a value for the destination.  because we used the special repop passthrough,
+    // we're responsible for inserting a set to set the var that we "stole" from.
+    // We do this through push_value_to_reg, so it can be propagated if needed, but only if
+    // somebody will actually read the output.
+    // to tell, we look at the live out of the store op and the end - the earlier one would of
+    // course be live out always because the store will read it again.
+
+    auto& op_info = env.reg_use().op.at(store_idx);
+    if (op_info.live.find(orig.reg()) == op_info.live.end()) {
+      // nobody reads it, don't bother.
+      stack.push_form_element(new_thing->elts().at(0), true);
+    } else {
+      stack.push_value_to_reg(orig, new_thing, true, TypeSpec("vector"));
+    }
+
+  } else {
+    stack.push_form_element(new_thing->elts().at(0), true);
+  }
+
+  return true;
 }
 }  // namespace
 
@@ -4060,15 +4126,33 @@ void VectorFloatLoadStoreElement::push_to_stack(const Env& env, FormPool& pool, 
     auto atom = form_as_atom(root);
     if (atom && atom->get_kind() == SimpleAtom::Kind::VARIABLE) {
       m_addr_type = env.get_variable_type(atom->var(), true);
+    }
+  }
+
+  auto name = env.func->guessed_name.to_string();
+  // don't find vector-! inside of vector-!.
+  if (!m_is_load && name != "vector-!" && name != "vector+!" && name != "vector-reset!") {
+    if (try_vector_add_sub_inline(env, pool, stack, true, this)) {
+      return;
+    }
+
+    if (try_vector_add_sub_inline(env, pool, stack, false, this)) {
+      return;
+    }
+
+    if (try_vector_reset_inline(env, pool, stack, this)) {
+      return;
+    }
+  }
+
+  if (loc_as_deref) {
+    auto root = loc_as_deref->base();
+    auto atom = form_as_atom(root);
+    if (atom && atom->get_kind() == SimpleAtom::Kind::VARIABLE) {
       loc_as_deref->set_base(pop_to_forms({atom->var()}, env, pool, stack, true).at(0));
     }
   }
   stack.push_form_element(this, true);
-
-  // don't find vector-! inside of vector-!.
-  if (!m_is_load && env.func->guessed_name.to_string() != "vector-!") {
-    try_vector_sub_inline(env, pool, stack);
-  }
 }
 
 void MethodOfTypeElement::update_from_stack(const Env& env,

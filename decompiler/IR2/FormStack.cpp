@@ -131,7 +131,12 @@ Form* FormStack::pop_reg(Register reg,
                          const RegSet& barrier,
                          const Env& env,
                          bool allow_side_effects,
-                         int begin_idx) {
+                         int begin_idx,
+                         RegisterAccess* orig_out,
+                         bool* found_orig_out) {
+  if (found_orig_out) {
+    *found_orig_out = false;
+  }
   assert(allow_side_effects);
   (void)env;  // keep this for easy debugging.
   RegSet modified;
@@ -158,8 +163,17 @@ Form* FormStack::pop_reg(Register reg,
           assert(entry.sequence_point == false);
           auto result = pop_reg(entry.non_seq_source->reg(), barrier, env, allow_side_effects, i);
           if (result) {
+            if (found_orig_out) {
+              *found_orig_out = true;
+              *orig_out = *entry.destination;
+            }
             return result;
           }
+        }
+
+        if (found_orig_out) {
+          *found_orig_out = true;
+          *orig_out = *entry.destination;
         }
         return entry.source;
       } else {
