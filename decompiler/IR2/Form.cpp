@@ -1886,11 +1886,13 @@ void DynamicMethodAccess::get_modified_regs(RegSet&) const {}
 ArrayFieldAccess::ArrayFieldAccess(RegisterAccess source,
                                    const std::vector<DerefToken>& deref_tokens,
                                    int expected_stride,
-                                   int constant_offset)
+                                   int constant_offset,
+                                   bool flipped)
     : m_source(source),
       m_deref_tokens(deref_tokens),
       m_expected_stride(expected_stride),
-      m_constant_offset(constant_offset) {
+      m_constant_offset(constant_offset),
+      m_flipped(flipped) {
   for (auto& token : m_deref_tokens) {
     if (token.kind() == DerefToken::Kind::INTEGER_EXPRESSION) {
       token.expr()->parent_element = this;
@@ -2323,8 +2325,9 @@ void StackStructureDefElement::get_modified_regs(RegSet&) const {}
 
 VectorFloatLoadStoreElement::VectorFloatLoadStoreElement(Register vf_reg,
                                                          Form* location,
-                                                         bool is_load)
-    : m_vf_reg(vf_reg), m_location(location), m_is_load(is_load) {
+                                                         bool is_load,
+                                                         int my_idx)
+    : m_vf_reg(vf_reg), m_location(location), m_is_load(is_load), m_my_idx(my_idx) {
   location->parent_element = this;
 }
 

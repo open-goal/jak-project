@@ -1503,3 +1503,29 @@ TEST_F(FormRegressionTest, VectorNewInlineProp) {
       "  )";
   test_with_stack_structures(func, type, expected, R"([[16, "vector"]])");
 }
+
+TEST_F(FormRegressionTest, Method23Trsqv) {
+  std::string func =
+      "sll r0, r0, 0\n"
+      "    daddiu sp, sp, -32\n"
+      "    sd ra, 0(sp)\n"
+
+      "    lw t9, vector-y-angle(s7)\n"
+      "    daddiu v1, sp, 16\n"
+      "    daddiu a0, a0, 12\n"
+      "    lqc2 vf4, 0(a1)\n"
+      "    lqc2 vf5, 0(a0)\n"
+      "    vmove.w vf6, vf0\n"
+      "    vsub.xyz vf6, vf4, vf5\n"
+      "    sqc2 vf6, 0(v1)\n"
+      "    or a0, v1, r0\n"
+      "    jalr ra, t9\n"
+      "    sll v0, ra, 0\n"
+      "    ld ra, 0(sp)\n"
+      "    jr ra\n"
+      "    daddiu sp, sp, 32\n";
+  std::string type = "(function trsqv vector float)";
+  std::string expected =
+      "(vector-y-angle (vector-! (new 'stack-no-clear 'vector) arg1 (-> arg0 trans)))";
+  test_with_stack_structures(func, type, expected, R"([[16, "vector"]])");
+}

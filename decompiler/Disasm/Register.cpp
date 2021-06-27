@@ -150,6 +150,14 @@ Register::Register(const std::string& name) {
     }
   }
 
+  // next vfs
+  for (int i = 0; i < 32; i++) {
+    if (name == vf_names[i]) {
+      id = (Reg::VF << REG_CATEGORY_SHIFT) | i;
+      return;
+    }
+  }
+
   throw std::runtime_error("Unknown register name: " + name);
 }
 

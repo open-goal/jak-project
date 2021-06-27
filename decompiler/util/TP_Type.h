@@ -215,11 +215,15 @@ class TP_Type {
     return result;
   }
 
-  static TP_Type make_object_plus_product(const TypeSpec& ts, int64_t multiplier) {
+  /*!
+   * flipped means it's int + obj.
+   */
+  static TP_Type make_object_plus_product(const TypeSpec& ts, int64_t multiplier, bool flipped) {
     TP_Type result;
     result.kind = Kind::OBJECT_PLUS_PRODUCT_WITH_CONSTANT;
     result.m_ts = ts;
     result.m_int = multiplier;
+    result.m_flipped_order = flipped;
     return result;
   }
 
@@ -314,6 +318,11 @@ class TP_Type {
     return m_method_id;
   }
 
+  bool flipped_add_order() const {
+    assert(kind == Kind::OBJECT_PLUS_PRODUCT_WITH_CONSTANT);
+    return m_flipped_order;
+  }
+
  private:
   TypeSpec m_ts;
   TypeSpec m_method_from_type;
@@ -321,6 +330,7 @@ class TP_Type {
   std::string m_str;
   int64_t m_int = 0;
   bool m_pcpyud = false;  // have we extracted the top doubleword of a bitfield?
+  bool m_flipped_order = false;
 
   int64_t m_extra_multiplier = 0;
 };
