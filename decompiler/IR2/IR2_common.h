@@ -148,6 +148,8 @@ enum class FixedOperatorKind {
   ADDRESS_OF,
   ASM_SLLV_R0,
   ASM_MADDS,
+  VECTOR_PLUS,
+  VECTOR_MINUS,
   INVALID
 };
 

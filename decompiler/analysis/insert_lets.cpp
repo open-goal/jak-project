@@ -336,6 +336,18 @@ FormElement* fix_up_abs_2(LetElement* in, const Env& env, FormPool& pool) {
   return in;
 }
 
+FormElement* rewrite_empty_let(LetElement* in, const Env& env, FormPool& pool) {
+  if (in->entries().size() != 1) {
+    return nullptr;
+  }
+
+  if (!in->body()->elts().empty()) {
+    return nullptr;
+  }
+
+  return in->entries().at(0).src->try_as_single_element();
+}
+
 /*!
  * Attempt to rewrite a let as another form.  If it cannot be rewritten, this will return nullptr.
  */
@@ -358,6 +370,11 @@ FormElement* rewrite_let(LetElement* in, const Env& env, FormPool& pool) {
   auto as_abs_2 = fix_up_abs_2(in, env, pool);
   if (as_abs_2) {
     return as_abs_2;
+  }
+
+  auto as_unused = rewrite_empty_let(in, env, pool);
+  if (as_unused) {
+    return as_unused;
   }
 
   // nothing matched.
