@@ -453,6 +453,27 @@ Type* TypeSystem::lookup_type_allow_partial_def(const std::string& name) const {
   return result;
 }
 
+/*!
+ * Get load size for a type.  Will succeed if one of the two conditions is true:
+ * - Is a fully defined type.
+ * - Is partially defined, but structure is in the parent.
+ * This should be safe to use to load a value from a field.
+ */
+int TypeSystem::get_load_size_allow_partial_def(const TypeSpec& ts) const {
+  auto fully_defined_it = m_types.find(ts.base_type());
+  if (fully_defined_it != m_types.end()) {
+    return fully_defined_it->second->get_load_size();
+  }
+
+  auto partial_def = lookup_type_allow_partial_def(ts);
+  if (!tc(TypeSpec("structure"), ts)) {
+    throw_typesystem_error("Cannot perform a load or store from partially defined type {}",
+                           ts.print());
+  }
+  assert(partial_def->get_load_size() == 4);
+  return partial_def->get_load_size();
+}
+
 MethodInfo TypeSystem::declare_method(const std::string& type_name,
                                       const std::string& method_name,
                                       bool no_virtual,

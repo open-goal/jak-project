@@ -237,17 +237,15 @@ Val* Compiler::do_set(const goos::Object& form, Val* dest, RegVal* src_in_reg, V
     // setting somewhere in memory
     auto base = as_mem_deref->base;
     auto base_as_mco = dynamic_cast<MemoryOffsetConstantVal*>(base);
+    int load_size = m_ts.get_load_size_allow_partial_def(as_mem_deref->type());
     if (base_as_mco) {
       // if it is a constant offset, we can use a fancy x86-64 addressing mode to simplify
-      auto ti = m_ts.lookup_type(as_mem_deref->type());
-      env->emit(std::make_unique<IR_StoreConstOffset>(
-          src_in_reg, base_as_mco->offset, base_as_mco->base->to_gpr(env), ti->get_load_size()));
+      env->emit(std::make_unique<IR_StoreConstOffset>(src_in_reg, base_as_mco->offset,
+                                                      base_as_mco->base->to_gpr(env), load_size));
       return src_in_reg;
     } else {
       // nope, the pointer to dereference is some complicated thing.
-      auto ti = m_ts.lookup_type(as_mem_deref->type());
-      env->emit(std::make_unique<IR_StoreConstOffset>(src_in_reg, 0, base->to_gpr(env),
-                                                      ti->get_load_size()));
+      env->emit(std::make_unique<IR_StoreConstOffset>(src_in_reg, 0, base->to_gpr(env), load_size));
       return src_in_reg;
     }
   } else if (as_pair) {
