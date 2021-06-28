@@ -41,7 +41,7 @@ int get_stack_offset(const RegVal* rv, const AllocationResult& allocs) {
   } else {
     assert(rv->forced_on_stack());
     auto& ass = allocs.ass_as_ranges.at(rv->ireg().id);
-    auto stack_slot = ass.assignment.at(0).stack_slot;
+    auto stack_slot = allocs.get_slot_for_spill(ass.assignment.at(0).stack_slot);
     assert(stack_slot >= 0);
     return stack_slot * 8;
   }

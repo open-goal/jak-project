@@ -551,9 +551,6 @@ void Listener::handle_output_message(const char* msg) {
  * Add a load to the load listing.
  */
 void Listener::add_load(const std::string& name, const LoadEntry& le) {
-  if (m_load_entries.find(name) != m_load_entries.end() && name != "*listener*") {
-    printf("[Listener Warning] The runtime has loaded %s twice!\n", name.c_str());
-  }
   m_load_entries[name] = le;
 }
 

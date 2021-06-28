@@ -132,7 +132,10 @@ TEST_F(FormRegressionTest, ExprMethod1Thread) {
   std::string type = "(function thread none)";
   std::string expected =
       "(begin\n"
-      "  (when (= arg0 (-> arg0 process main-thread)) (break!) (let ((v1-3 0))))\n"
+      "  (when (= arg0 (-> arg0 process main-thread))\n"
+      "   (break!)\n"
+      "   0\n"
+      "   )\n"
       "  (set! (-> arg0 process top-thread) (-> arg0 previous))\n"
       "  (none)\n"
       "  )";
@@ -286,8 +289,7 @@ TEST_F(FormRegressionTest, ExprMethod9Thread) {
       "     )\n"
       "    )\n"
       "   )\n"
-      "  (let ((v0-2 0))\n"
-      "   )\n"
+      "  0\n"
       "  (none)\n"
       "  )";
   test_with_expr(func, type, expected, false, "", {{"L342", "1 ~A ~%"}, {"L341", "2 ~A ~%"}});
@@ -2242,8 +2244,7 @@ TEST_F(FormRegressionTest, ExprMethod15DeadPoolHeap) {
       "   (set! (-> arg0 dead-list next) (the-as dead-pool-heap-rec s5-1))\n"
       "   (set! (-> s5-1 0) *null-process*)\n"
       "   )\n"
-      "  (let ((v0-4 0))\n"
-      "   )\n"
+      "  0\n"
       "  (none)\n"
       "  )";
   test_with_expr(func, type, expected, false, "",
@@ -2607,8 +2608,7 @@ TEST_F(FormRegressionTest, ExprMethod16DeadPoolHeap) {
       "      (when (nonzero? s2-0)\n"
       "       (when (< s2-0 0)\n"
       "        (break!)\n"
-      "        (let ((v1-20 0))\n"
-      "         )\n"
+      "        0\n"
       "        )\n"
       "       (shrink-heap arg0 s3-0)\n"
       "       (relocate s3-0 (- s2-0))\n"
@@ -2619,8 +2619,7 @@ TEST_F(FormRegressionTest, ExprMethod16DeadPoolHeap) {
       "     )\n"
       "    )\n"
       "   )\n"
-      "  (let ((v0-8 0))\n"
-      "   )\n"
+      "  0\n"
       "  (none)\n"
       "  )";
   test_with_expr(func, type, expected, false, "", {{"L296", "~3LLow Actor Memory~%~0L"}});
@@ -2817,8 +2816,7 @@ TEST_F(FormRegressionTest, ExprMethod18DeadPoolHeap) {
       "     )\n"
       "    )\n"
       "   )\n"
-      "  (let ((v0-4 0))\n"
-      "   )\n"
+      "  0\n"
       "  (none)\n"
       "  )";
   test_with_expr(func, type, expected);
