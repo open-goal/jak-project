@@ -653,7 +653,6 @@ void update_var_info(VariableNames::VarInfo* info,
     info->reg_id.reg = reg;
 
     info->type = type;
-
     info->initialized = true;
   }
 }
@@ -664,15 +663,9 @@ bool merge_infos(VariableNames::VarInfo* info1,
   if (info1->initialized && info2->initialized) {
     bool changed;
     auto new_type = dts.tp_lca(info1->type, info2->type, &changed);
-    if (changed) {
-      //      fmt::print("changed new to {} from {} {} ({} {})\n", new_type.print(),
-      //      info1->type.print(),
-      //                 info2->type.print(), info1->reg_id.print(), info2->reg_id.print());
-      info1->type = new_type;
-      info2->type = new_type;
-
-      return true;
-    }
+    info1->type = new_type;
+    info2->type = new_type;
+    return true;
   }
   return false;
 }

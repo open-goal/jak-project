@@ -649,8 +649,7 @@ TEST_F(FormRegressionTest, DmaSyncCrash) {
       "    (cond\n"
       "     ((zero? v1-0)\n"
       "      (crash!)\n"
-      "      (let ((a1-0 0))\n"
-      "       )\n"
+      "      0\n"
       "      )\n"
       "     (else\n"
       "      (+! v1-0 -1)\n"
@@ -1242,8 +1241,7 @@ TEST_F(FormRegressionTest, MakeSqrtTable) {
       "    )\n"
       "   )\n"
       "  (format #t \"};~%\")\n"
-      "  (let ((v0-3 0))\n"
-      "   )\n"
+      "  0\n"
       "  (none)\n"
       "  )";
   test_with_expr(

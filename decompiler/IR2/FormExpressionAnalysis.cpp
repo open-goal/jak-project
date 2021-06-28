@@ -950,6 +950,54 @@ void SimpleExpressionElement::update_from_stack_pcypld(const Env& env,
   result->push_back(new_form);
 }
 
+void SimpleExpressionElement::update_from_stack_vector_plus_minus(bool is_add,
+                                                                  const Env& env,
+                                                                  FormPool& pool,
+                                                                  FormStack& stack,
+                                                                  std::vector<FormElement*>* result,
+                                                                  bool allow_side_effects) {
+  std::vector<Form*> popped_args =
+      pop_to_forms({m_expr.get_arg(0).var(), m_expr.get_arg(1).var(), m_expr.get_arg(2).var()}, env,
+                   pool, stack, allow_side_effects);
+
+  for (int i = 0; i < 3; i++) {
+    auto arg_type = env.get_types_before_op(m_my_idx).get(m_expr.get_arg(i).var().reg());
+    if (arg_type.typespec() != TypeSpec("vector")) {
+      popped_args.at(i) = cast_form(popped_args.at(i), TypeSpec("vector"), pool, env);
+    }
+  }
+
+  auto new_form = pool.alloc_element<GenericElement>(
+      GenericOperator::make_fixed(is_add ? FixedOperatorKind::VECTOR_PLUS
+                                         : FixedOperatorKind::VECTOR_MINUS),
+      std::vector<Form*>{popped_args.at(0), popped_args.at(1), popped_args.at(2)});
+  result->push_back(new_form);
+}
+
+void SimpleExpressionElement::update_from_stack_vector_float_product(
+    const Env& env,
+    FormPool& pool,
+    FormStack& stack,
+    std::vector<FormElement*>* result,
+    bool allow_side_effects) {
+  std::vector<Form*> popped_args =
+      pop_to_forms({m_expr.get_arg(0).var(), m_expr.get_arg(1).var(), m_expr.get_arg(2).var()}, env,
+                   pool, stack, allow_side_effects);
+
+  for (int i = 0; i < 3; i++) {
+    auto arg_type = env.get_types_before_op(m_my_idx).get(m_expr.get_arg(i).var().reg());
+    TypeSpec desired_type(i == 2 ? "float" : "vector");
+    if (arg_type.typespec() != desired_type) {
+      popped_args.at(i) = cast_form(popped_args.at(i), desired_type, pool, env);
+    }
+  }
+
+  auto new_form = pool.alloc_element<GenericElement>(
+      GenericOperator::make_fixed(FixedOperatorKind::VECTOR_FLOAT_PRODUCT),
+      std::vector<Form*>{popped_args.at(0), popped_args.at(1), popped_args.at(2)});
+  result->push_back(new_form);
+}
+
 void SimpleExpressionElement::update_from_stack_copy_first_int_2(const Env& env,
                                                                  FixedOperatorKind kind,
                                                                  FormPool& pool,
@@ -1558,6 +1606,15 @@ void SimpleExpressionElement::update_from_stack(const Env& env,
       break;
     case SimpleExpression::Kind::PCPYLD:
       update_from_stack_pcypld(env, pool, stack, result, allow_side_effects);
+      break;
+    case SimpleExpression::Kind::VECTOR_PLUS:
+      update_from_stack_vector_plus_minus(true, env, pool, stack, result, allow_side_effects);
+      break;
+    case SimpleExpression::Kind::VECTOR_MINUS:
+      update_from_stack_vector_plus_minus(false, env, pool, stack, result, allow_side_effects);
+      break;
+    case SimpleExpression::Kind::VECTOR_FLOAT_PRODUCT:
+      update_from_stack_vector_float_product(env, pool, stack, result, allow_side_effects);
       break;
     default:
       throw std::runtime_error(
@@ -3787,110 +3844,6 @@ Form* is_load_store_vector_to_reg(const Register& reg,
 }
 
 /*!
- * try to convert to an assembly op, return nullptr if we can't.
- */
-const AsmOp* get_asm_op(FormElement* form) {
-  auto as_asm = dynamic_cast<OpenGoalAsmOpElement*>(form);
-  if (as_asm) {
-    return as_asm->op();
-  }
-
-  auto two = dynamic_cast<AsmOpElement*>(form);
-  if (two) {
-    return two->op();
-  }
-  return nullptr;
-}
-
-/*!
- * Is this vmove.w vfX, vf0? This is a common trick to set the w field.
- */
-bool is_set_w_1(const Register& reg, FormElement* form, const Env&) {
-  auto as_asm = get_asm_op(form);
-  if (!as_asm) {
-    return false;
-  }
-  auto instr = as_asm->instruction();
-
-  if (instr.kind != InstructionKind::VMOVE) {
-    return false;
-  }
-
-  if (instr.cop2_dest != 1) {
-    return false;
-  }
-
-  if (!instr.get_src(0).is_reg(Register(Reg::VF, 0))) {
-    return false;
-  }
-
-  if (!instr.get_dst(0).is_reg(reg)) {
-    return false;
-  }
-
-  return true;
-}
-
-/*!
- * Is this a COP2 op in the form vblah.mask vfX, vfY, vfZ?
- */
-bool is_vf_3op_dst(InstructionKind kind,
-                   u8 dest_mask,
-                   const Register& dst,
-                   const Register& src0,
-                   const Register& src1,
-
-                   FormElement* form) {
-  auto as_asm = get_asm_op(form);
-  if (!as_asm) {
-    return false;
-  }
-  auto instr = as_asm->instruction();
-
-  if (instr.kind != kind) {
-    return false;
-  }
-
-  if (instr.cop2_dest != dest_mask) {
-    return false;
-  }
-
-  if (!instr.get_src(0).is_reg(src0)) {
-    return false;
-  }
-
-  if (!instr.get_src(1).is_reg(src1)) {
-    return false;
-  }
-
-  if (!instr.get_dst(0).is_reg(dst)) {
-    return false;
-  }
-
-  return true;
-}
-
-/*!
- * Make a vf register.
- */
-Register vfr(int idx) {
-  return Register(Reg::VF, idx);
-}
-
-/*!
- * Try to pop a variable from the stack again. If we are detecting a macro that flips argument
- * evaluation order, we can use this to fix it up and remove temporaries.
- * If the previous pop succeeded, this does nothing.
- */
-Form* repop_arg(Form* in, FormStack& stack, const Env& env, FormPool& pool) {
-  auto as_atom = form_as_atom(in);
-  if (as_atom && as_atom->is_var()) {
-    return pop_to_forms({as_atom->var()}, env, pool, stack, true).at(0);
-  }
-  return in;
-}
-
-/*!
  * Imagine:
  *   x = foo
  *   { // some macro/inlined thing
@@ -3911,32 +3864,14 @@ Form* repop_arg(Form* in, FormStack& stack, const Env& env, FormPool& pool) {
  */
 Form* repop_passthrough_arg(Form* in,
                             FormStack& stack,
+                            const Env& env,
                             RegisterAccess* orig_out,
                             bool* found_orig_out) {
   *found_orig_out = false;
 
   auto as_atom = form_as_atom(in);
   if (as_atom && as_atom->is_var()) {
-    // get the last active thing on the stack and see if its what we want.
-    auto last_in_stack = stack.active_back();
-    if (!last_in_stack) {
-      return in;
-    }
-
-    if (!last_in_stack->destination) {
-      return in;
-    }
-
-    if (last_in_stack->destination->reg() != as_atom->var().reg()) {
-      return in;
-    }
-
-    // the x regaccess
-    *orig_out = *last_in_stack->destination;
-    auto val = last_in_stack->source;
-    *found_orig_out = true;
-    stack.pop_active_back();
-    return val;
+    return stack.pop_reg(as_atom->var().reg(), {}, env, true, -1, orig_out, found_orig_out);
   }
   return in;
 }
@@ -3952,57 +3887,29 @@ std::optional<RegisterAccess> form_as_ra(Form* form) {
   return {};
 }
 
-/*!
- * Handle an inlined call to vector-!
- */
-bool try_vector_sub_inline(const Env& env, FormPool& pool, FormStack& stack) {
-  // we are looking for 5 ops, none are sets
-  auto elts = stack.try_getting_active_stack_entries({false, false, false, false, false});
-  if (!elts) {
-    return false;
-  }
-
-  // check first: (.lvf vf4 (&-> arg1 quad))
-  auto first = is_load_store_vector_to_reg(Register(Reg::VF, 4), elts->at(0).elt, true, nullptr);
-  if (!first) {
-    return false;
-  }
-
-  // second (.lvf vf5 (&-> a0-1 quad))
-  auto second = is_load_store_vector_to_reg(Register(Reg::VF, 5), elts->at(1).elt, true, nullptr);
-  if (!second) {
-    return false;
-  }
-
-  // third (.vmove.w vf6 vf0)
-  if (!is_set_w_1(Register(Reg::VF, 6), elts->at(2).elt, env)) {
-    return false;
-  }
-
-  // 4th (.vsub.xyz vf6 vf4 vf5)
-  if (!is_vf_3op_dst(InstructionKind::VSUB, 14, vfr(6), vfr(4), vfr(5), elts->at(3).elt)) {
-    return false;
-  }
-
-  // 5th (and remember the index)
+bool try_vector_reset_inline(const Env& env,
+                             FormPool& pool,
+                             FormStack& stack,
+                             FormElement* store_element) {
+  // the store
   int store_idx = -1;
-  auto store =
-      is_load_store_vector_to_reg(Register(Reg::VF, 6), elts->at(4).elt, false, &store_idx);
+  auto store = is_load_store_vector_to_reg(Register(Reg::VF, 0), store_element, false, &store_idx);
   if (!store) {
     return false;
   }
+
+  // remove these from the stack.
+  // stack.pop(1);
 
   // the store here _should_ have failed propagation and just given us a variable.
   // if this is causing issues, we can run this check before propagating, as well call this from
   // the function that attempts the pop.
   auto store_var = form_as_ra(store);
   if (!store_var) {
-    env.func->warnings.general_warning("Almost found vector sub, but couldn't get store var.");
+    env.func->warnings.general_warning("Almost found vector reset, but couldn't get store var.");
+    // stack.push_form_element(new_thing->elts().at(0), true);
     return false;
   }
-
-  // remove these from the stack.
-  stack.pop(5);
 
   // ignore the store as a use. This will allow the entire vector-! expression to be expression
   // propagated, if it is appropriate.
@@ -4011,22 +3918,17 @@ bool try_vector_sub_inline(const Env& env, FormPool& pool, FormStack& stack) {
     menv->disable_use(*store_var);
   }
 
-  // repop the arguments in the opposite order. this can eliminate temporaries as this will
-  // use the opposite order of the original attempt.
-  second = repop_arg(second, stack, env, pool);
-  first = repop_arg(first, stack, env, pool);
-
   // now try to see if we can pop the first arg (destination vector).
   bool got_orig = false;
   RegisterAccess orig;
-  store = repop_passthrough_arg(store, stack, &orig, &got_orig);
+  store = repop_passthrough_arg(store, stack, env, &orig, &got_orig);
 
-  // create the actual vector-! form
+  // create the actual  form
   Form* new_thing = pool.alloc_single_element_form<GenericElement>(
       nullptr,
       GenericOperator::make_function(
-          pool.alloc_single_element_form<ConstantTokenElement>(nullptr, "vector-!")),
-      std::vector<Form*>{store, first, second});
+          pool.alloc_single_element_form<ConstantTokenElement>(nullptr, "vector-reset!")),
+      std::vector<Form*>{store});
 
   if (got_orig) {
     // we got a value for the destination.  because we used the special repop passthrough,
@@ -4035,6 +3937,7 @@ bool try_vector_sub_inline(const Env& env, FormPool& pool, FormStack& stack) {
     // somebody will actually read the output.
     // to tell, we look at the live out of the store op and the end - the earlier one would of
     // course be live out always because the store will read it again.
+
     auto& op_info = env.reg_use().op.at(store_idx);
     if (op_info.live.find(orig.reg()) == op_info.live.end()) {
       // nobody reads it, don't bother.
@@ -4047,7 +3950,7 @@ bool try_vector_sub_inline(const Env& env, FormPool& pool, FormStack& stack) {
     stack.push_form_element(new_thing->elts().at(0), true);
   }
 
-  return false;
+  return true;
 }
 }  // namespace
 
@@ -4060,15 +3963,25 @@ void VectorFloatLoadStoreElement::push_to_stack(const Env& env, FormPool& pool, 
     auto atom = form_as_atom(root);
     if (atom && atom->get_kind() == SimpleAtom::Kind::VARIABLE) {
       m_addr_type = env.get_variable_type(atom->var(), true);
+    }
+  }
+
+  auto name = env.func->guessed_name.to_string();
+  // don't find vector-! inside of vector-!.
+  if (!m_is_load && name != "vector-!" && name != "vector+!" && name != "vector-reset!") {
+    if (try_vector_reset_inline(env, pool, stack, this)) {
+      return;
+    }
+  }
+
+  if (loc_as_deref) {
+    auto root = loc_as_deref->base();
+    auto atom = form_as_atom(root);
+    if (atom && atom->get_kind() == SimpleAtom::Kind::VARIABLE) {
       loc_as_deref->set_base(pop_to_forms({atom->var()}, env, pool, stack, true).at(0));
     }
   }
   stack.push_form_element(this, true);
-
-  // don't find vector-! inside of vector-!.
-  if (!m_is_load && env.func->guessed_name.to_string() != "vector-!") {
-    try_vector_sub_inline(env, pool, stack);
-  }
 }
 
 void MethodOfTypeElement::update_from_stack(const Env& env,

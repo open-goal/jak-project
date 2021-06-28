@@ -39,7 +39,9 @@ class FormStack {
                 const RegSet& barrier,
                 const Env& env,
                 bool allow_side_effects,
-                int begin_idx = -1);
+                int begin_idx = -1,
+                RegisterAccess* orig_out = nullptr,
+                bool* found_orig_out = nullptr);
   FormElement* pop_back(FormPool& pool);
   bool is_single_expression();
   std::vector<FormElement*> rewrite(FormPool& pool, const Env& env) const;
