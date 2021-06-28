@@ -545,6 +545,12 @@ TEST_F(WithGameTests, InlinedPackedBasics) {
                           "0\n"});
 }
 
+TEST_F(WithGameTests, PartialDefineTypeField) {
+  runner.run_static_test(env, testCategory, "test-partial-define-type-field.gc",
+                         {"#f\n"
+                          "0\n"});
+}
+
 // VECTOR FLOAT TESTS
 
 // ---- One off Tests
