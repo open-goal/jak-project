@@ -62,7 +62,9 @@
               buffer-value="0"
               :value="jak1BlackLabelStatus.decompDone"
               stream
+              height="25"
             >
+            {{jak1BlackLabelStatus.decompLabel}} - {{jak1BlackLabelStatus.decompDone}}%
             </v-progress-linear>
           </v-col>
         </v-row>
@@ -122,7 +124,8 @@ export default {
     return {
       recentPRs: [],
       jak1BlackLabelStatus: {
-        decompDone: projectProgress.jak1.decomp
+        decompDone: projectProgress.jak1.locPercentage.value,
+        decompLabel: projectProgress.jak1.locPercentage.label
       }
     };
   },
