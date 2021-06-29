@@ -5,14 +5,14 @@
 (when *debug-segment*
 ;; definition of type debug-menu-context
 (deftype debug-menu-context (basic)
-  ((is-active   symbol             :offset-assert   4)
-   (sel-length  int32              :offset-assert   8)
-   (sel-menu    debug-menu       8 :offset-assert  12)
-   (root-menu   debug-menu         :offset-assert  44)
-   (joypad-func (function basic)   :offset-assert  48)
-   (joypad-item basic              :offset-assert  52)
-   (font        font-context       :offset-assert  56)
-   (is-hidden   symbol             :offset-assert  60)
+  ((is-active   symbol                  :offset-assert   4)
+   (sel-length  int32                   :offset-assert   8)
+   (sel-menu    debug-menu            8 :offset-assert  12)
+   (root-menu   debug-menu              :offset-assert  44)
+   (joypad-func (function basic none)   :offset-assert  48)
+   (joypad-item basic                   :offset-assert  52)
+   (font        font-context            :offset-assert  56)
+   (is-hidden   symbol                  :offset-assert  60)
    )
   :method-count-assert 9
   :size-assert         #x40
@@ -205,8 +205,8 @@
 
 ;; definition of type debug-menu-item-function
 (deftype debug-menu-item-function (debug-menu-item)
-  ((activate-func (function int)  :offset-assert  24)
-   (hilite-timer  int8            :offset-assert  28)
+  ((activate-func (function int int)  :offset-assert  24)
+   (hilite-timer  int8                :offset-assert  28)
    )
   :method-count-assert 9
   :size-assert         #x1d
@@ -249,7 +249,7 @@
    (set! (-> v0-0 refresh-delay) 0)
    (set! (-> v0-0 refresh-ctr) (-> v0-0 refresh-delay))
    (set! (-> v0-0 id) arg1)
-   (set! (-> v0-0 activate-func) (the-as (function int) arg2))
+   (set! (-> v0-0 activate-func) (the-as (function int int) arg2))
    (set! (-> v0-0 hilite-timer) 0)
    v0-0
    )
@@ -257,8 +257,8 @@
 
 ;; definition of type debug-menu-item-flag
 (deftype debug-menu-item-flag (debug-menu-item)
-  ((activate-func (function int int)  :offset-assert  24)
-   (is-on         symbol              :offset-assert  28)
+  ((activate-func (function int int symbol)  :offset-assert  24)
+   (is-on         symbol                     :offset-assert  28)
    )
   :method-count-assert 9
   :size-assert         #x20
@@ -301,7 +301,7 @@
    (set! (-> v0-0 refresh-delay) 23)
    (set! (-> v0-0 refresh-ctr) (-> v0-0 refresh-delay))
    (set! (-> v0-0 id) (the-as int arg1))
-   (set! (-> v0-0 activate-func) (the-as (function int int) arg2))
+   (set! (-> v0-0 activate-func) (the-as (function int int symbol) arg2))
    (set! (-> v0-0 is-on) #f)
    v0-0
    )
@@ -309,32 +309,32 @@
 
 ;; definition of type debug-menu-item-var
 (deftype debug-menu-item-var (debug-menu-item)
-  ((display-str      string          :offset-assert  24)
-   (grabbed-joypad-p basic           :offset-assert  28)
-   (float-p          basic           :offset-assert  32)
-   (range-p          basic           :offset-assert  36)
-   (show-len         int32           :offset-assert  40)
-   (inc-delay        int32           :offset-assert  44)
-   (inc-delay-ctr    int32           :offset-assert  48)
-   (step-delay-ctr   int32           :offset-assert  52)
-   (inc-dir          int32           :offset-assert  56)
-   (fval             float           :offset-assert  60)
-   (fundo-val        float           :offset-assert  64)
-   (frange-min       float           :offset-assert  68)
-   (frange-max       float           :offset-assert  72)
-   (fstart-inc       float           :offset-assert  76)
-   (fstep            float           :offset-assert  80)
-   (fprecision       int32           :offset-assert  84)
-   (factivate-func   function        :offset-assert  88)
-   (ival             int32           :offset         60)
-   (iundo-val        int32           :offset         64)
-   (irange-min       int32           :offset         68)
-   (irange-max       int32           :offset         72)
-   (istart-inc       int32           :offset         76)
-   (istep            int32           :offset         80)
-   (ihex-p           basic           :offset-assert  92)
-   (iactivate-func   (function int)  :offset         88)
-   (ifloat-p         basic           :offset-assert  96)
+  ((display-str      string    :offset-assert  24)
+   (grabbed-joypad-p symbol    :offset-assert  28)
+   (float-p          symbol    :offset-assert  32)
+   (range-p          symbol    :offset-assert  36)
+   (show-len         int32     :offset-assert  40)
+   (inc-delay        int32     :offset-assert  44)
+   (inc-delay-ctr    int32     :offset-assert  48)
+   (step-delay-ctr   int32     :offset-assert  52)
+   (inc-dir          int32     :offset-assert  56)
+   (fval             float     :offset-assert  60)
+   (fundo-val        float     :offset-assert  64)
+   (frange-min       float     :offset-assert  68)
+   (frange-max       float     :offset-assert  72)
+   (fstart-inc       float     :offset-assert  76)
+   (fstep            float     :offset-assert  80)
+   (fprecision       int32     :offset-assert  84)
+   (factivate-func   function  :offset-assert  88)
+   (ival             int32     :offset         60)
+   (iundo-val        int32     :offset         64)
+   (irange-min       int32     :offset         68)
+   (irange-max       int32     :offset         72)
+   (istart-inc       int32     :offset         76)
+   (istep            int32     :offset         80)
+   (ihex-p           symbol    :offset-assert  92)
+   (iactivate-func   function  :offset         88)
+   (ifloat-p         symbol    :offset-assert  96)
    )
   :method-count-assert 9
   :size-assert         #x64
@@ -427,7 +427,7 @@
 (defun
   debug-menu-item-var-make-int
   ((arg0 debug-menu-item-var)
-   (arg1 (function int))
+   (arg1 (function int int int int int))
    (arg2 int)
    (arg3 symbol)
    (arg4 int)
@@ -451,13 +451,18 @@
     0
     )
    )
-  (when arg1
-   (let ((t9-0 arg1))
-    (-> arg0 id)
-    3
+  (if arg1
+   (set!
     (-> arg0 fval)
-    (-> arg0 fval)
-    (set! (-> arg0 fval) (the-as float (t9-0)))
+    (the-as
+     float
+     (arg1
+      (-> arg0 id)
+      3
+      (the-as int (-> arg0 fval))
+      (the-as int (-> arg0 fval))
+      )
+     )
     )
    )
   (debug-menu-item-var-update-display-str arg0)
@@ -468,7 +473,7 @@
 (defun
   debug-menu-item-var-make-float
   ((arg0 debug-menu-item-var)
-   (arg1 (function int))
+   (arg1 (function int int float float int))
    (arg2 float)
    (arg3 symbol)
    (arg4 float)
@@ -487,13 +492,10 @@
    (set! (-> arg0 fval) arg4)
    (set! (-> arg0 fval) 0.0)
    )
-  (when arg1
-   (let ((t9-0 arg1))
-    (-> arg0 id)
-    3
+  (if arg1
+   (set!
     (-> arg0 fval)
-    (-> arg0 fval)
-    (set! (-> arg0 fval) (the float (t9-0)))
+    (the float (arg1 (-> arg0 id) 3 (-> arg0 fval) (-> arg0 fval)))
     )
    )
   (debug-menu-item-var-update-display-str arg0)
@@ -531,7 +533,15 @@
    (set! (-> gp-0 grabbed-joypad-p) #f)
    (set! (-> gp-0 ifloat-p) #f)
    (set! (-> gp-0 display-str) (new 'debug 'string 64 (the-as string #f)))
-   (debug-menu-item-var-make-int gp-0 (the-as (function int) #f) 1 #t 0 0 #f)
+   (debug-menu-item-var-make-int
+    gp-0
+    (the-as (function int int int int int) #f)
+    1
+    #t
+    0
+    0
+    #f
+    )
    gp-0
    )
   )
@@ -545,7 +555,7 @@
     #f
     )
    (else
-    (set! (-> arg0 joypad-func) (the-as (function basic) arg2))
+    (set! (-> arg0 joypad-func) (the-as (function basic none) arg2))
     (set! (-> arg0 joypad-item) arg1)
     #t
     )
@@ -713,24 +723,24 @@
   )
 
 ;; definition for function debug-menu-func-decode
-;; INFO: Return type mismatch object vs symbol.
+;; INFO: Return type mismatch object vs function.
 (defun debug-menu-func-decode ((arg0 object))
   (let ((v1-1 (rtype-of arg0)))
-   (the-as symbol (the-as symbol (cond
-                                  ((or (= v1-1 symbol) (= v1-1 type))
-                                   (the-as
-                                    symbol
-                                    (-> (the-as symbol arg0) value)
+   (the-as function (the-as symbol (cond
+                                    ((or (= v1-1 symbol) (= v1-1 type))
+                                     (the-as
+                                      symbol
+                                      (-> (the-as symbol arg0) value)
+                                      )
+                                     )
+                                    ((= v1-1 function)
+                                     (the-as symbol arg0)
+                                     )
+                                    (else
+                                     (the-as symbol nothing)
+                                     )
                                     )
-                                   )
-                                  ((= v1-1 function)
-                                   (the-as symbol arg0)
-                                   )
-                                  (else
-                                   (the-as symbol nothing)
-                                   )
-                                  )
-                   )
+                     )
     )
    )
   )
@@ -830,10 +840,7 @@
                    'debug-menu-item-flag
                    (the-as string s5-1)
                    (the-as symbol (car (cdr (cdr arg1))))
-                   (the-as
-                    function
-                    (debug-menu-func-decode (car (cdr (cdr (cdr arg1)))))
-                    )
+                   (debug-menu-func-decode (car (cdr (cdr (cdr arg1)))))
                    )
                   )
                  ((or (= s4-0 0) (= s4-0 'function))
@@ -842,10 +849,7 @@
                    'debug-menu-item-function
                    (the-as string s5-1)
                    (the-as int (car (cdr (cdr arg1))))
-                   (the-as
-                    function
-                    (debug-menu-func-decode (car (cdr (cdr (cdr arg1)))))
-                    )
+                   (debug-menu-func-decode (car (cdr (cdr (cdr arg1)))))
                    )
                   )
                  ((= s4-0 'var)
@@ -888,7 +892,7 @@
                            )
                       (s3-4
                        s2-3
-                       (the-as (function int) s1-3)
+                       (the-as (function int int int int int) s1-3)
                        s0-1
                        (the-as symbol sv-16)
                        sv-32
@@ -924,7 +928,7 @@
                      (let ((t2-1 (/ (the-as int (ref arg1 9)) 8)))
                       (s4-5
                        s3-6
-                       (the-as (function int) s2-5)
+                       (the-as (function int int float float int) s2-5)
                        s1-5
                        (the-as symbol s0-2)
                        sv-48
@@ -967,7 +971,7 @@
                      (let ((t2-2 (/ (the-as int (ref arg1 9)) 8)))
                       (s4-7
                        s3-8
-                       (the-as (function int) s2-7)
+                       (the-as (function int int float float int) s2-7)
                        s1-7
                        (the-as symbol s0-3)
                        sv-80
@@ -1129,26 +1133,26 @@
                            )
                           )
     )
-   )
-  (let* ((s4-0 (-> *display* frames (-> *display* on-screen) frame debug-buf))
-         (s5-0 (-> s4-0 base))
-         )
-   (draw-string (-> arg0 name) s4-0)
-   (let ((a3-1 (-> s4-0 base)))
-    (let ((v1-3 (the-as object (-> s4-0 base))))
-     (set!
-      (-> (the-as dma-packet v1-3) dma)
-      (new 'static 'dma-tag :id (dma-tag-id next))
+   (let* ((s4-0 (-> *display* frames (-> *display* on-screen) frame debug-buf))
+          (s5-0 (-> s4-0 base))
+          )
+    (draw-string (-> arg0 name) s4-0 v1-2)
+    (let ((a3-1 (-> s4-0 base)))
+     (let ((v1-3 (the-as object (-> s4-0 base))))
+      (set!
+       (-> (the-as dma-packet v1-3) dma)
+       (new 'static 'dma-tag :id (dma-tag-id next))
+       )
+      (set! (-> (the-as dma-packet v1-3) vif0) (new 'static 'vif-tag))
+      (set! (-> (the-as dma-packet v1-3) vif1) (new 'static 'vif-tag))
+      (set! (-> s4-0 base) (&+ (the-as pointer v1-3) 16))
       )
-     (set! (-> (the-as dma-packet v1-3) vif0) (new 'static 'vif-tag))
-     (set! (-> (the-as dma-packet v1-3) vif1) (new 'static 'vif-tag))
-     (set! (-> s4-0 base) (&+ (the-as pointer v1-3) 16))
-     )
-    (dma-bucket-insert-tag
-     (-> *display* frames (-> *display* on-screen) frame bucket-group)
-     68
-     s5-0
-     (the-as (pointer dma-tag) a3-1)
+     (dma-bucket-insert-tag
+      (-> *display* frames (-> *display* on-screen) frame bucket-group)
+      68
+      s5-0
+      (the-as (pointer dma-tag) a3-1)
+      )
      )
     )
    )
@@ -1184,26 +1188,26 @@
                            )
                           )
     )
-   )
-  (let* ((s4-0 (-> *display* frames (-> *display* on-screen) frame debug-buf))
-         (s5-0 (-> s4-0 base))
-         )
-   (draw-string (-> arg0 name) s4-0)
-   (let ((a3-1 (-> s4-0 base)))
-    (let ((v1-3 (the-as object (-> s4-0 base))))
-     (set!
-      (-> (the-as dma-packet v1-3) dma)
-      (new 'static 'dma-tag :id (dma-tag-id next))
+   (let* ((s4-0 (-> *display* frames (-> *display* on-screen) frame debug-buf))
+          (s5-0 (-> s4-0 base))
+          )
+    (draw-string (-> arg0 name) s4-0 v1-2)
+    (let ((a3-1 (-> s4-0 base)))
+     (let ((v1-3 (the-as object (-> s4-0 base))))
+      (set!
+       (-> (the-as dma-packet v1-3) dma)
+       (new 'static 'dma-tag :id (dma-tag-id next))
+       )
+      (set! (-> (the-as dma-packet v1-3) vif0) (new 'static 'vif-tag))
+      (set! (-> (the-as dma-packet v1-3) vif1) (new 'static 'vif-tag))
+      (set! (-> s4-0 base) (&+ (the-as pointer v1-3) 16))
       )
-     (set! (-> (the-as dma-packet v1-3) vif0) (new 'static 'vif-tag))
-     (set! (-> (the-as dma-packet v1-3) vif1) (new 'static 'vif-tag))
-     (set! (-> s4-0 base) (&+ (the-as pointer v1-3) 16))
-     )
-    (dma-bucket-insert-tag
-     (-> *display* frames (-> *display* on-screen) frame bucket-group)
-     68
-     s5-0
-     (the-as (pointer dma-tag) a3-1)
+     (dma-bucket-insert-tag
+      (-> *display* frames (-> *display* on-screen) frame bucket-group)
+      68
+      s5-0
+      (the-as (pointer dma-tag) a3-1)
+      )
      )
     )
    )
@@ -1344,13 +1348,7 @@
       )
      (set! sv-16 (-> *display* frames (-> *display* on-screen) frame debug-buf))
      (set! sv-32 (-> sv-16 base))
-     (let ((t9-2 draw-string)
-           (a0-22 ">")
-           (a1-6 sv-16)
-           )
-      (-> arg0 context font)
-      (t9-2 a0-22 a1-6)
-      )
+     (draw-string ">" sv-16 (-> arg0 context font))
      (let ((a3-3 (-> sv-16 base)))
       (let ((v1-26 (the-as object (-> sv-16 base))))
        (set!
@@ -1567,12 +1565,9 @@
    ((= arg1 4)
     (cond
      ((-> arg0 activate-func)
-      (let ((t9-0 (-> arg0 activate-func)))
-       (-> arg0 id)
-       (if (t9-0)
-        (set! (-> arg0 hilite-timer) 6)
-        (set! (-> arg0 hilite-timer) -6)
-        )
+      (if ((-> arg0 activate-func) (-> arg0 id))
+       (set! (-> arg0 hilite-timer) 6)
+       (set! (-> arg0 hilite-timer) -6)
        )
       )
      (else
@@ -1592,26 +1587,16 @@
 (defun debug-menu-item-flag-msg ((arg0 debug-menu-item-flag) (arg1 int))
   (cond
    ((= arg1 4)
-    (when (-> arg0 activate-func)
-     (let ((t9-0 (-> arg0 activate-func))
-           (a0-1 (-> arg0 id))
-           )
-      4
-      (set! (-> arg0 is-on) (the-as symbol (t9-0 a0-1)))
-      )
+    (if (-> arg0 activate-func)
+     (set! (-> arg0 is-on) ((-> arg0 activate-func) (-> arg0 id) 4))
      )
     (let ((a0-2 (-> arg0 parent context)))
      (debug-menu-context-send-msg a0-2 3 2)
      )
     )
    ((or (= arg1 3) (= arg1 1))
-    (when (-> arg0 activate-func)
-     (let ((t9-2 (-> arg0 activate-func))
-           (a0-5 (-> arg0 id))
-           )
-      3
-      (set! (-> arg0 is-on) (the-as symbol (t9-2 a0-5)))
-      )
+    (if (-> arg0 activate-func)
+     (set! (-> arg0 is-on) ((-> arg0 activate-func) (-> arg0 id) 3))
      )
     (set! (-> arg0 refresh-ctr) (-> arg0 refresh-delay))
     )
@@ -1633,20 +1618,14 @@
       )
      (cond
       ((-> arg0 float-p)
-       (when (-> arg0 factivate-func)
-        (let ((t9-1 (-> arg0 factivate-func))
-              (a0-2 (-> arg0 id))
-              (a1-1 4)
-              (a2-0 (-> arg0 fundo-val))
-              )
+       (if (-> arg0 factivate-func)
+        (set!
          (-> arg0 fval)
-         (set!
+         ((the-as (function int int float float float) (-> arg0 factivate-func))
+          (-> arg0 id)
+          4
+          (-> arg0 fundo-val)
           (-> arg0 fval)
-          ((the-as (function int float float float) t9-1)
-           a0-2
-           (the-as float a1-1)
-           a2-0
-           )
           )
          )
         )
@@ -2055,16 +2034,9 @@
 ;; definition for function debug-menus-active
 (defun debug-menus-active ((arg0 debug-menu-context))
   (when (not (-> arg0 is-hidden))
-   (cond
-    ((-> arg0 joypad-func)
-     (let ((t9-0 (-> arg0 joypad-func)))
-      (-> arg0 joypad-item)
-      (t9-0)
-      )
-     )
-    (else
-     (debug-menus-default-joypad-func arg0)
-     )
+   (if (-> arg0 joypad-func)
+    ((-> arg0 joypad-func) (-> arg0 joypad-item))
+    (debug-menus-default-joypad-func arg0)
     )
    (debug-menu-context-render arg0)
    )

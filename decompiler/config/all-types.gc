@@ -14750,7 +14750,7 @@
 (define-extern internal-draw-debug-text-3d (function bucket-id string vector rgba vector2h pointer))
 (define-extern get-debug-line (function debug-line))
 (define-extern internal-draw-debug-line (function bucket-id vector vector rgba symbol rgba object))
-(define-extern draw-string (function string dma-buffer int))
+(define-extern draw-string (function string dma-buffer font-context int))
 (define-extern transform-float-point (function vector vector vector))
 (define-extern add-debug-point (function symbol bucket-id vector symbol)) ;; unused
 (define-extern add-debug-outline-triangle (function symbol bucket-id vector vector vector rgba symbol))
@@ -16130,7 +16130,7 @@
 (define-extern progress-allowed? (function symbol))
 (define-extern print-game-text (function string font-context symbol int int float)) ; TODO decomp error, this seems correct though
 (define-extern get-aspect-ratio (function symbol))
-(define-extern get-task-status (function int uint64)) ;; TODO - not confirmed
+(define-extern get-task-status (function int uint)) ;; TODO - not confirmed
 (define-extern lookup-level-info (function symbol level-load-info))
 (define-extern calculate-completion function)
 (define-extern game-save-elt->string function)
@@ -18804,7 +18804,7 @@
    (sel-length  int32     :offset-assert 8)
    (sel-menu    debug-menu   8 :offset-assert 12)
    (root-menu   debug-menu     :offset-assert 44)
-   (joypad-func (function basic)     :offset-assert 48)
+   (joypad-func (function basic none)     :offset-assert 48)
    (joypad-item basic     :offset-assert 52) ;; is this more specific?
    (font        font-context     :offset-assert 56)
    (is-hidden   symbol     :offset-assert 60)
@@ -18862,7 +18862,7 @@
   )
 
 (deftype debug-menu-item-function (debug-menu-item)
-  ((activate-func (function int)  :offset-assert 24) ;; func is kinda a guess, might be 2 ints
+  ((activate-func (function int int)  :offset-assert 24) ;; func is kinda a guess, might be 2 ints
    (hilite-timer  int8   :offset-assert 28)
    )
   :method-count-assert 9
@@ -18873,7 +18873,7 @@
   )
 
 (deftype debug-menu-item-flag (debug-menu-item)
-  ((activate-func (function int int)  :offset-assert 24) ;; func is kinda a guess
+  ((activate-func (function int int symbol)  :offset-assert 24) ;; func is kinda a guess
    (is-on         symbol  :offset-assert 28)
    )
   :method-count-assert 9
@@ -18885,9 +18885,9 @@
 
 (deftype debug-menu-item-var (debug-menu-item)
   ((display-str      string  :offset-assert 24)
-   (grabbed-joypad-p basic  :offset-assert 28) ; seems like a symbol of true/false
-   (float-p          basic  :offset-assert 32) ; seems like a symbol of true/false
-   (range-p          basic  :offset-assert 36) ; seems like a symbol of true/false
+   (grabbed-joypad-p symbol  :offset-assert 28)
+   (float-p          symbol  :offset-assert 32)
+   (range-p          symbol  :offset-assert 36)
    (show-len         int32  :offset-assert 40)
    (inc-delay        int32  :offset-assert 44)
    (inc-delay-ctr    int32  :offset-assert 48)
@@ -18908,9 +18908,10 @@
    (irange-max       int32  :offset 72)
    (istart-inc       int32  :offset 76)
    (istep            int32  :offset 80)
-   (ihex-p           basic  :offset-assert 92) ; seems like a symbol of true/false
-   (iactivate-func   (function int)  :offset 88)
-   (ifloat-p         basic  :offset-assert 96) ; seems like a symbol of true/false
+   (ihex-p           symbol  :offset-assert 92)
+   ; (function int (the id) int (some constant) <int/float> <int/float> (fval or ival)x2 <int/float>)
+   (iactivate-func   function  :offset 88)
+   (ifloat-p         symbol  :offset-assert 96)
    )
   :method-count-assert 9
   :size-assert         #x64
@@ -18949,9 +18950,9 @@
 (define-extern debug-menu-make-from-template (function debug-menu-context pair debug-menu-node))
 (define-extern debug-menu-append-item (function debug-menu debug-menu-item debug-menu-item))
 (define-extern debug-menu-context-set-root-menu (function debug-menu-context debug-menu debug-menu-context))
-(define-extern debug-menu-func-decode (function object symbol))
-(define-extern debug-menu-item-var-make-int (function debug-menu-item-var (function int) int symbol int int symbol debug-menu-item-var))
-(define-extern debug-menu-item-var-make-float (function debug-menu-item-var (function int) float symbol float float symbol debug-menu-item-var))
+(define-extern debug-menu-func-decode (function object function))
+(define-extern debug-menu-item-var-make-int (function debug-menu-item-var (function int int int int int) int symbol int int symbol debug-menu-item-var))
+(define-extern debug-menu-item-var-make-float (function debug-menu-item-var (function int int float float int) float symbol float float symbol debug-menu-item-var))
 (define-extern debug-menu-rebuild (function debug-menu debug-menu))
 (define-extern debug-menu-context-default-selection (function debug-menu-context symbol debug-menu-context))
 (define-extern debug-menu-item-get-max-width (function debug-menu-item debug-menu int))
