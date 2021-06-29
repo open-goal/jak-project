@@ -291,6 +291,12 @@ std::string get_simple_expression_op_name(SimpleExpression::Kind kind) {
       return "max.ui";
     case SimpleExpression::Kind::PCPYLD:
       return "pcypld";
+    case SimpleExpression::Kind::VECTOR_PLUS:
+      return "vector+!2";
+    case SimpleExpression::Kind::VECTOR_MINUS:
+      return "vector-!2";
+    case SimpleExpression::Kind::VECTOR_FLOAT_PRODUCT:
+      return "vector-float*!2";
     default:
       assert(false);
       return {};
@@ -342,6 +348,10 @@ int get_simple_expression_arg_count(SimpleExpression::Kind kind) {
     case SimpleExpression::Kind::MAX_UNSIGNED:
     case SimpleExpression::Kind::PCPYLD:
       return 2;
+    case SimpleExpression::Kind::VECTOR_PLUS:
+    case SimpleExpression::Kind::VECTOR_MINUS:
+    case SimpleExpression::Kind::VECTOR_FLOAT_PRODUCT:
+      return 3;
     default:
       assert(false);
       return -1;
@@ -360,6 +370,18 @@ SimpleExpression::SimpleExpression(Kind kind, const SimpleAtom& arg0, const Simp
   m_args[1] = arg1;
   m_kind = kind;
   assert(get_simple_expression_arg_count(kind) == 2);
+}
+
+SimpleExpression::SimpleExpression(Kind kind,
+                                   const SimpleAtom& arg0,
+                                   const SimpleAtom& arg1,
+                                   const SimpleAtom& arg2)
+    : n_args(3) {
+  m_args[0] = arg0;
+  m_args[1] = arg1;
+  m_args[2] = arg2;
+  m_kind = kind;
+  assert(get_simple_expression_arg_count(kind) == 3);
 }
 
 goos::Object SimpleExpression::to_form(const std::vector<DecompilerLabel>& labels,

@@ -285,7 +285,12 @@ class Compiler {
                                               StructureType* type);
   Val* generate_inspector_for_bitfield_type(const goos::Object& form, Env* env, BitFieldType* type);
   RegVal* compile_get_method_of_type(const goos::Object& form,
-                                     const TypeSpec& type,
+                                     const TypeSpec& compile_time_type,
+                                     RegVal* type_object,
+                                     const std::string& method_name,
+                                     Env* env);
+  RegVal* compile_get_method_of_type(const goos::Object& form,
+                                     const TypeSpec& compile_time_type,
                                      const std::string& method_name,
                                      Env* env);
   RegVal* compile_get_method_of_object(const goos::Object& form,

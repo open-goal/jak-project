@@ -154,6 +154,8 @@ class TypeSystem {
   Type* lookup_type_allow_partial_def(const TypeSpec& ts) const;
   Type* lookup_type_allow_partial_def(const std::string& name) const;
 
+  int get_load_size_allow_partial_def(const TypeSpec& ts) const;
+
   MethodInfo declare_method(const std::string& type_name,
                             const std::string& method_name,
                             bool no_virtual,

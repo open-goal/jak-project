@@ -181,15 +181,14 @@ void pop_helper(const std::vector<RegisterAccess>& vars,
           submit_reg_to_var.push_back(var_idx);
           submit_regs.push_back(var.reg());
         } else {
-          /*
-          auto var_id = env.get_program_var_id(var);
-          fmt::print(
-              "Unsafe to pop {}: used {} times, def {} times, expected use {} ({} {} rd: {}) ({} "
-              "{})\n",
-              var.to_string(env), use_def.use_count(), use_def.def_count(), times,
-              var.reg().to_string(), var.idx(), var.mode() == AccessMode::READ,
-              var_id.reg.to_string(), var_id.id);
-              */
+          // auto var_id = env.get_program_var_id(var);
+          //          fmt::print(
+          //              "Unsafe to pop {}: used {} times, def {} times, expected use {} ({} {} rd:
+          //              {}) ({} "
+          //              "{})\n",
+          //              var.to_string(env), use_def.use_count(), use_def.def_count(), times,
+          //              var.reg().to_string(), var.idx(), var.mode() == AccessMode::READ,
+          //              var_id.reg.to_string(), var_id.id);
 
           //          if (var.to_string(env) == "a3-0") {
           //            for (auto& use : use_def.uses) {
@@ -951,6 +950,54 @@ void SimpleExpressionElement::update_from_stack_pcypld(const Env& env,
   result->push_back(new_form);
 }
 
+void SimpleExpressionElement::update_from_stack_vector_plus_minus(bool is_add,
+                                                                  const Env& env,
+                                                                  FormPool& pool,
+                                                                  FormStack& stack,
+                                                                  std::vector<FormElement*>* result,
+                                                                  bool allow_side_effects) {
+  std::vector<Form*> popped_args =
+      pop_to_forms({m_expr.get_arg(0).var(), m_expr.get_arg(1).var(), m_expr.get_arg(2).var()}, env,
+                   pool, stack, allow_side_effects);
+
+  for (int i = 0; i < 3; i++) {
+    auto arg_type = env.get_types_before_op(m_my_idx).get(m_expr.get_arg(i).var().reg());
+    if (arg_type.typespec() != TypeSpec("vector")) {
+      popped_args.at(i) = cast_form(popped_args.at(i), TypeSpec("vector"), pool, env);
+    }
+  }
+
+  auto new_form = pool.alloc_element<GenericElement>(
+      GenericOperator::make_fixed(is_add ? FixedOperatorKind::VECTOR_PLUS
+                                         : FixedOperatorKind::VECTOR_MINUS),
+      std::vector<Form*>{popped_args.at(0), popped_args.at(1), popped_args.at(2)});
+  result->push_back(new_form);
+}
+
+void SimpleExpressionElement::update_from_stack_vector_float_product(
+    const Env& env,
+    FormPool& pool,
+    FormStack& stack,
+    std::vector<FormElement*>* result,
+    bool allow_side_effects) {
+  std::vector<Form*> popped_args =
+      pop_to_forms({m_expr.get_arg(0).var(), m_expr.get_arg(1).var(), m_expr.get_arg(2).var()}, env,
+                   pool, stack, allow_side_effects);
+
+  for (int i = 0; i < 3; i++) {
+    auto arg_type = env.get_types_before_op(m_my_idx).get(m_expr.get_arg(i).var().reg());
+    TypeSpec desired_type(i == 2 ? "float" : "vector");
+    if (arg_type.typespec() != desired_type) {
+      popped_args.at(i) = cast_form(popped_args.at(i), desired_type, pool, env);
+    }
+  }
+
+  auto new_form = pool.alloc_element<GenericElement>(
+      GenericOperator::make_fixed(FixedOperatorKind::VECTOR_FLOAT_PRODUCT),
+      std::vector<Form*>{popped_args.at(0), popped_args.at(1), popped_args.at(2)});
+  result->push_back(new_form);
+}
+
 void SimpleExpressionElement::update_from_stack_copy_first_int_2(const Env& env,
                                                                  FixedOperatorKind kind,
                                                                  FormPool& pool,
@@ -1560,6 +1607,15 @@ void SimpleExpressionElement::update_from_stack(const Env& env,
     case SimpleExpression::Kind::PCPYLD:
       update_from_stack_pcypld(env, pool, stack, result, allow_side_effects);
       break;
+    case SimpleExpression::Kind::VECTOR_PLUS:
+      update_from_stack_vector_plus_minus(true, env, pool, stack, result, allow_side_effects);
+      break;
+    case SimpleExpression::Kind::VECTOR_MINUS:
+      update_from_stack_vector_plus_minus(false, env, pool, stack, result, allow_side_effects);
+      break;
+    case SimpleExpression::Kind::VECTOR_FLOAT_PRODUCT:
+      update_from_stack_vector_float_product(env, pool, stack, result, allow_side_effects);
+      break;
     default:
       throw std::runtime_error(
           fmt::format("SimpleExpressionElement::update_from_stack NYI for {}", to_string(env)));
@@ -1721,10 +1777,140 @@ Form* make_optional_cast(const std::optional<TypeSpec>& cast_type,
     return in;
   }
 }
+
+bool try_to_rewrite_vector_inline_ctor(const Env& env,
+                                       FormPool& pool,
+                                       FormStack& stack,
+                                       const std::string& type_name) {
+  // now, let's check for a matrix initialization.
+  auto matrix_entries = stack.try_getting_active_stack_entries({true, false});
+  if (matrix_entries) {
+    // the (set! var (new 'stack-no-clear 'matrix))
+    if (matrix_entries->at(0).destination->reg() == Register(Reg::GPR, Reg::R0)) {
+      return false;
+    }
+    auto var_name = env.get_variable_name(*matrix_entries->at(0).destination);
+    auto src = matrix_entries->at(0).source->try_as_element<StackStructureDefElement>();
+    if (!src) {
+      return false;
+    }
+    if (src->type() != TypeSpec(type_name)) {
+      return false;
+    }
+
+    // zeroing the rows:
+    std::vector<RegisterAccess> write_vars;
+
+    auto elt = matrix_entries->at(1).elt;
+
+    std::vector<DerefTokenMatcher> token_matchers = {DerefTokenMatcher::string("vec"),
+                                                     DerefTokenMatcher::string("quad")};
+    if (type_name == "vector") {
+      token_matchers = {DerefTokenMatcher::string("quad")};
+    }
+
+    auto matcher = Matcher::set(Matcher::deref(Matcher::any_reg(0), false, token_matchers),
+                                Matcher::cast("uint128", Matcher::integer(0)));
+
+    Form hack;
+    hack.elts().push_back(elt);
+    auto mr = match(matcher, &hack);
+
+    if (mr.matched) {
+      if (var_name != env.get_variable_name(*mr.maps.regs.at(0))) {
+        return false;
+      }
+      write_vars.push_back(*mr.maps.regs.at(0));
+    } else {
+      return false;
+    }
+
+    // success!
+    for (auto& wv : write_vars) {
+      env.get_use_def_info(wv);
+      Env* menv = const_cast<Env*>(&env);
+      menv->disable_use(wv);
+    }
+    stack.pop(2);
+
+    stack.push_value_to_reg(
+        *matrix_entries->at(0).destination,
+        pool.alloc_single_element_form<GenericElement>(
+            nullptr,
+            GenericOperator::make_function(pool.alloc_single_element_form<ConstantTokenElement>(
+                nullptr, fmt::format("new-stack-{}0", type_name)))),
+        true, TypeSpec(type_name));
+    return true;
+  }
+  return false;
+}
+
+bool try_to_rewrite_matrix_inline_ctor(const Env& env, FormPool& pool, FormStack& stack) {
+  // now, let's check for a matrix initialization.
+  auto matrix_entries = stack.try_getting_active_stack_entries({true, false, false, false, false});
+  if (matrix_entries) {
+    // the (set! var (new 'stack-no-clear 'matrix))
+    if (matrix_entries->at(0).destination->reg() == Register(Reg::GPR, Reg::R0)) {
+      return false;
+    }
+    auto var_name = env.get_variable_name(*matrix_entries->at(0).destination);
+    auto src = matrix_entries->at(0).source->try_as_element<StackStructureDefElement>();
+    if (!src) {
+      return false;
+    }
+    if (src->type() != TypeSpec("matrix")) {
+      return false;
+    }
+
+    // zeroing the rows:
+    std::vector<RegisterAccess> write_vars;
+    for (int i = 0; i < 4; i++) {
+      auto elt = matrix_entries->at(i + 1).elt;
+
+      auto matcher = Matcher::set(
+          Matcher::deref(Matcher::any_reg(0), false,
+                         {DerefTokenMatcher::string("vector"), DerefTokenMatcher::integer(i),
+                          DerefTokenMatcher::string("quad")}),
+          Matcher::cast("uint128", Matcher::integer(0)));
+
+      Form hack;
+      hack.elts().push_back(elt);
+      auto mr = match(matcher, &hack);
+
+      if (mr.matched) {
+        if (var_name != env.get_variable_name(*mr.maps.regs.at(0))) {
+          return false;
+        }
+        write_vars.push_back(*mr.maps.regs.at(0));
+      } else {
+        return false;
+      }
+    }
+
+    // success!
+    for (auto& wv : write_vars) {
+      env.get_use_def_info(wv);
+      Env* menv = const_cast<Env*>(&env);
+      menv->disable_use(wv);
+    }
+    stack.pop(5);
+
+    stack.push_value_to_reg(*matrix_entries->at(0).destination,
+                            pool.alloc_single_element_form<GenericElement>(
+                                nullptr, GenericOperator::make_function(
+                                             pool.alloc_single_element_form<ConstantTokenElement>(
+                                                 nullptr, "new-stack-matrix0"))),
+                            true, TypeSpec("matrix"));
+    return true;
+  }
+  return false;
+}
+
 }  // namespace
 
 void StorePlainDeref::push_to_stack(const Env& env, FormPool& pool, FormStack& stack) {
   mark_popped();
+
   if (m_expr.is_var()) {
     // this matches the order in Compiler::compile_set
     auto vars = std::vector<RegisterAccess>({m_expr.var(), m_base_var});
@@ -1758,6 +1944,12 @@ void StorePlainDeref::push_to_stack(const Env& env, FormPool& pool, FormStack& s
                                                make_optional_cast(m_src_cast_type, val, pool, env));
     fr->mark_popped();
     stack.push_form_element(fr, true);
+  }
+
+  if (!try_to_rewrite_matrix_inline_ctor(env, pool, stack)) {
+    if (!try_to_rewrite_vector_inline_ctor(env, pool, stack, "vector")) {
+      try_to_rewrite_vector_inline_ctor(env, pool, stack, "quaternion");
+    }
   }
 }
 
@@ -2229,6 +2421,7 @@ void CondNoElseElement::push_to_stack(const Env& env, FormPool& pool, FormStack&
     x->push_to_stack(env, pool, stack);
   }
 
+  RegisterAccess write_as_value = final_destination;
   bool first = true;
   for (auto& entry : entries) {
     for (auto form : {entry.condition, entry.body}) {
@@ -2243,8 +2436,15 @@ void CondNoElseElement::push_to_stack(const Env& env, FormPool& pool, FormStack&
         }
 
         std::vector<FormElement*> new_entries;
+
         if (form == entry.body && used_as_value) {
-          new_entries = rewrite_to_get_var(temp_stack, pool, final_destination, env);
+          // try to advance us to the real write so we don't use the final_destination,
+          // which may contain the wrong variable, but right register.
+          std::optional<RegisterAccess> written_var;
+          new_entries = rewrite_to_get_var(temp_stack, pool, final_destination, env, &written_var);
+          if (written_var) {
+            write_as_value = *written_var;
+          }
         } else {
           new_entries = temp_stack.rewrite(pool, env);
         }
@@ -2259,7 +2459,7 @@ void CondNoElseElement::push_to_stack(const Env& env, FormPool& pool, FormStack&
 
   if (used_as_value) {
     // TODO - is this wrong?
-    stack.push_value_to_reg(final_destination, pool.alloc_single_form(nullptr, this), true,
+    stack.push_value_to_reg(write_as_value, pool.alloc_single_form(nullptr, this), true,
                             env.get_variable_type(final_destination, false));
   } else {
     stack.push_form_element(this, true);
@@ -2386,10 +2586,12 @@ void CondWithElseElement::push_to_stack(const Env& env, FormPool& pool, FormStac
   if (rewrite_as_set && !set_unused) {
     // might not be the same if a set is eliminated by a coloring move.
     // assert(dest_sets.size() == write_output_forms.size());
-    for (size_t i = 0; i < dest_sets.size() - 1; i++) {
-      auto var = dest_sets.at(i)->dst();
-      auto* env2 = const_cast<Env*>(&env);
-      env2->disable_def(var, env2->func->warnings);
+    if (!dest_sets.empty()) {
+      for (size_t i = 0; i < dest_sets.size() - 1; i++) {
+        auto var = dest_sets.at(i)->dst();
+        auto* env2 = const_cast<Env*>(&env);
+        env2->disable_def(var, env2->func->warnings);
+      }
     }
   }
 
@@ -2806,6 +3008,15 @@ FormElement* ConditionElement::make_generic(const Env& env,
           nullptr, SimpleAtom::make_int_constant(0));
       casted.push_back(zero);
       return pool.alloc_element<GenericElement>(GenericOperator::make_fixed(FixedOperatorKind::LEQ),
+                                                casted);
+    }
+
+    case IR2_Condition::Kind::LESS_THAN_ZERO_UNSIGNED: {
+      auto casted = make_casts_if_needed(source_forms, types, TypeSpec("uint"), pool, env);
+      auto zero = pool.alloc_single_element_form<SimpleAtomElement>(
+          nullptr, SimpleAtom::make_int_constant(0));
+      casted.push_back(zero);
+      return pool.alloc_element<GenericElement>(GenericOperator::make_fixed(FixedOperatorKind::LT),
                                                 casted);
     }
 
@@ -3322,6 +3533,10 @@ void ArrayFieldAccess::update_with_val(Form* new_val,
       auto base = match_result.maps.forms.at(0);
       assert(idx && base);
 
+      if (m_flipped) {
+        std::swap(idx, base);
+      }
+
       std::vector<DerefToken> tokens = m_deref_tokens;
       for (auto& x : tokens) {
         if (x.kind() == DerefToken::Kind::EXPRESSION_PLACEHOLDER) {
@@ -3382,10 +3597,12 @@ void ArrayFieldAccess::update_with_val(Form* new_val,
     if (m_expected_stride == 1) {
       // reg0 is idx
       auto reg0_matcher =
-          Matcher::match_or({Matcher::cast("int", Matcher::any(0)), Matcher::any(0)});
+          Matcher::match_or({Matcher::cast("int", Matcher::any(0)),
+                             Matcher::cast("uint", Matcher::any(0)), Matcher::any(0)});
       // reg1 is base
       auto reg1_matcher =
-          Matcher::match_or({Matcher::cast("int", Matcher::any(1)), Matcher::any(1)});
+          Matcher::match_or({Matcher::cast("int", Matcher::any(1)),
+                             Matcher::cast("uint", Matcher::any(1)), Matcher::any(1)});
       auto matcher = Matcher::fixed_op(FixedOperatorKind::ADDITION, {reg0_matcher, reg1_matcher});
       auto match_result = match(matcher, new_val);
       if (!match_result.matched) {
@@ -3580,6 +3797,163 @@ void StackSpillStoreElement::push_to_stack(const Env& env, FormPool& pool, FormS
   stack.push_form_element(pool.alloc_element<SetFormFormElement>(dst, src), true);
 }
 
+namespace {
+
+/*!
+ * Is the given form an assembly form to load data from a vector to the given vf register?
+ */
+Form* is_load_store_vector_to_reg(const Register& reg,
+                                  FormElement* form,
+                                  bool is_load,
+                                  int* idx_out) {
+  auto as_vf_op = dynamic_cast<VectorFloatLoadStoreElement*>(form);
+  if (!as_vf_op) {
+    return nullptr;
+  }
+
+  if (as_vf_op->is_load() != is_load) {
+    return nullptr;
+  }
+
+  if (as_vf_op->vf_reg() != reg) {
+    return nullptr;
+  }
+
+  // check that we actually got a real vector type, not some other thing that happens to have a
+  // quad.
+  auto& addr_type = as_vf_op->addr_type();
+  if (!addr_type || addr_type != TypeSpec("vector")) {
+    return nullptr;
+  }
+
+  // make sure we load from the right spot, and extract the base.
+  auto loc = as_vf_op->location();
+  auto matcher = Matcher::deref(Matcher::any(0), true, {DerefTokenMatcher::string("quad")});
+  auto mr = match(matcher, loc);
+  if (!mr.matched) {
+    return nullptr;
+  }
+
+  // output the index of the actual store op, for reguse purposes.
+  if (idx_out) {
+    *idx_out = as_vf_op->my_idx();
+  }
+
+  // got it!
+  return mr.maps.forms.at(0);
+}
+
+/*!
+ * Imagine:
+ *   x = foo
+ *   { // some macro/inlined thing
+ *     read from x
+ *     return x;
+ *   }
+ *
+ * and you want to transform it to
+ * x = some_macro(foo, blah, ...)
+ *
+ * this will get you foo (and pop it from the stack), assuming the stack is sitting right after the
+ * point where the inline thing evaluated foo.
+ *
+ * For later book-keeping of reg use, if it gets you something new, it will set found_orig_out,
+ * and also give you the regaccess for the x of the x = foo.
+ *
+ * If you use this, you are responsible for adding code that sets x again.
+ */
+Form* repop_passthrough_arg(Form* in,
+                            FormStack& stack,
+                            const Env& env,
+                            RegisterAccess* orig_out,
+                            bool* found_orig_out) {
+  *found_orig_out = false;
+
+  auto as_atom = form_as_atom(in);
+  if (as_atom && as_atom->is_var()) {
+    return stack.pop_reg(as_atom->var().reg(), {}, env, true, -1, orig_out, found_orig_out);
+  }
+  return in;
+}
+
+/*!
+ * Try to convert a form to a regaccess.
+ */
+std::optional<RegisterAccess> form_as_ra(Form* form) {
+  auto as_atom = form_as_atom(form);
+  if (as_atom && as_atom->is_var()) {
+    return as_atom->var();
+  }
+  return {};
+}
+
+bool try_vector_reset_inline(const Env& env,
+                             FormPool& pool,
+                             FormStack& stack,
+                             FormElement* store_element) {
+  // the store
+  int store_idx = -1;
+  auto store = is_load_store_vector_to_reg(Register(Reg::VF, 0), store_element, false, &store_idx);
+  if (!store) {
+    return false;
+  }
+
+  // remove these from the stack.
+  // stack.pop(1);
+
+  // the store here _should_ have failed propagation and just given us a variable.
+  // if this is causing issues, we can run this check before propagating, as well call this from
+  // the function that attempts the pop.
+  auto store_var = form_as_ra(store);
+  if (!store_var) {
+    env.func->warnings.general_warning("Almost found vector reset, but couldn't get store var.");
+    // stack.push_form_element(new_thing->elts().at(0), true);
+    return false;
+  }
+
+  // ignore the store as a use. This will allow the entire vector-! expression to be expression
+  // propagated, if it is appropriate.
+  if (store_var) {
+    auto menv = const_cast<Env*>(&env);
+    menv->disable_use(*store_var);
+  }
+
+  // now try to see if we can pop the first arg (destination vector).
+  bool got_orig = false;
+  RegisterAccess orig;
+  store = repop_passthrough_arg(store, stack, env, &orig, &got_orig);
+
+  // create the actual  form
+  Form* new_thing = pool.alloc_single_element_form<GenericElement>(
+      nullptr,
+      GenericOperator::make_function(
+          pool.alloc_single_element_form<ConstantTokenElement>(nullptr, "vector-reset!")),
+      std::vector<Form*>{store});
+
+  if (got_orig) {
+    // we got a value for the destination.  because we used the special repop passthrough,
+    // we're responsible for inserting a set to set the var that we "stole" from.
+    // We do this through push_value_to_reg, so it can be propagated if needed, but only if
+    // somebody will actually read the output.
+    // to tell, we look at the live out of the store op and the end - the earlier one would of
+    // course be live out always because the store will read it again.
+
+    auto& op_info = env.reg_use().op.at(store_idx);
+    if (op_info.live.find(orig.reg()) == op_info.live.end()) {
+      // nobody reads it, don't bother.
+      stack.push_form_element(new_thing->elts().at(0), true);
+    } else {
+      stack.push_value_to_reg(orig, new_thing, true, TypeSpec("vector"));
+    }
+
+  } else {
+    stack.push_form_element(new_thing->elts().at(0), true);
+  }
+
+  return true;
+}
+}  // namespace
+
 void VectorFloatLoadStoreElement::push_to_stack(const Env& env, FormPool& pool, FormStack& stack) {
   mark_popped();
 
@@ -3588,10 +3962,25 @@ void VectorFloatLoadStoreElement::push_to_stack(const Env& env, FormPool& pool, 
     auto root = loc_as_deref->base();
     auto atom = form_as_atom(root);
     if (atom && atom->get_kind() == SimpleAtom::Kind::VARIABLE) {
-      loc_as_deref->set_base(pop_to_forms({atom->var()}, env, pool, stack, true).at(0));
+      m_addr_type = env.get_variable_type(atom->var(), true);
     }
   }
 
+  auto name = env.func->guessed_name.to_string();
+  // don't find vector-! inside of vector-!.
+  if (!m_is_load && name != "vector-!" && name != "vector+!" && name != "vector-reset!") {
+    if (try_vector_reset_inline(env, pool, stack, this)) {
+      return;
+    }
+  }
+
+  if (loc_as_deref) {
+    auto root = loc_as_deref->base();
+    auto atom = form_as_atom(root);
+    if (atom && atom->get_kind() == SimpleAtom::Kind::VARIABLE) {
+      loc_as_deref->set_base(pop_to_forms({atom->var()}, env, pool, stack, true).at(0));
+    }
+  }
   stack.push_form_element(this, true);
 }
 

@@ -854,8 +854,8 @@ std::string ObjectFileDB::ir2_function_to_string(ObjectFileData& data, Function&
         auto& op = func.get_atomic_op_at_instr(instr_id);
         op_id = func.ir2.atomic_ops->instruction_to_atomic_op.at(instr_id);
         append_commented(line, printed_comment,
-                         op.to_form(data.linked_data.labels, func.ir2.env).print() + "[" +
-                             std::to_string(op_id) + "]");
+                         fmt::format("[{:3d}] {}", op_id,
+                                     op.to_form(data.linked_data.labels, func.ir2.env).print()));
 
         if (func.ir2.env.has_type_analysis()) {
           append_commented(

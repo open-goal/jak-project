@@ -40,3 +40,12 @@ TEST(DecompilerInstructionParser, ProgramLabels) {
   auto result = parser.parse_program(program);
   EXPECT_EQ(result.print(), program);
 }
+
+TEST(DecompilerInstructionParser, VU) {
+  InstructionParser parser;
+  std::string program =
+      "  vmove.xy vf1, vf2\n"
+      "  vsub.yw vf1, vf2, vf25\n";
+  auto result = parser.parse_program(program);
+  EXPECT_EQ(result.print(), program);
+}
