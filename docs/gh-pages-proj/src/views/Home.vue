@@ -129,7 +129,7 @@ export default {
     return {
       recentPRs: [],
       jak1BlackLabelStatus: {
-        decompDone: projectProgress.jak1.locPercentage.value,
+        decompDone: (projectProgress.jak1.locPercentage.value / 750000.0) * 100.0,
         decompLabel: projectProgress.jak1.locPercentage.label
       }
     };
