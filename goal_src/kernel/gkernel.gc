@@ -95,13 +95,13 @@
   )
 
 ;; the main stack for running GOAL code!
-;; all user code (that I know of) runs using *dram-stack*
+;; most user code runs using *dram-stack*
 (define *dram-stack* (new 'global 'array 'uint8 DPROCESS_STACK_SIZE))
 ;; note - this name is a bit confusing. The kernel-dram-stack is not the stack that the kernel runs in.
 ;; I think it refers to the fact that it's _not_ the scratchpad stack
 (defconstant *kernel-dram-stack* (&+ *dram-stack* DPROCESS_STACK_SIZE))
 
-;; I don't think this stack is used, but I'm not sure.
+;; another stack for running GOAL processes, this one uses the scratchpad (fast memory).
 (set! (-> *kernel-context* fast-stack-top) *scratch-memory-top*)
 
 ;; A context with all process masks set to 0. This can be used to iterate through a process tree
@@ -959,7 +959,7 @@
 ;; they actually need.  To avoid heap fragmentation, the dead-pool-heap system will relocate
 ;; processes. This requires that you implement the relocate method on your process.
 
-;; DANGER: the dead pool heap is _not_ a proper process tree. Do not attempt to treat it like on.
+;; DANGER: the dead pool heap is _not_ a proper process tree. Do not attempt to treat it like one.
 ;;  If you get-process, you should immediately activate it. The activate method will (change-parent)
 ;;  and this will get stuck in an endless loop if you do it on a process that wasn't the most recent one.
 
@@ -1645,8 +1645,7 @@
 (define-extern *active-pool* process-tree)
 
 (defun kernel-dispatcher ()
-  "Run the kernel!
-  "
+  "Run the kernel!"
   
   (when *listener-function*
     (let ((result (reset-and-call (-> *listener-process* main-thread) *listener-function*)))

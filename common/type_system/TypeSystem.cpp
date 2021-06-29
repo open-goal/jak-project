@@ -161,7 +161,7 @@ void TypeSystem::forward_declare_type_as(const std::string& new_type,
       auto old_parent_it = m_types.find(fwd_it->second);
       auto new_parent_it = m_types.find(parent_type);
 
-      auto old_ts = TypeSpec(old_parent_it->second->get_name());
+      auto old_ts = TypeSpec(fwd_it->second);
 
       if (old_parent_it != m_types.end() && new_parent_it != m_types.end()) {
         auto new_ts = TypeSpec(new_parent_it->second->get_name());
