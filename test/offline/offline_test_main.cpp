@@ -46,35 +46,24 @@ const std::unordered_set<std::string> g_functions_expected_to_reject = {
     "(method 9 bounding-box)",   // handwritten asm loop
     "(method 14 bounding-box)",  // handwritten asm loop
     // trig
-    "exp",
-    "atan0",
-    "sincos!",
-    "sincos-rad!",
+    "exp", "atan0", "sincos!", "sincos-rad!",
     // matrix
     "(method 9 matrix)",  // handwritten asm loop
-    "matrix-axis-sin-cos!",
-    "matrix-axis-sin-cos-vu!",
+    "matrix-axis-sin-cos!", "matrix-axis-sin-cos-vu!",
     // dma-h
     "dma-count-until-done",  // dma asm loop
-    "dma-sync-with-count",
-    "dma-send-no-scratch",
-    "dma-sync-fast",
+    "dma-sync-with-count", "dma-send-no-scratch", "dma-sync-fast",
     // dma
-    "symlink2",
-    "symlink3",
+    "symlink2", "symlink3",
     "dma-sync-hang",  // handwritten asm
     "vector=",        // asm branching
     // display
     "vblank-handler",  // asm
-    "vif1-handler",
-    "vif1-handler-debug",
+    "vif1-handler", "vif1-handler-debug",
     // stats-h
-    "(method 11 perf-stat)",
-    "(method 12 perf-stat)",
+    "(method 11 perf-stat)", "(method 12 perf-stat)",
     // ripple - asm
-    "ripple-execute-init",
-    "ripple-create-wave-table",
-    "ripple-apply-wave-table",
+    "ripple-execute-init", "ripple-create-wave-table", "ripple-apply-wave-table",
     "ripple-matrix-scale",
     // ripple - calls an asm function
     "ripple-execute",
@@ -90,16 +79,14 @@ const std::unordered_set<std::string> g_functions_expected_to_reject = {
     // actor-link-h
     "(method 21 actor-link-info)",  // BUG: sc cfg / cfg-ir bug
     "(method 20 actor-link-info)",
+
+    "debug-menu-item-var-render"  // asm
 };
 
 const std::unordered_set<std::string> g_functions_to_skip_compiling = {
     /// GCOMMON
     // these functions are not implemented by the compiler in OpenGOAL, but are in GOAL.
-    "abs",
-    "ash",
-    "min",
-    "max",
-    "lognor",
+    "abs", "ash", "min", "max", "lognor",
     // weird PS2 specific debug registers:
     "breakpoint-range-set!",
     // inline assembly
@@ -117,8 +104,7 @@ const std::unordered_set<std::string> g_functions_to_skip_compiling = {
     "enter-state",  // stack pointer asm
 
     /// MATH
-    "rand-vu-init",
-    "rand-vu",
+    "rand-vu-init", "rand-vu",
     "rand-vu-nostep",  // random hardware
 
     // trig
@@ -142,19 +128,14 @@ const std::unordered_set<std::string> g_functions_to_skip_compiling = {
     "disasm-dma-list",  // missing a single cast :(
 
     // math camera
-    "transform-point-vector!",
-    "transform-point-qword!",
-    "transform-point-vector-scale!",
+    "transform-point-vector!", "transform-point-qword!", "transform-point-vector-scale!",
 
     // display-h
     "put-draw-env",
 
     // vector
     // bad decisions on float vs int128
-    "vector-degf",
-    "vector-degmod",
-    "vector-deg-diff",
-    "vector-degi",
+    "vector-degf", "vector-degmod", "vector-deg-diff", "vector-degi",
 
     // asm
     "invalidate-cache-line",
@@ -165,8 +146,7 @@ const std::unordered_set<std::string> g_functions_to_skip_compiling = {
     "(method 15 sync-info-paused)",  // needs display stuff first
 
     // ripple - calls an asm function
-    "ripple-execute",
-};
+    "ripple-execute"};
 
 // default location for the data. It can be changed with a command line argument.
 std::string g_iso_data_path = "";
