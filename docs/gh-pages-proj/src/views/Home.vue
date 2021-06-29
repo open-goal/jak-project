@@ -88,7 +88,7 @@
                   {{ pr.user.login }}
                 </p>
                 <div class="text--primary">
-                  {{ pr.body }}
+                  <pre class="wrapped-pre">{{ pr.body }}</pre>
                 </div>
               </v-card-text>
               <v-card-actions>
@@ -111,6 +111,11 @@
   background-position: center;
   background-size: cover;
   min-height: 50vh;
+}
+.wrapped-pre {
+  word-wrap: normal;
+  white-space: pre-wrap;
+  font-family: "Roboto", sans-serif !important;
 }
 </style>
 
@@ -144,7 +149,7 @@ export default {
         `https://api.github.com/search/issues?q=repo:water111/jak-project+is:pr+is:merged&sort=updated`
       );
       const data = await response.json();
-      const numPRs = 6;
+      const numPRs = 9;
       for (var i = 0; i < numPRs; i++) {
         var pr = data.items[i];
         if (pr.body.length == 0) {
