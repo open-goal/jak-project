@@ -114,8 +114,7 @@
               (the-as bsp-header #f)
               )
              (else
-              (format 0 "SUCCESSFUL RELOCATION OF BSP!!!!~%")
-              (format 0 "Info: ~A~%" (-> obj info))
+              (load-dbg "bsp login: ~A~%" obj)
               (set! (-> s5-0 bsp) obj)
               (set! (-> obj level) s5-0)
               obj
@@ -1255,7 +1254,10 @@
     (set! *print-login* #f)
     (level-status-set! (level-get *level* startup-level) 'active)
     )
+
+  (load-dbg "Load complete. Level: ~A. Now starting display!~%" (-> *level* level0))
   (on #t)
+  (load-dbg "Display started: ~A~%" *dproc*)
   (when arg1
     ;; (dummy-9 *game-info* 'game #f (the-as string #f)) TODO
     )
@@ -1622,7 +1624,9 @@
 
 (defmacro test-play ()
   `(begin
+    ;; before calling play, the C Kernel would set this.
     (define *kernel-boot-message* 'play)
+    (load-package "game" global)
     (play #t #t)
     )
   )
