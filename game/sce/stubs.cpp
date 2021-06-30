@@ -28,9 +28,7 @@ void sceGsExecStoreImage() {
   assert(false);
 }
 
-void FlushCache() {
-  assert(false);
-}
+void FlushCache() {}
 
 }  // namespace ee
 

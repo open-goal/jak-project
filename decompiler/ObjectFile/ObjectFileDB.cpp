@@ -763,6 +763,9 @@ void ObjectFileDB::analyze_functions_ir1(const Config& config) {
 void ObjectFileDB::dump_raw_objects(const std::string& output_dir) {
   for_each_obj([&](ObjectFileData& data) {
     auto dest = output_dir + "/" + data.to_unique_name();
+    if (data.obj_version != 3) {
+      dest += ".go";
+    }
     file_util::write_binary_file(dest, data.data.data(), data.data.size());
   });
 }

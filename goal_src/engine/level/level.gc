@@ -93,6 +93,44 @@
   )
 
 ;; relocate bsp-header
+(defmethod relocate bsp-header ((obj bsp-header) (arg0 int))
+  (let ((s5-0 (-> *level* unknown-level-2)))
+    (if s5-0
+        (cond
+          (obj
+           (cond
+             ((not (type-type? (-> obj type) bsp-header))
+              (format 0 "ERROR: level ~A is not a bsp-header.~%" (-> s5-0 name))
+              (the-as bsp-header #f)
+              )
+             ((not (file-info-correct-version? (-> obj info) (file-kind level-bt) 0))
+              (the-as bsp-header #f)
+              )
+             ((< 2048 (-> obj visible-list-length))
+              (format 0 "ERROR: level ~A visible-list-length ~d is greater than 2048 (16384 drawables).~%"
+               (-> s5-0 name)
+               (-> obj visible-list-length)
+               )
+              (the-as bsp-header #f)
+              )
+             (else
+              (load-dbg "bsp login: ~A~%" obj)
+              (set! (-> s5-0 bsp) obj)
+              (set! (-> obj level) s5-0)
+              obj
+              )
+             )
+           )
+          (else
+           (format 0 "ERROR: level ~A is not a valid file.~%"
+            (-> s5-0 name)
+            )
+           (the-as bsp-header #f)
+           )
+          )
+        )
+    )
+  )
 
 (defmethod dummy-24 level ((obj level))
   (unless (or (not (-> obj bsp)) (= *kernel-boot-mode* 'debug-boot))
@@ -448,7 +486,8 @@
   (cond
     ((-> obj bsp)
      (set! (-> *level* unknown-level-1) (the-as level (-> obj bsp)))
-     (login-level-textures *texture-pool* obj (-> obj bsp unk-data-1-len) (the-as (pointer texture-id) (-> obj bsp unk-data-1)))
+     ;; TODO
+     ;;(login-level-textures *texture-pool* obj (-> obj bsp unk-data-1-len) (the-as (pointer texture-id) (-> obj bsp unk-data-1)))
      (let ((bsp (-> obj bsp)))
        (when (nonzero? (-> bsp adgifs))
          (let ((adgifs (-> bsp adgifs)))
@@ -479,6 +518,9 @@
    (current-timer int)
    (initial-timer int)
    )
+  ;; TODO REMOVE
+  (goto skip-hard-stuff)
+
   0
   (let ((level-drawable-trees (-> loaded-level bsp drawable-trees)))
    0
@@ -651,6 +693,8 @@
    (set! (-> *subdivide-settings* close 3) f0-0)
    (set! (-> *subdivide-settings* far 3) f1-0)
    )
+
+  (label skip-hard-stuff)
   (dummy-25 loaded-level)
   (dummy-24 loaded-level)
   (set! (-> loaded-level status) 'loaded)
@@ -676,11 +720,11 @@
          (set! loading-level (-> obj heap))
          (set! (-> *level* unknown-level-1) (the-as level (-> obj bsp)))
          (set! (-> *level* unknown-level-2) obj)
-         (dummy-18 (-> obj bsp))
+         ;; (dummy-18 (-> obj bsp)) TODO
          (set! (-> obj status) 'alive)
-         (dummy-15 *game-info*)
-         (send-event *camera* 'level-activate (-> obj name))
-         (send-event *target* 'level-activate (-> obj name))
+         ;; (dummy-15 *game-info*) TODO
+         ;; (send-event *camera* 'level-activate (-> obj name))
+         ;; (send-event *target* 'level-activate (-> obj name))
          )
      )
     )
@@ -1210,9 +1254,12 @@
     (set! *print-login* #f)
     (level-status-set! (level-get *level* startup-level) 'active)
     )
+
+  (load-dbg "Load complete. Level: ~A. Now starting display!~%" (-> *level* level0))
   (on #t)
+  (load-dbg "Display started: ~A~%" *dproc*)
   (when arg1
-    (dummy-9 *game-info* 'game #f (the-as string #f))
+    ;; (dummy-9 *game-info* 'game #f (the-as string #f)) TODO
     )
   0
   )
@@ -1575,3 +1622,11 @@
 
 
 
+(defmacro test-play ()
+  `(begin
+    ;; before calling play, the C Kernel would set this.
+    (define *kernel-boot-message* 'play)
+    (load-package "game" global)
+    (play #t #t)
+    )
+  )
