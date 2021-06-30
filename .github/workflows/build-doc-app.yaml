@@ -1,0 +1,42 @@
+name: Re-build Doc Site
+
+# Controls when the action will run. Triggers the workflow on push or pull request
+# events but only for the master branch
+on:
+  push:
+    branches:
+      - master
+    paths:
+      - 'goal_src/**'
+      - 'docs/gh-pages-proj/**'
+
+jobs:
+  lint:
+    name: Update Documentation Site
+    runs-on: ubuntu-20.04
+    # Set some sort of timeout in the event of run-away builds.  We are limited on concurrent jobs so, get rid of them.
+    timeout-minutes: 10
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v2
+
+      # just do a sed for now
+      - name: Update Line Count
+        run: |
+          chmod +x ./.github/workflows/scripts/line-count.sh
+          ./.github/workflows/scripts/line-count.sh
+
+      - name: Update Site
+        run: |
+          cd docs/gh-pages-proj
+          npm install
+          npm run build
+          cd ../..
+          cp -r ./docs/gh-pages-proj/dist/* ./docs/
+
+      - name: Add & Commit
+        uses: EndBug/add-and-commit@v7.2.1
+        with:
+          default_author: github_actions
+          pull_strategy: "NO-PULL"
+          message: "Updated github pages site"
