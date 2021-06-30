@@ -61,6 +61,7 @@ class Debugger {
   void update_break_info();
   DebugInfo& get_debug_info_for_object(const std::string& object_name);
   const BreakInfo& get_cached_break_info() { return m_break_info; }
+  std::string get_info_about_addr(u32 addr);
 
   /*!
    * Get the x86 address of GOAL memory

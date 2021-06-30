@@ -127,6 +127,26 @@ bool Debugger::attach_and_break() {
   return false;
 }
 
+std::string Debugger::get_info_about_addr(u32 addr) {
+  if (addr >= EE_MAIN_MEM_LOW_PROTECT && addr < EE_MAIN_MEM_SIZE) {
+    auto map_loc = m_memory_map.lookup(addr);
+    if (map_loc.empty) {
+      return "Unknown Address";
+    }
+    std::string result = fmt::format("Object: {}\n", map_loc.obj_name);
+    u64 obj_offset = addr - map_loc.start_addr;
+    FunctionDebugInfo* info = nullptr;
+    std::string name;
+    if (get_debug_info_for_object(map_loc.obj_name)
+            .lookup_function(&info, &name, obj_offset, map_loc.seg_id)) {
+      result += fmt::format("Name: {}\n", name);
+    }
+    return result;
+  } else {
+    return "Outside of GOAL memory";
+  }
+}
+
 /*!
  * Read the registers, symbol table, and instructions near rip.
  * Print out some info about where we are.

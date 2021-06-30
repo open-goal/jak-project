@@ -29,7 +29,7 @@ void sceGsExecStoreImage() {
 }
 
 void FlushCache() {
-  assert(false);
+
 }
 
 }  // namespace ee
