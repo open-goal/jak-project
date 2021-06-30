@@ -322,6 +322,7 @@
 
 ;; Backup some values, and restore after executing body.
 ;; Non-dynamic (nonlocal jumps out of body will skip restore)
+;; NOTE : GOAL protected defs in a FIFO manner (this is FILO/LIFO), this should be fixed at some point
 (defmacro protect (defs &rest body)
   (if (null? defs)
     ;; nothing to backup, just insert body (base case)
@@ -510,7 +511,7 @@
   )
 
 (defmacro align64 (value)
-  `(logand -64 (+ (the-as int ,value) 63))
+  `(logand -64 (&+ (the-as pointer ,value) 63))
   )
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;

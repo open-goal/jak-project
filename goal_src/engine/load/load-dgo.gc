@@ -25,11 +25,11 @@
 ;; The OVERLORD responds with the same message.
 (deftype load-dgo-msg (structure)
   ((rsvd       uint16              :offset-assert 0) ;; unused?
-   (result     load-msg-result :offset-assert 2) ;; status from OVERLORD
-   (b1         uint32              :offset-assert 4) ;; EE -> OVERLORD, first temp load buffer
-   (b2         uint32              :offset-assert 8) ;; EE -> OVERLORD, second temp load buffer
-   (bt         uint32              :offset-assert 12) ;; EE -> OVERLORD, location of heap
-   (name       uint128          :offset-assert 16) ;; EE -> OVERLORD, name of file.
+   (result     load-msg-result     :offset-assert 2) ;; status from OVERLORD
+   (b1         pointer             :offset-assert 4) ;; EE -> OVERLORD, first temp load buffer
+   (b2         pointer             :offset-assert 8) ;; EE -> OVERLORD, second temp load buffer
+   (bt         pointer             :offset-assert 12) ;; EE -> OVERLORD, location of heap
+   (name       uint128             :offset-assert 16) ;; EE -> OVERLORD, name of file.
    (name-chars uint8   16          :offset  16)       ;; name of file (as chars)
    (address    uint32              :offset   4) ;; OVERLORD -> EE, location of loaded file.
    )
@@ -268,7 +268,7 @@ struct DgoHeader {
 
 (define *dgo-time* (the-as uint 0))
 
-(defun dgo-load-begin ((name string) (buffer1 int) (buffer2 int) (current-heap int))
+(defun dgo-load-begin ((name string) (buffer1 pointer) (buffer2 pointer) (buffer-top pointer))
   "Send a DGO load RPC!"
 
   ;; remember when we started
@@ -282,9 +282,9 @@ struct DgoHeader {
   (let ((cmd (the-as load-dgo-msg (add-element *load-dgo-rpc*))))
     ;; set parameters
     (set! (-> cmd result) (load-msg-result invalid))
-    (set! (-> cmd b1) (the-as uint buffer1))
-    (set! (-> cmd b2) (the-as uint buffer2))
-    (set! (-> cmd bt) (the-as uint current-heap))
+    (set! (-> cmd b1) buffer1)
+    (set! (-> cmd b2) buffer2)
+    (set! (-> cmd bt) buffer-top)
     ;; modified due to OpenGOAL not supporting uint128 return values yet
     (set! (-> cmd name) (string->sound-name name))
     ;; call now!
@@ -333,13 +333,13 @@ struct DgoHeader {
     )
   )
 
-(defun dgo-load-continue ((current-heap pointer))
+(defun dgo-load-continue ((buffer-top pointer))
   "Send a command to to the IOP to continue loading a DGO"
   (let ((cmd (the-as load-dgo-msg (add-element *load-dgo-rpc*))))
     (set! (-> cmd result) (load-msg-result invalid))
-    (set! (-> cmd b1) (the-as uint 0))
-    (set! (-> cmd b2) (the-as uint 0))
-    (set! (-> cmd bt) (the-as uint current-heap))
+    (set! (-> cmd b1) (the pointer 0))
+    (set! (-> cmd b2) (the pointer 0))
+    (set! (-> cmd bt) buffer-top)
     (set! (-> cmd name) (the-as uint128 0))
     (call *load-dgo-rpc* (the-as uint 1) (the-as pointer cmd) (the-as uint 32))
     (the-as int cmd)
