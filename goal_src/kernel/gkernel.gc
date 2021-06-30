@@ -108,6 +108,13 @@
 ;; without executing anything, to find a process for instance.
 (define *null-kernel-context* (new 'static 'kernel-context))
 
+(#when PC_PORT
+  ;; We will move stacks on the scratchpad to here.
+  ;; it might be possible to also throw them on the *dram-stack*, but they might depend on these
+  ;; not overlapping. We can spare the 16k of memory.
+  (define *fake-scratchpad-stack* (new 'global 'array 'uint8 (* 16 1024)))
+  )
+
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; Thread and CPU Thread
@@ -1698,7 +1705,7 @@
                ;; check for deadness
                (when (eq? (-> obj status) 'dead)
                  (set! (-> context current-process) #f)
-                 (return-from #f 'dead)
+                 (return 'dead)
                  )
                )
              )
@@ -1731,7 +1738,7 @@
                   (when (eq? (-> obj status) 'dead)
                     ;; oops we died.
                     (set! (-> context current-process) #f)
-                    (return-from #f 'dead)
+                    (return 'dead)
                     )
                   (set! (-> obj status) 'suspended)
                   )
@@ -2199,6 +2206,13 @@
 
 (defmethod activate process ((obj process) (dest process-tree) (name basic) (stack-top pointer))
   "Activate a process! Put it on the given active tree and set up the main thread."
+  (#when PC_PORT
+    (when (= stack-top *scratch-memory-top*)
+      ;; (format #t "Process ~A requested a stack on the scratchpad, moving to fake scratch~%")
+      (set! stack-top (&+ *fake-scratchpad-stack* (* 16 1024)))
+      )
+    )
+  
   (set! (-> obj mask) (logand (-> dest mask) PROCESS_CLEAR_MASK))
   (set! (-> obj status) 'ready)
   (let ((pid (-> *kernel-context* next-pid)))

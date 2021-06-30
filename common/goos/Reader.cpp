@@ -110,27 +110,38 @@ Reader::Reader() {
   add_reader_macro(",@", "unquote-splicing");
 
   // setup table of which characters are valid for starting a symbol
-  for (auto& x : valid_symbols_chars) {
+  for (auto& x : m_valid_symbols_chars) {
     x = false;
   }
 
   for (char x = 'a'; x <= 'z'; x++) {
-    valid_symbols_chars[(int)x] = true;
+    m_valid_symbols_chars[(int)x] = true;
   }
 
   for (char x = 'A'; x <= 'Z'; x++) {
-    valid_symbols_chars[(int)x] = true;
+    m_valid_symbols_chars[(int)x] = true;
   }
 
   for (char x = '0'; x <= '9'; x++) {
-    valid_symbols_chars[(int)x] = true;
+    m_valid_symbols_chars[(int)x] = true;
   }
 
   const char bonus[] = "!$%&*+-/\\.,@^_-;:<>?~=#";
 
   for (const char* c = bonus; *c; c++) {
-    valid_symbols_chars[(int)*c] = true;
+    m_valid_symbols_chars[(int)*c] = true;
   }
+
+  // table of characters that are valid in source code:
+  for (auto& x : m_valid_source_text_chars) {
+    x = false;
+  }
+  for (int i = ' '; i <= '~'; i++) {
+    m_valid_source_text_chars[i] = true;
+  }
+  m_valid_source_text_chars[(int)'\n'] = true;
+  m_valid_source_text_chars[(int)'\t'] = true;
+  m_valid_source_text_chars[(int)'\r'] = true;
 }
 
 /*!
@@ -190,6 +201,17 @@ Object Reader::read_from_file(const std::vector<std::string>& file_path) {
  * Common read for a SourceText
  */
 Object Reader::internal_read(std::shared_ptr<SourceText> text, bool add_top_level) {
+  // validate the input;
+  for (int offset = 0; offset < text->get_size(); offset++) {
+    if (!m_valid_source_text_chars[(u8)text->get_text()[offset]]) {
+      // failed.
+      int line_number = text->get_line_idx(offset) + 1;
+      throw std::runtime_error(fmt::format("Invalid character found on line {} of {}: 0x{:x}",
+                                           line_number, text->get_description(),
+                                           (u32)text->get_text()[offset]));
+    }
+  }
+
   // first create stream
   TextStream ts(text);
 
@@ -203,6 +225,15 @@ Object Reader::internal_read(std::shared_ptr<SourceText> text, bool add_top_leve
   } else {
     return objs;
   }
+}
+
+bool Reader::check_string_is_valid(const std::string& str) const {
+  for (auto c : str) {
+    if (!m_valid_source_text_chars[(u8)c]) {
+      return false;
+    }
+  }
+  return true;
 }
 
 /*!
@@ -258,7 +289,7 @@ Token Reader::get_next_token(TextStream& stream) {
  * These are used to make 'x turn into (quote x) and similar.
  */
 void Reader::add_reader_macro(const std::string& shortcut, std::string replacement) {
-  reader_macros[shortcut] = std::move(replacement);
+  m_reader_macros[shortcut] = std::move(replacement);
 }
 
 /*!
@@ -377,16 +408,16 @@ Object Reader::read_list(TextStream& ts, bool expect_close_paren) {
 
     // reader macro thing:
     std::vector<std::string> reader_macro_string_stack;
-    auto kv = reader_macros.find(tok.text);
-    if (kv != reader_macros.end()) {
-      while (kv != reader_macros.end()) {
+    auto kv = m_reader_macros.find(tok.text);
+    if (kv != m_reader_macros.end()) {
+      while (kv != m_reader_macros.end()) {
         // build a stack of reader macros to apply to this form.
         reader_macro_string_stack.push_back(kv->second);
         if (!ts.text_remains()) {
           throw_reader_error(ts, "Something must follow a reader macro", 0);
         }
         tok = get_next_token(ts);
-        kv = reader_macros.find(tok.text);
+        kv = m_reader_macros.find(tok.text);
       }
     } else {
       // only look for the dot when we aren't following a quote.
@@ -506,7 +537,7 @@ bool Reader::try_token_as_symbol(const Token& tok, Object& obj) {
   // check start character is valid:
   assert(!tok.text.empty());
   char start = tok.text[0];
-  if (valid_symbols_chars[(int)start]) {
+  if (m_valid_symbols_chars[(int)start]) {
     obj = SymbolObject::make_new(symbolTable, tok.text);
     return true;
   } else {
