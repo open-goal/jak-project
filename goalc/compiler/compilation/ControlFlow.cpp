@@ -242,10 +242,6 @@ Val* Compiler::compile_cond(const goos::Object& form, const goos::Object& rest, 
     }
   });
 
-  if (case_result_types.empty()) {
-    throw_compiler_error(form, "Cond must have at least one case");
-  }
-
   if (!got_else) {
     // if no else, clause, return #f.  But don't retype. todo what does goal do here?
     auto get_false = std::make_unique<IR_LoadSymbolPointer>(result, "#f");
