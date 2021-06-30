@@ -5,3 +5,44 @@
 ;; name in dgo: logic-target
 ;; dgos: GAME, ENGINE
 
+
+;; temp, this function is massive and a whole can of worms. Just do nothing for now, it's fine.
+(defun init-target ((cont continue-point))
+  
+  "NOTHING11!!!!"
+  (the object 0)
+  )
+
+(defun stop ((game-mode symbol))
+  "Stop the target system"
+
+  (when *target*
+    (kill-by-name 'target *active-pool*)
+    (set! *target* #f)
+    )
+  (set! (-> *game-info* mode) game-mode)
+  0
+  )
+
+(defun start ((game-mode symbol) (cont continue-point))
+  "Start the target system"
+
+  (set! (-> *level* border?) #f)
+  (set! (-> *setting-control* default border-mode) #f)
+  (stop game-mode)
+  ;; this is also that same macro... i just have no idea how to write it.
+  (let* ((s5-0 (the target (get-process *target-dead-pool* target #x4000)))
+         (v1-3 (when s5-0
+                 ((method-of-type target activate) s5-0 *target-pool* 'target *kernel-dram-stack*)
+                 ((the (function object object object object) run-function-in-process) s5-0 init-target cont)
+                 (-> s5-0 ppointer)
+                 ))
+         )
+      (if v1-3
+        (set! *target* (the target (-> v1-3 0 self)))
+        (set! *target* #f)
+        )
+      )
+  *target*
+  )
+

@@ -10,5 +10,80 @@
   (nonzero? (logand (-> *kernel-context* prevent-from-run) (process-mask movie)))
   )
 
+(defun set-blackout-frames ((arg0 int))
+  (cond
+    ((zero? arg0)
+     (set! (-> *game-info* blackout-time) (-> *display* base-frame-counter))
+     )
+    (else
+     (set! (-> *game-info* blackout-time) (max (-> *game-info* blackout-time) (+ (-> *display* base-frame-counter) arg0)))
+     )
+    )
+  )
+
+(defun display-loop ()
+  ;; this function doesnt decompile right now
+  0
+  )
+
+(defun on ((release-mode symbol))
+  "Turn the game on."
+
+  (when (not *dproc*)
+    (unless release-mode
+      (if (= (-> *level* level0 status) 'inactive)
+        (bg 'halfpipe)
+        )
+      )
+    (set! *run* #t)
+    ;; this is actually a macro (see logic-target.gc)
+    (let ((new-dproc (swhen (get-process *4k-dead-pool* process (* 16 1024))
+                          ((method-of-type process activate) bc *display-pool* 'display *kernel-dram-stack*)
+                          ((the (function cpu-thread function object) set-to-run) (-> bc main-thread) display-loop)
+                          (-> bc ppointer)
+                          ))
+          )
+      (set! *dproc* (the process (if new-dproc (-> new-dproc 0 self))))
+      )
+    (cond
+      ((or (level-get-with-status *level* 'loaded)
+           (level-get-with-status *level* 'alive)
+           (level-get-with-status *level* 'active)
+           )
+       (activate-levels! *level*)
+       (when (not release-mode)
+         (let ((entity-cam (entity-by-type camera-start)))
+             (if (and entity-cam (type-type? (-> entity-cam type) entity-actor))
+               (camera-teleport-to-entity entity-cam)
+               )
+             )
+         )
+       )
+      (else
+       (kill-by-name 'display *active-pool*)
+       (set! *dproc* #f)
+       )
+      )
+    *dproc*
+    )
+  )
+
+(defun off ()
+  "Turn the game off."
+
+  ;; stop the game and set the mode to debug
+  (stop 'debug)
+  ;; deactivate the levels
+  (dotimes (i (-> *level* length))
+    (let ((lev (-> *level* level i)))
+        (if (= (-> lev status) 'active)
+          (deactivate lev)
+          )
+        )
+    )
+  (set! *run* #f)
+  0
+  )
+
 ;; TODO - for credits
 (define-extern scf-get-territory (function int))

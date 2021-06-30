@@ -5,9 +5,9 @@
 (deftype load-dgo-msg (structure)
   ((rsvd       uint16             :offset-assert   0)
    (result     load-msg-result    :offset-assert   2)
-   (b1         uint32             :offset-assert   4)
-   (b2         uint32             :offset-assert   8)
-   (bt         uint32             :offset-assert  12)
+   (b1         pointer            :offset-assert   4)
+   (b2         pointer            :offset-assert   8)
+   (bt         pointer            :offset-assert  12)
    (name       uint128            :offset-assert  16)
    (name-chars uint8           16 :offset         16)
    (address    uint32             :offset          4)
@@ -233,15 +233,15 @@
 ;; Used lq/sq
 (defun
   dgo-load-begin
-  ((name string) (buffer1 int) (buffer2 int) (current-heap int))
+  ((name string) (buffer1 pointer) (buffer2 pointer) (current-heap pointer))
   (set! *dgo-time* (-> *display* real-integral-frame-counter))
   (format 0 "Starting level load clock~%")
   (sync *load-dgo-rpc* #t)
   (let ((cmd (the-as load-dgo-msg (add-element *load-dgo-rpc*))))
    (set! (-> cmd result) (load-msg-result invalid))
-   (set! (-> cmd b1) (the-as uint buffer1))
-   (set! (-> cmd b2) (the-as uint buffer2))
-   (set! (-> cmd bt) (the-as uint current-heap))
+   (set! (-> cmd b1) buffer1)
+   (set! (-> cmd b2) buffer2)
+   (set! (-> cmd bt) current-heap)
    (set! (-> cmd name) (string->sound-name name))
    (call *load-dgo-rpc* (the-as uint 0) (the-as pointer cmd) (the-as uint 32))
    cmd
@@ -249,7 +249,6 @@
   )
 
 ;; definition for function dgo-load-get-next
-;; INFO: Return type mismatch uint vs pointer.
 (defun dgo-load-get-next ((last-object (pointer symbol)))
   (set! (-> last-object 0) #t)
   (let ((load-location (the-as pointer #f)))
@@ -261,7 +260,7 @@
         (= (-> response result) (load-msg-result done))
         (= (-> response result) (load-msg-result more))
         )
-       (set! load-location (the-as pointer (-> response b1)))
+       (set! load-location (-> response b1))
        )
       (if (= (-> response result) (load-msg-result more))
        (set! (-> last-object 0) #f)
@@ -279,7 +278,7 @@
       )
      )
     )
-   (the-as pointer load-location)
+   load-location
    )
   )
 
@@ -289,9 +288,9 @@
 (defun dgo-load-continue ((current-heap pointer))
   (let ((cmd (the-as load-dgo-msg (add-element *load-dgo-rpc*))))
    (set! (-> cmd result) (load-msg-result invalid))
-   (set! (-> cmd b1) (the-as uint 0))
-   (set! (-> cmd b2) (the-as uint 0))
-   (set! (-> cmd bt) (the-as uint current-heap))
+   (set! (-> cmd b1) (the-as pointer 0))
+   (set! (-> cmd b2) (the-as pointer 0))
+   (set! (-> cmd bt) current-heap)
    (set! (-> cmd name) (the-as uint128 0))
    (call *load-dgo-rpc* (the-as uint 1) (the-as pointer cmd) (the-as uint 32))
    (the-as int cmd)

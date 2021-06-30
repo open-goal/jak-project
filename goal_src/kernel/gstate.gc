@@ -332,6 +332,20 @@ There are several ways to "go"
     )
   )
 
+(defmacro send-event (proc msg &rest params)
+  `(with-pp
+    (let ((event-data (new 'stack-no-clear 'event-message-block)))
+        (set! (-> event-data from) pp)
+        (set! (-> event-data num-params) ,(length params))
+        (set! (-> event-data message) ,msg)
+        ,@(let ((ep 0))
+          (apply (lambda (x) `(set! (-> event-data param ep) ,x) (inc! ep)) params)
+          )
+        (send-event-function ,proc event-data)
+        )
+    )
+  )
+
 (defun looping-code ()
   "Loop."
   (while #t
