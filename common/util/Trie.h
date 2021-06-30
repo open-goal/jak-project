@@ -27,13 +27,13 @@ class Trie {
   T* operator[](const std::string& str);
 
   // Lookup an existing object. If none exists, return nullptr.
-  T* lookup(const std::string& str);
+  T* lookup(const std::string& str) const;
 
   // return the number of entries.
   int size() const { return m_size; }
 
   // Get all objects starting with the given prefix.
-  std::vector<T*> lookup_prefix(const std::string& str);
+  std::vector<T*> lookup_prefix(const std::string& str) const;
   ~Trie();
 
  private:
@@ -111,7 +111,7 @@ class Trie {
       }
     }
 
-    T* lookup(const char* str) {
+    T* lookup(const char* str) const {
       if (!*str) {
         return value;
       }
@@ -121,7 +121,7 @@ class Trie {
       return nullptr;
     }
 
-    void get_all_children(std::vector<T*>& result) {
+    void get_all_children(std::vector<T*>& result) const {
       if (value) {
         result.push_back(value);
       }
@@ -132,7 +132,7 @@ class Trie {
       }
     }
 
-    std::vector<T*> lookup_prefix(const char* str) {
+    std::vector<T*> lookup_prefix(const char* str) const {
       if (!*str) {
         std::vector<T*> result;
         get_all_children(result);
@@ -165,7 +165,7 @@ void Trie<T>::insert(const std::string& str, const T& obj) {
 }
 
 template <typename T>
-T* Trie<T>::lookup(const std::string& str) {
+T* Trie<T>::lookup(const std::string& str) const {
   return m_root.lookup(str.c_str());
 }
 
@@ -180,6 +180,6 @@ T* Trie<T>::operator[](const std::string& str) {
 }
 
 template <typename T>
-std::vector<T*> Trie<T>::lookup_prefix(const std::string& str) {
+std::vector<T*> Trie<T>::lookup_prefix(const std::string& str) const {
   return m_root.lookup_prefix(str.c_str());
 }

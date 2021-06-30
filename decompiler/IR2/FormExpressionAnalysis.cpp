@@ -3187,10 +3187,14 @@ void ReturnElement::push_to_stack(const Env& env, FormPool& pool, FormStack& sta
   std::vector<FormElement*> new_entries;
   new_entries = rewrite_to_get_var(temp_stack, pool, env.end_var(), env);
 
+  assert(!new_entries.empty());
   return_code->clear();
-  for (auto e : new_entries) {
-    return_code->push_back(e);
+
+  for (int i = 0; i < ((int)new_entries.size()) - 1; i++) {
+    stack.push_form_element(new_entries.at(i), true);
   }
+
+  return_code->push_back(new_entries.back());
   stack.push_form_element(this, true);
 }
 

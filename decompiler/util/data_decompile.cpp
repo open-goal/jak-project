@@ -724,6 +724,8 @@ goos::Object decompile_boxed_array(const DecompilerLabel& label,
       } else if (word.kind == LinkedWord::PTR) {
         result.push_back(
             decompile_at_label(content_type, labels.at(word.label_id), labels, words, ts));
+      } else if (word.kind == LinkedWord::SYM_PTR) {
+        result.push_back(pretty_print::to_symbol(fmt::format("'{}", word.symbol_name)));
       } else {
         throw std::runtime_error(
             fmt::format("Unknown content type in boxed array of references, word idx {}",

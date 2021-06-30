@@ -427,8 +427,8 @@ Replxx::completions_t Compiler::find_symbols_by_prefix(std::string const& contex
                                                        std::vector<std::string> const& user_data) {
   (void)contextLen;
   (void)user_data;
-  auto token = m_repl.get()->get_current_repl_token(context);
-  auto possible_forms = m_symbol_info.lookup_symbols_starting_with(token.first);
+  auto token = m_repl->get_current_repl_token(context);
+  auto possible_forms = lookup_symbol_infos_starting_with(token.first);
   Replxx::completions_t completions;
   for (auto& x : possible_forms) {
     completions.push_back(token.second ? "(" + x : x);
@@ -442,8 +442,8 @@ Replxx::hints_t Compiler::find_hints_by_prefix(std::string const& context,
                                                std::vector<std::string> const& user_data) {
   (void)contextLen;
   (void)user_data;
-  auto token = m_repl.get()->get_current_repl_token(context);
-  auto possible_forms = m_symbol_info.lookup_symbols_starting_with(token.first);
+  auto token = m_repl->get_current_repl_token(context);
+  auto possible_forms = lookup_symbol_infos_starting_with(token.first);
 
   Replxx::hints_t hints;
 
@@ -482,7 +482,7 @@ void Compiler::repl_coloring(
         curr_symbol.second.erase(0, 1);
         curr_symbol.first++;
       }
-      std::vector<SymbolInfo>* sym_match = m_symbol_info.lookup_exact_name(curr_symbol.second);
+      std::vector<SymbolInfo>* sym_match = lookup_exact_name_info(curr_symbol.second);
       if (sym_match != nullptr && sym_match->size() == 1) {
         SymbolInfo sym_info = sym_match->at(0);
         for (int pos = curr_symbol.first; pos <= int(i); pos++) {
@@ -556,4 +556,19 @@ Val* Compiler::compile_add_macro_to_autocomplete(const goos::Object& form,
   va_check(form, args, {goos::ObjectType::SYMBOL}, {});
   m_symbol_info.add_macro(args.unnamed.at(0).as_symbol()->name, form);
   return get_none();
+}
+
+std::set<std::string> Compiler::lookup_symbol_infos_starting_with(const std::string& prefix) const {
+  if (m_goos.reader.check_string_is_valid(prefix)) {
+    return m_symbol_info.lookup_symbols_starting_with(prefix);
+  }
+  return {};
+}
+
+std::vector<SymbolInfo>* Compiler::lookup_exact_name_info(const std::string& name) const {
+  if (m_goos.reader.check_string_is_valid(name)) {
+    return m_symbol_info.lookup_exact_name(name);
+  } else {
+    return nullptr;
+  }
 }
