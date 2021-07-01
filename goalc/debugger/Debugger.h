@@ -15,14 +15,22 @@
 #include "common/cross_os_debug/xdbg.h"
 #include "goalc/listener/MemoryMap.h"
 #include "DebugInfo.h"
+#include <cstring>
 
 namespace listener {
 class Listener;
 }
 
-struct BreakInfo {
-  u64 real_rip = 0;
-  u32 goal_rip = 0;
+/*!
+ * Information about an instruction pointer, used for constructing a useful disassembly around it.
+ */
+struct InstructionPointerInfo {
+  u64 real_rip = 0;  // x86-64 rip register value (64-bits)
+  u32 goal_rip = 0;  // GOAL pointer of rip.
+
+  u64 real_rsp = 0;
+
+  bool in_goal_mem = false;
 
   bool knows_object = false;
   std::string object_name;
@@ -33,7 +41,19 @@ struct BreakInfo {
   std::string function_name;
   u32 function_offset = -1;
 
-  bool disassembly_failed = false;
+  std::optional<listener::MemoryMapEntry> map_entry;
+
+  FunctionDebugInfo* func_debug = nullptr;
+};
+
+struct Disassembly {
+  std::string text;
+  bool failed = false;
+};
+
+struct BacktraceFrame {
+  InstructionPointerInfo rip_info;
+  u64 rsp_at_rip = 0;
 };
 
 class Debugger {
@@ -51,7 +71,17 @@ class Debugger {
   bool attach_and_break();
   bool do_break();
   bool do_continue();
-  bool read_memory(u8* dest_buffer, int size, u32 goal_addr);
+  bool read_memory(u8* dest_buffer, int size, u32 goal_addr) const;
+  bool read_memory_if_safe(u8* dest_buffer, int size, u32 goal_addr) const;
+  template <typename T>
+  bool read_memory_if_safe(T* dst, u32 goal_addr) const {
+    u8 temp[sizeof(T)];
+    if (read_memory_if_safe(temp, sizeof(T), goal_addr)) {
+      memcpy(dst, temp, sizeof(T));
+      return true;
+    }
+    return false;
+  }
   bool write_memory(const u8* src_buffer, int size, u32 goal_addr);
   void read_symbol_table();
   u32 get_symbol_address(const std::string& sym_name);
@@ -59,9 +89,14 @@ class Debugger {
   void add_addr_breakpoint(u32 addr);
   void remove_addr_breakpoint(u32 addr);
   void update_break_info();
+
+  InstructionPointerInfo get_rip_info(u64 x86_rip);
   DebugInfo& get_debug_info_for_object(const std::string& object_name);
-  const BreakInfo& get_cached_break_info() { return m_break_info; }
+  const InstructionPointerInfo& get_cached_break_info() { return m_break_info; }
   std::string get_info_about_addr(u32 addr);
+  Disassembly disassemble_at_rip(const InstructionPointerInfo& info);
+
+  std::vector<BacktraceFrame> get_backtrace(u64 rip, u64 rsp);
 
   /*!
    * Get the x86 address of GOAL memory
@@ -150,6 +185,8 @@ class Debugger {
     Breakpoint addr_breakpoint;
   } m_continue_info;
 
+  ContinueInfo get_continue_info(u64 rip) const;
+
   // for more complicated breakpoint stuff, we have a queue of stops.
   // right now it's barely used for anything other than waiting for a "break" to be acknowledged.
   struct SignalInfo {
@@ -165,7 +202,7 @@ class Debugger {
   bool m_running = true;
   bool m_attached = false;
 
-  BreakInfo m_break_info;
+  InstructionPointerInfo m_break_info;
 
   listener::Listener* m_listener = nullptr;
   listener::MemoryMap m_memory_map;

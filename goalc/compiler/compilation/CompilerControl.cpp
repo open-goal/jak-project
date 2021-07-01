@@ -170,7 +170,7 @@ Val* Compiler::compile_asm_file(const goos::Object& form, const goos::Object& re
     // send to target
     if (load) {
       if (m_listener.is_connected()) {
-        m_listener.send_code(data);
+        m_listener.send_code(data, obj_file_name);
       } else {
         printf("WARNING - couldn't load because listener isn't connected\n");  // todo log warn
       }
