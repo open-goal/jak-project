@@ -2,6 +2,7 @@
 
 #include <vector>
 #include <string>
+#include <optional>
 #include <unordered_map>
 #include "common/util/assert.h"
 #include "common/common_types.h"
