@@ -9450,8 +9450,8 @@
   ((trans        vector :inline :offset-assert 0)
    (vector       vector :inline :offset-assert 16)
    (intersection vector :inline :offset-assert 32)
-   (attacker     uint64         :offset-assert 48) ;; handle
-   (invinc-time  uint64         :offset-assert 56)
+   (attacker     uint64         :offset-assert 48) ;; handle - TODO wat, this is used as an offset in the symbol table, how does this work!
+   (invinc-time  uint64         :offset-assert 56) ;; likely useconds?
    (mask         uint32         :offset-assert 64)
    (mode         basic          :offset-assert 68)
    (shove-back   float          :offset-assert 72) ;; meters
@@ -9468,7 +9468,7 @@
   :flag-assert         #xa00000068
   ;; field handle is likely a value type
   (:methods
-    (dummy-9 () none 9)
+    (dummy-9 (_type_ attack-info) none 9) ;; TODO - i gots a question
     )
   )
 
@@ -10464,7 +10464,7 @@
    (pat-ignore-mask       uint32             :offset-assert 148)
    (event-self            basic              :offset-assert 152)
    (event-other           basic              :offset-assert 156)
-   (root-prim             basic              :offset-assert 160)
+   (root-prim             collide-shape-prim              :offset-assert 160)
    (riders                basic              :offset-assert 164)
    (backup-collide-as     uint64             :offset-assert 168)
    (backup-collide-with   uint64             :offset-assert 176)
@@ -10517,8 +10517,8 @@
    (old-status            uint64             :offset-assert 280)
    (prev-status           uint64             :offset-assert 288)
    (reaction-flag         uint32             :offset-assert 296)
-   (reaction              basic              :offset-assert 300)
-   (no-reaction           basic              :offset-assert 304)
+   (reaction              function              :offset-assert 300)
+   (no-reaction           function              :offset-assert 304)
    (local-normal          vector     :inline :offset-assert 320)
    (surface-normal        vector     :inline :offset-assert 336)
    (poly-normal           vector     :inline :offset-assert 352)
@@ -10530,8 +10530,8 @@
    (poly-angle            float              :offset-assert 424)
    (touch-angle           float              :offset-assert 428)
    (coverage              float              :offset-assert 432)
-   (dynam                 basic              :offset-assert 436)
-   (surf                  basic              :offset-assert 440)
+   (dynam                 dynamics              :offset-assert 436)
+   (surf                  surface              :offset-assert 440)
    )
   :method-count-assert 65
   :size-assert         #x1bc
@@ -10589,14 +10589,34 @@
 
 (deftype control-info (collide-shape-moving)
   (
+   (unknown-quaternion00 quaternion :inline :offset 496) ;; from - target-util::(method 27 control-info)
    (unknown-vector00  vector :inline  :offset 576)
-   (unknown-surface  surface  :offset 660)
-   (unknown-symbol  symbol  :offset 664)
+   (unknown-surface00  surface  :offset 660)
+   (unknown-surface01  surface  :offset 664) ;; not a symbol - target-util::target-align-vel-z-adjust
+   (unknown-cpad-info00  cpad-info  :offset 668) ;; not a symbol - target-util::move-legs?
+   (unknown-matrix00 matrix :inline :offset 928) ;; from - target-util::(method 16 target)
+   (unknown-matrix01 matrix :inline :offset 992) ;; from - target-util::(method 16 target)
    (unknown-qword  uint128  :offset 1136)
    (unknown-vector10  vector :inline :offset 1216)
    (unknown-vector11  vector :inline :offset 1232)
    (unknown-vector12  vector :inline :offset 1248)
    (unknown-vector13  vector :inline :offset 1264)
+   (unknown-dword00 int64 :offset 1288) ;; from - target-util::can-jump?
+   (unknown-float00 float :offset 1300) ;; from - target-util::can-duck?
+   (unknown-float01 float :offset 1304) ;; from - target-util::target-align-vel-z-adjust
+   (unknown-sphere00 collide-shape-prim-sphere :offset 1608) ;; from target-util::target-collide-set!
+   (unknown-sphere01 collide-shape-prim-sphere :offset 1612) ;; from target-util::target-collide-set!
+   (unknown-sphere02 collide-shape-prim-sphere :offset 1616) ;; from target-util::target-collide-set!
+   (unknown-sphere10 collide-shape-prim-sphere :offset 1632) ;; from target-util::target-danger-set!
+   (unknown-sphere20 collide-shape-prim-sphere :offset 1636) ;; from target-util::target-danger-set!
+   (unknown-sphere30 collide-shape-prim-sphere :offset 1640) ;; from target-util::target-danger-set!
+   (unknown-dword10 int64 :offset 1672) ;; from target-util::can-hands?
+   (unknown-dword11 int64 :offset 1688) ;; from target-util::can-feet?
+   (unknown-symbol20 symbol :offset 1840) ;; from target-util::target-danger-set!
+   (unknown-float10 float :offset 1844) ;; from target-util::target-danger-set!
+   (unknown-int  int32 :offset 2384) ;; from target-util::target-danger-set!
+   (unknown-dword20 int64 :offset 2392) ;; from target-util::target-start-attack
+   (unknown-dword21 int64 :offset 2400) ;; from target-util::target-start-attack
    ;; these were determined from racer-collision-reaction.
    (history-length int16 :offset 2490)
    (history-data collide-history 128 :inline :offset-assert 2496)
@@ -11048,6 +11068,7 @@
 
 (deftype target (process-drawable)
   ((control             control-info        :score 100 :offset 112)
+   (fact-info-target    fact-info-target    :score 100 :offset 144)
    (skel2               basic               :offset-assert 176)
    (racer               basic               :offset-assert 180)
    (game                game-info           :offset-assert 184)
@@ -16468,7 +16489,7 @@
 (define-extern update-mood-quick function)
 (define-extern update-mood-flames function)
 (define-extern update-mood-light function)
-(define-extern target-joint-pos function)
+(define-extern target-joint-pos (function vector))
 (define-extern update-mood-itimes function)
 (define-extern update-mood-fog (function mood-fog mood-lights-table none))
 (define-extern update-mood-sky-texture function)
@@ -17367,7 +17388,7 @@
 (define-extern master-base-region function)
 (define-extern setup-slave-for-hopefull function)
 (define-extern master-is-hopeful-better? function)
-(define-extern target-cam-pos function)
+(define-extern target-cam-pos (function object)) ;; TODO - strange, not a vector?
 (define-extern cam-master-init function)
 
 ;; - Unknowns
@@ -18378,39 +18399,39 @@
 
 ;; - Functions
 
-(define-extern target-height-above-ground function)
-(define-extern target-align-vel-z-adjust function)
+(define-extern target-height-above-ground (function float))
+(define-extern target-align-vel-z-adjust (function float float))
 (define-extern target-collide-set! (function symbol float int))
-(define-extern target-start-attack function)
-(define-extern target-danger-set! function)
-(define-extern average-turn-angle function)
-(define-extern can-play-stance-amibent? function)
-(define-extern can-jump? function)
-(define-extern move-legs? function)
-(define-extern fall-test function)
-(define-extern slide-down-test function)
-(define-extern smack-surface? function)
-(define-extern can-wheel? function)
-(define-extern can-duck? function)
-(define-extern can-exit-duck? function)
-(define-extern can-hands? function)
-(define-extern can-feet? function)
-(define-extern vector-local+! function)
-(define-extern move-forward function)
-(define-extern set-forward-vel function)
-(define-extern delete-back-vel function)
-(define-extern set-side-vel function)
-(define-extern target-timed-invulnerable function)
-(define-extern target-timed-invulnerable-off function)
-(define-extern ground-tween-initialize function)
-(define-extern ground-tween-update function)
-(define-extern target-rot function)
+(define-extern target-start-attack (function none))
+(define-extern target-danger-set! (function int int float)) ;; TODO - args not confirmed yet
+(define-extern average-turn-angle (function target float)) ;; TODO - args not confirmed
+(define-extern can-play-stance-amibent? (function symbol))
+(define-extern can-jump? (function int symbol)) ;; TODO - arg not confirmed
+(define-extern move-legs? (function symbol))
+(define-extern fall-test (function int symbol object)) ;; TODO - first arg unused
+(define-extern slide-down-test (function symbol symbol object))
+(define-extern smack-surface? (function symbol symbol))
+(define-extern can-wheel? (function symbol))
+(define-extern can-duck? (function symbol))
+(define-extern can-exit-duck? (function symbol)) ;; TODO - have to investigate collide-cache for this
+(define-extern can-hands? (function int symbol)) ;; TODO - arg not confirmed
+(define-extern can-feet? (function symbol))
+(define-extern vector-local+! (function vector vector vector))
+(define-extern move-forward (function float vector))
+(define-extern set-forward-vel (function float vector))
+(define-extern delete-back-vel (function float none))
+(define-extern set-side-vel (function float vector))
+(define-extern target-timed-invulnerable (function uint64 target none)) ;; TODO - likely useconds
+(define-extern target-timed-invulnerable-off (function target none))
+(define-extern ground-tween-initialize (function none)) ;; TODO - gotta find the caller here
+(define-extern ground-tween-update (function none)) ;; TODO - find the caller, weird arg
+(define-extern target-rot (function quaternion))
 
 ;; - Unknowns
 
 (define-extern *TARGET-bank* target-bank) ;; unknown type
-;;(define-extern target-slide-down object) ;; unknown type
-;;(define-extern target-falling object) ;; unknown type
+(define-extern target-slide-down state) ;; TODO - didn't check
+(define-extern target-falling state) ;; unknown type
 (define-extern *jchar-sg* skeleton-group)
 (define-extern *target-shadow-control* shadow-control)
 
