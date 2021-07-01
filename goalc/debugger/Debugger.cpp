@@ -4,6 +4,7 @@
  * Uses xdbg functions to debug an OpenGOAL target.
  */
 
+#include "goalc/emitter/Register.h"
 #include "common/util/assert.h"
 #include "Debugger.h"
 #include "common/util/Timer.h"
@@ -148,6 +149,180 @@ std::string Debugger::get_info_about_addr(u32 addr) {
 }
 
 /*!
+ * This assumes we have an up-to-date memory map and symbol info.
+ */
+InstructionPointerInfo Debugger::get_rip_info(u64 rip) {
+  InstructionPointerInfo result;
+  result.real_rip = rip;
+
+  if (m_context_valid) {
+    result.goal_rip = rip - m_debug_context.base;
+    if (rip >= m_debug_context.base + EE_MAIN_MEM_LOW_PROTECT &&
+        rip < m_debug_context.base + EE_MAIN_MEM_SIZE) {
+      result.in_goal_mem = true;
+      auto map_loc = m_memory_map.lookup(rip - m_debug_context.base);
+      if (map_loc.empty) {
+        result.knows_object = false;
+        result.knows_function = false;
+      } else {
+        u64 obj_offset = rip - m_debug_context.base - map_loc.start_addr;
+        result.map_entry = map_loc;
+        result.knows_object = true;
+        result.object_name = map_loc.obj_name;
+        result.object_seg = map_loc.seg_id;
+        result.object_offset = obj_offset;
+
+        FunctionDebugInfo* info = nullptr;
+        std::string name;
+
+        if (get_debug_info_for_object(map_loc.obj_name)
+                .lookup_function(&info, &name, obj_offset, map_loc.seg_id)) {
+          result.knows_function = true;
+          result.function_name = name;
+          result.function_offset = obj_offset - info->offset_in_seg;
+          result.func_debug = info;
+
+          assert(!info->instructions.empty());
+        }
+      }
+    }
+  }
+
+  return result;
+}
+
+std::vector<BacktraceFrame> Debugger::get_backtrace(u64 rip, u64 rsp) {
+  fmt::print("Backtrace:\n");
+  std::vector<BacktraceFrame> bt;
+
+  if (rip == m_debug_context.base) {
+    // we jumped to NULL.
+    fmt::print("Jumped to GOAL 0x0. Attempting to find previous function.\n");
+    u64 next_rip = 0;
+    if (!read_memory_if_safe<u64>(&next_rip, rsp - m_debug_context.base)) {
+      fmt::print("  failed to read return address off of the stack\n");
+      return {};
+    }
+
+    rip = next_rip;
+    rsp += 8;
+  }
+
+  while (true) {
+    fmt::print("   rsp: 0x{:x} rip: 0x{:x}\n", rsp, rip);
+    BacktraceFrame frame;
+    frame.rip_info = get_rip_info(rip);
+    frame.rsp_at_rip = rsp;
+
+    if (frame.rip_info.knows_function && frame.rip_info.func_debug &&
+        frame.rip_info.func_debug->stack_usage) {
+      fmt::print("{}\n", frame.rip_info.function_name);
+      // we're good!
+      u64 rsp_at_call = rsp + *frame.rip_info.func_debug->stack_usage;
+
+      u64 next_rip = 0;
+      if (!read_memory_if_safe<u64>(&next_rip, rsp_at_call - m_debug_context.base)) {
+        fmt::print("Invalid return address encountered!\n");
+        break;
+      }
+
+      rip = next_rip;
+      rsp = rsp_at_call + 8;  // 8 for the call itself.
+
+    } else {
+      if (!frame.rip_info.knows_function) {
+        fmt::print("Unknown Function at 0x{:x}\n", rip);
+        break;
+      }
+      if (!frame.rip_info.func_debug) {
+        fmt::print("Function {} has no debug info.\n", frame.rip_info.function_name);
+        break;
+      } else {
+        fmt::print("Function {} with no stack frame data.\n", frame.rip_info.function_name);
+      }
+      break;
+    }
+
+    bt.push_back(frame);
+  }
+
+  return bt;
+}
+
+/*!
+ * This assumes we have an up-to-date memory map and symbol info.
+ */
+Disassembly Debugger::disassemble_at_rip(const InstructionPointerInfo& info) {
+  // todo adjust rip if break instruction????
+  Disassembly result;
+
+  result.failed = false;
+  u64 rip = info.real_rip;
+
+  if (info.in_goal_mem) {
+    // we only want to disassemble GOAL code.
+    // if the crash happens outside of GOAL code, use a normal debugger.
+
+    if (!info.knows_function || !info.knows_object || !info.map_entry) {
+      // something went wrong and we can't find this code.
+      // however, we can still do better than nothing by dumping the memory and disassembling.
+      std::vector<u8> mem;
+      mem.resize(INSTR_DUMP_SIZE_REV + INSTR_DUMP_SIZE_FWD);
+      read_memory(mem.data(), INSTR_DUMP_SIZE_REV + INSTR_DUMP_SIZE_FWD,
+                  info.real_rip - m_debug_context.base - INSTR_DUMP_SIZE_REV);
+      result.failed = true;
+      if (info.knows_object) {
+        result.text += fmt::format("In segment {} of obj {}, offset 0x{:x}\n", info.object_seg,
+                                   info.object_name, info.object_offset);
+        result.text += disassemble_x86(mem.data(), mem.size(), rip - INSTR_DUMP_SIZE_REV, rip);
+      } else {
+        result.text += "In unknown code\n";
+        result.text += disassemble_x86(mem.data(), mem.size(), rip - INSTR_DUMP_SIZE_REV, rip);
+      }
+    } else {
+      // we have enough info to do a fancy disassembly!
+      u64 obj_offset = rip - m_debug_context.base - info.map_entry->start_addr;
+
+      FunctionDebugInfo* func_info = info.func_debug;
+      std::string name = func_info->name;
+      auto continue_info = get_continue_info(rip);
+      assert(!func_info->instructions.empty());
+
+      std::vector<u8> function_mem;
+      function_mem.resize(func_info->instructions.back().offset +
+                          func_info->instructions.back().instruction.length());
+      read_memory(function_mem.data(), function_mem.size(),
+                  info.map_entry->start_addr + func_info->offset_in_seg);
+
+      int rip_offset = 0;
+      if (continue_info.valid && continue_info.is_addr_breakpiont) {
+        int offset_in_fmem = uint64_t(continue_info.addr_breakpoint.goal_addr) -
+                             uint64_t(info.map_entry->start_addr + func_info->offset_in_seg);
+        if (offset_in_fmem < 0 || offset_in_fmem >= int(function_mem.size())) {
+          result.failed = true;
+        } else {
+          function_mem.at(offset_in_fmem) = continue_info.addr_breakpoint.old_data;
+          rip_offset = -1;
+        }
+      }
+
+      result.text += fmt::format(
+          "In function {} in segment {} of obj {}, offset_obj 0x{:x}, offset_func 0x{:x}\n", name,
+          info.map_entry->seg_id, info.map_entry->obj_name, obj_offset, info.function_offset);
+
+      result.text += disassemble_x86_function(
+          function_mem.data(), function_mem.size(),
+          m_debug_context.base + info.map_entry->start_addr + func_info->offset_in_seg,
+          rip + rip_offset, func_info->instructions, func_info->irs, &result.failed);
+    }
+  } else {
+    result.failed = true;
+    result.text = "Not in GOAL code!\n";
+  }
+  return result;
+}
+
+/*!
  * Read the registers, symbol table, and instructions near rip.
  * Print out some info about where we are.
  */
@@ -166,85 +341,12 @@ void Debugger::update_break_info() {
   }
 
   if (regs_valid()) {
-    std::vector<u8> mem;
-    mem.resize(INSTR_DUMP_SIZE_REV + INSTR_DUMP_SIZE_FWD);
-    // very basic asm dump.
-    auto rip = m_regs_at_break.rip;
-    m_break_info.real_rip = rip;
-    m_break_info.goal_rip = rip - m_debug_context.base;
+    m_break_info = get_rip_info(m_regs_at_break.rip);
+    update_continue_info();
+    auto dis = disassemble_at_rip(m_break_info);
+    fmt::print("{}\n", dis.text);
 
-    m_break_info.disassembly_failed = false;
-
-    if (rip >= m_debug_context.base + EE_MAIN_MEM_LOW_PROTECT &&
-        rip < m_debug_context.base + EE_MAIN_MEM_SIZE) {
-      read_memory(mem.data(), INSTR_DUMP_SIZE_REV + INSTR_DUMP_SIZE_FWD,
-                  rip - m_debug_context.base - INSTR_DUMP_SIZE_REV);
-      auto map_loc = m_memory_map.lookup(rip - m_debug_context.base);
-      if (map_loc.empty) {
-        fmt::print("In unknown code\n");
-        fmt::print("{}", disassemble_x86(mem.data(), mem.size(), rip - INSTR_DUMP_SIZE_REV, rip));
-        m_break_info.disassembly_failed = true;
-        m_break_info.knows_object = false;
-        m_break_info.knows_function = false;
-      } else {
-        u64 obj_offset = rip - m_debug_context.base - map_loc.start_addr;
-        m_break_info.knows_object = true;
-        m_break_info.object_name = map_loc.obj_name;
-        m_break_info.object_seg = map_loc.seg_id;
-        m_break_info.object_offset = obj_offset;
-
-        FunctionDebugInfo* info = nullptr;
-        std::string name;
-
-        if (get_debug_info_for_object(map_loc.obj_name)
-                .lookup_function(&info, &name, obj_offset, map_loc.seg_id)) {
-          update_continue_info();
-          m_break_info.knows_function = true;
-          m_break_info.function_name = name;
-          m_break_info.function_offset = obj_offset - info->offset_in_seg;
-
-          assert(!info->instructions.empty());
-
-          std::vector<u8> function_mem;
-          function_mem.resize(info->instructions.back().offset +
-                              info->instructions.back().instruction.length());
-          read_memory(function_mem.data(), function_mem.size(),
-                      map_loc.start_addr + info->offset_in_seg);
-
-          int rip_offset = 0;
-          if (m_continue_info.valid && m_continue_info.is_addr_breakpiont) {
-            int offset_in_fmem = uint64_t(m_continue_info.addr_breakpoint.goal_addr) -
-                                 uint64_t(map_loc.start_addr + info->offset_in_seg);
-            if (offset_in_fmem < 0 || offset_in_fmem >= int(function_mem.size())) {
-              m_break_info.disassembly_failed = true;
-            } else {
-              function_mem.at(offset_in_fmem) = m_continue_info.addr_breakpoint.old_data;
-              rip_offset = -1;
-            }
-          }
-
-          fmt::print(
-              "In function {} in segment {} of obj {}, offset_obj 0x{:x}, offset_func 0x{:x}\n",
-              name, map_loc.seg_id, map_loc.obj_name, obj_offset, m_break_info.function_offset);
-
-          fmt::print("{}", disassemble_x86_function(
-                               function_mem.data(), function_mem.size(),
-                               m_debug_context.base + map_loc.start_addr + info->offset_in_seg,
-                               rip + rip_offset, info->instructions, info->irs,
-                               &m_break_info.disassembly_failed));
-
-        } else {
-          m_break_info.disassembly_failed = true;
-          m_break_info.knows_function = false;
-          fmt::print("In segment {} of obj {}, offset 0x{:x}\n", map_loc.seg_id, map_loc.obj_name,
-                     obj_offset);
-          fmt::print("{}", disassemble_x86(mem.data(), mem.size(), rip - INSTR_DUMP_SIZE_REV, rip));
-        }
-      }
-    } else {
-      m_break_info.disassembly_failed = true;
-      fmt::print("Not in GOAL code!\n");
-    }
+    get_backtrace(m_regs_at_break.rip, m_regs_at_break.gprs[emitter::RSP]);
   }
 }
 
@@ -302,9 +404,17 @@ bool Debugger::do_continue() {
 /*!
  * Read memory from an attached and halted target.
  */
-bool Debugger::read_memory(u8* dest_buffer, int size, u32 goal_addr) {
+bool Debugger::read_memory(u8* dest_buffer, int size, u32 goal_addr) const {
   assert(is_valid() && is_attached() && is_halted());
   return xdbg::read_goal_memory(dest_buffer, size, goal_addr, m_debug_context, m_memory_handle);
+}
+
+bool Debugger::read_memory_if_safe(u8* dest_buffer, int size, u32 goal_addr) const {
+  assert(is_valid() && is_attached() && is_halted());
+  if (goal_addr >= EE_MAIN_MEM_LOW_PROTECT && goal_addr + size < EE_MAIN_MEM_SIZE) {
+    return read_memory(dest_buffer, size, goal_addr);
+  }
+  return false;
 }
 
 /*!
@@ -616,6 +726,22 @@ void Debugger::update_continue_info() {
 
   m_expecting_immeidate_break = false;
   m_continue_info.valid = true;
+}
+
+Debugger::ContinueInfo Debugger::get_continue_info(u64 rip) const {
+  ContinueInfo result;
+  auto kv = m_addr_breakpoints.find(rip - m_debug_context.base - 1);
+  if (kv == m_addr_breakpoints.end()) {
+    result.subtract_1 = false;
+    result.is_addr_breakpiont = false;
+  } else {
+    result.subtract_1 = true;
+    result.is_addr_breakpiont = true;
+    result.addr_breakpoint = kv->second;
+  }
+
+  result.valid = true;
+  return result;
 }
 
 DebugInfo& Debugger::get_debug_info_for_object(const std::string& object_name) {

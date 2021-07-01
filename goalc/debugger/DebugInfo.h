@@ -24,6 +24,7 @@ struct FunctionDebugInfo {
 
   // the actual bytes in the object file.
   std::vector<u8> generated_code;
+  std::optional<int> stack_usage;
 
   std::string disassemble_debug_info(bool* had_failure);
 };
@@ -53,6 +54,8 @@ class DebugInfo {
     }
     return false;
   }
+
+  FunctionDebugInfo& function_by_name(const std::string& name) { return m_functions.at(name); }
 
   void clear() { m_functions.clear(); }
 
