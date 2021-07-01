@@ -3151,7 +3151,8 @@ void ConditionElement::update_from_stack(const Env& env,
         source_types.push_back(TypeSpec("int"));
       }
     } else {
-      throw std::runtime_error("Unsupported atom in ConditionElement::update_from_stack");
+      throw std::runtime_error("Unsupported atom in ConditionElement::update_from_stack: " +
+                               m_src[i]->to_string(env));
     }
   }
   if (m_flipped) {
