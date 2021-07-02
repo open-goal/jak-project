@@ -596,6 +596,7 @@
   :type uint16
   (bit-1 1)
   (dead 2)
+  (unknown 5) ;; TODO - task-control::task-cstage::14
   (complete 6))
 
 (defenum path-control-flag
@@ -612,6 +613,140 @@
   (bit8 8)
   (bit13 13)
   )
+
+(defenum task-status
+  :type uint64
+  (invalid 0)
+  (unknown 1)
+  (need-hint 2)
+  (need-introduction 3)
+  (need-reminder-a 4)
+  (need-reminder 5)
+  (need-reward-speech 6)
+  (need-resolution 7)
+  (*unknown* 999999)
+  )
+
+(defenum game-task
+  :type uint8
+  (none 0)
+  (complete 1)
+  (jungle-eggtop 2)
+  (jungle-lurkerm 3)
+  (jungle-tower 4)
+  (jungle-fishgame 5)
+  (jungle-plant 6)
+  (jungle-buzzer 7)
+  (jungle-canyon-end 8)
+  (jungle-temple-door 9)
+  (village1-yakow 10)
+  (village1-mayor-money 11)
+  (village1-uncle-money 12)
+  (village1-oracle-money1 13)
+  (village1-oracle-money2 14)
+  (beach-ecorocks 15)
+  (beach-pelican 16)
+  (beach-flutflut 17)
+  (beach-seagull 18)
+  (beach-cannon 19)
+  (beach-buzzer 20)
+  (beach-gimmie 21)
+  (beach-sentinel 22)
+  (misty-muse 23)
+  (misty-boat 24)
+  (misty-warehouse 25)
+  (misty-cannon 26)
+  (misty-bike 27)
+  (misty-buzzer 28)
+  (misty-bike-jump 29)
+  (misty-eco-challenge 30)
+  (village2-gambler-money 31)
+  (village2-geologist-money 32)
+  (village2-warrior-money 33)
+  (village2-oracle-money1 34)
+  (village2-oracle-money2 35)
+  (swamp-billy 36)
+  (swamp-flutflut 37)
+  (swamp-battle 38)
+  (swamp-tether-1 39)
+  (swamp-tether-2 40)
+  (swamp-tether-3 41)
+  (swamp-tether-4 42)
+  (swamp-buzzer 43)
+  (sunken-platforms 44)
+  (sunken-pipe 45)
+  (sunken-slide 46)
+  (sunken-room 47)
+  (sunken-sharks 48)
+  (sunken-buzzer 49)
+  (sunken-top-of-helix 50)
+  (sunken-spinning-room 51)
+  (rolling-race 52)
+  (rolling-robbers 53)
+  (rolling-moles 54)
+  (rolling-plants 55)
+  (rolling-lake 56)
+  (rolling-buzzer 57)
+  (rolling-ring-chase-1 58)
+  (rolling-ring-chase-2 59)
+  (snow-eggtop 60)
+  (snow-ram 61)
+  (snow-fort 62)
+  (snow-ball 63)
+  (snow-bunnies 64)
+  (snow-buzzer 65)
+  (snow-bumpers 66)
+  (snow-cage 67)
+  (firecanyon-buzzer 68)
+  (firecanyon-end 69)
+  (citadel-sage-green 70)
+  (citadel-sage-blue 71)
+  (citadel-sage-red 72)
+  (citadel-sage-yellow 73)
+  (village3-extra1 74)
+  (village1-buzzer 75)
+  (village2-buzzer 76)
+  (village3-buzzer 77)
+  (cave-gnawers 78)
+  (cave-dark-crystals 79)
+  (cave-dark-climb 80)
+  (cave-robot-climb 81)
+  (cave-swing-poles 82)
+  (cave-spider-tunnel 83)
+  (cave-platforms 84)
+  (cave-buzzer 85)
+  (ogre-boss 86)
+  (ogre-end 87)
+  (ogre-buzzer 88)
+  (lavatube-end 89)
+  (lavatube-buzzer 90)
+  (citadel-buzzer 91)
+  (training-gimmie 92)
+  (training-door 93)
+  (training-climb 94)
+  (training-buzzer 95)
+  (village3-miner-money1 96)
+  (village3-miner-money2 97)
+  (village3-miner-money3 98)
+  (village3-miner-money4 99)
+  (village3-oracle-money1 100)
+  (village3-oracle-money2 101)
+  (firecanyon-assistant 102)
+  (village2-levitator 103)
+  (swamp-arm 104)
+  (village3-button 105)
+  (red-eggtop 106)
+  (lavatube-balls 107)
+  (lavatube-start 108)
+  (intro 109)
+  (ogre-secret 110)
+  (village4-button 111)
+  (finalboss-movies 112)
+  (plunger-lurker-hit 113)
+  (leaving-misty 114)
+  (assistant-village3 115)
+  (max 116)
+  (*unknown* 255))
 
 
 ;; ----------------------
@@ -8461,6 +8596,7 @@
     )
   )
 
+(declare-type entity-perm structure)
 (declare-type entity-perm-array basic)
 (deftype game-info (basic)
   ((mode                  symbol     :offset-assert 4)
@@ -8517,7 +8653,7 @@
     (dummy-10 () none 10)
     (dummy-11 () none 11)
     (dummy-12 () none 12)
-    (dummy-13 () none 13)
+    (dummy-13 (_type_ uint) entity-perm 13) ; TODO - not totally confirmed
     (dummy-14 (_type_) none 14)
     (dummy-15 (_type_) none 15)
     (dummy-16 () none 16)
@@ -12472,7 +12608,7 @@
   )
 
 (deftype entity-perm-array (inline-array-class)
-  ()
+  ((data entity-perm :inline :dynamic :offset-assert 16))
   :method-count-assert 9
   :size-assert         #x10
   :flag-assert         #x900000010
@@ -15852,44 +15988,45 @@
 
 ;; - Types
 
+(declare-type task-control basic)
 (deftype task-cstage (structure)
-  ((game-task uint8   :offset-assert 0)
-   (status    uint64  :offset-assert 8)
+  ((game-task game-task   :offset-assert 0)
+   (status    task-status  :offset-assert 8)
    (flags     uint8   :offset-assert 16)
-   (condition basic   :offset-assert 20)
+   (condition (function task-control symbol) :offset-assert 20)
    )
   :method-count-assert 16
   :size-assert         #x18
   :flag-assert         #x1000000018
   (:methods
-    (dummy-9 () none 9)
-    (dummy-10 () none 10)
-    (dummy-11 () none 11)
-    (dummy-12 () none 12)
-    (dummy-13 () none 13)
-    (dummy-14 () none 14)
-    (dummy-15 () none 15)
+    (get-game-task (_type_) uint 9)
+    (get-task-status (_type_) uint 10)
+    (TODO-RENAME-11 (_type_ task-control) symbol 11)
+    (first-flag-bit? (_type_) symbol 12)
+    (third-flag-bit? (_type_) symbol 13)
+    (TODO-RENAME-14 (_type_) int 14)
+    (clear-all-but-first-flag-bit (_type_) int 15)
     )
   )
 
 (deftype task-control (basic)
   ((current-stage int16  :offset-assert 4)
-   (stage         basic  :offset-assert 8)
+   (stage         (array task-cstage)  :offset-assert 8)
    )
   :method-count-assert 19
   :size-assert         #xc
   :flag-assert         #x130000000c
   (:methods
-    (dummy-9 () none 9)
-    (dummy-10 () none 10)
-    (dummy-11 () none 11)
-    (dummy-12 () none 12)
-    (dummy-13 () none 13)
-    (dummy-14 () none 14)
-    (dummy-15 () none 15)
-    (dummy-16 () none 16)
-    (dummy-17 () none 17)
-    (dummy-18 () none 18)
+    (current-task (_type_) int 9)
+    (current-status (_type_) int 10)
+    (close-current! (_type_) none 11)
+    (close-status! (_type_ int) int 12)
+    (first-any (_type_ symbol) int 13)
+    (reset! (_type_ symbol symbol) int 14)
+    (closed? (_type_ int int) symbol 15)
+    (get-reminder (_type_ int) int 16)
+    (save-reminder (_type_ int int) int 17) ;; TODO - i believe this is none
+    (exists? (_type_ int int) symbol 18)
     )
   )
 
@@ -15986,11 +16123,11 @@
 
 ;; - Functions
 
-(define-extern get-task-control function)
+(define-extern get-task-control (function int task-control))
 (define-extern level-hint-spawn function)
 (define-extern get-game-count function)
 (define-extern activate-orb-all function)
-(define-extern close-specific-task! function)
+(define-extern close-specific-task! (function task-control int int))
 (define-extern reset-all-hint-controls function)
 (define-extern reset-actors function)
 (define-extern set-blackout-frames (function int uint))
@@ -15998,7 +16135,7 @@
 (define-extern stop (function symbol int))
 (define-extern start (function symbol continue-point target))
 (define-extern position-in-front-of-camera! (function vector float float vector))
-(define-extern game-task->string function)
+(define-extern game-task->string (function int string))
 (define-extern trsq->continue-point function)
 
 ;; - Symbols
@@ -16111,7 +16248,7 @@
 (define-extern progress-allowed? (function symbol))
 (define-extern print-game-text (function string font-context symbol int int float)) ; TODO decomp error, this seems correct though
 (define-extern get-aspect-ratio (function symbol))
-(define-extern get-task-status function)
+(define-extern get-task-status (function task-control int))
 (define-extern lookup-level-info (function symbol level-load-info))
 (define-extern calculate-completion function)
 (define-extern game-save-elt->string function)
@@ -18095,7 +18232,7 @@
 (define-extern hide-bottom-hud function)
 (define-extern ambient-hint-init-by-other function)
 (define-extern level-hint-process-cmd function)
-(define-extern task-known? function)
+(define-extern task-known? (function task-control symbol))
 (define-extern can-grab-display? function)
 (define-extern level-hint-displayed? function)
 (define-extern ambient-inspect function)
@@ -18753,7 +18890,7 @@
 (define-extern target-hit-push function)
 (define-extern velocity-set-to-target! function)
 (define-extern start-sequence-a function)
-(define-extern task-closed? function)
+(define-extern task-closed? (function int int symbol))
 (define-extern next-level function)
 
 ;; - Unknowns
@@ -19163,7 +19300,7 @@
 
 ;; - Functions
 
-(define-extern task-control-reset function)
+(define-extern task-control-reset (function symbol none))
 (define-extern init-entity function)
 (define-extern birth-viewer function)
 (define-extern update-actor-vis-box function)
@@ -19666,31 +19803,31 @@
 
 ;; - Functions
 
-(define-extern task-status->string function)
-(define-extern open-specific-task! function)
-(define-extern task-exists? function)
-(define-extern sages-kidnapped? function)
+(define-extern task-status->string (function int string))
+(define-extern open-specific-task! (function task-control int int))
+(define-extern task-exists? (function task-control int symbol))
+(define-extern sages-kidnapped? (function symbol))
 
-;; - Unknowns
+;; - Symbols
 
-;;(define-extern *null-task-control* object) ;; unknown type
-;;(define-extern *task-controls* object) ;; unknown type
-;;(define-extern *assistant-tasks* object) ;; unknown type
-;;(define-extern *assistant-village2-tasks* object) ;; unknown type
-;;(define-extern *gambler-tasks* object) ;; unknown type
-;;(define-extern *geologist-tasks* object) ;; unknown type
-;;(define-extern *mayor-tasks* object) ;; unknown type
-;;(define-extern *sage-tasks* object) ;; unknown type
-;;(define-extern *sage-bluehut-tasks* object) ;; unknown type
-;;(define-extern *oracle-village1-tasks* object) ;; unknown type
-;;(define-extern *oracle-village2-tasks* object) ;; unknown type
-;;(define-extern *oracle-village3-tasks* object) ;; unknown type
-;;(define-extern *miners-tasks* object) ;; unknown type
-;;(define-extern *sage-villagec-tasks* object) ;; unknown type
-;;(define-extern *citb-greensage-tasks* object) ;; unknown type
-;;(define-extern *citb-bluesage-tasks* object) ;; unknown type
-;;(define-extern *citb-redsage-tasks* object) ;; unknown type
-;;(define-extern *citb-yellowsage-tasks* object) ;; unknown type
+(define-extern *null-task-control* task-control)
+(define-extern *task-controls* (array task-control))
+(define-extern *assistant-tasks* task-control)
+(define-extern *assistant-village2-tasks* task-control)
+(define-extern *gambler-tasks* task-control)
+(define-extern *geologist-tasks* task-control)
+(define-extern *mayor-tasks* task-control)
+(define-extern *sage-tasks* task-control)
+(define-extern *sage-bluehut-tasks* task-control)
+(define-extern *oracle-village1-tasks* task-control)
+(define-extern *oracle-village2-tasks* task-control)
+(define-extern *oracle-village3-tasks* task-control)
+(define-extern *miners-tasks* task-control)
+(define-extern *sage-villagec-tasks* task-control)
+(define-extern *citb-greensage-tasks* task-control)
+(define-extern *citb-bluesage-tasks* task-control)
+(define-extern *citb-redsage-tasks* task-control)
+(define-extern *citb-yellowsage-tasks* task-control)
 
 
 ;; ----------------------
