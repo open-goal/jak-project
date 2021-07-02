@@ -11,6 +11,7 @@
 #include "common/util/FileUtil.h"
 #include "goalc/data_compiler/game_text.h"
 #include "goalc/data_compiler/game_count.h"
+#include "goalc/data_compiler/dir_tpages.h"
 #include "common/goos/ReplUtils.h"
 #include <regex>
 #include <stack>
@@ -67,6 +68,8 @@ Val* Compiler::compile_asm_data_file(const goos::Object& form, const goos::Objec
     compile_game_text(as_string(args.unnamed.at(1)));
   } else if (kind == "game-count") {
     compile_game_count(as_string(args.unnamed.at(1)));
+  } else if (kind == "dir-tpages") {
+    compile_dir_tpages(as_string(args.unnamed.at(1)));
   } else {
     throw_compiler_error(form, "The option {} was not recognized for asm-data-file.", kind);
   }

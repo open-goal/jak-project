@@ -15,6 +15,7 @@
 #include "decompiler/data/tpage.h"
 #include "decompiler/data/game_text.h"
 #include "decompiler/data/StrFileReader.h"
+#include "decompiler/data/dir_tpages.h"
 #include "decompiler/data/game_count.h"
 #include "LinkedObjectFileCreation.h"
 #include "decompiler/config.h"
@@ -556,20 +557,34 @@ void ObjectFileDB::find_and_write_scripts(const std::string& output_dir) {
   lg::info(" Total {:.3f} ms\n", timer.getMs());
 }
 
-void ObjectFileDB::process_tpages() {
+std::string ObjectFileDB::process_tpages() {
   lg::info("- Finding textures in tpages...");
   std::string tpage_string = "tpage-";
   int total = 0, success = 0;
+  int tpage_dir_count = 0;
   Timer timer;
+
+  std::string result;
   for_each_obj([&](ObjectFileData& data) {
     if (data.name_in_dgo.substr(0, tpage_string.length()) == tpage_string) {
       auto statistics = process_tpage(data);
       total += statistics.total_textures;
       success += statistics.successful_textures;
+    } else if (data.name_in_dgo == "dir-tpages") {
+      result = process_dir_tpages(data).to_source();
+      tpage_dir_count++;
     }
   });
+
+  assert(tpage_dir_count <= 1);
+
+  if (tpage_dir_count == 0) {
+    lg::warn("Did not find tpage-dir.");
+  }
+
   lg::info("Processed {} / {} textures {:.2f}% in {:.2f} ms", success, total,
            100.f * float(success) / float(total), timer.getMs());
+  return result;
 }
 
 std::string ObjectFileDB::process_game_text_files() {

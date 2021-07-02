@@ -775,6 +775,11 @@ TEST_F(WithGameTests, StaticLambda) {
   runner.run_static_test(env, testCategory, "test-static-lambda.gc", {"Add: 30 sub: -10\n0\n"});
 }
 
+TEST_F(WithGameTests, MethodReplace) {
+  runner.run_static_test(env, testCategory, "test-method-replace.gc",
+                         {"relocate! foo: 123 heap: 1 name: 2\n0\n"});
+}
+
 TEST(TypeConsistency, TypeConsistency) {
   Compiler compiler;
   compiler.enable_throw_on_redefines();

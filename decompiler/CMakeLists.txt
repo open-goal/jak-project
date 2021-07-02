@@ -15,6 +15,7 @@ add_library(
         analysis/type_analysis.cpp
         analysis/variable_naming.cpp
 
+        data/dir_tpages.cpp
         data/game_count.cpp
         data/game_text.cpp
         data/StrFileReader.cpp
