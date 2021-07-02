@@ -1,14 +1,14 @@
-#include "anonymous_function_def.h"
+#include "static_refs.h"
 #include "common/goos/PrettyPrinter.h"
 #include "decompiler/Function/Function.h"
 #include "decompiler/ObjectFile/LinkedObjectFile.h"
 #include "decompiler/analysis/final_output.h"
 
 namespace decompiler {
-int insert_anonymous_functions(Form* top_level_form,
-                               FormPool& pool,
-                               const Function& function,
-                               const DecompilerTypeSystem&) {
+int insert_static_refs(Form* top_level_form,
+                       FormPool& pool,
+                       const Function& function,
+                       const DecompilerTypeSystem&) {
   int replaced = 0;
   top_level_form->apply_form([&](Form* f) {
     auto atom = form_as_atom(f);
@@ -33,6 +33,13 @@ int insert_anonymous_functions(Form* top_level_form,
           }
         }
       }
+    }
+  });
+
+  top_level_form->apply([&](FormElement* fe) {
+    auto as_static_data = dynamic_cast<DecompiledDataElement*>(fe);
+    if (as_static_data) {
+      as_static_data->do_decomp(function.ir2.env, function.ir2.env.file);
     }
   });
   return replaced;

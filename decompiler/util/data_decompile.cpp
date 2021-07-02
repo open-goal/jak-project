@@ -6,6 +6,9 @@
 #include "common/goos/PrettyPrinter.h"
 #include "common/util/math_util.h"
 #include "common/log/log.h"
+#include "decompiler/ObjectFile/LinkedObjectFile.h"
+#include "decompiler/IR2/Form.h"
+#include "decompiler/analysis/final_output.h"
 
 namespace decompiler {
 
@@ -16,11 +19,12 @@ goos::Object decompile_at_label_with_hint(const LabelType& hint,
                                           const DecompilerLabel& label,
                                           const std::vector<DecompilerLabel>& labels,
                                           const std::vector<std::vector<LinkedWord>>& words,
-                                          DecompilerTypeSystem& dts) {
+                                          DecompilerTypeSystem& dts,
+                                          const LinkedObjectFile* file) {
   auto type = dts.parse_type_spec(hint.type_name);
   if (!hint.array_size.has_value()) {
     // if we don't have an array size, treat it as just a normal type.
-    return decompile_at_label(type, label, labels, words, dts.ts);
+    return decompile_at_label(type, label, labels, words, dts.ts, file);
   }
 
   if (type.base_type() == "pointer") {
@@ -67,7 +71,7 @@ goos::Object decompile_at_label_with_hint(const LabelType& hint,
         fake_label.offset = label.offset + field_type_info->get_offset() + stride * elt;
         fake_label.name = fmt::format("fake-label-{}-elt-{}", type.get_single_arg().print(), elt);
         array_def.push_back(
-            decompile_at_label(type.get_single_arg(), fake_label, labels, words, dts.ts));
+            decompile_at_label(type.get_single_arg(), fake_label, labels, words, dts.ts, file));
       }
       return pretty_print::build_list(array_def);
     }
@@ -121,12 +125,29 @@ std::optional<TypeSpec> get_type_of_label(const DecompilerLabel& label,
 goos::Object decompile_at_label_guess_type(const DecompilerLabel& label,
                                            const std::vector<DecompilerLabel>& labels,
                                            const std::vector<std::vector<LinkedWord>>& words,
-                                           const TypeSystem& ts) {
+                                           const TypeSystem& ts,
+                                           const LinkedObjectFile* file) {
   auto guessed_type = get_type_of_label(label, words);
   if (!guessed_type.has_value()) {
     throw std::runtime_error("Could not guess the type of " + label.name);
   }
-  return decompile_at_label(*guessed_type, label, labels, words, ts);
+  return decompile_at_label(*guessed_type, label, labels, words, ts, file);
+}
+
+goos::Object decompile_function_at_label(const DecompilerLabel& label,
+                                         const LinkedObjectFile* file) {
+  if (file) {
+    auto other_func = file->try_get_function_at_label(label);
+    if (other_func) {
+      std::vector<goos::Object> inline_body;
+      other_func->ir2.top_form->inline_forms(inline_body, other_func->ir2.env);
+      auto result = pretty_print::build_list(
+          "lambda", get_arg_list_for_function(*other_func, other_func->ir2.env));
+      pretty_print::append(result, pretty_print::build_list(inline_body));
+      return result;
+    }
+  }
+  return pretty_print::to_symbol(fmt::format("<lambda at {}>", label.name));
 }
 
 /*!
@@ -137,21 +158,26 @@ goos::Object decompile_at_label(const TypeSpec& type,
                                 const DecompilerLabel& label,
                                 const std::vector<DecompilerLabel>& labels,
                                 const std::vector<std::vector<LinkedWord>>& words,
-                                const TypeSystem& ts) {
+                                const TypeSystem& ts,
+                                const LinkedObjectFile* file) {
   if (type == TypeSpec("string")) {
     return decompile_string_at_label(label, words);
   }
 
+  if (ts.tc(TypeSpec("function"), type)) {
+    return decompile_function_at_label(label, file);
+  }
+
   if (ts.tc(TypeSpec("array"), type)) {
-    return decompile_boxed_array(label, labels, words, ts);
+    return decompile_boxed_array(label, labels, words, ts, file);
   }
 
   if (ts.tc(TypeSpec("structure"), type)) {
-    return decompile_structure(type, label, labels, words, ts);
+    return decompile_structure(type, label, labels, words, ts, file);
   }
 
   if (type == TypeSpec("pair")) {
-    return decompile_pair(label, labels, words, ts, true);
+    return decompile_pair(label, labels, words, ts, true, file);
   }
 
   throw std::runtime_error("Unimplemented decompile_at_label for " + type.print());
@@ -256,7 +282,8 @@ goos::Object decompile_structure(const TypeSpec& type,
                                  const DecompilerLabel& label,
                                  const std::vector<DecompilerLabel>& labels,
                                  const std::vector<std::vector<LinkedWord>>& words,
-                                 const TypeSystem& ts) {
+                                 const TypeSystem& ts,
+                                 const LinkedObjectFile* file) {
   // first step, get type info and words
   TypeSpec actual_type = type;
   auto uncast_type_info = ts.lookup_type(actual_type);
@@ -265,11 +292,39 @@ goos::Object decompile_structure(const TypeSpec& type,
     throw std::runtime_error(fmt::format("Type {} wasn't a structure type.", actual_type.print()));
   }
   bool is_basic = dynamic_cast<BasicType*>(uncast_type_info);
+  auto offset_location = label.offset - type_info->get_offset();
+
+  if (is_basic) {
+    const auto& word = words.at(label.target_segment).at((offset_location / 4));
+    if (word.kind != LinkedWord::TYPE_PTR) {
+      throw std::runtime_error("Basic does not start with type pointer");
+    }
+
+    if (word.symbol_name != actual_type.base_type()) {
+      // we can specify a more specific type.
+      auto got_type = TypeSpec(word.symbol_name);
+      if (ts.tc(actual_type, got_type)) {
+        actual_type = got_type;
+
+        type_info = dynamic_cast<StructureType*>(ts.lookup_type(actual_type));
+        if (!type_info) {
+          throw std::runtime_error(
+              fmt::format("Type-tag type {} wasn't a structure type.", actual_type.print()));
+        }
+
+        // try again with the right type. this resets back to decompile_at_label because we may
+        // want to get the specific function/string/etc implementations.
+        return decompile_at_label(actual_type, label, labels, words, ts, file);
+      } else {
+        throw std::runtime_error(fmt::format("Basic has the wrong type pointer, got {} expected {}",
+                                             word.symbol_name, actual_type.base_type()));
+      }
+    }
+  }
 
   int word_count = (type_info->get_size_in_memory() + 3) / 4;
 
   // check alignment
-  auto offset_location = label.offset - type_info->get_offset();
   if (offset_location % 8) {
     throw std::runtime_error(fmt::format(
         "Tried to decompile a structure with type type {} (type offset {}) at label {}, but it has "
@@ -333,18 +388,8 @@ goos::Object decompile_structure(const TypeSpec& type,
       }
 
       if (word.symbol_name != actual_type.base_type()) {
-        // we can specify a more specific type.
-        auto got_type = TypeSpec(word.symbol_name);
-        if (ts.tc(actual_type, got_type)) {
-          actual_type = got_type;
-          if (actual_type == TypeSpec("string")) {
-            return decompile_string_at_label(label, words);
-          }
-        } else {
-          throw std::runtime_error(
-              fmt::format("Basic has the wrong type pointer, got {} expected {}", word.symbol_name,
-                          actual_type.base_type()));
-        }
+        // the check above should have caught this.
+        assert(false);
       }
       for (int k = 0; k < 4; k++) {
         field_status_per_byte.at(k) = HAS_DATA_READ;
@@ -420,7 +465,7 @@ goos::Object decompile_structure(const TypeSpec& type,
         fake_label.offset = offset_location + field.offset() + field_type_info->get_offset();
         fake_label.name = fmt::format("fake-label-{}-{}", actual_type.print(), field.name());
         field_defs_out.emplace_back(
-            field.name(), decompile_at_label(field.type(), fake_label, labels, words, ts));
+            field.name(), decompile_at_label(field.type(), fake_label, labels, words, ts, file));
       } else if (!field.is_dynamic() && field.is_array() && field.is_inline()) {
         // it's an inline array.  let's figure out the len and stride
         auto len = field.array_size();
@@ -440,7 +485,8 @@ goos::Object decompile_structure(const TypeSpec& type,
               offset_location + field.offset() + field_type_info->get_offset() + stride * elt;
           fake_label.name =
               fmt::format("fake-label-{}-{}-elt-{}", actual_type.print(), field.name(), elt);
-          array_def.push_back(decompile_at_label(field.type(), fake_label, labels, words, ts));
+          array_def.push_back(
+              decompile_at_label(field.type(), fake_label, labels, words, ts, file));
         }
         field_defs_out.emplace_back(field.name(), pretty_print::build_list(array_def));
       } else if (!field.is_dynamic() && field.is_array() && !field.is_inline()) {
@@ -467,8 +513,8 @@ goos::Object decompile_structure(const TypeSpec& type,
           auto& word = obj_words.at((field_start / 4) + elt);
 
           if (word.kind == LinkedWord::PTR) {
-            array_def.push_back(
-                decompile_at_label(field.type(), labels.at(word.label_id), labels, words, ts));
+            array_def.push_back(decompile_at_label(field.type(), labels.at(word.label_id), labels,
+                                                   words, ts, file));
           } else if (word.kind == LinkedWord::PLAIN_DATA && word.data == 0) {
             // do nothing, the default is zero?
             array_def.push_back(pretty_print::to_symbol("0"));
@@ -501,7 +547,7 @@ goos::Object decompile_structure(const TypeSpec& type,
         if (word.kind == LinkedWord::PTR) {
           field_defs_out.emplace_back(
               field.name(),
-              decompile_at_label(field.type(), labels.at(word.label_id), labels, words, ts));
+              decompile_at_label(field.type(), labels.at(word.label_id), labels, words, ts, file));
         } else if (word.kind == LinkedWord::PLAIN_DATA && word.data == 0) {
           // do nothing, the default is zero?
           field_defs_out.emplace_back(field.name(), pretty_print::to_symbol("0"));
@@ -673,7 +719,8 @@ goos::Object decompile_value(const TypeSpec& type,
 goos::Object decompile_boxed_array(const DecompilerLabel& label,
                                    const std::vector<DecompilerLabel>& labels,
                                    const std::vector<std::vector<LinkedWord>>& words,
-                                   const TypeSystem& ts) {
+                                   const TypeSystem& ts,
+                                   const LinkedObjectFile* file) {
   TypeSpec content_type;
   auto type_ptr_word_idx = (label.offset / 4) - 1;
   if ((label.offset % 8) == 4) {
@@ -723,7 +770,7 @@ goos::Object decompile_boxed_array(const DecompilerLabel& label,
         result.push_back(pretty_print::to_symbol("0"));
       } else if (word.kind == LinkedWord::PTR) {
         result.push_back(
-            decompile_at_label(content_type, labels.at(word.label_id), labels, words, ts));
+            decompile_at_label(content_type, labels.at(word.label_id), labels, words, ts, file));
       } else if (word.kind == LinkedWord::SYM_PTR) {
         result.push_back(pretty_print::to_symbol(fmt::format("'{}", word.symbol_name)));
       } else {
@@ -765,7 +812,8 @@ namespace {
 goos::Object decompile_pair_elt(const LinkedWord& word,
                                 const std::vector<DecompilerLabel>& labels,
                                 const std::vector<std::vector<LinkedWord>>& words,
-                                const TypeSystem& ts) {
+                                const TypeSystem& ts,
+                                const LinkedObjectFile* file) {
   if (word.kind == LinkedWord::PTR) {
     auto& label = labels.at(word.label_id);
     auto guessed_type = get_type_of_label(label, words);
@@ -774,10 +822,10 @@ goos::Object decompile_pair_elt(const LinkedWord& word,
     }
 
     if (guessed_type == TypeSpec("pair")) {
-      return decompile_pair(label, labels, words, ts, false);
+      return decompile_pair(label, labels, words, ts, false, file);
     }
 
-    return decompile_at_label(*guessed_type, label, labels, words, ts);
+    return decompile_at_label(*guessed_type, label, labels, words, ts, file);
   } else if (word.kind == LinkedWord::PLAIN_DATA && word.data == 0) {
     // do nothing, the default is zero?
     return pretty_print::to_symbol("0");
@@ -798,7 +846,8 @@ goos::Object decompile_pair(const DecompilerLabel& label,
                             const std::vector<DecompilerLabel>& labels,
                             const std::vector<std::vector<LinkedWord>>& words,
                             const TypeSystem& ts,
-                            bool add_quote) {
+                            bool add_quote,
+                            const LinkedObjectFile* file) {
   if ((label.offset % 8) != 2) {
     if ((label.offset % 4) != 0) {
       throw std::runtime_error(fmt::format("Invalid alignment for pair {}\n", label.offset % 16));
@@ -825,7 +874,7 @@ goos::Object decompile_pair(const DecompilerLabel& label,
     if ((to_print.offset % 8) == 2) {
       // continue
       auto car_word = words.at(to_print.target_segment).at((to_print.offset - 2) / 4);
-      list_tokens.push_back(decompile_pair_elt(car_word, labels, words, ts));
+      list_tokens.push_back(decompile_pair_elt(car_word, labels, words, ts, file));
 
       auto cdr_word = words.at(to_print.target_segment).at((to_print.offset + 2) / 4);
       // if empty
@@ -847,7 +896,7 @@ goos::Object decompile_pair(const DecompilerLabel& label,
           "because we "
           "could not find a test case yet.");
       list_tokens.push_back(pretty_print::to_symbol("."));
-      list_tokens.push_back(decompile_pair_elt(cdr_word, labels, words, ts));
+      list_tokens.push_back(decompile_pair_elt(cdr_word, labels, words, ts, file));
       if (add_quote) {
         return pretty_print::build_list("quote", pretty_print::build_list(list_tokens));
       } else {
@@ -870,7 +919,7 @@ goos::Object decompile_pair(const DecompilerLabel& label,
             "could not find a test case yet.");
         list_tokens.push_back(pretty_print::to_symbol("."));
         list_tokens.push_back(decompile_pair_elt(
-            words.at(to_print.target_segment).at(to_print.offset / 4), labels, words, ts));
+            words.at(to_print.target_segment).at(to_print.offset / 4), labels, words, ts, file));
         if (add_quote) {
           return pretty_print::build_list("quote", pretty_print::build_list(list_tokens));
         } else {

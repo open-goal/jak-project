@@ -383,14 +383,11 @@ bool DecompilerTypeSystem::tp_lca(TypeState* combined, const TypeState& add) {
 }
 
 int DecompilerTypeSystem::get_format_arg_count(const std::string& str) const {
-  // temporary hack, remove this.
-  if (str == "ERROR: dma tag has data in reserved bits ~X~%") {
-    return 0;
+  auto bad_it = bad_format_strings.find(str);
+  if (bad_it != bad_format_strings.end()) {
+    return bad_it->second;
   }
 
-  if (str == "#<surface f0:~m f1:~f tf+:~f tf-:~f sf:~f tvv:~m") {
-    return 5;
-  }
   int arg_count = 0;
   for (size_t i = 0; i < str.length(); i++) {
     if (str.at(i) == '~') {

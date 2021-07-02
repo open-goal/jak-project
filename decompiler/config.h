@@ -100,6 +100,8 @@ struct Config {
   std::unordered_map<std::string, std::vector<StackStructureHint>>
       stack_structure_hints_by_function;
 
+  std::unordered_map<std::string, int> bad_format_strings;
+
   DecompileHacks hacks;
 };
 
