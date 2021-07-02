@@ -164,7 +164,11 @@ goos::Object decompile_at_label(const TypeSpec& type,
   }
 
   if (ts.tc(TypeSpec("array"), type)) {
-    return decompile_boxed_array(label, labels, words, ts, file);
+    std::optional<TypeSpec> content_type_spec;
+    if (type.has_single_arg()) {
+      content_type_spec = type.get_single_arg();
+    }
+    return decompile_boxed_array(label, labels, words, ts, file, content_type_spec);
   }
 
   if (ts.tc(TypeSpec("structure"), type)) {
@@ -522,10 +526,10 @@ goos::Object decompile_structure(const TypeSpec& type,
           } else if (word.kind == LinkedWord::EMPTY_PTR) {
             array_def.push_back(pretty_print::to_symbol("'()"));
           } else {
-            throw std::runtime_error(
-                fmt::format("Field {} in type {} offset {} did not have a proper reference for "
-                            "array element {}",
-                            field.name(), actual_type.print(), field.offset(), elt));
+            throw std::runtime_error(fmt::format(
+                "Field {} in type {} offset {} did not have a proper reference for "
+                "array element {} k = {}",
+                field.name(), actual_type.print(), field.offset(), elt, (int)word.kind));
           }
         }
         field_defs_out.emplace_back(field.name(), pretty_print::build_list(array_def));
@@ -715,7 +719,8 @@ goos::Object decompile_boxed_array(const DecompilerLabel& label,
                                    const std::vector<DecompilerLabel>& labels,
                                    const std::vector<std::vector<LinkedWord>>& words,
                                    const TypeSystem& ts,
-                                   const LinkedObjectFile* file) {
+                                   const LinkedObjectFile* file,
+                                   const std::optional<TypeSpec>& content_type_override) {
   TypeSpec content_type;
   auto type_ptr_word_idx = (label.offset / 4) - 1;
   if ((label.offset % 8) == 4) {
@@ -735,6 +740,10 @@ goos::Object decompile_boxed_array(const DecompilerLabel& label,
     }
   } else {
     throw std::runtime_error("Invalid alignment in decompile_boxed_array");
+  }
+
+  if (content_type_override) {
+    content_type = *content_type_override;
   }
 
   // now get the size
@@ -1057,7 +1066,7 @@ std::string decompile_int_enum_from_int(const TypeSpec& type, const TypeSystem& 
     }
   }
   throw std::runtime_error(
-      fmt::format("Failed to decompile integer enum. Value {} wasn't found in enum {}", value,
-                  type_info->get_name()));
+      fmt::format("Failed to decompile integer enum. Value {} (0x{:x}) wasn't found in enum {}",
+                  value, value, type_info->get_name()));
 }
 }  // namespace decompiler

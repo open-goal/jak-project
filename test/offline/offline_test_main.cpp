@@ -166,6 +166,8 @@ const std::unordered_set<std::string> g_functions_to_skip_compiling = {
 
     // ripple - calls an asm function
     "ripple-execute",
+
+    "get-task-status",
 };
 
 // default location for the data. It can be changed with a command line argument.
@@ -351,10 +353,6 @@ TEST_F(OfflineDecompilation, FunctionDetect) {
 
   // one login per object file
   EXPECT_EQ(config->allowed_objects.size(), login_count);
-
-  // not many lambdas.
-  // TODO - disabling this test, some files do have many lambdas! Gotta figure out a better way to
-  // do this EXPECT_TRUE(unknown_count < 10);
 }
 
 TEST_F(OfflineDecompilation, AsmFunction) {
