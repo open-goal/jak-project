@@ -775,7 +775,7 @@ TEST_F(WithGameTests, StaticLambda) {
   runner.run_static_test(env, testCategory, "test-static-lambda.gc", {"Add: 30 sub: -10\n0\n"});
 }
 
-TEST(TypeConsistency, TypeConsistency) {
+TEST(TypeConsistency, TypeConsistencyDraft) {
   Compiler compiler;
   compiler.enable_throw_on_redefines();
   compiler.run_test_no_load("test/goalc/source_templates/with_game/test-build-game.gc");
