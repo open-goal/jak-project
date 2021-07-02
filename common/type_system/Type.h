@@ -21,6 +21,7 @@ struct MethodInfo {
   TypeSpec type;
   std::string defined_in_type;
   bool no_virtual = false;
+  bool overrides_method_type_of_parent = false;
 
   bool operator==(const MethodInfo& other) const;
   bool operator!=(const MethodInfo& other) const { return !((*this) == other); }

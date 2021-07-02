@@ -84,7 +84,7 @@ class ObjectFileDB {
   std::string ir2_final_out(ObjectFileData& data,
                             const std::unordered_set<std::string>& skip_functions = {});
 
-  void process_tpages();
+  std::string process_tpages();
   std::string process_game_count_file();
   std::string process_game_text_files();
 

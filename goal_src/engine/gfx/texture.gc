@@ -13,7 +13,7 @@
 ;;    (common textures for Jak, crates, etc)
 ;; - "global common" textures that are uploaded as needed, but aren't level specific
 ;;    (the start menu hud)
-;; - "level common" textures that are uploaded as needed
+;; - "level common" textures that are uploaded as needed, and are specific to a level.
 ;; - "level near" textures. Part of these textures remain in VRAM always (don't live in RAM) and
 ;;      part is reuploaded as needed.  This is for TFRAG stuff near the camera
 
@@ -1662,7 +1662,120 @@
 (define *texture-pool* (new 'global 'texture-pool))
 
 ;; temp hack for loading:
-(defmethod relocate texture-page ((obj texture-page) (offset int))
+(defmethod relocate texture-page ((obj texture-page) (heap kheap) (ptr (pointer uint8)))
   (format #t "HACK! removing texture page ~A from level heap~%" (-> obj name))
-  (remove-from-heap obj loading-level) 
+  (remove-from-heap obj loading-level)
+  (none)
+  )
+
+
+(defmethod asize-of texture-page-dir ((obj texture-page-dir))
+  (the-as int
+   (+ (-> texture-page-dir size) (the-as uint (* 12 (+ (-> obj length) -1))))
+   )
+  )
+
+(defmethod length texture-page-dir ((obj texture-page-dir))
+  (-> obj length)
+  )
+
+(defmethod relocate texture-page-dir ((obj texture-page-dir) (arg0 kheap) (arg1 (pointer uint8)))
+  (set! *texture-page-dir* obj)
+  (none)
+  )
+
+(defun-debug texture-page-dir-inspect ((dir texture-page-dir) (mode symbol))
+  (format #t "[~8x] ~A~%" dir (-> dir type))
+  (let ((pool *texture-pool*))
+   (format
+    #t
+    "~Ttexture pool (~DK used, ~DK free)~%"
+    (/ (- (-> pool cur) (-> pool top)) 256)
+    (/ (- #xa0000 (-> pool cur)) 256)
+    )
+   )
+  (dotimes (level-idx (-> *level* length))
+   (let ((lev (-> *level* level level-idx)))
+    (if (= (-> lev status) 'active)
+     (texture-page-size-check *texture-pool* lev #f)
+     )
+    )
+   )
+  (format #t "~Tlength: ~D~%" (-> dir length))
+  (format #t "~Tdata[~D]: @ #x~X~%" (-> dir length) (-> dir entries))
+  (dotimes (entry-idx (-> dir length))
+   (let ((entry-page (-> dir entries entry-idx page))
+         (entry-link (-> dir entries entry-idx link))
+         )
+    (cond
+     (entry-page
+      (format #t "~T  [~3D]   loaded ~S ~A~%" entry-idx (if entry-link
+                                                         "  linked"
+                                                         "unlinked"
+                                                         )
+       entry-page
+       )
+      )
+     (else
+      (if (= mode 'full)
+       (format
+        #t
+        "~T  [~3D] unloaded ~S #<texture-page :length ~D>~%"
+        entry-idx
+        (if entry-link
+         "  linked"
+         "unlinked"
+         )
+        (-> dir entries entry-idx length)
+        )
+       )
+      )
+     )
+    (when (and (or entry-page entry-link) mode)
+     (dotimes (entry-list-length (-> dir entries entry-idx length))
+      (cond
+       ((not entry-link)
+        (format #t "~T    [~3D]   unlinked" entry-list-length)
+        )
+       ((zero? (-> entry-link next entry-list-length shader))
+        (format #t "~T    [~3D]   UNUSED  " entry-list-length)
+        )
+       (else
+        (let ((t9-9 format)
+              (a0-12 #t)
+              (a1-10 "~T    [~3D] ~3D links ")
+              (a2-11 entry-list-length)
+              (a3-7 0)
+              )
+         (let
+          ((v1-40
+            (the-as object (* (-> entry-link next entry-list-length shader) 16))
+            )
+           )
+          (while (nonzero? (the-as int v1-40))
+           (nop!)
+           (+! a3-7 1)
+           (set! v1-40 (* (-> (the-as adgif-shader v1-40) next shader) 16))
+           )
+          )
+         (t9-9 a0-12 a1-10 a2-11 a3-7)
+         )
+        )
+       )
+      (cond
+       ((not entry-page)
+        (format #t " unloaded~%")
+        )
+       ((not (-> entry-page data entry-list-length))
+        (format #t "    empty~%")
+        )
+       (else
+        (format #t " ~A~%" (-> entry-page data entry-list-length))
+        )
+       )
+      )
+     )
+    )
+   )
+  (none)
   )
