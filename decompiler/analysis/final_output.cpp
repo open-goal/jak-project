@@ -24,9 +24,9 @@ goos::Object get_arg_list_for_function(const Function& func, const Env& env) {
 }
 
 namespace {
-void append_to_body(goos::Object* top_form,
-                    const std::vector<goos::Object>& inline_body,
-                    const FunctionVariableDefinitions& var_dec) {
+void append_body_to_function_definition(goos::Object* top_form,
+                                        const std::vector<goos::Object>& inline_body,
+                                        const FunctionVariableDefinitions& var_dec) {
   if (var_dec.local_vars) {
     pretty_print::append(*top_form, pretty_print::build_list(*var_dec.local_vars));
   }
@@ -42,6 +42,15 @@ void append_to_body(goos::Object* top_form,
   }
 }
 }  // namespace
+
+goos::Object final_output_lambda(const Function& func) {
+  std::vector<goos::Object> inline_body;
+  func.ir2.top_form->inline_forms(inline_body, func.ir2.env);
+  auto var_dec = func.ir2.env.local_var_type_list(func.ir2.top_form, func.type.arg_count() - 1);
+  auto result = pretty_print::build_list("lambda", get_arg_list_for_function(func, func.ir2.env));
+  append_body_to_function_definition(&result, inline_body, var_dec);
+  return result;
+}
 
 std::string final_defun_out(const Function& func,
                             const Env& env,
@@ -72,7 +81,7 @@ std::string final_defun_out(const Function& func,
     top.push_back(arguments);
     auto top_form = pretty_print::build_list(top);
 
-    append_to_body(&top_form, inline_body, var_dec);
+    append_body_to_function_definition(&top_form, inline_body, var_dec);
     return pretty_print::to_string(top_form);
   }
 
@@ -87,7 +96,7 @@ std::string final_defun_out(const Function& func,
     top.push_back(arguments);
     auto top_form = pretty_print::build_list(top);
 
-    append_to_body(&top_form, inline_body, var_dec);
+    append_body_to_function_definition(&top_form, inline_body, var_dec);
     return pretty_print::to_string(top_form);
   }
 
@@ -98,7 +107,7 @@ std::string final_defun_out(const Function& func,
     top.push_back(arguments);
     auto top_form = pretty_print::build_list(top);
 
-    append_to_body(&top_form, inline_body, var_dec);
+    append_body_to_function_definition(&top_form, inline_body, var_dec);
     return pretty_print::to_string(top_form);
   }
 
@@ -111,7 +120,7 @@ std::string final_defun_out(const Function& func,
     top.push_back(arguments);
     auto top_form = pretty_print::build_list(top);
 
-    append_to_body(&top_form, inline_body, var_dec);
+    append_body_to_function_definition(&top_form, inline_body, var_dec);
     return pretty_print::to_string(top_form);
   }
   return "nyi";
