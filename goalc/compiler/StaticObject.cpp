@@ -145,10 +145,10 @@ void StaticStructure::add_type_record(std::string name, int offset) {
 }
 
 void StaticStructure::add_function_record(const FunctionEnv* function, int offset) {
-  FunctionRecord rec;
-  rec.func = function;
-  rec.offset_in_this = offset;
-  functions.push_back(rec);
+  FunctionRecord frec;
+  frec.func = function;
+  frec.offset_in_this = offset;
+  functions.push_back(frec);
 }
 
 ///////////////////
