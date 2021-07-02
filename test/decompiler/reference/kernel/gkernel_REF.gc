@@ -1136,7 +1136,7 @@
    process
    (search-process-tree
     arg1
-    (lambda ((a0-0 process)) (name= (-> a0-0 name) *global-search-name*))
+    (lambda ((arg0 process)) (name= (-> arg0 name) *global-search-name*))
     )
    )
   )
@@ -1149,7 +1149,7 @@
    process
    (search-process-tree
     arg1
-    (lambda ((a0-0 process)) (not (name= (-> a0-0 name) *global-search-name*)))
+    (lambda ((arg0 process)) (not (name= (-> arg0 name) *global-search-name*)))
     )
    )
   )
@@ -1160,7 +1160,7 @@
   (iterate-process-tree
    arg0
    (lambda
-    ((a0-0 process))
+    ((arg0 process))
     (set! *global-search-count* (+ *global-search-count* 1))
     #t
     )
@@ -1190,7 +1190,7 @@
            a0-1
            (search-process-tree
             arg1
-            (lambda ((a0-0 process)) (= (-> a0-0 type) *global-search-name*))
+            (lambda ((arg0 process)) (= (-> arg0 type) *global-search-name*))
             )
            )
           a0-1
@@ -1221,7 +1221,7 @@
            a0-1
            (search-process-tree
             arg1
-            (lambda ((a0-0 process)) (!= (-> a0-0 type) *global-search-name*))
+            (lambda ((arg0 process)) (!= (-> arg0 type) *global-search-name*))
             )
            )
           a0-1
@@ -1343,15 +1343,15 @@
    )
   (execute-process-tree
    *active-pool*
-   (lambda ((a0-0 process)) (let ((s5-0 *kernel-context*)
-                                  (v1-0 (-> a0-0 status))
+   (lambda ((arg0 process)) (let ((s5-0 *kernel-context*)
+                                  (v1-0 (-> arg0 status))
                                   )
                              (cond
                               ((or (= v1-0 'waiting-to-run) (= v1-0 'suspended))
-                               (set! (-> s5-0 current-process) a0-0)
+                               (set! (-> s5-0 current-process) arg0)
                                (cond
                                 ((nonzero?
-                                  (logand (-> a0-0 mask) (process-mask pause))
+                                  (logand (-> arg0 mask) (process-mask pause))
                                   )
                                  (set! *stdcon* *stdcon1*)
                                  (set! *debug-draw-pauseable* #t)
@@ -1361,23 +1361,23 @@
                                  (set! *debug-draw-pauseable* #f)
                                  )
                                 )
-                               (when (-> a0-0 trans-hook)
+                               (when (-> arg0 trans-hook)
                                 (let
                                  ((s4-0
                                    (new
                                     'process
                                     'cpu-thread
-                                    a0-0
+                                    arg0
                                     'trans
                                     256
-                                    (-> a0-0 main-thread stack-top)
+                                    (-> arg0 main-thread stack-top)
                                     )
                                    )
                                   )
-                                 (reset-and-call s4-0 (-> a0-0 trans-hook))
+                                 (reset-and-call s4-0 (-> arg0 trans-hook))
                                  (delete s4-0)
                                  )
-                                (when (= (-> a0-0 status) 'dead)
+                                (when (= (-> arg0 status) 'dead)
                                  (set! (-> s5-0 current-process) #f)
                                  (return 'dead)
                                  )
@@ -1385,42 +1385,42 @@
                                (if
                                 (nonzero?
                                  (logand
-                                  (-> a0-0 mask)
+                                  (-> arg0 mask)
                                   (process-mask sleep-code)
                                   )
                                  )
-                                (set! (-> a0-0 status) 'suspended)
-                                ((-> a0-0 main-thread resume-hook)
-                                 (-> a0-0 main-thread)
+                                (set! (-> arg0 status) 'suspended)
+                                ((-> arg0 main-thread resume-hook)
+                                 (-> arg0 main-thread)
                                  )
                                 )
                                (cond
-                                ((= (-> a0-0 status) 'dead)
+                                ((= (-> arg0 status) 'dead)
                                  (set! (-> s5-0 current-process) #f)
                                  'dead
                                  )
                                 (else
-                                 (when (-> a0-0 post-hook)
+                                 (when (-> arg0 post-hook)
                                   (let
                                    ((s4-1
                                      (new
                                       'process
                                       'cpu-thread
-                                      a0-0
+                                      arg0
                                       'post
                                       256
                                       (&-> *dram-stack* 14336)
                                       )
                                      )
                                     )
-                                   (reset-and-call s4-1 (-> a0-0 post-hook))
+                                   (reset-and-call s4-1 (-> arg0 post-hook))
                                    (delete s4-1)
                                    )
-                                  (when (= (-> a0-0 status) 'dead)
+                                  (when (= (-> arg0 status) 'dead)
                                    (set! (-> s5-0 current-process) #f)
                                    (return 'dead)
                                    )
-                                  (set! (-> a0-0 status) 'suspended)
+                                  (set! (-> arg0 status) 'suspended)
                                   )
                                  (set! (-> s5-0 current-process) #f)
                                  #f

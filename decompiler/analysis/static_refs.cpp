@@ -21,12 +21,7 @@ int insert_static_refs(Form* top_level_form,
           auto& file = env.file;
           auto other_func = file->try_get_function_at_label(atom->label());
           if (other_func) {
-            std::vector<goos::Object> inline_body;
-            other_func->ir2.top_form->inline_forms(inline_body, other_func->ir2.env);
-            auto result = pretty_print::build_list(
-                "lambda", get_arg_list_for_function(*other_func, other_func->ir2.env));
-            pretty_print::append(result, pretty_print::build_list(inline_body));
-
+            auto result = final_output_lambda(*other_func);
             f->clear();
             f->push_back(pool.alloc_element<LambdaDefinitionElement>(result));
             replaced++;
