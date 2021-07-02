@@ -279,17 +279,32 @@ void ObjectGenerator::link_static_symbol_ptr(StaticRecord rec,
  * Insert a pointer to other static data. This patching will happen during runtime linking.
  * The source and destination must be in the same segment.
  */
-void ObjectGenerator::link_static_pointer(const StaticRecord& source,
-                                          int source_offset,
-                                          const StaticRecord& dest,
-                                          int dest_offset) {
-  StaticPointerLink link;
+void ObjectGenerator::link_static_pointer_to_data(const StaticRecord& source,
+                                                  int source_offset,
+                                                  const StaticRecord& dest,
+                                                  int dest_offset) {
+  StaticDataPointerLink link;
   link.source = source;
   link.dest = dest;
   link.offset_in_source = source_offset;
   link.offset_in_dest = dest_offset;
   assert(link.source.seg == link.dest.seg);
-  m_static_temp_ptr_links_by_seg.at(source.seg).push_back(link);
+  m_static_data_temp_ptr_links_by_seg.at(source.seg).push_back(link);
+}
+
+/*!
+ * Insert a pointer to a function in static data.
+ * The patching will happen during runtime linking.
+ */
+void ObjectGenerator::link_static_pointer_to_function(const StaticRecord& source,
+                                                      int source_offset,
+                                                      const FunctionRecord& target_func) {
+  StaticFunctionPointerLink link;
+  link.source = source;
+  link.offset_in_source = source_offset;
+  link.dest = target_func;
+  assert(target_func.seg == source.seg);
+  m_static_function_temp_ptr_links_by_seg.at(source.seg).push_back(link);
 }
 
 void ObjectGenerator::link_instruction_static(const InstructionRecord& instr,
@@ -341,13 +356,25 @@ void ObjectGenerator::handle_temp_static_sym_links(int seg) {
  * m_static_temp_ptr_links_by_seg -> m_pointer_links_by_seg
  */
 void ObjectGenerator::handle_temp_static_ptr_links(int seg) {
-  for (const auto& link : m_static_temp_ptr_links_by_seg.at(seg)) {
+  for (const auto& link : m_static_data_temp_ptr_links_by_seg.at(seg)) {
     const auto& source_object = m_static_data_by_seg.at(seg).at(link.source.static_id);
     const auto& dest_object = m_static_data_by_seg.at(seg).at(link.dest.static_id);
     PointerLink result_link;
     result_link.segment = seg;
     result_link.source = source_object.location + link.offset_in_source;
     result_link.dest = dest_object.location + link.offset_in_dest;
+    m_pointer_links_by_seg.at(seg).push_back(result_link);
+  }
+
+  for (const auto& link : m_static_function_temp_ptr_links_by_seg.at(seg)) {
+    const auto& source_object = m_static_data_by_seg.at(seg).at(link.source.static_id);
+    const auto& dest_function = m_function_data_by_seg.at(seg).at(link.dest.func_id);
+    assert(link.dest.seg == seg);
+    int loc = dest_function.instruction_to_byte_in_data.at(0);
+    PointerLink result_link;
+    result_link.segment = seg;
+    result_link.source = source_object.location + link.offset_in_source;
+    result_link.dest = loc;
     m_pointer_links_by_seg.at(seg).push_back(result_link);
   }
 }

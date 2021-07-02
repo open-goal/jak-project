@@ -211,6 +211,8 @@ void Compiler::compile_static_structure_inline(const goos::Object& form,
                                  field_info.type.print());
           }
           structure->add_type_record(sr.symbol_name(), field_offset);
+        } else if (sr.is_func()) {
+          structure->add_function_record(sr.function(), field_offset);
         } else {
           throw_compiler_error(form, "Unsupported field value {}.", field_value.print());
         }
@@ -706,6 +708,13 @@ StaticResult Compiler::compile_static(const goos::Object& form_before_macro, Env
       m_ts.forward_declare_type_method_count(type_name, method_count);
 
       return StaticResult::make_type_ref(type_name, method_count);
+    } else if (first.is_symbol("lambda")) {
+      auto lambda = dynamic_cast<LambdaVal*>(compile_lambda(form, rest, env));
+      assert(lambda);
+      if (!lambda->func) {
+        throw_compiler_error(form, "Static lambda cannot be inline.");
+      }
+      return StaticResult::make_func_ref(lambda->func, lambda->type());
     } else {
       // maybe an enum
       s64 int_out;

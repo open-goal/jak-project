@@ -454,16 +454,13 @@ void SimpleExpressionElement::update_from_stack_identity(const Env& env,
       auto kv = env.label_types().find(lab.name);
       if (kv != env.label_types().end()) {
         auto type_name = kv->second.type_name;
+        // the actual decompilation is deferred until later, once static lambdas are done.
         if (type_name == "_auto_") {
-          auto decompiled_data = decompile_at_label_guess_type(lab, env.file->labels,
-                                                               env.file->words_by_seg, env.dts->ts);
-          result->push_back(pool.alloc_element<DecompiledDataElement>(decompiled_data));
+          result->push_back(pool.alloc_element<DecompiledDataElement>(lab));
         } else if (type_name == "_lambda_") {
           result->push_back(this);
         } else {
-          auto decompiled_data = decompile_at_label_with_hint(kv->second, lab, env.file->labels,
-                                                              env.file->words_by_seg, *env.dts);
-          result->push_back(pool.alloc_element<DecompiledDataElement>(decompiled_data));
+          result->push_back(pool.alloc_element<DecompiledDataElement>(lab, kv->second));
         }
       } else {
         result->push_back(this);

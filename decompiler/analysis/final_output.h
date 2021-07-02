@@ -16,4 +16,5 @@ std::string write_from_top_level(const Function& top_level,
                                  const std::unordered_set<std::string>& skip_functions = {});
 
 goos::Object get_arg_list_for_function(const Function& func, const Env& env);
+goos::Object final_output_lambda(const Function& function);
 }  // namespace decompiler

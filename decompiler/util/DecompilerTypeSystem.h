@@ -1,5 +1,4 @@
-#ifndef JAK_DECOMPILERTYPESYSTEM_H
-#define JAK_DECOMPILERTYPESYSTEM_H
+#pragma once
 
 #include "common/type_system/TypeSystem.h"
 #include "decompiler/Disasm/Register.h"
@@ -18,6 +17,7 @@ class DecompilerTypeSystem {
   std::vector<std::string> symbol_add_order;
   std::unordered_map<std::string, u64> type_flags;
   std::unordered_map<std::string, std::string> type_parents;
+  std::unordered_map<std::string, int> bad_format_strings;
 
   void add_symbol(const std::string& name) {
     if (symbols.find(name) == symbols.end()) {
@@ -54,5 +54,3 @@ class DecompilerTypeSystem {
   mutable goos::Reader m_reader;
 };
 }  // namespace decompiler
-
-#endif  // JAK_DECOMPILERTYPESYSTEM_H

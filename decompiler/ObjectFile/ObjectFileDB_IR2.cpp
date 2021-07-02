@@ -18,7 +18,7 @@
 #include "decompiler/analysis/expression_build.h"
 #include "decompiler/analysis/inline_asm_rewrite.h"
 #include "decompiler/analysis/stack_spill.h"
-#include "decompiler/analysis/anonymous_function_def.h"
+#include "decompiler/analysis/static_refs.h"
 #include "decompiler/analysis/symbol_def_map.h"
 #include "common/goos/PrettyPrinter.h"
 #include "decompiler/IR2/Form.h"
@@ -96,7 +96,7 @@ void ObjectFileDB::ir2_top_level_pass(const Config& config) {
 
       auto& func = data.linked_data.functions_by_seg.at(2).front();
       assert(func.guessed_name.empty());
-      func.guessed_name.set_as_top_level();
+      func.guessed_name.set_as_top_level(data.to_unique_name());
       func.find_global_function_defs(data.linked_data, dts);
       func.find_type_defs(data.linked_data, dts);
       func.find_method_defs(data.linked_data, dts);
@@ -602,7 +602,7 @@ void ObjectFileDB::ir2_insert_anonymous_functions() {
     (void)segment_id;
     (void)data;
     if (func.ir2.top_form && func.ir2.env.has_type_analysis()) {
-      total += insert_anonymous_functions(func.ir2.top_form, *func.ir2.form_pool, func, dts);
+      total += insert_static_refs(func.ir2.top_form, *func.ir2.form_pool, func, dts);
     }
   });
 

@@ -159,12 +159,13 @@ class TypeSystem {
   MethodInfo declare_method(const std::string& type_name,
                             const std::string& method_name,
                             bool no_virtual,
-                            const TypeSpec& ts);
+                            const TypeSpec& ts,
+                            bool override_type);
   MethodInfo declare_method(Type* type,
                             const std::string& method_name,
                             bool no_virtual,
-                            const TypeSpec& ts);
-
+                            const TypeSpec& ts,
+                            bool override_type);
   MethodInfo define_method(const std::string& type_name,
                            const std::string& method_name,
                            const TypeSpec& ts);
