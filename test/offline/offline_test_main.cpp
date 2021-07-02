@@ -353,7 +353,8 @@ TEST_F(OfflineDecompilation, FunctionDetect) {
   EXPECT_EQ(config->allowed_objects.size(), login_count);
 
   // not many lambdas.
-  EXPECT_TRUE(unknown_count < 10);
+  // TODO - disabling this test, some files do have many lambdas! Gotta figure out a better way to
+  // do this EXPECT_TRUE(unknown_count < 10);
 }
 
 TEST_F(OfflineDecompilation, AsmFunction) {
