@@ -249,7 +249,6 @@ void inspect_basics(const Ram& ram,
         bool goal_array = field.type() == TypeSpec("array", {TypeSpec("basic")});
 
         std::unordered_map<std::string, int> type_frequency;
-        int array_max_elts = 0;
 
         for (auto base_addr : basics.at(name)) {
           for (int elt_idx = 0; elt_idx < array_size; elt_idx++) {
