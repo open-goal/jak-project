@@ -81,6 +81,13 @@ void try_reverse_lookup_other(const FieldReverseLookupInput& input,
                               FieldReverseMultiLookupOutput* output,
                               int max_count);
 
+std::vector<FieldReverseLookupOutput::Token> parent_to_vector(const ReverseLookupNode* parent) {
+  if (!parent) {
+    return {};
+  }
+  return parent->to_vector();
+}
+
 /*!
  * Handle a dereference of a pointer/boxed array. This can be:
  * - just dereferencing a pointer
@@ -188,7 +195,7 @@ void try_reverse_lookup_array_like(const FieldReverseLookupInput& input,
       // also just return the array
       if (elt_idx == 0) {
         if (boxed_array) {
-          auto vec = parent->to_vector();
+          auto vec = parent_to_vector(parent);
           FieldReverseLookupOutput::Token tok;
           tok.kind = FieldReverseLookupOutput::Token::Kind::FIELD;
           tok.field_score = 0.0;  // don't bother
@@ -196,7 +203,7 @@ void try_reverse_lookup_array_like(const FieldReverseLookupInput& input,
           vec.push_back(tok);
           output->results.emplace_back(false, array_data_type, vec);
         } else {
-          auto parent_vector = parent->to_vector();
+          auto parent_vector = parent_to_vector(parent);
           if (!parent_vector.empty()) {
             output->results.emplace_back(false, input.base_type, parent_vector);
           }
@@ -280,9 +287,9 @@ void try_reverse_lookup_inline_array(const FieldReverseLookupInput& input,
 
   // can we just return the array?
   if (expected_offset_into_elt == offset_into_elt && !input.deref.has_value() && elt_idx == 0) {
-    auto parent_vec = parent->to_vector();
+    auto parent_vec = parent_to_vector(parent);
     if (!parent_vec.empty()) {
-      output->results.emplace_back(false, input.base_type, parent->to_vector());
+      output->results.emplace_back(false, input.base_type, parent_to_vector(parent));
     }
 
     if ((int)output->results.size() >= max_count) {
