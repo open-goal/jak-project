@@ -306,14 +306,15 @@ goos::Object decompile_structure(const TypeSpec& type,
       if (ts.tc(actual_type, got_type)) {
         actual_type = got_type;
 
-        // try again with the right type. this resets back to decompile_at_label because we may
-        // want to get the specific function/string/etc implementations.
-        return decompile_at_label(actual_type, label, labels, words, ts, file);
         type_info = dynamic_cast<StructureType*>(ts.lookup_type(actual_type));
         if (!type_info) {
           throw std::runtime_error(
               fmt::format("Type-tag type {} wasn't a structure type.", actual_type.print()));
         }
+
+        // try again with the right type. this resets back to decompile_at_label because we may
+        // want to get the specific function/string/etc implementations.
+        return decompile_at_label(actual_type, label, labels, words, ts, file);
       } else {
         throw std::runtime_error(fmt::format("Basic has the wrong type pointer, got {} expected {}",
                                              word.symbol_name, actual_type.base_type()));
