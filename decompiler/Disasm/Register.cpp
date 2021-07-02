@@ -6,6 +6,7 @@
 #include "Register.h"
 #include "common/util/assert.h"
 #include <stdexcept>
+#include "third-party/fmt/core.h"
 
 namespace decompiler {
 namespace Reg {
@@ -123,10 +124,16 @@ Register::Register(Reg::RegisterKind kind, uint32_t num) {
     case Reg::VF:
     case Reg::COP0:
     case Reg::VI:
-      assert(num < 32);
+      if (num > 32) {
+        fmt::print("RegisterKind: {}, greater than 32: {}\n", kind, num);
+        assert(false);
+      }
       break;
     case Reg::SPECIAL:
-      assert(num < Reg::MAX_SPECIAL);
+      if (num > 4) {
+        fmt::print("Special RegisterKind: {}, greater than 4: {}\n", kind, num);
+        assert(false);
+      }
       break;
     default:
       assert(false);

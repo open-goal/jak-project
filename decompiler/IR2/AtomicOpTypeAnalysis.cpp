@@ -1052,6 +1052,12 @@ TypeState CallOp::propagate_types_internal(const TypeState& input,
         arg_count = arg_type.get_format_string_arg_count();
       }
 
+      if (arg_count + 2 > 8) {
+        throw std::runtime_error(
+            "Call to `format` pushed the arg-count beyond the acceptable arg limit (8), do you need to add "
+            "a code to the ignore lists?");
+      }
+
       TypeSpec format_call_type("function");
       format_call_type.add_arg(TypeSpec("object"));  // destination
       format_call_type.add_arg(TypeSpec("string"));  // format string
@@ -1060,6 +1066,7 @@ TypeState CallOp::propagate_types_internal(const TypeState& input,
       }
       format_call_type.add_arg(TypeSpec("object"));
       arg_count += 2;  // for destination and format string.
+
       m_call_type = format_call_type;
       m_call_type_set = true;
 
