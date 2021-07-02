@@ -1,6 +1,7 @@
 #include "third-party/fmt/core.h"
 #include "StaticObject.h"
 #include "common/goal_constants.h"
+#include "goalc/compiler/Env.h"
 
 namespace {
 template <typename T>
@@ -102,11 +103,16 @@ void StaticStructure::generate_structure(emitter::ObjectGenerator* gen) {
   }
 
   for (auto& ptr : pointers) {
-    gen->link_static_pointer(rec, ptr.offset_in_this, ptr.dest->rec, ptr.offset_in_dest);
+    gen->link_static_pointer_to_data(rec, ptr.offset_in_this, ptr.dest->rec, ptr.offset_in_dest);
   }
 
   for (auto& type : types) {
     gen->link_static_type_ptr(rec, type.offset, type.name);
+  }
+
+  for (auto& func : functions) {
+    gen->link_static_pointer_to_function(rec, func.offset_in_this,
+                                         gen->get_existing_function_record(func.func->idx_in_file));
   }
 }
 
@@ -136,6 +142,13 @@ void StaticStructure::add_type_record(std::string name, int offset) {
   srec.name = std::move(name);
   srec.offset = offset;
   types.push_back(srec);
+}
+
+void StaticStructure::add_function_record(const FunctionEnv* function, int offset) {
+  FunctionRecord rec;
+  rec.func = function;
+  rec.offset_in_this = offset;
+  functions.push_back(rec);
 }
 
 ///////////////////
@@ -223,5 +236,13 @@ StaticResult StaticResult::make_type_ref(const std::string& type_name, int metho
   result.m_symbol = type_name;
   result.m_method_count = method_count;
   result.m_ts = TypeSpec("type");
+  return result;
+}
+
+StaticResult StaticResult::make_func_ref(const FunctionEnv* func, const TypeSpec& type) {
+  StaticResult result;
+  result.m_kind = Kind::FUNCTION_REFERENCE;
+  result.m_func = func;
+  result.m_ts = type;
   return result;
 }

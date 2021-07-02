@@ -1264,7 +1264,7 @@
   (set! (-> *texture-pool* allocate-func) texture-page-common-allocate)
   ;; in the level data, there is always code, then TFRAG texture,
   ;; so mark the code memory end as the start of this page.
-  (set! (-> *level* unknown-level-2 code-memory-end) (the-as uint page))
+  (set! (-> *level* unknown-level-2 code-memory-end) (the pointer page))
   page
   )
 
@@ -1310,7 +1310,7 @@
       )
     )
   (set! (-> *texture-pool* allocate-func) texture-page-common-allocate)
-  (set! (-> *level* unknown-level-2 code-memory-end) (the-as uint page))
+  (set! (-> *level* unknown-level-2 code-memory-end) (the pointer page))
   page
   )
 
@@ -1657,4 +1657,12 @@
       )
 
   (none)
+  )
+
+(define *texture-pool* (new 'global 'texture-pool))
+
+;; temp hack for loading:
+(defmethod relocate texture-page ((obj texture-page) (offset int))
+  (format #t "HACK! removing texture page ~A from level heap~%" (-> obj name))
+  (remove-from-heap obj loading-level) 
   )

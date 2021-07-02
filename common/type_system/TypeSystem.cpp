@@ -161,7 +161,7 @@ void TypeSystem::forward_declare_type_as(const std::string& new_type,
       auto old_parent_it = m_types.find(fwd_it->second);
       auto new_parent_it = m_types.find(parent_type);
 
-      auto old_ts = TypeSpec(old_parent_it->second->get_name());
+      auto old_ts = TypeSpec(fwd_it->second);
 
       if (old_parent_it != m_types.end() && new_parent_it != m_types.end()) {
         auto new_ts = TypeSpec(new_parent_it->second->get_name());
@@ -1353,14 +1353,14 @@ EnumType* TypeSystem::try_enum_lookup(const TypeSpec& type) const {
  * Get a path from type to object.
  */
 std::vector<std::string> TypeSystem::get_path_up_tree(const std::string& type) const {
-  auto parent = lookup_type(type)->get_parent();
+  auto parent = lookup_type_allow_partial_def(type)->get_parent();
   std::vector<std::string> path = {type};
   path.push_back(parent);
-  auto parent_type = lookup_type(parent);
+  auto parent_type = lookup_type_allow_partial_def(parent);
 
   while (parent_type->has_parent()) {
     parent = parent_type->get_parent();
-    parent_type = lookup_type(parent);
+    parent_type = lookup_type_allow_partial_def(parent);
     path.push_back(parent);
   }
 

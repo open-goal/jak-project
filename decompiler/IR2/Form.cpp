@@ -6,6 +6,7 @@
 #include "common/goos/PrettyPrinter.h"
 #include "common/type_system/TypeSystem.h"
 #include "decompiler/util/DecompilerTypeSystem.h"
+#include "decompiler/util/data_decompile.h"
 
 namespace decompiler {
 
@@ -2118,11 +2119,16 @@ void StoreArrayAccess::get_modified_regs(RegSet& regs) const {
 // DecompiledDataElement
 /////////////////////////////
 
-DecompiledDataElement::DecompiledDataElement(goos::Object description)
-    : m_description(std::move(description)) {}
+DecompiledDataElement::DecompiledDataElement(const DecompilerLabel& label,
+                                             const std::optional<LabelType>& type_hint)
+    : m_label(label), m_type_hint(type_hint) {}
 
 goos::Object DecompiledDataElement::to_form_internal(const Env&) const {
-  return m_description;
+  if (m_decompiled) {
+    return m_description;
+  } else {
+    return pretty_print::to_symbol(fmt::format("<static-data {}>", m_label.name));
+  }
 }
 
 void DecompiledDataElement::apply(const std::function<void(FormElement*)>& f) {
@@ -2134,6 +2140,18 @@ void DecompiledDataElement::apply_form(const std::function<void(Form*)>&) {}
 void DecompiledDataElement::collect_vars(RegAccessSet&, bool) const {}
 
 void DecompiledDataElement::get_modified_regs(RegSet&) const {}
+
+void DecompiledDataElement::do_decomp(const Env& env, const LinkedObjectFile* file) {
+  if (m_type_hint) {
+    m_description = decompile_at_label_with_hint(*m_type_hint, m_label, env.file->labels,
+                                                 env.file->words_by_seg, *env.dts, file);
+
+  } else {
+    m_description = decompile_at_label_guess_type(m_label, env.file->labels, env.file->words_by_seg,
+                                                  env.dts->ts, file);
+  }
+  m_decompiled = true;
+}
 
 /////////////////////////////
 // LetElement

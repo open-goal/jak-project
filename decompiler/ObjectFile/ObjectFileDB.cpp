@@ -160,6 +160,8 @@ ObjectFileDB::ObjectFileDB(const std::vector<std::string>& _dgos,
         "No object files have been added. Check that there are input files and the allowed_objects "
         "list.");
   }
+
+  dts.bad_format_strings = config.bad_format_strings;
 }
 
 void ObjectFileDB::load_map_file(const std::string& map_data) {
@@ -639,7 +641,7 @@ void ObjectFileDB::analyze_functions_ir1(const Config& config) {
 
       auto& func = data.linked_data.functions_by_seg.at(2).front();
       assert(func.guessed_name.empty());
-      func.guessed_name.set_as_top_level();
+      func.guessed_name.set_as_top_level(data.to_unique_name());
       func.find_global_function_defs(data.linked_data, dts);
       func.find_type_defs(data.linked_data, dts);
       func.find_method_defs(data.linked_data, dts);
@@ -763,6 +765,9 @@ void ObjectFileDB::analyze_functions_ir1(const Config& config) {
 void ObjectFileDB::dump_raw_objects(const std::string& output_dir) {
   for_each_obj([&](ObjectFileData& data) {
     auto dest = output_dir + "/" + data.to_unique_name();
+    if (data.obj_version != 3) {
+      dest += ".go";
+    }
     file_util::write_binary_file(dest, data.data.data(), data.data.size());
   });
 }

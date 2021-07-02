@@ -350,6 +350,7 @@ Val* Compiler::compile_disasm(const goos::Object& form, const goos::Object& rest
 
   m_debugger.read_memory(mem.data(), size, addr);
 
+  fmt::print("{}\n", m_debugger.get_info_about_addr(addr));
   fmt::print("{}\n",
              disassemble_x86(mem.data(), mem.size(), m_debugger.get_x86_base_addr() + addr));
 
