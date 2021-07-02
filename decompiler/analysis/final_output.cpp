@@ -9,6 +9,10 @@ namespace decompiler {
 
 goos::Object get_arg_list_for_function(const Function& func, const Env& env) {
   std::vector<goos::Object> argument_elts;
+  if (func.type.arg_count() < 1) {
+    throw std::runtime_error(
+        fmt::format("Function {} has unknown type.\n", func.guessed_name.to_string()));
+  }
   assert(func.type.arg_count() >= 1);
   for (size_t i = 0; i < func.type.arg_count() - 1; i++) {
     auto reg = Register(Reg::GPR, Reg::A0 + i);

@@ -160,6 +160,8 @@ ObjectFileDB::ObjectFileDB(const std::vector<std::string>& _dgos,
         "No object files have been added. Check that there are input files and the allowed_objects "
         "list.");
   }
+
+  dts.bad_format_strings = config.bad_format_strings;
 }
 
 void ObjectFileDB::load_map_file(const std::string& map_data) {
@@ -639,7 +641,7 @@ void ObjectFileDB::analyze_functions_ir1(const Config& config) {
 
       auto& func = data.linked_data.functions_by_seg.at(2).front();
       assert(func.guessed_name.empty());
-      func.guessed_name.set_as_top_level();
+      func.guessed_name.set_as_top_level(data.to_unique_name());
       func.find_global_function_defs(data.linked_data, dts);
       func.find_type_defs(data.linked_data, dts);
       func.find_method_defs(data.linked_data, dts);
