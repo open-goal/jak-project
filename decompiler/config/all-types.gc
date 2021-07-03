@@ -12811,7 +12811,7 @@
    (initial-value  int32   :offset 4)
    (random-range   int32   :offset 8)
    (random-mult    int32   :offset 12)
-   (func           basic   :offset 4)
+   (func           function   :offset 4)
    (tex            uint32  :offset 4)
    (pntr           uint32  :offset 4)
    (sym            basic   :offset 4)
@@ -12825,7 +12825,7 @@
 (deftype sparticle-launcher (basic)
   ((birthaccum float   :offset-assert 4)
    (soundaccum float   :offset-assert 8)
-   (init-specs uint32  :offset-assert 12)
+   (init-specs (array sp-field-init-spec)  :offset-assert 12)
    )
   :method-count-assert 9
   :size-assert         #x10
@@ -13324,7 +13324,7 @@
    (outro-t-step        float                     :offset-assert 2376)
    (outro-exit-value    float                     :offset-assert 2380)
    (water-drip-time     uint64                    :offset-assert 2384)
-   (water-drip          basic                     :offset-assert 2392)
+   (water-drip          sparticle-launch-control                     :offset-assert 2392)
    (water-drip-mult     float                     :offset-assert 2396)
    (water-drip-speed    float                     :offset-assert 2400)
    )
@@ -15721,7 +15721,7 @@
 (define-extern kill-all-particles-with-key function)
 (define-extern sp-relaunch-setup-fields function)
 (define-extern sp-init-fields! function)
-(define-extern sp-launch-particles-var function)
+(define-extern sp-launch-particles-var (function sparticle-system sparticle-launcher vector symbol symbol float none)) ;; asm not confirmed
 (define-extern sp-get-particle function)
 (define-extern particle-adgif function)
 (define-extern lookup-part-group-by-name function)
@@ -15746,7 +15746,7 @@
 ;; - Unknowns
 
 ;;(define-extern *global-toggle* object) ;; unknown type
-;;(define-extern *part-id-table* object) ;; unknown type
+(define-extern *part-id-table* (array sparticle-launcher))
 ;;(define-extern *particle-300hz-timer* object) ;; unknown type
 ;;(define-extern *sp-launch-queue* object) ;; unknown type
 ;;(define-extern *death-adgif* object) ;; unknown type
@@ -15785,7 +15785,7 @@
 (define-extern sp-free-particle function)
 (define-extern sp-particle-copy! function)
 (define-extern sp-get-block-size function)
-(define-extern sp-kill-particle function)
+(define-extern sp-kill-particle (function sparticle-system sparticle-cpuinfo none))
 (define-extern sp-orbiter function)
 (define-extern memcpy function)
 (define-extern kill-all-particles-in-level (function int))
@@ -16551,15 +16551,15 @@
 ;; - Functions
 
 (define-extern matrix-local->world (function symbol matrix))
-(define-extern update-snow function)
-(define-extern check-drop-level-rain function)
-(define-extern update-rain function)
-(define-extern cam-master-effect function)
-(define-extern sparticle-track-sun function)
+(define-extern update-snow (function target none))
+(define-extern check-drop-level-rain (function int sparticle-cpuinfo vector none)) ;; second arg is a guess, it's passed as `a1` to `sp-kill-particle`
+(define-extern update-rain (function target none))
+(define-extern cam-master-effect (function none))
+(define-extern sparticle-track-sun (function int int vector none)) ;; TODO - first two args are unknown and both unused
 
-;; - Unknowns
+;; - Symbols
 
-;;(define-extern group-rain-screend-drop object) ;; unknown type
+(define-extern group-rain-screend-drop sparticle-launch-group)
 
 
 ;; ----------------------
