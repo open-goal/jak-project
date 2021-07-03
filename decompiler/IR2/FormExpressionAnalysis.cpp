@@ -654,7 +654,7 @@ void SimpleExpressionElement::update_from_stack_add_i(const Env& env,
       input.stride = 1;
       input.base_type = arg1_type.typespec();
       auto out = env.dts->ts.reverse_field_lookup(input);
-      if (out.success) {
+      if (out.success && out.has_variable_token()) {
         // it is. now we have to modify things
         // first, look for the index
 
@@ -673,6 +673,7 @@ void SimpleExpressionElement::update_from_stack_add_i(const Env& env,
               tokens.push_back(to_token(tok));
             }
           }
+          assert(used_index);
           result->push_back(pool.alloc_element<DerefElement>(args.at(1), out.addr_of, tokens));
           return;
         } else {
@@ -686,7 +687,7 @@ void SimpleExpressionElement::update_from_stack_add_i(const Env& env,
       input.stride = arg0_type.get_mult_int_constant();
       input.base_type = arg1_type.typespec();
       auto out = env.dts->ts.reverse_field_lookup(input);
-      if (out.success) {
+      if (out.success && out.has_variable_token()) {
         // it is. now we have to modify things
         // first, look for the index
         int p2;
@@ -710,6 +711,7 @@ void SimpleExpressionElement::update_from_stack_add_i(const Env& env,
                 tokens.push_back(to_token(tok));
               }
             }
+            assert(used_index);
             result->push_back(pool.alloc_element<DerefElement>(args.at(1), out.addr_of, tokens));
             return;
           } else {
@@ -736,6 +738,7 @@ void SimpleExpressionElement::update_from_stack_add_i(const Env& env,
                 tokens.push_back(to_token(tok));
               }
             }
+            assert(used_index);
             result->push_back(pool.alloc_element<DerefElement>(args.at(1), out.addr_of, tokens));
             return;
           } else {
@@ -755,7 +758,7 @@ void SimpleExpressionElement::update_from_stack_add_i(const Env& env,
       rd_in.base_type = arg0_type.typespec();
       auto rd = env.dts->ts.reverse_field_lookup(rd_in);
 
-      if (rd.success) {
+      if (rd.success && rd.has_variable_token()) {
         auto arg1_matcher = Matcher::match_or(
             {Matcher::op(GenericOpMatcher::fixed(FixedOperatorKind::MULTIPLICATION),
                          {Matcher::any(0), Matcher::integer(rd_in.stride)}),
@@ -774,6 +777,7 @@ void SimpleExpressionElement::update_from_stack_add_i(const Env& env,
               tokens.push_back(to_token(tok));
             }
           }
+          assert(used_index);
           result->push_back(pool.alloc_element<DerefElement>(args.at(0), rd.addr_of, tokens));
           return;
         } else {

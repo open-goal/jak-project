@@ -67,6 +67,15 @@ std::string FieldReverseLookupOutput::Token::print() const {
   }
 }
 
+bool FieldReverseLookupOutput::has_variable_token() const {
+  for (const auto& tok : tokens) {
+    if (tok.kind == Token::Kind::VAR_IDX) {
+      return true;
+    }
+  }
+  return false;
+}
+
 namespace {
 
 void try_reverse_lookup(const FieldReverseLookupInput& input,

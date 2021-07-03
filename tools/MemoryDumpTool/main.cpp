@@ -338,6 +338,30 @@ static bool ends_with(const std::string& str, const std::string& suffix) {
          0 == str.compare(str.size() - suffix.size(), suffix.size(), suffix);
 }
 
+void inspect_symbols(const Ram& ram,
+                     const std::unordered_map<u32, std::string>& types,
+                     const SymbolMap& symbols) {
+  fmt::print("Symbols:\n");
+  for (const auto& [name, addr] : symbols.name_to_addr) {
+    std::string found_type;
+    if (ram.word_in_memory(addr)) {
+      u32 symbol_value = ram.read<u32>(addr);
+      if ((symbol_value & 0xf) == 4) {
+        if (ram.word_in_memory(symbol_value)) {
+          u32 type = ram.read<u32>(symbol_value - 4);
+          auto type_it = types.find(type);
+          if (type_it != types.end()) {
+            found_type = type_it->second;
+          }
+        }
+      }
+    }
+    if (!found_type.empty()) {
+      fmt::print("  {:30s} : {}\n", name, found_type);
+    }
+  }
+}
+
 int main(int argc, char** argv) {
   fmt::print("MemoryDumpTool\n");
 
@@ -411,6 +435,7 @@ int main(int argc, char** argv) {
   auto basics = find_basics(ram, types);
 
   inspect_basics(ram, basics, types, symbol_map, dts.ts, results);
+  inspect_symbols(ram, types, symbol_map);
 
   if (fs::exists(output_folder / "ee-results.json")) {
     fs::remove(output_folder / "ee-results.json");

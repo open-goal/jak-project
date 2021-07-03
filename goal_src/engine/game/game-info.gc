@@ -32,3 +32,133 @@
        (-> obj normal))
       0.0)
   )
+
+(defmethod status-bit-8? game-info ((obj game-info) (arg0 game-task))
+  "Likely closed, or in the process of closing"
+  (nonzero? (logand (-> obj task-perm-list data arg0 status) (entity-perm-status bit-8)))
+  )
+
+(define *default-continue* (new 'static 'continue-point
+   :name "default"
+   :level #f
+   :trans (new 'static 'vector :w 1.0)
+   :quat (new 'static 'quaternion :w 1.0)
+   :camera-trans (new 'static 'vector :w 1.0)
+   :load-commands '()
+   :vis-nick #f
+   :lev0 #f
+   :disp0 #f
+   :lev1 #f
+   :disp1 #f
+   )
+  )
+
+(defmethod get-or-create-continue! game-info ((obj game-info))
+  "Attempt to get a continue point, if it doesn't exist set the
+   default-continue to a location in front of the camera."
+  (cond
+    ((and (= (-> obj mode) 'play) (-> obj current-continue))
+     ;; we have a continue.
+     (-> obj current-continue)
+     )
+    (else
+     ;; need to make one
+     (let ((gp-0 *default-continue*))
+       (position-in-front-of-camera! (-> gp-0 trans) 40960.0 4096.0)
+       (quaternion-identity! (-> gp-0 quat))
+       (set! (-> gp-0 vis-nick) (-> *load-state* vis-nick))
+       (set! (-> gp-0 lev0) (-> *load-state* want 0 name))
+       (set! (-> gp-0 disp0) (-> *load-state* want 0 display?))
+       (set! (-> gp-0 lev1) (-> *load-state* want 1 name))
+       (set! (-> gp-0 disp1) (-> *load-state* want 1 display?))
+       gp-0
+       )
+     )
+    )
+  )
+
+(defmethod get-continue-by-name game-info ((obj game-info) (arg0 string))
+  "Look up a continue point by string name"
+  (let ((s5-0 *level-load-list*))
+    ;; loop over levels
+    (while (not (null? s5-0))
+      (let ((s4-0 (-> (the-as level-load-info (-> (the-as symbol (car s5-0)) value)) continues)))
+        ;; loop over continues in the level
+        (while (not (null? s4-0))
+          (let ((s3-0 (car s4-0)))
+            (if (string= arg0 (the-as string (-> (the-as continue-point s3-0) name)))
+                ;; match!
+                (return s3-0)
+                )
+            )
+          (set! s4-0 (cdr s4-0))
+          )
+        )
+      (set! s5-0 (cdr s5-0))
+      )
+    )
+  (the-as continue-point #f)
+  )
+
+(defmethod set-continue! game-info ((obj game-info) (arg0 basic))
+  "Set the current continue to to arg0.
+   arg0 can be:
+    '() or #f, in which case it does nothing.
+    a string, in which case it looks up by name
+    a continue point.
+
+   If it fails to get a continue-point, sets up a temporary continue point
+   in the default-continue
+
+   If the continue is changed, resets the death and time counters
+   "
+  (let ((s5-0 (-> obj current-continue)))
+    (if (null? arg0)
+        (set! arg0 #f)
+        )
+    (let ((v1-3 (-> arg0 type)))
+      (cond
+        ((= v1-3 string)
+         (let ((v1-5 (get-continue-by-name obj (the-as string arg0))))
+           (if v1-5
+               (set! (-> obj current-continue) v1-5)
+               )
+           )
+         )
+        (else
+         (cond
+           ((= v1-3 continue-point)
+            (set! (-> obj current-continue) (the-as continue-point arg0))
+            )
+           (else
+            (let ((s4-3 *default-continue*))
+              (position-in-front-of-camera! (-> s4-3 trans) 40960.0 4096.0)
+              (quaternion-identity! (-> s4-3 quat))
+              (set! (-> s4-3 vis-nick) (-> *load-state* vis-nick))
+              (set! (-> s4-3 lev0) (-> *load-state* want 0 name))
+              (set! (-> s4-3 disp0) (-> *load-state* want 0 display?))
+              (set! (-> s4-3 lev1) (-> *load-state* want 1 name))
+              (set! (-> s4-3 disp1) (-> *load-state* want 1 display?))
+              (set! (-> obj current-continue) s4-3)
+              )
+            )
+           )
+         )
+        )
+      )
+    (when (!= s5-0 (-> obj current-continue))
+      (set! (-> obj continue-deaths) 0)
+      (set! (-> obj continue-time) (-> *display* base-frame-counter))
+      )
+    )
+  (-> obj current-continue)
+  )
+
+(defmethod get-entity-task-perm game-info ((obj game-info) (arg0 game-task))
+  (-> obj task-perm-list data arg0)
+  )
+
+
+(defmethod get-health-percent-lost game-info ((obj game-info))
+  (* 0.25 (the float (get-death-count obj #f)))
+  )
