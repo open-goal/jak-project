@@ -105,10 +105,6 @@ const std::unordered_set<std::string> g_functions_to_skip_compiling = {
     // inline assembly
     "valid?",
 
-    /// GKERNEL-H
-    // bitfields, possibly inline assembly
-    "(method 2 handle)",
-
     /// GKERNEL
     // asm
     "(method 10 process)",

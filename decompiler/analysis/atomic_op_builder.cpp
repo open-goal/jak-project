@@ -723,6 +723,18 @@ std::unique_ptr<AtomicOp> convert_bnel_1(const Instruction& i0, int idx, bool li
   return make_branch_no_delay(condition, likely, dest, idx);
 }
 
+std::unique_ptr<AtomicOp> convert_subu_1(const Instruction& i0, int idx) {
+  // subu a2, v1, s7
+  if (i0.get_src(1).is_reg(rs7())) {
+    auto src = make_src_atom(i0.get_src(0).get_reg(), idx);
+    auto expr = SimpleExpression(SimpleExpression::Kind::SUBU_L32_S7, src);
+    auto dst = make_dst_var(i0.get_dst(0).get_reg(), idx);
+    return std::make_unique<SetVarOp>(dst, expr, idx);
+  } else {
+    return nullptr;  // go to asm fallback
+  }
+}
+
 std::unique_ptr<AtomicOp> convert_1(const Instruction& i0, int idx, bool hint_inline_asm) {
   switch (i0.kind) {
     case InstructionKind::OR:
@@ -856,6 +868,8 @@ std::unique_ptr<AtomicOp> convert_1(const Instruction& i0, int idx, bool hint_in
       return convert_beql_1(i0, idx, true);
     case InstructionKind::BNEL:
       return convert_bnel_1(i0, idx, true);
+    case InstructionKind::SUBU:
+      return convert_subu_1(i0, idx);  // may fail
     default:
       return nullptr;
   }

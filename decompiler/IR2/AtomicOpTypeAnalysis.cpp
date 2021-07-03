@@ -200,6 +200,8 @@ TP_Type SimpleExpression::get_type(const TypeState& input,
       return TP_Type::make_from_ts("vector");
     case Kind::VECTOR_FLOAT_PRODUCT:
       return TP_Type::make_from_ts("vector");
+    case Kind::SUBU_L32_S7:
+      return TP_Type::make_from_ts("int");
     default:
       throw std::runtime_error("Simple expression cannot get_type: " +
                                to_form(env.file->labels, env).print());
@@ -672,7 +674,6 @@ TypeState AsmOp::propagate_types_internal(const TypeState& input,
   // pextuw t0, r0, gp
   if (m_instr.kind == InstructionKind::PEXTUW) {
     if (m_src[0] && m_src[0]->reg() == Register(Reg::GPR, Reg::R0)) {
-      // sponge
       assert(m_src[1]);
       auto type = dts.ts.lookup_type(result.get(m_src[1]->reg()).typespec());
       auto as_bitfield = dynamic_cast<BitFieldType*>(type);
@@ -682,6 +683,17 @@ TypeState AsmOp::propagate_types_internal(const TypeState& input,
         result.get(m_dst->reg()) = TP_Type::make_from_ts(field.type());
         return result;
       }
+    }
+  }
+
+  // sllv out, in, r0
+  if (m_instr.kind == InstructionKind::SLLV && m_src[1]->reg() == Register(Reg::GPR, Reg::R0)) {
+    auto type = dts.ts.lookup_type(result.get(m_src[0]->reg()).typespec());
+    auto as_bitfield = dynamic_cast<BitFieldType*>(type);
+    if (as_bitfield) {
+      auto field = find_field(dts.ts, as_bitfield, 0, 32, {});
+      result.get(m_dst->reg()) = TP_Type::make_from_ts(field.type());
+      return result;
     }
   }
 

@@ -28,7 +28,8 @@ class Matcher {
   static Matcher any_label(int match_id = -1);
   static Matcher op(const GenericOpMatcher& op, const std::vector<Matcher>& args);
   static Matcher op_with_rest(const GenericOpMatcher& op, const std::vector<Matcher>& args);
-  static Matcher set(const Matcher& dst, const Matcher& src);
+  static Matcher set(const Matcher& dst, const Matcher& src);    // form-form
+  static Matcher set_var(const Matcher& src, int dst_match_id);  // var-form
   static Matcher fixed_op(FixedOperatorKind op, const std::vector<Matcher>& args);
   static Matcher match_or(const std::vector<Matcher>& args);
   static Matcher cast(const std::string& type, Matcher value);
@@ -49,6 +50,7 @@ class Matcher {
   static Matcher while_loop(const Matcher& condition, const Matcher& body);
   static Matcher any_constant_token(int match_id = -1);
   static Matcher or_expression(const std::vector<Matcher>& elts);
+  static Matcher begin(const std::vector<Matcher>& elts);
 
   enum class Kind {
     ANY_REG,     // matching any register
@@ -63,6 +65,7 @@ class Matcher {
     ANY_SYMBOL,
     DEREF_OP,
     SET,
+    SET_VAR,
     ANY_LABEL,
     SYMBOL,
     IF_WITH_ELSE,
@@ -70,6 +73,7 @@ class Matcher {
     WHILE_LOOP,
     ANY_CONSTANT_TOKEN,
     SC_OR,
+    BEGIN,
     INVALID
   };
 
