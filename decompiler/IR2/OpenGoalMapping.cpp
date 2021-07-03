@@ -109,13 +109,11 @@ const std::map<InstructionKind, OpenGOALAsm::Function> MIPS_ASM_TO_OPEN_GOAL_FUN
     //// Fixed point conversions
     {InstructionKind::VFTOI0, {".ftoi.vf", {MOD::DEST_MASK}}},
     {InstructionKind::VITOF0, {".itof.vf", {MOD::DEST_MASK}}},
-
-    {InstructionKind::VFTOI4, {"TODO.VFTOI4", {}}},
-
-    {InstructionKind::VITOF12, {"TODO.VITOF12", {}}},
-    {InstructionKind::VFTOI12, {"TODO.VFTOI12", {}}},
-
-    {InstructionKind::VITOF15, {"TODO.VITOF15", {}}},
+    // NOTE - Only the .xyzw mask is supported via macros!
+    {InstructionKind::VFTOI4, {".vftoi4.xyzw", {MOD::DEST_MASK}}},
+    {InstructionKind::VITOF12, {".vitof12.xyzw", {MOD::DEST_MASK}}},
+    {InstructionKind::VFTOI12, {".vftoi12.xyzw", {MOD::DEST_MASK}}},
+    {InstructionKind::VITOF15, {".vitof15.xyzw", {MOD::DEST_MASK}}},
 
     //// Status Checks
     {InstructionKind::VCLIP, {"TODO.VCLIP", {}}},
