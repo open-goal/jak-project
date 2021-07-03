@@ -129,6 +129,39 @@ bool is_power_of_two(int in, int* out) {
 }
 
 /*!
+ * Imagine:
+ *   x = foo
+ *   { // some macro/inlined thing
+ *     read from x
+ *     return x;
+ *   }
+ *
+ * and you want to transform it to
+ * x = some_macro(foo, blah, ...)
+ *
+ * this will get you foo (and pop it from the stack), assuming the stack is sitting right after the
+ * point where the inline thing evaluated foo.
+ *
+ * For later book-keeping of reg use, if it gets you something new, it will set found_orig_out,
+ * and also give you the regaccess for the x of the x = foo.
+ *
+ * If you use this, you are responsible for adding code that sets x again.
+ */
+Form* repop_passthrough_arg(Form* in,
+                            FormStack& stack,
+                            const Env& env,
+                            RegisterAccess* orig_out,
+                            bool* found_orig_out) {
+  *found_orig_out = false;
+
+  auto as_atom = form_as_atom(in);
+  if (as_atom && as_atom->is_var()) {
+    return stack.pop_reg(as_atom->var().reg(), {}, env, true, -1, orig_out, found_orig_out);
+  }
+  return in;
+}
+
+/*!
  * Create a form which represents a variable.
  */
 Form* var_to_form(const RegisterAccess& var, FormPool& pool) {
@@ -654,7 +687,7 @@ void SimpleExpressionElement::update_from_stack_add_i(const Env& env,
       input.stride = 1;
       input.base_type = arg1_type.typespec();
       auto out = env.dts->ts.reverse_field_lookup(input);
-      if (out.success) {
+      if (out.success && out.has_variable_token()) {
         // it is. now we have to modify things
         // first, look for the index
 
@@ -673,6 +706,7 @@ void SimpleExpressionElement::update_from_stack_add_i(const Env& env,
               tokens.push_back(to_token(tok));
             }
           }
+          assert(used_index);
           result->push_back(pool.alloc_element<DerefElement>(args.at(1), out.addr_of, tokens));
           return;
         } else {
@@ -686,7 +720,7 @@ void SimpleExpressionElement::update_from_stack_add_i(const Env& env,
       input.stride = arg0_type.get_mult_int_constant();
       input.base_type = arg1_type.typespec();
       auto out = env.dts->ts.reverse_field_lookup(input);
-      if (out.success) {
+      if (out.success && out.has_variable_token()) {
         // it is. now we have to modify things
         // first, look for the index
         int p2;
@@ -710,6 +744,7 @@ void SimpleExpressionElement::update_from_stack_add_i(const Env& env,
                 tokens.push_back(to_token(tok));
               }
             }
+            assert(used_index);
             result->push_back(pool.alloc_element<DerefElement>(args.at(1), out.addr_of, tokens));
             return;
           } else {
@@ -736,6 +771,7 @@ void SimpleExpressionElement::update_from_stack_add_i(const Env& env,
                 tokens.push_back(to_token(tok));
               }
             }
+            assert(used_index);
             result->push_back(pool.alloc_element<DerefElement>(args.at(1), out.addr_of, tokens));
             return;
           } else {
@@ -755,7 +791,7 @@ void SimpleExpressionElement::update_from_stack_add_i(const Env& env,
       rd_in.base_type = arg0_type.typespec();
       auto rd = env.dts->ts.reverse_field_lookup(rd_in);
 
-      if (rd.success) {
+      if (rd.success && rd.has_variable_token()) {
         auto arg1_matcher = Matcher::match_or(
             {Matcher::op(GenericOpMatcher::fixed(FixedOperatorKind::MULTIPLICATION),
                          {Matcher::any(0), Matcher::integer(rd_in.stride)}),
@@ -774,6 +810,7 @@ void SimpleExpressionElement::update_from_stack_add_i(const Env& env,
               tokens.push_back(to_token(tok));
             }
           }
+          assert(used_index);
           result->push_back(pool.alloc_element<DerefElement>(args.at(0), rd.addr_of, tokens));
           return;
         } else {
@@ -1474,6 +1511,28 @@ void SimpleExpressionElement::update_from_stack_float_to_int(const Env& env,
   }
 }
 
+namespace {
+GenericElement* allocate_fixed_op(FormPool& pool, FixedOperatorKind kind, Form* op1) {
+  return pool.alloc_element<GenericElement>(GenericOperator::make_fixed(kind), op1);
+}
+}  // namespace
+
+void SimpleExpressionElement::update_from_stack_subu_l32_s7(const Env& env,
+                                                            FormPool& pool,
+                                                            FormStack& stack,
+                                                            std::vector<FormElement*>* result,
+                                                            bool allow_side_effects) {
+  auto var = m_expr.get_arg(0).var();
+  auto arg = pop_to_forms({var}, env, pool, stack, allow_side_effects).at(0);
+  auto type = env.get_types_before_op(var.idx()).get(var.reg()).typespec();
+  if (type != TypeSpec("handle")) {
+    env.func->warnings.general_warning(
+        ".subu (32-bit) used on a {} at idx {}. This probably should be a handle.", type.print(),
+        var.idx());
+  }
+  result->push_back(allocate_fixed_op(pool, FixedOperatorKind::L32_NOT_FALSE_CBOOL, arg));
+}
+
 void SimpleExpressionElement::update_from_stack(const Env& env,
                                                 FormPool& pool,
                                                 FormStack& stack,
@@ -1612,6 +1671,9 @@ void SimpleExpressionElement::update_from_stack(const Env& env,
       break;
     case SimpleExpression::Kind::VECTOR_FLOAT_PRODUCT:
       update_from_stack_vector_float_product(env, pool, stack, result, allow_side_effects);
+      break;
+    case SimpleExpression::Kind::SUBU_L32_S7:
+      update_from_stack_subu_l32_s7(env, pool, stack, result, allow_side_effects);
       break;
     default:
       throw std::runtime_error(
@@ -2633,6 +2695,108 @@ void CondWithElseElement::push_to_stack(const Env& env, FormPool& pool, FormStac
 // ShortCircuitElement
 ///////////////////
 
+FormElement* sc_to_handle_get_proc(ShortCircuitElement* elt,
+                                   const Env& env,
+                                   FormPool& pool,
+                                   FormStack& stack) {
+  if (elt->kind != ShortCircuitElement::AND) {
+    return nullptr;
+  }
+
+  if (elt->entries.size() != 2) {
+    return nullptr;
+  }
+
+  // fmt::print("candidate: {}\n", elt->to_string(env));
+
+  constexpr int reg_input_1 = 0;
+  constexpr int reg_input_2 = 1;
+  constexpr int reg_input_3 = 2;
+  constexpr int reg_temp_1 = 10;
+  constexpr int reg_temp_2 = 11;
+  constexpr int reg_temp_3 = 12;
+
+  // check first.
+  auto first_matcher =
+      Matcher::op(GenericOpMatcher::condition(IR2_Condition::Kind::NONZERO),
+                  {Matcher::op(GenericOpMatcher::fixed(FixedOperatorKind::L32_NOT_FALSE_CBOOL),
+                               {Matcher::any_reg(reg_input_1)})});
+
+  auto first_result = match(first_matcher, elt->entries.at(0).condition);
+  if (!first_result.matched) {
+    return nullptr;
+  }
+
+  // auto first_use_of_in = *first_result.maps.regs.at(reg_input_1);
+  // fmt::print("reg1: {}\n", first_use_of_in.to_string(env));
+
+  auto setup_matcher = Matcher::set_var(
+      Matcher::deref(Matcher::any_reg(reg_input_2), false,
+                     {DerefTokenMatcher::string("process"), DerefTokenMatcher::integer(0)}),
+      reg_temp_1);
+
+  auto if_matcher = Matcher::if_no_else(
+      Matcher::op(
+          GenericOpMatcher::fixed(FixedOperatorKind::EQ),
+          {Matcher::deref(Matcher::any_reg(reg_input_3), false, {DerefTokenMatcher::string("pid")}),
+           Matcher::deref(Matcher::any_reg(reg_temp_2), false,
+                          {DerefTokenMatcher::string("pid")})}),
+      Matcher::any_reg(reg_temp_3));
+
+  auto second_matcher = Matcher::begin({setup_matcher, if_matcher});
+
+  auto second_result = match(second_matcher, elt->entries.at(1).condition);
+  if (!second_result.matched) {
+    return nullptr;
+  }
+
+  auto in1 = *first_result.maps.regs.at(reg_input_1);
+  auto in2 = *second_result.maps.regs.at(reg_input_2);
+  auto in3 = *second_result.maps.regs.at(reg_input_3);
+
+  auto in_name = in1.to_string(env);
+  if (in_name != in2.to_string(env)) {
+    return nullptr;
+  }
+
+  if (in_name != in3.to_string(env)) {
+    return nullptr;
+  }
+
+  auto temp_name = second_result.maps.regs.at(reg_temp_1)->to_string(env);
+  if (temp_name != second_result.maps.regs.at(reg_temp_2)->to_string(env)) {
+    return nullptr;
+  }
+
+  if (temp_name != second_result.maps.regs.at(reg_temp_3)->to_string(env)) {
+    return nullptr;
+  }
+
+  const auto& temp_use_def = env.get_use_def_info(*second_result.maps.regs.at(reg_temp_1));
+  if (temp_use_def.use_count() != 2 || temp_use_def.def_count() != 1) {
+    return nullptr;
+  }
+
+  // modify use def:
+  auto* menv = const_cast<Env*>(&env);
+  menv->disable_use(in2);
+  menv->disable_use(in3);
+
+  auto repopped = stack.pop_reg(in1, {}, env, true);
+  // fmt::print("repopped: {}\n", repopped->to_string(env));
+
+  if (!repopped) {
+    repopped = var_to_form(in1, pool);
+  }
+
+  return pool.alloc_element<GenericElement>(
+      GenericOperator::make_function(
+          pool.alloc_single_element_form<ConstantTokenElement>(nullptr, "handle->process")),
+      repopped);
+
+  return nullptr;
+}
+
 void ShortCircuitElement::push_to_stack(const Env& env, FormPool& pool, FormStack& stack) {
   mark_popped();
   if (!used_as_value.value_or(false)) {
@@ -2678,8 +2842,14 @@ void ShortCircuitElement::push_to_stack(const Env& env, FormPool& pool, FormStac
       }
     }
 
+    FormElement* to_push = this;
+    auto as_handle_get = sc_to_handle_get_proc(this, env, pool, stack);
+    if (as_handle_get) {
+      to_push = as_handle_get;
+    }
+
     assert(used_as_value.has_value());
-    stack.push_value_to_reg(final_result, pool.alloc_single_form(nullptr, this), true,
+    stack.push_value_to_reg(final_result, pool.alloc_single_form(nullptr, to_push), true,
                             env.get_variable_type(final_result, false));
     already_rewritten = true;
   }
@@ -3842,39 +4012,6 @@ Form* is_load_store_vector_to_reg(const Register& reg,
 
   // got it!
   return mr.maps.forms.at(0);
-}
-
-/*!
- * Imagine:
- *   x = foo
- *   { // some macro/inlined thing
- *     read from x
- *     return x;
- *   }
- *
- * and you want to transform it to
- * x = some_macro(foo, blah, ...)
- *
- * this will get you foo (and pop it from the stack), assuming the stack is sitting right after the
- * point where the inline thing evaluated foo.
- *
- * For later book-keeping of reg use, if it gets you something new, it will set found_orig_out,
- * and also give you the regaccess for the x of the x = foo.
- *
- * If you use this, you are responsible for adding code that sets x again.
- */
-Form* repop_passthrough_arg(Form* in,
-                            FormStack& stack,
-                            const Env& env,
-                            RegisterAccess* orig_out,
-                            bool* found_orig_out) {
-  *found_orig_out = false;
-
-  auto as_atom = form_as_atom(in);
-  if (as_atom && as_atom->is_var()) {
-    return stack.pop_reg(as_atom->var().reg(), {}, env, true, -1, orig_out, found_orig_out);
-  }
-  return in;
 }
 
 /*!

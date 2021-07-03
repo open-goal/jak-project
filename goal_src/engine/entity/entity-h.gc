@@ -17,10 +17,17 @@
 (defenum entity-perm-status
   :bitfield #t
   :type uint16
+  (bit-0 0)
   (bit-1 1)
   (dead 2)
-  (unknown 5) ;; TODO - task-control::task-cstage::14
-  (complete 6))
+  (bit-3 3)
+  (bit-4 4)
+  (user-set-from-cstage 5)
+  (complete 6)
+  (bit-7 7)
+  (real-complete 8)
+  (bit-9 9)
+  )
 
 ;; definition of type entity-perm
 (deftype entity-perm (structure)
@@ -44,15 +51,15 @@
   :size-assert         #x10
   :flag-assert         #xa00000010
   (:methods
-    (dummy-9 () none 9)
-    )
+   (update-perm! (_type_ symbol entity-perm-status) _type_ 9)
+   )
   )
 
 ;; definition of type entity-links
 (deftype entity-links (structure)
   ((prev-link entity-links             :offset-assert 0)
    (next-link entity-links             :offset-assert 4)
-   (entity    basic                    :offset-assert 8)
+   (entity    entity                   :offset-assert 8)
    (process   process                  :offset-assert 12)
    (level     level                    :offset-assert 16)
    (vis-id    int32                    :offset-assert 20)
@@ -82,7 +89,8 @@
 
 ;; definition of type entity-links-array
 (deftype entity-links-array (inline-array-class)
-  ()
+  ((data entity-links :inline :dynamic :offset-assert  16)
+   )
   :method-count-assert 9
   :size-assert         #x10
   :flag-assert         #x900000010
@@ -220,3 +228,5 @@
 (defun-extern entity-by-name string entity)
 (defun-extern entity-by-type type entity-actor)
 (defun-extern entity-by-aid uint entity)
+(define-extern reset-actors (function symbol none))
+(define-extern *spawn-actors* symbol)

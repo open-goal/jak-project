@@ -1,12 +1,8 @@
 ;;-*-Lisp-*-
 (in-package goal)
 
-;; name: task-control.gc
-;; name in dgo: task-control
-;; dgos: GAME, ENGINE
-
 ;; definition (debug) for function task-status->string
-(defun-debug task-status->string ((arg0 int))
+(defun-debug task-status->string ((arg0 task-status))
   (let ((v1-0 arg0))
    (cond
     ((= v1-0 7)
@@ -40,88 +36,91 @@
    )
   )
 
-;; definition for method 9 of type task-cstage
-;; INFO: Return type mismatch game-task vs uint.
 (defmethod get-game-task task-cstage ((obj task-cstage))
-  (the-as uint (-> obj game-task))
+  "Get the game task for this cstage"
+  (-> obj game-task)
   )
 
-;; definition for method 10 of type task-cstage
-;; INFO: Return type mismatch task-status vs uint.
 (defmethod get-task-status task-cstage ((obj task-cstage))
-  (the-as uint (-> obj status))
+  "Get the status for this cstage"
+  (-> obj status)
   )
 
-;; definition for method 12 of type task-cstage
-(defmethod first-flag-bit? task-cstage ((obj task-cstage))
-  (nonzero? (logand (-> obj flags) 1))
+(defmethod closed? task-cstage ((obj task-cstage))
+  "Is the closed flag set?"
+  (nonzero? (logand (-> obj flags) (task-flags closed)))
   )
 
-;; definition for method 13 of type task-cstage
-(defmethod third-flag-bit? task-cstage ((obj task-cstage))
-  (nonzero? (logand (-> obj flags) 4))
+(defmethod closed-by-default? task-cstage ((obj task-cstage))
+  "Is the closed-by-default flag set?"
+  (nonzero? (logand (-> obj flags) (task-flags closed-by-default)))
   )
 
-;; definition for method 11 of type task-cstage
-(defmethod TODO-RENAME-11 task-cstage ((obj task-cstage) (arg0 task-control))
+(defmethod task-available? task-cstage ((obj task-cstage) (arg0 task-control))
+  "Is this task available to be the current task?"
   (let ((a0-1 obj))
-   (cond
-    ((nonzero? (logand (-> a0-1 flags) 1))
-     #f
-     )
-    ((>=
-      (the-as
-       int
-       (-> (dummy-13 *game-info* (the-as uint (-> obj game-task))) user-uint8 0)
+    (cond
+      ((nonzero? (logand (-> a0-1 flags) (task-flags closed)))
+       ;; closed flag is set, we're already closed.
+       #f
        )
-      (the-as int (-> obj status))
+      ((>= (the-as int (-> (get-entity-task-perm *game-info* (-> obj game-task)) user-uint8 0))
+           (the-as int (-> obj status))
+           )
+       ;; the permanent entity for this task has stored that we have progresssed past
+       ;; our status. Remember that we are closed, and return #f.
+       (set! (-> obj flags) (logior (-> obj flags) (task-flags closed)))
+       #f
+       )
+      ((task-complete? *game-info* (-> obj game-task))
+       ;; the game-info thinks that we have completed this task already.
+       ;; remember we are closed and return #f
+       (set! (-> obj flags) (logior (-> obj flags) (task-flags closed)))
+       #f
+       )
+      (else
+       ;; we aren't closed. Check the condition.
+       ((-> obj condition) arg0)
+       )
       )
-     (set! (-> obj flags) (logior (-> obj flags) 1))
-     #f
-     )
-    ((let ((t9-1 (method-of-object *game-info* dummy-11)))
-      (-> obj game-task)
-      (t9-1)
-      )
-     (set! (-> obj flags) (logior (-> obj flags) 1))
-     #f
-     )
-    (else
-     ((-> obj condition) arg0)
-     )
     )
-   )
   )
 
-;; definition for method 14 of type task-cstage
-(defmethod TODO-RENAME-14 task-cstage ((obj task-cstage))
+(defmethod close-task! task-cstage ((obj task-cstage))
+  "Close this task!"
   (if (= (-> obj game-task) (game-task none))
-   (return (the-as int #f))
-   )
-  (set! (-> obj flags) (logior (-> obj flags) 1))
-  (when (nonzero? (logand (-> obj flags) 2))
-   (let ((v1-9 (dummy-13 *game-info* (the-as uint (-> obj game-task)))))
-    (set!
-     (-> v1-9 status)
-     (logior (-> v1-9 status) (entity-perm-status unknown))
-     )
-    (if (< (-> v1-9 user-uint8 0) (the-as uint (-> obj status)))
-     (set! (-> v1-9 user-int8 0) (the-as int (-> obj status)))
-     )
+      ;; invalid task.
+      (return (the-as int #f))
+      )
+
+  ;; flag as closed
+  (set! (-> obj flags) (logior (-> obj flags) (task-flags closed)))
+  ;; do we have an entity to update?
+  (when (nonzero? (logand (-> obj flags) (task-flags has-entity)))
+
+    ;; look up the permanent storage for the entity associated with our task
+    (let ((v1-9 (get-entity-task-perm *game-info* (-> obj game-task))))
+      ;; we set a bit to indicate that we are storing a non-default status
+      (set! (-> v1-9 status)
+            (logior (-> v1-9 status) (entity-perm-status user-set-from-cstage))
+            )
+      ;; and store the actual status (only increment)
+      (if (< (-> v1-9 user-uint8 0) (the-as uint (-> obj status)))
+          (set! (-> v1-9 user-int8 0) (the-as int (-> obj status)))
+          )
+      )
     )
-   )
   0
   )
 
-;; definition for method 15 of type task-cstage
-(defmethod clear-all-but-first-flag-bit task-cstage ((obj task-cstage))
-  (set! (-> obj flags) (logand -2 (the-as int (-> obj flags))))
+(defmethod open-task! task-cstage ((obj task-cstage))
+  "Clear the closed flag."
+  (set! (-> obj flags) (logand (lognot (task-flags closed)) (-> obj flags)))
   0
   )
 
-;; definition for symbol *null-task-control*, type task-control
-(define
-  *null-task-control*
+;; a task-control containing no cstages
+(define *null-task-control*
   (new 'static 'task-control
    :current-stage -1
    :stage
@@ -129,334 +128,357 @@
    )
   )
 
-;; definition for method 9 of type task-control
 (defmethod current-task task-control ((obj task-control))
-  (the-as int (cond
-               ((= obj *null-task-control*)
-                (format
-                 0
-                 "ERROR<GMJ>: current-task received *null-task-control*~%"
-                 )
-                0
-                )
-               ((= (-> obj current-stage) -1)
-                0
-                )
-               (else
-                (the-as int (-> obj stage (-> obj current-stage) game-task))
-                )
-               )
-   )
-  )
-
-;; definition for method 10 of type task-control
-(defmethod current-status task-control ((obj task-control))
-  (the-as int (cond
-               ((= obj *null-task-control*)
-                (format
-                 0
-                 "ERROR<GMJ>: current-status received self of *null-task-control*~%~%"
-                 )
-                0
-                )
-               ((= (-> obj current-stage) -1)
-                0
-                )
-               (else
-                (the-as int (-> obj stage (-> obj current-stage) status))
-                )
-               )
-   )
-  )
-
-;; definition for method 11 of type task-control
-;; INFO: Return type mismatch int vs none.
-(defmethod close-current! task-control ((obj task-control))
+  "Get the current task that is being played. If unknown returns the none task"
   (cond
-   ((= obj *null-task-control*)
-    (format
-     0
-     "ERROR<GMJ>: close-current! received self of *null-task-control*~%~%"
+    ((= obj *null-task-control*)
+     (format 0 "ERROR<GMJ>: current-task received *null-task-control*~%")
+     (game-task none)
+     )
+    ((= (-> obj current-stage) -1)
+     ;; state unknown
+     (game-task none) 
+     )
+    (else
+     ;; look up the current cstage's task
+     (the-as int (-> obj stage (-> obj current-stage) game-task))
+     )
+               
+    )
+  )
+
+(defmethod current-status task-control ((obj task-control))
+  "Get the status of the cstage that is being played.
+   Will return invalid if not possible"
+  (cond
+    ((= obj *null-task-control*)
+     (format 0 "ERROR<GMJ>: current-status received self of *null-task-control*~%~%")
+     (task-status invalid) 
+     )
+    ((= (-> obj current-stage) -1)
+     (task-status invalid)
+     )
+    (else
+     (the-as int (-> obj stage (-> obj current-stage) status))
      )
     )
+  
+  )
+
+(defmethod close-current! task-control ((obj task-control))
+  "Close the current cstage, if there is a current cstage"
+  (cond
+   ((= obj *null-task-control*)
+    (format 0 "ERROR<GMJ>: close-current! received self of *null-task-control*~%~%")
+    )
    ((= (-> obj current-stage) -1)
+    ;; no current stage, do nothing
     )
    (else
-    (TODO-RENAME-14 (-> obj stage (-> obj current-stage)))
+    (close-task! (-> obj stage (-> obj current-stage)))
     )
    )
+  ;; attempt to update the current task
   (first-any obj #t)
   (none)
   )
 
 ;; definition for method 12 of type task-control
-(defmethod close-status! task-control ((obj task-control) (arg0 int))
+(defmethod close-status! task-control ((obj task-control) (arg0 task-status))
+  "Close the cstage that:
+    - is associated with the task for the current cstage
+    - is for the given status
+   "
   (let ((a0-2 (current-task obj)))
-   (dotimes (v1-1 (-> obj stage length))
-    (when
-     (and
-      (= a0-2 (-> obj stage v1-1 game-task))
-      (= arg0 (-> obj stage v1-1 status))
+    ;; iterate over all cstages
+    (dotimes (v1-1 (-> obj stage length))
+      (when (and (= a0-2 (-> obj stage v1-1 game-task)) ;; right task
+                 (= arg0 (-> obj stage v1-1 status)) ;; right status
+                 )
+        ;; found it! close and update current stage
+        (close-task! (-> obj stage v1-1))
+        (return (first-any obj #t))
+        )
       )
-     (TODO-RENAME-14 (-> obj stage v1-1))
-     (return (first-any obj #t))
-     )
+    ;; nope, complain.
+    (format 0 "ERROR<GMJ>: close-status! received non-existent task-cstage(~S ~S)--returning #t.~%"
+            (game-task->string (the game-task a0-2))
+            (task-status->string arg0)
+            )
     )
-   (format
-    0
-    "ERROR<GMJ>: close-status! received non-existent task-cstage(~S ~S)--returning #t.~%"
-    (game-task->string a0-2)
-    (task-status->string arg0)
-    )
-   )
   0
   )
 
-;; definition for method 13 of type task-control
 (defmethod first-any task-control ((obj task-control) (arg0 symbol))
+  "Iterate through tasks, finding an unclosed one to mark as current
+   If arg0 is #t, warn on receiving null-task-control"
+
+  ;; check for null
   (when (= obj *null-task-control*)
    (if arg0
     (format 0 "ERROR<GMJ>: first-any received self of *null-task-control*~%~%")
     )
    (return 0)
    )
+
+  ;; iterate through all tasks
   (dotimes (s5-0 (-> obj stage length))
-   (when (TODO-RENAME-11 (-> obj stage s5-0) obj)
-    (set! (-> obj current-stage) s5-0)
-    (return (the-as int (-> obj stage s5-0 game-task)))
+    (when (task-available? (-> obj stage s5-0) obj)
+      ;; found an available task, set it.
+      (set! (-> obj current-stage) s5-0)
+      (return (the-as int (-> obj stage s5-0 game-task)))
+      )
     )
-   )
+  ;; none available.
   (set! (-> obj current-stage) -1)
   0
   )
 
-;; definition for method 14 of type task-control
 (defmethod reset! task-control ((obj task-control) (arg0 symbol) (arg1 symbol))
+  "Reset a task control. arg1 to warn on null, arg1 'game for a game reset"
   (when (= obj *null-task-control*)
-   (if arg1
-    (format 0 "ERROR<GMJ>: reset! received self of *null-task-control*~%~%")
-    )
-   (return 0)
-   )
-  (dotimes (s4-0 (-> obj stage length))
-   (if (or (= arg0 'game) (let ((a0-4 (-> obj stage s4-0)))
-                           (not (nonzero? (logand (-> a0-4 flags) 4)))
-                           )
+    (if arg1
+        (format 0 "ERROR<GMJ>: reset! received self of *null-task-control*~%~%")
         )
-    (clear-all-but-first-flag-bit (-> obj stage s4-0))
+    (return 0)
     )
-   (let ((a0-10 (-> obj stage s4-0)))
-    (if (nonzero? (logand (-> a0-10 flags) 1))
-     (TODO-RENAME-14 (-> obj stage s4-0))
-     )
+  (dotimes (s4-0 (-> obj stage length))
+    ;; do we open the task?
+    (if (or (= arg0 'game) ;; if we're resetting the whole game, yes
+            (let ((a0-4 (-> obj stage s4-0)))
+              (not (nonzero? (logand
+                              (-> a0-4 flags)
+                              (task-flags closed-by-default) ;; todo this flag?
+                              )
+                             )
+                   )
+              )
+            )
+        (open-task! (-> obj stage s4-0))
+        )
+
+    ;; call close-task! to send closed stuff to entities
+    (let ((a0-10 (-> obj stage s4-0)))
+      (if (nonzero? (logand (-> a0-10 flags) (task-flags closed)))
+          (close-task! (-> obj stage s4-0))
+          )
+      )
     )
-   )
   (the-as int #f)
   )
 
-;; definition for method 15 of type task-control
-(defmethod closed? task-control ((obj task-control) (arg0 int) (arg1 int))
+
+(defmethod closed? task-control ((obj task-control) (arg0 game-task) (arg1 task-status))
+  "Is the given task/status cstage closed?"
   (when (= obj *null-task-control*)
-   (format 0 "ERROR<GMJ>: closed? received self of *null-task-control*~%~%")
-   (return #f)
-   )
-  (dotimes (v1-3 (-> obj stage length))
-   (when
-    (and
-     (= arg0 (-> obj stage v1-3 game-task))
-     (= arg1 (-> obj stage v1-3 status))
-     )
-    (let ((a0-3 (-> obj stage v1-3)))
-     (return (nonzero? (logand (-> a0-3 flags) 1)))
-     )
+    (format 0 "ERROR<GMJ>: closed? received self of *null-task-control*~%~%")
+    (return #f)
     )
-   )
-  (format
-   0
-   "ERROR<GMJ>: closed? received non-existent task-cstage(~S ~S)--returning #t.~%"
-   (game-task->string arg0)
-   (task-status->string arg1)
-   )
+  ;; iterate all and check for match
+  (dotimes (v1-3 (-> obj stage length))
+    (when (and (= arg0 (-> obj stage v1-3 game-task))
+               (= arg1 (-> obj stage v1-3 status))
+               )
+      (let ((a0-3 (-> obj stage v1-3)))
+        ;; is the closed set?
+        (return (nonzero? (logand (-> a0-3 flags) (task-flags closed))))
+        )
+      )
+    )
+  (format 0 "ERROR<GMJ>: closed? received non-existent task-cstage(~S ~S)--returning #t.~%"
+          (game-task->string arg0)
+          (task-status->string arg1)
+          )
   #t
   )
 
-;; definition for method 18 of type task-control
-(defmethod exists? task-control ((obj task-control) (arg0 int) (arg1 int))
+(defmethod exists? task-control ((obj task-control) (arg0 game-task) (arg1 task-status))
+  "Is there a cstage for the given task and status?"
   (when (= obj *null-task-control*)
    (format 0 "ERROR<GMJ>: exists? received self of *null-task-control*~%~%")
    (return #f)
    )
   (dotimes (v1-3 (-> obj stage length))
-   (if
-    (and
-     (= arg0 (-> obj stage v1-3 game-task))
-     (= arg1 (-> obj stage v1-3 status))
-     )
+   (if (and (= arg0 (-> obj stage v1-3 game-task)) (= arg1 (-> obj stage v1-3 status)))
     (return #t)
     )
    )
   #f
   )
 
-;; definition for method 16 of type task-control
 (defmethod get-reminder task-control ((obj task-control) (arg0 int))
+  "Get the arg0th reminder. "
   (when (= obj *null-task-control*)
-   (format
-    0
-    "ERROR<GMJ>: get-reminder received self of *null-task-control*~%~%"
+    (format 0 "ERROR<GMJ>: get-reminder received self of *null-task-control*~%~%")
+    (return 0)
     )
-   (return 0)
-   )
-  (let ((v1-4 (dummy-13 *game-info* (the-as uint (-> obj stage 0 game-task)))))
-   (the-as int (-> v1-4 user-uint8 (+ arg0 1)))
-   )
+  (let ((v1-4 (get-entity-task-perm *game-info* (-> obj stage 0 game-task))))
+    (the-as int (-> v1-4 user-uint8 (+ arg0 1)))
+    )
   )
 
-;; definition for method 17 of type task-control
 (defmethod save-reminder task-control ((obj task-control) (arg0 int) (arg1 int))
+  "Set the arg1th reminder to arg0"
   (when (= obj *null-task-control*)
-   (format
-    0
-    "ERROR<GMJ>: save-reminder received self of *null-task-control*~%~%"
+    (format 0 "ERROR<GMJ>: save-reminder received self of *null-task-control*~%~%")
+    (return 0)
     )
-   (return 0)
-   )
-  (let ((v1-4 (dummy-13 *game-info* (the-as uint (-> obj stage 0 game-task)))))
-   (set!
-    (-> v1-4 status)
-    (logior (-> v1-4 status) (entity-perm-status unknown))
+  (let ((v1-4 (get-entity-task-perm *game-info* (-> obj stage 0 game-task))))
+    ;; remember that we have a change.
+    (set! (-> v1-4 status)
+          (logior (-> v1-4 status) (entity-perm-status user-set-from-cstage))
+          )
+    (set! (-> v1-4 user-int8 (+ arg1 1)) arg0)
     )
-   (set! (-> v1-4 user-int8 (+ arg1 1)) arg0)
-   )
   0
   )
 
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;; Task Control Definitions
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
 ;; definition for symbol *assistant-tasks*, type task-control
-(define
-  *assistant-tasks*
-  (new 'static 'task-control
-   :current-stage -1
-   :stage
-   (new
-    'static
-    'boxed-array
-    :type task-cstage :length 12 :allocated-length 12
-    (new 'static 'task-cstage
-     :game-task (game-task jungle-eggtop)
-     :status (task-status need-hint)
-     :flags #x6
-     :condition (lambda ((arg0 task-control)) #t)
-     )
-    (new 'static 'task-cstage
-     :game-task (game-task jungle-eggtop)
-     :status (task-status need-introduction)
-     :flags #x6
-     :condition (lambda ((arg0 task-control)) #t)
-     )
-    (new 'static 'task-cstage
-     :game-task (game-task misty-bike)
-     :status (task-status need-hint)
-     :flags #x6
-     :condition
-     (lambda
-      ((arg0 task-control))
-      (with-pp
-       (or
-        (closed? arg0 2 5)
-        (and
-         (closed? arg0 2 3)
-         (let ((a1-2 (new 'stack-no-clear 'event-message-block)))
-          (set! (-> a1-2 from) pp)
-          (set! (-> a1-2 num-params) 2)
-          (set! (-> a1-2 message) 'query)
-          (set! (-> a1-2 param 0) (the-as uint 'pickup))
-          (set! (-> a1-2 param 1) (the-as uint 6))
-          (>=
-           (the int (send-event-function *target* a1-2))
-           (+ (get-reminder arg0 1) 3)
-           )
-          )
+(define *assistant-tasks*
+    (new 'static 'task-control
+         :current-stage -1
+         :stage
+         (new 'static 'boxed-array
+              :type task-cstage :length 12 :allocated-length 12
+              (new 'static 'task-cstage
+                   :game-task (game-task jungle-eggtop)
+                   :status (task-status need-hint)
+                   :flags
+                   (task-flags has-entity closed-by-default)
+                   :condition (lambda ((arg0 task-control)) #t)
+                   )
+              (new 'static 'task-cstage
+                   :game-task (game-task jungle-eggtop)
+                   :status (task-status need-introduction)
+                   :flags
+                   (task-flags has-entity closed-by-default)
+                   :condition (lambda ((arg0 task-control)) #t)
+                   )
+              (new 'static 'task-cstage
+                   :game-task (game-task misty-bike)
+                   :status (task-status need-hint)
+                   :flags
+                   (task-flags has-entity closed-by-default)
+                   :condition
+                   (lambda
+                       ((arg0 task-control))
+                     (with-pp
+                       (or
+                        (closed? arg0 (game-task jungle-eggtop) (task-status need-reminder))
+                        (and
+                         (closed?
+                          arg0
+                          (game-task jungle-eggtop)
+                          (task-status need-introduction)
+                          )
+                         (let ((a1-2 (new 'stack-no-clear 'event-message-block)))
+                           (set! (-> a1-2 from) pp)
+                           (set! (-> a1-2 num-params) 2)
+                           (set! (-> a1-2 message) 'query)
+                           (set! (-> a1-2 param 0) (the-as uint 'pickup))
+                           (set! (-> a1-2 param 1) (the-as uint 6))
+                           (>=
+                            (the int (send-event-function *target* a1-2))
+                            (+ (get-reminder arg0 1) 3)
+                            )
+                           )
+                         )
+                        )
+                       )
+                     )
+                   )
+              (new 'static 'task-cstage
+                   :game-task (game-task misty-bike)
+                   :status (task-status need-introduction)
+                   :flags
+                   (task-flags has-entity closed-by-default)
+                   :condition
+                   (lambda
+                       ((arg0 task-control))
+                     (with-pp
+                       (or
+                        (closed? arg0 (game-task jungle-eggtop) (task-status need-reminder))
+                        (and
+                         (closed?
+                          arg0
+                          (game-task jungle-eggtop)
+                          (task-status need-introduction)
+                          )
+                         (let ((a1-2 (new 'stack-no-clear 'event-message-block)))
+                           (set! (-> a1-2 from) pp)
+                           (set! (-> a1-2 num-params) 2)
+                           (set! (-> a1-2 message) 'query)
+                           (set! (-> a1-2 param 0) (the-as uint 'pickup))
+                           (set! (-> a1-2 param 1) (the-as uint 6))
+                           (>=
+                            (the int (send-event-function *target* a1-2))
+                            (+ (get-reminder arg0 1) 3)
+                            )
+                           )
+                         )
+                        )
+                       )
+                     )
+                   )
+              (new 'static 'task-cstage
+                   :game-task (game-task jungle-eggtop)
+                   :status (task-status need-reminder)
+                   :flags (task-flags has-entity)
+                   :condition (lambda ((arg0 task-control)) #t)
+                   )
+              (new 'static 'task-cstage
+                   :game-task (game-task misty-bike)
+                   :status (task-status unknown)
+                   :condition (lambda ((arg0 task-control)) #t)
+                   )
+              (new 'static 'task-cstage
+                   :game-task (game-task misty-bike)
+                   :status (task-status need-reminder-a)
+                   :flags (task-flags has-entity)
+                   :condition (lambda ((arg0 task-control)) #t)
+                   )
+              (new 'static 'task-cstage
+                   :game-task (game-task misty-bike)
+                   :status (task-status need-reminder)
+                   :flags (task-flags has-entity)
+                   :condition (lambda ((arg0 task-control)) #t)
+                   )
+              (new 'static 'task-cstage
+                   :status (task-status unknown)
+                   :flags (task-flags has-entity)
+                   :condition
+                   (lambda
+                       ((arg0 task-control))
+                     (task-closed?
+                      (game-task village4-button)
+                      (task-status need-reward-speech)
+                      )
+                     )
+                   )
+              (new 'static 'task-cstage
+                   :status (task-status need-reminder)
+                   :flags (task-flags has-entity)
+                   :condition (lambda ((arg0 task-control)) #t)
+                   )
+              (new 'static 'task-cstage
+                   :game-task (game-task jungle-eggtop)
+                   :status (task-status need-resolution)
+                   :flags (task-flags has-entity)
+                   :condition (lambda ((arg0 task-control)) #t)
+                   )
+              (new 'static 'task-cstage
+                   :game-task (game-task misty-bike)
+                   :status (task-status need-resolution)
+                   :flags (task-flags has-entity)
+                   :condition (lambda ((arg0 task-control)) #t)
+                   )
+              )
          )
-        )
-       )
-      )
-     )
-    (new 'static 'task-cstage
-     :game-task (game-task misty-bike)
-     :status (task-status need-introduction)
-     :flags #x6
-     :condition
-     (lambda
-      ((arg0 task-control))
-      (with-pp
-       (or
-        (closed? arg0 2 5)
-        (and
-         (closed? arg0 2 3)
-         (let ((a1-2 (new 'stack-no-clear 'event-message-block)))
-          (set! (-> a1-2 from) pp)
-          (set! (-> a1-2 num-params) 2)
-          (set! (-> a1-2 message) 'query)
-          (set! (-> a1-2 param 0) (the-as uint 'pickup))
-          (set! (-> a1-2 param 1) (the-as uint 6))
-          (>=
-           (the int (send-event-function *target* a1-2))
-           (+ (get-reminder arg0 1) 3)
-           )
-          )
-         )
-        )
-       )
-      )
-     )
-    (new 'static 'task-cstage
-     :game-task (game-task jungle-eggtop)
-     :status (task-status need-reminder)
-     :flags #x2
-     :condition (lambda ((arg0 task-control)) #t)
-     )
-    (new 'static 'task-cstage
-     :game-task (game-task misty-bike)
-     :status (task-status unknown)
-     :condition (lambda ((arg0 task-control)) #t)
-     )
-    (new 'static 'task-cstage
-     :game-task (game-task misty-bike)
-     :status (task-status need-reminder-a)
-     :flags #x2
-     :condition (lambda ((arg0 task-control)) #t)
-     )
-    (new 'static 'task-cstage
-     :game-task (game-task misty-bike)
-     :status (task-status need-reminder)
-     :flags #x2
-     :condition (lambda ((arg0 task-control)) #t)
-     )
-    (new 'static 'task-cstage
-     :status (task-status unknown)
-     :flags #x2
-     :condition
-     (lambda ((arg0 task-control)) (task-closed? 111 6))
-     )
-    (new 'static 'task-cstage
-     :status (task-status need-reminder)
-     :flags #x2
-     :condition (lambda ((arg0 task-control)) #t)
-     )
-    (new 'static 'task-cstage
-     :game-task (game-task jungle-eggtop)
-     :status (task-status need-resolution)
-     :flags #x2
-     :condition (lambda ((arg0 task-control)) #t)
-     )
-    (new 'static 'task-cstage
-     :game-task (game-task misty-bike)
-     :status (task-status need-resolution)
-     :flags #x2
-     :condition (lambda ((arg0 task-control)) #t)
-     )
-    )
-   )
   )
 
 ;; definition for symbol *assistant-village2-tasks*, type task-control
@@ -477,25 +499,28 @@
     (new 'static 'task-cstage
      :game-task (game-task village2-levitator)
      :status (task-status need-hint)
-     :flags #x6
+     :flags
+     (task-flags has-entity closed-by-default)
      :condition (lambda ((arg0 task-control)) #t)
      )
     (new 'static 'task-cstage
      :game-task (game-task village2-levitator)
      :status (task-status need-introduction)
-     :flags #x6
+     :flags
+     (task-flags has-entity closed-by-default)
      :condition (lambda ((arg0 task-control)) #t)
      )
     (new 'static 'task-cstage
      :game-task (game-task village2-levitator)
      :status (task-status need-reminder-a)
-     :flags #x6
+     :flags
+     (task-flags has-entity closed-by-default)
      :condition (lambda ((arg0 task-control)) #t)
      )
     (new 'static 'task-cstage
      :game-task (game-task village2-levitator)
      :status (task-status need-reward-speech)
-     :flags #x2
+     :flags (task-flags has-entity)
      :condition
      (lambda
       ((arg0 task-control))
@@ -513,29 +538,32 @@
     (new 'static 'task-cstage
      :game-task (game-task sunken-room)
      :status (task-status need-hint)
-     :flags #x6
+     :flags
+     (task-flags has-entity closed-by-default)
      :condition (lambda ((arg0 task-control)) #t)
      )
     (new 'static 'task-cstage
      :game-task (game-task sunken-room)
      :status (task-status need-introduction)
-     :flags #x6
+     :flags
+     (task-flags has-entity closed-by-default)
      :condition (lambda ((arg0 task-control)) #t)
      )
     (new 'static 'task-cstage
      :game-task (game-task swamp-flutflut)
      :status (task-status need-hint)
-     :flags #x6
+     :flags
+     (task-flags has-entity closed-by-default)
      :condition
      (lambda
       ((arg0 task-control) (arg1 task-control))
       (with-pp
        (and
-        (task-closed? 17 5)
+        (task-closed? (game-task beach-flutflut) (task-status need-reminder))
         (or
-         (closed? arg0 47 5)
+         (closed? arg0 (game-task sunken-room) (task-status need-reminder))
          (and
-          (closed? arg0 47 3)
+          (closed? arg0 (game-task sunken-room) (task-status need-introduction))
           (let ((a1-4 (new 'stack-no-clear 'event-message-block)))
            (set! (-> a1-4 from) pp)
            (set! (-> a1-4 num-params) 2)
@@ -556,17 +584,18 @@
     (new 'static 'task-cstage
      :game-task (game-task swamp-flutflut)
      :status (task-status need-introduction)
-     :flags #x6
+     :flags
+     (task-flags has-entity closed-by-default)
      :condition
      (lambda
       ((arg0 task-control) (arg1 task-control))
       (with-pp
        (and
-        (task-closed? 17 5)
+        (task-closed? (game-task beach-flutflut) (task-status need-reminder))
         (or
-         (closed? arg0 47 5)
+         (closed? arg0 (game-task sunken-room) (task-status need-reminder))
          (and
-          (closed? arg0 47 3)
+          (closed? arg0 (game-task sunken-room) (task-status need-introduction))
           (let ((a1-4 (new 'stack-no-clear 'event-message-block)))
            (set! (-> a1-4 from) pp)
            (set! (-> a1-4 num-params) 2)
@@ -587,92 +616,104 @@
     (new 'static 'task-cstage
      :game-task (game-task rolling-robbers)
      :status (task-status need-hint)
-     :flags #x6
+     :flags
+     (task-flags has-entity closed-by-default)
      :condition
      (lambda
       ((arg0 task-control) (arg1 task-control))
-      (with-pp (if (task-closed? 17 5)
-                (or
-                 (closed? arg0 37 5)
-                 (and
-                  (closed? arg0 37 3)
-                  (let ((a1-4 (new 'stack-no-clear 'event-message-block)))
-                   (set! (-> a1-4 from) pp)
-                   (set! (-> a1-4 num-params) 2)
-                   (set! (-> a1-4 message) 'query)
-                   (set! (-> a1-4 param 0) (the-as uint 'pickup))
-                   (set! (-> a1-4 param 1) (the-as uint 6))
-                   (>=
-                    (the int (send-event-function *target* a1-4))
-                    (+ (get-reminder arg0 1) 3)
-                    )
-                   )
-                  )
-                 )
-                (or
-                 (closed? arg0 47 5)
-                 (and
-                  (closed? arg0 47 3)
-                  (let ((a1-8 (new 'stack-no-clear 'event-message-block)))
-                   (set! (-> a1-8 from) pp)
-                   (set! (-> a1-8 num-params) 2)
-                   (set! (-> a1-8 message) 'query)
-                   (set! (-> a1-8 param 0) (the-as uint 'pickup))
-                   (set! (-> a1-8 param 1) (the-as uint 6))
-                   (>=
-                    (the int (send-event-function *target* a1-8))
-                    (+ (get-reminder arg0 1) 3)
-                    )
-                   )
-                  )
-                 )
-                )
+      (with-pp
+       (if (task-closed? (game-task beach-flutflut) (task-status need-reminder))
+        (or
+         (closed? arg0 (game-task swamp-flutflut) (task-status need-reminder))
+         (and
+          (closed?
+           arg0
+           (game-task swamp-flutflut)
+           (task-status need-introduction)
+           )
+          (let ((a1-4 (new 'stack-no-clear 'event-message-block)))
+           (set! (-> a1-4 from) pp)
+           (set! (-> a1-4 num-params) 2)
+           (set! (-> a1-4 message) 'query)
+           (set! (-> a1-4 param 0) (the-as uint 'pickup))
+           (set! (-> a1-4 param 1) (the-as uint 6))
+           (>=
+            (the int (send-event-function *target* a1-4))
+            (+ (get-reminder arg0 1) 3)
+            )
+           )
+          )
+         )
+        (or
+         (closed? arg0 (game-task sunken-room) (task-status need-reminder))
+         (and
+          (closed? arg0 (game-task sunken-room) (task-status need-introduction))
+          (let ((a1-8 (new 'stack-no-clear 'event-message-block)))
+           (set! (-> a1-8 from) pp)
+           (set! (-> a1-8 num-params) 2)
+           (set! (-> a1-8 message) 'query)
+           (set! (-> a1-8 param 0) (the-as uint 'pickup))
+           (set! (-> a1-8 param 1) (the-as uint 6))
+           (>=
+            (the int (send-event-function *target* a1-8))
+            (+ (get-reminder arg0 1) 3)
+            )
+           )
+          )
+         )
+        )
        )
       )
      )
     (new 'static 'task-cstage
      :game-task (game-task rolling-robbers)
      :status (task-status need-introduction)
-     :flags #x6
+     :flags
+     (task-flags has-entity closed-by-default)
      :condition
      (lambda
       ((arg0 task-control) (arg1 task-control))
-      (with-pp (if (task-closed? 17 5)
-                (or
-                 (closed? arg0 37 5)
-                 (and
-                  (closed? arg0 37 3)
-                  (let ((a1-4 (new 'stack-no-clear 'event-message-block)))
-                   (set! (-> a1-4 from) pp)
-                   (set! (-> a1-4 num-params) 2)
-                   (set! (-> a1-4 message) 'query)
-                   (set! (-> a1-4 param 0) (the-as uint 'pickup))
-                   (set! (-> a1-4 param 1) (the-as uint 6))
-                   (>=
-                    (the int (send-event-function *target* a1-4))
-                    (+ (get-reminder arg0 1) 3)
-                    )
-                   )
-                  )
-                 )
-                (or
-                 (closed? arg0 47 5)
-                 (and
-                  (closed? arg0 47 3)
-                  (let ((a1-8 (new 'stack-no-clear 'event-message-block)))
-                   (set! (-> a1-8 from) pp)
-                   (set! (-> a1-8 num-params) 2)
-                   (set! (-> a1-8 message) 'query)
-                   (set! (-> a1-8 param 0) (the-as uint 'pickup))
-                   (set! (-> a1-8 param 1) (the-as uint 6))
-                   (>=
-                    (the int (send-event-function *target* a1-8))
-                    (+ (get-reminder arg0 1) 3)
-                    )
-                   )
-                  )
-                 )
-                )
+      (with-pp
+       (if (task-closed? (game-task beach-flutflut) (task-status need-reminder))
+        (or
+         (closed? arg0 (game-task swamp-flutflut) (task-status need-reminder))
+         (and
+          (closed?
+           arg0
+           (game-task swamp-flutflut)
+           (task-status need-introduction)
+           )
+          (let ((a1-4 (new 'stack-no-clear 'event-message-block)))
+           (set! (-> a1-4 from) pp)
+           (set! (-> a1-4 num-params) 2)
+           (set! (-> a1-4 message) 'query)
+           (set! (-> a1-4 param 0) (the-as uint 'pickup))
+           (set! (-> a1-4 param 1) (the-as uint 6))
+           (>=
+            (the int (send-event-function *target* a1-4))
+            (+ (get-reminder arg0 1) 3)
+            )
+           )
+          )
+         )
+        (or
+         (closed? arg0 (game-task sunken-room) (task-status need-reminder))
+         (and
+          (closed? arg0 (game-task sunken-room) (task-status need-introduction))
+          (let ((a1-8 (new 'stack-no-clear 'event-message-block)))
+           (set! (-> a1-8 from) pp)
+           (set! (-> a1-8 num-params) 2)
+           (set! (-> a1-8 message) 'query)
+           (set! (-> a1-8 param 0) (the-as uint 'pickup))
+           (set! (-> a1-8 param 1) (the-as uint 6))
+           (>=
+            (the int (send-event-function *target* a1-8))
+            (+ (get-reminder arg0 1) 3)
+            )
+           )
+          )
+         )
+        )
        )
       )
      )
@@ -684,21 +725,27 @@
     (new 'static 'task-cstage
      :game-task (game-task sunken-room)
      :status (task-status need-reminder)
-     :flags #x2
+     :flags (task-flags has-entity)
      :condition (lambda ((arg0 task-control)) #t)
      )
     (new 'static 'task-cstage
      :game-task (game-task swamp-flutflut)
      :status (task-status unknown)
      :condition
-     (lambda ((arg0 task-control)) (task-closed? 17 5))
+     (lambda
+      ((arg0 task-control))
+      (task-closed? (game-task beach-flutflut) (task-status need-reminder))
+      )
      )
     (new 'static 'task-cstage
      :game-task (game-task swamp-flutflut)
      :status (task-status need-reminder)
-     :flags #x2
+     :flags (task-flags has-entity)
      :condition
-     (lambda ((arg0 task-control)) (task-closed? 17 5))
+     (lambda
+      ((arg0 task-control))
+      (task-closed? (game-task beach-flutflut) (task-status need-reminder))
+      )
      )
     (new 'static 'task-cstage
      :game-task (game-task rolling-robbers)
@@ -708,7 +755,7 @@
     (new 'static 'task-cstage
      :game-task (game-task rolling-robbers)
      :status (task-status need-reminder)
-     :flags #x2
+     :flags (task-flags has-entity)
      :condition (lambda ((arg0 task-control)) #t)
      )
     (new 'static 'task-cstage
@@ -718,25 +765,25 @@
     (new 'static 'task-cstage
      :game-task (game-task sunken-room)
      :status (task-status need-resolution)
-     :flags #x2
+     :flags (task-flags has-entity)
      :condition (lambda ((arg0 task-control)) #t)
      )
     (new 'static 'task-cstage
      :game-task (game-task rolling-robbers)
      :status (task-status need-resolution)
-     :flags #x2
+     :flags (task-flags has-entity)
      :condition (lambda ((arg0 task-control)) #t)
      )
     (new 'static 'task-cstage
      :game-task (game-task swamp-flutflut)
      :status (task-status need-resolution)
-     :flags #x2
+     :flags (task-flags has-entity)
      :condition (lambda ((arg0 task-control)) #t)
      )
     (new 'static 'task-cstage
      :game-task (game-task village2-levitator)
      :status (task-status need-reminder)
-     :flags #x2
+     :flags (task-flags has-entity)
      :condition (lambda ((arg0 task-control)) #t)
      )
     )
@@ -756,52 +803,69 @@
     (new 'static 'task-cstage
      :game-task (game-task rolling-race)
      :status (task-status need-hint)
-     :flags #x6
+     :flags
+     (task-flags has-entity closed-by-default)
      :condition (lambda ((arg0 task-control)) #t)
      )
     (new 'static 'task-cstage
      :game-task (game-task rolling-race)
      :status (task-status need-introduction)
-     :flags #x6
+     :flags
+     (task-flags has-entity closed-by-default)
      :condition (lambda ((arg0 task-control)) #t)
      )
     (new 'static 'task-cstage
      :game-task (game-task village2-gambler-money)
      :status (task-status need-hint)
-     :flags #x6
+     :flags
+     (task-flags has-entity closed-by-default)
      :condition (lambda ((arg0 task-control)) #t)
      )
     (new 'static 'task-cstage
      :game-task (game-task village2-gambler-money)
      :status (task-status need-introduction)
-     :flags #x6
+     :flags
+     (task-flags has-entity closed-by-default)
      :condition (lambda ((arg0 task-control)) #t)
      )
     (new 'static 'task-cstage
      :game-task (game-task rolling-race)
      :status (task-status need-resolution)
-     :flags #x2
+     :flags (task-flags has-entity)
      :condition
-     (lambda ((arg0 task-control) (arg1 task-control)) (closed? arg0 52 6))
+     (lambda
+      ((arg0 task-control) (arg1 task-control))
+      (closed? arg0 (game-task rolling-race) (task-status need-reward-speech))
+      )
      )
     (new 'static 'task-cstage
      :game-task (game-task village2-gambler-money)
      :status (task-status need-resolution)
-     :flags #x2
+     :flags (task-flags has-entity)
      :condition
-     (lambda ((arg0 task-control) (arg1 task-control)) (closed? arg0 31 6))
+     (lambda
+      ((arg0 task-control) (arg1 task-control))
+      (closed?
+       arg0
+       (game-task village2-gambler-money)
+       (task-status need-reward-speech)
+       )
+      )
      )
     (new 'static 'task-cstage
      :game-task (game-task rolling-race)
      :status (task-status need-reward-speech)
-     :flags #x2
+     :flags (task-flags has-entity)
      :condition
-     (lambda ((arg0 task-control) (arg1 task-control)) (closed? arg0 52 5))
+     (lambda
+      ((arg0 task-control) (arg1 task-control))
+      (closed? arg0 (game-task rolling-race) (task-status need-reminder))
+      )
      )
     (new 'static 'task-cstage
      :game-task (game-task village2-gambler-money)
      :status (task-status need-reward-speech)
-     :flags #x2
+     :flags (task-flags has-entity)
      :condition
      (lambda
       ((arg0 task-control))
@@ -833,15 +897,21 @@
     (new 'static 'task-cstage
      :game-task (game-task rolling-race)
      :status (task-status need-reminder)
-     :flags #x2
+     :flags (task-flags has-entity)
      :condition
-     (lambda ((arg0 task-control) (arg1 task-control)) (closed? arg0 52 3))
+     (lambda
+      ((arg0 task-control) (arg1 task-control))
+      (closed? arg0 (game-task rolling-race) (task-status need-introduction))
+      )
      )
     (new 'static 'task-cstage
      :game-task (game-task village2-gambler-money)
      :status (task-status need-reminder)
      :condition
-     (lambda ((arg0 task-control) (arg1 task-control)) (closed? arg0 52 3))
+     (lambda
+      ((arg0 task-control) (arg1 task-control))
+      (closed? arg0 (game-task rolling-race) (task-status need-introduction))
+      )
      )
     )
    )
@@ -860,52 +930,69 @@
     (new 'static 'task-cstage
      :game-task (game-task rolling-moles)
      :status (task-status need-hint)
-     :flags #x6
+     :flags
+     (task-flags has-entity closed-by-default)
      :condition (lambda ((arg0 task-control)) #t)
      )
     (new 'static 'task-cstage
      :game-task (game-task rolling-moles)
      :status (task-status need-introduction)
-     :flags #x6
+     :flags
+     (task-flags has-entity closed-by-default)
      :condition (lambda ((arg0 task-control)) #t)
      )
     (new 'static 'task-cstage
      :game-task (game-task village2-geologist-money)
      :status (task-status need-hint)
-     :flags #x6
+     :flags
+     (task-flags has-entity closed-by-default)
      :condition (lambda ((arg0 task-control)) #t)
      )
     (new 'static 'task-cstage
      :game-task (game-task village2-geologist-money)
      :status (task-status need-introduction)
-     :flags #x6
+     :flags
+     (task-flags has-entity closed-by-default)
      :condition (lambda ((arg0 task-control)) #t)
      )
     (new 'static 'task-cstage
      :game-task (game-task rolling-moles)
      :status (task-status need-resolution)
-     :flags #x2
+     :flags (task-flags has-entity)
      :condition
-     (lambda ((arg0 task-control) (arg1 task-control)) (closed? arg0 54 6))
+     (lambda
+      ((arg0 task-control) (arg1 task-control))
+      (closed? arg0 (game-task rolling-moles) (task-status need-reward-speech))
+      )
      )
     (new 'static 'task-cstage
      :game-task (game-task village2-geologist-money)
      :status (task-status need-resolution)
-     :flags #x2
+     :flags (task-flags has-entity)
      :condition
-     (lambda ((arg0 task-control) (arg1 task-control)) (closed? arg0 32 6))
+     (lambda
+      ((arg0 task-control) (arg1 task-control))
+      (closed?
+       arg0
+       (game-task village2-geologist-money)
+       (task-status need-reward-speech)
+       )
+      )
      )
     (new 'static 'task-cstage
      :game-task (game-task rolling-moles)
      :status (task-status need-reward-speech)
-     :flags #x2
+     :flags (task-flags has-entity)
      :condition
-     (lambda ((arg0 task-control) (arg1 task-control)) (closed? arg0 54 5))
+     (lambda
+      ((arg0 task-control) (arg1 task-control))
+      (closed? arg0 (game-task rolling-moles) (task-status need-reminder))
+      )
      )
     (new 'static 'task-cstage
      :game-task (game-task village2-geologist-money)
      :status (task-status need-reward-speech)
-     :flags #x2
+     :flags (task-flags has-entity)
      :condition
      (lambda
       ((arg0 task-control))
@@ -937,15 +1024,21 @@
     (new 'static 'task-cstage
      :game-task (game-task rolling-moles)
      :status (task-status need-reminder)
-     :flags #x2
+     :flags (task-flags has-entity)
      :condition
-     (lambda ((arg0 task-control) (arg1 task-control)) (closed? arg0 54 3))
+     (lambda
+      ((arg0 task-control) (arg1 task-control))
+      (closed? arg0 (game-task rolling-moles) (task-status need-introduction))
+      )
      )
     (new 'static 'task-cstage
      :game-task (game-task village2-geologist-money)
      :status (task-status need-reminder)
      :condition
-     (lambda ((arg0 task-control) (arg1 task-control)) (closed? arg0 54 3))
+     (lambda
+      ((arg0 task-control) (arg1 task-control))
+      (closed? arg0 (game-task rolling-moles) (task-status need-introduction))
+      )
      )
     )
    )
@@ -964,52 +1057,69 @@
     (new 'static 'task-cstage
      :game-task (game-task jungle-lurkerm)
      :status (task-status need-hint)
-     :flags #x6
+     :flags
+     (task-flags has-entity closed-by-default)
      :condition (lambda ((arg0 task-control)) #t)
      )
     (new 'static 'task-cstage
      :game-task (game-task jungle-lurkerm)
      :status (task-status need-introduction)
-     :flags #x6
+     :flags
+     (task-flags has-entity closed-by-default)
      :condition (lambda ((arg0 task-control)) #t)
      )
     (new 'static 'task-cstage
      :game-task (game-task village1-mayor-money)
      :status (task-status need-hint)
-     :flags #x6
+     :flags
+     (task-flags has-entity closed-by-default)
      :condition (lambda ((arg0 task-control)) #t)
      )
     (new 'static 'task-cstage
      :game-task (game-task village1-mayor-money)
      :status (task-status need-introduction)
-     :flags #x6
+     :flags
+     (task-flags has-entity closed-by-default)
      :condition (lambda ((arg0 task-control)) #t)
      )
     (new 'static 'task-cstage
      :game-task (game-task jungle-lurkerm)
      :status (task-status need-resolution)
-     :flags #x2
+     :flags (task-flags has-entity)
      :condition
-     (lambda ((arg0 task-control) (arg1 task-control)) (closed? arg0 3 6))
+     (lambda
+      ((arg0 task-control) (arg1 task-control))
+      (closed? arg0 (game-task jungle-lurkerm) (task-status need-reward-speech))
+      )
      )
     (new 'static 'task-cstage
      :game-task (game-task village1-mayor-money)
      :status (task-status need-resolution)
-     :flags #x2
+     :flags (task-flags has-entity)
      :condition
-     (lambda ((arg0 task-control) (arg1 task-control)) (closed? arg0 11 6))
+     (lambda
+      ((arg0 task-control) (arg1 task-control))
+      (closed?
+       arg0
+       (game-task village1-mayor-money)
+       (task-status need-reward-speech)
+       )
+      )
      )
     (new 'static 'task-cstage
      :game-task (game-task jungle-lurkerm)
      :status (task-status need-reward-speech)
-     :flags #x2
+     :flags (task-flags has-entity)
      :condition
-     (lambda ((arg0 task-control) (arg1 task-control)) (closed? arg0 3 5))
+     (lambda
+      ((arg0 task-control) (arg1 task-control))
+      (closed? arg0 (game-task jungle-lurkerm) (task-status need-reminder))
+      )
      )
     (new 'static 'task-cstage
      :game-task (game-task village1-mayor-money)
      :status (task-status need-reward-speech)
-     :flags #x2
+     :flags (task-flags has-entity)
      :condition
      (lambda
       ((arg0 task-control))
@@ -1041,22 +1151,31 @@
     (new 'static 'task-cstage
      :game-task (game-task jungle-lurkerm)
      :status (task-status need-reminder-a)
-     :flags #x2
+     :flags (task-flags has-entity)
      :condition
-     (lambda ((arg0 task-control) (arg1 task-control)) (closed? arg0 3 3))
+     (lambda
+      ((arg0 task-control) (arg1 task-control))
+      (closed? arg0 (game-task jungle-lurkerm) (task-status need-introduction))
+      )
      )
     (new 'static 'task-cstage
      :game-task (game-task jungle-lurkerm)
      :status (task-status need-reminder)
-     :flags #x2
+     :flags (task-flags has-entity)
      :condition
-     (lambda ((arg0 task-control) (arg1 task-control)) (closed? arg0 3 3))
+     (lambda
+      ((arg0 task-control) (arg1 task-control))
+      (closed? arg0 (game-task jungle-lurkerm) (task-status need-introduction))
+      )
      )
     (new 'static 'task-cstage
      :game-task (game-task village1-mayor-money)
      :status (task-status need-reminder)
      :condition
-     (lambda ((arg0 task-control) (arg1 task-control)) (closed? arg0 3 3))
+     (lambda
+      ((arg0 task-control) (arg1 task-control))
+      (closed? arg0 (game-task jungle-lurkerm) (task-status need-introduction))
+      )
      )
     )
    )
@@ -1075,45 +1194,52 @@
     (new 'static 'task-cstage
      :game-task (game-task intro)
      :status (task-status need-introduction)
-     :flags #x2
+     :flags (task-flags has-entity)
      :condition (lambda ((arg0 task-control)) #t)
      )
     (new 'static 'task-cstage
      :game-task (game-task intro)
      :status (task-status need-reward-speech)
-     :flags #x2
+     :flags (task-flags has-entity)
      :condition (lambda ((arg0 task-control)) #t)
      )
     (new 'static 'task-cstage
      :game-task (game-task intro)
      :status (task-status need-resolution)
-     :flags #x2
+     :flags (task-flags has-entity)
      :condition (lambda ((arg0 task-control)) #t)
      )
     (new 'static 'task-cstage
      :game-task (game-task beach-ecorocks)
      :status (task-status need-hint)
-     :flags #x6
+     :flags
+     (task-flags has-entity closed-by-default)
      :condition (lambda ((arg0 task-control)) #t)
      )
     (new 'static 'task-cstage
      :game-task (game-task beach-ecorocks)
      :status (task-status need-introduction)
-     :flags #x6
+     :flags
+     (task-flags has-entity closed-by-default)
      :condition (lambda ((arg0 task-control)) #t)
      )
     (new 'static 'task-cstage
      :game-task (game-task misty-cannon)
      :status (task-status need-hint)
-     :flags #x6
+     :flags
+     (task-flags has-entity closed-by-default)
      :condition
      (lambda
       ((arg0 task-control) (arg1 task-control))
       (with-pp
        (or
-        (closed? arg0 15 5)
+        (closed? arg0 (game-task beach-ecorocks) (task-status need-reminder))
         (and
-         (closed? arg0 15 3)
+         (closed?
+          arg0
+          (game-task beach-ecorocks)
+          (task-status need-introduction)
+          )
          (let ((a1-3 (new 'stack-no-clear 'event-message-block)))
           (set! (-> a1-3 from) pp)
           (set! (-> a1-3 num-params) 2)
@@ -1133,15 +1259,20 @@
     (new 'static 'task-cstage
      :game-task (game-task misty-cannon)
      :status (task-status need-introduction)
-     :flags #x6
+     :flags
+     (task-flags has-entity closed-by-default)
      :condition
      (lambda
       ((arg0 task-control) (arg1 task-control))
       (with-pp
        (or
-        (closed? arg0 15 5)
+        (closed? arg0 (game-task beach-ecorocks) (task-status need-reminder))
         (and
-         (closed? arg0 15 3)
+         (closed?
+          arg0
+          (game-task beach-ecorocks)
+          (task-status need-introduction)
+          )
          (let ((a1-3 (new 'stack-no-clear 'event-message-block)))
           (set! (-> a1-3 from) pp)
           (set! (-> a1-3 num-params) 2)
@@ -1161,7 +1292,7 @@
     (new 'static 'task-cstage
      :game-task (game-task beach-ecorocks)
      :status (task-status need-reminder)
-     :flags #x2
+     :flags (task-flags has-entity)
      :condition (lambda ((arg0 task-control)) #t)
      )
     (new 'static 'task-cstage
@@ -1172,30 +1303,36 @@
     (new 'static 'task-cstage
      :game-task (game-task misty-cannon)
      :status (task-status need-reminder)
-     :flags #x2
+     :flags (task-flags has-entity)
      :condition (lambda ((arg0 task-control)) #t)
      )
     (new 'static 'task-cstage
      :status (task-status unknown)
-     :flags #x2
+     :flags (task-flags has-entity)
      :condition
-     (lambda ((arg0 task-control)) (task-closed? 111 6))
+     (lambda
+      ((arg0 task-control))
+      (task-closed?
+       (game-task village4-button)
+       (task-status need-reward-speech)
+       )
+      )
      )
     (new 'static 'task-cstage
      :status (task-status need-reminder)
-     :flags #x2
+     :flags (task-flags has-entity)
      :condition (lambda ((arg0 task-control)) #t)
      )
     (new 'static 'task-cstage
      :game-task (game-task beach-ecorocks)
      :status (task-status need-resolution)
-     :flags #x2
+     :flags (task-flags has-entity)
      :condition (lambda ((arg0 task-control)) #t)
      )
     (new 'static 'task-cstage
      :game-task (game-task misty-cannon)
      :status (task-status need-resolution)
-     :flags #x2
+     :flags (task-flags has-entity)
      :condition (lambda ((arg0 task-control)) #t)
      )
     )
@@ -1215,27 +1352,34 @@
     (new 'static 'task-cstage
      :game-task (game-task rolling-plants)
      :status (task-status need-hint)
-     :flags #x6
+     :flags
+     (task-flags has-entity closed-by-default)
      :condition (lambda ((arg0 task-control)) #t)
      )
     (new 'static 'task-cstage
      :game-task (game-task rolling-plants)
      :status (task-status need-introduction)
-     :flags #x6
+     :flags
+     (task-flags has-entity closed-by-default)
      :condition (lambda ((arg0 task-control)) #t)
      )
     (new 'static 'task-cstage
      :game-task (game-task swamp-arm)
      :status (task-status need-hint)
-     :flags #x6
+     :flags
+     (task-flags has-entity closed-by-default)
      :condition
      (lambda
       ((arg0 task-control) (arg1 task-control))
       (with-pp
        (or
-        (closed? arg0 55 5)
+        (closed? arg0 (game-task rolling-plants) (task-status need-reminder))
         (and
-         (closed? arg0 55 3)
+         (closed?
+          arg0
+          (game-task rolling-plants)
+          (task-status need-introduction)
+          )
          (let ((a1-3 (new 'stack-no-clear 'event-message-block)))
           (set! (-> a1-3 from) pp)
           (set! (-> a1-3 num-params) 2)
@@ -1255,15 +1399,20 @@
     (new 'static 'task-cstage
      :game-task (game-task swamp-arm)
      :status (task-status need-introduction)
-     :flags #x6
+     :flags
+     (task-flags has-entity closed-by-default)
      :condition
      (lambda
       ((arg0 task-control) (arg1 task-control))
       (with-pp
        (or
-        (closed? arg0 55 5)
+        (closed? arg0 (game-task rolling-plants) (task-status need-reminder))
         (and
-         (closed? arg0 55 3)
+         (closed?
+          arg0
+          (game-task rolling-plants)
+          (task-status need-introduction)
+          )
          (let ((a1-3 (new 'stack-no-clear 'event-message-block)))
           (set! (-> a1-3 from) pp)
           (set! (-> a1-3 num-params) 2)
@@ -1283,7 +1432,7 @@
     (new 'static 'task-cstage
      :game-task (game-task rolling-plants)
      :status (task-status need-reminder)
-     :flags #x2
+     :flags (task-flags has-entity)
      :condition (lambda ((arg0 task-control)) #t)
      )
     (new 'static 'task-cstage
@@ -1294,7 +1443,7 @@
     (new 'static 'task-cstage
      :game-task (game-task swamp-arm)
      :status (task-status need-reminder)
-     :flags #x2
+     :flags (task-flags has-entity)
      :condition (lambda ((arg0 task-control)) #t)
      )
     (new 'static 'task-cstage
@@ -1304,13 +1453,13 @@
     (new 'static 'task-cstage
      :game-task (game-task rolling-plants)
      :status (task-status need-resolution)
-     :flags #x2
+     :flags (task-flags has-entity)
      :condition (lambda ((arg0 task-control)) #t)
      )
     (new 'static 'task-cstage
      :game-task (game-task swamp-arm)
      :status (task-status need-resolution)
-     :flags #x2
+     :flags (task-flags has-entity)
      :condition (lambda ((arg0 task-control)) #t)
      )
     )
@@ -1330,31 +1479,35 @@
     (new 'static 'task-cstage
      :game-task (game-task village1-oracle-money1)
      :status (task-status need-hint)
-     :flags #x6
+     :flags
+     (task-flags has-entity closed-by-default)
      :condition (lambda ((arg0 task-control)) #t)
      )
     (new 'static 'task-cstage
      :game-task (game-task village1-oracle-money1)
      :status (task-status need-introduction)
-     :flags #x6
+     :flags
+     (task-flags has-entity closed-by-default)
      :condition (lambda ((arg0 task-control)) #t)
      )
     (new 'static 'task-cstage
      :game-task (game-task village1-oracle-money2)
      :status (task-status need-hint)
-     :flags #x6
+     :flags
+     (task-flags has-entity closed-by-default)
      :condition (lambda ((arg0 task-control)) #t)
      )
     (new 'static 'task-cstage
      :game-task (game-task village1-oracle-money2)
      :status (task-status need-introduction)
-     :flags #x6
+     :flags
+     (task-flags has-entity closed-by-default)
      :condition (lambda ((arg0 task-control)) #t)
      )
     (new 'static 'task-cstage
      :game-task (game-task village1-oracle-money1)
      :status (task-status need-reward-speech)
-     :flags #x2
+     :flags (task-flags has-entity)
      :condition
      (lambda
       ((arg0 task-control))
@@ -1391,13 +1544,13 @@
     (new 'static 'task-cstage
      :game-task (game-task village1-oracle-money1)
      :status (task-status need-resolution)
-     :flags #x2
+     :flags (task-flags has-entity)
      :condition (lambda ((arg0 task-control)) #t)
      )
     (new 'static 'task-cstage
      :game-task (game-task village1-oracle-money2)
      :status (task-status need-reward-speech)
-     :flags #x2
+     :flags (task-flags has-entity)
      :condition
      (lambda
       ((arg0 task-control))
@@ -1434,7 +1587,7 @@
     (new 'static 'task-cstage
      :game-task (game-task village1-oracle-money2)
      :status (task-status need-resolution)
-     :flags #x2
+     :flags (task-flags has-entity)
      :condition (lambda ((arg0 task-control)) #t)
      )
     )
@@ -1454,31 +1607,35 @@
     (new 'static 'task-cstage
      :game-task (game-task village2-oracle-money1)
      :status (task-status need-hint)
-     :flags #x6
+     :flags
+     (task-flags has-entity closed-by-default)
      :condition (lambda ((arg0 task-control)) #t)
      )
     (new 'static 'task-cstage
      :game-task (game-task village2-oracle-money1)
      :status (task-status need-introduction)
-     :flags #x6
+     :flags
+     (task-flags has-entity closed-by-default)
      :condition (lambda ((arg0 task-control)) #t)
      )
     (new 'static 'task-cstage
      :game-task (game-task village2-oracle-money2)
      :status (task-status need-hint)
-     :flags #x6
+     :flags
+     (task-flags has-entity closed-by-default)
      :condition (lambda ((arg0 task-control)) #t)
      )
     (new 'static 'task-cstage
      :game-task (game-task village2-oracle-money2)
      :status (task-status need-introduction)
-     :flags #x6
+     :flags
+     (task-flags has-entity closed-by-default)
      :condition (lambda ((arg0 task-control)) #t)
      )
     (new 'static 'task-cstage
      :game-task (game-task village2-oracle-money1)
      :status (task-status need-reward-speech)
-     :flags #x2
+     :flags (task-flags has-entity)
      :condition
      (lambda
       ((arg0 task-control))
@@ -1515,13 +1672,13 @@
     (new 'static 'task-cstage
      :game-task (game-task village2-oracle-money1)
      :status (task-status need-resolution)
-     :flags #x2
+     :flags (task-flags has-entity)
      :condition (lambda ((arg0 task-control)) #t)
      )
     (new 'static 'task-cstage
      :game-task (game-task village2-oracle-money2)
      :status (task-status need-reward-speech)
-     :flags #x2
+     :flags (task-flags has-entity)
      :condition
      (lambda
       ((arg0 task-control))
@@ -1558,7 +1715,7 @@
     (new 'static 'task-cstage
      :game-task (game-task village2-oracle-money2)
      :status (task-status need-resolution)
-     :flags #x2
+     :flags (task-flags has-entity)
      :condition (lambda ((arg0 task-control)) #t)
      )
     )
@@ -1578,31 +1735,35 @@
     (new 'static 'task-cstage
      :game-task (game-task village3-oracle-money1)
      :status (task-status need-hint)
-     :flags #x6
+     :flags
+     (task-flags has-entity closed-by-default)
      :condition (lambda ((arg0 task-control)) #t)
      )
     (new 'static 'task-cstage
      :game-task (game-task village3-oracle-money1)
      :status (task-status need-introduction)
-     :flags #x6
+     :flags
+     (task-flags has-entity closed-by-default)
      :condition (lambda ((arg0 task-control)) #t)
      )
     (new 'static 'task-cstage
      :game-task (game-task village3-oracle-money2)
      :status (task-status need-hint)
-     :flags #x6
+     :flags
+     (task-flags has-entity closed-by-default)
      :condition (lambda ((arg0 task-control)) #t)
      )
     (new 'static 'task-cstage
      :game-task (game-task village3-oracle-money2)
      :status (task-status need-introduction)
-     :flags #x6
+     :flags
+     (task-flags has-entity closed-by-default)
      :condition (lambda ((arg0 task-control)) #t)
      )
     (new 'static 'task-cstage
      :game-task (game-task village3-oracle-money1)
      :status (task-status need-reward-speech)
-     :flags #x2
+     :flags (task-flags has-entity)
      :condition
      (lambda
       ((arg0 task-control))
@@ -1639,13 +1800,13 @@
     (new 'static 'task-cstage
      :game-task (game-task village3-oracle-money1)
      :status (task-status need-resolution)
-     :flags #x2
+     :flags (task-flags has-entity)
      :condition (lambda ((arg0 task-control)) #t)
      )
     (new 'static 'task-cstage
      :game-task (game-task village3-oracle-money2)
      :status (task-status need-reward-speech)
-     :flags #x2
+     :flags (task-flags has-entity)
      :condition
      (lambda
       ((arg0 task-control))
@@ -1682,7 +1843,7 @@
     (new 'static 'task-cstage
      :game-task (game-task village3-oracle-money2)
      :status (task-status need-resolution)
-     :flags #x2
+     :flags (task-flags has-entity)
      :condition (lambda ((arg0 task-control)) #t)
      )
     )
@@ -1702,55 +1863,63 @@
     (new 'static 'task-cstage
      :game-task (game-task village3-miner-money1)
      :status (task-status need-hint)
-     :flags #x6
+     :flags
+     (task-flags has-entity closed-by-default)
      :condition (lambda ((arg0 task-control)) #t)
      )
     (new 'static 'task-cstage
      :game-task (game-task village3-miner-money1)
      :status (task-status need-introduction)
-     :flags #x6
+     :flags
+     (task-flags has-entity closed-by-default)
      :condition (lambda ((arg0 task-control)) #t)
      )
     (new 'static 'task-cstage
      :game-task (game-task village3-miner-money2)
      :status (task-status need-hint)
-     :flags #x6
+     :flags
+     (task-flags has-entity closed-by-default)
      :condition (lambda ((arg0 task-control)) #t)
      )
     (new 'static 'task-cstage
      :game-task (game-task village3-miner-money2)
      :status (task-status need-introduction)
-     :flags #x6
+     :flags
+     (task-flags has-entity closed-by-default)
      :condition (lambda ((arg0 task-control)) #t)
      )
     (new 'static 'task-cstage
      :game-task (game-task village3-miner-money3)
      :status (task-status need-hint)
-     :flags #x6
+     :flags
+     (task-flags has-entity closed-by-default)
      :condition (lambda ((arg0 task-control)) #t)
      )
     (new 'static 'task-cstage
      :game-task (game-task village3-miner-money3)
      :status (task-status need-introduction)
-     :flags #x6
+     :flags
+     (task-flags has-entity closed-by-default)
      :condition (lambda ((arg0 task-control)) #t)
      )
     (new 'static 'task-cstage
      :game-task (game-task village3-miner-money4)
      :status (task-status need-hint)
-     :flags #x6
+     :flags
+     (task-flags has-entity closed-by-default)
      :condition (lambda ((arg0 task-control)) #t)
      )
     (new 'static 'task-cstage
      :game-task (game-task village3-miner-money4)
      :status (task-status need-introduction)
-     :flags #x6
+     :flags
+     (task-flags has-entity closed-by-default)
      :condition (lambda ((arg0 task-control)) #t)
      )
     (new 'static 'task-cstage
      :game-task (game-task village3-miner-money1)
      :status (task-status need-reward-speech)
-     :flags #x2
+     :flags (task-flags has-entity)
      :condition
      (lambda
       ((arg0 task-control))
@@ -1782,7 +1951,7 @@
     (new 'static 'task-cstage
      :game-task (game-task village3-miner-money2)
      :status (task-status need-reward-speech)
-     :flags #x2
+     :flags (task-flags has-entity)
      :condition
      (lambda
       ((arg0 task-control))
@@ -1814,7 +1983,7 @@
     (new 'static 'task-cstage
      :game-task (game-task village3-miner-money3)
      :status (task-status need-reward-speech)
-     :flags #x2
+     :flags (task-flags has-entity)
      :condition
      (lambda
       ((arg0 task-control))
@@ -1846,7 +2015,7 @@
     (new 'static 'task-cstage
      :game-task (game-task village3-miner-money4)
      :status (task-status need-reward-speech)
-     :flags #x2
+     :flags (task-flags has-entity)
      :condition
      (lambda
       ((arg0 task-control))
@@ -1878,15 +2047,24 @@
     (new 'static 'task-cstage
      :game-task (game-task cave-gnawers)
      :status (task-status need-hint)
-     :flags #x6
+     :flags
+     (task-flags has-entity closed-by-default)
      :condition
      (lambda
       ((arg0 task-control) (arg1 task-control))
       (with-pp
        (or
-        (closed? arg0 99 5)
+        (closed?
+         arg0
+         (game-task village3-miner-money4)
+         (task-status need-reminder)
+         )
         (and
-         (closed? arg0 99 3)
+         (closed?
+          arg0
+          (game-task village3-miner-money4)
+          (task-status need-introduction)
+          )
          (let ((a1-3 (new 'stack-no-clear 'event-message-block)))
           (set! (-> a1-3 from) pp)
           (set! (-> a1-3 num-params) 2)
@@ -1906,15 +2084,24 @@
     (new 'static 'task-cstage
      :game-task (game-task cave-gnawers)
      :status (task-status need-introduction)
-     :flags #x6
+     :flags
+     (task-flags has-entity closed-by-default)
      :condition
      (lambda
       ((arg0 task-control) (arg1 task-control))
       (with-pp
        (or
-        (closed? arg0 99 5)
+        (closed?
+         arg0
+         (game-task village3-miner-money4)
+         (task-status need-reminder)
+         )
         (and
-         (closed? arg0 99 3)
+         (closed?
+          arg0
+          (game-task village3-miner-money4)
+          (task-status need-introduction)
+          )
          (let ((a1-3 (new 'stack-no-clear 'event-message-block)))
           (set! (-> a1-3 from) pp)
           (set! (-> a1-3 num-params) 2)
@@ -1934,15 +2121,16 @@
     (new 'static 'task-cstage
      :game-task (game-task snow-eggtop)
      :status (task-status need-hint)
-     :flags #x6
+     :flags
+     (task-flags has-entity closed-by-default)
      :condition
      (lambda
       ((arg0 task-control) (arg1 task-control))
       (with-pp
        (or
-        (closed? arg0 78 5)
+        (closed? arg0 (game-task cave-gnawers) (task-status need-reminder))
         (and
-         (closed? arg0 78 3)
+         (closed? arg0 (game-task cave-gnawers) (task-status need-introduction))
          (let ((a1-3 (new 'stack-no-clear 'event-message-block)))
           (set! (-> a1-3 from) pp)
           (set! (-> a1-3 num-params) 2)
@@ -1962,15 +2150,16 @@
     (new 'static 'task-cstage
      :game-task (game-task snow-eggtop)
      :status (task-status need-introduction)
-     :flags #x6
+     :flags
+     (task-flags has-entity closed-by-default)
      :condition
      (lambda
       ((arg0 task-control) (arg1 task-control))
       (with-pp
        (or
-        (closed? arg0 78 5)
+        (closed? arg0 (game-task cave-gnawers) (task-status need-reminder))
         (and
-         (closed? arg0 78 3)
+         (closed? arg0 (game-task cave-gnawers) (task-status need-introduction))
          (let ((a1-3 (new 'stack-no-clear 'event-message-block)))
           (set! (-> a1-3 from) pp)
           (set! (-> a1-3 num-params) 2)
@@ -1995,7 +2184,7 @@
     (new 'static 'task-cstage
      :game-task (game-task village3-miner-money1)
      :status (task-status need-reminder)
-     :flags #x2
+     :flags (task-flags has-entity)
      :condition (lambda ((arg0 task-control)) #t)
      )
     (new 'static 'task-cstage
@@ -2006,7 +2195,7 @@
     (new 'static 'task-cstage
      :game-task (game-task village3-miner-money2)
      :status (task-status need-reminder)
-     :flags #x2
+     :flags (task-flags has-entity)
      :condition (lambda ((arg0 task-control)) #t)
      )
     (new 'static 'task-cstage
@@ -2017,7 +2206,7 @@
     (new 'static 'task-cstage
      :game-task (game-task village3-miner-money3)
      :status (task-status need-reminder)
-     :flags #x2
+     :flags (task-flags has-entity)
      :condition (lambda ((arg0 task-control)) #t)
      )
     (new 'static 'task-cstage
@@ -2028,7 +2217,7 @@
     (new 'static 'task-cstage
      :game-task (game-task village3-miner-money4)
      :status (task-status need-reminder)
-     :flags #x2
+     :flags (task-flags has-entity)
      :condition (lambda ((arg0 task-control)) #t)
      )
     (new 'static 'task-cstage
@@ -2039,7 +2228,7 @@
     (new 'static 'task-cstage
      :game-task (game-task cave-gnawers)
      :status (task-status need-reminder)
-     :flags #x2
+     :flags (task-flags has-entity)
      :condition (lambda ((arg0 task-control)) #t)
      )
     (new 'static 'task-cstage
@@ -2050,7 +2239,7 @@
     (new 'static 'task-cstage
      :game-task (game-task snow-eggtop)
      :status (task-status need-reminder)
-     :flags #x2
+     :flags (task-flags has-entity)
      :condition (lambda ((arg0 task-control)) #t)
      )
     (new 'static 'task-cstage
@@ -2060,37 +2249,37 @@
     (new 'static 'task-cstage
      :game-task (game-task village3-miner-money1)
      :status (task-status need-resolution)
-     :flags #x2
+     :flags (task-flags has-entity)
      :condition (lambda ((arg0 task-control)) #t)
      )
     (new 'static 'task-cstage
      :game-task (game-task village3-miner-money2)
      :status (task-status need-resolution)
-     :flags #x2
+     :flags (task-flags has-entity)
      :condition (lambda ((arg0 task-control)) #t)
      )
     (new 'static 'task-cstage
      :game-task (game-task village3-miner-money3)
      :status (task-status need-resolution)
-     :flags #x2
+     :flags (task-flags has-entity)
      :condition (lambda ((arg0 task-control)) #t)
      )
     (new 'static 'task-cstage
      :game-task (game-task village3-miner-money4)
      :status (task-status need-resolution)
-     :flags #x2
+     :flags (task-flags has-entity)
      :condition (lambda ((arg0 task-control)) #t)
      )
     (new 'static 'task-cstage
      :game-task (game-task cave-gnawers)
      :status (task-status need-resolution)
-     :flags #x2
+     :flags (task-flags has-entity)
      :condition (lambda ((arg0 task-control)) #t)
      )
     (new 'static 'task-cstage
      :game-task (game-task snow-eggtop)
      :status (task-status need-resolution)
-     :flags #x2
+     :flags (task-flags has-entity)
      :condition (lambda ((arg0 task-control)) #t)
      )
     )
@@ -2115,39 +2304,52 @@
     (new 'static 'task-cstage
      :game-task (game-task village3-button)
      :status (task-status need-hint)
-     :flags #x6
+     :flags
+     (task-flags has-entity closed-by-default)
      :condition (lambda ((arg0 task-control)) #t)
      )
     (new 'static 'task-cstage
      :game-task (game-task village3-button)
      :status (task-status need-introduction)
-     :flags #x6
+     :flags
+     (task-flags has-entity closed-by-default)
      :condition (lambda ((arg0 task-control)) #t)
      )
     (new 'static 'task-cstage
      :game-task (game-task cave-dark-crystals)
      :status (task-status need-hint)
-     :flags #x6
+     :flags
+     (task-flags has-entity closed-by-default)
      :condition (lambda ((arg0 task-control)) #t)
      )
     (new 'static 'task-cstage
      :game-task (game-task cave-dark-crystals)
      :status (task-status need-introduction)
-     :flags #x6
+     :flags
+     (task-flags has-entity closed-by-default)
      :condition (lambda ((arg0 task-control)) #t)
      )
     (new 'static 'task-cstage
      :game-task (game-task snow-ram)
      :status (task-status need-hint)
-     :flags #x6
+     :flags
+     (task-flags has-entity closed-by-default)
      :condition
      (lambda
       ((arg0 task-control) (arg1 task-control))
       (with-pp
        (or
-        (closed? arg0 79 5)
+        (closed?
+         arg0
+         (game-task cave-dark-crystals)
+         (task-status need-reminder)
+         )
         (and
-         (closed? arg0 79 3)
+         (closed?
+          arg0
+          (game-task cave-dark-crystals)
+          (task-status need-introduction)
+          )
          (let ((a1-3 (new 'stack-no-clear 'event-message-block)))
           (set! (-> a1-3 from) pp)
           (set! (-> a1-3 num-params) 2)
@@ -2167,15 +2369,24 @@
     (new 'static 'task-cstage
      :game-task (game-task snow-ram)
      :status (task-status need-introduction)
-     :flags #x6
+     :flags
+     (task-flags has-entity closed-by-default)
      :condition
      (lambda
       ((arg0 task-control) (arg1 task-control))
       (with-pp
        (or
-        (closed? arg0 79 5)
+        (closed?
+         arg0
+         (game-task cave-dark-crystals)
+         (task-status need-reminder)
+         )
         (and
-         (closed? arg0 79 3)
+         (closed?
+          arg0
+          (game-task cave-dark-crystals)
+          (task-status need-introduction)
+          )
          (let ((a1-3 (new 'stack-no-clear 'event-message-block)))
           (set! (-> a1-3 from) pp)
           (set! (-> a1-3 num-params) 2)
@@ -2195,7 +2406,7 @@
     (new 'static 'task-cstage
      :game-task (game-task cave-dark-crystals)
      :status (task-status need-reminder)
-     :flags #x2
+     :flags (task-flags has-entity)
      :condition (lambda ((arg0 task-control)) #t)
      )
     (new 'static 'task-cstage
@@ -2206,13 +2417,13 @@
     (new 'static 'task-cstage
      :game-task (game-task snow-ram)
      :status (task-status need-reminder-a)
-     :flags #x2
+     :flags (task-flags has-entity)
      :condition (lambda ((arg0 task-control)) #t)
      )
     (new 'static 'task-cstage
      :game-task (game-task snow-ram)
      :status (task-status need-reminder)
-     :flags #x2
+     :flags (task-flags has-entity)
      :condition (lambda ((arg0 task-control)) #t)
      )
     (new 'static 'task-cstage
@@ -2222,13 +2433,13 @@
     (new 'static 'task-cstage
      :game-task (game-task cave-dark-crystals)
      :status (task-status need-resolution)
-     :flags #x2
+     :flags (task-flags has-entity)
      :condition (lambda ((arg0 task-control)) #t)
      )
     (new 'static 'task-cstage
      :game-task (game-task snow-ram)
      :status (task-status need-resolution)
-     :flags #x2
+     :flags (task-flags has-entity)
      :condition (lambda ((arg0 task-control)) #t)
      )
     )
@@ -2248,13 +2459,14 @@
     (new 'static 'task-cstage
      :game-task (game-task citadel-sage-green)
      :status (task-status need-hint)
-     :flags #x6
+     :flags
+     (task-flags has-entity closed-by-default)
      :condition (lambda ((arg0 task-control)) #t)
      )
     (new 'static 'task-cstage
      :game-task (game-task citadel-sage-green)
      :status (task-status need-resolution)
-     :flags #x2
+     :flags (task-flags has-entity)
      :condition (lambda ((arg0 task-control)) #t)
      )
     )
@@ -2274,13 +2486,14 @@
     (new 'static 'task-cstage
      :game-task (game-task citadel-sage-blue)
      :status (task-status need-hint)
-     :flags #x6
+     :flags
+     (task-flags has-entity closed-by-default)
      :condition (lambda ((arg0 task-control)) #t)
      )
     (new 'static 'task-cstage
      :game-task (game-task citadel-sage-blue)
      :status (task-status need-resolution)
-     :flags #x2
+     :flags (task-flags has-entity)
      :condition (lambda ((arg0 task-control)) #t)
      )
     )
@@ -2300,13 +2513,14 @@
     (new 'static 'task-cstage
      :game-task (game-task citadel-sage-red)
      :status (task-status need-hint)
-     :flags #x6
+     :flags
+     (task-flags has-entity closed-by-default)
      :condition (lambda ((arg0 task-control)) #t)
      )
     (new 'static 'task-cstage
      :game-task (game-task citadel-sage-red)
      :status (task-status need-resolution)
-     :flags #x2
+     :flags (task-flags has-entity)
      :condition (lambda ((arg0 task-control)) #t)
      )
     )
@@ -2326,23 +2540,31 @@
     (new 'static 'task-cstage
      :game-task (game-task citadel-sage-yellow)
      :status (task-status need-hint)
-     :flags #x6
+     :flags
+     (task-flags has-entity closed-by-default)
      :condition (lambda ((arg0 task-control)) #t)
      )
     (new 'static 'task-cstage
      :game-task (game-task citadel-sage-yellow)
      :status (task-status need-resolution)
-     :flags #x2
+     :flags (task-flags has-entity)
      :condition (lambda ((arg0 task-control)) #t)
      )
     )
    )
   )
 
-;; definition for symbol *task-controls*, type (array task-control)
-(define
-  *task-controls*
-  (the-as (array task-control)
+;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;; Main Task-Controls
+;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+;; this is arranged by game-task order.
+;; meaning you can find a cstages for the given game task
+;; in the (-> *task-controls* game-task-id) task control.
+;; this contains both symbols and task-controls.
+
+(define *task-controls*
+  (the-as (array basic)
    (new
     'static
     'boxed-array
@@ -2361,25 +2583,27 @@
       (new 'static 'task-cstage
        :game-task (game-task jungle-tower)
        :status (task-status need-hint)
-       :flags #x6
+       :flags
+       (task-flags has-entity closed-by-default)
        :condition (lambda ((arg0 task-control)) #t)
        )
       (new 'static 'task-cstage
        :game-task (game-task jungle-tower)
        :status (task-status need-introduction)
-       :flags #x6
+       :flags
+       (task-flags has-entity closed-by-default)
        :condition (lambda ((arg0 task-control)) #t)
        )
       (new 'static 'task-cstage
        :game-task (game-task jungle-tower)
        :status (task-status need-reminder)
-       :flags #x2
+       :flags (task-flags has-entity)
        :condition (lambda ((arg0 task-control)) #t)
        )
       (new 'static 'task-cstage
        :game-task (game-task jungle-tower)
        :status (task-status need-resolution)
-       :flags #x2
+       :flags (task-flags has-entity)
        :condition (lambda ((arg0 task-control)) #t)
        )
       )
@@ -2394,37 +2618,40 @@
       (new 'static 'task-cstage
        :game-task (game-task jungle-fishgame)
        :status (task-status need-hint)
-       :flags #x6
+       :flags
+       (task-flags has-entity closed-by-default)
        :condition (lambda ((arg0 task-control)) #t)
        )
       (new 'static 'task-cstage
        :game-task (game-task jungle-fishgame)
        :status (task-status need-introduction)
-       :flags #x6
+       :flags
+       (task-flags has-entity closed-by-default)
        :condition (lambda ((arg0 task-control)) #t)
        )
       (new 'static 'task-cstage
        :game-task (game-task jungle-fishgame)
        :status (task-status need-reminder-a)
-       :flags #x6
+       :flags
+       (task-flags has-entity closed-by-default)
        :condition (lambda ((arg0 task-control)) #t)
        )
       (new 'static 'task-cstage
        :game-task (game-task jungle-fishgame)
        :status (task-status need-reminder)
-       :flags #x2
+       :flags (task-flags has-entity)
        :condition (lambda ((arg0 task-control)) #t)
        )
       (new 'static 'task-cstage
        :game-task (game-task jungle-fishgame)
        :status (task-status need-reward-speech)
-       :flags #x2
+       :flags (task-flags has-entity)
        :condition (lambda ((arg0 task-control)) #t)
        )
       (new 'static 'task-cstage
        :game-task (game-task jungle-fishgame)
        :status (task-status need-resolution)
-       :flags #x2
+       :flags (task-flags has-entity)
        :condition (lambda ((arg0 task-control)) #t)
        )
       (new 'static 'task-cstage
@@ -2443,25 +2670,27 @@
       (new 'static 'task-cstage
        :game-task (game-task jungle-plant)
        :status (task-status need-hint)
-       :flags #x6
+       :flags
+       (task-flags has-entity closed-by-default)
        :condition (lambda ((arg0 task-control)) #t)
        )
       (new 'static 'task-cstage
        :game-task (game-task jungle-plant)
        :status (task-status need-introduction)
-       :flags #x6
+       :flags
+       (task-flags has-entity closed-by-default)
        :condition (lambda ((arg0 task-control)) #t)
        )
       (new 'static 'task-cstage
        :game-task (game-task jungle-plant)
        :status (task-status need-reminder)
-       :flags #x2
+       :flags (task-flags has-entity)
        :condition (lambda ((arg0 task-control)) #t)
        )
       (new 'static 'task-cstage
        :game-task (game-task jungle-plant)
        :status (task-status need-resolution)
-       :flags #x2
+       :flags (task-flags has-entity)
        :condition (lambda ((arg0 task-control)) #t)
        )
       )
@@ -2476,25 +2705,27 @@
       (new 'static 'task-cstage
        :game-task (game-task jungle-buzzer)
        :status (task-status need-hint)
-       :flags #x6
+       :flags
+       (task-flags has-entity closed-by-default)
        :condition (lambda ((arg0 task-control)) #t)
        )
       (new 'static 'task-cstage
        :game-task (game-task jungle-buzzer)
        :status (task-status need-introduction)
-       :flags #x6
+       :flags
+       (task-flags has-entity closed-by-default)
        :condition (lambda ((arg0 task-control)) #t)
        )
       (new 'static 'task-cstage
        :game-task (game-task jungle-buzzer)
        :status (task-status need-reminder)
-       :flags #x2
+       :flags (task-flags has-entity)
        :condition (lambda ((arg0 task-control)) #t)
        )
       (new 'static 'task-cstage
        :game-task (game-task jungle-buzzer)
        :status (task-status need-resolution)
-       :flags #x2
+       :flags (task-flags has-entity)
        :condition (lambda ((arg0 task-control)) #t)
        )
       )
@@ -2509,25 +2740,27 @@
       (new 'static 'task-cstage
        :game-task (game-task jungle-canyon-end)
        :status (task-status need-hint)
-       :flags #x6
+       :flags
+       (task-flags has-entity closed-by-default)
        :condition (lambda ((arg0 task-control)) #t)
        )
       (new 'static 'task-cstage
        :game-task (game-task jungle-canyon-end)
        :status (task-status need-introduction)
-       :flags #x6
+       :flags
+       (task-flags has-entity closed-by-default)
        :condition (lambda ((arg0 task-control)) #t)
        )
       (new 'static 'task-cstage
        :game-task (game-task jungle-canyon-end)
        :status (task-status need-reminder)
-       :flags #x2
+       :flags (task-flags has-entity)
        :condition (lambda ((arg0 task-control)) #t)
        )
       (new 'static 'task-cstage
        :game-task (game-task jungle-canyon-end)
        :status (task-status need-resolution)
-       :flags #x2
+       :flags (task-flags has-entity)
        :condition (lambda ((arg0 task-control)) #t)
        )
       )
@@ -2542,25 +2775,27 @@
       (new 'static 'task-cstage
        :game-task (game-task jungle-temple-door)
        :status (task-status need-hint)
-       :flags #x6
+       :flags
+       (task-flags has-entity closed-by-default)
        :condition (lambda ((arg0 task-control)) #t)
        )
       (new 'static 'task-cstage
        :game-task (game-task jungle-temple-door)
        :status (task-status need-introduction)
-       :flags #x6
+       :flags
+       (task-flags has-entity closed-by-default)
        :condition (lambda ((arg0 task-control)) #t)
        )
       (new 'static 'task-cstage
        :game-task (game-task jungle-temple-door)
        :status (task-status need-reminder)
-       :flags #x2
+       :flags (task-flags has-entity)
        :condition (lambda ((arg0 task-control)) #t)
        )
       (new 'static 'task-cstage
        :game-task (game-task jungle-temple-door)
        :status (task-status need-resolution)
-       :flags #x2
+       :flags (task-flags has-entity)
        :condition (lambda ((arg0 task-control)) #t)
        )
       )
@@ -2575,31 +2810,33 @@
       (new 'static 'task-cstage
        :game-task (game-task village1-yakow)
        :status (task-status need-hint)
-       :flags #x6
+       :flags
+       (task-flags has-entity closed-by-default)
        :condition (lambda ((arg0 task-control)) #t)
        )
       (new 'static 'task-cstage
        :game-task (game-task village1-yakow)
        :status (task-status need-introduction)
-       :flags #x6
+       :flags
+       (task-flags has-entity closed-by-default)
        :condition (lambda ((arg0 task-control)) #t)
        )
       (new 'static 'task-cstage
        :game-task (game-task village1-yakow)
        :status (task-status need-reminder)
-       :flags #x2
+       :flags (task-flags has-entity)
        :condition (lambda ((arg0 task-control)) #t)
        )
       (new 'static 'task-cstage
        :game-task (game-task village1-yakow)
        :status (task-status need-reward-speech)
-       :flags #x2
+       :flags (task-flags has-entity)
        :condition (lambda ((arg0 task-control)) #t)
        )
       (new 'static 'task-cstage
        :game-task (game-task village1-yakow)
        :status (task-status need-resolution)
-       :flags #x2
+       :flags (task-flags has-entity)
        :condition (lambda ((arg0 task-control)) #t)
        )
       )
@@ -2615,19 +2852,21 @@
       (new 'static 'task-cstage
        :game-task (game-task village1-uncle-money)
        :status (task-status need-hint)
-       :flags #x6
+       :flags
+       (task-flags has-entity closed-by-default)
        :condition (lambda ((arg0 task-control)) #t)
        )
       (new 'static 'task-cstage
        :game-task (game-task village1-uncle-money)
        :status (task-status need-introduction)
-       :flags #x6
+       :flags
+       (task-flags has-entity closed-by-default)
        :condition (lambda ((arg0 task-control)) #t)
        )
       (new 'static 'task-cstage
        :game-task (game-task village1-uncle-money)
        :status (task-status need-reward-speech)
-       :flags #x2
+       :flags (task-flags has-entity)
        :condition
        (lambda
         ((arg0 task-control))
@@ -2664,7 +2903,7 @@
       (new 'static 'task-cstage
        :game-task (game-task village1-uncle-money)
        :status (task-status need-resolution)
-       :flags #x2
+       :flags (task-flags has-entity)
        :condition (lambda ((arg0 task-control)) #t)
        )
       )
@@ -2682,25 +2921,27 @@
       (new 'static 'task-cstage
        :game-task (game-task beach-pelican)
        :status (task-status need-hint)
-       :flags #x6
+       :flags
+       (task-flags has-entity closed-by-default)
        :condition (lambda ((arg0 task-control)) #t)
        )
       (new 'static 'task-cstage
        :game-task (game-task beach-pelican)
        :status (task-status need-introduction)
-       :flags #x6
+       :flags
+       (task-flags has-entity closed-by-default)
        :condition (lambda ((arg0 task-control)) #t)
        )
       (new 'static 'task-cstage
        :game-task (game-task beach-pelican)
        :status (task-status need-reminder)
-       :flags #x2
+       :flags (task-flags has-entity)
        :condition (lambda ((arg0 task-control)) #t)
        )
       (new 'static 'task-cstage
        :game-task (game-task beach-pelican)
        :status (task-status need-resolution)
-       :flags #x2
+       :flags (task-flags has-entity)
        :condition (lambda ((arg0 task-control)) #t)
        )
       )
@@ -2715,31 +2956,33 @@
       (new 'static 'task-cstage
        :game-task (game-task beach-flutflut)
        :status (task-status need-hint)
-       :flags #x6
+       :flags
+       (task-flags has-entity closed-by-default)
        :condition (lambda ((arg0 task-control)) #t)
        )
       (new 'static 'task-cstage
        :game-task (game-task beach-flutflut)
        :status (task-status need-introduction)
-       :flags #x6
+       :flags
+       (task-flags has-entity closed-by-default)
        :condition (lambda ((arg0 task-control)) #t)
        )
       (new 'static 'task-cstage
        :game-task (game-task beach-flutflut)
        :status (task-status need-reminder)
-       :flags #x2
+       :flags (task-flags has-entity)
        :condition (lambda ((arg0 task-control)) #t)
        )
       (new 'static 'task-cstage
        :game-task (game-task beach-flutflut)
        :status (task-status need-reward-speech)
-       :flags #x2
+       :flags (task-flags has-entity)
        :condition (lambda ((arg0 task-control)) #t)
        )
       (new 'static 'task-cstage
        :game-task (game-task beach-flutflut)
        :status (task-status need-resolution)
-       :flags #x2
+       :flags (task-flags has-entity)
        :condition (lambda ((arg0 task-control)) #t)
        )
       )
@@ -2754,25 +2997,27 @@
       (new 'static 'task-cstage
        :game-task (game-task beach-seagull)
        :status (task-status need-hint)
-       :flags #x6
+       :flags
+       (task-flags has-entity closed-by-default)
        :condition (lambda ((arg0 task-control)) #t)
        )
       (new 'static 'task-cstage
        :game-task (game-task beach-seagull)
        :status (task-status need-introduction)
-       :flags #x6
+       :flags
+       (task-flags has-entity closed-by-default)
        :condition (lambda ((arg0 task-control)) #t)
        )
       (new 'static 'task-cstage
        :game-task (game-task beach-seagull)
        :status (task-status need-reminder)
-       :flags #x2
+       :flags (task-flags has-entity)
        :condition (lambda ((arg0 task-control)) #t)
        )
       (new 'static 'task-cstage
        :game-task (game-task beach-seagull)
        :status (task-status need-resolution)
-       :flags #x2
+       :flags (task-flags has-entity)
        :condition (lambda ((arg0 task-control)) #t)
        )
       )
@@ -2787,25 +3032,27 @@
       (new 'static 'task-cstage
        :game-task (game-task beach-cannon)
        :status (task-status need-hint)
-       :flags #x6
+       :flags
+       (task-flags has-entity closed-by-default)
        :condition (lambda ((arg0 task-control)) #t)
        )
       (new 'static 'task-cstage
        :game-task (game-task beach-cannon)
        :status (task-status need-introduction)
-       :flags #x6
+       :flags
+       (task-flags has-entity closed-by-default)
        :condition (lambda ((arg0 task-control)) #t)
        )
       (new 'static 'task-cstage
        :game-task (game-task beach-cannon)
        :status (task-status need-reminder)
-       :flags #x2
+       :flags (task-flags has-entity)
        :condition (lambda ((arg0 task-control)) #t)
        )
       (new 'static 'task-cstage
        :game-task (game-task beach-cannon)
        :status (task-status need-resolution)
-       :flags #x2
+       :flags (task-flags has-entity)
        :condition (lambda ((arg0 task-control)) #t)
        )
       )
@@ -2820,25 +3067,27 @@
       (new 'static 'task-cstage
        :game-task (game-task beach-buzzer)
        :status (task-status need-hint)
-       :flags #x6
+       :flags
+       (task-flags has-entity closed-by-default)
        :condition (lambda ((arg0 task-control)) #t)
        )
       (new 'static 'task-cstage
        :game-task (game-task beach-buzzer)
        :status (task-status need-introduction)
-       :flags #x6
+       :flags
+       (task-flags has-entity closed-by-default)
        :condition (lambda ((arg0 task-control)) #t)
        )
       (new 'static 'task-cstage
        :game-task (game-task beach-buzzer)
        :status (task-status need-reminder)
-       :flags #x2
+       :flags (task-flags has-entity)
        :condition (lambda ((arg0 task-control)) #t)
        )
       (new 'static 'task-cstage
        :game-task (game-task beach-buzzer)
        :status (task-status need-resolution)
-       :flags #x2
+       :flags (task-flags has-entity)
        :condition (lambda ((arg0 task-control)) #t)
        )
       )
@@ -2853,25 +3102,27 @@
       (new 'static 'task-cstage
        :game-task (game-task beach-gimmie)
        :status (task-status need-hint)
-       :flags #x6
+       :flags
+       (task-flags has-entity closed-by-default)
        :condition (lambda ((arg0 task-control)) #t)
        )
       (new 'static 'task-cstage
        :game-task (game-task beach-gimmie)
        :status (task-status need-introduction)
-       :flags #x6
+       :flags
+       (task-flags has-entity closed-by-default)
        :condition (lambda ((arg0 task-control)) #t)
        )
       (new 'static 'task-cstage
        :game-task (game-task beach-gimmie)
        :status (task-status need-reminder)
-       :flags #x2
+       :flags (task-flags has-entity)
        :condition (lambda ((arg0 task-control)) #t)
        )
       (new 'static 'task-cstage
        :game-task (game-task beach-gimmie)
        :status (task-status need-resolution)
-       :flags #x2
+       :flags (task-flags has-entity)
        :condition (lambda ((arg0 task-control)) #t)
        )
       )
@@ -2886,25 +3137,27 @@
       (new 'static 'task-cstage
        :game-task (game-task beach-sentinel)
        :status (task-status need-hint)
-       :flags #x6
+       :flags
+       (task-flags has-entity closed-by-default)
        :condition (lambda ((arg0 task-control)) #t)
        )
       (new 'static 'task-cstage
        :game-task (game-task beach-sentinel)
        :status (task-status need-introduction)
-       :flags #x6
+       :flags
+       (task-flags has-entity closed-by-default)
        :condition (lambda ((arg0 task-control)) #t)
        )
       (new 'static 'task-cstage
        :game-task (game-task beach-sentinel)
        :status (task-status need-reminder)
-       :flags #x2
+       :flags (task-flags has-entity)
        :condition (lambda ((arg0 task-control)) #t)
        )
       (new 'static 'task-cstage
        :game-task (game-task beach-sentinel)
        :status (task-status need-resolution)
-       :flags #x2
+       :flags (task-flags has-entity)
        :condition (lambda ((arg0 task-control)) #t)
        )
       )
@@ -2919,31 +3172,33 @@
       (new 'static 'task-cstage
        :game-task (game-task misty-muse)
        :status (task-status need-hint)
-       :flags #x6
+       :flags
+       (task-flags has-entity closed-by-default)
        :condition (lambda ((arg0 task-control)) #t)
        )
       (new 'static 'task-cstage
        :game-task (game-task misty-muse)
        :status (task-status need-introduction)
-       :flags #x6
+       :flags
+       (task-flags has-entity closed-by-default)
        :condition (lambda ((arg0 task-control)) #t)
        )
       (new 'static 'task-cstage
        :game-task (game-task misty-muse)
        :status (task-status need-reminder)
-       :flags #x2
+       :flags (task-flags has-entity)
        :condition (lambda ((arg0 task-control)) #t)
        )
       (new 'static 'task-cstage
        :game-task (game-task misty-muse)
        :status (task-status need-reward-speech)
-       :flags #x2
+       :flags (task-flags has-entity)
        :condition (lambda ((arg0 task-control)) #t)
        )
       (new 'static 'task-cstage
        :game-task (game-task misty-muse)
        :status (task-status need-resolution)
-       :flags #x2
+       :flags (task-flags has-entity)
        :condition (lambda ((arg0 task-control)) #t)
        )
       )
@@ -2958,25 +3213,27 @@
       (new 'static 'task-cstage
        :game-task (game-task misty-boat)
        :status (task-status need-hint)
-       :flags #x6
+       :flags
+       (task-flags has-entity closed-by-default)
        :condition (lambda ((arg0 task-control)) #t)
        )
       (new 'static 'task-cstage
        :game-task (game-task misty-boat)
        :status (task-status need-introduction)
-       :flags #x6
+       :flags
+       (task-flags has-entity closed-by-default)
        :condition (lambda ((arg0 task-control)) #t)
        )
       (new 'static 'task-cstage
        :game-task (game-task misty-boat)
        :status (task-status need-reminder)
-       :flags #x2
+       :flags (task-flags has-entity)
        :condition (lambda ((arg0 task-control)) #t)
        )
       (new 'static 'task-cstage
        :game-task (game-task misty-boat)
        :status (task-status need-resolution)
-       :flags #x2
+       :flags (task-flags has-entity)
        :condition (lambda ((arg0 task-control)) #t)
        )
       )
@@ -2991,25 +3248,27 @@
       (new 'static 'task-cstage
        :game-task (game-task misty-warehouse)
        :status (task-status need-hint)
-       :flags #x6
+       :flags
+       (task-flags has-entity closed-by-default)
        :condition (lambda ((arg0 task-control)) #t)
        )
       (new 'static 'task-cstage
        :game-task (game-task misty-warehouse)
        :status (task-status need-introduction)
-       :flags #x6
+       :flags
+       (task-flags has-entity closed-by-default)
        :condition (lambda ((arg0 task-control)) #t)
        )
       (new 'static 'task-cstage
        :game-task (game-task misty-warehouse)
        :status (task-status need-reminder)
-       :flags #x2
+       :flags (task-flags has-entity)
        :condition (lambda ((arg0 task-control)) #t)
        )
       (new 'static 'task-cstage
        :game-task (game-task misty-warehouse)
        :status (task-status need-resolution)
-       :flags #x2
+       :flags (task-flags has-entity)
        :condition (lambda ((arg0 task-control)) #t)
        )
       )
@@ -3026,25 +3285,27 @@
       (new 'static 'task-cstage
        :game-task (game-task misty-buzzer)
        :status (task-status need-hint)
-       :flags #x6
+       :flags
+       (task-flags has-entity closed-by-default)
        :condition (lambda ((arg0 task-control)) #t)
        )
       (new 'static 'task-cstage
        :game-task (game-task misty-buzzer)
        :status (task-status need-introduction)
-       :flags #x6
+       :flags
+       (task-flags has-entity closed-by-default)
        :condition (lambda ((arg0 task-control)) #t)
        )
       (new 'static 'task-cstage
        :game-task (game-task misty-buzzer)
        :status (task-status need-reminder)
-       :flags #x2
+       :flags (task-flags has-entity)
        :condition (lambda ((arg0 task-control)) #t)
        )
       (new 'static 'task-cstage
        :game-task (game-task misty-buzzer)
        :status (task-status need-resolution)
-       :flags #x2
+       :flags (task-flags has-entity)
        :condition (lambda ((arg0 task-control)) #t)
        )
       )
@@ -3059,25 +3320,27 @@
       (new 'static 'task-cstage
        :game-task (game-task misty-bike-jump)
        :status (task-status need-hint)
-       :flags #x6
+       :flags
+       (task-flags has-entity closed-by-default)
        :condition (lambda ((arg0 task-control)) #t)
        )
       (new 'static 'task-cstage
        :game-task (game-task misty-bike-jump)
        :status (task-status need-introduction)
-       :flags #x6
+       :flags
+       (task-flags has-entity closed-by-default)
        :condition (lambda ((arg0 task-control)) #t)
        )
       (new 'static 'task-cstage
        :game-task (game-task misty-bike-jump)
        :status (task-status need-reminder)
-       :flags #x2
+       :flags (task-flags has-entity)
        :condition (lambda ((arg0 task-control)) #t)
        )
       (new 'static 'task-cstage
        :game-task (game-task misty-bike-jump)
        :status (task-status need-resolution)
-       :flags #x2
+       :flags (task-flags has-entity)
        :condition (lambda ((arg0 task-control)) #t)
        )
       )
@@ -3092,25 +3355,27 @@
       (new 'static 'task-cstage
        :game-task (game-task misty-eco-challenge)
        :status (task-status need-hint)
-       :flags #x6
+       :flags
+       (task-flags has-entity closed-by-default)
        :condition (lambda ((arg0 task-control)) #t)
        )
       (new 'static 'task-cstage
        :game-task (game-task misty-eco-challenge)
        :status (task-status need-introduction)
-       :flags #x6
+       :flags
+       (task-flags has-entity closed-by-default)
        :condition (lambda ((arg0 task-control)) #t)
        )
       (new 'static 'task-cstage
        :game-task (game-task misty-eco-challenge)
        :status (task-status need-reminder)
-       :flags #x2
+       :flags (task-flags has-entity)
        :condition (lambda ((arg0 task-control)) #t)
        )
       (new 'static 'task-cstage
        :game-task (game-task misty-eco-challenge)
        :status (task-status need-resolution)
-       :flags #x2
+       :flags (task-flags has-entity)
        :condition (lambda ((arg0 task-control)) #t)
        )
       )
@@ -3127,27 +3392,45 @@
       (new 'static 'task-cstage
        :game-task (game-task village2-warrior-money)
        :status (task-status need-hint)
-       :flags #x6
+       :flags
+       (task-flags has-entity closed-by-default)
        :condition
        (lambda
         ((arg0 task-control))
-        (and (not (task-closed? 86 5)) (not (task-closed? 103 6)))
+        (and
+         (not (task-closed? (game-task ogre-boss) (task-status need-reminder)))
+         (not
+          (task-closed?
+           (game-task village2-levitator)
+           (task-status need-reward-speech)
+           )
+          )
+         )
         )
        )
       (new 'static 'task-cstage
        :game-task (game-task village2-warrior-money)
        :status (task-status need-introduction)
-       :flags #x6
+       :flags
+       (task-flags has-entity closed-by-default)
        :condition
        (lambda
         ((arg0 task-control))
-        (and (not (task-closed? 86 5)) (not (task-closed? 103 6)))
+        (and
+         (not (task-closed? (game-task ogre-boss) (task-status need-reminder)))
+         (not
+          (task-closed?
+           (game-task village2-levitator)
+           (task-status need-reward-speech)
+           )
+          )
+         )
         )
        )
       (new 'static 'task-cstage
        :game-task (game-task village2-warrior-money)
        :status (task-status need-reward-speech)
-       :flags #x2
+       :flags (task-flags has-entity)
        :condition
        (lambda
         ((arg0 task-control))
@@ -3184,7 +3467,7 @@
       (new 'static 'task-cstage
        :game-task (game-task village2-warrior-money)
        :status (task-status need-resolution)
-       :flags #x2
+       :flags (task-flags has-entity)
        :condition (lambda ((arg0 task-control)) #t)
        )
       )
@@ -3201,37 +3484,40 @@
       (new 'static 'task-cstage
        :game-task (game-task swamp-billy)
        :status (task-status need-hint)
-       :flags #x6
+       :flags
+       (task-flags has-entity closed-by-default)
        :condition (lambda ((arg0 task-control)) #t)
        )
       (new 'static 'task-cstage
        :game-task (game-task swamp-billy)
        :status (task-status need-introduction)
-       :flags #x6
+       :flags
+       (task-flags has-entity closed-by-default)
        :condition (lambda ((arg0 task-control)) #t)
        )
       (new 'static 'task-cstage
        :game-task (game-task swamp-billy)
        :status (task-status need-reminder-a)
-       :flags #x6
+       :flags
+       (task-flags has-entity closed-by-default)
        :condition (lambda ((arg0 task-control)) #t)
        )
       (new 'static 'task-cstage
        :game-task (game-task swamp-billy)
        :status (task-status need-reminder)
-       :flags #x2
+       :flags (task-flags has-entity)
        :condition (lambda ((arg0 task-control)) #t)
        )
       (new 'static 'task-cstage
        :game-task (game-task swamp-billy)
        :status (task-status need-reward-speech)
-       :flags #x2
+       :flags (task-flags has-entity)
        :condition (lambda ((arg0 task-control)) #t)
        )
       (new 'static 'task-cstage
        :game-task (game-task swamp-billy)
        :status (task-status need-resolution)
-       :flags #x2
+       :flags (task-flags has-entity)
        :condition (lambda ((arg0 task-control)) #t)
        )
       )
@@ -3247,25 +3533,27 @@
       (new 'static 'task-cstage
        :game-task (game-task swamp-battle)
        :status (task-status need-hint)
-       :flags #x6
+       :flags
+       (task-flags has-entity closed-by-default)
        :condition (lambda ((arg0 task-control)) #t)
        )
       (new 'static 'task-cstage
        :game-task (game-task swamp-battle)
        :status (task-status need-introduction)
-       :flags #x6
+       :flags
+       (task-flags has-entity closed-by-default)
        :condition (lambda ((arg0 task-control)) #t)
        )
       (new 'static 'task-cstage
        :game-task (game-task swamp-battle)
        :status (task-status need-reminder)
-       :flags #x2
+       :flags (task-flags has-entity)
        :condition (lambda ((arg0 task-control)) #t)
        )
       (new 'static 'task-cstage
        :game-task (game-task swamp-battle)
        :status (task-status need-resolution)
-       :flags #x2
+       :flags (task-flags has-entity)
        :condition (lambda ((arg0 task-control)) #t)
        )
       )
@@ -3280,25 +3568,27 @@
       (new 'static 'task-cstage
        :game-task (game-task swamp-tether-1)
        :status (task-status need-hint)
-       :flags #x6
+       :flags
+       (task-flags has-entity closed-by-default)
        :condition (lambda ((arg0 task-control)) #t)
        )
       (new 'static 'task-cstage
        :game-task (game-task swamp-tether-1)
        :status (task-status need-introduction)
-       :flags #x6
+       :flags
+       (task-flags has-entity closed-by-default)
        :condition (lambda ((arg0 task-control)) #t)
        )
       (new 'static 'task-cstage
        :game-task (game-task swamp-tether-1)
        :status (task-status need-reminder)
-       :flags #x2
+       :flags (task-flags has-entity)
        :condition (lambda ((arg0 task-control)) #t)
        )
       (new 'static 'task-cstage
        :game-task (game-task swamp-tether-1)
        :status (task-status need-resolution)
-       :flags #x2
+       :flags (task-flags has-entity)
        :condition (lambda ((arg0 task-control)) #t)
        )
       )
@@ -3313,25 +3603,27 @@
       (new 'static 'task-cstage
        :game-task (game-task swamp-tether-2)
        :status (task-status need-hint)
-       :flags #x6
+       :flags
+       (task-flags has-entity closed-by-default)
        :condition (lambda ((arg0 task-control)) #t)
        )
       (new 'static 'task-cstage
        :game-task (game-task swamp-tether-2)
        :status (task-status need-introduction)
-       :flags #x6
+       :flags
+       (task-flags has-entity closed-by-default)
        :condition (lambda ((arg0 task-control)) #t)
        )
       (new 'static 'task-cstage
        :game-task (game-task swamp-tether-2)
        :status (task-status need-reminder)
-       :flags #x2
+       :flags (task-flags has-entity)
        :condition (lambda ((arg0 task-control)) #t)
        )
       (new 'static 'task-cstage
        :game-task (game-task swamp-tether-2)
        :status (task-status need-resolution)
-       :flags #x2
+       :flags (task-flags has-entity)
        :condition (lambda ((arg0 task-control)) #t)
        )
       )
@@ -3346,25 +3638,27 @@
       (new 'static 'task-cstage
        :game-task (game-task swamp-tether-3)
        :status (task-status need-hint)
-       :flags #x6
+       :flags
+       (task-flags has-entity closed-by-default)
        :condition (lambda ((arg0 task-control)) #t)
        )
       (new 'static 'task-cstage
        :game-task (game-task swamp-tether-3)
        :status (task-status need-introduction)
-       :flags #x6
+       :flags
+       (task-flags has-entity closed-by-default)
        :condition (lambda ((arg0 task-control)) #t)
        )
       (new 'static 'task-cstage
        :game-task (game-task swamp-tether-3)
        :status (task-status need-reminder)
-       :flags #x2
+       :flags (task-flags has-entity)
        :condition (lambda ((arg0 task-control)) #t)
        )
       (new 'static 'task-cstage
        :game-task (game-task swamp-tether-3)
        :status (task-status need-resolution)
-       :flags #x2
+       :flags (task-flags has-entity)
        :condition (lambda ((arg0 task-control)) #t)
        )
       )
@@ -3379,25 +3673,27 @@
       (new 'static 'task-cstage
        :game-task (game-task swamp-tether-4)
        :status (task-status need-hint)
-       :flags #x6
+       :flags
+       (task-flags has-entity closed-by-default)
        :condition (lambda ((arg0 task-control)) #t)
        )
       (new 'static 'task-cstage
        :game-task (game-task swamp-tether-4)
        :status (task-status need-introduction)
-       :flags #x6
+       :flags
+       (task-flags has-entity closed-by-default)
        :condition (lambda ((arg0 task-control)) #t)
        )
       (new 'static 'task-cstage
        :game-task (game-task swamp-tether-4)
        :status (task-status need-reminder)
-       :flags #x2
+       :flags (task-flags has-entity)
        :condition (lambda ((arg0 task-control)) #t)
        )
       (new 'static 'task-cstage
        :game-task (game-task swamp-tether-4)
        :status (task-status need-resolution)
-       :flags #x2
+       :flags (task-flags has-entity)
        :condition (lambda ((arg0 task-control)) #t)
        )
       )
@@ -3412,25 +3708,27 @@
       (new 'static 'task-cstage
        :game-task (game-task swamp-buzzer)
        :status (task-status need-hint)
-       :flags #x6
+       :flags
+       (task-flags has-entity closed-by-default)
        :condition (lambda ((arg0 task-control)) #t)
        )
       (new 'static 'task-cstage
        :game-task (game-task swamp-buzzer)
        :status (task-status need-introduction)
-       :flags #x6
+       :flags
+       (task-flags has-entity closed-by-default)
        :condition (lambda ((arg0 task-control)) #t)
        )
       (new 'static 'task-cstage
        :game-task (game-task swamp-buzzer)
        :status (task-status need-reminder)
-       :flags #x2
+       :flags (task-flags has-entity)
        :condition (lambda ((arg0 task-control)) #t)
        )
       (new 'static 'task-cstage
        :game-task (game-task swamp-buzzer)
        :status (task-status need-resolution)
-       :flags #x2
+       :flags (task-flags has-entity)
        :condition (lambda ((arg0 task-control)) #t)
        )
       )
@@ -3445,25 +3743,27 @@
       (new 'static 'task-cstage
        :game-task (game-task sunken-platforms)
        :status (task-status need-hint)
-       :flags #x6
+       :flags
+       (task-flags has-entity closed-by-default)
        :condition (lambda ((arg0 task-control)) #t)
        )
       (new 'static 'task-cstage
        :game-task (game-task sunken-platforms)
        :status (task-status need-introduction)
-       :flags #x6
+       :flags
+       (task-flags has-entity closed-by-default)
        :condition (lambda ((arg0 task-control)) #t)
        )
       (new 'static 'task-cstage
        :game-task (game-task sunken-platforms)
        :status (task-status need-reminder)
-       :flags #x2
+       :flags (task-flags has-entity)
        :condition (lambda ((arg0 task-control)) #t)
        )
       (new 'static 'task-cstage
        :game-task (game-task sunken-platforms)
        :status (task-status need-resolution)
-       :flags #x2
+       :flags (task-flags has-entity)
        :condition (lambda ((arg0 task-control)) #t)
        )
       )
@@ -3478,25 +3778,27 @@
       (new 'static 'task-cstage
        :game-task (game-task sunken-pipe)
        :status (task-status need-hint)
-       :flags #x6
+       :flags
+       (task-flags has-entity closed-by-default)
        :condition (lambda ((arg0 task-control)) #t)
        )
       (new 'static 'task-cstage
        :game-task (game-task sunken-pipe)
        :status (task-status need-introduction)
-       :flags #x6
+       :flags
+       (task-flags has-entity closed-by-default)
        :condition (lambda ((arg0 task-control)) #t)
        )
       (new 'static 'task-cstage
        :game-task (game-task sunken-pipe)
        :status (task-status need-reminder)
-       :flags #x2
+       :flags (task-flags has-entity)
        :condition (lambda ((arg0 task-control)) #t)
        )
       (new 'static 'task-cstage
        :game-task (game-task sunken-pipe)
        :status (task-status need-resolution)
-       :flags #x2
+       :flags (task-flags has-entity)
        :condition (lambda ((arg0 task-control)) #t)
        )
       )
@@ -3511,25 +3813,27 @@
       (new 'static 'task-cstage
        :game-task (game-task sunken-slide)
        :status (task-status need-hint)
-       :flags #x6
+       :flags
+       (task-flags has-entity closed-by-default)
        :condition (lambda ((arg0 task-control)) #t)
        )
       (new 'static 'task-cstage
        :game-task (game-task sunken-slide)
        :status (task-status need-introduction)
-       :flags #x6
+       :flags
+       (task-flags has-entity closed-by-default)
        :condition (lambda ((arg0 task-control)) #t)
        )
       (new 'static 'task-cstage
        :game-task (game-task sunken-slide)
        :status (task-status need-reminder)
-       :flags #x2
+       :flags (task-flags has-entity)
        :condition (lambda ((arg0 task-control)) #t)
        )
       (new 'static 'task-cstage
        :game-task (game-task sunken-slide)
        :status (task-status need-resolution)
-       :flags #x2
+       :flags (task-flags has-entity)
        :condition (lambda ((arg0 task-control)) #t)
        )
       )
@@ -3545,25 +3849,27 @@
       (new 'static 'task-cstage
        :game-task (game-task sunken-sharks)
        :status (task-status need-hint)
-       :flags #x6
+       :flags
+       (task-flags has-entity closed-by-default)
        :condition (lambda ((arg0 task-control)) #t)
        )
       (new 'static 'task-cstage
        :game-task (game-task sunken-sharks)
        :status (task-status need-introduction)
-       :flags #x6
+       :flags
+       (task-flags has-entity closed-by-default)
        :condition (lambda ((arg0 task-control)) #t)
        )
       (new 'static 'task-cstage
        :game-task (game-task sunken-sharks)
        :status (task-status need-reminder)
-       :flags #x2
+       :flags (task-flags has-entity)
        :condition (lambda ((arg0 task-control)) #t)
        )
       (new 'static 'task-cstage
        :game-task (game-task sunken-sharks)
        :status (task-status need-resolution)
-       :flags #x2
+       :flags (task-flags has-entity)
        :condition (lambda ((arg0 task-control)) #t)
        )
       )
@@ -3578,25 +3884,27 @@
       (new 'static 'task-cstage
        :game-task (game-task sunken-buzzer)
        :status (task-status need-hint)
-       :flags #x6
+       :flags
+       (task-flags has-entity closed-by-default)
        :condition (lambda ((arg0 task-control)) #t)
        )
       (new 'static 'task-cstage
        :game-task (game-task sunken-buzzer)
        :status (task-status need-introduction)
-       :flags #x6
+       :flags
+       (task-flags has-entity closed-by-default)
        :condition (lambda ((arg0 task-control)) #t)
        )
       (new 'static 'task-cstage
        :game-task (game-task sunken-buzzer)
        :status (task-status need-reminder)
-       :flags #x2
+       :flags (task-flags has-entity)
        :condition (lambda ((arg0 task-control)) #t)
        )
       (new 'static 'task-cstage
        :game-task (game-task sunken-buzzer)
        :status (task-status need-resolution)
-       :flags #x2
+       :flags (task-flags has-entity)
        :condition (lambda ((arg0 task-control)) #t)
        )
       )
@@ -3611,25 +3919,27 @@
       (new 'static 'task-cstage
        :game-task (game-task sunken-top-of-helix)
        :status (task-status need-hint)
-       :flags #x6
+       :flags
+       (task-flags has-entity closed-by-default)
        :condition (lambda ((arg0 task-control)) #t)
        )
       (new 'static 'task-cstage
        :game-task (game-task sunken-top-of-helix)
        :status (task-status need-introduction)
-       :flags #x6
+       :flags
+       (task-flags has-entity closed-by-default)
        :condition (lambda ((arg0 task-control)) #t)
        )
       (new 'static 'task-cstage
        :game-task (game-task sunken-top-of-helix)
        :status (task-status need-reminder)
-       :flags #x2
+       :flags (task-flags has-entity)
        :condition (lambda ((arg0 task-control)) #t)
        )
       (new 'static 'task-cstage
        :game-task (game-task sunken-top-of-helix)
        :status (task-status need-resolution)
-       :flags #x2
+       :flags (task-flags has-entity)
        :condition (lambda ((arg0 task-control)) #t)
        )
       )
@@ -3644,25 +3954,27 @@
       (new 'static 'task-cstage
        :game-task (game-task sunken-spinning-room)
        :status (task-status need-hint)
-       :flags #x6
+       :flags
+       (task-flags has-entity closed-by-default)
        :condition (lambda ((arg0 task-control)) #t)
        )
       (new 'static 'task-cstage
        :game-task (game-task sunken-spinning-room)
        :status (task-status need-introduction)
-       :flags #x6
+       :flags
+       (task-flags has-entity closed-by-default)
        :condition (lambda ((arg0 task-control)) #t)
        )
       (new 'static 'task-cstage
        :game-task (game-task sunken-spinning-room)
        :status (task-status need-reminder)
-       :flags #x2
+       :flags (task-flags has-entity)
        :condition (lambda ((arg0 task-control)) #t)
        )
       (new 'static 'task-cstage
        :game-task (game-task sunken-spinning-room)
        :status (task-status need-resolution)
-       :flags #x2
+       :flags (task-flags has-entity)
        :condition (lambda ((arg0 task-control)) #t)
        )
       )
@@ -3681,25 +3993,27 @@
       (new 'static 'task-cstage
        :game-task (game-task rolling-lake)
        :status (task-status need-hint)
-       :flags #x6
+       :flags
+       (task-flags has-entity closed-by-default)
        :condition (lambda ((arg0 task-control)) #t)
        )
       (new 'static 'task-cstage
        :game-task (game-task rolling-lake)
        :status (task-status need-introduction)
-       :flags #x6
+       :flags
+       (task-flags has-entity closed-by-default)
        :condition (lambda ((arg0 task-control)) #t)
        )
       (new 'static 'task-cstage
        :game-task (game-task rolling-lake)
        :status (task-status need-reminder)
-       :flags #x2
+       :flags (task-flags has-entity)
        :condition (lambda ((arg0 task-control)) #t)
        )
       (new 'static 'task-cstage
        :game-task (game-task rolling-lake)
        :status (task-status need-resolution)
-       :flags #x2
+       :flags (task-flags has-entity)
        :condition (lambda ((arg0 task-control)) #t)
        )
       )
@@ -3714,25 +4028,27 @@
       (new 'static 'task-cstage
        :game-task (game-task rolling-buzzer)
        :status (task-status need-hint)
-       :flags #x6
+       :flags
+       (task-flags has-entity closed-by-default)
        :condition (lambda ((arg0 task-control)) #t)
        )
       (new 'static 'task-cstage
        :game-task (game-task rolling-buzzer)
        :status (task-status need-introduction)
-       :flags #x6
+       :flags
+       (task-flags has-entity closed-by-default)
        :condition (lambda ((arg0 task-control)) #t)
        )
       (new 'static 'task-cstage
        :game-task (game-task rolling-buzzer)
        :status (task-status need-reminder)
-       :flags #x2
+       :flags (task-flags has-entity)
        :condition (lambda ((arg0 task-control)) #t)
        )
       (new 'static 'task-cstage
        :game-task (game-task rolling-buzzer)
        :status (task-status need-resolution)
-       :flags #x2
+       :flags (task-flags has-entity)
        :condition (lambda ((arg0 task-control)) #t)
        )
       )
@@ -3747,25 +4063,27 @@
       (new 'static 'task-cstage
        :game-task (game-task rolling-ring-chase-1)
        :status (task-status need-hint)
-       :flags #x6
+       :flags
+       (task-flags has-entity closed-by-default)
        :condition (lambda ((arg0 task-control)) #t)
        )
       (new 'static 'task-cstage
        :game-task (game-task rolling-ring-chase-1)
        :status (task-status need-introduction)
-       :flags #x6
+       :flags
+       (task-flags has-entity closed-by-default)
        :condition (lambda ((arg0 task-control)) #t)
        )
       (new 'static 'task-cstage
        :game-task (game-task rolling-ring-chase-1)
        :status (task-status need-reminder)
-       :flags #x2
+       :flags (task-flags has-entity)
        :condition (lambda ((arg0 task-control)) #t)
        )
       (new 'static 'task-cstage
        :game-task (game-task rolling-ring-chase-1)
        :status (task-status need-resolution)
-       :flags #x2
+       :flags (task-flags has-entity)
        :condition (lambda ((arg0 task-control)) #t)
        )
       )
@@ -3780,25 +4098,27 @@
       (new 'static 'task-cstage
        :game-task (game-task rolling-ring-chase-2)
        :status (task-status need-hint)
-       :flags #x6
+       :flags
+       (task-flags has-entity closed-by-default)
        :condition (lambda ((arg0 task-control)) #t)
        )
       (new 'static 'task-cstage
        :game-task (game-task rolling-ring-chase-2)
        :status (task-status need-introduction)
-       :flags #x6
+       :flags
+       (task-flags has-entity closed-by-default)
        :condition (lambda ((arg0 task-control)) #t)
        )
       (new 'static 'task-cstage
        :game-task (game-task rolling-ring-chase-2)
        :status (task-status need-reminder)
-       :flags #x2
+       :flags (task-flags has-entity)
        :condition (lambda ((arg0 task-control)) #t)
        )
       (new 'static 'task-cstage
        :game-task (game-task rolling-ring-chase-2)
        :status (task-status need-resolution)
-       :flags #x2
+       :flags (task-flags has-entity)
        :condition (lambda ((arg0 task-control)) #t)
        )
       )
@@ -3815,25 +4135,27 @@
       (new 'static 'task-cstage
        :game-task (game-task snow-fort)
        :status (task-status need-hint)
-       :flags #x6
+       :flags
+       (task-flags has-entity closed-by-default)
        :condition (lambda ((arg0 task-control)) #t)
        )
       (new 'static 'task-cstage
        :game-task (game-task snow-fort)
        :status (task-status need-introduction)
-       :flags #x6
+       :flags
+       (task-flags has-entity closed-by-default)
        :condition (lambda ((arg0 task-control)) #t)
        )
       (new 'static 'task-cstage
        :game-task (game-task snow-fort)
        :status (task-status need-reminder)
-       :flags #x2
+       :flags (task-flags has-entity)
        :condition (lambda ((arg0 task-control)) #t)
        )
       (new 'static 'task-cstage
        :game-task (game-task snow-fort)
        :status (task-status need-resolution)
-       :flags #x2
+       :flags (task-flags has-entity)
        :condition (lambda ((arg0 task-control)) #t)
        )
       )
@@ -3848,25 +4170,27 @@
       (new 'static 'task-cstage
        :game-task (game-task snow-ball)
        :status (task-status need-hint)
-       :flags #x6
+       :flags
+       (task-flags has-entity closed-by-default)
        :condition (lambda ((arg0 task-control)) #t)
        )
       (new 'static 'task-cstage
        :game-task (game-task snow-ball)
        :status (task-status need-introduction)
-       :flags #x6
+       :flags
+       (task-flags has-entity closed-by-default)
        :condition (lambda ((arg0 task-control)) #t)
        )
       (new 'static 'task-cstage
        :game-task (game-task snow-ball)
        :status (task-status need-reminder)
-       :flags #x2
+       :flags (task-flags has-entity)
        :condition (lambda ((arg0 task-control)) #t)
        )
       (new 'static 'task-cstage
        :game-task (game-task snow-ball)
        :status (task-status need-resolution)
-       :flags #x2
+       :flags (task-flags has-entity)
        :condition (lambda ((arg0 task-control)) #t)
        )
       )
@@ -3881,25 +4205,27 @@
       (new 'static 'task-cstage
        :game-task (game-task snow-bunnies)
        :status (task-status need-hint)
-       :flags #x6
+       :flags
+       (task-flags has-entity closed-by-default)
        :condition (lambda ((arg0 task-control)) #t)
        )
       (new 'static 'task-cstage
        :game-task (game-task snow-bunnies)
        :status (task-status need-introduction)
-       :flags #x6
+       :flags
+       (task-flags has-entity closed-by-default)
        :condition (lambda ((arg0 task-control)) #t)
        )
       (new 'static 'task-cstage
        :game-task (game-task snow-bunnies)
        :status (task-status need-reminder)
-       :flags #x2
+       :flags (task-flags has-entity)
        :condition (lambda ((arg0 task-control)) #t)
        )
       (new 'static 'task-cstage
        :game-task (game-task snow-bunnies)
        :status (task-status need-resolution)
-       :flags #x2
+       :flags (task-flags has-entity)
        :condition (lambda ((arg0 task-control)) #t)
        )
       )
@@ -3914,25 +4240,27 @@
       (new 'static 'task-cstage
        :game-task (game-task snow-buzzer)
        :status (task-status need-hint)
-       :flags #x6
+       :flags
+       (task-flags has-entity closed-by-default)
        :condition (lambda ((arg0 task-control)) #t)
        )
       (new 'static 'task-cstage
        :game-task (game-task snow-buzzer)
        :status (task-status need-introduction)
-       :flags #x6
+       :flags
+       (task-flags has-entity closed-by-default)
        :condition (lambda ((arg0 task-control)) #t)
        )
       (new 'static 'task-cstage
        :game-task (game-task snow-buzzer)
        :status (task-status need-reminder)
-       :flags #x2
+       :flags (task-flags has-entity)
        :condition (lambda ((arg0 task-control)) #t)
        )
       (new 'static 'task-cstage
        :game-task (game-task snow-buzzer)
        :status (task-status need-resolution)
-       :flags #x2
+       :flags (task-flags has-entity)
        :condition (lambda ((arg0 task-control)) #t)
        )
       )
@@ -3947,25 +4275,27 @@
       (new 'static 'task-cstage
        :game-task (game-task snow-bumpers)
        :status (task-status need-hint)
-       :flags #x6
+       :flags
+       (task-flags has-entity closed-by-default)
        :condition (lambda ((arg0 task-control)) #t)
        )
       (new 'static 'task-cstage
        :game-task (game-task snow-bumpers)
        :status (task-status need-introduction)
-       :flags #x6
+       :flags
+       (task-flags has-entity closed-by-default)
        :condition (lambda ((arg0 task-control)) #t)
        )
       (new 'static 'task-cstage
        :game-task (game-task snow-bumpers)
        :status (task-status need-reminder)
-       :flags #x2
+       :flags (task-flags has-entity)
        :condition (lambda ((arg0 task-control)) #t)
        )
       (new 'static 'task-cstage
        :game-task (game-task snow-bumpers)
        :status (task-status need-resolution)
-       :flags #x2
+       :flags (task-flags has-entity)
        :condition (lambda ((arg0 task-control)) #t)
        )
       )
@@ -3980,25 +4310,27 @@
       (new 'static 'task-cstage
        :game-task (game-task snow-cage)
        :status (task-status need-hint)
-       :flags #x6
+       :flags
+       (task-flags has-entity closed-by-default)
        :condition (lambda ((arg0 task-control)) #t)
        )
       (new 'static 'task-cstage
        :game-task (game-task snow-cage)
        :status (task-status need-introduction)
-       :flags #x6
+       :flags
+       (task-flags has-entity closed-by-default)
        :condition (lambda ((arg0 task-control)) #t)
        )
       (new 'static 'task-cstage
        :game-task (game-task snow-cage)
        :status (task-status need-reminder)
-       :flags #x2
+       :flags (task-flags has-entity)
        :condition (lambda ((arg0 task-control)) #t)
        )
       (new 'static 'task-cstage
        :game-task (game-task snow-cage)
        :status (task-status need-resolution)
-       :flags #x2
+       :flags (task-flags has-entity)
        :condition (lambda ((arg0 task-control)) #t)
        )
       )
@@ -4013,25 +4345,27 @@
       (new 'static 'task-cstage
        :game-task (game-task firecanyon-buzzer)
        :status (task-status need-hint)
-       :flags #x6
+       :flags
+       (task-flags has-entity closed-by-default)
        :condition (lambda ((arg0 task-control)) #t)
        )
       (new 'static 'task-cstage
        :game-task (game-task firecanyon-buzzer)
        :status (task-status need-introduction)
-       :flags #x6
+       :flags
+       (task-flags has-entity closed-by-default)
        :condition (lambda ((arg0 task-control)) #t)
        )
       (new 'static 'task-cstage
        :game-task (game-task firecanyon-buzzer)
        :status (task-status need-reminder)
-       :flags #x2
+       :flags (task-flags has-entity)
        :condition (lambda ((arg0 task-control)) #t)
        )
       (new 'static 'task-cstage
        :game-task (game-task firecanyon-buzzer)
        :status (task-status need-resolution)
-       :flags #x2
+       :flags (task-flags has-entity)
        :condition (lambda ((arg0 task-control)) #t)
        )
       )
@@ -4046,25 +4380,27 @@
       (new 'static 'task-cstage
        :game-task (game-task firecanyon-end)
        :status (task-status need-hint)
-       :flags #x6
+       :flags
+       (task-flags has-entity closed-by-default)
        :condition (lambda ((arg0 task-control)) #t)
        )
       (new 'static 'task-cstage
        :game-task (game-task firecanyon-end)
        :status (task-status need-introduction)
-       :flags #x6
+       :flags
+       (task-flags has-entity closed-by-default)
        :condition (lambda ((arg0 task-control)) #t)
        )
       (new 'static 'task-cstage
        :game-task (game-task firecanyon-end)
        :status (task-status need-reminder)
-       :flags #x2
+       :flags (task-flags has-entity)
        :condition (lambda ((arg0 task-control)) #t)
        )
       (new 'static 'task-cstage
        :game-task (game-task firecanyon-end)
        :status (task-status need-resolution)
-       :flags #x2
+       :flags (task-flags has-entity)
        :condition (lambda ((arg0 task-control)) #t)
        )
       )
@@ -4083,25 +4419,27 @@
       (new 'static 'task-cstage
        :game-task (game-task village3-extra1)
        :status (task-status need-hint)
-       :flags #x6
+       :flags
+       (task-flags has-entity closed-by-default)
        :condition (lambda ((arg0 task-control)) #t)
        )
       (new 'static 'task-cstage
        :game-task (game-task village3-extra1)
        :status (task-status need-introduction)
-       :flags #x6
+       :flags
+       (task-flags has-entity closed-by-default)
        :condition (lambda ((arg0 task-control)) #t)
        )
       (new 'static 'task-cstage
        :game-task (game-task village3-extra1)
        :status (task-status need-reminder)
-       :flags #x2
+       :flags (task-flags has-entity)
        :condition (lambda ((arg0 task-control)) #t)
        )
       (new 'static 'task-cstage
        :game-task (game-task village3-extra1)
        :status (task-status need-resolution)
-       :flags #x2
+       :flags (task-flags has-entity)
        :condition (lambda ((arg0 task-control)) #t)
        )
       )
@@ -4116,25 +4454,27 @@
       (new 'static 'task-cstage
        :game-task (game-task village1-buzzer)
        :status (task-status need-hint)
-       :flags #x6
+       :flags
+       (task-flags has-entity closed-by-default)
        :condition (lambda ((arg0 task-control)) #t)
        )
       (new 'static 'task-cstage
        :game-task (game-task village1-buzzer)
        :status (task-status need-introduction)
-       :flags #x6
+       :flags
+       (task-flags has-entity closed-by-default)
        :condition (lambda ((arg0 task-control)) #t)
        )
       (new 'static 'task-cstage
        :game-task (game-task village1-buzzer)
        :status (task-status need-reminder)
-       :flags #x2
+       :flags (task-flags has-entity)
        :condition (lambda ((arg0 task-control)) #t)
        )
       (new 'static 'task-cstage
        :game-task (game-task village1-buzzer)
        :status (task-status need-resolution)
-       :flags #x2
+       :flags (task-flags has-entity)
        :condition (lambda ((arg0 task-control)) #t)
        )
       )
@@ -4149,25 +4489,27 @@
       (new 'static 'task-cstage
        :game-task (game-task village2-buzzer)
        :status (task-status need-hint)
-       :flags #x6
+       :flags
+       (task-flags has-entity closed-by-default)
        :condition (lambda ((arg0 task-control)) #t)
        )
       (new 'static 'task-cstage
        :game-task (game-task village2-buzzer)
        :status (task-status need-introduction)
-       :flags #x6
+       :flags
+       (task-flags has-entity closed-by-default)
        :condition (lambda ((arg0 task-control)) #t)
        )
       (new 'static 'task-cstage
        :game-task (game-task village2-buzzer)
        :status (task-status need-reminder)
-       :flags #x2
+       :flags (task-flags has-entity)
        :condition (lambda ((arg0 task-control)) #t)
        )
       (new 'static 'task-cstage
        :game-task (game-task village2-buzzer)
        :status (task-status need-resolution)
-       :flags #x2
+       :flags (task-flags has-entity)
        :condition (lambda ((arg0 task-control)) #t)
        )
       )
@@ -4182,25 +4524,27 @@
       (new 'static 'task-cstage
        :game-task (game-task village3-buzzer)
        :status (task-status need-hint)
-       :flags #x6
+       :flags
+       (task-flags has-entity closed-by-default)
        :condition (lambda ((arg0 task-control)) #t)
        )
       (new 'static 'task-cstage
        :game-task (game-task village3-buzzer)
        :status (task-status need-introduction)
-       :flags #x6
+       :flags
+       (task-flags has-entity closed-by-default)
        :condition (lambda ((arg0 task-control)) #t)
        )
       (new 'static 'task-cstage
        :game-task (game-task village3-buzzer)
        :status (task-status need-reminder)
-       :flags #x2
+       :flags (task-flags has-entity)
        :condition (lambda ((arg0 task-control)) #t)
        )
       (new 'static 'task-cstage
        :game-task (game-task village3-buzzer)
        :status (task-status need-resolution)
-       :flags #x2
+       :flags (task-flags has-entity)
        :condition (lambda ((arg0 task-control)) #t)
        )
       )
@@ -4217,25 +4561,27 @@
       (new 'static 'task-cstage
        :game-task (game-task cave-dark-climb)
        :status (task-status need-hint)
-       :flags #x6
+       :flags
+       (task-flags has-entity closed-by-default)
        :condition (lambda ((arg0 task-control)) #t)
        )
       (new 'static 'task-cstage
        :game-task (game-task cave-dark-climb)
        :status (task-status need-introduction)
-       :flags #x6
+       :flags
+       (task-flags has-entity closed-by-default)
        :condition (lambda ((arg0 task-control)) #t)
        )
       (new 'static 'task-cstage
        :game-task (game-task cave-dark-climb)
        :status (task-status need-reminder)
-       :flags #x2
+       :flags (task-flags has-entity)
        :condition (lambda ((arg0 task-control)) #t)
        )
       (new 'static 'task-cstage
        :game-task (game-task cave-dark-climb)
        :status (task-status need-resolution)
-       :flags #x2
+       :flags (task-flags has-entity)
        :condition (lambda ((arg0 task-control)) #t)
        )
       )
@@ -4250,25 +4596,27 @@
       (new 'static 'task-cstage
        :game-task (game-task cave-robot-climb)
        :status (task-status need-hint)
-       :flags #x6
+       :flags
+       (task-flags has-entity closed-by-default)
        :condition (lambda ((arg0 task-control)) #t)
        )
       (new 'static 'task-cstage
        :game-task (game-task cave-robot-climb)
        :status (task-status need-introduction)
-       :flags #x6
+       :flags
+       (task-flags has-entity closed-by-default)
        :condition (lambda ((arg0 task-control)) #t)
        )
       (new 'static 'task-cstage
        :game-task (game-task cave-robot-climb)
        :status (task-status need-reminder)
-       :flags #x2
+       :flags (task-flags has-entity)
        :condition (lambda ((arg0 task-control)) #t)
        )
       (new 'static 'task-cstage
        :game-task (game-task cave-robot-climb)
        :status (task-status need-resolution)
-       :flags #x2
+       :flags (task-flags has-entity)
        :condition (lambda ((arg0 task-control)) #t)
        )
       )
@@ -4283,25 +4631,27 @@
       (new 'static 'task-cstage
        :game-task (game-task cave-swing-poles)
        :status (task-status need-hint)
-       :flags #x6
+       :flags
+       (task-flags has-entity closed-by-default)
        :condition (lambda ((arg0 task-control)) #t)
        )
       (new 'static 'task-cstage
        :game-task (game-task cave-swing-poles)
        :status (task-status need-introduction)
-       :flags #x6
+       :flags
+       (task-flags has-entity closed-by-default)
        :condition (lambda ((arg0 task-control)) #t)
        )
       (new 'static 'task-cstage
        :game-task (game-task cave-swing-poles)
        :status (task-status need-reminder)
-       :flags #x2
+       :flags (task-flags has-entity)
        :condition (lambda ((arg0 task-control)) #t)
        )
       (new 'static 'task-cstage
        :game-task (game-task cave-swing-poles)
        :status (task-status need-resolution)
-       :flags #x2
+       :flags (task-flags has-entity)
        :condition (lambda ((arg0 task-control)) #t)
        )
       )
@@ -4316,25 +4666,27 @@
       (new 'static 'task-cstage
        :game-task (game-task cave-spider-tunnel)
        :status (task-status need-hint)
-       :flags #x6
+       :flags
+       (task-flags has-entity closed-by-default)
        :condition (lambda ((arg0 task-control)) #t)
        )
       (new 'static 'task-cstage
        :game-task (game-task cave-spider-tunnel)
        :status (task-status need-introduction)
-       :flags #x6
+       :flags
+       (task-flags has-entity closed-by-default)
        :condition (lambda ((arg0 task-control)) #t)
        )
       (new 'static 'task-cstage
        :game-task (game-task cave-spider-tunnel)
        :status (task-status need-reminder)
-       :flags #x2
+       :flags (task-flags has-entity)
        :condition (lambda ((arg0 task-control)) #t)
        )
       (new 'static 'task-cstage
        :game-task (game-task cave-spider-tunnel)
        :status (task-status need-resolution)
-       :flags #x2
+       :flags (task-flags has-entity)
        :condition (lambda ((arg0 task-control)) #t)
        )
       )
@@ -4349,25 +4701,27 @@
       (new 'static 'task-cstage
        :game-task (game-task cave-platforms)
        :status (task-status need-hint)
-       :flags #x6
+       :flags
+       (task-flags has-entity closed-by-default)
        :condition (lambda ((arg0 task-control)) #t)
        )
       (new 'static 'task-cstage
        :game-task (game-task cave-platforms)
        :status (task-status need-introduction)
-       :flags #x6
+       :flags
+       (task-flags has-entity closed-by-default)
        :condition (lambda ((arg0 task-control)) #t)
        )
       (new 'static 'task-cstage
        :game-task (game-task cave-platforms)
        :status (task-status need-reminder)
-       :flags #x2
+       :flags (task-flags has-entity)
        :condition (lambda ((arg0 task-control)) #t)
        )
       (new 'static 'task-cstage
        :game-task (game-task cave-platforms)
        :status (task-status need-resolution)
-       :flags #x2
+       :flags (task-flags has-entity)
        :condition (lambda ((arg0 task-control)) #t)
        )
       )
@@ -4382,25 +4736,27 @@
       (new 'static 'task-cstage
        :game-task (game-task cave-buzzer)
        :status (task-status need-hint)
-       :flags #x6
+       :flags
+       (task-flags has-entity closed-by-default)
        :condition (lambda ((arg0 task-control)) #t)
        )
       (new 'static 'task-cstage
        :game-task (game-task cave-buzzer)
        :status (task-status need-introduction)
-       :flags #x6
+       :flags
+       (task-flags has-entity closed-by-default)
        :condition (lambda ((arg0 task-control)) #t)
        )
       (new 'static 'task-cstage
        :game-task (game-task cave-buzzer)
        :status (task-status need-reminder)
-       :flags #x2
+       :flags (task-flags has-entity)
        :condition (lambda ((arg0 task-control)) #t)
        )
       (new 'static 'task-cstage
        :game-task (game-task cave-buzzer)
        :status (task-status need-resolution)
-       :flags #x2
+       :flags (task-flags has-entity)
        :condition (lambda ((arg0 task-control)) #t)
        )
       )
@@ -4415,25 +4771,27 @@
       (new 'static 'task-cstage
        :game-task (game-task ogre-boss)
        :status (task-status need-hint)
-       :flags #x6
+       :flags
+       (task-flags has-entity closed-by-default)
        :condition (lambda ((arg0 task-control)) #t)
        )
       (new 'static 'task-cstage
        :game-task (game-task ogre-boss)
        :status (task-status need-introduction)
-       :flags #x6
+       :flags
+       (task-flags has-entity closed-by-default)
        :condition (lambda ((arg0 task-control)) #t)
        )
       (new 'static 'task-cstage
        :game-task (game-task ogre-boss)
        :status (task-status need-reminder)
-       :flags #x2
+       :flags (task-flags has-entity)
        :condition (lambda ((arg0 task-control)) #t)
        )
       (new 'static 'task-cstage
        :game-task (game-task ogre-boss)
        :status (task-status need-resolution)
-       :flags #x2
+       :flags (task-flags has-entity)
        :condition (lambda ((arg0 task-control)) #t)
        )
       )
@@ -4448,25 +4806,27 @@
       (new 'static 'task-cstage
        :game-task (game-task ogre-end)
        :status (task-status need-hint)
-       :flags #x6
+       :flags
+       (task-flags has-entity closed-by-default)
        :condition (lambda ((arg0 task-control)) #t)
        )
       (new 'static 'task-cstage
        :game-task (game-task ogre-end)
        :status (task-status need-introduction)
-       :flags #x6
+       :flags
+       (task-flags has-entity closed-by-default)
        :condition (lambda ((arg0 task-control)) #t)
        )
       (new 'static 'task-cstage
        :game-task (game-task ogre-end)
        :status (task-status need-reminder)
-       :flags #x2
+       :flags (task-flags has-entity)
        :condition (lambda ((arg0 task-control)) #t)
        )
       (new 'static 'task-cstage
        :game-task (game-task ogre-end)
        :status (task-status need-resolution)
-       :flags #x2
+       :flags (task-flags has-entity)
        :condition (lambda ((arg0 task-control)) #t)
        )
       )
@@ -4481,25 +4841,27 @@
       (new 'static 'task-cstage
        :game-task (game-task ogre-buzzer)
        :status (task-status need-hint)
-       :flags #x6
+       :flags
+       (task-flags has-entity closed-by-default)
        :condition (lambda ((arg0 task-control)) #t)
        )
       (new 'static 'task-cstage
        :game-task (game-task ogre-buzzer)
        :status (task-status need-introduction)
-       :flags #x6
+       :flags
+       (task-flags has-entity closed-by-default)
        :condition (lambda ((arg0 task-control)) #t)
        )
       (new 'static 'task-cstage
        :game-task (game-task ogre-buzzer)
        :status (task-status need-reminder)
-       :flags #x2
+       :flags (task-flags has-entity)
        :condition (lambda ((arg0 task-control)) #t)
        )
       (new 'static 'task-cstage
        :game-task (game-task ogre-buzzer)
        :status (task-status need-resolution)
-       :flags #x2
+       :flags (task-flags has-entity)
        :condition (lambda ((arg0 task-control)) #t)
        )
       )
@@ -4514,25 +4876,27 @@
       (new 'static 'task-cstage
        :game-task (game-task lavatube-end)
        :status (task-status need-hint)
-       :flags #x6
+       :flags
+       (task-flags has-entity closed-by-default)
        :condition (lambda ((arg0 task-control)) #t)
        )
       (new 'static 'task-cstage
        :game-task (game-task lavatube-end)
        :status (task-status need-introduction)
-       :flags #x6
+       :flags
+       (task-flags has-entity closed-by-default)
        :condition (lambda ((arg0 task-control)) #t)
        )
       (new 'static 'task-cstage
        :game-task (game-task lavatube-end)
        :status (task-status need-reminder)
-       :flags #x2
+       :flags (task-flags has-entity)
        :condition (lambda ((arg0 task-control)) #t)
        )
       (new 'static 'task-cstage
        :game-task (game-task lavatube-end)
        :status (task-status need-resolution)
-       :flags #x2
+       :flags (task-flags has-entity)
        :condition (lambda ((arg0 task-control)) #t)
        )
       )
@@ -4547,25 +4911,27 @@
       (new 'static 'task-cstage
        :game-task (game-task lavatube-buzzer)
        :status (task-status need-hint)
-       :flags #x6
+       :flags
+       (task-flags has-entity closed-by-default)
        :condition (lambda ((arg0 task-control)) #t)
        )
       (new 'static 'task-cstage
        :game-task (game-task lavatube-buzzer)
        :status (task-status need-introduction)
-       :flags #x6
+       :flags
+       (task-flags has-entity closed-by-default)
        :condition (lambda ((arg0 task-control)) #t)
        )
       (new 'static 'task-cstage
        :game-task (game-task lavatube-buzzer)
        :status (task-status need-reminder)
-       :flags #x2
+       :flags (task-flags has-entity)
        :condition (lambda ((arg0 task-control)) #t)
        )
       (new 'static 'task-cstage
        :game-task (game-task lavatube-buzzer)
        :status (task-status need-resolution)
-       :flags #x2
+       :flags (task-flags has-entity)
        :condition (lambda ((arg0 task-control)) #t)
        )
       )
@@ -4580,25 +4946,27 @@
       (new 'static 'task-cstage
        :game-task (game-task citadel-buzzer)
        :status (task-status need-hint)
-       :flags #x6
+       :flags
+       (task-flags has-entity closed-by-default)
        :condition (lambda ((arg0 task-control)) #t)
        )
       (new 'static 'task-cstage
        :game-task (game-task citadel-buzzer)
        :status (task-status need-introduction)
-       :flags #x6
+       :flags
+       (task-flags has-entity closed-by-default)
        :condition (lambda ((arg0 task-control)) #t)
        )
       (new 'static 'task-cstage
        :game-task (game-task citadel-buzzer)
        :status (task-status need-reminder)
-       :flags #x2
+       :flags (task-flags has-entity)
        :condition (lambda ((arg0 task-control)) #t)
        )
       (new 'static 'task-cstage
        :game-task (game-task citadel-buzzer)
        :status (task-status need-resolution)
-       :flags #x2
+       :flags (task-flags has-entity)
        :condition (lambda ((arg0 task-control)) #t)
        )
       )
@@ -4613,25 +4981,27 @@
       (new 'static 'task-cstage
        :game-task (game-task training-gimmie)
        :status (task-status need-hint)
-       :flags #x6
+       :flags
+       (task-flags has-entity closed-by-default)
        :condition (lambda ((arg0 task-control)) #t)
        )
       (new 'static 'task-cstage
        :game-task (game-task training-gimmie)
        :status (task-status need-introduction)
-       :flags #x6
+       :flags
+       (task-flags has-entity closed-by-default)
        :condition (lambda ((arg0 task-control)) #t)
        )
       (new 'static 'task-cstage
        :game-task (game-task training-gimmie)
        :status (task-status need-reminder)
-       :flags #x2
+       :flags (task-flags has-entity)
        :condition (lambda ((arg0 task-control)) #t)
        )
       (new 'static 'task-cstage
        :game-task (game-task training-gimmie)
        :status (task-status need-resolution)
-       :flags #x2
+       :flags (task-flags has-entity)
        :condition (lambda ((arg0 task-control)) #t)
        )
       )
@@ -4646,25 +5016,27 @@
       (new 'static 'task-cstage
        :game-task (game-task training-door)
        :status (task-status need-hint)
-       :flags #x6
+       :flags
+       (task-flags has-entity closed-by-default)
        :condition (lambda ((arg0 task-control)) #t)
        )
       (new 'static 'task-cstage
        :game-task (game-task training-door)
        :status (task-status need-introduction)
-       :flags #x6
+       :flags
+       (task-flags has-entity closed-by-default)
        :condition (lambda ((arg0 task-control)) #t)
        )
       (new 'static 'task-cstage
        :game-task (game-task training-door)
        :status (task-status need-reminder)
-       :flags #x2
+       :flags (task-flags has-entity)
        :condition (lambda ((arg0 task-control)) #t)
        )
       (new 'static 'task-cstage
        :game-task (game-task training-door)
        :status (task-status need-resolution)
-       :flags #x2
+       :flags (task-flags has-entity)
        :condition (lambda ((arg0 task-control)) #t)
        )
       )
@@ -4679,25 +5051,27 @@
       (new 'static 'task-cstage
        :game-task (game-task training-climb)
        :status (task-status need-hint)
-       :flags #x6
+       :flags
+       (task-flags has-entity closed-by-default)
        :condition (lambda ((arg0 task-control)) #t)
        )
       (new 'static 'task-cstage
        :game-task (game-task training-climb)
        :status (task-status need-introduction)
-       :flags #x6
+       :flags
+       (task-flags has-entity closed-by-default)
        :condition (lambda ((arg0 task-control)) #t)
        )
       (new 'static 'task-cstage
        :game-task (game-task training-climb)
        :status (task-status need-reminder)
-       :flags #x2
+       :flags (task-flags has-entity)
        :condition (lambda ((arg0 task-control)) #t)
        )
       (new 'static 'task-cstage
        :game-task (game-task training-climb)
        :status (task-status need-resolution)
-       :flags #x2
+       :flags (task-flags has-entity)
        :condition (lambda ((arg0 task-control)) #t)
        )
       )
@@ -4712,25 +5086,27 @@
       (new 'static 'task-cstage
        :game-task (game-task training-buzzer)
        :status (task-status need-hint)
-       :flags #x6
+       :flags
+       (task-flags has-entity closed-by-default)
        :condition (lambda ((arg0 task-control)) #t)
        )
       (new 'static 'task-cstage
        :game-task (game-task training-buzzer)
        :status (task-status need-introduction)
-       :flags #x6
+       :flags
+       (task-flags has-entity closed-by-default)
        :condition (lambda ((arg0 task-control)) #t)
        )
       (new 'static 'task-cstage
        :game-task (game-task training-buzzer)
        :status (task-status need-reminder)
-       :flags #x2
+       :flags (task-flags has-entity)
        :condition (lambda ((arg0 task-control)) #t)
        )
       (new 'static 'task-cstage
        :game-task (game-task training-buzzer)
        :status (task-status need-resolution)
-       :flags #x2
+       :flags (task-flags has-entity)
        :condition (lambda ((arg0 task-control)) #t)
        )
       )
@@ -4751,7 +5127,7 @@
       (new 'static 'task-cstage
        :game-task (game-task firecanyon-assistant)
        :status (task-status need-reward-speech)
-       :flags #x2
+       :flags (task-flags has-entity)
        :condition
        (lambda
         ((arg0 task-control))
@@ -4786,25 +5162,27 @@
       (new 'static 'task-cstage
        :game-task (game-task red-eggtop)
        :status (task-status need-hint)
-       :flags #x6
+       :flags
+       (task-flags has-entity closed-by-default)
        :condition (lambda ((arg0 task-control)) #t)
        )
       (new 'static 'task-cstage
        :game-task (game-task red-eggtop)
        :status (task-status need-introduction)
-       :flags #x6
+       :flags
+       (task-flags has-entity closed-by-default)
        :condition (lambda ((arg0 task-control)) #t)
        )
       (new 'static 'task-cstage
        :game-task (game-task red-eggtop)
        :status (task-status need-reminder)
-       :flags #x2
+       :flags (task-flags has-entity)
        :condition (lambda ((arg0 task-control)) #t)
        )
       (new 'static 'task-cstage
        :game-task (game-task red-eggtop)
        :status (task-status need-resolution)
-       :flags #x2
+       :flags (task-flags has-entity)
        :condition (lambda ((arg0 task-control)) #t)
        )
       )
@@ -4819,25 +5197,27 @@
       (new 'static 'task-cstage
        :game-task (game-task lavatube-balls)
        :status (task-status need-hint)
-       :flags #x6
+       :flags
+       (task-flags has-entity closed-by-default)
        :condition (lambda ((arg0 task-control)) #t)
        )
       (new 'static 'task-cstage
        :game-task (game-task lavatube-balls)
        :status (task-status need-introduction)
-       :flags #x6
+       :flags
+       (task-flags has-entity closed-by-default)
        :condition (lambda ((arg0 task-control)) #t)
        )
       (new 'static 'task-cstage
        :game-task (game-task lavatube-balls)
        :status (task-status need-reminder)
-       :flags #x2
+       :flags (task-flags has-entity)
        :condition (lambda ((arg0 task-control)) #t)
        )
       (new 'static 'task-cstage
        :game-task (game-task lavatube-balls)
        :status (task-status need-resolution)
-       :flags #x2
+       :flags (task-flags has-entity)
        :condition (lambda ((arg0 task-control)) #t)
        )
       )
@@ -4852,7 +5232,7 @@
       (new 'static 'task-cstage
        :game-task (game-task lavatube-start)
        :status (task-status need-reward-speech)
-       :flags #x2
+       :flags (task-flags has-entity)
        :condition
        (lambda
         ((arg0 task-control))
@@ -4885,25 +5265,27 @@
       (new 'static 'task-cstage
        :game-task (game-task ogre-secret)
        :status (task-status need-hint)
-       :flags #x6
+       :flags
+       (task-flags has-entity closed-by-default)
        :condition (lambda ((arg0 task-control)) #t)
        )
       (new 'static 'task-cstage
        :game-task (game-task ogre-secret)
        :status (task-status need-introduction)
-       :flags #x6
+       :flags
+       (task-flags has-entity closed-by-default)
        :condition (lambda ((arg0 task-control)) #t)
        )
       (new 'static 'task-cstage
        :game-task (game-task ogre-secret)
        :status (task-status need-reminder)
-       :flags #x2
+       :flags (task-flags has-entity)
        :condition (lambda ((arg0 task-control)) #t)
        )
       (new 'static 'task-cstage
        :game-task (game-task ogre-secret)
        :status (task-status need-resolution)
-       :flags #x2
+       :flags (task-flags has-entity)
        :condition (lambda ((arg0 task-control)) #t)
        )
       )
@@ -4923,13 +5305,14 @@
       (new 'static 'task-cstage
        :game-task (game-task village4-button)
        :status (task-status need-hint)
-       :flags #x6
+       :flags
+       (task-flags has-entity closed-by-default)
        :condition (lambda ((arg0 task-control)) #t)
        )
       (new 'static 'task-cstage
        :game-task (game-task village4-button)
        :status (task-status need-reward-speech)
-       :flags #x2
+       :flags (task-flags has-entity)
        :condition (lambda ((arg0 task-control)) #t)
        )
       )
@@ -4944,31 +5327,31 @@
       (new 'static 'task-cstage
        :game-task (game-task finalboss-movies)
        :status (task-status unknown)
-       :flags #x2
+       :flags (task-flags has-entity)
        :condition (lambda ((arg0 task-control)) #t)
        )
       (new 'static 'task-cstage
        :game-task (game-task finalboss-movies)
        :status (task-status need-introduction)
-       :flags #x2
+       :flags (task-flags has-entity)
        :condition (lambda ((arg0 task-control)) #t)
        )
       (new 'static 'task-cstage
        :game-task (game-task finalboss-movies)
        :status (task-status need-reminder-a)
-       :flags #x2
+       :flags (task-flags has-entity)
        :condition (lambda ((arg0 task-control)) #t)
        )
       (new 'static 'task-cstage
        :game-task (game-task finalboss-movies)
        :status (task-status need-reminder)
-       :flags #x2
+       :flags (task-flags has-entity)
        :condition (lambda ((arg0 task-control)) #t)
        )
       (new 'static 'task-cstage
        :game-task (game-task finalboss-movies)
        :status (task-status need-reward-speech)
-       :flags #x2
+       :flags (task-flags has-entity)
        :condition (lambda ((arg0 task-control)) #t)
        )
       )
@@ -4983,13 +5366,15 @@
       (new 'static 'task-cstage
        :game-task (game-task plunger-lurker-hit)
        :status (task-status unknown)
-       :flags #x6
+       :flags
+       (task-flags has-entity closed-by-default)
        :condition (lambda ((arg0 task-control)) #t)
        )
       (new 'static 'task-cstage
        :game-task (game-task plunger-lurker-hit)
        :status (task-status need-hint)
-       :flags #x6
+       :flags
+       (task-flags has-entity closed-by-default)
        :condition (lambda ((arg0 task-control)) #t)
        )
       )
@@ -5004,13 +5389,15 @@
       (new 'static 'task-cstage
        :game-task (game-task leaving-misty)
        :status (task-status need-introduction)
-       :flags #x6
+       :flags
+       (task-flags has-entity closed-by-default)
        :condition (lambda ((arg0 task-control)) #t)
        )
       (new 'static 'task-cstage
        :game-task (game-task leaving-misty)
        :status (task-status need-reminder)
-       :flags #x6
+       :flags
+       (task-flags has-entity closed-by-default)
        :condition (lambda ((arg0 task-control)) #t)
        )
       )
@@ -5024,13 +5411,19 @@
       :type task-cstage :length 2 :allocated-length 2
       (new 'static 'task-cstage
        :status (task-status unknown)
-       :flags #x2
+       :flags (task-flags has-entity)
        :condition
-       (lambda ((arg0 task-control)) (task-closed? 111 6))
+       (lambda
+        ((arg0 task-control))
+        (task-closed?
+         (game-task village4-button)
+         (task-status need-reward-speech)
+         )
+        )
        )
       (new 'static 'task-cstage
        :status (task-status need-reminder)
-       :flags #x2
+       :flags (task-flags has-entity)
        :condition (lambda ((arg0 task-control)) #t)
        )
       )
@@ -5039,64 +5432,60 @@
    )
   )
 
-;; definition for function task-control-reset
-;; INFO: Return type mismatch int vs none.
 (defun task-control-reset ((arg0 symbol))
+  "Reset all task controls and set their current stage"
   (let ((s5-0 *task-controls*))
-   (countdown (s4-0 (-> s5-0 length))
-    (reset! (-> s5-0 s4-0) arg0 #f)
-    ;; TODO - uncomment this once we decompile game-info
-    ;; (first-any (-> s5-0 s4-0) #f)
+    (countdown (s4-0 (-> s5-0 length))
+      (reset! (the-as task-control (-> s5-0 s4-0)) arg0 #f)
+      (first-any (the-as task-control (-> s5-0 s4-0)) #f)
+      )
     )
-   )
   0
   (none)
   )
 
-;; definition for function get-task-control
-(defun get-task-control ((arg0 int))
-  (cond
-   ((or
-     (>= (the-as uint 1) (the-as uint arg0))
-     (>= (the-as uint arg0) (the-as uint 116))
-     )
-    (format
-     0
-     "ERROR<GMJ>: get-task-control received invalid task ~D/~S~%"
-     arg0
-     (game-task->string arg0)
-     )
-    *null-task-control*
-    )
-   (else
-    (-> *task-controls* arg0)
-    )
-   )
+(defun get-task-control ((arg0 game-task))
+  "Get the task control for a given game-task"
+  (the-as task-control
+          (cond
+            ((or (>= (the-as uint 1) (the-as uint arg0)) (>= (the-as uint arg0) (the-as uint 116)))
+             ;; invalid game task
+             (format 0 "ERROR<GMJ>: get-task-control received invalid task ~D/~S~%"
+              arg0
+              (game-task->string arg0)
+              )
+             *null-task-control*
+             )
+            (else
+             ;; otherwise look up in table
+             (-> *task-controls* arg0)
+             )
+            )
+          )
   )
 
-;; definition for function get-task-status
-(defun get-task-status ((arg0 task-control))
-  (let ((gp-0 (get-task-control (the-as int arg0))))
-   (when gp-0
-    (dotimes (s5-0 (-> gp-0 stage length))
-     (when
-      (and
-       (= arg0 (-> gp-0 stage s5-0 game-task))
-       (TODO-RENAME-11 (-> gp-0 stage s5-0) gp-0)
-       )
-      (first-any gp-0 #t)
-      (return (the-as int (-> gp-0 stage s5-0 status)))
+(defun get-task-status ((arg0 game-task))
+  "Get the staus of a game-task"
+  (let ((gp-0 (get-task-control arg0)))
+    (when gp-0
+      (dotimes (s5-0 (-> gp-0 stage length))
+        (when (and
+               (= arg0 (-> gp-0 stage s5-0 game-task))
+               (task-available? (-> gp-0 stage s5-0) gp-0)
+               )
+          (first-any gp-0 #t)
+          (return (-> gp-0 stage s5-0 status))
+          )
+        )
       )
-     )
+    (first-any gp-0 #t)
     )
-   (first-any gp-0 #t)
-   )
-  0
+  (the-as task-status 0)
   )
 
-;; definition for function close-specific-task!
-(defun close-specific-task! ((arg0 task-control) (arg1 int))
-  (let ((gp-0 (get-task-control (the-as int arg0))))
+(defun close-specific-task! ((arg0 game-task) (arg1 task-status))
+  "Close a cstage for a game-task"
+  (let ((gp-0 (get-task-control arg0)))
    (when gp-0
     (dotimes (v1-1 (-> gp-0 stage length))
      (when
@@ -5104,14 +5493,14 @@
        (= arg0 (-> gp-0 stage v1-1 game-task))
        (= arg1 (-> gp-0 stage v1-1 status))
        )
-      (TODO-RENAME-14 (-> gp-0 stage v1-1))
+      (close-task! (-> gp-0 stage v1-1))
       (return (first-any gp-0 #t))
       )
      )
     (format
      0
      "ERROR<GMJ>: close-specific! received non-existent task-cstage(~S ~S)--returning #t.~%"
-     (game-task->string (the-as int arg0))
+     (game-task->string arg0)
      (task-status->string arg1)
      )
     )
@@ -5119,9 +5508,9 @@
   0
   )
 
-;; definition for function open-specific-task!
-(defun open-specific-task! ((arg0 task-control) (arg1 int))
-  (let ((gp-0 (get-task-control (the-as int arg0))))
+(defun open-specific-task! ((arg0 game-task) (arg1 task-status))
+  "Open a cstage for a game-task"
+  (let ((gp-0 (get-task-control arg0)))
    (when gp-0
     (dotimes (v1-1 (-> gp-0 stage length))
      (when
@@ -5129,14 +5518,14 @@
        (= arg0 (-> gp-0 stage v1-1 game-task))
        (= arg1 (-> gp-0 stage v1-1 status))
        )
-      (clear-all-but-first-flag-bit (-> gp-0 stage v1-1))
+      (open-task! (-> gp-0 stage v1-1))
       (return (first-any gp-0 #t))
       )
      )
     (format
      0
      "ERROR<GMJ>: open-specific! received non-existent task-cstage(~S ~S)--returning #t.~%"
-     (game-task->string (the-as int arg0))
+     (game-task->string arg0)
      (task-status->string arg1)
      )
     )
@@ -5145,19 +5534,28 @@
   )
 
 ;; definition for function task-closed?
-(defun task-closed? ((arg0 int) (arg1 int))
+(defun task-closed? ((arg0 game-task) (arg1 task-status))
   (closed? (get-task-control arg0) arg0 arg1)
   )
 
 ;; definition for function task-exists?
-(defun task-exists? ((arg0 task-control) (arg1 int))
-  (exists? (get-task-control (the-as int arg0)) (the-as int arg0) arg1)
+(defun task-exists? ((arg0 game-task) (arg1 task-status))
+  (exists? (get-task-control arg0) arg0 arg1)
   )
 
 ;; definition for function task-known?
-(defun task-known? ((arg0 task-control))
+(defun task-known? ((arg0 game-task))
+  "Is there a cstage with a non-unknown status?"
   (let ((v1-0 (get-task-status arg0)))
-   (if (or (= v1-0 6) (= v1-0 3) (= v1-0 5) (= v1-0 4) (= v1-0 7) (zero? v1-0))
+   (if
+    (or
+     (= v1-0 (task-status need-reward-speech))
+     (= v1-0 (task-status need-introduction))
+     (= v1-0 (task-status need-reminder))
+     (= v1-0 (task-status need-reminder-a))
+     (= v1-0 (task-status need-resolution))
+     (= v1-0 (task-status invalid))
+     )
     #t
     #f
     )
@@ -5166,30 +5564,38 @@
 
 ;; definition for function sages-kidnapped?
 (defun sages-kidnapped? ()
-  (task-closed? 111 6)
+  (task-closed? (game-task village4-button) (task-status need-reward-speech))
   )
 
-;; failed to figure out what this is:
+
+;; replace symbols in task-controls with their value.
 (let ((gp-0 *task-controls*))
   (countdown (s5-0 (-> gp-0 length))
-   (when (and (-> gp-0 s5-0) (= (-> gp-0 s5-0 type) symbol))
-    (let ((s4-0 (-> (the-as symbol (-> gp-0 s5-0)) value)))
-     (cond
-      ((and (nonzero? s4-0) (type-type? (rtype-of s4-0) task-control))
-       (set! (-> gp-0 s5-0) (the-as task-control s4-0))
-       )
-      (else
-       (format
-        0
-        "ERROR<GMJ>: value of symbol ~A in task-controls is not a task-control~%"
+    (when (and (-> gp-0 s5-0) (= (-> gp-0 s5-0 type) symbol))
+      ;; found a symbol
+      (let ((s4-0 (-> (the-as symbol (-> gp-0 s5-0)) value)))
+        (cond
+          ((and (nonzero? s4-0) (type-type? (rtype-of s4-0) task-control))
+           ;; symbol holds a task-control, replace it
+           (set! (-> gp-0 s5-0) (the-as basic s4-0))
+           )
+          (else
+           ;; invalid symbol
+           (format
+            0
+            "ERROR<GMJ>: value of symbol ~A in task-controls is not a task-control~%"
+            )
+           (set! (-> gp-0 s5-0) '*null-task-control*)
+           )
+          )
         )
-       (set! (-> gp-0 s5-0) (the-as task-control '*null-task-control*))
-       )
       )
-     )
     )
-   )
   )
 
 ;; failed to figure out what this is:
 (task-control-reset 'game)
+
+
+
+

@@ -5,6 +5,18 @@
 ;; name in dgo: entity-table
 ;; dgos: GAME, ENGINE
 
+;; The *entity-info* table contains some simple information that can be used to
+;; spawn a process for an entity.
+;;   :ptype     the type of the process
+;;   :package   the package that must be loaded (not used?)
+;;   :art-group the art that must be loaded
+;;   :pool      the pool that the process should be allocated from
+;;   :heap-size the required size for the process heap
+
+;; At one point, this was much bigger, but got smaller between
+;; the demo and final build.  The entity info is possibly stored somewhere else
+;; and this may not even be used.
+
 (define *entity-info*
     (new 'static 'boxed-array :type entity-info :length 19 :allocated-length 19
          (new 'static 'entity-info
@@ -155,20 +167,24 @@
   (the-as entity-info
           (cond
             ((nonzero? (-> arg0 method-table 13))
+             ;; we already cached the type in the method table
              (-> arg0 method-table 13)
              )
             (else
+             ;; search the table
              (let ((v1-1 *entity-info*))
                (dotimes (a1-0 (-> v1-1 length))
                  (when (= arg0 (-> v1-1 a1-0 ptype))
-                   (set!
-                    (-> arg0 method-table 13)
+                   ;; found it, cache it in the method table
+                   (set! (-> arg0 method-table 13)
                     (the-as function (-> v1-1 a1-0))
                     )
                    (return (-> v1-1 a1-0))
                    )
                  )
                )
+
+             ;; didn't find it, cache and return #f
              (set! (-> arg0 method-table 13) #f)
              #f
              )

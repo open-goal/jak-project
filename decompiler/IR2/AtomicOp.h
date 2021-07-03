@@ -225,7 +225,8 @@ class SimpleExpression {
     PCPYLD,
     VECTOR_PLUS,
     VECTOR_MINUS,
-    VECTOR_FLOAT_PRODUCT
+    VECTOR_FLOAT_PRODUCT,
+    SUBU_L32_S7,  // use SUBU X, src0, s7 to check if lower 32-bits are s7.
   };
 
   // how many arguments?
