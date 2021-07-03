@@ -2785,6 +2785,10 @@ FormElement* sc_to_handle_get_proc(ShortCircuitElement* elt,
   auto repopped = stack.pop_reg(in1, {}, env, true);
   // fmt::print("repopped: {}\n", repopped->to_string(env));
 
+  if (!repopped) {
+    repopped = var_to_form(in1, pool);
+  }
+
   return pool.alloc_element<GenericElement>(
       GenericOperator::make_function(
           pool.alloc_single_element_form<ConstantTokenElement>(nullptr, "handle->process")),

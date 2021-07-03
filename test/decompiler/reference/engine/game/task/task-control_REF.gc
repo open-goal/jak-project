@@ -2,31 +2,31 @@
 (in-package goal)
 
 ;; definition (debug) for function task-status->string
-(defun-debug task-status->string ((arg0 int))
+(defun-debug task-status->string ((arg0 task-status))
   (let ((v1-0 arg0))
    (cond
-    ((= v1-0 7)
+    ((= v1-0 (task-status need-resolution))
      "need-resolution"
      )
-    ((= v1-0 6)
+    ((= v1-0 (task-status need-reward-speech))
      "need-reward-speech"
      )
-    ((= v1-0 5)
+    ((= v1-0 (task-status need-reminder))
      "need-reminder"
      )
-    ((= v1-0 4)
+    ((= v1-0 (task-status need-reminder-a))
      "need-reminder-a"
      )
-    ((= v1-0 3)
+    ((= v1-0 (task-status need-introduction))
      "need-introduction"
      )
-    ((= v1-0 2)
+    ((= v1-0 (task-status need-hint))
      "need-hint"
      )
-    ((= v1-0 1)
+    ((= v1-0 (task-status unknown))
      "unknown"
      )
-    ((zero? v1-0)
+    ((= v1-0 (task-status invalid))
      "invalid"
      )
     (else
@@ -57,7 +57,7 @@
   )
 
 ;; definition for method 11 of type task-cstage
-(defmethod check-for-close! task-cstage ((obj task-cstage) (arg0 task-control))
+(defmethod task-available? task-cstage ((obj task-cstage) (arg0 task-control))
   (let ((a0-1 obj))
    (cond
     ((nonzero? (logand (-> a0-1 flags) (task-flags closed)))
@@ -73,7 +73,7 @@
      (set! (-> obj flags) (logior (-> obj flags) (task-flags closed)))
      #f
      )
-    ((status-bit-8? *game-info* (-> obj game-task))
+    ((task-complete? *game-info* (-> obj game-task))
      (set! (-> obj flags) (logior (-> obj flags) (task-flags closed)))
      #f
      )
@@ -181,7 +181,7 @@
   )
 
 ;; definition for method 12 of type task-control
-(defmethod close-status! task-control ((obj task-control) (arg0 int))
+(defmethod close-status! task-control ((obj task-control) (arg0 task-status))
   (let ((a0-2 (current-task obj)))
    (dotimes (v1-1 (-> obj stage length))
     (when
@@ -196,7 +196,7 @@
    (format
     0
     "ERROR<GMJ>: close-status! received non-existent task-cstage(~S ~S)--returning #t.~%"
-    (game-task->string a0-2)
+    (game-task->string (the-as game-task a0-2))
     (task-status->string arg0)
     )
    )
@@ -212,7 +212,7 @@
    (return 0)
    )
   (dotimes (s5-0 (-> obj stage length))
-   (when (check-for-close! (-> obj stage s5-0) obj)
+   (when (task-available? (-> obj stage s5-0) obj)
     (set! (-> obj current-stage) s5-0)
     (return (the-as int (-> obj stage s5-0 game-task)))
     )
@@ -275,14 +275,17 @@
   (format
    0
    "ERROR<GMJ>: closed? received non-existent task-cstage(~S ~S)--returning #t.~%"
-   (game-task->string (the-as int arg0))
-   (task-status->string (the-as int arg1))
+   (game-task->string arg0)
+   (task-status->string arg1)
    )
   #t
   )
 
 ;; definition for method 18 of type task-control
-(defmethod exists? task-control ((obj task-control) (arg0 int) (arg1 int))
+(defmethod
+  exists?
+  task-control
+  ((obj task-control) (arg0 game-task) (arg1 task-status))
   (when (= obj *null-task-control*)
    (format 0 "ERROR<GMJ>: exists? received self of *null-task-control*~%~%")
    (return #f)
@@ -5437,7 +5440,7 @@
 
 ;; definition for function get-task-control
 ;; INFO: Return type mismatch basic vs task-control.
-(defun get-task-control ((arg0 int))
+(defun get-task-control ((arg0 game-task))
   (the-as task-control (cond
                         ((or
                           (>= (the-as uint 1) (the-as uint arg0))
@@ -5461,13 +5464,13 @@
 ;; definition for function get-task-status
 ;; INFO: Return type mismatch int vs task-status.
 (defun get-task-status ((arg0 game-task))
-  (let ((gp-0 (get-task-control (the-as int arg0))))
+  (let ((gp-0 (get-task-control arg0)))
    (when gp-0
     (dotimes (s5-0 (-> gp-0 stage length))
      (when
       (and
        (= arg0 (-> gp-0 stage s5-0 game-task))
-       (check-for-close! (-> gp-0 stage s5-0) gp-0)
+       (task-available? (-> gp-0 stage s5-0) gp-0)
        )
       (first-any gp-0 #t)
       (return (the-as int (-> gp-0 stage s5-0 status)))
@@ -5480,8 +5483,8 @@
   )
 
 ;; definition for function close-specific-task!
-(defun close-specific-task! ((arg0 task-control) (arg1 int))
-  (let ((gp-0 (get-task-control (the-as int arg0))))
+(defun close-specific-task! ((arg0 game-task) (arg1 task-status))
+  (let ((gp-0 (get-task-control arg0)))
    (when gp-0
     (dotimes (v1-1 (-> gp-0 stage length))
      (when
@@ -5496,7 +5499,7 @@
     (format
      0
      "ERROR<GMJ>: close-specific! received non-existent task-cstage(~S ~S)--returning #t.~%"
-     (game-task->string (the-as int arg0))
+     (game-task->string arg0)
      (task-status->string arg1)
      )
     )
@@ -5505,8 +5508,8 @@
   )
 
 ;; definition for function open-specific-task!
-(defun open-specific-task! ((arg0 task-control) (arg1 int))
-  (let ((gp-0 (get-task-control (the-as int arg0))))
+(defun open-specific-task! ((arg0 game-task) (arg1 task-status))
+  (let ((gp-0 (get-task-control arg0)))
    (when gp-0
     (dotimes (v1-1 (-> gp-0 stage length))
      (when
@@ -5521,7 +5524,7 @@
     (format
      0
      "ERROR<GMJ>: open-specific! received non-existent task-cstage(~S ~S)--returning #t.~%"
-     (game-task->string (the-as int arg0))
+     (game-task->string arg0)
      (task-status->string arg1)
      )
     )
@@ -5531,12 +5534,12 @@
 
 ;; definition for function task-closed?
 (defun task-closed? ((arg0 game-task) (arg1 task-status))
-  (closed? (get-task-control (the-as int arg0)) arg0 arg1)
+  (closed? (get-task-control arg0) arg0 arg1)
   )
 
 ;; definition for function task-exists?
-(defun task-exists? ((arg0 task-control) (arg1 int))
-  (exists? (get-task-control (the-as int arg0)) (the-as int arg0) arg1)
+(defun task-exists? ((arg0 game-task) (arg1 task-status))
+  (exists? (get-task-control arg0) arg0 arg1)
   )
 
 ;; definition for function task-known?

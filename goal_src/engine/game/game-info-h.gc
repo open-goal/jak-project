@@ -5,6 +5,8 @@
 ; ;; name in dgo: game-info-h
 ; ;; dgos: GAME, ENGINE
 
+;; List of each task in the game.
+;; Each task has a task-control associated with it, see task-control.gc
 (defenum game-task
   :type uint8
   (none 0)
@@ -126,6 +128,7 @@
   (max 116)
   (*unknown* 255))
 
+;; Game parameters.
 (deftype game-bank (basic)
   ((life-max-default   float  :offset-assert 4)
    (life-start-default float  :offset-assert 8)
@@ -147,16 +150,18 @@
                          )
   )
 
+;; aid
 (deftype actor-id (uint32)
   ()
   :flag-assert #x900000004
   )
 
+;; the possible state for a level.
 (deftype level-buffer-state (structure)
-  ((name          basic  :offset-assert 0)
-   (display?      symbol :offset-assert 4)
-   (force-vis?    symbol :offset-assert 8)
-   (force-inside? symbol :offset-assert 12)
+  ((name          basic  :offset-assert 0) ;; level name
+   (display?      symbol :offset-assert 4) ;; should it be drawn?
+   (force-vis?    symbol :offset-assert 8) ;; ? should it have its vis loaded?
+   (force-inside? symbol :offset-assert 12) ;; ?
    )
   :pack-me
   :method-count-assert 9
@@ -199,8 +204,9 @@
 
 (define-extern *load-state* load-state)
 
+;; a game checkpoint
 (deftype continue-point (basic)
-  ((name          basic          :offset-assert 4)
+  ((name          string         :offset-assert 4)
    (level         basic          :offset-assert 8)
    (flags         uint32         :offset-assert 12)
    (trans         vector :inline :offset-assert 16)
@@ -225,8 +231,11 @@
 (declare-type entity-perm structure)
 (declare-type entity-perm-array basic)
 (declare-type game-save basic)
+;; Game Info is the full state of the game
+;; this information can be saved/loaded from a game save.
+;; also, it must be manually synchronized with entity permanent state in the levels
 (deftype game-info (basic)
-  ((mode                  symbol                        :offset-assert   4)
+  ((mode                  symbol                        :offset-assert   4) ;; can be play/debug
    (save-name             basic                         :offset-assert   8)
    (life                  float                         :offset-assert  12)
    (life-max              float                         :offset-assert  16)
@@ -236,8 +245,8 @@
    (deaths-per-level      uint8                      32 :offset-assert  60)
    (buzzer-total          float                         :offset-assert  92)
    (fuel                  float                         :offset-assert  96)
-   (perm-list             entity-perm-array             :offset-assert 100)
-   (task-perm-list        entity-perm-array             :offset-assert 104)
+   (perm-list             entity-perm-array             :offset-assert 100) ;; permament storage for entities
+   (task-perm-list        entity-perm-array             :offset-assert 104) ;; permanent storage for task entities
    (current-continue      continue-point                :offset-assert 108)
    (text-ids-seen         bit-array                     :offset-assert 112)
    (level-opened          uint8                      32 :offset-assert 116)
@@ -275,24 +284,24 @@
   :size-assert         #x144
   :flag-assert         #x1d00000144
   (:methods
-   (initialize! (_type_ symbol symbol string) _type_ 9)
-   (dummy-10 () none 10)
-   (status-bit-8? (_type_ game-task) symbol 11)
+   (initialize! (_type_ symbol game-save string) _type_ 9)
+   (adjust (_type_ symbol float handle) float 10)
+   (task-complete? (_type_ game-task) symbol 11)
    (lookup-entity-perm-by-aid (_type_ uint) entity-perm 12)
    (get-entity-task-perm (_type_ game-task) entity-perm 13)
-   (dummy-14 (_type_) none 14)
-   (update-level-entities! (_type_ level) none 15)
+   (copy-perms-from-level! (_type_ level) none 14)
+   (copy-perms-to-level! (_type_ level) none 15)
    (debug-print (_type_ symbol) _type_ 16)
    (get-or-create-continue! (_type_) continue-point 17)
    (get-continue-by-name (_type_ string) continue-point 18)
    (set-continue! (_type_ basic) continue-point 19)
-   (dummy-20 () none 20)
-   (dummy-21 () none 21)
-   (dummy-22 () none 22)
-   (dummy-23 () none 23)
+   (buzzer-count (_type_ game-task) int 20)
+   (seen-text? (_type_ game-text-id) symbol 21)
+   (mark-text-as-seen (_type_ game-text-id) none 22)
+   (got-buzzer? (_type_ game-task int) symbol 23)
    (dummy-24 () none 24)
    (load-game! (_type_ game-save) game-save 25)
-   (dummy-26 () none 26)
+   (clear-text-seen! (_type_ game-text-id) none 26)
    (get-death-count (_type_ symbol) int 27)
    (get-health-percent-lost (_type_) float 28)
    )
@@ -308,4 +317,4 @@
     )
   )
 
-(define-extern game-task->string (function int string))
+(define-extern game-task->string (function game-task string))

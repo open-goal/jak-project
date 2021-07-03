@@ -600,9 +600,9 @@
   (bit-3 3)
   (bit-4 4)
   (user-set-from-cstage 5)
-  (complete 6)
+  (complete 6) ;; wrong!
   (bit-7 7)
-  (bit-8 8)
+  (real-complete 8)
   (bit-9 9)
   )
 
@@ -631,7 +631,6 @@
   (need-reminder 5)
   (need-reward-speech 6)
   (need-resolution 7)
-  (*unknown* 999999)
   )
 
 (defenum game-task
@@ -825,6 +824,8 @@
   
   (jungle-lurkerm-unblock #x22f)
   (jungle-lurkerm-return #x230)
+  
+  (MISSING-orb-hint #x233)
   
   (beach-gimmie #x262)
   (beach-sentinel #x263)
@@ -1562,7 +1563,7 @@
     (get-bit (_type_ int) symbol 9)
     (clear-bit (_type_ int) int 10)
     (set-bit (_type_ int) int 11)
-    (clear (_type_) _type_ 12)
+    (clear-all! (_type_) _type_ 12)
     )
   )
 
@@ -8762,7 +8763,7 @@
   )
 
 (deftype continue-point (basic)
-  ((name          basic           :offset-assert 4)
+  ((name          string          :offset-assert 4)
    (level         basic           :offset-assert 8)
    (flags         uint32          :offset-assert 12)
    (trans         vector  :inline :offset-assert 16)
@@ -8838,24 +8839,24 @@
   :flag-assert         #x1d00000144
   ;; field dummy is a basic loaded with a signed load
   (:methods
-    (initialize! (_type_ symbol symbol string) _type_ 9)
-    (dummy-10 () none 10)
-    (status-bit-8? (_type_ game-task) symbol 11)
+    (initialize! (_type_ symbol game-save string) _type_ 9)
+    (adjust (_type_ symbol float handle) float 10)
+    (task-complete? (_type_ game-task) symbol 11)
     (lookup-entity-perm-by-aid (_type_ uint) entity-perm 12)
     (get-entity-task-perm (_type_ game-task) entity-perm 13)
-    (dummy-14 (_type_) none 14)
-    (update-level-entities! (_type_ level) none 15)
+    (copy-perms-from-level! (_type_ level) none 14)
+    (copy-perms-to-level! (_type_ level) none 15)
     (debug-print (_type_ symbol) _type_ 16)
     (get-or-create-continue! (_type_) continue-point 17)
     (get-continue-by-name (_type_ string) continue-point 18)
     (set-continue! (_type_ basic) continue-point 19)
-    (dummy-20 () none 20)
-    (dummy-21 () none 21)
-    (dummy-22 () none 22)
-    (dummy-23 () none 23)
+    (buzzer-count (_type_ game-task) int 20)
+    (seen-text? (_type_ game-text-id) symbol 21)
+    (mark-text-as-seen (_type_ game-text-id) none 22)
+    (got-buzzer? (_type_ game-task int) symbol 23)
     (dummy-24 () none 24)
     (load-game! (_type_ game-save) game-save 25)
-    (dummy-26 () none 26)
+    (clear-text-seen! (_type_ game-text-id) none 26)
     (get-death-count (_type_ symbol) int 27)
     (get-health-percent-lost (_type_) float 28)
     )
@@ -9583,7 +9584,7 @@
   (:methods
     (new (symbol type process pickup-type float) _type_ 0)
     (dummy-9 () none 9)
-    (dummy-10 (_type_ symbol) none 10)
+    (reset! (_type_ symbol) none 10)
     (dummy-11 (_type_) float 11)
     )
   )
@@ -16198,7 +16199,7 @@
   (:methods
     (get-game-task (_type_) game-task 9)
     (get-task-status (_type_) task-status 10)
-    (check-for-close! (_type_ task-control) symbol 11)
+    (task-available? (_type_ task-control) symbol 11)
     (closed? (_type_) symbol 12)
     (closed-by-default? (_type_) symbol 13)
     (close-task! (_type_) int 14)
@@ -16217,13 +16218,13 @@
     (current-task (_type_) int 9)
     (current-status (_type_) int 10)
     (close-current! (_type_) none 11)
-    (close-status! (_type_ int) int 12)
+    (close-status! (_type_ task-status) int 12)
     (first-any (_type_ symbol) int 13)
     (reset! (_type_ symbol symbol) int 14)
     (closed? (_type_ game-task task-status) symbol 15)
     (get-reminder (_type_ int) int 16)
     (save-reminder (_type_ int int) int 17) ;; TODO - i believe this is none
-    (exists? (_type_ int int) symbol 18)
+    (exists? (_type_ game-task task-status) symbol 18)
     )
   )
 
@@ -16320,11 +16321,11 @@
 
 ;; - Functions
 
-(define-extern get-task-control (function int task-control))
-(define-extern level-hint-spawn function)
-(define-extern get-game-count function)
-(define-extern activate-orb-all function)
-(define-extern close-specific-task! (function task-control int int))
+(define-extern get-task-control (function game-task task-control))
+(define-extern level-hint-spawn (function game-text-id string symbol process-tree int none))
+(define-extern get-game-count (function int count-info))
+(define-extern activate-orb-all (function int int))
+(define-extern close-specific-task! (function game-task task-status int))
 (define-extern reset-all-hint-controls (function none))
 (define-extern reset-actors (function symbol none))
 (define-extern set-blackout-frames (function int uint))
@@ -16332,7 +16333,7 @@
 (define-extern stop (function symbol int))
 (define-extern start (function symbol continue-point target))
 (define-extern position-in-front-of-camera! (function vector float float vector))
-(define-extern game-task->string (function int string))
+(define-extern game-task->string (function game-task string))
 (define-extern trsq->continue-point (function trsq none))
 
 ;; - Symbols
@@ -20047,9 +20048,9 @@
 
 ;; - Functions
 
-(define-extern task-status->string (function int string))
-(define-extern open-specific-task! (function task-control int int))
-(define-extern task-exists? (function task-control int symbol))
+(define-extern task-status->string (function task-status string))
+(define-extern open-specific-task! (function game-task task-status int))
+(define-extern task-exists? (function game-task task-status symbol))
 (define-extern sages-kidnapped? (function symbol))
 
 ;; - Symbols
