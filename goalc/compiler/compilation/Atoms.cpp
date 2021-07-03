@@ -97,6 +97,10 @@ const std::unordered_map<
         {".pw.srl", &Compiler::compile_asm_pw_srl},
         {".pw.sra", &Compiler::compile_asm_pw_sra},
 
+        {".por", &Compiler::compile_asm_por},
+        {".pnor", &Compiler::compile_asm_pnor},
+        {".pand", &Compiler::compile_asm_pand},
+
         {".pceqb", &Compiler::compile_asm_pceqb},
         {".pceqh", &Compiler::compile_asm_pceqh},
         {".pceqw", &Compiler::compile_asm_pceqw},

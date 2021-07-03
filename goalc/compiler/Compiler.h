@@ -452,6 +452,10 @@ class Compiler {
   Val* compile_asm_pw_srl(const goos::Object& form, const goos::Object& rest, Env* env);
   Val* compile_asm_pw_sra(const goos::Object& form, const goos::Object& rest, Env* env);
 
+  Val* compile_asm_por(const goos::Object& form, const goos::Object& rest, Env* env);
+  Val* compile_asm_pnor(const goos::Object& form, const goos::Object& rest, Env* env);
+  Val* compile_asm_pand(const goos::Object& form, const goos::Object& rest, Env* env);
+
   Val* compile_asm_pceqb(const goos::Object& form, const goos::Object& rest, Env* env);
   Val* compile_asm_pceqh(const goos::Object& form, const goos::Object& rest, Env* env);
   Val* compile_asm_pceqw(const goos::Object& form, const goos::Object& rest, Env* env);

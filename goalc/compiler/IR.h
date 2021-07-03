@@ -577,7 +577,10 @@ class IR_Int128Math3Asm : public IR_Asm {
     PCEQW,
     PCGTB,
     PCGTH,
-    PCGTW
+    PCGTW,
+    POR,
+    PXOR,
+    PAND
   };
   IR_Int128Math3Asm(bool use_color,
                     const RegVal* dst,

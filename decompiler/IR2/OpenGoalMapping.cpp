@@ -12,6 +12,14 @@ const std::map<InstructionKind, OpenGOALAsm::Function> MIPS_ASM_TO_OPEN_GOAL_FUN
     {InstructionKind::PSRAW, {".pw.sra", {}}},
     {InstructionKind::PSUBW, {".psubw", {}}},
 
+    // Boolean Arithmetic - or / not or / and
+    {InstructionKind::POR, {".por", {}}},
+    {InstructionKind::PNOR, {".pnor", {}}},
+    {InstructionKind::PAND, {".pand", {}}},
+
+    // Parallel Pack
+    {InstructionKind::PPACH, {".ppach", {}}},
+
     // Parallel Compares
     {InstructionKind::PCEQB, {".pceqb", {}}},
     // {InstructionKind::PCEQH, {".pceqh", {}}},
