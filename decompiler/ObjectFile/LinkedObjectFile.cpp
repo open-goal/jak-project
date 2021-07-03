@@ -462,8 +462,7 @@ void LinkedObjectFile::process_fp_relative_links() {
         }
 
         // HACKs
-        if (instr.kind == InstructionKind::PEXTLW) {  // Review - should i add the LB and LH
-                                                      // varients here as well?
+        if (instr.kind == InstructionKind::PEXTLW) {
           continue;
         }
 

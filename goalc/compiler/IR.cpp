@@ -1542,11 +1542,26 @@ std::string IR_Int128Math3Asm::print() {
     case Kind::PCPYUD:
       function = ".pcpyud";
       break;
+    case Kind::PSUBW:
+      function = ".psubw";
+      break;
+    case Kind::PCEQB:
+      function = ".pceqb";
+      break;
+    case Kind::PCEQH:
+      function = ".pceqh";
+      break;
     case Kind::PCEQW:
       function = ".pceqw";
       break;
-    case Kind::PSUBW:
-      function = ".psubw";
+    case Kind::PCGTB:
+      function = ".pcgtb";
+      break;
+    case Kind::PCGTH:
+      function = ".pcgth";
+      break;
+    case Kind::PCGTW:
+      function = ".pcgtw";
       break;
     default:
       assert(false);
@@ -1604,8 +1619,23 @@ void IR_Int128Math3Asm::do_codegen(emitter::ObjectGenerator* gen,
     case Kind::PCPYUD:
       gen->add_instr(IGen::pcpyud(dst, src1, src2), irec);
       break;
+    case Kind::PCEQB:
+      gen->add_instr(IGen::parallel_compare_e_b(dst, src2, src1), irec);
+      break;
+    case Kind::PCEQH:
+      gen->add_instr(IGen::parallel_compare_e_h(dst, src2, src1), irec);
+      break;
     case Kind::PCEQW:
-      gen->add_instr(IGen::pceqw(dst, src1, src2), irec);
+      gen->add_instr(IGen::parallel_compare_e_w(dst, src2, src1), irec);
+      break;
+    case Kind::PCGTB:
+      gen->add_instr(IGen::parallel_compare_gt_b(dst, src2, src1), irec);
+      break;
+    case Kind::PCGTH:
+      gen->add_instr(IGen::parallel_compare_gt_h(dst, src2, src1), irec);
+      break;
+    case Kind::PCGTW:
+      gen->add_instr(IGen::parallel_compare_gt_w(dst, src2, src1), irec);
       break;
     case Kind::PSUBW:
       // psubW on mips is psubD on x86...

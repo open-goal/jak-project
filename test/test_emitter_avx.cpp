@@ -438,14 +438,14 @@ TEST(EmitterAVX, VPUNPCKHQDQ) {
 TEST(EmitterAVX, VPCMPEQD) {
   CodeTester tester;
   tester.init_code_buffer(1024);
-  tester.emit(IGen::pceqw(XMM0 + 3, XMM0 + 3, XMM0 + 3));
-  tester.emit(IGen::pceqw(XMM0 + 3, XMM0 + 3, XMM0 + 13));
-  tester.emit(IGen::pceqw(XMM0 + 3, XMM0 + 13, XMM0 + 3));
-  tester.emit(IGen::pceqw(XMM0 + 3, XMM0 + 13, XMM0 + 13));
-  tester.emit(IGen::pceqw(XMM0 + 13, XMM0 + 3, XMM0 + 3));
-  tester.emit(IGen::pceqw(XMM0 + 13, XMM0 + 3, XMM0 + 13));
-  tester.emit(IGen::pceqw(XMM0 + 13, XMM0 + 13, XMM0 + 3));
-  tester.emit(IGen::pceqw(XMM0 + 13, XMM0 + 13, XMM0 + 13));
+  tester.emit(IGen::parallel_compare_e_w(XMM0 + 3, XMM0 + 3, XMM0 + 3));
+  tester.emit(IGen::parallel_compare_e_w(XMM0 + 3, XMM0 + 3, XMM0 + 13));
+  tester.emit(IGen::parallel_compare_e_w(XMM0 + 3, XMM0 + 13, XMM0 + 3));
+  tester.emit(IGen::parallel_compare_e_w(XMM0 + 3, XMM0 + 13, XMM0 + 13));
+  tester.emit(IGen::parallel_compare_e_w(XMM0 + 13, XMM0 + 3, XMM0 + 3));
+  tester.emit(IGen::parallel_compare_e_w(XMM0 + 13, XMM0 + 3, XMM0 + 13));
+  tester.emit(IGen::parallel_compare_e_w(XMM0 + 13, XMM0 + 13, XMM0 + 3));
+  tester.emit(IGen::parallel_compare_e_w(XMM0 + 13, XMM0 + 13, XMM0 + 13));
   EXPECT_EQ(tester.dump_to_hex_string(true),
             "C5E176DBC4C16176DDC59176DBC4C11176DDC56176EBC4416176EDC51176EBC4411176ED");
 }

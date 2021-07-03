@@ -607,6 +607,30 @@ Val* Compiler::compile_asm_pw_sra(const goos::Object& form, const goos::Object& 
   return compile_asm_int128_math2_imm_u8(form, rest, IR_Int128Math2Asm::Kind::PW_SRA, env);
 }
 
+Val* Compiler::compile_asm_pceqb(const goos::Object& form, const goos::Object& rest, Env* env) {
+  return compile_asm_int128_math3(form, rest, IR_Int128Math3Asm::Kind::PCEQB, env);
+}
+
+Val* Compiler::compile_asm_pceqh(const goos::Object& form, const goos::Object& rest, Env* env) {
+  return compile_asm_int128_math3(form, rest, IR_Int128Math3Asm::Kind::PCEQH, env);
+}
+
+Val* Compiler::compile_asm_pceqw(const goos::Object& form, const goos::Object& rest, Env* env) {
+  return compile_asm_int128_math3(form, rest, IR_Int128Math3Asm::Kind::PCEQW, env);
+}
+
+Val* Compiler::compile_asm_pcgtb(const goos::Object& form, const goos::Object& rest, Env* env) {
+  return compile_asm_int128_math3(form, rest, IR_Int128Math3Asm::Kind::PCGTB, env);
+}
+
+Val* Compiler::compile_asm_pcgth(const goos::Object& form, const goos::Object& rest, Env* env) {
+  return compile_asm_int128_math3(form, rest, IR_Int128Math3Asm::Kind::PCGTH, env);
+}
+
+Val* Compiler::compile_asm_pcgtw(const goos::Object& form, const goos::Object& rest, Env* env) {
+  return compile_asm_int128_math3(form, rest, IR_Int128Math3Asm::Kind::PCGTW, env);
+}
+
 Val* Compiler::compile_asm_pextub(const goos::Object& form, const goos::Object& rest, Env* env) {
   return compile_asm_int128_math3(form, rest, IR_Int128Math3Asm::Kind::PEXTUB, env);
 }
@@ -637,10 +661,6 @@ Val* Compiler::compile_asm_pcpyud(const goos::Object& form, const goos::Object& 
 
 Val* Compiler::compile_asm_pcpyld(const goos::Object& form, const goos::Object& rest, Env* env) {
   return compile_asm_int128_math3(form, rest, IR_Int128Math3Asm::Kind::PCPYLD, env);
-}
-
-Val* Compiler::compile_asm_pceqw(const goos::Object& form, const goos::Object& rest, Env* env) {
-  return compile_asm_int128_math3(form, rest, IR_Int128Math3Asm::Kind::PCEQW, env);
 }
 
 Val* Compiler::compile_asm_psubw(const goos::Object& form, const goos::Object& rest, Env* env) {
