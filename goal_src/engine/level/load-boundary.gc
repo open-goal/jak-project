@@ -7,7 +7,6 @@
 
 
 (defmethod reset! load-state ((obj load-state))
-  (local-vars (v1-1 int))
   (set! (-> obj want 0 name) #f)
   (set! (-> obj want 0 display?) #f)
   (set! (-> obj want 0 force-vis?) #f)
@@ -17,11 +16,100 @@
   (set! (-> obj want 1 force-vis?) #f)
   (set! (-> obj want 1 force-inside?) #f)
   (set! (-> obj command-list) '())
-  (set! v1-1 0)
-  (while (< v1-1 256)
+  (dotimes (v1-1 256)
    (set! (-> obj object-name v1-1) #f)
-   (set! (-> obj object-status v1-1) (the basic 0))
-   (+! v1-1 1)
+   (set! (-> obj object-status v1-1) (the-as basic 0))
    )
   obj
   )
+
+(defmethod want-levels load-state ((obj load-state) (arg0 symbol) (arg1 symbol))
+  (dotimes (v1-0 LEVEL_COUNT)
+   (cond
+    ((= (-> obj want v1-0 name) arg0)
+     (set! arg0 #f)
+     )
+    ((= (-> obj want v1-0 name) arg1)
+     (set! arg1 #f)
+     )
+    (else
+     (set! (-> obj want v1-0 name) #f)
+     )
+    )
+   )
+  (when arg0
+   (dotimes (v1-4 LEVEL_COUNT)
+    (when (not (-> obj want v1-4 name))
+     (set! (-> obj want v1-4 name) arg0)
+     (set! (-> obj want v1-4 display?) #f)
+     (set! (-> obj want v1-4 force-vis?) #f)
+     (set! (-> obj want v1-4 force-inside?) #f)
+     (set! v1-4 LEVEL_COUNT)
+     )
+    )
+   )
+  (when arg1
+   (dotimes (v1-10 LEVEL_COUNT)
+    (when (not (-> obj want v1-10 name))
+     (set! (-> obj want v1-10 name) arg1)
+     (set! (-> obj want v1-10 display?) #f)
+     (set! (-> obj want v1-10 force-vis?) #f)
+     (set! (-> obj want v1-10 force-inside?) #f)
+     (set! v1-10 LEVEL_COUNT)
+     )
+    )
+   )
+  0
+  )
+
+(defmethod want-display-level load-state ((obj load-state) (arg0 symbol) (arg1 symbol))
+  (dotimes (v1-0 LEVEL_COUNT)
+   (when (= (-> obj want v1-0 name) arg0)
+    (set! (-> obj want v1-0 display?) arg1)
+    (return 0)
+    )
+   )
+  (if arg1
+   (format 0 "ERROR: can't display ~A because it isn't loaded~%" arg0)
+   )
+  0
+  )
+
+(defmethod want-vis load-state ((obj load-state) (arg0 symbol))
+  (set! (-> obj vis-nick) arg0)
+  0
+  )
+
+(defmethod want-force-vis load-state ((obj load-state) (arg0 symbol) (arg1 symbol))
+  (dotimes (v1-0 LEVEL_COUNT)
+   (if (= (-> obj want v1-0 name) arg0)
+    (set! (-> obj want v1-0 force-vis?) arg1)
+    (return 0)
+    )
+   )
+  (format 0 "ERROR: can't force vis on ~A because it isn't loaded~%" arg0)
+  0
+  )
+
+(defun load-state-want-levels ((arg0 symbol) (arg1 symbol))
+  (want-levels *load-state* arg0 arg1)
+  )
+
+(defun load-state-want-display-level ((arg0 symbol) (arg1 symbol))
+  (want-display-level *load-state* arg0 arg1)
+  )
+
+(defun load-state-want-vis ((arg0 symbol))
+  (want-vis *load-state* arg0)
+  )
+
+(defun load-state-want-force-vis ((arg0 symbol) (arg1 symbol))
+  (want-force-vis *load-state* arg0 arg1)
+  )
+
+
+(define *display-load-commands* #f)
+(define *backup-load-state* (new 'global 'load-state))
+
+(define-perm *load-state* load-state (new 'global 'load-state))
+

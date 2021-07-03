@@ -13,7 +13,7 @@ namespace Reg {
 
 // clang-format off
 const bool allowed_local_gprs[Reg::MAX_GPR] = {
-    false /*R0*/, false /*AT*/, true /*V0*/,  true /*V1*/,
+    false /*R0*/, true /*AT*/,  true /*V0*/,  true /*V1*/,
     true /*A0*/,  true /*A1*/,  true /*A2*/,  true /*A3*/,
     true /*T0*/,  true /*T1*/,  true /*T2*/,  true /*T3*/,
     true /*T4*/,  true /*T5*/,  true /*T6*/,  true /*T7*/,

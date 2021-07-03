@@ -170,6 +170,9 @@ Config read_config_file(const std::string& path_to_config_file) {
     config.hacks.cond_with_else_len_by_func_name[func_name].max_length_by_start_block[cond_name] =
         max_len;
   }
+
+  config.bad_format_strings =
+      hacks_json.at("bad_format_strings").get<std::unordered_map<std::string, int>>();
   return config;
 }
 

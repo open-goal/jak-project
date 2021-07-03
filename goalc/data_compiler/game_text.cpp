@@ -173,6 +173,9 @@ std::vector<std::unordered_map<int, std::string>> parse(const goos::Object& data
  */
 void compile(const std::vector<std::unordered_map<int, std::string>>& text,
              const std::string& group_name) {
+  if (text.empty()) {
+    return;
+  }
   // get all text ID's we know
   std::vector<int> add_order;
   add_order.reserve(text.front().size());

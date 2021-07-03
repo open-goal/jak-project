@@ -1093,7 +1093,7 @@ Val* Compiler::compile_cdr(const goos::Object& form, const goos::Object& rest, E
   if (pair->type() != m_ts.make_typespec("object")) {
     typecheck(form, m_ts.make_typespec("pair"), pair->type(), "Type of argument to cdr");
   }
-  auto result = fe->alloc_val<PairEntryVal>(m_ts.make_typespec("object"), pair, false);
+  auto result = fe->alloc_val<PairEntryVal>(m_ts.make_typespec("pair"), pair, false);
   result->mark_as_settable();
   return result;
 }

@@ -21,7 +21,8 @@ bool convert_to_expressions(
 
   // set argument names to some reasonable defaults. these will be used if the user doesn't
   // give us anything more specific.
-  if (f.guessed_name.kind == FunctionName::FunctionKind::GLOBAL) {
+  if (f.guessed_name.kind == FunctionName::FunctionKind::GLOBAL ||
+      f.guessed_name.kind == FunctionName::FunctionKind::UNIDENTIFIED) {
     f.ir2.env.set_remap_for_function(f.type.arg_count() - 1);
   } else if (f.guessed_name.kind == FunctionName::FunctionKind::METHOD) {
     if (f.guessed_name.method_id == GOAL_NEW_METHOD) {

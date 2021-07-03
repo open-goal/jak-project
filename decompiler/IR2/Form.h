@@ -8,6 +8,7 @@
 #include "decompiler/IR2/AtomicOp.h"
 #include "common/goos/Object.h"
 #include "common/type_system/TypeSystem.h"
+#include "decompiler/Disasm/DecompilerLabel.h"
 
 namespace decompiler {
 class Form;
@@ -153,6 +154,11 @@ class SimpleExpressionElement : public FormElement {
                                       FormStack& stack,
                                       std::vector<FormElement*>* result,
                                       bool allow_side_effects);
+  void update_from_stack_subu_l32_s7(const Env& env,
+                                     FormPool& pool,
+                                     FormStack& stack,
+                                     std::vector<FormElement*>* result,
+                                     bool allow_side_effects);
   void update_from_stack_float_to_int(const Env& env,
                                       FormPool& pool,
                                       FormStack& stack,
@@ -190,6 +196,17 @@ class SimpleExpressionElement : public FormElement {
                                 FormStack& stack,
                                 std::vector<FormElement*>* result,
                                 bool allow_side_effects);
+  void update_from_stack_vector_plus_minus(bool is_add,
+                                           const Env& env,
+                                           FormPool& pool,
+                                           FormStack& stack,
+                                           std::vector<FormElement*>* result,
+                                           bool allow_side_effects);
+  void update_from_stack_vector_float_product(const Env& env,
+                                              FormPool& pool,
+                                              FormStack& stack,
+                                              std::vector<FormElement*>* result,
+                                              bool allow_side_effects);
 
   const SimpleExpression& expr() const { return m_expr; }
 
@@ -1250,17 +1267,27 @@ class StoreArrayAccess : public FormElement {
   std::optional<TypeSpec> m_src_cast_type;
 };
 
+/*!
+ * This marks some static data that will be decompiled in a later pass.
+ * This is done at the very end so that we can make sure all static references to lambdas work.
+ */
 class DecompiledDataElement : public FormElement {
  public:
-  DecompiledDataElement(goos::Object description);
+  // DecompiledDataElement(goos::Object description);
+  DecompiledDataElement(const DecompilerLabel& label,
+                        const std::optional<LabelType>& type_hint = {});
   goos::Object to_form_internal(const Env& env) const override;
   void apply(const std::function<void(FormElement*)>& f) override;
   void apply_form(const std::function<void(Form*)>& f) override;
   void collect_vars(RegAccessSet& vars, bool recursive) const override;
   void get_modified_regs(RegSet& regs) const override;
+  void do_decomp(const Env& env, const LinkedObjectFile* file);
 
  private:
+  bool m_decompiled = false;
   goos::Object m_description;
+  DecompilerLabel m_label;
+  std::optional<LabelType> m_type_hint;
 };
 
 class LetElement : public FormElement {
@@ -1349,7 +1376,7 @@ class StackStructureDefElement : public FormElement {
 
 class VectorFloatLoadStoreElement : public FormElement {
  public:
-  VectorFloatLoadStoreElement(Register vf_reg, Form* location, bool is_load);
+  VectorFloatLoadStoreElement(Register vf_reg, Form* location, bool is_load, int my_idx);
   goos::Object to_form_internal(const Env& env) const override;
   void apply(const std::function<void(FormElement*)>& f) override;
   void apply_form(const std::function<void(Form*)>& f) override;
@@ -1359,11 +1386,16 @@ class VectorFloatLoadStoreElement : public FormElement {
   void collect_vf_regs(RegSet& regs) const;
   bool is_load() const { return m_is_load; }
   Register vf_reg() const { return m_vf_reg; }
+  const std::optional<TypeSpec>& addr_type() const { return m_addr_type; }
+  Form* location() const { return m_location; }
+  int my_idx() const { return m_my_idx; }
 
  private:
   Register m_vf_reg;
   Form* m_location = nullptr;
   bool m_is_load = false;
+  std::optional<TypeSpec> m_addr_type;
+  int m_my_idx = -1;
 };
 
 class StackSpillStoreElement : public FormElement {

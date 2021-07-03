@@ -887,10 +887,12 @@ void* ultimate_memcpy(void* dst, void* src, uint32_t size) {
       }
       gfunc_774.offset = sym->value;
     }
-    printf("calling goal ultimate-memcpy!\n");
-    return Ptr<u8>(call_goal(gfunc_774, make_u8_ptr(dst).offset, make_u8_ptr(src).offset, size,
-                             s7.offset, g_ee_main_mem))
-        .c();
+    printf("Replacing goal ultimate-memcpy! with memmove\n");
+    return memmove(dst, src, size);
+    //    return Ptr<u8>(call_goal(gfunc_774, make_u8_ptr(dst).offset, make_u8_ptr(src).offset,
+    //    size,
+    //                             s7.offset, g_ee_main_mem))
+    //        .c();
   } else {
     return memmove(dst, src, size);
   }

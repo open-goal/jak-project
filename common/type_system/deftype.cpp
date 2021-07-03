@@ -188,10 +188,16 @@ void declare_method(Type* type, TypeSystem* type_system, const goos::Object& def
     obj = cdr(obj);
 
     bool no_virtual = false;
+    bool replace_method = false;
 
     if (!obj->is_empty_list() && car(obj).is_symbol(":no-virtual")) {
       obj = cdr(obj);
       no_virtual = true;
+    }
+
+    if (!obj->is_empty_list() && car(obj).is_symbol(":replace")) {
+      obj = cdr(obj);
+      replace_method = true;
     }
 
     int id = -1;
@@ -212,7 +218,8 @@ void declare_method(Type* type, TypeSystem* type_system, const goos::Object& def
     });
     function_typespec.add_arg(parse_typespec(type_system, return_type));
 
-    auto info = type_system->declare_method(type, method_name, no_virtual, function_typespec);
+    auto info = type_system->declare_method(type, method_name, no_virtual, function_typespec,
+                                            replace_method);
 
     // check the method assert
     if (id != -1) {

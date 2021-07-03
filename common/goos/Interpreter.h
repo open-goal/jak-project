@@ -192,6 +192,9 @@ class Interpreter {
   Object eval_string_length(const Object& form,
                             Arguments& args,
                             const std::shared_ptr<EnvironmentObject>& env);
+  Object eval_string_append(const Object& form,
+                            Arguments& args,
+                            const std::shared_ptr<EnvironmentObject>& env);
   Object eval_ash(const Object& form,
                   Arguments& args,
                   const std::shared_ptr<EnvironmentObject>& env);

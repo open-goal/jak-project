@@ -39,7 +39,9 @@ class FormStack {
                 const RegSet& barrier,
                 const Env& env,
                 bool allow_side_effects,
-                int begin_idx = -1);
+                int begin_idx = -1,
+                RegisterAccess* orig_out = nullptr,
+                bool* found_orig_out = nullptr);
   FormElement* pop_back(FormPool& pool);
   bool is_single_expression();
   std::vector<FormElement*> rewrite(FormPool& pool, const Env& env) const;
@@ -64,6 +66,8 @@ class FormStack {
     std::string print(const Env& env) const;
   };
 
+  // requires consecutive active entries to succeed (can't skip over inactives).
+  // it's safe to use pop with the same size or smaller to remove the entries you expect.
   std::optional<std::vector<StackEntry>> try_getting_active_stack_entries(
       const std::vector<bool>& is_set) const {
     if (is_set.size() > m_stack.size()) {
@@ -99,6 +103,29 @@ class FormStack {
       assert(!m_stack.empty());
       m_stack.pop_back();
     }
+  }
+
+  // get the back, skipping inactives
+  const StackEntry* active_back() const {
+    for (size_t i = m_stack.size(); i-- > 0;) {
+      auto& e = m_stack.at(i);
+      if (e.active) {
+        return &e;
+      }
+    }
+    return nullptr;
+  }
+
+  // pop the back, skipping inactives
+  void pop_active_back() {
+    for (size_t i = m_stack.size(); i-- > 0;) {
+      auto& e = m_stack.at(i);
+      if (e.active) {
+        m_stack.erase(m_stack.begin() + i);
+        return;
+      }
+    }
+    assert(false);
   }
 
  private:

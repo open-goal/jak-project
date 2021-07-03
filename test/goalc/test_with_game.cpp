@@ -545,6 +545,12 @@ TEST_F(WithGameTests, InlinedPackedBasics) {
                           "0\n"});
 }
 
+TEST_F(WithGameTests, PartialDefineTypeField) {
+  runner.run_static_test(env, testCategory, "test-partial-define-type-field.gc",
+                         {"#f\n"
+                          "0\n"});
+}
+
 // VECTOR FLOAT TESTS
 
 // ---- One off Tests
@@ -763,6 +769,15 @@ TEST_F(WithGameTests, SoundName) {
   runner.run_static_test(env, testCategory, "test-sound-name.gc",
                          {"#t #f #f\n"
                           "0\n"});
+}
+
+TEST_F(WithGameTests, StaticLambda) {
+  runner.run_static_test(env, testCategory, "test-static-lambda.gc", {"Add: 30 sub: -10\n0\n"});
+}
+
+TEST_F(WithGameTests, MethodReplace) {
+  runner.run_static_test(env, testCategory, "test-method-replace.gc",
+                         {"relocate! foo: 123 heap: 1 name: 2\n0\n"});
 }
 
 TEST(TypeConsistency, TypeConsistency) {

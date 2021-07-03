@@ -150,9 +150,11 @@ class SymbolInfoMap {
     m_map[method_name]->push_back(SymbolInfo::make_method(method_name, type_name, defining_form));
   }
 
-  std::vector<SymbolInfo>* lookup_exact_name(const std::string& name) { return m_map.lookup(name); }
+  std::vector<SymbolInfo>* lookup_exact_name(const std::string& name) const {
+    return m_map.lookup(name);
+  }
 
-  std::set<std::string> lookup_symbols_starting_with(const std::string& prefix) {
+  std::set<std::string> lookup_symbols_starting_with(const std::string& prefix) const {
     std::set<std::string> result;
     auto lookup = m_map.lookup_prefix(prefix);
     for (auto& x : lookup) {

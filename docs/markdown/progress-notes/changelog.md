@@ -169,3 +169,7 @@
 - The `method-of-type` form will now accept an expression returning a type instead of just a type name.  In this case, it will only allow you to access method of `object`.
 - Added a `defun-recursive` to make it easier to define recursive functions
 - Forward declared basics can be used in more places
+- You can now set a field which has a forward declared structure or basic type
+- `cdr` now returns an object of type `pair`.
+- `lambda`s can now be used inside of a static object definition.
+- Methods can now be `:replace`d to override their type from their parent. Use this with extreme care.

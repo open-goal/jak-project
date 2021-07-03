@@ -161,7 +161,7 @@ void TypeSystem::forward_declare_type_as(const std::string& new_type,
       auto old_parent_it = m_types.find(fwd_it->second);
       auto new_parent_it = m_types.find(parent_type);
 
-      auto old_ts = TypeSpec(old_parent_it->second->get_name());
+      auto old_ts = TypeSpec(fwd_it->second);
 
       if (old_parent_it != m_types.end() && new_parent_it != m_types.end()) {
         auto new_ts = TypeSpec(new_parent_it->second->get_name());
@@ -453,11 +453,34 @@ Type* TypeSystem::lookup_type_allow_partial_def(const std::string& name) const {
   return result;
 }
 
+/*!
+ * Get load size for a type.  Will succeed if one of the two conditions is true:
+ * - Is a fully defined type.
+ * - Is partially defined, but structure is in the parent.
+ * This should be safe to use to load a value from a field.
+ */
+int TypeSystem::get_load_size_allow_partial_def(const TypeSpec& ts) const {
+  auto fully_defined_it = m_types.find(ts.base_type());
+  if (fully_defined_it != m_types.end()) {
+    return fully_defined_it->second->get_load_size();
+  }
+
+  auto partial_def = lookup_type_allow_partial_def(ts);
+  if (!tc(TypeSpec("structure"), ts)) {
+    throw_typesystem_error("Cannot perform a load or store from partially defined type {}",
+                           ts.print());
+  }
+  assert(partial_def->get_load_size() == 4);
+  return partial_def->get_load_size();
+}
+
 MethodInfo TypeSystem::declare_method(const std::string& type_name,
                                       const std::string& method_name,
                                       bool no_virtual,
-                                      const TypeSpec& ts) {
-  return declare_method(lookup_type(make_typespec(type_name)), method_name, no_virtual, ts);
+                                      const TypeSpec& ts,
+                                      bool override_type) {
+  return declare_method(lookup_type(make_typespec(type_name)), method_name, no_virtual, ts,
+                        override_type);
 }
 
 /*!
@@ -472,8 +495,12 @@ MethodInfo TypeSystem::declare_method(const std::string& type_name,
 MethodInfo TypeSystem::declare_method(Type* type,
                                       const std::string& method_name,
                                       bool no_virtual,
-                                      const TypeSpec& ts) {
+                                      const TypeSpec& ts,
+                                      bool override_type) {
   if (method_name == "new") {
+    if (override_type) {
+      throw_typesystem_error("Cannot use :replace option with a new method.");
+    }
     return add_new_method(type, ts);
   }
 
@@ -481,34 +508,48 @@ MethodInfo TypeSystem::declare_method(Type* type,
   MethodInfo existing_info;
   bool got_existing = try_lookup_method(type, method_name, &existing_info);
 
-  if (got_existing) {
-    // make sure we aren't changing anything.
-    if (!existing_info.type.is_compatible_child_method(ts, type->get_name())) {
+  if (override_type) {
+    if (!got_existing) {
       throw_typesystem_error(
-          "The method {} of type {} was originally declared as {}, but has been "
-          "redeclared as {}\n",
-          method_name, type->get_name(), existing_info.type.print(), ts.print());
+          "Cannot use :replace on method {} of {} because this method was not previously declared "
+          "in a parent.",
+          method_name, type->get_name());
     }
 
-    if ((existing_info.no_virtual || no_virtual) &&
-        existing_info.defined_in_type != type->get_name()) {
-      throw_typesystem_error(
-          "Cannot define method {} in type {} when it was defined as no_virtual in parent type {}",
-          method_name, type->get_name(), existing_info.defined_in_type);
-    }
-
-    if (no_virtual != existing_info.no_virtual) {
-      throw_typesystem_error(
-          "The method {} of type {} was originally declared with no_virtual = {}, but has been "
-          "redeclared as {}",
-          method_name, type->get_name(), existing_info.no_virtual, no_virtual);
-    }
-
-    return existing_info;
-  } else {
-    // add a new method!
+    // use the existing ID.
     return type->add_method(
-        {get_next_method_id(type), method_name, ts, type->get_name(), no_virtual});
+        {existing_info.id, method_name, ts, type->get_name(), no_virtual, true});
+  } else {
+    if (got_existing) {
+      // make sure we aren't changing anything.
+      if (!existing_info.type.is_compatible_child_method(ts, type->get_name())) {
+        throw_typesystem_error(
+            "The method {} of type {} was originally declared as {}, but has been "
+            "redeclared as {}\n",
+            method_name, type->get_name(), existing_info.type.print(), ts.print());
+      }
+
+      if ((existing_info.no_virtual || no_virtual) &&
+          existing_info.defined_in_type != type->get_name()) {
+        throw_typesystem_error(
+            "Cannot define method {} in type {} when it was defined as no_virtual in parent type "
+            "{}",
+            method_name, type->get_name(), existing_info.defined_in_type);
+      }
+
+      if (no_virtual != existing_info.no_virtual) {
+        throw_typesystem_error(
+            "The method {} of type {} was originally declared with no_virtual = {}, but has been "
+            "redeclared as {}",
+            method_name, type->get_name(), existing_info.no_virtual, no_virtual);
+      }
+
+      return existing_info;
+    } else {
+      // add a new method!
+      return type->add_method(
+          {get_next_method_id(type), method_name, ts, type->get_name(), no_virtual, false});
+    }
   }
 }
 
@@ -934,23 +975,25 @@ void TypeSystem::add_builtin_types() {
 
   // OBJECT
   declare_method(obj_type, "new", false,
-                 make_function_typespec({"symbol", "type", "int"}, "_type_"));
-  declare_method(obj_type, "delete", false, make_function_typespec({"_type_"}, "none"));
-  declare_method(obj_type, "print", false, make_function_typespec({"_type_"}, "_type_"));
-  declare_method(obj_type, "inspect", false, make_function_typespec({"_type_"}, "_type_"));
-  declare_method(obj_type, "length", false,
-                 make_function_typespec({"_type_"}, "int"));  // todo - this integer type?
-  declare_method(obj_type, "asize-of", false, make_function_typespec({"_type_"}, "int"));
-  declare_method(obj_type, "copy", false, make_function_typespec({"_type_", "symbol"}, "_type_"));
-  declare_method(obj_type, "relocate", false, make_function_typespec({"_type_", "int"}, "_type_"));
+                 make_function_typespec({"symbol", "type", "int"}, "_type_"), false);
+  declare_method(obj_type, "delete", false, make_function_typespec({"_type_"}, "none"), false);
+  declare_method(obj_type, "print", false, make_function_typespec({"_type_"}, "_type_"), false);
+  declare_method(obj_type, "inspect", false, make_function_typespec({"_type_"}, "_type_"), false);
+  declare_method(obj_type, "length", false, make_function_typespec({"_type_"}, "int"),
+                 false);  // todo - this integer type?
+  declare_method(obj_type, "asize-of", false, make_function_typespec({"_type_"}, "int"), false);
+  declare_method(obj_type, "copy", false, make_function_typespec({"_type_", "symbol"}, "_type_"),
+                 false);
+  declare_method(obj_type, "relocate", false, make_function_typespec({"_type_", "int"}, "_type_"),
+                 false);
   declare_method(obj_type, "mem-usage", false,
-                 make_function_typespec({"_type_", "memory-usage-block", "int"}, "_type_"));
+                 make_function_typespec({"_type_", "memory-usage-block", "int"}, "_type_"), false);
 
   // STRUCTURE
   // structure new doesn't support dynamic sizing, which is kinda weird - it grabs the size from
   // the type.  Dynamic structures use new-dynamic-structure, which is used exactly once ever.
-  declare_method(structure_type, "new", false,
-                 make_function_typespec({"symbol", "type"}, "_type_"));
+  declare_method(structure_type, "new", false, make_function_typespec({"symbol", "type"}, "_type_"),
+                 false);
   // structure_type is a field-less StructureType, so we have to do this to match the runtime.
   //  structure_type->override_size_in_memory(4);
 
@@ -959,18 +1002,19 @@ void TypeSystem::add_builtin_types() {
   add_field_to_type(basic_type, "type", make_typespec("type"));
   // the default new basic doesn't support dynamic sizing. anything dynamic will override this
   // and then call (method object new) to do the dynamically-sized allocation.
-  declare_method(basic_type, "new", false, make_function_typespec({"symbol", "type"}, "_type_"));
+  declare_method(basic_type, "new", false, make_function_typespec({"symbol", "type"}, "_type_"),
+                 false);
 
   // SYMBOL
   builtin_structure_inherit(symbol_type);
   add_field_to_type(symbol_type, "value", make_typespec("object"));
   // a new method which returns type none means new is illegal.
-  declare_method(symbol_type, "new", false, make_function_typespec({}, "none"));
+  declare_method(symbol_type, "new", false, make_function_typespec({}, "none"), false);
 
   // TYPE
   builtin_structure_inherit(type_type);
   declare_method(type_type, "new", false,
-                 make_function_typespec({"symbol", "type", "int"}, "_type_"));
+                 make_function_typespec({"symbol", "type", "int"}, "_type_"), false);
   add_field_to_type(type_type, "symbol", make_typespec("symbol"));
   add_field_to_type(type_type, "parent", make_typespec("type"));
   add_field_to_type(type_type, "size", make_typespec("uint16"));  // actually u16
@@ -987,7 +1031,7 @@ void TypeSystem::add_builtin_types() {
   // string is never deftype'd for the decompiler, so we need to manually give the constructor
   // type here.
   declare_method(string_type, "new", false,
-                 make_function_typespec({"symbol", "type", "int", "string"}, "_type_"));
+                 make_function_typespec({"symbol", "type", "int", "string"}, "_type_"), false);
 
   // FUNCTION
   builtin_structure_inherit(function_type);
@@ -1016,7 +1060,7 @@ void TypeSystem::add_builtin_types() {
   // todo
   builtin_structure_inherit(array_type);
   declare_method(array_type, "new", false,
-                 make_function_typespec({"symbol", "type", "type", "int"}, "_type_"));
+                 make_function_typespec({"symbol", "type", "type", "int"}, "_type_"), false);
   // array has: number, number, type
   add_field_to_type(array_type, "length", make_typespec("int32"));
   add_field_to_type(array_type, "allocated-length", make_typespec("int32"));
@@ -1026,7 +1070,7 @@ void TypeSystem::add_builtin_types() {
   // pair
   pair_type->override_offset(2);
   declare_method(pair_type, "new", false,
-                 make_function_typespec({"symbol", "type", "object", "object"}, "_type_"));
+                 make_function_typespec({"symbol", "type", "object", "object"}, "_type_"), false);
   add_field_to_type(pair_type, "car", make_typespec("object"));
   add_field_to_type(pair_type, "cdr", make_typespec("object"));
 
@@ -1044,7 +1088,7 @@ void TypeSystem::add_builtin_types() {
   add_field_to_type(file_stream_type, "name", make_typespec("string"));
   add_field_to_type(file_stream_type, "file", make_typespec("uint32"));
   declare_method(file_stream_type, "new", false,
-                 make_function_typespec({"symbol", "type", "string", "basic"}, "_type_"));
+                 make_function_typespec({"symbol", "type", "string", "basic"}, "_type_"), false);
 }
 
 /*!
@@ -1332,14 +1376,14 @@ EnumType* TypeSystem::try_enum_lookup(const TypeSpec& type) const {
  * Get a path from type to object.
  */
 std::vector<std::string> TypeSystem::get_path_up_tree(const std::string& type) const {
-  auto parent = lookup_type(type)->get_parent();
+  auto parent = lookup_type_allow_partial_def(type)->get_parent();
   std::vector<std::string> path = {type};
   path.push_back(parent);
-  auto parent_type = lookup_type(parent);
+  auto parent_type = lookup_type_allow_partial_def(parent);
 
   while (parent_type->has_parent()) {
     parent = parent_type->get_parent();
-    parent_type = lookup_type(parent);
+    parent_type = lookup_type_allow_partial_def(parent);
     path.push_back(parent);
   }
 
@@ -1567,6 +1611,10 @@ std::string TypeSystem::generate_deftype_footer(const Type* type) const {
 
     if (info.no_virtual) {
       methods_string.append(":no-virtual ");
+    }
+
+    if (info.overrides_method_type_of_parent) {
+      methods_string.append(":replace ");
     }
 
     methods_string.append(fmt::format("{})\n    ", info.id));
