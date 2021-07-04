@@ -86,7 +86,11 @@ const std::unordered_set<std::string> g_functions_expected_to_reject = {
 const std::unordered_set<std::string> g_functions_to_skip_compiling = {
     /// GCOMMON
     // these functions are not implemented by the compiler in OpenGOAL, but are in GOAL.
-    "abs", "ash", "min", "max", "lognor",
+    "abs",
+    "ash",
+    "min",
+    "max",
+    "lognor",
     // weird PS2 specific debug registers:
     "breakpoint-range-set!",
     // inline assembly
@@ -100,7 +104,8 @@ const std::unordered_set<std::string> g_functions_to_skip_compiling = {
     "enter-state",  // stack pointer asm
 
     /// MATH
-    "rand-vu-init", "rand-vu",
+    "rand-vu-init",
+    "rand-vu",
     "rand-vu-nostep",  // random hardware
 
     // trig
@@ -124,14 +129,19 @@ const std::unordered_set<std::string> g_functions_to_skip_compiling = {
     "disasm-dma-list",  // missing a single cast :(
 
     // math camera
-    "transform-point-vector!", "transform-point-qword!", "transform-point-vector-scale!",
+    "transform-point-vector!",
+    "transform-point-qword!",
+    "transform-point-vector-scale!",
 
     // display-h
     "put-draw-env",
 
     // vector
     // bad decisions on float vs int128
-    "vector-degf", "vector-degmod", "vector-deg-diff", "vector-degi",
+    "vector-degf",
+    "vector-degmod",
+    "vector-deg-diff",
+    "vector-degi",
 
     // asm
     "invalidate-cache-line",

@@ -8,7 +8,6 @@ parser = argparse.ArgumentParser()
 parser.add_argument("--path")
 args = parser.parse_args()
 
-import os
 from os import path
 import shutil
 
