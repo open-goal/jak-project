@@ -1314,6 +1314,22 @@ bool TypeSystem::typecheck_and_throw(const TypeSpec& expected,
     }
   }
 
+  // next, tag checks. It's fine to throw away tags, but the child must match all parent tags
+  for (auto& tag : expected.tags()) {
+    if (tag.name == "behavior") {
+      auto got = actual.try_get_tag(tag.name);
+      if (!got) {
+        success = false;
+      } else {
+        if (*got != tag.value) {
+          success = false;
+        }
+      }
+    } else {
+      throw_typesystem_error("Unknown tag {}", tag.name);
+    }
+  }
+
   if (!success) {
     if (print_on_error) {
       if (error_source_name.empty()) {
@@ -1615,6 +1631,11 @@ std::string TypeSystem::generate_deftype_footer(const Type* type) const {
 
     if (info.overrides_method_type_of_parent) {
       methods_string.append(":replace ");
+    }
+
+    auto behavior = info.type.try_get_tag("behavior");
+    if (behavior) {
+      methods_string.append(fmt::format(":behavior {} ", *behavior));
     }
 
     methods_string.append(fmt::format("{})\n    ", info.id));

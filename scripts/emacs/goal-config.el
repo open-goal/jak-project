@@ -30,59 +30,60 @@
   (show-paren-mode 1)
   ;; the default color is hard to see - make it the most painful color possible.
   (custom-set-faces
-   '(show-paren-match ((t (:foreground "white" :background "red")))))
+    '(show-paren-match ((t (:foreground "white" :background "red")))))
   )
 
 ;; very simple syntax highlighting (sometimes fails)
 ;; these are added to lisp-mode's highlighting.
 (font-lock-add-keywords 'lisp-mode
-			'(("set!" . font-lock-keyword-face)
-			  ("local-vars" . font-lock-keyword-face)
-			  ("until" . font-lock-keyword-face)
-			  ("car" . font-lock-keyword-face)
-			  ("cdr" . font-lock-keyword-face)
-			  ("->" . font-lock-keyword-face)
-			  ("else" . font-lock-constant-face)
-			  ("nop!" . font-lock-builtin-face)
-			  ;;("and" . font-lock-keyword-face)
-			  ;;("or" . font-lock-keyword-face)
+                        '(("set!" . font-lock-keyword-face)
+                          ("local-vars" . font-lock-keyword-face)
+                          ("until" . font-lock-keyword-face)
+                          ("car" . font-lock-keyword-face)
+                          ("cdr" . font-lock-keyword-face)
+                          ("->" . font-lock-keyword-face)
+                          ("else" . font-lock-constant-face)
+                          ("nop!" . font-lock-builtin-face)
+                          ;;("and" . font-lock-keyword-face)
+                          ;;("or" . font-lock-keyword-face)
                           ("format" . font-lock-builtin-face)
                           ("defun-debug" . font-lock-keyword-face)
+                          ("defbehavior" . font-lock-keyword-face)
                           ("defenum" . font-lock-keyword-face)
-			  ("begin" . font-lock-keyword-face)
-			  ("zero?" . font-lock-builtin-face)
-			  ("#f" . font-lock-constant-face)
-			  ("#t" . font-lock-constant-face)))
+                          ("begin" . font-lock-keyword-face)
+                          ("zero?" . font-lock-builtin-face)
+                          ("#f" . font-lock-constant-face)
+                          ("#t" . font-lock-constant-face)))
 
 ;; more advanced syntax highlighting. These still fail sometimes, but look nicer.
 (defconst scheme-font-lock-keywords-1
-  (eval-when-compile
-    (list
-     ;;
-     ;; Declarations.  Hannes Haug <hannes.haug@student.uni-tuebingen.de> says
-     ;; this works for SOS, STklos, SCOOPS, Meroon and Tiny CLOS.
-     (list (concat "(\\(define\\*?\\("
-                   ;; Function names.
-                   "\\(\\|-public\\|-method\\|-generic\\(-procedure\\)?\\)\\|"
-                   ;; Macro names, as variable names.  A bit dubious, this.
-                   "\\(-syntax\\|-macro\\)\\|"
-                   ;; Class names.
-                   "-class"
-                   ;; Guile modules.
-                   "\\|-module"
-                   "\\)\\)\\>"
-                   ;; Any whitespace and declared object.
-                   ;; The "(*" is for curried definitions, e.g.,
-                   ;;  (define ((sum a) b) (+ a b))
-                   "[ \t]*(*"
-                   "\\(\\sw+\\)?")
-           '(1 font-lock-keyword-face)
-           '(6 (cond ((match-beginning 3) font-lock-function-name-face)
-                     ((match-beginning 5) font-lock-variable-name-face)
-                     (t font-lock-type-face))
-               nil t))
-     ))
-  "Subdued expressions to highlight in Scheme modes.")
+          (eval-when-compile
+            (list
+              ;;
+              ;; Declarations.  Hannes Haug <hannes.haug@student.uni-tuebingen.de> says
+              ;; this works for SOS, STklos, SCOOPS, Meroon and Tiny CLOS.
+              (list (concat "(\\(define\\*?\\("
+                            ;; Function names.
+                            "\\(\\|-public\\|-method\\|-generic\\(-procedure\\)?\\)\\|"
+                            ;; Macro names, as variable names.  A bit dubious, this.
+                            "\\(-syntax\\|-macro\\)\\|"
+                            ;; Class names.
+                            "-class"
+                            ;; Guile modules.
+                            "\\|-module"
+                            "\\)\\)\\>"
+                            ;; Any whitespace and declared object.
+                            ;; The "(*" is for curried definitions, e.g.,
+                            ;;  (define ((sum a) b) (+ a b))
+                            "[ \t]*(*"
+                            "\\(\\sw+\\)?")
+                    '(1 font-lock-keyword-face)
+                    '(6 (cond ((match-beginning 3) font-lock-function-name-face)
+                              ((match-beginning 5) font-lock-variable-name-face)
+                              (t font-lock-type-face))
+                      nil t))
+              ))
+          "Subdued expressions to highlight in Scheme modes.")
 (font-lock-add-keywords 'lisp-mode scheme-font-lock-keywords-1)
 
 ;; make gc files use lisp-mode
@@ -103,6 +104,7 @@
     (put 'countdown    'common-lisp-indent-function 1)
     (put 'defun-debug  'common-lisp-indent-function 2)
     (put 'defenum      'common-lisp-indent-function 2)
+    (put 'defbehavior  'common-lisp-indent-function 3)
 
     ;; indent for common lisp, this makes if's look nicer
     (custom-set-variables '(lisp-indent-function 'common-lisp-indent-function))
@@ -130,10 +132,10 @@
   (let ((buffer (comint-check-proc "OpenGOAL")))
     ;; create or reuse a buffer and make it visible
     (pop-to-buffer
-     (if (or buffer (not (derived-mode-p 'opengoal-mode))
-             (comint-check-proc (current-buffer)))
-         (get-buffer-create (or buffer "*OpenGOAL*"))
-       (current-buffer)))
+      (if (or buffer (not (derived-mode-p 'opengoal-mode))
+              (comint-check-proc (current-buffer)))
+        (get-buffer-create (or buffer "*OpenGOAL*"))
+        (current-buffer)))
 
     (unless buffer
       ;; start the compiler
@@ -159,10 +161,10 @@
 (defun opengoal-compile-current-file (mode)
   "Check if the current file is saved. If so, compile it!"
   (cond
-   ((buffer-modified-p)
-    (message "Cannot compile current file: save your changes first!"))
-   (t
-    (opengoal-compile-file (buffer-file-name) mode))))
+    ((buffer-modified-p)
+     (message "Cannot compile current file: save your changes first!"))
+    (t
+      (opengoal-compile-file (buffer-file-name) mode))))
 
 (defun opengoal-m-file ()
   "Make the current file."

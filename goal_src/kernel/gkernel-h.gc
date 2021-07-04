@@ -558,3 +558,15 @@
   `(rlet ((pp :reg r13 :reset-here #t :type process))
          ,@body)
   )
+
+(defmacro defbehavior (name process-type bindings &rest body)
+  (if (and
+       (> (length body) 1)     ;; more than one thing in function
+       (string? (first body))  ;; first thing is a string
+       )
+      ;; then it's a docstring and we ignore it.
+      `(define ,name (lambda :name ,name :behavior ,process-type ,bindings ,@(cdr body)))
+      ;; otherwise don't ignore it.
+      `(define ,name (lambda :name ,name :behavior ,process-type ,bindings ,@body))
+      )
+  )

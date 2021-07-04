@@ -5,14 +5,20 @@
  * A GOAL TypeSpec is a reference to a type or compound type.
  */
 
-#ifndef JAK_TYPESPEC_H
-#define JAK_TYPESPEC_H
-
 #include <vector>
 #include <string>
+#include <optional>
 #include "common/util/assert.h"
 
-class Type;
+/*!
+ * A :name value modifier to apply to a type.
+ */
+struct TypeTag {
+  std::string name;
+  std::string value;
+
+  bool operator==(const TypeTag& other) const;
+};
 
 /*!
  * A TypeSpec is a reference to a Type, or possible a compound type.  This is the best way to
@@ -24,10 +30,19 @@ class Type;
  */
 class TypeSpec {
  public:
-  // create a typespec for a single type
   TypeSpec() = default;
-  TypeSpec(std::string type);
-  TypeSpec(std::string type, std::vector<TypeSpec> arguments);
+  TypeSpec(const std::string& type) : m_type(type) {}
+
+  TypeSpec(const std::string& type, const std::vector<TypeSpec>& arguments)
+      : m_type(type), m_arguments(arguments) {}
+
+  TypeSpec(const std::string& type, const std::vector<TypeTag>& tags)
+      : m_type(type), m_tags(tags) {}
+
+  TypeSpec(const std::string type,
+           const std::vector<TypeSpec>& arguments,
+           const std::vector<TypeTag>& tags)
+      : m_type(type), m_arguments(arguments), m_tags(tags) {}
 
   bool operator!=(const TypeSpec& other) const;
   bool operator==(const TypeSpec& other) const;
@@ -36,6 +51,11 @@ class TypeSpec {
   std::string print() const;
 
   void add_arg(const TypeSpec& ts) { m_arguments.push_back(ts); }
+  void add_new_tag(const std::string& tag_name, const std::string& tag_value);
+  std::optional<std::string> try_get_tag(const std::string& tag_name) const;
+  const std::string& get_tag(const std::string& tag_name) const;
+  void modify_tag(const std::string& tag_name, const std::string& tag_value);
+  void add_or_modify_tag(const std::string& tag_name, const std::string& tag_value);
 
   const std::string base_type() const { return m_type; }
 
@@ -57,10 +77,11 @@ class TypeSpec {
     return m_arguments.back();
   }
 
+  const std::vector<TypeTag>& tags() const { return m_tags; }
+
  private:
   friend class TypeSystem;
   std::string m_type;
   std::vector<TypeSpec> m_arguments;
+  std::vector<TypeTag> m_tags;
 };
-
-#endif  // JAK_TYPESPEC_H
