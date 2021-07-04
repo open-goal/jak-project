@@ -1,6 +1,7 @@
 #include <string>
 #include <vector>
 #include <limits>
+#include <unordered_set>
 
 #include "common/util/FileUtil.h"
 #include "common/util/Trie.h"
@@ -12,6 +13,7 @@
 #include "third-party/fmt/core.h"
 #include "common/util/print_float.h"
 #include "common/util/CopyOnWrite.h"
+#include "common/util/SmallVector.h"
 
 TEST(CommonUtil, get_file_path) {
   std::vector<std::string> test = {"cabbage", "banana", "apple"};
@@ -183,3 +185,207 @@ TEST(CommonUtil, CopyOnWrite) {
   EXPECT_EQ(*y, 3);
   EXPECT_EQ(*z, 15);
 }
+
+namespace cu {
+namespace test {
+
+class ThrowOnDefaultConstruct {
+ public:
+  ThrowOnDefaultConstruct() {
+    throw std::runtime_error("ThrowOnDefaultConstruct was default constructed.");
+  }
+};
+
+class ThrowOnDestruct {
+ public:
+  ~ThrowOnDestruct() {
+    // not a good idea to throw.
+    exit(-1);
+  }
+};
+
+struct RuleOfFiveExample {
+  // if we fail to call the destructor we'll leak memory, which will get caught with valgrind.
+  RuleOfFiveExample() { mem = new int; }
+  RuleOfFiveExample(const RuleOfFiveExample& other) {
+    if (&other != this) {
+      mem = new int;
+    }
+  }
+  RuleOfFiveExample(RuleOfFiveExample&& other) noexcept {
+    if (&other != this) {
+      mem = other.mem;
+      other.mem = nullptr;
+    }
+  }
+
+  RuleOfFiveExample& operator=(const RuleOfFiveExample& other) {
+    if (&other != this) {
+      delete mem;
+      mem = new int;
+    }
+    return *this;
+  }
+
+  RuleOfFiveExample& operator=(RuleOfFiveExample&& other) noexcept {
+    if (&other != this) {
+      mem = other.mem;
+      other.mem = nullptr;
+    }
+    return *this;
+  }
+
+  ~RuleOfFiveExample() { delete mem; }
+  int value = 12;
+  int* mem;
+};
+
+TEST(SmallVector, NoConstruction) {
+  // Confirm that an empty vector constructs nothing.
+  SmallVector<ThrowOnDefaultConstruct, 128> empty;
+  EXPECT_EQ(empty.size(), 0);
+  EXPECT_TRUE(empty.empty());
+
+  // should also destroy nothing
+  SmallVector<ThrowOnDestruct> empty2;
+}
+
+TEST(SmallVector, ConstructWithSize) {
+  // Test construction calls default constructors.
+  SmallVector<RuleOfFiveExample, 1> heap_no_stack(12);
+  SmallVector<RuleOfFiveExample, 12> full_stack(12);
+  SmallVector<RuleOfFiveExample, 12> not_full_stack(11);
+  SmallVector<RuleOfFiveExample, 12> overflow_to_heap(13);
+
+  // size
+  EXPECT_EQ(heap_no_stack.size(), 12);
+  EXPECT_EQ(full_stack.size(), 12);
+  EXPECT_EQ(not_full_stack.size(), 11);
+  EXPECT_EQ(overflow_to_heap.size(), 13);
+
+  // capacity
+  EXPECT_EQ(heap_no_stack.capacity(), 12);
+  EXPECT_EQ(full_stack.capacity(), 12);
+  EXPECT_EQ(not_full_stack.capacity(), 12);
+  EXPECT_EQ(overflow_to_heap.capacity(), 13);
+
+  // were they constructed?
+  int i = 0;
+  for (auto& obj : heap_no_stack) {
+    EXPECT_EQ(obj.value, 12);
+    i++;
+  }
+  EXPECT_EQ(i, 12);
+
+  for (auto vec : {full_stack, not_full_stack, overflow_to_heap}) {
+    int j = 0;
+    for (auto& obj : heap_no_stack) {
+      EXPECT_EQ(obj.value, 12);
+      j++;
+    }
+    EXPECT_EQ(j, 12);
+  }
+}
+
+// small std::string's aren't heap allocated.
+constexpr const char* long_string_1 = "this-is-a-string-thats-long-enough-to-go-on-the-heap!";
+constexpr const char* long_string_2 = "another-string-thats-long-enough-to-go-on-the-heap!";
+constexpr const char* long_string_3 = "also-long-enough-to-go-on-the-heap!";
+
+TEST(SmallVector, ConstructByCopying) {
+  // test that we copy the input properly.
+  SmallVector<std::string> strings(20, long_string_1);
+  EXPECT_EQ(strings[0], long_string_1);
+  strings[0] = long_string_2;
+  EXPECT_EQ(strings[1], long_string_1);
+  EXPECT_EQ(strings.size(), 20);
+}
+
+TEST(SmallVector, ConstructFromIterator) {
+  std::unordered_set<std::string> stuff;
+  for (auto x : Range(10, 20)) {
+    stuff.insert(long_string_1 + std::to_string(x));
+  }
+
+  // iterators into unordered set can't be subtracted, but this should still work.
+  SmallVector<std::string> strings(stuff.begin(), stuff.end());
+  EXPECT_EQ(strings.size(), 10);
+  std::unordered_set<std::string> stuff2(strings.begin(), strings.end());
+  EXPECT_EQ(stuff, stuff2);
+
+  // these can be subtracted.
+  SmallVector<std::string> strings2(strings.begin(), strings.end());
+  EXPECT_EQ(strings, strings2);
+  EXPECT_EQ(strings.at(1), strings2.at(1));
+  strings.at(1) = long_string_2;
+  EXPECT_TRUE(strings.at(1) != strings2.at(1));
+}
+
+TEST(SmallVector, ConstructFromCopy) {
+  SmallVector<std::string> one = {long_string_1, long_string_2, long_string_3};
+  SmallVector<std::string> two(one);
+  EXPECT_EQ(two.at(2), long_string_3);
+  two.at(2) = "four";
+  EXPECT_EQ(one.at(2), long_string_3);
+}
+
+TEST(SmallVector, ConstructFromMoveInline) {
+  // stack move
+  SmallVector<std::string, 20> one = {long_string_1, long_string_2, long_string_3};
+  SmallVector<std::string, 20> two(std::move(one));
+  EXPECT_TRUE(one.empty());  // this is the convention of SmallVector.
+  EXPECT_EQ(two.at(2), long_string_3);
+}
+
+TEST(SmallVector, ConstructFromMoveHeap) {
+  // heap move
+  SmallVector<std::string, 1> one = {long_string_1, long_string_2, long_string_3};
+  SmallVector<std::string, 1> two(std::move(one));
+  EXPECT_TRUE(one.empty());  // this is the convention of SmallVector.
+  EXPECT_EQ(two.at(2), long_string_3);
+  EXPECT_EQ(two.size(), 3);
+}
+
+TEST(SmallVector, ConstructFromInitList) {
+  SmallVector<std::string, 1> one({long_string_1, long_string_2, long_string_3});
+  EXPECT_EQ(one.at(2), long_string_3);
+  EXPECT_EQ(one.size(), 3);
+}
+
+/*
+TEST(SmallVector, SelfCopyAndMoveAssignment) {
+  SmallVector<std::string, 0> one({long_string_1, long_string_2, long_string_3});
+  one = one;
+  one = std::move(one);
+  EXPECT_EQ(one.at(2), long_string_3);
+  EXPECT_EQ(one.size(), 3);
+}
+*/
+
+TEST(SmallVector, CopyAssign) {
+  // heap -> heap
+  SmallVector<std::string, 1> heap_one({long_string_1, long_string_2, long_string_3}),
+      heap_two({"a", "b"});
+  heap_one = heap_two;
+  EXPECT_TRUE(heap_one.size() == 2);
+  EXPECT_TRUE(heap_one[0] == "a");
+  EXPECT_TRUE(heap_one[1] == "b");
+}
+
+TEST(SmallVector, Construction) {
+  SmallVector<ThrowOnDefaultConstruct, 128> empty;
+  EXPECT_EQ(empty.size(), 0);
+  EXPECT_TRUE(empty.empty());
+  empty.reserve(256);
+  EXPECT_EQ(empty.size(), 0);
+  EXPECT_TRUE(empty.empty());
+  empty.shrink_to_fit();
+  EXPECT_EQ(empty.capacity(), 128);
+
+  SmallVector<int, 2> one(1);
+  EXPECT_EQ(one.size(), 1);
+  EXPECT_FALSE(one.empty());
+}
+
+}  // namespace test
+}  // namespace cu
