@@ -48,9 +48,18 @@ goos::Object final_output_lambda(const Function& func) {
   std::vector<goos::Object> inline_body;
   func.ir2.top_form->inline_forms(inline_body, func.ir2.env);
   auto var_dec = func.ir2.env.local_var_type_list(func.ir2.top_form, func.type.arg_count() - 1);
-  auto result = pretty_print::build_list("lambda", get_arg_list_for_function(func, func.ir2.env));
-  append_body_to_function_definition(&result, inline_body, var_dec, func.type);
-  return result;
+
+  auto behavior = func.type.try_get_tag("behavior");
+  if (behavior) {
+    auto result = pretty_print::build_list(fmt::format("lambda :behavior {}", *behavior),
+                                           get_arg_list_for_function(func, func.ir2.env));
+    append_body_to_function_definition(&result, inline_body, var_dec, func.type);
+    return result;
+  } else {
+    auto result = pretty_print::build_list("lambda", get_arg_list_for_function(func, func.ir2.env));
+    append_body_to_function_definition(&result, inline_body, var_dec, func.type);
+    return result;
+  }
 }
 
 std::string final_defun_out(const Function& func,
