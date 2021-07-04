@@ -3,6 +3,7 @@
  * A GOAL TypeSpec is a reference to a type or compound type.
  */
 
+#include <stdexcept>
 #include "TypeSpec.h"
 #include "third-party/fmt/core.h"
 
