@@ -11,16 +11,19 @@ bool TypeTag::operator==(const TypeTag& other) const {
 }
 
 std::string TypeSpec::print() const {
-  if (m_arguments.empty() && m_tags.empty()) {
+  if ((!m_arguments || m_arguments->empty()) && m_tags.empty()) {
     return m_type;
   } else {
     std::string result = "(" + m_type;
     for (const auto& tag : m_tags) {
       result += fmt::format(" :{} {}", tag.name, tag.value);
     }
-    for (auto& x : m_arguments) {
-      result += " " + x.print();
+    if (m_arguments) {
+      for (auto& x : *m_arguments) {
+        result += " " + x.print();
+      }
     }
+
     return result + ")";
   }
 }
@@ -30,15 +33,31 @@ bool TypeSpec::operator!=(const TypeSpec& other) const {
 }
 
 bool TypeSpec::operator==(const TypeSpec& other) const {
-  return m_type == other.m_type && m_arguments == other.m_arguments && m_tags == other.m_tags;
+  if (m_type != other.m_type) {
+    return false;
+  }
+
+  if (m_tags != other.m_tags) {
+    return false;
+  }
+
+  if (m_arguments && other.m_arguments) {
+    return *m_arguments == *other.m_arguments;
+  }
+
+  return empty() && other.empty();
 }
 
 TypeSpec TypeSpec::substitute_for_method_call(const std::string& method_type) const {
   TypeSpec result;
   result.m_type = (m_type == "_type_") ? method_type : m_type;
-  for (const auto& x : m_arguments) {
-    result.m_arguments.push_back(x.substitute_for_method_call(method_type));
+  if (m_arguments) {
+    result.m_arguments = new std::vector<TypeSpec>();
+    for (const auto& x : *m_arguments) {
+      result.m_arguments->push_back(x.substitute_for_method_call(method_type));
+    }
   }
+
   return result;
 }
 
@@ -46,12 +65,12 @@ bool TypeSpec::is_compatible_child_method(const TypeSpec& implementation,
                                           const std::string& child_type) const {
   bool ok = implementation.m_type == m_type ||
             (m_type == "_type_" && implementation.m_type == child_type);
-  if (!ok || implementation.m_arguments.size() != m_arguments.size()) {
+  if (!ok || implementation.arg_count() != arg_count()) {
     return false;
   }
 
-  for (size_t i = 0; i < m_arguments.size(); i++) {
-    if (!m_arguments[i].is_compatible_child_method(implementation.m_arguments[i], child_type)) {
+  for (size_t i = 0; i < arg_count(); i++) {
+    if (!get_arg(i).is_compatible_child_method(implementation.get_arg(i), child_type)) {
       return false;
     }
   }

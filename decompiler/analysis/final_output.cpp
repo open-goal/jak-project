@@ -108,7 +108,7 @@ std::string final_defun_out(const Function& func,
     top.push_back(arguments);
     auto top_form = pretty_print::build_list(top);
 
-    append_body_to_function_definition(&top_form, inline_body, var_dec, func.type);
+    append_body_to_function_definition(&top_form, inline_body, var_dec, method_info.type);
     return pretty_print::to_string(top_form);
   }
 
