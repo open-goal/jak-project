@@ -71,6 +71,7 @@ Interpreter::Interpreter() {
                    {"error", &Interpreter::eval_error},
                    {"string-ref", &Interpreter::eval_string_ref},
                    {"string-length", &Interpreter::eval_string_length},
+                   {"string-append", &Interpreter::eval_string_append},
                    {"ash", &Interpreter::eval_ash}};
 
   string_to_type = {{"empty-list", ObjectType::EMPTY_LIST},
@@ -1554,6 +1555,25 @@ Object Interpreter::eval_string_length(const Object& form,
   vararg_check(form, args, {ObjectType::STRING}, {});
   auto str = args.unnamed.at(0).as_string();
   return Object::make_integer(str->data.length());
+}
+
+Object Interpreter::eval_string_append(const Object& form,
+                                       Arguments& args,
+                                       const std::shared_ptr<EnvironmentObject>& env) {
+  (void)env;
+  if (!args.named.empty()) {
+    throw_eval_error(form, "string-append does not accept named arguments");
+  }
+
+  std::string result;
+  for (auto& arg : args.unnamed) {
+    if (!arg.is_string()) {
+      throw_eval_error(form, "string-append can only operate on strings");
+    }
+    result += arg.as_string()->data;
+  }
+
+  return StringObject::make_new(result);
 }
 
 Object Interpreter::eval_ash(const Object& form,

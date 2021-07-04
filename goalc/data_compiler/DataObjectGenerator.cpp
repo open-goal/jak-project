@@ -194,8 +194,24 @@ std::vector<u8> DataObjectGenerator::generate_link_table() {
   }
   push_variable_length_integer(0, &link);
 
-  // todo symbols
-  assert(m_symbol_links.empty());
+  for (auto& sl : m_symbol_links) {
+    // insert name. first char won't have the highest bit set
+    for (auto c : sl.first) {
+      link.push_back(c);
+    }
+    link.push_back(0);
+    std::sort(sl.second.begin(), sl.second.end());
+    int prev = 0;
+
+    for (auto& x : sl.second) {
+      int diff = x - prev;
+      assert(diff >= 0);
+      push_better_variable_length_integer(diff * 4, &link);
+      m_words.at(x) = 0xffffffff;
+      prev = x;
+    }
+    link.push_back(0);
+  }
 
   // types
   for (auto& tl : m_type_links) {

@@ -5,47 +5,84 @@
 ;; name in dgo: task-control-h
 ;; dgos: GAME, ENGINE
 
-;; definition of type task-cstage
+;; There are a fixed number of game tasks. Most are just getting a power cell,
+;; but there are also ones for using the levitator etc.
+
+;; The list of all tasks is the game-task enum in game-info-h.gc
+
+;; the task control contains a list of all cstage.
+;; Each task may have multiple cstages.
+;; Each cstage corresponds to a game-task and a task-status.
+
+;; There is a concept of a "current stage" being played, but it may sometimes be invalid (-1).
+;; it is an index into the task-control list
+
+;; names from task-status->string function
+;; the status value will increase.
+;; some tasks may do their own thing and not use these values.
+(defenum task-status
+  :type uint64
+  (invalid 0)
+  (unknown 1)
+  (need-hint 2)
+  (need-introduction 3)
+  (need-reminder-a 4)
+  (need-reminder 5)
+  (need-reward-speech 6)
+  (need-resolution 7)
+  )
+
+;; our names
+(defenum task-flags
+  :type uint8
+  :bitfield #t
+  (closed 0)
+  (has-entity 1)
+  (closed-by-default 2)
+  )
+
+(declare-type task-control basic)
+
+;; A task-cstage describes 
 (deftype task-cstage (structure)
-  ((game-task uint8   :offset-assert 0)
-   (status    uint64  :offset-assert 8)
-   (flags     uint8   :offset-assert 16)
-   (condition basic   :offset-assert 20)
+  ((game-task game-task                       :offset-assert   0)
+   (status    task-status                     :offset-assert   8)
+   (flags     task-flags                      :offset-assert  16)
+   (condition (function task-control symbol)  :offset-assert  20)
    )
   :method-count-assert 16
   :size-assert         #x18
   :flag-assert         #x1000000018
   (:methods
-    (dummy-9 () none 9)
-    (dummy-10 () none 10)
-    (dummy-11 () none 11)
-    (dummy-12 () none 12)
-    (dummy-13 () none 13)
-    (dummy-14 () none 14)
-    (dummy-15 () none 15)
-    )
+   (get-game-task (_type_) game-task 9)
+   (get-task-status (_type_) task-status 10)
+   (task-available? (_type_ task-control) symbol 11)
+   (closed? (_type_) symbol 12)
+   (closed-by-default? (_type_) symbol 13)
+   (close-task! (_type_) int 14)
+   (open-task! (_type_) int 15)
+   )
   )
 
-;; definition of type task-control
 (deftype task-control (basic)
-  ((current-stage int16  :offset-assert 4)
-   (stage         basic  :offset-assert 8)
+  ((current-stage int16                :offset-assert   4)
+   (stage         (array task-cstage)  :offset-assert   8)
    )
   :method-count-assert 19
   :size-assert         #xc
   :flag-assert         #x130000000c
   (:methods
-    (dummy-9 () none 9)
-    (dummy-10 () none 10)
-    (dummy-11 () none 11)
-    (dummy-12 () none 12)
-    (dummy-13 () none 13)
-    (dummy-14 () none 14)
-    (dummy-15 () none 15)
-    (dummy-16 () none 16)
-    (dummy-17 () none 17)
-    (dummy-18 () none 18)
-    )
+   (current-task (_type_) int 9)
+   (current-status (_type_) int 10)
+   (close-current! (_type_) none 11)
+   (close-status! (_type_ task-status) int 12)
+   (first-any (_type_ symbol) int 13)
+   (reset! (_type_ symbol symbol) int 14)
+   (closed? (_type_ game-task task-status) symbol 15)
+   (get-reminder (_type_ int) int 16)
+   (save-reminder (_type_ int int) int 17)
+   (exists? (_type_ game-task task-status) symbol 18)
+   )
   )
 
 ;; definition of type ambient-control
@@ -132,3 +169,8 @@
     (dummy-52 () none 52)
     )
   )
+
+(define-extern task-closed? (function game-task task-status symbol))
+(define-extern get-task-status (function game-task task-status))
+(define-extern get-task-control (function game-task task-control))
+(define-extern close-specific-task! (function game-task task-status int))

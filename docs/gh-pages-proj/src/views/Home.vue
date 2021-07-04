@@ -62,7 +62,9 @@
               buffer-value="0"
               :value="jak1BlackLabelStatus.decompDone"
               stream
+              height="25"
             >
+            {{jak1BlackLabelStatus.decompLabel}} - {{jak1BlackLabelStatus.decompDone}}%
             </v-progress-linear>
           </v-col>
         </v-row>
@@ -86,7 +88,7 @@
                   {{ pr.user.login }}
                 </p>
                 <div class="text--primary">
-                  {{ pr.body }}
+                  <pre class="wrapped-pre">{{ pr.body }}</pre>
                 </div>
               </v-card-text>
               <v-card-actions>
@@ -110,6 +112,11 @@
   background-size: cover;
   min-height: 50vh;
 }
+.wrapped-pre {
+  word-wrap: normal;
+  white-space: pre-wrap;
+  font-family: "Roboto", sans-serif !important;
+}
 </style>
 
 <script>
@@ -122,7 +129,8 @@ export default {
     return {
       recentPRs: [],
       jak1BlackLabelStatus: {
-        decompDone: projectProgress.jak1.decomp
+        decompDone: (projectProgress.jak1.locPercentage.value / 750000.0) * 100.0,
+        decompLabel: projectProgress.jak1.locPercentage.label
       }
     };
   },
@@ -141,7 +149,7 @@ export default {
         `https://api.github.com/search/issues?q=repo:water111/jak-project+is:pr+is:merged&sort=updated`
       );
       const data = await response.json();
-      const numPRs = 6;
+      const numPRs = 9;
       for (var i = 0; i < numPRs; i++) {
         var pr = data.items[i];
         if (pr.body.length == 0) {

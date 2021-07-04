@@ -58,6 +58,8 @@ class Compiler {
                      std::vector<std::pair<std::string, Replxx::Color>> const& user_data);
 
  private:
+  std::set<std::string> lookup_symbol_infos_starting_with(const std::string& prefix) const;
+  std::vector<SymbolInfo>* lookup_exact_name_info(const std::string& name) const;
   bool get_true_or_false(const goos::Object& form, const goos::Object& boolean);
   bool try_getting_macro_from_goos(const goos::Object& macro_name, goos::Object* dest);
   bool expand_macro_once(const goos::Object& src, goos::Object* out, Env* env);

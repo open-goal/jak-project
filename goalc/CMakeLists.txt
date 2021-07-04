@@ -27,6 +27,7 @@ add_library(compiler
         compiler/compilation/Static.cpp
         compiler/Util.cpp
         data_compiler/game_text.cpp
+        data_compiler/dir_tpages.cpp
         data_compiler/DataObjectGenerator.cpp
         data_compiler/game_count.cpp
         debugger/Debugger.cpp

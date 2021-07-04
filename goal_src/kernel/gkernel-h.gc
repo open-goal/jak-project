@@ -223,13 +223,15 @@
 
 
 ;; A GOAL process.  A GOAL process contains memory and a suspendable main-thread.
+(declare-type res-lump basic)
+(declare-type entity res-lump)
 (deftype process (process-tree)
   ((pool dead-pool :offset-assert #x20)
    (status basic :offset-assert #x24)
    (pid int32 :offset-assert #x28)
    (main-thread cpu-thread :offset-assert #x2c)
    (top-thread thread :offset-assert #x30)
-   (entity basic :offset-assert #x34)
+   (entity entity :offset-assert #x34)
    (state state :offset-assert #x38)
    (trans-hook function :offset-assert #x3c)
    (post-hook function :offset-assert #x40)
@@ -402,7 +404,7 @@
   )
 
 
-(defmacro get-process-from-handle (handle)
+(defmacro handle->process (handle)
   ;; the actual implementation is more clever than this.
   ;; Checks PID.
   `(if (-> ,handle process)
@@ -431,7 +433,7 @@
   ;; a 0 in the process field, so we check it manually here.
   (if (nonzero? (-> obj u64))
       (format #t "#<handle :process ~A :pid ~D>"
-              (get-process-from-handle obj)
+              (handle->process obj)
               (-> obj pid)
               )
       (format #t "#<handle :process 0 :pid 0>")
@@ -555,4 +557,16 @@
 (defmacro with-pp (&rest body)
   `(rlet ((pp :reg r13 :reset-here #t :type process))
          ,@body)
+  )
+
+(defmacro defbehavior (name process-type bindings &rest body)
+  (if (and
+       (> (length body) 1)     ;; more than one thing in function
+       (string? (first body))  ;; first thing is a string
+       )
+      ;; then it's a docstring and we ignore it.
+      `(define ,name (lambda :name ,name :behavior ,process-type ,bindings ,@(cdr body)))
+      ;; otherwise don't ignore it.
+      `(define ,name (lambda :name ,name :behavior ,process-type ,bindings ,@body))
+      )
   )

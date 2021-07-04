@@ -182,7 +182,8 @@ TEST(Debugger, SimpleBreakpoint) {
     EXPECT_TRUE(bi.knows_object);
     EXPECT_TRUE(bi.object_name == "*listener*");
     EXPECT_TRUE(bi.function_name == "test-function");
-    EXPECT_FALSE(bi.disassembly_failed);
+    auto disasm = compiler.get_debugger().disassemble_at_rip(bi);
+    EXPECT_FALSE(disasm.failed);
     // if we change this to be before the break instruction this might need to be 0 in the future.
     EXPECT_EQ(bi.function_offset, 1);
 

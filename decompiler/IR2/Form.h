@@ -8,6 +8,7 @@
 #include "decompiler/IR2/AtomicOp.h"
 #include "common/goos/Object.h"
 #include "common/type_system/TypeSystem.h"
+#include "decompiler/Disasm/DecompilerLabel.h"
 
 namespace decompiler {
 class Form;
@@ -153,6 +154,11 @@ class SimpleExpressionElement : public FormElement {
                                       FormStack& stack,
                                       std::vector<FormElement*>* result,
                                       bool allow_side_effects);
+  void update_from_stack_subu_l32_s7(const Env& env,
+                                     FormPool& pool,
+                                     FormStack& stack,
+                                     std::vector<FormElement*>* result,
+                                     bool allow_side_effects);
   void update_from_stack_float_to_int(const Env& env,
                                       FormPool& pool,
                                       FormStack& stack,
@@ -1261,17 +1267,27 @@ class StoreArrayAccess : public FormElement {
   std::optional<TypeSpec> m_src_cast_type;
 };
 
+/*!
+ * This marks some static data that will be decompiled in a later pass.
+ * This is done at the very end so that we can make sure all static references to lambdas work.
+ */
 class DecompiledDataElement : public FormElement {
  public:
-  DecompiledDataElement(goos::Object description);
+  // DecompiledDataElement(goos::Object description);
+  DecompiledDataElement(const DecompilerLabel& label,
+                        const std::optional<LabelType>& type_hint = {});
   goos::Object to_form_internal(const Env& env) const override;
   void apply(const std::function<void(FormElement*)>& f) override;
   void apply_form(const std::function<void(Form*)>& f) override;
   void collect_vars(RegAccessSet& vars, bool recursive) const override;
   void get_modified_regs(RegSet& regs) const override;
+  void do_decomp(const Env& env, const LinkedObjectFile* file);
 
  private:
+  bool m_decompiled = false;
   goos::Object m_description;
+  DecompilerLabel m_label;
+  std::optional<LabelType> m_type_hint;
 };
 
 class LetElement : public FormElement {

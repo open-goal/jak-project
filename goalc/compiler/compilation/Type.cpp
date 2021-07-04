@@ -424,7 +424,7 @@ Val* Compiler::compile_defmethod(const goos::Object& form, const goos::Object& _
   if (lambda.params.size() > 8) {
     throw_compiler_error(form, "Methods cannot have more than 8 arguments");
   }
-  std::vector<RegVal*> args_for_coloring;
+  std::vector<RegVal*> reset_args_for_coloring;
   std::vector<TypeSpec> arg_types;
   for (auto& parm : lambda.params) {
     arg_types.push_back(parm.type);
@@ -441,7 +441,26 @@ Val* Compiler::compile_defmethod(const goos::Object& form, const goos::Object& _
     constr.desired_register = arg_regs.at(i);
     new_func_env->params[lambda.params.at(i).name] = ireg;
     new_func_env->constrain(constr);
-    args_for_coloring.push_back(ireg);
+    reset_args_for_coloring.push_back(ireg);
+  }
+
+  auto method_info = m_ts.lookup_method(symbol_string(type_name), symbol_string(method_name));
+  auto behavior = method_info.type.try_get_tag("behavior");
+  if (behavior) {
+    auto self_var = new_func_env->make_gpr(m_ts.make_typespec(*behavior));
+    IRegConstraint constr;
+    constr.contrain_everywhere = true;
+    constr.desired_register = emitter::gRegInfo.get_process_reg();
+    constr.ireg = self_var->ireg();
+    self_var->set_rlet_constraint(constr.desired_register);
+    new_func_env->constrain(constr);
+
+    if (new_func_env->params.find("self") != new_func_env->params.end()) {
+      throw_compiler_error(form, "Cannot have an argument named self in a behavior");
+    }
+    new_func_env->params["self"] = self_var;
+    reset_args_for_coloring.push_back(self_var);
+    lambda_ts.add_new_tag("behavior", *behavior);
   }
 
   place->func = new_func_env.get();
@@ -451,7 +470,7 @@ Val* Compiler::compile_defmethod(const goos::Object& form, const goos::Object& _
   auto func_block_env = new_func_env->alloc_env<BlockEnv>(new_func_env.get(), "#f");
   func_block_env->return_value = return_reg;
   func_block_env->end_label = Label(new_func_env.get());
-  func_block_env->emit(std::make_unique<IR_ValueReset>(args_for_coloring));
+  func_block_env->emit(std::make_unique<IR_ValueReset>(reset_args_for_coloring));
 
   // compile the function!
   Val* result = nullptr;

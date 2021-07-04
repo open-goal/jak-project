@@ -8,25 +8,27 @@
 ;; This type didn't have an inspect method, so these field names are made up.
 (declare-type art-group basic)
 (deftype load-dir (basic)
-  ((unknown basic)
-   (string-array (array string)) ;; these are the names
-   (data-array (array art-group))    ;; this is the file data.
+  ((unknown basic :offset-assert 4)
+   (string-array (array string) :offset-assert  8) ;; these are the names
+   (data-array (array basic)    :offset-assert 12) ;; this is the file data.
    )
   :flag-assert #xb00000010
   (:methods
-   (new (symbol type int basic) _type_ 0)
-   (dummy-9 () none 9)
-   (dummy-10 () none 10)
-   )
+    (new (symbol type int basic) _type_ 0)
+    (dummy-9 () none 9)
+    (dummy-10 () none 10)
+    )
   )
 
 ;; specialization of load-dir where the data-array holds art-groups.
+(declare-type art-group basic)
 (deftype load-dir-art-group (load-dir)
-  ()
-  (:methods
-   (new (symbol type int basic) _type_ 0)
+  ((art-group-array (array art-group) :offset 12)
    )
   :flag-assert #xb00000010
+  (:methods
+    (new (symbol type int basic) _type_ 0)
+    )
   )
 
 
@@ -65,35 +67,35 @@
 (deftype external-art-buffer (basic)
   ((index                      int32          :offset-assert 4)
    (other                      external-art-buffer          :offset-assert 8)
-   (status                     basic          :offset-assert 12)
-   (locked?                    basic          :offset-assert 16)
-   (frame-lock                 basic          :offset-assert 20)
+   (status                     symbol         :offset-assert 12)
+   (locked?                    symbol         :offset-assert 16)
+   (frame-lock                 symbol         :offset-assert 20)
    (heap                       kheap  :inline :offset-assert 32)
-   (pending-load-file          basic          :offset-assert 48)
+   (pending-load-file          string         :offset-assert 48)
    (pending-load-file-part     int32          :offset-assert 52)
    (pending-load-file-owner    uint64         :offset-assert 56)
    (pending-load-file-priority float          :offset-assert 64)
-   (load-file                  basic          :offset-assert 68)
+   (load-file                  string         :offset-assert 68)
    (load-file-part             int32          :offset-assert 72)
    (load-file-owner            uint64         :offset-assert 80)
    (load-file-priority         float          :offset-assert 88)
    (buf                        uint32         :offset-assert 92)
    (len                        int32          :offset-assert 96)
-   (art-group                  basic          :offset-assert 100)
+   (art-group                  art-group      :offset-assert 100)
    )
   :method-count-assert 16
   :size-assert         #x68
   :flag-assert         #x1000000068
   (:methods
-   (new (symbol type int) _type_ 0)
-   (dummy-9 () none 9)
-   (dummy-10 () none 10)
-   (dummy-11 () none 11)
-   (dummy-12 () none 12)
-   (dummy-13 () none 13)
-   (dummy-14 () none 14)
-   (dummy-15 () none 15)
-   )
+    (new (symbol type int) _type_ 0)
+    (dummy-9 (_type_ symbol int symbol float) none 9)
+    (dummy-10 () none 10)
+    (dummy-11 () none 11)
+    (dummy-12 () none 12)
+    (dummy-13 () none 13)
+    (dummy-14 () none 14)
+    (dummy-15 () none 15)
+    )
   )
 
 (defmethod new external-art-buffer ((allocation symbol) (type-to-make type) (idx int))
@@ -117,7 +119,7 @@
   )
 
 (deftype spool-anim (basic)
-  ((name         basic   :offset 16) ;; why?
+  ((name         string  :offset 16) ;; why?
    (index        int32   :offset-assert 20)
    (parts        int32   :offset-assert 24)
    (priority     float   :offset-assert 28)
@@ -145,16 +147,16 @@
   :size-assert         #x118
   :flag-assert         #x1100000118
   (:methods
-   (new (symbol type) _type_ 0)
-   (dummy-9 () none 9)
-   (dummy-10 () none 10)
-   (dummy-11 () none 11)
-   (dummy-12 () none 12)
-   (dummy-13 () none 13)
-   (dummy-14 () none 14)
-   (dummy-15 () none 15)
-   (dummy-16 () none 16)
-   )
+    (new (symbol type) _type_ 0)
+    (dummy-9 (_type_ symbol) none 9)
+    (dummy-10 (_type_) none 10)
+    (dummy-11 () none 11)
+    (dummy-12 () none 12)
+    (dummy-13 () none 13)
+    (dummy-14 () none 14)
+    (dummy-15 () none 15)
+    (dummy-16 () none 16)
+    )
   )
 
 (defmethod new external-art-control ((allocation symbol) (type-to-make type))

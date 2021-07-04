@@ -7,6 +7,7 @@
 #include "decompiler/ObjectFile/LinkedObjectFile.h"
 #include "AtomicOp.h"
 #include "OpenGoalMapping.h"
+#include "Form.h"
 
 namespace decompiler {
 /////////////////////////////
@@ -297,6 +298,8 @@ std::string get_simple_expression_op_name(SimpleExpression::Kind kind) {
       return "vector-!2";
     case SimpleExpression::Kind::VECTOR_FLOAT_PRODUCT:
       return "vector-float*!2";
+    case SimpleExpression::Kind::SUBU_L32_S7:
+      return "subu-s7";
     default:
       assert(false);
       return {};
@@ -352,6 +355,8 @@ int get_simple_expression_arg_count(SimpleExpression::Kind kind) {
     case SimpleExpression::Kind::VECTOR_MINUS:
     case SimpleExpression::Kind::VECTOR_FLOAT_PRODUCT:
       return 3;
+    case SimpleExpression::Kind::SUBU_L32_S7:
+      return 1;
     default:
       assert(false);
       return -1;

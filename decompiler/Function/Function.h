@@ -1,8 +1,5 @@
 #pragma once
 
-#ifndef NEXT_FUNCTION_H
-#define NEXT_FUNCTION_H
-
 #include <string>
 #include <vector>
 #include <unordered_map>
@@ -45,7 +42,7 @@ struct FunctionName {
       case FunctionKind::METHOD:
         return "(method " + std::to_string(method_id) + " " + type_name + ")";
       case FunctionKind::TOP_LEVEL_INIT:
-        return "(top-level-login)";
+        return "(top-level-login " + object_name + ")";
       case FunctionKind::UNIDENTIFIED:
         return "(anon-function " + std::to_string(id_in_object) + " " + object_name + ")";
       default:
@@ -60,7 +57,10 @@ struct FunctionName {
 
   bool empty() const { return kind == FunctionKind::UNIDENTIFIED; }
 
-  void set_as_top_level() { kind = FunctionKind::TOP_LEVEL_INIT; }
+  void set_as_top_level(const std::string& object_file_name) {
+    kind = FunctionKind::TOP_LEVEL_INIT;
+    object_name = object_file_name;
+  }
 
   void set_as_global(std::string name) {
     kind = FunctionKind::GLOBAL;
@@ -175,4 +175,3 @@ class Function {
   std::unordered_map<int, int> basic_op_to_instruction;
 };
 }  // namespace decompiler
-#endif  // NEXT_FUNCTION_H

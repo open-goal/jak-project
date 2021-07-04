@@ -171,3 +171,8 @@
 - Forward declared basics can be used in more places
 - You can now set a field which has a forward declared structure or basic type
 - `cdr` now returns an object of type `pair`.
+- `lambda`s can now be used inside of a static object definition.
+- Methods can now be `:replace`d to override their type from their parent. Use this with extreme care.
+- TypeSpecs now support "tags". This can specify a `:behavior` tag for a function.
+- Lambdas and methods now support `:behavior` to specify the current process type.
+- `defbehavior` has been added to define a global behavior.

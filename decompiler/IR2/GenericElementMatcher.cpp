@@ -137,6 +137,14 @@ Matcher Matcher::set(const Matcher& dst, const Matcher& src) {
   return m;
 }
 
+Matcher Matcher::set_var(const Matcher& src, int dst_match_id) {
+  Matcher m;
+  m.m_kind = Kind::SET_VAR;
+  m.m_sub_matchers = {src};
+  m.m_reg_out_id = dst_match_id;
+  return m;
+}
+
 Matcher Matcher::while_loop(const Matcher& condition, const Matcher& body) {
   Matcher m;
   m.m_kind = Kind::WHILE_LOOP;
@@ -148,6 +156,13 @@ Matcher Matcher::any_constant_token(int match_id) {
   Matcher m;
   m.m_kind = Kind::ANY_CONSTANT_TOKEN;
   m.m_string_out_id = match_id;
+  return m;
+}
+
+Matcher Matcher::begin(const std::vector<Matcher>& elts) {
+  Matcher m;
+  m.m_kind = Kind::BEGIN;
+  m.m_sub_matchers = elts;
   return m;
 }
 
@@ -526,6 +541,38 @@ bool Matcher::do_match(Form* input, MatchResult::Maps* maps_out) const {
       }
       return true;
     } break;
+
+    case Kind::BEGIN: {
+      if ((int)m_sub_matchers.size() != input->size()) {
+        return false;
+      }
+
+      for (int i = 0; i < input->size(); i++) {
+        Form fake;
+        fake.elts().push_back(input->elts().at(i));
+        if (!m_sub_matchers.at(i).do_match(&fake, maps_out)) {
+          return false;
+        }
+      }
+      return true;
+    }
+
+    case Kind::SET_VAR: {
+      auto as_set = dynamic_cast<SetVarElement*>(input->try_as_single_active_element());
+      if (!as_set) {
+        return false;
+      }
+
+      if (!m_sub_matchers.at(0).do_match(as_set->src(), maps_out)) {
+        return false;
+      }
+
+      if (m_reg_out_id != -1) {
+        maps_out->regs.resize(std::max((int)maps_out->regs.size(), m_reg_out_id + 1));
+        maps_out->regs.at(m_reg_out_id) = as_set->dst();
+      }
+      return true;
+    }
 
     default:
       assert(false);

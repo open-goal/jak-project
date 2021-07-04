@@ -92,10 +92,6 @@ const std::unordered_set<std::string> g_functions_to_skip_compiling = {
     // inline assembly
     "valid?",
 
-    /// GKERNEL-H
-    // bitfields, possibly inline assembly
-    "(method 2 handle)",
-
     /// GKERNEL
     // asm
     "(method 10 process)",
@@ -146,7 +142,10 @@ const std::unordered_set<std::string> g_functions_to_skip_compiling = {
     "(method 15 sync-info-paused)",  // needs display stuff first
 
     // ripple - calls an asm function
-    "ripple-execute"};
+    "ripple-execute",
+
+    "get-task-status",
+};
 
 // default location for the data. It can be changed with a command line argument.
 std::string g_iso_data_path = "";
@@ -331,9 +330,6 @@ TEST_F(OfflineDecompilation, FunctionDetect) {
 
   // one login per object file
   EXPECT_EQ(config->allowed_objects.size(), login_count);
-
-  // not many lambdas.
-  EXPECT_TRUE(unknown_count < 10);
 }
 
 TEST_F(OfflineDecompilation, AsmFunction) {
