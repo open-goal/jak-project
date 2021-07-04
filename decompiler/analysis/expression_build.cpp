@@ -23,12 +23,14 @@ bool convert_to_expressions(
   // give us anything more specific.
   if (f.guessed_name.kind == FunctionName::FunctionKind::GLOBAL ||
       f.guessed_name.kind == FunctionName::FunctionKind::UNIDENTIFIED) {
-    f.ir2.env.set_remap_for_function(f.type.arg_count() - 1);
+    f.ir2.env.set_remap_for_function(f.type);
   } else if (f.guessed_name.kind == FunctionName::FunctionKind::METHOD) {
+    auto method_type =
+        dts.ts.lookup_method(f.guessed_name.type_name, f.guessed_name.method_id).type;
     if (f.guessed_name.method_id == GOAL_NEW_METHOD) {
-      f.ir2.env.set_remap_for_new_method(f.type.arg_count() - 1);
+      f.ir2.env.set_remap_for_new_method(method_type);
     } else {
-      f.ir2.env.set_remap_for_method(f.type.arg_count() - 1);
+      f.ir2.env.set_remap_for_method(method_type);
     }
   }
 

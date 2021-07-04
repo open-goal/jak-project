@@ -189,6 +189,7 @@ void declare_method(Type* type, TypeSystem* type_system, const goos::Object& def
 
     bool no_virtual = false;
     bool replace_method = false;
+    TypeSpec function_typespec("function");
 
     if (!obj->is_empty_list() && car(obj).is_symbol(":no-virtual")) {
       obj = cdr(obj);
@@ -198,6 +199,12 @@ void declare_method(Type* type, TypeSystem* type_system, const goos::Object& def
     if (!obj->is_empty_list() && car(obj).is_symbol(":replace")) {
       obj = cdr(obj);
       replace_method = true;
+    }
+
+    if (!obj->is_empty_list() && car(obj).is_symbol(":behavior")) {
+      obj = cdr(obj);
+      function_typespec.add_new_tag("behavior", symbol_string(obj->as_pair()->car));
+      obj = cdr(obj);
     }
 
     int id = -1;
@@ -210,8 +217,6 @@ void declare_method(Type* type, TypeSystem* type_system, const goos::Object& def
     if (!obj->is_empty_list()) {
       throw std::runtime_error("too many things in method def: " + def.print());
     }
-
-    TypeSpec function_typespec("function");
 
     for_each_in_list(args, [&](const goos::Object& o) {
       function_typespec.add_arg(parse_typespec(type_system, o));
@@ -441,10 +446,39 @@ TypeSpec parse_typespec(const TypeSystem* type_system, const goos::Object& src) 
     return type_system->make_typespec(symbol_string(src));
   } else if (src.is_pair()) {
     TypeSpec ts = type_system->make_typespec(symbol_string(car(&src)));
-    const auto& rest = *cdr(&src);
+    const auto* rest = cdr(&src);
 
-    for_each_in_list(rest,
-                     [&](const goos::Object& o) { ts.add_arg(parse_typespec(type_system, o)); });
+    while (rest->is_pair()) {
+      auto& it = rest->as_pair()->car;
+
+      if (it.is_symbol() && it.as_symbol()->name.at(0) == ':') {
+        auto tag_name = it.as_symbol()->name.substr(1);
+        rest = &rest->as_pair()->cdr;
+
+        if (!rest->is_pair()) {
+          throw std::runtime_error("TypeSpec missing tag value");
+        }
+
+        auto& tag_val = rest->as_pair()->car;
+
+        if (tag_name == "behavior") {
+          if (!type_system->fully_defined_type_exists(tag_val.as_symbol()->name) &&
+              !type_system->partially_defined_type_exists(tag_val.as_symbol()->name)) {
+            throw std::runtime_error(
+                fmt::format("Behavior tag uses an unknown type {}", tag_val.as_symbol()->name));
+          }
+          ts.add_new_tag(tag_name, tag_val.as_symbol()->name);
+        } else {
+          throw std::runtime_error(fmt::format("Type tag {} is unknown", tag_name));
+        }
+
+      } else {
+        // normal argument.
+        ts.add_arg(parse_typespec(type_system, it));
+      }
+
+      rest = &rest->as_pair()->cdr;
+    }
 
     return ts;
   } else {

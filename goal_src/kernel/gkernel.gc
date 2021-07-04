@@ -249,13 +249,10 @@
 ;; Remove Exit
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-(defun remove-exit ()
-  "This is likely a defbehavior for process.
-  Pops a single stack frame, if there is one."
-  (rlet ((self :reg r13 :type process))
-    (when (-> self stack-frame-top)
-      (set! (-> self stack-frame-top) (-> self stack-frame-top next))
-      )
+(defbehavior remove-exit process ()
+  "Pops a single stack frame, if there is one."
+  (when (-> self stack-frame-top)
+    (set! (-> self stack-frame-top) (-> self stack-frame-top next))
     )
   )
 
@@ -268,83 +265,86 @@
 ;; The base class of process is process-tree.
 ;; Each process-tree element has a process-mask which indicates what type of node it is.
 
-(defun-debug stream<-process-mask (stream (mask int))
-  "Print out a process mask. This function may have been auto-generated?"
-                                        ; 24
-  (if (not (eq? 0 (logand mask (process-mask death))))
-      (format stream "death "))
-                                        ; 23
-  (if (not (eq? 0 (logand mask (process-mask attackable))))
-      (format stream "attackable "))  
-                                        ; 22
-  (if (not (eq? 0 (logand mask (process-mask projectile))))
-      (format stream "projectile "))  
-                                        ; 21
-  (if (not (eq? 0 (logand mask (process-mask entity))))
-      (format stream "entity "))
-                                        ; 20
-  (if (not (eq? 0 (logand mask (process-mask ambient))))
-      (format stream "ambient "))    
-                                        ; 19
-  (if (not (eq? 0 (logand mask (process-mask platform))))
-      (format stream "platform "))
-                                        ; 18
-  (if (not (eq? 0 (logand mask (process-mask camera))))
-      (format stream "camera "))  
-                                        ; 17
-  (if (not (eq? 0 (logand mask (process-mask enemy))))
-      (format stream "enemy "))  
-                                        ; 16
-  (if (not (eq? 0 (logand mask (process-mask collectable))))
-      (format stream "collectable "))
-                                        ; 15
-  (if (not (eq? 0 (logand mask (process-mask crate))))
-      (format stream "crate "))  
-                                        ; 14
-  (if (not (eq? 0 (logand mask (process-mask sidekick))))
-      (format stream "sidekick "))
-                                        ; 13
-  (if (not (eq? 0 (logand mask (process-mask target))))
-      (format stream "target "))  
-                                        ; 12
-  (if (not (eq? 0 (logand mask (process-mask movie-subject))))
-      (format stream "movie-subject "))
-                                        ; 11
-  (if (not (eq? 0 (logand mask (process-mask movie))))
-      (format stream "movie "))
-                                        ; 10
-  (if (not (eq? 0 (logand mask (process-mask going))))
-      (format stream "going "))  
-                                        ; 9
-  (if (not (eq? 0 (logand mask (process-mask heap-shrunk))))
-      (format stream "heap-shrunk "))
-                                        ; 8
-  (if (not (eq? 0 (logand mask (process-mask process-tree))))
-      (format stream "process-tree "))  
-                                        ; 7
-  (if (not (eq? 0 (logand mask (process-mask sleep-code))))
-      (format stream "sleep-code "))
-                                        ; 6
-  (if (not (eq? 0 (logand mask (process-mask sleep))))
-      (format stream "sleep "))  
-                                        ; 5
-  (if (not (eq? 0 (logand mask (process-mask actor-pause))))
-      (format stream "actor-pause "))  
-                                        ; 4
-  (if (not (eq? 0 (logand mask (process-mask progress))))
-      (format stream "progress "))
-                                        ; 3
-  (if (not (eq? 0 (logand mask (process-mask menu))))
-      (format stream "menu "))    
-                                        ; 2
-  (if (not (eq? 0 (logand mask (process-mask pause))))
-      (format stream "pause "))
-                                        ; 1
-  (if (not (eq? 0 (logand mask (process-mask draw))))
-      (format stream "draw "))  
-                                        ; 0
-  (if (not (eq? 0 (logand mask (process-mask execute))))
-      (format stream "execute "))  
+(defun-debug stream<-process-mask ((arg0 object) (arg1 process-mask))
+  (let ((s4-0 arg1))
+    (if (= (logand #x1000000 (the-as int s4-0)) (process-mask death))
+        (format arg0 "death ")
+        )
+    (if (= (logand #x800000 (the-as int s4-0)) (process-mask attackable))
+        (format arg0 "attackable ")
+        )
+    (if (= (logand #x400000 (the-as int s4-0)) (process-mask projectile))
+        (format arg0 "projectile ")
+        )
+    (if (= (logand #x200000 (the-as int s4-0)) (process-mask entity))
+        (format arg0 "entity ")
+        )
+    (if (= (logand #x100000 (the-as int s4-0)) (process-mask ambient))
+        (format arg0 "ambient ")
+        )
+    (if (= (logand #x80000 (the-as int s4-0)) (process-mask platform))
+        (format arg0 "platform ")
+        )
+    (if (= (logand #x40000 (the-as int s4-0)) (process-mask camera))
+        (format arg0 "camera ")
+        )
+    (if (= (logand #x20000 (the-as int s4-0)) (process-mask enemy))
+        (format arg0 "enemy ")
+        )
+    (if (= (logand #x10000 (the-as int s4-0)) (process-mask collectable))
+        (format arg0 "collectable ")
+        )
+    (if (= (logand s4-0 (process-mask crate)) (process-mask crate))
+        (format arg0 "crate ")
+        )
+    (if (= (logand s4-0 (process-mask sidekick)) (process-mask sidekick))
+        (format arg0 "sidekick ")
+        )
+    (if (= (logand s4-0 (process-mask target)) (process-mask target))
+        (format arg0 "target ")
+        )
+    (if
+     (= (logand s4-0 (process-mask movie-subject)) (process-mask movie-subject))
+     (format arg0 "movie-subject ")
+     )
+    (if (= (logand s4-0 (process-mask movie)) (process-mask movie))
+        (format arg0 "movie ")
+        )
+    (if (= (logand s4-0 (process-mask going)) (process-mask going))
+        (format arg0 "going ")
+        )
+    (if (= (logand s4-0 (process-mask heap-shrunk)) (process-mask heap-shrunk))
+        (format arg0 "heap-shrunk ")
+        )
+    (if (= (logand s4-0 (process-mask process-tree)) (process-mask process-tree))
+        (format arg0 "process-tree ")
+        )
+    (if (= (logand s4-0 (process-mask sleep-code)) (process-mask sleep-code))
+        (format arg0 "sleep-code ")
+        )
+    (if (= (logand s4-0 (process-mask sleep)) (process-mask sleep))
+        (format arg0 "sleep ")
+        )
+    (if (= (logand s4-0 (process-mask actor-pause)) (process-mask actor-pause))
+        (format arg0 "actor-pause ")
+        )
+    (if (= (logand s4-0 (process-mask progress)) (process-mask progress))
+        (format arg0 "progress ")
+        )
+    (if (= (logand s4-0 (process-mask menu)) (process-mask menu))
+        (format arg0 "menu ")
+        )
+    (if (= (logand s4-0 (process-mask pause)) (process-mask pause))
+        (format arg0 "pause ")
+        )
+    (if (= (logand s4-0 (process-mask draw)) (process-mask draw))
+        (format arg0 "draw ")
+        )
+    (if (= (logand s4-0 (process-mask execute)) (process-mask execute))
+        (format arg0 "execute ")
+        )
+    )
+  arg1
   )
 
 ;; game state

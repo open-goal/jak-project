@@ -1295,22 +1295,38 @@ bool TypeSystem::typecheck_and_throw(const TypeSpec& expected,
   }
 
   // next argument checks:
-  if (expected.m_arguments.size() == actual.m_arguments.size()) {
-    for (size_t i = 0; i < expected.m_arguments.size(); i++) {
+  if (expected.arg_count() == actual.arg_count()) {
+    for (size_t i = 0; i < expected.arg_count(); i++) {
       // don't print/throw because the error would be confusing. Better to fail only the
       // outer most check and print a single error message.
-      if (!tc(expected.m_arguments[i], actual.m_arguments[i])) {
+      if (!tc(expected.get_arg(i), actual.get_arg(i))) {
         success = false;
         break;
       }
     }
   } else {
     // different sizes of arguments.
-    if (expected.m_arguments.empty()) {
+    if (expected.arg_count() == 0) {
       // we expect zero arguments, but got some. The actual type is more specific, so this is fine.
     } else {
       // different sizes, and we expected arguments. No good!
       success = false;
+    }
+  }
+
+  // next, tag checks. It's fine to throw away tags, but the child must match all parent tags
+  for (auto& tag : expected.tags()) {
+    if (tag.name == "behavior") {
+      auto got = actual.try_get_tag(tag.name);
+      if (!got) {
+        success = false;
+      } else {
+        if (*got != tag.value) {
+          success = false;
+        }
+      }
+    } else {
+      throw_typesystem_error("Unknown tag {}", tag.name);
     }
   }
 
@@ -1431,16 +1447,14 @@ std::string TypeSystem::lca_base(const std::string& a, const std::string& b) con
  */
 TypeSpec TypeSystem::lowest_common_ancestor(const TypeSpec& a, const TypeSpec& b) const {
   auto result = make_typespec(lca_base(a.base_type(), b.base_type()));
-  if (result == TypeSpec("function") && a.m_arguments.size() == 2 && b.m_arguments.size() == 2 &&
-      (a.m_arguments.at(0) == TypeSpec("_varargs_") ||
-       b.m_arguments.at(0) == TypeSpec("_varargs_"))) {
+  if (result == TypeSpec("function") && a.arg_count() == 2 && b.arg_count() == 2 &&
+      (a.get_arg(0) == TypeSpec("_varargs_") || b.get_arg(0) == TypeSpec("_varargs_"))) {
     return TypeSpec("function");
   }
-  if (!a.m_arguments.empty() && !b.m_arguments.empty() &&
-      a.m_arguments.size() == b.m_arguments.size()) {
+  if (!a.empty() && !b.empty() && a.arg_count() == b.arg_count()) {
     // recursively add arguments
-    for (size_t i = 0; i < a.m_arguments.size(); i++) {
-      result.add_arg(lowest_common_ancestor(a.m_arguments.at(i), b.m_arguments.at(i)));
+    for (size_t i = 0; i < a.arg_count(); i++) {
+      result.add_arg(lowest_common_ancestor(a.get_arg(i), b.get_arg(i)));
     }
   }
   return result;
@@ -1594,8 +1608,15 @@ std::string TypeSystem::generate_deftype_footer(const Type* type) const {
         methods_string.push_back(' ');
       }
     }
-    methods_string.append(fmt::format(
-        ") {} {})\n    ", new_info->type.get_arg(new_info->type.arg_count() - 1).print(), 0));
+    methods_string.append(
+        fmt::format(") {} ", new_info->type.get_arg(new_info->type.arg_count() - 1).print(), 0));
+
+    auto behavior = new_info->type.try_get_tag("behavior");
+    if (behavior) {
+      methods_string.append(fmt::format(":behavior {} ", *behavior));
+    }
+
+    methods_string.append("0)\n    ");
   }
 
   for (auto& info : type->get_methods_defined_for_type()) {
@@ -1615,6 +1636,11 @@ std::string TypeSystem::generate_deftype_footer(const Type* type) const {
 
     if (info.overrides_method_type_of_parent) {
       methods_string.append(":replace ");
+    }
+
+    auto behavior = info.type.try_get_tag("behavior");
+    if (behavior) {
+      methods_string.append(fmt::format(":behavior {} ", *behavior));
     }
 
     methods_string.append(fmt::format("{})\n    ", info.id));
