@@ -346,7 +346,7 @@
 (defun can-hint-be-played? ((arg0 int))
   (let ((v1-0 (not (str-is-playing?))))
    (if (and v1-0 (nonzero? arg0))
-    (set! v1-0 (not (dummy-21 *game-info* arg0)))
+    (set! v1-0 (not (seen-text? *game-info* (the-as game-text-id arg0))))
     )
    (when v1-0
     (when *hint-semaphore*
@@ -490,9 +490,6 @@
 
 ;; TODO - defined in progress-static
 (define-extern *level-task-data-remap* (array int32))
-;; TODO
-(define-extern get-task-status (function int uint64)) ;; TODO - not confirmed
-(define-extern close-specific-task! (function int int none)) ;; TODO - not confirmed
 
 ;; definition for function update-task-hints
 ;; INFO: Return type mismatch int vs none.
@@ -508,14 +505,18 @@
         (when (and (!= gp-0 0) (nonzero? (-> gp-0 length)))
          (let ((s5-0 (-> *game-info* in-level-time a0-3)))
           (dotimes (s4-0 (-> gp-0 length))
-           (let ((v1-17 (get-task-status (the-as int (-> gp-0 s4-0 task)))))
+           (let
+            ((v1-17 (get-task-status (the-as game-task (-> gp-0 s4-0 task)))))
             (when
              (or
-              (zero? (+ (the-as uint v1-17) (the-as uint -2)))
-              (zero? (+ (the-as uint v1-17) (the-as uint -1)))
+              (= v1-17 (task-status need-hint))
+              (= v1-17 (task-status unknown))
               )
              (if (< (-> gp-0 s4-0 delay) s5-0)
-              (close-specific-task! (the-as int (-> gp-0 s4-0 task)) 2)
+              (close-specific-task!
+               (the-as game-task (-> gp-0 s4-0 task))
+               (task-status need-hint)
+               )
               )
              )
             )
@@ -531,7 +532,3 @@
   0
   (none)
   )
-
-
-
-
