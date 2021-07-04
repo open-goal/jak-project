@@ -86,6 +86,7 @@ class CfgVtx {
     bool has_branch = false;     // does the block end in a branch (any kind)?
     bool branch_likely = false;  // does the block end in a likely branch?
     bool branch_always = false;  // does the branch always get taken?
+    bool asm_branch = false;     // is this an inline assembly branch?
     DelaySlotKind kind = DelaySlotKind::NO_BRANCH;
   } end_branch;
 
@@ -331,6 +332,7 @@ class ControlFlowGraph {
   bool find_goto_end();
   bool find_infinite_loop();
   bool find_goto_not_end();
+  bool clean_up_asm_branches();
 
   /*!
    * Apply a function f to each top-level vertex.

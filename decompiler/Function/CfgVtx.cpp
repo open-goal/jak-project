@@ -121,6 +121,10 @@ std::string CfgVtx::links_to_string() {
     result += "  prev: " + prev->to_string() + "\n";
   }
 
+  if (end_branch.asm_branch) {
+    result += "  ASM BRANCH\n";
+  }
+
   if (!pred.empty()) {
     result += "  preds:\n";
     for (auto* x : pred) {
@@ -1051,6 +1055,188 @@ bool ControlFlowGraph::is_sequence(CfgVtx* b0, CfgVtx* b1, bool allow_self_loops
   return true;
 }
 
+/*!
+ * This is a weird and special pass that takes something like:
+ * B0
+ *  asm branch
+ * B1
+ *
+ * and merges B0B1 into a single block with a
+ */
+bool ControlFlowGraph::clean_up_asm_branches() {
+  bool replaced = false;
+  for_each_top_level_vtx([&](CfgVtx* vtx) {
+    auto* b0 = vtx;
+    auto* b1 = vtx->next;
+    if (!b1) {
+      return true;
+    }
+
+    if (!b0->end_branch.asm_branch) {
+      return true;
+    }
+
+    if (b0->end_branch.branch_likely) {
+      auto* bds = b1;
+      b1 = bds->next;
+      if (!b1) {
+        return true;
+      }
+
+      fmt::print("Looks like asm likely branch: {} {} to {}\n", b0->to_string(), bds->to_string(),
+                 b1->to_string());
+
+      auto* b0_seq = dynamic_cast<SequenceVtx*>(b0);
+      auto* b1_seq = dynamic_cast<SequenceVtx*>(b1);
+      if (!b0_seq && !b1_seq) {
+        // build new sequence
+        replaced = true;
+
+        m_blocks.at(bds->succ_branch->get_first_block_id())->needs_label = true;
+
+        auto* new_seq = alloc<SequenceVtx>();
+        new_seq->seq.push_back(b0);
+        new_seq->seq.push_back(bds);
+        new_seq->seq.push_back(b1);
+
+        for (auto* new_pred : b0->pred) {
+          fmt::print("  pred {}\n", new_pred->to_string());
+          new_pred->replace_succ_and_check(b0, new_seq);
+        }
+        new_seq->pred = b0->pred;
+
+        if (b0->succ_branch) {
+          b0->succ_branch->replace_preds_with_and_check({b0}, nullptr);
+        }
+
+        if (bds->succ_branch) {
+          // likely delay slots "branch" in this graph.
+          bds->succ_branch->replace_preds_with_and_check({bds}, nullptr);
+        }
+
+        for (auto* new_succ : b1->succs()) {
+          new_succ->replace_pred_and_check(b1, new_seq);
+        }
+        new_seq->succ_ft = b1->succ_ft;
+        new_seq->succ_branch = b1->succ_branch;
+
+        new_seq->prev = b0->prev;
+        if (new_seq->prev) {
+          new_seq->prev->next = new_seq;
+        }
+        new_seq->next = b1->next;
+        if (new_seq->next) {
+          new_seq->next->prev = new_seq;
+        }
+
+        b0->parent_claim(new_seq);
+        bds->parent_claim(new_seq);
+        b1->parent_claim(new_seq);
+        new_seq->end_branch = b1->end_branch;
+
+        return false;
+      } else if (b0_seq && b1_seq) {
+        replaced = true;
+        m_blocks.at(bds->succ_branch->get_first_block_id())->needs_label = true;
+        auto* seq = dynamic_cast<SequenceVtx*>(b0);
+        assert(seq);
+
+        auto* old_seq = dynamic_cast<SequenceVtx*>(b1);
+        assert(old_seq);
+
+        if (b0->succ_branch) {
+          b0->succ_branch->replace_preds_with_and_check({b0}, nullptr);
+        }
+
+        if (bds->succ_branch) {
+          // likely delay slots "branch" in this graph.
+          bds->succ_branch->replace_preds_with_and_check({bds}, nullptr);
+        }
+
+        seq->seq.push_back(bds);
+
+        for (auto* x : old_seq->seq) {
+          x->parent_claim(seq);
+          seq->seq.push_back(x);
+        }
+
+        for (auto* x : old_seq->succs()) {
+          //        printf("fix preds of %s\n", x->to_string().c_str());
+          x->replace_pred_and_check(old_seq, seq);
+        }
+        seq->succ_branch = old_seq->succ_branch;
+        seq->succ_ft = old_seq->succ_ft;
+        seq->end_branch = old_seq->end_branch;
+        seq->next = old_seq->next;
+        if (seq->next) {
+          seq->next->prev = seq;
+        }
+
+        // todo - proper trash?
+        old_seq->parent_claim(seq);
+        bds->parent_claim(seq);
+
+        return false;
+      }
+
+      else {
+        lg::error("unhandled sequences in clean_up_asm_branches likely seq: {} {}", !!b0_seq,
+                  !!b1_seq);
+      }
+
+    } else {
+      fmt::print("Looks like asm normal branch: {} to {}\n", b0->to_string(), b1->to_string());
+      auto* b0_seq = dynamic_cast<SequenceVtx*>(b0);
+      auto* b1_seq = dynamic_cast<SequenceVtx*>(b1);
+
+      if (!b0_seq && !b1_seq) {
+        // build new sequence
+        replaced = true;
+        m_blocks.at(b0->succ_branch->get_first_block_id())->needs_label = true;
+
+        auto* new_seq = alloc<SequenceVtx>();
+        new_seq->seq.push_back(b0);
+        new_seq->seq.push_back(b1);
+
+        for (auto* new_pred : b0->pred) {
+          fmt::print("  pred {}\n", new_pred->to_string());
+          new_pred->replace_succ_and_check(b0, new_seq);
+        }
+        new_seq->pred = b0->pred;
+
+        if (b0->succ_branch) {
+          b0->succ_branch->replace_preds_with_and_check({b0}, nullptr);
+        }
+
+        for (auto* new_succ : b1->succs()) {
+          new_succ->replace_pred_and_check(b1, new_seq);
+        }
+        new_seq->succ_ft = b1->succ_ft;
+        new_seq->succ_branch = b1->succ_branch;
+
+        new_seq->prev = b0->prev;
+        if (new_seq->prev) {
+          new_seq->prev->next = new_seq;
+        }
+        new_seq->next = b1->next;
+        if (new_seq->next) {
+          new_seq->next->prev = new_seq;
+        }
+
+        b0->parent_claim(new_seq);
+        b1->parent_claim(new_seq);
+        new_seq->end_branch = b1->end_branch;
+        return false;
+      } else {
+        lg::error("unhandled sequences in clean_up_asm_branches seq: {} {}", !!b0_seq, !!b1_seq);
+      }
+    }
+
+    return true;  // keep looking
+  });
+  return replaced;
+}
+
 bool ControlFlowGraph::is_sequence_of_non_sequences(CfgVtx* b0, CfgVtx* b1, bool allow_self_loops) {
   if (!b0 || !b1)
     return false;
@@ -1826,6 +2012,10 @@ bool ControlFlowGraph::find_short_circuits() {
       return true;
     }
 
+    if (vtx->end_branch.asm_branch) {
+      return true;
+    }
+
     // set up the first entry:
     ShortCircuit::Entry candidate = {vtx, vtx->next};
     CfgVtx* end = vtx->next->succ_branch;
@@ -2085,6 +2275,40 @@ CfgVtx::DelaySlotKind get_delay_slot(const Instruction& i) {
   }
 }
 
+namespace {
+/*!
+ * Is this instruction possible in the delay slot, without using inline assembly?
+ */
+bool branch_delay_asm(const Instruction& i) {
+  if (is_nop(i)) {
+    // nop can be used as a delay
+    return false;
+  } else if (is_gpr_3(i, InstructionKind::OR, {}, Register(Reg::GPR, Reg::S7),
+                      Register(Reg::GPR, Reg::R0))) {
+    // set false is used in ifs, etc
+    return false;
+  } else if (is_gpr_2_imm_int(i, InstructionKind::DADDIU, {}, Register(Reg::GPR, Reg::S7), 8)) {
+    // set true is used in sc
+    return false;
+  } else if (is_gpr_3(i, InstructionKind::OR, {}, {}, Register(Reg::GPR, Reg::R0))) {
+    // set var to var
+    return false;
+  } else if (is_gpr_3(i, InstructionKind::DSLLV, {}, {}, {})) {
+    // shift trick
+    return false;
+  } else if (is_gpr_3(i, InstructionKind::DSUBU, {}, Register(Reg::GPR, Reg::R0), {})) {
+    // abs trick
+    return false;
+  } else if (i.kind == InstructionKind::LW &&
+             (i.get_src(0).is_sym("binteger") || i.get_src(0).is_sym("pair"))) {
+    // rtype trick
+    return false;
+  } else {
+    return true;
+  }
+}
+}  // namespace
+
 /*!
  * Build and resolve a Control Flow Graph as much as possible.
  */
@@ -2104,8 +2328,6 @@ std::shared_ptr<ControlFlowGraph> build_cfg(const LinkedObjectFile& file,
   // add exit block
   cfg->exit()->pred.push_back(blocks.back());
   blocks.back()->succ_ft = cfg->exit();
-
-  // todo - early returns!
 
   // set up succ / pred
   for (int i = 0; i < int(func.basic_blocks.size()); i++) {
@@ -2234,6 +2456,44 @@ std::shared_ptr<ControlFlowGraph> build_cfg(const LinkedObjectFile& file,
     }
   }
 
+  for (int i = 0; i < int(func.basic_blocks.size()); i++) {
+    auto& bb = func.basic_blocks[i];
+    auto& b = blocks.at(i);
+
+    if (bb.end_word == bb.start_word) {
+      continue;  // zero sized block, there is no branch here.
+    }
+
+    // room for at least a likely branch, try that first.
+    int likely_branch_idx = bb.end_word - 1;
+    assert(likely_branch_idx >= bb.start_word);
+    auto& likely_branch_candidate = func.instructions.at(likely_branch_idx);
+
+    if (is_branch(likely_branch_candidate, true)) {
+      // likely branch!
+      auto following = func.instructions.at(likely_branch_idx + 1);
+      if (branch_delay_asm(following)) {
+        b->end_branch.asm_branch = true;
+        fmt::print("LIKELY ASM BRANCH: {} and {}\n", likely_branch_candidate.to_string(file.labels),
+                   following.to_string(file.labels));
+      }
+    }
+
+    if (bb.end_word - bb.start_word >= 2) {
+      int idx = bb.end_word - 2;
+      assert(idx >= bb.start_word);
+      auto& branch_candidate = func.instructions.at(idx);
+      auto& delay_slot_candidate = func.instructions.at(idx + 1);
+      if (is_branch(branch_candidate, false)) {
+        if (branch_delay_asm(delay_slot_candidate)) {
+          b->end_branch.asm_branch = true;
+          fmt::print("NORMAL ASM BRANCH: {} and {}\n", branch_candidate.to_string(file.labels),
+                     delay_slot_candidate.to_string(file.labels));
+        }
+      }
+    }
+  }
+
   cfg->flag_early_exit(func.basic_blocks);
 
   bool changed = true;
@@ -2270,6 +2530,10 @@ std::shared_ptr<ControlFlowGraph> build_cfg(const LinkedObjectFile& file,
 
     if (!changed) {
       changed = changed || cfg->find_cond_w_empty_else();
+    }
+
+    if (!changed) {
+      changed = changed || cfg->clean_up_asm_branches();
     }
 
     if (!changed) {

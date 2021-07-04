@@ -1373,13 +1373,29 @@ void BranchOp::collect_vars(RegAccessSet& vars) const {
 AsmBranchOp::AsmBranchOp(bool likely,
                          IR2_Condition condition,
                          int label,
+                         AtomicOp* branch_delay,
+                         int my_idx)
+    : AtomicOp(my_idx),
+      m_likely(likely),
+      m_condition(std::move(condition)),
+      m_label(label),
+      m_branch_delay(branch_delay) {
+  fmt::print("got bd? {}\n", !!m_branch_delay);
+}
+
+AsmBranchOp::AsmBranchOp(bool likely,
+                         IR2_Condition condition,
+                         int label,
                          std::shared_ptr<AtomicOp> branch_delay,
                          int my_idx)
     : AtomicOp(my_idx),
       m_likely(likely),
       m_condition(std::move(condition)),
       m_label(label),
-      m_branch_delay(std::move(branch_delay)) {}
+      m_branch_delay_sp(branch_delay) {
+  m_branch_delay = m_branch_delay_sp.get();
+  fmt::print("got bd? {}\n", !!m_branch_delay);
+}
 
 goos::Object AsmBranchOp::to_form(const std::vector<DecompilerLabel>& labels,
                                   const Env& env) const {
@@ -1393,7 +1409,10 @@ goos::Object AsmBranchOp::to_form(const std::vector<DecompilerLabel>& labels,
 
   forms.push_back(m_condition.to_form(labels, env));
   forms.push_back(pretty_print::to_symbol(labels.at(m_label).name));
-  forms.push_back(m_branch_delay->to_form(labels, env));
+
+  if (m_branch_delay) {
+    forms.push_back(m_branch_delay->to_form(labels, env));
+  }
 
   return pretty_print::build_list(forms);
 }
@@ -1419,23 +1438,28 @@ RegisterAccess AsmBranchOp::get_set_destination() const {
 
 void AsmBranchOp::update_register_info() {
   m_condition.get_regs(&m_read_regs);
-  m_branch_delay->update_register_info();
-  for (auto x : m_branch_delay->read_regs()) {
-    m_read_regs.push_back(x);
-  }
+  if (m_branch_delay) {
+    m_branch_delay->update_register_info();
 
-  for (auto x : m_branch_delay->write_regs()) {
-    m_write_regs.push_back(x);
-  }
+    for (auto x : m_branch_delay->read_regs()) {
+      m_read_regs.push_back(x);
+    }
 
-  for (auto x : m_branch_delay->clobber_regs()) {
-    m_clobber_regs.push_back(x);
+    for (auto x : m_branch_delay->write_regs()) {
+      m_write_regs.push_back(x);
+    }
+
+    for (auto x : m_branch_delay->clobber_regs()) {
+      m_clobber_regs.push_back(x);
+    }
   }
 }
 
 void AsmBranchOp::collect_vars(RegAccessSet& vars) const {
   m_condition.collect_vars(vars);
-  m_branch_delay->collect_vars(vars);
+  if (m_branch_delay) {
+    m_branch_delay->collect_vars(vars);
+  }
 }
 
 /////////////////////////////
@@ -1489,9 +1513,9 @@ void SpecialOp::update_register_info() {
       return;
     case Kind::SUSPEND:
       // todo - confirm this is true.
-      // the suspend operation is written in a way where it doesn't use temporaries to make the call
-      // but the actual suspend operation doesn't seem to preserve temporaries. Maybe the plan was
-      // to save temp registers at some point, but they later gave up on this?
+      // the suspend operation is written in a way where it doesn't use temporaries to make the
+      // call but the actual suspend operation doesn't seem to preserve temporaries. Maybe the
+      // plan was to save temp registers at some point, but they later gave up on this?
       clobber_temps();
       return;
     default:
@@ -1540,11 +1564,12 @@ RegisterAccess CallOp::get_set_destination() const {
 }
 
 void CallOp::update_register_info() {
-  // throw std::runtime_error("CallOp::update_register_info cannot be done until types are known");
+  // throw std::runtime_error("CallOp::update_register_info cannot be done until types are
+  // known");
   m_read_regs.push_back(Register(Reg::GPR, Reg::T9));
-  // previously, if the type analysis succeeds, it would remove this if the function doesn't return
-  // a value. however, this turned out to be not quite right because GOAL internally thinks that all
-  // functions return a value.
+  // previously, if the type analysis succeeds, it would remove this if the function doesn't
+  // return a value. however, this turned out to be not quite right because GOAL internally thinks
+  // that all functions return a value.
   m_write_regs.push_back(Register(Reg::GPR, Reg::V0));
   clobber_temps();
 }

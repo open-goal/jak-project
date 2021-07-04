@@ -3317,7 +3317,11 @@ void ConditionElement::update_from_stack(const Env& env,
       } else {
         source_types.push_back(TypeSpec("int"));
       }
-    } else {
+    } else if (m_src[i]->is_sym_val() && m_src[i]->get_str() == "#f") {
+      source_types.push_back(TypeSpec("symbol"));
+    }
+
+    else {
       throw std::runtime_error("Unsupported atom in ConditionElement::update_from_stack");
     }
   }
@@ -3604,6 +3608,18 @@ void AtomicOpElement::push_to_stack(const Env& env, FormPool& pool, FormStack& s
     return;
   }
 
+  auto as_branch = dynamic_cast<AsmBranchOp*>(m_op);
+  if (as_branch && !as_branch->is_likely()) {
+    // this is a bit of a hack, but we go AsmBranchOp -> AsmBranchElement -> TranslatedAsmBranch
+    auto delay = as_branch->branch_delay();
+    assert(delay);
+    // this might not be enough - we may need to back up to the cfg builder and do something there.
+    auto del = pool.alloc_single_element_form<AtomicOpElement>(nullptr, delay);
+    auto be = pool.alloc_element<AsmBranchElement>(as_branch, del, false);
+    be->push_to_stack(env, pool, stack);
+    return;
+  }
+
   throw std::runtime_error("Cannot push atomic op to stack: " + m_op->to_string(env));
 }
 
@@ -3624,6 +3640,31 @@ void GenericElement::update_from_stack(const Env& env,
     m_elts.front()->update_children_from_stack(env, pool, stack, true);
   }
   result->push_back(this);
+}
+
+void AsmBranchElement::push_to_stack(const Env& env, FormPool& pool, FormStack& stack) {
+  // create a condition element
+  RegSet consumed;
+  if (env.has_reg_use()) {
+    consumed = env.reg_use().op.at(m_branch_op->op_id()).consumes;
+  }
+  std::optional<SimpleAtom> vars[2];
+  for (int i = 0; i < get_condition_num_args(m_branch_op->condition().kind()); i++) {
+    vars[i] = m_branch_op->condition().src(i);
+  }
+  auto ce = pool.alloc_element<ConditionElement>(m_branch_op->condition().kind(), vars[0], vars[1],
+                                                 consumed, false);
+
+  // and update it from the stack.
+  std::vector<FormElement*> ce_updated;
+  ce->update_from_stack(env, pool, stack, &ce_updated, true);
+
+  auto branch_condition = pool.alloc_sequence_form(nullptr, ce_updated);
+
+  auto op = pool.alloc_element<TranslatedAsmBranch>(
+      branch_condition, m_branch_delay, m_branch_op->label_id(), m_branch_op->is_likely());
+  fmt::print("rewrote as {}\n", op->to_string(env));
+  stack.push_form_element(op, true);
 }
 
 void GenericElement::push_to_stack(const Env& env, FormPool& pool, FormStack& stack) {

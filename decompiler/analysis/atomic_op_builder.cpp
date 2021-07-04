@@ -361,6 +361,14 @@ std::unique_ptr<AtomicOp> make_asm_op(const Instruction& i0, int idx) {
   }
 }
 
+std::unique_ptr<AtomicOp> convert_1_allow_asm(const Instruction& i0, int idx) {
+  auto as_normal = convert_1(i0, idx, false);
+  if (as_normal) {
+    return as_normal;
+  }
+  return make_asm_op(i0, idx);
+}
+
 ////////////////////////
 // Branch Helpers
 ////////////////////////
@@ -407,7 +415,11 @@ std::unique_ptr<AtomicOp> make_branch(const IR2_Condition& condition,
   if (branch_delay.is_known()) {
     return std::make_unique<BranchOp>(likely, condition, dest_label, branch_delay, my_idx);
   } else {
-    auto delay_op = std::shared_ptr<AtomicOp>(convert_1(delay, my_idx, false));
+    auto delay_op = std::shared_ptr<AtomicOp>(convert_1_allow_asm(delay, my_idx));
+    if (!delay_op) {
+      throw std::runtime_error(
+          fmt::format("Failed to convert branch delay slot instruction for branch at {}", my_idx));
+    }
     return std::make_unique<AsmBranchOp>(likely, condition, dest_label, delay_op, my_idx);
   }
 }
@@ -419,6 +431,14 @@ std::unique_ptr<AtomicOp> make_branch_no_delay(const IR2_Condition& condition,
   assert(likely);
   IR2_BranchDelay delay(IR2_BranchDelay::Kind::NO_DELAY);
   return std::make_unique<BranchOp>(likely, condition, dest_label, delay, my_idx);
+}
+
+std::unique_ptr<AtomicOp> make_asm_branch_no_delay(const IR2_Condition& condition,
+                                                   bool likely,
+                                                   int dest_label,
+                                                   int my_idx) {
+  assert(likely);
+  return std::make_unique<AsmBranchOp>(likely, condition, dest_label, nullptr, my_idx);
 }
 
 ///////////////////////
@@ -880,6 +900,23 @@ std::unique_ptr<AtomicOp> convert_1(const Instruction& i0, int idx, bool hint_in
 // OP 2 Conversions
 //////////////////////
 
+std::unique_ptr<AtomicOp> convert_fp_branch_asm(const Instruction& i0,
+                                                const Instruction& i1,
+                                                IR2_Condition::Kind kind,
+                                                int idx) {
+  if (i1.kind == InstructionKind::BC1TL || i1.kind == InstructionKind::BC1FL) {
+    IR2_Condition condition(kind, make_src_atom(i0.get_src(0).get_reg(), idx),
+                            make_src_atom(i0.get_src(1).get_reg(), idx));
+    if (i1.kind == InstructionKind::BC1FL) {
+      condition.invert();
+    }
+    // return make_branch(condition, i2, false, i1.get_src(0).get_label(), idx);
+    return make_asm_branch_no_delay(condition, true, i1.get_src(0).get_label(), idx);
+  }
+
+  return nullptr;
+}
+
 std::unique_ptr<AtomicOp> convert_division_2(const Instruction& i0,
                                              const Instruction& i1,
                                              int idx,
@@ -1071,6 +1108,8 @@ std::unique_ptr<AtomicOp> convert_2(const Instruction& i0, const Instruction& i1
       return convert_slt_2(i0, i1, idx, true);
     case InstructionKind::SLTU:
       return convert_slt_2(i0, i1, idx, false);
+    case InstructionKind::CLTS:
+      return convert_fp_branch_asm(i0, i1, IR2_Condition::Kind::FLOAT_LESS_THAN, idx);
     default:
       return nullptr;
   }
@@ -1702,7 +1741,8 @@ int convert_block_to_atomic_ops(int begin_idx,
 
     if (!converted) {
       // failed!
-      throw std::runtime_error("Failed to convert " + instr->to_string(labels));
+      throw std::runtime_error(
+          fmt::format("Failed to convert ({} instrs) {}\n", n_instr, instr->to_string(labels)));
       //      lg::die("Failed to convert instruction {} to an atomic op",
       //      instr->to_string(labels));
     }

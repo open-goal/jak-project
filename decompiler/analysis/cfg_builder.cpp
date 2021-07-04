@@ -1379,6 +1379,35 @@ bool contains(const std::vector<T>& vec, const T& val) {
 }
 }  // namespace
 
+/*!
+ * Push x to output (can be a Form or std::vector<FormElement>).
+ * Will take of grouping the delay slots for likely asm branches into a single operation.
+ */
+template <typename T>
+void push_back_form_regroup_asm_likely_branches(T* output, FormElement* x, Function& f) {
+  std::vector<FormElement*> hack_temp;
+
+  if (output->size() > 0) {
+    auto back_as_asm = dynamic_cast<AtomicOpElement*>(output->back());
+    if (back_as_asm) {
+      auto back_as_branch = dynamic_cast<AsmBranchOp*>(back_as_asm->op());
+      if (back_as_branch) {
+        fmt::print("FASDAD\n");
+      }
+      if (back_as_branch && back_as_branch->is_likely()) {
+        fmt::print("HERE!!!\n");
+        auto& pool = *f.ir2.form_pool;
+        auto elt = pool.alloc_element<AsmBranchElement>(back_as_branch,
+                                                        pool.alloc_single_form(nullptr, x), true);
+        output->pop_back();
+        output->push_back(elt);
+        return;
+      }
+    }
+  }
+  output->push_back(x);
+}
+
 template <typename T>
 void convert_and_inline(FormPool& pool, Function& f, const BlockVtx* as_block, T* output) {
   auto start_op = f.ir2.atomic_ops->block_id_to_first_atomic_op.at(as_block->block_id);
@@ -1436,7 +1465,8 @@ void convert_and_inline(FormPool& pool, Function& f, const BlockVtx* as_block, T
     }
     if (add) {
       add_map.push_back(output->size());
-      output->push_back(op);
+      // output->push_back(op);
+      push_back_form_regroup_asm_likely_branches(output, op, f);
     } else {
       add_map.push_back(-1);
     }
@@ -1465,7 +1495,8 @@ void insert_cfg_into_list(FormPool& pool,
   } else {
     auto ir = cfg_to_ir(pool, f, vtx);
     for (auto x : ir->elts()) {
-      output->push_back(x);
+      push_back_form_regroup_asm_likely_branches(output, x, f);
+      // output->push_back(x);
     }
   }
 }

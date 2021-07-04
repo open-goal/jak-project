@@ -1149,7 +1149,9 @@ TypeState AsmBranchOp::propagate_types_internal(const TypeState& input,
   // for now, just make everything uint
   TypeState output = input;
   for (auto x : m_write_regs) {
-    output.get(x) = TP_Type::make_from_ts("uint");
+    if (x.allowed_local_gpr()) {
+      output.get(x) = TP_Type::make_from_ts("uint");
+    }
   }
   return output;
 }
