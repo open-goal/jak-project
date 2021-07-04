@@ -1383,9 +1383,7 @@ AsmBranchOp::AsmBranchOp(bool likely,
       m_likely(likely),
       m_condition(std::move(condition)),
       m_label(label),
-      m_branch_delay(branch_delay) {
-  fmt::print("got bd? {}\n", !!m_branch_delay);
-}
+      m_branch_delay(branch_delay) {}
 
 AsmBranchOp::AsmBranchOp(bool likely,
                          IR2_Condition condition,
@@ -1398,7 +1396,6 @@ AsmBranchOp::AsmBranchOp(bool likely,
       m_label(label),
       m_branch_delay_sp(branch_delay) {
   m_branch_delay = m_branch_delay_sp.get();
-  fmt::print("got bd? {}\n", !!m_branch_delay);
 }
 
 goos::Object AsmBranchOp::to_form(const std::vector<DecompilerLabel>& labels,

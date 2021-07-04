@@ -1391,11 +1391,7 @@ void push_back_form_regroup_asm_likely_branches(T* output, FormElement* x, Funct
     auto back_as_asm = dynamic_cast<AtomicOpElement*>(output->back());
     if (back_as_asm) {
       auto back_as_branch = dynamic_cast<AsmBranchOp*>(back_as_asm->op());
-      if (back_as_branch) {
-        fmt::print("FASDAD\n");
-      }
       if (back_as_branch && back_as_branch->is_likely()) {
-        fmt::print("HERE!!!\n");
         auto& pool = *f.ir2.form_pool;
         auto elt = pool.alloc_element<AsmBranchElement>(back_as_branch,
                                                         pool.alloc_single_form(nullptr, x), true);

@@ -117,11 +117,7 @@ const std::unordered_set<std::string> g_functions_to_skip_compiling = {
 
     /// VECTOR-H
     "(method 3 vector)",  // this function appears twice, which confuses the compiler.
-    "vector-dot",         // fpu acc
     "vector4-dot",        // fpu acc
-
-    // quaternion
-    "matrix-with-scale->quaternion",  // fpu-acc
 
     "(method 3 profile-frame)",  // double definition.
 
