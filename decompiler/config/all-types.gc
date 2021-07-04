@@ -92,8 +92,7 @@
 (define-extern inspect (function object object))
 (define-extern mem-print (function (pointer uint32) int symbol))
 (define-extern print-tree-bitmask (function int int symbol))
-;; instance in cam-update::update-visible
-(define-extern quad-copy! (function uint (pointer uint16) none))
+(define-extern quad-copy! (function pointer pointer int int)) ;; NOTE - actually returns none
 ;; has issues:
 (define-extern breakpoint-range-set! (function uint uint uint int))
 
@@ -1724,11 +1723,11 @@
   )
 
 (deftype vector (structure)
-  ((data float 4 :do-not-decompile :score -9999 :offset-assert 0)
-   (x float :offset 0)
+  ((x float :offset 0)
    (y float :offset 4)
    (z float :offset 8)
    (w float :offset 12)
+   (data float 4 :score -9999 :offset 0)
    (quad uint128 :offset 0)
    )
   :method-count-assert 9
@@ -4998,8 +4997,8 @@
    (pfog0                      float              :offset-assert 832)
    (pfog1                      float              :offset-assert 836)
    (trans                      vector     :inline :offset-assert 848)
-   (plane                      plane    4       :inline :offset-assert 864) ;; perhaps a 'plane' instead?
-   (guard-plane                plane    4       :inline :offset-assert 928) ;; perhaps a 'plane' instead?
+   (plane                      plane    4       :inline :offset-assert 864)
+   (guard-plane                plane    4       :inline :offset-assert 928)
    (shrub-mat                  matrix     :inline :offset-assert 992)
    (fov-correction-factor      float              :offset-assert 1056)
    )
@@ -17999,9 +17998,9 @@
 
 (define-extern move-camera-from-pad (function math-camera math-camera))
 (define-extern update-view-planes (function math-camera (inline-array plane) float float))
-(define-extern update-visible (function math-camera symbol)) ;; supposed a3 but it seems wrong - on `format` call
+(define-extern update-visible (function math-camera int uint uint symbol)) ;; second/third arg unused
 (define-extern set-point (function vector float float float float))
-(define-extern plane-from-points (function (inline-array plane) vector vector vector int float)) ;; supposedly an int, but I'm sure this is an array of planes...
+(define-extern plane-from-points (function (inline-array plane) vector vector vector int float))
 (define-extern update-camera (function symbol))
 
 ;; - Symbols
