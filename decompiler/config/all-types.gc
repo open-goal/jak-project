@@ -4607,7 +4607,7 @@
   )
 
 (deftype shader-ptr (uint32)
-  ((shader uint32 :offset 8 :size 24))
+  ((shader uint32 :offset 8 :size 24)) ;; TODO this seems wrong - default-menu::all-texture-tweak-adjust
   :method-count-assert 9
   :size-assert         #x4
   :flag-assert         #x900000004
@@ -4828,7 +4828,7 @@
    (mem-usage-block           basic           :offset-assert 2496)
    (mem-usage                 int32           :offset-assert 2500)
    (code-memory-start         pointer          :offset-assert 2504)
-   (code-memory-end           pointer          :offset-assert 2508)
+   (code-memory-end           pointer          :offset-assert 2508) ;; NOTE - usually a texture-page
    (texture-mask              uint32 9       :offset-assert 2512)
    (force-inside?             symbol          :offset-assert 2548)
    (pad                       uint8 56)
@@ -4872,7 +4872,7 @@
    (receiving-level basic                :offset-assert 32)
    (load-commands   pair                 :offset-assert 36)
    (play?           symbol               :offset-assert 40)
-   ;; there's something? from 40 -> 96.
+   ;; there's something? from 40 -> 96. ;; - Look at default-menu::debug-create-cam-restore
    (_hack-pad        uint8                :offset 90)
    (level0          level        :inline :offset-assert 96)
    (level1          level        :inline :offset-assert 2704)
@@ -5556,7 +5556,7 @@
 (define-extern texture-page-common-boot-allocate (function texture-pool texture-page kheap int texture-page))
 (define-extern texture-page-level-allocate (function texture-pool texture-page kheap int texture-page))
 (define-extern relocate-later (function symbol))
-(define-extern adgif-shader-update! function)
+(define-extern adgif-shader-update! (function int texture none)) ;; todo - unconfirmed
 (define-extern adgif-shader-login (function adgif-shader none))
 (define-extern adgif-shader-login-no-remap (function adgif-shader none))
 (define-extern adgif-shader-login-fast function)
@@ -5616,7 +5616,8 @@
 
 (define-extern *draw-hook* (function none))
 (define-extern *debug-hook* (function none))
-(define-extern *menu-hook* (function none))
+(declare-type debug-menu-context basic)
+(define-extern *menu-hook* (function debug-menu-context))
 (define-extern *progress-hook* (function none))
 (define-extern *dma-timeout-hook* (function none))
 
@@ -5802,6 +5803,7 @@
 
 (deftype drawable (basic)
   ((id      int16          :offset-assert 4)
+  ;  (unknown basic         :offset-assert 8) ;; - from default-menu::build-instance-list
    (bsphere vector :inline :offset-assert 16)
    )
   :method-count-assert 18
@@ -6012,7 +6014,7 @@
   ;; inherited inspect of process
   (:methods
     (dummy-14 () none 14)
-    (dummy-15 () none 15)
+    (dummy-15 (_type_) symbol 15)
     )
   )
 
@@ -6068,7 +6070,7 @@
   )
 
 (deftype task-hint-control-group (structure)
-  ((tasks basic  :offset-assert 0)
+  ((tasks (array task-hint-control)  :offset-assert 0)
    )
   :method-count-assert 9
   :size-assert         #x4
@@ -8805,7 +8807,7 @@
    (text-ids-seen         bit-array     :offset-assert 112)
    (level-opened          uint8  32 :offset-assert 116)
    (hint-control          (array level-hint-control)     :offset-assert 148)
-   (task-hint-control     array     :offset-assert 152)
+   (task-hint-control     (array task-hint-control-group)     :offset-assert 152)
    (total-deaths          int32     :offset-assert 156)
    (continue-deaths       int32     :offset-assert 160)
    (fuel-cell-deaths      int32     :offset-assert 164)
@@ -9013,7 +9015,8 @@
 
 (deftype instance (drawable)
   ((bucket-index uint16           :offset 6)
-   (origin       matrix4h :inline :offset-assert 32)
+   (unknown uint32 :offset 8) ; TODO - from default-menu
+   (origin       matrix4h :inline :offset-assert 32) ; TODO - this can also be a float, default-menu::lambda_62
    (wind-index   uint16           :offset 62)
    )
   :method-count-assert 18
@@ -10917,6 +10920,7 @@
 
 (deftype control-info (collide-shape-moving)
   (
+   (some-quaternion quaternion :offset 496)
    (unknown-vector00  vector :inline  :offset 576)
    (unknown-surface  surface  :offset 660)
    (unknown-symbol  symbol  :offset 664)
@@ -15053,7 +15057,7 @@
 (define-extern internal-draw-debug-text-3d (function bucket-id string vector rgba vector2h pointer))
 (define-extern get-debug-line (function debug-line))
 (define-extern internal-draw-debug-line (function bucket-id vector vector rgba symbol rgba object))
-(define-extern draw-string (function string dma-buffer int))
+(define-extern draw-string (function string dma-buffer font-context int))
 (define-extern transform-float-point (function vector vector vector))
 (define-extern add-debug-point (function symbol bucket-id vector symbol)) ;; unused
 (define-extern add-debug-outline-triangle (function symbol bucket-id vector vector vector rgba symbol))
@@ -15656,8 +15660,8 @@
 
 ;; - Functions
 
-(define-extern get-string-length function)
-(define-extern draw-string-adv function)
+(define-extern get-string-length (function string font-context float))
+(define-extern draw-string-adv (function string dma-buffer font-context none)) ;; TODO - ret value unconfirmed!
 
 ;; - Unknowns
 
@@ -16340,9 +16344,6 @@
 
 (define-extern *kernel-boot-message* symbol)
 (define-extern *level-load-list* pair)
-
-;; - Unknowns
-
 (define-extern *spawn-actors* symbol)
 (define-extern *default-continue* continue-point)
 
@@ -16488,7 +16489,7 @@
 
 ;; - Functions
 
-(define-extern auto-save-command function)
+(define-extern auto-save-command (function symbol int int process-tree none)) ;; TODO - not confirmed
 (define-extern auto-save-init-by-other function)
 (define-extern progress-allowed? (function symbol))
 (define-extern print-game-text (function string font-context symbol int int float)) ; TODO decomp error, this seems correct though
@@ -16955,7 +16956,7 @@
 (define-extern update-sky-tng-data function)
 (define-extern time-of-day-update function)
 (define-extern start-time-of-day (function int))
-(define-extern time-of-day-setup function)
+(define-extern time-of-day-setup (function symbol int none)) ;; not confirmed
 (define-extern set-time-of-day function)
 (define-extern init-time-of-day-context function)
 (define-extern update-time-of-day function)
@@ -17757,9 +17758,12 @@
 (define-extern target-cam-pos function)
 (define-extern cam-master-init function)
 
+;; - Symbols
+
+(define-extern cam-free-floating state)
+
 ;; - Unknowns
 
-;;(define-extern cam-free-floating object) ;; unknown type
 ;;(define-extern cam-master-active object) ;; unknown type
 ;;(define-extern list-keeper-active object) ;; unknown type
 ;;(define-extern cam-fixed object) ;; unknown type
@@ -18349,7 +18353,7 @@
 (define-extern cam-debug-add-coll-tri function)
 (define-extern debug-euler function)
 (define-extern bike-cam-limit function)
-(define-extern external-cam-reset! function)
+(define-extern external-cam-reset! (function none)) ;; TODO - unconfirmed
 
 ;; - Unknowns
 
@@ -18440,15 +18444,15 @@
 
 ;; - Functions
 
-(define-extern find-hint-control-index function)
-(define-extern start-hint-timer function)
-(define-extern increment-success-for-hint function)
-(define-extern can-hint-be-played? function)
-(define-extern update-task-hints function)
+(define-extern find-hint-control-index (function level-hint-control int))
+(define-extern start-hint-timer (function level-hint-control none))
+(define-extern increment-success-for-hint (function level-hint-control none))
+(define-extern can-hint-be-played? (function int symbol))
+(define-extern update-task-hints (function none))
 
-;; - Unknowns
+;; - Symbols
 
-;;(define-extern *hint-semaphore* object) ;; unknown type
+(define-extern *hint-semaphore* (pointer process-tree)) ;; likely a level-hint process
 
 
 ;; ----------------------
@@ -18475,7 +18479,7 @@
 (define-extern level-hint-init-by-other function)
 (define-extern voicebox-spawn function)
 (define-extern hide-bottom-hud function)
-(define-extern ambient-hint-init-by-other function)
+(define-extern ambient-hint-init-by-other (function none))
 (define-extern level-hint-process-cmd function)
 (define-extern task-known? (function game-task symbol))
 (define-extern can-grab-display? function)
@@ -19158,178 +19162,167 @@
 
 ;; - Types
 
-; (deftype debug-menu-context (basic)
-;   ((is-active   basic     :offset-assert 4)
-;    (sel-length  int32     :offset-assert 8)
-;    (sel-menu    UNKNOWN 8 :offset-assert 12)
-;    (root-menu   basic     :offset-assert 44)
-;    (joypad-func basic     :offset-assert 48)
-;    (joypad-item basic     :offset-assert 52)
-;    (font        basic     :offset-assert 56)
-;    (is-hidden   basic     :offset-assert 60)
-;    )
-;   :method-count-assert 9
-;   :size-assert         #x40
-;   :flag-assert         #x900000040
-;   )
+(declare-type debug-menu basic)
+(deftype debug-menu-context (basic)
+  ((is-active   symbol     :offset-assert 4)
+   (sel-length  int32     :offset-assert 8)
+   (sel-menu    debug-menu   8 :offset-assert 12)
+   (root-menu   debug-menu     :offset-assert 44)
+   (joypad-func (function basic none)     :offset-assert 48)
+   (joypad-item basic     :offset-assert 52) ;; is this more specific?
+   (font        font-context     :offset-assert 56)
+   (is-hidden   symbol     :offset-assert 60)
+   )
+  :method-count-assert 9
+  :size-assert         #x40
+  :flag-assert         #x900000040
+  (:methods
+   (new (symbol type) _type_ 0))
+  )
 
-; (deftype debug-menu-node (basic)
-;   ((name          basic  :offset-assert 4)
-;    (parent        basic  :offset-assert 8)
-;    (refresh-delay int32  :offset-assert 12)
-;    (refresh-ctr   int32  :offset-assert 16)
-;    )
-;   :method-count-assert 9
-;   :size-assert         #x14
-;   :flag-assert         #x900000014
-;   )
+(declare-type debug-menu basic)
+(deftype debug-menu-node (basic)
+  ((name          string  :offset-assert 4)
+   (parent        debug-menu  :offset-assert 8)
+   (refresh-delay int32  :offset-assert 12)
+   (refresh-ctr   int32  :offset-assert 16)
+   )
+  :method-count-assert 9
+  :size-assert         #x14
+  :flag-assert         #x900000014
+  )
 
-; (deftype debug-menu (debug-menu-node)
-;   ((name          basic  :offset-assert 4)
-;    (parent        basic  :offset-assert 8)
-;    (refresh-delay int32  :offset-assert 12)
-;    (refresh-ctr   int32  :offset-assert 16)
-;    (context       basic  :offset-assert 20)
-;    (selected-item basic  :offset-assert 24)
-;    (pix-width     int32  :offset-assert 28)
-;    (pix-height    int32  :offset-assert 32)
-;    (items         basic  :offset-assert 36)
-;    )
-;   :method-count-assert 9
-;   :size-assert         #x28
-;   :flag-assert         #x900000028
-;   )
+(declare-type debug-menu-item basic)
+(deftype debug-menu (debug-menu-node)
+  ((context       debug-menu-context  :offset-assert 20)
+   (selected-item debug-menu-item  :offset-assert 24)
+   (pix-width     int32  :offset-assert 28)
+   (pix-height    int32  :offset-assert 32)
+   (items         pair  :offset-assert 36) ; list of debug-menu-item
+   )
+  :method-count-assert 9
+  :size-assert         #x28
+  :flag-assert         #x900000028
+  (:methods
+   (new (symbol type debug-menu-context string) _type_ 0))
+  )
 
-; (deftype debug-menu-item (debug-menu-node)
-;   ((name          basic  :offset-assert 4)
-;    (parent        basic  :offset-assert 8)
-;    (refresh-delay int32  :offset-assert 12)
-;    (refresh-ctr   int32  :offset-assert 16)
-;    (id            int32  :offset-assert 20)
-;    )
-;   :method-count-assert 9
-;   :size-assert         #x18
-;   :flag-assert         #x900000018
-;   )
+(deftype debug-menu-item (debug-menu-node)
+  ((id            int32  :offset-assert 20)
+   )
+  :method-count-assert 9
+  :size-assert         #x18
+  :flag-assert         #x900000018
+  )
 
-; (deftype debug-menu-item-submenu (debug-menu-item)
-;   ((name          basic  :offset-assert 4)
-;    (parent        basic  :offset-assert 8)
-;    (refresh-delay int32  :offset-assert 12)
-;    (refresh-ctr   int32  :offset-assert 16)
-;    (id            int32  :offset-assert 20)
-;    (submenu       basic  :offset-assert 24)
-;    )
-;   :method-count-assert 9
-;   :size-assert         #x1c
-;   :flag-assert         #x90000001c
-;   )
+(deftype debug-menu-item-submenu (debug-menu-item)
+  ((submenu       debug-menu  :offset-assert 24)
+   )
+  :method-count-assert 9
+  :size-assert         #x1c
+  :flag-assert         #x90000001c
+  (:methods
+   (new (symbol type string debug-menu) _type_ 0))
+  )
 
-; (deftype debug-menu-item-function (debug-menu-item)
-;   ((name          basic  :offset-assert 4)
-;    (parent        basic  :offset-assert 8)
-;    (refresh-delay int32  :offset-assert 12)
-;    (refresh-ctr   int32  :offset-assert 16)
-;    (id            int32  :offset-assert 20)
-;    (activate-func basic  :offset-assert 24)
-;    (hilite-timer  int8   :offset-assert 28)
-;    )
-;   :method-count-assert 9
-;   :size-assert         #x1d
-;   :flag-assert         #x90000001d
-;   )
+(deftype debug-menu-item-function (debug-menu-item)
+  ((activate-func (function int int)  :offset-assert 24) ;; func is kinda a guess, might be 2 ints
+   (hilite-timer  int8   :offset-assert 28)
+   )
+  :method-count-assert 9
+  :size-assert         #x1d
+  :flag-assert         #x90000001d
+  (:methods
+   (new (symbol type string int function) _type_ 0))
+  )
 
-; (deftype debug-menu-item-flag (debug-menu-item)
-;   ((name          basic  :offset-assert 4)
-;    (parent        basic  :offset-assert 8)
-;    (refresh-delay int32  :offset-assert 12)
-;    (refresh-ctr   int32  :offset-assert 16)
-;    (id            int32  :offset-assert 20)
-;    (activate-func basic  :offset-assert 24)
-;    (is-on         basic  :offset-assert 28)
-;    )
-;   :method-count-assert 9
-;   :size-assert         #x20
-;   :flag-assert         #x900000020
-;   )
+(deftype debug-menu-item-flag (debug-menu-item)
+  ((activate-func (function int int symbol)  :offset-assert 24) ;; func is kinda a guess
+   (is-on         symbol  :offset-assert 28)
+   )
+  :method-count-assert 9
+  :size-assert         #x20
+  :flag-assert         #x900000020
+  (:methods
+   (new (symbol type string symbol function) _type_ 0))
+  )
 
-; (deftype debug-menu-item-var (debug-menu-item)
-;   ((name             basic  :offset-assert 4)
-;    (parent           basic  :offset-assert 8)
-;    (refresh-delay    int32  :offset-assert 12)
-;    (refresh-ctr      int32  :offset-assert 16)
-;    (id               int32  :offset-assert 20)
-;    (display-str      basic  :offset-assert 24)
-;    (grabbed-joypad-p basic  :offset-assert 28)
-;    (float-p          basic  :offset-assert 32)
-;    (range-p          basic  :offset-assert 36)
-;    (show-len         int32  :offset-assert 40)
-;    (inc-delay        int32  :offset-assert 44)
-;    (inc-delay-ctr    int32  :offset-assert 48)
-;    (step-delay-ctr   int32  :offset-assert 52)
-;    (inc-dir          int32  :offset-assert 56)
-;    (fval             float  :offset-assert 60)
-;    (fundo-val        float  :offset-assert 64)
-;    (frange-min       float  :offset-assert 68)
-;    (frange-max       float  :offset-assert 72)
-;    (fstart-inc       float  :offset-assert 76)
-;    (fstep            float  :offset-assert 80)
-;    (fprecision       int32  :offset-assert 84)
-;    (factivate-func   basic  :offset-assert 88)
-;    (ival             int32  :offset-assert 60)
-;    (iundo-val        int32  :offset-assert 64)
-;    (irange-min       int32  :offset-assert 68)
-;    (irange-max       int32  :offset-assert 72)
-;    (istart-inc       int32  :offset-assert 76)
-;    (istep            int32  :offset-assert 80)
-;    (ihex-p           basic  :offset-assert 92)
-;    (iactivate-func   basic  :offset-assert 88)
-;    (ifloat-p         basic  :offset-assert 96)
-;    )
-;   :method-count-assert 9
-;   :size-assert         #x64
-;   :flag-assert         #x900000064
-;   )
+(deftype debug-menu-item-var (debug-menu-item)
+  ((display-str      string  :offset-assert 24)
+   (grabbed-joypad-p symbol  :offset-assert 28)
+   (float-p          symbol  :offset-assert 32)
+   (range-p          symbol  :offset-assert 36)
+   (show-len         int32  :offset-assert 40)
+   (inc-delay        int32  :offset-assert 44)
+   (inc-delay-ctr    int32  :offset-assert 48)
+   (step-delay-ctr   int32  :offset-assert 52)
+   (inc-dir          int32  :offset-assert 56)
+   (fval             float  :offset-assert 60)
+   (fundo-val        float  :offset-assert 64)
+   (frange-min       float  :offset-assert 68)
+   (frange-max       float  :offset-assert 72)
+   (fstart-inc       float  :offset-assert 76)
+   (fstep            float  :offset-assert 80)
+   (fprecision       int32  :offset-assert 84)
+   ; (function int (the id) int (some constant) <int/float> <int/float> (fval or ival)x2 <int/float>)
+   (factivate-func   function  :offset-assert 88)
+   (ival             int32  :offset 60)
+   (iundo-val        int32  :offset 64)
+   (irange-min       int32  :offset 68)
+   (irange-max       int32  :offset 72)
+   (istart-inc       int32  :offset 76)
+   (istep            int32  :offset 80)
+   (ihex-p           symbol  :offset-assert 92)
+   ; (function int (the id) int (some constant) <int/float> <int/float> (fval or ival)x2 <int/float>)
+   (iactivate-func   function  :offset 88)
+   (ifloat-p         symbol  :offset-assert 96)
+   )
+  :method-count-assert 9
+  :size-assert         #x64
+  :flag-assert         #x900000064
+  (:methods
+   (new (symbol type string int int) _type_ 0))
+  )
 
 ;; - Functions
 
-(define-extern debug-menus-active function)
-(define-extern debug-menus-default-joypad-func function)
-(define-extern debug-menu-context-render function)
-(define-extern debug-menu-context-close-submenu function)
-(define-extern debug-menu-context-activate-selection function)
-(define-extern debug-menu-context-select-new-item function)
-(define-extern debug-menu-item-send-msg function)
-(define-extern debug-menu-send-msg function)
-(define-extern debug-menu-context-send-msg function)
-(define-extern debug-menu-item-submenu-msg function)
-(define-extern debug-menu-item-function-msg function)
-(define-extern debug-menu-item-flag-msg function)
-(define-extern debug-menu-item-var-msg function)
-(define-extern debug-menu-context-release-joypad function)
-(define-extern debug-menu-context-grab-joypad function)
-(define-extern debug-menu-item-var-joypad-handler function)
-(define-extern debug-menu-item-var-update-display-str function)
-(define-extern debug-menu-context-open-submenu function)
-(define-extern debug-menu-context-select-next-or-prev-item function)
-(define-extern debug-menu-render function)
-(define-extern debug-menu-item-render function)
-(define-extern debug-menu-item-submenu-render function)
-(define-extern debug-menu-item-function-render function)
-(define-extern debug-menu-item-flag-render function)
-(define-extern debug-menu-item-var-render function)
-(define-extern debug-menu-make-from-template function)
-(define-extern debug-menu-append-item function)
-(define-extern debug-menu-context-set-root-menu function)
-(define-extern debug-menu-func-decode function)
-(define-extern debug-menu-item-var-make-int function)
-(define-extern debug-menu-item-var-make-float function)
-(define-extern debug-menu-rebuild function)
-(define-extern debug-menu-context-default-selection function)
-(define-extern debug-menu-item-get-max-width function)
-(define-extern debug-menu-remove-all-items function)
-(define-extern debug-menu-find-from-template function)
-(define-extern debug-menus-handler function)
+(define-extern debug-menus-active (function debug-menu-context debug-menu-context))
+(define-extern debug-menus-default-joypad-func (function debug-menu-context debug-menu-context))
+(define-extern debug-menu-context-render (function debug-menu-context debug-menu-context))
+(define-extern debug-menu-context-close-submenu (function debug-menu-context debug-menu-context))
+(define-extern debug-menu-context-activate-selection (function debug-menu-context debug-menu-context))
+(define-extern debug-menu-context-select-new-item (function debug-menu-context int debug-menu-context))
+(define-extern debug-menu-item-send-msg (function debug-menu-item int debug-menu-item))
+(define-extern debug-menu-send-msg (function debug-menu int symbol debug-menu))
+(define-extern debug-menu-context-send-msg (function debug-menu-context int int debug-menu-context))
+(define-extern debug-menu-item-submenu-msg (function debug-menu-item-submenu int debug-menu-item-submenu))
+(define-extern debug-menu-item-function-msg (function debug-menu-item-function symbol debug-menu-item-function))
+(define-extern debug-menu-item-flag-msg (function debug-menu-item-flag int debug-menu-item-flag))
+(define-extern debug-menu-item-var-msg (function debug-menu-item-var int debug-menu-item-var))
+(define-extern debug-menu-context-release-joypad (function debug-menu-context symbol)) ;; this is called with a second arg in places, but definitely not used!
+(define-extern debug-menu-context-grab-joypad (function debug-menu-context basic function symbol))
+(define-extern debug-menu-item-var-joypad-handler (function debug-menu-item-var debug-menu-item-var))
+(define-extern debug-menu-item-var-update-display-str (function debug-menu-item-var debug-menu-item-var))
+(define-extern debug-menu-context-open-submenu (function debug-menu-context debug-menu basic)) ;; can also return string error messages
+(define-extern debug-menu-context-select-next-or-prev-item (function debug-menu-context int debug-menu-context))
+(define-extern debug-menu-render (function debug-menu int int int int debug-menu))
+(define-extern debug-menu-item-render (function debug-menu-item int int int symbol debug-menu-item))
+(define-extern debug-menu-item-submenu-render (function debug-menu-item-submenu int int int symbol debug-menu-item-submenu))
+(define-extern debug-menu-item-function-render (function debug-menu-item-function int int int symbol debug-menu-item-function))
+(define-extern debug-menu-item-flag-render (function debug-menu-item-flag int int int symbol debug-menu-item-flag))
+(define-extern debug-menu-item-var-render (function debug-menu-item-var int int int symbol debug-menu-item-var))
+(define-extern debug-menu-make-from-template (function debug-menu-context pair debug-menu-node))
+(define-extern debug-menu-append-item (function debug-menu debug-menu-item debug-menu-item))
+(define-extern debug-menu-context-set-root-menu (function debug-menu-context debug-menu debug-menu-context))
+(define-extern debug-menu-func-decode (function object function))
+(define-extern debug-menu-item-var-make-int (function debug-menu-item-var (function int int int int int) int symbol int int symbol debug-menu-item-var))
+(define-extern debug-menu-item-var-make-float (function debug-menu-item-var (function int int float float int) float symbol float float symbol debug-menu-item-var))
+(define-extern debug-menu-rebuild (function debug-menu debug-menu))
+(define-extern debug-menu-context-default-selection (function debug-menu-context symbol debug-menu-context))
+(define-extern debug-menu-item-get-max-width (function debug-menu-item debug-menu int))
+(define-extern debug-menu-remove-all-items (function debug-menu debug-menu))
+(define-extern debug-menu-find-from-template (function debug-menu-context pair debug-menu))
+(define-extern debug-menus-handler (function debug-menu-context debug-menu-context))
 
 
 ;; ----------------------
@@ -19350,11 +19343,11 @@
 (define-extern real-main-draw-hook function)
 (define-extern error-sphere function)
 (define-extern draw-instance-info function)
-(define-extern find-instance-by-name function)
+(define-extern find-instance-by-name (function string instance)) ;; TODO - ret not verified
 (define-extern prototype-bucket-type function)
 (define-extern guard-band-cull function)
 (define-extern find-instance-by-index function)
-(define-extern prototype-bucket-recalc-fields function)
+(define-extern prototype-bucket-recalc-fields (function instance none)) ;; TODO - ret not confirmed
 (define-extern dma-add-process-drawable-hud function)
 (define-extern foreground-engine-execute function)
 (define-extern main-debug-hook function)
@@ -19369,6 +19362,10 @@
 (define-extern cave-cam-restore function)
 (define-extern paals-cam-restore function)
 
+;; - Symbols
+
+(define-extern *edit-instance* string)
+
 ;; - Unknowns
 
 ;;(define-extern syncv object) ;; unknown type
@@ -19376,7 +19373,6 @@
 ;;(define-extern *surrogate-dma-buffer* object) ;; unknown type
 ;;(define-extern *screen-shot* object) ;; unknown type
 ;;(define-extern *hud-lights* object) ;; unknown type
-;;(define-extern *edit-instance* object) ;; unknown type
 ;;(define-extern *instance-mem-usage* object) ;; unknown type
 ;;(define-extern *add-sphere* object) ;; unknown type
 ;;(define-extern *generic-effect-mode* object) ;; unknown type
@@ -19454,7 +19450,7 @@
 (define-extern entity-by-type (function type entity-actor))
 (define-extern scf-get-territory (function int))
 (define-extern pause-allowed? (function symbol))
-(define-extern menu-respond-to-pause (function int))
+(define-extern menu-respond-to-pause (function symbol))
 (define-extern hide-progress-screen (function int))
 (define-extern set-letterbox-frames (function uint uint))
 (define-extern letterbox (function none))
@@ -21119,7 +21115,7 @@
 ;;(define-extern anim-tester-process object) ;; unknown type
 ;;(define-extern anim-test-field-highlight-lw object) ;; unknown type
 ;;(define-extern *DISP_LIST-bank* object) ;; unknown type
-;;(define-extern *debug-menu-context* object) ;; unknown type
+(define-extern *debug-menu-context* debug-menu-context)
 
 
 ;; ----------------------
@@ -21207,79 +21203,79 @@
 
 ;; - Functions
 
-(define-extern build-continue-menu function)
-(define-extern debug-menu-make-camera-menu function)
-(define-extern debug-menu-make-shader-menu function)
-(define-extern debug-menu-make-instance-menu function)
-(define-extern debug-menu-make-task-menu function)
-(define-extern dm-current-continue function)
-(define-extern dm-task-get-money function)
-(define-extern dm-levitator-ready function)
-(define-extern dm-lavabike-ready function)
-(define-extern dm-give-all-cells function)
-(define-extern debug-menu-make-task-unknown-menu function)
-(define-extern debug-menu-make-task-need-hint-menu function)
-(define-extern debug-menu-make-task-need-introduction-menu function)
-(define-extern debug-menu-make-task-need-reminder-a-menu function)
-(define-extern debug-menu-make-task-need-reminder-menu function)
-(define-extern debug-menu-make-task-need-reward-speech-menu function)
-(define-extern debug-menu-make-task-need-resolution-menu function)
-(define-extern dm-give-cell function)
-(define-extern build-instance-list function)
-(define-extern dm-edit-instance-toggle-pick-func function)
-(define-extern dm-boolean-toggle-pick-func function)
-(define-extern build-shader-list function)
-(define-extern all-texture-tweak-adjust function)
-(define-extern debug-menu-make-camera-mode-menu function)
-(define-extern dm-cam-externalize function)
-(define-extern dm-cam-render-float function)
-(define-extern dm-cam-settings-func function)
-(define-extern dm-cam-settings-func-int function)
-(define-extern debug-create-cam-restore function)
-(define-extern dm-cam-mode-func function)
-(define-extern dm-instance-pick-func function)
-(define-extern dm-enable-instance-func function)
-(define-extern dm-shader-pick-func function)
-(define-extern debug-menu-node<? function)
-(define-extern dm-subdiv-float function)
-(define-extern dm-subdiv-int function)
-(define-extern dm-setting-language function)
-(define-extern dm-subdiv-draw-func function)
-(define-extern dm-ocean-subdiv-draw-func function)
-(define-extern dm-time-of-day-func function)
-(define-extern dm-time-of-day-func2 function)
-(define-extern dm-time-of-day-pick-func function)
-(define-extern dm-actor-marks-pick-func function)
-(define-extern dm-compact-actor-pick-func function)
-(define-extern dm-actor-vis-pick-func function)
-(define-extern dm-game-mode-pick-func function)
-(define-extern dm-vu1-user-toggle-pick-func function)
-(define-extern dm-vu1-user-set-pick-func function)
-(define-extern dm-texture-user-toggle-pick-func function)
-(define-extern dm-texture-user-set-pick-func function)
-(define-extern dm-strip-lines-toggle-pick-func function)
-(define-extern dm-strip-lines-set-pick-func function)
-(define-extern dm-task-unknown function)
-(define-extern dm-task-hint function)
-(define-extern dm-task-introduction function)
-(define-extern dm-task-reminder-a function)
-(define-extern dm-task-reminder function)
-(define-extern dm-task-reward-speech function)
-(define-extern dm-task-resolution function)
-(define-extern dm-anim-tester-flag-func function)
-(define-extern dm-anim-tester-func function)
-(define-extern debug-menu-context-make-default-menus function)
-(define-extern popup-menu-context-make-default-menus function)
+(define-extern build-continue-menu (function debug-menu-context debug-menu-context)) ;; TODO - this is so simple...just iterating through a list of symbols...still confused though...
+(define-extern debug-menu-make-camera-menu (function debug-menu-context debug-menu-item-submenu))
+(define-extern debug-menu-make-shader-menu (function debug-menu-context debug-menu-item-submenu))
+(define-extern debug-menu-make-instance-menu (function debug-menu-context debug-menu-item-submenu))
+(define-extern debug-menu-make-task-menu (function debug-menu-context debug-menu-item-submenu))
+(define-extern dm-current-continue (function function int object)) ;; TODO - game-info::17
+(define-extern dm-task-get-money (function int int symbol))
+(define-extern dm-levitator-ready (function int int symbol))
+(define-extern dm-lavabike-ready (function int int symbol))
+(define-extern dm-give-all-cells (function int int symbol))
+(define-extern debug-menu-make-task-unknown-menu (function debug-menu-context debug-menu-context debug-menu-item))
+(define-extern debug-menu-make-task-need-hint-menu (function debug-menu-context debug-menu-context debug-menu-item))
+(define-extern debug-menu-make-task-need-introduction-menu (function debug-menu-context debug-menu-context debug-menu-item))
+(define-extern debug-menu-make-task-need-reminder-a-menu (function debug-menu-context debug-menu-context debug-menu-item))
+(define-extern debug-menu-make-task-need-reminder-menu (function debug-menu-context debug-menu-context debug-menu-item))
+(define-extern debug-menu-make-task-need-reward-speech-menu (function debug-menu-context debug-menu-context debug-menu-item))
+(define-extern debug-menu-make-task-need-resolution-menu (function debug-menu-context debug-menu-context debug-menu-item))
+(define-extern dm-give-cell (function int none))
+(define-extern build-instance-list (function none)) ;; TODO - drawable types aren't complete
+(define-extern dm-edit-instance-toggle-pick-func (function int int symbol))
+(define-extern dm-boolean-toggle-pick-func (function function int object)) ;; TODO
+(define-extern build-shader-list (function object))
+(define-extern all-texture-tweak-adjust (function texture-page-dir float object)) ;; TODO - texture related types
+(define-extern debug-menu-make-camera-mode-menu (function int int object)) ;; TODO - depends on camera stuff yet merged
+(define-extern dm-cam-externalize (function symbol int symbol))
+(define-extern dm-cam-render-float (function int int float float float))
+(define-extern dm-cam-settings-func (function int int symbol))
+(define-extern dm-cam-settings-func-int (function int int debug-menu debug-menu debug-menu))
+(define-extern debug-create-cam-restore (function none)) ;; TODO - level-group type isn't complete
+(define-extern dm-cam-mode-func (function uint int object))
+(define-extern dm-instance-pick-func (function string int basic))
+(define-extern dm-enable-instance-func (function string int symbol))
+(define-extern dm-shader-pick-func (function int int object)) ;; TODO - more texture stuff...
+(define-extern debug-menu-node<? (function debug-menu debug-menu symbol))
+(define-extern dm-subdiv-float (function symbol int float float float))
+(define-extern dm-subdiv-int (function function int object)) ;; TODO - dependant on anim-tester
+(define-extern dm-setting-language (function function int symbol))
+(define-extern dm-subdiv-draw-func (function int int symbol))
+(define-extern dm-ocean-subdiv-draw-func (function int int symbol))
+(define-extern dm-time-of-day-func (function int int symbol))
+(define-extern dm-time-of-day-func2 (function function int symbol)) ;; TODO
+(define-extern dm-time-of-day-pick-func (function symbol int none)) ;; TODO - confirm time-of-day::time-of-day-setup
+(define-extern dm-actor-marks-pick-func (function symbol int symbol))
+(define-extern dm-compact-actor-pick-func (function int int object)) ;; TODO - what is *compact-actors*
+(define-extern dm-actor-vis-pick-func (function symbol int symbol))
+(define-extern dm-game-mode-pick-func (function symbol int symbol))
+(define-extern dm-vu1-user-toggle-pick-func (function int int symbol))
+(define-extern dm-vu1-user-set-pick-func (function int int symbol))
+(define-extern dm-texture-user-toggle-pick-func (function int int symbol))
+(define-extern dm-texture-user-set-pick-func (function int int symbol))
+(define-extern dm-strip-lines-toggle-pick-func (function int int symbol))
+(define-extern dm-strip-lines-set-pick-func (function int int symbol))
+(define-extern dm-task-unknown (function int int symbol))
+(define-extern dm-task-hint (function int int symbol))
+(define-extern dm-task-introduction (function int int symbol))
+(define-extern dm-task-reminder-a (function int int symbol))
+(define-extern dm-task-reminder (function int int symbol))
+(define-extern dm-task-reward-speech (function int int symbol))
+(define-extern dm-task-resolution (function int int symbol))
+(define-extern dm-anim-tester-flag-func (function int int none)) ;; TODO - *anim-tester*
+(define-extern dm-anim-tester-func (function int none)) ;; TODO - *anim-tester*
+(define-extern debug-menu-context-make-default-menus (function debug-menu-context debug-menu-context))
+(define-extern popup-menu-context-make-default-menus (function debug-menu-context debug-menu-context))
 
 ;; - Unknowns
 
-;;(define-extern *popup-menu-context* object) ;; unknown type
-;;(define-extern *instance-shrub-menu* object) ;; unknown type
-;;(define-extern *instance-tie-menu* object) ;; unknown type
-;;(define-extern *enable-instance-tie-menu* object) ;; unknown type
-;;(define-extern *shader-pick-menu* object) ;; unknown type
+(define-extern *popup-menu-context* debug-menu-context) ;; unknown type
+(define-extern *instance-shrub-menu* debug-menu) ;; unknown type
+(define-extern *instance-tie-menu* debug-menu) ;; unknown type
+(define-extern *enable-instance-tie-menu* debug-menu) ;; unknown type
+(define-extern *shader-pick-menu* debug-menu) ;; unknown type
 ;;(define-extern cam-robotboss object) ;; unknown type
-;;(define-extern *dm-cam-mode-interpolation* object) ;; unknown type
+(define-extern *dm-cam-mode-interpolation* debug-menu) ;; unknown type
 
 
 ;; ----------------------
