@@ -1644,6 +1644,98 @@ std::unique_ptr<AtomicOp> convert_6(const Instruction& i0,
   return nullptr;
 }
 
+bool is_lwc(const Instruction& instr, int offset) {
+  return instr.kind == InstructionKind::LWC1 && instr.get_src(0).is_imm(offset);
+}
+
+// 9 instructions
+std::unique_ptr<AtomicOp> convert_vector3_dot(const Instruction* instrs, int idx) {
+  //    lwc1 f0, 0(a0)
+  if (!is_lwc(instrs[0], 0)) {
+    return nullptr;
+  }
+  auto t0 = instrs[0].get_dst(0).get_reg();
+
+  //    lwc1 f1, 4(a0)
+  if (!is_lwc(instrs[1], 4)) {
+    return nullptr;
+  }
+  auto t1 = instrs[1].get_dst(0).get_reg();
+
+  //    lwc1 f2, 8(a0)
+  if (!is_lwc(instrs[2], 8)) {
+    return nullptr;
+  }
+  auto t2 = instrs[2].get_dst(0).get_reg();
+
+  //    lwc1 f3, 0(v1)
+  if (!is_lwc(instrs[3], 0)) {
+    return nullptr;
+  }
+  auto t3 = instrs[3].get_dst(0).get_reg();
+
+  //    lwc1 f4, 4(v1)
+  if (!is_lwc(instrs[4], 4)) {
+    return nullptr;
+  }
+  auto t4 = instrs[4].get_dst(0).get_reg();
+
+  //    lwc1 f5, 8(v1)
+  if (!is_lwc(instrs[5], 8)) {
+    return nullptr;
+  }
+  auto t5 = instrs[5].get_dst(0).get_reg();
+
+  auto src0 = instrs[0].get_src(1).get_reg();
+  auto src1 = instrs[3].get_src(1).get_reg();
+  if (instrs[1].get_src(1).get_reg() != src0) {
+    return nullptr;
+  }
+  if (instrs[2].get_src(1).get_reg() != src0) {
+    return nullptr;
+  }
+  if (instrs[4].get_src(1).get_reg() != src1) {
+    return nullptr;
+  }
+  if (instrs[5].get_src(1).get_reg() != src1) {
+    return nullptr;
+  }
+
+  //    mula.s f0, f3
+  if (instrs[6].kind != InstructionKind::MULAS || instrs[6].get_src(0).get_reg() != t0 ||
+      instrs[6].get_src(1).get_reg() != t3) {
+    return nullptr;
+  }
+
+  //    madda.s f1, f4
+  if (instrs[7].kind != InstructionKind::MADDAS || instrs[7].get_src(0).get_reg() != t1 ||
+      instrs[7].get_src(1).get_reg() != t4) {
+    return nullptr;
+  }
+
+  //    madd.s f0, f2, f5
+  if (instrs[8].kind != InstructionKind::MADDS || instrs[8].get_src(0).get_reg() != t2 ||
+      instrs[8].get_src(1).get_reg() != t5) {
+    return nullptr;
+  }
+
+  auto dst = instrs[8].get_dst(0).get_reg();
+
+  return std::make_unique<SetVarOp>(
+      make_dst_var(dst, idx),
+      SimpleExpression(SimpleExpression::Kind::VECTOR_3_DOT, make_src_atom(src0, idx),
+                       make_src_atom(src1, idx)),
+      idx);
+}
+
+std::unique_ptr<AtomicOp> convert_9(const Instruction* instrs, int idx) {
+  auto as_vector3_dot = convert_vector3_dot(instrs, idx);
+  if (as_vector3_dot) {
+    return as_vector3_dot;
+  }
+  return nullptr;
+}
+
 }  // namespace
 
 /*!
@@ -1676,7 +1768,15 @@ int convert_block_to_atomic_ops(int begin_idx,
       warnings.warn_sq_lq();
     }
 
-    if (n_instr >= 6) {
+    if (n_instr >= 9) {
+      op = convert_9(&instr[0], op_idx);
+      if (op) {
+        converted = true;
+        length = 9;
+      }
+    }
+
+    if (!converted && n_instr >= 6) {
       // try 6 instructions
       op = convert_6(instr[0], instr[1], instr[2], instr[3], instr[4], instr[5], op_idx);
       if (op) {

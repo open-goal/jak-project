@@ -1658,6 +1658,8 @@ std::string fixed_operator_to_string(FixedOperatorKind kind) {
       return "vector-float*!";
     case FixedOperatorKind::L32_NOT_FALSE_CBOOL:
       return "l32-false-check";
+    case FixedOperatorKind::VECTOR_3_DOT:
+      return "vector-dot";
     default:
       assert(false);
       return "";

@@ -207,6 +207,11 @@ class SimpleExpressionElement : public FormElement {
                                               FormStack& stack,
                                               std::vector<FormElement*>* result,
                                               bool allow_side_effects);
+  void update_from_stack_vector_3_dot(const Env& env,
+                                      FormPool& pool,
+                                      FormStack& stack,
+                                      std::vector<FormElement*>* result,
+                                      bool allow_side_effects);
 
   const SimpleExpression& expr() const { return m_expr; }
 
@@ -431,6 +436,7 @@ class AsmBranchElement : public FormElement {
   void collect_vars(RegAccessSet& vars, bool recursive) const override;
   void push_to_stack(const Env& env, FormPool& pool, FormStack& stack) override;
   void get_modified_regs(RegSet& regs) const override;
+
  private:
   AsmBranchOp* m_branch_op = nullptr;
   Form* m_branch_delay = nullptr;
@@ -446,12 +452,12 @@ class TranslatedAsmBranch : public FormElement {
   void collect_vars(RegAccessSet& vars, bool recursive) const override;
   // void push_to_stack(const Env& env, FormPool& pool, FormStack& stack) override;
   void get_modified_regs(RegSet& regs) const override;
+
  private:
   Form* m_branch_condition = nullptr;
   Form* m_branch_delay = nullptr;
   int m_label_id = -1;
   bool m_likely = false;
-
 };
 
 /*!

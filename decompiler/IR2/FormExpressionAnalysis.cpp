@@ -1032,6 +1032,27 @@ void SimpleExpressionElement::update_from_stack_vector_float_product(
   result->push_back(new_form);
 }
 
+void SimpleExpressionElement::update_from_stack_vector_3_dot(const Env& env,
+                                                             FormPool& pool,
+                                                             FormStack& stack,
+                                                             std::vector<FormElement*>* result,
+                                                             bool allow_side_effects) {
+  std::vector<Form*> popped_args = pop_to_forms({m_expr.get_arg(0).var(), m_expr.get_arg(1).var()},
+                                                env, pool, stack, allow_side_effects);
+
+  for (int i = 0; i < 2; i++) {
+    auto arg_type = env.get_types_before_op(m_my_idx).get(m_expr.get_arg(i).var().reg());
+    if (arg_type.typespec() != TypeSpec("vector")) {
+      popped_args.at(i) = cast_form(popped_args.at(i), TypeSpec("vector"), pool, env);
+    }
+  }
+
+  auto new_form = pool.alloc_element<GenericElement>(
+      GenericOperator::make_fixed(FixedOperatorKind::VECTOR_3_DOT),
+      std::vector<Form*>{popped_args.at(0), popped_args.at(1)});
+  result->push_back(new_form);
+}
+
 void SimpleExpressionElement::update_from_stack_copy_first_int_2(const Env& env,
                                                                  FixedOperatorKind kind,
                                                                  FormPool& pool,
@@ -1674,6 +1695,9 @@ void SimpleExpressionElement::update_from_stack(const Env& env,
       break;
     case SimpleExpression::Kind::SUBU_L32_S7:
       update_from_stack_subu_l32_s7(env, pool, stack, result, allow_side_effects);
+      break;
+    case SimpleExpression::Kind::VECTOR_3_DOT:
+      update_from_stack_vector_3_dot(env, pool, stack, result, allow_side_effects);
       break;
     default:
       throw std::runtime_error(
