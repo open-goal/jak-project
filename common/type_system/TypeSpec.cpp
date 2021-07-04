@@ -15,13 +15,15 @@ std::string TypeSpec::print() const {
     return m_type;
   } else {
     std::string result = "(" + m_type;
-    for (const auto& tag : m_tags) {
-      result += fmt::format(" :{} {}", tag.name, tag.value);
-    }
+
     if (m_arguments) {
       for (auto& x : *m_arguments) {
         result += " " + x.print();
       }
+    }
+
+    for (const auto& tag : m_tags) {
+      result += fmt::format(" :{} {}", tag.name, tag.value);
     }
 
     return result + ")";
