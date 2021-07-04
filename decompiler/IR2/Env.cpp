@@ -9,7 +9,8 @@
 #include "common/util/math_util.h"
 
 namespace decompiler {
-void Env::set_remap_for_function(int nargs) {
+void Env::set_remap_for_function(const TypeSpec& ts) {
+  int nargs = ts.arg_count() - 1;
   for (int i = 0; i < nargs; i++) {
     std::string var_name;
     var_name.push_back(i >= 4 ? 't' : 'a');
@@ -18,10 +19,16 @@ void Env::set_remap_for_function(int nargs) {
     var_name.push_back('0');
     m_var_remap[var_name] = ("arg" + std::to_string(i));
   }
-  m_var_remap["s6-0"] = "pp";
+  if (ts.try_get_tag("behavior")) {
+    m_var_remap["s6-0"] = "self";
+    m_pp_mapped_by_behavior = true;
+  } else {
+    m_var_remap["s6-0"] = "pp";
+  }
 }
 
-void Env::set_remap_for_new_method(int nargs) {
+void Env::set_remap_for_new_method(const TypeSpec& ts) {
+  int nargs = ts.arg_count() - 1;
   m_var_remap["a0-0"] = "allocation";
   m_var_remap["a1-0"] = "type-to-make";
   for (int i = 2; i < nargs; i++) {
@@ -32,10 +39,16 @@ void Env::set_remap_for_new_method(int nargs) {
     var_name.push_back('0');
     m_var_remap[var_name] = ("arg" + std::to_string(i - 2));
   }
-  m_var_remap["s6-0"] = "pp";
+  if (ts.try_get_tag("behavior")) {
+    m_var_remap["s6-0"] = "self";
+    m_pp_mapped_by_behavior = true;
+  } else {
+    m_var_remap["s6-0"] = "pp";
+  }
 }
 
-void Env::set_remap_for_method(int nargs) {
+void Env::set_remap_for_method(const TypeSpec& ts) {
+  int nargs = ts.arg_count() - 1;
   m_var_remap["a0-0"] = "obj";
   for (int i = 1; i < nargs; i++) {
     std::string var_name;
@@ -45,7 +58,12 @@ void Env::set_remap_for_method(int nargs) {
     var_name.push_back('0');
     m_var_remap[var_name] = ("arg" + std::to_string(i - 1));
   }
-  m_var_remap["s6-0"] = "pp";
+  if (ts.try_get_tag("behavior")) {
+    m_var_remap["s6-0"] = "self";
+    m_pp_mapped_by_behavior = true;
+  } else {
+    m_var_remap["s6-0"] = "pp";
+  }
 }
 
 void Env::map_args_from_config(const std::vector<std::string>& args_names,
