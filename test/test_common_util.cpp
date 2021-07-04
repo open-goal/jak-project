@@ -248,8 +248,6 @@ TEST(SmallVector, NoConstruction) {
 
   // should also destroy nothing
   SmallVector<ThrowOnDestruct> empty2;
-  // should be no issues declaring a vector with no inline storage.
-  SmallVector<int, 0> no_stack_storage;
 }
 
 TEST(SmallVector, ConstructWithSize) {
@@ -341,15 +339,15 @@ TEST(SmallVector, ConstructFromMoveInline) {
 
 TEST(SmallVector, ConstructFromMoveHeap) {
   // heap move
-  SmallVector<std::string, 0> one = {long_string_1, long_string_2, long_string_3};
-  SmallVector<std::string, 0> two(std::move(one));
+  SmallVector<std::string, 1> one = {long_string_1, long_string_2, long_string_3};
+  SmallVector<std::string, 1> two(std::move(one));
   EXPECT_TRUE(one.empty());  // this is the convention of SmallVector.
   EXPECT_EQ(two.at(2), long_string_3);
   EXPECT_EQ(two.size(), 3);
 }
 
 TEST(SmallVector, ConstructFromInitList) {
-  SmallVector<std::string, 0> one({long_string_1, long_string_2, long_string_3});
+  SmallVector<std::string, 1> one({long_string_1, long_string_2, long_string_3});
   EXPECT_EQ(one.at(2), long_string_3);
   EXPECT_EQ(one.size(), 3);
 }
