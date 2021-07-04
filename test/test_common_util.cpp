@@ -252,7 +252,7 @@ TEST(SmallVector, NoConstruction) {
 
 TEST(SmallVector, ConstructWithSize) {
   // Test construction calls default constructors.
-  SmallVector<RuleOfFiveExample, 0> heap_no_stack(12);
+  SmallVector<RuleOfFiveExample, 1> heap_no_stack(12);
   SmallVector<RuleOfFiveExample, 12> full_stack(12);
   SmallVector<RuleOfFiveExample, 12> not_full_stack(11);
   SmallVector<RuleOfFiveExample, 12> overflow_to_heap(13);
