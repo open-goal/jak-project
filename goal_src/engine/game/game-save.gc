@@ -5,5 +5,668 @@
 ;; name in dgo: game-save
 ;; dgos: GAME, ENGINE
 
+(defconstant SAVE_VERSION 1)
+
+;; identifier for game save fields
+(defenum game-save-elt
+    :type uint16
+    (name 100)
+    (base-time 101)
+    (real-time 102)
+    (game-time 103)
+    (integral-time 104)
+    (continue 200)
+    (life 201)
+    (money 202)
+    (money-total 203)
+    (moeny-per-level 204)
+    (buzzer-total 205)
+    (fuel-cell 206)
+    (death-movie-tick 207)
+    (task-list 300)
+    (perm-list 301)
+    (hint-list 303)
+    (text-list 304)
+    (level-open-list 305)
+    (total-deaths 400)
+    (continue-deaths 401)
+    (fuel-cell-deaths 402)
+    (game-start-time 403)
+    (continue-timke 404) ;; typo in game
+    (death-time 405)
+    (hit-time 406)
+    (fuel-cell-pickup-time 407)
+    (continue-time 408)
+    (fuel-cell-time 409)
+    (enter-level-time 410)
+    (deaths-per-level 411)
+    (death-pos 412)
+    (auto-save-count 413)
+    (in-level-time 414)
+    (sfx-volume 500)
+    (music-volume 501)
+    (dialog-volume 502)
+    (language 503)
+    (screenx 504)
+    (screeny 505)
+    (vibration 506)
+    (play-hints 507)
+    (video-mode 508)
+    (aspect-ratio 509)
+    )
+
+;; the game save is a bunch of "game-save-tag"s
+;; the elt-type field identifies what it is.
+;; the data may be stored in one of the user fields, or
+;; may be stored after the tag itself.
+;; the count/size fields determine how big it is.
+
+(deftype game-save-tag (structure)
+  ((user-object object        2 :offset-assert   0)
+   (user-uint64 uint64          :offset          0)
+   (user-float0 float           :offset          0)
+   (user-float  float         2 :offset          0)
+   (user-int32  int32         2 :offset          0)
+   (user-uint32 uint32        2 :offset          0)
+   (user-int16  int16         4 :offset          0)
+   (user-uint16 uint16        4 :offset          0)
+   (user-int8   int8          8 :offset          0)
+   (user-int80  int8            :offset          0)
+   (user-int81  int8            :offset          1)
+   (user-uint8  uint8         8 :offset          0)
+   (elt-count   int32           :offset-assert   8)
+   (elt-size    uint16          :offset-assert  12)
+   (elt-type    game-save-elt   :offset-assert  14)
+   )
+  :method-count-assert 9
+  :size-assert         #x10
+  :flag-assert         #x900000010
+  )
+
+;; A game-save is a dynamic type that contains the full save.
+;; it contains common metadata plus all the tags
+(deftype game-save (basic)
+  ((version               int32                          :offset-assert   4)
+   (allocated-length      int32                          :offset-assert   8)
+   (length                int32                          :offset-assert  12)
+   (info-int32            int32         16               :offset-assert  16)
+   (info-int8             int8          64               :offset         16)
+   (level-index           int32                          :offset         16)
+   (fuel-cell-count       float                          :offset         20)
+   (money-count           float                          :offset         24)
+   (buzzer-count          float                          :offset         28)
+   (completion-percentage float                          :offset         32)
+   (minute                uint8                          :offset         36)
+   (hour                  uint8                          :offset         37)
+   (week                  uint8                          :offset         38)
+   (day                   uint8                          :offset         39)
+   (month                 uint8                          :offset         40)
+   (year                  uint8                          :offset         41)
+   (new-game              int32                          :offset         44)
+   (tag                   game-save-tag :inline :dynamic :offset-assert  80)
+   )
+  :method-count-assert 12
+  :size-assert         #x50
+  :flag-assert         #xc00000050
+  (:methods
+   (new (symbol type int) _type_ 0)
+   (save-to-file (_type_ string) _type_ 9)
+   (load-from-file! (_type_ string) _type_ 10)
+   (debug-print (_type_ symbol) _type_ 11)
+   )
+  )
+
+(defmethod asize-of game-save ((obj game-save))
+  "Get the size in memory of the save"
+  (the-as int (+ (-> game-save size) (the-as uint (-> obj allocated-length))))
+  )
+
+(defmethod new game-save ((allocation symbol) (type-to-make type) (arg0 int))
+  "Allocate a game save. arg0 is the number of bytes for tags."
+  (let ((v0-0 (object-new allocation type-to-make (the-as int (+ (-> type-to-make size) (the-as uint arg0))))))
+    (set! (-> v0-0 version) SAVE_VERSION)
+    (set! (-> v0-0 allocated-length) arg0)
+    v0-0
+    )
+  )
+
+(defun-debug game-save-elt->string ((arg0 game-save-elt))
+  "Convert a game-save-elt to a string"
+  (let ((v1-0 arg0))
+    (cond
+      ((= v1-0 (game-save-elt aspect-ratio)) "aspect-ratio")
+      ((= v1-0 (game-save-elt video-mode)) "video-mode")
+      ((= v1-0 (game-save-elt play-hints)) "play-hints")
+      ((= v1-0 (game-save-elt vibration)) "vibration")
+      ((= v1-0 (game-save-elt screeny)) "screeny")
+      ((= v1-0 (game-save-elt screenx)) "screenx")
+      ((= v1-0 (game-save-elt language)) "language")
+      ((= v1-0 (game-save-elt dialog-volume)) "dialog-volume")
+      ((= v1-0 (game-save-elt music-volume)) "music-volume")
+      ((= v1-0 (game-save-elt sfx-volume)) "sfx-volume")
+      ((= v1-0 (game-save-elt in-level-time)) "in-level-time")
+      ((= v1-0 (game-save-elt auto-save-count)) "auto-save-count")
+      ((= v1-0 (game-save-elt death-pos)) "death-pos")
+      ((= v1-0 (game-save-elt deaths-per-level)) "deaths-per-level")
+      ((= v1-0 (game-save-elt enter-level-time)) "enter-level-time")
+      ((= v1-0 (game-save-elt fuel-cell-time)) "fuel-cell-time")
+      ((= v1-0 (game-save-elt continue-time)) "continue-time")
+      ((= v1-0 (game-save-elt fuel-cell-pickup-time)) "fuel-cell-pickup-time")
+      ((= v1-0 (game-save-elt hit-time)) "hit-time")
+      ((= v1-0 (game-save-elt death-time)) "death-time")
+      ((= v1-0 (game-save-elt continue-timke)) "continue-timke")
+      ((= v1-0 (game-save-elt game-start-time)) "game-start-time")
+      ((= v1-0 (game-save-elt fuel-cell-deaths)) "fuel-cell-deaths")
+      ((= v1-0 (game-save-elt continue-deaths)) "continue-deaths")
+      ((= v1-0 (game-save-elt total-deaths)) "total-deaths")
+      ((= v1-0 (game-save-elt level-open-list)) "level-open-list")
+      ((= v1-0 (game-save-elt text-list)) "text-list")
+      ((= v1-0 (game-save-elt hint-list)) "hint-list")
+      ((= v1-0 (game-save-elt perm-list)) "perm-list")
+      ((= v1-0 (game-save-elt task-list)) "task-list")
+      ((= v1-0 (game-save-elt death-movie-tick)) "death-movie-tick")
+      ((= v1-0 (game-save-elt fuel-cell)) "fuel-cell")
+      ((= v1-0 (game-save-elt buzzer-total)) "buzzer-total")
+      ((= v1-0 (game-save-elt moeny-per-level)) "money-per-level")
+      ((= v1-0 (game-save-elt money-total)) "money-total")
+      ((= v1-0 (game-save-elt money)) "money")
+      ((= v1-0 (game-save-elt life)) "life")
+      ((= v1-0 (game-save-elt continue)) "continue")
+      ((= v1-0 (game-save-elt integral-time)) "integral-time")
+      ((= v1-0 (game-save-elt game-time)) "game-time")
+      ((= v1-0 (game-save-elt real-time)) "real-time")
+      ((= v1-0 (game-save-elt base-time)) "base-time")
+      ((= v1-0 (game-save-elt name)) "name")
+      (else "*unknown*")
+      )
+    )
+  )
+
+(defun progress-level-index->string ((arg0 int))
+  "Convert an index for a level in the progress menu (not actual data levels)
+   to a string (translated)."
+  (if (< arg0 (-> *level-task-data* length))
+      (lookup-text! *common-text* (-> *level-task-data* arg0 level-name-id) #f)
+      (the-as string #f)
+      )
+  )
+
+(defmethod debug-print game-save ((obj game-save) (detail symbol))
+  "Print a save to #t"
+  (format #t "[~8x] ~A~%" obj (-> obj type))
+  (format #t "~Tversion: ~D~%" (-> obj version))
+  (format #t "~Tallocated-length: ~D~%" (-> obj allocated-length))
+  (format #t "~Tlength: ~D~%" (-> obj length))
+  (format #t "~Tlevel-index: ~D~%" (-> obj level-index))
+  (format #t "~Tfuel-cell-count: ~f~%" (-> obj fuel-cell-count))
+  (format #t "~Tmoney-count: ~f~%" (-> obj money-count))
+  (format #t "~Tbuzzer-count: ~f~%" (-> obj buzzer-count))
+  (format #t "~Tcompletion-percentage: ~f~%" (-> obj completion-percentage))
+  (format #t "~Tsave-time: ~x:~x ~x/~x/~x~%"
+          (-> obj hour)
+          (-> obj minute)
+          (-> obj day)
+          (-> obj month)
+          (-> obj year)
+          )
+  (format #t "~Ttag[]: @ #x~X~%" (-> obj tag))
+
+  ;; loop through tags
+  (let ((tag (the-as game-save-tag (-> obj tag)))
+        (tag-idx 0)
+        )
+    (while (< (the-as int tag) (the-as int (-> obj tag)))
+      (format #t "~T  [~3D] ~-32S [~3D/~3D]  ~12D ~8f    "
+              tag-idx
+              (game-save-elt->string (-> tag elt-type))
+              (-> tag elt-count)
+              (-> tag elt-size)
+              (-> tag user-uint64)
+              (-> tag user-float))
+
+      ;; name/continue are strings
+      (let ((v1-0 (-> tag elt-type)))
+        (if (or (= v1-0 (game-save-elt name)) (= v1-0 (game-save-elt continue)))
+            (format #t "= \"~G\"~%" (&+ (the-as pointer tag) 16))
+            (format #t "~%")
+            )
+        )
+
+      (when detail
+        (let ((v1-4 (-> tag elt-type)))
+          (cond
+            ((or (= v1-4 (game-save-elt moeny-per-level)) (= v1-4 (game-save-elt deaths-per-level)))
+             ;; per level u8's
+             (dotimes (prog-lev-idx (-> tag elt-count))
+               (let ((lev-name (progress-level-index->string prog-lev-idx)))
+                 (if lev-name
+                     (format #t "                 ~-32S: ~D~%"
+                             lev-name
+                             (-> (the-as (pointer uint8) (&+ (the-as pointer (&-> (the-as (pointer uint8) tag) 16)) prog-lev-idx)))
+                             )
+                     )
+                 )
+               )
+             )
+            ((= v1-4 (game-save-elt enter-level-time))
+             ;; per level u64's 
+             (dotimes (s2-2 (-> tag elt-count))
+               (let ((a2-14 (progress-level-index->string s2-2)))
+                 (if a2-14
+                     (format #t "                 ~-32S: ~D~%"
+                             a2-14
+                             (-> (the-as (pointer uint64) (&+ (&+ (the-as pointer tag) 16) (* s2-2 8))))
+                             )
+                     )
+                 )
+               )
+             )
+            ((= v1-4 (game-save-elt in-level-time))
+             (dotimes (s2-3 (-> tag elt-count))
+               (let ((a2-15 (progress-level-index->string s2-3)))
+                 (if a2-15
+                     (format #t "                 ~-32S: ~D~%"
+                             a2-15
+                             (-> (the-as (pointer uint64) (&+ (&+ (the-as pointer tag) 16) (* s2-3 8))))
+                             )
+                     )
+                 )
+               )
+             )
+            ((= v1-4 (game-save-elt fuel-cell-time))
+             (dotimes (s2-4 (-> tag elt-count))
+               (let ((a2-16 (game-task->string (the game-task s2-4))))
+                 (if a2-16
+                     (format #t "                 ~-32S: ~D~%"
+                             a2-16
+                             (-> (the-as (pointer uint64) (&+ (&+ (the-as pointer tag) 16) (* s2-4 8))))
+                             )
+                     )
+                 )
+               )
+             )
+            )
+          )
+        )
+      (set! tag (the-as game-save-tag
+                        (&+ (the-as pointer tag)
+                            (logand -16 (+ (* (the-as int (-> tag elt-size)) (-> tag elt-count)) 31))
+                            )
+                        )
+            )
+      (+! tag-idx 1)
+      )
+    )
+  obj
+  )
+
+(defmethod inspect game-save ((obj game-save))
+  (debug-print obj #f)
+  )
+
+;; todo method 24 game-info
+
+(defmethod load-game! game-info ((obj game-info) (save game-save))
+  "Copy save data from a game-save to a game-info"
+  (let ((save-data (the-as game-save-tag (-> save tag))))
+    ;; loop over all tags
+    (while (< (the-as int save-data) (the-as int (+ (+ (-> save length) 76) (the-as int save))))
+      (let ((a0-1 (-> save-data elt-type)))
+        (cond
+          ((= a0-1 (game-save-elt sfx-volume))
+           (set! (-> *setting-control* default sfx-volume) (-> save-data user-float0))
+           )
+          ((= a0-1 (game-save-elt music-volume))
+           (set! (-> *setting-control* default music-volume) (-> save-data user-float0))
+           )
+          ((= a0-1 (game-save-elt dialog-volume))
+           (set! (-> *setting-control* default dialog-volume) (-> save-data user-float0))
+           )
+          ((= a0-1 (game-save-elt language))
+           (set! (-> *setting-control* default language) (the-as int (-> save-data user-uint64)))
+           )
+          ((= a0-1 (game-save-elt vibration))
+           (set! (-> *setting-control* default vibration) (= (-> save-data user-uint64) 1))
+           )
+          ((= a0-1 (game-save-elt play-hints))
+           (set! (-> *setting-control* default play-hints) (= (-> save-data user-uint64) 1))
+           )
+          )
+        )
+      (set! save-data (the-as game-save-tag
+                              (&+ (the-as pointer save-data)
+                                  (logand -16 (+ (* (the-as int (-> save-data elt-size)) (-> save-data elt-count)) 31))
+                                  )
+                              )
+            )
+      )
+    )
+
+  ;; if we're a new game, set our checkpoint.
+  (when (nonzero? (-> save new-game))
+    (set-continue! obj "game-start")
+    (set! save save)
+    (goto cfg-134)
+    )
+
+  ;; loop over all tags
+  (let ((data (the-as game-save-tag (-> save tag))))
+    (while (< (the-as int data) (the-as int (+ (+ (-> save length) 76) (the-as int save))))
+      (let ((v1-7 (-> data elt-type)))
+        (cond
+          ((= v1-7 (game-save-elt base-time))
+           ;; updating this requires some care to not break things
+           (let ((old-base-frame (-> *display* base-frame-counter)))
+             (set! (-> *display* base-frame-counter) (-> data user-uint64))
+             ;; remember the old value
+             (set! (-> *display* old-base-frame-counter) (+ (-> *display* base-frame-counter) -1))
+             (let ((frame-counter-diff (- (-> *display* base-frame-counter) old-base-frame)))
+
+               ;; update in-progress counters
+               (if (nonzero? (-> obj blackout-time))
+                   (set! (-> obj blackout-time) (+ (-> obj blackout-time) frame-counter-diff))
+                   )
+               (if (nonzero? (-> obj letterbox-time))
+                   (set! (-> obj letterbox-time) (+ (-> obj letterbox-time) frame-counter-diff))
+                   )
+               (if (nonzero? (-> obj hint-play-time))
+                   (set! (-> obj hint-play-time) (+ (-> obj hint-play-time) frame-counter-diff))
+                   )
+               (if (nonzero? (-> obj display-text-time))
+                   (set! (-> obj display-text-time) (+ (-> obj display-text-time) frame-counter-diff))
+                   )
+               )
+             )
+           ;; vibration may get stuck on if we warp back in time, just kill it
+           (buzz-stop! 0)
+           )
+
+          ((= v1-7 (game-save-elt game-time))
+           (set! (-> *display* game-frame-counter) (-> data user-uint64))
+           (set! (-> *display* old-game-frame-counter) (+ (-> *display* game-frame-counter) -1))
+           )
+          ((= v1-7 (game-save-elt real-time))
+           (set! (-> *display* real-frame-counter) (-> data user-uint64))
+           (set! (-> *display* old-real-frame-counter) (+ (-> *display* real-frame-counter) -1))
+           )
+          ((= v1-7 (game-save-elt integral-time))
+           (set! (-> *display* integral-frame-counter) (-> data user-uint64))
+           (set! (-> *display* old-integral-frame-counter) (+ (-> *display* integral-frame-counter) -1))
+           )
+          ((= v1-7 (game-save-elt continue))
+           (format (clear *temp-string*) "~G" (&+ (the-as pointer data) 16))
+           (set-continue! obj *temp-string*)
+           )
+          ((= v1-7 (game-save-elt life))
+           (set! (-> obj life) (-> data user-float0))
+           )
+          ((= v1-7 (game-save-elt buzzer-total))
+           (set! (-> obj buzzer-total) (-> data user-float0))
+           )
+          ((= v1-7 (game-save-elt fuel-cell))
+           (set! (-> obj fuel) (-> data user-float0))
+           )
+          ((= v1-7 (game-save-elt death-movie-tick))
+           (set! (-> obj death-movie-tick) (the-as int (-> data user-uint64)))
+           )
+          ((= v1-7 (game-save-elt money))
+           (set! (-> obj money) (-> data user-float0))
+           )
+          ((= v1-7 (game-save-elt money-total))
+           (set! (-> obj money-total) (-> data user-float0))
+           )
+          ((= v1-7 (game-save-elt moeny-per-level))
+           (let ((v1-34 (min 32 (-> data elt-count))))
+             (dotimes (a0-76 v1-34)
+               (set!
+                (-> obj money-per-level a0-76)
+                (-> (the-as (pointer uint8) (&+ (the-as pointer data) 16)) a0-76)
+                )
+               )
+             )
+           )
+          ((= v1-7 (game-save-elt level-open-list))
+           (let ((v1-38 (min 32 (-> data elt-count))))
+             (dotimes (a0-80 v1-38)
+               (set!
+                (-> obj level-opened a0-80)
+                (-> (the-as (pointer uint8) (&+ (the-as pointer data) 16)) a0-80)
+                )
+               )
+             )
+           )
+          ((= v1-7 (game-save-elt perm-list))
+           (let ((s3-2 (min (-> data elt-count) (-> obj perm-list allocated-length))))
+             (set! (-> obj perm-list length) s3-2)
+             (dotimes (s2-0 s3-2)
+               (mem-copy!
+                (the-as pointer (-> obj perm-list data s2-0))
+                (&+ (&+ (the-as pointer data) 16) (* s2-0 16))
+                16
+                )
+               )
+             )
+           )
+          ((= v1-7 (game-save-elt task-list))
+           (let ((s3-4 (min (-> data elt-count) (-> obj task-perm-list allocated-length))))
+             (set! (-> obj task-perm-list length) s3-4)
+             (dotimes (s2-1 s3-4)
+               (mem-copy!
+                (the-as pointer (-> obj task-perm-list data s2-1))
+                (&+ (&+ (the-as pointer data) 16) (* s2-1 16))
+                16
+                )
+               )
+             )
+           )
+          ((= v1-7 (game-save-elt text-list))
+           (let ((v1-61 (/ (logand -8 (+ (-> obj text-ids-seen allocated-length) 7)) 8))
+                 (a0-94 (-> data elt-count)))
+             (dotimes (a1-35 v1-61)
+               (cond
+                 ((>= a1-35 a0-94)
+                  (set! (-> obj text-ids-seen bytes a1-35) (the-as uint 0))
+                  0
+                  )
+                 (else
+                  (set! (-> obj text-ids-seen bytes a1-35)
+                        (-> (the-as (pointer uint8) (&+ (the-as pointer data) 16)) a1-35)
+                        )
+                  )
+                 )
+               )
+             )
+           )
+          ((= v1-7 (game-save-elt hint-list))
+           (cond
+             ((= (-> obj hint-control length) (-> data elt-count))
+              (let ((v1-65 (&+ (the-as pointer data) 16)))
+                (dotimes (a0-99 (-> data elt-count))
+                  (set! (-> obj hint-control a0-99 start-time)
+                        (-> (the-as (pointer uint64) (&+ v1-65 (* (* a0-99 4) 8))))
+                        )
+                  (set! (-> obj hint-control a0-99 last-time-called)
+                        (-> (the-as (pointer uint64) (&+ v1-65 (* (+ (* a0-99 4) 1) 8))))
+                        )
+                  (set! (-> obj hint-control a0-99 num-attempts)
+                        (-> (the-as (pointer int8)
+                                    (&+ (the-as (pointer uint8) v1-65) (+ (* a0-99 32) 16))
+                                    )
+                            )
+                        )
+                  (set!
+                   (-> obj hint-control a0-99 num-success)
+                   (-> (the-as (pointer int8)
+                               (&+ (the-as (pointer uint8) v1-65) (+ (* a0-99 32) 17))
+                               )
+                       )
+                   )
+                  )
+                )
+              )
+             (else
+              (format
+               0
+               "WARNING: SAVEGAME: hint control list did not match current, ignoring~%"
+               )
+              )
+             )
+           )
+          ((= v1-7 (game-save-elt auto-save-count))
+           (set! (-> obj auto-save-count) (the-as int (-> data user-uint64)))
+           )
+          ((= v1-7 (game-save-elt total-deaths))
+           (set! (-> obj total-deaths) (the-as int (-> data user-uint64)))
+           )
+          ((= v1-7 (game-save-elt continue-deaths))
+           (set! (-> obj continue-deaths) (the-as int (-> data user-uint64)))
+           )
+          ((= v1-7 (game-save-elt fuel-cell-deaths))
+           (set! (-> obj fuel-cell-deaths) (the-as int (-> data user-uint64)))
+           )
+          ((= v1-7 (game-save-elt game-start-time))
+           (set! (-> obj game-start-time) (-> data user-uint64))
+           )
+          ((= v1-7 (game-save-elt continue-time))
+           (set! (-> obj continue-time) (-> data user-uint64))
+           )
+          ((= v1-7 (game-save-elt death-time))
+           (set! (-> obj death-time) (-> data user-uint64))
+           )
+          ((= v1-7 (game-save-elt hit-time))
+           (set! (-> obj hit-time) (-> data user-uint64))
+           )
+          ((= v1-7 (game-save-elt fuel-cell-pickup-time))
+           (set! (-> obj fuel-cell-pickup-time) (-> data user-uint64))
+           )
+          ((= v1-7 (game-save-elt deaths-per-level))
+           (let ((v1-79 (min 32 (-> data elt-count))))
+             (dotimes (a0-122 v1-79)
+               (set!
+                (-> obj deaths-per-level a0-122)
+                (-> (the-as (pointer uint8) (&+ (the-as pointer data) 16)) a0-122)
+                )
+               )
+             )
+           )
+          ((= v1-7 (game-save-elt enter-level-time))
+           (let ((v1-83 (min 32 (-> data elt-count))))
+             (dotimes (a0-126 v1-83)
+               (set! (-> obj enter-level-time a0-126)
+                (-> (the-as (pointer uint64) (&+ (&+ (the-as pointer data) 16) (* a0-126 8))))
+                )
+               )
+             )
+           )
+          ((= v1-7 (game-save-elt in-level-time))
+           (let ((v1-87 (min 32 (-> data elt-count))))
+             (dotimes (a0-130 v1-87)
+               (set! (-> obj in-level-time a0-130)
+                (-> (the-as (pointer uint64) (&+ (&+ (the-as pointer data) 16) (* a0-130 8))))
+                )
+               )
+             )
+           )
+          ((= v1-7 (game-save-elt fuel-cell-time))
+           (let ((v1-92 (min 32 (-> data elt-count))))
+             (dotimes (a0-133 v1-92)
+               (set! (-> obj fuel-cell-time a0-133)
+                (-> (the-as (pointer uint64) (&+ (&+ (the-as pointer data) 16) (* a0-133 8))))
+                )
+               )
+             )
+           )
+          )
+        )
+      (set! data (the-as game-save-tag (&+ (the-as pointer data)
+                                           (logand -16
+                                                   (+ (* (the-as int (-> data elt-size)) (-> data elt-count)) 31)
+                                                   )
+                                           )
+                         )
+            )
+      )
+    )
+
+  ;; update entity stuff in levels that are active
+  (dotimes (s4-1 (-> *level* length))
+    (let ((a1-68 (-> *level* level s4-1)))
+      (if (= (-> a1-68 status) 'active)
+          (copy-perms-to-level! obj a1-68)
+          )
+      )
+    )
+  ;; update tasks
+  (let ((s5-1 2) ;; jungle eggtop
+        (s4-2 115) ;; max - 1
+        )
+    (while (>= (the-as uint s4-2) (the-as uint s5-1))
+      ;; calling this will run the function to see if the task is done or not
+      (get-task-status (the-as game-task s5-1))
+      (+! s5-1 1)
+      )
+    )
+  (label cfg-134)
+  save
+  )
+
+(defmethod save-to-file game-save ((obj game-save) (arg0 string))
+  "Write a game save to a file for debugging"
+  (let ((s5-0 (new 'stack 'file-stream arg0 'write)))
+    (file-stream-write s5-0
+                       (&-> obj type)
+                       (+ (-> obj type size) (the-as uint (-> obj length)))
+                       )
+    (file-stream-close s5-0)
+    )
+  obj
+  )
+
+(defmethod load-from-file! game-save ((obj game-save) (filename string))
+  (let ((stream (new 'stack 'file-stream filename 'read)))
+    (let ((in-size (file-stream-length stream))
+          (my-size (-> obj allocated-length))
+          )
+      (cond
+        ((>= (asize-of obj) in-size)
+         ;; thing in file is not bigger than we are, safe to read.
+         (cond
+           ((= (file-stream-read stream (&-> obj type) in-size) in-size)
+            ;; read success! set the type tag
+            (set! (-> obj type) game-save)
+            )
+           (else
+            ;; fail.
+            (format 0 "ERROR: SAVEGAME: save file ~A did not read correctly.~%" stream)
+            (set! (-> obj length) 0)
+            0
+            )
+           )
+         )
+        (else
+         ;; file is bigger than we are, just give up because we don't have
+         ;; enough room to put the save
+         (format 0 "ERROR: SAVEGAME: save file ~A is too big~%" stream)
+         )
+        )
+      (set! (-> obj allocated-length) my-size)
+      )
+    (when (!= (-> obj version) SAVE_VERSION)
+      ;; uh-oh, the version is wrong
+      (format 0 "ERROR: SAVEGAME: save file ~A was version ~d, but only ~d is supported.~%"
+       stream
+       (-> obj version)
+       SAVE_VERSION
+       )
+      (set! (-> obj length) 0)
+      0
+      )
+    (file-stream-close stream)
+    )
+  obj
+  )
+
+;; TODO sparticle stuff and more
+
 ;; TODO - for credits
 (define-extern print-game-text (function string font-context symbol int int float)) ; TODO decomp error, this seems correct though

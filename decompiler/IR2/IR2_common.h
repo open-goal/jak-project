@@ -151,6 +151,8 @@ enum class FixedOperatorKind {
   VECTOR_PLUS,
   VECTOR_MINUS,
   VECTOR_FLOAT_PRODUCT,
+  L32_NOT_FALSE_CBOOL,
+  VECTOR_3_DOT,
   INVALID
 };
 

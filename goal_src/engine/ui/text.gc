@@ -44,6 +44,45 @@
 
 ;; todo method 8
 ;; todo method 9
+
+(defmethod lookup-text! game-text-info ((obj game-text-info) (arg0 game-text-id) (arg1 symbol))
+  "Look up text by ID.  Will return the string.
+   If the ID can't be found, and arg1 is #t, it will return #f,
+   otherwise the temp string UNKNOWN ID <id number>"
+
+  ;; binary search for it
+  (let* ((a1-1 0)                     ;; min
+         (a3-0 (+ (-> obj length) 1)) ;; max
+         (v1-2 (/ (+ a1-1 a3-0) 2))   ;; mid
+         )
+    (let ((t0-0 -1)) ;; last time's lookup
+      (while (and (!= (-> obj data v1-2 id) arg0) (!= v1-2 t0-0)) ;; while we haven't found it/not the same as last time
+        (if (< arg0 (-> obj data v1-2 id))
+            (set! a3-0 v1-2) ;; bisect, right
+            (set! a1-1 v1-2) ;; bisect, left
+            )
+        (set! t0-0 v1-2) ;; remeber last time
+        (set! v1-2 (/ (+ a1-1 a3-0) 2)) ;; midpoint for next time
+        )
+      )
+    (cond
+      ((!= (-> obj data v1-2 id) arg0) ;; didn't find it :(
+       (cond
+         (arg1
+          (the-as string #f)
+          )
+         (else
+          (format (clear *temp-string*) "UNKNOWN ID ~D" arg0)
+          *temp-string*
+          )
+         )
+       )
+      (else
+       (-> obj data v1-2 text) ;; found it!
+       )
+      )
+    )
+  )
 ;; todo text-is-loading
 ;; todo load-game-text-info
 ;; todo load-level-text-files

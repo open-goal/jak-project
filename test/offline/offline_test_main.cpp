@@ -46,35 +46,26 @@ const std::unordered_set<std::string> g_functions_expected_to_reject = {
     "(method 9 bounding-box)",   // handwritten asm loop
     "(method 14 bounding-box)",  // handwritten asm loop
     // trig
-    "exp",
-    "atan0",
-    "sincos!",
-    "sincos-rad!",
+    "exp", "atan0", "sincos!", "sincos-rad!",
     // matrix
     "(method 9 matrix)",  // handwritten asm loop
-    "matrix-axis-sin-cos!",
-    "matrix-axis-sin-cos-vu!",
+    "matrix-axis-sin-cos!", "matrix-axis-sin-cos-vu!",
+    // geometry
+    "circle-circle-xz-intersect",  // unused not bothering
     // dma-h
     "dma-count-until-done",  // dma asm loop
-    "dma-sync-with-count",
-    "dma-send-no-scratch",
-    "dma-sync-fast",
+    "dma-sync-with-count", "dma-send-no-scratch", "dma-sync-fast",
     // dma
-    "symlink2",
-    "symlink3",
+    "symlink2", "symlink3",
     "dma-sync-hang",  // handwritten asm
     "vector=",        // asm branching
     // display
     "vblank-handler",  // asm
-    "vif1-handler",
-    "vif1-handler-debug",
+    "vif1-handler", "vif1-handler-debug",
     // stats-h
-    "(method 11 perf-stat)",
-    "(method 12 perf-stat)",
+    "(method 11 perf-stat)", "(method 12 perf-stat)",
     // ripple - asm
-    "ripple-execute-init",
-    "ripple-create-wave-table",
-    "ripple-apply-wave-table",
+    "ripple-execute-init", "ripple-create-wave-table", "ripple-apply-wave-table",
     "ripple-matrix-scale",
     // ripple - calls an asm function
     "ripple-execute",
@@ -90,6 +81,8 @@ const std::unordered_set<std::string> g_functions_expected_to_reject = {
     // actor-link-h
     "(method 21 actor-link-info)",  // BUG: sc cfg / cfg-ir bug
     "(method 20 actor-link-info)",
+
+    "debug-menu-item-var-render"  // asm
 };
 
 const std::unordered_set<std::string> g_functions_to_skip_compiling = {
@@ -100,10 +93,6 @@ const std::unordered_set<std::string> g_functions_to_skip_compiling = {
     "breakpoint-range-set!",
     // inline assembly
     "valid?",
-
-    /// GKERNEL-H
-    // bitfields, possibly inline assembly
-    "(method 2 handle)",
 
     /// GKERNEL
     // asm
@@ -125,11 +114,7 @@ const std::unordered_set<std::string> g_functions_to_skip_compiling = {
 
     /// VECTOR-H
     "(method 3 vector)",  // this function appears twice, which confuses the compiler.
-    "vector-dot",         // fpu acc
     "vector4-dot",        // fpu acc
-
-    // quaternion
-    "matrix-with-scale->quaternion",  // fpu-acc
 
     "(method 3 profile-frame)",  // double definition.
 
@@ -146,6 +131,11 @@ const std::unordered_set<std::string> g_functions_to_skip_compiling = {
     // bad decisions on float vs int128
     "vector-degf", "vector-degmod", "vector-deg-diff", "vector-degi",
 
+    // geometry
+    "calculate-basis-functions-vector!",  // asm requiring manual rewrite
+    "curve-evaluate!",                    // asm requiring manual rewrite
+    "point-in-triangle-cross",            // logior on floats manual fixup
+
     // asm
     "invalidate-cache-line",
 
@@ -156,6 +146,8 @@ const std::unordered_set<std::string> g_functions_to_skip_compiling = {
 
     // ripple - calls an asm function
     "ripple-execute",
+
+    "get-task-status",
 
     // issue - https://github.com/water111/jak-project/issues/396
     "ocean-trans-add-upload-strip", "ocean-trans-add-upload-table"};
@@ -343,9 +335,6 @@ TEST_F(OfflineDecompilation, FunctionDetect) {
 
   // one login per object file
   EXPECT_EQ(config->allowed_objects.size(), login_count);
-
-  // not many lambdas.
-  EXPECT_TRUE(unknown_count < 10);
 }
 
 TEST_F(OfflineDecompilation, AsmFunction) {

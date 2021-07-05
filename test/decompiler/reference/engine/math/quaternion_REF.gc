@@ -598,18 +598,9 @@
   )
 
 ;; definition for function matrix-with-scale->quaternion
-;; WARN: Unsupported inline assembly instruction kind - [mula.s f0, f3]
-;; WARN: Unsupported inline assembly instruction kind - [madda.s f1, f4]
-;; WARN: Unsupported inline assembly instruction kind - [madd.s f0, f2, f5]
-;; WARN: Unsupported inline assembly instruction kind - [mula.s f1, f4]
-;; WARN: Unsupported inline assembly instruction kind - [madda.s f2, f5]
-;; WARN: Unsupported inline assembly instruction kind - [madd.s f1, f3, f6]
-;; WARN: Unsupported inline assembly instruction kind - [mula.s f2, f5]
-;; WARN: Unsupported inline assembly instruction kind - [madda.s f3, f6]
-;; WARN: Unsupported inline assembly instruction kind - [madd.s f2, f4, f7]
 ;; Used lq/sq
 (defun matrix-with-scale->quaternion ((arg0 quaternion) (arg1 matrix))
-  (local-vars (a1-4 float) (f0-1 float) (f1-2 float) (f2-3 float))
+  (local-vars (a1-4 float))
   (rlet ((vf1 :class vf)
          (vf2 :class vf)
          (vf3 :class vf)
@@ -619,50 +610,31 @@
          (vf7 :class vf)
          )
    (let ((v1-0 (new-stack-matrix0)))
-    (let* ((a3-0 (-> arg1 vector))
-           (a2-0 (-> arg1 vector))
-           (f0-0 (-> a3-0 0 x))
-           (f1-0 (-> a3-0 0 y))
-           (f2-0 (-> a3-0 0 z))
-           (f3-0 (-> a2-0 0 x))
-           (f4-0 (-> a2-0 0 y))
-           (f5-0 (-> a2-0 0 z))
-           )
-     (.mula.s f0-0 f3-0)
-     (.madda.s f1-0 f4-0)
-     (.madd.s f0-1 f2-0 f5-0)
-     )
-    (let ((f0-2 f0-1))
-     (let* ((a3-1 (-> arg1 vector 1))
-            (a2-2 (-> arg1 vector 1))
-            )
-      (set! f1-2 (vector-dot a3-1 a2-2))
+    (let*
+     ((f0-1
+       (vector-dot
+        (the-as vector (-> arg1 vector))
+        (the-as vector (-> arg1 vector))
+        )
+       )
+      (f1-1 (vector-dot (-> arg1 vector 1) (-> arg1 vector 1)))
+      (f2-1 (vector-dot (-> arg1 vector 2) (-> arg1 vector 2)))
+      (f0-3 (/ 1.0 (sqrtf f0-1)))
+      (f1-3 (/ 1.0 (sqrtf f1-1)))
+      (f2-3 (/ 1.0 (sqrtf f2-1)))
       )
-     (let ((f1-3 f1-2))
-      (let* ((a3-2 (-> arg1 vector 2))
-             (a2-4 (-> arg1 vector 2))
-             )
-       (set! f2-3 (vector-dot a3-2 a2-4))
-       )
-      (let* ((f2-4 f2-3)
-             (f0-4 (/ 1.0 (sqrtf f0-2)))
-             (f1-5 (/ 1.0 (sqrtf f1-3)))
-             (f2-6 (/ 1.0 (sqrtf f2-4)))
-             )
-       (.lvf vf1 (&-> arg1 vector 0 quad))
-       (.lvf vf2 (&-> arg1 vector 1 quad))
-       (.lvf vf3 (&-> arg1 vector 2 quad))
-       (.lvf vf4 (&-> arg1 vector 3 quad))
-       (let ((a1-1 f0-4))
-        (.mov vf5 a1-1)
-        )
-       (let ((a1-2 f1-5))
-        (.mov vf6 a1-2)
-        )
-       (let ((a1-3 f2-6))
-        (.mov vf7 a1-3)
-        )
-       )
+     (.lvf vf1 (&-> arg1 vector 0 quad))
+     (.lvf vf2 (&-> arg1 vector 1 quad))
+     (.lvf vf3 (&-> arg1 vector 2 quad))
+     (.lvf vf4 (&-> arg1 vector 3 quad))
+     (let ((a1-1 f0-3))
+      (.mov vf5 a1-1)
+      )
+     (let ((a1-2 f1-3))
+      (.mov vf6 a1-2)
+      )
+     (let ((a1-3 f2-3))
+      (.mov vf7 a1-3)
       )
      )
     (.mul.x.vf vf1 vf1 vf5)
@@ -1021,18 +993,12 @@
   )
 
 ;; definition for function quaternion-delta-y
-;; WARN: Unsupported inline assembly instruction kind - [mula.s f0, f3]
-;; WARN: Unsupported inline assembly instruction kind - [madda.s f1, f4]
-;; WARN: Unsupported inline assembly instruction kind - [madd.s f0, f2, f5]
 (defun quaternion-delta-y ((arg0 quaternion) (arg1 quaternion))
-  (local-vars (f0-1 float))
-  (let ((gp-0 acos))
-   (let* ((s5-0 (vector-z-quaternion! (new 'stack-no-clear 'vector) arg0))
-          (v1-1 (vector-z-quaternion! (new 'stack-no-clear 'vector) arg1))
-          )
-    (set! f0-1 (vector-dot s5-0 v1-1))
+  (acos
+   (vector-dot
+    (vector-z-quaternion! (new 'stack-no-clear 'vector) arg0)
+    (vector-z-quaternion! (new 'stack-no-clear 'vector) arg1)
     )
-   (gp-0 f0-1)
    )
   )
 

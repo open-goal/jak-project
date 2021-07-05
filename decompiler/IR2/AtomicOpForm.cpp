@@ -728,7 +728,7 @@ FormElement* BranchOp::get_as_form(FormPool& pool, const Env&) const {
 }
 
 FormElement* SpecialOp::get_as_form(FormPool& pool, const Env&) const {
-  return pool.alloc_element<AtomicOpElement>(this);
+  return pool.alloc_element<AtomicOpElement>(const_cast<SpecialOp*>(this));
 }
 
 FormElement* CallOp::get_as_form(FormPool& pool, const Env& env) const {
@@ -764,11 +764,18 @@ FormElement* ConditionalMoveFalseOp::get_as_form(FormPool& pool, const Env&) con
 }
 
 FormElement* FunctionEndOp::get_as_form(FormPool& pool, const Env&) const {
-  return pool.alloc_element<AtomicOpElement>(this);
+  return pool.alloc_element<AtomicOpElement>(const_cast<FunctionEndOp*>(this));
 }
 
-FormElement* AsmBranchOp::get_as_form(FormPool& pool, const Env&) const {
-  return pool.alloc_element<AtomicOpElement>(this);
+FormElement* AsmBranchOp::get_as_form(FormPool& pool, const Env& env) const {
+  if (m_branch_delay) {
+    auto delay = m_branch_delay->get_as_form(pool, env);
+    auto delay_form = pool.alloc_single_form(nullptr, delay);
+    return pool.alloc_element<AsmBranchElement>(const_cast<AsmBranchOp*>(this), delay_form,
+                                                m_likely);
+  } else {
+    return pool.alloc_element<AtomicOpElement>(const_cast<AsmBranchOp*>(this));
+  }
 }
 
 FormElement* StackSpillLoadOp::get_as_form(FormPool& pool, const Env& env) const {

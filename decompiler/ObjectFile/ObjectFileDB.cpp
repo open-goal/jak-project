@@ -15,6 +15,7 @@
 #include "decompiler/data/tpage.h"
 #include "decompiler/data/game_text.h"
 #include "decompiler/data/StrFileReader.h"
+#include "decompiler/data/dir_tpages.h"
 #include "decompiler/data/game_count.h"
 #include "LinkedObjectFileCreation.h"
 #include "decompiler/config.h"
@@ -160,6 +161,8 @@ ObjectFileDB::ObjectFileDB(const std::vector<std::string>& _dgos,
         "No object files have been added. Check that there are input files and the allowed_objects "
         "list.");
   }
+
+  dts.bad_format_strings = config.bad_format_strings;
 }
 
 void ObjectFileDB::load_map_file(const std::string& map_data) {
@@ -554,20 +557,34 @@ void ObjectFileDB::find_and_write_scripts(const std::string& output_dir) {
   lg::info(" Total {:.3f} ms\n", timer.getMs());
 }
 
-void ObjectFileDB::process_tpages() {
+std::string ObjectFileDB::process_tpages() {
   lg::info("- Finding textures in tpages...");
   std::string tpage_string = "tpage-";
   int total = 0, success = 0;
+  int tpage_dir_count = 0;
   Timer timer;
+
+  std::string result;
   for_each_obj([&](ObjectFileData& data) {
     if (data.name_in_dgo.substr(0, tpage_string.length()) == tpage_string) {
       auto statistics = process_tpage(data);
       total += statistics.total_textures;
       success += statistics.successful_textures;
+    } else if (data.name_in_dgo == "dir-tpages") {
+      result = process_dir_tpages(data).to_source();
+      tpage_dir_count++;
     }
   });
+
+  assert(tpage_dir_count <= 1);
+
+  if (tpage_dir_count == 0) {
+    lg::warn("Did not find tpage-dir.");
+  }
+
   lg::info("Processed {} / {} textures {:.2f}% in {:.2f} ms", success, total,
            100.f * float(success) / float(total), timer.getMs());
+  return result;
 }
 
 std::string ObjectFileDB::process_game_text_files() {
@@ -639,7 +656,7 @@ void ObjectFileDB::analyze_functions_ir1(const Config& config) {
 
       auto& func = data.linked_data.functions_by_seg.at(2).front();
       assert(func.guessed_name.empty());
-      func.guessed_name.set_as_top_level();
+      func.guessed_name.set_as_top_level(data.to_unique_name());
       func.find_global_function_defs(data.linked_data, dts);
       func.find_type_defs(data.linked_data, dts);
       func.find_method_defs(data.linked_data, dts);
@@ -716,7 +733,7 @@ void ObjectFileDB::analyze_functions_ir1(const Config& config) {
       // run analysis
 
       // build a control flow graph, just looking at branch instructions.
-      func.cfg = build_cfg(data.linked_data, segment_id, func, {});
+      func.cfg = build_cfg(data.linked_data, segment_id, func, {}, {});
 
       // convert individual basic blocks to sequences of IR Basic Ops
       for (auto& block : func.basic_blocks) {
@@ -763,6 +780,9 @@ void ObjectFileDB::analyze_functions_ir1(const Config& config) {
 void ObjectFileDB::dump_raw_objects(const std::string& output_dir) {
   for_each_obj([&](ObjectFileData& data) {
     auto dest = output_dir + "/" + data.to_unique_name();
+    if (data.obj_version != 3) {
+      dest += ".go";
+    }
     file_util::write_binary_file(dest, data.data.data(), data.data.size());
   });
 }

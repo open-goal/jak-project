@@ -1365,3 +1365,21 @@
   ;; Copies the contents of a gpr to a cop0 (system control) register
   (fake-asm .mtc0 dest src)
   )
+
+
+;;;;;;;;;;;;;;;;;;;;;;;;
+;; Branch Macro
+;;;;;;;;;;;;;;;;;;;;;;;;
+
+(defmacro b! (pred destination &key (delay '()) &key (likely-delay '()))
+  "Branch!"
+  ;; evaluate the predicate
+  `(let ((should-branch ,pred))
+     ;; normal delay slot:
+     ,delay
+     (when should-branch
+       ,likely-delay
+       (goto ,destination)
+       )
+     )
+  )

@@ -1,6 +1,7 @@
 #include "goalc/compiler/Compiler.h"
 #include "goalc/compiler/IR.h"
 #include "common/goos/ParseHelpers.h"
+#include "common/type_system/deftype.h"
 
 /*!
  * Parse arguments into a goos::Arguments format.
@@ -124,20 +125,7 @@ void Compiler::expect_empty_list(const goos::Object& o) {
 }
 
 TypeSpec Compiler::parse_typespec(const goos::Object& src) {
-  if (src.is_symbol()) {
-    return m_ts.make_typespec(symbol_string(src));
-  } else if (src.is_pair()) {
-    TypeSpec ts = m_ts.make_typespec(symbol_string(pair_car(src)));
-    const auto& rest = pair_cdr(src);
-
-    for_each_in_list(rest, [&](const goos::Object& o) { ts.add_arg(parse_typespec(o)); });
-
-    return ts;
-  } else {
-    throw_compiler_error(src, "Invalid typespec.");
-  }
-  assert(false);
-  return {};
+  return ::parse_typespec(&m_ts, src);
 }
 
 bool Compiler::is_local_symbol(const goos::Object& obj, Env* env) {

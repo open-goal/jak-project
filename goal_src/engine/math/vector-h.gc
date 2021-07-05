@@ -28,7 +28,7 @@
    (get-bit (_type_ int) symbol 9)
    (clear-bit (_type_ int) int 10)
    (set-bit (_type_ int) int 11)
-   (clear (_type_) _type_ 12)
+   (clear-all! (_type_) _type_ 12)
    )
   )
 
@@ -91,7 +91,7 @@
   0
   )
 
-(defmethod clear bit-array ((obj bit-array))
+(defmethod clear-all! bit-array ((obj bit-array))
   "Set all bits to zero."
   (countdown (idx (/ (logand -8 (+ (-> obj allocated-length) 7)) 8))
     (nop!)
@@ -296,11 +296,11 @@
 
 ;; Vector of 4 floats. Shortened to "vector" because it is commonly used.
 (deftype vector (structure)
-  ((data float 4 :do-not-decompile :score -9999 :offset-assert 0)
-   (x float :offset 0)
+  ((x float :offset 0)
    (y float :offset 4)
    (z float :offset 8)
    (w float :offset 12)
+   (data float 4 :do-not-decompile :score -9999 :offset 0)
    (quad uint128 :offset 0)
    )
   :method-count-assert 9
@@ -408,7 +408,8 @@
   )
 
 (deftype box8s-array (inline-array-class)
-  ()
+  ((data  box8s  :inline :dynamic :offset 16)
+   )
   :method-count-assert 9
   :size-assert         #x10
   :flag-assert         #x900000010
@@ -713,3 +714,9 @@
 (defun-extern vector+float*! vector vector vector float vector)
 (defun-extern vector-normalize! vector float vector)
 (defun-extern vector-float*! vector vector float vector)
+(define-extern vector-normalize-copy! (function vector vector float vector))
+(define-extern vector-cross! (function vector vector vector vector))
+(define-extern vector-negate! (function vector vector vector))
+(define-extern vector-normalize-ret-len! (function vector float float))
+(define-extern vector-vector-distance (function vector vector float))
+(define-extern vector-vector-distance-squared (function vector vector float))

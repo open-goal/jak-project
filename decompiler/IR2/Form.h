@@ -8,6 +8,7 @@
 #include "decompiler/IR2/AtomicOp.h"
 #include "common/goos/Object.h"
 #include "common/type_system/TypeSystem.h"
+#include "decompiler/Disasm/DecompilerLabel.h"
 
 namespace decompiler {
 class Form;
@@ -153,6 +154,11 @@ class SimpleExpressionElement : public FormElement {
                                       FormStack& stack,
                                       std::vector<FormElement*>* result,
                                       bool allow_side_effects);
+  void update_from_stack_subu_l32_s7(const Env& env,
+                                     FormPool& pool,
+                                     FormStack& stack,
+                                     std::vector<FormElement*>* result,
+                                     bool allow_side_effects);
   void update_from_stack_float_to_int(const Env& env,
                                       FormPool& pool,
                                       FormStack& stack,
@@ -201,6 +207,11 @@ class SimpleExpressionElement : public FormElement {
                                               FormStack& stack,
                                               std::vector<FormElement*>* result,
                                               bool allow_side_effects);
+  void update_from_stack_vector_3_dot(const Env& env,
+                                      FormPool& pool,
+                                      FormStack& stack,
+                                      std::vector<FormElement*>* result,
+                                      bool allow_side_effects);
 
   const SimpleExpression& expr() const { return m_expr; }
 
@@ -402,7 +413,7 @@ class SetFormFormElement : public FormElement {
  */
 class AtomicOpElement : public FormElement {
  public:
-  explicit AtomicOpElement(const AtomicOp* op);
+  explicit AtomicOpElement(AtomicOp* op);
   goos::Object to_form_internal(const Env& env) const override;
   void apply(const std::function<void(FormElement*)>& f) override;
   void apply_form(const std::function<void(Form*)>& f) override;
@@ -410,9 +421,43 @@ class AtomicOpElement : public FormElement {
   void push_to_stack(const Env& env, FormPool& pool, FormStack& stack) override;
   void get_modified_regs(RegSet& regs) const override;
   const AtomicOp* op() const { return m_op; }
+  AtomicOp* op() { return m_op; }
 
  private:
-  const AtomicOp* m_op;
+  AtomicOp* m_op = nullptr;  // not const because of asm likely merging
+};
+
+class AsmBranchElement : public FormElement {
+ public:
+  AsmBranchElement(AsmBranchOp* branch_op, Form* branch_delay, bool likely);
+  goos::Object to_form_internal(const Env& env) const override;
+  void apply(const std::function<void(FormElement*)>& f) override;
+  void apply_form(const std::function<void(Form*)>& f) override;
+  void collect_vars(RegAccessSet& vars, bool recursive) const override;
+  void push_to_stack(const Env& env, FormPool& pool, FormStack& stack) override;
+  void get_modified_regs(RegSet& regs) const override;
+
+ private:
+  AsmBranchOp* m_branch_op = nullptr;
+  Form* m_branch_delay = nullptr;
+  bool m_likely = false;
+};
+
+class TranslatedAsmBranch : public FormElement {
+ public:
+  TranslatedAsmBranch(Form* branch_condition, Form* branch_delay, int label_id, bool likely);
+  goos::Object to_form_internal(const Env& env) const override;
+  void apply(const std::function<void(FormElement*)>& f) override;
+  void apply_form(const std::function<void(Form*)>& f) override;
+  void collect_vars(RegAccessSet& vars, bool recursive) const override;
+  // void push_to_stack(const Env& env, FormPool& pool, FormStack& stack) override;
+  void get_modified_regs(RegSet& regs) const override;
+
+ private:
+  Form* m_branch_condition = nullptr;
+  Form* m_branch_delay = nullptr;
+  int m_label_id = -1;
+  bool m_likely = false;
 };
 
 /*!
@@ -553,6 +598,7 @@ class BranchElement : public FormElement {
   void apply_form(const std::function<void(Form*)>& f) override;
   void collect_vars(RegAccessSet& vars, bool recursive) const override;
   void get_modified_regs(RegSet& regs) const override;
+  void push_to_stack(const Env& env, FormPool& pool, FormStack& stack) override;
   const BranchOp* op() const { return m_op; }
 
  private:
@@ -1261,17 +1307,27 @@ class StoreArrayAccess : public FormElement {
   std::optional<TypeSpec> m_src_cast_type;
 };
 
+/*!
+ * This marks some static data that will be decompiled in a later pass.
+ * This is done at the very end so that we can make sure all static references to lambdas work.
+ */
 class DecompiledDataElement : public FormElement {
  public:
-  DecompiledDataElement(goos::Object description);
+  // DecompiledDataElement(goos::Object description);
+  DecompiledDataElement(const DecompilerLabel& label,
+                        const std::optional<LabelType>& type_hint = {});
   goos::Object to_form_internal(const Env& env) const override;
   void apply(const std::function<void(FormElement*)>& f) override;
   void apply_form(const std::function<void(Form*)>& f) override;
   void collect_vars(RegAccessSet& vars, bool recursive) const override;
   void get_modified_regs(RegSet& regs) const override;
+  void do_decomp(const Env& env, const LinkedObjectFile* file);
 
  private:
+  bool m_decompiled = false;
   goos::Object m_description;
+  DecompilerLabel m_label;
+  std::optional<LabelType> m_type_hint;
 };
 
 class LetElement : public FormElement {

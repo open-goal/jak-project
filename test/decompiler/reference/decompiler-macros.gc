@@ -90,3 +90,40 @@
 
 (defconstant PI (the-as float #x40490fda))
 (defconstant MINUS_PI (the-as float #xc0490fda))
+
+(defmacro handle->process (handle)
+  ;; the actual implementation is more clever than this.
+  ;; Checks PID.
+  `(if (-> ,handle process)
+       (let ((proc (-> (-> ,handle process))))
+         (if (= (-> ,handle pid) (-> proc pid))
+             proc
+             )
+         )
+       )
+  )
+
+(defmacro defbehavior (name process-type bindings &rest body)
+  (if (and
+       (> (length body) 1)     ;; more than one thing in function
+       (string? (first body))  ;; first thing is a string
+       )
+      ;; then it's a docstring and we ignore it.
+      `(define ,name (lambda :name ,name :behavior ,process-type ,bindings ,@(cdr body)))
+      ;; otherwise don't ignore it.
+      `(define ,name (lambda :name ,name :behavior ,process-type ,bindings ,@body))
+      )
+  )
+
+(defmacro b! (pred destination &key (delay '()) &key (likely-delay '()))
+  "Branch!"
+  ;; evaluate the predicate
+  `(let ((should-branch ,pred))
+     ;; normal delay slot:
+     ,delay
+     (when should-branch
+       ,likely-delay
+       (goto ,destination)
+       )
+     )
+  )
