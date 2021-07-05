@@ -227,6 +227,7 @@ class SimpleExpression {
     VECTOR_MINUS,
     VECTOR_FLOAT_PRODUCT,
     SUBU_L32_S7,  // use SUBU X, src0, s7 to check if lower 32-bits are s7.
+    VECTOR_3_DOT,
   };
 
   // how many arguments?
@@ -559,6 +560,7 @@ class BranchOp : public AtomicOp {
   const IR2_Condition& condition() const { return m_condition; }
   ConditionElement* get_condition_as_form(FormPool& pool, const Env& env) const;
   bool likely() const { return m_likely; }
+  int label_id() const { return m_label; }
 
  private:
   bool m_likely = false;
@@ -572,11 +574,14 @@ class BranchOp : public AtomicOp {
  */
 class AsmBranchOp : public AtomicOp {
  public:
+  AsmBranchOp(bool likely, IR2_Condition condition, int label, AtomicOp* branch_delay, int my_idx);
+
   AsmBranchOp(bool likely,
               IR2_Condition condition,
               int label,
               std::shared_ptr<AtomicOp> branch_delay,
               int my_idx);
+
   goos::Object to_form(const std::vector<DecompilerLabel>& labels, const Env& env) const override;
   bool operator==(const AtomicOp& other) const override;
   bool is_sequence_point() const override;
@@ -587,12 +592,17 @@ class AsmBranchOp : public AtomicOp {
                                      const Env& env,
                                      DecompilerTypeSystem& dts) override;
   void collect_vars(RegAccessSet& vars) const override;
+  bool is_likely() const { return m_likely; }
+  const IR2_Condition& condition() const { return m_condition; }
+  int label_id() const { return m_label; }
+  AtomicOp* branch_delay() { return m_branch_delay; }
 
  private:
   bool m_likely = false;
   IR2_Condition m_condition;
   int m_label = -1;
-  std::shared_ptr<AtomicOp> m_branch_delay;
+  AtomicOp* m_branch_delay;
+  std::shared_ptr<AtomicOp> m_branch_delay_sp;
 };
 
 /*!

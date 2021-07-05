@@ -1727,11 +1727,11 @@
   )
 
 (deftype vector (structure)
-  ((data float 4 :do-not-decompile :score -9999 :offset-assert 0)
-   (x float :offset 0)
+  ((x float :offset 0)
    (y float :offset 4)
    (z float :offset 8)
    (w float :offset 12)
+   (data float 4  :score -9999 :offset 0)
    (quad uint128 :offset 0)
    )
   :method-count-assert 9
@@ -2100,7 +2100,7 @@
 (deftype curve (structure)
   ((cverts     pointer  :offset-assert 0)
    (num-cverts int32   :offset-assert 4)
-   (knots      pointer  :offset-assert 8)
+   (knots      (inline-array vector)  :offset-assert 8)
    (num-knots  int32   :offset-assert 12)
    (length     float   :offset-assert 16)
    )
@@ -2224,7 +2224,7 @@
 (define-extern atan (function float float float))
 (define-extern matrix-4x4-determinant (function matrix float))
 (define-extern matrix-3x3-determinant (function matrix float))
-(define-extern matrix-axis-sin-cos! (function matrix vector float float none))
+(define-extern matrix-axis-sin-cos! (function matrix vector float float matrix))
 (define-extern sin (function float float))
 (define-extern cos (function float float))
 (define-extern matrix-rotate-y! (function matrix float matrix))
@@ -2381,16 +2381,16 @@
 
 ;; - Functions
 
-(define-extern curve-length function)
-(define-extern curve-get-pos! function)
+
+
 (define-extern vector-vector-distance-squared (function vector vector float))
-(define-extern curve-evaluate! (function vector float int int vector int int))
+
 (define-extern vector-vector-distance (function vector vector float))
-(define-extern circle-circle-xz-intersect (function vector vector vector vector int))
+(define-extern circle-circle-xz-intersect (function sphere sphere vector vector int))
 (define-extern vector-normalize-copy! (function vector vector float vector))
 (define-extern forward-up->quaternion (function quaternion vector vector quaternion))
-(define-extern matrix-from-two-vectors-partial-linear! (function matrix vector vector float float none))
-(define-extern matrix-from-two-vectors-max-angle! (function matrix vector vector none))
+(define-extern matrix-from-two-vectors-partial-linear! (function matrix vector vector float matrix))
+(define-extern matrix-from-two-vectors-max-angle! (function matrix vector vector float matrix))
 (define-extern vector-negate! (function vector vector vector))
 (define-extern vector-normalize-ret-len! (function vector float float))
 (define-extern vector-flatten! (function vector vector vector vector))
@@ -2408,30 +2408,35 @@
 (define-extern vector-segment-distance-point! (function vector vector vector vector float))
 (define-extern vector-line-distance (function vector vector vector float))
 (define-extern vector-line-distance-point! (function vector vector vector vector float))
-(define-extern vector-orient-by-quat! (function vector vector vector vector))
+(define-extern vector-orient-by-quat! (function vector vector quaternion vector))
 (define-extern forward-up-nopitch->quaternion (function quaternion vector vector quaternion))
 (define-extern quaternion-from-two-vectors! (function quaternion vector vector quaternion))
-(define-extern matrix-from-two-vectors! (function matrix vector vector none))
-(define-extern matrix-from-two-vectors-max-angle-partial! (function matrix vector vector float float none))
-(define-extern matrix-remove-z-rot (function matrix matrix))
-(define-extern matrix-rot-diff! (function matrix matrix matrix float))
-(define-extern quaternion-seek (function quaternion quaternion quaternion float quaternion))
-(define-extern vector-deg-seek (function vector vector vector none))
+(define-extern matrix-from-two-vectors! (function matrix vector vector matrix))
+(define-extern matrix-from-two-vectors-max-angle-partial! (function matrix vector vector float float matrix))
+(define-extern matrix-remove-z-rot (function matrix matrix matrix))
+(define-extern matrix-rot-diff! (function vector matrix matrix float))
+(define-extern quaternion-seek (function quaternion quaternion quaternion float float quaternion))
+(define-extern vector-deg-seek (function vector vector vector float vector))
 (define-extern vector-deg-slerp (function vector vector vector float vector))
-(define-extern vector-vector-deg-slerp! function) ;; stack spills!
+(define-extern vector-vector-deg-slerp! (function vector vector vector float vector vector)) ;; stack spills!
 (define-extern normal-of-plane (function vector vector vector vector vector))
 (define-extern vector-3pt-cross! (function vector vector vector vector vector))
-(define-extern closest-pt-in-triangle function) ;; asm branches
+(define-extern closest-pt-in-triangle (function vector vector matrix vector none)) ;; asm branches
 (define-extern point-in-triangle-cross (function vector vector vector vector vector symbol))
 (define-extern point-in-plane-<-point+normal! (function vector vector vector vector))
 (define-extern circle-test (function none))
-(define-extern vector-circle-tangent-new function)
-(define-extern vector-circle-tangent function)
-(define-extern find-knot-span function)
-(define-extern calculate-basis-functions-vector! function)
-(define-extern curve-copy! function)
-(define-extern curve-closest-point function)
-(define-extern vector-plane-distance function)
+(define-extern vector-circle-tangent-new (function vector vector vector vector none))
+(define-extern vector-circle-tangent (function vector vector vector vector none))
+(define-extern find-knot-span (function int int float (inline-array vector) int))
+(define-extern calculate-basis-functions-vector! (function (pointer float) int float (pointer float) (pointer float)))
+
+(define-extern curve-closest-point (function curve vector float float int float float))
+(define-extern vector-plane-distance (function vector plane vector float))
+
+(define-extern curve-get-pos! (function vector float curve vector))
+(define-extern curve-evaluate! (function vector float pointer int (inline-array vector) int vector))
+(define-extern curve-length (function curve float))
+(define-extern curve-copy! (function curve curve curve))
 
 
 ;; ----------------------
@@ -15051,7 +15056,7 @@
 (define-extern add-debug-light (function symbol bucket-id light vector string symbol))
 (define-extern add-debug-text-3d (function symbol bucket-id string vector rgba vector2h symbol))
 (define-extern add-debug-x (function symbol bucket-id vector rgba symbol))
-(define-extern add-debug-curve (function symbol bucket-id pointer int vector int rgba symbol))
+(define-extern add-debug-curve (function symbol bucket-id pointer int (inline-array vector) int rgba symbol))
 (define-extern add-debug-sphere (function symbol bucket-id vector float rgba symbol))
 (define-extern get-debug-text-3d (function debug-text-3d))
 (define-extern internal-draw-debug-text-3d (function bucket-id string vector rgba vector2h pointer))

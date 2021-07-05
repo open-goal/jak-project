@@ -162,6 +162,9 @@ Config read_config_file(const std::string& path_to_config_file) {
       hacks_json.at("types_with_bad_inspect_methods").get<std::unordered_set<std::string>>();
   config.hacks.reject_cond_to_value = hacks_json.at("aggressively_reject_cond_to_value_rewrite")
                                           .get<std::unordered_set<std::string>>();
+  config.hacks.blocks_ending_in_asm_branch_by_func_name =
+      hacks_json.at("blocks_ending_in_asm_branch")
+          .get<std::unordered_map<std::string, std::unordered_set<int>>>();
 
   for (auto& entry : hacks_json.at("cond_with_else_max_lengths")) {
     auto func_name = entry.at(0).get<std::string>();

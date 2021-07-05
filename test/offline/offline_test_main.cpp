@@ -50,6 +50,8 @@ const std::unordered_set<std::string> g_functions_expected_to_reject = {
     // matrix
     "(method 9 matrix)",  // handwritten asm loop
     "matrix-axis-sin-cos!", "matrix-axis-sin-cos-vu!",
+    // geometry
+    "circle-circle-xz-intersect",  // unused not bothering
     // dma-h
     "dma-count-until-done",  // dma asm loop
     "dma-sync-with-count", "dma-send-no-scratch", "dma-sync-fast",
@@ -117,11 +119,7 @@ const std::unordered_set<std::string> g_functions_to_skip_compiling = {
 
     /// VECTOR-H
     "(method 3 vector)",  // this function appears twice, which confuses the compiler.
-    "vector-dot",         // fpu acc
     "vector4-dot",        // fpu acc
-
-    // quaternion
-    "matrix-with-scale->quaternion",  // fpu-acc
 
     "(method 3 profile-frame)",  // double definition.
 
@@ -142,6 +140,11 @@ const std::unordered_set<std::string> g_functions_to_skip_compiling = {
     "vector-degmod",
     "vector-deg-diff",
     "vector-degi",
+
+    // geometry
+    "calculate-basis-functions-vector!",  // asm requiring manual rewrite
+    "curve-evaluate!",                    // asm requiring manual rewrite
+    "point-in-triangle-cross",            // logior on floats manual fixup
 
     // asm
     "invalidate-cache-line",

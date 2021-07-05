@@ -789,9 +789,19 @@ void SimpleExpressionElement::update_from_stack_add_i(const Env& env,
       rd_in.stride = arg1_type.get_multiplier();
       rd_in.offset = 0;
       rd_in.base_type = arg0_type.typespec();
-      auto rd = env.dts->ts.reverse_field_lookup(rd_in);
+      auto rd = env.dts->ts.reverse_field_multi_lookup(rd_in);
+      int idx_of_success = -1;
+      if (rd.success) {
+        for (int i = 0; i < (int)rd.results.size(); i++) {
+          if (rd.results.at(i).has_variable_token()) {
+            idx_of_success = i;
+            break;
+          }
+        }
+      }
 
-      if (rd.success && rd.has_variable_token()) {
+      if (idx_of_success >= 0) {
+        auto& rd_ok = rd.results.at(idx_of_success);
         auto arg1_matcher = Matcher::match_or(
             {Matcher::op(GenericOpMatcher::fixed(FixedOperatorKind::MULTIPLICATION),
                          {Matcher::any(0), Matcher::integer(rd_in.stride)}),
@@ -801,7 +811,7 @@ void SimpleExpressionElement::update_from_stack_add_i(const Env& env,
         if (match_result.matched) {
           bool used_index = false;
           std::vector<DerefToken> tokens;
-          for (auto& tok : rd.tokens) {
+          for (auto& tok : rd_ok.tokens) {
             if (tok.kind == FieldReverseLookupOutput::Token::Kind::VAR_IDX) {
               assert(!used_index);
               used_index = true;
@@ -811,7 +821,55 @@ void SimpleExpressionElement::update_from_stack_add_i(const Env& env,
             }
           }
           assert(used_index);
-          result->push_back(pool.alloc_element<DerefElement>(args.at(0), rd.addr_of, tokens));
+          result->push_back(pool.alloc_element<DerefElement>(args.at(0), rd_ok.addr_of, tokens));
+          return;
+        } else {
+          throw std::runtime_error("Failed to match product_with_constant inline array access.");
+        }
+      }
+    } else if (arg0_type.kind == TP_Type::Kind::PRODUCT_WITH_CONSTANT &&
+               arg1_type.kind == TP_Type::Kind::TYPESPEC &&
+               arg1_type.typespec().base_type() == "inline-array") {
+      FieldReverseLookupInput rd_in;
+      rd_in.deref = std::nullopt;
+      rd_in.stride = arg0_type.get_multiplier();
+      rd_in.offset = 0;
+      rd_in.base_type = arg1_type.typespec();
+      auto rd = env.dts->ts.reverse_field_multi_lookup(rd_in);
+      int idx_of_success = -1;
+      if (rd.success) {
+        for (int i = 0; i < (int)rd.results.size(); i++) {
+          if (rd.results.at(i).has_variable_token()) {
+            idx_of_success = i;
+            break;
+          }
+        }
+      }
+      // fmt::print("here {} {} {}\n", rd_in.base_type.print(), rd.success,
+      // rd.has_variable_token());
+
+      if (idx_of_success >= 0) {
+        auto& rd_ok = rd.results.at(idx_of_success);
+        auto arg0_matcher = Matcher::match_or(
+            {Matcher::op(GenericOpMatcher::fixed(FixedOperatorKind::MULTIPLICATION),
+                         {Matcher::any(0), Matcher::integer(rd_in.stride)}),
+             Matcher::op(GenericOpMatcher::fixed(FixedOperatorKind::MULTIPLICATION),
+                         {Matcher::integer(rd_in.stride), Matcher::any(0)})});
+        auto match_result = match(arg0_matcher, args.at(0));
+        if (match_result.matched) {
+          bool used_index = false;
+          std::vector<DerefToken> tokens;
+          for (auto& tok : rd_ok.tokens) {
+            if (tok.kind == FieldReverseLookupOutput::Token::Kind::VAR_IDX) {
+              assert(!used_index);
+              used_index = true;
+              tokens.push_back(DerefToken::make_int_expr(match_result.maps.forms.at(0)));
+            } else {
+              tokens.push_back(to_token(tok));
+            }
+          }
+          assert(used_index);
+          result->push_back(pool.alloc_element<DerefElement>(args.at(1), rd_ok.addr_of, tokens));
           return;
         } else {
           throw std::runtime_error("Failed to match product_with_constant inline array access.");
@@ -1029,6 +1087,27 @@ void SimpleExpressionElement::update_from_stack_vector_float_product(
   auto new_form = pool.alloc_element<GenericElement>(
       GenericOperator::make_fixed(FixedOperatorKind::VECTOR_FLOAT_PRODUCT),
       std::vector<Form*>{popped_args.at(0), popped_args.at(1), popped_args.at(2)});
+  result->push_back(new_form);
+}
+
+void SimpleExpressionElement::update_from_stack_vector_3_dot(const Env& env,
+                                                             FormPool& pool,
+                                                             FormStack& stack,
+                                                             std::vector<FormElement*>* result,
+                                                             bool allow_side_effects) {
+  std::vector<Form*> popped_args = pop_to_forms({m_expr.get_arg(0).var(), m_expr.get_arg(1).var()},
+                                                env, pool, stack, allow_side_effects);
+
+  for (int i = 0; i < 2; i++) {
+    auto arg_type = env.get_types_before_op(m_my_idx).get(m_expr.get_arg(i).var().reg());
+    if (arg_type.typespec() != TypeSpec("vector")) {
+      popped_args.at(i) = cast_form(popped_args.at(i), TypeSpec("vector"), pool, env);
+    }
+  }
+
+  auto new_form = pool.alloc_element<GenericElement>(
+      GenericOperator::make_fixed(FixedOperatorKind::VECTOR_3_DOT),
+      std::vector<Form*>{popped_args.at(0), popped_args.at(1)});
   result->push_back(new_form);
 }
 
@@ -1674,6 +1753,9 @@ void SimpleExpressionElement::update_from_stack(const Env& env,
       break;
     case SimpleExpression::Kind::SUBU_L32_S7:
       update_from_stack_subu_l32_s7(env, pool, stack, result, allow_side_effects);
+      break;
+    case SimpleExpression::Kind::VECTOR_3_DOT:
+      update_from_stack_vector_3_dot(env, pool, stack, result, allow_side_effects);
       break;
     default:
       throw std::runtime_error(
@@ -3239,6 +3321,13 @@ FormElement* ConditionElement::make_generic(const Env& env,
                                                 casted);
     }
 
+    case IR2_Condition::Kind::FLOAT_GREATER_THAN: {
+      // never emitted by normal branch conditions
+      auto casted = make_casts_if_needed(source_forms, types, TypeSpec("float"), pool, env);
+      return pool.alloc_element<GenericElement>(GenericOperator::make_fixed(FixedOperatorKind::GT),
+                                                casted);
+    }
+
     default:
       throw std::runtime_error("ConditionElement::make_generic NYI for kind " +
                                get_condition_kind_name(m_kind));
@@ -3317,7 +3406,11 @@ void ConditionElement::update_from_stack(const Env& env,
       } else {
         source_types.push_back(TypeSpec("int"));
       }
-    } else {
+    } else if (m_src[i]->is_sym_val() && m_src[i]->get_str() == "#f") {
+      source_types.push_back(TypeSpec("symbol"));
+    }
+
+    else {
       throw std::runtime_error("Unsupported atom in ConditionElement::update_from_stack");
     }
   }
@@ -3604,6 +3697,18 @@ void AtomicOpElement::push_to_stack(const Env& env, FormPool& pool, FormStack& s
     return;
   }
 
+  auto as_branch = dynamic_cast<AsmBranchOp*>(m_op);
+  if (as_branch && !as_branch->is_likely()) {
+    // this is a bit of a hack, but we go AsmBranchOp -> AsmBranchElement -> TranslatedAsmBranch
+    auto delay = as_branch->branch_delay();
+    assert(delay);
+    // this might not be enough - we may need to back up to the cfg builder and do something there.
+    auto del = pool.alloc_single_element_form<AtomicOpElement>(nullptr, delay);
+    auto be = pool.alloc_element<AsmBranchElement>(as_branch, del, false);
+    be->push_to_stack(env, pool, stack);
+    return;
+  }
+
   throw std::runtime_error("Cannot push atomic op to stack: " + m_op->to_string(env));
 }
 
@@ -3626,6 +3731,77 @@ void GenericElement::update_from_stack(const Env& env,
   result->push_back(this);
 }
 
+void AsmBranchElement::push_to_stack(const Env& env, FormPool& pool, FormStack& stack) {
+  // create a condition element
+  RegSet consumed;
+  if (env.has_reg_use()) {
+    consumed = env.reg_use().op.at(m_branch_op->op_id()).consumes;
+  }
+  std::optional<SimpleAtom> vars[2];
+  for (int i = 0; i < get_condition_num_args(m_branch_op->condition().kind()); i++) {
+    vars[i] = m_branch_op->condition().src(i);
+  }
+  auto ce = pool.alloc_element<ConditionElement>(m_branch_op->condition().kind(), vars[0], vars[1],
+                                                 consumed, false);
+
+  // and update it from the stack.
+  std::vector<FormElement*> ce_updated;
+  ce->update_from_stack(env, pool, stack, &ce_updated, true);
+
+  auto branch_condition = pool.alloc_sequence_form(nullptr, ce_updated);
+
+  auto op = pool.alloc_element<TranslatedAsmBranch>(
+      branch_condition, m_branch_delay, m_branch_op->label_id(), m_branch_op->is_likely());
+  // fmt::print("rewrote as {}\n", op->to_string(env));
+  stack.push_form_element(op, true);
+}
+
+void BranchElement::push_to_stack(const Env& env, FormPool& pool, FormStack& stack) {
+  // These will appear if we have an asm-branch that looked like a normal branch.
+  // create a condition element
+  RegSet consumed;
+  if (env.has_reg_use()) {
+    consumed = env.reg_use().op.at(m_op->op_id()).consumes;
+  }
+  std::optional<SimpleAtom> vars[2];
+  for (int i = 0; i < get_condition_num_args(m_op->condition().kind()); i++) {
+    vars[i] = m_op->condition().src(i);
+  }
+  auto ce = pool.alloc_element<ConditionElement>(m_op->condition().kind(), vars[0], vars[1],
+                                                 consumed, false);
+
+  // and update it from the stack.
+  std::vector<FormElement*> ce_updated;
+  ce->update_from_stack(env, pool, stack, &ce_updated, true);
+
+  auto branch_condition = pool.alloc_sequence_form(nullptr, ce_updated);
+
+  Form* branch_delay = nullptr;
+  switch (m_op->branch_delay().kind()) {
+    case IR2_BranchDelay::Kind::NOP: {
+      branch_delay = nullptr;
+    } break;
+    case IR2_BranchDelay::Kind::SET_REG_REG: {
+      auto src = m_op->branch_delay().var(1);
+      auto dst = m_op->branch_delay().var(0);
+
+      auto src_form =
+          pool.alloc_single_element_form<SimpleAtomElement>(nullptr, SimpleAtom::make_var(src));
+
+      branch_delay = pool.alloc_single_element_form<SetVarElement>(
+          nullptr, dst, src_form, true, env.get_variable_type(src, true));
+    } break;
+    default:
+      throw std::runtime_error("Unhandled branch delay in BranchElement::push_to_stack: " +
+                               m_op->to_string(env));
+  }
+
+  auto op = pool.alloc_element<TranslatedAsmBranch>(branch_condition, branch_delay,
+                                                    m_op->label_id(), m_op->likely());
+  // fmt::print("rewrote (non-asm) as {}\n", op->to_string(env));
+  stack.push_form_element(op, true);
+}
+
 void GenericElement::push_to_stack(const Env& env, FormPool& pool, FormStack& stack) {
   (void)env;
   (void)pool;
@@ -3643,7 +3819,8 @@ void DynamicMethodAccess::update_from_stack(const Env& env,
                                             std::vector<FormElement*>* result,
                                             bool allow_side_effects) {
   mark_popped();
-  auto new_val = stack.pop_reg(m_source, {}, env, allow_side_effects);
+  // auto new_val = stack.pop_reg(m_source, {}, env, allow_side_effects);
+  auto new_val = pop_to_forms({m_source}, env, pool, stack, allow_side_effects).at(0);
   auto reg0_matcher =
       Matcher::match_or({Matcher::any_reg(0), Matcher::cast("uint", Matcher::any_reg(0))});
   auto reg1_matcher =
@@ -3740,6 +3917,8 @@ void ArrayFieldAccess::update_with_val(Form* new_val,
              Matcher::fixed_op(FixedOperatorKind::ADDITION_PTR, {mult_matcher, reg0_matcher})});
         match_result = match(matcher, new_val);
         if (!match_result.matched) {
+          result->push_back(this);
+          return;
           fmt::print("power {}\n", power_of_two);
           throw std::runtime_error(
               "Couldn't match ArrayFieldAccess (stride power of 2, 0 offset) values: " +
@@ -3875,7 +4054,7 @@ void ArrayFieldAccess::update_from_stack(const Env& env,
                                          std::vector<FormElement*>* result,
                                          bool allow_side_effects) {
   mark_popped();
-  auto new_val = stack.pop_reg(m_source, {}, env, allow_side_effects);
+  auto new_val = pop_to_forms({m_source}, env, pool, stack, allow_side_effects).at(0);
   update_with_val(new_val, env, pool, result, allow_side_effects);
 }
 

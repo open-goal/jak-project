@@ -733,7 +733,7 @@ void ObjectFileDB::analyze_functions_ir1(const Config& config) {
       // run analysis
 
       // build a control flow graph, just looking at branch instructions.
-      func.cfg = build_cfg(data.linked_data, segment_id, func, {});
+      func.cfg = build_cfg(data.linked_data, segment_id, func, {}, {});
 
       // convert individual basic blocks to sequences of IR Basic Ops
       for (auto& block : func.basic_blocks) {

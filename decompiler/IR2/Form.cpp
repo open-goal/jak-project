@@ -33,7 +33,8 @@ std::string FormElement::to_string(const Env& env) const {
 }
 
 void FormElement::push_to_stack(const Env& env, FormPool&, FormStack&) {
-  throw std::runtime_error("push_to_stack not implemented for " + to_string(env));
+  throw std::runtime_error(fmt::format("push_to_stack not implemented for {}: {}", to_string(env),
+                                       typeid(*this).name()));
 }
 
 goos::Object FormElement::to_form_as_condition_internal(const Env& env) const {
@@ -494,7 +495,7 @@ void SetFormFormElement::get_modified_regs(RegSet& regs) const {
 // AtomicOpElement
 /////////////////////////////
 
-AtomicOpElement::AtomicOpElement(const AtomicOp* op) : m_op(op) {}
+AtomicOpElement::AtomicOpElement(AtomicOp* op) : m_op(op) {}
 
 goos::Object AtomicOpElement::to_form_internal(const Env& env) const {
   return m_op->to_form(env.file->labels, env);
@@ -517,6 +518,137 @@ void AtomicOpElement::get_modified_regs(RegSet& regs) const {
 
   for (auto r : m_op->clobber_regs()) {
     regs.insert(r);
+  }
+}
+
+/////////////////////////////
+// AsmBranchElement
+/////////////////////////////
+
+AsmBranchElement::AsmBranchElement(AsmBranchOp* branch_op, Form* branch_delay, bool likely)
+    : m_branch_op(branch_op), m_branch_delay(branch_delay), m_likely(likely) {
+  m_branch_delay->parent_element = this;
+}
+
+goos::Object AsmBranchElement::to_form_internal(const Env& env) const {
+  auto f = m_branch_op->to_form(env.file->labels, env);
+  return pretty_print::build_list(f, m_branch_delay->to_form(env));  // temp hack
+}
+
+void AsmBranchElement::apply(const std::function<void(FormElement*)>& f) {
+  f(this);
+  m_branch_delay->apply(f);
+}
+
+void AsmBranchElement::apply_form(const std::function<void(Form*)>& f) {
+  m_branch_delay->apply_form(f);
+}
+
+void AsmBranchElement::collect_vars(RegAccessSet& vars, bool recursive) const {
+  if (recursive) {
+    m_branch_delay->collect_vars(vars, recursive);
+  }
+  m_branch_op->collect_vars(vars);
+}
+
+void AsmBranchElement::get_modified_regs(RegSet& regs) const {
+  m_branch_delay->get_modified_regs(regs);
+  for (auto r : m_branch_op->write_regs()) {
+    regs.insert(r);
+  }
+
+  for (auto r : m_branch_op->clobber_regs()) {
+    regs.insert(r);
+  }
+}
+
+/////////////////////////////
+// TranslatedAsmBranch
+/////////////////////////////
+
+TranslatedAsmBranch::TranslatedAsmBranch(Form* branch_condition,
+                                         Form* branch_delay,
+                                         int label_id,
+                                         bool likely)
+    : m_branch_condition(branch_condition),
+      m_branch_delay(branch_delay),
+      m_label_id(label_id),
+      m_likely(likely) {
+  if (m_branch_delay) {
+    m_branch_delay->parent_element = this;
+  }
+
+  m_branch_condition->parent_element = this;
+}
+
+goos::Object TranslatedAsmBranch::to_form_internal(const Env& env) const {
+  // auto& cfg = env.func->cfg;
+  auto& label = env.file->labels.at(m_label_id);
+  int instr_in_function = (label.offset / 4 - env.func->start_word);
+
+  int block_id = -20;
+  if (instr_in_function == env.func->basic_blocks.back().end_word) {
+    block_id = env.func->basic_blocks.size() - 1;
+  } else {
+    int atomic_op_in_function =
+        env.func->ir2.atomic_ops->instruction_to_atomic_op.at(instr_in_function);
+    auto& ao = env.func->ir2.atomic_ops;
+
+    for (int i = 0; i < (int)ao->block_id_to_first_atomic_op.size(); i++) {
+      if (ao->block_id_to_first_atomic_op.at(i) == atomic_op_in_function) {
+        block_id = i;
+        break;
+      }
+    }
+  }
+
+  assert(block_id >= 0);
+
+  if (m_branch_delay) {
+    std::vector<goos::Object> list = {
+        pretty_print::to_symbol("b!"), m_branch_condition->to_form(env),
+        pretty_print::to_symbol(fmt::format("cfg-{}", block_id)),
+        pretty_print::to_symbol(m_likely ? ":likely-delay" : ":delay"),
+        m_branch_delay->to_form(env)};
+
+    return pretty_print::build_list(list);
+  } else {
+    std::vector<goos::Object> list = {pretty_print::to_symbol("b!"),
+                                      m_branch_condition->to_form(env),
+                                      pretty_print::to_symbol(fmt::format("cfg-{}", block_id))};
+
+    return pretty_print::build_list(list);
+  }
+}
+
+void TranslatedAsmBranch::apply(const std::function<void(FormElement*)>& f) {
+  f(this);
+  m_branch_condition->apply(f);
+  if (m_branch_delay) {
+    m_branch_delay->apply(f);
+  }
+}
+
+void TranslatedAsmBranch::apply_form(const std::function<void(Form*)>& f) {
+  m_branch_condition->apply_form(f);
+  if (m_branch_delay) {
+    m_branch_delay->apply_form(f);
+  }
+}
+
+void TranslatedAsmBranch::collect_vars(RegAccessSet& vars, bool recursive) const {
+  if (recursive) {
+    m_branch_condition->collect_vars(vars, recursive);
+    if (m_branch_delay) {
+      m_branch_delay->collect_vars(vars, recursive);
+    }
+  }
+}
+
+void TranslatedAsmBranch::get_modified_regs(RegSet& regs) const {
+  m_branch_condition->get_modified_regs(regs);
+  if (m_branch_delay) {
+    m_branch_delay->get_modified_regs(regs);
   }
 }
 
@@ -1550,6 +1682,8 @@ std::string fixed_operator_to_string(FixedOperatorKind kind) {
       return "vector-float*!";
     case FixedOperatorKind::L32_NOT_FALSE_CBOOL:
       return "l32-false-check";
+    case FixedOperatorKind::VECTOR_3_DOT:
+      return "vector-dot";
     default:
       assert(false);
       return "";

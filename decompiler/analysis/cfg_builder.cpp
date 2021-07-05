@@ -178,7 +178,7 @@ void clean_up_return_final(const Function& f, ReturnElement* ir) {
 /*!
  * Remove the branch in a break (really return-from nonfunction scope)
  */
-void clean_up_break(FormPool& pool, BreakElement* ir) {
+void clean_up_break(FormPool& pool, BreakElement* ir, const Env&) {
   auto jump_to_end = get_condition_branch(ir->return_code);
   assert(jump_to_end.first);
   assert(jump_to_end.first->op()->branch_delay().kind() == IR2_BranchDelay::Kind::NOP);
@@ -192,7 +192,7 @@ void clean_up_break(FormPool& pool, BreakElement* ir) {
   }
 }
 
-void clean_up_break_final(const Function& f, BreakElement* ir) {
+void clean_up_break_final(const Function& f, BreakElement* ir, const Env& env) {
   EmptyElement* dead_empty = dynamic_cast<EmptyElement*>(ir->dead_code->try_as_single_element());
   if (dead_empty) {
     ir->dead_code = nullptr;
@@ -207,6 +207,13 @@ void clean_up_break_final(const Function& f, BreakElement* ir) {
         dead = nullptr;
         break;
       }
+    }
+  }
+
+  if (!dead) {
+    if (ir->dead_code->to_string(env) == "(nop!)") {
+      ir->dead_code = nullptr;
+      return;
     }
   }
 
@@ -1379,6 +1386,31 @@ bool contains(const std::vector<T>& vec, const T& val) {
 }
 }  // namespace
 
+/*!
+ * Push x to output (can be a Form or std::vector<FormElement>).
+ * Will take of grouping the delay slots for likely asm branches into a single operation.
+ */
+template <typename T>
+void push_back_form_regroup_asm_likely_branches(T* output, FormElement* x, Function& f) {
+  std::vector<FormElement*> hack_temp;
+
+  if (output->size() > 0) {
+    auto back_as_asm = dynamic_cast<AtomicOpElement*>(output->back());
+    if (back_as_asm) {
+      auto back_as_branch = dynamic_cast<AsmBranchOp*>(back_as_asm->op());
+      if (back_as_branch && back_as_branch->is_likely()) {
+        auto& pool = *f.ir2.form_pool;
+        auto elt = pool.alloc_element<AsmBranchElement>(back_as_branch,
+                                                        pool.alloc_single_form(nullptr, x), true);
+        output->pop_back();
+        output->push_back(elt);
+        return;
+      }
+    }
+  }
+  output->push_back(x);
+}
+
 template <typename T>
 void convert_and_inline(FormPool& pool, Function& f, const BlockVtx* as_block, T* output) {
   auto start_op = f.ir2.atomic_ops->block_id_to_first_atomic_op.at(as_block->block_id);
@@ -1436,7 +1468,8 @@ void convert_and_inline(FormPool& pool, Function& f, const BlockVtx* as_block, T
     }
     if (add) {
       add_map.push_back(output->size());
-      output->push_back(op);
+      // output->push_back(op);
+      push_back_form_regroup_asm_likely_branches(output, op, f);
     } else {
       add_map.push_back(-1);
     }
@@ -1465,7 +1498,8 @@ void insert_cfg_into_list(FormPool& pool,
   } else {
     auto ir = cfg_to_ir(pool, f, vtx);
     for (auto x : ir->elts()) {
-      output->push_back(x);
+      push_back_form_regroup_asm_likely_branches(output, x, f);
+      // output->push_back(x);
     }
   }
 }
@@ -1643,7 +1677,7 @@ Form* cfg_to_ir_helper(FormPool& pool, Function& f, const CfgVtx* vtx) {
     auto result = pool.alloc_single_element_form<BreakElement>(
         nullptr, cfg_to_ir(pool, f, cvtx->body),
         cfg_to_ir_allow_null(pool, f, cvtx->unreachable_block), cvtx->dest_block_id);
-    clean_up_break(pool, dynamic_cast<BreakElement*>(result->try_as_single_element()));
+    clean_up_break(pool, dynamic_cast<BreakElement*>(result->try_as_single_element()), f.ir2.env);
     return result;
   } else if (dynamic_cast<const EmptyVtx*>(vtx)) {
     return pool.alloc_single_element_form<EmptyElement>(nullptr);
@@ -1739,7 +1773,7 @@ void build_initial_forms(Function& function) {
 
       auto as_break = dynamic_cast<BreakElement*>(form);
       if (as_break) {
-        clean_up_break_final(function, as_break);
+        clean_up_break_final(function, as_break, function.ir2.env);
       }
     });
 
