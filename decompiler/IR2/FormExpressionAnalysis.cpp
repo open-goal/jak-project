@@ -3691,6 +3691,42 @@ void AsmBranchElement::push_to_stack(const Env& env, FormPool& pool, FormStack& 
   stack.push_form_element(op, true);
 }
 
+void BranchElement::push_to_stack(const Env& env, FormPool& pool, FormStack& stack) {
+  // These will appear if we have an asm-branch that looked like a normal branch.
+  // create a condition element
+  RegSet consumed;
+  if (env.has_reg_use()) {
+    consumed = env.reg_use().op.at(m_op->op_id()).consumes;
+  }
+  std::optional<SimpleAtom> vars[2];
+  for (int i = 0; i < get_condition_num_args(m_op->condition().kind()); i++) {
+    vars[i] = m_op->condition().src(i);
+  }
+  auto ce = pool.alloc_element<ConditionElement>(m_op->condition().kind(), vars[0], vars[1],
+                                                 consumed, false);
+
+  // and update it from the stack.
+  std::vector<FormElement*> ce_updated;
+  ce->update_from_stack(env, pool, stack, &ce_updated, true);
+
+  auto branch_condition = pool.alloc_sequence_form(nullptr, ce_updated);
+
+  Form* branch_delay = nullptr;
+  switch (m_op->branch_delay().kind()) {
+    case IR2_BranchDelay::Kind::NOP: {
+      branch_delay = nullptr;
+    } break;
+    default:
+      throw std::runtime_error("Unhandled branch delay in BranchElement::push_to_stack: " +
+                               m_op->to_string(env));
+  }
+
+  auto op = pool.alloc_element<TranslatedAsmBranch>(branch_condition, branch_delay,
+                                                    m_op->label_id(), m_op->likely());
+  fmt::print("rewrote (non-asm) as {}\n", op->to_string(env));
+  stack.push_form_element(op, true);
+}
+
 void GenericElement::push_to_stack(const Env& env, FormPool& pool, FormStack& stack) {
   (void)env;
   (void)pool;

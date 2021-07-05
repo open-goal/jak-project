@@ -389,6 +389,7 @@ class Function;
 std::shared_ptr<ControlFlowGraph> build_cfg(const LinkedObjectFile& file,
                                             int seg,
                                             Function& func,
-                                            const CondWithElseLengthHack& cond_with_else_hack);
+                                            const CondWithElseLengthHack& cond_with_else_hack,
+                                            const std::unordered_set<int>& blocks_ending_in_asm_br);
 }  // namespace decompiler
 #endif  // JAK_DISASSEMBLER_CFGVTX_H

@@ -121,6 +121,8 @@ std::string CfgVtx::links_to_string() {
     result += "  prev: " + prev->to_string() + "\n";
   }
 
+  result += "  start: " + std::to_string(get_first_block_id()) + "\n";
+
   if (end_branch.asm_branch) {
     result += "  ASM BRANCH\n";
   }
@@ -540,6 +542,11 @@ bool ControlFlowGraph::is_until_loop(CfgVtx* b1, CfgVtx* b2) {
   if (b1->succ_branch)
     return false;
   assert(!b1->end_branch.has_branch);
+
+  if (!b2->has_pred(b1)) {
+    fmt::print("Graph error {} (s {}) should have pred {} (s {})\n", b2->to_string(),
+               b2->get_first_block_id(), b1->to_string(), b1->get_first_block_id());
+  }
 
   assert(b2->has_pred(b1));
   if (b2->pred.size() != 1)
@@ -963,7 +970,9 @@ bool ControlFlowGraph::find_goto_not_end() {
   for_each_top_level_vtx([&](CfgVtx* vtx) {
     auto* b0 = vtx;
     auto* b1 = vtx->next;
-    if (is_goto_not_end_and_unreachable(b0, b1)) {
+
+    // this can't work on asm branches because the structuring will fail.
+    if (is_goto_not_end_and_unreachable(b0, b1) && b0 && !b0->end_branch.asm_branch) {
       replaced = true;
 
       auto* new_goto = alloc<Break>();
@@ -1226,6 +1235,85 @@ bool ControlFlowGraph::clean_up_asm_branches() {
         b0->parent_claim(new_seq);
         b1->parent_claim(new_seq);
         new_seq->end_branch = b1->end_branch;
+        return false;
+      } else if (b0_seq && !b1_seq) {
+        fmt::print("expanding sequence: {} (s {}) to include (s {})\n", b0_seq->to_string(),
+                   b0_seq->get_first_block_id(), b1->get_first_block_id());
+        if (b1->succ_ft) {
+          fmt::print("  b1 succ_ft is {}\n", b1->succ_ft->get_first_block_id());
+          assert(b1->succ_ft->has_pred(b1));
+        }
+        replaced = true;
+        m_blocks.at(b0->succ_branch->get_first_block_id())->needs_label = true;
+        auto* seq = dynamic_cast<SequenceVtx*>(b0);
+        assert(seq);
+
+        seq->seq.push_back(b1);
+
+        if (b0->succ_branch) {
+          fmt::print("branch s{} to {}\n", b0->get_first_block_id(), b1->get_first_block_id());
+          b0->succ_branch->replace_preds_with_and_check({b0}, nullptr);
+        }
+
+        for (auto* new_succ : b1->succs()) {
+          fmt::print("fixing up succ {}\n", new_succ->to_string());
+          new_succ->replace_pred_and_check(b1, b0);
+        }
+
+        if (b1->succ_ft) {
+          assert(b1->succ_ft->has_pred(b0));
+        }
+
+        if (b1->succ_ft) {
+          assert(b1->succ_ft->has_pred(b0));
+        }
+
+        // try
+
+        seq->succ_ft = b1->succ_ft;
+        seq->succ_branch = b1->succ_branch;
+        seq->next = b1->next;
+        if (seq->next) {
+          seq->next->prev = seq;
+        }
+
+        b1->parent_claim(seq);
+        seq->end_branch = b1->end_branch;
+        return false;
+      } else if (b0_seq && b1_seq) {
+        //      printf("make seq type 3 %s %s\n", b0->to_string().c_str(), b1->to_string().c_str());
+        replaced = true;
+        m_blocks.at(b0->succ_branch->get_first_block_id())->needs_label = true;
+        auto* seq = dynamic_cast<SequenceVtx*>(b0);
+        assert(seq);
+
+        auto* old_seq = dynamic_cast<SequenceVtx*>(b1);
+        assert(old_seq);
+
+        if (b0->succ_branch) {
+          b0->succ_branch->replace_preds_with_and_check({b0}, nullptr);
+        }
+
+        for (auto* x : old_seq->seq) {
+          x->parent_claim(seq);
+          seq->seq.push_back(x);
+        }
+
+        for (auto* x : old_seq->succs()) {
+          //        printf("fix preds of %s\n", x->to_string().c_str());
+          x->replace_pred_and_check(old_seq, seq);
+        }
+        seq->succ_branch = old_seq->succ_branch;
+        seq->succ_ft = old_seq->succ_ft;
+        seq->end_branch = old_seq->end_branch;
+        seq->next = old_seq->next;
+        if (seq->next) {
+          seq->next->prev = seq;
+        }
+
+        // todo - proper trash?
+        old_seq->parent_claim(seq);
+
         return false;
       } else {
         lg::error("unhandled sequences in clean_up_asm_branches seq: {} {}", !!b0_seq, !!b1_seq);
@@ -2315,7 +2403,8 @@ bool branch_delay_asm(const Instruction& i) {
 std::shared_ptr<ControlFlowGraph> build_cfg(const LinkedObjectFile& file,
                                             int seg,
                                             Function& func,
-                                            const CondWithElseLengthHack& cond_with_else_hack) {
+                                            const CondWithElseLengthHack& cond_with_else_hack,
+                                            const std::unordered_set<int>& blocks_ending_in_asm_br) {
   //  fmt::print("START {}\n", func.guessed_name.to_string());
   auto cfg = std::make_shared<ControlFlowGraph>();
 
@@ -2464,6 +2553,12 @@ std::shared_ptr<ControlFlowGraph> build_cfg(const LinkedObjectFile& file,
       continue;  // zero sized block, there is no branch here.
     }
 
+    if (blocks_ending_in_asm_br.find(i) != blocks_ending_in_asm_br.end()) {
+      b->end_branch.asm_branch = true;
+      fmt::print("OVERRIDE asm branch at block {}\n", i);
+      continue;
+    }
+
     // room for at least a likely branch, try that first.
     int likely_branch_idx = bb.end_word - 1;
     assert(likely_branch_idx >= bb.start_word);
@@ -2495,6 +2590,8 @@ std::shared_ptr<ControlFlowGraph> build_cfg(const LinkedObjectFile& file,
   }
 
   cfg->flag_early_exit(func.basic_blocks);
+
+  fmt::print("BEGIN\n\n");
 
   bool changed = true;
   bool complained_about_weird_gotos = false;

@@ -33,7 +33,8 @@ std::string FormElement::to_string(const Env& env) const {
 }
 
 void FormElement::push_to_stack(const Env& env, FormPool&, FormStack&) {
-  throw std::runtime_error("push_to_stack not implemented for " + to_string(env));
+  throw std::runtime_error(fmt::format("push_to_stack not implemented for {}: {}", to_string(env),
+                                       typeid(*this).name()));
 }
 
 goos::Object FormElement::to_form_as_condition_internal(const Env& env) const {
@@ -573,7 +574,10 @@ TranslatedAsmBranch::TranslatedAsmBranch(Form* branch_condition,
       m_branch_delay(branch_delay),
       m_label_id(label_id),
       m_likely(likely) {
-  m_branch_delay->parent_element = this;
+  if (m_branch_delay) {
+    m_branch_delay->parent_element = this;
+  }
+
   m_branch_condition->parent_element = this;
 }
 
@@ -596,36 +600,52 @@ goos::Object TranslatedAsmBranch::to_form_internal(const Env& env) const {
 
   assert(block_id >= 0);
 
-  std::vector<goos::Object> list = {pretty_print::to_symbol("b!"), m_branch_condition->to_form(env),
-                                    // todo the target
-                                    pretty_print::to_symbol(fmt::format("cfg-{}", block_id)),
-                                    pretty_print::to_symbol(m_likely ? ":likely-delay" : ":delay"),
-                                    m_branch_delay->to_form(env)};
+  if (m_branch_delay) {
+    std::vector<goos::Object> list = {
+        pretty_print::to_symbol("b!"), m_branch_condition->to_form(env),
+        pretty_print::to_symbol(fmt::format("cfg-{}", block_id)),
+        pretty_print::to_symbol(m_likely ? ":likely-delay" : ":delay"),
+        m_branch_delay->to_form(env)};
 
-  return pretty_print::build_list(list);
+    return pretty_print::build_list(list);
+  } else {
+    std::vector<goos::Object> list = {pretty_print::to_symbol("b!"),
+                                      m_branch_condition->to_form(env),
+                                      pretty_print::to_symbol(fmt::format("cfg-{}", block_id))};
+
+    return pretty_print::build_list(list);
+  }
 }
 
 void TranslatedAsmBranch::apply(const std::function<void(FormElement*)>& f) {
   f(this);
   m_branch_condition->apply(f);
-  m_branch_delay->apply(f);
+  if (m_branch_delay) {
+    m_branch_delay->apply(f);
+  }
 }
 
 void TranslatedAsmBranch::apply_form(const std::function<void(Form*)>& f) {
   m_branch_condition->apply_form(f);
-  m_branch_delay->apply_form(f);
+  if (m_branch_delay) {
+    m_branch_delay->apply_form(f);
+  }
 }
 
 void TranslatedAsmBranch::collect_vars(RegAccessSet& vars, bool recursive) const {
   if (recursive) {
     m_branch_condition->collect_vars(vars, recursive);
-    m_branch_delay->collect_vars(vars, recursive);
+    if (m_branch_delay) {
+      m_branch_delay->collect_vars(vars, recursive);
+    }
   }
 }
 
 void TranslatedAsmBranch::get_modified_regs(RegSet& regs) const {
   m_branch_condition->get_modified_regs(regs);
-  m_branch_delay->get_modified_regs(regs);
+  if (m_branch_delay) {
+    m_branch_delay->get_modified_regs(regs);
+  }
 }
 
 /////////////////////////////

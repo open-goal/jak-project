@@ -560,6 +560,21 @@ TP_Type SimpleExpression::get_type_int2(const TypeState& input,
     return TP_Type::make_from_ts(TypeSpec("int"));
   }
 
+  if (m_kind == Kind::RIGHT_SHIFT_LOGIC && arg0_type.typespec() == TypeSpec("float") &&
+      arg1_type.is_integer_constant(63)) {
+    //
+    return TP_Type::make_from_ts(TypeSpec("int"));
+  }
+
+  if (m_kind == Kind::OR && arg0_type.typespec() == TypeSpec("float") &&
+      arg1_type.typespec() == TypeSpec("float")) {
+    env.func->warnings.general_warning("Using logior on floats");
+    // returning int instead of uint because they like to use the float sign bit as an integer sign
+    // bit.
+    return TP_Type::make_from_ts(TypeSpec("float"));
+  }
+
+
   throw std::runtime_error(fmt::format("Cannot get_type_int2: {}, args {} and {}",
                                        to_form(env.file->labels, env).print(), arg0_type.print(),
                                        arg1_type.print()));

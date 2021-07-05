@@ -598,6 +598,7 @@ class BranchElement : public FormElement {
   void apply_form(const std::function<void(Form*)>& f) override;
   void collect_vars(RegAccessSet& vars, bool recursive) const override;
   void get_modified_regs(RegSet& regs) const override;
+  void push_to_stack(const Env& env, FormPool& pool, FormStack& stack) override;
   const BranchOp* op() const { return m_op; }
 
  private:

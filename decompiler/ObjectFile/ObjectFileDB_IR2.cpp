@@ -219,7 +219,15 @@ void ObjectFileDB::ir2_basic_block_pass(const Config& config) {
       if (lookup != config.hacks.cond_with_else_len_by_func_name.end()) {
         hack = lookup->second;
       }
-      func.cfg = build_cfg(data.linked_data, segment_id, func, hack);
+
+      std::unordered_set<int> asm_br_blocks;
+      auto asm_lookup =
+          config.hacks.blocks_ending_in_asm_branch_by_func_name.find(func.guessed_name.to_string());
+      if (asm_lookup != config.hacks.blocks_ending_in_asm_branch_by_func_name.end()) {
+        asm_br_blocks = asm_lookup->second;
+      }
+
+      func.cfg = build_cfg(data.linked_data, segment_id, func, hack, asm_br_blocks);
       if (!func.cfg->is_fully_resolved()) {
         lg::warn("Function {} from {} failed to build control flow graph!",
                  func.guessed_name.to_string(), data.to_unique_name());

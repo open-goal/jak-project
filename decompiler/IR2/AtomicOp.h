@@ -560,6 +560,7 @@ class BranchOp : public AtomicOp {
   const IR2_Condition& condition() const { return m_condition; }
   ConditionElement* get_condition_as_form(FormPool& pool, const Env& env) const;
   bool likely() const { return m_likely; }
+  int label_id() const { return m_label; }
 
  private:
   bool m_likely = false;
