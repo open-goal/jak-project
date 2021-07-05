@@ -585,16 +585,20 @@ goos::Object TranslatedAsmBranch::to_form_internal(const Env& env) const {
   // auto& cfg = env.func->cfg;
   auto& label = env.file->labels.at(m_label_id);
   int instr_in_function = (label.offset / 4 - env.func->start_word);
-  int atomic_op_in_function =
-      env.func->ir2.atomic_ops->instruction_to_atomic_op.at(instr_in_function);
-
-  auto& ao = env.func->ir2.atomic_ops;
 
   int block_id = -20;
-  for (int i = 0; i < (int)ao->block_id_to_first_atomic_op.size(); i++) {
-    if (ao->block_id_to_first_atomic_op.at(i) == atomic_op_in_function) {
-      block_id = i;
-      break;
+  if (instr_in_function == env.func->basic_blocks.back().end_word) {
+    block_id = env.func->basic_blocks.size() - 1;
+  } else {
+    int atomic_op_in_function =
+        env.func->ir2.atomic_ops->instruction_to_atomic_op.at(instr_in_function);
+    auto& ao = env.func->ir2.atomic_ops;
+
+    for (int i = 0; i < (int)ao->block_id_to_first_atomic_op.size(); i++) {
+      if (ao->block_id_to_first_atomic_op.at(i) == atomic_op_in_function) {
+        block_id = i;
+        break;
+      }
     }
   }
 

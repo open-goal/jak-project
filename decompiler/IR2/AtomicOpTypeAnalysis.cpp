@@ -493,10 +493,31 @@ TP_Type SimpleExpression::get_type_int2(const TypeState& input,
     rd_in.stride = arg1_type.get_multiplier();
     rd_in.offset = 0;
     rd_in.base_type = arg0_type.typespec();
-    auto rd = dts.ts.reverse_field_lookup(rd_in);
+    auto rd = dts.ts.reverse_field_multi_lookup(rd_in);
 
-    if (rd.success) {
-      return TP_Type::make_from_ts(coerce_to_reg_type(rd.result_type));
+    for (int i = 0; i < (int)rd.results.size(); i++) {
+      if (rd.results.at(i).has_variable_token()) {
+        return TP_Type::make_from_ts(coerce_to_reg_type(rd.results.at(i).result_type));
+        break;
+      }
+    }
+  }
+
+  if (m_kind == Kind::ADD && arg1_type.kind == TP_Type::Kind::TYPESPEC &&
+      arg1_type.typespec().base_type() == "inline-array" &&
+      arg0_type.kind == TP_Type::Kind::PRODUCT_WITH_CONSTANT) {
+    FieldReverseLookupInput rd_in;
+    rd_in.deref = std::nullopt;
+    rd_in.stride = arg0_type.get_multiplier();
+    rd_in.offset = 0;
+    rd_in.base_type = arg1_type.typespec();
+    auto rd = dts.ts.reverse_field_multi_lookup(rd_in);
+
+    for (int i = 0; i < (int)rd.results.size(); i++) {
+      if (rd.results.at(i).has_variable_token()) {
+        return TP_Type::make_from_ts(coerce_to_reg_type(rd.results.at(i).result_type));
+        break;
+      }
     }
   }
 
@@ -573,7 +594,6 @@ TP_Type SimpleExpression::get_type_int2(const TypeState& input,
     // bit.
     return TP_Type::make_from_ts(TypeSpec("float"));
   }
-
 
   throw std::runtime_error(fmt::format("Cannot get_type_int2: {}, args {} and {}",
                                        to_form(env.file->labels, env).print(), arg0_type.print(),

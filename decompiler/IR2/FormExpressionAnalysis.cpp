@@ -789,9 +789,19 @@ void SimpleExpressionElement::update_from_stack_add_i(const Env& env,
       rd_in.stride = arg1_type.get_multiplier();
       rd_in.offset = 0;
       rd_in.base_type = arg0_type.typespec();
-      auto rd = env.dts->ts.reverse_field_lookup(rd_in);
+      auto rd = env.dts->ts.reverse_field_multi_lookup(rd_in);
+      int idx_of_success = -1;
+      if (rd.success) {
+        for (int i = 0; i < (int)rd.results.size(); i++) {
+          if (rd.results.at(i).has_variable_token()) {
+            idx_of_success = i;
+            break;
+          }
+        }
+      }
 
-      if (rd.success && rd.has_variable_token()) {
+      if (idx_of_success >= 0) {
+        auto& rd_ok = rd.results.at(idx_of_success);
         auto arg1_matcher = Matcher::match_or(
             {Matcher::op(GenericOpMatcher::fixed(FixedOperatorKind::MULTIPLICATION),
                          {Matcher::any(0), Matcher::integer(rd_in.stride)}),
@@ -801,7 +811,7 @@ void SimpleExpressionElement::update_from_stack_add_i(const Env& env,
         if (match_result.matched) {
           bool used_index = false;
           std::vector<DerefToken> tokens;
-          for (auto& tok : rd.tokens) {
+          for (auto& tok : rd_ok.tokens) {
             if (tok.kind == FieldReverseLookupOutput::Token::Kind::VAR_IDX) {
               assert(!used_index);
               used_index = true;
@@ -811,7 +821,55 @@ void SimpleExpressionElement::update_from_stack_add_i(const Env& env,
             }
           }
           assert(used_index);
-          result->push_back(pool.alloc_element<DerefElement>(args.at(0), rd.addr_of, tokens));
+          result->push_back(pool.alloc_element<DerefElement>(args.at(0), rd_ok.addr_of, tokens));
+          return;
+        } else {
+          throw std::runtime_error("Failed to match product_with_constant inline array access.");
+        }
+      }
+    } else if (arg0_type.kind == TP_Type::Kind::PRODUCT_WITH_CONSTANT &&
+               arg1_type.kind == TP_Type::Kind::TYPESPEC &&
+               arg1_type.typespec().base_type() == "inline-array") {
+      FieldReverseLookupInput rd_in;
+      rd_in.deref = std::nullopt;
+      rd_in.stride = arg0_type.get_multiplier();
+      rd_in.offset = 0;
+      rd_in.base_type = arg1_type.typespec();
+      auto rd = env.dts->ts.reverse_field_multi_lookup(rd_in);
+      int idx_of_success = -1;
+      if (rd.success) {
+        for (int i = 0; i < (int)rd.results.size(); i++) {
+          if (rd.results.at(i).has_variable_token()) {
+            idx_of_success = i;
+            break;
+          }
+        }
+      }
+      // fmt::print("here {} {} {}\n", rd_in.base_type.print(), rd.success,
+      // rd.has_variable_token());
+
+      if (idx_of_success >= 0) {
+        auto& rd_ok = rd.results.at(idx_of_success);
+        auto arg0_matcher = Matcher::match_or(
+            {Matcher::op(GenericOpMatcher::fixed(FixedOperatorKind::MULTIPLICATION),
+                         {Matcher::any(0), Matcher::integer(rd_in.stride)}),
+             Matcher::op(GenericOpMatcher::fixed(FixedOperatorKind::MULTIPLICATION),
+                         {Matcher::integer(rd_in.stride), Matcher::any(0)})});
+        auto match_result = match(arg0_matcher, args.at(0));
+        if (match_result.matched) {
+          bool used_index = false;
+          std::vector<DerefToken> tokens;
+          for (auto& tok : rd_ok.tokens) {
+            if (tok.kind == FieldReverseLookupOutput::Token::Kind::VAR_IDX) {
+              assert(!used_index);
+              used_index = true;
+              tokens.push_back(DerefToken::make_int_expr(match_result.maps.forms.at(0)));
+            } else {
+              tokens.push_back(to_token(tok));
+            }
+          }
+          assert(used_index);
+          result->push_back(pool.alloc_element<DerefElement>(args.at(1), rd_ok.addr_of, tokens));
           return;
         } else {
           throw std::runtime_error("Failed to match product_with_constant inline array access.");
@@ -3263,6 +3321,13 @@ FormElement* ConditionElement::make_generic(const Env& env,
                                                 casted);
     }
 
+    case IR2_Condition::Kind::FLOAT_GREATER_THAN: {
+      // never emitted by normal branch conditions
+      auto casted = make_casts_if_needed(source_forms, types, TypeSpec("float"), pool, env);
+      return pool.alloc_element<GenericElement>(GenericOperator::make_fixed(FixedOperatorKind::GT),
+                                                casted);
+    }
+
     default:
       throw std::runtime_error("ConditionElement::make_generic NYI for kind " +
                                get_condition_kind_name(m_kind));
@@ -3687,7 +3752,7 @@ void AsmBranchElement::push_to_stack(const Env& env, FormPool& pool, FormStack& 
 
   auto op = pool.alloc_element<TranslatedAsmBranch>(
       branch_condition, m_branch_delay, m_branch_op->label_id(), m_branch_op->is_likely());
-  fmt::print("rewrote as {}\n", op->to_string(env));
+  // fmt::print("rewrote as {}\n", op->to_string(env));
   stack.push_form_element(op, true);
 }
 
@@ -3716,6 +3781,16 @@ void BranchElement::push_to_stack(const Env& env, FormPool& pool, FormStack& sta
     case IR2_BranchDelay::Kind::NOP: {
       branch_delay = nullptr;
     } break;
+    case IR2_BranchDelay::Kind::SET_REG_REG: {
+      auto src = m_op->branch_delay().var(1);
+      auto dst = m_op->branch_delay().var(0);
+
+      auto src_form =
+          pool.alloc_single_element_form<SimpleAtomElement>(nullptr, SimpleAtom::make_var(src));
+
+      branch_delay = pool.alloc_single_element_form<SetVarElement>(
+          nullptr, dst, src_form, true, env.get_variable_type(src, true));
+    } break;
     default:
       throw std::runtime_error("Unhandled branch delay in BranchElement::push_to_stack: " +
                                m_op->to_string(env));
@@ -3723,7 +3798,7 @@ void BranchElement::push_to_stack(const Env& env, FormPool& pool, FormStack& sta
 
   auto op = pool.alloc_element<TranslatedAsmBranch>(branch_condition, branch_delay,
                                                     m_op->label_id(), m_op->likely());
-  fmt::print("rewrote (non-asm) as {}\n", op->to_string(env));
+  // fmt::print("rewrote (non-asm) as {}\n", op->to_string(env));
   stack.push_form_element(op, true);
 }
 
@@ -3744,7 +3819,8 @@ void DynamicMethodAccess::update_from_stack(const Env& env,
                                             std::vector<FormElement*>* result,
                                             bool allow_side_effects) {
   mark_popped();
-  auto new_val = stack.pop_reg(m_source, {}, env, allow_side_effects);
+  // auto new_val = stack.pop_reg(m_source, {}, env, allow_side_effects);
+  auto new_val = pop_to_forms({m_source}, env, pool, stack, allow_side_effects).at(0);
   auto reg0_matcher =
       Matcher::match_or({Matcher::any_reg(0), Matcher::cast("uint", Matcher::any_reg(0))});
   auto reg1_matcher =
@@ -3841,6 +3917,8 @@ void ArrayFieldAccess::update_with_val(Form* new_val,
              Matcher::fixed_op(FixedOperatorKind::ADDITION_PTR, {mult_matcher, reg0_matcher})});
         match_result = match(matcher, new_val);
         if (!match_result.matched) {
+          result->push_back(this);
+          return;
           fmt::print("power {}\n", power_of_two);
           throw std::runtime_error(
               "Couldn't match ArrayFieldAccess (stride power of 2, 0 offset) values: " +
@@ -3976,7 +4054,7 @@ void ArrayFieldAccess::update_from_stack(const Env& env,
                                          std::vector<FormElement*>* result,
                                          bool allow_side_effects) {
   mark_popped();
-  auto new_val = stack.pop_reg(m_source, {}, env, allow_side_effects);
+  auto new_val = pop_to_forms({m_source}, env, pool, stack, allow_side_effects).at(0);
   update_with_val(new_val, env, pool, result, allow_side_effects);
 }
 

@@ -299,6 +299,8 @@ std::unique_ptr<AtomicOp> make_asm_op(const Instruction& i0, int idx) {
     case InstructionKind::MULAS:
     case InstructionKind::MADDAS:
     case InstructionKind::MADDS:
+    case InstructionKind::MSUBAS:
+    case InstructionKind::MSUBS:
     case InstructionKind::ADDAS:
 
       // Moves / Loads / Stores
