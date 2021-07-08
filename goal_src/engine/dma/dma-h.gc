@@ -5,10 +5,15 @@
 ;; name in dgo: dma-h
 ;; dgos: GAME, ENGINE
 
-;; Constants/type for the PS2 DMA System.
+;; Constants/type for the PS2 DMA hardware
 ;; There are a number of DMA channels.
 ;; The PS2 supports several types of DMA, including simple chunk transfer and more complicated
 ;; "chain" transfers, where the hardware can follow a linked data-structure.
+
+;; The code is organized into dma, dma-buffer, and dma-bucket
+;;  - dma interacts with the hardware and actually sends the DMA data.
+;;  - dma-buffer is memory management for the data to be sent
+;;  - dma-bucket is organization of all the frame's DMA data in the correct order
 
 ;; In OpenGOAL, "DMA" will be instant, meaning the game code will stop, wait until the
 ;; DMA is finished, and then continue. As a result, there is no need for DMA synchronization.
@@ -200,6 +205,10 @@
   )
 
 
+;; DMA data is divided into buckets.
+;; At the end of a frame, the buckets are all connected together and sent.
+;; the buckets are organized by renderer.
+
 (defenum bucket-id
     :type int32
     :bitfield #f
@@ -235,6 +244,7 @@
     (water-tex1 60)
     ;; merc1 61
     ;; generic1 62
+    ;; common tex 65
     ;; debug spheres? 67
     (debug-draw0 67)
     ;; debug text 68

@@ -86,7 +86,7 @@
         (new 'static 'gs-display-fb :psm psm :fbw (sar width 6) :fbp fbp)
         )
 
-  ;; set up the display area.
+  ;; set up the display area (obscure PS2 video output junk)
   (set! (-> env display)
         (new 'static 'gs-display
              :dw #x9ff
@@ -150,12 +150,12 @@
   (set! (-> env xyoffset1addr) (gs-reg64 xyoffset-1))
   (set! (-> env xyoffset1)
    (new 'static 'gs-xy-offset
-        :ofx #x7000
+        :ofx #x7000 ;; = 1792 px = 2048 - 256, this will make 2048 the center of the screen.
         :ofy (shl (-> *video-parms* screen-miny) 4) ;; 12.4 fixed point.
         )
    )
 
-  ;; scissor to the given width/height (in WCS)
+  ;; scissor to the given width/height (in WCS pixels)
   (set! (-> env scissor1addr) (gs-reg64 scissor-1))
   ;; the lower bound is set to 0: the origin of the WCS which is the xyoffset
   (set! (-> env scissor1)
@@ -174,9 +174,11 @@
 
 (defun set-draw-env-offset ((env draw-env) (x int) (y int) (arg3 int))
   "Set the drawing offset (origin of the WCS).
-   The input x and y should be in pixels to the _center_ of the window.
+   The input x and y should be in pixels to the _center_ of the scissoring area
    The width/height of the window are taken from the scissoring settings.
-   It is assumed that scax0 and scay0 are set to 0."
+   It is assumed that scax0 and scay0 are set to 0.
+   To center things in the usual way, call with 2048, 2048, even/odd
+   "
   (set! (-> env xyoffset1)
         (new 'static 'gs-xy-offset
              :ofx (shl (- x
@@ -335,10 +337,9 @@
   "Draw the bar! The bar pos shouldn't be changed."
 
   ;; recompute y stuff based on the current relative-y-scale.
-  ;; I don't know what would change it.
   (let ((height (the int (* 8.0 (-> *video-parms* relative-y-scale)))))
-    (set! *profile-y* (+ (-> *video-parms* screen-miny) height))
-    (set! *profile-h* height)
+    (set! *profile-y* (+ (-> *video-parms* screen-miny) height)) ;; px
+    (set! *profile-h* height) ;; px
     )
   (let ((block-idx 1) ;; block to draw (0 is 'start)
         (block-count (-> obj profile-frame-count)) ;; total number of blocks
@@ -409,20 +410,20 @@
                  )
             ;; draw sprite (alpha blend enable)
             (set! (-> (the-as (pointer gs-prim) t3-8) 0)
-             (new 'static 'gs-prim :prim (gs-prim-type sprite) :abe #x1)
-             )
+                  (new 'static 'gs-prim :prim (gs-prim-type sprite) :abe #x1)
+                  )
             ;; set color.
             (set! (-> (the-as (pointer uint64) t3-8) 1)
-             (the-as uint (-> block color))
-             )
+                  (the-as uint (-> block color))
+                  )
             ;; set vertex (left side)
             (set! (-> (the-as (pointer gs-xyzf) t3-8) 2)
-             (new 'static 'gs-xyzf
-                  :z #x3fffff
-                  :y (shl (+ *profile-y* screen-y) 4) ;; 12.4
-                  :x left ;; end of previous bar
+                  (new 'static 'gs-xyzf
+                       :z #x3fffff
+                       :y (shl (+ *profile-y* screen-y) 4) ;; 12.4
+                       :x left ;; end of previous bar
+                       )
                   )
-             )
             (set! (-> t2-4 base) (&+ t3-8 24))
             )
 
@@ -449,12 +450,12 @@
                (t2-8 (-> t1-8 base))
                )
           (set! (-> (the-as (pointer gs-xyzf) t2-8) 0)
-           (new 'static 'gs-xyzf
-                :z #x3fffff
-                :y (shl (+ (+ *profile-y* screen-y) *profile-h*) 4) ;; add height.
-                :x left ;; now the end of this bar.
+                (new 'static 'gs-xyzf
+                     :z #x3fffff
+                     :y (shl (+ (+ *profile-y* screen-y) *profile-h*) 4) ;; add height.
+                     :x left ;; now the end of this bar.
+                     )
                 )
-           )
           (set! (-> t1-8 base) (&+ t2-8 8))
           )
 
@@ -486,6 +487,8 @@
       (else
        ;; for some reason, they use 104% here. This means that when you see
        ;; 100%, it actually means ~96% of ticks-per-frame.
+       ;; this is possibly because there's some time in between reaching here
+       ;; and when the next one starts (in drawable.gc)
        (let ((f30-0 (/ (* 104.0 (the float (-> worst-time-cache (/ bar-pos 10))))
                        (the float *ticks-per-frame*)
                        )

@@ -753,11 +753,13 @@ void SimpleExpressionElement::update_from_stack_add_i(const Env& env,
                             args.at(0)->to_string(env)));
           }
         } else {
-          auto arg0_matcher =
-              Matcher::op(addition_matcher,
-                          {Matcher::op(GenericOpMatcher::fixed(FixedOperatorKind::MULTIPLICATION),
-                                       {Matcher::integer(input.stride), Matcher::any(0)}),
-                           Matcher::integer(input.offset)});
+          auto int_matcher = Matcher::integer(input.stride);
+          auto arg0_matcher = Matcher::op(
+              addition_matcher,
+              {Matcher::op(GenericOpMatcher::fixed(FixedOperatorKind::MULTIPLICATION),
+                           {Matcher::match_or({Matcher::cast("uint", int_matcher), int_matcher}),
+                            Matcher::any(0)}),
+               Matcher::integer(input.offset)});
           auto match_result = match(arg0_matcher, args.at(0));
           if (match_result.matched) {
             bool used_index = false;
@@ -1371,21 +1373,11 @@ void SimpleExpressionElement::update_from_stack_left_shift(const Env& env,
       auto arg0_i = is_int_type(env, m_my_idx, m_expr.get_arg(0).var());
       auto arg0_u = is_uint_type(env, m_my_idx, m_expr.get_arg(0).var());
       if (!arg0_i && !arg0_u) {
-        auto bti = dynamic_cast<EnumType*>(env.dts->ts.lookup_type(arg0_type));
-        if (bti) {
-          auto new_form = pool.alloc_element<GenericElement>(
-              GenericOperator::make_fixed(FixedOperatorKind::SHL), args.at(0),
-              cast_form(
-                  pool.alloc_single_element_form<SimpleAtomElement>(nullptr, m_expr.get_arg(1)),
-                  arg0_type, pool, env));
-          result->push_back(new_form);
-        } else {
-          auto new_form = pool.alloc_element<GenericElement>(
-              GenericOperator::make_fixed(FixedOperatorKind::SHL),
-              pool.alloc_single_element_form<CastElement>(nullptr, TypeSpec("int"), args.at(0)),
-              pool.alloc_single_element_form<SimpleAtomElement>(nullptr, m_expr.get_arg(1)));
-          result->push_back(new_form);
-        }
+        auto new_form = pool.alloc_element<GenericElement>(
+            GenericOperator::make_fixed(FixedOperatorKind::SHL),
+            pool.alloc_single_element_form<CastElement>(nullptr, TypeSpec("int"), args.at(0)),
+            pool.alloc_single_element_form<SimpleAtomElement>(nullptr, m_expr.get_arg(1)));
+        result->push_back(new_form);
       } else {
         auto new_form = pool.alloc_element<GenericElement>(
             GenericOperator::make_fixed(FixedOperatorKind::SHL), args.at(0),

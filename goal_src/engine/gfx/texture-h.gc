@@ -5,36 +5,58 @@
 ;; name in dgo: texture-h
 ;; dgos: GAME, ENGINE
 
+;; The texture system manages VRAM used for textures.
+;; Textures are broken up into "tpages", which are loaded by the texture system.
+;; There are three things called pages:
 
+;;  - tpage: a collection of textures for a renderer. Different tpages have different sizes.
+;;     the actual type is named texture-page.
+
+;;  - GS hardware page: the actual size of a page in the GS hardware.
+;;      this is 2048 VRAM words.
+
+;; - Pool page: the page size used by the texture-pool.  This is 2x the size of a GS page.
+
+;; There are a lot more details, see texture.gc
+
+;; The layout of VRAM (in 2048 * 4 byte word units)
+;;   0 - 320  VRAM managed by texture.gc
+;; 320 - 384 first frame buffer
+;; 384 - 448 second frame buffer
+;; 448 - 512 Z Buffer (+ some font textures in the upper 8 bits)
+
+;; There are different kinds of texture pages for the different renderers
 (defenum tpage-kind
     :type uint32
     :bitfield #f
-    (tfrag 0)
-    (pris 1)
-    (shrub 2)
-    (alpha 3)
-    (water 4)
+    (tfrag 0)  ;; background
+    (pris 1)   ;; foreground
+    (shrub 2)  ;; shrubs/sprites
+    (alpha 3)  ;; effects
+    (water 4)  ;; non-ocean water (fj rivers, water near farmer)
     )
 
-;; mask for different texture things.
-;; these are the ones that will be displayed in the menu
+;; bitmask for enabled textures (changed in debug menu)
 (define *texture-enable-user-menu* #x1f)
 
-;; enabled textures.
+;; enabled textures (drawable.gc updates this from reading *texture-enable-user-menu*)
 (define *texture-enable-user* 0)
 
+;; Any individual texture can be uniquely identified with a texture-id.
 (deftype texture-id (uint32)
-  ((index  uint16 :offset 8  :size 12)
-   (page   uint16 :offset 20 :size 12)
+  ((index  uint16 :offset 8  :size 12) ;; index of texture in its tpage
+   (page   uint16 :offset 20 :size 12) ;; tpage number
    )
   :method-count-assert 9
   :size-assert         #x4
   :flag-assert         #x900000004
   )
 
+
+;; A texture-pool-segment is a chunk of VRAM used to store textures
 (deftype texture-pool-segment (structure)
-  ((dest uint32  :offset-assert 0)
-   (size uint32  :offset-assert 4)
+  ((dest uint32  :offset-assert 0) ;; VRAM address (4-byte VRAM words)
+   (size uint32  :offset-assert 4) ;; size in 4-byte VRAM words
    )
   :pack-me
   :method-count-assert 9
@@ -45,19 +67,27 @@
 (declare-type texture-page basic)
 (declare-type level basic)
 
+;; There is a single texture-pool which manages storing textures in VRAM
 (deftype texture-pool (basic)
-  ((top              int32    :offset-assert 4)
-   (cur              int32    :offset-assert 8)
+  ((top              int32    :offset-assert 4) ;; seems be 0 always, start of VRAM managed by pool
+   (cur              int32    :offset-assert 8) ;; highest address in use by the pool
+
+   ;; the allocate function is used to add a texture-page to the pool.
    (allocate-func    (function texture-pool texture-page kheap int texture-page)  :offset-assert 12)
+
    (font-palette     int32     :offset-assert 16) ;; vram word idx
    
    ;; these were reordered
+   ;; we have 4 segments, but only the near and common are used.
    (segment-near     texture-pool-segment   :inline :offset-assert 20)
    (segment-common   texture-pool-segment   :inline :offset-assert 28)
    (segment          texture-pool-segment 4 :inline :offset 20)
-   
+
+   ;; tpages that are not part of level textures are stored here.
    (common-page      texture-page  32       :offset-assert 52)
+   ;; ??
    (common-page-mask int32                  :offset-assert 180)
+   ;; for each pool page, stores the id of the tpage which is currently loaded in VRAM.
    (ids              uint32        126      :offset-assert 184)
    )
   :method-count-assert 23
@@ -82,17 +112,20 @@
    )
   )
 
+;; A record for a texture.
+;; This refers to data stored elsewhere, either in the data of a tpage or VRAM.
+;; After a tpage has been allocated, the dest will be the VRAM address of the texture.
 (deftype texture (basic)
   ((w            int16     :offset-assert 4)
    (h            int16     :offset-assert 6)
-   (num-mips     uint8     :offset-assert 8)
-   (tex1-control uint8     :offset-assert 9)
-   (psm          gs-psm    :offset-assert 10)
+   (num-mips     uint8     :offset-assert 8) ;; number of mipmap levels
+   (tex1-control uint8     :offset-assert 9) ;; ?
+   (psm          gs-psm    :offset-assert 10) ;; texture format
    (mip-shift    uint8     :offset-assert 11)
-   (clutpsm      uint16    :offset-assert 12)
-   (dest         uint16 7 :offset-assert 14)
-   (clutdest     uint16    :offset-assert 28)
-   (width        uint8 7 :offset-assert 30)
+   (clutpsm      uint16    :offset-assert 12) ;; color look-up table format
+   (dest         uint16 7 :offset-assert 14) ;; per mip
+   (clutdest     uint16    :offset-assert 28) ;; color look-up table location.
+   (width        uint8 7 :offset-assert 30)  ;; per mip
    (name         string    :offset-assert 40)
    (size         uint32    :offset-assert 44)
    (uv-dist      float     :offset-assert 48)
@@ -103,10 +136,13 @@
   :flag-assert         #x900000040
   )
 
+;; tpages themselves are divided into segments.
+;; some renderers may know ahead of time that they don't need all segments
+;; and can skip uploading unused texture data.
 (deftype texture-page-segment (structure)
-  ((block-data pointer :offset-assert 0)
-   (size       uint32  :offset-assert 4)
-   (dest       uint32  :offset-assert 8)
+  ((block-data pointer :offset-assert 0) ;; location in EE memory of texture data.
+   (size       uint32  :offset-assert 4) ;; ?? units
+   (dest       uint32  :offset-assert 8) ;; VRAM destination where it will be loaded to.
    )
   :pack-me
   :method-count-assert 9
@@ -115,16 +151,20 @@
   )
 
 (defun texture-mip->segment ((arg0 int) (arg1 int))
+  "Unknown, not used."
   (if (>= 2 arg1) (+ (- -1 arg0) arg1) (max 0 (- 2 arg0)))
   )
 
+;; The actual texture-page header
+;; After the dynamic array of texture is the actual texture data.
+;; This may be thrown away if the texture is permanently in VRAM.
 (deftype texture-page (basic)
   ((info      basic            :offset-assert 4)
    (name      basic            :offset-assert 8)
    (id        uint32           :offset-assert 12)
-   (length    int32            :offset-assert 16)
+   (length    int32            :offset-assert 16) ;; number of textures.
    (mip0-size uint32           :offset-assert 20)
-   (size      uint32           :offset-assert 24)
+   (size      uint32           :offset-assert 24) ;; VRAM words
    (segment   texture-page-segment 3 :inline :offset-assert 28)
    (pad       uint32 16       :offset-assert 64)
    (data      texture :dynamic :offset-assert 128)
