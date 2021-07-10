@@ -460,8 +460,11 @@ PrettyPrinterNode* get_case_start_case(PrettyPrinterNode* start) {
   }
 loop_end:
   node = node->paren;
-  while (node->tok->kind != FormToken::TokenKind::OPEN_PAREN) {
+  while (node && (!node->tok || node->tok->kind != FormToken::TokenKind::OPEN_PAREN)) {
     node = node->next;
+  }
+  if (!node) {
+    return getNextListOnLine(start);
   }
   return node;
 }
