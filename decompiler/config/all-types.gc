@@ -610,6 +610,9 @@
   :bitfield #t
   :type uint32
   (display 0)
+  (draw-line 1) ;; TODO - only seen it used to control debug drawing so far
+  (draw-point 2) ;; TODO - only seen it used to control debug drawing so far
+  (draw-text 3) ;; TODO - only seen it used to control debug drawing so far
   (not-found 4)
   )
 
@@ -14121,35 +14124,34 @@
 
 (deftype path-control (basic)
   ((flags      path-control-flag         :offset-assert 4)
-   (name       basic          :offset-assert 8)
-   (process    basic          :offset-assert 12)
+   (name       symbol          :offset-assert 8)
+   (process    process-drawable          :offset-assert 12)
    (curve      curve  :inline :offset-assert 16)
    (num-cverts int32          :offset 20)
-   (cverts     pointer         :offset 16)
+   (cverts     (inline-array vector)         :score 100 :offset 16)
    )
   :method-count-assert 21
   :size-assert         #x24
   :flag-assert         #x1500000024
   (:methods
     (new (symbol type process symbol float) _type_)
-    (dummy-9 () none 9)
-    (dummy-10 () none 10)
-    (dummy-11 () none 11)
-    (dummy-12 () none 12)
-    (dummy-13 () none 13)
-    (dummy-14 () none 14)
+    (dummy-9 (_type_) none 9)
+    (eval-path-curve-div! (_type_ vector float symbol) vector 10)
+    (get-random-point (_type_ vector) vector 11)
+    (TODO-RENAME-12 (_type_ vector float) vector 12)
+    (eval-path-curve! (_type_ vector float symbol) vector 13)
+    (TODO-RENAME-14 (_type_ vector float) vector 14)
     (length-as-float (_type_) float 15)
-    (dummy-16 () none 16)
+    (path-distance (_type_) float 16)
     (get-num-verts (_type_) int 17)
     (should-display? (_type_) symbol 18)
-    (dummy-19 () none 19)
-    (dummy-20 () none 20)
+    (TODO-RENAME-19 (_type_) float 19)
+    (TODO-RENAME-20 (_type_) float 20)
     )
   )
 
 (deftype curve-control (path-control)
   ()
-
   (:methods
     (new (symbol type process symbol float) _type_)
     )
@@ -15088,7 +15090,7 @@
 (define-extern add-debug-rot-matrix (function symbol bucket-id matrix vector matrix))
 (define-extern add-debug-yrot-vector (function symbol bucket-id vector float float rgba symbol))
 (define-extern add-debug-arc (function symbol bucket-id vector float float float rgba matrix symbol))
-(define-extern add-debug-curve2 (function symbol bucket-id curve rgba symbol))
+(define-extern add-debug-curve2 (function symbol bucket-id curve rgba symbol symbol))
 (define-extern add-debug-points (function symbol bucket-id (inline-array vector) int rgba float int symbol)) ;; unused
 (define-extern debug-percent-bar (function symbol bucket-id int int float rgba symbol))
 (define-extern debug-pad-display (function cpad-info symbol)) ;; unused
