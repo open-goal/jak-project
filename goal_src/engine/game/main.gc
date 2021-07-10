@@ -5,21 +5,101 @@
 ;; name in dgo: main
 ;; dgos: GAME, ENGINE
 
-(defun movie? ()
-  "Are we in a movie?"
-  (nonzero? (logand (-> *kernel-context* prevent-from-run) (process-mask movie)))
+;;;;;;;;;;;;;;;;;;;;;
+;; Letterbox
+;;;;;;;;;;;;;;;;;;;;;
+
+(defun set-letterbox-frames ((arg0 uint))
+  "Set the letterbox frame counter for arg0 frames in the future"
+  (let ((v0-0 (+ (-> *display* base-frame-counter) arg0)))
+    (set! (-> *game-info* letterbox-time) v0-0)
+    v0-0
+    )
+  )
+
+(defun letterbox ()
+  "Draw the letterbox black rectangles"
+  (let* ((dma-buf (-> *display* frames (-> *display* on-screen) frame global-buf))
+         (gp-0 (-> dma-buf base))
+         )
+    ;; draw the sprites (gp-0 points to this DMA data)
+    (draw-sprite2d-xy dma-buf 0 0 512 25 (new 'static 'rgba :a #x80))
+    (draw-sprite2d-xy dma-buf 0 199 512 26 (new 'static 'rgba :a #x80))
+    (let ((a3-2 (-> dma-buf base)))
+      (let ((pkt (the-as dma-packet (-> dma-buf base))))
+        (set! (-> pkt dma) (new 'static 'dma-tag :id (dma-tag-id next)))
+        (set! (-> pkt vif0) (new 'static 'vif-tag))
+        (set! (-> pkt vif1) (new 'static 'vif-tag))
+        (set! (-> dma-buf base) (the-as pointer (&+ pkt 16)))
+        )
+
+      ;; add the sprites to debug-draw1, this makes sure it gets drawn at the very end.
+      (dma-bucket-insert-tag
+       (-> *display* frames (-> *display* on-screen) frame bucket-group)
+       (bucket-id debug-draw1)
+       gp-0
+       (the-as (pointer dma-tag) a3-2)
+       )
+      )
+    )
+  (none)
   )
 
 (defun set-blackout-frames ((arg0 int))
+  "Set the blackout frame counter. If arg0 is 0, disables blackout immediately.
+   Otherwise, this can only be used to increase the blackout period."
   (cond
     ((zero? arg0)
      (set! (-> *game-info* blackout-time) (-> *display* base-frame-counter))
      )
     (else
-     (set! (-> *game-info* blackout-time) (max (-> *game-info* blackout-time) (+ (-> *display* base-frame-counter) arg0)))
+     (set! (-> *game-info* blackout-time) (max (the int (-> *game-info* blackout-time))
+                                               (the int (+ (-> *display* base-frame-counter) arg0))))
      )
     )
   )
+
+(defun blackout ()
+  "Draw the blackout rectangle, convering the entire screen in darkness."
+  (let* ((dma-buf (-> *display* frames (-> *display* on-screen) frame global-buf))
+         (sprite-dma-data (-> dma-buf base))
+         )
+    (draw-sprite2d-xy dma-buf 0 0 512 224 (new 'static 'rgba :a #x80))
+    (let ((a3-1 (-> dma-buf base)))
+      (let ((pkt (the-as dma-packet (-> dma-buf base))))
+        (set! (-> pkt dma) (new 'static 'dma-tag :id (dma-tag-id next)))
+        (set! (-> pkt vif0) (new 'static 'vif-tag))
+        (set! (-> pkt vif1) (new 'static 'vif-tag))
+        (set! (-> dma-buf base) (the-as pointer (&+ pkt 16)))
+        )
+      (dma-bucket-insert-tag
+       (-> *display* frames (-> *display* on-screen) frame bucket-group)
+       (bucket-id debug-draw1)
+       sprite-dma-data
+       (the-as (pointer dma-tag) a3-1)
+       )
+      )
+    )
+  (none)
+  )
+
+(defun paused? ()
+  "Are we paused? True if *master-mode* = pause, progress is not hidden, or *master-mode* = menu"
+  (the-as symbol
+          (or (= *master-mode* 'pause)
+              (or (and *progress-process* (not (hidden? (-> *progress-process* 0))))
+                  (= *master-mode* 'menu)
+                  )
+              )
+          )
+  )
+
+
+(defun movie? ()
+  "Are we in a movie?"
+  (nonzero? (logand (-> *kernel-context* prevent-from-run) (process-mask movie)))
+  )
+
 
 (defun display-loop ()
   ;; this function doesnt decompile right now

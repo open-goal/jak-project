@@ -36,7 +36,7 @@ If the previous let variables appear in the definition of new one, make the let 
  */
 
 namespace {
-std::vector<Form*> path_up_tree(Form* in, const Env& env) {
+std::vector<Form*> path_up_tree(Form* in, const Env&) {
   std::vector<Form*> path;
 
   while (in) {
@@ -357,6 +357,18 @@ FormElement* rewrite_empty_let(LetElement* in, const Env&, FormPool&) {
   return in->entries().at(0).src->try_as_single_element();
 }
 
+
+//FormElement* rewrite_as_case_no_else(LetElement* in, const Env& env, FormPool& pool) {
+//  if (in->entries().size() != 1) {
+//    return nullptr;
+//  }
+//
+//  auto* cond = in->body()->try_as_element<CondNoElseElement>();
+//  if (!cond) {
+//    return nullptr;
+//  }
+//}
+
 /*!
  * Attempt to rewrite a let as another form.  If it cannot be rewritten, this will return nullptr.
  */
@@ -385,6 +397,11 @@ FormElement* rewrite_let(LetElement* in, const Env& env, FormPool& pool) {
   if (as_unused) {
     return as_unused;
   }
+
+//  auto as_case_no_else = rewrite_as_case_no_else(in, env, pool);
+//  if (as_case_no_else) {
+//    return as_case_no_else;
+//  }
 
   // nothing matched.
   return nullptr;

@@ -91,6 +91,7 @@ bool run_type_analysis_ir2(const TypeSpec& my_type, DecompilerTypeSystem& dts, F
   }
 
   std::vector<TypeState> block_init_types, op_types;
+  std::vector<bool> block_needs_update(func.basic_blocks.size(), true);
   block_init_types.resize(func.basic_blocks.size());
   op_types.resize(func.ir2.atomic_ops->ops.size());
   auto& aop = func.ir2.atomic_ops;
@@ -111,6 +112,9 @@ bool run_type_analysis_ir2(const TypeSpec& my_type, DecompilerTypeSystem& dts, F
     run_again = false;
     // do each block in the topological sort order:
     for (auto block_id : order.vist_order) {
+      if (!block_needs_update.at(block_id)) {
+        continue;
+      }
       auto& block = func.basic_blocks.at(block_id);
       TypeState* init_types = &block_init_types.at(block_id);
       for (int op_id = aop->block_id_to_first_atomic_op.at(block_id);
@@ -145,6 +149,7 @@ bool run_type_analysis_ir2(const TypeSpec& my_type, DecompilerTypeSystem& dts, F
         // for the next op...
         init_types = &op_types.at(op_id);
       }
+      block_needs_update.at(block_id) = false;
 
       // propagate the types: for each possible succ
       for (auto succ_block_id : {block.succ_ft, block.succ_branch}) {
@@ -153,6 +158,7 @@ bool run_type_analysis_ir2(const TypeSpec& my_type, DecompilerTypeSystem& dts, F
           if (dts.tp_lca(&block_init_types.at(succ_block_id), *init_types)) {
             // if something changed, run again!
             run_again = true;
+            block_needs_update.at(succ_block_id) = true;
           }
         }
       }

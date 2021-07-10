@@ -30,7 +30,9 @@ namespace decompiler {
  * At this point, we assume that the files are loaded and we've run find_code to locate all
  * functions, but nothing else.
  */
-void ObjectFileDB::analyze_functions_ir2(const std::string& output_dir, const Config& config) {
+void ObjectFileDB::analyze_functions_ir2(const std::string& output_dir,
+                                         const Config& config,
+                                         bool skip_debug_output) {
   lg::info("Using IR2 analysis...");
   lg::info("Processing top-level functions...");
   ir2_top_level_pass(config);
@@ -55,8 +57,11 @@ void ObjectFileDB::analyze_functions_ir2(const std::string& output_dir, const Co
   lg::info("Initial structuring...");
   ir2_cfg_build_pass();
 
-  lg::info("Storing temporary form result...");
-  ir2_store_current_forms();
+  if (!skip_debug_output) {
+    lg::info("Storing temporary form result...");
+    ir2_store_current_forms();
+  }
+
   lg::info("Expression building...");
   ir2_build_expressions(config);
   lg::info("Re-writing inline asm instructions...");

@@ -882,7 +882,20 @@ void SimpleExpressionElement::update_from_stack_add_i(const Env& env,
     }
   }
 
+
+
   auto arg0_type = env.get_types_before_op(m_my_idx).get(m_expr.get_arg(0).var().reg());
+
+  if (env.dts->ts.tc(TypeSpec("structure"), arg0_type.typespec()) && m_expr.get_arg(1).is_int()) {
+    auto type_info = env.dts->ts.lookup_type(arg0_type.typespec());
+    if (type_info->get_size_in_memory() == m_expr.get_arg(1).get_int()) {
+      auto new_form = pool.alloc_element<GenericElement>(
+          GenericOperator::make_fixed(FixedOperatorKind::ADDITION_PTR), args.at(0), args.at(1));
+      result->push_back(new_form);
+      return;
+    }
+  }
+
   if ((arg0_i && arg1_i) || (arg0_u && arg1_u)) {
     auto new_form = pool.alloc_element<GenericElement>(
         GenericOperator::make_fixed(FixedOperatorKind::ADDITION), args.at(0), args.at(1));
