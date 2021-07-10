@@ -162,6 +162,9 @@ const std::unordered_set<std::string> g_functions_to_skip_compiling = {
     "ripple-execute",
 
     "get-task-status",
+
+    // aligner - return-from-thread, currently not supported
+    "(method 9 align-control)"
 };
 
 // default location for the data. It can be changed with a command line argument.
