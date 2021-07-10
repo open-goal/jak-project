@@ -5,6 +5,10 @@
 ;; name in dgo: gs
 ;; dgos: GAME, ENGINE
 
+;; Types for the GS - the PS2's GPU.
+;; These are used when creating GS packets to be sent to the GIF
+;; or for directly interfacing with the memory-mapped GS control registers.
+
 ;; the GS's PMODE register makes various settings for the PCRTC.
 (deftype gs-pmode (uint64)
   ((en1    uint8 :offset 0 :size 1)
@@ -27,13 +31,7 @@
   :flag-assert #x900000008
   )
 
-;; 19 = PSMT8
-;; 20 = PSMT4
-;; 2 = PSMCT24
-;; 10 = PSMCT16S
-;; 50 = PSMZ16
-;; 58 = PSMZ16S
-
+;; texture formats
 (defenum gs-psm
     :bitfield #f
     :type uint8
@@ -169,7 +167,7 @@
   :flag-assert #x900000008
   )
 
-;; memory layout of the GS's privileged registers
+;; memory layout of the GS's privileged registers (mapped to EE memory)
 ;; it is missing the SIGLBLID/LABELID register at 4224 (useless anyway?)
 (deftype gs-bank (structure)
   ((pmode    gs-pmode  :offset-assert 0)
@@ -630,7 +628,34 @@
   :flag-assert         #x900000010
   )
 
-;; Note - there was an inspect method for the uint128-based gif-tag, but it is being left out.
+(defmethod inspect gif-tag ((obj gif-tag))
+  (format #t "[~8x] gif-tag~%" obj)
+  (format #t "~Tnloop: ~4d~%" (-> obj nloop))
+  (format #t "~Teop  : ~4d~%" (-> obj eop))
+  (format #t "~Tid   : ~4d~%" (-> obj id))
+  (format #t "~Tpre  : ~4d~%" (-> obj pre))
+  (format #t "~Tprim : ~4d~%" (-> obj prim))
+  (format #t "~Tflg  : ~4d~%" (-> obj flg))
+  (format #t "~Tnreg : ~4d~%" (-> obj nreg))
+  (format #t "~Tregs0 : ~4d~%" (-> obj regs0))
+  (format #t "~Tregs1 : ~4d~%" (-> obj regs1))
+  (format #t "~Tregs2 : ~4d~%" (-> obj regs2))
+  (format #t "~Tregs3 : ~4d~%" (-> obj regs3))
+  (format #t "~Tregs4 : ~4d~%" (-> obj regs4))
+  (format #t "~Tregs5 : ~4d~%" (-> obj regs5))
+  (format #t "~Tregs6 : ~4d~%" (-> obj regs6))
+  (format #t "~Tregs7 : ~4d~%" (-> obj regs7))
+  (format #t "~Tregs8 : ~4d~%" (-> obj regs8))
+  (format #t "~Tregs9 : ~4d~%" (-> obj regs9))
+  (format #t "~Tregs10: ~4d~%" (-> obj regs10))
+  (format #t "~Tregs11: ~4d~%" (-> obj regs11))
+  (format #t "~Tregs12: ~4d~%" (-> obj regs12))
+  (format #t "~Tregs13: ~4d~%" (-> obj regs13))
+  (format #t "~Tregs14: ~4d~%" (-> obj regs14))
+  (format #t "~Tregs15: ~4d~%" (-> obj regs15))
+  ;; original function failed to return this.
+  obj
+  )
 
 ;; some nice blue. probably the same as the fog color for geyser/sandover/etc.
 (define *fog-color* #xc88029)

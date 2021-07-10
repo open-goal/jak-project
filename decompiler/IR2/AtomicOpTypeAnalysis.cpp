@@ -378,8 +378,13 @@ TP_Type SimpleExpression::get_type_int2(const TypeState& input,
     } break;
 
     case Kind::MUL_UNSIGNED: {
-      // unsigned multiply will always return a unsigned number.
-      return TP_Type::make_from_ts("uint");
+      if (arg0_type.is_integer_constant() && is_int_or_uint(dts, arg1_type)) {
+        return TP_Type::make_from_product(arg0_type.get_integer_constant(),
+                                          is_signed(dts, arg0_type));
+      } else if (is_int_or_uint(dts, arg0_type) && is_int_or_uint(dts, arg1_type)) {
+        // unsigned multiply will always return a unsigned number.
+        return TP_Type::make_from_ts("uint");
+      }
     } break;
 
     case Kind::DIV_SIGNED:
@@ -414,6 +419,9 @@ TP_Type SimpleExpression::get_type_int2(const TypeState& input,
                                                             arg0_type.typespec());
       }
       break;
+
+    case Kind::MIN_SIGNED:
+      return TP_Type::make_from_ts("int");
 
     default:
       break;

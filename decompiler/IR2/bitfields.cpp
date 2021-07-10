@@ -28,6 +28,7 @@ BitfieldStaticDefElement::BitfieldStaticDefElement(
     : m_type(type) {
   for (auto& x : field_defs) {
     m_field_defs.push_back(BitFieldDef::from_constant(x, pool));
+    m_field_defs.back().value->parent_element = this;
   }
 }
 

@@ -6,7 +6,8 @@
 ;; dgos: GAME, ENGINE
 
 ;; Type definitions for sound.
-;; The actual sound code is all on the IOP, and the EE can send RPCs to control.
+;; Sound is handled on the IOP, a separate processor.
+;; The EE sends commands using the IOP RPC system to the OVERLORD IOP driver telling it to load and play sounds.
 ;; There is also some sort of per-frame status update, that is not included here.
 
 (deftype sound-id (uint32)
@@ -23,6 +24,7 @@
   )
 
 ;; Sound names were sometimes packed into a uint128
+;; this is also used for dgo names sent to the IOP.
 ;; fields added by us
 (deftype sound-name (uint128)
   ((lo  uint64  :offset 0)
@@ -52,6 +54,7 @@
     )
   )
 
+;; command types that can be sent to the IOP.
 (defenum sound-command
   :type uint16
   (load-bank)
@@ -78,8 +81,9 @@
   (list-sounds)
   (unload-music)
   )
+
 ;; like should match the sound type in OVERLORD
-;; This is shared between all sound RPCs.
+;; This is shared between all sound RPCs and acts like the header for the sound messages
 (deftype sound-rpc-cmd (structure)
   ((rsvd1   uint16  :offset-assert 0)
    (command sound-command  :offset-assert 2)
