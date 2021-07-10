@@ -3,12 +3,12 @@
 
 ;; definition of type path-control
 (deftype path-control (basic)
-  ((flags      path-control-flag         :offset-assert   4)
-   (name       symbol                    :offset-assert   8)
-   (process    process-drawable          :offset-assert  12)
-   (curve      curve             :inline :offset-assert  16)
-   (num-cverts int32                     :offset         20)
-   (cverts     pointer                   :offset         16)
+  ((flags      path-control-flag             :offset-assert   4)
+   (name       symbol                        :offset-assert   8)
+   (process    process-drawable              :offset-assert  12)
+   (curve      curve                 :inline :offset-assert  16)
+   (num-cverts int32                         :offset         20)
+   (cverts     (inline-array vector)         :offset         16)
    )
   :method-count-assert 21
   :size-assert         #x24
@@ -36,9 +36,9 @@
   (format #t "~Tflags: #x~X~%" (-> obj flags))
   (format #t "~Tname: ~A~%" (-> obj name))
   (format #t "~Tprocess: ~A~%" (-> obj process))
-  (format #t "~Tcurve: #<curve @ #x~X>~%" (-> obj curve))
+  (format #t "~Tcurve: #<curve @ #x~X>~%" (&-> obj cverts))
   (format #t "~Tnum-cverts: ~D~%" (-> obj curve num-cverts))
-  (format #t "~Tcverts: #x~X~%" (-> obj curve cverts))
+  (format #t "~Tcverts: #x~X~%" (-> obj cverts))
   obj
   )
 
@@ -59,9 +59,9 @@
   (format #t "~Tflags: #x~X~%" (-> obj flags))
   (format #t "~Tname: ~A~%" (-> obj name))
   (format #t "~Tprocess: ~A~%" (-> obj process))
-  (format #t "~Tcurve: #<curve @ #x~X>~%" (-> obj curve))
+  (format #t "~Tcurve: #<curve @ #x~X>~%" (&-> obj cverts))
   (format #t "~Tnum-cverts: ~D~%" (-> obj curve num-cverts))
-  (format #t "~Tcverts: #x~X~%" (-> obj curve cverts))
+  (format #t "~Tcverts: #x~X~%" (-> obj cverts))
   obj
   )
 
@@ -122,7 +122,7 @@
        )
       (cond
        (data
-        (set! (-> obj curve cverts) data)
+        (set! (-> obj cverts) (the-as (inline-array vector) data))
         (set! (-> obj curve num-cverts) (the-as int (-> tag elt-count)))
         )
        (else
@@ -130,7 +130,7 @@
          (-> obj flags)
          (logior (-> obj flags) (path-control-flag not-found))
          )
-        (set! (-> obj curve cverts) (the-as pointer #f))
+        (set! (-> obj cverts) (the-as (inline-array vector) #f))
         (set! (-> obj curve num-cverts) 0)
         0
         )
@@ -198,7 +198,8 @@
       (set! ent lookup-entity)
       )
      )
-    (when (not (get-curve-data! ent (-> obj curve) name s2-0 time))
+    (when
+     (not (get-curve-data! ent (the-as curve (&-> obj cverts)) name s2-0 time))
      (cond
       ((> (-> obj curve num-cverts) 0)
        (set! (-> obj type) path-control)
@@ -208,7 +209,7 @@
         (-> obj flags)
         (logior (-> obj flags) (path-control-flag not-found))
         )
-       (set! (-> obj curve cverts) (the-as pointer #f))
+       (set! (-> obj cverts) (the-as (inline-array vector) #f))
        (set! (-> obj curve num-cverts) 0)
        0
        )
@@ -221,7 +222,3 @@
 
 ;; failed to figure out what this is:
 0
-
-
-
-
