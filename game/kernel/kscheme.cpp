@@ -1720,11 +1720,9 @@ s32 InitHeapAndSymbol() {
   set_fixed_symbol(FIX_SYM_GLOBAL_HEAP, "global", kglobalheap.offset);
   set_fixed_symbol(FIX_SYM_DEBUG_HEAP, "debug", kdebugheap.offset);
   set_fixed_symbol(FIX_SYM_STATIC, "static", (s7 + FIX_SYM_STATIC).offset);
-  set_fixed_symbol(FIX_SYM_LOADING_LEVEL, "loading-level", (s7 + FIX_SYM_LOADING_LEVEL).offset);
-  set_fixed_symbol(FIX_SYM_LOADING_PACKAGE, "loading-package",
-                   (s7 + FIX_SYM_LOADING_PACKAGE).offset);
-  set_fixed_symbol(FIX_SYM_PROCESS_LEVEL_HEAP, "process-level-heap",
-                   (s7 + FIX_SYM_PROCESS_LEVEL_HEAP).offset);
+  set_fixed_symbol(FIX_SYM_LOADING_LEVEL, "loading-level", kglobalheap.offset);
+  set_fixed_symbol(FIX_SYM_LOADING_PACKAGE, "loading-package", kglobalheap.offset);
+  set_fixed_symbol(FIX_SYM_PROCESS_LEVEL_HEAP, "process-level-heap", kglobalheap.offset);
   set_fixed_symbol(FIX_SYM_STACK, "stack", (s7 + FIX_SYM_STACK).offset);
   set_fixed_symbol(FIX_SYM_SCRATCH, "scratch", (s7 + FIX_SYM_SCRATCH).offset);
   set_fixed_symbol(FIX_SYM_SCRATCH_TOP, "*scratch-top*", 0x70000000);

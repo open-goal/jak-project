@@ -596,12 +596,12 @@ void insertSpecialBreaks(NodePool& pool, PrettyPrinterNode* node) {
         }
       }
 
-      if (name == "begin") {
+      if (name == "begin" || name == "with-pp") {
         breakList(pool, node->paren);
       }
 
       if (name == "defun" || name == "defmethod" || name == "defun-debug" || name == "let" ||
-          name == "let*" || name == "rlet" || name == "defbehavior") {
+          name == "let*" || name == "rlet" || name == "defbehavior" || name == "lambda") {
         auto* first_list = getNextListOrEmptyListOnLine(node);
         if (first_list) {
           if (first_list->tok->kind == FormToken::TokenKind::EMPTY_PAIR) {

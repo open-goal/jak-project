@@ -64,7 +64,7 @@
     (new (symbol type) _type_ 0)
     (initialize! (_type_) _type_ 9)
     (print-usage (_type_) _type_ 10)
-    (dummy-11 (_type_) none 11)
+    (setup-font-texture! (_type_) none 11)
     (allocate-defaults! (_type_) none 12)
     (login-level-textures (_type_ level int (pointer texture-id)) none 13)
     (add-tex-to-dma! (_type_ level int) none 14)
@@ -73,7 +73,7 @@
     (dummy-17 () none 17)
     (dummy-18 () none 18)
     (dummy-19 () none 19)
-    (dummy-20 (_type_ texture-page) int 20)
+    (unload! (_type_ texture-page) int 20)
     (upload-one-common! (_type_) symbol 21)
     (lookup-boot-common-id (_type_ int) int 22)
     )
@@ -106,7 +106,9 @@
 ;; definition of type texture
 (deftype texture (basic)
   ((w            int16    :offset-assert   4)
+   (wu           uint16   :offset          4)
    (h            int16    :offset-assert   6)
+   (hu           uint16   :offset          6)
    (num-mips     uint8    :offset-assert   8)
    (tex1-control uint8    :offset-assert   9)
    (psm          gs-psm   :offset-assert  10)
@@ -176,7 +178,7 @@
 
 ;; definition of type texture-page
 (deftype texture-page (basic)
-  ((info      basic                          :offset-assert   4)
+  ((info      file-info                      :offset-assert   4)
    (name      basic                          :offset-assert   8)
    (id        uint32                         :offset-assert  12)
    (length    int32                          :offset-assert  16)
@@ -195,7 +197,7 @@
     (get-leftover-block-count (_type_ int int) int 10)
     (dummy-11 () none 11)
     (relocate-dests! (_type_ int int) none 12)
-    (add-to-dma-buffer (_type_ dma-buffer int) none 13)
+    (add-to-dma-buffer (_type_ dma-buffer int) int 13)
     (upload-now! (_type_ int) none 14)
     )
   )
@@ -273,7 +275,7 @@
   :flag-assert         #xa00000014
   (:methods
     (relocate (_type_ kheap (pointer uint8)) none :replace 7)
-    (dummy-9 (_type_ kheap) int 9)
+    (unlink-textures-in-heap! (_type_ kheap) int 9)
     )
   )
 
@@ -314,17 +316,17 @@
 
 ;; definition of type adgif-shader
 (deftype adgif-shader (structure)
-  ((quad       qword      5 :inline :offset   0)
-   (prims      uint64     10        :offset   0)
-   (tex0       uint64               :offset   0)
-   (tex1       uint64               :offset  16)
-   (miptbp1    uint64               :offset  32)
-   (clamp      uint64               :offset  48)
-   (clamp-reg  uint64               :offset  56)
-   (alpha      uint64               :offset  64)
-   (link-test  uint32               :offset   8)
-   (texture-id uint32               :offset  24)
-   (next       shader-ptr           :offset  40)
+  ((quad       qword           5 :inline :offset   0)
+   (prims      gs-reg64        10        :offset   0)
+   (tex0       gs-tex0                   :offset   0)
+   (tex1       gs-tex1                   :offset  16)
+   (miptbp1    gs-miptbp                 :offset  32)
+   (clamp      gs-clamp                  :offset  48)
+   (clamp-reg  gs-reg64                  :offset  56)
+   (alpha      gs-miptbp                 :offset  64)
+   (link-test  link-test-flags           :offset   8)
+   (texture-id texture-id                :offset  24)
+   (next       shader-ptr                :offset  40)
    )
   :method-count-assert 9
   :size-assert         #x50
@@ -334,8 +336,8 @@
 ;; definition for method 3 of type adgif-shader
 (defmethod inspect adgif-shader ((obj adgif-shader))
   (format #t "[~8x] ~A~%" obj 'adgif-shader)
-  (format #t "~Tquad[5] @ #x~X~%" (-> obj quad))
-  (format #t "~Tprims[10] @ #x~X~%" (-> obj quad))
+  (format #t "~Tquad[5] @ #x~X~%" (&-> obj tex0))
+  (format #t "~Tprims[10] @ #x~X~%" (&-> obj tex0))
   (format #t "~Ttex0: #x~X~%" (-> obj tex0))
   (format #t "~Ttex1: #x~X~%" (-> obj tex1))
   (format #t "~Tmiptbp1: #x~X~%" (-> obj miptbp1))

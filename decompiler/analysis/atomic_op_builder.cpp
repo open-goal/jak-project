@@ -443,6 +443,20 @@ std::unique_ptr<AtomicOp> make_asm_branch_no_delay(const IR2_Condition& conditio
   return std::make_unique<AsmBranchOp>(likely, condition, dest_label, nullptr, my_idx);
 }
 
+std::unique_ptr<AtomicOp> make_asm_branch(const IR2_Condition& condition,
+                                          const Instruction& delay,
+                                          bool likely,
+                                          int dest_label,
+                                          int my_idx) {
+  assert(!likely);
+  auto delay_op = std::shared_ptr<AtomicOp>(convert_1_allow_asm(delay, my_idx));
+  if (!delay_op) {
+    throw std::runtime_error(
+        fmt::format("Failed to convert branch delay slot instruction for branch at {}", my_idx));
+  }
+  return std::make_unique<AsmBranchOp>(likely, condition, dest_label, delay_op, my_idx);
+}
+
 ///////////////////////
 // OP 1 Conversions
 //////////////////////
@@ -1090,6 +1104,22 @@ std::unique_ptr<AtomicOp> convert_slt_2(const Instruction& i0,
   return result;
 }
 
+std::unique_ptr<AtomicOp> convert_bltz_2(const Instruction& i0, const Instruction& i1, int idx) {
+  // bltz is never emitted outside of inline asm.
+  auto dest = i0.get_src(1).get_label();
+  return make_asm_branch(IR2_Condition(IR2_Condition::Kind::LESS_THAN_ZERO_SIGNED,
+                                       make_src_atom(i0.get_src(0).get_reg(), idx)),
+                         i1, false, dest, idx);
+}
+
+std::unique_ptr<AtomicOp> convert_bgez_2(const Instruction& i0, const Instruction& i1, int idx) {
+  // bgez is never emitted outside of inline asm.
+  auto dest = i0.get_src(1).get_label();
+  return make_asm_branch(IR2_Condition(IR2_Condition::Kind::GEQ_ZERO_SIGNED,
+                                       make_src_atom(i0.get_src(0).get_reg(), idx)),
+                         i1, false, dest, idx);
+}
+
 std::unique_ptr<AtomicOp> convert_2(const Instruction& i0, const Instruction& i1, int idx) {
   switch (i0.kind) {
     case InstructionKind::DIV:
@@ -1112,6 +1142,10 @@ std::unique_ptr<AtomicOp> convert_2(const Instruction& i0, const Instruction& i1
       return convert_slt_2(i0, i1, idx, false);
     case InstructionKind::CLTS:
       return convert_fp_branch_asm(i0, i1, IR2_Condition::Kind::FLOAT_LESS_THAN, idx);
+    case InstructionKind::BLTZ:
+      return convert_bltz_2(i0, i1, idx);
+    case InstructionKind::BGEZ:
+      return convert_bgez_2(i0, i1, idx);
     default:
       return nullptr;
   }

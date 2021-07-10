@@ -759,6 +759,7 @@
   :type uint32
   :bitfield #f
   (zero 0)
+  (pause #x109)
   (sfx-volume #x10a)
   (music-volume #x10b)
   (speech-volume #x10c)
@@ -4255,7 +4256,7 @@
 (define-extern set-display (function display int int int int int display))
 (define-extern put-draw-env (function (pointer gif-tag) none))
 (define-extern *pre-draw-hook* (function none)) ;; unknown type
-(define-extern *post-draw-hook* (function none)) ;; unknown type
+(define-extern *post-draw-hook* (function dma-buffer none)) ;; unknown type
 
 
 ;; ----------------------
@@ -4539,7 +4540,7 @@
     (new (symbol type) _type_ 0)
     (initialize! (_type_) _type_ 9)
     (print-usage (_type_) _type_ 10)
-    (dummy-11 (_type_) none 11)
+    (setup-font-texture! (_type_) none 11)
     (allocate-defaults! (_type_) none 12)
     (login-level-textures (_type_ level int (pointer texture-id)) none 13) ;; loading level...
     (add-tex-to-dma! (_type_ level int) none 14) ;; very mysterious arg types.
@@ -4548,7 +4549,7 @@
     (dummy-17 () none 17)
     (dummy-18 () none 18)
     (dummy-19 () none 19)
-    (dummy-20 (_type_ texture-page) int 20)
+    (unload! (_type_ texture-page) int 20)
     (upload-one-common! (_type_) symbol 21)
     (lookup-boot-common-id (_type_ int) int 22)
     )
@@ -4556,7 +4557,9 @@
 
 (deftype texture (basic)
   ((w            int16     :offset-assert 4)
+   (wu           uint16    :offset 4)
    (h            int16     :offset-assert 6)
+   (hu           uint16    :offset 6)
    (num-mips     uint8     :offset-assert 8)
    (tex1-control uint8     :offset-assert 9)   ;; each level has a dest and a width
    (psm          gs-psm    :offset-assert 10)
@@ -4587,7 +4590,7 @@
   )
 
 (deftype texture-page (basic)
-  ((info      basic            :offset-assert 4)
+  ((info      file-info        :offset-assert 4)
    (name      basic            :offset-assert 8)
    (id        uint32           :offset-assert 12)
    (length    int32            :offset-assert 16) ;; number of texture
@@ -4606,7 +4609,7 @@
     (get-leftover-block-count (_type_ int int) int 10)
     (dummy-11 () none 11)
     (relocate-dests! (_type_ int int) none 12)
-    (add-to-dma-buffer (_type_ dma-buffer int) none 13)
+    (add-to-dma-buffer (_type_ dma-buffer int) int 13)
     (upload-now! (_type_ int) none 14)
     )
   )
@@ -4644,7 +4647,7 @@
    )
   (:methods
     (relocate (_type_ kheap (pointer uint8)) none :replace 7)
-    (dummy-9 (_type_ kheap) int 9)
+    (unlink-textures-in-heap! (_type_ kheap) int 9)
     )
   :flag-assert #xa00000014
   )
@@ -4662,17 +4665,24 @@
   :flag-assert         #x90000001c
   )
 
+(defenum link-test-flags
+  :type uint32
+  :bitfield #t
+  (needs-log-in 8)
+  (bit-9 9)
+  )
+
 (deftype adgif-shader (structure)
-  ((quad       qword  5 :inline  :offset 0)
-   (prims      uint64 10  :offset 0)
-   (tex0       uint64     :offset 0)
-   (tex1       uint64     :offset 16)
-   (miptbp1    uint64     :offset 32)
-   (clamp      uint64     :offset 48)
-   (clamp-reg  uint64     :offset 56)
-   (alpha      uint64     :offset 64)
-   (link-test  uint32     :offset 8)
-   (texture-id uint32     :offset 24)
+  ((quad       qword  5 :score -100 :inline  :offset 0)
+   (prims      gs-reg64 10 :score -100 :offset 0)
+   (tex0       gs-tex0     :offset 0)
+   (tex1       gs-tex1     :offset 16)
+   (miptbp1    gs-miptbp     :offset 32)
+   (clamp      gs-clamp     :offset 48)
+   (clamp-reg  gs-reg64     :offset 56)
+   (alpha      gs-miptbp     :offset 64)
+   (link-test  link-test-flags     :offset 8)
+   (texture-id texture-id     :offset 24)
    (next       shader-ptr :offset 40)
    )
   :method-count-assert 9
@@ -4830,7 +4840,7 @@
    (vis-self-index            int32           :offset-assert 440)
    (vis-adj-index             int32           :offset-assert 444)
    (vis-buffer                uint8 2048    :offset-assert 448)
-   (mem-usage-block           basic           :offset-assert 2496)
+   (mem-usage-block           memory-usage-block           :offset-assert 2496)
    (mem-usage                 int32           :offset-assert 2500)
    (code-memory-start         pointer          :offset-assert 2504)
    (code-memory-end           pointer          :offset-assert 2508) ;; NOTE - usually a texture-page
@@ -4844,10 +4854,10 @@
   (:methods
     (deactivate (_type_) _type_ 9)
     (dummy-10 (_type_ int) symbol 10)
-    (dummy-11 (_type_) none 11)
+    (add-irq-to-tex-buckets! (_type_) none 11)
     (unload! (_type_) _type_ 12)
     (bsp-name (_type_) symbol 13)
-    (dummy-14 (_type_) none 14)
+    (dummy-14 (_type_ object) none 14)
     (dummy-15 (_type_ vector) symbol 15)
     (dummy-16 (_type_) none 16)
     (load-continue (_type_) _type_ 17)
@@ -5507,7 +5517,7 @@
   (:methods
     (reset! (_type_) _type_ 9)
     (calculate-total (_type_) int 10)
-    (dummy-11 () none 11)
+    (print-mem-usage (_type_ level object) none 11)
     )
   )
 
@@ -5515,7 +5525,7 @@
 
 (define-extern *mem-usage* memory-usage-block)
 (define-extern *dma-mem-usage* memory-usage-block)
-(define-extern *temp-mem-usage* symbol)
+(define-extern *temp-mem-usage* memory-usage-block)
 
 
 ;; ----------------------
@@ -5526,17 +5536,17 @@
 
 ;; - Functions
 
-(define-extern adgif-shader<-texture! function)
-(define-extern adgif-shader<-texture-with-update! function)
-(define-extern level-remap-texture function)
-(define-extern link-texture-by-id (function adgif-shader texture-id int))
+(define-extern adgif-shader<-texture! (function adgif-shader texture adgif-shader))
+(define-extern adgif-shader<-texture-with-update! (function adgif-shader texture adgif-shader))
+(define-extern level-remap-texture (function texture-id texture-id))
+(define-extern link-texture-by-id (function texture-id adgif-shader texture-page-dir-entry))
 (define-extern lookup-texture-by-id (function texture-id texture))
-(define-extern texture-page-login (function texture-id function kheap texture-page-dir-entry))
+(define-extern texture-page-login (function texture-id (function texture-pool texture-page kheap int texture-page) kheap texture-page-dir-entry))
 ;; arg2 in these is not an int, but something else. Not sure what it is yet.
 ;; all these texture-page-segment might actually be texture-relocate-later!
 (define-extern texture-page-default-allocate (function texture-pool texture-page kheap int texture-page))
 (define-extern loado (function string kheap object))
-(define-extern texture-relocate (function dma-buffer texture int int int int))
+(define-extern texture-relocate (function dma-buffer texture int gs-psm int dma-buffer))
 (define-extern dma-buffer-add-ref-texture (function dma-buffer pointer int int gs-psm none))
 (define-extern upload-vram-pages (function texture-pool texture-pool-segment texture-page int int int))
 (define-extern upload-vram-pages-pris (function texture-pool texture-pool-segment texture-page int int int))
@@ -5561,13 +5571,13 @@
 (define-extern texture-page-common-boot-allocate (function texture-pool texture-page kheap int texture-page))
 (define-extern texture-page-level-allocate (function texture-pool texture-page kheap int texture-page))
 (define-extern relocate-later (function symbol))
-(define-extern adgif-shader-update! (function int texture none)) ;; todo - unconfirmed
-(define-extern adgif-shader-login (function adgif-shader none))
-(define-extern adgif-shader-login-no-remap (function adgif-shader none))
-(define-extern adgif-shader-login-fast function)
-(define-extern adgif-shader-login-no-remap-fast function)
+(define-extern adgif-shader-update! (function adgif-shader texture none)) ;; todo - unconfirmed
+(define-extern adgif-shader-login (function adgif-shader texture))
+(define-extern adgif-shader-login-no-remap (function adgif-shader texture))
+(define-extern adgif-shader-login-fast (function adgif-shader texture))
+(define-extern adgif-shader-login-no-remap-fast (function adgif-shader texture))
 ;;;; unknown type
-(define-extern adgif-shader<-texture-simple! function)
+(define-extern adgif-shader<-texture-simple! (function adgif-shader texture adgif-shader))
 
 ;; - Symbols
 
@@ -11531,7 +11541,7 @@
   )
 
 (deftype perf-stat-array (inline-array-class)
-  ()
+  ((data perf-stat :inline :dynamic :offset-assert 16))
   :method-count-assert 9
   :size-assert         #x10
   :flag-assert         #x900000010
@@ -14816,12 +14826,12 @@
 
 (define-extern *subdivide-settings* subdivide-settings)
 (define-extern *tfrag-work* tfrag-work) ;; unknown type
-;;(define-extern *perf-stats* object) ;; unknown type
+(define-extern *perf-stats* perf-stat-array) ;; unknown type
 ;;(define-extern *merc-global-stats* object) ;; unknown type
 ;;(define-extern *stat-string-tfrag-near* object) ;; unknown type
 ;;(define-extern *stat-string-tfrag* object) ;; unknown type
 ;;(define-extern *stat-string-total* object) ;; unknown type
-;;(define-extern *terrain-context* object) ;; unknown type
+(define-extern *terrain-context* terrain-context) ;; unknown type
 ;;(define-extern GSH_ENABLE object) ;; unknown type
 ;;(define-extern GSH_BUCKET object) ;; unknown type
 ;;(define-extern GSH_WHICH_STAT object) ;; unknown type
@@ -15062,7 +15072,7 @@
 (define-extern internal-draw-debug-text-3d (function bucket-id string vector rgba vector2h pointer))
 (define-extern get-debug-line (function debug-line))
 (define-extern internal-draw-debug-line (function bucket-id vector vector rgba symbol rgba object))
-(define-extern draw-string (function string dma-buffer font-context int))
+(define-extern draw-string (function string dma-buffer font-context float))
 (define-extern transform-float-point (function vector vector vector))
 (define-extern add-debug-point (function symbol bucket-id vector symbol)) ;; unused
 (define-extern add-debug-outline-triangle (function symbol bucket-id vector vector vector rgba symbol))
@@ -15174,11 +15184,11 @@
 (define-extern setup-blerc-chains-for-one-fragment function)
 (define-extern setup-blerc-chains function)
 (define-extern blerc-stats-init function)
-(define-extern blerc-init function)
+(define-extern blerc-init (function none))
 (define-extern blerc-a-fragment function)
 (define-extern dma-from-spr function)
 (define-extern merc-dma-chain-to-spr function)
-(define-extern blerc-execute function)
+(define-extern blerc-execute (function none))
 (define-extern merc-blend-shape function)
 
 ;; - Unknowns
@@ -15202,7 +15212,7 @@
 (define-extern merc-stats-display function)
 (define-extern merc-stats function)
 (define-extern merc-edge-stats function)
-(define-extern merc-vu1-init-buffers function)
+(define-extern merc-vu1-init-buffers (function none))
 
 ;; - Unknowns
 
@@ -15330,7 +15340,7 @@
 (define-extern dump-mem function)
 (define-extern bone-list-init function)
 (define-extern texscroll-make-request function)
-(define-extern texscroll-execute function)
+(define-extern texscroll-execute (function none))
 (define-extern bones-set-sqwc function)
 (define-extern bones-reset-sqwc function)
 (define-extern bones-init function)
@@ -15650,7 +15660,7 @@
 (define-extern depth-cue-set-stencil function)
 (define-extern depth-cue-draw-depth function)
 (define-extern depth-cue-calc-z function)
-(define-extern depth-cue function)
+(define-extern depth-cue (function display none))
 
 ;; - Unknowns
 
@@ -15959,7 +15969,7 @@
 
 ;; - Functions
 
-(define-extern tie-init-buffers function)
+(define-extern tie-init-buffers (function dma-buffer none))
 (define-extern tie-debug-between function)
 (define-extern tie-debug-one function)
 (define-extern walk-tie-generic-prototypes function)
@@ -16122,8 +16132,8 @@
 (define-extern sp-orbiter function)
 (define-extern memcpy function)
 (define-extern kill-all-particles-in-level (function int))
-(define-extern set-particle-frame-time function)
-(define-extern process-particles function)
+(define-extern set-particle-frame-time (function int none))
+(define-extern process-particles (function none))
 
 ;; - Unknowns
 
@@ -16505,7 +16515,7 @@
 (define-extern game-save-elt->string (function game-save-elt string))
 (define-extern progress-level-index->string (function int string))
 (define-extern auto-save-post function)
-(define-extern auto-save-check function)
+(define-extern auto-save-check (function none))
 
 ;; - Unknowns
 
@@ -16963,7 +16973,7 @@
 (define-extern start-time-of-day (function int))
 (define-extern time-of-day-setup (function symbol int none)) ;; not confirmed
 (define-extern set-time-of-day function)
-(define-extern init-time-of-day-context function)
+(define-extern init-time-of-day-context (function time-of-day-context none))
 (define-extern update-time-of-day function)
 
 ;; - Unknowns
@@ -17303,7 +17313,7 @@
 
 (define-extern set-font-color-alpha function)
 (define-extern load-game-text-info function)
-(define-extern load-level-text-files function)
+(define-extern load-level-text-files (function int none))
 (define-extern draw-debug-text-box function)
 (define-extern print-game-text-scaled function)
 (define-extern disable-level-text-file-loading function)
@@ -17501,7 +17511,7 @@
 
 ;; - Unknowns
 
-;;(define-extern *collide-vif0-init* object) ;; unknown type
+(define-extern *collide-vif0-init* (array uint32)) ;; unknown type
 
 
 ;; ----------------------
@@ -18005,7 +18015,7 @@
 (define-extern update-visible function)
 (define-extern set-point function)
 (define-extern plane-from-points function)
-(define-extern update-camera function)
+(define-extern update-camera (function none))
 
 ;; - Unknowns
 
@@ -18498,7 +18508,7 @@
 ;;(define-extern level-hint-ambient-sound object) ;; unknown type
 ;;(define-extern level-hint-sidekick object) ;; unknown type
 ;;(define-extern level-hint-normal object) ;; unknown type
-;;(define-extern *execute-ambients* object) ;; unknown type
+(define-extern *execute-ambients* symbol) ;; unknown type
 
 
 ;; ----------------------
@@ -19338,13 +19348,13 @@
 
 ;; - Functions
 
-(define-extern display-frame-finish function)
-(define-extern display-sync function)
-(define-extern determine-pause-mode function)
-(define-extern display-frame-start function)
+(define-extern display-frame-finish (function display object))
+(define-extern display-sync (function display none))
+(define-extern determine-pause-mode (function int))
+(define-extern display-frame-start (function display int int none))
 (define-extern toggle-pause (function int))
-(define-extern deactivate-progress function)
-(define-extern debug-init-buffer function)
+(define-extern deactivate-progress (function none))
+(define-extern debug-init-buffer (function bucket-id uint uint none))
 (define-extern real-main-draw-hook function)
 (define-extern error-sphere function)
 (define-extern draw-instance-info function)
@@ -19357,7 +19367,7 @@
 (define-extern foreground-engine-execute function)
 (define-extern main-debug-hook function)
 (define-extern main-draw-hook function)
-(define-extern swap-display function)
+(define-extern swap-display (function display object))
 (define-extern marks-cam-restore function)
 (define-extern eddie-cam-restore function)
 (define-extern gregs-jungle-cam-restore function)
@@ -19373,10 +19383,10 @@
 
 ;; - Unknowns
 
-;;(define-extern syncv object) ;; unknown type
-;;(define-extern put-display-env object) ;; unknown type
-;;(define-extern *surrogate-dma-buffer* object) ;; unknown type
-;;(define-extern *screen-shot* object) ;; unknown type
+(define-extern syncv (function int int)) ;; unknown type
+(define-extern put-display-env (function object none)) ;; unknown type
+(define-extern *surrogate-dma-buffer* dma-buffer) ;; unknown type
+(define-extern *screen-shot* symbol) ;; unknown type
 ;;(define-extern *hud-lights* object) ;; unknown type
 ;;(define-extern *instance-mem-usage* object) ;; unknown type
 ;;(define-extern *add-sphere* object) ;; unknown type
@@ -19535,7 +19545,7 @@
 
 ;; - Unknowns
 
-;;(define-extern *max-dma* object) ;; unknown type
+(define-extern *max-dma* int)
 
 
 ;; ----------------------
@@ -20691,7 +20701,7 @@
 (define-extern make-levels-with-tasks-available-to-progress function)
 (define-extern progress-init-by-other function)
 (define-extern init-game-options function)
-(define-extern make-current-level-available-to-progress function)
+(define-extern make-current-level-available-to-progress (function none))
 
 ;; - Unknowns
 
