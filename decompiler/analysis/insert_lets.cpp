@@ -357,17 +357,50 @@ FormElement* rewrite_empty_let(LetElement* in, const Env&, FormPool&) {
   return in->entries().at(0).src->try_as_single_element();
 }
 
+FormElement* rewrite_as_case_no_else(LetElement* in, const Env& env, FormPool& pool) {
+  if (in->entries().size() != 1) {
+    return nullptr;
+  }
 
-//FormElement* rewrite_as_case_no_else(LetElement* in, const Env& env, FormPool& pool) {
-//  if (in->entries().size() != 1) {
-//    return nullptr;
-//  }
-//
-//  auto* cond = in->body()->try_as_element<CondNoElseElement>();
-//  if (!cond) {
-//    return nullptr;
-//  }
-//}
+  auto* cond = in->body()->try_as_element<CondNoElseElement>();
+  if (!cond) {
+    return nullptr;
+  }
+
+  auto case_var = in->entries().at(0).dest;
+  auto case_var_name = env.get_variable_name(case_var);
+
+  std::vector<CaseElement::Entry> entries;
+
+  for (auto& e : cond->entries) {
+    fmt::print("entry: {}\n", e.condition->to_string(env));
+    // first, lets see if its just (= case_var <expr>)
+    auto single_matcher = Matcher::op(GenericOpMatcher::fixed(FixedOperatorKind::EQ),
+                                      {Matcher::any_reg(0), Matcher::any(1)});
+
+    auto single_matcher_result = match(single_matcher, e.condition);
+
+    Form* single_value = nullptr;
+    if (single_matcher_result.matched) {
+      auto var_name = env.get_variable_name(*single_matcher_result.maps.regs.at(0));
+      if (var_name == case_var_name) {
+        single_value = single_matcher_result.maps.forms.at(1);
+      }
+    }
+
+    if (single_value) {
+      fmt::print("Matched (single): {}\n", single_value->to_string(env));
+      entries.push_back({{single_value}, e.body});
+      continue;
+    }
+
+    // no match
+    return nullptr;
+  }
+
+  return pool.alloc_element<CaseElement>(in->entries().at(0).src, entries, nullptr);
+  return nullptr;
+}
 
 /*!
  * Attempt to rewrite a let as another form.  If it cannot be rewritten, this will return nullptr.
@@ -398,10 +431,10 @@ FormElement* rewrite_let(LetElement* in, const Env& env, FormPool& pool) {
     return as_unused;
   }
 
-//  auto as_case_no_else = rewrite_as_case_no_else(in, env, pool);
-//  if (as_case_no_else) {
-//    return as_case_no_else;
-//  }
+  auto as_case_no_else = rewrite_as_case_no_else(in, env, pool);
+  if (as_case_no_else) {
+    return as_case_no_else;
+  }
 
   // nothing matched.
   return nullptr;
