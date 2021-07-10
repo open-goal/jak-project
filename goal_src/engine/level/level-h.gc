@@ -5,6 +5,7 @@
 ;; name in dgo: level-h
 ;; dgos: GAME, ENGINE
 
+;; The level system is responsible for loading and managning the two levels.
 
 (defconstant LEVEL_COUNT 2) ;; there are two levels in memory!
 
@@ -75,6 +76,8 @@
   :flag-assert         #x900000074
   )
 
+;; The levels are initialized (called "login") over multiple frames.
+;; The state of this process is stored in a login-state.
 (declare-type drawable basic)
 (deftype login-state (basic)
   ((state int32      :offset-assert 4)
@@ -174,8 +177,8 @@
 (declare-type entity-links structure)
 (deftype level-group (basic)
   ((length          int32                :offset-assert 4)
-   (unknown-level-1 level                :offset-assert 8)
-   (unknown-level-2 level                :offset-assert 12) ;; currently loading
+   (log-in-level    level                :offset-assert 8)  ;; level currently logging in
+   (loading-level   level                :offset-assert 12) ;; currently loading
    (entity-link     entity-links         :offset-assert 16) ;; not sure what's going on here
    (border?         basic                :offset-assert 20)
    (vis?            basic                :offset-assert 24)
@@ -228,8 +231,8 @@
     (set! *level*
           (new 'static 'level-group
                :length 2
-               :unknown-level-1 #f
-               :unknown-level-2 #f
+               :log-in-level #f
+               :loading-level #f
                :entity-link #f
                :border? #f
                :want-level #f
