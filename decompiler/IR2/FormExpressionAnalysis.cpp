@@ -660,6 +660,7 @@ void SimpleExpressionElement::update_from_stack_add_i(const Env& env,
   }
 
   bool arg0_ptr = is_ptr_or_child(env, m_my_idx, m_expr.get_arg(0).var(), true);
+  bool arg1_ptr = false;
 
   // Look for getting an address inside of an object.
   // (+ <integer 108 + int> process). array style access with a stride of 1.
@@ -668,6 +669,7 @@ void SimpleExpressionElement::update_from_stack_add_i(const Env& env,
     // lookup types.
     auto arg1_type = env.get_types_before_op(m_my_idx).get(m_expr.get_arg(1).var().reg());
     auto arg0_type = env.get_types_before_op(m_my_idx).get(m_expr.get_arg(0).var().reg());
+    arg1_ptr = is_ptr_or_child(env, m_my_idx, m_expr.get_arg(1).var(), true);
 
     // try to find symbol to string stuff
     auto arg0_int = get_goal_integer_constant(args.at(0), env);
@@ -880,6 +882,7 @@ void SimpleExpressionElement::update_from_stack_add_i(const Env& env,
     }
   }
 
+  auto arg0_type = env.get_types_before_op(m_my_idx).get(m_expr.get_arg(0).var().reg());
   if ((arg0_i && arg1_i) || (arg0_u && arg1_u)) {
     auto new_form = pool.alloc_element<GenericElement>(
         GenericOperator::make_fixed(FixedOperatorKind::ADDITION), args.at(0), args.at(1));
@@ -888,10 +891,15 @@ void SimpleExpressionElement::update_from_stack_add_i(const Env& env,
     auto new_form = pool.alloc_element<GenericElement>(
         GenericOperator::make_fixed(FixedOperatorKind::ADDITION_PTR), args.at(0), args.at(1));
     result->push_back(new_form);
+  } else if (arg1_ptr && arg0_type.is_integer_constant()) {
+    // this is a bit weird, but (&+ thing <constant>) sometimes becomes (&+ <constant> thing).
+    // in these cases, we flip the argument order.
+    auto new_form = pool.alloc_element<GenericElement>(
+        GenericOperator::make_fixed(FixedOperatorKind::ADDITION_PTR), args.at(1), args.at(0));
+    result->push_back(new_form);
   } else {
     auto casted0 = args.at(0);
 
-    auto arg0_type = env.get_types_before_op(m_my_idx).get(m_expr.get_arg(0).var().reg());
     if (!arg0_i && !arg0_u && arg0_type.typespec() != TypeSpec("binteger")) {
       casted0 = pool.alloc_single_element_form<CastElement>(
           nullptr, TypeSpec(arg0_i ? "int" : "uint"), args.at(0));
@@ -1578,7 +1586,8 @@ void SimpleExpressionElement::update_from_stack_float_to_int(const Env& env,
   if (type == TypeSpec("float")) {
     result->push_back(pool.alloc_element<CastElement>(TypeSpec("int"), arg, true));
   } else {
-    throw std::runtime_error("Used float to int on a " + type.print());
+    throw std::runtime_error(
+        fmt::format("Used float to int on a {}: {}", type.print(), to_string(env)));
   }
 }
 
@@ -2055,26 +2064,26 @@ void StorePlainDeref::push_to_stack(const Env& env, FormPool& pool, FormStack& s
     if (size() == 16) {
       std::swap(popped.at(0), popped.at(1));
     }
-    m_dst->set_base(make_optional_cast(m_dst_cast_type, popped.at(1), pool, env));
+    m_dst->try_as_element<DerefElement>()->set_base(
+        make_optional_cast(m_dst_cast_type, popped.at(1), pool, env));
     m_dst->mark_popped();
-    m_dst->inline_nested();
+    m_dst->try_as_element<DerefElement>()->inline_nested();
     auto fr = pool.alloc_element<SetFormFormElement>(
-        pool.alloc_single_form(nullptr, m_dst),
-        make_optional_cast(m_src_cast_type, popped.at(0), pool, env));
+        m_dst, make_optional_cast(m_src_cast_type, popped.at(0), pool, env));
     // so the bitfield set check can run
     fr->mark_popped();
     fr->push_to_stack(env, pool, stack);
   } else {
     auto vars = std::vector<RegisterAccess>({m_base_var});
     auto popped = pop_to_forms(vars, env, pool, stack, true);
-    m_dst->set_base(make_optional_cast(m_dst_cast_type, popped.at(0), pool, env));
+    m_dst->try_as_element<DerefElement>()->set_base(
+        make_optional_cast(m_dst_cast_type, popped.at(0), pool, env));
     m_dst->mark_popped();
-    m_dst->inline_nested();
+    m_dst->try_as_element<DerefElement>()->inline_nested();
     auto val = pool.alloc_single_element_form<SimpleExpressionElement>(nullptr, m_expr, m_my_idx);
     val->mark_popped();
-    auto fr =
-        pool.alloc_element<SetFormFormElement>(pool.alloc_single_form(nullptr, m_dst),
-                                               make_optional_cast(m_src_cast_type, val, pool, env));
+    auto fr = pool.alloc_element<SetFormFormElement>(
+        m_dst, make_optional_cast(m_src_cast_type, val, pool, env));
     fr->mark_popped();
     stack.push_form_element(fr, true);
   }

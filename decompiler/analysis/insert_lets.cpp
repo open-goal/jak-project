@@ -36,20 +36,20 @@ If the previous let variables appear in the definition of new one, make the let 
  */
 
 namespace {
-std::vector<Form*> path_up_tree(Form* in) {
+std::vector<Form*> path_up_tree(Form* in, const Env& env) {
   std::vector<Form*> path;
 
   while (in) {
     path.push_back(in);
-    // lg::warn("In: {}", in->to_string(env));
+    //    lg::warn("In: {}", in->to_string(env));
     if (in->parent_element) {
-      // lg::warn("  {}", in->parent_element->to_string(env));
+      //      lg::warn("  {}", in->parent_element->to_string(env));
       in = in->parent_element->parent_form;
     } else {
       in = nullptr;
     }
   }
-  // lg::warn("DONE\n");
+  //  lg::warn("DONE\n");
   return path;
 }
 
@@ -58,12 +58,12 @@ Form* lca_form(Form* a, Form* b, const Env& env) {
   if (!a) {
     return b;
   }
+  //
+  //  fmt::print("lca {} ({}) and {} ({})\n", a->to_string(env), (void*)a, b->to_string(env),
+  //   (void*)b);
 
-  // fmt::print("lca {} ({}) and {} ({})\n", a->to_string(env), (void*)a, b->to_string(env),
-  // (void*)b);
-
-  auto a_up = path_up_tree(a);
-  auto b_up = path_up_tree(b);
+  auto a_up = path_up_tree(a, env);
+  auto b_up = path_up_tree(b, env);
 
   int ai = a_up.size() - 1;
   int bi = b_up.size() - 1;
@@ -77,6 +77,10 @@ Form* lca_form(Form* a, Form* b, const Env& env) {
     }
     ai--;
     bi--;
+  }
+  if (!result) {
+    auto* bad = b->parent_element;
+    fmt::print("bad form is {} {}\n", bad->to_string(env), (void*)bad);
   }
   assert(result);
 
@@ -543,6 +547,20 @@ LetStats insert_lets(const Function& func, Env& env, FormPool& pool, Form* top_l
     // for each element, figure out what vars we reference:
     RegAccessSet reg_accesses;
     elt->collect_vars(reg_accesses, false);
+
+    //    if (!reg_accesses.empty()) {
+    //      Form* f = elt->parent_form;
+    //      while (f && f != top_level_form) {
+    //        auto pe = f->parent_element;
+    //        if (pe) {
+    //          f = pe->parent_form;
+    //        } else {
+    //          f = nullptr;
+    //        }
+    //      }
+    //
+    //      assert(f);
+    //    }
 
     // and add it.
     for (auto& access : reg_accesses) {

@@ -420,6 +420,9 @@ TP_Type SimpleExpression::get_type_int2(const TypeState& input,
       }
       break;
 
+    case Kind::MIN_SIGNED:
+      return TP_Type::make_from_ts("int");
+
     default:
       break;
   }

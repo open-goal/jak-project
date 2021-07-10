@@ -146,6 +146,10 @@ const std::unordered_set<std::string> g_functions_to_skip_compiling = {
     "curve-evaluate!",                    // asm requiring manual rewrite
     "point-in-triangle-cross",            // logior on floats manual fixup
 
+    // texture
+    "(method 9 texture-page-dir)",         // multiplication on pointers
+    "adgif-shader<-texture-with-update!",  // misrecognized bitfield stuff.
+
     // asm
     "invalidate-cache-line",
 

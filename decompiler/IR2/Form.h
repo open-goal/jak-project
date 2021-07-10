@@ -1260,7 +1260,7 @@ class ConstantFloatElement : public FormElement {
 
 class StorePlainDeref : public FormElement {
  public:
-  StorePlainDeref(DerefElement* dst,
+  StorePlainDeref(Form* dst,
                   SimpleExpression expr,
                   int my_idx,
                   RegisterAccess base_var,
@@ -1277,7 +1277,7 @@ class StorePlainDeref : public FormElement {
   int size() const { return m_size; }
 
  private:
-  DerefElement* m_dst = nullptr;
+  Form* m_dst = nullptr;
   SimpleExpression m_expr;
   int m_my_idx = -1;
   RegisterAccess m_base_var;

@@ -449,103 +449,91 @@
 ;; Used lq/sq
 (defun nav-mesh-connect ((proc process) (trans trsqv) (nav-cont nav-control))
   (local-vars (sv-16 type) (sv-32 symbol))
-  (with-pp (let ((ent (-> proc entity)))
-            (when (zero? (-> (the-as entity-actor ent) nav-mesh))
-             (let
-              ((lookup-entity
-                (entity-actor-lookup
-                 (the-as entity-actor ent)
-                 'nav-mesh-actor
-                 0
-                 )
-                )
-               )
-              (if lookup-entity
-               (set! ent lookup-entity)
-               )
+  (with-pp
+   (let ((ent (-> proc entity)))
+    (when (zero? (-> (the-as entity-actor ent) nav-mesh))
+     (let
+      ((lookup-entity
+        (entity-actor-lookup (the-as entity-actor ent) 'nav-mesh-actor 0)
+        )
+       )
+      (if lookup-entity
+       (set! ent lookup-entity)
+       )
+      )
+     )
+    (let ((entity-nav-mesh (-> (the-as entity-actor ent) nav-mesh)))
+     (cond
+      ((nonzero? entity-nav-mesh)
+       (when (zero? (-> entity-nav-mesh user-list))
+        (set!
+         process-level-heap
+         (->
+          (the-as entity-links (-> (the-as entity (-> pp entity)) extra))
+          level
+          heap
+          )
+         )
+        (let ((s1-0 (method-of-type engine new))
+              (s0-0 'process-level-heap)
               )
-             )
-            (let ((entity-nav-mesh (-> (the-as entity-actor ent) nav-mesh)))
-             (cond
-              ((nonzero? entity-nav-mesh)
-               (when (zero? (-> entity-nav-mesh user-list))
-                (set!
-                 process-level-heap
-                 (->
-                  (the-as
-                   entity-links
-                   (-> (the-as entity (-> pp entity)) extra)
-                   )
-                  level
-                  heap
-                  )
-                 )
-                (let ((s1-0 (method-of-type engine new))
-                      (s0-0 'process-level-heap)
-                      )
-                 (set! sv-16 engine)
-                 (set! sv-32 'nav-engine)
-                 (let
-                  ((a3-1
-                    ((method-of-type res-lump get-property-value)
-                     ent
-                     'nav-max-users
-                     'interp
-                     -1000000000.0
-                     (the-as uint128 32)
-                     (the-as (pointer res-tag) #f)
-                     *res-static-buf*
-                     )
-                    )
-                   )
-                  (set!
-                   (-> entity-nav-mesh user-list)
-                   (s1-0 s0-0 sv-16 sv-32 (the-as int a3-1))
-                   )
-                  )
-                 )
-                (dummy-13 entity-nav-mesh)
-                (dummy-17 entity-nav-mesh)
-                )
-               (add-connection
-                (-> entity-nav-mesh user-list)
-                proc
-                (the-as (function object object object object object) nothing)
-                proc
-                nav-cont
-                trans
-                )
-               )
-              (else
-               (if (and nav-cont (-> proc entity))
-                (set!
-                 (->
-                  (the-as
-                   entity-links
-                   (-> (the-as entity (-> proc entity)) extra)
-                   )
-                  perm
-                  status
-                  )
-                 (logior
-                  (->
-                   (the-as
-                    entity-links
-                    (-> (the-as entity (-> proc entity)) extra)
-                    )
-                   perm
-                   status
-                   )
-                  (entity-perm-status bit-1)
-                  )
-                 )
-                )
-               (set! entity-nav-mesh *default-nav-mesh*)
-               )
-              )
-             entity-nav-mesh
+         (set! sv-16 engine)
+         (set! sv-32 'nav-engine)
+         (let
+          ((a3-1
+            ((method-of-type res-lump get-property-value)
+             ent
+             'nav-max-users
+             'interp
+             -1000000000.0
+             (the-as uint128 32)
+             (the-as (pointer res-tag) #f)
+             *res-static-buf*
              )
             )
+           )
+          (set!
+           (-> entity-nav-mesh user-list)
+           (s1-0 s0-0 sv-16 sv-32 (the-as int a3-1))
+           )
+          )
+         )
+        (dummy-13 entity-nav-mesh)
+        (dummy-17 entity-nav-mesh)
+        )
+       (add-connection
+        (-> entity-nav-mesh user-list)
+        proc
+        (the-as (function object object object object object) nothing)
+        proc
+        nav-cont
+        trans
+        )
+       )
+      (else
+       (if (and nav-cont (-> proc entity))
+        (set!
+         (->
+          (the-as entity-links (-> (the-as entity (-> proc entity)) extra))
+          perm
+          status
+          )
+         (logior
+          (->
+           (the-as entity-links (-> (the-as entity (-> proc entity)) extra))
+           perm
+           status
+           )
+          (entity-perm-status bit-1)
+          )
+         )
+        )
+       (set! entity-nav-mesh *default-nav-mesh*)
+       )
+      )
+     entity-nav-mesh
+     )
+    )
    )
   )
 

@@ -1462,6 +1462,10 @@ bool ControlFlowGraph::find_seq_top_level(bool allow_self_loops) {
     auto* b0 = vtx;
     auto* b1 = vtx->next;
 
+    //    if (b1 && b1->end_branch.asm_branch) {
+    //      return true;
+    //    }
+
     if (is_sequence_of_non_sequences(b0, b1, allow_self_loops)) {  // todo, avoid nesting sequences.
       replaced = true;
 

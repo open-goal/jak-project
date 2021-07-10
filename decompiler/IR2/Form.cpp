@@ -528,6 +528,9 @@ void AtomicOpElement::get_modified_regs(RegSet& regs) const {
 AsmBranchElement::AsmBranchElement(AsmBranchOp* branch_op, Form* branch_delay, bool likely)
     : m_branch_op(branch_op), m_branch_delay(branch_delay), m_likely(likely) {
   m_branch_delay->parent_element = this;
+  for (auto& elt : m_branch_delay->elts()) {
+    assert(elt->parent_form == m_branch_delay);
+  }
 }
 
 goos::Object AsmBranchElement::to_form_internal(const Env& env) const {
@@ -605,6 +608,12 @@ goos::Object TranslatedAsmBranch::to_form_internal(const Env& env) const {
   assert(block_id >= 0);
 
   if (m_branch_delay) {
+    if (m_branch_delay->parent_element != this) {
+      fmt::print("bad ptr. Parent is {}\n", m_branch_delay->parent_element->to_string(env));
+      assert(false);
+    }
+
+    assert(m_branch_delay->parent_element->parent_form);
     std::vector<goos::Object> list = {
         pretty_print::to_symbol("b!"), m_branch_condition->to_form(env),
         pretty_print::to_symbol(fmt::format("cfg-{}", block_id)),
@@ -640,6 +649,15 @@ void TranslatedAsmBranch::collect_vars(RegAccessSet& vars, bool recursive) const
   if (recursive) {
     m_branch_condition->collect_vars(vars, recursive);
     if (m_branch_delay) {
+      if (m_branch_delay->parent_element != this) {
+        fmt::print("bad ptr. Parent is {}\n", (void*)m_branch_delay->parent_element);
+        assert(false);
+      }
+
+      for (auto& elt : m_branch_delay->elts()) {
+        assert(elt->parent_form == m_branch_delay);
+      }
+
       m_branch_delay->collect_vars(vars, recursive);
     }
   }
@@ -2162,7 +2180,7 @@ goos::Object ConstantFloatElement::to_form_internal(const Env&) const {
 // StorePlainDeref
 /////////////////////////////
 
-StorePlainDeref::StorePlainDeref(DerefElement* dst,
+StorePlainDeref::StorePlainDeref(Form* dst,
                                  SimpleExpression expr,
                                  int my_idx,
                                  RegisterAccess base_var,
@@ -2175,7 +2193,9 @@ StorePlainDeref::StorePlainDeref(DerefElement* dst,
       m_base_var(base_var),
       m_dst_cast_type(std::move(dst_cast_type)),
       m_src_cast_type(std::move(src_cast_type)),
-      m_size(size) {}
+      m_size(size) {
+  m_dst->parent_element = this;
+}
 
 goos::Object StorePlainDeref::to_form_internal(const Env& env) const {
   std::vector<goos::Object> lst = {pretty_print::to_symbol("set!")};
@@ -2202,7 +2222,9 @@ void StorePlainDeref::apply(const std::function<void(FormElement*)>& f) {
   m_dst->apply(f);
 }
 
-void StorePlainDeref::apply_form(const std::function<void(Form*)>&) {}
+void StorePlainDeref::apply_form(const std::function<void(Form*)>& f) {
+  m_dst->apply_form(f);
+}
 
 void StorePlainDeref::collect_vars(RegAccessSet& vars, bool recursive) const {
   m_expr.collect_vars(vars);

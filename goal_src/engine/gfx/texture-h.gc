@@ -5,25 +5,17 @@
 ;; name in dgo: texture-h
 ;; dgos: GAME, ENGINE
 
-;; The texture system manages VRAM used for textures.
-;; Textures are broken up into "tpages", which are loaded by the texture system.
-;; There are three things called pages:
+;; The texture system manages:
+;;  - VRAM allocation and uploads
+;;  - the texture page directory
+;;  - adgif shaders
 
-;;  - tpage: a collection of textures for a renderer. Different tpages have different sizes.
-;;     the actual type is named texture-page.
+;; There are a lot more details, see texture.gc for more info
 
-;;  - GS hardware page: the actual size of a page in the GS hardware.
-;;      this is 2048 VRAM words.
 
-;; - Pool page: the page size used by the texture-pool.  This is 2x the size of a GS page.
-
-;; There are a lot more details, see texture.gc
-
-;; The layout of VRAM (in 2048 * 4 byte word units)
-;;   0 - 320  VRAM managed by texture.gc
-;; 320 - 384 first frame buffer
-;; 384 - 448 second frame buffer
-;; 448 - 512 Z Buffer (+ some font textures in the upper 8 bits)
+;;;;;;;;;;;;;;;;;;;;;;
+;; Texture Control
+;;;;;;;;;;;;;;;;;;;;;;
 
 ;; There are different kinds of texture pages for the different renderers
 (defenum tpage-kind
@@ -36,7 +28,7 @@
     (water 4)  ;; non-ocean water (fj rivers, water near farmer)
     )
 
-;; bitmask for enabled textures (changed in debug menu)
+;; bitmask for enabled tpage-kinds (changed in debug menu)
 (define *texture-enable-user-menu* #x1f)
 
 ;; enabled textures (drawable.gc updates this from reading *texture-enable-user-menu*)
@@ -52,6 +44,10 @@
   :flag-assert         #x900000004
   )
 
+
+;;;;;;;;;;;;;;;;;;;
+;; Texture Pool
+;;;;;;;;;;;;;;;;;;;
 
 ;; A texture-pool-segment is a chunk of VRAM used to store textures
 (deftype texture-pool-segment (structure)
@@ -75,7 +71,8 @@
    ;; the allocate function is used to add a texture-page to the pool.
    (allocate-func    (function texture-pool texture-page kheap int texture-page)  :offset-assert 12)
 
-   (font-palette     int32     :offset-assert 16) ;; vram word idx
+   ;; the location of the color look-up table for font texture (vram word idx)
+   (font-palette     int32     :offset-assert 16)
    
    ;; these were reordered
    ;; we have 4 segments, but only the near and common are used.
@@ -97,39 +94,47 @@
    (new (symbol type) _type_ 0)
    (initialize! (_type_) _type_ 9)
    (print-usage (_type_) _type_ 10)
-   (dummy-11 (_type_) none 11)
+   (setup-font-texture! (_type_) none 11)
    (allocate-defaults! (_type_) none 12)
-   (login-level-textures (_type_ level int (pointer texture-id)) none 13) ;; loading level...
-   (add-tex-to-dma! (_type_ level int) none 14) ;; very mysterious arg types.
+   (login-level-textures (_type_ level int (pointer texture-id)) none 13)
+   (add-tex-to-dma! (_type_ level int) none 14)
    (allocate-vram-words! (_type_ int) int 15)
    (allocate-segment! (_type_ texture-pool-segment int) texture-pool-segment 16)
    (dummy-17 () none 17)
    (dummy-18 () none 18)
    (dummy-19 () none 19)
-   (dummy-20 (_type_ texture-page) int 20)
+   (unload! (_type_ texture-page) int 20)
    (upload-one-common! (_type_) symbol 21)
    (lookup-boot-common-id (_type_ int) int 22)
    )
   )
 
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;; Texture and Texture Page
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
 ;; A record for a texture.
+;;  The texture can contain multiple levels of detail and also a color lookup table (CLUT)
 ;; This refers to data stored elsewhere, either in the data of a tpage or VRAM.
 ;; After a tpage has been allocated, the dest will be the VRAM address of the texture.
 (deftype texture (basic)
   ((w            int16     :offset-assert 4)
+   (wu           uint16    :offset 4)  ;; inline asm read this as u16
    (h            int16     :offset-assert 6)
+   (hu           uint16    :offset 6)
    (num-mips     uint8     :offset-assert 8) ;; number of mipmap levels
    (tex1-control uint8     :offset-assert 9) ;; ?
    (psm          gs-psm    :offset-assert 10) ;; texture format
    (mip-shift    uint8     :offset-assert 11)
    (clutpsm      uint16    :offset-assert 12) ;; color look-up table format
-   (dest         uint16 7 :offset-assert 14) ;; per mip
+   (dest         uint16 7  :offset-assert 14) ;; per mip VRAM address
    (clutdest     uint16    :offset-assert 28) ;; color look-up table location.
-   (width        uint8 7 :offset-assert 30)  ;; per mip
+   (width        uint8 7   :offset-assert 30) ;; per mip
    (name         string    :offset-assert 40)
    (size         uint32    :offset-assert 44)
    (uv-dist      float     :offset-assert 48)
-   (masks        uint32 3 :offset-assert 52)
+   (masks        uint32 3  :offset-assert 52)
    )
   :method-count-assert 9
   :size-assert         #x40
@@ -159,7 +164,7 @@
 ;; After the dynamic array of texture is the actual texture data.
 ;; This may be thrown away if the texture is permanently in VRAM.
 (deftype texture-page (basic)
-  ((info      basic            :offset-assert 4)
+  ((info      file-info        :offset-assert 4)
    (name      basic            :offset-assert 8)
    (id        uint32           :offset-assert 12)
    (length    int32            :offset-assert 16) ;; number of textures.
@@ -173,16 +178,28 @@
   :size-assert         #x80
   :flag-assert         #xf00000080
   (:methods
-   (relocate (_type_ kheap (pointer uint8)) none :replace 7)
-   (remove-from-heap (_type_ kheap) _type_ 9)
-   (get-leftover-block-count (_type_ int int) int 10)
-   (dummy-11 () none 11)
-   (relocate-dests! (_type_ int int) none 12)
-   (add-to-dma-buffer (_type_ dma-buffer int) none 13)
-   (upload-now! (_type_ int) none 14)
-   )
+    (relocate (_type_ kheap (pointer uint8)) none :replace 7)
+    (remove-from-heap (_type_ kheap) _type_ 9)
+    (get-leftover-block-count (_type_ int int) int 10)
+    (dummy-11 () none 11)
+    (relocate-dests! (_type_ int int) none 12)
+    (add-to-dma-buffer (_type_ dma-buffer int) int 13)
+    (upload-now! (_type_ int) none 14)
+    )
   )
 
+;;;;;;;;;;;;;;;;;;;;;;;
+;; Texture Shaders
+;;;;;;;;;;;;;;;;;;;;;;;
+
+;; The "adgif-shader" is a block of data that can be included in a GS packet
+;; to set up GS registers for texturing.
+;; There is a linked-list of these per texture that uses the shader-ptr type below
+
+;; A shader-ptr is a reference to an adgif shader.
+;; The trick here is that it can fit into unused space in the GS packet.
+;; the A+D format only uses bits 0-72, this fits in 72-96. The use of 96-128 is unknown
+;; the shader value must be multiplied by 16 first.
 (deftype shader-ptr (uint32)
   ((shader uint32 :offset 8 :size 24))
   :method-count-assert 9
@@ -190,6 +207,9 @@
   :flag-assert         #x900000004
   )
 
+;; This is a dynamic array of shader-ptrs
+;; There will be one array per texture-page, and this array will have one entry per texture.
+;; These arrays will be allocated by the texture system and stored in level heaps.
 (deftype texture-link (structure)
   ((next shader-ptr 1 :offset-assert 0)
    )
@@ -198,11 +218,12 @@
   :flag-assert         #x900000004
   )
 
+;; Each texture-page will have a texture-page-dir-entry for it
 (deftype texture-page-dir-entry (structure)
-  ((length int16   :offset-assert 0)
-   (status uint16  :offset-assert 2)
-   (page   texture-page   :offset-assert 4)
-   (link   texture-link  :offset-assert 8)
+  ((length int16   :offset-assert 0)        ;; number of textures
+   (status uint16  :offset-assert 2)        ;; ??
+   (page   texture-page   :offset-assert 4) ;; the actual texture page
+   (link   texture-link  :offset-assert 8) ;; the array of texture-links, per texture. #f if unallocated
    )
   :pack-me
   :method-count-assert 9
@@ -210,46 +231,96 @@
   :flag-assert         #x90000000c
   )
 
+;; There is a single texture-page-dir with a slot for each texture-page.
+;; It's stored on the DVD and loaded with the engine.
 (deftype texture-page-dir (basic)
   ((length int32)
    (entries texture-page-dir-entry 1 :inline)
    )
   (:methods
    (relocate (_type_ kheap (pointer uint8)) none :replace 7)
-   (dummy-9 (_type_ kheap) int 9)
+   (unlink-textures-in-heap! (_type_ kheap) int 9)
    )
   :flag-assert #xa00000014
   )
 
+
+;;;;;;;;;;;;;;;;;;;;;;
+;; Relocate Later
+;;;;;;;;;;;;;;;;;;;;;;
+
+;; Part of loading textures involves copying some data in EE RAM.
+;; It seems to be too slow to as part of tpage login, so its deferred to a second frame.
+;; The texture system will set this up, then the level system will do this when there's time.
+
 (deftype texture-relocate-later (basic)
-  ((memcpy symbol                  :offset-assert 4)
-   (dest   uint32                  :offset-assert 8)
-   (source uint32                  :offset-assert 12)
-   (move   uint32                  :offset-assert 16)
-   (entry  texture-page-dir-entry  :offset-assert 20)
-   (page   texture-page            :offset-assert 24)
+  ((memcpy symbol                  :offset-assert 4)  ;; set to #t when there's a pending copy
+   (dest   uint32                  :offset-assert 8)  ;; destination address
+   (source uint32                  :offset-assert 12) ;; source address
+   (move   uint32                  :offset-assert 16) ;; size to move
+   (entry  texture-page-dir-entry  :offset-assert 20) ;; the entry for the page we're moving
+   (page   texture-page            :offset-assert 24) ;; the page header.
    )
   :method-count-assert 9
   :size-assert         #x1c
   :flag-assert         #x90000001c
   )
 
+
+;; global relocate info
 (define *texture-relocate-later* (new 'global 'texture-relocate-later))
 (set! (-> *texture-relocate-later* memcpy) #f)
+
+;; set to #f, will be set by texture-page-dir's relocate method on engine load.
 (define *texture-page-dir* (the texture-page-dir #f))
 
+;;;;;;;;;;;;;;;;;;;;
+;; ADGIF Shader
+;;;;;;;;;;;;;;;;;;;;
+
+(defenum link-test-flags
+  :type uint32
+  :bitfield #t
+  ;; note that we start at bit 8 because [0-7] are in use.
+  
+  (needs-log-in 8)  ;; set if we should attempt to log in, cleared on log-in
+  (bit-9 9)         ;; cleared on log-in
+  )
+
+;; The actual adgif-shader is a 5 quadwords of A+D for GIF PACKED mode.
+;; there is some extra data snuck in.
 (deftype adgif-shader (structure)
-  ((quad       qword 5 :inline  :offset 0)
-   (prims      uint64 10  :offset 0)
-   (tex0       uint64     :offset 0)
-   (tex1       uint64     :offset 16)
-   (miptbp1    uint64     :offset 32)
-   (clamp      uint64     :offset 48)
-   (clamp-reg  uint64     :offset 56)
-   (alpha      uint64     :offset 64)
-   (link-test  uint32     :offset 8)
-   (texture-id uint32     :offset 24)
-   (next       shader-ptr :offset 40)
+  ((quad       qword  5 :score -100 :inline  :offset 0)
+   (prims      gs-reg64 10 :score -100 :offset 0)
+
+   ;; tex0, contains texture location, size, format, clut settings
+   (tex0       gs-tex0     :offset 0)
+   ;; prims 1 is the register id
+   ;; prims 1 is shared with the link-test bitfield.
+
+   ;; tex1, more texture information (LOD/MIP setup)
+   (tex1       gs-tex1     :offset 16)
+   ;; prims 3
+   ;; prims 3 is shared with texture-id
+
+   ;; miptb1, mip addresses/widths (levels 1 - 3)
+   (miptbp1    gs-miptbp     :offset 32)
+   ;; prims 5
+   ;; prims 5 is shared with the next shader-ptr
+
+   ;; clamp, used for texture wrapping
+   (clamp      gs-clamp     :offset 48)
+   (clamp-reg  gs-reg64     :offset 56) ;; or prims 7
+
+   ;; alpha blending. NOTE: this can also be miptbp2 (mip 4+ settings)
+   (alpha      gs-miptbp     :offset 64)
+   ;; prims 9
+
+
+   ;; sneaky overlays
+   (link-test  link-test-flags     :offset 8) ;; don't touch lower 8 bits of this
+   (texture-id texture-id     :offset 24)     ;; ok to touch all bits
+   (next       shader-ptr :offset 40)         ;; don't touch lower 8 bits of this
    )
   :method-count-assert 9
   :size-assert         #x50
@@ -264,6 +335,13 @@
   :flag-assert         #x900000010
   )
 (set! (-> adgif-shader-array heap-base) 80)
+
+
+;;;;;;;;;;;;;;;;;;;;;;;;
+;; Fixed VRAM
+;;;;;;;;;;;;;;;;;;;;;;;;
+
+;; These are pre-allocated and always in VRAM. 
 
 (define *sky-base-vram-word* 0)
 (define *sky-base-block* 0)
@@ -280,5 +358,9 @@
 
 
 (defun-extern texture-page-default-allocate texture-pool texture-page kheap int texture-page)
-(define-extern texture-page-login (function texture-id function kheap texture-page-dir-entry))
+(define-extern texture-page-login (function texture-id (function texture-pool texture-page kheap int texture-page) kheap texture-page-dir-entry))
 (define-extern *texture-pool* texture-pool)
+(define-extern lookup-texture-by-id (function texture-id texture))
+(define-extern adgif-shader<-texture-with-update! (function adgif-shader texture adgif-shader))
+
+(define-extern level-remap-texture (function texture-id texture-id))
