@@ -386,12 +386,16 @@ FormElement* rewrite_as_case_no_else(LetElement* in, const Env& env, FormPool& p
   }
 
   auto case_var = in->entries().at(0).dest;
+  auto& case_var_uses = env.get_use_def_info(case_var);
+  int found_uses = 0;
+  if (case_var_uses.def_count() != 1) {
+    return nullptr;
+  }
   auto case_var_name = env.get_variable_name(case_var);
 
   std::vector<CaseElement::Entry> entries;
 
   for (auto& e : cond->entries) {
-    fmt::print("entry: {}\n", e.condition->to_string(env));
     // first, lets see if its just (= case_var <expr>)
     auto single_matcher = Matcher::op(GenericOpMatcher::fixed(FixedOperatorKind::EQ),
                                       {Matcher::any_reg(0), Matcher::any(1)});
@@ -407,8 +411,8 @@ FormElement* rewrite_as_case_no_else(LetElement* in, const Env& env, FormPool& p
     }
 
     if (single_value) {
-      fmt::print("Matched (single): {}\n", single_value->to_string(env));
       entries.push_back({{single_value}, e.body});
+      found_uses++;
       continue;
     }
 
@@ -428,6 +432,7 @@ FormElement* rewrite_as_case_no_else(LetElement* in, const Env& env, FormPool& p
       if (var_name != case_var_name) {
         return nullptr;
       }
+      found_uses++;
       current_entry.vals.push_back(or_single_matcher_result.maps.forms.at(1));
     }
     current_entry.body = e.body;
@@ -437,7 +442,86 @@ FormElement* rewrite_as_case_no_else(LetElement* in, const Env& env, FormPool& p
     // return nullptr;
   }
 
+  if (found_uses != case_var_uses.use_count()) {
+    return nullptr;
+  }
+
   return pool.alloc_element<CaseElement>(in->entries().at(0).src, entries, nullptr);
+  return nullptr;
+}
+
+FormElement* rewrite_as_case_with_else(LetElement* in, const Env& env, FormPool& pool) {
+  if (in->entries().size() != 1) {
+    return nullptr;
+  }
+
+  auto* cond = in->body()->try_as_element<CondWithElseElement>();
+  if (!cond) {
+    return nullptr;
+  }
+
+  auto case_var = in->entries().at(0).dest;
+  auto& case_var_uses = env.get_use_def_info(case_var);
+  int found_uses = 0;
+  if (case_var_uses.def_count() != 1) {
+    return nullptr;
+  }
+  auto case_var_name = env.get_variable_name(case_var);
+
+  std::vector<CaseElement::Entry> entries;
+
+  for (auto& e : cond->entries) {
+    // first, lets see if its just (= case_var <expr>)
+    auto single_matcher = Matcher::op(GenericOpMatcher::fixed(FixedOperatorKind::EQ),
+                                      {Matcher::any_reg(0), Matcher::any(1)});
+
+    auto single_matcher_result = match(single_matcher, e.condition);
+
+    Form* single_value = nullptr;
+    if (single_matcher_result.matched) {
+      auto var_name = env.get_variable_name(*single_matcher_result.maps.regs.at(0));
+      if (var_name == case_var_name) {
+        single_value = single_matcher_result.maps.forms.at(1);
+      }
+    }
+
+    if (single_value) {
+      entries.push_back({{single_value}, e.body});
+      found_uses++;
+      continue;
+    }
+
+    // try as an or (or (= case_var <expr>) ...)
+    auto* as_or = get_or(e.condition);
+    if (!as_or) {
+      return nullptr;
+    }
+
+    CaseElement::Entry current_entry;
+    for (auto& or_case : as_or->entries) {
+      auto or_single_matcher_result = match(single_matcher, strip_truthy(or_case.condition));
+      if (!or_single_matcher_result.matched) {
+        return nullptr;
+      }
+      auto var_name = env.get_variable_name(*or_single_matcher_result.maps.regs.at(0));
+      if (var_name != case_var_name) {
+        return nullptr;
+      }
+      found_uses++;
+      current_entry.vals.push_back(or_single_matcher_result.maps.forms.at(1));
+    }
+    current_entry.body = e.body;
+    entries.push_back(current_entry);
+
+    // no match
+    // return nullptr;
+  }
+
+  if (found_uses != case_var_uses.use_count()) {
+    return nullptr;
+  }
+
+  return pool.alloc_element<CaseElement>(in->entries().at(0).src, entries, cond->else_ir);
   return nullptr;
 }
 
@@ -473,6 +557,11 @@ FormElement* rewrite_let(LetElement* in, const Env& env, FormPool& pool) {
   auto as_case_no_else = rewrite_as_case_no_else(in, env, pool);
   if (as_case_no_else) {
     return as_case_no_else;
+  }
+
+  auto as_case_with_else = rewrite_as_case_with_else(in, env, pool);
+  if (as_case_with_else) {
+    return as_case_with_else;
   }
 
   // nothing matched.

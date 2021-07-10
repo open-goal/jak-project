@@ -860,7 +860,7 @@ class CaseElement : public FormElement {
  private:
   Form* m_value = nullptr;
   std::vector<Entry> m_entries;
-  Form* m_else_body = nullptr; // may be nullptr, if no else.
+  Form* m_else_body = nullptr;  // may be nullptr, if no else.
 };
 
 /*!

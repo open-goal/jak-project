@@ -1395,6 +1395,13 @@ goos::Object CaseElement::to_form_internal(const Env& env) const {
     e.body->inline_forms(entry, env);
     list.push_back(pretty_print::build_list(entry));
   }
+
+  if (m_else_body) {
+    std::vector<goos::Object> entry;
+    entry.push_back(pretty_print::to_symbol("else"));
+    m_else_body->inline_forms(entry, env);
+    list.push_back(pretty_print::build_list(entry));
+  }
   return pretty_print::build_list(list);
 }
 

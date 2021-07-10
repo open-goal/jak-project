@@ -882,8 +882,6 @@ void SimpleExpressionElement::update_from_stack_add_i(const Env& env,
     }
   }
 
-
-
   auto arg0_type = env.get_types_before_op(m_my_idx).get(m_expr.get_arg(0).var().reg());
 
   if (env.dts->ts.tc(TypeSpec("structure"), arg0_type.typespec()) && m_expr.get_arg(1).is_int()) {
