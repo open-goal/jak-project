@@ -625,8 +625,8 @@ Form* cast_sound_name(FormPool& pool, const Env& env, Form* in) {
   auto hi = mr.maps.forms.at(1);
   auto lo = mr.maps.forms.at(0);
 
-  auto hi_int = get_goal_integer_constant(hi, env);
-  auto lo_int = get_goal_integer_constant(lo, env);
+  auto hi_int = get_goal_integer_constant(strip_int_or_uint_cast(hi), env);
+  auto lo_int = get_goal_integer_constant(strip_int_or_uint_cast(lo), env);
   if (!hi_int || !lo_int) {
     return nullptr;
   }

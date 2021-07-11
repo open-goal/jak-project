@@ -10,12 +10,13 @@
 #include "kmemcard.h"
 
 // static s32 next;
-// static s32 language;
+static s32 language;
 // static MemoryCardOperation op;
 // static mc_info mc[2];
 
 void kmemcard_init_globals() {
   //  next = 0;
+  language = 0;
 }
 
 ///*!
@@ -65,14 +66,14 @@ void kmemcard_init_globals() {
 //
 //}
 //
-///*!
-// * Set the language or something.
-// */
-// void MC_set_language(s32 l) {
-//  printf("Language set to %d\n", l);
-//  language = l;
-//}
-//
+/*!
+ * Set the language or something.
+ */
+void MC_set_language(s32 l) {
+  printf("Language set to %d\n", l);
+  language = l;
+}
+
 // u64 MC_format(s32 param) {
 //  u64 can_add = op.operation == NO_OP;
 //  if(can_add) {

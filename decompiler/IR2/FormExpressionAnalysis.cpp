@@ -2401,8 +2401,8 @@ void FunctionCallElement::update_from_stack(const Env& env,
         if (tp_type.kind != TP_Type::Kind::NON_VIRTUAL_METHOD) {
           throw std::runtime_error(fmt::format(
               "Method internal mismatch. METHOD_OF_TYPE operator didn't get a NON_VIRTUAL_METHOD "
-              "type. Got {} instead.",
-              tp_type.print()));
+              "type. Got {} instead. {} {}",
+              tp_type.print(), name, match_result.maps.forms.at(type_source)->to_string(env)));
         }
       }
 
