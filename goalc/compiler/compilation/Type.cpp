@@ -166,6 +166,10 @@ void Compiler::generate_field_description(const goos::Object& form,
     // Structure
     str_template += fmt::format("{}{}: #<{} @ #x~X>~%", tabs, f.name(), f.type().print());
     format_args.push_back(get_field_of_structure(type, reg, f.name(), env)->to_gpr(env));
+  } else if (f.type() == TypeSpec("seconds")) {
+    // seconds
+    str_template += fmt::format("{}{}: (seconds ~e)~%", tabs, f.name());
+    format_args.push_back(get_field_of_structure(type, reg, f.name(), env)->to_gpr(env));
   } else if (m_ts.tc(m_ts.make_typespec("integer"), f.type())) {
     // Integer
     if (m_ts.lookup_type(f.type())->get_load_size() > 8) {
@@ -175,6 +179,14 @@ void Compiler::generate_field_description(const goos::Object& form,
       format_args.push_back(get_field_of_structure(type, reg, f.name(), env)->to_gpr(env));
     }
 
+  } else if (f.type() == TypeSpec("meters")) {
+    // meters
+    str_template += fmt::format("{}{}: (meters ~m)~%", tabs, f.name());
+    format_args.push_back(get_field_of_structure(type, reg, f.name(), env)->to_gpr(env));
+  } else if (f.type() == TypeSpec("degrees")) {
+    // degrees
+    str_template += fmt::format("{}{}: (degrees ~r)~%", tabs, f.name());
+    format_args.push_back(get_field_of_structure(type, reg, f.name(), env)->to_gpr(env));
   } else if (m_ts.tc(m_ts.make_typespec("float"), f.type())) {
     // Float
     str_template += fmt::format("{}{}: ~f~%", tabs, f.name());

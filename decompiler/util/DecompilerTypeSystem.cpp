@@ -434,4 +434,21 @@ TypeSpec DecompilerTypeSystem::lookup_symbol_type(const std::string& name) const
     return kv->second;
   }
 }
+
+bool DecompilerTypeSystem::should_attempt_cast_simplify(const TypeSpec& expected,
+                                                        const TypeSpec& actual) const {
+  if (expected == TypeSpec("meters") && actual == TypeSpec("float")) {
+    return true;
+  }
+
+  if (expected == TypeSpec("seconds") && actual == TypeSpec("uint64")) {
+    return true;
+  }
+
+  if (expected == TypeSpec("degrees") && actual == TypeSpec("float")) {
+    return true;
+  }
+
+  return !ts.tc(expected, actual);
+}
 }  // namespace decompiler

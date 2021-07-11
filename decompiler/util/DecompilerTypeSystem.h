@@ -43,6 +43,7 @@ class DecompilerTypeSystem {
   int get_format_arg_count(const std::string& str) const;
   int get_format_arg_count(const TP_Type& type) const;
   TypeSpec lookup_symbol_type(const std::string& name) const;
+  bool should_attempt_cast_simplify(const TypeSpec& expected, const TypeSpec& actual) const;
 
   // todo - totally eliminate this.
   struct {
