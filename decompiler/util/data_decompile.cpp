@@ -857,11 +857,35 @@ goos::Object decompile_value(const TypeSpec& type,
     } else {
       return pretty_print::to_symbol(fmt::format("{}", value));
     }
+  } else if (type == TypeSpec("seconds")) {
+    assert(bytes.size() == 8);
+    u64 value;
+    memcpy(&value, bytes.data(), 8);
+
+    // only rewrite if exact.
+    u64 seconds = value / TICKS_PER_SECOND;
+    if (seconds * TICKS_PER_SECOND == value) {
+      return pretty_print::to_symbol(fmt::format("(seconds {})", seconds));
+    }
+
+    return pretty_print::to_symbol(fmt::format("#x{:x}", value));
   } else if (ts.tc(TypeSpec("uint64"), type)) {
     assert(bytes.size() == 8);
     u64 value;
     memcpy(&value, bytes.data(), 8);
     return pretty_print::to_symbol(fmt::format("#x{:x}", value));
+  } else if (type == TypeSpec("meters")) {
+    assert(bytes.size() == 4);
+    float value;
+    memcpy(&value, bytes.data(), 4);
+    double meters = (double)value / METER_LENGTH;
+    return pretty_print::build_list("meters", pretty_print::float_representation(meters));
+  } else if (type == TypeSpec("degrees")) {
+    assert(bytes.size() == 4);
+    float value;
+    memcpy(&value, bytes.data(), 4);
+    double degrees = (double)value / DEGREES_LENGTH;
+    return pretty_print::build_list("degrees", pretty_print::float_representation(degrees));
   } else if (ts.tc(TypeSpec("float"), type)) {
     assert(bytes.size() == 4);
     float value;

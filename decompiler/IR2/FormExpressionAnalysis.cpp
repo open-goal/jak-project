@@ -64,12 +64,57 @@ Form* strip_pcypld_64(Form* in) {
     return in;
   }
 }
+
+std::optional<float> get_goal_float_constant(Form* in) {
+  auto as_fc = in->try_as_element<ConstantFloatElement>();
+  if (as_fc) {
+    return as_fc->value();
+  }
+  return {};
+}
 }  // namespace
 
-Form* try_cast_simplify(Form* in, const TypeSpec& new_type, FormPool& pool, const Env& env) {
+Form* try_cast_simplify(Form* in,
+                        const TypeSpec& new_type,
+                        FormPool& pool,
+                        const Env& env,
+                        bool tc_pass) {
   auto in_as_cast = dynamic_cast<CastElement*>(in->try_as_single_element());
   if (in_as_cast && in_as_cast->type() == new_type) {
     return in;  // no need to cast again, it already has it!
+  }
+
+  if (new_type == TypeSpec("meters")) {
+    auto fc = get_goal_float_constant(in);
+
+    if (fc) {
+      double div = (double)*fc / METER_LENGTH;  // GOOS will use doubles here
+      if (div * METER_LENGTH == *fc) {
+        return pool.alloc_single_element_form<GenericElement>(
+            nullptr,
+            GenericOperator::make_function(
+                pool.alloc_single_element_form<ConstantTokenElement>(nullptr, "meters")),
+            pool.alloc_single_element_form<ConstantFloatElement>(nullptr, div));
+      } else {
+        lg::error("Floating point value {} could not be converted to meters.", *fc);
+      }
+    }
+  }
+
+  if (new_type == TypeSpec("degrees")) {
+    auto fc = get_goal_float_constant(in);
+    if (fc) {
+      double div = (double)*fc / DEGREES_LENGTH;  // GOOS will use doubles here
+      if (div * DEGREES_LENGTH == *fc) {
+        return pool.alloc_single_element_form<GenericElement>(
+            nullptr,
+            GenericOperator::make_function(
+                pool.alloc_single_element_form<ConstantTokenElement>(nullptr, "degrees")),
+            pool.alloc_single_element_form<ConstantFloatElement>(nullptr, div));
+      } else {
+        lg::error("Floating point value {} could not be converted to degrees.", *fc);
+      }
+    }
   }
 
   auto type_info = env.dts->ts.lookup_type(new_type);
@@ -91,7 +136,11 @@ Form* try_cast_simplify(Form* in, const TypeSpec& new_type, FormPool& pool, cons
     }
   }
 
-  return nullptr;
+  if (tc_pass) {
+    return in;
+  } else {
+    return nullptr;
+  }
 }
 
 bool Form::has_side_effects() {
@@ -285,8 +334,12 @@ void pop_helper(const std::vector<RegisterAccess>& vars,
 /*!
  * This should be used to generate all casts.
  */
-Form* cast_form(Form* in, const TypeSpec& new_type, FormPool& pool, const Env& env) {
-  auto result = try_cast_simplify(in, new_type, pool, env);
+Form* cast_form(Form* in,
+                const TypeSpec& new_type,
+                FormPool& pool,
+                const Env& env,
+                bool tc_pass = false) {
+  auto result = try_cast_simplify(in, new_type, pool, env, tc_pass);
   if (result) {
     return result;
   }
@@ -340,15 +393,12 @@ std::vector<Form*> pop_to_forms(const std::vector<RegisterAccess>& vars,
   return forms;
 }
 
-// TODO - if we start using child classes of float/int/uint for things like degrees/meters
-// we may need to adjust these.
-
 /*!
  * type == float (exactly)?
  */
 bool is_float_type(const Env& env, int my_idx, RegisterAccess var) {
   auto type = env.get_types_before_op(my_idx).get(var.reg()).typespec();
-  return type == TypeSpec("float");
+  return env.dts->ts.tc(TypeSpec("float"), type);
 }
 
 /*!
@@ -434,6 +484,10 @@ Form* make_cast_if_needed(Form* in,
                           FormPool& pool,
                           const Env& env) {
   if (in_type == out_type) {
+    return in;
+  }
+
+  if (out_type == TypeSpec("float") && env.dts->ts.tc(TypeSpec("float"), in_type)) {
     return in;
   }
   return cast_form(in, out_type, pool, env);
@@ -548,7 +602,8 @@ void SimpleExpressionElement::update_from_stack_fpr_to_gpr(const Env& env,
                                                            bool allow_side_effects) {
   auto src = m_expr.get_arg(0);
   auto src_type = env.get_types_before_op(m_my_idx).get(src.var().reg());
-  if (src_type.typespec() == TypeSpec("float") || src_type.typespec() == TypeSpec("int")) {
+  if (env.dts->ts.tc(TypeSpec("float"), src_type.typespec()) ||
+      src_type.typespec() == TypeSpec("int")) {
     // set ourself to identity.
     m_expr = src.as_expr();
     // then go again.
@@ -2229,8 +2284,9 @@ void FunctionCallElement::update_from_stack(const Env& env,
       }
 
       auto desired_arg_type = function_type.get_arg(arg_id);
-      if (!env.dts->ts.tc(desired_arg_type, actual_arg_type)) {
-        arg_forms.push_back(cast_form(val, desired_arg_type, pool, env));
+      if (env.dts->should_attempt_cast_simplify(desired_arg_type, actual_arg_type)) {
+        arg_forms.push_back(cast_form(val, desired_arg_type, pool, env,
+                                      env.dts->ts.tc(desired_arg_type, actual_arg_type)));
       } else {
         arg_forms.push_back(val);
       }

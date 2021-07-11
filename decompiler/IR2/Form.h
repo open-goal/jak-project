@@ -1274,6 +1274,7 @@ class ConstantFloatElement : public FormElement {
                          FormStack& stack,
                          std::vector<FormElement*>* result,
                          bool allow_side_effects) override;
+  float value() const { return m_value; }
 
  private:
   float m_value;
@@ -1770,5 +1771,9 @@ GenericElement* alloc_generic_token_op(const std::string& name,
                                        const std::vector<Form*>& args,
                                        FormPool& pool);
 Form* alloc_var_form(const RegisterAccess& var, FormPool& pool);
-Form* try_cast_simplify(Form* in, const TypeSpec& new_type, FormPool& pool, const Env& env);
+Form* try_cast_simplify(Form* in,
+                        const TypeSpec& new_type,
+                        FormPool& pool,
+                        const Env& env,
+                        bool tc_pass = false);
 }  // namespace decompiler

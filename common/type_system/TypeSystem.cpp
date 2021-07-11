@@ -965,6 +965,13 @@ void TypeSystem::add_builtin_types() {
   add_builtin_value_type("uinteger", "uint64", 8);
   add_builtin_value_type("uinteger", "uint128", 16, false, false, RegClass::INT_128);
 
+  // add special units types.
+  add_builtin_value_type("float", "meters", 4, false, false, RegClass::FLOAT)
+      ->set_runtime_type("float");
+  add_builtin_value_type("float", "degrees", 4, false, false, RegClass::FLOAT)
+      ->set_runtime_type("float");
+  add_builtin_value_type("uint64", "seconds", 8, false, false)->set_runtime_type("uint64");
+
   auto int_type = add_builtin_value_type("integer", "int", 8, false, true);
   int_type->disallow_in_runtime();
   auto uint_type = add_builtin_value_type("uinteger", "uint", 8, false, false);
@@ -1352,8 +1359,23 @@ bool TypeSystem::typecheck_and_throw(const TypeSpec& expected,
 /*!
  * Is actual of type expected? For base types.
  */
-bool TypeSystem::typecheck_base_types(const std::string& expected,
+bool TypeSystem::typecheck_base_types(const std::string& input_expected,
                                       const std::string& actual) const {
+  std::string expected = input_expected;
+
+  // the unit types aren't picky.
+  if (expected == "meters") {
+    expected = "float";
+  }
+
+  if (expected == "seconds") {
+    expected = "uint";
+  }
+
+  if (expected == "degrees") {
+    expected = "float";
+  }
+
   // just to make sure it exists.
   lookup_type_allow_partial_def(expected);
 
