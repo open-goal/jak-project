@@ -137,58 +137,63 @@ void Compiler::generate_field_description(const goos::Object& form,
                                           StructureType* type,
                                           Env* env,
                                           RegVal* reg,
-                                          const Field& f) {
+                                          const Field& f,
+                                          int tab_count) {
   std::string str_template;
+  std::string tabs;
+  for (int i = 0; i < tab_count; i++) {
+    tabs += "~T";
+  }
   std::vector<RegVal*> format_args = {};
   if (f.name() == "type" && f.offset() == 0) {
     // type
     return;
   } else if (f.is_array() && !f.is_dynamic()) {
     // Arrays
-    str_template += fmt::format("~T{}[{}] @ #x~X~%", f.name(), f.array_size());
+    str_template += fmt::format("{}{}[{}] @ #x~X~%", tabs, f.name(), f.array_size());
     format_args.push_back(get_field_of_structure(type, reg, f.name(), env)->to_gpr(env));
   } else if (f.is_dynamic()) {
     // Dynamic Field
-    str_template += fmt::format("~T{}[0] @ #x~X~%", f.name());
+    str_template += fmt::format("{}{}[0] @ #x~X~%", tabs, f.name());
     format_args.push_back(get_field_of_structure(type, reg, f.name(), env)->to_gpr(env));
   } else if (m_ts.tc(m_ts.make_typespec("basic"), f.type()) ||
              m_ts.tc(m_ts.make_typespec("binteger"), f.type()) ||
              m_ts.tc(m_ts.make_typespec("pair"), f.type())) {
     // basic, binteger, pair
-    str_template += fmt::format("~T{}: ~A~%", f.name());
+    str_template += fmt::format("{}{}: ~A~%", tabs, f.name());
     format_args.push_back(get_field_of_structure(type, reg, f.name(), env)->to_gpr(env));
   } else if (m_ts.tc(m_ts.make_typespec("structure"), f.type())) {
     // Structure
-    str_template += fmt::format("~T{}: #<{} @ #x~X>~%", f.name(), f.type().print());
+    str_template += fmt::format("{}{}: #<{} @ #x~X>~%", tabs, f.name(), f.type().print());
     format_args.push_back(get_field_of_structure(type, reg, f.name(), env)->to_gpr(env));
   } else if (m_ts.tc(m_ts.make_typespec("integer"), f.type())) {
     // Integer
     if (m_ts.lookup_type(f.type())->get_load_size() > 8) {
-      str_template += fmt::format("~T{}: <cannot-print>~%", f.name());
+      str_template += fmt::format("{}: <cannot-print>~%", tabs, f.name());
     } else {
-      str_template += fmt::format("~T{}: ~D~%", f.name());
+      str_template += fmt::format("{}{}: ~D~%", tabs, f.name());
       format_args.push_back(get_field_of_structure(type, reg, f.name(), env)->to_gpr(env));
     }
 
   } else if (m_ts.tc(m_ts.make_typespec("float"), f.type())) {
     // Float
-    str_template += fmt::format("~T{}: ~f~%", f.name());
+    str_template += fmt::format("{}{}: ~f~%", tabs, f.name());
     format_args.push_back(get_field_of_structure(type, reg, f.name(), env)->to_gpr(env));
   } else if (m_ts.tc(m_ts.make_typespec("pointer"), f.type())) {
     // Pointers
-    str_template += fmt::format("~T{}: #x~X~%", f.name());
+    str_template += fmt::format("{}{}: #x~X~%", tabs, f.name());
     format_args.push_back(get_field_of_structure(type, reg, f.name(), env)->to_gpr(env));
   } else {
     // Otherwise, we havn't implemented it!
-    str_template += fmt::format("~T{}: Undefined!~%", f.name());
+    str_template += fmt::format("{}{}: Undefined!~%", tabs, f.name());
   }
 
   compile_format_string(form, env, str_template, format_args);
 }
 
-Val* Compiler::generate_inspector_for_structured_type(const goos::Object& form,
-                                                      Env* env,
-                                                      StructureType* structure_type) {
+Val* Compiler::generate_inspector_for_structure_type(const goos::Object& form,
+                                                     Env* env,
+                                                     StructureType* structure_type) {
   // Create a function environment to hold the code for the inspect method. The name is just for
   // debugging.
   auto method_env = std::make_unique<FunctionEnv>(
@@ -207,18 +212,39 @@ Val* Compiler::generate_inspector_for_structured_type(const goos::Object& form,
   // Inform the compiler that `input`'s value will be written to `rdi` (first arg register)
   method_env->emit(std::make_unique<IR_ValueReset>(std::vector<RegVal*>{input}));
 
-  RegVal* type_name = nullptr;
-  if (dynamic_cast<BasicType*>(structure_type)) {
-    type_name = get_field_of_structure(structure_type, input, "type", method_env.get())
-                    ->to_gpr(method_env.get());
-  } else {
-    type_name =
-        compile_get_sym_obj(structure_type->get_name(), method_env.get())->to_gpr(method_env.get());
-  }
-  compile_format_string(form, method_env.get(), "[~8x] ~A~%", {input, type_name});
+  // there's a special case for children of process.
+  if (m_ts.fully_defined_type_exists("process") &&
+      m_ts.tc(TypeSpec("process"), TypeSpec(structure_type->get_name()))) {
+    // first, call the inspect method of our parent type.
+    auto parent_type_name = structure_type->get_parent();
+    auto parent_inspect =
+        compile_get_method_of_type(form, TypeSpec(parent_type_name), "inspect", method_env.get());
+    std::vector<RegVal*> args = {input};
+    compile_real_function_call(form, parent_inspect, args, method_env.get(), parent_type_name);
+    auto parent_type_info = dynamic_cast<StructureType*>(m_ts.lookup_type(parent_type_name));
+    if (!parent_type_info) {
+      throw_compiler_error(form, "Got an invalid parent type in process inspect method");
+    }
 
-  for (const Field& f : structure_type->fields()) {
-    generate_field_description(form, structure_type, method_env.get(), input, f);
+    for (size_t i = parent_type_info->fields().size(); i < structure_type->fields().size(); i++) {
+      generate_field_description(form, structure_type, method_env.get(), input,
+                                 structure_type->fields().at(i), 2);
+    }
+
+  } else {
+    RegVal* type_name = nullptr;
+    if (dynamic_cast<BasicType*>(structure_type)) {
+      type_name = get_field_of_structure(structure_type, input, "type", method_env.get())
+                      ->to_gpr(method_env.get());
+    } else {
+      type_name = compile_get_sym_obj(structure_type->get_name(), method_env.get())
+                      ->to_gpr(method_env.get());
+    }
+    compile_format_string(form, method_env.get(), "[~8x] ~A~%", {input, type_name});
+
+    for (const Field& f : structure_type->fields()) {
+      generate_field_description(form, structure_type, method_env.get(), input, f, 1);
+    }
   }
 
   method_env->emit_ir<IR_Return>(method_env->make_gpr(input->type()), input,
@@ -343,7 +369,7 @@ Val* Compiler::compile_deftype(const goos::Object& form, const goos::Object& res
   // Auto-generate (inspect) method
   auto as_structure_type = dynamic_cast<StructureType*>(result.type_info);
   if (as_structure_type) {  // generate the inspect method
-    generate_inspector_for_structured_type(form, env, as_structure_type);
+    generate_inspector_for_structure_type(form, env, as_structure_type);
   } else {
     auto as_bitfield_type = dynamic_cast<BitFieldType*>(result.type_info);
     if (as_bitfield_type && as_bitfield_type->get_load_size() <= 8) {  // Avoid 128-bit bitfields

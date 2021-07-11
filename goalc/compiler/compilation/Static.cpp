@@ -230,6 +230,15 @@ void Compiler::compile_static_structure_inline(const goos::Object& form,
       typecheck(form, TypeSpec("float"), sr.typespec());
       u64 value = sr.constant_u64();
       memcpy(structure->data.data() + field_offset, &value, sizeof(float));
+    } else if (field_info.type.base_type() == "inline-array") {
+      auto sr = compile_static(field_value, env);
+      if (!sr.is_reference()) {
+        throw_compiler_error(form, "Invalid definition of field {}", field_info.field.name());
+      }
+      typecheck(form, field_info.type, sr.typespec());
+      assert(sr.reference()->get_addr_offset() == 0);
+      structure->add_pointer_record(field_offset, sr.reference(),
+                                    sr.reference()->get_addr_offset());
     }
 
     else {

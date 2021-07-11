@@ -8,6 +8,7 @@
 //#include "ps2/common_types.h"
 //#include "kernel/kmachine.h"
 #include "kmemcard.h"
+#include <cstdio>
 
 // static s32 next;
 static s32 language;
