@@ -996,96 +996,46 @@
     ((and allow-false (not obj))
      #t
      )
-    (else
+    ((= expected-type structure)
      (cond
-      ((= expected-type structure)
-       (cond
-        ((nonzero? (logand (the-as int obj) 15))
-         (if name
-          (format
-           print-dest
-           "ERROR: object #x~X ~S is not a valid object of type '~A' (misaligned)~%"
-           obj
-           name
-           expected-type
-           )
-          )
-         #f
-         )
-        ((or (not in-goal-mem) (begin
-                                (let ((v1-10 #x8000))
-                                 (.daddu v1-11 v1-10 s7-0)
-                                 )
-                                (< (the-as uint obj) (the-as uint v1-11))
-                                )
-          )
-         (if name
-          (format
-           print-dest
-           "ERROR: object #x~X ~S is not a valid object of type '~A' (bad address)~%"
-           obj
-           name
-           expected-type
-           )
-          )
-         #f
-         )
-        (else
-         #t
+      ((nonzero? (logand (the-as int obj) 15))
+       (if name
+        (format
+         print-dest
+         "ERROR: object #x~X ~S is not a valid object of type '~A' (misaligned)~%"
+         obj
+         name
+         expected-type
          )
         )
+       #f
        )
-      ((= expected-type pair)
-       (cond
-        ((!= (logand (the-as int obj) 7) 2)
-         (if name
-          (format
-           print-dest
-           "ERROR: object #x~X ~S is not a valid object of type '~A' (misaligned)~%"
-           obj
-           name
-           expected-type
-           )
-          )
-         #f
-         )
-        ((not in-goal-mem)
-         (if name
-          (format
-           print-dest
-           "ERROR: object #x~X ~S is not a valid object of type '~A' (bad address)~%"
-           obj
-           name
-           expected-type
-           )
-          )
-         #f
-         )
-        (else
-         #t
+      ((or (not in-goal-mem) (begin
+                              (let ((v1-10 #x8000))
+                               (.daddu v1-11 v1-10 s7-0)
+                               )
+                              (< (the-as uint obj) (the-as uint v1-11))
+                              )
+        )
+       (if name
+        (format
+         print-dest
+         "ERROR: object #x~X ~S is not a valid object of type '~A' (bad address)~%"
+         obj
+         name
+         expected-type
          )
         )
+       #f
        )
-      ((= expected-type binteger)
-       (cond
-        ((zero? (logand (the-as int obj) 7))
-         #t
-         )
-        (else
-         (if name
-          (format
-           print-dest
-           "ERROR: object #x~X ~S is not a valid object of type '~A' (misaligned)~%"
-           obj
-           name
-           expected-type
-           )
-          )
-         #f
-         )
-        )
+      (else
+       #t
        )
-      ((!= (logand (the-as int obj) 7) 4)
+      )
+     )
+    ((= expected-type pair)
+     (cond
+      ((!= (logand (the-as int obj) 7) 2)
        (if name
         (format
          print-dest
@@ -1109,77 +1059,103 @@
         )
        #f
        )
-      ((and (= expected-type type) (!= (rtype-of obj) type))
+      (else
+       #t
+       )
+      )
+     )
+    ((= expected-type binteger)
+     (cond
+      ((zero? (logand (the-as int obj) 7))
+       #t
+       )
+      (else
        (if name
         (format
          print-dest
-         "ERROR: object #x~X ~S is not a valid object of type '~A' (invalid type #x~X)~%"
+         "ERROR: object #x~X ~S is not a valid object of type '~A' (misaligned)~%"
          obj
          name
          expected-type
-         (rtype-of obj)
          )
         )
        #f
        )
-      ((and (!= expected-type type) (not (valid? (rtype-of obj) type #f #t 0)))
+      )
+     )
+    ((!= (logand (the-as int obj) 7) 4)
+     (if name
+      (format
+       print-dest
+       "ERROR: object #x~X ~S is not a valid object of type '~A' (misaligned)~%"
+       obj
+       name
+       expected-type
+       )
+      )
+     #f
+     )
+    ((not in-goal-mem)
+     (if name
+      (format
+       print-dest
+       "ERROR: object #x~X ~S is not a valid object of type '~A' (bad address)~%"
+       obj
+       name
+       expected-type
+       )
+      )
+     #f
+     )
+    ((and (= expected-type type) (!= (rtype-of obj) type))
+     (if name
+      (format
+       print-dest
+       "ERROR: object #x~X ~S is not a valid object of type '~A' (invalid type #x~X)~%"
+       obj
+       name
+       expected-type
+       (rtype-of obj)
+       )
+      )
+     #f
+     )
+    ((and (!= expected-type type) (not (valid? (rtype-of obj) type #f #t 0)))
+     (if name
+      (format
+       print-dest
+       "ERROR: object #x~X ~S is not a valid object of type '~A' (invalid type #x~X)~%"
+       obj
+       name
+       expected-type
+       (rtype-of obj)
+       )
+      )
+     #f
+     )
+    ((not (type-type? (rtype-of obj) expected-type))
+     (if name
+      (format
+       print-dest
+       "ERROR: object #x~X ~S is not a valid object of type '~A' (is type '~A' instead)~%"
+       obj
+       name
+       expected-type
+       (rtype-of obj)
+       )
+      )
+     #f
+     )
+    ((= expected-type symbol)
+     (let ((v1-43 #x8000))
+      (.daddu v1-44 v1-43 s7-0)
+      )
+     (cond
+      ((>= (the-as uint obj) (the-as uint v1-44))
        (if name
         (format
          print-dest
-         "ERROR: object #x~X ~S is not a valid object of type '~A' (invalid type #x~X)~%"
-         obj
-         name
-         expected-type
-         (rtype-of obj)
-         )
-        )
-       #f
-       )
-      ((not (type-type? (rtype-of obj) expected-type))
-       (if name
-        (format
-         print-dest
-         "ERROR: object #x~X ~S is not a valid object of type '~A' (is type '~A' instead)~%"
-         obj
-         name
-         expected-type
-         (rtype-of obj)
-         )
-        )
-       #f
-       )
-      ((= expected-type symbol)
-       (let ((v1-43 #x8000))
-        (.daddu v1-44 v1-43 s7-0)
-        )
-       (cond
-        ((>= (the-as uint obj) (the-as uint v1-44))
-         (if name
-          (format
-           print-dest
-           "ERROR: object #x~X ~S is not a valid object of type '~A' (not in symbol table)~%"
-           obj
-           name
-           expected-type
-           )
-          )
-         #f
-         )
-        (else
-         #t
-         )
-        )
-       )
-      ((begin
-        (let ((v1-47 #x8000))
-         (.daddu v1-48 v1-47 s7-0)
-         )
-        (< (the-as uint obj) (the-as uint v1-48))
-        )
-       (if name
-        (format
-         print-dest
-         "ERROR: object #x~X ~S is not a valid object of type '~A' (inside symbol table)~%"
+         "ERROR: object #x~X ~S is not a valid object of type '~A' (not in symbol table)~%"
          obj
          name
          expected-type
@@ -1191,6 +1167,26 @@
        #t
        )
       )
+     )
+    ((begin
+      (let ((v1-47 #x8000))
+       (.daddu v1-48 v1-47 s7-0)
+       )
+      (< (the-as uint obj) (the-as uint v1-48))
+      )
+     (if name
+      (format
+       print-dest
+       "ERROR: object #x~X ~S is not a valid object of type '~A' (inside symbol table)~%"
+       obj
+       name
+       expected-type
+       )
+      )
+     #f
+     )
+    (else
+     #t
      )
     )
    )

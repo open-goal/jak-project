@@ -726,15 +726,18 @@
 ;; INFO: Return type mismatch object vs function.
 (defun debug-menu-func-decode ((arg0 object))
   (let ((v1-1 (rtype-of arg0)))
-   (the-as function (the-as symbol (if (or (= v1-1 symbol) (= v1-1 type))
-                                    (the-as
-                                     symbol
-                                     (-> (the-as symbol arg0) value)
+   (the-as function (the-as symbol (cond
+                                    ((or (= v1-1 symbol) (= v1-1 type))
+                                     (the-as
+                                      symbol
+                                      (-> (the-as symbol arg0) value)
+                                      )
                                      )
-                                    (the-as symbol (if (= v1-1 function)
-                                                    (the-as symbol arg0)
-                                                    (the-as symbol nothing)
-                                                    )
+                                    ((= v1-1 function)
+                                     (the-as symbol arg0)
+                                     )
+                                    (else
+                                     (the-as symbol nothing)
                                      )
                                     )
                      )
@@ -821,142 +824,159 @@
       )
      (debug-menu-context-set-root-menu arg0 (the-as debug-menu s5-0))
      )
-    ((= s4-0 'flag)
-     (set!
-      s5-0
-      (new
-       'debug
-       'debug-menu-item-flag
-       (the-as string s5-1)
-       (the-as symbol (car (cdr (cdr arg1))))
-       (debug-menu-func-decode (car (cdr (cdr (cdr arg1)))))
-       )
-      )
-     )
-    ((or (= s4-0 0) (= s4-0 'function))
-     (set!
-      s5-0
-      (new
-       'debug
-       'debug-menu-item-function
-       (the-as string s5-1)
-       (the-as int (car (cdr (cdr arg1))))
-       (debug-menu-func-decode (car (cdr (cdr (cdr arg1)))))
-       )
-      )
-     )
-    ((= s4-0 'var)
-     (set!
-      s5-0
-      (new
-       'debug
-       'debug-menu-item-var
-       (the-as string s5-1)
-       (the-as int (car (cdr (cdr arg1))))
-       (the-as int (car (cdr (cdr (cdr arg1)))))
-       )
-      )
-     )
-    ((or (= s4-0 'int-var) (= s4-0 'int-var-gat1) (= s4-0 'hex-var))
-     (set!
-      s5-0
-      (new
-       'debug
-       'debug-menu-item-var
-       (the-as string s5-1)
-       (the-as int (car (cdr (cdr arg1))))
-       (the-as int (ref arg1 4))
-       )
-      )
-     (let ((s3-4 debug-menu-item-var-make-int)
-           (s2-3 (the-as debug-menu-item-var s5-0))
-           (s1-3 (debug-menu-func-decode (car (cdr (cdr (cdr arg1))))))
-           (s0-1 (/ (the-as int (ref arg1 5)) 8))
-           )
-      (set! sv-16 (ref arg1 6))
-      (set! sv-32 (/ (the-as int (ref arg1 7)) 8))
-      (let ((t1-0 (/ (the-as int (ref arg1 8)) 8))
-            (t2-0 (= s4-0 'hex-var))
-            )
-       (s3-4
-        s2-3
-        (the-as (function int int int int int) s1-3)
-        s0-1
-        (the-as symbol sv-16)
-        sv-32
-        t1-0
-        t2-0
-        )
-       )
-      )
-     (set! (-> (the-as debug-menu-item-var s5-0) ifloat-p) #t)
-     )
-    ((= s4-0 'float-var)
-     (set!
-      s5-0
-      (new
-       'debug
-       'debug-menu-item-var
-       (the-as string s5-1)
-       (the-as int (car (cdr (cdr arg1))))
-       (the-as int (ref arg1 4))
-       )
-      )
-     (let ((s4-5 debug-menu-item-var-make-float)
-           (s3-6 (the-as debug-menu-item-var s5-0))
-           (s2-5 (debug-menu-func-decode (car (cdr (cdr (cdr arg1))))))
-           (s1-5 (the float (/ (the-as int (ref arg1 5)) 8)))
-           (s0-2 (ref arg1 6))
-           )
-      (set! sv-48 (the float (/ (the-as int (ref arg1 7)) 8)))
-      (set! sv-64 (the float (/ (the-as int (ref arg1 8)) 8)))
-      (let ((t2-1 (/ (the-as int (ref arg1 9)) 8)))
-       (s4-5
-        s3-6
-        (the-as (function int int float float int) s2-5)
-        s1-5
-        (the-as symbol s0-2)
-        sv-48
-        sv-64
-        (the-as symbol t2-1)
-        )
-       )
-      )
-     )
-    ((= s4-0 'float-fixed-var)
-     (set!
-      s5-0
-      (new
-       'debug
-       'debug-menu-item-var
-       (the-as string s5-1)
-       (the-as int (car (cdr (cdr arg1))))
-       (the-as int (ref arg1 4))
-       )
-      )
-     (let ((s4-7 debug-menu-item-var-make-float)
-           (s3-8 (the-as debug-menu-item-var s5-0))
-           (s2-7 (debug-menu-func-decode (car (cdr (cdr (cdr arg1))))))
-           (s1-7 (* 0.001 (the float (/ (the-as int (ref arg1 5)) 8))))
-           (s0-3 (ref arg1 6))
-           )
-      (set! sv-80 (* 0.001 (the float (/ (the-as int (ref arg1 7)) 8))))
-      (set! sv-96 (* 0.001 (the float (/ (the-as int (ref arg1 8)) 8))))
-      (let ((t2-2 (/ (the-as int (ref arg1 9)) 8)))
-       (s4-7
-        s3-8
-        (the-as (function int int float float int) s2-7)
-        s1-7
-        (the-as symbol s0-3)
-        sv-80
-        sv-96
-        (the-as symbol t2-2)
-        )
-       )
-      )
-     )
     (else
-     (set! s5-0 (the-as debug-menu-node #f))
+     (set! s5-0 (cond
+                 ((= s4-0 'flag)
+                  (new
+                   'debug
+                   'debug-menu-item-flag
+                   (the-as string s5-1)
+                   (the-as symbol (car (cdr (cdr arg1))))
+                   (debug-menu-func-decode (car (cdr (cdr (cdr arg1)))))
+                   )
+                  )
+                 ((or (= s4-0 0) (= s4-0 'function))
+                  (new
+                   'debug
+                   'debug-menu-item-function
+                   (the-as string s5-1)
+                   (the-as int (car (cdr (cdr arg1))))
+                   (debug-menu-func-decode (car (cdr (cdr (cdr arg1)))))
+                   )
+                  )
+                 ((= s4-0 'var)
+                  (new
+                   'debug
+                   'debug-menu-item-var
+                   (the-as string s5-1)
+                   (the-as int (car (cdr (cdr arg1))))
+                   (the-as int (car (cdr (cdr (cdr arg1)))))
+                   )
+                  )
+                 ((or
+                   (= s4-0 'int-var)
+                   (= s4-0 'int-var-gat1)
+                   (= s4-0 'hex-var)
+                   )
+                  (set!
+                   s5-0
+                   (new
+                    'debug
+                    'debug-menu-item-var
+                    (the-as string s5-1)
+                    (the-as int (car (cdr (cdr arg1))))
+                    (the-as int (ref arg1 4))
+                    )
+                   )
+                  (let ((s3-4 debug-menu-item-var-make-int)
+                        (s2-3 (the-as debug-menu-item-var s5-0))
+                        (s1-3
+                         (debug-menu-func-decode (car (cdr (cdr (cdr arg1)))))
+                         )
+                        (s0-1 (/ (the-as int (ref arg1 5)) 8))
+                        )
+                   (set! sv-16 (ref arg1 6))
+                   (set! sv-32 (/ (the-as int (ref arg1 7)) 8))
+                   (let ((t1-0 (/ (the-as int (ref arg1 8)) 8))
+                         (t2-0 (= s4-0 'hex-var))
+                         )
+                    (s3-4
+                     s2-3
+                     (the-as (function int int int int int) s1-3)
+                     s0-1
+                     (the-as symbol sv-16)
+                     sv-32
+                     t1-0
+                     t2-0
+                     )
+                    )
+                   )
+                  (set! (-> (the-as debug-menu-item-var s5-0) ifloat-p) #t)
+                  s5-0
+                  )
+                 ((= s4-0 'float-var)
+                  (set!
+                   s5-0
+                   (new
+                    'debug
+                    'debug-menu-item-var
+                    (the-as string s5-1)
+                    (the-as int (car (cdr (cdr arg1))))
+                    (the-as int (ref arg1 4))
+                    )
+                   )
+                  (let ((s4-5 debug-menu-item-var-make-float)
+                        (s3-6 (the-as debug-menu-item-var s5-0))
+                        (s2-5
+                         (debug-menu-func-decode (car (cdr (cdr (cdr arg1)))))
+                         )
+                        (s1-5 (the float (/ (the-as int (ref arg1 5)) 8)))
+                        (s0-2 (ref arg1 6))
+                        )
+                   (set! sv-48 (the float (/ (the-as int (ref arg1 7)) 8)))
+                   (set! sv-64 (the float (/ (the-as int (ref arg1 8)) 8)))
+                   (let ((t2-1 (/ (the-as int (ref arg1 9)) 8)))
+                    (s4-5
+                     s3-6
+                     (the-as (function int int float float int) s2-5)
+                     s1-5
+                     (the-as symbol s0-2)
+                     sv-48
+                     sv-64
+                     (the-as symbol t2-1)
+                     )
+                    )
+                   )
+                  s5-0
+                  )
+                 ((= s4-0 'float-fixed-var)
+                  (set!
+                   s5-0
+                   (new
+                    'debug
+                    'debug-menu-item-var
+                    (the-as string s5-1)
+                    (the-as int (car (cdr (cdr arg1))))
+                    (the-as int (ref arg1 4))
+                    )
+                   )
+                  (let ((s4-7 debug-menu-item-var-make-float)
+                        (s3-8 (the-as debug-menu-item-var s5-0))
+                        (s2-7
+                         (debug-menu-func-decode (car (cdr (cdr (cdr arg1)))))
+                         )
+                        (s1-7
+                         (* 0.001 (the float (/ (the-as int (ref arg1 5)) 8)))
+                         )
+                        (s0-3 (ref arg1 6))
+                        )
+                   (set!
+                    sv-80
+                    (* 0.001 (the float (/ (the-as int (ref arg1 7)) 8)))
+                    )
+                   (set!
+                    sv-96
+                    (* 0.001 (the float (/ (the-as int (ref arg1 8)) 8)))
+                    )
+                   (let ((t2-2 (/ (the-as int (ref arg1 9)) 8)))
+                    (s4-7
+                     s3-8
+                     (the-as (function int int float float int) s2-7)
+                     s1-7
+                     (the-as symbol s0-3)
+                     sv-80
+                     sv-96
+                     (the-as symbol t2-2)
+                     )
+                    )
+                   )
+                  s5-0
+                  )
+                 (else
+                  (the-as debug-menu-node #f)
+                  )
+                 )
+      )
      )
     )
    )
@@ -1206,39 +1226,35 @@
      arg4
      )
     )
-   (else
-    (cond
-     ((= (-> arg0 type) debug-menu-item-function)
-      (debug-menu-item-function-render
-       (the-as debug-menu-item-function arg0)
-       arg1
-       arg2
-       arg3
-       arg4
-       )
-      )
-     ((= (-> arg0 type) debug-menu-item-flag)
-      (debug-menu-item-flag-render
-       (the-as debug-menu-item-flag arg0)
-       arg1
-       arg2
-       arg3
-       arg4
-       )
-      )
-     ((= (-> arg0 type) debug-menu-item-var)
-      (debug-menu-item-var-render
-       (the-as debug-menu-item-var arg0)
-       arg1
-       arg2
-       arg3
-       arg4
-       )
-      )
-     (else
-      (format 0 "ERROR: Found unknown item type!~%")
-      )
+   ((= (-> arg0 type) debug-menu-item-function)
+    (debug-menu-item-function-render
+     (the-as debug-menu-item-function arg0)
+     arg1
+     arg2
+     arg3
+     arg4
      )
+    )
+   ((= (-> arg0 type) debug-menu-item-flag)
+    (debug-menu-item-flag-render
+     (the-as debug-menu-item-flag arg0)
+     arg1
+     arg2
+     arg3
+     arg4
+     )
+    )
+   ((= (-> arg0 type) debug-menu-item-var)
+    (debug-menu-item-var-render
+     (the-as debug-menu-item-var arg0)
+     arg1
+     arg2
+     arg3
+     arg4
+     )
+    )
+   (else
+    (format 0 "ERROR: Found unknown item type!~%")
     )
    )
   arg0

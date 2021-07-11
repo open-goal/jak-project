@@ -338,7 +338,6 @@
 ;; definition for function can-hint-be-played?
 ;; WARN: disable def twice: 139. This may happen when a cond (no else) is nested inside of another conditional, but it should be rare.
 (defun can-hint-be-played? ((arg0 int))
-  (local-vars (v1-21 symbol) (gp-1 level-hint-control))
   (let ((v1-0 (not (str-is-playing?))))
    (if (and v1-0 (nonzero? arg0))
     (set! v1-0 (not (seen-text? *game-info* (the-as game-text-id arg0))))
@@ -392,65 +391,68 @@
        ((< v1-16 0)
         #t
         )
-       ((begin
-         (set! gp-1 (-> *game-info* hint-control v1-16))
-         (let
-          ((a0-24
-            (-
-             (-> *display* base-frame-counter)
-             (-> *game-info* hint-control v1-16 last-time-called)
+       (else
+        (let ((gp-1 (-> *game-info* hint-control v1-16))
+              (a0-24
+               (-
+                (-> *display* base-frame-counter)
+                (-> *game-info* hint-control v1-16 last-time-called)
+                )
+               )
+              (v1-21 #t)
+              )
+         (if
+          (and
+           (= (-> gp-1 num-attempts-before-playing) 1)
+           (< (the-as int a0-24) 30)
+           )
+          (set! (-> gp-1 start-time) (+ (-> gp-1 start-time) a0-24))
+          )
+         (cond
+          ((and
+            (!= (-> gp-1 num-attempts-before-playing) 1)
+            (nonzero? (-> gp-1 last-time-called))
+            (<
+             (the-as
+              int
+              (- (-> *display* base-frame-counter) (-> gp-1 last-time-called))
+              )
+             150
+             )
+            )
+           (set! (-> gp-1 last-time-called) (-> *display* base-frame-counter))
+           #f
+           )
+          (else
+           (set! (-> gp-1 last-time-called) (-> *display* base-frame-counter))
+           (when (nonzero? (-> gp-1 delay-before-playing))
+            (if
+             (<
+              (the-as int (-> gp-1 start-time))
+              (the-as int (-> gp-1 delay-before-playing))
+              )
+             (set! v1-21 #f)
+             )
+            0
+            )
+           (cond
+            (v1-21
+             (set! (-> gp-1 num-attempts) (seekl (-> gp-1 num-attempts) 127 1))
+             (and
+              (>= (-> gp-1 num-attempts) (-> gp-1 num-attempts-before-playing))
+              (or
+               (= (-> gp-1 num-success-before-killing) -1)
+               (< (-> gp-1 num-success) (-> gp-1 num-success-before-killing))
+               )
+              )
+             )
+            (else
+             #f
              )
             )
            )
-          (set! v1-21 #t)
-          (if
-           (and
-            (= (-> gp-1 num-attempts-before-playing) 1)
-            (< (the-as int a0-24) 30)
-            )
-           (set! (-> gp-1 start-time) (+ (-> gp-1 start-time) a0-24))
-           )
-          )
-         (and
-          (!= (-> gp-1 num-attempts-before-playing) 1)
-          (nonzero? (-> gp-1 last-time-called))
-          (<
-           (the-as
-            int
-            (- (-> *display* base-frame-counter) (-> gp-1 last-time-called))
-            )
-           150
-           )
           )
          )
-        (set! (-> gp-1 last-time-called) (-> *display* base-frame-counter))
-        #f
-        )
-       ((begin
-         (set! (-> gp-1 last-time-called) (-> *display* base-frame-counter))
-         (when (nonzero? (-> gp-1 delay-before-playing))
-          (if
-           (<
-            (the-as int (-> gp-1 start-time))
-            (the-as int (-> gp-1 delay-before-playing))
-            )
-           (set! v1-21 #f)
-           )
-          0
-          )
-         v1-21
-         )
-        (set! (-> gp-1 num-attempts) (seekl (-> gp-1 num-attempts) 127 1))
-        (and
-         (>= (-> gp-1 num-attempts) (-> gp-1 num-attempts-before-playing))
-         (or
-          (= (-> gp-1 num-success-before-killing) -1)
-          (< (-> gp-1 num-success) (-> gp-1 num-success-before-killing))
-          )
-         )
-        )
-       (else
-        #f
         )
        )
       )

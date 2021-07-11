@@ -577,53 +577,41 @@
 
 ;; definition for function gs-page-height
 (defun gs-page-height ((arg0 gs-psm))
-  (let ((v1-0 arg0))
-   (cond
-    ((or (= v1-0 (gs-psm ct32)) (= v1-0 (gs-psm ct24)))
+  (case arg0 
+   (((gs-psm ct32) (gs-psm ct24))
      32
      )
-    ((or (= v1-0 (gs-psm ct16)) (= v1-0 (gs-psm ct16s)))
-     64
-     )
-    (else
-     (cond
-      ((= v1-0 (gs-psm mt8))
-       64
-       )
-      ((= v1-0 (gs-psm mt4))
-       128
-       )
-      (else
-       (format #t "Warning: Unknown block width for psm ~D~%" arg0)
-       1
-       )
-      )
-     )
+   (((gs-psm ct16) (gs-psm ct16s))
+    64
+    )
+   (((gs-psm mt8))
+    64
+    )
+   (((gs-psm mt4))
+    128
+    )
+   (else
+    (format #t "Warning: Unknown block width for psm ~D~%" arg0)
+    1
     )
    )
   )
 
 ;; definition for function gs-block-width
 (defun gs-block-width ((arg0 gs-psm))
-  (let ((v1-0 arg0))
-   (cond
-    ((or (= v1-0 (gs-psm ct32)) (= v1-0 (gs-psm ct24)))
+  (case arg0 
+   (((gs-psm ct32) (gs-psm ct24))
      8
      )
-    ((or (= v1-0 (gs-psm ct16)) (= v1-0 (gs-psm ct16s)) (= v1-0 (gs-psm mt8)))
-     16
-     )
-    (else
-     (cond
-      ((= v1-0 (gs-psm mt4))
-       32
-       )
-      (else
-       (format #t "Warning: Unknown block width for psm ~D~%" arg0)
-       1
-       )
-      )
-     )
+   (((gs-psm ct16) (gs-psm ct16s) (gs-psm mt8))
+    16
+    )
+   (((gs-psm mt4))
+    32
+    )
+   (else
+    (format #t "Warning: Unknown block width for psm ~D~%" arg0)
+    1
     )
    )
   )
@@ -1730,32 +1718,32 @@
      (cond
       ((= distance 4095996000.0)
        )
-      (else
-       (if (< 102400.0 distance)
-        (set!
+      ((< 102400.0 distance)
+       (set!
+        (-> level upload-size 0)
+        (+
          (-> level upload-size 0)
-         (+
-          (-> level upload-size 0)
-          (upload-vram-pages
-           obj
-           (-> obj segment-common)
-           tfrag-page
-           0
-           (the-as bucket-id tfrag-bucket)
-           )
+         (upload-vram-pages
+          obj
+          (-> obj segment-common)
+          tfrag-page
+          0
+          (the-as bucket-id tfrag-bucket)
           )
          )
-        (set!
+        )
+       )
+      (else
+       (set!
+        (-> level upload-size 0)
+        (+
          (-> level upload-size 0)
-         (+
-          (-> level upload-size 0)
-          (upload-vram-pages
-           obj
-           (-> obj segment-common)
-           tfrag-page
-           -2
-           (the-as bucket-id tfrag-bucket)
-           )
+         (upload-vram-pages
+          obj
+          (-> obj segment-common)
+          tfrag-page
+          -2
+          (the-as bucket-id tfrag-bucket)
           )
          )
         )
@@ -1802,18 +1790,14 @@
                         ((= shrub-closest 4095996000.0)
                          -3
                          )
+                        ((< 102400.0 shrub-closest)
+                         0
+                         )
+                        ((< 81920.0 shrub-closest)
+                         -2
+                         )
                         (else
-                         (cond
-                          ((< 102400.0 shrub-closest)
-                           0
-                           )
-                          ((< 81920.0 shrub-closest)
-                           -2
-                           )
-                          (else
-                           -1
-                           )
-                          )
+                         -1
                          )
                         )
             )
@@ -1846,11 +1830,11 @@
                         ((< 348160.0 alpha-closest)
                          0
                          )
+                        ((< 163840.0 alpha-closest)
+                         -2
+                         )
                         (else
-                         (if (< 163840.0 alpha-closest)
-                          -2
-                          -1
-                          )
+                         -1
                          )
                         )
             )
@@ -3637,11 +3621,11 @@
        ((not entry-page)
         (format #t " unloaded~%")
         )
+       ((not (-> entry-page data entry-list-length))
+        (format #t "    empty~%")
+        )
        (else
-        (if (not (-> entry-page data entry-list-length))
-         (format #t "    empty~%")
-         (format #t " ~A~%" (-> entry-page data entry-list-length))
-         )
+        (format #t " ~A~%" (-> entry-page data entry-list-length))
         )
        )
       )
