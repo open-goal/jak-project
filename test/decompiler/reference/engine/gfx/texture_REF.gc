@@ -1007,7 +1007,7 @@
    (segment texture-pool-segment)
    (page texture-page)
    (mode int)
-   (bucket-idx int)
+   (bucket-idx bucket-id)
    )
   (local-vars
    (tex-data pointer)
@@ -1249,7 +1249,7 @@
   ((pool texture-pool)
    (segment texture-pool-segment)
    (page texture-page)
-   (bucket-idx int)
+   (bucket-idx bucket-id)
    (allow-cache-mask int)
    )
   (local-vars
@@ -1445,7 +1445,7 @@
     )
    )
   (set! (-> *texture-pool* allocate-func) texture-page-common-allocate)
-  (set! (-> *level* unknown-level-2 code-memory-end) (the-as pointer page))
+  (set! (-> *level* loading-level code-memory-end) (the-as pointer page))
   page
   )
 
@@ -1485,7 +1485,7 @@
     )
    )
   (set! (-> *texture-pool* allocate-func) texture-page-common-allocate)
-  (set! (-> *level* unknown-level-2 code-memory-end) (the-as pointer page))
+  (set! (-> *level* loading-level code-memory-end) (the-as pointer page))
   page
   )
 
@@ -1500,7 +1500,7 @@
      (set! (-> pool common-page common-id) page)
      )
     (else
-     (let ((level-idx (-> *level* unknown-level-2 index)))
+     (let ((level-idx (-> *level* loading-level index)))
       (cond
        ((zero? level-idx)
         (texture-page-near-allocate-0 pool page heap mode)
@@ -1771,7 +1771,13 @@
        (-> level upload-size 0)
        (+
         (-> level upload-size 0)
-        (upload-vram-pages obj (-> obj segment-near) tfrag-page 2 tfrag-bucket)
+        (upload-vram-pages
+         obj
+         (-> obj segment-near)
+         tfrag-page
+         2
+         (the-as bucket-id tfrag-bucket)
+         )
         )
        )
       )
@@ -1788,7 +1794,7 @@
           (-> obj segment-common)
           tfrag-page
           0
-          tfrag-bucket
+          (the-as bucket-id tfrag-bucket)
           )
          )
         )
@@ -1803,7 +1809,7 @@
           (-> obj segment-common)
           tfrag-page
           -2
-          tfrag-bucket
+          (the-as bucket-id tfrag-bucket)
           )
          )
         )
@@ -1828,7 +1834,7 @@
         obj
         (-> obj segment-common)
         pris-page
-        pris-bucket
+        (the-as bucket-id pris-bucket)
         (the-as int (-> level texture-mask 7))
         )
        )
@@ -1869,7 +1875,7 @@
         (-> obj segment-common)
         shrub-page
         shrub-mode
-        shrub-bucket
+        (the-as bucket-id shrub-bucket)
         )
        )
       )
@@ -1913,7 +1919,7 @@
         (-> obj segment-common)
         alpha-page
         alpha-mode
-        alpha-bucket
+        (the-as bucket-id alpha-bucket)
         )
        )
       )
@@ -1935,7 +1941,7 @@
         obj
         (-> obj segment-common)
         water-page
-        water-bucket
+        (the-as bucket-id water-bucket)
         (the-as int (-> level texture-mask 8))
         )
        )
@@ -1948,7 +1954,7 @@
   )
 
 ;; definition for method 21 of type texture-pool
-(defmethod upload-one-common! texture-pool ((obj texture-pool))
+(defmethod upload-one-common! texture-pool ((obj texture-pool) (arg0 level))
   (dotimes (v1-0 32)
    (let ((a2-0 (-> obj common-page v1-0)))
     (when
@@ -1956,7 +1962,13 @@
       (nonzero? a2-0)
       (nonzero? (logand (-> obj common-page-mask) (ash 1 v1-0)))
       )
-     (upload-vram-pages obj (-> obj segment-common) a2-0 -2 65)
+     (upload-vram-pages
+      obj
+      (-> obj segment-common)
+      a2-0
+      -2
+      (bucket-id bucket-65)
+      )
      (return #f)
      )
     )
@@ -1996,7 +2008,7 @@
        )
       (dma-bucket-insert-tag
        (-> *display* frames (-> *display* on-screen) frame bucket-group)
-       5
+       (bucket-id tfrag-tex0)
        a2-0
        (the-as (pointer dma-tag) a3-3)
        )
@@ -2029,7 +2041,7 @@
        )
       (dma-bucket-insert-tag
        (-> *display* frames (-> *display* on-screen) frame bucket-group)
-       48
+       (bucket-id pris-tex0)
        a2-1
        (the-as (pointer dma-tag) a3-7)
        )
@@ -2062,7 +2074,7 @@
        )
       (dma-bucket-insert-tag
        (-> *display* frames (-> *display* on-screen) frame bucket-group)
-       19
+       (bucket-id shrub-tex0)
        a2-2
        (the-as (pointer dma-tag) a3-11)
        )
@@ -2095,7 +2107,7 @@
        )
       (dma-bucket-insert-tag
        (-> *display* frames (-> *display* on-screen) frame bucket-group)
-       31
+       (bucket-id alpha-tex0)
        a2-3
        (the-as (pointer dma-tag) a3-15)
        )
@@ -2130,7 +2142,7 @@
        )
       (dma-bucket-insert-tag
        (-> *display* frames (-> *display* on-screen) frame bucket-group)
-       12
+       (bucket-id tfrag-tex1)
        a2-4
        (the-as (pointer dma-tag) a3-19)
        )
@@ -2163,7 +2175,7 @@
        )
       (dma-bucket-insert-tag
        (-> *display* frames (-> *display* on-screen) frame bucket-group)
-       51
+       (bucket-id pris-tex1)
        a2-5
        (the-as (pointer dma-tag) a3-23)
        )
@@ -2196,7 +2208,7 @@
        )
       (dma-bucket-insert-tag
        (-> *display* frames (-> *display* on-screen) frame bucket-group)
-       25
+       (bucket-id shrub-tex1)
        a2-6
        (the-as (pointer dma-tag) a3-27)
        )
@@ -2229,7 +2241,7 @@
        )
       (dma-bucket-insert-tag
        (-> *display* frames (-> *display* on-screen) frame bucket-group)
-       38
+       (bucket-id alpha-tex1)
        a2-7
        (the-as (pointer dma-tag) a3-31)
        )
@@ -2678,17 +2690,6 @@
 ;; WARN: Stack slot offset 20 signed mismatch
 ;; WARN: Stack slot offset 16 signed mismatch
 ;; WARN: Stack slot offset 16 signed mismatch
-;; WARN: Stack slot offset 20 signed mismatch
-;; WARN: Stack slot offset 20 signed mismatch
-;; WARN: Stack slot offset 20 signed mismatch
-;; WARN: Stack slot offset 20 signed mismatch
-;; WARN: Stack slot offset 16 signed mismatch
-;; WARN: Stack slot offset 16 signed mismatch
-;; WARN: Stack slot offset 20 signed mismatch
-;; WARN: Stack slot offset 20 signed mismatch
-;; WARN: Stack slot offset 20 signed mismatch
-;; WARN: Stack slot offset 20 signed mismatch
-;; WARN: Stack slot offset 16 signed mismatch
 ;; WARN: Stack slot offset 16 signed mismatch
 ;; INFO: Return type mismatch int vs none.
 (defmethod setup-font-texture! texture-pool ((obj texture-pool))
@@ -2970,7 +2971,7 @@
     (set! obj (the-as texture-page #f))
     )
    ((begin
-     (let ((v1-2 (-> *level* unknown-level-2)))
+     (let ((v1-2 (-> *level* loading-level)))
       (when v1-2
        (set!
         (-> v1-2 loaded-texture-page (-> v1-2 loaded-texture-page-count))
@@ -3259,17 +3260,19 @@
 ;; definition for function adgif-shader-update!
 ;; INFO: Return type mismatch gs-tex1 vs none.
 (defun adgif-shader-update! ((arg0 adgif-shader) (arg1 texture))
-  (let ((s5-0 (the int (/ 256.0 (-> arg1 uv-dist))))
-        (v1-2 (-> arg0 tex1 l))
-        )
-   (if (= v1-2 1)
-    (set!
-     (-> arg0 tex1 k)
-     (+ (+ (logand (ash s5-0 (- 5 (log2 s5-0))) 31) -350) (* (log2 s5-0) 32))
-     )
-    (set!
-     (-> arg0 tex1 k)
-     (+ (+ (logand (ash s5-0 (- 4 (log2 s5-0))) 15) -175) (* (log2 s5-0) 16))
+  (let ((s5-0 (the int (/ 256.0 (-> arg1 uv-dist)))))
+   (case (-> arg0 tex1 l) 
+    ((1)
+      (set!
+       (-> arg0 tex1 k)
+       (+ (+ (logand (ash s5-0 (- 5 (log2 s5-0))) 31) -350) (* (log2 s5-0) 32))
+       )
+      )
+    (else
+     (set!
+      (-> arg0 tex1 k)
+      (+ (+ (logand (ash s5-0 (- 4 (log2 s5-0))) 15) -175) (* (log2 s5-0) 16))
+      )
      )
     )
    )
@@ -3706,7 +3709,3 @@
 
 ;; definition for symbol *texture-pool*, type texture-pool
 (define *texture-pool* (new 'global 'texture-pool))
-
-
-
-

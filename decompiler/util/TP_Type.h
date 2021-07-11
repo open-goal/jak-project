@@ -335,11 +335,12 @@ class TP_Type {
   int64_t m_extra_multiplier = 0;
 };
 
-struct TypeState {
+class TypeState {
+ private:
+ public:
+  std::unordered_map<int, TP_Type> spill_slots;
   TP_Type gpr_types[32];
   TP_Type fpr_types[32];
-  std::unordered_map<int, TP_Type> spill_slots;
-
   std::string print_gpr_masked(u32 mask) const;
   TP_Type& get(const Register& r) {
     switch (r.get_kind()) {

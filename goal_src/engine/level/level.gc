@@ -94,7 +94,7 @@
 
 ;; relocate bsp-header
 (defmethod relocate bsp-header ((obj bsp-header) (dest-heap kheap) (name (pointer uint8)))
-  (let ((s5-0 (-> *level* unknown-level-2)))
+  (let ((s5-0 (-> *level* loading-level)))
     (if s5-0
         (cond
           (obj
@@ -455,8 +455,8 @@
   "Start loading the level. Uses 2 megabyte heaps for loading each non-bt object."
 
   (set! loading-level (-> obj heap))
-  (set! (-> *level* unknown-level-2) obj)
-  (set! (-> *level* unknown-level-1) #f)
+  (set! (-> *level* loading-level) obj)
+  (set! (-> *level* log-in-level) #f)
   (set! (-> obj nickname) #f)
   (set! (-> obj bsp) #f)
   (set! (-> obj entity) #f)
@@ -487,7 +487,7 @@
   (set! (-> *texture-pool* allocate-func) texture-page-default-allocate)
   (cond
     ((-> obj bsp)
-     (set! (-> *level* unknown-level-1) (the-as level (-> obj bsp)))
+     (set! (-> *level* log-in-level) (the-as level (-> obj bsp)))
      ;; TODO
      ;;(login-level-textures *texture-pool* obj (-> obj bsp unk-data-1-len) (the-as (pointer texture-id) (-> obj bsp unk-data-1)))
      (let ((bsp (-> obj bsp)))
@@ -507,7 +507,7 @@
     (else
      (level-status-set! obj 'inactive)
      (set! loading-level global)
-     (set! (-> *level* unknown-level-2) (-> *level* level-default))
+     (set! (-> *level* loading-level) (-> *level* level-default))
      )
     )
   obj
@@ -701,8 +701,8 @@
   (dummy-24 loaded-level)
   (set! (-> loaded-level status) 'loaded)
   (set! loading-level global)
-  (set! (-> *level* unknown-level-2) (-> *level* level-default))
-  (set! (-> *level* unknown-level-1) #f)
+  (set! (-> *level* loading-level) (-> *level* level-default))
+  (set! (-> *level* log-in-level) #f)
   0
   ;;(.mfc0 v1-154 Count)
   ;;(- v1-154 initial-timer)
@@ -716,12 +716,12 @@
   (case (-> obj status)
     (('loaded)
      (protect (loading-level
-               (-> *level* unknown-level-2)
-               (-> *level* unknown-level-1)
+               (-> *level* loading-level)
+               (-> *level* log-in-level)
                )
          (set! loading-level (-> obj heap))
-         (set! (-> *level* unknown-level-1) (the-as level (-> obj bsp)))
-         (set! (-> *level* unknown-level-2) obj)
+         (set! (-> *level* log-in-level) (the-as level (-> obj bsp)))
+         (set! (-> *level* loading-level) obj)
          ;; (dummy-18 (-> obj bsp)) TODO
          (set! (-> obj status) 'alive)
          ;; (dummy-15 *game-info*) TODO
@@ -767,8 +767,8 @@
          )
      )
     )
-  (if (= (-> *level* unknown-level-1) (-> obj bsp))
-    (set! (-> *level* unknown-level-1) #f)
+  (if (= (-> *level* log-in-level) (-> obj bsp))
+    (set! (-> *level* log-in-level) #f)
     )
   obj
   )
@@ -849,10 +849,10 @@
         )
     (set! (-> obj code-memory-start) (the pointer 0))
     (set! (-> obj code-memory-end) (the pointer 0))
-    (when (= (-> *level* unknown-level-2) obj)
+    (when (= (-> *level* loading-level) obj)
       (set! loading-level global)
-      (set! (-> *level* unknown-level-2) (-> *level* level-default))
-      (set! (-> *level* unknown-level-1) #f)
+      (set! (-> *level* loading-level) (-> *level* level-default))
+      (set! (-> *level* log-in-level) #f)
       )
     )
   obj
@@ -1206,7 +1206,7 @@
   ;; temp
   (format #t "(play ~A ~A) has been called!~%" use-vis arg1)
   (format 0 "(play ~A ~A) has been called!~%" use-vis arg1)
-  (kernel-shutdown)
+  ;;(kernel-shutdown)
 
   (let ((startup-level (case *kernel-boot-message*
                         (('play)
@@ -1589,7 +1589,7 @@
 (when (zero? (-> *level* level0 art-group))
   (let ((lev-group *level*))
       (set! (-> lev-group vis?) #f)
-      (set! (-> lev-group unknown-level-2) (-> lev-group level-default))
+      (set! (-> lev-group loading-level) (-> lev-group level-default))
       (set! (-> lev-group level0 art-group) (new 'global 'load-dir-art-group 50 (-> lev-group level0)))
       (set! (-> lev-group level0 foreground-draw-engine 0) (new 'global 'engine 'draw 280))
       (set! (-> lev-group level0 foreground-draw-engine 1) (new 'global 'engine 'draw 280))

@@ -1363,6 +1363,107 @@ void CondNoElseElement::get_modified_regs(RegSet& regs) const {
   }
 }
 
+CaseElement::CaseElement(Form* value, const std::vector<Entry>& entries, Form* else_body)
+    : m_value(value), m_entries(entries), m_else_body(else_body) {
+  m_value->parent_element = this;
+  for (auto& entry : m_entries) {
+    for (auto& val : entry.vals) {
+      val->parent_element = this;
+    }
+    entry.body->parent_element = this;
+  }
+  if (m_else_body) {
+    m_else_body->parent_element = this;
+  }
+}
+
+goos::Object CaseElement::to_form_internal(const Env& env) const {
+  std::vector<goos::Object> list;
+  list.push_back(pretty_print::to_symbol("case"));
+  list.push_back(m_value->to_form(env));
+  for (auto& e : m_entries) {
+    std::vector<goos::Object> entry;
+
+    // cases
+    std::vector<goos::Object> cases;
+    for (auto& val : e.vals) {
+      cases.push_back(val->to_form(env));
+    }
+    entry.push_back(pretty_print::build_list(cases));
+
+    // body
+    e.body->inline_forms(entry, env);
+    list.push_back(pretty_print::build_list(entry));
+  }
+
+  if (m_else_body) {
+    std::vector<goos::Object> entry;
+    entry.push_back(pretty_print::to_symbol("else"));
+    m_else_body->inline_forms(entry, env);
+    list.push_back(pretty_print::build_list(entry));
+  }
+  return pretty_print::build_list(list);
+}
+
+void CaseElement::apply(const std::function<void(FormElement*)>& f) {
+  f(this);
+  m_value->apply(f);
+  for (auto& e : m_entries) {
+    for (auto& val : e.vals) {
+      val->apply(f);
+    }
+    e.body->apply(f);
+  }
+
+  if (m_else_body) {
+    m_else_body->apply(f);
+  }
+}
+
+void CaseElement::apply_form(const std::function<void(Form*)>& f) {
+  m_value->apply_form(f);
+  for (auto& e : m_entries) {
+    for (auto& val : e.vals) {
+      val->apply_form(f);
+    }
+    e.body->apply_form(f);
+  }
+
+  if (m_else_body) {
+    m_else_body->apply_form(f);
+  }
+}
+
+void CaseElement::collect_vars(RegAccessSet& vars, bool recursive) const {
+  if (recursive) {
+    m_value->collect_vars(vars, recursive);
+    for (auto& e : m_entries) {
+      for (auto& val : e.vals) {
+        val->collect_vars(vars, recursive);
+      }
+      e.body->collect_vars(vars, recursive);
+    }
+
+    if (m_else_body) {
+      m_else_body->collect_vars(vars, recursive);
+    }
+  }
+}
+
+void CaseElement::get_modified_regs(RegSet& regs) const {
+  m_value->get_modified_regs(regs);
+  for (auto& e : m_entries) {
+    for (auto& val : e.vals) {
+      val->get_modified_regs(regs);
+    }
+    e.body->get_modified_regs(regs);
+  }
+
+  if (m_else_body) {
+    m_else_body->get_modified_regs(regs);
+  }
+}
+
 /////////////////////////////
 // AbsElement
 /////////////////////////////

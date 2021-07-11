@@ -498,6 +498,7 @@
     :type int32
     :bitfield #f
 
+    (bucket-3 3)
     (tfrag-tex0 5)
     ;; merc0 10
     ;; generic0 11
@@ -529,6 +530,7 @@
     (water-tex1 60)
     ;; merc1 61
     ;; generic1 62
+    (bucket-65 65)
     ;; debug spheres? 67
     (debug-draw0 67)
     ;; debug text 68
@@ -3448,7 +3450,7 @@
 
 (define-extern dma-buffer-add-buckets (function dma-buffer int none))
 (define-extern dma-buffer-patch-buckets (function dma-bucket int dma-bucket))
-(define-extern dma-bucket-insert-tag (function dma-bucket int pointer (pointer dma-tag) pointer))
+(define-extern dma-bucket-insert-tag (function dma-bucket bucket-id pointer (pointer dma-tag) pointer))
 
 
 ;; ----------------------
@@ -4553,7 +4555,7 @@
     (dummy-18 () none 18)
     (dummy-19 () none 19)
     (unload! (_type_ texture-page) int 20)
-    (upload-one-common! (_type_) symbol 21)
+    (upload-one-common! (_type_ level) symbol 21)
     (lookup-boot-common-id (_type_ int) int 22)
     )
   )
@@ -4860,7 +4862,7 @@
     (add-irq-to-tex-buckets! (_type_) none 11)
     (unload! (_type_) _type_ 12)
     (bsp-name (_type_) symbol 13)
-    (dummy-14 (_type_ object) none 14)
+    (dummy-14 (_type_ object) memory-usage-block 14)
     (dummy-15 (_type_ vector) symbol 15)
     (dummy-16 (_type_) none 16)
     (load-continue (_type_) _type_ 17)
@@ -4881,8 +4883,8 @@
 (declare-type entity-links structure)
 (deftype level-group (basic)
   ((length          int32                :offset-assert 4)
-   (unknown-level-1 level                :offset-assert 8)
-   (unknown-level-2 level                :offset-assert 12)
+   (log-in-level    level                :offset-assert 8)
+   (loading-level   level                :offset-assert 12)
    (entity-link     entity-links         :offset-assert 16) ;; not sure what's going on here
    (border?         basic                :offset-assert 20)
    (vis?            basic                :offset-assert 24)
@@ -4910,7 +4912,7 @@
     (level-get-for-use (_type_ symbol symbol) level 11)
     (activate-levels! (_type_) int 12)
     (dummy-13 () none 13)
-    (dummy-14 () none 14)
+    (dummy-14 (_type_ object) none 14)
     (dummy-15 () none 15)
     (dummy-16 (_type_) int 16)
     (level-get-target-inside (_type_) level 17)
@@ -5375,7 +5377,7 @@
    (sfx-volume  float :offset-assert 4)
    (music-volume float :offset-assert 8)
    (dialog-volume float :offset-assert 12)
-   (process-mask uint32 :offset-assert 16)
+   (process-mask process-mask :offset-assert 16)
    (common-page int32 :offset-assert 20)
    (language int64 :offset-assert 24)
    (screenx int32 :offset-assert 32)
@@ -5551,8 +5553,8 @@
 (define-extern loado (function string kheap object))
 (define-extern texture-relocate (function dma-buffer texture int gs-psm int dma-buffer))
 (define-extern dma-buffer-add-ref-texture (function dma-buffer pointer int int gs-psm none))
-(define-extern upload-vram-pages (function texture-pool texture-pool-segment texture-page int int int))
-(define-extern upload-vram-pages-pris (function texture-pool texture-pool-segment texture-page int int int))
+(define-extern upload-vram-pages (function texture-pool texture-pool-segment texture-page int bucket-id int))
+(define-extern upload-vram-pages-pris (function texture-pool texture-pool-segment texture-page bucket-id int int))
 (define-extern movie? (function symbol))
 (define-extern texture-page-near-allocate-1 (function texture-pool texture-page kheap int texture-page))
 (define-extern texture-page-near-allocate-0 (function texture-pool texture-page kheap int texture-page))
@@ -5775,7 +5777,7 @@
   )
 
 (deftype skeleton (inline-array-class)
-  ()
+  ((bones bone :inline :dynamic))
   :method-count-assert 9
   :size-assert         #x10
   :flag-assert         #x900000010
@@ -5819,6 +5821,7 @@
 
 ;; - Types
 
+(declare-type ambient-list structure)
 (deftype drawable (basic)
   ((id      int16          :offset-assert 4)
   ;  (unknown basic         :offset-assert 8) ;; - from default-menu::build-instance-list
@@ -5836,7 +5839,7 @@
     (dummy-14 () none 14)
     (dummy-15 (_type_) none 15)
     (dummy-16 (_type_ object object) object 16)
-    (dummy-17 () none 17)
+    (dummy-17 (_type_ sphere int ambient-list) none 17)
     )
   )
 
@@ -5906,24 +5909,18 @@
   ;; field distance is a float printed as hex?
   )
 
-; (deftype drawable-inline-array-node (drawable-inline-array)
-;   ()
-;   :method-count-assert 18
-;   :size-assert         #x44
-;   :flag-assert         #x1200000044
-;   ;;  too many basic blocks
-;   (:methods
-;     (dummy-9 () none 9)
-;     (dummy-10 () none 10)
-;     (dummy-11 () none 11)
-;     (dummy-12 () none 12)
-;     (dummy-13 () none 13)
-;     (dummy-14 () none 14)
-;     (dummy-15 () none 15)
-;     (dummy-16 () none 16)
-;     (dummy-17 () none 17)
-;     )
-;   )
+(deftype drawable-inline-array-node (drawable-inline-array)
+  ((data draw-node 1 :inline)
+   (pad uint32)
+   )
+  :method-count-assert 18
+  :size-assert         #x44
+  :flag-assert         #x1200000044
+  ;;  too many basic blocks
+  (:methods
+
+    )
+  )
 
 (deftype draw-node-dma (structure)
   ((banka draw-node 32 :inline :offset-assert 0)
@@ -6038,13 +6035,12 @@
 
 (deftype ambient-list (structure)
   ((num-items int32        :offset-assert 0)
-   (items     uint32 2048 :offset-assert 4)
+   (items     drawable-ambient 2048 :offset-assert 4)
    )
   :method-count-assert 9
   :size-assert         #x2004
   :flag-assert         #x900002004
   )
-
 
 ;; ----------------------
 ;; File - game-task-h
@@ -6515,9 +6511,10 @@
   )
 
 (deftype ocean-mid-mask (structure)
-  ((mask  uint8 8 :offset-assert 0)
+  ((mask  uint8 8 :offset-assert 0 :do-not-decompile) ;; avoid huge arrays.
    (dword uint64    :offset 0)
    )
+  :pack-me
   :method-count-assert 9
   :size-assert         #x8
   :flag-assert         #x900000008
@@ -6532,7 +6529,7 @@
   )
 
 (deftype ocean-mid-masks (basic)
-  ((data uint32 :offset-assert 4)
+  ((data (inline-array ocean-mid-mask) :offset-assert 4)
    )
   :pack-me
   :method-count-assert 9
@@ -6561,7 +6558,7 @@
   )
 
 (deftype ocean-trans-indices (basic)
-  ((data uint32 2304 :offset-assert 4)
+  ((data ocean-trans-index 2304 :inline :offset-assert 4)
    )
   :method-count-assert 9
   :size-assert         #x2404
@@ -6577,7 +6574,7 @@
   )
 
 (deftype ocean-near-indices (basic)
-  ((data uint32  :offset-assert 4)
+  ((data (inline-array ocean-near-index)  :offset-assert 4)
    )
   :method-count-assert 9
   :size-assert         #x8
@@ -7443,7 +7440,7 @@
   )
 
 (deftype art-mesh-anim (art-element)
-  ()
+  ((data basic :dynamic))
   :method-count-assert 13
   :size-assert         #x20
   :flag-assert         #xd00000020
@@ -8848,8 +8845,8 @@
    (auto-save-status      uint32    :offset-assert 280)
    (auto-save-card        int32     :offset-assert 284)
    (auto-save-which       int32     :offset-assert 288)
-   (pov-camera-handle     uint64    :offset-assert 296)
-   (other-camera-handle   uint64    :offset-assert 304)
+   (pov-camera-handle     handle    :offset-assert 296)
+   (other-camera-handle   handle    :offset-assert 304)
    (death-pos             vector-array     :offset-assert 312)
    (dummy                 basic     :offset-assert 316)
    (auto-save-count       int32     :offset-assert 320)
@@ -11588,7 +11585,7 @@
    (unk-data-1 pointer :offset-assert 60)
    (unk-data-1-len int32 :offset-assert 64)
 
-   (unk-zero-0 uint32 :offset-assert 68)
+   (unk-zero-0 basic :offset-assert 68)
 
    (name symbol :offset-assert 72)
    (nickname symbol :offset-assert 76)
@@ -11616,7 +11613,6 @@
   :flag-assert         #x1400000190
   (:methods
     (relocate (_type_ kheap (pointer uint8)) none :replace 7)
-    (dummy-17 () none 17)
     (dummy-18 (_type_) none 18)
     (dummy-19 (_type_) none 19)
     )
@@ -12324,7 +12320,7 @@
    (dma-level-0       uint32                       :offset 32)
    (dma-base          uint32                       :offset 36)
    (dma-level-1       uint32                       :offset 40)
-   (dma-qwc           uint32              4       :offset-assert 44)
+   (dma-qwc           uint32              4       :offset 44)
    (shader            uint32                       :offset 48)
    (num-shaders       uint8                        :offset 52)
    (num-base-colors   uint8                        :offset 53)
@@ -12359,7 +12355,7 @@
   )
 
 (deftype drawable-tree-tfrag (drawable-tree)
-  ()
+  ((time-of-day-pal time-of-day-palette :offset 12))
   :method-count-assert #x12
   :size-assert #x24
   :flag-assert #x1200000024
@@ -14016,7 +14012,7 @@
     (dummy-17 () none 17)
     (dummy-18 () none 18)
     (dummy-19 () none 19)
-    (dummy-20 () none 20)
+    (hidden? (_type_) symbol 20)
     (dummy-21 () none 21)
     (dummy-22 () none 22)
     (TODO-RENAME-23 (_type_ symbol symbol) none 23)
@@ -14797,9 +14793,9 @@
 
 (define-extern print-cl-stat function)
 (define-extern clear-cl-stat function)
-(define-extern mem-usage-bsp-tree function)
+(define-extern mem-usage-bsp-tree (function bsp-header (inline-array bsp-node) memory-usage-block int none))
 (define-extern bsp-camera-asm function)
-(define-extern print-collide-stats function)
+(define-extern print-collide-stats (function none))
 
 ;; - Unknowns
 
@@ -14817,12 +14813,12 @@
 (define-extern perf-stat-bucket->string function)
 (define-extern print-tr-stat function)
 (define-extern clear-tr-stat function)
-(define-extern print-terrain-stats function)
+(define-extern print-terrain-stats (function none))
 (define-extern update-subdivide-settings! function)
 (define-extern set-tfrag-dists! function)
-(define-extern start-perf-stat-collection function)
-(define-extern end-perf-stat-collection function)
-(define-extern print-perf-stats function)
+(define-extern start-perf-stat-collection (function engine display-frame int int none))
+(define-extern end-perf-stat-collection (function none))
+(define-extern print-perf-stats (function none))
 
 ;; - Unknowns
 
@@ -14944,7 +14940,7 @@
 (define-extern add-to-sprite-aux-list function)
 (define-extern sprite-set-3d-quaternion! function)
 (define-extern sprite-get-3d-quaternion! function)
-(define-extern sprite-draw function)
+(define-extern sprite-draw (function display none))
 (define-extern sprite-allocate-user-hvdf function)
 (define-extern sprite-release-user-hvdf function)
 (define-extern sprite-get-user-hvdf function)
@@ -15348,7 +15344,7 @@
 (define-extern bones-init function)
 (define-extern draw-bones-mtx-calc function)
 (define-extern bones-mtx-calc function)
-(define-extern bones-mtx-calc-execute function)
+(define-extern bones-mtx-calc-execute (function none))
 (define-extern bones-wrapup function)
 (define-extern dump-qword function)
 (define-extern bones-debug function)
@@ -15368,7 +15364,7 @@
 ;;(define-extern bones-vu0-block object) ;; unknown type
 ;;(define-extern *texscroll-globals* object) ;; unknown type
 ;;(define-extern *use-generic* object) ;; unknown type
-;;(define-extern *merc-global-array* object) ;; unknown type
+(define-extern *merc-global-array* merc-global-array) ;; unknown type
 ;;(define-extern *bones-first* object) ;; unknown type
 ;;(define-extern *default-shadow-settings* object) ;; unknown type
 
@@ -15491,7 +15487,7 @@
 (define-extern high-speed-reject function)
 (define-extern generic-merc-execute-asm function)
 (define-extern generic-merc-add-to-cue function)
-(define-extern generic-merc-execute-all function)
+(define-extern generic-merc-execute-all (function none))
 
 ;; - Unknowns
 
@@ -15589,7 +15585,7 @@
 (define-extern shadow-add-single-edges function)
 (define-extern shadow-add-double-tris function)
 (define-extern shadow-add-double-edges function)
-(define-extern shadow-execute-all function)
+(define-extern shadow-execute-all (function dma-buffer shadow-queue none))
 
 ;; - Symbols
 
@@ -15728,8 +15724,8 @@
 (define-extern draw-drawable-tree-ice-tfrag function)
 (define-extern tie-near-make-perspective-matrix function)
 (define-extern draw-drawable-tree-instance-tie function)
-(define-extern init-background function)
-(define-extern finish-background function)
+(define-extern init-background (function none))
+(define-extern finish-background (function none))
 
 ;; - Symbols
 
@@ -15772,7 +15768,7 @@
 (define-extern shrub-upload-view-data function)
 (define-extern shrub-init-view-data function)
 (define-extern mem-usage-shrub-walk function)
-(define-extern shrub-make-perspective-matrix function)
+(define-extern shrub-make-perspective-matrix (function matrix none))
 (define-extern shrub-time function)
 (define-extern draw-inline-array-instance-shrub function)
 (define-extern draw-prototype-inline-array-shrub function)
@@ -16349,7 +16345,7 @@
 (define-extern close-specific-task! (function game-task task-status int))
 (define-extern reset-all-hint-controls (function none))
 (define-extern reset-actors (function symbol none))
-(define-extern set-blackout-frames (function int uint))
+(define-extern set-blackout-frames (function int int))
 (define-extern set-master-mode (function symbol none))
 (define-extern stop (function symbol int))
 (define-extern start (function symbol continue-point target))
@@ -16976,7 +16972,7 @@
 (define-extern time-of-day-setup (function symbol int none)) ;; not confirmed
 (define-extern set-time-of-day function)
 (define-extern init-time-of-day-context (function time-of-day-context none))
-(define-extern update-time-of-day function)
+(define-extern update-time-of-day (function time-of-day-context none))
 
 ;; - Unknowns
 
@@ -17068,7 +17064,7 @@
 (define-extern clip-polygon-against-negative-hyperplane function)
 (define-extern sky-duplicate-polys function)
 (define-extern sky-tng-setup-clouds function)
-(define-extern render-sky-tng function)
+(define-extern render-sky-tng (function time-of-day-context none))
 
 ;; - Unknowns
 
@@ -17217,7 +17213,7 @@
 (define-extern lb-set-camera function)
 (define-extern lb-set-player function)
 (define-extern lb-copy function)
-(define-extern render-boundaries function)
+(define-extern render-boundaries (function none))
 (define-extern command-get-time function)
 
 ;; - Unknowns
@@ -17314,19 +17310,20 @@
 ;; - Functions
 
 (define-extern set-font-color-alpha function)
-(define-extern load-game-text-info function)
+(define-extern load-game-text-info (function string symbol kheap int))
 (define-extern load-level-text-files (function int none))
 (define-extern draw-debug-text-box function)
 (define-extern print-game-text-scaled function)
 (define-extern disable-level-text-file-loading function)
 (define-extern enable-level-text-file-loading function)
+(define-extern link (function pointer pointer int kheap int pointer))
 
 ;; - Unknowns
 
-;;(define-extern *level-text-file-load-flag* object) ;; unknown type
-;;(define-extern *game-text-line* object) ;; unknown type
-;;(define-extern *game-text-word* object) ;; unknown type
-;;(define-extern text-is-loading object) ;; unknown type
+(define-extern *level-text-file-load-flag* symbol)
+(define-extern *game-text-line* string)
+(define-extern *game-text-word* string)
+(define-extern text-is-loading symbol)
 
 
 ;; ----------------------
@@ -17485,7 +17482,7 @@
 (define-extern find-ground-point function)
 (define-extern default-collision-reaction function)
 (define-extern simple-collision-reaction function)
-(define-extern collide-shape-draw-debug-marks function)
+(define-extern collide-shape-draw-debug-marks (function none))
 (define-extern debug-report-col-stats function)
 
 ;; - Unknowns
@@ -19357,7 +19354,7 @@
 (define-extern toggle-pause (function int))
 (define-extern deactivate-progress (function none))
 (define-extern debug-init-buffer (function bucket-id uint uint none))
-(define-extern real-main-draw-hook function)
+(define-extern real-main-draw-hook (function none))
 (define-extern error-sphere function)
 (define-extern draw-instance-info function)
 (define-extern find-instance-by-name (function string instance)) ;; TODO - ret not verified
@@ -19366,7 +19363,7 @@
 (define-extern find-instance-by-index function)
 (define-extern prototype-bucket-recalc-fields (function instance none)) ;; TODO - ret not confirmed
 (define-extern dma-add-process-drawable-hud function)
-(define-extern foreground-engine-execute function)
+(define-extern foreground-engine-execute (function engine display-frame int int none))
 (define-extern main-debug-hook function)
 (define-extern main-draw-hook function)
 (define-extern swap-display (function display object))
@@ -19389,10 +19386,10 @@
 (define-extern put-display-env (function object none)) ;; unknown type
 (define-extern *surrogate-dma-buffer* dma-buffer) ;; unknown type
 (define-extern *screen-shot* symbol) ;; unknown type
-;;(define-extern *hud-lights* object) ;; unknown type
-;;(define-extern *instance-mem-usage* object) ;; unknown type
-;;(define-extern *add-sphere* object) ;; unknown type
-;;(define-extern *generic-effect-mode* object) ;; unknown type
+(define-extern *hud-lights* vu-lights) ;; unknown type
+(define-extern *instance-mem-usage* memory-usage-block) ;; unknown type
+(define-extern *add-sphere* symbol) ;; unknown type
+(define-extern *generic-effect-mode* int) ;; unknown type
 
 
 ;; ----------------------
@@ -20795,8 +20792,8 @@
 (define-extern render-ocean-far function)
 (define-extern render-ocean-quad function)
 (define-extern draw-large-polygon-ocean function)
-(define-extern draw-ocean function)
-(define-extern update-ocean function)
+(define-extern draw-ocean (function none))
+(define-extern update-ocean (function none))
 
 ;; - Unknowns
 
@@ -20924,7 +20921,7 @@
 (define-extern compute-and-draw-shadow function)
 (define-extern draw-shadow function)
 (define-extern add-fake-shadow-to-buffer function)
-(define-extern swap-fake-shadow-buffers function)
+(define-extern swap-fake-shadow-buffers (function none))
 
 
 ;; ----------------------
@@ -20937,7 +20934,7 @@
 
 (define-extern convert-eye-data function)
 (define-extern render-eyes function)
-(define-extern update-eyes function)
+(define-extern update-eyes (function none))
 
 ;; - Unknowns
 

@@ -554,6 +554,14 @@ TP_Type SimpleExpression::get_type_int2(const TypeState& input,
     return TP_Type::make_from_ts(arg1_type.typespec());
   }
 
+  if (m_kind == Kind::ADD && tc(dts, TypeSpec("structure"), arg0_type) &&
+      arg1_type.is_integer_constant()) {
+    auto type_info = dts.ts.lookup_type(arg0_type.typespec());
+    if (type_info->get_size_in_memory() == arg1_type.get_integer_constant()) {
+      return TP_Type::make_from_ts(arg0_type.typespec());
+    }
+  }
+
   if (tc(dts, TypeSpec("structure"), arg1_type) && !m_args[0].is_int() &&
       is_int_or_uint(dts, arg0_type)) {
     if (arg1_type.typespec() == TypeSpec("symbol") &&

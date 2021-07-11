@@ -5,17 +5,24 @@
 ;; name in dgo: memory-usage-h
 ;; dgos: GAME, ENGINE
 
+;; The memory-usage system is used to track how memory is arranged.
+;; All basics have a mem-usage method that will add its memory usage to
+;; a memory-usage-block.  It also takes some flags that are currently unknown.
+
+
+;; Information for a single category.
 (deftype memory-usage-info (structure)
   ((name  string :offset-assert 0)
-   (count int32  :offset-assert 4)
-   (used  int32  :offset-assert 8)
-   (total int32  :offset-assert 12)
+   (count int32  :offset-assert 4)  ;; meaning depends on category. For textures, it's the number of textures, for example.
+   (used  int32  :offset-assert 8)  ;; how much memory is in use (not counting padding)
+   (total int32  :offset-assert 12) ;; actual total memory used, including padding to 16-bytes, etc.
    )
   :method-count-assert 9
   :size-assert         #x10
   :flag-assert         #x900000010
   )
 
+;; Memory info for all categories
 (deftype memory-usage-block (basic)
   ((work-bsp basic       :offset-assert 4)
    (length   int32       :offset-assert 8)
@@ -31,8 +38,14 @@
     )
   )
 
+
+;; The main RAM usage memory info
 (define *mem-usage* (new 'debug 'memory-usage-block))
+
+;; The DMA memory usage info
 (define *dma-mem-usage* (new 'debug 'memory-usage-block))
+
+;; Used internally for computing memory info
 (define *temp-mem-usage* (the-as memory-usage-block #f))
 
 
@@ -41,7 +54,103 @@
 (defenum mem-usage-id
     :bitfield #f
     :type uint32
+    (drawable-group 0)
+    (tfragment-unknown 1) ;; made up name
+    (tfragment-base 2)
+    (tfragment-common 3)
+    (tfragment-level0 4)
+    (tfragment-level1 5)
+    (tfragment-color 6)
+    (tfragment-debug 7)
+    (tfragment-pal 8)
+    (tie-fragment 9)
+    (tie-gif 10)
+    (tie-point 11)
+    (tie-colors 12)
+    (tie-draw-points 13)
+    (tie-debug 14)
+    ;; 15??
+    (tie-pal 16)
+    (tie-generic 17)
+    (instance-tie 18)
+    (instance-tie-colors0 19)
+    (instance-tie-colors1 20)
+    (instance-tie-colors2 21)
+    (instance-tie-colors3 22)
+    (instance-tie-colors 23)
+    (prototype-bucket-shrub 24)
+    (generic-shrub 25)
+    (generic-shrub-data 26)
+    (shrubbery 27)
+    (shrubbery-object 28)
+    (shrubbery-vertex 29)
+    (shrubbery-color 30)
+    (shrubbery-stq 31)
+    (shrubbery-pal 32)
+    (billboard 33)
+    ;; ???
+    (entity 43)
+    (camera 44)
+    (nav-mesh 45)
+    ;; ??
+    (res 48)
+    (ambient 49)
+    (collide-fragment-0 50)
+    (collision-poly-0 51)
+    (collision-vertex-0 52)
+    (collide-fragment-1 53)
+    (collision-poly-1 54)
+    (collision-vertex-1 55)
+    (bsp-main 56)
+    (bsp-misc 57)
+    (bsp-node 58)
+    (bsp-leaf-vis-self 59)
+    (bsp-leaf-vis-adj 60)
+    (draw-node 61)
+    (pat 62)
+    (level-code 63)
+    (entity-links 64) ;; or ambient links, its messed up
+    (joint 65)
+    (joint-anim-compressed 66)
+    ;; 
+    (art-group 70)
+    (art-mesh-anim 71)
+    (art-mesh-geo 72)
+    (art-joint-geo 73)
+    (art-joint-anim 74)
+    (merc-ctrl 75)
+    (joint-anim-drawable 76)
+    (blend-shape 77)
+    (collide-mesh 78)
     (texture 79)
+    (string 80)
+    (array 81)
+    ;; 
+    (debug-dma 84) ;; maybe
+    (sky-dma 85) ;; maybe
+    ;;
+    (4k-dead-pool 87)
+    (8k-dead-pool 88)
+    (16k-dead-pool 89)
+    (nk-dead-pool 90)
+    (target-dead-pool 91)
+    (camera-dead-pool 92)
+    (debug-dead-pool 93)
+    (process-active 94)
+    (heap-total 95)
+    (heap-process 96)
+    (heap-header 97)
+    (heap-thread 98)
+    (heap-root 99)
+    (heap-draw-control 100)
+    (heap-joint-control 101)
+    (heap-cspace 102)
+    (heap-bone 103)
+    (heap-part 104)
+    (heap-collide-prim 105)
+    (heap-misc 106)
+    (shadow-geo 107)
+    (eye-anim 108)
     )
 
 ;; get a memory usage id as an integer.

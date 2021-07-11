@@ -234,6 +234,9 @@ class OfflineDecompilation : public ::testing::Test {
  protected:
   static std::unique_ptr<decompiler::ObjectFileDB> db;
   static std::unique_ptr<decompiler::Config> config;
+
+  static std::unique_ptr<std::unordered_map<std::string, std::string>> final_output_cache;
+
   static void SetUpTestCase() {
     // global setup
     file_util::init_crc();
@@ -272,17 +275,22 @@ class OfflineDecompilation : public ::testing::Test {
     db->process_labels();
 
     // fancy decompilation.
-    db->analyze_functions_ir2({}, *config);
+    db->analyze_functions_ir2({}, *config, true);
+
+    final_output_cache = std::make_unique<std::unordered_map<std::string, std::string>>();
   }
 
   static void TearDownTestCase() {
     db.reset();
     config.reset();
+    final_output_cache.reset();
   }
 };
 
 std::unique_ptr<decompiler::ObjectFileDB> OfflineDecompilation::db;
 std::unique_ptr<decompiler::Config> OfflineDecompilation::config;
+std::unique_ptr<std::unordered_map<std::string, std::string>>
+    OfflineDecompilation::final_output_cache;
 
 /*!
  * Check that the most basic disassembly into files/functions/instructions has succeeded.
@@ -478,14 +486,26 @@ TEST_F(OfflineDecompilation, Reference) {
 
     std::string src = db->ir2_final_out(obj_l.at(0));
 
-    /*     if (file == "gstring") {
-           fmt::print("{}\n", src);
-         }*/
-
     lg::info("Comparing {}...", file.first);
 
     // NOTE - currently only handles .gc files!
     auto reference = file_util::read_text_file(file.second.string());
+
+    bool can_cache = true;
+    for (auto& func_list : obj_l.at(0).linked_data.functions_by_seg) {
+      for (auto& func : func_list) {
+        if (g_functions_to_skip_compiling.find(func.guessed_name.to_string()) !=
+            g_functions_to_skip_compiling.end()) {
+          can_cache = false;
+          break;
+        }
+      }
+    }
+
+    if (can_cache) {
+      EXPECT_EQ(final_output_cache->count(file.first), 0);
+      final_output_cache->insert({file.first, src});
+    }
 
     strip_trailing_newlines(reference);
     strip_trailing_newlines(src);
@@ -532,10 +552,16 @@ TEST_F(OfflineDecompilation, Compile) {
     auto& obj_l = db->obj_files_by_name.at(file.first);
     ASSERT_EQ(obj_l.size(), 1);
 
-    std::string src = db->ir2_final_out(obj_l.at(0), g_functions_to_skip_compiling);
-    total_lines += line_count(src);
-
-    compiler.run_full_compiler_on_string_no_save(src);
+    const auto& cache = final_output_cache->find(file.first);
+    if (cache != final_output_cache->end()) {
+      const auto& src = cache->second;
+      total_lines += line_count(src);
+      compiler.run_full_compiler_on_string_no_save(src);
+    } else {
+      auto src = db->ir2_final_out(obj_l.at(0), g_functions_to_skip_compiling);
+      total_lines += line_count(src);
+      compiler.run_full_compiler_on_string_no_save(src);
+    }
   }
   auto time = timer.getSeconds();
   lg::info("Total Lines Compiled: {}. Lines/second: {:.1f}\n", total_lines,

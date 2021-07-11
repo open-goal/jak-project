@@ -627,6 +627,12 @@ TEST_F(WithGameTests, StaticArrayField) {
                           "0\n"});
 }
 
+TEST_F(WithGameTests, ArrayRefStatic) {
+  runner.run_static_test(env, testCategory, "test-array-ref-static.gc",
+                         {"test-not-inline-inline-array-type 12 asdf 13 bean 14\n"
+                          "0\n"});
+}
+
 TEST_F(WithGameTests, TypeReference) {
   runner.run_static_test(env, testCategory, "test-type-ref.gc",
                          {"string #t basic some-unknown-type 20 0\n"

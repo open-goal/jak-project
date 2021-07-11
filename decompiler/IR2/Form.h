@@ -842,6 +842,27 @@ class CondNoElseElement : public FormElement {
   bool allow_in_if() const override { return false; }
 };
 
+class CaseElement : public FormElement {
+ public:
+  struct Entry {
+    std::vector<Form*> vals;
+    Form* body = nullptr;
+  };
+
+  CaseElement(Form* value, const std::vector<Entry>& entries, Form* else_body);
+  goos::Object to_form_internal(const Env& env) const override;
+  void apply(const std::function<void(FormElement*)>& f) override;
+  void apply_form(const std::function<void(Form*)>& f) override;
+  void collect_vars(RegAccessSet& vars, bool recursive) const override;
+  void get_modified_regs(RegSet& regs) const override;
+  bool allow_in_if() const override { return false; }
+
+ private:
+  Form* m_value = nullptr;
+  std::vector<Entry> m_entries;
+  Form* m_else_body = nullptr;  // may be nullptr, if no else.
+};
+
 /*!
  * Represents a (abs x) expression.
  */

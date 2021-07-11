@@ -6,7 +6,7 @@
 
 namespace decompiler {
 class TP_Type;
-struct TypeState;
+class TypeState;
 
 class DecompilerTypeSystem {
  public:

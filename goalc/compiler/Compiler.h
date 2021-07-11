@@ -281,10 +281,11 @@ class Compiler {
                                   StructureType* type,
                                   Env* env,
                                   RegVal* reg,
-                                  const Field& f);
-  Val* generate_inspector_for_structured_type(const goos::Object& form,
-                                              Env* env,
-                                              StructureType* type);
+                                  const Field& f,
+                                  int tab_count);
+  Val* generate_inspector_for_structure_type(const goos::Object& form,
+                                             Env* env,
+                                             StructureType* structure_type);
   Val* generate_inspector_for_bitfield_type(const goos::Object& form, Env* env, BitFieldType* type);
   RegVal* compile_get_method_of_type(const goos::Object& form,
                                      const TypeSpec& compile_time_type,

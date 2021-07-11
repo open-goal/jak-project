@@ -810,7 +810,7 @@
   (none)
   )
 
-(defun upload-vram-pages ((pool texture-pool) (segment texture-pool-segment) (page texture-page) (mode int) (bucket-idx int))
+(defun upload-vram-pages ((pool texture-pool) (segment texture-pool-segment) (page texture-page) (mode int) (bucket-idx bucket-id))
   "Add a dma chain to upload textures to the bucket. This will only upload chunks that aren't already there.
    This will automatically update the cache info in the pool for the upload.
    mode: -3 = don't want anything (this function does nothing)
@@ -1059,7 +1059,7 @@
   0
   )
 
-(defun upload-vram-pages-pris ((pool texture-pool) (segment texture-pool-segment) (page texture-page) (bucket-idx int) (needed-mask int))
+(defun upload-vram-pages-pris ((pool texture-pool) (segment texture-pool-segment) (page texture-page) (bucket-idx bucket-id) (needed-mask int))
   "Upload the entire texture page. If the needed-mask is not set, it will not upload those chunks.
    Upload will be added to the given bucket for on-screen.
    The nth bit of the mask determines if the nth 16-kB chunk is needed in this upload.
@@ -1312,7 +1312,7 @@
   ;; in the level data, there is always code, then TFRAG texture,
   ;; so mark the code memory end as the start of this page.
   ;; (note: this may be wrong on levels with the zoomer hud texture)
-  (set! (-> *level* unknown-level-2 code-memory-end) (the pointer page))
+  (set! (-> *level* loading-level code-memory-end) (the pointer page))
   page
   )
 
@@ -1358,7 +1358,7 @@
       )
     )
   (set! (-> *texture-pool* allocate-func) texture-page-common-allocate)
-  (set! (-> *level* unknown-level-2 code-memory-end) (the pointer page))
+  (set! (-> *level* loading-level code-memory-end) (the pointer page))
   page
   )
 
@@ -1373,7 +1373,7 @@
        (set! (-> pool common-page common-id) page)
        )
       (else
-       (let ((level-idx (-> *level* unknown-level-2 index)))
+       (let ((level-idx (-> *level* loading-level index)))
          ;; these will handle TFRAG. These allocators will then switch the allocator
          ;; to common for everything else.
          (cond
@@ -1579,7 +1579,7 @@
   (when (= tex-page-kind (tpage-kind tfrag)) ;; TFRAG (0)
     ;; get the texture page, bucket to add to, and an effective distance from the closest thing.    
     (let ((tfrag-page (-> level texture-page 0))
-          (tfrag-bucket (if (zero? (-> level index)) 5 12))
+          (tfrag-bucket (if (zero? (-> level index)) (bucket-id tfrag-tex0) (bucket-id tfrag-tex1)))
           ;; not really sure how this is calculated, but it's a distance.
           (distance (fmin (fmin (-> level closest-object 0)
                                 (if (and (< 0.0 (-> level level-distance))
@@ -1633,7 +1633,7 @@
   (if (= tex-page-kind (tpage-kind pris)) ;; PRIS (1)
       (let ((pris-page (-> level texture-page 1)))
         (if (and pris-page (nonzero? pris-page))
-            (let ((pris-bucket (if (zero? (-> level index)) 48 51)))
+            (let ((pris-bucket (if (zero? (-> level index)) (bucket-id pris-tex0) (bucket-id pris-tex1))))
               ;; just upload the whole thing always.
               ;; use the cache mask as requested by the level.
               (set! (-> level upload-size 1)
@@ -1649,7 +1649,7 @@
             (shrub-closest (-> level closest-object 2)) ;; I guess this is the shrub closest.
             )
         (if (and shrub-page (nonzero? shrub-page))
-            (let ((shrub-bucket (if (zero? (-> level index)) 19 25))
+            (let ((shrub-bucket (if (zero? (-> level index)) (bucket-id shrub-tex0) (bucket-id shrub-tex1)))
                   (shrub-mode (cond
                                 ((= shrub-closest 4095995904.0)
                                  -3 ;; nothing
@@ -1679,7 +1679,7 @@
             (alpha-closest (-> level closest-object 3))
             )
         (if (and alpha-page (nonzero? alpha-page))
-            (let ((alpha-bucket (if (zero? (-> level index)) 31 38))
+            (let ((alpha-bucket (if (zero? (-> level index)) (bucket-id alpha-tex0) (bucket-id alpha-tex1)))
                   (alpha-mode (cond
                                 ((< 348160.0 alpha-closest)
                                  0 ;; segment 0
@@ -1712,7 +1712,7 @@
   (if (= tex-page-kind (tpage-kind water)) ;; WATER (4)
       (let ((water-page (-> level texture-page 4)))
         (if (and water-page (nonzero? water-page))
-            (let ((water-bucket (if (zero? (-> level index)) 57 60)))
+            (let ((water-bucket (if (zero? (-> level index)) (bucket-id water-tex0) (bucket-id water-tex1))))
               (set! (-> level upload-size 4)
                (upload-vram-pages-pris obj (-> obj segment-common) water-page water-bucket (the-as int (-> level texture-mask 8)))
                )
@@ -1724,7 +1724,7 @@
   (none)
   )
 
-(defmethod upload-one-common! texture-pool ((obj texture-pool))
+(defmethod upload-one-common! texture-pool ((obj texture-pool) (lev level))
   "Upload the first common texture page that's in in the common-page-mask."
   (dotimes (v1-0 32)
     (let ((a2-0 (-> obj common-page v1-0)))
@@ -1732,7 +1732,7 @@
                  (nonzero? (logand (-> obj common-page-mask) (ash 1 v1-0))) ;; in the mask.
                  )
         ;; upload it!
-        (upload-vram-pages obj (-> obj segment-common) a2-0 -2 65)
+        (upload-vram-pages obj (-> obj segment-common) a2-0 -2 (bucket-id bucket-65))
         (return #f)
         )
       )
@@ -1774,7 +1774,7 @@
         ;; add it
         (dma-bucket-insert-tag
          (-> *display* frames (-> *display* on-screen) frame bucket-group)
-         5
+         (bucket-id tfrag-tex0)
          a2-0
          (the-as (pointer dma-tag) a3-3)
          )
@@ -1807,7 +1807,7 @@
        )
       (dma-bucket-insert-tag
        (-> *display* frames (-> *display* on-screen) frame bucket-group)
-       48
+       (bucket-id pris-tex0)
        a2-1
        (the-as (pointer dma-tag) a3-7)
        )
@@ -1840,7 +1840,7 @@
        )
       (dma-bucket-insert-tag
        (-> *display* frames (-> *display* on-screen) frame bucket-group)
-       19
+       (bucket-id shrub-tex0)
        a2-2
        (the-as (pointer dma-tag) a3-11)
        )
@@ -1873,7 +1873,7 @@
        )
       (dma-bucket-insert-tag
        (-> *display* frames (-> *display* on-screen) frame bucket-group)
-       31
+       (bucket-id alpha-tex0)
        a2-3
        (the-as (pointer dma-tag) a3-15)
        )
@@ -1908,7 +1908,7 @@
        )
       (dma-bucket-insert-tag
        (-> *display* frames (-> *display* on-screen) frame bucket-group)
-       12
+       (bucket-id tfrag-tex1)
        a2-4
        (the-as (pointer dma-tag) a3-19)
        )
@@ -1941,7 +1941,7 @@
        )
       (dma-bucket-insert-tag
        (-> *display* frames (-> *display* on-screen) frame bucket-group)
-       51
+       (bucket-id pris-tex1)
        a2-5
        (the-as (pointer dma-tag) a3-23)
        )
@@ -1974,7 +1974,7 @@
        )
       (dma-bucket-insert-tag
        (-> *display* frames (-> *display* on-screen) frame bucket-group)
-       25
+       (bucket-id shrub-tex1)
        a2-6
        (the-as (pointer dma-tag) a3-27)
        )
@@ -2007,7 +2007,7 @@
        )
       (dma-bucket-insert-tag
        (-> *display* frames (-> *display* on-screen) frame bucket-group)
-       38
+       (bucket-id alpha-tex1)
        a2-7
        (the-as (pointer dma-tag) a3-31)
        )
@@ -2736,7 +2736,7 @@
      (set! obj (the-as texture-page #f))
      )
     ((begin
-      (let ((v1-2 (-> *level* unknown-level-2))) ;; loading/linking level
+      (let ((v1-2 (-> *level* loading-level))) ;; loading/linking level
         (tex-dbg "  tpage is with level ~A~%" v1-2)
         (when v1-2
           ;; add us to the loading level's tpages

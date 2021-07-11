@@ -5,6 +5,7 @@
 ;; name in dgo: level-h
 ;; dgos: GAME, ENGINE
 
+;; The level system is responsible for loading and managning the two levels.
 
 (defconstant LEVEL_COUNT 2) ;; there are two levels in memory!
 
@@ -75,6 +76,8 @@
   :flag-assert         #x900000074
   )
 
+;; The levels are initialized (called "login") over multiple frames.
+;; The state of this process is stored in a login-state.
 (declare-type drawable basic)
 (deftype login-state (basic)
   ((state int32      :offset-assert 4)
@@ -147,7 +150,7 @@
     (add-irq-to-tex-buckets! (_type_) none 11)
     (unload! (_type_) _type_ 12)
     (bsp-name (_type_) symbol 13)
-    (dummy-14 (_type_ object) none 14)
+    (dummy-14 (_type_ object) memory-usage-block 14)
     (dummy-15 (_type_ vector) symbol 15)
     (dummy-16 (_type_) none 16)
     (load-continue (_type_) _type_ 17)
@@ -174,8 +177,8 @@
 (declare-type entity-links structure)
 (deftype level-group (basic)
   ((length          int32                :offset-assert 4)
-   (unknown-level-1 level                :offset-assert 8)
-   (unknown-level-2 level                :offset-assert 12) ;; currently loading
+   (log-in-level    level                :offset-assert 8)  ;; level currently logging in
+   (loading-level   level                :offset-assert 12) ;; currently loading
    (entity-link     entity-links         :offset-assert 16) ;; not sure what's going on here
    (border?         basic                :offset-assert 20)
    (vis?            basic                :offset-assert 24)
@@ -203,7 +206,7 @@
     (level-get-for-use (_type_ symbol symbol) level 11)
     (activate-levels! (_type_) int 12)
     (dummy-13 () none 13)
-    (dummy-14 () none 14)
+    (dummy-14 (_type_ object) none 14)
     (dummy-15 () none 15)
     (dummy-16 (_type_) int 16)
     (level-get-target-inside (_type_) level 17)
@@ -222,14 +225,15 @@
 
 (defun-extern level-update-after-load level login-state level)
 
-
+;; Initialize the level structure. This assigns DMA buckets to each level.
+;; TODO: figure out exactly which buckets are used for what.
 (define-extern *level* level-group)
 (if (zero? *level*)
     (set! *level*
           (new 'static 'level-group
                :length 2
-               :unknown-level-1 #f
-               :unknown-level-2 #f
+               :log-in-level #f
+               :loading-level #f
                :entity-link #f
                :border? #f
                :want-level #f

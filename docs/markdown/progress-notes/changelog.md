@@ -176,3 +176,5 @@
 - TypeSpecs now support "tags". This can specify a `:behavior` tag for a function.
 - Lambdas and methods now support `:behavior` to specify the current process type.
 - `defbehavior` has been added to define a global behavior.
+- Auto-generated inspect methods of process now start by calling the parent type's inspect, like in GOAL.
+- Fields with type `(inline-array thing)` can now be set in statics.
