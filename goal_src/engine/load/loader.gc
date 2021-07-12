@@ -265,11 +265,15 @@
 
 ;; (method 10 external-art-buffer)
 
+;; start loading a spooled anim if we think one is about to be used, e.g. when approaching a fuel cell or npc
+;; (some processes may want to wait for the stream to be preloaded, which won't happen with this disabled)
+(define *preload-spool-anims* #t)
+
 (defmethod first-using-status external-art-control ((obj external-art-control) (arg0 string) (arg1 int))
   "Get the status of the first buffer that's in use. #f = none are in use"
 
   (dotimes (i 2)
-    (swhen ((v1-3 (file-status (-> obj buffer i) arg0 arg1)))
+    (swhen (file-status (-> obj buffer i) arg0 arg1)
       (return bc)
       )
     )
@@ -333,7 +337,6 @@
    (label cfg-46)
    )
 
-  ;; I have never seen this enabled
   (when (not (-> obj reserve-buffer))
    (let ((s4-2 (-> obj rec 0 buf1)))
     (if (and s4-2
@@ -427,7 +430,269 @@
   0
   )
 
-;; start loading a spooled anim if we think one is about to be used, e.g. when approaching a fuel cell or npc
-;; (some processes may want to wait for the stream to be preloaded, which won't happen with this disabled)
-(define *preload-spool-anims* #t)
+;; (method 10 external-art-control)
+
+
+(defmethod try-preload-stream external-art-control ((obj external-art-control) (arg0 string) (arg1 int) (arg2 process-drawable) (arg3 float))
+
+  (when (and (= arg3 -99.0) arg2)
+   (let ((a0-2 (target-pos 0)))
+    (set! arg3 (vector-vector-distance a0-2 (-> arg2 root trans)))
+    )
+   )
+  (unless (and (-> obj preload-stream name)
+               (>= arg3 (-> obj preload-stream priority))
+               )
+   (set! (-> obj preload-stream name) arg0)
+   (set! (-> obj preload-stream parts) arg1)
+   (set! (-> obj preload-stream priority) arg3)
+   (set! (-> obj preload-stream owner) (process->handle arg2))
+   )
+  0
+  )
+
+;; (method 11 external-art-control)
+
+(defun ja-play-spooled-anim ((arg0 spool-anim) (arg1 art-joint-anim) (arg2 art-joint-anim) (arg3 (function process-drawable symbol)))
+  (local-vars
+   (sv-16 int)
+   (sv-24 float)
+   (sv-28 uint)
+   (sv-32 int)
+   (sv-40 int)
+   (sv-48 int)
+   (sv-56 int)
+   (sv-64 sound-id)
+   (sv-72 int)
+   )
+  (with-pp
+   (set! sv-16 0)
+   (set! sv-24 -17.0)
+   (set! sv-28 (-> pp skel status))
+   (set! sv-32 -2)
+   (set! sv-40 0)
+   (set! sv-48 0)
+   (set! sv-56 0)
+   (set! sv-64 (new-sound-id))
+   (dummy-17 *load-state* (-> arg0 command-list))
+   (set-setting! *setting-control* pp 'spooling (process->ppointer pp) 0.0 0)
+   (logior! (-> pp skel status) #x7)
+   (kill-current-level-hint '() '() 'die)
+   (level-hint-surpress!)
+   (copy-settings-from-target! *setting-control*)
+   ;; the spool lock is active (or we're not in game mode for some reason?)
+   (when (or (handle->process (-> *art-control* spool-lock))
+             (!= *master-mode* 'game)
+             )
+    (cond
+     (arg1
+      (when (!= (if (> (-> pp skel active-channels) 0)
+                 (-> pp skel root-channel 0 frame-group)
+                 )
+             arg1
+             )
+       (ja-channel-push! 1 15)
+       ;; TODO macro
+       (let ((s2-0 (-> pp skel root-channel 0)))
+        (joint-control-channel-group-eval! s2-0 arg1 num-func-identity)
+        (set! (-> s2-0 frame-num) 0.0)
+        )
+       )
+      )
+     (else
+      (ja-channel-set! 0)
+      )
+     )
+    (while (or (handle->process (-> *art-control* spool-lock))
+               (!= *master-mode* 'game)
+               )
+     (format #t "WARNING: ---------------------> loader stall on lock~%")
+     (if (arg3 pp)
+      (goto cfg-88)
+      )
+     (dummy-11 *art-control* (-> arg0 name) sv-16 pp -9.0)
+     (suspend)
+     (when arg1
+      ;; TODO macro
+      (let ((a0-17 (-> pp skel root-channel 0)))
+       (set! (-> a0-17 param 0) 1.0)
+       (joint-control-channel-group-eval! a0-17 (the-as art-joint-anim #f) num-func-loop!)
+       )
+      )
+     )
+    )
+   (set! (-> *art-control* spool-lock) (process->handle pp))
+   (set! sv-48 (the-as int (-> *display* base-frame-counter)))
+   (while (< sv-16 (-> arg0 parts))
+    (dummy-11 *art-control* (-> arg0 name) sv-16 pp -20.0)
+    (update *art-control* #f)
+    (dummy-11 *art-control* (-> arg0 name) sv-16 pp -20.0)
+    (when (!= (first-using-status *art-control* (-> arg0 name) sv-16) 'active)
+     (cond
+      (arg1
+       (when (!= (if (> (-> pp skel active-channels) 0)
+                  (-> pp skel root-channel 0 frame-group)
+                  )
+              arg1
+              )
+        (ja-channel-set! 1)
+        (let ((s2-2 (-> pp skel root-channel 0)))
+         (joint-control-channel-group-eval! s2-2 arg1 num-func-identity)
+         (set! (-> s2-2 frame-num) 0.0)
+         )
+        )
+       )
+      (else
+       (ja-channel-set! 0)
+       )
+      )
+     (while (!= (first-using-status *art-control* (-> arg0 name) sv-16) 'active)
+      (if (arg3 pp)
+        (goto cfg-88)
+        )
+      (dummy-11 *art-control* (-> arg0 name) sv-16 pp -20.0)
+      (format #t "WARNING: ---------------------> loader stall on art ~S ~D~%" (-> arg0 name) sv-16)
+      (suspend)
+      (when arg1
+       (let ((a0-37 (-> pp skel root-channel 0)))
+        (set! (-> a0-37 param 0) 1.0)
+        (joint-control-channel-group-eval! a0-37 (the-as art-joint-anim #f) num-func-loop!)
+        )
+       )
+      )
+     )
+    (dummy-11 *art-control* (-> arg0 name) sv-16 pp -20.0)
+    (let ((s2-4 (the-as art-joint-anim (dummy-10 (-> pp draw art-group) (-> arg0 name) art-joint-anim))))
+     (cond
+      (s2-4
+       (ja-channel-set! 1)
+       (let ((a0-42 (-> pp skel root-channel 0)))
+        (set! (-> a0-42 frame-group) s2-4)
+        (set! (-> a0-42 param 0) (the float (+ (-> s2-4 data 0 length) -1)))
+        (set! (-> a0-42 param 1) 1.0)
+        (set! (-> a0-42 frame-num) 0.0)
+        (joint-control-channel-group! a0-42 s2-4 num-func-seek!)
+        )
+       (when (zero? sv-16)
+        (str-play-async (-> arg0 name) (the-as pointer sv-64))
+        (set! (-> *art-control* active-stream) (-> arg0 name))
+        )
+       (let* ((f30-0 (* 0.05859375 (-> s2-4 speed)))
+              (f28-0
+               (+ sv-24 (/ (the float (+ (-> s2-4 data 0 length) -1)) f30-0))
+               )
+              )
+        (set! sv-72 (current-str-pos (the-as int sv-64)))
+        (set! sv-40 (the-as int (-> *display* base-frame-counter)))
+        ;; uhh...
+        (until (begin
+                (dummy-11 *art-control* (-> arg0 name) sv-16 pp -20.0)
+                (cond
+                 ((< (+ sv-16 1) (-> arg0 parts))
+                  (dummy-11 *art-control* (-> arg0 name) (1+ sv-16) pp -10.0)
+                  )
+                 (else
+                  (set!
+                   (-> pp skel status)
+                   (logand -5 (the-as int (-> pp skel status)))
+                   )
+                  )
+                 )
+                (dummy-16 *load-state* (ja-aframe-num 0))
+                (cond
+                 ((and (< sv-32 sv-72) (= (current-str-id) sv-64))
+                  (+! sv-56 (the-as int (- (-> *display* base-frame-counter) (-> *display* old-base-frame-counter))))
+                  (set! sv-40 (the-as int (-> *display* base-frame-counter)))
+                  )
+                 (else
+                  0
+                  )
+                 )
+                (set! sv-32 sv-72)
+                (set! sv-48 (the-as int (-> *display* base-frame-counter)))
+                (suspend)
+                (let ((f0-14 (* (- (the float (current-str-pos (the-as int sv-64))) sv-24) f30-0))
+                      (a0-69 (-> pp skel root-channel 0))
+                      )
+                 (set! (-> a0-69 param 0) (the float (+ (-> a0-69 frame-group data 0 length) -1)))
+                 (set! (-> a0-69 param 1) 1.0)
+                 (set! (-> a0-69 frame-num) f0-14)
+                 (joint-control-channel-group! a0-69 (the-as art-joint-anim #f) num-func-seek!)
+                 )
+                (let ((v0-39 (current-str-pos (the-as int sv-64))))
+                 (set! sv-72 v0-39)
+                 (>= (the float v0-39) f28-0)
+                 )
+                )
+         (if (= (-> pp skel root-channel 0) (-> pp skel channel))
+          (set! (-> pp skel status) (logior (-> pp skel status) 32))
+          )
+         (if (or (arg3 pp)
+                 (and (<= sv-72 0)
+                      (>= (the-as int (- (-> *display* base-frame-counter) sv-40)) (seconds 4))
+                      )
+           (and (< (seconds 1) sv-56) (<= sv-72 0))
+           )
+          (goto cfg-88)
+          )
+         )
+        (set! sv-24 f28-0)
+        )
+       (logclear! (-> pp skel status) #x20)
+       )
+      (else
+       (format 0 "ERROR: <asg> ~A in spool anim loop for ~A ~D, but not loaded.~" pp (-> arg0 name) sv-16)
+       (goto cfg-88)
+       )
+      )
+     )
+    (1+! sv-16)
+    )
+   (1-! sv-16)
+   (label cfg-88)
+   (ja-abort-spooled-anim arg0 arg2 sv-16)
+   0
+   )
+  )
+
+(defun ja-abort-spooled-anim ((arg0 spool-anim) (arg1 art-joint-anim) (arg2 int))
+  (with-pp
+   (dummy-18 *load-state*)
+   (str-play-stop (-> arg0 name))
+   (set! (-> *art-control* active-stream) #f)
+   (logclear! (-> pp skel status) #x6) ;; #x4 and #x2
+   (if (not (logtest? (-> pp skel status) 1))
+     (logclear! (-> pp skel status) #x1)
+     )
+   (clear-pending-settings-from-process *setting-control* pp 'spooling)
+   (cond
+    ((and arg1 (>= arg2 0))
+     (ja-channel-push! 1 30)
+     (set! (-> pp skel root-channel 0 frame-group) arg1)
+     (while (!= (-> pp skel root-channel 0) (-> pp skel channel))
+       (dummy-11 *art-control* (-> arg0 name) arg2 pp -20.0)
+       (suspend)
+       ;; TODO macro
+       (let ((a0-12 (-> pp skel root-channel 0)))
+        (set! (-> a0-12 param 0) (the float (+ (-> a0-12 frame-group data 0 length) -1)))
+        (set! (-> a0-12 param 1) 1.0)
+        (joint-control-channel-group-eval! a0-12 (the-as art-joint-anim #f) num-func-seek!)
+        )
+       )
+     )
+    (else
+     (ja-channel-set! 0)
+     )
+    )
+   (set! (-> *art-control* spool-lock) (the-as handle #f))
+   0
+   )
+  )
+
+
+;; todo
+(define-extern *art-control* external-art-control)
+(if (zero? *art-control*)
+  (set! *art-control* (new 'global 'external-art-control))
+  )
 
