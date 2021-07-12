@@ -112,6 +112,7 @@
   ((mask  uint8  8 :offset-assert   0)
    (dword uint64   :offset          0)
    )
+  :pack-me
   :method-count-assert 9
   :size-assert         #x8
   :flag-assert         #x900000008
@@ -120,7 +121,7 @@
 ;; definition for method 3 of type ocean-mid-mask
 (defmethod inspect ocean-mid-mask ((obj ocean-mid-mask))
   (format #t "[~8x] ~A~%" obj 'ocean-mid-mask)
-  (format #t "~Tmask[8] @ #x~X~%" (-> obj mask))
+  (format #t "~Tmask[8] @ #x~X~%" (&-> obj dword))
   (format #t "~Tdword: #x~X~%" (-> obj dword))
   obj
   )
@@ -143,7 +144,7 @@
 
 ;; definition of type ocean-mid-masks
 (deftype ocean-mid-masks (basic)
-  ((data uint32  :offset-assert   4)
+  ((data (inline-array ocean-mid-mask)  :offset-assert   4)
    )
   :pack-me
   :method-count-assert 9
@@ -198,7 +199,7 @@
 
 ;; definition of type ocean-trans-indices
 (deftype ocean-trans-indices (basic)
-  ((data uint32 2304 :offset-assert   4)
+  ((data ocean-trans-index 2304 :inline :offset-assert   4)
    )
   :method-count-assert 9
   :size-assert         #x2404
@@ -230,7 +231,7 @@
 
 ;; definition of type ocean-near-indices
 (deftype ocean-near-indices (basic)
-  ((data uint32  :offset-assert   4)
+  ((data (inline-array ocean-near-index)  :offset-assert   4)
    )
   :method-count-assert 9
   :size-assert         #x8
@@ -268,14 +269,14 @@
 
 ;; definition of type ocean-map
 (deftype ocean-map (basic)
-  ((start-corner        vector        :inline :offset-assert  16)
-   (far-color           vector        :inline :offset-assert  32)
-   (ocean-spheres       ocean-spheres         :offset-assert  48)
-   (ocean-colors        ocean-colors          :offset-assert  52)
-   (ocean-mid-indices   basic                 :offset-assert  56)
-   (ocean-trans-indices basic                 :offset-assert  60)
-   (ocean-near-indices  basic                 :offset-assert  64)
-   (ocean-mid-masks     basic                 :offset-assert  68)
+  ((start-corner        vector              :inline :offset-assert  16)
+   (far-color           vector              :inline :offset-assert  32)
+   (ocean-spheres       ocean-spheres               :offset-assert  48)
+   (ocean-colors        ocean-colors                :offset-assert  52)
+   (ocean-mid-indices   ocean-mid-indices           :offset-assert  56)
+   (ocean-trans-indices ocean-trans-indices         :offset-assert  60)
+   (ocean-near-indices  ocean-near-indices          :offset-assert  64)
+   (ocean-mid-masks     ocean-mid-masks             :offset-assert  68)
    )
   :method-count-assert 9
   :size-assert         #x48
@@ -818,5 +819,4 @@
   )
 
 ;; failed to figure out what this is:
-(let ((v0-64 0))
-  )
+0

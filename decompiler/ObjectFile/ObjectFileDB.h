@@ -63,7 +63,9 @@ class ObjectFileDB {
                          bool print_hex);
 
   void analyze_functions_ir1(const Config& config);
-  void analyze_functions_ir2(const std::string& output_dir, const Config& config);
+  void analyze_functions_ir2(const std::string& output_dir,
+                             const Config& config,
+                             bool skip_debug_output = false);
   void ir2_top_level_pass(const Config& config);
   void ir2_stack_spill_slot_pass();
   void ir2_basic_block_pass(const Config& config);
@@ -84,7 +86,7 @@ class ObjectFileDB {
   std::string ir2_final_out(ObjectFileData& data,
                             const std::unordered_set<std::string>& skip_functions = {});
 
-  void process_tpages();
+  std::string process_tpages();
   std::string process_game_count_file();
   std::string process_game_text_files();
 

@@ -195,6 +195,15 @@ TP_Type SimpleExpression::get_type(const TypeState& input,
     case Kind::MOD_UNSIGNED:
     case Kind::PCPYLD:
       return TP_Type::make_from_ts("uint");
+    case Kind::VECTOR_PLUS:
+    case Kind::VECTOR_MINUS:
+      return TP_Type::make_from_ts("vector");
+    case Kind::VECTOR_FLOAT_PRODUCT:
+      return TP_Type::make_from_ts("vector");
+    case Kind::SUBU_L32_S7:
+      return TP_Type::make_from_ts("int");
+    case Kind::VECTOR_3_DOT:
+      return TP_Type::make_from_ts("float");
     default:
       throw std::runtime_error("Simple expression cannot get_type: " +
                                to_form(env.file->labels, env).print());
@@ -369,8 +378,13 @@ TP_Type SimpleExpression::get_type_int2(const TypeState& input,
     } break;
 
     case Kind::MUL_UNSIGNED: {
-      // unsigned multiply will always return a unsigned number.
-      return TP_Type::make_from_ts("uint");
+      if (arg0_type.is_integer_constant() && is_int_or_uint(dts, arg1_type)) {
+        return TP_Type::make_from_product(arg0_type.get_integer_constant(),
+                                          is_signed(dts, arg0_type));
+      } else if (is_int_or_uint(dts, arg0_type) && is_int_or_uint(dts, arg1_type)) {
+        // unsigned multiply will always return a unsigned number.
+        return TP_Type::make_from_ts("uint");
+      }
     } break;
 
     case Kind::DIV_SIGNED:
@@ -405,6 +419,9 @@ TP_Type SimpleExpression::get_type_int2(const TypeState& input,
                                                             arg0_type.typespec());
       }
       break;
+
+    case Kind::MIN_SIGNED:
+      return TP_Type::make_from_ts("int");
 
     default:
       break;
@@ -454,7 +471,8 @@ TP_Type SimpleExpression::get_type_int2(const TypeState& input,
   }
 
   // special cases for non-integers
-  if ((arg0_type.typespec() == TypeSpec("object") || arg0_type.typespec() == TypeSpec("pair")) &&
+  if ((arg0_type.typespec() == TypeSpec("object") || arg0_type.typespec() == TypeSpec("pair") ||
+       tc(dts, TypeSpec("basic"), arg0_type)) &&
       (arg1_type.is_integer_constant(62) || arg1_type.is_integer_constant(61))) {
     // boxed object tag trick.
     return TP_Type::make_from_ts("int");
@@ -483,25 +501,48 @@ TP_Type SimpleExpression::get_type_int2(const TypeState& input,
     rd_in.stride = arg1_type.get_multiplier();
     rd_in.offset = 0;
     rd_in.base_type = arg0_type.typespec();
-    auto rd = dts.ts.reverse_field_lookup(rd_in);
+    auto rd = dts.ts.reverse_field_multi_lookup(rd_in);
 
-    if (rd.success) {
-      return TP_Type::make_from_ts(coerce_to_reg_type(rd.result_type));
+    for (int i = 0; i < (int)rd.results.size(); i++) {
+      if (rd.results.at(i).has_variable_token()) {
+        return TP_Type::make_from_ts(coerce_to_reg_type(rd.results.at(i).result_type));
+        break;
+      }
+    }
+  }
+
+  if (m_kind == Kind::ADD && arg1_type.kind == TP_Type::Kind::TYPESPEC &&
+      arg1_type.typespec().base_type() == "inline-array" &&
+      arg0_type.kind == TP_Type::Kind::PRODUCT_WITH_CONSTANT) {
+    FieldReverseLookupInput rd_in;
+    rd_in.deref = std::nullopt;
+    rd_in.stride = arg0_type.get_multiplier();
+    rd_in.offset = 0;
+    rd_in.base_type = arg1_type.typespec();
+    auto rd = dts.ts.reverse_field_multi_lookup(rd_in);
+
+    for (int i = 0; i < (int)rd.results.size(); i++) {
+      if (rd.results.at(i).has_variable_token()) {
+        return TP_Type::make_from_ts(coerce_to_reg_type(rd.results.at(i).result_type));
+        break;
+      }
     }
   }
 
   if (m_kind == Kind::ADD && arg0_type.is_product() && arg1_type.kind == TP_Type::Kind::TYPESPEC) {
-    return TP_Type::make_object_plus_product(arg1_type.typespec(), arg0_type.get_multiplier());
+    return TP_Type::make_object_plus_product(arg1_type.typespec(), arg0_type.get_multiplier(),
+                                             true);
   }
 
   if (m_kind == Kind::ADD && arg1_type.is_product() && arg0_type.kind == TP_Type::Kind::TYPESPEC) {
-    return TP_Type::make_object_plus_product(arg0_type.typespec(), arg1_type.get_multiplier());
+    return TP_Type::make_object_plus_product(arg0_type.typespec(), arg1_type.get_multiplier(),
+                                             false);
   }
 
   if ((m_kind == Kind::ADD || m_kind == Kind::SUB) &&
       arg0_type.typespec().base_type() == "pointer" && tc(dts, TypeSpec("integer"), arg1_type)) {
     if (m_kind == Kind::ADD && !m_args[1].is_int()) {
-      return TP_Type::make_object_plus_product(arg0_type.typespec(), 1);
+      return TP_Type::make_object_plus_product(arg0_type.typespec(), 1, false);
     }
     // plain pointer plus integer = plain pointer
     return TP_Type::make_from_ts(arg0_type.typespec());
@@ -511,6 +552,14 @@ TP_Type SimpleExpression::get_type_int2(const TypeState& input,
       arg1_type.typespec().base_type() == "pointer" && tc(dts, TypeSpec("integer"), arg0_type)) {
     // plain pointer plus integer = plain pointer
     return TP_Type::make_from_ts(arg1_type.typespec());
+  }
+
+  if (m_kind == Kind::ADD && tc(dts, TypeSpec("structure"), arg0_type) &&
+      arg1_type.is_integer_constant()) {
+    auto type_info = dts.ts.lookup_type(arg0_type.typespec());
+    if ((u64)type_info->get_size_in_memory() == arg1_type.get_integer_constant()) {
+      return TP_Type::make_from_ts(arg0_type.typespec());
+    }
   }
 
   if (tc(dts, TypeSpec("structure"), arg1_type) && !m_args[0].is_int() &&
@@ -526,7 +575,7 @@ TP_Type SimpleExpression::get_type_int2(const TypeState& input,
       // byte access of offset array field trick.
       // arg1 holds a structure.
       // arg0 is an integer in a register.
-      return TP_Type::make_object_plus_product(arg1_type.typespec(), 1);
+      return TP_Type::make_object_plus_product(arg1_type.typespec(), 1, true);
     }
   }
 
@@ -546,6 +595,20 @@ TP_Type SimpleExpression::get_type_int2(const TypeState& input,
   if ((m_kind == Kind::ADD || m_kind == Kind::SUB) && tc(dts, TypeSpec("pointer"), arg0_type) &&
       tc(dts, TypeSpec("pointer"), arg1_type)) {
     return TP_Type::make_from_ts(TypeSpec("int"));
+  }
+
+  if (m_kind == Kind::RIGHT_SHIFT_LOGIC && arg0_type.typespec() == TypeSpec("float") &&
+      arg1_type.is_integer_constant(63)) {
+    //
+    return TP_Type::make_from_ts(TypeSpec("int"));
+  }
+
+  if (m_kind == Kind::OR && arg0_type.typespec() == TypeSpec("float") &&
+      arg1_type.typespec() == TypeSpec("float")) {
+    env.func->warnings.general_warning("Using logior on floats");
+    // returning int instead of uint because they like to use the float sign bit as an integer sign
+    // bit.
+    return TP_Type::make_from_ts(TypeSpec("float"));
   }
 
   throw std::runtime_error(fmt::format("Cannot get_type_int2: {}, args {} and {}",
@@ -664,7 +727,6 @@ TypeState AsmOp::propagate_types_internal(const TypeState& input,
   // pextuw t0, r0, gp
   if (m_instr.kind == InstructionKind::PEXTUW) {
     if (m_src[0] && m_src[0]->reg() == Register(Reg::GPR, Reg::R0)) {
-      // sponge
       assert(m_src[1]);
       auto type = dts.ts.lookup_type(result.get(m_src[1]->reg()).typespec());
       auto as_bitfield = dynamic_cast<BitFieldType*>(type);
@@ -674,6 +736,17 @@ TypeState AsmOp::propagate_types_internal(const TypeState& input,
         result.get(m_dst->reg()) = TP_Type::make_from_ts(field.type());
         return result;
       }
+    }
+  }
+
+  // sllv out, in, r0
+  if (m_instr.kind == InstructionKind::SLLV && m_src[1]->reg() == Register(Reg::GPR, Reg::R0)) {
+    auto type = dts.ts.lookup_type(result.get(m_src[0]->reg()).typespec());
+    auto as_bitfield = dynamic_cast<BitFieldType*>(type);
+    if (as_bitfield) {
+      auto field = find_field(dts.ts, as_bitfield, 0, 32, {});
+      result.get(m_dst->reg()) = TP_Type::make_from_ts(field.type());
+      return result;
     }
   }
 
@@ -772,11 +845,13 @@ TP_Type LoadVarOp::get_src_type(const TypeState& input,
         ro.offset >= 16 && (ro.offset & 3) == 0 && m_size == 4 && m_kind == Kind::UNSIGNED) {
       // method get of an unknown type. We assume the most general "object" type.
       auto method_id = (ro.offset - 16) / 4;
-      auto method_info = dts.ts.lookup_method("object", method_id);
-      if (method_id != GOAL_NEW_METHOD && method_id != GOAL_RELOC_METHOD) {
-        // this can get us the wrong thing for `new` methods.  And maybe relocate?
-        return TP_Type::make_non_virtual_method(
-            method_info.type.substitute_for_method_call("object"), TypeSpec("object"), method_id);
+      if (method_id <= (int)GOAL_MEMUSAGE_METHOD) {
+        auto method_info = dts.ts.lookup_method("object", method_id);
+        if (method_id != GOAL_NEW_METHOD && method_id != GOAL_RELOC_METHOD) {
+          // this can get us the wrong thing for `new` methods.  And maybe relocate?
+          return TP_Type::make_non_virtual_method(
+              method_info.type.substitute_for_method_call("object"), TypeSpec("object"), method_id);
+        }
       }
     }
 
@@ -1127,7 +1202,9 @@ TypeState AsmBranchOp::propagate_types_internal(const TypeState& input,
   // for now, just make everything uint
   TypeState output = input;
   for (auto x : m_write_regs) {
-    output.get(x) = TP_Type::make_from_ts("uint");
+    if (x.allowed_local_gpr()) {
+      output.get(x) = TP_Type::make_from_ts("uint");
+    }
   }
   return output;
 }

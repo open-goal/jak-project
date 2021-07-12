@@ -6,6 +6,7 @@
 #include "common/goos/PrettyPrinter.h"
 #include "common/type_system/TypeSystem.h"
 #include "decompiler/util/DecompilerTypeSystem.h"
+#include "decompiler/util/data_decompile.h"
 
 namespace decompiler {
 
@@ -32,7 +33,8 @@ std::string FormElement::to_string(const Env& env) const {
 }
 
 void FormElement::push_to_stack(const Env& env, FormPool&, FormStack&) {
-  throw std::runtime_error("push_to_stack not implemented for " + to_string(env));
+  throw std::runtime_error(fmt::format("push_to_stack not implemented for {}: {}", to_string(env),
+                                       typeid(*this).name()));
 }
 
 goos::Object FormElement::to_form_as_condition_internal(const Env& env) const {
@@ -493,7 +495,7 @@ void SetFormFormElement::get_modified_regs(RegSet& regs) const {
 // AtomicOpElement
 /////////////////////////////
 
-AtomicOpElement::AtomicOpElement(const AtomicOp* op) : m_op(op) {}
+AtomicOpElement::AtomicOpElement(AtomicOp* op) : m_op(op) {}
 
 goos::Object AtomicOpElement::to_form_internal(const Env& env) const {
   return m_op->to_form(env.file->labels, env);
@@ -516,6 +518,155 @@ void AtomicOpElement::get_modified_regs(RegSet& regs) const {
 
   for (auto r : m_op->clobber_regs()) {
     regs.insert(r);
+  }
+}
+
+/////////////////////////////
+// AsmBranchElement
+/////////////////////////////
+
+AsmBranchElement::AsmBranchElement(AsmBranchOp* branch_op, Form* branch_delay, bool likely)
+    : m_branch_op(branch_op), m_branch_delay(branch_delay), m_likely(likely) {
+  m_branch_delay->parent_element = this;
+  for (auto& elt : m_branch_delay->elts()) {
+    assert(elt->parent_form == m_branch_delay);
+  }
+}
+
+goos::Object AsmBranchElement::to_form_internal(const Env& env) const {
+  auto f = m_branch_op->to_form(env.file->labels, env);
+  return pretty_print::build_list(f, m_branch_delay->to_form(env));  // temp hack
+}
+
+void AsmBranchElement::apply(const std::function<void(FormElement*)>& f) {
+  f(this);
+  m_branch_delay->apply(f);
+}
+
+void AsmBranchElement::apply_form(const std::function<void(Form*)>& f) {
+  m_branch_delay->apply_form(f);
+}
+
+void AsmBranchElement::collect_vars(RegAccessSet& vars, bool recursive) const {
+  if (recursive) {
+    m_branch_delay->collect_vars(vars, recursive);
+  }
+  m_branch_op->collect_vars(vars);
+}
+
+void AsmBranchElement::get_modified_regs(RegSet& regs) const {
+  m_branch_delay->get_modified_regs(regs);
+  for (auto r : m_branch_op->write_regs()) {
+    regs.insert(r);
+  }
+
+  for (auto r : m_branch_op->clobber_regs()) {
+    regs.insert(r);
+  }
+}
+
+/////////////////////////////
+// TranslatedAsmBranch
+/////////////////////////////
+
+TranslatedAsmBranch::TranslatedAsmBranch(Form* branch_condition,
+                                         Form* branch_delay,
+                                         int label_id,
+                                         bool likely)
+    : m_branch_condition(branch_condition),
+      m_branch_delay(branch_delay),
+      m_label_id(label_id),
+      m_likely(likely) {
+  if (m_branch_delay) {
+    m_branch_delay->parent_element = this;
+  }
+
+  m_branch_condition->parent_element = this;
+}
+
+goos::Object TranslatedAsmBranch::to_form_internal(const Env& env) const {
+  // auto& cfg = env.func->cfg;
+  auto& label = env.file->labels.at(m_label_id);
+  int instr_in_function = (label.offset / 4 - env.func->start_word);
+
+  int block_id = -20;
+  if (instr_in_function == env.func->basic_blocks.back().end_word) {
+    block_id = env.func->basic_blocks.size() - 1;
+  } else {
+    int atomic_op_in_function =
+        env.func->ir2.atomic_ops->instruction_to_atomic_op.at(instr_in_function);
+    auto& ao = env.func->ir2.atomic_ops;
+
+    for (int i = 0; i < (int)ao->block_id_to_first_atomic_op.size(); i++) {
+      if (ao->block_id_to_first_atomic_op.at(i) == atomic_op_in_function) {
+        block_id = i;
+        break;
+      }
+    }
+  }
+
+  assert(block_id >= 0);
+
+  if (m_branch_delay) {
+    if (m_branch_delay->parent_element != this) {
+      fmt::print("bad ptr. Parent is {}\n", m_branch_delay->parent_element->to_string(env));
+      assert(false);
+    }
+
+    assert(m_branch_delay->parent_element->parent_form);
+    std::vector<goos::Object> list = {
+        pretty_print::to_symbol("b!"), m_branch_condition->to_form(env),
+        pretty_print::to_symbol(fmt::format("cfg-{}", block_id)),
+        pretty_print::to_symbol(m_likely ? ":likely-delay" : ":delay"),
+        m_branch_delay->to_form(env)};
+
+    return pretty_print::build_list(list);
+  } else {
+    std::vector<goos::Object> list = {pretty_print::to_symbol("b!"),
+                                      m_branch_condition->to_form(env),
+                                      pretty_print::to_symbol(fmt::format("cfg-{}", block_id))};
+
+    return pretty_print::build_list(list);
+  }
+}
+
+void TranslatedAsmBranch::apply(const std::function<void(FormElement*)>& f) {
+  f(this);
+  m_branch_condition->apply(f);
+  if (m_branch_delay) {
+    m_branch_delay->apply(f);
+  }
+}
+
+void TranslatedAsmBranch::apply_form(const std::function<void(Form*)>& f) {
+  m_branch_condition->apply_form(f);
+  if (m_branch_delay) {
+    m_branch_delay->apply_form(f);
+  }
+}
+
+void TranslatedAsmBranch::collect_vars(RegAccessSet& vars, bool recursive) const {
+  if (recursive) {
+    m_branch_condition->collect_vars(vars, recursive);
+    if (m_branch_delay) {
+      if (m_branch_delay->parent_element != this) {
+        fmt::print("bad ptr. Parent is {}\n", (void*)m_branch_delay->parent_element);
+        assert(false);
+      }
+
+      for (auto& elt : m_branch_delay->elts()) {
+        assert(elt->parent_form == m_branch_delay);
+      }
+
+      m_branch_delay->collect_vars(vars, recursive);
+    }
+  }
+}
+
+void TranslatedAsmBranch::get_modified_regs(RegSet& regs) const {
+  m_branch_condition->get_modified_regs(regs);
+  if (m_branch_delay) {
+    m_branch_delay->get_modified_regs(regs);
   }
 }
 
@@ -1212,6 +1363,107 @@ void CondNoElseElement::get_modified_regs(RegSet& regs) const {
   }
 }
 
+CaseElement::CaseElement(Form* value, const std::vector<Entry>& entries, Form* else_body)
+    : m_value(value), m_entries(entries), m_else_body(else_body) {
+  m_value->parent_element = this;
+  for (auto& entry : m_entries) {
+    for (auto& val : entry.vals) {
+      val->parent_element = this;
+    }
+    entry.body->parent_element = this;
+  }
+  if (m_else_body) {
+    m_else_body->parent_element = this;
+  }
+}
+
+goos::Object CaseElement::to_form_internal(const Env& env) const {
+  std::vector<goos::Object> list;
+  list.push_back(pretty_print::to_symbol("case"));
+  list.push_back(m_value->to_form(env));
+  for (auto& e : m_entries) {
+    std::vector<goos::Object> entry;
+
+    // cases
+    std::vector<goos::Object> cases;
+    for (auto& val : e.vals) {
+      cases.push_back(val->to_form(env));
+    }
+    entry.push_back(pretty_print::build_list(cases));
+
+    // body
+    e.body->inline_forms(entry, env);
+    list.push_back(pretty_print::build_list(entry));
+  }
+
+  if (m_else_body) {
+    std::vector<goos::Object> entry;
+    entry.push_back(pretty_print::to_symbol("else"));
+    m_else_body->inline_forms(entry, env);
+    list.push_back(pretty_print::build_list(entry));
+  }
+  return pretty_print::build_list(list);
+}
+
+void CaseElement::apply(const std::function<void(FormElement*)>& f) {
+  f(this);
+  m_value->apply(f);
+  for (auto& e : m_entries) {
+    for (auto& val : e.vals) {
+      val->apply(f);
+    }
+    e.body->apply(f);
+  }
+
+  if (m_else_body) {
+    m_else_body->apply(f);
+  }
+}
+
+void CaseElement::apply_form(const std::function<void(Form*)>& f) {
+  m_value->apply_form(f);
+  for (auto& e : m_entries) {
+    for (auto& val : e.vals) {
+      val->apply_form(f);
+    }
+    e.body->apply_form(f);
+  }
+
+  if (m_else_body) {
+    m_else_body->apply_form(f);
+  }
+}
+
+void CaseElement::collect_vars(RegAccessSet& vars, bool recursive) const {
+  if (recursive) {
+    m_value->collect_vars(vars, recursive);
+    for (auto& e : m_entries) {
+      for (auto& val : e.vals) {
+        val->collect_vars(vars, recursive);
+      }
+      e.body->collect_vars(vars, recursive);
+    }
+
+    if (m_else_body) {
+      m_else_body->collect_vars(vars, recursive);
+    }
+  }
+}
+
+void CaseElement::get_modified_regs(RegSet& regs) const {
+  m_value->get_modified_regs(regs);
+  for (auto& e : m_entries) {
+    for (auto& val : e.vals) {
+      val->get_modified_regs(regs);
+    }
+    e.body->get_modified_regs(regs);
+  }
+
+  if (m_else_body) {
+    m_else_body->get_modified_regs(regs);
+  }
+}
+
 /////////////////////////////
 // AbsElement
 /////////////////////////////
@@ -1541,6 +1793,16 @@ std::string fixed_operator_to_string(FixedOperatorKind kind) {
       return ".asm.sllv.r0";
     case FixedOperatorKind::ASM_MADDS:
       return ".asm.madd.s";
+    case FixedOperatorKind::VECTOR_MINUS:
+      return "vector-!";
+    case FixedOperatorKind::VECTOR_PLUS:
+      return "vector+!";
+    case FixedOperatorKind::VECTOR_FLOAT_PRODUCT:
+      return "vector-float*!";
+    case FixedOperatorKind::L32_NOT_FALSE_CBOOL:
+      return "l32-false-check";
+    case FixedOperatorKind::VECTOR_3_DOT:
+      return "vector-dot";
     default:
       assert(false);
       return "";
@@ -1798,6 +2060,7 @@ DerefElement::DerefElement(Form* base, bool is_addr_of, DerefToken token)
       x.expr()->parent_element = this;
     }
   }
+  inline_nested();
 }
 
 DerefElement::DerefElement(Form* base, bool is_addr_of, std::vector<DerefToken> tokens)
@@ -1808,6 +2071,7 @@ DerefElement::DerefElement(Form* base, bool is_addr_of, std::vector<DerefToken> 
       x.expr()->parent_element = this;
     }
   }
+  inline_nested();
 }
 
 goos::Object DerefElement::to_form_internal(const Env& env) const {
@@ -1884,11 +2148,13 @@ void DynamicMethodAccess::get_modified_regs(RegSet&) const {}
 ArrayFieldAccess::ArrayFieldAccess(RegisterAccess source,
                                    const std::vector<DerefToken>& deref_tokens,
                                    int expected_stride,
-                                   int constant_offset)
+                                   int constant_offset,
+                                   bool flipped)
     : m_source(source),
       m_deref_tokens(deref_tokens),
       m_expected_stride(expected_stride),
-      m_constant_offset(constant_offset) {
+      m_constant_offset(constant_offset),
+      m_flipped(flipped) {
   for (auto& token : m_deref_tokens) {
     if (token.kind() == DerefToken::Kind::INTEGER_EXPRESSION) {
       token.expr()->parent_element = this;
@@ -2015,7 +2281,7 @@ goos::Object ConstantFloatElement::to_form_internal(const Env&) const {
 // StorePlainDeref
 /////////////////////////////
 
-StorePlainDeref::StorePlainDeref(DerefElement* dst,
+StorePlainDeref::StorePlainDeref(Form* dst,
                                  SimpleExpression expr,
                                  int my_idx,
                                  RegisterAccess base_var,
@@ -2028,7 +2294,9 @@ StorePlainDeref::StorePlainDeref(DerefElement* dst,
       m_base_var(base_var),
       m_dst_cast_type(std::move(dst_cast_type)),
       m_src_cast_type(std::move(src_cast_type)),
-      m_size(size) {}
+      m_size(size) {
+  m_dst->parent_element = this;
+}
 
 goos::Object StorePlainDeref::to_form_internal(const Env& env) const {
   std::vector<goos::Object> lst = {pretty_print::to_symbol("set!")};
@@ -2055,7 +2323,9 @@ void StorePlainDeref::apply(const std::function<void(FormElement*)>& f) {
   m_dst->apply(f);
 }
 
-void StorePlainDeref::apply_form(const std::function<void(Form*)>&) {}
+void StorePlainDeref::apply_form(const std::function<void(Form*)>& f) {
+  m_dst->apply_form(f);
+}
 
 void StorePlainDeref::collect_vars(RegAccessSet& vars, bool recursive) const {
   m_expr.collect_vars(vars);
@@ -2108,11 +2378,16 @@ void StoreArrayAccess::get_modified_regs(RegSet& regs) const {
 // DecompiledDataElement
 /////////////////////////////
 
-DecompiledDataElement::DecompiledDataElement(goos::Object description)
-    : m_description(std::move(description)) {}
+DecompiledDataElement::DecompiledDataElement(const DecompilerLabel& label,
+                                             const std::optional<LabelType>& type_hint)
+    : m_label(label), m_type_hint(type_hint) {}
 
 goos::Object DecompiledDataElement::to_form_internal(const Env&) const {
-  return m_description;
+  if (m_decompiled) {
+    return m_description;
+  } else {
+    return pretty_print::to_symbol(fmt::format("<static-data {}>", m_label.name));
+  }
 }
 
 void DecompiledDataElement::apply(const std::function<void(FormElement*)>& f) {
@@ -2124,6 +2399,18 @@ void DecompiledDataElement::apply_form(const std::function<void(Form*)>&) {}
 void DecompiledDataElement::collect_vars(RegAccessSet&, bool) const {}
 
 void DecompiledDataElement::get_modified_regs(RegSet&) const {}
+
+void DecompiledDataElement::do_decomp(const Env& env, const LinkedObjectFile* file) {
+  if (m_type_hint) {
+    m_description = decompile_at_label_with_hint(*m_type_hint, m_label, env.file->labels,
+                                                 env.file->words_by_seg, *env.dts, file);
+
+  } else {
+    m_description = decompile_at_label_guess_type(m_label, env.file->labels, env.file->words_by_seg,
+                                                  env.dts->ts, file);
+  }
+  m_decompiled = true;
+}
 
 /////////////////////////////
 // LetElement
@@ -2201,45 +2488,58 @@ void LetElement::set_body(Form* new_body) {
 }
 
 /////////////////////////////
-// DoTimesElement
+// CounterLoopElement
 /////////////////////////////
 
-DoTimesElement::DoTimesElement(RegisterAccess var_init,
-                               RegisterAccess var_check,
-                               RegisterAccess var_inc,
-                               Form* check_value,
-                               Form* body)
+CounterLoopElement::CounterLoopElement(Kind kind,
+                                       RegisterAccess var_init,
+                                       RegisterAccess var_check,
+                                       RegisterAccess var_inc,
+                                       Form* check_value,
+                                       Form* body)
     : m_var_init(var_init),
       m_var_check(var_check),
       m_var_inc(var_inc),
       m_check_value(check_value),
-      m_body(body) {
+      m_body(body),
+      m_kind(kind) {
   m_body->parent_element = this;
   m_check_value->parent_element = this;
   assert(m_var_inc.reg() == m_var_check.reg());
   assert(m_var_init.reg() == m_var_inc.reg());
 }
 
-goos::Object DoTimesElement::to_form_internal(const Env& env) const {
+goos::Object CounterLoopElement::to_form_internal(const Env& env) const {
+  std::string loop_name;
+  switch (m_kind) {
+    case Kind::DOTIMES:
+      loop_name = "dotimes";
+      break;
+    case Kind::COUNTDOWN:
+      loop_name = "countdown";
+      break;
+    default:
+      assert(false);
+  }
   std::vector<goos::Object> outer = {
-      pretty_print::to_symbol("dotimes"),
+      pretty_print::to_symbol(loop_name),
       pretty_print::build_list(m_var_init.to_form(env), m_check_value->to_form(env))};
   m_body->inline_forms(outer, env);
   return pretty_print::build_list(outer);
 }
 
-void DoTimesElement::apply(const std::function<void(FormElement*)>& f) {
+void CounterLoopElement::apply(const std::function<void(FormElement*)>& f) {
   f(this);
   m_check_value->apply(f);
   m_body->apply(f);
 }
 
-void DoTimesElement::apply_form(const std::function<void(Form*)>& f) {
+void CounterLoopElement::apply_form(const std::function<void(Form*)>& f) {
   m_check_value->apply_form(f);
   m_body->apply_form(f);
 }
 
-void DoTimesElement::collect_vars(RegAccessSet& vars, bool recursive) const {
+void CounterLoopElement::collect_vars(RegAccessSet& vars, bool recursive) const {
   vars.insert(m_var_init);
   vars.insert(m_var_check);
   vars.insert(m_var_inc);
@@ -2249,7 +2549,7 @@ void DoTimesElement::collect_vars(RegAccessSet& vars, bool recursive) const {
   }
 }
 
-void DoTimesElement::get_modified_regs(RegSet& regs) const {
+void CounterLoopElement::get_modified_regs(RegSet& regs) const {
   regs.insert(m_var_inc.reg());
   m_body->get_modified_regs(regs);
   m_check_value->get_modified_regs(regs);
@@ -2308,8 +2608,9 @@ void StackStructureDefElement::get_modified_regs(RegSet&) const {}
 
 VectorFloatLoadStoreElement::VectorFloatLoadStoreElement(Register vf_reg,
                                                          Form* location,
-                                                         bool is_load)
-    : m_vf_reg(vf_reg), m_location(location), m_is_load(is_load) {
+                                                         bool is_load,
+                                                         int my_idx)
+    : m_vf_reg(vf_reg), m_location(location), m_is_load(is_load), m_my_idx(my_idx) {
   location->parent_element = this;
 }
 

@@ -96,7 +96,9 @@
 (define *file-temp-string* (new 'global 'string 128 (the-as string #f)))
 
 ;; definition for function make-file-name
-(defun make-file-name ((kind file-kind) (name string) (art-group-version int))
+(defun
+  make-file-name
+  ((kind file-kind) (name string) (art-group-version int) (arg3 symbol))
   (clear *file-temp-string*)
   (cond
    ((= kind (file-kind dir-tpage))
@@ -149,26 +151,20 @@
   )
 
 ;; definition for function file-info-correct-version?
-;; WARN: disable def twice: 16. This may happen when a cond (no else) is nested inside of another conditional, but it should be rare.
 (defun
   file-info-correct-version?
   ((info file-info) (kind file-kind) (version-override int))
   (let* ((expected-version (cond
                             ((zero? version-override)
-                             (let ((v1-0 kind))
-                              (cond
-                               ((or
-                                 (= v1-0 (file-kind tpage))
-                                 (= v1-0 (file-kind dir-tpage))
-                                 )
+                             (case kind 
+                              (((file-kind tpage) (file-kind dir-tpage))
                                 7
                                 )
-                               ((= v1-0 (file-kind level-bt))
-                                30
-                                )
-                               ((= v1-0 (file-kind art-group))
-                                6
-                                )
+                              (((file-kind level-bt))
+                               30
+                               )
+                              (((file-kind art-group))
+                               6
                                )
                               )
                              )

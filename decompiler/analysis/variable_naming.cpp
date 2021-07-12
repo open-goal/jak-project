@@ -279,6 +279,16 @@ bool is_possible_coloring_move(Register dst, Register src) {
   return false;
 }
 
+namespace {
+int arg_count(const Function& f) {
+  if (f.type.arg_count() > 0) {
+    return f.type.arg_count() - 1;
+  } else {
+    return 0;
+  }
+}
+}  // namespace
+
 /*!
  * Create a "really crude" SSA, as described in
  * "Aycock and Horspool Simple Generation of Static Single-Assignment Form"
@@ -310,6 +320,8 @@ SSA make_rc_ssa(const Function& function, const RegUsageInfo& rui, const Functio
     // local map: current register names at the current op.
     std::unordered_map<Register, VarSSA, Register::hash> current_regs;
 
+    // if we're block zero, write function arguments:
+
     // initialize phis. this is only done on:
     //  - variables live out at the first op
     //  - variables read by the first op
@@ -334,6 +346,19 @@ SSA make_rc_ssa(const Function& function, const RegUsageInfo& rui, const Functio
       } else {
         current_regs.insert(std::make_pair(reg, ssa.get_phi_dest(block_id, reg)));
       }
+    }
+
+    if (block_id == 0) {
+      SSA::Ins ins(-1);
+      for (int i = 0; i < arg_count(function); i++) {
+        auto dest_reg = Register::get_arg_reg(i);
+        auto it = current_regs.find(dest_reg);
+        if (it == current_regs.end()) {
+          current_regs.insert(std::make_pair(dest_reg, ssa.get_phi_dest(block_id, dest_reg)));
+        }
+        ins.src.push_back(current_regs.at(dest_reg));
+      }
+      ssa.blocks.at(block_id).ins.push_back(ins);
     }
 
     // loop over ops, creating and reading from variables as needed.
@@ -546,7 +571,7 @@ void SSA::merge_all_phis() {
  * Remaps all SSA variable ids to final variable IDs.
  * This forces you to have all positive, consecutive IDs, with 0 being the entry value.
  */
-void SSA::remap() {
+void SSA::remap(int) {
   // this keeps the order of variable assignments in the instruction order, not var_id order.
   struct VarIdRecord {
     std::unordered_set<int> set;
@@ -628,7 +653,6 @@ void update_var_info(VariableNames::VarInfo* info,
     info->reg_id.reg = reg;
 
     info->type = type;
-
     info->initialized = true;
   }
 }
@@ -639,15 +663,9 @@ bool merge_infos(VariableNames::VarInfo* info1,
   if (info1->initialized && info2->initialized) {
     bool changed;
     auto new_type = dts.tp_lca(info1->type, info2->type, &changed);
-    if (changed) {
-      //      fmt::print("changed new to {} from {} {} ({} {})\n", new_type.print(),
-      //      info1->type.print(),
-      //                 info2->type.print(), info1->reg_id.print(), info2->reg_id.print());
-      info1->type = new_type;
-      info2->type = new_type;
-
-      return true;
-    }
+    info1->type = new_type;
+    info2->type = new_type;
+    return true;
   }
   return false;
 }
@@ -676,6 +694,9 @@ void SSA::make_vars(const Function& function, const DecompilerTypeSystem& dts) {
     const TypeState* init_types = &function.ir2.env.get_types_at_block_entry(block_id);
     for (auto& instr : block.ins) {
       auto op_id = instr.op_id;
+      if (op_id < 0) {
+        continue;
+      }
 
       const TypeState* end_types = &function.ir2.env.get_types_after_op(op_id);
 
@@ -762,6 +783,9 @@ VariableNames SSA::get_vars() const {
     const auto& block = blocks.at(block_id);
     for (auto& instr : block.ins) {
       auto op_id = instr.op_id;
+      if (op_id < 0) {
+        continue;
+      }
       if (instr.dst.has_value()) {
         auto& ids = result.write_opid_to_varid[instr.dst->reg()];
         if (int(ids.size()) <= op_id) {
@@ -776,6 +800,9 @@ VariableNames SSA::get_vars() const {
     const auto& block = blocks.at(block_id);
     for (auto& instr : block.ins) {
       auto op_id = instr.op_id;
+      if (op_id < 0) {
+        continue;
+      }
       for (auto& src : instr.src) {
         auto& ids = result.read_opid_to_varid[src.reg()];
         if (int(ids.size()) <= op_id) {
@@ -944,7 +971,7 @@ std::optional<VariableNames> run_variable_renaming(const Function& function,
   // merge same vars (decided this made things worse)
 
   // do rename
-  ssa.remap();
+  ssa.remap(arg_count(function));
   if (debug_prints) {
     fmt::print("{}", ssa.print());
   }

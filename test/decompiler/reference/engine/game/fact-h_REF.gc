@@ -3,21 +3,21 @@
 
 ;; definition of type fact-bank
 (deftype fact-bank (basic)
-  ((eco-level-max        float   :offset-assert   4)
-   (eco-single-inc       float   :offset-assert   8)
-   (eco-full-inc         float   :offset-assert  12)
-   (eco-single-timeout   uint64  :offset-assert  16)
-   (eco-full-timeout     uint64  :offset-assert  24)
-   (dummy                uint64  :offset-assert  32)
-   (health-max-default   float   :offset-assert  40)
-   (health-single-inc    float   :offset-assert  44)
-   (eco-pill-max-default float   :offset-assert  48)
-   (health-small-inc     float   :offset-assert  52)
-   (buzzer-max-default   float   :offset-assert  56)
-   (buzzer-single-inc    float   :offset-assert  60)
-   (suck-bounce-dist     float   :offset-assert  64)
-   (suck-suck-dist       float   :offset-assert  68)
-   (default-pill-inc     float   :offset-assert  72)
+  ((eco-level-max        float    :offset-assert   4)
+   (eco-single-inc       float    :offset-assert   8)
+   (eco-full-inc         float    :offset-assert  12)
+   (eco-single-timeout   seconds  :offset-assert  16)
+   (eco-full-timeout     seconds  :offset-assert  24)
+   (dummy                seconds  :offset-assert  32)
+   (health-max-default   float    :offset-assert  40)
+   (health-single-inc    float    :offset-assert  44)
+   (eco-pill-max-default float    :offset-assert  48)
+   (health-small-inc     float    :offset-assert  52)
+   (buzzer-max-default   float    :offset-assert  56)
+   (buzzer-single-inc    float    :offset-assert  60)
+   (suck-bounce-dist     meters   :offset-assert  64)
+   (suck-suck-dist       meters   :offset-assert  68)
+   (default-pill-inc     float    :offset-assert  72)
    )
   :method-count-assert 9
   :size-assert         #x4c
@@ -52,57 +52,55 @@
    :eco-level-max 2.0
    :eco-single-inc 1.0
    :eco-full-inc 5.0
-   :eco-single-timeout #x5dc
-   :eco-full-timeout #x1770
-   :dummy #x1194
+   :eco-single-timeout (seconds 5)
+   :eco-full-timeout (seconds 20)
+   :dummy (seconds 15)
    :health-max-default 3.0
    :health-single-inc 1.0
    :eco-pill-max-default 50.0
    :health-small-inc 1.0
    :buzzer-max-default 7.0
    :buzzer-single-inc 1.0
-   :suck-bounce-dist 73728.0
-   :suck-suck-dist 30720.0
+   :suck-bounce-dist (meters 18.0)
+   :suck-suck-dist (meters 7.5)
    )
   )
 
 ;; definition for function pickup-type->string
 (defun pickup-type->string ((arg0 pickup-type))
-  (let ((v1-0 arg0))
-   (cond
-    ((= v1-0 (pickup-type eco-pill-random))
+  (case arg0 
+   (((pickup-type eco-pill-random))
      "eco-pill-random"
      )
-    ((= v1-0 (pickup-type buzzer))
-     "buzzer"
-     )
-    ((= v1-0 (pickup-type eco-pill))
-     "eco-pill"
-     )
-    ((= v1-0 (pickup-type fuel-cell))
-     "fuel-cell"
-     )
-    ((= v1-0 (pickup-type money))
-     "money"
-     )
-    ((= v1-0 (pickup-type eco-green))
-     "eco-green"
-     )
-    ((= v1-0 (pickup-type eco-blue))
-     "eco-blue"
-     )
-    ((= v1-0 (pickup-type eco-red))
-     "eco-red"
-     )
-    ((= v1-0 (pickup-type eco-yellow))
-     "eco-yellow"
-     )
-    ((= v1-0 (pickup-type none))
-     "none"
-     )
-    (else
-     "*unknown*"
-     )
+   (((pickup-type buzzer))
+    "buzzer"
+    )
+   (((pickup-type eco-pill))
+    "eco-pill"
+    )
+   (((pickup-type fuel-cell))
+    "fuel-cell"
+    )
+   (((pickup-type money))
+    "money"
+    )
+   (((pickup-type eco-green))
+    "eco-green"
+    )
+   (((pickup-type eco-blue))
+    "eco-blue"
+    )
+   (((pickup-type eco-red))
+    "eco-red"
+    )
+   (((pickup-type eco-yellow))
+    "eco-yellow"
+    )
+   (((pickup-type none))
+    "none"
+    )
+   (else
+    "*unknown*"
     )
    )
   )
@@ -122,7 +120,7 @@
   (:methods
     (new (symbol type process pickup-type float) _type_ 0)
     (dummy-9 () none 9)
-    (dummy-10 (_type_ symbol) none 10)
+    (reset! (_type_ symbol) none 10)
     (dummy-11 (_type_) float 11)
     )
   )
@@ -141,23 +139,23 @@
 
 ;; definition of type fact-info-target
 (deftype fact-info-target (fact-info)
-  ((eco-type              int32   :offset-assert  40)
-   (eco-level             float   :offset-assert  44)
-   (eco-pickup-time       uint64  :offset-assert  48)
-   (eco-timeout           uint64  :offset-assert  56)
-   (health                float   :offset-assert  64)
-   (health-max            float   :offset-assert  68)
-   (buzzer                float   :offset-assert  72)
-   (buzzer-max            float   :offset-assert  76)
-   (eco-pill              float   :offset-assert  80)
-   (eco-pill-max          float   :offset-assert  84)
-   (health-pickup-time    uint64  :offset-assert  88)
-   (eco-source            uint64  :offset-assert  96)
-   (eco-source-time       uint64  :offset-assert 104)
-   (money-pickup-time     uint64  :offset-assert 112)
-   (buzzer-pickup-time    uint64  :offset-assert 120)
-   (fuel-cell-pickup-time uint64  :offset-assert 128)
-   (eco-pill-pickup-time  uint64  :offset-assert 136)
+  ((eco-type              int32    :offset-assert  40)
+   (eco-level             float    :offset-assert  44)
+   (eco-pickup-time       uint64   :offset-assert  48)
+   (eco-timeout           seconds  :offset-assert  56)
+   (health                float    :offset-assert  64)
+   (health-max            float    :offset-assert  68)
+   (buzzer                float    :offset-assert  72)
+   (buzzer-max            float    :offset-assert  76)
+   (eco-pill              float    :offset-assert  80)
+   (eco-pill-max          float    :offset-assert  84)
+   (health-pickup-time    uint64   :offset-assert  88)
+   (eco-source            uint64   :offset-assert  96)
+   (eco-source-time       uint64   :offset-assert 104)
+   (money-pickup-time     uint64   :offset-assert 112)
+   (buzzer-pickup-time    uint64   :offset-assert 120)
+   (fuel-cell-pickup-time uint64   :offset-assert 128)
+   (eco-pill-pickup-time  uint64   :offset-assert 136)
    )
   :method-count-assert 12
   :size-assert         #x90
@@ -198,13 +196,13 @@
 
 ;; definition of type fact-info-enemy
 (deftype fact-info-enemy (fact-info)
-  ((speed           float  :offset-assert  40)
-   (idle-distance   float  :offset-assert  44)
-   (notice-top      float  :offset-assert  48)
-   (notice-bottom   float  :offset-assert  52)
-   (cam-horz        float  :offset-assert  56)
-   (cam-vert        float  :offset-assert  60)
-   (cam-notice-dist float  :offset-assert  64)
+  ((speed           float   :offset-assert  40)
+   (idle-distance   meters  :offset-assert  44)
+   (notice-top      meters  :offset-assert  48)
+   (notice-bottom   meters  :offset-assert  52)
+   (cam-horz        meters  :offset-assert  56)
+   (cam-vert        meters  :offset-assert  60)
+   (cam-notice-dist meters  :offset-assert  64)
    )
   :method-count-assert 12
   :size-assert         #x44
@@ -271,7 +269,7 @@
         (the-as
          (pointer int32)
          ((method-of-type res-lump get-property-data)
-          (the-as res-lump ent)
+          ent
           'eco-info
           'interp
           0.0
@@ -310,7 +308,7 @@
       (the-as
        uint
        ((method-of-type res-lump get-property-value)
-        (the-as res-lump ent)
+        ent
         'options
         'interp
         -1000000000.0
@@ -332,7 +330,7 @@
           (the-as
            float
            ((method-of-type res-lump get-property-value-float)
-            (the-as res-lump ent)
+            ent
             'timeout
             'interp
             -1000000000.0
@@ -382,7 +380,7 @@
      (the-as
       float
       ((method-of-type res-lump get-property-value-float)
-       (the-as res-lump entity)
+       entity
        'speed
        'interp
        -1000000000.0
@@ -397,7 +395,7 @@
      (the-as
       float
       ((method-of-type res-lump get-property-value-float)
-       (the-as res-lump entity)
+       entity
        'idle-distance
        'interp
        -1000000000.0
@@ -412,7 +410,7 @@
      (the-as
       float
       ((method-of-type res-lump get-property-value-float)
-       (the-as res-lump entity)
+       entity
        'notice-top
        'interp
        -1000000000.0
@@ -427,7 +425,7 @@
      (the-as
       float
       ((method-of-type res-lump get-property-value-float)
-       (the-as res-lump entity)
+       entity
        'notice-bottom
        'interp
        -1000000000.0
@@ -442,7 +440,7 @@
      (the-as
       float
       ((method-of-type res-lump get-property-value-float)
-       (the-as res-lump entity)
+       entity
        'cam-horz
        'interp
        -1000000000.0
@@ -457,7 +455,7 @@
      (the-as
       float
       ((method-of-type res-lump get-property-value-float)
-       (the-as res-lump entity)
+       entity
        'cam-vert
        'interp
        -1000000000.0
@@ -472,7 +470,7 @@
      (the-as
       float
       ((method-of-type res-lump get-property-value-float)
-       (the-as res-lump entity)
+       entity
        'cam-notice-dist
        'interp
        -1000000000.0
@@ -506,7 +504,7 @@
      )
     )
    (set! (-> obj eco-source) (the-as uint #f))
-   (dummy-10 obj #f)
+   (reset! obj #f)
    obj
    )
   )

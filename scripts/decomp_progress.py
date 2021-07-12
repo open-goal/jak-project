@@ -6,9 +6,9 @@ import argparse
 ### Script to track decompilation progress.
 ### Example usage: python3 scripts/decomp_progress.py ~/jak-project/goal_src
 
-def get_goal_files(root_dir):
+def get_goal_files(root_dir, ext = "*.gc"):
     """Get all GOAL source files under root_dir."""
-    return [goal_file for file in os.walk(root_dir) for goal_file in glob.glob(os.path.join(file[0], '*.gc'))]
+    return [goal_file for file in os.walk(root_dir) for goal_file in glob.glob(os.path.join(file[0], ext))]
 
 
 def lines_in_file(file_path):
@@ -41,10 +41,17 @@ def main():
     args = parser.parse_args()
     all_files = get_goal_files(args.goal_src)
 
+    ref_files = get_goal_files(args.goal_src + "/../test/", "*_REF.gc")
+
+    ref_files_no_ext = [os.path.basename(fn)[:-7] for fn in ref_files]
+
+
+
     file_stats = []
     total_gc_files = 0
     excluded_files = {"game_dgos.gc", "all_files.gc", "goal-lib.gc", "ocean-trans-tables.gc", "ocean-frames.gc",
                       "ocean-tables.gc"}
+    modified = set()
 
     for fn in all_files:
         short_name = os.path.basename(fn)
@@ -60,7 +67,17 @@ def main():
             continue
 
         file_stats.append((short_name, line_count))
+        modified.add(short_name[:-3])
+
     file_stats.sort(key=lambda x: x[1])
+
+
+    missing_ref_files = modified - set(ref_files_no_ext)
+
+    print("Missing ref files:")
+    for fn in missing_ref_files:
+        print(" {}".format(fn))
+
 
     print_table(file_stats, total_gc_files)
 

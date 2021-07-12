@@ -131,7 +131,12 @@ Form* FormStack::pop_reg(Register reg,
                          const RegSet& barrier,
                          const Env& env,
                          bool allow_side_effects,
-                         int begin_idx) {
+                         int begin_idx,
+                         RegisterAccess* orig_out,
+                         bool* found_orig_out) {
+  if (found_orig_out) {
+    *found_orig_out = false;
+  }
   assert(allow_side_effects);
   (void)env;  // keep this for easy debugging.
   RegSet modified;
@@ -158,8 +163,17 @@ Form* FormStack::pop_reg(Register reg,
           assert(entry.sequence_point == false);
           auto result = pop_reg(entry.non_seq_source->reg(), barrier, env, allow_side_effects, i);
           if (result) {
+            if (found_orig_out) {
+              *found_orig_out = true;
+              *orig_out = *entry.destination;
+            }
             return result;
           }
+        }
+
+        if (found_orig_out) {
+          *found_orig_out = true;
+          *orig_out = *entry.destination;
         }
         return entry.source;
       } else {
@@ -350,14 +364,15 @@ std::vector<FormElement*> FormStack::rewrite(FormPool& pool, const Env& env) con
   return result;
 }
 
-void rewrite_to_get_var(std::vector<FormElement*>& default_result,
-                        FormPool& pool,
-                        const RegisterAccess& var,
-                        const Env& env) {
+std::optional<RegisterAccess> rewrite_to_get_var(std::vector<FormElement*>& default_result,
+                                                 FormPool& pool,
+                                                 const RegisterAccess& var,
+                                                 const Env& env) {
   bool keep_going = true;
   RegisterAccess var_to_get = var;
 
   std::vector<FormElement*> result;
+  std::optional<RegisterAccess> result_access;
 
   bool first = true;
   while (keep_going && !default_result.empty()) {
@@ -386,26 +401,33 @@ void rewrite_to_get_var(std::vector<FormElement*>& default_result,
       } else {
         result = last_op_as_set->src()->elts();
       }
+      result_access = last_op_as_set->dst();
     }
     first = false;
   }
 
   if (result.empty()) {
     default_result.push_back(pool.alloc_element<SimpleAtomElement>(SimpleAtom::make_var(var)));
+    return {};
   } else {
     for (auto x : result) {
       x->parent_form = nullptr;
       default_result.push_back(x);
     }
+    return result_access;
   }
 }
 
 std::vector<FormElement*> rewrite_to_get_var(FormStack& stack,
                                              FormPool& pool,
                                              const RegisterAccess& var,
-                                             const Env& env) {
+                                             const Env& env,
+                                             std::optional<RegisterAccess>* used_var) {
   auto default_result = stack.rewrite(pool, env);
-  rewrite_to_get_var(default_result, pool, var, env);
+  auto uv = rewrite_to_get_var(default_result, pool, var, env);
+  if (used_var) {
+    *used_var = uv;
+  }
   return default_result;
 }
 

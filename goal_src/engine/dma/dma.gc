@@ -222,9 +222,7 @@
   "Due to a bug in the PS2 hardware, you must always disable the DMAtag mismatch
    error. This is done here."
 
-  ;; (declare (print-asm))
   (#when PC_PORT
-    (format 0 "[dma.gc] skipping dma-initialize for PC port~%")
     (return 0)
     )
   
@@ -234,7 +232,8 @@
   )
 
 (defun clear-vu0-mem ()
-  "Set the vu0 data memory to 0xabadbeef. This uses the slow EE mapping of VU memory."
+  "Set the vu0 data memory to 0xabadbeef. This uses the slow EE mapping of VU memory.
+   Will crash on PC Port."
   (let ((v1-0 VU0_DATA_MEM_MAP))
    (dotimes (a0-0 1024)
     (set! (-> v1-0 a0-0) #xabadbeef)
@@ -244,7 +243,8 @@
   )
 
 (defun clear-vu1-mem ()
-  "Set the vu1 data memory to 0xabadbeef. This uses the slow EE mapping of VU memory."
+  "Set the vu1 data memory to 0xabadbeef. This uses the slow EE mapping of VU memory.
+   Will crash on PC Port."
   (let ((v1-0 VU1_DATA_MEM_MAP))
    (dotimes (a0-0 4096)
     (set! (-> v1-0 a0-0) #xabadbeef)
@@ -254,7 +254,8 @@
   )
 
 (defun dump-vu1-mem ()
-  "Print VU1 memory to runtime stdout."
+  "Print VU1 memory to runtime stdout.
+   Will crash on PC Port."
   (local-vars (s5-0 int) (gp-0 (pointer uint32)))
   (set! gp-0 (the (pointer uint32) #x1100c000))
   (set! s5-0 0)
@@ -278,7 +279,8 @@
   )
 
 (defun dump-vu1-range ((start uint) (total-count uint))
-  "Print part of VU1 memory to runtime stdout."
+  "Print part of VU1 memory to runtime stdout.
+   Will crash on PC Port."
   (local-vars (s3-0 int) (s2-0 int) (s4-0 (pointer uint32)))
   (set! s4-0 (the (pointer uint32) #x1100c000))
   (set! s3-0 0)
@@ -328,54 +330,63 @@
    Memory is copied in ascending order, in 4 kB blocks.
    The size should be a multiple of 16 bytes."
 
-  ;; ultimate-memcpy works by DMAing to the scratchpad and back.
-  ;; surprisingly this seems to be the fastest memcpy on larger
-  ;; transfers.  This is a nice example of how DMA is used from GOAL.
-  (let ((spr-to-bank (the-as dma-bank-spr #x1000d400))
-        (spr-from-bank (the-as dma-bank-spr #x1000d000))
-        (qwc-remaining (shr size-bytes 4))
-        )
+  (#cond
+    (PC_PORT
+     ;; on PC Port, just call C mem-move, it's the fastest.
+     (__mem-move dst src size-bytes)
+     )
+    (else
 
-    ;; Flush all data in the dcache to main memory. DMA bypasses the dcache.
-    (flush-cache 0)
-    ;; Complete all pending DMA transfers using the spad.
-    ;; (this uses the Sony library DMA sync, which is bad)
-    (dma-sync (the-as pointer spr-to-bank) 0 0)
-    (dma-sync (the-as pointer spr-from-bank) 0 0)
+     ;; ultimate-memcpy works by DMAing to the scratchpad and back.
+     ;; surprisingly this seems to be the fastest memcpy on larger
+     ;; transfers.  This is a nice example of how DMA is used from GOAL.
+     (let ((spr-to-bank (the-as dma-bank-spr #x1000d400))
+           (spr-from-bank (the-as dma-bank-spr #x1000d000))
+           (qwc-remaining (shr size-bytes 4))
+           )
 
-    ;; transfer loop
-    (while (> qwc-remaining 0)
-      ;; copy up to 1024 quadwords - limited by the 4kB spad size.
-      (let ((qwc-transferred-now (the-as int qwc-remaining)))
-        (if (< (the-as uint 1024) (the-as uint qwc-transferred-now))
-            (set! qwc-transferred-now 1024)
-            )
-        (set! qwc-remaining (- qwc-remaining (the-as uint qwc-transferred-now)))
-        ;; set up the "to spad" transfer
-        (.sync.l)
-        (set! (-> spr-to-bank madr) (the-as uint src))
-        (set! (-> spr-to-bank sadr) (the-as uint 0))
-        (set! (-> spr-to-bank qwc) (the-as uint qwc-transferred-now))
-        (.sync.l)
-        ;; activate!
-        (set! (-> spr-to-bank chcr) (new 'static 'dma-chcr :str #x1))
-        (.sync.l)
-        ;; wait for it to finish...
-        (dma-sync (the-as pointer spr-to-bank) 0 0)
-        (&+! src (shl qwc-transferred-now 4))
-        ;; and copy back...
-        (set! (-> spr-from-bank madr) (the-as uint dst))
-        (set! (-> spr-from-bank sadr) (the-as uint 0))
-        (set! (-> spr-from-bank qwc) (the-as uint qwc-transferred-now))
-        (.sync.l)
-        (set! (-> spr-from-bank chcr) (new 'static 'dma-chcr :str #x1))
-        (.sync.l)
-        (dma-sync (the-as pointer spr-from-bank) 0 0)
-        (&+! dst (shl qwc-transferred-now 4))
-        )
-      )
-    )
-  (let ((v0-4 0))
+       ;; Flush all data in the dcache to main memory. DMA bypasses the dcache.
+       (flush-cache 0)
+       ;; Complete all pending DMA transfers using the spad.
+       ;; (this uses the Sony library DMA sync, which is bad)
+       (dma-sync (the-as pointer spr-to-bank) 0 0)
+       (dma-sync (the-as pointer spr-from-bank) 0 0)
+
+       ;; transfer loop
+       (while (> qwc-remaining 0)
+         ;; copy up to 1024 quadwords - limited by the 4kB spad size.
+         (let ((qwc-transferred-now (the-as int qwc-remaining)))
+           (if (< (the-as uint 1024) (the-as uint qwc-transferred-now))
+               (set! qwc-transferred-now 1024)
+               )
+           (set! qwc-remaining (- qwc-remaining (the-as uint qwc-transferred-now)))
+           ;; set up the "to spad" transfer
+           (.sync.l)
+           (set! (-> spr-to-bank madr) (the-as uint src))
+           (set! (-> spr-to-bank sadr) (the-as uint 0))
+           (set! (-> spr-to-bank qwc) (the-as uint qwc-transferred-now))
+           (.sync.l)
+           ;; activate!
+           (set! (-> spr-to-bank chcr) (new 'static 'dma-chcr :str #x1))
+           (.sync.l)
+           ;; wait for it to finish...
+           (dma-sync (the-as pointer spr-to-bank) 0 0)
+           (&+! src (shl qwc-transferred-now 4))
+           ;; and copy back...
+           (set! (-> spr-from-bank madr) (the-as uint dst))
+           (set! (-> spr-from-bank sadr) (the-as uint 0))
+           (set! (-> spr-from-bank qwc) (the-as uint qwc-transferred-now))
+           (.sync.l)
+           (set! (-> spr-from-bank chcr) (new 'static 'dma-chcr :str #x1))
+           (.sync.l)
+           (dma-sync (the-as pointer spr-from-bank) 0 0)
+           (&+! dst (shl qwc-transferred-now 4))
+           )
+         )
+       )
+     (let ((v0-4 0))
+       )
+     )
     )
   (none)
   )

@@ -149,7 +149,7 @@ std::unique_ptr<FormRegressionTest::TestData> FormRegressionTest::make_function(
   // analyze function prologue/epilogue
   test->func.analyze_prologue(test->file);
   // build control flow graph
-  test->func.cfg = build_cfg(test->file, 0, test->func, {});
+  test->func.cfg = build_cfg(test->file, 0, test->func, {}, {});
   EXPECT_TRUE(test->func.cfg->is_fully_resolved());
   if (!test->func.cfg->is_fully_resolved()) {
     fmt::print("CFG:\n{}\n", test->func.cfg->to_dot());

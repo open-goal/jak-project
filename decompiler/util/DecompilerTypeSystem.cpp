@@ -383,14 +383,11 @@ bool DecompilerTypeSystem::tp_lca(TypeState* combined, const TypeState& add) {
 }
 
 int DecompilerTypeSystem::get_format_arg_count(const std::string& str) const {
-  // temporary hack, remove this.
-  if (str == "ERROR: dma tag has data in reserved bits ~X~%") {
-    return 0;
+  auto bad_it = bad_format_strings.find(str);
+  if (bad_it != bad_format_strings.end()) {
+    return bad_it->second;
   }
 
-  if (str == "#<surface f0:~m f1:~f tf+:~f tf-:~f sf:~f tvv:~m") {
-    return 5;
-  }
   int arg_count = 0;
   for (size_t i = 0; i < str.length(); i++) {
     if (str.at(i) == '~') {
@@ -400,8 +397,18 @@ int DecompilerTypeSystem::get_format_arg_count(const std::string& str) const {
         continue;
       }
 
-      // ~3L, ~0L do'nt seem to take arguments either.
+      // ~3L, ~0L don't seem to take arguments either.
       if (i + 1 < str.length() && (str.at(i) == '0' || str.at(i) == '3') && str.at(i + 1) == 'L') {
+        continue;
+      }
+
+      // ~1K
+      if (i + 1 < str.length() && (str.at(i) == '1') && str.at(i + 1) == 'K') {
+        continue;
+      }
+
+      // ~2j
+      if (i + 1 < str.length() && (str.at(i) == '2') && str.at(i + 1) == 'j') {
         continue;
       }
       arg_count++;
@@ -426,5 +433,22 @@ TypeSpec DecompilerTypeSystem::lookup_symbol_type(const std::string& name) const
   } else {
     return kv->second;
   }
+}
+
+bool DecompilerTypeSystem::should_attempt_cast_simplify(const TypeSpec& expected,
+                                                        const TypeSpec& actual) const {
+  if (expected == TypeSpec("meters") && actual == TypeSpec("float")) {
+    return true;
+  }
+
+  if (expected == TypeSpec("seconds") && actual == TypeSpec("uint64")) {
+    return true;
+  }
+
+  if (expected == TypeSpec("degrees") && actual == TypeSpec("float")) {
+    return true;
+  }
+
+  return !ts.tc(expected, actual);
 }
 }  // namespace decompiler

@@ -8,6 +8,7 @@
 #include "decompiler/IR2/AtomicOp.h"
 #include "common/goos/Object.h"
 #include "common/type_system/TypeSystem.h"
+#include "decompiler/Disasm/DecompilerLabel.h"
 
 namespace decompiler {
 class Form;
@@ -153,6 +154,11 @@ class SimpleExpressionElement : public FormElement {
                                       FormStack& stack,
                                       std::vector<FormElement*>* result,
                                       bool allow_side_effects);
+  void update_from_stack_subu_l32_s7(const Env& env,
+                                     FormPool& pool,
+                                     FormStack& stack,
+                                     std::vector<FormElement*>* result,
+                                     bool allow_side_effects);
   void update_from_stack_float_to_int(const Env& env,
                                       FormPool& pool,
                                       FormStack& stack,
@@ -190,6 +196,22 @@ class SimpleExpressionElement : public FormElement {
                                 FormStack& stack,
                                 std::vector<FormElement*>* result,
                                 bool allow_side_effects);
+  void update_from_stack_vector_plus_minus(bool is_add,
+                                           const Env& env,
+                                           FormPool& pool,
+                                           FormStack& stack,
+                                           std::vector<FormElement*>* result,
+                                           bool allow_side_effects);
+  void update_from_stack_vector_float_product(const Env& env,
+                                              FormPool& pool,
+                                              FormStack& stack,
+                                              std::vector<FormElement*>* result,
+                                              bool allow_side_effects);
+  void update_from_stack_vector_3_dot(const Env& env,
+                                      FormPool& pool,
+                                      FormStack& stack,
+                                      std::vector<FormElement*>* result,
+                                      bool allow_side_effects);
 
   const SimpleExpression& expr() const { return m_expr; }
 
@@ -391,7 +413,7 @@ class SetFormFormElement : public FormElement {
  */
 class AtomicOpElement : public FormElement {
  public:
-  explicit AtomicOpElement(const AtomicOp* op);
+  explicit AtomicOpElement(AtomicOp* op);
   goos::Object to_form_internal(const Env& env) const override;
   void apply(const std::function<void(FormElement*)>& f) override;
   void apply_form(const std::function<void(Form*)>& f) override;
@@ -399,9 +421,43 @@ class AtomicOpElement : public FormElement {
   void push_to_stack(const Env& env, FormPool& pool, FormStack& stack) override;
   void get_modified_regs(RegSet& regs) const override;
   const AtomicOp* op() const { return m_op; }
+  AtomicOp* op() { return m_op; }
 
  private:
-  const AtomicOp* m_op;
+  AtomicOp* m_op = nullptr;  // not const because of asm likely merging
+};
+
+class AsmBranchElement : public FormElement {
+ public:
+  AsmBranchElement(AsmBranchOp* branch_op, Form* branch_delay, bool likely);
+  goos::Object to_form_internal(const Env& env) const override;
+  void apply(const std::function<void(FormElement*)>& f) override;
+  void apply_form(const std::function<void(Form*)>& f) override;
+  void collect_vars(RegAccessSet& vars, bool recursive) const override;
+  void push_to_stack(const Env& env, FormPool& pool, FormStack& stack) override;
+  void get_modified_regs(RegSet& regs) const override;
+
+ private:
+  AsmBranchOp* m_branch_op = nullptr;
+  Form* m_branch_delay = nullptr;
+  bool m_likely = false;
+};
+
+class TranslatedAsmBranch : public FormElement {
+ public:
+  TranslatedAsmBranch(Form* branch_condition, Form* branch_delay, int label_id, bool likely);
+  goos::Object to_form_internal(const Env& env) const override;
+  void apply(const std::function<void(FormElement*)>& f) override;
+  void apply_form(const std::function<void(Form*)>& f) override;
+  void collect_vars(RegAccessSet& vars, bool recursive) const override;
+  // void push_to_stack(const Env& env, FormPool& pool, FormStack& stack) override;
+  void get_modified_regs(RegSet& regs) const override;
+
+ private:
+  Form* m_branch_condition = nullptr;
+  Form* m_branch_delay = nullptr;
+  int m_label_id = -1;
+  bool m_likely = false;
 };
 
 /*!
@@ -542,6 +598,7 @@ class BranchElement : public FormElement {
   void apply_form(const std::function<void(Form*)>& f) override;
   void collect_vars(RegAccessSet& vars, bool recursive) const override;
   void get_modified_regs(RegSet& regs) const override;
+  void push_to_stack(const Env& env, FormPool& pool, FormStack& stack) override;
   const BranchOp* op() const { return m_op; }
 
  private:
@@ -783,6 +840,27 @@ class CondNoElseElement : public FormElement {
                          std::vector<FormElement*>* result,
                          bool allow_side_effects) override;
   bool allow_in_if() const override { return false; }
+};
+
+class CaseElement : public FormElement {
+ public:
+  struct Entry {
+    std::vector<Form*> vals;
+    Form* body = nullptr;
+  };
+
+  CaseElement(Form* value, const std::vector<Entry>& entries, Form* else_body);
+  goos::Object to_form_internal(const Env& env) const override;
+  void apply(const std::function<void(FormElement*)>& f) override;
+  void apply_form(const std::function<void(Form*)>& f) override;
+  void collect_vars(RegAccessSet& vars, bool recursive) const override;
+  void get_modified_regs(RegSet& regs) const override;
+  bool allow_in_if() const override { return false; }
+
+ private:
+  Form* m_value = nullptr;
+  std::vector<Entry> m_entries;
+  Form* m_else_body = nullptr;  // may be nullptr, if no else.
 };
 
 /*!
@@ -1097,7 +1175,8 @@ class ArrayFieldAccess : public FormElement {
   ArrayFieldAccess(RegisterAccess source,
                    const std::vector<DerefToken>& deref_tokens,
                    int expected_stride,
-                   int constant_offset);
+                   int constant_offset,
+                   bool flipped);
   goos::Object to_form_internal(const Env& env) const override;
   void apply(const std::function<void(FormElement*)>& f) override;
   void apply_form(const std::function<void(Form*)>& f) override;
@@ -1115,11 +1194,14 @@ class ArrayFieldAccess : public FormElement {
                        std::vector<FormElement*>* result,
                        bool allow_side_effects);
 
+  bool flipped() const { return m_flipped; }
+
  private:
   RegisterAccess m_source;
   std::vector<DerefToken> m_deref_tokens;
   int m_expected_stride = -1;
   int m_constant_offset = -1;
+  bool m_flipped = false;
 };
 
 class GetMethodElement : public FormElement {
@@ -1192,6 +1274,7 @@ class ConstantFloatElement : public FormElement {
                          FormStack& stack,
                          std::vector<FormElement*>* result,
                          bool allow_side_effects) override;
+  float value() const { return m_value; }
 
  private:
   float m_value;
@@ -1199,7 +1282,7 @@ class ConstantFloatElement : public FormElement {
 
 class StorePlainDeref : public FormElement {
  public:
-  StorePlainDeref(DerefElement* dst,
+  StorePlainDeref(Form* dst,
                   SimpleExpression expr,
                   int my_idx,
                   RegisterAccess base_var,
@@ -1216,7 +1299,7 @@ class StorePlainDeref : public FormElement {
   int size() const { return m_size; }
 
  private:
-  DerefElement* m_dst = nullptr;
+  Form* m_dst = nullptr;
   SimpleExpression m_expr;
   int m_my_idx = -1;
   RegisterAccess m_base_var;
@@ -1246,17 +1329,27 @@ class StoreArrayAccess : public FormElement {
   std::optional<TypeSpec> m_src_cast_type;
 };
 
+/*!
+ * This marks some static data that will be decompiled in a later pass.
+ * This is done at the very end so that we can make sure all static references to lambdas work.
+ */
 class DecompiledDataElement : public FormElement {
  public:
-  DecompiledDataElement(goos::Object description);
+  // DecompiledDataElement(goos::Object description);
+  DecompiledDataElement(const DecompilerLabel& label,
+                        const std::optional<LabelType>& type_hint = {});
   goos::Object to_form_internal(const Env& env) const override;
   void apply(const std::function<void(FormElement*)>& f) override;
   void apply_form(const std::function<void(Form*)>& f) override;
   void collect_vars(RegAccessSet& vars, bool recursive) const override;
   void get_modified_regs(RegSet& regs) const override;
+  void do_decomp(const Env& env, const LinkedObjectFile* file);
 
  private:
+  bool m_decompiled = false;
   goos::Object m_description;
+  DecompilerLabel m_label;
+  std::optional<LabelType> m_type_hint;
 };
 
 class LetElement : public FormElement {
@@ -1288,13 +1381,15 @@ class LetElement : public FormElement {
   bool m_star = false;
 };
 
-class DoTimesElement : public FormElement {
+class CounterLoopElement : public FormElement {
  public:
-  DoTimesElement(RegisterAccess var_init,
-                 RegisterAccess var_check,
-                 RegisterAccess var_inc,
-                 Form* check_value,
-                 Form* body);
+  enum class Kind { DOTIMES, COUNTDOWN, INVALID };
+  CounterLoopElement(Kind kind,
+                     RegisterAccess var_init,
+                     RegisterAccess var_check,
+                     RegisterAccess var_inc,
+                     Form* check_value,
+                     Form* body);
   goos::Object to_form_internal(const Env& env) const override;
   void apply(const std::function<void(FormElement*)>& f) override;
   void apply_form(const std::function<void(Form*)>& f) override;
@@ -1306,6 +1401,7 @@ class DoTimesElement : public FormElement {
   RegisterAccess m_var_init, m_var_check, m_var_inc;
   Form* m_check_value = nullptr;
   Form* m_body = nullptr;
+  Kind m_kind = Kind::INVALID;
 };
 
 class LambdaDefinitionElement : public FormElement {
@@ -1342,7 +1438,7 @@ class StackStructureDefElement : public FormElement {
 
 class VectorFloatLoadStoreElement : public FormElement {
  public:
-  VectorFloatLoadStoreElement(Register vf_reg, Form* location, bool is_load);
+  VectorFloatLoadStoreElement(Register vf_reg, Form* location, bool is_load, int my_idx);
   goos::Object to_form_internal(const Env& env) const override;
   void apply(const std::function<void(FormElement*)>& f) override;
   void apply_form(const std::function<void(Form*)>& f) override;
@@ -1350,11 +1446,18 @@ class VectorFloatLoadStoreElement : public FormElement {
   void get_modified_regs(RegSet& regs) const override;
   void push_to_stack(const Env& env, FormPool& pool, FormStack& stack) override;
   void collect_vf_regs(RegSet& regs) const;
+  bool is_load() const { return m_is_load; }
+  Register vf_reg() const { return m_vf_reg; }
+  const std::optional<TypeSpec>& addr_type() const { return m_addr_type; }
+  Form* location() const { return m_location; }
+  int my_idx() const { return m_my_idx; }
 
  private:
   Register m_vf_reg;
   Form* m_location = nullptr;
   bool m_is_load = false;
+  std::optional<TypeSpec> m_addr_type;
+  int m_my_idx = -1;
 };
 
 class StackSpillStoreElement : public FormElement {
@@ -1590,6 +1693,8 @@ class Form {
   std::vector<FormElement*> m_elements;
 };
 
+class CfgVtx;
+
 /*!
  * A FormPool is used to allocate forms and form elements.
  * It will clean up everything when it is destroyed.
@@ -1637,11 +1742,25 @@ class FormPool {
     return form;
   }
 
+  Form* lookup_cached_conversion(const CfgVtx* vtx) const {
+    auto it = m_vtx_to_form_cache.find(vtx);
+    if (it == m_vtx_to_form_cache.end()) {
+      return nullptr;
+    }
+    return it->second;
+  }
+
+  void cache_conversion(const CfgVtx* vtx, Form* form) {
+    assert(m_vtx_to_form_cache.find(vtx) == m_vtx_to_form_cache.end());
+    m_vtx_to_form_cache[vtx] = form;
+  }
+
   ~FormPool();
 
  private:
   std::vector<Form*> m_forms;
   std::vector<FormElement*> m_elements;
+  std::unordered_map<const CfgVtx*, Form*> m_vtx_to_form_cache;
 };
 
 std::optional<SimpleAtom> form_element_as_atom(const FormElement* f);
@@ -1652,5 +1771,9 @@ GenericElement* alloc_generic_token_op(const std::string& name,
                                        const std::vector<Form*>& args,
                                        FormPool& pool);
 Form* alloc_var_form(const RegisterAccess& var, FormPool& pool);
-Form* try_cast_simplify(Form* in, const TypeSpec& new_type, FormPool& pool, const Env& env);
+Form* try_cast_simplify(Form* in,
+                        const TypeSpec& new_type,
+                        FormPool& pool,
+                        const Env& env,
+                        bool tc_pass = false);
 }  // namespace decompiler

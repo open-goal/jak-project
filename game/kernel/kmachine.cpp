@@ -29,6 +29,7 @@
 #include "game/sce/libpad.h"
 #include "common/symbols.h"
 #include "common/log/log.h"
+#include "common/util/Timer.h"
 
 #include "game/system/vm/vm.h"
 using namespace ee;
@@ -48,11 +49,14 @@ u8 pad_dma_buf[2 * SCE_PAD_DMA_BUFFER_SIZE];
 
 const char* init_types[] = {"fakeiso", "deviso", "iso_cd"};
 
+Timer ee_clock_timer;
+
 void kmachine_init_globals() {
   isodrv = iso_cd;
   modsrc = 1;
   reboot = 1;
   memset(pad_dma_buf, 0, sizeof(pad_dma_buf));
+  ee_clock_timer = Timer();
 }
 
 /*!
@@ -565,6 +569,27 @@ void PutDisplayEnv() {
 }
 
 /*!
+ * PC Port function to get a 300MHz timer value.
+ */
+u64 read_ee_timer() {
+  u64 ns = ee_clock_timer.getNs();
+  return (ns * 3) / 10;
+}
+
+/*!
+ * PC Port function to do a fast memory copy.
+ */
+void c_memmove(u32 dst, u32 src, u32 size) {
+  memmove(Ptr<u8>(dst).c(), Ptr<u8>(src).c(), size);
+}
+
+void InitMachine_PCPort() {
+  // PC Port added functions
+  make_function_symbol_from_c("__read-ee-timer", (void*)read_ee_timer);
+  make_function_symbol_from_c("__mem-move", (void*)c_memmove);
+}
+
+/*!
  * Final initialization of the system after the kernel is loaded.
  * This is called from InitHeapAndSymbol at the very end.
  * Exports the last of the functions written in C to the GOAL symbol table
@@ -602,6 +627,8 @@ void InitMachineScheme() {
   make_function_symbol_from_c("dma-to-iop", (void*)dma_to_iop);                           // unused
   make_function_symbol_from_c("kernel-shutdown", (void*)KernelShutdown);                  // used
   make_function_symbol_from_c("aybabtu", (void*)sceCdMmode);                              // used
+
+  InitMachine_PCPort();
   InitSoundScheme();
   intern_from_c("*stack-top*")->value = 0x07ffc000;
   intern_from_c("*stack-base*")->value = 0x07ffffff;

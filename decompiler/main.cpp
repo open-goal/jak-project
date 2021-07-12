@@ -104,7 +104,8 @@ int main(int argc, char** argv) {
   }
 
   if (config.process_tpages) {
-    db.process_tpages();
+    auto result = db.process_tpages();
+    file_util::write_text_file(file_util::get_file_path({"assets", "tpage-dir.txt"}), result);
   }
 
   if (config.process_game_count) {

@@ -545,6 +545,12 @@ TEST_F(WithGameTests, InlinedPackedBasics) {
                           "0\n"});
 }
 
+TEST_F(WithGameTests, PartialDefineTypeField) {
+  runner.run_static_test(env, testCategory, "test-partial-define-type-field.gc",
+                         {"#f\n"
+                          "0\n"});
+}
+
 // VECTOR FLOAT TESTS
 
 // ---- One off Tests
@@ -618,6 +624,18 @@ TEST_F(WithGameTests, StaticInlineArray) {
 TEST_F(WithGameTests, StaticArrayField) {
   runner.run_static_test(env, testCategory, "test-static-array-field.gc",
                          {"\"ghjkl\"\n"
+                          "0\n"});
+}
+
+TEST_F(WithGameTests, ArrayRefStatic) {
+  runner.run_static_test(env, testCategory, "test-array-ref-static.gc",
+                         {"test-not-inline-inline-array-type 12 asdf 13 bean 14\n"
+                          "0\n"});
+}
+
+TEST_F(WithGameTests, TypeReference) {
+  runner.run_static_test(env, testCategory, "test-type-ref.gc",
+                         {"string #t basic some-unknown-type 20 0\n"
                           "0\n"});
 }
 
@@ -757,6 +775,21 @@ TEST_F(WithGameTests, SoundName) {
   runner.run_static_test(env, testCategory, "test-sound-name.gc",
                          {"#t #f #f\n"
                           "0\n"});
+}
+
+TEST_F(WithGameTests, StaticLambda) {
+  runner.run_static_test(env, testCategory, "test-static-lambda.gc", {"Add: 30 sub: -10\n0\n"});
+}
+
+TEST_F(WithGameTests, MethodReplace) {
+  runner.run_static_test(env, testCategory, "test-method-replace.gc",
+                         {"relocate! foo: 123 heap: 1 name: 2\n0\n"});
+}
+
+TEST_F(WithGameTests, Behaviors) {
+  runner.run_static_test(env, testCategory, "test-behaviors.gc",
+                         {"function self: 123\n"
+                          "method obj: 456 self: 123\n0\n"});
 }
 
 TEST(TypeConsistency, TypeConsistency) {

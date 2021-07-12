@@ -132,7 +132,10 @@ TEST_F(FormRegressionTest, ExprMethod1Thread) {
   std::string type = "(function thread none)";
   std::string expected =
       "(begin\n"
-      "  (when (= arg0 (-> arg0 process main-thread)) (break!) (let ((v1-3 0))))\n"
+      "  (when (= arg0 (-> arg0 process main-thread))\n"
+      "   (break!)\n"
+      "   0\n"
+      "   )\n"
       "  (set! (-> arg0 process top-thread) (-> arg0 previous))\n"
       "  (none)\n"
       "  )";
@@ -286,8 +289,7 @@ TEST_F(FormRegressionTest, ExprMethod9Thread) {
       "     )\n"
       "    )\n"
       "   )\n"
-      "  (let ((v0-2 0))\n"
-      "   )\n"
+      "  0\n"
       "  (none)\n"
       "  )";
   test_with_expr(func, type, expected, false, "", {{"L342", "1 ~A ~%"}, {"L341", "2 ~A ~%"}});
@@ -1263,19 +1265,16 @@ TEST_F(FormRegressionTest, ExprMethod0DeadPoolHeap) {
       "  (set! (-> obj child) (the-as (pointer process-tree) #f))\n"
       "  (set! (-> obj self) obj)\n"
       "  (set! (-> obj ppointer) (&-> obj self))\n"
-      "  (let\n"
-      "   ((v1-4 arg3))\n"
-      "   (while\n"
-      "    (nonzero? v1-4)\n"
-      "    (+! v1-4 -1)\n"
-      "    (let\n"
-      "     ((a0-4 (-> obj process-list v1-4)))\n"
-      "     (set! (-> a0-4 process) *null-process*)\n"
-      "     (set! (-> a0-4 next) (-> obj process-list (+ v1-4 1)))\n"
-      "     )\n"
+      "  (countdown (v1-4 arg3)\n"
+      "   (let ((a0-4 (-> obj process-list v1-4)))\n"
+      "    (set! (-> a0-4 process) *null-process*)\n"
+      "    (set! (-> a0-4 next) (-> obj process-list (+ v1-4 1)))\n"
       "    )\n"
       "   )\n"
-      "  (set! (-> obj dead-list next) (the-as dead-pool-heap-rec (-> obj process-list)))\n"
+      "  (set!\n"
+      "   (-> obj dead-list next)\n"
+      "   (the-as dead-pool-heap-rec (-> obj process-list))\n"
+      "   )\n"
       "  (set! (-> obj alive-list process) #f)\n"
       "  (set! (-> obj process-list (+ arg3 -1) next) #f)\n"
       "  (set! (-> obj alive-list prev) (-> obj alive-list))\n"
@@ -2245,8 +2244,7 @@ TEST_F(FormRegressionTest, ExprMethod15DeadPoolHeap) {
       "   (set! (-> arg0 dead-list next) (the-as dead-pool-heap-rec s5-1))\n"
       "   (set! (-> s5-1 0) *null-process*)\n"
       "   )\n"
-      "  (let ((v0-4 0))\n"
-      "   )\n"
+      "  0\n"
       "  (none)\n"
       "  )";
   test_with_expr(func, type, expected, false, "",
@@ -2610,8 +2608,7 @@ TEST_F(FormRegressionTest, ExprMethod16DeadPoolHeap) {
       "      (when (nonzero? s2-0)\n"
       "       (when (< s2-0 0)\n"
       "        (break!)\n"
-      "        (let ((v1-20 0))\n"
-      "         )\n"
+      "        0\n"
       "        )\n"
       "       (shrink-heap arg0 s3-0)\n"
       "       (relocate s3-0 (- s2-0))\n"
@@ -2622,8 +2619,7 @@ TEST_F(FormRegressionTest, ExprMethod16DeadPoolHeap) {
       "     )\n"
       "    )\n"
       "   )\n"
-      "  (let ((v0-8 0))\n"
-      "   )\n"
+      "  0\n"
       "  (none)\n"
       "  )";
   test_with_expr(func, type, expected, false, "", {{"L296", "~3LLow Actor Memory~%~0L"}});
@@ -2820,8 +2816,7 @@ TEST_F(FormRegressionTest, ExprMethod18DeadPoolHeap) {
       "     )\n"
       "    )\n"
       "   )\n"
-      "  (let ((v0-4 0))\n"
-      "   )\n"
+      "  0\n"
       "  (none)\n"
       "  )";
   test_with_expr(func, type, expected);

@@ -444,6 +444,31 @@ PrettyPrinterNode* getNextListOrEmptyListOnLine(PrettyPrinterNode* start) {
   return nullptr;
 }
 
+PrettyPrinterNode* get_case_start_case(PrettyPrinterNode* start) {
+  auto node = start->next;
+  while (node) {
+    switch (node->tok->kind) {
+      case FormToken::TokenKind::OPEN_PAREN:
+        goto loop_end;
+        break;
+      case FormToken::TokenKind::WHITESPACE:
+        break;
+      default:
+        return getNextListOnLine(start);
+    }
+    node = node->next;
+  }
+loop_end:
+  node = node->paren;
+  while (node && (!node->tok || node->tok->kind != FormToken::TokenKind::OPEN_PAREN)) {
+    node = node->next;
+  }
+  if (!node) {
+    return getNextListOnLine(start);
+  }
+  return node;
+}
+
 /*!
  * Get the first open paren on the current line (can start in the middle of line, inclusive of
  * start) nullptr if there's no open parens on the rest of this line
@@ -572,9 +597,8 @@ void breakList(NodePool& pool, PrettyPrinterNode* leftParen, PrettyPrinterNode* 
 }
 
 namespace {
-const std::unordered_set<std::string> control_flow_start_forms = {
-    "while", "dotimes", "until", "if", "when",
-};
+const std::unordered_set<std::string> control_flow_start_forms = {"while", "dotimes", "until",
+                                                                  "if",    "when",    "countdown"};
 }
 
 PrettyPrinterNode* seek_to_next_non_whitespace(PrettyPrinterNode* in) {
@@ -597,12 +621,12 @@ void insertSpecialBreaks(NodePool& pool, PrettyPrinterNode* node) {
         }
       }
 
-      if (name == "begin") {
+      if (name == "begin" || name == "with-pp") {
         breakList(pool, node->paren);
       }
 
       if (name == "defun" || name == "defmethod" || name == "defun-debug" || name == "let" ||
-          name == "let*" || name == "rlet") {
+          name == "let*" || name == "rlet" || name == "defbehavior" || name == "lambda") {
         auto* first_list = getNextListOrEmptyListOnLine(node);
         if (first_list) {
           if (first_list->tok->kind == FormToken::TokenKind::EMPTY_PAIR) {
@@ -679,8 +703,15 @@ void insertSpecialBreaks(NodePool& pool, PrettyPrinterNode* node) {
         }
       }
 
-      if (name == "cond") {
-        auto* start_of_case = getNextListOnLine(node);
+      if (name == "cond" || name == "case") {
+        PrettyPrinterNode* start_of_case;
+        if (name == "cond") {
+          start_of_case = getNextListOnLine(node);
+        } else {
+          start_of_case = get_case_start_case(node);
+          insertNewlineBefore(pool, start_of_case, 0);
+        }
+
         while (true) {
           // let's break this case:
           assert(start_of_case->tok->kind == FormToken::TokenKind::OPEN_PAREN);
@@ -709,7 +740,23 @@ void insertSpecialBreaks(NodePool& pool, PrettyPrinterNode* node) {
         }
 
         // break cond into a multi-line always
-        breakList(pool, node->paren);
+        if (name == "case") {
+          auto next = node->next;
+          if (next) {
+            next = next->next;
+          }
+          if (next->tok && next->tok->kind == FormToken::TokenKind::OPEN_PAREN) {
+            next = next->paren;
+            if (next) {
+              next = next->next;
+            }
+          }
+          if (next) {
+            // insertNewlineAfter(pool, next, 0);
+          }
+        } else {
+          breakList(pool, node->paren);
+        }
       }
     }
   }

@@ -165,3 +165,17 @@
 - Fixed a bug where saved xmm registers might be clobbered when calling a C++ function that wasn't `format`.
 - The `declare-type` form now supports any parent type. The type system will do a better job of trying to make things work out when only part of the type hierarchy is defined, and you can now chain type forward declarations. The compiler is stricter and will not accept forward declarations that are possibly incompatible. Instead, forward declare enough types and their parents for the compiler to be able to figure it out.  
 - The `deftype` form is more strict and will throw an error if the type definition is in any way incompatible with existing forward declarations of types.
+- Added a `type-ref` form to insert a reference to a type into a static structure and optionally forward declare the number of methods
+- The `method-of-type` form will now accept an expression returning a type instead of just a type name.  In this case, it will only allow you to access method of `object`.
+- Added a `defun-recursive` to make it easier to define recursive functions
+- Forward declared basics can be used in more places
+- You can now set a field which has a forward declared structure or basic type
+- `cdr` now returns an object of type `pair`.
+- `lambda`s can now be used inside of a static object definition.
+- Methods can now be `:replace`d to override their type from their parent. Use this with extreme care.
+- TypeSpecs now support "tags". This can specify a `:behavior` tag for a function.
+- Lambdas and methods now support `:behavior` to specify the current process type.
+- `defbehavior` has been added to define a global behavior.
+- Auto-generated inspect methods of process now start by calling the parent type's inspect, like in GOAL.
+- Fields with type `(inline-array thing)` can now be set in statics.
+- `meters`, `degrees`, and `seconds` types have been added.

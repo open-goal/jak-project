@@ -36,7 +36,7 @@ class Listener {
   void send_reset(bool shutdown);
   void send_poke();
   void disconnect();
-  void send_code(std::vector<uint8_t>& code);
+  void send_code(std::vector<uint8_t>& code, const std::optional<std::string>& load_name = {});
   void add_debugger(Debugger* debugger);
   bool most_recent_send_was_acked() const { return got_ack; }
   MemoryMap build_memory_map();
@@ -64,6 +64,8 @@ class Listener {
   ListenerMessageKind filter = ListenerMessageKind::MSG_INVALID;
   std::vector<std::string> message_record;
   std::unordered_map<std::string, LoadEntry> m_load_entries;
+
+  std::optional<std::string> m_pending_listener_load_object_name;
   char ack_recv_buff[512];
   uint64_t last_sent_id = 0;
   uint64_t last_recvd_id = 0;

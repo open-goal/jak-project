@@ -28,6 +28,7 @@ BitfieldStaticDefElement::BitfieldStaticDefElement(
     : m_type(type) {
   for (auto& x : field_defs) {
     m_field_defs.push_back(BitFieldDef::from_constant(x, pool));
+    m_field_defs.back().value->parent_element = this;
   }
 }
 
@@ -547,7 +548,7 @@ std::vector<Form*> compact_nested_logiors(GenericElement* input, const Env&) {
   while (next) {
     assert(next->elts().size() == 2);
     result.push_back(next->elts().at(1));
-    auto next_next = next->elts().at(0);
+    auto next_next = strip_int_or_uint_cast(next->elts().at(0));
     next = next_next->try_as_element<GenericElement>();
     if (!next || !next->op().is_fixed(FixedOperatorKind::LOGIOR)) {
       result.push_back(next_next);
@@ -624,8 +625,8 @@ Form* cast_sound_name(FormPool& pool, const Env& env, Form* in) {
   auto hi = mr.maps.forms.at(1);
   auto lo = mr.maps.forms.at(0);
 
-  auto hi_int = get_goal_integer_constant(hi, env);
-  auto lo_int = get_goal_integer_constant(lo, env);
+  auto hi_int = get_goal_integer_constant(strip_int_or_uint_cast(hi), env);
+  auto lo_int = get_goal_integer_constant(strip_int_or_uint_cast(lo), env);
   if (!hi_int || !lo_int) {
     return nullptr;
   }

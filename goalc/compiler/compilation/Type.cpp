@@ -17,25 +17,28 @@ int get_offset_of_method(int id) {
 }  // namespace
 
 /*!
- * Given a type and method name (known at compile time), get the method.
- * This can be used for method calls where the type is unknown at run time (non-virtual method call)
+ * Given a type and method name (known at compile time), get the method, from the given type object.
+ * To do method lookup, the given type must be the same as, or a child of, the given compile time
+ * type.
  */
-RegVal* Compiler::compile_get_method_of_type(const goos::Object& form,
-                                             const TypeSpec& type,
+RegVal* Compiler::compile_get_method_of_type(const goos::Object& /*form*/,
+                                             const TypeSpec& compile_time_type,
+                                             RegVal* type,
                                              const std::string& method_name,
                                              Env* env) {
-  auto info = m_ts.lookup_method(type.base_type(), method_name);
-  info.type = info.type.substitute_for_method_call(type.base_type());
+  auto info = m_ts.lookup_method(compile_time_type.base_type(), method_name);
+  info.type = info.type.substitute_for_method_call(compile_time_type.base_type());
   auto offset_of_method = get_offset_of_method(info.id);
+  assert(type->type() == TypeSpec("type"));
 
   auto fe = get_parent_env_of_type<FunctionEnv>(env);
-  auto typ = compile_get_symbol_value(form, type.base_type(), env)->to_gpr(env);
+
   MemLoadInfo load_info;
   load_info.sign_extend = false;
   load_info.size = POINTER_SIZE;
 
   auto loc_type = m_ts.make_pointer_typespec(info.type);
-  auto loc = fe->alloc_val<MemoryOffsetConstantVal>(loc_type, typ, offset_of_method);
+  auto loc = fe->alloc_val<MemoryOffsetConstantVal>(loc_type, type, offset_of_method);
   auto di = m_ts.get_deref_info(loc_type);
   assert(di.can_deref);
   assert(di.mem_deref);
@@ -44,6 +47,19 @@ RegVal* Compiler::compile_get_method_of_type(const goos::Object& form,
 
   auto deref = fe->alloc_val<MemoryDerefVal>(di.result_type, loc, MemLoadInfo(di));
   return deref->to_reg(env);
+}
+
+/*!
+ * Look up a method from the type, with the type specified at compile time.
+ * This can be used for method calls where the type can't be found at run time, but is known at
+ * compile time. (non-virtual method call)
+ */
+RegVal* Compiler::compile_get_method_of_type(const goos::Object& form,
+                                             const TypeSpec& compile_time_type,
+                                             const std::string& method_name,
+                                             Env* env) {
+  auto typ = compile_get_symbol_value(form, compile_time_type.base_type(), env)->to_gpr(env);
+  return compile_get_method_of_type(form, compile_time_type, typ, method_name, env);
 }
 
 /*!
@@ -121,58 +137,75 @@ void Compiler::generate_field_description(const goos::Object& form,
                                           StructureType* type,
                                           Env* env,
                                           RegVal* reg,
-                                          const Field& f) {
+                                          const Field& f,
+                                          int tab_count) {
   std::string str_template;
+  std::string tabs;
+  for (int i = 0; i < tab_count; i++) {
+    tabs += "~T";
+  }
   std::vector<RegVal*> format_args = {};
-  if (m_ts.tc(m_ts.make_typespec("type"), f.type())) {
+  if (f.name() == "type" && f.offset() == 0) {
     // type
     return;
   } else if (f.is_array() && !f.is_dynamic()) {
     // Arrays
-    str_template += fmt::format("~T{}[{}] @ #x~X~%", f.name(), f.array_size());
+    str_template += fmt::format("{}{}[{}] @ #x~X~%", tabs, f.name(), f.array_size());
     format_args.push_back(get_field_of_structure(type, reg, f.name(), env)->to_gpr(env));
   } else if (f.is_dynamic()) {
     // Dynamic Field
-    str_template += fmt::format("~T{}[0] @ #x~X~%", f.name());
+    str_template += fmt::format("{}{}[0] @ #x~X~%", tabs, f.name());
     format_args.push_back(get_field_of_structure(type, reg, f.name(), env)->to_gpr(env));
   } else if (m_ts.tc(m_ts.make_typespec("basic"), f.type()) ||
              m_ts.tc(m_ts.make_typespec("binteger"), f.type()) ||
              m_ts.tc(m_ts.make_typespec("pair"), f.type())) {
     // basic, binteger, pair
-    str_template += fmt::format("~T{}: ~A~%", f.name());
+    str_template += fmt::format("{}{}: ~A~%", tabs, f.name());
     format_args.push_back(get_field_of_structure(type, reg, f.name(), env)->to_gpr(env));
   } else if (m_ts.tc(m_ts.make_typespec("structure"), f.type())) {
     // Structure
-    str_template += fmt::format("~T{}: #<{} @ #x~X>~%", f.name(), f.type().print());
+    str_template += fmt::format("{}{}: #<{} @ #x~X>~%", tabs, f.name(), f.type().print());
+    format_args.push_back(get_field_of_structure(type, reg, f.name(), env)->to_gpr(env));
+  } else if (f.type() == TypeSpec("seconds")) {
+    // seconds
+    str_template += fmt::format("{}{}: (seconds ~e)~%", tabs, f.name());
     format_args.push_back(get_field_of_structure(type, reg, f.name(), env)->to_gpr(env));
   } else if (m_ts.tc(m_ts.make_typespec("integer"), f.type())) {
     // Integer
     if (m_ts.lookup_type(f.type())->get_load_size() > 8) {
-      str_template += fmt::format("~T{}: <cannot-print>~%", f.name());
+      str_template += fmt::format("{}: <cannot-print>~%", tabs, f.name());
     } else {
-      str_template += fmt::format("~T{}: ~D~%", f.name());
+      str_template += fmt::format("{}{}: ~D~%", tabs, f.name());
       format_args.push_back(get_field_of_structure(type, reg, f.name(), env)->to_gpr(env));
     }
 
+  } else if (f.type() == TypeSpec("meters")) {
+    // meters
+    str_template += fmt::format("{}{}: (meters ~m)~%", tabs, f.name());
+    format_args.push_back(get_field_of_structure(type, reg, f.name(), env)->to_gpr(env));
+  } else if (f.type() == TypeSpec("degrees")) {
+    // degrees
+    str_template += fmt::format("{}{}: (degrees ~r)~%", tabs, f.name());
+    format_args.push_back(get_field_of_structure(type, reg, f.name(), env)->to_gpr(env));
   } else if (m_ts.tc(m_ts.make_typespec("float"), f.type())) {
     // Float
-    str_template += fmt::format("~T{}: ~f~%", f.name());
+    str_template += fmt::format("{}{}: ~f~%", tabs, f.name());
     format_args.push_back(get_field_of_structure(type, reg, f.name(), env)->to_gpr(env));
   } else if (m_ts.tc(m_ts.make_typespec("pointer"), f.type())) {
     // Pointers
-    str_template += fmt::format("~T{}: #x~X~%", f.name());
+    str_template += fmt::format("{}{}: #x~X~%", tabs, f.name());
     format_args.push_back(get_field_of_structure(type, reg, f.name(), env)->to_gpr(env));
   } else {
     // Otherwise, we havn't implemented it!
-    str_template += fmt::format("~T{}: Undefined!~%", f.name());
+    str_template += fmt::format("{}{}: Undefined!~%", tabs, f.name());
   }
 
   compile_format_string(form, env, str_template, format_args);
 }
 
-Val* Compiler::generate_inspector_for_structured_type(const goos::Object& form,
-                                                      Env* env,
-                                                      StructureType* structure_type) {
+Val* Compiler::generate_inspector_for_structure_type(const goos::Object& form,
+                                                     Env* env,
+                                                     StructureType* structure_type) {
   // Create a function environment to hold the code for the inspect method. The name is just for
   // debugging.
   auto method_env = std::make_unique<FunctionEnv>(
@@ -191,18 +224,39 @@ Val* Compiler::generate_inspector_for_structured_type(const goos::Object& form,
   // Inform the compiler that `input`'s value will be written to `rdi` (first arg register)
   method_env->emit(std::make_unique<IR_ValueReset>(std::vector<RegVal*>{input}));
 
-  RegVal* type_name = nullptr;
-  if (dynamic_cast<BasicType*>(structure_type)) {
-    type_name = get_field_of_structure(structure_type, input, "type", method_env.get())
-                    ->to_gpr(method_env.get());
-  } else {
-    type_name =
-        compile_get_sym_obj(structure_type->get_name(), method_env.get())->to_gpr(method_env.get());
-  }
-  compile_format_string(form, method_env.get(), "[~8x] ~A~%", {input, type_name});
+  // there's a special case for children of process.
+  if (m_ts.fully_defined_type_exists("process") &&
+      m_ts.tc(TypeSpec("process"), TypeSpec(structure_type->get_name()))) {
+    // first, call the inspect method of our parent type.
+    auto parent_type_name = structure_type->get_parent();
+    auto parent_inspect =
+        compile_get_method_of_type(form, TypeSpec(parent_type_name), "inspect", method_env.get());
+    std::vector<RegVal*> args = {input};
+    compile_real_function_call(form, parent_inspect, args, method_env.get(), parent_type_name);
+    auto parent_type_info = dynamic_cast<StructureType*>(m_ts.lookup_type(parent_type_name));
+    if (!parent_type_info) {
+      throw_compiler_error(form, "Got an invalid parent type in process inspect method");
+    }
 
-  for (const Field& f : structure_type->fields()) {
-    generate_field_description(form, structure_type, method_env.get(), input, f);
+    for (size_t i = parent_type_info->fields().size(); i < structure_type->fields().size(); i++) {
+      generate_field_description(form, structure_type, method_env.get(), input,
+                                 structure_type->fields().at(i), 2);
+    }
+
+  } else {
+    RegVal* type_name = nullptr;
+    if (dynamic_cast<BasicType*>(structure_type)) {
+      type_name = get_field_of_structure(structure_type, input, "type", method_env.get())
+                      ->to_gpr(method_env.get());
+    } else {
+      type_name = compile_get_sym_obj(structure_type->get_name(), method_env.get())
+                      ->to_gpr(method_env.get());
+    }
+    compile_format_string(form, method_env.get(), "[~8x] ~A~%", {input, type_name});
+
+    for (const Field& f : structure_type->fields()) {
+      generate_field_description(form, structure_type, method_env.get(), input, f, 1);
+    }
   }
 
   method_env->emit_ir<IR_Return>(method_env->make_gpr(input->type()), input,
@@ -327,7 +381,7 @@ Val* Compiler::compile_deftype(const goos::Object& form, const goos::Object& res
   // Auto-generate (inspect) method
   auto as_structure_type = dynamic_cast<StructureType*>(result.type_info);
   if (as_structure_type) {  // generate the inspect method
-    generate_inspector_for_structured_type(form, env, as_structure_type);
+    generate_inspector_for_structure_type(form, env, as_structure_type);
   } else {
     auto as_bitfield_type = dynamic_cast<BitFieldType*>(result.type_info);
     if (as_bitfield_type && as_bitfield_type->get_load_size() <= 8) {  // Avoid 128-bit bitfields
@@ -408,7 +462,7 @@ Val* Compiler::compile_defmethod(const goos::Object& form, const goos::Object& _
   if (lambda.params.size() > 8) {
     throw_compiler_error(form, "Methods cannot have more than 8 arguments");
   }
-  std::vector<RegVal*> args_for_coloring;
+  std::vector<RegVal*> reset_args_for_coloring;
   std::vector<TypeSpec> arg_types;
   for (auto& parm : lambda.params) {
     arg_types.push_back(parm.type);
@@ -425,7 +479,26 @@ Val* Compiler::compile_defmethod(const goos::Object& form, const goos::Object& _
     constr.desired_register = arg_regs.at(i);
     new_func_env->params[lambda.params.at(i).name] = ireg;
     new_func_env->constrain(constr);
-    args_for_coloring.push_back(ireg);
+    reset_args_for_coloring.push_back(ireg);
+  }
+
+  auto method_info = m_ts.lookup_method(symbol_string(type_name), symbol_string(method_name));
+  auto behavior = method_info.type.try_get_tag("behavior");
+  if (behavior) {
+    auto self_var = new_func_env->make_gpr(m_ts.make_typespec(*behavior));
+    IRegConstraint constr;
+    constr.contrain_everywhere = true;
+    constr.desired_register = emitter::gRegInfo.get_process_reg();
+    constr.ireg = self_var->ireg();
+    self_var->set_rlet_constraint(constr.desired_register);
+    new_func_env->constrain(constr);
+
+    if (new_func_env->params.find("self") != new_func_env->params.end()) {
+      throw_compiler_error(form, "Cannot have an argument named self in a behavior");
+    }
+    new_func_env->params["self"] = self_var;
+    reset_args_for_coloring.push_back(self_var);
+    lambda_ts.add_new_tag("behavior", *behavior);
   }
 
   place->func = new_func_env.get();
@@ -435,7 +508,7 @@ Val* Compiler::compile_defmethod(const goos::Object& form, const goos::Object& _
   auto func_block_env = new_func_env->alloc_env<BlockEnv>(new_func_env.get(), "#f");
   func_block_env->return_value = return_reg;
   func_block_env->end_label = Label(new_func_env.get());
-  func_block_env->emit(std::make_unique<IR_ValueReset>(args_for_coloring));
+  func_block_env->emit(std::make_unique<IR_ValueReset>(reset_args_for_coloring));
 
   // compile the function!
   Val* result = nullptr;
@@ -1077,7 +1150,7 @@ Val* Compiler::compile_cdr(const goos::Object& form, const goos::Object& rest, E
   if (pair->type() != m_ts.make_typespec("object")) {
     typecheck(form, m_ts.make_typespec("pair"), pair->type(), "Type of argument to cdr");
   }
-  auto result = fe->alloc_val<PairEntryVal>(m_ts.make_typespec("object"), pair, false);
+  auto result = fe->alloc_val<PairEntryVal>(m_ts.make_typespec("pair"), pair, false);
   result->mark_as_settable();
   return result;
 }
@@ -1091,6 +1164,8 @@ Val* Compiler::compile_method_of_type(const goos::Object& form,
   auto arg = args.unnamed.at(0);
   auto method_name = symbol_string(args.unnamed.at(1));
 
+  // in order to do proper method lookup, we peek at the symbol that the user provided and see if
+  // its a type name
   if (arg.is_symbol()) {
     if (m_ts.fully_defined_type_exists(symbol_string(arg))) {
       return compile_get_method_of_type(form, m_ts.make_typespec(symbol_string(arg)), method_name,
@@ -1099,6 +1174,15 @@ Val* Compiler::compile_method_of_type(const goos::Object& form,
       throw_compiler_error(form,
                            "The method form is ambiguous when used on a forward declared type.");
     }
+  }
+
+  // if the user didn't provide a symbol, but instead some expression that gives us a type, then use
+  // that, and do method lookup as if it was a plain object.
+  // this will let you do (method-of-type <something-complicated> inspect) and get the inspect
+  // method, with the proper type, from the given type's method table.
+  auto user_type = compile_error_guard(arg, env)->to_gpr(env);
+  if (user_type->type() == TypeSpec("type")) {
+    return compile_get_method_of_type(form, TypeSpec("object"), user_type, method_name, env);
   }
 
   throw_compiler_error(form, "Cannot get method of type {}: the type is invalid", arg.print());

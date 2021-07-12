@@ -116,7 +116,7 @@ Val* Compiler::compile_lambda(const goos::Object& form, const goos::Object& rest
   auto obj_env = get_parent_env_of_type<FileEnv>(env);
   auto args = get_va(form, rest);
   if (args.unnamed.empty() || !args.unnamed.front().is_list() ||
-      !args.only_contains_named({"name", "inline-only", "segment"})) {
+      !args.only_contains_named({"name", "inline-only", "segment", "behavior"})) {
     throw_compiler_error(form, "Invalid lambda form");
   }
 
@@ -196,7 +196,7 @@ Val* Compiler::compile_lambda(const goos::Object& form, const goos::Object& rest
     }
 
     // set up argument register constraints.
-    std::vector<RegVal*> args_for_coloring;
+    std::vector<RegVal*> reset_args_for_coloring;
     std::vector<TypeSpec> arg_types;
     for (auto& parm : lambda.params) {
       arg_types.push_back(parm.type);
@@ -213,7 +213,25 @@ Val* Compiler::compile_lambda(const goos::Object& form, const goos::Object& rest
       constr.desired_register = arg_regs.at(i);
       new_func_env->params[lambda.params.at(i).name] = ireg;
       new_func_env->constrain(constr);
-      args_for_coloring.push_back(ireg);
+      reset_args_for_coloring.push_back(ireg);
+    }
+
+    if (args.has_named("behavior")) {
+      const std::string behavior_type = symbol_string(args.get_named("behavior"));
+      auto self_var = new_func_env->make_gpr(m_ts.make_typespec(behavior_type));
+      IRegConstraint constr;
+      constr.contrain_everywhere = true;
+      constr.desired_register = emitter::gRegInfo.get_process_reg();
+      constr.ireg = self_var->ireg();
+      self_var->set_rlet_constraint(constr.desired_register);
+      new_func_env->constrain(constr);
+
+      if (new_func_env->params.find("self") != new_func_env->params.end()) {
+        throw_compiler_error(form, "Cannot have an argument named self in a behavior");
+      }
+      new_func_env->params["self"] = self_var;
+      reset_args_for_coloring.push_back(self_var);
+      lambda_ts.add_new_tag("behavior", behavior_type);
     }
 
     place->func = new_func_env.get();
@@ -224,7 +242,7 @@ Val* Compiler::compile_lambda(const goos::Object& form, const goos::Object& rest
     auto func_block_env = new_func_env->alloc_env<BlockEnv>(new_func_env.get(), "#f");
     func_block_env->return_value = return_reg;
     func_block_env->end_label = Label(new_func_env.get());
-    func_block_env->emit(std::make_unique<IR_ValueReset>(args_for_coloring));
+    func_block_env->emit(std::make_unique<IR_ValueReset>(reset_args_for_coloring));
 
     // compile the function, iterating through the body.
     Val* result = nullptr;
@@ -286,6 +304,10 @@ Val* Compiler::compile_lambda(const goos::Object& form, const goos::Object& rest
     assert(obj_env);
     if (new_func_env->settings.save_code) {
       obj_env->add_function(std::move(new_func_env));
+    }
+  } else {
+    if (args.has_named("behavior")) {
+      throw_compiler_error(form, "Inline behaviors are not yet implemented.");
     }
   }
 

@@ -242,7 +242,8 @@ FormElement* StoreOp::get_vf_store_as_form(FormPool& pool, const Env& env) const
         }
         assert(!rd.addr_of);  // we'll change this to true because .svf uses an address.
         auto addr = pool.alloc_single_element_form<DerefElement>(nullptr, source, true, tokens);
-        return pool.alloc_element<VectorFloatLoadStoreElement>(m_value.var().reg(), addr, false);
+        return pool.alloc_element<VectorFloatLoadStoreElement>(m_value.var().reg(), addr, false,
+                                                               m_my_idx);
       } else {
         // try again with no deref.
         rd_in.deref = {};
@@ -260,7 +261,8 @@ FormElement* StoreOp::get_vf_store_as_form(FormPool& pool, const Env& env) const
           // some sketchy type stuff going on.
           addr = pool.alloc_single_element_form<CastElement>(
               nullptr, TypeSpec("pointer", {TypeSpec("uint128")}), addr);
-          return pool.alloc_element<VectorFloatLoadStoreElement>(m_value.var().reg(), addr, false);
+          return pool.alloc_element<VectorFloatLoadStoreElement>(m_value.var().reg(), addr, false,
+                                                                 m_my_idx);
         }
       }
     }
@@ -383,8 +385,9 @@ FormElement* StoreOp::get_as_form(FormPool& pool, const Env& env) const {
 
           // we pass along the register offset because code generation seems to be a bit
           // different in different cases.
-          auto source = pool.alloc_element<ArrayFieldAccess>(
-              ro.var, tokens, input_type.get_multiplier(), ro.offset);
+          auto source =
+              pool.alloc_element<ArrayFieldAccess>(ro.var, tokens, input_type.get_multiplier(),
+                                                   ro.offset, input_type.flipped_add_order());
 
           //          auto val = pool.alloc_single_element_form<SimpleExpressionElement>(
           //              nullptr, m_value.as_expr(), m_my_idx);
@@ -418,7 +421,8 @@ FormElement* StoreOp::get_as_form(FormPool& pool, const Env& env) const {
         auto addr = pool.alloc_element<DerefElement>(source, rd.addr_of, tokens);
 
         return pool.alloc_element<StorePlainDeref>(
-            addr, m_value.as_expr(), m_my_idx, ro.var, std::nullopt,
+            pool.alloc_single_form(nullptr, addr), m_value.as_expr(), m_my_idx, ro.var,
+            std::nullopt,
             get_typecast_for_atom(m_value, env, coerce_to_reg_type(rd.result_type), m_my_idx),
             m_size);
       }
@@ -463,9 +467,9 @@ FormElement* StoreOp::get_as_form(FormPool& pool, const Env& env) const {
             nullptr, TypeSpec("pointer", {TypeSpec(cast_type)}), source);
         auto deref =
             pool.alloc_element<DerefElement>(cast_source, false, std::vector<DerefToken>());
-        return pool.alloc_element<StorePlainDeref>(deref, m_value.as_expr(), m_my_idx, ro.var,
-                                                   TypeSpec("pointer", {TypeSpec(cast_type)}),
-                                                   std::nullopt, m_size);
+        return pool.alloc_element<StorePlainDeref>(
+            pool.alloc_single_form(nullptr, deref), m_value.as_expr(), m_my_idx, ro.var,
+            TypeSpec("pointer", {TypeSpec(cast_type)}), std::nullopt, m_size);
       }
     }
   }
@@ -529,8 +533,8 @@ Form* LoadVarOp::get_load_src(FormPool& pool, const Env& env) const {
 
           // we pass along the register offset because code generation seems to be a bit
           // different in different cases.
-          return pool.alloc_single_element_form<ArrayFieldAccess>(nullptr, ro.var, tokens,
-                                                                  rd_in.stride, ro.offset);
+          return pool.alloc_single_element_form<ArrayFieldAccess>(
+              nullptr, ro.var, tokens, rd_in.stride, ro.offset, input_type.flipped_add_order());
         }
       }
 
@@ -642,8 +646,10 @@ Form* LoadVarOp::get_load_src(FormPool& pool, const Env& env) const {
           u64 value;
           memcpy(&value, &word0.data, 4);
           memcpy(((u8*)&value) + 4, &word1.data, 4);
-          return pool.alloc_single_element_form<SimpleAtomElement>(
-              nullptr, SimpleAtom::make_int_constant(value));
+          return pool.alloc_single_element_form<CastElement>(
+              nullptr, TypeSpec("uint"),
+              pool.alloc_single_element_form<SimpleAtomElement>(
+                  nullptr, SimpleAtom::make_int_constant(value)));
         }
 
         // is it a constant bitfield?
@@ -701,13 +707,13 @@ FormElement* LoadVarOp::get_as_form(FormPool& pool, const Env& env) const {
     if (src_as_deref) {
       assert(!src_as_deref->is_addr_of());
       src_as_deref->set_addr_of(true);
-      return pool.alloc_element<VectorFloatLoadStoreElement>(m_dst.reg(), src, true);
+      return pool.alloc_element<VectorFloatLoadStoreElement>(m_dst.reg(), src, true, m_my_idx);
     }
 
     auto src_as_unrecognized = dynamic_cast<LoadSourceElement*>(src->try_as_single_element());
     if (src_as_unrecognized) {
-      return pool.alloc_element<VectorFloatLoadStoreElement>(m_dst.reg(),
-                                                             src_as_unrecognized->location(), true);
+      return pool.alloc_element<VectorFloatLoadStoreElement>(
+          m_dst.reg(), src_as_unrecognized->location(), true, m_my_idx);
     }
 
     throw std::runtime_error("VF unknown load");
@@ -723,7 +729,7 @@ FormElement* BranchOp::get_as_form(FormPool& pool, const Env&) const {
 }
 
 FormElement* SpecialOp::get_as_form(FormPool& pool, const Env&) const {
-  return pool.alloc_element<AtomicOpElement>(this);
+  return pool.alloc_element<AtomicOpElement>(const_cast<SpecialOp*>(this));
 }
 
 FormElement* CallOp::get_as_form(FormPool& pool, const Env& env) const {
@@ -759,11 +765,18 @@ FormElement* ConditionalMoveFalseOp::get_as_form(FormPool& pool, const Env&) con
 }
 
 FormElement* FunctionEndOp::get_as_form(FormPool& pool, const Env&) const {
-  return pool.alloc_element<AtomicOpElement>(this);
+  return pool.alloc_element<AtomicOpElement>(const_cast<FunctionEndOp*>(this));
 }
 
-FormElement* AsmBranchOp::get_as_form(FormPool& pool, const Env&) const {
-  return pool.alloc_element<AtomicOpElement>(this);
+FormElement* AsmBranchOp::get_as_form(FormPool& pool, const Env& env) const {
+  if (m_branch_delay) {
+    auto delay = m_branch_delay->get_as_form(pool, env);
+    auto delay_form = pool.alloc_single_form(nullptr, delay);
+    return pool.alloc_element<AsmBranchElement>(const_cast<AsmBranchOp*>(this), delay_form,
+                                                m_likely);
+  } else {
+    return pool.alloc_element<AtomicOpElement>(const_cast<AsmBranchOp*>(this));
+  }
 }
 
 FormElement* StackSpillLoadOp::get_as_form(FormPool& pool, const Env& env) const {

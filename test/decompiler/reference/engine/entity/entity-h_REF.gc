@@ -32,7 +32,7 @@
   :size-assert         #x10
   :flag-assert         #xa00000010
   (:methods
-    (dummy-9 () none 9)
+    (update-perm! (_type_ symbol entity-perm-status) _type_ 9)
     )
   )
 
@@ -61,7 +61,7 @@
 (deftype entity-links (structure)
   ((prev-link entity-links         :offset-assert   0)
    (next-link entity-links         :offset-assert   4)
-   (entity    basic                :offset-assert   8)
+   (entity    entity               :offset-assert   8)
    (process   process              :offset-assert  12)
    (level     level                :offset-assert  16)
    (vis-id    int32                :offset-assert  20)
@@ -98,7 +98,8 @@
 
 ;; definition of type entity-perm-array
 (deftype entity-perm-array (inline-array-class)
-  ()
+  ((data entity-perm :inline :dynamic :offset-assert  16)
+   )
   :method-count-assert 9
   :size-assert         #x10
   :flag-assert         #x900000010
@@ -109,7 +110,7 @@
   (format #t "[~8x] ~A~%" obj (-> obj type))
   (format #t "~Tlength: ~D~%" (-> obj length))
   (format #t "~Tallocated-length: ~D~%" (-> obj allocated-length))
-  (format #t "~Tdata[0] @ #x~X~%" (-> obj _data))
+  (format #t "~Tdata[0] @ #x~X~%" (-> obj data))
   obj
   )
 
@@ -118,7 +119,8 @@
 
 ;; definition of type entity-links-array
 (deftype entity-links-array (inline-array-class)
-  ()
+  ((data entity-links :inline :dynamic :offset-assert  16)
+   )
   :method-count-assert 9
   :size-assert         #x10
   :flag-assert         #x900000010
@@ -129,7 +131,7 @@
   (format #t "[~8x] ~A~%" obj (-> obj type))
   (format #t "~Tlength: ~D~%" (-> obj length))
   (format #t "~Tallocated-length: ~D~%" (-> obj allocated-length))
-  (format #t "~Tdata[0] @ #x~X~%" (-> obj _data))
+  (format #t "~Tdata[0] @ #x~X~%" (-> obj data))
   obj
   )
 
@@ -234,7 +236,7 @@
 ;; definition of type entity-actor
 (deftype entity-actor (entity)
   ((nav-mesh nav-mesh           :offset-assert  52)
-   (etype    basic              :offset-assert  56)
+   (etype    type               :offset-assert  56)
    (task     uint8              :offset-assert  60)
    (vis-id   uint16             :offset-assert  62)
    (quat     quaternion :inline :offset-assert  64)
@@ -252,9 +254,9 @@
 
 ;; definition of type entity-info
 (deftype entity-info (basic)
-  ((ptype     basic  :offset-assert   4)
+  ((ptype     type   :offset-assert   4)
    (package   basic  :offset-assert   8)
-   (art-group basic  :offset-assert  12)
+   (art-group pair   :offset-assert  12)
    (pool      basic  :offset-assert  16)
    (heap-size int32  :offset-assert  20)
    )
@@ -276,7 +278,7 @@
 
 ;; failed to figure out what this is:
 (if (zero? entity-nav-login)
-  (set! entity-nav-login nothing)
+  (set! entity-nav-login (the-as (function entity-actor none) nothing))
   )
 
 ;; definition of type actor-bank
@@ -310,5 +312,4 @@
   )
 
 ;; failed to figure out what this is:
-(let ((v0-20 0))
-  )
+0

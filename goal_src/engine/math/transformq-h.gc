@@ -28,14 +28,14 @@
 ;; Representing a translate/rotate/scale with a quaternion and a velocity.
 ;; definition of type trsqv
 (deftype trsqv (trsq)
-  ((pause-adjust-distance float      :offset   4)
-   (nav-radius            float      :offset   8)
-   (transv                vector     :inline     :offset-assert 64)
-   (rotv                  vector     :inline     :offset-assert 80)
-   (scalev                vector     :inline     :offset-assert 96)
-   (dir-targ              quaternion :inline     :offset-assert 112)
-   (angle-change-time     uint64                 :offset-assert 128)
-   (old-y-angle-diff      float                  :offset-assert 136)
+  ((pause-adjust-distance meters             :offset          4)
+   (nav-radius            meters             :offset          8)
+   (transv                vector     :inline :offset-assert  64)
+   (rotv                  vector     :inline :offset-assert  80)
+   (scalev                vector     :inline :offset-assert  96)
+   (dir-targ              quaternion :inline :offset-assert 112)
+   (angle-change-time     uint64             :offset-assert 128)
+   (old-y-angle-diff      float              :offset-assert 136)
    )
   :method-count-assert 28
   :size-assert         #x8c
@@ -58,37 +58,20 @@
     (global-y-angle-to-point (_type_ vector) float 23)
     (relative-y-angle-to-point (_type_ vector) float 24)
     (TODO-VECTOR-MATH-ISSUES-25 (_type_) float 25)
-    (dummy-26 () none 26)
+    (TODO-RENAME-26 (_type_ int vector float) trsqv 26)
     (get-quaternion (_type_) quaternion 27)
     )
   )
 
 (defmethod global-y-angle-to-point trsqv ((obj trsqv) (arg0 vector))
   "Get the angle from the position of this trsqv to the point arg0."
-  (rlet ((vf0 :class vf)
-         (vf4 :class vf)
-         (vf5 :class vf)
-         (vf6 :class vf)
-         )
-    (init-vf0-vector)
-    (vector-y-angle
-     (vector-! (new 'stack-no-clear 'vector) arg0 (-> obj trans))
-     )
-    )
+  (vector-y-angle (vector-! (new 'stack-no-clear 'vector) arg0 (-> obj trans)))
   )
 
 (defmethod relative-y-angle-to-point trsqv ((obj trsqv) (arg0 vector))
   "Get the y angle between here and arg0, starting at whatever angle we're currently at."
-  (rlet ((vf0 :class vf)
-         (vf4 :class vf)
-         (vf5 :class vf)
-         (vf6 :class vf)
-         )
-    (init-vf0-vector)
-
-    (deg-diff
-     (y-angle obj)
-     (vector-y-angle (vector-! (new 'stack-no-clear 'vector) arg0 (-> obj trans)))
-     )
-    )
+  (deg-diff
+   (y-angle obj)
+   (vector-y-angle (vector-! (new 'stack-no-clear 'vector) arg0 (-> obj trans)))
+   )
   )

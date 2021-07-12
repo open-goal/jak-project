@@ -2726,8 +2726,7 @@ TEST_F(FormRegressionTest, StripStripTrailingWhitespace) {
       "     )\n"
       "    (set! (-> v1-6 1) (the-as uint 0))\n"
       "    )\n"
-      "   (let ((v1-7 0))\n"
-      "    )\n"
+      "   0\n"
       "   )\n"
       "  #f\n"
       "  )";

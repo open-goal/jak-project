@@ -104,6 +104,8 @@ struct FieldReverseLookupOutput {
   double total_score = 0.;
   TypeSpec result_type;
   std::vector<Token> tokens;
+
+  bool has_variable_token() const;
 };
 
 struct FieldReverseMultiLookupOutput {
@@ -125,6 +127,9 @@ class TypeSystem {
   Type* add_type(const std::string& name, std::unique_ptr<Type> type);
   void forward_declare_type_as_type(const std::string& name);
   void forward_declare_type_as(const std::string& new_type, const std::string& parent_type);
+  void forward_declare_type_method_count(const std::string& name, int num_methods);
+  int get_type_method_count(const std::string& name) const;
+  std::optional<int> try_get_type_method_count(const std::string& name) const;
   std::string get_runtime_type(const TypeSpec& ts);
 
   DerefInfo get_deref_info(const TypeSpec& ts) const;
@@ -151,15 +156,18 @@ class TypeSystem {
   Type* lookup_type_allow_partial_def(const TypeSpec& ts) const;
   Type* lookup_type_allow_partial_def(const std::string& name) const;
 
+  int get_load_size_allow_partial_def(const TypeSpec& ts) const;
+
   MethodInfo declare_method(const std::string& type_name,
                             const std::string& method_name,
                             bool no_virtual,
-                            const TypeSpec& ts);
+                            const TypeSpec& ts,
+                            bool override_type);
   MethodInfo declare_method(Type* type,
                             const std::string& method_name,
                             bool no_virtual,
-                            const TypeSpec& ts);
-
+                            const TypeSpec& ts,
+                            bool override_type);
   MethodInfo define_method(const std::string& type_name,
                            const std::string& method_name,
                            const TypeSpec& ts);
@@ -257,6 +265,8 @@ class TypeSystem {
 
   std::unordered_map<std::string, std::unique_ptr<Type>> m_types;
   std::unordered_map<std::string, std::string> m_forward_declared_types;
+  std::unordered_map<std::string, int> m_forward_declared_method_counts;
+
   std::vector<std::unique_ptr<Type>> m_old_types;
 
   bool m_allow_redefinition = false;
