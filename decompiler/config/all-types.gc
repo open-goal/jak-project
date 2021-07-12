@@ -13167,7 +13167,7 @@
 (deftype sparticle-launcher (basic)
   ((birthaccum float   :offset-assert 4)
    (soundaccum float   :offset-assert 8)
-   (init-specs sp-field-init-spec :offset-assert 12)
+   (init-specs (inline-array sp-field-init-spec) :offset-assert 12)
    )
   :method-count-assert 9
   :size-assert         #x10
@@ -13216,8 +13216,8 @@
    (duration        uint16         :offset-assert 6)
    (linger-duration uint16         :offset-assert 8)
    (flags           uint16         :offset-assert 10)
-   (name            basic          :offset-assert 12)
-   (launcher        uint32         :offset-assert 16)
+   (name            string         :offset-assert 12)
+   (launcher        (pointer sparticle-launcher)   :offset-assert 16)
    (bounds          sphere :inline :offset-assert 32)
    )
   :method-count-assert 10
@@ -13281,11 +13281,11 @@
    (flags         uint32                         :offset-assert 104)
    (user-int32    int32                          :offset-assert 108)
    (user-uint32   uint32                         :offset 108)
-   (user-float    float                          :offset 108)
+   (user-float    float                          :score 100 :offset 108)
    (user-pntr     uint32                         :offset 108)
    (user-sprite   sprite-vec-data-2d             :offset 108)
    (func          basic                          :offset-assert 112) ; possibilities - add-to-sprite-aux-list | 
-   (next-time     uint32                         :offset-assert 116)
+   (next-time     object                         :offset-assert 116) ; i think this can be anything (any of the user types)
    (next-launcher basic                          :offset-assert 120)
    (cache-alpha   float                          :offset-assert 124)
    (valid         basic                          :offset-assert 128)
@@ -16061,10 +16061,10 @@
 (define-extern sphere-in-view-frustum? (function vector none)) ;; TODO - ret not confirmed
 (define-extern kill-all-particles-with-key (function sparticle-launch-control none))
 (define-extern sp-relaunch-setup-fields (function int int sparticle-cpuinfo sparticle-cpuinfo none)) ;; third arg is right, ints are TODO
-(define-extern sp-init-fields! (function vector int int int symbol none)) ; asm - second arg is unconfirmed (takes 4 args)
+(define-extern sp-init-fields! (function transform sp-field-init-spec int int symbol sp-field-init-spec)) ; asm - second arg is unconfirmed (takes 4 args)
 (define-extern sp-launch-particles-var (function sparticle-system sparticle-launcher vector symbol symbol float none)) ;; asm - ret not confirmed
-(define-extern sp-get-particle (function int int symbol none)) ; asm
-(define-extern particle-adgif function) ; asm
+(define-extern sp-get-particle (function int int symbol sparticle-cpuinfo)) ; asm
+(define-extern particle-adgif (function adgif-shader int none)) ; asm - not confirmed return
 (define-extern lookup-part-group-by-name (function string sparticle-launch-group))
 (define-extern lookup-part-group-pointer-by-name (function string (pointer sparticle-launch-group)))
 (define-extern unlink-part-group-by-heap (function kheap none))
@@ -16073,16 +16073,16 @@
 (define-extern sp-adjust-launch (function vector3s sparticle-cpuinfo int none)) ;; TODO
 (define-extern sp-euler-convert (function sparticle-cpuinfo sparticle-cpuinfo none))
 (define-extern sp-rotate-system (function gsf-vertex sparticle-cpuinfo gsf-vertex none)) ;; TODO - i doubt the gsf-vertex's are right
-(define-extern sp-launch-particles-death (function sparticle-system int sparticle-launcher none)) ;; TODO
+(define-extern sp-launch-particles-death (function sparticle-system sparticle-launcher int int)) ;; TODO
 (define-extern sp-clear-queue (function none))
 (define-extern sp-relaunch-particle-2d (function int int sparticle-cpuinfo sparticle-cpuinfo none)) ;; third arg is right, ints are TODO
 (define-extern sp-relaunch-particle-3d (function int int sparticle-cpuinfo sparticle-cpuinfo none)) ;; third arg is right, ints are TODO
 (define-extern sparticle-track-root (function none)) ; TODO - no idea, third arg is likely a vector
 (define-extern sparticle-track-root-prim function) ; TODO - no idea, third arg is likely a vector
-(define-extern birth-func-copy-rot-color (function int int none)) ;; first two args once again, third arg...something with a vector at 40-8, 4th is likely a transform
+(define-extern birth-func-copy-rot-color (function int sparticle-cpuinfo sparticle-launchinfo int sparticle-launchinfo none)) ;; first two args once again, third arg...something with a vector at 40-8, 4th is likely a transform
 (define-extern birth-func-copy2-rot-color function) ;; likely more of the same
 (define-extern birth-func-copy-omega-to-z (function none))
-(define-extern birth-func-random-next-time function)
+(define-extern birth-func-random-next-time (function int sparticle-cpuinfo int))
 
 ;; - Unknowns
 
