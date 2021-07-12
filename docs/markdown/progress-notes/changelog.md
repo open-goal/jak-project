@@ -179,3 +179,5 @@
 - Auto-generated inspect methods of process now start by calling the parent type's inspect, like in GOAL.
 - Fields with type `(inline-array thing)` can now be set in statics.
 - `meters`, `degrees`, and `seconds` types have been added.
+- Bitfields with `symbol` fields used in an immediate `(new 'static ...)` can now define the symbol in the `new` form.
+- Bitfields with `float` fields used in an immediate `(new 'static ...)` in code can use a non-constant floating point value.

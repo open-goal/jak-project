@@ -2804,6 +2804,18 @@ void CondWithElseElement::push_to_stack(const Env& env, FormPool& pool, FormStac
     }
   }
 
+  // merge conds in the else block.
+  auto else_as_another_cond = else_ir->try_as_element<CondWithElseElement>();
+  if (else_as_another_cond) {
+    while (else_as_another_cond) {
+      for (auto& e : else_as_another_cond->entries) {
+        entries.push_back(e);
+      }
+      else_ir = else_as_another_cond->else_ir;
+      else_as_another_cond = else_ir->try_as_element<CondWithElseElement>();
+    }
+  }
+
   if (rewrite_as_set) {
     if (set_unused) {
       stack.push_form_element(this, true);
@@ -4492,17 +4504,22 @@ void LabelElement::push_to_stack(const Env&, FormPool&, FormStack& stack) {
 
 void BreakElement::push_to_stack(const Env& env, FormPool& pool, FormStack& stack) {
   mark_popped();
-
   FormStack temp_stack(false);
   for (auto& elt : return_code->elts()) {
     elt->push_to_stack(env, pool, temp_stack);
   }
 
-  auto new_entries = temp_stack.rewrite(pool, env);
+  std::vector<FormElement*> new_entries;
+  new_entries = temp_stack.rewrite(pool, env);
+
+  assert(!new_entries.empty());
   return_code->clear();
-  for (auto e : new_entries) {
-    return_code->push_back(e);
+
+  for (int i = 0; i < ((int)new_entries.size()); i++) {
+    stack.push_form_element(new_entries.at(i), true);
   }
+
+  return_code->push_back(pool.alloc_element<EmptyElement>());
   stack.push_form_element(this, true);
 }
 

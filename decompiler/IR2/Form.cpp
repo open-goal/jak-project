@@ -939,9 +939,13 @@ goos::Object BreakElement::to_form_internal(const Env& env) const {
     forms.push_back(pretty_print::build_list(return_code->to_form(env)));
     forms.push_back(pretty_print::build_list(dead_code->to_form(env)));
   } else {
-    forms.push_back(pretty_print::to_symbol("begin"));
-    return_code->inline_forms(forms, env);
-    forms.push_back(pretty_print::build_list(fmt::format("goto cfg-{}", lid)));
+    if (return_code->try_as_element<EmptyElement>()) {
+      return pretty_print::build_list(fmt::format("goto cfg-{}", lid));
+    } else {
+      forms.push_back(pretty_print::to_symbol("begin"));
+      return_code->inline_forms(forms, env);
+      forms.push_back(pretty_print::build_list(fmt::format("goto cfg-{}", lid)));
+    }
   }
   return pretty_print::build_list(forms);
 }

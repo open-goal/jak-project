@@ -379,10 +379,21 @@ Val* Compiler::compile_bitfield_definition(const goos::Object& form,
 
       float value = 0.f;
       if (!try_getting_constant_float(field_value, &value, env)) {
-        throw_compiler_error(form,
-                             "Field {} is a float, but the value given couldn't "
-                             "be converted to a float at compile time.",
-                             field_name_def);
+        // failed to get as constant, add to dynamic or error.
+        if (allow_dynamic_construction) {
+          DynamicDef dyn;
+          dyn.definition = field_value;
+          dyn.field_offset = field_offset;
+          dyn.field_size = field_size;
+          dyn.field_name = field_name_def;
+          dyn.expected_type = TypeSpec("float");
+          dynamic_defs.push_back(dyn);
+        } else {
+          throw_compiler_error(form,
+                               "Field {} is a float, but the value given couldn't "
+                               "be converted to a float at compile time.",
+                               field_name_def);
+        }
       }
       u64 float_value = float_as_u32(value);
       bool start_lo = field_offset < 64;
@@ -392,6 +403,20 @@ Val* Compiler::compile_bitfield_definition(const goos::Object& form,
         constant_integer_part.lo |= (float_value << field_offset);
       } else {
         constant_integer_part.hi |= (float_value << (field_offset - 64));
+      }
+    } else if (field_info.result_type == TypeSpec("symbol")) {
+      if (allow_dynamic_construction) {
+        DynamicDef dyn;
+        dyn.definition = field_value;
+        dyn.field_offset = field_offset;
+        dyn.field_size = field_size;
+        dyn.field_name = field_name_def;
+        dyn.expected_type = coerce_to_reg_type(field_info.result_type);
+        dynamic_defs.push_back(dyn);
+      } else {
+        throw_compiler_error(
+            form, "Field {} is a symbol, which cannot be constructed at compile time yet.",
+            field_name_def);
       }
     }
 
