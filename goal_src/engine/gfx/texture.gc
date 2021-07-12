@@ -161,22 +161,20 @@
 
 (defun texture-bpp ((arg0 gs-psm))
   "Get the number of bits per pixel for the given texture format"
-  (let ((v1-0 arg0))
-    (cond
-      ((= v1-0 (gs-psm mt8)) 8)
-      ((= v1-0 (gs-psm mt4)) 4)
-      (else
-       (if (or (= v1-0 (gs-psm ct16))
-               (= v1-0 (gs-psm ct16s))
-               (= v1-0 (gs-psm mz16))
-               (= v1-0 (gs-psm mz16s))
-               )
-           16
-           32
-           )
-       )
-      )
+  (case arg0 
+   (((gs-psm mt8))
+     8
+     )
+   (((gs-psm mt4))
+    4
     )
+   (((gs-psm ct16) (gs-psm ct16s) (gs-psm mz16) (gs-psm mz16s))
+    16
+    )
+   (else
+    32
+    )
+   )
   )
 
 (defun texture-qwc ((w int) (h int) (tex-format gs-psm))
@@ -364,88 +362,72 @@
   )
 
 (defun gs-page-width ((arg0 gs-psm))
-  (let ((v1-0 arg0))
-    (if (or (zero? v1-0)
-            (= v1-0 (gs-psm ct24))
-            (= v1-0 (gs-psm ct16))
-            (= v1-0 (gs-psm ct16s))
-            )
-        64
-        (cond
-          ((or (= v1-0 (gs-psm mt8)) (= v1-0 (gs-psm mt4)))
-           128
-           )
-          (else
-           (format #t "Warning: Unknown block width for psm ~D~%" arg0)
-           1
-           )
-          )
-        )
+  (case arg0 
+   (((gs-psm ct32) (gs-psm ct24) (gs-psm ct16) (gs-psm ct16s))
+     64
+     )
+   (((gs-psm mt8) (gs-psm mt4))
+    128
     )
+   (else
+    (format #t "Warning: Unknown block width for psm ~D~%" arg0)
+    1
+    )
+   )
   )
 
 (defun gs-page-height ((arg0 gs-psm))
-  (let ((v1-0 arg0))
-    (if (or (zero? v1-0) (= v1-0 (gs-psm ct24)))
-        32
-        (cond
-          ((or (= v1-0 (gs-psm ct16)) (= v1-0 (gs-psm ct16s)))
-           64
-           )
-          ((= v1-0 (gs-psm mt8))
-           64
-           )
-          ((= v1-0 (gs-psm mt4))
-           128
-           )
-          (else
-           (format #t "Warning: Unknown block width for psm ~D~%" arg0)
-           1
-           )
-          )
-        )
+  (case arg0 
+   (((gs-psm ct32) (gs-psm ct24))
+     32
+     )
+   (((gs-psm ct16) (gs-psm ct16s))
+    64
     )
+   (((gs-psm mt8))
+    64
+    )
+   (((gs-psm mt4))
+    128
+    )
+   (else
+    (format #t "Warning: Unknown block width for psm ~D~%" arg0)
+    1
+    )
+   )
   )
 
 (defun gs-block-width ((arg0 gs-psm))
-  (let ((v1-0 arg0))
-   (if (or (zero? v1-0) (= v1-0 (gs-psm ct24)))
-    8
-    (cond
-     ((or (= v1-0 (gs-psm ct16)) (= v1-0 (gs-psm ct16s)) (= v1-0 (gs-psm mt8)))
-      16
-      )
-     ((= v1-0 (gs-psm mt4))
-      32
-      )
-     (else
-      (format #t "Warning: Unknown block width for psm ~D~%" arg0)
-      1
-      )
+  (case arg0 
+   (((gs-psm ct32) (gs-psm ct24))
+     8
      )
+   (((gs-psm ct16) (gs-psm ct16s) (gs-psm mt8))
+    16
+    )
+   (((gs-psm mt4))
+    32
+    )
+   (else
+    (format #t "Warning: Unknown block width for psm ~D~%" arg0)
+    1
     )
    )
   )
 
 (defun gs-block-height ((arg0 gs-psm))
-  (let ((v1-0 arg0))
-    (if (or (zero? v1-0)
-            (= v1-0 (gs-psm ct24))
-            (= v1-0 (gs-psm ct16))
-            (= v1-0 (gs-psm ct16s))
-            )
-        8
-        (cond
-          ((or (= v1-0 (gs-psm mt8)) (= v1-0 (gs-psm mt4)))
-           16
-           )
-          (else
-           (format #t "Warning: Unknown block width for psm ~D~%" arg0)
-           1
-           )
-          )
-        )
+  (case arg0 
+   (((gs-psm ct32) (gs-psm ct24) (gs-psm ct16) (gs-psm ct16s))
+     8
+     )
+   (((gs-psm mt8) (gs-psm mt4))
+    16
     )
+   (else
+    (format #t "Warning: Unknown block width for psm ~D~%" arg0)
+    1
+    )
+   )
   )
 
 (defun gs-largest-block ((tex-width int) (tex-height int) (tex-format gs-psm))
@@ -533,33 +515,69 @@
 (defmethod lookup-boot-common-id texture-pool ((obj texture-pool) (arg0 int))
   "Map these special textures to a number betwen 0 and 19. For other textures, return -1.
    NOTE: hud means start menu + zoomer, not the usual health HUD."
-  (let ((v1-0 arg0))
-   (cond
-    ((= v1-0 1032) 0) ;; hud (seg0 only)
-    ((= v1-0 1119) 1) ;; zoomer-hud (not actually loaded at boot)
-    ((= v1-0 1478) 2) ;; doesn't exist? (likely demo1)
-    ((= v1-0 1485) 3) ;; demo2 (seg0 only)
-    ((= v1-0 1486) 4) ;; demo3 (seg0 only)
-    ((= v1-0 1487) 5) ;; demo4 (seg0 only)
-    (else
-     (cond
-      ((or (= v1-0 635) (= v1-0 1609)) 6) ;; X or demo5j (seg0 only)
-      ((= v1-0 636) 7) ;; nope
-      ((= v1-0 637) 8) ;; nope
-      ((= v1-0 752) 9) ;; nope
-      ((= v1-0 1598) 10) ;; nope
-      ((= v1-0 1599) 11) ;; demo2f
-      ((= v1-0 1600) 12) ;; demo2g
-      ((= v1-0 1601) 13) ;; demo2i
-      ((= v1-0 1602) 14) ;; demo2s
-      ((= v1-0 1603) 15) ;; demo4e
-      ((= v1-0 1604) 16) ;; demo4f
-      ((= v1-0 1605) 17) ;; demo4g
-      ((= v1-0 1606) 18) ;; demo4i
-      ((= v1-0 1607) 19) ;; demo4s
-      (else -1)
-      )
+  (case arg0
+   ((1032) ;; hud (seg0 only)
+     0
      )
+   ((1119) ;; zoomer-hud (not actually loaded at boot)
+    1
+    )
+   ((1478) ;; doesn't exist? (likely demo1)
+    2
+    )
+   ((1485) ;; demo2 (seg0 only)
+    3
+    )
+   ((1486) ;; demo3 (seg0 only)
+    4
+    )
+   ((1487) ;; demo4 (seg0 only)
+    5
+    )
+   ((635 1609) ;; X or demo5j (seg0 only)
+    6
+    )
+   ((636) ;; nope
+    7
+    )
+   ((637) ;; nope
+    8
+    )
+   ((752) ;; nope
+    9
+    )
+   ((1598) ;; nope
+    10
+    )
+   ((1599) ;; demo2f
+    11
+    )
+   ((1600) ;; demo2g
+    12
+    )
+   ((1601) ;; demo2i
+    13
+    )
+   ((1602) ;; demo2s
+    14
+    )
+   ((1603) ;; demo4e
+    15
+    )
+   ((1604) ;; demo4f
+    16
+    )
+   ((1605) ;; demo4g
+    17
+    )
+   ((1606) ;; demo4i
+    18
+    )
+   ((1607) ;; demo4s
+    19
+    )
+   (else
+    -1
     )
    )
   )
@@ -2873,12 +2891,10 @@
     ;; iterate through all textures
     (dotimes (a0-1 (-> v1-0 length))
       ;; found it!
-      (if (= arg0 (-> v1-0 entries a0-1 page))
-          (begin
-           (set! a0-2 a0-1)
-           (goto cfg-7)
-           )
-          )
+      (when (= arg0 (-> v1-0 entries a0-1 page))
+       (set! a0-2 a0-1)
+       (goto cfg-7)
+       )
       )
     (set! a0-2 -1)
     (label cfg-7)
