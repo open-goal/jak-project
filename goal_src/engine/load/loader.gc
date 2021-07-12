@@ -5,3 +5,275 @@
 ;; name in dgo: loader
 ;; dgos: GAME, ENGINE
 
+
+(defmethod inspect load-dir ((obj load-dir))
+  (format #t "[~8x] ~A~%" obj (-> obj type))
+  (format #t "~Tlevel: ~A~%" (-> obj unknown))
+  (format #t "~Tallocated-length: ~D~%" (-> obj string-array allocated-length))
+  (format #t "~Tlength: ~D~%" (-> obj string-array length))
+  (dotimes (i (-> obj string-array length))
+    (format #t "~T  [~D] ~S ~A  (~D bytes)~%"
+              i (-> obj string-array i) (-> obj data-array i) (mem-size (-> obj data-array i) #f 0))
+    )
+  obj
+  )
+
+(defmethod mem-usage load-dir ((obj load-dir) (arg0 memory-usage-block) (arg1 int))
+  "Get the memory usage data of a load-dir"
+
+  (set! (-> arg0 length) (max 82 (-> arg0 length)))
+  (set! (-> arg0 data 81 name) "array")
+  (set! (-> arg0 data 81 count) (+ (-> arg0 data 81 count) 1))
+  (let ((v1-6 (asize-of obj)))
+   (set! (-> arg0 data 81 used) (+ (-> arg0 data 81 used) v1-6))
+   (set!
+    (-> arg0 data 81 total)
+    (+ (-> arg0 data 81 total) (logand -16 (+ v1-6 15)))
+    )
+   )
+  (set! (-> arg0 length) (max 82 (-> arg0 length)))
+  (set! (-> arg0 data 81 name) "array")
+  (set! (-> arg0 data 81 count) (-> arg0 data 81 count))
+  (let ((v1-15 (asize-of (-> obj string-array))))
+   (set! (-> arg0 data 81 used) (+ (-> arg0 data 81 used) v1-15))
+   (set!
+    (-> arg0 data 81 total)
+    (+ (-> arg0 data 81 total) (logand -16 (+ v1-15 15)))
+    )
+   )
+  (set! (-> arg0 length) (max 82 (-> arg0 length)))
+  (set! (-> arg0 data 81 name) "array")
+  (set! (-> arg0 data 81 count) (-> arg0 data 81 count))
+  (let ((v1-24 (asize-of (-> obj data-array))))
+   (set! (-> arg0 data 81 used) (+ (-> arg0 data 81 used) v1-24))
+   (set!
+    (-> arg0 data 81 total)
+    (+ (-> arg0 data 81 total) (logand -16 (+ v1-24 15)))
+    )
+   )
+  (dotimes (s3-0 (-> obj data-array length))
+   (mem-usage (-> obj data-array s3-0) arg0 arg1)
+   )
+  (the-as load-dir #f)
+  )
+
+(defmethod dummy-9 load-dir-art-group ((obj load-dir-art-group) (arg0 string) (arg1 symbol) (arg2 kheap) (arg3 int))
+
+
+  (let ((s5-0 (-> obj string-array)))
+   (dotimes (s3-0 (-> s5-0 length))
+    (when (string= arg0 (-> s5-0 s3-0))
+     (when arg1
+      (let ((v1-4 (art-group-load-check arg0 arg2 arg3)))
+       (if v1-4
+        (set! (-> obj art-group-array s3-0) v1-4)
+        )
+       )
+      )
+     (return (-> obj art-group-array s3-0))
+     )
+    )
+   (let ((v0-2 (art-group-load-check arg0 arg2 arg3)))
+    (when v0-2
+     (set! (-> s5-0 (-> s5-0 length)) arg0)
+     (set! (-> obj art-group-array (-> s5-0 length)) v0-2)
+     (set! (-> s5-0 length) (+ (-> s5-0 length) 1))
+     (set!
+      (-> obj art-group-array length)
+      (+ (-> obj art-group-array length) 1)
+      )
+     )
+    v0-2
+    )
+   )
+  )
+
+(defmethod dummy-10 load-dir-art-group ((obj load-dir-art-group) (arg0 art-group))
+
+
+  (let ((s4-0 (-> obj string-array)))
+   (dotimes (s3-0 (-> s4-0 length))
+    (when (string= (-> arg0 name) (-> s4-0 s3-0))
+      (set! (-> obj art-group-array s3-0) arg0)
+      (return (-> obj art-group-array s3-0))
+      )
+    )
+   (set! (-> s4-0 (-> s4-0 length)) (-> arg0 name))
+   (set! (-> obj art-group-array (-> s4-0 length)) arg0)
+   (set! (-> s4-0 length) (+ (-> s4-0 length) 1))
+   )
+  (set! (-> obj art-group-array length) (+ (-> obj art-group-array length) 1))
+  arg0
+  )
+
+;; drawable-load
+;; art-load
+;; art-group-load-check
+
+(defmethod dummy-9 external-art-buffer ((obj external-art-buffer) (arg0 symbol) (arg1 int) (arg2 handle) (arg3 float))
+  (set! (-> obj pending-load-file) (the-as string arg0))
+  (set! (-> obj pending-load-file-part) arg1)
+  (set! (-> obj pending-load-file-owner) arg2)
+  (set! (-> obj pending-load-file-priority) arg3)
+  0
+  )
+
+(defmethod unlock! external-art-buffer ((obj external-art-buffer))
+  "Unlock this buffer."
+
+  (declare (inline))
+  (set! (-> obj locked?) #f)
+  #f
+  )
+
+(defmethod inactive? external-art-buffer ((obj external-art-buffer))
+  "Is this buffer inactive?"
+
+  (declare (inline))
+  (!= (-> obj status) 'active)
+  )
+
+(defmethod file-status external-art-buffer ((obj external-art-buffer) (name string) (part int))
+  "Get the status of a file in the buffer. #f = file is not present."
+
+  (when (and (name= (-> obj pending-load-file) name)
+             (= (-> obj pending-load-file-part) part)
+             )
+    ;; the file is at least wanting to load
+    (if (and (name= (-> obj load-file) name) (= (-> obj load-file-part) part))
+      (-> obj status) ;; file is loaded
+      'pending        ;; file is not loaded yet?
+      )
+    )
+  )
+
+(defmethod link-art! art-group ((obj art-group))
+  "Links the elements of this art-group."
+
+  ;; this check seems superfluous
+  (when obj
+   (countdown (s5-0 (-> obj length))
+    (let* ((art-elt (-> obj data s5-0))
+           (janim (if (and (nonzero? art-elt) (type-type? (-> art-elt type) art-joint-anim))
+                              (the-as art-joint-anim art-elt)
+                              ))
+           (success #f)
+           )
+        (when janim
+          ;; a countdown with a label right at the start
+          (let ((s3-1 3))
+           (while (begin
+                   (label cfg-22)
+                   (nonzero? s3-1)
+                   )
+            (+! s3-1 -1)
+            (let ((janim-group (art-group-get-by-name (-> *level* level s3-1) (-> janim master-art-group-name))))
+                (when janim-group
+                  (cond
+                    ((and (< (-> janim master-art-group-index) (-> janim-group length))
+                          (not (-> janim-group data (-> janim master-art-group-index)))
+                          )
+                     (set! (-> janim-group data (-> janim master-art-group-index)) janim)
+                     (set! success #t)
+                     )
+                    (else
+                     (countdown (a0-14 (-> janim-group length))
+                       (when (not (-> janim-group data a0-14))
+                         (set! (-> janim-group data a0-14) janim)
+                         (set! success #t)
+                         (goto cfg-22)
+                         )
+                       )
+                     )
+                    )
+                  )
+                )
+            )
+           )
+          (if (not success)
+            (format 0 "ERROR: ~A could not find a master slot to link for ~A.~%" (-> obj name) janim)
+            )
+          )
+        )
+    )
+   )
+  obj
+  )
+
+(defmethod unlink-art! art-group ((obj art-group))
+  "Unlinks the elements of this art-group."
+
+  (when obj
+    (countdown (s5-0 (-> obj length))
+      (let* ((art-elt (-> obj data s5-0))
+             (janim (if (and (nonzero? art-elt) (type-type? (-> art-elt type) art-joint-anim))
+                               (the-as art-joint-anim art-elt)
+                               ))
+             (success #f)
+             )
+          (when janim
+            (let ((s2-0 3))
+              (while (begin
+                      (label cfg-16)
+                      (nonzero? s2-0)
+                      )
+                (+! s2-0 -1)
+                (let ((janim-group (art-group-get-by-name (-> *level* level s2-0) (-> janim master-art-group-name))))
+                  (when janim-group
+                    (countdown (a0-5 (-> janim-group length))
+                      (when (= janim (-> janim-group data a0-5))
+                        (set! (-> janim-group data a0-5) #f)
+                        (set! success #t)
+                        (goto cfg-16)
+                        )
+                      )
+                    )
+                  )
+                )
+              )
+            (if (not success)
+              (format 0 "ERROR: ~A could not find a master slot to unlink for ~A.~%" (-> obj name) janim)
+              )
+            )
+          )
+      )
+    )
+  0
+  )
+
+(defmethod link external-art-buffer ((obj external-art-buffer) (ag art-group))
+  "Link the art-group and set it to this buffer's art group."
+
+  (when ag
+    (link-art! ag)
+    (set! (-> obj art-group) ag)
+    )
+  ag
+  )
+
+(defmethod unlink external-art-buffer ((obj external-art-buffer) (ag art-group))
+  "Unlink the art-group and remove this buffer's art group."
+
+  (when ag
+    (unlink-art! ag)
+    (set! (-> obj art-group) #f)
+    )
+  0
+  )
+
+;; (method 10 external-art-buffer)
+
+(defmethod first-using-status external-art-control ((obj external-art-control) (arg0 string) (arg1 int))
+  "Get the status of the first buffer that's in use. #f = none are in use"
+
+  (dotimes (i 2)
+    (swhen ((v1-3 (file-status (-> obj buffer i) arg0 arg1)))
+      (return bc)
+      )
+    )
+  #f
+  )
+
+;; start loading a spooled anim if we think one is about to be used, e.g. when approaching a fuel cell or npc
+(define *preload-spool-anims* #t)
+

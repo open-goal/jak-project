@@ -4392,6 +4392,7 @@
 
 ;; - Types
 
+(declare-type art-group basic)
 ;; custom fields
 (deftype load-dir (basic)
   ((unknown basic :offset-assert 4)
@@ -4401,19 +4402,20 @@
   :flag-assert #xb00000010
   (:methods
     (new (symbol type int basic) _type_ 0)
-    (dummy-9 () none 9)
-    (dummy-10 () none 10)
+    (dummy-9 (_type_ string symbol kheap int) basic 9)
+    (dummy-10 (_type_ art-group) art-group 10)
     )
   )
 
 ;; custom fields
-(declare-type art-group basic)
 (deftype load-dir-art-group (load-dir)
   ((art-group-array (array art-group) :offset 12)
    )
   :flag-assert #xb00000010
   (:methods
     (new (symbol type int basic) _type_ 0)
+    (dummy-9 (_type_ string symbol kheap int) basic 9)
+    (dummy-10 (_type_ art-group) art-group 10)
     )
   )
 
@@ -4426,11 +4428,11 @@
    (heap                       kheap  :inline :offset-assert 32)
    (pending-load-file          string         :offset-assert 48)
    (pending-load-file-part     int32          :offset-assert 52)
-   (pending-load-file-owner    uint64         :offset-assert 56)
+   (pending-load-file-owner    handle         :offset-assert 56)
    (pending-load-file-priority float          :offset-assert 64)
    (load-file                  string         :offset-assert 68)
    (load-file-part             int32          :offset-assert 72)
-   (load-file-owner            uint64         :offset-assert 80)
+   (load-file-owner            handle         :offset-assert 80)
    (load-file-priority         float          :offset-assert 88)
    (buf                        uint32         :offset-assert 92)
    (len                        int32          :offset-assert 96)
@@ -4441,13 +4443,13 @@
   :flag-assert         #x1000000068
   (:methods
     (new (symbol type int) _type_ 0)
-    (dummy-9 (_type_ symbol int symbol float) none 9)
-    (dummy-10 () none 10)
-    (dummy-11 () none 11)
-    (dummy-12 () none 12)
-    (dummy-13 () none 13)
-    (dummy-14 () none 14)
-    (dummy-15 () none 15)
+    (dummy-9 (_type_ symbol int handle float) int 9)
+    (dummy-10 (_type_) int 10)
+    (inactive? (_type_) symbol 11)
+    (file-status (_type_ string int) symbol 12)
+    (link (_type_ art-group) art-group 13)
+    (unlink (_type_ art-group) int 14)
+    (unlock! (_type_) symbol 15)
     )
   )
 
@@ -4456,7 +4458,7 @@
    (index        int32   :offset-assert 20)
    (parts        int32   :offset-assert 24)
    (priority     float   :offset-assert 28)
-   (owner        uint64  :offset-assert 32)
+   (owner        handle  :offset-assert 32)
    (command-list basic   :offset-assert 40)
    )
   :pack-me
@@ -4465,10 +4467,9 @@
   :flag-assert         #x90000002c
   )
 
-; todo inline basics
 (deftype external-art-control (basic)
   ((buffer               external-art-buffer    2       :offset-assert 4)
-   (rec             spool-anim 3 :inline)
+   (rec                  spool-anim 3 :inline :offset-assert 16)
    (spool-lock           uint64             :offset-assert 160)
    (reserve-buffer       basic              :offset-assert 168)
    (reserve-buffer-count int32              :offset-assert 172)
@@ -4482,13 +4483,13 @@
   :flag-assert         #x1100000118
   (:methods
     (new (symbol type) _type_ 0)
-    (dummy-9 (_type_ symbol) none 9)
+    (dummy-9 (_type_ symbol) int 9)
     (dummy-10 (_type_) none 10)
     (dummy-11 () none 11)
-    (dummy-12 () none 12)
-    (dummy-13 () none 13)
-    (dummy-14 () none 14)
-    (dummy-15 () none 15)
+    (first-using-status (_type_ string int) symbol 12)
+    (dummy-13 (_type_) none 13)
+    (dummy-14 (_type_) none 14)
+    (dummy-15 (_type_) symbol 15)
     (dummy-16 () none 16)
     )
   )
@@ -7470,8 +7471,8 @@
   :size-assert         #x20
   :flag-assert         #xf00000020
   (:methods
-    (dummy-13 (_type_) int 13)
-    (dummy-14 (_type_) int 14)
+    (link-art! (_type_) art-group 13)
+    (unlink-art! (_type_) int 14)
     )
   )
 
@@ -16170,10 +16171,11 @@
 (define-extern level-hint-surpress! function)
 (define-extern ja-aframe-num (function int float))
 (define-extern ja-abort-spooled-anim function)
-(define-extern art-group-load-check function)
-(define-extern drawable-load function)
-(define-extern art-load function)
+(define-extern art-group-load-check (function string kheap int art-group))
+(define-extern drawable-load (function drawable kheap drawable))
+(define-extern art-load (function art kheap art))
 (define-extern ja-play-spooled-anim function)
+(define-extern link (function pointer pointer int kheap int pointer))
 
 ;; - Symbols
 
@@ -16183,8 +16185,8 @@
 ;; - Unknowns
 
 (define-extern *art-control* external-art-control)
-;;(define-extern *preload-spool-anims* object) ;; unknown type
-;;(define-extern *stack-top* object) ;; unknown type
+(define-extern *preload-spool-anims* symbol)
+(define-extern *stack-top* pointer)
 
 
 ;; ----------------------
