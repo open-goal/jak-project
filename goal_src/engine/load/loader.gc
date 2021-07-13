@@ -285,7 +285,7 @@
    If debug-print, also prints some text to the display console"
 
   (if (nonzero? (-> obj reserve-buffer-count))
-    (dummy-11 obj "reserved" 0 *dproc* (if (-> obj reserve-buffer)
+    (spool-push obj "reserved" 0 *dproc* (if (-> obj reserve-buffer)
                                           -110.0
                                           -0.5)
                                         )
@@ -344,7 +344,7 @@
              (not (string= (-> s4-2 pending-load-file) "reserved"))
              (not (string= (-> s4-2 other pending-load-file) "reserved"))
              )
-     (want-file (-> s4-2 other) (the-as string #f) -1 (the-as handle #f) 100000000.0)
+     (want-file (-> s4-2 other) (the-as string #f) -1 (the-as handle #f) SPOOL_PRIORITY_LOWEST)
      )
     )
    )
@@ -419,7 +419,7 @@
     (set! (-> obj reserve-buffer-count) 0)
     )
    ((= (-> obj reserve-buffer heap) arg0)
-    (want-file (-> obj reserve-buffer) (the-as string #f) -1 (the-as handle #f) 100000000.0)
+    (want-file (-> obj reserve-buffer) (the-as string #f) -1 (the-as handle #f) SPOOL_PRIORITY_LOWEST)
     (dummy-10 (-> obj reserve-buffer))
     (set! (-> obj reserve-buffer-count) 0)
     )
@@ -430,16 +430,61 @@
   0
   )
 
-;; (method 10 external-art-control)
+(defmethod clear-rec external-art-control ((obj external-art-control))
+  "Clears the recent spool anims from the art control."
 
-
-(defmethod try-preload-stream external-art-control ((obj external-art-control) (arg0 string) (arg1 int) (arg2 process-drawable) (arg3 float))
-
-  (when (and (= arg3 -99.0) arg2)
-   (let ((a0-2 (target-pos 0)))
-    (set! arg3 (vector-vector-distance a0-2 (-> arg2 root trans)))
+  (cond
+   ((!= *master-mode* 'game)
+    (dotimes (s5-0 3)
+     (when (name= (-> obj rec s5-0 name) "reserved")
+      (case s5-0
+        ((0)
+         (mem-copy! (&-> obj rec 0 type) (&-> obj rec 1 type) (size-of spool-anim))
+         (mem-copy! (&-> obj rec 1 type) (&-> obj rec 2 type) (size-of spool-anim))
+         )
+        ((1)
+         (mem-copy! (&-> obj rec 1 type) (&-> obj rec 2 type) (size-of spool-anim))
+         )
+       )
+      (set! (-> obj rec 2 type) spool-anim)
+      (set! (-> obj rec 2 name) #f)
+      (set! (-> obj rec 2 priority) SPOOL_PRIORITY_LOWEST)
+      (set! (-> obj rec 2 owner) (the-as handle #f))
+      )
+     )
+    )
+   (else
+    (dotimes (v1-19 3)
+     (set! (-> obj rec v1-19 type) spool-anim)
+     (set! (-> obj rec v1-19 name) #f)
+     (set! (-> obj rec v1-19 priority) SPOOL_PRIORITY_LOWEST)
+     (set! (-> obj rec v1-19 owner) (the-as handle #f))
+     )
+    (set! (-> obj preload-stream type) spool-anim)
+    (set! (-> obj preload-stream name) #f)
+    (set! (-> obj preload-stream priority) SPOOL_PRIORITY_LOWEST)
+    (set! (-> obj preload-stream owner) (the-as handle #f))
     )
    )
+  0
+  )
+
+(defmacro spool-calc-priority (priority proc)
+  "Check the priority of a spool anim and recalculate it if needed. It will be the same as distance between target and the requesting process.
+   priority = var that stores priority
+   proc = a process to recalc from"
+  `(when (and (= ,priority SPOOL_PRIORITY_RECALC) ,proc)
+    (let ((target-trans (target-pos 0)))
+      (set! ,priority (vector-vector-distance target-trans (-> ,proc root trans)))
+      )
+    )
+  )
+
+(defmethod try-preload-stream external-art-control ((obj external-art-control) (arg0 string) (arg1 int) (arg2 process-drawable) (arg3 float))
+  "Set a new stream to be preloaded, if appropriate."
+
+  (spool-calc-priority arg3 arg2)
+
   (unless (and (-> obj preload-stream name)
                (>= arg3 (-> obj preload-stream priority))
                )
@@ -451,9 +496,75 @@
   0
   )
 
-;; (method 11 external-art-control)
+(defmethod spool-push external-art-control ((obj external-art-control) (name string) (part int) (proc process-drawable) (priority float))
+  "Push a spool-anim to the spool array. There are only space for three, and only the three highest priority spool anims will be kept. (lowest priority = top)"
+
+  (spool-calc-priority priority proc)
+
+  ;; if this spool-anim already exists, pop it from the rec list
+  (cond
+   ((and (= part (-> obj rec 0 parts)) (name= name (-> obj rec 0 name)))
+    (if (>= priority (-> obj rec 0 priority))
+     (return (the-as int #f))
+     )
+    ;; first spool. copy 1st <- 2nd and 2nd <- 3rd, 3rd will be wiped
+    (mem-copy! (&-> obj rec 0 type) (&-> obj rec 1 type) (size-of spool-anim))
+    (mem-copy! (&-> obj rec 1 type) (&-> obj rec 2 type) (size-of spool-anim))
+    (set! (-> obj rec 2 name) #f)
+    (set! (-> obj rec 2 owner) (the-as handle #f))
+    )
+   ((and (= part (-> obj rec 1 parts)) (name= name (-> obj rec 1 name)))
+    (if (>= priority (-> obj rec 1 priority))
+     (return (the-as int #f))
+     )
+    ;; second spool. copy 2nd <- 3rd, 3rd will be wiped
+    (mem-copy! (&-> obj rec 1 type) (&-> obj rec 2 type) (size-of spool-anim))
+    (set! (-> obj rec 2 name) #f)
+    (set! (-> obj rec 2 owner) (the-as handle #f))
+    )
+   ((and (= part (-> obj rec 2 parts)) (name= name (-> obj rec 2 name)))
+    (if (>= priority (-> obj rec 2 priority))
+     (return (the-as int #f))
+     )
+    ;; third spool. 3rd will be wiped
+    (set! (-> obj rec 2 name) #f)
+    (set! (-> obj rec 2 owner) (the-as handle #f))
+    )
+   )
+  
+  ;; if it's top 3 priority, push this spool-anim to the rec list
+  (cond
+   ((< priority (-> obj rec 0 priority))
+    ;; 1st place!
+    (mem-copy! (&-> obj rec 2 type) (&-> obj rec 1 type) (size-of spool-anim))
+    (mem-copy! (&-> obj rec 1 type) (&-> obj rec 0 type) (size-of spool-anim))
+    (set! (-> obj rec 0 name) name)
+    (set! (-> obj rec 0 parts) part)
+    (set! (-> obj rec 0 priority) priority)
+    (set! (-> obj rec 0 owner) (process->handle proc))
+    )
+   ((< priority (-> obj rec 1 priority))
+    ;; 2nd place.
+    (mem-copy! (&-> obj rec 2 type) (&-> obj rec 1 type) (size-of spool-anim))
+    (set! (-> obj rec 1 name) name)
+    (set! (-> obj rec 1 parts) part)
+    (set! (-> obj rec 1 priority) priority)
+    (set! (-> obj rec 1 owner) (process->handle proc))
+    )
+   ((< priority (-> obj rec 2 priority))
+    ;; 3rd place...
+    (set! (-> obj rec 2 name) name)
+    (set! (-> obj rec 2 parts) part)
+    (set! (-> obj rec 2 priority) priority)
+    (set! (-> obj rec 2 owner) (process->handle proc))
+    )
+   )
+  0
+  )
 
 (defun ja-play-spooled-anim ((arg0 spool-anim) (arg1 art-joint-anim) (arg2 art-joint-anim) (arg3 (function process-drawable symbol)))
+  "Set up and start playing a spooled animation. details not understood yet."
+
   (local-vars
    (sv-16 int)
    (sv-24 float)
@@ -510,7 +621,7 @@
      (if (arg3 pp)
       (goto cfg-88)
       )
-     (dummy-11 *art-control* (-> arg0 name) sv-16 pp -9.0)
+     (spool-push *art-control* (-> arg0 name) sv-16 pp -9.0)
      (suspend)
      (when arg1
       ;; TODO macro
@@ -524,9 +635,9 @@
    (set! (-> *art-control* spool-lock) (process->handle pp))
    (set! sv-48 (the-as int (-> *display* base-frame-counter)))
    (while (< sv-16 (-> arg0 parts))
-    (dummy-11 *art-control* (-> arg0 name) sv-16 pp -20.0)
+    (spool-push *art-control* (-> arg0 name) sv-16 pp -20.0)
     (update *art-control* #f)
-    (dummy-11 *art-control* (-> arg0 name) sv-16 pp -20.0)
+    (spool-push *art-control* (-> arg0 name) sv-16 pp -20.0)
     (when (!= (first-using-status *art-control* (-> arg0 name) sv-16) 'active)
      (cond
       (arg1
@@ -550,7 +661,7 @@
       (if (arg3 pp)
         (goto cfg-88)
         )
-      (dummy-11 *art-control* (-> arg0 name) sv-16 pp -20.0)
+      (spool-push *art-control* (-> arg0 name) sv-16 pp -20.0)
       (format #t "WARNING: ---------------------> loader stall on art ~S ~D~%" (-> arg0 name) sv-16)
       (suspend)
       (when arg1
@@ -561,7 +672,7 @@
        )
       )
      )
-    (dummy-11 *art-control* (-> arg0 name) sv-16 pp -20.0)
+    (spool-push *art-control* (-> arg0 name) sv-16 pp -20.0)
     (let ((s2-4 (the-as art-joint-anim (dummy-10 (-> pp draw art-group) (-> arg0 name) art-joint-anim))))
      (cond
       (s2-4
@@ -586,10 +697,10 @@
         (set! sv-40 (the-as int (-> *display* base-frame-counter)))
         ;; uhh...
         (until (begin
-                (dummy-11 *art-control* (-> arg0 name) sv-16 pp -20.0)
+                (spool-push *art-control* (-> arg0 name) sv-16 pp -20.0)
                 (cond
                  ((< (+ sv-16 1) (-> arg0 parts))
-                  (dummy-11 *art-control* (-> arg0 name) (1+ sv-16) pp -10.0)
+                  (spool-push *art-control* (-> arg0 name) (1+ sv-16) pp -10.0)
                   )
                  (else
                   (set!
@@ -670,7 +781,7 @@
      (ja-channel-push! 1 30)
      (set! (-> pp skel root-channel 0 frame-group) arg1)
      (while (!= (-> pp skel root-channel 0) (-> pp skel channel))
-       (dummy-11 *art-control* (-> arg0 name) arg2 pp -20.0)
+       (spool-push *art-control* (-> arg0 name) arg2 pp -20.0)
        (suspend)
        ;; TODO macro
        (let ((a0-12 (-> pp skel root-channel 0)))

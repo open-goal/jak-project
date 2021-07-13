@@ -8,6 +8,13 @@
 ;; This is not well-understood yet, but it is definitely related to streaming animation loading,
 ;; and possibly art-group stuff.
 
+
+(defconstant SPOOL_PRIORITY_LOWEST 100000000.0)
+(defconstant SPOOL_PRIORITY_RECALC -99.0)
+(defconstant SPOOL_PRIORITY_HIGHEST -20.0)
+(defconstant SPOOL_PRIORITY_HIGH -10.0)
+
+
 ;; This type didn't have an inspect method, so these field names are made up.
 (declare-type art-group basic)
 (deftype load-dir (basic)
@@ -108,11 +115,11 @@
    (set! (-> obj load-file) #f)
    (set! (-> obj load-file-part) -1)
    (set! (-> obj load-file-owner) (the-as uint #f))
-   (set! (-> obj load-file-priority) 100000000.0)
+   (set! (-> obj load-file-priority) SPOOL_PRIORITY_LOWEST)
    (set! (-> obj pending-load-file) #f)
    (set! (-> obj pending-load-file-part) -1)
    (set! (-> obj pending-load-file-owner) (the-as uint #f))
-   (set! (-> obj pending-load-file-priority) 100000000.0)
+   (set! (-> obj pending-load-file-priority) SPOOL_PRIORITY_LOWEST)
    (set! (-> obj art-group) #f)
    (set! (-> obj status) 'initialize)
    (set! (-> obj locked?) #f)
@@ -162,6 +169,7 @@
     )
   )
 
+
 (defmethod new external-art-control ((allocation symbol) (type-to-make type))
   (let ((obj (object-new allocation type-to-make (the-as int (-> type-to-make size)))))
     ;; allocate buffers.
@@ -176,19 +184,19 @@
     ;; set up recs
     (dotimes (rec-idx 3)
       (set! (-> obj rec rec-idx name) #f)
-      (set! (-> obj rec rec-idx priority) 100000000.0)
-      (set! (-> obj rec rec-idx owner) (the-as uint #f))
+      (set! (-> obj rec rec-idx priority) SPOOL_PRIORITY_LOWEST)
+      (set! (-> obj rec rec-idx owner) #f)
       )
     ;; set up defaults.
-    (set! (-> obj spool-lock) (the-as uint #f))
+    (set! (-> obj spool-lock) #f)
     (set! (-> obj reserve-buffer) #f)
     (set! (-> obj active-stream) #f)
     (set! (-> obj preload-stream name) #f)
-    (set! (-> obj preload-stream priority) 100000000.0)
-    (set! (-> obj preload-stream owner) (the-as uint #f))
+    (set! (-> obj preload-stream priority) SPOOL_PRIORITY_LOWEST)
+    (set! (-> obj preload-stream owner) #f)
     (set! (-> obj last-preload-stream name) #f)
-    (set! (-> obj last-preload-stream priority) 100000000.0)
-    (set! (-> obj last-preload-stream owner) (the-as uint #f))
+    (set! (-> obj last-preload-stream priority) SPOOL_PRIORITY_LOWEST)
+    (set! (-> obj last-preload-stream owner) #f)
     obj
     )
   )
