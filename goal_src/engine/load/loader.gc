@@ -243,7 +243,7 @@
   0
   )
 
-(defmethod link external-art-buffer ((obj external-art-buffer) (ag art-group))
+(defmethod link-file external-art-buffer ((obj external-art-buffer) (ag art-group))
   "Link the art-group and set it to this buffer's art group."
 
   (when ag
@@ -253,7 +253,7 @@
   ag
   )
 
-(defmethod unlink external-art-buffer ((obj external-art-buffer) (ag art-group))
+(defmethod unlink-file external-art-buffer ((obj external-art-buffer) (ag art-group))
   "Unlink the art-group and remove this buffer's art group."
 
   (when ag
@@ -263,7 +263,206 @@
   0
   )
 
-;; (method 10 external-art-buffer)
+(defmethod update external-art-buffer ((obj external-art-buffer))
+  "Update this buffer."
+
+  (when (or (not (name= (-> obj pending-load-file) (-> obj load-file)))
+            (!= (-> obj pending-load-file-part) (-> obj load-file-part))
+            )
+   ;; we're loading a different file, or a different part of a file
+   (unless (handle->process (-> obj pending-load-file-owner))
+    ;; nobody owns the loading file so we can discard it
+    (set! (-> obj pending-load-file) #f)
+    (set! (-> obj pending-load-file-part) -1)
+    (set! (-> obj pending-load-file-owner) (the-as handle #f))
+    (set! (-> obj pending-load-file-priority) SPOOL_PRIORITY_LOWEST)
+    )
+   (when (= (-> obj status) 'initialize)
+    ;; we need to initialize the heap
+    (let ((v1-11 (-> obj heap)))
+     (set! (-> v1-11 base) (the-as pointer (+ #x84000 (* #x3dc00 (-> obj index)))))
+     (set! (-> v1-11 current) (-> v1-11 base))
+     (set! (-> v1-11 top-base) (&+ (-> v1-11 base) #x3dc00))
+     (set! (-> v1-11 top) (-> v1-11 top-base))
+     )
+    (set! (-> obj status) 'inactive)
+    ;; heap is now allocated, but there is no data to use
+    )
+   (cond
+    ((-> obj load-file)
+     ;; the buffer is working on a file
+     (if (= (-> obj status) 'loading)
+       ;; something else is already loading, cancel that because we want something else
+       (str-load-cancel)
+       )
+     ;; now nothing is loaded!
+     (set! (-> obj load-file) #f)
+     (set! (-> obj load-file-part) -1)
+     (set! (-> obj load-file-owner) (the-as handle #f))
+     (set! (-> obj load-file-priority) SPOOL_PRIORITY_LOWEST)
+     )
+    (else
+     ;; we have officially chosen to load this file
+     (set! (-> obj load-file) (-> obj pending-load-file))
+     (set! (-> obj load-file-part) (-> obj pending-load-file-part))
+     (set! (-> obj load-file-owner) (-> obj pending-load-file-owner))
+     (set! (-> obj load-file-priority) (-> obj pending-load-file-priority))
+     )
+    )
+   )
+  (label cfg-18)
+  (cond
+   ((-> obj load-file)
+    ;; something is being worked on
+    (case (-> obj status) 
+     (('active 'reserved)
+       ;; file is loaded and usable (or reserved)
+       )
+     (('error)
+      ;; oops an error happened. make this buffer unusable now.
+      (set! (-> obj status) 'inactive)
+      (set! (-> obj load-file) #f)
+      (set! (-> obj load-file-part) -1)
+      (set! (-> obj load-file-owner) (the-as handle #f))
+      (set! (-> obj load-file-priority) SPOOL_PRIORITY_LOWEST)
+      (set! (-> obj pending-load-file) #f)
+      (set! (-> obj pending-load-file-part) -1)
+      (set! (-> obj pending-load-file-owner) (the-as handle #f))
+      (set! (-> obj pending-load-file-priority) SPOOL_PRIORITY_LOWEST)
+      (set! (-> obj art-group) #f)
+      )
+     (('inactive)
+      ;; no usable data here, fill the buffer
+      ;; TODO macro
+      (let ((v1-28 (-> obj heap)))
+       (set! (-> v1-28 current) (-> v1-28 base))
+       )
+      (cond
+       ((string= (-> obj load-file) "reserved") ;; we want to reserve something
+        (cond
+         ((-> *art-control* reserve-buffer)
+          (format 0 "ERROR: trying double reserve ~A when ~A is reserved~%" obj (-> *art-control* reserve-buffer))
+          )
+         (else
+          (set! (-> obj status) 'reserved)
+          (set! (-> *art-control* reserve-buffer) obj) ;; this buffer is reserved
+          )
+         )
+        )
+       ((and (!= (-> *level* loading-level) (-> *level* level-default))
+                 (< (meters 20) (-> obj load-file-priority))
+                 )
+        ;; unused cond
+        )
+       ((str-load (-> obj load-file) (-> obj load-file-part) (align64 (-> obj heap current)) #x3fc00)
+        (set! (-> obj status) 'loading)
+        )
+       )
+      )
+     (('loading)
+      ;; loading...
+      (case (str-load-status (&-> obj len)) 
+       (('error)
+         ;; something went wrong. oh well.
+         (set! (-> obj status) 'error)
+         )
+       (('busy)
+        ;; loading. we have nothing to do.
+        )
+       (else
+        ;; done!!
+        ;; not sure it is a good idea to assume that this is a success...
+        (set! (-> obj buf) (align64 (-> obj heap current)))
+        (set! (-> obj status) 'loaded)
+        (goto cfg-18) ;; go back and check status again!
+        )
+       )
+      )
+     (('loaded)
+      ;; file is loaded. link it and see if we're good
+      (let ((a0-37 (-> obj buf)))
+       (set! (-> obj art-group) (the-as art-group (link (the-as pointer a0-37) (-> obj load-file data) (-> obj len) (-> obj heap) 0)))
+       )
+      (let ((s4-0 (-> obj art-group))
+            (s3-0 (-> obj load-file))
+            )
+       (cond
+        ((not s4-0)
+         (format 0 "ERROR: art-group ~A part ~D is not a valid file.~%" s3-0 (-> obj load-file-part))
+         (set! (-> obj status) 'error)
+         )
+        ((not (type-type? (-> s4-0 type) art-group))
+         (format 0 "ERROR: art-group ~A part ~D is not a art-group.~%" s3-0 (-> obj load-file-part))
+         (set! (-> obj status) 'error)
+         )
+        ((not (file-info-correct-version? (-> s4-0 info) (file-kind art-group) 0))
+         ;;(format 0 "ERROR: art-group ~A part ~D is the wrong version.~%" s3-0 (-> obj load-file-part))
+         (set! (-> obj status) 'error)
+         )
+        (else
+         (dummy-9 s4-0)
+         (set! (-> obj status) 'locked) ;; make file ready to be used
+         )
+        )
+       )
+      )
+     (('locked)
+      ;; this buffer is locked and needs to be unlocked before it can be used.
+      (when (and (not (-> obj locked?)) (handle->process (-> obj load-file-owner))
+       ;; we want to be used, unlock this buffer and lock the other just in case.
+       (link-file obj (-> obj art-group))
+       (set! (-> obj other locked?) #t)
+       (set! (-> obj status) 'active)
+       (goto cfg-18)
+       )
+      )
+     )
+    )
+   (else
+    ;; we want to get rid of the file!
+    (case (-> obj status) 
+     (('initialize)
+      ;; this was done earlier
+      )
+     (('reserved)
+      ;; this buffer is reserved
+      (cond
+       ((= (-> *art-control* reserve-buffer) obj) ;; yep it's this one!
+        (set! (-> *art-control* reserve-buffer) #f)
+        (set! (-> obj status) 'inactive)
+        )
+       (else
+        (format 0 "ERROR: trying tro free ~A when ~A is reserved~%" obj (-> *art-control* reserve-buffer))
+        )
+       )
+      )
+     (('active)
+      ;; buffer is in use. not anymore!
+      (unlink-file obj (-> obj art-group))
+      (let ((v1-70 (-> obj heap)))
+       (set! (-> v1-70 current) (-> v1-70 base))
+       )
+      (set! (-> obj art-group) #f)
+      (set! (-> obj status) 'inactive)
+      (when (-> obj other locked?)
+       (unlock! (-> obj other))
+       (update (-> obj other))
+       )
+      )
+     (else
+      ;; some other scenario, just get rid of the whole thing.
+      (let ((v1-79 (-> obj heap)))
+       (set! (-> v1-79 current) (-> v1-79 base))
+       )
+      (set! (-> obj art-group) #f)
+      (set! (-> obj status) 'inactive)
+      )
+     )
+    )
+   )
+  0
+  )
+
 
 ;; start loading a spooled anim if we think one is about to be used, e.g. when approaching a fuel cell or npc
 ;; (some processes may want to wait for the stream to be preloaded, which won't happen with this disabled)
@@ -350,7 +549,7 @@
    )
 
   (dotimes (s4-3 2)
-   (dummy-10 (-> obj buffer s4-3))
+   (update (-> obj buffer s4-3))
    )
 
   ;; sort spool anims.
@@ -420,7 +619,7 @@
     )
    ((= (-> obj reserve-buffer heap) arg0)
     (want-file (-> obj reserve-buffer) (the-as string #f) -1 (the-as handle #f) SPOOL_PRIORITY_LOWEST)
-    (dummy-10 (-> obj reserve-buffer))
+    (update (-> obj reserve-buffer))
     (set! (-> obj reserve-buffer-count) 0)
     )
    (else
