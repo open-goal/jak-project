@@ -36,6 +36,12 @@ class Interpreter {
                                const std::shared_ptr<EnvironmentObject>& env);
   bool truthy(const Object& o);
 
+  void register_form(
+      const std::string& name,
+      const std::function<
+          Object(const Object&, Arguments&, const std::shared_ptr<EnvironmentObject>&)>& form);
+  void eval_args(Arguments* args, const std::shared_ptr<EnvironmentObject>& env);
+
   Reader reader;
   Object global_environment;
   Object goal_env;
@@ -59,7 +65,6 @@ class Interpreter {
       const std::unordered_map<std::string, std::pair<bool, std::optional<ObjectType>>>& named);
 
   Object eval_pair(const Object& o, const std::shared_ptr<EnvironmentObject>& env);
-  void eval_args(Arguments* args, const std::shared_ptr<EnvironmentObject>& env);
   ArgumentSpec parse_arg_spec(const Object& form, Object& rest);
 
   Object quasiquote_helper(const Object& form, const std::shared_ptr<EnvironmentObject>& env);
@@ -239,6 +244,11 @@ class Interpreter {
                                              Arguments& args,
                                              const std::shared_ptr<EnvironmentObject>& env)>
       builtin_forms;
+
+  std::unordered_map<
+      std::string,
+      std::function<Object(const Object&, Arguments&, const std::shared_ptr<EnvironmentObject>&)>>
+      m_user_forms;
   std::unordered_map<std::string,
                      Object (Interpreter::*)(const Object& form,
                                              const Object& rest,

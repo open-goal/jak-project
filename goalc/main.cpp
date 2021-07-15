@@ -48,7 +48,7 @@ int main(int argc, char** argv) {
   // Init REPL
   // the compiler may throw an exception if it fails to load its standard library.
   try {
-    std::unique_ptr<Compiler> compiler = std::make_unique<Compiler>();
+    std::unique_ptr<Compiler> compiler;
     if (argument.empty()) {
       ReplStatus status = ReplStatus::WANT_RELOAD;
       while (status == ReplStatus::WANT_RELOAD) {

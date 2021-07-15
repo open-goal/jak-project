@@ -90,6 +90,13 @@ Interpreter::Interpreter() {
   load_goos_library();
 }
 
+void Interpreter::register_form(
+    const std::string& name,
+    const std::function<
+        Object(const Object&, Arguments&, const std::shared_ptr<EnvironmentObject>&)>& form) {
+  m_user_forms[name] = form;
+}
+
 Interpreter::~Interpreter() {
   // There are some circular references that prevent shared_ptrs from cleaning up if we
   // don't do this.
@@ -523,6 +530,13 @@ Object Interpreter::eval_pair(const Object& obj, const std::shared_ptr<Environme
       // all "built-in" forms expect arguments to be evaluated (that's why they aren't special)
       eval_args(&args, env);
       return ((*this).*(kv_b->second))(obj, args, env);
+    }
+
+    // try users next
+    auto kv_u = m_user_forms.find(head_sym->name);
+    if (kv_u != m_user_forms.end()) {
+      Arguments args = get_args(obj, rest, make_varargs());
+      return (kv_u->second)(obj, args, env);
     }
 
     // try macros next

@@ -115,6 +115,10 @@ std::vector<std::string> get_test_pass_string(const std::string& name, int count
 }
 }  // namespace
 
+TEST_F(WithGameTests, MakeSystem) {
+  compiler.run_front_end_on_string("(make \"out/iso/ENGINE.CGO\")");
+}
+
 TEST_F(WithGameTests, ReturnConstant) {
   runner.run_static_test(env, testCategory, "defun-return-constant.static.gc", {"12\n"});
 }
