@@ -34,10 +34,9 @@ add_library(compiler
         debugger/DebugInfo.cpp
         listener/Listener.cpp
         listener/MemoryMap.cpp
-        make/CompilerTool.cpp
-        make/DgoTool.cpp
         make/MakeSystem.cpp
         make/Tool.cpp
+        make/Tools.cpp
         regalloc/IRegister.cpp
         regalloc/Allocator.cpp
         regalloc/allocate.cpp

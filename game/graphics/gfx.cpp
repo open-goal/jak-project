@@ -54,7 +54,7 @@ void Loop(std::function<bool()> f) {
       // exit if display window was closed
       if (glfwWindowShouldClose(Display::display)) {
         // Display::KillDisplay(Display::display);
-        MasterExit = 1;
+        MasterExit = 2;
       }
     }
   }

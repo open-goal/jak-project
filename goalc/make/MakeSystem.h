@@ -31,9 +31,14 @@ class MakeSystem {
   std::vector<std::string> get_dependencies(const std::string& target) const;
   std::vector<std::string> filter_dependencies(const std::vector<std::string>& all_deps);
 
-  bool make(const std::string& target, bool force);
+  bool make(const std::string& target, bool force, bool verbose);
 
   void add_tool(std::shared_ptr<Tool> tool);
+
+  template <typename T>
+  void add_tool() {
+    add_tool(std::make_shared<T>());
+  }
 
   void clear_project();
 

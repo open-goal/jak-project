@@ -59,6 +59,7 @@ int main(int argc, char** argv) {
         }
       }
     } else {
+      compiler = std::make_unique<Compiler>();
       compiler->run_front_end_on_string(argument);
     }
   } catch (std::exception& e) {

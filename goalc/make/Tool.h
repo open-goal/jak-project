@@ -20,9 +20,6 @@ class Tool {
 
   const std::string& name() const { return m_name; }
 
- protected:
-  bool are_deps_out_of_date(const std::string& in, const std::vector<std::string>& deps);
-
  private:
   std::string m_name;
 };

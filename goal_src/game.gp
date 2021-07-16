@@ -23,25 +23,25 @@
   "Add a GOAL source file with the given dependencies"
   `(defstep :in ,(string-append "goal_src/" src-file)
      ;; use goal compiler
-     :tool goalc
+     :tool 'goalc
      ;; will output the obj file
-     :out (,(gc-file->o-file src-file))
+     :out '(,(gc-file->o-file src-file))
      ;; dependencies are the obj files
-     :dep (,@(apply gc-file->o-file deps))
+     :dep '(,@(apply gc-file->o-file deps))
      )
   )
 
 (defun make-src-sequence-elt (current previous prefix)
   "Helper for goal-src-sequence"
   `(defstep :in ,(string-append "goal_src/" prefix current)
-     :tool goalc
-     :out (,(gc-file->o-file current))
-     :dep (#|"iso/KERNEL.CGO"|#
+     :tool 'goalc
+     :out '(,(gc-file->o-file current))
+     :dep '(#|"iso/KERNEL.CGO"|#
            ,(gc-file->o-file previous))
      )
   )
 
-(defmacro goal-src-sequence (prefix &key (deps ()) &rest sequence)
+(defmacro goal-src-sequence (prefix &key (deps '()) &rest sequence)
   "Add a sequence of GOAL files (each depending on the previous) in the given directory, 
    with all depending on the given deps."
   (let* ((first-thing `(goal-src ,(string-append prefix (first sequence)) ,@deps))
@@ -70,11 +70,47 @@
 (defmacro cgo (output-name desc-file-name &rest objs)
   "Add a CGO with the given output name (in out/iso) and input name (in goal_src/dgos)"
   `(defstep :in ,(string-append "goal_src/dgos/" desc-file-name)
-     :tool dgo
-     :out (,(string-append "out/iso/" output-name))
+     :tool 'dgo
+     :out '(,(string-append "out/iso/" output-name))
      )
   )
 
+(defun tpage-name (id)
+  (fmt #f "tpage-{}.go" id)
+  )
+
+(defmacro copy-texture (tpage-id)
+  `(defstep :in ,(string-append "decompiler_out/raw_obj/" (tpage-name tpage-id))
+     :tool 'copy
+     :out '(,(string-append "out/obj/" (tpage-name tpage-id)))
+     )
+  )
+
+(defmacro copy-textures (&rest ids)
+  `(begin
+    ,@(apply (lambda (x) `(copy-texture ,x)) ids)
+    )
+  )
+
+(defmacro copy-go (name)
+  `(defstep :in ,(string-append "decompiler_out/raw_obj/" name ".go")
+     :tool 'copy
+     :out '(,(string-append "out/obj/" name ".go"))
+     )
+  )
+
+(defmacro copy-gos (&rest gos)
+  `(begin
+    ,@(apply (lambda (x) `(copy-go ,x)) gos)
+    )
+  )
+
+(defmacro group (name &rest stuff)
+  `(defstep :in ""
+     :tool 'group
+     :out '(,(string-append "GROUP:" name))
+     :dep '(,@stuff))
+  )
 
 ;;;;;;;;;;;;;;;;;;;;;;
 ;; CGO's
@@ -107,10 +143,154 @@
   "gkernel")
 
 
+;;;;;;;;;;;;;;;;;;;;;;;;
+;; Weird special things
+;;;;;;;;;;;;;;;;;;;;;;;;
 
-;;;;;;;;;;;;;;;;;
-;; Game Engine
-;;;;;;;;;;;;;;;;;
+;; The tpage directory
+(defstep :in "assets/tpage-dir.txt"
+  :tool 'tpage-dir
+  :out '("out/obj/dir-tpages.go")
+  )
+
+;; the count file.
+(defstep :in "assets/game_count.txt"
+  :tool 'game-cnt
+  :out '("out/obj/game-cnt.go")
+  )
+
+
+;;;;;;;;;;;;;;;;;;;;;
+;; Textures (Common)
+;;;;;;;;;;;;;;;;;;;;;
+                 
+(copy-textures 463 2 880 256 1278 1032 62 1532)
+
+
+;;;;;;;;;;;;;;;;;;;;;
+;; Art (Common)
+;;;;;;;;;;;;;;;;;;;;;
+
+(copy-gos
+ "fuel-cell-ag"
+ "money-ag"
+ "buzzer-ag"
+ "ecovalve-ag-ART-GAME"
+ "crate-ag"
+ "speaker-ag"
+ "fuelcell-naked-ag"
+ "eichar-ag"
+ "sidekick-ag"
+ "deathcam-ag"
+ )
+
+;;;;;;;;;;;;;;;;;;;;;
+;; Text
+;;;;;;;;;;;;;;;;;;;;;
+
+(defstep :in "assets/game_text.txt"
+  :tool 'text
+  :out '("out/iso/0COMMON.TXT"
+         "out/iso/1COMMON.TXT"
+         "out/iso/2COMMON.TXT"
+         "out/iso/3COMMON.TXT"
+         "out/iso/4COMMON.TXT"
+         "out/iso/5COMMON.TXT"
+         "out/iso/6COMMON.TXT")
+  )
+
+
+;;;;;;;;;;;;;;;;;;;;;
+;; ISO Group
+;;;;;;;;;;;;;;;;;;;;;
+;; the iso group is a group of files required to boot.
+
+(group "iso"
+       "out/iso/0COMMON.TXT"
+       "out/iso/KERNEL.CGO"
+       "out/iso/GAME.CGO"
+       "out/iso/VI1.DGO"
+       )
+
+
+;;;;;;;;;;;;;;;;;;;;;
+;; Village 1
+;;;;;;;;;;;;;;;;;;;;;
+
+;; the definition for the DGO file.
+(cgo "VI1.DGO"
+     "vi1.gd"
+     )
+
+;; the code
+(goal-src-sequence
+ "levels/"
+ :deps ;; no idea what these depend on, make it depend on the whole engine
+ ("out/obj/default-menu.o")
+
+ "village_common/villagep-obs.gc"
+ "village_common/oracle.gc"
+ "village1/farmer.gc"
+ "village1/explorer.gc"
+ "village1/assistant.gc"
+ "village1/sage.gc"
+ "village1/yakow.gc"
+ "village1/village-obs-VI1.gc"
+ "village1/fishermans-boat.gc"
+ "village1/village1-part.gc"
+ "village1/village1-part2.gc"
+ "village1/sequence-a-village1.gc"
+ )
+
+;; the textures
+(copy-textures 398 400 399 401 1470)
+
+;; the art
+(copy-gos
+ "assistant-ag"
+ "evilplant-ag"
+ "explorer-ag"
+ "farmer-ag"
+ "fishermans-boat-ag"
+ "hutlamp-ag"
+ "mayorgears-ag"
+ "medres-beach-ag"
+ "medres-beach1-ag"
+ "medres-beach2-ag"
+ "medres-beach3-ag"
+ "medres-jungle-ag"
+ "medres-jungle1-ag"
+ "medres-jungle2-ag"
+ "medres-misty-ag"
+ "medres-training-ag"
+ "medres-village11-ag"
+ "medres-village12-ag"
+ "medres-village13-ag"
+ "oracle-ag-VI1"
+ "orb-cache-top-ag-VI1"
+ "reflector-middle-ag"
+ "revcycle-ag"
+ "revcycleprop-ag"
+ "ropebridge-32-ag"
+ "sage-ag"
+ "sagesail-ag"
+ "sharkey-ag-VI1"
+ "villa-starfish-ag"
+ "village-cam-ag-VI1"
+ "village1cam-ag"
+ "warp-gate-switch-ag-VI1-VI3"
+ "warpgate-ag"
+ "water-anim-village1-ag"
+ "windmill-sail-ag"
+ "windspinner-ag"
+ "yakow-ag"
+ "village1-vis"
+ )
+ 
+
+;;;;;;;;;;;;;;;;;;;;;
+;; Game Engine Code
+;;;;;;;;;;;;;;;;;;;;;
 
 ;; We don't know the actual dependencies, but the build
 ;; order is a possibly ordering, and the goal-src-sequence
@@ -422,6 +602,25 @@
 (goal-src-sequence
  "levels/common/"
  :deps ("out/obj/default-menu.o")
- "texture-upload.gc")
+ "texture-upload.gc"
+ "rigid-body-h.gc"
+ "water-anim.gc"
+ "dark-eco-pool.gc"
+ "rigid-body.gc"
+ "nav-enemy-h.gc"
+ "nav-enemy.gc"
+ "baseplat.gc"
+ "basebutton.gc"
+ "tippy.gc"
+ "joint-exploder.gc"
+ "babak.gc"
+ "sharkey.gc"
+ "orb-cache.gc"
+ "plat.gc"
+ "plat-button.gc"
+ "plat-eco.gc"
+ "ropebridge.gc"
+ "ticky.gc"
+ )
 
 

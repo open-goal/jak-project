@@ -19,6 +19,8 @@ class Interpreter {
   void throw_eval_error(const Object& o, const std::string& err);
   Object eval_with_rewind(const Object& obj, const std::shared_ptr<EnvironmentObject>& env);
   bool get_global_variable_by_name(const std::string& name, Object* dest);
+  void set_global_variable_by_name(const std::string& name, const Object& value);
+  void set_global_variable_to_symbol(const std::string& name, const std::string& value);
   Object eval(Object obj, const std::shared_ptr<EnvironmentObject>& env);
   Object intern(const std::string& name);
   void disable_printfs();
@@ -203,6 +205,9 @@ class Interpreter {
   Object eval_ash(const Object& form,
                   Arguments& args,
                   const std::shared_ptr<EnvironmentObject>& env);
+  Object eval_symbol_to_string(const Object& form,
+                               Arguments& args,
+                               const std::shared_ptr<EnvironmentObject>& env);
 
   // specials
   Object eval_define(const Object& form,
@@ -248,7 +253,7 @@ class Interpreter {
   std::unordered_map<
       std::string,
       std::function<Object(const Object&, Arguments&, const std::shared_ptr<EnvironmentObject>&)>>
-      m_user_forms;
+      m_custom_forms;
   std::unordered_map<std::string,
                      Object (Interpreter::*)(const Object& form,
                                              const Object& rest,

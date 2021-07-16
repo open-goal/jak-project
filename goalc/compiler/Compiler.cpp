@@ -4,7 +4,7 @@
 #include "CompilerException.h"
 #include "IR.h"
 #include "common/link_types.h"
-#include "goalc/make/CompilerTool.h"
+#include "goalc/make/Tools.h"
 #include "goalc/regalloc/allocate.h"
 #include "third-party/fmt/core.h"
 
