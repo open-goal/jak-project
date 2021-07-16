@@ -580,6 +580,7 @@ std::string ObjectFileDB::process_tpages() {
 
   if (tpage_dir_count == 0) {
     lg::warn("Did not find tpage-dir.");
+    return {};
   }
 
   lg::info("Processed {} / {} textures {:.2f}% in {:.2f} ms", success, total,
@@ -612,6 +613,9 @@ std::string ObjectFileDB::process_game_text_files() {
   lg::info("Processed {} text files ({} strings, {} characters) in {:.2f} ms", file_count,
            string_count, char_count, timer.getMs());
 
+  if (text_by_language_by_id.empty()) {
+    return {};
+  }
   return write_game_text(text_by_language_by_id);
 }
 

@@ -625,3 +625,33 @@
 (defmacro fake-asm (asm-name &rest args)
   `(defmacro ,asm-name (,@args) `(none))
   )
+
+
+;;;;;;;;;;;;;;;;;;;;;;;;;
+;; Build System
+;;;;;;;;;;;;;;;;;;;;;;;;;
+
+(defmacro makeo (object-name &rest flags)
+  "Make the given object. Can use a string, or not."
+  `(make ,(string-append
+           "out/obj/"
+           (if (string? object-name) object-name (symbol->string object-name))
+           ".o"
+           )
+         ,@flags)
+  )
+
+(defmacro make-cgo (file)
+  `(make ,(string-append "out/iso/" file ".CGO"))
+  )
+
+(defmacro make-dgo (file)
+  `(make ,(string-append "out/iso/" file ".DGO"))
+  )
+
+(defmacro make-group (name &key (verbose #f) &key (force #f))
+  `(make ,(string-append "GROUP:" name) :verbose ,verbose :force ,force)
+  )
+
+;; load the default project
+(load-project "goal_src/game.gp")

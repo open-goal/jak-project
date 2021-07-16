@@ -100,17 +100,23 @@ int main(int argc, char** argv) {
 
   if (config.process_game_text) {
     auto result = db.process_game_text_files();
-    file_util::write_text_file(file_util::get_file_path({"assets", "game_text.txt"}), result);
+    if (!result.empty()) {
+      file_util::write_text_file(file_util::get_file_path({"assets", "game_text.txt"}), result);
+    }
   }
 
   if (config.process_tpages) {
     auto result = db.process_tpages();
-    file_util::write_text_file(file_util::get_file_path({"assets", "tpage-dir.txt"}), result);
+    if (!result.empty()) {
+      file_util::write_text_file(file_util::get_file_path({"assets", "tpage-dir.txt"}), result);
+    }
   }
 
   if (config.process_game_count) {
     auto result = db.process_game_count_file();
-    file_util::write_text_file(file_util::get_file_path({"assets", "game_count.txt"}), result);
+    if (!result.empty()) {
+      file_util::write_text_file(file_util::get_file_path({"assets", "game_count.txt"}), result);
+    }
   }
 
   lg::info("Disassembly has completed successfully.");

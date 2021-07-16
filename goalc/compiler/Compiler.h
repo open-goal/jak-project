@@ -2,19 +2,22 @@
 
 #include <functional>
 #include <optional>
-#include "common/type_system/TypeSystem.h"
-#include "Env.h"
-#include "goalc/listener/Listener.h"
+
+#include "third-party/fmt/color.h"
+#include "third-party/fmt/core.h"
+
 #include "common/goos/Interpreter.h"
+#include "common/goos/ReplUtils.h"
+#include "common/type_system/TypeSystem.h"
+#include "goalc/compiler/CompilerException.h"
+#include "goalc/compiler/CompilerSettings.h"
+#include "goalc/compiler/Env.h"
 #include "goalc/compiler/IR.h"
+#include "goalc/compiler/SymbolInfo.h"
 #include "goalc/debugger/Debugger.h"
 #include "goalc/emitter/Register.h"
-#include "CompilerSettings.h"
-#include "third-party/fmt/core.h"
-#include "third-party/fmt/color.h"
-#include "CompilerException.h"
-#include "goalc/compiler/SymbolInfo.h"
-#include "common/goos/ReplUtils.h"
+#include "goalc/listener/Listener.h"
+#include "goalc/make/MakeSystem.h"
 
 enum MathMode { MATH_INT, MATH_BINT, MATH_FLOAT, MATH_INVALID };
 
@@ -56,8 +59,26 @@ class Compiler {
   void repl_coloring(std::string const& str,
                      Replxx::colors_t& colors,
                      std::vector<std::pair<std::string, Replxx::Color>> const& user_data);
+  bool knows_object_file(const std::string& name);
 
  private:
+  TypeSystem m_ts;
+  std::unique_ptr<GlobalEnv> m_global_env = nullptr;
+  std::unique_ptr<None> m_none = nullptr;
+  bool m_want_exit = false;
+  bool m_want_reload = false;
+  listener::Listener m_listener;
+  Debugger m_debugger;
+  goos::Interpreter m_goos;
+  std::unordered_map<std::string, TypeSpec> m_symbol_types;
+  std::unordered_map<std::shared_ptr<goos::SymbolObject>, goos::Object> m_global_constants;
+  std::unordered_map<std::shared_ptr<goos::SymbolObject>, LambdaVal*> m_inlineable_functions;
+  CompilerSettings m_settings;
+  bool m_throw_on_define_extern_redefinition = false;
+  SymbolInfoMap m_symbol_info;
+  std::unique_ptr<ReplWrapper> m_repl;
+  MakeSystem m_make;
+
   std::set<std::string> lookup_symbol_infos_starting_with(const std::string& prefix) const;
   std::vector<SymbolInfo>* lookup_exact_name_info(const std::string& name) const;
   bool get_true_or_false(const goos::Object& form, const goos::Object& boolean);
@@ -222,22 +243,6 @@ class Compiler {
                                 Env* env);
 
   std::string make_symbol_info_description(const SymbolInfo& info);
-
-  TypeSystem m_ts;
-  std::unique_ptr<GlobalEnv> m_global_env = nullptr;
-  std::unique_ptr<None> m_none = nullptr;
-  bool m_want_exit = false;
-  bool m_want_reload = false;
-  listener::Listener m_listener;
-  Debugger m_debugger;
-  goos::Interpreter m_goos;
-  std::unordered_map<std::string, TypeSpec> m_symbol_types;
-  std::unordered_map<std::shared_ptr<goos::SymbolObject>, goos::Object> m_global_constants;
-  std::unordered_map<std::shared_ptr<goos::SymbolObject>, LambdaVal*> m_inlineable_functions;
-  CompilerSettings m_settings;
-  bool m_throw_on_define_extern_redefinition = false;
-  SymbolInfoMap m_symbol_info;
-  std::unique_ptr<ReplWrapper> m_repl;
 
   MathMode get_math_mode(const TypeSpec& ts);
   bool is_number(const TypeSpec& ts);
@@ -492,6 +497,8 @@ class Compiler {
   Val* compile_add_macro_to_autocomplete(const goos::Object& form,
                                          const goos::Object& rest,
                                          Env* env);
+  Val* compile_load_project(const goos::Object& form, const goos::Object& rest, Env* env);
+  Val* compile_make(const goos::Object& form, const goos::Object& rest, Env* env);
 
   // ControlFlow
   Condition compile_condition(const goos::Object& condition, Env* env, bool invert);
