@@ -961,6 +961,7 @@
 
 ;; - Types
 
+(declare-type res-lump basic)
 (define-extern process-tree type) ; deftype provided by C Kernel
 (deftype process-tree (basic)
   ((name basic :offset-assert 4)
@@ -975,7 +976,7 @@
     (new (symbol type basic) _type_ 0)
     (activate (_type_ process-tree basic pointer) process-tree 9)
     (deactivate  (_type_) none 10)
-    (dummy-method-11 () none 11)
+    (TODO-RENAME-11 (_type_ res-lump) none 11) ;; see - (method 11 evilbro)
     (run-logic? (_type_) symbol 12)
     (dummy-method () none 13)
     )
@@ -1218,11 +1219,6 @@
    )
   (:methods
     (new (symbol type basic int) _type_ 0)
-    (activate (_type_ process-tree basic pointer) process-tree 9)
-    (deactivate  (process) none 10)
-    (dummy-method-11 () none 11)
-    (run-logic? (process) symbol 12)
-    (dummy-method () none 13)
     )
   :size-assert #x70
   :method-count-assert 14
@@ -16261,31 +16257,31 @@
   )
 
 (deftype process-taskable (process-drawable)
-  ((tasks                basic                   :offset-assert 176)
+  ((tasks                task-control                   :offset-assert 176)
    (query                gui-query       :inline :offset-assert 180)
    (old-target-pos       transformq      :inline :offset-assert 208)
    (cell-for-task        uint8                   :offset-assert 256)
    (cell-x               uint64                  :offset-assert 264)
    (cam-joint-index      int32                   :offset-assert 272)
-   (skippable            basic                   :offset-assert 276)
-   (blend-on-exit        basic                   :offset-assert 280)
+   (skippable            basic                   :offset-assert 276) ;; probably a symbol
+   (blend-on-exit        basic                   :offset-assert 280) ;; probably a symbol?
    (camera               uint64                  :offset-assert 288)
-   (will-talk            basic                   :offset-assert 296)
+   (will-talk            symbol                   :offset-assert 296)
    (talk-message         uint32                  :offset-assert 300)
    (last-talk            uint64                  :offset-assert 304)
-   (bounce-away          basic                   :offset-assert 312)
+   (bounce-away          symbol                   :offset-assert 312)
    (ambient              ambient-control :inline :offset-assert 320)
    (center-joint-index   int32                   :offset-assert 336)
    (draw-bounds-y-offset float                   :offset-assert 340)
    (neck-joint-index     int32                   :offset-assert 344)
-   (fuel-cell-anim       basic                   :offset-assert 348)
+   (fuel-cell-anim       spool-anim                   :offset-assert 348)
    (sound-flava          uint8                   :offset-assert 352)
-   (have-flava           basic                   :offset-assert 356)
+   (have-flava           symbol                   :offset-assert 356) ;; probably
    (music                basic                   :offset-assert 360)
-   (have-music           basic                   :offset-assert 364)
-   (been-kicked          basic                   :offset-assert 368)
-   (cur-trans-hook       basic                   :offset-assert 372)
-   (shadow-backup        basic                   :offset-assert 376)
+   (have-music           symbol                   :offset-assert 364) ;; probably
+   (been-kicked          symbol                   :offset-assert 368) ;; probably
+   (cur-trans-hook       function                   :offset-assert 372)
+   (shadow-backup        shadow-geo                   :offset-assert 376)
    )
   :heap-base #x110
   :method-count-assert 53
@@ -16304,8 +16300,8 @@
     (dummy-28 () none 28)
     (dummy-29 () none 29)
     (dummy-30 () none 30)
-    (dummy-31 () none 31)
-    (dummy-32 () none 32)
+    (get-third-art-element (_type_) art-element 31)
+    (play-anim (_type_ symbol) spool-anim 32) ;; TODO - not 100% sure on the 2nd arg
     (dummy-33 () none 33)
     (dummy-34 () none 34)
     (dummy-35 () none 35)
@@ -16313,7 +16309,7 @@
     (dummy-37 () none 37)
     (dummy-38 () none 38)
     (dummy-39 () none 39)
-    (dummy-40 () none 40)
+    (dummy-40 (_type_ res-lump skeleton-group int int vector int) none 40) ;; TODO - not sure about the vector (is 4 words from the stack)
     (dummy-41 () none 41)
     (dummy-42 () none 42)
     (dummy-43 () none 43)
@@ -28944,119 +28940,28 @@
 
 ;; - Types
 
-; (deftype evilbro (process-taskable)
-;   ((evilsis basic  :offset-assert 380)
-;    )
-;   :method-count-assert 53
-;   :size-assert         #x180
-;   :flag-assert         #x3501100180
-;   ;; inherited inspect of process-taskable
-;   (:methods
-;     (dummy-9 () none 9)
-;     (dummy-10 () none 10)
-;     (dummy-11 () none 11)
-;     (dummy-12 () none 12)
-;     (dummy-13 () none 13)
-;     (dummy-14 () none 14)
-;     (dummy-15 () none 15)
-;     (dummy-16 () none 16)
-;     (dummy-17 () none 17)
-;     (dummy-18 () none 18)
-;     (dummy-19 () none 19)
-;     (dummy-20 () none 20)
-;     (dummy-21 () none 21)
-;     (dummy-22 () none 22)
-;     (dummy-23 () none 23)
-;     (dummy-24 () none 24)
-;     (dummy-25 () none 25)
-;     (dummy-26 () none 26)
-;     (dummy-27 () none 27)
-;     (dummy-28 () none 28)
-;     (dummy-29 () none 29)
-;     (dummy-30 () none 30)
-;     (dummy-31 () none 31)
-;     (dummy-32 () none 32)
-;     (dummy-33 () none 33)
-;     (dummy-34 () none 34)
-;     (dummy-35 () none 35)
-;     (dummy-36 () none 36)
-;     (dummy-37 () none 37)
-;     (dummy-38 () none 38)
-;     (dummy-39 () none 39)
-;     (dummy-40 () none 40)
-;     (dummy-41 () none 41)
-;     (dummy-42 () none 42)
-;     (dummy-43 () none 43)
-;     (dummy-44 () none 44)
-;     (dummy-45 () none 45)
-;     (dummy-46 () none 46)
-;     (dummy-47 () none 47)
-;     (dummy-48 () none 48)
-;     (dummy-49 () none 49)
-;     (dummy-50 () none 50)
-;     (dummy-51 () none 51)
-;     (dummy-52 () none 52)
-;     )
-;   )
+(declare-type evilsis basic)
+(deftype evilbro (process-taskable)
+  ((evilsis evilsis  :offset-assert 380)
+   )
+  :method-count-assert 53
+  :heap-base           #x110
+  :size-assert         #x180
+  :flag-assert         #x3501100180
+  )
 
-; (deftype evilsis (process-taskable)
-;   ()
-;   :method-count-assert 53
-;   :size-assert         #x17c
-;   :flag-assert         #x350110017c
-;   ;;  not enough basic ops
-;   (:methods
-;     (dummy-9 () none 9)
-;     (dummy-10 () none 10)
-;     (dummy-11 () none 11)
-;     (dummy-12 () none 12)
-;     (dummy-13 () none 13)
-;     (dummy-14 () none 14)
-;     (dummy-15 () none 15)
-;     (dummy-16 () none 16)
-;     (dummy-17 () none 17)
-;     (dummy-18 () none 18)
-;     (dummy-19 () none 19)
-;     (dummy-20 () none 20)
-;     (dummy-21 () none 21)
-;     (dummy-22 () none 22)
-;     (dummy-23 () none 23)
-;     (dummy-24 () none 24)
-;     (dummy-25 () none 25)
-;     (dummy-26 () none 26)
-;     (dummy-27 () none 27)
-;     (dummy-28 () none 28)
-;     (dummy-29 () none 29)
-;     (dummy-30 () none 30)
-;     (dummy-31 () none 31)
-;     (dummy-32 () none 32)
-;     (dummy-33 () none 33)
-;     (dummy-34 () none 34)
-;     (dummy-35 () none 35)
-;     (dummy-36 () none 36)
-;     (dummy-37 () none 37)
-;     (dummy-38 () none 38)
-;     (dummy-39 () none 39)
-;     (dummy-40 () none 40)
-;     (dummy-41 () none 41)
-;     (dummy-42 () none 42)
-;     (dummy-43 () none 43)
-;     (dummy-44 () none 44)
-;     (dummy-45 () none 45)
-;     (dummy-46 () none 46)
-;     (dummy-47 () none 47)
-;     (dummy-48 () none 48)
-;     (dummy-49 () none 49)
-;     (dummy-50 () none 50)
-;     (dummy-51 () none 51)
-;     (dummy-52 () none 52)
-;     )
-;   )
+(deftype evilsis (process-taskable)
+  ()
+  :method-count-assert 53
+  :heap-base           #x110
+  :size-assert         #x17c
+  :flag-assert         #x350110017c
+  )
 
 ;; - Unknowns
 
-;;(define-extern *evilsis-intro-sg* object) ;; unknown type
-;;(define-extern *evilbro-intro-sg* object) ;; unknown type
+(define-extern *evilsis-intro-sg* skeleton-group) ;; unknown type
+(define-extern *evilbro-intro-sg* skeleton-group) ;; unknown type
 
 
 ;; ----------------------
@@ -31656,59 +31561,13 @@
 
 ;; - Types
 
-; (deftype farmer (process-taskable)
-;   ()
-;   :method-count-assert 53
-;   :size-assert         #x17c
-;   :flag-assert         #x350110017c
-;   ;;  not enough basic ops
-;   (:methods
-;     (dummy-9 () none 9)
-;     (dummy-10 () none 10)
-;     (dummy-11 () none 11)
-;     (dummy-12 () none 12)
-;     (dummy-13 () none 13)
-;     (dummy-14 () none 14)
-;     (dummy-15 () none 15)
-;     (dummy-16 () none 16)
-;     (dummy-17 () none 17)
-;     (dummy-18 () none 18)
-;     (dummy-19 () none 19)
-;     (dummy-20 () none 20)
-;     (dummy-21 () none 21)
-;     (dummy-22 () none 22)
-;     (dummy-23 () none 23)
-;     (dummy-24 () none 24)
-;     (dummy-25 () none 25)
-;     (dummy-26 () none 26)
-;     (dummy-27 () none 27)
-;     (dummy-28 () none 28)
-;     (dummy-29 () none 29)
-;     (dummy-30 () none 30)
-;     (dummy-31 () none 31)
-;     (dummy-32 () none 32)
-;     (dummy-33 () none 33)
-;     (dummy-34 () none 34)
-;     (dummy-35 () none 35)
-;     (dummy-36 () none 36)
-;     (dummy-37 () none 37)
-;     (dummy-38 () none 38)
-;     (dummy-39 () none 39)
-;     (dummy-40 () none 40)
-;     (dummy-41 () none 41)
-;     (dummy-42 () none 42)
-;     (dummy-43 () none 43)
-;     (dummy-44 () none 44)
-;     (dummy-45 () none 45)
-;     (dummy-46 () none 46)
-;     (dummy-47 () none 47)
-;     (dummy-48 () none 48)
-;     (dummy-49 () none 49)
-;     (dummy-50 () none 50)
-;     (dummy-51 () none 51)
-;     (dummy-52 () none 52)
-;     )
-;   )
+(deftype farmer (process-taskable)
+  ()
+  :method-count-assert 53
+  :heap-base           #x110
+  :size-assert         #x17c
+  :flag-assert         #x350110017c
+  )
 
 ;; - Unknowns
 
