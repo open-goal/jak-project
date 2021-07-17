@@ -5,6 +5,7 @@
 #include "decompiler/util/TP_Type.h"
 #include "decompiler/util/DecompilerTypeSystem.h"
 #include "decompiler/IR2/bitfields.h"
+#include "common/type_system/state.h"
 
 namespace decompiler {
 
@@ -81,6 +82,8 @@ TP_Type SimpleAtom::get_type(const TypeState& input,
         // which actually means that you get the first address in the symbol table.
         // it's not really a linked symbol, but the basic op builder represents it as one.
         return TP_Type::make_from_ts(TypeSpec("pointer"));
+      } else if (m_string == "enter-state") {
+        return TP_Type::make_enter_state();
       }
 
       // look up the type of the symbol
@@ -798,9 +801,18 @@ TypeState SetVarConditionOp::propagate_types_internal(const TypeState& input,
 TypeState StoreOp::propagate_types_internal(const TypeState& input,
                                             const Env& env,
                                             DecompilerTypeSystem& dts) {
+  TypeState output = input;
+
+  // look for setting the next state of the current process
+  IR2_RegOffset ro;
+  if (get_as_reg_offset(m_addr, &ro)) {
+    if (ro.reg == Register(Reg::GPR, Reg::S6) && ro.offset == 72) {
+      output.next_state_type = m_value.get_type(input, env, dts);
+    }
+  }
   (void)env;
   (void)dts;
-  return input;
+  return output;
 }
 
 TP_Type LoadVarOp::get_src_type(const TypeState& input,
@@ -1111,6 +1123,26 @@ TypeState CallOp::propagate_types_internal(const TypeState& input,
 
   if (in_type.base_type() != "function") {
     throw std::runtime_error("Called something that was not a function: " + in_type.print());
+  }
+
+  // If we call enter-state, update our type.
+  if (in_tp.kind == TP_Type::Kind::ENTER_STATE_FUNCTION) {
+    // this is a GO!
+    auto state_type = input.next_state_type.typespec();
+    if (state_type.base_type() != "state") {
+      throw std::runtime_error(
+          fmt::format("At op {}, called enter-state, but the current next-state has type {}, which "
+                      "is not a valid state.",
+                      m_my_idx, input.next_state_type.print()));
+    }
+
+    if (state_type.arg_count() == 0) {
+      throw std::runtime_error(fmt::format(
+          "At op {}, tried to enter-state, but the type of (-> s6 next-state) is just a plain "
+          "state.  The decompiler must know the specific state type.",
+          m_my_idx));
+    }
+    in_type = state_to_go_function(state_type);
   }
 
   if (in_type.arg_count() < 1) {

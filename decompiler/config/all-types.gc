@@ -962,13 +962,15 @@
 ;; - Types
 
 (define-extern process-tree type) ; deftype provided by C Kernel
+(declare-type process basic)
+
 (deftype process-tree (basic)
   ((name basic :offset-assert 4)
    (mask process-mask :offset-assert 8)
    (parent (pointer process-tree) :offset-assert 12)
    (brother (pointer process-tree) :offset-assert 16)
    (child (pointer process-tree) :offset-assert 20)
-   (ppointer (pointer process-tree) :offset-assert 24)
+   (ppointer (pointer process) :offset-assert 24)
    (self process-tree :offset-assert 28)
    )
   (:methods
@@ -5831,8 +5833,8 @@
   :size-assert         #x20
   :flag-assert         #x1200000020
   (:methods
-    (dummy-9 (_type_) _type_ 9) ;; probably login or init.
-    (dummy-10 (_type_ drawable display-frame) int 10) ;; display-frame is from the method inspect tool
+    (login (_type_) _type_ 9) ;; probably login or init.
+    (draw (_type_ drawable display-frame) int 10) ;; display-frame is from the method inspect tool
     (dummy-11 (_type_ int) none 11) ; int - length
     (dummy-12 (_type_ int) none 12) ; int - length
     (dummy-13 (_type_ int) none 13) ; int - length
@@ -9654,7 +9656,8 @@
 
 ;; - Symbols
 
-(define-extern process-drawable-art-error state)
+(declare-type process-drawable process)
+(define-extern process-drawable-art-error (state string process-drawable))
 (define-extern *FACT-bank* fact-bank) ;; unknown type
 
 
@@ -10489,7 +10492,7 @@
   ((vertex    vector 3 :inline :offset-assert 0)
    (intersect vector  :inline  :offset-assert 48)
    (normal    vector  :inline  :offset-assert 64)
-   (pat       uint32           :offset-assert 80)
+   (pat       pat-surface      :offset-assert 80)
    )
   :method-count-assert 9
   :size-assert         #x54
@@ -10497,9 +10500,9 @@
   )
 
 (deftype collide-mesh-tri (structure)
-  ((vertex-index uint8   3 :offset-assert 0)
-   (unused       uint8     :offset-assert 3)
-   (pat          uint32    :offset-assert 4)
+  ((vertex-index uint8   3    :offset-assert 0)
+   (unused       uint8        :offset-assert 3)
+   (pat          pat-surface  :offset-assert 4)
    )
   :pack-me
   :method-count-assert 9
@@ -10549,7 +10552,7 @@
   ((vertex vector   3     :inline :offset-assert 0)
    (normal vector         :inline :offset-assert 48)
    (bbox4w bounding-box4w :inline :offset-assert 64)
-   (pat    uint32                 :offset 60)
+   (pat    pat-surface            :offset 60)
    )
   :method-count-assert 9
   :size-assert         #x60
@@ -10703,7 +10706,7 @@
   )
 
 (deftype collide-shape-prim-sphere (collide-shape-prim)
-  ((pat             uint32                    :offset-assert 72)
+  ((pat             pat-surface                    :offset-assert 72)
    )
   :method-count-assert 28
   :size-assert         #x4c
@@ -10805,7 +10808,7 @@
    (max-iteration-count   uint8              :offset-assert 144)
    (nav-flags             uint8              :offset-assert 145)
    (pad-byte              uint8      2       :offset-assert 146)
-   (pat-ignore-mask       uint32             :offset-assert 148)
+   (pat-ignore-mask       pat-surface        :offset-assert 148)
    (event-self            basic              :offset-assert 152)
    (event-other           basic              :offset-assert 156)
    (root-prim             basic              :offset-assert 160)
@@ -10853,9 +10856,9 @@
   ((rider-time            uint64             :offset-assert 184)
    (rider-last-move       vector     :inline :offset-assert 192)
    (trans-old             vector    3 :inline      :offset-assert 208)
-   (poly-pat              uint32             :offset-assert 256)
-   (cur-pat               uint32             :offset-assert 260)
-   (ground-pat            uint32             :offset-assert 264)
+   (poly-pat              pat-surface        :offset-assert 256)
+   (cur-pat               pat-surface        :offset-assert 260)
+   (ground-pat            pat-surface        :offset-assert 264)
    (status                uint64             :offset-assert 272)
    (old-status            uint64             :offset-assert 280)
    (prev-status           uint64             :offset-assert 288)
@@ -10919,7 +10922,7 @@
    (surface-normal vector :inline :offset-assert 80)
    (time           uint64         :offset-assert 96)
    (status         uint64         :offset-assert 104)
-   (pat            uint32         :offset-assert 112)
+   (pat            pat-surface    :offset-assert 112)
    (reaction-flag  uint32         :offset-assert 116)
    )
   :method-count-assert 10

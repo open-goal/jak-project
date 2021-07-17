@@ -177,7 +177,7 @@
 ;; sphere collision
 ;; the pat is stored directly here.
 (deftype collide-shape-prim-sphere (collide-shape-prim)
-  ((pat             uint32                    :offset-assert 72)
+  ((pat             pat-surface                    :offset-assert 72)
    )
   :method-count-assert 28
   :size-assert         #x4c
@@ -290,7 +290,7 @@
    (max-iteration-count   uint8              :offset-assert 144)
    (nav-flags             uint8              :offset-assert 145)
    (pad-byte              uint8      2       :offset-assert 146)
-   (pat-ignore-mask       uint32             :offset-assert 148)
+   (pat-ignore-mask       pat-surface        :offset-assert 148)
    (event-self            basic              :offset-assert 152)
    (event-other           basic              :offset-assert 156)
    (root-prim             basic              :offset-assert 160)
@@ -339,9 +339,9 @@
   ((rider-time            uint64             :offset-assert 184)
    (rider-last-move       vector     :inline :offset-assert 192)
    (trans-old             vector    3 :inline      :offset-assert 208)
-   (poly-pat              uint32             :offset-assert 256)
-   (cur-pat               uint32             :offset-assert 260)
-   (ground-pat            uint32             :offset-assert 264)
+   (poly-pat              pat-surface        :offset-assert 256)
+   (cur-pat               pat-surface        :offset-assert 260)
+   (ground-pat            pat-surface        :offset-assert 264)
    (status                uint64             :offset-assert 272)
    (old-status            uint64             :offset-assert 280)
    (prev-status           uint64             :offset-assert 288)
@@ -402,7 +402,7 @@
   "Allocate a new sphere primitive"
 
   (let ((obj (the collide-shape-prim-sphere ((method-of-type collide-shape-prim new) allocation type-to-make cshape prim-id (size-of collide-shape-prim-mesh)))))
-      (set! (-> obj pat) #x10)
+      (set! (-> obj pat) (new 'static 'pat-surface :mode (pat-mode obstacle)))
       (set! (-> obj prim-core prim-type) -1)
       obj
       )
@@ -444,7 +444,7 @@
 (defmethod asize-of collide-shape-prim-group ((obj collide-shape-prim-group))
   "How big is this in memory?"
   (the-as int
-          (+ (-> obj type size) (the-as uint (shl (+ (-> obj allocated-prims) -1) 2)))
+          (+ (-> obj type size) (the-as uint (* (+ (-> obj allocated-prims) -1) 4)))
           )
   )
 
@@ -461,12 +461,20 @@
     (set! (-> obj root-prim) #f)
 
     ;; add a special ignore mask for the camera vs other things.
-    (case (-> proc type symbol)
-      (('camera)
-       (set! (-> obj pat-ignore-mask) #x2)
-       (set! (-> obj pat-ignore-mask) #x1)
+   (case (-> proc type symbol) 
+    (('camera)
+      (set!
+       (-> obj pat-ignore-mask)
+       (new 'static 'pat-surface :skip #x2 :nocamera #x1)
        )
       )
+    (else
+     (set!
+      (-> obj pat-ignore-mask)
+      (new 'static 'pat-surface :skip #x1 :noentity #x1)
+      )
+     )
+    )
 
     ;; reset transformation to the origin.
     (set! (-> obj trans w) 1.0)
