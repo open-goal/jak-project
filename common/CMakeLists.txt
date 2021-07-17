@@ -12,6 +12,7 @@ add_library(common
         log/log.cpp
         type_system/defenum.cpp
         type_system/deftype.cpp
+        type_system/state.cpp
         type_system/Type.cpp
         type_system/TypeFieldLookup.cpp
         type_system/TypeSpec.cpp

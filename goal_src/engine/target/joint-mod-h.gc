@@ -177,19 +177,15 @@
 
 (defmethod set-trs! joint-mod ((obj joint-mod) (trans vector) (rot quaternion) (scale vector))
   "Set the translation, rotation, and scale."
-  (when trans
-    (let ((v1-1 (-> obj trans)))
-      (set! (-> v1-1 quad) (-> trans quad))
-      )
-    )
+  (if trans
+   (set! (-> obj trans quad) (-> trans quad))
+   )
   (if rot
-      (quaternion-copy! (-> obj quat) rot)
-      )
-  (when scale
-    (let ((v1-5 (-> obj scale)))
-      (set! (-> v1-5 quad) (-> scale quad))
-      )
-    )
+   (quaternion-copy! (-> obj quat) rot)
+   )
+  (if scale
+   (set! (-> obj scale quad) (-> scale quad))
+   )
   (none)
   )
 
@@ -203,9 +199,7 @@
   ;; how far are we from the target?
   (let ((distance (vector-vector-distance (-> obj process root trans) target-trans)))
     (set! (-> obj shutting-down?) #f)
-    (let ((v1-6 (-> obj target)))
-      (set! (-> v1-6 quad) (-> target-trans quad))
-      )
+    (set! (-> obj target quad) (-> target-trans quad))
     (if (< distance (-> obj max-dist))
         (set! (-> obj blend) 1.0) ;; in range, set blend to 1.0 to start
         (set! (-> obj blend) 0.0) ;; not in range, set blend to 0.0 to disable.
@@ -259,17 +253,16 @@
             ;; success! we consider this a noticed and remember when
             (set! (-> obj notice-time) (-> *display* base-frame-counter))
             ;; and update the look at data
-            (let ((ppointer (the-as (pointer process)
-                                    (if proc
-                                        (the-as (pointer process) (-> proc ppointer))
-                                        )
-                                    )
-                    )
-                  )
-              (set! (-> last-try-to-look-at-data who)
-               (new 'static 'handle :process ppointer :pid (-> ppointer 0 pid))
-               )
+       (let ((v1-12 (if proc
+                     (-> proc ppointer)
+                     )
               )
+             )
+        (set!
+         (-> last-try-to-look-at-data who)
+         (new 'static 'handle :process v1-12 :pid (-> v1-12 0 pid))
+         )
+        )
             ;; not sure what these are yet.
             (if (< (-> last-try-to-look-at-data vert) (-> enemy-facts cam-vert))
                 (set! (-> last-try-to-look-at-data vert) (-> enemy-facts cam-vert))
@@ -302,9 +295,7 @@
           (set-mode! obj (joint-mod-handler-mode look-at))
           )
       ;; set our target.
-      (let ((v1-37 (-> obj target)))
-        (set! (-> v1-37 quad) (-> target-trans quad))
-        )
+      (set! (-> obj target quad) (-> target-trans quad))
       ;; activate us.
       (set! (-> obj blend) 1.0)
       (set! (-> obj shutting-down?) #f)
@@ -695,38 +686,33 @@
     )
   )
 
-;; todo needs better vector-dot stuff
 (defun joint-mod-wheel-callback ((arg0 cspace) (arg1 transformq))
-  (local-vars (f0-3 float))
   (let ((s4-0 (the-as joint-mod-wheel (-> arg0 param1))))
-    (let ((v1-1 (-> s4-0 process root))
-          (s1-0 (new-stack-vector0))
-          (s3-0 (new-stack-vector0))
-          (s2-0 (new-stack-vector0))
-          )
-      (let ((f0-0 0.0))
-        )
-      (let ((f0-1 0.0))
-        )
-      (vector-z-quaternion! s2-0 (-> v1-1 quat))
-      (vector<-cspace! s1-0 arg0)
-      (vector-! s3-0 s1-0 (-> s4-0 last-position))
-      (set! (-> s4-0 last-position quad) (-> s1-0 quad))
-      (set! f0-3 (vector-dot s2-0 s3-0))
-      )
-    (let* ((f0-4 f0-3)
-           (f1-1 65536.0)
-           (f2-2 (* 6.28318 (-> s4-0 wheel-radius)))
-           (f0-5 (* (* f1-1 (/ 1.0 f2-2)) f0-4))
+   (let ((v1-1 (-> s4-0 process root))
+         (s1-0 (new-stack-vector0))
+         (s3-0 (new-stack-vector0))
+         (s2-0 (new-stack-vector0))
+         )
+    0.0
+    0.0
+    (vector-z-quaternion! s2-0 (-> v1-1 quat))
+    (vector<-cspace! s1-0 arg0)
+    (vector-! s3-0 s1-0 (-> s4-0 last-position))
+    (set! (-> s4-0 last-position quad) (-> s1-0 quad))
+    (let* ((f0-3 (vector-dot s2-0 s3-0))
+           (f1-0 65536.0)
+           (f2-1 (* 6.28318 (-> s4-0 wheel-radius)))
+           (f0-4 (* (* f1-0 (/ 1.0 f2-1)) f0-3))
            )
-      (set! (-> s4-0 angle) (+ (-> s4-0 angle) f0-5))
-      )
-    (quaternion-vector-angle!
-     (-> arg1 quat)
-     (-> *joint-axis-vectors* (-> s4-0 wheel-axis))
-     (-> s4-0 angle)
+     (+! (-> s4-0 angle) f0-4)
      )
     )
+   (quaternion-vector-angle!
+    (-> arg1 quat)
+    (-> *joint-axis-vectors* (-> s4-0 wheel-axis))
+    (-> s4-0 angle)
+    )
+   )
   (cspace<-parented-transformq-joint! arg0 arg1)
   (none)
   )

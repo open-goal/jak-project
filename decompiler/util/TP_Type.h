@@ -36,6 +36,7 @@ class TP_Type {
     PCPYUD_BITFIELD_AND,
     LEFT_SHIFTED_BITFIELD,  // (bitfield << some-constant)
     LABEL_ADDR,
+    ENTER_STATE_FUNCTION,
     INVALID
   } kind = Kind::UNINITIALIZED;
   TP_Type() = default;
@@ -65,6 +66,7 @@ class TP_Type {
       case Kind::PCPYUD_BITFIELD:
       case Kind::PCPYUD_BITFIELD_AND:
       case Kind::LABEL_ADDR:
+      case Kind::ENTER_STATE_FUNCTION:
         return false;
       case Kind::UNINITIALIZED:
       case Kind::OBJECT_NEW_METHOD:
@@ -254,6 +256,12 @@ class TP_Type {
     return result;
   }
 
+  static TP_Type make_enter_state() {
+    TP_Type result;
+    result.kind = Kind::ENTER_STATE_FUNCTION;
+    return result;
+  }
+
   static TP_Type make_label_addr() {
     TP_Type result;
     result.kind = Kind::LABEL_ADDR;
@@ -352,6 +360,7 @@ class TypeState {
   std::unordered_map<int, TP_Type> spill_slots;
   TP_Type gpr_types[32];
   TP_Type fpr_types[32];
+  TP_Type next_state_type;
   std::string print_gpr_masked(u32 mask) const;
   TP_Type& get(const Register& r) {
     switch (r.get_kind()) {

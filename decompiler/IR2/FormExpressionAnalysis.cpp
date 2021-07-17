@@ -7,6 +7,7 @@
 #include "decompiler/util/data_decompile.h"
 #include "decompiler/IR2/bitfields.h"
 #include "common/util/BitUtils.h"
+#include "common/type_system/state.h"
 
 /*
  * TODO
@@ -2334,6 +2335,34 @@ void AbsElement::update_from_stack(const Env& env,
   result->push_back(new_form);
 }
 
+namespace {
+/*!
+ * Try to recognize setting the next state.
+ */
+Form* get_set_next_state(FormElement* set_elt, const Env& env) {
+  auto as_set = dynamic_cast<SetFormFormElement*>(set_elt);
+  if (!as_set) {
+    return nullptr;
+  }
+
+  auto dst = as_set->dst();
+  auto dst_matcher =
+      Matcher::deref(Matcher::any_reg(0), false, {DerefTokenMatcher::string("next-state")});
+  auto mr = match(dst_matcher, dst);
+  if (!mr.matched) {
+    fmt::print("failed to match dst {}\n", dst->to_string(env));
+    return nullptr;
+  }
+
+  if (mr.maps.regs.at(0)->reg() != Register(Reg::GPR, Reg::S6)) {
+    fmt::print("failed to match pp reg, got {}\n", mr.maps.regs.at(0)->reg().to_string());
+    return nullptr;
+  }
+
+  return as_set->src();
+}
+}  // namespace
+
 ///////////////////
 // FunctionCallElement
 ///////////////////
@@ -2354,9 +2383,40 @@ void FunctionCallElement::update_from_stack(const Env& env,
   }
 
   TypeSpec function_type;
-  auto& tp_type = env.get_types_before_op(all_pop_vars.at(0).idx()).get(all_pop_vars.at(0).reg());
+  auto& in_type_state = env.get_types_before_op(all_pop_vars.at(0).idx());
+  auto& tp_type = in_type_state.get(all_pop_vars.at(0).reg());
   if (env.has_type_analysis()) {
     function_type = tp_type.typespec();
+  }
+
+  // if we're actually a go:
+  Form* go_next_state = nullptr;
+  if (tp_type.kind == TP_Type::Kind::ENTER_STATE_FUNCTION) {
+    auto& next_state_type = in_type_state.next_state_type;
+    if (next_state_type.typespec().base_type() != "state") {
+      throw std::runtime_error("Bad state type in expressions (not state): " +
+                               next_state_type.print());
+    }
+    if (next_state_type.typespec().arg_count() == 0) {
+      throw std::runtime_error("Bad state type in expressions (no args): " +
+                               next_state_type.print());
+    }
+
+    // modify our type for the go.
+    function_type = state_to_go_function(next_state_type.typespec());
+
+    // up next, we need to deal with the
+    // (set! (-> pp next-state) process-drawable-art-error)
+    auto stack_back = stack.pop_back(pool);
+
+    auto next_state = get_set_next_state(stack_back, env);
+    if (!next_state) {
+      throw std::runtime_error(
+          fmt::format("Expressions couldn't figure out this go. The back of the stack was {} and "
+                      "we expected to see something set (-> pp next-state) instead.",
+                      stack_back->to_string(env)));
+    }
+    go_next_state = next_state;
   }
 
   bool swap_function =
@@ -2410,6 +2470,16 @@ void FunctionCallElement::update_from_stack(const Env& env,
 
   FormElement* new_form = nullptr;
 
+  if (go_next_state) {
+    arg_forms.insert(arg_forms.begin(), go_next_state);
+    auto go_form = pool.alloc_element<GenericElement>(
+        GenericOperator::make_function(
+            pool.alloc_single_element_form<ConstantTokenElement>(nullptr, "go")),
+        arg_forms);
+    result->push_back(go_form);
+    return;
+  }
+
   {
     // deal with virtual method calls.
     auto matcher = Matcher::op(GenericOpMatcher::fixed(FixedOperatorKind::METHOD_OF_OBJECT),
@@ -2448,6 +2518,7 @@ void FunctionCallElement::update_from_stack(const Env& env,
           new_form = pool.alloc_element<GenericElement>(
               GenericOperator::make_function(mr.maps.forms.at(1)), arg_forms);
           result->push_back(new_form);
+          assert(!go_next_state);
           return;
         }
       }
@@ -2496,6 +2567,7 @@ void FunctionCallElement::update_from_stack(const Env& env,
         auto new_op = pool.alloc_element<GenericElement>(
             GenericOperator::make_fixed(FixedOperatorKind::OBJECT_NEW), new_args);
         result->push_back(new_op);
+        assert(!go_next_state);
         return;
       }
       if (name == "new" && type_1 == "type") {
@@ -2503,6 +2575,7 @@ void FunctionCallElement::update_from_stack(const Env& env,
         auto new_op = pool.alloc_element<GenericElement>(
             GenericOperator::make_fixed(FixedOperatorKind::TYPE_NEW), new_args);
         result->push_back(new_op);
+        assert(!go_next_state);
         return;
       } else if (name == "new") {
         constexpr int allocation = 2;
@@ -2538,6 +2611,7 @@ void FunctionCallElement::update_from_stack(const Env& env,
             auto cons_op = pool.alloc_element<GenericElement>(
                 GenericOperator::make_fixed(FixedOperatorKind::CONS), cons_args);
             result->push_back(cons_op);
+            assert(!go_next_state);
             return;
           } else {
             // just normal construction on the heap
@@ -2547,6 +2621,7 @@ void FunctionCallElement::update_from_stack(const Env& env,
             auto new_op = pool.alloc_element<GenericElement>(
                 GenericOperator::make_fixed(FixedOperatorKind::NEW), new_args);
             result->push_back(new_op);
+            assert(!go_next_state);
             return;
           }
         }
@@ -2596,6 +2671,7 @@ void FunctionCallElement::update_from_stack(const Env& env,
         auto gop = GenericOperator::make_function(method_op);
 
         result->push_back(pool.alloc_element<GenericElement>(gop, arg_forms));
+        assert(!go_next_state);
         return;
       }
 
@@ -2633,6 +2709,7 @@ void FunctionCallElement::update_from_stack(const Env& env,
           }
           result->push_back(pool.alloc_element<GenericElement>(
               GenericOperator::make_fixed(FixedOperatorKind::NEW), stack_new_args));
+          assert(!go_next_state);
           return;
         }
       }
