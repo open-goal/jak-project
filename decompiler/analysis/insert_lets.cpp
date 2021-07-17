@@ -368,6 +368,97 @@ Form* strip_truthy(Form* in) {
   return in;
 }
 
+FormElement* rewrite_set_vector(LetElement* in, const Env& env, FormPool& pool) {
+  if (in->entries().size() != 1) {
+    return nullptr;
+  }
+
+  auto in_vec = env.get_variable_name(in->entries().at(0).dest);
+
+  auto& body_elts = in->body()->elts();
+  if (body_elts.size() != 4) {
+    return nullptr;
+  }
+
+  std::vector<Form*> sources;
+  for (int i = 0; i < 4; i++) {
+    auto elt_as_form_form = dynamic_cast<SetFormFormElement*>(body_elts.at(i));
+    if (!elt_as_form_form) {
+      return nullptr;
+    }
+    auto dst = elt_as_form_form->dst();
+    sources.push_back(elt_as_form_form->src());
+    Matcher dst_matcher = Matcher::deref(Matcher::any_reg(0), false,
+                                         {DerefTokenMatcher::string(std::string(1, "xyzw"[i]))});
+    auto mr = match(dst_matcher, dst);
+    if (!mr.matched) {
+      return nullptr;
+    }
+    if (in_vec != env.get_variable_name(*mr.maps.regs.at(0))) {
+      return nullptr;
+    }
+  }
+
+  std::vector<Form*> args;
+  args.push_back(in->entries().at(0).src);
+  for (auto& src : sources) {
+    args.push_back(src);
+  }
+
+  auto op = GenericOperator::make_function(
+      pool.alloc_single_element_form<ConstantTokenElement>(nullptr, "set-vector!"));
+  return pool.alloc_element<GenericElement>(op, args);
+}
+
+FormElement* rewrite_set_vector_2(LetElement* in, const Env& env, FormPool& pool) {
+  if (in->entries().size() != 1) {
+    return nullptr;
+  }
+
+  auto in_vec = env.get_variable_name(in->entries().at(0).dest);
+  auto src_as_deref = in->entries().at(0).src->try_as_element<DerefElement>();
+  if (!src_as_deref) {
+    return nullptr;
+  }
+
+  auto& body_elts = in->body()->elts();
+  if (body_elts.size() != 4) {
+    return nullptr;
+  }
+
+  std::vector<Form*> sources;
+  for (int i = 0; i < 4; i++) {
+    auto elt_as_form_form = dynamic_cast<SetFormFormElement*>(body_elts.at(i));
+    if (!elt_as_form_form) {
+      return nullptr;
+    }
+    auto dst = elt_as_form_form->dst();
+    sources.push_back(elt_as_form_form->src());
+    Matcher dst_matcher = Matcher::deref(
+        Matcher::any_reg(0), false,
+        {DerefTokenMatcher::integer(0), DerefTokenMatcher::string(std::string(1, "xyzw"[i]))});
+    auto mr = match(dst_matcher, dst);
+    if (!mr.matched) {
+      return nullptr;
+    }
+    if (in_vec != env.get_variable_name(*mr.maps.regs.at(0))) {
+      return nullptr;
+    }
+  }
+
+  src_as_deref->tokens().push_back(DerefToken::make_int_constant(0));
+
+  std::vector<Form*> args;
+  args.push_back(in->entries().at(0).src);
+  for (auto& src : sources) {
+    args.push_back(src);
+  }
+
+  auto op = GenericOperator::make_function(
+      pool.alloc_single_element_form<ConstantTokenElement>(nullptr, "set-vector!"));
+  return pool.alloc_element<GenericElement>(op, args);
+}
+
 ShortCircuitElement* get_or(Form* in) {
   // strip off truthy
   in = strip_truthy(in);
@@ -562,6 +653,16 @@ FormElement* rewrite_let(LetElement* in, const Env& env, FormPool& pool) {
   auto as_case_with_else = rewrite_as_case_with_else(in, env, pool);
   if (as_case_with_else) {
     return as_case_with_else;
+  }
+
+  auto as_set_vector = rewrite_set_vector(in, env, pool);
+  if (as_set_vector) {
+    return as_set_vector;
+  }
+
+  auto as_set_vector2 = rewrite_set_vector_2(in, env, pool);
+  if (as_set_vector2) {
+    return as_set_vector2;
   }
 
   // nothing matched.

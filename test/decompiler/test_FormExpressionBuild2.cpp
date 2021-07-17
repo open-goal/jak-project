@@ -1484,12 +1484,7 @@ TEST_F(FormRegressionTest, VectorNewInlineProp) {
   std::string expected =
       "(begin\n"
       "  (let ((s5-0 (new-stack-vector0)))\n"
-      "   (let ((v1-0 s5-0))\n"
-      "    (set! (-> v1-0 x) (-> arg1 x))\n"
-      "    (set! (-> v1-0 y) (-> arg1 y))\n"
-      "    (set! (-> v1-0 z) (-> arg1 z))\n"
-      "    (set! (-> v1-0 w) 0.0)\n"
-      "    )\n"
+      "   (set-vector! s5-0 (-> arg1 x) (-> arg1 y) (-> arg1 z) 0.0)\n"
       "   (vector-matrix*! s5-0 s5-0 arg2)\n"
       "   (set! (-> arg0 x) (-> s5-0 x))\n"
       "   (set! (-> arg0 y) (-> s5-0 y))\n"

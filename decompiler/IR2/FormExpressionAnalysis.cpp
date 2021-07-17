@@ -2028,6 +2028,26 @@ void SetFormFormElement::push_to_stack(const Env& env, FormPool& pool, FormStack
     fmt::print("invalid bf set: {}\n", src_as_bf_set->to_string(env));
   }
 
+  const std::pair<FixedOperatorKind, FixedOperatorKind> in_place_ops[] = {
+      {FixedOperatorKind::ADDITION, FixedOperatorKind::ADDITION_IN_PLACE},
+      {FixedOperatorKind::ADDITION_PTR, FixedOperatorKind::ADDITION_PTR_IN_PLACE}};
+
+  auto src_as_generic = m_src->try_as_element<GenericElement>();
+  if (src_as_generic) {
+    for (auto& op_pair : in_place_ops) {
+      if (src_as_generic->op().is_fixed(op_pair.first)) {
+        auto dst_form = m_dst->to_form(env);
+        auto add_form_0 = src_as_generic->elts().at(0)->to_form(env);
+
+        if (dst_form == add_form_0) {
+          src_as_generic->op() = GenericOperator::make_fixed(op_pair.second);
+          stack.push_form_element(src_as_generic, true);
+          return;
+        }
+      }
+    }
+  }
+
   stack.push_form_element(this, true);
 }
 
