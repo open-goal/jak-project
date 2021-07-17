@@ -54,6 +54,10 @@ class FormElement {
                                  bool allow_side_effects);
   bool is_popped() const { return m_popped; }
 
+  FormElement() = default;
+  FormElement(const FormElement& other) = delete;
+  FormElement& operator=(const FormElement& other) = delete;
+
   void mark_popped() {
     assert(!m_popped);
     m_popped = true;

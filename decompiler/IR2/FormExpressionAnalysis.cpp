@@ -1113,6 +1113,29 @@ void SimpleExpressionElement::update_from_stack_pcypld(const Env& env,
     }
   }
 
+  /*
+    pcpyud v1, s4, r0
+    ld a0, L152(fp)
+    and v1, v1, a0
+    lui a0, 1
+    dsll32 a0, a0, 0
+    or v1, v1, a0
+    pcpyld v1, v1, s4
+    por s4, v1, r0
+   */
+
+  auto as_mod = args.at(0)->try_as_element<ModifiedCopyBitfieldElement>();
+  if (as_mod && as_mod->from_pcpyud()) {
+    auto base_form = as_mod->base()->to_form(env);
+    auto a1_form = args.at(1)->to_form(env);
+    if (base_form == a1_form) {
+      as_mod->clear_pcpyud_flag();
+      result->push_back(as_mod);
+      return;
+    } else {
+      fmt::print("pcpyud rewrite form fail: {} {}\n", base_form.print(), a1_form.print());
+    }
+  }
   auto new_form = pool.alloc_element<GenericElement>(
       GenericOperator::make_fixed(FixedOperatorKind::PCPYLD), args.at(0), args.at(1));
   result->push_back(new_form);
@@ -1262,16 +1285,45 @@ void SimpleExpressionElement::update_from_stack_logor_or_logand(const Env& env,
                                                                 FormStack& stack,
                                                                 std::vector<FormElement*>* result,
                                                                 bool allow_side_effects) {
+  // grab the normal variable type
   auto arg0_type = env.get_variable_type(m_expr.get_arg(0).var(), true);
 
+  // and try to get it as a bitfield
   auto type_info = env.dts->ts.lookup_type(arg0_type);
   auto bitfield_info = dynamic_cast<BitFieldType*>(type_info);
+  bool had_pcpyud = false;
+  TypeSpec bitfield_type = arg0_type;
+
+  if (!bitfield_info) {
+    // the above won't work if we're already done a pcpyud to grab the upper 64 bits.
+    // we need to grab the type in the register (a TP_type) and check
+    const auto& arg0_reg_type =
+        env.get_types_before_op(m_expr.get_arg(0).var().idx()).get(m_expr.get_arg(0).var().reg());
+    if (arg0_reg_type.kind == TP_Type::Kind::PCPYUD_BITFIELD) {
+      // yes!
+      had_pcpyud = true;
+      bitfield_info =
+          dynamic_cast<BitFieldType*>(env.dts->ts.lookup_type(arg0_reg_type.get_bitfield_type()));
+      assert(bitfield_info);
+    } else if (arg0_reg_type.kind == TP_Type::Kind::PCPYUD_BITFIELD_AND) {
+      // already have the pcpyud in the thing.
+      bitfield_info =
+          dynamic_cast<BitFieldType*>(env.dts->ts.lookup_type(arg0_reg_type.get_bitfield_type()));
+      assert(bitfield_info);
+    }
+  }
+
   if (bitfield_info && m_expr.get_arg(1).is_int()) {
     // andi, ori with bitfield.
     auto base = pop_to_forms({m_expr.get_arg(0).var()}, env, pool, stack, allow_side_effects).at(0);
     auto read_elt = dynamic_cast<BitfieldAccessElement*>(base->try_as_single_element());
     if (!read_elt) {
-      read_elt = pool.alloc_element<BitfieldAccessElement>(base, arg0_type);
+      read_elt = pool.alloc_element<BitfieldAccessElement>(base, bitfield_type);
+      assert(!had_pcpyud);
+    } else {
+      if (had_pcpyud) {
+        assert(read_elt->has_pcpyud());
+      }
     }
 
     BitfieldManip::Kind manip_kind;
@@ -1313,13 +1365,19 @@ void SimpleExpressionElement::update_from_stack_logor_or_logand(const Env& env,
       bool made_new_read_elt = false;
       auto read_elt = dynamic_cast<BitfieldAccessElement*>(args.at(0)->try_as_single_element());
       if (!read_elt) {
-        read_elt = pool.alloc_element<BitfieldAccessElement>(args.at(0), arg0_type);
+        read_elt = pool.alloc_element<BitfieldAccessElement>(args.at(0), bitfield_type);
         made_new_read_elt = true;
+        assert(!had_pcpyud);
+      } else {
+        if (had_pcpyud) {
+          assert(read_elt->has_pcpyud());
+        }
       }
 
       auto stripped_arg1 = strip_int_or_uint_cast(args.at(1));
-      auto arg1_atom = form_as_atom(strip_int_or_uint_cast(args.at(1)));
-      if (arg1_atom && arg1_atom->is_int()) {
+      // auto arg1_atom = form_as_atom(strip_int_or_uint_cast(args.at(1)));
+      auto arg1_as_int = get_goal_integer_constant(stripped_arg1, env);
+      if (arg1_as_int) {
         BitfieldManip::Kind manip_kind;
         if (kind == FixedOperatorKind::LOGAND) {
           manip_kind = BitfieldManip::Kind::LOGAND_WITH_CONSTANT_INT;
@@ -1328,10 +1386,14 @@ void SimpleExpressionElement::update_from_stack_logor_or_logand(const Env& env,
         } else {
           assert(false);
         }
-        BitfieldManip step(manip_kind, arg1_atom->get_int());
+        BitfieldManip step(manip_kind, *arg1_as_int);
         auto other = read_elt->push_step(step, env.dts->ts, pool, env);
-        assert(!other);  // shouldn't be complete.
-        result->push_back(read_elt);
+        // assert(!other);  // shouldn't be complete.
+        if (other) {
+          result->push_back(other);
+        } else {
+          result->push_back(read_elt);
+        }
         return;
       } else if (!made_new_read_elt) {
         BitfieldManip::Kind manip_kind;
@@ -1847,6 +1909,13 @@ void SetVarElement::push_to_stack(const Env& env, FormPool& pool, FormStack& sta
     return;
   }
 
+  // bool skip = false;
+  //  auto dst_type = env.get_variable_type(m_dst, false);
+  //  auto as_bitfield = dynamic_cast<BitFieldType*>(env.dts->ts.lookup_type(dst_type));
+  //  if (as_bitfield && as_bitfield->get_load_size() == 16) {
+  //    skip = true;
+  //  }
+
   // if we are a reg-reg move that consumes the original, push it without popping from stack.
   // it is the Stack's responsibility to untangle these later on.
   if (m_src->is_single_element()) {
@@ -1873,6 +1942,28 @@ void SetVarElement::push_to_stack(const Env& env, FormPool& pool, FormStack& sta
 
   // we aren't a reg-reg move, so update our source
   m_src->update_children_from_stack(env, pool, stack, true);
+
+  /*
+  auto src_as_bf_set = dynamic_cast<ModifiedCopyBitfieldElement*>(m_src->try_as_single_element());
+  if (src_as_bf_set && !src_as_bf_set->from_pcpyud() && src_as_bf_set->mods().size() == 1) {
+    auto dst_form = m_dst.to_form(env, RegisterAccess::Print::AS_VARIABLE_NO_CAST);
+    auto src_form = src_as_bf_set->base()->to_form(env);
+    if (dst_form == src_form) {
+      // success!
+      auto value = src_as_bf_set->mods().at(0).value;
+      value->parent_element = this;
+
+      // make the (-> thing bitfield)
+      auto field_token = DerefToken::make_field_name(src_as_bf_set->mods().at(0).field_name);
+      auto dst_dform = pool.alloc_single_element_form<SimpleAtomElement>(nullptr,
+  SimpleAtom::make_var(m_dst)); auto loc_elt = pool.alloc_element<DerefElement>(dst_dform, false,
+  field_token); loc_elt->inline_nested(); auto loc = pool.alloc_single_form(nullptr, loc_elt); auto
+  new_form_el = pool.alloc_element<SetFormFormElement>(loc, value);
+      stack.push_form_element(new_form_el, true);
+      return;
+    }
+  }
+   */
 
   for (auto x : m_src->elts()) {
     assert(x->parent_form == m_src);
@@ -1915,7 +2006,7 @@ void SetFormFormElement::push_to_stack(const Env& env, FormPool& pool, FormStack
 
   // check for bitfield setting:
   auto src_as_bf_set = dynamic_cast<ModifiedCopyBitfieldElement*>(m_src->try_as_single_element());
-  if (src_as_bf_set && src_as_bf_set->mods().size() == 1) {
+  if (src_as_bf_set && !src_as_bf_set->from_pcpyud() && src_as_bf_set->mods().size() == 1) {
     auto dst_form = m_dst->to_form(env);
     auto src_form = src_as_bf_set->base()->to_form(env);
     if (dst_form == src_form) {
@@ -1933,6 +2024,8 @@ void SetFormFormElement::push_to_stack(const Env& env, FormPool& pool, FormStack
       m_dst = loc;
       m_src = value;
     }
+  } else if (src_as_bf_set) {
+    fmt::print("invalid bf set: {}\n", src_as_bf_set->to_string(env));
   }
 
   stack.push_form_element(this, true);
@@ -2314,23 +2407,29 @@ void FunctionCallElement::update_from_stack(const Env& env,
               "type.");
         }
 
-        if (!env.dts->ts.should_use_virtual_methods(tp_type.method_from_type(),
-                                                    tp_type.method_id())) {
+        bool is_res_lump = tp_type.method_from_type().base_type() == "res-lump";
+        bool should_use_virtual =
+            env.dts->ts.should_use_virtual_methods(tp_type.method_from_type(), tp_type.method_id());
+
+        if (!should_use_virtual && !is_res_lump) {
           throw std::runtime_error(
               fmt::format("Method call on {} id {} used a virtual call unexpectedly.",
                           tp_type.method_from_type().print(), tp_type.method_id()));
         }
-        // fmt::print("STACK\n{}\n\n", stack.print(env));
-        auto pop =
-            pop_to_forms({*arg0_mr.maps.regs.at(0)}, env, pool, stack, allow_side_effects, {}, {2})
-                .at(0);
-        // fmt::print("GOT: {}\n", pop->to_string(env));
-        arg_forms.at(0) = pop;
 
-        new_form = pool.alloc_element<GenericElement>(
-            GenericOperator::make_function(mr.maps.forms.at(1)), arg_forms);
-        result->push_back(new_form);
-        return;
+        if (should_use_virtual) {
+          // fmt::print("STACK\n{}\n\n", stack.print(env));
+          auto pop = pop_to_forms({*arg0_mr.maps.regs.at(0)}, env, pool, stack, allow_side_effects,
+                                  {}, {2})
+                         .at(0);
+          // fmt::print("GOT: {}\n", pop->to_string(env));
+          arg_forms.at(0) = pop;
+
+          new_form = pool.alloc_element<GenericElement>(
+              GenericOperator::make_function(mr.maps.forms.at(1)), arg_forms);
+          result->push_back(new_form);
+          return;
+        }
       }
     }
   }
@@ -3525,9 +3624,11 @@ void ReturnElement::push_to_stack(const Env& env, FormPool& pool, FormStack& sta
   }
 
   std::vector<FormElement*> new_entries;
-  new_entries = rewrite_to_get_var(temp_stack, pool, env.end_var(), env);
+  std::optional<RegisterAccess> var;
+  new_entries = rewrite_to_get_var(temp_stack, pool, env.end_var(), env, &var);
 
   assert(!new_entries.empty());
+
   return_code->clear();
 
   for (int i = 0; i < ((int)new_entries.size()) - 1; i++) {
@@ -3535,6 +3636,20 @@ void ReturnElement::push_to_stack(const Env& env, FormPool& pool, FormStack& sta
   }
 
   return_code->push_back(new_entries.back());
+  if (var) {
+    const auto& func_type = env.func->type.last_arg();
+    if (!env.dts->ts.tc(func_type, env.get_variable_type(*var, false))) {
+      auto as_cast = return_code->try_as_element<CastElement>();
+      if (as_cast) {
+        return_code->clear();
+        as_cast->set_type(func_type);
+        return_code->push_back(as_cast);
+      } else {
+        return_code = cast_form(return_code, func_type, pool, env);
+        return_code->parent_element = this;
+      }
+    }
+  }
   stack.push_form_element(this, true);
 }
 
