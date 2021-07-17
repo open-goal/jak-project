@@ -349,9 +349,9 @@ std::vector<FormElement*> FormStack::rewrite(FormPool& pool, const Env& env) con
 
       auto elt = pool.alloc_element<SetVarElement>(*e.destination, simplified_source,
                                                    e.sequence_point, type, e.set_info);
-      e.source->parent_element = elt;
 
       auto final_elt = try_rewrites_in_place(elt, env, pool);
+      simplified_source->parent_element = final_elt;
       result.push_back(final_elt);
     } else {
       result.push_back(e.elt);
@@ -411,7 +411,6 @@ std::optional<RegisterAccess> rewrite_to_get_var(std::vector<FormElement*>& defa
     return {};
   } else {
     for (auto x : result) {
-      x->parent_form = nullptr;
       default_result.push_back(x);
     }
     return result_access;

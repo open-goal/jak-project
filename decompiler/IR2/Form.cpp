@@ -1904,10 +1904,11 @@ void GenericElement::get_modified_regs(RegSet& regs) const {
 
 CastElement::CastElement(TypeSpec type, Form* source, bool numeric)
     : m_type(std::move(type)), m_source(source), m_numeric(numeric) {
-  source->parent_element = this;
+  m_source->parent_element = this;
 }
 
 goos::Object CastElement::to_form_internal(const Env& env) const {
+  // assert(m_source->parent_element == this);
   auto atom = form_as_atom(m_source);
   if (atom && atom->is_var()) {
     return pretty_print::build_list(
@@ -1919,21 +1920,25 @@ goos::Object CastElement::to_form_internal(const Env& env) const {
 }
 
 void CastElement::apply(const std::function<void(FormElement*)>& f) {
+  // assert(m_source->parent_element == this);
   f(this);
   m_source->apply(f);
 }
 
 void CastElement::apply_form(const std::function<void(Form*)>& f) {
+  // assert(m_source->parent_element == this);
   m_source->apply_form(f);
 }
 
 void CastElement::collect_vars(RegAccessSet& vars, bool recursive) const {
+  // assert(m_source->parent_element == this);
   if (recursive) {
     m_source->collect_vars(vars, recursive);
   }
 }
 
 void CastElement::get_modified_regs(RegSet& regs) const {
+  assert(m_source->parent_element == this);
   m_source->get_modified_regs(regs);
 }
 

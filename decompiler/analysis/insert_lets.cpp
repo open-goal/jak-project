@@ -79,8 +79,8 @@ Form* lca_form(Form* a, Form* b, const Env& env) {
     bi--;
   }
   if (!result) {
-    auto* bad = b->parent_element;
-    fmt::print("bad form is {} {}\n", bad->to_string(env), (void*)bad);
+    fmt::print("{} bad form is {}\n\n{}\n", env.func->guessed_name.to_string(), a->to_string(env),
+               b->to_string(env));
   }
   assert(result);
 
