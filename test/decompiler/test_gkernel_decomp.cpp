@@ -2613,7 +2613,7 @@ TEST_F(FormRegressionTest, ExprMethod16DeadPoolHeap) {
       "       (shrink-heap arg0 s3-0)\n"
       "       (relocate s3-0 (- s2-0))\n"
       "       (set! (-> arg0 first-gap) (find-gap arg0 s4-1))\n"
-      "       (set! (-> arg0 compact-count) (+ (-> arg0 compact-count) 1))\n"
+      "       (+! (-> arg0 compact-count) 1)\n"
       "       )\n"
       "      )\n"
       "     )\n"
