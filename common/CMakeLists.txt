@@ -1,5 +1,6 @@
 add_library(common
         SHARED
+        audio/audio_formats.cpp
         cross_os_debug/xdbg.cpp
         cross_sockets/xsocket.cpp
         goos/Interpreter.cpp
