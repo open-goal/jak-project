@@ -106,9 +106,85 @@
   arg0
   )
 
-;; drawable-load
-;; art-load
-;; art-group-load-check
+(defun drawable-load ((arg0 drawable) (arg1 kheap))
+  "Load a drawable file. Unused."
+
+  (cond
+   ((type-type? (-> arg0 type) string)
+    #|(with-sp (protect sp
+      (if (< sp *stack-top*)
+        (set! sp (&+ *kernel-sp* -1024))
+        )|#
+    (let ((s5-1 (loado (the-as string arg0) arg1)))
+      (if (and s5-1 (type-type? (-> s5-1 type) drawable))
+        (login s5-1)
+        )
+      )
+    ;;))
+    )
+   ((type-type? (-> arg0 type) drawable)
+    (login arg0)
+    )
+   )
+  #|(with-sp (protect sp
+    (if (< sp *stack-top*)
+      (set! sp (&+ *kernel-sp* -1024))
+      )|#
+    (let ((s5-0 (loado arg0 arg1)))
+      (if (type-type? (-> s5-0 type) art)
+              (dummy-9 s5-0)
+              (the-as art #f)
+              )
+      )
+    ;;))
+  )
+
+(defun art-load ((arg0 string) (arg1 kheap))
+  "Load an art file. Unused."
+
+  #|(with-sp (protect sp
+    (if (< sp *stack-top*)
+      (set! sp (&+ *kernel-sp* -1024))
+      )|#
+    (let ((s5-0 (loado arg0 arg1)))
+      (if (type-type? (-> s5-0 type) art)
+              (dummy-9 s5-0)
+              (the-as art #f)
+              )
+      )
+    ;;))
+  )
+
+(defun art-group-load-check ((arg0 string) (arg1 kheap) (arg2 int))
+  "Load and check an art-group file. this only runs if we're using debug memory."
+
+  (when *debug-segment*
+    #|(with-sp (protect sp
+      (if (< sp *stack-top*)
+        (set! sp (&+ *kernel-sp* -1024))
+        )|#
+      (let ((s3-1 (loado (make-file-name (file-kind art-group) arg0 arg2 #f) arg1)))
+        (cond
+          ((not s3-1)
+           (format 0 "ERROR: art-group ~A is not a valid file.~%" arg0)
+           (the-as art-group #f)
+           )
+          ((not (type-type? (-> s3-1 type) art-group))
+           (format 0 "ERROR: art-group ~A is not a art-group.~%" arg0)
+           (the-as art-group #f)
+           )
+          ((not (file-info-correct-version? (-> s3-1 info) (file-kind art-group) arg2))
+           ;;(format 0 "ERROR: art-group ~A is not the correct version.~%" arg0)
+           (the-as art-group #f)
+           )
+          (else
+           (dummy-9 s3-1)
+           )
+          )
+        )
+      ;;))
+    )
+  )
 
 (defmethod want-file external-art-buffer ((obj external-art-buffer) (arg0 symbol) (arg1 int) (arg2 handle) (arg3 float))
   "Request a new file to be loaded into this buffer."
