@@ -1310,7 +1310,8 @@ TEST_F(FormRegressionTest, SoundNameEqual) {
       "    jr ra\n"
       "    daddu sp, sp, r0";
   std::string type = "(function sound-name sound-name symbol)";
-  std::string expected = "(and (= arg0 arg1) (= (-> arg0 hi) (-> arg1 hi)))";
+  std::string expected =
+      "(and (= (the-as uint arg0) (the-as uint arg1)) (= (-> arg0 hi) (-> arg1 hi)))";
   test_with_expr(func, type, expected);
 }
 

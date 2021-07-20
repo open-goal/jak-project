@@ -113,7 +113,9 @@
    )
   )
 
-;; definition of type cam-float-seeker
+;; cam-float-seeker moves value toward target in a smooth way, with second order dynamics.
+;; The acceleration is proportional to the error.
+;; This isn't stable by itself, so there is a velocity limit (proportional to distance) applied.
 (deftype cam-float-seeker (structure)
   ((target      float  :offset-assert 0)
    (value       float  :offset-assert 4)
@@ -129,8 +131,8 @@
   (:methods
    (init-cam-float-seeker (_type_ float float float float) none 9)
    (copy-cam-float-seeker (_type_ _type_) none 10)
-   (TODO-RENAME-11 (_type_ float) none 11)
-   (TODO-RENAME-12 (_type_ float) float 12)
+   (update! (_type_ float) none 11)
+   (jump-to-target! (_type_ float) float 12)
    )
   )
 
@@ -158,35 +160,37 @@
   (none)
   )
 
-;; definition for method 11 of type cam-float-seeker
-;; INFO: Return type mismatch int vs none.
-(defmethod TODO-RENAME-11 cam-float-seeker ((obj cam-float-seeker) (arg0 float))
-  (let ((f0-0 0.0))
-    )
-  (let ((f0-1 0.0))
-    )
-  (let* ((f1-2 (- (+ (-> obj target) arg0) (-> obj value)))
-         (f0-5 (* (-> obj max-partial) (fabs f1-2)))
+(defmethod update! cam-float-seeker ((obj cam-float-seeker) (offset float))
+  "Seek toward target + offset"
+  (let* ((pos-error (- (+ (-> obj target) offset) (-> obj value)))
+         ;; the velocity limit based on distance to target
+         (partial-velocity-limit (* (-> obj max-partial) (fabs pos-error)))
          )
-    (let ((f1-3 (* f1-2 (* (-> obj accel) (-> *display* time-adjust-ratio)))))
-      (set! (-> obj vel) (+ (-> obj vel) f1-3))
+
+    ;; apply acceleration to velocity
+    (let ((daccel (* pos-error (* (-> obj accel) (-> *display* time-adjust-ratio)))))
+      (+! (-> obj vel) daccel)
       )
-    (let ((f1-6 (fabs (-> obj vel)))
-          (f0-6 (fmin f0-5 (-> obj max-vel)))
+
+    ;; limit velocity using max-vel and the partial limit
+    (let ((abs-vel (fabs (-> obj vel)))
+          (abs-vel-limit (fmin partial-velocity-limit (-> obj max-vel)))
           )
-      (if (< f0-6 f1-6)
-          (set! (-> obj vel) (* (-> obj vel) (/ f0-6 f1-6)))
+      (if (< abs-vel-limit abs-vel)
+          (set! (-> obj vel) (* (-> obj vel) (/ abs-vel-limit abs-vel)))
           )
       )
     )
-  (let ((f0-10 (* (-> obj vel) (-> *display* time-adjust-ratio))))
-    (set! (-> obj value) (+ (-> obj value) f0-10))
+
+  ;; update position
+  (let ((dpos (* (-> obj vel) (-> *display* time-adjust-ratio))))
+    (+! (-> obj value) dpos)
     )
   (none)
   )
 
-;; definition for method 12 of type cam-float-seeker
-(defmethod TODO-RENAME-12 cam-float-seeker ((obj cam-float-seeker) (arg0 float))
+(defmethod jump-to-target! cam-float-seeker ((obj cam-float-seeker) (arg0 float))
+  "Jump to target + arg0 and set velocity to 0"
   (set! (-> obj value) (+ (-> obj target) arg0))
   (let ((f0-2 0.0))
     (set! (-> obj vel) f0-2)
@@ -194,7 +198,8 @@
     )
   )
 
-;; definition of type cam-vector-seeker
+;; very similar to cam-float-seeker but works on an
+;; entire vector.
 (deftype cam-vector-seeker (structure)
   ((target      vector :inline :offset-assert 0)
    (value       vector :inline :offset-assert 16)
@@ -207,15 +212,12 @@
   :size-assert         #x3c
   :flag-assert         #xb0000003c
   (:methods
-   (TODO-RENAME-9 (_type_ vector float float float) none 9)
-   (TODO-RENAME-10 (_type_ vector) none 10)
+   (init! (_type_ vector float float float) none 9)
+   (update! (_type_ vector) none 10)
    )
   )
 
-;; definition for method 9 of type cam-vector-seeker
-;; INFO: Return type mismatch int vs none.
-;; Used lq/sq
-(defmethod TODO-RENAME-9 cam-vector-seeker ((obj cam-vector-seeker) (arg0 vector) (arg1 float) (arg2 float) (arg3 float))
+(defmethod init! cam-vector-seeker ((obj cam-vector-seeker) (arg0 vector) (arg1 float) (arg2 float) (arg3 float))
   (cond
     (arg0
      (set! (-> obj target quad) (-> arg0 quad))
@@ -230,16 +232,12 @@
   (set! (-> obj accel) arg1)
   (set! (-> obj max-vel) arg2)
   (set! (-> obj max-partial) arg3)
+  0
   (none)
   )
- 
 
-;; definition for method 10 of type cam-vector-seeker
-;; INFO: Return type mismatch int vs none.
-;; TODO - vector-float*! replacement
-(defmethod TODO-RENAME-10 cam-vector-seeker ((obj cam-vector-seeker) (arg0 vector))
+(defmethod update! cam-vector-seeker ((obj cam-vector-seeker) (arg0 vector))
   (let ((gp-0 (new 'stack-no-clear 'vector)))
-    0.0
     (cond
       (arg0
        (vector+! gp-0 (-> obj target) arg0)
@@ -271,7 +269,6 @@
   (none)
   )
 
-;; definition of type cam-rotation-tracker
 (deftype cam-rotation-tracker (structure)
   ((inv-mat                 matrix           :inline :offset-assert 0)
    (no-follow               basic                    :offset-assert 64)

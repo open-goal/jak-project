@@ -5,10 +5,21 @@
 ;; name in dgo: actor-link-h
 ;; dgos: GAME, ENGINE
 
-;; The exact details of actor-link-h are not yet understood, but this system links entities to processes.
+;; The exact details of actor-link-h are not yet understood, but this system caches lookups for entities/process.
+;; Each entity has a res-lump.  Some entities may reference other entities.  This is done with an element in a res-lump
+;; than contains named lists (possibly of size 1) of other entities.  These lists may store entities by a name, or by an
+;; actor id (AID).
 
-;; One entity may have a reference to another entity, either by name or by ID.
-;; Some common ones are next-actor and prev-actor.
+;; This process is slow: it involves going from a process, to its entity, to doing a res-lump, deciding if you have an AID/string,
+;; then looking up the other actor by name, or AID.  Lookup by name is extremely slow, as it involves checking each actor's name
+;; a res lookup per every actor in every level.  Lookup by aid isn't bad, but is still a binary search through all actors.
+
+;; The next-actor and prev-actor res build a linked list of actors.
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;; Initial Lookup Functions
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;; these functions find actors before we've built the links.
 
 (defun entity-actor-lookup ((lump res-lump) (name symbol) (idx int))
   "Given an entity (the res-lump), look up a reference to another entity and return that entity."
@@ -29,6 +40,7 @@
                       )
           )
         )
+
     (the-as entity-actor
             ;; check in range, and lookup succesful
             (when (and v1-1 (< idx (the-as int (-> sv-16 elt-count))))
@@ -62,7 +74,11 @@
   )
 
 ;; entity-actors are part of a linked list of entities.
-;; It is not yet known where these are allocated.
+;; these prevent you from looking up next-actor, prev-actor again and again to iterate.
+;; The actor-link-info for an entity is stored in that res-lump's "extra"
+;; of course, this only works for cases where each entity has at most 1 process.
+
+;; These are allocated on the process heap of the entity's process.
 
 (deftype actor-link-info (basic)
   ((process process       :offset-assert 4)   ;; process for this entity
@@ -94,6 +110,10 @@
    )
   )
 
+;;;;;;;;;;;;;;;;
+;; Link Setup
+;;;;;;;;;;;;;;;;
+
 (defmethod next-actor entity-actor ((obj entity-actor))
   "Utility function to look up the next actor in the list, assuming we don't have actor-link-info yet."
   ;; look up reference to next-actor - this is slow.
@@ -124,6 +144,9 @@
     )
   )
 
+;;;;;;;;;;;;;;;;;;;;
+;; Access
+;;;;;;;;;;;;;;;;;;;;
 
 ;; These methods can now be used to get next/prev more efficiently, without having to do a res lookup.
 (defmethod get-next actor-link-info ((obj actor-link-info))

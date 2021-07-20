@@ -213,3 +213,24 @@
      ((the (function _varargs_ object) enter-state) ,@args)
      )
   )
+
+(defmacro static-sound-name (str)
+  "Convert a string constant to a static sound-name."
+
+  ;; all this is done at compile-time so we can come up with 2
+  ;; 64-bit constants to use
+  (when (> (string-length str) 16)
+    (error "static-sound-name got a string that is too long")
+    )
+  (let ((lo-val 0)
+        (hi-val 0)
+        )
+    (dotimes (i (string-length str))
+      (if (>= i 8)
+          (+! hi-val (ash (string-ref str i) (* 8 (- i 8))))
+          (+! lo-val (ash (string-ref str i) (* 8 i)))
+          )
+      )
+    `(new 'static 'sound-name :lo ,lo-val :hi ,hi-val)
+    )
+  )
