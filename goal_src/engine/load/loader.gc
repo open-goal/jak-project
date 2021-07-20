@@ -468,11 +468,11 @@
 ;; (some processes may want to wait for the stream to be preloaded, which won't happen with this disabled)
 (define *preload-spool-anims* #t)
 
-(defmethod first-using-status external-art-control ((obj external-art-control) (arg0 string) (arg1 int))
-  "Get the status of the first buffer that's in use. #f = none are in use"
+(defmethod file-status external-art-control ((obj external-art-control) (name string) (part int))
+  "Get the status of a file in this art control. #f = file not found"
 
   (dotimes (i 2)
-    (swhen (file-status (-> obj buffer i) arg0 arg1)
+    (swhen (file-status (-> obj buffer i) name part)
       (return bc)
       )
     )
@@ -837,7 +837,7 @@
     (spool-push *art-control* (-> arg0 name) sv-16 pp -20.0)
     (update *art-control* #f)
     (spool-push *art-control* (-> arg0 name) sv-16 pp -20.0)
-    (when (!= (first-using-status *art-control* (-> arg0 name) sv-16) 'active)
+    (when (!= (file-status *art-control* (-> arg0 name) sv-16) 'active)
      (cond
       (arg1
        (when (!= (if (> (-> pp skel active-channels) 0)
@@ -856,7 +856,7 @@
        (ja-channel-set! 0)
        )
       )
-     (while (!= (first-using-status *art-control* (-> arg0 name) sv-16) 'active)
+     (while (!= (file-status *art-control* (-> arg0 name) sv-16) 'active)
       (if (arg3 pp)
         (goto cfg-88)
         )
