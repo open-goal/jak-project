@@ -62,8 +62,6 @@ const std::unordered_set<std::string> g_functions_expected_to_reject = {
     // display
     "vblank-handler",  // asm
     "vif1-handler", "vif1-handler-debug",
-    // stats-h
-    "(method 11 perf-stat)", "(method 12 perf-stat)",
     // ripple - asm
     "ripple-execute-init", "ripple-create-wave-table", "ripple-apply-wave-table",
     "ripple-matrix-scale",
@@ -77,10 +75,6 @@ const std::unordered_set<std::string> g_functions_expected_to_reject = {
 
     // collide-mesh-h
     "(method 11 collide-mesh-cache)",  // asm
-
-    // actor-link-h
-    "(method 21 actor-link-info)",  // BUG: sc cfg / cfg-ir bug
-    "(method 20 actor-link-info)",
 
     "debug-menu-item-var-render"  // asm
 };
@@ -142,6 +136,9 @@ const std::unordered_set<std::string> g_functions_to_skip_compiling = {
 
     // asm
     "invalidate-cache-line",
+
+    // stats-h
+    "(method 11 perf-stat)", "(method 12 perf-stat)",
 
     // sync-info
     "(method 15 sync-info)",         // needs display stuff first

@@ -6,31 +6,35 @@
  */
 
 #include <cstdint>
+#include <cstring>
 #include "common/util/assert.h"
+#include "common/common_types.h"
 #include <vector>
 
 class BinaryReader {
  public:
-  explicit BinaryReader(const std::vector<uint8_t>& _buffer) : buffer(_buffer) {}
+  explicit BinaryReader(const std::vector<uint8_t>& _buffer) : m_buffer(_buffer) {}
 
   template <typename T>
   T read() {
-    assert(seek + sizeof(T) <= buffer.size());
-    T& obj = *(T*)(buffer.data() + seek);
-    seek += sizeof(T);
+    assert(m_seek + sizeof(T) <= m_buffer.size());
+    T obj;
+    memcpy(&obj, m_buffer.data() + m_seek, sizeof(T));
+    m_seek += sizeof(T);
     return obj;
   }
 
   void ffwd(int amount) {
-    seek += amount;
-    assert(seek <= buffer.size());
+    m_seek += amount;
+    assert(m_seek <= m_buffer.size());
   }
 
-  uint32_t bytes_left() const { return buffer.size() - seek; }
-  uint8_t* here() { return buffer.data() + seek; }
-  uint32_t get_seek() const { return seek; }
+  uint32_t bytes_left() const { return m_buffer.size() - m_seek; }
+  uint8_t* here() { return m_buffer.data() + m_seek; }
+  uint32_t get_seek() const { return m_seek; }
+  void set_seek(u32 seek) { m_seek = seek; }
 
  private:
-  std::vector<u8> buffer;
-  uint32_t seek = 0;
+  std::vector<u8> m_buffer;
+  uint32_t m_seek = 0;
 };

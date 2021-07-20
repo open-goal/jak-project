@@ -730,6 +730,25 @@ void SSA::make_vars(const Function& function, const DecompilerTypeSystem& dts) {
     }
   }
 
+  //  if (function.type.last_arg() != TypeSpec("none")) {
+  //    auto return_var = function.ir2.atomic_ops->end_op().return_var();
+  //    auto return_reg = return_var.reg();
+  //    const auto& last_block = blocks.at(blocks.size() - 1);
+  //    const auto& last_ins = last_block.ins.at(last_block.ins.size() - 1);
+  //    assert(last_ins.src.size() == 1);
+  //    auto return_idx = map.var_id(last_ins.src.at(0));
+  //
+  //    if (!program_read_vars[return_reg].empty()) {
+  //      program_read_vars[return_reg].at(return_idx).type =
+  //          TP_Type::make_from_ts(function.type.last_arg());
+  //    }
+  //
+  //    if (!program_write_vars[return_reg].empty()) {
+  //      program_write_vars[return_reg].at(return_idx).type =
+  //          TP_Type::make_from_ts(function.type.last_arg());
+  //    }
+  //  }
+
   merge_infos(program_write_vars, program_read_vars, dts);
 
   // copy types from input argument coloring moves:

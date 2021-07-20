@@ -379,6 +379,13 @@ bool DecompilerTypeSystem::tp_lca(TypeState* combined, const TypeState& add) {
     }
   }
 
+  bool diff = false;
+  auto new_type = tp_lca(combined->next_state_type, add.next_state_type, &diff);
+  if (diff) {
+    result = true;
+    combined->next_state_type = new_type;
+  }
+
   return result;
 }
 

@@ -6,6 +6,7 @@
 #include "config.h"
 #include "common/util/FileUtil.h"
 #include "common/versions.h"
+#include "decompiler/data/streamed_audio.h"
 
 int main(int argc, char** argv) {
   using namespace decompiler;
@@ -100,17 +101,27 @@ int main(int argc, char** argv) {
 
   if (config.process_game_text) {
     auto result = db.process_game_text_files();
-    file_util::write_text_file(file_util::get_file_path({"assets", "game_text.txt"}), result);
+    if (!result.empty()) {
+      file_util::write_text_file(file_util::get_file_path({"assets", "game_text.txt"}), result);
+    }
   }
 
   if (config.process_tpages) {
     auto result = db.process_tpages();
-    file_util::write_text_file(file_util::get_file_path({"assets", "tpage-dir.txt"}), result);
+    if (!result.empty()) {
+      file_util::write_text_file(file_util::get_file_path({"assets", "tpage-dir.txt"}), result);
+    }
   }
 
   if (config.process_game_count) {
     auto result = db.process_game_count_file();
-    file_util::write_text_file(file_util::get_file_path({"assets", "game_count.txt"}), result);
+    if (!result.empty()) {
+      file_util::write_text_file(file_util::get_file_path({"assets", "game_count.txt"}), result);
+    }
+  }
+
+  if (!config.audio_dir_file_name.empty()) {
+    process_streamed_audio(config.audio_dir_file_name, config.streamed_audio_file_names);
   }
 
   lg::info("Disassembly has completed successfully.");

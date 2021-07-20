@@ -11,7 +11,10 @@ namespace decompiler {
 
 namespace {
 
-std::unique_ptr<AtomicOp> convert_1(const Instruction& i0, int idx, bool hint_inline_asm);
+std::unique_ptr<AtomicOp> convert_1(const Instruction& i0,
+                                    int idx,
+                                    bool hint_inline_asm,
+                                    bool force_asm_branch);
 
 //////////////////////
 // Register Helpers
@@ -364,7 +367,9 @@ std::unique_ptr<AtomicOp> make_asm_op(const Instruction& i0, int idx) {
 }
 
 std::unique_ptr<AtomicOp> convert_1_allow_asm(const Instruction& i0, int idx) {
-  auto as_normal = convert_1(i0, idx, false);
+  // only used for delay slots, so fine to assume that this can never be an asm branch itself
+  // as there are no branches in delay slots anywhere.
+  auto as_normal = convert_1(i0, idx, false, false);
   if (as_normal) {
     return as_normal;
   }
@@ -426,21 +431,25 @@ std::unique_ptr<AtomicOp> make_branch(const IR2_Condition& condition,
   }
 }
 
-std::unique_ptr<AtomicOp> make_branch_no_delay(const IR2_Condition& condition,
-                                               bool likely,
-                                               int dest_label,
-                                               int my_idx) {
-  assert(likely);
-  IR2_BranchDelay delay(IR2_BranchDelay::Kind::NO_DELAY);
-  return std::make_unique<BranchOp>(likely, condition, dest_label, delay, my_idx);
-}
-
 std::unique_ptr<AtomicOp> make_asm_branch_no_delay(const IR2_Condition& condition,
                                                    bool likely,
                                                    int dest_label,
                                                    int my_idx) {
   assert(likely);
   return std::make_unique<AsmBranchOp>(likely, condition, dest_label, nullptr, my_idx);
+}
+
+std::unique_ptr<AtomicOp> make_branch_no_delay(const IR2_Condition& condition,
+                                               bool likely,
+                                               int dest_label,
+                                               int my_idx,
+                                               bool force_asm_branch) {
+  if (force_asm_branch) {
+    return make_asm_branch_no_delay(condition, likely, dest_label, my_idx);
+  }
+  assert(likely);
+  IR2_BranchDelay delay(IR2_BranchDelay::Kind::NO_DELAY);
+  return std::make_unique<BranchOp>(likely, condition, dest_label, delay, my_idx);
 }
 
 std::unique_ptr<AtomicOp> make_asm_branch(const IR2_Condition& condition,
@@ -705,12 +714,16 @@ std::unique_ptr<AtomicOp> convert_dsrl32_1(const Instruction& i0, int idx) {
 std::unique_ptr<AtomicOp> convert_likely_branch_1(const Instruction& i0,
                                                   IR2_Condition::Kind kind,
                                                   bool likely,
-                                                  int idx) {
+                                                  int idx,
+                                                  bool force_asm) {
   return make_branch_no_delay(IR2_Condition(kind, make_src_atom(i0.get_src(0).get_reg(), idx)),
-                              likely, i0.get_src(1).get_label(), idx);
+                              likely, i0.get_src(1).get_label(), idx, force_asm);
 }
 
-std::unique_ptr<AtomicOp> convert_beql_1(const Instruction& i0, int idx, bool likely) {
+std::unique_ptr<AtomicOp> convert_beql_1(const Instruction& i0,
+                                         int idx,
+                                         bool likely,
+                                         bool force_asm) {
   auto s0 = i0.get_src(0).get_reg();
   auto s1 = i0.get_src(1).get_reg();
   auto dest = i0.get_src(2).get_label();
@@ -735,10 +748,13 @@ std::unique_ptr<AtomicOp> convert_beql_1(const Instruction& i0, int idx, bool li
         IR2_Condition(IR2_Condition::Kind::EQUAL, make_src_atom(s0, idx), make_src_atom(s1, idx));
     condition.make_flipped();
   }
-  return make_branch_no_delay(condition, likely, dest, idx);
+  return make_branch_no_delay(condition, likely, dest, idx, force_asm);
 }
 
-std::unique_ptr<AtomicOp> convert_bnel_1(const Instruction& i0, int idx, bool likely) {
+std::unique_ptr<AtomicOp> convert_bnel_1(const Instruction& i0,
+                                         int idx,
+                                         bool likely,
+                                         bool force_asm) {
   auto s0 = i0.get_src(0).get_reg();
   auto s1 = i0.get_src(1).get_reg();
   auto dest = i0.get_src(2).get_label();
@@ -756,7 +772,7 @@ std::unique_ptr<AtomicOp> convert_bnel_1(const Instruction& i0, int idx, bool li
                               make_src_atom(s1, idx));
     condition.make_flipped();
   }
-  return make_branch_no_delay(condition, likely, dest, idx);
+  return make_branch_no_delay(condition, likely, dest, idx, force_asm);
 }
 
 std::unique_ptr<AtomicOp> convert_subu_1(const Instruction& i0, int idx) {
@@ -771,7 +787,10 @@ std::unique_ptr<AtomicOp> convert_subu_1(const Instruction& i0, int idx) {
   }
 }
 
-std::unique_ptr<AtomicOp> convert_1(const Instruction& i0, int idx, bool hint_inline_asm) {
+std::unique_ptr<AtomicOp> convert_1(const Instruction& i0,
+                                    int idx,
+                                    bool hint_inline_asm,
+                                    bool force_asm_branch) {
   switch (i0.kind) {
     case InstructionKind::OR:
       return convert_or_1(i0, idx);
@@ -895,15 +914,18 @@ std::unique_ptr<AtomicOp> convert_1(const Instruction& i0, int idx, bool hint_in
     case InstructionKind::MOVZ:
       return convert_cmov_1(i0, idx);
     case InstructionKind::BGTZL:
-      return convert_likely_branch_1(i0, IR2_Condition::Kind::GREATER_THAN_ZERO_SIGNED, true, idx);
+      return convert_likely_branch_1(i0, IR2_Condition::Kind::GREATER_THAN_ZERO_SIGNED, true, idx,
+                                     force_asm_branch);
     case InstructionKind::BGEZL:
-      return convert_likely_branch_1(i0, IR2_Condition::Kind::GEQ_ZERO_SIGNED, true, idx);
+      return convert_likely_branch_1(i0, IR2_Condition::Kind::GEQ_ZERO_SIGNED, true, idx,
+                                     force_asm_branch);
     case InstructionKind::BLTZL:
-      return convert_likely_branch_1(i0, IR2_Condition::Kind::LESS_THAN_ZERO_SIGNED, true, idx);
+      return convert_likely_branch_1(i0, IR2_Condition::Kind::LESS_THAN_ZERO_SIGNED, true, idx,
+                                     force_asm_branch);
     case InstructionKind::BEQL:
-      return convert_beql_1(i0, idx, true);
+      return convert_beql_1(i0, idx, true, force_asm_branch);
     case InstructionKind::BNEL:
-      return convert_bnel_1(i0, idx, true);
+      return convert_bnel_1(i0, idx, true, force_asm_branch);
     case InstructionKind::SUBU:
       return convert_subu_1(i0, idx);  // may fail
     default:
@@ -1787,7 +1809,8 @@ int convert_block_to_atomic_ops(int begin_idx,
                                 const std::vector<DecompilerLabel>& labels,
                                 FunctionAtomicOps* container,
                                 DecompWarnings& warnings,
-                                bool hint_inline_asm) {
+                                bool hint_inline_asm,
+                                bool block_ends_in_asm_branch) {
   container->block_id_to_first_atomic_op.push_back(container->ops.size());
   for (auto& instr = begin; instr < end;) {
     // how many instructions can we look at, at most?
@@ -1859,7 +1882,8 @@ int convert_block_to_atomic_ops(int begin_idx,
 
     if (!converted) {
       // try 1 instruction
-      op = convert_1(*instr, op_idx, hint_inline_asm);
+      bool force_asm_branch = n_instr == 1 && block_ends_in_asm_branch;
+      op = convert_1(*instr, op_idx, hint_inline_asm, force_asm_branch);
       if (op) {
         converted = true;
         length = 1;
@@ -1899,10 +1923,12 @@ int convert_block_to_atomic_ops(int begin_idx,
   return int(container->ops.size());
 }
 
-FunctionAtomicOps convert_function_to_atomic_ops(const Function& func,
-                                                 const std::vector<DecompilerLabel>& labels,
-                                                 DecompWarnings& warnings,
-                                                 bool hint_inline_asm) {
+FunctionAtomicOps convert_function_to_atomic_ops(
+    const Function& func,
+    const std::vector<DecompilerLabel>& labels,
+    DecompWarnings& warnings,
+    bool hint_inline_asm,
+    const std::unordered_set<int>& blocks_ending_in_asm_branches) {
   FunctionAtomicOps result;
 
   int last_op = 0;
@@ -1912,8 +1938,9 @@ FunctionAtomicOps convert_function_to_atomic_ops(const Function& func,
     if (block.end_word > block.start_word) {
       auto begin = func.instructions.begin() + block.start_word;
       auto end = func.instructions.begin() + block.end_word;
-      last_op = convert_block_to_atomic_ops(block.start_word, begin, end, labels, &result, warnings,
-                                            hint_inline_asm);
+      last_op = convert_block_to_atomic_ops(
+          block.start_word, begin, end, labels, &result, warnings, hint_inline_asm,
+          blocks_ending_in_asm_branches.find(i) != blocks_ending_in_asm_branches.end());
       if (i == int(func.basic_blocks.size()) - 1) {
         // we're the last block. insert the function end op.
         result.ops.push_back(std::make_unique<FunctionEndOp>(int(result.ops.size())));

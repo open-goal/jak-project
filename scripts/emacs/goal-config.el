@@ -99,6 +99,8 @@
     ;; set up indentation for GOAL keywords
     (put 'with-pp      'common-lisp-indent-function 0)
     (put 'while        'common-lisp-indent-function 1)
+    (put 'goal-src     'common-lisp-indent-function 1)
+    (put 'engine-src   'common-lisp-indent-function 1)
     (put 'rlet         'common-lisp-indent-function 1)
     (put 'until        'common-lisp-indent-function 1)
     (put 'countdown    'common-lisp-indent-function 1)

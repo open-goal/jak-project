@@ -149,58 +149,56 @@
    the entity of the process automatically. Will attempt to read pickup-type and amount from the entity, but if this
    fails will use the values in the arguments"
   (local-vars (tag res-tag))
-  (with-pp
-    ;; allocate.
-    (let ((obj (object-new allocation type-to-make (the-as int (-> type-to-make size)))))
-      (let ((ent (the res-lump (-> proc entity))))
-        ;; confirm that we allocated successfully
-        (when (zero? obj)
-          (go process-drawable-art-error "memory")
-          ;; this is already true...
-          (set! obj (the-as fact-info 0))
-          (goto cfg-10)
-          )
-
-        ;; remember who we belong to
-        (set! (-> obj process) proc)
-
-        ;; eco may override the pickup type and amount, so try to get this.
-        (let ((v1-6 (res-lump-data ent 'eco-info (pointer int32) :tag-ptr (& tag) :time 0.0)))
-          (cond
-            (v1-6
-             ;; eco-info lookup succeeded,
-             (let ((a0-6 (-> tag elt-count)))
-               ;; first thing is pickup type, it's always there
-               (set! (-> obj pickup-type) (the-as pickup-type (-> v1-6 0)))
-               ;; pickup amount is optional.
-               (set! pkup-amount (if (< (the-as uint 1) (the-as uint a0-6))
-                                     (the float (-> v1-6 1))
-                                     pkup-amount
-                                     )
-                     )
-               )
-             (set! (-> obj pickup-amount) pkup-amount)
-             )
-            (else
-             ;; no eco-info, use stuff from args
-             (set! (-> obj pickup-type) pkup-type)
-             (set! (-> obj pickup-amount) pkup-amount)
-             )
-            )
-          )
-
-        ;; read the options
-        (set! (-> obj options) (res-lump-value ent 'options uint))
-
-        ;; TODO - some enum bitfield here.
-        (if (nonzero? (logand #x80200 (the-as int (-> obj options))))
-            (set! (-> obj fade-time) (the-as uint (the int (* 300.0 (res-lump-float ent 'timeout)))))
-            )
+  ;; allocate.
+  (let ((obj (object-new allocation type-to-make (the-as int (-> type-to-make size)))))
+    (let ((ent (the res-lump (-> proc entity))))
+      ;; confirm that we allocated successfully
+      (when (zero? obj)
+        (go process-drawable-art-error "memory")
+        ;; this is already true...
+        (set! obj (the-as fact-info 0))
+        (goto cfg-10)
         )
 
-      (label cfg-10)
-      obj
+      ;; remember who we belong to
+      (set! (-> obj process) proc)
+
+      ;; eco may override the pickup type and amount, so try to get this.
+      (let ((v1-6 (res-lump-data ent 'eco-info (pointer int32) :tag-ptr (& tag) :time 0.0)))
+        (cond
+          (v1-6
+           ;; eco-info lookup succeeded,
+           (let ((a0-6 (-> tag elt-count)))
+             ;; first thing is pickup type, it's always there
+             (set! (-> obj pickup-type) (the-as pickup-type (-> v1-6 0)))
+             ;; pickup amount is optional.
+             (set! pkup-amount (if (< (the-as uint 1) (the-as uint a0-6))
+                                   (the float (-> v1-6 1))
+                                   pkup-amount
+                                   )
+                   )
+             )
+           (set! (-> obj pickup-amount) pkup-amount)
+           )
+          (else
+           ;; no eco-info, use stuff from args
+           (set! (-> obj pickup-type) pkup-type)
+           (set! (-> obj pickup-amount) pkup-amount)
+           )
+          )
+        )
+
+      ;; read the options
+      (set! (-> obj options) (res-lump-value ent 'options uint))
+
+      ;; TODO - some enum bitfield here.
+      (if (nonzero? (logand #x80200 (the-as int (-> obj options))))
+          (set! (-> obj fade-time) (the-as uint (the int (* 300.0 (res-lump-float ent 'timeout)))))
+          )
       )
+
+    (label cfg-10)
+    obj
     )
   )
 

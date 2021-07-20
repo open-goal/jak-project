@@ -128,6 +128,8 @@ const std::unordered_map<
         {"get-info", &Compiler::compile_get_info},
         {"autocomplete", &Compiler::compile_autocomplete},
         {"add-macro-to-autocomplete", &Compiler::compile_add_macro_to_autocomplete},
+        {"load-project", &Compiler::compile_load_project},
+        {"make", &Compiler::compile_make},
 
         // CONDITIONAL COMPILATION
         {"#cond", &Compiler::compile_gscond},
