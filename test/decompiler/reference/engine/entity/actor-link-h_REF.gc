@@ -233,10 +233,64 @@
   )
 
 ;; definition for method 20 of type actor-link-info
-;; ERROR: function was not converted to expressions. Cannot decompile.
+(defmethod
+  send-to-all-after
+  actor-link-info
+  ((obj actor-link-info) (message object))
+  (with-pp
+   (let ((iter (-> obj next))
+         (result (the-as object #f))
+         )
+    (while iter
+     (let ((proc (-> iter extra process)))
+      (when proc
+       (let ((msg-block (new 'stack-no-clear 'event-message-block)))
+        (set! (-> msg-block from) pp)
+        (set! (-> msg-block num-params) 0)
+        (set! (-> msg-block message) (the-as basic message))
+        (let ((v1-3 (send-event-function proc msg-block)))
+         (b! v1-3 cfg-4 :likely-delay (set! result v1-3))
+         )
+        )
+       (label cfg-4)
+       )
+      )
+     (set! iter (entity-actor-lookup iter 'next-actor 0))
+     )
+    result
+    )
+   )
+  )
 
 ;; definition for method 21 of type actor-link-info
-;; ERROR: function was not converted to expressions. Cannot decompile.
+(defmethod
+  send-to-all-before
+  actor-link-info
+  ((obj actor-link-info) (arg0 object))
+  (with-pp
+   (let ((s4-0 (-> obj prev))
+         (s5-0 (the-as object #f))
+         )
+    (while s4-0
+     (let ((a0-1 (-> s4-0 extra process)))
+      (when a0-1
+       (let ((a1-1 (new 'stack-no-clear 'event-message-block)))
+        (set! (-> a1-1 from) pp)
+        (set! (-> a1-1 num-params) 0)
+        (set! (-> a1-1 message) (the-as basic arg0))
+        (let ((v1-3 (send-event-function a0-1 a1-1)))
+         (b! v1-3 cfg-4 :likely-delay (set! s5-0 v1-3))
+         )
+        )
+       (label cfg-4)
+       )
+      )
+     (set! s4-0 (entity-actor-lookup s4-0 'prev-actor 0))
+     )
+    s5-0
+    )
+   )
+  )
 
 ;; definition for method 23 of type actor-link-info
 ;; INFO: Return type mismatch int vs none.
@@ -436,3 +490,7 @@
    incomplete-count
    )
   )
+
+
+
+

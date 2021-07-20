@@ -51,9 +51,9 @@
   (:methods
     (dummy-9 (_type_) none 9)
     (dummy-10 (_type_) none 10)
-    (PERF-COUNTER-REG-ACCESS-11 (_type_) none 11)
-    (PERF-COUNTER-REG-ACCESS-12 (_type_) none 12)
-    (update-wait-stats-13 (_type_ uint uint uint) none 13)
+    (reset! (_type_) none 11)
+    (read! (_type_) none 12)
+    (update-wait-stats (_type_ uint uint uint) none 13)
     )
   )
 
@@ -68,17 +68,45 @@
 ;; failed to figure out what this is:
 (set! (-> perf-stat-array heap-base) (the-as uint 52))
 
-(defmethod PERF-COUNTER-REG-ACCESS-11 perf-stat ((obj perf-stat))
+(defmethod reset! perf-stat ((obj perf-stat))
   "Perfomance counters are not implemented, so this does nothing."
+  #|
+  (let ((v1-0 (-> obj ctrl)))
+    (+! (-> obj count) 1)
+    (b! (zero? v1-0) cfg-2)
+    (.mtc0 Perf r0-0)
+    (.sync.l)
+    (.sync.p)
+    (.mtpc pcr0 r0-0)
+    (.mtpc pcr1 r0-0)
+    (.sync.l)
+    (.sync.p)
+    (.mtc0 Perf v1-0)
+    )
+  (.sync.l)
+  (.sync.p)
+  (label cfg-2)
+  |#
   (none)
   )
 
-(defmethod PERF-COUNTER-REG-ACCESS-12 perf-stat ((obj perf-stat))
+(defmethod read! perf-stat ((obj perf-stat))
   "Perfomance counters are not implemented, so this does nothing."
+  #|
+  (b! (zero? (-> obj ctrl)) cfg-2)
+  (.mtc0 Perf r0-0)
+  (.sync.l)
+  (.sync.p)
+  (.mfpc v1-1 pcr0)
+  (+! (-> obj accum0) (the-as uint v1-1))
+  (.mfpc v1-3 pcr1)
+  (+! (-> obj accum1) (the-as uint v1-3))
+  (label cfg-2)
+  |#
   (none)
   )
 
-(defmethod update-wait-stats-13 perf-stat ((obj perf-stat) (arg0 uint) (arg1 uint) (arg2 uint))
+(defmethod update-wait-stats perf-stat ((obj perf-stat) (arg0 uint) (arg1 uint) (arg2 uint))
   (when (nonzero? (-> obj ctrl))
    (set! (-> obj to-vu0-waits) (+ (-> obj to-vu0-waits) arg0))
    (set! (-> obj to-spr-waits) (+ (-> obj to-spr-waits) arg1))

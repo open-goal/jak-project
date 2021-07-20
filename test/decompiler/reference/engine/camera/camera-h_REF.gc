@@ -218,8 +218,8 @@
   (:methods
     (init-cam-float-seeker (_type_ float float float float) none 9)
     (copy-cam-float-seeker (_type_ _type_) none 10)
-    (TODO-RENAME-11 (_type_ float) none 11)
-    (TODO-RENAME-12 (_type_ float) float 12)
+    (update! (_type_ float) none 11)
+    (jump-to-target! (_type_ float) float 12)
     )
   )
 
@@ -269,32 +269,33 @@
 
 ;; definition for method 11 of type cam-float-seeker
 ;; INFO: Return type mismatch int vs none.
-(defmethod TODO-RENAME-11 cam-float-seeker ((obj cam-float-seeker) (arg0 float))
+(defmethod update! cam-float-seeker ((obj cam-float-seeker) (offset float))
   0.0
   0.0
-  (let* ((f1-2 (- (+ (-> obj target) arg0) (-> obj value)))
-         (f0-5 (* (-> obj max-partial) (fabs f1-2)))
+  (let* ((pos-error (- (+ (-> obj target) offset) (-> obj value)))
+         (partial-velocity-limit (* (-> obj max-partial) (fabs pos-error)))
          )
-   (let ((f1-3 (* f1-2 (* (-> obj accel) (-> *display* time-adjust-ratio)))))
-    (+! (-> obj vel) f1-3)
+   (let
+    ((daccel (* pos-error (* (-> obj accel) (-> *display* time-adjust-ratio)))))
+    (+! (-> obj vel) daccel)
     )
-   (let ((f1-6 (fabs (-> obj vel)))
-         (f0-6 (fmin f0-5 (-> obj max-vel)))
+   (let ((abs-vel (fabs (-> obj vel)))
+         (abs-vel-limit (fmin partial-velocity-limit (-> obj max-vel)))
          )
-    (if (< f0-6 f1-6)
-     (set! (-> obj vel) (* (-> obj vel) (/ f0-6 f1-6)))
+    (if (< abs-vel-limit abs-vel)
+     (set! (-> obj vel) (* (-> obj vel) (/ abs-vel-limit abs-vel)))
      )
     )
    )
-  (let ((f0-10 (* (-> obj vel) (-> *display* time-adjust-ratio))))
-   (+! (-> obj value) f0-10)
+  (let ((dpos (* (-> obj vel) (-> *display* time-adjust-ratio))))
+   (+! (-> obj value) dpos)
    )
   0
   (none)
   )
 
 ;; definition for method 12 of type cam-float-seeker
-(defmethod TODO-RENAME-12 cam-float-seeker ((obj cam-float-seeker) (arg0 float))
+(defmethod jump-to-target! cam-float-seeker ((obj cam-float-seeker) (arg0 float))
   (set! (-> obj value) (+ (-> obj target) arg0))
   (let ((f0-2 0.0))
    (set! (-> obj vel) f0-2)
@@ -315,8 +316,8 @@
   :size-assert         #x3c
   :flag-assert         #xb0000003c
   (:methods
-    (TODO-RENAME-9 (_type_ vector float float float) none 9)
-    (TODO-RENAME-10 (_type_ vector) none 10)
+    (init! (_type_ vector float float float) none 9)
+    (update! (_type_ vector) none 10)
     )
   )
 
@@ -336,7 +337,7 @@
 ;; INFO: Return type mismatch int vs none.
 ;; Used lq/sq
 (defmethod
-  TODO-RENAME-9
+  init!
   cam-vector-seeker
   ((obj cam-vector-seeker) (arg0 vector) (arg1 float) (arg2 float) (arg3 float))
   (cond
@@ -359,10 +360,7 @@
 
 ;; definition for method 10 of type cam-vector-seeker
 ;; INFO: Return type mismatch int vs none.
-(defmethod
-  TODO-RENAME-10
-  cam-vector-seeker
-  ((obj cam-vector-seeker) (arg0 vector))
+(defmethod update! cam-vector-seeker ((obj cam-vector-seeker) (arg0 vector))
   (let ((gp-0 (new 'stack-no-clear 'vector)))
    0.0
    (cond
@@ -745,3 +743,7 @@
 
 ;; failed to figure out what this is:
 0
+
+
+
+

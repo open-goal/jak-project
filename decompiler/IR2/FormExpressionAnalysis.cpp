@@ -967,7 +967,8 @@ void SimpleExpressionElement::update_from_stack_add_i(const Env& env,
   } else {
     auto casted0 = args.at(0);
 
-    if (!arg0_i && !arg0_u && arg0_type.typespec() != TypeSpec("binteger")) {
+    if (!arg0_i && !arg0_u && arg0_type.typespec() != TypeSpec("binteger") &&
+        !env.dts->ts.tc(TypeSpec("integer"), arg0_type.typespec())) {
       casted0 = pool.alloc_single_element_form<CastElement>(
           nullptr, TypeSpec(arg0_i ? "int" : "uint"), args.at(0));
     }
@@ -975,8 +976,9 @@ void SimpleExpressionElement::update_from_stack_add_i(const Env& env,
     auto casted1 = pool.alloc_single_element_form<CastElement>(
         nullptr, TypeSpec(arg0_i ? "int" : "uint"), args.at(1));
 
-    auto new_form = pool.alloc_element<GenericElement>(
+    FormElement* new_form = pool.alloc_element<GenericElement>(
         GenericOperator::make_fixed(FixedOperatorKind::ADDITION), casted0, casted1);
+
     result->push_back(new_form);
   }
 }
@@ -3289,6 +3291,23 @@ Form* try_make_constant_from_int_for_compare(s64 value,
   }
   return nullptr;
 }
+
+std::vector<Form*> cast_to_64_bit(const std::vector<Form*>& forms,
+                                  const std::vector<TypeSpec>& types,
+                                  FormPool& pool,
+                                  const Env& env) {
+  std::vector<Form*> result;
+  for (size_t i = 0; i < forms.size(); i++) {
+    if (env.dts->ts.tc(TypeSpec("uint128"), types.at(i))) {
+      result.push_back(cast_form(forms[i], TypeSpec("uint"), pool, env));
+    } else if (env.dts->ts.tc(TypeSpec("int128"), types.at(i))) {
+      result.push_back(cast_form(forms[i], TypeSpec("int"), pool, env));
+    } else {
+      result.push_back(forms[i]);
+    }
+  }
+  return result;
+}
 }  // namespace
 
 FormElement* ConditionElement::make_zero_check_generic(const Env& env,
@@ -3388,16 +3407,18 @@ FormElement* ConditionElement::make_equal_check_generic(const Env& env,
       return pool.alloc_element<GenericElement>(GenericOperator::make_fixed(FixedOperatorKind::EQ),
                                                 forms_with_cast);
     } else {
-      return pool.alloc_element<GenericElement>(GenericOperator::make_fixed(FixedOperatorKind::EQ),
-                                                source_forms);
+      return pool.alloc_element<GenericElement>(
+          GenericOperator::make_fixed(FixedOperatorKind::EQ),
+          cast_to_64_bit(source_forms, source_types, pool, env));
     }
   }
 }
 
-FormElement* ConditionElement::make_not_equal_check_generic(const Env&,
-                                                            FormPool& pool,
-                                                            const std::vector<Form*>& source_forms,
-                                                            const std::vector<TypeSpec>&) {
+FormElement* ConditionElement::make_not_equal_check_generic(
+    const Env& env,
+    FormPool& pool,
+    const std::vector<Form*>& source_forms,
+    const std::vector<TypeSpec>& source_types) {
   assert(source_forms.size() == 2);
   // (!= thing '())
   auto ref = source_forms.at(1);
@@ -3409,8 +3430,9 @@ FormElement* ConditionElement::make_not_equal_check_generic(const Env&,
         pool.alloc_single_element_form<GenericElement>(
             nullptr, GenericOperator::make_fixed(FixedOperatorKind::NULLP), source_forms.at(0)));
   } else {
-    return pool.alloc_element<GenericElement>(GenericOperator::make_fixed(FixedOperatorKind::NEQ),
-                                              source_forms);
+    return pool.alloc_element<GenericElement>(
+        GenericOperator::make_fixed(FixedOperatorKind::NEQ),
+        cast_to_64_bit(source_forms, source_types, pool, env));
   }
 }
 
@@ -4088,6 +4110,7 @@ void BranchElement::push_to_stack(const Env& env, FormPool& pool, FormStack& sta
                                m_op->to_string(env));
   }
 
+  assert(!m_op->likely());
   auto op = pool.alloc_element<TranslatedAsmBranch>(branch_condition, branch_delay,
                                                     m_op->label_id(), m_op->likely());
   // fmt::print("rewrote (non-asm) as {}\n", op->to_string(env));
