@@ -77,11 +77,8 @@
     (when v0-2
      (set! (-> s5-0 (-> s5-0 length)) arg0)
      (set! (-> obj art-group-array (-> s5-0 length)) v0-2)
-     (set! (-> s5-0 length) (+ (-> s5-0 length) 1))
-     (set!
-      (-> obj art-group-array length)
-      (+ (-> obj art-group-array length) 1)
-      )
+     (1+! (-> s5-0 length))
+     (1+! (-> obj art-group-array length))
      )
     v0-2
     )
@@ -115,7 +112,7 @@
       (if (< sp *stack-top*)
         (set! sp (&+ *kernel-sp* -1024))
         )|#
-    (let ((s5-1 (loado (the-as string arg0) arg1)))
+    (let ((s5-1 (the-as drawable (loado (the-as string arg0) arg1))))
       (if (and s5-1 (type-type? (-> s5-1 type) drawable))
         (login s5-1)
         )
@@ -126,17 +123,6 @@
     (login arg0)
     )
    )
-  #|(with-sp (protect sp
-    (if (< sp *stack-top*)
-      (set! sp (&+ *kernel-sp* -1024))
-      )|#
-    (let ((s5-0 (loado arg0 arg1)))
-      (if (type-type? (-> s5-0 type) art)
-              (dummy-9 s5-0)
-              (the-as art #f)
-              )
-      )
-    ;;))
   )
 
 (defun art-load ((arg0 string) (arg1 kheap))
@@ -146,7 +132,7 @@
     (if (< sp *stack-top*)
       (set! sp (&+ *kernel-sp* -1024))
       )|#
-    (let ((s5-0 (loado arg0 arg1)))
+    (let ((s5-0 (the-as art (loado arg0 arg1))))
       (if (type-type? (-> s5-0 type) art)
               (dummy-9 s5-0)
               (the-as art #f)
@@ -163,7 +149,7 @@
       (if (< sp *stack-top*)
         (set! sp (&+ *kernel-sp* -1024))
         )|#
-      (let ((s3-1 (loado (make-file-name (file-kind art-group) arg0 arg2 #f) arg1)))
+      (let ((s3-1 (the-as art-group (loado (make-file-name (file-kind art-group) arg0 arg2 #f) arg1))))
         (cond
           ((not s3-1)
            (format 0 "ERROR: art-group ~A is not a valid file.~%" arg0)
@@ -186,10 +172,10 @@
     )
   )
 
-(defmethod want-file external-art-buffer ((obj external-art-buffer) (arg0 symbol) (arg1 int) (arg2 handle) (arg3 float))
+(defmethod want-file external-art-buffer ((obj external-art-buffer) (arg0 string) (arg1 int) (arg2 handle) (arg3 float))
   "Request a new file to be loaded into this buffer."
 
-  (set! (-> obj pending-load-file) (the-as string arg0))
+  (set! (-> obj pending-load-file) arg0)
   (set! (-> obj pending-load-file-part) arg1)
   (set! (-> obj pending-load-file-owner) arg2)
   (set! (-> obj pending-load-file-priority) arg3)
@@ -484,7 +470,7 @@
       )
      (('locked)
       ;; this buffer is locked and needs to be unlocked before it can be used.
-      (when (and (not (-> obj locked?)) (handle->process (-> obj load-file-owner))
+      (when (and (not (-> obj locked?)) (handle->process (-> obj load-file-owner)))
        ;; we want to be used, unlock this buffer and lock the other just in case.
        (link-file obj (-> obj art-group))
        (set! (-> obj other locked?) #t)
@@ -634,7 +620,7 @@
     (if (and (-> obj rec s3-2 name)
              (not (name= (-> obj rec s3-2 name) (-> obj active-stream)))
              )
-      (set! s4-4 (-> obj rec))
+      (set! s4-4 (-> obj rec 0))
       )
     )
    (if (and (-> obj preload-stream name)
@@ -750,12 +736,12 @@
    proc = a process to recalc from"
   `(when (and (= ,priority SPOOL_PRIORITY_RECALC) ,proc)
     (let ((target-trans (target-pos 0)))
-      (set! ,priority (vector-vector-distance target-trans (-> ,proc root trans)))
+      (set! ,priority (vector-vector-distance target-trans (-> (the-as process-drawable ,proc) root trans)))
       )
     )
   )
 
-(defmethod try-preload-stream external-art-control ((obj external-art-control) (arg0 string) (arg1 int) (arg2 process-drawable) (arg3 float))
+(defmethod try-preload-stream external-art-control ((obj external-art-control) (arg0 string) (arg1 int) (arg2 process) (arg3 float))
   "Set a new stream to be preloaded, if appropriate."
 
   (spool-calc-priority arg3 arg2)
@@ -771,7 +757,7 @@
   0
   )
 
-(defmethod spool-push external-art-control ((obj external-art-control) (name string) (part int) (proc process-drawable) (priority float))
+(defmethod spool-push external-art-control ((obj external-art-control) (name string) (part int) (proc process) (priority float))
   "Push a spool-anim to the spool array. There are only space for three, and only the three highest priority spool anims will be kept. (lowest priority = top)"
 
   (spool-calc-priority priority proc)
@@ -837,6 +823,13 @@
   0
   )
 
+(defun-extern level-hint-surpress! none) ;; ?
+(defun-extern ja-channel-push! int int none) ;; TODO temp
+(defun-extern ja-channel-set! int none) ;; TODO temp
+(defun-extern joint-control-channel-group-eval! joint-control-channel art-joint-anim (function joint-control-channel float float float) none) ;; TODO temp
+(defun-extern joint-control-channel-group! joint-control-channel art-joint-anim (function joint-control-channel float float float) none) ;; TODO temp
+(defun-extern ja-aframe-num int float) ;; TODO temp
+(define-extern ja-abort-spooled-anim (function spool-anim art-joint-anim int int :behavior process-drawable))
 (defbehavior ja-play-spooled-anim process-drawable ((arg0 spool-anim) (arg1 art-joint-anim) (arg2 art-joint-anim) (arg3 (function process-drawable symbol)))
   "Set up and start playing a spooled animation. details not understood yet."
 
@@ -860,7 +853,7 @@
   (set! sv-56 0)
   (set! sv-64 (new-sound-id))
   (dummy-17 *load-state* (-> arg0 command-list))
-  (set-setting! *setting-control* self 'spooling (process->ppointer self) 0.0 0)
+  (set-setting! *setting-control* self 'spooling (the-as symbol (process->ppointer self)) 0.0 0)
   (logior! (-> self skel status) #x7)
   (kill-current-level-hint '() '() 'die)
   (level-hint-surpress!)
@@ -1067,8 +1060,6 @@
   )
 
 
-;; todo
-(define-extern *art-control* external-art-control)
 (if (zero? *art-control*)
   (set! *art-control* (new 'global 'external-art-control))
   )
