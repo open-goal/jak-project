@@ -1491,6 +1491,26 @@ std::unique_ptr<AtomicOp> convert_dsll32_4(const Instruction& i0,
   return nullptr;
 }
 
+std::unique_ptr<AtomicOp> convert_fp_branch_with_nop(const Instruction& i0,
+                                                     const Instruction& i1,
+                                                     const Instruction& i2,
+                                                     const Instruction& i3,
+                                                     IR2_Condition::Kind kind,
+                                                     int idx) {
+  if (i1.kind != InstructionKind::VNOP) {
+    return nullptr;
+  }
+  if (i2.kind == InstructionKind::BC1T || i2.kind == InstructionKind::BC1F) {
+    IR2_Condition condition(kind, make_src_atom(i0.get_src(0).get_reg(), idx),
+                            make_src_atom(i0.get_src(1).get_reg(), idx));
+    if (i2.kind == InstructionKind::BC1F) {
+      condition.invert();
+    }
+    return make_branch(condition, i3, false, i2.get_src(0).get_label(), idx);
+  }
+  return nullptr;
+}
+
 std::unique_ptr<AtomicOp> convert_4(const Instruction& i0,
                                     const Instruction& i1,
                                     const Instruction& i2,
@@ -1499,6 +1519,8 @@ std::unique_ptr<AtomicOp> convert_4(const Instruction& i0,
   switch (i0.kind) {
     case InstructionKind::DSLL32:
       return convert_dsll32_4(i0, i1, i2, i3, idx);
+    case InstructionKind::CEQS:
+      return convert_fp_branch_with_nop(i0, i1, i2, i3, IR2_Condition::Kind::FLOAT_EQUAL, idx);
     default:
       return nullptr;
   }
