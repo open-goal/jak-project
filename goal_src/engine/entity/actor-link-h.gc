@@ -432,7 +432,7 @@
   )
 
 (defun actor-link-subtask-complete-hook ((arg0 entity-actor) (arg1 (pointer symbol)))
-  "Sets arg1 if the thing is complete. Returns the opposite value."
+  "Sets arg1 if the thing is complete. Does not continue the apply if the complete flag is set."
   (cond
     ((logtest? (-> (the-as entity-links (-> arg0 extra)) perm status) (entity-perm-status complete))
      (set! (-> arg1 0) #t)
@@ -446,13 +446,9 @@
   )
 
 (defun actor-link-dead-hook ((arg0 entity-actor) (arg1 (pointer symbol)))
-  "Sets arg1 is the thing is dead. Returns the opposite value."
+  "Sets arg1 is the thing is dead. Does not continue the apply if the dead flag is set."
   (cond
-    ((nonzero? (logand
-                (-> (the-as entity-links (-> arg0 extra)) perm status)
-                (entity-perm-status dead)
-                )
-               )
+    ((logtest? (-> (the-as entity-links (-> arg0 extra)) perm status) (entity-perm-status dead))
      (set! (-> arg1 0) #t)
      #f
      )
