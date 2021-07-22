@@ -1801,6 +1801,8 @@ std::string fixed_operator_to_string(FixedOperatorKind kind) {
       return "vector-!";
     case FixedOperatorKind::VECTOR_PLUS:
       return "vector+!";
+    case FixedOperatorKind::VECTOR_CROSS:
+      return "vector-cross!";
     case FixedOperatorKind::VECTOR_FLOAT_PRODUCT:
       return "vector-float*!";
     case FixedOperatorKind::L32_NOT_FALSE_CBOOL:

@@ -200,12 +200,12 @@ class SimpleExpressionElement : public FormElement {
                                 FormStack& stack,
                                 std::vector<FormElement*>* result,
                                 bool allow_side_effects);
-  void update_from_stack_vector_plus_minus(bool is_add,
-                                           const Env& env,
-                                           FormPool& pool,
-                                           FormStack& stack,
-                                           std::vector<FormElement*>* result,
-                                           bool allow_side_effects);
+  void update_from_stack_vector_plus_minus_cross(FixedOperatorKind op_kind,
+                                                 const Env& env,
+                                                 FormPool& pool,
+                                                 FormStack& stack,
+                                                 std::vector<FormElement*>* result,
+                                                 bool allow_side_effects);
   void update_from_stack_vector_float_product(const Env& env,
                                               FormPool& pool,
                                               FormStack& stack,

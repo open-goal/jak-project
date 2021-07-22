@@ -1144,12 +1144,13 @@ void SimpleExpressionElement::update_from_stack_pcypld(const Env& env,
   result->push_back(new_form);
 }
 
-void SimpleExpressionElement::update_from_stack_vector_plus_minus(bool is_add,
-                                                                  const Env& env,
-                                                                  FormPool& pool,
-                                                                  FormStack& stack,
-                                                                  std::vector<FormElement*>* result,
-                                                                  bool allow_side_effects) {
+void SimpleExpressionElement::update_from_stack_vector_plus_minus_cross(
+    FixedOperatorKind op_kind,
+    const Env& env,
+    FormPool& pool,
+    FormStack& stack,
+    std::vector<FormElement*>* result,
+    bool allow_side_effects) {
   std::vector<Form*> popped_args =
       pop_to_forms({m_expr.get_arg(0).var(), m_expr.get_arg(1).var(), m_expr.get_arg(2).var()}, env,
                    pool, stack, allow_side_effects);
@@ -1162,8 +1163,7 @@ void SimpleExpressionElement::update_from_stack_vector_plus_minus(bool is_add,
   }
 
   auto new_form = pool.alloc_element<GenericElement>(
-      GenericOperator::make_fixed(is_add ? FixedOperatorKind::VECTOR_PLUS
-                                         : FixedOperatorKind::VECTOR_MINUS),
+      GenericOperator::make_fixed(op_kind),
       std::vector<Form*>{popped_args.at(0), popped_args.at(1), popped_args.at(2)});
   result->push_back(new_form);
 }
@@ -1875,10 +1875,16 @@ void SimpleExpressionElement::update_from_stack(const Env& env,
       update_from_stack_pcypld(env, pool, stack, result, allow_side_effects);
       break;
     case SimpleExpression::Kind::VECTOR_PLUS:
-      update_from_stack_vector_plus_minus(true, env, pool, stack, result, allow_side_effects);
+      update_from_stack_vector_plus_minus_cross(FixedOperatorKind::VECTOR_PLUS, env, pool, stack,
+                                                result, allow_side_effects);
       break;
     case SimpleExpression::Kind::VECTOR_MINUS:
-      update_from_stack_vector_plus_minus(false, env, pool, stack, result, allow_side_effects);
+      update_from_stack_vector_plus_minus_cross(FixedOperatorKind::VECTOR_MINUS, env, pool, stack,
+                                                result, allow_side_effects);
+      break;
+    case SimpleExpression::Kind::VECTOR_CROSS:
+      update_from_stack_vector_plus_minus_cross(FixedOperatorKind::VECTOR_CROSS, env, pool, stack,
+                                                result, allow_side_effects);
       break;
     case SimpleExpression::Kind::VECTOR_FLOAT_PRODUCT:
       update_from_stack_vector_float_product(env, pool, stack, result, allow_side_effects);

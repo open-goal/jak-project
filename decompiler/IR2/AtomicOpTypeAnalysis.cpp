@@ -200,6 +200,7 @@ TP_Type SimpleExpression::get_type(const TypeState& input,
       return TP_Type::make_from_ts("uint");
     case Kind::VECTOR_PLUS:
     case Kind::VECTOR_MINUS:
+    case Kind::VECTOR_CROSS:
       return TP_Type::make_from_ts("vector");
     case Kind::VECTOR_FLOAT_PRODUCT:
       return TP_Type::make_from_ts("vector");
