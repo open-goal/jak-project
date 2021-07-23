@@ -5,12 +5,27 @@
 ;; name in dgo: collide-func
 ;; dgos: GAME, ENGINE
 
+;; This file contains the primitive intersection functions used for collision.
+;; Most take a description of primitive and a "probe"
+;; The probe has an origin and a direction.  The length of the direction vector is the length
+;; of the probe.
 
-;; Many of the functions in this file use this "raw-ray-sphere-intersect" function.
-;; It takes two arguments by vf registers (vf1, vf2)
+;; Generally, collision functions will return the fraction of the probe to reach the primitive.
+;; For example, if the probe is 5.0 long, and hits the primitive 2.0 away from the probe origin,
+;; the return value (u) would be 0.4.
+
+;; If (u) would be > 1.0, then it counts as "not intersecting" (object too far away)
+;; If (u) would be < 0.0, then it counts as "not intersecting" (object behind probe)
+;; If there's a miss, return COLLISION_MISS, a large negative number.
+;; If we are inside of the primitive, return 0.0
+
+(defconstant COLLISION_MISS -100000000.0)
+
 
 
 (defun raw-ray-sphere-intersect ((arg0 float))
+  "DANGER: this function takes two arguments by vf registers.
+   As a result, it doesn't work properly in OpenGOAL.  See the functions below."
   (local-vars
    (v1-1 float)
    (v1-2 float)
@@ -20,6 +35,7 @@
    (a0-3 int)
    (a1-0 float)
    )
+  (crash!)
   (rlet ((Q :class vf)
          (vf0 :class vf)
          (vf1 :class vf)
@@ -33,7 +49,7 @@
          (vf9 :class vf)
          )
     (init-vf0-vector)
-    (.mov vf3 arg0)       ;; vf3 = radius
+    (.mov vf3 arg0) ;; vf3 = radius
     ;; sphere is at the origin, vf1 is source of the ray (o)
     ;; vf2 is the ray's unit vector (u)
     (.mul.vf vf4 vf2 vf2) ;; vf4 = u.^2
@@ -54,11 +70,9 @@
         (.mul.x.vf vf7 vf6 vf4)
         (.mov a1-0 vf6)
         (.mul.vf vf8 vf5 vf5)
-        (format #t "asdf~%")
         (b! (< (the-as int a1-0) 0) cfg-7 :delay (set! a0-2 a0-1))
         (.mul.vf vf4 vf0 Q :mask #b1000)
         (.sub.vf vf9 vf8 vf7)
-        (format #t "Floats: ~f ~f~%" a0-2 v1-0)
         (b! (= a0-2 v1-0) cfg-6 :delay (.mov v1-1 vf5))
         )
       (.sqrt.vf Q vf9 :ftf #b1)
@@ -88,6 +102,8 @@
   )
 
 (defmacro pc-port-do-raw-ray-sphere-intersect (rad vf1-val vf2-val)
+  "Calls to raw-ray-sphere-intersect should be replaced with this macro,
+   and this should be given vf1, vf2, which contain the origin and direction of the probe."
   `(let ((vf1-storage (new 'stack-no-clear 'vector))
          (vf2-storage (new 'stack-no-clear 'vector))
          )
@@ -99,13 +115,21 @@
 
 
 (defun pc-port-raw-ray-sphere-implementation ((rad float) (vf1-val vector) (vf2-val vector))
+  "This is one of the main primitives for collision.
+   Assumes a sphere of radius rad is at the origin.
+   Handles:
+     - miss (return MISS)
+     - behind (return MISS)
+     - too far away (return MISS)
+     - inside (return 0)
+   "
   (local-vars
    (v1-1 int)
    (v1-2 int)
    (v1-4 int)
    (a0-1 float)
    (a0-2 float)
-   (a0-3 float)
+   (a0-3 int)
    (a1-0 int)
    )
   (rlet ((Q :class vf)
@@ -142,16 +166,14 @@
         (.mul.x.vf vf7 vf6 vf4)
         (.mov a1-0 vf6)
         (.mul.vf vf8 vf5 vf5)
-        (print-vf vf6)
         (b! (< (the-as int a1-0) 0) cfg-7 :delay (set! a0-2 a0-1)) ;; in the sphere
         (.mul.vf vf4 vf0 Q :mask #b1000)
         (.sub.vf vf9 vf8 vf7)
-        ;;(format #t "floats ~f ~f~%" a0-2 v1-0)
-        (b! (= a0-2 v1-0) cfg-6 :delay (.mov v1-1 vf5)) ;; bad direction
+        (b! (= a0-2 v1-0) cfg-6 :delay (.mov v1-1 vf5)) ;; bad denominator in division
         )
       (.sqrt.vf Q vf9 :ftf #b1)
-      (b! (>= (the-as int v1-1) 0) cfg-6 :delay (.mov v1-2 vf9)) ;; bad sqrt
-      (b! (< (the-as int v1-2) 0) cfg-6 :delay 1.0)
+      (b! (>= (the-as int v1-1) 0) cfg-6 :delay (.mov v1-2 vf9)) ;; wrong dir
+      (b! (< (the-as int v1-2) 0) cfg-6 :delay 1.0) ;; bad sqrt
       (.add.x.vf vf6 vf5 vf4)
       (.mov v1-4 vf6)
       (.mul.vf vf6 vf6 vf6)
@@ -160,8 +182,9 @@
       (.add.w.vf vf9 vf5 vf9 :mask #b10)
       (.mov a0-3 vf6)
       (.mul.w.vf vf9 vf9 vf4 :mask #b10)
-      ;; bad direction
-      (b! (< (logand (the-as uint v1-4) (the-as uint a0-3)) 0)
+
+      ;; too far.
+      (b! (< (logand (the-as int v1-4) (the-as int a0-3)) 0)
        cfg-6
        :delay (.sub.y.vf vf4 vf0 vf9)
        )
@@ -176,12 +199,16 @@
 
 
 (defun ray-sphere-intersect ((ray-origin vector) (ray-dir vector) (sph-origin vector) (radius float))
+  "Intersect a ray and sphere. Will return 0 if you are in the sphere, -huge number if you don't hit it.
+   Returns the length of the ray to the first intersection."
+
+  ;; offset stuff as if the sphere is at the origin.
   (rlet ((vf1 :class vf)
          (vf2 :class vf)
          )
     (.lvf vf1 (&-> ray-origin quad))
     (.lvf vf2 (&-> sph-origin quad))
-    (.sub.vf vf1 vf1 vf2)
+    (.sub.vf vf1 vf1 vf2) ;; the sphere is at the origin in the actual intersection.
     (.lvf vf2 (&-> ray-dir quad))
     ;;(raw-ray-sphere-intersect radius)
     (pc-port-do-raw-ray-sphere-intersect radius vf1 vf2)

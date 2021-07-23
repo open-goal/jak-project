@@ -796,6 +796,15 @@ TEST_F(WithGameTests, Behaviors) {
                           "method obj: 456 self: 123\n0\n"});
 }
 
+TEST_F(WithGameTests, RaySphere) {
+  runner.run_static_test(env, testCategory, "test-ray-sphere.gc",
+                         {"Got 0.2346\n"
+                          "Got -100000000.0000\n"
+                          "Got -100000000.0000\n"
+                          "Got 0.0000\n"
+                          "Got -100000000.0000\n0\n"});
+}
+
 TEST(TypeConsistency, TypeConsistency) {
   Compiler compiler;
   compiler.enable_throw_on_redefines();
