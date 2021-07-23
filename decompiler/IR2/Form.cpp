@@ -1739,14 +1739,26 @@ std::string fixed_operator_to_string(FixedOperatorKind kind) {
       return "fmax";
     case FixedOperatorKind::LOGAND:
       return "logand";
+    case FixedOperatorKind::LOGAND_IN_PLACE:
+      return "logand!";
     case FixedOperatorKind::LOGIOR:
       return "logior";
+    case FixedOperatorKind::LOGIOR_IN_PLACE:
+      return "logior!";
     case FixedOperatorKind::LOGXOR:
       return "logxor";
     case FixedOperatorKind::LOGNOR:
       return "lognor";
     case FixedOperatorKind::LOGNOT:
       return "lognot";
+    case FixedOperatorKind::LOGCLEAR:
+      return "logclear";
+    case FixedOperatorKind::LOGCLEAR_IN_PLACE:
+      return "logclear!";
+    case FixedOperatorKind::LOGTEST:
+      return "logtest?";
+    case FixedOperatorKind::LOGTESTA:
+      return "logtesta?";
     case FixedOperatorKind::SHL:
       return "shl";
     case FixedOperatorKind::SHR:

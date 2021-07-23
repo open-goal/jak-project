@@ -2039,7 +2039,9 @@ void SetFormFormElement::push_to_stack(const Env& env, FormPool& pool, FormStack
 
   const std::pair<FixedOperatorKind, FixedOperatorKind> in_place_ops[] = {
       {FixedOperatorKind::ADDITION, FixedOperatorKind::ADDITION_IN_PLACE},
-      {FixedOperatorKind::ADDITION_PTR, FixedOperatorKind::ADDITION_PTR_IN_PLACE}};
+      {FixedOperatorKind::ADDITION_PTR, FixedOperatorKind::ADDITION_PTR_IN_PLACE},
+      {FixedOperatorKind::LOGAND, FixedOperatorKind::LOGAND_IN_PLACE},
+      {FixedOperatorKind::LOGIOR, FixedOperatorKind::LOGIOR_IN_PLACE}};
 
   auto src_as_generic = m_src->try_as_element<GenericElement>();
   if (src_as_generic) {
