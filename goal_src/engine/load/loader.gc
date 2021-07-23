@@ -829,6 +829,7 @@
 (defun-extern joint-control-channel-group-eval! joint-control-channel art-joint-anim (function joint-control-channel float float float) none) ;; TODO temp
 (defun-extern joint-control-channel-group! joint-control-channel art-joint-anim (function joint-control-channel float float float) none) ;; TODO temp
 (defun-extern ja-aframe-num int float) ;; TODO temp
+
 (define-extern ja-abort-spooled-anim (function spool-anim art-joint-anim int int :behavior process-drawable))
 (defbehavior ja-play-spooled-anim process-drawable ((arg0 spool-anim) (arg1 art-joint-anim) (arg2 art-joint-anim) (arg3 (function process-drawable symbol)))
   "Set up and start playing a spooled animation. details not understood yet."
@@ -942,12 +943,12 @@
          (joint-control-channel-group! a0-42 s2-4 num-func-seek!)
          )
         (when (zero? spool-part)
-         (str-play-async (-> arg0 name) (the-as pointer spool-sound))
+         (str-play-async (-> arg0 name) spool-sound)
          (set! (-> *art-control* active-stream) (-> arg0 name))
          )
         (let* ((f30-0 (* 0.05859375 (-> s2-4 speed)))
                (f28-0 (+ sv-24 (/ (the float (+ (-> s2-4 data 0 length) -1)) f30-0)))
-               (sv-72 (current-str-pos (the-as int spool-sound)))
+               (sv-72 (current-str-pos spool-sound))
                )
          (set! sv-40 (the-as int (-> *display* base-frame-counter)))
          ;; uhh...
@@ -974,7 +975,7 @@
                  (set! sv-32 sv-72)
                  (set! sv-48 (the-as int (-> *display* base-frame-counter)))
                  (suspend)
-                 (let ((f0-14 (* (- (the float (current-str-pos (the-as int spool-sound))) sv-24) f30-0))
+                 (let ((f0-14 (* (- (the float (current-str-pos spool-sound)) sv-24) f30-0))
                        (a0-69 (-> self skel root-channel 0))
                        )
                   (set! (-> a0-69 param 0) (the float (+ (-> a0-69 frame-group data 0 length) -1)))
@@ -982,7 +983,7 @@
                   (set! (-> a0-69 frame-num) f0-14)
                   (joint-control-channel-group! a0-69 (the-as art-joint-anim #f) num-func-seek!)
                   )
-                 (let ((v0-39 (current-str-pos (the-as int spool-sound))))
+                 (let ((v0-39 (current-str-pos spool-sound)))
                   (set! sv-72 v0-39)
                   (>= (the float v0-39) f28-0)
                   )
@@ -1051,7 +1052,6 @@
   (set! (-> *art-control* spool-lock) (the-as handle #f))
   0
   )
-
 
 (if (zero? *art-control*)
   (set! *art-control* (new 'global 'external-art-control))
