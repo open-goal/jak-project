@@ -622,6 +622,13 @@
   :bitfield #t
   :type uint32
   (display-marks 0)
+  (bit1 1)
+  (bit2 2)
+  (bit3 3)
+  (bit4 4)
+  (bit5 5)
+  (bit6 6)
+  (bit7 7)
   (bit8 8)
   (bit13 13)
   )
@@ -977,7 +984,7 @@
     (new (symbol type basic) _type_ 0)
     (activate (_type_ process-tree basic pointer) process-tree 9)
     (deactivate  (_type_) none 10)
-    (dummy-method-11 () none 11)
+    (dummy-method-11 (_type_ object) none 11)
     (run-logic? (_type_) symbol 12)
     (dummy-method () none 13)
     )
@@ -1001,12 +1008,12 @@
    (allow-to-run       process-mask  :offset-assert 12)
    (next-pid           int32         :offset-assert 16)
    (fast-stack-top     pointer       :offset-assert 20)
-   (current-process    basic         :offset-assert 24)
+   (current-process    process       :offset-assert 24)
    (relocating-process basic         :offset-assert 28)
    (relocating-min     int32         :offset-assert 32)
    (relocating-max     int32         :offset-assert 36)
    (relocating-offset  int32         :offset-assert 40)
-   (low-memory-message basic         :offset-assert 44)
+   (low-memory-message symbol        :offset-assert 44)
    )
   :method-count-assert 9
   :size-assert         #x30
@@ -1155,14 +1162,14 @@
    (trans (function object)  :offset-assert 20)
    (post  function  :offset-assert 24)
    (enter (function object object object object object object object)  :offset-assert 28)
-   (event (function basic int basic event-message-block object)     :offset-assert 32)
+   (event (function process int symbol event-message-block object)     :offset-assert 32)
    )
   (:methods
     (new (symbol type basic function
           (function object)
           (function object object object object object object object)
           (function object)
-          (function basic int basic event-message-block object)) _type_ 0)
+          (function process int symbol event-message-block object)) _type_ 0)
     )
   :method-count-assert 9
   :size-assert         #x24
@@ -1170,10 +1177,10 @@
   )
 
 (deftype event-message-block (structure)
-  ((to         basic     :offset-assert 0)
-   (from       basic     :offset-assert 4)
+  ((to         process   :offset-assert 0)
+   (from       process   :offset-assert 4)
    (num-params int32     :offset-assert 8)
-   (message    basic     :offset-assert 12)
+   (message    symbol    :offset-assert 12)
    (param      uint64 7  :offset-assert 16)
    )
   :method-count-assert 9
@@ -1208,7 +1215,7 @@
    (state state :offset-assert #x38)
    (trans-hook function :offset-assert #x3c)
    (post-hook function :offset-assert #x40)
-   (event-hook (function basic int basic event-message-block object) :offset-assert #x44)
+   (event-hook (function process int symbol event-message-block object) :offset-assert #x44)
    (allocated-length int32 :offset-assert #x48)
    (next-state state :offset-assert #x4c)
    (heap-base pointer :offset-assert #x50)
@@ -1222,7 +1229,7 @@
     (new (symbol type basic int) _type_ 0)
     (activate (_type_ process-tree basic pointer) process-tree 9)
     (deactivate  (process) none 10)
-    (dummy-method-11 () none 11)
+    (dummy-method-11 (_type_ object) none 11)
     (run-logic? (process) symbol 12)
     (dummy-method () none 13)
     )
@@ -4394,28 +4401,31 @@
 
 ;; - Types
 
+(declare-type art-group basic)
 ;; custom fields
 (deftype load-dir (basic)
   ((unknown basic :offset-assert 4)
-   (string-array (array string) :offset-assert 8)
-   (data-array (array basic) :score -50 :offset-assert 12)
+   (string-array (array string) :offset-assert 8) ;; these are the names
+   (data-array (array basic) :score -50 :offset-assert 12) ;; this is the file data.
    )
   :flag-assert #xb00000010
   (:methods
     (new (symbol type int basic) _type_ 0)
-    (dummy-9 () none 9)
-    (dummy-10 () none 10)
+    ;; these methods dont exist
+    (dummy-9 (_type_ string symbol kheap int) art-group 9)
+    (dummy-10 (_type_ art-group) art-group 10)
     )
   )
 
 ;; custom fields
-(declare-type art-group basic)
 (deftype load-dir-art-group (load-dir)
   ((art-group-array (array art-group) :offset 12)
    )
   :flag-assert #xb00000010
   (:methods
     (new (symbol type int basic) _type_ 0)
+    (dummy-9 (_type_ string symbol kheap int) art-group 9)
+    (dummy-10 (_type_ art-group) art-group 10)
     )
   )
 
@@ -4428,13 +4438,13 @@
    (heap                       kheap  :inline :offset-assert 32)
    (pending-load-file          string         :offset-assert 48)
    (pending-load-file-part     int32          :offset-assert 52)
-   (pending-load-file-owner    uint64         :offset-assert 56)
+   (pending-load-file-owner    handle         :offset-assert 56)
    (pending-load-file-priority float          :offset-assert 64)
    (load-file                  string         :offset-assert 68)
    (load-file-part             int32          :offset-assert 72)
-   (load-file-owner            uint64         :offset-assert 80)
+   (load-file-owner            handle         :offset-assert 80)
    (load-file-priority         float          :offset-assert 88)
-   (buf                        uint32         :offset-assert 92)
+   (buf                        pointer        :offset-assert 92)
    (len                        int32          :offset-assert 96)
    (art-group                  art-group      :offset-assert 100)
    )
@@ -4443,23 +4453,25 @@
   :flag-assert         #x1000000068
   (:methods
     (new (symbol type int) _type_ 0)
-    (dummy-9 (_type_ symbol int symbol float) none 9)
-    (dummy-10 () none 10)
-    (dummy-11 () none 11)
-    (dummy-12 () none 12)
-    (dummy-13 () none 13)
-    (dummy-14 () none 14)
-    (dummy-15 () none 15)
+    (want-file (_type_ string int handle float) int 9)
+    (update (_type_) int 10)
+    (inactive? (_type_) symbol 11)
+    (file-status (_type_ string int) symbol 12)
+    (link-file (_type_ art-group) art-group 13)
+    (unlink-file (_type_ art-group) int 14)
+    (unlock! (_type_) symbol 15)
     )
   )
 
 (deftype spool-anim (basic)
   ((name         string  :offset 16) ;; why?
-   (index        int32   :offset-assert 20)
+   (buf1         external-art-buffer  :offset 16) ;; custom
+   (buf2         external-art-buffer  :offset-assert 20) ;; custom (also what?)
+   (index        int32   :offset 20)
    (parts        int32   :offset-assert 24)
    (priority     float   :offset-assert 28)
-   (owner        uint64  :offset-assert 32)
-   (command-list basic   :offset-assert 40)
+   (owner        handle  :offset-assert 32)
+   (command-list pair    :offset-assert 40)
    )
   :pack-me
   :method-count-assert 9
@@ -4467,14 +4479,13 @@
   :flag-assert         #x90000002c
   )
 
-; todo inline basics
 (deftype external-art-control (basic)
   ((buffer               external-art-buffer    2       :offset-assert 4)
-   (rec             spool-anim 3 :inline)
-   (spool-lock           uint64             :offset-assert 160)
-   (reserve-buffer       basic              :offset-assert 168)
+   (rec                  spool-anim 3 :inline :offset-assert 16)
+   (spool-lock           handle             :offset-assert 160)
+   (reserve-buffer       external-art-buffer  :offset-assert 168)
    (reserve-buffer-count int32              :offset-assert 172)
-   (active-stream        basic              :offset-assert 176)
+   (active-stream        string             :offset-assert 176)
    (preload-stream       spool-anim :inline :offset-assert 184)
    (last-preload-stream  spool-anim :inline :offset-assert 232)
    (end-pad uint32)
@@ -4484,14 +4495,14 @@
   :flag-assert         #x1100000118
   (:methods
     (new (symbol type) _type_ 0)
-    (dummy-9 (_type_ symbol) none 9)
-    (dummy-10 (_type_) none 10)
-    (dummy-11 () none 11)
-    (dummy-12 () none 12)
-    (dummy-13 () none 13)
-    (dummy-14 () none 14)
-    (dummy-15 () none 15)
-    (dummy-16 () none 16)
+    (update (_type_ symbol) int 9)
+    (clear-rec (_type_) int 10)
+    (spool-push (_type_ string int process float) int 11)
+    (file-status (_type_ string int) symbol 12)
+    (reserve-alloc (_type_) kheap 13)
+    (reserve-free (_type_ kheap) int 14)
+    (none-reserved? (_type_) symbol 15)
+    (try-preload-stream (_type_ string int process float) int 16)
     )
   )
 
@@ -6857,13 +6868,13 @@
 
 ;; - Symbols
 
-(define-extern *ocean-work* ocean-work) ;; unknown type
-(define-extern *ocean-facing* int) ;; unknown type
-(define-extern *ocean-off* symbol) ;; unknown type
-(define-extern *ocean-mid-off* symbol) ;; unknown type
-(define-extern *ocean-near-off* symbol) ;; unknown type
-(define-extern *ocean-heights* symbol) ;; unknown type
-(define-extern *ocean-verts* symbol) ;; unknown type
+(define-extern *ocean-work* ocean-work)
+(define-extern *ocean-facing* int)
+(define-extern *ocean-off* symbol)
+(define-extern *ocean-mid-off* symbol)
+(define-extern *ocean-near-off* symbol)
+(define-extern *ocean-heights* symbol)
+(define-extern *ocean-verts* symbol)
 
 
 ;; ----------------------
@@ -6874,25 +6885,25 @@
 
 ;; - Symbols
 
-(define-extern *ocean-left-table* (pointer float)) ;; unknown type
-(define-extern *ocean-right-table* (pointer float)) ;; unknown type
-(define-extern *ocean-up-table* (pointer float)) ;; unknown type
-(define-extern *ocean-down-table* (pointer float)) ;; unknown type
-(define-extern *ocean-down-left-table* (pointer float)) ;; unknown type
-(define-extern *ocean-down-right-table* (pointer float)) ;; unknown type
-(define-extern *ocean-up-right-table* (pointer float)) ;; unknown type
-(define-extern *ocean-up-left-table* (pointer float)) ;; unknown type
-(define-extern *ocean-trans-left-table* (pointer float)) ;; unknown type
-(define-extern *ocean-trans-right-table* (pointer float)) ;; unknown type
-(define-extern *ocean-trans-up-table* (pointer float)) ;; unknown type
-(define-extern *ocean-trans-down-table* (pointer float)) ;; unknown type
-(define-extern *ocean-trans-down-left-table* (pointer float)) ;; unknown type
-(define-extern *ocean-trans-down-right-table* (pointer float)) ;; unknown type
-(define-extern *ocean-trans-up-right-table* (pointer float)) ;; unknown type
-(define-extern *ocean-trans-up-left-table* (pointer float)) ;; unknown type
-(define-extern *ocean-trans-corner-table* (pointer float)) ;; unknown type
-(define-extern *ocean-trans-strip-array* (pointer float)) ;; unknown type
-(define-extern *ocean-trans-st-table* (pointer float)) ;; unknown type
+(define-extern *ocean-left-table* (pointer float))
+(define-extern *ocean-right-table* (pointer float))
+(define-extern *ocean-up-table* (pointer float))
+(define-extern *ocean-down-table* (pointer float))
+(define-extern *ocean-down-left-table* (pointer float))
+(define-extern *ocean-down-right-table* (pointer float))
+(define-extern *ocean-up-right-table* (pointer float))
+(define-extern *ocean-up-left-table* (pointer float))
+(define-extern *ocean-trans-left-table* (pointer float))
+(define-extern *ocean-trans-right-table* (pointer float))
+(define-extern *ocean-trans-up-table* (pointer float))
+(define-extern *ocean-trans-down-table* (pointer float))
+(define-extern *ocean-trans-down-left-table* (pointer float))
+(define-extern *ocean-trans-down-right-table* (pointer float))
+(define-extern *ocean-trans-up-right-table* (pointer float))
+(define-extern *ocean-trans-up-left-table* (pointer float))
+(define-extern *ocean-trans-corner-table* (pointer float))
+(define-extern *ocean-trans-strip-array* (pointer float))
+(define-extern *ocean-trans-st-table* (pointer float))
 
 
 ;; ----------------------
@@ -6903,25 +6914,25 @@
 
 ;; - Symbols
 
-(define-extern *ocean-spheres-village1* ocean-spheres) ;; unknown type
-(define-extern *ocean-colors-village1* ocean-colors) ;; unknown type
-(define-extern *ocean-near-indices-village1* ocean-near-indices) ;; unknown type
-(define-extern *ocean-trans-indices-village1* ocean-trans-indices) ;; unknown type
-(define-extern *ocean-mid-indices-village1* ocean-mid-indices) ;; unknown type
-(define-extern *ocean-mid-masks-village1* ocean-mid-masks) ;; unknown type
-(define-extern *ocean-spheres-village2* ocean-spheres) ;; unknown type
-(define-extern *ocean-colors-village2* ocean-colors) ;; unknown type
-(define-extern *ocean-near-indices-village2* ocean-near-indices) ;; unknown type
-(define-extern *ocean-trans-indices-village2* ocean-trans-indices) ;; unknown type
-(define-extern *ocean-mid-indices-village2* ocean-mid-indices) ;; unknown type
-(define-extern *ocean-mid-masks-village2* ocean-mid-masks) ;; unknown type
-(define-extern *ocean-near-indices-sunken* ocean-near-indices) ;; unknown type
-(define-extern *ocean-trans-indices-sunken* ocean-trans-indices) ;; unknown type
-(define-extern *ocean-mid-indices-sunken* ocean-mid-indices) ;; unknown type
-(define-extern *ocean-mid-masks-sunken* ocean-mid-masks) ;; unknown type
-(define-extern *ocean-map-village1* ocean-map) ;; unknown type
-(define-extern *ocean-map-village2* ocean-map) ;; unknown type
-(define-extern *ocean-map-sunken* ocean-map) ;; unknown type
+(define-extern *ocean-spheres-village1* ocean-spheres)
+(define-extern *ocean-colors-village1* ocean-colors)
+(define-extern *ocean-near-indices-village1* ocean-near-indices)
+(define-extern *ocean-trans-indices-village1* ocean-trans-indices)
+(define-extern *ocean-mid-indices-village1* ocean-mid-indices)
+(define-extern *ocean-mid-masks-village1* ocean-mid-masks)
+(define-extern *ocean-spheres-village2* ocean-spheres)
+(define-extern *ocean-colors-village2* ocean-colors)
+(define-extern *ocean-near-indices-village2* ocean-near-indices)
+(define-extern *ocean-trans-indices-village2* ocean-trans-indices)
+(define-extern *ocean-mid-indices-village2* ocean-mid-indices)
+(define-extern *ocean-mid-masks-village2* ocean-mid-masks)
+(define-extern *ocean-near-indices-sunken* ocean-near-indices)
+(define-extern *ocean-trans-indices-sunken* ocean-trans-indices)
+(define-extern *ocean-mid-indices-sunken* ocean-mid-indices)
+(define-extern *ocean-mid-masks-sunken* ocean-mid-masks)
+(define-extern *ocean-map-village1* ocean-map)
+(define-extern *ocean-map-village2* ocean-map)
+(define-extern *ocean-map-sunken* ocean-map)
 
 
 ;; ----------------------
@@ -6943,8 +6954,6 @@
 
 ;; - Types
 
-;;;;;;;;;;
-;;;;;;;;;;
 (deftype sky-color-hour (structure)
   ((snapshot1   int32  :offset-assert 0)
    (snapshot2   int32  :offset-assert 4)
@@ -6978,12 +6987,12 @@
    (r-sun          float           :offset 16)
    (r-halo         float           :offset 20)
    (r-aurora       float           :offset 24)
-   (c-sun-start    uint32          :offset 32)
-   (c-sun-end      uint32          :offset 48)
-   (c-halo-start   uint32          :offset 36)
-   (c-halo-end     uint32          :offset 52)
-   (c-aurora-start uint32          :offset 40)
-   (c-aurora-end   uint32          :offset 56)
+   (c-sun-start    rgba            :offset 32)
+   (c-sun-end      rgba            :offset 48)
+   (c-halo-start   rgba            :offset 36)
+   (c-halo-end     rgba            :offset 52)
+   (c-aurora-start rgba            :offset 40)
+   (c-aurora-end   rgba            :offset 56)
    )
   :method-count-assert 9
   :size-assert         #x40
@@ -7015,10 +7024,8 @@
   )
 
 (deftype sky-upload-data (basic)
-  (
-   ;(data   UNKNOWN         27      :offset-assert 16)
-   (circle sky-circle-data :inline :offset-assert 16)
-   (sun    sky-sun-data 2 :inline       :offset-assert 288)
+  ((circle sky-circle-data :inline :offset-assert 16)
+   (sun    sky-sun-data  2 :inline :offset-assert 288)
    (moon   sky-moon-data   :inline :offset-assert 416)
    (data   uint128         27      :offset 16)
    )
@@ -7049,7 +7056,7 @@
    (giftag-roof  qword   :inline :offset-assert 32)
    (giftag-ocean qword   :inline :offset-assert 48)
    (fog          vector  :inline :offset-assert 64)
-   (sky          uint32 8       :offset-assert 80)
+   (sky          uint32  8       :offset-assert 80)
    (time         float           :offset-assert 112)
    (off-s-0      uint16          :offset-assert 116)
    (off-t-0      uint16          :offset-assert 118)
@@ -7085,10 +7092,10 @@
 
 ;; - Symbols
 
-(define-extern *sky-parms* sky-parms) ;; unknown type
-(define-extern *sky-upload-data* sky-upload-data) ;; unknown type
-(define-extern *sky-drawn* symbol) ;; unknown type
-(define-extern *cloud-drawn* symbol) ;; unknown type
+(define-extern *sky-parms* sky-parms)
+(define-extern *sky-upload-data* sky-upload-data)
+(define-extern *sky-drawn* symbol)
+(define-extern *cloud-drawn* symbol)
 
 
 ;; ----------------------
@@ -7295,9 +7302,9 @@
 
 ;; - Symbols
 
-(define-extern *palette-fade-controls* palette-fade-controls) ;; unknown type
-(define-extern *time-of-day-mode* int) ;; unknown type
-(define-extern *time-of-day-context* time-of-day-context) ;; unknown type
+(define-extern *palette-fade-controls* palette-fade-controls)
+(define-extern *time-of-day-mode* int)
+(define-extern *time-of-day-context* time-of-day-context)
 
 
 ;; ----------------------
@@ -7472,8 +7479,8 @@
   :size-assert         #x20
   :flag-assert         #xf00000020
   (:methods
-    (dummy-13 (_type_) int 13)
-    (dummy-14 (_type_) int 14)
+    (link-art! (_type_) art-group 13)
+    (unlink-art! (_type_) int 14)
     )
   )
 
@@ -7596,7 +7603,7 @@
 
 ;; - Functions
 
-(define-extern new-dynamic-structure (function symbol type int structure)) ;; unknown type
+(define-extern new-dynamic-structure (function symbol type int structure))
 
 
 ;; ----------------------
@@ -8464,7 +8471,7 @@
 
 ;; - Symbols
 
-(define-extern *generic-debug* generic-debug) ;; unknown type
+(define-extern *generic-debug* generic-debug)
 
 
 ;; ----------------------
@@ -8637,10 +8644,10 @@
 
 ;; - Symbols
 
-(define-extern *shadow-queue* shadow-queue) ;; unknown type
-(define-extern *shadow* symbol) ;; unknown type
-(define-extern *shadow-object* symbol) ;; unknown type
-(define-extern *shadow-debug* symbol) ;; unknown type
+(define-extern *shadow-queue* shadow-queue)
+(define-extern *shadow* symbol)
+(define-extern *shadow-object* symbol)
+(define-extern *shadow-debug* symbol)
 
 
 ;; ----------------------
@@ -8743,7 +8750,7 @@
   )
 
 (deftype level-buffer-state (structure)
-  ((name          basic  :offset-assert 0)
+  ((name          symbol :offset-assert 0)
    (display?      symbol :offset-assert 4)
    (force-vis?    symbol :offset-assert 8)
    (force-inside? symbol :offset-assert 12)
@@ -8772,29 +8779,29 @@
     (want-display-level (_type_ symbol symbol) int 12)
     (want-vis (_type_ symbol) int 13)
     (want-force-vis (_type_ symbol symbol) int 14)
-    (dummy-15 () none 15)
-    (dummy-16 () none 16)
-    (dummy-17 () none 17)
-    (dummy-18 () none 18)
-    (dummy-19 () none 19)
+    (dummy-15 (_type_ pair) none 15)
+    (dummy-16 (_type_ float) int 16)
+    (dummy-17 (_type_ pair) int 17)
+    (dummy-18 (_type_) int 18)
+    (dummy-19 (_type_) int 19)
     (dummy-20 () none 20)
     )
   )
 
 (deftype continue-point (basic)
   ((name          string          :offset-assert 4)
-   (level         basic           :offset-assert 8)
+   (level         symbol          :offset-assert 8)
    (flags         uint32          :offset-assert 12)
    (trans         vector  :inline :offset-assert 16)
    (quat          quaternion  :inline :offset-assert 32)
    (camera-trans  vector  :inline :offset-assert 48)
-   (camera-rot    float 9       :offset-assert 64)
-   (load-commands pair           :offset-assert 100)
-   (vis-nick      basic           :offset-assert 104)
-   (lev0          basic           :offset-assert 108)
-   (disp0         basic           :offset-assert 112)
-   (lev1          basic           :offset-assert 116)
-   (disp1         basic           :offset-assert 120)
+   (camera-rot    float  9        :offset-assert 64)
+   (load-commands pair            :offset-assert 100)
+   (vis-nick      symbol          :offset-assert 104)
+   (lev0          symbol          :offset-assert 108)
+   (disp0         symbol          :offset-assert 112)
+   (lev1          symbol          :offset-assert 116)
+   (disp1         symbol          :offset-assert 120)
    )
   :method-count-assert 10
   :size-assert         #x7c
@@ -8861,7 +8868,7 @@
     (initialize! (_type_ symbol game-save string) _type_ 9)
     (adjust (_type_ symbol float handle) float 10)
     (task-complete? (_type_ game-task) symbol 11)
-    (lookup-entity-perm-by-aid (_type_ uint) entity-perm 12)
+    (lookup-entity-perm-by-aid (_type_ actor-id) entity-perm 12)
     (get-entity-task-perm (_type_ game-task) entity-perm 13)
     (copy-perms-from-level! (_type_ level) none 14)
     (copy-perms-to-level! (_type_ level) none 15)
@@ -8883,7 +8890,7 @@
 
 ;; - Symbols
 
-(define-extern *GAME-bank* game-bank) ;; unknown type
+(define-extern *GAME-bank* game-bank)
 (define-extern *game-info* game-info)
 
 
@@ -9269,7 +9276,7 @@
 
 ;; - Symbols
 
-(define-extern *merc-globals* symbol) ;; unknown type
+(define-extern *merc-globals* symbol)
 
 
 ;; ----------------------
@@ -9282,7 +9289,7 @@
 
 ;;;; engine
 (define-extern *background-draw-engine* engine)
-(define-extern *matrix-engine* (array handle)) ;; unknown type
+(define-extern *matrix-engine* (array handle))
 (define-extern *camera-engine* engine)
 (define-extern *debug-engine* engine)
 
@@ -9467,48 +9474,48 @@
 
 ;; - Symbols
 
-(define-extern *walk-mods* surface) ;; unknown type
-(define-extern *walk-no-turn-mods* surface) ;; unknown type
-(define-extern *turn-around-mods* surface) ;; unknown type
-(define-extern *duck-mods* surface) ;; unknown type
-(define-extern *duck-attack-mods* surface) ;; unknown type
-(define-extern *jump-mods* surface) ;; unknown type
-(define-extern *double-jump-mods* surface) ;; unknown type
-(define-extern *smack-jump-mods* surface) ;; unknown type
-(define-extern *high-jump-mods* surface) ;; unknown type
-(define-extern *launch-jump-mods* surface) ;; unknown type
-(define-extern *forward-high-jump-mods* surface) ;; unknown type
-(define-extern *flip-jump-mods* surface) ;; unknown type
-(define-extern *forward-jump-mods* surface) ;; unknown type
-(define-extern *forward-pole-jump-mods* surface) ;; unknown type
-(define-extern *attack-mods* surface) ;; unknown type
-(define-extern *jump-attack-mods* surface) ;; unknown type
-(define-extern *uppercut-jump-mods* surface) ;; unknown type
-(define-extern *run-attack-mods* surface) ;; unknown type
-(define-extern *wheel-mods* surface) ;; unknown type
-(define-extern *wheel-flip-mods* surface) ;; unknown type
-(define-extern *flop-mods* surface) ;; unknown type
-(define-extern *flop-land-mods* surface) ;; unknown type
-(define-extern *wade-mods* surface) ;; unknown type
-(define-extern *swim-mods* surface) ;; unknown type
-(define-extern *dive-mods* surface) ;; unknown type
-(define-extern *dive-bottom-mods* surface) ;; unknown type
-(define-extern *pole-mods* surface) ;; unknown type
-(define-extern *grab-mods* surface) ;; unknown type
-(define-extern *edge-grab-mods* surface) ;; unknown type
-(define-extern *empty-mods* surface) ;; unknown type
-(define-extern *neutral-mods* surface) ;; unknown type
-(define-extern *stone-surface* surface) ;; unknown type
-(define-extern *edge-surface* surface) ;; unknown type
-(define-extern *wade-surface* surface) ;; unknown type
-(define-extern *slope-surface* surface) ;; unknown type
-(define-extern *quicksand-surface* surface) ;; unknown type
-(define-extern *tar-surface* surface) ;; unknown type
-(define-extern *grass-surface* surface) ;; unknown type
-(define-extern *ice-surface* surface) ;; unknown type
-(define-extern *tread-surface* surface) ;; unknown type
-(define-extern *standard-ground-surface* surface) ;; unknown type
-(define-extern *swim-surface* surface) ;; unknown type
+(define-extern *walk-mods* surface)
+(define-extern *walk-no-turn-mods* surface)
+(define-extern *turn-around-mods* surface)
+(define-extern *duck-mods* surface)
+(define-extern *duck-attack-mods* surface)
+(define-extern *jump-mods* surface)
+(define-extern *double-jump-mods* surface)
+(define-extern *smack-jump-mods* surface)
+(define-extern *high-jump-mods* surface)
+(define-extern *launch-jump-mods* surface)
+(define-extern *forward-high-jump-mods* surface)
+(define-extern *flip-jump-mods* surface)
+(define-extern *forward-jump-mods* surface)
+(define-extern *forward-pole-jump-mods* surface)
+(define-extern *attack-mods* surface)
+(define-extern *jump-attack-mods* surface)
+(define-extern *uppercut-jump-mods* surface)
+(define-extern *run-attack-mods* surface)
+(define-extern *wheel-mods* surface)
+(define-extern *wheel-flip-mods* surface)
+(define-extern *flop-mods* surface)
+(define-extern *flop-land-mods* surface)
+(define-extern *wade-mods* surface)
+(define-extern *swim-mods* surface)
+(define-extern *dive-mods* surface)
+(define-extern *dive-bottom-mods* surface)
+(define-extern *pole-mods* surface)
+(define-extern *grab-mods* surface)
+(define-extern *edge-grab-mods* surface)
+(define-extern *empty-mods* surface)
+(define-extern *neutral-mods* surface)
+(define-extern *stone-surface* surface)
+(define-extern *edge-surface* surface)
+(define-extern *wade-surface* surface)
+(define-extern *slope-surface* surface)
+(define-extern *quicksand-surface* surface)
+(define-extern *tar-surface* surface)
+(define-extern *grass-surface* surface)
+(define-extern *ice-surface* surface)
+(define-extern *tread-surface* surface)
+(define-extern *standard-ground-surface* surface)
+(define-extern *swim-surface* surface)
 
 
 ;; ----------------------
@@ -9554,7 +9561,7 @@
 
 ;; - Symbols
 
-(define-extern *pat-mode-info* (inline-array pat-mode-info)) ;; unknown type
+(define-extern *pat-mode-info* (inline-array pat-mode-info))
 
 
 ;; ----------------------
@@ -9658,7 +9665,7 @@
 
 (declare-type process-drawable process)
 (define-extern process-drawable-art-error (state string process-drawable))
-(define-extern *FACT-bank* fact-bank) ;; unknown type
+(define-extern *FACT-bank* fact-bank)
 
 
 ;; ----------------------
@@ -9669,7 +9676,6 @@
 
 ;; - Types
 
-(declare-type process-drawable process)
 (deftype align-control (basic)
   ((flags       uint32             :offset-assert 4)
    (process     process-drawable            :offset-assert 8)
@@ -9703,25 +9709,29 @@
 
 ;; - Types
 
-(declare-type collide-shape basic)
-(declare-type water-control basic)
+(declare-type nav-control basic)
+(declare-type path-control basic)
+(declare-type vol-control basic)
+(declare-type actor-link-info basic)
 (declare-type sparticle-launch-control basic)
+(declare-type water-control basic)
+(declare-type collide-shape basic)
 (deftype process-drawable (process)
   ((root        trsqv           :offset-assert 112)
    (node-list   cspace-array    :offset-assert 116)
    (draw        draw-control    :offset-assert 120)
    (skel        joint-control   :offset-assert 124)
-   (nav         basic   :offset-assert 128)
+   (nav         nav-control     :offset-assert 128)
    (align       align-control   :offset-assert 132)
-   (path        basic   :offset-assert 136)
-   (vol         basic   :offset-assert 140)
+   (path        path-control    :offset-assert 136)
+   (vol         vol-control     :offset-assert 140)
    (fact        fact-info       :offset-assert 144)
-   (link        basic   :offset-assert 148)
+   (link        actor-link-info   :offset-assert 148)
    (part        sparticle-launch-control   :offset-assert 152)
    (water       water-control   :offset-assert 156)
    (sound       ambient-sound   :offset-assert 160)
    (state-flags uint32  :offset-assert 164)
-   (state-time  uint64  :offset-assert 168)
+   (state-time  seconds  :offset-assert 168)
    )
   :heap-base #x40
   :method-count-assert 20
@@ -9846,9 +9856,9 @@
   ((new-trans-hook       function        :offset-assert 176)
    (cur-trans-hook       function        :offset-assert 180)
    (cur-event-hook       function        :offset-assert 184)
-   (new-joint-anim       basic           :offset-assert 188)
+   (new-joint-anim       art-joint-anim  :offset-assert 188)
    (new-joint-anim-blend uint64          :offset-assert 192)
-   (anim-mode            basic           :offset-assert 200)
+   (anim-mode            symbol          :offset-assert 200)
    (cur-grab-handle      uint64          :offset-assert 208)
    (cur-target-handle    uint64          :offset-assert 216)
    (old-grab-pos         vector  :inline :offset-assert 224)
@@ -10811,7 +10821,7 @@
    (pat-ignore-mask       pat-surface        :offset-assert 148)
    (event-self            basic              :offset-assert 152)
    (event-other           basic              :offset-assert 156)
-   (root-prim             basic              :offset-assert 160)
+   (root-prim             collide-shape-prim :offset-assert 160)
    (riders                basic              :offset-assert 164)
    (backup-collide-as     uint64             :offset-assert 168)
    (backup-collide-with   uint64             :offset-assert 176)
@@ -11203,14 +11213,14 @@
 (define-extern cspace-by-name (function process-drawable string cspace))
 (define-extern cspace-by-name-no-fail (function process-drawable string cspace))
 (define-extern cspace-index-by-name-no-fail (function process-drawable string int))
-(define-extern num-func-none (function joint-control-channel float))
-(define-extern num-func-+! (function joint-control-channel float float))
-(define-extern num-func--! (function joint-control-channel float float))
-(define-extern num-func-loop! (function joint-control-channel float float))
+(define-extern num-func-none (function joint-control-channel float float float))
+(define-extern num-func-+! (function joint-control-channel float float float))
+(define-extern num-func--! (function joint-control-channel float float float))
+(define-extern num-func-loop! (function joint-control-channel float float float))
 (define-extern num-func-seek! (function joint-control-channel float float float))
-(define-extern num-func-blend-in! (function joint-control-channel float float))
-(define-extern num-func-chan (function joint-control-channel float float))
-(define-extern num-func-identity (function joint-control-channel float))
+(define-extern num-func-blend-in! (function joint-control-channel float float float))
+(define-extern num-func-chan (function joint-control-channel float float float))
+(define-extern num-func-identity (function joint-control-channel float float float))
 
 
 ;; ----------------------
@@ -11432,7 +11442,7 @@
 (deftype sidekick (process-drawable)
   ((control          control-info   :offset 112)
    (anim-seed        uint64  :offset 192)
-   (shadow-in-movie? basic   :offset-assert 200)
+   (shadow-in-movie? symbol  :offset-assert 200)
    )
   :heap-base #x60
   :method-count-assert 20
@@ -12781,8 +12791,8 @@
    (user-uint8  uint8 8 :offset 0)
    (status      entity-perm-status    :offset-assert 8)
    (dummy       uint8 1 :offset-assert 10)
-   (task        uint8     :offset-assert 11)
-   (aid         uint32    :offset-assert 12)
+   (task        game-task     :offset-assert 11)
+   (aid         actor-id    :offset-assert 12)
    (quad        uint128   :offset 0)
    )
   :pack-me
@@ -12804,8 +12814,8 @@
    (trans     vector       :inline :offset-assert 32)
    (perm      entity-perm  :inline :offset-assert 48)
    (status    uint16               :offset 56) ;; overlays
-   (aid       uint32               :offset 60)
-   (task      uint8                :offset 59)
+   (aid       actor-id             :offset 60)
+   (task      game-task            :offset 59)
    )
   :method-count-assert 10
   :size-assert         #x40
@@ -13354,7 +13364,7 @@
   :size-assert         #x10
   :flag-assert         #x1a00000010
   (:methods
-    (new (symbol type process) _type_)
+    (new (symbol type process) _type_ 0)
     (get-matching-actor-type-mask (_type_ type) int 9)
     (actor-count-before (_type_) int 10)
     (link (_type_) entity-actor 11)
@@ -13365,12 +13375,12 @@
     (apply-function-forward (_type_ (function entity-actor object object) object) int 16)
     (apply-function-reverse (_type_ (function entity-actor object object) object) int 17)
     (apply-all (_type_ (function entity-actor object object) object) int 18)
-    (send-to-all (_type_ object) none 19)
-    (send-to-all-after (_type_ object) object 20)
-    (send-to-all-before (_type_ object) object 21)
-    (send-to-next-and-prev (_type_ object) none 22)
-    (send-to-next (_type_ object) none 23)
-    (send-to-prev (_type_ object) none 24)
+    (send-to-all (_type_ symbol) none 19)
+    (send-to-all-after (_type_ symbol) object 20)
+    (send-to-all-before (_type_ symbol) object 21)
+    (send-to-next-and-prev (_type_ symbol) none 22)
+    (send-to-next (_type_ symbol) none 23)
+    (send-to-prev (_type_ symbol) none 24)
     (actor-count (_type_) int 25)
     )
   )
@@ -14477,7 +14487,7 @@
 (define-extern str-load (function string int pointer int symbol))
 (define-extern str-load-status (function (pointer int32) symbol))
 (define-extern str-load-cancel (function none))
-(define-extern str-play-async (function string pointer none))
+(define-extern str-play-async (function string sound-id none))
 (define-extern str-play-stop (function string none))
 (define-extern str-play-queue (function string none))
 (define-extern str-ambient-play (function string none))
@@ -14564,19 +14574,19 @@
 ;; - Types
 
 (deftype sound-iop-info (basic)
-  ((frame       uint32     :offset 16)
+  ((frame       uint32     :offset  16)
    (strpos      int32      :offset-assert 20)
-   (str-id      uint32     :offset-assert 24)
-   (str-id-sign int32      :offset 24)
+   (str-id      sound-id   :offset-assert 24)
+   (str-id-sign int32      :offset  24)
    (freemem     uint32     :offset-assert 28)
-   (chinfo      uint8   48 :offset-assert 32)
+   (chinfo      uint8  48  :offset-assert 32)
    (freemem2    uint32     :offset-assert 80)
    (nocd        uint32     :offset-assert 84)
    (dirtycd     uint32     :offset-assert 88)
-   (diskspeed   uint32  2  :offset-assert 92)
+   (diskspeed   uint32 2   :offset-assert 92)
    (lastspeed   uint32     :offset-assert 100)
    (dupseg      int32      :offset-assert 104)
-   (times       uint32  41 :offset-assert 108)
+   (times       uint32 41  :offset-assert 108)
    (times-seq   uint32     :offset-assert 272)
    )
   :method-count-assert 9
@@ -14623,8 +14633,8 @@
 (define-extern sound-command->string (function sound-command string))
 (define-extern sound-name= (function sound-name sound-name symbol))
 (define-extern str-is-playing? (function symbol))
-(define-extern current-str-id (function int))
-(define-extern current-str-pos (function int int))
+(define-extern current-str-id (function sound-id))
+(define-extern current-str-pos (function sound-id int))
 (define-extern is-cd-in? (function symbol))
 (define-extern check-irx-version (function int))
 (define-extern sound-bank-load (function sound-name sound-id))
@@ -16067,7 +16077,7 @@
 (define-extern sp-launch-particles-var function)
 (define-extern sp-get-particle function)
 (define-extern particle-adgif function)
-(define-extern lookup-part-group-by-name function)
+(define-extern lookup-part-group-by-name (function string basic))
 (define-extern lookup-part-group-pointer-by-name function)
 (define-extern unlink-part-group-by-heap (function kheap int))
 (define-extern particle-setup-adgif function)
@@ -16169,13 +16179,14 @@
 (define-extern ja-channel-push! (function int int int))
 (define-extern ja-channel-set! (function int int))
 (define-extern kill-current-level-hint (function pair pair symbol none))
-(define-extern level-hint-surpress! function)
+(define-extern level-hint-surpress! (function none))
 (define-extern ja-aframe-num (function int float))
-(define-extern ja-abort-spooled-anim function)
-(define-extern art-group-load-check function)
-(define-extern drawable-load function)
-(define-extern art-load function)
-(define-extern ja-play-spooled-anim function)
+(define-extern ja-abort-spooled-anim (function spool-anim art-joint-anim int int :behavior process-drawable))
+(define-extern art-group-load-check (function string kheap int art-group))
+(define-extern drawable-load (function drawable kheap drawable))
+(define-extern art-load (function string kheap art))
+(define-extern ja-play-spooled-anim (function spool-anim art-joint-anim art-joint-anim (function process-drawable symbol) int :behavior process-drawable))
+(define-extern link (function pointer pointer int kheap int pointer))
 
 ;; - Symbols
 
@@ -16185,8 +16196,8 @@
 ;; - Unknowns
 
 (define-extern *art-control* external-art-control)
-;;(define-extern *preload-spool-anims* object) ;; unknown type
-;;(define-extern *stack-top* object) ;; unknown type
+(define-extern *preload-spool-anims* symbol)
+(define-extern *stack-top* pointer)
 
 
 ;; ----------------------
@@ -16256,17 +16267,17 @@
   :size-assert         #x10
   :flag-assert         #xc00000010
   (:methods
-    (dummy-9 () none 9)
+    (dummy-9 (_type_ vector int float process-drawable) none 9)
     (dummy-10 () none 10)
     (dummy-11 () none 11)
     )
   )
 
 (deftype process-taskable (process-drawable)
-  ((tasks                basic                   :offset-assert 176)
+  ((tasks                task-control            :offset-assert 176)
    (query                gui-query       :inline :offset-assert 180)
    (old-target-pos       transformq      :inline :offset-assert 208)
-   (cell-for-task        uint8                   :offset-assert 256)
+   (cell-for-task        game-task               :offset-assert 256)
    (cell-x               uint64                  :offset-assert 264)
    (cam-joint-index      int32                   :offset-assert 272)
    (skippable            basic                   :offset-assert 276)
@@ -16293,41 +16304,40 @@
   :method-count-assert 53
   :size-assert         #x17c
   :flag-assert         #x350110017c
-  ;; inherited inspect of process-drawable
   (:methods
-    (dummy-20 () none 20)
-    (dummy-21 () none 21)
-    (dummy-22 () none 22)
-    (dummy-23 () none 23)
-    (dummy-24 () none 24)
-    (dummy-25 () none 25)
-    (dummy-26 () none 26)
-    (dummy-27 () none 27)
-    (dummy-28 () none 28)
-    (dummy-29 () none 29)
-    (dummy-30 () none 30)
-    (dummy-31 () none 31)
-    (dummy-32 () none 32)
-    (dummy-33 () none 33)
-    (dummy-34 () none 34)
-    (dummy-35 () none 35)
-    (dummy-36 () none 36)
-    (dummy-37 () none 37)
-    (dummy-38 () none 38)
-    (dummy-39 () none 39)
-    (dummy-40 () none 40)
-    (dummy-41 () none 41)
-    (dummy-42 () none 42)
-    (dummy-43 () none 43)
-    (dummy-44 () none 44)
-    (dummy-45 () none 45)
-    (dummy-46 () none 46)
-    (dummy-47 () none 47)
-    (dummy-48 () none 48)
-    (dummy-49 () none 49)
-    (dummy-50 () none 50)
-    (dummy-51 () none 51)
-    (dummy-52 () none 52)
+    (dummy-20 (_type_) none 20)
+    (dummy-21 (_type_) none 21)
+    (dummy-22 (_type_) none 22)
+    (dummy-23 (_type_) none 23)
+    (dummy-24 (_type_) none 24)
+    (dummy-25 (_type_) none 25)
+    (dummy-26 (_type_) none 26)
+    (dummy-27 (_type_) none 27)
+    (dummy-28 (_type_) none 28)
+    (dummy-29 (_type_) none 29)
+    (dummy-30 (_type_) none 30)
+    (dummy-31 (_type_) none 31)
+    (dummy-32 (_type_ symbol) spool-anim 32)
+    (dummy-33 (_type_) none 33)
+    (dummy-34 (_type_) none 34)
+    (dummy-35 (_type_) none 35)
+    (dummy-36 (_type_) none 36)
+    (dummy-37 (_type_) none 37)
+    (dummy-38 (_type_) none 38)
+    (dummy-39 (_type_) none 39)
+    (dummy-40 (_type_ object skeleton-group int int vector int) none 40)
+    (dummy-41 (_type_) none 41)
+    (dummy-42 (_type_) none 42)
+    (dummy-43 (_type_) none 43)
+    (dummy-44 (_type_) none 44)
+    (dummy-45 (_type_) none 45)
+    (dummy-46 (_type_) none 46)
+    (dummy-47 (_type_) none 47)
+    (dummy-48 (_type_) none 48)
+    (dummy-49 (_type_) none 49)
+    (dummy-50 (_type_) none 50)
+    (dummy-51 (_type_) none 51)
+    (dummy-52 (_type_) none 52)
     )
   )
 
@@ -16992,10 +17002,10 @@
 ;; - Functions
 
 (define-extern sky-set-sun-radii (function sky-parms int float float float symbol))
-(define-extern sky-set-sun-colors (function sky-parms int uint uint uint uint symbol))
-(define-extern sky-set-sun-colors-sun (function sky-parms int uint uint symbol))
-(define-extern sky-set-sun-colors-halo (function sky-parms int uint uint symbol))
-(define-extern sky-set-sun-colors-aurora (function sky-parms int uint uint symbol))
+(define-extern sky-set-sun-colors (function sky-parms int rgba rgba rgba rgba symbol))
+(define-extern sky-set-sun-colors-sun (function sky-parms int rgba rgba symbol))
+(define-extern sky-set-sun-colors-halo (function sky-parms int rgba rgba symbol))
+(define-extern sky-set-sun-colors-aurora (function sky-parms int rgba rgba symbol))
 (define-extern sky-set-orbit (function sky-parms int float float float float float float symbol))
 
 
@@ -17170,14 +17180,14 @@
 (define-extern load-state-want-levels (function symbol symbol int))
 (define-extern load-state-want-display-level (function symbol symbol int))
 (define-extern load-state-want-force-vis (function symbol symbol int))
-(define-extern command-get-param function)
-(define-extern entity-birth-no-kill function)
+(define-extern command-get-param (function object symbol symbol))
+(define-extern entity-birth-no-kill (function entity none))
 (define-extern part-tracker-init function)
-(define-extern command-list-get-process function)
-(define-extern command-get-quoted-param function)
-(define-extern command-get-int function)
-(define-extern ambient-hint-spawn function)
-(define-extern command-get-float function)
+(define-extern command-list-get-process (function object process))
+(define-extern command-get-quoted-param (function object symbol symbol))
+(define-extern command-get-int (function object int int))
+(define-extern ambient-hint-spawn (function symbol symbol process-tree none))
+(define-extern command-get-float (function object float float))
 (define-extern process-by-ename function)
 (define-extern point-in-polygon function)
 (define-extern try-corner function)
@@ -18411,7 +18421,7 @@
 
 ;; - Functions
 
-(define-extern process-entity-status! (function process int symbol symbol))
+(define-extern process-entity-status! (function process entity-perm-status symbol int))
 (define-extern process-grab? (function process symbol))
 (define-extern process-release? (function process symbol))
 (define-extern ja-post (function int))
@@ -18641,7 +18651,7 @@
 
 (define-extern line-in-view-frustum? function)
 (define-extern process-drawable-random-point! function)
-(define-extern process-drawable-from-entity! function)
+(define-extern process-drawable-from-entity! (function process-drawable object none))
 (define-extern cam-launcher-long-joystick function)
 (define-extern hide-hud-quick function)
 (define-extern command-get-process function)
@@ -31658,63 +31668,24 @@
 
 ;; - Types
 
-; (deftype farmer (process-taskable)
-;   ()
-;   :method-count-assert 53
-;   :size-assert         #x17c
-;   :flag-assert         #x350110017c
-;   ;;  not enough basic ops
-;   (:methods
-;     (dummy-9 () none 9)
-;     (dummy-10 () none 10)
-;     (dummy-11 () none 11)
-;     (dummy-12 () none 12)
-;     (dummy-13 () none 13)
-;     (dummy-14 () none 14)
-;     (dummy-15 () none 15)
-;     (dummy-16 () none 16)
-;     (dummy-17 () none 17)
-;     (dummy-18 () none 18)
-;     (dummy-19 () none 19)
-;     (dummy-20 () none 20)
-;     (dummy-21 () none 21)
-;     (dummy-22 () none 22)
-;     (dummy-23 () none 23)
-;     (dummy-24 () none 24)
-;     (dummy-25 () none 25)
-;     (dummy-26 () none 26)
-;     (dummy-27 () none 27)
-;     (dummy-28 () none 28)
-;     (dummy-29 () none 29)
-;     (dummy-30 () none 30)
-;     (dummy-31 () none 31)
-;     (dummy-32 () none 32)
-;     (dummy-33 () none 33)
-;     (dummy-34 () none 34)
-;     (dummy-35 () none 35)
-;     (dummy-36 () none 36)
-;     (dummy-37 () none 37)
-;     (dummy-38 () none 38)
-;     (dummy-39 () none 39)
-;     (dummy-40 () none 40)
-;     (dummy-41 () none 41)
-;     (dummy-42 () none 42)
-;     (dummy-43 () none 43)
-;     (dummy-44 () none 44)
-;     (dummy-45 () none 45)
-;     (dummy-46 () none 46)
-;     (dummy-47 () none 47)
-;     (dummy-48 () none 48)
-;     (dummy-49 () none 49)
-;     (dummy-50 () none 50)
-;     (dummy-51 () none 51)
-;     (dummy-52 () none 52)
-;     )
-;   )
+(deftype farmer (process-taskable)
+  ()
+  :heap-base           #x110
+  :method-count-assert 53
+  :size-assert         #x17c
+  :flag-assert         #x350110017c
+  (:methods
+    (dummy-method-11 (_type_ object) none 11)
+    (dummy-31 (_type_) none 31)
+    (dummy-32 (_type_ symbol) spool-anim 32)
+    (dummy-41 (_type_) none 41)
+    (dummy-43 (_type_) none 43)
+    )
+  )
 
 ;; - Unknowns
 
-;;(define-extern *farmer-sg* object) ;; unknown type
+(define-extern *farmer-sg* skeleton-group) ;; unknown type
 
 
 ;; ----------------------
@@ -31933,104 +31904,92 @@
 
 ;; - Types
 
-; (deftype yakow-bank (basic)
-;   ((walk-cycle-frame-count float   :offset-assert 4)
-;    (run-cycle-frame-count  float   :offset-assert 8)
-;    (walk-speed             meters  :offset-assert 12)
-;    (run-speed              meters  :offset-assert 16)
-;    (walk-anim-speed        float   :offset-assert 20)
-;    (run-anim-speed         float   :offset-assert 24)
-;    (walk-away-dist         meters  :offset-assert 28)
-;    (run-away-dist          meters  :offset-assert 32)
-;    (walk-rotate-speed      float   :offset-assert 36)
-;    (run-rotate-speed       float   :offset-assert 40)
-;    (walk-turn-time         uint64  :offset-assert 48)
-;    (run-turn-time          uint64  :offset-assert 56)
-;    (max-walk-speed         float   :offset-assert 64)
-;    (min-run-speed          float   :offset-assert 68)
-;    (walk-run-blend-rate    float   :offset-assert 72)
-;    (walk-turn-blend-rate   float   :offset-assert 76)
-;    (max-run-speed          float   :offset-assert 80)
-;    (acceleration           meters  :offset-assert 84)
-;    (default-patrol-time    uint64  :offset-assert 88)
-;    (default-idle-distance  meters  :offset-assert 96)
-;    (safe-distance          meters  :offset-assert 100)
-;    (min-run-anim-speed     float   :offset-assert 104)
-;    (max-run-anim-speed     float   :offset-assert 108)
-;    (min-walk-anim-speed    float   :offset-assert 112)
-;    (speed-boost-impulse    meters  :offset-assert 116)
-;    )
-;   :method-count-assert 9
-;   :size-assert         #x78
-;   :flag-assert         #x900000078
-;   )
+(deftype yakow-bank (basic)
+  ((walk-cycle-frame-count float   :offset-assert 4)
+   (run-cycle-frame-count  float   :offset-assert 8)
+   (walk-speed             meters  :offset-assert 12)
+   (run-speed              meters  :offset-assert 16)
+   (walk-anim-speed        float   :offset-assert 20)
+   (run-anim-speed         float   :offset-assert 24)
+   (walk-away-dist         meters  :offset-assert 28)
+   (run-away-dist          meters  :offset-assert 32)
+   (walk-rotate-speed      float   :offset-assert 36)
+   (run-rotate-speed       float   :offset-assert 40)
+   (walk-turn-time         uint64  :offset-assert 48)
+   (run-turn-time          uint64  :offset-assert 56)
+   (max-walk-speed         float   :offset-assert 64)
+   (min-run-speed          float   :offset-assert 68)
+   (walk-run-blend-rate    float   :offset-assert 72)
+   (walk-turn-blend-rate   float   :offset-assert 76)
+   (max-run-speed          float   :offset-assert 80)
+   (acceleration           meters  :offset-assert 84)
+   (default-patrol-time    uint64  :offset-assert 88)
+   (default-idle-distance  meters  :offset-assert 96)
+   (safe-distance          meters  :offset-assert 100)
+   (min-run-anim-speed     float   :offset-assert 104)
+   (max-run-anim-speed     float   :offset-assert 108)
+   (min-walk-anim-speed    float   :offset-assert 112)
+   (speed-boost-impulse    meters  :offset-assert 116)
+   )
+  :method-count-assert 9
+  :size-assert         #x78
+  :flag-assert         #x900000078
+  )
 
-; (deftype yakow (process-drawable)
-;   ((player-attack-id   int32          :offset-assert 176)
-;    (walk-run-blend     float          :offset-assert 180)
-;    (walk-turn-blend    float          :offset-assert 184)
-;    (run-mode           basic          :offset-assert 188)
-;    (travel-speed       meters         :offset-assert 192)
-;    (final-speed        meters         :offset-assert 196)
-;    (rotate-speed       float          :offset-assert 200)
-;    (turn-time          uint64         :offset-assert 208)
-;    (vulnerable         basic          :offset-assert 216)
-;    (grazing            basic          :offset-assert 220)
-;    (push-velocity      vector :inline :offset-assert 224)
-;    (home-base          vector :inline :offset-assert 240)
-;    (dest-base          vector :inline :offset-assert 256)
-;    (dest-rot           degrees            :offset-assert 272)
-;    (enable-turn-around basic          :offset-assert 276)
-;    (rotating           basic          :offset-assert 280)
-;    (in-pen             basic          :offset-assert 284)
-;    )
-;   :method-count-assert 20
-;   :size-assert         #x120
-;   :flag-assert         #x1400b00120
-;   ;; inherited inspect of process-drawable
-;   (:methods
-;     (dummy-9 () none 9)
-;     (dummy-10 () none 10)
-;     (dummy-11 () none 11)
-;     (dummy-12 () none 12)
-;     (dummy-13 () none 13)
-;     (dummy-14 () none 14)
-;     (dummy-15 () none 15)
-;     (dummy-16 () none 16)
-;     (dummy-17 () none 17)
-;     (dummy-18 () none 18)
-;     (dummy-19 () none 19)
-;     )
-;   )
+(deftype yakow (process-drawable)
+  ((player-attack-id   int32          :offset-assert 176)
+   (walk-run-blend     float          :offset-assert 180)
+   (walk-turn-blend    float          :offset-assert 184)
+   (run-mode           basic          :offset-assert 188)
+   (travel-speed       meters         :offset-assert 192)
+   (final-speed        meters         :offset-assert 196)
+   (rotate-speed       float          :offset-assert 200)
+   (turn-time          uint64         :offset-assert 208)
+   (vulnerable         basic          :offset-assert 216)
+   (grazing            basic          :offset-assert 220)
+   (push-velocity      vector :inline :offset-assert 224)
+   (home-base          vector :inline :offset-assert 240)
+   (dest-base          vector :inline :offset-assert 256)
+   (dest-rot           degrees         :offset-assert 272)
+   (enable-turn-around basic          :offset-assert 276)
+   (rotating           basic          :offset-assert 280)
+   (in-pen             basic          :offset-assert 284)
+   )
+  :method-count-assert 20
+  :size-assert         #x120
+  :heap-base           #xb0
+  :flag-assert         #x1400b00120
+  ;; inherited inspect of process-drawable
+  )
 
 ;; - Functions
 
-(define-extern yakow-task-complete? function)
+(define-extern yakow-task-complete? (function symbol none :behavior yakow))
 (define-extern yakow-facing-player? function)
-(define-extern yakow-post function)
+(define-extern yakow-post (function none :behavior yakow))
 (define-extern yakow-facing-point? function)
 (define-extern yakow-facing-direction? function)
 (define-extern yakow-generate-travel-vector function)
-(define-extern yakow-common-post function)
-(define-extern yakow-cam function)
-(define-extern yakow-default-event-handler function)
+(define-extern yakow-common-post (function none :behavior yakow))
+(define-extern yakow-cam (function none))
+(define-extern yakow-default-event-handler (function process-drawable int symbol event-message-block object :behavior yakow))
 (define-extern yakow-simple-post function)
 (define-extern yakow-run-post function)
 (define-extern yakow-blend-walk-run function)
 
 ;; - Unknowns
 
-;;(define-extern *YAKOW-bank* object) ;; unknown type
-;;(define-extern *yakow-sg* object) ;; unknown type
-;;(define-extern yakow-graze object) ;; unknown type
-;;(define-extern yakow-idle object) ;; unknown type
-;;(define-extern yakow-run-away object) ;; unknown type
-;;(define-extern yakow-graze-kicked object) ;; unknown type
-;;(define-extern yakow-walk-to object) ;; unknown type
-;;(define-extern yakow-notice object) ;; unknown type
-;;(define-extern yakow-kicked object) ;; unknown type
-;;(define-extern *village1cam-sg* object) ;; unknown type
-;;(define-extern yakow-die object) ;; unknown type
+(define-extern *YAKOW-bank* yakow-bank) ;; unknown type
+(define-extern *yakow-sg* skeleton-group) ;; unknown type
+(define-extern yakow-graze (state none)) ;; unknown type
+(define-extern yakow-idle (state none)) ;; unknown type
+(define-extern yakow-run-away state) ;; unknown type
+(define-extern yakow-graze-kicked state) ;; unknown type
+(define-extern yakow-walk-to state) ;; unknown type
+(define-extern yakow-notice state) ;; unknown type
+(define-extern yakow-kicked (state none)) ;; unknown type
+(define-extern *village1cam-sg* skeleton-group) ;; unknown type
+(define-extern yakow-die state) ;; unknown type
 
 
 ;; ----------------------
@@ -45436,16 +45395,16 @@
 ;; - Types
 
 (deftype logo (process-drawable)
-  ((~Tcamera      uint64  :offset-assert 176)
-   (~Tcamera-anim uint64  :offset-assert 184)
-   (~Tvolumes     uint64  :offset-assert 192)
-   (~Tblack       uint64  :offset-assert 200)
-   (~Ttarget      uint64  :offset-assert 208)
-   (~Tsidekick    uint64  :offset-assert 216)
-   (~Tmain-joint  basic   :offset-assert 224)
-   (~Tanim        basic   :offset-assert 228)
-   (~Tnext-anim   basic   :offset-assert 232)
-   (~Tdone?       basic   :offset-assert 236)
+  ((camera      uint64  :offset-assert 176)
+   (camera-anim uint64  :offset-assert 184)
+   (volumes     uint64  :offset-assert 192)
+   (black       uint64  :offset-assert 200)
+   (target      uint64  :offset-assert 208)
+   (sidekick    uint64  :offset-assert 216)
+   (main-joint  basic   :offset-assert 224)
+   (anim        basic   :offset-assert 228)
+   (next-anim   basic   :offset-assert 232)
+   (done?       basic   :offset-assert 236)
    )
   :heap-base #x80
   :method-count-assert 24
@@ -45461,7 +45420,7 @@
   )
 
 (deftype logo-slave (process-drawable)
-  ((~Tmain-joint basic  :offset-assert 176)
+  ((main-joint basic  :offset-assert 176)
    )
   :heap-base #x50
   :method-count-assert 21

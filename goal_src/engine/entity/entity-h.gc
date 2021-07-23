@@ -5,13 +5,8 @@
 ;; name in dgo: entity-h
 ;; dgos: GAME, ENGINE
 
-;; definition for symbol *generate-actor-vis*, type symbol
 (define *generate-actor-vis* #f)
-
-;; definition for symbol *generate-actor-vis-start*, type symbol
 (define *generate-actor-vis-start* #f)
-
-;; definition for symbol *generate-actor-vis-output*, type symbol
 (define *generate-actor-vis-output* #f)
 
 (defenum entity-perm-status
@@ -31,43 +26,42 @@
 
 ;; definition of type entity-perm
 (deftype entity-perm (structure)
-  ((user-object object  2             :offset-assert 0)
-   (user-uint64 uint64  :offset   0)
-   (user-float  float   2 :offset   0)
-   (user-int32  int32   2 :offset   0)
-   (user-uint32 uint32  2 :offset   0)
-   (user-int16  int16   4 :offset   0)
-   (user-uint16 uint16  4 :offset   0)
-   (user-int8   int8    8 :offset   0)
-   (user-uint8  uint8   8 :offset   0)
-   (status      entity-perm-status    :offset-assert 8)
-   (dummy       uint8   1             :offset-assert 10)
-   (task        uint8                 :offset-assert 11)
-   (aid         uint32                :offset-assert 12)
-   (quad        uint128 :offset   0)
+  ((user-object object             2 :offset-assert   0)
+   (user-uint64 uint64               :offset          0)
+   (user-float  float              2 :offset          0)
+   (user-int32  int32              2 :offset          0)
+   (user-uint32 uint32             2 :offset          0)
+   (user-int16  int16              4 :offset          0)
+   (user-uint16 uint16             4 :offset          0)
+   (user-int8   int8               8 :offset          0)
+   (user-uint8  uint8              8 :offset          0)
+   (status      entity-perm-status   :offset-assert   8)
+   (dummy       uint8              1 :offset-assert  10)
+   (task        game-task            :offset-assert  11)
+   (aid         actor-id             :offset-assert  12)
+   (quad        uint128              :offset          0)
    )
   :pack-me
   :method-count-assert 10
   :size-assert         #x10
   :flag-assert         #xa00000010
   (:methods
-   (update-perm! (_type_ symbol entity-perm-status) _type_ 9)
-   )
+    (update-perm! (_type_ symbol entity-perm-status) _type_ 9)
+    )
   )
 
-;; definition of type entity-links
 (deftype entity-links (structure)
-  ((prev-link entity-links             :offset-assert 0)
-   (next-link entity-links             :offset-assert 4)
-   (entity    entity                   :offset-assert 8)
-   (process   process                  :offset-assert 12)
-   (level     level                    :offset-assert 16)
-   (vis-id    int32                    :offset-assert 20)
-   (trans     vector       :inline     :offset-assert 32)
-   (perm      entity-perm  :inline     :offset-assert 48)
-   (status    uint16       :offset  56)
-   (aid       uint32       :offset  60)
-   (task      uint8        :offset  59)
+  ((prev-link entity-links         :offset-assert   0)
+   (next-link entity-links         :offset-assert   4)
+   (entity    entity               :offset-assert   8)
+   (process   process              :offset-assert  12)
+   (level     level                :offset-assert  16)
+   (vis-id    int32                :offset-assert  20)
+   (trans     vector       :inline :offset-assert  32)
+   (perm      entity-perm  :inline :offset-assert  48)
+   (status    uint16               :offset         56)
+   (aid       actor-id             :offset         60)
+   (task      game-task            :offset         59)
    )
   :method-count-assert 10
   :size-assert         #x40
@@ -77,17 +71,15 @@
     )
   )
 
-;; definition of type entity-perm-array
 (deftype entity-perm-array (inline-array-class)
-  ((data entity-perm :inline :dynamic :offset-assert 16))
+  ((data entity-perm :inline :dynamic :offset-assert  16)
+   )
   :method-count-assert 9
   :size-assert         #x10
   :flag-assert         #x900000010
   )
-
 (set! (-> entity-perm-array heap-base) (the-as uint 16))
 
-;; definition of type entity-links-array
 (deftype entity-links-array (inline-array-class)
   ((data entity-links :inline :dynamic :offset-assert  16)
    )
@@ -95,13 +87,11 @@
   :size-assert         #x10
   :flag-assert         #x900000010
   )
-
 (set! (-> entity-links-array heap-base) (the-as uint 64))
 
-;; definition of type entity
 (deftype entity (res-lump)
-  ((trans vector :inline :offset-assert 32)
-   (aid   uint32         :offset-assert 48)
+  ((trans vector :inline :offset-assert  32)
+   (aid   uint32         :offset-assert  48)
    )
   :method-count-assert 27
   :size-assert         #x34
@@ -115,45 +105,40 @@
     )
   )
 
-;; definition of type entity-camera
 (deftype entity-camera (entity)
-  ((connect connectable :inline :offset-assert 64)
+  ((connect connectable :inline :offset-assert  64)
    )
   :method-count-assert 27
   :size-assert         #x50
   :flag-assert         #x1b00000050
   )
 
-;; definition of type entity-ambient-data
 (deftype entity-ambient-data (structure)
-  ((user-object object  3              :offset-assert 0)
-   (function    basic                  :offset-assert 12)
-   (quad        uint128 :offset   0)
-   (user-uint64 uint64  1 :offset   0)
-   (user-float  float   3 :offset   0)
-   (user-int32  int32   3 :offset   0)
-   (user-uint32 uint32  3 :offset   0)
-   (user-int16  int16   6 :offset   0)
-   (user-uint16 uint16  6 :offset   0)
-   (user-int8   int8    12 :offset   0)
-   (user-uint8  uint8   12 :offset   0)
+  ((user-object object  3  :offset-assert   0)
+   (function    basic      :offset-assert  12)
+   (quad        uint128    :offset          0)
+   (user-uint64 uint64  1  :offset          0)
+   (user-float  float   3  :offset          0)
+   (user-int32  int32   3  :offset          0)
+   (user-uint32 uint32  3  :offset          0)
+   (user-int16  int16   6  :offset          0)
+   (user-uint16 uint16  6  :offset          0)
+   (user-int8   int8    12 :offset          0)
+   (user-uint8  uint8   12 :offset          0)
    )
   :method-count-assert 9
   :size-assert         #x10
   :flag-assert         #x900000010
   )
 
-;; definition of type entity-ambient-data-array
 (deftype entity-ambient-data-array (inline-array-class)
   ()
   :method-count-assert 9
   :size-assert         #x10
   :flag-assert         #x900000010
   )
-
 (set! (-> entity-ambient-data-array heap-base) (the-as uint 16))
 
-;; definition of type entity-ambient
 (deftype entity-ambient (entity)
   ()
   :method-count-assert 29
@@ -165,33 +150,30 @@
     )
   )
 
-;; definition of type entity-actor
-(declare-type nav-mesh basic)
 (deftype entity-actor (entity)
-  ((nav-mesh nav-mesh           :offset-assert 52)
-   (etype    type               :offset-assert 56)
-   (task     uint8              :offset-assert 60)
-   (vis-id   uint16             :offset-assert 62)
-   (quat     quaternion :inline :offset-assert 64)
+  ((nav-mesh nav-mesh           :offset-assert  52)
+   (etype    type               :offset-assert  56)
+   (task     uint8              :offset-assert  60)
+   (vis-id   uint16             :offset-assert  62)
+   (quat     quaternion :inline :offset-assert  64)
    )
   :method-count-assert 31
   :size-assert         #x50
   :flag-assert         #x1f00000050
   (:methods
-   (next-actor (_type_) entity-actor 27)
-   (prev-actor (_type_) entity-actor 28)
-   (dummy-29 () none 29)
-   (dummy-30 () none 30)
-   )
+    (next-actor (_type_) entity-actor 27)
+    (prev-actor (_type_) entity-actor 28)
+    (dummy-29 () none 29)
+    (dummy-30 () none 30)
+    )
   )
 
-;; definition of type entity-info
 (deftype entity-info (basic)
-  ((ptype     type   :offset-assert 4)
-   (package   basic  :offset-assert 8)
-   (art-group pair   :offset-assert 12)
-   (pool      basic  :offset-assert 16)
-   (heap-size int32  :offset-assert 20)
+  ((ptype     type   :offset-assert   4)
+   (package   basic  :offset-assert   8)
+   (art-group pair   :offset-assert  12)
+   (pool      basic  :offset-assert  16)
+   (heap-size int32  :offset-assert  20)
    )
   :method-count-assert 9
   :size-assert         #x18
@@ -205,23 +187,21 @@
   (set! entity-nav-login (the-as (function entity-actor none) nothing))
   )
 
-;; definition of type actor-bank
 (deftype actor-bank (basic)
-  ((pause-dist float  :offset-assert 4)
-   (birth-dist float  :offset-assert 8)
-   (birth-max  int32  :offset-assert 12)
+  ((pause-dist float  :offset-assert   4)
+   (birth-dist float  :offset-assert   8)
+   (birth-max  int32  :offset-assert  12)
    )
   :method-count-assert 9
   :size-assert         #x10
   :flag-assert         #x900000010
   )
 
-;; definition for symbol *ACTOR-bank*, type actor-bank
 (define *ACTOR-bank*
     (new 'static 'actor-bank
-         :pause-dist 204800.0
-         :birth-dist 901120.0
-         :birth-max 10
+         :pause-dist (meters 50)  ;; actor activity range?
+         :birth-dist (meters 220) ;; draw distance or something?
+         :birth-max 10  ;; maximum actor births per frame? (it is known they dont all happen at once)
          )
   )
 
