@@ -75,21 +75,48 @@ Val* Compiler::compile_rlet(const goos::Object& form, const goos::Object& rest, 
     }
 
     // alloc a register:
-    auto new_place_reg = env->make_ireg(ts, register_class);
-    new_place_reg->mark_as_settable();
-
+    RegVal* new_place_reg = nullptr;
     if (def_args.has_named("reg")) {
-      IRegConstraint constraint;
-      constraint.ireg = new_place_reg->ireg();
-      constraint.contrain_everywhere = true;
-      constraint.desired_register = parse_register(def_args.named.at("reg"));
-      if (def_args.has_named("reset-here") &&
-          get_true_or_false(form, def_args.get_named("reset-here"))) {
-        reset_regs.push_back(new_place_reg);
+      auto desired_register = parse_register(def_args.named.at("reg"));
+      // we want to see if we already created a variable for this register, and reuse it.
+      for (auto& constr : fenv->constraints()) {
+        if (constr.desired_register == desired_register && constr.contrain_everywhere) {
+          auto reg_val_ptr = std::make_unique<RegVal>(constr.ireg, ts);
+          new_place_reg = fenv->push_reg_val(std::move(reg_val_ptr));
+          new_place_reg->mark_as_settable();
+          break;
+        }
       }
 
-      new_place_reg->set_rlet_constraint(constraint.desired_register);
-      constraints.push_back(constraint);
+      if (!new_place_reg) {
+        for (auto& constr : constraints) {
+          if (constr.desired_register == desired_register && constr.contrain_everywhere) {
+            auto reg_val_ptr = std::make_unique<RegVal>(constr.ireg, ts);
+            new_place_reg = fenv->push_reg_val(std::move(reg_val_ptr));
+            new_place_reg->mark_as_settable();
+            break;
+          }
+        }
+      }
+    }
+
+    if (!new_place_reg) {
+      new_place_reg = env->make_ireg(ts, register_class);
+      new_place_reg->mark_as_settable();
+
+      if (def_args.has_named("reg")) {
+        IRegConstraint constraint;
+        constraint.ireg = new_place_reg->ireg();
+        constraint.contrain_everywhere = true;
+        constraint.desired_register = parse_register(def_args.named.at("reg"));
+        if (def_args.has_named("reset-here") &&
+            get_true_or_false(form, def_args.get_named("reset-here"))) {
+          reset_regs.push_back(new_place_reg);
+        }
+
+        new_place_reg->set_rlet_constraint(constraint.desired_register);
+        constraints.push_back(constraint);
+      }
     }
 
     lenv->vars[new_place_name.as_symbol()->name] = new_place_reg;
