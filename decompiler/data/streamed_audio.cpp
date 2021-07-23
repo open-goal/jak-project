@@ -181,9 +181,10 @@ AudioFileInfo process_audio_file(const std::vector<u8>& data,
 }
 
 void process_streamed_audio(const std::string& dir, const std::vector<std::string>& audio_files) {
-  lg::info("Streaming audio: {}\n", dir);
+  auto dir_file_name = file_util::combine_path(dir, "VAGDIR.AYB");
+  lg::info("Streaming audio: {}\n", dir_file_name);
   file_util::create_dir_if_needed(file_util::get_file_path({"assets", "streaming_audio"}));
-  auto dir_data = read_audio_dir(file_util::get_file_path({"iso_data", dir}));
+  auto dir_data = read_audio_dir(file_util::get_file_path({"iso_data", dir_file_name}));
   double audio_len = 0.f;
 
   std::vector<std::string> langs;
@@ -198,7 +199,7 @@ void process_streamed_audio(const std::string& dir, const std::vector<std::strin
 
   for (size_t lang_id = 0; lang_id < audio_files.size(); lang_id++) {
     auto& file = audio_files[lang_id];
-    auto wad_data = file_util::read_binary_file(file_util::get_file_path({"iso_data", file}));
+    auto wad_data = file_util::read_binary_file(file_util::get_file_path({"iso_data", dir, file}));
     auto suffix = std::filesystem::path(file).extension().u8string().substr(1);
     langs.push_back(suffix);
     dir_data.set_file_size(wad_data.size());
