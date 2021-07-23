@@ -151,7 +151,10 @@ const std::unordered_set<std::string> g_functions_to_skip_compiling = {
     "get-task-status",
 
     // aligner - return-from-thread, currently not supported
-    "(method 9 align-control)"};
+    "(method 9 align-control)",
+
+    // loader - decompiler bug with detecting handle macros
+    "(method 10 external-art-buffer)"};
 
 // default location for the data. It can be changed with a command line argument.
 std::string g_iso_data_path = "";
