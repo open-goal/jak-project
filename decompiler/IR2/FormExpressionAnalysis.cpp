@@ -1282,12 +1282,12 @@ Form* strip_int_or_uint_cast(Form* in) {
 }
 }  // namespace
 
-void SimpleExpressionElement::update_from_stack_logor_or_logand(const Env& env,
-                                                                FixedOperatorKind kind,
-                                                                FormPool& pool,
-                                                                FormStack& stack,
-                                                                std::vector<FormElement*>* result,
-                                                                bool allow_side_effects) {
+FormElement* SimpleExpressionElement::update_from_stack_logor_or_logand_helper(
+    const Env& env,
+    FixedOperatorKind kind,
+    FormPool& pool,
+    FormStack& stack,
+    bool allow_side_effects) {
   // grab the normal variable type
   auto arg0_type = env.get_variable_type(m_expr.get_arg(0).var(), true);
 
@@ -1341,15 +1341,17 @@ void SimpleExpressionElement::update_from_stack_logor_or_logand(const Env& env,
     BitfieldManip step(manip_kind, m_expr.get_arg(1).get_int());
     auto other = read_elt->push_step(step, env.dts->ts, pool, env);
     if (other) {
-      result->push_back(other);
+      return other;
     } else {
-      result->push_back(read_elt);
+      return read_elt;
     }
-    return;
 
   } else if (!m_expr.get_arg(1).is_var()) {
     // andi, something else (don't think this can happen?)
-    update_from_stack_copy_first_int_2(env, kind, pool, stack, result, allow_side_effects);
+    std::vector<FormElement*> result;
+    update_from_stack_copy_first_int_2(env, kind, pool, stack, &result, allow_side_effects);
+    assert(result.size() == 1);
+    return result.at(0);
   } else {
     // and, two forms
     auto arg1_type = env.get_variable_type(m_expr.get_arg(1).var(), true);
@@ -1393,11 +1395,10 @@ void SimpleExpressionElement::update_from_stack_logor_or_logand(const Env& env,
         auto other = read_elt->push_step(step, env.dts->ts, pool, env);
         // assert(!other);  // shouldn't be complete.
         if (other) {
-          result->push_back(other);
+          return other;
         } else {
-          result->push_back(read_elt);
+          return read_elt;
         }
-        return;
       } else if (!made_new_read_elt) {
         BitfieldManip::Kind manip_kind;
         if (kind == FixedOperatorKind::LOGAND) {
@@ -1410,22 +1411,21 @@ void SimpleExpressionElement::update_from_stack_logor_or_logand(const Env& env,
         auto step = BitfieldManip::from_form(manip_kind, stripped_arg1);
         auto other = read_elt->push_step(step, env.dts->ts, pool, env);
         if (other) {
-          result->push_back(other);
+          return other;
         } else {
-          result->push_back(read_elt);
+          return read_elt;
         }
-        return;
       }
     }
 
-    if ((arg0_i && arg1_i) || (arg0_u && arg1_u) ||
+    if (((arg0_i || arg0_u) && (arg1_i || arg1_u)) ||
         (arg0_n && arg1_type.base_type() == "pointer") ||
         (arg1_n && arg0_type.base_type() == "pointer")) {
       // types already good
       // we also allow (logand intvar pointer) and (logand pointer intvar)
       auto new_form = pool.alloc_element<GenericElement>(GenericOperator::make_fixed(kind),
                                                          args.at(0), args.at(1));
-      result->push_back(new_form);
+      return new_form;
       // types bad, insert cast.
     } else {
       // this is an ugly hack to make (logand (lognot (enum-bitfield xxxx)) work.
@@ -1450,20 +1450,74 @@ void SimpleExpressionElement::update_from_stack_logor_or_logand(const Env& env,
                 nullptr, GenericOperator::make_fixed(FixedOperatorKind::LOGNOT), inverted);
             auto new_form = pool.alloc_element<GenericElement>(GenericOperator::make_fixed(kind),
                                                                normal, args.at(1));
-            result->push_back(new_form);
-            //                assert(false);
-            return;
+            return new_form;
           }
         }
+      }
+
+      bool arg0_int_like = env.dts->ts.tc(TypeSpec("integer"), arg0_type);
+      bool arg1_int_like = env.dts->ts.tc(TypeSpec("integer"), arg1_type);
+
+      if ((arg0_int_like) && (arg1_int_like)) {
+        auto new_form = pool.alloc_element<GenericElement>(GenericOperator::make_fixed(kind),
+                                                           args.at(0), args.at(1));
+        return new_form;
+        // types bad, insert cast.
       }
 
       auto cast = pool.alloc_single_element_form<CastElement>(
           nullptr, TypeSpec(arg0_i ? "int" : "uint"), args.at(1));
       auto new_form =
           pool.alloc_element<GenericElement>(GenericOperator::make_fixed(kind), args.at(0), cast);
-      result->push_back(new_form);
+      return new_form;
     }
   }
+}
+
+void SimpleExpressionElement::update_from_stack_logor_or_logand(const Env& env,
+                                                                FixedOperatorKind kind,
+                                                                FormPool& pool,
+                                                                FormStack& stack,
+                                                                std::vector<FormElement*>* result,
+                                                                bool allow_side_effects) {
+  auto element =
+      update_from_stack_logor_or_logand_helper(env, kind, pool, stack, allow_side_effects);
+
+  /*
+     (defmacro logclear (a b)
+       "Returns the result of setting the bits in b to zero in a"
+       `(logand (lognot ,b) ,a)
+       )
+   */
+
+  constexpr int a_form = 0;
+  constexpr int b_form = 1;
+
+  auto lognot_submatcher =
+      Matcher::op(GenericOpMatcher::fixed(FixedOperatorKind::LOGNOT), {Matcher::any(b_form)});
+  auto lognot_submatchers =
+      Matcher::match_or({Matcher::cast("uint", lognot_submatcher),
+                         Matcher::cast("int", lognot_submatcher), lognot_submatcher});
+
+  auto logclear_matcher =
+      Matcher::match_or({Matcher::op(GenericOpMatcher::fixed(FixedOperatorKind::LOGAND),
+                                     {lognot_submatchers, Matcher::any(a_form)}),
+                         Matcher::op(GenericOpMatcher::fixed(FixedOperatorKind::LOGAND),
+                                     {Matcher::any(a_form), lognot_submatchers})});
+
+  Form hack_form;
+  hack_form.elts().push_back(element);
+
+  auto mr = match(logclear_matcher, &hack_form);
+  if (mr.matched) {
+    result->push_back(pool.alloc_element<GenericElement>(
+        GenericOperator::make_fixed(FixedOperatorKind::LOGCLEAR),
+        std::vector<Form*>{mr.maps.forms.at(a_form), mr.maps.forms.at(b_form)}));
+
+    return;
+  }
+
+  result->push_back(element);
 }
 
 void SimpleExpressionElement::update_from_stack_left_shift(const Env& env,
@@ -2041,7 +2095,8 @@ void SetFormFormElement::push_to_stack(const Env& env, FormPool& pool, FormStack
       {FixedOperatorKind::ADDITION, FixedOperatorKind::ADDITION_IN_PLACE},
       {FixedOperatorKind::ADDITION_PTR, FixedOperatorKind::ADDITION_PTR_IN_PLACE},
       {FixedOperatorKind::LOGAND, FixedOperatorKind::LOGAND_IN_PLACE},
-      {FixedOperatorKind::LOGIOR, FixedOperatorKind::LOGIOR_IN_PLACE}};
+      {FixedOperatorKind::LOGIOR, FixedOperatorKind::LOGIOR_IN_PLACE},
+      {FixedOperatorKind::LOGCLEAR, FixedOperatorKind::LOGCLEAR_IN_PLACE}};
 
   auto src_as_generic = m_src->try_as_element<GenericElement>();
   if (src_as_generic) {
