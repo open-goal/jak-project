@@ -1344,11 +1344,7 @@
    )
   (upload-now! page 2)
   (update-vram-pages pool (-> pool segment-near) page 2)
-  (let
-   ((page-seg-2-size
-     (logand -4096 (the-as int (+ (-> page segment 2 size) 4095)))
-     )
-    )
+  (let ((page-seg-2-size (logand -4096 (+ (-> page segment 2 size) 4095))))
    (cond
     ((< (the-as uint #x24000) page-seg-2-size)
      (let ((after-seg-2-data (&+ (-> page segment 2 block-data) #x90000)))
@@ -1384,8 +1380,7 @@
 (defun
   texture-page-near-allocate-1
   ((pool texture-pool) (page texture-page) (heap kheap) (mode int))
-  (let
-   ((seg2-size (logand -4096 (the-as int (+ (-> page segment 2 size) 4095)))))
+  (let ((seg2-size (logand -4096 (+ (-> page segment 2 size) 4095))))
    (let
     ((seg2-dest
       (+ (- #x62000 (the-as int seg2-size)) (-> pool segment-near dest))
@@ -3083,7 +3078,7 @@
   unlink-textures-in-heap!
   texture-page-dir
   ((obj texture-page-dir) (heap kheap))
-  (local-vars (dist-past-end uint))
+  (local-vars (dist-past-end pointer))
   (let ((mem-start (-> heap base))
         (mem-end (-> heap top-base))
         )
@@ -3104,7 +3099,7 @@
           (< (the-as int (- (the-as int shader) (the-as int mem-start))) 0)
           cfg-7
           :delay
-          (set! dist-past-end (the-as uint (- (the-as int shader) mem-end)))
+          (set! dist-past-end (- (the-as int shader) mem-end))
           )
          (b! (>= (the-as int dist-past-end) 0) cfg-7 :delay (nop!))
          (let ((t4-2 (-> shader next)))
@@ -3222,12 +3217,10 @@
          (f1-0 (-> arg1 uv-dist))
          (v1-2 (+ v1-1 -1))
          (f0-2 (/ f0-1 f1-0))
-         (a2-2 (logior a2-1 (the-as uint (* v1-2 4))))
+         (a2-2 (logior a2-1 (* v1-2 4)))
          (v1-5 (shl (-> arg1 mip-shift) 19))
          (a3-0 (-> arg1 tex1-control))
-         (a2-4
-          (logior (logior a2-2 (the-as uint v1-5)) (the-as uint (* a3-0 32)))
-          )
+         (a2-4 (logior (logior a2-2 v1-5) (* a3-0 32)))
          )
    (let* ((t1-1 (incomplete-bitfield-access (-> arg0 tex0)))
           (v1-6 (-> arg1 psm))
@@ -3248,22 +3241,17 @@
            (v1-13 (shl v1-12 26))
            )
       (.plzcw a3-4 a3-3)
-      (let ((t1-7 (logior t1-6 (the-as uint v1-13))))
+      (let ((t1-7 (logior t1-6 v1-13)))
        (.subu a3-5 t0-0 a3-4)
        (let* ((a3-6 (shl a3-5 30))
               (v1-14 1)
-              (t1-9
-               (logior
-                (logior t1-7 (the-as uint a3-6))
-                (the-as uint (shl v1-14 34))
-                )
-               )
+              (t1-9 (logior (logior t1-7 a3-6) (shl v1-14 34)))
               (v1-17 (shl (-> arg1 clutdest) 37))
               (a3-8 (shl (-> arg1 clutpsm) 51))
               (t1-11 (logior (logior t1-9 v1-17) a3-8))
               (v1-19 (shl 1 61))
               (f0-3 (the int f0-2))
-              (t1-12 (logior t1-11 (the-as uint v1-19)))
+              (t1-12 (logior t1-11 v1-19))
               (v1-20 f0-3)
               )
         (set! (-> arg0 tex0) (the-as gs-tex0 t1-12))
@@ -3280,7 +3268,7 @@
                (t0-5 (logand t0-4 15))
                )
          (nop!)
-         (b! #t cfg-3 :delay (set! a3-13 (the-as int (+ a3-12 t0-5))))
+         (b! #t cfg-3 :delay (set! a3-13 (+ a3-12 t0-5)))
          )
         (label cfg-2)
         (let* ((t0-6 (+ a3-10 -5))
@@ -3303,7 +3291,7 @@
           (t1-13 (-> arg1 dest 1))
           (a3-17 (shl a3-16 32))
           (v1-21 (-> arg1 width 1))
-          (a2-5 (logior a2-4 (the-as uint a3-17)))
+          (a2-5 (logior a2-4 a3-17))
           (v1-22 (shl v1-21 14))
           )
     (set! (-> arg0 tex1) a2-5)
@@ -3319,12 +3307,7 @@
             (t0-10 (+ (-> arg1 num-mips) -5))
             )
       (set! (-> arg0 miptbp1) (the-as gs-miptbp a2-10))
-      (b!
-       (< (the-as int t0-10) 0)
-       cfg-5
-       :delay
-       (set! a3-22 (the-as uint (-> arg1 width 4)))
-       )
+      (b! (< (the-as int t0-10) 0) cfg-5 :delay (set! a3-22 (-> arg1 width 4)))
       )
      )
     )
@@ -3349,11 +3332,8 @@
 
 ;; definition for function adgif-shader-login
 (defun adgif-shader-login ((shader adgif-shader))
-  (when (nonzero? (logand (-> shader link-test) (link-test-flags needs-log-in)))
-   (set!
-    (-> shader link-test)
-    (logand (lognot (link-test-flags needs-log-in bit-9)) (-> shader link-test))
-    )
+  (when (logtest? (-> shader link-test) (link-test-flags needs-log-in))
+   (logclear! (-> shader link-test) (link-test-flags needs-log-in bit-9))
    (set! (-> shader texture-id) (level-remap-texture (-> shader texture-id)))
    (link-texture-by-id (-> shader texture-id) shader)
    (let ((tex (lookup-texture-by-id (-> shader texture-id))))
@@ -3373,11 +3353,8 @@
 
 ;; definition for function adgif-shader-login-no-remap
 (defun adgif-shader-login-no-remap ((arg0 adgif-shader))
-  (when (nonzero? (logand (-> arg0 link-test) (link-test-flags needs-log-in)))
-   (set!
-    (-> arg0 link-test)
-    (logand (lognot (link-test-flags needs-log-in bit-9)) (-> arg0 link-test))
-    )
+  (when (logtest? (-> arg0 link-test) (link-test-flags needs-log-in))
+   (logclear! (-> arg0 link-test) (link-test-flags needs-log-in bit-9))
    (link-texture-by-id (-> arg0 texture-id) arg0)
    (let ((s5-0 (lookup-texture-by-id (-> arg0 texture-id))))
     (if s5-0
@@ -3396,11 +3373,8 @@
 
 ;; definition for function adgif-shader-login-fast
 (defun adgif-shader-login-fast ((shader adgif-shader))
-  (when (nonzero? (logand (-> shader link-test) (link-test-flags needs-log-in)))
-   (set!
-    (-> shader link-test)
-    (logand (lognot (link-test-flags needs-log-in bit-9)) (-> shader link-test))
-    )
+  (when (logtest? (-> shader link-test) (link-test-flags needs-log-in))
+   (logclear! (-> shader link-test) (link-test-flags needs-log-in bit-9))
    (set! (-> shader texture-id) (level-remap-texture (-> shader texture-id)))
    (let ((tex-id (-> shader texture-id)))
     (when
@@ -3450,11 +3424,8 @@
 
 ;; definition for function adgif-shader-login-no-remap-fast
 (defun adgif-shader-login-no-remap-fast ((arg0 adgif-shader))
-  (when (nonzero? (logand (-> arg0 link-test) (link-test-flags needs-log-in)))
-   (set!
-    (-> arg0 link-test)
-    (logand (lognot (link-test-flags needs-log-in bit-9)) (-> arg0 link-test))
-    )
+  (when (logtest? (-> arg0 link-test) (link-test-flags needs-log-in))
+   (logclear! (-> arg0 link-test) (link-test-flags needs-log-in bit-9))
    (let ((v1-4 (-> arg0 texture-id)))
     (when
      (and

@@ -1491,6 +1491,26 @@ std::unique_ptr<AtomicOp> convert_dsll32_4(const Instruction& i0,
   return nullptr;
 }
 
+std::unique_ptr<AtomicOp> convert_fp_branch_with_nop(const Instruction& i0,
+                                                     const Instruction& i1,
+                                                     const Instruction& i2,
+                                                     const Instruction& i3,
+                                                     IR2_Condition::Kind kind,
+                                                     int idx) {
+  if (i1.kind != InstructionKind::VNOP) {
+    return nullptr;
+  }
+  if (i2.kind == InstructionKind::BC1T || i2.kind == InstructionKind::BC1F) {
+    IR2_Condition condition(kind, make_src_atom(i0.get_src(0).get_reg(), idx),
+                            make_src_atom(i0.get_src(1).get_reg(), idx));
+    if (i2.kind == InstructionKind::BC1F) {
+      condition.invert();
+    }
+    return make_branch(condition, i3, false, i2.get_src(0).get_label(), idx);
+  }
+  return nullptr;
+}
+
 std::unique_ptr<AtomicOp> convert_4(const Instruction& i0,
                                     const Instruction& i1,
                                     const Instruction& i2,
@@ -1499,6 +1519,8 @@ std::unique_ptr<AtomicOp> convert_4(const Instruction& i0,
   switch (i0.kind) {
     case InstructionKind::DSLL32:
       return convert_dsll32_4(i0, i1, i2, i3, idx);
+    case InstructionKind::CEQS:
+      return convert_fp_branch_with_nop(i0, i1, i2, i3, IR2_Condition::Kind::FLOAT_EQUAL, idx);
     default:
       return nullptr;
   }
@@ -1602,6 +1624,53 @@ std::unique_ptr<AtomicOp> convert_vector_minus(const Instruction& i0,
       idx);
 }
 
+std::unique_ptr<AtomicOp> convert_vector_cross(const Instruction& i0,
+                                               const Instruction& i1,
+                                               const Instruction& i2,
+                                               const Instruction& i3,
+                                               const Instruction& i4,
+                                               int idx) {
+  // lqc2 vf1, 0(v1) (src1)
+  if (i0.kind != InstructionKind::LQC2 || i0.get_dst(0).get_reg() != make_vf(1) ||
+      !i0.get_src(0).is_imm(0)) {
+    return nullptr;
+  }
+  Register src1 = i0.get_src(1).get_reg();
+
+  // lqc2 vf5, 0(a2) (src2)
+  if (i1.kind != InstructionKind::LQC2 || i1.get_dst(0).get_reg() != make_vf(2) ||
+      !i1.get_src(0).is_imm(0)) {
+    return nullptr;
+  }
+  Register src2 = i1.get_src(1).get_reg();
+
+  // vopmula.xyz acc, vf1, vf2
+  if (i2.kind != InstructionKind::VOPMULA || i2.get_src(0).get_reg() != make_vf(1) ||
+      i2.get_src(1).get_reg() != make_vf(2) || i2.cop2_dest != 14) {
+    return nullptr;
+  }
+
+  // vopmsub.xyz vf3, vf2, vf1
+  if (i3.kind != InstructionKind::VOPMSUB || i3.get_dst(0).get_reg() != make_vf(3) ||
+      i3.get_src(0).get_reg() != make_vf(2) || i3.get_src(1).get_reg() != make_vf(1) ||
+      i3.cop2_dest != 14) {
+    return nullptr;
+  }
+
+  // sqc2 vf3, 0(a0)
+  if (i4.kind != InstructionKind::SQC2 || i4.get_src(0).get_reg() != make_vf(3) ||
+      !i4.get_src(1).is_imm(0)) {
+    return nullptr;
+  }
+  Register dst = i4.get_src(2).get_reg();
+
+  return std::make_unique<SetVarOp>(
+      make_dst_var(dst, idx),
+      SimpleExpression(SimpleExpression::Kind::VECTOR_CROSS, make_src_atom(dst, idx),
+                       make_src_atom(src1, idx), make_src_atom(src2, idx)),
+      idx);
+}
+
 std::unique_ptr<AtomicOp> convert_5(const Instruction& i0,
                                     const Instruction& i1,
                                     const Instruction& i2,
@@ -1628,6 +1697,11 @@ std::unique_ptr<AtomicOp> convert_5(const Instruction& i0,
   auto as_vector_minus = convert_vector_minus(i0, i1, i2, i3, i4, idx);
   if (as_vector_minus) {
     return as_vector_minus;
+  }
+
+  auto as_vector_cross = convert_vector_cross(i0, i1, i2, i3, i4, idx);
+  if (as_vector_cross) {
+    return as_vector_cross;
   }
   return nullptr;
 }

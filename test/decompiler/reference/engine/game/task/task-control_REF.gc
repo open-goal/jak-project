@@ -68,11 +68,11 @@
        )
       (the-as int (-> obj status))
       )
-     (set! (-> obj flags) (logior (-> obj flags) (task-flags closed)))
+     (logior! (-> obj flags) (task-flags closed))
      #f
      )
     ((task-complete? *game-info* (-> obj game-task))
-     (set! (-> obj flags) (logior (-> obj flags) (task-flags closed)))
+     (logior! (-> obj flags) (task-flags closed))
      #f
      )
     (else
@@ -87,13 +87,10 @@
   (if (= (-> obj game-task) (game-task none))
    (return (the-as int #f))
    )
-  (set! (-> obj flags) (logior (-> obj flags) (task-flags closed)))
-  (when (nonzero? (logand (-> obj flags) (task-flags has-entity)))
+  (logior! (-> obj flags) (task-flags closed))
+  (when (logtest? (-> obj flags) (task-flags has-entity))
    (let ((v1-9 (get-entity-task-perm *game-info* (-> obj game-task))))
-    (set!
-     (-> v1-9 status)
-     (logior (-> v1-9 status) (entity-perm-status user-set-from-cstage))
-     )
+    (logior! (-> v1-9 status) (entity-perm-status user-set-from-cstage))
     (if (< (-> v1-9 user-uint8 0) (the-as uint (-> obj status)))
      (set! (-> v1-9 user-int8 0) (the-as int (-> obj status)))
      )
@@ -104,7 +101,7 @@
 
 ;; definition for method 15 of type task-cstage
 (defmethod open-task! task-cstage ((obj task-cstage))
-  (set! (-> obj flags) (logand (lognot (task-flags closed)) (-> obj flags)))
+  (logclear! (-> obj flags) (task-flags closed))
   0
   )
 
@@ -324,10 +321,7 @@
    (return 0)
    )
   (let ((v1-4 (get-entity-task-perm *game-info* (-> obj stage 0 game-task))))
-   (set!
-    (-> v1-4 status)
-    (logior (-> v1-4 status) (entity-perm-status user-set-from-cstage))
-    )
+   (logior! (-> v1-4 status) (entity-perm-status user-set-from-cstage))
    (set! (-> v1-4 user-int8 (+ arg1 1)) arg0)
    )
   0

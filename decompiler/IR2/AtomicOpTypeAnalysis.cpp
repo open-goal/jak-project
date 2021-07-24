@@ -200,6 +200,7 @@ TP_Type SimpleExpression::get_type(const TypeState& input,
       return TP_Type::make_from_ts("uint");
     case Kind::VECTOR_PLUS:
     case Kind::VECTOR_MINUS:
+    case Kind::VECTOR_CROSS:
       return TP_Type::make_from_ts("vector");
     case Kind::VECTOR_FLOAT_PRODUCT:
       return TP_Type::make_from_ts("vector");
@@ -1244,8 +1245,11 @@ void FunctionEndOp::mark_function_as_no_return_value() {
 }
 
 TypeState AsmBranchOp::propagate_types_internal(const TypeState& input,
-                                                const Env&,
-                                                DecompilerTypeSystem&) {
+                                                const Env& env,
+                                                DecompilerTypeSystem& dts) {
+  if (m_branch_delay) {
+    return m_branch_delay->propagate_types(input, env, dts);
+  }
   // for now, just make everything uint
   TypeState output = input;
   for (auto x : m_write_regs) {
@@ -1253,6 +1257,7 @@ TypeState AsmBranchOp::propagate_types_internal(const TypeState& input,
       output.get(x) = TP_Type::make_from_ts("uint");
     }
   }
+
   return output;
 }
 

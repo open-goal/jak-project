@@ -38,17 +38,17 @@
 (defmethod new bit-array ((allocation symbol) (type-to-make type) (length int))
   "Allocate a new bit-array which can hold length bits.
    Sets both the length and the allocated-length to this length."
-  (local-vars (obj bit-array))
-  ;; remove one byte, we get one in the type already.
-  (set! obj (object-new allocation type-to-make
-                        (+ (+ (sar (logand -8 (+ length 7)) 3) -1)
-                           (the-as int (-> type-to-make size))
-                           )
-                        )
+  (let ((obj (object-new allocation type-to-make
+                         (+ (+ (/ (logand -8 (+ length 7)) 8) -1)
+                            (the-as int (-> type-to-make size))
+                            )
+                         )
+          )
         )
-  (set! (-> obj length) length)
-  (set! (-> obj allocated-length) length)
-  obj
+    (set! (-> obj length) length)
+    (set! (-> obj allocated-length) length)
+    obj
+    )
   )
 
 (defmethod length bit-array ((obj bit-array))
@@ -58,39 +58,30 @@
 
 (defmethod asize-of bit-array ((obj bit-array))
   "Get the size in memory. 
-   It is wrong and says its one bit longer, which is safe."
+   It is wrong and says its one byte longer, which is safe."
   (the-as int
           (+ (-> obj type size)
-             (the-as uint (sar (logand -8 (+ (-> obj allocated-length) 7)) 3))
+             (the-as uint (/ (logand -8 (+ (-> obj allocated-length) 7)) 8))
              )
           )
   )
 
 (defmethod get-bit bit-array ((obj bit-array) (idx int))
   "Is the bit at idx set or not?"
-  (local-vars (byte uint))
-  ;; read the byte
-  (set! byte (-> obj bytes (sar idx 3)))
-  (nonzero? (logand byte (the-as uint (ash 1 (logand idx 7)))))
+  (let ((v1-2 (-> obj bytes (/ idx 8))))
+    (nonzero? (logand v1-2 (ash 1 (logand idx 7))))
+    )
   )
 
 (defmethod clear-bit bit-array ((obj bit-array) (idx int))
   "Clear the bit at position idx"
-  (set! (-> obj bytes (sar idx 3))
-        (logand (-> obj bytes (sar idx 3))
-                (the-as uint (lognot (ash 1 (logand idx 7))))
-                )
-        )
+  (logclear! (-> obj bytes (/ idx 8)) (ash 1 (logand idx 7)))
   0
   )
 
 (defmethod set-bit bit-array ((obj bit-array) (idx int))
   "Set the bit at position idx"
-  (set! (-> obj bytes (sar idx 3))
-        (logior (-> obj bytes (sar idx 3))
-                (the-as uint (ash 1 (logand idx 7)))
-                )
-        )
+  (logior! (-> obj bytes (/ idx 8)) (the-as uint (ash 1 (logand idx 7))))
   0
   )
 
@@ -507,7 +498,10 @@
        (set! (-> vec x) ,xv)
        (set! (-> vec y) ,yv)
        (set! (-> vec z) ,zv)
-       (set! (-> vec w) ,wv)))
+       (set! (-> vec w) ,wv)
+       vec
+       )
+     )
      )
 
 (defun vector-dot ((a vector) (b vector))
