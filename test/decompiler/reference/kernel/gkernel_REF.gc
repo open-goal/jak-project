@@ -990,7 +990,7 @@
     (when
      (not
       (or
-       (nonzero? (logand (-> arg0 mask) (process-mask heap-shrunk)))
+       (logtest? (-> arg0 mask) (process-mask heap-shrunk))
        (and (not (-> arg0 next-state)) (not (-> arg0 state)))
        )
       )
@@ -1250,10 +1250,7 @@
   ((arg0 process-tree) (arg1 (function object object)) (arg2 kernel-context))
   (let
    ((s4-0
-     (or
-      (nonzero? (logand (-> arg0 mask) (process-mask process-tree)))
-      (arg1 arg0)
-      )
+     (or (logtest? (-> arg0 mask) (process-mask process-tree)) (arg1 arg0))
      )
     )
    (cond
@@ -1281,7 +1278,7 @@
   (let
    ((s3-0
      (or
-      (nonzero? (logand (-> arg0 mask) (process-mask process-tree)))
+      (logtest? (-> arg0 mask) (process-mask process-tree))
       (not
        (and
         (zero? (logand (-> arg2 prevent-from-run) (-> arg0 mask)))
@@ -1355,11 +1352,9 @@
                                          (('waiting-to-run 'suspended)
                                            (set! (-> s5-0 current-process) arg0)
                                            (cond
-                                            ((nonzero?
-                                              (logand
-                                               (-> arg0 mask)
-                                               (process-mask pause)
-                                               )
+                                            ((logtest?
+                                              (-> arg0 mask)
+                                              (process-mask pause)
                                               )
                                              (set! *stdcon* *stdcon1*)
                                              (set! *debug-draw-pauseable* #t)
@@ -1394,11 +1389,9 @@
                                              )
                                             )
                                            (if
-                                            (nonzero?
-                                             (logand
-                                              (-> arg0 mask)
-                                              (process-mask sleep-code)
-                                              )
+                                            (logtest?
+                                             (-> arg0 mask)
+                                             (process-mask sleep-code)
                                              )
                                             (set! (-> arg0 status) 'suspended)
                                             ((-> arg0 main-thread resume-hook)
@@ -1734,7 +1727,7 @@
   (set! (-> obj event-hook) #f)
   (set! (-> obj state) #f)
   (set! (-> obj next-state) #f)
-  (if (nonzero? (logand (-> arg0 mask) (process-mask process-tree)))
+  (if (logtest? (-> arg0 mask) (process-mask process-tree))
    (set! (-> obj entity) #f)
    (set! (-> obj entity) (-> (the-as process arg0) entity))
    )
