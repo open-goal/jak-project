@@ -24,7 +24,7 @@ DgoReader::DgoReader(std::string file_name, const std::vector<u8>& data)
           "Warning: final file %s in DGO %s has a size missing %d bytes.  It will be adjusted from "
           "%d to %d bytes.\n",
           obj_header.name, header.name, obj_header.size - reader.bytes_left(), obj_header.size,
-          reader.bytes_left());
+          (int)reader.bytes_left());
       obj_header.size = reader.bytes_left();
     }
     assert(reader.bytes_left() >= obj_header.size);
