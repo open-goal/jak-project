@@ -1536,6 +1536,15 @@ std::string IR_Int128Math3Asm::print() {
     case Kind::PSUBW:
       function = ".psubw";
       break;
+    case Kind::POR:
+      function = ".por";
+      break;
+    case Kind::PXOR:
+      function = ".pxor";
+      break;
+    case Kind::PAND:
+      function = ".pand";
+      break;
     default:
       assert(false);
   }
@@ -1582,6 +1591,15 @@ void IR_Int128Math3Asm::do_codegen(emitter::ObjectGenerator* gen,
     case Kind::PSUBW:
       // psubW on mips is psubD on x86...
       gen->add_instr(IGen::vpsubd(dst, src1, src2), irec);
+      break;
+    case Kind::POR:
+      gen->add_instr(IGen::parallel_bitwise_or(dst, src2, src1), irec);
+      break;
+    case Kind::PXOR:
+      gen->add_instr(IGen::parallel_bitwise_xor(dst, src2, src1), irec);
+      break;
+    case Kind::PAND:
+      gen->add_instr(IGen::parallel_bitwise_and(dst, src2, src1), irec);
       break;
     default:
       assert(false);
