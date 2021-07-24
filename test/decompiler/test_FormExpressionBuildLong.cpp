@@ -1785,7 +1785,7 @@ TEST_F(FormRegressionTest, ExprValid) {
       "  (cond\n"
       "   ((not arg1)\n"
       "    (cond\n"
-      "     ((nonzero? (logand (the-as int arg0) 3))\n"
+      "     ((logtest? (the-as int arg0) 3)\n"
       "      (if arg2\n"
       "       (format\n"
       "        arg4\n"
@@ -1817,7 +1817,7 @@ TEST_F(FormRegressionTest, ExprValid) {
       "    )\n"
       "   ((= arg1 structure)\n"
       "    (cond\n"
-      "     ((nonzero? (logand (the-as int arg0) 15))\n"
+      "     ((logtest? (the-as int arg0) 15)\n"
       "      (if arg2\n"
       "       (format\n"
       "        arg4\n"
@@ -2010,7 +2010,8 @@ TEST_F(FormRegressionTest, ExprValid) {
       "    #t\n"
       "    )\n"
       "   )\n"
-      "  )";
+      "  )\n"
+      "\n";
   test_with_expr(
       func, type, expected, false, "",
       {{"L321", "ERROR: object #x~X ~S is not a valid object (misaligned)~%"},
