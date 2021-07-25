@@ -12,6 +12,10 @@ const std::map<InstructionKind, OpenGOALAsm::Function> MIPS_ASM_TO_OPEN_GOAL_FUN
     {InstructionKind::PSRAW, {".pw.sra", {}}},
     {InstructionKind::PSUBW, {".psubw", {}}},
 
+    {InstructionKind::POR, {".por", {}}},
+    {InstructionKind::PNOR, {".pnor", {}}},
+    {InstructionKind::PAND, {".pand", {}}},
+
     {InstructionKind::PEXTUW, {".pextuw", {}}},
     {InstructionKind::PEXTLW, {".pextlw", {}}},
     {InstructionKind::PCPYLD, {".pcpyld", {}}},
@@ -174,7 +178,7 @@ std::vector<goos::Object> OpenGOALAsm::get_args(const std::vector<DecompilerLabe
 
     if (v.has_value()) {
       // Normal register / constant args
-      args.push_back(v.value().to_form(env));
+      args.push_back(v.value().to_form(env, RegisterAccess::Print::AS_VARIABLE_NO_CAST));
     } else if (atom.kind == InstructionAtom::AtomKind::VF_FIELD) {
       // Handle FTF/FSF operations
       if (func.allows_modifier(MOD::FTF) && func.allows_modifier(MOD::FSF)) {

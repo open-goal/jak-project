@@ -8,6 +8,7 @@
 #include "decompiler/analysis/final_output.h"
 #include "decompiler/analysis/stack_spill.h"
 #include "decompiler/analysis/insert_lets.h"
+#include "decompiler/analysis/inline_asm_rewrite.h"
 #include "decompiler/util/config_parsers.h"
 #include "common/goos/PrettyPrinter.h"
 #include "common/util/json_util.h"
@@ -219,6 +220,10 @@ std::unique_ptr<FormRegressionTest::TestData> FormRegressionTest::make_function(
       if (!success) {
         return nullptr;
       }
+
+      rewrite_inline_asm_instructions(test->func.ir2.top_form, *test->func.ir2.form_pool,
+                                      test->func, *dts);
+
       // move variables into lets.
       insert_lets(test->func, test->func.ir2.env, *test->func.ir2.form_pool,
                   test->func.ir2.top_form);

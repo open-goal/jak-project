@@ -118,7 +118,7 @@
 
 ;; - Unknowns
 
-;;(define-extern quad-copy! UNKNOWN)
+(define-extern quad-copy! (function pointer pointer int none))
 
 
 ;; ----------------------
@@ -531,6 +531,7 @@
     ;; merc1 61
     ;; generic1 62
     (bucket-65 65)
+    (sprite 66)
     ;; debug spheres? 67
     (debug-draw0 67)
     ;; debug text 68
@@ -1837,8 +1838,8 @@
   :size-assert         #x28
   :flag-assert         #xb00000028
   (:methods
-    (TODO-RENAME-HUGE-9 (_type_ vector) none 9)
-    (TODO-RENAME-10 (_type_ vector vector) float 10)
+    (debug-draw (_type_ vector) none 9)
+    (ray-capsule-intersect (_type_ vector vector) float 10)
     )
   )
 
@@ -1852,8 +1853,8 @@
   :size-assert         #x28
   :flag-assert         #xb00000028
   (:methods
-    (TODO-RENAME-HUGE-9 (_type_ vector) none 9)
-    (TODO-RENAME-10 (_type_ vector vector) float 10)
+    (debug-draw (_type_ vector) none 9)
+    (ray-flat-cyl-intersect (_type_ vector vector) float 10)
     )
   )
 
@@ -4897,7 +4898,7 @@
 (declare-type entity-links structure)
 (deftype level-group (basic)
   ((length          int32                :offset-assert 4)
-   (log-in-level    level                :offset-assert 8)
+   (log-in-level-bsp    bsp-header                :offset-assert 8)
    (loading-level   level                :offset-assert 12)
    (entity-link     entity-links         :offset-assert 16) ;; not sure what's going on here
    (border?         basic                :offset-assert 20)
@@ -5846,12 +5847,12 @@
   :flag-assert         #x1200000020
   (:methods
     (login (_type_) _type_ 9) ;; probably login or init.
-    (draw (_type_ drawable display-frame) int 10) ;; display-frame is from the method inspect tool
-    (dummy-11 (_type_ int) none 11) ; int - length
-    (dummy-12 (_type_ int) none 12) ; int - length
-    (dummy-13 (_type_ int) none 13) ; int - length
-    (dummy-14 () none 14)
-    (dummy-15 (_type_) none 15)
+    (draw (_type_ drawable display-frame) none 10) ;; display-frame is from the method inspect tool
+    (dummy-11 (_type_ int object) none 11) ; int - length, collision related
+    (dummy-12 (_type_ int object) none 12) ; int - length, collision related
+    (dummy-13 (_type_ int object) none 13) ; int - length, collision related
+    (dummy-14 (_type_) none 14)
+    (dummy-15 (_type_ object object) none 15) ;; something debugging
     (dummy-16 (_type_ object object) object 16)
     (dummy-17 (_type_ sphere int ambient-list) none 17)
     )
@@ -11529,12 +11530,13 @@
    (to-spr-waits   uint32  :offset-assert 44)
    (from-spr-waits uint32  :offset-assert 48)
    )
+  :pack-me
   :method-count-assert 14
   :size-assert         #x34
   :flag-assert         #xe00000034
   (:methods
     (dummy-9 (_type_) none 9)
-    (dummy-10 (_type_) none 10)
+    (print-to-stream (_type_ string basic) none 10)
     (reset! (_type_) none 11)
     (read! (_type_) none 12)
     (update-wait-stats (_type_ uint uint uint) none 13)
@@ -11579,9 +11581,9 @@
    (pat pointer :offset-assert 44)
    (pat-length int32 :offset-assert 48)
 
-   ;; not sure what this is
-   (unk-data-0 pointer :offset-assert 52)
-   (unk-data-0-len int32 :offset-assert 56)
+   ;; some osrt of texture remapping info
+   (texture-remap-table (pointer uint64) :offset-assert 52)
+   (texture-remap-table-len int32 :offset-assert 56)
 
    (unk-data-1 pointer :offset-assert 60)
    (unk-data-1-len int32 :offset-assert 64)
@@ -11596,10 +11598,11 @@
    (nodes (inline-array bsp-node) :offset-assert 120)
 
    (level level :offset-assert 124)
-   (unk-data-2 uint32 5 :offset-assert 128)
+   (current-leaf-idx uint16 :offset-assert 128)
+   (unk-data-2 uint16 9 :offset-assert 130)
 
    (boxes box8s-array :offset-assert 148)
-   (unk-data-3 uint32 :offset-assert 152)
+   (current-bsp-back-flags uint32 :offset-assert 152)
    (ambients drawable-inline-array-ambient :offset-assert 156)
    (unk-data-4 float :offset-assert 160)
    (unk-data-5 float :offset-assert 164)
@@ -12589,7 +12592,7 @@
    (far    float 4 :offset-assert 60)
    )
   (:methods
-    (new (symbol type float float) _type_)
+    (new (symbol type meters meters) _type_)
     )
   :method-count-assert 9
   :size-assert         #x4c
@@ -12959,9 +12962,9 @@
 ;; - Types
 
 (deftype sprite-vec-data-2d (structure)
-  ((x-y-z-sx    vector   :inline :offset-assert 0)
-   (flag-rot-sy vector   :inline :offset-assert 16)
-   (r-g-b-a     vector   :inline :offset-assert 32)
+  ((x-y-z-sx    vector   :inline :offset-assert 0 :score -10)
+   (flag-rot-sy vector   :inline :offset-assert 16 :score -10)
+   (r-g-b-a     vector   :inline :offset-assert 32 :score -10)
    (x           float            :offset 0)
    (y           float            :offset 4)
    (z           float            :offset 8)
@@ -12986,13 +12989,16 @@
   )
 
 (deftype sprite-array-2d (basic)
-  ((num-sprites uint32 2 :offset-assert 4)
-   (num-valid   uint32 2 :offset-assert 12)
+  ((num-sprites int32 2 :offset-assert 4)
+   (num-valid   int32 2 :offset-assert 12)
    (vec-data    uint32    :offset-assert 20)
    (adgif-data  uint32    :offset-assert 24)
    (pad         uint128 4 :offset-assert 32)
    (data        uint128 1 :offset-assert 96)
    )
+  (:methods
+    (new (symbol type int int) _type_ 0)
+    )
   :method-count-assert 9
   :size-assert         #x70
   :flag-assert         #x900000070
@@ -13025,12 +13031,15 @@
   )
 
 (deftype sprite-array-3d (basic)
-  ((num-sprites uint32 2 :offset-assert 4)
-   (num-valid   uint32 2 :offset-assert 12)
+  ((num-sprites int32 2 :offset-assert 4)
+   (num-valid   int32 2 :offset-assert 12)
    (vec-data    uint32    :offset-assert 20)
    (adgif-data  uint32    :offset-assert 24)
    (data        uint128 1 :offset-assert 32)
    )
+  (:methods
+    (new (symbol type int int) _type_ 0)
+    )
   :method-count-assert 9
   :size-assert         #x30
   :flag-assert         #x900000030
@@ -14697,7 +14706,7 @@
 (define-extern ray-circle-intersect (function vector vector vector float float))
 (define-extern ray-cylinder-intersect (function vector vector vector vector float float vector float))
 (define-extern ray-plane-intersect (function vector vector vector vector vector vector vector float))
-(define-extern ray-triangle-intersect (function vector)) ;; NOTE - didn't bother to check input args
+(define-extern ray-triangle-intersect (function vector vector float matrix vector vector float))
 (define-extern collide-do-primitives (function float)) ;; NOTE - didn't bother to check input args
 (define-extern moving-sphere-sphere-intersect (function vector vector vector vector float))
 (define-extern moving-sphere-moving-sphere-intersect (function vector vector vector vector float))
@@ -14724,7 +14733,7 @@
 (define-extern create-interpolated-joint-animation-frame (function joint-control int process-drawable int))
 (define-extern mem-size (function basic symbol int int))
 (define-extern jacc-mem-usage (function pointer memory-usage-block int int))
-(define-extern joint-anim-inspect-elt (function joint-anim float int))
+(define-extern joint-anim-inspect-elt (function joint-anim float joint-anim))
 (define-extern joint-anim-login (function joint-anim-drawable joint-anim-drawable))
 (define-extern joint-control-channel-eval (function joint-control-channel float))
 (define-extern joint-control-channel-eval! (function joint-control-channel (function joint-control-channel float float float) float))
@@ -14795,10 +14804,10 @@
 
 ;; - Functions
 
-(define-extern print-cl-stat function)
-(define-extern clear-cl-stat function)
-(define-extern mem-usage-bsp-tree (function bsp-header (inline-array bsp-node) memory-usage-block int none))
-(define-extern bsp-camera-asm function)
+(define-extern print-cl-stat (function cl-stat string none))
+(define-extern clear-cl-stat (function cl-stat none))
+(define-extern mem-usage-bsp-tree (function bsp-header bsp-node memory-usage-block int none))
+(define-extern bsp-camera-asm (function bsp-header vector none))
 (define-extern print-collide-stats (function none))
 
 ;; - Unknowns
@@ -14814,13 +14823,32 @@
 
 ;; - Functions
 
-(define-extern perf-stat-bucket->string function)
-(define-extern print-tr-stat function)
-(define-extern clear-tr-stat function)
+(defenum perf-stat-bucket
+  (all-code 0)
+  (mercneric 1)
+  (tie-generic 2)
+  (background 3)
+  (drawable 4)
+  (tfrag 5)
+  (tfrag-near 6)
+  (inst-shrub 7)
+  (proto-shrub 8)
+  (inst-tie 9)
+  (proto-tie-g 10)
+  (proto-tie 11)
+  (proto-tie-n 12)
+  (bones 13)
+  (nav 14)
+  (collide 15)
+  (camera 16))
+
+(define-extern perf-stat-bucket->string (function perf-stat-bucket string))
+(define-extern print-tr-stat (function tr-stat string string none))
+(define-extern clear-tr-stat (function tr-stat none))
 (define-extern print-terrain-stats (function none))
-(define-extern update-subdivide-settings! function)
-(define-extern set-tfrag-dists! function)
-(define-extern start-perf-stat-collection (function engine display-frame int int none))
+(define-extern update-subdivide-settings! (function subdivide-settings math-camera int none))
+(define-extern set-tfrag-dists! (function (pointer float) none))
+(define-extern start-perf-stat-collection (function none))
 (define-extern end-perf-stat-collection (function none))
 (define-extern print-perf-stats (function none))
 
@@ -14829,17 +14857,17 @@
 (define-extern *subdivide-settings* subdivide-settings)
 (define-extern *tfrag-work* tfrag-work) ;; unknown type
 (define-extern *perf-stats* perf-stat-array) ;; unknown type
-;;(define-extern *merc-global-stats* object) ;; unknown type
-;;(define-extern *stat-string-tfrag-near* object) ;; unknown type
-;;(define-extern *stat-string-tfrag* object) ;; unknown type
-;;(define-extern *stat-string-total* object) ;; unknown type
+(define-extern *merc-global-stats* merc-global-stats)
+(define-extern *stat-string-tfrag-near* string)
+(define-extern *stat-string-tfrag* string) ;; unknown type
+(define-extern *stat-string-total* string) ;; unknown type
 (define-extern *terrain-context* terrain-context) ;; unknown type
-;;(define-extern GSH_ENABLE object) ;; unknown type
-;;(define-extern GSH_BUCKET object) ;; unknown type
-;;(define-extern GSH_WHICH_STAT object) ;; unknown type
-;;(define-extern GSH_MAX_DISPLAY object) ;; unknown type
-;;(define-extern GSH_TIME object) ;; unknown type
-;;(define-extern *gomi-stats-hack* object) ;; unknown type
+(define-extern GSH_ENABLE symbol) ;; unknown type
+(define-extern GSH_BUCKET bucket-id) ;; unknown type
+(define-extern GSH_WHICH_STAT int) ;; unknown type
+(define-extern GSH_MAX_DISPLAY basic) ;; unknown type
+(define-extern GSH_TIME int) ;; unknown type
+(define-extern *gomi-stats-hack* (inline-array perf-stat)) ;; unknown type
 
 
 ;; ----------------------
@@ -14850,104 +14878,115 @@
 
 ;; - Types
 
-; (deftype sprite-header (structure)
-;   ((header      UNKNOWN 1 :offset-assert 0)
-;    (num-sprites int32     :offset-assert 0)
-;    )
-;   :method-count-assert 9
-;   :size-assert         #x10
-;   :flag-assert         #x900000010
-;   )
+(deftype sprite-header (structure)
+  (
+   (header      qword 1 :inline :offset-assert 0)
+   (num-sprites int32     :offset 0)
+   )
+  :method-count-assert 9
+  :size-assert         #x10
+  :flag-assert         #x900000010
+  )
 
-; (deftype sprite-hvdf-data (structure)
-;   ((data UNKNOWN 76 :offset-assert 0)
-;    )
-;   :method-count-assert 9
-;   :size-assert         #x4c0
-;   :flag-assert         #x9000004c0
-;   )
+(deftype sprite-hvdf-data (structure)
+  ((data qword 76 :inline :offset-assert 0)
+   )
+  :method-count-assert 9
+  :size-assert         #x4c0
+  :flag-assert         #x9000004c0
+  )
 
-; (deftype sprite-hvdf-control (structure)
-;   ((alloc UNKNOWN 76 :offset-assert 0)
-;    )
-;   :method-count-assert 9
-;   :size-assert         #x4c
-;   :flag-assert         #x90000004c
-;   )
+(deftype sprite-hvdf-control (structure)
+  ((alloc int8 76 :offset-assert 0)
+   )
+  :method-count-assert 9
+  :size-assert         #x4c
+  :flag-assert         #x90000004c
+  )
 
-; (deftype sprite-aux-list (basic)
-;   ((num-entries int32     :offset-assert 4)
-;    (entry       int32     :offset-assert 8)
-;    (data        UNKNOWN 1 :offset-assert 12)
-;    )
-;   :method-count-assert 9
-;   :size-assert         #x10
-;   :flag-assert         #x900000010
-;   )
+(deftype sprite-aux-list (basic)
+  ((num-entries int32     :offset-assert 4)
+   (entry       int32     :offset-assert 8)
+   (data        sprite-vec-data-2d 1   :offset-assert 12) ;; likely 4-bytes each
+   )
+  (:methods
+    (new (symbol type int) _type_ 0)
+    )
+  :method-count-assert 9
+  :size-assert         #x10
+  :flag-assert         #x900000010
+  )
 
-; (deftype sprite-frame-data (structure)
-;   ((data               UNKNOWN      41      :offset-assert 0)
-;    (cdata              UNKNOWN      16      :offset-assert 0)
-;    (fdata              UNKNOWN      25      :offset-assert 256)
-;    (xy-array           UNKNOWN      8       :offset-assert 0)
-;    (st-array           UNKNOWN      4       :offset-assert 128)
-;    (xyz-array          UNKNOWN      4       :offset-assert 192)
-;    (hmge-scale         vector       :inline :offset-assert 256)
-;    (consts             vector       :inline :offset-assert 272)
-;    (pfog0              float                :offset-assert 272)
-;    (deg-to-rad         float                :offset-assert 276)
-;    (min-scale          float                :offset-assert 280)
-;    (inv-area           float                :offset-assert 284)
-;    (adgif-giftag       qword        :inline :offset-assert 288)
-;    (sprite-2d-giftag   qword        :inline :offset-assert 304)
-;    (sprite-2d-giftag-2 qword        :inline :offset-assert 320)
-;    (sincos-01          vector       :inline :offset-assert 336)
-;    (sincos-23          vector       :inline :offset-assert 352)
-;    (sincos-45          vector       :inline :offset-assert 368)
-;    (sincos-67          vector       :inline :offset-assert 384)
-;    (sincos-89          vector       :inline :offset-assert 400)
-;    (basis-x            vector       :inline :offset-assert 416)
-;    (basis-y            vector       :inline :offset-assert 432)
-;    (sprite-3d-giftag   qword        :inline :offset-assert 448)
-;    (screen-shader      adgif-shader :inline :offset-assert 464)
-;    (clipped-giftag     qword        :inline :offset-assert 544)
-;    (inv-hmge-scale     vector       :inline :offset-assert 560)
-;    (stq-offset         vector       :inline :offset-assert 576)
-;    (stq-scale          vector       :inline :offset-assert 592)
-;    (rgba-plain         qword        :inline :offset-assert 608)
-;    (warp-giftag        qword        :inline :offset-assert 624)
-;    (fog-clamp          vector       :inline :offset-assert 640)
-;    (fog-min            float                :offset-assert 640)
-;    (fog-max            float                :offset-assert 644)
-;    (max-scale          float                :offset-assert 648)
-;    )
-;   :method-count-assert 9
-;   :size-assert         #x290
-;   :flag-assert         #x900000290
-;   )
+(deftype sprite-frame-data (structure)
+  (
+   ;(data               UNKNOWN      41      :offset-assert 0)
+   (cdata              vector      16 :inline     :offset-assert 0)
+   ;(fdata              UNKNOWN      25      :offset-assert 256)
+   ;(xy-array           UNKNOWN      8       :offset-assert 0)
+   ;(st-array           UNKNOWN      4       :offset-assert 128)
+   ;(xyz-array          UNKNOWN      4       :offset-assert 192)
+   (hmge-scale         vector       :inline :offset 256)
+   (consts             vector       :inline :offset-assert 272 :score -100.)
+   (pfog0              float                :offset 272)
+   (deg-to-rad         float                :offset 276)
+   (min-scale          float                :offset 280)
+   (inv-area           float                :offset 284)
+   ;(adgif-giftag       qword        :inline :offset-assert 288)
+   (adgif-giftag       gs-gif-tag        :inline :offset-assert 288)
+   (sprite-2d-giftag   gs-gif-tag        :inline :offset-assert 304)
+   (sprite-2d-giftag-2 gs-gif-tag        :inline :offset-assert 320)
+   ;;(sprite-2d-giftag   qword        :inline :offset-assert 304)
+   ;;(sprite-2d-giftag-2 qword        :inline :offset-assert 320)
+   (sincos-01          vector       :inline :offset-assert 336)
+   (sincos-23          vector       :inline :offset-assert 352)
+   (sincos-45          vector       :inline :offset-assert 368)
+   (sincos-67          vector       :inline :offset-assert 384)
+   (sincos-89          vector       :inline :offset-assert 400)
+   (basis-x            vector       :inline :offset-assert 416)
+   (basis-y            vector       :inline :offset-assert 432)
+   ;;(sprite-3d-giftag   qword        :inline :offset-assert 448)
+   (sprite-3d-giftag   gs-gif-tag   :inline :offset-assert 448)
+   (screen-shader      adgif-shader :inline :offset-assert 464)
+   ;;(clipped-giftag     qword        :inline :offset-assert 544)
+   (clipped-giftag     gs-gif-tag   :inline :offset-assert 544)
+   (inv-hmge-scale     vector       :inline :offset-assert 560)
+   (stq-offset         vector       :inline :offset-assert 576)
+   (stq-scale          vector       :inline :offset-assert 592)
+   (rgba-plain         qword        :inline :offset-assert 608)
+   ;;(warp-giftag        qword        :inline :offset-assert 624)
+   (warp-giftag        gs-gif-tag   :inline :offset-assert 624)
+   (fog-clamp          vector       :inline :offset-assert 640)
+   (fog-min            float                :offset 640)
+   (fog-max            float                :offset 644)
+   (max-scale          float                :offset 648)
+   )
+  :method-count-assert 9
+  :size-assert         #x290
+  :flag-assert         #x900000290
+  )
 
 ;; - Functions
 
-(define-extern sprite-init-distorter function)
-(define-extern sprite-draw-distorters function)
-(define-extern sprite-add-frame-data function)
-(define-extern sprite-add-matrix-data function)
-(define-extern sprite-add-3d-all function)
-(define-extern sprite-add-2d-all function)
-(define-extern sprite-add-shadow-all function)
-(define-extern sprite-add-shadow-chunk function)
-(define-extern sprite-setup-header function)
-(define-extern sprite-add-3d-chunk function)
-(define-extern sprite-add-2d-chunk function)
-(define-extern sprite-setup-frame-data function)
-(define-extern clear-sprite-aux-list function)
-(define-extern add-to-sprite-aux-list function)
-(define-extern sprite-set-3d-quaternion! function)
-(define-extern sprite-get-3d-quaternion! function)
+(define-extern sprite-init-distorter (function dma-buffer uint none))
+(define-extern sprite-draw-distorters (function dma-buffer none))
+(define-extern sprite-add-frame-data (function dma-buffer uint none))
+(define-extern sprite-add-matrix-data (function dma-buffer uint none))
+(define-extern sprite-add-3d-all (function sprite-array-3d dma-buffer int none))
+(define-extern sprite-add-2d-all (function sprite-array-2d dma-buffer int none))
+(define-extern sprite-add-shadow-all (function fake-shadow-buffer dma-buffer none))
+(define-extern sprite-add-shadow-chunk (function fake-shadow-buffer int int dma-buffer none))
+(define-extern sprite-setup-header (function sprite-header int none))
+(define-extern sprite-add-3d-chunk (function sprite-array-3d int int dma-buffer none))
+(define-extern sprite-add-2d-chunk (function sprite-array-2d int int dma-buffer int none))
+(define-extern sprite-setup-frame-data (function sprite-frame-data int none))
+(define-extern clear-sprite-aux-list (function none))
+(define-extern add-to-sprite-aux-list function) ;; it's a callback.
+(define-extern sprite-set-3d-quaternion! (function sprite-vec-data-3d quaternion quaternion))
+(define-extern sprite-get-3d-quaternion! (function quaternion sprite-vec-data-3d quaternion))
 (define-extern sprite-draw (function display none))
-(define-extern sprite-allocate-user-hvdf function)
-(define-extern sprite-release-user-hvdf function)
-(define-extern sprite-get-user-hvdf function)
+(define-extern sprite-allocate-user-hvdf (function int))
+(define-extern sprite-release-user-hvdf (function int none))
+(define-extern sprite-get-user-hvdf (function int qword))
 
 ;; - Symbols
 
@@ -14955,12 +14994,12 @@
 
 ;; - Unknowns
 
-;;(define-extern *sprite-hvdf-data* object) ;; unknown type
-;;(define-extern *sprite-hvdf-control* object) ;; unknown type
-;;(define-extern sprite-vu1-block object) ;; unknown type
-;;(define-extern *sprite-array-3d* object) ;; unknown type
-;;(define-extern *sprite-array-2d* object) ;; unknown type
-;;(define-extern *sprite-aux-list* object) ;; unknown type
+(define-extern *sprite-hvdf-data* sprite-hvdf-data) ;; unknown type
+(define-extern *sprite-hvdf-control* sprite-hvdf-control) ;; unknown type
+(define-extern sprite-vu1-block vu-function) ;; unknown type
+(define-extern *sprite-array-3d* sprite-array-3d) ;; unknown type
+(define-extern *sprite-array-2d* sprite-array-2d) ;; unknown type
+(define-extern *sprite-aux-list* sprite-aux-list)
 
 
 ;; ----------------------
@@ -14971,23 +15010,23 @@
 
 ;; - Types
 
-; (deftype sprite-distorter-sine-tables (basic)
-;   ((aspx   float           :offset-assert 4)
-;    (aspy   float           :offset-assert 8)
-;    (entry  UNKNOWN 128     :offset-assert 16)
-;    (ientry UNKNOWN 9       :offset-assert 2064)
-;    (giftag qword   :inline :offset-assert 2208)
-;    (color  qword   :inline :offset-assert 2224)
-;    )
-;   :method-count-assert 9
-;   :size-assert         #x8c0
-;   :flag-assert         #x9000008c0
-;   )
+(deftype sprite-distorter-sine-tables (basic)
+  ((aspx   float           :offset-assert 4)
+   (aspy   float           :offset-assert 8)
+   (entry  vector 128 :inline     :offset-assert 16)
+   (ientry qword 9 :inline      :offset-assert 2064)
+   (giftag gs-gif-tag   :inline :offset-assert 2208) ;; was qword
+   (color  qword   :inline :offset-assert 2224)
+   )
+  :method-count-assert 9
+  :size-assert         #x8c0
+  :flag-assert         #x9000008c0
+  )
 
 ;; - Unknowns
 
-;;(define-extern *sprite-distorter-sine-tables* object) ;; unknown type
-;;(define-extern sprite-distort-vu1-block object) ;; unknown type
+(define-extern *sprite-distorter-sine-tables* sprite-distorter-sine-tables)
+(define-extern sprite-distort-vu1-block vu-function)
 
 
 ;; ----------------------
@@ -18015,7 +18054,7 @@
 
 (define-extern move-camera-from-pad function)
 (define-extern update-view-planes function)
-(define-extern update-visible function)
+(define-extern update-visible (function math-camera none))
 (define-extern set-point function)
 (define-extern plane-from-points function)
 (define-extern update-camera (function none))
@@ -18026,7 +18065,7 @@
 ;;(define-extern *timer-value* object) ;; unknown type
 ;;(define-extern *start-pos* object) ;; unknown type
 ;;(define-extern *save-camera-inv-rot* object) ;; unknown type
-;;(define-extern *update-leaf-when-outside-bsp* object) ;; unknown type
+(define-extern *update-leaf-when-outside-bsp* symbol)
 
 
 ;; ----------------------

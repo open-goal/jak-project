@@ -805,6 +805,17 @@ TEST_F(WithGameTests, RaySphere) {
                           "Got -100000000.0000\n0\n"});
 }
 
+TEST_F(WithGameTests, PandPorPnor) {
+  runner.run_static_test(env, testCategory, "test-pand-por-pnor.gc",
+                         {"#x1f1f1d0f0f0f0d0b0f0f0d0707070503\n"
+                          "#xe0e0e2f0f0f0f2f4f0f0f2f8f8f8fafc\n"
+                          "#x0200000c0a0808080200000402000000\n"
+                          "\n"
+                          "#x1f1f1d0f0f0f0d0b0f0f0d0707070503\n"
+                          "#xe0e0e2f0f0f0f2f4f0f0f2f8f8f8fafc\n"
+                          "#x0200000c0a0808080200000402000000\n0\n"});
+}
+
 TEST(TypeConsistency, TypeConsistency) {
   Compiler compiler;
   compiler.enable_throw_on_redefines();

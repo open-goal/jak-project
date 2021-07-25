@@ -541,7 +541,8 @@ std::unique_ptr<AtomicOp> convert_mfc1_1(const Instruction& i0, int idx) {
 }
 
 std::unique_ptr<AtomicOp> convert_lw_1(const Instruction& i0, int idx) {
-  if (i0.get_dst(0).is_reg(rra()) || i0.get_dst(0).is_reg(make_gpr(Reg::AT))) {
+  if (i0.get_dst(0).is_reg(rra()) ||
+      (i0.get_dst(0).is_reg(make_gpr(Reg::AT)) && !i0.get_src(1).is_reg(rs7()))) {
     return std::make_unique<AsmOp>(i0, idx);
   }
   if (i0.get_dst(0).is_reg(rr0()) && i0.get_src(0).is_imm(2) && i0.get_src(1).is_reg(rr0())) {

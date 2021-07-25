@@ -1102,6 +1102,8 @@ TEST(GoosObject, String) {
   Object obj2 = StringObject::make_new("test2");
   Object obj3 = StringObject::make_new("test1");
 
+  Object obj4 = StringObject::make_new("test-with\"quote");
+
   EXPECT_TRUE(obj1.is_string());
 
   EXPECT_TRUE(obj1 == obj3);
@@ -1112,6 +1114,7 @@ TEST(GoosObject, String) {
 
   EXPECT_EQ(obj1.print(), "\"test1\"");
   EXPECT_EQ(obj1.inspect(), "[string] \"test1\"\n");
+  EXPECT_EQ(obj4.print(), "\"test-with\\\"quote\"");
 }
 
 /*!

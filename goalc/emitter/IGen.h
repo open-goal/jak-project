@@ -1,8 +1,5 @@
 #pragma once
 
-#ifndef JAK_IGEN_H
-#define JAK_IGEN_H
-
 #include "common/util/assert.h"
 #include "Register.h"
 #include "Instruction.h"
@@ -2555,7 +2552,41 @@ class IGen {
     instr.set(Imm(1, imm));
     return instr;
   }
+
+  static Instruction parallel_bitwise_or(Register dst, Register src0, Register src1) {
+    assert(dst.is_xmm());
+    assert(src0.is_xmm());
+    assert(src1.is_xmm());
+    // VEX.128.66.0F.WIG EB /r VPOR xmm1, xmm2, xmm3/m128
+    // reg, vex, r/m
+    Instruction instr(0xEB);
+    instr.set_vex_modrm_and_rex(dst.hw_id(), src1.hw_id(), VEX3::LeadingBytes::P_0F, src0.hw_id(),
+                                false, VexPrefix::P_66);
+    return instr;
+  }
+
+  static Instruction parallel_bitwise_xor(Register dst, Register src0, Register src1) {
+    assert(dst.is_xmm());
+    assert(src0.is_xmm());
+    assert(src1.is_xmm());
+    // VEX.128.66.0F.WIG EF /r VPXOR xmm1, xmm2, xmm3/m128
+    // reg, vex, r/m
+    Instruction instr(0xEF);
+    instr.set_vex_modrm_and_rex(dst.hw_id(), src1.hw_id(), VEX3::LeadingBytes::P_0F, src0.hw_id(),
+                                false, VexPrefix::P_66);
+    return instr;
+  }
+
+  static Instruction parallel_bitwise_and(Register dst, Register src0, Register src1) {
+    assert(dst.is_xmm());
+    assert(src0.is_xmm());
+    assert(src1.is_xmm());
+    // VEX.128.66.0F.WIG DB /r VPAND xmm1, xmm2, xmm3/m128
+    // reg, vex, r/m
+    Instruction instr(0xDB);
+    instr.set_vex_modrm_and_rex(dst.hw_id(), src1.hw_id(), VEX3::LeadingBytes::P_0F, src0.hw_id(),
+                                false, VexPrefix::P_66);
+    return instr;
+  }
 };
 }  // namespace emitter
-
-#endif  // JAK_IGEN_H
