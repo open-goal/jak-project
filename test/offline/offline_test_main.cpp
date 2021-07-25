@@ -153,6 +153,12 @@ const std::unordered_set<std::string> g_functions_to_skip_compiling = {
     // aligner - return-from-thread, currently not supported
     "(method 9 align-control)",
 
+    // stat collection
+    "start-perf-stat-collection", "end-perf-stat-collection",
+
+    // float to int
+    "(method 10 bsp-header)",
+
     // loader - decompiler bug with detecting handle macros
     "(method 10 external-art-buffer)"};
 

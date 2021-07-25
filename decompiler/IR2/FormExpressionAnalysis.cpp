@@ -583,7 +583,7 @@ void SimpleExpressionElement::update_from_stack_gpr_to_fpr(const Env& env,
   // set ourself to identity.
   m_expr = src.as_expr();
 
-  if (src_type.typespec() == TypeSpec("float")) {
+  if (env.dts->ts.tc(TypeSpec("float"), src_type.typespec())) {
     // got a float as an input, we can convert it to an FPR with no effect.
     for (auto x : src_fes) {
       result->push_back(x);
@@ -884,7 +884,7 @@ void SimpleExpressionElement::update_from_stack_add_i(const Env& env,
           result->push_back(pool.alloc_element<DerefElement>(args.at(0), rd_ok.addr_of, tokens));
           return;
         } else {
-          throw std::runtime_error("Failed to match product_with_constant inline array access.");
+          throw std::runtime_error("Failed to match product_with_constant inline array access 1.");
         }
       }
     } else if (arg0_type.kind == TP_Type::Kind::PRODUCT_WITH_CONSTANT &&
@@ -914,7 +914,9 @@ void SimpleExpressionElement::update_from_stack_add_i(const Env& env,
             {Matcher::op(GenericOpMatcher::fixed(FixedOperatorKind::MULTIPLICATION),
                          {Matcher::any(0), Matcher::integer(rd_in.stride)}),
              Matcher::op(GenericOpMatcher::fixed(FixedOperatorKind::MULTIPLICATION),
-                         {Matcher::integer(rd_in.stride), Matcher::any(0)})});
+                         {Matcher::match_or({Matcher::cast("uint", Matcher::integer(rd_in.stride)),
+                                             Matcher::integer(rd_in.stride)}),
+                          Matcher::any(0)})});
         auto match_result = match(arg0_matcher, args.at(0));
         if (match_result.matched) {
           bool used_index = false;
@@ -932,7 +934,8 @@ void SimpleExpressionElement::update_from_stack_add_i(const Env& env,
           result->push_back(pool.alloc_element<DerefElement>(args.at(1), rd_ok.addr_of, tokens));
           return;
         } else {
-          throw std::runtime_error("Failed to match product_with_constant inline array access.");
+          lg::error("Bad is {}\n", args.at(0)->to_string(env));
+          throw std::runtime_error("Failed to match product_with_constant inline array access 2.");
         }
       }
     }
