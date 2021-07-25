@@ -436,7 +436,7 @@ void init_opcode_info() {
   def(IK::VIADDI, "viaddi").dst_vi(FT::FT).src_vi(FT::FS).src(FT::IMM5, DT::IMM);
 
   def(IK::QMFC2, "qmfc2").src(FT::IL, DT::IL).dst_gpr(FT::RT).src_vf(FT::FS);
-  def(IK::QMTC2, "qmtc2").src(FT::IL, DT::IL).src_gpr(FT::RT).dst_vf(FT::FS);
+  def(IK::QMTC2, "qmtc2").src(FT::IL, DT::IL).dst_vf(FT::FS).src_gpr(FT::RT);
   def(IK::VSQRT, "vsqrt").dst(FT::ZERO, DT::VU_Q).src_vf(FT::FT).src(FT::FT_F, DT::VF_F);
   def(IK::VRXOR, "vrxor").src(FT::BC, DT::BC).src_vf(FT::FS);
   def(IK::VRNEXT, "vrnext").src(FT::DEST, DT::DEST).dst_vf(FT::FT);
