@@ -27,15 +27,30 @@ TEST_F(FormRegressionTest, VectorDegToVectorRad) {
       "    daddu sp, sp, r0";
   std::string type = "(function vector vector none)";
   std::string expected =
-      "(begin\n"
-      "  (let ((s5-0 (new-stack-matrix0)))\n"
-      "   (matrix*! s5-0 arg1 arg2)\n"
-      "   (set! (-> arg0 vector 0 quad) (-> s5-0 vector 0 quad))\n"
-      "   (set! (-> arg0 vector 1 quad) (-> s5-0 vector 1 quad))\n"
-      "   (set! (-> arg0 vector 2 quad) (-> s5-0 vector 2 quad))\n"
-      "   (set! (-> arg0 vector 3 quad) (-> s5-0 vector 3 quad))\n"
+      "(defun test-function ((arg0 vector) (arg1 vector))\n"
+      "  (local-vars (v0-0 float) (v1-1 uint128) (v1-2 uint128) (v1-3 uint128))\n"
+      "  (rlet ((vf1 :class vf)\n"
+      "         (vf2 :class vf)\n"
+      "         )\n"
+      "   (let ((v1-0 #x38c90fda))\n"
+      "    (let ((a2-0 #x3f000000))\n"
+      "     (.lvf vf1 (&-> arg1 quad))\n"
+      "     (.mov vf2 a2-0)\n"
+      "     )\n"
+      "    (.mul.x.vf vf1 vf1 vf2)\n"
+      "    (.ftoi.vf vf1 vf1)\n"
+      "    (.mov vf2 v1-0)\n"
+      "    )\n"
+      "   (.mov v1-1 vf1)\n"
+      "   (.pw.sll v1-2 v1-1 16)\n"
+      "   (.pw.sra v1-3 v1-2 16)\n"
+      "   (.mov vf1 v1-3)\n"
+      "   (.itof.vf vf1 vf1)\n"
+      "   (.mul.x.vf vf1 vf1 vf2)\n"
+      "   (.svf (&-> arg0 quad) vf1)\n"
+      "   (.mov v0-0 vf1)\n"
+      "   (none)\n"
       "   )\n"
-      "  arg0\n"
       "  )";
   test_final_function(func, type, expected);
 }

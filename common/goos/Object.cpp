@@ -304,4 +304,30 @@ bool Arguments::only_contains_named(const std::unordered_set<std::string>& names
   return true;
 }
 
+namespace {
+std::string escape_string(const std::string& in) {
+  std::string result;
+  result.reserve(in.size());
+
+  for (char c : in) {
+    if (c == '"') {
+      result.push_back('\\');
+      result.push_back('"');
+    } else {
+      result.push_back(c);
+    }
+  }
+
+  return result;
+}
+}  // namespace
+
+std::string StringObject::print() const {
+  return "\"" + escape_string(data) + "\"";
+}
+
+std::string StringObject::inspect() const {
+  return "[string] \"" + escape_string(data) + "\"\n";
+}
+
 }  // namespace goos

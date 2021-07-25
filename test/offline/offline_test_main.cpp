@@ -100,11 +100,9 @@ const std::unordered_set<std::string> g_functions_to_skip_compiling = {
     "rand-vu-nostep",  // random hardware
 
     // trig
-    "sin-rad",                    // fpu acc
-    "cos-rad",                    // fpu acc
-    "atan-series-rad",            // fpu acc
-    "vector-rad<-vector-deg!",    // bad decisions on float vs int128
-    "vector-rad<-vector-deg/2!",  // bad decisions on float vs int128
+    "sin-rad",          // fpu acc
+    "cos-rad",          // fpu acc
+    "atan-series-rad",  // fpu acc
 
     /// VECTOR-H
     "(method 3 vector)",  // this function appears twice, which confuses the compiler.
@@ -120,10 +118,6 @@ const std::unordered_set<std::string> g_functions_to_skip_compiling = {
 
     // display-h
     "put-draw-env",
-
-    // vector
-    // bad decisions on float vs int128
-    "vector-degf", "vector-degmod", "vector-deg-diff", "vector-degi",
 
     // geometry
     "calculate-basis-functions-vector!",  // asm requiring manual rewrite

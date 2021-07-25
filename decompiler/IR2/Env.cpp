@@ -117,6 +117,10 @@ goos::Object Env::get_variable_name_with_cast(const RegisterAccess& access) cons
   }
 }
 
+std::string Env::get_variable_name(const RegisterAccess& access) const {
+  return get_variable_and_cast(access).name;
+}
+
 VariableWithCast Env::get_variable_and_cast(const RegisterAccess& access) const {
   if (access.reg().get_kind() == Reg::FPR || access.reg().get_kind() == Reg::GPR) {
     auto& var_info = m_var_names.lookup(access.reg(), access.idx(), access.mode());
@@ -248,19 +252,6 @@ std::optional<TypeSpec> Env::get_user_cast_for_access(const RegisterAccess& acce
     }
   }
   return {};
-}
-
-std::string Env::get_variable_name(const RegisterAccess& access) const {
-  if (access.reg().get_kind() == Reg::FPR || access.reg().get_kind() == Reg::GPR) {
-    std::string lookup_name = m_var_names.lookup(access.reg(), access.idx(), access.mode()).name();
-    auto remapped = m_var_remap.find(lookup_name);
-    if (remapped != m_var_remap.end()) {
-      lookup_name = remapped->second;
-    }
-    return lookup_name;
-  } else {
-    throw std::runtime_error("Cannot store a variable in this reg");
-  }
 }
 
 /*!

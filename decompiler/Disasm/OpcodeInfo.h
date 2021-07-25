@@ -335,6 +335,7 @@ struct OpcodeInfo {
   bool is_store = false;
   bool is_load = false;
   bool has_delay_slot = false;
+  bool gpr_128 = false;  // does it requires 128-bit registers?
 
   void step(DecodeStep& s);
 
@@ -349,6 +350,8 @@ struct OpcodeInfo {
   OpcodeInfo& dst_fpr(FieldType field);
   OpcodeInfo& dst_vf(FieldType field);
   OpcodeInfo& dst_vi(FieldType field);
+
+  OpcodeInfo& gpr128();
 
   uint8_t step_count = 0;
   DecodeStep steps[MAX_DECODE_STEPS];
