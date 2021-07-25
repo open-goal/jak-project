@@ -54,3 +54,112 @@ TEST_F(FormRegressionTest, VectorDegToVectorRad) {
       "  )";
   test_final_function(func, type, expected);
 }
+
+// weird short circuit thing
+TEST_F(FormRegressionTest, WeirdShortCircuit) {
+  std::string func =
+      "sll r0, r0, 0\n"
+      "   daddiu sp, sp, -144\n"
+      "    sd ra, 0(sp)\n"
+      "    sq s4, 96(sp)\n"
+      "    sq s5, 112(sp)\n"
+      "    sq gp, 128(sp)\n"
+
+      "    or gp, a1, r0\n"
+      "    or v1, a0, r0\n"
+      "    lwu s4, 4(v1)\n"
+      "    or s5, s7, r0\n"  // s5 = result
+      "    beq r0, r0, L43\n"
+      "    sll r0, r0, 0\n"
+
+      "L40:\n"
+      "    lwu v1, 20(s4)\n"
+      "    lwu a0, 12(v1)\n"
+      "    beq s7, a0, L42\n"
+      "    or v1, s7, r0\n"
+
+      "    daddiu a1, sp, 16\n"
+      "    sw s6, 4(a1)\n"
+      "    sw r0, 8(a1)\n"
+      "    sw gp, 12(a1)\n"
+      "    lw t9, send-event-function(s7)\n"
+      "    jalr ra, t9\n"
+      "    sll v0, ra, 0\n"
+
+      "    or v1, v0, r0\n"
+      "    bnel s7, v1, L41\n"
+
+      "    or s5, v1, r0\n"
+
+      // there's nothing here!
+
+      "L41:\n"
+      "    or v1, s5, r0\n"
+
+      "L42:\n"
+      "    lw t9, entity-actor-lookup(s7)\n"
+      "    daddiu a1, s7, next-actor\n"
+      "    addiu a2, r0, 0\n"
+      "    or a0, s4, r0\n"
+      "    jalr ra, t9\n"
+
+      "    sll v0, ra, 0\n"
+
+      "    or v1, v0, r0\n"
+      "    or s4, v1, r0\n"
+
+      "L43:\n"
+      "    bne s7, s4, L40\n"
+      "    sll r0, r0, 0\n"
+
+      "    or v1, s7, r0\n"
+      "    or v0, s5, r0\n"
+      "    ld ra, 0(sp)\n"
+      "    lq gp, 128(sp)\n"
+      "    lq s5, 112(sp)\n"
+      "    lq s4, 96(sp)\n"
+      "    jr ra\n"
+      "    daddiu sp, sp, 144";
+  std::string type = "(function actor-link-info symbol object)";
+  std::string expected =
+      "(let ((s4-0 (-> arg0 next))\n"
+      "     (s5-0 (the-as object #f))\n"
+      "     )\n"
+      "  (while s4-0\n"
+      "   (let ((a0-1 (-> s4-0 extra process)))\n"
+      "    (when a0-1\n"
+      "     (let ((a1-1 (new 'stack-no-clear 'event-message-block)))\n"
+      "      (set! (-> a1-1 from) pp)\n"
+      "      (set! (-> a1-1 num-params) 0)\n"
+      "      (set! (-> a1-1 message) arg1)\n"
+      "      (set! s5-0 (or (send-event-function a0-1 a1-1) s5-0))\n"
+      "      )\n"
+      "     )\n"
+      "    )\n"
+      "   (set! s4-0 (entity-actor-lookup s4-0 'next-actor 0))\n"
+      "   )\n"
+      "  s5-0\n"
+      "  )";
+  test_with_stack_structures(func, type, expected, "[[16, \"event-message-block\"]]");
+}
+
+TEST_F(FormRegressionTest, WeirdShortCircuit2) {
+  std::string func =
+      "sll r0, r0, 0\n"
+      "L62:\n"
+      "    lwu v1, 8(a0)\n"
+      "    beql s7, v1, L63\n"
+
+      "    or v0, v1, r0\n"
+
+      "    lwu v1, 8(a0)\n"  // here's the case
+      "    lwu v1, 20(v1)\n"
+      "    lwu v0, 12(v1)\n"
+
+      "L63:\n"
+      "    jr ra\n"
+      "    daddu sp, sp, r0";
+  std::string type = "(function actor-link-info object)";
+  std::string expected = "(and (-> arg0 prev) (-> arg0 prev extra process))";
+  test_with_stack_structures(func, type, expected, "[[16, \"event-message-block\"]]");
+}

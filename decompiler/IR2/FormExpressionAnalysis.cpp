@@ -3263,7 +3263,13 @@ void ShortCircuitElement::push_to_stack(const Env& env, FormPool& pool, FormStac
 
         entry.condition->clear();
         for (auto e : new_entries) {
+          if (dynamic_cast<EmptyElement*>(e)) {
+            continue;
+          }
           entry.condition->push_back(e);
+        }
+        if (entry.condition->elts().empty()) {
+          entry.condition->push_back(pool.alloc_element<EmptyElement>());
         }
       }
     }

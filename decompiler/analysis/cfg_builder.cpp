@@ -611,7 +611,14 @@ bool try_splitting_nested_sc(FormPool& pool, Function& func, ShortCircuitElement
  * if there is a case like (and a (or b c))
  */
 void clean_up_sc(FormPool& pool, Function& func, ShortCircuitElement* ir) {
-  assert(ir->entries.size() > 1);
+  assert(ir->entries.size() > 0);
+  if (ir->entries.size() == 1) {
+    // need to fake the final entry.
+    ShortCircuitElement::Entry empty_final;
+    empty_final.condition = pool.alloc_single_element_form<EmptyElement>(ir);
+    ir->entries.push_back(empty_final);
+  }
+
   if (!try_clean_up_sc_as_and(pool, func, ir)) {
     if (!try_clean_up_sc_as_or(pool, func, ir)) {
       if (!try_splitting_nested_sc(pool, func, ir)) {
@@ -1615,9 +1622,6 @@ Form* cfg_to_ir_helper(FormPool& pool, Function& f, const CfgVtx* vtx) {
       return as_abs;
     }
 
-    if (svtx->entries.size() == 1) {
-      throw std::runtime_error("Weird short circuit form.");
-    }
     // now try as a normal and/or
     std::vector<ShortCircuitElement::Entry> entries;
     for (auto& x : svtx->entries) {
