@@ -6,15 +6,17 @@
 ;; dgos: GAME, ENGINE
 
 
-(defun transform-float-point ((arg0 vector) (arg1 vector))
-
+(defun transform-float-point ((in vector) (out vector))
+  "Transform point in and store the result in out.
+   This uses the cached vf register transformation matrix
+   Note that the input/output order of the arguments is swapped from usual"
   (with-vf0
     (with-vf (vf4 vf1 vf2 vf3 vf9 vf8 vf6)
       (rlet ((acc :class vf)
              (Q :class vf)
              (vf5 :class vf)
              )
-        (.lvf vf5 (&-> arg0 quad))
+        (.lvf vf5 (&-> in quad))
         (.mul.w.vf acc vf4 vf5)
         (.add.mul.x.vf acc vf1 vf5 acc)
         (.add.mul.y.vf acc vf2 vf5 acc)
@@ -26,145 +28,153 @@
         (.max.x.vf vf5 vf5 vf0 :mask #b1000)
         (.min.x.vf vf5 vf5 vf6 :mask #b1000)
         (vftoi4.xyzw vf5 vf5)
-        (.svf (&-> arg1 quad) vf5)
-        arg1
+        (.svf (&-> out quad) vf5)
+        out
         )
       )
     )
   )
 
 
-(defun-debug add-debug-point ((arg0 symbol) (arg1 bucket-id) (arg2 vector))
-  (if (not arg0)
-   (return #f)
-   )
+;;;;;;;;;;;;;;;;;;
+;; Debug Draw
+;;;;;;;;;;;;;;;;;;
+
+;; All of these functions are super slow and probably very old.
+;; They do a DMA packet per thing drawn.
+
+(defun-debug add-debug-point ((enable-draw symbol) (bucket bucket-id) (pt vector))
+  "Draw a point."
+  (if (not enable-draw)
+      (return #f)
+      )
   (let ((s5-0 (new 'stack 'vector4w-2)))
-   (set! (-> arg2 w) 1.0)
-   (when (transform-point-qword! (the-as vector (-> s5-0 quad)) arg2)
-    (let* ((v1-7 (-> *display* frames (-> *display* on-screen) frame debug-buf))
-           (a2-1 (-> v1-7 base))
+    ;; transform the input point and convert to fixed point
+    (set! (-> pt w) 1.0)
+    (when (transform-point-qword! (the-as vector4w (-> s5-0 quad)) pt)
+      (let* ((v1-7 (-> *display* frames (-> *display* on-screen) frame debug-buf))
+             (a2-1 (-> v1-7 base))
+             )
+        (let ((a0-6 (the-as (pointer uint64) (-> v1-7 base))))
+          (let* ((a1-3 v1-7)
+                 (a3-0 (the-as dma-packet (-> a1-3 base)))
+                 )
+            ;; for now, don't set the length
+            (set! (-> a3-0 dma) (new 'static 'dma-tag :id (dma-tag-id cnt)))
+            (set! (-> a3-0 vif0) (new 'static 'vif-tag))
+            (set! (-> a3-0 vif1) (new 'static 'vif-tag :cmd (vif-cmd direct) :msk #x1))
+            (set! (-> a1-3 base) (&+ (the-as pointer a3-0) 16))
+            )
+
+          ;; add a giftag to draw a primitive
+          (let* ((a1-4 v1-7)
+                 (a3-2 (the-as gs-gif-tag (-> a1-4 base)))
+                 )
+            (set! (-> a3-2 tag)
+             (new 'static 'gif-tag64
+                  :nloop #x1
+                  :eop #x1
+                  :pre #x1
+                  :prim #x4c
+                  :nreg #x8
+                  )
+             )
+            (set! (-> a3-2 regs)
+             (new 'static 'gif-tag-regs
+                  :regs0 (gif-reg-id rgbaq)
+                  :regs1 (gif-reg-id xyzf2)
+                  :regs2 (gif-reg-id rgbaq)
+                  :regs3 (gif-reg-id xyzf2)
+                  :regs4 (gif-reg-id rgbaq)
+                  :regs5 (gif-reg-id xyzf2)
+                  :regs6 (gif-reg-id rgbaq)
+                  :regs7 (gif-reg-id xyzf2)
+                  )
+             )
+            (set! (-> a1-4 base) (&+ (the-as pointer a3-2) 16))
+            )
+
+          ;; add the data.
+          (set! (-> s5-0 vector 1 x) 255)
+          (set! (-> s5-0 vector 1 y) 128)
+          (set! (-> s5-0 vector 1 z) 128)
+          (set! (-> s5-0 vector 1 w) 128)
+          (+! (-> s5-0 vector 0 y) 160)
+          (let* ((a1-11 v1-7)
+                 (a3-4 (the-as vector4w-2 (-> a1-11 base)))
+                 )
+            (set! (-> a3-4 quad 0) (-> (&-> s5-0 quad 1) 0))
+            (set! (-> a3-4 quad 1) (-> s5-0 quad 0))
+            (set! (-> a1-11 base) (&+ (the-as pointer a3-4) 32))
+            )
+          (+! (-> s5-0 vector 0 x) -256)
+          (+! (-> s5-0 vector 0 y) -160)
+          (set! (-> s5-0 vector 1 x) 128)
+          (set! (-> s5-0 vector 1 y) 255)
+          (let* ((a1-18 v1-7)
+                 (a3-6 (the-as vector4w-2 (-> a1-18 base)))
+                 )
+            (set! (-> a3-6 quad 0) (-> (&-> s5-0 quad 1) 0))
+            (set! (-> a3-6 quad 1) (-> s5-0 quad 0))
+            (set! (-> a1-18 base) (&+ (the-as pointer a3-6) 32))
+            )
+          (+! (-> s5-0 vector 0 x) 512)
+          (set! (-> s5-0 vector 1 y) 128)
+          (set! (-> s5-0 vector 1 z) 255)
+          (let* ((a1-23 v1-7)
+                 (a3-8 (the-as vector4w-2 (-> a1-23 base)))
+                 )
+            (set! (-> a3-8 quad 0) (-> (&-> s5-0 quad 1) 0))
+            (set! (-> a3-8 quad 1) (-> s5-0 quad 0))
+            (set! (-> a1-23 base) (&+ (the-as pointer a3-8) 32))
+            )
+          (+! (-> s5-0 vector 0 x) -256)
+          (+! (-> s5-0 vector 0 y) -160)
+          (set! (-> s5-0 vector 1 x) 255)
+          (set! (-> s5-0 vector 1 y) 128)
+          (let* ((a3-10 v1-7)
+                 (a1-30 (the-as vector4w-2 (-> a3-10 base)))
+                 )
+            (set! (-> a1-30 quad 0) (-> (&-> s5-0 quad 1) 0))
+            (set! (-> a1-30 quad 1) (-> s5-0 quad 0))
+            (set! (-> a3-10 base) (&+ (the-as pointer a1-30) 32))
+            )
+
+          ;; update the lengths
+          (let ((a3-14 (/ (the-as int (+ (&- (the-as pointer -16) (the-as uint a0-6)) (the-as int (-> v1-7 base)))) 16)))
+            (cond
+              ((nonzero? a3-14)
+               (logior! (-> a0-6 0) (shr (shl a3-14 48) 48))
+               (logior! (-> a0-6 1) (shl (shr (shl a3-14 48) 48) 32))
+               )
+              (else
+               (set! (-> v1-7 base) a0-6)
+               )
+              )
+            )
+          )
+
+        ;; add to bucket
+        (let ((a3-20 (-> v1-7 base)))
+          (let ((a0-7 (the-as dma-packet (-> v1-7 base))))
+            (set! (-> a0-7 dma) (new 'static 'dma-tag :id (dma-tag-id next)))
+            (set! (-> a0-7 vif0) (new 'static 'vif-tag))
+            (set! (-> a0-7 vif1) (new 'static 'vif-tag))
+            (set! (-> v1-7 base) (&+ (the-as pointer a0-7) 16))
+            )
+          (dma-bucket-insert-tag
+           (-> *display* frames (-> *display* on-screen) frame bucket-group)
+           bucket
+           a2-1
+           (the-as (pointer dma-tag) a3-20)
            )
-     (let ((a0-6 (the-as (pointer uint64) (-> v1-7 base))))
-      (let* ((a1-3 v1-7)
-             (a3-0 (the-as dma-packet (-> a1-3 base)))
-             )
-       (set! (-> a3-0 dma) (new 'static 'dma-tag :id (dma-tag-id cnt)))
-       (set! (-> a3-0 vif0) (new 'static 'vif-tag))
-       (set!
-        (-> a3-0 vif1)
-        (new 'static 'vif-tag :cmd (vif-cmd direct) :msk #x1)
-        )
-       (set! (-> a1-3 base) (&+ (the-as pointer a3-0) 16))
-       )
-      (let* ((a1-4 v1-7)
-             (a3-2 (the-as gs-gif-tag (-> a1-4 base)))
-             )
-       (set!
-        (-> a3-2 tag)
-        (new 'static 'gif-tag64
-         :nloop #x1
-         :eop #x1
-         :pre #x1
-         :prim #x4c
-         :nreg #x8
-         )
-        )
-       (set!
-        (-> a3-2 regs)
-        (new 'static 'gif-tag-regs
-         :regs0 (gif-reg-id rgbaq)
-         :regs1 (gif-reg-id xyzf2)
-         :regs2 (gif-reg-id rgbaq)
-         :regs3 (gif-reg-id xyzf2)
-         :regs4 (gif-reg-id rgbaq)
-         :regs5 (gif-reg-id xyzf2)
-         :regs6 (gif-reg-id rgbaq)
-         :regs7 (gif-reg-id xyzf2)
-         )
-        )
-       (set! (-> a1-4 base) (&+ (the-as pointer a3-2) 16))
-       )
-      (set! (-> s5-0 vector 1 x) 255)
-      (set! (-> s5-0 vector 1 y) 128)
-      (set! (-> s5-0 vector 1 z) 128)
-      (set! (-> s5-0 vector 1 w) 128)
-      (set! (-> s5-0 vector 0 y) (+ (-> s5-0 vector 0 y) 160))
-      (let* ((a1-11 v1-7)
-             (a3-4 (the-as vector4w-2 (-> a1-11 base)))
-             )
-       (set! (-> a3-4 quad 0) (-> (&-> s5-0 quad 1) 0))
-       (set! (-> a3-4 quad 1) (-> s5-0 quad 0))
-       (set! (-> a1-11 base) (&+ (the-as pointer a3-4) 32))
-       )
-      (set! (-> s5-0 vector 0 x) (+ (-> s5-0 vector 0 x) -256))
-      (set! (-> s5-0 vector 0 y) (+ (-> s5-0 vector 0 y) -160))
-      (set! (-> s5-0 vector 1 x) 128)
-      (set! (-> s5-0 vector 1 y) 255)
-      (let* ((a1-18 v1-7)
-             (a3-6 (the-as vector4w-2 (-> a1-18 base)))
-             )
-       (set! (-> a3-6 quad 0) (-> (&-> s5-0 quad 1) 0))
-       (set! (-> a3-6 quad 1) (-> s5-0 quad 0))
-       (set! (-> a1-18 base) (&+ (the-as pointer a3-6) 32))
-       )
-      (set! (-> s5-0 vector 0 x) (+ (-> s5-0 vector 0 x) 512))
-      (set! (-> s5-0 vector 1 y) 128)
-      (set! (-> s5-0 vector 1 z) 255)
-      (let* ((a1-23 v1-7)
-             (a3-8 (the-as vector4w-2 (-> a1-23 base)))
-             )
-       (set! (-> a3-8 quad 0) (-> (&-> s5-0 quad 1) 0))
-       (set! (-> a3-8 quad 1) (-> s5-0 quad 0))
-       (set! (-> a1-23 base) (&+ (the-as pointer a3-8) 32))
-       )
-      (set! (-> s5-0 vector 0 x) (+ (-> s5-0 vector 0 x) -256))
-      (set! (-> s5-0 vector 0 y) (+ (-> s5-0 vector 0 y) -160))
-      (set! (-> s5-0 vector 1 x) 255)
-      (set! (-> s5-0 vector 1 y) 128)
-      (let* ((a3-10 v1-7)
-             (a1-30 (the-as vector4w-2 (-> a3-10 base)))
-             )
-       (set! (-> a1-30 quad 0) (-> (&-> s5-0 quad 1) 0))
-       (set! (-> a1-30 quad 1) (-> s5-0 quad 0))
-       (set! (-> a3-10 base) (&+ (the-as pointer a1-30) 32))
-       )
-      (let ((a3-14 (/ (the-as int (+ (&- (the-as pointer -16) (the-as uint a0-6)) (the-as int (-> v1-7 base)))) 16)))
-       (cond
-        ((nonzero? a3-14)
-         (set!
-          (-> a0-6 0)
-          (logior (-> a0-6 0) (the-as uint (shr (shl a3-14 48) 48)))
           )
-         (set!
-          (-> a0-6 1)
-          (logior (-> a0-6 1) (the-as uint (shl (shr (shl a3-14 48) 48) 32)))
-          )
-         )
-        (else
-         (set! (-> v1-7 base) a0-6)
-         )
         )
-       )
       )
-     (let ((a3-20 (-> v1-7 base)))
-      (let ((a0-7 (the-as dma-packet (-> v1-7 base))))
-       (set! (-> a0-7 dma) (new 'static 'dma-tag :id (dma-tag-id next)))
-       (set! (-> a0-7 vif0) (new 'static 'vif-tag))
-       (set! (-> a0-7 vif1) (new 'static 'vif-tag))
-       (set! (-> v1-7 base) (&+ (the-as pointer a0-7) 16))
-       )
-      (dma-bucket-insert-tag
-       (-> *display* frames (-> *display* on-screen) frame bucket-group)
-       arg1
-       a2-1
-       (the-as (pointer dma-tag) a3-20)
-       )
-      )
-     )
     )
-   )
   #f
   )
+
 
 (defun-debug internal-draw-debug-line ((arg0 bucket-id) (arg1 vector) (arg2 vector) (arg3 rgba) (arg4 symbol) (arg5 rgba))
   (local-vars (sv-80 vector))
@@ -214,8 +224,8 @@
      int
      (when
       (and
-       (transform-point-qword! (the-as vector (-> s4-0 quad)) arg1)
-       (transform-point-qword! (the-as vector (&-> s4-0 quad 1)) sv-80)
+       (transform-point-qword! (the-as vector4w (-> s4-0 quad)) arg1)
+       (transform-point-qword! (the-as vector4w (&-> s4-0 quad 1)) sv-80)
        )
       (let*
        ((v1-28 (-> *display* frames (-> *display* on-screen) frame debug-buf))
@@ -389,7 +399,7 @@
 (defun-debug internal-draw-debug-text-3d ((arg0 bucket-id) (arg1 string) (arg2 vector) (arg3 rgba) (arg4 vector2h))
   (let ((s2-0 (new 'stack-no-clear 'vector4w)))
    (set! (-> s2-0 quad) (the-as uint128 0))
-   (when (transform-point-qword! (the-as vector s2-0) arg2)
+   (when (transform-point-qword! (the-as vector4w s2-0) arg2)
     (let* ((s3-0 (-> *display* frames (-> *display* on-screen) frame debug-buf))
            (s5-0 (-> s3-0 base))
            )
@@ -514,9 +524,9 @@
    (set! (-> arg4 w) 1.0)
    (when
     (and
-     (transform-point-qword! (the-as vector (-> s5-0 quad)) arg2)
-     (transform-point-qword! (the-as vector (&-> s5-0 quad 1)) arg3)
-     (transform-point-qword! (the-as vector (&-> s5-0 quad 2)) arg4)
+     (transform-point-qword! (the-as vector4w (-> s5-0 quad)) arg2)
+     (transform-point-qword! (the-as vector4w (&-> s5-0 quad 1)) arg3)
+     (transform-point-qword! (the-as vector4w (&-> s5-0 quad 2)) arg4)
      )
     (let* ((v1-9 (-> *display* frames (-> *display* on-screen) frame debug-buf))
            (a2-1 (-> v1-9 base))
