@@ -373,51 +373,6 @@ TEST(EmitterAVX, VPSLLD) {
   EXPECT_EQ(tester.dump_to_hex_string(true), "C5E172F403C4C16172F604C59172F405C4C11172F606");
 }
 
-TEST(EmitterAVX, VPOR) {
-  CodeTester tester;
-  tester.init_code_buffer(1024);
-  tester.emit(IGen::parallel_bitwise_or(XMM0 + 3, XMM0 + 3, XMM0 + 3));
-  tester.emit(IGen::parallel_bitwise_or(XMM0 + 3, XMM0 + 3, XMM0 + 13));
-  tester.emit(IGen::parallel_bitwise_or(XMM0 + 3, XMM0 + 13, XMM0 + 3));
-  tester.emit(IGen::parallel_bitwise_or(XMM0 + 3, XMM0 + 13, XMM0 + 13));
-  tester.emit(IGen::parallel_bitwise_or(XMM0 + 13, XMM0 + 3, XMM0 + 3));
-  tester.emit(IGen::parallel_bitwise_or(XMM0 + 13, XMM0 + 3, XMM0 + 13));
-  tester.emit(IGen::parallel_bitwise_or(XMM0 + 13, XMM0 + 13, XMM0 + 3));
-  tester.emit(IGen::parallel_bitwise_or(XMM0 + 13, XMM0 + 13, XMM0 + 13));
-  EXPECT_EQ(tester.dump_to_hex_string(true),
-            "C5E1EBDBC4C161EBDDC591EBDBC4C111EBDDC561EBEBC44161EBEDC511EBEBC44111EBED");
-}
-
-TEST(EmitterAVX, VPXOR) {
-  CodeTester tester;
-  tester.init_code_buffer(1024);
-  tester.emit(IGen::parallel_bitwise_xor(XMM0 + 3, XMM0 + 3, XMM0 + 3));
-  tester.emit(IGen::parallel_bitwise_xor(XMM0 + 3, XMM0 + 3, XMM0 + 13));
-  tester.emit(IGen::parallel_bitwise_xor(XMM0 + 3, XMM0 + 13, XMM0 + 3));
-  tester.emit(IGen::parallel_bitwise_xor(XMM0 + 3, XMM0 + 13, XMM0 + 13));
-  tester.emit(IGen::parallel_bitwise_xor(XMM0 + 13, XMM0 + 3, XMM0 + 3));
-  tester.emit(IGen::parallel_bitwise_xor(XMM0 + 13, XMM0 + 3, XMM0 + 13));
-  tester.emit(IGen::parallel_bitwise_xor(XMM0 + 13, XMM0 + 13, XMM0 + 3));
-  tester.emit(IGen::parallel_bitwise_xor(XMM0 + 13, XMM0 + 13, XMM0 + 13));
-  EXPECT_EQ(tester.dump_to_hex_string(true),
-            "C5E1EFDBC4C161EFDDC591EFDBC4C111EFDDC561EFEBC44161EFEDC511EFEBC44111EFED");
-}
-
-TEST(EmitterAVX, VPAND) {
-  CodeTester tester;
-  tester.init_code_buffer(1024);
-  tester.emit(IGen::parallel_bitwise_and(XMM0 + 3, XMM0 + 3, XMM0 + 3));
-  tester.emit(IGen::parallel_bitwise_and(XMM0 + 3, XMM0 + 3, XMM0 + 13));
-  tester.emit(IGen::parallel_bitwise_and(XMM0 + 3, XMM0 + 13, XMM0 + 3));
-  tester.emit(IGen::parallel_bitwise_and(XMM0 + 3, XMM0 + 13, XMM0 + 13));
-  tester.emit(IGen::parallel_bitwise_and(XMM0 + 13, XMM0 + 3, XMM0 + 3));
-  tester.emit(IGen::parallel_bitwise_and(XMM0 + 13, XMM0 + 3, XMM0 + 13));
-  tester.emit(IGen::parallel_bitwise_and(XMM0 + 13, XMM0 + 13, XMM0 + 3));
-  tester.emit(IGen::parallel_bitwise_and(XMM0 + 13, XMM0 + 13, XMM0 + 13));
-  EXPECT_EQ(tester.dump_to_hex_string(true),
-            "C5E1DBDBC4C161DBDDC591DBDBC4C111DBDDC561DBEBC44161DBEDC511DBEBC44111DBED");
-}
-
 TEST(EmitterAVX, VPCMPEQB) {
   CodeTester tester;
   tester.init_code_buffer(1024);

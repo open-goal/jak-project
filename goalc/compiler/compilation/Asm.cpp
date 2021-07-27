@@ -686,10 +686,6 @@ Val* Compiler::compile_asm_pand(const goos::Object& form, const goos::Object& re
   return compile_asm_int128_math3(form, rest, IR_Int128Math3Asm::Kind::PAND, env);
 }
 
-Val* Compiler::compile_asm_pand(const goos::Object& form, const goos::Object& rest, Env* env) {
-  return compile_asm_int128_math3(form, rest, IR_Int128Math3Asm::Kind::PAND, env);
-}
-
 Val* Compiler::compile_asm_pceqb(const goos::Object& form, const goos::Object& rest, Env* env) {
   return compile_asm_int128_math3(form, rest, IR_Int128Math3Asm::Kind::PCEQB, env);
 }
