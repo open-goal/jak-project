@@ -67,8 +67,12 @@ std::string TP_Type::print() const {
       }
     case Kind::PCPYUD_BITFIELD:
       return fmt::format("<pcpyud {}>", m_ts.print());
+    case Kind::PCPYUD_BITFIELD_AND:
+      return fmt::format("<pcpyud-and {}>", m_ts.print());
     case Kind::LABEL_ADDR:
       return "<label-addr>";
+    case Kind::ENTER_STATE_FUNCTION:
+      return "<enter-state-func>";
     case Kind::INVALID:
     default:
       assert(false);
@@ -119,7 +123,10 @@ bool TP_Type::operator==(const TP_Type& other) const {
       return m_int == other.m_int && m_ts == other.m_ts && m_pcpyud == other.m_pcpyud;
     case Kind::PCPYUD_BITFIELD:
       return m_pcpyud == other.m_pcpyud && m_ts == other.m_ts;
+    case Kind::PCPYUD_BITFIELD_AND:
+      return m_pcpyud == other.m_pcpyud && m_ts == other.m_ts;
     case Kind::LABEL_ADDR:
+    case Kind::ENTER_STATE_FUNCTION:
       return true;
     case Kind::INVALID:
     default:
@@ -177,8 +184,13 @@ TypeSpec TP_Type::typespec() const {
       return TypeSpec("int");  // ideally this is never used.
     case Kind::PCPYUD_BITFIELD:
       return TypeSpec("int");
+    case Kind::PCPYUD_BITFIELD_AND:
+      return TypeSpec("int");
     case Kind::LABEL_ADDR:
       return TypeSpec("pointer");  // ?
+    case Kind::ENTER_STATE_FUNCTION:
+      // give a general function so we can't call it normally.
+      return TypeSpec("function");
     case Kind::INVALID:
     default:
       assert(false);

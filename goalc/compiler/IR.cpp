@@ -1572,6 +1572,15 @@ std::string IR_Int128Math3Asm::print() {
     case Kind::PAND:
       function = ".pand";
       break;
+    case Kind::POR:
+      function = ".por";
+      break;
+    case Kind::PXOR:
+      function = ".pxor";
+      break;
+    case Kind::PAND:
+      function = ".pand";
+      break;
     default:
       assert(false);
   }

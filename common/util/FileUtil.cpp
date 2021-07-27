@@ -15,6 +15,7 @@
 #include "BinaryWriter.h"
 #include "common/common_types.h"
 #include "third-party/svpng.h"
+#include "third-party/fmt/core.h"
 #include "third-party/lzokay/lzokay.hpp"
 
 #ifdef _WIN32
@@ -119,6 +120,21 @@ void write_text_file(const std::string& file_name, const std::string& text) {
 }
 
 std::vector<uint8_t> read_binary_file(const std::string& filename) {
+  // make sure file exists and isn't a directory
+  std::filesystem::path path(filename);
+
+  auto status = std::filesystem::status(std::filesystem::path(filename));
+
+  if (!std::filesystem::exists(status)) {
+    throw std::runtime_error(fmt::format("File {} cannot be opened: does not exist.", filename));
+  }
+
+  if (status.type() != std::filesystem::file_type::regular &&
+      status.type() != std::filesystem::file_type::symlink) {
+    throw std::runtime_error(
+        fmt::format("File {} cannot be opened: not a regular file or symlink.", filename));
+  }
+
   auto fp = fopen(filename.c_str(), "rb");
   if (!fp)
     throw std::runtime_error("File " + filename +

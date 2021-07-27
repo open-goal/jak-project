@@ -6,12 +6,41 @@
 ;; dgos: GAME, ENGINE
 
 
-;; The Emotion Engine has 4 hardware timers.
+;; There are two sources for timing:
+;; - EE TIMER1, used for the frame profiler. There are 9765 counts of this per frame. It gets reset in drawable.
+;; - The "stopwatch" system, used for reading the CPU clock cycle counter, at 300 MHz (32-bit)
+
+;; The Emotion Engine has 4 hardware timers, timer1 is used as the
 (defconstant TIMER0_BANK #x10000000) ;; has HOLD register!
 (defconstant TIMER1_BANK #x10000800) ;; has HOLD register!
 (defconstant TIMER2_BANK #x10001000) ;; does NOT have HOLD register!
 (defconstant TIMER3_BANK #x10001800) ;; does NOT have HOLD register!
 
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;; PC Port Timer
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+(defmacro get-cpu-clock ()
+  "Read the 300 MHz clock."
+  ;; __read-ee-timer is a 300 MHz timer from the C Kernel.
+  ;; it's a real timer.
+  `(the uint (logand #xffffffff (__read-ee-timer)))
+  )
+
+(defmacro get-bus-clock/256 ()
+  "Read the 150 MHz / 256 clock."
+  ;; 300 MHz / (2^9)
+  `(the uint (logand #xffffffff (shr (__read-ee-timer) 9)))
+  )
+
+(#when PC_PORT
+  ;; the bus clock can be reset, which just stores the current count here.
+  (define *timer-reset-value* (the uint 0))
+  )
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;; Timer HW
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 (defenum timer-clock-selection
   :type uint8
   (busclk 0)
@@ -66,6 +95,8 @@
   )
 
 ;; stopwatches are used to measure CPU clock cycles
+;; they don't use the timer above, but instead the Count COP0 register
+;; which counts CPU clock cycles directly
 (deftype stopwatch (basic)
   ((prev-time-elapsed uint64  :offset-assert 8)
    (start-time        uint64  :offset-assert 16)
@@ -77,6 +108,7 @@
   )
 
 ;; Confusing! What IS this measuring exactly? Hmm...
+;; this is set by default for NTSC, it will later be changed if PAL.
 (define *ticks-per-frame* (/ 2500000 256)) ;; 2 500 000 / 256 = 9765
 
 (defun timer-init ((timer timer-bank) (mode timer-mode))
@@ -88,9 +120,18 @@
 ;; needs PS2 TIMER porting
 (#unless PC_PORT
   (timer-init (the-as timer-bank TIMER1_BANK) (new 'static 'timer-mode :clks (timer-clock-selection busclk/16) :cue 1))
-  )
+  ) 
 
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;; Profiler
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
+;; The profiler uses the EE Timer 1 to record how long is spent in each part of the frame.
+;; There is a EE and VU1 profiler. The EE profiler relies on code manually reporting how long
+;; it takes to run, and the VU1 profiler uses VIF interrupts to do this automatically on
+;; microprogram completion.
+
+;; A single thing in the profiler
 (deftype profile-frame (structure)
   ((name       symbol  :offset-assert 0)
    (time-stamp uint32  :offset-assert 4)
@@ -111,6 +152,7 @@
   obj
   )
 
+;; A "bar" to display all the timed events
 (declare-type dma-buffer basic)
 (deftype profile-bar (basic)
   ((profile-frame-count int32        :offset-assert 4)

@@ -19,8 +19,9 @@ CallingConvention get_function_calling_convention(const TypeSpec& function_type,
     }
   } else {
     for (int i = 0; i < (int)function_type.arg_count() - 1; i++) {
-      auto info = type_system.lookup_type(function_type.get_arg(i));
-      if (dynamic_cast<const ValueType*>(info) && info->get_load_size() == 16) {
+      auto info = type_system.lookup_type_allow_partial_def(function_type.get_arg(i));
+      auto load_size = type_system.get_load_size_allow_partial_def(function_type.get_arg(i));
+      if (dynamic_cast<const ValueType*>(info) && load_size == 16) {
         cc.arg_regs.push_back(emitter::gRegInfo.get_xmm_arg_reg(xmm_idx++));
       } else {
         cc.arg_regs.push_back(emitter::gRegInfo.get_gpr_arg_reg(gpr_idx++));
@@ -29,7 +30,7 @@ CallingConvention get_function_calling_convention(const TypeSpec& function_type,
   }
 
   if (function_type.last_arg() != TypeSpec("none")) {
-    if (type_system.lookup_type(function_type.last_arg())->get_load_size() == 16) {
+    if (type_system.get_load_size_allow_partial_def(function_type.last_arg()) == 16) {
       cc.return_reg = emitter::gRegInfo.get_xmm_ret_reg();
     } else {
       cc.return_reg = emitter::gRegInfo.get_gpr_ret_reg();
@@ -45,8 +46,8 @@ std::vector<emitter::Register> get_arg_registers(const TypeSystem& type_system,
   int gpr_idx = 0;
   int xmm_idx = 0;
   for (auto& type : arg_types) {
-    auto info = type_system.lookup_type(type);
-    if (info->get_load_size() == 16) {
+    auto load_size = type_system.get_load_size_allow_partial_def(type);
+    if (load_size == 16) {
       result.push_back(emitter::gRegInfo.get_xmm_arg_reg(xmm_idx++));
     } else {
       result.push_back(emitter::gRegInfo.get_gpr_arg_reg(gpr_idx++));

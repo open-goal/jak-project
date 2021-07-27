@@ -320,10 +320,10 @@
     ;; circle/square move camera relative x (left and right)
     (set! (-> local-trans x)
           (cond
-            ((nonzero? (logand (-> *cpad-list* cpads pad-idx button0-abs 0) (pad-buttons circle)))
+            ((logtest? (-> *cpad-list* cpads pad-idx button0-abs 0) (pad-buttons circle))
              -80.0
              )
-            ((nonzero? (logand (-> *cpad-list* cpads pad-idx button0-abs 0) (pad-buttons square)))
+            ((logtest? (-> *cpad-list* cpads pad-idx button0-abs 0) (pad-buttons square))
              80.0
              )
             (else
@@ -338,10 +338,10 @@
     ;; in and out movement
     (set! (-> local-trans z)
           (cond
-            ((nonzero? (logand (-> *cpad-list* cpads pad-idx button0-abs 0) (pad-buttons down)))
+            ((logtest? (-> *cpad-list* cpads pad-idx button0-abs 0) (pad-buttons down))
              -80.0
              )
-            ((nonzero? (logand (-> *cpad-list* cpads pad-idx button0-abs 0) (pad-buttons up)))
+            ((logtest? (-> *cpad-list* cpads pad-idx button0-abs 0) (pad-buttons up))
              80.0
              )
             (else
@@ -370,24 +370,24 @@
   (set! (-> trans trans w) 1.0)
 
   ;; global translation
-  (if (nonzero? (logand (-> *cpad-list* cpads pad-idx button0-abs 0) (pad-buttons r1)))
+  (if (logtest? (-> *cpad-list* cpads pad-idx button0-abs 0) (pad-buttons r1))
       (set! (-> trans trans y) (+ 80.0 (-> trans trans y)))
       )
-  (if (nonzero? (logand (-> *cpad-list* cpads pad-idx button0-abs 0) (pad-buttons r2)))
+  (if (logtest? (-> *cpad-list* cpads pad-idx button0-abs 0) (pad-buttons r2))
       (set! (-> trans trans y) (+ -80.0 (-> trans trans y)))
       )
 
   ;; rotation (don't allow camera roll)
-  (if (nonzero? (logand (-> *cpad-list* cpads pad-idx button0-abs 0) (pad-buttons x)))
+  (if (logtest? (-> *cpad-list* cpads pad-idx button0-abs 0) (pad-buttons x))
       (set! (-> trans rot x) (+ 546.13336 (-> trans rot x)))
       )
-  (if (nonzero? (logand (-> *cpad-list* cpads pad-idx button0-abs 0) (pad-buttons triangle)))
+  (if (logtest? (-> *cpad-list* cpads pad-idx button0-abs 0) (pad-buttons triangle))
       (set! (-> trans rot x) (+ -546.13336 (-> trans rot x)))
       )
-  (if (nonzero? (logand (-> *cpad-list* cpads pad-idx button0-abs 0) (pad-buttons left)))
+  (if (logtest? (-> *cpad-list* cpads pad-idx button0-abs 0) (pad-buttons left))
       (set! (-> trans rot y) (+ 546.13336 (-> trans rot y)))
       )
-  (if (nonzero? (logand (-> *cpad-list* cpads pad-idx button0-abs 0) (pad-buttons right)))
+  (if (logtest? (-> *cpad-list* cpads pad-idx button0-abs 0) (pad-buttons right))
       (set! (-> trans rot y) (+ -546.13336 (-> trans rot y)))
       )
   trans
@@ -439,7 +439,7 @@
     )
   )
 
-(defun transform-point-qword! ((arg0 vector) (arg1 vector))
+(defun transform-point-qword! ((arg0 vector4w) (arg1 vector))
   "Apply camera transformation to point, returning fixed point 28.4 position"
   (rlet ((acc :class vf)
          (Q :class vf)
@@ -535,6 +535,7 @@
   )
 
 (defun init-for-transform ((arg0 matrix))
+  "Sets up VU0 registers with camera info. Most rendering stuff doesn't use this."
   (rlet ((vf1 :class vf)
          (vf17 :class vf)
          (vf18 :class vf)

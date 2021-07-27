@@ -49,7 +49,8 @@ goos::Object decompile_boxed_array(const DecompilerLabel& label,
                                    const std::vector<DecompilerLabel>& labels,
                                    const std::vector<std::vector<LinkedWord>>& words,
                                    const TypeSystem& ts,
-                                   const LinkedObjectFile* file);
+                                   const LinkedObjectFile* file,
+                                   const std::optional<TypeSpec>& content_type_override);
 goos::Object decompile_value(const TypeSpec& type,
                              const std::vector<u8>& bytes,
                              const TypeSystem& ts);
@@ -72,6 +73,13 @@ struct BitFieldConstantDef {
   u64 value = -1;
   std::optional<std::string> enum_constant;
   std::string field_name;
+
+  struct NestedField {
+    TypeSpec field_type;
+    std::vector<BitFieldConstantDef> fields;
+  };
+
+  std::optional<NestedField> nested_field;
 };
 
 template <typename T>

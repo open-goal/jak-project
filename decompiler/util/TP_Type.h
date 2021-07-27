@@ -33,8 +33,10 @@ class TP_Type {
     VIRTUAL_METHOD,
     NON_VIRTUAL_METHOD,
     PCPYUD_BITFIELD,
+    PCPYUD_BITFIELD_AND,
     LEFT_SHIFTED_BITFIELD,  // (bitfield << some-constant)
     LABEL_ADDR,
+    ENTER_STATE_FUNCTION,
     INVALID
   } kind = Kind::UNINITIALIZED;
   TP_Type() = default;
@@ -62,7 +64,9 @@ class TP_Type {
       case Kind::NON_VIRTUAL_METHOD:
       case Kind::LEFT_SHIFTED_BITFIELD:
       case Kind::PCPYUD_BITFIELD:
+      case Kind::PCPYUD_BITFIELD_AND:
       case Kind::LABEL_ADDR:
+      case Kind::ENTER_STATE_FUNCTION:
         return false;
       case Kind::UNINITIALIZED:
       case Kind::OBJECT_NEW_METHOD:
@@ -244,6 +248,20 @@ class TP_Type {
     return result;
   }
 
+  static TP_Type make_from_pcpyud_and_bitfield(const TypeSpec& ts) {
+    TP_Type result;
+    result.kind = Kind::PCPYUD_BITFIELD_AND;
+    result.m_ts = ts;
+    result.m_pcpyud = true;
+    return result;
+  }
+
+  static TP_Type make_enter_state() {
+    TP_Type result;
+    result.kind = Kind::ENTER_STATE_FUNCTION;
+    return result;
+  }
+
   static TP_Type make_label_addr() {
     TP_Type result;
     result.kind = Kind::LABEL_ADDR;
@@ -296,7 +314,8 @@ class TP_Type {
   }
 
   const TypeSpec& get_bitfield_type() const {
-    assert(kind == Kind::LEFT_SHIFTED_BITFIELD || kind == Kind::PCPYUD_BITFIELD);
+    assert(kind == Kind::LEFT_SHIFTED_BITFIELD || kind == Kind::PCPYUD_BITFIELD ||
+           kind == Kind::PCPYUD_BITFIELD_AND);
     return m_ts;
   }
 
@@ -335,11 +354,13 @@ class TP_Type {
   int64_t m_extra_multiplier = 0;
 };
 
-struct TypeState {
+class TypeState {
+ private:
+ public:
+  std::unordered_map<int, TP_Type> spill_slots;
   TP_Type gpr_types[32];
   TP_Type fpr_types[32];
-  std::unordered_map<int, TP_Type> spill_slots;
-
+  TP_Type next_state_type;
   std::string print_gpr_masked(u32 mask) const;
   TP_Type& get(const Register& r) {
     switch (r.get_kind()) {

@@ -421,7 +421,8 @@ FormElement* StoreOp::get_as_form(FormPool& pool, const Env& env) const {
         auto addr = pool.alloc_element<DerefElement>(source, rd.addr_of, tokens);
 
         return pool.alloc_element<StorePlainDeref>(
-            addr, m_value.as_expr(), m_my_idx, ro.var, std::nullopt,
+            pool.alloc_single_form(nullptr, addr), m_value.as_expr(), m_my_idx, ro.var,
+            std::nullopt,
             get_typecast_for_atom(m_value, env, coerce_to_reg_type(rd.result_type), m_my_idx),
             m_size);
       }
@@ -466,9 +467,9 @@ FormElement* StoreOp::get_as_form(FormPool& pool, const Env& env) const {
             nullptr, TypeSpec("pointer", {TypeSpec(cast_type)}), source);
         auto deref =
             pool.alloc_element<DerefElement>(cast_source, false, std::vector<DerefToken>());
-        return pool.alloc_element<StorePlainDeref>(deref, m_value.as_expr(), m_my_idx, ro.var,
-                                                   TypeSpec("pointer", {TypeSpec(cast_type)}),
-                                                   std::nullopt, m_size);
+        return pool.alloc_element<StorePlainDeref>(
+            pool.alloc_single_form(nullptr, deref), m_value.as_expr(), m_my_idx, ro.var,
+            TypeSpec("pointer", {TypeSpec(cast_type)}), std::nullopt, m_size);
       }
     }
   }
@@ -728,7 +729,7 @@ FormElement* BranchOp::get_as_form(FormPool& pool, const Env&) const {
 }
 
 FormElement* SpecialOp::get_as_form(FormPool& pool, const Env&) const {
-  return pool.alloc_element<AtomicOpElement>(this);
+  return pool.alloc_element<AtomicOpElement>(const_cast<SpecialOp*>(this));
 }
 
 FormElement* CallOp::get_as_form(FormPool& pool, const Env& env) const {
@@ -764,11 +765,18 @@ FormElement* ConditionalMoveFalseOp::get_as_form(FormPool& pool, const Env&) con
 }
 
 FormElement* FunctionEndOp::get_as_form(FormPool& pool, const Env&) const {
-  return pool.alloc_element<AtomicOpElement>(this);
+  return pool.alloc_element<AtomicOpElement>(const_cast<FunctionEndOp*>(this));
 }
 
-FormElement* AsmBranchOp::get_as_form(FormPool& pool, const Env&) const {
-  return pool.alloc_element<AtomicOpElement>(this);
+FormElement* AsmBranchOp::get_as_form(FormPool& pool, const Env& env) const {
+  if (m_branch_delay) {
+    auto delay = m_branch_delay->get_as_form(pool, env);
+    auto delay_form = pool.alloc_single_form(nullptr, delay);
+    return pool.alloc_element<AsmBranchElement>(const_cast<AsmBranchOp*>(this), delay_form,
+                                                m_likely);
+  } else {
+    return pool.alloc_element<AtomicOpElement>(const_cast<AsmBranchOp*>(this));
+  }
 }
 
 FormElement* StackSpillLoadOp::get_as_form(FormPool& pool, const Env& env) const {
