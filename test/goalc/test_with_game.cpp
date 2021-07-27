@@ -816,6 +816,12 @@ TEST_F(WithGameTests, PandPorPnor) {
                           "#x0200000c0a0808080200000402000000\n0\n"});
 }
 
+TEST_F(WithGameTests, StackInlineArray) {
+  runner.run_static_test(env, testCategory, "test-stack-inline-array.gc",
+                         {"#x8\n"
+                          "#x30\n0\n"});
+}
+
 TEST(TypeConsistency, TypeConsistency) {
   Compiler compiler;
   compiler.enable_throw_on_redefines();
