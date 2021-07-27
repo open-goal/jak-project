@@ -454,6 +454,13 @@ goos::Object SetFormFormElement::to_form_internal(const Env& env) const {
 
 goos::Object SetFormFormElement::to_form_for_define(const Env& env) const {
   if (m_cast_for_define) {
+    // for vu-function, we just put a 0. These aren't supported
+    if (*m_cast_for_define == TypeSpec("vu-function")) {
+      return pretty_print::build_list(
+          fmt::format("define"), m_dst->to_form(env),
+          pretty_print::build_list(fmt::format("the-as {}", m_cast_for_define->print()),
+                                   pretty_print::to_symbol("0")));
+    }
     return pretty_print::build_list(
         fmt::format("define"), m_dst->to_form(env),
         pretty_print::build_list(fmt::format("the-as {}", m_cast_for_define->print()),

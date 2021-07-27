@@ -62,6 +62,8 @@ const std::unordered_set<std::string> g_functions_expected_to_reject = {
     // display
     "vblank-handler",  // asm
     "vif1-handler", "vif1-handler-debug",
+    // sprite. Don't know types yet.
+    "add-to-sprite-aux-list",
     // ripple - asm
     "ripple-execute-init", "ripple-create-wave-table", "ripple-apply-wave-table",
     "ripple-matrix-scale",
@@ -152,6 +154,9 @@ const std::unordered_set<std::string> g_functions_to_skip_compiling = {
 
     // float to int
     "(method 10 bsp-header)",
+
+    // multiply defined.
+    "(method 3 sprite-aux-list)",
 
     // loader - decompiler bug with detecting handle macros
     "(method 10 external-art-buffer)"};
