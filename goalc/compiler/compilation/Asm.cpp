@@ -686,12 +686,52 @@ Val* Compiler::compile_asm_pand(const goos::Object& form, const goos::Object& re
   return compile_asm_int128_math3(form, rest, IR_Int128Math3Asm::Kind::PAND, env);
 }
 
-Val* Compiler::compile_asm_pextlw(const goos::Object& form, const goos::Object& rest, Env* env) {
-  return compile_asm_int128_math3(form, rest, IR_Int128Math3Asm::Kind::PEXTLW, env);
+Val* Compiler::compile_asm_pceqb(const goos::Object& form, const goos::Object& rest, Env* env) {
+  return compile_asm_int128_math3(form, rest, IR_Int128Math3Asm::Kind::PCEQB, env);
+}
+
+Val* Compiler::compile_asm_pceqh(const goos::Object& form, const goos::Object& rest, Env* env) {
+  return compile_asm_int128_math3(form, rest, IR_Int128Math3Asm::Kind::PCEQH, env);
+}
+
+Val* Compiler::compile_asm_pceqw(const goos::Object& form, const goos::Object& rest, Env* env) {
+  return compile_asm_int128_math3(form, rest, IR_Int128Math3Asm::Kind::PCEQW, env);
+}
+
+Val* Compiler::compile_asm_pcgtb(const goos::Object& form, const goos::Object& rest, Env* env) {
+  return compile_asm_int128_math3(form, rest, IR_Int128Math3Asm::Kind::PCGTB, env);
+}
+
+Val* Compiler::compile_asm_pcgth(const goos::Object& form, const goos::Object& rest, Env* env) {
+  return compile_asm_int128_math3(form, rest, IR_Int128Math3Asm::Kind::PCGTH, env);
+}
+
+Val* Compiler::compile_asm_pcgtw(const goos::Object& form, const goos::Object& rest, Env* env) {
+  return compile_asm_int128_math3(form, rest, IR_Int128Math3Asm::Kind::PCGTW, env);
+}
+
+Val* Compiler::compile_asm_pextub(const goos::Object& form, const goos::Object& rest, Env* env) {
+  return compile_asm_int128_math3(form, rest, IR_Int128Math3Asm::Kind::PEXTUB, env);
+}
+
+Val* Compiler::compile_asm_pextuh(const goos::Object& form, const goos::Object& rest, Env* env) {
+  return compile_asm_int128_math3(form, rest, IR_Int128Math3Asm::Kind::PEXTUH, env);
 }
 
 Val* Compiler::compile_asm_pextuw(const goos::Object& form, const goos::Object& rest, Env* env) {
   return compile_asm_int128_math3(form, rest, IR_Int128Math3Asm::Kind::PEXTUW, env);
+}
+
+Val* Compiler::compile_asm_pextlb(const goos::Object& form, const goos::Object& rest, Env* env) {
+  return compile_asm_int128_math3(form, rest, IR_Int128Math3Asm::Kind::PEXTLB, env);
+}
+
+Val* Compiler::compile_asm_pextlh(const goos::Object& form, const goos::Object& rest, Env* env) {
+  return compile_asm_int128_math3(form, rest, IR_Int128Math3Asm::Kind::PEXTLH, env);
+}
+
+Val* Compiler::compile_asm_pextlw(const goos::Object& form, const goos::Object& rest, Env* env) {
+  return compile_asm_int128_math3(form, rest, IR_Int128Math3Asm::Kind::PEXTLW, env);
 }
 
 Val* Compiler::compile_asm_pcpyud(const goos::Object& form, const goos::Object& rest, Env* env) {
@@ -700,10 +740,6 @@ Val* Compiler::compile_asm_pcpyud(const goos::Object& form, const goos::Object& 
 
 Val* Compiler::compile_asm_pcpyld(const goos::Object& form, const goos::Object& rest, Env* env) {
   return compile_asm_int128_math3(form, rest, IR_Int128Math3Asm::Kind::PCPYLD, env);
-}
-
-Val* Compiler::compile_asm_pceqw(const goos::Object& form, const goos::Object& rest, Env* env) {
-  return compile_asm_int128_math3(form, rest, IR_Int128Math3Asm::Kind::PCEQW, env);
 }
 
 Val* Compiler::compile_asm_psubw(const goos::Object& form, const goos::Object& rest, Env* env) {
