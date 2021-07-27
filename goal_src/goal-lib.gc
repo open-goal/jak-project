@@ -475,6 +475,10 @@
   `(neq? ,thing 0)
   )
 
+(defmacro minmax (val minv maxv)
+  `(max (min ,val ,maxv) ,minv)
+  )
+
 (defmacro &+! (val amount)
   `(set! ,val (&+ ,val ,amount))
   )
@@ -531,12 +535,17 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; Bit Macros
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;
-(defmacro align16 (value)
-  `(logand #xfffffff0 (+ (the-as integer ,value) 15))
+(defmacro align-n (val n)
+  "align val to n-byte boundaries"
+  `(logand ,(- n) (&+ (the-as pointer ,val) ,(- n 1)))
   )
 
-(defmacro align64 (value)
-  `(logand -64 (&+ (the-as pointer ,value) 63))
+(defmacro align16 (val)
+  `(align-n ,val 16)
+  )
+
+(defmacro align64 (val)
+  `(align-n ,val 64)
   )
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;

@@ -189,3 +189,146 @@
    (the-as uint (-> buf data))
    )
   )
+
+
+(defmacro dma-buffer-add-base-type (buf pkt dma-type &rest body)
+  "Base macro for adding stuff to a dma-buffer. Don't use this directly!"
+  
+  (with-gensyms (dma-buf)
+    `(let* ((,dma-buf ,buf)
+            (,pkt (the-as ,dma-type (-> ,dma-buf base))))
+        
+          ,@body
+          
+          (set! (-> ,dma-buf base) (&+ (the-as pointer ,pkt) (size-of ,dma-type)))
+        
+        )
+    )
+  )
+
+(defmacro dma-buffer-add-base-data (buf data-type forms)
+  "Base macro for adding data words to a dma-buffer.
+   Each form in forms is converted into data-type and added to the buffer. NO TYPE CHECKING is performed, so be careful!"
+  
+  (with-gensyms (dma-buf ptr)
+    `(let* ((,dma-buf ,buf)
+            (,ptr (the-as (pointer ,data-type) (-> ,dma-buf base))))
+        
+          ,@(apply-i (lambda (x i) `(set! (-> ,ptr ,i) (the-as ,data-type ,x))) forms)
+          
+          (set! (-> ,dma-buf base) (&+ (the-as pointer ,ptr) (* ,(length forms) (size-of ,data-type))))
+        
+        )
+    )
+  )
+
+
+(defmacro dma-buffer-add-cnt-vif2 (buf qwc vif0 vif1)
+  "Add a dma-packet to a dma-buffer.
+   The packet is made up of a 'cnt' DMAtag (transfer qwc qwords of data after the tag and continue from after that point)
+    and includes two vif-tags for vifcode, or something else if needed."
+
+  (with-gensyms (pkt)
+    `(dma-buffer-add-base-type ,buf ,pkt dma-packet
+        
+        (set! (-> ,pkt dma) (new 'static 'dma-tag :id (dma-tag-id cnt) :qwc ,qwc))
+            
+        (set! (-> ,pkt vif0) ,vif0)
+        (set! (-> ,pkt vif1) ,vif1)
+        
+        )
+    )
+  )
+
+
+(defmacro dma-buffer-add-gif-tag (buf giftag gifregs)
+  "Add a giftag to a dma-buffer."
+  
+  (with-gensyms (pkt)
+    `(dma-buffer-add-base-type ,buf ,pkt gs-gif-tag
+        
+        (set! (-> ,pkt tag) ,giftag)
+        
+        (set! (-> ,pkt regs) ,gifregs)
+        
+        )
+    )
+  )
+
+
+(defmacro dma-buffer-add-uint64 (buf &rest body)
+  "Add 64-bit words to a dma-buffer. See dma-buffer-add-base-data"
+  
+  `(dma-buffer-add-base-data ,buf uint64 ,body)
+  )
+
+(defmacro dma-buffer-add-gs-set-flusha (buf &rest reg-list)
+  "Add a gif cnt dma packet to a dma-buffer for setting GS registers.
+   The packet runs the flusha command which waits for GIF transfer to end and VU1 microprogram to stop.
+   reg-list is a list of pairs where the car is the register name and the cadr is the value to be set for that register."
+  
+  (let ((reg-count (length reg-list))
+        (qwc (+ (length reg-list) 1))
+        (reg-names (apply first reg-list))
+        (reg-datas (apply second reg-list))
+        )
+    `(begin
+      ;; dma tag
+      (dma-buffer-add-cnt-vif2 ,buf ,qwc
+                              (new 'static 'vif-tag :cmd (vif-cmd flusha))
+                              (new 'static 'vif-tag :cmd (vif-cmd direct) :imm ,qwc)
+                              )
+      
+      ;; gif tag for editing gs regs
+      (dma-buffer-add-gif-tag ,buf (new 'static 'gif-tag64 :nloop 1 :eop 1 :nreg ,reg-count)
+                                   (gs-reg-list a+d a+d a+d a+d a+d a+d a+d a+d a+d a+d a+d a+d a+d a+d a+d a+d))
+      
+      ;; gs regs
+      (dma-buffer-add-uint64 ,buf
+          ,@(apply2 (lambda (x) x) (lambda (x) `(gs-reg64 ,x)) reg-datas reg-names)
+          )
+      )
+    )
+  )
+
+(defmacro with-cnt-vif-block (bindings &rest body)
+  "Start a cnt w/ vif direct to gif dma packet setup for the dma-buffer in bindings.
+   With this, you can transfer data through PATH2 without having to setup the tag yourself.
+   The qwc of the transfer is determined at runtime at the end of this block."
+  
+  (let ((buf (first bindings)))
+  
+  (with-gensyms (buf-start buf-qwc)
+    `(let ((,buf-start (-> ,buf base)))
+        
+        ;; setup the dmatag for PATH2 transfer, qwc is 0 (patched later)
+        (dma-buffer-add-cnt-vif2 ,buf 0
+                        (new 'static 'vif-tag :cmd (vif-cmd nop))
+                        (new 'static 'vif-tag :cmd (vif-cmd direct))
+                        )
+        
+        ;; things with this buffer!
+        ,@body
+        
+        ;; patch qwc! just do the difference between the current ptr and the old one and turn it into qwords.
+        ;; we take one qword out because it's the initial dmatag which isnt part of the count.
+        ;; this rounds *down*, so make sure to fill the buffer in 128-bit boundaries.
+        (let ((,buf-qwc (/ (+ (&- -16 ,buf-start) (the int (-> ,buf base))) 16)))
+          (cond
+            ((nonzero? ,buf-qwc) ;; stuff was added to the buffer
+             ;; patch the DMA tag
+             (logior! (-> (the-as (pointer dma-tag) ,buf-start) 0) (the-as uint (new 'static 'dma-tag :qwc ,buf-qwc)))
+             ;; patch the 2nd vifcode's imm field (qwc)
+             (logior! (-> (the-as (pointer dma-tag) ,buf-start) 1) (the-as uint (shl (shr (shl ,buf-qwc 48) 48) 32)))
+             )
+            (else ;; nothing was added to the buffer. delete the dmatag, you cannot transfer 0 qwords.
+             (set! (-> ,buf base) ,buf-start)
+             )
+            )
+          )
+        )
+
+    ))
+  )
+
+

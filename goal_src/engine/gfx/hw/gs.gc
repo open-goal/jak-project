@@ -200,7 +200,7 @@
 (deftype gs-frame (uint64)
   ((fbp    uint16 :offset 0  :size 9)
    (fbw    uint8  :offset 16 :size 6)
-   (psm    uint8  :offset 24 :size 6)
+   (psm    gs-psm :offset 24 :size 6)
    (fbmsk  uint32 :offset 32 :size 32)
    )
   :flag-assert #x900000008
@@ -209,7 +209,7 @@
 ;; the GS's ZBUF registers make various settings regarding Z buffer.
 (deftype gs-zbuf (uint64)
   ((zbp   uint16 :offset 0  :size 9)
-   (psm   uint8  :offset 24 :size 4)
+   (psm   gs-psm :offset 24 :size 4)
    (zmsk  uint8  :offset 32 :size 1)
    )
   :flag-assert #x900000008
@@ -250,16 +250,35 @@
   ((dthe  uint8 :offset 0 :size 1))
   :flag-assert #x900000008
   )
+
+(defenum gs-atest
+  :type uint8
+  (never 0)
+  (always 1)
+  (less 2)
+  (less-equal 3)
+  (equal 4)
+  (greater-equal 5)
+  (greater 6)
+  (not-equal 7)
+  )
+(defenum gs-ztest
+  :type uint8
+  (never 0)
+  (always 1)
+  (greater-equal 2)
+  (greater 3)
+  )
 ;; the GS's TEST register performs settings related to the pixel test.
 (deftype gs-test (uint64)
   ((ate    uint8 :offset 0  :size 1) ;; alpha test enable
-   (atst   uint8 :offset 1  :size 3) ;; alpha test method
+   (atst   gs-atest :offset 1  :size 3) ;; alpha test method
    (aref   uint8 :offset 4  :size 8) ;; alpha val reference
    (afail  uint8 :offset 12 :size 2) ;; processing method on alpha test fail
    (date   uint8 :offset 14 :size 1) ;; dest alpha test enable
    (datm   uint8 :offset 15 :size 1) ;; dest alpha test mode
    (zte    uint8 :offset 16 :size 1) ;; depth test enable
-   (ztst   uint8 :offset 17 :size 2) ;; depth test method
+   (ztst   gs-ztest :offset 17 :size 2) ;; depth test method
    )
   :flag-assert #x900000008
   )
@@ -538,46 +557,8 @@
   ()
   :flag-assert #x900000004
   )
-(deftype gif-tag64 (uint64)
-  ((nloop   uint16  :offset 0   :size 15)
-   (eop     uint8   :offset 15  :size 1)
-   (id      uint16  :offset 32  :size 14)
-   (pre     uint8   :offset 46  :size 1)
-   (prim    gs-prim :offset 47  :size 11)
-   (flg     uint8   :offset 58  :size 2)
-   (nreg    uint8   :offset 60  :size 4))
-  :flag-assert #x900000008
-  )
-(deftype gif-tag (uint128)
-  ((nloop   uint16 :offset 0   :size 15)
-   (eop     uint8  :offset 15  :size 1)
-   (id      uint16 :offset 32  :size 14)
-   (pre     uint8  :offset 46  :size 1)
-   (prim    uint16 :offset 47  :size 11)
-   (flg     uint8  :offset 58  :size 2)
-   (nreg    uint8  :offset 60  :size 4)
-   (regs0   uint8 :offset 64  :size 4)
-   (regs1   uint8 :offset 68  :size 4)
-   (regs2   uint8 :offset 72  :size 4)
-   (regs3   uint8 :offset 76  :size 4)
-   (regs4   uint8 :offset 80  :size 4)
-   (regs5   uint8 :offset 84  :size 4)
-   (regs6   uint8 :offset 88  :size 4)
-   (regs7   uint8 :offset 92  :size 4)
-   (regs8   uint8 :offset 96  :size 4)
-   (regs9   uint8 :offset 100 :size 4)
-   (regs10  uint8 :offset 104 :size 4)
-   (regs11  uint8 :offset 108 :size 4)
-   (regs12  uint8 :offset 112 :size 4)
-   (regs13  uint8 :offset 116 :size 4)
-   (regs14  uint8 :offset 120 :size 4)
-   (regs15  uint8 :offset 124 :size 4)
-   )
-  :flag-assert #x900000010
-  )
 
 (defenum gif-reg-id
-  :bitfield #f
   :type uint8
   (prim 0)
   (rgbaq 1)
@@ -594,6 +575,52 @@
   (xyz3 13)
   (a+d 14)
   (nop 15)
+  )
+
+(defenum gif-flag
+  :type uint8
+  (packed 0)
+  (reg-list 1)
+  (image 2)
+  (disable 3)
+  )
+
+(deftype gif-tag64 (uint64)
+  ((nloop   uint16  :offset 0   :size 15)
+   (eop     uint8   :offset 15  :size 1)
+   (id      uint16  :offset 32  :size 14)
+   (pre     uint8   :offset 46  :size 1)
+   (prim    gs-prim :offset 47  :size 11)
+   (flg     gif-flag   :offset 58  :size 2)
+   (nreg    uint8   :offset 60  :size 4))
+  :flag-assert #x900000008
+  )
+(deftype gif-tag (uint128)
+  ((nloop   uint16 :offset 0   :size 15)
+   (eop     uint8  :offset 15  :size 1)
+   (id      uint16 :offset 32  :size 14)
+   (pre     uint8  :offset 46  :size 1)
+   (prim    uint16 :offset 47  :size 11)
+   (flg     gif-flag  :offset 58  :size 2)
+   (nreg    uint8  :offset 60  :size 4)
+   (regs0   gif-reg-id :offset 64  :size 4)
+   (regs1   gif-reg-id :offset 68  :size 4)
+   (regs2   gif-reg-id :offset 72  :size 4)
+   (regs3   gif-reg-id :offset 76  :size 4)
+   (regs4   gif-reg-id :offset 80  :size 4)
+   (regs5   gif-reg-id :offset 84  :size 4)
+   (regs6   gif-reg-id :offset 88  :size 4)
+   (regs7   gif-reg-id :offset 92  :size 4)
+   (regs8   gif-reg-id :offset 96  :size 4)
+   (regs9   gif-reg-id :offset 100 :size 4)
+   (regs10  gif-reg-id :offset 104 :size 4)
+   (regs11  gif-reg-id :offset 108 :size 4)
+   (regs12  gif-reg-id :offset 112 :size 4)
+   (regs13  gif-reg-id :offset 116 :size 4)
+   (regs14  gif-reg-id :offset 120 :size 4)
+   (regs15  gif-reg-id :offset 124 :size 4)
+   )
+  :flag-assert #x900000010
   )
 
 (deftype gif-tag-regs (uint64)
@@ -621,6 +648,23 @@
   "Allocates a new static array of two uint64's making up the gif-tag and the tag registers"
   
   `(new 'static 'array uint64 2 ,tag ,regs)
+  )
+
+(defmacro gs-reg-list (&rest reg-ids)
+  "Generate a giftag register descriptor list from reg-ids."
+  
+  (when (> (length reg-ids) 16)
+    (ferror "too many regs passed to gs-reg-list!")
+    )
+  (let ((i -1)
+        (reg-count (length reg-ids)))
+
+    `(the-as gif-tag-regs (logior ,@(apply (lambda (x)
+        `(shl (the-as uint (gif-reg-id ,x)) ,(* 4 (inc! i)))
+              ) reg-ids)
+            ))
+
+    )
   )
 
 (deftype gs-gif-tag (structure)
@@ -834,7 +878,7 @@
   (set! (-> arg0 gif-tag tag)
         (new 'static 'gif-tag64
              :nloop #x1
-             :flg #x1
+             :flg (gif-flag reg-list)
              :eop eop
              :nreg (-> arg0 reg-count)
              )
