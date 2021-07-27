@@ -205,6 +205,10 @@
   `(apply-i-fun ,fun ,x 0)
   )
 
+(defsmacro string->symbol-format (str &rest args)
+  `(string->symbol (fmt #f ,str ,@args))
+  )
+
 ;; Bootstrap GOAL macro system
 
 
