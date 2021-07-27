@@ -622,9 +622,23 @@
   :bitfield #t
   :type uint32
   (display-marks 0)
+  (bit1 1) ;; TODO - nav-control::9
+  (bit2 2) ;; TODO - nav-control::9
+  (bit3 3) ;; TODO - nav-control::9
+  (bit4 4) ;; TODO - nav-control::9
+  (bit5 5) ;; TODO - nav-control::9
+  (bit6 6) ;; TODO - nav-control::9
+  (bit7 7) ;; TODO - nav-control::9
   (bit8 8)
-  (bit9 9) ;; TODO - (method 14 nav-control)
+  (bit9 9) ;; TODO - nav-control::14 | 11
+  (bit11 11) ;; TODO - nav-control::28
+  (bit10 10) ;; TODO - nav-control::19
+  (bit12 12) ;; TODO - nav-control::24
   (bit13 13)
+  (bit17 17) ;; TODO - nav-control::11
+  (bit18 18) ;; TODO - nav-control::11
+  (bit19 19) ;; TODO - nav-control::11
+  (bit21 21) ;; TODO - nav-control::19
   )
 
 (defenum task-status
@@ -1686,7 +1700,7 @@
 (deftype vector4w-3 (structure)
   ((data   int32 12 :score -9999 :offset-assert 0)
    (quad   uint128 3  :offset 0)
-   (vector vector4w 3  :inline :offset 0)
+   (vector vector4w 3  :inline :score 100 :offset 0)
    )
   :method-count-assert 9
   :size-assert         #x30
@@ -9707,12 +9721,13 @@
 (declare-type collide-shape basic)
 (declare-type water-control basic)
 (declare-type sparticle-launch-control basic)
+(declare-type nav-control basic)
 (deftype process-drawable (process)
   ((root        trsqv           :offset-assert 112)
    (node-list   cspace-array    :offset-assert 116)
    (draw        draw-control    :offset-assert 120)
    (skel        joint-control   :offset-assert 124)
-   (nav         basic   :offset-assert 128)
+   (nav         nav-control   :offset-assert 128)
    (align       align-control   :offset-assert 132)
    (path        basic   :offset-assert 136)
    (vol         basic   :offset-assert 140)
@@ -10805,14 +10820,14 @@
   )
 
 (deftype collide-shape (trsqv)
-  ((process               process            :offset-assert 140)
+  ((process               process-drawable            :offset-assert 140)
    (max-iteration-count   uint8              :offset-assert 144)
    (nav-flags             uint8              :offset-assert 145)
    (pad-byte              uint8      2       :offset-assert 146)
    (pat-ignore-mask       pat-surface        :offset-assert 148)
    (event-self            basic              :offset-assert 152)
    (event-other           basic              :offset-assert 156)
-   (root-prim             basic              :offset-assert 160)
+   (root-prim             collide-shape-prim              :offset-assert 160)
    (riders                basic              :offset-assert 164)
    (backup-collide-as     uint64             :offset-assert 168)
    (backup-collide-with   uint64             :offset-assert 176)
@@ -14227,7 +14242,7 @@
   )
 
 (deftype clip-travel-vector-to-mesh-return-info (structure)
-  ((found-boundary  basic            :offset-assert 0)
+  ((found-boundary  symbol            :offset-assert 0)
    (intersection    vector   :inline :offset-assert 16)
    (boundary-normal vector   :inline :offset-assert 32)
    (prev-normal     vector   :inline :offset-assert 48)
@@ -14287,46 +14302,46 @@
 
 (deftype nav-mesh (basic)
   ((user-list           engine           :offset-assert 4)
-   (poly-lookup-history uint8 2       :offset-assert 8)
+   (poly-lookup-history uint8 2         :offset-assert 8)
    (debug-time          uint8           :offset-assert 10)
    (static-sphere-count uint8           :offset-assert 11)
-   (static-sphere       uint32          :offset-assert 12)
+   (static-sphere       nav-sphere          :offset-assert 12)
    (bounds              sphere  :inline :offset-assert 16)
    (origin              vector  :inline :offset-assert 32)
    (cache               nav-lookup-elem 4 :inline :offset-assert 48) ;; guess on type
    (node-count          int32           :offset-assert 176)
-   (nodes               nav-node        :offset-assert 180)
+   (nodes               (pointer nav-node)        :offset-assert 180)
    (vertex-count        int32           :offset-assert 184)
    (vertex              nav-vertex      :offset-assert 188)
    (poly-count          int32           :offset-assert 192)
-   (poly                uint32          :offset-assert 196)
-   (route               uint32          :offset-assert 200)
+   (poly                nav-poly          :offset-assert 196)
+   (route               (pointer uint8)          :offset-assert 200)
    )
   :method-count-assert 30
   :size-assert         #xcc
   :flag-assert         #x1e000000cc
   (:methods
     (dummy-9 (_type_ int rgba) vector 9) ;; TODO - calls method 10, skeptical about rgba now (iirc the debug method signatures might be wrong)
-    (dummy-10 (_type_ int rgba) none 10) ;; TODO - int arg is a byte array?
-    (dummy-11 () none 11)
-    (dummy-12 () none 12)
-    (dummy-13 (_type_) none 13)
-    (dummy-14 (_type_ nav-ray) none 14) ;; TODO - confirm
+    (TODO-RENAME-10 (_type_ nav-poly rgba) vector 10) ;; TODO - int arg is a byte array?
+    (dummy-11 (_type_ nav-poly nav-poly symbol) nav-poly 11)
+    (dummy-12 (_type_ nav-poly nav-poly nav-route-portal) none 12)
+    (TODO-RENAME-13 (_type_) none 13)
+    (TODO-RENAME-14 (_type_ nav-ray) none 14)
     (TODO-RENAME-15 (_type_ nav-poly vector vector float) meters 15)
-    (dummy-16 () none 16)
+    (TODO-RENAME-16 (_type_ vector nav-poly vector symbol float clip-travel-vector-to-mesh-return-info) none 16)
     (dummy-17 (_type_) none 17)
-    (dummy-18 () none 18)
+    (dummy-18 (_type_ int vector int int int) none 18)
     (TODO-RENAME-19 (_type_ vector vector) none 19)
-    (dummy-20 (_type_ int rgba) none 20) ;; TODO - int arg is a byte array?
-    (dummy-21 (_type_ int vector) none 21) ;; TODO - what is this byte array!?
-    (dummy-22 () none 22)
-    (dummy-23 () none 23)
-    (dummy-24 () none 24) ;; TODO - what is this byte array!?
-    (dummy-25 () none 25)
-    (dummy-26 (_type_ int vector ) none 26)
-    (dummy-27 (_type_ vector meters) none 27) ;; TODO - CFG failure
-    (dummy-28 () none 28)
-    (dummy-29 (_type_ vector basic meters) none 29)
+    (TODO-RENAME-20 (_type_ nav-poly rgba) none 20) ;; TODO - int arg is a byte array?
+    (TODO-RENAME-21 (_type_ nav-poly vector) symbol 21) ;; TODO - what is this byte array!?
+    (TODO-RENAME-22 (_type_ (pointer uint8) (pointer uint8)) uint 22) ;; TODO - unused, hard to tell what these types are...
+    (dummy-23 (_type_ basic vector vector vector basic) vector 23) ;; TODO - basics!
+    (TODO-RENAME-24 (_type_ nav-poly vector vector) vector 24) ;; TODO - what is this byte array!?
+    (dummy-25 (_type_ nav-poly vector vector) none 25)
+    (TODO-RENAME-26 (_type_ nav-poly vector vector) vector 26)
+    (dummy-27 (_type_ vector meters) symbol 27) ;; TODO - CFG failure
+    (dummy-28 (_type_ vector meters (pointer nav-control-flags)) nav-poly 28)
+    (dummy-29 (_type_ vector float meters) none 29)
     )
   )
 
@@ -14384,31 +14399,31 @@
     (new (symbol type collide-shape int float) _type_)
     (dummy-9 (_type_) none 9)
     (point-in-bounds? (_type_ vector) symbol 10)
-    (dummy-11 (_type_) none 11)
-    (dummy-12 () none 12)
-    (dummy-13 (_type_ ) none 13)
+    (TODO-RENAME-11 (_type_ vector) vector 11)
+    (TODO-RENAME-12 (_type_ nav-gap-info) symbol 12)
+    (TODO-RENAME-13 (_type_ vector clip-travel-vector-to-mesh-return-info) vector 13)
     (set-current-poly! (_type_ nav-poly) none 14)
     (set-target-pos! (_type_ vector) none 15)
-    (dummy-16 (_type_ vector) none 16)
-    (dummy-17 (_type_) none 17)
-    (TODO-RENAME-18 (_type_ vector) none 18) ;; ret not confirmed
-    (dummy-19 () none 19)
-    (dummy-20 (_type_ basic basic vector) none 20)
-    (dummy-21 (_type_ vector) none 21)
-    (dummy-22 () none 22)
-    (dummy-23 () none 23)
-    (dummy-24 () none 24)
-    (dummy-25 (_type_ vector) none 25)
-    (dummy-26 () none 26)
-    (dummy-27 () none 27)
-    (dummy-28 (_type_ int) none 28) ;; TODO - collide-shape's event-other, what is it! (event-message-block perhaps? - vector at 12/16)
+    (TODO-RENAME-16 (_type_ vector) symbol 16)
+    (dummy-17 (_type_ vector vector) vector 17)
+    (TODO-RENAME-18 (_type_ vector) nav-poly 18) ;; ret not confirmed
+    (dummy-19 (_type_ vector trsqv vector float) vector 19)
+    (dummy-20 (_type_ basic vector vector) vector 20)
+    (TODO-RENAME-21 (_type_ vector) symbol 21)
+    (TODO-RENAME-22 (_type_ vector float) symbol 22)
+    (dummy-23 (_type_ vector matrix) float 23)
+    (dummy-24 (_type_ float clip-travel-vector-to-mesh-return-info) none 24)
+    (dummy-25 (_type_ vector basic) none 25)
+    (TODO-RENAME-26 (_type_) none 26) ;; stub
+    (TODO-RENAME-27 (_type_) none 27)
+    (TODO-RENAME-28 (_type_ int) none 28)
     (should-display? (_type_) symbol 29)
     (dummy-30 (_type_ vector vector basic) sphere 30) ;; TODO - last arg?
     (intersect-ray-line-segment? (_type_ vector vector vector vector) symbol 31)
-    (dummy-32 (_type_ basic vector) none 32)
-    (dummy-33 () none 33)
+    (TODO-ASM-32 (_type_ vector vector vector clip-travel-vector-to-mesh-return-info float) none 32) ;; TODO - basics?
+    (TODO-RENAME-33 (_type_ vector vector vector clip-travel-vector-to-mesh-return-info float) symbol 33)
     (dummy-34 () none 34)
-    (dummy-35 (_type_ basic vector) none 35)
+    (dummy-35 (_type_ basic vector basic basic float vector) none 35)
     )
   )
 
@@ -19523,8 +19538,8 @@
 ;; - Functions
 
 (define-extern make-collide-list-using-line-sphere-inst-test function)
-(define-extern test-closest-pt-in-triangle function)
 
+(define-extern test-closest-pt-in-triangle function)
 ;; - Unknowns
 
 ;;(define-extern *already-printed-exeeded-max-cache-tris* object) ;; unknown type
@@ -19663,38 +19678,38 @@
 
 ;; - Functions
 
-(define-extern test-xz-point-on-line-segment? function)
+(define-extern test-xz-point-on-line-segment? (function vector vector vector float symbol))
 (define-extern ray-ccw-line-segment-intersection? (function vector vector vector vector symbol))
-(define-extern choose-travel-portal-vertex (function none))
+(define-extern choose-travel-portal-vertex (function nav-mesh nav-route-portal nav-poly vector int)) ;; TODO - confirm the matrix
 (define-extern init-ray (function nav-ray symbol))
 (define-extern ray-line-segment-intersection? (function vector vector vector vector symbol))
-(define-extern point-triangle-distance-min function)
-(define-extern nav-mesh-update-route-table (function nav-mesh int int symbol none)) ;; TODO - symbol = byte array!!!!
-(define-extern nav-mesh-lookup-route function)
+(define-extern point-triangle-distance-min (function vector float (inline-array nav-vertex) float))
+(define-extern nav-mesh-update-route-table (function nav-mesh int int uint int))
+(define-extern nav-mesh-lookup-route (function nav-mesh int int uint))
 (define-extern nav-ray-test-local? (function nav-mesh nav-poly vector vector symbol))
 (define-extern init-ray-local (function nav-ray nav-poly vector vector symbol))
 (define-extern init-ray-dir-local (function nav-ray nav-poly vector vector float symbol))
-(define-extern circle-triangle-intersection? function)
-(define-extern point-inside-rect? (function nav-mesh vector vector symbol))
-(define-extern recursive-inside-poly (function nav-mesh (inline-array nav-node) vector float none)) ;; first uint32 is `nodes` in nav-mesh
-(define-extern point-inside-poly? function)
+(define-extern circle-triangle-intersection? (function vector float vector symbol)) ;; TODO - last arg has 5 vectors or more?
+(define-extern point-inside-rect? (function nav-node vector float symbol))
+(define-extern recursive-inside-poly (function nav-mesh nav-node vector float symbol)) ;; unused / TODO
+(define-extern point-inside-poly? (function nav-mesh uint vector float symbol))
 (define-extern vu-point-triangle-intersection? (function vector vector vector vector symbol)) ;; TODO - slt / slti
 (define-extern pke-nav-hack (function none))
 (define-extern debug-report-nav-stats (function none)) ;; empty stub
 (define-extern inc-mod3 (function int none)) ;; TODO - has a movn and slt
 (define-extern dec-mod3 (function int none)) ;; TODO - has a movn and slt
-(define-extern circle-triangle-intersection-proc? (function vector float int none))
+(define-extern circle-triangle-intersection-proc? (function vector float (inline-array nav-vertex) none))
 (define-extern nav-ray-test (function nav-mesh nav-poly vector vector meters))
 (define-extern clip-vector-to-halfspace! (function vector float float float float))
 (define-extern add-nav-sphere (function nav-control vector none))
-(define-extern add-collide-shape-spheres (function nav-control ))
+(define-extern add-collide-shape-spheres (function nav-control collide-shape vector none)) ;; unused
 (define-extern circle-tangent-directions (function vector vector vector vector vector))
-(define-extern find-closest-circle-ray-intersection (function vector vector float int int none))
+(define-extern find-closest-circle-ray-intersection (function vector vector float int (inline-array vector) float int))
 (define-extern sign-bit (function int int)) ;; TODO - sra
-(define-extern compute-dir-parm (function vector vector vector vector float)) ;; TODO - sra
-(define-extern debug-nav-validate-current-poly function)
-(define-extern start-collect-nav function)
-(define-extern end-collect-nav function)
+(define-extern compute-dir-parm (function vector vector vector float)) ;; TODO - sra
+(define-extern debug-nav-validate-current-poly (function nav-mesh nav-poly vector symbol)) ;; unused
+(define-extern start-collect-nav (function none)) ;; TODO - make these instructions just NOP out?
+(define-extern end-collect-nav (function none)) ;; TODO - make these instructions just NOP out?
 (define-extern nav-sphere-from-cam (function none))
 
 ;; - Unknowns
