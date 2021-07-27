@@ -240,7 +240,6 @@
     )
   )
 
-
 (defmacro dma-buffer-add-gif-tag (buf giftag gifregs)
   "Add a giftag to a dma-buffer."
   
@@ -250,6 +249,19 @@
         (set! (-> ,pkt tag) ,giftag)
         
         (set! (-> ,pkt regs) ,gifregs)
+        
+        )
+    )
+  )
+
+(defmacro dma-buffer-add-vector4w-2 (buf vec)
+  "Add a vector4w-2 to a dma-buffer. For some reason the vectors are swapped."
+  
+  (with-gensyms (pkt)
+    `(dma-buffer-add-base-type ,buf ,pkt vector4w-2
+        
+        (set! (-> ,pkt quad 0) (-> ,vec quad 1))
+        (set! (-> ,pkt quad 1) (-> ,vec quad 0))
         
         )
     )
@@ -330,6 +342,38 @@
         )
 
     ))
+  )
+
+(defmacro with-dma-bucket (bindings &rest body)
+  "Start a new dma-bucket in body that will be finished at the end.
+   The bindings are the dma-buffer, dma-bucket and bucket-id respectively."
+  
+  (let ((buf (first bindings))
+        (bucket (second bindings))
+        (bucket-id (third bindings))
+        )
+      
+      (with-gensyms (buf-start bucket-edge pkt)
+        `(let ((,buf-start (-> ,buf base)))
+            
+            ,@body
+            
+            (let ((,bucket-edge (the (pointer dma-tag) (-> ,buf base))))
+                (let ((,pkt (the-as dma-packet (-> ,buf base))))
+                
+                  (set! (-> ,pkt dma) (new 'static 'dma-tag :id (dma-tag-id next)))
+                  (set! (-> ,pkt vif0) (new 'static 'vif-tag :cmd (vif-cmd nop)))
+                  (set! (-> ,pkt vif1) (new 'static 'vif-tag :cmd (vif-cmd nop)))
+                  
+                  (set! (-> ,buf base) (&+ (the-as pointer ,pkt) (size-of dma-packet)))
+                
+                  )
+                (dma-bucket-insert-tag ,bucket ,bucket-id ,buf-start ,bucket-edge)
+                )
+            )
+        )
+      
+      )
   )
 
 
