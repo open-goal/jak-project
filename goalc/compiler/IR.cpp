@@ -13,7 +13,7 @@ Register get_reg(const RegVal* rv, const AllocationResult& allocs, emitter::IR_R
     auto reg = rv->rlet_constraint().value();
     if (rv->ireg().id < int(range.size())) {
       auto& lr = range.at(rv->ireg().id);
-      if (irec.ir_id >= lr.min && irec.ir_id <= lr.max) {
+      if (lr.has_info_at(irec.ir_id)) {
         auto ass_reg = range.at(rv->ireg().id).get(irec.ir_id);
         if (ass_reg.kind == Assignment::Kind::REGISTER) {
           assert(ass_reg.reg == reg);
@@ -41,7 +41,7 @@ int get_stack_offset(const RegVal* rv, const AllocationResult& allocs) {
   } else {
     assert(rv->forced_on_stack());
     auto& ass = allocs.ass_as_ranges.at(rv->ireg().id);
-    auto stack_slot = allocs.get_slot_for_spill(ass.assignment.at(0).stack_slot);
+    auto stack_slot = allocs.get_slot_for_spill(ass.stack_slot());
     assert(stack_slot >= 0);
     return stack_slot * 8;
   }

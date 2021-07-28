@@ -5,7 +5,7 @@
 #include "IR.h"
 #include "common/link_types.h"
 #include "goalc/make/Tools.h"
-#include "goalc/regalloc/allocate.h"
+#include "goalc/regalloc/Allocator.h"
 #include "third-party/fmt/core.h"
 
 using namespace goos;
@@ -198,6 +198,7 @@ Val* Compiler::compile_error_guard(const goos::Object& code, Env* env) {
 }
 
 void Compiler::color_object_file(FileEnv* env) {
+  int num_spills_in_file = 0;
   for (auto& f : env->functions()) {
     AllocationInput input;
     input.is_asm_function = f->is_asm_func;
@@ -222,9 +223,14 @@ void Compiler::color_object_file(FileEnv* env) {
       input.debug_settings.print_analysis = true;
       input.debug_settings.allocate_log_level = 2;
     }
-
-    f->set_allocations(allocate_registers(input));
+    auto regalloc_result = allocate_registers(input);
+    num_spills_in_file += regalloc_result.num_spills;
+    f->set_allocations(regalloc_result);
   }
+
+  m_debug_stats.num_spills += num_spills_in_file;
+  fmt::print("Spills in {}: {}\n", env->name(), num_spills_in_file);
+  fmt::print("Total: {}\n", m_debug_stats.num_spills);
 }
 
 std::vector<u8> Compiler::codegen_object_file(FileEnv* env) {

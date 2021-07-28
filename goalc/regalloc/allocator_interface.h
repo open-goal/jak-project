@@ -13,7 +13,6 @@
 #include <unordered_set>
 #include "goalc/emitter/Register.h"
 #include "IRegister.h"
-#include "allocate_common.h"
 
 /*!
  * Information about an instruction needed for register allocation.
@@ -59,17 +58,77 @@ struct RegAllocInstr {
 };
 
 /*!
+ * An operation that's added to an Instruction so that it loads/stores things from the stack if
+ * needed for spilling.
+ */
+struct StackOp {
+  struct Op {
+    int slot = -1;
+    emitter::Register reg;
+    RegClass reg_class = RegClass::INVALID;
+    bool load = false;   // load from reg before instruction?
+    bool store = false;  // store into reg after instruction?
+  };
+
+  std::vector<Op> ops;
+
+  std::string print() const;
+};
+
+/*!
+ * The assignment of an IRegister to a real Register.
+ * For a single IR Instruction.
+ */
+struct Assignment {
+  enum class Kind { STACK, REGISTER, UNASSIGNED } kind = Kind::UNASSIGNED;
+  emitter::Register reg = -1;  //! where the IRegister is now
+  int stack_slot = -1;         //! index of the slot, if we are ever spilled
+  bool spilled = false;        //! are we ever spilled
+
+  std::string to_string() const;
+
+  bool occupies_same_reg(const Assignment& other) const { return other.reg == reg && (reg != -1); }
+
+  bool occupies_reg(emitter::Register other_reg) const { return reg == other_reg && (reg != -1); }
+
+  bool is_assigned() const { return kind != Kind::UNASSIGNED; }
+};
+
+class AssignmentRange {
+ public:
+  AssignmentRange(int start_instr,
+                  const std::vector<bool>& live,
+                  const std::vector<Assignment>& assignments)
+      : m_start(start_instr), m_live(live), m_ass(assignments) {
+    m_end = start_instr + live.size() - 1;
+    assert(m_live.size() == m_ass.size());
+  }
+  bool is_live_at_instr(int instr) const { return m_live.at(instr - m_start); }
+  const Assignment& get(int instr) const { return m_ass.at(instr - m_start); }
+  bool has_info_at(int instr) const { return instr >= m_start && instr <= m_end; }
+  int stack_slot() const { return m_ass.at(0).stack_slot; }
+
+ private:
+  int m_start = -1;
+  int m_end = -1;  // INCLUSIVE!
+  std::vector<bool> m_live;
+  std::vector<Assignment> m_ass;
+};
+
+/*!
  * Result of the allocate_registers algorithm
  */
 struct AllocationResult {
-  bool ok = false;                                  // did it work?
-  std::vector<std::vector<Assignment>> assignment;  // variable, instruction
-  std::vector<LiveInfo> ass_as_ranges;              // another format, maybe easier?
-  std::vector<emitter::Register> used_saved_regs;   // which saved regs get clobbered?
-  int stack_slots_for_spills = 0;                   // how many space on the stack do we need?
+  bool ok = false;  // did it work?
+  // std::vector<std::vector<Assignment>> assignment;  // variable, instruction
+  std::vector<AssignmentRange> ass_as_ranges;      // another format, maybe easier?
+  std::vector<emitter::Register> used_saved_regs;  // which saved regs get clobbered?
+  int stack_slots_for_spills = 0;                  // how many space on the stack do we need?
   int stack_slots_for_vars = 0;
   std::vector<StackOp> stack_ops;  // additional instructions to spill/restore
   bool needs_aligned_stack_for_spills = false;
+
+  int num_spills = 0;
 
   // we put the variables before the spills so the variables are 16-byte aligned.
 
@@ -115,4 +174,5 @@ struct AllocationInput {
   }
 };
 
-AllocationResult allocate_registers(const AllocationInput& input);
+void print_allocate_input(const AllocationInput& in);
+void print_result(const AllocationInput& in, const AllocationResult& result);

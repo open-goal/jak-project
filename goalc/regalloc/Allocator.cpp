@@ -6,6 +6,37 @@
 #include <algorithm>
 #include "third-party/fmt/core.h"
 #include "Allocator.h"
+#include "goalc/regalloc/allocator_interface.h"
+
+std::string Assignment::to_string() const {
+  std::string result;
+  if (spilled) {
+    result += "*";
+  }
+  switch (kind) {
+    case Kind::STACK:
+      result += fmt::format("s[{:2d}]", stack_slot);
+      break;
+    case Kind::REGISTER:
+      result += emitter::gRegInfo.get_info(reg).name;
+      break;
+    case Kind::UNASSIGNED:
+      result += "unassigned";
+      break;
+    default:
+      assert(false);
+  }
+
+  return result;
+}
+
+std::string LiveInfo::print_assignment() {
+  std::string result = "Assignment for var " + std::to_string(var) + "\n";
+  for (uint32_t i = 0; i < assignment.size(); i++) {
+    result += fmt::format("i[{:3d}] {}\n", i + min, assignment.at(i).to_string());
+  }
+  return result;
+}
 
 /*!
  * Find basic blocks and add block link info.
@@ -794,6 +825,12 @@ bool try_spill_coloring(int var, RegAllocCache* cache, const AllocationInput& in
 
     if (bonus.load || bonus.store) {
       cache->stack_ops.at(instr).ops.push_back(bonus);
+      if (bonus.load) {
+        cache->stats.num_spill_ops++;
+      }
+      if (bonus.store) {
+        cache->stats.num_spill_ops++;
+      }
     }
   }
   return true;
@@ -909,4 +946,149 @@ bool run_allocator(RegAllocCache* cache, const AllocationInput& in, int debug_tr
     }
   }
   return true;
+}
+
+namespace {
+/*!
+ * Print out the state of the RegAllocCache after doing analysis.
+ */
+void print_analysis(const AllocationInput& in, RegAllocCache* cache) {
+  fmt::print("[RegAlloc] Basic Blocks\n");
+  fmt::print("-----------------------------------------------------------------\n");
+  for (auto& b : cache->basic_blocks) {
+    fmt::print("{}\n", b.print(in.instructions));
+  }
+
+  printf("[RegAlloc] Alive Info\n");
+  printf("-----------------------------------------------------------------\n");
+  // align to where we start putting live stuff
+  printf("      %30s    ", "");
+  for (int i = 0; i < cache->max_var; i++) {
+    printf("%2d ", i);
+  }
+  printf("\n");
+  printf("_________________________________________________________________\n");
+  for (uint32_t i = 0; i < in.instructions.size(); i++) {
+    std::vector<bool> ids_live;
+    std::string lives;
+
+    ids_live.resize(cache->max_var, false);
+
+    for (int j = 0; j < cache->max_var; j++) {
+      if (cache->live_ranges.at(j).is_live_at_instr(i)) {
+        ids_live.at(j) = true;
+      }
+    }
+
+    for (uint32_t j = 0; j < ids_live.size(); j++) {
+      if (ids_live[j]) {
+        char buff[256];
+        sprintf(buff, "%2d ", j);
+        lives.append(buff);
+      } else {
+        lives.append(".. ");
+      }
+    }
+
+    if (in.debug_instruction_names.size() == in.instructions.size()) {
+      std::string code_str = in.debug_instruction_names.at(i);
+      if (code_str.length() >= 50) {
+        code_str = code_str.substr(0, 48);
+        code_str.push_back('~');
+      }
+      printf("[%03d] %30s -> %s\n", i, code_str.c_str(), lives.c_str());
+    } else {
+      printf("[%03d] %30s -> %s\n", i, "???", lives.c_str());
+    }
+  }
+}
+}  // namespace
+
+/*!
+ * The top-level register allocation algorithm!
+ */
+AllocationResult allocate_registers(const AllocationInput& input) {
+  AllocationResult result;
+  RegAllocCache cache;
+  cache.is_asm_func = input.is_asm_function;
+
+  // if desired, print input for debugging.
+  if (input.debug_settings.print_input) {
+    print_allocate_input(input);
+  }
+
+  // first step is analysis
+  find_basic_blocks(&cache, input);
+  analyze_liveliness(&cache, input);
+  if (input.debug_settings.print_analysis) {
+    print_analysis(input, &cache);
+  }
+
+  // do constraints first, to get them out of the way
+  do_constrained_alloc(&cache, input, input.debug_settings.trace_debug_constraints);
+  // the user may have specified invalid constraints, so we should attempt to find conflicts now
+  // rather than having the register allocation mysteriously fail later on or silently ignore a
+  // constraint.
+  if (!check_constrained_alloc(&cache, input)) {
+    result.ok = false;
+    fmt::print("[RegAlloc Error] Register allocation has failed due to bad constraints.\n");
+    return result;
+  }
+
+  // do the allocations!
+  if (!run_allocator(&cache, input, input.debug_settings.allocate_log_level)) {
+    result.ok = false;
+    fmt::print("[RegAlloc Error] Register allocation has failed.\n");
+    return result;
+  }
+
+  // prepare the result
+  result.ok = true;
+  result.needs_aligned_stack_for_spills = cache.used_stack;
+  result.stack_slots_for_spills = cache.current_stack_slot;
+  result.stack_slots_for_vars = input.stack_slots_for_stack_vars;
+
+  // copy over the assignment result
+  //  result.assignment.resize(cache.max_var);
+  //  for (size_t i = 0; i < result.assignment.size(); i++) {
+  //    auto& x = result.assignment[i];
+  //    x.resize(input.instructions.size());
+  //    const auto& lr = cache.live_ranges.at(i);
+  //    for (int j = lr.min; j <= lr.max; j++) {
+  //      x.at(j) = lr.get(j);
+  //    }
+  //  }
+
+  // check for use of saved registers
+  for (auto sr : emitter::gRegInfo.get_all_saved()) {
+    bool uses_sr = false;
+    for (auto& lr : cache.live_ranges) {
+      for (int instr_idx = lr.min; instr_idx <= lr.max; instr_idx++) {
+        if (lr.get(instr_idx).reg == sr) {
+          uses_sr = true;
+          break;
+        }
+      }
+      if (uses_sr) {
+        break;
+      }
+    }
+    if (uses_sr) {
+      result.used_saved_regs.push_back(sr);
+    }
+  }
+  // result.ass_as_ranges = std::move(cache.live_ranges);
+  for (auto& lr : cache.live_ranges) {
+    result.ass_as_ranges.push_back(AssignmentRange(lr.min, lr.is_alive, lr.assignment));
+  }
+  result.stack_ops = std::move(cache.stack_ops);
+
+  // final result print
+  if (input.debug_settings.print_result) {
+    print_result(input, result);
+  }
+
+  result.num_spills = cache.stats.num_spill_ops;
+
+  return result;
 }

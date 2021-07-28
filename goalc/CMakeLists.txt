@@ -39,8 +39,8 @@ add_library(compiler
         make/Tools.cpp
         regalloc/IRegister.cpp
         regalloc/Allocator.cpp
-        regalloc/allocate.cpp
-        regalloc/allocate_common.cpp
+        regalloc/allocator_interface.cpp
+        regalloc/Allocator_v2.cpp
         )
 
 target_link_libraries(compiler common Zydis)
