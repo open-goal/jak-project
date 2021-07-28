@@ -62,8 +62,8 @@ const std::unordered_set<std::string> g_functions_expected_to_reject = {
     // display
     "vblank-handler",  // asm
     "vif1-handler", "vif1-handler-debug",
-    // stats-h
-    "(method 11 perf-stat)", "(method 12 perf-stat)",
+    // sprite. Don't know types yet.
+    "add-to-sprite-aux-list",
     // ripple - asm
     "ripple-execute-init", "ripple-create-wave-table", "ripple-apply-wave-table",
     "ripple-matrix-scale",
@@ -77,10 +77,6 @@ const std::unordered_set<std::string> g_functions_expected_to_reject = {
 
     // collide-mesh-h
     "(method 11 collide-mesh-cache)",  // asm
-
-    // actor-link-h
-    "(method 21 actor-link-info)",  // BUG: sc cfg / cfg-ir bug
-    "(method 20 actor-link-info)",
 
     "debug-menu-item-var-render"  // asm
 };
@@ -106,11 +102,9 @@ const std::unordered_set<std::string> g_functions_to_skip_compiling = {
     "rand-vu-nostep",  // random hardware
 
     // trig
-    "sin-rad",                    // fpu acc
-    "cos-rad",                    // fpu acc
-    "atan-series-rad",            // fpu acc
-    "vector-rad<-vector-deg!",    // bad decisions on float vs int128
-    "vector-rad<-vector-deg/2!",  // bad decisions on float vs int128
+    "sin-rad",          // fpu acc
+    "cos-rad",          // fpu acc
+    "atan-series-rad",  // fpu acc
 
     /// VECTOR-H
     "(method 3 vector)",  // this function appears twice, which confuses the compiler.
@@ -127,17 +121,20 @@ const std::unordered_set<std::string> g_functions_to_skip_compiling = {
     // display-h
     "put-draw-env",
 
-    // vector
-    // bad decisions on float vs int128
-    "vector-degf", "vector-degmod", "vector-deg-diff", "vector-degi",
-
     // geometry
     "calculate-basis-functions-vector!",  // asm requiring manual rewrite
     "curve-evaluate!",                    // asm requiring manual rewrite
     "point-in-triangle-cross",            // logior on floats manual fixup
 
+    // texture
+    "(method 9 texture-page-dir)",         // multiplication on pointers
+    "adgif-shader<-texture-with-update!",  // misrecognized bitfield stuff.
+
     // asm
     "invalidate-cache-line",
+
+    // stats-h
+    "(method 11 perf-stat)", "(method 12 perf-stat)",
 
     // sync-info
     "(method 15 sync-info)",         // needs display stuff first
@@ -149,8 +146,20 @@ const std::unordered_set<std::string> g_functions_to_skip_compiling = {
 
     "get-task-status",
 
-    // issue - https://github.com/water111/jak-project/issues/396
-    "ocean-trans-add-upload-strip", "ocean-trans-add-upload-table"};
+    // aligner - return-from-thread, currently not supported
+    "(method 9 align-control)",
+
+    // stat collection
+    "start-perf-stat-collection", "end-perf-stat-collection",
+
+    // float to int
+    "(method 10 bsp-header)",
+
+    // multiply defined.
+    "(method 3 sprite-aux-list)",
+
+    // loader - decompiler bug with detecting handle macros
+    "(method 10 external-art-buffer)"};
 
 // default location for the data. It can be changed with a command line argument.
 std::string g_iso_data_path = "";
@@ -230,6 +239,9 @@ class OfflineDecompilation : public ::testing::Test {
  protected:
   static std::unique_ptr<decompiler::ObjectFileDB> db;
   static std::unique_ptr<decompiler::Config> config;
+
+  static std::unique_ptr<std::unordered_map<std::string, std::string>> final_output_cache;
+
   static void SetUpTestCase() {
     // global setup
     file_util::init_crc();
@@ -268,17 +280,22 @@ class OfflineDecompilation : public ::testing::Test {
     db->process_labels();
 
     // fancy decompilation.
-    db->analyze_functions_ir2({}, *config);
+    db->analyze_functions_ir2({}, *config, true);
+
+    final_output_cache = std::make_unique<std::unordered_map<std::string, std::string>>();
   }
 
   static void TearDownTestCase() {
     db.reset();
     config.reset();
+    final_output_cache.reset();
   }
 };
 
 std::unique_ptr<decompiler::ObjectFileDB> OfflineDecompilation::db;
 std::unique_ptr<decompiler::Config> OfflineDecompilation::config;
+std::unique_ptr<std::unordered_map<std::string, std::string>>
+    OfflineDecompilation::final_output_cache;
 
 /*!
  * Check that the most basic disassembly into files/functions/instructions has succeeded.
@@ -474,14 +491,26 @@ TEST_F(OfflineDecompilation, Reference) {
 
     std::string src = db->ir2_final_out(obj_l.at(0));
 
-    /*     if (file == "gstring") {
-           fmt::print("{}\n", src);
-         }*/
-
     lg::info("Comparing {}...", file.first);
 
     // NOTE - currently only handles .gc files!
     auto reference = file_util::read_text_file(file.second.string());
+
+    bool can_cache = true;
+    for (auto& func_list : obj_l.at(0).linked_data.functions_by_seg) {
+      for (auto& func : func_list) {
+        if (g_functions_to_skip_compiling.find(func.guessed_name.to_string()) !=
+            g_functions_to_skip_compiling.end()) {
+          can_cache = false;
+          break;
+        }
+      }
+    }
+
+    if (can_cache) {
+      EXPECT_EQ(final_output_cache->count(file.first), 0);
+      final_output_cache->insert({file.first, src});
+    }
 
     strip_trailing_newlines(reference);
     strip_trailing_newlines(src);
@@ -528,10 +557,16 @@ TEST_F(OfflineDecompilation, Compile) {
     auto& obj_l = db->obj_files_by_name.at(file.first);
     ASSERT_EQ(obj_l.size(), 1);
 
-    std::string src = db->ir2_final_out(obj_l.at(0), g_functions_to_skip_compiling);
-    total_lines += line_count(src);
-
-    compiler.run_full_compiler_on_string_no_save(src);
+    const auto& cache = final_output_cache->find(file.first);
+    if (cache != final_output_cache->end()) {
+      const auto& src = cache->second;
+      total_lines += line_count(src);
+      compiler.run_full_compiler_on_string_no_save(src);
+    } else {
+      auto src = db->ir2_final_out(obj_l.at(0), g_functions_to_skip_compiling);
+      total_lines += line_count(src);
+      compiler.run_full_compiler_on_string_no_save(src);
+    }
   }
   auto time = timer.getSeconds();
   lg::info("Total Lines Compiled: {}. Lines/second: {:.1f}\n", total_lines,

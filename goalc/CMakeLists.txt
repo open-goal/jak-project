@@ -34,6 +34,9 @@ add_library(compiler
         debugger/DebugInfo.cpp
         listener/Listener.cpp
         listener/MemoryMap.cpp
+        make/MakeSystem.cpp
+        make/Tool.cpp
+        make/Tools.cpp
         regalloc/IRegister.cpp
         regalloc/Allocator.cpp
         regalloc/allocate.cpp
@@ -42,15 +45,15 @@ add_library(compiler
 
 target_link_libraries(compiler common Zydis)
 
-if(WIN32)
+if (WIN32)
     target_link_libraries(compiler mman)
-endif()
+endif ()
 
-if(UNIX)
+if (UNIX)
     set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -O2")
-elseif(WIN32)
+elseif (WIN32)
     set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} /O2")
-endif()
+endif ()
 
 add_executable(goalc main.cpp)
 target_link_libraries(goalc common Zydis compiler)

@@ -275,6 +275,150 @@ std::string print_def(const goos::Object& obj) {
   }
   return obj.print();
 }
+
+/*!
+ * Start at start_byte, and find the location of the next label.
+ * Will only check labels that are in the given segment.
+ */
+int index_of_closest_following_label_in_segment(int start_byte,
+                                                int seg,
+                                                const std::vector<DecompilerLabel>& labels) {
+  int result_idx = -1;
+  int closest_byte = -1;
+  for (int i = 0; i < (int)labels.size(); i++) {
+    const auto& label = labels.at(i);
+    if (label.target_segment == seg) {
+      if (result_idx == -1) {
+        result_idx = i;
+        closest_byte = label.offset;
+      } else {
+        if (label.offset > start_byte && label.offset < closest_byte) {
+          result_idx = i;
+          closest_byte = label.offset;
+        }
+      }
+    }
+  }
+  return result_idx;
+}
+
+/*!
+ * Attempt to decompile a reference to an inline array, without knowing the size.
+ */
+goos::Object decomp_ref_to_inline_array_guess_size(
+    const std::vector<LinkedWord>& words,
+    const std::vector<DecompilerLabel>& labels,
+    int my_seg,
+    int field_location,
+    const TypeSystem& ts,
+    const Field& data_field,
+    const std::vector<std::vector<LinkedWord>>& all_words,
+    const LinkedObjectFile* file,
+    const TypeSpec& array_elt_type,
+    int stride) {
+  fmt::print("Decomp decomp_ref_to_inline_array_guess_size {}\n", array_elt_type.print());
+
+  // verify that the field is the right type.
+  assert(data_field.type() == TypeSpec("inline-array", {array_elt_type}));
+
+  // verify the stride matches the type system
+  auto elt_type_info = ts.lookup_type(array_elt_type);
+  assert(stride == align(elt_type_info->get_size_in_memory(),
+                         elt_type_info->get_inline_array_stride_alignment()));
+
+  // the input is the location of the data field.
+  // we expect that to be a label:
+  assert((field_location % 4) == 0);
+  auto pointer_to_data = words.at(field_location / 4);
+  assert(pointer_to_data.kind == LinkedWord::PTR);
+
+  // the data shouldn't have any labels in the middle of it, so we can find the end of the array
+  // by searching for the label after the start label.
+  const auto& start_label = labels.at(pointer_to_data.label_id);
+  int end_label_idx =
+      index_of_closest_following_label_in_segment(start_label.offset, my_seg, labels);
+  assert(end_label_idx >= 0);
+  const auto& end_label = labels.at(end_label_idx);
+  fmt::print("Data is from {} to {}\n", start_label.name, end_label.name);
+
+  // now we can figure out the size
+  int size_bytes = end_label.offset - start_label.offset;
+  int size_elts = size_bytes / stride;  // 32 bytes per ocean-near-index
+  int leftover_bytes = size_bytes % stride;
+  fmt::print("Size is {} bytes: {} elts, {} left over\n", size_bytes, size_elts, leftover_bytes);
+
+  // if we have leftover, should verify that its all zeros, or that it's the type pointer
+  // of the next basic in the data section.
+  // ex:
+  // .word <data>
+  // .type <some-other-basic's type tag>
+  // L21: ; label some other basic
+  // <other basic's data>
+  int padding_start = end_label.offset - leftover_bytes;
+  int padding_end = end_label.offset;
+  for (int pad_byte_idx = padding_start; pad_byte_idx < padding_end; pad_byte_idx++) {
+    auto& word = all_words.at(my_seg).at(pad_byte_idx / 4);
+    switch (word.kind) {
+      case LinkedWord::PLAIN_DATA:
+        assert(word.get_byte(pad_byte_idx) == 0);
+        break;
+      case LinkedWord::TYPE_PTR:
+        break;
+      default:
+        assert(false);
+    }
+  }
+
+  // now disassemble:
+  std::vector<goos::Object> array_def = {pretty_print::to_symbol(
+      fmt::format("new 'static 'inline-array {} {}", array_elt_type.print(), size_elts))};
+
+  for (int elt = 0; elt < size_elts; elt++) {
+    // for each element, create a fake temporary label at the start to identify it
+    DecompilerLabel fake_label;
+    fake_label.target_segment = my_seg;  // same segment
+    fake_label.offset = start_label.offset + elt * stride;
+    array_def.push_back(
+        decompile_at_label(array_elt_type, fake_label, labels, all_words, ts, file));
+  }
+
+  // build into a list.
+  return pretty_print::build_list(array_def);
+}
+
+/*!
+ * Decompile the data field of ocean-near-indices, which is an (inline-array ocean-near-index).
+ * This is like a C++ ocean_near_index*, meaning we don't know how long the array is.
+ * We know all the data in a ocean_near_index is just integers, so we can guess that the end
+ * of the array is just the location of the next label.
+ * There's a chance that this will include some padding in the array and make it too long,
+ * but there is no harm in that.
+ */
+goos::Object ocean_near_indices_decompile(const std::vector<LinkedWord>& words,
+                                          const std::vector<DecompilerLabel>& labels,
+                                          int my_seg,
+                                          int field_location,
+                                          const TypeSystem& ts,
+                                          const Field& data_field,
+                                          const std::vector<std::vector<LinkedWord>>& all_words,
+                                          const LinkedObjectFile* file) {
+  return decomp_ref_to_inline_array_guess_size(words, labels, my_seg, field_location, ts,
+                                               data_field, all_words, file,
+                                               TypeSpec("ocean-near-index"), 32);
+}
+
+goos::Object ocean_mid_masks_decompile(const std::vector<LinkedWord>& words,
+                                       const std::vector<DecompilerLabel>& labels,
+                                       int my_seg,
+                                       int field_location,
+                                       const TypeSystem& ts,
+                                       const Field& data_field,
+                                       const std::vector<std::vector<LinkedWord>>& all_words,
+                                       const LinkedObjectFile* file) {
+  return decomp_ref_to_inline_array_guess_size(words, labels, my_seg, field_location, ts,
+                                               data_field, all_words, file,
+                                               TypeSpec("ocean-mid-mask"), 8);
+}
 }  // namespace
 
 goos::Object decompile_structure(const TypeSpec& type,
@@ -325,11 +469,18 @@ goos::Object decompile_structure(const TypeSpec& type,
 
   // check alignment
   if (offset_location % 8) {
-    throw std::runtime_error(fmt::format(
-        "Tried to decompile a structure with type type {} (type offset {}) at label {}, but it has "
-        "alignment {}, which is not valid. {}",
+    std::string error = fmt::format(
+        "Decompiling a structure with type type {} (type offset {}) at label {}, but it has "
+        "alignment {}, which is not valid. This might be okay for a packed inline array, but "
+        "shouldn't happen for basics. {}",
         type_info->get_name(), type_info->get_offset(), label.name, (offset_location % 8),
-        (offset_location & 0b10) ? "Maybe it is actually a pair?" : ""));
+        (offset_location & 0b10) ? "Maybe it is actually a pair?" : "");
+
+    if (is_basic || !type_info->is_packed()) {
+      throw std::runtime_error(error);
+    } else {
+      // fmt::print("{}\n", error);
+    }
   }
 
   // check enough room
@@ -448,11 +599,22 @@ goos::Object decompile_structure(const TypeSpec& type,
             fmt::format("Dynamic value field {} in static data type {} not yet implemented",
                         field.name(), actual_type.print()));
       } else {
-        std::vector<u8> bytes_out;
-        for (int byte_idx = field_start; byte_idx < field_end; byte_idx++) {
-          bytes_out.push_back(obj_words.at(byte_idx / 4).get_byte(byte_idx % 4));
+        if (field.name() == "data" && type.print() == "ocean-near-indices") {
+          // first, get the label:
+          field_defs_out.emplace_back(
+              field.name(), ocean_near_indices_decompile(obj_words, labels, label.target_segment,
+                                                         field_start, ts, field, words, file));
+        } else if (field.name() == "data" && type.print() == "ocean-mid-masks") {
+          field_defs_out.emplace_back(
+              field.name(), ocean_mid_masks_decompile(obj_words, labels, label.target_segment,
+                                                      field_start, ts, field, words, file));
+        } else {
+          std::vector<u8> bytes_out;
+          for (int byte_idx = field_start; byte_idx < field_end; byte_idx++) {
+            bytes_out.push_back(obj_words.at(byte_idx / 4).get_byte(byte_idx % 4));
+          }
+          field_defs_out.emplace_back(field.name(), decompile_value(field.type(), bytes_out, ts));
         }
-        field_defs_out.emplace_back(field.name(), decompile_value(field.type(), bytes_out, ts));
       }
 
     } else {
@@ -695,11 +857,35 @@ goos::Object decompile_value(const TypeSpec& type,
     } else {
       return pretty_print::to_symbol(fmt::format("{}", value));
     }
+  } else if (type == TypeSpec("seconds")) {
+    assert(bytes.size() == 8);
+    u64 value;
+    memcpy(&value, bytes.data(), 8);
+
+    // only rewrite if exact.
+    u64 seconds = value / TICKS_PER_SECOND;
+    if (seconds * TICKS_PER_SECOND == value) {
+      return pretty_print::to_symbol(fmt::format("(seconds {})", seconds));
+    }
+
+    return pretty_print::to_symbol(fmt::format("#x{:x}", value));
   } else if (ts.tc(TypeSpec("uint64"), type)) {
     assert(bytes.size() == 8);
     u64 value;
     memcpy(&value, bytes.data(), 8);
     return pretty_print::to_symbol(fmt::format("#x{:x}", value));
+  } else if (type == TypeSpec("meters")) {
+    assert(bytes.size() == 4);
+    float value;
+    memcpy(&value, bytes.data(), 4);
+    double meters = (double)value / METER_LENGTH;
+    return pretty_print::build_list("meters", pretty_print::float_representation(meters));
+  } else if (type == TypeSpec("degrees")) {
+    assert(bytes.size() == 4);
+    float value;
+    memcpy(&value, bytes.data(), 4);
+    double degrees = (double)value / DEGREES_LENGTH;
+    return pretty_print::build_list("degrees", pretty_print::float_representation(degrees));
   } else if (ts.tc(TypeSpec("float"), type)) {
     assert(bytes.size() == 4);
     float value;
@@ -996,6 +1182,14 @@ std::optional<std::vector<BitFieldConstantDef>> try_decompile_bitfield_from_int(
       if (enum_info && !enum_info->is_bitfield()) {
         auto name = decompile_int_enum_from_int(field.type(), ts, bitfield_value);
         def.enum_constant = fmt::format("({} {})", field.type().print(), name);
+      }
+
+      auto nested_bitfield_type = dynamic_cast<BitFieldType*>(ts.lookup_type(field.type()));
+      if (nested_bitfield_type) {
+        BitFieldConstantDef::NestedField nested;
+        nested.field_type = field.type();
+        nested.fields = *try_decompile_bitfield_from_int(field.type(), ts, bitfield_value, true);
+        def.nested_field = nested;
       }
       result.push_back(def);
     }

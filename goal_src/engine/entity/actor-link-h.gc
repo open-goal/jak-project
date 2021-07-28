@@ -5,10 +5,21 @@
 ;; name in dgo: actor-link-h
 ;; dgos: GAME, ENGINE
 
-;; The exact details of actor-link-h are not yet understood, but this system links entities to processes.
+;; The exact details of actor-link-h are not yet understood, but this system caches lookups for entities/process.
+;; Each entity has a res-lump.  Some entities may reference other entities.  This is done with an element in a res-lump
+;; than contains named lists (possibly of size 1) of other entities.  These lists may store entities by a name, or by an
+;; actor id (AID).
 
-;; One entity may have a reference to another entity, either by name or by ID.
-;; Some common ones are next-actor and prev-actor.
+;; This process is slow: it involves going from a process, to its entity, to doing a res-lump, deciding if you have an AID/string,
+;; then looking up the other actor by name, or AID.  Lookup by name is extremely slow, as it involves checking each actor's name
+;; a res lookup per every actor in every level.  Lookup by aid isn't bad, but is still a binary search through all actors.
+
+;; The next-actor and prev-actor res build a linked list of actors.
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;; Initial Lookup Functions
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;; these functions find actors before we've built the links.
 
 (defun entity-actor-lookup ((lump res-lump) (name symbol) (idx int))
   "Given an entity (the res-lump), look up a reference to another entity and return that entity."
@@ -29,6 +40,7 @@
                       )
           )
         )
+
     (the-as entity-actor
             ;; check in range, and lookup succesful
             (when (and v1-1 (< idx (the-as int (-> sv-16 elt-count))))
@@ -62,7 +74,11 @@
   )
 
 ;; entity-actors are part of a linked list of entities.
-;; It is not yet known where these are allocated.
+;; these prevent you from looking up next-actor, prev-actor again and again to iterate.
+;; The actor-link-info for an entity is stored in that res-lump's "extra"
+;; of course, this only works for cases where each entity has at most 1 process.
+
+;; These are allocated on the process heap of the entity's process.
 
 (deftype actor-link-info (basic)
   ((process process       :offset-assert 4)   ;; process for this entity
@@ -73,26 +89,30 @@
   :size-assert         #x10
   :flag-assert         #x1a00000010
   (:methods
-   (new (symbol type process) _type_ 0)
-   (get-matching-actor-type-mask (_type_ type) int 9)
-   (actor-count-before (_type_) int 10)
-   (link (_type_) entity-actor 11)
-   (get-next (_type_) entity-actor 12)
-   (get-prev (_type_) entity-actor 13)
-   (get-next-process (_type_) process 14)
-   (get-prev-process (_type_) process 15)
-   (apply-function-forward (_type_ (function entity-actor object object) object) int 16)
-   (apply-function-reverse (_type_ (function entity-actor object object) object) int 17)
-   (apply-all (_type_ (function entity-actor object object) object) int 18)
-   (send-to-all (_type_ object) none 19)
-   (send-to-all-after (_type_ object) object 20)
-   (send-to-all-before (_type_ object) object 21)
-   (send-to-next-and-prev (_type_ object) none 22)
-   (send-to-next (_type_ object) none 23)
-   (send-to-prev (_type_ object) none 24)
-   (actor-count (_type_) int 25)
-   )
+    (new (symbol type process) _type_ 0)
+    (get-matching-actor-type-mask (_type_ type) int 9)
+    (actor-count-before (_type_) int 10)
+    (link (_type_) entity-actor 11)
+    (get-next (_type_) entity-actor 12)
+    (get-prev (_type_) entity-actor 13)
+    (get-next-process (_type_) process 14)
+    (get-prev-process (_type_) process 15)
+    (apply-function-forward (_type_ (function entity-actor object object) object) int 16)
+    (apply-function-reverse (_type_ (function entity-actor object object) object) int 17)
+    (apply-all (_type_ (function entity-actor object object) object) int 18)
+    (send-to-all (_type_ symbol) none 19)
+    (send-to-all-after (_type_ symbol) object 20)
+    (send-to-all-before (_type_ symbol) object 21)
+    (send-to-next-and-prev (_type_ symbol) none 22)
+    (send-to-next (_type_ symbol) none 23)
+    (send-to-prev (_type_ symbol) none 24)
+    (actor-count (_type_) int 25)
+    )
   )
+
+;;;;;;;;;;;;;;;;
+;; Link Setup
+;;;;;;;;;;;;;;;;
 
 (defmethod next-actor entity-actor ((obj entity-actor))
   "Utility function to look up the next actor in the list, assuming we don't have actor-link-info yet."
@@ -124,6 +144,9 @@
     )
   )
 
+;;;;;;;;;;;;;;;;;;;;
+;; Access
+;;;;;;;;;;;;;;;;;;;;
 
 ;; These methods can now be used to get next/prev more efficiently, without having to do a res lookup.
 (defmethod get-next actor-link-info ((obj actor-link-info))
@@ -221,76 +244,51 @@
   0
   )
 
-;; method 20
-(defmethod send-to-all-after actor-link-info ((obj actor-link-info) (message object))
-  (with-pp
-    (let ((iter (-> obj next))
-          (result (the object #f)))
-      (while iter
-        (let ((proc (-> (the entity-links (-> iter extra)) process)))
-          (when proc
-            (let ((msg-block (new 'stack-no-clear 'event-message-block)))
-              (set! (-> msg-block from) pp)
-              (set! (-> msg-block num-params) 0)
-              (set! (-> msg-block message) (the basic message))
+(defmethod send-to-all-after actor-link-info ((obj actor-link-info) (message symbol))
+  "Send an event to all processes after this link with no parameters."
 
-              (let ((send-result (send-event-function (the process proc) msg-block)))
-                (set! result (and result send-result))
-                )
-              )
-            )
-          (set! iter (entity-actor-lookup iter 'next-actor 0))
+  (let ((iter (-> obj next))
+        (result (the object #f)))
+    (while iter
+      (let ((proc (-> (the entity-links (-> iter extra)) process)))
+        (when proc
+          (set! result (or (send-event proc message) result))
           )
+        (set! iter (entity-actor-lookup iter 'next-actor 0))
         )
-      result
       )
+    result
     )
   )
 
-(defmethod send-to-all-before actor-link-info ((obj actor-link-info) (message object))
-  (with-pp
-    (let ((iter (-> obj prev))
-          (result (the object #f)))
-      (while iter
-        (let ((proc (-> (the entity-links (-> iter extra)) process)))
-          (when proc
-            (let ((msg-block (new 'stack-no-clear 'event-message-block)))
-              (set! (-> msg-block from) pp)
-              (set! (-> msg-block num-params) 0)
-              (set! (-> msg-block message) (the basic message))
+(defmethod send-to-all-before actor-link-info ((obj actor-link-info) (message symbol))
+  "Send an event to all processes before this link with no parameters."
 
-              (let ((send-result (send-event-function (the process proc) msg-block)))
-                (set! result (and result send-result))
-                )
-              )
-            )
-          (set! iter (entity-actor-lookup iter 'prev-actor 0))
+  (let ((iter (-> obj prev))
+        (result (the object #f)))
+    (while iter
+      (let ((proc (-> (the entity-links (-> iter extra)) process)))
+        (when proc
+          (set! result (or (send-event proc message) result))
           )
+        (set! iter (entity-actor-lookup iter 'prev-actor 0))
         )
-      result
       )
+    result
     )
   )
 
-(defmethod send-to-next actor-link-info ((obj actor-link-info) (arg0 object))
+(defmethod send-to-next actor-link-info ((obj actor-link-info) (message symbol))
   "Send event arg0 to the next actor's process"
-  (with-pp
-    (let ((a0-1 (-> obj next)))
-      ;; do we have a next?
-      (when a0-1
-        ;; get the actual process
-        (let ((a0-2 (-> (the-as entity-links (-> a0-1 extra)) process)))
-          ;; do we have a process?
-          (when a0-2
-            ;; create a block on the stack
-            (let ((v1-4 (new 'stack-no-clear 'event-message-block)))
-              (set! (-> v1-4 from) pp)
-              (set! (-> v1-4 num-params) 0)
-              (set! (-> v1-4 message) (the-as basic arg0))
-              ;; and send it!
-              (send-event-function (the process a0-2) v1-4)
-              )
-            )
+
+  (let ((a0-1 (-> obj next)))
+    ;; do we have a next?
+    (when a0-1
+      ;; get the actual process
+      (let ((a0-2 (-> (the-as entity-links (-> a0-1 extra)) process)))
+        ;; do we have a process?
+        (when a0-2
+          (send-event a0-2 message)
           )
         )
       )
@@ -298,20 +296,14 @@
   (none)
   )
 
-(defmethod send-to-prev actor-link-info ((obj actor-link-info) (arg0 object))
+(defmethod send-to-prev actor-link-info ((obj actor-link-info) (message symbol))
   "Send event arg1 to the next actor's process."
-  (with-pp
-    (let ((a0-1 (-> obj prev)))
-      (when a0-1
-        (let ((a0-2 (-> (the-as entity-links (-> a0-1 extra)) process)))
-          (when a0-2
-            (let ((v1-4 (new 'stack-no-clear 'event-message-block)))
-              (set! (-> v1-4 from) pp)
-              (set! (-> v1-4 num-params) 0)
-              (set! (-> v1-4 message) (the-as basic arg0))
-              (send-event-function (the process a0-2) v1-4)
-              )
-            )
+
+  (let ((a0-1 (-> obj prev)))
+    (when a0-1
+      (let ((a0-2 (-> (the-as entity-links (-> a0-1 extra)) process)))
+        (when a0-2
+          (send-event a0-2 message)
           )
         )
       )
@@ -319,16 +311,17 @@
   (none)
   )
 
-(defmethod send-to-next-and-prev actor-link-info ((obj actor-link-info) (arg0 object))
-  "Send event arg0 to both next and prev."
-  (send-to-next obj arg0)
-  (send-to-prev obj arg0)
+(defmethod send-to-next-and-prev actor-link-info ((obj actor-link-info) (msg symbol))
+  "Send an event to both next and prev with no params."
+
+  (send-to-next obj msg)
+  (send-to-prev obj msg)
   (none)
   )
 
-(defmethod send-to-all actor-link-info ((obj actor-link-info) (arg0 object))
-  (send-to-all-after obj arg0)
-  (send-to-all-before obj arg0)
+(defmethod send-to-all actor-link-info ((obj actor-link-info) (msg symbol))
+  (send-to-all-after obj msg)
+  (send-to-all-before obj msg)
   (none)
   )
 
@@ -409,13 +402,9 @@
   )
 
 (defun actor-link-subtask-complete-hook ((arg0 entity-actor) (arg1 (pointer symbol)))
-  "Sets arg1 if the thing is complete. Returns the opposite value."
+  "Sets arg1 if the thing is complete. Does not continue the apply if the complete perm is set."
   (cond
-    ((nonzero? (logand
-                (-> (the-as entity-links (-> arg0 extra)) perm status)
-                (entity-perm-status complete)
-                )
-               )
+    ((logtest? (-> (the-as entity-links (-> arg0 extra)) perm status) (entity-perm-status complete))
      (set! (-> arg1 0) #t)
      #f
      )
@@ -427,13 +416,9 @@
   )
 
 (defun actor-link-dead-hook ((arg0 entity-actor) (arg1 (pointer symbol)))
-  "Sets arg1 is the thing is dead. Returns the opposite value."
+  "Sets arg1 is the thing is dead. Does not continue the apply if the dead perm is set."
   (cond
-    ((nonzero? (logand
-                (-> (the-as entity-links (-> arg0 extra)) perm status)
-                (entity-perm-status dead)
-                )
-               )
+    ((logtest? (-> (the-as entity-links (-> arg0 extra)) perm status) (entity-perm-status dead))
      (set! (-> arg1 0) #t)
      #f
      )

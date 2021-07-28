@@ -36,17 +36,16 @@
    ((= arg0 (gs-psm mt4))
     32
     )
-   (else
-    (if
-     (or
-      (= arg0 (gs-psm ct16))
-      (= arg0 (gs-psm ct16s))
-      (= arg0 (gs-psm mz16))
-      (= arg0 (gs-psm mz16s))
-      )
-     128
-     256
+   ((or
+     (= arg0 (gs-psm ct16))
+     (= arg0 (gs-psm ct16s))
+     (= arg0 (gs-psm mz16))
+     (= arg0 (gs-psm mz16s))
      )
+    128
+    )
+   (else
+    256
     )
    )
   )
@@ -60,67 +59,64 @@
    ((= arg0 (gs-psm mt4))
     128
     )
-   (else
-    (if
-     (or
-      (= arg0 (gs-psm ct16))
-      (= arg0 (gs-psm ct16s))
-      (= arg0 (gs-psm mz16))
-      (= arg0 (gs-psm mz16s))
-      )
-     64
-     32
+   ((or
+     (= arg0 (gs-psm ct16))
+     (= arg0 (gs-psm ct16s))
+     (= arg0 (gs-psm mz16))
+     (= arg0 (gs-psm mz16s))
      )
+    64
+    )
+   (else
+    32
     )
    )
   )
 
 ;; definition for function psm->string
 (defun psm->string ((arg0 gs-psm))
-  (let ((v1-0 arg0))
-   (cond
-    ((= v1-0 (gs-psm mz16s))
+  (case arg0 
+   (((gs-psm mz16s))
      "mz16s"
      )
-    ((= v1-0 (gs-psm mz16))
-     "mz16"
-     )
-    ((= v1-0 (gs-psm mz24))
-     "mz24"
-     )
-    ((= v1-0 (gs-psm mz32))
-     "mz32"
-     )
-    ((= v1-0 (gs-psm mt4hh))
-     "mt4hh"
-     )
-    ((= v1-0 (gs-psm mt4hl))
-     "mt4hl"
-     )
-    ((= v1-0 (gs-psm mt8h))
-     "mt8h"
-     )
-    ((= v1-0 (gs-psm mt4))
-     "mt4"
-     )
-    ((= v1-0 (gs-psm mt8))
-     "mt8"
-     )
-    ((= v1-0 (gs-psm ct16s))
-     "ct16s"
-     )
-    ((= v1-0 (gs-psm ct16))
-     "ct16"
-     )
-    ((= v1-0 (gs-psm ct24))
-     "ct24"
-     )
-    ((= v1-0 (gs-psm ct32))
-     "ct32"
-     )
-    (else
-     "*unknown*"
-     )
+   (((gs-psm mz16))
+    "mz16"
+    )
+   (((gs-psm mz24))
+    "mz24"
+    )
+   (((gs-psm mz32))
+    "mz32"
+    )
+   (((gs-psm mt4hh))
+    "mt4hh"
+    )
+   (((gs-psm mt4hl))
+    "mt4hl"
+    )
+   (((gs-psm mt8h))
+    "mt8h"
+    )
+   (((gs-psm mt4))
+    "mt4"
+    )
+   (((gs-psm mt8))
+    "mt8"
+    )
+   (((gs-psm ct16s))
+    "ct16s"
+    )
+   (((gs-psm ct16))
+    "ct16"
+    )
+   (((gs-psm ct24))
+    "ct24"
+    )
+   (((gs-psm ct32))
+    "ct32"
+    )
+   (else
+    "*unknown*"
     )
    )
   )
@@ -939,16 +935,10 @@
 ;; INFO: Return type mismatch gif-packet vs none.
 (defun add-reg-gif-packet ((packet gif-packet) (reg-idx int) (reg-val int))
   (let ((tag (-> packet gif-tag)))
-   (set!
-    (-> tag regs)
-    (logior
-     (-> tag regs)
-     (the-as uint (ash reg-idx (* (-> packet reg-count) 4)))
-     )
-    )
+   (logior! (-> tag regs) (ash reg-idx (* (-> packet reg-count) 4)))
    )
   (set! (-> (&-> packet args (-> packet reg-count)) 0) (the-as uint reg-val))
-  (set! (-> packet reg-count) (+ (-> packet reg-count) 1))
+  (+! (-> packet reg-count) 1)
   (none)
   )
 

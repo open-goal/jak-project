@@ -1,6 +1,7 @@
 #include "common/util/assert.h"
 #include <algorithm>
 #include <stdexcept>
+#include <optional>
 #include "common/common_types.h"
 #include "InstructionParser.h"
 
@@ -46,14 +47,24 @@ InstructionParser::InstructionParser() {
                  InstructionKind::MFLO1,  InstructionKind::SYNCL,  InstructionKind::PCPYUD,
                  InstructionKind::PEXTUW, InstructionKind::POR,    InstructionKind::VMOVE,
                  InstructionKind::VSUB,   InstructionKind::LQC2,   InstructionKind::SQC2,
-                 InstructionKind::MULAS,  InstructionKind::MADDAS}) {
+                 InstructionKind::MULAS,  InstructionKind::MADDAS, InstructionKind::QMTC2,
+                 InstructionKind::QMFC2,  InstructionKind::VITOF0, InstructionKind::VFTOI0,
+                 InstructionKind::PSLLW,  InstructionKind::PSRAW}) {
     auto& info = gOpcodeInfo[int(i)];
     if (info.defined) {
       m_opcode_name_lookup[info.name] = int(i);
       added++;
     }
   }
-  assert(added == int(m_opcode_name_lookup.size()));
+
+  for (auto i : {InstructionKind::VMUL_BC}) {
+    auto& info = gOpcodeInfo[int(i)];
+    if (info.defined) {
+      m_opcode_name_broadcast_lookup[info.name] = int(i);
+      added++;
+    }
+  }
+  assert(added == int(m_opcode_name_lookup.size()) + int(m_opcode_name_broadcast_lookup.size()));
 }
 
 namespace {
@@ -89,6 +100,18 @@ std::string get_instr_name(std::string& instr) {
     }
   }
   auto name = instr.substr(0, i);
+
+  // qmXc2.i should not grab the i.
+  if (name == "qmtc2.i") {
+    name = "qmtc2";  // strip .i
+    i -= 2;          // leave the i for the next step.
+  }
+
+  if (name == "qmfc2.i") {
+    name = "qmfc2";  // strip .i
+    i -= 2;          // leave the i for the next step.
+  }
+
   if (i == instr.length()) {
     instr.clear();
   } else {
@@ -220,14 +243,34 @@ Instruction InstructionParser::parse_single_instruction(
     std::string str,
     const std::vector<DecompilerLabel>& labels) {
   auto name = get_instr_name(str);
+
+  std::optional<int> op_idx;
   auto lookup = m_opcode_name_lookup.find(name);
   if (lookup == m_opcode_name_lookup.end()) {
+    // it might be a VU with broadcast.
+    if (!name.empty() && name.front() == 'v') {
+      char last_char = name.back();
+      if (last_char == 'x' || last_char == 'y' || last_char == 'z' || last_char == 'w') {
+        str.insert(str.begin(), ' ');
+        str.insert(str.begin(), last_char);
+        name.pop_back();
+        auto bc_lookup = m_opcode_name_broadcast_lookup.find(name);
+        if (bc_lookup != m_opcode_name_broadcast_lookup.end()) {
+          op_idx = bc_lookup->second;
+        }
+      }
+    }
+  } else {
+    op_idx = lookup->second;
+  }
+
+  if (!op_idx) {
     throw std::runtime_error("InstructionParser cannot handle opcode " + name);
   }
 
   Instruction instr;
-  instr.kind = InstructionKind(lookup->second);
-  auto& info = gOpcodeInfo[lookup->second];
+  instr.kind = InstructionKind(*op_idx);
+  auto& info = gOpcodeInfo[*op_idx];
   for (u8 i = 0; i < info.step_count; i++) {
     auto& step = info.steps[i];
     switch (step.decode) {
@@ -333,7 +376,36 @@ Instruction InstructionParser::parse_single_instruction(
         break;
       }
 
+      case DecodeType::IL: {
+        auto thing = get_until_space(str);
+        if (thing == "i") {
+          instr.il = 1;
+        } else if (thing == "ni") {
+          instr.il = 0;
+        } else {
+          printf("Bad interlock specification. Got %s\n", thing.c_str());
+          assert(false);
+        }
+      } break;
+
+      case DecodeType::BC: {
+        auto thing = get_until_space(str);
+        if (thing == "x") {
+          instr.cop2_bc = 0;
+        } else if (thing == "y") {
+          instr.cop2_bc = 1;
+        } else if (thing == "z") {
+          instr.cop2_bc = 2;
+        } else if (thing == "w") {
+          instr.cop2_bc = 3;
+        } else {
+          printf("Bad broadcast. Got %s\n", thing.c_str());
+          assert(false);
+        }
+      } break;
+
       default:
+        printf("missing DecodeType: %d\n", (int)step.decode);
         assert(false);
     }
   }

@@ -6,25 +6,29 @@
 ;; dgos: GAME, ENGINE
 
 
-(declare-type collide-shape basic)
-(declare-type water-control basic)
+(declare-type nav-control basic)
+(declare-type path-control basic)
+(declare-type vol-control basic)
+(declare-type actor-link-info basic)
 (declare-type sparticle-launch-control basic)
+(declare-type water-control basic)
+(declare-type collide-shape basic)
 (deftype process-drawable (process)
   ((root        trsqv           :offset-assert 112)
    (node-list   cspace-array    :offset-assert 116)
    (draw        draw-control    :offset-assert 120)
    (skel        joint-control   :offset-assert 124)
-   (nav         basic   :offset-assert 128)
+   (nav         nav-control     :offset-assert 128)
    (align       align-control   :offset-assert 132)
-   (path        basic   :offset-assert 136)
-   (vol         basic   :offset-assert 140)
+   (path        path-control    :offset-assert 136)
+   (vol         vol-control     :offset-assert 140)
    (fact        fact-info       :offset-assert 144)
-   (link        basic   :offset-assert 148)
+   (link        actor-link-info   :offset-assert 148)
    (part        sparticle-launch-control   :offset-assert 152)
    (water       water-control   :offset-assert 156)
    (sound       ambient-sound   :offset-assert 160)
    (state-flags uint32  :offset-assert 164)
-   (state-time  uint64  :offset-assert 168)
+   (state-time  seconds  :offset-assert 168)
    )
   :heap-base #x40
   :method-count-assert 20
@@ -33,11 +37,21 @@
   ;; inherited inspect of process
   (:methods
     (deactivate (_type_) none 10)
-    (dummy-14 (_type_ skeleton-group object) none 14)
+    ;; add-art?
+    (dummy-14 (_type_ skeleton-group object) none 14) ;; I think skeleton group is too specific.
+    
+    ;; load skeleton group?
     (dummy-15 (_type_ string object) _type_ 15)
+    
+    ;; apply velocity offset?
+    ;; probably a transformq
     (dummy-16 (_type_ int (inline-array vector) vector) collide-shape 16)
+    
+    ;; something with cspace
     (dummy-17 (_type_) none 17)
     (dummy-18 (_type_) symbol 18)
+    
+    ;; something with animation
     (dummy-19 (_type_) none 19)
     )
   )
@@ -96,21 +110,21 @@
   )
 
 (deftype attack-info (structure)
-  ((trans        vector :inline :offset-assert 0)
-   (vector       vector :inline :offset-assert 16)
-   (intersection vector :inline :offset-assert 32)
-   (attacker     uint64         :offset-assert 48) ;; handle
-   (invinc-time  uint64         :offset-assert 56)
-   (mask         uint32         :offset-assert 64)
-   (mode         basic          :offset-assert 68)
-   (shove-back   float          :offset-assert 72) ;; meters
-   (shove-up     float          :offset-assert 76) ;; meters
-   (speed        float          :offset-assert 80) ;; meters
-   (dist         float          :offset-assert 84) ;; meters
-   (control      float          :offset-assert 88)
-   (angle        basic          :offset-assert 92)
-   (rotate-to    float          :offset-assert 96) ;; deg
-   (prev-state   basic          :offset-assert 100)
+  ((trans        vector  :inline :offset-assert   0)
+   (vector       vector  :inline :offset-assert  16)
+   (intersection vector  :inline :offset-assert  32)
+   (attacker     uint64          :offset-assert  48) ;; handle
+   (invinc-time  uint64          :offset-assert  56)
+   (mask         uint32          :offset-assert  64)
+   (mode         basic           :offset-assert  68)
+   (shove-back   meters          :offset-assert  72)
+   (shove-up     meters          :offset-assert  76)
+   (speed        meters          :offset-assert  80)
+   (dist         meters          :offset-assert  84)
+   (control      float           :offset-assert  88)
+   (angle        basic           :offset-assert  92)
+   (rotate-to    degrees         :offset-assert  96)
+   (prev-state   basic           :offset-assert 100)
    )
   :method-count-assert 10
   :size-assert         #x68
@@ -134,4 +148,5 @@
   )
 
 
-(declare-type target basic)
+(declare-type target process-drawable)
+

@@ -298,6 +298,8 @@ std::string get_simple_expression_op_name(SimpleExpression::Kind kind) {
       return "vector-!2";
     case SimpleExpression::Kind::VECTOR_FLOAT_PRODUCT:
       return "vector-float*!2";
+    case SimpleExpression::Kind::VECTOR_CROSS:
+      return "veccross";
     case SimpleExpression::Kind::SUBU_L32_S7:
       return "subu-s7";
     case SimpleExpression::Kind::VECTOR_3_DOT:
@@ -356,6 +358,7 @@ int get_simple_expression_arg_count(SimpleExpression::Kind kind) {
     case SimpleExpression::Kind::VECTOR_PLUS:
     case SimpleExpression::Kind::VECTOR_MINUS:
     case SimpleExpression::Kind::VECTOR_FLOAT_PRODUCT:
+    case SimpleExpression::Kind::VECTOR_CROSS:
       return 3;
     case SimpleExpression::Kind::SUBU_L32_S7:
       return 1;

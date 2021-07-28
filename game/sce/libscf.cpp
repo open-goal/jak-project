@@ -2,7 +2,7 @@
 
 namespace ee {
 int sceScfGetAspect() {
-  return SCE_ASPECT_169;
+  return SCE_ASPECT_43;
 }
 
 int sceScfGetLanguage() {

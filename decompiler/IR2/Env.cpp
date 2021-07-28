@@ -117,6 +117,10 @@ goos::Object Env::get_variable_name_with_cast(const RegisterAccess& access) cons
   }
 }
 
+std::string Env::get_variable_name(const RegisterAccess& access) const {
+  return get_variable_and_cast(access).name;
+}
+
 VariableWithCast Env::get_variable_and_cast(const RegisterAccess& access) const {
   if (access.reg().get_kind() == Reg::FPR || access.reg().get_kind() == Reg::GPR) {
     auto& var_info = m_var_names.lookup(access.reg(), access.idx(), access.mode());
@@ -248,19 +252,6 @@ std::optional<TypeSpec> Env::get_user_cast_for_access(const RegisterAccess& acce
     }
   }
   return {};
-}
-
-std::string Env::get_variable_name(const RegisterAccess& access) const {
-  if (access.reg().get_kind() == Reg::FPR || access.reg().get_kind() == Reg::GPR) {
-    std::string lookup_name = m_var_names.lookup(access.reg(), access.idx(), access.mode()).name();
-    auto remapped = m_var_remap.find(lookup_name);
-    if (remapped != m_var_remap.end()) {
-      lookup_name = remapped->second;
-    }
-    return lookup_name;
-  } else {
-    throw std::runtime_error("Cannot store a variable in this reg");
-  }
 }
 
 /*!
@@ -527,12 +518,12 @@ void Env::set_stack_structure_hints(const std::vector<StackStructureHint>& hints
   for (auto& hint : hints) {
     StackStructureEntry entry;
     entry.hint = hint;
-    // parse the type spec.
-    TypeSpec base_typespec = dts->parse_type_spec(hint.element_type);
-    auto type_info = dts->ts.lookup_type(base_typespec);
 
     switch (hint.container_type) {
-      case StackStructureHint::ContainerType::NONE:
+      case StackStructureHint::ContainerType::NONE: {
+        // parse the type spec.
+        TypeSpec base_typespec = dts->parse_type_spec(hint.element_type);
+        auto type_info = dts->ts.lookup_type(base_typespec);
         // just a plain object on the stack.
         if (!type_info->is_reference()) {
           throw std::runtime_error(
@@ -549,8 +540,29 @@ void Env::set_stack_structure_hints(const std::vector<StackStructureHint>& hints
                     entry.ref_type.print(), entry.hint.stack_offset,
                     type_info->get_in_memory_alignment());
         }
+      } break;
 
-        break;
+      case StackStructureHint::ContainerType::INLINE_ARRAY: {
+        TypeSpec base_typespec = dts->parse_type_spec(hint.element_type);
+        auto type_info = dts->ts.lookup_type(base_typespec);
+        if (!type_info->is_reference()) {
+          throw std::runtime_error(
+              fmt::format("Stack inline-array element type {} is not a reference and cannot be "
+                          "stored in an inline-array. Use an array instead.",
+                          base_typespec.print()));
+        }
+
+        entry.ref_type = TypeSpec("inline-array", {TypeSpec(base_typespec)});
+        entry.size = 1;  // we assume that there is no constant propagation into this array and
+        // make this only trigger in get_stack_type if we hit exactly.
+        // sanity check the alignment
+        if (align(entry.hint.stack_offset, type_info->get_in_memory_alignment()) !=
+            entry.hint.stack_offset) {
+          lg::error("Misaligned stack variable of type {} offset {} required align {}\n",
+                    entry.ref_type.print(), entry.hint.stack_offset,
+                    type_info->get_in_memory_alignment());
+        }
+      } break;
       default:
         assert(false);
     }
