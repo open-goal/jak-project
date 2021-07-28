@@ -390,3 +390,15 @@ TEST_F(DataDecompTest, KernelContext) {
                     "  :relocating-process #f\n"
                     "  :low-memory-message #t)\n");
 }
+
+TEST_F(DataDecompTest, ReverseArtExt) {
+  FieldReverseLookupInput input;
+  input.base_type = TypeSpec("external-art-control");
+  input.offset = 124;
+  auto result = dts->ts.reverse_field_multi_lookup(input);
+  EXPECT_EQ(result.results.at(0).tokens.at(2).print(), "name");
+
+  input.offset = 108;
+  result = dts->ts.reverse_field_multi_lookup(input);
+  EXPECT_EQ(result.results.at(0).tokens.at(2).print(), "type");
+}

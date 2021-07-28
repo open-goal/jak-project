@@ -68,28 +68,19 @@
 ;; definition for method 9 of type bit-array
 (defmethod get-bit bit-array ((obj bit-array) (arg0 int))
   (let ((v1-2 (-> obj bytes (/ arg0 8))))
-   (nonzero? (logand v1-2 (the-as uint (ash 1 (logand arg0 7)))))
+   (nonzero? (logand v1-2 (ash 1 (logand arg0 7))))
    )
   )
 
 ;; definition for method 10 of type bit-array
 (defmethod clear-bit bit-array ((obj bit-array) (arg0 int))
-  (set!
-   (-> obj bytes (/ arg0 8))
-   (logand
-    (-> obj bytes (/ arg0 8))
-    (the-as uint (lognot (ash 1 (logand arg0 7))))
-    )
-   )
+  (logclear! (-> obj bytes (/ arg0 8)) (ash 1 (logand arg0 7)))
   0
   )
 
 ;; definition for method 11 of type bit-array
 (defmethod set-bit bit-array ((obj bit-array) (arg0 int))
-  (set!
-   (-> obj bytes (/ arg0 8))
-   (logior (-> obj bytes (/ arg0 8)) (the-as uint (ash 1 (logand arg0 7))))
-   )
+  (logior! (-> obj bytes (/ arg0 8)) (ash 1 (logand arg0 7)))
   0
   )
 
@@ -691,8 +682,8 @@
   :size-assert         #x28
   :flag-assert         #xb00000028
   (:methods
-    (TODO-RENAME-HUGE-9 (_type_ vector) none 9)
-    (TODO-RENAME-10 (_type_ vector vector) float 10)
+    (debug-draw (_type_ vector) none 9)
+    (ray-capsule-intersect (_type_ vector vector) float 10)
     )
   )
 
@@ -717,8 +708,8 @@
   :size-assert         #x28
   :flag-assert         #xb00000028
   (:methods
-    (TODO-RENAME-HUGE-9 (_type_ vector) none 9)
-    (TODO-RENAME-10 (_type_ vector vector) float 10)
+    (debug-draw (_type_ vector) none 9)
+    (ray-flat-cyl-intersect (_type_ vector vector) float 10)
     )
   )
 
@@ -820,23 +811,8 @@
   )
 
 ;; definition for function vector-dot
-;; WARN: Unsupported inline assembly instruction kind - [mula.s f0, f3]
-;; WARN: Unsupported inline assembly instruction kind - [madda.s f1, f4]
-;; WARN: Unsupported inline assembly instruction kind - [madd.s f0, f2, f5]
 (defun vector-dot ((arg0 vector) (arg1 vector))
-  (local-vars (f0-1 float))
-  (let ((f0-0 (-> arg0 x))
-        (f1-0 (-> arg0 y))
-        (f2-0 (-> arg0 z))
-        (f3-0 (-> arg1 x))
-        (f4-0 (-> arg1 y))
-        (f5-0 (-> arg1 z))
-        )
-   (.mula.s f0-0 f3-0)
-   (.madda.s f1-0 f4-0)
-   (.madd.s f0-1 f2-0 f5-0)
-   )
-  f0-1
+  (vector-dot arg0 arg1)
   )
 
 ;; definition for function vector-dot-vu

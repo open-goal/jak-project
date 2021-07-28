@@ -12,7 +12,7 @@
    (trans (function object))
    (enter (function object object object object object object object))
    (exit (function object))
-   (event (function basic int basic event-message-block object))
+   (event (function process int symbol event-message-block object))
    )
   (let
    ((obj
@@ -64,11 +64,8 @@
    )
   (local-vars (s7-0 none) (sp-0 none) (sp-1 int) (ra-0 int) (sv-0 none))
   (with-pp
-   (set!
-    (-> pp mask)
-    (logand (lognot (process-mask sleep sleep-code)) (-> pp mask))
-    )
-   (set! (-> pp mask) (logior (-> pp mask) (process-mask going)))
+   (logclear! (-> pp mask) (process-mask sleep sleep-code))
+   (logior! (-> pp mask) (process-mask going))
    (cond
     ((= (-> pp status) 'initialize)
      (set! (-> pp trans-hook) #f)
@@ -89,15 +86,15 @@
      (set! (-> pp state) (-> pp next-state))
      (let ((s0-1 (-> pp stack-frame-top)))
       (while s0-1
-       (let ((v1-10 (-> s0-1 type)))
-        (if (or (= v1-10 protect-frame) (= v1-10 state))
-         ((-> (the-as protect-frame s0-1) exit))
-         )
+       (case (-> s0-1 type) 
+        ((protect-frame state)
+          ((-> (the-as protect-frame s0-1) exit))
+          )
         )
        (set! s0-1 (-> s0-1 next))
        )
       )
-     (set! (-> pp mask) (logand (lognot (process-mask going)) (-> pp mask)))
+     (logclear! (-> pp mask) (process-mask going))
      (let ((s0-2 (-> pp state)))
       (set! (-> pp event-hook) (-> s0-2 event))
       (if (-> s0-2 exit)

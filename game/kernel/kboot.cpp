@@ -12,6 +12,7 @@
 
 #include "common/common_types.h"
 #include "common/util/Timer.h"
+#include "game/common/game_common_types.h"
 #include "game/sce/libscf.h"
 #include "kboot.h"
 #include "kmachine.h"

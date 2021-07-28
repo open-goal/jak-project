@@ -31,6 +31,10 @@
   `(if ,x #f #t)
   )
 
+(defsmacro unless (clause &rest body)
+  `(if (not ,clause) (begin ,@body) #f)
+  )
+
 (desfun factorial (x)
 	(if (= x 1)
 	    1
@@ -70,6 +74,13 @@
 
 (desfun third (x)
         (car (cddr x)))
+
+(defsmacro push! (lst x)
+  `(set! ,lst (cons ,x ,lst))
+  )
+(defsmacro pop! (lst)
+  `(set! ,lst (cdr ,lst))
+  )
 
 (desfun apply (fun x)
 	(if (null? x)
@@ -159,6 +170,10 @@
 
 (defsmacro pair? (x)
   `(type? 'pair ,x)
+  )
+
+(defsmacro symbol? (x)
+  `(type? 'symbol ,x)
   )
 
 (defsmacro ferror (&rest args)

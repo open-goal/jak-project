@@ -47,14 +47,11 @@ echo " ================ Running offline decompiler tests..."
 echo " ================ Decompiling..."
 ../scripts/shell/decomp.sh
 
-echo " ================ Building assets..."
-../scripts/shell/gc.sh -cmd \(build-data\)
+echo " ================ Building project..."
+../scripts/shell/gc.sh -cmd \(make-group\ \"iso\"\)
 
 echo " ================ Checking assets..."
 ../scripts/shell/check.sh
-
-echo " ================ Building game..."
-../scripts/shell/gc.sh -cmd \(build-game\)
 
 echo " ================ Booting game..."
 ../scripts/shell/boot_game.sh

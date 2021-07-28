@@ -379,6 +379,13 @@ bool DecompilerTypeSystem::tp_lca(TypeState* combined, const TypeState& add) {
     }
   }
 
+  bool diff = false;
+  auto new_type = tp_lca(combined->next_state_type, add.next_state_type, &diff);
+  if (diff) {
+    result = true;
+    combined->next_state_type = new_type;
+  }
+
   return result;
 }
 
@@ -404,6 +411,11 @@ int DecompilerTypeSystem::get_format_arg_count(const std::string& str) const {
 
       // ~1K
       if (i + 1 < str.length() && (str.at(i) == '1') && str.at(i + 1) == 'K') {
+        continue;
+      }
+
+      // ~0k
+      if (i + 1 < str.length() && (str.at(i) == '0') && str.at(i + 1) == 'k') {
         continue;
       }
 
@@ -433,5 +445,22 @@ TypeSpec DecompilerTypeSystem::lookup_symbol_type(const std::string& name) const
   } else {
     return kv->second;
   }
+}
+
+bool DecompilerTypeSystem::should_attempt_cast_simplify(const TypeSpec& expected,
+                                                        const TypeSpec& actual) const {
+  if (expected == TypeSpec("meters") && actual == TypeSpec("float")) {
+    return true;
+  }
+
+  if (expected == TypeSpec("seconds") && actual == TypeSpec("uint64")) {
+    return true;
+  }
+
+  if (expected == TypeSpec("degrees") && actual == TypeSpec("float")) {
+    return true;
+  }
+
+  return !ts.tc(expected, actual);
 }
 }  // namespace decompiler

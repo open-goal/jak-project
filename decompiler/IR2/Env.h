@@ -82,6 +82,7 @@ class Env {
   VariableWithCast get_variable_and_cast(const RegisterAccess& access) const;
   std::optional<TypeSpec> get_user_cast_for_access(const RegisterAccess& access) const;
   TypeSpec get_variable_type(const RegisterAccess& access, bool using_user_var_types) const;
+  TP_Type get_variable_tp_type(const RegisterAccess& access, bool using_user_var_types) const;
 
   /*!
    * Get the types in registers _after_ the given operation has completed.
@@ -149,9 +150,9 @@ class Env {
 
   const std::unordered_map<int, StackTypeCast>& stack_casts() const { return m_stack_typecasts; }
 
-  void set_remap_for_function(int nargs);
-  void set_remap_for_method(int nargs);
-  void set_remap_for_new_method(int nargs);
+  void set_remap_for_function(const TypeSpec& ts);
+  void set_remap_for_method(const TypeSpec& ts);
+  void set_remap_for_new_method(const TypeSpec& ts);
   void map_args_from_config(const std::vector<std::string>& args_names,
                             const std::unordered_map<std::string, std::string>& var_names);
   void map_args_from_config(const std::vector<std::string>& args_names,
@@ -208,6 +209,8 @@ class Env {
   // hacks:
   bool aggressively_reject_cond_to_value_rewrite = false;
 
+  bool pp_mapped_by_behavior() const { return m_pp_mapped_by_behavior; }
+
  private:
   RegisterAccess m_end_var;
 
@@ -218,6 +221,7 @@ class Env {
   VariableNames m_var_names;
 
   bool m_has_types = false;
+  bool m_pp_mapped_by_behavior = false;
   std::vector<TypeState> m_block_init_types;
   std::vector<TypeState> m_op_end_types;
   std::vector<TypeState*> m_op_init_types;

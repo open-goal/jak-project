@@ -15,20 +15,18 @@
 (defmethod set-time-ratios display ((obj display) (slowdown float))
   (let ((ratio (fmin 4.0 slowdown)))
    (set! (-> obj time-ratio) ratio)
-   (let ((v1-0 (get-video-mode)))
-    (cond
-     ((= v1-0 'pal)
+   (case (get-video-mode) 
+    (('pal)
       (set! (-> obj time-adjust-ratio) (* 1.2 ratio))
       (set! (-> obj seconds-per-frame) (* 0.02 ratio))
       (set! (-> obj frames-per-second) (* 50.0 (/ 1.0 ratio)))
       (set! (-> obj time-factor) 6.0)
       )
-     (else
-      (set! (-> obj time-adjust-ratio) ratio)
-      (set! (-> obj seconds-per-frame) (* 0.016666668 ratio))
-      (set! (-> obj frames-per-second) (* 60.0 (/ 1.0 ratio)))
-      (set! (-> obj time-factor) 5.0)
-      )
+    (else
+     (set! (-> obj time-adjust-ratio) ratio)
+     (set! (-> obj seconds-per-frame) (* 0.016666668 ratio))
+     (set! (-> obj frames-per-second) (* 60.0 (/ 1.0 ratio)))
+     (set! (-> obj time-factor) 5.0)
      )
     )
    )
@@ -283,7 +281,7 @@
 (defmethod add-frame profile-bar ((obj profile-bar) (name symbol) (color rgba))
   (when *debug-segment*
    (let ((new-frame (-> obj data (-> obj profile-frame-count))))
-    (set! (-> obj profile-frame-count) (+ (-> obj profile-frame-count) 1))
+    (+! (-> obj profile-frame-count) 1)
     (set! (-> new-frame name) name)
     (set!
      (-> new-frame time-stamp)
@@ -308,7 +306,7 @@
   profile-bar
   ((obj profile-bar) (name symbol) (color rgba))
   (let ((new-frame (-> obj data (-> obj profile-frame-count))))
-   (set! (-> obj profile-frame-count) (+ (-> obj profile-frame-count) 1))
+   (+! (-> obj profile-frame-count) 1)
    (set! (-> new-frame name) name)
    (set! (-> new-frame time-stamp) (the-as uint *ticks-per-frame*))
    (set! (-> new-frame color) color)
@@ -572,19 +570,13 @@
    (let ((total-qwc (/ (&+ (- -16 (the-as int end-dma)) (-> buf base)) 16)))
     (cond
      ((nonzero? total-qwc)
-      (set!
+      (logior!
        (-> (the-as (pointer dma-tag) end-dma) 0)
-       (logior
-        (-> (the-as (pointer dma-tag) end-dma) 0)
-        (the-as uint (new 'static 'dma-tag :qwc total-qwc))
-        )
+       (new 'static 'dma-tag :qwc total-qwc)
        )
-      (set!
+      (logior!
        (-> (the-as (pointer dma-tag) end-dma) 1)
-       (logior
-        (-> (the-as (pointer dma-tag) end-dma) 1)
-        (the-as uint (shl (shr (shl total-qwc 48) 48) 32))
-        )
+       (shl (shr (shl total-qwc 48) 48) 32)
        )
       )
      (else
@@ -697,19 +689,13 @@
    (let ((total-qwc (/ (&+ (- -16 (the-as int end-dma)) (-> buf base)) 16)))
     (cond
      ((nonzero? total-qwc)
-      (set!
+      (logior!
        (-> (the-as (pointer dma-tag) end-dma) 0)
-       (logior
-        (-> (the-as (pointer dma-tag) end-dma) 0)
-        (the-as uint (new 'static 'dma-tag :qwc total-qwc))
-        )
+       (new 'static 'dma-tag :qwc total-qwc)
        )
-      (set!
+      (logior!
        (-> (the-as (pointer dma-tag) end-dma) 1)
-       (logior
-        (-> (the-as (pointer dma-tag) end-dma) 1)
-        (the-as uint (shl (shr (shl total-qwc 48) 48) 32))
-        )
+       (shl (shr (shl total-qwc 48) 48) 32)
        )
       )
      (else

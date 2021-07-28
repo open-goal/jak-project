@@ -3,35 +3,33 @@
 
 ;; definition (debug) for function task-status->string
 (defun-debug task-status->string ((arg0 task-status))
-  (let ((v1-0 arg0))
-   (cond
-    ((= v1-0 (task-status need-resolution))
+  (case arg0 
+   (((task-status need-resolution))
      "need-resolution"
      )
-    ((= v1-0 (task-status need-reward-speech))
-     "need-reward-speech"
-     )
-    ((= v1-0 (task-status need-reminder))
-     "need-reminder"
-     )
-    ((= v1-0 (task-status need-reminder-a))
-     "need-reminder-a"
-     )
-    ((= v1-0 (task-status need-introduction))
-     "need-introduction"
-     )
-    ((= v1-0 (task-status need-hint))
-     "need-hint"
-     )
-    ((= v1-0 (task-status unknown))
-     "unknown"
-     )
-    ((= v1-0 (task-status invalid))
-     "invalid"
-     )
-    (else
-     "*unknown*"
-     )
+   (((task-status need-reward-speech))
+    "need-reward-speech"
+    )
+   (((task-status need-reminder))
+    "need-reminder"
+    )
+   (((task-status need-reminder-a))
+    "need-reminder-a"
+    )
+   (((task-status need-introduction))
+    "need-introduction"
+    )
+   (((task-status need-hint))
+    "need-hint"
+    )
+   (((task-status unknown))
+    "unknown"
+    )
+   (((task-status invalid))
+    "invalid"
+    )
+   (else
+    "*unknown*"
     )
    )
   )
@@ -70,11 +68,11 @@
        )
       (the-as int (-> obj status))
       )
-     (set! (-> obj flags) (logior (-> obj flags) (task-flags closed)))
+     (logior! (-> obj flags) (task-flags closed))
      #f
      )
     ((task-complete? *game-info* (-> obj game-task))
-     (set! (-> obj flags) (logior (-> obj flags) (task-flags closed)))
+     (logior! (-> obj flags) (task-flags closed))
      #f
      )
     (else
@@ -89,13 +87,10 @@
   (if (= (-> obj game-task) (game-task none))
    (return (the-as int #f))
    )
-  (set! (-> obj flags) (logior (-> obj flags) (task-flags closed)))
-  (when (nonzero? (logand (-> obj flags) (task-flags has-entity)))
+  (logior! (-> obj flags) (task-flags closed))
+  (when (logtest? (-> obj flags) (task-flags has-entity))
    (let ((v1-9 (get-entity-task-perm *game-info* (-> obj game-task))))
-    (set!
-     (-> v1-9 status)
-     (logior (-> v1-9 status) (entity-perm-status user-set-from-cstage))
-     )
+    (logior! (-> v1-9 status) (entity-perm-status user-set-from-cstage))
     (if (< (-> v1-9 user-uint8 0) (the-as uint (-> obj status)))
      (set! (-> v1-9 user-int8 0) (the-as int (-> obj status)))
      )
@@ -106,7 +101,7 @@
 
 ;; definition for method 15 of type task-cstage
 (defmethod open-task! task-cstage ((obj task-cstage))
-  (set! (-> obj flags) (logand (lognot (task-flags closed)) (-> obj flags)))
+  (logclear! (-> obj flags) (task-flags closed))
   0
   )
 
@@ -326,10 +321,7 @@
    (return 0)
    )
   (let ((v1-4 (get-entity-task-perm *game-info* (-> obj stage 0 game-task))))
-   (set!
-    (-> v1-4 status)
-    (logior (-> v1-4 status) (entity-perm-status user-set-from-cstage))
-    )
+   (logior! (-> v1-4 status) (entity-perm-status user-set-from-cstage))
    (set! (-> v1-4 user-int8 (+ arg1 1)) arg0)
    )
   0
@@ -365,8 +357,7 @@
      :flags
      (task-flags has-entity closed-by-default)
      :condition
-     (lambda
-      ((arg0 task-control))
+     (lambda ((arg0 task-control))
       (with-pp
        (or
         (closed? arg0 (game-task jungle-eggtop) (task-status need-reminder))
@@ -398,8 +389,7 @@
      :flags
      (task-flags has-entity closed-by-default)
      :condition
-     (lambda
-      ((arg0 task-control))
+     (lambda ((arg0 task-control))
       (with-pp
        (or
         (closed? arg0 (game-task jungle-eggtop) (task-status need-reminder))
@@ -452,8 +442,7 @@
      :status (task-status unknown)
      :flags (task-flags has-entity)
      :condition
-     (lambda
-      ((arg0 task-control))
+     (lambda ((arg0 task-control))
       (task-closed?
        (game-task village4-button)
        (task-status need-reward-speech)
@@ -522,16 +511,16 @@
      :status (task-status need-reward-speech)
      :flags (task-flags has-entity)
      :condition
-     (lambda
-      ((arg0 task-control))
-      (with-pp (let ((a1-0 (new 'stack-no-clear 'event-message-block)))
-                (set! (-> a1-0 from) pp)
-                (set! (-> a1-0 num-params) 2)
-                (set! (-> a1-0 message) 'query)
-                (set! (-> a1-0 param 0) (the-as uint 'pickup))
-                (set! (-> a1-0 param 1) (the-as uint 6))
-                (>= (the int (send-event-function *target* a1-0)) 45)
-                )
+     (lambda ((arg0 task-control))
+      (with-pp
+       (let ((a1-0 (new 'stack-no-clear 'event-message-block)))
+        (set! (-> a1-0 from) pp)
+        (set! (-> a1-0 num-params) 2)
+        (set! (-> a1-0 message) 'query)
+        (set! (-> a1-0 param 0) (the-as uint 'pickup))
+        (set! (-> a1-0 param 1) (the-as uint 6))
+        (>= (the int (send-event-function *target* a1-0)) 45)
+        )
        )
       )
      )
@@ -555,8 +544,7 @@
      :flags
      (task-flags has-entity closed-by-default)
      :condition
-     (lambda
-      ((arg0 task-control) (arg1 task-control))
+     (lambda ((arg0 task-control) (arg1 task-control))
       (with-pp
        (and
         (task-closed? (game-task beach-flutflut) (task-status need-reminder))
@@ -587,8 +575,7 @@
      :flags
      (task-flags has-entity closed-by-default)
      :condition
-     (lambda
-      ((arg0 task-control) (arg1 task-control))
+     (lambda ((arg0 task-control) (arg1 task-control))
       (with-pp
        (and
         (task-closed? (game-task beach-flutflut) (task-status need-reminder))
@@ -619,8 +606,7 @@
      :flags
      (task-flags has-entity closed-by-default)
      :condition
-     (lambda
-      ((arg0 task-control) (arg1 task-control))
+     (lambda ((arg0 task-control) (arg1 task-control))
       (with-pp
        (if (task-closed? (game-task beach-flutflut) (task-status need-reminder))
         (or
@@ -671,8 +657,7 @@
      :flags
      (task-flags has-entity closed-by-default)
      :condition
-     (lambda
-      ((arg0 task-control) (arg1 task-control))
+     (lambda ((arg0 task-control) (arg1 task-control))
       (with-pp
        (if (task-closed? (game-task beach-flutflut) (task-status need-reminder))
         (or
@@ -732,8 +717,7 @@
      :game-task (game-task swamp-flutflut)
      :status (task-status unknown)
      :condition
-     (lambda
-      ((arg0 task-control))
+     (lambda ((arg0 task-control))
       (task-closed? (game-task beach-flutflut) (task-status need-reminder))
       )
      )
@@ -742,8 +726,7 @@
      :status (task-status need-reminder)
      :flags (task-flags has-entity)
      :condition
-     (lambda
-      ((arg0 task-control))
+     (lambda ((arg0 task-control))
       (task-closed? (game-task beach-flutflut) (task-status need-reminder))
       )
      )
@@ -833,8 +816,7 @@
      :status (task-status need-resolution)
      :flags (task-flags has-entity)
      :condition
-     (lambda
-      ((arg0 task-control) (arg1 task-control))
+     (lambda ((arg0 task-control) (arg1 task-control))
       (closed? arg0 (game-task rolling-race) (task-status need-reward-speech))
       )
      )
@@ -843,8 +825,7 @@
      :status (task-status need-resolution)
      :flags (task-flags has-entity)
      :condition
-     (lambda
-      ((arg0 task-control) (arg1 task-control))
+     (lambda ((arg0 task-control) (arg1 task-control))
       (closed?
        arg0
        (game-task village2-gambler-money)
@@ -857,8 +838,7 @@
      :status (task-status need-reward-speech)
      :flags (task-flags has-entity)
      :condition
-     (lambda
-      ((arg0 task-control) (arg1 task-control))
+     (lambda ((arg0 task-control) (arg1 task-control))
       (closed? arg0 (game-task rolling-race) (task-status need-reminder))
       )
      )
@@ -867,8 +847,7 @@
      :status (task-status need-reward-speech)
      :flags (task-flags has-entity)
      :condition
-     (lambda
-      ((arg0 task-control))
+     (lambda ((arg0 task-control))
       (with-pp
        (the-as
         symbol
@@ -899,8 +878,7 @@
      :status (task-status need-reminder)
      :flags (task-flags has-entity)
      :condition
-     (lambda
-      ((arg0 task-control) (arg1 task-control))
+     (lambda ((arg0 task-control) (arg1 task-control))
       (closed? arg0 (game-task rolling-race) (task-status need-introduction))
       )
      )
@@ -908,8 +886,7 @@
      :game-task (game-task village2-gambler-money)
      :status (task-status need-reminder)
      :condition
-     (lambda
-      ((arg0 task-control) (arg1 task-control))
+     (lambda ((arg0 task-control) (arg1 task-control))
       (closed? arg0 (game-task rolling-race) (task-status need-introduction))
       )
      )
@@ -960,8 +937,7 @@
      :status (task-status need-resolution)
      :flags (task-flags has-entity)
      :condition
-     (lambda
-      ((arg0 task-control) (arg1 task-control))
+     (lambda ((arg0 task-control) (arg1 task-control))
       (closed? arg0 (game-task rolling-moles) (task-status need-reward-speech))
       )
      )
@@ -970,8 +946,7 @@
      :status (task-status need-resolution)
      :flags (task-flags has-entity)
      :condition
-     (lambda
-      ((arg0 task-control) (arg1 task-control))
+     (lambda ((arg0 task-control) (arg1 task-control))
       (closed?
        arg0
        (game-task village2-geologist-money)
@@ -984,8 +959,7 @@
      :status (task-status need-reward-speech)
      :flags (task-flags has-entity)
      :condition
-     (lambda
-      ((arg0 task-control) (arg1 task-control))
+     (lambda ((arg0 task-control) (arg1 task-control))
       (closed? arg0 (game-task rolling-moles) (task-status need-reminder))
       )
      )
@@ -994,8 +968,7 @@
      :status (task-status need-reward-speech)
      :flags (task-flags has-entity)
      :condition
-     (lambda
-      ((arg0 task-control))
+     (lambda ((arg0 task-control))
       (with-pp
        (the-as
         symbol
@@ -1026,8 +999,7 @@
      :status (task-status need-reminder)
      :flags (task-flags has-entity)
      :condition
-     (lambda
-      ((arg0 task-control) (arg1 task-control))
+     (lambda ((arg0 task-control) (arg1 task-control))
       (closed? arg0 (game-task rolling-moles) (task-status need-introduction))
       )
      )
@@ -1035,8 +1007,7 @@
      :game-task (game-task village2-geologist-money)
      :status (task-status need-reminder)
      :condition
-     (lambda
-      ((arg0 task-control) (arg1 task-control))
+     (lambda ((arg0 task-control) (arg1 task-control))
       (closed? arg0 (game-task rolling-moles) (task-status need-introduction))
       )
      )
@@ -1087,8 +1058,7 @@
      :status (task-status need-resolution)
      :flags (task-flags has-entity)
      :condition
-     (lambda
-      ((arg0 task-control) (arg1 task-control))
+     (lambda ((arg0 task-control) (arg1 task-control))
       (closed? arg0 (game-task jungle-lurkerm) (task-status need-reward-speech))
       )
      )
@@ -1097,8 +1067,7 @@
      :status (task-status need-resolution)
      :flags (task-flags has-entity)
      :condition
-     (lambda
-      ((arg0 task-control) (arg1 task-control))
+     (lambda ((arg0 task-control) (arg1 task-control))
       (closed?
        arg0
        (game-task village1-mayor-money)
@@ -1111,8 +1080,7 @@
      :status (task-status need-reward-speech)
      :flags (task-flags has-entity)
      :condition
-     (lambda
-      ((arg0 task-control) (arg1 task-control))
+     (lambda ((arg0 task-control) (arg1 task-control))
       (closed? arg0 (game-task jungle-lurkerm) (task-status need-reminder))
       )
      )
@@ -1121,8 +1089,7 @@
      :status (task-status need-reward-speech)
      :flags (task-flags has-entity)
      :condition
-     (lambda
-      ((arg0 task-control))
+     (lambda ((arg0 task-control))
       (with-pp
        (the-as
         symbol
@@ -1153,8 +1120,7 @@
      :status (task-status need-reminder-a)
      :flags (task-flags has-entity)
      :condition
-     (lambda
-      ((arg0 task-control) (arg1 task-control))
+     (lambda ((arg0 task-control) (arg1 task-control))
       (closed? arg0 (game-task jungle-lurkerm) (task-status need-introduction))
       )
      )
@@ -1163,8 +1129,7 @@
      :status (task-status need-reminder)
      :flags (task-flags has-entity)
      :condition
-     (lambda
-      ((arg0 task-control) (arg1 task-control))
+     (lambda ((arg0 task-control) (arg1 task-control))
       (closed? arg0 (game-task jungle-lurkerm) (task-status need-introduction))
       )
      )
@@ -1172,8 +1137,7 @@
      :game-task (game-task village1-mayor-money)
      :status (task-status need-reminder)
      :condition
-     (lambda
-      ((arg0 task-control) (arg1 task-control))
+     (lambda ((arg0 task-control) (arg1 task-control))
       (closed? arg0 (game-task jungle-lurkerm) (task-status need-introduction))
       )
      )
@@ -1229,8 +1193,7 @@
      :flags
      (task-flags has-entity closed-by-default)
      :condition
-     (lambda
-      ((arg0 task-control) (arg1 task-control))
+     (lambda ((arg0 task-control) (arg1 task-control))
       (with-pp
        (or
         (closed? arg0 (game-task beach-ecorocks) (task-status need-reminder))
@@ -1262,8 +1225,7 @@
      :flags
      (task-flags has-entity closed-by-default)
      :condition
-     (lambda
-      ((arg0 task-control) (arg1 task-control))
+     (lambda ((arg0 task-control) (arg1 task-control))
       (with-pp
        (or
         (closed? arg0 (game-task beach-ecorocks) (task-status need-reminder))
@@ -1310,8 +1272,7 @@
      :status (task-status unknown)
      :flags (task-flags has-entity)
      :condition
-     (lambda
-      ((arg0 task-control))
+     (lambda ((arg0 task-control))
       (task-closed?
        (game-task village4-button)
        (task-status need-reward-speech)
@@ -1369,8 +1330,7 @@
      :flags
      (task-flags has-entity closed-by-default)
      :condition
-     (lambda
-      ((arg0 task-control) (arg1 task-control))
+     (lambda ((arg0 task-control) (arg1 task-control))
       (with-pp
        (or
         (closed? arg0 (game-task rolling-plants) (task-status need-reminder))
@@ -1402,8 +1362,7 @@
      :flags
      (task-flags has-entity closed-by-default)
      :condition
-     (lambda
-      ((arg0 task-control) (arg1 task-control))
+     (lambda ((arg0 task-control) (arg1 task-control))
       (with-pp
        (or
         (closed? arg0 (game-task rolling-plants) (task-status need-reminder))
@@ -1509,8 +1468,7 @@
      :status (task-status need-reward-speech)
      :flags (task-flags has-entity)
      :condition
-     (lambda
-      ((arg0 task-control))
+     (lambda ((arg0 task-control))
       (with-pp
        (the-as
         symbol
@@ -1552,8 +1510,7 @@
      :status (task-status need-reward-speech)
      :flags (task-flags has-entity)
      :condition
-     (lambda
-      ((arg0 task-control))
+     (lambda ((arg0 task-control))
       (with-pp
        (the-as
         symbol
@@ -1637,8 +1594,7 @@
      :status (task-status need-reward-speech)
      :flags (task-flags has-entity)
      :condition
-     (lambda
-      ((arg0 task-control))
+     (lambda ((arg0 task-control))
       (with-pp
        (the-as
         symbol
@@ -1680,8 +1636,7 @@
      :status (task-status need-reward-speech)
      :flags (task-flags has-entity)
      :condition
-     (lambda
-      ((arg0 task-control))
+     (lambda ((arg0 task-control))
       (with-pp
        (the-as
         symbol
@@ -1765,8 +1720,7 @@
      :status (task-status need-reward-speech)
      :flags (task-flags has-entity)
      :condition
-     (lambda
-      ((arg0 task-control))
+     (lambda ((arg0 task-control))
       (with-pp
        (the-as
         symbol
@@ -1808,8 +1762,7 @@
      :status (task-status need-reward-speech)
      :flags (task-flags has-entity)
      :condition
-     (lambda
-      ((arg0 task-control))
+     (lambda ((arg0 task-control))
       (with-pp
        (the-as
         symbol
@@ -1921,8 +1874,7 @@
      :status (task-status need-reward-speech)
      :flags (task-flags has-entity)
      :condition
-     (lambda
-      ((arg0 task-control))
+     (lambda ((arg0 task-control))
       (with-pp
        (the-as
         symbol
@@ -1953,8 +1905,7 @@
      :status (task-status need-reward-speech)
      :flags (task-flags has-entity)
      :condition
-     (lambda
-      ((arg0 task-control))
+     (lambda ((arg0 task-control))
       (with-pp
        (the-as
         symbol
@@ -1985,8 +1936,7 @@
      :status (task-status need-reward-speech)
      :flags (task-flags has-entity)
      :condition
-     (lambda
-      ((arg0 task-control))
+     (lambda ((arg0 task-control))
       (with-pp
        (the-as
         symbol
@@ -2017,8 +1967,7 @@
      :status (task-status need-reward-speech)
      :flags (task-flags has-entity)
      :condition
-     (lambda
-      ((arg0 task-control))
+     (lambda ((arg0 task-control))
       (with-pp
        (the-as
         symbol
@@ -2050,8 +1999,7 @@
      :flags
      (task-flags has-entity closed-by-default)
      :condition
-     (lambda
-      ((arg0 task-control) (arg1 task-control))
+     (lambda ((arg0 task-control) (arg1 task-control))
       (with-pp
        (or
         (closed?
@@ -2087,8 +2035,7 @@
      :flags
      (task-flags has-entity closed-by-default)
      :condition
-     (lambda
-      ((arg0 task-control) (arg1 task-control))
+     (lambda ((arg0 task-control) (arg1 task-control))
       (with-pp
        (or
         (closed?
@@ -2124,8 +2071,7 @@
      :flags
      (task-flags has-entity closed-by-default)
      :condition
-     (lambda
-      ((arg0 task-control) (arg1 task-control))
+     (lambda ((arg0 task-control) (arg1 task-control))
       (with-pp
        (or
         (closed? arg0 (game-task cave-gnawers) (task-status need-reminder))
@@ -2153,8 +2099,7 @@
      :flags
      (task-flags has-entity closed-by-default)
      :condition
-     (lambda
-      ((arg0 task-control) (arg1 task-control))
+     (lambda ((arg0 task-control) (arg1 task-control))
       (with-pp
        (or
         (closed? arg0 (game-task cave-gnawers) (task-status need-reminder))
@@ -2335,8 +2280,7 @@
      :flags
      (task-flags has-entity closed-by-default)
      :condition
-     (lambda
-      ((arg0 task-control) (arg1 task-control))
+     (lambda ((arg0 task-control) (arg1 task-control))
       (with-pp
        (or
         (closed?
@@ -2372,8 +2316,7 @@
      :flags
      (task-flags has-entity closed-by-default)
      :condition
-     (lambda
-      ((arg0 task-control) (arg1 task-control))
+     (lambda ((arg0 task-control) (arg1 task-control))
       (with-pp
        (or
         (closed?
@@ -2861,8 +2804,7 @@
        :status (task-status need-reward-speech)
        :flags (task-flags has-entity)
        :condition
-       (lambda
-        ((arg0 task-control))
+       (lambda ((arg0 task-control))
         (with-pp
          (the-as
           symbol
@@ -3388,8 +3330,7 @@
        :flags
        (task-flags has-entity closed-by-default)
        :condition
-       (lambda
-        ((arg0 task-control))
+       (lambda ((arg0 task-control))
         (and
          (not (task-closed? (game-task ogre-boss) (task-status need-reminder)))
          (not
@@ -3407,8 +3348,7 @@
        :flags
        (task-flags has-entity closed-by-default)
        :condition
-       (lambda
-        ((arg0 task-control))
+       (lambda ((arg0 task-control))
         (and
          (not (task-closed? (game-task ogre-boss) (task-status need-reminder)))
          (not
@@ -3425,8 +3365,7 @@
        :status (task-status need-reward-speech)
        :flags (task-flags has-entity)
        :condition
-       (lambda
-        ((arg0 task-control))
+       (lambda ((arg0 task-control))
         (with-pp
          (the-as
           symbol
@@ -5122,16 +5061,16 @@
        :status (task-status need-reward-speech)
        :flags (task-flags has-entity)
        :condition
-       (lambda
-        ((arg0 task-control))
-        (with-pp (let ((a1-0 (new 'stack-no-clear 'event-message-block)))
-                  (set! (-> a1-0 from) pp)
-                  (set! (-> a1-0 num-params) 2)
-                  (set! (-> a1-0 message) 'query)
-                  (set! (-> a1-0 param 0) (the-as uint 'pickup))
-                  (set! (-> a1-0 param 1) (the-as uint 6))
-                  (>= (the int (send-event-function *target* a1-0)) 20)
-                  )
+       (lambda ((arg0 task-control))
+        (with-pp
+         (let ((a1-0 (new 'stack-no-clear 'event-message-block)))
+          (set! (-> a1-0 from) pp)
+          (set! (-> a1-0 num-params) 2)
+          (set! (-> a1-0 message) 'query)
+          (set! (-> a1-0 param 0) (the-as uint 'pickup))
+          (set! (-> a1-0 param 1) (the-as uint 6))
+          (>= (the int (send-event-function *target* a1-0)) 20)
+          )
          )
         )
        )
@@ -5227,16 +5166,16 @@
        :status (task-status need-reward-speech)
        :flags (task-flags has-entity)
        :condition
-       (lambda
-        ((arg0 task-control))
-        (with-pp (let ((a1-0 (new 'stack-no-clear 'event-message-block)))
-                  (set! (-> a1-0 from) pp)
-                  (set! (-> a1-0 num-params) 2)
-                  (set! (-> a1-0 message) 'query)
-                  (set! (-> a1-0 param 0) (the-as uint 'pickup))
-                  (set! (-> a1-0 param 1) (the-as uint 6))
-                  (>= (the int (send-event-function *target* a1-0)) 72)
-                  )
+       (lambda ((arg0 task-control))
+        (with-pp
+         (let ((a1-0 (new 'stack-no-clear 'event-message-block)))
+          (set! (-> a1-0 from) pp)
+          (set! (-> a1-0 num-params) 2)
+          (set! (-> a1-0 message) 'query)
+          (set! (-> a1-0 param 0) (the-as uint 'pickup))
+          (set! (-> a1-0 param 1) (the-as uint 6))
+          (>= (the int (send-event-function *target* a1-0)) 72)
+          )
          )
         )
        )
@@ -5406,8 +5345,7 @@
        :status (task-status unknown)
        :flags (task-flags has-entity)
        :condition
-       (lambda
-        ((arg0 task-control))
+       (lambda ((arg0 task-control))
         (task-closed?
          (game-task village4-button)
          (task-status need-reward-speech)
@@ -5473,7 +5411,7 @@
        (task-available? (-> gp-0 stage s5-0) gp-0)
        )
       (first-any gp-0 #t)
-      (return (the-as int (-> gp-0 stage s5-0 status)))
+      (return (the-as task-status (-> gp-0 stage s5-0 status)))
       )
      )
     )
@@ -5544,17 +5482,17 @@
 
 ;; definition for function task-known?
 (defun task-known? ((arg0 game-task))
-  (let ((v1-0 (get-task-status arg0)))
-   (if
-    (or
-     (= v1-0 (task-status need-reward-speech))
-     (= v1-0 (task-status need-introduction))
-     (= v1-0 (task-status need-reminder))
-     (= v1-0 (task-status need-reminder-a))
-     (= v1-0 (task-status need-resolution))
-     (= v1-0 (task-status invalid))
+  (case (get-task-status arg0) 
+   (((task-status need-reward-speech)
+    (task-status need-introduction)
+    (task-status need-reminder)
+    (task-status need-reminder-a)
+    (task-status need-resolution)
+    (task-status invalid)
+    )
+     #t
      )
-    #t
+   (else
     #f
     )
    )

@@ -109,7 +109,7 @@ uint64_t link_begin(uint64_t object_data,
                     uint32_t flags);
 
 uint64_t link_resume();
-void* ultimate_memcpy(void* dst, void* src, uint32_t size);
+void ultimate_memcpy(void* dst, void* src, uint32_t size);
 
 extern link_control saved_link_control;
 

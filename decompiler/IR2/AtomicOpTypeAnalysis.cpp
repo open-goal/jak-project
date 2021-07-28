@@ -5,6 +5,7 @@
 #include "decompiler/util/TP_Type.h"
 #include "decompiler/util/DecompilerTypeSystem.h"
 #include "decompiler/IR2/bitfields.h"
+#include "common/type_system/state.h"
 
 namespace decompiler {
 
@@ -81,6 +82,8 @@ TP_Type SimpleAtom::get_type(const TypeState& input,
         // which actually means that you get the first address in the symbol table.
         // it's not really a linked symbol, but the basic op builder represents it as one.
         return TP_Type::make_from_ts(TypeSpec("pointer"));
+      } else if (m_string == "enter-state") {
+        return TP_Type::make_enter_state();
       }
 
       // look up the type of the symbol
@@ -187,21 +190,24 @@ TP_Type SimpleExpression::get_type(const TypeState& input,
     case Kind::XOR:
     case Kind::LEFT_SHIFT:
     case Kind::MUL_UNSIGNED:
+    case Kind::PCPYLD:
       return get_type_int2(input, env, dts);
     case Kind::NEG:
     case Kind::LOGNOT:
       return get_type_int1(input, env, dts);
     case Kind::DIV_UNSIGNED:
     case Kind::MOD_UNSIGNED:
-    case Kind::PCPYLD:
       return TP_Type::make_from_ts("uint");
     case Kind::VECTOR_PLUS:
     case Kind::VECTOR_MINUS:
+    case Kind::VECTOR_CROSS:
       return TP_Type::make_from_ts("vector");
     case Kind::VECTOR_FLOAT_PRODUCT:
       return TP_Type::make_from_ts("vector");
     case Kind::SUBU_L32_S7:
       return TP_Type::make_from_ts("int");
+    case Kind::VECTOR_3_DOT:
+      return TP_Type::make_from_ts("float");
     default:
       throw std::runtime_error("Simple expression cannot get_type: " +
                                to_form(env.file->labels, env).print());
@@ -255,7 +261,8 @@ TP_Type get_stack_type_at_constant_offset(int offset,
 
     if (offset == structure.hint.stack_offset) {
       // special case just getting the variable
-      if (structure.hint.container_type == StackStructureHint::ContainerType::NONE) {
+      if (structure.hint.container_type == StackStructureHint::ContainerType::NONE ||
+          structure.hint.container_type == StackStructureHint::ContainerType::INLINE_ARRAY) {
         return TP_Type::make_from_ts(coerce_to_reg_type(structure.ref_type));
       }
     }
@@ -376,8 +383,13 @@ TP_Type SimpleExpression::get_type_int2(const TypeState& input,
     } break;
 
     case Kind::MUL_UNSIGNED: {
-      // unsigned multiply will always return a unsigned number.
-      return TP_Type::make_from_ts("uint");
+      if (arg0_type.is_integer_constant() && is_int_or_uint(dts, arg1_type)) {
+        return TP_Type::make_from_product(arg0_type.get_integer_constant(),
+                                          is_signed(dts, arg0_type));
+      } else if (is_int_or_uint(dts, arg0_type) && is_int_or_uint(dts, arg1_type)) {
+        // unsigned multiply will always return a unsigned number.
+        return TP_Type::make_from_ts("uint");
+      }
     } break;
 
     case Kind::DIV_SIGNED:
@@ -413,8 +425,26 @@ TP_Type SimpleExpression::get_type_int2(const TypeState& input,
       }
       break;
 
+    case Kind::MIN_SIGNED:
+      return TP_Type::make_from_ts("int");
+
     default:
       break;
+  }
+
+  if (arg0_type.kind == TP_Type::Kind::PCPYUD_BITFIELD &&
+      (m_kind == Kind::AND || m_kind == Kind::OR)) {
+    // anding a bitfield should return the bitfield type.
+    return TP_Type::make_from_pcpyud_bitfield(arg0_type.get_bitfield_type());
+  }
+
+  // this is right but breaks something else right now.
+  if (m_kind == Kind::PCPYLD && arg0_type.kind == TP_Type::Kind::PCPYUD_BITFIELD) {
+    return arg1_type;
+  }
+
+  if (m_kind == Kind::PCPYLD) {
+    return TP_Type::make_from_ts("uint");
   }
 
   if (arg0_type.kind == TP_Type::Kind::INTEGER_CONSTANT_PLUS_VAR_MULT && m_kind == Kind::ADD) {
@@ -491,10 +521,31 @@ TP_Type SimpleExpression::get_type_int2(const TypeState& input,
     rd_in.stride = arg1_type.get_multiplier();
     rd_in.offset = 0;
     rd_in.base_type = arg0_type.typespec();
-    auto rd = dts.ts.reverse_field_lookup(rd_in);
+    auto rd = dts.ts.reverse_field_multi_lookup(rd_in);
 
-    if (rd.success) {
-      return TP_Type::make_from_ts(coerce_to_reg_type(rd.result_type));
+    for (int i = 0; i < (int)rd.results.size(); i++) {
+      if (rd.results.at(i).has_variable_token()) {
+        return TP_Type::make_from_ts(coerce_to_reg_type(rd.results.at(i).result_type));
+        break;
+      }
+    }
+  }
+
+  if (m_kind == Kind::ADD && arg1_type.kind == TP_Type::Kind::TYPESPEC &&
+      arg1_type.typespec().base_type() == "inline-array" &&
+      arg0_type.kind == TP_Type::Kind::PRODUCT_WITH_CONSTANT) {
+    FieldReverseLookupInput rd_in;
+    rd_in.deref = std::nullopt;
+    rd_in.stride = arg0_type.get_multiplier();
+    rd_in.offset = 0;
+    rd_in.base_type = arg1_type.typespec();
+    auto rd = dts.ts.reverse_field_multi_lookup(rd_in);
+
+    for (int i = 0; i < (int)rd.results.size(); i++) {
+      if (rd.results.at(i).has_variable_token()) {
+        return TP_Type::make_from_ts(coerce_to_reg_type(rd.results.at(i).result_type));
+        break;
+      }
     }
   }
 
@@ -521,6 +572,14 @@ TP_Type SimpleExpression::get_type_int2(const TypeState& input,
       arg1_type.typespec().base_type() == "pointer" && tc(dts, TypeSpec("integer"), arg0_type)) {
     // plain pointer plus integer = plain pointer
     return TP_Type::make_from_ts(arg1_type.typespec());
+  }
+
+  if (m_kind == Kind::ADD && tc(dts, TypeSpec("structure"), arg0_type) &&
+      arg1_type.is_integer_constant()) {
+    auto type_info = dts.ts.lookup_type(arg0_type.typespec());
+    if ((u64)type_info->get_size_in_memory() == arg1_type.get_integer_constant()) {
+      return TP_Type::make_from_ts(arg0_type.typespec());
+    }
   }
 
   if (tc(dts, TypeSpec("structure"), arg1_type) && !m_args[0].is_int() &&
@@ -556,6 +615,20 @@ TP_Type SimpleExpression::get_type_int2(const TypeState& input,
   if ((m_kind == Kind::ADD || m_kind == Kind::SUB) && tc(dts, TypeSpec("pointer"), arg0_type) &&
       tc(dts, TypeSpec("pointer"), arg1_type)) {
     return TP_Type::make_from_ts(TypeSpec("int"));
+  }
+
+  if (m_kind == Kind::RIGHT_SHIFT_LOGIC && arg0_type.typespec() == TypeSpec("float") &&
+      arg1_type.is_integer_constant(63)) {
+    //
+    return TP_Type::make_from_ts(TypeSpec("int"));
+  }
+
+  if (m_kind == Kind::OR && arg0_type.typespec() == TypeSpec("float") &&
+      arg1_type.typespec() == TypeSpec("float")) {
+    env.func->warnings.general_warning("Using logior on floats");
+    // returning int instead of uint because they like to use the float sign bit as an integer sign
+    // bit.
+    return TP_Type::make_from_ts(TypeSpec("float"));
   }
 
   throw std::runtime_error(fmt::format("Cannot get_type_int2: {}, args {} and {}",
@@ -730,9 +803,18 @@ TypeState SetVarConditionOp::propagate_types_internal(const TypeState& input,
 TypeState StoreOp::propagate_types_internal(const TypeState& input,
                                             const Env& env,
                                             DecompilerTypeSystem& dts) {
+  TypeState output = input;
+
+  // look for setting the next state of the current process
+  IR2_RegOffset ro;
+  if (get_as_reg_offset(m_addr, &ro)) {
+    if (ro.reg == Register(Reg::GPR, Reg::S6) && ro.offset == 72) {
+      output.next_state_type = m_value.get_type(input, env, dts);
+    }
+  }
   (void)env;
   (void)dts;
-  return input;
+  return output;
 }
 
 TP_Type LoadVarOp::get_src_type(const TypeState& input,
@@ -1045,6 +1127,26 @@ TypeState CallOp::propagate_types_internal(const TypeState& input,
     throw std::runtime_error("Called something that was not a function: " + in_type.print());
   }
 
+  // If we call enter-state, update our type.
+  if (in_tp.kind == TP_Type::Kind::ENTER_STATE_FUNCTION) {
+    // this is a GO!
+    auto state_type = input.next_state_type.typespec();
+    if (state_type.base_type() != "state") {
+      throw std::runtime_error(
+          fmt::format("At op {}, called enter-state, but the current next-state has type {}, which "
+                      "is not a valid state.",
+                      m_my_idx, input.next_state_type.print()));
+    }
+
+    if (state_type.arg_count() == 0) {
+      throw std::runtime_error(fmt::format(
+          "At op {}, tried to enter-state, but the type of (-> s6 next-state) is just a plain "
+          "state.  The decompiler must know the specific state type.",
+          m_my_idx));
+    }
+    in_type = state_to_go_function(state_type);
+  }
+
   if (in_type.arg_count() < 1) {
     throw std::runtime_error("Called a function, but we do not know its type");
   }
@@ -1144,13 +1246,19 @@ void FunctionEndOp::mark_function_as_no_return_value() {
 }
 
 TypeState AsmBranchOp::propagate_types_internal(const TypeState& input,
-                                                const Env&,
-                                                DecompilerTypeSystem&) {
+                                                const Env& env,
+                                                DecompilerTypeSystem& dts) {
+  if (m_branch_delay) {
+    return m_branch_delay->propagate_types(input, env, dts);
+  }
   // for now, just make everything uint
   TypeState output = input;
   for (auto x : m_write_regs) {
-    output.get(x) = TP_Type::make_from_ts("uint");
+    if (x.allowed_local_gpr()) {
+      output.get(x) = TP_Type::make_from_ts("uint");
+    }
   }
+
   return output;
 }
 
