@@ -10,6 +10,7 @@ add_library(common
         goos/Reader.cpp
         goos/TextDB.cpp
         goos/ReplUtils.cpp
+        math/geometry.cpp
         log/log.cpp
         type_system/defenum.cpp
         type_system/deftype.cpp

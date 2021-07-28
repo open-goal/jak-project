@@ -299,10 +299,11 @@ TEST_F(FormRegressionTest, IterateProcessTree) {
       "    daddiu sp, sp, 80";
   std::string type = "(function process-tree (function object object) kernel-context object)";
   std::string expected =
-      "(let ((s4-0 (or (nonzero? (logand (-> arg0 mask) (process-mask process-tree))) (arg1 "
-      "arg0))))\n"
+      "(let\n"
+      "  ((s4-0 (or (logtest? (-> arg0 mask) (process-mask process-tree)) (arg1 arg0)))\n"
+      "   )\n"
       "  (cond\n"
-      "   ((= s4-0 (quote dead))\n"
+      "   ((= s4-0 'dead)\n"
       "    )\n"
       "   (else\n"
       "    (let ((v1-4 (-> arg0 child)))\n"
@@ -728,13 +729,10 @@ TEST_F(FormRegressionTest, DmaSend) {
       "  (.sync.l)\n"
       "  (set!\n"
       "   (-> arg0 madr)\n"
-      "   (logior\n"
-      "    (logand #xfffffff (the-as int arg1))\n"
-      "    (the-as uint (if (= (logand #x70000000 (the-as int arg1)) #x70000000)\n"
-      "                  (shl #x8000 16)\n"  // note: maybe this should be #x80000000? Not sure.
-      "                  0\n"
-      "                  )\n"
-      "     )\n"
+      "   (logior (logand #xfffffff arg1) (if (= (logand #x70000000 arg1) #x70000000)\n"
+      "                                    (shl #x8000 16)\n"
+      "                                    0\n"
+      "                                    )\n"
       "    )\n"
       "   )\n"
       "  (set! (-> arg0 qwc) arg2)\n"

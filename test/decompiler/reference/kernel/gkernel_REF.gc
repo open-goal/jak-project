@@ -209,31 +209,31 @@
 ;; definition (debug) for function stream<-process-mask
 (defun-debug stream<-process-mask ((arg0 object) (arg1 process-mask))
   (let ((s4-0 arg1))
-   (if (= (logand #x1000000 (the-as int s4-0)) (process-mask death))
+   (if (= (logand #x1000000 s4-0) (process-mask death))
     (format arg0 "death ")
     )
-   (if (= (logand #x800000 (the-as int s4-0)) (process-mask attackable))
+   (if (= (logand #x800000 s4-0) (process-mask attackable))
     (format arg0 "attackable ")
     )
-   (if (= (logand #x400000 (the-as int s4-0)) (process-mask projectile))
+   (if (= (logand #x400000 s4-0) (process-mask projectile))
     (format arg0 "projectile ")
     )
-   (if (= (logand #x200000 (the-as int s4-0)) (process-mask entity))
+   (if (= (logand #x200000 s4-0) (process-mask entity))
     (format arg0 "entity ")
     )
-   (if (= (logand #x100000 (the-as int s4-0)) (process-mask ambient))
+   (if (= (logand #x100000 s4-0) (process-mask ambient))
     (format arg0 "ambient ")
     )
-   (if (= (logand #x80000 (the-as int s4-0)) (process-mask platform))
+   (if (= (logand #x80000 s4-0) (process-mask platform))
     (format arg0 "platform ")
     )
-   (if (= (logand #x40000 (the-as int s4-0)) (process-mask camera))
+   (if (= (logand #x40000 s4-0) (process-mask camera))
     (format arg0 "camera ")
     )
-   (if (= (logand #x20000 (the-as int s4-0)) (process-mask enemy))
+   (if (= (logand #x20000 s4-0) (process-mask enemy))
     (format arg0 "enemy ")
     )
-   (if (= (logand #x10000 (the-as int s4-0)) (process-mask collectable))
+   (if (= (logand #x10000 s4-0) (process-mask collectable))
     (format arg0 "collectable ")
     )
    (if (= (logand s4-0 (process-mask crate)) (process-mask crate))
@@ -990,7 +990,7 @@
     (when
      (not
       (or
-       (nonzero? (logand (-> arg0 mask) (process-mask heap-shrunk)))
+       (logtest? (-> arg0 mask) (process-mask heap-shrunk))
        (and (not (-> arg0 next-state)) (not (-> arg0 state)))
        )
       )
@@ -1003,7 +1003,7 @@
       (< (the-as int arg0) (the-as int (gap-location obj (-> obj first-gap))))
       (set! (-> obj first-gap) (find-gap obj (the-as dead-pool-heap-rec s5-0)))
       )
-     (set! (-> arg0 mask) (logior (-> arg0 mask) (process-mask heap-shrunk)))
+     (logior! (-> arg0 mask) (process-mask heap-shrunk))
      )
     (if (= (-> obj first-shrink) s5-0)
      (set! (-> obj first-shrink) (the-as dead-pool-heap-rec (-> s5-0 2)))
@@ -1250,10 +1250,7 @@
   ((arg0 process-tree) (arg1 (function object object)) (arg2 kernel-context))
   (let
    ((s4-0
-     (or
-      (nonzero? (logand (-> arg0 mask) (process-mask process-tree)))
-      (arg1 arg0)
-      )
+     (or (logtest? (-> arg0 mask) (process-mask process-tree)) (arg1 arg0))
      )
     )
    (cond
@@ -1281,10 +1278,10 @@
   (let
    ((s3-0
      (or
-      (nonzero? (logand (-> arg0 mask) (process-mask process-tree)))
+      (logtest? (-> arg0 mask) (process-mask process-tree))
       (not
        (and
-        (zero? (logand (-> arg2 prevent-from-run) (the-as uint (-> arg0 mask))))
+        (zero? (logand (-> arg2 prevent-from-run) (-> arg0 mask)))
         (run-logic? arg0)
         )
        )
@@ -1355,11 +1352,9 @@
                                          (('waiting-to-run 'suspended)
                                            (set! (-> s5-0 current-process) arg0)
                                            (cond
-                                            ((nonzero?
-                                              (logand
-                                               (-> arg0 mask)
-                                               (process-mask pause)
-                                               )
+                                            ((logtest?
+                                              (-> arg0 mask)
+                                              (process-mask pause)
                                               )
                                              (set! *stdcon* *stdcon1*)
                                              (set! *debug-draw-pauseable* #t)
@@ -1394,11 +1389,9 @@
                                              )
                                             )
                                            (if
-                                            (nonzero?
-                                             (logand
-                                              (-> arg0 mask)
-                                              (process-mask sleep-code)
-                                              )
+                                            (logtest?
+                                             (-> arg0 mask)
+                                             (process-mask sleep-code)
                                              )
                                             (set! (-> arg0 status) 'suspended)
                                             ((-> arg0 main-thread resume-hook)
@@ -1710,9 +1703,9 @@
   ((obj process) (arg0 process-tree) (arg1 basic) (arg2 pointer))
   (set!
    (-> obj mask)
-   (logand
-    (lognot (process-mask sleep sleep-code process-tree heap-shrunk))
+   (logclear
     (-> arg0 mask)
+    (process-mask sleep sleep-code process-tree heap-shrunk)
     )
    )
   (set! (-> obj status) 'ready)
@@ -1734,7 +1727,7 @@
   (set! (-> obj event-hook) #f)
   (set! (-> obj state) #f)
   (set! (-> obj next-state) #f)
-  (if (nonzero? (logand (-> arg0 mask) (process-mask process-tree)))
+  (if (logtest? (-> arg0 mask) (process-mask process-tree))
    (set! (-> obj entity) #f)
    (set! (-> obj entity) (-> (the-as process arg0) entity))
    )

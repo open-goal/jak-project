@@ -5,55 +5,65 @@
 ;; name in dgo: bsp-h
 ;; dgos: GAME, ENGINE
 
-;; The level's layout is stored in a BSP.
-;; There is a bsp-header that contains the actual nodes
-;; as well as lists of entities and other stuff found in the level.
-;; As a result, it is more than just a BSP.
-;; The final file in the level DGO is the BSP, and is the largest file.
+;; Each level has . There is a bsp-header, and a list of bsp-nodes.
+;; The bsp-nodes make up a tree.  Each node has a plane and two child nodes.
+;; The bsp-header also contains (or references) all of the static level information.
+;; The file containing the bsp-header is called the "bt" and is loaded in a special
+;; way because that allows it to use all of the remaining level heap memory.
+;; This file is very large (>8 MB), and always the last file in a level DGO.
+
+;; In the game, all of these bsp-header files have -vis after their name
+;; I believe this means that this is a version of a level that has an associated vis file
+;; for precomputed visibility.
+
 
 (declare-type entity-camera basic)
 
+;; a node in the bsp tree
 (deftype bsp-node (structure)
-  ((front       int32          :offset-assert 0)
-   (back        int32          :offset-assert 4)
-   (front-flags uint32         :offset-assert 8)
-   (back-flags  uint32         :offset-assert 12)
-   (plane       vector :inline :offset-assert 16)
+  ((front       int32          :offset-assert 0)  ;; if > 0, is a pointer to another bsp-node
+   (back        int32          :offset-assert 4)  ;; if > 0, is a pointer to another bsp-node
+   (front-flags uint32         :offset-assert 8)  ;; ?
+   (back-flags  uint32         :offset-assert 12) ;; ?
+   (plane       vector :inline :offset-assert 16) ;; the partitioning plane
    )
   :method-count-assert 9
   :size-assert         #x20
   :flag-assert         #x900000020
   )
 
+;; This is the object stored first in the level bt (-vis)
+;; It is also a drawable, and drawing it will draw the level.
 (deftype bsp-header (drawable)
-  ((info                file-info                     :offset   4)
-   (all-visible-list    (pointer uint16)                          :offset-assert 32)
-   (visible-list-length int32                                     :offset-assert 36)
-   (drawable-trees      drawable-tree-array                       :offset-assert 40)
-   (pat                 pointer                                   :offset-assert 44)
-   (pat-length          int32                                     :offset-assert 48)
-   (unk-data-0          pointer                                   :offset-assert 52)
-   (unk-data-0-len      int32                                     :offset-assert 56)
-   (unk-data-1          pointer                                   :offset-assert 60)
-   (unk-data-1-len      int32                                     :offset-assert 64)
-   (unk-zero-0          basic                                     :offset-assert 68)
-   (name                symbol                                    :offset-assert 72)
-   (nickname            symbol                                    :offset-assert 76)
-   (vis-info            level-vis-info                8           :offset-assert 80)
-   (actors              drawable-inline-array-actor               :offset-assert 112)
-   (cameras             (array entity-camera)                     :offset-assert 116)
-   (nodes               (inline-array bsp-node)                   :offset-assert 120)
-   (level               level                                     :offset-assert 124)
-   (unk-data-2          uint32                        5           :offset-assert 128)
-   (boxes               box8s-array                               :offset-assert 148)
-   (unk-data-3          uint32                                    :offset-assert 152)
-   (ambients            drawable-inline-array-ambient             :offset-assert 156)
-   (unk-data-4          float                                     :offset-assert 160)
-   (unk-data-5          float                                     :offset-assert 164)
-   (adgifs              adgif-shader-array                        :offset-assert 168)
-   (unk-data-6          pointer                                   :offset-assert 172)
-   (unk-data-7          pointer                                   :offset-assert 176)
-   (unk-data-8          uint32                        55          :offset-assert 180)
+  ((info                   file-info                        :offset          4)
+   (all-visible-list       (pointer uint16)                 :offset-assert  32)
+   (visible-list-length    int32                            :offset-assert  36)
+   (drawable-trees         drawable-tree-array              :offset-assert  40)
+   (pat                    pointer                          :offset-assert  44)
+   (pat-length             int32                            :offset-assert  48)
+   (texture-remap-table    (pointer uint64)                 :offset-assert  52)
+   (texture-remap-table-len int32                           :offset-assert  56)
+   (unk-data-1             pointer                          :offset-assert  60)
+   (unk-data-1-len         int32                            :offset-assert  64)
+   (unk-zero-0             basic                            :offset-assert  68)
+   (name                   symbol                           :offset-assert  72)
+   (nickname               symbol                           :offset-assert  76)
+   (vis-info               level-vis-info                8  :offset-assert  80)
+   (actors                 drawable-inline-array-actor      :offset-assert 112)
+   (cameras                (array entity-camera)            :offset-assert 116)
+   (nodes                  (inline-array bsp-node)          :offset-assert 120)
+   (level                  level                            :offset-assert 124)
+   (current-leaf-idx       uint16                           :offset-assert 128)
+   (unk-data-2             uint16                        9  :offset-assert 130)
+   (boxes                  box8s-array                      :offset-assert 148)
+   (current-bsp-back-flags uint32                           :offset-assert 152)
+   (ambients               drawable-inline-array-ambient    :offset-assert 156)
+   (unk-data-4             float                            :offset-assert 160)
+   (unk-data-5             float                            :offset-assert 164)
+   (adgifs                 adgif-shader-array               :offset-assert 168)
+   (unk-data-6             pointer                          :offset-assert 172)
+   (unk-data-7             pointer                          :offset-assert 176)
+   (unk-data-8             uint32                        55 :offset-assert 180)
    )
   :method-count-assert 20
   :size-assert         #x190
@@ -66,6 +76,7 @@
   )
 
 ;; seems to be unused?
+;; In practice, a normal bsp-header is a game-level.
 (deftype game-level (basic)
   ((master-bsp basic  :offset-assert 4)
    )
@@ -102,6 +113,7 @@
   )
 
 (defun-debug inspect-bsp-tree ((arg0 bsp-header) (arg1 bsp-node))
+  "Recursively print all nodes in a bsp tree. This makes a huge mess"
   (cond
    ((zero? arg1)
     )
@@ -127,6 +139,7 @@
 
 (define-extern map-bsp-tree (function (function bsp-node none) bsp-header bsp-node none))
 (defun map-bsp-tree ((arg0 (function bsp-node none)) (arg1 bsp-header) (arg2 bsp-node))
+  "Recursively apply arg0 to all nodes in the bsp tree"
   (cond
    ((zero? arg2)
     )
@@ -169,3 +182,7 @@
   :size-assert         #x80
   :flag-assert         #x900000080
   )
+
+;; offsets of stuff in the scratchpad during bsp draw.
+(defconstant TERRAIN_BSP_SCRATCHPAD #x0)
+(defconstant VISIBLE_LIST_SCRATCHPAD #x38b0)

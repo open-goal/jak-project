@@ -253,16 +253,16 @@ void init_opcode_info() {
       .dst(FT::RD, DT::COP0);  // Move to System Control Coprocessor
   def(IK::MFC0, "mfc0")
       .dst_gpr(FT::RT)
-      .src(FT::RD, DT::COP0);                 // Move from System Control Coprocessor
-  def(IK::MTDAB, "mtdab").src_gpr(FT::RT);    // Move to Data Address Breakpoint Register
-  def(IK::MTDABM, "mtdabm").src_gpr(FT::RT);  // Move to Data Address Breakpoint Mask Register
-  drd(def(IK::MFHI, "mfhi"));                 // Move from HI Register
-  drd(def(IK::MFLO, "mflo"));                 // Move from LO Register
-  def(IK::MTLO1, "mtlo1").src_gpr(FT::RS);    // Move to LO1 Register
-  drd(def(IK::MFLO1, "mflo1"));               // Move from LO1 Register
-  drd(def(IK::PMFHL_UW, "pmfhl.uw"));         // Parallel Move From HI/LO Register
-  drd(def(IK::PMFHL_LW, "pmfhl.lw"));
-  drd(def(IK::PMFHL_LH, "pmfhl.lh"));
+      .src(FT::RD, DT::COP0);                   // Move from System Control Coprocessor
+  def(IK::MTDAB, "mtdab").src_gpr(FT::RT);      // Move to Data Address Breakpoint Register
+  def(IK::MTDABM, "mtdabm").src_gpr(FT::RT);    // Move to Data Address Breakpoint Mask Register
+  drd(def(IK::MFHI, "mfhi"));                   // Move from HI Register
+  drd(def(IK::MFLO, "mflo"));                   // Move from LO Register
+  def(IK::MTLO1, "mtlo1").src_gpr(FT::RS);      // Move to LO1 Register
+  drd(def(IK::MFLO1, "mflo1"));                 // Move from LO1 Register
+  drd(def(IK::PMFHL_UW, "pmfhl.uw").gpr128());  // Parallel Move From HI/LO Register
+  drd(def(IK::PMFHL_LW, "pmfhl.lw").gpr128());
+  drd(def(IK::PMFHL_LH, "pmfhl.lh").gpr128());
   def(IK::MFPC, "mfpc").dst_gpr(FT::RT).src(FT::PCR, DT::PCR);  // Move from Performance Counter
   def(IK::MTPC, "mtpc").src_gpr(FT::RT).dst(FT::PCR, DT::PCR);  // Move to Performance Counter
 
@@ -279,45 +279,48 @@ void init_opcode_info() {
   def(IK::ERET, "eret");     // Exception Return
   def(IK::EI, "ei");         // Enable Interrupt
 
-  drd_srs_srt(def(IK::PPACB, "ppacb"));    // Parallel Pack to Byte
-  drd_srs_srt(def(IK::PPACH, "ppach"));    // Parallel Pack to Halfword
-  drd_srs_srt(def(IK::PPACW, "ppacw"));    // Parallel Pack to Word
-  drd_srs_srt(def(IK::PADDH, "paddh"));    // Parallel Add Halfword
-  drd_srs_srt(def(IK::PADDW, "paddw"));    // Parallel Add Word
-  drd_srs_srt(def(IK::PSUBW, "psubw"));    // Parallel Subtract Word
-  drd_srs_srt(def(IK::PMINH, "pminh"));    // Parallel Minimize Halfword
-  drd_srs_srt(def(IK::PMINW, "pminw"));    // Parallel Minimize Word
-  drd_srs_srt(def(IK::PMAXH, "pmaxh"));    // Parallel Maximize Halfword
-  drd_srs_srt(def(IK::PMAXW, "pmaxw"));    // Parallel Maximize Word
-  drd_srs_srt(def(IK::PEXTLB, "pextlb"));  // Parallel Extend Lower from Byte
-  drd_srs_srt(def(IK::PEXTLH, "pextlh"));  // Parallel Extend Lower from Halfword
-  drd_srs_srt(def(IK::PEXTLW, "pextlw"));  // Parallel Extend Lower from Word
-  drd_srs_srt(def(IK::PCGTW, "pcgtw"));    // Parallel Compare for Greater Than Word
-  drd_srs_srt(def(IK::PCEQB, "pceqb"));    // Parallel Compare for Equal Byte
-  drd_srs_srt(def(IK::PCEQW, "pceqw"));    // Parallel Compare for Equal Word
-  drd_srs_srt(def(IK::PEXTUB, "pextub"));  // Parallel Extend Upper from Byte
-  drd_srs_srt(def(IK::PEXTUH, "pextuh"));  // Parallel Extend Upper from Halfword
-  drd_srs_srt(def(IK::PEXTUW, "pextuw"));  // Parallel Extend Upper from Word
-  drd_srs_srt(def(IK::PCPYUD, "pcpyud"));  // Parallel Copy Upper Doubleword
-  drd_srs_srt(def(IK::PCPYLD, "pcpyld"));  // Parallel Copy Lower Doubleword
-  drd_srs_srt(def(IK::PMADDH, "pmaddh"));  // Parallel Multiply-Add Halfword
-  drd_srs_srt(def(IK::PMULTH, "pmulth"));  // Parallel Multiply Halfword
-  drd_srs_srt(def(IK::PEXEW, "pexew"));    // Parallel Exchange Even Word
-  drd_srs_srt(def(IK::PINTEH, "pinteh"));  // Parallel Interleave Even Halfword
-  drd_srs_srt(def(IK::PAND, "pand"));      // Parallel And
-  drd_srs_srt(def(IK::POR, "por"));        // Parallel Or
-  drd_srs_srt(def(IK::PNOR, "pnor"));      // Parallel Not Or
+  drd_srs_srt(def(IK::PPACB, "ppacb").gpr128());    // Parallel Pack to Byte
+  drd_srs_srt(def(IK::PPACH, "ppach").gpr128());    // Parallel Pack to Halfword
+  drd_srs_srt(def(IK::PPACW, "ppacw").gpr128());    // Parallel Pack to Word
+  drd_srs_srt(def(IK::PADDH, "paddh").gpr128());    // Parallel Add Halfword
+  drd_srs_srt(def(IK::PADDW, "paddw").gpr128());    // Parallel Add Word
+  drd_srs_srt(def(IK::PSUBW, "psubw").gpr128());    // Parallel Subtract Word
+  drd_srs_srt(def(IK::PMINH, "pminh").gpr128());    // Parallel Minimize Halfword
+  drd_srs_srt(def(IK::PMINW, "pminw").gpr128());    // Parallel Minimize Word
+  drd_srs_srt(def(IK::PMAXH, "pmaxh").gpr128());    // Parallel Maximize Halfword
+  drd_srs_srt(def(IK::PMAXW, "pmaxw").gpr128());    // Parallel Maximize Word
+  drd_srs_srt(def(IK::PEXTLB, "pextlb").gpr128());  // Parallel Extend Lower from Byte
+  drd_srs_srt(def(IK::PEXTLH, "pextlh").gpr128());  // Parallel Extend Lower from Halfword
+  drd_srs_srt(def(IK::PEXTLW, "pextlw").gpr128());  // Parallel Extend Lower from Word
+  drd_srs_srt(def(IK::PCGTW, "pcgtw").gpr128());    // Parallel Compare for Greater Than Word
+  drd_srs_srt(def(IK::PCEQB, "pceqb").gpr128());    // Parallel Compare for Equal Byte
+  drd_srs_srt(def(IK::PCEQW, "pceqw").gpr128());    // Parallel Compare for Equal Word
+  drd_srs_srt(def(IK::PEXTUB, "pextub").gpr128());  // Parallel Extend Upper from Byte
+  drd_srs_srt(def(IK::PEXTUH, "pextuh").gpr128());  // Parallel Extend Upper from Halfword
+  drd_srs_srt(def(IK::PEXTUW, "pextuw").gpr128());  // Parallel Extend Upper from Word
+  drd_srs_srt(def(IK::PCPYUD, "pcpyud").gpr128());  // Parallel Copy Upper Doubleword
+  drd_srs_srt(def(IK::PCPYLD, "pcpyld").gpr128());  // Parallel Copy Lower Doubleword
+  drd_srs_srt(def(IK::PMADDH, "pmaddh").gpr128());  // Parallel Multiply-Add Halfword
+  drd_srs_srt(def(IK::PMULTH, "pmulth").gpr128());  // Parallel Multiply Halfword
+  drd_srs_srt(def(IK::PEXEW, "pexew").gpr128());    // Parallel Exchange Even Word
+  drd_srs_srt(def(IK::PINTEH, "pinteh").gpr128());  // Parallel Interleave Even Halfword
+  drd_srs_srt(def(IK::PAND, "pand").gpr128());      // Parallel And
+  drd_srs_srt(def(IK::POR, "por").gpr128());        // Parallel Or
+  drd_srs_srt(def(IK::PNOR, "pnor").gpr128());      // Parallel Not Or
 
-  drd_srt_ssa(def(IK::PSLLW, "psllw"));  // Parallel Shift Left Logical Word
-  drd_srt_ssa(def(IK::PSLLH, "psllh"));  // Parallel Shift Left Logical Halfword
-  drd_srt_ssa(def(IK::PSRAW, "psraw"));  // Parallel Shift Right Arithmetic Word
-  drd_srt_ssa(def(IK::PSRAH, "psrah"));  // Parallel Shift Right Arithmetic Halfword
-  drd_srt_ssa(def(IK::PSRLH, "psrlh"));  // Parallel Shift Right Logical Halfword
+  drd_srt_ssa(def(IK::PSLLW, "psllw").gpr128());  // Parallel Shift Left Logical Word
+  drd_srt_ssa(def(IK::PSLLH, "psllh").gpr128());  // Parallel Shift Left Logical Halfword
+  drd_srt_ssa(def(IK::PSRAW, "psraw").gpr128());  // Parallel Shift Right Arithmetic Word
+  drd_srt_ssa(def(IK::PSRAH, "psrah").gpr128());  // Parallel Shift Right Arithmetic Halfword
+  drd_srt_ssa(def(IK::PSRLH, "psrlh").gpr128());  // Parallel Shift Right Logical Halfword
 
-  def(IK::PLZCW, "plzcw").dst_gpr(FT::RD).src_gpr(FT::RS);    // Parallel Leading Zero Count Word
-  def(IK::PABSW, "pabsw").dst_gpr(FT::RD).src_gpr(FT::RT);    // Parallel Absolute Word
-  def(IK::PROT3W, "prot3w").dst_gpr(FT::RD).src_gpr(FT::RT);  // Parallel Rotate 3 Word
-  def(IK::PCPYH, "pcpyh").dst_gpr(FT::RD).src_gpr(FT::RT);    // Parallel Copy Halfword
+  def(IK::PLZCW, "plzcw")
+      .dst_gpr(FT::RD)
+      .src_gpr(FT::RS)
+      .gpr128();  // Parallel Leading Zero Count Word
+  def(IK::PABSW, "pabsw").dst_gpr(FT::RD).src_gpr(FT::RT).gpr128();    // Parallel Absolute Word
+  def(IK::PROT3W, "prot3w").dst_gpr(FT::RD).src_gpr(FT::RT).gpr128();  // Parallel Rotate 3 Word
+  def(IK::PCPYH, "pcpyh").dst_gpr(FT::RD).src_gpr(FT::RT).gpr128();    // Parallel Copy Halfword
 
   // COP1
 
@@ -436,7 +439,7 @@ void init_opcode_info() {
   def(IK::VIADDI, "viaddi").dst_vi(FT::FT).src_vi(FT::FS).src(FT::IMM5, DT::IMM);
 
   def(IK::QMFC2, "qmfc2").src(FT::IL, DT::IL).dst_gpr(FT::RT).src_vf(FT::FS);
-  def(IK::QMTC2, "qmtc2").src(FT::IL, DT::IL).src_gpr(FT::RT).dst_vf(FT::FS);
+  def(IK::QMTC2, "qmtc2").src(FT::IL, DT::IL).dst_vf(FT::FS).src_gpr(FT::RT);
   def(IK::VSQRT, "vsqrt").dst(FT::ZERO, DT::VU_Q).src_vf(FT::FT).src(FT::FT_F, DT::VF_F);
   def(IK::VRXOR, "vrxor").src(FT::BC, DT::BC).src_vf(FT::FS);
   def(IK::VRNEXT, "vrnext").src(FT::DEST, DT::DEST).dst_vf(FT::FT);
@@ -517,5 +520,10 @@ OpcodeInfo& OpcodeInfo::dst_vf(FieldType field) {
 
 OpcodeInfo& OpcodeInfo::dst_vi(FieldType field) {
   return dst(field, DT::VI);
+}
+
+OpcodeInfo& OpcodeInfo::gpr128() {
+  gpr_128 = true;
+  return *this;
 }
 }  // namespace decompiler

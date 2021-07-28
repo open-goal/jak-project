@@ -538,6 +538,10 @@ bool ControlFlowGraph::is_until_loop(CfgVtx* b1, CfgVtx* b2) {
   if (!b1 || !b2)
     return false;
 
+  if (b2->end_branch.asm_branch) {
+    return false;
+  }
+
   // check next and prev
   if (b1->next != b2)
     return false;
@@ -790,7 +794,7 @@ bool ControlFlowGraph::find_until1_loop() {
   bool found = false;
 
   for_each_top_level_vtx([&](CfgVtx* vtx) {
-    if (vtx->succ_branch == vtx && vtx->succ_ft) {
+    if (vtx->succ_branch == vtx && vtx->succ_ft && !vtx->end_branch.asm_branch) {
       auto loop = alloc<UntilLoop_single>();
       loop->block = vtx;
       loop->pred = vtx->pred;

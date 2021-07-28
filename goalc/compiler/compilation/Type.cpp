@@ -3,6 +3,7 @@
 #include "common/type_system/defenum.h"
 #include "common/type_system/deftype.h"
 #include "goalc/emitter/CallingConvention.h"
+#include "common/util/math_util.h"
 
 namespace {
 
@@ -1022,6 +1023,9 @@ Val* Compiler::compile_stack_new(const goos::Object& form,
   auto type_of_object = parse_typespec(unquote(type));
   auto fe = get_parent_env_of_type<FunctionEnv>(env);
   if (type_of_object == TypeSpec("inline-array") || type_of_object == TypeSpec("array")) {
+    if (call_constructor) {
+      throw_compiler_error(form, "Constructing stack arrays is not yet supported");
+    }
     bool is_inline = type_of_object == TypeSpec("inline-array");
     auto elt_type = quoted_sym_as_string(pair_car(*rest));
     rest = &pair_cdr(*rest);
@@ -1050,16 +1054,22 @@ Val* Compiler::compile_stack_new(const goos::Object& form,
     if (!info.can_deref) {
       throw_compiler_error(form, "Cannot make an {} of {}\n", type_of_object.print(), ts.print());
     }
-
+    auto type_info = m_ts.lookup_type(ts.get_single_arg());
     if (!m_ts.lookup_type(elt_type)->is_reference()) {
       // not a reference type
       int size_in_bytes = info.stride * constant_count;
-      auto addr = fe->allocate_stack_variable(ts, size_in_bytes);
+      auto addr = fe->allocate_aligned_stack_variable(ts, size_in_bytes,
+                                                      type_info->get_in_memory_alignment());
       return addr;
     }
-    // todo
-    throw_compiler_error(form, "Static array of type {} is not yet supported.", ts.print());
-    return get_none();
+
+    int stride =
+        align(type_info->get_size_in_memory(), type_info->get_inline_array_stride_alignment());
+    assert(stride == info.stride);
+
+    int size_in_bytes = info.stride * constant_count;
+    auto addr = fe->allocate_aligned_stack_variable(ts, size_in_bytes, stride);
+    return addr;
   } else {
     auto ti = m_ts.lookup_type(type_of_object);
 

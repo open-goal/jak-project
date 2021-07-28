@@ -200,6 +200,7 @@ TP_Type SimpleExpression::get_type(const TypeState& input,
       return TP_Type::make_from_ts("uint");
     case Kind::VECTOR_PLUS:
     case Kind::VECTOR_MINUS:
+    case Kind::VECTOR_CROSS:
       return TP_Type::make_from_ts("vector");
     case Kind::VECTOR_FLOAT_PRODUCT:
       return TP_Type::make_from_ts("vector");
@@ -260,7 +261,8 @@ TP_Type get_stack_type_at_constant_offset(int offset,
 
     if (offset == structure.hint.stack_offset) {
       // special case just getting the variable
-      if (structure.hint.container_type == StackStructureHint::ContainerType::NONE) {
+      if (structure.hint.container_type == StackStructureHint::ContainerType::NONE ||
+          structure.hint.container_type == StackStructureHint::ContainerType::INLINE_ARRAY) {
         return TP_Type::make_from_ts(coerce_to_reg_type(structure.ref_type));
       }
     }
@@ -1244,8 +1246,11 @@ void FunctionEndOp::mark_function_as_no_return_value() {
 }
 
 TypeState AsmBranchOp::propagate_types_internal(const TypeState& input,
-                                                const Env&,
-                                                DecompilerTypeSystem&) {
+                                                const Env& env,
+                                                DecompilerTypeSystem& dts) {
+  if (m_branch_delay) {
+    return m_branch_delay->propagate_types(input, env, dts);
+  }
   // for now, just make everything uint
   TypeState output = input;
   for (auto x : m_write_regs) {
@@ -1253,6 +1258,7 @@ TypeState AsmBranchOp::propagate_types_internal(const TypeState& input,
       output.get(x) = TP_Type::make_from_ts("uint");
     }
   }
+
   return output;
 }
 
