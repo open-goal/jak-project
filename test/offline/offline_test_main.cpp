@@ -76,7 +76,7 @@ const std::unordered_set<std::string> g_functions_expected_to_reject = {
     "(method 15 sync-info-paused)",  // needs *res-static-buf*
 
     // camera
-    "slave-set-rotation!", "v-slrp2!", "v-slrp3!", // vector-dot involving the stack
+    "slave-set-rotation!", "v-slrp2!", "v-slrp3!",  // vector-dot involving the stack
 
     // collide-mesh-h
     "(method 11 collide-mesh-cache)",  // asm
