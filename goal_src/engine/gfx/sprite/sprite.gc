@@ -484,21 +484,15 @@
       ((zero? matrix-mode)
 
        ;; upload to VU1 memory setup
-       (let* ((a1-1 dma-buff)
-              (pkt1 (the-as dma-packet (-> a1-1 base)))
-              )
-         (set! (-> pkt1 dma) (new 'static 'dma-tag :qwc #x5 :id (dma-tag-id cnt)))
-         (set! (-> pkt1 vif0) (new 'static 'vif-tag :imm #x404 :cmd (vif-cmd stcycl)))
-         (set! (-> pkt1 vif1) (new 'static 'vif-tag
-                                   :num #x5
-                                   :cmd (vif-cmd unpack-v4-32)
-                                   :imm (shr (shl count 54) 54)
-                                   )
-               )
-         (set! (-> a1-1 base) (&+ (the-as pointer pkt1) 16))
-         )
+       (dma-buffer-add-cnt-vif2 dma-buff 5
+                  (new 'static 'vif-tag :cmd (vif-cmd stcycl)
+                                        :imm (new 'static 'vif-stcycl-imm :cl 4 :wl 4))
+                  (new 'static 'vif-tag :cmd (vif-cmd unpack-v4-32) :num 5 ;; matrix + qword
+                                        :imm (new 'static 'vif-unpack-imm :addr count))
+                  )
 
        ;; sent the camera-temp matrix
+       ;; these weren't done through the usual macros which is strange
        (let* ((mtx (the-as matrix (-> dma-buff base)))
               (t1-0 (-> *math-camera* camera-temp))
               (a2-4 (-> t1-0 vector 0 quad))
@@ -524,19 +518,13 @@
        )
 
       ((= matrix-mode 1)
-       (let* ((a1-10 dma-buff)
-              (pkt2 (the-as dma-packet (-> a1-10 base)))
-              )
-         (set! (-> pkt2 dma) (new 'static 'dma-tag :qwc #x50 :id (dma-tag-id cnt)))
-         (set! (-> pkt2 vif0) (new 'static 'vif-tag :imm #x404 :cmd (vif-cmd stcycl)))
-         (set! (-> pkt2 vif1) (new 'static 'vif-tag
-                                   :num #x50 ;; this looks wrong...
-                                   :cmd (vif-cmd unpack-v4-32)
-                                   :imm (shr (shl count 54) 54)
-                                   )
-               )
-         (set! (-> a1-10 base) (&+ (the-as pointer pkt2) 16))
-         )
+       (dma-buffer-add-cnt-vif2 dma-buff 80
+                  (new 'static 'vif-tag :cmd (vif-cmd stcycl)
+                                        :imm (new 'static 'vif-stcycl-imm :cl 4 :wl 4))
+                  (new 'static 'vif-tag :cmd (vif-cmd unpack-v4-32) :num 80 ;; matrix + qword + 75 qword table
+                                        :imm (new 'static 'vif-unpack-imm :addr count))
+                  )
+
        (let ((mtx2 (the-as matrix (-> dma-buff base)))
              (f1-0 (-> *math-camera* perspective vector 0 x))
              (f2-0 (-> *math-camera* perspective vector 1 y))
@@ -582,14 +570,12 @@
 (defun sprite-add-frame-data ((dma-buff dma-buffer) (tbp-offset uint))
   "Upload the frame data."
   (let ((s5-0 41)) ;; qwc of frame data.
-    (let* ((v1-0 dma-buff)
-           (pkt (the-as dma-packet (-> v1-0 base)))
-           )
-      (set! (-> pkt dma) (new 'static 'dma-tag :id (dma-tag-id cnt) :qwc s5-0))
-      (set! (-> pkt vif0) (new 'static 'vif-tag :imm #x404 :cmd (vif-cmd stcycl)))
-      (set! (-> pkt vif1) (new 'static 'vif-tag :imm #x3d4 :cmd (vif-cmd unpack-v4-32) :num s5-0))
-      (set! (-> v1-0 base) (&+ (the-as pointer pkt) 16))
-      )
+    (dma-buffer-add-cnt-vif2 dma-buff s5-0
+               (new 'static 'vif-tag :cmd (vif-cmd stcycl)
+                                     :imm (new 'static 'vif-stcycl-imm :cl 4 :wl 4))
+               (new 'static 'vif-tag :cmd (vif-cmd unpack-v4-32) :num s5-0
+                                     :imm (new 'static 'vif-unpack-imm :addr 980))
+               )
     ;; setup frame data directly in the dma buffer.
     (sprite-setup-frame-data
      (the-as sprite-frame-data (-> dma-buff base))
