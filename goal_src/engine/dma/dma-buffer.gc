@@ -186,6 +186,21 @@
     )
   )
 
+(defmacro dma-buffer-add-ret (buf)
+  "Add a dma-packet to a dma-buffer. This packet simply does a DMA 'return' "
+
+  (with-gensyms (pkt)
+    `(dma-buffer-add-base-type ,buf ,pkt dma-packet
+        
+        (set! (-> ,pkt dma) (new 'static 'dma-tag :id (dma-tag-id ret) :qwc 0))
+            
+        (set! (-> ,pkt vif0) (new 'static 'vif-tag :cmd (vif-cmd nop)))
+        (set! (-> ,pkt vif1) (new 'static 'vif-tag :cmd (vif-cmd nop)))
+        
+        )
+    )
+  )
+
 (defmacro dma-buffer-add-gif-tag (buf giftag gifregs)
   "Add a giftag to a dma-buffer."
   
