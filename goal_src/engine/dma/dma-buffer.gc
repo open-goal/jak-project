@@ -119,77 +119,6 @@
   (shr (+ (&- (-> arg0 end) (-> arg0 base)) 15) 4)
   )
 
-(defun dma-buffer-add-vu-function ((dma-buf dma-buffer) (vu-func vu-function) (flush-path-3 int))
-  "Add DMA tags to load the given VU function. The destination in vu instruction memory
-   is specific inside the vu-function. This does NOT copy the vu-function into the buffer,
-   but creates a reference to the existing VU function."
-
-  ;; The first 4 bytes of a vu-function object's data are discarded because they aren't aligned.
-  (let ((func-ptr (the-as pointer (&-> vu-func data 4)))
-        (qlen (-> vu-func qlength)) ;; number of quadwords
-        (origin (-> vu-func origin)) ;; destination address in VU instruction memory.
-        )
-    ;; loop until whole program is transferred.
-    (while (> qlen 0)
-      ;; transfer up to 127 quadwords at a single time.
-      (let ((qwc-now (min 127 qlen)))
-        ;; grab the next dma-packet:
-        (let* ((dma-buf-2 dma-buf)
-               (buf-ptr (the-as dma-packet (-> dma-buf-2 base)))
-               )
-          ;; Set up DMA to transfer the data from the vu-function
-          ;; ref id = reference to data outside of the buffer.
-          (set! (-> buf-ptr dma)
-                (new 'static 'dma-tag :id (dma-tag-id ref) :addr (the-as int func-ptr) :qwc qwc-now)
-                )
-          ;; Set up first vifcode as a flush.
-          (set! (-> buf-ptr vif0)
-                (new 'static 'vif-tag :cmd (if (zero? flush-path-3) (vif-cmd flushe) (vif-cmd flusha)))
-                )
-          ;; next vifcode, transfer microprogram. This is in 64-bit units (VU instructions)
-          (set! (-> buf-ptr vif1)
-                (new 'static 'vif-tag :cmd (vif-cmd mpg) :num (shl qwc-now 1) :imm origin)
-                )
-          (set! (-> dma-buf-2 base) (&+ (the-as pointer buf-ptr) 16))
-          )
-        ;; increment by qwc-now quadwords.
-        (&+! func-ptr (shl qwc-now 4))
-        (set! qlen (- qlen qwc-now))
-        (+! origin (shl qwc-now 1))
-        )
-      )
-    )
-  #f
-  )
-
-
-(defun dma-buffer-send ((chan dma-bank) (buf dma-buffer))
-  "Send the DMA buffer! DOES NOT TRANSFER TAG, you probably want dma-buffer-send-chain instead."
-  (when (< (-> buf allocated-length)
-           (&- (-> buf base) (-> buf data))
-           )
-    ;; oops. we overflowed the DMA buffer. die.
-    (segfault)
-    )
-  (dma-send chan
-   (the-as uint (-> buf data))
-   (the-as uint (dma-buffer-length buf))
-   )
-  )
-
-(defun dma-buffer-send-chain ((chan dma-bank-source) (buf dma-buffer))
-  "Send the DMA buffer! Sends the tags"
-  (when (< (-> buf allocated-length)
-           (&- (-> buf base) (-> buf data))
-           )
-    ;; oops. we overflowed the DMA buffer. die.
-    (segfault)
-    )
-  (dma-send-chain chan
-   (the-as uint (-> buf data))
-   )
-  )
-
 
 (defmacro dma-buffer-add-base-type (buf pkt dma-type &rest body)
   "Base macro for adding stuff to a dma-buffer. Don't use this directly!"
@@ -271,13 +200,11 @@
     )
   )
 
-
 (defmacro dma-buffer-add-uint64 (buf &rest body)
   "Add 64-bit words to a dma-buffer. See dma-buffer-add-base-data"
   
   `(dma-buffer-add-base-data ,buf uint64 ,body)
   )
-
 
 (defmacro dma-buffer-add-uint128 (buf &rest body)
   "Add 128-bit words to a dma-buffer. See dma-buffer-add-base-data"
@@ -285,8 +212,68 @@
   `(dma-buffer-add-base-data ,buf uint128 ,body)
   )
 
+(defun dma-buffer-add-vu-function ((dma-buf dma-buffer) (vu-func vu-function) (flush-path-3 int))
+  "Add DMA tags to load the given VU function. The destination in vu instruction memory
+   is specific inside the vu-function. This does NOT copy the vu-function into the buffer,
+   but creates a reference to the existing VU function."
+
+  ;; The first 4 bytes of a vu-function object's data are discarded because they aren't aligned.
+  (let ((func-ptr (the-as pointer (&-> vu-func data 4)))
+        (qlen (-> vu-func qlength)) ;; number of quadwords
+        (origin (-> vu-func origin)) ;; destination address in VU instruction memory.
+        )
+    ;; loop until whole program is transferred.
+    (while (> qlen 0)
+      ;; transfer up to 127 quadwords at a single time.
+      (let ((qwc-now (min 127 qlen)))
+        ;; Set up DMA to transfer the data from the vu-function
+        ;; ref id = reference to data outside of the buffer.
+        (dma-buffer-add-ref-vif2 dma-buf qwc-now func-ptr
+                    ;; Set up first vifcode as a flush.
+                    (new 'static 'vif-tag :cmd (if (zero? flush-path-3) (vif-cmd flushe) (vif-cmd flusha)))
+                    ;; next vifcode, transfer microprogram. This is in 64-bit units (VU instructions)
+                    (new 'static 'vif-tag :cmd (vif-cmd mpg) :num (shl qwc-now 1) :imm origin)
+                    )
+        ;; increment by qwc-now quadwords.
+        (&+! func-ptr (shl qwc-now 4))
+        (set! qlen (- qlen qwc-now))
+        (+! origin (shl qwc-now 1))
+        )
+      )
+    )
+  #f
+  )
+
+
+(defun dma-buffer-send ((chan dma-bank) (buf dma-buffer))
+  "Send the DMA buffer! DOES NOT TRANSFER TAG, you probably want dma-buffer-send-chain instead."
+  (when (< (-> buf allocated-length)
+           (&- (-> buf base) (-> buf data))
+           )
+    ;; oops. we overflowed the DMA buffer. die.
+    (segfault)
+    )
+  (dma-send chan
+   (the-as uint (-> buf data))
+   (the-as uint (dma-buffer-length buf))
+   )
+  )
+
+(defun dma-buffer-send-chain ((chan dma-bank-source) (buf dma-buffer))
+  "Send the DMA buffer! Sends the tags"
+  (when (< (-> buf allocated-length)
+           (&- (-> buf base) (-> buf data))
+           )
+    ;; oops. we overflowed the DMA buffer. die.
+    (segfault)
+    )
+  (dma-send-chain chan
+   (the-as uint (-> buf data))
+   )
+  )
+
 (defmacro dma-buffer-add-gs-set-flusha (buf &rest reg-list)
-  "Add a gif cnt dma packet to a dma-buffer for setting GS registers.
+  "Add a gif cnt dma packet to a dma-buffer for setting GS registers. Up to 16 can be set at once.
    The packet runs the flusha command which waits for GIF transfer to end and VU1 microprogram to stop.
    reg-list is a list of pairs where the car is the register name and the cadr is the value to be set for that register."
   
@@ -316,7 +303,7 @@
   )
 
 (defmacro dma-buffer-add-gs-set (buf &rest reg-list)
-  "Add a gif cnt dma packet to a dma-buffer for setting GS registers.
+  "Add a gif cnt dma packet to a dma-buffer for setting GS registers. Up to 16 can be set at once.
    reg-list is a list of pairs where the car is the register name and the cadr is the value to be set for that register."
   
   (let ((reg-count (length reg-list))
