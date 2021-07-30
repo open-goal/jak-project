@@ -1935,16 +1935,11 @@ TEST_F(FormRegressionTest, ExprMemOr) {
   std::string type = "(function pointer pointer int pointer)";
 
   std::string expected =
-      "(let\n"
-      "  ((v0-0 arg0))\n"
-      "  (dotimes\n"
-      "   (v1-0 arg2)\n"
-      "   (set!\n"
+      "(let ((v0-0 arg0))\n"
+      "  (dotimes (v1-0 arg2)\n"
+      "   (logior!\n"
       "    (-> (the-as (pointer uint8) arg0))\n"
-      "    (logior\n"
-      "     (-> (the-as (pointer uint8) arg0))\n"
-      "     (-> (the-as (pointer uint8) arg1))\n"
-      "     )\n"
+      "    (-> (the-as (pointer uint8) arg1))\n"
       "    )\n"
       "   (&+! arg0 1)\n"
       "   (&+! arg1 1)\n"
@@ -2904,10 +2899,7 @@ TEST_F(FormRegressionTest, AshPropagation) {
   std::string type = "(function bit-array int int)";
   std::string expected =
       "(begin\n"
-      "  (set!\n"
-      "   (-> arg0 bytes (/ arg1 8))\n"
-      "   (logior (-> arg0 bytes (/ arg1 8)) (the-as uint (ash 1 (logand arg1 7))))\n"
-      "   )\n"
+      "  (logior! (-> arg0 bytes (/ arg1 8)) (ash 1 (logand arg1 7)))\n"
       "  0\n"
       "  )";
   test_with_expr(func, type, expected);
@@ -2942,7 +2934,7 @@ TEST_F(FormRegressionTest, AshPropagation2) {
   std::string type = "(function bit-array int symbol)";
   std::string expected =
       "(let ((v1-2 (-> arg0 bytes (/ arg1 8))))\n"
-      "  (nonzero? (logand v1-2 (the-as uint (ash 1 (logand arg1 7)))))\n"
+      "  (nonzero? (logand v1-2 (ash 1 (logand arg1 7))))\n"
       "  )";
   test_with_expr(func, type, expected);
 }

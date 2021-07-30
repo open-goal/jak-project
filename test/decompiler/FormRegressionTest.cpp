@@ -8,6 +8,7 @@
 #include "decompiler/analysis/final_output.h"
 #include "decompiler/analysis/stack_spill.h"
 #include "decompiler/analysis/insert_lets.h"
+#include "decompiler/analysis/inline_asm_rewrite.h"
 #include "decompiler/util/config_parsers.h"
 #include "common/goos/PrettyPrinter.h"
 #include "common/util/json_util.h"
@@ -164,7 +165,7 @@ std::unique_ptr<FormRegressionTest::TestData> FormRegressionTest::make_function(
 
   // convert instruction to atomic ops
   DecompWarnings warnings;
-  auto ops = convert_function_to_atomic_ops(test->func, program.labels, warnings, false);
+  auto ops = convert_function_to_atomic_ops(test->func, program.labels, warnings, false, {});
   test->func.ir2.atomic_ops = std::make_shared<FunctionAtomicOps>(std::move(ops));
   test->func.ir2.atomic_ops_succeeded = true;
   test->func.ir2.env.set_end_var(test->func.ir2.atomic_ops->end_op().return_var());
@@ -219,6 +220,10 @@ std::unique_ptr<FormRegressionTest::TestData> FormRegressionTest::make_function(
       if (!success) {
         return nullptr;
       }
+
+      rewrite_inline_asm_instructions(test->func.ir2.top_form, *test->func.ir2.form_pool,
+                                      test->func, *dts);
+
       // move variables into lets.
       insert_lets(test->func, test->func.ir2.env, *test->func.ir2.form_pool,
                   test->func.ir2.top_form);

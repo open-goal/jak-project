@@ -26,5 +26,6 @@ class InstructionParser {
 
  private:
   std::unordered_map<std::string, int> m_opcode_name_lookup;
+  std::unordered_map<std::string, int> m_opcode_name_broadcast_lookup;
 };
 }  // namespace decompiler

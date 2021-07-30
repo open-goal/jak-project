@@ -71,7 +71,7 @@
    (bsp-mask          uint64   :offset-assert  80)
    (bsphere           sphere   :offset-assert  88)
    (buzzer            int32    :offset-assert  92)
-   (bottom-height     float    :offset-assert  96)
+   (bottom-height     meters   :offset-assert  96)
    (run-packages      pair     :offset-assert 100)
    (prev-level        basic    :offset-assert 104)
    (next-level        basic    :offset-assert 108)
@@ -158,7 +158,7 @@
    (ambient                   entity-ambient-data-array           :offset-assert 288)
    (closest-object            float                     9         :offset-assert 292)
    (upload-size               int32                     9         :offset-assert 328)
-   (level-distance            float                               :offset-assert 364)
+   (level-distance            meters                              :offset-assert 364)
    (inside-sphere?            symbol                              :offset-assert 368)
    (inside-boxes?             symbol                              :offset-assert 372)
    (display?                  symbol                              :offset-assert 376)
@@ -173,7 +173,7 @@
    (vis-self-index            int32                               :offset-assert 440)
    (vis-adj-index             int32                               :offset-assert 444)
    (vis-buffer                uint8                     2048      :offset-assert 448)
-   (mem-usage-block           basic                               :offset-assert 2496)
+   (mem-usage-block           memory-usage-block                  :offset-assert 2496)
    (mem-usage                 int32                               :offset-assert 2500)
    (code-memory-start         pointer                             :offset-assert 2504)
    (code-memory-end           pointer                             :offset-assert 2508)
@@ -187,10 +187,10 @@
   (:methods
     (deactivate (_type_) _type_ 9)
     (dummy-10 (_type_ int) symbol 10)
-    (dummy-11 (_type_) none 11)
+    (add-irq-to-tex-buckets! (_type_) none 11)
     (unload! (_type_) _type_ 12)
     (bsp-name (_type_) symbol 13)
-    (dummy-14 (_type_) none 14)
+    (dummy-14 (_type_ object) memory-usage-block 14)
     (dummy-15 (_type_ vector) symbol 15)
     (dummy-16 (_type_) none 16)
     (load-continue (_type_) _type_ 17)
@@ -268,23 +268,23 @@
 
 ;; definition of type level-group
 (deftype level-group (basic)
-  ((length          int32                  :offset-assert   4)
-   (unknown-level-1 level                  :offset-assert   8)
-   (unknown-level-2 level                  :offset-assert  12)
-   (entity-link     entity-links           :offset-assert  16)
-   (border?         basic                  :offset-assert  20)
-   (vis?            basic                  :offset-assert  24)
-   (want-level      basic                  :offset-assert  28)
-   (receiving-level basic                  :offset-assert  32)
-   (load-commands   pair                   :offset-assert  36)
-   (play?           symbol                 :offset-assert  40)
-   (_hack-pad       uint8                  :offset         90)
-   (level0          level        :inline   :offset-assert  96)
-   (level1          level        :inline   :offset-assert 2704)
-   (level-default   level        :inline   :offset-assert 5312)
-   (level           level        3 :inline :offset         96)
-   (data            level        3 :inline :offset         96)
-   (pad             uint32                 :offset-assert 7920)
+  ((length           int32                  :offset-assert   4)
+   (log-in-level-bsp bsp-header             :offset-assert   8)
+   (loading-level    level                  :offset-assert  12)
+   (entity-link      entity-links           :offset-assert  16)
+   (border?          basic                  :offset-assert  20)
+   (vis?             basic                  :offset-assert  24)
+   (want-level       basic                  :offset-assert  28)
+   (receiving-level  basic                  :offset-assert  32)
+   (load-commands    pair                   :offset-assert  36)
+   (play?            symbol                 :offset-assert  40)
+   (_hack-pad        uint8                  :offset         90)
+   (level0           level        :inline   :offset-assert  96)
+   (level1           level        :inline   :offset-assert 2704)
+   (level-default    level        :inline   :offset-assert 5312)
+   (level            level        3 :inline :offset         96)
+   (data             level        3 :inline :offset         96)
+   (pad              uint32                 :offset-assert 7920)
    )
   :method-count-assert 27
   :size-assert         #x1ef4
@@ -295,7 +295,7 @@
     (level-get-for-use (_type_ symbol symbol) level 11)
     (activate-levels! (_type_) int 12)
     (dummy-13 () none 13)
-    (dummy-14 () none 14)
+    (dummy-14 (_type_ object) none 14)
     (dummy-15 () none 15)
     (dummy-16 (_type_) int 16)
     (level-get-target-inside (_type_) level 17)
@@ -336,8 +336,8 @@
    *level*
    (new 'static 'level-group
     :length 2
-    :unknown-level-1 #f
-    :unknown-level-2 #f
+    :log-in-level-bsp #f
+    :loading-level #f
     :entity-link #f
     :border? #f
     :want-level #f

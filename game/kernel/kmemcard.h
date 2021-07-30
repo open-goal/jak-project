@@ -5,9 +5,6 @@
  * Memory card interface. Very messy code.
  */
 
-#ifndef JAK_KMEMCARD_H
-#define JAK_KMEMCARD_H
-
 #include "common/common_types.h"
 #include "kmachine.h"
 
@@ -79,5 +76,3 @@ u64 MC_load(s32 param, s32 param2, Ptr<u8> data);
 void MC_makefile(s32 port, s32 size);
 u32 MC_check_result();
 void MC_get_status(s32 slot, Ptr<mc_slot_info> info);
-
-#endif  // JAK_KMEMCARD_H

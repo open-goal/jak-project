@@ -127,3 +127,206 @@
        )
      )
   )
+
+
+(defglobalconstant METER_LENGTH 4096.0)
+
+(defmacro meters (x)
+  "Convert number to meters.
+   If the input is a constant float or integer, the result will be a
+   compile time constant float. Otherwise, it will not be constant."
+
+  ;; we don't have enough constant propagation for the compiler to figure this out.
+  (cond
+    ((float? x)
+     (* METER_LENGTH x)
+     )
+    ((integer? x)
+     (* METER_LENGTH x)
+     )
+    (#t
+     `(* METER_LENGTH ,x)
+     )
+    )
+  )
+
+(defglobalconstant DEGREES_PER_ROT 65536.0)
+
+(defmacro degrees (x)
+  "Convert number to degrees unit.
+   Will keep a constant float/int constant."
+  (cond
+    ((or (float? x) (integer? x))
+     (* DEGREES_PER_ROT (/ (+ 0.0 x) 360.0))
+     )
+    (#t
+     `(* (/ (the float ,x) 360.0)
+         DEGREES_PER_ROT
+         )
+     )
+    )
+  )
+
+(defglobalconstant TICKS_PER_SECOND 300) ;; 5 t/frame @ 60fps, 6 t/frame @ 50fps
+
+(defmacro seconds (x)
+  "Convert number to seconds unit."
+  (cond
+    ((float? x)
+     (* 1.0 TICKS_PER_SECOND x)
+     )
+    ((integer? x)
+     (* TICKS_PER_SECOND x)
+     )
+    (#t
+     `(* 1.0 TICKS_PER_SECOND ,x)
+     )
+    )
+  )
+
+;; maybe rename to "velocity"?
+(defmacro vel-tick (vel)
+  "turn a velocity value into a per-tick value"
+  `(* (/ 1.0 ,TICKS_PER_SECOND) ,vel)
+  )
+
+(defmacro copy-and-set-field (original field-name field-value)
+  `(let ((temp-copy ,original))
+     (set! (-> temp-copy ,field-name) ,field-value)
+     temp-copy
+     )
+  )
+
+(defmacro set-vector! (v xv yv zv wv)
+  "Set all fields in a vector"
+  (with-gensyms (vec)
+     `(let ((vec ,v))
+       (set! (-> vec x) ,xv)
+       (set! (-> vec y) ,yv)
+       (set! (-> vec z) ,zv)
+       (set! (-> vec w) ,wv)))
+     )
+
+(defmacro go (next-state &rest args)
+  `(with-pp
+     (set! (-> pp next-state) ,next-state)
+     ((the (function _varargs_ object) enter-state) ,@args)
+     )
+  )
+
+(defmacro static-sound-name (str)
+  "Convert a string constant to a static sound-name."
+
+  ;; all this is done at compile-time so we can come up with 2
+  ;; 64-bit constants to use
+  (when (> (string-length str) 16)
+    (error "static-sound-name got a string that is too long")
+    )
+  (let ((lo-val 0)
+        (hi-val 0)
+        )
+    (dotimes (i (string-length str))
+      (if (>= i 8)
+          (+! hi-val (ash (string-ref str i) (* 8 (- i 8))))
+          (+! lo-val (ash (string-ref str i) (* 8 i)))
+          )
+      )
+    `(new 'static 'sound-name :lo ,lo-val :hi ,hi-val)
+    )
+  )
+
+(defmacro vftoi4.xyzw (dst src)
+  "convert to 28.4 integer. This does the multiply while the number is still
+   a float. This will have issues for very large floats, but it seems like this
+   is how PCSX2 does it as well, so maybe it's right?
+   NOTE: this is the only version of the instruction used in Jak 1, so we
+   don't need to worry about masks."
+
+  `(begin
+    (rlet ((temp :class vf))
+      (set! temp 16.0)
+      (.mul.x.vf temp ,src temp)
+      (.ftoi.vf ,dst temp)
+      )
+    )
+  )
+
+(defmacro vftoi12.xyzw (dst src)
+  "convert to 20.12 integer. This does the multiply while the number is still
+   a float. This will have issues for very large floats, but it seems like this
+   is how PCSX2 does it as well, so maybe it's right?
+   NOTE: this is the only version of the instruction used in Jak 1, so we
+   don't need to worry about masks."
+
+  `(begin
+    (rlet ((temp :class vf))
+      (set! temp 4096.0)
+      (.mul.x.vf temp ,src temp)
+      (.ftoi.vf ,dst temp)
+      )
+    )
+  )
+
+(defmacro vftoi15.xyzw (dst src)
+  "convert to 17.15 integer. This does the multiply while the number is still
+   a float. This will have issues for very large floats, but it seems like this
+   is how PCSX2 does it as well, so maybe it's right?
+   NOTE: this is the only version of the instruction used in Jak 1, so we
+   don't need to worry about masks."
+
+  `(begin
+    (rlet ((temp :class vf))
+      (set! temp 32768.0)
+      (.mul.x.vf temp ,src temp)
+      (.ftoi.vf ,dst temp)
+      )
+    )
+  )
+
+(defmacro vitof4.xyzw (dst src)
+  "convert from a 28.4 integer. This does the multiply while the number is still
+   a float. This will have issues for very large floats, but it seems like this
+   is how PCSX2 does it as well, so maybe it's right?
+   NOTE: this is the only version of the instruction used in Jak 1, so we
+   don't need to worry about masks."
+
+  `(begin
+    (rlet ((temp :class vf))
+      (set! temp 0.0625)
+      (.mul.x.vf temp ,src temp)
+      (.ftoi.vf ,dst temp)
+      )
+    )
+  )
+
+(defmacro vitof12.xyzw (dst src)
+  "convert from a 20.12 integer. This does the multiply while the number is still
+   a float. This will have issues for very large floats, but it seems like this
+   is how PCSX2 does it as well, so maybe it's right?
+   NOTE: this is the only version of the instruction used in Jak 1, so we
+   don't need to worry about masks."
+
+  `(begin
+    (rlet ((temp :class vf))
+      (set! temp 0.000244140625)
+      (.mul.x.vf temp ,src temp)
+      (.ftoi.vf ,dst temp)
+      )
+    )
+  )
+
+(defmacro vitof15.xyzw (dst src)
+  "convert from a 17.15 integer. This does the multiply while the number is still
+   a float. This will have issues for very large floats, but it seems like this
+   is how PCSX2 does it as well, so maybe it's right?
+   NOTE: this is the only version of the instruction used in Jak 1, so we
+   don't need to worry about masks."
+
+  `(begin
+    (rlet ((temp :class vf))
+      (set! temp 0.000030517578125)
+      (.mul.x.vf temp ,src temp)
+      (.ftoi.vf ,dst temp)
+      )
+    )
+  )

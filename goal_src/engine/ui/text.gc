@@ -5,9 +5,9 @@
 ;; name in dgo: text
 ;; dgos: GAME, ENGINE
 
-(define *game-text-word* (new 'global 'string 256 (the string '#f)))
+(define *game-text-word* (new 'global 'string 128 (the string '#f)))
 (define *game-text-line* (new 'global 'string 256 (the string '#f)))
-(define *level-text-file-load-flag* '#t)
+(define *level-text-file-load-flag* #t)
 
 ;; allocate the game text heap if it isn't already allocated.
 (when (= 0 (-> *common-text-heap* base))
@@ -42,8 +42,34 @@
   obj
   )
 
-;; todo method 8
-;; todo method 9
+(defmethod mem-usage game-text-info ((obj game-text-info) (arg0 memory-usage-block) (arg1 int))
+  "Get the memory usage."
+  (set! (-> arg0 length) (max 81 (-> arg0 length)))
+  (set! (-> arg0 data 80 name) "string")
+  (set! (-> arg0 data 80 count) (+ (-> arg0 data 80 count) 1))
+
+  ;; get the size of this structure
+  (let ((v1-6 (asize-of obj)))
+    (set! (-> arg0 data 80 used) (+ (-> arg0 data 80 used) v1-6))
+    (set! (-> arg0 data 80 total)
+          (+ (-> arg0 data 80 total) (logand -16 (+ v1-6 15)))
+          )
+    )
+
+  ;; get the size of all the strings
+  (dotimes (s4-0 (-> obj length))
+    (set! (-> arg0 length) (max 81 (-> arg0 length)))
+    (set! (-> arg0 data 80 name) "string")
+    (set! (-> arg0 data 80 count) (+ (-> arg0 data 80 count) 1))
+    (let ((v1-18 (asize-of (-> obj data s4-0 text))))
+      (set! (-> arg0 data 80 used) (+ (-> arg0 data 80 used) v1-18))
+      (set! (-> arg0 data 80 total)
+            (+ (-> arg0 data 80 total) (logand -16 (+ v1-18 15)))
+            )
+      )
+    )
+  obj
+  )
 
 (defmethod lookup-text! game-text-info ((obj game-text-info) (arg0 game-text-id) (arg1 symbol))
   "Look up text by ID.  Will return the string.
@@ -83,8 +109,106 @@
       )
     )
   )
-;; todo text-is-loading
+
+(define text-is-loading #f)
+
 ;; todo load-game-text-info
+
+(defun load-game-text-info ((txt-name string) (curr-text symbol) (heap kheap))
+  "Load text, if needed."
+  (local-vars
+   (v0-2 int)
+   (heap-sym-heap game-text-info)
+   (lang int)
+   (load-status int)
+   (heap-free int)
+   )
+  (set! heap-sym-heap (the-as game-text-info (-> curr-text value)))
+  (set! lang (-> *setting-control* current language))
+  (set! load-status 0)
+  (set! heap-free (&- (-> heap top) (the-as uint (-> heap base))))
+  (if (and (= (scf-get-territory) 1) (zero? lang))
+      (set! lang 6)
+      )
+  (when (or (= heap-sym-heap #f)
+            (!= (-> heap-sym-heap language-id) lang)
+            (not (string= (-> heap-sym-heap group-name) txt-name))
+            )
+    (let ((v1-16 heap))
+      (set! (-> v1-16 current) (-> v1-16 base))
+      )
+    (b! #t cfg-14)
+    (label cfg-13)
+    (load-dbg "Strange error during text load.~%")
+    (set! v0-2 0)
+    (b! #t cfg-27)
+    (label cfg-14)
+    (let ((s3-0 str-load))
+      (format (clear *temp-string*) "~D~S.TXT" lang txt-name)
+      ;; this branch is super weird.
+      (b! (not (s3-0
+                *temp-string*
+                -1
+                (logand -64 (&+ (-> heap current) 63))
+                (&- (-> heap top) (the-as uint (-> heap current)))
+                )
+               )
+          cfg-13
+          )
+      )
+    (label cfg-16)
+    (let ((v1-20 (str-load-status (the-as (pointer int32) (& load-status)))))
+      (cond
+        ((= v1-20 'error)
+         (format 0 "Error loading text~%")
+         (return 0)
+         )
+        ((>= load-status (+ heap-free -300))
+         (format 0 "Game text heap overrun!~%")
+         (return 0)
+         )
+        ((= v1-20 'busy)
+         (begin
+          (nop!)
+          (nop!)
+          (nop!)
+          (nop!)
+          (nop!)
+          (nop!)
+          (goto cfg-16)
+          )
+         )
+        )
+      )
+    (let ((s2-1 (logand -64 (&+ (-> heap current) 63))))
+      (flush-cache 0)
+      (let ((s3-1 link))
+        (format (clear *temp-string*) "~D~S.TXT" lang txt-name)
+        (set!
+         (-> curr-text value)
+         (s3-1 s2-1 (-> *temp-string* data) load-status heap 0)
+         )
+        )
+      (format 0 "loaded text ~A~%" *common-text*)
+      (format 0 "~A~%" (lookup-text! *common-text* (game-text-id continue-without-saving) #f))
+      )
+    (if (<= (the-as int (-> curr-text value)) 0)
+        (set! (-> curr-text value) (the-as object #f))
+        )
+    )
+  (set! v0-2 0)
+  (label cfg-27)
+
+  v0-2
+  )
+
+(defun load-level-text-files ((arg0 int))
+  (if (or *level-text-file-load-flag* (>= arg0 0))
+      (load-game-text-info "common" '*common-text* *common-text-heap*)
+      )
+  0
+  (none)
+  )
 ;; todo load-level-text-files
 ;; todo draw-debug-text-box
 ;; todo set-font-color-alpha

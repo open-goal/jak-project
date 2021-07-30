@@ -52,12 +52,17 @@ struct SoundRpcBankCommand {
   char bank_name[16];
 };
 
+struct SoundRpcSetLanguageCommand {
+  u32 langauge_id;  // game_common_types.h, Language
+};
+
 struct SoundRpcCommand {
   u16 rsvd1;
   SoundCommand command;
   union {
     SoundRpcGetIrxVersion irx_version;
     SoundRpcBankCommand load_bank;
+    SoundRpcSetLanguageCommand set_language;
   };
 };
 
