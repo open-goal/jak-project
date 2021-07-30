@@ -240,6 +240,23 @@
     )
   )
 
+(defmacro dma-buffer-add-ref-vif2 (buf qwc addr vif0 vif1)
+  "Add a dma-packet to a dma-buffer.
+   The packet is made up of a 'cnt' DMAtag (transfer qwc qwords of data at addr and continue from after the tag)
+    and includes two vif-tags for vifcode, or something else if needed."
+
+  (with-gensyms (pkt)
+    `(dma-buffer-add-base-type ,buf ,pkt dma-packet
+        
+        (set! (-> ,pkt dma) (new 'static 'dma-tag :id (dma-tag-id ref) :qwc ,qwc :addr (the-as int ,addr)))
+            
+        (set! (-> ,pkt vif0) ,vif0)
+        (set! (-> ,pkt vif1) ,vif1)
+        
+        )
+    )
+  )
+
 (defmacro dma-buffer-add-gif-tag (buf giftag gifregs)
   "Add a giftag to a dma-buffer."
   
@@ -285,6 +302,29 @@
                               (new 'static 'vif-tag :cmd (vif-cmd direct) :imm ,qwc)
                               )
       
+      ;; gif tag for editing gs regs
+      (dma-buffer-add-gif-tag ,buf (new 'static 'gif-tag64 :nloop 1 :eop 1 :nreg ,reg-count)
+                                   (gs-reg-list a+d a+d a+d a+d a+d a+d a+d a+d a+d a+d a+d a+d a+d a+d a+d a+d)
+                                   )
+      
+      ;; gs regs
+      (dma-buffer-add-uint64 ,buf
+          ,@(apply2 (lambda (x) x) (lambda (x) `(gs-reg64 ,x)) reg-datas reg-names)
+          )
+      )
+    )
+  )
+
+(defmacro dma-buffer-add-gs-set (buf &rest reg-list)
+  "Add a gif cnt dma packet to a dma-buffer for setting GS registers.
+   reg-list is a list of pairs where the car is the register name and the cadr is the value to be set for that register."
+  
+  (let ((reg-count (length reg-list))
+        (qwc (+ (length reg-list) 1))
+        (reg-names (apply first reg-list))
+        (reg-datas (apply second reg-list))
+        )
+    `(begin
       ;; gif tag for editing gs regs
       (dma-buffer-add-gif-tag ,buf (new 'static 'gif-tag64 :nloop 1 :eop 1 :nreg ,reg-count)
                                    (gs-reg-list a+d a+d a+d a+d a+d a+d a+d a+d a+d a+d a+d a+d a+d a+d a+d a+d)
@@ -352,6 +392,8 @@
             
             ,@body
             
+            ;; we end the chain with a next.  The bucket system will patch the next chain to this,
+            ;; and then patch all the buckets togehter before sending the DMA.
             (let ((,bucket-edge (the (pointer dma-tag) (-> ,buf base))))
                 (let ((,pkt (the-as dma-packet (-> ,buf base))))
                 
@@ -362,7 +404,10 @@
                   (set! (-> ,buf base) (&+ (the-as pointer ,pkt) (size-of dma-packet)))
                 
                   )
-                (dma-bucket-insert-tag ,bucket ,bucket-id ,buf-start ,bucket-edge)
+                (dma-bucket-insert-tag ,bucket ,bucket-id
+                      ,buf-start ;; the first thing in this chain, bucket will patch previous to this
+                      ,bucket-edge ;; end of this chain (ptr to next tag)
+                      )
                 )
             )
         )
