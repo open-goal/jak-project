@@ -12,7 +12,8 @@
 #include <vector>
 #include <unordered_set>
 #include "goalc/emitter/Register.h"
-#include "IRegister.h"
+#include "goalc/regalloc/IRegSet.h"
+#include "goalc/regalloc/IRegister.h"
 
 /*!
  * Information about an instruction needed for register allocation.
@@ -103,7 +104,9 @@ class AssignmentRange {
     m_end = start_instr + live.size() - 1;
     assert(m_live.size() == m_ass.size());
   }
-  bool is_live_at_instr(int instr) const { return m_live.at(instr - m_start); }
+  bool is_live_at_instr(int instr) const {
+    return has_info_at(instr) && m_live.at(instr - m_start);
+  }
   const Assignment& get(int instr) const { return m_ass.at(instr - m_start); }
   bool has_info_at(int instr) const { return instr >= m_start && instr <= m_end; }
   int stack_slot() const { return m_ass.at(0).stack_slot; }
@@ -157,6 +160,10 @@ struct AllocationInput {
   int stack_slots_for_stack_vars = 0;
   bool is_asm_function = false;
 
+  std::string function_name;
+
+  int allocator_version = 1;
+
   struct {
     bool print_input = false;
     bool print_analysis = false;
@@ -174,5 +181,28 @@ struct AllocationInput {
   }
 };
 
+struct RegAllocBasicBlock {
+  std::vector<int> instr_idx;
+  std::vector<int> succ;
+  std::vector<int> pred;
+  std::vector<IRegSet> live, dead;
+  IRegSet use, defs, input, output;
+  bool is_entry = false;
+  bool is_exit = false;
+  int idx = -1;
+  void analyze_liveliness_phase1(const std::vector<RegAllocInstr>& instructions);
+  bool analyze_liveliness_phase2(std::vector<RegAllocBasicBlock>& blocks,
+                                 const std::vector<RegAllocInstr>& instructions);
+  void analyze_liveliness_phase3(std::vector<RegAllocBasicBlock>& blocks,
+                                 const std::vector<RegAllocInstr>& instructions);
+  std::string print(const std::vector<RegAllocInstr>& insts);
+  std::string print_summary();
+};
+
+struct ControlFlowAnalysisCache {
+  std::vector<RegAllocBasicBlock> basic_blocks;
+};
+
 void print_allocate_input(const AllocationInput& in);
 void print_result(const AllocationInput& in, const AllocationResult& result);
+void find_basic_blocks(ControlFlowAnalysisCache* cache, const AllocationInput& in);

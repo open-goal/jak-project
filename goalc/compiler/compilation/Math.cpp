@@ -419,6 +419,10 @@ Val* Compiler::compile_div(const goos::Object& form, const goos::Object& rest, E
               IntegerMathKind::UDIV_32, result,
               to_math_type(form, val, math_type, env)->to_gpr(env)));
         }
+
+        auto result_moved = env->make_gpr(first_type);
+        env->emit_ir<IR_RegSet>(result_moved, result);
+        return result_moved;
       }
 
       return result;

@@ -3,32 +3,9 @@
  * Implementation of register allocation algorithms
  */
 
-#include <algorithm>
 #include "third-party/fmt/core.h"
 #include "Allocator.h"
 #include "goalc/regalloc/allocator_interface.h"
-
-std::string Assignment::to_string() const {
-  std::string result;
-  if (spilled) {
-    result += "*";
-  }
-  switch (kind) {
-    case Kind::STACK:
-      result += fmt::format("s[{:2d}]", stack_slot);
-      break;
-    case Kind::REGISTER:
-      result += emitter::gRegInfo.get_info(reg).name;
-      break;
-    case Kind::UNASSIGNED:
-      result += "unassigned";
-      break;
-    default:
-      assert(false);
-  }
-
-  return result;
-}
 
 std::string LiveInfo::print_assignment() {
   std::string result = "Assignment for var " + std::to_string(var) + "\n";
@@ -36,85 +13,6 @@ std::string LiveInfo::print_assignment() {
     result += fmt::format("i[{:3d}] {}\n", i + min, assignment.at(i).to_string());
   }
   return result;
-}
-
-/*!
- * Find basic blocks and add block link info.
- */
-void find_basic_blocks(RegAllocCache* cache, const AllocationInput& in) {
-  std::vector<int> dividers;
-
-  dividers.push_back(0);
-  dividers.push_back(in.instructions.size());
-
-  // loop over instructions, finding jump targets
-  for (uint32_t i = 0; i < in.instructions.size(); i++) {
-    const auto& instr = in.instructions[i];
-    if (!instr.jumps.empty()) {
-      dividers.push_back(i + 1);
-      for (auto dest : instr.jumps) {
-        dividers.push_back(dest);
-      }
-    }
-  }
-
-  // sort dividers, and make blocks
-  std::sort(dividers.begin(), dividers.end(), [](int a, int b) { return a < b; });
-
-  for (uint32_t i = 0; i < dividers.size() - 1; i++) {
-    if (dividers[i] != dividers[i + 1]) {
-      // new basic block!
-      RegAllocBasicBlock block;
-      for (int j = dividers[i]; j < dividers[i + 1]; j++) {
-        block.instr_idx.push_back(j);
-      }
-
-      block.idx = cache->basic_blocks.size();
-      cache->basic_blocks.push_back(block);
-    }
-  }
-
-  if (!cache->basic_blocks.empty()) {
-    cache->basic_blocks.front().is_entry = true;
-    cache->basic_blocks.back().is_exit = true;
-  }
-
-  auto find_basic_block_to_target = [&](int instr) {
-    bool found = false;
-    uint32_t result = -1;
-    for (uint32_t i = 0; i < cache->basic_blocks.size(); i++) {
-      if (!cache->basic_blocks[i].instr_idx.empty() &&
-          cache->basic_blocks[i].instr_idx.front() == instr) {
-        assert(!found);
-        found = true;
-        result = i;
-      }
-    }
-    if (!found) {
-      printf("[RegAlloc Error] couldn't find basic block beginning with instr %d of %d\n", instr,
-             int(in.instructions.size()));
-    }
-    assert(found);
-    return result;
-  };
-
-  // link blocks
-  for (auto& block : cache->basic_blocks) {
-    assert(!block.instr_idx.empty());
-    auto& last_instr = in.instructions.at(block.instr_idx.back());
-    if (last_instr.fallthrough) {
-      // try to link to next block:
-      int next_idx = block.idx + 1;
-      if (next_idx < (int)cache->basic_blocks.size()) {
-        cache->basic_blocks.at(next_idx).pred.push_back(block.idx);
-        block.succ.push_back(next_idx);
-      }
-    }
-    for (auto target : last_instr.jumps) {
-      cache->basic_blocks.at(find_basic_block_to_target(target)).pred.push_back(block.idx);
-      block.succ.push_back(find_basic_block_to_target(target));
-    }
-  }
 }
 
 namespace {
@@ -127,7 +25,7 @@ void compute_live_ranges(RegAllocCache* cache, const AllocationInput& in) {
   cache->live_ranges.resize(cache->max_var, LiveInfo(in.instructions.size(), 0));
 
   // now compute the ranges
-  for (auto& block : cache->basic_blocks) {
+  for (auto& block : cache->control_flow.basic_blocks) {
     // from var use
     for (auto instr_id : block.instr_idx) {
       auto& inst = in.instructions.at(instr_id);
@@ -178,7 +76,7 @@ void analyze_liveliness(RegAllocCache* cache, const AllocationInput& in) {
   }
 
   // phase 1
-  for (auto& block : cache->basic_blocks) {
+  for (auto& block : cache->control_flow.basic_blocks) {
     block.live.resize(block.instr_idx.size());
     block.dead.resize(block.instr_idx.size());
     block.analyze_liveliness_phase1(in.instructions);
@@ -188,16 +86,16 @@ void analyze_liveliness(RegAllocCache* cache, const AllocationInput& in) {
   bool changed = false;
   do {
     changed = false;
-    for (auto& block : cache->basic_blocks) {
-      if (block.analyze_liveliness_phase2(cache->basic_blocks, in.instructions)) {
+    for (auto& block : cache->control_flow.basic_blocks) {
+      if (block.analyze_liveliness_phase2(cache->control_flow.basic_blocks, in.instructions)) {
         changed = true;
       }
     }
   } while (changed);
 
   // phase 3
-  for (auto& block : cache->basic_blocks) {
-    block.analyze_liveliness_phase3(cache->basic_blocks, in.instructions);
+  for (auto& block : cache->control_flow.basic_blocks) {
+    block.analyze_liveliness_phase3(cache->control_flow.basic_blocks, in.instructions);
   }
 
   // phase 4
@@ -223,141 +121,6 @@ void analyze_liveliness(RegAllocCache* cache, const AllocationInput& in) {
       }
     }
   }
-}
-
-void RegAllocBasicBlock::analyze_liveliness_phase1(const std::vector<RegAllocInstr>& instructions) {
-  for (int i = instr_idx.size(); i-- > 0;) {
-    auto ii = instr_idx.at(i);
-    auto& instr = instructions.at(ii);
-    auto& lv = live.at(i);
-    auto& dd = dead.at(i);
-
-    // make all read live out
-    lv.clear();
-    for (auto& x : instr.read) {
-      lv.insert(x.id);
-    }
-
-    // kill things which are overwritten
-    dd.clear();
-    for (auto& x : instr.write) {
-      if (!lv[x.id]) {
-        dd.insert(x.id);
-      }
-    }
-
-    use.bitwise_and_not(dd);
-    use.bitwise_or(lv);
-
-    defs.bitwise_and_not(lv);
-    defs.bitwise_or(dd);
-  }
-}
-
-bool RegAllocBasicBlock::analyze_liveliness_phase2(std::vector<RegAllocBasicBlock>& blocks,
-                                                   const std::vector<RegAllocInstr>& instructions) {
-  (void)instructions;
-  bool changed = false;
-  auto out = defs;
-
-  for (auto s : succ) {
-    out.bitwise_or(blocks.at(s).input);
-  }
-
-  IRegSet in = use;
-  IRegSet temp = out;
-  temp.bitwise_and_not(defs);
-  in.bitwise_or(temp);
-
-  if (in != input || out != output) {
-    changed = true;
-    input = in;
-    output = out;
-  }
-
-  return changed;
-}
-
-void RegAllocBasicBlock::analyze_liveliness_phase3(std::vector<RegAllocBasicBlock>& blocks,
-                                                   const std::vector<RegAllocInstr>& instructions) {
-  (void)instructions;
-  IRegSet live_local;
-  for (auto s : succ) {
-    live_local.bitwise_or(blocks.at(s).input);
-  }
-
-  for (int i = instr_idx.size(); i-- > 0;) {
-    auto& lv = live.at(i);
-    auto& dd = dead.at(i);
-
-    IRegSet new_live = live_local;
-    new_live.bitwise_and_not(dd);
-    new_live.bitwise_or(lv);
-
-    lv = live_local;
-    live_local = new_live;
-  }
-}
-
-std::string RegAllocBasicBlock::print_summary() {
-  std::string result = "block " + std::to_string(idx) + "\nsucc: ";
-  for (auto s : succ) {
-    result += std::to_string(s) + " ";
-  }
-  result += "\npred: ";
-  for (auto p : pred) {
-    result += std::to_string(p) + " ";
-  }
-  result += "\nuse: ";
-  for (int x = 0; x < use.size(); x++) {
-    if (use[x]) {
-      result += std::to_string(x) + " ";
-    }
-  }
-  result += "\ndef: ";
-  for (int x = 0; x < defs.size(); x++) {
-    if (defs[x]) {
-      result += std::to_string(x) + " ";
-    }
-  }
-  result += "\ninput: ";
-  for (int x = 0; x < input.size(); x++) {
-    if (input[x]) {
-      result += std::to_string(x) + " ";
-    }
-  }
-  result += "\noutput: ";
-  for (int x = 0; x < output.size(); x++) {
-    if (output[x]) {
-      result += std::to_string(x) + " ";
-    }
-  }
-
-  return result;
-}
-
-std::string RegAllocBasicBlock::print(const std::vector<RegAllocInstr>& insts) {
-  std::string result = print_summary() + "\n";
-  int k = 0;
-  for (auto instr : instr_idx) {
-    std::string line = insts.at(instr).print();
-    constexpr int pad_len = 30;
-    if (line.length() < pad_len) {
-      // line.insert(line.begin(), pad_len - line.length(), ' ');
-      line.append(pad_len - line.length(), ' ');
-    }
-
-    result += "  " + line + " live: ";
-    for (int x = 0; x < live.at(k).size(); x++) {
-      if (live.at(k)[x]) {
-        result += std::to_string(x) + " ";
-      }
-    }
-    result += "\n";
-
-    k++;
-  }
-  return result;
 }
 
 /*!
@@ -955,7 +718,7 @@ namespace {
 void print_analysis(const AllocationInput& in, RegAllocCache* cache) {
   fmt::print("[RegAlloc] Basic Blocks\n");
   fmt::print("-----------------------------------------------------------------\n");
-  for (auto& b : cache->basic_blocks) {
+  for (auto& b : cache->control_flow.basic_blocks) {
     fmt::print("{}\n", b.print(in.instructions));
   }
 
@@ -1018,7 +781,7 @@ AllocationResult allocate_registers(const AllocationInput& input) {
   }
 
   // first step is analysis
-  find_basic_blocks(&cache, input);
+  find_basic_blocks(&cache.control_flow, input);
   analyze_liveliness(&cache, input);
   if (input.debug_settings.print_analysis) {
     print_analysis(input, &cache);
@@ -1047,17 +810,6 @@ AllocationResult allocate_registers(const AllocationInput& input) {
   result.needs_aligned_stack_for_spills = cache.used_stack;
   result.stack_slots_for_spills = cache.current_stack_slot;
   result.stack_slots_for_vars = input.stack_slots_for_stack_vars;
-
-  // copy over the assignment result
-  //  result.assignment.resize(cache.max_var);
-  //  for (size_t i = 0; i < result.assignment.size(); i++) {
-  //    auto& x = result.assignment[i];
-  //    x.resize(input.instructions.size());
-  //    const auto& lr = cache.live_ranges.at(i);
-  //    for (int j = lr.min; j <= lr.max; j++) {
-  //      x.at(j) = lr.get(j);
-  //    }
-  //  }
 
   // check for use of saved registers
   for (auto sr : emitter::gRegInfo.get_all_saved()) {

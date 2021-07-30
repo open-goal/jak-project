@@ -206,14 +206,13 @@ Val* Compiler::compile_lambda(const goos::Object& form, const goos::Object& rest
     for (u32 i = 0; i < lambda.params.size(); i++) {
       IRegConstraint constr;
       constr.instr_idx = 0;  // constraint at function start
-      auto ireg = new_func_env->make_ireg(
+      auto ireg_arg = new_func_env->make_ireg(
           lambda.params.at(i).type, arg_regs.at(i).is_gpr() ? RegClass::GPR_64 : RegClass::INT_128);
-      ireg->mark_as_settable();
-      constr.ireg = ireg->ireg();
+      ireg_arg->mark_as_settable();
+      constr.ireg = ireg_arg->ireg();
       constr.desired_register = arg_regs.at(i);
-      new_func_env->params[lambda.params.at(i).name] = ireg;
       new_func_env->constrain(constr);
-      reset_args_for_coloring.push_back(ireg);
+      reset_args_for_coloring.push_back(ireg_arg);
     }
 
     if (args.has_named("behavior")) {
@@ -243,6 +242,14 @@ Val* Compiler::compile_lambda(const goos::Object& form, const goos::Object& rest
     func_block_env->return_value = return_reg;
     func_block_env->end_label = Label(new_func_env.get());
     func_block_env->emit(std::make_unique<IR_ValueReset>(reset_args_for_coloring));
+
+    for (u32 i = 0; i < lambda.params.size(); i++) {
+      auto ireg = new_func_env->make_ireg(
+          lambda.params.at(i).type, arg_regs.at(i).is_gpr() ? RegClass::GPR_64 : RegClass::INT_128);
+      ireg->mark_as_settable();
+      new_func_env->params[lambda.params.at(i).name] = ireg;
+      new_func_env->emit_ir<IR_RegSet>(ireg, reset_args_for_coloring.at(i));
+    }
 
     // compile the function, iterating through the body.
     Val* result = nullptr;

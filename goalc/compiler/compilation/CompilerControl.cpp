@@ -605,3 +605,15 @@ Val* Compiler::compile_make(const goos::Object& form, const goos::Object& rest, 
   m_make.make(args.unnamed.at(0).as_string()->data, force, verbose);
   return get_none();
 }
+
+Val* Compiler::compile_print_debug_compiler_stats(const goos::Object& form,
+                                                  const goos::Object& rest,
+                                                  Env*) {
+  auto args = get_va(form, rest);
+  va_check(form, args, {}, {});
+
+  fmt::print("Spill operations: {}\n", m_debug_stats.num_spills);
+  fmt::print("Eliminated moves: {}\n", m_debug_stats.num_moves_eliminated);
+
+  return get_none();
+}

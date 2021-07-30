@@ -6,6 +6,7 @@
 #include "common/link_types.h"
 #include "goalc/make/Tools.h"
 #include "goalc/regalloc/Allocator.h"
+#include "goalc/regalloc/Allocator_v2.h"
 #include "third-party/fmt/core.h"
 
 using namespace goos;
@@ -216,6 +217,7 @@ void Compiler::color_object_file(FileEnv* env) {
     input.max_vars = f->max_vars();
     input.constraints = f->constraints();
     input.stack_slots_for_stack_vars = f->stack_slots_used_for_stack_vars();
+    input.function_name = f->name();
 
     if (m_settings.debug_print_regalloc) {
       input.debug_settings.print_input = true;
@@ -224,13 +226,24 @@ void Compiler::color_object_file(FileEnv* env) {
       input.debug_settings.allocate_log_level = 2;
     }
     auto regalloc_result = allocate_registers(input);
-    num_spills_in_file += regalloc_result.num_spills;
-    f->set_allocations(regalloc_result);
+    m_debug_stats.num_spills_1only += regalloc_result.num_spills;
+
+    auto regalloc_result_2 = allocate_registers_v2(input);
+
+    if (regalloc_result_2.ok) {
+      num_spills_in_file += regalloc_result_2.num_spills;
+      f->set_allocations(regalloc_result_2);
+    } else {
+      num_spills_in_file += regalloc_result.num_spills;
+      f->set_allocations(regalloc_result);
+    }
   }
 
   m_debug_stats.num_spills += num_spills_in_file;
+  /*
   fmt::print("Spills in {}: {}\n", env->name(), num_spills_in_file);
-  fmt::print("Total: {}\n", m_debug_stats.num_spills);
+  fmt::print("Total: {} / {}\n", m_debug_stats.num_spills, m_debug_stats.num_spills_1only);
+   */
 }
 
 std::vector<u8> Compiler::codegen_object_file(FileEnv* env) {
@@ -245,6 +258,8 @@ std::vector<u8> Compiler::codegen_object_file(FileEnv* env) {
         fmt::print("{}\n", debug_info->disassemble_function_by_name(f->name(), &ok));
       }
     }
+    auto stats = gen.get_obj_stats();
+    m_debug_stats.num_moves_eliminated += stats.moves_eliminated;
     return result;
   } catch (std::exception& e) {
     throw_compiler_error_no_code("Error during codegen: {}", e.what());

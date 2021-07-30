@@ -103,6 +103,7 @@ void regset_common(emitter::ObjectGenerator* gen,
   if (src_class == RegClass::GPR_64 && dst_class == RegClass::GPR_64) {
     if (src_reg == dst_reg) {
       // eliminate move
+      gen->count_eliminated_move();
       gen->add_instr(IGen::null(), irec);
     } else {
       gen->add_instr(IGen::mov_gpr64_gpr64(dst_reg, src_reg), irec);
@@ -110,6 +111,7 @@ void regset_common(emitter::ObjectGenerator* gen,
   } else if (src_class == RegClass::FLOAT && dst_class == RegClass::FLOAT) {
     if (src_reg == dst_reg) {
       // eliminate move
+      gen->count_eliminated_move();
       gen->add_instr(IGen::null(), irec);
     } else {
       gen->add_instr(IGen::mov_xmm32_xmm32(dst_reg, src_reg), irec);
@@ -117,6 +119,7 @@ void regset_common(emitter::ObjectGenerator* gen,
   } else if (src_is_xmm128 && dst_is_xmm128) {
     if (src_reg == dst_reg) {
       // eliminate move
+      gen->count_eliminated_move();
       gen->add_instr(IGen::null(), irec);
     } else {
       gen->add_instr(IGen::mov_vf_vf(dst_reg, src_reg), irec);
