@@ -624,7 +624,12 @@ void ObjectFileDB::ir2_insert_anonymous_functions() {
     (void)segment_id;
     (void)data;
     if (func.ir2.top_form && func.ir2.env.has_type_analysis()) {
-      total += insert_static_refs(func.ir2.top_form, *func.ir2.form_pool, func, dts);
+      try {
+        total += insert_static_refs(func.ir2.top_form, *func.ir2.form_pool, func, dts);
+      } catch (std::exception& e) {
+        func.warnings.general_warning("Failed static ref finding: {}\n", e.what());
+        lg::error("Function {} failed static ref: {}\n", func.guessed_name.to_string(), e.what());
+      }
     }
   });
 
