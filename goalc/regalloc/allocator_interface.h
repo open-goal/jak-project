@@ -132,6 +132,7 @@ struct AllocationResult {
   bool needs_aligned_stack_for_spills = false;
 
   int num_spills = 0;
+  int num_spilled_vars = 0;
 
   // we put the variables before the spills so the variables are 16-byte aligned.
 

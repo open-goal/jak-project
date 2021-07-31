@@ -612,8 +612,12 @@ Val* Compiler::compile_print_debug_compiler_stats(const goos::Object& form,
   auto args = get_va(form, rest);
   va_check(form, args, {}, {});
 
-  fmt::print("Spill operations: {}\n", m_debug_stats.num_spills);
+  fmt::print("Spill operations (total): {}\n", m_debug_stats.num_spills);
+  fmt::print("Spill operations (v1 only): {}\n", m_debug_stats.num_spills_v1);
   fmt::print("Eliminated moves: {}\n", m_debug_stats.num_moves_eliminated);
+  fmt::print("Total functions: {}\n", m_debug_stats.total_funcs);
+  fmt::print("Functions requiring v1: {}\n", m_debug_stats.funcs_requiring_v1_allocator);
+  fmt::print("Size of autocomplete prefix tree: {}\n", m_symbol_info.symbol_count());
 
   return get_none();
 }

@@ -6,8 +6,6 @@
 #include "IRegister.h"
 #include "allocator_interface.h"
 
-
-
 // with this on, gaps in usage of registers allow other variables to steal registers.
 // this reduces stack spills/moves, but may make register allocation slower.
 constexpr bool enable_fancy_coloring = true;

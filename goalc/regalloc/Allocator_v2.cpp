@@ -44,6 +44,11 @@
 
 namespace {
 
+// set this to restrict the allocator to a small subset of registers.
+// this has the effect of adding many spills even to very simple functions.
+// It can be used to test less common spilling situations.
+constexpr bool torture_test_spills = false;
+
 /*!
  * The VarAssignment is the per-variable information used by the allocator.
  * It "has_info" over a variable's live range.
@@ -124,6 +129,8 @@ class VarAssignment {
   // does the variable's live range cross a function call?
   bool crosses_function() const { return m_crosses_function_call; }
 
+  bool locked() const { return m_locked; }
+
   // Assignment functions:
 
   // put this variable in the given register and constrain it there (prevent spilling)
@@ -141,6 +148,40 @@ class VarAssignment {
     m_assigned_register = reg;
   }
 
+  void assign_to_stack(int slot) {
+    assert(unassigned());
+    m_kind = Kind::STACK;
+    m_locked = false;
+    m_stack_temp_regs.resize(m_live.size());
+    m_stack_slot = slot;
+  }
+
+  void demote_to_stack(int slot) {
+    assert(assigned_to_reg());
+    m_kind = Kind::STACK;
+    m_locked = false;
+    m_stack_temp_regs.resize(m_live.size());
+    m_stack_slot = slot;
+  }
+
+  void set_stack_slot_reg(const emitter::Register& reg, int instr_idx) {
+    assert(assigned_to_stack());
+    assert(!m_stack_temp_regs.at(instr_idx - first_live()));
+    m_stack_temp_regs.at(instr_idx - first_live()) = reg;
+  }
+
+  void clear_stack_slot_regs() {
+    for (auto& x : m_stack_temp_regs) {
+      x = {};
+    }
+  }
+
+  emitter::Register get_stack_slot_reg(int instr_idx) const {
+    assert(assigned_to_stack());
+    assert(m_stack_temp_regs.at(instr_idx - first_live()));
+    return *m_stack_temp_regs.at(instr_idx - first_live());
+  }
+
   bool stack_bonus_op_needs_reg(const emitter::Register& reg, int instr_idx) const {
     assert(assigned_to_stack());
     auto& stack_reg = m_stack_temp_regs.at(instr_idx - m_first_live);
@@ -151,14 +192,30 @@ class VarAssignment {
   std::vector<Assignment> make_assignment_vector() const {
     std::vector<Assignment> asses;
     asses.reserve(m_live.size());
-    assert(assigned_to_reg());
-    for (int i = 0; i < (int)m_live.size(); i++) {
-      Assignment a;
-      a.kind = Assignment::Kind::REGISTER;
-      a.reg = m_assigned_register;
-      asses.push_back(a);
+    if (assigned_to_reg()) {
+      for (int i = 0; i < (int)m_live.size(); i++) {
+        Assignment a;
+        a.kind = Assignment::Kind::REGISTER;
+        a.reg = m_assigned_register;
+        asses.push_back(a);
+      }
+      return asses;
+    } else if (assigned_to_stack()) {
+      for (int i = 0; i < (int)m_live.size(); i++) {
+        Assignment a;
+        a.kind = Assignment::Kind::STACK;
+        a.stack_slot = m_stack_slot;
+        auto& slot_reg = m_stack_temp_regs.at(i);
+        if (slot_reg) {
+          a.kind = Assignment::Kind::REGISTER;
+          a.reg = *slot_reg;
+        }
+        asses.push_back(a);
+      }
+      return asses;
+    } else {
+      assert(false);
     }
-    return asses;
   }
 
   const std::vector<bool> live_vector() const { return m_live; }
@@ -196,12 +253,15 @@ struct RACache {
   std::vector<IRegSet> liveout_per_instr;
   int current_stack_slot = 0;
   bool used_stack = false;
+  bool failed_alloc = false;
 
   struct Stats {
     int var_count = 0;
     int used_var_count = 0;
     int interference_graph_size_bytes = 0;
     int assign_passes = 0;
+    int num_spilled_vars = 0;
+    int num_spill_ops = 0;
   } stats;
 };
 
@@ -222,6 +282,11 @@ AssignmentOrder REG_temp_first_order = {
      emitter::XMM12, emitter::XMM13, emitter::XMM14, emitter::XMM15},
     {emitter::R9, emitter::R8, emitter::RCX, emitter::RDX, emitter::RSI, emitter::RDI, emitter::RAX,
      emitter::RBX, emitter::RBP, emitter::R12, emitter::R11, emitter::R10}};
+
+AssignmentOrder REG_extra_hard_order = {
+    {emitter::XMM7, emitter::XMM6, emitter::XMM5, emitter::XMM4, emitter::XMM3, emitter::XMM2,
+     emitter::XMM1, emitter::XMM0, emitter::XMM8, emitter::XMM9},
+    {emitter::R9, emitter::RSI, emitter::RDI, emitter::RAX, emitter::RBP, emitter::R12}};
 
 AssignmentOrder REG_temp_only_order = {{emitter::XMM7, emitter::XMM6, emitter::XMM5, emitter::XMM4,
                                         emitter::XMM3, emitter::XMM2, emitter::XMM1, emitter::XMM0},
@@ -247,6 +312,13 @@ const std::vector<emitter::Register>& get_alloc_order(int var_idx,
       return REG_temp_only_order.xmms;
     }
   } else {
+    if (torture_test_spills) {
+      if (is_gpr) {
+        return REG_extra_hard_order.gprs;
+      } else {
+        return REG_extra_hard_order.xmms;
+      }
+    }
     if (saved_first) {
       if (is_gpr) {
         return REG_saved_first_order.gprs;
@@ -569,59 +641,103 @@ bool vector_contains(const std::vector<T>& vec, const T& obj) {
 /*!
  * Is it okay to assign the given variable to the register?
  */
+bool check_register_assign_at(const AllocationInput& input,
+                              RACache& cache,
+                              int var_idx,
+                              int instr_idx,
+                              emitter::Register reg) {
+  // Step 1: check other assignments
+
+  // look at everybody else in the interference graph
+  for (int other_idx : cache.live_per_instruction.at(instr_idx)) {
+    // don't check ourselves
+    if (other_idx == var_idx) {
+      continue;
+    }
+
+    // we are both live here.
+    const auto& other_var = cache.vars.at(other_idx);
+    if (other_var.unassigned()) {
+      // okay!
+    } else if (other_var.assigned_to_reg()) {
+      if (other_var.assigned_to_reg(reg)) {
+        // assigned to the same register as us!
+        if (!safe_overlap(input, cache, cache.vars.at(var_idx), other_var, instr_idx)) {
+          return false;
+        }
+      }
+    } else {
+      // assigned to stack TODO
+      if (other_var.stack_bonus_op_needs_reg(reg, instr_idx)) {
+        return false;
+      }
+    }
+  }
+
+  // Step 2: check clobbers and excludes.
+  // The model for clobber is that each instruction reads, clobbers, then writes.
+  // so in some cases it's okay to clobber.
+
+  // loop over our live range
+
+  const auto& instr = input.instructions.at(instr_idx);
+
+  if (vector_contains(instr.clobber, reg)) {
+    // there's two cases where this is okay.
+    // 1: if we aren't live-out. The clobber won't clobber anything.
+    if (!cache.liveout_per_instr.at(instr_idx)[var_idx]) {
+      // ok
+    } else {
+      // otherwise, we need to write it.
+      //        if (!instr.writes(var_idx)) {
+      return false;
+      //        }
+      // 2: we write it after the clobber.
+    }
+  }
+
+  if (vector_contains(instr.exclude, reg)) {
+    return false;
+  }
+
+  return true;
+}
+
+/*!
+ * Is it okay to assign the given variable to the register?
+ */
 bool check_register_assign(const AllocationInput& input,
                            RACache& cache,
                            int var_idx,
-                           emitter::Register reg,
-                           bool trace) {
+                           emitter::Register reg) {
   auto& this_var = cache.vars.at(var_idx);
-
-  bool extra_debug = false;  // var_idx == 6 && reg.print() == "r9";
-  if (extra_debug) {
-    fmt::print("CHECK DEBUG EXTRA\n");
-  }
 
   // Step 1: check other assignments
 
   // loop over our live range
   for (int instr = this_var.first_live(); instr <= this_var.last_live(); instr++) {
-    if (extra_debug) {
-      fmt::print("  checking at instr {}\n", instr);
-    }
     // and leave out the ones where we're dead
     if (!this_var.live(instr)) {
-      if (extra_debug) {
-        fmt::print("  skip this instr!\n");
-      }
       continue;
     }
 
     // look at everybody else in the interference graph
     for (int other_idx : cache.live_per_instruction.at(instr)) {
-      if (extra_debug)
-        fmt::print("  checking other var {}\n", other_idx);
       // don't check ourselves
       if (other_idx == var_idx) {
-        if (extra_debug)
-          fmt::print("  nope its us\n");
         continue;
       }
 
       // we are both live here.
       const auto& other_var = cache.vars.at(other_idx);
       if (other_var.unassigned()) {
-        if (extra_debug)
-          fmt::print(" other unassigned.\n");
         // skip unassigned.
         continue;
       } else if (other_var.assigned_to_reg()) {
         if (other_var.assigned_to_reg(reg)) {
-          if (extra_debug)
-            fmt::print("  other in ours!\n");
           // assigned to the same register as us!
           if (!safe_overlap(input, cache, this_var, other_var, instr)) {
-            if (extra_debug)
-              fmt::print("usafe, killing\n");
+            ;
             return false;
           }
         }
@@ -669,18 +785,207 @@ bool check_register_assign(const AllocationInput& input,
   return true;
 }
 
+int get_stack_slot_for_var(int var, RACache* cache) {
+  int slot_size;
+  auto& info = cache->iregs.at(var);
+  switch (info.reg_class) {
+    case RegClass::INT_128:
+      slot_size = 2;
+      break;
+    case RegClass::VECTOR_FLOAT:
+      slot_size = 2;
+      break;
+    case RegClass::FLOAT:
+      slot_size = 1;  // todo - this wastes some space
+      break;
+    case RegClass::GPR_64:
+      slot_size = 1;
+      break;
+    default:
+      assert(false);
+  }
+  auto kv = cache->var_to_stack_slot.find(var);
+  if (kv == cache->var_to_stack_slot.end()) {
+    if (slot_size == 2 && (cache->current_stack_slot & 1)) {
+      cache->current_stack_slot++;
+    }
+    auto slot = cache->current_stack_slot;
+    cache->current_stack_slot += slot_size;
+    cache->var_to_stack_slot[var] = slot;
+    return slot;
+  } else {
+    return kv->second;
+  }
+}
+
 struct AssignmentSettings {
   bool trace_debug = false;
   bool prefer_saved = false;
   bool only_move_eliminate_assigns = false;
 };
 
+bool setup_stack_bonus_ops(const AllocationInput& input,
+                           RACache* cache,
+                           int var_idx,
+                           const AssignmentSettings& settings,
+                           int my_slot);
+
+bool try_demote_stack(const AllocationInput& input,
+                      RACache* cache,
+                      int var_idx,
+                      const AssignmentSettings& settings) {
+  auto& var = cache->vars.at(var_idx);
+  if (!var.assigned_to_reg() || var.locked()) {
+    return false;  // not in a reg.
+  }
+
+  int my_slot = get_stack_slot_for_var(var_idx, cache);
+  var.demote_to_stack(my_slot);
+  setup_stack_bonus_ops(input, cache, var_idx, settings, my_slot);
+  return true;
+}
+
+/*!
+ * Stack "bonus" ops load and store arguments from the stack as needed.
+ * This may require temporary registers, which are found here.
+ */
+bool setup_stack_bonus_ops(const AllocationInput& input,
+                           RACache* cache,
+                           int var_idx,
+                           const AssignmentSettings& settings,
+                           int my_slot) {
+  auto& var = cache->vars.at(var_idx);
+  // loop over all possible instruction that might use this var
+  //  bool successful = false;
+  //  while (!successful) {
+loop_top:
+  for (int instr_idx = var.first_live(); instr_idx <= var.last_live(); instr_idx++) {
+    // check out the instruction
+    auto& op = input.instructions.at(instr_idx);
+    bool is_read = op.reads(var_idx);
+    bool is_written = op.writes(var_idx);
+    //    fmt::print("op {} {} {}\n", instr_idx, is_read, is_written);
+    if (!is_read && !is_written) {
+      continue;
+    }
+    // start setting up a bonus op.
+    StackOp::Op bonus;
+    bonus.reg_class = cache->iregs.at(var_idx).reg_class;
+    const auto& order = get_alloc_order(var_idx, input, *cache, false);
+    bool success = false;
+
+    const auto& instr = input.instructions.at(instr_idx);
+    if (instr.is_move) {
+      int check_other_reg = is_written ? instr.read.front().id : instr.write.front().id;
+      auto& check_other_var = cache->vars.at(check_other_reg);
+      if (check_other_var.assigned_to_reg()) {
+        auto reg = check_other_var.reg();
+        if (vector_contains(allowable_local_var_move_elim, reg)) {
+          if (check_register_assign_at(input, *cache, var_idx, instr_idx, reg)) {
+            var.set_stack_slot_reg(reg, instr_idx);
+            bonus.reg = reg;
+            bonus.slot = my_slot;
+            success = true;
+            goto success_check;
+          }
+        }
+      }
+    }
+
+    for (auto reg : order) {
+      if (check_register_assign_at(input, *cache, var_idx, instr_idx, reg)) {
+        var.set_stack_slot_reg(reg, instr_idx);
+        bonus.reg = reg;
+        bonus.slot = my_slot;
+        success = true;
+        break;
+      }
+    }
+
+  success_check:
+    if (!success) {
+      for (auto other_var_idx : cache->live_per_instruction.at(instr_idx)) {
+        if (other_var_idx == var_idx) {
+          continue;
+        }
+
+        if (try_demote_stack(input, cache, other_var_idx, settings)) {
+          var.clear_stack_slot_regs();
+          goto loop_top;
+        }
+      }
+
+      fmt::print(
+          "In function {}, register allocator fell back to a highly inefficient strategy to create "
+          "a spill temporary register.\n",
+          input.function_name);
+
+      for (int other_var_idx = 0; other_var_idx < input.max_vars; other_var_idx++) {
+        if (other_var_idx == var_idx) {
+          continue;
+        }
+
+        auto& other_var = cache->vars.at(other_var_idx);
+
+        if (other_var.seen() && (other_var.first_live() <= var.last_live()) &&
+            (var.first_live() <= other_var.last_live())) {
+          if (try_demote_stack(input, cache, other_var_idx, settings)) {
+            var.clear_stack_slot_regs();
+            goto loop_top;
+          }
+        }
+      }
+
+      return false;
+    }
+
+    bonus.load = is_read;
+    bonus.store = is_written;
+
+    if (bonus.load || bonus.store) {
+      cache->stack_ops.at(instr_idx).ops.push_back(bonus);
+      if (bonus.load) {
+        cache->stats.num_spill_ops++;
+      }
+      if (bonus.store) {
+        cache->stats.num_spill_ops++;
+      }
+    }
+  }
+
+  //  }
+
+  cache->stats.num_spilled_vars++;
+
+  return true;
+}
+
+/*!
+ * If we fail to put the variable in a register, this function will spill it to the
+ stack.
+ */
+bool handle_failed_register_allocation(const AllocationInput& input,
+                                       RACache* cache,
+                                       int var_idx,
+                                       const AssignmentSettings& settings) {
+  // so we couldn't find a register and we need to put this on the stack.  Set on stack:
+  auto& var = cache->vars.at(var_idx);
+  int my_slot = get_stack_slot_for_var(var_idx, cache);
+  var.assign_to_stack(my_slot);
+  return setup_stack_bonus_ops(input, cache, var_idx, settings, my_slot);
+}
+
+/*!
+ * Perform allocation for the given variable!
+ */
 bool run_assignment_on_var(const AllocationInput& input,
                            RACache* cache,
                            int var_idx,
                            const AssignmentSettings& settings) {
   bool trace = settings.trace_debug;
   auto& var = cache->vars.at(var_idx);
+  bool can_be_in_register =
+      input.force_on_stack_regs.find(var_idx) == input.force_on_stack_regs.end();
   if (var.unassigned() && var.seen()) {
     bool assigned_to_reg = false;
 
@@ -688,17 +993,14 @@ bool run_assignment_on_var(const AllocationInput& input,
     auto& first_instr = input.instructions.at(var.first_live());
     auto& last_instr = input.instructions.at(var.last_live());
 
-    if (first_instr.is_move) {
-      if (trace) {
-        fmt::print("first is move {}\n", cache->iregs.at(var_idx).to_string());
-      }
+    if (first_instr.is_move && can_be_in_register) {
       int other_live_var_idx = first_instr.read.front().id;
 
       const auto& other_var = cache->vars.at(other_live_var_idx);
       if (other_var.assigned_to_reg() &&
           safe_overlap(input, *cache, var, other_var, var.first_live())) {
         if (vector_contains(allowable_local_var_move_elim, other_var.reg())) {
-          bool worked = check_register_assign(input, *cache, var_idx, other_var.reg(), trace);
+          bool worked = check_register_assign(input, *cache, var_idx, other_var.reg());
           if (trace) {
             fmt::print("m0 trying var {} in {}: {}\n", cache->iregs.at(var_idx).to_string(),
                        other_var.reg().print(), worked);
@@ -712,10 +1014,7 @@ bool run_assignment_on_var(const AllocationInput& input,
       }
     }
 
-    if (!assigned_to_reg && last_instr.is_move) {
-      if (trace) {
-        fmt::print("last is move {}\n", cache->iregs.at(var_idx).to_string());
-      }
+    if (!assigned_to_reg && last_instr.is_move && can_be_in_register) {
       int other_live_var_idx = last_instr.write.front().id;
 
       const auto& other_var = cache->vars.at(other_live_var_idx);
@@ -729,7 +1028,7 @@ bool run_assignment_on_var(const AllocationInput& input,
       if (other_var.assigned_to_reg() &&
           safe_overlap(input, *cache, var, other_var, var.last_live())) {
         if (vector_contains(allowable_local_var_move_elim, other_var.reg())) {
-          bool worked = check_register_assign(input, *cache, var_idx, other_var.reg(), trace);
+          bool worked = check_register_assign(input, *cache, var_idx, other_var.reg());
           if (trace) {
             fmt::print("m1 trying var {} in {}: {}\n", cache->iregs.at(var_idx).to_string(),
                        other_var.reg().print(), worked);
@@ -743,10 +1042,10 @@ bool run_assignment_on_var(const AllocationInput& input,
       }
     }
 
-    if (!assigned_to_reg && !settings.only_move_eliminate_assigns) {
+    if (!assigned_to_reg && !settings.only_move_eliminate_assigns && can_be_in_register) {
       const auto& assign_order = get_alloc_order(var_idx, input, *cache, settings.prefer_saved);
       for (auto& reg : assign_order) {
-        bool worked = check_register_assign(input, *cache, var_idx, reg, trace);
+        bool worked = check_register_assign(input, *cache, var_idx, reg);
         if (trace) {
           fmt::print("m2 trying var {} in {}: {}\n", cache->iregs.at(var_idx).to_string(),
                      reg.print(), worked);
@@ -756,6 +1055,13 @@ bool run_assignment_on_var(const AllocationInput& input,
           assigned_to_reg = true;
           break;
         }
+      }
+    }
+
+    if (!assigned_to_reg && !settings.only_move_eliminate_assigns) {
+      assigned_to_reg = handle_failed_register_allocation(input, cache, var_idx, settings);
+      if (!assigned_to_reg) {
+        cache->failed_alloc = true;
       }
     }
     return assigned_to_reg;
@@ -769,7 +1075,6 @@ int run_assignment_on_some_vars(const AllocationInput& input,
                                 const std::vector<int>& vars_to_alloc,
                                 const AssignmentSettings& settings) {
   cache->stats.assign_passes++;
-  bool trace = settings.trace_debug;
   int assigned_count = 0;
 
   for (auto var_idx : vars_to_alloc) {
@@ -818,27 +1123,36 @@ AllocationResult allocate_registers_v2(const AllocationInput& input) {
     return result;
   }
 
-  // STEP 3: Function Crossing Allocation.
-  AssignmentSettings function_cross_settings;
-  function_cross_settings.only_move_eliminate_assigns = false;
-  function_cross_settings.prefer_saved = true;
-  function_cross_settings.trace_debug = false;
-  auto func_cross_vars = var_indices_of_function_crossers_large_to_small(input, cache);
-  run_assignment_on_some_vars(input, &cache, func_cross_vars, function_cross_settings);
+  if (torture_test_spills) {
+    AssignmentSettings pick_up_new_settings;
+    run_assignment_on_all_vars(input, &cache, pick_up_new_settings);
+  } else {
+    // STEP 3: Function Crossing Allocation.
+    AssignmentSettings function_cross_settings;
+    function_cross_settings.only_move_eliminate_assigns = false;
+    function_cross_settings.prefer_saved = true;
+    auto func_cross_vars = var_indices_of_function_crossers_large_to_small(input, cache);
+    run_assignment_on_some_vars(input, &cache, func_cross_vars, function_cross_settings);
 
-  AssignmentSettings branch_out_settings;
-  branch_out_settings.only_move_eliminate_assigns = true;
+    AssignmentSettings branch_out_settings;
+    branch_out_settings.only_move_eliminate_assigns = true;
 
-  AssignmentSettings pick_up_new_settings;
+    AssignmentSettings pick_up_new_settings;
 
-  int loop_count = 1;
-  while (loop_count) {
-    loop_count = run_assignment_on_all_vars(input, &cache, branch_out_settings);
+    int loop_count = 1;
+    while (loop_count) {
+      loop_count = run_assignment_on_all_vars(input, &cache, branch_out_settings);
+    }
+
+    run_assignment_on_all_vars(input, &cache, pick_up_new_settings);
   }
 
-  run_assignment_on_all_vars(input, &cache, pick_up_new_settings);
-
   result.ok = true;
+
+  if (cache.failed_alloc) {
+    result.ok = false;
+    return result;
+  }
   for (int var_idx = 0; var_idx < input.max_vars; var_idx++) {
     auto& var = cache.vars.at(var_idx);
     if (var.seen() && !var.assigned()) {
@@ -846,12 +1160,6 @@ AllocationResult allocate_registers_v2(const AllocationInput& input) {
       result.ok = false;
       return result;
     }
-  }
-
-  if (!input.force_on_stack_regs.empty()) {
-    //    fmt::print("av2: {} failed\n", input.function_name);
-    result.ok = false;
-    return result;
   }
 
   result.needs_aligned_stack_for_spills = cache.used_stack;
@@ -899,7 +1207,8 @@ AllocationResult allocate_registers_v2(const AllocationInput& input) {
     print_result(input, result);
   }
 
-  result.num_spills = 0;  // TODO
+  result.num_spilled_vars = cache.stats.num_spilled_vars;
+  result.num_spills = cache.stats.num_spill_ops;
 
   return result;
 }

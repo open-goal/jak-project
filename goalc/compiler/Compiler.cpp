@@ -225,25 +225,32 @@ void Compiler::color_object_file(FileEnv* env) {
       input.debug_settings.print_analysis = true;
       input.debug_settings.allocate_log_level = 2;
     }
-    auto regalloc_result = allocate_registers(input);
-    m_debug_stats.num_spills_1only += regalloc_result.num_spills;
+
+    m_debug_stats.total_funcs++;
 
     auto regalloc_result_2 = allocate_registers_v2(input);
 
     if (regalloc_result_2.ok) {
+      if (regalloc_result_2.num_spilled_vars > 0) {
+        // fmt::print("Function {} has {} spilled vars.\n", f->name(),
+        //  regalloc_result_2.num_spilled_vars);
+      }
       num_spills_in_file += regalloc_result_2.num_spills;
       f->set_allocations(regalloc_result_2);
     } else {
+      fmt::print(
+          "Warning: function {} failed register allocation with the v2 allocator. Falling back to "
+          "the v1 allocator.\n",
+          f->name());
+      m_debug_stats.funcs_requiring_v1_allocator++;
+      auto regalloc_result = allocate_registers(input);
+      m_debug_stats.num_spills_v1 += regalloc_result.num_spills;
       num_spills_in_file += regalloc_result.num_spills;
       f->set_allocations(regalloc_result);
     }
   }
 
   m_debug_stats.num_spills += num_spills_in_file;
-  /*
-  fmt::print("Spills in {}: {}\n", env->name(), num_spills_in_file);
-  fmt::print("Total: {} / {}\n", m_debug_stats.num_spills, m_debug_stats.num_spills_1only);
-   */
 }
 
 std::vector<u8> Compiler::codegen_object_file(FileEnv* env) {

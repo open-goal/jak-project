@@ -81,8 +81,10 @@ class Compiler {
 
   struct DebugStats {
     int num_spills = 0;
+    int num_spills_v1 = 0;
     int num_moves_eliminated = 0;
-    int num_spills_1only = 0;
+    int total_funcs = 0;
+    int funcs_requiring_v1_allocator = 0;
   } m_debug_stats;
 
   std::set<std::string> lookup_symbol_infos_starting_with(const std::string& prefix) const;
