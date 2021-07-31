@@ -2617,6 +2617,10 @@ goos::Object StackStructureDefElement::to_form_internal(const Env&) const {
     case StackStructureHint::ContainerType::NONE:
       return pretty_print::build_list(
           fmt::format("new 'stack-no-clear '{}", m_entry.ref_type.print()));
+    case StackStructureHint::ContainerType::INLINE_ARRAY:
+      return pretty_print::build_list(fmt::format("new 'stack-no-clear 'inline-array '{} {}",
+                                                  m_entry.ref_type.get_single_arg().print(),
+                                                  m_entry.hint.container_size));
     default:
       assert(false);
   }

@@ -667,6 +667,8 @@ TEST_F(WithGameTests, I128Simple) {
                           "12344321\n"});
 }
 
+// TODO - add tests
+
 TEST_F(WithGameTests, Pextlw) {
   runner.run_static_test(env, testCategory, "test-pextlw.gc",
                          {"#x07060504171615140302010013121110\n"
@@ -814,6 +816,12 @@ TEST_F(WithGameTests, PandPorPnor) {
                           "#x1f1f1d0f0f0f0d0b0f0f0d0707070503\n"
                           "#xe0e0e2f0f0f0f2f4f0f0f2f8f8f8fafc\n"
                           "#x0200000c0a0808080200000402000000\n0\n"});
+}
+
+TEST_F(WithGameTests, StackInlineArray) {
+  runner.run_static_test(env, testCategory, "test-stack-inline-array.gc",
+                         {"#x8\n"
+                          "#x30\n0\n"});
 }
 
 TEST(TypeConsistency, TypeConsistency) {
