@@ -1,10 +1,6 @@
 ;;-*-Lisp-*-
 (in-package goal)
 
-;; name: camera.gc
-;; name in dgo: camera
-;; dgos: GAME, ENGINE
-
 ;; definition for symbol *cam-res-string*, type string
 (define *cam-res-string* (new 'global 'string 64 (the-as string #f)))
 
@@ -2055,373 +2051,373 @@
    )
   )
 
-; ;; definition for function slave-set-rotation!
-; ;; INFO: Return type mismatch int vs none.
-; ;; WARN: Unsupported inline assembly instruction kind - [mula.s f0, f3]
-; ;; WARN: Unsupported inline assembly instruction kind - [madda.s f1, f4]
-; ;; WARN: Unsupported inline assembly instruction kind - [madd.s f0, f2, f5]
-; ;; Used lq/sq
-; (defun
-;   slave-set-rotation!
-;   ((arg0 cam-rotation-tracker)
-;    (arg1 vector)
-;    (arg2 float)
-;    (arg3 float)
-;    (arg4 symbol)
-;    )
-;   (local-vars
-;    (f0-8 float)
-;    (sv-192 vector)
-;    (sv-208 vector)
-;    (sv-224 matrix)
-;    (sv-240 (function matrix vector float vector))
-;    (sv-256 matrix)
-;    )
-;   (rlet ((vf0 :class vf)
-;          (vf4 :class vf)
-;          (vf5 :class vf)
-;          (vf6 :class vf)
-;          )
-;    (init-vf0-vector)
-;    (let ((s1-0 (new-stack-vector0))
-;          (s5-0 (new-stack-matrix0))
-;          )
-;     (let ((f30-0 (-> arg0 tilt-adjust value)))
-;      (cond
-;       ((< 0.0001 (-> arg0 point-of-interest-blend value))
-;        (set! sv-192 (new 'stack-no-clear 'vector))
-;        0.0
-;        (vector-! s1-0 (-> arg0 follow-pt) arg1)
-;        (let ((f28-0 (vector-length s1-0)))
-;         (vector-! sv-192 (-> arg0 point-of-interest) arg1)
-;         (vector-normalize!
-;          sv-192
-;          (* f28-0 (-> arg0 point-of-interest-blend value))
-;          )
-;         (let ((v1-3 s1-0))
-;          (let ((a0-5 s1-0))
-;           (.mov.vf vf6 vf0 :mask #b1000)
-;           (.lvf vf4 (&-> a0-5 quad))
-;           )
-;          (.lvf vf5 (&-> sv-192 quad))
-;          (.add.vf vf6 vf4 vf5 :mask #b111)
-;          (.svf (&-> v1-3 quad) vf6)
-;          )
-;         (vector-normalize! s1-0 f28-0)
-;         )
-;        )
-;       (else
-;        (vector-! s1-0 (-> arg0 follow-pt) arg1)
-;        )
-;       )
-;      (forward-down->inv-matrix s5-0 s1-0 (-> *camera* local-down))
-;      (when (!= f30-0 0.0)
-;       0.0
-;       0.0
-;       (set! sv-224 (new 'stack-no-clear 'matrix))
-;       (set! sv-208 (new 'stack-no-clear 'vector))
-;       (vector-normalize-copy! sv-208 s1-0 1.0)
-;       (let* ((v1-11 (-> *camera* local-down))
-;              (f0-7 (-> sv-208 x))
-;              (f1-1 (-> sv-208 y))
-;              (f2-0 (-> sv-208 z))
-;              (f3-0 (-> v1-11 x))
-;              (f4-0 (-> v1-11 y))
-;              (f5-0 (-> v1-11 z))
-;              )
-;        (.mula.s f0-7 f3-0)
-;        (.madda.s f1-1 f4-0)
-;        (.madd.s f0-8 f2-0 f5-0)
-;        )
-;       (let* ((f28-1 f0-8)
-;              (f0-10 (acos (fabs f28-1)))
-;              )
-;        (cond
-;         ((< 0.0 f30-0)
-;          (set! f30-0 (if (< 0.0 f28-1)
-;                       (fmin f30-0 (fmax 0.0 (+ -2730.6667 f0-10)))
-;                       (fmin f30-0 (fmax 0.0 (- 32768.0 (+ 2730.6667 f0-10))))
-;                       )
-;           )
-;          )
-;         ((< f30-0 0.0)
-;          (set! f30-0 (if (< 0.0 f28-1)
-;                       (fmax
-;                        f30-0
-;                        (- (fmax 0.0 (- 32768.0 (+ 2730.6667 f0-10))))
-;                        )
-;                       (fmax f30-0 (- (fmax 0.0 (+ -2730.6667 f0-10))))
-;                       )
-;           )
-;          )
-;         )
-;        )
-;       (matrix-rotate-x! sv-224 f30-0)
-;       (let ((t9-7 matrix*!)
-;             (a0-16 s5-0)
-;             (a2-3 s5-0)
-;             )
-;        (t9-7 a0-16 sv-224 a2-3)
-;        )
-;       )
-;      )
-;     (if
-;      (and
-;       (= (-> *camera* under-water) 2)
-;       *target*
-;       (!= (-> *target* next-state name) 'target-swim-up)
-;       )
-;      (set! (-> arg0 underwater-blend target) 1.0)
-;      (set! (-> arg0 underwater-blend target) 0.0)
-;      )
-;     (set! sv-240 vector-into-frustum-nosmooth!)
-;     (set! sv-256 s5-0)
-;     (let
-;      ((a2-5 (lerp-clamp arg3 (* 0.25 arg3) (-> arg0 underwater-blend value))))
-;      (sv-240 sv-256 arg1 a2-5)
-;      )
-;     (cond
-;      (arg4
-;       (slave-matrix-blend-2 (-> arg0 inv-mat) arg2 s1-0 s5-0)
-;       )
-;      (else
-;       (let* ((v1-31 (-> arg0 inv-mat))
-;              (a3-2 s5-0)
-;              (a0-22 (-> a3-2 vector 0 quad))
-;              (a1-16 (-> a3-2 vector 1 quad))
-;              (a2-7 (-> a3-2 vector 2 quad))
-;              (a3-3 (-> a3-2 vector 3 quad))
-;              )
-;        (set! (-> v1-31 vector 0 quad) a0-22)
-;        (set! (-> v1-31 vector 1 quad) a1-16)
-;        (set! (-> v1-31 vector 2 quad) a2-7)
-;        (set! (-> v1-31 vector 3 quad) a3-3)
-;        )
-;       )
-;      )
-;     )
-;    (mat-remove-z-rot (-> arg0 inv-mat) (-> *camera* local-down))
-;    0
-;    (none)
-;    )
-;   )
+;; definition for function slave-set-rotation!
+;; INFO: Return type mismatch int vs none.
+;; WARN: Unsupported inline assembly instruction kind - [mula.s f0, f3]
+;; WARN: Unsupported inline assembly instruction kind - [madda.s f1, f4]
+;; WARN: Unsupported inline assembly instruction kind - [madd.s f0, f2, f5]
+;; Used lq/sq
+(defun
+  slave-set-rotation!
+  ((arg0 cam-rotation-tracker)
+   (arg1 vector)
+   (arg2 float)
+   (arg3 float)
+   (arg4 symbol)
+   )
+  (local-vars
+   (f0-8 float)
+   (sv-192 vector)
+   (sv-208 vector)
+   (sv-224 matrix)
+   (sv-240 (function matrix vector float vector))
+   (sv-256 matrix)
+   )
+  (rlet ((vf0 :class vf)
+         (vf4 :class vf)
+         (vf5 :class vf)
+         (vf6 :class vf)
+         )
+   (init-vf0-vector)
+   (let ((s1-0 (new-stack-vector0))
+         (s5-0 (new-stack-matrix0))
+         )
+    (let ((f30-0 (-> arg0 tilt-adjust value)))
+     (cond
+      ((< 0.0001 (-> arg0 point-of-interest-blend value))
+       (set! sv-192 (new 'stack-no-clear 'vector))
+       0.0
+       (vector-! s1-0 (-> arg0 follow-pt) arg1)
+       (let ((f28-0 (vector-length s1-0)))
+        (vector-! sv-192 (-> arg0 point-of-interest) arg1)
+        (vector-normalize!
+         sv-192
+         (* f28-0 (-> arg0 point-of-interest-blend value))
+         )
+        (let ((v1-3 s1-0))
+         (let ((a0-5 s1-0))
+          (.mov.vf vf6 vf0 :mask #b1000)
+          (.lvf vf4 (&-> a0-5 quad))
+          )
+         (.lvf vf5 (&-> sv-192 quad))
+         (.add.vf vf6 vf4 vf5 :mask #b111)
+         (.svf (&-> v1-3 quad) vf6)
+         )
+        (vector-normalize! s1-0 f28-0)
+        )
+       )
+      (else
+       (vector-! s1-0 (-> arg0 follow-pt) arg1)
+       )
+      )
+     (forward-down->inv-matrix s5-0 s1-0 (-> *camera* local-down))
+     (when (!= f30-0 0.0)
+      0.0
+      0.0
+      (set! sv-224 (new 'stack-no-clear 'matrix))
+      (set! sv-208 (new 'stack-no-clear 'vector))
+      (vector-normalize-copy! sv-208 s1-0 1.0)
+      (let* ((v1-11 (-> *camera* local-down))
+             (f0-7 (-> sv-208 x))
+             (f1-1 (-> sv-208 y))
+             (f2-0 (-> sv-208 z))
+             (f3-0 (-> v1-11 x))
+             (f4-0 (-> v1-11 y))
+             (f5-0 (-> v1-11 z))
+             )
+       (.mula.s f0-7 f3-0)
+       (.madda.s f1-1 f4-0)
+       (.madd.s f0-8 f2-0 f5-0)
+       )
+      (let* ((f28-1 f0-8)
+             (f0-10 (acos (fabs f28-1)))
+             )
+       (cond
+        ((< 0.0 f30-0)
+         (set! f30-0 (if (< 0.0 f28-1)
+                      (fmin f30-0 (fmax 0.0 (+ -2730.6667 f0-10)))
+                      (fmin f30-0 (fmax 0.0 (- 32768.0 (+ 2730.6667 f0-10))))
+                      )
+          )
+         )
+        ((< f30-0 0.0)
+         (set! f30-0 (if (< 0.0 f28-1)
+                      (fmax
+                       f30-0
+                       (- (fmax 0.0 (- 32768.0 (+ 2730.6667 f0-10))))
+                       )
+                      (fmax f30-0 (- (fmax 0.0 (+ -2730.6667 f0-10))))
+                      )
+          )
+         )
+        )
+       )
+      (matrix-rotate-x! sv-224 f30-0)
+      (let ((t9-7 matrix*!)
+            (a0-16 s5-0)
+            (a2-3 s5-0)
+            )
+       (t9-7 a0-16 sv-224 a2-3)
+       )
+      )
+     )
+    (if
+     (and
+      (= (-> *camera* under-water) 2)
+      *target*
+      (!= (-> *target* next-state name) 'target-swim-up)
+      )
+     (set! (-> arg0 underwater-blend target) 1.0)
+     (set! (-> arg0 underwater-blend target) 0.0)
+     )
+    (set! sv-240 vector-into-frustum-nosmooth!)
+    (set! sv-256 s5-0)
+    (let
+     ((a2-5 (lerp-clamp arg3 (* 0.25 arg3) (-> arg0 underwater-blend value))))
+     (sv-240 sv-256 arg1 a2-5)
+     )
+    (cond
+     (arg4
+      (slave-matrix-blend-2 (-> arg0 inv-mat) arg2 s1-0 s5-0)
+      )
+     (else
+      (let* ((v1-31 (-> arg0 inv-mat))
+             (a3-2 s5-0)
+             (a0-22 (-> a3-2 vector 0 quad))
+             (a1-16 (-> a3-2 vector 1 quad))
+             (a2-7 (-> a3-2 vector 2 quad))
+             (a3-3 (-> a3-2 vector 3 quad))
+             )
+       (set! (-> v1-31 vector 0 quad) a0-22)
+       (set! (-> v1-31 vector 1 quad) a1-16)
+       (set! (-> v1-31 vector 2 quad) a2-7)
+       (set! (-> v1-31 vector 3 quad) a3-3)
+       )
+      )
+     )
+    )
+   (mat-remove-z-rot (-> arg0 inv-mat) (-> *camera* local-down))
+   0
+   (none)
+   )
+  )
 
-; ;; definition for function v-slrp2!
-; ;; WARN: Stack slot offset 144 signed mismatch
-; ;; WARN: Stack slot offset 144 signed mismatch
-; ;; WARN: Unsupported inline assembly instruction kind - [mula.s f0, f3]
-; ;; WARN: Unsupported inline assembly instruction kind - [madda.s f1, f4]
-; ;; WARN: Unsupported inline assembly instruction kind - [madd.s f0, f2, f5]
-; ;; Used lq/sq
-; (defun
-;   v-slrp2!
-;   ((arg0 vector)
-;    (arg1 vector)
-;    (arg2 vector)
-;    (arg3 float)
-;    (arg4 vector)
-;    (arg5 float)
-;    )
-;   (local-vars
-;    (f0-10 float)
-;    (f28-0 float)
-;    (f30-0 float)
-;    (sv-144 float)
-;    (sv-160 vector)
-;    (sv-176 matrix)
-;    (sv-192 vector)
-;    )
-;   (set! sv-144 arg5)
-;   (let ((s0-0 (new-stack-vector0)))
-;    (set! sv-160 (new 'stack-no-clear 'vector))
-;    (set! (-> sv-160 quad) (the-as uint128 0))
-;    1.0
-;    1.0
-;    (let ((s3-0 (new-stack-vector0)))
-;     0.0
-;     1.0
-;     (set! sv-176 (new 'stack-no-clear 'matrix))
-;     (set! (-> sv-176 vector 0 quad) (the-as uint128 0))
-;     (set! (-> sv-176 vector 1 quad) (the-as uint128 0))
-;     (set! (-> sv-176 vector 2 quad) (the-as uint128 0))
-;     (set! (-> sv-176 vector 3 quad) (the-as uint128 0))
-;     (cond
-;      ((< 1.0 arg3)
-;       (set! arg3 1.0)
-;       )
-;      ((< arg3 0.0)
-;       (set! arg3 0.0)
-;       )
-;      )
-;     (cond
-;      (arg4
-;       (vector-flatten! s0-0 arg1 arg4)
-;       (vector-flatten! sv-160 arg2 arg4)
-;       (set! f30-0 (vector-normalize-ret-len! s0-0 1.0))
-;       (set! f28-0 (vector-normalize-ret-len! sv-160 1.0))
-;       (vector-normalize! (vector-cross! s3-0 sv-160 s0-0) 1.0)
-;       (let ((f26-0 (vector-dot arg4 s3-0)))
-;        (vector-normalize-copy! s3-0 arg4 1.0)
-;        (if (< f26-0 0.0)
-;         (vector-negate! s3-0 s3-0)
-;         )
-;        )
-;       )
-;      (else
-;       (set! (-> s0-0 quad) (-> arg1 quad))
-;       (set! (-> sv-160 quad) (-> arg2 quad))
-;       (set! f30-0 (vector-normalize-ret-len! s0-0 1.0))
-;       (set! f28-0 (vector-normalize-ret-len! sv-160 1.0))
-;       (vector-normalize! (vector-cross! s3-0 arg2 arg1) 1.0)
-;       )
-;      )
-;     (let ((t9-10 acos))
-;      (let* ((v1-18 s0-0)
-;             (f0-9 (-> v1-18 x))
-;             (f1-2 (-> v1-18 y))
-;             (f2-0 (-> v1-18 z))
-;             (f3-0 (-> sv-160 x))
-;             (f4-0 (-> sv-160 y))
-;             (f5-0 (-> sv-160 z))
-;             )
-;       (.mula.s f0-9 f3-0)
-;       (.madda.s f1-2 f4-0)
-;       (.madd.s f0-10 f2-0 f5-0)
-;       )
-;      (let* ((f1-3 (t9-10 f0-10))
-;             (f0-12 (* arg3 f1-3))
-;             )
-;       (when (< sv-144 f0-12)
-;        (set! f0-12 sv-144)
-;        (set! arg3 (/ sv-144 f1-3))
-;        )
-;       (let* ((f0-13 (cos f0-12))
-;              (t9-12 matrix-axis-sin-cos!)
-;              (a0-20 sv-176)
-;              (a1-13 s3-0)
-;              (f1-5 1.0)
-;              (f2-3 f0-13)
-;              )
-;        (t9-12 a0-20 a1-13 (sqrtf (- f1-5 (* f2-3 f2-3))) f0-13)
-;        )
-;       )
-;      )
-;     (vector-matrix*! arg0 s0-0 sv-176)
-;     (let ((s0-1 vector-normalize!))
-;      (set! sv-192 arg0)
-;      (let ((a1-16 (lerp f30-0 f28-0 arg3)))
-;       (s0-1 sv-192 a1-16)
-;       )
-;      )
-;     (when arg4
-;      (vector+float*! arg0 arg0 s3-0 (vector-dot arg1 s3-0))
-;      (vector+float*!
-;       arg0
-;       arg0
-;       s3-0
-;       (* arg3 (vector-dot (vector-! (new-stack-vector0) arg2 arg1) s3-0))
-;       )
-;      )
-;     )
-;    )
-;   arg0
-;   )
+;; definition for function v-slrp2!
+;; WARN: Stack slot offset 144 signed mismatch
+;; WARN: Stack slot offset 144 signed mismatch
+;; WARN: Unsupported inline assembly instruction kind - [mula.s f0, f3]
+;; WARN: Unsupported inline assembly instruction kind - [madda.s f1, f4]
+;; WARN: Unsupported inline assembly instruction kind - [madd.s f0, f2, f5]
+;; Used lq/sq
+(defun
+  v-slrp2!
+  ((arg0 vector)
+   (arg1 vector)
+   (arg2 vector)
+   (arg3 float)
+   (arg4 vector)
+   (arg5 float)
+   )
+  (local-vars
+   (f0-10 float)
+   (f28-0 float)
+   (f30-0 float)
+   (sv-144 float)
+   (sv-160 vector)
+   (sv-176 matrix)
+   (sv-192 vector)
+   )
+  (set! sv-144 arg5)
+  (let ((s0-0 (new-stack-vector0)))
+   (set! sv-160 (new 'stack-no-clear 'vector))
+   (set! (-> sv-160 quad) (the-as uint128 0))
+   1.0
+   1.0
+   (let ((s3-0 (new-stack-vector0)))
+    0.0
+    1.0
+    (set! sv-176 (new 'stack-no-clear 'matrix))
+    (set! (-> sv-176 vector 0 quad) (the-as uint128 0))
+    (set! (-> sv-176 vector 1 quad) (the-as uint128 0))
+    (set! (-> sv-176 vector 2 quad) (the-as uint128 0))
+    (set! (-> sv-176 vector 3 quad) (the-as uint128 0))
+    (cond
+     ((< 1.0 arg3)
+      (set! arg3 1.0)
+      )
+     ((< arg3 0.0)
+      (set! arg3 0.0)
+      )
+     )
+    (cond
+     (arg4
+      (vector-flatten! s0-0 arg1 arg4)
+      (vector-flatten! sv-160 arg2 arg4)
+      (set! f30-0 (vector-normalize-ret-len! s0-0 1.0))
+      (set! f28-0 (vector-normalize-ret-len! sv-160 1.0))
+      (vector-normalize! (vector-cross! s3-0 sv-160 s0-0) 1.0)
+      (let ((f26-0 (vector-dot arg4 s3-0)))
+       (vector-normalize-copy! s3-0 arg4 1.0)
+       (if (< f26-0 0.0)
+        (vector-negate! s3-0 s3-0)
+        )
+       )
+      )
+     (else
+      (set! (-> s0-0 quad) (-> arg1 quad))
+      (set! (-> sv-160 quad) (-> arg2 quad))
+      (set! f30-0 (vector-normalize-ret-len! s0-0 1.0))
+      (set! f28-0 (vector-normalize-ret-len! sv-160 1.0))
+      (vector-normalize! (vector-cross! s3-0 arg2 arg1) 1.0)
+      )
+     )
+    (let ((t9-10 acos))
+     (let* ((v1-18 s0-0)
+            (f0-9 (-> v1-18 x))
+            (f1-2 (-> v1-18 y))
+            (f2-0 (-> v1-18 z))
+            (f3-0 (-> sv-160 x))
+            (f4-0 (-> sv-160 y))
+            (f5-0 (-> sv-160 z))
+            )
+      (.mula.s f0-9 f3-0)
+      (.madda.s f1-2 f4-0)
+      (.madd.s f0-10 f2-0 f5-0)
+      )
+     (let* ((f1-3 (t9-10 f0-10))
+            (f0-12 (* arg3 f1-3))
+            )
+      (when (< sv-144 f0-12)
+       (set! f0-12 sv-144)
+       (set! arg3 (/ sv-144 f1-3))
+       )
+      (let* ((f0-13 (cos f0-12))
+             (t9-12 matrix-axis-sin-cos!)
+             (a0-20 sv-176)
+             (a1-13 s3-0)
+             (f1-5 1.0)
+             (f2-3 f0-13)
+             )
+       (t9-12 a0-20 a1-13 (sqrtf (- f1-5 (* f2-3 f2-3))) f0-13)
+       )
+      )
+     )
+    (vector-matrix*! arg0 s0-0 sv-176)
+    (let ((s0-1 vector-normalize!))
+     (set! sv-192 arg0)
+     (let ((a1-16 (lerp f30-0 f28-0 arg3)))
+      (s0-1 sv-192 a1-16)
+      )
+     )
+    (when arg4
+     (vector+float*! arg0 arg0 s3-0 (vector-dot arg1 s3-0))
+     (vector+float*!
+      arg0
+      arg0
+      s3-0
+      (* arg3 (vector-dot (vector-! (new-stack-vector0) arg2 arg1) s3-0))
+      )
+     )
+    )
+   )
+  arg0
+  )
 
-; ;; definition for function v-slrp3!
-; ;; WARN: Stack slot offset 144 signed mismatch
-; ;; WARN: Stack slot offset 144 signed mismatch
-; ;; WARN: Unsupported inline assembly instruction kind - [mula.s f0, f3]
-; ;; WARN: Unsupported inline assembly instruction kind - [madda.s f1, f4]
-; ;; WARN: Unsupported inline assembly instruction kind - [madd.s f0, f2, f5]
-; ;; Used lq/sq
-; (defun
-;   v-slrp3!
-;   ((arg0 vector) (arg1 vector) (arg2 vector) (arg3 vector) (arg4 float))
-;   (local-vars
-;    (f0-7 float)
-;    (f26-0 float)
-;    (f28-0 float)
-;    (sv-144 float)
-;    (sv-160 vector)
-;    )
-;   (set! sv-144 arg4)
-;   (let ((s1-0 (new-stack-vector0)))
-;    (set! sv-160 (new 'stack-no-clear 'vector))
-;    (set! (-> sv-160 quad) (the-as uint128 0))
-;    0.0
-;    0.0
-;    (let ((s3-0 (new-stack-vector0))
-;          (f30-0 1.0)
-;          )
-;     0.0
-;     (let ((s0-0 (new-stack-matrix0)))
-;      (cond
-;       (arg3
-;        (vector-flatten! s1-0 arg1 arg3)
-;        (vector-flatten! sv-160 arg2 arg3)
-;        (set! f28-0 (vector-normalize-ret-len! s1-0 1.0))
-;        (set! f26-0 (vector-normalize-ret-len! sv-160 1.0))
-;        (vector-normalize! (vector-cross! s3-0 sv-160 s1-0) 1.0)
-;        (let ((f24-0 (vector-dot arg3 s3-0)))
-;         (vector-normalize-copy! s3-0 arg3 1.0)
-;         (if (< f24-0 0.0)
-;          (vector-negate! s3-0 s3-0)
-;          )
-;         )
-;        )
-;       (else
-;        (set! (-> s1-0 quad) (-> arg1 quad))
-;        (set! (-> sv-160 quad) (-> arg2 quad))
-;        (set! f28-0 (vector-normalize-ret-len! s1-0 1.0))
-;        (set! f26-0 (vector-normalize-ret-len! sv-160 1.0))
-;        (vector-normalize! (vector-cross! s3-0 arg2 arg1) 1.0)
-;        )
-;       )
-;      (let ((t9-10 acos))
-;       (let* ((v1-9 s1-0)
-;              (f0-6 (-> v1-9 x))
-;              (f1-0 (-> v1-9 y))
-;              (f2-0 (-> v1-9 z))
-;              (f3-0 (-> sv-160 x))
-;              (f4-0 (-> sv-160 y))
-;              (f5-0 (-> sv-160 z))
-;              )
-;        (.mula.s f0-6 f3-0)
-;        (.madda.s f1-0 f4-0)
-;        (.madd.s f0-7 f2-0 f5-0)
-;        )
-;       (let ((f0-8 (t9-10 f0-7)))
-;        (when (< sv-144 f0-8)
-;         (set! f30-0 (/ sv-144 f0-8))
-;         (set! f0-8 sv-144)
-;         )
-;        (let* ((f0-9 (cos f0-8))
-;               (t9-12 matrix-axis-sin-cos!)
-;               (a0-20 s0-0)
-;               (a1-13 s3-0)
-;               (f1-3 1.0)
-;               (f2-1 f0-9)
-;               )
-;         (t9-12 a0-20 a1-13 (sqrtf (- f1-3 (* f2-1 f2-1))) f0-9)
-;         )
-;        )
-;       )
-;      (vector-matrix*! arg0 s1-0 s0-0)
-;      )
-;     (vector-normalize! arg0 (lerp f28-0 f26-0 f30-0))
-;     (when arg3
-;      (vector+float*! arg0 arg0 s3-0 (vector-dot arg1 s3-0))
-;      (vector+float*!
-;       arg0
-;       arg0
-;       s3-0
-;       (* f30-0 (vector-dot (vector-! (new-stack-vector0) arg2 arg1) s3-0))
-;       )
-;      )
-;     )
-;    )
-;   arg0
-;   )
+;; definition for function v-slrp3!
+;; WARN: Stack slot offset 144 signed mismatch
+;; WARN: Stack slot offset 144 signed mismatch
+;; WARN: Unsupported inline assembly instruction kind - [mula.s f0, f3]
+;; WARN: Unsupported inline assembly instruction kind - [madda.s f1, f4]
+;; WARN: Unsupported inline assembly instruction kind - [madd.s f0, f2, f5]
+;; Used lq/sq
+(defun
+  v-slrp3!
+  ((arg0 vector) (arg1 vector) (arg2 vector) (arg3 vector) (arg4 float))
+  (local-vars
+   (f0-7 float)
+   (f26-0 float)
+   (f28-0 float)
+   (sv-144 float)
+   (sv-160 vector)
+   )
+  (set! sv-144 arg4)
+  (let ((s1-0 (new-stack-vector0)))
+   (set! sv-160 (new 'stack-no-clear 'vector))
+   (set! (-> sv-160 quad) (the-as uint128 0))
+   0.0
+   0.0
+   (let ((s3-0 (new-stack-vector0))
+         (f30-0 1.0)
+         )
+    0.0
+    (let ((s0-0 (new-stack-matrix0)))
+     (cond
+      (arg3
+       (vector-flatten! s1-0 arg1 arg3)
+       (vector-flatten! sv-160 arg2 arg3)
+       (set! f28-0 (vector-normalize-ret-len! s1-0 1.0))
+       (set! f26-0 (vector-normalize-ret-len! sv-160 1.0))
+       (vector-normalize! (vector-cross! s3-0 sv-160 s1-0) 1.0)
+       (let ((f24-0 (vector-dot arg3 s3-0)))
+        (vector-normalize-copy! s3-0 arg3 1.0)
+        (if (< f24-0 0.0)
+         (vector-negate! s3-0 s3-0)
+         )
+        )
+       )
+      (else
+       (set! (-> s1-0 quad) (-> arg1 quad))
+       (set! (-> sv-160 quad) (-> arg2 quad))
+       (set! f28-0 (vector-normalize-ret-len! s1-0 1.0))
+       (set! f26-0 (vector-normalize-ret-len! sv-160 1.0))
+       (vector-normalize! (vector-cross! s3-0 arg2 arg1) 1.0)
+       )
+      )
+     (let ((t9-10 acos))
+      (let* ((v1-9 s1-0)
+             (f0-6 (-> v1-9 x))
+             (f1-0 (-> v1-9 y))
+             (f2-0 (-> v1-9 z))
+             (f3-0 (-> sv-160 x))
+             (f4-0 (-> sv-160 y))
+             (f5-0 (-> sv-160 z))
+             )
+       (.mula.s f0-6 f3-0)
+       (.madda.s f1-0 f4-0)
+       (.madd.s f0-7 f2-0 f5-0)
+       )
+      (let ((f0-8 (t9-10 f0-7)))
+       (when (< sv-144 f0-8)
+        (set! f30-0 (/ sv-144 f0-8))
+        (set! f0-8 sv-144)
+        )
+       (let* ((f0-9 (cos f0-8))
+              (t9-12 matrix-axis-sin-cos!)
+              (a0-20 s0-0)
+              (a1-13 s3-0)
+              (f1-3 1.0)
+              (f2-1 f0-9)
+              )
+        (t9-12 a0-20 a1-13 (sqrtf (- f1-3 (* f2-1 f2-1))) f0-9)
+        )
+       )
+      )
+     (vector-matrix*! arg0 s1-0 s0-0)
+     )
+    (vector-normalize! arg0 (lerp f28-0 f26-0 f30-0))
+    (when arg3
+     (vector+float*! arg0 arg0 s3-0 (vector-dot arg1 s3-0))
+     (vector+float*!
+      arg0
+      arg0
+      s3-0
+      (* f30-0 (vector-dot (vector-! (new-stack-vector0) arg2 arg1) s3-0))
+      )
+     )
+    )
+   )
+  arg0
+  )
 
 
 
