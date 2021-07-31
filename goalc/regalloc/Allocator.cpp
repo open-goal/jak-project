@@ -747,7 +747,7 @@ void print_analysis(const AllocationInput& in, RegAllocCache* cache) {
     for (uint32_t j = 0; j < ids_live.size(); j++) {
       if (ids_live[j]) {
         char buff[256];
-        sprintf(buff, "%2d ", j);
+        sprintf(buff, "%2d ", (int)j);
         lives.append(buff);
       } else {
         lives.append(".. ");
@@ -760,9 +760,9 @@ void print_analysis(const AllocationInput& in, RegAllocCache* cache) {
         code_str = code_str.substr(0, 48);
         code_str.push_back('~');
       }
-      printf("[%03d] %30s -> %s\n", i, code_str.c_str(), lives.c_str());
+      printf("[%03d] %30s -> %s\n", (int)i, code_str.c_str(), lives.c_str());
     } else {
-      printf("[%03d] %30s -> %s\n", i, "???", lives.c_str());
+      printf("[%03d] %30s -> %s\n", (int)i, "???", lives.c_str());
     }
   }
 }

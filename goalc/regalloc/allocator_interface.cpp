@@ -60,7 +60,7 @@ void print_result(const AllocationInput& in, const AllocationResult& result) {
       code_str = code_str.substr(0, 48);
       code_str.push_back('~');
     }
-    printf("[%03d] %30s | %30s | %30s\n", i, code_str.c_str(), lives.c_str(),
+    printf("[%03d] %30s | %30s | %30s\n", (int)i, code_str.c_str(), lives.c_str(),
            result.stack_ops.at(i).print().c_str());
   }
 }

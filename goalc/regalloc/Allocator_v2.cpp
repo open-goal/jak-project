@@ -1,5 +1,6 @@
 #include <unordered_map>
 #include <algorithm>
+#include <optional>
 #include "third-party/fmt/core.h"
 #include "common/util/Range.h"
 #include "Allocator_v2.h"
@@ -257,8 +258,6 @@ struct RACache {
 
   struct Stats {
     int var_count = 0;
-    int used_var_count = 0;
-    int interference_graph_size_bytes = 0;
     int assign_passes = 0;
     int num_spilled_vars = 0;
     int num_spill_ops = 0;
