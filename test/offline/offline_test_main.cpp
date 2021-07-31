@@ -75,6 +75,9 @@ const std::unordered_set<std::string> g_functions_expected_to_reject = {
     "(method 15 sync-info-eased)",   // needs *res-static-buf*
     "(method 15 sync-info-paused)",  // needs *res-static-buf*
 
+    // camera
+    "slave-set-rotation!", "v-slrp2!", "v-slrp3!",  // vector-dot involving the stack
+
     // collide-mesh-h
     "(method 11 collide-mesh-cache)",  // asm
 
@@ -157,6 +160,9 @@ const std::unordered_set<std::string> g_functions_to_skip_compiling = {
 
     // multiply defined.
     "(method 3 sprite-aux-list)",
+
+    // camera
+    "slave-set-rotation!", "v-slrp2!", "v-slrp3!",  // vector-dot involving the stack
 
     // loader - decompiler bug with detecting handle macros
     "(method 10 external-art-buffer)"};
