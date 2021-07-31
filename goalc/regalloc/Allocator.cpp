@@ -3,6 +3,7 @@
  * Implementation of register allocation algorithms
  */
 
+#include <stdexcept>
 #include "third-party/fmt/core.h"
 #include "Allocator.h"
 #include "goalc/regalloc/allocator_interface.h"

@@ -1,6 +1,7 @@
 #pragma once
 
 #include <vector>
+#include <stdexcept>
 #include "IRegSet.h"
 #include <unordered_map>
 #include "IRegister.h"
