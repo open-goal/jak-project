@@ -79,6 +79,14 @@ class Compiler {
   std::unique_ptr<ReplWrapper> m_repl;
   MakeSystem m_make;
 
+  struct DebugStats {
+    int num_spills = 0;
+    int num_spills_v1 = 0;
+    int num_moves_eliminated = 0;
+    int total_funcs = 0;
+    int funcs_requiring_v1_allocator = 0;
+  } m_debug_stats;
+
   std::set<std::string> lookup_symbol_infos_starting_with(const std::string& prefix) const;
   std::vector<SymbolInfo>* lookup_exact_name_info(const std::string& name) const;
   bool get_true_or_false(const goos::Object& form, const goos::Object& boolean);
@@ -517,6 +525,9 @@ class Compiler {
                                          Env* env);
   Val* compile_load_project(const goos::Object& form, const goos::Object& rest, Env* env);
   Val* compile_make(const goos::Object& form, const goos::Object& rest, Env* env);
+  Val* compile_print_debug_compiler_stats(const goos::Object& form,
+                                          const goos::Object& rest,
+                                          Env* env);
 
   // ControlFlow
   Condition compile_condition(const goos::Object& condition, Env* env, bool invert);

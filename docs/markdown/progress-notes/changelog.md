@@ -185,3 +185,5 @@
 - Stack arrays of uint128 will now be 16-byte aligned instead of sometimes only 8.
 - Inline arrays of structures are now allowed with `stack-no-clear`.
 - Creating arrays on the stack now must be done with `stack-no-clear` as they are not memset to 0 or constructed in any way.
+- The register allocator has been dramatically improved and generates ~5x fewer spill instructions and is able to eliminate more moves.
+- Added a `(print-debug-compiler-stats)` form to print out statistics related to register allocation and move elimination

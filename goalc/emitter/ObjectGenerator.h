@@ -5,9 +5,6 @@
 
 #pragma once
 
-#ifndef JAK_OBJECTGENERATOR_H
-#define JAK_OBJECTGENERATOR_H
-
 #include <cstring>
 #include <map>
 #include <string>
@@ -56,6 +53,10 @@ struct StaticRecord {
   int static_id = -1;
 };
 
+struct ObjectGeneratorStats {
+  int moves_eliminated = 0;
+};
+
 class ObjectGenerator {
  public:
   ObjectGenerator() = default;
@@ -90,6 +91,8 @@ class ObjectGenerator {
                                int offset);
   void link_instruction_to_function(const InstructionRecord& instr,
                                     const FunctionRecord& target_func);
+  ObjectGeneratorStats get_stats() const;
+  void count_eliminated_move();
 
  private:
   void handle_temp_static_type_links(int seg);
@@ -226,7 +229,7 @@ class ObjectGenerator {
   seg_vector<PointerLink> m_pointer_links_by_seg;
 
   std::vector<FunctionRecord> m_all_function_records;
+
+  ObjectGeneratorStats m_stats;
 };
 }  // namespace emitter
-
-#endif  // JAK_OBJECTGENERATOR_H
