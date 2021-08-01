@@ -689,6 +689,54 @@ void SimpleExpressionElement::update_from_stack_si_1(const Env& env,
       make_cast_if_needed(arg, in_type, TypeSpec("int"), pool, env)));
 }
 
+namespace {
+std::vector<Form*> get_addition_elements(Form* in) {
+  auto gen_elt = in->try_as_element<GenericElement>();
+  if (gen_elt && gen_elt->op().is_fixed(FixedOperatorKind::ADDITION)) {
+    return gen_elt->elts();
+  } else {
+    return {in};
+  }
+}
+
+FormElement* make_and_compact_addition(Form* arg0,
+                                       Form* arg1,
+                                       const std::optional<TypeSpec>& arg0_cast,
+                                       const std::optional<TypeSpec>& arg1_cast,
+                                       FormPool& pool,
+                                       const Env& env) {
+  if (!arg1_cast) {
+    auto arg0_elts = get_addition_elements(arg0);
+    assert(!arg0_elts.empty());
+    if (arg0_cast) {
+      arg0_elts.front() = cast_form(arg0_elts.front(), *arg0_cast, pool, env);
+    }
+
+    // it's fine to only cast the first thing here - the rest are already cast properly.
+    auto arg1_elts = get_addition_elements(arg1);
+    assert(!arg1_elts.empty());
+    if (arg1_cast) {
+      arg1_elts.front() = cast_form(arg1_elts.front(), *arg1_cast, pool, env);
+    }
+
+    // add all together
+    arg0_elts.insert(arg0_elts.end(), arg1_elts.begin(), arg1_elts.end());
+    return pool.alloc_element<GenericElement>(
+        GenericOperator::make_fixed(FixedOperatorKind::ADDITION), arg0_elts);
+  } else {
+    if (arg0_cast) {
+      arg0 = cast_form(arg0, *arg0_cast, pool, env);
+    }
+
+    if (arg1_cast) {
+      arg1 = cast_form(arg1, *arg1_cast, pool, env);
+    }
+    return pool.alloc_element<GenericElement>(
+        GenericOperator::make_fixed(FixedOperatorKind::ADDITION), arg0, arg1);
+  }
+}
+}  // namespace
+
 void SimpleExpressionElement::update_from_stack_add_i(const Env& env,
                                                       FormPool& pool,
                                                       FormStack& stack,
@@ -953,7 +1001,7 @@ void SimpleExpressionElement::update_from_stack_add_i(const Env& env,
     }
   }
 
-  if ((arg0_i && arg1_i) || (arg0_u && arg1_u)) {
+  if (false && ((arg0_i && arg1_i) || (arg0_u && arg1_u))) {
     auto new_form = pool.alloc_element<GenericElement>(
         GenericOperator::make_fixed(FixedOperatorKind::ADDITION), args.at(0), args.at(1));
     result->push_back(new_form);
@@ -968,21 +1016,19 @@ void SimpleExpressionElement::update_from_stack_add_i(const Env& env,
         GenericOperator::make_fixed(FixedOperatorKind::ADDITION_PTR), args.at(1), args.at(0));
     result->push_back(new_form);
   } else {
-    auto casted0 = args.at(0);
+    std::optional<TypeSpec> arg0_cast, arg1_cast;
 
     if (!arg0_i && !arg0_u && arg0_type.typespec() != TypeSpec("binteger") &&
         !env.dts->ts.tc(TypeSpec("integer"), arg0_type.typespec())) {
-      casted0 = pool.alloc_single_element_form<CastElement>(
-          nullptr, TypeSpec(arg0_i ? "int" : "uint"), args.at(0));
+      arg0_cast = TypeSpec(arg0_i ? "int" : "uint");
     }
 
-    auto casted1 = pool.alloc_single_element_form<CastElement>(
-        nullptr, TypeSpec(arg0_i ? "int" : "uint"), args.at(1));
+    if (!arg1_i && !arg1_u) {
+      arg1_cast = TypeSpec(arg0_i ? "int" : "uint");
+    }
 
-    FormElement* new_form = pool.alloc_element<GenericElement>(
-        GenericOperator::make_fixed(FixedOperatorKind::ADDITION), casted0, casted1);
-
-    result->push_back(new_form);
+    result->push_back(
+        make_and_compact_addition(args.at(0), args.at(1), arg0_cast, arg1_cast, pool, env));
   }
 }
 
@@ -3388,24 +3434,16 @@ FormElement* ConditionElement::make_zero_check_generic(const Env& env,
                                                        const std::vector<TypeSpec>& source_types) {
   // (zero? (+ thing small-integer)) -> (= thing (- small-integer))
   assert(source_forms.size() == 1);
-  auto mr = match(Matcher::op(GenericOpMatcher::fixed(FixedOperatorKind::ADDITION),
-                              {Matcher::any(0), Matcher::any_integer(1)}),
-                  source_forms.at(0));
-  if (mr.matched) {
-    s64 value = -mr.maps.ints.at(1);
-    auto value_form = pool.alloc_single_element_form<SimpleAtomElement>(
-        nullptr, SimpleAtom::make_int_constant(value));
-    return pool.alloc_element<GenericElement>(GenericOperator::make_fixed(FixedOperatorKind::EQ),
-                                              std::vector<Form*>{mr.maps.forms.at(0), value_form});
-  }
 
   auto enum_type_info = env.dts->ts.try_enum_lookup(source_types.at(0));
   if (enum_type_info && !enum_type_info->is_bitfield()) {
     // (zero? (+ (the-as uint arg0) (the-as uint -2))) check enum value
-    mr = match(Matcher::op(GenericOpMatcher::fixed(FixedOperatorKind::ADDITION),
-                           {make_int_uint_cast_matcher(Matcher::any(0)),
-                            make_int_uint_cast_matcher(Matcher::any_integer(1))}),
-               source_forms.at(0));
+    auto mr = match(
+        Matcher::op(GenericOpMatcher::fixed(FixedOperatorKind::ADDITION),
+                    {make_int_uint_cast_matcher(Matcher::any(0)),
+                     Matcher::match_or({Matcher::any_integer(1),
+                                        make_int_uint_cast_matcher(Matcher::any_integer(1))})}),
+        source_forms.at(0));
     if (mr.matched) {
       s64 value = mr.maps.ints.at(1);
       value = -value;
@@ -3413,6 +3451,20 @@ FormElement* ConditionElement::make_zero_check_generic(const Env& env,
       return pool.alloc_element<GenericElement>(
           GenericOperator::make_fixed(FixedOperatorKind::EQ),
           std::vector<Form*>{mr.maps.forms.at(0), enum_constant});
+    }
+  }
+
+  {
+    auto mr = match(Matcher::op(GenericOpMatcher::fixed(FixedOperatorKind::ADDITION),
+                                {Matcher::any(0), Matcher::any_integer(1)}),
+                    source_forms.at(0));
+    if (mr.matched) {
+      s64 value = -mr.maps.ints.at(1);
+      auto value_form = pool.alloc_single_element_form<SimpleAtomElement>(
+          nullptr, SimpleAtom::make_int_constant(value));
+      return pool.alloc_element<GenericElement>(
+          GenericOperator::make_fixed(FixedOperatorKind::EQ),
+          std::vector<Form*>{mr.maps.forms.at(0), value_form});
     }
   }
 

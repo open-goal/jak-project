@@ -116,17 +116,11 @@
      )
     ((=
       (-> a2-0 heap-cur)
-      (+
-       (+ (+ (-> obj stack-size) -4) (the-as int (-> obj type size)))
-       (the-as int obj)
-       )
+      (+ (+ (-> obj stack-size) -4 (-> obj type size)) (the-as int obj))
       )
      (set!
       (-> a2-0 heap-cur)
-      (the-as
-       pointer
-       (+ (+ (+ arg0 -4) (the-as int (-> obj type size))) (the-as int obj))
-       )
+      (the-as pointer (+ (+ arg0 -4 (-> obj type size)) (the-as int obj)))
       )
      (set! (-> obj stack-size) arg0)
      )
@@ -193,7 +187,7 @@
 ;; definition for method 5 of type cpu-thread
 ;; INFO: Return type mismatch uint vs int.
 (defmethod asize-of cpu-thread ((obj cpu-thread))
-  (the-as int (+ (-> obj type size) (the-as uint (-> obj stack-size))))
+  (the-as int (+ (-> obj type size) (-> obj stack-size)))
   )
 
 ;; definition for function remove-exit
@@ -364,7 +358,7 @@
                (object-new
                 allocation
                 type-to-make
-                (the-as int (+ (-> process size) (the-as uint arg1)))
+                (the-as int (+ (-> process size) arg1))
                 )
                (+ (the-as int allocation) 4)
                )
@@ -473,7 +467,7 @@
   (format #t "~Theap-top: #x~X~%" (-> obj heap-top))
   (format #t "~Theap-cur: #x~X~%" (-> obj heap-cur))
   (let ((s5-0 *print-column*))
-   (set! *print-column* (+ *print-column* (the-as uint 64)))
+   (set! *print-column* (+ *print-column* 64))
    (format #t "----~%")
    (inspect-process-heap obj)
    (format #t "----~%")
@@ -487,7 +481,7 @@
 ;; definition for method 5 of type process
 ;; INFO: Return type mismatch uint vs int.
 (defmethod asize-of process ((obj process))
-  (the-as int (+ (-> process size) (the-as uint (-> obj allocated-length))))
+  (the-as int (+ (-> process size) (-> obj allocated-length)))
   )
 
 ;; definition for method 2 of type process
@@ -641,10 +635,7 @@
       type-to-make
       (the-as
        int
-       (+
-        (+ (-> type-to-make size) (the-as uint (logand -16 (+ (* 12 arg1) 15))))
-        (the-as uint arg2)
-        )
+       (+ (-> type-to-make size) (logand -16 (+ (* 12 arg1) 15)) arg2)
        )
       )
      )
@@ -676,7 +667,7 @@
    (set! (-> obj first-shrink) #f)
    (set!
     (-> obj heap base)
-    (the-as pointer (logand -16 (+ (+ (the-as int obj) 115) (* 12 arg1))))
+    (the-as pointer (logand -16 (+ (the-as int obj) 115 (* 12 arg1))))
     )
    (set! (-> obj heap current) (-> obj heap base))
    (set! (-> obj heap top) (&+ (-> obj heap base) arg2))
@@ -693,10 +684,7 @@
   ((obj dead-pool-heap) (arg0 dead-pool-heap-rec))
   (the-as pointer (if (-> arg0 process)
                    (+
-                    (+
-                     (+ (-> arg0 process allocated-length) -4)
-                     (the-as int (-> process size))
-                     )
+                    (+ (-> arg0 process allocated-length) -4 (-> process size))
                     (the-as int (-> arg0 process))
                     )
                    (-> obj heap base)
@@ -861,14 +849,7 @@
   (let ((s4-0 (-> obj dead-list next))
         (s3-0 (the-as process #f))
         )
-   (let
-    ((s1-0
-      (find-gap-by-size
-       obj
-       (the-as int (+ (-> process size) (the-as uint arg1)))
-       )
-      )
-     )
+   (let ((s1-0 (find-gap-by-size obj (the-as int (+ (-> process size) arg1)))))
     (cond
      ((and s4-0 s1-0)
       (set! (-> obj dead-list next) (-> s4-0 next))
