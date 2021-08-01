@@ -591,18 +591,23 @@ Val* Compiler::compile_logand(const goos::Object& form, const goos::Object& rest
 
 Val* Compiler::compile_logior(const goos::Object& form, const goos::Object& rest, Env* env) {
   auto args = get_va(form, rest);
-  va_check(form, args, {{}, {}}, {});
-  auto first = compile_error_guard(args.unnamed.at(0), env)->to_gpr(env);
-  auto second = compile_error_guard(args.unnamed.at(1), env)->to_gpr(env);
-  if (get_math_mode(first->type()) != MathMode::MATH_INT ||
-      get_math_mode(second->type()) != MathMode::MATH_INT) {
-    throw_compiler_error(form, "Cannot logior a {} by a {}.", first->type().print(),
-                         second->type().print());
+  if (!args.named.empty() || args.unnamed.empty()) {
+    throw_compiler_error(form, "Invalid logior form");
   }
+
+  auto first = compile_error_guard(args.unnamed.at(0), env)->to_gpr(env);
 
   auto result = env->make_gpr(first->type());
   env->emit(std::make_unique<IR_RegSet>(result, first));
-  env->emit(std::make_unique<IR_IntegerMath>(IntegerMathKind::OR_64, result, second));
+
+  for (size_t i = 1; i < args.unnamed.size(); i++) {
+    auto sec = compile_error_guard(args.unnamed.at(i), env);
+    if (!is_integer(sec->type())) {
+      throw_compiler_error(form, "Cannot logior a {} by a {}.", first->type().print(),
+                           sec->type().print());
+    }
+    env->emit(std::make_unique<IR_IntegerMath>(IntegerMathKind::OR_64, result, sec->to_gpr(env)));
+  }
   return result;
 }
 

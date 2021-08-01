@@ -494,36 +494,56 @@
     :type int32
     :bitfield #f
 
+    (bucket-1 1)
+    (bucket-2 2)
     (bucket-3 3)
     (tfrag-tex0 5)
     ;; merc0 10
     ;; generic0 11
+    (bucket-10 10)
+    (bucket-11 11)
 
     (tfrag-tex1 12)
     ;; merc1 17
     ;; generic1 18
+    (bucket-17 17)
+    (bucket-18 18)
 
     (shrub-tex0 19)
 
     (shrub-tex1 25)
 
+    (generic-foreground 30) ;; ?
     (alpha-tex0 31)
 
     (alpha-tex1 38)
 
+    (bucket-45 45)
+    (bucket-46 46)
+
     (pris-tex0 48)
+    (bucket-49 49)
+    (bucket-50 50)
     ;; merc0 49
     ;; generic0 50
 
     (pris-tex1 51)
+    (bucket-52 52)
+    (bucket-53 53)
     ;; merc1 52
     ;; generic1 53
 
+    (bucket-55 55)
+    (bucket-56 56)
     (water-tex0 57)
+    (bucket-58 58)
+    (bucket-59 59)
     ;; merc0 58     (+ default)
     ;; generic0 59  (+ default)
 
     (water-tex1 60)
+    (bucket-61 61)
+    (bucket-62 62)
     ;; merc1 61
     ;; generic1 62
     (depth-cue 64)
@@ -3302,7 +3322,7 @@
 ;; - Types
 
 (deftype dma-foreground-sink (basic)
-  ((bucket                   int32  :offset-assert 4)
+  ((bucket                   bucket-id  :offset-assert 4)
    (foreground-texture-page  int8   :offset-assert 8)
    (foreground-texture-level int8   :offset-assert 9)
    (foreground-output-bucket int8   :offset-assert 10)
@@ -3685,7 +3705,7 @@
 (deftype gs-frame (uint64)
   ((fbp    uint16 :offset 0  :size 9)
    (fbw    uint8  :offset 16 :size 6)
-   (psm    uint8  :offset 24 :size 6)
+   (psm    gs-psm :offset 24 :size 6)
    (fbmsk  uint32 :offset 32 :size 32)
    )
   :flag-assert #x900000008
@@ -3694,7 +3714,7 @@
 ;; the GS's ZBUF registers make various settings regarding Z buffer.
 (deftype gs-zbuf (uint64)
   ((zbp   uint16 :offset 0  :size 9)
-   (psm   uint8  :offset 24 :size 4)
+   (psm   gs-psm :offset 24 :size 4)
    (zmsk  uint8  :offset 32 :size 1)
    )
   :flag-assert #x900000008
@@ -3741,16 +3761,34 @@
   :flag-assert #x900000008
   )
 
+(defenum gs-atest
+  :type uint8
+  (never 0)
+  (always 1)
+  (less 2)
+  (less-equal 3)
+  (equal 4)
+  (greater-equal 5)
+  (greater 6)
+  (not-equal 7)
+  )
+(defenum gs-ztest
+  :type uint8
+  (never 0)
+  (always 1)
+  (greater-equal 2)
+  (greater 3)
+  )
 ;; the GS's TEST register performs settings related to the pixel test.
 (deftype gs-test (uint64)
   ((ate    uint8 :offset 0  :size 1) ;; alpha test enable
-   (atst   uint8 :offset 1  :size 3) ;; alpha test method
+   (atst   gs-atest :offset 1  :size 3) ;; alpha test method
    (aref   uint8 :offset 4  :size 8) ;; alpha val reference
    (afail  uint8 :offset 12 :size 2) ;; processing method on alpha test fail
    (date   uint8 :offset 14 :size 1) ;; dest alpha test enable
    (datm   uint8 :offset 15 :size 1) ;; dest alpha test mode
    (zte    uint8 :offset 16 :size 1) ;; depth test enable
-   (ztst   uint8 :offset 17 :size 2) ;; depth test method
+   (ztst   gs-ztest :offset 17 :size 2) ;; depth test method
    )
   :flag-assert #x900000008
   )
@@ -3938,9 +3976,17 @@
   :flag-assert #x900000008
   )
 
+(defenum gs-tex-wrap-mode
+  :type uint8
+  (repeat 0)
+  (clamp 1)
+  (region-clamp 2)
+  (region-repeat 3)
+  )
+
 (deftype gs-clamp (uint64)
-  ((wms   uint8  :offset 0  :size 2)
-   (wmt   uint8  :offset 2  :size 2)
+  ((wms   gs-tex-wrap-mode  :offset 0  :size 2)
+   (wmt   gs-tex-wrap-mode  :offset 2  :size 2)
    (minu  uint16 :offset 4  :size 10)
    (maxu  uint16 :offset 14 :size 10)
    (minv  uint16 :offset 24 :size 10)
@@ -4040,43 +4086,89 @@
   :flag-assert #x900000004
   )
 
+(defenum gif-reg-id
+  :type uint8
+  (prim 0)
+  (rgbaq 1)
+  (st 2)
+  (uv 3)
+  (xyzf2 4)
+  (xyz2 5)
+  (tex0-1 6)
+  (tex0-2 7)
+  (clamp-1 8)
+  (clamp-2 9)
+  (fog 10)
+  (xyzf3 12)
+  (xyz3 13)
+  (a+d 14)
+  (nop 15)
+  )
+
+(defenum gif-flag
+  :type uint8
+  (packed 0)
+  (reg-list 1)
+  (image 2)
+  (disable 3)
+  )
+
 (deftype gif-tag64 (uint64)
   ((nloop   uint16  :offset 0   :size 15)
    (eop     uint8   :offset 15  :size 1)
    (id      uint16  :offset 32  :size 14)
    (pre     uint8   :offset 46  :size 1)
    (prim    gs-prim :offset 47  :size 11)
-   (flg     uint8   :offset 58  :size 2)
+   (flg     gif-flag   :offset 58  :size 2)
    (nreg    uint8   :offset 60  :size 4))
   :flag-assert #x900000008
   )
-
 (deftype gif-tag (uint128)
   ((nloop   uint16 :offset 0   :size 15)
    (eop     uint8  :offset 15  :size 1)
    (id      uint16 :offset 32  :size 14)
    (pre     uint8  :offset 46  :size 1)
    (prim    uint16 :offset 47  :size 11)
-   (flg     uint8  :offset 58  :size 2)
+   (flg     gif-flag  :offset 58  :size 2)
    (nreg    uint8  :offset 60  :size 4)
-   (regs0   uint8 :offset 64  :size 4)
-   (regs1   uint8 :offset 68  :size 4)
-   (regs2   uint8 :offset 72  :size 4)
-   (regs3   uint8 :offset 76  :size 4)
-   (regs4   uint8 :offset 80  :size 4)
-   (regs5   uint8 :offset 84  :size 4)
-   (regs6   uint8 :offset 88  :size 4)
-   (regs7   uint8 :offset 92  :size 4)
-   (regs8   uint8 :offset 96  :size 4)
-   (regs9   uint8 :offset 100 :size 4)
-   (regs10  uint8 :offset 104 :size 4)
-   (regs11  uint8 :offset 108 :size 4)
-   (regs12  uint8 :offset 112 :size 4)
-   (regs13  uint8 :offset 116 :size 4)
-   (regs14  uint8 :offset 120 :size 4)
-   (regs15  uint8 :offset 124 :size 4)
+   (regs0   gif-reg-id :offset 64  :size 4)
+   (regs1   gif-reg-id :offset 68  :size 4)
+   (regs2   gif-reg-id :offset 72  :size 4)
+   (regs3   gif-reg-id :offset 76  :size 4)
+   (regs4   gif-reg-id :offset 80  :size 4)
+   (regs5   gif-reg-id :offset 84  :size 4)
+   (regs6   gif-reg-id :offset 88  :size 4)
+   (regs7   gif-reg-id :offset 92  :size 4)
+   (regs8   gif-reg-id :offset 96  :size 4)
+   (regs9   gif-reg-id :offset 100 :size 4)
+   (regs10  gif-reg-id :offset 104 :size 4)
+   (regs11  gif-reg-id :offset 108 :size 4)
+   (regs12  gif-reg-id :offset 112 :size 4)
+   (regs13  gif-reg-id :offset 116 :size 4)
+   (regs14  gif-reg-id :offset 120 :size 4)
+   (regs15  gif-reg-id :offset 124 :size 4)
    )
   :flag-assert #x900000010
+  )
+
+(deftype gif-tag-regs (uint64)
+  ((regs0   gif-reg-id :offset 0  :size 4)
+   (regs1   gif-reg-id :offset 4  :size 4)
+   (regs2   gif-reg-id :offset 8  :size 4)
+   (regs3   gif-reg-id :offset 12  :size 4)
+   (regs4   gif-reg-id :offset 16  :size 4)
+   (regs5   gif-reg-id :offset 20  :size 4)
+   (regs6   gif-reg-id :offset 24  :size 4)
+   (regs7   gif-reg-id :offset 28  :size 4)
+   (regs8   gif-reg-id :offset 32  :size 4)
+   (regs9   gif-reg-id :offset 36 :size 4)
+   (regs10  gif-reg-id :offset 40 :size 4)
+   (regs11  gif-reg-id :offset 44 :size 4)
+   (regs12  gif-reg-id :offset 48 :size 4)
+   (regs13  gif-reg-id :offset 52 :size 4)
+   (regs14  gif-reg-id :offset 56 :size 4)
+   (regs15  gif-reg-id :offset 60 :size 4)
+   )
   )
 
 (deftype gs-gif-tag (structure)
@@ -5235,7 +5327,7 @@
 (define-extern vblank-handler (function int))
 (define-extern set-display-gs-state (function dma-buffer int int int int int dma-buffer))
 (define-extern set-display-gs-state-offset (function dma-buffer int int int int int int int dma-buffer))
-(define-extern reset-display-gs-state (function display dma-buffer int none))
+(define-extern reset-display-gs-state (function display dma-buffer int display))
 
 ;; - Symbols
 
@@ -7638,8 +7730,8 @@
 
 (deftype generic-constants (structure)
   ((fog         vector :inline :offset-assert 0)
-   (adgif       qword  :inline :offset-assert 16)
-   (giftag      qword  :inline :offset-assert 32)
+   (adgif       gs-gif-tag  :inline :offset-assert 16) ;; was qword
+   (giftag      gs-gif-tag  :inline :offset-assert 32) ;; was qword
    (hvdf-offset vector :inline :offset-assert 48)
    (hmge-scale  vector :inline :offset-assert 64)
    (invh-scale  vector :inline :offset-assert 80)
@@ -15112,7 +15204,7 @@
 (define-extern get-debug-text-3d (function debug-text-3d))
 (define-extern internal-draw-debug-text-3d (function bucket-id string vector rgba vector2h pointer))
 (define-extern get-debug-line (function debug-line))
-(define-extern internal-draw-debug-line (function bucket-id vector vector rgba symbol rgba object))
+(define-extern internal-draw-debug-line (function bucket-id vector vector rgba symbol rgba pointer))
 (define-extern draw-string (function string dma-buffer font-context float))
 (define-extern transform-float-point (function vector vector vector))
 (define-extern add-debug-point (function symbol bucket-id vector symbol)) ;; unused
@@ -15124,7 +15216,7 @@
 (define-extern add-debug-line2d (function symbol bucket-id vector vector vector symbol))
 (define-extern add-debug-box (function symbol bucket-id vector vector rgba symbol))
 (define-extern add-debug-sphere-with-transform (function symbol bucket-id vector float matrix rgba symbol))
-(define-extern add-debug-spheres (function symbol bucket-id (pointer float) int rgba symbol))
+(define-extern add-debug-spheres (function symbol bucket-id (inline-array vector) int rgba symbol))
 (define-extern add-debug-circle (function symbol bucket-id vector float rgba matrix symbol))
 (define-extern add-debug-rot-matrix (function symbol bucket-id matrix vector matrix))
 (define-extern add-debug-yrot-vector (function symbol bucket-id vector float float rgba symbol))
@@ -15156,7 +15248,7 @@
 
 ;; - Unknowns
 
-;;(define-extern merc-vu1-block object) ;; unknown type
+(define-extern merc-vu1-block vu-function)
 
 
 ;; ----------------------
@@ -15431,7 +15523,7 @@
 
 ;; - Functions
 
-(define-extern generic-init-buf (function dma-buffer int uint none))
+(define-extern generic-init-buf (function dma-buffer int gs-zbuf none))
 (define-extern generic-dma-foreground-sink-init (function generic-dma-foreground-sink none))
 (define-extern generic-init-buffers (function symbol))
 (define-extern generic-sink (function int generic-dma-foreground-sink))
@@ -15449,13 +15541,13 @@
 
 ;; - Functions
 
-(define-extern generic-add-constants function)
-(define-extern generic-setup-constants function)
+(define-extern generic-add-constants (function dma-buffer int none))
+(define-extern generic-setup-constants (function generic-constants int none))
 (define-extern generic-reset-buffers function)
 
 ;; - Unknowns
 
-;;(define-extern generic-vu1-block object) ;; unknown type
+(define-extern generic-vu1-block vu-function)
 
 
 ;; ----------------------
@@ -15685,7 +15777,7 @@
 
 ;; - Unknowns
 
-;;(define-extern shadow-vu1-block object) ;; unknown type
+(define-extern shadow-vu1-block vu-function)
 ;;(define-extern *shadow-vu1-tri-template* object) ;; unknown type
 
 
@@ -15820,7 +15912,7 @@
 
 ;; - Unknowns
 
-;;(define-extern shrub-vu1-block object) ;; unknown type
+(define-extern shrub-vu1-block vu-function)
 
 
 ;; ----------------------
@@ -15845,7 +15937,7 @@
 
 ;; - Unknowns
 
-;;(define-extern tnear-vu1-block object) ;; unknown type
+(define-extern tnear-vu1-block vu-function)
 
 
 ;; ----------------------
@@ -15871,7 +15963,7 @@
 
 ;; - Unknowns
 
-;;(define-extern tfrag-vu1-block object) ;; unknown type
+(define-extern tfrag-vu1-block vu-function)
 ;;(define-extern t-stat object) ;; unknown type
 ;;(define-extern *tfrag-display-stats* object) ;; unknown type
 
@@ -15937,7 +16029,7 @@
 
 ;; - Unknowns
 
-;;(define-extern tie-vu1-block object) ;; unknown type
+(define-extern tie-vu1-block vu-function)
 
 
 ;; ----------------------
@@ -15977,7 +16069,7 @@
 
 ;; - Unknowns
 
-;;(define-extern tie-near-vu1-block object) ;; unknown type
+(define-extern tie-near-vu1-block vu-function)
 
 
 ;; ----------------------
@@ -17079,7 +17171,7 @@
 
 ;; - Unknowns
 
-;;(define-extern sky-vu1-block object) ;; unknown type
+(define-extern sky-vu1-block vu-function)
 
 
 ;; ----------------------
@@ -19240,7 +19332,6 @@
    (new (symbol type) _type_ 0))
   )
 
-(declare-type debug-menu basic)
 (deftype debug-menu-node (basic)
   ((name          string  :offset-assert 4)
    (parent        debug-menu  :offset-assert 8)
@@ -19252,7 +19343,7 @@
   :flag-assert         #x900000014
   )
 
-(declare-type debug-menu-item basic)
+(declare-type debug-menu-item debug-menu-node)
 (deftype debug-menu (debug-menu-node)
   ((context       debug-menu-context  :offset-assert 20)
    (selected-item debug-menu-item  :offset-assert 24)
@@ -19324,17 +19415,15 @@
    (fstart-inc       float  :offset-assert 76)
    (fstep            float  :offset-assert 80)
    (fprecision       int32  :offset-assert 84)
-   ; (function int (the id) int (some constant) <int/float> <int/float> (fval or ival)x2 <int/float>)
-   (factivate-func   function  :offset-assert 88)
-   (ival             int32  :offset 60)
-   (iundo-val        int32  :offset 64)
-   (irange-min       int32  :offset 68)
-   (irange-max       int32  :offset 72)
-   (istart-inc       int32  :offset 76)
-   (istep            int32  :offset 80)
-   (ihex-p           symbol  :offset-assert 92)
-   ; (function int (the id) int (some constant) <int/float> <int/float> (fval or ival)x2 <int/float>)
-   (iactivate-func   function  :offset 88)
+   (factivate-func   (function int int float float float)  :offset-assert  88)
+   (ival             int32     :offset         60)
+   (iundo-val        int32     :offset         64)
+   (irange-min       int32     :offset         68)
+   (irange-max       int32     :offset         72)
+   (istart-inc       int32     :offset         76)
+   (istep            int32     :offset         80)
+   (ihex-p           symbol    :offset-assert  92)
+   (iactivate-func   (function int int int int int)  :offset         88)
    (ifloat-p         symbol  :offset-assert 96)
    )
   :method-count-assert 9
@@ -19376,7 +19465,7 @@
 (define-extern debug-menu-context-set-root-menu (function debug-menu-context debug-menu debug-menu-context))
 (define-extern debug-menu-func-decode (function object function))
 (define-extern debug-menu-item-var-make-int (function debug-menu-item-var (function int int int int int) int symbol int int symbol debug-menu-item-var))
-(define-extern debug-menu-item-var-make-float (function debug-menu-item-var (function int int float float int) float symbol float float symbol debug-menu-item-var))
+(define-extern debug-menu-item-var-make-float (function debug-menu-item-var (function int int float float float) float symbol float float int debug-menu-item-var))
 (define-extern debug-menu-rebuild (function debug-menu debug-menu))
 (define-extern debug-menu-context-default-selection (function debug-menu-context symbol debug-menu-context))
 (define-extern debug-menu-item-get-max-width (function debug-menu-item debug-menu int))
@@ -20861,7 +20950,7 @@
 
 ;; - Unknowns
 
-;;(define-extern ocean-texture-vu1-block object) ;; unknown type
+(define-extern ocean-texture-vu1-block vu-function)
 ;;(define-extern *ocean-texture-work* object) ;; unknown type
 
 

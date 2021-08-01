@@ -375,7 +375,12 @@
   (set! (-> data screen-shader clamp-reg) (gs-reg64 clamp-1))
   (set!
    (-> data screen-shader clamp)
-   (new 'static 'gs-clamp :wms #x2 :wmt #x2 :maxu #x27f :maxv #xef)
+   (new 'static 'gs-clamp
+    :wms (gs-tex-wrap-mode region-clamp)
+    :wmt (gs-tex-wrap-mode region-clamp)
+    :maxu #x27f
+    :maxv #xef
+    )
    )
   (set! (-> data screen-shader prims 9) (gs-reg64 alpha-1))
   (set! (-> data screen-shader alpha) (new 'static 'gs-miptbp :tbp1 #x44))
@@ -923,13 +928,13 @@
    (num-sprites int)
    (dma-buff dma-buffer)
    )
-  (let ((pkt1-qwc 1))
+  (let ((qwc-pkt1 1))
    (let* ((v1-0 dma-buff)
           (pkt1 (the-as dma-packet (-> v1-0 base)))
           )
     (set!
      (-> pkt1 dma)
-     (new 'static 'dma-tag :id (dma-tag-id cnt) :qwc pkt1-qwc)
+     (new 'static 'dma-tag :id (dma-tag-id cnt) :qwc qwc-pkt1)
      )
     (set!
      (-> pkt1 vif0)
@@ -940,26 +945,26 @@
      (new 'static 'vif-tag
       :imm #x8000
       :cmd (vif-cmd unpack-v4-32)
-      :num pkt1-qwc
+      :num qwc-pkt1
       )
      )
     (set! (-> v1-0 base) (&+ (the-as pointer pkt1) 16))
     )
    (sprite-setup-header (the-as sprite-header (-> dma-buff base)) num-sprites)
-   (&+! (-> dma-buff base) (* pkt1-qwc 16))
+   (&+! (-> dma-buff base) (* qwc-pkt1 16))
    )
-  (let* ((pkt2-qwc (* 3 num-sprites))
+  (let* ((qwc-pkt2 (* 3 num-sprites))
          (v1-4 dma-buff)
          (pkt2 (the-as dma-packet (-> v1-4 base)))
          )
    (set!
     (-> pkt2 dma)
-    (new 'static 'dma-tag :id (dma-tag-id cnt) :qwc pkt2-qwc)
+    (new 'static 'dma-tag :id (dma-tag-id cnt) :qwc qwc-pkt2)
     )
    (set! (-> pkt2 vif0) (new 'static 'vif-tag))
    (set!
     (-> pkt2 vif1)
-    (new 'static 'vif-tag :imm #x8001 :cmd (vif-cmd unpack-v4-32) :num pkt2-qwc)
+    (new 'static 'vif-tag :imm #x8001 :cmd (vif-cmd unpack-v4-32) :num qwc-pkt2)
     )
    (set! (-> v1-4 base) (&+ (the-as pointer pkt2) 16))
    )
@@ -982,15 +987,18 @@
     )
    (&+! (-> dma-buff base) 48)
    )
-  (let* ((a1-15 (* 5 num-sprites))
+  (let* ((qwc-pkt3 (* 5 num-sprites))
          (v1-9 dma-buff)
          (pkt3 (the-as dma-packet (-> v1-9 base)))
          )
-   (set! (-> pkt3 dma) (new 'static 'dma-tag :id (dma-tag-id cnt) :qwc a1-15))
+   (set!
+    (-> pkt3 dma)
+    (new 'static 'dma-tag :id (dma-tag-id cnt) :qwc qwc-pkt3)
+    )
    (set! (-> pkt3 vif0) (new 'static 'vif-tag))
    (set!
     (-> pkt3 vif1)
-    (new 'static 'vif-tag :imm #x8091 :cmd (vif-cmd unpack-v4-32) :num a1-15)
+    (new 'static 'vif-tag :imm #x8091 :cmd (vif-cmd unpack-v4-32) :num qwc-pkt3)
     )
    (set! (-> v1-9 base) (&+ (the-as pointer pkt3) 16))
    )
@@ -1107,17 +1115,20 @@
       (-> (the-as (pointer gs-test) a0-13) 0)
       (new 'static 'gs-test
        :ate #x1
-       :atst #x5
+       :atst (gs-atest greater-equal)
        :aref #x26
        :afail #x1
        :zte #x1
-       :ztst #x2
+       :ztst (gs-ztest greater-equal)
        )
       )
      (set! (-> (the-as (pointer gs-reg64) a0-13) 1) (gs-reg64 test-1))
      (set!
       (-> (the-as (pointer gs-clamp) a0-13) 2)
-      (new 'static 'gs-clamp :wms #x1 :wmt #x1)
+      (new 'static 'gs-clamp
+       :wms (gs-tex-wrap-mode clamp)
+       :wmt (gs-tex-wrap-mode clamp)
+       )
       )
      (set! (-> (the-as (pointer gs-reg64) a0-13) 3) (gs-reg64 clamp-1))
      (set! (-> v1-15 base) (&+ a0-13 32))
