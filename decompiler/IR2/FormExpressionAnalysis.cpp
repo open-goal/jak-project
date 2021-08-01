@@ -3434,24 +3434,16 @@ FormElement* ConditionElement::make_zero_check_generic(const Env& env,
                                                        const std::vector<TypeSpec>& source_types) {
   // (zero? (+ thing small-integer)) -> (= thing (- small-integer))
   assert(source_forms.size() == 1);
-  auto mr = match(Matcher::op(GenericOpMatcher::fixed(FixedOperatorKind::ADDITION),
-                              {Matcher::any(0), Matcher::any_integer(1)}),
-                  source_forms.at(0));
-  if (mr.matched) {
-    s64 value = -mr.maps.ints.at(1);
-    auto value_form = pool.alloc_single_element_form<SimpleAtomElement>(
-        nullptr, SimpleAtom::make_int_constant(value));
-    return pool.alloc_element<GenericElement>(GenericOperator::make_fixed(FixedOperatorKind::EQ),
-                                              std::vector<Form*>{mr.maps.forms.at(0), value_form});
-  }
 
   auto enum_type_info = env.dts->ts.try_enum_lookup(source_types.at(0));
   if (enum_type_info && !enum_type_info->is_bitfield()) {
     // (zero? (+ (the-as uint arg0) (the-as uint -2))) check enum value
-    mr = match(Matcher::op(GenericOpMatcher::fixed(FixedOperatorKind::ADDITION),
-                           {make_int_uint_cast_matcher(Matcher::any(0)),
-                            make_int_uint_cast_matcher(Matcher::any_integer(1))}),
-               source_forms.at(0));
+    auto mr = match(
+        Matcher::op(GenericOpMatcher::fixed(FixedOperatorKind::ADDITION),
+                    {make_int_uint_cast_matcher(Matcher::any(0)),
+                     Matcher::match_or({Matcher::any_integer(1),
+                                        make_int_uint_cast_matcher(Matcher::any_integer(1))})}),
+        source_forms.at(0));
     if (mr.matched) {
       s64 value = mr.maps.ints.at(1);
       value = -value;
@@ -3459,6 +3451,20 @@ FormElement* ConditionElement::make_zero_check_generic(const Env& env,
       return pool.alloc_element<GenericElement>(
           GenericOperator::make_fixed(FixedOperatorKind::EQ),
           std::vector<Form*>{mr.maps.forms.at(0), enum_constant});
+    }
+  }
+
+  {
+    auto mr = match(Matcher::op(GenericOpMatcher::fixed(FixedOperatorKind::ADDITION),
+                                {Matcher::any(0), Matcher::any_integer(1)}),
+                    source_forms.at(0));
+    if (mr.matched) {
+      s64 value = -mr.maps.ints.at(1);
+      auto value_form = pool.alloc_single_element_form<SimpleAtomElement>(
+          nullptr, SimpleAtom::make_int_constant(value));
+      return pool.alloc_element<GenericElement>(
+          GenericOperator::make_fixed(FixedOperatorKind::EQ),
+          std::vector<Form*>{mr.maps.forms.at(0), value_form});
     }
   }
 

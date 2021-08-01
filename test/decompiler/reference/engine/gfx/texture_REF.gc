@@ -23,7 +23,7 @@
 ;; definition for method 5 of type texture-page
 ;; INFO: Return type mismatch uint vs int.
 (defmethod asize-of texture-page ((obj texture-page))
-  (the-as int (+ (-> obj type size) (the-as uint (* (-> obj length) 4))))
+  (the-as int (+ (-> obj type size) (* (-> obj length) 4)))
   )
 
 ;; definition for method 8 of type texture-page
@@ -638,10 +638,10 @@
   (let* ((block-width (gs-block-width tex-format))
          (block-height (gs-block-height tex-format))
          (real-width
-          (* (/ (+ (+ block-width -1) tex-width) block-width) block-width)
+          (* (/ (+ block-width -1 tex-width) block-width) block-width)
           )
          (real-height
-          (* (/ (+ (+ block-height -1) tex-height) block-height) block-height)
+          (* (/ (+ block-height -1 tex-height) block-height) block-height)
           )
          (width-blocks (/ real-width block-width))
          (height-blocks (/ real-height block-height))
@@ -660,11 +660,9 @@
 (defun gs-blocks-used ((tex-width int) (tex-height int) (tex-format gs-psm))
   (let* ((page-width (gs-page-width tex-format))
          (page-height (gs-page-height tex-format))
-         (real-width
-          (* (/ (+ (+ page-width -1) tex-width) page-width) page-width)
-          )
+         (real-width (* (/ (+ page-width -1 tex-width) page-width) page-width))
          (real-height
-          (* (/ (+ (+ page-height -1) tex-height) page-height) page-height)
+          (* (/ (+ page-height -1 tex-height) page-height) page-height)
           )
          (width-blocks (/ real-width page-width))
          (height-blocks (/ real-height page-height))
@@ -673,7 +671,8 @@
          )
    (if (or (< a0-9 page-width) (< a1-7 page-height))
     (+
-     (+ (gs-largest-block a0-9 a1-7 tex-format) 1)
+     (gs-largest-block a0-9 a1-7 tex-format)
+     1
      (* (+ (* width-blocks height-blocks) -1) 32)
      )
     (* (* height-blocks width-blocks) 32)
@@ -792,7 +791,7 @@
   ((obj texture-page) (segment-count int) (additional-size int))
   (let ((v1-0 additional-size))
    (dotimes (a2-1 segment-count)
-    (+! v1-0 (the-as int (-> obj segment a2-1 size)))
+    (+! v1-0 (-> obj segment a2-1 size))
     )
    (logand (/ v1-0 64) 63)
    )
@@ -1009,11 +1008,7 @@
       )
      )
     (dotimes (upload-chunk-idx chunk-count)
-     (let
-      ((current-dest-chunk
-        (+ tex-dest-base-chunk (the-as uint upload-chunk-idx))
-        )
-       )
+     (let ((current-dest-chunk (+ tex-dest-base-chunk upload-chunk-idx)))
       (cond
        ((zero? chunks-to-upload-count)
         (when (!= (-> pool ids current-dest-chunk) tex-id)
@@ -1025,10 +1020,7 @@
        ((= (-> pool ids current-dest-chunk) tex-id)
         (upload-vram-data
          dma-buf
-         (the-as
-          int
-          (* (+ tex-dest-base-chunk (the-as uint first-chunk-idx-to-upload)) 64)
-          )
+         (the-as int (* (+ tex-dest-base-chunk first-chunk-idx-to-upload) 64))
          (&+ tex-data (shl first-chunk-idx-to-upload 14))
          (* chunks-to-upload-count 32)
          )
@@ -1046,10 +1038,7 @@
     (when (nonzero? chunks-to-upload-count)
      (upload-vram-data
       dma-buf
-      (the-as
-       int
-       (* (+ tex-dest-base-chunk (the-as uint first-chunk-idx-to-upload)) 64)
-       )
+      (the-as int (* (+ tex-dest-base-chunk first-chunk-idx-to-upload) 64))
       (&+ tex-data (shl first-chunk-idx-to-upload 14))
       (* chunks-to-upload-count 32)
       )
@@ -1161,7 +1150,7 @@
        )
       )
      (dotimes (chunk-idx upload-chunks)
-      (let ((vram-chunk (+ dest-block (the-as uint chunk-idx))))
+      (let ((vram-chunk (+ dest-block chunk-idx)))
        (cond
         ((zero? modified-chunk-count)
          (when (!= (-> pool ids vram-chunk) page-id)
@@ -1223,10 +1212,7 @@
       )
      )
     (dotimes (upload-chunk-idx chunk-count)
-     (set!
-      current-dest-chunk
-      (+ tex-dest-base-chunk (the-as uint upload-chunk-idx))
-      )
+     (set! current-dest-chunk (+ tex-dest-base-chunk upload-chunk-idx))
      (set!
       need-tex
       (nonzero? (logand allow-cache-mask (ash 1 upload-chunk-idx)))
@@ -1242,10 +1228,7 @@
       ((or (= (-> pool ids current-dest-chunk) page-id) (not need-tex))
        (upload-vram-data
         dma-buf
-        (the-as
-         int
-         (* (+ tex-dest-base-chunk (the-as uint first-chunk-idx-to-upload)) 64)
-         )
+        (the-as int (* (+ tex-dest-base-chunk first-chunk-idx-to-upload) 64))
         (&+ tex-data (shl first-chunk-idx-to-upload 14))
         (* chunks-to-upload-count 32)
         )
@@ -1262,10 +1245,7 @@
     (when (nonzero? chunks-to-upload-count)
      (upload-vram-data
       dma-buf
-      (the-as
-       int
-       (* (+ tex-dest-base-chunk (the-as uint first-chunk-idx-to-upload)) 64)
-       )
+      (the-as int (* (+ tex-dest-base-chunk first-chunk-idx-to-upload) 64))
       (&+ tex-data (shl first-chunk-idx-to-upload 14))
       (* chunks-to-upload-count 32)
       )
@@ -1353,11 +1333,8 @@
     ((< (the-as uint #x24000) page-seg-2-size)
      (let ((after-seg-2-data (&+ (-> page segment 2 block-data) #x90000)))
       (let ((seg-2-data (-> page segment 2 block-data)))
-       (set! (-> page segment 2 size) (+ -147456 (the-as int page-seg-2-size)))
-       (set!
-        (-> page segment 2 dest)
-        (+ #x24000 (the-as int (-> pool segment-near dest)))
-        )
+       (set! (-> page segment 2 size) (+ -147456 page-seg-2-size))
+       (set! (-> page segment 2 dest) (+ #x24000 (-> pool segment-near dest)))
        (set!
         (-> heap current)
         (&+ (-> page segment 2 block-data) (* (-> page segment 2 size) 4))
@@ -1402,7 +1379,7 @@
    (update-vram-pages pool (-> pool segment-near) page 2)
    (cond
     ((< (the-as uint #x24000) seg2-size)
-     (set! (-> page segment 2 size) (+ -147456 (the-as int seg2-size)))
+     (set! (-> page segment 2 size) (+ -147456 seg2-size))
      (set!
       (-> heap current)
       (&+ (-> page segment 2 block-data) (* (-> page segment 2 size) 4))
@@ -2793,10 +2770,7 @@
      (and
       main-font-tx
       (-> main-font-tx page)
-      (=
-       (-> obj cur)
-       (+ heap-before-font-tex (the-as int (-> main-font-tx page size)))
-       )
+      (= (-> obj cur) (+ heap-before-font-tex (-> main-font-tx page size)))
       )
      (set! (-> obj cur) heap-before-font-tex)
      (format 0 "ERROR: could not resize heap to remove gamefont.~%")
@@ -2810,10 +2784,7 @@
 ;; definition for method 5 of type texture-page-dir
 ;; INFO: Return type mismatch uint vs int.
 (defmethod asize-of texture-page-dir ((obj texture-page-dir))
-  (the-as
-   int
-   (+ (-> texture-page-dir size) (the-as uint (* 12 (+ (-> obj length) -1))))
-   )
+  (the-as int (+ (-> texture-page-dir size) (* 12 (+ (-> obj length) -1))))
   )
 
 ;; definition for method 4 of type texture-page-dir
@@ -2847,23 +2818,20 @@
              (num-mips (-> tex num-mips))
              )
        (if (zero? seg-id)
-        (set!
-         (-> tex clutdest)
-         (+ (- (-> tex clutdest) dst-block) (the-as uint v1-0))
-         )
+        (set! (-> tex clutdest) (+ (- (-> tex clutdest) dst-block) v1-0))
         )
        (dotimes (mip-id (the-as int num-mips))
         (let ((t4-0 mip-id)
               (t5-0 num-mips)
               )
          (if (= seg-id (if (>= (the-as uint 2) t5-0)
-                        (+ (- -1 t4-0) (the-as int t5-0))
+                        (+ (- -1 t4-0) t5-0)
                         (max 0 (- 2 t4-0))
                         )
               )
           (set!
            (-> tex dest mip-id)
-           (+ (- (-> tex dest mip-id) dst-block) (the-as uint v1-0))
+           (+ (- (-> tex dest mip-id) dst-block) v1-0)
            )
           )
          )
@@ -3181,13 +3149,13 @@
     ((1)
       (set!
        (-> arg0 tex1 k)
-       (+ (+ (logand (ash s5-0 (- 5 (log2 s5-0))) 31) -350) (* (log2 s5-0) 32))
+       (+ (logand (ash s5-0 (- 5 (log2 s5-0))) 31) -350 (* (log2 s5-0) 32))
        )
       )
     (else
      (set!
       (-> arg0 tex1 k)
-      (+ (+ (logand (ash s5-0 (- 4 (log2 s5-0))) 15) -175) (* (log2 s5-0) 16))
+      (+ (logand (ash s5-0 (- 4 (log2 s5-0))) 15) -175 (* (log2 s5-0) 16))
       )
      )
     )
