@@ -475,6 +475,13 @@
   `(neq? ,thing 0)
   )
 
+(defmacro minmax (val minval maxval)
+  `(max (min ,val ,maxval) ,minval)
+  )
+(defmacro fminmax (val minval maxval)
+  `(fmax (fmin ,val ,maxval) ,minval)
+  )
+
 (defmacro &+! (val amount)
   `(set! ,val (&+ ,val ,amount))
   )
@@ -531,12 +538,17 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; Bit Macros
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;
-(defmacro align16 (value)
-  `(logand #xfffffff0 (+ (the-as integer ,value) 15))
+(defmacro align-n (val n)
+  "align val to n-byte boundaries"
+  `(logand ,(- n) (+ (the-as int ,val) ,(- n 1)))
   )
 
-(defmacro align64 (value)
-  `(logand -64 (&+ (the-as pointer ,value) 63))
+(defmacro align16 (val)
+  `(align-n ,val 16)
+  )
+
+(defmacro align64 (val)
+  `(align-n ,val 64)
   )
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -592,6 +604,22 @@
 
 (defmacro caar (arg)
   `(car (car ,arg))
+  )
+
+(defmacro cadr (arg)
+  `(car (cdr ,arg))
+  )
+
+(defmacro cddr (arg)
+  `(cdr (cdr ,arg))
+  )
+
+(defmacro caddr (arg)
+  `(car (cdr (cdr ,arg)))
+  )
+
+(defmacro cadddr (arg)
+  `(car (cdr (cdr (cdr ,arg))))
   )
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
