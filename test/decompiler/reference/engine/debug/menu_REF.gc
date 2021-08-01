@@ -309,32 +309,32 @@
 
 ;; definition of type debug-menu-item-var
 (deftype debug-menu-item-var (debug-menu-item)
-  ((display-str      string    :offset-assert  24)
-   (grabbed-joypad-p symbol    :offset-assert  28)
-   (float-p          symbol    :offset-assert  32)
-   (range-p          symbol    :offset-assert  36)
-   (show-len         int32     :offset-assert  40)
-   (inc-delay        int32     :offset-assert  44)
-   (inc-delay-ctr    int32     :offset-assert  48)
-   (step-delay-ctr   int32     :offset-assert  52)
-   (inc-dir          int32     :offset-assert  56)
-   (fval             float     :offset-assert  60)
-   (fundo-val        float     :offset-assert  64)
-   (frange-min       float     :offset-assert  68)
-   (frange-max       float     :offset-assert  72)
-   (fstart-inc       float     :offset-assert  76)
-   (fstep            float     :offset-assert  80)
-   (fprecision       int32     :offset-assert  84)
-   (factivate-func   function  :offset-assert  88)
-   (ival             int32     :offset         60)
-   (iundo-val        int32     :offset         64)
-   (irange-min       int32     :offset         68)
-   (irange-max       int32     :offset         72)
-   (istart-inc       int32     :offset         76)
-   (istep            int32     :offset         80)
-   (ihex-p           symbol    :offset-assert  92)
-   (iactivate-func   function  :offset         88)
-   (ifloat-p         symbol    :offset-assert  96)
+  ((display-str      string                                :offset-assert  24)
+   (grabbed-joypad-p symbol                                :offset-assert  28)
+   (float-p          symbol                                :offset-assert  32)
+   (range-p          symbol                                :offset-assert  36)
+   (show-len         int32                                 :offset-assert  40)
+   (inc-delay        int32                                 :offset-assert  44)
+   (inc-delay-ctr    int32                                 :offset-assert  48)
+   (step-delay-ctr   int32                                 :offset-assert  52)
+   (inc-dir          int32                                 :offset-assert  56)
+   (fval             float                                 :offset-assert  60)
+   (fundo-val        float                                 :offset-assert  64)
+   (frange-min       float                                 :offset-assert  68)
+   (frange-max       float                                 :offset-assert  72)
+   (fstart-inc       float                                 :offset-assert  76)
+   (fstep            float                                 :offset-assert  80)
+   (fprecision       int32                                 :offset-assert  84)
+   (factivate-func   (function int int float float float)  :offset-assert  88)
+   (ival             int32                                 :offset         60)
+   (iundo-val        int32                                 :offset         64)
+   (irange-min       int32                                 :offset         68)
+   (irange-max       int32                                 :offset         72)
+   (istart-inc       int32                                 :offset         76)
+   (istep            int32                                 :offset         80)
+   (ihex-p           symbol                                :offset-assert  92)
+   (iactivate-func   (function int int int int int)        :offset         88)
+   (ifloat-p         symbol                                :offset-assert  96)
    )
   :method-count-assert 9
   :size-assert         #x64
@@ -441,7 +441,10 @@
   (set! (-> arg0 fstart-inc) (the-as float arg2))
   (set! (-> arg0 fstep) (the-as float arg2))
   (set! (-> arg0 ihex-p) arg6)
-  (set! (-> arg0 factivate-func) arg1)
+  (set!
+   (-> arg0 factivate-func)
+   (the-as (function int int float float float) arg1)
+   )
   (cond
    (arg3
     (set! (-> arg0 fval) (the-as float arg4))
@@ -473,12 +476,12 @@
 (defun
   debug-menu-item-var-make-float
   ((arg0 debug-menu-item-var)
-   (arg1 (function int int float float int))
+   (arg1 (function int int float float float))
    (arg2 float)
    (arg3 symbol)
    (arg4 float)
    (arg5 float)
-   (arg6 symbol)
+   (arg6 int)
    )
   (set! (-> arg0 float-p) #t)
   (set! (-> arg0 range-p) arg3)
@@ -486,7 +489,7 @@
   (set! (-> arg0 frange-max) arg5)
   (set! (-> arg0 fstart-inc) arg2)
   (set! (-> arg0 fstep) arg2)
-  (set! (-> arg0 fprecision) (the-as int arg6))
+  (set! (-> arg0 fprecision) arg6)
   (set! (-> arg0 factivate-func) arg1)
   (if arg3
    (set! (-> arg0 fval) arg4)
@@ -743,25 +746,17 @@
 
 ;; definition for function debug-menu-make-from-template
 ;; WARN: Stack slot load mismatch: defined as size 4, got size 16
-
 ;; WARN: Stack slot load mismatch: defined as size 4, got size 16
-
 ;; WARN: Stack slot load mismatch: defined as size 4, got size 16
-
 ;; WARN: Stack slot load mismatch: defined as size 4, got size 16
-
 ;; WARN: Stack slot load mismatch: defined as size 4, got size 16
-
 ;; WARN: Stack slot load mismatch: defined as size 4, got size 16
-
 ;; WARN: Stack slot load mismatch: defined as size 4, got size 16
-
 ;; WARN: Stack slot load mismatch: defined as size 4, got size 16
-
 ;; Used lq/sq
 (defun debug-menu-make-from-template ((arg0 debug-menu-context) (arg1 pair))
   (local-vars
-   (s5-0 debug-menu-node)
+   (s5-0 basic)
    (sv-16 object)
    (sv-32 int)
    (sv-48 float)
@@ -770,19 +765,16 @@
    (sv-96 float)
    )
   (when (or (not arg1) (null? arg1))
-   (set! s5-0 (the-as debug-menu-node #f))
+   (set! s5-0 #f)
    (goto cfg-41)
    )
   (let ((s4-0 (car arg1))
-        (s5-1 (car (cdr arg1)))
+        (s5-1 (the-as string (car (cdr arg1))))
         )
    (cond
     ((= s4-0 'menu)
-     (let ((s4-1 (new 'debug 'debug-menu arg0 (the-as string s5-1))))
-      (set!
-       s5-0
-       (new 'debug 'debug-menu-item-submenu (the-as string s5-1) s4-1)
-       )
+     (let ((s4-1 (new 'debug 'debug-menu arg0 s5-1)))
+      (set! s5-0 (new 'debug 'debug-menu-item-submenu s5-1 s4-1))
       (let* ((gp-1 (cdr (cdr arg1)))
              (a1-3 (car gp-1))
              )
@@ -799,7 +791,7 @@
       )
      )
     ((= s4-0 'main-menu)
-     (set! s5-0 (new 'debug 'debug-menu arg0 (the-as string s5-1)))
+     (set! s5-0 (new 'debug 'debug-menu arg0 s5-1))
      (let* ((gp-2 (cdr (cdr arg1)))
             (a1-6 (car gp-2))
             )
@@ -824,7 +816,7 @@
                   (new
                    'debug
                    'debug-menu-item-flag
-                   (the-as string s5-1)
+                   s5-1
                    (the-as symbol (car (cdr (cdr arg1))))
                    (debug-menu-func-decode (car (cdr (cdr (cdr arg1)))))
                    )
@@ -833,7 +825,7 @@
                   (new
                    'debug
                    'debug-menu-item-function
-                   (the-as string s5-1)
+                   s5-1
                    (the-as int (car (cdr (cdr arg1))))
                    (debug-menu-func-decode (car (cdr (cdr (cdr arg1)))))
                    )
@@ -842,7 +834,7 @@
                   (new
                    'debug
                    'debug-menu-item-var
-                   (the-as string s5-1)
+                   s5-1
                    (the-as int (car (cdr (cdr arg1))))
                    (the-as int (car (cdr (cdr (cdr arg1)))))
                    )
@@ -857,7 +849,7 @@
                    (new
                     'debug
                     'debug-menu-item-var
-                    (the-as string s5-1)
+                    s5-1
                     (the-as int (car (cdr (cdr arg1))))
                     (the-as int (ref arg1 4))
                     )
@@ -894,7 +886,7 @@
                    (new
                     'debug
                     'debug-menu-item-var
-                    (the-as string s5-1)
+                    s5-1
                     (the-as int (car (cdr (cdr arg1))))
                     (the-as int (ref arg1 4))
                     )
@@ -912,12 +904,12 @@
                    (let ((t2-1 (/ (the-as int (ref arg1 9)) 8)))
                     (s4-5
                      s3-6
-                     (the-as (function int int float float int) s2-5)
+                     (the-as (function int int float float float) s2-5)
                      s1-5
                      (the-as symbol s0-2)
                      sv-48
                      sv-64
-                     (the-as symbol t2-1)
+                     t2-1
                      )
                     )
                    )
@@ -929,7 +921,7 @@
                    (new
                     'debug
                     'debug-menu-item-var
-                    (the-as string s5-1)
+                    s5-1
                     (the-as int (car (cdr (cdr arg1))))
                     (the-as int (ref arg1 4))
                     )
@@ -955,19 +947,19 @@
                    (let ((t2-2 (/ (the-as int (ref arg1 9)) 8)))
                     (s4-7
                      s3-8
-                     (the-as (function int int float float int) s2-7)
+                     (the-as (function int int float float float) s2-7)
                      s1-7
                      (the-as symbol s0-3)
                      sv-80
                      sv-96
-                     (the-as symbol t2-2)
+                     t2-2
                      )
                     )
                    )
                   s5-0
                   )
                  (else
-                  (the-as debug-menu-node #f)
+                  #f
                   )
                  )
       )
@@ -975,7 +967,7 @@
     )
    )
   (label cfg-41)
-  s5-0
+  (the-as debug-menu-node s5-0)
   )
 
 ;; definition for function debug-menu-find-from-template
@@ -1187,7 +1179,75 @@
   )
 
 ;; definition for function debug-menu-item-var-render
-;; ERROR: function was not converted to expressions. Cannot decompile.
+(defun
+  debug-menu-item-var-render
+  ((arg0 debug-menu-item-var) (arg1 int) (arg2 int) (arg3 int) (arg4 symbol))
+  (let ((s5-0 (-> arg0 parent context font)))
+   (let ((v1-2 s5-0)
+         (a0-1 arg2)
+         )
+    (set! (-> v1-2 origin x) (the float arg1))
+    (set! (-> v1-2 origin y) (the float a0-1))
+    )
+   (set! (-> s5-0 color) (cond
+                          ((zero? arg3)
+                           (if (-> arg0 grabbed-joypad-p)
+                            10
+                            12
+                            )
+                           )
+                          (arg4
+                           11
+                           )
+                          (else
+                           13
+                           )
+                          )
+    )
+   (let* ((s1-0 (-> *display* frames (-> *display* on-screen) frame debug-buf))
+          (s4-0 (-> s1-0 base))
+          )
+    (draw-string-adv (-> arg0 name) s1-0 s5-0)
+    (draw-string-adv ":" s1-0 s5-0)
+    (cond
+     ((>= (-> arg0 show-len) (length (-> arg0 display-str)))
+      (draw-string (-> arg0 display-str) s1-0 s5-0)
+      )
+     (else
+      (draw-string "..." s1-0 s5-0)
+      (set! arg4 (and (zero? arg3) arg4))
+      (when arg4
+       (let ((v1-12 s5-0)
+             (a1-5 20)
+             (a0-10 204)
+             )
+        (set! (-> v1-12 origin x) (the float a1-5))
+        (set! (-> v1-12 origin y) (the float a0-10))
+        )
+       (draw-string-adv (-> arg0 name) s1-0 s5-0)
+       (draw-string-adv ":" s1-0 s5-0)
+       (draw-string (-> arg0 display-str) s1-0 s5-0)
+       )
+      )
+     )
+    (let ((a3-1 (-> s1-0 base)))
+     (let ((v1-14 (the-as dma-packet (-> s1-0 base))))
+      (set! (-> v1-14 dma) (new 'static 'dma-tag :id (dma-tag-id next)))
+      (set! (-> v1-14 vif0) (new 'static 'vif-tag))
+      (set! (-> v1-14 vif1) (new 'static 'vif-tag))
+      (set! (-> s1-0 base) (the-as pointer (&+ v1-14 16)))
+      )
+     (dma-bucket-insert-tag
+      (-> *display* frames (-> *display* on-screen) frame bucket-group)
+      (bucket-id debug-draw1)
+      s4-0
+      (the-as (pointer dma-tag) a3-1)
+      )
+     )
+    )
+   )
+  arg0
+  )
 
 ;; definition for function debug-menu-item-render
 (defun
@@ -1576,7 +1636,7 @@
        (if (-> arg0 factivate-func)
         (set!
          (-> arg0 fval)
-         ((the-as (function int int float float float) (-> arg0 factivate-func))
+         ((-> arg0 factivate-func)
           (-> arg0 id)
           4
           (-> arg0 fundo-val)
@@ -1695,15 +1755,7 @@
            )
           (set!
            (-> arg0 fval)
-           ((the-as
-             (function int int float float float)
-             (-> arg0 factivate-func)
-             )
-            (-> arg0 id)
-            4
-            f0-8
-            (-> arg0 fval)
-            )
+           ((-> arg0 factivate-func) (-> arg0 id) 4 f0-8 (-> arg0 fval))
            )
           )
          )
@@ -1796,12 +1848,7 @@
       (if (-> arg0 factivate-func)
        (set!
         (-> arg0 fval)
-        ((the-as (function int int float float float) (-> arg0 factivate-func))
-         (-> arg0 id)
-         3
-         (-> arg0 fval)
-         (-> arg0 fval)
-         )
+        ((-> arg0 factivate-func) (-> arg0 id) 3 (-> arg0 fval) (-> arg0 fval))
         )
        )
       )

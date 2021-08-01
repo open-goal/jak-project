@@ -28,69 +28,6 @@
   :flag-assert         #x900000028
   )
 
-(defenum gs-reg
-  :type uint8
-  (prim 0)
-  (rgbaq 1)
-  (st 2)
-  (uv 3)
-  (xyzf2 4)
-  (xyz2 5)
-  (tex0-1 6)
-  (tex0-2 7)
-  (clamp-1 8)
-  (clamp-2 9)
-  (fog 10)
-  (xyzf3 12)
-  (xyz3 13)
-  (tex1-1 20)
-  (tex1-2 21)
-  (tex2-1 22)
-  (tex2-2 23)
-  (xyoffset-1 24)
-  (xyoffset-2 25)
-  (prmodecont 26)
-  (prmode 27)
-  (texclut 28)
-  (scanmsk 34)
-  (miptbp1-1 52)
-  (miptbp1-2 53)
-  (miptbp2-1 54)
-  (miptbp2-2 55)
-  (texa 59)
-  (fogcol 61)
-  (texflush 63)
-  (scissor-1 64)
-  (scissor-2 65)
-  (alpha-1 66)
-  (alpha-2 67)
-  (dimx 68)
-  (dthe 69)
-  (colclamp 70)
-  (test-1 71)
-  (test-2 72)
-  (pabe 73)
-  (fba-1 74)
-  (fba-2 75)
-  (frame-1 76)
-  (frame-2 77)
-  (zbuf-1 78)
-  (zbuf-2 79)
-  (bitbltbuf 80)
-  (trxpos 81)
-  (trxreg 82)
-  (trxdir 83)
-  (hwreg 84)
-  (signal 96)
-  (finish 97)
-  (label 98)
-  )
-
-(defenum gs-reg64
-  :type uint64
-  :copy-entries gs-reg
-  )
-
 ;; draw-env stores the GS settings for drawing to somewhere in VRAM.
 ;; the "addr" fields represent GS register addresses
 ;; this is identical to the Sony sceGsDrawEnv1/2 structs
@@ -282,21 +219,18 @@
     ;; do this again. just in case.
     (default-buffer-init *default-regs-buffer*)
     ;; set the default gray color.
-    (set! (-> obj bg-clear-color 0)
-          (new 'static 'rgba :r #x80 :g #x80 :b #x80 :a #x80)
-          )
-    (set! (-> obj bg-clear-color 1)
-          (new 'static 'rgba :r #x80 :g #x80 :b #x80 :a #x80)
-          )
-    (set! (-> obj bg-clear-color 2)
-          (new 'static 'rgba :r #x80 :g #x80 :b #x80 :a #x80)
-          )
-    (set! (-> obj bg-clear-color 3)
-          (new 'static 'rgba :r #x80 :g #x80 :b #x80 :a #x80)
-          )
+    (set! (-> obj bg-clear-color 0) (static-rgba #x80 #x80 #x80 #x80))
+    (set! (-> obj bg-clear-color 1) (static-rgba #x80 #x80 #x80 #x80))
+    (set! (-> obj bg-clear-color 2) (static-rgba #x80 #x80 #x80 #x80))
+    (set! (-> obj bg-clear-color 3) (static-rgba #x80 #x80 #x80 #x80))
     obj
     )
   )
 
 (define *pre-draw-hook* nothing)
 (define *post-draw-hook* (the-as (function dma-buffer none) nothing))
+
+
+(defmacro current-display-frame (&rest args)
+  `(-> *display* frames (-> *display* on-screen) frame ,@args)
+  )

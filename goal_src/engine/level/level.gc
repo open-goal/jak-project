@@ -378,7 +378,7 @@
         (('loading)
          ;; load another object if we don't wanna copy anything
          (if (not (-> *texture-relocate-later* memcpy))
-           (dgo-load-continue (align64 (-> obj heap current)))
+           (dgo-load-continue (the pointer (align64 (-> obj heap current))))
            )
          )
         (('loading-bt)
@@ -393,7 +393,7 @@
   ;; otherwise, copy stuff that needs copying
   (when (-> *texture-relocate-later* memcpy)
     (relocate-later)
-    (dgo-load-continue (align64 (-> obj heap current)))
+    (dgo-load-continue (the pointer (align64 (-> obj heap current))))
     (return obj)
     )
   ;; otherwise, check status
@@ -411,7 +411,7 @@
                 ((dgo-load-link (the-as dgo-header a0-15) (-> obj heap) *print-login* #f)
                  ;; linking finished (that was fast)
                  (if (not (-> *texture-relocate-later* memcpy))
-                   (dgo-load-continue (align64 (-> obj heap current)))
+                   (dgo-load-continue (the pointer (align64 (-> obj heap current))))
                    )
                  )
                 (else
@@ -435,7 +435,7 @@
      )
     (('loading-bt)
      ;; link the last object
-     (let ((a0-26 (align64 (-> obj heap current))))
+     (let ((a0-26 (the pointer (align64 (-> obj heap current)))))
          (cond
            ((dgo-load-link (the-as dgo-header a0-26) (-> obj heap) *print-login* #t)
             (level-status-set! obj 'loading-done)
@@ -478,7 +478,7 @@
       (load-dbg " DGO buffers at #x~X #x~X~%" s4-0 s5-2)
       (set! (-> obj code-memory-start) (-> obj heap current))
       (format 0 "-----------> begin load ~A [~S]~%" (-> obj load-name) *temp-string*)
-      (dgo-load-begin *temp-string* s5-2 s4-0 (align64 (-> obj heap current)))
+      (dgo-load-begin *temp-string* s5-2 s4-0 (the pointer (align64 (-> obj heap current))))
       )
   obj
   )

@@ -371,7 +371,7 @@
       (-> start-gif-tag tag)
       (new 'static 'gif-tag64
        :eop #x1
-       :flg #x1
+       :flg (gif-flag reg-list)
        :nreg #x4
        :nloop (+ block-count -1)
        )
@@ -530,7 +530,12 @@
           )
     (set!
      (-> gif tag)
-     (new 'static 'gif-tag64 :nloop #x1 :eop #x1 :flg #x1 :nreg #x4)
+     (new 'static 'gif-tag64
+      :nloop #x1
+      :eop #x1
+      :flg (gif-flag reg-list)
+      :nreg #x4
+      )
      )
     (set!
      (-> gif regs)
@@ -618,7 +623,12 @@
           )
     (set!
      (-> gif tag)
-     (new 'static 'gif-tag64 :nloop #x1 :eop #x1 :flg #x1 :nreg #x9)
+     (new 'static 'gif-tag64
+      :nloop #x1
+      :eop #x1
+      :flg (gif-flag reg-list)
+      :nreg #x9
+      )
      )
     (set!
      (-> gif regs)
@@ -807,7 +817,7 @@
     (set! (-> (the-as (pointer gs-reg64) gif-buf) 5) (gs-reg64 frame-1))
     (set!
      (-> (the-as (pointer gs-test) gif-buf) 6)
-     (new 'static 'gs-test :zte #x1 :ztst #x1)
+     (new 'static 'gs-test :zte #x1 :ztst (gs-ztest always))
      )
     (set! (-> (the-as (pointer gs-reg64) gif-buf) 7) (gs-reg64 test-1))
     (set!
@@ -817,7 +827,7 @@
     (set! (-> (the-as (pointer gs-reg64) gif-buf) 9) (gs-reg64 texa))
     (set!
      (-> (the-as (pointer gs-zbuf) gif-buf) 10)
-     (new 'static 'gs-zbuf :zbp #x1c0 :psm #x1 :zmsk #x1)
+     (new 'static 'gs-zbuf :zbp #x1c0 :psm (gs-psm ct24) :zmsk #x1)
      )
     (set! (-> (the-as (pointer gs-reg64) gif-buf) 11) (gs-reg64 zbuf-1))
     (set! (-> (the-as (pointer uint64) gif-buf) 12) (the-as uint 0))
@@ -899,7 +909,7 @@
     (set! (-> (the-as (pointer gs-reg64) gif-data) 5) (gs-reg64 frame-1))
     (set!
      (-> (the-as (pointer gs-test) gif-data) 6)
-     (new 'static 'gs-test :zte #x1 :ztst #x1)
+     (new 'static 'gs-test :zte #x1 :ztst (gs-ztest always))
      )
     (set! (-> (the-as (pointer gs-reg64) gif-data) 7) (gs-reg64 test-1))
     (set!
@@ -909,7 +919,7 @@
     (set! (-> (the-as (pointer gs-reg64) gif-data) 9) (gs-reg64 texa))
     (set!
      (-> (the-as (pointer gs-zbuf) gif-data) 10)
-     (new 'static 'gs-zbuf :zbp #x1c0 :psm #x1 :zmsk #x1)
+     (new 'static 'gs-zbuf :zbp #x1c0 :psm (gs-psm ct24) :zmsk #x1)
      )
     (set! (-> (the-as (pointer gs-reg64) gif-data) 11) (gs-reg64 zbuf-1))
     (set! (-> gif-data 12) (the-as uint 0))
@@ -921,7 +931,6 @@
   )
 
 ;; definition for function reset-display-gs-state
-;; INFO: Return type mismatch display vs none.
 (defun reset-display-gs-state ((disp display) (dma-buf dma-buffer) (oddeven int))
   (let* ((onscreen (-> disp on-screen))
          (hoff (* oddeven 8))
@@ -989,7 +998,11 @@
     (set! (-> (the-as (pointer gs-reg64) gif-data) 5) (gs-reg64 frame-1))
     (set!
      (-> (the-as (pointer gs-test) gif-data) 6)
-     (new 'static 'gs-test :atst #x7 :zte #x1 :ztst #x2)
+     (new 'static 'gs-test
+      :atst (gs-atest not-equal)
+      :zte #x1
+      :ztst (gs-ztest greater-equal)
+      )
      )
     (set! (-> (the-as (pointer gs-reg64) gif-data) 7) (gs-reg64 test-1))
     (set!
@@ -999,7 +1012,7 @@
     (set! (-> (the-as (pointer gs-reg64) gif-data) 9) (gs-reg64 texa))
     (set!
      (-> (the-as (pointer gs-zbuf) gif-data) 10)
-     (new 'static 'gs-zbuf :zbp #x1c0 :psm #x1)
+     (new 'static 'gs-zbuf :zbp #x1c0 :psm (gs-psm ct24))
      )
     (set! (-> (the-as (pointer gs-reg64) gif-data) 11) (gs-reg64 zbuf-1))
     (set! (-> gif-data 12) (the-as uint 0))
@@ -1007,7 +1020,7 @@
     (set! (-> dma-buf base) (&+ (the-as pointer gif-data) 112))
     )
    )
-  (none)
+  disp
   )
 
 ;; definition for symbol *vu0-dma-list*, type dma-buffer
