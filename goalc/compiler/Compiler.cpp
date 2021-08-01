@@ -1,11 +1,12 @@
 #include "Compiler.h"
-#include "common/link_types.h"
-#include "IR.h"
-#include "goalc/regalloc/allocate.h"
-#include "third-party/fmt/core.h"
-#include "CompilerException.h"
 #include <chrono>
 #include <thread>
+#include "CompilerException.h"
+#include "IR.h"
+#include "common/link_types.h"
+#include "goalc/make/Tools.h"
+#include "goalc/regalloc/allocate.h"
+#include "third-party/fmt/core.h"
 
 using namespace goos;
 
@@ -16,7 +17,10 @@ Compiler::Compiler(std::unique_ptr<ReplWrapper> repl)
   m_global_env = std::make_unique<GlobalEnv>();
   m_none = std::make_unique<None>(m_ts.make_typespec("none"));
 
-  // compile GOAL library
+  // let the build system run us
+  m_make.add_tool(std::make_shared<CompilerTool>(this));
+
+  // load GOAL library
   Object library_code = m_goos.reader.read_from_file({"goal_src", "goal-lib.gc"});
   compile_object_file("goal-lib", library_code, false);
 
@@ -409,4 +413,8 @@ void Compiler::typecheck_reg_type_allow_false(const goos::Object& form,
     }
   }
   typecheck(form, expected, coerce_to_reg_type(actual->type()), error_message);
+}
+
+bool Compiler::knows_object_file(const std::string& name) {
+  return m_debugger.knows_object(name);
 }

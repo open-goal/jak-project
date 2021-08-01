@@ -13,6 +13,11 @@
 ;; buckets live consecutively in the dma-buffer, and can mark the start of a DMA chain
 ;; location anywhere.
 
+;; The bucket doesn't own the data, but rather is a beginning of a linked list of DMA data associated with that bucket
+;; that's stored somewhere else.
+
+;; At the end, all the buckets are spliced together.
+
 ;; The typical process is:
 ;; - empty buckets are allocated with add-buckets
 ;; - tags are put somewhere and added to the appropriate bucket with insert-tag, updating last as needed.
@@ -67,7 +72,7 @@
   bucket
   )
 
-(defun dma-bucket-insert-tag ((base dma-bucket) (idx int) (tag-start pointer) (tag-end (pointer dma-tag)))
+(defun dma-bucket-insert-tag ((base dma-bucket) (idx bucket-id) (tag-start pointer) (tag-end (pointer dma-tag)))
   "Add a dma chain to the idx bucket"
 
   ;; find the bucket

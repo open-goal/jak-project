@@ -31,6 +31,10 @@
   `(if ,x #f #t)
   )
 
+(defsmacro unless (clause &rest body)
+  `(if (not ,clause) (begin ,@body) #f)
+  )
+
 (desfun factorial (x)
 	(if (= x 1)
 	    1
@@ -71,11 +75,30 @@
 (desfun third (x)
         (car (cddr x)))
 
+(defsmacro push! (lst x)
+  `(set! ,lst (cons ,x ,lst))
+  )
+(defsmacro pop! (lst)
+  `(set! ,lst (cdr ,lst))
+  )
+
 (desfun apply (fun x)
 	(if (null? x)
 	    '()
 	    (cons (fun (car x))
 		        (apply fun (cdr x))
+		        )
+	    )
+	)
+
+;; same as apply but interleaves with two functions and lists
+(desfun apply2 (fun1 fun2 lst1 lst2)
+	(if (or (null? lst1) (null? lst2) (not (= (length lst1) (length lst2))))
+	    '()
+	    (cons (fun1 (car lst1))
+		        (cons (fun2 (car lst2))
+                  (apply2 fun1 fun2 (cdr lst1) (cdr lst2))
+                  )
 		        )
 	    )
 	)
@@ -161,10 +184,30 @@
   `(type? 'pair ,x)
   )
 
+(defsmacro symbol? (x)
+  `(type? 'symbol ,x)
+  )
+
 (defsmacro ferror (&rest args)
   `(error (fmt #f ,@args))
   )
 
+
+(desfun apply-i-fun (fun x i)
+  (if (null? x)
+      '()
+      (cons (fun (car x) i)
+            (apply-i-fun fun (cdr x) (inc! i))
+            )
+      )
+	)
+(defsmacro apply-i (fun x)
+  `(apply-i-fun ,fun ,x 0)
+  )
+
+(defsmacro string->symbol-format (str &rest args)
+  `(string->symbol (fmt #f ,str ,@args))
+  )
 
 ;; Bootstrap GOAL macro system
 

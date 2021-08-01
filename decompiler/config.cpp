@@ -33,6 +33,9 @@ Config read_config_file(const std::string& path_to_config_file) {
   config.dgo_names = inputs_json.at("dgo_names").get<std::vector<std::string>>();
   config.object_file_names = inputs_json.at("object_file_names").get<std::vector<std::string>>();
   config.str_file_names = inputs_json.at("str_file_names").get<std::vector<std::string>>();
+  config.audio_dir_file_name = inputs_json.at("audio_dir_file_name").get<std::string>();
+  config.streamed_audio_file_names =
+      inputs_json.at("streamed_audio_file_names").get<std::vector<std::string>>();
 
   if (cfg.contains("obj_file_name_map_file")) {
     config.obj_file_name_map_file = cfg.at("obj_file_name_map_file").get<std::string>();
@@ -162,6 +165,9 @@ Config read_config_file(const std::string& path_to_config_file) {
       hacks_json.at("types_with_bad_inspect_methods").get<std::unordered_set<std::string>>();
   config.hacks.reject_cond_to_value = hacks_json.at("aggressively_reject_cond_to_value_rewrite")
                                           .get<std::unordered_set<std::string>>();
+  config.hacks.blocks_ending_in_asm_branch_by_func_name =
+      hacks_json.at("blocks_ending_in_asm_branch")
+          .get<std::unordered_map<std::string, std::unordered_set<int>>>();
 
   for (auto& entry : hacks_json.at("cond_with_else_max_lengths")) {
     auto func_name = entry.at(0).get<std::string>();
@@ -170,6 +176,9 @@ Config read_config_file(const std::string& path_to_config_file) {
     config.hacks.cond_with_else_len_by_func_name[func_name].max_length_by_start_block[cond_name] =
         max_len;
   }
+
+  config.bad_format_strings =
+      hacks_json.at("bad_format_strings").get<std::unordered_map<std::string, int>>();
   return config;
 }
 

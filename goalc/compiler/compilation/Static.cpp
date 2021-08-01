@@ -211,6 +211,8 @@ void Compiler::compile_static_structure_inline(const goos::Object& form,
                                  field_info.type.print());
           }
           structure->add_type_record(sr.symbol_name(), field_offset);
+        } else if (sr.is_func()) {
+          structure->add_function_record(sr.function(), field_offset);
         } else {
           throw_compiler_error(form, "Unsupported field value {}.", field_value.print());
         }
@@ -228,6 +230,15 @@ void Compiler::compile_static_structure_inline(const goos::Object& form,
       typecheck(form, TypeSpec("float"), sr.typespec());
       u64 value = sr.constant_u64();
       memcpy(structure->data.data() + field_offset, &value, sizeof(float));
+    } else if (field_info.type.base_type() == "inline-array") {
+      auto sr = compile_static(field_value, env);
+      if (!sr.is_reference()) {
+        throw_compiler_error(form, "Invalid definition of field {}", field_info.field.name());
+      }
+      typecheck(form, field_info.type, sr.typespec());
+      assert(sr.reference()->get_addr_offset() == 0);
+      structure->add_pointer_record(field_offset, sr.reference(),
+                                    sr.reference()->get_addr_offset());
     }
 
     else {
@@ -368,10 +379,21 @@ Val* Compiler::compile_bitfield_definition(const goos::Object& form,
 
       float value = 0.f;
       if (!try_getting_constant_float(field_value, &value, env)) {
-        throw_compiler_error(form,
-                             "Field {} is a float, but the value given couldn't "
-                             "be converted to a float at compile time.",
-                             field_name_def);
+        // failed to get as constant, add to dynamic or error.
+        if (allow_dynamic_construction) {
+          DynamicDef dyn;
+          dyn.definition = field_value;
+          dyn.field_offset = field_offset;
+          dyn.field_size = field_size;
+          dyn.field_name = field_name_def;
+          dyn.expected_type = TypeSpec("float");
+          dynamic_defs.push_back(dyn);
+        } else {
+          throw_compiler_error(form,
+                               "Field {} is a float, but the value given couldn't "
+                               "be converted to a float at compile time.",
+                               field_name_def);
+        }
       }
       u64 float_value = float_as_u32(value);
       bool start_lo = field_offset < 64;
@@ -381,6 +403,20 @@ Val* Compiler::compile_bitfield_definition(const goos::Object& form,
         constant_integer_part.lo |= (float_value << field_offset);
       } else {
         constant_integer_part.hi |= (float_value << (field_offset - 64));
+      }
+    } else if (field_info.result_type == TypeSpec("symbol")) {
+      if (allow_dynamic_construction) {
+        DynamicDef dyn;
+        dyn.definition = field_value;
+        dyn.field_offset = field_offset;
+        dyn.field_size = field_size;
+        dyn.field_name = field_name_def;
+        dyn.expected_type = coerce_to_reg_type(field_info.result_type);
+        dynamic_defs.push_back(dyn);
+      } else {
+        throw_compiler_error(
+            form, "Field {} is a symbol, which cannot be constructed at compile time yet.",
+            field_name_def);
       }
     }
 
@@ -706,6 +742,13 @@ StaticResult Compiler::compile_static(const goos::Object& form_before_macro, Env
       m_ts.forward_declare_type_method_count(type_name, method_count);
 
       return StaticResult::make_type_ref(type_name, method_count);
+    } else if (first.is_symbol("lambda")) {
+      auto lambda = dynamic_cast<LambdaVal*>(compile_lambda(form, rest, env));
+      assert(lambda);
+      if (!lambda->func) {
+        throw_compiler_error(form, "Static lambda cannot be inline.");
+      }
+      return StaticResult::make_func_ref(lambda->func, lambda->type());
     } else {
       // maybe an enum
       s64 int_out;

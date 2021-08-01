@@ -208,6 +208,8 @@ class FunctionEnv : public DeclareEnv {
 
   const std::vector<std::unique_ptr<RegVal>>& reg_vals() const { return m_iregs; }
 
+  RegVal* push_reg_val(std::unique_ptr<RegVal> in);
+
   int segment = -1;
   std::string method_of_type_name = "#f";
   bool is_asm_func = false;
