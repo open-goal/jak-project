@@ -284,7 +284,7 @@ void try_reverse_lookup_inline_array(const FieldReverseLookupInput& input,
   const_idx_node.token.kind = FieldReverseLookupOutput::Token::Kind::CONSTANT_IDX;
   const_idx_node.token.idx = elt_idx;
 
-  if (offset_into_elt == 0 && !input.deref.has_value()) {
+  if (offset_into_elt == 0 && !input.deref.has_value() && !input.stride) {
     // just get an element (possibly zero, and we want to include the 0 if so)
     // for the degenerate inline-array case, it seems more likely that we get the zeroth object
     // rather than the array, so this goes before that case.
@@ -296,7 +296,7 @@ void try_reverse_lookup_inline_array(const FieldReverseLookupInput& input,
   }
 
   // can we just return the array?
-  if (offset_into_elt == 0 && !input.deref.has_value() && elt_idx == 0) {
+  if (offset_into_elt == 0 && !input.deref.has_value() && elt_idx == 0 && !input.stride) {
     auto parent_vec = parent_to_vector(parent);
     if (!parent_vec.empty()) {
       output->results.emplace_back(false, input.base_type, parent_to_vector(parent));

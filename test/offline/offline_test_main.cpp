@@ -81,6 +81,10 @@ const std::unordered_set<std::string> g_functions_expected_to_reject = {
     // collide-mesh-h
     "(method 11 collide-mesh-cache)",  // asm
 
+    // mood
+    "update-mood-lava",       // asm
+    "update-mood-lightning",  // asm
+
     "debug-menu-item-var-render"  // asm
 };
 
