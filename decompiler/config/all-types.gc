@@ -11785,7 +11785,7 @@
   :flag-assert         #x2100008670
   (:methods
     (dummy-9 () none 9)
-    (dummy-10 () none 10)
+    (dummy-10 (_type_) float 10)
     (dummy-11 () none 11)
     (dummy-12 () none 12)
     (dummy-13 () none 13)
@@ -12845,7 +12845,7 @@
     (dummy-23 () none 23)
     (dummy-24 () none 24)
     (dummy-25 () none 25)
-    (dummy-26 () none 26)
+    (dummy-26 (_type_) none 26) ;; TODO - returns something, see cam-master anon 6
     )
   )
 
@@ -13633,7 +13633,7 @@
    (slave-options       uint32                    :offset-assert 128)
    (view-off-param-save float                     :offset-assert 132)
    (changer             uint32                    :offset-assert 136)
-   (cam-entity          entity                     :offset-assert 140) ; not totally confirmed yet
+   (cam-entity          entity                    :offset-assert 140) ; not totally confirmed yet
    (stringMinLength     float                     :offset-assert 144)
    (stringMaxLength     float                     :offset-assert 148)
    (stringMinHeight     float                     :offset-assert 152)
@@ -13646,15 +13646,15 @@
    (force-blend         uint32                    :offset-assert 296)
    (force-blend-time    uint32                    :offset-assert 300)
    (local-down          vector            :inline :offset-assert 304)
-   (drawable-target     uint64                    :offset-assert 320)
+   (drawable-target     handle                    :offset-assert 320) ; likely a `target`?
    (which-bone          int32                     :offset-assert 328)
    (pov-handle          uint64                    :offset-assert 336)
    (pov-bone            int32                     :offset-assert 344)
-   (being-attacked      basic                     :offset-assert 348)
+   (being-attacked      symbol                     :offset-assert 348)
    (attack-start        uint64                    :offset-assert 352)
-   (on-ground           basic                     :offset-assert 360)
+   (on-ground           symbol                     :offset-assert 360)
    (under-water         int32                     :offset-assert 364)
-   (on-pole             basic                     :offset-assert 368)
+   (on-pole             symbol                     :offset-assert 368)
    (tgt-rot-mat         matrix            :inline :offset-assert 384)
    (tgt-face-mat        matrix            :inline :offset-assert 448)
    (tpos-old            vector            :inline :offset-assert 512)
@@ -13677,7 +13677,7 @@
    (outro-t-step        float                     :offset-assert 2376)
    (outro-exit-value    float                     :offset-assert 2380)
    (water-drip-time     uint64                    :offset-assert 2384)
-   (water-drip          basic                     :offset-assert 2392)
+   (water-drip          sparticle-launch-control                     :offset-assert 2392)
    (water-drip-mult     float                     :offset-assert 2396)
    (water-drip-speed    float                     :offset-assert 2400)
    )
@@ -16989,7 +16989,7 @@
 (define-extern update-snow function)
 (define-extern check-drop-level-rain function)
 (define-extern update-rain function)
-(define-extern cam-master-effect function)
+(define-extern cam-master-effect (function none :behavior camera-master))
 (define-extern sparticle-track-sun function)
 
 ;; - Unknowns
@@ -17795,21 +17795,21 @@
 
 ;; - Functions
 
-(define-extern list-keeper-init function)
-(define-extern master-track-target function)
-(define-extern master-check-regions function)
+(define-extern list-keeper-init (function none :behavior camera-master))
+(define-extern master-track-target (function none :behavior camera-master)) ;; TODO - go get that collide-cache function
+(define-extern master-check-regions (function none :behavior camera-master))
 (define-extern camera-master-debug function)
-(define-extern master-unset-region function)
-(define-extern reset-target-tracking function)
-(define-extern reset-drawable-tracking function)
-(define-extern master-switch-to-entity function)
-(define-extern reset-drawable-follow function)
-(define-extern reset-follow function)
-(define-extern in-cam-entity-volume? function)
-(define-extern master-base-region function)
-(define-extern setup-slave-for-hopefull function)
-(define-extern master-is-hopeful-better? function)
-(define-extern target-cam-pos function)
+(define-extern master-unset-region (function object :behavior camera-master))
+(define-extern reset-target-tracking (function none :behavior camera-master))
+(define-extern reset-drawable-tracking (function none :behavior camera-master))
+(define-extern master-switch-to-entity (function none :behavior camera-master))
+(define-extern reset-drawable-follow (function float :behavior camera-master))
+(define-extern reset-follow (function float :behavior camera-master))
+(define-extern in-cam-entity-volume? (function vector entity float symbol symbol))
+(define-extern master-base-region (function entity float :behavior camera-master))
+(define-extern setup-slave-for-hopefull (function camera-slave none))
+(define-extern master-is-hopeful-better? (function process-tree process-tree symbol :behavior camera-master)) ;; TODO - ASM
+(define-extern target-cam-pos (function vector))
 (define-extern cam-master-init (function none :behavior camera-master))
 
 ;; - Symbols
@@ -17824,7 +17824,7 @@
 
 ;;(define-extern cam-fixed object) ;; unknown type
 ;;(define-extern cam-decel object) ;; unknown type
-;;(define-extern cam-eye object) ;; unknown type
+(define-extern cam-eye state)
 
 
 ;; ----------------------
