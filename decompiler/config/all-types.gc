@@ -4284,9 +4284,7 @@
    (debug-buf    dma-buffer    :offset 36)
    (global-buf   dma-buffer    :offset 40)
    (bucket-group dma-bucket    :offset 44)
-   (buffer       uint32    11  :offset 4) ;; for debugging?
-
-
+   (buffer       dma-buffer    11  :offset 4)
    (profile-bar  profile-bar 2 :offset 48)
    (run-time     uint64        :offset 56)
    )
@@ -6615,7 +6613,7 @@
   )
 
 (deftype ocean-mid-mask (structure)
-  ((mask  uint8 8 :offset-assert 0 :do-not-decompile) ;; avoid huge arrays.
+  ((mask  uint8 8 :offset-assert 0) ;; avoid huge arrays. (this causes an ocean-transition function to not decompile!)
    (dword uint64    :offset 0)
    )
   :pack-me
@@ -6642,7 +6640,7 @@
   )
 
 (deftype ocean-trans-mask (structure)
-  ((mask uint16 4 :offset-assert 0)
+  ((mask uint8   4 :offset-assert 0)
    (word uint64    :offset 0)
    )
   :pack-me
@@ -6751,9 +6749,9 @@
    (corner-array       ocean-corner 25 :inline     :offset-assert 80)
    (corner-count       int32           :offset-assert 2080)
    (temp-vecs          vector 4 :inline        :offset-assert 2096)
-   (mid-mask-ptrs      pointer 36      :offset-assert 2160)
+   (mid-mask-ptrs      (pointer int32) 36      :offset-assert 2160)
    (mid-camera-masks   uint64 36     :offset-assert 2304)
-   (trans-mask-ptrs    pointer 64      :offset-assert 2592)
+   (trans-mask-ptrs    (pointer int32) 64      :offset-assert 2592)
    (trans-camera-masks ocean-trans-mask 16 :inline      :offset-assert 2848)
    (trans-temp-masks   ocean-trans-mask 16 :inline     :offset-assert 2976)
    (near-mask-indices  uint16 16      :offset-assert 3104)
@@ -6992,9 +6990,9 @@
 (define-extern *ocean-trans-down-right-table* (pointer float))
 (define-extern *ocean-trans-up-right-table* (pointer float))
 (define-extern *ocean-trans-up-left-table* (pointer float))
-(define-extern *ocean-trans-corner-table* (pointer float))
-(define-extern *ocean-trans-strip-array* (pointer float))
-(define-extern *ocean-trans-st-table* (pointer float))
+(define-extern *ocean-trans-corner-table* (inline-array vector4w-2))
+(define-extern *ocean-trans-strip-array* (pointer float)) ;; TODO this should probably be a ocean-trans-strip-array ?
+(define-extern *ocean-trans-st-table* (inline-array vector))
 
 
 ;; ----------------------
@@ -20901,10 +20899,10 @@
 (define-extern ocean-interp-wave function)
 (define-extern ocean-generate-verts function)
 (define-extern draw-ocean-texture function)
-(define-extern ocean-init-buffer function)
-(define-extern draw-ocean-far function)
-(define-extern draw-ocean-mid function)
-(define-extern ocean-end-buffer function)
+(define-extern ocean-init-buffer (function dma-buffer none)) ; not confirmed
+(define-extern draw-ocean-far (function dma-buffer none)) ; not confirmed
+(define-extern draw-ocean-mid (function dma-buffer none)) ; not confirmed
+(define-extern ocean-end-buffer (function dma-buffer none)) ; not confirmed
 (define-extern draw-ocean-near function)
 (define-extern init-ocean-far-regs function)
 (define-extern render-ocean-far function)
@@ -20913,9 +20911,12 @@
 (define-extern draw-ocean (function none))
 (define-extern update-ocean (function none))
 
+;; - Symbols
+
+(define-extern *ocean-map* ocean-map)
+
 ;; - Unknowns
 
-(define-extern *ocean-map* ocean-map) ;; unknown type
 ;;(define-extern *swamp-low-ocean-marker* object) ;; unknown type
 
 
@@ -20963,7 +20964,7 @@
 ;; - Functions
 
 (define-extern ocean-mid-add-constants function)
-(define-extern ocean-mid-add-call function)
+(define-extern ocean-mid-add-call (function dma-buffer int none))
 (define-extern ocean-mid-add-upload function)
 (define-extern ocean-mid-add-call-flush (function dma-buffer uint none))
 (define-extern draw-ocean-transition (function dma-buffer none))
@@ -20976,7 +20977,7 @@
 (define-extern ocean-mid-mask-ptrs-bit? (function uint uint))
 (define-extern ocean-mid-add-upload-table function)
 (define-extern ocean-mid-camera-masks-set! function)
-(define-extern ocean-mid-add-matrices function)
+(define-extern ocean-mid-add-matrices (function dma-buffer none)) ;; not verified
 (define-extern ocean-mid-check function)
 (define-extern ocean-matrix*! function)
 (define-extern ocean-mid-setup-constants function)
@@ -20995,16 +20996,16 @@
 
 ;; - Functions
 
-(define-extern ocean-make-trans-camera-masks (function uint uint uint uint none))
-(define-extern ocean-trans-add-upload-strip (function dma-buffer uint uint uint uint none))
-(define-extern ocean-trans-add-constants (function dma-buffer none))
-(define-extern draw-ocean-transition-seams (function dma-buffer none))
-(define-extern ocean-trans-camera-masks-bit? function)
-(define-extern ocean-trans-add-upload function)
-(define-extern ocean-trans-mask-ptrs-bit? function)
-(define-extern ocean-trans-add-upload-table function)
-(define-extern ocean-transition-check function)
-(define-extern ocean-trans-mask-ptrs-set! function)
+(define-extern ocean-make-trans-camera-masks (function uint uint uint uint symbol))
+(define-extern ocean-trans-add-upload-strip (function dma-buffer uint uint uint uint uint none))
+(define-extern ocean-trans-add-constants (function dma-buffer pointer))
+(define-extern draw-ocean-transition-seams (function dma-buffer symbol))
+(define-extern ocean-trans-camera-masks-bit? (function uint uint symbol))
+(define-extern ocean-trans-add-upload (function dma-buffer int int none))
+(define-extern ocean-trans-mask-ptrs-bit? (function int int symbol))
+(define-extern ocean-trans-add-upload-table (function dma-buffer int int (pointer float) int symbol none))
+(define-extern ocean-transition-check (function ocean-trans-mask int int vector symbol))
+(define-extern ocean-trans-mask-ptrs-set! (function int int symbol))
 
 
 ;; ----------------------
