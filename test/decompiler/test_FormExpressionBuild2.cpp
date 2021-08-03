@@ -990,8 +990,7 @@ TEST_F(FormRegressionTest, DmaBucketInsertTag) {
   std::string type = "(function dma-bucket int pointer (pointer dma-tag) pointer)";
   std::string expected =
       "(begin\n"
-      "  (let\n"
-      "   ((v1-1 (the-as dma-bucket (+ (the-as uint arg0) (the-as uint (* arg1 16))))))\n"
+      "  (let ((v1-1 (the-as dma-bucket (+ (the-as uint arg0) (* arg1 16)))))\n"
       "   (set! (-> (the-as dma-bucket (-> v1-1 last)) next) (the-as uint arg2))\n"
       "   (set! (-> v1-1 last) arg3)\n"
       "   )\n"

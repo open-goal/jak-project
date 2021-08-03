@@ -153,6 +153,7 @@ const std::unordered_map<
         {"add-macro-to-autocomplete", &Compiler::compile_add_macro_to_autocomplete},
         {"load-project", &Compiler::compile_load_project},
         {"make", &Compiler::compile_make},
+        {"print-debug-compiler-stats", &Compiler::compile_print_debug_compiler_stats},
 
         // CONDITIONAL COMPILATION
         {"#cond", &Compiler::compile_gscond},

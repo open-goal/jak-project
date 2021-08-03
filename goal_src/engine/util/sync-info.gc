@@ -6,567 +6,679 @@
 ;; dgos: GAME, ENGINE
 
 
-;; definition for method 14 of type sync-info
-(defmethod
-  dummy-14
-  sync-info
-  ((obj sync-info) (arg0 uint) (arg1 float) (arg2 float) (arg3 float))
-  (set! (-> obj period) arg0)
-  (let* ((f0-1 (the float arg0))
-         (f1-1 (* arg1 f0-1))
+(defmethod setup-params! sync-info ((obj sync-info) (period uint) (phase float) (arg2 float) (arg3 float))
+  "Setup a sync-info.
+   period is the duration of the pattern.
+   phase is the offset relative to the global clock, specified as a fraction of period."
+  (set! (-> obj period) period)
+  (let* ((period-float (the float period))
+         (value (* phase period-float))
          )
-   (set! (-> obj offset) (- f1-1 (* (the float (the int (/ f1-1 f0-1))) f0-1)))
-   )
-  0
-  )
-
-;; definition for method 14 of type sync-info-eased
-(defmethod
-  dummy-14
-  sync-info-eased
-  ((obj sync-info-eased) (arg0 uint) (arg1 float) (arg2 float) (arg3 float))
-  (set! (-> obj period) arg0)
-  (let* ((f0-1 (the float arg0))
-         (f1-1 (* arg1 f0-1))
-         )
-   (set! (-> obj offset) (- f1-1 (* (the float (the int (/ f1-1 f0-1))) f0-1)))
-   )
-  (if (< arg2 0.0)
-   (set! arg2 0.0)
-   )
-  (if (< 1.0 arg2)
-   (set! arg2 1.0)
-   )
-  (if (< arg3 0.001)
-   (set! arg3 0.001)
-   )
-  (if (< 1.0 arg3)
-   (set! arg3 1.0)
-   )
-  (let ((f0-9 (+ arg2 arg3)))
-   (when (< 1.0 f0-9)
-    (set! f0-9 1.0)
-    (set! arg2 (- 1.0 arg3))
-    )
-   (let* ((f1-11 (- 1.0 f0-9))
-          (f0-10 arg2)
-          (f1-12 (+ arg2 f1-11))
-          (f2-5 (* f0-10 f0-10))
-          (f3-3 (+ (* (* 2.0 f0-10) (- f1-12 f0-10)) f2-5))
-          (f4-3 (/ f0-10 (- 1.0 f1-12)))
-          (f3-4 (+ (* (* (- 1.0 f1-12) (- 1.0 f1-12)) f4-3) f3-3))
+    ;; this is like (fmod value period-float)
+    (set! (-> obj offset)
+          (- value (* (the float (the int (/ value period-float))) period-float))
           )
-    (set! (-> obj tlo) f0-10)
-    (set! (-> obj thi) f1-12)
-    (set! (-> obj ylo) f2-5)
-    (set! (-> obj m2) f4-3)
-    (set! (-> obj yend) f3-4)
     )
-   )
-  0
+  (none)
   )
 
-;; definition for method 14 of type sync-info-paused
-(defmethod
-  dummy-14
-  sync-info-paused
-  ((obj sync-info-paused) (arg0 uint) (arg1 float) (arg2 float) (arg3 float))
-  (set! (-> obj period) arg0)
-  (let* ((f0-1 (the float arg0))
-         (f1-1 (* arg1 f0-1))
+(defmethod setup-params! sync-info-eased ((obj sync-info-eased) (period uint) (phase float) (out-param float) (in-param float))
+  "Setup a sync-info-eased. The out-param and in-param are related to the smoothing at the beginning/end.
+   it looks like the easing is cubic so the first derivative is continuous."
+  (set! (-> obj period) period)
+
+  ;; set the offset from the phase
+  (let* ((period-float (the float period))
+         (value (* phase period-float))
          )
-   (set! (-> obj offset) (- f1-1 (* (the float (the int (/ f1-1 f0-1))) f0-1)))
-   )
-  (cond
-   ((< arg2 0.0)
-    (set! arg2 0.0)
+    (set! (-> obj offset) (- value (* (the float (the int (/ value period-float))) period-float)))
     )
-   ((< 1.0 arg2)
-    (set! arg2 1.0)
-    )
-   )
-  (cond
-   ((< arg3 0.0)
-    (set! arg3 0.0)
-    )
-   ((< (- 1.0 arg2) arg3)
-    (set! arg3 (- 1.0 arg2))
-    )
-   )
-  (set! (-> obj pause-after-in) arg3)
-  (set! (-> obj pause-after-out) arg2)
-  0
-  )
-
-;; definition for method 15 of type sync-info
-;; ERROR: function was not converted to expressions. Cannot decompile.
-
-;; definition for method 15 of type sync-info-eased
-;; ERROR: function was not converted to expressions. Cannot decompile.
-
-;; definition for method 15 of type sync-info-paused
-;; ERROR: function was not converted to expressions. Cannot decompile.
-
-;; definition for method 10 of type sync-info
-(defmethod dummy-10 sync-info ((obj sync-info))
-  (let* ((v1-0 (-> obj period))
-         (f0-1 (the float v1-0))
-         (f1-2
-          (+
-           (the float (mod (-> *display* base-frame-counter) v1-0))
-           (-> obj offset)
+  ;; saturate the params
+  (if (< out-param 0.0)
+      (set! out-param 0.0)
+      )
+  (if (< 1.0 out-param)
+      (set! out-param 1.0)
+      )
+  (if (< in-param 0.001)
+      (set! in-param 0.001)
+      )
+  (if (< 1.0 in-param)
+      (set! in-param 1.0)
+      )
+  (let ((total-easing-phase (+ out-param in-param)))
+    (when (< 1.0 total-easing-phase)
+      (set! total-easing-phase 1.0)
+      (set! out-param (- 1.0 in-param))
+      )
+    (let* ((total-normal-phase (- 1.0 total-easing-phase))
+           (f0-10 out-param)
+           (f1-12 (+ out-param total-normal-phase))
+           (f2-5 (* f0-10 f0-10))
+           (f3-3 (+ (* (* 2.0 f0-10) (- f1-12 f0-10)) f2-5))
+           (f4-3 (/ f0-10 (- 1.0 f1-12)))
+           (y-end (+ (* (* (- 1.0 f1-12) (- 1.0 f1-12)) f4-3) f3-3))
            )
-          )
+      (set! (-> obj tlo) f0-10)
+      (set! (-> obj thi) f1-12)
+      (set! (-> obj ylo) f2-5)
+      (set! (-> obj m2) f4-3)
+      (set! (-> obj yend) y-end)
+      )
+    )
+  (none)
+  )
+
+(defmethod setup-params! sync-info-paused ((obj sync-info-paused) (period uint) (phase float) (out-param float) (in-param float))
+  "Setup a sync-info-paused.  The params are delays for the pause, specified in a fraction of period."
+  (set! (-> obj period) period)
+  ;; set phase.
+  (let* ((f0-1 (the float period))
+         (f1-1 (* phase f0-1))
          )
-   (/ (- f1-2 (* (the float (the int (/ f1-2 f0-1))) f0-1)) f0-1)
+    (set! (-> obj offset) (- f1-1 (* (the float (the int (/ f1-1 f0-1))) f0-1)))
+    )
+  ;; saturate params
+  (cond
+    ((< out-param 0.0)
+     (set! out-param 0.0)
+     )
+    ((< 1.0 out-param)
+     (set! out-param 1.0)
+     )
+    )
+  (cond
+    ((< in-param 0.0)
+     (set! in-param 0.0)
+     )
+    ;; note: makes sure pauses don't overlap
+    ((< (- 1.0 out-param) in-param)
+     (set! in-param (- 1.0 out-param))
+     )
+    )
+  (set! (-> obj pause-after-in) in-param)
+  (set! (-> obj pause-after-out) out-param)
+  (none)
+  )
+
+(defmethod load-params! sync-info ((obj sync-info) (proc process) (default-period uint) (default-phase float) (default-out float) (default-in float))
+  "Load params from the res of a process, and set them up. If the res lookup fails, returns #f and uses
+   the specified defaults."
+  (local-vars (sv-16 res-tag))
+  (set! sv-16 (new 'static 'res-tag))
+  (let ((v1-1 ((method-of-type res-lump get-property-data)
+               (-> proc entity)
+               'sync
+               'interp
+               -1000000000.0
+               (the-as pointer #f)
+               (& sv-16)
+               *res-static-buf*
+               )
+          )
+        )
+    (cond
+      (v1-1
+       ;; res lookup succeeded, we should have two values: a period (not yet in seconds) and a phase.
+       (setup-params!
+        obj
+        (the-as uint (the int (* 300.0 (-> (the-as (pointer float) v1-1) 0))))
+        (-> (the-as (pointer float) v1-1) 1)
+        0.15
+        0.15
+        )
+       #t
+       )
+      (else
+       ;; failed, set defaults
+       (setup-params! obj default-period default-phase 0.15 0.15)
+       #f
+       )
+      )
+    )
+  )
+
+(defmethod load-params! sync-info-eased ((obj sync-info-eased) (proc process) (default-period uint) (default-phase float) (default-out float) (default-in float))
+  "Load settings from a res. Can load settings from just a sync-info and uses defaults.
+   If res lookup totally fails, will return #f and use all defaults."
+  (local-vars (sv-16 res-tag))
+  (set! sv-16 (new 'static 'res-tag))
+  (let ((v1-1 ((method-of-type res-lump get-property-data)
+               (-> proc entity)
+               'sync
+               'interp
+               -1000000000.0
+               (the-as pointer #f)
+               (& sv-16)
+               *res-static-buf*
+               )
+          )
+        )
+    (cond
+      (v1-1
+       ;; we may not get all the parameters
+       (if (>= (-> sv-16 elt-count) (the-as uint 4))
+           (setup-params!
+            obj
+            (the-as uint (the int (* 300.0 (-> (the-as (pointer float) v1-1) 0))))
+            (-> (the-as (pointer float) v1-1) 1)
+            (-> (the-as (pointer float) v1-1) 2)
+            (-> (the-as (pointer float) v1-1) 3)
+            )
+           (setup-params!
+            obj
+            (the-as uint (the int (* 300.0 (-> (the-as (pointer float) v1-1) 0))))
+            (-> (the-as (pointer float) v1-1) 1)
+            default-out
+            default-in
+            )
+           )
+       #t
+       )
+      (else
+       (setup-params! obj default-period default-phase default-out default-in)
+       #f
+       )
+      )
+    )
+  )
+
+(defmethod load-params! sync-info-paused ((obj sync-info-paused) (proc process) (default-period uint) (default-phase float) (default-out float) (default-in float))
+  "Load and setup a sync-info-paused."
+  (local-vars (sv-16 res-tag))
+  (set! sv-16 (new 'static 'res-tag))
+  (let ((v1-1 ((method-of-type res-lump get-property-data)
+      (-> proc entity)
+      'sync
+      'interp
+      -1000000000.0
+      (the-as pointer #f)
+      (& sv-16)
+      *res-static-buf*
+      )
+     )
+    )
+   (cond
+    (v1-1
+     (if (>= (-> sv-16 elt-count) (the-as uint 4))
+      (setup-params!
+       obj
+       (the-as uint (the int (* 300.0 (-> (the-as (pointer float) v1-1) 0))))
+       (-> (the-as (pointer float) v1-1) 1)
+       (-> (the-as (pointer float) v1-1) 2)
+       (-> (the-as (pointer float) v1-1) 3)
+       )
+      (setup-params!
+       obj
+       (the-as uint (the int (* 300.0 (-> (the-as (pointer float) v1-1) 0))))
+       (-> (the-as (pointer float) v1-1) 1)
+       default-out
+       default-in
+       )
+      )
+     #t
+     )
+    (else
+     (setup-params! obj default-period default-phase default-out default-in)
+     #f
+     )
+    )
    )
   )
 
-;; definition for method 17 of type sync-info
-(defmethod dummy-17 sync-info ((obj sync-info))
+(defmethod get-current-phase-no-mod sync-info ((obj sync-info))
+  "Based on the current frame, get the current phase. Does not apply any modifications
+   like pauses or eases."
+  (let* ((period (-> obj period))
+         (period-float (the float period))
+         ;; now + offset
+         (current-time
+          (+ (the float (mod (-> *display* base-frame-counter) period))
+             (-> obj offset)
+             )
+           )
+         )
+    ;; compute wrapped phase from current-time
+    (/ (- current-time
+          (* (the float (the int (/ current-time period-float))) period-float))
+       period-float
+       )
+    )
+  )
+
+(defmethod get-phase-offset sync-info ((obj sync-info))
+  "Get the offset, as a fraction of period"
   (/ (-> obj offset) (the float (-> obj period)))
   )
 
-;; definition for method 16 of type sync-info
-(defmethod dummy-16 sync-info ((obj sync-info) (arg0 float))
-  (let* ((a2-0 (-> obj period))
-         (f0-1 (the float a2-0))
-         (v1-0 (- arg0 (* (the float (the int (/ arg0 f0-1))) f0-1)))
-         (f1-4
-          (+
-           (the float (mod (-> *display* base-frame-counter) a2-0))
-           (-> obj offset)
+(defmethod sync-now! sync-info ((obj sync-info) (user-phase-offset float))
+  "Adjusts our offset so we are at phase user-phase-offset now"
+  (let* ((period (-> obj period))
+         (period-float (the float period))
+         ;; in (0, 1)
+         (wrapped-user-offset
+          (- user-phase-offset
+             (* (the float (the int (/ user-phase-offset period-float)))
+                period-float
+                )
+             )
            )
-          )
-         (f1-6 (/ (- f1-4 (* (the float (the int (/ f1-4 f0-1))) f0-1)) f0-1))
-         (f1-10 (+ (+ (* (- v1-0 f1-6) f0-1) f0-1) (-> obj offset)))
-         (f0-3 (- f1-10 (* (the float (the int (/ f1-10 f0-1))) f0-1)))
-         )
-   (set! (-> obj offset) f0-3)
-   f0-3
-   )
-  )
-
-;; definition for method 11 of type sync-info
-(defmethod dummy-11 sync-info ((obj sync-info))
-  (let* ((v1-0 (-> obj period))
-         (f0-1 (the float v1-0))
-         (f1-2
-          (+
-           (the float (mod (-> *display* base-frame-counter) v1-0))
-           (-> obj offset)
+         ;; with the current offset, what is the time (0, period)?
+         (current-time
+          (+ (the float (mod (-> *display* base-frame-counter) period))
+             (-> obj offset)
+             )
            )
-          )
-         )
-   (/ (- f1-2 (* (the float (the int (/ f1-2 f0-1))) f0-1)) f0-1)
-   )
-  )
-
-;; definition for method 11 of type sync-info-paused
-(defmethod dummy-11 sync-info-paused ((obj sync-info-paused))
-  (let* ((v1-0 (-> obj period))
-         (f1-0 (the float v1-0))
-         (f0-1 1.0)
-         (f2-2
-          (+
-           (the float (mod (-> *display* base-frame-counter) v1-0))
-           (-> obj offset)
+         ;; current period in (0, 1)
+         (current-period-wrapped
+          (/ (- current-time (* (the float (the int (/ current-time period-float))) period-float))
+             period-float
+             )
            )
-          )
+         ;; a time
+         (combined-offset
+          (+ (+ (* (- wrapped-user-offset current-period-wrapped) period-float)
+                period-float
+                )
+             (-> obj offset)
+             )
+           )
+         ;; wrap it
+         (combined-offset-wrapped
+          (- combined-offset
+             (* (the float (the int (/ combined-offset period-float))) period-float)
+             )
+           )
          )
-   (fmin
-    f0-1
-    (/
-     (- f2-2 (* (the float (the int (/ f2-2 f1-0))) f1-0))
-     (* f1-0 (- 1.0 (-> obj pause-after-out)))
-     )
+    (set! (-> obj offset) combined-offset-wrapped)
+    combined-offset-wrapped
     )
-   )
   )
 
-;; definition for method 9 of type sync-info
-(defmethod dummy-9 sync-info ((obj sync-info) (arg0 float))
-  (let* ((v1-0 (-> obj period))
-         (f0-1 (the float v1-0))
-         (f1-2
-          (+
-           (the float (mod (-> *display* base-frame-counter) v1-0))
-           (-> obj offset)
-           )
-          )
+(defmethod get-current-phase sync-info ((obj sync-info))
+  "Get the current phase."
+  (let* ((period (-> obj period))
+         (period-float (the float period))
+         (current-time (+ (the float (mod (-> *display* base-frame-counter) period)) (-> obj offset)))
          )
-   (* (/ (- f1-2 (* (the float (the int (/ f1-2 f0-1))) f0-1)) f0-1) arg0)
-   )
+    ;; don't need to wrap this again.
+    (/ (- current-time (* (the float (the int (/ current-time period-float))) period-float))
+       period-float
+       )
+    )
   )
 
-;; definition for method 9 of type sync-info-paused
-(defmethod dummy-9 sync-info-paused ((obj sync-info-paused) (arg0 float))
-  (* (dummy-11 obj) arg0)
+(defmethod get-current-phase sync-info-paused ((obj sync-info-paused))
+  "Get the current phase.  this only uses the pause-after-out - use the mirrored version
+   for pauses on both ends"
+  (let* ((period (-> obj period))
+         (period-float (the float period))
+         (max-phase 1.0)
+         (current-time (+ (the float (mod (-> *display* base-frame-counter) period)) (-> obj offset)))
+         )
+    (fmin max-phase
+          (/ (- current-time (* (the float (the int (/ current-time period-float))) period-float))
+             (* period-float (- 1.0 (-> obj pause-after-out))) ;; just tweak the effective period so we end early
+             )
+          )
+    )
   )
 
-;; definition for method 13 of type sync-info
-(defmethod dummy-13 sync-info ((obj sync-info))
+(defmethod get-current-value sync-info ((obj sync-info) (max-val float))
+  "This is just get-current-phase multiplied by max-val"
+  (let* ((period (-> obj period))
+         (period-float (the float period))
+         (current-time (+ (the float (mod (-> *display* base-frame-counter) period)) (-> obj offset)))
+         )
+    (* (/ (- current-time (* (the float (the int (/ current-time period-float))) period-float))
+          period-float
+          )
+       max-val
+       )
+    )
+  )
+
+(defmethod get-current-value sync-info-paused ((obj sync-info-paused) (arg0 float))
+  "This is just get-current-phase multiplied by max-val"
+  (* (get-current-phase obj) arg0)
+  )
+
+(defmethod get-current-phase-with-mirror sync-info ((obj sync-info))
+  "Gets the phase that goes from 0 to 1 back to 0 every period."
+  (let* ((period (-> obj period))
+         (period-float (the float period))
+         (max-val 2.0)
+         (current-time (+ (the float (mod (-> *display* base-frame-counter) period)) (-> obj offset)))
+         (phase-out-of-2
+          (* max-val
+             (/ (- current-time (* (the float (the int (/ current-time period-float))) period-float))
+                period-float
+                )
+             )
+           )
+         )
+    (if (>= phase-out-of-2 1.0)
+        (set! phase-out-of-2 (- 2.0 phase-out-of-2))
+        )
+    phase-out-of-2
+    )
+  )
+  
+
+(defmethod get-current-phase-with-mirror sync-info-eased ((obj sync-info-eased))
+  "Get the phase that goes from 0 to 1 back to 0 every period.
+   Note that sync-info-eased only does easing on this mirrored version."
+  (let* ((period (-> obj period))
+         (period-float (the float period))
+         (max-val 2.0)
+         (current-time (+ (the float (mod (-> *display* base-frame-counter) period)) (-> obj offset)))
+         (current-val
+          (* max-val
+             (/ (- current-time (* (the float (the int (/ current-time period-float))) period-float))
+                period-float
+                )
+             )
+           )
+         (in-mirror? #f)
+         )
+
+    ;; the input to the eased-phase calculation is un-mirrored, then mirrored after
+    (when (>= current-val 1.0)
+      (set! in-mirror? #t)
+      (set! current-val (+ -1.0 current-val))
+      )
+    (let* ((tlo (-> obj tlo))
+           (eased-phase (/ (cond
+                             ((< current-val tlo)
+                              ;; quadratic ramp in
+                              (* current-val current-val)
+                              )
+                             ((< current-val (-> obj thi))
+                              ;; linear part
+                              (+ (* (* 2.0 tlo) (- current-val tlo)) (-> obj ylo))
+                              )
+                             (else
+                              (let ((f1-7 (- 1.0 current-val)))
+                                ;; quadratic ramp out
+                                (- (-> obj yend) (* (* f1-7 f1-7) (-> obj m2)))
+                                )
+                              )
+                             )
+                           (-> obj yend)
+                           )
+             )
+           )
+      ;; flip again
+      (if in-mirror?
+          (set! eased-phase (- 1.0 eased-phase))
+          )
+      eased-phase
+      )
+    )
+  )
+
+(defmethod get-current-phase-with-mirror sync-info-paused ((obj sync-info-paused))
+  "Get the phase that goes from 0 to 1 to 0 in one period."
   (let* ((v1-0 (-> obj period))
          (f1-0 (the float v1-0))
+         ;; max val
          (f0-1 2.0)
-         (f2-2
-          (+
-           (the float (mod (-> *display* base-frame-counter) v1-0))
-           (-> obj offset)
-           )
-          )
-         (f0-2
-          (*
-           f0-1
-           (/ (- f2-2 (* (the float (the int (/ f2-2 f1-0))) f1-0)) f1-0)
-           )
-          )
-         )
-   (if (>= f0-2 1.0)
-    (set! f0-2 (- 2.0 f0-2))
-    )
-   f0-2
-   )
-  )
-
-;; definition for method 13 of type sync-info-eased
-(defmethod dummy-13 sync-info-eased ((obj sync-info-eased))
-  (let* ((v1-0 (-> obj period))
-         (f1-0 (the float v1-0))
-         (f0-1 2.0)
-         (f2-2
-          (+
-           (the float (mod (-> *display* base-frame-counter) v1-0))
-           (-> obj offset)
-           )
-          )
-         (f0-2
-          (*
-           f0-1
-           (/ (- f2-2 (* (the float (the int (/ f2-2 f1-0))) f1-0)) f1-0)
-           )
-          )
-         (v1-2 #f)
-         )
-   (when (>= f0-2 1.0)
-    (set! v1-2 #t)
-    (set! f0-2 (+ -1.0 f0-2))
-    )
-   (let* ((f1-4 (-> obj tlo))
-          (f0-7 (/ (cond
-                    ((< f0-2 f1-4)
-                     (* f0-2 f0-2)
-                     )
-                    ((< f0-2 (-> obj thi))
-                     (+ (* (* 2.0 f1-4) (- f0-2 f1-4)) (-> obj ylo))
-                     )
-                    (else
-                     (let ((f1-7 (- 1.0 f0-2)))
-                      (- (-> obj yend) (* (* f1-7 f1-7) (-> obj m2)))
-                      )
-                     )
-                    )
-                 (-> obj yend)
-                 )
-           )
-          )
-    (if v1-2
-     (set! f0-7 (- 1.0 f0-7))
-     )
-    f0-7
-    )
-   )
-  )
-
-;; definition for method 13 of type sync-info-paused
-(defmethod dummy-13 sync-info-paused ((obj sync-info-paused))
-  (let* ((v1-0 (-> obj period))
-         (f1-0 (the float v1-0))
-         (f0-1 2.0)
-         (f2-2
-          (+
-           (the float (mod (-> *display* base-frame-counter) v1-0))
-           (-> obj offset)
-           )
-          )
-         (f0-2
-          (*
-           f0-1
-           (/ (- f2-2 (* (the float (the int (/ f2-2 f1-0))) f1-0)) f1-0)
-           )
-          )
+         ;; current-time
+         (f2-2 (+ (the float (mod (-> *display* base-frame-counter) v1-0)) (-> obj offset)))
+         ;; phase
+         (f0-2 (* f0-1 (/ (- f2-2 (* (the float (the int (/ f2-2 f1-0))) f1-0)) f1-0)))
+         ;; offset for pause
          (f1-3 (- 1.0 (* 2.0 (-> obj pause-after-in))))
          (f2-7 (- 1.0 (* 2.0 (-> obj pause-after-out))))
          )
    (cond
     ((>= f0-2 (+ 1.0 f1-3))
-     0.0
+     0.0 ;; before pause ends
      )
     ((< 1.0 f0-2)
+     ;; in moving part
      (- 1.0 (/ (+ -1.0 f0-2) f1-3))
      )
     ((>= f0-2 f2-7)
+     ;; after end pause
      1.0
      )
     (else
+     ;; in moving part
      (/ f0-2 f2-7)
      )
     )
    )
   )
 
-;; definition for method 12 of type sync-info
-(defmethod dummy-12 sync-info ((obj sync-info) (arg0 float))
-  (let* ((v1-0 (-> obj period))
-         (f1-0 (the float v1-0))
-         (f0-1 2.0)
-         (f2-2
-          (+
-           (the float (mod (-> *display* base-frame-counter) v1-0))
-           (-> obj offset)
+(defmethod get-current-value-with-mirror sync-info ((obj sync-info) (max-out-val float))
+  "Get the phase that goes from 0 to max-out-val to 0 in each period."
+  (let* ((period (-> obj period))
+         (period-float (the float period))
+         (max-val 2.0)
+         (current-time (+ (the float (mod (-> *display* base-frame-counter) period)) (-> obj offset)))
+         (current-val
+          (* max-val
+             (/ (- current-time (* (the float (the int (/ current-time period-float))) period-float))
+                period-float
+                )
+             )
            )
-          )
-         (f0-2
-          (*
-           f0-1
-           (/ (- f2-2 (* (the float (the int (/ f2-2 f1-0))) f1-0)) f1-0)
-           )
-          )
          )
-   (if (>= f0-2 1.0)
-    (set! f0-2 (- 2.0 f0-2))
+    (if (>= current-val 1.0)
+        (set! current-val (- 2.0 current-val))
+        )
+    (* current-val max-out-val)
     )
-   (* f0-2 arg0)
-   )
   )
 
-;; definition for method 12 of type sync-info-eased
-(defmethod dummy-12 sync-info-eased ((obj sync-info-eased) (arg0 float))
-  (* (dummy-13 obj) arg0)
+(defmethod get-current-value-with-mirror sync-info-eased ((obj sync-info-eased) (max-out-val float))
+  "Get phase that goes from 0 to max-out-val to 0 in each period"
+  (* (get-current-phase-with-mirror obj) max-out-val)
   )
 
-;; definition for method 12 of type sync-info-paused
-(defmethod dummy-12 sync-info-paused ((obj sync-info-paused) (arg0 float))
-  (* (dummy-13 obj) arg0)
+(defmethod get-current-value-with-mirror sync-info-paused ((obj sync-info-paused) (max-out-val float))
+  "Get phase that goes from 0 to max-out-val to 0 in each period"
+  (* (get-current-phase-with-mirror obj) max-out-val)
   )
 
-;; definition for method 9 of type delayed-rand-float
-(defmethod
-  dummy-9
-  delayed-rand-float
-  ((obj delayed-rand-float) (arg0 int) (arg1 int) (arg2 float))
-  (set! (-> obj min-time) arg0)
-  (set! (-> obj max-time) arg1)
-  (set! (-> obj max-val) (* 0.5 arg2))
+(defmethod set-params! delayed-rand-float ((obj delayed-rand-float) (min-tim int) (max-time int) (max-times-two float))
+  "Float that changes randomly:
+   min-time: minimum time between changes
+   max-time: maximum time between changes
+   max-times-two: maximum range. result is centered around zero."
+  (set! (-> obj min-time) min-tim)
+  (set! (-> obj max-time) max-time)
+  (set! (-> obj max-val) (* 0.5 max-times-two))
   (set! (-> obj start-time) (the-as uint 0))
   (set! (-> obj timer) 0)
   (set! (-> obj value) 0.0)
   (-> obj value)
   )
 
-;; definition for method 10 of type delayed-rand-float
-(defmethod dummy-10 delayed-rand-float ((obj delayed-rand-float))
-  (when
-   (>=
-    (the-as int (- (-> *display* base-frame-counter) (-> obj start-time)))
-    (-> obj timer)
+(defmethod update! delayed-rand-float ((obj delayed-rand-float))
+  "Get the value."
+  (when (>= (the-as int (- (-> *display* base-frame-counter) (-> obj start-time))) (-> obj timer))
+    ;; only update if enough time has passed.
+    (set! (-> obj start-time) (-> *display* base-frame-counter))
+    ;; come up with a random end time.
+    (set! (-> obj timer) (rand-vu-int-range (-> obj min-time) (-> obj max-time)))
+    ;; come up with a random value in (-max, max)
+    (set! (-> obj value) (rand-vu-float-range (- (-> obj max-val)) (-> obj max-val)))
     )
-   (set! (-> obj start-time) (-> *display* base-frame-counter))
-   (set! (-> obj timer) (rand-vu-int-range (-> obj min-time) (-> obj max-time)))
-   (set!
-    (-> obj value)
-    (rand-vu-float-range (- (-> obj max-val)) (-> obj max-val))
-    )
-   )
   (-> obj value)
   )
 
-;; definition for method 9 of type oscillating-float
-(defmethod
-  dummy-9
-  oscillating-float
-  ((obj oscillating-float) (arg0 float) (arg1 float) (arg2 float) (arg3 float))
-  (set! (-> obj value) arg0)
-  (set! (-> obj target) arg0)
+(defmethod set-params! oscillating-float ((obj oscillating-float) (init-val float) (accel float) (max-vel float) (damping float))
+  "Setup an oscillating-float. It will head toward the target, but will overshoot and oscillate before
+   eventually reaching the target.
+   init-val: the initial value and target
+   max-vel: velocity limit
+   damping: this is 1 - damping really. 0 means don't move, 1 means oscillate forever.
+   accel: gain."
+   
+  (set! (-> obj value) init-val)
+  (set! (-> obj target) init-val)
   (set! (-> obj vel) 0.0)
-  (set! (-> obj max-vel) arg2)
-  (set! (-> obj damping) arg3)
-  (set! (-> obj accel) arg1)
+  (set! (-> obj max-vel) max-vel)
+  (set! (-> obj damping) damping)
+  (set! (-> obj accel) accel)
   (-> obj value)
   )
 
-;; definition for method 10 of type oscillating-float
-(defmethod dummy-10 oscillating-float ((obj oscillating-float) (arg0 float))
-  (let
-   ((f0-3
-     (*
-      (- (+ (-> obj target) arg0) (-> obj value))
-      (* (-> obj accel) (-> *display* time-adjust-ratio))
-      )
-     )
+(defmethod update! oscillating-float ((obj oscillating-float) (target-offset float))
+  ;; first compute desired acceleration
+  (let ((acc (* (- (+ (-> obj target) target-offset) (-> obj value))
+                (* (-> obj accel) (-> *display* time-adjust-ratio))
+                )
+          )
+        )
+    ;; integrate and update velocity
+    (+! (-> obj vel) acc)
     )
-   (set! (-> obj vel) (+ (-> obj vel) f0-3))
-   )
-  (set!
-   (-> obj vel)
-   (fmin (-> obj max-vel) (fmax (- (-> obj max-vel)) (-> obj vel)))
-   )
+  ;; limit velocity
+  (set! (-> obj vel) (fmin (-> obj max-vel) (fmax (- (-> obj max-vel)) (-> obj vel))))
+  ;; apply damping
   (set! (-> obj vel) (* (-> obj vel) (-> obj damping)))
-  (set!
-   (-> obj value)
-   (+ (-> obj value) (* (-> obj vel) (-> *display* time-adjust-ratio)))
-   )
+  ;; integrate and update position
+  (+! (-> obj value) (* (-> obj vel) (-> *display* time-adjust-ratio)))
   (-> obj value)
   )
 
-;; definition for method 9 of type bouncing-float
-(defmethod
-  dummy-9
-  bouncing-float
-  ((obj bouncing-float)
-   (arg0 float)
-   (arg1 float)
-   (arg2 float)
-   (arg3 float)
-   (arg4 float)
-   (arg5 float)
-   (arg6 float)
-   )
-  (dummy-9 (-> obj osc) arg0 arg4 arg5 arg6)
-  (set! (-> obj max-value) arg1)
-  (set! (-> obj min-value) arg2)
-  (set! (-> obj elasticity) arg3)
+(defmethod set-params! bouncing-float ((obj bouncing-float) (init-val float) (max-val float) (min-val float) (elast float) (accel float) (max-vel float) (damping float))
+  "Float that bounces. It's an oscillating float, but you can add a floor/ceiling that has an
+   elastic collision.
+   init-val: intial value and target.
+   max-val: ceiling to bounce off of
+   min-val: floor to bounce off of
+   elast: elasticity
+   accel: gain
+   max-vel: maximum velocity, not in elastic part.
+   damping: damping for the non-elastic part."
+  (set-params! (-> obj osc) init-val accel max-vel damping)
+  (set! (-> obj max-value) max-val)
+  (set! (-> obj min-value) min-val)
+  (set! (-> obj elasticity) elast)
   (set! (-> obj state) 0)
   (-> obj osc value)
   )
 
-;; definition for method 10 of type bouncing-float
-(defmethod dummy-10 bouncing-float ((obj bouncing-float) (arg0 float))
-  (dummy-10 (-> obj osc) arg0)
+(defmethod update! bouncing-float ((obj bouncing-float) (arg0 float))
+  ;; first, update the oscillator and assume we aren't in a bouncing part
+  (update! (-> obj osc) arg0)
   (set! (-> obj state) 0)
+  
   (when (>= (-> obj osc value) (-> obj max-value))
-   (set! (-> obj osc value) (-> obj max-value))
-   (if (< 0.0 (-> obj osc vel))
-    (set! (-> obj osc vel) (* (-> obj osc vel) (- (-> obj elasticity))))
+    ;; boucing off of the ceiling. first, saturate to max-val
+    (set! (-> obj osc value) (-> obj max-value))
+    (if (< 0.0 (-> obj osc vel))
+        ;; then update our velocity for the elastic collision
+        (set! (-> obj osc vel) (* (-> obj osc vel) (- (-> obj elasticity))))
+        )
+    ;; and remember we did this, so at-min/at-max work
+    (set! (-> obj state) 1)
     )
-   (set! (-> obj state) 1)
-   )
+  ;; same for bouncing off of the floor
   (when (>= (-> obj min-value) (-> obj osc value))
-   (set! (-> obj osc value) (-> obj min-value))
-   (if (< (-> obj osc vel) 0.0)
-    (set! (-> obj osc vel) (* (-> obj osc vel) (- (-> obj elasticity))))
+    (set! (-> obj osc value) (-> obj min-value))
+    (if (< (-> obj osc vel) 0.0)
+        (set! (-> obj osc vel) (* (-> obj osc vel) (- (-> obj elasticity))))
+        )
+    (set! (-> obj state) -1)
     )
-   (set! (-> obj state) -1)
-   )
   (-> obj osc value)
   )
 
-;; definition for method 11 of type bouncing-float
-(defmethod dummy-11 bouncing-float ((obj bouncing-float))
+(defmethod at-min? bouncing-float ((obj bouncing-float))
+  "Did the last update it the minimum value?"
   (= (-> obj state) -1)
   )
 
-;; definition for method 12 of type bouncing-float
-(defmethod dummy-12 bouncing-float ((obj bouncing-float))
+(defmethod at-max? bouncing-float ((obj bouncing-float))
+  "Did the last update hit the maximum value?"
   (= (-> obj state) 1)
   )
 
-;; definition for method 9 of type delayed-rand-vector
-(defmethod dummy-9 delayed-rand-vector ((obj delayed-rand-vector) (arg0 int) (arg1 int) (arg2 float) (arg3 float))
-  (set! (-> obj min-time) arg0)
-  (set! (-> obj max-time) arg1)
-  (set! (-> obj xz-max) (* 0.5 arg2))
-  (set! (-> obj y-max) (* 0.5 arg3))
+(defmethod set-params! delayed-rand-vector ((obj delayed-rand-vector) (min-time int) (max-time int) (xz-range float) (y-range float))
+  "Set up a delayed-rand-vector. This vector randomly changes at random times.
+   min-time: minimum time between changes
+   max-time: maximum time between changes
+   xz-range: xz results in (-range/2, range/2)
+   y-range: y results in (-range/2, range/2)"
+  (set! (-> obj min-time) min-time)
+  (set! (-> obj max-time) max-time)
+  (set! (-> obj xz-max) (* 0.5 xz-range))
+  (set! (-> obj y-max) (* 0.5 y-range))
   (set! (-> obj start-time) (the-as uint 0))
   (set! (-> obj timer) 0)
   (vector-reset! (-> obj value))
   (-> obj value)
   )
 
-;; definition for method 10 of type delayed-rand-vector
-(defmethod dummy-10 delayed-rand-vector ((obj delayed-rand-vector))
+(defmethod update-now! delayed-rand-vector ((obj delayed-rand-vector))
+  "update to a random value now"
   (set! (-> obj start-time) (-> *display* base-frame-counter))
   (set! (-> obj timer) (rand-vu-int-range (-> obj min-time) (-> obj max-time)))
-  (set!
-   (-> obj value x)
-   (rand-vu-float-range (- (-> obj xz-max)) (-> obj xz-max))
-   )
-  (set!
-   (-> obj value y)
-   (rand-vu-float-range (- (-> obj y-max)) (-> obj y-max))
-   )
-  (set!
-   (-> obj value z)
-   (rand-vu-float-range (- (-> obj xz-max)) (-> obj xz-max))
+  (set! (-> obj value x) (rand-vu-float-range (- (-> obj xz-max)) (-> obj xz-max)))
+  (set! (-> obj value y) (rand-vu-float-range (- (-> obj y-max)) (-> obj y-max)))
+  (set! (-> obj value z) (rand-vu-float-range (- (-> obj xz-max)) (-> obj xz-max)))
+  (-> obj value)
+  )
+
+(defmethod update-with-delay! delayed-rand-vector ((obj delayed-rand-vector))
+  "Update, if enough time has passed"
+  (if (>= (the-as int (- (-> *display* base-frame-counter) (-> obj start-time))) (-> obj timer))
+   (update-now! obj)
    )
   (-> obj value)
   )
 
-;; definition for method 11 of type delayed-rand-vector
-(defmethod dummy-11 delayed-rand-vector ((obj delayed-rand-vector))
-  (if
-   (>=
-    (the-as int (- (-> *display* base-frame-counter) (-> obj start-time)))
-    (-> obj timer)
-    )
-   (dummy-10 obj)
+(defmethod update-with-delay-or-reset! delayed-rand-vector ((obj delayed-rand-vector))
+  "Update, if enough time has passed. Otherwise reset to zero."
+  (if (>= (the-as int (- (-> *display* base-frame-counter) (-> obj start-time))) (-> obj timer))
+   (update-now! obj)
+   (vector-reset! (-> obj value))
    )
   (-> obj value)
   )
 
-;; definition for method 12 of type delayed-rand-vector
-(defmethod dummy-12 delayed-rand-vector ((obj delayed-rand-vector))
-  (if (>= (the-as int (- (-> *display* base-frame-counter) (-> obj start-time)))
-          (-> obj timer)
-          )
-      (dummy-10 obj)
-      (vector-reset! (-> obj value))
-      )
-  (-> obj value)
-  )
-
-;; definition for method 9 of type oscillating-vector
-;; Used lq/sq
-(defmethod dummy-9 oscillating-vector ((obj oscillating-vector) (arg0 vector) (arg1 float) (arg2 float) (arg3 float))
+(defmethod set-params! oscillating-vector ((obj oscillating-vector) (init-val vector) (accel float) (max-vel float) (damping float))
+  "Works just like oscillating-float, but does a whole vector.
+   init-val can be #f to reset to 0."
   (cond
-    (arg0
-     (set! (-> obj value quad) (-> arg0 quad))
-     (set! (-> obj target quad) (-> arg0 quad))
-     )
-    (else
-     (vector-reset! (-> obj value))
-     (vector-reset! (-> obj target))
-     )
+   (init-val
+    (set! (-> obj value quad) (-> init-val quad))
+    (set! (-> obj target quad) (-> init-val quad))
     )
+   (else
+    (vector-reset! (-> obj value))
+    (vector-reset! (-> obj target))
+    )
+   )
   (vector-reset! (-> obj vel))
-  (set! (-> obj max-vel) arg2)
-  (set! (-> obj damping) arg3)
-  (set! (-> obj accel) arg1)
+  (set! (-> obj max-vel) max-vel)
+  (set! (-> obj damping) damping)
+  (set! (-> obj accel) accel)
   (-> obj value)
   )
 
-;; definition for method 10 of type oscillating-vector
-;; todo vector-float*!
-(defmethod dummy-10 oscillating-vector ((obj oscillating-vector) (arg0 vector))
+(defmethod update! oscillating-vector ((obj oscillating-vector) (target-offset vector))
+  "target-offset can be #f, acts like 0"
   (let ((s5-0 (new 'stack-no-clear 'vector)))
     (cond
-      (arg0
-       (vector+! s5-0 (-> obj target) arg0)
+      (target-offset
+       (vector+! s5-0 (-> obj target) target-offset)
        (vector-! s5-0 s5-0 (-> obj value))
        )
       (else
        (vector-! s5-0 (-> obj target) (-> obj value))
        )
       )
-    (vector-float*!
-     s5-0
-     s5-0
-     (* (-> obj accel) (-> *display* time-adjust-ratio))
-     )
+    (vector-float*! s5-0 s5-0 (* (-> obj accel) (-> *display* time-adjust-ratio)))
     (vector+! (-> obj vel) (-> obj vel) s5-0)
-    (let ((f0-2 (vector-length (-> obj vel))))
-      (if (< (-> obj max-vel) f0-2)
-          (vector-float*! (-> obj vel) (-> obj vel) (/ (-> obj max-vel) f0-2))
+    (let ((vel (vector-length (-> obj vel))))
+      (if (< (-> obj max-vel) vel)
+          (vector-float*! (-> obj vel) (-> obj vel) (/ (-> obj max-vel) vel))
           )
       )
     (vector-float*! (-> obj vel) (-> obj vel) (-> obj damping))

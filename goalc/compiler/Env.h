@@ -13,7 +13,7 @@
 #include <memory>
 #include <vector>
 #include "common/type_system/TypeSpec.h"
-#include "goalc/regalloc/allocate.h"
+#include "goalc/regalloc/allocator_interface.h"
 #include "common/goos/Object.h"
 #include "StaticObject.h"
 #include "Label.h"
