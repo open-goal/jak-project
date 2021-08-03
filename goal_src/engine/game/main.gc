@@ -19,28 +19,12 @@
 
 (defun letterbox ()
   "Draw the letterbox black rectangles"
-  (let* ((dma-buf (current-display-frame global-buf))
-         (gp-0 (-> dma-buf base))
-         )
-    ;; draw the sprites (gp-0 points to this DMA data)
+  (with-dma-buffer-add-bucket ((dma-buf (current-display-frame global-buf))
+                               (current-display-frame bucket-group)
+                               (bucket-id debug-draw1)) ;; debug-draw1 is one of the last buckets
+    ;; draw the two sprites
     (draw-sprite2d-xy dma-buf 0 0 512 25 (new 'static 'rgba :a #x80))
     (draw-sprite2d-xy dma-buf 0 199 512 26 (new 'static 'rgba :a #x80))
-    (let ((a3-2 (-> dma-buf base)))
-      (let ((pkt (the-as dma-packet (-> dma-buf base))))
-        (set! (-> pkt dma) (new 'static 'dma-tag :id (dma-tag-id next)))
-        (set! (-> pkt vif0) (new 'static 'vif-tag))
-        (set! (-> pkt vif1) (new 'static 'vif-tag))
-        (set! (-> dma-buf base) (the-as pointer (&+ pkt 16)))
-        )
-
-      ;; add the sprites to debug-draw1, this makes sure it gets drawn at the very end.
-      (dma-bucket-insert-tag
-       (current-display-frame bucket-group)
-       (bucket-id debug-draw1)
-       gp-0
-       (the-as (pointer dma-tag) a3-2)
-       )
-      )
     )
   (none)
   )
@@ -61,24 +45,10 @@
 
 (defun blackout ()
   "Draw the blackout rectangle, convering the entire screen in darkness."
-  (let* ((dma-buf (current-display-frame global-buf))
-         (sprite-dma-data (-> dma-buf base))
-         )
+  (with-dma-buffer-add-bucket ((dma-buf (current-display-frame global-buf))
+                               (current-display-frame bucket-group)
+                               (bucket-id debug-draw1)) ;; debug-draw1 is one of the last buckets
     (draw-sprite2d-xy dma-buf 0 0 512 224 (new 'static 'rgba :a #x80))
-    (let ((a3-1 (-> dma-buf base)))
-      (let ((pkt (the-as dma-packet (-> dma-buf base))))
-        (set! (-> pkt dma) (new 'static 'dma-tag :id (dma-tag-id next)))
-        (set! (-> pkt vif0) (new 'static 'vif-tag))
-        (set! (-> pkt vif1) (new 'static 'vif-tag))
-        (set! (-> dma-buf base) (the-as pointer (&+ pkt 16)))
-        )
-      (dma-bucket-insert-tag
-       (current-display-frame bucket-group)
-       (bucket-id debug-draw1)
-       sprite-dma-data
-       (the-as (pointer dma-tag) a3-1)
-       )
-      )
     )
   (none)
   )
