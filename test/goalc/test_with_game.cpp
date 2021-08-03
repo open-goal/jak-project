@@ -824,6 +824,12 @@ TEST_F(WithGameTests, StackInlineArray) {
                           "#x30\n0\n"});
 }
 
+TEST_F(WithGameTests, GetEnumVals) {
+  runner.run_static_test(env, testCategory, "test-get-enum-vals.gc",
+                         {"((thing1 . #<invalid object #x1>) (thing3 . #<invalid object #x3>) "
+                          "(thing5 . #<invalid object #x5>))\n0\n"});
+}
+
 TEST(TypeConsistency, TypeConsistency) {
   Compiler compiler;
   compiler.enable_throw_on_redefines();

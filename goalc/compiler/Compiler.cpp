@@ -34,6 +34,9 @@ Compiler::Compiler(std::unique_ptr<ReplWrapper> repl)
   if (m_repl) {
     m_repl->load_history();
   }
+
+  // add GOOS forms that get info from the compiler
+  setup_goos_forms();
 }
 
 ReplStatus Compiler::execute_repl(bool auto_listen) {
@@ -445,4 +448,36 @@ void Compiler::typecheck_reg_type_allow_false(const goos::Object& form,
 
 bool Compiler::knows_object_file(const std::string& name) {
   return m_debugger.knows_object(name);
+}
+
+void Compiler::setup_goos_forms() {
+  m_goos.register_form("get-enum-vals", [&](const goos::Object& form, goos::Arguments& args,
+                                            const std::shared_ptr<goos::EnvironmentObject>& env) {
+    m_goos.eval_args(&args, env);
+    va_check(form, args, {goos::ObjectType::SYMBOL}, {});
+    std::vector<Object> enum_vals;
+
+    const auto& enum_name = args.unnamed.at(0).as_symbol()->name;
+    auto enum_type = m_ts.try_enum_lookup(enum_name);
+    if (!enum_type) {
+      throw_compiler_error(form, "Unknown enum {} in get-enum-vals", enum_name);
+    }
+
+    std::vector<std::pair<std::string, s64>> sorted_values;
+    for (auto& val : enum_type->entries()) {
+      sorted_values.emplace_back(val.first, val.second);
+    }
+
+    std::sort(sorted_values.begin(), sorted_values.end(),
+              [](const std::pair<std::string, s64>& a, const std::pair<std::string, s64>& b) {
+                return a.second < b.second;
+              });
+
+    for (auto& thing : sorted_values) {
+      enum_vals.push_back(PairObject::make_new(m_goos.intern(thing.first),
+                                               goos::Object::make_integer(thing.second)));
+    }
+
+    return goos::build_list(enum_vals);
+  });
 }
