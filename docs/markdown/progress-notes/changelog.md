@@ -187,3 +187,4 @@
 - Creating arrays on the stack now must be done with `stack-no-clear` as they are not memset to 0 or constructed in any way.
 - The register allocator has been dramatically improved and generates ~5x fewer spill instructions and is able to eliminate more moves.
 - Added a `(print-debug-compiler-stats)` form to print out statistics related to register allocation and move elimination
+- Added `get-enum-vals` which returns a list of pairs. Each pair is the name (symbol) and value (int) for each value in the enum
