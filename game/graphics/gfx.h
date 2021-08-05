@@ -10,7 +10,6 @@
 #include "common/common_types.h"
 #include "game/kernel/kboot.h"
 
-
 // forward declarations
 struct GfxSettings;
 class GfxDisplay;

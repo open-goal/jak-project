@@ -17,5 +17,4 @@ enum GlfwKeyAction {
   Repeat = GLFW_REPEAT     // repeated input on hold e.g. when typing something
 };
 
-
 extern const GfxRendererModule moduleOpenGL;

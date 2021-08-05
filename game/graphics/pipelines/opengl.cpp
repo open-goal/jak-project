@@ -11,7 +11,6 @@
 #include "common/log/log.h"
 #include <memory>
 
-
 namespace {
 
 void SetDisplayCallbacks(GLFWwindow* d) {
@@ -116,7 +115,6 @@ static void gl_render_display(GfxDisplay* display) {
     MasterExit = 2;
   }
 }
-
 
 const GfxRendererModule moduleOpenGL = {
     gl_init,               // init

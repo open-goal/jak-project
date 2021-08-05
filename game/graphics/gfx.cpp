@@ -16,7 +16,6 @@ namespace {
 // initializes a gfx settings.
 // TODO save and load from file
 void InitSettings(GfxSettings& settings) {
-
   // use opengl by default for now
   settings.renderer = Gfx::GetRenderer(GfxPipeline::OpenGL);  // Gfx::renderers[0];
 

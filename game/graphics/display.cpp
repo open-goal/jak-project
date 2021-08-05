@@ -8,7 +8,6 @@
 
 #include "common/log/log.h"
 
-
 /* ****************************** */
 /* Internal functions  */
 /* ****************************** */
@@ -28,7 +27,6 @@ void set_main_display(std::shared_ptr<GfxDisplay>& display) {
 }
 
 }  // namespace
-
 
 /* ****************************** */
 /* GfxDisplay  */
@@ -83,7 +81,6 @@ void GfxDisplay::render_graphics() {
   m_renderer->render_display(this);
 }
 
-
 /* ****************************** */
 /* DISPLAY  */
 /* ****************************** */
@@ -96,7 +93,6 @@ std::shared_ptr<GfxDisplay> GetMainDisplay() {
     return NULL;
   return g_displays.front()->is_active() ? g_displays.front() : NULL;
 }
-
 
 int InitMainDisplay(int width, int height, const char* title, GfxSettings& settings) {
   if (GetMainDisplay() != NULL) {
