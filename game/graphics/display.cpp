@@ -15,11 +15,11 @@ bool renderer_is_correct(const GfxRendererModule* renderer, GfxPipeline pipeline
   return renderer->pipeline == pipeline;
 }
 
-void set_main_display(GfxDisplay* display) {
+void set_main_display(std::shared_ptr<GfxDisplay>& display) {
   if (Display::displays.size() > 0) {
-    Display::displays[0] = display;
+    Display::displays[0] = std::move(display);
   } else {
-    Display::displays.push_back(display);
+    Display::displays.push_back(std::move(display));
   }
 }
 
@@ -79,11 +79,16 @@ void GfxDisplay::render_graphics() {
 
 namespace Display {
 
-std::vector<GfxDisplay*> displays;
-GfxDisplay* GetMainDisplay() {
+std::vector<std::shared_ptr<GfxDisplay>> displays;
+std::shared_ptr<GfxDisplay> GetMainDisplay() {
   if (displays.size() == 0)
     return NULL;
-  return displays.front()->is_active() ? displays.front() : NULL;
+  if (displays.front()->is_active()) {
+    return displays.front();
+  } else {
+    return NULL;
+  }
+  // return displays.front()->is_active() ? std::move(displays.front()) : NULL;
 }
 
 
@@ -96,8 +101,8 @@ int InitMainDisplay(int width, int height, const char* title, GfxSettings& setti
   set_main_display(settings.renderer->make_main_display(width, height, title, settings));
 }
 
-void KillDisplay(GfxDisplay* display) {
-  lg::debug("kill display #x{:x}", (uintptr_t)display);
+void KillDisplay(std::shared_ptr<GfxDisplay>& display) {
+  // lg::debug("kill display #x{:x}", (uintptr_t)display);
   if (!display->is_active()) {
     lg::warn("display #x{:x} cant be killed because it is not active");
     return;
@@ -105,19 +110,15 @@ void KillDisplay(GfxDisplay* display) {
 
   if (GetMainDisplay() == display) {
     // killing the main display, kill all children displays too!
-    for (auto child_disp : displays) {
-      if (child_disp == display)
-        continue;
-      KillDisplay(child_disp);
+    for (int i = 1; i < displays.size(); ++i) {
+      KillDisplay(std::move(displays.at(i)));
     }
   }
 
   // find this display in the list and remove it from there
+  // if everything went right the smart pointer should delete the display.
   auto this_disp = std::find(displays.begin(), displays.end(), display);
   displays.erase(this_disp);
-
-  // delete the display. the destructor does the rest.
-  delete display;
 }
 
 }  // namespace Display

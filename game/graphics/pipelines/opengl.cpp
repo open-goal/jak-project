@@ -9,6 +9,7 @@
 #include "game/graphics/display.h"
 
 #include "common/log/log.h"
+#include <memory>
 
 
 namespace {
@@ -56,7 +57,7 @@ static void gl_exit() {
   glfwSetErrorCallback(NULL);
 }
 
-static GfxDisplay* gl_make_main_display(int width,
+static std::shared_ptr<GfxDisplay> gl_make_main_display(int width,
                                               int height,
                                               const char* title,
                                               GfxSettings& settings) {
@@ -86,7 +87,7 @@ static GfxDisplay* gl_make_main_display(int width,
     return NULL;
   }
 
-  GfxDisplay* display = new GfxDisplay(window);
+  std::shared_ptr<GfxDisplay> display = std::make_shared<GfxDisplay>(window);
   // lg::debug("init display #x{:x}", (uintptr_t)display);
 
   return display;

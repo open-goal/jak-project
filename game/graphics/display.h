@@ -8,6 +8,7 @@
 #include "pipelines/opengl.h"
 #include "gfx.h"
 #include <vector>
+#include <memory>
 
 // a GfxDisplay class is equivalent to a window that displays stuff. This holds an actual internal
 // window pointer used by whichever renderer. It also contains functions for setting and
@@ -41,11 +42,11 @@ namespace Display {
 
 // a list of displays. the first one is the "main" display, all others are spectator-like extra
 // views.
-extern std::vector<GfxDisplay*> displays;
+extern std::vector<std::shared_ptr<GfxDisplay>> displays;
 
 int InitMainDisplay(int width, int height, const char* title, GfxSettings& settings);
-void KillDisplay(GfxDisplay* display);
+void KillDisplay(std::shared_ptr<GfxDisplay>& display);
 
-GfxDisplay* GetMainDisplay();
+std::shared_ptr<GfxDisplay> GetMainDisplay();
 
 }  // namespace Display

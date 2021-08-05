@@ -6,6 +6,7 @@
  */
 
 #include <functional>
+#include <memory>
 #include "common/common_types.h"
 #include "game/kernel/kboot.h"
 
@@ -23,7 +24,7 @@ enum class GfxPipeline {
 // module for the different rendering pipelines
 struct GfxRendererModule {
   std::function<int()> init;
-  std::function<GfxDisplay*(int w, int h, const char* title, GfxSettings& settings)>
+  std::function<std::shared_ptr<GfxDisplay>(int w, int h, const char* title, GfxSettings& settings)>
       make_main_display;
   std::function<void(GfxDisplay* display)> kill_display;
   std::function<void(GfxDisplay* display)> render_display;
@@ -46,7 +47,7 @@ struct GfxVertex {
   // x y z
   float x, y, z;
 
-  // rgba for the full u32 thing.
+  // rgba or the full u32 thing.
   union {
     u32 rgba;
     struct {
