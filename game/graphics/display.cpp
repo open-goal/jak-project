@@ -100,7 +100,12 @@ int InitMainDisplay(int width, int height, const char* title, GfxSettings& setti
     return 1;
   }
 
-  set_main_display(settings.renderer->make_main_display(width, height, title, settings));
+  auto display = settings.renderer->make_main_display(width, height, title, settings);
+  if (display == NULL) {
+    lg::error("Failed to make main display.");
+    return 1;
+  }
+  set_main_display(display);
 }
 
 void KillDisplay(std::shared_ptr<GfxDisplay> display) {
