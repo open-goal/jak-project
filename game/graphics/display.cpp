@@ -9,6 +9,10 @@
 #include "common/log/log.h"
 
 
+/* ****************************** */
+/* Internal functions  */
+/* ****************************** */
+
 namespace {
 
 bool renderer_is_correct(const GfxRendererModule* renderer, GfxPipeline pipeline) {
@@ -16,15 +20,19 @@ bool renderer_is_correct(const GfxRendererModule* renderer, GfxPipeline pipeline
 }
 
 void set_main_display(std::shared_ptr<GfxDisplay>& display) {
-  if (Display::displays.size() > 0) {
-    Display::displays[0] = std::move(display);
+  if (Display::g_displays.size() > 0) {
+    Display::g_displays[0] = std::move(display);
   } else {
-    Display::displays.push_back(std::move(display));
+    Display::g_displays.push_back(std::move(display));
   }
 }
 
-}
+}  // namespace
 
+
+/* ****************************** */
+/* GfxDisplay  */
+/* ****************************** */
 
 GfxDisplay::GfxDisplay(GLFWwindow* a_window) {
   set_renderer(GfxPipeline::OpenGL);
@@ -32,7 +40,7 @@ GfxDisplay::GfxDisplay(GLFWwindow* a_window) {
 }
 
 GfxDisplay::~GfxDisplay() {
-  renderer->kill_display(this);
+  m_renderer->kill_display(this);
   // window_generic_ptr = nullptr;
 }
 
@@ -41,17 +49,17 @@ void GfxDisplay::set_renderer(GfxPipeline pipeline) {
     lg::error("Can't change display's renderer while window exists.");
     return;
   }
-  if (renderer != nullptr) {
+  if (m_renderer != nullptr) {
     lg::error("A display changed renderer unexpectedly.");
     return;
   }
 
-  renderer = Gfx::GetRenderer(pipeline);
+  m_renderer = Gfx::GetRenderer(pipeline);
 }
 
 void GfxDisplay::set_window(GLFWwindow* window) {
-  if (!renderer_is_correct(renderer, GfxPipeline::OpenGL)) {
-    lg::error("Can't set OpenGL window when using {}", renderer->name);
+  if (!renderer_is_correct(m_renderer, GfxPipeline::OpenGL)) {
+    lg::error("Can't set OpenGL window when using {}", m_renderer->name);
     return;
   }
   if (is_active()) {
@@ -69,26 +77,25 @@ void GfxDisplay::set_title(const char* title)
     return;
   }
 
-  this->title = title;
+  m_title = title;
 }
 
 void GfxDisplay::render_graphics() {
-  renderer->render_display(this);
+  m_renderer->render_display(this);
 }
 
 
+/* ****************************** */
+/* DISPLAY  */
+/* ****************************** */
+
 namespace Display {
 
-std::vector<std::shared_ptr<GfxDisplay>> displays;
+std::vector<std::shared_ptr<GfxDisplay>> g_displays;
 std::shared_ptr<GfxDisplay> GetMainDisplay() {
-  if (displays.size() == 0)
+  if (g_displays.size() == 0)
     return NULL;
-  if (displays.front()->is_active()) {
-    return displays.front();
-  } else {
-    return NULL;
-  }
-  // return displays.front()->is_active() ? std::move(displays.front()) : NULL;
+  return g_displays.front()->is_active() ? g_displays.front() : NULL;
 }
 
 
@@ -110,15 +117,15 @@ void KillDisplay(std::shared_ptr<GfxDisplay>& display) {
 
   if (GetMainDisplay() == display) {
     // killing the main display, kill all children displays too!
-    for (int i = 1; i < displays.size(); ++i) {
-      KillDisplay(std::move(displays.at(i)));
+    for (int i = 1; i < g_displays.size(); ++i) {
+      KillDisplay(std::move(g_displays.at(i)));
     }
   }
 
   // find this display in the list and remove it from there
   // if everything went right the smart pointer should delete the display.
-  auto this_disp = std::find(displays.begin(), displays.end(), display);
-  displays.erase(this_disp);
+  auto this_disp = std::find(g_displays.begin(), g_displays.end(), display);
+  g_displays.erase(this_disp);
 }
 
 }  // namespace Display

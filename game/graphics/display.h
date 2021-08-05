@@ -14,9 +14,9 @@
 // window pointer used by whichever renderer. It also contains functions for setting and
 // retrieving certain window parameters.
 class GfxDisplay {
-  const char* title;
+  const char* m_title;
 
-  const GfxRendererModule* renderer = nullptr;
+  const GfxRendererModule* m_renderer = nullptr;
 
   public:
   GfxDisplay(GLFWwindow* a_window);  // OpenGL window constructor
@@ -33,7 +33,7 @@ class GfxDisplay {
   void set_renderer(GfxPipeline pipeline);
   void set_window(GLFWwindow* window);
   void set_title(const char* title);
-  const char* get_title() const { return title; }
+  const char* get_title() const { return m_title; }
 
   void render_graphics();
 };
@@ -42,7 +42,7 @@ namespace Display {
 
 // a list of displays. the first one is the "main" display, all others are spectator-like extra
 // views.
-extern std::vector<std::shared_ptr<GfxDisplay>> displays;
+extern std::vector<std::shared_ptr<GfxDisplay>> g_displays;
 
 int InitMainDisplay(int width, int height, const char* title, GfxSettings& settings);
 void KillDisplay(std::shared_ptr<GfxDisplay>& display);

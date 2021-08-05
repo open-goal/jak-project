@@ -30,9 +30,9 @@ void InitSettings(GfxSettings& settings) {
 
 namespace Gfx {
 
-GfxVertex vertices_temp[VERTEX_BUFFER_LENGTH_TEMP];
+GfxVertex g_vertices_temp[VERTEX_BUFFER_LENGTH_TEMP];
 
-GfxSettings settings;
+GfxSettings g_settings;
 // const std::vector<const GfxRendererModule*> renderers = {&moduleOpenGL};
 
 const GfxRendererModule* GetRenderer(GfxPipeline pipeline) {
@@ -52,9 +52,9 @@ const GfxRendererModule* GetRenderer(GfxPipeline pipeline) {
 u32 Init() {
   lg::info("GFX Init");
   // initialize settings
-  InitSettings(settings);
+  InitSettings(g_settings);
 
-  if (settings.renderer->init()) {
+  if (g_settings.renderer->init()) {
     lg::error("Gfx::Init error");
     return 1;
   }
@@ -62,7 +62,7 @@ u32 Init() {
   if (g_main_thread_id != std::this_thread::get_id()) {
     lg::warn("ran Gfx::Init outside main thread. Init display elsewhere?");
   } else {
-    Display::InitMainDisplay(640, 480, "testy", settings);
+    Display::InitMainDisplay(640, 480, "testy", g_settings);
   }
 
   return 0;
@@ -82,7 +82,7 @@ void Loop(std::function<bool()> f) {
 u32 Exit() {
   lg::info("GFX Exit");
   Display::KillDisplay(Display::GetMainDisplay());
-  settings.renderer->exit();
+  g_settings.renderer->exit();
   return 0;
 }
 

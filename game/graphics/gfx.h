@@ -59,9 +59,9 @@ struct GfxVertex {
 namespace Gfx {
 
 static constexpr int VERTEX_BUFFER_LENGTH_TEMP = 4096;
-extern GfxVertex vertices_temp[VERTEX_BUFFER_LENGTH_TEMP];
+extern GfxVertex g_vertices_temp[VERTEX_BUFFER_LENGTH_TEMP];
 
-extern GfxSettings settings;
+extern GfxSettings g_settings;
 // extern const std::vector<const GfxRendererModule*> renderers;
 
 const GfxRendererModule* GetRenderer(GfxPipeline pipeline);
