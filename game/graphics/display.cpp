@@ -18,11 +18,11 @@ bool renderer_is_correct(const GfxRendererModule* renderer, GfxPipeline pipeline
   return renderer->pipeline == pipeline;
 }
 
-void set_main_display(std::shared_ptr<GfxDisplay>& display) {
+void set_main_display(std::shared_ptr<GfxDisplay> display) {
   if (Display::g_displays.size() > 0) {
-    Display::g_displays[0] = std::move(display);
+    Display::g_displays[0] = display;
   } else {
-    Display::g_displays.push_back(std::move(display));
+    Display::g_displays.push_back(display);
   }
 }
 
