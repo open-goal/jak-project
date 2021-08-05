@@ -18,7 +18,7 @@ class GfxDisplay {
 
   const GfxRendererModule* m_renderer = nullptr;
 
-  public:
+ public:
   GfxDisplay(GLFWwindow* a_window);  // OpenGL window constructor
   ~GfxDisplay();  // destructor - this calls the renderer's function for getting rid of a window,
                   // and we can then get rid of the GfxDisplay itself

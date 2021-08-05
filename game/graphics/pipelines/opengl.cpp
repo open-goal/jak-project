@@ -58,9 +58,9 @@ static void gl_exit() {
 }
 
 static std::shared_ptr<GfxDisplay> gl_make_main_display(int width,
-                                              int height,
-                                              const char* title,
-                                              GfxSettings& settings) {
+                                                        int height,
+                                                        const char* title,
+                                                        GfxSettings& settings) {
   GLFWwindow* window = glfwCreateWindow(width, height, title, NULL, NULL);
 
   if (!window) {

@@ -70,8 +70,7 @@ void GfxDisplay::set_window(GLFWwindow* window) {
   this->window_glfw = window;
 }
 
-void GfxDisplay::set_title(const char* title)
-{
+void GfxDisplay::set_title(const char* title) {
   if (!is_active()) {
     lg::error("No window to set title `{}`.", title);
     return;

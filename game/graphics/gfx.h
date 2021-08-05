@@ -16,10 +16,7 @@ struct GfxSettings;
 class GfxDisplay;
 
 // enum for rendering pipeline
-enum class GfxPipeline {
-  Invalid = 0,
-  OpenGL
-};
+enum class GfxPipeline { Invalid = 0, OpenGL };
 
 // module for the different rendering pipelines
 struct GfxRendererModule {
@@ -36,10 +33,9 @@ struct GfxRendererModule {
 
 // store settings related to the gfx systems
 struct GfxSettings {
-
   const GfxRendererModule* renderer;  // which rendering pipeline to use.
 
-  int vsync; // (temp) number of screen update per frame
+  int vsync;  // (temp) number of screen update per frame
 };
 
 // struct for a single vertex. this should in theory be renderer-agnostic
