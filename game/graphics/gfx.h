@@ -19,6 +19,10 @@ u32 Init();
 void Loop(std::function<bool()> f);
 u32 Exit();
 
+u32 vsync();
+void wait_for_render_completion();
+bool is_initialized();
+
 }  // namespace Gfx
 
 #endif  // RUNTIME_GFX_H

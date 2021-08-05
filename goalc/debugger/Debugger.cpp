@@ -216,7 +216,7 @@ std::vector<BacktraceFrame> Debugger::get_backtrace(u64 rip, u64 rsp) {
 
     if (frame.rip_info.knows_function && frame.rip_info.func_debug &&
         frame.rip_info.func_debug->stack_usage) {
-      fmt::print("{}\n", frame.rip_info.function_name);
+      fmt::print("{} from {}\n", frame.rip_info.function_name, frame.rip_info.func_debug->obj_name);
       // we're good!
       u64 rsp_at_call = rsp + *frame.rip_info.func_debug->stack_usage;
 

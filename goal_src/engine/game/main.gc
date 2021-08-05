@@ -135,7 +135,7 @@
                    (-> *setting-control* default process-mask)
                    )
            )
-     (sound-group-continue (the-as uint 255))
+     ;; (sound-group-continue (the-as uint 255)) TODO (we need to flush sound commands)
      ;;(hide-progress-screen) TODO
      )
     )
@@ -944,6 +944,10 @@
   )
 
 
+(defmacro dloop-dbg (str &rest args)
+  `(format 0 ,(string-append "[display-loop] " str) ,@args)
+  )
+
 (defun display-loop ()
   "This is in progress..."
 
@@ -957,8 +961,10 @@
     (set! *teleport* #t)
     (update-per-frame-settings! *setting-control*)
     ;;(init-time-of-day-context *time-of-day-context*) TODO
-    ;;(display-sync disp)
-    ;; (swap-display disp)
+    (format 0 "DISPLAY LOOP calling sync~%")
+    (display-sync disp)
+    (format 0 "first call to sync done~%")
+    (swap-display disp)
     ;; touching list
     ;; bler init
     ;; collide dma
@@ -977,24 +983,278 @@
       ;; update-camera
       ;; draw hook
       ;; menu hook
-      ;; update-current-level-availabe-to-progress
+      (add-ee-profile-frame 'draw :g #x40)
+       
+      ;; make-current-level-availabe-to-progress
       ;; update-task-hitns
-      ;; load-level-textu-files
       (load-level-text-files -1)
-      ;; sync/timeout
+
+      (add-ee-profile-frame 'unknown-cpu-time)
+      ;; collect perf stats
+      (read! (-> *perf-stats* data (perf-stat-bucket all-code)))
+
+      (when (nonzero? (sync-path 0 0))
+        (*dma-timeout-hook*)
+        (reset-vif1-path)
+        (if *debug-segment*
+            (format
+             0
+             "profile bar at ~D.~%"
+             (->
+              *display*
+              frames
+              (-> *display* on-screen)
+              frame
+              profile-bar
+              1
+              profile-frame-count
+              )
+             )
+            )
+        )
+      (reset! (-> *perf-stats* data (perf-stat-bucket all-code)))
 
       ;; depth cue
       ;; screen filter
-      ;; letterbox
-      ;; blackout
-      ;; debug draw
-      ;; deci count
-      ;; file info
-      ;; pause text
-      ;; iop info
-      ;; mc info
-      ;; dma memory usage
+
+      ;; run letterbox if needed
+      (when (or (movie?)
+                (< (the-as int (-> *display* base-frame-counter))
+                   (the-as int (-> *game-info* letterbox-time))
+                   )
+                )
+        (if (< (the-as int (-> *game-info* letterbox-time))
+               (the-as int (-> *display* base-frame-counter))
+               )
+            (set! (-> *game-info* letterbox-time) (-> *display* base-frame-counter))
+            )
+        (if (= (-> *setting-control* current aspect-ratio) 'aspect4x3)
+            (letterbox)
+            )
+        )
+
+      ;; do blackout if needed.
+      (if (< (the-as int (-> *display* base-frame-counter))
+             (the-as int (-> *game-info* blackout-time))
+             )
+          (set! (-> *setting-control* default bg-a-force) 1.0)
+          (set! (-> *setting-control* default bg-a-force) 0.0)
+          )
+      (read! (-> *perf-stats* data (perf-stat-bucket all-code)))
+
+      ;; grab a buffer for drawing debug stuff.
+      ;; we might draw even outside of debug mode if cheat-mode is disabled.
+      (let ((debug-txt-buf
+             (-> (if *debug-segment*
+                     (-> disp frames (-> disp on-screen) frame debug-buf)
+                     (-> disp frames (-> disp on-screen) frame global-buf)
+                     )
+                 base
+                 )
+              )
+            )
+
+        ;; debug drawing
+        (when *debug-segment*
+          (debug-draw-buffers) ;; lines/text
+
+          ;; debug dma
+          (let* ((debug-buf (-> disp frames (-> disp on-screen) frame debug-buf))
+                 (s4-3 (-> debug-buf base))
+                 )
+            (when *display-profile*
+              (let* ((v1-172 debug-buf)
+                     (a0-77 (the-as object (-> v1-172 base)))
+                     )
+                (set! (-> (the-as dma-packet a0-77) dma) (new 'static 'dma-tag :qwc #xa :id (dma-tag-id cnt)))
+                (set! (-> (the-as dma-packet a0-77) vif0) (new 'static 'vif-tag))
+                (set! (-> (the-as dma-packet a0-77) vif1) (new 'static 'vif-tag :imm #xa :cmd (vif-cmd direct) :msk #x1))
+                (set! (-> v1-172 base) (&+ (the-as pointer a0-77) 16))
+                )
+              (let* ((v1-173 debug-buf)
+                     (a0-79 (the-as object (-> v1-173 base)))
+                     )
+                (set! (-> (the-as gs-gif-tag a0-79) tag) (new 'static 'gif-tag64 :nloop #x1 :eop #x1 :nreg #x9))
+                (set! (-> (the-as gs-gif-tag a0-79) regs)
+                 (new 'static 'gif-tag-regs
+                      :regs0 (gif-reg-id a+d)
+                      :regs1 (gif-reg-id a+d)
+                      :regs2 (gif-reg-id a+d)
+                      :regs3 (gif-reg-id a+d)
+                      :regs4 (gif-reg-id a+d)
+                      :regs5 (gif-reg-id a+d)
+                      :regs6 (gif-reg-id a+d)
+                      :regs7 (gif-reg-id a+d)
+                      :regs8 (gif-reg-id a+d)
+                      :regs9 (gif-reg-id a+d)
+                      :regs10 (gif-reg-id a+d)
+                      :regs11 (gif-reg-id a+d)
+                      :regs12 (gif-reg-id a+d)
+                      :regs13 (gif-reg-id a+d)
+                      :regs14 (gif-reg-id a+d)
+                      :regs15 (gif-reg-id a+d)
+                      )
+                 )
+                (set! (-> v1-173 base) (&+ (the-as pointer a0-79) 16))
+                )
+              (let* ((v1-174 debug-buf)
+                     (a0-81 (-> v1-174 base))
+                     )
+                (set! (-> (the-as (pointer gs-alpha) a0-81) 0) (new 'static 'gs-alpha :b #x1 :d #x1))
+                (set! (-> (the-as (pointer gs-reg64) a0-81) 1) (gs-reg64 alpha-1))
+                (set! (-> (the-as (pointer gs-zbuf) a0-81) 2) (new 'static 'gs-zbuf :zbp #x1c0 :psm (gs-psm ct24) :zmsk #x1))
+                (set! (-> (the-as (pointer gs-reg64) a0-81) 3) (gs-reg64 zbuf-1))
+                (set! (-> (the-as (pointer gs-test) a0-81) 4) (new 'static 'gs-test :zte #x1 :ztst (gs-ztest always)))
+                (set! (-> (the-as (pointer gs-reg64) a0-81) 5) (gs-reg64 test-1))
+                (set! (-> (the-as (pointer uint64) a0-81) 6) (the-as uint 0))
+                (set! (-> (the-as (pointer gs-reg64) a0-81) 7) (gs-reg64 pabe))
+                (set! (-> (the-as (pointer gs-clamp) a0-81) 8)
+                 (new 'static 'gs-clamp
+                      :wms (gs-tex-wrap-mode clamp)
+                      :wmt (gs-tex-wrap-mode clamp)
+                      )
+                 )
+                (set! (-> (the-as (pointer gs-reg64) a0-81) 9) (gs-reg64 clamp-1))
+                (set! (-> (the-as (pointer gs-tex1) a0-81) 10)
+                 (new 'static 'gs-tex1 :mmag #x1 :mmin #x1)
+                 )
+                (set! (-> (the-as (pointer gs-reg64) a0-81) 11) (gs-reg64 tex1-1))
+                (set! (-> (the-as (pointer gs-texa) a0-81) 12)
+                 (new 'static 'gs-texa :ta1 #x80)
+                 )
+                (set! (-> (the-as (pointer gs-reg64) a0-81) 13) (gs-reg64 texa))
+                (set! (-> (the-as (pointer gs-texclut) a0-81) 14)
+                 (new 'static 'gs-texclut :cbw #x4)
+                 )
+                (set! (-> (the-as (pointer gs-reg64) a0-81) 15) (gs-reg64 texclut))
+                (set! (-> (the-as (pointer gs-fogcol) a0-81) 16)
+                 (the-as gs-fogcol *fog-color*)
+                 )
+                (set! (-> (the-as (pointer gs-reg64) a0-81) 17) (gs-reg64 fogcol))
+                (set! (-> v1-174 base) (&+ a0-81 144))
+                )
+
+              ;; draw the profile bars
+              (dotimes (s2-0 2)
+                (let ((s1-0 (-> disp frames (-> disp on-screen) frame profile-bar s2-0)))
+                  (add-end-frame
+                   s1-0
+                   'end-draw
+                   (new 'static 'rgba :r #x40 :g #x40 :b #x40 :a #x40)
+                   )
+                  (draw s1-0 debug-buf (* 10 s2-0))
+                  )
+                0
+                )
+              ) ;; end profiler draw
+
+            
+            (when *display-deci-count*
+              (let ((s2-1 draw-string-xy))
+                (format (clear *temp-string*) "~D" *deci-count*)
+                (s2-1 *temp-string* debug-buf 448 210 0 3)
+                )
+              )
+
+            (display-file-info)
+
+            ;; add it all to debug-draw1
+            (let ((a3-6 (-> debug-buf base)))
+              (let ((v1-188 (the-as object (-> debug-buf base))))
+                (set! (-> (the-as dma-packet v1-188) dma)
+                 (new 'static 'dma-tag :id (dma-tag-id next))
+                 )
+                (set! (-> (the-as dma-packet v1-188) vif0) (new 'static 'vif-tag))
+                (set! (-> (the-as dma-packet v1-188) vif1) (new 'static 'vif-tag))
+                (set! (-> debug-buf base) (&+ (the-as pointer v1-188) 16))
+                )
+              (dma-bucket-insert-tag
+               (-> *display* frames (-> *display* on-screen) frame bucket-group)
+               (bucket-id debug-draw1)
+               s4-3
+               (the-as (pointer dma-tag) a3-6)
+               )
+              )
+            ) ;; end dma let
+          ) ;; end debug-segment
+
+        ;; draw pause text.
+        (let* ((s3-1 (if *debug-segment*
+                         (-> disp frames (-> disp on-screen) frame debug-buf)
+                         (-> disp frames (-> disp on-screen) frame global-buf)
+                         )
+                 )
+               (s4-4 (-> s3-1 base))
+               )
+          (if (= *master-mode* 'pause)
+              (draw-string-xy
+               (lookup-text! *common-text* (game-text-id pause) #f)
+               s3-1 256 160 3 39)
+              )
+
+          ;; draw console text on screen
+          (let ((a3-8 (the int (draw-string *stdcon0* s3-1 *font-context*))))
+            (draw-string-xy *stdcon1*
+             s3-1
+             (the int (-> *font-context* origin x))
+             a3-8
+             0
+             3
+             )
+            )
+
+          ;; draw misc info
+          (if *display-iop-info*
+              (show-iop-info s3-1)
+              )
+          (if *display-memcard-info*
+              (show-mc-info s3-1)
+              )
+
+          ;; draw to debug0
+          (let ((a3-9 (-> s3-1 base)))
+            (let ((v1-215 (the-as object (-> s3-1 base))))
+              (set! (-> (the-as dma-packet v1-215) dma)
+               (new 'static 'dma-tag :id (dma-tag-id next))
+               )
+              (set! (-> (the-as dma-packet v1-215) vif0) (new 'static 'vif-tag))
+              (set! (-> (the-as dma-packet v1-215) vif1) (new 'static 'vif-tag))
+              (set! (-> s3-1 base) (&+ (the-as pointer v1-215) 16))
+              )
+            (dma-bucket-insert-tag
+             (-> *display* frames (-> *display* on-screen) frame bucket-group)
+             (bucket-id debug-draw0)
+             s4-4
+             (the-as (pointer dma-tag) a3-9)
+             )
+            )
+          )
+        (let ((v1-220 *dma-mem-usage*))
+          (when (nonzero? v1-220)
+            (set! (-> v1-220 length) (max 85 (-> v1-220 length)))
+            (set! (-> v1-220 data 84 name) "debug")
+            (+! (-> v1-220 data 84 count) 1)
+            (+! (-> v1-220 data 84 used)
+                (&- (-> (if *debug-segment*
+                            (-> disp frames (-> disp on-screen) frame debug-buf)
+                            (-> disp frames (-> disp on-screen) frame global-buf)
+                            )
+                        base
+                        )
+                    (the-as uint debug-txt-buf)
+                    )
+                )
+            (set! (-> v1-220 data 84 total) (-> v1-220 data 84 used))
+            )
+          )
+        )
+      
       ;; console buffers
+      (set! *stdcon* (clear *stdcon0*))
+
+      ;; here it is:
+      (swap-display disp)
+
       ;; swap display
       ;; particles
       ;; vif0 collid

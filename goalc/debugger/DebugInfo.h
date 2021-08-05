@@ -19,6 +19,7 @@ struct FunctionDebugInfo {
   u32 length;
   u8 seg;
   std::string name;
+  std::string obj_name;
 
   std::vector<std::string> irs;
   std::vector<InstructionInfo> instructions;  // contains mapping to IRs
@@ -34,12 +35,13 @@ class DebugInfo {
  public:
   explicit DebugInfo(std::string obj_name);
 
-  FunctionDebugInfo& add_function(const std::string& name) {
+  FunctionDebugInfo& add_function(const std::string& name, const std::string& obj_name) {
     if (m_functions.find(name) != m_functions.end()) {
       assert(false);
     }
     auto& result = m_functions[name];
     result.name = name;
+    result.obj_name = obj_name;
     return result;
   }
 

@@ -4,13 +4,7 @@
 
 namespace ee {
 
-void sceGsSyncV() {
-  assert(false);
-}
 
-void sceGsSyncPath() {
-  assert(false);
-}
 
 void sceGsResetGraph() {
   assert(false);

@@ -78,6 +78,7 @@
   "Set up a new frame. Call this before drawing anything.
    new-frame-idx is the display frame that will be set up.
    odd-even is the odd-even of the new frame"
+   
 
   ;; due to a HW bug in the PS2, you must set this.
   ;;(set! (-> (the-as vif-bank #x10003c00) err me0) 1)
@@ -87,11 +88,33 @@
   ;; due to vsync, we should never go too fast.
   (let ((time-ratio (the float
                          (+ (/ (timer-count (the-as timer-bank #x10000800)) (the-as uint *ticks-per-frame*))
-                            1
+                            1 ;; so we round up.
                             )
                          )
+
           )
         )
+
+    (let ((float-time-ratio (/ (the float (timer-count (the-as timer-bank #x10000800))) (the float *ticks-per-frame*))))
+      ;; on the PS2, if you have > 1/60 seconds between frames, it means you missed a vsync.
+      ;; this doesn't seem to be the case on my machine. It appears that glfwSwapBuffers sometimes returns ~1 ms early,
+      ;; making the next frame ~1 ms too long.
+
+      ;; to work around with, we internally run the game at 60 fps if it appears to be slightly too slow.
+      ;; if we actually do miss a frame, the time ratio will be around 2.
+
+      (#when PC_PORT
+        (if (< float-time-ratio 1.3)
+            (set! time-ratio 1.0)
+            )
+        #|
+        (if (> time-ratio 1.)
+            (format #t "LAG ~f frames~%" (- time-ratio 1.))
+            )
+        |#
+        )
+      )
+
 
     ;; inform display system of our speed. This will adjust the scaling used in all physics calculations
     (set-time-ratios *display* time-ratio)
@@ -373,6 +396,15 @@
   0
   )
 
+(define *surrogate-dma-buffer* (the dma-buffer #f))
+
+(defmacro cpu-usage ()
+  "print out the cpu usage of the most recently rendered frame"
+  `(format #t "CPU: ~,,2f%~%frame-time: ~,,1fms~%"
+           (* 100. (/ (the float (current-display-frame run-time)) *ticks-per-frame*))
+           (* 1000. (/ 1. 60.) (/ (the float (current-display-frame run-time)) *ticks-per-frame*))
+           )
+  )
 
 (defun display-sync ((disp display))
   "Switch frames! This assumes that you have called display-frame-finish on the current frame.
@@ -427,7 +459,8 @@
     ;; begin rendering the next frame
     (let ((dma-buf-to-send (-> disp frames frame-idx frame calc-buf)))
       (if (nonzero? (dma-buffer-length dma-buf-to-send))
-          (dma-buffer-send-chain (the-as dma-bank-source #x10009000)
+          ;; was dma-send-chain originally.
+          (__send-gfx-dma-chain (the-as dma-bank-source #x10009000)
                                  (cond
                                    ;; some buffer for debugging, not used
                                    (*surrogate-dma-buffer*

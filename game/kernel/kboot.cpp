@@ -170,7 +170,7 @@ void KernelCheckAndDispatch() {
     }
 
     auto time_ms = kernel_dispatch_timer.getMs();
-    if (time_ms > 3) {
+    if (time_ms > 30) {
       printf("Kernel dispatch time: %.3f ms\n", time_ms);
     }
 
