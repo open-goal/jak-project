@@ -103,7 +103,7 @@ int InitMainDisplay(int width, int height, const char* title, GfxSettings& setti
   set_main_display(settings.renderer->make_main_display(width, height, title, settings));
 }
 
-void KillDisplay(std::shared_ptr<GfxDisplay>& display) {
+void KillDisplay(std::shared_ptr<GfxDisplay> display) {
   // lg::debug("kill display #x{:x}", (uintptr_t)display);
   if (!display->is_active()) {
     lg::warn("display #x{:x} cant be killed because it is not active");
@@ -113,7 +113,7 @@ void KillDisplay(std::shared_ptr<GfxDisplay>& display) {
   if (GetMainDisplay() == display) {
     // killing the main display, kill all children displays too!
     for (int i = 1; i < g_displays.size(); ++i) {
-      KillDisplay(std::move(g_displays.at(i)));
+      KillDisplay(g_displays.at(i));
     }
   }
 
