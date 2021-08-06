@@ -18,6 +18,7 @@ add_library(
         data/dir_tpages.cpp
         data/game_count.cpp
         data/game_text.cpp
+        data/streamed_audio.cpp
         data/StrFileReader.cpp
         data/tpage.cpp
 

@@ -72,7 +72,9 @@ Interpreter::Interpreter() {
                    {"string-ref", &Interpreter::eval_string_ref},
                    {"string-length", &Interpreter::eval_string_length},
                    {"string-append", &Interpreter::eval_string_append},
-                   {"ash", &Interpreter::eval_ash}};
+                   {"ash", &Interpreter::eval_ash},
+                   {"symbol->string", &Interpreter::eval_symbol_to_string},
+                   {"string->symbol", &Interpreter::eval_string_to_symbol}};
 
   string_to_type = {{"empty-list", ObjectType::EMPTY_LIST},
                     {"integer", ObjectType::INTEGER},
@@ -88,6 +90,17 @@ Interpreter::Interpreter() {
 
   // load the standard library
   load_goos_library();
+}
+
+/*!
+ * Add a user defined special form. The given function will be called with unevaluated arguments.
+ * Lookup from these forms occurs after special/builtin, but before any env lookups.
+ */
+void Interpreter::register_form(
+    const std::string& name,
+    const std::function<
+        Object(const Object&, Arguments&, const std::shared_ptr<EnvironmentObject>&)>& form) {
+  m_custom_forms[name] = form;
 }
 
 Interpreter::~Interpreter() {
@@ -189,6 +202,19 @@ bool Interpreter::get_global_variable_by_name(const std::string& name, Object* d
     return true;
   }
   return false;
+}
+
+/*!
+ * Sets the variable to the value. Overwrites an existing value, or creates a new global.
+ */
+void Interpreter::set_global_variable_by_name(const std::string& name, const Object& value) {
+  auto sym = SymbolObject::make_new(reader.symbolTable, name).as_symbol();
+  global_environment.as_env()->vars[sym] = value;
+}
+
+void Interpreter::set_global_variable_to_symbol(const std::string& name, const std::string& value) {
+  auto sym = SymbolObject::make_new(reader.symbolTable, value);
+  set_global_variable_by_name(name, sym);
 }
 
 /*!
@@ -523,6 +549,13 @@ Object Interpreter::eval_pair(const Object& obj, const std::shared_ptr<Environme
       // all "built-in" forms expect arguments to be evaluated (that's why they aren't special)
       eval_args(&args, env);
       return ((*this).*(kv_b->second))(obj, args, env);
+    }
+
+    // try custom forms next
+    auto kv_u = m_custom_forms.find(head_sym->name);
+    if (kv_u != m_custom_forms.end()) {
+      Arguments args = get_args(obj, rest, make_varargs());
+      return (kv_u->second)(obj, args, env);
     }
 
     // try macros next
@@ -1586,10 +1619,24 @@ Object Interpreter::eval_ash(const Object& form,
   if (sa >= 0 && sa < 64) {
     return Object::make_integer(val << sa);
   } else if (sa > -64) {
-    return Object::make_integer(val >> sa);
+    return Object::make_integer(val >> -sa);
   } else {
     throw_eval_error(form, fmt::format("Shift amount {} is out of range", sa));
     return EmptyListObject::make_new();
   }
+}
+
+Object Interpreter::eval_symbol_to_string(const Object& form,
+                                          Arguments& args,
+                                          const std::shared_ptr<EnvironmentObject>&) {
+  vararg_check(form, args, {ObjectType::SYMBOL}, {});
+  return StringObject::make_new(args.unnamed.at(0).as_symbol()->name);
+}
+
+Object Interpreter::eval_string_to_symbol(const Object& form,
+                                          Arguments& args,
+                                          const std::shared_ptr<EnvironmentObject>&) {
+  vararg_check(form, args, {ObjectType::STRING}, {});
+  return SymbolObject::make_new(reader.symbolTable, args.unnamed.at(0).as_string()->data);
 }
 }  // namespace goos

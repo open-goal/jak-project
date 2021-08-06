@@ -4,15 +4,15 @@
  * Uses xdbg functions to debug an OpenGOAL target.
  */
 
-#include "goalc/emitter/Register.h"
-#include "common/util/assert.h"
 #include "Debugger.h"
-#include "common/util/Timer.h"
 #include "common/goal_constants.h"
 #include "common/symbols.h"
-#include "third-party/fmt/core.h"
+#include "common/util/Timer.h"
+#include "common/util/assert.h"
 #include "goalc/debugger/disassemble.h"
+#include "goalc/emitter/Register.h"
 #include "goalc/listener/Listener.h"
+#include "third-party/fmt/core.h"
 
 /*!
  * Is the target halted? If we don't know or aren't connected, returns false.
@@ -751,4 +751,8 @@ DebugInfo& Debugger::get_debug_info_for_object(const std::string& object_name) {
   }
 
   return m_debug_info.insert(std::make_pair(object_name, DebugInfo(object_name))).first->second;
+}
+
+bool Debugger::knows_object(const std::string& object_name) const {
+  return m_debug_info.find(object_name) != m_debug_info.end();
 }

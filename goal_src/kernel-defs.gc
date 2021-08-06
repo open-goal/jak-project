@@ -117,7 +117,7 @@
 
 (define-extern *debug-segment* symbol)
 (define-extern *enable-method-set* int)
-;; *boot-video-mode* ?
+(define-extern *boot-video-mode* int)
 (define-extern *deci-count* int)
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -134,6 +134,7 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;; kmachine - InitMachineScheme
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
 
 ;; put-display-env
 ;; syncv
@@ -159,13 +160,13 @@
 ;; file-stream-seek
 (define-extern file-stream-read (function file-stream pointer int int))
 (define-extern file-stream-write (function file-stream pointer uint uint))
-;; scf-get-language
+(define-extern scf-get-language (function uint))
 ;; scf-get-time
-;; scf-get-aspect
-;; scf-get-volume
-;; scf-get-territory
-;; scf-get-timeout
-;; scf-get-inactive-timeout
+(define-extern scf-get-aspect (function uint))
+(define-extern scf-get-volume (function int))
+(define-extern scf-get-territory (function int))
+(define-extern scf-get-timeout (function int))
+(define-extern scf-get-inactive-timeout (function int))
 ;; dma-to-iop
 (define-extern kernel-shutdown (function none))
 ;; aybabtu
@@ -226,13 +227,15 @@
     (death          24) ;; 16777216
     )
 
+(declare-type process basic)
+
 (deftype process-tree (basic)
   ((name basic :offset-assert 4)
    (mask process-mask :offset-assert 8)
    (parent (pointer process-tree) :offset-assert 12)
    (brother (pointer process-tree) :offset-assert 16)
    (child (pointer process-tree) :offset-assert 20)
-   (ppointer (pointer process-tree) :offset-assert 24)
+   (ppointer (pointer process) :offset-assert 24)
    (self process-tree :offset-assert 28)
    )
   
@@ -240,7 +243,7 @@
    (new (symbol type basic) _type_ 0)
    (activate (_type_ process-tree basic pointer) process-tree 9)
    (deactivate  (_type_) none 10)
-   (dummy-method-11 () none 11)
+   (dummy-method-11 (_type_ object) none 11)
    (run-logic? (_type_) symbol 12)
    (dummy-method () none 13)
    )  

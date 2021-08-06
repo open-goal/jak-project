@@ -231,6 +231,8 @@ void try_reverse_lookup_array_like(const FieldReverseLookupInput& input,
  * - get something inside an object (variable idx)
  * - get a constant idx reference object (we pick this over just getting the array for idx = 0)
  * - get something inside a constant idx reference object
+ *
+ * Note: for an inline array of basics, the offset should include the basic offset.
  */
 void try_reverse_lookup_inline_array(const FieldReverseLookupInput& input,
                                      const TypeSystem& ts,
@@ -264,7 +266,7 @@ void try_reverse_lookup_inline_array(const FieldReverseLookupInput& input,
     FieldReverseLookupInput next_input;
     next_input.deref = input.deref;
     next_input.stride = 0;
-    next_input.offset = input.offset;
+    next_input.offset = input.offset;  // includes the offset.
     next_input.base_type = di.result_type;
     try_reverse_lookup(next_input, ts, &var_idx_node, output, max_count);
     return;
@@ -272,18 +274,17 @@ void try_reverse_lookup_inline_array(const FieldReverseLookupInput& input,
 
   // constant lookup, or accessing within the first one
   // which element we are in
-  int elt_idx = input.offset / di.stride;
-  // how many bytes into the element we look
+  int elt_idx = (ts.lookup_type(di.result_type)->get_offset() + input.offset) / di.stride;
+  // how many bytes into the element we look (including offset)
   int offset_into_elt = input.offset - (elt_idx * di.stride);
   // the expected number of bytes into the element we would look to grab a ref to the elt.
-  int expected_offset_into_elt = ts.lookup_type(di.result_type)->get_offset();
 
   ReverseLookupNode const_idx_node;
   const_idx_node.prev = parent;
   const_idx_node.token.kind = FieldReverseLookupOutput::Token::Kind::CONSTANT_IDX;
   const_idx_node.token.idx = elt_idx;
 
-  if (offset_into_elt == expected_offset_into_elt && !input.deref.has_value()) {
+  if (offset_into_elt == 0 && !input.deref.has_value() && !input.stride) {
     // just get an element (possibly zero, and we want to include the 0 if so)
     // for the degenerate inline-array case, it seems more likely that we get the zeroth object
     // rather than the array, so this goes before that case.
@@ -295,7 +296,7 @@ void try_reverse_lookup_inline_array(const FieldReverseLookupInput& input,
   }
 
   // can we just return the array?
-  if (expected_offset_into_elt == offset_into_elt && !input.deref.has_value() && elt_idx == 0) {
+  if (offset_into_elt == 0 && !input.deref.has_value() && elt_idx == 0 && !input.stride) {
     auto parent_vec = parent_to_vector(parent);
     if (!parent_vec.empty()) {
       output->results.emplace_back(false, input.base_type, parent_to_vector(parent));
@@ -311,8 +312,7 @@ void try_reverse_lookup_inline_array(const FieldReverseLookupInput& input,
   FieldReverseLookupInput next_input;
   next_input.deref = input.deref;
   next_input.stride = input.stride;
-  // try_reverse_lookup expects "offset_into_field - boxed_offset"
-  next_input.offset = offset_into_elt - expected_offset_into_elt;
+  next_input.offset = offset_into_elt;
   next_input.base_type = di.result_type;
   try_reverse_lookup(next_input, ts, &const_idx_node, output, max_count);
 }

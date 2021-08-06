@@ -615,4 +615,12 @@ std::vector<u8> ObjectGenerator::generate_header_v3() {
   push_data<uint32_t>(64 + 4 + total_link_size, result);  // todo, make these numbers less magic.
   return result;
 }
+
+ObjectGeneratorStats ObjectGenerator::get_stats() const {
+  return m_stats;
+}
+
+void ObjectGenerator::count_eliminated_move() {
+  m_stats.moves_eliminated++;
+}
 }  // namespace emitter

@@ -13,6 +13,7 @@
 #include "kmalloc.h"
 #include "kprint.h"
 #include "fileio.h"
+#include "kmemcard.h"
 #include "kboot.h"
 #include "kdsnetm.h"
 #include "kdgo.h"
@@ -1947,7 +1948,7 @@ s32 InitHeapAndSymbol() {
   //  make_function_symbol_from_c("mc-check-result", &CKernel::not_yet_implemented);
   //  make_function_symbol_from_c("mc-get-slot-info", &CKernel::not_yet_implemented);
   //  make_function_symbol_from_c("mc-makefile", &CKernel::not_yet_implemented);
-  //  make_function_symbol_from_c("kset-language", &CKernel::not_yet_implemented);
+  make_function_symbol_from_c("kset-language", (void*)MC_set_language);
 
   // set *debug-segment*
   auto ds_symbol = intern_from_c("*debug-segment*");

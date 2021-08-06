@@ -161,22 +161,20 @@
 
 (defun texture-bpp ((arg0 gs-psm))
   "Get the number of bits per pixel for the given texture format"
-  (let ((v1-0 arg0))
-    (cond
-      ((= v1-0 (gs-psm mt8)) 8)
-      ((= v1-0 (gs-psm mt4)) 4)
-      (else
-       (if (or (= v1-0 (gs-psm ct16))
-               (= v1-0 (gs-psm ct16s))
-               (= v1-0 (gs-psm mz16))
-               (= v1-0 (gs-psm mz16s))
-               )
-           16
-           32
-           )
-       )
-      )
+  (case arg0 
+   (((gs-psm mt8))
+     8
+     )
+   (((gs-psm mt4))
+    4
     )
+   (((gs-psm ct16) (gs-psm ct16s) (gs-psm mz16) (gs-psm mz16s))
+    16
+    )
+   (else
+    32
+    )
+   )
   )
 
 (defun texture-qwc ((w int) (h int) (tex-format gs-psm))
@@ -206,46 +204,21 @@
         ;; is this the last transfer?
         (let ((eop (if (= qwc qwc-this-time) 1 0)))
           ;; set up dma/vif for a single giftag
-          (let* ((a2-2 buf)
-                 (setup-dma (the-as dma-packet (-> a2-2 base)))
-                 )
-            (set! (-> setup-dma dma)
-                  (new 'static 'dma-tag :qwc #x1 :id (dma-tag-id cnt))
-                  )
-            (set! (-> setup-dma vif0) (new 'static 'vif-tag))
-            (set! (-> setup-dma vif1)
-                  (new 'static 'vif-tag :imm #x1 :cmd (vif-cmd direct) :msk #x1)
-                  )
-            (set! (-> a2-2 base) (&+ (the-as pointer setup-dma) 16))
-            )
+          (dma-buffer-add-cnt-vif2 buf 1 (new 'static 'vif-tag :cmd (vif-cmd nop))
+                                         (new 'static 'vif-tag :cmd (vif-cmd direct) :imm 1)
+                                         )
 
           ;; set up IMAGE mode!
-          (let* ((a2-3 buf)
-                 (setup-dif (the-as gs-gif-tag (-> a2-3 base)))
-                 )
-            (set! (-> setup-dif tag) (new 'static 'gif-tag64 :flg #x2 :eop eop :nloop qwc-this-time))
-            (set! (-> setup-dif regs) (new 'static 'gif-tag-regs))
-            (set! (-> a2-3 base) (&+ (the-as pointer setup-dif) 16))
-            )
+          (dma-buffer-add-gif-tag buf (new 'static 'gif-tag64 :flg (gif-flag image) :eop eop :nloop qwc-this-time)
+                                      (gs-reg-list)
+                                      )
           )
 
         ;; and send the data.
-        (let* ((a1-9 buf)
-               (data-dma (the-as dma-packet (-> a1-9 base)))
-               )
-          (set! (-> data-dma dma)
-                (new 'static 'dma-tag
-                     :id (dma-tag-id ref)
-                     :addr (the-as int data-ptr)
-                     :qwc qwc-this-time
-                     )
-                )
-          (set! (-> data-dma vif0) (new 'static 'vif-tag))
-          (set! (-> data-dma vif1)
-                (new 'static 'vif-tag :cmd (vif-cmd direct) :msk #x1 :imm qwc-this-time)
-                )
-          (set! (-> a1-9 base) (&+ (the-as pointer data-dma) 16))
-          )
+        (dma-buffer-add-ref-vif2 buf qwc-this-time data-ptr
+                                 (new 'static 'vif-tag :cmd (vif-cmd nop))
+                                 (new 'static 'vif-tag :cmd (vif-cmd direct) :imm qwc-this-time)
+                                 )
 
         ;; seek to next data.
         (&+! data-ptr (shl qwc-this-time 4))
@@ -364,88 +337,72 @@
   )
 
 (defun gs-page-width ((arg0 gs-psm))
-  (let ((v1-0 arg0))
-    (if (or (zero? v1-0)
-            (= v1-0 (gs-psm ct24))
-            (= v1-0 (gs-psm ct16))
-            (= v1-0 (gs-psm ct16s))
-            )
-        64
-        (cond
-          ((or (= v1-0 (gs-psm mt8)) (= v1-0 (gs-psm mt4)))
-           128
-           )
-          (else
-           (format #t "Warning: Unknown block width for psm ~D~%" arg0)
-           1
-           )
-          )
-        )
+  (case arg0 
+   (((gs-psm ct32) (gs-psm ct24) (gs-psm ct16) (gs-psm ct16s))
+     64
+     )
+   (((gs-psm mt8) (gs-psm mt4))
+    128
     )
+   (else
+    (format #t "Warning: Unknown block width for psm ~D~%" arg0)
+    1
+    )
+   )
   )
 
 (defun gs-page-height ((arg0 gs-psm))
-  (let ((v1-0 arg0))
-    (if (or (zero? v1-0) (= v1-0 (gs-psm ct24)))
-        32
-        (cond
-          ((or (= v1-0 (gs-psm ct16)) (= v1-0 (gs-psm ct16s)))
-           64
-           )
-          ((= v1-0 (gs-psm mt8))
-           64
-           )
-          ((= v1-0 (gs-psm mt4))
-           128
-           )
-          (else
-           (format #t "Warning: Unknown block width for psm ~D~%" arg0)
-           1
-           )
-          )
-        )
+  (case arg0 
+   (((gs-psm ct32) (gs-psm ct24))
+     32
+     )
+   (((gs-psm ct16) (gs-psm ct16s))
+    64
     )
+   (((gs-psm mt8))
+    64
+    )
+   (((gs-psm mt4))
+    128
+    )
+   (else
+    (format #t "Warning: Unknown block width for psm ~D~%" arg0)
+    1
+    )
+   )
   )
 
 (defun gs-block-width ((arg0 gs-psm))
-  (let ((v1-0 arg0))
-   (if (or (zero? v1-0) (= v1-0 (gs-psm ct24)))
-    8
-    (cond
-     ((or (= v1-0 (gs-psm ct16)) (= v1-0 (gs-psm ct16s)) (= v1-0 (gs-psm mt8)))
-      16
-      )
-     ((= v1-0 (gs-psm mt4))
-      32
-      )
-     (else
-      (format #t "Warning: Unknown block width for psm ~D~%" arg0)
-      1
-      )
+  (case arg0 
+   (((gs-psm ct32) (gs-psm ct24))
+     8
      )
+   (((gs-psm ct16) (gs-psm ct16s) (gs-psm mt8))
+    16
+    )
+   (((gs-psm mt4))
+    32
+    )
+   (else
+    (format #t "Warning: Unknown block width for psm ~D~%" arg0)
+    1
     )
    )
   )
 
 (defun gs-block-height ((arg0 gs-psm))
-  (let ((v1-0 arg0))
-    (if (or (zero? v1-0)
-            (= v1-0 (gs-psm ct24))
-            (= v1-0 (gs-psm ct16))
-            (= v1-0 (gs-psm ct16s))
-            )
-        8
-        (cond
-          ((or (= v1-0 (gs-psm mt8)) (= v1-0 (gs-psm mt4)))
-           16
-           )
-          (else
-           (format #t "Warning: Unknown block width for psm ~D~%" arg0)
-           1
-           )
-          )
-        )
+  (case arg0 
+   (((gs-psm ct32) (gs-psm ct24) (gs-psm ct16) (gs-psm ct16s))
+     8
+     )
+   (((gs-psm mt8) (gs-psm mt4))
+    16
     )
+   (else
+    (format #t "Warning: Unknown block width for psm ~D~%" arg0)
+    1
+    )
+   )
   )
 
 (defun gs-largest-block ((tex-width int) (tex-height int) (tex-format gs-psm))
@@ -533,33 +490,69 @@
 (defmethod lookup-boot-common-id texture-pool ((obj texture-pool) (arg0 int))
   "Map these special textures to a number betwen 0 and 19. For other textures, return -1.
    NOTE: hud means start menu + zoomer, not the usual health HUD."
-  (let ((v1-0 arg0))
-   (cond
-    ((= v1-0 1032) 0) ;; hud (seg0 only)
-    ((= v1-0 1119) 1) ;; zoomer-hud (not actually loaded at boot)
-    ((= v1-0 1478) 2) ;; doesn't exist? (likely demo1)
-    ((= v1-0 1485) 3) ;; demo2 (seg0 only)
-    ((= v1-0 1486) 4) ;; demo3 (seg0 only)
-    ((= v1-0 1487) 5) ;; demo4 (seg0 only)
-    (else
-     (cond
-      ((or (= v1-0 635) (= v1-0 1609)) 6) ;; X or demo5j (seg0 only)
-      ((= v1-0 636) 7) ;; nope
-      ((= v1-0 637) 8) ;; nope
-      ((= v1-0 752) 9) ;; nope
-      ((= v1-0 1598) 10) ;; nope
-      ((= v1-0 1599) 11) ;; demo2f
-      ((= v1-0 1600) 12) ;; demo2g
-      ((= v1-0 1601) 13) ;; demo2i
-      ((= v1-0 1602) 14) ;; demo2s
-      ((= v1-0 1603) 15) ;; demo4e
-      ((= v1-0 1604) 16) ;; demo4f
-      ((= v1-0 1605) 17) ;; demo4g
-      ((= v1-0 1606) 18) ;; demo4i
-      ((= v1-0 1607) 19) ;; demo4s
-      (else -1)
-      )
+  (case arg0
+   ((1032) ;; hud (seg0 only)
+     0
      )
+   ((1119) ;; zoomer-hud (not actually loaded at boot)
+    1
+    )
+   ((1478) ;; doesn't exist? (likely demo1)
+    2
+    )
+   ((1485) ;; demo2 (seg0 only)
+    3
+    )
+   ((1486) ;; demo3 (seg0 only)
+    4
+    )
+   ((1487) ;; demo4 (seg0 only)
+    5
+    )
+   ((635 1609) ;; X or demo5j (seg0 only)
+    6
+    )
+   ((636) ;; nope
+    7
+    )
+   ((637) ;; nope
+    8
+    )
+   ((752) ;; nope
+    9
+    )
+   ((1598) ;; nope
+    10
+    )
+   ((1599) ;; demo2f
+    11
+    )
+   ((1600) ;; demo2g
+    12
+    )
+   ((1601) ;; demo2i
+    13
+    )
+   ((1602) ;; demo2s
+    14
+    )
+   ((1603) ;; demo4e
+    15
+    )
+   ((1604) ;; demo4f
+    16
+    )
+   ((1605) ;; demo4g
+    17
+    )
+   ((1606) ;; demo4i
+    18
+    )
+   ((1607) ;; demo4s
+    19
+    )
+   (else
+    -1
     )
    )
   )
@@ -759,42 +752,22 @@
     ;; only 2048 height/transfer.
     (let ((height-this-time (min 2048 tex-h)))
       ;; add dma/vif tag.
-      (let* ((v1-1 buf)
-             (dma (the-as dma-packet (-> v1-1 base)))
-             )
-        (set! (-> dma dma) (new 'static 'dma-tag :qwc #x5 :id (dma-tag-id cnt)))
-        (set! (-> dma vif0) (new 'static 'vif-tag))
-        (set! (-> dma vif1) (new 'static 'vif-tag :imm #x5 :cmd (vif-cmd direct) :msk #x1))
-        (set! (-> v1-1 base) (&+ (the-as pointer dma) 16))
-        )
+      (dma-buffer-add-cnt-vif2 buf 5 (new 'static 'vif-tag :cmd (vif-cmd nop))
+                                     (new 'static 'vif-tag :cmd (vif-cmd direct) :imm 5)
+                                     )
 
       ;; add gif (a+d)
-      (let* ((v1-2 buf)
-             (gif (the-as gs-gif-tag (-> v1-2 base)))
-             )
-        (set! (-> gif tag) (new 'static 'gif-tag64 :nloop #x4 :nreg #x1))
-        (set! (-> gif regs) (new 'static 'gif-tag-regs :regs0 (gif-reg-id a+d)))
-        (set! (-> v1-2 base) (&+ (the-as pointer gif) 16))
-        )
+      (dma-buffer-add-gif-tag buf (new 'static 'gif-tag64 :nloop 4 :nreg 1 :flg (gif-flag packed))
+                                  (gs-reg-list a+d)
+                                  )
 
       ;; add transfer setting registers
-      (let* ((v1-3 buf)
-             (gs-data (-> v1-3 base))
-             )
-        (set! (-> (the-as (pointer gs-bitbltbuf) gs-data) 0)
-         (new 'static 'gs-bitbltbuf :dbw #x2 :dbp dest)
-         )
-        (set! (-> (the-as (pointer gs-reg64) gs-data) 1) (gs-reg64 bitbltbuf))
-        (set! (-> (the-as (pointer gs-trxpos) gs-data) 2) (new 'static 'gs-trxpos))
-        (set! (-> (the-as (pointer gs-reg64) gs-data) 3) (gs-reg64 trxpos))
-        (set! (-> (the-as (pointer gs-trxreg) gs-data) 4)
-         (new 'static 'gs-trxreg :rrw #x80 :rrh height-this-time)
-         )
-        (set! (-> (the-as (pointer gs-reg64) gs-data) 5) (gs-reg64 trxreg))
-        (set! (-> (the-as (pointer gs-trxdir) gs-data) 6) (new 'static 'gs-trxdir))
-        (set! (-> (the-as (pointer gs-reg64) gs-data) 7) (gs-reg64 trxdir))
-        (set! (-> v1-3 base) (&+ gs-data 64))
-        )
+      (dma-buffer-add-uint64 buf
+                      (new 'static 'gs-bitbltbuf :dbw 2 :dbp dest) (gs-reg64 bitbltbuf)
+                      (new 'static 'gs-trxpos) (gs-reg64 trxpos)
+                      (new 'static 'gs-trxreg :rrw 128 :rrh height-this-time) (gs-reg64 trxreg)
+                      (new 'static 'gs-trxdir :xdir 0) (gs-reg64 trxdir)
+                      )
       (dma-buffer-add-ref-texture
        buf
        tex-data
@@ -804,13 +777,13 @@
        )
       )
     (+! dest 4096)
-    (set! tex-data (&+ tex-data #x100000))
+    (&+! tex-data #x100000)
     (+! tex-h -2048)
     )
   (none)
   )
 
-(defun upload-vram-pages ((pool texture-pool) (segment texture-pool-segment) (page texture-page) (mode int) (bucket-idx int))
+(defun upload-vram-pages ((pool texture-pool) (segment texture-pool-segment) (page texture-page) (mode int) (bucket-idx bucket-id))
   "Add a dma chain to upload textures to the bucket. This will only upload chunks that aren't already there.
    This will automatically update the cache info in the pool for the upload.
    mode: -3 = don't want anything (this function does nothing)
@@ -827,9 +800,9 @@
    (tex-id uint)
    )
   (let ((total-upload-size 0))
-    (let* ((dma-buf (-> *display* frames (-> *display* on-screen) frame global-buf)) ;; the global DMA buffer
-           (dma-start (-> dma-buf base)) ;; the start of the DMA to add to the bucket.
-           )
+    (with-dma-buffer-add-bucket ((dma-buf (current-display-frame global-buf)) ;; the global DMA buffer
+                                 (current-display-frame bucket-group)
+                                 bucket-idx)
 
       ;; default to segment 0 only (mode 0)
       (set! tex-data (-> page segment 0 block-data)) ;; data to send, in EE memory
@@ -920,73 +893,10 @@
 
       ;; do a texflush
 
-      ;; first, set up dma/vif
-      (let* ((v1-47 dma-buf)
-             (dma (the-as dma-packet (-> v1-47 base)))
-             )
-        (set! (-> dma dma) (new 'static 'dma-tag :qwc #x2 :id (dma-tag-id cnt)))
-        (set! (-> dma vif0) (new 'static 'vif-tag))
-        (set!
-         (-> dma vif1)
-         (new 'static 'vif-tag :imm #x2 :cmd (vif-cmd direct) :msk #x1)
-         )
-        (set! (-> v1-47 base) (&+ (the-as pointer dma) 16))
-        )
-
-      ;; and gif (a+d)
-      (let* ((v1-48 dma-buf)
-             (gif (the-as gs-gif-tag (-> v1-48 base)))
-             )
-        (set! (-> gif tag) (new 'static 'gif-tag64 :nloop #x1 :eop #x1 :nreg #x1))
-        (set!
-         (-> gif regs)
-         (new 'static 'gif-tag-regs
-              :regs0 (gif-reg-id a+d)
-              :regs1 (gif-reg-id a+d)
-              :regs2 (gif-reg-id a+d)
-              :regs3 (gif-reg-id a+d)
-              :regs4 (gif-reg-id a+d)
-              :regs5 (gif-reg-id a+d)
-              :regs6 (gif-reg-id a+d)
-              :regs7 (gif-reg-id a+d)
-              :regs8 (gif-reg-id a+d)
-              :regs9 (gif-reg-id a+d)
-              :regs10 (gif-reg-id a+d)
-              :regs11 (gif-reg-id a+d)
-              :regs12 (gif-reg-id a+d)
-              :regs13 (gif-reg-id a+d)
-              :regs14 (gif-reg-id a+d)
-              :regs15 (gif-reg-id a+d)
-              )
-         )
-        (set! (-> v1-48 base) (&+ (the-as pointer gif) 16))
-        )
-
-      ;; texflush
-      (let* ((v1-49 dma-buf)
-             (gif-data (-> v1-49 base))
-             )
-        (set! (-> (the-as (pointer uint64) gif-data) 0) (the-as uint 1))
-        (set! (-> (the-as (pointer gs-reg64) gif-data) 1) (gs-reg64 texflush))
-        (set! (-> v1-49 base) (&+ gif-data 16))
-        )
-
-      ;; we end the chain with a next.  The bucket system will patch the next chain to this,
-      ;; and then patch all the buckets togehter before sending the DMA.
-      (let ((a3-3 (-> dma-buf base)))
-        (let ((dma-end (the-as dma-packet (-> dma-buf base))))
-          (set! (-> dma-end dma) (new 'static 'dma-tag :id (dma-tag-id next)))
-          (set! (-> dma-end vif0) (new 'static 'vif-tag))
-          (set! (-> dma-end vif1) (new 'static 'vif-tag))
-          (set! (-> dma-buf base) (&+ (the-as pointer dma-end) 16))
-          )
-        (dma-bucket-insert-tag
-         (-> *display* frames (-> *display* on-screen) frame bucket-group)
-         bucket-idx
-         dma-start ;; the first thing in this chain, bucket will patch previous to this
-         (the-as (pointer dma-tag) a3-3) ;; end of this chain (ptr to next tag)
-         )
-        )
+      ;; send gif (a+d)
+      (dma-buffer-add-gs-set dma-buf
+                          (texflush 1) ;; texflush
+                          )
       )
     (shl total-upload-size 14)
     )
@@ -1059,7 +969,7 @@
   0
   )
 
-(defun upload-vram-pages-pris ((pool texture-pool) (segment texture-pool-segment) (page texture-page) (bucket-idx int) (needed-mask int))
+(defun upload-vram-pages-pris ((pool texture-pool) (segment texture-pool-segment) (page texture-page) (bucket-idx bucket-id) (needed-mask int))
   "Upload the entire texture page. If the needed-mask is not set, it will not upload those chunks.
    Upload will be added to the given bucket for on-screen.
    The nth bit of the mask determines if the nth 16-kB chunk is needed in this upload.
@@ -1075,9 +985,10 @@
    (need-tex symbol)
    )
   (let ((total-upload-size 0))
-   (let* ((dma-buf (-> *display* frames (-> *display* on-screen) frame global-buf))
-          (dma-start (-> dma-buf base))
-          )
+   (with-dma-buffer-add-bucket ((dma-buf (current-display-frame global-buf))
+                                (current-display-frame bucket-group)
+                                bucket-idx)
+
      (set! tex-data (-> page segment 0 block-data)) ;; data in RAM
      (set! tex-dest-base-chunk (shr (-> page segment 0 dest) 12)) ;; where to load
      (set! chunk-count (-> page size)) ;; how much to load
@@ -1138,68 +1049,9 @@
        )
 
      ;; do a texflush.
-     (let* ((v1-52 dma-buf)
-            (dma (the-as dma-packet (-> v1-52 base)))
-            )
-       (set! (-> dma dma) (new 'static 'dma-tag :qwc #x2 :id (dma-tag-id cnt)))
-       (set! (-> dma vif0) (new 'static 'vif-tag))
-       (set! (-> dma vif1)
-        (new 'static 'vif-tag :imm #x2 :cmd (vif-cmd direct) :msk #x1)
-        )
-       (set! (-> v1-52 base) (&+ (the-as pointer dma) 16))
-       )
-     (let* ((v1-53 dma-buf)
-            (gif (the-as gs-gif-tag (-> v1-53 base)))
-            )
-       (set! (-> gif tag) (new 'static 'gif-tag64 :nloop #x1 :eop #x1 :nreg #x1))
-       (set!
-        (-> gif regs)
-        (new 'static 'gif-tag-regs
-             :regs0 (gif-reg-id a+d)
-             :regs1 (gif-reg-id a+d)
-             :regs2 (gif-reg-id a+d)
-             :regs3 (gif-reg-id a+d)
-             :regs4 (gif-reg-id a+d)
-             :regs5 (gif-reg-id a+d)
-             :regs6 (gif-reg-id a+d)
-             :regs7 (gif-reg-id a+d)
-             :regs8 (gif-reg-id a+d)
-             :regs9 (gif-reg-id a+d)
-             :regs10 (gif-reg-id a+d)
-             :regs11 (gif-reg-id a+d)
-             :regs12 (gif-reg-id a+d)
-             :regs13 (gif-reg-id a+d)
-             :regs14 (gif-reg-id a+d)
-             :regs15 (gif-reg-id a+d)
-             )
-        )
-       (set! (-> v1-53 base) (&+ (the-as pointer gif) 16))
-       )
-     (let* ((v1-54 dma-buf)
-            (a0-25 (-> v1-54 base))
-            )
-       (set! (-> (the-as (pointer uint64) a0-25) 0) (the-as uint 1))
-       (set! (-> (the-as (pointer gs-reg64) a0-25) 1) (gs-reg64 texflush))
-       (set! (-> v1-54 base) (&+ a0-25 16))
-       )
-
-     ;; terminate the chain for the bucket.
-     (let ((a3-3 (-> dma-buf base)))
-       (let ((dma-end (the-as dma-packet (-> dma-buf base))))
-         (set! (-> dma-end dma) (new 'static 'dma-tag :id (dma-tag-id next)))
-         (set! (-> dma-end vif0) (new 'static 'vif-tag))
-         (set! (-> dma-end vif1) (new 'static 'vif-tag))
-         (set! (-> dma-buf base) (&+ (the-as pointer dma-end) 16))
-         )
-
-       ;; add chain to bucket.
-       (dma-bucket-insert-tag
-        (-> *display* frames (-> *display* on-screen) frame bucket-group)
-        bucket-idx
-        dma-start
-        (the-as (pointer dma-tag) a3-3)
-        )
-       )
+     (dma-buffer-add-gs-set dma-buf
+                  (texflush 1)
+                  )
      )
    (shl total-upload-size 14)
    )
@@ -1312,7 +1164,7 @@
   ;; in the level data, there is always code, then TFRAG texture,
   ;; so mark the code memory end as the start of this page.
   ;; (note: this may be wrong on levels with the zoomer hud texture)
-  (set! (-> *level* unknown-level-2 code-memory-end) (the pointer page))
+  (set! (-> *level* loading-level code-memory-end) (the pointer page))
   page
   )
 
@@ -1358,7 +1210,7 @@
       )
     )
   (set! (-> *texture-pool* allocate-func) texture-page-common-allocate)
-  (set! (-> *level* unknown-level-2 code-memory-end) (the pointer page))
+  (set! (-> *level* loading-level code-memory-end) (the pointer page))
   page
   )
 
@@ -1373,7 +1225,7 @@
        (set! (-> pool common-page common-id) page)
        )
       (else
-       (let ((level-idx (-> *level* unknown-level-2 index)))
+       (let ((level-idx (-> *level* loading-level index)))
          ;; these will handle TFRAG. These allocators will then switch the allocator
          ;; to common for everything else.
          (cond
@@ -1579,15 +1431,15 @@
   (when (= tex-page-kind (tpage-kind tfrag)) ;; TFRAG (0)
     ;; get the texture page, bucket to add to, and an effective distance from the closest thing.    
     (let ((tfrag-page (-> level texture-page 0))
-          (tfrag-bucket (if (zero? (-> level index)) 5 12))
+          (tfrag-bucket (if (zero? (-> level index)) (bucket-id tfrag-tex0) (bucket-id tfrag-tex1)))
           ;; not really sure how this is calculated, but it's a distance.
           (distance (fmin (fmin (-> level closest-object 0)
                                 (if (and (< 0.0 (-> level level-distance))
-                                         (< (+ 409600.0 (-> level level-distance))
+                                         (< (+ (meters 100) (-> level level-distance))
                                             (-> level closest-object 5)
                                             )
                                          )
-                                    4095995904.0
+                                    (meters 999999)
                                     (-> level closest-object 5)
                                     )
                                 )
@@ -1600,7 +1452,7 @@
         (set! (-> level upload-size 0) 0)
 
         ;; near upload.
-        (if (< distance 81920.0)
+        (if (< distance (meters 20))
             (set! (-> level upload-size 0)
                   (+ (-> level upload-size 0)
                      (upload-vram-pages obj (-> obj segment-near) tfrag-page 2 tfrag-bucket)
@@ -1608,8 +1460,8 @@
                   )
             )
         (cond
-          ((= distance 4095995904.0)) ;; not near at all, don't upload anything.
-          ((< 102400.0 distance)
+          ((= distance (meters 999999))) ;; not near at all, don't upload anything.
+          ((< (meters 25) distance)
            ;; pretty far. Just do segment 0.
            (set! (-> level upload-size 0)
                  (+ (-> level upload-size 0)
@@ -1633,7 +1485,7 @@
   (if (= tex-page-kind (tpage-kind pris)) ;; PRIS (1)
       (let ((pris-page (-> level texture-page 1)))
         (if (and pris-page (nonzero? pris-page))
-            (let ((pris-bucket (if (zero? (-> level index)) 48 51)))
+            (let ((pris-bucket (if (zero? (-> level index)) (bucket-id pris-tex0) (bucket-id pris-tex1))))
               ;; just upload the whole thing always.
               ;; use the cache mask as requested by the level.
               (set! (-> level upload-size 1)
@@ -1649,15 +1501,15 @@
             (shrub-closest (-> level closest-object 2)) ;; I guess this is the shrub closest.
             )
         (if (and shrub-page (nonzero? shrub-page))
-            (let ((shrub-bucket (if (zero? (-> level index)) 19 25))
+            (let ((shrub-bucket (if (zero? (-> level index)) (bucket-id shrub-tex0) (bucket-id shrub-tex1)))
                   (shrub-mode (cond
-                                ((= shrub-closest 4095995904.0)
+                                ((= shrub-closest (meters 999999))
                                  -3 ;; nothing
                                  )
-                                ((< 102400.0 shrub-closest)
+                                ((< (meters 25) shrub-closest)
                                  0 ;; seg 0
                                  )
-                                ((< 81920.0 shrub-closest)
+                                ((< (meters 20) shrub-closest)
                                  -2 ;; seg 0 and 1
                                  )
                                 (else
@@ -1679,12 +1531,12 @@
             (alpha-closest (-> level closest-object 3))
             )
         (if (and alpha-page (nonzero? alpha-page))
-            (let ((alpha-bucket (if (zero? (-> level index)) 31 38))
+            (let ((alpha-bucket (if (zero? (-> level index)) (bucket-id alpha-tex0) (bucket-id alpha-tex1)))
                   (alpha-mode (cond
-                                ((< 348160.0 alpha-closest)
+                                ((< (meters 85) alpha-closest)
                                  0 ;; segment 0
                                  )
-                                ((< 163840.0 alpha-closest)
+                                ((< (meters 40) alpha-closest)
                                  -2 ;; 0 and 1
                                  )
                                 (else
@@ -1712,7 +1564,7 @@
   (if (= tex-page-kind (tpage-kind water)) ;; WATER (4)
       (let ((water-page (-> level texture-page 4)))
         (if (and water-page (nonzero? water-page))
-            (let ((water-bucket (if (zero? (-> level index)) 57 60)))
+            (let ((water-bucket (if (zero? (-> level index)) (bucket-id water-tex0) (bucket-id water-tex1))))
               (set! (-> level upload-size 4)
                (upload-vram-pages-pris obj (-> obj segment-common) water-page water-bucket (the-as int (-> level texture-mask 8)))
                )
@@ -1724,7 +1576,7 @@
   (none)
   )
 
-(defmethod upload-one-common! texture-pool ((obj texture-pool))
+(defmethod upload-one-common! texture-pool ((obj texture-pool) (lev level))
   "Upload the first common texture page that's in in the common-page-mask."
   (dotimes (v1-0 32)
     (let ((a2-0 (-> obj common-page v1-0)))
@@ -1732,7 +1584,7 @@
                  (nonzero? (logand (-> obj common-page-mask) (ash 1 v1-0))) ;; in the mask.
                  )
         ;; upload it!
-        (upload-vram-pages obj (-> obj segment-common) a2-0 -2 65)
+        (upload-vram-pages obj (-> obj segment-common) a2-0 -2 (bucket-id bucket-65))
         (return #f)
         )
       )
@@ -1745,273 +1597,81 @@
    buckets for a given level.  This will trigger a VU1 profiler bar"
   (cond
     ((zero? (-> obj index))
-     ;; use bucket numbers for the 0th level
-    (let* ((v1-4 (-> *display* frames (-> *display* on-screen) frame global-buf))
-           (a2-0 (-> v1-4 base))
-           )
-      ;; packet macro
-      (let* ((a0-4 v1-4)
-             (a1-0 (the-as object (-> a0-4 base)))
-             )
-        ;; continue packet. For some reason we don't put it on the next directly
-        (set! (-> (the-as dma-packet a1-0) dma)
-         (new 'static 'dma-tag :id (dma-tag-id cnt))
-         )
-        (set! (-> (the-as dma-packet a1-0) vif0) (new 'static 'vif-tag))
-        (set! (-> (the-as dma-packet a1-0) vif1) (new 'static 'vif-tag :irq #x1)) ;; interrupt
-        (set! (-> a0-4 base) (&+ (the-as pointer a1-0) 16))
-        )
-      ;; a next packet, just to make the bucket linking work
-      (let ((a3-3 (-> v1-4 base)))
-        (let ((a0-5 (the-as object (-> v1-4 base))))
-          (set! (-> (the-as dma-packet a0-5) dma)
-           (new 'static 'dma-tag :id (dma-tag-id next))
-           )
-          (set! (-> (the-as dma-packet a0-5) vif0) (new 'static 'vif-tag))
-          (set! (-> (the-as dma-packet a0-5) vif1) (new 'static 'vif-tag))
-          (set! (-> v1-4 base) (&+ (the-as pointer a0-5) 16))
-          )
-        ;; add it
-        (dma-bucket-insert-tag
-         (-> *display* frames (-> *display* on-screen) frame bucket-group)
-         5
-         a2-0
-         (the-as (pointer dma-tag) a3-3)
-         )
-        )
+    ;; use bucket numbers for the 0th level
+    ;; TFRAG
+    (with-dma-buffer-add-bucket ((v1-4 (current-display-frame global-buf))
+                                 (current-display-frame bucket-group)
+                                 (bucket-id tfrag-tex0))
+
+      (dma-buffer-add-cnt-vif2 v1-4 0 (new 'static 'vif-tag :cmd (vif-cmd nop))
+                                      (new 'static 'vif-tag :cmd (vif-cmd nop) :irq 1)
+                                      )
       )
-     ;; the rest are the same
-    (let* ((v1-12 (-> *display* frames (-> *display* on-screen) frame global-buf))
-      (a2-1 (-> v1-12 base))
-      )
-     (let* ((a0-14 v1-12)
-            (a1-4 (the-as object (-> a0-14 base)))
-            )
-      (set!
-       (-> (the-as dma-packet a1-4) dma)
-       (new 'static 'dma-tag :id (dma-tag-id cnt))
-       )
-      (set! (-> (the-as dma-packet a1-4) vif0) (new 'static 'vif-tag))
-      (set! (-> (the-as dma-packet a1-4) vif1) (new 'static 'vif-tag :irq #x1))
-      (set! (-> a0-14 base) (&+ (the-as pointer a1-4) 16))
-      )
-     (let ((a3-7 (-> v1-12 base)))
-      (let ((a0-15 (the-as object (-> v1-12 base))))
-       (set!
-        (-> (the-as dma-packet a0-15) dma)
-        (new 'static 'dma-tag :id (dma-tag-id next))
-        )
-       (set! (-> (the-as dma-packet a0-15) vif0) (new 'static 'vif-tag))
-       (set! (-> (the-as dma-packet a0-15) vif1) (new 'static 'vif-tag))
-       (set! (-> v1-12 base) (&+ (the-as pointer a0-15) 16))
-       )
-      (dma-bucket-insert-tag
-       (-> *display* frames (-> *display* on-screen) frame bucket-group)
-       48
-       a2-1
-       (the-as (pointer dma-tag) a3-7)
-       )
-      )
+    ;; the rest are the same
+    ;; PRIS
+    (with-dma-buffer-add-bucket ((v1-12 (current-display-frame global-buf))
+                                 (current-display-frame bucket-group)
+                                 (bucket-id pris-tex0))
+
+      (dma-buffer-add-cnt-vif2 v1-12 0 (new 'static 'vif-tag :cmd (vif-cmd nop))
+                                       (new 'static 'vif-tag :cmd (vif-cmd nop) :irq 1)
+                                       )
      )
-    (let*
-     ((v1-20 (-> *display* frames (-> *display* on-screen) frame global-buf))
-      (a2-2 (-> v1-20 base))
-      )
-     (let* ((a0-24 v1-20)
-            (a1-8 (the-as object (-> a0-24 base)))
-            )
-      (set!
-       (-> (the-as dma-packet a1-8) dma)
-       (new 'static 'dma-tag :id (dma-tag-id cnt))
-       )
-      (set! (-> (the-as dma-packet a1-8) vif0) (new 'static 'vif-tag))
-      (set! (-> (the-as dma-packet a1-8) vif1) (new 'static 'vif-tag :irq #x1))
-      (set! (-> a0-24 base) (&+ (the-as pointer a1-8) 16))
-      )
-     (let ((a3-11 (-> v1-20 base)))
-      (let ((a0-25 (the-as object (-> v1-20 base))))
-       (set!
-        (-> (the-as dma-packet a0-25) dma)
-        (new 'static 'dma-tag :id (dma-tag-id next))
-        )
-       (set! (-> (the-as dma-packet a0-25) vif0) (new 'static 'vif-tag))
-       (set! (-> (the-as dma-packet a0-25) vif1) (new 'static 'vif-tag))
-       (set! (-> v1-20 base) (&+ (the-as pointer a0-25) 16))
-       )
-      (dma-bucket-insert-tag
-       (-> *display* frames (-> *display* on-screen) frame bucket-group)
-       19
-       a2-2
-       (the-as (pointer dma-tag) a3-11)
-       )
-      )
+    ;; SHRUB
+    (with-dma-buffer-add-bucket ((v1-20 (current-display-frame global-buf))
+                                 (current-display-frame bucket-group)
+                                 (bucket-id shrub-tex0))
+
+      (dma-buffer-add-cnt-vif2 v1-20 0 (new 'static 'vif-tag :cmd (vif-cmd nop))
+                                       (new 'static 'vif-tag :cmd (vif-cmd nop) :irq 1)
+                                       )
      )
-    (let*
-     ((v1-28 (-> *display* frames (-> *display* on-screen) frame global-buf))
-      (a2-3 (-> v1-28 base))
-      )
-     (let* ((a0-34 v1-28)
-            (a1-12 (the-as object (-> a0-34 base)))
-            )
-      (set!
-       (-> (the-as dma-packet a1-12) dma)
-       (new 'static 'dma-tag :id (dma-tag-id cnt))
-       )
-      (set! (-> (the-as dma-packet a1-12) vif0) (new 'static 'vif-tag))
-      (set! (-> (the-as dma-packet a1-12) vif1) (new 'static 'vif-tag :irq #x1))
-      (set! (-> a0-34 base) (&+ (the-as pointer a1-12) 16))
-      )
-     (let ((a3-15 (-> v1-28 base)))
-      (let ((a0-35 (the-as object (-> v1-28 base))))
-       (set!
-        (-> (the-as dma-packet a0-35) dma)
-        (new 'static 'dma-tag :id (dma-tag-id next))
-        )
-       (set! (-> (the-as dma-packet a0-35) vif0) (new 'static 'vif-tag))
-       (set! (-> (the-as dma-packet a0-35) vif1) (new 'static 'vif-tag))
-       (set! (-> v1-28 base) (&+ (the-as pointer a0-35) 16))
-       )
-      (dma-bucket-insert-tag
-       (-> *display* frames (-> *display* on-screen) frame bucket-group)
-       31
-       a2-3
-       (the-as (pointer dma-tag) a3-15)
-       )
-      )
+    ;; ALPHA
+    (with-dma-buffer-add-bucket ((v1-28 (current-display-frame global-buf))
+                                 (current-display-frame bucket-group)
+                                 (bucket-id alpha-tex0))
+
+      (dma-buffer-add-cnt-vif2 v1-28 0 (new 'static 'vif-tag :cmd (vif-cmd nop))
+                                       (new 'static 'vif-tag :cmd (vif-cmd nop) :irq 1)
+                                       )
      )
     )
    (else
-    (let*
-     ((v1-36 (-> *display* frames (-> *display* on-screen) frame global-buf))
-      (a2-4 (-> v1-36 base))
+    ;; TFRAG
+    (with-dma-buffer-add-bucket ((v1-36 (current-display-frame global-buf))
+                                 (current-display-frame bucket-group)
+                                 (bucket-id tfrag-tex1))
+
+      (dma-buffer-add-cnt-vif2 v1-36 0 (new 'static 'vif-tag :cmd (vif-cmd nop))
+                                      (new 'static 'vif-tag :cmd (vif-cmd nop) :irq 1)
+                                      )
       )
-     (let* ((a0-44 v1-36)
-            (a1-16 (the-as object (-> a0-44 base)))
-            )
-      (set!
-       (-> (the-as dma-packet a1-16) dma)
-       (new 'static 'dma-tag :id (dma-tag-id cnt))
-       )
-      (set! (-> (the-as dma-packet a1-16) vif0) (new 'static 'vif-tag))
-      (set! (-> (the-as dma-packet a1-16) vif1) (new 'static 'vif-tag :irq #x1))
-      (set! (-> a0-44 base) (&+ (the-as pointer a1-16) 16))
-      )
-     (let ((a3-19 (-> v1-36 base)))
-      (let ((a0-45 (the-as object (-> v1-36 base))))
-       (set!
-        (-> (the-as dma-packet a0-45) dma)
-        (new 'static 'dma-tag :id (dma-tag-id next))
-        )
-       (set! (-> (the-as dma-packet a0-45) vif0) (new 'static 'vif-tag))
-       (set! (-> (the-as dma-packet a0-45) vif1) (new 'static 'vif-tag))
-       (set! (-> v1-36 base) (&+ (the-as pointer a0-45) 16))
-       )
-      (dma-bucket-insert-tag
-       (-> *display* frames (-> *display* on-screen) frame bucket-group)
-       12
-       a2-4
-       (the-as (pointer dma-tag) a3-19)
-       )
-      )
+    ;; PRIS
+    (with-dma-buffer-add-bucket ((v1-44 (current-display-frame global-buf))
+                                 (current-display-frame bucket-group)
+                                 (bucket-id pris-tex1))
+
+      (dma-buffer-add-cnt-vif2 v1-44 0 (new 'static 'vif-tag :cmd (vif-cmd nop))
+                                       (new 'static 'vif-tag :cmd (vif-cmd nop) :irq 1)
+                                       )
      )
-    (let*
-     ((v1-44 (-> *display* frames (-> *display* on-screen) frame global-buf))
-      (a2-5 (-> v1-44 base))
-      )
-     (let* ((a0-54 v1-44)
-            (a1-20 (the-as object (-> a0-54 base)))
-            )
-      (set!
-       (-> (the-as dma-packet a1-20) dma)
-       (new 'static 'dma-tag :id (dma-tag-id cnt))
-       )
-      (set! (-> (the-as dma-packet a1-20) vif0) (new 'static 'vif-tag))
-      (set! (-> (the-as dma-packet a1-20) vif1) (new 'static 'vif-tag :irq #x1))
-      (set! (-> a0-54 base) (&+ (the-as pointer a1-20) 16))
-      )
-     (let ((a3-23 (-> v1-44 base)))
-      (let ((a0-55 (the-as object (-> v1-44 base))))
-       (set!
-        (-> (the-as dma-packet a0-55) dma)
-        (new 'static 'dma-tag :id (dma-tag-id next))
-        )
-       (set! (-> (the-as dma-packet a0-55) vif0) (new 'static 'vif-tag))
-       (set! (-> (the-as dma-packet a0-55) vif1) (new 'static 'vif-tag))
-       (set! (-> v1-44 base) (&+ (the-as pointer a0-55) 16))
-       )
-      (dma-bucket-insert-tag
-       (-> *display* frames (-> *display* on-screen) frame bucket-group)
-       51
-       a2-5
-       (the-as (pointer dma-tag) a3-23)
-       )
-      )
+    ;; SHRUB
+    (with-dma-buffer-add-bucket ((v1-52 (current-display-frame global-buf))
+                                 (current-display-frame bucket-group)
+                                 (bucket-id shrub-tex1))
+
+      (dma-buffer-add-cnt-vif2 v1-52 0 (new 'static 'vif-tag :cmd (vif-cmd nop))
+                                       (new 'static 'vif-tag :cmd (vif-cmd nop) :irq 1)
+                                       )
      )
-    (let*
-     ((v1-52 (-> *display* frames (-> *display* on-screen) frame global-buf))
-      (a2-6 (-> v1-52 base))
-      )
-     (let* ((a0-64 v1-52)
-            (a1-24 (the-as object (-> a0-64 base)))
-            )
-      (set!
-       (-> (the-as dma-packet a1-24) dma)
-       (new 'static 'dma-tag :id (dma-tag-id cnt))
-       )
-      (set! (-> (the-as dma-packet a1-24) vif0) (new 'static 'vif-tag))
-      (set! (-> (the-as dma-packet a1-24) vif1) (new 'static 'vif-tag :irq #x1))
-      (set! (-> a0-64 base) (&+ (the-as pointer a1-24) 16))
-      )
-     (let ((a3-27 (-> v1-52 base)))
-      (let ((a0-65 (the-as object (-> v1-52 base))))
-       (set!
-        (-> (the-as dma-packet a0-65) dma)
-        (new 'static 'dma-tag :id (dma-tag-id next))
-        )
-       (set! (-> (the-as dma-packet a0-65) vif0) (new 'static 'vif-tag))
-       (set! (-> (the-as dma-packet a0-65) vif1) (new 'static 'vif-tag))
-       (set! (-> v1-52 base) (&+ (the-as pointer a0-65) 16))
-       )
-      (dma-bucket-insert-tag
-       (-> *display* frames (-> *display* on-screen) frame bucket-group)
-       25
-       a2-6
-       (the-as (pointer dma-tag) a3-27)
-       )
-      )
-     )
-    (let*
-     ((v1-60 (-> *display* frames (-> *display* on-screen) frame global-buf))
-      (a2-7 (-> v1-60 base))
-      )
-     (let* ((a0-74 v1-60)
-            (a1-28 (the-as object (-> a0-74 base)))
-            )
-      (set!
-       (-> (the-as dma-packet a1-28) dma)
-       (new 'static 'dma-tag :id (dma-tag-id cnt))
-       )
-      (set! (-> (the-as dma-packet a1-28) vif0) (new 'static 'vif-tag))
-      (set! (-> (the-as dma-packet a1-28) vif1) (new 'static 'vif-tag :irq #x1))
-      (set! (-> a0-74 base) (&+ (the-as pointer a1-28) 16))
-      )
-     (let ((a3-31 (-> v1-60 base)))
-      (let ((a0-75 (the-as object (-> v1-60 base))))
-       (set!
-        (-> (the-as dma-packet a0-75) dma)
-        (new 'static 'dma-tag :id (dma-tag-id next))
-        )
-       (set! (-> (the-as dma-packet a0-75) vif0) (new 'static 'vif-tag))
-       (set! (-> (the-as dma-packet a0-75) vif1) (new 'static 'vif-tag))
-       (set! (-> v1-60 base) (&+ (the-as pointer a0-75) 16))
-       )
-      (dma-bucket-insert-tag
-       (-> *display* frames (-> *display* on-screen) frame bucket-group)
-       38
-       a2-7
-       (the-as (pointer dma-tag) a3-31)
-       )
-      )
+    ;; ALPHA
+    (with-dma-buffer-add-bucket ((v1-60 (current-display-frame global-buf))
+                                 (current-display-frame bucket-group)
+                                 (bucket-id alpha-tex1))
+
+      (dma-buffer-add-cnt-vif2 v1-60 0 (new 'static 'vif-tag :cmd (vif-cmd nop))
+                                       (new 'static 'vif-tag :cmd (vif-cmd nop) :irq 1)
+                                       )
      )
     )
    )
@@ -2037,68 +1697,14 @@
     (add-to-dma-buffer obj gp-0 arg0)
 
     ;; DMA -> VIF (direct) -> GIF
-    (let* ((v1-3 gp-0)
-           (a0-1 (the-as object (-> v1-3 base)))
-           )
-      (set! (-> (the-as dma-packet a0-1) dma)
-       (new 'static 'dma-tag :qwc #x2 :id (dma-tag-id cnt))
-       )
-      (set! (-> (the-as dma-packet a0-1) vif0) (new 'static 'vif-tag))
-      (set! (-> (the-as dma-packet a0-1) vif1)
-       (new 'static 'vif-tag :imm #x2 :cmd (vif-cmd direct) :msk #x1)
-       )
-      (set! (-> v1-3 base) (&+ (the-as pointer a0-1) 16))
-      )
-    ;; GIF regs (1)
-    (let* ((v1-4 gp-0)
-           (a0-3 (the-as object (-> v1-4 base)))
-           )
-      (set! (-> (the-as gs-gif-tag a0-3) tag)
-       (new 'static 'gif-tag64 :nloop #x1 :eop #x1 :nreg #x1)
-       )
-      (set! (-> (the-as gs-gif-tag a0-3) regs)
-       (new 'static 'gif-tag-regs
-            :regs0 (gif-reg-id a+d)
-            :regs1 (gif-reg-id a+d)
-            :regs2 (gif-reg-id a+d)
-            :regs3 (gif-reg-id a+d)
-            :regs4 (gif-reg-id a+d)
-            :regs5 (gif-reg-id a+d)
-            :regs6 (gif-reg-id a+d)
-            :regs7 (gif-reg-id a+d)
-            :regs8 (gif-reg-id a+d)
-            :regs9 (gif-reg-id a+d)
-            :regs10 (gif-reg-id a+d)
-            :regs11 (gif-reg-id a+d)
-            :regs12 (gif-reg-id a+d)
-            :regs13 (gif-reg-id a+d)
-            :regs14 (gif-reg-id a+d)
-            :regs15 (gif-reg-id a+d)
-            )
-       )
-      (set! (-> v1-4 base) (&+ (the-as pointer a0-3) 16))
-      )
-
     ;; GIF texflush
-    (let* ((v1-5 gp-0)
-           (a0-5 (-> v1-5 base))
-           )
-      (set! (-> (the-as (pointer uint64) a0-5) 0) (the-as uint 1))
-      (set! (-> (the-as (pointer gs-reg64) a0-5) 1) (gs-reg64 texflush))
-      (set! (-> v1-5 base) (&+ a0-5 16))
-      )
+    (dma-buffer-add-gs-set gp-0
+                (texflush 1)
+                )
 
     ;; DMA end (do it ourselves, no buckets here)
-    (let* ((v1-6 gp-0)
-           (a0-7 (the-as object (-> v1-6 base)))
-           )
-      (set!
-       (-> (the-as dma-packet a0-7) dma)
-       (new 'static 'dma-tag :id (dma-tag-id end))
-       )
-      (set! (-> (the-as (pointer uint64) a0-7) 1) (the-as uint 0))
-      (set! (-> v1-6 base) (&+ (the-as pointer a0-7) 16))
-      )
+    (dma-buffer-add-uint64 gp-0 (new 'static 'dma-tag :id (dma-tag-id end))
+                                0)
 
     ;; send now!
     ;; we send this to the GIF, which will basically ignore the
@@ -2161,46 +1767,22 @@
       ;; do up to 2048 now
       (let ((chunks-now (min 2048 chunk-count)))
         ;; vif direct
-        (let* ((v1-11 dma-buff)
-               (pkt (the-as dma-packet (-> v1-11 base)))
-               )
-          (set! (-> pkt dma) (new 'static 'dma-tag :qwc #x5 :id (dma-tag-id cnt)))
-          (set! (-> pkt vif0) (new 'static 'vif-tag))
-          (set! (-> pkt vif1) (new 'static 'vif-tag :imm #x5 :cmd (vif-cmd direct) :msk #x1))
-          (set! (-> v1-11 base) (&+ (the-as pointer pkt) 16))
-          )
+        (dma-buffer-add-cnt-vif2 dma-buff 5 (new 'static 'vif-tag :cmd (vif-cmd nop))
+                                            (new 'static 'vif-tag :cmd (vif-cmd direct) :imm 5)
+                                            )
 
         ;; gs regs
-        (let* ((v1-12 dma-buff)
-               (gs-tag (the-as gs-gif-tag (-> v1-12 base)))
-               )
-          (set! (-> gs-tag tag) (new 'static 'gif-tag64 :nloop #x4 :nreg #x1))
-          (set! (-> gs-tag regs) (new 'static 'gif-tag-regs :regs0 (gif-reg-id a+d)))
-          (set! (-> v1-12 base) (&+ (the-as pointer gs-tag) 16))
-          )
+        (dma-buffer-add-gif-tag dma-buff (new 'static 'gif-tag64 :nloop 4 :nreg 1)
+                                         (gs-reg-list a+d)
+                                         )
 
         ;; the actual regs
-        (let* ((v1-13 dma-buff)
-               (gs-reg-data (-> v1-13 base))
-               )
-          (set! (-> (the-as (pointer gs-bitbltbuf) gs-reg-data) 0)
-                (new 'static 'gs-bitbltbuf :dbw #x2 :dbp current-dest)
-                )
-          (set! (-> (the-as (pointer gs-reg64) gs-reg-data) 1) (gs-reg64 bitbltbuf))
-          (set! (-> (the-as (pointer gs-trxpos) gs-reg-data) 2)
-                (new 'static 'gs-trxpos)
-                )
-          (set! (-> (the-as (pointer gs-reg64) gs-reg-data) 3) (gs-reg64 trxpos))
-          (set! (-> (the-as (pointer gs-trxreg) gs-reg-data) 4)
-                (new 'static 'gs-trxreg :rrw #x80 :rrh chunks-now)
-                )
-          (set! (-> (the-as (pointer gs-reg64) gs-reg-data) 5) (gs-reg64 trxreg))
-          (set! (-> (the-as (pointer gs-trxdir) gs-reg-data) 6)
-                (new 'static 'gs-trxdir)
-                )
-          (set! (-> (the-as (pointer gs-reg64) gs-reg-data) 7) (gs-reg64 trxdir))
-          (set! (-> v1-13 base) (&+ gs-reg-data 64))
-          )
+        (dma-buffer-add-uint64 dma-buff
+                    (new 'static 'gs-bitbltbuf :dbw 2 :dbp current-dest) (gs-reg64 bitbltbuf)
+                    (new 'static 'gs-trxpos) (gs-reg64 trxpos)
+                    (new 'static 'gs-trxreg :rrw 128 :rrh chunks-now) (gs-reg64 trxreg)
+                    (new 'static 'gs-trxdir) (gs-reg64 trxdir)
+                    )
 
         ;; add data.
         (dma-buffer-add-ref-texture dma-buff current-data 128 chunks-now (gs-psm ct32))
@@ -2226,67 +1808,19 @@
           (mip-h (ash (-> tex h) (- mip-level)))
           )
       ;; vif direct
-      (let* ((t3-2 dma-buff)
-             (dma-pkt (the-as dma-packet (-> t3-2 base)))
-             )
-        (set! (-> dma-pkt dma) (new 'static 'dma-tag :qwc #x5 :id (dma-tag-id cnt)))
-        (set! (-> dma-pkt vif0) (new 'static 'vif-tag))
-        (set! (-> dma-pkt vif1) (new 'static 'vif-tag :imm #x5 :cmd (vif-cmd direct) :msk #x1))
-        (set! (-> t3-2 base) (&+ (the-as pointer dma-pkt) 16))
-        )
-
-      ;; gs reg setup
-      (let* ((t3-3 dma-buff)
-             (gs-pkt (the-as gs-gif-tag (-> t3-3 base)))
-             )
-        (set! (-> gs-pkt tag) (new 'static 'gif-tag64 :nloop #x1 :eop #x1 :nreg #x4))
-        (set! (-> gs-pkt regs)
-         (new 'static 'gif-tag-regs
-              :regs0 (gif-reg-id a+d)
-              :regs1 (gif-reg-id a+d)
-              :regs2 (gif-reg-id a+d)
-              :regs3 (gif-reg-id a+d)
-              :regs4 (gif-reg-id a+d)
-              :regs5 (gif-reg-id a+d)
-              :regs6 (gif-reg-id a+d)
-              :regs7 (gif-reg-id a+d)
-              :regs8 (gif-reg-id a+d)
-              :regs9 (gif-reg-id a+d)
-              :regs10 (gif-reg-id a+d)
-              :regs11 (gif-reg-id a+d)
-              :regs12 (gif-reg-id a+d)
-              :regs13 (gif-reg-id a+d)
-              :regs14 (gif-reg-id a+d)
-              :regs15 (gif-reg-id a+d)
-              )
-         )
-        (set! (-> t3-3 base) (&+ (the-as pointer gs-pkt) 16))
-        )
-
-      ;; regs (bitbltbuf)
-      (let* ((t3-4 dma-buff)
-             (t4-4 (-> t3-4 base))
-             )
-        (set!
-         (-> (the-as (pointer gs-bitbltbuf) t4-4) 0)
-         (new 'static 'gs-bitbltbuf
-              :sbp (-> tex dest mip-level)    ;; source VRAM addr
-              :sbw (-> tex width mip-level)   ;; source width
-              :spsm (the-as int (-> tex psm)) ;; source format
-              :dbp (/ dest-loc 64)            ;; dest location
-              :dbw (-> tex width mip-level)   ;; dest width
-              :dpsm dest-fmt                  ;; dest format
-              )
-         )
-        (set! (-> (the-as (pointer gs-reg64) t4-4) 1) (gs-reg64 bitbltbuf))
-        (set! (-> (the-as (pointer gs-trxpos) t4-4) 2) (new 'static 'gs-trxpos))
-        (set! (-> (the-as (pointer gs-reg64) t4-4) 3) (gs-reg64 trxpos))
-        (set! (-> (the-as (pointer gs-trxreg) t4-4) 4) (new 'static 'gs-trxreg :rrw mip-w :rrh mip-h))
-        (set! (-> (the-as (pointer gs-reg64) t4-4) 5) (gs-reg64 trxreg))
-        (set! (-> (the-as (pointer gs-trxdir) t4-4) 6) (new 'static 'gs-trxdir :xdir #x2))
-        (set! (-> (the-as (pointer gs-reg64) t4-4) 7) (gs-reg64 trxdir))
-        (set! (-> t3-4 base) (&+ t4-4 64))
-        )
+      (dma-buffer-add-gs-set dma-buff
+                  (bitbltbuf (new 'static 'gs-bitbltbuf
+                                  :sbp (-> tex dest mip-level)    ;; source VRAM addr
+                                  :sbw (-> tex width mip-level)   ;; source width
+                                  :spsm (the-as int (-> tex psm)) ;; source format
+                                  :dbp (/ dest-loc 64)            ;; dest location
+                                  :dbw (-> tex width mip-level)   ;; dest width
+                                  :dpsm dest-fmt                  ;; dest format
+                                  ))
+                  (trxpos (new 'static 'gs-trxpos))
+                  (trxreg (new 'static 'gs-trxreg :rrw mip-w :rrh mip-h))
+                  (trxdir (new 'static 'gs-trxdir :xdir 2)) ;; VRAM -> VRAM
+                  )
       )
     (set! (-> tex dest mip-level) (the-as uint (/ dest-loc 64)))
     )
@@ -2298,147 +1832,36 @@
      )
     ((= (-> tex psm) (gs-psm mt4))
      ;; case for mt4 format texture
-     (let* ((v1-7 dma-buff)
-            (a2-2 (the-as object (-> v1-7 base)))
-            )
-       (set! (-> (the-as dma-packet a2-2) dma) (new 'static 'dma-tag :qwc #x5 :id (dma-tag-id cnt)))
-       (set! (-> (the-as dma-packet a2-2) vif0) (new 'static 'vif-tag))
-       (set! (-> (the-as dma-packet a2-2) vif1) (new 'static 'vif-tag :imm #x5 :cmd (vif-cmd direct) :msk #x1))
-       (set! (-> v1-7 base) (&+ (the-as pointer a2-2) 16))
-       )
-     (let* ((v1-8 dma-buff)
-            (a2-4 (the-as object (-> v1-8 base)))
-            )
-       (set! (-> (the-as gs-gif-tag a2-4) tag) (new 'static 'gif-tag64 :nloop #x1 :eop #x1 :nreg #x4))
-       (set!
-        (-> (the-as gs-gif-tag a2-4) regs)
-        (new 'static 'gif-tag-regs
-             :regs0 (gif-reg-id a+d)
-             :regs1 (gif-reg-id a+d)
-             :regs2 (gif-reg-id a+d)
-             :regs3 (gif-reg-id a+d)
-             :regs4 (gif-reg-id a+d)
-             :regs5 (gif-reg-id a+d)
-             :regs6 (gif-reg-id a+d)
-             :regs7 (gif-reg-id a+d)
-             :regs8 (gif-reg-id a+d)
-             :regs9 (gif-reg-id a+d)
-             :regs10 (gif-reg-id a+d)
-             :regs11 (gif-reg-id a+d)
-             :regs12 (gif-reg-id a+d)
-             :regs13 (gif-reg-id a+d)
-             :regs14 (gif-reg-id a+d)
-             :regs15 (gif-reg-id a+d)
-             )
-        )
-       (set! (-> v1-8 base) (&+ (the-as pointer a2-4) 16))
-       )
-     (let* ((v1-9 dma-buff)
-            (a2-6 (-> v1-9 base))
-            )
-       (set!
-        (-> (the-as (pointer gs-bitbltbuf) a2-6) 0)
-        (new 'static 'gs-bitbltbuf
-             :sbw #x1
-             :dbw #x1
-             :dpsm (-> tex clutpsm)
-             :dbp (/ clut-dst 64)
-             :spsm (-> tex clutpsm)
-             :sbp (-> tex clutdest)
-             )
-        )
-       (set! (-> (the-as (pointer gs-reg64) a2-6) 1) (gs-reg64 bitbltbuf))
-       (set! (-> (the-as (pointer gs-trxpos) a2-6) 2) (new 'static 'gs-trxpos))
-       (set! (-> (the-as (pointer gs-reg64) a2-6) 3) (gs-reg64 trxpos))
-       (set!
-        (-> (the-as (pointer gs-trxreg) a2-6) 4)
-        (new 'static 'gs-trxreg :rrw #x8 :rrh #x2)
-        )
-       (set! (-> (the-as (pointer gs-reg64) a2-6) 5) (gs-reg64 trxreg))
-       (set!
-        (-> (the-as (pointer gs-trxdir) a2-6) 6)
-        (new 'static 'gs-trxdir :xdir #x2)
-        )
-       (set! (-> (the-as (pointer gs-reg64) a2-6) 7) (gs-reg64 trxdir))
-       (set! (-> v1-9 base) (&+ a2-6 64))
-       )
+     (dma-buffer-add-gs-set dma-buff
+                 (bitbltbuf (new 'static 'gs-bitbltbuf
+                                 :sbw 1
+                                 :dbw 1
+                                 :dpsm (-> tex clutpsm)
+                                 :dbp (/ clut-dst 64)
+                                 :spsm (-> tex clutpsm)
+                                 :sbp (-> tex clutdest)
+                                 ))
+                 (trxpos (new 'static 'gs-trxpos))
+                 (trxreg (new 'static 'gs-trxreg :rrw 8 :rrh 2))
+                 (trxdir (new 'static 'gs-trxdir :xdir 2)) ;; VRAM -> VRAM
+                 )
      (set! (-> tex clutdest) (the-as uint (/ clut-dst 64)))
      )
     ((= (-> tex psm) (gs-psm mt8))
      ;; 8-bit index
-     (let* ((v1-13 dma-buff)
-            (a2-9 (the-as object (-> v1-13 base)))
-            )
-       (set!
-        (-> (the-as dma-packet a2-9) dma)
-        (new 'static 'dma-tag :qwc #x5 :id (dma-tag-id cnt))
-        )
-       (set! (-> (the-as dma-packet a2-9) vif0) (new 'static 'vif-tag))
-       (set!
-        (-> (the-as dma-packet a2-9) vif1)
-        (new 'static 'vif-tag :imm #x5 :cmd (vif-cmd direct) :msk #x1)
-        )
-       (set! (-> v1-13 base) (&+ (the-as pointer a2-9) 16))
-       )
-     (let* ((v1-14 dma-buff)
-            (a2-11 (the-as object (-> v1-14 base)))
-            )
-       (set!
-        (-> (the-as gs-gif-tag a2-11) tag)
-        (new 'static 'gif-tag64 :nloop #x1 :eop #x1 :nreg #x4)
-        )
-       (set!
-        (-> (the-as gs-gif-tag a2-11) regs)
-        (new 'static 'gif-tag-regs
-             :regs0 (gif-reg-id a+d)
-             :regs1 (gif-reg-id a+d)
-             :regs2 (gif-reg-id a+d)
-             :regs3 (gif-reg-id a+d)
-             :regs4 (gif-reg-id a+d)
-             :regs5 (gif-reg-id a+d)
-             :regs6 (gif-reg-id a+d)
-             :regs7 (gif-reg-id a+d)
-             :regs8 (gif-reg-id a+d)
-             :regs9 (gif-reg-id a+d)
-             :regs10 (gif-reg-id a+d)
-             :regs11 (gif-reg-id a+d)
-             :regs12 (gif-reg-id a+d)
-             :regs13 (gif-reg-id a+d)
-             :regs14 (gif-reg-id a+d)
-             :regs15 (gif-reg-id a+d)
-             )
-        )
-       (set! (-> v1-14 base) (&+ (the-as pointer a2-11) 16))
-       )
-     (let* ((v1-15 dma-buff)
-            (a2-13 (-> v1-15 base))
-            )
-       (set!
-        (-> (the-as (pointer gs-bitbltbuf) a2-13) 0)
-        (new 'static 'gs-bitbltbuf
-             :sbw #x2
-             :dbw #x2
-             :dpsm (-> tex clutpsm)
-             :dbp (/ clut-dst 64)
-             :spsm (-> tex clutpsm)
-             :sbp (-> tex clutdest)
-             )
-        )
-       (set! (-> (the-as (pointer gs-reg64) a2-13) 1) (gs-reg64 bitbltbuf))
-       (set! (-> (the-as (pointer gs-trxpos) a2-13) 2) (new 'static 'gs-trxpos))
-       (set! (-> (the-as (pointer gs-reg64) a2-13) 3) (gs-reg64 trxpos))
-       (set!
-        (-> (the-as (pointer gs-trxreg) a2-13) 4)
-        (new 'static 'gs-trxreg :rrw #x10 :rrh #x10)
-        )
-       (set! (-> (the-as (pointer gs-reg64) a2-13) 5) (gs-reg64 trxreg))
-       (set!
-        (-> (the-as (pointer gs-trxdir) a2-13) 6)
-        (new 'static 'gs-trxdir :xdir #x2)
-        )
-       (set! (-> (the-as (pointer gs-reg64) a2-13) 7) (gs-reg64 trxdir))
-       (set! (-> v1-15 base) (&+ a2-13 64))
-       )
+     (dma-buffer-add-gs-set dma-buff
+                 (bitbltbuf (new 'static 'gs-bitbltbuf
+                                 :sbw 2
+                                 :dbw 2
+                                 :dpsm (-> tex clutpsm)
+                                 :dbp (/ clut-dst 64)
+                                 :spsm (-> tex clutpsm)
+                                 :sbp (-> tex clutdest)
+                                 ))
+                 (trxpos (new 'static 'gs-trxpos))
+                 (trxreg (new 'static 'gs-trxreg :rrw 16 :rrh 16))
+                 (trxdir (new 'static 'gs-trxdir :xdir 2)) ;; VRAM -> VRAM
+                 )
      (set! (-> tex clutdest) (the-as uint (/ clut-dst 64)))
      )
     )
@@ -2565,69 +1988,13 @@
           )
 
         ;; texflush
-        (let* ((v1-15 dma-buff)
-               (a0-18 (the-as object (-> v1-15 base)))
-               )
-          (set!
-           (-> (the-as dma-packet a0-18) dma)
-           (new 'static 'dma-tag :qwc #x2 :id (dma-tag-id cnt))
-           )
-          (set! (-> (the-as dma-packet a0-18) vif0) (new 'static 'vif-tag))
-          (set!
-           (-> (the-as dma-packet a0-18) vif1)
-           (new 'static 'vif-tag :imm #x2 :cmd (vif-cmd direct) :msk #x1)
-           )
-          (set! (-> v1-15 base) (&+ (the-as pointer a0-18) 16))
-          )
-        (let* ((v1-16 dma-buff)
-               (a0-20 (the-as object (-> v1-16 base)))
-               )
-          (set!
-           (-> (the-as gs-gif-tag a0-20) tag)
-           (new 'static 'gif-tag64 :nloop #x1 :eop #x1 :nreg #x1)
-           )
-          (set!
-           (-> (the-as gs-gif-tag a0-20) regs)
-           (new 'static 'gif-tag-regs
-                :regs0 (gif-reg-id a+d)
-                :regs1 (gif-reg-id a+d)
-                :regs2 (gif-reg-id a+d)
-                :regs3 (gif-reg-id a+d)
-                :regs4 (gif-reg-id a+d)
-                :regs5 (gif-reg-id a+d)
-                :regs6 (gif-reg-id a+d)
-                :regs7 (gif-reg-id a+d)
-                :regs8 (gif-reg-id a+d)
-                :regs9 (gif-reg-id a+d)
-                :regs10 (gif-reg-id a+d)
-                :regs11 (gif-reg-id a+d)
-                :regs12 (gif-reg-id a+d)
-                :regs13 (gif-reg-id a+d)
-                :regs14 (gif-reg-id a+d)
-                :regs15 (gif-reg-id a+d)
-                )
-           )
-          (set! (-> v1-16 base) (&+ (the-as pointer a0-20) 16))
-          )
-        (let* ((v1-17 dma-buff)
-               (a0-22 (-> v1-17 base))
-               )
-          (set! (-> (the-as (pointer uint64) a0-22) 0) (the-as uint 1))
-          (set! (-> (the-as (pointer gs-reg64) a0-22) 1) (gs-reg64 texflush))
-          (set! (-> v1-17 base) (&+ a0-22 16))
-          )
+        (dma-buffer-add-gs-set dma-buff
+                    (texflush 1)
+                    )
 
         ;; end of DMA
-        (let* ((v1-18 dma-buff)
-               (a0-24 (the-as object (-> v1-18 base)))
-               )
-          (set!
-           (-> (the-as dma-packet a0-24) dma)
-           (new 'static 'dma-tag :id (dma-tag-id end))
-           )
-          (set! (-> (the-as (pointer uint64) a0-24) 1) (the-as uint 0))
-          (set! (-> v1-18 base) (&+ (the-as pointer a0-24) 16))
-          )
+        (dma-buffer-add-uint64 dma-buff (new 'static 'dma-tag :id (dma-tag-id end))
+                                        0)
 
         ;; send and sync! VIF tags are probably ignored.
         (#cond
@@ -2736,7 +2103,7 @@
      (set! obj (the-as texture-page #f))
      )
     ((begin
-      (let ((v1-2 (-> *level* unknown-level-2))) ;; loading/linking level
+      (let ((v1-2 (-> *level* loading-level))) ;; loading/linking level
         (tex-dbg "  tpage is with level ~A~%" v1-2)
         (when v1-2
           ;; add us to the loading level's tpages
@@ -2873,12 +2240,10 @@
     ;; iterate through all textures
     (dotimes (a0-1 (-> v1-0 length))
       ;; found it!
-      (if (= arg0 (-> v1-0 entries a0-1 page))
-          (begin
-           (set! a0-2 a0-1)
-           (goto cfg-7)
-           )
-          )
+      (when (= arg0 (-> v1-0 entries a0-1 page))
+       (set! a0-2 a0-1)
+       (goto cfg-7)
+       )
       )
     (set! a0-2 -1)
     (label cfg-7)
@@ -3055,10 +2420,8 @@
   "If not logged in already, link us and update from texture."
 
   ;; only do it if we need to
-  (when (nonzero? (logand (-> shader link-test) (link-test-flags needs-log-in)))
-    (set! (-> shader link-test)
-          (logand (lognot (link-test-flags needs-log-in bit-9)) (-> shader link-test))
-          )
+  (when (logtest? (-> shader link-test) (link-test-flags needs-log-in))
+    (logclear! (-> shader link-test) (link-test-flags needs-log-in bit-9))
     ;; remap our texture
     (set! (-> shader texture-id) (level-remap-texture (-> shader texture-id)))
     ;; link this shader to the tpage dir
@@ -3077,10 +2440,8 @@
 
 (defun adgif-shader-login-no-remap ((arg0 adgif-shader))
   "Same as adgif-shader-login, but don't remap our texture id"
-  (when (nonzero? (logand (-> arg0 link-test) (link-test-flags needs-log-in)))
-    (set! (-> arg0 link-test)
-          (logand (lognot (link-test-flags needs-log-in bit-9)) (-> arg0 link-test))
-          )
+  (when (logtest? (-> arg0 link-test) (link-test-flags needs-log-in))
+    (logclear! (-> arg0 link-test) (link-test-flags needs-log-in bit-9))
     (link-texture-by-id (-> arg0 texture-id) arg0)
     (let ((s5-0 (lookup-texture-by-id (-> arg0 texture-id))))
       (if s5-0
@@ -3094,11 +2455,9 @@
 
 (defun adgif-shader-login-fast ((shader adgif-shader))
   "Like adgif-shader-login, but assumes you've already logged in the texture"
-  (when (nonzero? (logand (-> shader link-test) (link-test-flags needs-log-in)))
+  (when (logtest? (-> shader link-test) (link-test-flags needs-log-in))
     ;; usual remap
-    (set! (-> shader link-test)
-          (logand (lognot (link-test-flags needs-log-in bit-9)) (-> shader link-test))
-          )
+    (logclear! (-> shader link-test) (link-test-flags needs-log-in bit-9))
     (set! (-> shader texture-id) (level-remap-texture (-> shader texture-id)))
     (let ((tex-id (-> shader texture-id)))
       (when (and (nonzero? (-> tex-id page))
@@ -3139,10 +2498,8 @@
 
 (defun adgif-shader-login-no-remap-fast ((arg0 adgif-shader))
   "Like adgif-shader-login-fast, but no level remap"
-  (when (nonzero? (logand (-> arg0 link-test) (link-test-flags needs-log-in)))
-    (set! (-> arg0 link-test)
-          (logand (lognot (link-test-flags needs-log-in bit-9)) (-> arg0 link-test))
-          )
+  (when (logtest? (-> arg0 link-test) (link-test-flags needs-log-in))
+    (logclear! (-> arg0 link-test) (link-test-flags needs-log-in bit-9))
     (let ((v1-4 (-> arg0 texture-id)))
       (when (and (nonzero? (-> v1-4 page))
                  (< (the-as uint (-> v1-4 page))
@@ -3191,8 +2548,8 @@
   (if arg1
    (adgif-shader<-texture! arg0 arg1)
    )
-  (set! (-> arg0 clamp) (new 'static 'gs-clamp :wms #x1 :wmt #x1))
-  (set! (-> arg0 alpha) (new 'static 'gs-miptbp :tbp1 #x44))
+  (set! (-> arg0 clamp) (new 'static 'gs-clamp :wms (gs-tex-wrap-mode clamp) :wmt (gs-tex-wrap-mode clamp)))
+  (set! (-> arg0 alpha) (new 'static 'gs-miptbp :tbp1 68))
   (set! (-> arg0 prims 1) (gs-reg64 tex0-1))
   (set! (-> arg0 prims 3) (gs-reg64 tex1-1))
   (set! (-> arg0 prims 5) (gs-reg64 miptbp1-1))
@@ -3310,3 +2667,5 @@
 
 
 (define *texture-pool* (new 'global 'texture-pool))
+
+(define-extern *shadow-middot-texture* texture)

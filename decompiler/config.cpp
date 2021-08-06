@@ -33,6 +33,9 @@ Config read_config_file(const std::string& path_to_config_file) {
   config.dgo_names = inputs_json.at("dgo_names").get<std::vector<std::string>>();
   config.object_file_names = inputs_json.at("object_file_names").get<std::vector<std::string>>();
   config.str_file_names = inputs_json.at("str_file_names").get<std::vector<std::string>>();
+  config.audio_dir_file_name = inputs_json.at("audio_dir_file_name").get<std::string>();
+  config.streamed_audio_file_names =
+      inputs_json.at("streamed_audio_file_names").get<std::vector<std::string>>();
 
   if (cfg.contains("obj_file_name_map_file")) {
     config.obj_file_name_map_file = cfg.at("obj_file_name_map_file").get<std::string>();

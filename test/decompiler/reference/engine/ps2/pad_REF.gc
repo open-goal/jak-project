@@ -96,7 +96,7 @@
 
 ;; definition for function cpad-invalid!
 (defun cpad-invalid! ((pad cpad-info))
-  (set! (-> pad valid) (logior (-> pad valid) 128))
+  (logior! (-> pad valid) 128)
   (set! (-> pad button0) (the-as uint 0))
   (set! (-> pad button0-abs 0) (pad-buttons))
   (set! (-> pad button0-shadow-abs 0) (pad-buttons))
@@ -216,16 +216,13 @@
      (-> pad buzz-time buzz-idx)
      (max
       (the-as int (-> pad buzz-time buzz-idx))
-      (the-as int (+ (get-current-time) (the-as uint duration)))
+      (the-as int (+ (get-current-time) duration))
       )
      )
     )
    ((< (-> pad buzz-val buzz-idx) (the-as uint buzz-amount))
     (set! (-> pad buzz-val buzz-idx) (the-as uint buzz-amount))
-    (set!
-     (-> pad buzz-time buzz-idx)
-     (+ (get-current-time) (the-as uint duration))
-     )
+    (set! (-> pad buzz-time buzz-idx) (+ (get-current-time) duration))
     )
    )
   0
@@ -296,10 +293,7 @@
         )
        (set!
         (-> pad button0-rel 0)
-        (logand
-         (-> pad button0-abs 0)
-         (the-as uint (lognot (-> pad button0-abs 1)))
-         )
+        (logclear (-> pad button0-abs 0) (-> pad button0-abs 1))
         )
        (when *cpad-debug*
         (set! (-> pad leftx) (the-as uint 255))

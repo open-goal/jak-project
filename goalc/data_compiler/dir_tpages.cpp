@@ -8,8 +8,6 @@
 void compile_dir_tpages(const std::string& filename) {
   std::vector<int> lengths;
 
-  printf("[Build tpage dir] %s\n", filename.c_str());
-
   goos::Reader reader;
   auto code = reader.read_from_file({filename});
   std::string err;

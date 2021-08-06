@@ -145,7 +145,7 @@
    (offense         int8                      :offset 44)
    (prim-type       int8                      :offset 45)
    ;; overlay of the local-sphere w
-   (radius          float                     :offset 60) ;; meters
+   (radius          meters                    :offset 60)
    )
   :method-count-assert 28
   :size-assert         #x48
@@ -177,7 +177,7 @@
 ;; sphere collision
 ;; the pat is stored directly here.
 (deftype collide-shape-prim-sphere (collide-shape-prim)
-  ((pat             uint32                    :offset-assert 72)
+  ((pat             pat-surface                    :offset-assert 72)
    )
   :method-count-assert 28
   :size-assert         #x4c
@@ -290,10 +290,10 @@
    (max-iteration-count   uint8              :offset-assert 144)
    (nav-flags             uint8              :offset-assert 145)
    (pad-byte              uint8      2       :offset-assert 146)
-   (pat-ignore-mask       uint32             :offset-assert 148)
+   (pat-ignore-mask       pat-surface        :offset-assert 148)
    (event-self            basic              :offset-assert 152)
    (event-other           basic              :offset-assert 156)
-   (root-prim             basic              :offset-assert 160)
+   (root-prim             collide-shape-prim :offset-assert 160)
    (riders                basic              :offset-assert 164)
    (backup-collide-as     uint64             :offset-assert 168)
    (backup-collide-with   uint64             :offset-assert 176)
@@ -303,7 +303,6 @@
   :flag-assert         #x38000000b8
   (:methods
     (new (symbol type process collide-list-enum) _type_)
-    (dummy-26 () none 26)
     (dummy-28 () none 28)
     (dummy-29 () none 29)
     (dummy-30 () none 30)
@@ -340,43 +339,43 @@
   ((rider-time            uint64             :offset-assert 184)
    (rider-last-move       vector     :inline :offset-assert 192)
    (trans-old             vector    3 :inline      :offset-assert 208)
-   (poly-pat              uint32             :offset-assert 256)
-   (cur-pat               uint32             :offset-assert 260)
-   (ground-pat            uint32             :offset-assert 264)
+   (poly-pat              pat-surface        :offset-assert 256)
+   (cur-pat               pat-surface        :offset-assert 260)
+   (ground-pat            pat-surface        :offset-assert 264)
    (status                uint64             :offset-assert 272)
    (old-status            uint64             :offset-assert 280)
    (prev-status           uint64             :offset-assert 288)
    (reaction-flag         uint32             :offset-assert 296)
-   (reaction              basic              :offset-assert 300)
-   (no-reaction           basic              :offset-assert 304)
+   (reaction              function              :offset-assert 300)
+   (no-reaction           function              :offset-assert 304)
    (local-normal          vector     :inline :offset-assert 320)
    (surface-normal        vector     :inline :offset-assert 336)
    (poly-normal           vector     :inline :offset-assert 352)
    (ground-poly-normal    vector     :inline :offset-assert 368)
    (ground-touch-point    vector     :inline :offset-assert 384)
    (shadow-pos            vector     :inline :offset-assert 400)
-   (ground-impact-vel     float              :offset-assert 416) ;; meters
+   (ground-impact-vel     meters             :offset-assert 416)
    (surface-angle         float              :offset-assert 420)
    (poly-angle            float              :offset-assert 424)
    (touch-angle           float              :offset-assert 428)
    (coverage              float              :offset-assert 432)
-   (dynam                 basic              :offset-assert 436)
-   (surf                  basic              :offset-assert 440)
+   (dynam                 dynamics              :offset-assert 436)
+   (surf                  surface              :offset-assert 440)
    )
   :method-count-assert 65
   :size-assert         #x1bc
   :flag-assert         #x41000001bc
   (:methods
-   (dummy-56 () none 56)
-   (dummy-57 () none 57)
-   (dummy-58 () none 58)
-   (dummy-59 () none 59)
-   (dummy-60 () none 60)
-   (dummy-61 () none 61)
-   (dummy-62 () none 62)
-   (dummy-63 () none 63)
-   (dummy-64 () none 64)
-   )
+    (dummy-56 () none 56)
+    (dummy-57 () none 57)
+    (dummy-58 () none 58)
+    (dummy-59 () none 59)
+    (dummy-60 () none 60)
+    (dummy-61 () none 61)
+    (dummy-62 () none 62)
+    (dummy-63 () none 63)
+    (dummy-64 () none 64)
+    )
   )
 
 (defmethod new collide-shape-prim ((allocation symbol) (type-to-make type) (cshape basic) (prim-id uint) (size-bytes int))
@@ -403,7 +402,7 @@
   "Allocate a new sphere primitive"
 
   (let ((obj (the collide-shape-prim-sphere ((method-of-type collide-shape-prim new) allocation type-to-make cshape prim-id (size-of collide-shape-prim-mesh)))))
-      (set! (-> obj pat) #x10)
+      (set! (-> obj pat) (new 'static 'pat-surface :mode (pat-mode obstacle)))
       (set! (-> obj prim-core prim-type) -1)
       obj
       )
@@ -445,7 +444,7 @@
 (defmethod asize-of collide-shape-prim-group ((obj collide-shape-prim-group))
   "How big is this in memory?"
   (the-as int
-          (+ (-> obj type size) (the-as uint (shl (+ (-> obj allocated-prims) -1) 2)))
+          (+ (-> obj type size) (the-as uint (* (+ (-> obj allocated-prims) -1) 4)))
           )
   )
 
@@ -462,12 +461,20 @@
     (set! (-> obj root-prim) #f)
 
     ;; add a special ignore mask for the camera vs other things.
-    (case (-> proc type symbol)
-      (('camera)
-       (set! (-> obj pat-ignore-mask) #x2)
-       (set! (-> obj pat-ignore-mask) #x1)
+   (case (-> proc type symbol) 
+    (('camera)
+      (set!
+       (-> obj pat-ignore-mask)
+       (new 'static 'pat-surface :skip #x2 :nocamera #x1)
        )
       )
+    (else
+     (set!
+      (-> obj pat-ignore-mask)
+      (new 'static 'pat-surface :skip #x1 :noentity #x1)
+      )
+     )
+    )
 
     ;; reset transformation to the origin.
     (set! (-> obj trans w) 1.0)

@@ -6,6 +6,7 @@
 #include "common/util/BitUtils.h"
 #include "decompiler/util/DecompilerTypeSystem.h"
 #include "decompiler/IR2/GenericElementMatcher.h"
+#include "decompiler/Function/Function.h"
 
 namespace decompiler {
 
@@ -84,8 +85,12 @@ void BitfieldStaticDefElement::get_modified_regs(RegSet& regs) const {
 ModifiedCopyBitfieldElement::ModifiedCopyBitfieldElement(
     const TypeSpec& type,
     Form* base,
+    bool from_pcpyud,
     const std::vector<BitFieldDef>& field_modifications)
-    : m_type(type), m_base(base), m_field_modifications(field_modifications) {
+    : m_type(type),
+      m_base(base),
+      m_field_modifications(field_modifications),
+      m_from_pcpyud(from_pcpyud) {
   m_base->parent_element = this;
   for (auto& mod : m_field_modifications) {
     if (mod.value) {
@@ -95,13 +100,23 @@ ModifiedCopyBitfieldElement::ModifiedCopyBitfieldElement(
 }
 
 goos::Object ModifiedCopyBitfieldElement::to_form_internal(const Env& env) const {
-  std::vector<goos::Object> result = {pretty_print::to_symbol("copy-and-set-bf")};
-  result.push_back(m_base->to_form(env));
-  for (auto& def : m_field_modifications) {
-    result.push_back(pretty_print::to_symbol(fmt::format(":{}", def.field_name)));
-    result.push_back(def.value->to_form(env));
+  if (m_field_modifications.size() == 1) {
+    std::vector<goos::Object> result = {pretty_print::to_symbol("copy-and-set-field")};
+    result.push_back(m_base->to_form(env));
+    for (auto& def : m_field_modifications) {
+      result.push_back(pretty_print::to_symbol(fmt::format("{}", def.field_name)));
+      result.push_back(def.value->to_form(env));
+    }
+    return pretty_print::build_list(result);
+  } else {
+    std::vector<goos::Object> result = {pretty_print::to_symbol("copy-and-set-bf-multi")};
+    result.push_back(m_base->to_form(env));
+    for (auto& def : m_field_modifications) {
+      result.push_back(pretty_print::to_symbol(fmt::format(":{}", def.field_name)));
+      result.push_back(def.value->to_form(env));
+    }
+    return pretty_print::build_list(result);
   }
-  return pretty_print::build_list(result);
 }
 
 void ModifiedCopyBitfieldElement::apply(const std::function<void(FormElement*)>& f) {
@@ -220,12 +235,17 @@ BitField find_field(const TypeSystem& ts,
 namespace {
 std::optional<BitField> find_field_from_mask(const TypeSystem& ts,
                                              const BitFieldType* type,
-                                             uint64_t mask) {
+                                             uint64_t mask,
+                                             bool upper_64) {
   // try to find a field that is masked by this:
   auto mask_range = get_bit_range(mask);
   if (!mask_range) {
     // it wasn't even a valid mask...
     return {};
+  }
+
+  if (upper_64) {
+    mask_range = Range<int>(mask_range->first() + 64, mask_range->last() + 64);
   }
 
   return find_field(ts, type, mask_range->first(), mask_range->size(), {});
@@ -241,7 +261,8 @@ Form* strip_int_or_uint_cast(Form* in) {
 
 std::optional<BitFieldDef> get_bitfield_initial_set(Form* form,
                                                     const BitFieldType* type,
-                                                    const TypeSystem& ts) {
+                                                    const TypeSystem& ts,
+                                                    int offset_in_bitfield) {
   // (shr (shl arg1 59) 44) for example
   {
     auto matcher = Matcher::op(GenericOpMatcher::fixed(FixedOperatorKind::SHR),
@@ -255,7 +276,7 @@ std::optional<BitFieldDef> get_bitfield_initial_set(Form* form,
       int right = mr.maps.ints.at(2);
       int size = 64 - left;
       int offset = left - right;
-      auto f = find_field(ts, type, offset, size, {});
+      auto f = find_field(ts, type, offset + offset_in_bitfield, size, {});
       BitFieldDef def;
       def.value = value;
       def.field_name = f.name();
@@ -278,7 +299,7 @@ std::optional<BitFieldDef> get_bitfield_initial_set(Form* form,
         int right = *power_of_two;
         int size = 64 - left;
         int offset = left - right;
-        auto f = find_field(ts, type, offset, size, {});
+        auto f = find_field(ts, type, offset + offset_in_bitfield, size, {});
         BitFieldDef def;
         def.value = value;
         def.field_name = f.name();
@@ -298,7 +319,7 @@ std::optional<BitFieldDef> get_bitfield_initial_set(Form* form,
     int right = 0;
     int size = 64 - left;
     int offset = left - right;
-    auto f = find_field(ts, type, offset, size, {});
+    auto f = find_field(ts, type, offset + offset_in_bitfield, size, {});
     BitFieldDef def;
     def.value = value;
     def.field_name = f.name();
@@ -313,7 +334,7 @@ std::optional<BitFieldDef> get_bitfield_initial_set(Form* form,
     auto value = mr_sllv.maps.forms.at(0);
     int size = 32;
     int offset = 0;
-    auto f = find_field(ts, type, offset, size, {});
+    auto f = find_field(ts, type, offset + offset_in_bitfield, size, {});
     BitFieldDef def;
     def.value = value;
     def.field_name = f.name();
@@ -343,6 +364,19 @@ void BitfieldAccessElement::push_pcpyud(const TypeSystem& ts, FormPool& pool, co
     result->inline_nested();
     m_current_result = pool.alloc_single_form(this, result);
   }
+}
+
+std::string BitfieldAccessElement::debug_print(const Env& env) const {
+  std::string result = "BitfieldAccessElement:";
+  if (m_got_pcpyud) {
+    result += "pcpyud";
+  }
+  result += '\n';
+  result += fmt::format("base: {}\n", m_base->to_string(env));
+  for (auto& step : m_steps) {
+    result += fmt::format(" {}\n", step.print());
+  }
+  return result;
 }
 
 /*!
@@ -434,9 +468,7 @@ FormElement* BitfieldAccessElement::push_step(const BitfieldManip step,
 
   if (m_steps.empty() && step.kind == BitfieldManip::Kind::LOGAND_WITH_CONSTANT_INT) {
     // and with mask
-    if (m_got_pcpyud) {
-      throw std::runtime_error("unknown pcpyud LOGAND_WITH_CONSTANT_INT sequence in bitfield");
-    }
+    // no need to do anything with pcpyud here.
     m_steps.push_back(step);
     return nullptr;
   }
@@ -449,7 +481,7 @@ FormElement* BitfieldAccessElement::push_step(const BitfieldManip step,
     auto type = ts.lookup_type(m_type);
     auto as_bitfield = dynamic_cast<BitFieldType*>(type);
     assert(as_bitfield);
-    auto field = find_field_from_mask(ts, as_bitfield, m_steps.at(0).amount);
+    auto field = find_field_from_mask(ts, as_bitfield, m_steps.at(0).amount, false);  // todo PCPYUP
     if (field) {
       auto get_field = pool.alloc_element<DerefElement>(m_base, false,
                                                         DerefToken::make_field_name(field->name()));
@@ -462,9 +494,6 @@ FormElement* BitfieldAccessElement::push_step(const BitfieldManip step,
 
   if (m_steps.size() == 1 && m_steps.at(0).kind == BitfieldManip::Kind::LOGAND_WITH_CONSTANT_INT &&
       step.kind == BitfieldManip::Kind::LOGIOR_WITH_CONSTANT_INT) {
-    if (m_got_pcpyud) {
-      throw std::runtime_error("unknown pcpyud LOGIOR_WITH_CONSTANT_INT sequence in bitfield");
-    }
     // this is setting a bitfield to a constant.
     // first, let's check that the mask is used properly:
     u64 mask = m_steps.at(0).amount;
@@ -477,7 +506,7 @@ FormElement* BitfieldAccessElement::push_step(const BitfieldManip step,
     auto as_bitfield = dynamic_cast<BitFieldType*>(type);
     assert(as_bitfield);
     // use the mask to figure out the field.
-    auto field = find_field_from_mask(ts, as_bitfield, ~mask);
+    auto field = find_field_from_mask(ts, as_bitfield, ~mask, m_got_pcpyud);
     assert(field);
     bool is_signed =
         ts.tc(TypeSpec("int"), field->type()) && !ts.tc(TypeSpec("uint"), field->type());
@@ -485,24 +514,21 @@ FormElement* BitfieldAccessElement::push_step(const BitfieldManip step,
     // use the field to figure out what value is being set.
     u64 set_value;
     if (is_signed) {
-      set_value = extract_bitfield<s64>(value, field->offset(), field->size());
+      set_value = extract_bitfield<s64>(value, field->offset() - pcpyud_offset, field->size());
     } else {
-      set_value = extract_bitfield<u64>(value, field->offset(), field->size());
+      set_value = extract_bitfield<u64>(value, field->offset() - pcpyud_offset, field->size());
     }
 
     BitFieldDef def;
     def.field_name = field->name();
     def.value = pool.alloc_single_element_form<SimpleAtomElement>(
         nullptr, SimpleAtom::make_int_constant(set_value));
-    return pool.alloc_element<ModifiedCopyBitfieldElement>(m_type, m_base,
+    return pool.alloc_element<ModifiedCopyBitfieldElement>(m_type, m_base, m_got_pcpyud,
                                                            std::vector<BitFieldDef>{def});
   }
 
   if (m_steps.size() == 1 && m_steps.at(0).kind == BitfieldManip::Kind::LOGAND_WITH_CONSTANT_INT &&
       step.kind == BitfieldManip::Kind::LOGIOR_WITH_FORM) {
-    if (m_got_pcpyud) {
-      throw std::runtime_error("unknown pcpyud LOGIOR_WITH_FORM sequence in bitfield");
-    }
     // this is setting a bitfield to a variable
     u64 mask = m_steps.at(0).amount;
 
@@ -510,10 +536,10 @@ FormElement* BitfieldAccessElement::push_step(const BitfieldManip step,
     auto as_bitfield = dynamic_cast<BitFieldType*>(type);
     assert(as_bitfield);
     // use the mask to figure out the field.
-    auto field = find_field_from_mask(ts, as_bitfield, ~mask);
+    auto field = find_field_from_mask(ts, as_bitfield, ~mask, m_got_pcpyud);
     assert(field);
 
-    auto val = get_bitfield_initial_set(step.value, as_bitfield, ts);
+    auto val = get_bitfield_initial_set(step.value, as_bitfield, ts, pcpyud_offset);
 
     if (!val) {
       throw std::runtime_error(
@@ -524,7 +550,7 @@ FormElement* BitfieldAccessElement::push_step(const BitfieldManip step,
       throw std::runtime_error("Incompatible bitfield set");
     }
 
-    return pool.alloc_element<ModifiedCopyBitfieldElement>(m_type, m_base,
+    return pool.alloc_element<ModifiedCopyBitfieldElement>(m_type, m_base, m_got_pcpyud,
                                                            std::vector<BitFieldDef>{*val});
   }
 
@@ -532,7 +558,10 @@ FormElement* BitfieldAccessElement::push_step(const BitfieldManip step,
   for (auto& old_step : m_steps) {
     lg::error("  {}", old_step.print());
   }
-  lg::error("Current: {}\n", step.print());
+  lg::error("Current: {}", step.print());
+  if (m_got_pcpyud) {
+    lg::error("Got pcpyud\n");
+  }
 
   throw std::runtime_error("Unknown state in BitfieldReadElement");
 }
@@ -595,6 +624,22 @@ std::optional<u64> get_goal_integer_constant(Form* in, const Env&) {
       return result;
     }
   }
+
+  // also (shl (shl <something> 16) 32)
+  // why.
+  matcher = Matcher::op(GenericOpMatcher::fixed(FixedOperatorKind::SHL),
+                        {Matcher::op(GenericOpMatcher::fixed(FixedOperatorKind::SHL),
+                                     {Matcher::any(1), Matcher::integer(16)}),
+                         Matcher::integer(32)});
+  mr = match(matcher, in);
+  if (mr.matched) {
+    auto arg_as_atom = form_as_atom(mr.maps.forms.at(1));
+    if (arg_as_atom && arg_as_atom->is_int()) {
+      u64 result = arg_as_atom->get_int();
+      result <<= 48ull;
+      return result;
+    }
+  }
   return {};
 }
 
@@ -602,7 +647,14 @@ BitFieldDef BitFieldDef::from_constant(const BitFieldConstantDef& constant, Form
   BitFieldDef bfd;
   bfd.field_name = constant.field_name;
   bfd.is_signed = constant.is_signed;
-  if (constant.enum_constant) {
+  if (constant.nested_field) {
+    std::vector<BitFieldDef> defs;
+    for (auto& x : constant.nested_field->fields) {
+      defs.push_back(BitFieldDef::from_constant(x, pool));
+    }
+    bfd.value = pool.alloc_single_element_form<BitfieldStaticDefElement>(
+        nullptr, constant.nested_field->field_type, defs);
+  } else if (constant.enum_constant) {
     bfd.value =
         pool.alloc_single_element_form<ConstantTokenElement>(nullptr, *constant.enum_constant);
   } else {
@@ -625,8 +677,8 @@ Form* cast_sound_name(FormPool& pool, const Env& env, Form* in) {
   auto hi = mr.maps.forms.at(1);
   auto lo = mr.maps.forms.at(0);
 
-  auto hi_int = get_goal_integer_constant(hi, env);
-  auto lo_int = get_goal_integer_constant(lo, env);
+  auto hi_int = get_goal_integer_constant(strip_int_or_uint_cast(hi), env);
+  auto lo_int = get_goal_integer_constant(strip_int_or_uint_cast(lo), env);
   if (!hi_int || !lo_int) {
     return nullptr;
   }
@@ -713,8 +765,9 @@ Form* cast_to_bitfield(const BitFieldType* type_info,
 
     // now variables
     for (auto& arg : args) {
+      // it's a 64-bit constant so correct to set offset 0 here.
       auto maybe_field =
-          get_bitfield_initial_set(strip_int_or_uint_cast(arg), type_info, env.dts->ts);
+          get_bitfield_initial_set(strip_int_or_uint_cast(arg), type_info, env.dts->ts, 0);
       if (!maybe_field) {
         // failed, just return cast.
         return pool.alloc_single_element_form<CastElement>(nullptr, typespec, in);

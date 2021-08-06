@@ -5,7 +5,7 @@
 ;; INFO: Return type mismatch int vs none.
 (defmethod dummy-9 path-control ((obj path-control))
   (cond
-   ((nonzero? (logand (-> obj flags) (path-control-flag not-found)))
+   ((logtest? (-> obj flags) (path-control-flag not-found))
     (when
      (and
       (type-type? (-> obj process type) process-drawable)
@@ -41,7 +41,7 @@
      (let ((s4-1 (-> obj cverts s5-1)))
       (if
        (and
-        (nonzero? (logand (-> obj flags) (path-control-flag draw-line)))
+        (logtest? (-> obj flags) (path-control-flag draw-line))
         (< s5-1 (+ (-> obj curve num-cverts) -1))
         )
        (add-debug-line
@@ -54,7 +54,7 @@
         (the-as rgba -1)
         )
        )
-      (if (nonzero? (logand (-> obj flags) (path-control-flag draw-point)))
+      (if (logtest? (-> obj flags) (path-control-flag draw-point))
        (add-debug-x
         #t
         (bucket-id debug-draw1)
@@ -62,7 +62,7 @@
         (new 'static 'rgba :r #xff :a #x80)
         )
        )
-      (when (nonzero? (logand (-> obj flags) (path-control-flag draw-text)))
+      (when (logtest? (-> obj flags) (path-control-flag draw-text))
        (let ((s3-1 add-debug-text-3d)
              (s2-1 #t)
              (s1-0 68)
@@ -126,15 +126,15 @@
     ((>= f0-3 (the float (+ a1-1 -1)))
      (set! (-> arg0 quad) (-> obj cverts (+ a1-1 -1) quad))
      )
+    ((or (= arg2 'exact) (= f0-3 arg1))
+     (set! (-> arg0 quad) (-> obj cverts (the int f0-3) quad))
+     )
     (else
-     (if (or (= arg2 'exact) (= f0-3 arg1))
-      (set! (-> arg0 quad) (-> obj cverts (the int f0-3) quad))
-      (vector-lerp!
-       arg0
-       (-> obj cverts (the int f0-3))
-       (-> obj cverts (the int (+ 1.0 f0-3)))
-       (- arg1 f0-3)
-       )
+     (vector-lerp!
+      arg0
+      (-> obj cverts (the int f0-3))
+      (-> obj cverts (the int (+ 1.0 f0-3)))
+      (- arg1 f0-3)
       )
      )
     )
@@ -195,19 +195,17 @@
   eval-path-curve!
   curve-control
   ((obj curve-control) (arg0 vector) (arg1 float) (arg2 symbol))
-  (the-as
-   vector
-   (if (nonzero? (logand (-> obj flags) (path-control-flag not-found)))
-    0.0
-    (curve-evaluate!
-     arg0
-     arg1
-     (the-as pointer (-> obj cverts))
-     (-> obj curve num-cverts)
-     (-> obj curve knots)
-     (-> obj curve num-knots)
-     )
-    )
+  (the-as vector (if (logtest? (-> obj flags) (path-control-flag not-found))
+                  0.0
+                  (curve-evaluate!
+                   arg0
+                   arg1
+                   (the-as pointer (-> obj cverts))
+                   (-> obj curve num-cverts)
+                   (-> obj curve knots)
+                   (-> obj curve num-knots)
+                   )
+                  )
    )
   )
 
@@ -217,19 +215,17 @@
   eval-path-curve-div!
   curve-control
   ((obj curve-control) (arg0 vector) (arg1 float) (arg2 symbol))
-  (the-as
-   vector
-   (if (nonzero? (logand (-> obj flags) (path-control-flag not-found)))
-    0.0
-    (curve-evaluate!
-     arg0
-     (/ arg1 (the float (+ (-> obj curve num-cverts) -1)))
-     (the-as pointer (-> obj cverts))
-     (-> obj curve num-cverts)
-     (-> obj curve knots)
-     (-> obj curve num-knots)
-     )
-    )
+  (the-as vector (if (logtest? (-> obj flags) (path-control-flag not-found))
+                  0.0
+                  (curve-evaluate!
+                   arg0
+                   (/ arg1 (the float (+ (-> obj curve num-cverts) -1)))
+                   (the-as pointer (-> obj cverts))
+                   (-> obj curve num-cverts)
+                   (-> obj curve knots)
+                   (-> obj curve num-knots)
+                   )
+                  )
    )
   )
 
@@ -379,7 +375,7 @@
 ;; INFO: Return type mismatch int vs none.
 (defmethod dummy-9 curve-control ((obj curve-control))
   (cond
-   ((nonzero? (logand (-> obj flags) (path-control-flag not-found)))
+   ((logtest? (-> obj flags) (path-control-flag not-found))
     (when
      (and
       (type-type? (-> obj process type) process-drawable)
@@ -413,7 +409,7 @@
      )
     (if
      (and
-      (nonzero? (logand (-> obj flags) (path-control-flag draw-line)))
+      (logtest? (-> obj flags) (path-control-flag draw-line))
       (> (-> obj curve num-cverts) 0)
       )
      (add-debug-curve2
@@ -426,7 +422,7 @@
      )
     (dotimes (s5-1 (-> obj curve num-cverts))
      (let ((s4-1 (-> obj cverts s5-1)))
-      (if (nonzero? (logand (-> obj flags) (path-control-flag draw-point)))
+      (if (logtest? (-> obj flags) (path-control-flag draw-point))
        (add-debug-x
         #t
         (bucket-id debug-draw1)
@@ -434,7 +430,7 @@
         (new 'static 'rgba :r #xff :a #x80)
         )
        )
-      (when (nonzero? (logand (-> obj flags) (path-control-flag draw-text)))
+      (when (logtest? (-> obj flags) (path-control-flag draw-text))
        (let ((s3-1 add-debug-text-3d)
              (s2-1 #t)
              (s1-0 68)
@@ -457,7 +453,3 @@
   0
   (none)
   )
-
-
-
-

@@ -82,6 +82,7 @@ class Env {
   VariableWithCast get_variable_and_cast(const RegisterAccess& access) const;
   std::optional<TypeSpec> get_user_cast_for_access(const RegisterAccess& access) const;
   TypeSpec get_variable_type(const RegisterAccess& access, bool using_user_var_types) const;
+  TP_Type get_variable_tp_type(const RegisterAccess& access, bool using_user_var_types) const;
 
   /*!
    * Get the types in registers _after_ the given operation has completed.

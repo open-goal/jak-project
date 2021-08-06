@@ -5,22 +5,7 @@
  * GOAL Boot.  Contains the "main" function to launch GOAL runtime.
  */
 
-#ifndef RUNTIME_KBOOT_H
-#define RUNTIME_KBOOT_H
-
 #include "common/common_types.h"
-
-//! Supported languages.
-enum class Language {
-  English = 0,
-  French = 1,
-  German = 2,
-  Spanish = 3,
-  Italian = 4,
-  Japanese = 5,
-  UK_English = 6,
-  // uk english?
-};
 
 struct MasterConfig {
   u16 language;          //! GOAL language 0
@@ -76,5 +61,3 @@ void KernelCheckAndDispatch();
 void KernelShutdown();
 
 extern u32 MasterUseKernel;
-
-#endif  // RUNTIME_KBOOT_H
