@@ -597,6 +597,9 @@ void Debugger::watcher() {
         case xdbg::SignalInfo::BREAK:
           printf("Target has stopped. Run (:di) to get more information.\n");
           break;
+        case xdbg::SignalInfo::MATH_EXCEPTION:
+          printf("Target has crashed with a MATH_EXCEPTION! Run (:di) to get more information.\n");
+          break;
         default:
           printf("[Debugger] unhandled signal in watcher: %d\n", int(signal_info.kind));
           assert(false);

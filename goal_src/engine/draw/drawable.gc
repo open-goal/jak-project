@@ -341,12 +341,8 @@
                (global-start (-> global-buf data))
                (global-end (-> global-buf end))
                )
-          (format *stdcon* "~0kvu1 buf = ~d~%"
-           (&- calc-current (the-as uint calc-start))
-           )
-          (format *stdcon* "~0kglobal buf = ~d~%"
-           (&- global-current (the-as uint global-start))
-           )
+          (format *stdcon* "~0kvu1 buf = ~d~%" (&- calc-current (the-as uint calc-start)))
+          (format *stdcon* "~0kglobal buf = ~d~%" (&- global-current (the-as uint global-start)))
           (format *stdcon* "~0kbase = #x~x~%" global-current)
           (format *stdcon* "~0kend = #x~x~%" global-end)
           )
@@ -406,6 +402,14 @@
            )
   )
 
+(#when PC_PORT
+  (define *disasm-count* 0)
+
+  (defmacro disasm-next-dma (&key (count 1))
+    `(set! *disasm-count* ,count)
+    )
+  )
+
 (defun display-sync ((disp display))
   "Switch frames! This assumes that you have called display-frame-finish on the current frame.
    It will:
@@ -458,8 +462,15 @@
 
     ;; begin rendering the next frame
     (let ((dma-buf-to-send (-> disp frames frame-idx frame calc-buf)))
-      (if (nonzero? (dma-buffer-length dma-buf-to-send))
-          ;; was dma-send-chain originally.
+      (when (nonzero? (dma-buffer-length dma-buf-to-send))
+        ;; was dma-send-chain originally.
+        (#when PC_PORT
+          (when (> *disasm-count* 0)
+            (disasm-dma-list (the-as dma-packet (-> dma-buf-to-send data-buffer)) 'details #t #t -1)
+            (-! *disasm-count* 1)
+            )
+          )
+        ;;(cpu-usage)
           (__send-gfx-dma-chain (the-as dma-bank-source #x10009000)
                                  (cond
                                    ;; some buffer for debugging, not used

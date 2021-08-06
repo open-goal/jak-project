@@ -6,7 +6,8 @@
 ;; dgos: GAME, ENGINE
 
 (defmacro .sll (result in sa)
-  `(set! ,result (the-as int (shl (logand ,in #xffffffff) ,sa)))
+  `(set! ,result (sext32 (the-as int (shl (logand ,in #xffffffff) ,sa))))
+  ;`(set! ,result (shl (the-as int ,in) ,sa))
   )
 
 (defmacro .movz (result value check)
@@ -23,11 +24,18 @@
 
 
 (defmacro .addu (result a b)
-  `(set! ,result (logand (+ (the-as int ,a) (the-as int ,b)) #xffffffff))
+  `(set! ,result (sext32 (logand (+ (the-as int ,a) (the-as int ,b)) #xffffffff)))
+  ;`(set! ,result (+ (the-as int ,a) (the-as int ,b)))
+  )
+
+(defmacro sext32 (in)
+  `(sar (shl ,in 32) 32)
   )
 
 (defmacro .sra (result in sa)
-  `(set! ,result (logand #xffffffff (sar (the-as int ,in) ,sa)))
+  ;;`(set! ,result (sext32 (logand #xffffffff (sar (the-as int ,in) ,sa))))
+  `(set! ,result (sext32 (sar (logand #xffffffff (the-as int ,in)) ,sa)))
+  ;`(sar (the-as int ,in) ,sa)
   )
 
 
@@ -584,11 +592,23 @@
    )
   )
 
+(defmacro print-vf (vf &key (name #f))
+  "Print out a vf register as a vector."
+  `(let ((temp (new 'stack 'vector)))
+     (.svf temp ,vf)
+     ,(if name
+          `(format 0 "~A: ~`vector`P~%" (quote ,name) temp)
+          `(format 0 "~`vector`P~%" temp)
+          )
+     )
+  )
+
 (defun draw-string ((arg0 string) (arg1 dma-buffer) (arg2 font-context))
   "Draw a string."
   ;; note: this function is > 4000 instructions and around 80 kB of x86-64.
   ;; it contains over 2000 iregisters.
   ;;(declare (print-asm))
+
   (local-vars
    (r0 uint128)
    (v0-0 float)
@@ -722,8 +742,19 @@
    (t8-4 uint)
    (t8-5 int)
    (f31-0 none)
+
+   (hack-str string)
    )
+
+  ;(set! hack-str (new 'debug 'string 256 (the string #f)))
+  ;(copy-string<-string hack-str arg0)
+  ;(set! arg0 hack-str)
+  
+  
   (set! r0 (the-as uint128 0))
+
+  ;;(inspect *font-work*)
+
   (rlet ((acc :class vf)
          (Q :class vf)
          (vf0 :class vf)
@@ -765,7 +796,9 @@
     (.add.w.vf vf26 vf26 vf0 :mask #b1)
     (let ((v1-1 (-> arg2 mat)))
       (.lvf vf25 (&-> arg2 context-vec quad))
+      ;;(print-vf vf25 :name y-is-ctxt-ht)
       (.lvf vf23 (&-> arg2 origin quad))
+      ;;(print-vf vf23 :name vf23-init)
       (.lvf vf24 (&-> arg2 origin quad))
       (.lvf vf28 (&-> v1-1 vector 0 quad))
       (.lvf vf29 (&-> v1-1 vector 1 quad))
@@ -774,6 +807,7 @@
       )
     (let ((v1-3 *video-parms*))
       (.lvf vf1 (+ (the int v1-3) 64))
+      ;;(print-vf vf1 :name vid-params) seems legit
       )
     (.mul.vf vf25 vf25 vf1 :mask #b11)
     (.mul.vf vf23 vf23 vf1 :mask #b11)
@@ -864,10 +898,13 @@
                 (label cfg-4)
                 (let ((t4-4 (-> (the-as (pointer uint8) arg0) 4)))
                   (set! arg0 (the-as string (&-> (the-as (pointer uint8) arg0) 1)))
+                  ;;(format 0 "char at the top is '~c'~%" t4-4)
                   (b! (zero? t4-4) cfg-67 :delay (set! t5-3 (+ t4-4 -1)))
                   (b! (zero? t5-3) cfg-54 :delay (set! t5-4 (+ t4-4 -126)))
                   (b! (nonzero? t5-4) cfg-55)
+                  ;; here, if we have a tilde arg.
                   (set! t4-4 (-> (the-as (pointer uint8) arg0) 4))
+
                   (set! arg0 (the-as string (&-> (the-as (pointer uint8) arg0) 1)))
                   0
                   (let ((t6-2 0))
@@ -956,32 +993,44 @@
                     (b! #t cfg-4 :delay (set! t2-0 (logior t2-0 4)))
                     (label cfg-42)
                     (.mov vf1 t6-2)
+                    ;; (print-vf vf1 :name after-t6-2move) not hit
                     (let ((t4-9 (+ t5-7 -45)))
+
                       (b! (zero? t5-7) cfg-46 :delay (.itof.vf vf1 vf1))
                       (b! (zero? t4-9) cfg-45)
                       )
+                    ;;(format 0 "AAAA~%") didn't get here
                     (b! #t cfg-4 :delay (.add.x.vf vf23 vf23 vf1 :mask #b1))
                     (label cfg-45)
+                    ;;(format 0 "ASDFASDF~%") not here
                     (b! #t cfg-4 :delay (.sub.x.vf vf23 vf23 vf1 :mask #b1))
                     (label cfg-46)
+                    ;;(format 0 "2ASDFASDF~%") not here
                     (b! #t cfg-4 :delay (.add.x.vf vf23 vf0 vf1 :mask #b1))
                     (label cfg-47)
                     (.mov vf1 t6-2)
+                    ;;(print-vf vf1 :name after-t6-2move)
                     )
                   (let ((t4-10 (+ t5-7 -45)))
                     (b! (zero? t5-7) cfg-51 :delay (.itof.vf vf1 vf1))
                     (b! (zero? t4-10) cfg-50)
                     )
+                  (format 0 "NO~%")
                   (b! #t cfg-4 :delay (.add.x.vf vf23 vf23 vf1 :mask #b10))
                   (label cfg-50)
+                  (format 0 "NO~%")
                   (b! #t cfg-4 :delay (.sub.x.vf vf23 vf23 vf1 :mask #b10))
                   (label cfg-51)
+                  (format 0 "NO~%")
                   (b! #t cfg-4 :delay (.add.x.vf vf23 vf0 vf1 :mask #b10))
                   (label cfg-52)
+                  (format 0 "NO~%")
                   (b! #t cfg-4 :delay (.svf (&-> v1-5 save quad) vf23))
                   (label cfg-53)
+                  (format 0 "NO~%")
                   (b! #t cfg-4 :delay (.lvf vf23 (&-> v1-5 save quad)))
                   (label cfg-54)
+                  (format 0 "NO~%")
                   (let ((t4-11 (-> (the-as (pointer uint8) arg0) 4)))
                     (set! arg0 (the-as string (&-> (the-as (pointer uint8) arg0) 1)))
                     (.add.vf vf4 vf23 vf15 :mask #b111)
@@ -993,9 +1042,16 @@
                       )
                     )
                   (label cfg-55)
+                  ;; gets here with a non-tilde arg
+                  ;;(print-vf vf23 :name next-vf23) ;; these increase, like you'd expect
                   (.add.vf vf4 vf23 vf15 :mask #b111)
                   (.sll t5-9 (the-as int t4-4) 4)
+                  ;;(print-vf vf25 :name vf25) ;; 0.0 in y (suspicious of this)
+                  ;;(print-vf vf23 :name vf23) ;; -18.0 in y
                   (.sub.vf vf1 vf25 vf23)
+                  ;;(print-vf vf1 :name bad-vf1) has -18.0 in y.
+                  
+                  ;;(format 0 "!!!!~d ~c~%" t5-9 t4-4) also see first char here
                   (b! (= t4-4 10) cfg-57 :delay (set! t4-14 (+ t4-4 -13)))
                   )
                 (b! (nonzero? t4-14) cfg-62)
@@ -1038,10 +1094,24 @@
                  (set! t3-6 (-> (the-as font-work t3-6) font-tmpl gif))
                  )
                 (label cfg-62)
+                ;; stuff above is newline stuff.
+                ;; here, I think t5-9 is the offset.
+                ;;(format #t "at render part, offset is ~d~%" t5-9) seems legit
                 (.addu t4-17 t5-9 a3-2)
+                ;; (format #t "addu ~x ~x ~x~%" t4-17 t5-9 a3-2)
                 (nop!)
                 (.lvf vf5 (+ t4-17 -256))
+                ;;(print-vf vf5)
                 (.mov t4-18 vf1)
+                ;;(format #t "t4-18 = ~d~%" t4-18) we do take this branch, and I am pretty sure this is wrong.
+                ;;(print-vf vf1)
+                ;;(format #t "~%")
+
+
+
+
+                ;; PART 2 (the good part)
+                
                 (b! (< (the-as int t4-18) 0) cfg-67 :delay (.sra t4-19 t4-18 31))
                 (.mul.vf vf19 vf5 vf13)
                 (b! (zero? (logand t2-0 2)) cfg-65)
@@ -1052,7 +1122,10 @@
                 (label cfg-66)
                 (b! #t cfg-4)
                 (label cfg-67)
+                ;;(print-vf vf23 :name vf23-good-part)
+                ;;(format 0 "flag ~d~%" t2-0)
                 (.sub.vf vf1 vf23 vf24)
+                ;;(print-vf vf1 :name set-vf1)
                 (b! (logtest? t2-0 16) cfg-70 :delay (set! a0-2 (logand t2-0 4)))
                 (b! (nonzero? a0-2) cfg-71)
                 (.add.x.vf vf23 vf0 vf24 :mask #b1)
@@ -1064,7 +1137,13 @@
                  (.svf (&-> (the-as font-work t3-6) justify 0 quad) vf23)
                  )
                 (label cfg-70)
+                ;; vf23.x is our position.
+                ;; vf24 is the origin.
+                ;; vf1 ??
+                ;;(print-vf vf1 :name vf1-sub)
+                ;;(print-vf vf24 :name vf24-sub)
                 (.sub.vf vf23 vf24 vf1 :mask #b1)
+                ;;(print-vf vf23 :name vf23-good-part)
                 (nop!)
                 (b!
                  #t
@@ -1086,16 +1165,21 @@
                   (.lvf vf23 (&-> (the-as font-work t2-1) justify 0 quad))
                   (label cfg-73)
                   (let ((t4-21 (-> t3-7 4)))
+                    ; (format #t "paa char ~c~%" t4-21) ;; we get here with the v.
                     (set! t3-7 (&-> t3-7 1))
                     (b! (zero? t4-21) cfg-131 :delay (set! t5-10 (+ t4-21 -1)))
                     (b! (zero? t5-10) cfg-121 :delay (set! t5-11 (+ t4-21 -126)))
                     (b! (nonzero? t5-11) cfg-122)
+                    ;; get here as well
                     (set! t4-21 (-> t3-7 4))
+                    ;;(format #t "eat char ~c~%" t4-21)
                     (set! t3-7 (&-> t3-7 1))
                     0
                     (let ((t6-9 0))
                       (b! (zero? t4-21) cfg-131 :delay (set! t7-18 (+ t4-21 -43)))
+                      ; (format #t "movz ~d ~d ~d~%" t5-13 t4-21 t7-18)
                       (.movz t5-13 (the-as int t4-21) t7-18)
+                      ; (format #t "res ~d~%" t5-13)
                       (let ((t7-19 (+ t4-21 -45)))
                         (.movz t5-14 (the-as int t4-21) t7-19)
                         )
@@ -1188,6 +1272,7 @@
                       (label cfg-109)
                       (.mov vf1 t6-9)
                       (let ((t4-26 (+ t5-14 -45)))
+                        ; (format #t "itof122~%")
                         (b! (zero? t5-14) cfg-113 :delay (.itof.vf vf1 vf1))
                         (b! (zero? t4-26) cfg-112)
                         )
@@ -1200,6 +1285,7 @@
                       (.mov vf1 t6-9)
                       )
                     (let ((t4-27 (+ t5-14 -45)))
+                      ; (format #t "itof12323~%")
                       (b! (zero? t5-14) cfg-118 :delay (.itof.vf vf1 vf1))
                       (b! (zero? t4-27) cfg-117)
                       )
@@ -1237,7 +1323,8 @@
                      :delay
                      (.lvf vf23 (+ (the-as int t2-1) 944))
                      )
-                    (label cfg-125)
+                    (label cfg-125) ;; get here
+                    ; (format #t "aa~%")
                     (.addu t5-18 t5-17 a3-2)
                     (nop!)
                     (.lvf vf5 (+ t5-18 -256))
@@ -1248,6 +1335,7 @@
                      :delay
                      (.add.vf vf6 vf5 vf16 :mask #b111)
                      )
+                    ; (format #t "b~%")
                     (.sra t5-20 t5-19 31)
                     (.add.vf vf7 vf5 vf17 :mask #b111)
                     (b! (< t5-20 0) cfg-73 :delay (.add.vf vf8 vf5 vf18 :mask #b111))
@@ -1430,6 +1518,7 @@
                   (label cfg-132)
                   (let ((t4-30 (-> t3-8 4)))
                     (set! t3-8 (&-> t3-8 1))
+                    ;;(format #t "yac: ~c~%" t4-30) get the v here as well.
                     (b! (zero? t4-30) cfg-189 :delay (set! t5-24 (+ t4-30 -1)))
                     (b! (zero? t5-24) cfg-179 :delay (set! t5-25 (+ t4-30 -126)))
                     (b! (nonzero? t5-25) cfg-180)
@@ -1613,6 +1702,7 @@
                       (label cfg-167)
                       (.mov vf1 t6-19)
                       (let ((t4-39 (+ t5-28 -45)))
+                        ; (format #t "itof13424~%")
                         (b! (zero? t5-28) cfg-171 :delay (.itof.vf vf1 vf1))
                         (b! (zero? t4-39) cfg-170)
                         )
@@ -1625,6 +1715,7 @@
                       (.mov vf1 t6-19)
                       )
                     (let ((t4-40 (+ t5-28 -45)))
+                      ; (format #t "itof153532~%")
                       (b! (zero? t5-28) cfg-176 :delay (.itof.vf vf1 vf1))
                       (b! (zero? t4-40) cfg-175)
                       )
@@ -1698,6 +1789,7 @@
                         )
                       )
                     (label cfg-180)
+                    ;;(format #t "aaaa~%") get here
                     (.add.vf vf4 vf23 vf15 :mask #b111)
                     (.sll t5-39 t4-30 4)
                     (.sub.vf vf1 vf25 vf23)
@@ -1713,6 +1805,7 @@
                      (.lvf vf23 (+ (the-as int t2-2) 944))
                      )
                     (label cfg-183)
+                    ;;(format #t "ok~%") ;;here as well
                     (.addu t5-40 t5-39 a3-2)
                     (nop!)
                     (.lvf vf5 (+ t5-40 -256))
@@ -1873,6 +1966,7 @@
                 (.add.vf vf4 vf4 vf27)
                 ;;(s.vf! (+ a1-1 176) vf3)
                 (.svf (+ 176 (the int a1-1)) vf3)
+                ;;(format #t "here~%")
                 (let ((t4-44 (logand a0-4 2)))
                   (nop!)
                   (b! (zero? t4-44) cfg-187)
@@ -1892,13 +1986,13 @@
         (nop!)
         (nop!)
         ;;(s.vf! (+ a1-1 192) vf8)
-        (.svf (+ 192 (the int a1-1)) vf3)
+        (.svf (+ 192 (the int a1-1)) vf8)
         (nop!)
         ;;(s.vf! (+ a1-1 208) vf12)
-        (.svf (+ 208 (the int a1-1)) vf3)
+        (.svf (+ 208 (the int a1-1)) vf12)
         (nop!)
         ;;(s.vf! (+ a1-1 224) vf4)
-        (.svf (+ 224 (the int a1-1)) vf3)
+        (.svf (+ 224 (the int a1-1)) vf4)
         (b! #t cfg-132 :delay (set! a1-1 (the pointer (+ (the-as int a1-1) 240))))
         (label cfg-189)
         (let ((v1-6 (-> v1-5 buf)))
@@ -1908,8 +2002,11 @@
         )
       )
     (.lvf vf24 (&-> arg2 origin quad))
+    ;; vf23.x is the x position of the string, which somehow moves backward...
     (.sub.vf vf23 vf23 vf24)
     (.mov v0-0 vf23)
+                                        ;(print-vf vf0)
+   ;;(format 0 "String result ~f~%" v0-0)
     v0-0
     )
   )
@@ -2134,6 +2231,7 @@
   )
 
 (defun draw-string-xy ((arg0 string) (arg1 dma-buffer) (arg2 int) (arg3 int) (arg4 int) (arg5 int))
+  ;(format #t "call to ds: ~A~%" arg0)
   (let ((a2-2 (new 'stack 'font-context
                    *font-default-matrix*
                    arg2
@@ -2144,6 +2242,7 @@
                    )
           )
         )
+    ;;(format 0 "len is ~f~%" (get-string-length arg0 a2-2))
     (draw-string arg0 arg1 a2-2)
     )
   (none)

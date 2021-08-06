@@ -8,6 +8,14 @@
 ;; The font system draws all of the strings.
 ;; The font textures live in the upper 8 bits of the 24-bit texture format depth buffer.
 
+;; flags
+;; 1
+;; 2
+;; 4
+;; 8
+;; 16
+;; 32 (use size 24)
+
 (deftype char-verts (structure)
   ((pos    vector 4 :inline :offset-assert 0)
    (color  vector 4 :inline :offset-assert 64)
@@ -150,26 +158,62 @@
   obj
   )
 
-(defmethod new font-context ((allocation symbol) (type-to-make type) (mat matrix) (x int) (y int) (z float) (color int) (flags uint))
-  "Allocate a new font-context with the given parameters"
-
-  (let ((obj (object-new allocation type-to-make (the-as int (-> type-to-make size)))))
-    (set-mat! obj mat)
-    (set-origin! obj x y)
-    (if (= z 0)
-      (set! (-> obj origin z) (-> *math-camera* isometric data 14)) ;; inlined set-depth!
-      (set! (-> obj origin z) z) ;; inlined set-depth!
-      )
-    (set-w! obj 1.0)
-    (set-width! obj 512)
-    (set-width! obj 256)
-    (set-projection! obj 1.0)
-    (set-color! obj color)
-    (set-flags! obj flags)
-    (set-start-line! obj (the-as uint 0))
-    (set-scale! obj 1.0)
-    obj
+(defmethod
+  new
+  font-context
+  ((allocation symbol)
+   (type-to-make type)
+   (mat matrix)
+   (x int)
+   (y int)
+   (z float)
+   (color int)
+   (flags uint)
+   )
+  (let
+   ((obj
+     (object-new allocation type-to-make (the-as int (-> type-to-make size)))
+     )
     )
+   (set! (-> obj mat) mat)
+   (let ((v1-3 obj))
+    (set! (-> v1-3 origin x) (the float x))
+    (set! (-> v1-3 origin y) (the float y))
+    )
+   (cond
+    ((= z 0.0)
+     (let ((v1-4 obj))
+      (set! (-> v1-4 origin z) (-> *math-camera* isometric vector 3 z))
+      )
+     )
+    (else
+     (let ((v1-5 obj))
+      (set! (-> v1-5 origin z) z)
+      )
+     )
+    )
+   (let ((v1-6 obj))
+    (set! (-> v1-6 origin w) 1.0)
+    )
+   (let ((v1-7 obj))
+    (set! (-> v1-7 width) (the float 512))
+    )
+   (let ((v1-8 obj))
+    (set! (-> v1-8 height) (the float 256))
+    )
+   (let ((v1-9 obj))
+    (set! (-> v1-9 projection) 1.0)
+    )
+   (set! (-> obj color) color)
+   (set! (-> obj flags) flags)
+   (let ((a0-4 obj))
+    (set! (-> a0-4 start-line) (the-as uint 0))
+    )
+   (let ((v1-13 obj))
+    (set! (-> v1-13 scale) 1.0)
+    )
+   obj
+   )
   )
 
 (deftype font-work (structure)
