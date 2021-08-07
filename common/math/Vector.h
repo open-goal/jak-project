@@ -127,6 +127,9 @@ class Vector {
     return result + "]";
   }
 
+  T* data() { return m_data; }
+  const T* data() const { return m_data; }
+
  private:
   T m_data[Size];
 };

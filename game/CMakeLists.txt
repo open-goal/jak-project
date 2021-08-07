@@ -76,7 +76,9 @@ set(RUNTIME_SOURCE
         graphics/display.cpp
         graphics/sceGraphicsInterface.cpp
         graphics/dma/dma_copy.cpp
-        graphics/dma_reader.cpp
+        graphics/dma/gs.cpp
+        graphics/opengl_renderer/BucketRenderer.cpp
+        graphics/opengl_renderer/DirectRenderer.cpp
         graphics/opengl_renderer/OpenGLRenderer.cpp
         graphics/opengl_renderer/Shader.cpp
         system/vm/dmac.cpp

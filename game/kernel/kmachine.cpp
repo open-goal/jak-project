@@ -31,7 +31,6 @@
 #include "common/log/log.h"
 #include "common/util/Timer.h"
 #include "game/graphics/sceGraphicsInterface.h"
-#include "game/graphics/dma_reader.h"
 #include "game/graphics/gfx.h"
 #include "game/graphics/dma/dma_chain_read.h"
 #include "game/graphics/dma/dma_copy.h"

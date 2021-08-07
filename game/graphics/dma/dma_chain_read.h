@@ -22,6 +22,9 @@ struct DmaTransfer {
   u32 data_offset = 0;
   u32 size_bytes = 0;
   u64 transferred_tag = 0;
+
+  u32 vif0() const { return transferred_tag & 0xffffffff; }
+  u32 vif1() const { return (transferred_tag >> 32) & 0xffffffff; }
 };
 
 class DmaFollower {

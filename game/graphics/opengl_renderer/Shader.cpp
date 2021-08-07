@@ -65,4 +65,5 @@ void Shader::activate() {
 
 ShaderLibrary::ShaderLibrary() {
   at(ShaderId::TEST_SHADER) = {"test_shader"};
+  at(ShaderId::DIRECT_BASIC) = {"direct_basic"};
 }
