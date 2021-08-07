@@ -3,6 +3,7 @@
 #include "common/type_system/defenum.h"
 #include "common/type_system/deftype.h"
 #include "goalc/emitter/CallingConvention.h"
+#include "common/util/math_util.h"
 
 namespace {
 
@@ -214,15 +215,18 @@ Val* Compiler::generate_inspector_for_structure_type(const goos::Object& form,
   method_env->set_segment(DEBUG_SEGMENT);
 
   // Create a register which will hold the input to the inspect method
-  auto input = method_env->make_gpr(structure_type->get_name());
+  auto input_arg = method_env->make_gpr(structure_type->get_name());
   // "Constrain" this register to be the register that the function argument is passed in
   IRegConstraint constraint;
-  constraint.instr_idx = 0;         // constraint at the start of the function
-  constraint.ireg = input->ireg();  // constrain this register
+  constraint.instr_idx = 0;             // constraint at the start of the function
+  constraint.ireg = input_arg->ireg();  // constrain this register
   constraint.desired_register = emitter::gRegInfo.get_gpr_arg_reg(0);  // to the first argument
   method_env->constrain(constraint);
   // Inform the compiler that `input`'s value will be written to `rdi` (first arg register)
-  method_env->emit(std::make_unique<IR_ValueReset>(std::vector<RegVal*>{input}));
+  method_env->emit(std::make_unique<IR_ValueReset>(std::vector<RegVal*>{input_arg}));
+
+  auto input = method_env->make_gpr(structure_type->get_name());
+  method_env->emit_ir<IR_RegSet>(input, input_arg);
 
   // there's a special case for children of process.
   if (m_ts.fully_defined_type_exists("process") &&
@@ -290,11 +294,11 @@ Val* Compiler::generate_inspector_for_bitfield_type(const goos::Object& form,
   method_env->set_segment(DEBUG_SEGMENT);
 
   // Create a register which will hold the input to the inspect method
-  auto input = method_env->make_gpr(bitfield_type->get_name());
+  auto input_arg = method_env->make_gpr(bitfield_type->get_name());
   // "Constrain" this register to be the register that the function argument is passed in
   IRegConstraint constraint;
-  constraint.instr_idx = 0;         // constraint at the start of the function
-  constraint.ireg = input->ireg();  // constrain this register
+  constraint.instr_idx = 0;             // constraint at the start of the function
+  constraint.ireg = input_arg->ireg();  // constrain this register
   if (bitfield_128) {
     constraint.desired_register = emitter::gRegInfo.get_xmm_arg_reg(0);  // to the first argument
   } else {
@@ -303,7 +307,10 @@ Val* Compiler::generate_inspector_for_bitfield_type(const goos::Object& form,
 
   method_env->constrain(constraint);
   // Inform the compiler that `input`'s value will be written to `rdi` (first arg register)
-  method_env->emit(std::make_unique<IR_ValueReset>(std::vector<RegVal*>{input}));
+  method_env->emit(std::make_unique<IR_ValueReset>(std::vector<RegVal*>{input_arg}));
+
+  auto input = method_env->make_gpr(bitfield_type->get_name());
+  method_env->emit_ir<IR_RegSet>(input, input_arg);
 
   RegVal* type_name =
       compile_get_sym_obj(bitfield_type->get_name(), method_env.get())->to_gpr(method_env.get());
@@ -472,14 +479,14 @@ Val* Compiler::compile_defmethod(const goos::Object& form, const goos::Object& _
   for (u32 i = 0; i < lambda.params.size(); i++) {
     IRegConstraint constr;
     constr.instr_idx = 0;  // constraint at function start
-    auto ireg = new_func_env->make_ireg(
+    auto ireg_arg = new_func_env->make_ireg(
         lambda.params.at(i).type, arg_regs.at(i).is_gpr() ? RegClass::GPR_64 : RegClass::INT_128);
-    ireg->mark_as_settable();
-    constr.ireg = ireg->ireg();
+    ireg_arg->mark_as_settable();
+    constr.ireg = ireg_arg->ireg();
     constr.desired_register = arg_regs.at(i);
-    new_func_env->params[lambda.params.at(i).name] = ireg;
+
     new_func_env->constrain(constr);
-    reset_args_for_coloring.push_back(ireg);
+    reset_args_for_coloring.push_back(ireg_arg);
   }
 
   auto method_info = m_ts.lookup_method(symbol_string(type_name), symbol_string(method_name));
@@ -509,6 +516,14 @@ Val* Compiler::compile_defmethod(const goos::Object& form, const goos::Object& _
   func_block_env->return_value = return_reg;
   func_block_env->end_label = Label(new_func_env.get());
   func_block_env->emit(std::make_unique<IR_ValueReset>(reset_args_for_coloring));
+
+  for (u32 i = 0; i < lambda.params.size(); i++) {
+    auto ireg = new_func_env->make_ireg(
+        lambda.params.at(i).type, arg_regs.at(i).is_gpr() ? RegClass::GPR_64 : RegClass::INT_128);
+    ireg->mark_as_settable();
+    new_func_env->params[lambda.params.at(i).name] = ireg;
+    new_func_env->emit_ir<IR_RegSet>(ireg, reset_args_for_coloring.at(i));
+  }
 
   // compile the function!
   Val* result = nullptr;
@@ -1022,6 +1037,9 @@ Val* Compiler::compile_stack_new(const goos::Object& form,
   auto type_of_object = parse_typespec(unquote(type));
   auto fe = get_parent_env_of_type<FunctionEnv>(env);
   if (type_of_object == TypeSpec("inline-array") || type_of_object == TypeSpec("array")) {
+    if (call_constructor) {
+      throw_compiler_error(form, "Constructing stack arrays is not yet supported");
+    }
     bool is_inline = type_of_object == TypeSpec("inline-array");
     auto elt_type = quoted_sym_as_string(pair_car(*rest));
     rest = &pair_cdr(*rest);
@@ -1050,16 +1068,22 @@ Val* Compiler::compile_stack_new(const goos::Object& form,
     if (!info.can_deref) {
       throw_compiler_error(form, "Cannot make an {} of {}\n", type_of_object.print(), ts.print());
     }
-
+    auto type_info = m_ts.lookup_type(ts.get_single_arg());
     if (!m_ts.lookup_type(elt_type)->is_reference()) {
       // not a reference type
       int size_in_bytes = info.stride * constant_count;
-      auto addr = fe->allocate_stack_variable(ts, size_in_bytes);
+      auto addr = fe->allocate_aligned_stack_variable(ts, size_in_bytes,
+                                                      type_info->get_in_memory_alignment());
       return addr;
     }
-    // todo
-    throw_compiler_error(form, "Static array of type {} is not yet supported.", ts.print());
-    return get_none();
+
+    int stride =
+        align(type_info->get_size_in_memory(), type_info->get_inline_array_stride_alignment());
+    assert(stride == info.stride);
+
+    int size_in_bytes = info.stride * constant_count;
+    auto addr = fe->allocate_aligned_stack_variable(ts, size_in_bytes, stride);
+    return addr;
   } else {
     auto ti = m_ts.lookup_type(type_of_object);
 

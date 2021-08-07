@@ -302,6 +302,11 @@ StackVarAddrVal* FunctionEnv::allocate_aligned_stack_variable(const TypeSpec& ts
   return result;
 }
 
+RegVal* FunctionEnv::push_reg_val(std::unique_ptr<RegVal> in) {
+  m_iregs.push_back(std::move(in));
+  return m_iregs.back().get();
+}
+
 ///////////////////
 // LexicalEnv
 ///////////////////

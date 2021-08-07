@@ -916,6 +916,104 @@ std::unordered_map<RegId, UseDefInfo, RegId::hash> SSA::get_use_def_info(
   return result;
 }
 
+namespace {
+
+VariableNames::VarInfo* try_lookup_read(VariableNames* in, RegId var_id) {
+  auto kv = in->read_vars.find(var_id.reg);
+  if (kv != in->read_vars.end()) {
+    if ((int)kv->second.size() > var_id.id) {
+      auto& entry = kv->second.at(var_id.id);
+      if (entry.initialized) {
+        return &entry;
+      }
+    }
+  }
+  return nullptr;
+}
+
+VariableNames::VarInfo* try_lookup_write(VariableNames* in, RegId var_id) {
+  auto kv = in->write_vars.find(var_id.reg);
+  if (kv != in->write_vars.end()) {
+    if ((int)kv->second.size() > var_id.id) {
+      auto& entry = kv->second.at(var_id.id);
+      if (entry.initialized) {
+        return &entry;
+      }
+    }
+  }
+  return nullptr;
+}
+
+bool is_128bit(const TP_Type& type, const DecompilerTypeSystem& dts) {
+  if (dts.ts.tc(TypeSpec("uint128"), type.typespec())) {
+    return true;
+  }
+
+  if (dts.ts.tc(TypeSpec("int128"), type.typespec())) {
+    return true;
+  }
+
+  if (type.kind == TP_Type::Kind::PCPYUD_BITFIELD) {
+    return true;
+  }
+
+  if (type.kind == TP_Type::Kind::PCPYUD_BITFIELD_AND) {
+    return true;
+  }
+
+  return false;
+}
+
+void promote_register_class(const Function& func,
+                            VariableNames* result,
+                            const DecompilerTypeSystem& dts) {
+  enum class PromotionType { PROMOTE_64, PROMOTE_128 };
+  std::unordered_map<RegId, PromotionType, RegId::hash> promote_map;
+  // here we loop through ops and find cases where we need to adjust types.
+
+  auto& ao = func.ir2.atomic_ops;
+  for (size_t op_idx = 0; op_idx < ao->ops.size() - 1; op_idx++) {
+    auto* op = ao->ops.at(op_idx).get();
+    auto op_as_asm = dynamic_cast<AsmOp*>(op);
+    if (op_as_asm) {
+      auto& instr = op_as_asm->instruction();
+      if (gOpcodeInfo[(int)instr.kind].gpr_128) {
+        for (auto& reg : op_as_asm->write_regs()) {
+          if (reg.get_kind() == Reg::GPR) {
+            auto& info = result->lookup(reg, op_idx, AccessMode::WRITE);
+            promote_map[info.reg_id] = PromotionType::PROMOTE_128;
+          }
+        }
+
+        for (auto& reg : op_as_asm->read_regs()) {
+          if (reg.get_kind() == Reg::GPR) {
+            auto& info = result->lookup(reg, op_idx, AccessMode::READ);
+            promote_map[info.reg_id] = PromotionType::PROMOTE_128;
+          }
+        }
+      }
+    }
+  }
+
+  for (const auto& promotion : promote_map) {
+    // fmt::print("Promote {} to {}\n", promotion.first.print(), "uint128");
+
+    // first reads:
+    auto read_info = try_lookup_read(result, promotion.first);
+    auto write_info = try_lookup_write(result, promotion.first);
+    assert(read_info || write_info);
+
+    if (read_info && !is_128bit(read_info->type, dts)) {
+      read_info->type = TP_Type::make_from_ts("uint128");
+    }
+
+    if (write_info && !is_128bit(write_info->type, dts)) {
+      write_info->type = TP_Type::make_from_ts("uint128");
+    }
+  }
+}
+}  // namespace
+
 std::optional<VariableNames> run_variable_renaming(const Function& function,
                                                    const RegUsageInfo& rui,
                                                    const FunctionAtomicOps& ops,
@@ -1001,6 +1099,8 @@ std::optional<VariableNames> run_variable_renaming(const Function& function,
     //
     auto result = ssa.get_vars();
     result.use_def_info = ssa.get_use_def_info(ssa_mapping);
+
+    promote_register_class(function, &result, dts);
     return result;
   } else {
     return std::nullopt;

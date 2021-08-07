@@ -647,7 +647,14 @@ BitFieldDef BitFieldDef::from_constant(const BitFieldConstantDef& constant, Form
   BitFieldDef bfd;
   bfd.field_name = constant.field_name;
   bfd.is_signed = constant.is_signed;
-  if (constant.enum_constant) {
+  if (constant.nested_field) {
+    std::vector<BitFieldDef> defs;
+    for (auto& x : constant.nested_field->fields) {
+      defs.push_back(BitFieldDef::from_constant(x, pool));
+    }
+    bfd.value = pool.alloc_single_element_form<BitfieldStaticDefElement>(
+        nullptr, constant.nested_field->field_type, defs);
+  } else if (constant.enum_constant) {
     bfd.value =
         pool.alloc_single_element_form<ConstantTokenElement>(nullptr, *constant.enum_constant);
   } else {

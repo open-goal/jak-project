@@ -35,10 +35,7 @@
      (object-new
       allocation
       type-to-make
-      (+
-       (+ (/ (logand -8 (+ length 7)) 8) -1)
-       (the-as int (-> type-to-make size))
-       )
+      (+ (/ (logand -8 (+ length 7)) 8) -1 (-> type-to-make size))
       )
      )
     )
@@ -58,38 +55,26 @@
 (defmethod asize-of bit-array ((obj bit-array))
   (the-as
    int
-   (+
-    (-> obj type size)
-    (the-as uint (/ (logand -8 (+ (-> obj allocated-length) 7)) 8))
-    )
+   (+ (-> obj type size) (/ (logand -8 (+ (-> obj allocated-length) 7)) 8))
    )
   )
 
 ;; definition for method 9 of type bit-array
 (defmethod get-bit bit-array ((obj bit-array) (arg0 int))
   (let ((v1-2 (-> obj bytes (/ arg0 8))))
-   (nonzero? (logand v1-2 (the-as uint (ash 1 (logand arg0 7)))))
+   (nonzero? (logand v1-2 (ash 1 (logand arg0 7))))
    )
   )
 
 ;; definition for method 10 of type bit-array
 (defmethod clear-bit bit-array ((obj bit-array) (arg0 int))
-  (set!
-   (-> obj bytes (/ arg0 8))
-   (logand
-    (-> obj bytes (/ arg0 8))
-    (the-as uint (lognot (ash 1 (logand arg0 7))))
-    )
-   )
+  (logclear! (-> obj bytes (/ arg0 8)) (ash 1 (logand arg0 7)))
   0
   )
 
 ;; definition for method 11 of type bit-array
 (defmethod set-bit bit-array ((obj bit-array) (arg0 int))
-  (set!
-   (-> obj bytes (/ arg0 8))
-   (logior (-> obj bytes (/ arg0 8)) (the-as uint (ash 1 (logand arg0 7))))
-   )
+  (logior! (-> obj bytes (/ arg0 8)) (ash 1 (logand arg0 7)))
   0
   )
 
@@ -691,8 +676,8 @@
   :size-assert         #x28
   :flag-assert         #xb00000028
   (:methods
-    (TODO-RENAME-HUGE-9 (_type_ vector) none 9)
-    (TODO-RENAME-10 (_type_ vector vector) float 10)
+    (debug-draw (_type_ vector) none 9)
+    (ray-capsule-intersect (_type_ vector vector) float 10)
     )
   )
 
@@ -717,8 +702,8 @@
   :size-assert         #x28
   :flag-assert         #xb00000028
   (:methods
-    (TODO-RENAME-HUGE-9 (_type_ vector) none 9)
-    (TODO-RENAME-10 (_type_ vector vector) float 10)
+    (debug-draw (_type_ vector) none 9)
+    (ray-flat-cyl-intersect (_type_ vector vector) float 10)
     )
   )
 

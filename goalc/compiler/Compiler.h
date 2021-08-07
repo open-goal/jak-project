@@ -79,6 +79,15 @@ class Compiler {
   std::unique_ptr<ReplWrapper> m_repl;
   MakeSystem m_make;
 
+  struct DebugStats {
+    int num_spills = 0;
+    int num_spills_v1 = 0;
+    int num_moves_eliminated = 0;
+    int total_funcs = 0;
+    int funcs_requiring_v1_allocator = 0;
+  } m_debug_stats;
+
+  void setup_goos_forms();
   std::set<std::string> lookup_symbol_infos_starting_with(const std::string& prefix) const;
   std::vector<SymbolInfo>* lookup_exact_name_info(const std::string& name) const;
   bool get_true_or_false(const goos::Object& form, const goos::Object& boolean);
@@ -457,11 +466,29 @@ class Compiler {
   Val* compile_asm_pw_sll(const goos::Object& form, const goos::Object& rest, Env* env);
   Val* compile_asm_pw_srl(const goos::Object& form, const goos::Object& rest, Env* env);
   Val* compile_asm_pw_sra(const goos::Object& form, const goos::Object& rest, Env* env);
-  Val* compile_asm_pextlw(const goos::Object& form, const goos::Object& rest, Env* env);
+
+  Val* compile_asm_por(const goos::Object& form, const goos::Object& rest, Env* env);
+  Val* compile_asm_pnor(const goos::Object& form, const goos::Object& rest, Env* env);
+  Val* compile_asm_pand(const goos::Object& form, const goos::Object& rest, Env* env);
+
+  Val* compile_asm_pceqb(const goos::Object& form, const goos::Object& rest, Env* env);
+  Val* compile_asm_pceqh(const goos::Object& form, const goos::Object& rest, Env* env);
+  Val* compile_asm_pceqw(const goos::Object& form, const goos::Object& rest, Env* env);
+
+  Val* compile_asm_pcgtb(const goos::Object& form, const goos::Object& rest, Env* env);
+  Val* compile_asm_pcgth(const goos::Object& form, const goos::Object& rest, Env* env);
+  Val* compile_asm_pcgtw(const goos::Object& form, const goos::Object& rest, Env* env);
+
+  Val* compile_asm_pextub(const goos::Object& form, const goos::Object& rest, Env* env);
+  Val* compile_asm_pextuh(const goos::Object& form, const goos::Object& rest, Env* env);
   Val* compile_asm_pextuw(const goos::Object& form, const goos::Object& rest, Env* env);
+
+  Val* compile_asm_pextlb(const goos::Object& form, const goos::Object& rest, Env* env);
+  Val* compile_asm_pextlh(const goos::Object& form, const goos::Object& rest, Env* env);
+  Val* compile_asm_pextlw(const goos::Object& form, const goos::Object& rest, Env* env);
+
   Val* compile_asm_pcpyud(const goos::Object& form, const goos::Object& rest, Env* env);
   Val* compile_asm_pcpyld(const goos::Object& form, const goos::Object& rest, Env* env);
-  Val* compile_asm_pceqw(const goos::Object& form, const goos::Object& rest, Env* env);
   Val* compile_asm_ppach(const goos::Object& form, const goos::Object& rest, Env* env);
   Val* compile_asm_psubw(const goos::Object& form, const goos::Object& rest, Env* env);
   Val* compile_asm_xorp(const goos::Object& form, const goos::Object& rest, Env* env);
@@ -499,6 +526,9 @@ class Compiler {
                                          Env* env);
   Val* compile_load_project(const goos::Object& form, const goos::Object& rest, Env* env);
   Val* compile_make(const goos::Object& form, const goos::Object& rest, Env* env);
+  Val* compile_print_debug_compiler_stats(const goos::Object& form,
+                                          const goos::Object& rest,
+                                          Env* env);
 
   // ControlFlow
   Condition compile_condition(const goos::Object& condition, Env* env, bool invert);

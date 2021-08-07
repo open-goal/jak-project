@@ -454,6 +454,13 @@ goos::Object SetFormFormElement::to_form_internal(const Env& env) const {
 
 goos::Object SetFormFormElement::to_form_for_define(const Env& env) const {
   if (m_cast_for_define) {
+    // for vu-function, we just put a 0. These aren't supported
+    if (*m_cast_for_define == TypeSpec("vu-function")) {
+      return pretty_print::build_list(
+          fmt::format("define"), m_dst->to_form(env),
+          pretty_print::build_list(fmt::format("the-as {}", m_cast_for_define->print()),
+                                   pretty_print::to_symbol("0")));
+    }
     return pretty_print::build_list(
         fmt::format("define"), m_dst->to_form(env),
         pretty_print::build_list(fmt::format("the-as {}", m_cast_for_define->print()),
@@ -1739,14 +1746,26 @@ std::string fixed_operator_to_string(FixedOperatorKind kind) {
       return "fmax";
     case FixedOperatorKind::LOGAND:
       return "logand";
+    case FixedOperatorKind::LOGAND_IN_PLACE:
+      return "logand!";
     case FixedOperatorKind::LOGIOR:
       return "logior";
+    case FixedOperatorKind::LOGIOR_IN_PLACE:
+      return "logior!";
     case FixedOperatorKind::LOGXOR:
       return "logxor";
     case FixedOperatorKind::LOGNOR:
       return "lognor";
     case FixedOperatorKind::LOGNOT:
       return "lognot";
+    case FixedOperatorKind::LOGCLEAR:
+      return "logclear";
+    case FixedOperatorKind::LOGCLEAR_IN_PLACE:
+      return "logclear!";
+    case FixedOperatorKind::LOGTEST:
+      return "logtest?";
+    case FixedOperatorKind::LOGTESTA:
+      return "logtesta?";
     case FixedOperatorKind::SHL:
       return "shl";
     case FixedOperatorKind::SHR:
@@ -1801,6 +1820,8 @@ std::string fixed_operator_to_string(FixedOperatorKind kind) {
       return "vector-!";
     case FixedOperatorKind::VECTOR_PLUS:
       return "vector+!";
+    case FixedOperatorKind::VECTOR_CROSS:
+      return "vector-cross!";
     case FixedOperatorKind::VECTOR_FLOAT_PRODUCT:
       return "vector-float*!";
     case FixedOperatorKind::L32_NOT_FALSE_CBOOL:
@@ -2596,6 +2617,10 @@ goos::Object StackStructureDefElement::to_form_internal(const Env&) const {
     case StackStructureHint::ContainerType::NONE:
       return pretty_print::build_list(
           fmt::format("new 'stack-no-clear '{}", m_entry.ref_type.print()));
+    case StackStructureHint::ContainerType::INLINE_ARRAY:
+      return pretty_print::build_list(fmt::format("new 'stack-no-clear 'inline-array '{} {}",
+                                                  m_entry.ref_type.get_single_arg().print(),
+                                                  m_entry.hint.container_size));
     default:
       assert(false);
   }
