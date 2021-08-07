@@ -31,6 +31,10 @@
 #include "common/log/log.h"
 #include "common/util/Timer.h"
 #include "game/graphics/sceGraphicsInterface.h"
+#include "game/graphics/dma_reader.h"
+#include "game/graphics/gfx.h"
+#include "game/graphics/dma/dma_chain_read.h"
+#include "game/graphics/dma/dma_copy.h"
 
 #include "game/system/vm/vm.h"
 using namespace ee;
@@ -435,8 +439,8 @@ void InstallDebugHandler() {
   assert(false);
 }
 
-void send_gfx_dma_chain(u32 bank, u32 chain) {
-
+void send_gfx_dma_chain(u32 /*bank*/, u32 chain) {
+  Gfx::send_chain(g_ee_main_mem, chain);
 }
 
 /*!

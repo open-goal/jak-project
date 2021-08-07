@@ -20,8 +20,7 @@ void Loop(std::function<bool()> f);
 u32 Exit();
 
 u32 vsync();
-void wait_for_render_completion();
-bool is_initialized();
+void send_chain(const void* data, u32 offset);
 
 }  // namespace Gfx
 

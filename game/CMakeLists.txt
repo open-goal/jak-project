@@ -71,9 +71,14 @@ set(RUNTIME_SOURCE
         overlord/srpc.cpp
         overlord/ssound.cpp
         overlord/stream.cpp
+        graphics/dma/dma.cpp
         graphics/gfx.cpp
         graphics/display.cpp
         graphics/sceGraphicsInterface.cpp
+        graphics/dma/dma_copy.cpp
+        graphics/dma_reader.cpp
+        graphics/opengl_renderer/OpenGLRenderer.cpp
+        graphics/opengl_renderer/Shader.cpp
         system/vm/dmac.cpp
         system/vm/vm.cpp)
 

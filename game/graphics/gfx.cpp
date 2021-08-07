@@ -7,19 +7,34 @@
 #include <functional>
 #include <memory>
 #include <mutex>
+#include <chrono>
 #include <condition_variable>
 #include "common/log/log.h"
 #include "game/runtime.h"
+#include "game/graphics/dma/dma_copy.h"
 #include "display.h"
-
-#include "opengl.h"
+#include "common/goal_constants.h"
+#include "common/util/Timer.h"
+#include "game/graphics/opengl_renderer/OpenGLRenderer.h"
 
 namespace Gfx {
 
 struct GraphicsData {
+  // vsync
   std::mutex sync_mutex;
   std::condition_variable sync_cv;
+
+  // dma chain transfer
+  std::mutex dma_mutex;
+  std::condition_variable dma_cv;
   u64 frame_idx = 0;
+  bool has_data_to_render = false;
+  FixedChunkDmaCopier dma_copier;
+
+  // temporary opengl renderer
+  OpenGLRenderer ogl_renderer;
+
+  GraphicsData() : dma_copier(EE_MAIN_MEM_SIZE) {}
 };
 
 std::unique_ptr<GraphicsData> g_gfx_data;
@@ -55,15 +70,40 @@ void Loop(std::function<bool()> f) {
   while (f()) {
     // run display-specific things
     if (Display::display) {
-      // lg::debug("run display");
+      // pre-render setup
       glfwMakeContextCurrent(Display::display);
 
-      // render graphics
-      glClear(GL_COLOR_BUFFER_BIT);
+      // wait for a copied chain.
+      bool got_chain = false;
+      {
+        std::unique_lock<std::mutex> lock(g_gfx_data->dma_mutex);
+        // note: there's a timeout here. If the engine is messed up and not sending us frames,
+        // we still want to run the glfw loop.
+        got_chain = g_gfx_data->dma_cv.wait_for(lock, std::chrono::milliseconds(20),
+                                                [=] { return g_gfx_data->has_data_to_render; });
+      }
 
+      // render that chain.
+      if (got_chain) {
+        auto& chain = g_gfx_data->dma_copier.get_last_result();
+        int width, height;
+        glfwGetFramebufferSize(Display::display, &width, &height);
+        g_gfx_data->ogl_renderer.render(DmaFollower(chain.data.data(), chain.start_offset), width,
+                                        height);
+      }
+
+      // before vsync, mark the chain as rendered.
+      {
+        // should be fine to remove this mutex if the game actually waits for vsync to call
+        // send_chain again. but let's be safe for now.
+        std::unique_lock<std::mutex> lock(g_gfx_data->dma_mutex);
+        g_gfx_data->has_data_to_render = false;
+      }
+
+      // actual vsync
       glfwSwapBuffers(Display::display);
 
-      // toggle even odd and wake up anybody waiting on vsync.
+      // toggle even odd and wake up engine waiting on vsync.
       {
         std::unique_lock<std::mutex> lock(g_gfx_data->sync_mutex);
         g_gfx_data->frame_idx++;
@@ -98,6 +138,7 @@ bool is_initialized() {
 
 /*!
  * Wait for the next vsync. Returns 0 or 1 depending on if frame is even or odd.
+ * Called from the game thread, on a GOAL stack.
  */
 u32 vsync() {
   if (!g_gfx_data) {
@@ -109,6 +150,40 @@ u32 vsync() {
   g_gfx_data->sync_cv.wait(lock, [=] { return g_gfx_data->frame_idx > init_frame; });
 
   return g_gfx_data->frame_idx & 1;
+}
+
+/*!
+ * Send DMA to the renderer.
+ * Called from the game thread, on a GOAL stack.
+ */
+void send_chain(const void* data, u32 offset) {
+  if (g_gfx_data) {
+    std::unique_lock<std::mutex> lock(g_gfx_data->dma_mutex);
+    if (g_gfx_data->has_data_to_render) {
+      lg::error(
+          "Gfx::send_chain called when the graphics renderer has pending data. Was this called "
+          "multiple times per frame?");
+      return;
+    }
+
+    // we copy the dma data and give a copy of it to the render.
+    // the copy has a few advantages:
+    // - if the game code has a bug and corrupts the DMA buffer, the renderer won't see it.
+    // - the copied DMA is much smaller than the entire game memory, so it can be dumped to a file
+    //    separate of the entire RAM.
+    // - it verifies the DMA data is valid early on.
+    // but it may also be pretty expensive. Both the renderer and the game wait on this to complete.
+
+    // The renderers should just operate on DMA chains, so eliminating this step in the future may
+    // be easy.
+
+    // Timer copy_timer;
+    g_gfx_data->dma_copier.run(data, offset);
+    // fmt::print("copy took {:.3f}ms\n", copy_timer.getMs());
+
+    g_gfx_data->has_data_to_render = true;
+    g_gfx_data->dma_cv.notify_all();
+  }
 }
 
 }  // namespace Gfx
