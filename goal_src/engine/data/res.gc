@@ -41,7 +41,6 @@ This is updated from the entity system used in Crash 2, which had most of these 
 (defmethod print res-tag ((obj res-tag))
   "print a res-tag."
 
-  (let ((obj obj))
     (if (res-ref? obj)
 
       (format #t "#<res-tag :name ~A :key-frame ~f :elt-type ~A :elt-count ~D>"
@@ -60,7 +59,6 @@ This is updated from the entity system used in Crash 2, which had most of these 
       )
 
     obj
-    )
   )
 
 (defmethod length res-tag ((obj res-tag))
@@ -69,7 +67,7 @@ This is updated from the entity system used in Crash 2, which had most of these 
   (the int
   (if (res-ref? obj)
 
-    (* (-> obj elt-count) 4)
+    (* (-> obj elt-count) 4) ;; elements are pointers/references to data.
 
     (* (-> obj elt-count) (-> obj elt-type size))
     )
@@ -687,6 +685,148 @@ This is updated from the entity system used in Crash 2, which had most of these 
   obj
   )
 
+(defmethod allocate-data-memory-for-tag! res-lump ((obj res-lump) (arg0 res-tag))
+  "Find space for the data described by arg0 in obj.
+   Returns a tag with data-offset set correctly for this res-lump.
+   If the lump already contains memory for the given tag, and it is big enough,
+   it will be reused.  Alignment will be at least 8 bytes.
+   If the input tag has elt-count = 0, it will return a tag for elt-count = 1."
+  (local-vars (resource-mem pointer))
+
+  ;; first, look up the tag to see if it already exists in this res-lump
+  (let ((tag-pair (lookup-tag-idx obj (-> arg0 name) 'exact (-> arg0 key-frame))))
+    (let ((existing-tag (-> obj tag (-> tag-pair lo))))
+      ;; If our existing tag is valid, but our key-frame is NaN, then we forget about it.
+      (if (and (>= (the-as int tag-pair) 0)
+               (!= (-> arg0 key-frame) (-> arg0 key-frame)) ;; check for NaN
+               )
+          (set! tag-pair (new 'static 'res-tag-pair :lo #xffffffff :hi #xffffffff))
+          )
+
+      ;; modify the input to have at least one element
+      (if (zero? (-> arg0 elt-count))
+          (set! (-> arg0 elt-count) 1)
+          )
+
+      ;; next, we try to find some memory
+      (let ((data-size (length arg0))) ;; size in bytes to store the data.
+        (cond
+          ((and (>= (the-as int tag-pair) 0)
+                (>= (the-as uint (length existing-tag)) (the-as uint data-size))
+                )
+           ;; we have enough memory in the existing tag.
+           ;; so we can just reuse it.
+           (set! resource-mem (&+ (-> obj data-base) (-> existing-tag data-offset)))
+
+           ;; but we want at least 8 byte alignment. If this fails, allocate with 16-byte alignment from the top.
+           (when (nonzero? (logand (the-as int resource-mem) 7))
+             (set! resource-mem (logand -16 (&+ (-> obj data-top) 15)))
+             (set! (-> obj data-top) (&+ resource-mem data-size))
+             )
+           )
+          (else
+           ;; the existing tag wasn't there, or it wasn't big enough.
+           ;; just allocate new memory.
+           (set! resource-mem (logand -16 (&+ (-> obj data-top) 15)))
+           (set! (-> obj data-top) (&+ resource-mem data-size))
+           )
+          )
+
+        ;; set our data offset.
+        (set! (-> arg0 data-offset) (&- resource-mem (the-as uint (-> obj data-base))))
+
+        ;; check for overflow of the data memory
+        ;; this will leave things in a bad state.
+        (when (>= (the-as int (&+ resource-mem data-size))
+                  (the-as int (&+ (-> obj data-base) (-> obj data-size)))
+                  )
+          (format 0 "ERROR: attempting to a new tag ~`res-tag`P data of #x~X bytes to ~A, but data memory is full.~%"
+           arg0
+           data-size
+           obj
+           )
+          (return (the-as res-tag #f))
+          )
+        )
+      )
+
+    ;; next step is to add us to the list of tags.
+    (cond
+      ((< (the-as int tag-pair) 0)
+       ;; we couldn't reuse an existing tag. Need to allocate another
+       (cond
+         ((>= (-> obj length) (-> obj allocated-length))
+          ;; but there isn't room for another tag.
+          (format 0 "ERROR: attempting to a new tag ~`res-tag`P to ~A, but tag memory is full.~%"
+           arg0
+           obj
+           )
+          (return (the-as res-tag #f))
+          )
+         (else
+          ;; allocate a new tag and sort, so the binary search works properly.
+          (set! (-> obj tag (-> obj length)) arg0)
+          (set! (-> obj length) (+ (-> obj length) 1))
+          (sort! obj)
+          )
+         )
+       )
+      (else
+       ;; reuse the existing tag.
+       (set! (-> obj tag (-> tag-pair lo)) arg0)
+       )
+      )
+    )
+  arg0
+  )
+
+(defmethod add-data! res-lump ((obj res-lump) (arg0 res-tag) (arg1 pointer))
+  "Given a tag and a pointer to its data, copy it to this res-lump.
+   This doesn't seem to do the right thing if the given tag is a non-inline tag
+   with > 1 element."
+
+  ;; get a tag for this lump with memory for the given tag.
+  (let ((new-tag (allocate-data-memory-for-tag! obj arg0)))
+    (when new-tag
+      ;; get pointer to new tag's memory
+      (let* ((v1-2 obj)
+             (a1-1 new-tag)
+             (tag-mem (&+ (-> v1-2 data-base) (-> a1-1 data-offset)))
+             )
+        (cond
+          ((zero? (-> new-tag inlined?))
+           ;; this seems wrong, it should loop over the length maybe?
+           (length new-tag) ;; unused?
+           (set! (-> (the-as (pointer pointer) tag-mem)) arg1)
+           )
+          (else
+           ;; otherwise, copy the memory.
+           (let ((a2-1 (length new-tag)))
+             (mem-copy! tag-mem arg1 a2-1)
+             )
+           )
+          )
+        )
+      )
+    )
+  obj
+  )
+
+(defmethod add-32bit-data! res-lump ((obj res-lump) (arg0 res-tag) (arg1 object))
+  "Add a single 32-bit value using add-data."
+  (set! (-> arg0 inlined?) 1)
+  (add-data! obj arg0 (& arg1)) ;; note, only 32-bits are spilled to the stack here.
+  #|
+  (local-vars (sv-16 object))
+  (set! sv-16 arg1)
+  (let* ((v1-0 arg0)
+         (a1-4 (copy-and-set-bf v1-0 :inlined? 1))
+         )
+   (add-data! obj a1-4 (& sv-16))
+   )
+   |#
+  )
+
 (defmethod get-curve-data! res-lump ((obj res-lump) (curve-target curve) (points-name symbol) (knots-name symbol) (time float))
   "Read curve data and write it to curve-target. Return #t if both control points and knots data was succesfully read, #f otherwise."
 
@@ -722,10 +862,139 @@ This is updated from the entity system used in Crash 2, which had most of these 
       )
   )
 
-;; method 15 res-lump
-;; method 17 res-lump
-;; method 18 res-lump
-;; mem-usage res-lump
+(define-extern part-group-pointer? (function pointer symbol))
+(declare-type nav-mesh basic)
+(declare-type collide-mesh basic)
+(defmethod mem-usage res-lump ((obj res-lump) (block memory-usage-block) (flags int))
+  "Get the memory usage of this lump and its data"
+  (local-vars (sv-16 int))
+
+  ;; get the name and ID
+  (let ((mem-use-id (mem-usage-id res))
+        (mem-use-name "res")
+        )
+    (cond
+      ((nonzero? (logand flags 256))
+       (set! mem-use-id (mem-usage-id camera))
+       (set! mem-use-name "camera")
+       )
+      ((nonzero? (logand flags 64))
+       (set! mem-use-id (mem-usage-id entity))
+       (set! mem-use-name "entity")
+       )
+      ((nonzero? (logand flags 128))
+       (set! mem-use-id (mem-usage-id ambient))
+       (set! mem-use-name "ambient")
+       )
+      ((nonzero? (logand flags 512))
+       (set! mem-use-id (mem-usage-id art-joint-geo))
+       (set! mem-use-name "art-joint-geo")
+       )
+      )
+
+    ;; set up the block
+    (set! (-> block length) (max (-> block length) (+ mem-use-id 1)))
+    (set! (-> block data mem-use-id name) mem-use-name)
+
+    ;; the lump counts as 1 in the count field
+    (set! (-> block data mem-use-id count) (+ (-> block data mem-use-id count) 1))
+
+    ;; add the size of the lump itself.
+    (let ((obj-size (asize-of obj)))
+      (set! (-> block data mem-use-id used)
+       (+ (-> block data mem-use-id used) obj-size)
+       )
+      (set! (-> block data mem-use-id total)
+       (+ (-> block data mem-use-id total) (logand -16 (+ obj-size 15)))
+       )
+      )
+
+    ;; add the tags
+    (dotimes (tag-idx (-> obj length))
+      (when (zero? (-> obj tag tag-idx inlined?))
+        (let* ((a1-4 obj)
+               (a0-15 tag-idx)
+               (tag-data
+                (the-as basic
+                        (-> (the-as (pointer uint32) (&+ (-> a1-4 data-base) (-> a1-4 tag a0-15 data-offset)))
+                            )
+                        )
+                 )
+               )
+          ;; ref to non-inline data.  Inline data would have been counted above.
+          (when (not (part-group-pointer? (the-as pointer tag-data)))
+            (case (-> (the-as basic tag-data) type) 
+              ((symbol type)
+               )
+              ((string)
+               ;; strings add like a normal object.
+               ;; this seems identical to the else case.
+               (set! (-> block length) (max (-> block length) (+ mem-use-id 1)))
+               (set! (-> block data mem-use-id name) mem-use-name)
+               (set! (-> block data mem-use-id count)
+                     (+ (-> block data mem-use-id count) 1)
+                     )
+               (let ((v1-47 (asize-of tag-data)))
+                 (set! (-> block data mem-use-id used)
+                       (+ (-> block data mem-use-id used) v1-47)
+                       )
+                 (set! (-> block data mem-use-id total)
+                       (+ (-> block data mem-use-id total) (logand -16 (+ v1-47 15)))
+                       )
+                 )
+               )
+              ((nav-mesh collide-mesh)
+               ;; these have their own implementation.
+               (mem-usage tag-data block flags)
+               )
+              ((array)
+               (set! (-> block length) (max (-> block length) (+ mem-use-id 1)))
+               (set! (-> block data mem-use-id name) mem-use-name)
+               (set! (-> block data mem-use-id count)
+                     (+ (-> block data mem-use-id count) 1)
+                     )
+               (let ((v1-63 (asize-of (the-as (array object) tag-data))))
+                 (set! (-> block data mem-use-id used)
+                  (+ (-> block data mem-use-id used) v1-63)
+                  )
+                 (set! (-> block data mem-use-id total)
+                  (+ (-> block data mem-use-id total) (logand -16 (+ v1-63 15)))
+                  )
+                 )
+               ;; call mem usage on all of our children.
+               (set! sv-16 0)
+               (while (< sv-16 (-> (the-as array tag-data) length))
+                 (let ((a0-58 (-> (the-as (array object) tag-data) sv-16)))
+                   ((method-of-type (rtype-of a0-58) mem-usage) a0-58 block flags)
+                   )
+                 (set! sv-16 (+ sv-16 1))
+                 )
+               )
+              (else
+               ;; unknown type.
+               ;; we assume its nothing fancy and use the asize of.
+               (set! (-> block length) (max (-> block length) (+ mem-use-id 1)))
+               (set! (-> block data mem-use-id name) mem-use-name)
+               (set! (-> block data mem-use-id count)
+                (+ (-> block data mem-use-id count) 1)
+                )
+               (let ((v1-88 (asize-of tag-data)))
+                 (set! (-> block data mem-use-id used)
+                  (+ (-> block data mem-use-id used) v1-88)
+                  )
+                 (set! (-> block data mem-use-id total)
+                  (+ (-> block data mem-use-id total) (logand -16 (+ v1-88 15)))
+                  )
+                 )
+               )
+              )
+            )
+          )
+        )
+      )
+    )
+  (the-as res-lump 0)
+  )
 
 
 (define *res-static-buf* (malloc 'global 128))

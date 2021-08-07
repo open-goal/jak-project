@@ -1,5 +1,6 @@
 add_library(common
         SHARED
+        audio/audio_formats.cpp
         cross_os_debug/xdbg.cpp
         cross_sockets/xsocket.cpp
         goos/Interpreter.cpp
@@ -9,9 +10,11 @@ add_library(common
         goos/Reader.cpp
         goos/TextDB.cpp
         goos/ReplUtils.cpp
+        math/geometry.cpp
         log/log.cpp
         type_system/defenum.cpp
         type_system/deftype.cpp
+        type_system/state.cpp
         type_system/Type.cpp
         type_system/TypeFieldLookup.cpp
         type_system/TypeSpec.cpp

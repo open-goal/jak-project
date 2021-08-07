@@ -4,6 +4,7 @@
 #include "srpc.h"
 #include "game/sce/iop.h"
 #include "game/common/loader_rpc_types.h"
+#include "game/common/game_common_types.h"
 #include "common/versions.h"
 #include "sbank.h"
 #include "iso_api.h"
@@ -16,11 +17,16 @@ uint8_t gLoaderBuf[SRPC_MESSAGE_SIZE];
 int32_t gSoundEnable = 1;
 u32 gInfoEE = 0;  // EE address where we should send info on each frame.
 
+// english, french, germain, spanish, italian, japanese, uk.
+static const char* languages[] = {"ENG", "FRE", "GER", "SPA", "ITA", "JAP", "UKE"};
+const char* gLanguage = nullptr;
+
 void srpc_init_globals() {
   memset((void*)&gMusicTweakInfo, 0, sizeof(gMusicTweakInfo));
   memset((void*)gLoaderBuf, 0, sizeof(gLoaderBuf));
   gSoundEnable = 1;
   gInfoEE = 0;
+  gLanguage = languages[(int)Language::English];
 }
 
 // todo Thread_Player
@@ -71,6 +77,11 @@ void* RPC_Loader(unsigned int /*fno*/, void* data, int size) {
           gInfoEE = cmd->irx_version.ee_addr;
           return cmd;
         } break;
+        case SoundCommand::SET_LANGUAGE: {
+          gLanguage = languages[cmd->set_language.langauge_id];
+          printf("IOP language: %s\n", gLanguage);  // added.
+          break;
+        }
         default:
           printf("Unhandled RPC Loader command %d\n", (int)cmd->command);
           assert(false);

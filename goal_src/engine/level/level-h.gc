@@ -5,6 +5,7 @@
 ;; name in dgo: level-h
 ;; dgos: GAME, ENGINE
 
+;; The level system is responsible for loading and managning the two levels.
 
 (defconstant LEVEL_COUNT 2) ;; there are two levels in memory!
 
@@ -64,7 +65,7 @@
    (bsp-mask          uint64    :offset-assert 80) ;; ??
    (bsphere           sphere    :offset-assert 88) ;; boundings sphere of level?
    (buzzer            int32     :offset-assert 92) ;; which task is the scout fly?
-   (bottom-height     float     :offset-assert 96) ;; meters
+   (bottom-height     meters     :offset-assert 96)
    (run-packages      pair      :offset-assert 100) ;; possibly unused?
    (prev-level        basic     :offset-assert 104)
    (next-level        basic     :offset-assert 108)
@@ -75,6 +76,8 @@
   :flag-assert         #x900000074
   )
 
+;; The levels are initialized (called "login") over multiple frames.
+;; The state of this process is stored in a login-state.
 (declare-type drawable basic)
 (deftype login-state (basic)
   ((state int32      :offset-assert 4)
@@ -115,7 +118,7 @@
    (ambient                   entity-ambient-data-array           :offset-assert 288)
    (closest-object            float 9       :offset-assert 292)
    (upload-size               int32 9       :offset-assert 328)
-   (level-distance            float          :offset-assert 364) ; meters
+   (level-distance            meters          :offset-assert 364)
    (inside-sphere?            symbol          :offset-assert 368)
    (inside-boxes?             symbol          :offset-assert 372)
    (display?                  symbol          :offset-assert 376)
@@ -130,7 +133,7 @@
    (vis-self-index            int32           :offset-assert 440)
    (vis-adj-index             int32           :offset-assert 444)
    (vis-buffer                uint8 2048    :offset-assert 448)
-   (mem-usage-block           basic           :offset-assert 2496)
+   (mem-usage-block           memory-usage-block           :offset-assert 2496)
    (mem-usage                 int32           :offset-assert 2500)
    (code-memory-start         pointer          :offset-assert 2504)
    (code-memory-end           pointer          :offset-assert 2508)
@@ -144,12 +147,12 @@
   (:methods
     (deactivate (_type_) _type_ 9)
     (dummy-10 (_type_ int) symbol 10)
-    (dummy-11 (_type_) none 11)
+    (add-irq-to-tex-buckets! (_type_) none 11)
     (unload! (_type_) _type_ 12)
     (bsp-name (_type_) symbol 13)
-    (dummy-14 (_type_) none 14)
+    (dummy-14 (_type_ object) memory-usage-block 14)
     (dummy-15 (_type_ vector) symbol 15)
-    (dummy-16 (_type_) none 16)
+    (dummy-16 (_type_ uint uint) none 16)
     (load-continue (_type_) _type_ 17)
     (load-begin (_type_) _type_ 18)
     (login (_type_) _type_ 19)
@@ -173,25 +176,25 @@
 ;; don't belong to any level, for example to render Jak.
 (declare-type entity-links structure)
 (deftype level-group (basic)
-  ((length          int32                :offset-assert 4)
-   (unknown-level-1 level                :offset-assert 8)
-   (unknown-level-2 level                :offset-assert 12) ;; currently loading
-   (entity-link     entity-links         :offset-assert 16) ;; not sure what's going on here
-   (border?         basic                :offset-assert 20)
-   (vis?            basic                :offset-assert 24)
-   (want-level      basic                :offset-assert 28)
-   (receiving-level basic                :offset-assert 32)
-   (load-commands   pair                 :offset-assert 36)
-   (play?           symbol               :offset-assert 40)
+  ((length           int32                :offset-assert 4)
+   (log-in-level-bsp bsp-header           :offset-assert 8)  ;; level currently logging in
+   (loading-level    level                :offset-assert 12) ;; currently loading
+   (entity-link      entity-links         :offset-assert 16) ;; not sure what's going on here
+   (border?          basic                :offset-assert 20)
+   (vis?             basic                :offset-assert 24)
+   (want-level       basic                :offset-assert 28)
+   (receiving-level  basic                :offset-assert 32)
+   (load-commands    pair                 :offset-assert 36)
+   (play?            symbol               :offset-assert 40)
    ;; there's something? from 40 -> 96.
    (_hack-pad        uint8                :offset 90)
-   (level0          level        :inline :offset-assert 96)
-   (level1          level        :inline :offset-assert 2704)
-   (level-default   level        :inline :offset-assert 5312)
+   (level0           level        :inline :offset-assert 96)
+   (level1           level        :inline :offset-assert 2704)
+   (level-default    level        :inline :offset-assert 5312)
    ;; this actually went earlier,
-   (level           level 3      :inline :offset 96)
+   (level            level 3      :inline :offset 96)
    ;; and this one too. why another one?
-   (data            level 3      :score -1 :inline :offset 96)
+   (data             level 3      :score -1 :inline :offset 96)
    (pad uint32)
    )
   :method-count-assert 27
@@ -203,7 +206,7 @@
     (level-get-for-use (_type_ symbol symbol) level 11)
     (activate-levels! (_type_) int 12)
     (dummy-13 () none 13)
-    (dummy-14 () none 14)
+    (dummy-14 (_type_ object) none 14)
     (dummy-15 () none 15)
     (dummy-16 (_type_) int 16)
     (level-get-target-inside (_type_) level 17)
@@ -222,14 +225,15 @@
 
 (defun-extern level-update-after-load level login-state level)
 
-
+;; Initialize the level structure. This assigns DMA buckets to each level.
+;; TODO: figure out exactly which buckets are used for what.
 (define-extern *level* level-group)
 (if (zero? *level*)
     (set! *level*
           (new 'static 'level-group
                :length 2
-               :unknown-level-1 #f
-               :unknown-level-2 #f
+               :log-in-level-bsp #f
+               :loading-level #f
                :entity-link #f
                :border? #f
                :want-level #f

@@ -6,16 +6,16 @@
 
 #pragma once
 
-#include <unordered_map>
-#include <thread>
-#include <mutex>
 #include <condition_variable>
+#include <cstring>
+#include <mutex>
 #include <queue>
+#include <thread>
+#include <unordered_map>
+#include "DebugInfo.h"
 #include "common/common_types.h"
 #include "common/cross_os_debug/xdbg.h"
 #include "goalc/listener/MemoryMap.h"
-#include "DebugInfo.h"
-#include <cstring>
 
 namespace listener {
 class Listener;
@@ -92,6 +92,7 @@ class Debugger {
 
   InstructionPointerInfo get_rip_info(u64 x86_rip);
   DebugInfo& get_debug_info_for_object(const std::string& object_name);
+  bool knows_object(const std::string& object_name) const;
   const InstructionPointerInfo& get_cached_break_info() { return m_break_info; }
   std::string get_info_about_addr(u32 addr);
   Disassembly disassemble_at_rip(const InstructionPointerInfo& info);

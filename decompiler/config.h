@@ -68,6 +68,9 @@ struct Config {
   std::vector<std::string> object_file_names;
   std::vector<std::string> str_file_names;
 
+  std::string audio_dir_file_name;
+  std::vector<std::string> streamed_audio_file_names;
+
   std::string obj_file_name_map_file;
 
   bool disassemble_code = false;

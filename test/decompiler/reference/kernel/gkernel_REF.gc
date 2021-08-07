@@ -116,17 +116,11 @@
      )
     ((=
       (-> a2-0 heap-cur)
-      (+
-       (+ (+ (-> obj stack-size) -4) (the-as int (-> obj type size)))
-       (the-as int obj)
-       )
+      (+ (+ (-> obj stack-size) -4 (-> obj type size)) (the-as int obj))
       )
      (set!
       (-> a2-0 heap-cur)
-      (the-as
-       pointer
-       (+ (+ (+ arg0 -4) (the-as int (-> obj type size))) (the-as int obj))
-       )
+      (the-as pointer (+ (+ arg0 -4 (-> obj type size)) (the-as int obj)))
       )
      (set! (-> obj stack-size) arg0)
      )
@@ -193,7 +187,7 @@
 ;; definition for method 5 of type cpu-thread
 ;; INFO: Return type mismatch uint vs int.
 (defmethod asize-of cpu-thread ((obj cpu-thread))
-  (the-as int (+ (-> obj type size) (the-as uint (-> obj stack-size))))
+  (the-as int (+ (-> obj type size) (-> obj stack-size)))
   )
 
 ;; definition for function remove-exit
@@ -209,31 +203,31 @@
 ;; definition (debug) for function stream<-process-mask
 (defun-debug stream<-process-mask ((arg0 object) (arg1 process-mask))
   (let ((s4-0 arg1))
-   (if (= (logand #x1000000 (the-as int s4-0)) (process-mask death))
+   (if (= (logand #x1000000 s4-0) (process-mask death))
     (format arg0 "death ")
     )
-   (if (= (logand #x800000 (the-as int s4-0)) (process-mask attackable))
+   (if (= (logand #x800000 s4-0) (process-mask attackable))
     (format arg0 "attackable ")
     )
-   (if (= (logand #x400000 (the-as int s4-0)) (process-mask projectile))
+   (if (= (logand #x400000 s4-0) (process-mask projectile))
     (format arg0 "projectile ")
     )
-   (if (= (logand #x200000 (the-as int s4-0)) (process-mask entity))
+   (if (= (logand #x200000 s4-0) (process-mask entity))
     (format arg0 "entity ")
     )
-   (if (= (logand #x100000 (the-as int s4-0)) (process-mask ambient))
+   (if (= (logand #x100000 s4-0) (process-mask ambient))
     (format arg0 "ambient ")
     )
-   (if (= (logand #x80000 (the-as int s4-0)) (process-mask platform))
+   (if (= (logand #x80000 s4-0) (process-mask platform))
     (format arg0 "platform ")
     )
-   (if (= (logand #x40000 (the-as int s4-0)) (process-mask camera))
+   (if (= (logand #x40000 s4-0) (process-mask camera))
     (format arg0 "camera ")
     )
-   (if (= (logand #x20000 (the-as int s4-0)) (process-mask enemy))
+   (if (= (logand #x20000 s4-0) (process-mask enemy))
     (format arg0 "enemy ")
     )
-   (if (= (logand #x10000 (the-as int s4-0)) (process-mask collectable))
+   (if (= (logand #x10000 s4-0) (process-mask collectable))
     (format arg0 "collectable ")
     )
    (if (= (logand s4-0 (process-mask crate)) (process-mask crate))
@@ -311,7 +305,7 @@
    (set! (-> v0-0 brother) (the-as (pointer process-tree) #f))
    (set! (-> v0-0 child) (the-as (pointer process-tree) #f))
    (set! (-> v0-0 self) v0-0)
-   (set! (-> v0-0 ppointer) (&-> v0-0 self))
+   (set! (-> v0-0 ppointer) (the-as (pointer process) (&-> v0-0 self)))
    v0-0
    )
   )
@@ -364,7 +358,7 @@
                (object-new
                 allocation
                 type-to-make
-                (the-as int (+ (-> process size) (the-as uint arg1)))
+                (the-as int (+ (-> process size) arg1))
                 )
                (+ (the-as int allocation) 4)
                )
@@ -404,7 +398,10 @@
    (set! (-> (the-as process v0-0) brother) (the-as (pointer process-tree) #f))
    (set! (-> (the-as process v0-0) child) (the-as (pointer process-tree) #f))
    (set! (-> (the-as process v0-0) self) (the-as process v0-0))
-   (set! (-> (the-as process v0-0) ppointer) (&-> (the-as process v0-0) self))
+   (set!
+    (-> (the-as process v0-0) ppointer)
+    (the-as (pointer process) (&-> (the-as process v0-0) self))
+    )
    (the-as process v0-0)
    )
   )
@@ -470,7 +467,7 @@
   (format #t "~Theap-top: #x~X~%" (-> obj heap-top))
   (format #t "~Theap-cur: #x~X~%" (-> obj heap-cur))
   (let ((s5-0 *print-column*))
-   (set! *print-column* (+ *print-column* (the-as uint 64)))
+   (set! *print-column* (+ *print-column* 64))
    (format #t "----~%")
    (inspect-process-heap obj)
    (format #t "----~%")
@@ -484,7 +481,7 @@
 ;; definition for method 5 of type process
 ;; INFO: Return type mismatch uint vs int.
 (defmethod asize-of process ((obj process))
-  (the-as int (+ (-> process size) (the-as uint (-> obj allocated-length))))
+  (the-as int (+ (-> process size) (-> obj allocated-length)))
   )
 
 ;; definition for method 2 of type process
@@ -545,7 +542,7 @@
    (set! (-> s3-0 brother) (the-as (pointer process-tree) #f))
    (set! (-> s3-0 child) (the-as (pointer process-tree) #f))
    (set! (-> s3-0 self) s3-0)
-   (set! (-> s3-0 ppointer) (&-> s3-0 self))
+   (set! (-> s3-0 ppointer) (the-as (pointer process) (&-> s3-0 self)))
    (dotimes (s2-1 arg0)
     (let ((s1-0 (-> s3-0 child))
           (v1-5 ((method-of-type process new) allocation process 'dead arg1))
@@ -638,10 +635,7 @@
       type-to-make
       (the-as
        int
-       (+
-        (+ (-> type-to-make size) (the-as uint (logand -16 (+ (* 12 arg1) 15))))
-        (the-as uint arg2)
-        )
+       (+ (-> type-to-make size) (logand -16 (+ (* 12 arg1) 15)) arg2)
        )
       )
      )
@@ -653,7 +647,7 @@
    (set! (-> obj brother) (the-as (pointer process-tree) #f))
    (set! (-> obj child) (the-as (pointer process-tree) #f))
    (set! (-> obj self) obj)
-   (set! (-> obj ppointer) (&-> obj self))
+   (set! (-> obj ppointer) (the-as (pointer process) (&-> obj self)))
    (countdown (v1-4 arg1)
     (let ((a0-4 (-> obj process-list v1-4)))
      (set! (-> a0-4 process) *null-process*)
@@ -673,7 +667,7 @@
    (set! (-> obj first-shrink) #f)
    (set!
     (-> obj heap base)
-    (the-as pointer (logand -16 (+ (+ (the-as int obj) 115) (* 12 arg1))))
+    (the-as pointer (logand -16 (+ (the-as int obj) 115 (* 12 arg1))))
     )
    (set! (-> obj heap current) (-> obj heap base))
    (set! (-> obj heap top) (&+ (-> obj heap base) arg2))
@@ -690,10 +684,7 @@
   ((obj dead-pool-heap) (arg0 dead-pool-heap-rec))
   (the-as pointer (if (-> arg0 process)
                    (+
-                    (+
-                     (+ (-> arg0 process allocated-length) -4)
-                     (the-as int (-> process size))
-                     )
+                    (+ (-> arg0 process allocated-length) -4 (-> process size))
                     (the-as int (-> arg0 process))
                     )
                    (-> obj heap base)
@@ -722,14 +713,14 @@
       )
      )
     )
-   (else
-    (if (-> arg0 next)
-     (&-
-      (the-as pointer (-> arg0 next process))
-      (the-as uint (&+ (-> obj heap base) 4))
-      )
-     (&- (-> obj heap top) (the-as uint (-> obj heap base)))
+   ((-> arg0 next)
+    (&-
+     (the-as pointer (-> arg0 next process))
+     (the-as uint (&+ (-> obj heap base) 4))
      )
+    )
+   (else
+    (&- (-> obj heap top) (the-as uint (-> obj heap base)))
     )
    )
   )
@@ -858,14 +849,7 @@
   (let ((s4-0 (-> obj dead-list next))
         (s3-0 (the-as process #f))
         )
-   (let
-    ((s1-0
-      (find-gap-by-size
-       obj
-       (the-as int (+ (-> process size) (the-as uint arg1)))
-       )
-      )
-     )
+   (let ((s1-0 (find-gap-by-size obj (the-as int (+ (-> process size) arg1)))))
     (cond
      ((and s4-0 s1-0)
       (set! (-> obj dead-list next) (-> s4-0 next))
@@ -972,7 +956,7 @@
     (set! (-> s5-1 2 mask) (the-as process-mask (-> s5-1 1)))
     (set! (-> obj alive-list prev) (the-as dead-pool-heap-rec (-> s5-1 1)))
     )
-   (set! (-> s5-1 2) (the-as process-tree (-> obj dead-list next)))
+   (set! (-> s5-1 2) (the-as process (-> obj dead-list next)))
    (set! (-> obj dead-list next) (the-as dead-pool-heap-rec s5-1))
    (set! (-> s5-1 0) *null-process*)
    )
@@ -987,7 +971,7 @@
     (when
      (not
       (or
-       (nonzero? (logand (-> arg0 mask) (process-mask heap-shrunk)))
+       (logtest? (-> arg0 mask) (process-mask heap-shrunk))
        (and (not (-> arg0 next-state)) (not (-> arg0 state)))
        )
       )
@@ -1000,7 +984,7 @@
       (< (the-as int arg0) (the-as int (gap-location obj (-> obj first-gap))))
       (set! (-> obj first-gap) (find-gap obj (the-as dead-pool-heap-rec s5-0)))
       )
-     (set! (-> arg0 mask) (logior (-> arg0 mask) (process-mask heap-shrunk)))
+     (logior! (-> arg0 mask) (process-mask heap-shrunk))
      )
     (if (= (-> obj first-shrink) s5-0)
      (set! (-> obj first-shrink) (the-as dead-pool-heap-rec (-> s5-0 2)))
@@ -1058,7 +1042,7 @@
        (shrink-heap obj s3-0)
        (relocate s3-0 (- s2-0))
        (set! (-> obj first-gap) (find-gap obj s4-1))
-       (set! (-> obj compact-count) (+ (-> obj compact-count) 1))
+       (+! (-> obj compact-count) 1)
        )
       )
      )
@@ -1131,12 +1115,13 @@
 ;; INFO: Return type mismatch process-tree vs process.
 (defun process-by-name ((arg0 object) (arg1 process-tree))
   (set! *global-search-name* (the-as basic arg0))
-  (the-as
-   process
-   (search-process-tree
-    arg1
-    (lambda ((arg0 process)) (name= (-> arg0 name) *global-search-name*))
-    )
+  (the-as process (search-process-tree arg1 (lambda ((arg0 process))
+                                             (name=
+                                              (-> arg0 name)
+                                              *global-search-name*
+                                              )
+                                             )
+                   )
    )
   )
 
@@ -1144,25 +1129,28 @@
 ;; INFO: Return type mismatch process-tree vs process.
 (defun process-not-name ((arg0 object) (arg1 process-tree))
   (set! *global-search-name* (the-as basic arg0))
-  (the-as
-   process
-   (search-process-tree
-    arg1
-    (lambda ((arg0 process)) (not (name= (-> arg0 name) *global-search-name*)))
-    )
+  (the-as process (search-process-tree arg1 (lambda ((arg0 process))
+                                             (not
+                                              (name=
+                                               (-> arg0 name)
+                                               *global-search-name*
+                                               )
+                                              )
+                                             )
+                   )
    )
   )
 
 ;; definition for function process-count
 (defun process-count ((arg0 process-tree))
   (set! *global-search-count* 0)
-  (iterate-process-tree
-   arg0
-   (lambda
-    ((arg0 process))
-    (set! *global-search-count* (+ *global-search-count* 1))
-    #t
-    )
+  (iterate-process-tree arg0 (lambda ((arg0 process))
+                              (set!
+                               *global-search-count*
+                               (+ *global-search-count* 1)
+                               )
+                              #t
+                              )
    *null-kernel-context*
    )
   *global-search-count*
@@ -1185,12 +1173,13 @@
   (local-vars (a0-1 process-tree))
   (set! *global-search-name* (the-as basic arg0))
   (while (begin
-          (set!
-           a0-1
-           (search-process-tree
-            arg1
-            (lambda ((arg0 process)) (= (-> arg0 type) *global-search-name*))
-            )
+          (set! a0-1 (search-process-tree arg1 (lambda ((arg0 process))
+                                                (=
+                                                 (-> arg0 type)
+                                                 *global-search-name*
+                                                 )
+                                                )
+                      )
            )
           a0-1
           )
@@ -1216,12 +1205,13 @@
   (local-vars (a0-1 process-tree))
   (set! *global-search-name* (the-as basic arg0))
   (while (begin
-          (set!
-           a0-1
-           (search-process-tree
-            arg1
-            (lambda ((arg0 process)) (!= (-> arg0 type) *global-search-name*))
-            )
+          (set! a0-1 (search-process-tree arg1 (lambda ((arg0 process))
+                                                (!=
+                                                 (-> arg0 type)
+                                                 *global-search-name*
+                                                 )
+                                                )
+                      )
            )
           a0-1
           )
@@ -1241,10 +1231,7 @@
   ((arg0 process-tree) (arg1 (function object object)) (arg2 kernel-context))
   (let
    ((s4-0
-     (or
-      (nonzero? (logand (-> arg0 mask) (process-mask process-tree)))
-      (arg1 arg0)
-      )
+     (or (logtest? (-> arg0 mask) (process-mask process-tree)) (arg1 arg0))
      )
     )
    (cond
@@ -1272,10 +1259,10 @@
   (let
    ((s3-0
      (or
-      (nonzero? (logand (-> arg0 mask) (process-mask process-tree)))
+      (logtest? (-> arg0 mask) (process-mask process-tree))
       (not
        (and
-        (zero? (logand (-> arg2 prevent-from-run) (the-as uint (-> arg0 mask))))
+        (zero? (logand (-> arg2 prevent-from-run) (-> arg0 mask)))
         (run-logic? arg0)
         )
        )
@@ -1340,98 +1327,103 @@
    (set! *enable-method-set* (+ *enable-method-set* -1))
    0
    )
-  (execute-process-tree
-   *active-pool*
-   (lambda ((arg0 process)) (let ((s5-0 *kernel-context*)
-                                  (v1-0 (-> arg0 status))
-                                  )
-                             (cond
-                              ((or (= v1-0 'waiting-to-run) (= v1-0 'suspended))
-                               (set! (-> s5-0 current-process) arg0)
-                               (cond
-                                ((nonzero?
-                                  (logand (-> arg0 mask) (process-mask pause))
-                                  )
-                                 (set! *stdcon* *stdcon1*)
-                                 (set! *debug-draw-pauseable* #t)
-                                 )
-                                (else
-                                 (set! *stdcon* *stdcon0*)
-                                 (set! *debug-draw-pauseable* #f)
-                                 )
-                                )
-                               (when (-> arg0 trans-hook)
-                                (let
-                                 ((s4-0
-                                   (new
-                                    'process
-                                    'cpu-thread
-                                    arg0
-                                    'trans
-                                    256
-                                    (-> arg0 main-thread stack-top)
-                                    )
-                                   )
-                                  )
-                                 (reset-and-call s4-0 (-> arg0 trans-hook))
-                                 (delete s4-0)
-                                 )
-                                (when (= (-> arg0 status) 'dead)
-                                 (set! (-> s5-0 current-process) #f)
-                                 (return 'dead)
-                                 )
-                                )
-                               (if
-                                (nonzero?
-                                 (logand
-                                  (-> arg0 mask)
-                                  (process-mask sleep-code)
-                                  )
-                                 )
-                                (set! (-> arg0 status) 'suspended)
-                                ((-> arg0 main-thread resume-hook)
-                                 (-> arg0 main-thread)
-                                 )
-                                )
-                               (cond
-                                ((= (-> arg0 status) 'dead)
-                                 (set! (-> s5-0 current-process) #f)
-                                 'dead
-                                 )
-                                (else
-                                 (when (-> arg0 post-hook)
-                                  (let
-                                   ((s4-1
-                                     (new
-                                      'process
-                                      'cpu-thread
-                                      arg0
-                                      'post
-                                      256
-                                      (&-> *dram-stack* 14336)
-                                      )
-                                     )
-                                    )
-                                   (reset-and-call s4-1 (-> arg0 post-hook))
-                                   (delete s4-1)
-                                   )
-                                  (when (= (-> arg0 status) 'dead)
-                                   (set! (-> s5-0 current-process) #f)
-                                   (return 'dead)
-                                   )
-                                  (set! (-> arg0 status) 'suspended)
-                                  )
-                                 (set! (-> s5-0 current-process) #f)
-                                 #f
-                                 )
-                                )
-                               )
-                              ((= v1-0 'dead)
-                               'dead
-                               )
-                              )
-                             )
-    )
+  (execute-process-tree *active-pool* (lambda ((arg0 process))
+                                       (let ((s5-0 *kernel-context*))
+                                        (case (-> arg0 status) 
+                                         (('waiting-to-run 'suspended)
+                                           (set! (-> s5-0 current-process) arg0)
+                                           (cond
+                                            ((logtest?
+                                              (-> arg0 mask)
+                                              (process-mask pause)
+                                              )
+                                             (set! *stdcon* *stdcon1*)
+                                             (set! *debug-draw-pauseable* #t)
+                                             )
+                                            (else
+                                             (set! *stdcon* *stdcon0*)
+                                             (set! *debug-draw-pauseable* #f)
+                                             )
+                                            )
+                                           (when (-> arg0 trans-hook)
+                                            (let
+                                             ((s4-0
+                                               (new
+                                                'process
+                                                'cpu-thread
+                                                arg0
+                                                'trans
+                                                256
+                                                (-> arg0 main-thread stack-top)
+                                                )
+                                               )
+                                              )
+                                             (reset-and-call
+                                              s4-0
+                                              (-> arg0 trans-hook)
+                                              )
+                                             (delete s4-0)
+                                             )
+                                            (when (= (-> arg0 status) 'dead)
+                                             (set! (-> s5-0 current-process) #f)
+                                             (return 'dead)
+                                             )
+                                            )
+                                           (if
+                                            (logtest?
+                                             (-> arg0 mask)
+                                             (process-mask sleep-code)
+                                             )
+                                            (set! (-> arg0 status) 'suspended)
+                                            ((-> arg0 main-thread resume-hook)
+                                             (-> arg0 main-thread)
+                                             )
+                                            )
+                                           (cond
+                                            ((= (-> arg0 status) 'dead)
+                                             (set! (-> s5-0 current-process) #f)
+                                             'dead
+                                             )
+                                            (else
+                                             (when (-> arg0 post-hook)
+                                              (let
+                                               ((s4-1
+                                                 (new
+                                                  'process
+                                                  'cpu-thread
+                                                  arg0
+                                                  'post
+                                                  256
+                                                  (&-> *dram-stack* 14336)
+                                                  )
+                                                 )
+                                                )
+                                               (reset-and-call
+                                                s4-1
+                                                (-> arg0 post-hook)
+                                                )
+                                               (delete s4-1)
+                                               )
+                                              (when (= (-> arg0 status) 'dead)
+                                               (set!
+                                                (-> s5-0 current-process)
+                                                #f
+                                                )
+                                               (return 'dead)
+                                               )
+                                              (set! (-> arg0 status) 'suspended)
+                                              )
+                                             (set! (-> s5-0 current-process) #f)
+                                             #f
+                                             )
+                                            )
+                                           )
+                                         (('dead)
+                                          'dead
+                                          )
+                                         )
+                                        )
+                                       )
    *kernel-context*
    )
   )
@@ -1497,14 +1489,15 @@
   new
   protect-frame
   ((allocation symbol) (type-to-make type) (arg0 (function object)))
-  (with-pp (let ((v0-0 (the-as object (+ (the-as int allocation) 4))))
-            (set! (-> (the-as protect-frame v0-0) type) type-to-make)
-            (set! (-> (the-as protect-frame v0-0) name) 'protect-frame)
-            (set! (-> (the-as protect-frame v0-0) exit) arg0)
-            (set! (-> (the-as protect-frame v0-0) next) (-> pp stack-frame-top))
-            (set! (-> pp stack-frame-top) (the-as protect-frame v0-0))
-            (the-as protect-frame v0-0)
-            )
+  (with-pp
+   (let ((v0-0 (the-as object (+ (the-as int allocation) 4))))
+    (set! (-> (the-as protect-frame v0-0) type) type-to-make)
+    (set! (-> (the-as protect-frame v0-0) name) 'protect-frame)
+    (set! (-> (the-as protect-frame v0-0) exit) arg0)
+    (set! (-> (the-as protect-frame v0-0) next) (-> pp stack-frame-top))
+    (set! (-> pp stack-frame-top) (the-as protect-frame v0-0))
+    (the-as protect-frame v0-0)
+    )
    )
   )
 
@@ -1625,11 +1618,11 @@
        ((or (not a3-1) (not v1-4))
         (return 0)
         )
+       ((= a3-1 a2-1)
+        (set! (-> a3-1 4) (the-as process-tree (-> arg0 brother)))
+        )
        (else
-        (if (= a3-1 a2-1)
-         (set! (-> a3-1 4) (the-as process-tree (-> arg0 brother)))
-         (set! (-> a3-1 3) (the-as process-tree (-> arg0 brother)))
-         )
+        (set! (-> a3-1 3) (the-as process-tree (-> arg0 brother)))
         )
        )
       (cond
@@ -1691,9 +1684,9 @@
   ((obj process) (arg0 process-tree) (arg1 basic) (arg2 pointer))
   (set!
    (-> obj mask)
-   (logand
-    (lognot (process-mask sleep sleep-code process-tree heap-shrunk))
+   (logclear
     (-> arg0 mask)
+    (process-mask sleep sleep-code process-tree heap-shrunk)
     )
    )
   (set! (-> obj status) 'ready)
@@ -1715,7 +1708,7 @@
   (set! (-> obj event-hook) #f)
   (set! (-> obj state) #f)
   (set! (-> obj next-state) #f)
-  (if (nonzero? (logand (-> arg0 mask) (process-mask process-tree)))
+  (if (logtest? (-> arg0 mask) (process-mask process-tree))
    (set! (-> obj entity) #f)
    (set! (-> obj entity) (-> (the-as process arg0) entity))
    )
@@ -1797,55 +1790,56 @@
 ;; WARN: Unsupported inline assembly instruction kind - [jr ra]
 (defmethod deactivate process ((obj process))
   (local-vars (s7-0 none) (ra-0 int))
-  (with-pp (when (!= (-> obj status) 'dead)
-            (set! (-> obj next-state) dead-state)
-            (if (-> obj entity)
-             (entity-deactivate-handler obj (-> obj entity))
-             )
-            (let ((s5-0 pp))
-             (let ((s4-0 (-> obj stack-frame-top)))
-              (while (the-as protect-frame s4-0)
-               (let ((v1-5 (-> s4-0 type)))
-                (if (or (= v1-5 protect-frame) (= v1-5 state))
-                 ((-> (the-as protect-frame s4-0) exit))
-                 )
-                )
-               (set! s4-0 (-> (the-as protect-frame s4-0) next))
-               )
-              )
-             (let ((s6-2 s5-0))
-              )
-             )
-            (process-disconnect obj)
-            (let ((v1-11 (-> obj child)))
-             (while v1-11
-              (let ((s5-1 (-> v1-11 0 brother)))
-               (deactivate (-> v1-11 0))
-               (set! v1-11 s5-1)
-               )
-              )
-             )
-            (return-process (-> obj pool) obj)
-            (set! (-> obj state) #f)
-            (set! (-> obj next-state) #f)
-            (set! (-> obj entity) #f)
-            (set! (-> obj pid) 0)
-            (cond
-             ((= (-> *kernel-context* current-process) obj)
-              (set! (-> obj status) 'dead)
-              (.lw ra-0 return-from-thread s7-0)
-              (.jr ra-0)
-              (nop!)
-              0
-              )
-             ((= (-> obj status) 'initialize)
-              (set! (-> obj status) 'dead)
-              (throw 'initialize #f)
-              )
-             )
-            (set! (-> obj status) 'dead)
-            0
-            )
+  (with-pp
+   (when (!= (-> obj status) 'dead)
+    (set! (-> obj next-state) dead-state)
+    (if (-> obj entity)
+     (entity-deactivate-handler obj (-> obj entity))
+     )
+    (let ((s5-0 pp))
+     (let ((s4-0 (-> obj stack-frame-top)))
+      (while (the-as protect-frame s4-0)
+       (case (-> s4-0 type) 
+        ((protect-frame state)
+          ((-> (the-as protect-frame s4-0) exit))
+          )
+        )
+       (set! s4-0 (-> (the-as protect-frame s4-0) next))
+       )
+      )
+     (let ((s6-2 s5-0))
+      )
+     )
+    (process-disconnect obj)
+    (let ((v1-11 (-> obj child)))
+     (while v1-11
+      (let ((s5-1 (-> v1-11 0 brother)))
+       (deactivate (-> v1-11 0))
+       (set! v1-11 s5-1)
+       )
+      )
+     )
+    (return-process (-> obj pool) obj)
+    (set! (-> obj state) #f)
+    (set! (-> obj next-state) #f)
+    (set! (-> obj entity) #f)
+    (set! (-> obj pid) 0)
+    (cond
+     ((= (-> *kernel-context* current-process) obj)
+      (set! (-> obj status) 'dead)
+      (.lw ra-0 return-from-thread s7-0)
+      (.jr ra-0)
+      (nop!)
+      0
+      )
+     ((= (-> obj status) 'initialize)
+      (set! (-> obj status) 'dead)
+      (throw 'initialize #f)
+      )
+     )
+    (set! (-> obj status) 'dead)
+    0
+    )
    (none)
    )
   )

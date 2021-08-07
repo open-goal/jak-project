@@ -1,9 +1,11 @@
 #include <cstdio>
+#include <stdexcept>
 #include "common/versions.h"
 #include "common/util/FileUtil.h"
 #include "common/util/DgoReader.h"
 
-int main(int argc, char** argv) {
+namespace {
+int run(int argc, char** argv) {
   printf("OpenGOAL version %d.%d\n", versions::GOAL_VERSION_MAJOR, versions::GOAL_VERSION_MINOR);
   printf("DGO Unpacking Tool\n");
 
@@ -41,4 +43,14 @@ int main(int argc, char** argv) {
 
   printf("Done\n");
   return 0;
+}
+}  // namespace
+
+int main(int argc, char** argv) {
+  try {
+    return run(argc, argv);
+  } catch (const std::exception& e) {
+    printf("An error occurred: %s\n", e.what());
+    return 1;
+  }
 }

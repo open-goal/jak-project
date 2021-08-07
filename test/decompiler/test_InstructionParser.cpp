@@ -41,11 +41,27 @@ TEST(DecompilerInstructionParser, ProgramLabels) {
   EXPECT_EQ(result.print(), program);
 }
 
-TEST(DecompilerInstructionParser, VU) {
+TEST(DecompilerInstructionParser, VuMask) {
   InstructionParser parser;
   std::string program =
       "  vmove.xy vf1, vf2\n"
       "  vsub.yw vf1, vf2, vf25\n";
+  auto result = parser.parse_program(program);
+  EXPECT_EQ(result.print(), program);
+}
+
+TEST(DecompilerInstructionParser, VuMoves) {
+  InstructionParser parser;
+  std::string program =
+      "  qmtc2.i vf2, a2\n"
+      "  qmfc2.i v0, vf1\n";
+  auto result = parser.parse_program(program);
+  EXPECT_EQ(result.print(), program);
+}
+
+TEST(DecompilerInstructionParser, VuBroadcast) {
+  InstructionParser parser;
+  std::string program = "  vmuly.xyw vf1, vf1, vf2\n";
   auto result = parser.parse_program(program);
   EXPECT_EQ(result.print(), program);
 }

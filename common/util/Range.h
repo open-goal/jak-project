@@ -21,6 +21,8 @@ class Range {
   Range(const T& start, const T& end) : m_start(start), m_end(end) {}
   const T& first() const { return m_start; }
   const T& last() const { return m_end; }
+  T& first() { return m_start; }
+  T& last() { return m_end; }
   bool contains(T& val) const { return val >= m_start && val < m_end; }
   bool empty() const { return m_end <= m_start; }
   T size() const { return m_end - m_start; }

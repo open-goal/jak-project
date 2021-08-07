@@ -5,10 +5,15 @@
 ;; name in dgo: dma-h
 ;; dgos: GAME, ENGINE
 
-;; Constants/type for the PS2 DMA System.
+;; Constants/type for the PS2 DMA hardware
 ;; There are a number of DMA channels.
 ;; The PS2 supports several types of DMA, including simple chunk transfer and more complicated
 ;; "chain" transfers, where the hardware can follow a linked data-structure.
+
+;; The code is organized into dma, dma-buffer, and dma-bucket
+;;  - dma interacts with the hardware and actually sends the DMA data.
+;;  - dma-buffer is memory management for the data to be sent
+;;  - dma-bucket is organization of all the frame's DMA data in the correct order
 
 ;; In OpenGOAL, "DMA" will be instant, meaning the game code will stop, wait until the
 ;; DMA is finished, and then continue. As a result, there is no need for DMA synchronization.
@@ -200,41 +205,69 @@
   )
 
 
+;; DMA data is divided into buckets.
+;; At the end of a frame, the buckets are all connected together and sent.
+;; the buckets are organized by renderer.
+
 (defenum bucket-id
     :type int32
     :bitfield #f
 
+    (bucket-1 1)
+    (bucket-2 2)
+    (bucket-3 3)
     (tfrag-tex0 5)
     ;; merc0 10
     ;; generic0 11
+    (bucket-10 10)
+    (bucket-11 11)
 
     (tfrag-tex1 12)
     ;; merc1 17
     ;; generic1 18
+    (bucket-17 17)
+    (bucket-18 18)
 
     (shrub-tex0 19)
 
     (shrub-tex1 25)
 
+    (generic-foreground 30) ;; ?
     (alpha-tex0 31)
 
     (alpha-tex1 38)
 
+    (bucket-45 45)
+    (bucket-46 46)
+
     (pris-tex0 48)
+    (bucket-49 49)
+    (bucket-50 50)
     ;; merc0 49
     ;; generic0 50
 
     (pris-tex1 51)
+    (bucket-52 52)
+    (bucket-53 53)
     ;; merc1 52
     ;; generic1 53
 
+    (bucket-55 55)
+    (bucket-56 56)
     (water-tex0 57)
+    (bucket-58 58)
+    (bucket-59 59)
     ;; merc0 58     (+ default)
     ;; generic0 59  (+ default)
 
     (water-tex1 60)
+    (bucket-61 61)
+    (bucket-62 62)
     ;; merc1 61
     ;; generic1 62
+    (depth-cue 64)
+    (bucket-65 65)
+    (sprite 66)
     ;; debug spheres? 67
     (debug-draw0 67)
     ;; debug text 68
@@ -347,7 +380,7 @@
     )
 
 ;; The VIF also has tags to control it.
-;; Different VIF commands (called VIFcode) have different tag layouts.;; dma-h
+;; Different VIF commands (called VIFcode) have different tag layouts.
 (deftype vif-tag (uint32)
   ((imm uint16  :offset 0 :size 16)
    (num uint8   :offset 16 :size 8)

@@ -115,6 +115,10 @@ std::vector<std::string> get_test_pass_string(const std::string& name, int count
 }
 }  // namespace
 
+TEST_F(WithGameTests, MakeSystem) {
+  compiler.run_front_end_on_string("(make \"out/iso/ENGINE.CGO\")");
+}
+
 TEST_F(WithGameTests, ReturnConstant) {
   runner.run_static_test(env, testCategory, "defun-return-constant.static.gc", {"12\n"});
 }
@@ -627,6 +631,12 @@ TEST_F(WithGameTests, StaticArrayField) {
                           "0\n"});
 }
 
+TEST_F(WithGameTests, ArrayRefStatic) {
+  runner.run_static_test(env, testCategory, "test-array-ref-static.gc",
+                         {"test-not-inline-inline-array-type 12 asdf 13 bean 14\n"
+                          "0\n"});
+}
+
 TEST_F(WithGameTests, TypeReference) {
   runner.run_static_test(env, testCategory, "test-type-ref.gc",
                          {"string #t basic some-unknown-type 20 0\n"
@@ -656,6 +666,8 @@ TEST_F(WithGameTests, I128Simple) {
                           "[7] #x000102030405060708090a0b0c0d0e0f\n"
                           "12344321\n"});
 }
+
+// TODO - add tests
 
 TEST_F(WithGameTests, Pextlw) {
   runner.run_static_test(env, testCategory, "test-pextlw.gc",
@@ -784,6 +796,38 @@ TEST_F(WithGameTests, Behaviors) {
   runner.run_static_test(env, testCategory, "test-behaviors.gc",
                          {"function self: 123\n"
                           "method obj: 456 self: 123\n0\n"});
+}
+
+TEST_F(WithGameTests, RaySphere) {
+  runner.run_static_test(env, testCategory, "test-ray-sphere.gc",
+                         {"Got 0.2346\n"
+                          "Got -100000000.0000\n"
+                          "Got -100000000.0000\n"
+                          "Got 0.0000\n"
+                          "Got -100000000.0000\n0\n"});
+}
+
+TEST_F(WithGameTests, PandPorPnor) {
+  runner.run_static_test(env, testCategory, "test-pand-por-pnor.gc",
+                         {"#x1f1f1d0f0f0f0d0b0f0f0d0707070503\n"
+                          "#xe0e0e2f0f0f0f2f4f0f0f2f8f8f8fafc\n"
+                          "#x0200000c0a0808080200000402000000\n"
+                          "\n"
+                          "#x1f1f1d0f0f0f0d0b0f0f0d0707070503\n"
+                          "#xe0e0e2f0f0f0f2f4f0f0f2f8f8f8fafc\n"
+                          "#x0200000c0a0808080200000402000000\n0\n"});
+}
+
+TEST_F(WithGameTests, StackInlineArray) {
+  runner.run_static_test(env, testCategory, "test-stack-inline-array.gc",
+                         {"#x8\n"
+                          "#x30\n0\n"});
+}
+
+TEST_F(WithGameTests, GetEnumVals) {
+  runner.run_static_test(env, testCategory, "test-get-enum-vals.gc",
+                         {"((thing1 . #<invalid object #x1>) (thing3 . #<invalid object #x3>) "
+                          "(thing5 . #<invalid object #x5>))\n0\n"});
 }
 
 TEST(TypeConsistency, TypeConsistency) {

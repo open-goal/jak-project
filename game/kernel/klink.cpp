@@ -876,25 +876,23 @@ uint64_t link_resume() {
  * but it may use the scratchpad.  It is implemented in GOAL, and falls back to normal C memcpy
  * if GOAL isn't loaded, or if the alignment isn't good enough.
  */
-void* ultimate_memcpy(void* dst, void* src, uint32_t size) {
+void ultimate_memcpy(void* dst, void* src, uint32_t size) {
   // only possible if alignment is good.
   if (!(u64(dst) & 0xf) && !(u64(src) & 0xf) && !(u64(size) & 0xf) && size > 0xfff) {
     if (!gfunc_774.offset) {
       // GOAL function is unknown, lets see if its loaded:
       auto sym = find_symbol_from_c("ultimate-memcpy");
       if (sym->value == 0) {
-        return memmove(dst, src, size);
+        memmove(dst, src, size);
       }
       gfunc_774.offset = sym->value;
     }
-    printf("Replacing goal ultimate-memcpy! with memmove\n");
-    return memmove(dst, src, size);
-    //    return Ptr<u8>(call_goal(gfunc_774, make_u8_ptr(dst).offset, make_u8_ptr(src).offset,
-    //    size,
-    //                             s7.offset, g_ee_main_mem))
-    //        .c();
+
+    Ptr<u8>(call_goal(gfunc_774, make_u8_ptr(dst).offset, make_u8_ptr(src).offset, size, s7.offset,
+                      g_ee_main_mem))
+        .c();
   } else {
-    return memmove(dst, src, size);
+    memmove(dst, src, size);
   }
 }
 

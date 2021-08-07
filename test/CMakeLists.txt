@@ -16,6 +16,7 @@ add_executable(goalc-test
         ${CMAKE_CURRENT_LIST_DIR}/test_emitter_avx.cpp
         ${CMAKE_CURRENT_LIST_DIR}/test_common_util.cpp
         ${CMAKE_CURRENT_LIST_DIR}/test_pretty_print.cpp
+        ${CMAKE_CURRENT_LIST_DIR}/test_math.cpp
         ${CMAKE_CURRENT_LIST_DIR}/test_zydis.cpp
         ${CMAKE_CURRENT_LIST_DIR}/goalc/test_goal_kernel.cpp
         ${CMAKE_CURRENT_LIST_DIR}/decompiler/FormRegressionTest.cpp
@@ -23,6 +24,7 @@ add_executable(goalc-test
         ${CMAKE_CURRENT_LIST_DIR}/decompiler/test_FormBeforeExpressions.cpp
         ${CMAKE_CURRENT_LIST_DIR}/decompiler/test_FormExpressionBuild.cpp
         ${CMAKE_CURRENT_LIST_DIR}/decompiler/test_FormExpressionBuild2.cpp
+        ${CMAKE_CURRENT_LIST_DIR}/decompiler/test_FormExpressionBuild3.cpp
         ${CMAKE_CURRENT_LIST_DIR}/decompiler/test_FormExpressionBuildLong.cpp
         ${CMAKE_CURRENT_LIST_DIR}/decompiler/test_InstructionDecode.cpp
         ${CMAKE_CURRENT_LIST_DIR}/decompiler/test_InstructionParser.cpp
