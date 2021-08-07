@@ -988,7 +988,7 @@
 
 (define-extern process-tree type) ; deftype provided by C Kernel
 (declare-type process basic)
-
+(declare-type res-lump basic)
 (deftype process-tree (basic)
   ((name basic :offset-assert 4)
    (mask process-mask :offset-assert 8)
@@ -1002,7 +1002,7 @@
     (new (symbol type basic) _type_ 0)
     (activate (_type_ process-tree basic pointer) process-tree 9)
     (deactivate  (_type_) none 10)
-    (dummy-method-11 (_type_ object) none 11)
+    (copy-defaults (_type_ res-lump) none 11)
     (run-logic? (_type_) symbol 12)
     (dummy-method () none 13)
     )
@@ -1245,11 +1245,6 @@
    )
   (:methods
     (new (symbol type basic int) _type_ 0)
-    (activate (_type_ process-tree basic pointer) process-tree 9)
-    (deactivate  (process) none 10)
-    (dummy-method-11 (_type_ object) none 11)
-    (run-logic? (process) symbol 12)
-    (dummy-method () none 13)
     )
   :size-assert #x70
   :method-count-assert 14
@@ -10687,12 +10682,13 @@
   :flag-assert         #x900000020
   )
 
+(declare-type collide-shape-prim basic)
 (deftype collide-shape-intersect (basic)
   ((move-vec       vector             :inline :offset-assert 16)
    (best-u         float                      :offset-assert 32)
    (best-tri       collide-tri-result :inline :offset-assert 48)
-   (best-from-prim basic                      :offset-assert 132)
-   (best-to-prim   basic                      :offset-assert 136)
+   (best-from-prim collide-shape-prim                      :offset-assert 132)
+   (best-to-prim   collide-shape-prim                      :offset-assert 136)
    )
   :method-count-assert 10
   :size-assert         #x8c
@@ -10702,10 +10698,11 @@
     )
   )
 
+(declare-type collide-shape-prim basic)
 (deftype collide-overlap-result (structure)
   ((best-dist      float                      :offset-assert 0)
-   (best-from-prim basic                      :offset-assert 4)
-   (best-to-prim   basic                      :offset-assert 8)
+   (best-from-prim collide-shape-prim                      :offset-assert 4)
+   (best-to-prim   collide-shape-prim                      :offset-assert 8)
    (best-from-tri  collide-tri-result :inline :offset-assert 16)
    )
   :method-count-assert 10
@@ -17583,7 +17580,7 @@
 
 (define-extern target-attack-up function)
 (define-extern find-ground-point function)
-(define-extern default-collision-reaction function)
+(define-extern default-collision-reaction (function collide-shape-moving collide-shape-intersect vector vector none)) ;; TODO - not completely confirmed
 (define-extern simple-collision-reaction function)
 (define-extern collide-shape-draw-debug-marks (function none))
 (define-extern debug-report-col-stats function)
@@ -22055,7 +22052,7 @@
 ;; - Functions
 
 (define-extern matrix-3x3-triple-transpose-product (function matrix matrix matrix matrix))
-(define-extern rigid-body-platform-event-handler (function process int symbol event-message-block object :behavior rigid-body-platform))
+(define-extern rigid-body-platform-event-handler (function process int symbol event-message-block vector :behavior rigid-body-platform))
 (define-extern rigid-body-platform-post (function int :behavior rigid-body-platform))
 
 ;; - Unknowns
@@ -31448,7 +31445,6 @@
   :size-assert         #x17c
   :flag-assert         #x350110017c
   (:methods
-    (dummy-method-11 (_type_ object) none 11)
     (dummy-31 (_type_) none 31)
     (dummy-32 (_type_ symbol) spool-anim 32)
     (dummy-41 (_type_) none 41)

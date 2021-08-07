@@ -654,9 +654,9 @@ void SimpleExpressionElement::update_from_stack_float_2(const Env& env,
   } else {
     auto type0 = env.get_types_before_op(m_my_idx).get(m_expr.get_arg(0).var().reg());
     auto type1 = env.get_types_before_op(m_my_idx).get(m_expr.get_arg(1).var().reg());
-    throw std::runtime_error(
-        fmt::format("[OP: {}] - Floating point math attempted on invalid types: {} and {} in op {}.",
-                    m_my_idx, type0.print(), type1.print(), to_string(env)));
+    throw std::runtime_error(fmt::format(
+        "[OP: {}] - Floating point math attempted on invalid types: {} and {} in op {}.", m_my_idx,
+        type0.print(), type1.print(), to_string(env)));
   }
 }
 
