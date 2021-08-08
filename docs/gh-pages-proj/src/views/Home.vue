@@ -58,13 +58,33 @@
           <v-col cols="10">
             <v-subheader>Decompilation</v-subheader>
             <v-progress-linear
-              color="teal"
+              color="green"
               buffer-value="0"
-              :value="jak1BlackLabelStatus.decompDone"
+              :value="jak1BlackLabelStatus.srcFilesFinishedValue"
               stream
               height="25"
             >
-            {{jak1BlackLabelStatus.decompLabel}} - {{jak1BlackLabelStatus.decompDone}}%
+            Source Files Finished - {{ jak1BlackLabelStatus.srcFilesFinished }} / {{ jak1BlackLabelStatus.srcFilesTotal }}
+            </v-progress-linear>
+            <br>
+            <v-progress-linear
+              color="yellow"
+              buffer-value="0"
+              :value="jak1BlackLabelStatus.srcFilesStartedValue"
+              stream
+              height="25"
+            >
+            Source Files Started - {{ jak1BlackLabelStatus.srcFilesStarted }} / {{ jak1BlackLabelStatus.srcFilesTotal }}
+            </v-progress-linear>
+            <br>
+            <v-progress-linear
+              color="teal"
+              buffer-value="0"
+              :value="jak1BlackLabelStatus.dataFilesStartedValue"
+              stream
+              height="25"
+            >
+            Data Files Started - {{ jak1BlackLabelStatus.dataFilesStarted }} / {{ jak1BlackLabelStatus.dataFilesTotal }}
             </v-progress-linear>
           </v-col>
         </v-row>
@@ -129,8 +149,14 @@ export default {
     return {
       recentPRs: [],
       jak1BlackLabelStatus: {
-        decompDone: (projectProgress.jak1.locPercentage.value / 750000.0) * 100.0,
-        decompLabel: projectProgress.jak1.locPercentage.label
+        srcFilesTotal: projectProgress.jak1.fileProgress.src_files_total,
+        srcFilesFinished: projectProgress.jak1.fileProgress.src_files_finished,
+        srcFilesFinishedValue: projectProgress.jak1.fileProgress.src_files_finished / projectProgress.jak1.fileProgress.src_files_total * 100,
+        srcFilesStarted: projectProgress.jak1.fileProgress.src_files_started,
+        srcFilesStartedValue: projectProgress.jak1.fileProgress.src_files_started / projectProgress.jak1.fileProgress.src_files_total * 100,
+        dataFilesTotal: projectProgress.jak1.fileProgress.data_files_total,
+        dataFilesStarted: projectProgress.jak1.fileProgress.data_files_started,
+        dataFilesStartedValue: projectProgress.jak1.fileProgress.data_files_started / projectProgress.jak1.fileProgress.data_files_total * 100,
       }
     };
   },
