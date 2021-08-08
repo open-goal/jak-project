@@ -62,8 +62,8 @@ const std::unordered_set<std::string> g_functions_expected_to_reject = {
     // display
     "vblank-handler",  // asm
     "vif1-handler", "vif1-handler-debug",
-    // stats-h
-    "(method 11 perf-stat)", "(method 12 perf-stat)",
+    // sprite. Don't know types yet.
+    "add-to-sprite-aux-list",
     // ripple - asm
     "ripple-execute-init", "ripple-create-wave-table", "ripple-apply-wave-table",
     "ripple-matrix-scale",
@@ -75,12 +75,15 @@ const std::unordered_set<std::string> g_functions_expected_to_reject = {
     "(method 15 sync-info-eased)",   // needs *res-static-buf*
     "(method 15 sync-info-paused)",  // needs *res-static-buf*
 
+    // camera
+    "slave-set-rotation!", "v-slrp2!", "v-slrp3!",  // vector-dot involving the stack
+
     // collide-mesh-h
     "(method 11 collide-mesh-cache)",  // asm
 
-    // actor-link-h
-    "(method 21 actor-link-info)",  // BUG: sc cfg / cfg-ir bug
-    "(method 20 actor-link-info)",
+    // mood
+    "update-mood-lava",       // asm
+    "update-mood-lightning",  // asm
 
     "debug-menu-item-var-render"  // asm
 };
@@ -106,11 +109,9 @@ const std::unordered_set<std::string> g_functions_to_skip_compiling = {
     "rand-vu-nostep",  // random hardware
 
     // trig
-    "sin-rad",                    // fpu acc
-    "cos-rad",                    // fpu acc
-    "atan-series-rad",            // fpu acc
-    "vector-rad<-vector-deg!",    // bad decisions on float vs int128
-    "vector-rad<-vector-deg/2!",  // bad decisions on float vs int128
+    "sin-rad",          // fpu acc
+    "cos-rad",          // fpu acc
+    "atan-series-rad",  // fpu acc
 
     /// VECTOR-H
     "(method 3 vector)",  // this function appears twice, which confuses the compiler.
@@ -127,10 +128,6 @@ const std::unordered_set<std::string> g_functions_to_skip_compiling = {
     // display-h
     "put-draw-env",
 
-    // vector
-    // bad decisions on float vs int128
-    "vector-degf", "vector-degmod", "vector-deg-diff", "vector-degi",
-
     // geometry
     "calculate-basis-functions-vector!",  // asm requiring manual rewrite
     "curve-evaluate!",                    // asm requiring manual rewrite
@@ -143,6 +140,9 @@ const std::unordered_set<std::string> g_functions_to_skip_compiling = {
     // asm
     "invalidate-cache-line",
 
+    // stats-h
+    "(method 11 perf-stat)", "(method 12 perf-stat)",
+
     // sync-info
     "(method 15 sync-info)",         // needs display stuff first
     "(method 15 sync-info-eased)",   // needs display stuff first
@@ -154,7 +154,22 @@ const std::unordered_set<std::string> g_functions_to_skip_compiling = {
     "get-task-status",
 
     // aligner - return-from-thread, currently not supported
-    "(method 9 align-control)"};
+    "(method 9 align-control)",
+
+    // stat collection
+    "start-perf-stat-collection", "end-perf-stat-collection",
+
+    // float to int
+    "(method 10 bsp-header)",
+
+    // multiply defined.
+    "(method 3 sprite-aux-list)",
+
+    // camera
+    "slave-set-rotation!", "v-slrp2!", "v-slrp3!",  // vector-dot involving the stack
+
+    // loader - decompiler bug with detecting handle macros
+    "(method 10 external-art-buffer)"};
 
 // default location for the data. It can be changed with a command line argument.
 std::string g_iso_data_path = "";

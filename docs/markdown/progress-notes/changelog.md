@@ -181,3 +181,10 @@
 - `meters`, `degrees`, and `seconds` types have been added.
 - Bitfields with `symbol` fields used in an immediate `(new 'static ...)` can now define the symbol in the `new` form.
 - Bitfields with `float` fields used in an immediate `(new 'static ...)` in code can use a non-constant floating point value.
+- Multiple variables assigned to the same register using `:reg` in `rlet` (or overlapping with `self` in a behavior) will now be merged to a single variable instead of causing a compiler error. Variables will have their own type, but they will all be an alias of the same exact register.
+- Stack arrays of uint128 will now be 16-byte aligned instead of sometimes only 8.
+- Inline arrays of structures are now allowed with `stack-no-clear`.
+- Creating arrays on the stack now must be done with `stack-no-clear` as they are not memset to 0 or constructed in any way.
+- The register allocator has been dramatically improved and generates ~5x fewer spill instructions and is able to eliminate more moves.
+- Added a `(print-debug-compiler-stats)` form to print out statistics related to register allocation and move elimination
+- Added `get-enum-vals` which returns a list of pairs. Each pair is the name (symbol) and value (int) for each value in the enum

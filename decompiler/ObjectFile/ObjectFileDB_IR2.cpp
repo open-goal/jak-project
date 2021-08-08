@@ -306,8 +306,17 @@ void ObjectFileDB::ir2_atomic_op_pass(const Config& config) {
         bool inline_asm =
             config.hacks.hint_inline_assembly_functions.find(func.guessed_name.to_string()) !=
             config.hacks.hint_inline_assembly_functions.end();
+
+        std::unordered_set<int> blocks_ending_in_asm_branch;
+        auto asm_branch_it = config.hacks.blocks_ending_in_asm_branch_by_func_name.find(
+            func.guessed_name.to_string());
+
+        if (asm_branch_it != config.hacks.blocks_ending_in_asm_branch_by_func_name.end()) {
+          blocks_ending_in_asm_branch = asm_branch_it->second;
+        }
+
         auto ops = convert_function_to_atomic_ops(func, data.linked_data.labels, func.warnings,
-                                                  inline_asm);
+                                                  inline_asm, blocks_ending_in_asm_branch);
         func.ir2.atomic_ops = std::make_shared<FunctionAtomicOps>(std::move(ops));
         func.ir2.atomic_ops_succeeded = true;
         func.ir2.env.set_end_var(func.ir2.atomic_ops->end_op().return_var());
@@ -615,7 +624,12 @@ void ObjectFileDB::ir2_insert_anonymous_functions() {
     (void)segment_id;
     (void)data;
     if (func.ir2.top_form && func.ir2.env.has_type_analysis()) {
-      total += insert_static_refs(func.ir2.top_form, *func.ir2.form_pool, func, dts);
+      try {
+        total += insert_static_refs(func.ir2.top_form, *func.ir2.form_pool, func, dts);
+      } catch (std::exception& e) {
+        func.warnings.general_warning("Failed static ref finding: {}\n", e.what());
+        lg::error("Function {} failed static ref: {}\n", func.guessed_name.to_string(), e.what());
+      }
     }
   });
 

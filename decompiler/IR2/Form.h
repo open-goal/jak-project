@@ -54,6 +54,10 @@ class FormElement {
                                  bool allow_side_effects);
   bool is_popped() const { return m_popped; }
 
+  FormElement() = default;
+  FormElement(const FormElement& other) = delete;
+  FormElement& operator=(const FormElement& other) = delete;
+
   void mark_popped() {
     assert(!m_popped);
     m_popped = true;
@@ -185,6 +189,11 @@ class SimpleExpressionElement : public FormElement {
                                            FormStack& stack,
                                            std::vector<FormElement*>* result,
                                            bool allow_side_effects);
+  FormElement* update_from_stack_logor_or_logand_helper(const Env& env,
+                                                        FixedOperatorKind kind,
+                                                        FormPool& pool,
+                                                        FormStack& stack,
+                                                        bool allow_side_effects);
   void update_from_stack_logor_or_logand(const Env& env,
                                          FixedOperatorKind kind,
                                          FormPool& pool,
@@ -196,12 +205,12 @@ class SimpleExpressionElement : public FormElement {
                                 FormStack& stack,
                                 std::vector<FormElement*>* result,
                                 bool allow_side_effects);
-  void update_from_stack_vector_plus_minus(bool is_add,
-                                           const Env& env,
-                                           FormPool& pool,
-                                           FormStack& stack,
-                                           std::vector<FormElement*>* result,
-                                           bool allow_side_effects);
+  void update_from_stack_vector_plus_minus_cross(FixedOperatorKind op_kind,
+                                                 const Env& env,
+                                                 FormPool& pool,
+                                                 FormStack& stack,
+                                                 std::vector<FormElement*>* result,
+                                                 bool allow_side_effects);
   void update_from_stack_vector_float_product(const Env& env,
                                               FormPool& pool,
                                               FormStack& stack,

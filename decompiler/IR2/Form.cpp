@@ -454,6 +454,13 @@ goos::Object SetFormFormElement::to_form_internal(const Env& env) const {
 
 goos::Object SetFormFormElement::to_form_for_define(const Env& env) const {
   if (m_cast_for_define) {
+    // for vu-function, we just put a 0. These aren't supported
+    if (*m_cast_for_define == TypeSpec("vu-function")) {
+      return pretty_print::build_list(
+          fmt::format("define"), m_dst->to_form(env),
+          pretty_print::build_list(fmt::format("the-as {}", m_cast_for_define->print()),
+                                   pretty_print::to_symbol("0")));
+    }
     return pretty_print::build_list(
         fmt::format("define"), m_dst->to_form(env),
         pretty_print::build_list(fmt::format("the-as {}", m_cast_for_define->print()),
@@ -1739,14 +1746,26 @@ std::string fixed_operator_to_string(FixedOperatorKind kind) {
       return "fmax";
     case FixedOperatorKind::LOGAND:
       return "logand";
+    case FixedOperatorKind::LOGAND_IN_PLACE:
+      return "logand!";
     case FixedOperatorKind::LOGIOR:
       return "logior";
+    case FixedOperatorKind::LOGIOR_IN_PLACE:
+      return "logior!";
     case FixedOperatorKind::LOGXOR:
       return "logxor";
     case FixedOperatorKind::LOGNOR:
       return "lognor";
     case FixedOperatorKind::LOGNOT:
       return "lognot";
+    case FixedOperatorKind::LOGCLEAR:
+      return "logclear";
+    case FixedOperatorKind::LOGCLEAR_IN_PLACE:
+      return "logclear!";
+    case FixedOperatorKind::LOGTEST:
+      return "logtest?";
+    case FixedOperatorKind::LOGTESTA:
+      return "logtesta?";
     case FixedOperatorKind::SHL:
       return "shl";
     case FixedOperatorKind::SHR:
@@ -1801,6 +1820,8 @@ std::string fixed_operator_to_string(FixedOperatorKind kind) {
       return "vector-!";
     case FixedOperatorKind::VECTOR_PLUS:
       return "vector+!";
+    case FixedOperatorKind::VECTOR_CROSS:
+      return "vector-cross!";
     case FixedOperatorKind::VECTOR_FLOAT_PRODUCT:
       return "vector-float*!";
     case FixedOperatorKind::L32_NOT_FALSE_CBOOL:
@@ -1904,10 +1925,11 @@ void GenericElement::get_modified_regs(RegSet& regs) const {
 
 CastElement::CastElement(TypeSpec type, Form* source, bool numeric)
     : m_type(std::move(type)), m_source(source), m_numeric(numeric) {
-  source->parent_element = this;
+  m_source->parent_element = this;
 }
 
 goos::Object CastElement::to_form_internal(const Env& env) const {
+  // assert(m_source->parent_element == this);
   auto atom = form_as_atom(m_source);
   if (atom && atom->is_var()) {
     return pretty_print::build_list(
@@ -1919,21 +1941,25 @@ goos::Object CastElement::to_form_internal(const Env& env) const {
 }
 
 void CastElement::apply(const std::function<void(FormElement*)>& f) {
+  // assert(m_source->parent_element == this);
   f(this);
   m_source->apply(f);
 }
 
 void CastElement::apply_form(const std::function<void(Form*)>& f) {
+  // assert(m_source->parent_element == this);
   m_source->apply_form(f);
 }
 
 void CastElement::collect_vars(RegAccessSet& vars, bool recursive) const {
+  // assert(m_source->parent_element == this);
   if (recursive) {
     m_source->collect_vars(vars, recursive);
   }
 }
 
 void CastElement::get_modified_regs(RegSet& regs) const {
+  assert(m_source->parent_element == this);
   m_source->get_modified_regs(regs);
 }
 
@@ -2591,6 +2617,10 @@ goos::Object StackStructureDefElement::to_form_internal(const Env&) const {
     case StackStructureHint::ContainerType::NONE:
       return pretty_print::build_list(
           fmt::format("new 'stack-no-clear '{}", m_entry.ref_type.print()));
+    case StackStructureHint::ContainerType::INLINE_ARRAY:
+      return pretty_print::build_list(fmt::format("new 'stack-no-clear 'inline-array '{} {}",
+                                                  m_entry.ref_type.get_single_arg().print(),
+                                                  m_entry.hint.container_size));
     default:
       assert(false);
   }

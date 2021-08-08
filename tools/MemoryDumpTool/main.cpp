@@ -106,6 +106,7 @@ u32 scan_for_symbol_table(const Ram& ram, u32 start_addr, u32 end_addr) {
 
 struct SymbolMap {
   std::unordered_map<std::string, u32> name_to_addr;
+  std::unordered_map<std::string, u32> name_to_value;
   std::unordered_map<u32, std::string> addr_to_name;
 };
 
@@ -133,6 +134,7 @@ SymbolMap build_symbol_map(const Ram& ram, u32 s7) {
         assert(map.name_to_addr.find(name) == map.name_to_addr.end());
         map.name_to_addr[name] = sym;
         map.addr_to_name[sym] = name;
+        map.name_to_value[name] = ram.word(sym);
       }
     }
   }
@@ -357,7 +359,7 @@ void inspect_symbols(const Ram& ram,
       }
     }
     if (!found_type.empty()) {
-      fmt::print("  {:30s} : {}\n", name, found_type);
+      fmt::print("  [{:08x}] {:30s} : {}\n", symbols.name_to_value.at(name), name, found_type);
     }
   }
 }

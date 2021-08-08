@@ -1183,6 +1183,14 @@ std::optional<std::vector<BitFieldConstantDef>> try_decompile_bitfield_from_int(
         auto name = decompile_int_enum_from_int(field.type(), ts, bitfield_value);
         def.enum_constant = fmt::format("({} {})", field.type().print(), name);
       }
+
+      auto nested_bitfield_type = dynamic_cast<BitFieldType*>(ts.lookup_type(field.type()));
+      if (nested_bitfield_type) {
+        BitFieldConstantDef::NestedField nested;
+        nested.field_type = field.type();
+        nested.fields = *try_decompile_bitfield_from_int(field.type(), ts, bitfield_value, true);
+        def.nested_field = nested;
+      }
       result.push_back(def);
     }
 

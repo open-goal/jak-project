@@ -266,7 +266,7 @@
 
 (defmacro print128 (value &key (stream #t))
   "Print a 128-bit value"
-  `(let ((temp (new 'stack 'array 'uint64 2)))
+  `(let ((temp (new 'stack-no-clear 'array 'uint64 2)))
      (set! (-> (the (pointer uint128) temp)) ,value)
      (format ,stream "#x~16X~16X" (-> temp 1) (-> temp 0))
      )
@@ -308,7 +308,7 @@
   ;; as other basics don't require 16-byte aligned sizes.
   ;; - maybe the 16-byte aligned size was a requirement if types were stored in the symbol table?
   ;; - maybe types used to be a little bit larger, they made an effort to pack fields tightly.
-  (align16 (+ 28 (* 4 (-> type allocated-length))))
+  (logand #xfffffff0 (+ 15 (* 4 (-> type allocated-length)) 28))
   )
 
 (defun basic-type? ((obj basic) (parent-type type))
@@ -1055,12 +1055,9 @@
    Not very efficient."
   (let ((result dst))
     (dotimes (i size)
-      (set!
+      (logior!
        (-> (the-as (pointer uint8) dst))
-       (logior
-        (-> (the-as (pointer uint8) dst))
-        (-> (the-as (pointer uint8) src))
-        )
+       (-> (the-as (pointer uint8) src))
        )
       (&+! dst 1)
       (&+! src 1)
@@ -1073,7 +1070,7 @@
 (defun quad-copy! ((dst pointer) (src pointer) (qwc int))
   "Optimized memory copy. The original is pretty clever, but this isn't."
   (qmem-copy<-! dst src (* qwc 16))
-  0
+  (none)
   )
 
 (defun-recursive fact int ((x int))
@@ -1388,3 +1385,13 @@
        )
      )
   )
+
+;; the decompiler may fail to recognize setting fields of a 128-bit bitfield
+;; and will rely on this macro:
+(defmacro copy-and-set-field (original field-name field-value)
+  `(let ((temp-copy ,original))
+     (set! (-> temp-copy ,field-name) ,field-value)
+     temp-copy
+     )
+  )
+

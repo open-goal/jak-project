@@ -379,6 +379,13 @@ bool DecompilerTypeSystem::tp_lca(TypeState* combined, const TypeState& add) {
     }
   }
 
+  bool diff = false;
+  auto new_type = tp_lca(combined->next_state_type, add.next_state_type, &diff);
+  if (diff) {
+    result = true;
+    combined->next_state_type = new_type;
+  }
+
   return result;
 }
 
@@ -404,6 +411,11 @@ int DecompilerTypeSystem::get_format_arg_count(const std::string& str) const {
 
       // ~1K
       if (i + 1 < str.length() && (str.at(i) == '1') && str.at(i + 1) == 'K') {
+        continue;
+      }
+
+      // ~0k
+      if (i + 1 < str.length() && (str.at(i) == '0') && str.at(i + 1) == 'k') {
         continue;
       }
 

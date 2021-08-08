@@ -19,6 +19,8 @@ class Interpreter {
   void throw_eval_error(const Object& o, const std::string& err);
   Object eval_with_rewind(const Object& obj, const std::shared_ptr<EnvironmentObject>& env);
   bool get_global_variable_by_name(const std::string& name, Object* dest);
+  void set_global_variable_by_name(const std::string& name, const Object& value);
+  void set_global_variable_to_symbol(const std::string& name, const std::string& value);
   Object eval(Object obj, const std::shared_ptr<EnvironmentObject>& env);
   Object intern(const std::string& name);
   void disable_printfs();
@@ -35,6 +37,12 @@ class Interpreter {
                                Object rest,
                                const std::shared_ptr<EnvironmentObject>& env);
   bool truthy(const Object& o);
+
+  void register_form(
+      const std::string& name,
+      const std::function<
+          Object(const Object&, Arguments&, const std::shared_ptr<EnvironmentObject>&)>& form);
+  void eval_args(Arguments* args, const std::shared_ptr<EnvironmentObject>& env);
 
   Reader reader;
   Object global_environment;
@@ -59,7 +67,6 @@ class Interpreter {
       const std::unordered_map<std::string, std::pair<bool, std::optional<ObjectType>>>& named);
 
   Object eval_pair(const Object& o, const std::shared_ptr<EnvironmentObject>& env);
-  void eval_args(Arguments* args, const std::shared_ptr<EnvironmentObject>& env);
   ArgumentSpec parse_arg_spec(const Object& form, Object& rest);
 
   Object quasiquote_helper(const Object& form, const std::shared_ptr<EnvironmentObject>& env);
@@ -198,6 +205,12 @@ class Interpreter {
   Object eval_ash(const Object& form,
                   Arguments& args,
                   const std::shared_ptr<EnvironmentObject>& env);
+  Object eval_symbol_to_string(const Object& form,
+                               Arguments& args,
+                               const std::shared_ptr<EnvironmentObject>& env);
+  Object eval_string_to_symbol(const Object& form,
+                               Arguments& args,
+                               const std::shared_ptr<EnvironmentObject>& env);
 
   // specials
   Object eval_define(const Object& form,
@@ -239,6 +252,11 @@ class Interpreter {
                                              Arguments& args,
                                              const std::shared_ptr<EnvironmentObject>& env)>
       builtin_forms;
+
+  std::unordered_map<
+      std::string,
+      std::function<Object(const Object&, Arguments&, const std::shared_ptr<EnvironmentObject>&)>>
+      m_custom_forms;
   std::unordered_map<std::string,
                      Object (Interpreter::*)(const Object& form,
                                              const Object& rest,

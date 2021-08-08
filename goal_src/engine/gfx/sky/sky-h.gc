@@ -39,12 +39,12 @@
    (r-sun          float           :offset 16)
    (r-halo         float           :offset 20)
    (r-aurora       float           :offset 24)
-   (c-sun-start    uint32          :offset 32)
-   (c-sun-end      uint32          :offset 48)
-   (c-halo-start   uint32          :offset 36)
-   (c-halo-end     uint32          :offset 52)
-   (c-aurora-start uint32          :offset 40)
-   (c-aurora-end   uint32          :offset 56)
+   (c-sun-start    rgba            :offset 32)
+   (c-sun-end      rgba            :offset 48)
+   (c-halo-start   rgba            :offset 36)
+   (c-halo-end     rgba            :offset 52)
+   (c-aurora-start rgba            :offset 40)
+   (c-aurora-end   rgba            :offset 56)
    )
   :method-count-assert 9
   :size-assert         #x40
@@ -76,9 +76,7 @@
   )
 
 (deftype sky-upload-data (basic)
-  (
-   ;;(data   UNKNOWN         27      :offset-assert 16)
-   (circle sky-circle-data :inline :offset-assert 16)
+  ((circle sky-circle-data :inline :offset-assert 16)
    (sun    sky-sun-data 2 :inline       :offset-assert 288)
    (moon   sky-moon-data   :inline :offset-assert 416)
    (data   uint128         27      :offset 16)
@@ -106,12 +104,12 @@
   )
 
 (defmethod new sky-parms ((allocation symbol) (type-to-make type))
-  (local-vars (v0-0 sky-parms))
-  (set! v0-0
-        (object-new allocation type-to-make (the-as int (-> type-to-make size)))
-        )
-  (set! (-> v0-0 upload-data type) sky-upload-data)
-  v0-0
+  "allocate a new sky-parms"
+
+  (let ((v0-0 (object-new allocation type-to-make (the-as int (-> type-to-make size)))))
+    (set! (-> v0-0 upload-data type) sky-upload-data)
+    v0-0
+    )
   )
 
 (define *sky-parms* (new 'global 'sky-parms))
