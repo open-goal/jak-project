@@ -15,7 +15,8 @@ class TextureConverter {
                          u32 h,
                          u32 psm,
                          u32 clut_psm,
-                         u32 clut_vram_addr);
+                         u32 clut_vram_addr,
+                         u32 expected_size_bytes);
 
  private:
   std::vector<u8> m_vram;

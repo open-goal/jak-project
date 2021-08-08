@@ -3,6 +3,7 @@
 #include "third-party/fmt/core.h"
 #include "common/util/assert.h"
 #include "common/util/FileUtil.h"
+#include "common/util/Timer.h"
 
 ////////////////////////////////
 // Extraction of textures
@@ -94,23 +95,25 @@ struct GoalTexturePage {
  * - add this to the PC pool.
  *
  * The textures are scrambled around in a confusing way.
+ *
+ * NOTE: the actual conversion is currently done here, but this might be too slow.
+ * We could store textures in the right format to begin with, or spread the conversion out over
+ * multiple frames.
  */
 void TexturePool::handle_upload_now(const u8* tpage, int mode, const u8* memory_base, u32 s7_ptr) {
-  fmt::print("[TexutrePool C++] Got upload now! {} {}\n", (const void*)tpage, mode);
+  Timer timer;
 
   // extract the texture-page object. This is just a description of the page data.
   GoalTexturePage texture_page;
   memcpy(&texture_page, tpage, sizeof(GoalTexturePage));
-
-  std::vector<u8> output_buffer;
-  output_buffer.resize(1024 * 1024);
 
   u32 sizes[3] = {texture_page.segment[0].size, texture_page.segment[1].size,
                   texture_page.segment[2].size};
   if (mode == -1) {
     // I don't really understand what's going on here with the size.
     // the sizes given aren't the actual sizes in memory, so if you just use that, you get the
-    // wrong answer. I solved this in the decompiler by using
+    // wrong answer. I solved this in the decompiler by using the size of the actual data, but we
+    // don't really have that here.
     u32 size = ((sizes[0] + sizes[1] + sizes[2] + 255) / 256) * 256;
     m_tex_converter.upload(memory_base + texture_page.segment[0].block_data_ptr,
                            texture_page.segment[0].dest, size);
@@ -125,13 +128,23 @@ void TexturePool::handle_upload_now(const u8* tpage, int mode, const u8* memory_
     if (texture_page.try_copy_texture_description(&tex, tex_idx, memory_base, tpage, s7_ptr)) {
       // each texture may have multiple mip levels.
       for (int mip_idx = 0; mip_idx < tex.num_mips; mip_idx++) {
-        s32 segment = tex.segment_of_mip(mip_idx);
-
         u32 ww = tex.w >> mip_idx;
         u32 hh = tex.h >> mip_idx;
-        m_tex_converter.download_rgba8888(output_buffer.data(), tex.dest[mip_idx],
+        u32 size_bytes = ww * hh * 4;
+
+        auto texture_record = std::make_unique<TextureRecord>();
+        texture_record->page_name = goal_string(texture_page.name_ptr, memory_base);
+        texture_record->name = goal_string(tex.name_ptr, memory_base);
+        texture_record->mip_level = mip_idx;
+        texture_record->w = ww;
+        texture_record->h = hh;
+        texture_record->data_segment = tex.segment_of_mip(mip_idx);
+        texture_record->data.resize(size_bytes);
+
+        m_tex_converter.download_rgba8888(texture_record->data.data(), tex.dest[mip_idx],
                                           tex.width[mip_idx], ww, hh, tex.psm, tex.clutpsm,
-                                          tex.clut_dest);
+                                          tex.clut_dest, size_bytes);
+        m_textures.at(tex.dest[mip_idx]) = std::move(texture_record);
 
         // Debug output.
         if (dump_textures_to_file) {
@@ -143,11 +156,13 @@ void TexturePool::handle_upload_now(const u8* tpage, int mode, const u8* memory_
               fmt::format(
                   file_util::get_file_path({"debug_out", "textures", tpage_name, "{}-{}-{}.png"}),
                   tex_idx, tex_name, mip_idx),
-              output_buffer.data(), ww, hh);
+              texture_record->data.data(), ww, hh);
         }
       }
     } else {
-      fmt::print("[{}] #f ------------\n", tex_idx);
+      // texture was #f, skip it.
     }
   }
+
+  fmt::print("upload now took {:.2f} ms\n", timer.getMs());
 }

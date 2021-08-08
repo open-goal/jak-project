@@ -30,10 +30,10 @@ void TextureConverter::download_rgba8888(u8* result,
                                          u32 h,
                                          u32 psm,
                                          u32 clut_psm,
-                                         u32 clut_vram_addr) {
+                                         u32 clut_vram_addr,
+                                         u32 expected_size_bytes) {
+  u32 out_offset = 0;
   if (psm == int(PSM::PSMT8) && clut_psm == int(CPSM::PSMCT32)) {
-    u32 out_offset = 0;
-
     // width is like the TEX0 register, in 64 texel units.
     // not sure what the other widths are yet.
     int read_width = 64 * goal_tex_width;
@@ -68,8 +68,6 @@ void TextureConverter::download_rgba8888(u8* result,
     }
 
   } else if (psm == int(PSM::PSMT8) && clut_psm == int(CPSM::PSMCT16)) {
-    u32 out_offset = 0;
-
     // width is like the TEX0 register, in 64 texel units.
     // not sure what the other widths are yet.
     int read_width = 64 * goal_tex_width;
@@ -106,8 +104,6 @@ void TextureConverter::download_rgba8888(u8* result,
     }
 
   } else if (psm == int(PSM::PSMT4) && clut_psm == int(CPSM::PSMCT16)) {
-    u32 out_offset = 0;
-
     // width is like the TEX0 register, in 64 texel units.
     // not sure what the other widths are yet.
     int read_width = 64 * goal_tex_width;
@@ -141,8 +137,6 @@ void TextureConverter::download_rgba8888(u8* result,
       }
     }
   } else if (psm == int(PSM::PSMT4) && clut_psm == int(CPSM::PSMCT32)) {
-    u32 out_offset = 0;
-
     // width is like the TEX0 register, in 64 texel units.
     // not sure what the other widths are yet.
     int read_width = 64 * goal_tex_width;
@@ -178,4 +172,6 @@ void TextureConverter::download_rgba8888(u8* result,
   } else {
     assert(false);
   }
+
+  assert(out_offset == expected_size_bytes);
 }
