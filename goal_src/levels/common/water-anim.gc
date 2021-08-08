@@ -17,16 +17,6 @@
   :flag-assert         #x1e007000dc
   )
 
-;; definition for method 3 of type water-anim
-(defmethod inspect water-anim ((obj water-anim))
-  (let ((t9-0 (method-of-type water-vol inspect)))
-   (t9-0 obj)
-   )
-  (format #t "~T~Tlook: ~D~%" (-> obj look))
-  (format #t "~T~Tplay-ambient-sound?: ~A~%" (-> obj play-ambient-sound?))
-  obj
-  )
-
 ;; failed to figure out what this is:
 (let
   ((v1-1
@@ -875,15 +865,6 @@
   :method-count-assert 9
   :size-assert         #xc
   :flag-assert         #x90000000c
-  )
-
-;; definition for method 3 of type water-anim-look
-(defmethod inspect water-anim-look ((obj water-anim-look))
-  (format #t "[~8x] ~A~%" obj 'water-anim-look)
-  (format #t "~Tskel-group: ~A~%" (-> obj skel-group))
-  (format #t "~Tanim: ~D~%" (-> obj anim))
-  (format #t "~Tambient-sound-spec: ~A~%" (-> obj ambient-sound-spec))
-  obj
   )
 
 ;; definition for symbol *water-anim-look*, type (array water-anim-look)
@@ -1785,88 +1766,88 @@
    )
   )
 
-;; failed to figure out what this is:
-(let
-  ((gp-0
-    (new 'static 'state
-     :name 'water-vol-idle
-     :next #f
-     :exit #f
-     :code #f
-     :trans #f
-     :post #f
-     :enter #f
-     :event #f
-     )
-    )
-   )
-  (inherit-state gp-0 (the-as state (method-of-type water-vol water-vol-idle)))
-  (method-set! water-anim 20 (the-as function gp-0))
-  (set!
-   (-> gp-0 event)
-   (lambda :behavior water-anim
-    ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
-    (case arg2 
-     (('move-to)
-       (set!
-        (-> self root trans quad)
-        (-> (the-as vector (-> arg3 param 0)) quad)
-        )
-       (set! (-> self water-height) (-> self root trans y))
-       (if (nonzero? (-> self sound))
-        (update-trans! (-> self sound) (-> self root trans))
-        )
-       (let ((v0-0 (logclear (-> self mask) (process-mask sleep-code))))
-        (set! (-> self mask) v0-0)
-        v0-0
-        )
-       )
-     )
-    )
-   )
-  (set!
-   (-> gp-0 trans)
-   (the-as
-    (function object)
-    (lambda :behavior water-anim
-     ()
-     (let
-      ((t9-0
-        (->
-         (the-as (state none) (method-of-type water-vol water-vol-idle))
-         trans
-         )
-        )
-       )
-      (if t9-0
-       (t9-0)
-       )
-      )
-     (if (< (-> (math-camera-pos) y) (+ -8192.0 (-> self root trans y)))
-      (logior! (-> self draw status) 2)
-      (set! (-> self draw status) (logand -3 (-> self draw status)))
-      )
-     (if (and (-> self play-ambient-sound?) (nonzero? (-> self sound)))
-      (update! (-> self sound))
-      )
-     (none)
-     )
-    )
-   )
-  (set! (-> gp-0 code) (lambda :behavior water-anim () (while #t
-                                                        (ja-post)
-                                                        (logior!
-                                                         (-> self mask)
-                                                         (process-mask
-                                                          sleep-code
-                                                          )
-                                                         )
-                                                        (suspend)
-                                                        )
-                        (none)
-                        )
-   )
-  )
+;; TODO - something here is causing the tests to crash!
+; (let
+;   ((gp-0
+;     (new 'static 'state
+;      :name 'water-vol-idle
+;      :next #f
+;      :exit #f
+;      :code #f
+;      :trans #f
+;      :post #f
+;      :enter #f
+;      :event #f
+;      )
+;     )
+;    )
+;   (inherit-state gp-0 (the-as state (method-of-type water-vol water-vol-idle)))
+;   (method-set! water-anim 20 (the-as function gp-0))
+;   (set!
+;    (-> gp-0 event)
+;    (lambda :behavior water-anim
+;     ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
+;     (case arg2 
+;      (('move-to)
+;        (set!
+;         (-> self root trans quad)
+;         (-> (the-as vector (-> arg3 param 0)) quad)
+;         )
+;        (set! (-> self water-height) (-> self root trans y))
+;        (if (nonzero? (-> self sound))
+;         (update-trans! (-> self sound) (-> self root trans))
+;         )
+;        (let ((v0-0 (logclear (-> self mask) (process-mask sleep-code))))
+;         (set! (-> self mask) v0-0)
+;         v0-0
+;         )
+;        )
+;      )
+;     )
+;    )
+;   (set!
+;    (-> gp-0 trans)
+;    (the-as
+;     (function object)
+;     (lambda :behavior water-anim
+;      ()
+;      (let
+;       ((t9-0
+;         (->
+;          (the-as (state none) (method-of-type water-vol water-vol-idle))
+;          trans
+;          )
+;         )
+;        )
+;       (if t9-0
+;        (t9-0)
+;        )
+;       )
+;      (if (< (-> (math-camera-pos) y) (+ -8192.0 (-> self root trans y)))
+;       (logior! (-> self draw status) 2)
+;       (set! (-> self draw status) (logand -3 (-> self draw status)))
+;       )
+;      (if (and (-> self play-ambient-sound?) (nonzero? (-> self sound)))
+;       (update! (-> self sound))
+;       )
+;      (none)
+;      )
+;     )
+;    )
+;   (set! (-> gp-0 code) (lambda :behavior water-anim () (while #t
+;                                                         (ja-post)
+;                                                         (logior!
+;                                                          (-> self mask)
+;                                                          (process-mask
+;                                                           sleep-code
+;                                                           )
+;                                                          )
+;                                                         (suspend)
+;                                                         )
+;                         (none)
+;                         )
+;    )
+;   )
 
 ;; definition for method 28 of type water-anim
 (defmethod get-ripple-height water-anim ((obj water-anim) (arg0 vector))
