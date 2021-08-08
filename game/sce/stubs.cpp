@@ -4,8 +4,6 @@
 
 namespace ee {
 
-
-
 void sceGsResetGraph() {
   assert(false);
 }

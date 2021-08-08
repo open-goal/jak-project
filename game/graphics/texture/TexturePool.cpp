@@ -10,6 +10,8 @@
 //    this simply converts the PS2 format textures loaded by the game, then puts them into the PC
 //    port texture pool.
 
+constexpr bool dump_textures_to_file = false;
+
 const char empty_string[] = "";
 const char* goal_string(u32 ptr, const u8* memory_base) {
   if (ptr == 0) {
@@ -84,7 +86,6 @@ struct GoalTexturePage {
   }
 };
 
-
 /*!
  * Handle a GOAL texture-page object being uploaded to VRAM.
  * The strategy:
@@ -115,14 +116,13 @@ void TexturePool::handle_upload_now(const u8* tpage, int mode, const u8* memory_
                            texture_page.segment[0].dest, size);
   } else {
     assert(false);
+    //    return;
   }
-
 
   // loop over all texture in the tpage and download them.
   for (int tex_idx = 0; tex_idx < texture_page.length; tex_idx++) {
     GoalTexture tex;
     if (texture_page.try_copy_texture_description(&tex, tex_idx, memory_base, tpage, s7_ptr)) {
-
       // each texture may have multiple mip levels.
       for (int mip_idx = 0; mip_idx < tex.num_mips; mip_idx++) {
         s32 segment = tex.segment_of_mip(mip_idx);
@@ -134,18 +134,18 @@ void TexturePool::handle_upload_now(const u8* tpage, int mode, const u8* memory_
                                           tex.clut_dest);
 
         // Debug output.
-        const char* tpage_name = goal_string(texture_page.name_ptr, memory_base);
-        const char* tex_name = goal_string(tex.name_ptr, memory_base);
-        file_util::create_dir_if_needed(
-            file_util::get_file_path({"debug_out", "textures", tpage_name}));
-        file_util::write_rgba_png(
-            fmt::format(
-                file_util::get_file_path({"debug_out", "textures", tpage_name, "{}-{}-{}.png"}),
-                tex_idx, tex_name, mip_idx),
-            output_buffer.data(), ww, hh);
+        if (dump_textures_to_file) {
+          const char* tpage_name = goal_string(texture_page.name_ptr, memory_base);
+          const char* tex_name = goal_string(tex.name_ptr, memory_base);
+          file_util::create_dir_if_needed(
+              file_util::get_file_path({"debug_out", "textures", tpage_name}));
+          file_util::write_rgba_png(
+              fmt::format(
+                  file_util::get_file_path({"debug_out", "textures", tpage_name, "{}-{}-{}.png"}),
+                  tex_idx, tex_name, mip_idx),
+              output_buffer.data(), ww, hh);
+        }
       }
-
-      // TODO the clut
     } else {
       fmt::print("[{}] #f ------------\n", tex_idx);
     }

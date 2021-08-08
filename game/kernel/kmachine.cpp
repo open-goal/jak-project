@@ -426,7 +426,6 @@ void CPadGetData() {
     lg::warn("ignoring calls to CPadGetData");
     warned = true;
   }
-
 }
 
 // TODO InstallHandler
@@ -582,7 +581,7 @@ void DecodeTime() {
 
 // TODO PutDisplayEnv
 void PutDisplayEnv() {
-  //assert(false);
+  // assert(false);
 }
 
 /*!
@@ -617,7 +616,7 @@ void InitMachine_PCPort() {
  */
 void InitMachineScheme() {
   make_function_symbol_from_c("put-display-env", (void*)PutDisplayEnv);       // used in drawable
-  make_function_symbol_from_c("syncv", (void*)sceGsSyncV);                   // used in drawable
+  make_function_symbol_from_c("syncv", (void*)sceGsSyncV);                    // used in drawable
   make_function_symbol_from_c("sync-path", (void*)sceGsSyncPath);             // used
   make_function_symbol_from_c("reset-path", (void*)sceGsResetPath);           // used in dma
   make_function_symbol_from_c("reset-graph", (void*)sceGsResetGraph);         // used

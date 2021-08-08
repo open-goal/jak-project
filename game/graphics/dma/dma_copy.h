@@ -29,7 +29,6 @@ class FixedChunkDmaCopier {
   const DmaData& get_last_result() const { return m_result; }
 
  private:
-
   struct Fixup {
     u32 source_chunk;
     u32 offset_in_source_chunk;

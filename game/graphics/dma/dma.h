@@ -76,4 +76,3 @@ struct VifCode {
 
   std::string print();
 };
-

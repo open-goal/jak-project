@@ -67,7 +67,6 @@ class DirectRenderer : public BucketRenderer {
   void update_gl_blend();
   void update_gl_test();
 
-
   struct TestState {
     void from_register(GsTest reg);
 
@@ -81,7 +80,6 @@ class DirectRenderer : public BucketRenderer {
     bool datm = false;
     bool zte = true;
     GsTest::ZTest ztst = GsTest::ZTest::GEQUAL;
-
 
   } m_test_state;
 
