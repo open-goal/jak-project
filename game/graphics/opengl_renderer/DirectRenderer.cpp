@@ -73,15 +73,14 @@ void DirectRenderer::flush_pending(SharedRenderState* render_state) {
     m_test_state_needs_gl_update = false;
   }
 
-   u32* data = ( u32*)m_prim_buffer.verts.data();
-
-
+  // hacks
+  //  glEnable(GL_DEPTH_TEST);
+  //  glDepthFunc(GL_ALWAYS);
 
   // render!
   // update buffers:
   glBindBuffer(GL_ARRAY_BUFFER, m_ogl.vertex_buffer);
   glBufferSubData(GL_ARRAY_BUFFER, 0, m_ogl.vertex_buffer_bytes, m_prim_buffer.verts.data());
-  // glBufferSubData(GL_ARRAY_BUFFER, 0, m_ogl.vertex_buffer_bytes, verts);
   glBindBuffer(GL_ARRAY_BUFFER, m_ogl.color_buffer);
   glBufferSubData(GL_ARRAY_BUFFER, 0, m_ogl.color_buffer_bytes, m_prim_buffer.rgba_u8.data());
 
@@ -114,7 +113,7 @@ void DirectRenderer::update_gl_prim() {
   // currently gouraud is handled in setup.
   const auto& state = m_prim_gl_state;
   if (state.texture_enable) {
-    assert(false);
+    // assert(false); TODO
   }
   if (state.fogging_enable) {
     assert(false);
@@ -257,10 +256,6 @@ void DirectRenderer::render_vif(u32 vif0,
  */
 void DirectRenderer::render_gif(const u8* data, u32 size, SharedRenderState* render_state) {
   fmt::print("Render GIF: {}\n", size);
-  if (size == 224) {
-    lg::error("Skipping 224 sized GIF render.\n");
-    return;
-  }
   assert(size >= 16);
   bool eop = false;
 
@@ -280,11 +275,23 @@ void DirectRenderer::render_gif(const u8* data, u32 size, SharedRenderState* ren
 
     auto format = tag.flg();
     if (format == GifTag::Format::PACKED) {
+      if (tag.pre()) {
+        handle_prim(tag.prim(), render_state);
+      }
       for (u32 loop = 0; loop < tag.nloop(); loop++) {
         for (u32 reg = 0; reg < nreg; reg++) {
           switch (reg_desc[reg]) {
             case GifTag::RegisterDescriptor::AD:
               handle_ad(data + offset, render_state);
+              break;
+            case GifTag::RegisterDescriptor::ST:
+              handle_st_packed(data + offset);
+              break;
+            case GifTag::RegisterDescriptor::RGBAQ:
+              handle_rgbaq_packed(data + offset);
+              break;
+            case GifTag::RegisterDescriptor::XYZF2:
+              handle_xyzf2_packed(data + offset);
               break;
             default:
               fmt::print("Register {} is not supported in packed mode yet\n",
@@ -352,17 +359,61 @@ void DirectRenderer::handle_ad(const u8* data, SharedRenderState* render_state) 
     case GsRegisterAddress::CLAMP_1:
       handle_clamp1(value);
       break;
+    case GsRegisterAddress::PRIM:
+      handle_prim(value, render_state);
+      break;
 
       // for now, ignore textures/fog.
+      // TODO
     case GsRegisterAddress::TEX1_1:
     case GsRegisterAddress::TEXA:
     case GsRegisterAddress::TEXCLUT:
     case GsRegisterAddress::FOGCOL:
+    case GsRegisterAddress::TEX0_1:
       break;
     default:
       fmt::print("Address {} is not supported\n", register_address_name(addr));
       assert(false);
   }
+}
+
+void DirectRenderer::handle_st_packed(const u8* data) {
+  // TODO
+}
+
+void DirectRenderer::handle_rgbaq_packed(const u8* data) {
+  // TODO update Q from st.
+  m_prim_building.rgba_reg[0] = data[0];
+  m_prim_building.rgba_reg[1] = data[4];
+  m_prim_building.rgba_reg[2] = data[8];
+  m_prim_building.rgba_reg[3] = data[12];
+}
+
+float u32_to_float(u32 in) {
+  double x = (double)in / UINT32_MAX;
+  return x * 2 - 1;
+}
+
+void DirectRenderer::handle_xyzf2_packed(const u8* data) {
+  u32 x, y;
+  memcpy(&x, data, 4);
+  memcpy(&y, data + 4, 4);
+
+  u64 upper;
+  memcpy(&upper, data + 8, 8);
+  u32 z = (upper >> 4) & 0xffffff;
+  u8 f = (upper >> 36);
+  bool adc = upper & (1ull << 47);
+  assert(!adc);
+  assert(!f);
+  // TODO (not this)
+  fmt::print("font vert at {} {}\n", u32_to_float(x), u32_to_float(y));
+
+  handle_xyzf2_common(x, y, z, f);
+}
+
+void debug_print_vtx(const math::Vector<u32, 3>& vtx) {
+  fmt::print("{} {}\n", u32_to_float(vtx.x()), u32_to_float(vtx.y()));
 }
 
 void DirectRenderer::handle_zbuf1(u64 val) {
@@ -405,10 +456,15 @@ void DirectRenderer::handle_clamp1(u64 val) {
 void DirectRenderer::handle_prim(u64 val, SharedRenderState* render_state) {
   fmt::print("got prim: 0x{:x}\n", val);
 
-  // need to flush any in progress prims to the buffer.
-  if (m_prim_building.building_idx > 0) {
-    assert(false);  // shouldn't leave any half-finished prims
+  if (m_prim_building.tri_strip_startup) {
+    m_prim_building.tri_strip_startup = 0;
+    m_prim_building.building_idx = 0;
+  } else {
+    if (m_prim_building.building_idx > 0) {
+      assert(false);  // shouldn't leave any half-finished prims
+    }
   }
+  // need to flush any in progress prims to the buffer.
 
   GsPrim prim(val);
   if (m_prim_gl_state.current_register != prim || m_blend_state.alpha_blend_enable != prim.abe()) {
@@ -428,22 +484,10 @@ void DirectRenderer::handle_rgbaq(u64 val) {
   fmt::print("a = 0x{:x}\n", m_prim_building.rgba_reg[3]);
 }
 
-void DirectRenderer::handle_xyzf2(u64 val, SharedRenderState* render_state) {
-  if (m_prim_buffer.is_full()) {
-    flush_pending(render_state);
-  }
-
-  m_prim_building.building_rgba[m_prim_building.building_idx] = m_prim_building.rgba_reg;
-
-  // m_prim_buffer.rgba_u8[m_prim_buffer.vert_count] = m_prim_building.rgba;
-
-  u32 x = val & 0xffff;
-  u32 y = (val >> 16) & 0xffff;
-  u32 z = (val >> 32) & 0xfffff;
-  u32 f = (val >> 56) & 0xff;
-
+void DirectRenderer::handle_xyzf2_common(u32 x, u32 y, u32 z, u8 f) {
   assert(f == 0);
-  m_prim_building.building_vert[m_prim_building.building_idx] = {x << 16, y << 16, z};
+  m_prim_building.building_rgba.at(m_prim_building.building_idx) = m_prim_building.rgba_reg;
+  m_prim_building.building_vert.at(m_prim_building.building_idx) = {x << 16, y << 16, z};
   m_prim_building.building_idx++;
 
   switch (m_prim_building.kind) {
@@ -474,10 +518,40 @@ void DirectRenderer::handle_xyzf2(u64 val, SharedRenderState* render_state) {
         m_prim_building.building_idx = 0;
       }
     } break;
+    case GsPrim::Kind::TRI_STRIP: {
+      if (m_prim_building.building_idx == 3) {
+        m_prim_building.building_idx = 0;
+      }
+
+      if (m_prim_building.tri_strip_startup < 3) {
+        m_prim_building.tri_strip_startup++;
+      }
+      if (m_prim_building.tri_strip_startup >= 3) {
+        m_prim_buffer.push(m_prim_building.building_rgba[0], m_prim_building.building_vert[0]);
+        m_prim_buffer.push(m_prim_building.building_rgba[1], m_prim_building.building_vert[1]);
+        m_prim_buffer.push(m_prim_building.building_rgba[2], m_prim_building.building_vert[2]);
+      }
+
+    } break;
     default:
       fmt::print("prim type {} is unsupported.\n", (int)m_prim_building.kind);
       assert(false);
   }
+}
+
+void DirectRenderer::handle_xyzf2(u64 val, SharedRenderState* render_state) {
+  if (m_prim_buffer.is_full()) {
+    flush_pending(render_state);
+  }
+
+  // m_prim_buffer.rgba_u8[m_prim_buffer.vert_count] = m_prim_building.rgba;
+
+  u32 x = val & 0xffff;
+  u32 y = (val >> 16) & 0xffff;
+  u32 z = (val >> 32) & 0xfffff;
+  u32 f = (val >> 56) & 0xff;
+
+  handle_xyzf2_common(x, y, z, f);
 }
 
 void DirectRenderer::reset_state() {
@@ -489,6 +563,8 @@ void DirectRenderer::reset_state() {
 
   m_prim_gl_state_needs_gl_update = true;
   m_prim_gl_state = PrimGlState();
+
+  m_prim_building = PrimBuildState();
 }
 
 void DirectRenderer::TestState::from_register(GsTest reg) {

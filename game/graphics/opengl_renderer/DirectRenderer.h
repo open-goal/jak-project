@@ -57,6 +57,11 @@ class DirectRenderer : public BucketRenderer {
   void handle_prim(u64 val, SharedRenderState* render_state);
   void handle_rgbaq(u64 val);
   void handle_xyzf2(u64 val, SharedRenderState* render_state);
+  void handle_st_packed(const u8* data);
+  void handle_rgbaq_packed(const u8* data);
+  void handle_xyzf2_packed(const u8* data);
+
+  void handle_xyzf2_common(u32 x, u32 y, u32 z, u8 f);
 
   void update_gl_prim();
   void update_gl_blend();
@@ -109,13 +114,14 @@ class DirectRenderer : public BucketRenderer {
   } m_prim_gl_state;
 
   // state set through the prim/rgbaq register that doesn't require changing GL stuff
-  struct PrimBufferState {
+  struct PrimBuildState {
     GsPrim::Kind kind = GsPrim::Kind::PRIM_7;
     math::Vector<u8, 4> rgba_reg = {0, 0, 0, 0};
 
     std::array<math::Vector<u8, 4>, 3> building_rgba;
     std::array<math::Vector<u32, 3>, 3> building_vert;
     int building_idx = 0;
+    int tri_strip_startup = 0;
 
   } m_prim_building;
 

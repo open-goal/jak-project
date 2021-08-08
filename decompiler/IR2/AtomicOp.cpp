@@ -539,6 +539,11 @@ goos::Object AsmOp::to_form(const std::vector<DecompilerLabel>& labels, const En
     }
   }
 
+  if (m_instr.kind == InstructionKind::MOVZ || m_instr.kind == InstructionKind::MOVN) {
+    RegisterAccess ra(AccessMode::READ, m_dst->reg(), m_dst->idx());
+    forms.push_back(ra.to_form(env));
+  }
+
   return pretty_print::build_list(forms);
 }
 
@@ -602,6 +607,10 @@ void AsmOp::update_register_info() {
     if (src.has_value()) {
       m_read_regs.push_back(src->reg());
     }
+  }
+
+  if (m_instr.kind == InstructionKind::MOVN || m_instr.kind == InstructionKind::MOVZ) {
+    m_read_regs.push_back(m_dst->reg());
   }
 
   if (m_instr.kind >= FIRST_COP2_MACRO && m_instr.kind <= LAST_COP2_MACRO) {
@@ -710,6 +719,11 @@ void AsmOp::collect_vars(RegAccessSet& vars) const {
     if (x.has_value()) {
       vars.insert(*x);
     }
+  }
+
+  if (m_instr.kind == InstructionKind::MOVN || m_instr.kind == InstructionKind::MOVZ) {
+    RegisterAccess ra(AccessMode::READ, m_dst->reg(), m_dst->idx());
+    vars.insert(ra);
   }
 }
 /////////////////////////////
