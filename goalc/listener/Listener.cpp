@@ -337,14 +337,21 @@ int Listener::get_received_message_count() {
 /*!
  * Send a "CODE" message for the target to execute as the Listener Function.
  * Returns once the target acks the code.
+ *
+ * The load name is not actually sent to the target.  Instead, if the target loads successfully
+ * and outputs a *listener* load message, this will be remapped to a load of the given name.
  */
-void Listener::send_code(std::vector<uint8_t>& code) {
+void Listener::send_code(std::vector<uint8_t>& code, const std::optional<std::string>& load_name) {
   got_ack = false;
   int total_size = code.size() + sizeof(ListenerMessageHeader);
   if (total_size > BUFFER_SIZE) {
     printf("[ERROR] Listener send_code got too big of a message\n");
     return;
   }
+
+  rcv_mtx.lock();
+  m_pending_listener_load_object_name = load_name;
+  rcv_mtx.unlock();
 
   auto* header = (ListenerMessageHeader*)m_buffer;
   auto* buffer_data = (char*)(header + 1);
@@ -551,7 +558,14 @@ void Listener::handle_output_message(const char* msg) {
  * Add a load to the load listing.
  */
 void Listener::add_load(const std::string& name, const LoadEntry& le) {
-  m_load_entries[name] = le;
+  // if we load a file through the listener, the compiler will set the pending load name,
+  // and the runtime will send a load message with *listener*.
+  if (name == "*listener*" && m_pending_listener_load_object_name) {
+    m_load_entries[*m_pending_listener_load_object_name] = le;
+    m_pending_listener_load_object_name = {};
+  } else {
+    m_load_entries[name] = le;
+  }
 }
 
 /*!

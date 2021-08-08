@@ -18,7 +18,7 @@
 #include "decompiler/analysis/expression_build.h"
 #include "decompiler/analysis/inline_asm_rewrite.h"
 #include "decompiler/analysis/stack_spill.h"
-#include "decompiler/analysis/anonymous_function_def.h"
+#include "decompiler/analysis/static_refs.h"
 #include "decompiler/analysis/symbol_def_map.h"
 #include "common/goos/PrettyPrinter.h"
 #include "decompiler/IR2/Form.h"
@@ -30,7 +30,9 @@ namespace decompiler {
  * At this point, we assume that the files are loaded and we've run find_code to locate all
  * functions, but nothing else.
  */
-void ObjectFileDB::analyze_functions_ir2(const std::string& output_dir, const Config& config) {
+void ObjectFileDB::analyze_functions_ir2(const std::string& output_dir,
+                                         const Config& config,
+                                         bool skip_debug_output) {
   lg::info("Using IR2 analysis...");
   lg::info("Processing top-level functions...");
   ir2_top_level_pass(config);
@@ -55,8 +57,11 @@ void ObjectFileDB::analyze_functions_ir2(const std::string& output_dir, const Co
   lg::info("Initial structuring...");
   ir2_cfg_build_pass();
 
-  lg::info("Storing temporary form result...");
-  ir2_store_current_forms();
+  if (!skip_debug_output) {
+    lg::info("Storing temporary form result...");
+    ir2_store_current_forms();
+  }
+
   lg::info("Expression building...");
   ir2_build_expressions(config);
   lg::info("Re-writing inline asm instructions...");
@@ -96,7 +101,7 @@ void ObjectFileDB::ir2_top_level_pass(const Config& config) {
 
       auto& func = data.linked_data.functions_by_seg.at(2).front();
       assert(func.guessed_name.empty());
-      func.guessed_name.set_as_top_level();
+      func.guessed_name.set_as_top_level(data.to_unique_name());
       func.find_global_function_defs(data.linked_data, dts);
       func.find_type_defs(data.linked_data, dts);
       func.find_method_defs(data.linked_data, dts);
@@ -219,7 +224,15 @@ void ObjectFileDB::ir2_basic_block_pass(const Config& config) {
       if (lookup != config.hacks.cond_with_else_len_by_func_name.end()) {
         hack = lookup->second;
       }
-      func.cfg = build_cfg(data.linked_data, segment_id, func, hack);
+
+      std::unordered_set<int> asm_br_blocks;
+      auto asm_lookup =
+          config.hacks.blocks_ending_in_asm_branch_by_func_name.find(func.guessed_name.to_string());
+      if (asm_lookup != config.hacks.blocks_ending_in_asm_branch_by_func_name.end()) {
+        asm_br_blocks = asm_lookup->second;
+      }
+
+      func.cfg = build_cfg(data.linked_data, segment_id, func, hack, asm_br_blocks);
       if (!func.cfg->is_fully_resolved()) {
         lg::warn("Function {} from {} failed to build control flow graph!",
                  func.guessed_name.to_string(), data.to_unique_name());
@@ -293,8 +306,17 @@ void ObjectFileDB::ir2_atomic_op_pass(const Config& config) {
         bool inline_asm =
             config.hacks.hint_inline_assembly_functions.find(func.guessed_name.to_string()) !=
             config.hacks.hint_inline_assembly_functions.end();
+
+        std::unordered_set<int> blocks_ending_in_asm_branch;
+        auto asm_branch_it = config.hacks.blocks_ending_in_asm_branch_by_func_name.find(
+            func.guessed_name.to_string());
+
+        if (asm_branch_it != config.hacks.blocks_ending_in_asm_branch_by_func_name.end()) {
+          blocks_ending_in_asm_branch = asm_branch_it->second;
+        }
+
         auto ops = convert_function_to_atomic_ops(func, data.linked_data.labels, func.warnings,
-                                                  inline_asm);
+                                                  inline_asm, blocks_ending_in_asm_branch);
         func.ir2.atomic_ops = std::make_shared<FunctionAtomicOps>(std::move(ops));
         func.ir2.atomic_ops_succeeded = true;
         func.ir2.env.set_end_var(func.ir2.atomic_ops->end_op().return_var());
@@ -602,7 +624,12 @@ void ObjectFileDB::ir2_insert_anonymous_functions() {
     (void)segment_id;
     (void)data;
     if (func.ir2.top_form && func.ir2.env.has_type_analysis()) {
-      total += insert_anonymous_functions(func.ir2.top_form, *func.ir2.form_pool, func, dts);
+      try {
+        total += insert_static_refs(func.ir2.top_form, *func.ir2.form_pool, func, dts);
+      } catch (std::exception& e) {
+        func.warnings.general_warning("Failed static ref finding: {}\n", e.what());
+        lg::error("Function {} failed static ref: {}\n", func.guessed_name.to_string(), e.what());
+      }
     }
   });
 

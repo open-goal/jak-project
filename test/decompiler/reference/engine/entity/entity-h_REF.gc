@@ -23,8 +23,8 @@
    (user-uint8  uint8              8 :offset          0)
    (status      entity-perm-status   :offset-assert   8)
    (dummy       uint8              1 :offset-assert  10)
-   (task        uint8                :offset-assert  11)
-   (aid         uint32               :offset-assert  12)
+   (task        game-task            :offset-assert  11)
+   (aid         actor-id             :offset-assert  12)
    (quad        uint128              :offset          0)
    )
   :pack-me
@@ -32,7 +32,7 @@
   :size-assert         #x10
   :flag-assert         #xa00000010
   (:methods
-    (dummy-9 () none 9)
+    (update-perm! (_type_ symbol entity-perm-status) _type_ 9)
     )
   )
 
@@ -61,15 +61,15 @@
 (deftype entity-links (structure)
   ((prev-link entity-links         :offset-assert   0)
    (next-link entity-links         :offset-assert   4)
-   (entity    basic                :offset-assert   8)
+   (entity    entity               :offset-assert   8)
    (process   process              :offset-assert  12)
    (level     level                :offset-assert  16)
    (vis-id    int32                :offset-assert  20)
    (trans     vector       :inline :offset-assert  32)
    (perm      entity-perm  :inline :offset-assert  48)
    (status    uint16               :offset         56)
-   (aid       uint32               :offset         60)
-   (task      uint8                :offset         59)
+   (aid       actor-id             :offset         60)
+   (task      game-task            :offset         59)
    )
   :method-count-assert 10
   :size-assert         #x40
@@ -98,7 +98,8 @@
 
 ;; definition of type entity-perm-array
 (deftype entity-perm-array (inline-array-class)
-  ()
+  ((data entity-perm :inline :dynamic :offset-assert  16)
+   )
   :method-count-assert 9
   :size-assert         #x10
   :flag-assert         #x900000010
@@ -109,7 +110,7 @@
   (format #t "[~8x] ~A~%" obj (-> obj type))
   (format #t "~Tlength: ~D~%" (-> obj length))
   (format #t "~Tallocated-length: ~D~%" (-> obj allocated-length))
-  (format #t "~Tdata[0] @ #x~X~%" (-> obj _data))
+  (format #t "~Tdata[0] @ #x~X~%" (-> obj data))
   obj
   )
 
@@ -118,7 +119,8 @@
 
 ;; definition of type entity-links-array
 (deftype entity-links-array (inline-array-class)
-  ()
+  ((data entity-links :inline :dynamic :offset-assert  16)
+   )
   :method-count-assert 9
   :size-assert         #x10
   :flag-assert         #x900000010
@@ -129,7 +131,7 @@
   (format #t "[~8x] ~A~%" obj (-> obj type))
   (format #t "~Tlength: ~D~%" (-> obj length))
   (format #t "~Tallocated-length: ~D~%" (-> obj allocated-length))
-  (format #t "~Tdata[0] @ #x~X~%" (-> obj _data))
+  (format #t "~Tdata[0] @ #x~X~%" (-> obj data))
   obj
   )
 

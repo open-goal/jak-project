@@ -59,6 +59,7 @@ struct DecompileHacks {
   std::unordered_set<std::string> pair_functions_by_name;
   std::unordered_map<std::string, CondWithElseLengthHack> cond_with_else_len_by_func_name;
   std::unordered_set<std::string> reject_cond_to_value;
+  std::unordered_map<std::string, std::unordered_set<int>> blocks_ending_in_asm_branch_by_func_name;
 };
 
 struct Config {
@@ -66,6 +67,9 @@ struct Config {
   std::vector<std::string> dgo_names;
   std::vector<std::string> object_file_names;
   std::vector<std::string> str_file_names;
+
+  std::string audio_dir_file_name;
+  std::vector<std::string> streamed_audio_file_names;
 
   std::string obj_file_name_map_file;
 
@@ -99,6 +103,8 @@ struct Config {
   std::unordered_map<std::string, std::unordered_map<std::string, LabelType>> label_types;
   std::unordered_map<std::string, std::vector<StackStructureHint>>
       stack_structure_hints_by_function;
+
+  std::unordered_map<std::string, int> bad_format_strings;
 
   DecompileHacks hacks;
 };

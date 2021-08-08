@@ -10,6 +10,7 @@
 #include "decompiler/util/DecompilerTypeSystem.h"
 
 namespace decompiler {
+class LinkedObjectFile;
 std::optional<TypeSpec> get_type_of_label(const DecompilerLabel& label,
                                           const std::vector<std::vector<LinkedWord>>& words);
 
@@ -19,30 +20,37 @@ goos::Object decompile_at_label(const TypeSpec& type,
                                 const DecompilerLabel& label,
                                 const std::vector<DecompilerLabel>& labels,
                                 const std::vector<std::vector<LinkedWord>>& words,
-                                const TypeSystem& ts);
+                                const TypeSystem& ts,
+                                const LinkedObjectFile* file);
 goos::Object decompile_at_label_with_hint(const LabelType& hint,
                                           const DecompilerLabel& label,
                                           const std::vector<DecompilerLabel>& labels,
                                           const std::vector<std::vector<LinkedWord>>& words,
-                                          DecompilerTypeSystem& dts);
+                                          DecompilerTypeSystem& dts,
+                                          const LinkedObjectFile* file);
 goos::Object decompile_at_label_guess_type(const DecompilerLabel& label,
                                            const std::vector<DecompilerLabel>& labels,
                                            const std::vector<std::vector<LinkedWord>>& words,
-                                           const TypeSystem& ts);
+                                           const TypeSystem& ts,
+                                           const LinkedObjectFile* file);
 goos::Object decompile_structure(const TypeSpec& actual_type,
                                  const DecompilerLabel& label,
                                  const std::vector<DecompilerLabel>& labels,
                                  const std::vector<std::vector<LinkedWord>>& words,
-                                 const TypeSystem& ts);
+                                 const TypeSystem& ts,
+                                 const LinkedObjectFile* file);
 goos::Object decompile_pair(const DecompilerLabel& label,
                             const std::vector<DecompilerLabel>& labels,
                             const std::vector<std::vector<LinkedWord>>& words,
                             const TypeSystem& ts,
-                            bool add_quote);
+                            bool add_quote,
+                            const LinkedObjectFile* file);
 goos::Object decompile_boxed_array(const DecompilerLabel& label,
                                    const std::vector<DecompilerLabel>& labels,
                                    const std::vector<std::vector<LinkedWord>>& words,
-                                   const TypeSystem& ts);
+                                   const TypeSystem& ts,
+                                   const LinkedObjectFile* file,
+                                   const std::optional<TypeSpec>& content_type_override);
 goos::Object decompile_value(const TypeSpec& type,
                              const std::vector<u8>& bytes,
                              const TypeSystem& ts);
@@ -65,6 +73,13 @@ struct BitFieldConstantDef {
   u64 value = -1;
   std::optional<std::string> enum_constant;
   std::string field_name;
+
+  struct NestedField {
+    TypeSpec field_type;
+    std::vector<BitFieldConstantDef> fields;
+  };
+
+  std::optional<NestedField> nested_field;
 };
 
 template <typename T>

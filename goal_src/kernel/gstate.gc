@@ -85,9 +85,17 @@ There are several ways to "go"
   `(inspect-process-tree *active-pool* 0 0 ,detail)
   )
 
+;; use a compile-time list to keep track of the type of an anonymous behavior.
+(seval (define *defstate-type-stack* '()))
+(desfun def-state-check-behavior (beh-form beh-type)
+  "check if code block is an anonymous behavior. needed for anonymous behaviors on defstate."
 
-;; define a state state
-(defmacro defstate (state-name
+  (when (and (pair? beh-form) (eq? (first beh-form) 'behavior))
+    (push! *defstate-type-stack* beh-type)
+    )
+  )
+
+(defmacro defstate (state-name parents
                     &key (event #f)
                     &key (enter #f)
                     &key (trans #f)
@@ -95,46 +103,69 @@ There are several ways to "go"
                     &key (code #f)
                     &key (post #f)
                       )
-  `(begin
-    (define ,state-name (new 'static 'state
-                             :name (quote ,state-name)
-                             :next #f
-                             :exit #f
-                             :code #f
-                             :trans #f
-                             :post #f
-                             :enter #f
-                             :event #f
-                             )
+  "Define a new state!"
+
+  (with-gensyms (new-state)
+    (let ((defstate-type (first parents)))
+      (when (not (null? *defstate-type-stack*))
+          (ferror "*defstate-type-stack* leaked! An error probably happened in a previous defstate. stack is: {}" *defstate-type-stack*)
+          )
+      (set! *defstate-type-stack* '())
+      (def-state-check-behavior event defstate-type)
+      (def-state-check-behavior enter defstate-type)
+      (def-state-check-behavior trans defstate-type)
+      (def-state-check-behavior exit defstate-type)
+      (def-state-check-behavior code defstate-type)
+      (def-state-check-behavior post defstate-type)
+      `(let ((,new-state (new 'static 'state
+                               :name (quote ,state-name)
+                               :next #f
+                               :exit #f
+                               :code #f
+                               :trans #f
+                               :post #f
+                               :enter #f
+                               :event #f
+                               )
+        ))
+        (define ,state-name ,new-state)
+        ,(if event
+             `(set! (-> ,new-state event) ,event)
+             `(none)
+             )
+        ,(if enter
+             `(set! (-> ,new-state enter) (the (function object object object object object object object) ,enter))
+             `(none)
+             )
+        ,(if trans
+             `(set! (-> ,new-state trans) ,trans)
+             `(none)
+             )
+        ,(if exit
+             `(set! (-> ,new-state exit) ,exit)
+             `(none)
+             )
+        ,(if code
+             `(set! (-> ,new-state code) ,code)
+             `(none)
+             )
+        ,(if post
+             `(set! (-> ,new-state post) ,post)
+             `(none)
+             )
+        )
       )
-    ,(if event
-         `(set! (-> ,state-name event) ,event)
-         `(none)
-         )
-    ,(if enter
-         `(set! (-> ,state-name enter) (the (function object object object object object object object) ,enter))
-         `(none)
-         )
-    ,(if trans
-         `(set! (-> ,state-name trans) ,trans)
-         `(none)
-         )
-    ,(if exit
-         `(set! (-> ,state-name exit) ,exit)
-         `(none)
-         )
-    ,(if code
-         `(set! (-> ,state-name code) ,code)
-         `(none)
-         )
-    ,(if post
-         `(set! (-> ,state-name post) ,post)
-         `(none)
-         )
     )
-    
   )
-  
+
+(defmacro behavior (bindings &rest body)
+  "Define an anonymous behavior for a process state. This may only be used inside a defstate!"
+
+  (let ((behavior-type (first *defstate-type-stack*)))
+      (pop! *defstate-type-stack*)
+      `(the-as (function object) (lambda :behavior ,behavior-type ,bindings ,@body))
+      )
+  )
 
 (defmethod new state
   ((allocation symbol)
@@ -144,16 +175,16 @@ There are several ways to "go"
    (trans (function object))
    (enter (function object object object object object object object))
    (exit (function object))
-   (event (function basic int basic event-message-block object)))
+   (event (function process int symbol event-message-block object)))
   "Allocate a new state. It seems like this isn't really used much and most states are
    statically allocated and as a result don't have the constructor called."
   (let ((obj (object-new allocation type-to-make (the-as int (-> type-to-make size)))))
     (set! (-> obj name) name)
-    (set! (-> obj next) '#f)
+    (set! (-> obj next) #f)
     (set! (-> obj exit) exit)
     (set! (-> obj code) code)
     (set! (-> obj trans) trans)
-    (set! (-> obj post) '#f)
+    (set! (-> obj post) #f)
     (set! (-> obj enter) enter)
     (set! (-> obj event) event)
     obj
@@ -218,11 +249,10 @@ There are several ways to "go"
        ;; loop through current stack frames
        (let ((frame (-> pp stack-frame-top)))
          (while frame
-           (let ((typ (-> frame type)))
-             (if (or (= typ protect-frame) (= typ state))
-                 ;; if we got a protect-frame or a state, call exit handler
-                 ((-> (the protect-frame frame) exit))
-                 )
+           (case (-> frame type) 
+             ((protect-frame state)
+              ((-> (the-as protect-frame frame) exit))
+              )
              )
            (set! frame (-> frame next))
            )
@@ -319,6 +349,8 @@ There are several ways to "go"
   )
 
 (defun send-event-function ((proc process) (msg event-message-block))
+  "Function to send an event to a process. Please use the send-event macros when possible"
+
   (with-pp
     (when (and proc (!= (-> proc type) process-tree) (-> proc event-hook))
       (let ((pp-backup pp))
@@ -333,6 +365,8 @@ There are several ways to "go"
   )
 
 (defmacro send-event (proc msg &rest params)
+  "Send an event to a process. This should be used over send-event-function"
+
   `(with-pp
     (let ((event-data (new 'stack-no-clear 'event-message-block)))
         (set! (-> event-data from) pp)
@@ -348,8 +382,13 @@ There are several ways to "go"
 
 (defun looping-code ()
   "Loop."
-  (while #t
+  (loop
     (suspend)
     )
   #f
   )
+
+
+
+
+

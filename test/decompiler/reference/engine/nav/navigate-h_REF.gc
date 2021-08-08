@@ -67,7 +67,7 @@
    (dest-pos     vector   :inline :offset-assert  32)
    (current-poly nav-poly         :offset-assert  48)
    (next-poly    nav-poly         :offset-assert  52)
-   (len          float            :offset-assert  56)
+   (len          meters           :offset-assert  56)
    (last-edge    int8             :offset-assert  60)
    (terminated   basic            :offset-assert  64)
    (reached-dest basic            :offset-assert  68)
@@ -357,7 +357,7 @@
    (next-poly           nav-poly                           :offset-assert  32)
    (target-poly         nav-poly                           :offset-assert  36)
    (portal              nav-route-portal  2                :offset-assert  40)
-   (nearest-y-threshold float                              :offset-assert  48)
+   (nearest-y-threshold meters                             :offset-assert  48)
    (event-temp          vector            :inline          :offset-assert  64)
    (old-travel          vector            :inline          :offset-assert  80)
    (blocked-travel      vector            :inline          :offset-assert  96)
@@ -449,103 +449,84 @@
 ;; Used lq/sq
 (defun nav-mesh-connect ((proc process) (trans trsqv) (nav-cont nav-control))
   (local-vars (sv-16 type) (sv-32 symbol))
-  (with-pp (let ((ent (-> proc entity)))
-            (when (zero? (-> (the-as entity-actor ent) nav-mesh))
-             (let
-              ((lookup-entity
-                (entity-actor-lookup
-                 (the-as entity-actor ent)
-                 'nav-mesh-actor
-                 0
-                 )
-                )
-               )
-              (if lookup-entity
-               (set! ent lookup-entity)
-               )
+  (with-pp
+   (let ((ent (-> proc entity)))
+    (when (zero? (-> (the-as entity-actor ent) nav-mesh))
+     (let
+      ((lookup-entity
+        (entity-actor-lookup (the-as entity-actor ent) 'nav-mesh-actor 0)
+        )
+       )
+      (if lookup-entity
+       (set! ent lookup-entity)
+       )
+      )
+     )
+    (let ((entity-nav-mesh (-> (the-as entity-actor ent) nav-mesh)))
+     (cond
+      ((nonzero? entity-nav-mesh)
+       (when (zero? (-> entity-nav-mesh user-list))
+        (set!
+         process-level-heap
+         (->
+          (the-as entity-links (-> (the-as entity (-> pp entity)) extra))
+          level
+          heap
+          )
+         )
+        (let ((s1-0 (method-of-type engine new))
+              (s0-0 'process-level-heap)
               )
-             )
-            (let ((entity-nav-mesh (-> (the-as entity-actor ent) nav-mesh)))
-             (cond
-              ((nonzero? entity-nav-mesh)
-               (when (zero? (-> entity-nav-mesh user-list))
-                (set!
-                 process-level-heap
-                 (->
-                  (the-as
-                   entity-links
-                   (-> (the-as entity (-> pp entity)) extra)
-                   )
-                  level
-                  heap
-                  )
-                 )
-                (let ((s1-0 (method-of-type engine new))
-                      (s0-0 'process-level-heap)
-                      )
-                 (set! sv-16 engine)
-                 (set! sv-32 'nav-engine)
-                 (let
-                  ((a3-1
-                    ((method-of-type res-lump get-property-value)
-                     ent
-                     'nav-max-users
-                     'interp
-                     -1000000000.0
-                     (the-as uint128 32)
-                     (the-as (pointer res-tag) #f)
-                     *res-static-buf*
-                     )
-                    )
-                   )
-                  (set!
-                   (-> entity-nav-mesh user-list)
-                   (s1-0 s0-0 sv-16 sv-32 (the-as int a3-1))
-                   )
-                  )
-                 )
-                (dummy-13 entity-nav-mesh)
-                (dummy-17 entity-nav-mesh)
-                )
-               (add-connection
-                (-> entity-nav-mesh user-list)
-                proc
-                (the-as (function object object object object object) nothing)
-                proc
-                nav-cont
-                trans
-                )
-               )
-              (else
-               (if (and nav-cont (-> proc entity))
-                (set!
-                 (->
-                  (the-as
-                   entity-links
-                   (-> (the-as entity (-> proc entity)) extra)
-                   )
-                  perm
-                  status
-                  )
-                 (logior
-                  (->
-                   (the-as
-                    entity-links
-                    (-> (the-as entity (-> proc entity)) extra)
-                    )
-                   perm
-                   status
-                   )
-                  (entity-perm-status bit-1)
-                  )
-                 )
-                )
-               (set! entity-nav-mesh *default-nav-mesh*)
-               )
-              )
-             entity-nav-mesh
+         (set! sv-16 engine)
+         (set! sv-32 'nav-engine)
+         (let
+          ((a3-1
+            ((method-of-type res-lump get-property-value)
+             ent
+             'nav-max-users
+             'interp
+             -1000000000.0
+             (the-as uint128 32)
+             (the-as (pointer res-tag) #f)
+             *res-static-buf*
              )
             )
+           )
+          (set!
+           (-> entity-nav-mesh user-list)
+           (s1-0 s0-0 sv-16 sv-32 (the-as int a3-1))
+           )
+          )
+         )
+        (dummy-13 entity-nav-mesh)
+        (dummy-17 entity-nav-mesh)
+        )
+       (add-connection
+        (-> entity-nav-mesh user-list)
+        proc
+        (the-as (function object object object object object) nothing)
+        proc
+        nav-cont
+        trans
+        )
+       )
+      (else
+       (if (and nav-cont (-> proc entity))
+        (logior!
+         (->
+          (the-as entity-links (-> (the-as entity (-> proc entity)) extra))
+          perm
+          status
+          )
+         (entity-perm-status bit-1)
+         )
+        )
+       (set! entity-nav-mesh *default-nav-mesh*)
+       )
+      )
+     entity-nav-mesh
+     )
+    )
    )
   )
 
@@ -560,58 +541,49 @@
    (sphere-count int)
    (nearest-y-threshold-default float)
    )
-  (with-pp
-   (let
-    ((obj
-      (object-new
-       allocation
-       type-to-make
-       (the-as int (+ (-> type-to-make size) (the-as uint (* sphere-count 16))))
-       )
+  (let
+   ((obj
+     (object-new
+      allocation
+      type-to-make
+      (the-as int (+ (-> type-to-make size) (* sphere-count 16)))
       )
      )
-    (if (zero? obj)
-     (begin
-      (let ((t9-1 (the-as function enter-state))
-            (a0-1 "memory")
-            )
-       (set! (-> pp next-state) process-drawable-art-error)
-       ((the-as (function string none) t9-1) a0-1)
-       )
-      (set! obj (the-as nav-control 0))
-      (goto cfg-4)
-      )
-     )
-    (set! (-> obj max-spheres) sphere-count)
-    (set! (-> obj flags) (nav-control-flags bit8 bit13))
-    (set! (-> obj mesh) (nav-mesh-connect (-> shape process) shape obj))
-    (let ((ent (-> shape process entity)))
-     (set!
-      (-> obj nearest-y-threshold)
-      ((method-of-type res-lump get-property-value-float)
-       ent
-       'nearest-y-threshold
-       'interp
-       -1000000000.0
-       nearest-y-threshold-default
-       (the-as (pointer res-tag) #f)
-       *res-static-buf*
-       )
-      )
-     )
-    (set! (-> obj shape) shape)
-    (set! (-> obj process) (-> shape process))
-    (set! (-> obj gap-event) #f)
-    (set! (-> obj current-poly) #f)
-    (set! (-> obj next-poly) #f)
-    (set! (-> obj target-poly) #f)
-    (set! (-> obj user-poly) #f)
-    (set! (-> obj portal 0) #f)
-    (set! (-> obj portal 1) #f)
-    (set! (-> obj nav-cull-radius) 40960.0)
-    (label cfg-4)
-    (the-as nav-control obj)
     )
+   (when (zero? obj)
+    (go process-drawable-art-error "memory")
+    (set! obj (the-as nav-control 0))
+    (goto cfg-4)
+    )
+   (set! (-> obj max-spheres) sphere-count)
+   (set! (-> obj flags) (nav-control-flags bit8 bit13))
+   (set! (-> obj mesh) (nav-mesh-connect (-> shape process) shape obj))
+   (let ((ent (-> shape process entity)))
+    (set!
+     (-> obj nearest-y-threshold)
+     ((method-of-type res-lump get-property-value-float)
+      ent
+      'nearest-y-threshold
+      'interp
+      -1000000000.0
+      nearest-y-threshold-default
+      (the-as (pointer res-tag) #f)
+      *res-static-buf*
+      )
+     )
+    )
+   (set! (-> obj shape) shape)
+   (set! (-> obj process) (-> shape process))
+   (set! (-> obj gap-event) #f)
+   (set! (-> obj current-poly) #f)
+   (set! (-> obj next-poly) #f)
+   (set! (-> obj target-poly) #f)
+   (set! (-> obj user-poly) #f)
+   (set! (-> obj portal 0) #f)
+   (set! (-> obj portal 1) #f)
+   (set! (-> obj nav-cull-radius) 40960.0)
+   (label cfg-4)
+   (the-as nav-control obj)
    )
   )
 

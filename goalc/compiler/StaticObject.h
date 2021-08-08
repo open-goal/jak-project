@@ -7,6 +7,8 @@
 #include "goalc/compiler/ConstantValue.h"
 #include "common/util/BitUtils.h"
 
+class FunctionEnv;
+
 class StaticObject {
  public:
   virtual std::string print() const = 0;
@@ -60,13 +62,20 @@ class StaticStructure : public StaticObject {
     int offset_in_dest = -1;
   };
 
+  struct FunctionRecord {
+    const FunctionEnv* func = nullptr;
+    int offset_in_this = -1;
+  };
+
   std::vector<SymbolRecord> types;
   std::vector<SymbolRecord> symbols;
   std::vector<PointerRecord> pointers;
+  std::vector<FunctionRecord> functions;
 
   void add_symbol_record(std::string name, int offset);
   void add_pointer_record(int offset_in_this, StaticStructure* dest, int offset_in_dest);
   void add_type_record(std::string name, int offset);
+  void add_function_record(const FunctionEnv* function, int offset);
 
  private:
   int m_offset = 0;
@@ -87,6 +96,8 @@ class StaticString : public StaticBasic {
   void generate(emitter::ObjectGenerator* gen) override;
 };
 
+class FunctionEnv;
+
 /*!
  * Represents a "static value". Like a reference to a static structure (including pair, string,
  * basic), a symbol, or some constant (bitfield, integer, float).  Cannot be used to store a static
@@ -102,12 +113,14 @@ class StaticResult {
   static StaticResult make_constant_data(u64 data, const TypeSpec& ts);
   static StaticResult make_symbol(const std::string& name);
   static StaticResult make_type_ref(const std::string& type_name, int method_count);
+  static StaticResult make_func_ref(const FunctionEnv* func, const TypeSpec& ts);
 
   const TypeSpec& typespec() const { return m_ts; }
   bool is_reference() const { return m_kind == Kind::STRUCTURE_REFERENCE; }
   bool is_constant_data() const { return m_kind == Kind::CONSTANT_DATA; }
   bool is_symbol() const { return m_kind == Kind::SYMBOL; }
   bool is_type() const { return m_kind == Kind::TYPE; }
+  bool is_func() const { return m_kind == Kind::FUNCTION_REFERENCE; }
 
   StaticStructure* reference() const {
     assert(is_reference());
@@ -123,6 +136,11 @@ class StaticResult {
   const std::string& symbol_name() const {
     assert(is_symbol() || is_type());
     return m_symbol;
+  }
+
+  const FunctionEnv* function() const {
+    assert(is_func());
+    return m_func;
   }
 
   int method_count() const {
@@ -147,6 +165,9 @@ class StaticResult {
   // used for only STRUCTURE_REFERENCE
   StaticStructure* m_struct = nullptr;
 
+  // used for only FUNCTION_REFERENCE
+  const FunctionEnv* m_func = nullptr;
+
   // used for only constant data
   std::optional<ConstantValue> m_constant_data;
 
@@ -161,6 +182,7 @@ class StaticResult {
     CONSTANT_DATA,
     SYMBOL,
     TYPE,
+    FUNCTION_REFERENCE,
     INVALID
   } m_kind = Kind::INVALID;
 };

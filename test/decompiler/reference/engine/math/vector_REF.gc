@@ -3,17 +3,7 @@
 
 ;; definition for function vector-cross!
 (defun vector-cross! ((arg0 vector) (arg1 vector) (arg2 vector))
-  (rlet ((acc :class vf)
-         (vf1 :class vf)
-         (vf2 :class vf)
-         (vf3 :class vf)
-         )
-   (.lvf vf1 (&-> arg1 quad))
-   (.lvf vf2 (&-> arg2 quad))
-   (.outer.product.vf vf3 vf1 vf2)
-   (.svf (&-> arg0 quad) vf3)
-   arg0
-   )
+  (vector-cross! arg0 arg1 arg2)
   )
 
 ;; definition for function vector+float!
@@ -319,13 +309,13 @@
            )
      (cond
       ((>= max-step step-len)
-       (set! (-> vec x) (+ (-> vec x) x-step))
-       (set! (-> vec z) (+ (-> vec z) z-step))
+       (+! (-> vec x) x-step)
+       (+! (-> vec z) z-step)
        )
       (else
        (let ((f2-6 (/ max-step step-len)))
-        (set! (-> vec x) (+ (-> vec x) (* f2-6 x-step)))
-        (set! (-> vec z) (+ (-> vec z) (* f2-6 z-step)))
+        (+! (-> vec x) (* f2-6 x-step))
+        (+! (-> vec z) (* f2-6 z-step))
         )
        )
       )
@@ -349,13 +339,13 @@
            )
      (cond
       ((>= max-step step-len)
-       (set! (-> vec y) (+ (-> vec y) y-step))
-       (set! (-> vec z) (+ (-> vec z) z-step))
+       (+! (-> vec y) y-step)
+       (+! (-> vec z) z-step)
        )
       (else
        (let ((step-scale (/ max-step step-len)))
-        (set! (-> vec y) (+ (-> vec y) (* step-scale y-step)))
-        (set! (-> vec z) (+ (-> vec z) (* step-scale z-step)))
+        (+! (-> vec y) (* step-scale y-step))
+        (+! (-> vec z) (* step-scale z-step))
         )
        )
       )
@@ -385,15 +375,15 @@
            )
      (cond
       ((>= max-step step-len)
-       (set! (-> vec x) (+ (-> vec x) x-step))
-       (set! (-> vec y) (+ (-> vec y) y-step))
-       (set! (-> vec z) (+ (-> vec z) z-step))
+       (+! (-> vec x) x-step)
+       (+! (-> vec y) y-step)
+       (+! (-> vec z) z-step)
        )
       (else
        (let ((step-scale (/ max-step step-len)))
-        (set! (-> vec x) (+ (-> vec x) (* step-scale x-step)))
-        (set! (-> vec y) (+ (-> vec y) (* step-scale y-step)))
-        (set! (-> vec z) (+ (-> vec z) (* step-scale z-step)))
+        (+! (-> vec x) (* step-scale x-step))
+        (+! (-> vec y) (* step-scale y-step))
+        (+! (-> vec z) (* step-scale z-step))
         )
        )
       )
@@ -1007,7 +997,7 @@
 ;; definition for function vector-degi
 ;; Used lq/sq
 (defun vector-degi ((arg0 vector) (arg1 vector))
-  (local-vars (v1-0 float) (v1-1 int))
+  (local-vars (v1-0 uint128) (v1-1 uint128))
   (rlet ((vf1 :class vf))
    (.lvf vf1 (&-> arg1 quad))
    (.ftoi.vf vf1 vf1)
@@ -1035,7 +1025,7 @@
 
 ;; definition for function vector-degmod
 (defun vector-degmod ((arg0 vector) (arg1 vector))
-  (local-vars (v1-0 float) (v1-1 int) (v1-2 int))
+  (local-vars (v1-0 uint128) (v1-1 uint128) (v1-2 uint128))
   (rlet ((vf1 :class vf))
    (.lvf vf1 (&-> arg1 quad))
    (.ftoi.vf vf1 vf1)
@@ -1054,12 +1044,12 @@
 (defun vector-deg-diff ((arg0 vector) (arg1 vector) (arg2 vector))
   (local-vars
    (v0-0 float)
-   (v1-0 float)
-   (v1-1 int)
-   (v1-2 int)
-   (v1-3 int)
-   (a1-1 float)
-   (a1-2 int)
+   (v1-0 uint128)
+   (v1-1 uint128)
+   (v1-2 uint128)
+   (v1-3 uint128)
+   (a1-1 uint128)
+   (a1-2 uint128)
    )
   (rlet ((vf1 :class vf)
          (vf2 :class vf)
@@ -1185,11 +1175,12 @@
 
 ;; definition for function rand-vu-sphere-point!
 (defun rand-vu-sphere-point! ((arg0 vector) (arg1 float))
-  (let ((s4-0 arg0))
-   (set! (-> s4-0 x) (rand-vu-float-range -1.0 1.0))
-   (set! (-> s4-0 y) (rand-vu-float-range -1.0 1.0))
-   (set! (-> s4-0 z) (rand-vu-float-range -1.0 1.0))
-   (set! (-> s4-0 w) 1.0)
+  (set-vector!
+   arg0
+   (rand-vu-float-range -1.0 1.0)
+   (rand-vu-float-range -1.0 1.0)
+   (rand-vu-float-range -1.0 1.0)
+   1.0
    )
   (vector-normalize! arg0 (rand-vu-float-range 0.0 arg1))
   )

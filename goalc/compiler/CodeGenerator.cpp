@@ -63,6 +63,7 @@ void CodeGenerator::do_function(FunctionEnv* env, int f_idx) {
  */
 void CodeGenerator::do_goal_function(FunctionEnv* env, int f_idx) {
   bool use_new_xmms = true;
+  auto* debug = &m_debug_info->function_by_name(env->name());
 
   auto f_rec = m_gen.get_existing_function_record(f_idx);
   // todo, extra alignment settings
@@ -154,6 +155,7 @@ void CodeGenerator::do_goal_function(FunctionEnv* env, int f_idx) {
                             InstructionInfo::Kind::PROLOGUE);
     }
   }
+  debug->stack_usage = stack_offset;
 
   // emit each IR into x86 instructions.
   for (int ir_idx = 0; ir_idx < int(env->code().size()); ir_idx++) {

@@ -379,17 +379,20 @@ bool DecompilerTypeSystem::tp_lca(TypeState* combined, const TypeState& add) {
     }
   }
 
+  bool diff = false;
+  auto new_type = tp_lca(combined->next_state_type, add.next_state_type, &diff);
+  if (diff) {
+    result = true;
+    combined->next_state_type = new_type;
+  }
+
   return result;
 }
 
 int DecompilerTypeSystem::get_format_arg_count(const std::string& str) const {
-  // temporary hack, remove this.
-  if (str == "ERROR: dma tag has data in reserved bits ~X~%") {
-    return 0;
-  }
-
-  if (str == "#<surface f0:~m f1:~f tf+:~f tf-:~f sf:~f tvv:~m") {
-    return 5;
+  auto bad_it = bad_format_strings.find(str);
+  if (bad_it != bad_format_strings.end()) {
+    return bad_it->second;
   }
 
   std::vector<char> single_char_ignore_list = {'%', 'T'};
@@ -441,5 +444,22 @@ TypeSpec DecompilerTypeSystem::lookup_symbol_type(const std::string& name) const
   } else {
     return kv->second;
   }
+}
+
+bool DecompilerTypeSystem::should_attempt_cast_simplify(const TypeSpec& expected,
+                                                        const TypeSpec& actual) const {
+  if (expected == TypeSpec("meters") && actual == TypeSpec("float")) {
+    return true;
+  }
+
+  if (expected == TypeSpec("seconds") && actual == TypeSpec("uint64")) {
+    return true;
+  }
+
+  if (expected == TypeSpec("degrees") && actual == TypeSpec("float")) {
+    return true;
+  }
+
+  return !ts.tc(expected, actual);
 }
 }  // namespace decompiler

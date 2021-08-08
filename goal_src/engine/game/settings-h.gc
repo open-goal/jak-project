@@ -5,13 +5,29 @@
 ;; name in dgo: settings-h
 ;; dgos: GAME, ENGINE
 
-;; was manually done
+;; The settings system handles settings transitions.
+;; There are three copies of setting data:
+;;  - default
+;;  - target
+;;  - current
+
+;; Processes may request a setting change. Once the process dies, the change will be reverted.
+
+;; Internally, the frame's current settings are determined with this process:
+;;  1). The target settings are set to default.
+;;  2). Any changes to settings requested by processes are applied to target
+;;    NOTE: these requests are _not_ cleared on every frame.
+;;  3). Target and current are compared and updated. Mostly this is just copying, but
+;;    some settings may also call a function when they are changed.
+
+
+;; The full setting state.
 (deftype setting-data (structure)
   ((border-mode          symbol               :offset-assert   0)
    (sfx-volume           float                :offset-assert   4)
    (music-volume         float                :offset-assert   8)
    (dialog-volume        float                :offset-assert  12)
-   (process-mask         uint32               :offset-assert  16)
+   (process-mask         process-mask         :offset-assert  16)
    (common-page          int32                :offset-assert  20)
    (language             int64                :offset-assert  24)
    (screenx              int32                :offset-assert  32)
@@ -97,6 +113,9 @@
   obj
   )
 
+
+;; The setting-control manages the current/target/default system.
+;; The setting requests are managed by the engine.
 (deftype setting-control (basic)
   ((current setting-data :inline :offset-assert  16)
    (target  setting-data :inline :offset-assert 224)
@@ -126,7 +145,8 @@
   s4-0
   )
 
-
+;; believed unused.
+;; possibly the PS2 BIOS time type.
 (deftype scf-time (structure)
   ((stat   uint8  :offset-assert 0)
    (second uint8  :offset-assert 1)
@@ -143,9 +163,3 @@
   )
 
 (define-extern *setting-control* setting-control)
-
-;; TODO - defined in the kernel
-(define-extern scf-get-volume (function int))
-(define-extern scf-get-language (function uint))
-(define-extern scf-get-aspect (function uint))
-(define-extern *boot-video-mode* int)

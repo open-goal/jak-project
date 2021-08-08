@@ -32,7 +32,8 @@ std::string reg_kind_to_string(RegClass kind) {
  */
 bool MethodInfo::operator==(const MethodInfo& other) const {
   return id == other.id && name == other.name && type == other.type &&
-         defined_in_type == other.defined_in_type && other.no_virtual == no_virtual;
+         defined_in_type == other.defined_in_type && other.no_virtual == no_virtual &&
+         other.overrides_method_type_of_parent == overrides_method_type_of_parent;
 }
 
 std::string MethodInfo::diff(const MethodInfo& other) const {
@@ -55,6 +56,11 @@ std::string MethodInfo::diff(const MethodInfo& other) const {
 
   if (no_virtual != other.no_virtual) {
     result += fmt::format("no_virtual: {} vs. {}\n", no_virtual, other.no_virtual);
+  }
+
+  if (overrides_method_type_of_parent != other.overrides_method_type_of_parent) {
+    result += fmt::format("overrides_method_type_of_parent: {} vs. {}\n",
+                          overrides_method_type_of_parent, other.overrides_method_type_of_parent);
   }
   return result;
 }
@@ -311,9 +317,11 @@ bool Type::get_my_method(int id, MethodInfo* out) const {
  * defined specifically for this type or not.
  */
 bool Type::get_my_last_method(MethodInfo* out) const {
-  if (!m_methods.empty()) {
-    *out = m_methods.back();
-    return true;
+  for (auto it = m_methods.rbegin(); it != m_methods.rend(); it++) {
+    if (!it->overrides_method_type_of_parent) {
+      *out = *it;
+      return true;
+    }
   }
   return false;
 }
@@ -334,9 +342,13 @@ bool Type::get_my_new_method(MethodInfo* out) const {
  * Add a method defined specifically for this type.
  */
 const MethodInfo& Type::add_method(const MethodInfo& info) {
-  if (!m_methods.empty()) {
-    assert(m_methods.back().id + 1 == info.id);
+  for (auto it = m_methods.rbegin(); it != m_methods.rend(); it++) {
+    if (!it->overrides_method_type_of_parent) {
+      assert(it->id + 1 == info.id);
+      break;
+    }
   }
+
   m_methods.push_back(info);
   return m_methods.back();
 }

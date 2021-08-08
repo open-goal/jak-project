@@ -1,0 +1,74 @@
+;;-*-Lisp-*-
+(in-package goal)
+
+;; definition for function cam-stop
+(defun cam-stop ()
+  (kill-by-name 'camera-master *active-pool*)
+  (kill-by-name 'camera-slave *active-pool*)
+  (kill-by-name 'camera-combiner *active-pool*)
+  (set! *camera* #f)
+  (set! *camera-combiner* #f)
+  (let ((v0-3 cam-string))
+   (set! *camera-base-mode* v0-3)
+   v0-3
+   )
+  )
+
+;; definition for function cam-start
+;; INFO: Return type mismatch int vs none.
+(defun cam-start ((arg0 symbol))
+  (cam-stop)
+  (let ((s5-0 (get-process *camera-dead-pool* camera-combiner #x4000)))
+   (when s5-0
+    (let ((t9-2 (method-of-type camera-combiner activate)))
+     (t9-2
+      (the-as camera-combiner s5-0)
+      *camera-pool*
+      'camera-combiner
+      (the-as pointer #x70004000)
+      )
+     )
+    ((the-as (function process object function) run-function-in-process)
+     s5-0
+     cam-combiner-init
+     )
+    (-> s5-0 ppointer)
+    )
+   )
+  (let* ((s5-1 (get-process *camera-master-dead-pool* camera-master #x4000))
+         (v1-5 (when s5-1
+                (let ((t9-5 (method-of-type camera-master activate)))
+                 (t9-5
+                  (the-as camera-master s5-1)
+                  *camera-pool*
+                  'camera-master
+                  (the-as pointer #x70004000)
+                  )
+                 )
+                ((the-as (function process object function) set-to-run)
+                 (the-as process (-> s5-1 main-thread))
+                 cam-master-init
+                 )
+                (-> s5-1 ppointer)
+                )
+          )
+         )
+   (set! *camera* (the-as camera-master (if v1-5
+                                         (-> v1-5 0 self)
+                                         )
+                   )
+    )
+   )
+  (if arg0
+   (reset-cameras)
+   )
+  0
+  (none)
+  )
+
+;; failed to figure out what this is:
+(cam-start #f)
+
+
+
+

@@ -1,0 +1,16 @@
+(deftype type-with-weird-relocate (basic)
+  ((foo int))
+  (:methods
+   (relocate (_type_ kheap (pointer uint8)) none :replace 7)
+   )
+  )
+
+(defmethod relocate type-with-weird-relocate ((obj type-with-weird-relocate) (dest-heap kheap) (name (pointer uint8)))
+  (format #t "relocate! foo: ~D heap: ~D name: ~D~%" (-> obj foo) dest-heap name)
+  (none)
+  )
+
+(let ((obj (new 'static 'type-with-weird-relocate :foo 123)))
+  (relocate obj (the kheap 1) (the (pointer uint8) 2))
+  0
+  )
