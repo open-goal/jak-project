@@ -20,7 +20,8 @@ void GLAPIENTRY opengl_error_callback(GLenum /*source*/,
   lg::error("OpenGL error: {}", message);
 }
 
-OpenGLRenderer::OpenGLRenderer() {
+OpenGLRenderer::OpenGLRenderer(std::shared_ptr<TexturePool> texture_pool)
+    : m_render_state(texture_pool) {
   // setup OpenGL errors
   glEnable(GL_DEBUG_OUTPUT);
   glDebugMessageCallback(opengl_error_callback, nullptr);

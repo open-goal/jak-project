@@ -81,6 +81,8 @@ set(RUNTIME_SOURCE
         graphics/opengl_renderer/DirectRenderer.cpp
         graphics/opengl_renderer/OpenGLRenderer.cpp
         graphics/opengl_renderer/Shader.cpp
+        graphics/texture/TextureConverter.cpp
+        graphics/texture/TexturePool.cpp
         system/vm/dmac.cpp
         system/vm/vm.cpp)
 

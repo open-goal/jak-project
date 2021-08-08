@@ -1,8 +1,10 @@
 #pragma once
 
 #include <string>
+#include <memory>
 #include "game/graphics/dma/dma_chain_read.h"
 #include "game/graphics/opengl_renderer/Shader.h"
+#include "game/graphics/texture/TexturePool.h"
 
 /*!
  * Matches the bucket-id enum in GOAL
@@ -21,7 +23,10 @@ enum class BucketId {
  * This allows bucket renders to share textures and shaders.
  */
 struct SharedRenderState {
+  explicit SharedRenderState(std::shared_ptr<TexturePool> _texture_pool)
+      : texture_pool(_texture_pool) {}
   ShaderLibrary shaders;
+  std::shared_ptr<TexturePool> texture_pool;
   u32 buckets_base = 0;  // address of buckets array.
   u32 next_bucket = 0;   // address of next bucket that we haven't started rendering in buckets
   u32 default_regs_buffer = 0;  // address of the default regs chain.

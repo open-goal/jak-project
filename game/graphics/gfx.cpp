@@ -16,6 +16,7 @@
 #include "common/goal_constants.h"
 #include "common/util/Timer.h"
 #include "game/graphics/opengl_renderer/OpenGLRenderer.h"
+#include "game/graphics/texture/TexturePool.h"
 
 namespace Gfx {
 
@@ -31,10 +32,16 @@ struct GraphicsData {
   bool has_data_to_render = false;
   FixedChunkDmaCopier dma_copier;
 
+  // texture pool
+  std::shared_ptr<TexturePool> texture_pool;
+
   // temporary opengl renderer
   OpenGLRenderer ogl_renderer;
 
-  GraphicsData() : dma_copier(EE_MAIN_MEM_SIZE) {}
+  GraphicsData()
+      : dma_copier(EE_MAIN_MEM_SIZE),
+        texture_pool(std::make_shared<TexturePool>()),
+        ogl_renderer(texture_pool) {}
 };
 
 std::unique_ptr<GraphicsData> g_gfx_data;
@@ -183,6 +190,15 @@ void send_chain(const void* data, u32 offset) {
 
     g_gfx_data->has_data_to_render = true;
     g_gfx_data->dma_cv.notify_all();
+  }
+}
+
+void texture_upload_now(const u8* tpage, int mode, u32 s7_ptr) {
+  if (g_gfx_data) {
+    // just pass it to the texture pool.
+    // the texture pool will take care of locking.
+    // we don't want to lock here for the entire duration of the conversion.
+    g_gfx_data->texture_pool->handle_upload_now(tpage, mode, g_ee_main_mem, s7_ptr);
   }
 }
 
