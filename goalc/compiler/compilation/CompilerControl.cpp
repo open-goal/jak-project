@@ -4,17 +4,18 @@
  */
 
 #include <filesystem>
-#include "goalc/compiler/Compiler.h"
-#include "goalc/compiler/IR.h"
-#include "common/util/Timer.h"
-#include "common/util/DgoWriter.h"
-#include "common/util/FileUtil.h"
-#include "goalc/data_compiler/game_text.h"
-#include "goalc/data_compiler/game_count.h"
-#include "goalc/data_compiler/dir_tpages.h"
-#include "common/goos/ReplUtils.h"
 #include <regex>
 #include <stack>
+
+#include "common/goos/ReplUtils.h"
+#include "common/util/DgoWriter.h"
+#include "common/util/FileUtil.h"
+#include "common/util/Timer.h"
+#include "goalc/compiler/Compiler.h"
+#include "goalc/compiler/IR.h"
+#include "goalc/data_compiler/dir_tpages.h"
+#include "goalc/data_compiler/game_count.h"
+#include "goalc/data_compiler/game_text.h"
 
 /*!
  * Exit the compiler. Disconnects the listener and tells the target to reset itself.
@@ -90,6 +91,7 @@ Val* Compiler::compile_asm_file(const goos::Object& form, const goos::Object& re
   bool write = false;
   bool no_code = false;
   bool disassemble = false;
+  bool no_time_prints = false;
 
   std::vector<std::pair<std::string, double>> timing;
   Timer total_timer;
@@ -120,6 +122,8 @@ Val* Compiler::compile_asm_file(const goos::Object& form, const goos::Object& re
       } else if (setting == ":disassemble") {
         disassemble = true;
         last_was_disasm = true;
+      } else if (setting == ":no-time-prints") {
+        no_time_prints = true;
       } else {
         throw_compiler_error(form, "The option {} was not recognized for asm-file.", setting);
       }
@@ -208,7 +212,7 @@ Val* Compiler::compile_asm_file(const goos::Object& form, const goos::Object& re
     printf("\n");
   } else {
     auto total_time = total_timer.getMs();
-    if (total_time > 10.0 && color) {
+    if (total_time > 10.0 && color && !no_time_prints) {
       fmt::print("[ASM-FILE] {} took {:.2f} ms\n", obj_file_name, total_time);
     }
   }
@@ -574,4 +578,46 @@ std::vector<SymbolInfo>* Compiler::lookup_exact_name_info(const std::string& nam
   } else {
     return nullptr;
   }
+}
+
+Val* Compiler::compile_load_project(const goos::Object& form, const goos::Object& rest, Env*) {
+  auto args = get_va(form, rest);
+  va_check(form, args, {goos::ObjectType::STRING}, {});
+  m_make.load_project_file(args.unnamed.at(0).as_string()->data);
+  return get_none();
+}
+
+Val* Compiler::compile_make(const goos::Object& form, const goos::Object& rest, Env*) {
+  auto args = get_va(form, rest);
+  va_check(form, args, {goos::ObjectType::STRING},
+           {{"force", {false, {goos::ObjectType::SYMBOL}}},
+            {"verbose", {false, {goos::ObjectType::SYMBOL}}}});
+  bool force = false;
+  if (args.has_named("force")) {
+    force = get_true_or_false(form, args.get_named("force"));
+  }
+
+  bool verbose = false;
+  if (args.has_named("verbose")) {
+    verbose = get_true_or_false(form, args.get_named("verbose"));
+  }
+
+  m_make.make(args.unnamed.at(0).as_string()->data, force, verbose);
+  return get_none();
+}
+
+Val* Compiler::compile_print_debug_compiler_stats(const goos::Object& form,
+                                                  const goos::Object& rest,
+                                                  Env*) {
+  auto args = get_va(form, rest);
+  va_check(form, args, {}, {});
+
+  fmt::print("Spill operations (total): {}\n", m_debug_stats.num_spills);
+  fmt::print("Spill operations (v1 only): {}\n", m_debug_stats.num_spills_v1);
+  fmt::print("Eliminated moves: {}\n", m_debug_stats.num_moves_eliminated);
+  fmt::print("Total functions: {}\n", m_debug_stats.total_funcs);
+  fmt::print("Functions requiring v1: {}\n", m_debug_stats.funcs_requiring_v1_allocator);
+  fmt::print("Size of autocomplete prefix tree: {}\n", m_symbol_info.symbol_count());
+
+  return get_none();
 }

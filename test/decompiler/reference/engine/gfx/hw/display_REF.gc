@@ -15,20 +15,18 @@
 (defmethod set-time-ratios display ((obj display) (slowdown float))
   (let ((ratio (fmin 4.0 slowdown)))
    (set! (-> obj time-ratio) ratio)
-   (let ((v1-0 (get-video-mode)))
-    (cond
-     ((= v1-0 'pal)
+   (case (get-video-mode) 
+    (('pal)
       (set! (-> obj time-adjust-ratio) (* 1.2 ratio))
       (set! (-> obj seconds-per-frame) (* 0.02 ratio))
       (set! (-> obj frames-per-second) (* 50.0 (/ 1.0 ratio)))
       (set! (-> obj time-factor) 6.0)
       )
-     (else
-      (set! (-> obj time-adjust-ratio) ratio)
-      (set! (-> obj seconds-per-frame) (* 0.016666668 ratio))
-      (set! (-> obj frames-per-second) (* 60.0 (/ 1.0 ratio)))
-      (set! (-> obj time-factor) 5.0)
-      )
+    (else
+     (set! (-> obj time-adjust-ratio) ratio)
+     (set! (-> obj seconds-per-frame) (* 0.016666668 ratio))
+     (set! (-> obj frames-per-second) (* 60.0 (/ 1.0 ratio)))
+     (set! (-> obj time-factor) 5.0)
      )
     )
    )
@@ -283,7 +281,7 @@
 (defmethod add-frame profile-bar ((obj profile-bar) (name symbol) (color rgba))
   (when *debug-segment*
    (let ((new-frame (-> obj data (-> obj profile-frame-count))))
-    (set! (-> obj profile-frame-count) (+ (-> obj profile-frame-count) 1))
+    (+! (-> obj profile-frame-count) 1)
     (set! (-> new-frame name) name)
     (set!
      (-> new-frame time-stamp)
@@ -308,7 +306,7 @@
   profile-bar
   ((obj profile-bar) (name symbol) (color rgba))
   (let ((new-frame (-> obj data (-> obj profile-frame-count))))
-   (set! (-> obj profile-frame-count) (+ (-> obj profile-frame-count) 1))
+   (+! (-> obj profile-frame-count) 1)
    (set! (-> new-frame name) name)
    (set! (-> new-frame time-stamp) (the-as uint *ticks-per-frame*))
    (set! (-> new-frame color) color)
@@ -373,7 +371,7 @@
       (-> start-gif-tag tag)
       (new 'static 'gif-tag64
        :eop #x1
-       :flg #x1
+       :flg (gif-flag reg-list)
        :nreg #x4
        :nloop (+ block-count -1)
        )
@@ -419,12 +417,9 @@
        (*
         (+
          *profile-x*
-         (the-as
-          int
-          (/
-           (* (-> block time-stamp) (the-as uint *profile-w*))
-           (the-as uint *ticks-per-frame*)
-           )
+         (/
+          (* (-> block time-stamp) (the-as uint *profile-w*))
+          (the-as uint *ticks-per-frame*)
           )
          )
         16
@@ -438,7 +433,7 @@
        (-> (the-as (pointer gs-xyzf) t2-8) 0)
        (new 'static 'gs-xyzf
         :z #x3fffff
-        :y (* (+ (+ *profile-y* screen-y) *profile-h*) 16)
+        :y (* (+ *profile-y* screen-y *profile-h*) 16)
         :x left
         )
        )
@@ -532,7 +527,12 @@
           )
     (set!
      (-> gif tag)
-     (new 'static 'gif-tag64 :nloop #x1 :eop #x1 :flg #x1 :nreg #x4)
+     (new 'static 'gif-tag64
+      :nloop #x1
+      :eop #x1
+      :flg (gif-flag reg-list)
+      :nreg #x4
+      )
      )
     (set!
      (-> gif regs)
@@ -572,19 +572,13 @@
    (let ((total-qwc (/ (&+ (- -16 (the-as int end-dma)) (-> buf base)) 16)))
     (cond
      ((nonzero? total-qwc)
-      (set!
+      (logior!
        (-> (the-as (pointer dma-tag) end-dma) 0)
-       (logior
-        (-> (the-as (pointer dma-tag) end-dma) 0)
-        (the-as uint (new 'static 'dma-tag :qwc total-qwc))
-        )
+       (new 'static 'dma-tag :qwc total-qwc)
        )
-      (set!
+      (logior!
        (-> (the-as (pointer dma-tag) end-dma) 1)
-       (logior
-        (-> (the-as (pointer dma-tag) end-dma) 1)
-        (the-as uint (shl (shr (shl total-qwc 48) 48) 32))
-        )
+       (shl (shr (shl total-qwc 48) 48) 32)
        )
       )
      (else
@@ -626,7 +620,12 @@
           )
     (set!
      (-> gif tag)
-     (new 'static 'gif-tag64 :nloop #x1 :eop #x1 :flg #x1 :nreg #x9)
+     (new 'static 'gif-tag64
+      :nloop #x1
+      :eop #x1
+      :flg (gif-flag reg-list)
+      :nreg #x9
+      )
      )
     (set!
      (-> gif regs)
@@ -697,19 +696,13 @@
    (let ((total-qwc (/ (&+ (- -16 (the-as int end-dma)) (-> buf base)) 16)))
     (cond
      ((nonzero? total-qwc)
-      (set!
+      (logior!
        (-> (the-as (pointer dma-tag) end-dma) 0)
-       (logior
-        (-> (the-as (pointer dma-tag) end-dma) 0)
-        (the-as uint (new 'static 'dma-tag :qwc total-qwc))
-        )
+       (new 'static 'dma-tag :qwc total-qwc)
        )
-      (set!
+      (logior!
        (-> (the-as (pointer dma-tag) end-dma) 1)
-       (logior
-        (-> (the-as (pointer dma-tag) end-dma) 1)
-        (the-as uint (shl (shr (shl total-qwc 48) 48) 32))
-        )
+       (shl (shr (shl total-qwc 48) 48) 32)
        )
       )
      (else
@@ -821,7 +814,7 @@
     (set! (-> (the-as (pointer gs-reg64) gif-buf) 5) (gs-reg64 frame-1))
     (set!
      (-> (the-as (pointer gs-test) gif-buf) 6)
-     (new 'static 'gs-test :zte #x1 :ztst #x1)
+     (new 'static 'gs-test :zte #x1 :ztst (gs-ztest always))
      )
     (set! (-> (the-as (pointer gs-reg64) gif-buf) 7) (gs-reg64 test-1))
     (set!
@@ -831,7 +824,7 @@
     (set! (-> (the-as (pointer gs-reg64) gif-buf) 9) (gs-reg64 texa))
     (set!
      (-> (the-as (pointer gs-zbuf) gif-buf) 10)
-     (new 'static 'gs-zbuf :zbp #x1c0 :psm #x1 :zmsk #x1)
+     (new 'static 'gs-zbuf :zbp #x1c0 :psm (gs-psm ct24) :zmsk #x1)
      )
     (set! (-> (the-as (pointer gs-reg64) gif-buf) 11) (gs-reg64 zbuf-1))
     (set! (-> (the-as (pointer uint64) gif-buf) 12) (the-as uint 0))
@@ -913,7 +906,7 @@
     (set! (-> (the-as (pointer gs-reg64) gif-data) 5) (gs-reg64 frame-1))
     (set!
      (-> (the-as (pointer gs-test) gif-data) 6)
-     (new 'static 'gs-test :zte #x1 :ztst #x1)
+     (new 'static 'gs-test :zte #x1 :ztst (gs-ztest always))
      )
     (set! (-> (the-as (pointer gs-reg64) gif-data) 7) (gs-reg64 test-1))
     (set!
@@ -923,7 +916,7 @@
     (set! (-> (the-as (pointer gs-reg64) gif-data) 9) (gs-reg64 texa))
     (set!
      (-> (the-as (pointer gs-zbuf) gif-data) 10)
-     (new 'static 'gs-zbuf :zbp #x1c0 :psm #x1 :zmsk #x1)
+     (new 'static 'gs-zbuf :zbp #x1c0 :psm (gs-psm ct24) :zmsk #x1)
      )
     (set! (-> (the-as (pointer gs-reg64) gif-data) 11) (gs-reg64 zbuf-1))
     (set! (-> gif-data 12) (the-as uint 0))
@@ -935,7 +928,6 @@
   )
 
 ;; definition for function reset-display-gs-state
-;; INFO: Return type mismatch display vs none.
 (defun reset-display-gs-state ((disp display) (dma-buf dma-buffer) (oddeven int))
   (let* ((onscreen (-> disp on-screen))
          (hoff (* oddeven 8))
@@ -1003,7 +995,11 @@
     (set! (-> (the-as (pointer gs-reg64) gif-data) 5) (gs-reg64 frame-1))
     (set!
      (-> (the-as (pointer gs-test) gif-data) 6)
-     (new 'static 'gs-test :atst #x7 :zte #x1 :ztst #x2)
+     (new 'static 'gs-test
+      :atst (gs-atest not-equal)
+      :zte #x1
+      :ztst (gs-ztest greater-equal)
+      )
      )
     (set! (-> (the-as (pointer gs-reg64) gif-data) 7) (gs-reg64 test-1))
     (set!
@@ -1013,7 +1009,7 @@
     (set! (-> (the-as (pointer gs-reg64) gif-data) 9) (gs-reg64 texa))
     (set!
      (-> (the-as (pointer gs-zbuf) gif-data) 10)
-     (new 'static 'gs-zbuf :zbp #x1c0 :psm #x1)
+     (new 'static 'gs-zbuf :zbp #x1c0 :psm (gs-psm ct24))
      )
     (set! (-> (the-as (pointer gs-reg64) gif-data) 11) (gs-reg64 zbuf-1))
     (set! (-> gif-data 12) (the-as uint 0))
@@ -1021,7 +1017,7 @@
     (set! (-> dma-buf base) (&+ (the-as pointer gif-data) 112))
     )
    )
-  (none)
+  disp
   )
 
 ;; definition for symbol *vu0-dma-list*, type dma-buffer

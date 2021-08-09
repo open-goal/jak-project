@@ -3,35 +3,33 @@
 
 ;; definition (debug) for function task-status->string
 (defun-debug task-status->string ((arg0 task-status))
-  (let ((v1-0 arg0))
-   (cond
-    ((= v1-0 (task-status need-resolution))
+  (case arg0 
+   (((task-status need-resolution))
      "need-resolution"
      )
-    ((= v1-0 (task-status need-reward-speech))
-     "need-reward-speech"
-     )
-    ((= v1-0 (task-status need-reminder))
-     "need-reminder"
-     )
-    ((= v1-0 (task-status need-reminder-a))
-     "need-reminder-a"
-     )
-    ((= v1-0 (task-status need-introduction))
-     "need-introduction"
-     )
-    ((= v1-0 (task-status need-hint))
-     "need-hint"
-     )
-    ((= v1-0 (task-status unknown))
-     "unknown"
-     )
-    ((= v1-0 (task-status invalid))
-     "invalid"
-     )
-    (else
-     "*unknown*"
-     )
+   (((task-status need-reward-speech))
+    "need-reward-speech"
+    )
+   (((task-status need-reminder))
+    "need-reminder"
+    )
+   (((task-status need-reminder-a))
+    "need-reminder-a"
+    )
+   (((task-status need-introduction))
+    "need-introduction"
+    )
+   (((task-status need-hint))
+    "need-hint"
+    )
+   (((task-status unknown))
+    "unknown"
+    )
+   (((task-status invalid))
+    "invalid"
+    )
+   (else
+    "*unknown*"
     )
    )
   )
@@ -70,11 +68,11 @@
        )
       (the-as int (-> obj status))
       )
-     (set! (-> obj flags) (logior (-> obj flags) (task-flags closed)))
+     (logior! (-> obj flags) (task-flags closed))
      #f
      )
     ((task-complete? *game-info* (-> obj game-task))
-     (set! (-> obj flags) (logior (-> obj flags) (task-flags closed)))
+     (logior! (-> obj flags) (task-flags closed))
      #f
      )
     (else
@@ -89,13 +87,10 @@
   (if (= (-> obj game-task) (game-task none))
    (return (the-as int #f))
    )
-  (set! (-> obj flags) (logior (-> obj flags) (task-flags closed)))
-  (when (nonzero? (logand (-> obj flags) (task-flags has-entity)))
+  (logior! (-> obj flags) (task-flags closed))
+  (when (logtest? (-> obj flags) (task-flags has-entity))
    (let ((v1-9 (get-entity-task-perm *game-info* (-> obj game-task))))
-    (set!
-     (-> v1-9 status)
-     (logior (-> v1-9 status) (entity-perm-status user-set-from-cstage))
-     )
+    (logior! (-> v1-9 status) (entity-perm-status user-set-from-cstage))
     (if (< (-> v1-9 user-uint8 0) (the-as uint (-> obj status)))
      (set! (-> v1-9 user-int8 0) (the-as int (-> obj status)))
      )
@@ -106,7 +101,7 @@
 
 ;; definition for method 15 of type task-cstage
 (defmethod open-task! task-cstage ((obj task-cstage))
-  (set! (-> obj flags) (logand (lognot (task-flags closed)) (-> obj flags)))
+  (logclear! (-> obj flags) (task-flags closed))
   0
   )
 
@@ -326,10 +321,7 @@
    (return 0)
    )
   (let ((v1-4 (get-entity-task-perm *game-info* (-> obj stage 0 game-task))))
-   (set!
-    (-> v1-4 status)
-    (logior (-> v1-4 status) (entity-perm-status user-set-from-cstage))
-    )
+   (logior! (-> v1-4 status) (entity-perm-status user-set-from-cstage))
    (set! (-> v1-4 user-int8 (+ arg1 1)) arg0)
    )
   0
@@ -5419,7 +5411,7 @@
        (task-available? (-> gp-0 stage s5-0) gp-0)
        )
       (first-any gp-0 #t)
-      (return (the-as int (-> gp-0 stage s5-0 status)))
+      (return (the-as task-status (-> gp-0 stage s5-0 status)))
       )
      )
     )
@@ -5490,17 +5482,17 @@
 
 ;; definition for function task-known?
 (defun task-known? ((arg0 game-task))
-  (let ((v1-0 (get-task-status arg0)))
-   (if
-    (or
-     (= v1-0 (task-status need-reward-speech))
-     (= v1-0 (task-status need-introduction))
-     (= v1-0 (task-status need-reminder))
-     (= v1-0 (task-status need-reminder-a))
-     (= v1-0 (task-status need-resolution))
-     (= v1-0 (task-status invalid))
+  (case (get-task-status arg0) 
+   (((task-status need-reward-speech)
+    (task-status need-introduction)
+    (task-status need-reminder)
+    (task-status need-reminder-a)
+    (task-status need-resolution)
+    (task-status invalid)
+    )
+     #t
      )
-    #t
+   (else
     #f
     )
    )

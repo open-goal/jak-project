@@ -75,21 +75,48 @@ Val* Compiler::compile_rlet(const goos::Object& form, const goos::Object& rest, 
     }
 
     // alloc a register:
-    auto new_place_reg = env->make_ireg(ts, register_class);
-    new_place_reg->mark_as_settable();
-
+    RegVal* new_place_reg = nullptr;
     if (def_args.has_named("reg")) {
-      IRegConstraint constraint;
-      constraint.ireg = new_place_reg->ireg();
-      constraint.contrain_everywhere = true;
-      constraint.desired_register = parse_register(def_args.named.at("reg"));
-      if (def_args.has_named("reset-here") &&
-          get_true_or_false(form, def_args.get_named("reset-here"))) {
-        reset_regs.push_back(new_place_reg);
+      auto desired_register = parse_register(def_args.named.at("reg"));
+      // we want to see if we already created a variable for this register, and reuse it.
+      for (auto& constr : fenv->constraints()) {
+        if (constr.desired_register == desired_register && constr.contrain_everywhere) {
+          auto reg_val_ptr = std::make_unique<RegVal>(constr.ireg, ts);
+          new_place_reg = fenv->push_reg_val(std::move(reg_val_ptr));
+          new_place_reg->mark_as_settable();
+          break;
+        }
       }
 
-      new_place_reg->set_rlet_constraint(constraint.desired_register);
-      constraints.push_back(constraint);
+      if (!new_place_reg) {
+        for (auto& constr : constraints) {
+          if (constr.desired_register == desired_register && constr.contrain_everywhere) {
+            auto reg_val_ptr = std::make_unique<RegVal>(constr.ireg, ts);
+            new_place_reg = fenv->push_reg_val(std::move(reg_val_ptr));
+            new_place_reg->mark_as_settable();
+            break;
+          }
+        }
+      }
+    }
+
+    if (!new_place_reg) {
+      new_place_reg = env->make_ireg(ts, register_class);
+      new_place_reg->mark_as_settable();
+
+      if (def_args.has_named("reg")) {
+        IRegConstraint constraint;
+        constraint.ireg = new_place_reg->ireg();
+        constraint.contrain_everywhere = true;
+        constraint.desired_register = parse_register(def_args.named.at("reg"));
+        if (def_args.has_named("reset-here") &&
+            get_true_or_false(form, def_args.get_named("reset-here"))) {
+          reset_regs.push_back(new_place_reg);
+        }
+
+        new_place_reg->set_rlet_constraint(constraint.desired_register);
+        constraints.push_back(constraint);
+      }
     }
 
     lenv->vars[new_place_name.as_symbol()->name] = new_place_reg;
@@ -607,12 +634,104 @@ Val* Compiler::compile_asm_pw_sra(const goos::Object& form, const goos::Object& 
   return compile_asm_int128_math2_imm_u8(form, rest, IR_Int128Math2Asm::Kind::PW_SRA, env);
 }
 
-Val* Compiler::compile_asm_pextlw(const goos::Object& form, const goos::Object& rest, Env* env) {
-  return compile_asm_int128_math3(form, rest, IR_Int128Math3Asm::Kind::PEXTLW, env);
+Val* Compiler::compile_asm_por(const goos::Object& form, const goos::Object& rest, Env* env) {
+  return compile_asm_int128_math3(form, rest, IR_Int128Math3Asm::Kind::POR, env);
+}
+
+bool ireg_is_128_ok(const IRegister& ireg) {
+  return ireg.reg_class == RegClass::VECTOR_FLOAT || ireg.reg_class == RegClass::INT_128;
+}
+
+Val* Compiler::compile_asm_pnor(const goos::Object& form, const goos::Object& rest, Env* env) {
+  auto args = get_va(form, rest);
+  va_check(form, args, {{}, {}, {}}, {});
+
+  auto dest = compile_error_guard(args.unnamed.at(0), env)->to_reg(env);
+  auto src1 = compile_error_guard(args.unnamed.at(1), env)->to_reg(env);  // rs
+  auto src2 = compile_error_guard(args.unnamed.at(2), env)->to_reg(env);  // rt
+  auto temp = env->make_ireg(TypeSpec("uint128"), RegClass::INT_128);
+
+  if (!ireg_is_128_ok(dest->ireg())) {
+    throw_compiler_error(args.unnamed.at(0), "bad destination register kind");
+  }
+  if (!ireg_is_128_ok(src1->ireg())) {
+    throw_compiler_error(args.unnamed.at(1), "bad src1 register kind");
+  }
+  if (!ireg_is_128_ok(src2->ireg())) {
+    throw_compiler_error(args.unnamed.at(2), "bad src2 register kind");
+  }
+
+  if (!dest->settable()) {
+    throw_compiler_error(form, "Cannot set destination");
+  }
+
+  // A NOR is equivalent to an inverted input AND
+  // Use the destination register and a temp register.
+  // There is also no PNOT instruction, so the easiest way to is to XOR with an all-ones register
+  // Remember - we do not want to mutate the source registers!
+
+  // How do we create an all-ones-register? Compare it with itself
+  env->emit_ir<IR_Int128Math3Asm>(true, temp, temp, temp, IR_Int128Math3Asm::Kind::PCEQW);
+  // Then NOT the first input, store in destination
+  env->emit_ir<IR_Int128Math3Asm>(true, dest, temp, src1, IR_Int128Math3Asm::Kind::PXOR);
+  // NOT the second input, we not longer require the all-ones-register
+  env->emit_ir<IR_Int128Math3Asm>(true, temp, temp, src2, IR_Int128Math3Asm::Kind::PXOR);
+  // Preform the AND aka NOR
+  env->emit_ir<IR_Int128Math3Asm>(true, dest, dest, temp, IR_Int128Math3Asm::Kind::PAND);
+
+  return get_none();
+}
+
+Val* Compiler::compile_asm_pand(const goos::Object& form, const goos::Object& rest, Env* env) {
+  return compile_asm_int128_math3(form, rest, IR_Int128Math3Asm::Kind::PAND, env);
+}
+
+Val* Compiler::compile_asm_pceqb(const goos::Object& form, const goos::Object& rest, Env* env) {
+  return compile_asm_int128_math3(form, rest, IR_Int128Math3Asm::Kind::PCEQB, env);
+}
+
+Val* Compiler::compile_asm_pceqh(const goos::Object& form, const goos::Object& rest, Env* env) {
+  return compile_asm_int128_math3(form, rest, IR_Int128Math3Asm::Kind::PCEQH, env);
+}
+
+Val* Compiler::compile_asm_pceqw(const goos::Object& form, const goos::Object& rest, Env* env) {
+  return compile_asm_int128_math3(form, rest, IR_Int128Math3Asm::Kind::PCEQW, env);
+}
+
+Val* Compiler::compile_asm_pcgtb(const goos::Object& form, const goos::Object& rest, Env* env) {
+  return compile_asm_int128_math3(form, rest, IR_Int128Math3Asm::Kind::PCGTB, env);
+}
+
+Val* Compiler::compile_asm_pcgth(const goos::Object& form, const goos::Object& rest, Env* env) {
+  return compile_asm_int128_math3(form, rest, IR_Int128Math3Asm::Kind::PCGTH, env);
+}
+
+Val* Compiler::compile_asm_pcgtw(const goos::Object& form, const goos::Object& rest, Env* env) {
+  return compile_asm_int128_math3(form, rest, IR_Int128Math3Asm::Kind::PCGTW, env);
+}
+
+Val* Compiler::compile_asm_pextub(const goos::Object& form, const goos::Object& rest, Env* env) {
+  return compile_asm_int128_math3(form, rest, IR_Int128Math3Asm::Kind::PEXTUB, env);
+}
+
+Val* Compiler::compile_asm_pextuh(const goos::Object& form, const goos::Object& rest, Env* env) {
+  return compile_asm_int128_math3(form, rest, IR_Int128Math3Asm::Kind::PEXTUH, env);
 }
 
 Val* Compiler::compile_asm_pextuw(const goos::Object& form, const goos::Object& rest, Env* env) {
   return compile_asm_int128_math3(form, rest, IR_Int128Math3Asm::Kind::PEXTUW, env);
+}
+
+Val* Compiler::compile_asm_pextlb(const goos::Object& form, const goos::Object& rest, Env* env) {
+  return compile_asm_int128_math3(form, rest, IR_Int128Math3Asm::Kind::PEXTLB, env);
+}
+
+Val* Compiler::compile_asm_pextlh(const goos::Object& form, const goos::Object& rest, Env* env) {
+  return compile_asm_int128_math3(form, rest, IR_Int128Math3Asm::Kind::PEXTLH, env);
+}
+
+Val* Compiler::compile_asm_pextlw(const goos::Object& form, const goos::Object& rest, Env* env) {
+  return compile_asm_int128_math3(form, rest, IR_Int128Math3Asm::Kind::PEXTLW, env);
 }
 
 Val* Compiler::compile_asm_pcpyud(const goos::Object& form, const goos::Object& rest, Env* env) {
@@ -621,10 +740,6 @@ Val* Compiler::compile_asm_pcpyud(const goos::Object& form, const goos::Object& 
 
 Val* Compiler::compile_asm_pcpyld(const goos::Object& form, const goos::Object& rest, Env* env) {
   return compile_asm_int128_math3(form, rest, IR_Int128Math3Asm::Kind::PCPYLD, env);
-}
-
-Val* Compiler::compile_asm_pceqw(const goos::Object& form, const goos::Object& rest, Env* env) {
-  return compile_asm_int128_math3(form, rest, IR_Int128Math3Asm::Kind::PCEQW, env);
 }
 
 Val* Compiler::compile_asm_psubw(const goos::Object& form, const goos::Object& rest, Env* env) {

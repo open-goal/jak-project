@@ -241,23 +241,20 @@
        (set! (-> sprite-row-0 vector 0 z) 0.0)
        (set! (-> sprite-row-0 vector 0 w) 0.0)
        )
-      (let ((sprite-row-1 (-> math-cam sprite-2d vector 1)))
-       (set! (-> sprite-row-1 x) 0.0)
-       (set! (-> sprite-row-1 y) (- (* (/ persp-yy persp-xx) persp-x)))
-       (set! (-> sprite-row-1 z) 0.0)
-       (set! (-> sprite-row-1 w) 0.0)
+      (set-vector!
+       (-> math-cam sprite-2d vector 1)
+       0.0
+       (- (* (/ persp-yy persp-xx) persp-x))
+       0.0
+       0.0
        )
-      (let ((sprite-row-2 (-> math-cam sprite-2d vector 2)))
-       (set! (-> sprite-row-2 x) 0.0)
-       (set! (-> sprite-row-2 y) 0.0)
-       (set! (-> sprite-row-2 z) (- persp-x))
-       (set! (-> sprite-row-2 w) 0.0)
-       )
-      (let ((sprite-row-3 (-> math-cam sprite-2d vector 3)))
-       (set! (-> sprite-row-3 x) 0.0)
-       (set! (-> sprite-row-3 y) 0.0)
-       (set! (-> sprite-row-3 z) (* 500000000.0 persp-x))
-       (set! (-> sprite-row-3 w) (* (* 60.0 persp-x) (-> math-cam pfog0)))
+      (set-vector! (-> math-cam sprite-2d vector 2) 0.0 0.0 (- persp-x) 0.0)
+      (set-vector!
+       (-> math-cam sprite-2d vector 3)
+       0.0
+       0.0
+       (* 500000000.0 persp-x)
+       (* (* 60.0 persp-x) (-> math-cam pfog0))
        )
       )
      (set! (-> math-cam sprite-2d-hvdf quad) (-> math-cam hvdf-off quad))
@@ -356,19 +353,15 @@
 (defun move-target-from-pad ((trans transform) (pad-idx int))
   (let ((local-trans (new-stack-vector0)))
    (set! (-> local-trans x) (cond
-                             ((nonzero?
-                               (logand
-                                (-> *cpad-list* cpads pad-idx button0-abs 0)
-                                (pad-buttons circle)
-                                )
+                             ((logtest?
+                               (-> *cpad-list* cpads pad-idx button0-abs 0)
+                               (pad-buttons circle)
                                )
                               -80.0
                               )
-                             ((nonzero?
-                               (logand
-                                (-> *cpad-list* cpads pad-idx button0-abs 0)
-                                (pad-buttons square)
-                                )
+                             ((logtest?
+                               (-> *cpad-list* cpads pad-idx button0-abs 0)
+                               (pad-buttons square)
                                )
                               80.0
                               )
@@ -379,19 +372,15 @@
     )
    (set! (-> local-trans y) 0.0)
    (set! (-> local-trans z) (cond
-                             ((nonzero?
-                               (logand
-                                (-> *cpad-list* cpads pad-idx button0-abs 0)
-                                (pad-buttons down)
-                                )
+                             ((logtest?
+                               (-> *cpad-list* cpads pad-idx button0-abs 0)
+                               (pad-buttons down)
                                )
                               -80.0
                               )
-                             ((nonzero?
-                               (logand
-                                (-> *cpad-list* cpads pad-idx button0-abs 0)
-                                (pad-buttons up)
-                                )
+                             ((logtest?
+                               (-> *cpad-list* cpads pad-idx button0-abs 0)
+                               (pad-buttons up)
                                )
                               80.0
                               )
@@ -411,40 +400,27 @@
    (vector+! (-> trans trans) (-> trans trans) local-trans)
    )
   (set! (-> trans trans w) 1.0)
-  (if
-   (nonzero?
-    (logand (-> *cpad-list* cpads pad-idx button0-abs 0) (pad-buttons r1))
-    )
+  (if (logtest? (-> *cpad-list* cpads pad-idx button0-abs 0) (pad-buttons r1))
    (set! (-> trans trans y) (+ 80.0 (-> trans trans y)))
    )
-  (if
-   (nonzero?
-    (logand (-> *cpad-list* cpads pad-idx button0-abs 0) (pad-buttons r2))
-    )
+  (if (logtest? (-> *cpad-list* cpads pad-idx button0-abs 0) (pad-buttons r2))
    (set! (-> trans trans y) (+ -80.0 (-> trans trans y)))
    )
-  (if
-   (nonzero?
-    (logand (-> *cpad-list* cpads pad-idx button0-abs 0) (pad-buttons x))
-    )
+  (if (logtest? (-> *cpad-list* cpads pad-idx button0-abs 0) (pad-buttons x))
    (set! (-> trans rot x) (+ 546.13336 (-> trans rot x)))
    )
   (if
-   (nonzero?
-    (logand (-> *cpad-list* cpads pad-idx button0-abs 0) (pad-buttons triangle))
+   (logtest?
+    (-> *cpad-list* cpads pad-idx button0-abs 0)
+    (pad-buttons triangle)
     )
    (set! (-> trans rot x) (+ -546.13336 (-> trans rot x)))
    )
-  (if
-   (nonzero?
-    (logand (-> *cpad-list* cpads pad-idx button0-abs 0) (pad-buttons left))
-    )
+  (if (logtest? (-> *cpad-list* cpads pad-idx button0-abs 0) (pad-buttons left))
    (set! (-> trans rot y) (+ 546.13336 (-> trans rot y)))
    )
   (if
-   (nonzero?
-    (logand (-> *cpad-list* cpads pad-idx button0-abs 0) (pad-buttons right))
-    )
+   (logtest? (-> *cpad-list* cpads pad-idx button0-abs 0) (pad-buttons right))
    (set! (-> trans rot y) (+ -546.13336 (-> trans rot y)))
    )
   trans
@@ -499,8 +475,7 @@
 ;; definition for function transform-point-qword!
 ;; WARN: Inline assembly instruction marked with TODO - [TODO.VCLIP]
 ;; WARN: Unsupported inline assembly instruction kind - [cfc2.i v1, Clipping]
-;; WARN: Inline assembly instruction marked with TODO - [TODO.VFTOI4]
-(defun transform-point-qword! ((arg0 vector) (arg1 vector))
+(defun transform-point-qword! ((arg0 vector4w) (arg1 vector))
   (local-vars (v1-7 int))
   (rlet ((acc :class vf)
          (Q :class vf)
@@ -538,7 +513,7 @@
    (.mul.vf vf23 vf23 Q)
    (.add.vf vf28 vf28 vf30)
    (.max.x.vf vf28 vf28 vf0 :mask #b1000)
-   (TODO.VFTOI4 vf28 vf28)
+   (vftoi4.xyzw vf28 vf28)
    (.svf (&-> arg0 quad) vf28)
    (zero? (logand v1-7 63))
    )
@@ -624,12 +599,7 @@
     (let ((s2-0 (new 'stack 'vector4s-3)))
      (matrix*! s5-0 arg0 (-> *math-camera* camera-temp))
      (matrix-3x3-inverse-transpose! gp-0 arg0)
-     (let ((v1-3 s3-0))
-      (set! (-> v1-3 x) 0.4)
-      (set! (-> v1-3 y) 0.4)
-      (set! (-> v1-3 z) 0.4)
-      (set! (-> v1-3 w) 1.0)
-      )
+     (set-vector! s3-0 0.4 0.4 0.4 1.0)
      (let ((v1-4 (-> s4-0 data)))
       (set! (-> v1-4 0) 1.0)
       (set! (-> v1-4 1) 1.0)

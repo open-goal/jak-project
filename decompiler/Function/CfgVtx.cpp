@@ -280,6 +280,7 @@ goos::Object UntilLoop_single::to_form() const {
 }
 
 int UntilLoop_single::get_first_block_id() const {
+  return block->get_first_block_id();
   assert(false);
   return -1;
 }
@@ -537,6 +538,10 @@ bool ControlFlowGraph::is_until_loop(CfgVtx* b1, CfgVtx* b2) {
   if (!b1 || !b2)
     return false;
 
+  if (b2->end_branch.asm_branch) {
+    return false;
+  }
+
   // check next and prev
   if (b1->next != b2)
     return false;
@@ -572,6 +577,10 @@ bool ControlFlowGraph::is_until_loop(CfgVtx* b1, CfgVtx* b2) {
 
 bool ControlFlowGraph::is_goto_not_end_and_unreachable(CfgVtx* b0, CfgVtx* b1) {
   if (!b0 || !b1) {
+    return false;
+  }
+
+  if (b0->end_branch.asm_branch || b1->end_branch.asm_branch) {
     return false;
   }
 
@@ -785,7 +794,7 @@ bool ControlFlowGraph::find_until1_loop() {
   bool found = false;
 
   for_each_top_level_vtx([&](CfgVtx* vtx) {
-    if (vtx->succ_branch == vtx && vtx->succ_ft) {
+    if (vtx->succ_branch == vtx && vtx->succ_ft && !vtx->end_branch.asm_branch) {
       auto loop = alloc<UntilLoop_single>();
       loop->block = vtx;
       loop->pred = vtx->pred;
@@ -903,6 +912,9 @@ bool ControlFlowGraph::find_infinite_continue() {
 
       fmt::print("Considering {} as an infinite continue:\n", b0->to_string());
 
+      if (b0->end_branch.asm_branch) {
+        return true;
+      }
       if (dest_block >= my_block) {
         fmt::print("  Rejecting because destination block {} comes after me {}\n", dest_block,
                    my_block);
@@ -1040,6 +1052,10 @@ bool ControlFlowGraph::find_goto_not_end() {
 bool ControlFlowGraph::is_sequence(CfgVtx* b0, CfgVtx* b1, bool allow_self_loops) {
   if (!b0 || !b1)
     return false;
+
+  //  if (b0->end_branch.asm_branch || b1->end_branch.asm_branch) {
+  //    return false;
+  //  }
 
   if (b0->next != b1) {
     return false;

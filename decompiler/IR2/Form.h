@@ -54,6 +54,10 @@ class FormElement {
                                  bool allow_side_effects);
   bool is_popped() const { return m_popped; }
 
+  FormElement() = default;
+  FormElement(const FormElement& other) = delete;
+  FormElement& operator=(const FormElement& other) = delete;
+
   void mark_popped() {
     assert(!m_popped);
     m_popped = true;
@@ -185,6 +189,11 @@ class SimpleExpressionElement : public FormElement {
                                            FormStack& stack,
                                            std::vector<FormElement*>* result,
                                            bool allow_side_effects);
+  FormElement* update_from_stack_logor_or_logand_helper(const Env& env,
+                                                        FixedOperatorKind kind,
+                                                        FormPool& pool,
+                                                        FormStack& stack,
+                                                        bool allow_side_effects);
   void update_from_stack_logor_or_logand(const Env& env,
                                          FixedOperatorKind kind,
                                          FormPool& pool,
@@ -196,12 +205,12 @@ class SimpleExpressionElement : public FormElement {
                                 FormStack& stack,
                                 std::vector<FormElement*>* result,
                                 bool allow_side_effects);
-  void update_from_stack_vector_plus_minus(bool is_add,
-                                           const Env& env,
-                                           FormPool& pool,
-                                           FormStack& stack,
-                                           std::vector<FormElement*>* result,
-                                           bool allow_side_effects);
+  void update_from_stack_vector_plus_minus_cross(FixedOperatorKind op_kind,
+                                                 const Env& env,
+                                                 FormPool& pool,
+                                                 FormStack& stack,
+                                                 std::vector<FormElement*>* result,
+                                                 bool allow_side_effects);
   void update_from_stack_vector_float_product(const Env& env,
                                               FormPool& pool,
                                               FormStack& stack,
@@ -842,6 +851,27 @@ class CondNoElseElement : public FormElement {
   bool allow_in_if() const override { return false; }
 };
 
+class CaseElement : public FormElement {
+ public:
+  struct Entry {
+    std::vector<Form*> vals;
+    Form* body = nullptr;
+  };
+
+  CaseElement(Form* value, const std::vector<Entry>& entries, Form* else_body);
+  goos::Object to_form_internal(const Env& env) const override;
+  void apply(const std::function<void(FormElement*)>& f) override;
+  void apply_form(const std::function<void(Form*)>& f) override;
+  void collect_vars(RegAccessSet& vars, bool recursive) const override;
+  void get_modified_regs(RegSet& regs) const override;
+  bool allow_in_if() const override { return false; }
+
+ private:
+  Form* m_value = nullptr;
+  std::vector<Entry> m_entries;
+  Form* m_else_body = nullptr;  // may be nullptr, if no else.
+};
+
 /*!
  * Represents a (abs x) expression.
  */
@@ -1253,6 +1283,7 @@ class ConstantFloatElement : public FormElement {
                          FormStack& stack,
                          std::vector<FormElement*>* result,
                          bool allow_side_effects) override;
+  float value() const { return m_value; }
 
  private:
   float m_value;
@@ -1749,5 +1780,9 @@ GenericElement* alloc_generic_token_op(const std::string& name,
                                        const std::vector<Form*>& args,
                                        FormPool& pool);
 Form* alloc_var_form(const RegisterAccess& var, FormPool& pool);
-Form* try_cast_simplify(Form* in, const TypeSpec& new_type, FormPool& pool, const Env& env);
+Form* try_cast_simplify(Form* in,
+                        const TypeSpec& new_type,
+                        FormPool& pool,
+                        const Env& env,
+                        bool tc_pass = false);
 }  // namespace decompiler

@@ -6,6 +6,7 @@
 ;; dgos: GAME, ENGINE
 
 ;; definition of type target
+(declare-type sidekick basic)
 (deftype target (process-drawable)
   ((control             control-info        :score 100 :offset 112)
    (skel2               basic               :offset-assert 176)
@@ -15,8 +16,8 @@
    (state-hook-time     uint64              :offset-assert 192)
    (state-hook          function            :offset-assert 200)
    (cam-user-mode       symbol              :offset-assert 204)
-   (sidekick            uint32              :offset-assert 208)
-   (manipy              uint32              :offset-assert 212)
+   (sidekick            (pointer sidekick)  :offset-assert 208)
+   (manipy              (pointer manipy)    :offset-assert 212)
    (attack-info         attack-info :inline :offset-assert 224)
    (attack-info-rec     attack-info :inline :offset-assert 336)
    (anim-seed           uint64              :offset-assert 440)
@@ -42,10 +43,12 @@
     )
   )
 
+(define-perm *target* target #f)
+
 (deftype sidekick (process-drawable)
   ((control          control-info   :offset 112)
    (anim-seed        uint64  :offset 192)
-   (shadow-in-movie? basic   :offset-assert 200)
+   (shadow-in-movie? symbol  :offset-assert 200)
    )
   :heap-base #x60
   :method-count-assert 20
@@ -54,10 +57,12 @@
   ;; inherited inspect of process-drawable
   )
 
-(define-perm *target* target #f)
 (define-perm *sidekick* sidekick #f)
 
 
 (defun-extern stop symbol int)
 (defun-extern start symbol continue-point target)
 
+
+;; TODO - for mood
+(define-extern target-joint-pos (function vector)) ;; TODO - unconfirmed

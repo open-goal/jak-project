@@ -161,54 +161,55 @@
   "Check if the version and kind in the info is valid.  The version-override can specify a
    non-default version, or set to 0 for the default version"
   (let* ((expected-version
-          (if (zero? version-override)
-              (let ((v1-0 kind))
-                (cond
-                  ((or (= v1-0 (file-kind tpage)) (= v1-0 (file-kind dir-tpage)))
-                   TPAGE_FILE_VERSION
-                   )
-                  ((= kind (file-kind level-bt))
-                   LEVEL_BT_FILE_VERSION
-                   )
-                  ((= v1-0 (file-kind art-group))
-                   ART_GROUP_FILE_VERSION
-                   )
-                  )
-                )
-              version-override
-              )
-           )
-         (v1-1 kind)
-         (kind-name
           (cond
-            ((= v1-1 (file-kind tpage))
-             "texture-page"
+            ((zero? version-override)
+             (case kind 
+               (((file-kind tpage) (file-kind dir-tpage))
+                7
+                )
+               (((file-kind level-bt))
+                30
+                )
+               (((file-kind art-group))
+                6
+                )
+               )
              )
-            ((= kind (file-kind level-bt))
-             "bsp-header"
-             )
-            ((= v1-1 (file-kind art-group))
-             "art-group"
+            (else
+             version-override
              )
             )
+           )
+         (v1-1 kind)
+         (kind-name (cond
+                      ((= v1-1 (file-kind tpage))
+                       "texture-page"
+                       )
+                      ((= v1-1 (file-kind level-bt))
+                       "bsp-header"
+                       )
+                      ((= v1-1 (file-kind art-group))
+                       "art-group"
+                       )
+                      )
            )
          )
     (cond
       ((not (name= (the-as basic (-> info file-type value)) kind-name))
        (format 0 "ERROR: file ~A is of type ~S but needs to be ~S.~%"
-        (-> info file-name)
-        (-> info file-type)
-        kind-name
-        )
+               (-> info file-name)
+               (-> info file-type)
+               kind-name
+               )
        #f
        )
       ((!= expected-version (-> info major-version))
        (format 0 "ERROR: file ~A is version ~D.~D, but needs to be ~D.x~%"
-        (-> info file-name)
-        (-> info major-version)
-        (-> info minor-version)
-        expected-version
-        )
+               (-> info file-name)
+               (-> info major-version)
+               (-> info minor-version)
+               expected-version
+               )
        #f
        )
       (else

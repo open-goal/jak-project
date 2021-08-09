@@ -91,7 +91,7 @@ The `state` system is used to control a process.  Each process can be in a `stat
 
 For example, we can create a simple test state like this:
 ```
-(defstate test-state
+(defstate test-state (process)
     :enter (lambda () (format #t "enter!~%"))
     :exit (lambda () (format #t "exit!~%"))
     :trans (lambda () (format #t "trans!~%"))

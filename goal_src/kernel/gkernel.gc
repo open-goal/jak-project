@@ -122,6 +122,10 @@
   ;; it might be possible to also throw them on the *dram-stack*, but they might depend on these
   ;; not overlapping. We can spare the 16k of memory.
   (define *fake-scratchpad-stack* (new 'global 'array 'uint8 (* 16 1024)))
+  
+  ;; similar thing for the scratchpad data.
+  ;; in 
+  (define *fake-scratchpad-data*  (new 'global 'array 'uint8 (* 16 1024)))
   )
 
 
@@ -371,7 +375,7 @@
     (set! (-> obj child) #f)
     
     (set! (-> obj self) obj)
-    (set! (-> obj ppointer) (&-> obj self))
+    (set! (-> obj ppointer) (the (pointer process) (&-> obj self)))
     obj
     )
   )
@@ -436,7 +440,7 @@
     
     ;; setup reference stuff.
     (set! (-> obj self) obj)
-    (set! (-> obj ppointer) (&-> obj self))
+    (set! (-> obj ppointer) (the (pointer process) (&-> obj self)))
     obj
     )            
   )
@@ -449,7 +453,7 @@
       ;; inspect the object
       (inspect (the basic ptr))
       ;; seek to the next object on the heap.
-      (set! ptr (&+ ptr (align16 (asize-of (the basic ptr)))))
+      (&+! ptr (the int (align16 (asize-of (the basic ptr)))))
       )
     )
   )
@@ -885,6 +889,8 @@
     (set! obj (the cpu-thread (-> obj process)))
     ;; resume!
     (.jr temp)
+    (.add a4 a4)
+    (.add a5 a5)
     )
   (none)
   )
@@ -910,7 +916,7 @@
     (set! (-> obj child) #f)
     ;; setup ref
     (set! (-> obj self) obj)
-    (set! (-> obj ppointer) (&-> obj self))
+    (set! (-> obj ppointer) (the (pointer process) (&-> obj self)))
     
     (dotimes (i count)
       ;; create each process
@@ -984,7 +990,7 @@
 (defmethod new dead-pool-heap ((allocation symbol) (type-to-make type) (name basic) (allocated-length int) (heap-size int))
   "Create a new dead pool heap. It will support allocated-length processes and have a total heap size of heap-size"
   (let ((obj (object-new allocation type-to-make (+ (the int (-> type-to-make size))
-                                                    (align16 (* allocated-length 12))
+                                                    (the int (align16 (* allocated-length 12)))
                                                     heap-size))))
     (set! (-> obj name) name)
     (set! (-> obj mask) (process-mask process-tree))
@@ -994,7 +1000,7 @@
     (set! (-> obj child) #f)
     
     (set! (-> obj self) obj)
-    (set! (-> obj ppointer) (&-> obj self))
+    (set! (-> obj ppointer) (the (pointer process) (&-> obj self)))
     
     ;; initialize each process handle
     ;; build them into a linked list of null-process
@@ -2261,7 +2267,7 @@
   This will then return the value of the function you called!"
   (rlet ((pp :reg r13 :type process))
     
-    (let ((param-array (new 'stack 'array 'uint64 6))
+    (let ((param-array (new 'stack-no-clear 'array 'uint64 6))
           )
       ;; copy params to the stack.
       
@@ -2318,7 +2324,7 @@
    This stub remaps these saved registers to argument registers.
    It also creates a return trampoline to return-from-thread-dead"
   (declare (asm-func none)
-                                        ;(print-asm)
+           ;;(print-asm)
            )
   
   (rlet ((s0 :reg rbx :type uint)
@@ -2326,11 +2332,13 @@
          (s2 :reg r10 :type uint)
          (s3 :reg r11 :type uint)
          (s4 :reg r12 :type uint)
-         (a0 :reg rdi :type uint) ; ok
-         (a1 :reg rsi :type uint) ; ok 
-         (a2 :reg rdx :type uint) ; ok
-         (a3 :reg rcx :type uint) ; ok
+         (a0 :reg rdi :type uint)       ; ok
+         (a1 :reg rsi :type uint)       ; ok 
+         (a2 :reg rdx :type uint)       ; ok
+         (a3 :reg rcx :type uint)       ; ok
          (off :reg r15 :type uint)
+         (a4 :reg r8 :type uint)
+         (a5 :reg r9 :type uint)
          (temp :reg rax)
          )
 
@@ -2348,7 +2356,9 @@
     
     (.add :color #f s0 off)
     (.jr :color #f s0)
-    
+
+    (.add a4 a4)
+    (.add a5 a5)
     )
   
   )
@@ -2434,12 +2444,11 @@
         (set! pp obj)
         (let ((cur (-> pp stack-frame-top)))
           (while cur
-            (when (or
-                   (= (-> cur type) protect-frame)
-                   (= (-> cur type) state)
-                   )
-              ;; we're a state or protect-frame, we can exit.
-              ((-> (the protect-frame cur) exit))
+            (case (-> cur type) 
+              ((protect-frame state)
+               ;; we're a state or protect-frame, we can exit.
+               ((-> (the-as protect-frame cur) exit))
+               )
               )
             (set! cur (-> cur next))
             )

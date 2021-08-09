@@ -1,8 +1,5 @@
 #pragma once
 
-#ifndef JAK_GOAL_CONSTANTS_H
-#define JAK_GOAL_CONSTANTS_H
-
 #include "common_types.h"
 
 constexpr s32 BINTEGER_OFFSET = 0;
@@ -36,4 +33,7 @@ constexpr u64 EE_MAIN_MEM_MAP = 0x2123000000;      // intentionally > 32-bit to 
 // so this should be used only for debugging.
 constexpr bool EE_MEM_LOW_MAP = false;
 
-#endif  // JAK_GOAL_CONSTANTS_H
+constexpr double METER_LENGTH = 4096.0;
+constexpr double DEGREES_PER_ROT = 65536.0;
+constexpr double DEGREES_LENGTH = DEGREES_PER_ROT / 360.0;
+constexpr u64 TICKS_PER_SECOND = 300.0;

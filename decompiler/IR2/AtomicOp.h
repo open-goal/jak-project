@@ -226,6 +226,7 @@ class SimpleExpression {
     VECTOR_PLUS,
     VECTOR_MINUS,
     VECTOR_FLOAT_PRODUCT,
+    VECTOR_CROSS,
     SUBU_L32_S7,  // use SUBU X, src0, s7 to check if lower 32-bits are s7.
     VECTOR_3_DOT,
   };

@@ -6,7 +6,6 @@
 #include "game_count.h"
 
 void compile_game_count(const std::string& filename) {
-  printf("[Build Game Count] %s\n", filename.c_str());
   struct Count {
     int buzzer;
     int money;

@@ -301,7 +301,8 @@
   )
 
 (defmacro dotimes (var &rest body)
-  "Loop like for (int i = 0; i < end; i++)"
+  "Loop like for (int i = 0; i < end; i++)
+   var is a list made up of a variable to bind the amount to (second item), and the remaining forms are evaluated after the loop is finished."
   `(let (( ,(first var) 0))
      (while (< ,(first var) ,(second var))
             ,@body
@@ -319,6 +320,12 @@
        ,@body
        )
      )
+  )
+
+(defmacro loop (&rest body)
+  "Loop this code forever."
+  `(while #t
+      ,@body)
   )
 
 ;; Backup some values, and restore after executing body.
@@ -468,6 +475,13 @@
   `(neq? ,thing 0)
   )
 
+(defmacro minmax (val minval maxval)
+  `(max (min ,val ,maxval) ,minval)
+  )
+(defmacro fminmax (val minval maxval)
+  `(fmax (fmin ,val ,maxval) ,minval)
+  )
+
 (defmacro &+! (val amount)
   `(set! ,val (&+ ,val ,amount))
   )
@@ -488,12 +502,29 @@
   `(set! ,place (logxor ,place ,amount))
   )
 
-(defmacro lognor! (place amount)
-  `(set! ,place (lognor ,place ,amount))
-  )
-
 (defmacro logand! (place amount)
   `(set! ,place (logand ,place ,amount))
+  )
+
+(defmacro logclear (a b)
+  "Returns the result of setting the bits in b to zero in a"
+  ;; put a first so the return type matches a.
+  `(logand ,a (lognot ,b))
+  )
+
+(defmacro logclear! (a b)
+  "Sets the bits in b to zero in a, in place"
+  `(set! ,a (logand ,a (lognot ,b)))
+  )
+
+(defmacro logtest? (a b)
+  "does a have any of the bits in b?"
+  `(nonzero? (logand ,a ,b))
+  )
+
+(defmacro logtesta? (a b)
+  "does a have ALL of the bits in b?"
+  `(= (logand ,a ,b) ,b)
   )
 
 (defmacro deref (t addr &rest fields)
@@ -507,12 +538,17 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; Bit Macros
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;
-(defmacro align16 (value)
-  `(logand #xfffffff0 (+ (the-as integer ,value) 15))
+(defmacro align-n (val n)
+  "align val to n-byte boundaries"
+  `(logand ,(- n) (+ (the-as int ,val) ,(- n 1)))
   )
 
-(defmacro align64 (value)
-  `(logand -64 (&+ (the-as pointer ,value) 63))
+(defmacro align16 (val)
+  `(align-n ,val 16)
+  )
+
+(defmacro align64 (val)
+  `(align-n ,val 64)
   )
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -570,6 +606,22 @@
   `(car (car ,arg))
   )
 
+(defmacro cadr (arg)
+  `(car (cdr ,arg))
+  )
+
+(defmacro cddr (arg)
+  `(cdr (cdr ,arg))
+  )
+
+(defmacro caddr (arg)
+  `(car (cdr (cdr ,arg)))
+  )
+
+(defmacro cadddr (arg)
+  `(car (cdr (cdr (cdr ,arg))))
+  )
+
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; METHOD STUFF
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -625,3 +677,33 @@
 (defmacro fake-asm (asm-name &rest args)
   `(defmacro ,asm-name (,@args) `(none))
   )
+
+
+;;;;;;;;;;;;;;;;;;;;;;;;;
+;; Build System
+;;;;;;;;;;;;;;;;;;;;;;;;;
+
+(defmacro makeo (object-name &rest flags)
+  "Make the given object. Can use a string, or not."
+  `(make ,(string-append
+           "out/obj/"
+           (if (string? object-name) object-name (symbol->string object-name))
+           ".o"
+           )
+         ,@flags)
+  )
+
+(defmacro make-cgo (file)
+  `(make ,(string-append "out/iso/" file ".CGO"))
+  )
+
+(defmacro make-dgo (file)
+  `(make ,(string-append "out/iso/" file ".DGO"))
+  )
+
+(defmacro make-group (name &key (verbose #f) &key (force #f))
+  `(make ,(string-append "GROUP:" name) :verbose ,verbose :force ,force)
+  )
+
+;; load the default project
+(load-project "goal_src/game.gp")

@@ -85,10 +85,15 @@ bool convert_to_expressions(
       if (!dts.ts.tc(f.type.last_arg(), return_type)) {
         // we need to cast the final value.
         auto to_cast = new_entries.back();
-        new_entries.pop_back();
-        auto cast = pool.alloc_element<CastElement>(f.type.last_arg(),
-                                                    pool.alloc_single_form(nullptr, to_cast));
-        new_entries.push_back(cast);
+        auto as_cast = dynamic_cast<CastElement*>(to_cast);
+        if (as_cast) {
+          as_cast->set_type(f.type.last_arg());
+        } else {
+          new_entries.pop_back();
+          auto cast = pool.alloc_element<CastElement>(f.type.last_arg(),
+                                                      pool.alloc_single_form(nullptr, to_cast));
+          new_entries.push_back(cast);
+        }
       }
     } else {
       // or just get all the expressions
