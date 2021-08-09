@@ -48,9 +48,7 @@
 #include "game/overlord/stream.h"
 #include "game/overlord/sbank.h"
 
-#include "game/graphics/opengl.h"
 #include "game/graphics/gfx.h"
-#include "game/graphics/display.h"
 
 #include "game/system/vm/vm.h"
 #include "game/system/vm/dmac.h"
