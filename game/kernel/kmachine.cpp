@@ -55,12 +55,16 @@ const char* init_types[] = {"fakeiso", "deviso", "iso_cd"};
 
 Timer ee_clock_timer;
 
+// added
+bool machine_booted = false;
+
 void kmachine_init_globals() {
   isodrv = iso_cd;
   modsrc = 1;
   reboot = 1;
   memset(pad_dma_buf, 0, sizeof(pad_dma_buf));
   ee_clock_timer = Timer();
+  machine_booted = false;
 }
 
 /*!
@@ -612,6 +616,16 @@ void InitMachine_PCPort() {
   make_function_symbol_from_c("__pc-texture-relocate", (void*)pc_texture_relocate);
 }
 
+void vif_interrupt_callback() {
+  // added for the PC port for faking VIF interrupts from the graphics system.
+  if (machine_booted) {
+    auto sym = intern_from_c("vif1-handler-debug");
+    if (sym->value) {
+      call_goal(Ptr<Function>(sym->value), 0, 0, 0, s7.offset, g_ee_main_mem);
+    }
+  }
+}
+
 /*!
  * Final initialization of the system after the kernel is loaded.
  * This is called from InitHeapAndSymbol at the very end.
@@ -684,4 +698,5 @@ void InitMachineScheme() {
     lg::info("calling fake play~");
     call_goal_function_by_name("play");
   }
+  machine_booted = true;
 }

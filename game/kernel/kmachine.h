@@ -5,9 +5,6 @@
  * GOAL Machine.  Contains low-level hardware interfaces for GOAL.
  */
 
-#ifndef RUNTIME_KMACHINE_H
-#define RUNTIME_KMACHINE_H
-
 #include "common/common_types.h"
 #include "Ptr.h"
 
@@ -118,4 +115,4 @@ struct FileStream {
 
 // static_assert(offsetof(CpadInfo, new_pad) == 76, "cpad type offset");
 
-#endif  // RUNTIME_KMACHINE_H
+void vif_interrupt_callback();

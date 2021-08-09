@@ -33,7 +33,7 @@ DirectRenderer::~DirectRenderer() {
  * Render from a DMA bucket.
  */
 void DirectRenderer::render(DmaFollower& dma, SharedRenderState* render_state) {
-  fmt::print("direct: {}\n", m_my_id);
+  //  fmt::print("direct: {}\n", m_my_id);
   // if we're rendering from a bucket, we should start off we a totally reset state:
   reset_state();
   setup_common_state(render_state);
@@ -53,7 +53,6 @@ void DirectRenderer::render(DmaFollower& dma, SharedRenderState* render_state) {
     }
   }
 
-  fmt::print("update from end {}\n", m_prim_gl_state.texture_enable);
   flush_pending(render_state);
 }
 
@@ -62,7 +61,7 @@ void DirectRenderer::flush_pending(SharedRenderState* render_state) {
     return;
   }
 
-  lg::warn("DirectRenderer flush with {} triangles.\n", m_prim_buffer.vert_count / 3);
+  // lg::warn("DirectRenderer flush with {} triangles.", m_prim_buffer.vert_count / 3);
   // update opengl state
   if (m_prim_gl_state_needs_gl_update) {
     update_gl_prim(render_state);
@@ -92,9 +91,6 @@ void DirectRenderer::flush_pending(SharedRenderState* render_state) {
   if (m_prim_gl_state.texture_enable) {
     glBindBuffer(GL_ARRAY_BUFFER, m_ogl.st_buffer);
     glBufferSubData(GL_ARRAY_BUFFER, 0, m_ogl.st_buffer_bytes, m_prim_buffer.sts.data());
-    for (int i = 0; i < 10; i++) {
-      fmt::print("{}: {} {}\n", i, m_prim_buffer.sts[i].x(), m_prim_buffer.sts[i].y());
-    }
   }
 
   // setup attributes:
@@ -119,7 +115,6 @@ void DirectRenderer::flush_pending(SharedRenderState* render_state) {
                         0);
 
   if (m_prim_gl_state.texture_enable) {
-    fmt::print("DO TEXTURE!\n");
     glBindBuffer(GL_ARRAY_BUFFER, m_ogl.st_buffer);
     glEnableVertexAttribArray(2);
     glVertexAttribPointer(2,         // location 0 in the shader
@@ -176,7 +171,7 @@ void DirectRenderer::upload_texture(TextureRecord* tex) {
 void DirectRenderer::update_gl_texture(SharedRenderState* render_state) {
   auto tex = render_state->texture_pool->lookup(m_texture_state.texture_base_ptr);
   assert(tex);
-  fmt::print("Successful texture lookup! {} {}\n", tex->page_name, tex->name);
+  // fmt::print("Successful texture lookup! {} {}\n", tex->page_name, tex->name);
 
   // first: do we need to load the texture?
   if (!tex->on_gpu) {
@@ -365,7 +360,8 @@ void DirectRenderer::render_gif(const u8* data, u32 size, SharedRenderState* ren
         for (u32 reg = 0; reg < nreg; reg++) {
           u64 register_data;
           memcpy(&register_data, data + offset, 8);
-//          fmt::print("loop: {} reg: {} {}\n", loop, reg, reg_descriptor_name(reg_desc[reg]));
+          //          fmt::print("loop: {} reg: {} {}\n", loop, reg,
+          //          reg_descriptor_name(reg_desc[reg]));
           switch (reg_desc[reg]) {
             case GifTag::RegisterDescriptor::PRIM:
               handle_prim(register_data, render_state);
@@ -393,7 +389,7 @@ void DirectRenderer::render_gif(const u8* data, u32 size, SharedRenderState* ren
 
   assert(offset == size);
 
-//  fmt::print("{}\n", GifTag(data).print());
+  //  fmt::print("{}\n", GifTag(data).print());
 }
 
 void DirectRenderer::handle_ad(const u8* data, SharedRenderState* render_state) {
@@ -461,7 +457,7 @@ void DirectRenderer::handle_tex1_1(u64 val) {
 
 void DirectRenderer::handle_tex0_1(u64 val, SharedRenderState* render_state) {
   GsTex0 reg(val);
-//  fmt::print("{}\n", reg.print());
+  //  fmt::print("{}\n", reg.print());
 
   // update tbp
   if (m_texture_state.current_register != reg) {
@@ -648,6 +644,39 @@ void DirectRenderer::handle_xyzf2_common(u32 x, u32 y, u32 z, u8 f) {
       }
 
     } break;
+      //    case GsPrim::Kind::LINE: {
+      //      if (m_prim_building.building_idx == 1) {
+      //        math::Vector<double, 3> pt0 = m_prim_building.building_vert[0].cast<double>();
+      //        math::Vector<double, 3> pt1 = m_prim_building.building_vert[1].cast<double>();
+      //        auto normal = (pt1 - pt0).normalized().cross({0, 0, 1});
+      //
+      //        double line_width = (1 << 28);
+      //        fmt::print("Line:\n ");
+      //        fmt::print(" {} {} {} {}\n", m_prim_building.building_vert[0].x(),
+      //                   m_prim_building.building_vert[0].y(),
+      //                   m_prim_building.building_vert[1].x(),
+      //                   m_prim_building.building_vert[1].y());
+      //        //        debug_print_vtx(m_prim_building.building_vert[0]);
+      //        //        debug_print_vtx(m_prim_building.building_vert[1]);
+      //
+      //        math::Vector<double, 3> a = pt0 + normal * line_width;
+      //        math::Vector<double, 3> b = pt1 + normal * line_width;
+      //        math::Vector<double, 3> c = pt0 - normal * line_width;
+      //        math::Vector<double, 3> d = pt1 - normal * line_width;
+      //
+      //        // ACB:
+      //        m_prim_buffer.push(m_prim_building.building_rgba[0], a.cast<u32>(), {});
+      //        m_prim_buffer.push(m_prim_building.building_rgba[0], c.cast<u32>(), {});
+      //        m_prim_buffer.push(m_prim_building.building_rgba[1], b.cast<u32>(), {});
+      //        // b c d
+      //        m_prim_buffer.push(m_prim_building.building_rgba[1], b.cast<u32>(), {});
+      //        m_prim_buffer.push(m_prim_building.building_rgba[0], c.cast<u32>(), {});
+      //        m_prim_buffer.push(m_prim_building.building_rgba[1], d.cast<u32>(), {});
+      //        //
+      //
+      //        m_prim_building.building_idx = 0;
+      //      }
+      //    } break;
     default:
       fmt::print("prim type {} is unsupported.\n", (int)m_prim_building.kind);
       assert(false);
@@ -719,7 +748,6 @@ void DirectRenderer::PrimGlState::from_register(GsPrim reg) {
   current_register = reg;
   gouraud_enable = reg.gouraud();
   texture_enable = reg.tme();
-  fmt::print("set tex en: {}\n", texture_enable);
   fogging_enable = reg.fge();
   aa_enable = reg.aa1();
   use_uv = reg.fst();

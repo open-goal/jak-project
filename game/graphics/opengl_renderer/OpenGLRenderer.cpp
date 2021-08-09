@@ -4,6 +4,9 @@
 #include "game/graphics/opengl.h"
 #include "game/graphics/opengl_renderer/DirectRenderer.h"
 
+// for the vif callback
+#include "game/kernel/kmachine.h"
+
 /*!
  * OpenGL Error callback. If we do something invalid, this will be called.
  */
@@ -108,6 +111,7 @@ void OpenGLRenderer::dispatch_buckets(DmaFollower dma) {
     // should have ended at the start of the next chain
     assert(dma.current_tag_offset() == m_render_state.next_bucket);
     m_render_state.next_bucket += 16;
+    vif_interrupt_callback();
   }
 
   // TODO ending data.
