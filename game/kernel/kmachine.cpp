@@ -618,7 +618,7 @@ void InitMachine_PCPort() {
 
 void vif_interrupt_callback() {
   // added for the PC port for faking VIF interrupts from the graphics system.
-  if (machine_booted) {
+  if (machine_booted && MasterExit == 0) {
     auto sym = intern_from_c("vif1-handler-debug");
     if (sym->value) {
       call_goal(Ptr<Function>(sym->value), 0, 0, 0, s7.offset, g_ee_main_mem);
