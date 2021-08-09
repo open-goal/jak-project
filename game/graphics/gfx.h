@@ -22,6 +22,7 @@ u32 Exit();
 u32 vsync();
 void send_chain(const void* data, u32 offset);
 void texture_upload_now(const u8* tpage, int mode, u32 s7_ptr);
+void texture_relocate(u32 destination, u32 source);
 
 }  // namespace Gfx
 

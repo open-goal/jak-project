@@ -60,12 +60,18 @@ class DirectRenderer : public BucketRenderer {
   void handle_st_packed(const u8* data);
   void handle_rgbaq_packed(const u8* data);
   void handle_xyzf2_packed(const u8* data);
+  void handle_tex0_1(u64 val, SharedRenderState* render_state);
+  void handle_tex1_1(u64 val);
+  void handle_texa(u64 val);
 
   void handle_xyzf2_common(u32 x, u32 y, u32 z, u8 f);
 
-  void update_gl_prim();
+  void update_gl_prim(SharedRenderState* render_state);
   void update_gl_blend();
   void update_gl_test();
+  void update_gl_texture(SharedRenderState* render_state);
+
+  void upload_texture(TextureRecord* tex);
 
   struct TestState {
     void from_register(GsTest reg);
@@ -111,15 +117,24 @@ class DirectRenderer : public BucketRenderer {
     bool fix = false;     // what does this even do?
   } m_prim_gl_state;
 
+  struct TextureState {
+    GsTex0 current_register;
+    u32 texture_base_ptr = 0;
+  } m_texture_state;
+
   // state set through the prim/rgbaq register that doesn't require changing GL stuff
   struct PrimBuildState {
     GsPrim::Kind kind = GsPrim::Kind::PRIM_7;
     math::Vector<u8, 4> rgba_reg = {0, 0, 0, 0};
+    math::Vector<float, 2> st_reg;
 
     std::array<math::Vector<u8, 4>, 3> building_rgba;
     std::array<math::Vector<u32, 3>, 3> building_vert;
+    std::array<math::Vector<float, 2>, 3> building_st;
     int building_idx = 0;
     int tri_strip_startup = 0;
+
+    float Q = 0;
 
   } m_prim_building;
 
@@ -127,21 +142,26 @@ class DirectRenderer : public BucketRenderer {
     PrimitiveBuffer(int max_triangles);
     std::vector<math::Vector<u8, 4>> rgba_u8;
     std::vector<math::Vector<u32, 3>> verts;
+    std::vector<math::Vector<float, 2>> sts;
     int vert_count = 0;
     int max_verts = 0;
 
     // leave 6 free on the end so we always have room to flush one last primitive.
     bool is_full() { return max_verts < (vert_count - 6); }
-    void push(const math::Vector<u8, 4>& rgba, const math::Vector<u32, 3>& vert);
+    void push(const math::Vector<u8, 4>& rgba,
+              const math::Vector<u32, 3>& vert,
+              const math::Vector<float, 2>& st);
   } m_prim_buffer;
 
   struct {
-    GLuint vertex_buffer, color_buffer;
+    GLuint vertex_buffer, color_buffer, st_buffer;
     u32 vertex_buffer_bytes = 0;
     u32 color_buffer_bytes = 0;
+    u32 st_buffer_bytes = 0;
   } m_ogl;
 
   bool m_prim_gl_state_needs_gl_update = true;
   bool m_test_state_needs_gl_update = true;
   bool m_blend_state_needs_gl_update = true;
+  bool m_texture_state_needs_gl_update = true;
 };

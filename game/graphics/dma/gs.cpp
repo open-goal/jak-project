@@ -334,3 +334,18 @@ std::string GsAlpha::print() const {
 
   return result;
 }
+
+std::string GsTex1::print() const {
+  return fmt::format("lcm: {} mxl: {} mmag: {} mmin: {} mtba: {} l: {} k: {}\n", lcm(), mxl(),
+                     mmag(), mmin(), mtba(), l(), k());
+}
+
+std::string GsTexa::print() const {
+  return fmt::format("ta0: {} aem: {} ta1: {}\n", ta0(), aem(), ta1());
+}
+
+std::string GsTex0::print() const {
+  return fmt::format(
+      "tbp0: {} tbw: {} psm: {} tw: {} th: {} tcc: {} tfx: {} cbp: {} cpsm: {} csm: {}\n", tbp0(),
+      tbw(), psm(), tw(), th(), tcc(), tfx(), cbp(), cpsm(), csm());
+}

@@ -38,8 +38,8 @@ void OpenGLRenderer::init_bucket_renderers() {
   init_bucket_renderer<EmptyBucketRenderer>("bucket0", BucketId::BUCKET0);
 
   // TODO what the heck is drawing to debug-draw-0 on init?
-  init_bucket_renderer<DirectRenderer>("debug-draw-0", BucketId::DEBUG_DRAW_0, 1024);
-  init_bucket_renderer<DirectRenderer>("debug-draw-1", BucketId::DEBUG_DRAW_1, 1024);
+  init_bucket_renderer<DirectRenderer>("debug-draw-0", BucketId::DEBUG_DRAW_0, 1024 * 8);
+  init_bucket_renderer<DirectRenderer>("debug-draw-1", BucketId::DEBUG_DRAW_1, 1024 * 8);
 
   // for now, for any unset renderers, just set them to an EmptyBucketRenderer.
   for (size_t i = 0; i < m_bucket_renderers.size(); i++) {

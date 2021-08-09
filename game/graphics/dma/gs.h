@@ -243,3 +243,66 @@ struct GsPrim {
   bool operator==(const GsPrim& other) const { return data == other.data; }
   bool operator!=(const GsPrim& other) const { return data != other.data; }
 };
+
+struct GsTex0 {
+  GsTex0() = default;
+  GsTex0(u64 val) : data(val) {}
+
+  u32 tbp0() const { return data & 0b11'1111'1111'1111; }
+  u32 tbw() const { return (data >> 14) & 0b111111; }
+  u32 psm() const { return (data >> 20) & 0b111111; }
+  u32 tw() const { return (data >> 26) & 0b1111; }
+  u32 th() const { return (data >> 30) & 0b1111; }
+  enum class TextureFunction : u8 {
+    MODULATE = 0,
+    DECAL = 1,
+    HIGHLIGHT = 2,
+    HIGHLIGHT2 = 3,
+  };
+  u32 tcc() const { return ((data >> 34) & 0b1); }
+  TextureFunction tfx() const { return (TextureFunction)((data >> 35) & 0b11); }
+  u32 cbp() const { return (data >> 37) & 0b11'1111'1111'1111; }
+  u32 cpsm() const { return (data >> 51) & 0b1111; }
+  u32 csm() const { return (data >> 55) & 1; }
+
+  std::string print() const;
+
+  bool operator==(const GsTex0& other) const { return data == other.data; }
+  bool operator!=(const GsTex0& other) const { return data != other.data; }
+
+  u64 data = 0;
+};
+
+struct GsTex1 {  // tex1_1 and tex1_2
+  GsTex1() = default;
+  GsTex1(u64 val) : data(val) {}
+
+  bool lcm() const {
+    // 1 = fixed
+    return data & 1;
+  }
+
+  u32 mxl() const { return (data >> 2) & 0b111; }
+  bool mmag() const { return data & (1 << 5); }
+  u32 mmin() const { return (data >> 6) & 0b111; }
+  bool mtba() const { return data & (1 << 9); }
+  u32 l() const { return (data >> 19) & 0b11; }
+  u32 k() const { return (data >> 32) & 0b1111'1111'1111; }
+
+  std::string print() const;
+
+  u64 data = 0;
+};
+
+struct GsTexa {
+  GsTexa() = default;
+  GsTexa(u64 val) : data(val) {}
+
+  u8 ta0() const { return data; }
+  bool aem() const { return data & (1 << 15); }
+  u8 ta1() const { return (data >> 32); }
+
+  std::string print() const;
+
+  u64 data = 0;
+};

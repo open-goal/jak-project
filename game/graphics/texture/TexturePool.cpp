@@ -4,6 +4,7 @@
 #include "common/util/assert.h"
 #include "common/util/FileUtil.h"
 #include "common/util/Timer.h"
+#include "common/log/log.h"
 
 ////////////////////////////////
 // Extraction of textures
@@ -118,8 +119,9 @@ void TexturePool::handle_upload_now(const u8* tpage, int mode, const u8* memory_
     m_tex_converter.upload(memory_base + texture_page.segment[0].block_data_ptr,
                            texture_page.segment[0].dest, size);
   } else {
-    assert(false);
-    //    return;
+    // no reason to skip this, other than
+    lg::error("TexturePool skipping upload now with mode {}.", mode);
+    return;
   }
 
   // loop over all texture in the tpage and download them.
@@ -144,7 +146,7 @@ void TexturePool::handle_upload_now(const u8* tpage, int mode, const u8* memory_
         m_tex_converter.download_rgba8888(texture_record->data.data(), tex.dest[mip_idx],
                                           tex.width[mip_idx], ww, hh, tex.psm, tex.clutpsm,
                                           tex.clut_dest, size_bytes);
-        m_textures.at(tex.dest[mip_idx]) = std::move(texture_record);
+        set_texture(tex.dest[mip_idx], std::move(texture_record));
 
         // Debug output.
         if (dump_textures_to_file) {
@@ -165,4 +167,29 @@ void TexturePool::handle_upload_now(const u8* tpage, int mode, const u8* memory_
   }
 
   fmt::print("upload now took {:.2f} ms\n", timer.getMs());
+}
+
+/*!
+ * Store a texture in the pool. Location is specified like TBP.
+ */
+void TexturePool::set_texture(u32 location, std::unique_ptr<TextureRecord>&& record) {
+  if (m_textures.at(location)) {
+    m_garbage_textures.push_back(std::move(m_textures[location]));
+  }
+  m_textures[location] = std::move(record);
+}
+
+/*!
+ * Move a texture.
+ */
+void TexturePool::relocate(u32 destination, u32 source) {
+  if (m_textures.at(source)) {
+    if (m_textures.at(destination)) {
+      return;  // HACK
+    }
+    m_textures.at(destination) = std::move(m_textures.at(source));
+    fmt::print("Relocated a texture: {}\n", m_textures[destination]->name);
+  } else {
+    assert(false);
+  }
 }

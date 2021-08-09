@@ -181,7 +181,10 @@ void KernelCheckAndDispatch() {
       SendAck();
     }
 
-    std::this_thread::sleep_for(std::chrono::microseconds(1000));
+    if (time_ms < 4) {
+      std::this_thread::sleep_for(std::chrono::microseconds(1000));
+    }
+
   }
 }
 

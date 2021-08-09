@@ -9,6 +9,7 @@ class Shader {
   Shader() = default;
   void activate();
   bool okay() const { return m_is_okay; }
+  uint id() const { return m_program; }
 
  private:
   uint m_frag_shader = 0;
@@ -18,7 +19,7 @@ class Shader {
 };
 
 // note: update the constructor in Shader.cpp
-enum class ShaderId { TEST_SHADER = 0, DIRECT_BASIC = 1, MAX_SHADERS };
+enum class ShaderId { TEST_SHADER = 0, DIRECT_BASIC = 1, DIRECT_BASIC_TEXTURED = 2, MAX_SHADERS };
 
 class ShaderLibrary {
  public:

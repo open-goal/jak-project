@@ -445,6 +445,10 @@ void pc_texture_upload_now(u32 page, u32 mode) {
   Gfx::texture_upload_now(Ptr<u8>(page).c(), mode, s7.offset);
 }
 
+void pc_texture_relocate(u32 dst, u32 src) {
+  Gfx::texture_relocate(dst, src);
+}
+
 /*!
  * Open a file-stream.  Name is a GOAL string. Mode is a GOAL symbol.  Use 'read for readonly
  * and anything else for write only.
@@ -605,6 +609,7 @@ void InitMachine_PCPort() {
   make_function_symbol_from_c("__mem-move", (void*)c_memmove);
   make_function_symbol_from_c("__send-gfx-dma-chain", (void*)send_gfx_dma_chain);
   make_function_symbol_from_c("__pc-texture-upload-now", (void*)pc_texture_upload_now);
+  make_function_symbol_from_c("__pc-texture-relocate", (void*)pc_texture_relocate);
 }
 
 /*!

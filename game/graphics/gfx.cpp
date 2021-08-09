@@ -202,4 +202,10 @@ void texture_upload_now(const u8* tpage, int mode, u32 s7_ptr) {
   }
 }
 
+void texture_relocate(u32 destination, u32 source) {
+  if (g_gfx_data) {
+    g_gfx_data->texture_pool->relocate(destination, source);
+  }
+}
+
 }  // namespace Gfx
