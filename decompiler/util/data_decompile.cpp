@@ -288,7 +288,7 @@ int index_of_closest_following_label_in_segment(int start_byte,
   for (int i = 0; i < (int)labels.size(); i++) {
     const auto& label = labels.at(i);
     if (label.target_segment == seg) {
-      if (result_idx == -1) {
+      if (result_idx == -1 && label.offset > start_byte) {
         result_idx = i;
         closest_byte = label.offset;
       } else {
@@ -419,6 +419,20 @@ goos::Object ocean_mid_masks_decompile(const std::vector<LinkedWord>& words,
                                                data_field, all_words, file,
                                                TypeSpec("ocean-mid-mask"), 8);
 }
+
+goos::Object sp_field_init_spec_decompile(const std::vector<LinkedWord>& words,
+                                          const std::vector<DecompilerLabel>& labels,
+                                          int my_seg,
+                                          int field_location,
+                                          const TypeSystem& ts,
+                                          const Field& data_field,
+                                          const std::vector<std::vector<LinkedWord>>& all_words,
+                                          const LinkedObjectFile* file) {
+  return decomp_ref_to_inline_array_guess_size(words, labels, my_seg, field_location, ts,
+                                               data_field, all_words, file,
+                                               TypeSpec("sp-field-init-spec"), 16);
+}
+
 }  // namespace
 
 goos::Object decompile_structure(const TypeSpec& type,
@@ -608,6 +622,10 @@ goos::Object decompile_structure(const TypeSpec& type,
           field_defs_out.emplace_back(
               field.name(), ocean_mid_masks_decompile(obj_words, labels, label.target_segment,
                                                       field_start, ts, field, words, file));
+        } else if (field.name() == "init-specs" && type.print() == "sparticle-launcher") {
+          field_defs_out.emplace_back(
+              field.name(), sp_field_init_spec_decompile(obj_words, labels, label.target_segment,
+                                                         field_start, ts, field, words, file));
         } else {
           std::vector<u8> bytes_out;
           for (int byte_idx = field_start; byte_idx < field_end; byte_idx++) {

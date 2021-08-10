@@ -62,6 +62,9 @@
 (defsmacro cddr (x)
            `(cdr (cdr ,x)))
 
+(defsmacro cdddr (x)
+           `(cdr (cdr (cdr ,x))))
+
 (desfun first (x)
 	(car x))
 
@@ -115,6 +118,40 @@
 	    (assoc x (cdr a))
 	    )
 	)
+
+(desfun reverse (lst)
+  (if (null? lst)
+    '()
+    (let ((old-lst lst)
+          (new-lst '()))
+      (while (not (null? old-lst))
+        (set! new-lst (cons (car old-lst) new-lst))
+        (set! old-lst (cdr old-lst))
+        )
+      new-lst
+      )
+    )
+  )
+
+(desfun reverse-recursive (lst)
+  (if (null? lst)
+    '()
+    (let ((old-lst lst)
+          (new-lst '()))
+      (while (not (null? old-lst))
+        (let ((cur-obj (car old-lst)))
+          (set! new-lst (cons (if (pair? cur-obj)
+                                  (reverse-recursive cur-obj)
+                                  cur-obj
+                                  )
+                              new-lst))
+          (set! old-lst (cdr old-lst))
+          )
+        )
+      new-lst
+      )
+    )
+  )
 
 (defsmacro let (bindings &rest body)
   `((lambda ,(apply first bindings) ,@body)
@@ -239,6 +276,49 @@
   )
 
 
+;;;;;;;;;;;;;;;;;;;
+;; enum stuff
+;;;;;;;;;;;;;;;;;;;
+
+(desfun enum-length (enum)
+  (length (get-enum-vals enum))
+  )
+
+(defsmacro doenum (bindings &rest body)
+  ;; (doenum (name-var val-var 'enum &rest result) &rest body)
+  
+  (with-gensyms (enum-vals)
+    `(let ((,enum-vals (get-enum-vals ,(third bindings))))
+        
+        (while (not (null? ,enum-vals))
+          (let ((,(first bindings) (caar ,enum-vals)) ;; name
+                (,(second bindings) (cdar ,enum-vals)) ;; value
+                )
+            ,@body
+            )
+          
+          (set! ,enum-vals (cdr ,enum-vals))
+          )
+        
+        ,@(cdddr bindings)
+        
+        )
+    )
+  
+  )
+
+(desfun enum-max (enum)
+  "get the highest value in an enum"
+  
+  (let ((max-val -999999999))
+    (doenum (name val enum)
+      (when (> val max-val)
+        (set! max-val val))
+      )
+
+    max-val
+    )
+  )
 
 
 ;; shortcut to quit GOOS
