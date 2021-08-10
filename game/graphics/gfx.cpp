@@ -90,15 +90,21 @@ u32 vsync() {
 }
 
 void send_chain(const void* data, u32 offset) {
-  g_settings.renderer->send_chain(data, offset);
+  if (g_settings.renderer) {
+    g_settings.renderer->send_chain(data, offset);
+  }
 }
 
 void texture_upload_now(const u8* tpage, int mode, u32 s7_ptr) {
-  g_settings.renderer->texture_upload_now(tpage, mode, s7_ptr);
+  if (g_settings.renderer) {
+    g_settings.renderer->texture_upload_now(tpage, mode, s7_ptr);
+  }
 }
 
 void texture_relocate(u32 destination, u32 source) {
-  g_settings.renderer->texture_relocate(destination, source);
+  if (g_settings.renderer) {
+    g_settings.renderer->texture_relocate(destination, source);
+  }
 }
 
 }  // namespace Gfx
