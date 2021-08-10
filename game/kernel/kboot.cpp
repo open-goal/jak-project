@@ -184,7 +184,6 @@ void KernelCheckAndDispatch() {
     if (time_ms < 4) {
       std::this_thread::sleep_for(std::chrono::microseconds(1000));
     }
-
   }
 }
 

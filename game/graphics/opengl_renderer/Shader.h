@@ -2,6 +2,8 @@
 
 #include <string>
 
+#include "common/common_types.h"
+
 class Shader {
  public:
   static constexpr char shader_folder[] = "game/graphics/opengl_renderer/shaders/";
@@ -9,12 +11,12 @@ class Shader {
   Shader() = default;
   void activate();
   bool okay() const { return m_is_okay; }
-  uint id() const { return m_program; }
+  u64 id() const { return m_program; }
 
  private:
-  uint m_frag_shader = 0;
-  uint m_vert_shader = 0;
-  uint m_program = 0;
+  u64 m_frag_shader = 0;
+  u64 m_vert_shader = 0;
+  u64 m_program = 0;
   bool m_is_okay = false;
 };
 
