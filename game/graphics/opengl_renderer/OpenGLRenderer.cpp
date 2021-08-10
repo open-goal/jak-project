@@ -1,7 +1,7 @@
 #include "OpenGLRenderer.h"
 
 #include "common/log/log.h"
-#include "game/graphics/opengl.h"
+#include "game/graphics/pipelines/opengl.h"
 #include "game/graphics/opengl_renderer/DirectRenderer.h"
 
 // for the vif callback

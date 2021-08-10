@@ -1,7 +1,7 @@
 #include "Shader.h"
 #include "common/util/assert.h"
 #include "common/util/FileUtil.h"
-#include "game/graphics/opengl.h"
+#include "game/graphics/pipelines/opengl.h"
 
 Shader::Shader(const std::string& shader_name) {
   // read the shader source

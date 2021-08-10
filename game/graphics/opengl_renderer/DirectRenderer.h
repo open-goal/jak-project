@@ -6,7 +6,7 @@
 #include "game/graphics/types.h"
 #include "common/math/Vector.h"
 #include "common/util/SmallVector.h"
-#include "game/graphics/opengl.h"
+#include "game/graphics/pipelines/opengl.h"
 
 /*!
  * The direct renderer will handle rendering GIFtags directly.
@@ -59,12 +59,12 @@ class DirectRenderer : public BucketRenderer {
   void handle_xyzf2(u64 val, SharedRenderState* render_state);
   void handle_st_packed(const u8* data);
   void handle_rgbaq_packed(const u8* data);
-  void handle_xyzf2_packed(const u8* data);
+  void handle_xyzf2_packed(const u8* data, SharedRenderState* render_state);
   void handle_tex0_1(u64 val, SharedRenderState* render_state);
   void handle_tex1_1(u64 val);
   void handle_texa(u64 val);
 
-  void handle_xyzf2_common(u32 x, u32 y, u32 z, u8 f);
+  void handle_xyzf2_common(u32 x, u32 y, u32 z, u8 f, SharedRenderState* render_state);
 
   void update_gl_prim(SharedRenderState* render_state);
   void update_gl_blend();

@@ -85,4 +85,20 @@ u32 Exit() {
   return 0;
 }
 
+u32 vsync() {
+  return g_settings.renderer->vsync();
+}
+
+void send_chain(const void* data, u32 offset) {
+  g_settings.renderer->send_chain(data, offset);
+}
+
+void texture_upload_now(const u8* tpage, int mode, u32 s7_ptr) {
+  g_settings.renderer->texture_upload_now(tpage, mode, s7_ptr);
+}
+
+void texture_relocate(u32 destination, u32 source) {
+  g_settings.renderer->texture_relocate(destination, source);
+}
+
 }  // namespace Gfx

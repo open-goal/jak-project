@@ -2,7 +2,7 @@
 #include "game/graphics/dma/gs.h"
 #include "common/log/log.h"
 #include "third-party/fmt/core.h"
-#include "game/graphics/opengl.h"
+#include "game/graphics/pipelines/opengl.h"
 
 DirectRenderer::DirectRenderer(const std::string& name, BucketId my_id, int batch_size)
     : BucketRenderer(name, my_id), m_prim_buffer(batch_size) {
@@ -236,7 +236,7 @@ void DirectRenderer::update_gl_test() {
   }
 }
 
-void DirectRenderer::setup_common_state(SharedRenderState* render_state) {
+void DirectRenderer::setup_common_state(SharedRenderState* /*render_state*/) {
   // todo texture clamp.
 }
 
@@ -346,7 +346,7 @@ void DirectRenderer::render_gif(const u8* data, u32 size, SharedRenderState* ren
               handle_rgbaq_packed(data + offset);
               break;
             case GifTag::RegisterDescriptor::XYZF2:
-              handle_xyzf2_packed(data + offset);
+              handle_xyzf2_packed(data + offset, render_state);
               break;
             default:
               fmt::print("Register {} is not supported in packed mode yet\n",
@@ -512,7 +512,7 @@ float u32_to_float(u32 in) {
   return x * 2 - 1;
 }
 
-void DirectRenderer::handle_xyzf2_packed(const u8* data) {
+void DirectRenderer::handle_xyzf2_packed(const u8* data, SharedRenderState* render_state) {
   u32 x, y;
   memcpy(&x, data, 4);
   memcpy(&y, data + 4, 4);
@@ -524,7 +524,7 @@ void DirectRenderer::handle_xyzf2_packed(const u8* data) {
   bool adc = upper & (1ull << 47);
   assert(!adc);
   assert(!f);
-  handle_xyzf2_common(x, y, z, f);
+  handle_xyzf2_common(x, y, z, f, render_state);
 }
 
 void debug_print_vtx(const math::Vector<u32, 3>& vtx) {
@@ -594,7 +594,14 @@ void DirectRenderer::handle_rgbaq(u64 val) {
   memcpy(m_prim_building.rgba_reg.data(), &val, 4);
 }
 
-void DirectRenderer::handle_xyzf2_common(u32 x, u32 y, u32 z, u8 f) {
+void DirectRenderer::handle_xyzf2_common(u32 x,
+                                         u32 y,
+                                         u32 z,
+                                         u8 f,
+                                         SharedRenderState* render_state) {
+  if (m_prim_buffer.is_full()) {
+    flush_pending(render_state);
+  }
   assert(f == 0);
   m_prim_building.building_st.at(m_prim_building.building_idx) = m_prim_building.st_reg;
   m_prim_building.building_rgba.at(m_prim_building.building_idx) = m_prim_building.rgba_reg;
@@ -685,11 +692,6 @@ void DirectRenderer::handle_xyzf2_common(u32 x, u32 y, u32 z, u8 f) {
 }
 
 void DirectRenderer::handle_xyzf2(u64 val, SharedRenderState* render_state) {
-  if (m_prim_buffer.is_full()) {
-    fmt::print("update from full\n");
-    flush_pending(render_state);
-  }
-
   // m_prim_buffer.rgba_u8[m_prim_buffer.vert_count] = m_prim_building.rgba;
 
   u32 x = val & 0xffff;
@@ -697,7 +699,7 @@ void DirectRenderer::handle_xyzf2(u64 val, SharedRenderState* render_state) {
   u32 z = (val >> 32) & 0xfffff;
   u32 f = (val >> 56) & 0xff;
 
-  handle_xyzf2_common(x, y, z, f);
+  handle_xyzf2_common(x, y, z, f, render_state);
 }
 
 void DirectRenderer::reset_state() {
