@@ -83,6 +83,10 @@ void DirectRenderer::flush_pending(SharedRenderState* render_state) {
   //  glEnable(GL_DEPTH_TEST);
   //  glDepthFunc(GL_ALWAYS);
 
+  GLuint vao;
+  glGenVertexArrays(1, &vao);
+  glBindVertexArray(vao);
+
   // render!
   // update buffers:
   glBindBuffer(GL_ARRAY_BUFFER, m_ogl.vertex_buffer);
@@ -130,8 +134,11 @@ void DirectRenderer::flush_pending(SharedRenderState* render_state) {
   }
   // assert(false);
   glDrawArrays(GL_TRIANGLES, 0, m_prim_buffer.vert_count);
+  glBindVertexArray(0);
   m_triangles += m_prim_buffer.vert_count / 3;
   m_prim_buffer.vert_count = 0;
+
+  glDeleteVertexArrays(1, &vao);
 }
 
 void DirectRenderer::update_gl_prim(SharedRenderState* render_state) {

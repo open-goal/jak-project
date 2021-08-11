@@ -125,9 +125,12 @@ void OpenGLRenderer::draw_test_triangle() {
   //////////
 
   // create "buffer object names"
-  GLuint vertex_buffer, color_buffer;
+  GLuint vertex_buffer, color_buffer, vao;
   glGenBuffers(1, &vertex_buffer);
   glGenBuffers(1, &color_buffer);
+
+  glGenVertexArrays(1, &vao);
+  glBindVertexArray(vao);
 
   // set vertex data
   glBindBuffer(GL_ARRAY_BUFFER, vertex_buffer);
@@ -161,6 +164,7 @@ void OpenGLRenderer::draw_test_triangle() {
   glVertexAttribPointer(1, 4, GL_FLOAT, GL_FALSE, 0, (void*)0);
 
   glDrawArrays(GL_TRIANGLES, 0, 3);
+  glBindVertexArray(0);
 
   ////////////
   // Clean Up
@@ -168,4 +172,5 @@ void OpenGLRenderer::draw_test_triangle() {
   // delete buffer
   glDeleteBuffers(1, &color_buffer);
   glDeleteBuffers(1, &vertex_buffer);
+  glDeleteVertexArrays(1, &vao);
 }
