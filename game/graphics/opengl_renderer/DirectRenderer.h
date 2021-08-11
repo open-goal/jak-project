@@ -147,7 +147,7 @@ class DirectRenderer : public BucketRenderer {
     int max_verts = 0;
 
     // leave 6 free on the end so we always have room to flush one last primitive.
-    bool is_full() { return max_verts < (vert_count - 6); }
+    bool is_full() { return max_verts < (vert_count + 18); }
     void push(const math::Vector<u8, 4>& rgba,
               const math::Vector<u32, 3>& vert,
               const math::Vector<float, 2>& st);

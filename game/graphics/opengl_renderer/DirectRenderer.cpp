@@ -63,7 +63,6 @@ void DirectRenderer::flush_pending(SharedRenderState* render_state) {
     return;
   }
 
-  // lg::warn("DirectRenderer flush with {} triangles.", m_prim_buffer.vert_count / 3);
   // update opengl state
   if (m_prim_gl_state_needs_gl_update) {
     update_gl_prim(render_state);
@@ -87,16 +86,18 @@ void DirectRenderer::flush_pending(SharedRenderState* render_state) {
   // render!
   // update buffers:
   glBindBuffer(GL_ARRAY_BUFFER, m_ogl.vertex_buffer);
-  glBufferSubData(GL_ARRAY_BUFFER, 0, m_ogl.vertex_buffer_bytes, m_prim_buffer.verts.data());
+  glBufferSubData(GL_ARRAY_BUFFER, 0, m_prim_buffer.verts.size() * sizeof(math::Vector<u32, 3>),
+                  m_prim_buffer.verts.data());
   glBindBuffer(GL_ARRAY_BUFFER, m_ogl.color_buffer);
-  glBufferSubData(GL_ARRAY_BUFFER, 0, m_ogl.color_buffer_bytes, m_prim_buffer.rgba_u8.data());
+  glBufferSubData(GL_ARRAY_BUFFER, 0, m_prim_buffer.rgba_u8.size() * sizeof(math::Vector<u8, 4>),
+                  m_prim_buffer.rgba_u8.data());
   if (m_prim_gl_state.texture_enable) {
     glBindBuffer(GL_ARRAY_BUFFER, m_ogl.st_buffer);
-    glBufferSubData(GL_ARRAY_BUFFER, 0, m_ogl.st_buffer_bytes, m_prim_buffer.sts.data());
+    glBufferSubData(GL_ARRAY_BUFFER, 0, m_prim_buffer.sts.size() * sizeof(math::Vector<float, 2>),
+                    m_prim_buffer.sts.data());
   }
 
   // setup attributes:
-
   glBindBuffer(GL_ARRAY_BUFFER, m_ogl.vertex_buffer);
   glEnableVertexAttribArray(0);
   glVertexAttribPointer(0,                // location 0 in the shader
