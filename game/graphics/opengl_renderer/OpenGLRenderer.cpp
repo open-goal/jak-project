@@ -10,24 +10,37 @@
 /*!
  * OpenGL Error callback. If we do something invalid, this will be called.
  */
-void GLAPIENTRY opengl_error_callback(GLenum /*source*/,
-                                      GLenum /*type*/,
-                                      GLuint /*id*/,
+void GLAPIENTRY opengl_error_callback(GLenum source,
+                                      GLenum type,
+                                      GLuint id,
                                       GLenum severity,
                                       GLsizei /*length*/,
                                       const GLchar* message,
                                       const void* /*userParam*/) {
   if (severity == GL_DEBUG_SEVERITY_NOTIFICATION) {
     return;
+  } else if (severity == GL_DEBUG_SEVERITY_LOW) {
+    lg::info("OpenGL message 0x{:X} S{:X} T{:X}: {}", id, source, type, message);
+  } else if (severity == GL_DEBUG_SEVERITY_MEDIUM) {
+    lg::warn("OpenGL warn 0x{:X} S{:X} T{:X}: {}", id, source, type, message);
+  } else if (severity == GL_DEBUG_SEVERITY_HIGH) {
+    lg::error("OpenGL error 0x{:X} S{:X} T{:X}: {}", id, source, type, message);
   }
-  lg::error("OpenGL error: {}", message);
 }
 
 OpenGLRenderer::OpenGLRenderer(std::shared_ptr<TexturePool> texture_pool)
     : m_render_state(texture_pool) {
   // setup OpenGL errors
+
+  // disable specific errors
+  const GLuint l_gl_error_ignores[1] = {
+      0x64  // [API-PERFORMANCE] glDrawArrays uses non-native input attribute type
+  };
   glEnable(GL_DEBUG_OUTPUT);
   glDebugMessageCallback(opengl_error_callback, nullptr);
+  // filter
+  glDebugMessageControl(GL_DEBUG_SOURCE_API, GL_DEBUG_TYPE_PERFORMANCE, GL_DONT_CARE, 1,
+                        &l_gl_error_ignores[0], GL_FALSE);
 
   // initialize all renderers
   init_bucket_renderers();
@@ -125,9 +138,12 @@ void OpenGLRenderer::draw_test_triangle() {
   //////////
 
   // create "buffer object names"
-  GLuint vertex_buffer, color_buffer;
+  GLuint vertex_buffer, color_buffer, vao;
   glGenBuffers(1, &vertex_buffer);
   glGenBuffers(1, &color_buffer);
+
+  glGenVertexArrays(1, &vao);
+  glBindVertexArray(vao);
 
   // set vertex data
   glBindBuffer(GL_ARRAY_BUFFER, vertex_buffer);
@@ -161,6 +177,7 @@ void OpenGLRenderer::draw_test_triangle() {
   glVertexAttribPointer(1, 4, GL_FLOAT, GL_FALSE, 0, (void*)0);
 
   glDrawArrays(GL_TRIANGLES, 0, 3);
+  glBindVertexArray(0);
 
   ////////////
   // Clean Up
@@ -168,4 +185,5 @@ void OpenGLRenderer::draw_test_triangle() {
   // delete buffer
   glDeleteBuffers(1, &color_buffer);
   glDeleteBuffers(1, &vertex_buffer);
+  glDeleteVertexArrays(1, &vao);
 }
