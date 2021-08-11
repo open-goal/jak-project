@@ -105,6 +105,9 @@ s32 goal_main(int argc, const char* const* argv) {
     masterConfig.language = (u16)Language::German;
   } else if (masterConfig.language == SCE_ITALIAN_LANGUAGE) {
     masterConfig.language = (u16)Language::Italian;
+  } else if (masterConfig.language == SCE_JAPANESE_LANGUAGE) {
+    // Note: this case was added so it is easier to test Japanese fonts.
+    masterConfig.language = (u16)Language::Japanese;
   } else {
     // pick english by default, if language is not supported.
     masterConfig.language = (u16)Language::English;

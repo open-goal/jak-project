@@ -180,7 +180,12 @@ void DirectRenderer::upload_texture(TextureRecord* tex) {
 }
 
 void DirectRenderer::update_gl_texture(SharedRenderState* render_state) {
-  auto tex = render_state->texture_pool->lookup(m_texture_state.texture_base_ptr);
+  TextureRecord* tex = nullptr;
+  if (m_texture_state.using_mt4hh) {
+    tex = render_state->texture_pool->lookup_mt4hh(m_texture_state.texture_base_ptr);
+  } else {
+    tex = render_state->texture_pool->lookup(m_texture_state.texture_base_ptr);
+  }
   assert(tex);
   // fmt::print("Successful texture lookup! {} {}\n", tex->page_name, tex->name);
 
@@ -475,6 +480,7 @@ void DirectRenderer::handle_tex0_1(u64 val, SharedRenderState* render_state) {
   if (m_texture_state.current_register != reg) {
     flush_pending(render_state);
     m_texture_state.texture_base_ptr = reg.tbp0();
+    m_texture_state.using_mt4hh = reg.psm() == GsTex0::PSM::PSMT4HH;
     m_prim_gl_state_needs_gl_update = true;
     m_texture_state.current_register = reg;
   }

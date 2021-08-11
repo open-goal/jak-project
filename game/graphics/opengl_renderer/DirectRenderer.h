@@ -120,6 +120,7 @@ class DirectRenderer : public BucketRenderer {
   struct TextureState {
     GsTex0 current_register;
     u32 texture_base_ptr = 0;
+    bool using_mt4hh = false;
   } m_texture_state;
 
   // state set through the prim/rgbaq register that doesn't require changing GL stuff

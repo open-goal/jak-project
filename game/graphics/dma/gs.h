@@ -250,7 +250,22 @@ struct GsTex0 {
 
   u32 tbp0() const { return data & 0b11'1111'1111'1111; }
   u32 tbw() const { return (data >> 14) & 0b111111; }
-  u32 psm() const { return (data >> 20) & 0b111111; }
+  enum class PSM {
+    PSMCT32 = 0,
+    PSMCT24 = 1,
+    PSMCT16 = 2,
+    PSMCT16S = 0b1010,
+    PSMT8 = 0b10011,
+    PSMT4 = 0b10100,
+    PSMT8H = 0b011011,
+    PSMT4HL = 0b100100,
+    PSMT4HH = 0b101100,
+    PSMZ32 = 0b110000,
+    PSMZ24 = 0b110001,
+    PSMZ16 = 0b110010,
+    PSMZ16S = 0b111010
+  };
+  PSM psm() const { return (PSM)((data >> 20) & 0b111111); }
   u32 tw() const { return (data >> 26) & 0b1111; }
   u32 th() const { return (data >> 30) & 0b1111; }
   enum class TextureFunction : u8 {

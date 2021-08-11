@@ -449,8 +449,8 @@ void pc_texture_upload_now(u32 page, u32 mode) {
   Gfx::texture_upload_now(Ptr<u8>(page).c(), mode, s7.offset);
 }
 
-void pc_texture_relocate(u32 dst, u32 src) {
-  Gfx::texture_relocate(dst, src);
+void pc_texture_relocate(u32 dst, u32 src, u32 format) {
+  Gfx::texture_relocate(dst, src, format);
 }
 
 /*!

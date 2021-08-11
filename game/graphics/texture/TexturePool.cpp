@@ -160,7 +160,11 @@ void TexturePool::handle_upload_now(const u8* tpage, int mode, const u8* memory_
                   tex_idx, tex_name, mip_idx),
               texture_record->data.data(), ww, hh);
         }
-        set_texture(tex.dest[mip_idx], std::move(texture_record));
+        if (tex.psm == 44) {
+          set_mt4hh_texture(tex.dest[mip_idx], std::move(texture_record));
+        } else {
+          set_texture(tex.dest[mip_idx], std::move(texture_record));
+        }
       }
     } else {
       // texture was #f, skip it.
@@ -174,23 +178,28 @@ void TexturePool::handle_upload_now(const u8* tpage, int mode, const u8* memory_
  * Store a texture in the pool. Location is specified like TBP.
  */
 void TexturePool::set_texture(u32 location, std::unique_ptr<TextureRecord>&& record) {
-  if (m_textures.at(location)) {
-    m_garbage_textures.push_back(std::move(m_textures[location]));
+  if (m_textures.at(location).normal_texture) {
+    m_garbage_textures.push_back(std::move(m_textures[location].normal_texture));
   }
-  m_textures[location] = std::move(record);
+  m_textures[location].normal_texture = std::move(record);
+}
+
+void TexturePool::set_mt4hh_texture(u32 location, std::unique_ptr<TextureRecord>&& record) {
+  if (m_textures.at(location).mt4hh_texture) {
+    m_garbage_textures.push_back(std::move(m_textures[location].mt4hh_texture));
+  }
+  m_textures[location].mt4hh_texture = std::move(record);
 }
 
 /*!
  * Move a texture.
  */
-void TexturePool::relocate(u32 destination, u32 source) {
-  if (m_textures.at(source)) {
-    if (m_textures.at(destination)) {
-      return;  // HACK
-    }
-    m_textures.at(destination) = std::move(m_textures.at(source));
-    fmt::print("Relocated a texture: {}\n", m_textures[destination]->name);
+void TexturePool::relocate(u32 destination, u32 source, u32 format) {
+  auto& src = m_textures.at(source).normal_texture;
+  assert(src);
+  if (format == 44) {
+    m_textures.at(destination).mt4hh_texture = std::move(src);
   } else {
-    assert(false);
+    m_textures.at(destination).normal_texture = std::move(src);
   }
 }

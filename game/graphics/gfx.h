@@ -29,7 +29,7 @@ struct GfxRendererModule {
   std::function<u32()> sync_path;
   std::function<void(const void*, u32)> send_chain;
   std::function<void(const u8*, int, u32)> texture_upload_now;
-  std::function<void(u32, u32)> texture_relocate;
+  std::function<void(u32, u32, u32)> texture_relocate;
 
   GfxPipeline pipeline;
   const char* name;
@@ -74,6 +74,6 @@ u32 vsync();
 u32 sync_path();
 void send_chain(const void* data, u32 offset);
 void texture_upload_now(const u8* tpage, int mode, u32 s7_ptr);
-void texture_relocate(u32 destination, u32 source);
+void texture_relocate(u32 destination, u32 source, u32 format);
 
 }  // namespace Gfx

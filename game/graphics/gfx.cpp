@@ -105,9 +105,9 @@ void texture_upload_now(const u8* tpage, int mode, u32 s7_ptr) {
   }
 }
 
-void texture_relocate(u32 destination, u32 source) {
+void texture_relocate(u32 destination, u32 source, u32 format) {
   if (g_settings.renderer) {
-    g_settings.renderer->texture_relocate(destination, source);
+    g_settings.renderer->texture_relocate(destination, source, format);
   }
 }
 
