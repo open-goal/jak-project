@@ -21,7 +21,7 @@
  */
 u32 sceGsSyncPath(u32 mode, u32 timeout) {
   assert(mode == 0 && timeout == 0);
-  return 0;
+  return Gfx::sync_path();
 }
 
 /*!

@@ -8,6 +8,7 @@ DirectRenderer::DirectRenderer(const std::string& name, BucketId my_id, int batc
     : BucketRenderer(name, my_id), m_prim_buffer(batch_size) {
   glGenBuffers(1, &m_ogl.vertex_buffer);
   glGenBuffers(1, &m_ogl.color_buffer);
+  glGenBuffers(1, &m_ogl.st_buffer);
 
   glBindBuffer(GL_ARRAY_BUFFER, m_ogl.vertex_buffer);
   m_ogl.vertex_buffer_bytes = batch_size * 3 * 3 * sizeof(u32);
@@ -33,6 +34,7 @@ DirectRenderer::~DirectRenderer() {
  * Render from a DMA bucket.
  */
 void DirectRenderer::render(DmaFollower& dma, SharedRenderState* render_state) {
+  m_triangles = 0;
   //  fmt::print("direct: {}\n", m_my_id);
   // if we're rendering from a bucket, we should start off we a totally reset state:
   reset_state();
@@ -127,6 +129,7 @@ void DirectRenderer::flush_pending(SharedRenderState* render_state) {
   }
   // assert(false);
   glDrawArrays(GL_TRIANGLES, 0, m_prim_buffer.vert_count);
+  m_triangles += m_prim_buffer.vert_count / 3;
   m_prim_buffer.vert_count = 0;
 }
 
@@ -464,7 +467,7 @@ void DirectRenderer::handle_tex0_1(u64 val, SharedRenderState* render_state) {
   if (m_texture_state.current_register != reg) {
     flush_pending(render_state);
     m_texture_state.texture_base_ptr = reg.tbp0();
-    m_texture_state_needs_gl_update = true;
+    m_prim_gl_state_needs_gl_update = true;
     m_texture_state.current_register = reg;
   }
 
@@ -712,7 +715,6 @@ void DirectRenderer::reset_state() {
   m_prim_gl_state_needs_gl_update = true;
   m_prim_gl_state = PrimGlState();
 
-  m_texture_state_needs_gl_update = true;
   m_texture_state = TextureState();
 
   m_prim_building = PrimBuildState();

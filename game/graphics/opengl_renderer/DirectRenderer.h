@@ -160,8 +160,9 @@ class DirectRenderer : public BucketRenderer {
     u32 st_buffer_bytes = 0;
   } m_ogl;
 
+  int m_triangles = 0;
+
   bool m_prim_gl_state_needs_gl_update = true;
   bool m_test_state_needs_gl_update = true;
   bool m_blend_state_needs_gl_update = true;
-  bool m_texture_state_needs_gl_update = true;
 };

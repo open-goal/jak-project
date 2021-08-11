@@ -162,6 +162,7 @@ static void gl_render_display(GfxDisplay* display) {
     // send_chain again. but let's be safe for now.
     std::unique_lock<std::mutex> lock(g_gfx_data->dma_mutex);
     g_gfx_data->has_data_to_render = false;
+    g_gfx_data->sync_cv.notify_all();
   }
 
   // actual vsync
@@ -197,6 +198,18 @@ u32 gl_vsync() {
   g_gfx_data->sync_cv.wait(lock, [=] { return g_gfx_data->frame_idx > init_frame; });
 
   return g_gfx_data->frame_idx & 1;
+}
+
+u32 gl_sync_path() {
+  if (!g_gfx_data) {
+    return 0;
+  }
+  std::unique_lock<std::mutex> lock(g_gfx_data->sync_mutex);
+  if (!g_gfx_data->has_data_to_render) {
+    return 0;
+  }
+  g_gfx_data->sync_cv.wait(lock, [=] { return !g_gfx_data->has_data_to_render; });
+  return 0;
 }
 
 /*!
@@ -255,6 +268,7 @@ const GfxRendererModule moduleOpenGL = {
     gl_render_display,      // render_display
     gl_exit,                // exit
     gl_vsync,               // vsync
+    gl_sync_path,           // sync_path
     gl_send_chain,          // send_chain
     gl_texture_upload_now,  // texture_upload_now
     gl_texture_relocate,    // texture_relocate

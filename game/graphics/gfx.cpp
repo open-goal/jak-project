@@ -89,6 +89,10 @@ u32 vsync() {
   return g_settings.renderer->vsync();
 }
 
+u32 sync_path() {
+  return g_settings.renderer->sync_path();
+}
+
 void send_chain(const void* data, u32 offset) {
   if (g_settings.renderer) {
     g_settings.renderer->send_chain(data, offset);

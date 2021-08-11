@@ -118,6 +118,7 @@ void TexturePool::handle_upload_now(const u8* tpage, int mode, const u8* memory_
     u32 size = ((sizes[0] + sizes[1] + sizes[2] + 255) / 256) * 256;
     m_tex_converter.upload(memory_base + texture_page.segment[0].block_data_ptr,
                            texture_page.segment[0].dest, size);
+
   } else {
     // no reason to skip this, other than
     lg::error("TexturePool skipping upload now with mode {}.", mode);
@@ -146,7 +147,6 @@ void TexturePool::handle_upload_now(const u8* tpage, int mode, const u8* memory_
         m_tex_converter.download_rgba8888(texture_record->data.data(), tex.dest[mip_idx],
                                           tex.width[mip_idx], ww, hh, tex.psm, tex.clutpsm,
                                           tex.clut_dest, size_bytes);
-        set_texture(tex.dest[mip_idx], std::move(texture_record));
 
         // Debug output.
         if (dump_textures_to_file) {
@@ -160,6 +160,7 @@ void TexturePool::handle_upload_now(const u8* tpage, int mode, const u8* memory_
                   tex_idx, tex_name, mip_idx),
               texture_record->data.data(), ww, hh);
         }
+        set_texture(tex.dest[mip_idx], std::move(texture_record));
       }
     } else {
       // texture was #f, skip it.
