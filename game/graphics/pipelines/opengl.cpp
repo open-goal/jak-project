@@ -78,9 +78,9 @@ static int gl_init() {
   }
 
   // request Debug OpenGL 3.3 Core
-  glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 3); // 3.3
+  glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 3);  // 3.3
   glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 3);
-  glfwWindowHint(GLFW_OPENGL_DEBUG_CONTEXT, GLFW_TRUE); // debug
+  // glfwWindowHint(GLFW_OPENGL_DEBUG_CONTEXT, GLFW_TRUE);           // debug
   glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);  // core profile, not compat
 
   return 0;
