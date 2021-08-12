@@ -178,7 +178,7 @@ export default {
       const numPRs = 9;
       for (var i = 0; i < numPRs; i++) {
         var pr = data.items[i];
-        if (pr,body == null || pr.body.length == 0) {
+        if (pr.body == null || pr.body.length == 0) {
           pr.body = "No Description";
         }
         pr.body = this.truncateString(pr.body, 250);
