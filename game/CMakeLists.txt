@@ -73,6 +73,7 @@ set(RUNTIME_SOURCE
         overlord/stream.cpp
         graphics/gfx.cpp
         graphics/display.cpp
+        graphics/pipelines/opengl.cpp
         system/vm/dmac.cpp
         system/vm/vm.cpp)
 

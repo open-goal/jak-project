@@ -7,9 +7,6 @@
  * Not an emulator!
  */
 
-#ifndef VM_H
-#define VM_H
-
 #include "common/common_types.h"
 
 namespace VM {
@@ -33,5 +30,3 @@ void unsubscribe_component();
 u64 get_vm_ptr(u32 ptr);
 
 }  // namespace VM
-
-#endif  // VM_H
