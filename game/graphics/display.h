@@ -5,21 +5,48 @@
  * Display for graphics. This is the game window, distinct from the runtime console.
  */
 
-#ifndef RUNTIME_DISPLAY_H
-#define RUNTIME_DISPLAY_H
+#include "pipelines/opengl.h"
+#include "gfx.h"
+#include <vector>
+#include <memory>
 
-#include "opengl.h"
+// a GfxDisplay class is equivalent to a window that displays stuff. This holds an actual internal
+// window pointer used by whichever renderer. It also contains functions for setting and
+// retrieving certain window parameters.
+class GfxDisplay {
+  const char* m_title;
+
+  const GfxRendererModule* m_renderer = nullptr;
+
+ public:
+  GfxDisplay(GLFWwindow* a_window);  // OpenGL window constructor
+  ~GfxDisplay();  // destructor - this calls the renderer's function for getting rid of a window,
+                  // and we can then get rid of the GfxDisplay itself
+
+  // all kinds of windows for the display
+  union {
+    void* window_generic_ptr = nullptr;
+    GLFWwindow* window_glfw;
+  };
+
+  bool is_active() const { return window_generic_ptr != nullptr; }
+  void set_renderer(GfxPipeline pipeline);
+  void set_window(GLFWwindow* window);
+  void set_title(const char* title);
+  const char* get_title() const { return m_title; }
+
+  void render_graphics();
+};
 
 namespace Display {
 
-// TODO - eventually we might actually want to support having multiple windows and viewpoints
-// so it would be nice if we didn't end up designing this system such that this MUST be
-// a single window.
-extern GLFWwindow* display;
+// a list of displays. the first one is the "main" display, all others are spectator-like extra
+// views.
+extern std::vector<std::shared_ptr<GfxDisplay>> g_displays;
 
-void InitDisplay(int width, int height, const char* title, GLFWwindow*& d);
-void KillDisplay(GLFWwindow*& d);
+int InitMainDisplay(int width, int height, const char* title, GfxSettings& settings);
+void KillDisplay(std::shared_ptr<GfxDisplay> display);
+
+std::shared_ptr<GfxDisplay> GetMainDisplay();
 
 }  // namespace Display
-
-#endif  // RUNTIME_DISPLAY_H
