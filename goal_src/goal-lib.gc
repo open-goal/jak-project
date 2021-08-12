@@ -524,7 +524,7 @@
 
 (defmacro logtesta? (a b)
   "does a have ALL of the bits in b?"
-  `(= (logand ,a ,b) ,b)
+  `(= (logand ,b ,a) ,b)
   )
 
 (defmacro deref (t addr &rest fields)
@@ -707,3 +707,38 @@
 
 ;; load the default project
 (load-project "goal_src/game.gp")
+
+
+;;;;;;;;;;;;;;;;;;;
+;; enum stuff
+;;;;;;;;;;;;;;;;;;;
+
+(defmacro enum->string (enum input)
+  "return the name of an enum value"
+
+  `(case ,input
+      ,@(apply (lambda (x) `(((,enum ,(car x) )) ,(symbol->string (car x) ) )) (reverse (get-enum-vals enum)))
+      (else "*unknown*")
+      )
+  )
+
+(defmacro bit-enum->string (enum input stream)
+  "print the enum bits in input to stream"
+
+  (with-gensyms (val str)
+    `(let ((,val ,input)
+           (,str ,stream))
+        
+        ,@(apply (lambda (x)
+                    `(if (logtesta? ,val (,enum ,(car x)))
+                        (format ,str ,(fmt #f "{} " (car x)))
+                        )
+                    
+                    ) (reverse (get-enum-vals enum)))
+        
+        )
+    )
+  )
+
+
+

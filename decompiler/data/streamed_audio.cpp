@@ -167,9 +167,10 @@ AudioFileInfo process_audio_file(const std::vector<u8>& data,
     assert(reader.read<u8>() == 0);
   }
 
-  auto file_name = fmt::format("{}_{}.wav", remove_trailing_spaces(name), suffix);
+  file_util::create_dir_if_needed(file_util::get_file_path({"assets", "streaming_audio", suffix}));
+  auto file_name = fmt::format("{}.wav", remove_trailing_spaces(name));
   write_wave_file_mono(decoded_samples, header.sample_rate,
-                       file_util::get_file_path({"assets", "streaming_audio", file_name}));
+                       file_util::get_file_path({"assets", "streaming_audio", suffix, file_name}));
 
   std::string vag_filename;
   for (int i = 0; i < 16; i++) {
