@@ -3,7 +3,6 @@
 #include <vector>
 #include "game/graphics/opengl_renderer/BucketRenderer.h"
 #include "game/graphics/dma/gs.h"
-#include "game/graphics/types.h"
 #include "common/math/Vector.h"
 #include "common/util/SmallVector.h"
 #include "game/graphics/pipelines/opengl.h"
