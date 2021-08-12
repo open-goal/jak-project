@@ -57,6 +57,9 @@ bool Debugger::is_attached() const {
  */
 void Debugger::detach() {
   if (is_valid() && m_attached) {
+    if (!is_halted()) {
+      do_break();
+    }
     stop_watcher();
     xdbg::close_memory(m_debug_context.tid, &m_memory_handle);
     xdbg::detach_and_resume(m_debug_context.tid);
