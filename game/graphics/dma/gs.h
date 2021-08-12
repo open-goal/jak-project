@@ -2,6 +2,11 @@
 
 #include "game/graphics/dma/dma.h"
 
+/*!
+ * @file gs.h
+ * PS2 GS/GIF hardware types
+ */
+
 struct GifTag {
   enum class Format : u8 { PACKED = 0, REGLIST = 1, IMAGE = 2, DISABLE = 3 };
 

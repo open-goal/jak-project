@@ -2,7 +2,7 @@
 
 /*!
  * @file dma.h
- * Unpacking utils for PS2 DMA, VIF, and GIF data.
+ * PS2 DMA and VIF types.
  */
 
 #include <string>

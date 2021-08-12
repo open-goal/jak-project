@@ -17,6 +17,9 @@
  * }
  */
 
+/*!
+ * Represents a DMA transfer, including 64-bits of VIF tag.
+ */
 struct DmaTransfer {
   const u8* data = nullptr;
   u32 data_offset = 0;

@@ -539,6 +539,8 @@ goos::Object AsmOp::to_form(const std::vector<DecompilerLabel>& labels, const En
     }
   }
 
+  // note: to correctly represent a MOVN/MOVZ in our IR, we need to both read and write the
+  // destination register, so we append a read to the end here.
   if (m_instr.kind == InstructionKind::MOVZ || m_instr.kind == InstructionKind::MOVN) {
     RegisterAccess ra(AccessMode::READ, m_dst->reg(), m_dst->idx());
     forms.push_back(ra.to_form(env));
@@ -610,6 +612,7 @@ void AsmOp::update_register_info() {
   }
 
   if (m_instr.kind == InstructionKind::MOVN || m_instr.kind == InstructionKind::MOVZ) {
+    // in the case that MOVN/MOVZ don't do the move, they effectively read the original value.
     m_read_regs.push_back(m_dst->reg());
   }
 
@@ -722,6 +725,8 @@ void AsmOp::collect_vars(RegAccessSet& vars) const {
   }
 
   if (m_instr.kind == InstructionKind::MOVN || m_instr.kind == InstructionKind::MOVZ) {
+    // the conditional moves read their write register, but don't have it listed as a write
+    // in the actual ASM.  We handle this difference for the variable naming system here.
     RegisterAccess ra(AccessMode::READ, m_dst->reg(), m_dst->idx());
     vars.insert(ra);
   }

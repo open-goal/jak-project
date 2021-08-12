@@ -3,18 +3,26 @@
 #include "dma_copy.h"
 #include "third-party/fmt/core.h"
 
+/*!
+ * Convert a DMA chain to an array of bytes that can be directly fed to VIF.
+ */
 std::vector<u8> flatten_dma(const DmaFollower& in) {
   DmaFollower state = in;
   std::vector<u8> result;
   while (!state.ended()) {
     auto read_result = state.read_and_advance();
-    result.push_back(0);  // tag transfer padding
-    result.push_back(read_result.transferred_tag);
-    result.insert(result.end(), read_result.data, read_result.data + read_result.size_bytes);
 
-    //    for (u32 i = 0; i < read_result.size_bytes; i += 8) {
-    //      result.push_back(state.read_val<u64>(read_result.data_offset + i));
-    //    }
+    // insert 1 quadword of zeros.
+    // the first 8 bytes will remain zero and will be interpreted as VIF nop.
+    for (int i = 0; i < 16; i++) {
+      result.push_back(0);
+    }
+
+    // the second will contain the transferred tag.
+    memcpy(result.data() + result.size() - 8, &read_result.transferred_tag, 8);
+
+    // and the actual DMA data.
+    result.insert(result.end(), read_result.data, read_result.data + read_result.size_bytes);
   }
   return result;
 }

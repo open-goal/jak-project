@@ -5,11 +5,6 @@
 #include "common/common_types.h"
 #include "game/graphics/dma/dma_chain_read.h"
 
-/*!
- * This function is used to copy a DMA chain. To avoid needing a huge amount of memory, the DMA data
- * is rearranged in memory.
- */
-
 struct DmaData {
   u32 start_offset = 0;
   std::vector<u8> data;
@@ -43,4 +38,7 @@ class FixedChunkDmaCopier {
   DmaData m_result;
 };
 
+/*!
+ * Convert a DMA chain to an array of bytes that can be directly fed to VIF.
+ */
 std::vector<u8> flatten_dma(const DmaFollower& in);

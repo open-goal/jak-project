@@ -9,9 +9,9 @@ There are three frames in flight at a time:
 
 ## Synchronization
 
-The PC Port only synchronizes on vsync. This waits for the "draw" frame to finish rendering, and for the buffers to be swapped.
+The PC Port synchronizes on `syncv` and on `sync-path`. The `syncv` waits for an actual buffer swap and `sync-path` waits for the renderer to finish.
 
-The game's code for this is kind of messy and confusing. On the PS2, you make sure rendering is done with `sync-path`, which waits for the DMA chain to finish.  But they call this earlier than I think they need to, and I don't really understand why.  I don't see any place where they read back from the finished frame or depth buffer.  Or where they would overwrite the memory. There's a second call to `sync-path` right where you would expected, right before the `syncv`.  After `syncv`, they call some Sony library function to actually display the correct framebuffer, then immediately start sending the next DMA chain.
+The game's code for this is kind of messy and confusing, and calls `sync-path` twice. On the PS2, you make sure rendering is done with `sync-path`, which waits for the DMA chain to finish.  But they call this earlier than I think they need to, and I don't really understand why.  I don't see any place where they read back from the finished frame or depth buffer.  Or where they would overwrite the memory. There's a second call to `sync-path` right where you would expect, imeediately before the `syncv`.  After `syncv`, they call some Sony library function to actually display the correct framebuffer, then immediately start sending the next DMA chain.
 
 The stuff between `sync-path` and `syncv` is:
 - depth cue "calc" (seems fast)
@@ -30,13 +30,11 @@ The stuff between `sync-path` and `syncv` is:
 - cache flush
 - a second `sync-path`
 
-I'm really not sure why they have the first `sync-path` there. One theory is that they didn't want debug code and non-debug rendering running at the same time - the debug code will compete with the rendering to use the main bus, and will make the rendering slower.
+According to the Performance Analyzer, this takes about 1% to 2% of a frame.  They subtract off 4% of a frame from the profile bar so that 100% there is really around 96% of a frame, I guess to account for this extra time.
 
-For now, the PC Port doesn't do anything on `sync-path`. I think there's two ways this could be an issue in the future:
-- If they reuse the DMA buffer after `sync-path`, and our renderer is still reading from it. Currently not an issue because of dma copy, described later.
-- If they need to read the completed depth buffer or frame buffer after `sync-path`. I don't see any example of this.
+I'm really not sure why they have the first `sync-path` there.  It makes some sense in debug mode so that you can draw the profile bar for the GPU after it has finished.  Another theory is that they didn't want debug code and non-debug rendering running at the same time - the debug code will compete with the rendering to use the main bus, and will make the rendering slower.  But it seems like you don't want this in the release version.
 
-
+For now, the PC Port does sync on `sync-path`, but it probably doesn't need to.
 
 ## DMA Copy
 
