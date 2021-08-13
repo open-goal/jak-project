@@ -1,4 +1,5 @@
 #include <thread>
+#include <memory>
 #include "goalc/compiler/Compiler.h"
 #include "test/goalc/framework/test_runner.h"
 #include "gtest/gtest.h"
@@ -6,40 +7,44 @@
 class KernelTest : public testing::Test {
  public:
   static void SetUpTestSuite() {
+    shared_compiler = std::make_unique<SharedCompiler>();
     printf("Building kernel...\n");
     try {
       // a macro in goal-lib.gc
-      compiler.run_front_end_on_string("(build-kernel)");
+      shared_compiler->compiler.run_front_end_on_string("(build-kernel)");
     } catch (std::exception& e) {
       fprintf(stderr, "caught exception %s\n", e.what());
       EXPECT_TRUE(false);
     }
 
     printf("Starting GOAL Kernel...\n");
-    runtime_thread = std::thread(GoalTest::runtime_with_kernel);
-    runner.c = &compiler;
-    compiler.run_test_from_string("(set! *use-old-listener-print* #t)");
+    shared_compiler->runtime_thread = std::thread(GoalTest::runtime_with_kernel);
+    shared_compiler->runner.c = &shared_compiler->compiler;
+    shared_compiler->compiler.run_test_from_string("(set! *use-old-listener-print* #t)");
   }
 
   static void TearDownTestSuite() {
     // send message to shutdown
-    compiler.shutdown_target();
+    shared_compiler->compiler.shutdown_target();
     // wait for shutdown.
-    runtime_thread.join();
+    shared_compiler->runtime_thread.join();
+    shared_compiler.reset();
   }
 
   void SetUp() {}
 
   void TearDown() {}
 
-  static std::thread runtime_thread;
-  static Compiler compiler;
-  static GoalTest::CompilerTestRunner runner;
+  struct SharedCompiler {
+    std::thread runtime_thread;
+    Compiler compiler;
+    GoalTest::CompilerTestRunner runner;
+  };
+
+  static std::unique_ptr<SharedCompiler> shared_compiler;
 };
 
-std::thread KernelTest::runtime_thread;
-Compiler KernelTest::compiler;
-GoalTest::CompilerTestRunner KernelTest::runner;
+std::unique_ptr<KernelTest::SharedCompiler> KernelTest::shared_compiler;
 
 namespace {
 std::string send_code_and_get_multiple_responses(const std::string& code,
@@ -65,8 +70,10 @@ std::string send_code_and_get_multiple_responses(const std::string& code,
 }  // namespace
 
 TEST_F(KernelTest, Basic) {
-  runner.c->run_test_from_string("(ml \"test/goalc/source_templates/kernel/kernel-test.gc\")");
-  std::string result = send_code_and_get_multiple_responses("(kernel-test)", 10, &runner);
+  shared_compiler->runner.c->run_test_from_string(
+      "(ml \"test/goalc/source_templates/kernel/kernel-test.gc\")");
+  std::string result =
+      send_code_and_get_multiple_responses("(kernel-test)", 10, &shared_compiler->runner);
 
   std::string expected =
       "0\n"
@@ -95,8 +102,10 @@ TEST_F(KernelTest, Basic) {
 }
 
 TEST_F(KernelTest, RunFunctionInProcess) {
-  runner.c->run_test_from_string("(ml \"test/goalc/source_templates/kernel/kernel-test.gc\")");
-  std::string result = send_code_and_get_multiple_responses("(kernel-test-2)", 1, &runner);
+  shared_compiler->runner.c->run_test_from_string(
+      "(ml \"test/goalc/source_templates/kernel/kernel-test.gc\")");
+  std::string result =
+      send_code_and_get_multiple_responses("(kernel-test-2)", 1, &shared_compiler->runner);
 
   std::string expected =
       "0\n"
@@ -112,8 +121,10 @@ TEST_F(KernelTest, RunFunctionInProcess) {
 }
 
 TEST_F(KernelTest, StateAndXmm) {
-  runner.c->run_test_from_string("(ml \"test/goalc/source_templates/kernel/kernel-test.gc\")");
-  std::string result = send_code_and_get_multiple_responses("(state-test)", 5, &runner);
+  shared_compiler->runner.c->run_test_from_string(
+      "(ml \"test/goalc/source_templates/kernel/kernel-test.gc\")");
+  std::string result =
+      send_code_and_get_multiple_responses("(state-test)", 5, &shared_compiler->runner);
 
   std::string expected =
       "0\nenter wreck: 3 4 5 6\nwreck: 3 4 5 6\nenter check: 9 8 7 6\nrun xmm-check 12.3400 "
@@ -124,8 +135,10 @@ TEST_F(KernelTest, StateAndXmm) {
 }
 
 TEST_F(KernelTest, ThrowXmm) {
-  runner.c->run_test_from_string("(ml \"test/goalc/source_templates/kernel/kernel-test.gc\")");
-  std::string result = send_code_and_get_multiple_responses("(throw-backup-test)", 1, &runner);
+  shared_compiler->runner.c->run_test_from_string(
+      "(ml \"test/goalc/source_templates/kernel/kernel-test.gc\")");
+  std::string result =
+      send_code_and_get_multiple_responses("(throw-backup-test)", 1, &shared_compiler->runner);
 
   std::string expected =
       "value now is 10.1000\n"

@@ -819,6 +819,7 @@
   (new-game #x15c)
   (ok #x15e)
   (exit-demo #x15f)
+  (press-start #x16e)
   (quit-game #x16f)
 
   (village1-mayor-money #x200)
@@ -3473,7 +3474,7 @@
 
 ;; - Functions
 
-(define-extern dma-buffer-add-buckets (function dma-buffer int none))
+(define-extern dma-buffer-add-buckets (function dma-buffer int dma-bucket))
 (define-extern dma-buffer-patch-buckets (function dma-bucket int dma-bucket))
 (define-extern dma-bucket-insert-tag (function dma-bucket bucket-id pointer (pointer dma-tag) pointer))
 
@@ -4355,7 +4356,7 @@
 
 (define-extern set-display (function display int int int int int display))
 (define-extern put-draw-env (function (pointer gif-tag) none))
-(define-extern *pre-draw-hook* (function none)) ;; unknown type
+(define-extern *pre-draw-hook* (function object none)) ;; unknown type
 (define-extern *post-draw-hook* (function dma-buffer none)) ;; unknown type
 
 
@@ -5203,8 +5204,11 @@
    (width      float          :offset-assert 48)
    (height     float          :offset-assert 52)
    (projection float          :offset-assert 56)
+   (context-vec vector :inline :offset 48) ;; added
    (color      int64          :offset-assert 64)
+   (color-s32  int32          :offset 64) ;; added for asm
    (flags      uint32         :offset-assert 72)
+   (flags-signed int32        :offset        72) ;; added for asm
    (mat        matrix         :offset-assert 76)
    (start-line uint32         :offset-assert 80)
    (scale      float          :offset-assert 84)
@@ -5233,9 +5237,13 @@
    (char-tmpl          dma-gif-packet :inline :offset-assert 32)
    (tex1-tmpl          uint64        2       :offset-assert 64)
    (small-font-lo-tmpl uint64        2       :offset-assert 80)
+   (small-font-lo-tmpl-qw uint128            :offset 80)
    (small-font-hi-tmpl uint64        2       :offset-assert 96)
+   (small-font-hi-tmpl-qw uint128            :offset 96)
    (large-font-lo-tmpl uint64        2       :offset-assert 112)
+   (large-font-lo-tmpl-qw uint128            :offset 112)
    (large-font-hi-tmpl uint64        2       :offset-assert 128)
+   (large-font-hi-tmpl-qw uint128            :offset 128)
    (size1-small        vector         :inline :offset-assert 144)
    (size2-small        vector         :inline :offset-assert 160)
    (size3-small        vector         :inline :offset-assert 176)
@@ -5254,10 +5262,14 @@
    (color-shadow       vector4w       :inline :offset-assert 1968)
    (color-table        char-color       64  :inline    :offset-assert 1984)
    (last-color         uint64                 :offset-assert 3008)
+   (last-color-32      int32                  :offset 3008)
    (save-last-color    uint64                 :offset-assert 3016)
+   (save-last-color-32 int32                  :offset 3016) ;; added
    (buf                basic                  :offset-assert 3024)
    (str-ptr            uint32                 :offset-assert 3028)
+   (str-ptr-signed     (pointer uint8)                  :offset 3028) ;; added
    (flags              uint32                 :offset-assert 3032)
+   (flags-signed       int32                  :offset 3032) ;; added
    (reg-save           uint32        5       :offset-assert 3036)
    )
   :method-count-assert 9
@@ -5316,7 +5328,7 @@
 (define-extern allocate-dma-buffers (function display display))
 (define-extern draw-sprite2d-xy (function dma-buffer int int int int rgba none))
 (define-extern screen-gradient (function dma-buffer rgba rgba rgba rgba none))
-(define-extern vif1-handler-debug (function int))
+(define-extern vif1-handler-debug (function none))
 (define-extern vif1-handler (function int))
 (define-extern install-handler (function int (function int) int))  ;; GOAL thinks it returns something.
 (define-extern vblank-handler (function int))
@@ -5585,7 +5597,7 @@
 
 (define-extern gs-set-default-store-image (function gs-store-image-packet int int int int int int int int))
 (define-extern gs-store-image (function object object object))
-(define-extern sync-path (function int int none))
+(define-extern sync-path (function int int int))
 (define-extern file-stream-write (function file-stream pointer uint uint))
 (define-extern file-stream-close (function file-stream file-stream))
 (define-extern store-image (function int int))
@@ -14097,7 +14109,7 @@
     (dummy-29 () none 29)
     (dummy-30 () none 30)
     (dummy-31 () none 31)
-    (dummy-32 () none 32)
+    (dummy-32 (_type_) none 32)
     (dummy-33 () none 33)
     (dummy-34 () none 34)
     (dummy-35 () none 35)
@@ -15781,8 +15793,8 @@
 
 ;; - Unknowns
 
-;;(define-extern *font12-table* object) ;; unknown type
-;;(define-extern *font24-table* object) ;; unknown type
+(define-extern *font12-table* (inline-array vector))
+(define-extern *font24-table* (inline-array vector))
 
 
 ;; ----------------------
@@ -17409,13 +17421,13 @@
 
 ;; - Functions
 
-(define-extern set-font-color-alpha function)
+(define-extern set-font-color-alpha (function int int none))
 (define-extern load-game-text-info (function string symbol kheap int))
 (define-extern load-level-text-files (function int none))
-(define-extern draw-debug-text-box function)
-(define-extern print-game-text-scaled function)
-(define-extern disable-level-text-file-loading function)
-(define-extern enable-level-text-file-loading function)
+(define-extern draw-debug-text-box (function font-context none))
+(define-extern print-game-text-scaled (function string float font-context int none))
+(define-extern disable-level-text-file-loading (function none))
+(define-extern enable-level-text-file-loading (function none))
 (define-extern link (function pointer pointer int kheap int pointer))
 
 ;; - Unknowns
@@ -18749,7 +18761,7 @@
 (define-extern process-drawable-random-point! function)
 (define-extern process-drawable-from-entity! (function process-drawable object none))
 (define-extern cam-launcher-long-joystick function)
-(define-extern hide-hud-quick function)
+(define-extern hide-hud-quick (function none))
 (define-extern command-get-process function)
 (define-extern camera-change-to (function string int symbol none)) ;; TODO - not confirmed yet
 (define-extern camera-look-at function)
@@ -19454,13 +19466,13 @@
 
 ;; - Functions
 
-(define-extern display-frame-finish (function display object))
+(define-extern display-frame-finish (function display display))
 (define-extern display-sync (function display none))
 (define-extern determine-pause-mode (function int))
 (define-extern display-frame-start (function display int int none))
 (define-extern toggle-pause (function int))
 (define-extern deactivate-progress (function none))
-(define-extern debug-init-buffer (function bucket-id uint uint none))
+(define-extern debug-init-buffer (function bucket-id gs-zbuf gs-test none))
 (define-extern real-main-draw-hook (function none))
 (define-extern error-sphere function)
 (define-extern draw-instance-info function)
@@ -19473,7 +19485,7 @@
 (define-extern foreground-engine-execute (function engine display-frame int int none))
 (define-extern main-debug-hook function)
 (define-extern main-draw-hook function)
-(define-extern swap-display (function display object))
+(define-extern swap-display (function display none))
 (define-extern marks-cam-restore function)
 (define-extern eddie-cam-restore function)
 (define-extern gregs-jungle-cam-restore function)

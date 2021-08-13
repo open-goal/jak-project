@@ -106,6 +106,7 @@ int InitMainDisplay(int width, int height, const char* title, GfxSettings& setti
     return 1;
   }
   set_main_display(display);
+  return 0;
 }
 
 void KillDisplay(std::shared_ptr<GfxDisplay> display) {
@@ -117,7 +118,7 @@ void KillDisplay(std::shared_ptr<GfxDisplay> display) {
 
   if (GetMainDisplay() == display) {
     // killing the main display, kill all children displays too!
-    for (int i = 1; i < g_displays.size(); ++i) {
+    for (size_t i = 1; i < g_displays.size(); ++i) {
       KillDisplay(g_displays.at(i));
     }
   }

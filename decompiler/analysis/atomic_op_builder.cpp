@@ -244,6 +244,7 @@ std::unique_ptr<AtomicOp> make_asm_op(const Instruction& i0, int idx) {
     case InstructionKind::SLT:
     case InstructionKind::MOVN:
     case InstructionKind::SLTI:  // a few cases used in inline asm
+    case InstructionKind::MOVZ:  // in font.gc
 
       // VU/COP2
     case InstructionKind::VMOVE:
@@ -1143,6 +1144,14 @@ std::unique_ptr<AtomicOp> convert_bgez_2(const Instruction& i0, const Instructio
                          i1, false, dest, idx);
 }
 
+std::unique_ptr<AtomicOp> convert_bgtz_2(const Instruction& i0, const Instruction& i1, int idx) {
+  // bgtz is never emitted outside of inline asm.
+  auto dest = i0.get_src(1).get_label();
+  return make_asm_branch(IR2_Condition(IR2_Condition::Kind::GREATER_THAN_ZERO_SIGNED,
+                                       make_src_atom(i0.get_src(0).get_reg(), idx)),
+                         i1, false, dest, idx);
+}
+
 std::unique_ptr<AtomicOp> convert_2(const Instruction& i0, const Instruction& i1, int idx) {
   switch (i0.kind) {
     case InstructionKind::DIV:
@@ -1169,6 +1178,8 @@ std::unique_ptr<AtomicOp> convert_2(const Instruction& i0, const Instruction& i1
       return convert_bltz_2(i0, i1, idx);
     case InstructionKind::BGEZ:
       return convert_bgez_2(i0, i1, idx);
+    case InstructionKind::BGTZ:
+      return convert_bgtz_2(i0, i1, idx);
     default:
       return nullptr;
   }

@@ -1687,6 +1687,12 @@
 
 (defmethod upload-now! texture-page ((obj texture-page) (arg0 int))
   "Immediately upload the texture-page to the given buffer, using arg0 mode."
+
+  (#when PC_PORT
+    ;; load it to the PC Port's texture pool.
+    (__pc-texture-upload-now obj arg0)
+    )
+
   (let ((gp-0 *txt-dma-list*))
     ;; Set up the DMA buffer
     (let ((v1-0 gp-0))
@@ -1800,6 +1806,11 @@
   "Move a texture in VRAM. Unrelated to the texture-relocate-later, which moves textures in RAM.
    Will try to move the whole thing, including the clut, assuming you provide a destination for it.
    Note that this uses the format/width stuff properly, so it will be slower, but won't scramble your texture."
+
+  (#when PC_PORT
+    ;; as far as I know this is only used for fonts which have 1 mip level.
+    (__pc-texture-relocate (/ dest-loc 64) (-> tex dest 0) dest-fmt)
+    )
 
   ;; loop over mips
   (dotimes (mip-level (the-as int (-> tex num-mips)))
@@ -2089,11 +2100,12 @@
 
 (defmethod relocate texture-page ((obj texture-page) (arg0 kheap) (arg1 (pointer uint8)))
   "Add to VRAM and allocate links"
-  (tex-dbg "loaded tpage ~A ~A ~A ~A ~A~%" obj
-           (-> obj info file-name)
-           (-> obj info maya-file-name)
-           (-> obj info tool-debug)
-           (-> obj info mdb-file-name))
+  (tex-dbg "loaded tpage ~A~%" obj
+           ;;(-> obj info file-name)
+           ;;(-> obj info maya-file-name)
+           ;;(-> obj info tool-debug)
+           ;;(-> obj info mdb-file-name)
+           )
   (local-vars (s4-0 texture-page-dir-entry))
   (cond
     ((or (not obj)

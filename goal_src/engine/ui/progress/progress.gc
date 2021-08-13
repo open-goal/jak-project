@@ -15,3 +15,65 @@
       (= (-> *progress-process* 0 in-out-position) 4096)
       )
   )
+
+(defun deactivate-progress ()
+  ;; todo stub
+  )
+
+(defun progress-allowed? ()
+  (with-pp
+   (not
+    (or
+     (-> *setting-control* current talking)
+     (-> *setting-control* current movie)
+     (movie?)
+     (handle->process (-> *game-info* pov-camera-handle))
+     (handle->process (-> *game-info* other-camera-handle))
+     (<
+      (the-as int (-> *display* base-frame-counter))
+      (the-as int (-> *game-info* letterbox-time))
+      )
+     (<
+      (the-as int (-> *display* base-frame-counter))
+      (the-as int (-> *game-info* blackout-time))
+      )
+     (!= (-> *setting-control* current bg-a) 0.0)
+     (!= (-> *setting-control* current bg-a-force) 0.0)
+     (not (-> *setting-control* current allow-progress))
+     (or
+      (and
+       (handle->process (-> *game-info* auto-save-proc))
+       (let ((a1-3 (new 'stack-no-clear 'event-message-block)))
+        (set! (-> a1-3 from) pp)
+        (set! (-> a1-3 num-params) 0)
+        (set! (-> a1-3 message) 'progress-allowed?)
+        (not
+         (send-event-function
+          (handle->process (-> *game-info* auto-save-proc))
+          a1-3
+          )
+         )
+        )
+       )
+      (not *target*)
+      )
+     )
+    )
+   )
+  )
+
+(defun pause-allowed? ()
+  (not
+   (or
+    (<
+     (the-as int (-> *display* base-frame-counter))
+     (the-as int (-> *game-info* blackout-time))
+     )
+    (!= (-> *setting-control* current bg-a) 0.0)
+    (!= (-> *setting-control* current bg-a-force) 0.0)
+    (not (-> *setting-control* current allow-pause))
+    (handle->process (-> *game-info* auto-save-proc))
+    (not *target*)
+    )
+   )
+  )

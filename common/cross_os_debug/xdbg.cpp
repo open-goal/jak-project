@@ -94,6 +94,11 @@ bool check_stopped(const ThreadID& tid, SignalInfo* out) {
   int status;
   int rv = waitpid(tid.id, &status, WNOHANG);
   if (rv < 0) {
+    if (errno == ECHILD) {
+      // the thing died.
+      out->kind = SignalInfo::DISAPPEARED;
+      return true;
+    }
     printf("[Debugger] Failed to waitpid: %s.\n", strerror(errno));
     //    assert(false);  // todo, temp because I think we should never hit this.
     return false;

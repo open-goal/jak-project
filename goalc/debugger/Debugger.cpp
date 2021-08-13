@@ -57,6 +57,9 @@ bool Debugger::is_attached() const {
  */
 void Debugger::detach() {
   if (is_valid() && m_attached) {
+    if (!is_halted()) {
+      do_break();
+    }
     stop_watcher();
     xdbg::close_memory(m_debug_context.tid, &m_memory_handle);
     xdbg::detach_and_resume(m_debug_context.tid);
@@ -216,7 +219,7 @@ std::vector<BacktraceFrame> Debugger::get_backtrace(u64 rip, u64 rsp) {
 
     if (frame.rip_info.knows_function && frame.rip_info.func_debug &&
         frame.rip_info.func_debug->stack_usage) {
-      fmt::print("{}\n", frame.rip_info.function_name);
+      fmt::print("{} from {}\n", frame.rip_info.function_name, frame.rip_info.func_debug->obj_name);
       // we're good!
       u64 rsp_at_call = rsp + *frame.rip_info.func_debug->stack_usage;
 
@@ -596,6 +599,12 @@ void Debugger::watcher() {
           break;
         case xdbg::SignalInfo::BREAK:
           printf("Target has stopped. Run (:di) to get more information.\n");
+          break;
+        case xdbg::SignalInfo::MATH_EXCEPTION:
+          printf("Target has crashed with a MATH_EXCEPTION! Run (:di) to get more information.\n");
+          break;
+        case xdbg::SignalInfo::DISAPPEARED:
+          printf("Target has disappeared. Maybe it quit or was killed.\n");
           break;
         default:
           printf("[Debugger] unhandled signal in watcher: %d\n", int(signal_info.kind));
