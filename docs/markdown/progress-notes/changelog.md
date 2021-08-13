@@ -188,3 +188,4 @@
 - The register allocator has been dramatically improved and generates ~5x fewer spill instructions and is able to eliminate more moves.
 - Added a `(print-debug-compiler-stats)` form to print out statistics related to register allocation and move elimination
 - Added `get-enum-vals` which returns a list of pairs. Each pair is the name (symbol) and value (int) for each value in the enum
+- It is now possible to set a 64-bit memory location from a float, if you insert a cast. It will zero-extend the float, just like any other float -> 64-bit conversion.
