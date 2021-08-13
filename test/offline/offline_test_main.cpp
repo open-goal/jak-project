@@ -143,6 +143,9 @@ const std::unordered_set<std::string> g_functions_to_skip_compiling = {
     // stats-h
     "(method 11 perf-stat)", "(method 12 perf-stat)",
 
+    // sprite-distorter
+    "sprite-draw-distorters",  // uses clipping flag.
+
     // sync-info
     "(method 15 sync-info)",         // needs display stuff first
     "(method 15 sync-info-eased)",   // needs display stuff first
