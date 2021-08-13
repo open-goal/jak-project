@@ -872,8 +872,8 @@ TEST_F(WithGameTests, GetEnumVals) {
 }
 
 TEST_F(WithGameTests, SetU64FromFloat) {
-  runner.run_static_test(env, testCategory, "test-set-u64-from-float.gc",
-                         {"-12.0000 #xc1400000 #xc1400000 #x0\n0\n"});
+  shared_compiler->runner.run_static_test(env, testCategory, "test-set-u64-from-float.gc",
+                                          {"-12.0000 #xc1400000 #xc1400000 #x0\n0\n"});
 }
 
 TEST(TypeConsistency, TypeConsistency) {
