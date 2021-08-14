@@ -1246,11 +1246,20 @@ std::vector<std::string> decompile_bitfield_enum_from_int(const TypeSpec& type,
   assert(type_info);
   assert(type_info->is_bitfield());
 
+  std::vector<std::string> bit_sorted_names;
   for (auto& field : type_info->entries()) {
-    u64 mask = ((u64)1) << field.second;
+    bit_sorted_names.push_back(field.first);
+  }
+  std::sort(bit_sorted_names.begin(), bit_sorted_names.end(),
+            [&](const std::string& a, const std::string& b) {
+              return type_info->entries().at(a) < type_info->entries().at(b);
+            });
+
+  for (auto& field_name : bit_sorted_names) {
+    u64 mask = ((u64)1) << type_info->entries().at(field_name);
     if (value & mask) {
       reconstructed |= mask;
-      result.push_back(field.first);
+      result.push_back(field_name);
     }
   }
 
