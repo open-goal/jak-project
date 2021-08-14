@@ -85,9 +85,6 @@ const std::unordered_set<std::string> g_functions_expected_to_reject = {
     "update-mood-lava",       // asm
     "update-mood-lightning",  // asm
 
-    // nav-enemy
-    "(anon-function 28 nav-enemy)", // asm
-
     "debug-menu-item-var-render"  // asm
 };
 
@@ -170,9 +167,6 @@ const std::unordered_set<std::string> g_functions_to_skip_compiling = {
 
     // camera
     "slave-set-rotation!", "v-slrp2!", "v-slrp3!",  // vector-dot involving the stack
-
-    // nav-enemy
-    "(anon-function 28 nav-enemy)",  // asm
 
     // loader - decompiler bug with detecting handle macros
     "(method 10 external-art-buffer)"};
