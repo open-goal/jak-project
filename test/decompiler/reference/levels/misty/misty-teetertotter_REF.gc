@@ -1,0 +1,481 @@
+;;-*-Lisp-*-
+(in-package goal)
+
+;; definition of type teetertotter
+(deftype teetertotter (process-drawable)
+  ((launched-player   basic  :offset-assert 176)
+   (in-launch-window  basic  :offset-assert 180)
+   (rock-is-dangerous basic  :offset-assert 184)
+   )
+  :heap-base #x50
+  :method-count-assert 20
+  :size-assert         #xbc
+  :flag-assert         #x14005000bc
+  )
+
+;; definition for method 3 of type teetertotter
+(defmethod inspect teetertotter ((obj teetertotter))
+  (let ((t9-0 (method-of-type process-drawable inspect)))
+   (t9-0 obj)
+   )
+  (format #t "~T~Tlaunched-player: ~A~%" (-> obj launched-player))
+  (format #t "~T~Tin-launch-window: ~A~%" (-> obj in-launch-window))
+  (format #t "~T~Trock-is-dangerous: ~A~%" (-> obj rock-is-dangerous))
+  obj
+  )
+
+;; failed to figure out what this is:
+(let
+  ((v1-1
+    (new 'static 'skeleton-group
+     :art-group-name "teetertotter"
+     :bounds (new 'static 'vector :w 32768.0)
+     :max-lod 2
+     :version #x6
+     )
+    )
+   )
+  (set! (-> v1-1 jgeo) 0)
+  (set! (-> v1-1 janim) 4)
+  (set! (-> v1-1 mgeo 0) (the-as uint 1))
+  (set! (-> v1-1 lod-dist 0) 81920.0)
+  (set! (-> v1-1 mgeo 1) (the-as uint 2))
+  (set! (-> v1-1 lod-dist 1) 163840.0)
+  (set! (-> v1-1 mgeo 2) (the-as uint 3))
+  (set! (-> v1-1 lod-dist 2) 4095996000.0)
+  (set! *teetertotter-sg* v1-1)
+  )
+
+;; definition for function target-on-end-of-teetertotter?
+;; Used lq/sq
+(defun target-on-end-of-teetertotter? ((arg0 teetertotter))
+  (let
+   ((gp-1
+     (vector-!
+      (new-stack-vector0)
+      (-> *target* control trans)
+      (-> arg0 root trans)
+      )
+     )
+    )
+   (if
+    (<
+     (vector-dot
+      (vector-x-quaternion! (new-stack-vector0) (-> arg0 root quat))
+      gp-1
+      )
+     -8192.0
+     )
+    #t
+    )
+   )
+  )
+
+;; failed to figure out what this is:
+(let
+  ((v1-3
+    (new 'static 'state
+     :name 'teetertotter-idle
+     :next #f
+     :exit #f
+     :code #f
+     :trans #f
+     :post #f
+     :enter #f
+     :event #f
+     )
+    )
+   )
+  (set! teetertotter-idle (the-as (state none) v1-3))
+  (set!
+   (-> v1-3 event)
+   (lambda :behavior teetertotter
+    ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
+    (let ((v1-0 arg2))
+     (the-as object (cond
+                     ((= v1-0 'attack)
+                      (case (-> arg3 param 1) 
+                       (('flop)
+                         (when (target-on-end-of-teetertotter? self)
+                          (set! (-> self in-launch-window) #f)
+                          (increment-success-for-hint
+                           (the-as level-hint-control 676)
+                           )
+                          (go teetertotter-launch)
+                          )
+                         )
+                       )
+                      )
+                     ((= v1-0 'bonk)
+                      (when (target-on-end-of-teetertotter? self)
+                       (level-hint-spawn
+                        (game-text-id misty-teetertotter-bonk-dax-tutorial)
+                        "sksp0070"
+                        #f
+                        *entity-pool*
+                        0
+                        )
+                       (go teetertotter-bend)
+                       )
+                      )
+                     )
+      )
+     )
+    )
+   )
+  (set!
+   (-> v1-3 code)
+   (lambda :behavior teetertotter () (let ((gp-0 (-> self skel root-channel 0)))
+                                      (joint-control-channel-group-eval!
+                                       gp-0
+                                       (the-as
+                                        art-joint-anim
+                                        (-> self draw art-group data 4)
+                                        )
+                                       num-func-identity
+                                       )
+                                      (set! (-> gp-0 frame-num) 0.0)
+                                      )
+    (while #t
+     (suspend)
+     )
+    (none)
+    )
+   )
+  (set! (-> v1-3 post) transform-post)
+  )
+
+;; failed to figure out what this is:
+(let
+  ((v1-4
+    (new 'static 'state
+     :name 'teetertotter-launch
+     :next #f
+     :exit #f
+     :code #f
+     :trans #f
+     :post #f
+     :enter #f
+     :event #f
+     )
+    )
+   )
+  (set! teetertotter-launch (the-as (state none) v1-4))
+  (set!
+   (-> v1-4 event)
+   (lambda :behavior teetertotter
+    ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
+    (when (= arg2 'touch)
+     (-> arg3 param 0)
+     (let ((t9-0 (method-of-type touching-shapes-entry dummy-12)))
+      (-> self root)
+      1
+      (when (and (t9-0) (-> self rock-is-dangerous))
+       (let ((a1-2 (new 'stack-no-clear 'event-message-block)))
+        (set! (-> a1-2 from) self)
+        (set! (-> a1-2 num-params) 2)
+        (set! (-> a1-2 message) 'attack)
+        (set! (-> a1-2 param 0) (-> arg3 param 0))
+        (let ((a0-2 (new 'static 'attack-info :mask #x20)))
+         (set! (-> a0-2 mode) 'deadly)
+         (set! (-> a1-2 param 1) (the-as uint a0-2))
+         )
+        (send-event-function arg0 a1-2)
+        )
+       )
+      )
+     (-> arg3 param 0)
+     (let ((t9-2 (method-of-type touching-shapes-entry dummy-12)))
+      (-> self root)
+      2
+      (when
+       (and
+        (t9-2)
+        (target-on-end-of-teetertotter? self)
+        (not (-> self launched-player))
+        (-> self in-launch-window)
+        )
+       (let ((a1-4 (new 'stack-no-clear 'event-message-block)))
+        (set! (-> a1-4 from) self)
+        (set! (-> a1-4 num-params) 2)
+        (set! (-> a1-4 message) 'shove)
+        (set! (-> a1-4 param 0) (the-as uint #f))
+        (let ((v1-16 (new 'static 'attack-info :mask #xcc0)))
+         (set! (-> v1-16 shove-back) 0.0)
+         (set! (-> v1-16 shove-up) 53248.0)
+         (set! (-> v1-16 angle) 'jump)
+         (set! (-> v1-16 control) 1.0)
+         (set! (-> a1-4 param 1) (the-as uint v1-16))
+         )
+        (when (send-event-function arg0 a1-4)
+         (let ((v0-0 #t))
+          (set! (-> self launched-player) v0-0)
+          v0-0
+          )
+         )
+        )
+       )
+      )
+     )
+    )
+   )
+  (set!
+   (-> v1-4 code)
+   (lambda :behavior teetertotter
+    ()
+    (local-vars (v1-16 symbol) (f0-4 float))
+    (set! (-> self launched-player) #f)
+    (let ((a0-0 (-> self skel root-channel 0)))
+     (set!
+      (-> a0-0 frame-group)
+      (the-as art-joint-anim (-> self draw art-group data 4))
+      )
+     (set!
+      (-> a0-0 param 0)
+      (the
+       float
+       (+
+        (->
+         (the-as art-joint-anim (-> self draw art-group data 4))
+         data
+         0
+         length
+         )
+        -1
+        )
+       )
+      )
+     (set! (-> a0-0 param 1) 1.0)
+     (set! (-> a0-0 frame-num) 0.0)
+     (joint-control-channel-group!
+      a0-0
+      (the-as art-joint-anim (-> self draw art-group data 4))
+      num-func-seek!
+      )
+     )
+    (until (begin
+            (set! (-> self rock-is-dangerous) (and v1-16 (>= 76.0 f0-4)))
+            (suspend)
+            (let ((a0-2 (-> self skel root-channel 0)))
+             (set!
+              (-> a0-2 param 0)
+              (the float (+ (-> a0-2 frame-group data 0 length) -1))
+              )
+             (set! (-> a0-2 param 1) 1.0)
+             (joint-control-channel-group-eval!
+              a0-2
+              (the-as art-joint-anim #f)
+              num-func-seek!
+              )
+             )
+            (ja-done? 0)
+            )
+     (set! f0-4 (ja-aframe-num 0))
+     (set! (-> self in-launch-window) (and (>= f0-4 76.0) (>= 82.0 f0-4)))
+     (set! v1-16 (>= f0-4 12.0))
+     )
+    (go teetertotter-idle)
+    (none)
+    )
+   )
+  (set! (-> v1-4 post) rider-post)
+  )
+
+;; failed to figure out what this is:
+(let
+  ((v1-5
+    (new 'static 'state
+     :name 'teetertotter-bend
+     :next #f
+     :exit #f
+     :code #f
+     :trans #f
+     :post #f
+     :enter #f
+     :event #f
+     )
+    )
+   )
+  (set! teetertotter-bend (the-as (state none) v1-5))
+  (set!
+   (-> v1-5 code)
+   (lambda :behavior teetertotter () (let ((a0-0 (-> self skel root-channel 0)))
+                                      (set!
+                                       (-> a0-0 frame-group)
+                                       (the-as
+                                        art-joint-anim
+                                        (-> self draw art-group data 5)
+                                        )
+                                       )
+                                      (set!
+                                       (-> a0-0 param 0)
+                                       (the
+                                        float
+                                        (+
+                                         (->
+                                          (the-as
+                                           art-joint-anim
+                                           (-> self draw art-group data 5)
+                                           )
+                                          data
+                                          0
+                                          length
+                                          )
+                                         -1
+                                         )
+                                        )
+                                       )
+                                      (set! (-> a0-0 param 1) 1.0)
+                                      (set! (-> a0-0 frame-num) 0.0)
+                                      (joint-control-channel-group!
+                                       a0-0
+                                       (the-as
+                                        art-joint-anim
+                                        (-> self draw art-group data 5)
+                                        )
+                                       num-func-seek!
+                                       )
+                                      )
+    (until (begin
+            (suspend)
+            (let ((a0-1 (-> self skel root-channel 0)))
+             (set!
+              (-> a0-1 param 0)
+              (the float (+ (-> a0-1 frame-group data 0 length) -1))
+              )
+             (set! (-> a0-1 param 1) 1.0)
+             (joint-control-channel-group-eval!
+              a0-1
+              (the-as art-joint-anim #f)
+              num-func-seek!
+              )
+             )
+            (ja-done? 0)
+            )
+     (empty)
+     )
+    (go teetertotter-idle)
+    (none)
+    )
+   )
+  (set! (-> v1-5 post) rider-post)
+  )
+
+;; definition for method 11 of type teetertotter
+(defmethod copy-defaults! teetertotter ((obj teetertotter) (arg0 res-lump))
+  (let
+   ((s4-0
+     (new 'process 'collide-shape-moving obj (collide-list-enum hit-by-player))
+     )
+    )
+   (set! (-> s4-0 dynam) (copy *standard-dynamics* 'process))
+   (set! (-> s4-0 reaction) default-collision-reaction)
+   (set! (-> s4-0 no-reaction) nothing)
+   (let ((t9-2 (method-of-object s4-0 dummy-29)))
+    1
+    (t9-2)
+    )
+   (let ((s3-0 (new 'process 'collide-shape-prim-group s4-0 (the-as uint 5) 0)))
+    (set! (-> s3-0 prim-core collide-as) (the-as uint 2048))
+    (set! (-> s3-0 collide-with) (the-as uint 16))
+    (set! (-> s3-0 prim-core action) (the-as uint 1))
+    (set-vector! (-> s3-0 local-sphere) 0.0 12288.0 0.0 36864.0)
+    ((method-of-object s4-0 dummy-46))
+    (let ((s2-0 (new 'process 'collide-shape-prim-sphere s4-0 (the-as uint 1))))
+     (set! (-> s2-0 prim-core collide-as) (the-as uint 2048))
+     (set! (-> s2-0 collide-with) (the-as uint 16))
+     (set! (-> s2-0 prim-core action) (the-as uint 1))
+     (set! (-> s2-0 prim-core offense) 4)
+     (set! (-> s2-0 transform-index) 5)
+     (set-vector! (-> s2-0 local-sphere) -4096.0 2048.0 0.0 5120.0)
+     )
+    ((method-of-object s3-0 dummy-28))
+    (let
+     ((s2-1
+       (new
+        'process
+        'collide-shape-prim-mesh
+        s4-0
+        (the-as uint 0)
+        (the-as uint 2)
+        )
+       )
+      )
+     (set! (-> s2-1 prim-core collide-as) (the-as uint 2048))
+     (set! (-> s2-1 collide-with) (the-as uint 16))
+     (set! (-> s2-1 prim-core action) (the-as uint 3))
+     (set! (-> s2-1 prim-core offense) 4)
+     (set! (-> s2-1 transform-index) 7)
+     (set-vector! (-> s2-1 local-sphere) 0.0 0.0 0.0 32768.0)
+     )
+    ((method-of-object s3-0 dummy-28))
+    (let
+     ((s2-2
+       (new
+        'process
+        'collide-shape-prim-mesh
+        s4-0
+        (the-as uint 1)
+        (the-as uint 0)
+        )
+       )
+      )
+     (set! (-> s2-2 prim-core collide-as) (the-as uint 2048))
+     (set! (-> s2-2 collide-with) (the-as uint 16))
+     (set! (-> s2-2 prim-core action) (the-as uint 1))
+     (set! (-> s2-2 prim-core offense) 4)
+     (set! (-> s2-2 transform-index) 4)
+     (set-vector! (-> s2-2 local-sphere) 0.0 0.0 0.0 32768.0)
+     )
+    ((method-of-object s3-0 dummy-28))
+    (let
+     ((s2-3
+       (new
+        'process
+        'collide-shape-prim-mesh
+        s4-0
+        (the-as uint 2)
+        (the-as uint 0)
+        )
+       )
+      )
+     (set! (-> s2-3 prim-core collide-as) (the-as uint 2048))
+     (set! (-> s2-3 collide-with) (the-as uint 16))
+     (set! (-> s2-3 prim-core action) (the-as uint 1))
+     (set! (-> s2-3 prim-core offense) 4)
+     (set! (-> s2-3 transform-index) 3)
+     (set-vector! (-> s2-3 local-sphere) 0.0 0.0 0.0 32768.0)
+     )
+    ((method-of-object s3-0 dummy-28))
+    (let
+     ((s2-4
+       (new
+        'process
+        'collide-shape-prim-mesh
+        s4-0
+        (the-as uint 3)
+        (the-as uint 2)
+        )
+       )
+      )
+     (set! (-> s2-4 prim-core collide-as) (the-as uint 2048))
+     (set! (-> s2-4 collide-with) (the-as uint 16))
+     (set! (-> s2-4 prim-core action) (the-as uint 3))
+     (set! (-> s2-4 prim-core offense) 4)
+     (set! (-> s2-4 transform-index) 3)
+     (set-vector! (-> s2-4 local-sphere) 0.0 0.0 0.0 32768.0)
+     )
+    ((method-of-object s3-0 dummy-28))
+    )
+   (set! (-> s4-0 nav-radius) (* 0.75 (-> s4-0 root-prim local-sphere w)))
+   ((method-of-object s4-0 dummy-50))
+   (set! (-> obj root) s4-0)
+   )
+  (process-drawable-from-entity! obj arg0)
+  (dummy-14 obj *teetertotter-sg* '())
+  (set! (-> obj launched-player) #f)
+  (set! (-> obj in-launch-window) #f)
+  (set! (-> obj rock-is-dangerous) #f)
+  (go teetertotter-idle)
+  (none)
+  )

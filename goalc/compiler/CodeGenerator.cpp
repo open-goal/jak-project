@@ -32,7 +32,7 @@ std::vector<u8> CodeGenerator::run(const TypeSystem* ts) {
              f->name().c_str());
       throw std::runtime_error("Failed to codegen.");
     }
-    m_gen.add_function_to_seg(f->segment, &m_debug_info->add_function(f->name()));
+    m_gen.add_function_to_seg(f->segment, &m_debug_info->add_function(f->name(), m_fe->name()));
   }
 
   // next, add all static objects.

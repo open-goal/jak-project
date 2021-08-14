@@ -1927,7 +1927,7 @@ s32 InitHeapAndSymbol() {
   make_function_symbol_from_c("method-set!", (void*)method_set);
 
   // dgo
-  make_function_symbol_from_c("link", (void*)link_and_exec_wrapper);
+  make_stack_arg_function_symbol_from_c("link", (void*)link_and_exec_wrapper);
   make_function_symbol_from_c("dgo-load", (void*)load_and_link_dgo);
 
   // forward declare
@@ -1937,7 +1937,7 @@ s32 InitHeapAndSymbol() {
   make_raw_function_symbol_from_c("symlink3", 0);
 
   // game stuff
-  make_function_symbol_from_c("link-begin", (void*)link_begin);
+  make_stack_arg_function_symbol_from_c("link-begin", (void*)link_begin);
   make_function_symbol_from_c("link-resume", (void*)link_resume);
   //  make_function_symbol_from_c("mc-run", &CKernel::not_yet_implemented);
   //  make_function_symbol_from_c("mc-format", &CKernel::not_yet_implemented);
