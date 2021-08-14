@@ -5,7 +5,7 @@
 #include "game/graphics/gfx.h"
 
 /*!
- * @file libpad.h
+ * @file libpad.cpp
  * Stub implementation of the EE pad (controller) library
  */
 
@@ -64,7 +64,8 @@ static const Pad::Button libpad_PadPressureButtons[] = {
 int scePadRead(int port, int slot, u8* rdata) {
   auto cpad = (CPadInfo*)(rdata);
 
-  cpad->valid = 0;                                   // success
+  cpad->valid = 0;  // success
+
   cpad->status = 0x70 /* (dualshock2) */ | (20 / 2); /* (dualshock2 data size) */
 
   cpad->rightx = 0;
