@@ -67,7 +67,7 @@ bool HasError() {
 }  // namespace
 
 static bool gl_inited = false;
-static int gl_init() {
+static int gl_init(GfxSettings& settings) {
   if (glfwSetErrorCallback(ErrorCallback) != NULL) {
     lg::warn("glfwSetErrorCallback has been re-set!");
   }
@@ -77,11 +77,16 @@ static int gl_init() {
     return 1;
   }
 
-  // request Debug OpenGL 3.3 Core
+  // request an OpenGL 3.3 Core
   glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 3);  // 3.3
   glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 3);
-  // glfwWindowHint(GLFW_OPENGL_DEBUG_CONTEXT, GLFW_TRUE);           // debug
   glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);  // core profile, not compat
+  // debug check
+  if (settings.debug) {
+    glfwWindowHint(GLFW_OPENGL_DEBUG_CONTEXT, GLFW_TRUE);
+  } else {
+    glfwWindowHint(GLFW_OPENGL_DEBUG_CONTEXT, GLFW_FALSE);
+  }
 
   return 0;
 }

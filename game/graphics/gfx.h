@@ -19,11 +19,11 @@ enum class GfxPipeline { Invalid = 0, OpenGL };
 
 // module for the different rendering pipelines
 struct GfxRendererModule {
-  std::function<int()> init;
+  std::function<int(GfxSettings&)> init;
   std::function<std::shared_ptr<GfxDisplay>(int w, int h, const char* title, GfxSettings& settings)>
       make_main_display;
-  std::function<void(GfxDisplay* display)> kill_display;
-  std::function<void(GfxDisplay* display)> render_display;
+  std::function<void(GfxDisplay*)> kill_display;
+  std::function<void(GfxDisplay*)> render_display;
   std::function<void()> exit;
   std::function<u32()> vsync;
   std::function<u32()> sync_path;
@@ -37,29 +37,17 @@ struct GfxRendererModule {
 
 // store settings related to the gfx systems
 struct GfxSettings {
+  // current version of the settings. this should be set up so that newer versions are always higher
+  // than older versions
+  static constexpr u64 CURRENT_VERSION = 0x0000'0000'00001'0001;
+
+  u64 version; // the version of this settings struct
   const GfxRendererModule* renderer;  // which rendering pipeline to use.
-
   int vsync;  // (temp) number of screen update per frame
-};
-
-// struct for a single vertex. this should in theory be renderer-agnostic
-struct GfxVertex {
-  // x y z
-  float x, y, z;
-
-  // rgba or the full u32 thing.
-  union {
-    u32 rgba;
-    struct {
-      u8 r, g, b, a;
-    };
-  };
+  bool debug; // graphics debugging
 };
 
 namespace Gfx {
-
-static constexpr int VERTEX_BUFFER_LENGTH_TEMP = 4096;
-extern GfxVertex g_vertices_temp[VERTEX_BUFFER_LENGTH_TEMP];
 
 extern GfxSettings g_settings;
 // extern const std::vector<const GfxRendererModule*> renderers;

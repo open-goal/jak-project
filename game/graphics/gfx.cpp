@@ -3,8 +3,9 @@
  * Graphics component for the runtime. Abstraction layer for the main graphics routines.
  */
 
-#include "gfx.h"
 #include <functional>
+
+#include "gfx.h"
 #include "common/log/log.h"
 #include "game/runtime.h"
 #include "display.h"
@@ -16,11 +17,17 @@ namespace {
 // initializes a gfx settings.
 // TODO save and load from file
 void InitSettings(GfxSettings& settings) {
+  // set the current settings version
+  settings.version = GfxSettings::CURRENT_VERSION;
+
   // use opengl by default for now
   settings.renderer = Gfx::GetRenderer(GfxPipeline::OpenGL);  // Gfx::renderers[0];
 
   // 1 screen update per frame
   settings.vsync = 1;
+
+  // debug for now
+  settings.debug = true;
 
   return;
 }
@@ -28,8 +35,6 @@ void InitSettings(GfxSettings& settings) {
 }  // namespace
 
 namespace Gfx {
-
-GfxVertex g_vertices_temp[VERTEX_BUFFER_LENGTH_TEMP];
 
 GfxSettings g_settings;
 // const std::vector<const GfxRendererModule*> renderers = {&moduleOpenGL};
@@ -53,7 +58,7 @@ u32 Init() {
   // initialize settings
   InitSettings(g_settings);
 
-  if (g_settings.renderer->init()) {
+  if (g_settings.renderer->init(g_settings)) {
     lg::error("Gfx::Init error");
     return 1;
   }
@@ -80,7 +85,7 @@ void Loop(std::function<bool()> f) {
 
 u32 Exit() {
   lg::info("GFX Exit");
-  Display::KillDisplay(Display::GetMainDisplay());
+  Display::KillMainDisplay();
   g_settings.renderer->exit();
   return 0;
 }
