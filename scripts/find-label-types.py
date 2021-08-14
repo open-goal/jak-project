@@ -23,27 +23,25 @@ with open(file_path) as f:
   # Find all
   content = f.readlines()
   prev_line = ""
+  next_label_will_be_lambda = False
   for i, line in enumerate(content):
+    if ".function (anon-function" in line:
+      next_label_will_be_lambda = True
     if line.startswith("L"):
       for label in labels_with_no_type:
         if line.startswith("{}:".format(label)):
+          # If we were expecting a lambda
+          if next_label_will_be_lambda:
+            label_lines.append("[\"{}\", \"_lambda_\", true]".format(label))
+            labels_with_no_type.remove(label)
+            next_label_will_be_lambda = False
+            break
           # Check if the previous line has a `.type`
           prev_line = content[i-1]
           if ".type" in prev_line:
             the_type = prev_line.split(".type ")[1].strip()
             label_lines.append("[\"{}\", \"{}\", true]".format(label, the_type))
             labels_with_no_type.remove(label)
-            break
-          # Otherwise, lets see if it's a lambda, check the last 10 lines (hopefully this is enough)
-          found_it = False
-          for j in range(20):
-            temp_line = content[i-j]
-            if "anon-function" in temp_line:
-              label_lines.append("[\"{}\", \"_lambda_\", true]".format(label))
-              labels_with_no_type.remove(label)
-              found_it = True
-              break
-          if found_it:
             break
 
 # Print out the labels
