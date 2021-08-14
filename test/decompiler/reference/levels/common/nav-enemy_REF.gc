@@ -78,32 +78,25 @@
 ;; definition for method 42 of type nav-enemy
 (defmethod TODO-RENAME-42 nav-enemy ((obj nav-enemy))
   (local-vars (v1-11 symbol))
-  (with-pp
-   (when (<= (-> obj path curve num-cverts) 0)
-    (let ((t9-0 (the-as (function object object) enter-state))
-          (a0-1 "no path")
-          )
-     (set! (-> pp next-state) process-drawable-art-error)
-     (t9-0 a0-1)
-     )
-    )
-   (let ((s5-0 3))
-    0
-    (let ((s4-0 (-> obj nav destination-pos)))
-     (until (or v1-11 (<= s5-0 0))
-      (let ((v1-8 (nav-enemy-rnd-int-count (-> obj path curve num-cverts))))
-       (eval-path-curve-div! (-> obj path) s4-0 (the float v1-8) 'interp)
-       )
-      (+! s5-0 -1)
-      (set!
-       v1-11
-       (< 4096.0 (vector-vector-xz-distance s4-0 (-> obj collide-info trans)))
-       )
+  (if (<= (-> obj path curve num-cverts) 0)
+   (go process-drawable-art-error "no path")
+   )
+  (let ((s5-0 3))
+   0
+   (let ((s4-0 (-> obj nav destination-pos)))
+    (until (or v1-11 (<= s5-0 0))
+     (let ((v1-8 (nav-enemy-rnd-int-count (-> obj path curve num-cverts))))
+      (eval-path-curve-div! (-> obj path) s4-0 (the float v1-8) 'interp)
+      )
+     (+! s5-0 -1)
+     (set!
+      v1-11
+      (< 4096.0 (vector-vector-xz-distance s4-0 (-> obj collide-info trans)))
       )
      )
     )
-   0
    )
+  0
   )
 
 ;; definition for method 39 of type nav-enemy
@@ -123,11 +116,7 @@
       )
      )
     )
-   (let ((t9-0 (method-of-object (-> obj collide-info) dummy-54)))
-    2
-    1
-    (t9-0)
-    )
+   (dummy-54 (-> obj collide-info) 2 1)
    (set! (-> obj nav-enemy-flags) (logand -257 (-> obj nav-enemy-flags)))
    )
   ((method-of-object (-> obj draw shadow-ctrl) dummy-14))
@@ -277,11 +266,7 @@
     (set! (-> v1-0 param 1) (the-as uint a1-1))
     )
    (when (send-event-function arg0 v1-0)
-    (let ((t9-1 (method-of-object (-> self collide-info) dummy-54)))
-     2
-     0
-     (t9-1)
-     )
+    (dummy-54 (-> self collide-info) 2 0)
     (logior! (-> self nav-enemy-flags) 256)
     #t
     )
@@ -395,13 +380,7 @@
   ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
   (case arg2 
    (('death-start)
-     (let ((t9-0 (method-of-object (-> self fact) dummy-9)))
-      #t
-      *entity-pool*
-      (-> self fact)
-      0
-      (t9-0)
-      )
+     (TODO-RENAME-9 (-> self fact) #t *entity-pool* (-> self fact) 0)
      )
    (('death-end)
     (let ((v0-0 (logior (-> self draw status) 2)))
@@ -434,10 +413,7 @@ nav-enemy-default-event-handler
 ;; definition for method 40 of type nav-enemy
 ;; INFO: Return type mismatch int vs none.
 (defmethod dummy-40 nav-enemy ((obj nav-enemy))
-  (let ((t9-0 (method-of-object (-> obj nav) dummy-11)))
-   (-> obj nav target-pos)
-   (t9-0)
-   )
+  (dummy-11 (-> obj nav) (-> obj nav target-pos))
   0
   (none)
   )
@@ -498,14 +474,10 @@ nav-enemy-default-event-handler
      )
     )
    )
-  (when (-> obj nav-info move-to-ground)
-   (let ((s5-0 vector-v++!)
-         (s4-0 (-> obj collide-info transv))
-         (t9-3 (method-of-object (-> obj collide-info) dummy-62))
-         )
-    (set! (-> (new 'stack-no-clear 'vector) quad) (the-as uint128 0))
-    0.0
-    (s5-0 s4-0 (the-as vector (t9-3)))
+  (if (-> obj nav-info move-to-ground)
+   (vector-v++!
+    (-> obj collide-info transv)
+    (dummy-62 (-> obj collide-info) (new-stack-vector0) 0.0)
     )
    )
   0
@@ -542,23 +514,17 @@ nav-enemy-default-event-handler
 ;; definition for method 38 of type nav-enemy
 ;; INFO: Return type mismatch int vs none.
 (defmethod TODO-RENAME-38 nav-enemy ((obj nav-enemy))
-  (cond
-   ((-> obj nav-info move-to-ground)
-    (let ((t9-0 (method-of-object (-> obj collide-info) dummy-59)))
-     (-> obj collide-info transv)
-     (-> obj nav-info gnd-collide-with)
-     8192.0
-     (-> obj nav-info hover-if-no-ground)
-     (nonzero? (logand (-> obj nav-enemy-flags) #x8000))
-     (t9-0)
-     )
+  (if (-> obj nav-info move-to-ground)
+   (dummy-59
+    (-> obj collide-info)
+    (-> obj collide-info transv)
+    (-> obj nav-info gnd-collide-with)
+    8192.0
+    #f
+    (-> obj nav-info hover-if-no-ground)
+    (nonzero? (logand (-> obj nav-enemy-flags) #x8000))
     )
-   (else
-    (let ((t9-1 (method-of-object (-> obj collide-info) dummy-58)))
-     (-> obj collide-info transv)
-     (t9-1)
-     )
-    )
+   (dummy-58 (-> obj collide-info) (-> obj collide-info transv))
    )
   0
   (none)
@@ -607,12 +573,12 @@ nav-enemy-default-event-handler
    (logior! (-> self nav flags) (nav-control-flags bit10))
    (nav-enemy-get-new-patrol-point)
    )
-  (let ((t9-1 (method-of-object (-> self nav) dummy-19)))
+  (dummy-19
+   (-> self nav)
    (-> self nav target-pos)
    (-> self collide-info)
    (-> self nav destination-pos)
    (-> self rotate-speed)
-   (t9-1)
    )
   (if (logtest? #x200000 (-> self nav flags))
    (logclear! (-> self nav flags) (nav-control-flags bit10))
@@ -655,10 +621,7 @@ nav-enemy-default-event-handler
    (set! (-> self nav travel quad) (-> gp-1 quad))
    )
   (vector-normalize! (-> self nav travel) 409600.0)
-  (let ((t9-3 (method-of-object (-> self nav) dummy-24)))
-   204.8
-   (t9-3)
-   )
+  (dummy-24 (-> self nav) 204.8 #f)
   (vector+!
    (-> self nav target-pos)
    (-> self collide-info trans)
@@ -689,18 +652,14 @@ nav-enemy-default-event-handler
 ;; INFO: Return type mismatch int vs none.
 ;; Used lq/sq
 (defbehavior nav-enemy-falling-post nav-enemy ()
-  (let ((gp-0 vector-v++!)
-        (s5-0 (-> self collide-info transv))
-        (t9-0 (method-of-object (-> self collide-info) dummy-62))
-        )
-   (set! (-> (new 'stack-no-clear 'vector) quad) (the-as uint128 0))
-   0.0
-   (gp-0 s5-0 (the-as vector (t9-0)))
+  (vector-v++!
+   (-> self collide-info transv)
+   (dummy-62 (-> self collide-info) (new-stack-vector0) 0.0)
    )
-  (let ((t9-2 (method-of-object (-> self collide-info) dummy-33)))
+  (dummy-33
+   (-> self collide-info)
    (-> self collide-info transv)
    (-> self collide-info root-prim collide-with)
-   (t9-2)
    )
   (nav-enemy-common-post)
   0
@@ -711,18 +670,11 @@ nav-enemy-default-event-handler
 ;; INFO: Return type mismatch int vs none.
 ;; Used lq/sq
 (defbehavior nav-enemy-death-post nav-enemy ()
-  (let ((gp-0 vector-v++!)
-        (s5-0 (-> self collide-info transv))
-        (t9-0 (method-of-object (-> self collide-info) dummy-62))
-        )
-   (set! (-> (new 'stack-no-clear 'vector) quad) (the-as uint128 0))
-   0.0
-   (gp-0 s5-0 (the-as vector (t9-0)))
-   )
-  (let ((t9-2 (method-of-object (-> self collide-info) dummy-57)))
+  (vector-v++!
    (-> self collide-info transv)
-   (t9-2)
+   (dummy-62 (-> self collide-info) (new-stack-vector0) 0.0)
    )
+  (dummy-57 (-> self collide-info) (-> self collide-info transv))
   (nav-enemy-common-post)
   0
   (none)
@@ -998,7 +950,7 @@ nav-enemy-default-event-handler
 ;; INFO: Return type mismatch int vs none.
 (defbehavior
   nav-enemy-fall-and-play-death-anim nav-enemy
-  ((arg0 art-joint-anim) (arg1 int) (arg2 float))
+  ((arg0 art-joint-anim) (arg1 float) (arg2 float) (arg3 float) (arg4 int))
   (nav-enemy-neck-control-inactive)
   (logclear! (-> self mask) (process-mask actor-pause))
   (set! (-> self skel root-channel 0 frame-group) arg0)
@@ -1045,7 +997,7 @@ nav-enemy-default-event-handler
       ((nonzero? (-> self align))
        (when (not s4-1)
         (TODO-RENAME-9 (-> self align))
-        (TODO-RENAME-10 (-> self align) 4098 1.0 (the-as float arg1) 1.0)
+        (TODO-RENAME-10 (-> self align) 4098 1.0 arg1 1.0)
         (when (zero? (logand (-> self align flags) 1))
          (let
           ((f0-6
@@ -1202,13 +1154,13 @@ nav-enemy-default-event-handler
      ()
      (nav-enemy-neck-control-inactive)
      (set! (-> self state-time) (-> *display* base-frame-counter))
-     (when (-> self nav-info move-to-ground)
-      (let ((t9-1 (method-of-object (-> self collide-info) dummy-60)))
+     (if (-> self nav-info move-to-ground)
+      (dummy-60
+       (-> self collide-info)
        40960.0
        40960.0
        #t
        (-> self nav-info gnd-collide-with)
-       (t9-1)
        )
       )
      (set! (-> self nav-enemy-flags) (logand -7 (-> self nav-enemy-flags)))
@@ -1746,10 +1698,7 @@ nav-enemy-default-event-handler
            )
       (set! (-> gp-0 target-pos quad) (-> v1-10 quad))
       )
-     (let ((t9-3 (method-of-object (-> self nav) dummy-11)))
-      (-> self nav target-pos)
-      (t9-3)
-      )
+     (dummy-11 (-> self nav) (-> self nav target-pos))
      (set! (-> self rotate-speed) (-> self nav-info run-rotate-speed))
      (let ((v0-4 (-> self nav-info run-turn-time)))
       (set! (-> self turn-time) (the-as uint v0-4))
@@ -2872,14 +2821,15 @@ nav-enemy-default-event-handler
     ()
     (ja-channel-push! 1 22)
     (dummy-48 (-> self collide-info))
-    (let ((t9-2 nav-enemy-fall-and-play-death-anim)
-          (a0-4 (-> self draw art-group data (-> self nav-info die-anim)))
-          (a1-1 1.0)
-          (a2-0 1.0)
-          )
+    (nav-enemy-fall-and-play-death-anim
+     (the-as
+      art-joint-anim
+      (-> self draw art-group data (-> self nav-info die-anim))
+      )
+     1.0
+     1.0
      1000000000000000.0
      600
-     (t9-2 (the-as art-joint-anim a0-4) (the-as int a1-1) a2-0)
      )
     (let ((a1-2 (new 'stack-no-clear 'event-message-block)))
      (set! (-> a1-2 from) self)
@@ -3379,10 +3329,7 @@ nav-enemy-default-event-handler
 ;; Used lq/sq
 (defbehavior nav-enemy-jump-land-post nav-enemy ()
   (TODO-RENAME-9 (-> self align))
-  (let ((t9-1 (method-of-object (-> self nav) dummy-11)))
-   (-> self nav target-pos)
-   (t9-1)
-   )
+  (dummy-11 (-> self nav) (-> self nav target-pos))
   (set!
    (-> self target-speed)
    (seek (-> self target-speed) (-> self nav-info run-travel-speed) 2048.0)
@@ -3424,20 +3371,18 @@ nav-enemy-default-event-handler
     (the-as int (-> self turn-time))
     )
    )
-  (let ((gp-0 vector-v++!)
-        (s5-0 (-> self collide-info transv))
-        (t9-7 (method-of-object (-> self collide-info) dummy-62))
-        )
-   (set! (-> (new 'stack-no-clear 'vector) quad) (the-as uint128 0))
-   0.0
-   (gp-0 s5-0 (the-as vector (t9-7)))
+  (vector-v++!
+   (-> self collide-info transv)
+   (dummy-62 (-> self collide-info) (new-stack-vector0) 0.0)
    )
-  (let ((t9-9 (method-of-object (-> self collide-info) dummy-59)))
+  (dummy-59
+   (-> self collide-info)
    (-> self collide-info transv)
    (-> self nav-info gnd-collide-with)
    8192.0
+   #f
    (-> self nav-info hover-if-no-ground)
-   (t9-9)
+   #f
    )
   (nav-enemy-common-post)
   (none)
@@ -3817,7 +3762,7 @@ nav-enemy-default-event-handler
    (nav-control-flags display-marks bit0 bit3 bit5 bit6 bit7)
    )
   (set! (-> obj nav gap-event) 'jump)
-  ((method-of-object (-> obj nav) dummy-26))
+  (dummy-26 (-> obj nav))
   (set! (-> obj path) (new 'process 'path-control obj 'path 0.0))
   (logior!
    (-> obj path flags)
@@ -3946,10 +3891,7 @@ nav-enemy-default-event-handler
    (set! (-> s4-0 quad) (-> obj collide-info trans quad))
    (set! (-> obj collide-info trans quad) (-> arg0 quad))
    (let ((gp-0 (-> obj nav)))
-    (let ((t9-0 (method-of-object gp-0 dummy-28)))
-     -1
-     (t9-0)
-     )
+    (dummy-28 gp-0 -1)
     (set! (-> obj collide-info trans quad) (-> s4-0 quad))
     (let* ((v1-8 (-> gp-0 mesh origin))
            (f0-1 (- (-> arg0 x) (-> v1-8 x)))
