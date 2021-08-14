@@ -5,8 +5,12 @@
 ;; name in dgo: debug
 ;; dgos: GAME, ENGINE
 
+;; This file contains functions for debug drawing.
+;; In general, the 3d functions draw using the camera and the 2d functions draw in screen coordinated.
+;; Most functions take a boolean as their first argument. If the boolean is set to #f, it will skip drawing the point.
 
-(defun transform-float-point ((in vector) (out vector))
+
+(defun transform-float-point ((in vector) (out vector4w))
   "Transform point in and store the result in out.
    This uses the cached vf register transformation matrix
    Note that the input/output order of the arguments is swapped from usual"
@@ -44,7 +48,8 @@
 ;; They do a DMA packet per thing drawn.
 
 (defun-debug add-debug-point ((enable-draw symbol) (bucket bucket-id) (pt vector))
-  "Draw a point."
+  "Draw a point.
+   The point is actually a pretty large square with some weird rgb gradient."
   (if (not enable-draw)
       (return #f)
       )
@@ -60,8 +65,9 @@
                   (new 'static 'gif-tag64 :nloop 1 :eop 1 :pre 1 :nreg 8 :prim (gif-prim tri-strip))
                   (gs-reg-list rgbaq xyzf2 rgbaq xyzf2 rgbaq xyzf2 rgbaq xyzf2)
                   )
-            
-            (set! (-> s5-0 vector 1 x) 255)
+
+            ;; upper point is red
+            (set! (-> s5-0 vector 1 x) 255) ;; r
             (set! (-> s5-0 vector 1 y) 128)
             (set! (-> s5-0 vector 1 z) 128)
             (set! (-> s5-0 vector 1 w) 128)
@@ -70,16 +76,18 @@
                           (-> s5-0 quad 1)
                           (-> s5-0 quad 0)
                           )
-            
+
+            ;; left point is green
             (+! (-> s5-0 vector 0 x) -256)
             (+! (-> s5-0 vector 0 y) -160)
             (set! (-> s5-0 vector 1 x) 128)
-            (set! (-> s5-0 vector 1 y) 255)
+            (set! (-> s5-0 vector 1 y) 255) ;; g
             (dma-buffer-add-uint128 v1-7
                           (-> s5-0 quad 1)
                           (-> s5-0 quad 0)
                           )
-            
+
+            ;; right point is blue
             (+! (-> s5-0 vector 0 x) 512)
             (set! (-> s5-0 vector 1 y) 128)
             (set! (-> s5-0 vector 1 z) 255)
@@ -87,7 +95,8 @@
                           (-> s5-0 quad 1)
                           (-> s5-0 quad 0)
                           )
-            
+
+            ;; bottom point is red again
             (+! (-> s5-0 vector 0 x) -256)
             (+! (-> s5-0 vector 0 y) -160)
             (set! (-> s5-0 vector 1 x) 255)
@@ -244,21 +253,21 @@
   #f
   )
 
-(defun-debug add-debug-flat-triangle ((arg0 symbol) (arg1 bucket-id) (arg2 vector) (arg3 vector) (arg4 vector) (arg5 rgba))
-  (if (not arg0)
+(defun-debug add-debug-flat-triangle ((enable-draw symbol) (bucket bucket-id) (p0 vector) (p1 vector) (p2 vector) (arg5 rgba))
+  (if (not enable-draw)
    (return #f)
    )
   (let ((s5-0 (new 'stack 'vector4w-3))
         (s4-0 (new 'stack 'vector4w-3))
         )
-    (set! (-> arg2 w) 1.0)
-    (set! (-> arg3 w) 1.0)
-    (set! (-> arg4 w) 1.0)
-    (when (and (transform-point-qword! (-> s5-0 vector 0) arg2)
-               (transform-point-qword! (-> s5-0 vector 1) arg3)
-               (transform-point-qword! (-> s5-0 vector 2) arg4)
+    (set! (-> p0 w) 1.0)
+    (set! (-> p1 w) 1.0)
+    (set! (-> p2 w) 1.0)
+    (when (and (transform-point-qword! (-> s5-0 vector 0) p0)
+               (transform-point-qword! (-> s5-0 vector 1) p1)
+               (transform-point-qword! (-> s5-0 vector 2) p2)
                )
-      (with-dma-buffer-add-bucket ((v1-9 (current-display-frame debug-buf)) (current-display-frame bucket-group) arg1)
+      (with-dma-buffer-add-bucket ((v1-9 (current-display-frame debug-buf)) (current-display-frame bucket-group) bucket)
 
         (with-cnt-vif-block (v1-9)
           (dma-buffer-add-gif-tag v1-9 (new 'static 'gif-tag64 :nloop 1 :eop 1 :pre 1 :nreg 6 :prim (gif-prim tri))
