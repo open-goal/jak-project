@@ -17,7 +17,7 @@
 
 namespace Pad {
 
-static constexpr int CONTROLLER_COUNT = 2; // support 2 controllers.
+static constexpr int CONTROLLER_COUNT = 2;  // support 2 controllers.
 
 // mirrors goal enum pad-buttons. used as indices to an array!
 enum class Button {
@@ -50,9 +50,9 @@ enum class Button {
 };
 
 struct MappingInfo {
-  bool debug = true;                          // debug mode
-  bool input_mode = false;                    // input mode for controller mapping
-  bool buffer_mode = true;                    // use buffered inputs
+  bool debug = true;                                         // debug mode
+  bool input_mode = false;                                   // input mode for controller mapping
+  bool buffer_mode = true;                                   // use buffered inputs
   int pad_mapping[CONTROLLER_COUNT][(int)Pad::Button::Max];  // controller button mapping
   // TODO complex button mapping & key macros (e.g. shift+x for l2+r2 press etc.)
 };

@@ -43,13 +43,13 @@ struct GfxSettings {
   // than older versions
   static constexpr u64 CURRENT_VERSION = 0x0000'0000'0002'0001;
 
-  u64 version; // the version of this settings struct
+  u64 version;                        // the version of this settings struct
   const GfxRendererModule* renderer;  // which rendering pipeline to use.
-  int vsync;  // (temp) number of screen update per frame
-  bool debug; // graphics debugging
+  int vsync;                          // (temp) number of screen update per frame
+  bool debug;                         // graphics debugging
 
-  Pad::MappingInfo pad_mapping_info; // button mapping
-  Pad::MappingInfo pad_mapping_info_backup; // button mapping backup (see newpad.h)
+  Pad::MappingInfo pad_mapping_info;         // button mapping
+  Pad::MappingInfo pad_mapping_info_backup;  // button mapping backup (see newpad.h)
 };
 
 namespace Gfx {

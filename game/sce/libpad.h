@@ -10,31 +10,31 @@
 #define SCE_PAD_DMA_BUFFER_SIZE 0x100
 
 // pad status
-#define scePadStateDiscon   0
-#define scePadStateFindPad  1
+#define scePadStateDiscon 0
+#define scePadStateFindPad 1
 #define scePadStateFindCTP1 2
-#define scePadStateExecCmd  5
-#define scePadStateStable   6
-#define scePadStateError    7
-#define scePadStateClosed   99
+#define scePadStateExecCmd 5
+#define scePadStateStable 6
+#define scePadStateError 7
+#define scePadStateClosed 99
 
 // pad mode info checks
-#define InfoModeCurID     1
-#define InfoModeCurExID   2
+#define InfoModeCurID 1
+#define InfoModeCurExID 2
 #define InfoModeCurExOffs 3
-#define InfoModeIdTable   4
+#define InfoModeIdTable 4
 
 // pad async request states
-#define scePadReqStateComplete  0
-#define scePadReqStateFaild     1 // lol
-#define scePadReqStateFailed    1
-#define scePadReqStateBusy      2
+#define scePadReqStateComplete 0
+#define scePadReqStateFaild 1  // lol
+#define scePadReqStateFailed 1
+#define scePadReqStateBusy 2
 
 // pad actuator info checks
-#define InfoActFunc   1
-#define InfoActSub    2
-#define InfoActSize   3
-#define InfoActCurr   4
+#define InfoActFunc 1
+#define InfoActSub 2
+#define InfoActSize 3
+#define InfoActCurr 4
 
 namespace ee {
 
@@ -59,4 +59,4 @@ int scePadGetReqState(int port, int slot);
 int scePadInfoAct(int port, int slot, int actno, int term);
 int scePadInfoPressMode(int port, int slot);
 int scePadEnterPressMode(int port, int slot);
-}
+}  // namespace ee

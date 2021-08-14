@@ -520,10 +520,10 @@ Ptr<CPadInfo> CPadGetData(u64 cpad_info) {
       }
       break;
     case 78:  // pressure mode request check
-      if (scePadGetReqState(cpad->number, 0) == 1) {
+      if (scePadGetReqState(cpad->number, 0) == scePadReqStateFailed) {
         cpad->state = 76;
       }
-      if (scePadGetReqState(cpad->number, 0) == 0) {
+      if (scePadGetReqState(cpad->number, 0) == scePadReqStateComplete) {
         cpad->state = 99;
       }
       break;
