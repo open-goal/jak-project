@@ -135,7 +135,7 @@ std::string TextDb::get_info_for(const Object& o, bool* terminate_compiler_error
  */
 std::string TextDb::get_info_for(const std::shared_ptr<SourceText>& frag, int offset) const {
   std::string result = "text from " + frag->get_description() +
-                       ", line: " + std::to_string(frag->get_line_idx(offset) + 1) + "\n";
+                       ", line: " + std::to_string(frag->get_line_idx(offset)) + "\n";
   result += frag->get_line_containing_offset(offset) + "\n";
   return result;
 }
