@@ -593,7 +593,12 @@
            (table-data-end (&+ table-data-ptr (* table-size 8)))
            )
      (label cfg-2)
-     (b! (= (the-as object table-data-start) table-data-end) cfg-8)
+     (b!
+      (= (the-as object table-data-start) table-data-end)
+      cfg-8
+      :delay
+      (nop!)
+      )
      (let
       ((midpoint
         (the-as
@@ -616,17 +621,14 @@
          (- (-> (the-as (pointer int32) midpoint) 0) (the-as int masked-tex-id))
          )
         )
-       (b! (zero? diff) cfg-7)
+       (b! (zero? diff) cfg-7 :delay (nop!))
        (b! (< diff 0) cfg-6 :delay (nop!))
        )
       (b!
        #t
        cfg-2
        :delay
-       (set!
-        table-data-end
-        (the-as (pointer uint64) (the-as (pointer uint64) midpoint))
-        )
+       (set! table-data-end (the-as (pointer uint64) midpoint))
        )
       (label cfg-6)
       (b!

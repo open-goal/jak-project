@@ -4838,6 +4838,11 @@
 
 ;; - Types
 
+(defenum vis-info-flag
+  :bitfield #t
+  :type uint32
+  (waiting-for-load 30)
+  )
 (declare-type bsp-header basic)
 (deftype level-vis-info (basic)
   ((level              symbol           :offset-assert 4)
@@ -4852,7 +4857,7 @@
    (ramdisk            uint32           :offset-assert 40)
    (vis-bits           pointer          :offset-assert 44)
    (current-vis-string uint32           :offset-assert 48)
-   (vis-string         uint8 :dynamic :offset-assert 52)
+   (vis-string         uint32 :dynamic :offset-assert 52)
    )
   :method-count-assert 9
   :size-assert         #x34
@@ -4967,7 +4972,7 @@
     (bsp-name (_type_) symbol 13)
     (dummy-14 (_type_ object) memory-usage-block 14)
     (dummy-15 (_type_ vector) symbol 15)
-    (dummy-16 (_type_ uint uint) none 16)
+    (update-vis! (_type_ level-vis-info uint uint) symbol 16)
     (load-continue (_type_) _type_ 17)
     (load-begin (_type_) _type_ 18)
     (login (_type_) _type_ 19)
@@ -15236,22 +15241,22 @@
   :flag-assert         #x900000020
   )
 
-; (deftype blerc-block (structure)
-;   ((output UNKNOWN            848     :offset-assert 0)
-;    (header blerc-block-header :inline :offset-assert 848)
-;    )
-;   :method-count-assert 9
-;   :size-assert         #x370
-;   :flag-assert         #x900000370
-;   )
+(deftype blerc-block (structure)
+  ((output uint8            848     :offset-assert 0)
+   (header blerc-block-header :inline :offset-assert 848)
+   )
+  :method-count-assert 9
+  :size-assert         #x370
+  :flag-assert         #x900000370
+  )
 
-; (deftype blerc-dcache (structure)
-;   ((repl-mult UNKNOWN 40 :offset-assert 0)
-;    )
-;   :method-count-assert 9
-;   :size-assert         #x280
-;   :flag-assert         #x900000280
-;   )
+(deftype blerc-dcache (structure)
+  ((repl-mult vector 40 :inline  :offset-assert 0)
+   )
+  :method-count-assert 9
+  :size-assert         #x280
+  :flag-assert         #x900000280
+  )
 
 (deftype blerc-globals (structure)
   ((first            uint32  :offset-assert 0)
@@ -15267,21 +15272,21 @@
   :flag-assert         #x900000018
   )
 
-; (deftype blerc-context (structure)
-;   ((block-a blerc-block :inline :offset-assert 0)
-;    (dummy   UNKNOWN     7312    :offset-assert 880)
-;    (block-b blerc-block :inline :offset-assert 8192)
-;    )
-;   :method-count-assert 9
-;   :size-assert         #x2370
-;   :flag-assert         #x900002370
-;   )
+(deftype blerc-context (structure)
+  ((block-a blerc-block :inline :offset-assert 0)
+   (dummy   uint8     7312    :offset-assert 880)
+   (block-b blerc-block :inline :offset-assert 8192)
+   )
+  :method-count-assert 9
+  :size-assert         #x2370
+  :flag-assert         #x900002370
+  )
 
 ;; - Functions
 
 (define-extern setup-blerc-chains-for-one-fragment function)
 (define-extern setup-blerc-chains function)
-(define-extern blerc-stats-init function)
+(define-extern blerc-stats-init (function none))
 (define-extern blerc-init (function none))
 (define-extern blerc-a-fragment function)
 (define-extern dma-from-spr function)
@@ -15291,8 +15296,8 @@
 
 ;; - Unknowns
 
-;;(define-extern *blerc-globals* object) ;; unknown type
-;;(define-extern *stats-blerc* object) ;; unknown type
+(define-extern *blerc-globals* blerc-globals)
+(define-extern *stats-blerc* symbol)
 
 
 ;; ----------------------
@@ -15801,8 +15806,8 @@
 
 ;; - Functions
 
-(define-extern unpack-comp-rle function)
-(define-extern unpack-comp-huf function)
+(define-extern unpack-comp-rle (function (pointer int8) (pointer int8) none))
+(define-extern unpack-comp-huf (function (pointer uint8) (pointer uint8) uint huf-dictionary-node none))
 
 
 ;; ----------------------
