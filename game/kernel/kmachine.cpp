@@ -30,6 +30,10 @@
 #include "common/symbols.h"
 #include "common/log/log.h"
 #include "common/util/Timer.h"
+#include "game/graphics/sceGraphicsInterface.h"
+#include "game/graphics/gfx.h"
+#include "game/graphics/dma/dma_chain_read.h"
+#include "game/graphics/dma/dma_copy.h"
 
 #include "game/system/vm/vm.h"
 using namespace ee;
@@ -51,12 +55,16 @@ const char* init_types[] = {"fakeiso", "deviso", "iso_cd"};
 
 Timer ee_clock_timer;
 
+// added
+bool machine_booted = false;
+
 void kmachine_init_globals() {
   isodrv = iso_cd;
   modsrc = 1;
   reboot = 1;
   memset(pad_dma_buf, 0, sizeof(pad_dma_buf));
   ee_clock_timer = Timer();
+  machine_booted = false;
 }
 
 /*!
@@ -417,7 +425,11 @@ u64 CPadOpen(u64 cpad_info, s32 pad_number) {
 
 // TODO CPadGetData
 void CPadGetData() {
-  assert(false);
+  static bool warned = false;
+  if (!warned) {
+    lg::warn("ignoring calls to CPadGetData");
+    warned = true;
+  }
 }
 
 // TODO InstallHandler
@@ -427,6 +439,18 @@ void InstallHandler() {
 // TODO InstallDebugHandler
 void InstallDebugHandler() {
   assert(false);
+}
+
+void send_gfx_dma_chain(u32 /*bank*/, u32 chain) {
+  Gfx::send_chain(g_ee_main_mem, chain);
+}
+
+void pc_texture_upload_now(u32 page, u32 mode) {
+  Gfx::texture_upload_now(Ptr<u8>(page).c(), mode, s7.offset);
+}
+
+void pc_texture_relocate(u32 dst, u32 src, u32 format) {
+  Gfx::texture_relocate(dst, src, format);
 }
 
 /*!
@@ -565,7 +589,7 @@ void DecodeTime() {
 
 // TODO PutDisplayEnv
 void PutDisplayEnv() {
-  assert(false);
+  // assert(false);
 }
 
 /*!
@@ -587,6 +611,19 @@ void InitMachine_PCPort() {
   // PC Port added functions
   make_function_symbol_from_c("__read-ee-timer", (void*)read_ee_timer);
   make_function_symbol_from_c("__mem-move", (void*)c_memmove);
+  make_function_symbol_from_c("__send-gfx-dma-chain", (void*)send_gfx_dma_chain);
+  make_function_symbol_from_c("__pc-texture-upload-now", (void*)pc_texture_upload_now);
+  make_function_symbol_from_c("__pc-texture-relocate", (void*)pc_texture_relocate);
+}
+
+void vif_interrupt_callback() {
+  // added for the PC port for faking VIF interrupts from the graphics system.
+  if (machine_booted && MasterExit == 0) {
+    auto sym = intern_from_c("vif1-handler-debug");
+    if (sym->value) {
+      call_goal(Ptr<Function>(sym->value), 0, 0, 0, s7.offset, g_ee_main_mem);
+    }
+  }
 }
 
 /*!
@@ -598,7 +635,7 @@ void InitMachine_PCPort() {
  */
 void InitMachineScheme() {
   make_function_symbol_from_c("put-display-env", (void*)PutDisplayEnv);       // used in drawable
-  make_function_symbol_from_c("syncv", (void*)ee::sceGsSyncV);                // used in drawable
+  make_function_symbol_from_c("syncv", (void*)sceGsSyncV);                    // used in drawable
   make_function_symbol_from_c("sync-path", (void*)sceGsSyncPath);             // used
   make_function_symbol_from_c("reset-path", (void*)sceGsResetPath);           // used in dma
   make_function_symbol_from_c("reset-graph", (void*)sceGsResetGraph);         // used
@@ -661,4 +698,5 @@ void InitMachineScheme() {
     lg::info("calling fake play~");
     call_goal_function_by_name("play");
   }
+  machine_booted = true;
 }

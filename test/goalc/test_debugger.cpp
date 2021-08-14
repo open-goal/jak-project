@@ -17,7 +17,6 @@ TEST(Debugger, DebuggerBasicConnect) {
     EXPECT_TRUE(compiler.get_debugger().is_valid());
     EXPECT_TRUE(compiler.get_debugger().is_halted());
     compiler.shutdown_target();  // will detach/unhalt, then send the usual shutdown message
-
     // and now the child process should be done!
     EXPECT_TRUE(wait(nullptr) >= 0);
   }

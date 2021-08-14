@@ -4,9 +4,8 @@ new_file = []
 with open("./decompiler/config/all-types.gc") as f:
   symbols_found = []
   lines = f.readlines()
-  
-  for line_num in range(len(lines)):
-    line = lines[line_num]
+
+  for line_num, line in enumerate(lines):
     if "flag-assert" in line:
       heap_base_amount = ""
       flag_assert = line.split("#x")[1].strip()
@@ -25,7 +24,7 @@ with open("./decompiler/config/all-types.gc") as f:
           else:
             new_file.append("  :heap-base #x{}\n".format(heap_base_amount.lstrip("0")))
     new_file.append(line)
-      
+
 os.remove("./decompiler/config/all-types.gc")
 with open("./decompiler/config/all-types.gc", "w") as f:
   f.writelines(new_file)

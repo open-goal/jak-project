@@ -1047,7 +1047,23 @@ std::string EnumType::diff_impl(const Type& other_) const {
   }
 
   if (m_entries != other.m_entries) {
-    result += "Entries are different.\n";
+    result += "Entries are different:\n";
+    for (auto& ours : m_entries) {
+      auto theirs = other.m_entries.find(ours.first);
+      if (theirs == other.m_entries.end()) {
+        result += fmt::format("  {} is in one, but not the other.\n", ours.first);
+      } else if (ours.second != theirs->second) {
+        result += fmt::format("  {} is defined differently: {} vs {}\n", ours.first, ours.second,
+                              theirs->second);
+      }
+    }
+
+    for (auto& theirs : other.m_entries) {
+      auto ours = m_entries.find(theirs.first);
+      if (ours == m_entries.end()) {
+        result += fmt::format("  {} is in one, but not the other.\n", theirs.first);
+      }
+    }
   }
 
   return result;

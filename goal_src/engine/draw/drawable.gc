@@ -5,3 +5,506 @@
 ;; name in dgo: drawable
 ;; dgos: GAME, ENGINE
 
+(defun debug-init-buffer ((arg0 bucket-id) (arg1 gs-zbuf) (arg2 gs-test))
+  "Initialize a bucket for debug draw with the given zbuf and test settings"
+  (let* ((t0-0 (-> *display* frames (-> *display* on-screen) frame global-buf))
+         (v1-3 (-> t0-0 base))
+         )
+    (let* ((a3-3 t0-0)
+           (t1-0 (the-as object (-> a3-3 base)))
+           )
+      (set! (-> (the-as dma-packet t1-0) dma) (new 'static 'dma-tag :qwc #x3 :id (dma-tag-id cnt)))
+      (set! (-> (the-as dma-packet t1-0) vif0) (new 'static 'vif-tag))
+      (set! (-> (the-as dma-packet t1-0) vif1) (new 'static 'vif-tag :imm #x3 :cmd (vif-cmd direct) :msk #x1))
+      (set! (-> a3-3 base) (&+ (the-as pointer t1-0) 16))
+      )
+    (let* ((a3-4 t0-0)
+           (t1-2 (the-as object (-> a3-4 base)))
+           )
+      (set! (-> (the-as gs-gif-tag t1-2) tag)
+       (new 'static 'gif-tag64 :nloop #x1 :eop #x1 :nreg #x2)
+       )
+      (set! (-> (the-as gs-gif-tag t1-2) regs)
+       (new 'static 'gif-tag-regs
+            :regs0 (gif-reg-id a+d)
+            :regs1 (gif-reg-id a+d)
+            :regs2 (gif-reg-id a+d)
+            :regs3 (gif-reg-id a+d)
+            :regs4 (gif-reg-id a+d)
+            :regs5 (gif-reg-id a+d)
+            :regs6 (gif-reg-id a+d)
+            :regs7 (gif-reg-id a+d)
+            :regs8 (gif-reg-id a+d)
+            :regs9 (gif-reg-id a+d)
+            :regs10 (gif-reg-id a+d)
+            :regs11 (gif-reg-id a+d)
+            :regs12 (gif-reg-id a+d)
+            :regs13 (gif-reg-id a+d)
+            :regs14 (gif-reg-id a+d)
+            :regs15 (gif-reg-id a+d)
+            )
+       )
+      (set! (-> a3-4 base) (&+ (the-as pointer t1-2) 16))
+      )
+    (let* ((a3-5 t0-0)
+           (t1-4 (-> a3-5 base))
+           )
+      (set! (-> (the-as (pointer gs-zbuf) t1-4) 0) arg1)
+      (set! (-> (the-as (pointer gs-reg64) t1-4) 1) (gs-reg64 zbuf-1))
+      (set! (-> (the-as (pointer gs-test) t1-4) 2) arg2)
+      (set! (-> (the-as (pointer gs-reg64) t1-4) 3) (gs-reg64 test-1))
+      (set! (-> a3-5 base) (&+ t1-4 32))
+      )
+    (let ((a3-6 (-> t0-0 base)))
+      (let ((a1-4 (the-as object (-> t0-0 base))))
+        (set! (-> (the-as dma-packet a1-4) dma) (new 'static 'dma-tag :id (dma-tag-id next)))
+        (set! (-> (the-as dma-packet a1-4) vif0) (new 'static 'vif-tag))
+        (set! (-> (the-as dma-packet a1-4) vif1) (new 'static 'vif-tag))
+        (set! (-> t0-0 base) (&+ (the-as pointer a1-4) 16))
+        )
+      (dma-bucket-insert-tag
+       (-> *display* frames (-> *display* on-screen) frame bucket-group)
+       arg0
+       v1-3
+       (the-as (pointer dma-tag) a3-6)
+       )
+      )
+    )
+  (none)
+  )
+
+(define *screen-shot* #f)
+(defun display-frame-start ((disp display) (new-frame-idx int) (odd-even int))
+  "Set up a new frame. Call this before drawing anything.
+   new-frame-idx is the display frame that will be set up.
+   odd-even is the odd-even of the new frame"
+   
+
+  ;; due to a HW bug in the PS2, you must set this.
+  ;;(set! (-> (the-as vif-bank #x10003c00) err me0) 1)
+
+  ;; figure out how fast we're going compared to the desired.
+  ;; larger = slower than we should.
+  ;; due to vsync, we should never go too fast.
+  (let ((time-ratio (the float
+                         (+ (/ (timer-count (the-as timer-bank #x10000800)) (the-as uint *ticks-per-frame*))
+                            1 ;; so we round up.
+                            )
+                         )
+
+          )
+        )
+
+    (let ((float-time-ratio (/ (the float (timer-count (the-as timer-bank #x10000800))) (the float *ticks-per-frame*))))
+      ;; on the PS2, if you have > 1/60 seconds between frames, it means you missed a vsync.
+      ;; this doesn't seem to be the case on my machine. It appears that glfwSwapBuffers sometimes returns ~1 ms early,
+      ;; making the next frame ~1 ms too long.
+
+      ;; to work around with, we internally run the game at 60 fps if it appears to be slightly too slow.
+      ;; if we actually do miss a frame, the time ratio will be around 2.
+
+      (#when PC_PORT
+        (if (< float-time-ratio 1.3)
+            (set! time-ratio 1.0)
+            )
+        #|
+        (if (> time-ratio 1.)
+            (format #t "LAG ~f frames~%" (- time-ratio 1.))
+            )
+        |#
+        )
+      )
+
+
+    ;; inform display system of our speed. This will adjust the scaling used in all physics calculations
+    (set-time-ratios *display* time-ratio)
+
+    ;; set our "old" counters.  In the event of a game load/save, these will not jump
+    (set! (-> disp old-base-frame-counter) (-> disp base-frame-counter))
+    (set! (-> disp old-game-frame-counter) (-> disp game-frame-counter))
+    (set! (-> disp old-real-frame-counter) (-> disp real-frame-counter))
+    (set! (-> disp old-integral-frame-counter) (-> disp integral-frame-counter))
+    (set! (-> disp old-real-integral-frame-counter) (-> disp real-integral-frame-counter))
+    (set! (-> disp old-part-frame-counter) (-> disp part-frame-counter))
+    (set! (-> disp old-actual-frame-counter) (-> disp actual-frame-counter))
+    (set! (-> disp old-real-actual-frame-counter) (-> disp real-actual-frame-counter))
+
+    ;; get the increment in seconds unit.
+    (let ((scaled-seconds (* (the int time-ratio) (the int (-> disp time-factor)))))
+      ;; tell the sparticle system
+      (set-particle-frame-time (min 12 scaled-seconds))
+
+      ;; the "not real" frame counters only count when unpaused
+      (when (not (paused?))
+        ;; these count by scaled time
+        (+! (-> disp base-frame-counter) scaled-seconds)
+        (+! (-> disp part-frame-counter) scaled-seconds)
+        ;; this counts actual frames, not seconds. Will count 2 frames if we lag
+        (+! (-> disp integral-frame-counter) (the int time-ratio))
+        ;; this counts actual frames, not doubling for lag. Will count 1 per frame drawn
+        (+! (-> disp actual-frame-counter) 1)
+        ;; game counter will count seconds that we're not in a movie
+        (if (not (movie?))
+            (+! (-> disp game-frame-counter) scaled-seconds)
+            )
+        )
+      ;; real counts like base, but increments when paused
+      (+! (-> disp real-frame-counter) scaled-seconds)
+      )
+    ;; actual frames, lag counts as 2x
+    (+! (-> disp real-integral-frame-counter) (the int time-ratio))
+    )
+  ;; actual real frames (for real)
+  (+! (-> disp real-actual-frame-counter) 1)
+
+  ;; reset the timer.
+  (timer-reset (the-as timer-bank #x10000800))
+
+  ;; take a screenshot, if desired
+  (when *screen-shot*
+    (if *debug-segment*
+        (store-image odd-even)
+        )
+    (set! *screen-shot* #f)
+    )
+
+  ;; set up the frame object.
+  (let ((new-frame (-> disp frames new-frame-idx frame)))
+    ;; profile setup
+    (when *debug-segment*
+      (dotimes (s2-0 2)
+        (reset (-> new-frame profile-bar s2-0))
+        )
+      )
+    ;; right now, the old frame is being rendered.
+    ;; if we set *sync-dma*, we will wait here until it finishes rendering.
+    (if *sync-dma*
+        (sync-path 0 0)
+        )
+
+    ;; reset the global dma buffer.
+    (let ((v1-56 (-> new-frame global-buf)))
+      (set! (-> v1-56 base) (-> v1-56 data))
+      (set! (-> v1-56 end) (&-> v1-56 data-buffer (-> v1-56 allocated-length)))
+      )
+
+    ;; reset the debug dma buffer
+    (when *debug-segment*
+      (let ((v1-59 (-> new-frame debug-buf)))
+        (set! (-> v1-59 base) (-> v1-59 data))
+        (set! (-> v1-59 end) (&-> v1-59 data-buffer (-> v1-59 allocated-length)))
+        )
+      )
+
+    ;; reset the calc buffer. This holds the buckets themselves and what is sent
+    ;; to actually draw the frame.
+    (let ((v1-60 (-> new-frame calc-buf)))
+      (set! (-> v1-60 base) (-> v1-60 data))
+      (set! (-> v1-60 end) (&-> v1-60 data-buffer (-> v1-60 allocated-length)))
+      )
+
+    ;; the default buffer holds a DMA chain to fully reset the GS.
+    ;; reinitialize it, just to be safe
+    (default-buffer-init *default-regs-buffer*)
+    ;; and add it to the very beginning of the calc buf
+    (let* ((v1-61 (-> new-frame calc-buf))
+           (a2-1 *default-regs-buffer*)
+           (a0-28 (the-as object (-> v1-61 base)))
+           )
+      (set! (-> (the-as dma-packet a0-28) dma)
+       (new 'static 'dma-tag
+            :id (dma-tag-id call)
+            :addr (the-as int (-> a2-1 data))
+            )
+       )
+      (set! (-> (the-as dma-packet a0-28) vif0) (new 'static 'vif-tag))
+      (set! (-> (the-as dma-packet a0-28) vif1) (new 'static 'vif-tag))
+      (set! (-> v1-61 base) (&+ (the-as pointer a0-28) 16))
+      )
+
+    ;; could be used for debugging or something, but is set to nothing.
+    (*pre-draw-hook* (-> new-frame calc-buf))
+
+    ;; reset debugging stuff
+    (when (not (paused?))
+      (clear *stdcon1*)
+      (debug-reset-buffers)
+      )
+
+    ;; add the buckets
+    (set! (-> new-frame bucket-group)
+     (the-as dma-bucket (dma-buffer-add-buckets (-> new-frame calc-buf) 69))
+     )
+    )
+
+  ;; initialize the debug bucket
+  (debug-init-buffer
+   (bucket-id debug-draw1)
+   (new 'static 'gs-zbuf :zbp #x1c0 :psm (gs-psm ct24) :zmsk #x1)
+   (new 'static 'gs-test :zte #x1 :ztst (gs-ztest always))
+   )
+
+  ;; setup our drawing offset for even/odd offset
+  (set-draw-env-offset (-> disp frames new-frame-idx draw) 2048 2048 odd-even)
+
+  ;; read controllers
+  (service-cpads)
+  ;; now we are ready to run a frame!
+  (none)
+  )
+
+(defun display-frame-finish ((disp display))
+  "End drawing. Call this after drawing everything.
+   Note that this does not start a DMA transfer, just finishes up the buffered data for
+   the frame."
+  (let* ((this-frame (-> disp frames (-> disp on-screen) frame))
+         (this-calc-buf (-> this-frame calc-buf))
+         )
+    ;; post draw stuff
+    (tie-init-buffers this-calc-buf)
+    (merc-vu1-init-buffers)
+    (*post-draw-hook* (-> disp frames (-> disp on-screen) frame calc-buf))
+
+    ;; iterate through all buckets and append a final GS state reset.
+    (dotimes (bucket-idx 69)
+      (let* ((this-global-buf (-> this-frame global-buf))
+             (a2-0 (-> this-global-buf base))
+             )
+        ;; clear GS state after the bucket
+        (let* ((a0-3 this-global-buf)
+               (t0-0 *default-regs-buffer*)
+               (a1-0 (the-as object (-> a0-3 base)))
+               )
+          (set! (-> (the-as dma-packet a1-0) dma)
+           (new 'static 'dma-tag
+                :id (dma-tag-id call)
+                :addr (the-as int (-> t0-0 data))
+                )
+           )
+          (set! (-> (the-as dma-packet a1-0) vif0) (new 'static 'vif-tag :irq #x1))
+          (set! (-> (the-as dma-packet a1-0) vif1) (new 'static 'vif-tag))
+          (set! (-> a0-3 base) (&+ (the-as pointer a1-0) 16))
+          )
+        (let ((a3-4 (-> this-global-buf base)))
+          (let ((a0-4 (the-as object (-> this-global-buf base))))
+            (set!
+             (-> (the-as dma-packet a0-4) dma)
+             (new 'static 'dma-tag :id (dma-tag-id next))
+             )
+            (set! (-> (the-as dma-packet a0-4) vif0) (new 'static 'vif-tag))
+            (set! (-> (the-as dma-packet a0-4) vif1) (new 'static 'vif-tag))
+            (set! (-> this-global-buf base) (&+ (the-as pointer a0-4) 16))
+            )
+          (dma-bucket-insert-tag
+           (-> *display* frames (-> *display* on-screen) frame bucket-group)
+           (the-as bucket-id bucket-idx)
+           a2-0
+           (the-as (pointer dma-tag) a3-4)
+           )
+          )
+        )
+      )
+    ;; append a FLUSHE and IRQ to end the calc-buf
+    (let* ((v1-14 this-calc-buf)
+           (a0-10 (the-as object (-> v1-14 base)))
+           )
+      (set! (-> (the-as dma-packet a0-10) dma)
+       (new 'static 'dma-tag :id (dma-tag-id cnt))
+       )
+      (set! (-> (the-as dma-packet a0-10) vif0)
+       (new 'static 'vif-tag :cmd (vif-cmd flushe) :msk #x1)
+       )
+      (set! (-> (the-as dma-packet a0-10) vif1) (new 'static 'vif-tag :irq #x1))
+      (set! (-> v1-14 base) (&+ (the-as pointer a0-10) 16))
+      )
+    ;; patch the buckets. Now sending the calc buf will send everything!
+    (dma-buffer-patch-buckets (-> this-frame bucket-group) 69)
+    ;; append the final END.
+    (let* ((v1-15 this-calc-buf)
+           (a0-13 (the-as object (-> v1-15 base)))
+           )
+      (set! (-> (the-as dma-packet a0-13) dma)
+       (new 'static 'dma-tag :id (dma-tag-id end))
+       )
+      (set! (-> (the-as (pointer uint64) a0-13) 1) (the-as uint 0))
+      (set! (-> v1-15 base) (&+ (the-as pointer a0-13) 16))
+      )
+    ;; final cache flush after finishing DMA chains
+    (flush-cache 0)
+    ;; print debug stats.
+    (when (not (paused?))
+      (when *stats-buffer*
+        (let* ((global-buf (-> this-frame global-buf))
+               (calc-current (-> this-calc-buf base))
+               (calc-start (-> this-calc-buf data))
+               (global-current (-> global-buf base))
+               (global-start (-> global-buf data))
+               (global-end (-> global-buf end))
+               )
+          (format *stdcon* "~0kvu1 buf = ~d~%" (&- calc-current (the-as uint calc-start)))
+          (format *stdcon* "~0kglobal buf = ~d~%" (&- global-current (the-as uint global-start)))
+          (format *stdcon* "~0kbase = #x~x~%" global-current)
+          (format *stdcon* "~0kend = #x~x~%" global-end)
+          )
+        )
+      )
+    )
+  disp
+  )
+
+(defun determine-pause-mode ()
+  "Update pause system"
+
+  ;; debug frame advance
+  (when (and *debug-pause* (= *master-mode* 'pause))
+    (logclear! (-> *cpad-list* cpads 0 button0-abs 0) (pad-buttons start r2))
+    (logclear! (-> *cpad-list* cpads 0 button0-rel 0) (pad-buttons start r2))
+    (while (and (= *master-mode* 'pause)
+                (zero? (logand (-> *cpad-list* cpads 0 button0-rel 0) (pad-buttons start r2)))
+                )
+      (sync-path 0 0)
+      (service-cpads)
+      )
+    (toggle-pause)
+    )
+  (when (or (not *progress-process*) (dummy-32 (-> *progress-process* 0)))
+    (if (or (logtest? (-> *cpad-list* cpads 0 button0-rel 0) (pad-buttons select r3 start)) ;; push pause
+            (and ;; controller lost
+             (logtest? (-> *cpad-list* cpads 0 valid) 128)
+             (= *master-mode* 'game)
+             (>= (the-as int (-> *display* base-frame-counter)) (the-as int (-> *game-info* blackout-time)))
+             ;; this is a hack. this is initialized to #x493e0. It prevents controller-loss pause from
+             ;; triggering in the first few seconds of gameplay.
+             (< #x49764 (the-as int (-> *display* real-frame-counter)))
+             )
+            (and (logtest? (-> *cpad-list* cpads 0 button0-rel 0) (pad-buttons r2)) ;; debug press
+                 (paused?)
+                 )
+            *pause-lock*
+            )
+        (toggle-pause)
+        )
+    )
+  ;; if we toggled out of pause, kill it.
+  (if (!= *master-mode* 'progress)
+      (deactivate-progress)
+      )
+  0
+  )
+
+(define *surrogate-dma-buffer* (the dma-buffer #f))
+
+(defmacro cpu-usage ()
+  "print out the cpu usage of the most recently rendered frame"
+  `(format #t "CPU: ~,,2f%~%frame-time: ~,,1fms~%"
+           (* 100. (/ (the float (current-display-frame run-time)) *ticks-per-frame*))
+           (* 1000. (/ 1. 60.) (/ (the float (current-display-frame run-time)) *ticks-per-frame*))
+           )
+  )
+
+(#when PC_PORT
+  (define *disasm-count* 0)
+
+  (defmacro disasm-next-dma (&key (count 1))
+    `(set! *disasm-count* ,count)
+    )
+  )
+
+(defun display-sync ((disp display))
+  "Switch frames! This assumes that you have called display-frame-finish on the current frame.
+   It will:
+    - wait for the current rendering frame to stop.
+    - do a vsync to get that frame on screen (possibly waiting up to 1 frame, if the prev frame
+                                              did not finish in time. This is why we drop to 30fps
+                                              as soon as we don't fit into 60 fps)
+    - start rendering the current frame
+    - initialize DMA buffers for the next frame drawing, advance to next frame"
+
+  ;; wait for rendering to finish.
+  (sync-path 0 0)
+  ;; remember when.
+  (set! (-> disp frames (-> disp on-screen) frame run-time)
+        (timer-count (the-as timer-bank #x10000800))
+        )
+
+  ;; now, do a vsync. If we finished rendering in time, this will just wait until the next.
+  (let ((frame-idx (-> disp on-screen))
+        (syncv-result (syncv 0))
+        )
+
+    ;; starting here, we are in a new frame
+    ;; syncv returns odd/even (if you miss multiple syncv's due to the sync-path above taking many
+    ;; frames, this will get us back on the correct field)
+    (set! *oddeven* syncv-result)
+
+    ;; if we need to change video modes:
+    (when (-> *video-parms* set-video-mode)
+      ;; to GS
+      (set-display2 *display* 0 512 (-> *video-parms* screen-sy) 2 49)
+      (set! (-> *video-parms* set-video-mode) #f)
+      ;; reset video mode is for changing ntsc/pal
+      (when (-> *video-parms* reset-video-mode)
+        (set! (-> *video-parms* reset-video-mode) #f)
+        ;; need to call reset-graph with some magic number
+        ;; also stash this parameter so that if things go really wrong and our DMA transfer
+        ;; times out, we can reset-graph to the appropriate video mode
+        (if (= (-> *setting-control* current video-mode) 'ntsc)
+            (set! *video-reset-parm* 2)
+            (set! *video-reset-parm* 3)
+            )
+        (reset-graph 0 1 *video-reset-parm* 1)
+        )
+      )
+
+    ;; setup the env (Sony functions)
+    (put-display-env (-> disp frames frame-idx display))
+    (put-draw-env (the-as (pointer gif-tag) (-> disp frames frame-idx gif)))
+
+    ;; begin rendering the next frame
+    (let ((dma-buf-to-send (-> disp frames frame-idx frame calc-buf)))
+      (when (nonzero? (dma-buffer-length dma-buf-to-send))
+        ;; was dma-send-chain originally.
+        (#when PC_PORT
+          (when (> *disasm-count* 0)
+            (disasm-dma-list (the-as dma-packet (-> dma-buf-to-send data-buffer)) 'details #t #t -1)
+            (-! *disasm-count* 1)
+            )
+          )
+        ;;(cpu-usage)
+          (__send-gfx-dma-chain (the-as dma-bank-source #x10009000)
+                                 (cond
+                                   ;; some buffer for debugging, not used
+                                   (*surrogate-dma-buffer*
+                                    *surrogate-dma-buffer*
+                                    )
+                                   (else
+                                    (-> dma-buf-to-send data-buffer)
+                                    )
+                                   )
+                                 )
+          )
+      )
+
+    (determine-pause-mode)
+
+    ;; update display frame
+    (let ((next-frame (+ frame-idx 1)))
+      (if (< 1 next-frame)
+          (set! next-frame 0)
+          )
+      (set! (-> disp last-screen) (-> disp on-screen))
+      (set! (-> disp on-screen) next-frame)
+
+      ;; initialize next frame
+      (display-frame-start disp next-frame syncv-result)
+      )
+    )
+  (none)
+  )
+
+(defun swap-display ((disp display))
+  "Swap frames! Synchronizes with rendering and vsync, kicks off the next render, and initializes the
+   to-draw frame"
+  (display-frame-finish disp)
+  (display-sync disp) ;; also starts next
+  )
