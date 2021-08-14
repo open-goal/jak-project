@@ -107,7 +107,9 @@ bool Debugger::attach_and_break() {
       m_continue_info.subtract_1 = false;
 
       // this may fail if you crash at exactly the wrong time. todo - remove?
-      assert(info.kind == xdbg::SignalInfo::BREAK);
+      if (info.kind != xdbg::SignalInfo::BREAK) {
+        fmt::print("[Debugger] got signal {} when expecting break.\n", (int)info.kind);
+      }
 
       // open the memory of the process
       if (!xdbg::open_memory(m_debug_context.tid, &m_memory_handle)) {

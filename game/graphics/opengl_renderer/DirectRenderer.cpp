@@ -540,7 +540,7 @@ void DirectRenderer::handle_xyzf2_packed(const u8* data, SharedRenderState* rend
   u8 f = (upper >> 36);
   bool adc = upper & (1ull << 47);
   assert(!adc);
-  assert(!f);
+  //  assert(!f);
   handle_xyzf2_common(x, y, z, f, render_state);
 }
 
@@ -619,7 +619,8 @@ void DirectRenderer::handle_xyzf2_common(u32 x,
   if (m_prim_buffer.is_full()) {
     flush_pending(render_state);
   }
-  assert(f == 0);
+  //  assert(f == 0);
+
   m_prim_building.building_st.at(m_prim_building.building_idx) = m_prim_building.st_reg;
   m_prim_building.building_rgba.at(m_prim_building.building_idx) = m_prim_building.rgba_reg;
   m_prim_building.building_vert.at(m_prim_building.building_idx) = {x << 16, y << 16, z};
@@ -669,39 +670,44 @@ void DirectRenderer::handle_xyzf2_common(u32 x,
       }
 
     } break;
-      //    case GsPrim::Kind::LINE: {
-      //      if (m_prim_building.building_idx == 1) {
-      //        math::Vector<double, 3> pt0 = m_prim_building.building_vert[0].cast<double>();
-      //        math::Vector<double, 3> pt1 = m_prim_building.building_vert[1].cast<double>();
-      //        auto normal = (pt1 - pt0).normalized().cross({0, 0, 1});
-      //
-      //        double line_width = (1 << 28);
-      //        fmt::print("Line:\n ");
-      //        fmt::print(" {} {} {} {}\n", m_prim_building.building_vert[0].x(),
-      //                   m_prim_building.building_vert[0].y(),
-      //                   m_prim_building.building_vert[1].x(),
-      //                   m_prim_building.building_vert[1].y());
-      //        //        debug_print_vtx(m_prim_building.building_vert[0]);
-      //        //        debug_print_vtx(m_prim_building.building_vert[1]);
-      //
-      //        math::Vector<double, 3> a = pt0 + normal * line_width;
-      //        math::Vector<double, 3> b = pt1 + normal * line_width;
-      //        math::Vector<double, 3> c = pt0 - normal * line_width;
-      //        math::Vector<double, 3> d = pt1 - normal * line_width;
-      //
-      //        // ACB:
-      //        m_prim_buffer.push(m_prim_building.building_rgba[0], a.cast<u32>(), {});
-      //        m_prim_buffer.push(m_prim_building.building_rgba[0], c.cast<u32>(), {});
-      //        m_prim_buffer.push(m_prim_building.building_rgba[1], b.cast<u32>(), {});
-      //        // b c d
-      //        m_prim_buffer.push(m_prim_building.building_rgba[1], b.cast<u32>(), {});
-      //        m_prim_buffer.push(m_prim_building.building_rgba[0], c.cast<u32>(), {});
-      //        m_prim_buffer.push(m_prim_building.building_rgba[1], d.cast<u32>(), {});
-      //        //
-      //
-      //        m_prim_building.building_idx = 0;
-      //      }
-      //    } break;
+
+    case GsPrim::Kind::TRI:
+      if (m_prim_building.building_idx == 3) {
+        m_prim_building.building_idx = 0;
+        for (int i = 0; i < 3; i++) {
+          m_prim_buffer.push(m_prim_building.building_rgba[i], m_prim_building.building_vert[i],
+                             m_prim_building.building_st[i]);
+        }
+      }
+      break;
+    case GsPrim::Kind::LINE: {
+      if (m_prim_building.building_idx == 2) {
+        math::Vector<double, 3> pt0 = m_prim_building.building_vert[0].cast<double>();
+        math::Vector<double, 3> pt1 = m_prim_building.building_vert[1].cast<double>();
+        auto normal = (pt1 - pt0).normalized().cross({0, 0, 1});
+
+        double line_width = (1 << 19);
+        //        debug_print_vtx(m_prim_building.building_vert[0]);
+        //        debug_print_vtx(m_prim_building.building_vert[1]);
+
+        math::Vector<double, 3> a = pt0 + normal * line_width;
+        math::Vector<double, 3> b = pt1 + normal * line_width;
+        math::Vector<double, 3> c = pt0 - normal * line_width;
+        math::Vector<double, 3> d = pt1 - normal * line_width;
+
+        // ACB:
+        m_prim_buffer.push(m_prim_building.building_rgba[0], a.cast<u32>(), {});
+        m_prim_buffer.push(m_prim_building.building_rgba[0], c.cast<u32>(), {});
+        m_prim_buffer.push(m_prim_building.building_rgba[1], b.cast<u32>(), {});
+        // b c d
+        m_prim_buffer.push(m_prim_building.building_rgba[1], b.cast<u32>(), {});
+        m_prim_buffer.push(m_prim_building.building_rgba[0], c.cast<u32>(), {});
+        m_prim_buffer.push(m_prim_building.building_rgba[1], d.cast<u32>(), {});
+        //
+
+        m_prim_building.building_idx = 0;
+      }
+    } break;
     default:
       fmt::print("prim type {} is unsupported.\n", (int)m_prim_building.kind);
       assert(false);

@@ -70,7 +70,7 @@ void OpenGLRenderer::init_bucket_renderers() {
  */
 void OpenGLRenderer::render(DmaFollower dma, int window_width_px, int window_height_px) {
   setup_frame(window_width_px, window_height_px);
-  draw_test_triangle();
+  // draw_test_triangle();
   // render the buckets!
   dispatch_buckets(dma);
 }
