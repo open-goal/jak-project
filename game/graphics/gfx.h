@@ -7,8 +7,10 @@
 
 #include <functional>
 #include <memory>
+
 #include "common/common_types.h"
 #include "game/kernel/kboot.h"
+#include "game/system/newpad.h"
 
 // forward declarations
 struct GfxSettings;
@@ -39,12 +41,15 @@ struct GfxRendererModule {
 struct GfxSettings {
   // current version of the settings. this should be set up so that newer versions are always higher
   // than older versions
-  static constexpr u64 CURRENT_VERSION = 0x0000'0000'00001'0001;
+  static constexpr u64 CURRENT_VERSION = 0x0000'0000'0002'0001;
 
   u64 version; // the version of this settings struct
   const GfxRendererModule* renderer;  // which rendering pipeline to use.
   int vsync;  // (temp) number of screen update per frame
   bool debug; // graphics debugging
+
+  Pad::MappingInfo pad_mapping_info; // button mapping
+  Pad::MappingInfo pad_mapping_info_backup; // button mapping backup (see newpad.h)
 };
 
 namespace Gfx {
@@ -63,5 +68,7 @@ u32 sync_path();
 void send_chain(const void* data, u32 offset);
 void texture_upload_now(const u8* tpage, int mode, u32 s7_ptr);
 void texture_relocate(u32 destination, u32 source, u32 format);
+
+int PadIsPressed(Pad::Button button, int port);
 
 }  // namespace Gfx

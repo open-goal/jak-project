@@ -6,11 +6,12 @@
 #include <functional>
 
 #include "gfx.h"
+#include "display.h"
+#include "pipelines/opengl.h"
+
 #include "common/log/log.h"
 #include "game/runtime.h"
-#include "display.h"
-
-#include "pipelines/opengl.h"
+#include "game/system/newpad.h"
 
 namespace {
 
@@ -29,7 +30,14 @@ void InitSettings(GfxSettings& settings) {
   // debug for now
   settings.debug = true;
 
-  return;
+  // we're not setting controller info
+  settings.pad_mapping_info.input_mode = false;
+  // use buffered input mode
+  settings.pad_mapping_info.buffer_mode = true;
+  // debug input settings
+  settings.pad_mapping_info.debug = true;
+  // use a default mapping
+  Pad::DefaultMapping(settings.pad_mapping_info);
 }
 
 }  // namespace
@@ -57,6 +65,8 @@ u32 Init() {
   lg::info("GFX Init");
   // initialize settings
   InitSettings(g_settings);
+  // guarantee we have no keys detected by pad
+  Pad::ForceClearKeys();
 
   if (g_settings.renderer->init(g_settings)) {
     lg::error("Gfx::Init error");
@@ -75,6 +85,9 @@ u32 Init() {
 void Loop(std::function<bool()> f) {
   lg::info("GFX Loop");
   while (f()) {
+    // clean the inputs
+    Pad::ClearKeys();
+
     // check if we have a display
     if (Display::GetMainDisplay()) {
       // lg::debug("run display");
@@ -114,6 +127,10 @@ void texture_relocate(u32 destination, u32 source, u32 format) {
   if (g_settings.renderer) {
     g_settings.renderer->texture_relocate(destination, source, format);
   }
+}
+
+int PadIsPressed(Pad::Button button, int port) {
+  return Pad::IsPressed(g_settings.pad_mapping_info, button, port);
 }
 
 }  // namespace Gfx

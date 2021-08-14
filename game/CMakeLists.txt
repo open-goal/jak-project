@@ -34,6 +34,7 @@ set(RUNTIME_SOURCE
         system/IOP_Kernel.cpp
         system/iop_thread.cpp
         system/Deci2Server.cpp
+        system/newpad.cpp
         sce/libcdvd_ee.cpp
         sce/libscf.cpp
         sce/libdma.cpp

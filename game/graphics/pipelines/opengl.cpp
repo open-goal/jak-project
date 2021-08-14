@@ -14,6 +14,7 @@
 #include "game/graphics/opengl_renderer/OpenGLRenderer.h"
 #include "game/graphics/texture/TexturePool.h"
 #include "game/graphics/dma/dma_copy.h"
+#include "game/system/newpad.h"
 #include "common/log/log.h"
 #include "common/goal_constants.h"
 #include "game/runtime.h"
@@ -50,8 +51,10 @@ void SetDisplayCallbacks(GLFWwindow* d) {
   glfwSetKeyCallback(d, [](GLFWwindow* /*window*/, int key, int scancode, int action, int mods) {
     if (action == GlfwKeyAction::Press) {
       lg::debug("KEY PRESS:   key: {} scancode: {} mods: {:X}", key, scancode, mods);
+      Pad::OnKeyPress(key);
     } else if (action == GlfwKeyAction::Release) {
       lg::debug("KEY RELEASE: key: {} scancode: {} mods: {:X}", key, scancode, mods);
+      Pad::OnKeyRelease(key);
     }
   });
 }

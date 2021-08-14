@@ -409,27 +409,128 @@ void CacheFlush(void* mem, int size) {
  * Prints an error if it fails to open.
  */
 u64 CPadOpen(u64 cpad_info, s32 pad_number) {
-  auto info = Ptr<CpadInfo>(cpad_info).c();
-  if (info->cpad_file == 0) {
+  auto cpad = Ptr<CPadInfo>(cpad_info).c();
+  if (cpad->cpad_file == 0) {
     // not open, so we will open it
-    info->cpad_file =
+    cpad->cpad_file =
         ee::scePadPortOpen(pad_number, 0, pad_dma_buf + pad_number * SCE_PAD_DMA_BUFFER_SIZE);
-    if (info->cpad_file < 1) {
-      MsgErr("dkernel: !open cpad #%d (%d)\n", pad_number, info->cpad_file);
+    if (cpad->cpad_file < 1) {
+      MsgErr("dkernel: !open cpad #%d (%d)\n", pad_number, cpad->cpad_file);
     }
-    info->new_pad = 1;
-    info->state = 0;
+    cpad->new_pad = 1;
+    cpad->state = 0;
   }
   return cpad_info;
 }
 
 // TODO CPadGetData
-void CPadGetData() {
-  static bool warned = false;
-  if (!warned) {
-    lg::warn("ignoring calls to CPadGetData");
-    warned = true;
+Ptr<CPadInfo> CPadGetData(u64 cpad_info) {
+  auto cpad = Ptr<CPadInfo>(cpad_info).c();
+  auto pad_state = scePadGetState(cpad->number, 0);
+  if (pad_state == scePadStateDiscon) {
+    cpad->state = 0;
   }
+  cpad->valid = pad_state | 0x80;
+  switch (cpad->state) {
+    // case 99: // functional
+    default:  // controller is functioning as normal
+      if (pad_state == scePadStateStable || pad_state == scePadStateFindCTP1) {
+        scePadRead(cpad->number, 0, (u8*)cpad);
+        // ps2 controllers would send an enabled bit if the button was NOT pressed, but we don't do
+        // that here. removed code that flipped the bits.
+
+        if (cpad->change_time != 0) {
+          scePadSetActDirect(cpad->number, 0, cpad->direct);
+        }
+        cpad->valid = pad_state;
+      }
+      break;
+    case 0:  // unavailable
+      if (pad_state == scePadStateStable || pad_state == scePadStateFindCTP1) {
+        auto pad_mode = scePadInfoMode(cpad->number, 0, InfoModeCurID, 0);
+        if (pad_mode != 0) {
+          auto vibration_mode = scePadInfoMode(cpad->number, 0, InfoModeCurExID, 0);
+          if (vibration_mode > 0) {
+            // vibration supported
+            pad_mode = vibration_mode;
+          }
+          if (pad_mode == 4) {
+            // controller mode
+            cpad->state = 40;
+          } else if (pad_mode == 7) {
+            // dualshock mode
+            cpad->state = 70;
+          } else {
+            // who knows mode
+            cpad->state = 90;
+          }
+        }
+      }
+      break;
+    case 40:  // controller mode - check for extra modes
+      cpad->change_time = 0;
+      if (scePadInfoMode(cpad->number, 0, InfoModeIdTable, -1) == 0) {
+        // no controller modes
+        cpad->state = 90;
+        return make_ptr<CPadInfo>(cpad);
+      }
+      cpad->state = 41;
+    case 41:  // controller mode - change to dualshock mode!
+      // try to enter the 2nd controller mode (dualshock for ds2's)
+      if (scePadSetMainMode(cpad->number, 0, 1, 3) == 1) {
+        cpad->state = 42;
+      }
+      break;
+    case 42:  // controller mode change check
+      if (scePadGetReqState(cpad->number, 0) == scePadReqStateFailed) {
+        // failed to change to DS2
+        cpad->state = 41;
+      }
+      if (scePadGetReqState(cpad->number, 0) == scePadReqStateComplete) {
+        // change successful. go back to the beginning.
+        cpad->state = 0;
+      }
+      break;
+    case 70:  // dualshock mode - check vibration
+      // get number of actuators (2 for DS2)
+      if (scePadInfoAct(cpad->number, 0, -1, 0) < 1) {
+        // no actuators means no vibration. skip to end!
+        cpad->change_time = 0;
+        cpad->state = 99;
+      } else {
+        // we have actuators to use.
+        cpad->change_time = 1;  // remember to update vibration.
+        cpad->state = 75;
+      }
+      break;
+    case 75:  // set actuator vib param info
+      if (scePadSetActAlign(cpad->number, 0, cpad->align) != 0) {
+        if (scePadInfoPressMode(cpad->number, 0) == 1) {
+          // pressure buttons supported
+          cpad->state = 76;
+        } else {
+          // no pressure buttons, done with controller setup
+          cpad->state = 99;
+        }
+      }
+      break;
+    case 76:  // enter pressure mode
+      if (scePadEnterPressMode(cpad->number, 0) == 1) {
+        cpad->state = 78;
+      }
+      break;
+    case 78:  // pressure mode request check
+      if (scePadGetReqState(cpad->number, 0) == 1) {
+        cpad->state = 76;
+      }
+      if (scePadGetReqState(cpad->number, 0) == 0) {
+        cpad->state = 99;
+      }
+      break;
+    case 90:
+      break;  // unsupported controller. too bad!
+  }
+  return make_ptr<CPadInfo>(cpad);
 }
 
 // TODO InstallHandler

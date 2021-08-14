@@ -8,9 +8,11 @@
 
 #include "common/log/log.h"
 
-/* ****************************** */
-/* Internal functions  */
-/* ****************************** */
+/*
+********************************
+* Internal functions
+********************************
+*/
 
 namespace {
 
@@ -28,9 +30,11 @@ void set_main_display(std::shared_ptr<GfxDisplay> display) {
 
 }  // namespace
 
-/* ****************************** */
-/* GfxDisplay  */
-/* ****************************** */
+/*
+********************************
+* GfxDisplay
+********************************
+*/
 
 GfxDisplay::GfxDisplay(GLFWwindow* a_window) {
   set_renderer(GfxPipeline::OpenGL);
@@ -81,9 +85,11 @@ void GfxDisplay::render_graphics() {
   m_renderer->render_display(this);
 }
 
-/* ****************************** */
-/* DISPLAY  */
-/* ****************************** */
+/*
+********************************
+* DISPLAY
+********************************
+*/
 
 namespace Display {
 
