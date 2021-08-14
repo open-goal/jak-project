@@ -2944,9 +2944,9 @@
   (when
    (and
     (nonzero? (-> id page))
-    (< (the-as uint (-> id page)) (the-as uint (-> *texture-page-dir* length)))
+    (< (-> id page) (the-as uint (-> *texture-page-dir* length)))
     )
-   (let ((dir-entry (-> *texture-page-dir* entries (the-as uint (-> id page)))))
+   (let ((dir-entry (-> *texture-page-dir* entries (-> id page))))
     (when (not (-> dir-entry page))
      (let ((old-alloc-func (-> *texture-pool* allocate-func)))
       (set! (-> *texture-pool* allocate-func) alloc-func)
@@ -3016,14 +3016,10 @@
    (not
     (or
      (zero? (-> arg0 page))
-     (>=
-      (the-as uint (-> arg0 page))
-      (the-as uint (-> *texture-page-dir* length))
-      )
+     (>= (-> arg0 page) (the-as uint (-> *texture-page-dir* length)))
      )
     )
-   (let
-    ((dir-entry (-> *texture-page-dir* entries (the-as uint (-> arg0 page)))))
+   (let ((dir-entry (-> *texture-page-dir* entries (-> arg0 page))))
     (if (not (-> dir-entry link))
      (set!
       (-> dir-entry link)
@@ -3066,12 +3062,12 @@
        (let ((link-slot (&-> link-arr 0))
              (shader (the-as adgif-shader (* (-> link-arr 0 shader) 16)))
              )
-        (while (nonzero? (the-as int shader))
+        (while (nonzero? (the-as uint shader))
          (b!
-          (< (the-as int (- (the-as int shader) (the-as int mem-start))) 0)
+          (< (the-as int (- (the-as uint shader) (the-as uint mem-start))) 0)
           cfg-7
           :delay
-          (set! dist-past-end (- (the-as int shader) mem-end))
+          (set! dist-past-end (- (the-as uint shader) mem-end))
           )
          (b! (>= (the-as int dist-past-end) 0) cfg-7 :delay (nop!))
          (let ((t4-2 (-> shader next)))
@@ -3352,16 +3348,9 @@
     (when
      (and
       (nonzero? (-> tex-id page))
-      (<
-       (the-as uint (-> tex-id page))
-       (the-as uint (-> *texture-page-dir* length))
-       )
+      (< (-> tex-id page) (the-as uint (-> *texture-page-dir* length)))
       )
-     (let
-      ((dir-entry
-        (-> *texture-page-dir* entries (the-as uint (-> tex-id page)))
-        )
-       )
+     (let ((dir-entry (-> *texture-page-dir* entries (-> tex-id page))))
       (when
        (and
         (< (-> tex-id index) (the-as uint (-> dir-entry length)))
@@ -3402,12 +3391,9 @@
     (when
      (and
       (nonzero? (-> v1-4 page))
-      (<
-       (the-as uint (-> v1-4 page))
-       (the-as uint (-> *texture-page-dir* length))
-       )
+      (< (-> v1-4 page) (the-as uint (-> *texture-page-dir* length)))
       )
-     (let ((a1-7 (-> *texture-page-dir* entries (the-as uint (-> v1-4 page)))))
+     (let ((a1-7 (-> *texture-page-dir* entries (-> v1-4 page))))
       (when
        (and (< (-> v1-4 index) (the-as uint (-> a1-7 length))) (-> a1-7 link))
        (set! (-> arg0 next shader) (-> a1-7 link next (-> v1-4 index) shader))
@@ -3539,7 +3525,7 @@
             (the-as object (* (-> entry-link next entry-list-length shader) 16))
             )
            )
-          (while (nonzero? (the-as int v1-40))
+          (while (nonzero? (the-as uint v1-40))
            (nop!)
            (+! a3-7 1)
            (set! v1-40 (* (-> (the-as adgif-shader v1-40) next shader) 16))

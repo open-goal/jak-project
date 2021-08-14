@@ -14,38 +14,38 @@
   "Debugging function to set the camera's position and orientation"
   ;; update to compute the perspective matrix.
   (update-math-camera
-   *math-camera*
-   (-> *setting-control* current video-mode)
-   (-> *setting-control* current aspect-ratio)
-   )
-
+    *math-camera*
+    (-> *setting-control* current video-mode)
+    (-> *setting-control* current aspect-ratio)
+    )
+  
   ;; copy the input rotation
   (matrix-copy! (-> *math-camera* inv-camera-rot) inv-rot)
   ;; inverse of rotation matrix matrix is its transpose
   (matrix-transpose! (-> *math-camera* camera-rot) (-> *math-camera* inv-camera-rot))
-
+  
   ;; fake some value here
   (set! (-> *math-camera* fov-correction-factor) 1.0)
-
+  
   ;; do the math
   (set! (-> *math-camera* trans quad) (-> location quad))
-    (let ((cam-temp (-> *math-camera* camera-temp))
+  (let ((cam-temp (-> *math-camera* camera-temp))
         (cam-rot (-> *math-camera* camera-rot))
         (inv-cam-rot (-> *math-camera* inv-camera-rot))
         (cam-trans (-> *math-camera* trans))
         )
-   (let ((rotated-trans (new-stack-vector0)))
-    (set! (-> rotated-trans x) (- (-> cam-trans x)))
-    (set! (-> rotated-trans y) (- (-> cam-trans y)))
-    (set! (-> rotated-trans z) (- (-> cam-trans z)))
-    (set! (-> rotated-trans w) 1.0)
-    (vector-matrix*! rotated-trans rotated-trans cam-rot)
-    (set! (-> cam-rot vector 3 quad) (-> rotated-trans quad))
+    (let ((rotated-trans (new-stack-vector0)))
+      (set! (-> rotated-trans x) (- (-> cam-trans x)))
+      (set! (-> rotated-trans y) (- (-> cam-trans y)))
+      (set! (-> rotated-trans z) (- (-> cam-trans z)))
+      (set! (-> rotated-trans w) 1.0)
+      (vector-matrix*! rotated-trans rotated-trans cam-rot)
+      (set! (-> cam-rot vector 3 quad) (-> rotated-trans quad))
+      )
+    (matrix*! cam-temp cam-rot (-> *math-camera* perspective))
+    (set! (-> inv-cam-rot vector 3 quad) (-> cam-trans quad))
     )
-   (matrix*! cam-temp cam-rot (-> *math-camera* perspective))
-   (set! (-> inv-cam-rot vector 3 quad) (-> cam-trans quad))
-   )
-
+  
   (none)
   )
 
@@ -87,7 +87,7 @@
         (add-debug-x #t (bucket-id debug-draw0) (new 'static 'vector) (new 'static 'rgba :g #x80 :a #x80))
         (add-debug-box #t (bucket-id debug-draw0) p0 p2 (new 'static 'rgba :b #x80 :a #x80))
         (add-debug-flat-triangle #t (bucket-id debug-draw0) p0 p1 p2 (new 'static 'rgba :r #x80))
-        (add-debug-text-3d #t (bucket-id debug-draw0) "triangle!" p0 (the rgba 1) (the vector2h #f))
+        (add-debug-text-3d #t (bucket-id debug-draw0) "triangle!" p0 (font-color yellow-green) (the vector2h #f))
         (add-debug-sphere #t (bucket-id debug-draw0) p2 (meters 0.5) (new 'static 'rgba :r #x80))
         )
       )
