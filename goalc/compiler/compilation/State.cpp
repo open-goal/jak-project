@@ -1,5 +1,13 @@
 #include "goalc/compiler/Compiler.h"
+#include "common/type_system/state.h"
 
+/*!
+ * The define-state-hook compiler form is used from a macro in gstate.gc.
+ * Args:
+ *  - state_name, a symbol of the state's name.
+ *  - state_parent, a symbol with the type name. Must be child of process
+ *  - state, the actual state object to initialize.
+ */
 Val* Compiler::compile_define_state_hook(const goos::Object& form,
                                          const goos::Object& rest,
                                          Env* env) {
@@ -52,7 +60,7 @@ Val* Compiler::compile_define_state_hook(const goos::Object& form,
   do_set(form, code_field, code_value->to_gpr(env), code_value, env);
 
   // state name
-  TypeSpec state_type("state");  // todo
+  TypeSpec state_type("state");
 
   for (int i = 0; i < (int)code_value->type().arg_count() - 1; i++) {
     state_type.add_arg(code_value->type().get_arg(i));
@@ -68,6 +76,69 @@ Val* Compiler::compile_define_state_hook(const goos::Object& form,
   auto sym_val =
       get_parent_env_of_type<FunctionEnv>(env)->alloc_val<SymbolVal>(state_name, state_type);
   env->emit(std::make_unique<IR_SetSymbolValue>(sym_val, state_object));
+
+  return get_none();
+}
+
+/*!
+ * The go-hook compiler form is used within go macros.
+ * Args:
+ * - process to perform the go on
+ * - state
+ * - args to enter the state with.
+ */
+Val* Compiler::compile_go_hook(const goos::Object& form, const goos::Object& rest, Env* env) {
+  auto args = get_va(form, rest);
+  if (!args.named.empty()) {
+    throw_compiler_error(form, "go-hook does not take named arguments");
+  }
+
+  if (args.unnamed.size() < 2) {
+    throw_compiler_error(form, "go-hook must get at least 2 arguments");
+  }
+
+  // get the process
+  auto proc = compile_error_guard(args.unnamed.at(0), env)->to_gpr(env);
+  if (!m_ts.tc(TypeSpec("process"), proc->type())) {
+    throw_compiler_error(form, "First argument to go-hook should be a process, got {} instead",
+                         proc->type().print());
+  }
+
+  // get the state
+  auto state = compile_error_guard(args.unnamed.at(1), env)->to_gpr(env);
+  if (!m_ts.tc(TypeSpec("state"), state->type())) {
+    throw_compiler_error(form, "Second argument to go-hook should be a state, got {} instead",
+                         state->type().print());
+  }
+
+  // make sure the state is ok.
+  if (state->type().arg_count() == 0) {
+    throw_compiler_error(form, "Attempting to go to a state with incomplete type.");
+  }
+
+  // if we wanted to typecheck the process, we could do it here:
+  //  auto expected_proc_type = state->type().last_arg();
+  //  if (!m_ts.tc(expected_proc_type, proc->type())) {
+  //    print_compiler_warning("Going to state of type {} from process of type {}.",
+  //                           expected_proc_type.print(), proc->type().print());
+  //  }
+
+  // set the next state
+  auto proc_type_info = m_ts.get_type_of_type<StructureType>("process");
+  auto next_state_field = get_field_of_structure(proc_type_info, proc, "next-state", env);
+  do_set(form, next_state_field, state, state, env);
+
+  // now we have to call the function.
+  auto enter_state_func = compile_get_symbol_value(form, "enter-state", env);
+  enter_state_func->set_type(state_to_go_function(state->type()));
+
+  std::vector<RegVal*> function_arguments;
+  for (size_t i = 2; i < args.unnamed.size(); i++) {
+    function_arguments.push_back(compile_error_guard(args.unnamed.at(i), env)->to_gpr(env));
+  }
+
+  // typechecking here will make sure the go is possible.
+  compile_real_function_call(form, enter_state_func->to_gpr(env), function_arguments, env);
 
   return get_none();
 }

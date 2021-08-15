@@ -254,6 +254,7 @@ const std::unordered_map<
 
         // STATE
         {"define-state-hook", &Compiler::compile_define_state_hook},
+        {"go-hook", &Compiler::compile_go_hook},
 };
 
 /*!

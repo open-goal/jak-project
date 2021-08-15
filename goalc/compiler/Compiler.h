@@ -608,6 +608,7 @@ class Compiler {
 
   // State
   Val* compile_define_state_hook(const goos::Object& form, const goos::Object& rest, Env* env);
+  Val* compile_go_hook(const goos::Object& form, const goos::Object& rest, Env* env);
 };
 
 extern const std::unordered_map<

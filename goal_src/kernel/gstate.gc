@@ -38,14 +38,22 @@ There are several ways to "go"
 - go from the main thread of the main process. This causes the (-> pp state) to change, the stack frames
   to be cleaned up, and the old state's exit to be called.  It will reset the stack, then run the code.
   Unlike the others, this means you "go" immediately.
+  
+The compiler has two special hooks related to states: go-hook and define-state-hook.
+These take care of doing a go and a state definition and properly checking types.
+
+The define-state-hook takes a state object and handlers and defines a global symbol
+with the appropriate state type.
+
+The go-hook calls enter state and sets (-> proc next-state) for the given process.
+It type checks the arguments for the entry function.
 
 |#
 
 ;; cause the current process to change state
 (defmacro go (next-state &rest args)
   `(with-pp
-     (set! (-> pp next-state) ,next-state)
-     ((the (function _varargs_ object) enter-state) ,@args)
+     (go-hook pp ,next-state ,@args)
      )
   )
 
@@ -54,8 +62,7 @@ There are several ways to "go"
   `(with-pp
      (protect (pp)
               (set! pp ,proc)
-              (set! (-> pp next-state) ,state)
-              ((the (function _varargs_ object) enter-state) ,@args)
+              (go-hook pp ,next-state ,@args)
               )
      )
   )
