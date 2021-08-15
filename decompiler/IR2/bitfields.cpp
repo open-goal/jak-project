@@ -379,6 +379,32 @@ std::string BitfieldAccessElement::debug_print(const Env& env) const {
   return result;
 }
 
+std::optional<BitField> BitfieldAccessElement::get_set_field_0(const TypeSystem& ts) const {
+  if (m_got_pcpyud) {
+    return {};
+  }
+  if (m_steps.size() != 1) {
+    return {};
+  }
+
+  auto& step = m_steps.at(0);
+  if (step.kind != BitfieldManip::Kind::LOGAND_WITH_CONSTANT_INT) {
+    return {};
+  }
+
+  u64 mask = step.amount;
+  auto type = ts.lookup_type(m_type);
+  auto as_bitfield = dynamic_cast<BitFieldType*>(type);
+  assert(as_bitfield);
+  // use the mask to figure out the field.
+  auto field = find_field_from_mask(ts, as_bitfield, ~mask, m_got_pcpyud);
+  if (field) {
+    return field;
+  } else {
+    return {};
+  }
+}
+
 /*!
  * Add a step to the bitfield access. If this completes the access, returns a form representing the
  * access

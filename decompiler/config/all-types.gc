@@ -3477,9 +3477,9 @@
 
 ;; - Functions
 
-(define-extern dma-buffer-add-buckets (function dma-buffer int dma-bucket))
-(define-extern dma-buffer-patch-buckets (function dma-bucket int dma-bucket))
-(define-extern dma-bucket-insert-tag (function dma-bucket bucket-id pointer (pointer dma-tag) pointer))
+(define-extern dma-buffer-add-buckets (function dma-buffer int (inline-array dma-bucket)))
+(define-extern dma-buffer-patch-buckets (function (inline-array dma-bucket) int (inline-array dma-bucket)))
+(define-extern dma-bucket-insert-tag (function (inline-array dma-bucket) bucket-id pointer (pointer dma-tag) pointer))
 
 
 ;; ----------------------
@@ -4284,7 +4284,7 @@
    (vu1-buf      dma-buffer    :offset 8)
    (debug-buf    dma-buffer    :offset 36)
    (global-buf   dma-buffer    :offset 40)
-   (bucket-group dma-bucket    :offset 44)
+   (bucket-group (inline-array dma-bucket)    :offset 44)
    (buffer       dma-buffer    11  :offset 4)
    (profile-bar  profile-bar 2 :offset 48)
    (run-time     uint64        :offset 56)
@@ -7574,7 +7574,7 @@
   :size-assert         #x14
   :flag-assert         #xd00000014
   (:methods
-    (dummy-9 (_type_) _type_ 9)
+    (login (_type_) _type_ 9)
     (dummy-10 (_type_ string type) art-element 10)
     (dummy-11 (_type_ string type) int 11)
     (dummy-12 (_type_) symbol 12)
@@ -7587,7 +7587,6 @@
   :size-assert         #x20
   :flag-assert         #xd00000020
   (:methods
-    (dummy-9 (_type_) _type_ 9)
     (dummy-10 (_type_ string type) art-element 10)
     (dummy-11 (_type_ string type) int 11)
     (dummy-12 (_type_) symbol 12)
@@ -7609,6 +7608,7 @@
    (artist-step float :offset 28)
    (master-art-group-name string :offset 32)
    (master-art-group-index int32 :offset 36)
+   (blerc-data (pointer uint8) :offset 40)
    (frames pointer :offset 44) ;; this structure doesn't exist? it's a structure with an array of joint-anim-compressed-hdr starting at offset 12
    (data joint-anim-compressed :dynamic :offset-assert 48)
    )
@@ -7619,7 +7619,7 @@
 
 (deftype art-group (art)
   ((info  file-info    :offset 4)
-   (data  art-element  :dynamic :offset 32)
+   (data  art-element  :dynamic :offset 32) ;; might just be art?
    )
   :method-count-assert 15
   :size-assert         #x20
@@ -7854,7 +7854,7 @@
   :size-assert         #x18
   :flag-assert         #xa00000018
   (:methods
-    (dummy-9 () none 9)
+    (login-adgifs (_type_) none 9)
     )
   )
 
@@ -7895,6 +7895,7 @@
   ((matrix-number uint8  :offset-assert 0)
    (matrix-dest   uint8  :offset-assert 1)
    )
+  :pack-me
   :method-count-assert 9
   :size-assert         #x2
   :flag-assert         #x900000002
@@ -7905,7 +7906,7 @@
    (lump-four-count     uint8            :offset-assert 1)
    (fp-qwc              uint8            :offset-assert 2)
    (mat-xfer-count      uint8            :offset-assert 3)
-   (mat-dest-data       uint8 :dynamic :offset-assert 4)
+   (mat-dest-data       merc-mat-dest :inline :dynamic :offset-assert 4)
    )
   :method-count-assert 9
   :size-assert         #x4
@@ -7970,6 +7971,9 @@
   :flag-assert         #x900000010
   )
 
+;;effect-bits:
+;; 1 - swap with last effect.
+
 (deftype merc-effect (structure)
   ((frag-geo         merc-fragment          :offset-assert 0)
    (frag-ctrl        merc-fragment-control  :offset-assert 4)
@@ -7984,12 +7988,15 @@
    (dummy1           uint8                  :offset-assert 26)
    (envmap-usage     uint8                  :offset-assert 27)
    (extra-info       merc-extra-info        :offset-assert 28)
+   
+   ;; added
+   (data uint64 4 :offset 0)
    )
   :method-count-assert 10
   :size-assert         #x20
   :flag-assert         #xa00000020
   (:methods
-    (dummy-9 () none 9)
+    (login-adgifs (_type_) none 9)
     )
   )
 
@@ -8038,7 +8045,7 @@
    (st-vif-add             uint32           :offset-assert 16)
    (st-int-off             uint16           :offset-assert 20)
    (st-int-scale           uint16           :offset-assert 22)
-   (effect-count           uint32           :offset-assert 24)
+   (effect-count           uint32           :offset-assert 24) ;; number of effects in merc-ctrl effect
    (blend-target-count     uint32           :offset-assert 28)
    (fragment-count         uint16           :offset-assert 32)
    (tri-count              uint16           :offset-assert 34)
@@ -8089,8 +8096,8 @@
   )
 
 (deftype merc-vu1-low-mem (structure)
-  ((tri-strip-gif qword   :inline :offset-assert 0)
-   (ad-gif        qword   :inline :offset-assert 16)
+  ((tri-strip-gif gs-gif-tag   :inline :offset-assert 0) ;; was qword
+   (ad-gif        gs-gif-tag   :inline :offset-assert 16) ;; was qword
    (hvdf-offset   vector  :inline :offset-assert 32)
    (perspective   uint128 4       :offset-assert 48)
    (fog           vector  :inline :offset-assert 112)
@@ -8149,7 +8156,7 @@
 
 ;; - Functions
 
-(define-extern merc-fragment-fp-data (function merc-fragment pointer))
+(define-extern merc-fragment-fp-data (function merc-fragment merc-fp-header))
 
 
 ;; ----------------------
@@ -15285,14 +15292,14 @@
 ;; - Functions
 
 (define-extern setup-blerc-chains-for-one-fragment function)
-(define-extern setup-blerc-chains function)
+(define-extern setup-blerc-chains (function merc-ctrl (pointer int16) dma-buffer none))
 (define-extern blerc-stats-init (function none))
 (define-extern blerc-init (function none))
 (define-extern blerc-a-fragment function)
 (define-extern dma-from-spr function)
 (define-extern merc-dma-chain-to-spr function)
 (define-extern blerc-execute (function none))
-(define-extern merc-blend-shape function)
+(define-extern merc-blend-shape (function process-drawable object))
 
 ;; - Unknowns
 
@@ -15308,18 +15315,18 @@
 
 ;; - Functions
 
-(define-extern merc-vu1-init-buffer function)
-(define-extern merc-vu1-initialize-chain function)
-(define-extern merc-vu1-add-vu-function function)
-(define-extern get-eye-block function)
-(define-extern merc-stats-display function)
-(define-extern merc-stats function)
-(define-extern merc-edge-stats function)
+(define-extern merc-vu1-init-buffer (function bucket-id gs-test int none))
+(define-extern merc-vu1-initialize-chain (function dma-gif-packet none))
+(define-extern merc-vu1-add-vu-function (function dma-packet vu-function int dma-gif-packet))
+(define-extern get-eye-block (function int int int))
+(define-extern merc-stats-display (function merc-ctrl none))
+(define-extern merc-stats (function none))
+(define-extern merc-edge-stats (function none))
 (define-extern merc-vu1-init-buffers (function none))
 
 ;; - Unknowns
 
-;;(define-extern *merc-ctrl-header* object) ;; unknown type
+(define-extern *merc-ctrl-header* merc-ctrl-header)
 
 
 ;; ----------------------
@@ -15840,7 +15847,7 @@
 
 ;; - Unknowns
 
-;;(define-extern background-vu0-block object) ;; unknown type
+(define-extern background-vu0-block vu-function)
 
 
 ;; ----------------------

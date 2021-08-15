@@ -1659,6 +1659,10 @@ bool ControlFlowGraph::find_cond_w_else(const CondWithElseLengthHack& hack) {
       return true;
     }
 
+    if (b0->end_branch.asm_branch) {
+      return true;
+    }
+
     //        printf("cwe try %s %s\n", c0->to_string().c_str(), b0->to_string().c_str());
 
     // first condition should have the _option_ to fall through to first body

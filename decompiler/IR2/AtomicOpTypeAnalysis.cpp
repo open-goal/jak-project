@@ -261,10 +261,8 @@ TP_Type get_stack_type_at_constant_offset(int offset,
 
     if (offset == structure.hint.stack_offset) {
       // special case just getting the variable
-      if (structure.hint.container_type == StackStructureHint::ContainerType::NONE ||
-          structure.hint.container_type == StackStructureHint::ContainerType::INLINE_ARRAY) {
-        return TP_Type::make_from_ts(coerce_to_reg_type(structure.ref_type));
-      }
+
+      return TP_Type::make_from_ts(coerce_to_reg_type(structure.ref_type));
     }
 
     // Note: GOAL doesn't seem to constant propagate memory access on the stack, so the code

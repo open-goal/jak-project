@@ -2140,6 +2140,24 @@ void SetFormFormElement::push_to_stack(const Env& env, FormPool& pool, FormStack
     fmt::print("invalid bf set: {}\n", src_as_bf_set->to_string(env));
   }
 
+  // setting a bitfield to zero is wonky.
+  auto bfa = dynamic_cast<BitfieldAccessElement*>(m_src->try_as_single_element());
+  if (bfa) {
+    fmt::print("setting bfa: {}\n", bfa->to_string(env));
+    auto zero_set = bfa->get_set_field_0(env.dts->ts);
+    if (zero_set) {
+      auto field_token = DerefToken::make_field_name(zero_set->name());
+      auto loc_elt = pool.alloc_element<DerefElement>(m_dst, false, field_token);
+      loc_elt->inline_nested();
+      auto loc = pool.alloc_single_form(nullptr, loc_elt);
+      loc->parent_element = this;
+      m_dst = loc;
+      auto zero = SimpleAtom::make_int_constant(0);
+      auto zero_form = pool.alloc_single_element_form<SimpleAtomElement>(nullptr, zero);
+      m_src = zero_form;
+    }
+  }
+
   const std::pair<FixedOperatorKind, FixedOperatorKind> in_place_ops[] = {
       {FixedOperatorKind::ADDITION, FixedOperatorKind::ADDITION_IN_PLACE},
       {FixedOperatorKind::ADDITION_PTR, FixedOperatorKind::ADDITION_PTR_IN_PLACE},
