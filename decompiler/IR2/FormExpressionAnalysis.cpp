@@ -932,7 +932,7 @@ void SimpleExpressionElement::update_from_stack_add_i(const Env& env,
           result->push_back(pool.alloc_element<DerefElement>(args.at(0), rd_ok.addr_of, tokens));
           return;
         } else {
-          throw std::runtime_error("Failed to match product_with_constant inline array access 1.");
+          throw std::runtime_error(fmt::format("Failed to match product_with_constant inline array access 1 at Op. {}", m_my_idx));
         }
       }
     } else if (arg0_type.kind == TP_Type::Kind::PRODUCT_WITH_CONSTANT &&
