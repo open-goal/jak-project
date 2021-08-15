@@ -2143,7 +2143,6 @@ void SetFormFormElement::push_to_stack(const Env& env, FormPool& pool, FormStack
   // setting a bitfield to zero is wonky.
   auto bfa = dynamic_cast<BitfieldAccessElement*>(m_src->try_as_single_element());
   if (bfa) {
-    fmt::print("setting bfa: {}\n", bfa->to_string(env));
     auto zero_set = bfa->get_set_field_0(env.dts->ts);
     if (zero_set) {
       auto field_token = DerefToken::make_field_name(zero_set->name());
