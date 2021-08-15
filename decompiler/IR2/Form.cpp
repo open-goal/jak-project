@@ -2804,6 +2804,64 @@ void GetSymbolStringPointer::get_modified_regs(RegSet& regs) const {
 }
 
 ////////////////////////////////
+// NonVirtualDefstateElement
+////////////////////////////////
+
+NonVirtualDefstateElement::NonVirtualDefstateElement(const std::string& process_type,
+                                                     const std::string& state_name,
+                                                     const std::vector<Entry>& entries)
+    : m_process_type(process_type), m_state_name(state_name), m_entries(entries) {
+  for (auto& e : m_entries) {
+    e.val->parent_element = this;
+  }
+}
+
+void NonVirtualDefstateElement::apply(const std::function<void(FormElement*)>& f) {
+  f(this);
+  for (auto& e : m_entries) {
+    e.val->apply(f);
+  }
+}
+
+void NonVirtualDefstateElement::apply_form(const std::function<void(Form*)>& f) {
+  for (auto& e : m_entries) {
+    e.val->apply_form(f);
+  }
+}
+
+void NonVirtualDefstateElement::collect_vars(RegAccessSet& vars, bool recursive) const {
+  if (recursive) {
+    for (auto& e : m_entries) {
+      e.val->collect_vars(vars, recursive);
+    }
+  }
+}
+
+void NonVirtualDefstateElement::get_modified_regs(RegSet& regs) const {
+  for (auto& e : m_entries) {
+    e.val->get_modified_regs(regs);
+  }
+}
+
+goos::Object NonVirtualDefstateElement::to_form_internal(const Env& env) const {
+  std::vector<goos::Object> forms;
+  forms.push_back(pretty_print::to_symbol("defstate"));
+  forms.push_back(pretty_print::to_symbol(m_state_name));
+  forms.push_back(pretty_print::build_list(m_process_type));
+
+  for (const auto& e : m_entries) {
+    forms.push_back(pretty_print::to_symbol(fmt::format(":{}", handler_kind_to_name(e.kind))));
+    auto to_print = e.val;
+    while (to_print->try_as_element<CastElement>()) {
+      to_print = to_print->try_as_element<CastElement>()->source();
+    }
+    forms.push_back(to_print->to_form(env));
+  }
+
+  return pretty_print::build_list(forms);
+}
+
+////////////////////////////////
 // Utilities
 ////////////////////////////////
 

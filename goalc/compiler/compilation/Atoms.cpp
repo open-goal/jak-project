@@ -251,6 +251,9 @@ const std::unordered_map<
 
         // UTIL
         {"set-config!", &Compiler::compile_set_config},
+
+        // STATE
+        {"define-state-hook", &Compiler::compile_define_state_hook},
 };
 
 /*!

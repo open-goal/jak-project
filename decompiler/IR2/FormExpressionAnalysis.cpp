@@ -4871,6 +4871,15 @@ void GetSymbolStringPointer::update_from_stack(const Env&,
   result->push_back(this);
 }
 
+void NonVirtualDefstateElement::update_from_stack(const Env&,
+                                                  FormPool&,
+                                                  FormStack&,
+                                                  std::vector<FormElement*>* result,
+                                                  bool) {
+  mark_popped();
+  result->push_back(this);
+}
+
 void LabelElement::push_to_stack(const Env&, FormPool&, FormStack& stack) {
   mark_popped();
   stack.push_form_element(this, true);
