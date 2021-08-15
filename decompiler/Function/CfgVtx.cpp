@@ -477,6 +477,10 @@ bool ControlFlowGraph::is_while_loop(CfgVtx* b0, CfgVtx* b1, CfgVtx* b2) {
   if (!b0 || !b1 || !b2)
     return false;
 
+  if (b0->end_branch.asm_branch || b1->end_branch.asm_branch) {
+    return false;
+  }
+
   // check next and prev
   if (b0->next != b1)
     return false;
@@ -1243,6 +1247,10 @@ bool ControlFlowGraph::clean_up_asm_branches() {
         }
         // build new sequence
         replaced = true;
+        if (!b0->succ_branch) {
+          fmt::print("asm missing branch in block {}\n", b0->to_string());
+          assert(false);
+        }
         m_blocks.at(b0->succ_branch->get_first_block_id())->needs_label = true;
 
         auto* new_seq = alloc<SequenceVtx>();
@@ -1410,7 +1418,36 @@ bool ControlFlowGraph::clean_up_asm_branches() {
         old_seq->parent_claim(seq);
 
         return false;
-      } else {
+      } else if (!b0_seq && b1_seq) {
+        replaced = true;
+        if (!b0->succ_branch) {
+          fmt::print("bad: {}\n", b0->to_string());
+        }
+        m_blocks.at(b0->succ_branch->get_first_block_id())->needs_label = true;
+        auto* old_seq = dynamic_cast<SequenceVtx*>(b1);
+        assert(old_seq);
+        if (b0->succ_branch) {
+          if (debug_asm_branch) {
+            fmt::print("  sbp: {}\n", !!b0->succ_branch->parent);
+            fmt::print("  sb: {}\n", b0->succ_branch->to_string());
+          }
+          b0->succ_branch->replace_preds_with_and_check({b0}, nullptr);
+        }
+
+        for (auto* p : b0->pred) {
+          p->replace_succ_and_check(b0, old_seq);
+        }
+        old_seq->pred = b0->pred;
+        old_seq->prev = b0->prev;
+        if (old_seq->prev) {
+          old_seq->prev->next = old_seq;
+        }
+
+        old_seq->seq.insert(old_seq->seq.begin(), b0);
+        b0->parent_claim(old_seq);
+      }
+
+      else {
         lg::error("unhandled sequences in clean_up_asm_branches seq: {} {}", !!b0_seq, !!b1_seq);
       }
     }
@@ -1619,6 +1656,10 @@ bool ControlFlowGraph::find_cond_w_else(const CondWithElseLengthHack& hack) {
     auto* c0 = vtx;       // first condition
     auto* b0 = c0->next;  // first body
     if (!b0) {
+      return true;
+    }
+
+    if (b0->end_branch.asm_branch) {
       return true;
     }
 
@@ -1982,6 +2023,10 @@ bool ControlFlowGraph::find_cond_n_else() {
     auto* b0 = c0->next;  // first body
     if (!b0) {
       printf("reject 0\n");
+      return true;
+    }
+
+    if (b0->end_branch.asm_branch) {
       return true;
     }
 
