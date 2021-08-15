@@ -11013,6 +11013,9 @@
    (unknown-vector11  vector :inline :offset 1232)
    (unknown-vector12  vector :inline :offset 1248)
    (unknown-vector13  vector :inline :offset 1264)
+   (unknown-int00     int32          :offset 2184) ;; from (anon-function 1 basebutton)
+   (unknown-vector20  vector :inline :offset 2224) ;; from (anon-function 3 basebutton)
+   (unknown-vector21  vector :inline :offset 2240) ;; from (anon-function 3 basebutton)
    ;; these were determined from racer-collision-reaction.
    (history-length int16 :offset 2490)
    (history-data collide-history 128 :inline :offset-assert 2496)
@@ -17878,7 +17881,7 @@
 
 ;; - Unknowns
 
-;;(define-extern cam-fixed object) ;; unknown type
+(define-extern cam-fixed state) ;; unknown type
 ;;(define-extern cam-decel object) ;; unknown type
 ;;(define-extern cam-eye object) ;; unknown type
 
@@ -18969,7 +18972,7 @@
 (define-extern activate-hud (function process none))
 (define-extern reset-target-state (function symbol none))
 (define-extern init-sidekick function)
-(define-extern target-generic-event-handler function)
+(define-extern target-generic-event-handler (function process int symbol event-message-block object))
 (define-extern level-setup (function none))
 (define-extern target-exit function)
 (define-extern target-calc-camera-pos function)
@@ -22275,16 +22278,17 @@
 ;; - Types
 
 (deftype basebutton (process-drawable)
-  ((down?             symbol             :offset-assert 176)
+  ((root-override     collide-shape-moving :score 100 :offset 112)
+   (down?             symbol             :offset-assert 176)
    (spawned-by-other? symbol              :offset-assert 180)
    (move-to?          symbol             :offset-assert 184)
-   (notify-actor      basic              :offset-assert 188)
+   (notify-actor      entity-actor              :offset-assert 188)
    (timeout           float              :offset-assert 192)
    (button-id         int32              :offset-assert 196)
-   (event-going-down  basic              :offset-assert 200)
-   (event-down        basic              :offset-assert 204)
-   (event-going-up    basic              :offset-assert 208)
-   (event-up          basic              :offset-assert 212)
+   (event-going-down  symbol              :offset-assert 200)
+   (event-down        symbol              :offset-assert 204)
+   (event-going-up    symbol              :offset-assert 208)
+   (event-up          symbol              :offset-assert 212)
    (anim-speed        float              :offset-assert 216)
    (move-to-pos       vector     :inline :offset-assert 224)
    (move-to-quat      quaternion :inline :offset-assert 240)
@@ -22300,13 +22304,13 @@
     (dummy-22 () none 22)
     (dummy-23 () none 23)
     (basebutton-up-idle () none 24) ;; state
-    (dummy-25 () none 25)
-    (dummy-26 () none 26)
-    (dummy-27 () none 27)
-    (dummy-28 () none 28)
-    (dummy-29 () none 29)
-    (dummy-30 () none 30)
-    (dummy-31 () none 31)
+    (reset! (_type_) float 25)
+    (TODO-RENAME-26 (_type_) none 26)
+    (TODO-RENAME-27 (_type_) collide-shape-moving 27)
+    (arm-trigger-event! (_type_) symbol 28)
+    (TODO-RENAME-29 (_type_ symbol process) none 29)
+    (move-to-vec-or-quat! (_type_ vector quaternion) quaternion 30) ;; args are optional
+    (press! (_type_ symbol) int 31)
     )
   )
 
@@ -22331,13 +22335,13 @@
 
 ;; - Functions
 
-(define-extern basebutton-init-by-other function)
+(define-extern basebutton-init-by-other (function basebutton vector quaternion entity-actor symbol float none :behavior basebutton))
 
 ;; - Unknowns
 
-;;(define-extern *warp-jump-mods* object) ;; unknown type
-;;(define-extern target-warp-out object) ;; unknown type
-;;(define-extern *warp-info* object) ;; unknown type
+(define-extern *warp-jump-mods* surface) ;; unknown type
+(define-extern target-warp-out state) ;; unknown type
+(define-extern *warp-info* (array string)) ;; unknown type
 (define-extern *generic-button-sg* skeleton-group)
 
 
@@ -24617,41 +24621,17 @@
 ;     )
 ;   )
 
-; (deftype warp-gate-switch (basebutton)
-;   ((warp uint64  :offset-assert 256)
-;    )
-;   :method-count-assert 33
-;   :size-assert         #x108
-;   :heap-base           #xa0
-;   :flag-assert         #x2100a00108
-;   ;; inherited inspect of basebutton
-;   (:methods
-;     (dummy-9 () none 9)
-;     (dummy-10 () none 10)
-;     (dummy-11 () none 11)
-;     (dummy-12 () none 12)
-;     (dummy-13 () none 13)
-;     (dummy-14 () none 14)
-;     (dummy-15 () none 15)
-;     (dummy-16 () none 16)
-;     (dummy-17 () none 17)
-;     (dummy-18 () none 18)
-;     (dummy-19 () none 19)
-;     (dummy-20 () none 20)
-;     (dummy-21 () none 21)
-;     (dummy-22 () none 22)
-;     (dummy-23 () none 23)
-;     (dummy-24 () none 24)
-;     (dummy-25 () none 25)
-;     (dummy-26 () none 26)
-;     (dummy-27 () none 27)
-;     (dummy-28 () none 28)
-;     (dummy-29 () none 29)
-;     (dummy-30 () none 30)
-;     (dummy-31 () none 31)
-;     (dummy-32 () none 32)
-;     )
-;   )
+(deftype warp-gate-switch (basebutton)
+  ((warp uint64  :offset-assert 256)
+   )
+  :method-count-assert 33
+  :size-assert         #x108
+  :heap-base           #xa0
+  :flag-assert         #x2100a00108
+  (:methods
+    (dummy-32 () none 32)
+    )
+  )
 
 ; (deftype village-cam (process)
 ;   ((root       basic   :offset-assert 112)
