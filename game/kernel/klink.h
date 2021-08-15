@@ -6,9 +6,6 @@
  * DONE!
  */
 
-#ifndef JAK_KLINK_H
-#define JAK_KLINK_H
-
 #include "Ptr.h"
 #include "kmalloc.h"
 #include "common/link_types.h"
@@ -94,7 +91,7 @@ struct ObjectFileHeader {
 
 void klink_init_globals();
 
-u64 link_and_exec_wrapper(u64 data, u64 name, s64 size, u64 heap, u64 flags);
+u64 link_and_exec_wrapper(u64* args);
 
 Ptr<uint8_t> link_and_exec(Ptr<uint8_t> data,
                            const char* name,
@@ -102,15 +99,9 @@ Ptr<uint8_t> link_and_exec(Ptr<uint8_t> data,
                            Ptr<kheapinfo> heap,
                            uint32_t flags);
 
-uint64_t link_begin(uint64_t object_data,
-                    uint64_t name,
-                    int32_t size,
-                    uint64_t heap,
-                    uint32_t flags);
+uint64_t link_begin(u64* args);
 
 uint64_t link_resume();
 void ultimate_memcpy(void* dst, void* src, uint32_t size);
 
 extern link_control saved_link_control;
-
-#endif  // JAK_KLINK_H

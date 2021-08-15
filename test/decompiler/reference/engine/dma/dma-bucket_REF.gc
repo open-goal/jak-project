@@ -2,26 +2,28 @@
 (in-package goal)
 
 ;; definition for function dma-buffer-add-buckets
-;; INFO: Return type mismatch pointer vs none.
+;; INFO: Return type mismatch pointer vs dma-bucket.
 (defun dma-buffer-add-buckets ((dma-buf dma-buffer) (count int))
-  (let ((current-bucket (the-as dma-bucket (-> dma-buf base))))
-   (dotimes (i count)
-    (set!
-     (-> current-bucket tag)
-     (new 'static 'dma-tag
-      :id (dma-tag-id next)
-      :addr (the-as int (&+ (the-as pointer current-bucket) 16))
+  (let ((v0-0 (-> dma-buf base)))
+   (let ((current-bucket (the-as dma-bucket v0-0)))
+    (dotimes (i count)
+     (set!
+      (-> current-bucket tag)
+      (new 'static 'dma-tag
+       :id (dma-tag-id next)
+       :addr (the-as int (&+ (the-as pointer current-bucket) 16))
+       )
+      )
+     (set! (-> current-bucket last) (the-as (pointer dma-tag) current-bucket))
+     (set!
+      current-bucket
+      (the-as dma-bucket (&+ (the-as pointer current-bucket) 16))
       )
      )
-    (set! (-> current-bucket last) (the-as (pointer dma-tag) current-bucket))
-    (set!
-     current-bucket
-     (the-as dma-bucket (&+ (the-as pointer current-bucket) 16))
-     )
+    (set! (-> dma-buf base) (the-as pointer current-bucket))
     )
-   (set! (-> dma-buf base) (the-as pointer current-bucket))
+   (the-as dma-bucket v0-0)
    )
-  (none)
   )
 
 ;; definition for function dma-buffer-patch-buckets

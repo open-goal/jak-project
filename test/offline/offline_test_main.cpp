@@ -143,6 +143,9 @@ const std::unordered_set<std::string> g_functions_to_skip_compiling = {
     // stats-h
     "(method 11 perf-stat)", "(method 12 perf-stat)",
 
+    // sprite-distorter
+    "sprite-draw-distorters",  // uses clipping flag.
+
     // sync-info
     "(method 15 sync-info)",         // needs display stuff first
     "(method 15 sync-info-eased)",   // needs display stuff first
@@ -268,7 +271,7 @@ class OfflineDecompilation : public ::testing::Test {
     config->generate_symbol_definition_map = false;
 
     std::vector<std::string> dgos = {"CGO/KERNEL.CGO", "CGO/ENGINE.CGO", "CGO/GAME.CGO",
-                                     "DGO/BEA.DGO"};
+                                     "DGO/BEA.DGO", "CGO/L1.CGO"};
     std::vector<std::string> dgo_paths;
     if (g_iso_data_path.empty()) {
       for (auto& x : dgos) {

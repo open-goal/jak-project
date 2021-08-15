@@ -32,7 +32,10 @@
 
 (defun dma-buffer-add-buckets ((dma-buf dma-buffer) (count int))
   "Add count buckets. Each bucket is initialized as empty and won't transfer anything."
-  (let ((current-bucket (the-as dma-bucket (-> dma-buf base))))
+  (let* ((initial-bucket (the-as dma-bucket (-> dma-buf base)))
+         (current-bucket initial-bucket))
+    
+  ;;(let ((current-bucket (the-as dma-bucket (-> dma-buf base))))
     (dotimes (i count)
       ;; set the DMA tag to next, with a qwc of zero.
       ;; the address is set to the next bucket.
@@ -51,8 +54,8 @@
       )
     ;; update base ptr of dma-buffer to point after the buckets.
     (set! (-> dma-buf base) (the-as pointer current-bucket))
+    initial-bucket
     )
-  (none)
   )
 
 
@@ -74,7 +77,6 @@
 
 (defun dma-bucket-insert-tag ((base dma-bucket) (idx bucket-id) (tag-start pointer) (tag-end (pointer dma-tag)))
   "Add a dma chain to the idx bucket"
-
   ;; find the bucket
   (let ((bucket (the-as dma-bucket (&+ base (the-as uint (shl idx 4))))))
     ;; update our last bucket to point to this one.

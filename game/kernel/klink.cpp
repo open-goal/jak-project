@@ -833,8 +833,10 @@ Ptr<uint8_t> link_and_exec(Ptr<uint8_t> data,
 /*!
  * Wrapper so this can be called from GOAL. Not in original game.
  */
-u64 link_and_exec_wrapper(u64 data, u64 name, s64 size, u64 heap, u64 flags) {
-  return link_and_exec(Ptr<u8>(data), Ptr<char>(name).c(), size, Ptr<kheapinfo>(heap), flags)
+u64 link_and_exec_wrapper(u64* args) {
+  // data, name, size, heap, flags
+  return link_and_exec(Ptr<u8>(args[0]), Ptr<char>(args[1]).c(), args[2], Ptr<kheapinfo>(args[3]),
+                       args[4])
       .offset;
 }
 
@@ -843,13 +845,10 @@ u64 link_and_exec_wrapper(u64 data, u64 name, s64 size, u64 heap, u64 flags) {
  * 47 -> output_load, output_true, execute, 8, force fast
  * 39 -> no 8 (s7)
  */
-uint64_t link_begin(uint64_t object_data,
-                    uint64_t name,
-                    int32_t size,
-                    uint64_t heap,
-                    uint32_t flags) {
-  saved_link_control.begin(Ptr<u8>(object_data), Ptr<char>(name).c(), size, Ptr<kheapinfo>(heap),
-                           flags);
+uint64_t link_begin(u64* args) {
+  // object data, name size, heap flags
+  saved_link_control.begin(Ptr<u8>(args[0]), Ptr<char>(args[1]).c(), args[2],
+                           Ptr<kheapinfo>(args[3]), args[4]);
   auto work_result = saved_link_control.work();
   // if we managed to finish in one shot, take care of calling finish
   if (work_result) {
