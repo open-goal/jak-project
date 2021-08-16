@@ -79,8 +79,12 @@ void OnKeyRelease(int key) {
   if (input_mode == InputModeStatus::Enabled) {
     return;
   }
+
+  // if we come out of input mode, the key wont be found.
+  if (g_key_status.find(key) == g_key_status.end()) {
+    return;
+  }
   // set absolute key status
-  // no bounds checking for now in order to catch bugs
   g_key_status.at(key) = 0;
 }
 
