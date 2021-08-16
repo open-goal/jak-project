@@ -417,10 +417,11 @@ std::unique_ptr<AtomicOp> make_branch(const IR2_Condition& condition,
                                       const Instruction& delay,
                                       bool likely,
                                       int dest_label,
-                                      int my_idx) {
+                                      int my_idx,
+                                      bool force_asm) {
   assert(!likely);
   auto branch_delay = get_branch_delay(delay, my_idx);
-  if (branch_delay.is_known()) {
+  if (!force_asm && branch_delay.is_known()) {
     return std::make_unique<BranchOp>(likely, condition, dest_label, branch_delay, my_idx);
   } else {
     auto delay_op = std::shared_ptr<AtomicOp>(convert_1_allow_asm(delay, my_idx));
@@ -989,7 +990,8 @@ std::unique_ptr<AtomicOp> convert_jalr_2(const Instruction& i0, const Instructio
 std::unique_ptr<AtomicOp> convert_bne_2(const Instruction& i0,
                                         const Instruction& i1,
                                         int idx,
-                                        bool likely) {
+                                        bool likely,
+                                        bool force_asm) {
   auto s0 = i0.get_src(0).get_reg();
   auto s1 = i0.get_src(1).get_reg();
   auto dest = i0.get_src(2).get_label();
@@ -1007,13 +1009,14 @@ std::unique_ptr<AtomicOp> convert_bne_2(const Instruction& i0,
                               make_src_atom(s1, idx));
     condition.make_flipped();
   }
-  return make_branch(condition, i1, likely, dest, idx);
+  return make_branch(condition, i1, likely, dest, idx, force_asm);
 }
 
 std::unique_ptr<AtomicOp> convert_beq_2(const Instruction& i0,
                                         const Instruction& i1,
                                         int idx,
-                                        bool likely) {
+                                        bool likely,
+                                        bool force_asm) {
   auto s0 = i0.get_src(0).get_reg();
   auto s1 = i0.get_src(1).get_reg();
   auto dest = i0.get_src(2).get_label();
@@ -1038,7 +1041,7 @@ std::unique_ptr<AtomicOp> convert_beq_2(const Instruction& i0,
         IR2_Condition(IR2_Condition::Kind::EQUAL, make_src_atom(s0, idx), make_src_atom(s1, idx));
     condition.make_flipped();
   }
-  return make_branch(condition, i1, likely, dest, idx);
+  return make_branch(condition, i1, likely, dest, idx, force_asm);
 }
 
 std::unique_ptr<AtomicOp> convert_daddiu_2(const Instruction& i0, const Instruction& i1, int idx) {
@@ -1144,6 +1147,14 @@ std::unique_ptr<AtomicOp> convert_bgez_2(const Instruction& i0, const Instructio
                          i1, false, dest, idx);
 }
 
+std::unique_ptr<AtomicOp> convert_blez_2(const Instruction& i0, const Instruction& i1, int idx) {
+  // blez is never emitted outside of inline asm.
+  auto dest = i0.get_src(1).get_label();
+  return make_asm_branch(IR2_Condition(IR2_Condition::Kind::LEQ_ZERO_SIGNED,
+                                       make_src_atom(i0.get_src(0).get_reg(), idx)),
+                         i1, false, dest, idx);
+}
+
 std::unique_ptr<AtomicOp> convert_bgtz_2(const Instruction& i0, const Instruction& i1, int idx) {
   // bgtz is never emitted outside of inline asm.
   auto dest = i0.get_src(1).get_label();
@@ -1152,7 +1163,10 @@ std::unique_ptr<AtomicOp> convert_bgtz_2(const Instruction& i0, const Instructio
                          i1, false, dest, idx);
 }
 
-std::unique_ptr<AtomicOp> convert_2(const Instruction& i0, const Instruction& i1, int idx) {
+std::unique_ptr<AtomicOp> convert_2(const Instruction& i0,
+                                    const Instruction& i1,
+                                    int idx,
+                                    bool force_asm_branch) {
   switch (i0.kind) {
     case InstructionKind::DIV:
       return convert_division_2(i0, i1, idx, true);
@@ -1161,9 +1175,9 @@ std::unique_ptr<AtomicOp> convert_2(const Instruction& i0, const Instruction& i1
     case InstructionKind::JALR:
       return convert_jalr_2(i0, i1, idx);
     case InstructionKind::BNE:
-      return convert_bne_2(i0, i1, idx, false);
+      return convert_bne_2(i0, i1, idx, false, force_asm_branch);
     case InstructionKind::BEQ:
-      return convert_beq_2(i0, i1, idx, false);
+      return convert_beq_2(i0, i1, idx, false, force_asm_branch);
     case InstructionKind::DADDIU:
       return convert_daddiu_2(i0, i1, idx);
     case InstructionKind::LUI:
@@ -1180,6 +1194,8 @@ std::unique_ptr<AtomicOp> convert_2(const Instruction& i0, const Instruction& i1
       return convert_bgez_2(i0, i1, idx);
     case InstructionKind::BGTZ:
       return convert_bgtz_2(i0, i1, idx);
+    case InstructionKind::BLEZ:
+      return convert_blez_2(i0, i1, idx);
     default:
       return nullptr;
   }
@@ -1326,7 +1342,7 @@ std::unique_ptr<AtomicOp> convert_slt_3(const Instruction& i0,
     if (i1.kind == InstructionKind::BEQ) {
       condition.invert();
     }
-    result = make_branch(condition, i2, false, dest, idx);
+    result = make_branch(condition, i2, false, dest, idx, false);
     add_clobber_if_unwritten(*result, temp);
     return result;
   } else if (i1.kind == InstructionKind::DADDIU &&
@@ -1391,7 +1407,7 @@ std::unique_ptr<AtomicOp> convert_slti_3(const Instruction& i0,
     if (i1.kind == InstructionKind::BEQ) {
       condition.invert();
     }
-    result = make_branch(condition, i2, false, dest, idx);
+    result = make_branch(condition, i2, false, dest, idx, false);
     add_clobber_if_unwritten(*result, temp);
     return result;
   } else if (i1.kind == InstructionKind::DADDIU &&
@@ -1434,7 +1450,7 @@ std::unique_ptr<AtomicOp> convert_fp_branch(const Instruction& i0,
     if (i1.kind == InstructionKind::BC1F) {
       condition.invert();
     }
-    return make_branch(condition, i2, false, i1.get_src(0).get_label(), idx);
+    return make_branch(condition, i2, false, i1.get_src(0).get_label(), idx, false);
   }
   return nullptr;
 }
@@ -1496,7 +1512,7 @@ std::unique_ptr<AtomicOp> convert_dsll32_4(const Instruction& i0,
     assert(i2.get_src(1).is_reg(rr0()));
 
     IR2_Condition condition(IR2_Condition::Kind::IS_NOT_PAIR, make_src_atom(arg, idx));
-    auto result = make_branch(condition, i3, false, i2.get_src(2).get_label(), idx);
+    auto result = make_branch(condition, i3, false, i2.get_src(2).get_label(), idx, false);
     result->add_clobber_reg(temp);
     return result;
   }
@@ -1518,7 +1534,7 @@ std::unique_ptr<AtomicOp> convert_fp_branch_with_nop(const Instruction& i0,
     if (i2.kind == InstructionKind::BC1F) {
       condition.invert();
     }
-    return make_branch(condition, i3, false, i2.get_src(0).get_label(), idx);
+    return make_branch(condition, i3, false, i2.get_src(0).get_label(), idx, false);
   }
   return nullptr;
 }
@@ -1959,7 +1975,7 @@ int convert_block_to_atomic_ops(int begin_idx,
 
     if (!converted && n_instr >= 2) {
       // try 2 instructions
-      op = convert_2(instr[0], instr[1], op_idx);
+      op = convert_2(instr[0], instr[1], op_idx, block_ends_in_asm_branch);
       if (op) {
         converted = true;
         length = 2;
