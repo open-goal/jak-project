@@ -141,6 +141,23 @@ void input_mode_set(u32 enable) {
   }
 }
 
+void input_mode_save() {
+  if (Pad::input_mode_get() == (u64)Pad::InputModeStatus::Enabled) {
+    lg::error("Can't save controller mapping while mapping controller.");
+  } else if (Pad::input_mode_get() == (u64)Pad::InputModeStatus::Disabled) {
+    g_settings.pad_mapping_info_backup = g_settings.pad_mapping_info; // copy to backup
+    g_settings.pad_mapping_info = Pad::g_input_mode_mapping; // set current mapping
+  }
+}
+
+s64 get_mapped_button(s64 pad, s64 button) {
+  if (pad < 0 || pad > Pad::CONTROLLER_COUNT || button < 0 || button > 16) {
+    lg::error("Invalid parameters to get_mapped_button({}, {})", pad, button);
+    return -1;
+  }
+  return (s64)g_settings.pad_mapping_info.pad_mapping[pad][button];
+}
+
 int PadIsPressed(Pad::Button button, int port) {
   return Pad::IsPressed(g_settings.pad_mapping_info, button, port);
 }

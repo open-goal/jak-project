@@ -80,14 +80,14 @@ There are several ways to "go"
     )
   )
 
-(defmacro make-function-process (dead-pool new-pool proc-type proc-name func &key (stack-size #x4000) &key (stack *kernel-dram-stack*) &rest args)
+(defmacro make-function-process (dead-pool new-pool proc-type func &key (name #f) &key (stack-size #x4000) &key (stack *kernel-dram-stack*) &rest args)
   "Start a new process that runs a function on its main thread.
    Returns a pointer to the new process (or #f? on error)."
   
   (with-gensyms (new-proc)
     `(let ((,new-proc (the-as ,proc-type (get-process ,dead-pool ,proc-type ,stack-size))))
         (when ,new-proc
-          ((method-of-type ,proc-type activate) ,new-proc ,new-pool ,proc-name ,stack)
+          ((method-of-type ,proc-type activate) ,new-proc ,new-pool ,(if name name `(quote ,proc-type)) ,stack)
           (run-next-time-in-process ,new-proc ,func ,@args)
           (-> ,new-proc ppointer)
           )
@@ -95,14 +95,14 @@ There are several ways to "go"
     )
   )
 
-(defmacro make-init-process (dead-pool new-pool proc-type proc-name func &key (stack-size #x4000) &key (stack *kernel-dram-stack*) &rest args)
+(defmacro make-init-process (dead-pool new-pool proc-type func &key (name #f) &key (stack-size #x4000) &key (stack *kernel-dram-stack*) &rest args)
   "Start a new process and run an init function on it.
    Returns a pointer to the new process, or #f (or is it 0?) if something goes wrong."
   
   (with-gensyms (new-proc)
     `(let ((,new-proc (the-as ,proc-type (get-process ,dead-pool ,proc-type ,stack-size))))
         (when ,new-proc
-          ((method-of-type ,proc-type activate) ,new-proc ,new-pool ,proc-name ,stack)
+          ((method-of-type ,proc-type activate) ,new-proc ,new-pool ,(if name name `(quote ,proc-type)) ,stack)
           (run-now-in-process ,new-proc ,func ,@args)
           (-> ,new-proc ppointer)
           )

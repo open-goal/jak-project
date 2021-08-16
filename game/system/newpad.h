@@ -72,6 +72,10 @@ void DefaultMapping(MappingInfo& mapping);
 int IsPressed(MappingInfo& mapping, Button button, int pad);
 void MapButton(MappingInfo& mapping, Button button, int pad, int key);
 
+// this enum is also in pc-pad-utils.gc
+enum class InputModeStatus { Disabled, Enabled, Canceled };
+
+extern MappingInfo g_input_mode_mapping;
 void EnterInputMode();
 void ExitInputMode(bool);
 u64 input_mode_get();

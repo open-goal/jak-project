@@ -22,18 +22,12 @@ std::unordered_map<int, int> g_key_status;
 std::unordered_map<int, int> g_buffered_key_status;
 
 // input mode for controller mapping
-// this enum is also in pc-pad-utils.gc
-enum class InputModeStatus {
-  Disabled,
-  Enabled,
-  Canceled
-};
 InputModeStatus input_mode = InputModeStatus::Disabled;
 u64 input_mode_pad = 0;
 u64 input_mode_key = -1;
 u64 input_mode_mod = 0;
 u64 input_mode_index = 0;
-MappingInfo input_mode_mapping;
+MappingInfo g_input_mode_mapping;
 
 void ForceClearKeys() {
   g_key_status.clear();
@@ -54,8 +48,8 @@ void OnKeyPress(int key) {
       return;
     }
     input_mode_key = key;
-    MapButton(input_mode_mapping, (Button)(input_mode_index++), input_mode_pad, key);
-    if (input_mode_index > (u64)Button::Max) {
+    MapButton(g_input_mode_mapping, (Button)(input_mode_index++), input_mode_pad, key);
+    if (input_mode_index >= (u64)Button::Max) {
       ExitInputMode(false);
     }
     return;

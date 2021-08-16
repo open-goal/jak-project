@@ -72,6 +72,8 @@ void texture_upload_now(const u8* tpage, int mode, u32 s7_ptr);
 void texture_relocate(u32 destination, u32 source, u32 format);
 void poll_events();
 void input_mode_set(u32 enable);
+void input_mode_save();
+s64 get_mapped_button(s64 pad, s64 button);
 
 int PadIsPressed(Pad::Button button, int port);
 

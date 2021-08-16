@@ -19,7 +19,8 @@
 
 (cond (*debug-segment*
 
-(deftype pc-pad-proc-list (basic)
+;; a structure to hold the handles used in this file
+(deftype pc-pad-proc-list (structure)
   ((show   handle)
    (input  handle)
    )
@@ -28,6 +29,7 @@
 (set! (-> *pc-pad-proc-list* show) (the handle #f))
 (set! (-> *pc-pad-proc-list* input) (the handle #f))
 
+;; a pc pad process
 (deftype pc-pad-proc (process)
   ((state-time   seconds)
    (input-index  uint64)
@@ -69,20 +71,16 @@
 
   (if (not (handle->process (-> *pc-pad-proc-list* show)))
     (let ((procp
-      (make-function-process *nk-dead-pool* *active-pool* pc-pad-proc 'pc-pad-show
+      (make-function-process *nk-dead-pool* *active-pool* pc-pad-proc :name 'pc-pad-show
         (lambda :behavior pc-pad-proc ()
           (stack-size-set! (-> self main-thread) 512)
           (loop
-            (let ((cpad (-> *cpad-list* cpads 0)))
-                (format *stdcon* "~3Lcpad 0~%~0L")
-                (format *stdcon* "~Tbutton0: ~X~%" (-> cpad button0))
-                (format *stdcon* "~Tbutton0-abs 0: ~X~%" (-> cpad button0-abs 0))
-                (format *stdcon* "~Tbutton0-abs 1: ~X~%" (-> cpad button0-abs 1))
-                (format *stdcon* "~Tbutton0-abs 2: ~X~%" (-> cpad button0-abs 2))
-                (format *stdcon* "~Tbutton0-rel 0: ~X~%" (-> cpad button0-rel 0))
-                (format *stdcon* "~Tbutton0-rel 1: ~X~%" (-> cpad button0-rel 1))
-                (format *stdcon* "~Tbutton0-rel 2: ~X~%" (-> cpad button0-rel 2))
+            (dotimes (ii 2)
+              (format *stdcon* "~3Lcpad ~D~0L~%" ii)
+              (dotimes (i 16)
+                (format *stdcon* "   ~S: ~32L~D~0L~%" (-> *pc-pad-button-names* i) (pc-pad-get-mapped-button ii i))
                 )
+              )
             (suspend)
             )
           )
@@ -151,7 +149,20 @@
 
 (defstate pc-pi-done (pc-pad-proc)
     
+    :enter (behavior () (set! (-> self input-index) 16))
     :code (behavior ()
+      (pc-pad-input-map-save!)
+      (set-state-time)
+      (until (time-passed? PC_PAD_INPUT_NOTICE_TIME)
+        (with-dma-buffer-add-bucket ((buf (current-display-frame debug-buf))
+                                     (current-display-frame bucket-group)
+                                     (bucket-id debug-draw1))
+          (draw-string-xy (string-format "MAPPED ~D TO ~S!"
+                                         (pc-pad-input-key-get) (-> *pc-pad-button-names* (1- (-> self input-index))))
+                             buf 256 96 (font-color green) (font-flags shadow kerning large middle))
+          )
+        (suspend)
+        )
       (set-state-time)
       (until (time-passed? PC_PAD_INPUT_NOTICE_TIME)
         (with-dma-buffer-add-bucket ((buf (current-display-frame debug-buf))
@@ -214,7 +225,7 @@
   
   (if (not (handle->process (-> *pc-pad-proc-list* input)))
     (let ((procp
-      (make-init-process *nk-dead-pool* *active-pool* pc-pad-proc 'pc-pad-input
+      (make-init-process *nk-dead-pool* *active-pool* pc-pad-proc :name 'pc-pad-input
         (lambda :behavior pc-pad-proc ()
           (pc-pad-input-mode-set #t)
           (go pc-pi-mapping-button)
