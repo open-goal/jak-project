@@ -717,8 +717,10 @@ void InitMachine_PCPort() {
   make_function_symbol_from_c("__pc-texture-relocate", (void*)pc_texture_relocate);
 
   // pad stuff
-  make_function_symbol_from_c("pc-pad-input-mode-set", (void*)Pad::input_mode_set);
+  make_function_symbol_from_c("pc-pad-input-mode-set", (void*)Gfx::input_mode_set);
   make_function_symbol_from_c("pc-pad-input-mode-get", (void*)Pad::input_mode_get);
+  make_function_symbol_from_c("pc-pad-input-key-get", (void*)Pad::input_mode_get_key);
+  make_function_symbol_from_c("pc-pad-input-index-get", (void*)Pad::input_mode_get_index);
 
   // init ps2 VM
   if (VM::use) {

@@ -42,12 +42,13 @@ struct GfxRendererModule {
 struct GfxSettings {
   // current version of the settings. this should be set up so that newer versions are always higher
   // than older versions
-  static constexpr u64 CURRENT_VERSION = 0x0000'0000'0002'0001;
+  static constexpr u64 CURRENT_VERSION = 0x0000'0000'0003'0001;
 
-  u64 version;                        // the version of this settings struct
+  u64 version;  // the version of this settings struct
+  int vsync;    // (temp) number of screen update per frame
+  bool debug;   // graphics debugging
+
   const GfxRendererModule* renderer;  // which rendering pipeline to use.
-  int vsync;                          // (temp) number of screen update per frame
-  bool debug;                         // graphics debugging
 
   Pad::MappingInfo pad_mapping_info;         // button mapping
   Pad::MappingInfo pad_mapping_info_backup;  // button mapping backup (see newpad.h)
@@ -70,6 +71,7 @@ void send_chain(const void* data, u32 offset);
 void texture_upload_now(const u8* tpage, int mode, u32 s7_ptr);
 void texture_relocate(u32 destination, u32 source, u32 format);
 void poll_events();
+void input_mode_set(u32 enable);
 
 int PadIsPressed(Pad::Button button, int port);
 

@@ -17,18 +17,60 @@
 (ml "goal_src/pc_debug/pc-pad-utils.gc")  ;; build and load this file.
 |#
 
-(if *debug-segment* (begin
+(cond (*debug-segment*
 
-(define *pc-pad-show-proc* (the handle #f))
-(define *pc-pad-input-proc* (the handle #f))
+(deftype pc-pad-proc-list (basic)
+  ((show   handle)
+   (input  handle)
+   )
+  )
+(define *pc-pad-proc-list* (new 'static 'pc-pad-proc-list))
+(set! (-> *pc-pad-proc-list* show) (the handle #f))
+(set! (-> *pc-pad-proc-list* input) (the handle #f))
+
+(deftype pc-pad-proc (process)
+  ((state-time   seconds)
+   (input-index  uint64)
+   )
+  :heap-base #x10
+  )
+
+(define *pc-pad-button-names*
+    (new 'static 'array string 16
+          "SELECT"
+          "L3"
+          "R3"
+          "START"
+
+          "UP"
+          "RIGHT"
+          "DOWN"
+          "LEFT"
+
+          "L2"
+          "R2"
+          "L1"
+          "R1"
+
+          "TRIANGLE"
+          "CIRCLE"
+          "X"
+          "SQUARE"
+        ))
+
+(defenum pc-pad-input-status
+  (disabled)
+  (enabled)
+  (canceled)
+  )
 
 (defun-debug pc-pad-show-start ()
   "Start the PC port pad debug display"
 
-  (if (not (handle->process *pc-pad-show-proc*))
-    (set! *pc-pad-show-proc* (ppointer->handle
-      (make-function-process *nk-dead-pool* *active-pool* process 'pc-pad-show
-        (lambda :behavior process ()
+  (if (not (handle->process (-> *pc-pad-proc-list* show)))
+    (let ((procp
+      (make-function-process *nk-dead-pool* *active-pool* pc-pad-proc 'pc-pad-show
+        (lambda :behavior pc-pad-proc ()
           (stack-size-set! (-> self main-thread) 512)
           (loop
             (let ((cpad (-> *cpad-list* cpads 0)))
@@ -46,8 +88,10 @@
           )
         )
       ))
+      (set! (-> *pc-pad-proc-list* show) (ppointer->handle procp))
+      )
     
-    (format #t "That process is already running. :-)")
+    (format #t "That process is already running. :-)~%")
     )
   )
 
@@ -57,36 +101,130 @@
   (kill-by-name 'pc-pad-show *active-pool*)
   )
 
+
+(defconstant PC_PAD_INPUT_NOTICE_TIME (seconds 1.5))
+
+
+(define-extern pc-pi-mapping-button state)
+
+(defstate pc-pi-new-mapping (pc-pad-proc)
+    
+    :enter (behavior () (set! (-> self input-index) (pc-pad-input-index-get)) )
+    :code (behavior ()
+      (set-state-time)
+      (until (time-passed? PC_PAD_INPUT_NOTICE_TIME)
+        (with-dma-buffer-add-bucket ((buf (current-display-frame debug-buf))
+                                     (current-display-frame bucket-group)
+                                     (bucket-id debug-draw1))
+          (draw-string-xy (string-format "MAPPED ~D FOR ~S!"
+                                         (pc-pad-input-key-get) (-> *pc-pad-button-names* (1- (-> self input-index))))
+                             buf 256 96 (font-color green) (font-flags shadow kerning large middle))
+          )
+        (suspend)
+        )
+      (go pc-pi-mapping-button)
+      )
+    :trans (behavior ()
+      (if (or (!= (-> self input-index) (pc-pad-input-index-get))
+              (!= (pc-pad-input-mode-get) (pc-pad-input-status enabled)))
+        ;; something's changed, go back to the main state and check everything
+        (go pc-pi-mapping-button)
+        )
+      )
+    
+    )
+
+(defstate pc-pi-canceled (pc-pad-proc)
+    
+    :code (behavior ()
+      (set-state-time)
+      (until (time-passed? PC_PAD_INPUT_NOTICE_TIME)
+        (with-dma-buffer-add-bucket ((buf (current-display-frame debug-buf))
+                                     (current-display-frame bucket-group)
+                                     (bucket-id debug-draw1))
+          (draw-string-xy "CANCELED!" buf 256 96 (font-color red-reverse) (font-flags shadow kerning large middle))
+          )
+        (suspend)
+        )
+      )
+    )
+
+(defstate pc-pi-done (pc-pad-proc)
+    
+    :code (behavior ()
+      (set-state-time)
+      (until (time-passed? PC_PAD_INPUT_NOTICE_TIME)
+        (with-dma-buffer-add-bucket ((buf (current-display-frame debug-buf))
+                                     (current-display-frame bucket-group)
+                                     (bucket-id debug-draw1))
+          (draw-string-xy "DONE!" buf 256 96 (font-color green) (font-flags shadow kerning large middle))
+          )
+        (suspend)
+        )
+      )
+    )
+
+(defstate pc-pi-mapping-button (pc-pad-proc)
+    
+    :code (behavior ()
+      (set-state-time)
+      (loop
+        (with-dma-buffer-add-bucket ((buf (current-display-frame debug-buf))
+                                     (current-display-frame bucket-group)
+                                     (bucket-id debug-draw1))
+          (if (< (mod (time-passed) (seconds 2)) (seconds 1))
+            (draw-string-xy "NOW MAPPING PAD" buf 256 32 (font-color red) (font-flags shadow kerning large middle))
+            )
+          (draw-string-xy "PRESS ESCAPE TO EXIT" buf 256 64 (font-color default) (font-flags shadow kerning large middle))
+          (draw-string-xy (string-format "PLEASE MAP FOR ~S" (-> *pc-pad-button-names* (-> self input-index)))
+                              buf 256 96 (font-color default) (font-flags shadow kerning large middle))
+          )
+        (suspend)
+        )
+      )
+    :trans (behavior ()
+      (cond
+        ;; canceled
+        ((= (pc-pad-input-mode-get) (pc-pad-input-status canceled))
+         (go pc-pi-canceled)
+         )
+        ;; finished
+        ((or (>= (pc-pad-input-index-get) 16)
+             (= (pc-pad-input-mode-get) (pc-pad-input-status disabled)))
+         (go pc-pi-done)
+         )
+        ;; waiting input
+        ((= (-> self input-index) (pc-pad-input-index-get))
+         )
+        ;; one input has been done!
+        ((= (1+ (-> self input-index)) (pc-pad-input-index-get))
+         (go pc-pi-new-mapping)
+         )
+        ;; more than one input has been done. go to last mapping.
+        ((< (1+ (-> self input-index)) (pc-pad-input-index-get))
+         (go pc-pi-new-mapping)
+         )
+        )
+      )
+    
+    )
+
 (defun-debug pc-pad-input-start ()
   "Start the PC port pad debug key mapping"
   
-  (if (not (handle->process *pc-pad-input-proc*))
-    (set! *pc-pad-input-proc* (ppointer->handle
-      (make-function-process *nk-dead-pool* *active-pool* process 'pc-pad-input
-        (lambda :behavior process ()
-          (stack-size-set! (-> self main-thread) 512)
-          (let ((start-time (get-current-time))
-                (time-passed 0))
-              (loop
-                (set! time-passed (- (the int (get-current-time)) start-time))
-                
-                (with-dma-buffer-add-bucket ((buf (current-display-frame debug-buf))
-                                             (current-display-frame bucket-group)
-                                             (bucket-id debug-draw1))
-                    (if (< (mod time-passed (seconds 2)) (seconds 1))
-                      (draw-string-xy "NOW MAPPING PAD" buf 256 64 (font-color red) (font-flags shadow kerning large middle))
-                      )
-                    
-                    )
-                
-                (suspend)
-                )
-              )
+  (if (not (handle->process (-> *pc-pad-proc-list* input)))
+    (let ((procp
+      (make-init-process *nk-dead-pool* *active-pool* pc-pad-proc 'pc-pad-input
+        (lambda :behavior pc-pad-proc ()
+          (pc-pad-input-mode-set #t)
+          (go pc-pi-mapping-button)
           )
         )
       ))
+      (set! (-> *pc-pad-proc-list* input) (ppointer->handle procp))
+      )
     
-    (format #t "That process is already running. :-)")
+    (format #t "That process is already running. :-)~%")
     )
   )
 
@@ -97,4 +235,4 @@
   )
 
 )
-(format #t "No debug memory in use. pc-pad-utils not loaded."))
+(else (format #t "No debug memory in use. pc-pad-utils not loaded.")))

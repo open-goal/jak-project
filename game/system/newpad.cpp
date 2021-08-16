@@ -22,9 +22,18 @@ std::unordered_map<int, int> g_key_status;
 std::unordered_map<int, int> g_buffered_key_status;
 
 // input mode for controller mapping
-bool input_mode = false;
+// this enum is also in pc-pad-utils.gc
+enum class InputModeStatus {
+  Disabled,
+  Enabled,
+  Canceled
+};
+InputModeStatus input_mode = InputModeStatus::Disabled;
+u64 input_mode_pad = 0;
 u64 input_mode_key = -1;
 u64 input_mode_mod = 0;
+u64 input_mode_index = 0;
+MappingInfo input_mode_mapping;
 
 void ForceClearKeys() {
   g_key_status.clear();
@@ -39,12 +48,16 @@ void ClearKeys() {
 }
 
 void OnKeyPress(int key) {
-  if (input_mode) {
+  if (input_mode == InputModeStatus::Enabled) {
     if (key == GLFW_KEY_ESCAPE) {
-      input_mode = false;
+      ExitInputMode(true);
       return;
     }
     input_mode_key = key;
+    MapButton(input_mode_mapping, (Button)(input_mode_index++), input_mode_pad, key);
+    if (input_mode_index > (u64)Button::Max) {
+      ExitInputMode(false);
+    }
     return;
   }
   // set absolute key status
@@ -63,7 +76,7 @@ void OnKeyPress(int key) {
 }
 
 void OnKeyRelease(int key) {
-  if (input_mode) {
+  if (input_mode == InputModeStatus::Enabled) {
     return;
   }
   // set absolute key status
@@ -126,16 +139,26 @@ void DefaultMapping(MappingInfo& mapping) {
   MapButton(mapping, Button::Left, 0, GLFW_KEY_LEFT);
 }
 
-void input_mode_set(u32 enable) {
-  if (enable != s7.offset) {
-    input_mode = true;
-  } else {
-    input_mode = false;
-  }
+void EnterInputMode() {
+  input_mode = InputModeStatus::Enabled;
+  input_mode_index = 0;
+  input_mode_pad = 0;
+}
+
+void ExitInputMode(bool canceled) {
+  input_mode = canceled ? InputModeStatus::Canceled : InputModeStatus::Disabled;
 }
 
 u64 input_mode_get() {
+  return (u64)input_mode;
+}
+
+u64 input_mode_get_key() {
   return input_mode_key;
+}
+
+u64 input_mode_get_index() {
+  return input_mode_index;
 }
 
 };  // namespace Pad

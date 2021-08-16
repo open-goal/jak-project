@@ -9,6 +9,8 @@
 #include "display.h"
 #include "pipelines/opengl.h"
 
+#include "game/kernel/kscheme.h"
+#include "common/symbols.h"
 #include "common/log/log.h"
 #include "game/runtime.h"
 #include "game/system/newpad.h"
@@ -129,6 +131,14 @@ void texture_relocate(u32 destination, u32 source, u32 format) {
 
 void poll_events() {
   g_settings.renderer->poll_events();
+}
+
+void input_mode_set(u32 enable) {
+  if (enable == s7.offset + FIX_SYM_TRUE) {  // #t
+    Pad::EnterInputMode();
+  } else {
+    Pad::ExitInputMode(enable != s7.offset);  // use #f for graceful exit, or 'canceled for abrupt
+  }
 }
 
 int PadIsPressed(Pad::Button button, int port) {

@@ -72,7 +72,10 @@ void DefaultMapping(MappingInfo& mapping);
 int IsPressed(MappingInfo& mapping, Button button, int pad);
 void MapButton(MappingInfo& mapping, Button button, int pad, int key);
 
-void input_mode_set(u32 enable);
+void EnterInputMode();
+void ExitInputMode(bool);
 u64 input_mode_get();
+u64 input_mode_get_key();
+u64 input_mode_get_index();
 
 }  // namespace Pad
