@@ -1146,7 +1146,7 @@
             (when *display-deci-count*
               (let ((s2-1 draw-string-xy))
                 (format (clear *temp-string*) "~D" *deci-count*)
-                (s2-1 *temp-string* debug-buf 448 210 (font-color default) 3)
+                (s2-1 *temp-string* debug-buf 448 210 (font-color default) (font-flags shadow kerning))
                 )
               )
 
@@ -1183,7 +1183,7 @@
           (if (= *master-mode* 'pause)
               (draw-string-xy
                (lookup-text! *common-text* (game-text-id pause) #f)
-               s3-1 256 160 (font-color orange-red) 39)
+               s3-1 256 160 (font-color orange-red) (font-flags shadow kerning middle large))
               )
 
           ;; draw console text on screen
@@ -1193,7 +1193,7 @@
              (the int (-> *font-context* origin x))
              a3-8
              (font-color default)
-             3
+             (font-flags shadow kerning)
              )
             )
 
@@ -1277,14 +1277,8 @@
         )
       )
     (set! *run* #t)
-    ;; this is actually a macro (see logic-target.gc)
-    (let ((new-dproc (swhen (get-process *4k-dead-pool* process (* 16 1024))
-                          ((method-of-type process activate) bc *display-pool* 'display *kernel-dram-stack*)
-                          ((the (function cpu-thread function object) set-to-run) (-> bc main-thread) display-loop)
-                          (-> bc ppointer)
-                          ))
-          )
-      (set! *dproc* (the process (if new-dproc (-> new-dproc 0 self))))
+    (let ((new-dproc (make-function-process *4k-dead-pool* *display-pool* process 'display display-loop)))
+      (set! *dproc* (the process (as-process new-dproc)))
       )
     (cond
       ((or (level-get-with-status *level* 'loaded)

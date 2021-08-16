@@ -50,10 +50,10 @@ std::unique_ptr<GraphicsData> g_gfx_data;
 void SetDisplayCallbacks(GLFWwindow* d) {
   glfwSetKeyCallback(d, [](GLFWwindow* /*window*/, int key, int scancode, int action, int mods) {
     if (action == GlfwKeyAction::Press) {
-      lg::debug("KEY PRESS:   key: {} scancode: {} mods: {:X}", key, scancode, mods);
+      // lg::debug("KEY PRESS:   key: {} scancode: {} mods: {:X}", key, scancode, mods);
       Pad::OnKeyPress(key);
     } else if (action == GlfwKeyAction::Release) {
-      lg::debug("KEY RELEASE: key: {} scancode: {} mods: {:X}", key, scancode, mods);
+      // lg::debug("KEY RELEASE: key: {} scancode: {} mods: {:X}", key, scancode, mods);
       Pad::OnKeyRelease(key);
     }
   });
@@ -145,6 +145,9 @@ static void gl_kill_display(GfxDisplay* display) {
 static void gl_render_display(GfxDisplay* display) {
   GLFWwindow* window = display->window_glfw;
 
+  // poll events
+  glfwPollEvents();
+
   glfwMakeContextCurrent(window);
 
   // wait for a copied chain.
@@ -182,10 +185,9 @@ static void gl_render_display(GfxDisplay* display) {
   {
     std::unique_lock<std::mutex> lock(g_gfx_data->sync_mutex);
     g_gfx_data->frame_idx++;
+
     g_gfx_data->sync_cv.notify_all();
   }
-  // poll events TODO integrate input with cpad
-  glfwPollEvents();
 
   // exit if display window was closed
   if (glfwWindowShouldClose(window)) {
@@ -271,6 +273,10 @@ void gl_texture_relocate(u32 destination, u32 source, u32 format) {
   }
 }
 
+void gl_poll_events() {
+  glfwPollEvents();
+}
+
 const GfxRendererModule moduleOpenGL = {
     gl_init,                // init
     gl_make_main_display,   // make_main_display
@@ -282,6 +288,7 @@ const GfxRendererModule moduleOpenGL = {
     gl_send_chain,          // send_chain
     gl_texture_upload_now,  // texture_upload_now
     gl_texture_relocate,    // texture_relocate
+    gl_poll_events,         // poll_events
     GfxPipeline::OpenGL,    // pipeline
     "OpenGL 3.0"            // name
 };

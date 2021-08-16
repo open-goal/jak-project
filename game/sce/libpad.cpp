@@ -63,6 +63,7 @@ static const Pad::Button libpad_PadPressureButtons[] = {
 // returns buffer size (32) or 0 on error.
 int scePadRead(int port, int slot, u8* rdata) {
   auto cpad = (CPadInfo*)(rdata);
+  Gfx::poll_events();
 
   cpad->valid = 0;  // success
 

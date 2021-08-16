@@ -30,8 +30,6 @@ void InitSettings(GfxSettings& settings) {
   // debug for now
   settings.debug = true;
 
-  // we're not setting controller info
-  settings.pad_mapping_info.input_mode = false;
   // use buffered input mode
   settings.pad_mapping_info.buffer_mode = true;
   // debug input settings
@@ -127,6 +125,10 @@ void texture_relocate(u32 destination, u32 source, u32 format) {
   if (g_settings.renderer) {
     g_settings.renderer->texture_relocate(destination, source, format);
   }
+}
+
+void poll_events() {
+  g_settings.renderer->poll_events();
 }
 
 int PadIsPressed(Pad::Button button, int port) {

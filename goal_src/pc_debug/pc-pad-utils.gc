@@ -1,0 +1,100 @@
+;;-*-Lisp-*-
+(in-package goal)
+
+
+;; This file is used for debugging and testing the PC port pad (controller/input) implementation.
+;; It contains a function for creating a process for debugging cpad inputs and a function to kill that process.
+;; It also contains a function to start a process to map keys to cpad inputs (X, circle, etc.), and another one to kill it.
+;; THIS FILE IS DEBUG ONLY and will not work if *debug-segment* is not enabled.
+
+;; To run this:
+
+#|
+(make-group "iso")  ;; build the game
+(lt)                ;; connect to the runtime
+(lg)                ;; have the runtime load the game engine
+(test-play)         ;; start the game loop
+(ml "goal_src/pc_debug/pc-pad-utils.gc")  ;; build and load this file.
+|#
+
+(if *debug-segment* (begin
+
+(define *pc-pad-show-proc* (the handle #f))
+(define *pc-pad-input-proc* (the handle #f))
+
+(defun-debug pc-pad-show-start ()
+  "Start the PC port pad debug display"
+
+  (if (not (handle->process *pc-pad-show-proc*))
+    (set! *pc-pad-show-proc* (ppointer->handle
+      (make-function-process *nk-dead-pool* *active-pool* process 'pc-pad-show
+        (lambda :behavior process ()
+          (stack-size-set! (-> self main-thread) 512)
+          (loop
+            (let ((cpad (-> *cpad-list* cpads 0)))
+                (format *stdcon* "~3Lcpad 0~%~0L")
+                (format *stdcon* "~Tbutton0: ~X~%" (-> cpad button0))
+                (format *stdcon* "~Tbutton0-abs 0: ~X~%" (-> cpad button0-abs 0))
+                (format *stdcon* "~Tbutton0-abs 1: ~X~%" (-> cpad button0-abs 1))
+                (format *stdcon* "~Tbutton0-abs 2: ~X~%" (-> cpad button0-abs 2))
+                (format *stdcon* "~Tbutton0-rel 0: ~X~%" (-> cpad button0-rel 0))
+                (format *stdcon* "~Tbutton0-rel 1: ~X~%" (-> cpad button0-rel 1))
+                (format *stdcon* "~Tbutton0-rel 2: ~X~%" (-> cpad button0-rel 2))
+                )
+            (suspend)
+            )
+          )
+        )
+      ))
+    
+    (format #t "That process is already running. :-)")
+    )
+  )
+
+(defun-debug pc-pad-show-stop ()
+  "Stop the PC port pad debug display"
+  
+  (kill-by-name 'pc-pad-show *active-pool*)
+  )
+
+(defun-debug pc-pad-input-start ()
+  "Start the PC port pad debug key mapping"
+  
+  (if (not (handle->process *pc-pad-input-proc*))
+    (set! *pc-pad-input-proc* (ppointer->handle
+      (make-function-process *nk-dead-pool* *active-pool* process 'pc-pad-input
+        (lambda :behavior process ()
+          (stack-size-set! (-> self main-thread) 512)
+          (let ((start-time (get-current-time))
+                (time-passed 0))
+              (loop
+                (set! time-passed (- (the int (get-current-time)) start-time))
+                
+                (with-dma-buffer-add-bucket ((buf (current-display-frame debug-buf))
+                                             (current-display-frame bucket-group)
+                                             (bucket-id debug-draw1))
+                    (if (< (mod time-passed (seconds 2)) (seconds 1))
+                      (draw-string-xy "NOW MAPPING PAD" buf 256 64 (font-color red) (font-flags shadow kerning large middle))
+                      )
+                    
+                    )
+                
+                (suspend)
+                )
+              )
+          )
+        )
+      ))
+    
+    (format #t "That process is already running. :-)")
+    )
+  )
+
+(defun-debug pc-pad-input-stop ()
+  "Stop the PC port pad debug key mapping"
+  
+  (kill-by-name 'pc-pad-input *active-pool*)
+  )
+
+)
+(format #t "No debug memory in use. pc-pad-utils not loaded."))

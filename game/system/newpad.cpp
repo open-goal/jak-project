@@ -8,6 +8,7 @@
 #include "common/log/log.h"
 
 #include "game/graphics/pipelines/opengl.h"  // for GLFW macros
+#include "game/kernel/kscheme.h"
 
 namespace Pad {
 
@@ -20,21 +21,32 @@ namespace Pad {
 std::unordered_map<int, int> g_key_status;
 std::unordered_map<int, int> g_buffered_key_status;
 
+// input mode for controller mapping
+bool input_mode = false;
+u64 input_mode_key = -1;
+u64 input_mode_mod = 0;
+
 void ForceClearKeys() {
   g_key_status.clear();
   g_buffered_key_status.clear();
 }
 
 void ClearKeys() {
+  g_buffered_key_status.clear();
   for (auto& key : g_key_status) {
-    key.second = false;
-  }
-  for (auto& key : g_buffered_key_status) {
-    key.second = false;
+    g_buffered_key_status.insert(std::make_pair(key.first, key.second));
   }
 }
 
 void OnKeyPress(int key) {
+  if (input_mode) {
+    if (key == GLFW_KEY_ESCAPE) {
+      input_mode = false;
+      return;
+    }
+    input_mode_key = key;
+    return;
+  }
   // set absolute key status
   if (g_key_status.find(key) == g_key_status.end()) {
     g_key_status.insert(std::make_pair(key, 1));
@@ -51,6 +63,9 @@ void OnKeyPress(int key) {
 }
 
 void OnKeyRelease(int key) {
+  if (input_mode) {
+    return;
+  }
   // set absolute key status
   // no bounds checking for now in order to catch bugs
   g_key_status.at(key) = 0;
@@ -109,6 +124,18 @@ void DefaultMapping(MappingInfo& mapping) {
   MapButton(mapping, Button::Right, 0, GLFW_KEY_RIGHT);
   MapButton(mapping, Button::Down, 0, GLFW_KEY_DOWN);
   MapButton(mapping, Button::Left, 0, GLFW_KEY_LEFT);
+}
+
+void input_mode_set(u32 enable) {
+  if (enable != s7.offset) {
+    input_mode = true;
+  } else {
+    input_mode = false;
+  }
+}
+
+u64 input_mode_get() {
+  return input_mode_key;
 }
 
 };  // namespace Pad

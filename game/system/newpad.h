@@ -14,6 +14,7 @@
  */
 
 #include <unordered_map>
+#include "common/common_types.h"
 
 namespace Pad {
 
@@ -50,9 +51,9 @@ enum class Button {
 };
 
 struct MappingInfo {
-  bool debug = true;                                         // debug mode
-  bool input_mode = false;                                   // input mode for controller mapping
-  bool buffer_mode = true;                                   // use buffered inputs
+  bool debug = true;        // debug mode
+  bool buffer_mode = true;  // use buffered inputs
+
   int pad_mapping[CONTROLLER_COUNT][(int)Pad::Button::Max];  // controller button mapping
   // TODO complex button mapping & key macros (e.g. shift+x for l2+r2 press etc.)
 };
@@ -70,5 +71,8 @@ void ClearKeys();
 void DefaultMapping(MappingInfo& mapping);
 int IsPressed(MappingInfo& mapping, Button button, int pad);
 void MapButton(MappingInfo& mapping, Button button, int pad, int key);
+
+void input_mode_set(u32 enable);
+u64 input_mode_get();
 
 }  // namespace Pad

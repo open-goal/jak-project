@@ -36,6 +36,7 @@
 #include "game/graphics/dma/dma_copy.h"
 
 #include "game/system/vm/vm.h"
+#include "game/system/newpad.h"
 using namespace ee;
 
 /*!
@@ -423,8 +424,7 @@ u64 CPadOpen(u64 cpad_info, s32 pad_number) {
   return cpad_info;
 }
 
-// TODO CPadGetData
-Ptr<CPadInfo> CPadGetData(u64 cpad_info) {
+u64 CPadGetData(u64 cpad_info) {
   auto cpad = Ptr<CPadInfo>(cpad_info).c();
   auto pad_state = scePadGetState(cpad->number, 0);
   if (pad_state == scePadStateDiscon) {
@@ -472,7 +472,7 @@ Ptr<CPadInfo> CPadGetData(u64 cpad_info) {
       if (scePadInfoMode(cpad->number, 0, InfoModeIdTable, -1) == 0) {
         // no controller modes
         cpad->state = 90;
-        return make_ptr<CPadInfo>(cpad);
+        return cpad_info;
       }
       cpad->state = 41;
     case 41:  // controller mode - change to dualshock mode!
@@ -530,7 +530,7 @@ Ptr<CPadInfo> CPadGetData(u64 cpad_info) {
     case 90:
       break;  // unsupported controller. too bad!
   }
-  return make_ptr<CPadInfo>(cpad);
+  return cpad_info;
 }
 
 // TODO InstallHandler
@@ -715,6 +715,16 @@ void InitMachine_PCPort() {
   make_function_symbol_from_c("__send-gfx-dma-chain", (void*)send_gfx_dma_chain);
   make_function_symbol_from_c("__pc-texture-upload-now", (void*)pc_texture_upload_now);
   make_function_symbol_from_c("__pc-texture-relocate", (void*)pc_texture_relocate);
+
+  // pad stuff
+  make_function_symbol_from_c("pc-pad-input-mode-set", (void*)Pad::input_mode_set);
+  make_function_symbol_from_c("pc-pad-input-mode-get", (void*)Pad::input_mode_get);
+
+  // init ps2 VM
+  if (VM::use) {
+    make_function_symbol_from_c("vm-ptr", (void*)VM::get_vm_ptr);
+    VM::vm_init();
+  }
 }
 
 void vif_interrupt_callback() {
