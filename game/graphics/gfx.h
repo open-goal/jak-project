@@ -42,16 +42,19 @@ struct GfxRendererModule {
 struct GfxSettings {
   // current version of the settings. this should be set up so that newer versions are always higher
   // than older versions
-  static constexpr u64 CURRENT_VERSION = 0x0000'0000'0003'0001;
+  // increment this whenever you change this struct.
+  // there's probably a smarter way to do this (automatically deduce size etc.)
+  static constexpr u64 CURRENT_VERSION = 0x0000'0000'0004'0001;
 
-  u64 version;  // the version of this settings struct
-  int vsync;    // (temp) number of screen update per frame
-  bool debug;   // graphics debugging
-
-  const GfxRendererModule* renderer;  // which rendering pipeline to use.
+  u64 version;  // the version of this settings struct. MUST ALWAYS BE THE FIRST THING!
 
   Pad::MappingInfo pad_mapping_info;         // button mapping
   Pad::MappingInfo pad_mapping_info_backup;  // button mapping backup (see newpad.h)
+
+  int vsync;   // (temp) number of screen update per frame
+  bool debug;  // graphics debugging
+
+  GfxPipeline renderer;  // which rendering pipeline to use.
 };
 
 namespace Gfx {

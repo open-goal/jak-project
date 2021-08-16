@@ -3,15 +3,19 @@
  * Graphics component for the runtime. Abstraction layer for the main graphics routines.
  */
 
+#include <cstdio>
 #include <functional>
+#include <filesystem>
 
 #include "gfx.h"
 #include "display.h"
 #include "pipelines/opengl.h"
 
-#include "game/kernel/kscheme.h"
 #include "common/symbols.h"
 #include "common/log/log.h"
+#include "common/util/FileUtil.h"
+#include "game/common/file_paths.h"
+#include "game/kernel/kscheme.h"
 #include "game/runtime.h"
 #include "game/system/newpad.h"
 
@@ -24,7 +28,7 @@ void InitSettings(GfxSettings& settings) {
   settings.version = GfxSettings::CURRENT_VERSION;
 
   // use opengl by default for now
-  settings.renderer = Gfx::GetRenderer(GfxPipeline::OpenGL);  // Gfx::renderers[0];
+  settings.renderer = GfxPipeline::OpenGL;  // Gfx::renderers[0];
 
   // 1 screen update per frame
   settings.vsync = 1;
@@ -47,6 +51,33 @@ namespace Gfx {
 GfxSettings g_settings;
 // const std::vector<const GfxRendererModule*> renderers = {&moduleOpenGL};
 
+void LoadSettings() {
+  const auto filename = file_util::get_file_path({GAME_CONFIG_DIR_NAME, SETTINGS_GFX_FILE_NAME});
+  if (std::filesystem::exists(filename)) {
+    FILE* fp = fopen(filename.c_str(), "rb");
+    u64 version;
+    fread(&version, sizeof(u64), 1, fp);
+    if (version == GfxSettings::CURRENT_VERSION) {
+      fseek(fp, 0, SEEK_SET);
+      fread(&g_settings, sizeof(GfxSettings), 1, fp);
+      lg::info("Loaded gfx settings.");
+    } else {
+      // TODO upgrade func
+      lg::info("Detected gfx settings from old version. Ignoring.");
+    }
+    fclose(fp);
+  }
+}
+
+void SaveSettings() {
+  const auto filename = file_util::get_file_path({GAME_CONFIG_DIR_NAME, SETTINGS_GFX_FILE_NAME});
+  file_util::create_dir_if_needed(file_util::get_file_path({GAME_CONFIG_DIR_NAME}));
+  FILE* fp = fopen(filename.c_str(), "wb");
+  fwrite(&g_settings, sizeof(GfxSettings), 1, fp);
+  fclose(fp);
+  lg::info("Saved gfx settings.");
+}
+
 const GfxRendererModule* GetRenderer(GfxPipeline pipeline) {
   switch (pipeline) {
     case GfxPipeline::Invalid:
@@ -61,6 +92,10 @@ const GfxRendererModule* GetRenderer(GfxPipeline pipeline) {
   }
 }
 
+const GfxRendererModule* GetCurrentRenderer() {
+  return GetRenderer(g_settings.renderer);
+}
+
 u32 Init() {
   lg::info("GFX Init");
   // initialize settings
@@ -68,7 +103,9 @@ u32 Init() {
   // guarantee we have no keys detected by pad
   Pad::ForceClearKeys();
 
-  if (g_settings.renderer->init(g_settings)) {
+  LoadSettings();
+
+  if (GetCurrentRenderer()->init(g_settings)) {
     lg::error("Gfx::Init error");
     return 1;
   }
@@ -99,38 +136,38 @@ void Loop(std::function<bool()> f) {
 u32 Exit() {
   lg::info("GFX Exit");
   Display::KillMainDisplay();
-  g_settings.renderer->exit();
+  GetCurrentRenderer()->exit();
   return 0;
 }
 
 u32 vsync() {
-  return g_settings.renderer->vsync();
+  return GetCurrentRenderer()->vsync();
 }
 
 u32 sync_path() {
-  return g_settings.renderer->sync_path();
+  return GetCurrentRenderer()->sync_path();
 }
 
 void send_chain(const void* data, u32 offset) {
-  if (g_settings.renderer) {
-    g_settings.renderer->send_chain(data, offset);
+  if (GetCurrentRenderer()) {
+    GetCurrentRenderer()->send_chain(data, offset);
   }
 }
 
 void texture_upload_now(const u8* tpage, int mode, u32 s7_ptr) {
-  if (g_settings.renderer) {
-    g_settings.renderer->texture_upload_now(tpage, mode, s7_ptr);
+  if (GetCurrentRenderer()) {
+    GetCurrentRenderer()->texture_upload_now(tpage, mode, s7_ptr);
   }
 }
 
 void texture_relocate(u32 destination, u32 source, u32 format) {
-  if (g_settings.renderer) {
-    g_settings.renderer->texture_relocate(destination, source, format);
+  if (GetCurrentRenderer()) {
+    GetCurrentRenderer()->texture_relocate(destination, source, format);
   }
 }
 
 void poll_events() {
-  g_settings.renderer->poll_events();
+  GetCurrentRenderer()->poll_events();
 }
 
 void input_mode_set(u32 enable) {
@@ -147,6 +184,8 @@ void input_mode_save() {
   } else if (Pad::input_mode_get() == (u64)Pad::InputModeStatus::Disabled) {
     g_settings.pad_mapping_info_backup = g_settings.pad_mapping_info; // copy to backup
     g_settings.pad_mapping_info = Pad::g_input_mode_mapping; // set current mapping
+
+    SaveSettings();
   }
 }
 
