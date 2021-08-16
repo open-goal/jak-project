@@ -1568,16 +1568,17 @@ class GetSymbolStringPointer : public FormElement {
   Form* m_src = nullptr;
 };
 
-class NonVirtualDefstateElement : public FormElement {
+class DefstateElement : public FormElement {
  public:
   struct Entry {
     StateHandler kind;
     Form* val = nullptr;
     bool is_behavior = false;
   };
-  NonVirtualDefstateElement(const std::string& process_type,
-                            const std::string& state_name,
-                            const std::vector<Entry>& entries);
+  DefstateElement(const std::string& process_type,
+                  const std::string& state_name,
+                  const std::vector<Entry>& entries,
+                  bool is_virtual);
 
   goos::Object to_form_internal(const Env& env) const override;
   void apply(const std::function<void(FormElement*)>& f) override;
@@ -1594,6 +1595,7 @@ class NonVirtualDefstateElement : public FormElement {
   std::string m_process_type;
   std::string m_state_name;
   std::vector<Entry> m_entries;
+  bool m_is_virtual = false;
 };
 
 /*!

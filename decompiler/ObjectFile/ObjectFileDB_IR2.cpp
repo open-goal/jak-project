@@ -1018,13 +1018,18 @@ bool ObjectFileDB::lookup_function_type(const FunctionName& name,
       }
     }
   } else if (name.kind == FunctionName::FunctionKind::NV_STATE) {
-    auto sym_type = dts.symbol_types.find(name.nv_state_name);
+    auto sym_type = dts.symbol_types.find(name.state_name);
     if (sym_type == dts.symbol_types.end()) {
       lg::error("Could not find symbol with name {} for state. This is likely a decompiler bug.",
-                name.nv_state_name);
+                name.state_name);
       return false;
     }
     *result = get_state_handler_type(name.handler_kind, sym_type->second);
+    return true;
+  } else if (name.kind == FunctionName::FunctionKind::V_STATE) {
+    auto mi = dts.ts.lookup_method(name.type_name, name.state_name);
+    *result = get_state_handler_type(name.handler_kind,
+                                     mi.type.substitute_for_method_call(name.type_name));
     return true;
   } else {
     assert(false);

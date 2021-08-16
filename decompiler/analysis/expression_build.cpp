@@ -23,7 +23,8 @@ bool convert_to_expressions(
   // give us anything more specific.
   if (f.guessed_name.kind == FunctionName::FunctionKind::GLOBAL ||
       f.guessed_name.kind == FunctionName::FunctionKind::UNIDENTIFIED ||
-      f.guessed_name.kind == FunctionName::FunctionKind::NV_STATE) {
+      f.guessed_name.kind == FunctionName::FunctionKind::NV_STATE ||
+      f.guessed_name.kind == FunctionName::FunctionKind::V_STATE) {
     f.ir2.env.set_remap_for_function(f.type);
   } else if (f.guessed_name.kind == FunctionName::FunctionKind::METHOD) {
     auto method_type =
