@@ -182,8 +182,8 @@ void input_mode_save() {
   if (Pad::input_mode_get() == (u64)Pad::InputModeStatus::Enabled) {
     lg::error("Can't save controller mapping while mapping controller.");
   } else if (Pad::input_mode_get() == (u64)Pad::InputModeStatus::Disabled) {
-    g_settings.pad_mapping_info_backup = g_settings.pad_mapping_info; // copy to backup
-    g_settings.pad_mapping_info = Pad::g_input_mode_mapping; // set current mapping
+    g_settings.pad_mapping_info_backup = g_settings.pad_mapping_info;  // copy to backup
+    g_settings.pad_mapping_info = Pad::g_input_mode_mapping;           // set current mapping
 
     SaveSettings();
   }

@@ -106,7 +106,8 @@ int InitMainDisplay(int width, int height, const char* title, GfxSettings& setti
     return 1;
   }
 
-  auto display = Gfx::GetRenderer(settings.renderer)->make_main_display(width, height, title, settings);
+  auto display =
+      Gfx::GetRenderer(settings.renderer)->make_main_display(width, height, title, settings);
   if (display == NULL) {
     lg::error("Failed to make main display.");
     return 1;
