@@ -144,6 +144,21 @@ std::string final_defun_out(const Function& func,
     append_body_to_function_definition(&top_form, inline_body, var_dec, func.type);
     return pretty_print::to_string(top_form);
   }
+
+  if (func.guessed_name.kind == FunctionName::FunctionKind::NV_STATE ||
+      func.guessed_name.kind == FunctionName::FunctionKind::V_STATE) {
+    std::vector<goos::Object> top;
+    top.push_back(pretty_print::to_symbol("state-handler"));
+
+    top.push_back(pretty_print::to_symbol(func.guessed_name.to_string()));
+
+    top.push_back(arguments);
+    auto top_form = pretty_print::build_list(top);
+
+    append_body_to_function_definition(&top_form, inline_body, var_dec, func.type);
+    return pretty_print::to_string(top_form);
+  }
+
   return "nyi";
 }
 

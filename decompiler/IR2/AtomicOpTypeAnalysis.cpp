@@ -991,7 +991,14 @@ TP_Type LoadVarOp::get_src_type(const TypeState& input,
       auto rd = dts.ts.reverse_field_lookup(rd_in);
 
       if (rd.success) {
-        return TP_Type::make_from_ts(coerce_to_reg_type(rd.result_type));
+        if (rd_in.base_type.base_type() == "state" && rd.tokens.size() == 1 &&
+            rd.tokens.front().kind == FieldReverseLookupOutput::Token::Kind::FIELD &&
+            rd.tokens.front().name == "enter" && rd_in.base_type.arg_count() > 0) {
+          // special case for accessing the enter field of state
+          return TP_Type::make_from_ts(state_to_go_function(rd_in.base_type));
+        } else {
+          return TP_Type::make_from_ts(coerce_to_reg_type(rd.result_type));
+        }
       }
     }
 

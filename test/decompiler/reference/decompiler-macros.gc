@@ -340,8 +340,8 @@
     (push! *defstate-type-stack* beh-type)
     )
   )
-
 (defmacro defstate (state-name parents
+                               &key (virtual #f)
                                &key (event #f)
                                &key (enter #f)
                                &key (trans #f)
@@ -350,7 +350,7 @@
                                &key (post #f)
                                )
   "Define a new state!"
-
+  
   (with-gensyms (new-state)
     (let ((defstate-type (first parents)))
       (when (not (null? *defstate-type-stack*))
@@ -377,11 +377,16 @@
          ;; the compiler will set the fields of the given state and define the symbol.
          ;; This way it can check the individual function types, make sure they make sense, and create
          ;; a state with the appropriate type.
-         (define-state-hook ,state-name ,defstate-type ,new-state :event ,event :enter ,enter :trans ,trans :exit ,exit :code ,code :post ,post)
+         ,(if virtual
+              `(define-virtual-state-hook ,state-name ,defstate-type ,new-state :event ,event :enter ,enter :trans ,trans :exit ,exit :code ,code :post ,post)
+              `(define-state-hook ,state-name ,defstate-type ,new-state :event ,event :enter ,enter :trans ,trans :exit ,exit :code ,code :post ,post)
+              )
+         
          )
       )
     )
   )
+
 
 (defmacro behavior (bindings &rest body)
   "Define an anonymous behavior for a process state. This may only be used inside a defstate!"

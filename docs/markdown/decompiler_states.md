@@ -104,9 +104,21 @@ which means that the `plat-button-move-upward` entry in `:methods` in `(deftype 
 ### Name of a virtual state
 The decompiler will check that the name in the method is correct.  If you get it wrong, there will be an error that tells you the right name.
 
+For example:
+```
+Disagreement between state name and type system name. The state is named plat-button-move-upward, but the slot is named dummy-24, defined in type plat-button
+```
+
+This means you should rename `dummy-24` in `plat-button` to `plat-button-move-upward`.
+
+
 ### Go to a virtual state
 todo
 
 
 ## Unsupported
+Calls to `find-parent-method` that actually return a `state` will have the wrong type. You must manually cast it. Make sure you get the argument types correct.
+
 If there is a function with multiple virtual `go`s which assume a different type at compile-time (accessing different parts of the type tree), then it is not possible to insert the right kind of cast yet.
+
+Virtual states that don't call `inherit-state` will not work correctly. I need to find an example of this in order to add support.

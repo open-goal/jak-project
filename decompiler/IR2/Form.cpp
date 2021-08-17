@@ -2853,9 +2853,13 @@ void DefstateElement::get_modified_regs(RegSet& regs) const {
 
 goos::Object DefstateElement::to_form_internal(const Env& env) const {
   std::vector<goos::Object> forms;
-  forms.push_back(pretty_print::to_symbol(m_is_virtual ? "defstate-virtual" : "defstate"));
+  forms.push_back(pretty_print::to_symbol("defstate"));
   forms.push_back(pretty_print::to_symbol(m_state_name));
   forms.push_back(pretty_print::build_list(m_process_type));
+
+  if (m_is_virtual) {
+    forms.push_back(pretty_print::to_symbol(":virtual #t"));
+  }
 
   for (const auto& e : m_entries) {
     forms.push_back(pretty_print::to_symbol(fmt::format(":{}", handler_kind_to_name(e.kind))));
