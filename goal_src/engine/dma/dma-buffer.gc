@@ -423,12 +423,13 @@
       )
   )
 
-(defmacro with-dma-buffer-add-bucket (bindings &rest body)
+(defmacro with-dma-buffer-add-bucket (bindings &key (bucket-group (current-display-frame bucket-group)) &rest body)
   "Bind a dma-buffer to a variable and use it on a block to allow adding things to a new bucket.
-   usage: (with-dma-buffer-add-bucket ((buffer-name buffer) bucket bucket-id) &rest body "
+   usage: (with-dma-buffer-add-bucket ((buffer-name buffer) bucket-id) &rest body
+   example: (with-dma-buffer-add-bucket ((buf (current-display-frame debug-buf)) (bucket-id debug-draw1)) ...)"
   
-  `(let (,(car bindings))
-    (with-dma-bucket (,(caar bindings) ,(second bindings) ,(third bindings))
+  `(let ((,(caar bindings) ,(cadar bindings)))
+    (with-dma-bucket (,(caar bindings) ,bucket-group ,(cadr bindings))
       ,@body
       )
     )
