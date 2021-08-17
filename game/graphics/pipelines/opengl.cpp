@@ -80,7 +80,7 @@ static int gl_init(GfxSettings& settings) {
     return 1;
   }
 
-  // request an OpenGL 3.3 Core
+  // request an OpenGL 3.3 Core context
   glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 3);  // 3.3
   glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 3);
   glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);  // core profile, not compat
