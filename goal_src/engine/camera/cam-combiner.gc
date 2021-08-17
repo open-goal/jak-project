@@ -5,222 +5,345 @@
 ;; name in dgo: cam-combiner
 ;; dgos: GAME, ENGINE
 
+;; failed to figure out what this is:
 (defstate cam-combiner-active (camera-combiner)
   :event
   (lambda :behavior camera-combiner
    ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
-   (case arg2 
-    (('point-of-interest)
-      (cond
-       ((-> arg3 param 0)
-        (set! (-> (the-as camera-slave self) unknown-symbol) #t)
-        (set!
-         (-> (the-as camera-slave self) view-off quad)
-         (-> (the-as vector (-> arg3 param 0)) quad)
-         )
-        (set! (-> (the-as camera-slave self) min-z-override) 1.0)
-        )
-       (else
-        (set! (-> (the-as camera-slave self) unknown-symbol) #f)
-        (set! (-> (the-as camera-slave self) min-z-override) 0.0)
-        )
-       )
-      )
-    (('set-interpolation)
-     (set! (-> (the-as camera-combiner self) interp-val) 0.0)
-     (set!
-      (-> (the-as camera-combiner self) interp-step)
-      (/ 5.0 (the float (-> arg3 param 0)))
-      )
-     )
-    (('teleport)
-     (when (nonzero? (-> (the-as camera-combiner self) tracking-status))
-      (cam-calc-follow!
-       (-> (the-as camera-combiner self) tracking)
-       (-> (the-as camera-combiner self) trans)
-       #f
-       )
-      (slave-set-rotation!
-       (-> (the-as camera-combiner self) tracking)
-       (-> (the-as camera-combiner self) trans)
-       (the-as float (-> (the-as camera-combiner self) tracking-options))
-       (-> (the-as camera-combiner self) fov)
-       #f
-       )
-      )
-     )
-    (('stop-tracking)
-     (set! (-> (the-as camera-combiner self) tracking-status) (the-as uint 0))
-     0
-     )
-    (('start-tracking)
-     (cond
-      ((< arg1 1)
-       (let ((t9-2 format)
-             (a0-15 0)
-             (a1-3
-              "ERROR <GMJ>: missing camera-slave parameter to *camera-combiner* start-tracking~%"
-              )
-             )
-        (let ((v1-7 (-> arg3 param 0)))
-         (rtype-of v1-7)
-         )
-        (t9-2 a0-15 a1-3)
-        )
-       )
-      ((let ((t9-3 type-type?)
-             (v1-8 (-> arg3 param 0))
-             )
-        (not (t9-3 (rtype-of v1-8) camera-slave))
-        )
-       (let ((t9-4 format)
-             (a0-18 0)
-             (a1-5
-              "ERROR <GMJ>: invalid type '~A' to *camera-combiner* start-tracking~%"
-              )
-             (v1-10 (-> arg3 param 0))
-             )
-        (t9-4 a0-18 a1-5 (rtype-of v1-10))
-        )
-       )
-      ((zero? (-> (the-as camera-combiner self) tracking-status))
-       (set! (-> (the-as camera-combiner self) tracking-status) (the-as uint 1))
-       (let ((gp-1 (the-as object (-> arg3 param 0))))
-        (set!
-         (-> (the-as camera-combiner self) tracking-options)
-         (the-as int (-> (the-as camera-slave gp-1) options))
-         )
-        (set!
-         (-> (the-as camera-combiner self) tracking no-follow)
-         (-> (the-as camera-slave gp-1) tracking no-follow)
-         )
-        (copy-cam-float-seeker
-         (-> (the-as camera-combiner self) tracking tilt-adjust)
-         (-> (the-as camera-slave gp-1) tracking tilt-adjust)
-         )
-        (copy-cam-float-seeker
-         (-> (the-as camera-combiner self) tracking underwater-blend)
-         (-> (the-as camera-slave gp-1) tracking underwater-blend)
-         )
-        (set!
-         (-> (the-as camera-combiner self) tracking use-point-of-interest)
-         (-> (the-as camera-slave gp-1) tracking use-point-of-interest)
-         )
-        (set!
-         (-> (the-as camera-combiner self) tracking point-of-interest quad)
-         (-> (the-as camera-slave gp-1) tracking point-of-interest quad)
-         )
-        (copy-cam-float-seeker
-         (-> (the-as camera-combiner self) tracking point-of-interest-blend)
-         (-> (the-as camera-slave gp-1) tracking point-of-interest-blend)
-         )
-        (let ((gp-2 (+ (the-as uint gp-1) 108)))
-         (cam-calc-follow!
-          (-> (the-as camera-combiner self) tracking)
-          (the-as vector gp-2)
-          #f
-          )
-         (slave-set-rotation!
-          (-> (the-as camera-combiner self) tracking)
-          (the-as vector gp-2)
-          (the-as float (-> (the-as camera-combiner self) tracking-options))
-          (-> (the-as camera-combiner self) fov)
-          #f
-          )
-         )
-        )
-       )
-      )
-     )
-    (('copy-tracking)
-     (cond
-      ((< arg1 1)
-       (let ((t9-10 format)
-             (a0-27 0)
-             (a1-11
-              "ERROR <GMJ>: missing camera-slave parameter to *camera-combiner* copy-tracking~%"
-              )
-             )
-        (let ((v1-23 (-> arg3 param 0)))
-         (rtype-of v1-23)
-         )
-        (t9-10 a0-27 a1-11)
-        )
-       )
-      ((let ((t9-11 type-type?)
-             (v1-24 (-> arg3 param 0))
-             )
-        (not (t9-11 (rtype-of v1-24) camera-slave))
-        )
-       (let ((t9-12 format)
-             (a0-30 0)
-             (a1-13
-              "ERROR <GMJ>: invalid type '~A' to *camera-combiner* copy-tracking~%"
-              )
-             (v1-25 (-> arg3 param 0))
-             )
-        (t9-12 a0-30 a1-13 (rtype-of v1-25))
-        )
-       )
-      ((nonzero? (-> (the-as camera-combiner self) tracking-status))
-       )
-      (else
-       (set! (-> (the-as camera-combiner self) tracking-status) (the-as uint 1))
-       (let ((gp-3 (the-as camera-slave (-> arg3 param 0))))
-        (set!
-         (-> (the-as camera-combiner self) tracking-options)
-         (the-as int (-> gp-3 options))
-         )
-        (set!
-         (-> (the-as camera-combiner self) tracking no-follow)
-         (-> gp-3 tracking no-follow)
-         )
-        (copy-cam-float-seeker
-         (-> (the-as camera-combiner self) tracking tilt-adjust)
-         (-> gp-3 tracking tilt-adjust)
-         )
-        (copy-cam-float-seeker
-         (-> (the-as camera-combiner self) tracking underwater-blend)
-         (-> gp-3 tracking underwater-blend)
-         )
-        (set!
-         (-> (the-as camera-combiner self) tracking follow-off quad)
-         (-> gp-3 tracking follow-off quad)
-         )
-        (set!
-         (-> (the-as camera-combiner self) tracking follow-pt quad)
-         (-> gp-3 tracking follow-pt quad)
-         )
-        (let* ((a2-17 (-> (the-as camera-combiner self) tracking))
-               (a3-3 (-> gp-3 tracking))
-               (v1-36 (-> a3-3 inv-mat vector 0 quad))
-               (a0-37 (-> a3-3 inv-mat vector 1 quad))
-               (a1-16 (-> a3-3 inv-mat vector 2 quad))
-               (a3-4 (-> a3-3 inv-mat vector 3 quad))
-               )
-         (set! (-> a2-17 inv-mat vector 0 quad) v1-36)
-         (set! (-> a2-17 inv-mat vector 1 quad) a0-37)
-         (set! (-> a2-17 inv-mat vector 2 quad) a1-16)
-         (set! (-> a2-17 inv-mat vector 3 quad) a3-4)
-         )
-        (set!
-         (-> (the-as camera-combiner self) tracking use-point-of-interest)
-         (-> gp-3 tracking use-point-of-interest)
-         )
-        (set!
-         (-> (the-as camera-combiner self) tracking point-of-interest quad)
-         (-> gp-3 tracking point-of-interest quad)
-         )
-        (copy-cam-float-seeker
-         (-> (the-as camera-combiner self) tracking point-of-interest-blend)
-         (-> gp-3 tracking point-of-interest-blend)
-         )
-        )
-       )
-      )
+   (let ((v1-0 arg2))
+    (the-as object (cond
+                    ((= v1-0 'point-of-interest)
+                     (the-as none (cond
+                                   ((-> arg3 param 0)
+                                    (set!
+                                     (->
+                                      (the-as camera-slave self)
+                                      unknown-symbol
+                                      )
+                                     #t
+                                     )
+                                    (set!
+                                     (->
+                                      (the-as camera-slave self)
+                                      view-off
+                                      quad
+                                      )
+                                     (-> (the-as vector (-> arg3 param 0)) quad)
+                                     )
+                                    (let ((f0-0 1.0))
+                                     (set!
+                                      (->
+                                       (the-as camera-slave self)
+                                       min-z-override
+                                       )
+                                      f0-0
+                                      )
+                                     f0-0
+                                     )
+                                    )
+                                   (else
+                                    (set!
+                                     (->
+                                      (the-as camera-slave self)
+                                      unknown-symbol
+                                      )
+                                     #f
+                                     )
+                                    (let ((f0-1 0.0))
+                                     (set!
+                                      (->
+                                       (the-as camera-slave self)
+                                       min-z-override
+                                       )
+                                      f0-1
+                                      )
+                                     f0-1
+                                     )
+                                    )
+                                   )
+                      )
+                     )
+                    ((= v1-0 'set-interpolation)
+                     (set! (-> (the-as camera-combiner self) interp-val) 0.0)
+                     (let ((f0-4 (/ 5.0 (the float (-> arg3 param 0)))))
+                      (set! (-> (the-as camera-combiner self) interp-step) f0-4)
+                      f0-4
+                      )
+                     )
+                    ((= v1-0 'teleport)
+                     (when
+                      (nonzero?
+                       (-> (the-as camera-combiner self) tracking-status)
+                       )
+                      (cam-calc-follow!
+                       (-> (the-as camera-combiner self) tracking)
+                       (-> (the-as camera-combiner self) trans)
+                       #f
+                       )
+                      (slave-set-rotation!
+                       (-> (the-as camera-combiner self) tracking)
+                       (-> (the-as camera-combiner self) trans)
+                       (the-as
+                        float
+                        (-> (the-as camera-combiner self) tracking-options)
+                        )
+                       (-> (the-as camera-combiner self) fov)
+                       #f
+                       )
+                      )
+                     )
+                    ((= v1-0 'stop-tracking)
+                     (set!
+                      (-> (the-as camera-combiner self) tracking-status)
+                      (the-as uint 0)
+                      )
+                     0
+                     )
+                    ((= v1-0 'start-tracking)
+                     (cond
+                      ((< arg1 1)
+                       (let ((t9-2 format)
+                             (a0-15 0)
+                             (a1-3
+                              "ERROR <GMJ>: missing camera-slave parameter to *camera-combiner* start-tracking~%"
+                              )
+                             )
+                        (let ((v1-7 (-> arg3 param 0)))
+                         (rtype-of v1-7)
+                         )
+                        (t9-2 a0-15 a1-3)
+                        )
+                       )
+                      ((let ((t9-3 type-type?)
+                             (v1-8 (-> arg3 param 0))
+                             )
+                        (not (t9-3 (rtype-of v1-8) camera-slave))
+                        )
+                       (let ((t9-4 format)
+                             (a0-18 0)
+                             (a1-5
+                              "ERROR <GMJ>: invalid type '~A' to *camera-combiner* start-tracking~%"
+                              )
+                             (v1-10 (-> arg3 param 0))
+                             )
+                        (t9-4 a0-18 a1-5 (rtype-of v1-10))
+                        )
+                       )
+                      ((zero?
+                        (-> (the-as camera-combiner self) tracking-status)
+                        )
+                       (set!
+                        (-> (the-as camera-combiner self) tracking-status)
+                        (the-as uint 1)
+                        )
+                       (let ((gp-1 (the-as object (-> arg3 param 0))))
+                        (set!
+                         (-> (the-as camera-combiner self) tracking-options)
+                         (the-as int (-> (the-as camera-slave gp-1) options))
+                         )
+                        (set!
+                         (-> (the-as camera-combiner self) tracking no-follow)
+                         (-> (the-as camera-slave gp-1) tracking no-follow)
+                         )
+                        (copy-cam-float-seeker
+                         (-> (the-as camera-combiner self) tracking tilt-adjust)
+                         (-> (the-as camera-slave gp-1) tracking tilt-adjust)
+                         )
+                        (copy-cam-float-seeker
+                         (->
+                          (the-as camera-combiner self)
+                          tracking
+                          underwater-blend
+                          )
+                         (->
+                          (the-as camera-slave gp-1)
+                          tracking
+                          underwater-blend
+                          )
+                         )
+                        (set!
+                         (->
+                          (the-as camera-combiner self)
+                          tracking
+                          use-point-of-interest
+                          )
+                         (->
+                          (the-as camera-slave gp-1)
+                          tracking
+                          use-point-of-interest
+                          )
+                         )
+                        (set!
+                         (->
+                          (the-as camera-combiner self)
+                          tracking
+                          point-of-interest
+                          quad
+                          )
+                         (->
+                          (the-as camera-slave gp-1)
+                          tracking
+                          point-of-interest
+                          quad
+                          )
+                         )
+                        (copy-cam-float-seeker
+                         (->
+                          (the-as camera-combiner self)
+                          tracking
+                          point-of-interest-blend
+                          )
+                         (->
+                          (the-as camera-slave gp-1)
+                          tracking
+                          point-of-interest-blend
+                          )
+                         )
+                        (let ((gp-2 (+ (the-as uint gp-1) 108)))
+                         (cam-calc-follow!
+                          (-> (the-as camera-combiner self) tracking)
+                          (the-as vector gp-2)
+                          #f
+                          )
+                         (slave-set-rotation!
+                          (-> (the-as camera-combiner self) tracking)
+                          (the-as vector gp-2)
+                          (the-as
+                           float
+                           (-> (the-as camera-combiner self) tracking-options)
+                           )
+                          (-> (the-as camera-combiner self) fov)
+                          #f
+                          )
+                         )
+                        )
+                       )
+                      )
+                     )
+                    ((= v1-0 'copy-tracking)
+                     (cond
+                      ((< arg1 1)
+                       (let ((t9-10 format)
+                             (a0-27 0)
+                             (a1-11
+                              "ERROR <GMJ>: missing camera-slave parameter to *camera-combiner* copy-tracking~%"
+                              )
+                             )
+                        (let ((v1-23 (-> arg3 param 0)))
+                         (rtype-of v1-23)
+                         )
+                        (t9-10 a0-27 a1-11)
+                        )
+                       )
+                      ((let ((t9-11 type-type?)
+                             (v1-24 (-> arg3 param 0))
+                             )
+                        (not (t9-11 (rtype-of v1-24) camera-slave))
+                        )
+                       (let ((t9-12 format)
+                             (a0-30 0)
+                             (a1-13
+                              "ERROR <GMJ>: invalid type '~A' to *camera-combiner* copy-tracking~%"
+                              )
+                             (v1-25 (-> arg3 param 0))
+                             )
+                        (t9-12 a0-30 a1-13 (rtype-of v1-25))
+                        )
+                       )
+                      ((nonzero?
+                        (-> (the-as camera-combiner self) tracking-status)
+                        )
+                       #f
+                       )
+                      (else
+                       (set!
+                        (-> (the-as camera-combiner self) tracking-status)
+                        (the-as uint 1)
+                        )
+                       (let ((gp-3 (the-as camera-slave (-> arg3 param 0))))
+                        (set!
+                         (-> (the-as camera-combiner self) tracking-options)
+                         (the-as int (-> gp-3 options))
+                         )
+                        (set!
+                         (-> (the-as camera-combiner self) tracking no-follow)
+                         (-> gp-3 tracking no-follow)
+                         )
+                        (copy-cam-float-seeker
+                         (-> (the-as camera-combiner self) tracking tilt-adjust)
+                         (-> gp-3 tracking tilt-adjust)
+                         )
+                        (copy-cam-float-seeker
+                         (->
+                          (the-as camera-combiner self)
+                          tracking
+                          underwater-blend
+                          )
+                         (-> gp-3 tracking underwater-blend)
+                         )
+                        (set!
+                         (->
+                          (the-as camera-combiner self)
+                          tracking
+                          follow-off
+                          quad
+                          )
+                         (-> gp-3 tracking follow-off quad)
+                         )
+                        (set!
+                         (->
+                          (the-as camera-combiner self)
+                          tracking
+                          follow-pt
+                          quad
+                          )
+                         (-> gp-3 tracking follow-pt quad)
+                         )
+                        (let*
+                         ((a2-17 (-> (the-as camera-combiner self) tracking))
+                          (a3-3 (-> gp-3 tracking))
+                          (v1-36 (-> a3-3 inv-mat vector 0 quad))
+                          (a0-37 (-> a3-3 inv-mat vector 1 quad))
+                          (a1-16 (-> a3-3 inv-mat vector 2 quad))
+                          (a3-4 (-> a3-3 inv-mat vector 3 quad))
+                          )
+                         (set! (-> a2-17 inv-mat vector 0 quad) v1-36)
+                         (set! (-> a2-17 inv-mat vector 1 quad) a0-37)
+                         (set! (-> a2-17 inv-mat vector 2 quad) a1-16)
+                         (set! (-> a2-17 inv-mat vector 3 quad) a3-4)
+                         )
+                        (set!
+                         (->
+                          (the-as camera-combiner self)
+                          tracking
+                          use-point-of-interest
+                          )
+                         (-> gp-3 tracking use-point-of-interest)
+                         )
+                        (set!
+                         (->
+                          (the-as camera-combiner self)
+                          tracking
+                          point-of-interest
+                          quad
+                          )
+                         (-> gp-3 tracking point-of-interest quad)
+                         )
+                        (copy-cam-float-seeker
+                         (->
+                          (the-as camera-combiner self)
+                          tracking
+                          point-of-interest-blend
+                          )
+                         (-> gp-3 tracking point-of-interest-blend)
+                         )
+                        )
+                       )
+                      )
+                     )
+                    )
      )
     )
-   (none)
    )
   :code
   (lambda :behavior camera-combiner
@@ -625,7 +748,3 @@
   0
   (none)
   )
-
-
-
-

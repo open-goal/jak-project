@@ -58,7 +58,7 @@ It type checks the arguments for the entry function.
   )
 
 ;; cause the given process to change state.
-(defmacro go-process (proc state &rest args)
+(defmacro go-process (proc next-state &rest args)
   `(with-pp
      (protect (pp)
               (set! pp ,proc)
@@ -166,7 +166,7 @@ It type checks the arguments for the entry function.
    (trans (function none))
    (enter function)
    (exit (function none))
-   (event (function process int symbol event-message-block none)))
+   (event (function process int symbol event-message-block object)))
   "Allocate a new state. It seems like this isn't really used much and most states are
    statically allocated and as a result don't have the constructor called."
   (let ((obj (object-new allocation type-to-make (the-as int (-> type-to-make size)))))
@@ -184,12 +184,22 @@ It type checks the arguments for the entry function.
 
 (defun inherit-state ((child state) (parent state))
   "Copy handler functions from parent to child"
-  (set! (-> child exit) (-> parent exit))
-  (set! (-> child code) (-> parent code))
-  (set! (-> child trans) (-> parent trans))
-  (set! (-> child post) (-> parent post))
-  (set! (-> child enter) (-> parent enter))
-  (set! (-> child event) (-> parent event))
+  (cond
+    ((nonzero? parent)
+     (set! (-> child exit) (-> parent exit))
+     (set! (-> child code) (-> parent code))
+     (set! (-> child trans) (-> parent trans))
+     (set! (-> child post) (-> parent post))
+     (set! (-> child enter) (-> parent enter))
+     (set! (-> child event) (-> parent event))
+     )
+    (else
+      ;; Note: this is added to let us defstate on a child before the parent.
+      ;; The child won't be usable like this, but it will prevent a crash. 
+      (format 0 "[STATE ERROR] inherit-state got a null parent state. Child is ~A~%" (-> child name))
+      )
+    )
+  
   child
   )
 

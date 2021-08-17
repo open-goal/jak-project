@@ -10,6 +10,7 @@
 namespace decompiler {
 
 constexpr bool debug_defstates = false;
+constexpr bool print_renames = false;
 
 namespace {
 
@@ -127,29 +128,28 @@ std::vector<DefstateElement::Entry> get_defstate_entries(
       }
 
       this_entry.is_behavior = true;
-      fmt::print("RENAME: {} to ", handler_func->guessed_name.to_string());
+      if (print_renames) {
+        fmt::print("RENAME: {} to ", handler_func->guessed_name.to_string());
+      }
+
       if (virtual_child) {
         handler_func->guessed_name.set_as_v_state(*virtual_child, state_name, handler_kind);
       } else {
         handler_func->guessed_name.set_as_nv_state(state_name, handler_kind);
       }
-      fmt::print("{}\n", handler_func->guessed_name.to_string());
+      if (print_renames) {
+        fmt::print("{}\n", handler_func->guessed_name.to_string());
+      }
 
       // scary part - modify the function type!
       handler_func->type = get_state_handler_type(handler_kind, state_type);
     } else if (handler_atom && handler_atom->is_sym_val()) {
       auto sym_type = env.dts->lookup_symbol_type(handler_atom->get_str());
       auto expected_type = get_state_handler_type(handler_kind, state_type);
-      fmt::print("SYM: {}\n", handler_atom->get_str());
       if (!env.dts->ts.tc(expected_type, sym_type)) {
         this_entry.val =
             pool.alloc_single_element_form<CastElement>(nullptr, expected_type, this_entry.val);
-        fmt::print("FAIL! {}\n", this_entry.val->to_string(env));
-      } else {
-        fmt::print("Pass {} is a {}\n", sym_type.print(), expected_type.print());
       }
-    } else {
-      fmt::print("is atom {} val {}\n", !!handler_atom, val->to_string(env));
     }
     entries.push_back(this_entry);
   }
@@ -366,8 +366,6 @@ FormElement* rewrite_virtual_defstate(LetElement* elt,
       }
     }
   }
-
-  fmt::print("type: {} method: {} val: {}\n", type_name, method_id, val->to_string(env));
 
   // checks: parent_type_name is the parent
   if (inherit_info) {
