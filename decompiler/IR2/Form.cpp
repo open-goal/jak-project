@@ -2864,9 +2864,6 @@ goos::Object DefstateElement::to_form_internal(const Env& env) const {
   for (const auto& e : m_entries) {
     forms.push_back(pretty_print::to_symbol(fmt::format(":{}", handler_kind_to_name(e.kind))));
     auto to_print = e.val;
-    while (to_print->try_as_element<CastElement>()) {
-      to_print = to_print->try_as_element<CastElement>()->source();
-    }
     forms.push_back(to_print->to_form(env));
   }
 

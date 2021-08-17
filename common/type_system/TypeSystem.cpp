@@ -525,8 +525,9 @@ MethodInfo TypeSystem::declare_method(Type* type,
       if (!existing_info.type.is_compatible_child_method(ts, type->get_name())) {
         throw_typesystem_error(
             "The method {} of type {} was originally declared as {}, but has been "
-            "redeclared as {}\n",
-            method_name, type->get_name(), existing_info.type.print(), ts.print());
+            "redeclared as {}. Originally declared in {}\n",
+            method_name, type->get_name(), existing_info.type.print(), ts.print(),
+            existing_info.defined_in_type);
       }
 
       if ((existing_info.no_virtual || no_virtual) &&
@@ -1663,6 +1664,10 @@ std::string TypeSystem::generate_deftype_footer(const Type* type) const {
     auto behavior = info.type.try_get_tag("behavior");
     if (behavior) {
       methods_string.append(fmt::format(":behavior {} ", *behavior));
+    }
+
+    if (info.type.base_type() == "state") {
+      methods_string.append(":state ");
     }
 
     methods_string.append(fmt::format("{})\n    ", info.id));
