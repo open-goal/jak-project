@@ -409,7 +409,7 @@ bool is_nonvirtual_state(LetElement* elt) {
 
 }  // namespace
 
-void run_defstate(DecompilerTypeSystem& dts, Function& top_level_func) {
+void run_defstate(Function& top_level_func) {
   auto& env = top_level_func.ir2.env;
   auto& pool = *top_level_func.ir2.form_pool;
   top_level_func.ir2.top_form->apply_form([&](Form* form) {

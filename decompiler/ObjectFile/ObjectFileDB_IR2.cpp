@@ -44,7 +44,7 @@ void ObjectFileDB::analyze_functions_ir2(const std::string& output_dir,
 
   for_each_obj([&](ObjectFileData& data) {
     try {
-      run_defstate(dts, data.linked_data.functions_by_seg.at(2).front());
+      run_defstate(data.linked_data.functions_by_seg.at(2).front());
     } catch (const std::exception& e) {
       lg::error("Failed to find defstates: {}", e.what());
     }

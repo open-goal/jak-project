@@ -74,8 +74,7 @@
 ;; failed to figure out what this is:
 (defstate teetertotter-idle (teetertotter)
   :event
-  (lambda :behavior teetertotter
-   ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
+  (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
    (let ((v1-0 arg2))
     (the-as object (cond
                     ((= v1-0 'attack)
@@ -108,17 +107,15 @@
     )
    )
   :code
-  (lambda :behavior teetertotter () (let ((gp-0 (-> self skel root-channel 0)))
-                                     (joint-control-channel-group-eval!
-                                      gp-0
-                                      (the-as
-                                       art-joint-anim
-                                       (-> self draw art-group data 4)
-                                       )
-                                      num-func-identity
-                                      )
-                                     (set! (-> gp-0 frame-num) 0.0)
-                                     )
+  (behavior ()
+   (let ((gp-0 (-> self skel root-channel 0)))
+    (joint-control-channel-group-eval!
+     gp-0
+     (the-as art-joint-anim (-> self draw art-group data 4))
+     num-func-identity
+     )
+    (set! (-> gp-0 frame-num) 0.0)
+    )
    (while #t
     (suspend)
     )
@@ -131,8 +128,7 @@
 ;; failed to figure out what this is:
 (defstate teetertotter-launch (teetertotter)
   :event
-  (lambda :behavior teetertotter
-   ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
+  (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
    (when (= arg2 'touch)
     (when
      (and
@@ -189,8 +185,7 @@
     )
    )
   :code
-  (lambda :behavior teetertotter
-   ()
+  (behavior ()
    (local-vars (v1-16 symbol) (f0-4 float))
    (set! (-> self launched-player) #f)
    (let ((a0-0 (-> self skel root-channel 0)))
@@ -252,43 +247,35 @@
 ;; failed to figure out what this is:
 (defstate teetertotter-bend (teetertotter)
   :code
-  (lambda :behavior teetertotter () (let ((a0-0 (-> self skel root-channel 0)))
-                                     (set!
-                                      (-> a0-0 frame-group)
-                                      (the-as
-                                       art-joint-anim
-                                       (-> self draw art-group data 5)
-                                       )
-                                      )
-                                     (set!
-                                      (-> a0-0 param 0)
-                                      (the
-                                       float
-                                       (+
-                                        (->
-                                         (the-as
-                                          art-joint-anim
-                                          (-> self draw art-group data 5)
-                                          )
-                                         data
-                                         0
-                                         length
-                                         )
-                                        -1
-                                        )
-                                       )
-                                      )
-                                     (set! (-> a0-0 param 1) 1.0)
-                                     (set! (-> a0-0 frame-num) 0.0)
-                                     (joint-control-channel-group!
-                                      a0-0
-                                      (the-as
-                                       art-joint-anim
-                                       (-> self draw art-group data 5)
-                                       )
-                                      num-func-seek!
-                                      )
-                                     )
+  (behavior ()
+   (let ((a0-0 (-> self skel root-channel 0)))
+    (set!
+     (-> a0-0 frame-group)
+     (the-as art-joint-anim (-> self draw art-group data 5))
+     )
+    (set!
+     (-> a0-0 param 0)
+     (the
+      float
+      (+
+       (->
+        (the-as art-joint-anim (-> self draw art-group data 5))
+        data
+        0
+        length
+        )
+       -1
+       )
+      )
+     )
+    (set! (-> a0-0 param 1) 1.0)
+    (set! (-> a0-0 frame-num) 0.0)
+    (joint-control-channel-group!
+     a0-0
+     (the-as art-joint-anim (-> self draw art-group data 5))
+     num-func-seek!
+     )
+    )
    (until (begin
            (suspend)
            (let ((a0-1 (-> self skel root-channel 0)))

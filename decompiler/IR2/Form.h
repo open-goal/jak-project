@@ -1590,6 +1590,7 @@ class DefstateElement : public FormElement {
                          std::vector<FormElement*>* result,
                          bool allow_side_effects) override;
   void get_modified_regs(RegSet& regs) const override;
+  std::vector<Entry>& entries() { return m_entries; }
 
  private:
   std::string m_process_type;
