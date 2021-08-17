@@ -5228,7 +5228,7 @@
   (another-gray 17)
   (dark-dark-green 18)
   (flat-dark-purple 19)
-  (yellow 20)
+  (flat-yellow 20)
   (blue-white 21)
   (flat-dark-gray 22)
   (flat-gray 23)
@@ -5240,9 +5240,29 @@
   (yellow-orange 29)
   (yellow-green-2 30)
   (another-light-blue 31)
-  (another-default 32)
+  (light-yellow 32)
   (red-orange 33)
   (another-orange-red 34)
+  
+  (red 3)
+  (red2 4)
+  (yellow 5)
+  (green 6)
+  (blue 7)
+  (cyan 10)
+  (red-reverse 33)
+  (red-obverse 34)
+  )
+
+(defenum font-flags
+  :type uint32
+  :bitfield #t
+  (shadow 0)
+  (kerning 1)
+  (middle 2)
+  (left 3)
+  (right 4)
+  (large 5)
   )
 
 (deftype font-context (basic)
@@ -5254,7 +5274,7 @@
    (context-vec vector :inline :offset 48) ;; added
    (color      font-color     :offset-assert 64)
    (color-s32  int32          :offset 64) ;; added for asm
-   (flags      uint32         :offset-assert 72)
+   (flags      font-flags         :offset-assert 72)
    (flags-signed int32        :offset        72) ;; added for asm
    (mat        matrix         :offset-assert 76)
    (start-line uint32         :offset-assert 80)
@@ -5264,7 +5284,7 @@
   :size-assert         #x58
   :flag-assert         #x1400000058
   (:methods
-    (new (symbol type matrix int int float font-color uint) _type_ 0)
+    (new (symbol type matrix int int float font-color font-flags) _type_ 0)
     (set-mat! (font-context matrix) font-context 9)
     (set-origin! (font-context int int) font-context 10)
     (set-depth! (font-context int) font-context 11)
@@ -5273,7 +5293,7 @@
     (set-height! (font-context int) font-context 14)
     (set-projection! (font-context float) font-context 15)
     (set-color! (font-context font-color) font-context 16)
-    (set-flags! (font-context uint) font-context 17)
+    (set-flags! (font-context font-flags) font-context 17)
     (set-start-line! (font-context uint) font-context 18)
     (set-scale! (font-context float) font-context 19)
     )
@@ -5315,7 +5335,7 @@
    (buf                basic                  :offset-assert 3024)
    (str-ptr            uint32                 :offset-assert 3028)
    (str-ptr-signed     (pointer uint8)                  :offset 3028) ;; added
-   (flags              uint32                 :offset-assert 3032)
+   (flags              font-flags                 :offset-assert 3032)
    (flags-signed       int32                  :offset 3032) ;; added
    (reg-save           uint32        5       :offset-assert 3036)
    )
@@ -5368,7 +5388,7 @@
 (define-extern set-display-env (function display-env int int int int int int display-env))
 (define-extern set-draw-env (function draw-env int int int int int int draw-env))
 (define-extern get-video-mode (function symbol))
-(define-extern draw-string-xy (function string dma-buffer int int font-color int none))
+(define-extern draw-string-xy (function string dma-buffer int int font-color font-flags none))
 (define-extern set-draw-env-offset (function draw-env int int int draw-env))
 (define-extern put-display-alpha-env (function display-env none))
 (define-extern set-display2 (function display int int int int int display))

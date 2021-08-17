@@ -415,7 +415,9 @@
   )
 
 (defmacro ppointer->handle (pproc)
-  `(new 'static 'handle :process ,pproc :pid (-> ,pproc 0 pid))
+  `(let ((the-process ,pproc))
+      (new 'static 'handle :process the-process :pid (-> the-process 0 pid))
+      )
   )
 
 (defmacro process->handle (proc)
@@ -455,7 +457,7 @@
   )
 
 
-;; Not sure what this is, but it's probably used in the event system.
+;; this is used for the event system to pass around parameters from one process to another.
 (deftype event-message-block (structure)
   ((to process :offset-assert 0)
    (from process :offset-assert 4)
