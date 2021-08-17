@@ -80,6 +80,36 @@ There are several ways to "go"
     )
   )
 
+(defmacro make-function-process (dead-pool new-pool proc-type func &key (name #f) &key (stack-size #x4000) &key (stack *kernel-dram-stack*) &rest args)
+  "Start a new process that runs a function on its main thread.
+   Returns a pointer to the new process (or #f? on error)."
+  
+  (with-gensyms (new-proc)
+    `(let ((,new-proc (the-as ,proc-type (get-process ,dead-pool ,proc-type ,stack-size))))
+        (when ,new-proc
+          ((method-of-type ,proc-type activate) ,new-proc ,new-pool ,(if name name `(quote ,proc-type)) ,stack)
+          (run-next-time-in-process ,new-proc ,func ,@args)
+          (-> ,new-proc ppointer)
+          )
+        )
+    )
+  )
+
+(defmacro make-init-process (dead-pool new-pool proc-type func &key (name #f) &key (stack-size #x4000) &key (stack *kernel-dram-stack*) &rest args)
+  "Start a new process and run an init function on it.
+   Returns a pointer to the new process, or #f (or is it 0?) if something goes wrong."
+  
+  (with-gensyms (new-proc)
+    `(let ((,new-proc (the-as ,proc-type (get-process ,dead-pool ,proc-type ,stack-size))))
+        (when ,new-proc
+          ((method-of-type ,proc-type activate) ,new-proc ,new-pool ,(if name name `(quote ,proc-type)) ,stack)
+          (run-now-in-process ,new-proc ,func ,@args)
+          (-> ,new-proc ppointer)
+          )
+        )
+    )
+  )
+
 ;; display a listing of active processes.
 (defmacro ps (&key (detail #f))
   `(inspect-process-tree *active-pool* 0 0 ,detail)
@@ -388,7 +418,21 @@ There are several ways to "go"
   #f
   )
 
+(defmacro set-state-time ()
+  "set the state-time field of the current object to the current time. process-drawable has one"
 
+  `(set! (-> self state-time) (current-time))
+  )
+
+(defmacro time-passed ()
+  "how much time has passed since set-state-time"
+  `(- (current-time) (-> self state-time))
+  )
+
+(defmacro time-passed? (time)
+  "has it been 'time' since set-state-time?"
+  `(>= (time-passed) ,time)
+  )
 
 
 
