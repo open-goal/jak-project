@@ -290,5 +290,5 @@ const GfxRendererModule moduleOpenGL = {
     gl_texture_relocate,    // texture_relocate
     gl_poll_events,         // poll_events
     GfxPipeline::OpenGL,    // pipeline
-    "OpenGL 3.0"            // name
+    "OpenGL 3.3"            // name
 };
