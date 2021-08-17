@@ -15,17 +15,16 @@ that's a state, and you can expect the file to have `defstate`s.
 ## Virtual vs. Non-Virtual States
 A non-virtual state is stored in a global variable with the same name as the state.  This is just like a global function.  You don't have to do anything special with this - the decompiler will insert a `defstate` with the appropriate name and make sure that the name of the symbol and the name stored in the `state` itself match.
 
-A virtual state is stored in the method table of a type, similar to a method.  When doing a `go`, the virtual state will be looked up from the method table of the current process, allowing a child type of process to override the state of its parent.  You can tell if a state is virtual by looking for a call to `inherit-state`.
+A virtual state is stored in the method table of a type, similar to a method.  When doing a `go`, the virtual state will be looked up from the method table of the current process, allowing a child type of process to override the state of its parent.  You can tell if a state is virtual by looking for a call to `inherit-state` or `method-set!`.
 
 ## Decompiling state handers
-Each state has up to 6 handler functions: `enter`, `post`, `exit`, `trans`, `code`, and `event`. In order for the decompiler to recognize these, you _must_ have the top-level function pass expressions. Do not attempt to decompile these functions until the top-level function passes.
+Each state has up to 6 handler functions: `enter`, `post`, `exit`, `trans`, `code`, and `event`. In order for the decompiler to recognize these, you _must_ have the top-level function decompile. Do not attempt to decompile these functions until the top-level function passes.
 
-The top-level analysis will find state handlers and name them appropriately.  For non-virtual states, they will be named like `(<handler-name> <state-name>)`. Like `(code teetertotter-launch)`.  Use these names in type casts, stack structures, etc. These names will not work unless the top-level has been decompiled.
+The top-level analysis will find state handlers and name them appropriately.  For non-virtual states, they will be named like `(<handler-name> <state-name>)`. Like `(code teetertotter-launch)`. For virtual states, the name will be `(<handler-name> <state-name> <type-name>)`.  Use these names in type casts, stack structures, etc. These names will not work unless the top-level has been decompiled.
 
 The type of the state handlers will be set up automatically by the type system, but requires that you get the type of the state itself correct.
 
-TODO: names for virtual states.
-
+Note: inside of `find_defstates.cpp` there is an option to enable rename prints that will print out the old name of the function before the rename.
 
 ## State Types
 Each state object must have its type set.  The type of a state is:
@@ -53,7 +52,7 @@ There are a few special cases for virtual states.
 
 1. The state must be declared in the `deftype`, within the list of methods.
 2. The name of the method must be correct.
-3. Any `go` _must_ be in a behavior of the appropriate process.
+3. Any `go` should be in a behavior of the appropriate process.
 
 The next three sections explain these in more detail
 
@@ -113,12 +112,16 @@ This means you should rename `dummy-24` in `plat-button` to `plat-button-move-up
 
 
 ### Go to a virtual state
-todo
+You must be in a behavior in order for `go-virtual` to decompile successfully.
+
+## The return value of `event` problem.
+There is one place that seems to rely on the return value of `event`. As a result, the default is to assume that `event` returns an `object`. However, there are sometimes `event` functions that clearly don't return a value and will refuse to decompile.  The recommendation is:
+- Try to make all `event` functions return a value.
+- If it is absolutely not possible, make the function type return `none`, then the defstate should automatically insert a cast.
 
 
 ## Unsupported
-Calls to `find-parent-method` that actually return a `state` will have the wrong type. You must manually cast it. Make sure you get the argument types correct.
+Calls to `find-parent-method` that actually return a `state` will have type `function`. You must manually cast it. Make sure you get the argument types correct. This same problem exists for finding methods, but it has been very rare. If needed we can add special support in the decompiler/compiler to make this work.
 
 If there is a function with multiple virtual `go`s which assume a different type at compile-time (accessing different parts of the type tree), then it is not possible to insert the right kind of cast yet.
 
-Virtual states that don't call `inherit-state` will not work correctly. I need to find an example of this in order to add support.
