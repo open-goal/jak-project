@@ -214,6 +214,11 @@
      )
   )
 
+(defmacro go-virtual (state-name &key (proc self) &rest args)
+  "Change the current process to the virtual state of the given process."
+  `(go (method-of-object ,proc ,state-name) ,@args)
+  )
+
 (defmacro static-sound-name (str)
   "Convert a string constant to a static sound-name."
 
@@ -329,6 +334,72 @@
       (.ftoi.vf ,dst temp)
       )
     )
+  )
+
+;; use a compile-time list to keep track of the type of an anonymous behavior.
+(seval (define *defstate-type-stack* '()))
+(desfun def-state-check-behavior (beh-form beh-type)
+  "check if code block is an anonymous behavior. needed for anonymous behaviors on defstate."
+
+  (when (and (pair? beh-form) (eq? (first beh-form) 'behavior))
+    (push! *defstate-type-stack* beh-type)
+    )
+  )
+(defmacro defstate (state-name parents
+                               &key (virtual #f)
+                               &key (event #f)
+                               &key (enter #f)
+                               &key (trans #f)
+                               &key (exit #f)
+                               &key (code #f)
+                               &key (post #f)
+                               )
+  "Define a new state!"
+  
+  (with-gensyms (new-state)
+    (let ((defstate-type (first parents)))
+      (when (not (null? *defstate-type-stack*))
+        (ferror "*defstate-type-stack* leaked! An error probably happened in a previous defstate. stack is: {}" *defstate-type-stack*)
+        )
+      (set! *defstate-type-stack* '())
+      (def-state-check-behavior event defstate-type)
+      (def-state-check-behavior enter defstate-type)
+      (def-state-check-behavior trans defstate-type)
+      (def-state-check-behavior exit defstate-type)
+      (def-state-check-behavior code defstate-type)
+      (def-state-check-behavior post defstate-type)
+      `(let ((,new-state (new 'static 'state
+                              :name (quote ,state-name)
+                              :next #f
+                              :exit #f
+                              :code #f
+                              :trans #f
+                              :post #f
+                              :enter #f
+                              :event #f
+                              )
+                         ))
+         ;; the compiler will set the fields of the given state and define the symbol.
+         ;; This way it can check the individual function types, make sure they make sense, and create
+         ;; a state with the appropriate type.
+         ,(if virtual
+              `(define-virtual-state-hook ,state-name ,defstate-type ,new-state :event ,event :enter ,enter :trans ,trans :exit ,exit :code ,code :post ,post)
+              `(define-state-hook ,state-name ,defstate-type ,new-state :event ,event :enter ,enter :trans ,trans :exit ,exit :code ,code :post ,post)
+              )
+         
+         )
+      )
+    )
+  )
+
+
+(defmacro behavior (bindings &rest body)
+  "Define an anonymous behavior for a process state. This may only be used inside a defstate!"
+
+  (let ((behavior-type (first *defstate-type-stack*)))
+      (pop! *defstate-type-stack*)
+      `(lambda :behavior ,behavior-type ,bindings ,@body)
+      )
   )
 
 (defmacro sext32 (in)

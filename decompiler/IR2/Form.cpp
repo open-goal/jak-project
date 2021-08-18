@@ -2808,6 +2808,69 @@ void GetSymbolStringPointer::get_modified_regs(RegSet& regs) const {
 }
 
 ////////////////////////////////
+// DefstateElement
+////////////////////////////////
+
+DefstateElement::DefstateElement(const std::string& process_type,
+                                 const std::string& state_name,
+                                 const std::vector<Entry>& entries,
+                                 bool is_virtual)
+    : m_process_type(process_type),
+      m_state_name(state_name),
+      m_entries(entries),
+      m_is_virtual(is_virtual) {
+  for (auto& e : m_entries) {
+    e.val->parent_element = this;
+  }
+}
+
+void DefstateElement::apply(const std::function<void(FormElement*)>& f) {
+  f(this);
+  for (auto& e : m_entries) {
+    e.val->apply(f);
+  }
+}
+
+void DefstateElement::apply_form(const std::function<void(Form*)>& f) {
+  for (auto& e : m_entries) {
+    e.val->apply_form(f);
+  }
+}
+
+void DefstateElement::collect_vars(RegAccessSet& vars, bool recursive) const {
+  if (recursive) {
+    for (auto& e : m_entries) {
+      e.val->collect_vars(vars, recursive);
+    }
+  }
+}
+
+void DefstateElement::get_modified_regs(RegSet& regs) const {
+  for (auto& e : m_entries) {
+    e.val->get_modified_regs(regs);
+  }
+}
+
+goos::Object DefstateElement::to_form_internal(const Env& env) const {
+  std::vector<goos::Object> forms;
+  forms.push_back(pretty_print::to_symbol("defstate"));
+  forms.push_back(pretty_print::to_symbol(m_state_name));
+  forms.push_back(pretty_print::build_list(m_process_type));
+
+  if (m_is_virtual) {
+    forms.push_back(pretty_print::to_symbol(":virtual #t"));
+  }
+
+  for (const auto& e : m_entries) {
+    forms.push_back(pretty_print::to_symbol(fmt::format(":{}", handler_kind_to_name(e.kind))));
+    auto to_print = e.val;
+    forms.push_back(to_print->to_form(env));
+  }
+
+  return pretty_print::build_list(forms);
+}
+
+////////////////////////////////
 // Utilities
 ////////////////////////////////
 

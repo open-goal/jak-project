@@ -327,46 +327,6 @@ TEST_F(OfflineDecompilation, CheckBasicDecode) {
   EXPECT_EQ(obj_count, config->allowed_objects.size());
 }
 
-/*!
- * Not a super great test, but check that we find functions, methods, and logins.
- * This is a test of ir2_top_level_pass, which isn't tested as part of the normal decompiler
- tests.
- */
-TEST_F(OfflineDecompilation, FunctionDetect) {
-  int function_count = 0;  // global functions
-  int method_count = 0;    // methods
-  int login_count = 0;     // top-level logins
-  int unknown_count = 0;   // unknown functions, like anonymous lambdas
-
-  db->for_each_function(
-      [&](decompiler::Function& func, int segment_id, decompiler::ObjectFileData&) {
-        if (segment_id == TOP_LEVEL_SEGMENT) {
-          EXPECT_EQ(func.guessed_name.kind, decompiler::FunctionName::FunctionKind::TOP_LEVEL_INIT);
-        } else {
-          EXPECT_NE(func.guessed_name.kind, decompiler::FunctionName::FunctionKind::TOP_LEVEL_INIT);
-        }
-        switch (func.guessed_name.kind) {
-          case decompiler::FunctionName::FunctionKind::GLOBAL:
-            function_count++;
-            break;
-          case decompiler::FunctionName::FunctionKind::METHOD:
-            method_count++;
-            break;
-          case decompiler::FunctionName::FunctionKind::TOP_LEVEL_INIT:
-            login_count++;
-            break;
-          case decompiler::FunctionName::FunctionKind::UNIDENTIFIED:
-            unknown_count++;
-            break;
-          default:
-            assert(false);
-        }
-      });
-
-  // one login per object file
-  EXPECT_EQ(config->allowed_objects.size(), login_count);
-}
-
 TEST_F(OfflineDecompilation, AsmFunction) {
   int failed_count = 0;
   db->for_each_function([&](decompiler::Function& func, int, decompiler::ObjectFileData&) {

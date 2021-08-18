@@ -57,7 +57,7 @@ const char* init_types[] = {"fakeiso", "deviso", "iso_cd"};
 Timer ee_clock_timer;
 
 // added
-bool machine_booted = false;
+u32 vif1_interrupt_handler = 0;
 
 void kmachine_init_globals() {
   isodrv = iso_cd;
@@ -65,7 +65,7 @@ void kmachine_init_globals() {
   reboot = 1;
   memset(pad_dma_buf, 0, sizeof(pad_dma_buf));
   ee_clock_timer = Timer();
-  machine_booted = false;
+  vif1_interrupt_handler = 0;
 }
 
 /*!
@@ -534,8 +534,9 @@ u64 CPadGetData(u64 cpad_info) {
 }
 
 // TODO InstallHandler
-void InstallHandler() {
-  assert(false);
+void InstallHandler(u32 handler_idx, u32 handler_func) {
+  assert(handler_idx == 5);  // vif1
+  vif1_interrupt_handler = handler_func;
 }
 // TODO InstallDebugHandler
 void InstallDebugHandler() {
@@ -733,11 +734,8 @@ void InitMachine_PCPort() {
 
 void vif_interrupt_callback() {
   // added for the PC port for faking VIF interrupts from the graphics system.
-  if (machine_booted && MasterExit == 0) {
-    auto sym = intern_from_c("vif1-handler-debug");
-    if (sym->value) {
-      call_goal(Ptr<Function>(sym->value), 0, 0, 0, s7.offset, g_ee_main_mem);
-    }
+  if (vif1_interrupt_handler && MasterExit == 0) {
+    call_goal(Ptr<Function>(vif1_interrupt_handler), 0, 0, 0, s7.offset, g_ee_main_mem);
   }
 }
 
@@ -813,5 +811,4 @@ void InitMachineScheme() {
     lg::info("calling fake play~");
     call_goal_function_by_name("play");
   }
-  machine_booted = true;
 }

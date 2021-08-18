@@ -2602,6 +2602,22 @@ void FunctionCallElement::update_from_stack(const Env& env,
   FormElement* new_form = nullptr;
 
   if (go_next_state) {
+    // see if we're a virtual go
+    Matcher virtual_go_state_matcher =
+        Matcher::op(GenericOpMatcher::fixed(FixedOperatorKind::METHOD_OF_OBJECT),
+                    {Matcher::any(0), Matcher::any_constant_token(1)});
+    auto virtual_go_mr = match(virtual_go_state_matcher, go_next_state);
+    if (virtual_go_mr.matched && virtual_go_mr.maps.forms.at(0)->to_string(env) == "self") {
+      arg_forms.insert(arg_forms.begin(), pool.alloc_single_element_form<ConstantTokenElement>(
+                                              nullptr, virtual_go_mr.maps.strings.at(1)));
+      auto go_form = pool.alloc_element<GenericElement>(
+          GenericOperator::make_function(
+              pool.alloc_single_element_form<ConstantTokenElement>(nullptr, "go-virtual")),
+          arg_forms);
+      result->push_back(go_form);
+      return;
+    }
+
     arg_forms.insert(arg_forms.begin(), go_next_state);
     auto go_form = pool.alloc_element<GenericElement>(
         GenericOperator::make_function(
@@ -4884,6 +4900,15 @@ void GetSymbolStringPointer::update_from_stack(const Env&,
                                                FormStack&,
                                                std::vector<FormElement*>* result,
                                                bool) {
+  mark_popped();
+  result->push_back(this);
+}
+
+void DefstateElement::update_from_stack(const Env&,
+                                        FormPool&,
+                                        FormStack&,
+                                        std::vector<FormElement*>* result,
+                                        bool) {
   mark_popped();
   result->push_back(this);
 }

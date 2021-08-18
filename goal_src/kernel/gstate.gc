@@ -38,24 +38,36 @@ There are several ways to "go"
 - go from the main thread of the main process. This causes the (-> pp state) to change, the stack frames
   to be cleaned up, and the old state's exit to be called.  It will reset the stack, then run the code.
   Unlike the others, this means you "go" immediately.
+  
+The compiler has two special hooks related to states: go-hook and define-state-hook.
+These take care of doing a go and a state definition and properly checking types.
+
+The define-state-hook takes a state object and handlers and defines a global symbol
+with the appropriate state type.
+
+The go-hook calls enter state and sets (-> proc next-state) for the given process.
+It type checks the arguments for the entry function.
 
 |#
 
 ;; cause the current process to change state
 (defmacro go (next-state &rest args)
   `(with-pp
-     (set! (-> pp next-state) ,next-state)
-     ((the (function _varargs_ object) enter-state) ,@args)
+     (go-hook pp ,next-state ,@args)
      )
   )
 
+(defmacro go-virtual (state-name &key (proc self) &rest args)
+  "Change the current process to the virtual state of the given process."
+  `(go (method-of-object ,proc ,state-name) ,@args)
+  )
+
 ;; cause the given process to change state.
-(defmacro go-process (proc state &rest args)
+(defmacro go-process (proc next-state &rest args)
   `(with-pp
      (protect (pp)
               (set! pp ,proc)
-              (set! (-> pp next-state) ,state)
-              ((the (function _varargs_ object) enter-state) ,@args)
+              (go-hook pp ,next-state ,@args)
               )
      )
   )
@@ -126,20 +138,21 @@ There are several ways to "go"
   )
 
 (defmacro defstate (state-name parents
-                    &key (event #f)
-                    &key (enter #f)
-                    &key (trans #f)
-                    &key (exit #f)
-                    &key (code #f)
-                    &key (post #f)
-                      )
+                               &key (virtual #f)
+                               &key (event #f)
+                               &key (enter #f)
+                               &key (trans #f)
+                               &key (exit #f)
+                               &key (code #f)
+                               &key (post #f)
+                               )
   "Define a new state!"
-
+  
   (with-gensyms (new-state)
     (let ((defstate-type (first parents)))
       (when (not (null? *defstate-type-stack*))
-          (ferror "*defstate-type-stack* leaked! An error probably happened in a previous defstate. stack is: {}" *defstate-type-stack*)
-          )
+        (ferror "*defstate-type-stack* leaked! An error probably happened in a previous defstate. stack is: {}" *defstate-type-stack*)
+        )
       (set! *defstate-type-stack* '())
       (def-state-check-behavior event defstate-type)
       (def-state-check-behavior enter defstate-type)
@@ -148,53 +161,36 @@ There are several ways to "go"
       (def-state-check-behavior code defstate-type)
       (def-state-check-behavior post defstate-type)
       `(let ((,new-state (new 'static 'state
-                               :name (quote ,state-name)
-                               :next #f
-                               :exit #f
-                               :code #f
-                               :trans #f
-                               :post #f
-                               :enter #f
-                               :event #f
-                               )
-        ))
-        (define ,state-name ,new-state)
-        ,(if event
-             `(set! (-> ,new-state event) ,event)
-             `(none)
-             )
-        ,(if enter
-             `(set! (-> ,new-state enter) (the (function object object object object object object object) ,enter))
-             `(none)
-             )
-        ,(if trans
-             `(set! (-> ,new-state trans) ,trans)
-             `(none)
-             )
-        ,(if exit
-             `(set! (-> ,new-state exit) ,exit)
-             `(none)
-             )
-        ,(if code
-             `(set! (-> ,new-state code) ,code)
-             `(none)
-             )
-        ,(if post
-             `(set! (-> ,new-state post) ,post)
-             `(none)
-             )
-        )
+                              :name (quote ,state-name)
+                              :next #f
+                              :exit #f
+                              :code #f
+                              :trans #f
+                              :post #f
+                              :enter #f
+                              :event #f
+                              )
+                         ))
+         ;; the compiler will set the fields of the given state and define the symbol.
+         ;; This way it can check the individual function types, make sure they make sense, and create
+         ;; a state with the appropriate type.
+         ,(if virtual
+              `(define-virtual-state-hook ,state-name ,defstate-type ,new-state :event ,event :enter ,enter :trans ,trans :exit ,exit :code ,code :post ,post)
+              `(define-state-hook ,state-name ,defstate-type ,new-state :event ,event :enter ,enter :trans ,trans :exit ,exit :code ,code :post ,post)
+              )
+         
+         )
       )
     )
   )
 
 (defmacro behavior (bindings &rest body)
   "Define an anonymous behavior for a process state. This may only be used inside a defstate!"
-
+  
   (let ((behavior-type (first *defstate-type-stack*)))
-      (pop! *defstate-type-stack*)
-      `(the-as (function object) (lambda :behavior ,behavior-type ,bindings ,@body))
-      )
+    (pop! *defstate-type-stack*)
+    `(lambda :behavior ,behavior-type ,bindings ,@body)
+    )
   )
 
 (defmethod new state
@@ -202,9 +198,9 @@ There are several ways to "go"
    (type-to-make type)
    (name basic)
    (code function)
-   (trans (function object))
-   (enter (function object object object object object object object))
-   (exit (function object))
+   (trans (function none))
+   (enter function)
+   (exit (function none))
    (event (function process int symbol event-message-block object)))
   "Allocate a new state. It seems like this isn't really used much and most states are
    statically allocated and as a result don't have the constructor called."
@@ -223,12 +219,22 @@ There are several ways to "go"
 
 (defun inherit-state ((child state) (parent state))
   "Copy handler functions from parent to child"
-  (set! (-> child exit) (-> parent exit))
-  (set! (-> child code) (-> parent code))
-  (set! (-> child trans) (-> parent trans))
-  (set! (-> child post) (-> parent post))
-  (set! (-> child enter) (-> parent enter))
-  (set! (-> child event) (-> parent event))
+  (cond
+    ((nonzero? parent)
+     (set! (-> child exit) (-> parent exit))
+     (set! (-> child code) (-> parent code))
+     (set! (-> child trans) (-> parent trans))
+     (set! (-> child post) (-> parent post))
+     (set! (-> child enter) (-> parent enter))
+     (set! (-> child event) (-> parent event))
+     )
+    (else
+      ;; Note: this is added to let us defstate on a child before the parent.
+      ;; The child won't be usable like this, but it will prevent a crash. 
+      (format 0 "[STATE ERROR] inherit-state got a null parent state. Child is ~A~%" (-> child name))
+      )
+    )
+  
   child
   )
 
@@ -306,7 +312,7 @@ There are several ways to "go"
          ;; now do the enter
          (let ((enter-func (-> new-state enter)))
            (if enter-func
-               (enter-func arg0 arg1 arg2 arg3 arg4 arg5)
+               ((the (function _varargs_ none) enter-func) arg0 arg1 arg2 arg3 arg4 arg5)
                )
            )
          ;; now do the trans

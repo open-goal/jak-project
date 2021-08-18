@@ -211,44 +211,38 @@
     (send-event-function arg0 v1-0)
     )
    (logclear! (-> obj mask) (process-mask actor-pause attackable))
-   (let ((t9-1 (the-as (function object) enter-state)))
-    (set!
-     (-> pp next-state)
-     (the-as state (method-of-object obj nav-enemy-die))
-     )
-    (t9-1)
-    )
+   (go (method-of-object obj nav-enemy-die))
    'die
    )
   )
 
 ;; definition for method 43 of type nav-enemy
+;; INFO: Return type mismatch none vs object.
+;; WARN: rewrite_to_get_var got a none typed variable. Is there unreachable code?
 (defmethod
   dummy-43
   nav-enemy
   ((obj nav-enemy) (arg0 process) (arg1 event-message-block))
   (with-pp
-   (cond
-    ((logtest? (-> obj nav-enemy-flags) 32)
-     (let ((v1-2 (new 'stack-no-clear 'event-message-block)))
-      (set! (-> v1-2 from) pp)
-      (set! (-> v1-2 num-params) 1)
-      (set! (-> v1-2 message) 'get-attack-count)
-      (set! (-> v1-2 param 0) (the-as uint 1))
-      (send-event-function arg0 v1-2)
-      )
-     (logclear! (-> obj mask) (process-mask actor-pause attackable))
-     (let ((t9-1 (the-as (function object) enter-state)))
-      (set!
-       (-> pp next-state)
-       (the-as state (method-of-object obj nav-enemy-die))
-       )
-      (t9-1)
-      )
-     )
-    (else
-     (dummy-44 obj arg0 arg1)
-     )
+   (the-as object (cond
+                   ((logtest? (-> obj nav-enemy-flags) 32)
+                    (let ((v1-2 (new 'stack-no-clear 'event-message-block)))
+                     (set! (-> v1-2 from) pp)
+                     (set! (-> v1-2 num-params) 1)
+                     (set! (-> v1-2 message) 'get-attack-count)
+                     (set! (-> v1-2 param 0) (the-as uint 1))
+                     (send-event-function arg0 v1-2)
+                     )
+                    (logclear!
+                     (-> obj mask)
+                     (process-mask actor-pause attackable)
+                     )
+                    (go (method-of-object obj nav-enemy-die))
+                    )
+                   (else
+                    (dummy-44 obj arg0 arg1)
+                    )
+                   )
     )
    )
   )
@@ -298,13 +292,7 @@
      (vector-normalize! gp-1 1.0)
      )
     (logclear! (-> self mask) (process-mask actor-pause attackable))
-    (let ((t9-5 (the-as (function object) enter-state)))
-     (set!
-      (-> self next-state)
-      (the-as state (method-of-object self nav-enemy-die))
-      )
-     (t9-5)
-     )
+    (go-virtual nav-enemy-die)
     )
    (('jump)
     (when (!= (-> self next-state name) 'nav-enemy-jump-land)
@@ -313,14 +301,8 @@
       (-> (the-as vector (-> arg3 param 0)) quad)
       )
      (set! (-> self nav user-poly) (the-as nav-poly (-> arg3 param 1)))
-     (set! (-> self jump-return-state) (-> self state))
-     (let ((t9-6 (the-as (function object) enter-state)))
-      (set!
-       (-> self next-state)
-       (the-as state (method-of-object self nav-enemy-jump))
-       )
-      (t9-6)
-      )
+     (set! (-> self jump-return-state) (the-as (state process) (-> self state)))
+     (go-virtual nav-enemy-jump)
      )
     )
    (('cue-jump-to-point)
@@ -329,37 +311,20 @@
       (-> self event-param-point quad)
       (-> (the-as vector (-> arg3 param 0)) quad)
       )
-     (let ((v0-0 (the-as object (logand -2049 (-> self nav-enemy-flags)))))
-      (set! (-> self nav-enemy-flags) (the-as uint v0-0))
-      v0-0
-      )
+     (set! (-> self nav-enemy-flags) (logand -2049 (-> self nav-enemy-flags)))
      )
     )
    (('cue-chase)
-    (let ((t9-7 (the-as (function object) enter-state)))
-     (set!
-      (-> self next-state)
-      (the-as state (method-of-object self nav-enemy-chase))
-      )
-     (t9-7)
-     )
+    (go-virtual nav-enemy-chase)
     )
    (('cue-patrol)
-    (let ((t9-8 (the-as (function object) enter-state)))
-     (set!
-      (-> self next-state)
-      (the-as state (method-of-object self nav-enemy-patrol))
-      )
-     (t9-8)
-     )
+    (go-virtual nav-enemy-patrol)
     )
    (('go-wait-for-cue)
-    (let ((t9-9 (the-as (function object) enter-state)))
-     (set! (-> self next-state) (the-as state (method-of-object self dummy-35)))
-     (t9-9)
-     )
+    (go-virtual nav-enemy-wait-for-cue)
     )
    )
+  (none)
   )
 
 ;; definition for function nav-enemy-jump-event-handler
@@ -1134,720 +1099,175 @@ nav-enemy-default-event-handler
   )
 
 ;; failed to figure out what this is:
-(let
-  ((gp-0
-    (new 'static 'state
-     :name 'nav-enemy-idle
-     :next #f
-     :exit #f
-     :code #f
-     :trans #f
-     :post #f
-     :enter #f
-     :event #f
+(defstate nav-enemy-idle (nav-enemy)
+  :virtual #t
+  :event
+  (the-as
+   (function process int symbol event-message-block object :behavior nav-enemy)
+   nav-enemy-default-event-handler
+   )
+  :enter
+  (behavior ()
+   (nav-enemy-neck-control-inactive)
+   (set! (-> self state-time) (-> *display* base-frame-counter))
+   (if (-> self nav-info move-to-ground)
+    (dummy-60
+     (-> self collide-info)
+     40960.0
+     40960.0
+     #t
+     (-> self nav-info gnd-collide-with)
      )
     )
+   (set! (-> self nav-enemy-flags) (logand -7 (-> self nav-enemy-flags)))
+   (set! (-> self state-timeout) (the-as uint 300))
+   (none)
    )
-  (method-set! nav-enemy 28 (the-as function gp-0))
-  (set! (-> gp-0 event) nav-enemy-default-event-handler)
-  (set!
-   (-> gp-0 enter)
-   (the-as
-    (function object object object object object object object)
-    (lambda :behavior nav-enemy
-     ()
-     (nav-enemy-neck-control-inactive)
-     (set! (-> self state-time) (-> *display* base-frame-counter))
-     (if (-> self nav-info move-to-ground)
-      (dummy-60
-       (-> self collide-info)
-       40960.0
-       40960.0
-       #t
-       (-> self nav-info gnd-collide-with)
-       )
-      )
-     (set! (-> self nav-enemy-flags) (logand -7 (-> self nav-enemy-flags)))
-     (let ((v0-2 300))
-      (set! (-> self state-timeout) (the-as uint v0-2))
-      v0-2
-      )
-     )
-    )
-   )
-  (set!
-   (-> gp-0 trans)
-   (lambda :behavior nav-enemy
-    ()
-    (when
+  :trans
+  (behavior ()
+   (if
+    (and
      (and
-      (and
-       *target*
-       (>=
-        (-> self enemy-info idle-distance)
-        (vector-vector-distance
-         (-> self collide-info trans)
-         (-> *target* control trans)
-         )
-        )
-       )
+      *target*
       (>=
-       (the-as
-        int
-        (- (-> *display* base-frame-counter) (the-as uint (-> self state-time)))
+       (-> self enemy-info idle-distance)
+       (vector-vector-distance
+        (-> self collide-info trans)
+        (-> *target* control trans)
         )
-       (the-as int (-> self state-timeout))
        )
-      (nonzero? (-> self draw))
-      (nonzero? (logand (-> self draw status) 8))
       )
-     (let ((t9-1 (the-as (function object) enter-state)))
-      (set!
-       (-> self next-state)
-       (the-as state (method-of-object self nav-enemy-patrol))
-       )
-      (t9-1)
-      )
-     )
-    )
-   )
-  (set!
-   (-> gp-0 code)
-   (lambda :behavior nav-enemy
-    ()
-    (ja-channel-push! 1 22)
-    (let ((v1-2 (-> self skel root-channel 0)))
-     (set!
-      (-> v1-2 frame-group)
+     (>=
       (the-as
-       art-joint-anim
-       (-> self draw art-group data (-> self nav-info idle-anim))
+       int
+       (- (-> *display* base-frame-counter) (the-as uint (-> self state-time)))
        )
+      (the-as int (-> self state-timeout))
       )
+     (nonzero? (-> self draw))
+     (nonzero? (logand (-> self draw status) 8))
      )
-    (let ((v1-5 (-> self skel root-channel 0)))
-     (set! (-> v1-5 num-func) num-func-identity)
-     (set! (-> v1-5 frame-num) 0.0)
-     )
-    (let ((f30-0 (nav-enemy-rnd-float-range 0.75 1.25)))
-     (while #t
-      (suspend)
-      (let ((a0-8 (-> self skel root-channel 0)))
-       (set! (-> a0-8 param 0) f30-0)
-       (joint-control-channel-group-eval!
-        a0-8
-        (the-as art-joint-anim #f)
-        num-func-loop!
-        )
-       )
-      )
-     )
-    (none)
+    (go-virtual nav-enemy-patrol)
     )
+   (none)
    )
-  (set! (-> gp-0 post) ja-post)
+  :code
+  (behavior ()
+   (ja-channel-push! 1 22)
+   (let ((v1-2 (-> self skel root-channel 0)))
+    (set!
+     (-> v1-2 frame-group)
+     (the-as
+      art-joint-anim
+      (-> self draw art-group data (-> self nav-info idle-anim))
+      )
+     )
+    )
+   (let ((v1-5 (-> self skel root-channel 0)))
+    (set! (-> v1-5 num-func) num-func-identity)
+    (set! (-> v1-5 frame-num) 0.0)
+    )
+   (let ((f30-0 (nav-enemy-rnd-float-range 0.75 1.25)))
+    (while #t
+     (suspend)
+     (let ((a0-8 (-> self skel root-channel 0)))
+      (set! (-> a0-8 param 0) f30-0)
+      (joint-control-channel-group-eval!
+       a0-8
+       (the-as art-joint-anim #f)
+       num-func-loop!
+       )
+      )
+     )
+    )
+   (none)
+   )
+  :post
+  (the-as (function none :behavior nav-enemy) ja-post)
   )
 
 ;; failed to figure out what this is:
-(let
-  ((gp-1
-    (new 'static 'state
-     :name 'nav-enemy-patrol
-     :next #f
-     :exit #f
-     :code #f
-     :trans #f
-     :post #f
-     :enter #f
-     :event #f
-     )
-    )
+(defstate nav-enemy-patrol (nav-enemy)
+  :virtual #t
+  :event
+  (the-as
+   (function process int symbol event-message-block object :behavior nav-enemy)
+   nav-enemy-default-event-handler
    )
-  (method-set! nav-enemy 30 (the-as function gp-1))
-  (set! (-> gp-1 event) nav-enemy-default-event-handler)
-  (set!
-   (-> gp-1 enter)
-   (the-as
-    (function object object object object object object object)
-    (lambda :behavior nav-enemy
-     ()
-     (set! (-> self state-time) (-> *display* base-frame-counter))
-     (set!
-      (-> self nav flags)
-      (the-as
-       nav-control-flags
-       (the-as int (logior #x80000 (-> self nav flags)))
-       )
+  :enter
+  (behavior ()
+   (set! (-> self state-time) (-> *display* base-frame-counter))
+   (set!
+    (-> self nav flags)
+    (the-as nav-control-flags (the-as int (logior #x80000 (-> self nav flags))))
+    )
+   (set! (-> self nav-enemy-flags) (logand -5 (-> self nav-enemy-flags)))
+   (logior! (-> self nav-enemy-flags) 8)
+   (set! (-> self state-timeout) (the-as uint 300))
+   (set! (-> self target-speed) (-> self nav-info walk-travel-speed))
+   (set! (-> self acceleration) (-> self nav-info walk-acceleration))
+   (set! (-> self rotate-speed) (-> self nav-info walk-rotate-speed))
+   (set! (-> self turn-time) (the-as uint (-> self nav-info walk-turn-time)))
+   (none)
+   )
+  :exit
+  (behavior ()
+   (logior! (-> self nav-enemy-flags) 8)
+   (none)
+   )
+  :trans
+  (behavior ()
+   (when
+    (>=
+     (the-as
+      int
+      (- (-> *display* base-frame-counter) (the-as uint (-> self state-time)))
       )
-     (set! (-> self nav-enemy-flags) (logand -5 (-> self nav-enemy-flags)))
-     (logior! (-> self nav-enemy-flags) 8)
-     (set! (-> self state-timeout) (the-as uint 300))
-     (set! (-> self target-speed) (-> self nav-info walk-travel-speed))
-     (set! (-> self acceleration) (-> self nav-info walk-acceleration))
-     (set! (-> self rotate-speed) (-> self nav-info walk-rotate-speed))
-     (let ((v0-0 (-> self nav-info walk-turn-time)))
-      (set! (-> self turn-time) (the-as uint v0-0))
-      (the-as uint v0-0)
-      )
+     30
      )
-    )
-   )
-  (set!
-   (-> gp-1 exit)
-   (lambda :behavior nav-enemy
-    ()
-    (let ((v0-0 (logior (-> self nav-enemy-flags) 8)))
-     (set! (-> self nav-enemy-flags) v0-0)
-     v0-0
-     )
-    )
-   )
-  (set!
-   (-> gp-1 trans)
-   (lambda :behavior nav-enemy
-    ()
     (when
      (>=
       (the-as
        int
        (- (-> *display* base-frame-counter) (the-as uint (-> self state-time)))
        )
-      30
+      (the-as int (-> self state-timeout))
       )
-     (when
-      (>=
-       (the-as
-        int
-        (- (-> *display* base-frame-counter) (the-as uint (-> self state-time)))
-        )
-       (the-as int (-> self state-timeout))
-       )
-      (if
-       (and
-        (nonzero? (-> self draw))
-        (nonzero? (logand (-> self draw status) 8))
-        )
-       (set! (-> self free-time) (-> *display* base-frame-counter))
-       )
-      (when
-       (or
-        (or
-         (not *target*)
-         (<
-          (-> self enemy-info idle-distance)
-          (vector-vector-distance
-           (-> self collide-info trans)
-           (-> *target* control trans)
-           )
-          )
-         )
-        (>=
-         (the-as int (- (-> *display* base-frame-counter) (-> self free-time)))
-         600
-         )
-        )
-       (let ((t9-1 (the-as (function object) enter-state)))
-        (set!
-         (-> self next-state)
-         (the-as state (method-of-object self nav-enemy-idle))
-         )
-        (t9-1)
-        )
-       )
-      )
-     (when
+     (if
       (and
-       (-> self nav-info use-flee)
-       (and
-        (and
-         *target*
-         (>=
-          (-> self nav-info notice-distance)
-          (vector-vector-distance
-           (-> self collide-info trans)
-           (-> *target* control trans)
-           )
-          )
-         )
-        (let ((gp-0 'racer)
-              (a1-2 (new 'stack-no-clear 'event-message-block))
-              )
-         (set! (-> a1-2 from) self)
-         (set! (-> a1-2 num-params) 1)
-         (set! (-> a1-2 message) 'query)
-         (set! (-> a1-2 param 0) (the-as uint 'mode))
-         (= gp-0 (send-event-function *target* a1-2))
-         )
-        )
+       (nonzero? (-> self draw))
+       (nonzero? (logand (-> self draw status) 8))
        )
-      (let ((t9-4 (the-as (function object) enter-state)))
-       (set!
-        (-> self next-state)
-        (the-as state (method-of-object self dummy-22))
-        )
-       (t9-4)
-       )
+      (set! (-> self free-time) (-> *display* base-frame-counter))
       )
-     (when (nav-enemy-notice-player?)
-      (let ((t9-6 (the-as (function object) enter-state)))
-       (set!
-        (-> self next-state)
-        (the-as state (method-of-object self nav-enemy-notice))
-        )
-       (t9-6)
-       )
-      )
-     )
-    )
-   )
-  (set!
-   (-> gp-1 code)
-   (lambda :behavior nav-enemy
-    ()
-    (let ((f30-0 (nav-enemy-rnd-float-range 0.9 1.1)))
-     (while #t
-      (let ((a0-1 (-> self skel root-channel 0)))
-       (set!
-        (-> a0-1 frame-group)
-        (the-as
-         art-joint-anim
-         (-> self draw art-group data (-> self nav-info walk-anim))
-         )
-        )
-       (set!
-        (-> a0-1 param 0)
-        (the
-         float
-         (+
-          (->
-           (the-as
-            art-joint-anim
-            (-> self draw art-group data (-> self nav-info walk-anim))
-            )
-           data
-           0
-           length
-           )
-          -1
-          )
-         )
-        )
-       (set! (-> a0-1 param 1) f30-0)
-       (set! (-> a0-1 frame-num) 0.0)
-       (joint-control-channel-group!
-        a0-1
-        (the-as
-         art-joint-anim
-         (-> self draw art-group data (-> self nav-info walk-anim))
-         )
-        num-func-seek!
-        )
-       )
-      (until (begin
-              (suspend)
-              (let ((a0-2 (-> self skel root-channel 0)))
-               (set!
-                (-> a0-2 param 0)
-                (the float (+ (-> a0-2 frame-group data 0 length) -1))
-                )
-               (set! (-> a0-2 param 1) f30-0)
-               (joint-control-channel-group-eval!
-                a0-2
-                (the-as art-joint-anim #f)
-                num-func-seek!
-                )
-               )
-              (ja-done? 0)
-              )
-       (empty)
-       )
-      (when (nav-enemy-rnd-go-idle? 0.2)
-       (let ((a0-5 (-> self skel root-channel 0)))
-        (set! (-> a0-5 param 0) 1.0)
-        (joint-control-channel-group!
-         a0-5
-         (the-as art-joint-anim #f)
-         num-func-loop!
-         )
-        )
-       (ja-channel-push! 1 180)
-       (set! (-> self nav-enemy-flags) (logand -9 (-> self nav-enemy-flags)))
-       (let ((a0-8 (-> self skel root-channel 0)))
-        (set!
-         (-> a0-8 frame-group)
-         (the-as
-          art-joint-anim
-          (-> self draw art-group data (-> self nav-info idle-anim))
-          )
-         )
-        (set!
-         (-> a0-8 param 0)
-         (the
-          float
-          (+
-           (->
-            (the-as
-             art-joint-anim
-             (-> self draw art-group data (-> self nav-info idle-anim))
-             )
-            data
-            0
-            length
-            )
-           -1
-           )
-          )
-         )
-        (set! (-> a0-8 param 1) f30-0)
-        (set! (-> a0-8 frame-num) 0.0)
-        (joint-control-channel-group!
-         a0-8
-         (the-as
-          art-joint-anim
-          (-> self draw art-group data (-> self nav-info idle-anim))
-          )
-         num-func-seek!
-         )
-        )
-       (until (begin
-               (ja-blend-eval)
-               (suspend)
-               (let ((a0-9 (-> self skel root-channel 0)))
-                (set!
-                 (-> a0-9 param 0)
-                 (the float (+ (-> a0-9 frame-group data 0 length) -1))
-                 )
-                (set! (-> a0-9 param 1) f30-0)
-                (joint-control-channel-group-eval!
-                 a0-9
-                 (the-as art-joint-anim #f)
-                 num-func-seek!
-                 )
-                )
-               (ja-done? 0)
-               )
-        (empty)
-        )
-       (until (begin
-               (not (nav-enemy-rnd-go-idle? 0.2))
-               )
-        (let ((a0-11 (-> self skel root-channel 0)))
-         (set!
-          (-> a0-11 frame-group)
-          (the-as
-           art-joint-anim
-           (-> self draw art-group data (-> self nav-info idle-anim))
-           )
-          )
-         (set!
-          (-> a0-11 param 0)
-          (the
-           float
-           (+
-            (->
-             (the-as
-              art-joint-anim
-              (-> self draw art-group data (-> self nav-info idle-anim))
-              )
-             data
-             0
-             length
-             )
-            -1
-            )
-           )
-          )
-         (set! (-> a0-11 param 1) f30-0)
-         (set! (-> a0-11 frame-num) 0.0)
-         (joint-control-channel-group!
-          a0-11
-          (the-as
-           art-joint-anim
-           (-> self draw art-group data (-> self nav-info idle-anim))
-           )
-          num-func-seek!
-          )
-         )
-        (until (begin
-                (suspend)
-                (let ((a0-12 (-> self skel root-channel 0)))
-                 (set!
-                  (-> a0-12 param 0)
-                  (the float (+ (-> a0-12 frame-group data 0 length) -1))
-                  )
-                 (set! (-> a0-12 param 1) f30-0)
-                 (joint-control-channel-group-eval!
-                  a0-12
-                  (the-as art-joint-anim #f)
-                  num-func-seek!
-                  )
-                 )
-                (ja-done? 0)
-                )
-         (empty)
-         )
-        )
-       (logior! (-> self nav-enemy-flags) 8)
-       (let ((a0-15 (-> self skel root-channel 0)))
-        (set! (-> a0-15 param 0) 1.0)
-        (joint-control-channel-group!
-         a0-15
-         (the-as art-joint-anim #f)
-         num-func-loop!
-         )
-        )
-       (ja-channel-push! 1 180)
-       (let ((a0-17 (-> self skel root-channel 0)))
-        (set!
-         (-> a0-17 frame-group)
-         (the-as
-          art-joint-anim
-          (-> self draw art-group data (-> self nav-info walk-anim))
-          )
-         )
-        (set!
-         (-> a0-17 param 0)
-         (the
-          float
-          (+
-           (->
-            (the-as
-             art-joint-anim
-             (-> self draw art-group data (-> self nav-info walk-anim))
-             )
-            data
-            0
-            length
-            )
-           -1
-           )
-          )
-         )
-        (set! (-> a0-17 param 1) f30-0)
-        (set! (-> a0-17 frame-num) 0.0)
-        (joint-control-channel-group!
-         a0-17
-         (the-as
-          art-joint-anim
-          (-> self draw art-group data (-> self nav-info walk-anim))
-          )
-         num-func-seek!
-         )
-        )
-       (until (begin
-               (ja-blend-eval)
-               (suspend)
-               (let ((a0-18 (-> self skel root-channel 0)))
-                (set!
-                 (-> a0-18 param 0)
-                 (the float (+ (-> a0-18 frame-group data 0 length) -1))
-                 )
-                (set! (-> a0-18 param 1) f30-0)
-                (joint-control-channel-group-eval!
-                 a0-18
-                 (the-as art-joint-anim #f)
-                 num-func-seek!
-                 )
-                )
-               (ja-done? 0)
-               )
-        (empty)
-        )
-       )
-      )
-     )
-    (none)
-    )
-   )
-  (set! (-> gp-1 post) nav-enemy-patrol-post)
-  )
-
-;; failed to figure out what this is:
-(let
-  ((gp-2
-    (new 'static 'state
-     :name 'nav-enemy-notice
-     :next #f
-     :exit #f
-     :code #f
-     :trans #f
-     :post #f
-     :enter #f
-     :event #f
-     )
-    )
-   )
-  (method-set! nav-enemy 29 (the-as function gp-2))
-  (set! (-> gp-2 event) nav-enemy-default-event-handler)
-  (set!
-   (-> gp-2 enter)
-   (the-as
-    (function object object object object object object object)
-    (lambda :behavior nav-enemy
-     ()
-     (logior! (-> self nav-enemy-flags) 4)
-     (nav-enemy-neck-control-look-at)
-     (when (logtest? (-> self nav-enemy-flags) 2)
-      (let ((t9-1 (the-as (function object) enter-state)))
-       (set!
-        (-> self next-state)
-        (the-as state (method-of-object self nav-enemy-chase))
-        )
-       (t9-1)
-       )
-      )
-     (logior! (-> self nav-enemy-flags) 2)
-     (let ((gp-0 (-> self nav))
-           (v1-10 (target-pos 0))
-           )
-      (set! (-> gp-0 target-pos quad) (-> v1-10 quad))
-      )
-     (dummy-11 (-> self nav) (-> self nav target-pos))
-     (set! (-> self rotate-speed) (-> self nav-info run-rotate-speed))
-     (let ((v0-4 (-> self nav-info run-turn-time)))
-      (set! (-> self turn-time) (the-as uint v0-4))
-      (the-as uint v0-4)
-      )
-     )
-    )
-   )
-  (set!
-   (-> gp-2 code)
-   (lambda :behavior nav-enemy
-    ()
-    (ja-channel-push! 1 22)
-    (let ((f30-0 (nav-enemy-rnd-float-range 0.8 1.2)))
-     (let ((a0-2 (-> self skel root-channel 0)))
-      (set!
-       (-> a0-2 frame-group)
-       (the-as
-        art-joint-anim
-        (-> self draw art-group data (-> self nav-info notice-anim))
-        )
-       )
-      (set!
-       (-> a0-2 param 0)
-       (the
-        float
-        (+
-         (->
-          (the-as
-           art-joint-anim
-           (-> self draw art-group data (-> self nav-info notice-anim))
-           )
-          data
-          0
-          length
-          )
-         -1
-         )
-        )
-       )
-      (set! (-> a0-2 param 1) f30-0)
-      (set! (-> a0-2 frame-num) 0.0)
-      (joint-control-channel-group!
-       a0-2
-       (the-as
-        art-joint-anim
-        (-> self draw art-group data (-> self nav-info notice-anim))
-        )
-       num-func-seek!
-       )
-      )
-     (until (begin
-             (seek-toward-heading-vec!
-              (-> self collide-info)
-              (-> self nav travel)
-              (-> self rotate-speed)
-              (the-as int (-> self turn-time))
-              )
-             (suspend)
-             (let ((a0-4 (-> self skel root-channel 0)))
-              (set!
-               (-> a0-4 param 0)
-               (the float (+ (-> a0-4 frame-group data 0 length) -1))
-               )
-              (set! (-> a0-4 param 1) f30-0)
-              (joint-control-channel-group-eval!
-               a0-4
-               (the-as art-joint-anim #f)
-               num-func-seek!
-               )
-              )
-             (ja-done? 0)
-             )
-      (empty)
-      )
-     )
-    (let ((t9-6 (the-as (function object) enter-state)))
-     (set!
-      (-> self next-state)
-      (the-as state (method-of-object self nav-enemy-chase))
-      )
-     (t9-6)
-     )
-    )
-   )
-  (set! (-> gp-2 post) nav-enemy-simple-post)
-  )
-
-;; definition for function ja-group-index?
-(defbehavior ja-group-index? nav-enemy ((arg0 int))
-  (= (if (> (-> self skel active-channels) 0)
-      (-> self skel root-channel 0 frame-group)
-      )
-   (-> self draw art-group data arg0)
-   )
-  )
-
-;; failed to figure out what this is:
-(let
-  ((gp-3
-    (new 'static 'state
-     :name 'nav-enemy-flee
-     :next #f
-     :exit #f
-     :code #f
-     :trans #f
-     :post #f
-     :enter #f
-     :event #f
-     )
-    )
-   )
-  (method-set! nav-enemy 22 (the-as function gp-3))
-  (set! (-> gp-3 event) nav-enemy-default-event-handler)
-  (set!
-   (-> gp-3 enter)
-   (the-as
-    (function object object object object object object object)
-    (lambda :behavior nav-enemy
-     ()
-     (let ((v0-0 (-> *display* base-frame-counter)))
-      (set! (-> self state-time) v0-0)
-      v0-0
-      )
-     )
-    )
-   )
-  (set!
-   (-> gp-3 trans)
-   (lambda :behavior nav-enemy
-    ()
-    (when
-     (>=
-      (the-as
-       int
-       (- (-> *display* base-frame-counter) (the-as uint (-> self state-time)))
-       )
-      (the-as int (-> self reaction-time))
-      )
-     (when
+     (if
       (or
        (or
         (not *target*)
         (<
-         (-> self nav-info stop-chase-distance)
+         (-> self enemy-info idle-distance)
+         (vector-vector-distance
+          (-> self collide-info trans)
+          (-> *target* control trans)
+          )
+         )
+        )
+       (>=
+        (the-as int (- (-> *display* base-frame-counter) (-> self free-time)))
+        600
+        )
+       )
+      (go-virtual nav-enemy-idle)
+      )
+     )
+    (if
+     (and
+      (-> self nav-info use-flee)
+      (and
+       (and
+        *target*
+        (>=
+         (-> self nav-info notice-distance)
          (vector-vector-distance
           (-> self collide-info trans)
           (-> *target* control trans)
@@ -1855,49 +1275,45 @@ nav-enemy-default-event-handler
          )
         )
        (let ((gp-0 'racer)
-             (a1-1 (new 'stack-no-clear 'event-message-block))
+             (a1-2 (new 'stack-no-clear 'event-message-block))
              )
-        (set! (-> a1-1 from) self)
-        (set! (-> a1-1 num-params) 1)
-        (set! (-> a1-1 message) 'query)
-        (set! (-> a1-1 param 0) (the-as uint 'mode))
-        (!= gp-0 (send-event-function *target* a1-1))
+        (set! (-> a1-2 from) self)
+        (set! (-> a1-2 num-params) 1)
+        (set! (-> a1-2 message) 'query)
+        (set! (-> a1-2 param 0) (the-as uint 'mode))
+        (= gp-0 (send-event-function *target* a1-2))
         )
-       )
-      (let ((t9-2 (the-as (function object) enter-state)))
-       (set!
-        (-> self next-state)
-        (the-as state (method-of-object self nav-enemy-patrol))
-        )
-       (t9-2)
        )
       )
+     (go-virtual nav-enemy-flee)
+     )
+    (if (nav-enemy-notice-player?)
+     (go-virtual nav-enemy-notice)
      )
     )
+   (none)
    )
-  (set!
-   (-> gp-3 code)
-   (lambda :behavior nav-enemy
-    ()
-    (let ((f30-0 (nav-enemy-rnd-float-range 0.9 1.1)))
-     (ja-channel-push! 1 60)
-     (let ((a0-2 (-> self skel root-channel 0)))
+  :code
+  (behavior ()
+   (let ((f30-0 (nav-enemy-rnd-float-range 0.9 1.1)))
+    (while #t
+     (let ((a0-1 (-> self skel root-channel 0)))
       (set!
-       (-> a0-2 frame-group)
+       (-> a0-1 frame-group)
        (the-as
         art-joint-anim
-        (-> self draw art-group data (-> self nav-info notice-anim))
+        (-> self draw art-group data (-> self nav-info walk-anim))
         )
        )
       (set!
-       (-> a0-2 param 0)
+       (-> a0-1 param 0)
        (the
         float
         (+
          (->
           (the-as
            art-joint-anim
-           (-> self draw art-group data (-> self nav-info notice-anim))
+           (-> self draw art-group data (-> self nav-info walk-anim))
            )
           data
           0
@@ -1907,27 +1323,27 @@ nav-enemy-default-event-handler
          )
         )
        )
-      (set! (-> a0-2 param 1) f30-0)
-      (set! (-> a0-2 frame-num) 0.0)
+      (set! (-> a0-1 param 1) f30-0)
+      (set! (-> a0-1 frame-num) 0.0)
       (joint-control-channel-group!
-       a0-2
+       a0-1
        (the-as
         art-joint-anim
-        (-> self draw art-group data (-> self nav-info notice-anim))
+        (-> self draw art-group data (-> self nav-info walk-anim))
         )
        num-func-seek!
        )
       )
      (until (begin
              (suspend)
-             (let ((a0-3 (-> self skel root-channel 0)))
+             (let ((a0-2 (-> self skel root-channel 0)))
               (set!
-               (-> a0-3 param 0)
-               (the float (+ (-> a0-3 frame-group data 0 length) -1))
+               (-> a0-2 param 0)
+               (the float (+ (-> a0-2 frame-group data 0 length) -1))
                )
-              (set! (-> a0-3 param 1) f30-0)
+              (set! (-> a0-2 param 1) f30-0)
               (joint-control-channel-group-eval!
-               a0-3
+               a0-2
                (the-as art-joint-anim #f)
                num-func-seek!
                )
@@ -1936,18 +1352,27 @@ nav-enemy-default-event-handler
              )
       (empty)
       )
-     (ja-channel-push! 1 60)
-     (while #t
-      (let ((a0-6 (-> self skel root-channel 0)))
+     (when (nav-enemy-rnd-go-idle? 0.2)
+      (let ((a0-5 (-> self skel root-channel 0)))
+       (set! (-> a0-5 param 0) 1.0)
+       (joint-control-channel-group!
+        a0-5
+        (the-as art-joint-anim #f)
+        num-func-loop!
+        )
+       )
+      (ja-channel-push! 1 180)
+      (set! (-> self nav-enemy-flags) (logand -9 (-> self nav-enemy-flags)))
+      (let ((a0-8 (-> self skel root-channel 0)))
        (set!
-        (-> a0-6 frame-group)
+        (-> a0-8 frame-group)
         (the-as
          art-joint-anim
          (-> self draw art-group data (-> self nav-info idle-anim))
          )
         )
        (set!
-        (-> a0-6 param 0)
+        (-> a0-8 param 0)
         (the
          float
          (+
@@ -1964,10 +1389,10 @@ nav-enemy-default-event-handler
           )
          )
         )
-       (set! (-> a0-6 param 1) f30-0)
-       (set! (-> a0-6 frame-num) 0.0)
+       (set! (-> a0-8 param 1) f30-0)
+       (set! (-> a0-8 frame-num) 0.0)
        (joint-control-channel-group!
-        a0-6
+        a0-8
         (the-as
          art-joint-anim
          (-> self draw art-group data (-> self nav-info idle-anim))
@@ -1976,15 +1401,141 @@ nav-enemy-default-event-handler
         )
        )
       (until (begin
+              (ja-blend-eval)
               (suspend)
-              (let ((a0-7 (-> self skel root-channel 0)))
+              (let ((a0-9 (-> self skel root-channel 0)))
                (set!
-                (-> a0-7 param 0)
-                (the float (+ (-> a0-7 frame-group data 0 length) -1))
+                (-> a0-9 param 0)
+                (the float (+ (-> a0-9 frame-group data 0 length) -1))
                 )
-               (set! (-> a0-7 param 1) f30-0)
+               (set! (-> a0-9 param 1) f30-0)
                (joint-control-channel-group-eval!
-                a0-7
+                a0-9
+                (the-as art-joint-anim #f)
+                num-func-seek!
+                )
+               )
+              (ja-done? 0)
+              )
+       (empty)
+       )
+      (until (begin
+              (not (nav-enemy-rnd-go-idle? 0.2))
+              )
+       (let ((a0-11 (-> self skel root-channel 0)))
+        (set!
+         (-> a0-11 frame-group)
+         (the-as
+          art-joint-anim
+          (-> self draw art-group data (-> self nav-info idle-anim))
+          )
+         )
+        (set!
+         (-> a0-11 param 0)
+         (the
+          float
+          (+
+           (->
+            (the-as
+             art-joint-anim
+             (-> self draw art-group data (-> self nav-info idle-anim))
+             )
+            data
+            0
+            length
+            )
+           -1
+           )
+          )
+         )
+        (set! (-> a0-11 param 1) f30-0)
+        (set! (-> a0-11 frame-num) 0.0)
+        (joint-control-channel-group!
+         a0-11
+         (the-as
+          art-joint-anim
+          (-> self draw art-group data (-> self nav-info idle-anim))
+          )
+         num-func-seek!
+         )
+        )
+       (until (begin
+               (suspend)
+               (let ((a0-12 (-> self skel root-channel 0)))
+                (set!
+                 (-> a0-12 param 0)
+                 (the float (+ (-> a0-12 frame-group data 0 length) -1))
+                 )
+                (set! (-> a0-12 param 1) f30-0)
+                (joint-control-channel-group-eval!
+                 a0-12
+                 (the-as art-joint-anim #f)
+                 num-func-seek!
+                 )
+                )
+               (ja-done? 0)
+               )
+        (empty)
+        )
+       )
+      (logior! (-> self nav-enemy-flags) 8)
+      (let ((a0-15 (-> self skel root-channel 0)))
+       (set! (-> a0-15 param 0) 1.0)
+       (joint-control-channel-group!
+        a0-15
+        (the-as art-joint-anim #f)
+        num-func-loop!
+        )
+       )
+      (ja-channel-push! 1 180)
+      (let ((a0-17 (-> self skel root-channel 0)))
+       (set!
+        (-> a0-17 frame-group)
+        (the-as
+         art-joint-anim
+         (-> self draw art-group data (-> self nav-info walk-anim))
+         )
+        )
+       (set!
+        (-> a0-17 param 0)
+        (the
+         float
+         (+
+          (->
+           (the-as
+            art-joint-anim
+            (-> self draw art-group data (-> self nav-info walk-anim))
+            )
+           data
+           0
+           length
+           )
+          -1
+          )
+         )
+        )
+       (set! (-> a0-17 param 1) f30-0)
+       (set! (-> a0-17 frame-num) 0.0)
+       (joint-control-channel-group!
+        a0-17
+        (the-as
+         art-joint-anim
+         (-> self draw art-group data (-> self nav-info walk-anim))
+         )
+        num-func-seek!
+        )
+       )
+      (until (begin
+              (ja-blend-eval)
+              (suspend)
+              (let ((a0-18 (-> self skel root-channel 0)))
+               (set!
+                (-> a0-18 param 0)
+                (the float (+ (-> a0-18 frame-group data 0 length) -1))
+                )
+               (set! (-> a0-18 param 1) f30-0)
+               (joint-control-channel-group-eval!
+                a0-18
                 (the-as art-joint-anim #f)
                 num-func-seek!
                 )
@@ -1995,10 +1546,293 @@ nav-enemy-default-event-handler
        )
       )
      )
-    (none)
     )
+   (none)
    )
-  (set! (-> gp-3 post) nav-enemy-face-player-post)
+  :post
+  nav-enemy-patrol-post
+  )
+
+;; failed to figure out what this is:
+(defstate nav-enemy-notice (nav-enemy)
+  :virtual #t
+  :event
+  (the-as
+   (function process int symbol event-message-block object :behavior nav-enemy)
+   nav-enemy-default-event-handler
+   )
+  :enter
+  (behavior ()
+   (logior! (-> self nav-enemy-flags) 4)
+   (nav-enemy-neck-control-look-at)
+   (if (logtest? (-> self nav-enemy-flags) 2)
+    (go-virtual nav-enemy-chase)
+    )
+   (logior! (-> self nav-enemy-flags) 2)
+   (let ((gp-0 (-> self nav))
+         (v1-10 (target-pos 0))
+         )
+    (set! (-> gp-0 target-pos quad) (-> v1-10 quad))
+    )
+   (dummy-11 (-> self nav) (-> self nav target-pos))
+   (set! (-> self rotate-speed) (-> self nav-info run-rotate-speed))
+   (set! (-> self turn-time) (the-as uint (-> self nav-info run-turn-time)))
+   (none)
+   )
+  :code
+  (behavior ()
+   (ja-channel-push! 1 22)
+   (let ((f30-0 (nav-enemy-rnd-float-range 0.8 1.2)))
+    (let ((a0-2 (-> self skel root-channel 0)))
+     (set!
+      (-> a0-2 frame-group)
+      (the-as
+       art-joint-anim
+       (-> self draw art-group data (-> self nav-info notice-anim))
+       )
+      )
+     (set!
+      (-> a0-2 param 0)
+      (the
+       float
+       (+
+        (->
+         (the-as
+          art-joint-anim
+          (-> self draw art-group data (-> self nav-info notice-anim))
+          )
+         data
+         0
+         length
+         )
+        -1
+        )
+       )
+      )
+     (set! (-> a0-2 param 1) f30-0)
+     (set! (-> a0-2 frame-num) 0.0)
+     (joint-control-channel-group!
+      a0-2
+      (the-as
+       art-joint-anim
+       (-> self draw art-group data (-> self nav-info notice-anim))
+       )
+      num-func-seek!
+      )
+     )
+    (until (begin
+            (seek-toward-heading-vec!
+             (-> self collide-info)
+             (-> self nav travel)
+             (-> self rotate-speed)
+             (the-as int (-> self turn-time))
+             )
+            (suspend)
+            (let ((a0-4 (-> self skel root-channel 0)))
+             (set!
+              (-> a0-4 param 0)
+              (the float (+ (-> a0-4 frame-group data 0 length) -1))
+              )
+             (set! (-> a0-4 param 1) f30-0)
+             (joint-control-channel-group-eval!
+              a0-4
+              (the-as art-joint-anim #f)
+              num-func-seek!
+              )
+             )
+            (ja-done? 0)
+            )
+     (empty)
+     )
+    )
+   (go-virtual nav-enemy-chase)
+   (none)
+   )
+  :post
+  nav-enemy-simple-post
+  )
+
+;; definition for function ja-group-index?
+(defbehavior ja-group-index? nav-enemy ((arg0 int))
+  (= (if (> (-> self skel active-channels) 0)
+      (-> self skel root-channel 0 frame-group)
+      )
+   (-> self draw art-group data arg0)
+   )
+  )
+
+;; failed to figure out what this is:
+(defstate nav-enemy-flee (nav-enemy)
+  :virtual #t
+  :event
+  (the-as
+   (function process int symbol event-message-block object :behavior nav-enemy)
+   nav-enemy-default-event-handler
+   )
+  :enter
+  (behavior ()
+   (set! (-> self state-time) (-> *display* base-frame-counter))
+   (none)
+   )
+  :trans
+  (behavior ()
+   (when
+    (>=
+     (the-as
+      int
+      (- (-> *display* base-frame-counter) (the-as uint (-> self state-time)))
+      )
+     (the-as int (-> self reaction-time))
+     )
+    (if
+     (or
+      (or
+       (not *target*)
+       (<
+        (-> self nav-info stop-chase-distance)
+        (vector-vector-distance
+         (-> self collide-info trans)
+         (-> *target* control trans)
+         )
+        )
+       )
+      (let ((gp-0 'racer)
+            (a1-1 (new 'stack-no-clear 'event-message-block))
+            )
+       (set! (-> a1-1 from) self)
+       (set! (-> a1-1 num-params) 1)
+       (set! (-> a1-1 message) 'query)
+       (set! (-> a1-1 param 0) (the-as uint 'mode))
+       (!= gp-0 (send-event-function *target* a1-1))
+       )
+      )
+     (go-virtual nav-enemy-patrol)
+     )
+    )
+   (none)
+   )
+  :code
+  (behavior ()
+   (let ((f30-0 (nav-enemy-rnd-float-range 0.9 1.1)))
+    (ja-channel-push! 1 60)
+    (let ((a0-2 (-> self skel root-channel 0)))
+     (set!
+      (-> a0-2 frame-group)
+      (the-as
+       art-joint-anim
+       (-> self draw art-group data (-> self nav-info notice-anim))
+       )
+      )
+     (set!
+      (-> a0-2 param 0)
+      (the
+       float
+       (+
+        (->
+         (the-as
+          art-joint-anim
+          (-> self draw art-group data (-> self nav-info notice-anim))
+          )
+         data
+         0
+         length
+         )
+        -1
+        )
+       )
+      )
+     (set! (-> a0-2 param 1) f30-0)
+     (set! (-> a0-2 frame-num) 0.0)
+     (joint-control-channel-group!
+      a0-2
+      (the-as
+       art-joint-anim
+       (-> self draw art-group data (-> self nav-info notice-anim))
+       )
+      num-func-seek!
+      )
+     )
+    (until (begin
+            (suspend)
+            (let ((a0-3 (-> self skel root-channel 0)))
+             (set!
+              (-> a0-3 param 0)
+              (the float (+ (-> a0-3 frame-group data 0 length) -1))
+              )
+             (set! (-> a0-3 param 1) f30-0)
+             (joint-control-channel-group-eval!
+              a0-3
+              (the-as art-joint-anim #f)
+              num-func-seek!
+              )
+             )
+            (ja-done? 0)
+            )
+     (empty)
+     )
+    (ja-channel-push! 1 60)
+    (while #t
+     (let ((a0-6 (-> self skel root-channel 0)))
+      (set!
+       (-> a0-6 frame-group)
+       (the-as
+        art-joint-anim
+        (-> self draw art-group data (-> self nav-info idle-anim))
+        )
+       )
+      (set!
+       (-> a0-6 param 0)
+       (the
+        float
+        (+
+         (->
+          (the-as
+           art-joint-anim
+           (-> self draw art-group data (-> self nav-info idle-anim))
+           )
+          data
+          0
+          length
+          )
+         -1
+         )
+        )
+       )
+      (set! (-> a0-6 param 1) f30-0)
+      (set! (-> a0-6 frame-num) 0.0)
+      (joint-control-channel-group!
+       a0-6
+       (the-as
+        art-joint-anim
+        (-> self draw art-group data (-> self nav-info idle-anim))
+        )
+       num-func-seek!
+       )
+      )
+     (until (begin
+             (suspend)
+             (let ((a0-7 (-> self skel root-channel 0)))
+              (set!
+               (-> a0-7 param 0)
+               (the float (+ (-> a0-7 frame-group data 0 length) -1))
+               )
+              (set! (-> a0-7 param 1) f30-0)
+              (joint-control-channel-group-eval!
+               a0-7
+               (the-as art-joint-anim #f)
+               num-func-seek!
+               )
+              )
+             (ja-done? 0)
+             )
+      (empty)
+      )
+     )
+    )
+   (none)
+   )
+  :post
+  nav-enemy-face-player-post
   )
 
 ;; definition for function nav-enemy-reset-frustration
@@ -2036,881 +1870,611 @@ nav-enemy-default-event-handler
   )
 
 ;; failed to figure out what this is:
-(let
-  ((gp-4
-    (new 'static 'state
-     :name 'nav-enemy-chase
-     :next #f
-     :exit #f
-     :code #f
-     :trans #f
-     :post #f
-     :enter #f
-     :event #f
-     )
-    )
+(defstate nav-enemy-chase (nav-enemy)
+  :virtual #t
+  :event
+  (the-as
+   (function process int symbol event-message-block object :behavior nav-enemy)
+   nav-enemy-default-event-handler
    )
-  (method-set! nav-enemy 21 (the-as function gp-4))
-  (set! (-> gp-4 event) nav-enemy-default-event-handler)
-  (set!
-   (-> gp-4 enter)
-   (the-as
-    (function object object object object object object object)
-    (lambda :behavior nav-enemy
-     ()
-     (nav-enemy-neck-control-look-at)
-     (set! (-> self state-time) (-> *display* base-frame-counter))
-     (set! (-> self free-time) (-> *display* base-frame-counter))
-     (logior! (-> self nav-enemy-flags) 4)
-     (set! (-> self target-speed) (-> self nav-info run-travel-speed))
-     (set! (-> self acceleration) (-> self nav-info run-acceleration))
-     (set! (-> self rotate-speed) (-> self nav-info run-rotate-speed))
-     (set! (-> self turn-time) (the-as uint (-> self nav-info run-turn-time)))
-     (nav-enemy-reset-frustration)
-     (none)
-     )
-    )
+  :enter
+  (behavior ()
+   (nav-enemy-neck-control-look-at)
+   (set! (-> self state-time) (-> *display* base-frame-counter))
+   (set! (-> self free-time) (-> *display* base-frame-counter))
+   (logior! (-> self nav-enemy-flags) 4)
+   (set! (-> self target-speed) (-> self nav-info run-travel-speed))
+   (set! (-> self acceleration) (-> self nav-info run-acceleration))
+   (set! (-> self rotate-speed) (-> self nav-info run-rotate-speed))
+   (set! (-> self turn-time) (the-as uint (-> self nav-info run-turn-time)))
+   (nav-enemy-reset-frustration)
+   (none)
    )
-  (set!
-   (-> gp-4 trans)
-   (lambda :behavior nav-enemy () (when (logtest? (-> *target* state-flags) 128)
-                                   (let
-                                    ((t9-0
-                                      (the-as (function object) enter-state)
-                                      )
-                                     )
-                                    (set!
-                                     (-> self next-state)
-                                     (the-as
-                                      state
-                                      (method-of-object self nav-enemy-patrol)
-                                      )
-                                     )
-                                    (t9-0)
-                                    )
-                                   )
-    (when (logtest? (-> self nav-enemy-flags) 256)
-     (let ((t9-1 (the-as (function object) enter-state)))
-      (set!
-       (-> self next-state)
-       (the-as state (method-of-object self nav-enemy-victory))
-       )
-      (t9-1)
+  :trans
+  (behavior ()
+   (if (logtest? (-> *target* state-flags) 128)
+    (go-virtual nav-enemy-patrol)
+    )
+   (if (logtest? (-> self nav-enemy-flags) 256)
+    (go-virtual nav-enemy-victory)
+    )
+   (if
+    (or
+     (not (nav-enemy-player-at-frustration-point?))
+     (<
+      (-> self nav-info frustration-distance)
+      (vector-vector-xz-distance (target-pos 0) (-> self collide-info trans))
       )
+     )
+    (nav-enemy-reset-frustration)
+    )
+   (when
+    (>=
+     (the-as
+      int
+      (- (-> *display* base-frame-counter) (the-as uint (-> self state-time)))
+      )
+     (the-as int (-> self reaction-time))
      )
     (if
-     (or
-      (not (nav-enemy-player-at-frustration-point?))
-      (<
-       (-> self nav-info frustration-distance)
-       (vector-vector-xz-distance (target-pos 0) (-> self collide-info trans))
-       )
-      )
-     (nav-enemy-reset-frustration)
-     )
-    (when
      (>=
       (the-as
        int
-       (- (-> *display* base-frame-counter) (the-as uint (-> self state-time)))
+       (- (-> *display* base-frame-counter) (-> self frustration-time))
        )
-      (the-as int (-> self reaction-time))
+      (the-as
+       int
+       (+ (-> self reaction-time) (-> self nav-info frustration-time))
+       )
       )
+     (logior! (-> self nav-enemy-flags) 8192)
+     )
+    (if
+     (or
+      (not (TODO-RENAME-46 self (-> self nav-info stop-chase-distance)))
+      (nonzero? (logand (-> self nav-enemy-flags) 8192))
+      )
+     (go-virtual nav-enemy-stop-chase)
+     )
+    (cond
+     ((logtest? #x20000 (-> self nav flags))
+      (if
+       (>=
+        (the-as int (- (-> *display* base-frame-counter) (-> self free-time)))
+        300
+        )
+       (go-virtual nav-enemy-patrol)
+       )
+      )
+     (else
+      (set! (-> self free-time) (-> *display* base-frame-counter))
+      )
+     )
+    )
+   (none)
+   )
+  :code
+  (behavior ()
+   (ja-channel-push! 1 60)
+   (let ((v1-2 (-> self skel root-channel 0)))
+    (set!
+     (-> v1-2 frame-group)
+     (the-as
+      art-joint-anim
+      (-> self draw art-group data (-> self nav-info run-anim))
+      )
+     )
+    )
+   (let ((v1-5 (-> self skel root-channel 0)))
+    (set! (-> v1-5 num-func) num-func-identity)
+    (set! (-> v1-5 frame-num) 0.0)
+    )
+   (let ((f30-0 (nav-enemy-rnd-float-range 0.9 1.1)))
+    (while #t
+     (suspend)
+     (let ((a0-8 (-> self skel root-channel 0)))
+      (set! (-> a0-8 param 0) f30-0)
+      (joint-control-channel-group-eval!
+       a0-8
+       (the-as art-joint-anim #f)
+       num-func-loop!
+       )
+      )
+     )
+    )
+   (none)
+   )
+  :post
+  nav-enemy-chase-post
+  )
+
+;; failed to figure out what this is:
+(defstate nav-enemy-stop-chase (nav-enemy)
+  :virtual #t
+  :event
+  (the-as
+   (function process int symbol event-message-block object :behavior nav-enemy)
+   nav-enemy-default-event-handler
+   )
+  :enter
+  (behavior ()
+   (set! (-> self state-time) (-> *display* base-frame-counter))
+   (let*
+    ((f30-0
+      (vector-vector-distance (-> self collide-info trans) (target-pos 0))
+      )
+     (gp-1
+      (the
+       int
+       (+
+        (lerp-scale 600.0 1800.0 f30-0 32768.0 122880.0)
+        (nav-enemy-rnd-float-range 0.0 30.0)
+        )
+       )
+      )
+     )
+    (if (< f30-0 40960.0)
+     (go-virtual nav-enemy-stare)
+     )
+    (set! (-> self state-timeout) (the-as uint gp-1))
+    )
+   (set! (-> self target-speed) (-> self nav-info walk-travel-speed))
+   (set! (-> self acceleration) (-> self nav-info walk-acceleration))
+   (set! (-> self rotate-speed) (-> self nav-info walk-rotate-speed))
+   (set! (-> self turn-time) (the-as uint (-> self nav-info walk-turn-time)))
+   (none)
+   )
+  :trans
+  (behavior ()
+   (when
+    (>=
+     (the-as
+      int
+      (- (-> *display* base-frame-counter) (the-as uint (-> self state-time)))
+      )
+     30
+     )
+    (if (logtest? (-> *target* state-flags) 128)
+     (go-virtual nav-enemy-patrol)
+     )
+    (if
+     (and
+      (TODO-RENAME-46 self (-> self nav-info notice-distance))
+      (not (nav-enemy-frustrated?))
+      )
+     (go-virtual nav-enemy-chase)
+     )
+    (if
+     (or
+      (or
+       (not *target*)
+       (<
+        (-> self enemy-info idle-distance)
+        (vector-vector-distance
+         (-> self collide-info trans)
+         (-> *target* control trans)
+         )
+        )
+       )
+      (logtest? #x20000 (-> self nav flags))
+      (>=
+       (the-as
+        int
+        (- (-> *display* base-frame-counter) (the-as uint (-> self state-time)))
+        )
+       (the-as int (-> self state-timeout))
+       )
+      )
+     (go-virtual nav-enemy-stare)
+     )
+    )
+   (none)
+   )
+  :code
+  (behavior ()
+   (ja-channel-push! 1 30)
+   (let ((v1-2 (-> self skel root-channel 0)))
+    (set!
+     (-> v1-2 frame-group)
+     (the-as
+      art-joint-anim
+      (-> self draw art-group data (-> self nav-info walk-anim))
+      )
+     )
+    )
+   (let ((v1-5 (-> self skel root-channel 0)))
+    (set! (-> v1-5 num-func) num-func-identity)
+    (set! (-> v1-5 frame-num) 0.0)
+    )
+   (let ((f30-0 (nav-enemy-rnd-float-range 0.8 1.2)))
+    (while #t
+     (suspend)
+     (let ((a0-8 (-> self skel root-channel 0)))
+      (set! (-> a0-8 param 0) f30-0)
+      (joint-control-channel-group-eval!
+       a0-8
+       (the-as art-joint-anim #f)
+       num-func-loop!
+       )
+      )
+     )
+    )
+   (none)
+   )
+  :post
+  nav-enemy-chase-post
+  )
+
+;; failed to figure out what this is:
+(defstate nav-enemy-stare (nav-enemy)
+  :virtual #t
+  :event
+  (the-as
+   (function process int symbol event-message-block object :behavior nav-enemy)
+   nav-enemy-default-event-handler
+   )
+  :enter
+  (behavior ()
+   (set! (-> self state-time) (-> *display* base-frame-counter))
+   (set! (-> self nav-enemy-flags) (logand -17 (-> self nav-enemy-flags)))
+   (let
+    ((f0-0 (vector-vector-distance (-> self collide-info trans) (target-pos 0)))
+     )
+    (set!
+     (-> self state-timeout)
+     (the-as
+      uint
+      (the
+       int
+       (+
+        (lerp-scale 3000.0 0.0 f0-0 12288.0 122880.0)
+        (nav-enemy-rnd-float-range 0.0 900.0)
+        )
+       )
+      )
+     )
+    )
+   (set! (-> self rotate-speed) (-> self nav-info run-rotate-speed))
+   (set! (-> self turn-time) (the-as uint (-> self nav-info run-turn-time)))
+   (set! (-> self collide-info transv quad) (-> *null-vector* quad))
+   (none)
+   )
+  :exit
+  (behavior ()
+   (logior! (-> self nav-enemy-flags) 16)
+   (none)
+   )
+  :trans
+  (behavior ()
+   (when
+    (>=
+     (the-as
+      int
+      (- (-> *display* base-frame-counter) (the-as uint (-> self state-time)))
+      )
+     30
+     )
+    (if (logtest? (-> *target* state-flags) 128)
+     (go-virtual nav-enemy-patrol)
+     )
+    (cond
+     ((TODO-RENAME-46 self (-> self nav-info notice-distance))
+      (if
+       (and
+        (>=
+         (the-as
+          int
+          (- (-> *display* base-frame-counter) (-> self notice-time))
+          )
+         (the-as int (-> self reaction-time))
+         )
+        (not (nav-enemy-frustrated?))
+        )
+       (go-virtual nav-enemy-chase)
+       )
+      )
+     (else
+      (set! (-> self notice-time) (-> *display* base-frame-counter))
+      )
+     )
+    (when
+     (not
+      (or
+       (and
+        *target*
+        (>=
+         40960.0
+         (vector-vector-distance
+          (-> self collide-info trans)
+          (-> *target* control trans)
+          )
+         )
+        )
+       (and
+        (-> self nav-info use-proximity-notice)
+        *target*
+        (>=
+         (-> self nav-info proximity-notice-distance)
+         (vector-vector-distance
+          (-> self collide-info trans)
+          (-> *target* control trans)
+          )
+         )
+        )
+       )
+      )
+     (set! (-> self nav-enemy-flags) (logand -5 (-> self nav-enemy-flags)))
      (if
       (>=
        (the-as
         int
-        (- (-> *display* base-frame-counter) (-> self frustration-time))
+        (- (-> *display* base-frame-counter) (the-as uint (-> self state-time)))
         )
-       (the-as
-        int
-        (+ (-> self reaction-time) (-> self nav-info frustration-time))
-        )
+       (the-as int (-> self state-timeout))
        )
-      (logior! (-> self nav-enemy-flags) 8192)
+      (go-virtual nav-enemy-give-up)
       )
-     (when
+     )
+    (if
+     (or
       (or
-       (not (TODO-RENAME-46 self (-> self nav-info stop-chase-distance)))
-       (nonzero? (logand (-> self nav-enemy-flags) 8192))
-       )
-      (let ((t9-7 (the-as (function object) enter-state)))
-       (set!
-        (-> self next-state)
-        (the-as state (method-of-object self nav-enemy-stop-chase))
-        )
-       (t9-7)
-       )
-      )
-     (cond
-      ((logtest? #x20000 (-> self nav flags))
-       (when
-        (>=
-         (the-as int (- (-> *display* base-frame-counter) (-> self free-time)))
-         300
-         )
-        (let ((t9-8 (the-as (function object) enter-state)))
-         (set!
-          (-> self next-state)
-          (the-as state (method-of-object self nav-enemy-patrol))
-          )
-         (t9-8)
+       (not *target*)
+       (<
+        (-> self enemy-info idle-distance)
+        (vector-vector-distance
+         (-> self collide-info trans)
+         (-> *target* control trans)
          )
         )
        )
-      (else
-       (let ((v0-6 (the-as object (-> *display* base-frame-counter))))
-        (set! (-> self free-time) (the-as uint v0-6))
-        v0-6
-        )
-       )
+      (nonzero? (logand #x20000 (-> self nav flags)))
       )
+     (go-virtual nav-enemy-give-up)
      )
     )
+   (none)
    )
-  (set!
-   (-> gp-4 code)
-   (lambda :behavior nav-enemy
-    ()
-    (ja-channel-push! 1 60)
-    (let ((v1-2 (-> self skel root-channel 0)))
-     (set!
-      (-> v1-2 frame-group)
-      (the-as
-       art-joint-anim
-       (-> self draw art-group data (-> self nav-info run-anim))
-       )
-      )
-     )
-    (let ((v1-5 (-> self skel root-channel 0)))
-     (set! (-> v1-5 num-func) num-func-identity)
-     (set! (-> v1-5 frame-num) 0.0)
-     )
-    (let ((f30-0 (nav-enemy-rnd-float-range 0.9 1.1)))
-     (while #t
-      (suspend)
-      (let ((a0-8 (-> self skel root-channel 0)))
-       (set! (-> a0-8 param 0) f30-0)
-       (joint-control-channel-group-eval!
-        a0-8
-        (the-as art-joint-anim #f)
-        num-func-loop!
-        )
-       )
-      )
-     )
-    (none)
-    )
+  :code
+  (behavior ()
+   (go-virtual nav-enemy-give-up)
+   (none)
    )
-  (set! (-> gp-4 post) nav-enemy-chase-post)
+  :post
+  nav-enemy-face-player-post
   )
 
 ;; failed to figure out what this is:
-(let
-  ((gp-5
-    (new 'static 'state
-     :name 'nav-enemy-stop-chase
-     :next #f
-     :exit #f
-     :code #f
-     :trans #f
-     :post #f
-     :enter #f
-     :event #f
-     )
-    )
+(defstate nav-enemy-give-up (nav-enemy)
+  :virtual #t
+  :event
+  (the-as
+   (function process int symbol event-message-block object :behavior nav-enemy)
+   nav-enemy-default-event-handler
    )
-  (method-set! nav-enemy 32 (the-as function gp-5))
-  (set! (-> gp-5 event) nav-enemy-default-event-handler)
-  (set!
-   (-> gp-5 enter)
-   (the-as
-    (function object object object object object object object)
-    (lambda :behavior nav-enemy
-     ()
-     (set! (-> self state-time) (-> *display* base-frame-counter))
-     (let*
-      ((f30-0
-        (vector-vector-distance (-> self collide-info trans) (target-pos 0))
-        )
-       (gp-1
-        (the
-         int
-         (+
-          (lerp-scale 600.0 1800.0 f30-0 32768.0 122880.0)
-          (nav-enemy-rnd-float-range 0.0 30.0)
-          )
-         )
-        )
-       )
-      (when (< f30-0 40960.0)
-       (let ((t9-4 (the-as (function object) enter-state)))
-        (set!
-         (-> self next-state)
-         (the-as state (method-of-object self nav-enemy-stare))
-         )
-        (t9-4)
-        )
-       )
-      (set! (-> self state-timeout) (the-as uint gp-1))
-      )
-     (set! (-> self target-speed) (-> self nav-info walk-travel-speed))
-     (set! (-> self acceleration) (-> self nav-info walk-acceleration))
-     (set! (-> self rotate-speed) (-> self nav-info walk-rotate-speed))
-     (let ((v0-5 (-> self nav-info walk-turn-time)))
-      (set! (-> self turn-time) (the-as uint v0-5))
-      (the-as uint v0-5)
-      )
-     )
-    )
+  :enter
+  (behavior ()
+   (set! (-> self state-time) (-> *display* base-frame-counter))
+   (nav-enemy-neck-control-inactive)
+   (set! (-> self nav-enemy-flags) (logand -5 (-> self nav-enemy-flags)))
+   (none)
    )
-  (set!
-   (-> gp-5 trans)
-   (lambda :behavior nav-enemy
-    ()
-    (when
-     (>=
-      (the-as
-       int
-       (- (-> *display* base-frame-counter) (the-as uint (-> self state-time)))
-       )
-      30
-      )
-     (when (logtest? (-> *target* state-flags) 128)
-      (let ((t9-0 (the-as (function object) enter-state)))
-       (set!
-        (-> self next-state)
-        (the-as state (method-of-object self nav-enemy-patrol))
-        )
-       (t9-0)
-       )
-      )
-     (when
-      (and
-       (TODO-RENAME-46 self (-> self nav-info notice-distance))
-       (not (nav-enemy-frustrated?))
-       )
-      (let ((t9-3 (the-as (function object) enter-state)))
-       (set!
-        (-> self next-state)
-        (the-as state (method-of-object self nav-enemy-chase))
-        )
-       (t9-3)
-       )
-      )
-     (when
-      (or
-       (or
-        (not *target*)
-        (<
-         (-> self enemy-info idle-distance)
-         (vector-vector-distance
-          (-> self collide-info trans)
-          (-> *target* control trans)
-          )
-         )
-        )
-       (logtest? #x20000 (-> self nav flags))
-       (>=
-        (the-as
-         int
-         (-
-          (-> *display* base-frame-counter)
-          (the-as uint (-> self state-time))
-          )
-         )
-        (the-as int (-> self state-timeout))
-        )
-       )
-      (let ((t9-5 (the-as (function object) enter-state)))
-       (set!
-        (-> self next-state)
-        (the-as state (method-of-object self nav-enemy-stare))
-        )
-       (t9-5)
-       )
-      )
-     )
-    )
-   )
-  (set!
-   (-> gp-5 code)
-   (lambda :behavior nav-enemy
-    ()
-    (ja-channel-push! 1 30)
-    (let ((v1-2 (-> self skel root-channel 0)))
-     (set!
-      (-> v1-2 frame-group)
-      (the-as
-       art-joint-anim
-       (-> self draw art-group data (-> self nav-info walk-anim))
-       )
-      )
-     )
-    (let ((v1-5 (-> self skel root-channel 0)))
-     (set! (-> v1-5 num-func) num-func-identity)
-     (set! (-> v1-5 frame-num) 0.0)
-     )
-    (let ((f30-0 (nav-enemy-rnd-float-range 0.8 1.2)))
-     (while #t
-      (suspend)
-      (let ((a0-8 (-> self skel root-channel 0)))
-       (set! (-> a0-8 param 0) f30-0)
-       (joint-control-channel-group-eval!
-        a0-8
-        (the-as art-joint-anim #f)
-        num-func-loop!
-        )
-       )
-      )
-     )
-    (none)
-    )
-   )
-  (set! (-> gp-5 post) nav-enemy-chase-post)
-  )
-
-;; failed to figure out what this is:
-(let
-  ((gp-6
-    (new 'static 'state
-     :name 'nav-enemy-stare
-     :next #f
-     :exit #f
-     :code #f
-     :trans #f
-     :post #f
-     :enter #f
-     :event #f
-     )
-    )
-   )
-  (method-set! nav-enemy 31 (the-as function gp-6))
-  (set! (-> gp-6 event) nav-enemy-default-event-handler)
-  (set!
-   (-> gp-6 enter)
-   (the-as
-    (function object object object object object object object)
-    (lambda :behavior nav-enemy
-     ()
-     (set! (-> self state-time) (-> *display* base-frame-counter))
-     (set! (-> self nav-enemy-flags) (logand -17 (-> self nav-enemy-flags)))
-     (let
-      ((f0-0
-        (vector-vector-distance (-> self collide-info trans) (target-pos 0))
-        )
-       )
-      (set!
-       (-> self state-timeout)
-       (the-as
-        uint
-        (the
-         int
-         (+
-          (lerp-scale 3000.0 0.0 f0-0 12288.0 122880.0)
-          (nav-enemy-rnd-float-range 0.0 900.0)
-          )
-         )
-        )
-       )
-      )
-     (set! (-> self rotate-speed) (-> self nav-info run-rotate-speed))
-     (set! (-> self turn-time) (the-as uint (-> self nav-info run-turn-time)))
-     (let ((v0-4 (-> self collide-info transv)))
-      (set! (-> v0-4 quad) (-> *null-vector* quad))
-      v0-4
-      )
-     )
-    )
-   )
-  (set!
-   (-> gp-6 exit)
-   (lambda :behavior nav-enemy
-    ()
-    (let ((v0-0 (logior (-> self nav-enemy-flags) 16)))
-     (set! (-> self nav-enemy-flags) v0-0)
-     v0-0
-     )
-    )
-   )
-  (set!
-   (-> gp-6 trans)
-   (lambda :behavior nav-enemy
-    ()
-    (when
-     (>=
-      (the-as
-       int
-       (- (-> *display* base-frame-counter) (the-as uint (-> self state-time)))
-       )
-      30
-      )
-     (when (logtest? (-> *target* state-flags) 128)
-      (let ((t9-0 (the-as (function object) enter-state)))
-       (set!
-        (-> self next-state)
-        (the-as state (method-of-object self nav-enemy-patrol))
-        )
-       (t9-0)
-       )
-      )
-     (cond
-      ((TODO-RENAME-46 self (-> self nav-info notice-distance))
-       (when
-        (and
-         (>=
-          (the-as
-           int
-           (- (-> *display* base-frame-counter) (-> self notice-time))
-           )
-          (the-as int (-> self reaction-time))
-          )
-         (not (nav-enemy-frustrated?))
-         )
-        (let ((t9-3 (the-as (function object) enter-state)))
-         (set!
-          (-> self next-state)
-          (the-as state (method-of-object self nav-enemy-chase))
-          )
-         (t9-3)
-         )
-        )
-       )
-      (else
-       (set! (-> self notice-time) (-> *display* base-frame-counter))
-       )
-      )
-     (when
-      (not
-       (or
-        (and
-         *target*
-         (>=
-          40960.0
-          (vector-vector-distance
-           (-> self collide-info trans)
-           (-> *target* control trans)
-           )
-          )
-         )
-        (and
-         (-> self nav-info use-proximity-notice)
-         *target*
-         (>=
-          (-> self nav-info proximity-notice-distance)
-          (vector-vector-distance
-           (-> self collide-info trans)
-           (-> *target* control trans)
-           )
-          )
-         )
-        )
-       )
-      (set! (-> self nav-enemy-flags) (logand -5 (-> self nav-enemy-flags)))
-      (when
-       (>=
-        (the-as
-         int
-         (-
-          (-> *display* base-frame-counter)
-          (the-as uint (-> self state-time))
-          )
-         )
-        (the-as int (-> self state-timeout))
-        )
-       (let ((t9-6 (the-as (function object) enter-state)))
-        (set!
-         (-> self next-state)
-         (the-as state (method-of-object self nav-enemy-give-up))
-         )
-        (t9-6)
-        )
-       )
-      )
-     (when
-      (or
-       (or
-        (not *target*)
-        (<
-         (-> self enemy-info idle-distance)
-         (vector-vector-distance
-          (-> self collide-info trans)
-          (-> *target* control trans)
-          )
-         )
-        )
-       (nonzero? (logand #x20000 (-> self nav flags)))
-       )
-      (let ((t9-8 (the-as (function object) enter-state)))
-       (set!
-        (-> self next-state)
-        (the-as state (method-of-object self nav-enemy-give-up))
-        )
-       (t9-8)
-       )
-      )
-     )
-    )
-   )
-  (set!
-   (-> gp-6 code)
-   (lambda :behavior nav-enemy
-    ()
-    (let ((t9-0 (the-as (function object) enter-state)))
-     (set!
-      (-> self next-state)
-      (the-as state (method-of-object self nav-enemy-give-up))
-      )
-     (t9-0)
-     )
-    )
-   )
-  (set! (-> gp-6 post) nav-enemy-face-player-post)
-  )
-
-;; failed to figure out what this is:
-(let
-  ((gp-7
-    (new 'static 'state
-     :name 'nav-enemy-give-up
-     :next #f
-     :exit #f
-     :code #f
-     :trans #f
-     :post #f
-     :enter #f
-     :event #f
-     )
-    )
-   )
-  (method-set! nav-enemy 25 (the-as function gp-7))
-  (set! (-> gp-7 event) nav-enemy-default-event-handler)
-  (set!
-   (-> gp-7 enter)
-   (the-as
-    (function object object object object object object object)
-    (lambda :behavior nav-enemy
-     ()
-     (set! (-> self state-time) (-> *display* base-frame-counter))
-     (nav-enemy-neck-control-inactive)
-     (let ((v0-1 (logand -5 (-> self nav-enemy-flags))))
-      (set! (-> self nav-enemy-flags) v0-1)
-      v0-1
-      )
-     )
-    )
-   )
-  (set!
-   (-> gp-7 trans)
-   (lambda :behavior nav-enemy
-    ()
-    (when
-     (>=
-      (the-as
-       int
-       (- (-> *display* base-frame-counter) (the-as uint (-> self state-time)))
-       )
-      30
-      )
-     (when (TODO-RENAME-46 self (-> self nav-info notice-distance))
-      (let ((t9-1 (the-as (function object) enter-state)))
-       (set!
-        (-> self next-state)
-        (the-as state (method-of-object self nav-enemy-chase))
-        )
-       (t9-1)
-       )
-      )
-     )
-    )
-   )
-  (set!
-   (-> gp-7 code)
-   (lambda :behavior nav-enemy
-    ()
-    (let ((t9-0 (the-as (function object) enter-state)))
-     (set!
-      (-> self next-state)
-      (the-as state (method-of-object self nav-enemy-patrol))
-      )
-     (t9-0)
-     )
-    )
-   )
-  (set! (-> gp-7 post) nav-enemy-simple-post)
-  )
-
-;; failed to figure out what this is:
-(let
-  ((gp-8
-    (new 'static 'state
-     :name 'nav-enemy-attack
-     :next #f
-     :exit #f
-     :code #f
-     :trans #f
-     :post #f
-     :enter #f
-     :event #f
-     )
-    )
-   )
-  (method-set! nav-enemy 20 (the-as function gp-8))
-  (set! (-> gp-8 event) nav-enemy-default-event-handler)
-  (set!
-   (-> gp-8 code)
-   (lambda :behavior nav-enemy
-    ()
-    (let ((t9-0 (the-as (function object) enter-state)))
-     (set!
-      (-> self next-state)
-      (the-as state (method-of-object self nav-enemy-victory))
-      )
-     (t9-0)
-     )
-    )
-   )
-  (set! (-> gp-8 post) nav-enemy-simple-post)
-  )
-
-;; failed to figure out what this is:
-(let
-  ((gp-9
-    (new 'static 'state
-     :name 'nav-enemy-victory
-     :next #f
-     :exit #f
-     :code #f
-     :trans #f
-     :post #f
-     :enter #f
-     :event #f
-     )
-    )
-   )
-  (method-set! nav-enemy 33 (the-as function gp-9))
-  (set! (-> gp-9 event) nav-enemy-default-event-handler)
-  (set!
-   (-> gp-9 enter)
-   (the-as
-    (function object object object object object object object)
-    (lambda :behavior nav-enemy () (let ((v0-0 (-> self collide-info transv)))
-                                    (set!
-                                     (-> v0-0 quad)
-                                     (-> *null-vector* quad)
-                                     )
-                                    v0-0
-                                    )
-     )
-    )
-   )
-  (set!
-   (-> gp-9 code)
-   (lambda :behavior nav-enemy
-    ()
-    (ja-channel-push! 1 22)
-    (let ((f30-0 (nav-enemy-rnd-float-range 0.8 1.2)))
-     (let ((a0-2 (-> self skel root-channel 0)))
-      (set!
-       (-> a0-2 frame-group)
-       (the-as
-        art-joint-anim
-        (-> self draw art-group data (-> self nav-info victory-anim))
-        )
-       )
-      (set!
-       (-> a0-2 param 0)
-       (the
-        float
-        (+
-         (->
-          (the-as
-           art-joint-anim
-           (-> self draw art-group data (-> self nav-info victory-anim))
-           )
-          data
-          0
-          length
-          )
-         -1
-         )
-        )
-       )
-      (set! (-> a0-2 param 1) f30-0)
-      (set! (-> a0-2 frame-num) 0.0)
-      (joint-control-channel-group!
-       a0-2
-       (the-as
-        art-joint-anim
-        (-> self draw art-group data (-> self nav-info victory-anim))
-        )
-       num-func-seek!
-       )
-      )
-     (until (begin
-             (suspend)
-             (let ((a0-3 (-> self skel root-channel 0)))
-              (set!
-               (-> a0-3 param 0)
-               (the float (+ (-> a0-3 frame-group data 0 length) -1))
-               )
-              (set! (-> a0-3 param 1) f30-0)
-              (joint-control-channel-group-eval!
-               a0-3
-               (the-as art-joint-anim #f)
-               num-func-seek!
-               )
-              )
-             (ja-done? 0)
-             )
-      (empty)
-      )
-     )
-    (let ((t9-5 (the-as (function object) enter-state)))
-     (set!
-      (-> self next-state)
-      (the-as state (method-of-object self nav-enemy-stare))
-      )
-     (t9-5)
-     )
-    )
-   )
-  (set! (-> gp-9 post) nav-enemy-simple-post)
-  )
-
-;; failed to figure out what this is:
-(let
-  ((gp-10
-    (new 'static 'state
-     :name 'nav-enemy-die
-     :next #f
-     :exit #f
-     :code #f
-     :trans #f
-     :post #f
-     :enter #f
-     :event #f
-     )
-    )
-   )
-  (method-set! nav-enemy 23 (the-as function gp-10))
-  (set! (-> gp-10 event) process-drawable-death-event-handler)
-  (set!
-   (-> gp-10 enter)
-   (the-as
-    (function object object object object object object object)
-    (lambda :behavior nav-enemy
-     ()
-     (let ((a1-0 (new 'stack-no-clear 'event-message-block)))
-      (set! (-> a1-0 from) self)
-      (set! (-> a1-0 num-params) 0)
-      (set! (-> a1-0 message) 'child-die)
-      (let ((t9-0 send-event-function)
-            (v1-1 (-> self parent))
-            )
-       (t9-0 (the-as process (if v1-1
-                              (-> v1-1 0 self)
-                              )
-              )
-        a1-0
-        )
-       )
-      )
-     )
-    )
-   )
-  (set!
-   (-> gp-10 code)
-   (lambda :behavior nav-enemy
-    ()
-    (ja-channel-push! 1 22)
-    (dummy-48 (-> self collide-info))
-    (nav-enemy-fall-and-play-death-anim
+  :trans
+  (behavior ()
+   (when
+    (>=
      (the-as
-      art-joint-anim
-      (-> self draw art-group data (-> self nav-info die-anim))
+      int
+      (- (-> *display* base-frame-counter) (the-as uint (-> self state-time)))
       )
-     1.0
-     1.0
-     1000000000000000.0
-     600
+     30
      )
-    (let ((a1-2 (new 'stack-no-clear 'event-message-block)))
-     (set! (-> a1-2 from) self)
-     (set! (-> a1-2 num-params) 0)
-     (set! (-> a1-2 message) 'death-end)
-     (send-event-function self a1-2)
+    (if (TODO-RENAME-46 self (-> self nav-info notice-distance))
+     (go-virtual nav-enemy-chase)
      )
-    (when (logtest? (-> self enemy-info options) 2)
-     (let ((t9-4 (the-as (function object) enter-state)))
-      (set!
-       (-> self next-state)
-       (the-as state (method-of-object self nav-enemy-fuel-cell))
+    )
+   (none)
+   )
+  :code
+  (behavior ()
+   (go-virtual nav-enemy-patrol)
+   (none)
+   )
+  :post
+  nav-enemy-simple-post
+  )
+
+;; failed to figure out what this is:
+(defstate nav-enemy-attack (nav-enemy)
+  :virtual #t
+  :event
+  (the-as
+   (function process int symbol event-message-block object :behavior nav-enemy)
+   nav-enemy-default-event-handler
+   )
+  :code
+  (behavior ()
+   (go-virtual nav-enemy-victory)
+   (none)
+   )
+  :post
+  nav-enemy-simple-post
+  )
+
+;; failed to figure out what this is:
+(defstate nav-enemy-victory (nav-enemy)
+  :virtual #t
+  :event
+  (the-as
+   (function process int symbol event-message-block object :behavior nav-enemy)
+   nav-enemy-default-event-handler
+   )
+  :enter
+  (behavior ()
+   (set! (-> self collide-info transv quad) (-> *null-vector* quad))
+   (none)
+   )
+  :code
+  (behavior ()
+   (ja-channel-push! 1 22)
+   (let ((f30-0 (nav-enemy-rnd-float-range 0.8 1.2)))
+    (let ((a0-2 (-> self skel root-channel 0)))
+     (set!
+      (-> a0-2 frame-group)
+      (the-as
+       art-joint-anim
+       (-> self draw art-group data (-> self nav-info victory-anim))
        )
-      (t9-4)
       )
+     (set!
+      (-> a0-2 param 0)
+      (the
+       float
+       (+
+        (->
+         (the-as
+          art-joint-anim
+          (-> self draw art-group data (-> self nav-info victory-anim))
+          )
+         data
+         0
+         length
+         )
+        -1
+        )
+       )
+      )
+     (set! (-> a0-2 param 1) f30-0)
+     (set! (-> a0-2 frame-num) 0.0)
+     (joint-control-channel-group!
+      a0-2
+      (the-as
+       art-joint-anim
+       (-> self draw art-group data (-> self nav-info victory-anim))
+       )
+      num-func-seek!
+      )
+     )
+    (until (begin
+            (suspend)
+            (let ((a0-3 (-> self skel root-channel 0)))
+             (set!
+              (-> a0-3 param 0)
+              (the float (+ (-> a0-3 frame-group data 0 length) -1))
+              )
+             (set! (-> a0-3 param 1) f30-0)
+             (joint-control-channel-group-eval!
+              a0-3
+              (the-as art-joint-anim #f)
+              num-func-seek!
+              )
+             )
+            (ja-done? 0)
+            )
+     (empty)
+     )
+    )
+   (go-virtual nav-enemy-stare)
+   (none)
+   )
+  :post
+  nav-enemy-simple-post
+  )
+
+;; failed to figure out what this is:
+(defstate nav-enemy-die (nav-enemy)
+  :virtual #t
+  :event
+  (the-as
+   (function process int symbol event-message-block object :behavior nav-enemy)
+   process-drawable-death-event-handler
+   )
+  :enter
+  (behavior ()
+   (let ((a1-0 (new 'stack-no-clear 'event-message-block)))
+    (set! (-> a1-0 from) self)
+    (set! (-> a1-0 num-params) 0)
+    (set! (-> a1-0 message) 'child-die)
+    (let ((t9-0 send-event-function)
+          (v1-1 (-> self parent))
+          )
+     (t9-0 (the-as process (if v1-1
+                            (-> v1-1 0 self)
+                            )
+            )
+      a1-0
+      )
+     )
+    )
+   (none)
+   )
+  :code
+  (behavior ()
+   (ja-channel-push! 1 22)
+   (dummy-48 (-> self collide-info))
+   (nav-enemy-fall-and-play-death-anim
+    (the-as
+     art-joint-anim
+     (-> self draw art-group data (-> self nav-info die-anim))
+     )
+    1.0
+    1.0
+    1000000000000000.0
+    600
+    )
+   (let ((a1-2 (new 'stack-no-clear 'event-message-block)))
+    (set! (-> a1-2 from) self)
+    (set! (-> a1-2 num-params) 0)
+    (set! (-> a1-2 message) 'death-end)
+    (send-event-function self a1-2)
+    )
+   (if (logtest? (-> self enemy-info options) 2)
+    (go-virtual nav-enemy-fuel-cell)
+    )
+   (while (-> self child)
+    (suspend)
+    )
+   (dummy-18 self)
+   (none)
+   )
+  :post
+  nav-enemy-death-post
+  )
+
+;; failed to figure out what this is:
+(defstate nav-enemy-fuel-cell (nav-enemy)
+  :virtual #t
+  :event
+  (the-as
+   (function process int symbol event-message-block object :behavior nav-enemy)
+   process-drawable-fuel-cell-handler
+   )
+  :code
+  (behavior ()
+   (ja-channel-set! 0)
+   (dummy-48 (-> self collide-info))
+   (ja-post)
+   (process-entity-status! self (entity-perm-status complete) #t)
+   (when (not (task-complete? *game-info* (-> self entity extra perm task)))
+    (label cfg-1)
+    (let ((t9-5 birth-pickup-at-point)
+          (a0-4 (-> self collide-info trans))
+          (a1-2 6)
+          (a2-1 (the float (the-as int (-> self entity extra perm task))))
+          (a3-0 #f)
+          (t1-0 #f)
+          )
+     (t9-5 a0-4 a1-2 a2-1 a3-0 self t1-0)
+     )
+    (when (not (-> self child))
+     (suspend)
+     (goto cfg-1)
      )
     (while (-> self child)
      (suspend)
      )
-    (dummy-18 self)
     )
-   )
-  (set! (-> gp-10 post) nav-enemy-death-post)
-  )
-
-;; failed to figure out what this is:
-(let
-  ((gp-11
-    (new 'static 'state
-     :name 'nav-enemy-fuel-cell
-     :next #f
-     :exit #f
-     :code #f
-     :trans #f
-     :post #f
-     :enter #f
-     :event #f
-     )
-    )
-   )
-  (method-set! nav-enemy 24 (the-as function gp-11))
-  (set!
-   (-> gp-11 event)
-   (the-as
-    (function process int symbol event-message-block object)
-    process-drawable-fuel-cell-handler
-    )
-   )
-  (set!
-   (-> gp-11 code)
-   (lambda :behavior nav-enemy
-    ()
-    (ja-channel-set! 0)
-    (dummy-48 (-> self collide-info))
-    (ja-post)
-    (process-entity-status! self (entity-perm-status complete) #t)
-    (when (not (task-complete? *game-info* (-> self entity extra perm task)))
-     (label cfg-1)
-     (let ((t9-5 birth-pickup-at-point)
-           (a0-4 (-> self collide-info trans))
-           (a1-2 6)
-           (a2-1 (the float (the-as int (-> self entity extra perm task))))
-           (a3-0 #f)
-           (t1-0 #f)
-           )
-      (t9-5 a0-4 a1-2 a2-1 a3-0 self t1-0)
-      )
-     (when (not (-> self child))
-      (suspend)
-      (goto cfg-1)
-      )
-     (while (-> self child)
-      (suspend)
-      )
-     )
-    (dummy-18 self)
-    )
+   (dummy-18 self)
+   (none)
    )
   )
 
@@ -3253,80 +2817,44 @@ nav-enemy-default-event-handler
   )
 
 ;; failed to figure out what this is:
-(let
-  ((gp-12
-    (new 'static 'state
-     :name 'nav-enemy-jump
-     :next #f
-     :exit #f
-     :code #f
-     :trans #f
-     :post #f
-     :enter #f
-     :event #f
+(defstate nav-enemy-jump (nav-enemy)
+  :virtual #t
+  :event
+  nav-enemy-jump-event-handler
+  :enter
+  (behavior ()
+   (set! (-> self state-time) (-> *display* base-frame-counter))
+   (if
+    (and
+     (-> self nav-info use-jump-blocked)
+     (TODO-RENAME-50 self (-> self event-param-point))
+     )
+    (go-virtual nav-enemy-jump-blocked)
+    )
+   (nav-enemy-initialize-jump (-> self event-param-point))
+   (none)
+   )
+  :exit
+  (behavior ()
+   (logior! (-> self nav-enemy-flags) 24)
+   (none)
+   )
+  :code
+  (behavior ()
+   (nav-enemy-execute-jump)
+   (let ((a1-0 (the-as structure (-> self nav user-poly))))
+    (if (not (the-as nav-poly a1-0))
+     (set! a1-0 (dummy-16 (-> self nav) (-> self jump-dest)))
+     )
+    (if a1-0
+     (dummy-14 (-> self nav))
      )
     )
+   (go-virtual nav-enemy-jump-land)
+   (none)
    )
-  (method-set! nav-enemy 26 (the-as function gp-12))
-  (set! (-> gp-12 event) nav-enemy-jump-event-handler)
-  (set!
-   (-> gp-12 enter)
-   (the-as
-    (function object object object object object object object)
-    (lambda :behavior nav-enemy
-     ()
-     (set! (-> self state-time) (-> *display* base-frame-counter))
-     (when
-      (and
-       (-> self nav-info use-jump-blocked)
-       (TODO-RENAME-50 self (-> self event-param-point))
-       )
-      (let ((t9-1 (the-as (function object) enter-state)))
-       (set!
-        (-> self next-state)
-        (the-as state (method-of-object self dummy-74))
-        )
-       (t9-1)
-       )
-      )
-     (nav-enemy-initialize-jump (-> self event-param-point))
-     (none)
-     )
-    )
-   )
-  (set!
-   (-> gp-12 exit)
-   (lambda :behavior nav-enemy
-    ()
-    (let ((v0-0 (logior (-> self nav-enemy-flags) 24)))
-     (set! (-> self nav-enemy-flags) v0-0)
-     v0-0
-     )
-    )
-   )
-  (set!
-   (-> gp-12 code)
-   (lambda :behavior nav-enemy
-    ()
-    (nav-enemy-execute-jump)
-    (let ((a1-0 (the-as structure (-> self nav user-poly))))
-     (if (not (the-as nav-poly a1-0))
-      (set! a1-0 (dummy-16 (-> self nav) (-> self jump-dest)))
-      )
-     (if a1-0
-      ((method-of-object (-> self nav) dummy-14))
-      )
-     )
-    (let ((t9-3 (the-as (function object) enter-state)))
-     (set!
-      (-> self next-state)
-      (the-as state (method-of-object self nav-enemy-jump-land))
-      )
-     (t9-3)
-     )
-    )
-   )
-  (set! (-> gp-12 post) nav-enemy-jump-post)
+  :post
+  nav-enemy-jump-post
   )
 
 ;; definition for function nav-enemy-jump-land-post
@@ -3393,115 +2921,31 @@ nav-enemy-default-event-handler
   )
 
 ;; failed to figure out what this is:
-(let
-  ((gp-13
-    (new 'static 'state
-     :name 'nav-enemy-jump-land
-     :next #f
-     :exit #f
-     :code #f
-     :trans #f
-     :post #f
-     :enter #f
-     :event #f
-     )
-    )
+(defstate nav-enemy-jump-land (nav-enemy)
+  :virtual #t
+  :event
+  (the-as
+   (function process int symbol event-message-block object :behavior nav-enemy)
+   nav-enemy-default-event-handler
    )
-  (method-set! nav-enemy 27 (the-as function gp-13))
-  (set! (-> gp-13 event) nav-enemy-default-event-handler)
-  (set!
-   (-> gp-13 enter)
-   (the-as
-    (function object object object object object object object)
-    (lambda :behavior nav-enemy
-     ()
-     (set! (-> self state-time) (-> *display* base-frame-counter))
-     (logclear! (-> self nav flags) (nav-control-flags bit19))
-     (let ((gp-0 (new 'stack-no-clear 'vector)))
-      (set! (-> gp-0 quad) (-> self collide-info transv quad))
-      (set! (-> gp-0 y) 0.0)
-      (set! (-> self target-speed) (vector-length gp-0))
-      (set! (-> self momentum-speed) (-> self target-speed))
-      (vector-xz-normalize! gp-0 16384.0)
-      (vector+! (-> self nav target-pos) (-> self collide-info trans) gp-0)
-      )
-     )
+  :enter
+  (behavior ()
+   (set! (-> self state-time) (-> *display* base-frame-counter))
+   (logclear! (-> self nav flags) (nav-control-flags bit19))
+   (let ((gp-0 (new 'stack-no-clear 'vector)))
+    (set! (-> gp-0 quad) (-> self collide-info transv quad))
+    (set! (-> gp-0 y) 0.0)
+    (set! (-> self target-speed) (vector-length gp-0))
+    (set! (-> self momentum-speed) (-> self target-speed))
+    (vector-xz-normalize! gp-0 16384.0)
+    (vector+! (-> self nav target-pos) (-> self collide-info trans) gp-0)
     )
+   (none)
    )
-  (set!
-   (-> gp-13 trans)
-   (lambda :behavior nav-enemy
-    ()
-    (when
-     (or
-      (>=
-       (the-as
-        int
-        (- (-> *display* base-frame-counter) (the-as uint (-> self state-time)))
-        )
-       150
-       )
-      (nonzero? (logand #x80000 (-> self nav flags)))
-      )
-     (let ((t9-0 (the-as (function object) enter-state)))
-      (set!
-       (-> self next-state)
-       (the-as state (method-of-object self nav-enemy-chase))
-       )
-      (t9-0)
-      )
-     )
-    )
-   )
-  (set!
-   (-> gp-13 code)
-   (lambda :behavior nav-enemy
-    ()
-    (nav-enemy-jump-land-anim)
-    (let ((t9-1 (the-as (function object) enter-state)))
-     (set! (-> self next-state) (the-as state (-> self jump-return-state)))
-     (t9-1)
-     )
-    )
-   )
-  (set! (-> gp-13 post) nav-enemy-jump-land-post)
-  )
-
-;; failed to figure out what this is:
-(let
-  ((gp-14
-    (new 'static 'state
-     :name 'nav-enemy-jump-blocked
-     :next #f
-     :exit #f
-     :code #f
-     :trans #f
-     :post #f
-     :enter #f
-     :event #f
-     )
-    )
-   )
-  (method-set! nav-enemy 74 (the-as function gp-14))
-  (set! (-> gp-14 event) nav-enemy-default-event-handler)
-  (set!
-   (-> gp-14 enter)
-   (the-as
-    (function object object object object object object object)
-    (lambda :behavior nav-enemy
-     ()
-     (let ((v0-0 (-> *display* base-frame-counter)))
-      (set! (-> self state-time) v0-0)
-      v0-0
-      )
-     )
-    )
-   )
-  (set!
-   (-> gp-14 trans)
-   (lambda :behavior nav-enemy
-    ()
-    (when
+  :trans
+  (behavior ()
+   (if
+    (or
      (>=
       (the-as
        int
@@ -3509,207 +2953,205 @@ nav-enemy-default-event-handler
        )
       150
       )
-     (let ((t9-0 (the-as (function object) enter-state)))
-      (set! (-> self next-state) (the-as state (-> self jump-return-state)))
-      (t9-0)
-      )
+     (nonzero? (logand #x80000 (-> self nav flags)))
      )
+    (go-virtual nav-enemy-chase)
     )
+   (none)
    )
-  (set!
-   (-> gp-14 code)
-   (lambda :behavior nav-enemy
-    ()
-    (when (not (= (if (> (-> self skel active-channels) 0)
-                   (-> self skel root-channel 0 frame-group)
-                   )
-                (-> self draw art-group data (-> self nav-info idle-anim))
-                )
-           )
-     (ja-channel-push! 1 60)
-     (let ((gp-0 (-> self skel root-channel 0)))
-      (joint-control-channel-group-eval!
-       gp-0
-       (the-as
-        art-joint-anim
-        (-> self draw art-group data (-> self nav-info idle-anim))
-        )
-       num-func-identity
-       )
-      (set!
-       (-> gp-0 frame-num)
-       (rand-vu-float-range
-        0.0
-        (the float (+ (-> (if (> (-> self skel active-channels) 0)
-                           (-> self skel root-channel 0 frame-group)
-                           )
-                       data
-                       0
-                       length
-                       )
-                    -1
-                    )
-         )
-        )
-       )
-      )
-     )
-    (let ((f30-0 (nav-enemy-rnd-float-range 0.75 1.25)))
-     (while #t
-      (suspend)
-      (let ((a0-10 (-> self skel root-channel 0)))
-       (set! (-> a0-10 param 0) f30-0)
-       (joint-control-channel-group-eval!
-        a0-10
-        (the-as art-joint-anim #f)
-        num-func-loop!
-        )
-       )
-      )
-     )
-    (none)
-    )
+  :code
+  (behavior ()
+   (nav-enemy-jump-land-anim)
+   (go (-> self jump-return-state))
+   (none)
    )
-  (set! (-> gp-14 post) nav-enemy-simple-post)
+  :post
+  nav-enemy-jump-land-post
   )
 
 ;; failed to figure out what this is:
-(let
-  ((gp-15
-    (new 'static 'state
-     :name 'nav-enemy-wait-for-cue
-     :next #f
-     :exit #f
-     :code #f
-     :trans #f
-     :post #f
-     :enter #f
-     :event #f
-     )
-    )
+(defstate nav-enemy-jump-blocked (nav-enemy)
+  :virtual #t
+  :event
+  (the-as
+   (function process int symbol event-message-block object :behavior nav-enemy)
+   nav-enemy-default-event-handler
    )
-  (method-set! nav-enemy 35 (the-as function gp-15))
-  (set! (-> gp-15 event) nav-enemy-default-event-handler)
-  (set!
-   (-> gp-15 code)
-   (lambda :behavior nav-enemy
-    ()
-    (set! (-> self state-time) (-> *display* base-frame-counter))
-    (logior! (-> self nav-enemy-flags) 2048)
-    (ja-channel-push! 1 30)
-    (let ((f30-0 (nav-enemy-rnd-float-range 0.8 1.2)))
-     (let ((v1-6 (-> self skel root-channel 0)))
-      (set!
-       (-> v1-6 frame-group)
-       (the-as
-        art-joint-anim
-        (-> self draw art-group data (-> self nav-info idle-anim))
-        )
-       )
+  :enter
+  (behavior ()
+   (set! (-> self state-time) (-> *display* base-frame-counter))
+   (none)
+   )
+  :trans
+  (behavior ()
+   (if
+    (>=
+     (the-as
+      int
+      (- (-> *display* base-frame-counter) (the-as uint (-> self state-time)))
       )
-     (let ((v1-9 (-> self skel root-channel 0)))
-      (set! (-> v1-9 num-func) num-func-identity)
-      (set! (-> v1-9 frame-num) 0.0)
-      )
-     (while (logtest? (-> self nav-enemy-flags) 2048)
-      (suspend)
-      (let ((a0-8 (-> self skel root-channel 0)))
-       (set! (-> a0-8 param 0) f30-0)
-       (joint-control-channel-group-eval!
-        a0-8
-        (the-as art-joint-anim #f)
-        num-func-loop!
-        )
-       )
-      )
-     (ja-channel-push! 1 30)
-     (nav-enemy-turn-to-face-point (-> self event-param-point) 910.2222)
-     (let ((gp-0 (nav-enemy-rnd-int-range 0 150))
-           (s5-0 (-> *display* base-frame-counter))
-           )
-      (until (begin
-              (let ((a0-12 (-> self skel root-channel 0)))
-               (set! (-> a0-12 param 0) f30-0)
-               (joint-control-channel-group-eval!
-                a0-12
-                (the-as art-joint-anim #f)
-                num-func-loop!
-                )
+     150
+     )
+    (go (-> self jump-return-state))
+    )
+   (none)
+   )
+  :code
+  (behavior ()
+   (when (not (= (if (> (-> self skel active-channels) 0)
+                  (-> self skel root-channel 0 frame-group)
+                  )
+               (-> self draw art-group data (-> self nav-info idle-anim))
                )
-              (suspend)
-              (>= (the-as int (- (-> *display* base-frame-counter) s5-0)) gp-0)
-              )
-       (empty)
+          )
+    (ja-channel-push! 1 60)
+    (let ((gp-0 (-> self skel root-channel 0)))
+     (joint-control-channel-group-eval!
+      gp-0
+      (the-as
+       art-joint-anim
+       (-> self draw art-group data (-> self nav-info idle-anim))
+       )
+      num-func-identity
+      )
+     (set!
+      (-> gp-0 frame-num)
+      (rand-vu-float-range
+       0.0
+       (the float (+ (-> (if (> (-> self skel active-channels) 0)
+                          (-> self skel root-channel 0 frame-group)
+                          )
+                      data
+                      0
+                      length
+                      )
+                   -1
+                   )
+        )
        )
       )
      )
-    (let ((t9-7 (the-as (function object) enter-state)))
-     (set! (-> self next-state) (the-as state (method-of-object self dummy-36)))
-     (t9-7)
+    )
+   (let ((f30-0 (nav-enemy-rnd-float-range 0.75 1.25)))
+    (while #t
+     (suspend)
+     (let ((a0-10 (-> self skel root-channel 0)))
+      (set! (-> a0-10 param 0) f30-0)
+      (joint-control-channel-group-eval!
+       a0-10
+       (the-as art-joint-anim #f)
+       num-func-loop!
+       )
+      )
      )
     )
+   (none)
    )
-  (set! (-> gp-15 post) nav-enemy-simple-post)
+  :post
+  nav-enemy-simple-post
   )
 
 ;; failed to figure out what this is:
-(let
-  ((gp-16
-    (new 'static 'state
-     :name 'nav-enemy-jump-to-point
-     :next #f
-     :exit #f
-     :code #f
-     :trans #f
-     :post #f
-     :enter #f
-     :event #f
+(defstate nav-enemy-wait-for-cue (nav-enemy)
+  :virtual #t
+  :event
+  (the-as
+   (function process int symbol event-message-block object :behavior nav-enemy)
+   nav-enemy-default-event-handler
+   )
+  :code
+  (behavior ()
+   (set! (-> self state-time) (-> *display* base-frame-counter))
+   (logior! (-> self nav-enemy-flags) 2048)
+   (ja-channel-push! 1 30)
+   (let ((f30-0 (nav-enemy-rnd-float-range 0.8 1.2)))
+    (let ((v1-6 (-> self skel root-channel 0)))
+     (set!
+      (-> v1-6 frame-group)
+      (the-as
+       art-joint-anim
+       (-> self draw art-group data (-> self nav-info idle-anim))
+       )
+      )
+     )
+    (let ((v1-9 (-> self skel root-channel 0)))
+     (set! (-> v1-9 num-func) num-func-identity)
+     (set! (-> v1-9 frame-num) 0.0)
+     )
+    (while (logtest? (-> self nav-enemy-flags) 2048)
+     (suspend)
+     (let ((a0-8 (-> self skel root-channel 0)))
+      (set! (-> a0-8 param 0) f30-0)
+      (joint-control-channel-group-eval!
+       a0-8
+       (the-as art-joint-anim #f)
+       num-func-loop!
+       )
+      )
+     )
+    (ja-channel-push! 1 30)
+    (nav-enemy-turn-to-face-point (-> self event-param-point) 910.2222)
+    (let ((gp-0 (nav-enemy-rnd-int-range 0 150))
+          (s5-0 (-> *display* base-frame-counter))
+          )
+     (until (begin
+             (let ((a0-12 (-> self skel root-channel 0)))
+              (set! (-> a0-12 param 0) f30-0)
+              (joint-control-channel-group-eval!
+               a0-12
+               (the-as art-joint-anim #f)
+               num-func-loop!
+               )
+              )
+             (suspend)
+             (>= (the-as int (- (-> *display* base-frame-counter) s5-0)) gp-0)
+             )
+      (empty)
+      )
      )
     )
+   (go-virtual nav-enemy-jump-to-point)
+   (none)
    )
-  (method-set! nav-enemy 36 (the-as function gp-16))
-  (set! (-> gp-16 event) nav-enemy-jump-event-handler)
-  (set!
-   (-> gp-16 exit)
-   (lambda :behavior nav-enemy
-    ()
-    (let ((v0-0 (logior (-> self nav-enemy-flags) 24)))
-     (set! (-> self nav-enemy-flags) v0-0)
-     v0-0
-     )
+  :post
+  nav-enemy-simple-post
+  )
+
+;; failed to figure out what this is:
+(defstate nav-enemy-jump-to-point (nav-enemy)
+  :virtual #t
+  :event
+  nav-enemy-jump-event-handler
+  :exit
+  (behavior ()
+   (logior! (-> self nav-enemy-flags) 24)
+   (none)
+   )
+  :trans
+  (behavior ()
+   0
+   (none)
+   )
+  :code
+  (behavior ()
+   (set! (-> self state-time) (-> *display* base-frame-counter))
+   (nav-enemy-initialize-jump (-> self event-param-point))
+   (nav-enemy-neck-control-look-at)
+   (logior! (-> self nav-enemy-flags) 16)
+   (set! (-> self nav-enemy-flags) (logand -9 (-> self nav-enemy-flags)))
+   (when (not (nav-enemy-facing-point? (-> self jump-dest) 5461.3335))
+    (ja-channel-push! 1 60)
+    (nav-enemy-turn-to-face-point (-> self jump-dest) 1820.4445)
     )
+   (set! (-> self nav-enemy-flags) (logand -17 (-> self nav-enemy-flags)))
+   (nav-enemy-execute-jump)
+   (set! (-> self nav-enemy-flags) (logand -9 (-> self nav-enemy-flags)))
+   (nav-enemy-jump-land-anim)
+   (go-virtual nav-enemy-wait-for-cue)
+   (none)
    )
-  (set! (-> gp-16 trans) (the-as (function object) (lambda ()
-                                                    0
-                                                    (none)
-                                                    )
-                          )
-   )
-  (set!
-   (-> gp-16 code)
-   (lambda :behavior nav-enemy
-    ()
-    (set! (-> self state-time) (-> *display* base-frame-counter))
-    (nav-enemy-initialize-jump (-> self event-param-point))
-    (nav-enemy-neck-control-look-at)
-    (logior! (-> self nav-enemy-flags) 16)
-    (set! (-> self nav-enemy-flags) (logand -9 (-> self nav-enemy-flags)))
-    (when (not (nav-enemy-facing-point? (-> self jump-dest) 5461.3335))
-     (ja-channel-push! 1 60)
-     (nav-enemy-turn-to-face-point (-> self jump-dest) 1820.4445)
-     )
-    (set! (-> self nav-enemy-flags) (logand -17 (-> self nav-enemy-flags)))
-    (nav-enemy-execute-jump)
-    (set! (-> self nav-enemy-flags) (logand -9 (-> self nav-enemy-flags)))
-    (nav-enemy-jump-land-anim)
-    (let ((t9-7 (the-as (function object) enter-state)))
-     (set! (-> self next-state) (the-as state (method-of-object self dummy-35)))
-     (t9-7)
-     )
-    (none)
-    )
-   )
-  (set! (-> gp-16 post) nav-enemy-jump-post)
+  :post
+  nav-enemy-jump-post
   )
 
 ;; definition for symbol *nav-enemy-dummy-shadow-control*, type shadow-control
@@ -3763,7 +3205,7 @@ nav-enemy-default-event-handler
    )
   (logior!
    (-> obj nav flags)
-   (nav-control-flags display-marks bit0 bit3 bit5 bit6 bit7)
+   (nav-control-flags bit0 display-marks bit3 bit5 bit6 bit7)
    )
   (set! (-> obj nav gap-event) 'jump)
   (dummy-26 (-> obj nav))
@@ -3818,7 +3260,6 @@ nav-enemy-default-event-handler
   )
 
 ;; definition for function nav-enemy-init-by-other
-;; INFO: Return type mismatch object vs nav-enemy.
 ;; Used lq/sq
 (defbehavior
   nav-enemy-init-by-other nav-enemy
@@ -3835,16 +3276,10 @@ nav-enemy-default-event-handler
   (vector-identity! (-> self collide-info scale))
   (set! (-> self entity) (-> arg0 entity))
   (TODO-RENAME-48 self)
-  (let ((v1-13 -4097)
-        (a0-10 (-> self nav-enemy-flags))
-        )
-   (set! (-> self nav-enemy-flags) (logand v1-13 a0-10))
-   (logior! (-> self nav-enemy-flags) 2)
-   (let ((t9-5 (the-as (function object object) enter-state)))
-    (set! (-> self next-state) (the-as state (method-of-object self dummy-35)))
-    (the-as nav-enemy (t9-5 a0-10))
-    )
-   )
+  (set! (-> self nav-enemy-flags) (logand -4097 (-> self nav-enemy-flags)))
+  (logior! (-> self nav-enemy-flags) 2)
+  (go-virtual nav-enemy-wait-for-cue)
+  (none)
   )
 
 ;; definition for method 47 of type nav-enemy
@@ -3864,17 +3299,9 @@ nav-enemy-default-event-handler
 ;; definition for method 59 of type nav-enemy
 ;; INFO: Return type mismatch int vs none.
 (defmethod TODO-RENAME-59 nav-enemy ((obj nav-enemy))
-  (with-pp
-   (let ((t9-0 (the-as (function object) enter-state)))
-    (set!
-     (-> pp next-state)
-     (the-as state (method-of-object obj nav-enemy-idle))
-     )
-    (t9-0)
-    )
-   0
-   (none)
-   )
+  (go (method-of-object obj nav-enemy-idle))
+  0
+  (none)
   )
 
 ;; definition for method 11 of type nav-enemy

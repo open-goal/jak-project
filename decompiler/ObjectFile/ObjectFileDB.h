@@ -67,20 +67,21 @@ class ObjectFileDB {
                              const Config& config,
                              bool skip_debug_output = false);
   void ir2_top_level_pass(const Config& config);
-  void ir2_stack_spill_slot_pass();
-  void ir2_basic_block_pass(const Config& config);
-  void ir2_atomic_op_pass(const Config& config);
-  void ir2_type_analysis_pass(const Config& config);
-  void ir2_register_usage_pass();
-  void ir2_variable_pass();
-  void ir2_cfg_build_pass();
-  void ir2_store_current_forms();
-  void ir2_build_expressions(const Config& config);
-  void ir2_insert_lets();
-  void ir2_rewrite_inline_asm_instructions();
-  void ir2_insert_anonymous_functions();
+  void ir2_stack_spill_slot_pass(int seg);
+  void ir2_basic_block_pass(int seg, const Config& config);
+  void ir2_atomic_op_pass(int seg, const Config& config);
+  void ir2_type_analysis_pass(int seg, const Config& config);
+  void ir2_register_usage_pass(int seg);
+  void ir2_variable_pass(int seg);
+  void ir2_cfg_build_pass(int seg);
+  void ir2_store_current_forms(int seg);
+  void ir2_build_expressions(int seg, const Config& config);
+  void ir2_insert_lets(int seg);
+  void ir2_rewrite_inline_asm_instructions(int seg);
+  void ir2_insert_anonymous_functions(int seg);
   void ir2_symbol_definition_map(const std::string& output_dir);
   void ir2_write_results(const std::string& output_dir, const Config& config);
+  void ir2_do_common_segment_analysis(int seg, const Config& config);
   std::string ir2_to_file(ObjectFileData& data, const Config& config);
   std::string ir2_function_to_string(ObjectFileData& data, Function& function, int seg);
   std::string ir2_final_out(ObjectFileData& data,
@@ -149,6 +150,17 @@ class ObjectFileDB {
           f(data.linked_data.functions_by_seg.at(i).at(j), i, data);
           fn++;
         }
+      }
+    });
+  }
+
+  template <typename Func>
+  void for_each_function_in_seg(int seg, Func f) {
+    for_each_obj([&](ObjectFileData& data) {
+      int fn = 0;
+      for (size_t j = data.linked_data.functions_by_seg.at(seg).size(); j-- > 0;) {
+        f(data.linked_data.functions_by_seg.at(seg).at(j), data);
+        fn++;
       }
     });
   }
