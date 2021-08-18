@@ -560,37 +560,19 @@
   )
 
 ;; failed to figure out what this is:
-(let
-  ((gp-0
-    (new 'static 'state
-     :name 'idle
-     :next #f
-     :exit #f
-     :code #f
-     :trans #f
-     :post #f
-     :enter #f
-     :event #f
-     )
-    )
+(defstate idle (oracle)
+  :virtual #t
+  :exit
+  (behavior ()
+   (stop! (-> self sound))
+   ((-> (method-of-type process-taskable idle) exit))
+   (none)
    )
-  (inherit-state gp-0 (the-as state (method-of-type process-taskable idle)))
-  (method-set! oracle 30 (the-as function gp-0))
-  (set!
-   (-> gp-0 exit)
-   (lambda :behavior oracle
-    ()
-    (stop! (-> self sound))
-    ((-> (the-as (state none) (method-of-type process-taskable idle)) exit))
-    )
-   )
-  (set!
-   (-> gp-0 trans)
-   (lambda :behavior oracle
-    ()
-    (update! (-> self sound))
-    ((-> (the-as (state none) (method-of-type process-taskable idle)) trans))
-    )
+  :trans
+  (behavior ()
+   (update! (-> self sound))
+   ((-> (method-of-type process-taskable idle) trans))
+   (none)
    )
   )
 

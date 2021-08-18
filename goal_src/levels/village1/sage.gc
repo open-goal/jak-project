@@ -1179,241 +1179,192 @@
   )
 
 ;; failed to figure out what this is:
-(let
-  ((gp-0
-    (new 'static 'state
-     :name 'idle
-     :next #f
-     :exit #f
-     :code #f
-     :trans #f
-     :post #f
-     :enter #f
-     :event #f
+(defstate idle (sage)
+  :virtual #t
+  :trans
+  (behavior ()
+   (case (get-task-status (game-task intro)) 
+    (((task-status need-reward-speech))
+      (when (process-grab? *target*)
+       (let ((a1-0 (new 'stack-no-clear 'event-message-block)))
+        (set! (-> a1-0 from) self)
+        (set! (-> a1-0 num-params) 0)
+        (set! (-> a1-0 message) 'play-anim)
+        (send-event-function self a1-0)
+        )
+       )
+      )
+    )
+   ((-> (method-of-type process-taskable idle) trans))
+   (none)
+   )
+  :code
+  (behavior ()
+   (if (!= (if (> (-> self skel active-channels) 0)
+            (-> self skel root-channel 0 frame-group)
+            )
+        (get-3rd-art-elem self)
+        )
+    (ja-channel-push! 1 60)
+    )
+   (while #t
+    (let ((gp-0 (-> self skel root-channel 0)))
+     (set!
+      (-> gp-0 frame-group)
+      (the-as art-joint-anim (get-3rd-art-elem self))
+      )
      )
-    )
-   )
-  (inherit-state gp-0 (the-as state (method-of-type process-taskable idle)))
-  (method-set! sage 30 (the-as function gp-0))
-  (set!
-   (-> gp-0 trans)
-   (lambda :behavior sage () (case (get-task-status (game-task intro)) 
-                              (((task-status need-reward-speech))
-                                (when (process-grab? *target*)
-                                 (let
-                                  ((a1-0
-                                    (new 'stack-no-clear 'event-message-block)
-                                    )
-                                   )
-                                  (set! (-> a1-0 from) self)
-                                  (set! (-> a1-0 num-params) 0)
-                                  (set! (-> a1-0 message) 'play-anim)
-                                  (send-event-function self a1-0)
-                                  )
-                                 )
-                                )
-                              )
-    ((-> (the-as (state none) (method-of-type process-taskable idle)) trans))
-    )
-   )
-  (set!
-   (-> gp-0 code)
-   (lambda :behavior sage () (if (!= (if (> (-> self skel active-channels) 0)
-                                      (-> self skel root-channel 0 frame-group)
-                                      )
-                                  (get-3rd-art-elem self)
-                                  )
-                              (ja-channel-push! 1 60)
-                              )
-    (while #t
-     (let ((gp-0 (-> self skel root-channel 0)))
-      (set!
-       (-> gp-0 frame-group)
-       (the-as art-joint-anim (get-3rd-art-elem self))
-       )
-      )
-     (let* ((f30-0 3.0)
-            (v1-9 (/ (the-as int (rand-uint31-gen *random-generator*)) 256))
-            (v1-10 (the-as number (logior #x3f800000 v1-9)))
-            )
-      (countdown (gp-1 (+ (the int (* f30-0 (+ -1.0 (the-as float v1-10)))) 5))
-       (TODO-RENAME-43 self)
-       (let ((a0-11 (-> self skel root-channel 0)))
-        (set! (-> a0-11 frame-group) (if (> (-> self skel active-channels) 0)
-                                      (-> self skel root-channel 0 frame-group)
-                                      )
-         )
-        (set!
-         (-> a0-11 param 0)
-         (the float (+ (-> (if (> (-> self skel active-channels) 0)
-                            (-> self skel root-channel 0 frame-group)
-                            )
-                        data
-                        0
-                        length
-                        )
-                     -1
-                     )
-          )
-         )
-        (set! (-> a0-11 param 1) 1.0)
-        (set! (-> a0-11 frame-num) 0.0)
-        (joint-control-channel-group!
-         a0-11
-         (if (> (-> self skel active-channels) 0)
-          (-> self skel root-channel 0 frame-group)
-          )
-         num-func-seek!
-         )
-        )
-       (until (begin
-               (suspend)
-               (let ((a0-13 (-> self skel root-channel 0)))
-                (set!
-                 (-> a0-13 param 0)
-                 (the float (+ (-> a0-13 frame-group data 0 length) -1))
-                 )
-                (set! (-> a0-13 param 1) 1.0)
-                (joint-control-channel-group-eval!
-                 a0-13
-                 (the-as art-joint-anim #f)
-                 num-func-seek!
-                 )
-                )
-               (ja-done? 0)
-               )
-        (if
-         (and
-          (-> self reminder-played)
-          (< 81920.0 (vector-vector-distance (-> self root trans) (camera-pos)))
-          )
-         (go (the-as (state none) (method-of-object self idle)))
-         )
-        )
-       )
-      )
-     (when (= (if (> (-> self skel active-channels) 0)
-               (-> self skel root-channel 0 frame-group)
-               )
-            (-> self draw art-group data 4)
-            )
-      (let ((a0-20 (-> self skel root-channel 0)))
-       (set!
-        (-> a0-20 frame-group)
-        (the-as art-joint-anim (-> self draw art-group data 5))
-        )
-       (set!
-        (-> a0-20 param 0)
-        (the
-         float
-         (+
-          (->
-           (the-as art-joint-anim (-> self draw art-group data 5))
-           data
-           0
-           length
+    (let* ((f30-0 3.0)
+           (v1-9 (/ (the-as int (rand-uint31-gen *random-generator*)) 256))
+           (v1-10 (the-as number (logior #x3f800000 v1-9)))
            )
-          -1
-          )
+     (countdown (gp-1 (+ (the int (* f30-0 (+ -1.0 (the-as float v1-10)))) 5))
+      (TODO-RENAME-43 self)
+      (let ((a0-11 (-> self skel root-channel 0)))
+       (set! (-> a0-11 frame-group) (if (> (-> self skel active-channels) 0)
+                                     (-> self skel root-channel 0 frame-group)
+                                     )
+        )
+       (set!
+        (-> a0-11 param 0)
+        (the float (+ (-> (if (> (-> self skel active-channels) 0)
+                           (-> self skel root-channel 0 frame-group)
+                           )
+                       data
+                       0
+                       length
+                       )
+                    -1
+                    )
          )
         )
-       (set! (-> a0-20 param 1) 1.0)
-       (set! (-> a0-20 frame-num) 0.0)
+       (set! (-> a0-11 param 1) 1.0)
+       (set! (-> a0-11 frame-num) 0.0)
        (joint-control-channel-group!
-        a0-20
-        (the-as art-joint-anim (-> self draw art-group data 5))
+        a0-11
+        (if (> (-> self skel active-channels) 0)
+         (-> self skel root-channel 0 frame-group)
+         )
         num-func-seek!
         )
        )
       (until (begin
               (suspend)
-              (let ((a0-21 (-> self skel root-channel 0)))
+              (let ((a0-13 (-> self skel root-channel 0)))
                (set!
-                (-> a0-21 param 0)
-                (the float (+ (-> a0-21 frame-group data 0 length) -1))
+                (-> a0-13 param 0)
+                (the float (+ (-> a0-13 frame-group data 0 length) -1))
                 )
-               (set! (-> a0-21 param 1) 1.0)
+               (set! (-> a0-13 param 1) 1.0)
                (joint-control-channel-group-eval!
-                a0-21
+                a0-13
                 (the-as art-joint-anim #f)
                 num-func-seek!
                 )
                )
               (ja-done? 0)
               )
-       (empty)
+       (if
+        (and
+         (-> self reminder-played)
+         (< 81920.0 (vector-vector-distance (-> self root trans) (camera-pos)))
+         )
+        (go-virtual idle)
+        )
        )
       )
      )
-    (none)
+    (when (= (if (> (-> self skel active-channels) 0)
+              (-> self skel root-channel 0 frame-group)
+              )
+           (-> self draw art-group data 4)
+           )
+     (let ((a0-20 (-> self skel root-channel 0)))
+      (set!
+       (-> a0-20 frame-group)
+       (the-as art-joint-anim (-> self draw art-group data 5))
+       )
+      (set!
+       (-> a0-20 param 0)
+       (the
+        float
+        (+
+         (->
+          (the-as art-joint-anim (-> self draw art-group data 5))
+          data
+          0
+          length
+          )
+         -1
+         )
+        )
+       )
+      (set! (-> a0-20 param 1) 1.0)
+      (set! (-> a0-20 frame-num) 0.0)
+      (joint-control-channel-group!
+       a0-20
+       (the-as art-joint-anim (-> self draw art-group data 5))
+       num-func-seek!
+       )
+      )
+     (until (begin
+             (suspend)
+             (let ((a0-21 (-> self skel root-channel 0)))
+              (set!
+               (-> a0-21 param 0)
+               (the float (+ (-> a0-21 frame-group data 0 length) -1))
+               )
+              (set! (-> a0-21 param 1) 1.0)
+              (joint-control-channel-group-eval!
+               a0-21
+               (the-as art-joint-anim #f)
+               num-func-seek!
+               )
+              )
+             (ja-done? 0)
+             )
+      (empty)
+      )
+     )
     )
+   (none)
    )
   )
 
 ;; failed to figure out what this is:
-(let
-  ((gp-1
-    (new 'static 'state
-     :name 'play-anim
-     :next #f
-     :exit #f
-     :code #f
-     :trans #f
-     :post #f
-     :enter #f
-     :event #f
+(defstate play-anim (sage)
+  :virtual #t
+  :exit
+  (behavior ()
+   (set! (-> self draw bounds w) 10240.0)
+   (let ((a0-1 (handle->process (-> self assistant))))
+    (if a0-1
+     (deactivate a0-1)
      )
     )
-   )
-  (inherit-state
-   gp-1
-   (the-as state (method-of-type process-taskable play-anim))
-   )
-  (method-set! sage 27 (the-as function gp-1))
-  (set!
-   (-> gp-1 exit)
-   (lambda :behavior sage
-    ()
-    (set! (-> self draw bounds w) 10240.0)
-    (let ((a0-1 (handle->process (-> self assistant))))
-     (if a0-1
-      (deactivate a0-1)
-      )
-     )
-    ((-> (the-as (state none) (method-of-type process-taskable play-anim)) exit)
-     )
-    (case (get-task-status (game-task intro)) 
-     (((task-status need-resolution))
-       (clear-pending-settings-from-process
-        *setting-control*
-        self
-        'music-volume-movie
-        )
-       (close-specific-task! (game-task intro) (task-status need-resolution))
-       (start 'play (get-continue-by-name *game-info* "game-start"))
+   ((-> (method-of-type process-taskable play-anim) exit))
+   (case (get-task-status (game-task intro)) 
+    (((task-status need-resolution))
+      (clear-pending-settings-from-process
+       *setting-control*
+       self
+       'music-volume-movie
        )
-     )
-    )
-   )
-  (set!
-   (-> gp-1 trans)
-   (lambda :behavior sage () (case (get-task-status (game-task intro)) 
-                              (((task-status need-reward-speech))
-                                (spool-push
-                                 *art-control*
-                                 "sage-intro-sequence-d2"
-                                 0
-                                 self
-                                 -1.0
-                                 )
-                                )
-                              )
-    ((->
-      (the-as (state none) (method-of-type process-taskable play-anim))
-      trans
+      (close-specific-task! (game-task intro) (task-status need-resolution))
+      (start 'play (get-continue-by-name *game-info* "game-start"))
       )
-     )
     )
+   (none)
+   )
+  :trans
+  (behavior ()
+   (case (get-task-status (game-task intro)) 
+    (((task-status need-reward-speech))
+      (spool-push *art-control* "sage-intro-sequence-d2" 0 self -1.0)
+      )
+    )
+   ((-> (method-of-type process-taskable play-anim) trans))
+   (none)
    )
   )
 
@@ -1473,7 +1424,3 @@
   (dummy-42 obj)
   (none)
   )
-
-
-
-
