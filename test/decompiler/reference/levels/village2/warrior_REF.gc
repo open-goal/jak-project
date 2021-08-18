@@ -261,38 +261,18 @@
   )
 
 ;; failed to figure out what this is:
-(let
-  ((gp-0
-    (new 'static 'state
-     :name 'play-anim
-     :next #f
-     :exit #f
-     :code #f
-     :trans #f
-     :post #f
-     :enter #f
-     :event #f
-     )
+(defstate play-anim (warrior)
+  :virtual #t
+  :exit
+  (behavior ()
+   (let ((gp-0 (new 'stack-no-clear 'event-message-block)))
+    (set! (-> gp-0 from) self)
+    (set! (-> gp-0 num-params) 0)
+    (set! (-> gp-0 message) 'end-mode)
+    (send-event-function (-> (entity-by-type allpontoons) extra process) gp-0)
     )
-   )
-  (inherit-state
-   gp-0
-   (the-as state (method-of-type process-taskable play-anim))
-   )
-  (method-set! warrior 27 (the-as function gp-0))
-  (set!
-   (-> gp-0 exit)
-   (lambda :behavior warrior
-    ()
-    (let ((gp-0 (new 'stack-no-clear 'event-message-block)))
-     (set! (-> gp-0 from) self)
-     (set! (-> gp-0 num-params) 0)
-     (set! (-> gp-0 message) 'end-mode)
-     (send-event-function (-> (entity-by-type allpontoons) extra process) gp-0)
-     )
-    ((-> (the-as (state none) (method-of-type process-taskable play-anim)) exit)
-     )
-    )
+   ((-> (method-of-type process-taskable play-anim) exit))
+   (none)
    )
   )
 
@@ -395,7 +375,3 @@
   (dummy-42 obj)
   (none)
   )
-
-
-
-
