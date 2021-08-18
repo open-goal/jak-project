@@ -301,9 +301,12 @@ def get_root_parent_type(t):
 
 def get_safe_parent_type(current_type, all_types, earliest_usage_line):
   parent_type_name = current_type["parent_type"]
-  if parent_type_name in ["basic", "structure", "type"]:
+  if parent_type_name in ["basic", "structure", "symbol", "object", "integer", "pair", "number", "binteger", "function", "array", "type", "string", "uint8", "int8", "uint16", "int16", "uint32", "int32", "uint64", "int64", "uint128", "int128", "float", "kheap"]:
     return parent_type_name
-  parent_type = all_types[parent_type_name]
+  try:
+    parent_type = all_types[parent_type_name]
+  except:
+    print("error - {}".format(current_type))
   if parent_type["declared_on_line"] < earliest_usage_line:
     return parent_type["type_name"]
   return get_root_parent_type(current_type)
