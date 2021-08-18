@@ -30,7 +30,15 @@
     (x        14)
     (square   15)
     )
-    
+
+(defenum pad-type
+  (normal 4)
+  (analog 5)
+  (dualshock 7)
+  (negcon 2)
+  (namco-gun 6)
+  )
+
 ;; these forward declarations should probably go somewhere else...
 (define-extern get-current-time (function uint))
 (define-extern get-integral-current-time (function uint))
@@ -38,16 +46,25 @@
 ;; this gets set to #f later on.
 (define *cheat-mode* #t)
 
-;; data that comes directly from hardware.
+;; data that comes directly from hardware. it's 32 bytes + type tag (ignored in C kernel).
 (deftype hw-cpad (basic)
-  ((valid   uint8     :offset-assert 4)
-   (status  uint8     :offset-assert 5)
-   (button0 uint16    :offset-assert 6)
-   (rightx  uint8     :offset-assert 8)
-   (righty  uint8     :offset-assert 9)
-   (leftx   uint8     :offset-assert 10)
-   (lefty   uint8     :offset-assert 11)
-   (abutton uint8  12 :offset-assert 12)
+  (;; BASIC CONTROLLER data
+   ;; status = 0x40 | (data length / 2)
+   (valid   uint8     :offset-assert 4) ;; 0 if success, 255 if fail
+   (status  uint8     :offset-assert 5) ;; depends on controller
+   (button0 uint16    :offset-assert 6) ;; binary button states!
+   ;; DUALSHOCK or JOYSTICK data
+   ;; status (dualshock) = 0x70 | (data length / 2)
+   ;; status (joystick)  = 0x50 | (data length / 2)
+   (rightx  uint8     :offset-assert 8) ;; right stick xdir
+   (righty  uint8     :offset-assert 9) ;; right stick ydir
+   (leftx   uint8     :offset-assert 10) ;; left stick xdir
+   (lefty   uint8     :offset-assert 11) ;; left stick ydir
+   ;; DUALSHOCK 2 data
+   ;; status = 0x70 | (data length / 2)
+   (abutton uint8  12 :offset-assert 12) ;; pressure sensitivity information
+   
+   ;; pad buffer needs to be 32 bytes large.
    (dummy   uint8  12 :offset-assert 24)
    )
   :method-count-assert 9
@@ -57,7 +74,7 @@
 
 ;; data from hardware + additional info calculated here.
 (deftype cpad-info (hw-cpad)
-  ((number             int32           :offset-assert 36)
+  ((number             int32           :offset-assert 36) ;; controller port number
    (cpad-file          int32           :offset-assert 40)
    (button0-abs        pad-buttons 3   :offset-assert 44) ;; bitmask of buttons, pressed or not, with history
    (button0-shadow-abs pad-buttons 1   :offset-assert 56) ;; modify this to change button history in the future.
@@ -66,7 +83,7 @@
    (stick0-speed       float           :offset-assert 76)
    (new-pad            int32           :offset-assert 80)
    (state              int32           :offset-assert 84)
-   (align              uint8 6         :offset-assert 88)
+   (align              uint8 6         :offset-assert 88) ;; hardware control of buzzing.
    (direct             uint8 6         :offset-assert 94) ;; hardware control of buzzing.
    (buzz-val           uint8 2         :offset-assert 100) ;; intensity for buzzing
    (buzz-time          uint64 2        :offset-assert 104) ;; when to stop buzzing
@@ -80,6 +97,10 @@
   :method-count-assert 9
   :size-assert         #x88
   :flag-assert         #x900000088
+  )
+
+(defmacro cpad-type? (type)
+  `(= (shr (-> pad status) 4) (cpad-type ,type))
   )
 
 (defun cpad-invalid! ((pad cpad-info))

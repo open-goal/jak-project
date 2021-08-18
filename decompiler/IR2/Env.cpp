@@ -563,6 +563,14 @@ void Env::set_stack_structure_hints(const std::vector<StackStructureHint>& hints
                     type_info->get_in_memory_alignment());
         }
       } break;
+
+      case StackStructureHint::ContainerType::ARRAY: {
+        TypeSpec base_typespec = dts->parse_type_spec(hint.element_type);
+        entry.ref_type = TypeSpec("pointer", {TypeSpec(base_typespec)});
+        entry.size = 1;  // we assume that there is no constant propagation into this array and
+        // make this only trigger in get_stack_type if we hit exactly.
+        break;
+      }
       default:
         assert(false);
     }

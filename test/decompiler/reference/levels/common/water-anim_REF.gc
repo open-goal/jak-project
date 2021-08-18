@@ -1782,85 +1782,51 @@
   )
 
 ;; failed to figure out what this is:
-(let
-  ((gp-0
-    (new 'static 'state
-     :name 'water-vol-idle
-     :next #f
-     :exit #f
-     :code #f
-     :trans #f
-     :post #f
-     :enter #f
-     :event #f
-     )
-    )
-   )
-  (inherit-state gp-0 (the-as state (method-of-type water-vol water-vol-idle)))
-  (method-set! water-anim 20 (the-as function gp-0))
-  (set!
-   (-> gp-0 event)
-   (lambda :behavior water-anim
-    ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
-    (case arg2 
-     (('move-to)
-       (set!
-        (-> self root trans quad)
-        (-> (the-as vector (-> arg3 param 0)) quad)
-        )
-       (set! (-> self water-height) (-> self root trans y))
-       (if (nonzero? (-> self sound))
-        (update-trans! (-> self sound) (-> self root trans))
-        )
-       (let ((v0-0 (logclear (-> self mask) (process-mask sleep-code))))
-        (set! (-> self mask) v0-0)
-        v0-0
-        )
+(defstate water-vol-idle (water-anim)
+  :virtual #t
+  :event
+  (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
+   (case arg2 
+    (('move-to)
+      (set!
+       (-> self root trans quad)
+       (-> (the-as vector (-> arg3 param 0)) quad)
        )
-     )
-    )
-   )
-  (set!
-   (-> gp-0 trans)
-   (the-as
-    (function object)
-    (lambda :behavior water-anim
-     ()
-     (let
-      ((t9-0
-        (->
-         (the-as (state none) (method-of-type water-vol water-vol-idle))
-         trans
-         )
-        )
+      (set! (-> self water-height) (-> self root trans y))
+      (if (nonzero? (-> self sound))
+       (update-trans! (-> self sound) (-> self root trans))
        )
-      (if t9-0
-       (t9-0)
+      (let ((v0-0 (logclear (-> self mask) (process-mask sleep-code))))
+       (set! (-> self mask) v0-0)
+       v0-0
        )
       )
-     (if (< (-> (math-camera-pos) y) (+ -8192.0 (-> self root trans y)))
-      (logior! (-> self draw status) 2)
-      (set! (-> self draw status) (logand -3 (-> self draw status)))
-      )
-     (if (and (-> self play-ambient-sound?) (nonzero? (-> self sound)))
-      (update! (-> self sound))
-      )
-     (none)
-     )
     )
    )
-  (set! (-> gp-0 code) (lambda :behavior water-anim () (while #t
-                                                        (ja-post)
-                                                        (logior!
-                                                         (-> self mask)
-                                                         (process-mask
-                                                          sleep-code
-                                                          )
-                                                         )
-                                                        (suspend)
-                                                        )
-                        (none)
-                        )
+  :trans
+  (behavior ()
+   (let ((t9-0 (-> (method-of-type water-vol water-vol-idle) trans)))
+    (if t9-0
+     (t9-0)
+     )
+    )
+   (if (< (-> (math-camera-pos) y) (+ -8192.0 (-> self root trans y)))
+    (logior! (-> self draw status) 2)
+    (set! (-> self draw status) (logand -3 (-> self draw status)))
+    )
+   (if (and (-> self play-ambient-sound?) (nonzero? (-> self sound)))
+    (update! (-> self sound))
+    )
+   (none)
+   )
+  :code
+  (behavior ()
+   (while #t
+    (ja-post)
+    (logior! (-> self mask) (process-mask sleep-code))
+    (suspend)
+    )
+   (none)
    )
   )
 
@@ -1943,58 +1909,46 @@
 ;; definition for method 22 of type water-anim
 ;; INFO: Return type mismatch int vs ripple-wave-set.
 (defmethod TODO-RENAME-22 water-anim ((obj water-anim))
-  (with-pp
-   (let ((s5-0 (-> obj look)))
-    (when (or (< s5-0 0) (>= s5-0 (-> *water-anim-look* length)))
-     (let ((t9-0 (the-as (function object object) enter-state))
-           (a0-2 "skel group")
-           )
-      (set! (-> pp next-state) process-drawable-art-error)
-      (t9-0 a0-2)
-      )
-     )
-    (let ((s5-1 (-> *water-anim-look* s5-0)))
-     (let ((s4-0 (-> s5-1 skel-group value)))
-      (let ((s3-0 s4-0))
-       (when
-        (not
-         (if
-          (and
-           (nonzero? s3-0)
-           (type-type? (-> (the-as basic s3-0) type) skeleton-group)
-           )
-          s3-0
+  (let ((s5-0 (-> obj look)))
+   (if (or (< s5-0 0) (>= s5-0 (-> *water-anim-look* length)))
+    (go process-drawable-art-error "skel group")
+    )
+   (let ((s5-1 (-> *water-anim-look* s5-0)))
+    (let ((s4-0 (-> s5-1 skel-group value)))
+     (let ((s3-0 s4-0))
+      (if
+       (not
+        (if
+         (and
+          (nonzero? s3-0)
+          (type-type? (-> (the-as basic s3-0) type) skeleton-group)
           )
-         )
-        (let ((t9-2 (the-as (function object object) enter-state))
-              (a0-5 "skel group")
-              )
-         (set! (-> pp next-state) process-drawable-art-error)
-         (t9-2 a0-5)
+         s3-0
          )
         )
+       (go process-drawable-art-error "skel group")
        )
-      (dummy-14 obj (the-as skeleton-group s4-0) '())
       )
-     (ja-channel-set! 1)
-     (let ((s4-1 (-> obj skel root-channel 0)))
-      (joint-control-channel-group-eval!
-       s4-1
-       (the-as art-joint-anim (-> obj draw art-group data (-> s5-1 anim)))
-       num-func-identity
-       )
-      (set! (-> s4-1 frame-num) 0.0)
+     (dummy-14 obj (the-as skeleton-group s4-0) '())
+     )
+    (ja-channel-set! 1)
+    (let ((s4-1 (-> obj skel root-channel 0)))
+     (joint-control-channel-group-eval!
+      s4-1
+      (the-as art-joint-anim (-> obj draw art-group data (-> s5-1 anim)))
+      num-func-identity
       )
-     (let ((a2-2 (-> s5-1 ambient-sound-spec)))
-      (when a2-2
-       (let ((a3-0 (new 'stack-no-clear 'vector)))
-        (vector+! a3-0 (-> obj root trans) (-> obj draw bounds))
-        (set! (-> obj sound) (new 'process 'ambient-sound a2-2 a3-0))
-        )
+     (set! (-> s4-1 frame-num) 0.0)
+     )
+    (let ((a2-2 (-> s5-1 ambient-sound-spec)))
+     (when a2-2
+      (let ((a3-0 (new 'stack-no-clear 'vector)))
+       (vector+! a3-0 (-> obj root trans) (-> obj draw bounds))
+       (set! (-> obj sound) (new 'process 'ambient-sound a2-2 a3-0))
        )
       )
      )
     )
-   (the-as ripple-wave-set (ja-post))
    )
+  (the-as ripple-wave-set (ja-post))
   )

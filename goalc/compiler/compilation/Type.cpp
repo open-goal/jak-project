@@ -4,6 +4,7 @@
 #include "common/type_system/deftype.h"
 #include "goalc/emitter/CallingConvention.h"
 #include "common/util/math_util.h"
+#include "common/type_system/state.h"
 
 namespace {
 
@@ -702,7 +703,16 @@ Val* Compiler::compile_deref(const goos::Object& form, const goos::Object& _rest
             continue;
           }
         } else {
+          const auto& in_type = result->type();
           result = get_field_of_structure(struct_type, result, field_name, env);
+
+          // special case (-> <state> enter) should return the appropriate function type.
+          if (in_type.arg_count() > 0 && in_type.base_type() == "state") {
+            if (field_name == "enter") {
+              result->set_type(state_to_go_function(in_type));
+            }
+          }
+
           continue;
         }
       }

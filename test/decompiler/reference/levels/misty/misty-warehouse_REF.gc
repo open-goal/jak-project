@@ -41,61 +41,39 @@
   )
 
 ;; failed to figure out what this is:
-(let
-  ((v1-2
-    (new 'static 'state
-     :name 'silostep-idle
-     :next #f
-     :exit #f
-     :code #f
-     :trans #f
-     :post #f
-     :enter #f
-     :event #f
+(defstate silostep-idle (silostep)
+  :event
+  (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
+   (let ((v1-0 arg2))
+    (the-as object (cond
+                    ((= v1-0 'trigger)
+                     (go silostep-camera)
+                     )
+                    ((= v1-0 'trigger-rise)
+                     (go silostep-rise #f)
+                     )
+                    )
      )
     )
    )
-  (set! silostep-idle (the-as (state none) v1-2))
-  (set!
-   (-> v1-2 event)
-   (the-as
-    (function process int symbol event-message-block object)
-    (lambda :behavior silostep
-     ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
-     (case arg2 
-      (('trigger)
-        (go silostep-camera)
-        )
-      (('trigger-rise)
-       enter-state
-       (go silostep-rise)
-       )
-      )
-     (none)
+  :code
+  (behavior ()
+   (let ((gp-0 (-> self skel root-channel 0)))
+    (joint-control-channel-group-eval!
+     gp-0
+     (the-as art-joint-anim (-> self draw art-group data 2))
+     num-func-identity
      )
+    (set! (-> gp-0 frame-num) 0.0)
     )
-   )
-  (set!
-   (-> v1-2 code)
-   (lambda :behavior silostep () (let ((gp-0 (-> self skel root-channel 0)))
-                                  (joint-control-channel-group-eval!
-                                   gp-0
-                                   (the-as
-                                    art-joint-anim
-                                    (-> self draw art-group data 2)
-                                    )
-                                   num-func-identity
-                                   )
-                                  (set! (-> gp-0 frame-num) 0.0)
-                                  )
-    (transform-post)
-    (while #t
-     (suspend)
-     )
-    (none)
+   (transform-post)
+   (while #t
+    (suspend)
     )
+   (none)
    )
-  (set! (-> v1-2 post) ja-post)
+  :post
+  (the-as (function none :behavior silostep) ja-post)
   )
 
 ;; definition for function misty-camera-view
@@ -159,129 +137,96 @@
   )
 
 ;; failed to figure out what this is:
-(let
-  ((v1-4
-    (new 'static 'state
-     :name 'silostep-camera
-     :next #f
-     :exit #f
-     :code #f
-     :trans #f
-     :post #f
-     :enter #f
-     :event #f
+(defstate silostep-camera (silostep)
+  :code
+  (behavior ()
+   (misty-camera-view)
+   (let* ((gp-0 (get-task-control (game-task misty-warehouse)))
+          (v1-1 (get-reminder gp-0 0))
+          )
+    (save-reminder gp-0 (logior v1-1 2) 0)
+    )
+   (set! (-> self state-time) (-> *display* base-frame-counter))
+   (let ((gp-1 (-> *display* base-frame-counter)))
+    (until (begin
+            (suspend)
+            (>= (the-as int (- (-> *display* base-frame-counter) gp-1)) 300)
+            )
+     (empty)
      )
     )
-   )
-  (set! silostep-camera (the-as (state none) v1-4))
-  (set!
-   (-> v1-4 code)
-   (lambda :behavior silostep
-    ()
-    (misty-camera-view)
-    (let* ((gp-0 (get-task-control (game-task misty-warehouse)))
-           (v1-1 (get-reminder gp-0 0))
-           )
-     (save-reminder gp-0 (logior v1-1 2) 0)
-     )
-    (set! (-> self state-time) (-> *display* base-frame-counter))
-    (let ((gp-1 (-> *display* base-frame-counter)))
-     (until (begin
-             (suspend)
-             (>= (the-as int (- (-> *display* base-frame-counter) gp-1)) 300)
-             )
-      (empty)
-      )
-     )
-    (sound-play-by-name
-     (static-sound-name "arena-steps")
-     (new-sound-id)
-     1024
-     0
-     0
-     (the-as uint 1)
-     (the-as vector #t)
-     )
-    (send-to-all-after (-> self link) 'trigger-rise)
-    enter-state
-    (go silostep-rise)
-    (none)
+   (sound-play-by-name
+    (static-sound-name "arena-steps")
+    (new-sound-id)
+    1024
+    0
+    0
+    (the-as uint 1)
+    (the-as vector #t)
     )
+   (send-to-all-after (-> self link) 'trigger-rise)
+   (go silostep-rise #f)
+   (none)
    )
-  (set! (-> v1-4 post) ja-post)
+  :post
+  (the-as (function none :behavior silostep) ja-post)
   )
 
 ;; failed to figure out what this is:
-(let
-  ((v1-5
-    (new 'static 'state
-     :name 'silostep-rise
-     :next #f
-     :exit #f
-     :code #f
-     :trans #f
-     :post #f
-     :enter #f
-     :event #f
-     )
-    )
-   )
-  (set! silostep-rise (the-as (state none) v1-5))
-  (set!
-   (-> v1-5 code)
-   (lambda :behavior silostep
-    ((arg0 symbol))
-    (process-entity-status! self (entity-perm-status complete) #t)
-    (when (not arg0)
-     (let ((a0-2 (-> self skel root-channel 0)))
-      (set!
-       (-> a0-2 frame-group)
-       (the-as art-joint-anim (-> self draw art-group data 2))
-       )
-      (set! (-> a0-2 param 0) (-> self anim-limit))
-      (set! (-> a0-2 param 1) 1.0)
-      (set! (-> a0-2 frame-num) 0.0)
-      (joint-control-channel-group!
-       a0-2
-       (the-as art-joint-anim (-> self draw art-group data 2))
-       num-func-seek!
-       )
-      )
-     (until (begin
-             (rider-trans)
-             (rider-post)
-             (suspend)
-             (let ((a0-3 (-> self skel root-channel 0)))
-              (set! (-> a0-3 param 0) (-> self anim-limit))
-              (set! (-> a0-3 param 1) 1.0)
-              (joint-control-channel-group-eval!
-               a0-3
-               (the-as art-joint-anim #f)
-               num-func-seek!
-               )
-              )
-             (ja-done? 0)
-             )
-      (empty)
-      )
-     )
-    (let ((gp-1 (-> self skel root-channel 0)))
-     (joint-control-channel-group-eval!
-      gp-1
+(defstate silostep-rise (silostep)
+  :code
+  (behavior ((arg0 symbol))
+   (process-entity-status! self (entity-perm-status complete) #t)
+   (when (not arg0)
+    (let ((a0-2 (-> self skel root-channel 0)))
+     (set!
+      (-> a0-2 frame-group)
       (the-as art-joint-anim (-> self draw art-group data 2))
-      num-func-identity
       )
-     (set! (-> gp-1 frame-num) (-> self anim-limit))
+     (set! (-> a0-2 param 0) (-> self anim-limit))
+     (set! (-> a0-2 param 1) 1.0)
+     (set! (-> a0-2 frame-num) 0.0)
+     (joint-control-channel-group!
+      a0-2
+      (the-as art-joint-anim (-> self draw art-group data 2))
+      num-func-seek!
+      )
      )
-    (rider-post)
-    (while #t
-     (ja-post)
-     (suspend)
+    (until (begin
+            (rider-trans)
+            (rider-post)
+            (suspend)
+            (let ((a0-3 (-> self skel root-channel 0)))
+             (set! (-> a0-3 param 0) (-> self anim-limit))
+             (set! (-> a0-3 param 1) 1.0)
+             (joint-control-channel-group-eval!
+              a0-3
+              (the-as art-joint-anim #f)
+              num-func-seek!
+              )
+             )
+            (ja-done? 0)
+            )
+     (empty)
      )
-    (none)
     )
+   (let ((gp-1 (-> self skel root-channel 0)))
+    (joint-control-channel-group-eval!
+     gp-1
+     (the-as art-joint-anim (-> self draw art-group data 2))
+     num-func-identity
+     )
+    (set! (-> gp-1 frame-num) (-> self anim-limit))
+    )
+   (rider-post)
+   (while #t
+    (ja-post)
+    (suspend)
+    )
+   (none)
    )
-  (set! (-> v1-5 post) #f)
+  :post
+  (the-as (function none :behavior silostep) #f)
   )
 
 ;; definition for method 11 of type silostep
@@ -346,20 +291,15 @@
     )
    )
   (set! (-> obj link) (new 'process 'actor-link-info obj))
-  (cond
-   ((and
-     (-> obj entity)
-     (nonzero?
-      (logand (-> obj entity extra perm status) (entity-perm-status complete))
-      )
+  (if
+   (and
+    (-> obj entity)
+    (nonzero?
+     (logand (-> obj entity extra perm status) (entity-perm-status complete))
      )
-    enter-state
-    #t
-    (go silostep-rise)
     )
-   (else
-    (go silostep-idle)
-    )
+   (go silostep-rise #t)
+   (go silostep-idle)
    )
   (none)
   )
@@ -440,20 +380,8 @@
   (dummy-14 obj *rounddoor-sg* '())
   (set! (-> obj open-distance) 69632.0)
   (set! (-> obj close-distance) 81920.0)
-  (set!
-   (-> obj open-sound)
-   (the-as
-    uint128
-    (make-u128 (the-as uint #x6e65706f2d72) (the-as uint #x6f6f64616e657261))
-    )
-   )
-  (set!
-   (-> obj close-sound)
-   (the-as
-    uint128
-    (make-u128 (the-as uint #x65736f6c632d72) (the-as uint #x6f6f64616e657261))
-    )
-   )
+  (set! (-> obj open-sound) (static-sound-name "arenadoor-open"))
+  (set! (-> obj close-sound) (static-sound-name "arenadoor-close"))
   (set! (-> obj speed) 1.5)
   (set! (-> obj auto-close) #t)
   (set! (-> obj one-way) #t)

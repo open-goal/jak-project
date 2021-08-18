@@ -1281,13 +1281,23 @@ std::string decompile_int_enum_from_int(const TypeSpec& type, const TypeSystem& 
   auto type_info = ts.try_enum_lookup(type.base_type());
   assert(type_info);
   assert(!type_info->is_bitfield());
+
+  std::vector<std::string> matches;
   for (auto& field : type_info->entries()) {
     if ((u64)field.second == value) {
-      return field.first;
+      matches.push_back(field.first);
     }
   }
-  throw std::runtime_error(
-      fmt::format("Failed to decompile integer enum. Value {} (0x{:x}) wasn't found in enum {}",
-                  value, value, type_info->get_name()));
+
+  if (matches.size() == 0) {
+    throw std::runtime_error(
+        fmt::format("Failed to decompile integer enum. Value {} (0x{:x}) wasn't found in enum {}",
+                    value, value, type_info->get_name()));
+  } else if (matches.size() == 1) {
+    return matches.front();
+  } else {
+    std::sort(matches.begin(), matches.end());
+    return matches.front();
+  }
 }
 }  // namespace decompiler

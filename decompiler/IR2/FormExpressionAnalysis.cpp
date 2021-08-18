@@ -2140,6 +2140,23 @@ void SetFormFormElement::push_to_stack(const Env& env, FormPool& pool, FormStack
     fmt::print("invalid bf set: {}\n", src_as_bf_set->to_string(env));
   }
 
+  // setting a bitfield to zero is wonky.
+  auto bfa = dynamic_cast<BitfieldAccessElement*>(m_src->try_as_single_element());
+  if (bfa) {
+    auto zero_set = bfa->get_set_field_0(env.dts->ts);
+    if (zero_set) {
+      auto field_token = DerefToken::make_field_name(zero_set->name());
+      auto loc_elt = pool.alloc_element<DerefElement>(m_dst, false, field_token);
+      loc_elt->inline_nested();
+      auto loc = pool.alloc_single_form(nullptr, loc_elt);
+      loc->parent_element = this;
+      m_dst = loc;
+      auto zero = SimpleAtom::make_int_constant(0);
+      auto zero_form = pool.alloc_single_element_form<SimpleAtomElement>(nullptr, zero);
+      m_src = zero_form;
+    }
+  }
+
   const std::pair<FixedOperatorKind, FixedOperatorKind> in_place_ops[] = {
       {FixedOperatorKind::ADDITION, FixedOperatorKind::ADDITION_IN_PLACE},
       {FixedOperatorKind::ADDITION_PTR, FixedOperatorKind::ADDITION_PTR_IN_PLACE},
@@ -2585,6 +2602,22 @@ void FunctionCallElement::update_from_stack(const Env& env,
   FormElement* new_form = nullptr;
 
   if (go_next_state) {
+    // see if we're a virtual go
+    Matcher virtual_go_state_matcher =
+        Matcher::op(GenericOpMatcher::fixed(FixedOperatorKind::METHOD_OF_OBJECT),
+                    {Matcher::any(0), Matcher::any_constant_token(1)});
+    auto virtual_go_mr = match(virtual_go_state_matcher, go_next_state);
+    if (virtual_go_mr.matched && virtual_go_mr.maps.forms.at(0)->to_string(env) == "self") {
+      arg_forms.insert(arg_forms.begin(), pool.alloc_single_element_form<ConstantTokenElement>(
+                                              nullptr, virtual_go_mr.maps.strings.at(1)));
+      auto go_form = pool.alloc_element<GenericElement>(
+          GenericOperator::make_function(
+              pool.alloc_single_element_form<ConstantTokenElement>(nullptr, "go-virtual")),
+          arg_forms);
+      result->push_back(go_form);
+      return;
+    }
+
     arg_forms.insert(arg_forms.begin(), go_next_state);
     auto go_form = pool.alloc_element<GenericElement>(
         GenericOperator::make_function(
@@ -4867,6 +4900,15 @@ void GetSymbolStringPointer::update_from_stack(const Env&,
                                                FormStack&,
                                                std::vector<FormElement*>* result,
                                                bool) {
+  mark_popped();
+  result->push_back(this);
+}
+
+void DefstateElement::update_from_stack(const Env&,
+                                        FormPool&,
+                                        FormStack&,
+                                        std::vector<FormElement*>* result,
+                                        bool) {
   mark_popped();
   result->push_back(this);
 }
