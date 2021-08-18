@@ -910,11 +910,14 @@ void SimpleExpressionElement::update_from_stack_add_i(const Env& env,
 
       if (idx_of_success >= 0) {
         auto& rd_ok = rd.results.at(idx_of_success);
+        auto stride_matcher = Matcher::match_or(
+            {Matcher::cast("uint", Matcher::integer(rd_in.stride)),
+             Matcher::cast("int", Matcher::integer(rd_in.stride)), Matcher::integer(rd_in.stride)});
         auto arg1_matcher = Matcher::match_or(
             {Matcher::op(GenericOpMatcher::fixed(FixedOperatorKind::MULTIPLICATION),
-                         {Matcher::any(0), Matcher::integer(rd_in.stride)}),
+                         {Matcher::any(0), stride_matcher}),
              Matcher::op(GenericOpMatcher::fixed(FixedOperatorKind::MULTIPLICATION),
-                         {Matcher::integer(rd_in.stride), Matcher::any(0)})});
+                         {stride_matcher, Matcher::any(0)})});
         auto match_result = match(arg1_matcher, args.at(1));
         if (match_result.matched) {
           bool used_index = false;
