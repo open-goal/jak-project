@@ -1,8 +1,5 @@
 #pragma once
 
-#ifndef JAK1_LIBSCF_H
-#define JAK1_LIBSCF_H
-
 #define SCE_JAPANESE_LANGUAGE 0
 #define SCE_ENGLISH_LANGUAGE 1
 #define SCE_FRENCH_LANGUAGE 2
@@ -29,5 +26,3 @@ int sceScfGetAspect();
  */
 int sceScfGetLanguage();
 }  // namespace ee
-
-#endif  // JAK1_LIBSCF_H

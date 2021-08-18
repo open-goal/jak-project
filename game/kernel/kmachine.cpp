@@ -499,7 +499,7 @@ u64 CPadGetData(u64 cpad_info) {
         cpad->state = 99;
       } else {
         // we have actuators to use.
-        cpad->change_time = 1;  // remember to update vibration.
+        cpad->change_time = 1;  // remember to update pad times.
         cpad->state = 75;
       }
       break;
@@ -672,8 +672,10 @@ u64 DecodeVolume() {
   return masterConfig.volume;
 }
 
+// NOTE: this is originally hardcoded, and returns different values depending on the disc region.
+// it returns 0 for NTSC-U, 1 for PAL and 2 for NTSC-J
 u64 DecodeTerritory() {
-  return 0;
+  return masterConfig.territory;
 }
 
 u64 DecodeTimeout() {
