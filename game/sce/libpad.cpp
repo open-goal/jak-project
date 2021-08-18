@@ -19,7 +19,7 @@ int scePadPortOpen(int port, int slot, void*) {
   return port + 1;
 }
 
-int scePadGetState(int port, int slot) {
+int scePadGetState(int /*port*/, int /*slot*/) {
   // pretend we always have a controller connected
   return scePadStateStable;
 }
@@ -30,7 +30,7 @@ static const int libpad_DualShock2_ModeIDs[2] = {
     (int)PadMode::Controller,  // no vibration or pressure sensitive buttons
     (int)PadMode::DualShock2   // vibration + pressure sensitive buttons
 };
-int scePadInfoMode(int port, int slot, int term, int offs) {
+int scePadInfoMode(int /*port*/, int /*slot*/, int term, int offs) {
   if (term == InfoModeCurExID) {
     // return vibration mode ID. that's just dualshock mode.
     return libpad_DualShock2_ModeIDs[1];
@@ -61,7 +61,7 @@ static const Pad::Button libpad_PadPressureButtons[] = {
     Pad::Button::L1,       Pad::Button::R1,     Pad::Button::L2, Pad::Button::R2};
 // reads controller data and writes it to a buffer in rdata (must be at least 32 bytes large).
 // returns buffer size (32) or 0 on error.
-int scePadRead(int port, int slot, u8* rdata) {
+int scePadRead(int port, int /*slot*/, u8* rdata) {
   auto cpad = (CPadInfo*)(rdata);
   Gfx::poll_events();
 
@@ -88,24 +88,24 @@ int scePadRead(int port, int slot, u8* rdata) {
 }
 
 // buzzer control. We don't care right now, return success.
-int scePadSetActDirect(int port, int slot, const u8* data) {
+int scePadSetActDirect(int /*port*/, int /*slot*/, const u8* /*data*/) {
   return 1;
 }
-int scePadSetActAlign(int port, int slot, const u8* data) {
+int scePadSetActAlign(int /*port*/, int /*slot*/, const u8* /*data*/) {
   return 1;
 }
 
 // we also don't care
-int scePadSetMainMode(int port, int slot, int offs, int lock) {
+int scePadSetMainMode(int /*port*/, int /*slot*/, int /*offs*/, int /*lock*/) {
   return 1;
 }
 
 // async pad functions are gonna be synchronous so this always succeeds
-int scePadGetReqState(int port, int slot) {
+int scePadGetReqState(int /*port*/, int /*slot*/) {
   return scePadReqStateComplete;
 }
 
-int scePadInfoAct(int port, int slot, int actno, int term) {
+int scePadInfoAct(int /*port*/, int /*slot*/, int actno, int term) {
   if (actno == -1)
     return 2;  // i think?
   if (actno < 2) {
@@ -122,11 +122,11 @@ int scePadInfoAct(int port, int slot, int actno, int term) {
   return 0;
 }
 
-int scePadInfoPressMode(int port, int slot) {
+int scePadInfoPressMode(int /*port*/, int /*slot*/) {
   return 0;  // we do NOT support pressure sensitive buttons right now
 }
 
-int scePadEnterPressMode(int port, int slot) {
+int scePadEnterPressMode(int /*port*/, int /*slot*/) {
   return 1;  // we dont support pressure button, but if we did this would work straight away
 }
 
