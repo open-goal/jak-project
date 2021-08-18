@@ -412,6 +412,9 @@ bool is_nonvirtual_state(LetElement* elt) {
 void run_defstate(Function& top_level_func) {
   auto& env = top_level_func.ir2.env;
   auto& pool = *top_level_func.ir2.form_pool;
+  if (!top_level_func.ir2.top_form) {
+    return;
+  }
   top_level_func.ir2.top_form->apply_form([&](Form* form) {
     for (auto& fe : form->elts()) {
       auto as_let = dynamic_cast<LetElement*>(fe);
