@@ -383,34 +383,20 @@
   )
 
 (defun string-cat-to-last-char ((base-str string) (append-str string) (char uint))
-  "Append append-str to the end of of base-str, up to the last occurance of char in append-str"
-  (local-vars
-   (location-of-char (pointer uint8))
-   (end-of-append (pointer uint8))
-   )
-
-  ;; point to one before the beginning of the append string (kind of a hack)
-  (set! end-of-append (&-> (the-as (pointer uint8) append-str) 3))
-  ;; try to find char in append-str
-  (set! location-of-char (string-skip-to-char (-> append-str data) char))
-  (when (= (-> location-of-char 0) char)
-    ;; found it!
-    (until
-        (begin
-         ;; update the location of the last find
-         (set! end-of-append location-of-char)
-         ;; try to find another
-         (set! location-of-char (string-skip-to-char (&-> location-of-char 1) char))
-         ;; did we succeed?
-         (!= (-> location-of-char 0) char)
-         )
-      (none)
+  "Append append-str to the end of base-str, up to the last occurance of char in append-str"
+  (let ((end-of-append (&-> (the-as (pointer uint8) append-str) 3)))
+    (let ((location-of-char (string-skip-to-char (-> append-str data) char)))
+      (when (= (-> location-of-char 0) char)
+        (until (!= (-> location-of-char 0) char)
+          (set! end-of-append location-of-char)
+          (set! location-of-char (string-skip-to-char (&-> location-of-char 1) char))
+          )
+        )
       )
+    (cat-string<-string_to_charp base-str append-str end-of-append)
     )
-  ;; now location-of-char points to the last occurance.
-  ;; or to 1 before the start of append-str if we never found it.
-  (cat-string<-string_to_charp base-str append-str end-of-append)
   )
+
 
 (defmacro is-whitespace-char? (c)
   ;; 32 = space
