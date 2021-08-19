@@ -70,7 +70,7 @@ std::string TP_Type::print() const {
     case Kind::PCPYUD_BITFIELD_AND:
       return fmt::format("<pcpyud-and {}>", m_ts.print());
     case Kind::LABEL_ADDR:
-      return "<label-addr>";
+      return fmt::format("<label-{}>", m_int);
     case Kind::ENTER_STATE_FUNCTION:
       return "<enter-state-func>";
     case Kind::INVALID:
