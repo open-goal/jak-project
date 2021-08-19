@@ -460,8 +460,8 @@
   :size-assert         #x2d4
   :flag-assert         #x23027002d4
   (:methods
-    (rigid-body-platform-idle () none 20)
-    (rigid-body-platform-float () none 21)
+    (rigid-body-platform-idle () _type_ :state 20)
+    (rigid-body-platform-float () _type_ :state 21)
     (TODO-RENAME-22 (_type_ vector basic) float 22)
     (TODO-RENAME-23 (_type_ basic) none 23)
     (TODO-RENAME-24 (_type_ rigid-body-control-point basic) none 24)
@@ -976,112 +976,70 @@
   )
 
 ;; failed to figure out what this is:
-(let
-  ((gp-0
-    (new 'static 'state
-     :name 'rigid-body-platform-idle
-     :next #f
-     :exit #f
-     :code #f
-     :trans #f
-     :post #f
-     :enter #f
-     :event #f
-     )
-    )
-   )
-  (method-set! rigid-body-platform 20 (the-as function gp-0))
-  (set!
-   (-> gp-0 trans)
-   (the-as
-    (function object)
-    (lambda :behavior rigid-body-platform
-     ()
-     (when
-      (and
-       *target*
-       (>=
-        (-> self info idle-distance)
-        (vector-vector-distance
-         (-> self root-overlay trans)
-         (-> *target* control trans)
-         )
-        )
-       )
-      (let ((t9-1 (the-as (function object) enter-state)))
-       (set!
-        (-> self next-state)
-        (the-as state (method-of-object self rigid-body-platform-float))
-        )
-       (t9-1)
+(defstate rigid-body-platform-idle (rigid-body-platform)
+  :virtual #t
+  :trans
+  (behavior ()
+   (if
+    (and
+     *target*
+     (>=
+      (-> self info idle-distance)
+      (vector-vector-distance
+       (-> self root-overlay trans)
+       (-> *target* control trans)
        )
       )
-     (none)
      )
+    (go-virtual rigid-body-platform-float)
     )
+   (none)
    )
-  (set! (-> gp-0 code) (lambda :behavior rigid-body-platform () (while #t
-                                                                 (suspend)
-                                                                 )
-                        (none)
-                        )
+  :code
+  (behavior ()
+   (while #t
+    (suspend)
+    )
+   (none)
    )
-  (set! (-> gp-0 post) ja-post)
+  :post
+  (the-as (function none :behavior rigid-body-platform) ja-post)
   )
 
 ;; failed to figure out what this is:
-(let
-  ((gp-1
-    (new 'static 'state
-     :name 'rigid-body-platform-float
-     :next #f
-     :exit #f
-     :code #f
-     :trans #f
-     :post #f
-     :enter #f
-     :event #f
-     )
-    )
-   )
-  (method-set! rigid-body-platform 21 (the-as function gp-1))
-  (set! (-> gp-1 event) rigid-body-platform-event-handler)
-  (set!
-   (-> gp-1 trans)
-   (the-as
-    (function object)
-    (lambda :behavior rigid-body-platform
-     ()
-     (when
-      (or
-       (not *target*)
-       (<
-        (-> self info idle-distance)
-        (vector-vector-distance
-         (-> self root-overlay trans)
-         (-> *target* control trans)
-         )
-        )
-       )
-      (let ((t9-1 (the-as (function object) enter-state)))
-       (set!
-        (-> self next-state)
-        (the-as state (method-of-object self rigid-body-platform-idle))
-        )
-       (t9-1)
+(defstate rigid-body-platform-float (rigid-body-platform)
+  :virtual #t
+  :event
+  rigid-body-platform-event-handler
+  :trans
+  (behavior ()
+   (if
+    (or
+     (not *target*)
+     (<
+      (-> self info idle-distance)
+      (vector-vector-distance
+       (-> self root-overlay trans)
+       (-> *target* control trans)
        )
       )
-     (none)
      )
+    (go-virtual rigid-body-platform-idle)
     )
+   (none)
    )
-  (set! (-> gp-1 code) (lambda :behavior rigid-body-platform () (while #t
-                                                                 (suspend)
-                                                                 )
-                        (none)
-                        )
+  :code
+  (behavior ()
+   (while #t
+    (suspend)
+    )
+   (none)
    )
-  (set! (-> gp-1 post) rigid-body-platform-post)
+  :post
+  (the-as
+   (function none :behavior rigid-body-platform)
+   rigid-body-platform-post
+   )
   )
 
 ;; definition for method 29 of type rigid-body-platform
@@ -1211,17 +1169,9 @@
 ;; definition for method 34 of type rigid-body-platform
 ;; INFO: Return type mismatch int vs none.
 (defmethod TODO-RENAME-34 rigid-body-platform ((obj rigid-body-platform))
-  (with-pp
-   (let ((t9-0 (the-as (function object) enter-state)))
-    (set!
-     (-> pp next-state)
-     (the-as state (method-of-object obj rigid-body-platform-idle))
-     )
-    (t9-0)
-    )
-   0
-   (none)
-   )
+  (go (method-of-object obj rigid-body-platform-idle))
+  0
+  (none)
   )
 
 ;; definition for method 31 of type rigid-body-platform

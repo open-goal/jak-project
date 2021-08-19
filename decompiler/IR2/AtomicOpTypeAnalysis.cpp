@@ -261,10 +261,8 @@ TP_Type get_stack_type_at_constant_offset(int offset,
 
     if (offset == structure.hint.stack_offset) {
       // special case just getting the variable
-      if (structure.hint.container_type == StackStructureHint::ContainerType::NONE ||
-          structure.hint.container_type == StackStructureHint::ContainerType::INLINE_ARRAY) {
-        return TP_Type::make_from_ts(coerce_to_reg_type(structure.ref_type));
-      }
+
+      return TP_Type::make_from_ts(coerce_to_reg_type(structure.ref_type));
     }
 
     // Note: GOAL doesn't seem to constant propagate memory access on the stack, so the code
@@ -993,7 +991,14 @@ TP_Type LoadVarOp::get_src_type(const TypeState& input,
       auto rd = dts.ts.reverse_field_lookup(rd_in);
 
       if (rd.success) {
-        return TP_Type::make_from_ts(coerce_to_reg_type(rd.result_type));
+        if (rd_in.base_type.base_type() == "state" && rd.tokens.size() == 1 &&
+            rd.tokens.front().kind == FieldReverseLookupOutput::Token::Kind::FIELD &&
+            rd.tokens.front().name == "enter" && rd_in.base_type.arg_count() > 0) {
+          // special case for accessing the enter field of state
+          return TP_Type::make_from_ts(state_to_go_function(rd_in.base_type));
+        } else {
+          return TP_Type::make_from_ts(coerce_to_reg_type(rd.result_type));
+        }
       }
     }
 

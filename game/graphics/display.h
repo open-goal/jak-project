@@ -33,7 +33,7 @@ class GfxDisplay {
   void set_renderer(GfxPipeline pipeline);
   void set_window(GLFWwindow* window);
   void set_title(const char* title);
-  const char* get_title() const { return m_title; }
+  const char* title() const { return m_title; }
 
   void render_graphics();
 };
@@ -46,6 +46,7 @@ extern std::vector<std::shared_ptr<GfxDisplay>> g_displays;
 
 int InitMainDisplay(int width, int height, const char* title, GfxSettings& settings);
 void KillDisplay(std::shared_ptr<GfxDisplay> display);
+void KillMainDisplay();
 
 std::shared_ptr<GfxDisplay> GetMainDisplay();
 

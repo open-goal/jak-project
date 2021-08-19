@@ -65,6 +65,12 @@
 (defsmacro cdddr (x)
            `(cdr (cdr (cdr ,x))))
 
+(defsmacro caadr (x)
+  `(car (car (cdr ,x))))
+
+(defsmacro cadar (x)
+  `(car (cdr (car ,x))))
+
 (desfun first (x)
 	(car x))
 

@@ -5,8 +5,6 @@
  * Representation of a GOAL type in the type system.
  */
 
-#pragma once
-
 #include <string>
 #include "common/util/assert.h"
 #include <unordered_map>
