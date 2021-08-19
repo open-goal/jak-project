@@ -1187,7 +1187,8 @@ TypeState CallOp::propagate_types_internal(const TypeState& input,
 
       if (arg_count + 2 > 8) {
         throw std::runtime_error(
-            "Call to `format` pushed the arg-count beyond the acceptable arg limit (8), do you need to add "
+            "Call to `format` pushed the arg-count beyond the acceptable arg limit (8), do you "
+            "need to add "
             "a code to the ignore lists?");
       }
 
