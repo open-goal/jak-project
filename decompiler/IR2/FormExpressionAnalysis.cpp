@@ -910,11 +910,14 @@ void SimpleExpressionElement::update_from_stack_add_i(const Env& env,
 
       if (idx_of_success >= 0) {
         auto& rd_ok = rd.results.at(idx_of_success);
+        auto stride_matcher = Matcher::match_or(
+            {Matcher::cast("uint", Matcher::integer(rd_in.stride)),
+             Matcher::cast("int", Matcher::integer(rd_in.stride)), Matcher::integer(rd_in.stride)});
         auto arg1_matcher = Matcher::match_or(
             {Matcher::op(GenericOpMatcher::fixed(FixedOperatorKind::MULTIPLICATION),
-                         {Matcher::any(0), Matcher::integer(rd_in.stride)}),
+                         {Matcher::any(0), stride_matcher}),
              Matcher::op(GenericOpMatcher::fixed(FixedOperatorKind::MULTIPLICATION),
-                         {Matcher::integer(rd_in.stride), Matcher::any(0)})});
+                         {stride_matcher, Matcher::any(0)})});
         auto match_result = match(arg1_matcher, args.at(1));
         if (match_result.matched) {
           bool used_index = false;
@@ -2922,16 +2925,51 @@ void DerefElement::inline_nested() {
 ///////////////////
 
 void UntilElement::push_to_stack(const Env& env, FormPool& pool, FormStack& stack) {
+  // in asm:
+  // LTOP:
+  //  body
+  //  condition
+  //  jump to top
+  // so we can end up getting the body/condition wrong.
+  // the way the CfgPass works means that we put too much in condition.
+  // we can safely move stuff from the top of condition to the bottom of body.
+
   mark_popped();
-  for (auto form : {condition, body}) {
-    FormStack temp_stack(false);
-    for (auto& entry : form->elts()) {
-      entry->push_to_stack(env, pool, temp_stack);
+
+  std::vector<FormElement*> condition_to_body;
+  {
+    FormStack condition_temp_stack(false);
+    for (auto& entry : condition->elts()) {
+      entry->push_to_stack(env, pool, condition_temp_stack);
     }
-    auto new_entries = temp_stack.rewrite(pool, env);
-    form->clear();
+    condition_to_body = condition_temp_stack.rewrite(pool, env);
+    condition->clear();
+    assert(!condition_to_body.empty());
+    condition->push_back(condition_to_body.back());
+    condition_to_body.pop_back();
+  }
+
+  {
+    FormStack body_temp_stack(false);
+    for (auto& entry : body->elts()) {
+      entry->push_to_stack(env, pool, body_temp_stack);
+    }
+    auto new_entries = body_temp_stack.rewrite(pool, env);
+    body->clear();
+
     for (auto e : new_entries) {
-      form->push_back(e);
+      if (!dynamic_cast<EmptyElement*>(e)) {
+        body->push_back(e);
+      }
+    }
+    for (auto e : condition_to_body) {
+      if (!dynamic_cast<EmptyElement*>(e)) {
+        body->push_back(e);
+      }
+    }
+
+    if (body->size() == 0) {
+      body->push_back(pool.alloc_element<EmptyElement>());
     }
   }
 

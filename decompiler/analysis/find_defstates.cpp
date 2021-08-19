@@ -21,45 +21,45 @@ namespace {
 std::pair<std::string, TypeSpec> get_state_info(FormElement* state_set, const Env& env) {
   auto sff = dynamic_cast<SetFormFormElement*>(state_set);
   if (!sff) {
-    throw std::runtime_error(
-        fmt::format("Failed to identify defstate. The state symbol set was supposed to be: {}, but "
-                    "this doesn't look like a set.",
-                    state_set->to_string(env)));
+    env.func->warnings.warn_and_throw(
+        "Failed to identify defstate. The state symbol set was supposed to be: {}, but "
+        "this doesn't look like a set.",
+        state_set->to_string(env));
   }
 
   auto atom = form_as_atom(sff->dst());
   if (!atom || atom->get_kind() != SimpleAtom::Kind::SYMBOL_VAL) {
-    throw std::runtime_error(fmt::format(
+    env.func->warnings.warn_and_throw(
         "Failed to identify defstate. The state symbol set was: {}, which doesn't set a symbol",
-        state_set->to_string(env)));
+        state_set->to_string(env));
   }
 
   std::string state_name = atom->get_str();
 
   auto type = env.dts->symbol_types.find(state_name);
   if (type == env.dts->symbol_types.end()) {
-    throw std::runtime_error(fmt::format(
+    env.func->warnings.warn_and_throw(
         "Identified a defstate for state {}, but there is no type information for this state.",
-        state_name));
+        state_name);
   }
 
   if (type->second.base_type() != "state") {
-    throw std::runtime_error(
-        fmt::format("Identified a defstate for state {}, but our type information thinks it is a "
-                    "{}, not a state.",
-                    type->second.print()));
+    env.func->warnings.warn_and_throw(
+        "Identified a defstate for state {}, but our type information thinks it is a "
+        "{}, not a state.",
+        type->second.print());
   }
 
   if (type->second.arg_count() == 0) {
-    throw std::runtime_error(fmt::format(
-        "Identified a defstate for state {}, but there is no argument information.", state_name));
+    env.func->warnings.warn_and_throw(
+        "Identified a defstate for state {}, but there is no argument information.", state_name);
   }
 
   if (type->second.last_arg() == TypeSpec("none")) {
-    throw std::runtime_error(
-        fmt::format("Identified a defstate for state {}, but the process type is none. You must "
-                    "provide a process type as the final argument of a state",
-                    state_name));
+    env.func->warnings.warn_and_throw(
+        "Identified a defstate for state {}, but the process type is none. You must "
+        "provide a process type as the final argument of a state",
+        state_name);
   }
 
   return {atom->get_str(), type->second};
@@ -87,9 +87,9 @@ std::vector<DefstateElement::Entry> get_defstate_entries(
     auto mr = match(matcher, &temp);
 
     if (!mr.matched) {
-      throw std::runtime_error(
-          fmt::format("In defstate for state {}, failed to recognize handler set: {}", state_name,
-                      temp.to_string(env)));
+      env.func->warnings.warn_and_throw(
+          "In defstate for state {}, failed to recognize handler set: {}", state_name,
+          temp.to_string(env));
     }
 
     auto var = mr.maps.regs.at(0);
@@ -106,9 +106,9 @@ std::vector<DefstateElement::Entry> get_defstate_entries(
 
     if (!var || env.get_variable_name(*var) != env.get_variable_name(let_dest_var)) {
       if (var) {
-        throw std::runtime_error(fmt::format("Messed up defstate. State is in {}, but we set {}",
-                                             env.get_variable_name(let_dest_var),
-                                             env.get_variable_name(*var)));
+        env.func->warnings.warn_and_throw("Messed up defstate. State is in {}, but we set {}",
+                                          env.get_variable_name(let_dest_var),
+                                          env.get_variable_name(*var));
       } else {
         assert(false);
       }
@@ -124,7 +124,7 @@ std::vector<DefstateElement::Entry> get_defstate_entries(
     if (handler_atom && handler_atom->is_label()) {
       auto handler_func = env.file->try_get_function_at_label(handler_atom->label());
       if (!handler_func) {
-        throw std::runtime_error("Failed to find handler function.");
+        env.func->warnings.warn_and_throw("Failed to find handler function.");
       }
 
       this_entry.is_behavior = true;
@@ -169,9 +169,9 @@ FormElement* rewrite_nonvirtual_defstate(LetElement* elt,
   auto first_in_body = elt->body()->at(body_index);
   auto info = get_state_info(first_in_body, env);
   if (info.first != expected_state_name) {
-    throw std::runtime_error(
-        fmt::format("Inconsistent defstate name. code has {}, static state has {}", info.first,
-                    expected_state_name));
+    env.func->warnings.warn_and_throw(
+        "Inconsistent defstate name. code has {}, static state has {}", info.first,
+        expected_state_name);
   }
   if (debug_defstates) {
     fmt::print("State: {} Type: {}\n", info.first, info.second.print());
@@ -219,18 +219,19 @@ std::string verify_empty_state_and_get_name(DecompiledDataElement* state, const 
 
   auto first_word = words.at(start_word_idx);
   if (first_word.kind != LinkedWord::TYPE_PTR || first_word.symbol_name != "state") {
-    throw std::runtime_error("Reference to state bad: invalid type pointer");
+    env.func->warnings.warn_and_throw("Reference to state bad: invalid type pointer");
   }
 
   auto name_word = words.at(start_word_idx + 1);
   if (name_word.kind != LinkedWord::SYM_PTR) {
-    throw std::runtime_error("Reference to state bad: invalid name");
+    env.func->warnings.warn_and_throw("Reference to state bad: invalid name");
   }
 
   for (int i = 0; i < 7; i++) {
     auto& word = words.at(start_word_idx + 2 + i);
     if (word.kind != LinkedWord::SYM_PTR || word.symbol_name != "#f") {
-      throw std::runtime_error("Reference to state bad: got a non #f in the initial fields");
+      env.func->warnings.warn_and_throw(
+          "Reference to state bad: got a non #f in the initial fields");
     }
   }
 
@@ -276,20 +277,20 @@ FormElement* rewrite_virtual_defstate(LetElement* elt,
     auto parent_state = inherit_mr.maps.forms.at(1);
 
     if (env.get_variable_name(state_var_from_let_def) != env.get_variable_name(state_var)) {
-      throw std::runtime_error(fmt::format(
+      env.func->warnings.warn_and_throw(
           "Variable name disagreement in virtual defstate: began with {}, but did method "
           "set using {}",
-          env.get_variable_name(state_var_from_let_def), env.get_variable_name(state_var)));
+          env.get_variable_name(state_var_from_let_def), env.get_variable_name(state_var));
     }
 
     // if there's a cast here, it probably means that there's no :state in the deftype.
     // let's warn here instead of trying to go on.
     auto parent_state_cast = parent_state->try_as_element<CastElement>();
     if (parent_state_cast) {
-      throw std::runtime_error(
-          fmt::format("virtual defstate attempted on something that isn't a state: {}\nDid you "
-                      "forget to put :state in the method definition?",
-                      parent_state_cast->to_string(env)));
+      env.func->warnings.warn_and_throw(
+          "virtual defstate attempted on something that isn't a state: {}\nDid you "
+          "forget to put :state in the method definition?",
+          parent_state_cast->to_string(env));
     }
 
     // identify the (method-of-type ...) form that grabs the parent state.
@@ -297,9 +298,9 @@ FormElement* rewrite_virtual_defstate(LetElement* elt,
                                    {Matcher::any_symbol(0), Matcher::any_constant_token(1)});
     auto mot_mr = match(mot_matcher, parent_state);
     if (!mot_mr.matched) {
-      throw std::runtime_error(fmt::format(
+      env.func->warnings.warn_and_throw(
           "Failed to recognize virtual defstate. Got a {} as the parent to inherit from.",
-          parent_state->to_string(env)));
+          parent_state->to_string(env));
     }
 
     inherit_info = {{mot_mr.maps.strings.at(0), mot_mr.maps.strings.at(1)}};
@@ -317,10 +318,10 @@ FormElement* rewrite_virtual_defstate(LetElement* elt,
                   {Matcher::any_symbol(0), Matcher::any_integer(1), Matcher::any(2)});
   auto mset_mr = match(mset_matcher, &temp);
   if (!mset_mr.matched) {
-    throw std::runtime_error(
-        fmt::format("Failed to recognize virtual defstate. Got a {} as the second thing, but was "
-                    "expecting method-set! call",
-                    temp.to_string(env)));
+    env.func->warnings.warn_and_throw(
+        "Failed to recognize virtual defstate. Got a {} as the second thing, but was "
+        "expecting method-set! call",
+        temp.to_string(env));
   }
 
   // the actual type that gets this as a state
@@ -330,21 +331,21 @@ FormElement* rewrite_virtual_defstate(LetElement* elt,
   // should be the state again.
   auto val = strip_cast(mset_mr.maps.forms.at(2)->try_as_single_element());
   if (val->to_string(env) != env.get_variable_name(state_var_from_let_def)) {
-    throw std::runtime_error(
-        fmt::format("Variable name disagreement in virtual defstate: began with {}, but did method "
-                    "set using {}",
-                    val->to_string(env), env.get_variable_name(state_var_from_let_def)));
+    env.func->warnings.warn_and_throw(
+        "Variable name disagreement in virtual defstate: began with {}, but did method "
+        "set using {}",
+        val->to_string(env), env.get_variable_name(state_var_from_let_def));
   }
 
   // we should double check that the type in the defstate is correct
   auto method_info = env.dts->ts.lookup_method(type_name, method_id);
   if (method_info.type.base_type() != "state" ||
       method_info.type.last_arg().base_type() != "_type_") {
-    throw std::runtime_error(
-        fmt::format("Virtual defstate is defining a virtual state in method {} of {}, but the type "
-                    "of this method is {}, which is not a valid virtual state type (must be "
-                    "\"(state ... _type_)\")",
-                    method_info.name, type_name, method_info.type.print()));
+    env.func->warnings.warn_and_throw(
+        "Virtual defstate is defining a virtual state in method {} of {}, but the type "
+        "of this method is {}, which is not a valid virtual state type (must be "
+        "\"(state ... _type_)\")",
+        method_info.name, type_name, method_info.type.print());
   }
 
   {
@@ -352,17 +353,17 @@ FormElement* rewrite_virtual_defstate(LetElement* elt,
     auto parent_type_name = env.dts->ts.lookup_type(type_name)->get_parent();
     if (env.dts->ts.try_lookup_method(parent_type_name, method_info.name, &parent_method_info)) {
       if (!inherit_info) {
-        throw std::runtime_error(
-            fmt::format("Virtual defstate for state {} in type {}: the state was defined in the "
-                        "parent but wasn't inherited.",
-                        expected_state_name, type_name));
+        env.func->warnings.warn_and_throw(
+            "Virtual defstate for state {} in type {}: the state was defined in the "
+            "parent but wasn't inherited.",
+            expected_state_name, type_name);
       }
     } else {
       if (inherit_info) {
-        throw std::runtime_error(
-            fmt::format("Virtual defstate for state {} in type {}: the state wasn't defined in the "
-                        "parent but was inherited.",
-                        expected_state_name, type_name));
+        env.func->warnings.warn_and_throw(
+            "Virtual defstate for state {} in type {}: the state wasn't defined in the "
+            "parent but was inherited.",
+            expected_state_name, type_name);
       }
     }
   }
@@ -371,27 +372,27 @@ FormElement* rewrite_virtual_defstate(LetElement* elt,
   if (inherit_info) {
     auto child_type_info = env.dts->ts.lookup_type(type_name);
     if (child_type_info->get_parent() != inherit_info->parent_type_name) {
-      throw std::runtime_error(fmt::format(
+      env.func->warnings.warn_and_throw(
           "Parent type disagreement in virtual defstate. The state is inherited from {}, but the "
           "parent is {}",
-          inherit_info->parent_type_name, child_type_info->get_parent()));
+          inherit_info->parent_type_name, child_type_info->get_parent());
     }
 
     auto parent_method_info = env.dts->ts.lookup_method(inherit_info->parent_type_name, method_id);
     if (parent_method_info.name != inherit_info->method_name) {
-      throw std::runtime_error(fmt::format(
+      env.func->warnings.warn_and_throw(
           "Disagreement between inherit and define. We inherited from method {}, but redefine {}",
-          inherit_info->method_name, parent_method_info.name));
+          inherit_info->method_name, parent_method_info.name);
     }
   }
 
   // name matches
 
   if (expected_state_name != method_info.name) {
-    throw std::runtime_error(
-        fmt::format("Disagreement between state name and type system name. The state is named {}, "
-                    "but the slot is named {}, defined in type {}",
-                    expected_state_name, method_info.name, method_info.defined_in_type));
+    env.func->warnings.warn_and_throw(
+        "Disagreement between state name and type system name. The state is named {}, "
+        "but the slot is named {}, defined in type {}",
+        expected_state_name, method_info.name, method_info.defined_in_type);
   }
 
   // fmt::print("is a {}\n", typeid(*parent_state->try_as_single_element()).name());
