@@ -261,10 +261,8 @@ TP_Type get_stack_type_at_constant_offset(int offset,
 
     if (offset == structure.hint.stack_offset) {
       // special case just getting the variable
-      if (structure.hint.container_type == StackStructureHint::ContainerType::NONE ||
-          structure.hint.container_type == StackStructureHint::ContainerType::INLINE_ARRAY) {
-        return TP_Type::make_from_ts(coerce_to_reg_type(structure.ref_type));
-      }
+
+      return TP_Type::make_from_ts(coerce_to_reg_type(structure.ref_type));
     }
 
     // Note: GOAL doesn't seem to constant propagate memory access on the stack, so the code
@@ -770,6 +768,20 @@ TypeState AsmOp::propagate_types_internal(const TypeState& input,
     }
   }
 
+  // srl out, bitfield, int
+  if (m_instr.kind == InstructionKind::SRL) {
+    auto type = dts.ts.lookup_type(result.get(m_src[0]->reg()).typespec());
+    auto as_bitfield = dynamic_cast<BitFieldType*>(type);
+    if (as_bitfield) {
+      int sa = m_instr.src[1].get_imm();
+      int offset = sa;
+      int size = 32 - offset;
+      auto field = find_field(dts.ts, as_bitfield, offset, size, {});
+      result.get(m_dst->reg()) = TP_Type::make_from_ts(coerce_to_reg_type(field.type()));
+      return result;
+    }
+  }
+
   if (m_dst.has_value()) {
     auto kind = m_dst->reg().get_kind();
     if (kind == Reg::FPR) {
@@ -979,7 +991,14 @@ TP_Type LoadVarOp::get_src_type(const TypeState& input,
       auto rd = dts.ts.reverse_field_lookup(rd_in);
 
       if (rd.success) {
-        return TP_Type::make_from_ts(coerce_to_reg_type(rd.result_type));
+        if (rd_in.base_type.base_type() == "state" && rd.tokens.size() == 1 &&
+            rd.tokens.front().kind == FieldReverseLookupOutput::Token::Kind::FIELD &&
+            rd.tokens.front().name == "enter" && rd_in.base_type.arg_count() > 0) {
+          // special case for accessing the enter field of state
+          return TP_Type::make_from_ts(state_to_go_function(rd_in.base_type));
+        } else {
+          return TP_Type::make_from_ts(coerce_to_reg_type(rd.result_type));
+        }
       }
     }
 

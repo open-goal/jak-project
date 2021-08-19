@@ -212,7 +212,7 @@
     (new (symbol type basic) _type_ 0)
     (activate (_type_ process-tree basic pointer) process-tree 9)
     (deactivate  (_type_) none 10)
-    (dummy-method-11 (_type_ object) none 11)
+    (copy-defaults! (_type_ res-lump) none 11)
     (run-logic? (_type_) symbol 12)
     (dummy-method () none 13)
    )  
@@ -246,16 +246,9 @@
    (connection-list connectable :inline :offset-assert #x60)
    (stack uint8 :dynamic :offset-assert #x70)
    )
-  
   (:methods
     (new (symbol type basic int) _type_ 0)
-    (activate (_type_ process-tree basic pointer) process-tree 9)
-    (deactivate  (process) none 10)
-    (dummy-method-11 (_type_ object) none 11)
-    (run-logic? (process) symbol 12)
-    (dummy-method () none 13)
-   )  
-  
+   )
   :size-assert #x70
   :method-count-assert 14
   :no-runtime-type ;; already defined by kscheme. Don't do it again.
@@ -371,10 +364,10 @@
 
 ;; A protect frame is a frame which has a cleanup function called on exit.
 (deftype protect-frame (stack-frame)
-  ((exit (function object) :offset-assert 12)) ;; function to call to clean up
+  ((exit (function none) :offset-assert 12)) ;; function to call to clean up
   
   (:methods
-   (new (symbol type (function object)) protect-frame)
+   (new (symbol type (function none)) protect-frame)
    )
   :size-assert 16
   :method-count-assert 9
@@ -422,7 +415,9 @@
   )
 
 (defmacro ppointer->handle (pproc)
-  `(new 'static 'handle :process ,pproc :pid (-> ,pproc 0 pid))
+  `(let ((the-process ,pproc))
+      (new 'static 'handle :process the-process :pid (-> the-process 0 pid))
+      )
   )
 
 (defmacro process->handle (proc)
@@ -443,17 +438,17 @@
   )
 
 (deftype state (protect-frame)
-  ((code  function  :offset-assert 16)
-   (trans (function object)  :offset-assert 20)
-   (post  function  :offset-assert 24)
-   (enter (function object object object object object object object)  :offset-assert 28)
-   (event (function process int symbol event-message-block object)     :offset-assert 32)
+  ((code  function         :offset-assert  16)
+   (trans (function none)  :offset-assert  20)
+   (post  (function none)         :offset-assert  24)
+   (enter function         :offset-assert  28)
+   (event (function process int symbol event-message-block object)  :offset-assert  32)
    )
   (:methods
     (new (symbol type basic function
-          (function object) 
-          (function object object object object object object object)
-          (function object)
+          (function none) 
+          function
+          (function none)
           (function process int symbol event-message-block object)) _type_ 0)
     )
   :method-count-assert 9
@@ -462,7 +457,7 @@
   )
 
 
-;; Not sure what this is, but it's probably used in the event system.
+;; this is used for the event system to pass around parameters from one process to another.
 (deftype event-message-block (structure)
   ((to process :offset-assert 0)
    (from process :offset-assert 4)

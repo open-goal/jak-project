@@ -103,6 +103,8 @@ class BitfieldAccessElement : public FormElement {
   void push_pcpyud(const TypeSystem& ts, FormPool& pool, const Env& env);
   std::string debug_print(const Env& env) const;
   bool has_pcpyud() const { return m_got_pcpyud; }
+  const std::vector<BitfieldManip>& steps() const { return m_steps; }
+  std::optional<BitField> get_set_field_0(const TypeSystem& ts) const;
 
  private:
   bool m_got_pcpyud = false;

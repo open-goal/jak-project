@@ -1,6 +1,7 @@
 #pragma once
 #include <string>
 #include <vector>
+#include <stdexcept>
 #include "common/util/assert.h"
 
 #include "third-party/fmt/core.h"
@@ -13,6 +14,13 @@ class DecompWarnings {
   template <typename... Args>
   void general_warning(const std::string& str, Args&&... args) {
     warning(Warning::Kind::GENERAL, str, std::forward<Args>(args)...);
+  }
+
+  template <typename... Args>
+  void warn_and_throw(const std::string& str, Args&&... args) {
+    auto text = fmt::format(str, std::forward<Args>(args)...);
+    warning(Warning::Kind::GENERAL, text);
+    throw std::runtime_error(text);
   }
 
   template <typename... Args>

@@ -654,9 +654,9 @@ void SimpleExpressionElement::update_from_stack_float_2(const Env& env,
   } else {
     auto type0 = env.get_types_before_op(m_my_idx).get(m_expr.get_arg(0).var().reg());
     auto type1 = env.get_types_before_op(m_my_idx).get(m_expr.get_arg(1).var().reg());
-    throw std::runtime_error(
-        fmt::format("Floating point math attempted on invalid types: {} and {} in op {}.",
-                    type0.print(), type1.print(), to_string(env)));
+    throw std::runtime_error(fmt::format(
+        "[OP: {}] - Floating point math attempted on invalid types: {} and {} in op {}.", m_my_idx,
+        type0.print(), type1.print(), to_string(env)));
   }
 }
 
@@ -910,11 +910,14 @@ void SimpleExpressionElement::update_from_stack_add_i(const Env& env,
 
       if (idx_of_success >= 0) {
         auto& rd_ok = rd.results.at(idx_of_success);
+        auto stride_matcher = Matcher::match_or(
+            {Matcher::cast("uint", Matcher::integer(rd_in.stride)),
+             Matcher::cast("int", Matcher::integer(rd_in.stride)), Matcher::integer(rd_in.stride)});
         auto arg1_matcher = Matcher::match_or(
             {Matcher::op(GenericOpMatcher::fixed(FixedOperatorKind::MULTIPLICATION),
-                         {Matcher::any(0), Matcher::integer(rd_in.stride)}),
+                         {Matcher::any(0), stride_matcher}),
              Matcher::op(GenericOpMatcher::fixed(FixedOperatorKind::MULTIPLICATION),
-                         {Matcher::integer(rd_in.stride), Matcher::any(0)})});
+                         {stride_matcher, Matcher::any(0)})});
         auto match_result = match(arg1_matcher, args.at(1));
         if (match_result.matched) {
           bool used_index = false;
@@ -2140,6 +2143,23 @@ void SetFormFormElement::push_to_stack(const Env& env, FormPool& pool, FormStack
     fmt::print("invalid bf set: {}\n", src_as_bf_set->to_string(env));
   }
 
+  // setting a bitfield to zero is wonky.
+  auto bfa = dynamic_cast<BitfieldAccessElement*>(m_src->try_as_single_element());
+  if (bfa) {
+    auto zero_set = bfa->get_set_field_0(env.dts->ts);
+    if (zero_set) {
+      auto field_token = DerefToken::make_field_name(zero_set->name());
+      auto loc_elt = pool.alloc_element<DerefElement>(m_dst, false, field_token);
+      loc_elt->inline_nested();
+      auto loc = pool.alloc_single_form(nullptr, loc_elt);
+      loc->parent_element = this;
+      m_dst = loc;
+      auto zero = SimpleAtom::make_int_constant(0);
+      auto zero_form = pool.alloc_single_element_form<SimpleAtomElement>(nullptr, zero);
+      m_src = zero_form;
+    }
+  }
+
   const std::pair<FixedOperatorKind, FixedOperatorKind> in_place_ops[] = {
       {FixedOperatorKind::ADDITION, FixedOperatorKind::ADDITION_IN_PLACE},
       {FixedOperatorKind::ADDITION_PTR, FixedOperatorKind::ADDITION_PTR_IN_PLACE},
@@ -2585,6 +2605,22 @@ void FunctionCallElement::update_from_stack(const Env& env,
   FormElement* new_form = nullptr;
 
   if (go_next_state) {
+    // see if we're a virtual go
+    Matcher virtual_go_state_matcher =
+        Matcher::op(GenericOpMatcher::fixed(FixedOperatorKind::METHOD_OF_OBJECT),
+                    {Matcher::any(0), Matcher::any_constant_token(1)});
+    auto virtual_go_mr = match(virtual_go_state_matcher, go_next_state);
+    if (virtual_go_mr.matched && virtual_go_mr.maps.forms.at(0)->to_string(env) == "self") {
+      arg_forms.insert(arg_forms.begin(), pool.alloc_single_element_form<ConstantTokenElement>(
+                                              nullptr, virtual_go_mr.maps.strings.at(1)));
+      auto go_form = pool.alloc_element<GenericElement>(
+          GenericOperator::make_function(
+              pool.alloc_single_element_form<ConstantTokenElement>(nullptr, "go-virtual")),
+          arg_forms);
+      result->push_back(go_form);
+      return;
+    }
+
     arg_forms.insert(arg_forms.begin(), go_next_state);
     auto go_form = pool.alloc_element<GenericElement>(
         GenericOperator::make_function(
@@ -2889,16 +2925,51 @@ void DerefElement::inline_nested() {
 ///////////////////
 
 void UntilElement::push_to_stack(const Env& env, FormPool& pool, FormStack& stack) {
+  // in asm:
+  // LTOP:
+  //  body
+  //  condition
+  //  jump to top
+  // so we can end up getting the body/condition wrong.
+  // the way the CfgPass works means that we put too much in condition.
+  // we can safely move stuff from the top of condition to the bottom of body.
+
   mark_popped();
-  for (auto form : {condition, body}) {
-    FormStack temp_stack(false);
-    for (auto& entry : form->elts()) {
-      entry->push_to_stack(env, pool, temp_stack);
+
+  std::vector<FormElement*> condition_to_body;
+  {
+    FormStack condition_temp_stack(false);
+    for (auto& entry : condition->elts()) {
+      entry->push_to_stack(env, pool, condition_temp_stack);
     }
-    auto new_entries = temp_stack.rewrite(pool, env);
-    form->clear();
+    condition_to_body = condition_temp_stack.rewrite(pool, env);
+    condition->clear();
+    assert(!condition_to_body.empty());
+    condition->push_back(condition_to_body.back());
+    condition_to_body.pop_back();
+  }
+
+  {
+    FormStack body_temp_stack(false);
+    for (auto& entry : body->elts()) {
+      entry->push_to_stack(env, pool, body_temp_stack);
+    }
+    auto new_entries = body_temp_stack.rewrite(pool, env);
+    body->clear();
+
     for (auto e : new_entries) {
-      form->push_back(e);
+      if (!dynamic_cast<EmptyElement*>(e)) {
+        body->push_back(e);
+      }
+    }
+    for (auto e : condition_to_body) {
+      if (!dynamic_cast<EmptyElement*>(e)) {
+        body->push_back(e);
+      }
+    }
+
+    if (body->size() == 0) {
+      body->push_back(pool.alloc_element<EmptyElement>());
     }
   }
 
@@ -4867,6 +4938,15 @@ void GetSymbolStringPointer::update_from_stack(const Env&,
                                                FormStack&,
                                                std::vector<FormElement*>* result,
                                                bool) {
+  mark_popped();
+  result->push_back(this);
+}
+
+void DefstateElement::update_from_stack(const Env&,
+                                        FormPool&,
+                                        FormStack&,
+                                        std::vector<FormElement*>* result,
+                                        bool) {
   mark_popped();
   result->push_back(this);
 }

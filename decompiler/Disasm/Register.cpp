@@ -20,7 +20,7 @@ const bool allowed_local_gprs[Reg::MAX_GPR] = {
     true /*S0*/,  true /*S1*/,  true /*S2*/,  true /*S3*/,
     true /*S4*/,  true /*S5*/,  false /*S6*/, false /*S7*/,
     true /*T8*/,  true /*T9*/,  false /*K0*/, false /*K1*/,
-    true /*GP*/,  true /*SP*/,  false /*FP*/, false /*RA*/
+    true /*GP*/,  true /*SP*/,  false /*FP*/, true /*RA*/
 };
 // clang-format on
 }  // namespace Reg

@@ -114,6 +114,13 @@ class Vector {
     return result;
   }
 
+  Vector<T, Size> cross(const Vector<T, Size>& other) const {
+    static_assert(Size == 3, "Size for cross");
+    Vector<T, Size> result = {y() * other.z() - z() * other.y(), z() * other.x() - x() * other.z(),
+                              x() * other.y() - y() * other.x()};
+    return result;
+  }
+
   Vector<T, Size> normalized(const T& norm = T(1)) const { return (*this) * (norm / length()); }
 
   void normalize(const T& norm = T(1)) { *this = normalized(norm); }
@@ -125,6 +132,18 @@ class Vector {
     }
     result.pop_back();
     return result + "]";
+  }
+
+  T* data() { return m_data; }
+  const T* data() const { return m_data; }
+
+  template <typename U>
+  Vector<U, Size> cast() {
+    Vector<U, Size> result;
+    for (int i = 0; i < Size; i++) {
+      result[i] = (U)m_data[i];
+    }
+    return result;
   }
 
  private:

@@ -605,6 +605,13 @@ class Compiler {
   Val* compile_defenum(const goos::Object& form, const goos::Object& rest, Env* env);
   Val* compile_size_of(const goos::Object& form, const goos::Object& rest, Env* env);
   Val* compile_psize_of(const goos::Object& form, const goos::Object& rest, Env* env);
+
+  // State
+  Val* compile_define_state_hook(const goos::Object& form, const goos::Object& rest, Env* env);
+  Val* compile_define_virtual_state_hook(const goos::Object& form,
+                                         const goos::Object& rest,
+                                         Env* env);
+  Val* compile_go_hook(const goos::Object& form, const goos::Object& rest, Env* env);
 };
 
 extern const std::unordered_map<

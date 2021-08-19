@@ -39,6 +39,7 @@
   )
 
 ;; definition for method 32 of type evilbro
+;; INFO: Return type mismatch spool-anim vs basic.
 (defmethod play-anim! evilbro ((obj evilbro) (arg0 symbol))
   (with-pp
    (cond
@@ -85,65 +86,121 @@
   )
 
 ;; definition for method 31 of type evilbro
-(defmethod get-third-art-element evilbro ((obj evilbro))
+(defmethod get-art-elem evilbro ((obj evilbro))
   (-> obj draw art-group data 3)
   )
 
 ;; failed to figure out what this is:
-(let
-  ((gp-0
-    (new 'static 'state
-     :name 'play-anim
-     :next #f
-     :exit #f
-     :code #f
-     :trans #f
-     :post #f
-     :enter #f
-     :event #f
-     )
+(defstate play-anim (evilbro)
+  :virtual #t
+  :exit
+  (behavior ()
+   (let ((a1-0 (new 'stack-no-clear 'event-message-block)))
+    (set! (-> a1-0 from) self)
+    (set! (-> a1-0 num-params) 0)
+    (set! (-> a1-0 message) 'end-mode)
+    (send-event-function (-> self evilsis ppointer 3) a1-0)
     )
-   )
-  (inherit-state
-   gp-0
-   (the-as state (method-of-type process-taskable play-anim))
-   )
-  (method-set! evilbro 27 (the-as function gp-0))
-  (set!
-   (-> gp-0 exit)
-   (lambda :behavior evilbro
-    ()
-    (let ((a1-0 (new 'stack-no-clear 'event-message-block)))
-     (set! (-> a1-0 from) self)
-     (set! (-> a1-0 num-params) 0)
-     (set! (-> a1-0 message) 'end-mode)
-     (send-event-function (-> self evilsis ppointer 3) a1-0)
-     )
-    ((-> (the-as state (method-of-type process-taskable play-anim)) exit))
-    )
+   ((-> (method-of-type process-taskable play-anim) exit))
+   (none)
    )
   )
 
 ;; failed to figure out what this is:
-(let
-  ((gp-1
-    (new 'static 'state
-     :name 'idle
-     :next #f
-     :exit #f
-     :code #f
-     :trans #f
-     :post #f
-     :enter #f
-     :event #f
-     )
+(defstate idle (evilbro)
+  :virtual #t
+  :code
+  (behavior ()
+   (if (!= (if (> (-> self skel active-channels) 0)
+            (-> self skel root-channel 0 frame-group)
+            )
+        (get-art-elem self)
+        )
+    (ja-channel-push! 1 15)
     )
-   )
-  (inherit-state gp-1 (the-as state (method-of-type process-taskable idle)))
-  (method-set! evilbro 30 (the-as function gp-1))
-  (set!
-   (-> gp-1 code)
-   (lambda :behavior evilbro () (if (!= (if (> (-> self skel active-channels) 0)
+   (while #t
+    (let ((a0-7 (-> self skel root-channel 0)))
+     (set!
+      (-> a0-7 frame-group)
+      (the-as art-joint-anim (-> self draw art-group data 3))
+      )
+     (set!
+      (-> a0-7 param 0)
+      (the
+       float
+       (+
+        (->
+         (the-as art-joint-anim (-> self draw art-group data 3))
+         data
+         0
+         length
+         )
+        -1
+        )
+       )
+      )
+     (set! (-> a0-7 param 1) 1.0)
+     (set! (-> a0-7 frame-num) 0.0)
+     (joint-control-channel-group!
+      a0-7
+      (the-as art-joint-anim (-> self draw art-group data 3))
+      num-func-seek!
+      )
+     )
+    (until (ja-done? 0)
+     (suspend)
+     (let ((a0-8 (-> self skel root-channel 0)))
+      (set!
+       (-> a0-8 param 0)
+       (the float (+ (-> a0-8 frame-group data 0 length) -1))
+       )
+      (set! (-> a0-8 param 1) 1.0)
+      (joint-control-channel-group-eval!
+       a0-8
+       (the-as art-joint-anim #f)
+       num-func-seek!
+       )
+      )
+     )
+    (let ((gp-0 (-> *display* base-frame-counter)))
+     (while (let* ((s5-0 (-> *display* base-frame-counter))
+                   (f30-0 300.0)
+                   (f28-0 0.16)
+                   (f26-0 0.17000002)
+                   (v1-29
+                    (/ (the-as int (rand-uint31-gen *random-generator*)) 256)
+                    )
+                   (v1-30 (the-as number (logior #x3f800000 v1-29)))
+                   )
+             (<
+              (the-as
+               int
+               (-
+                s5-0
+                (the-as
+                 uint
+                 (the
+                  int
+                  (* f30-0 (+ f28-0 (* f26-0 (+ -1.0 (the-as float v1-30)))))
+                  )
+                 )
+                )
+               )
+              (the-as int gp-0)
+              )
+             )
+      (suspend)
+      )
+     )
+    (let ((gp-1 (-> self skel root-channel 0)))
+     (set! (-> gp-1 frame-group) (if (> (-> self skel active-channels) 0)
+                                  (-> self skel root-channel 0 frame-group)
+                                  )
+      )
+     (set! (-> gp-1 param 0) (ja-aframe 0.0 0))
+     (set! (-> gp-1 param 1) 1.0)
+     (set! (-> gp-1 frame-num) (ja-aframe 16.0 0))
+     (joint-control-channel-group! gp-1 (if (> (-> self skel active-channels) 0)
                                          (->
                                           self
                                           skel
@@ -152,151 +209,53 @@
                                           frame-group
                                           )
                                          )
-                                     (get-third-art-element self)
-                                     )
-                                 (ja-channel-push! 1 15)
-                                 )
-    (while #t
-     (let ((a0-7 (-> self skel root-channel 0)))
-      (set!
-       (-> a0-7 frame-group)
-       (the-as art-joint-anim (-> self draw art-group data 3))
-       )
-      (set!
-       (-> a0-7 param 0)
-       (the
-        float
-        (+
-         (->
-          (the-as art-joint-anim (-> self draw art-group data 3))
-          data
-          0
-          length
-          )
-         -1
-         )
-        )
-       )
-      (set! (-> a0-7 param 1) 1.0)
-      (set! (-> a0-7 frame-num) 0.0)
-      (joint-control-channel-group!
-       a0-7
-       (the-as art-joint-anim (-> self draw art-group data 3))
+      num-func-seek!
+      )
+     )
+    (until (ja-done? 0)
+     (suspend)
+     (let ((gp-2 (-> self skel root-channel 0)))
+      (set! (-> gp-2 param 0) (ja-aframe 0.0 0))
+      (set! (-> gp-2 param 1) 1.0)
+      (joint-control-channel-group-eval!
+       gp-2
+       (the-as art-joint-anim #f)
        num-func-seek!
-       )
-      )
-     (until (begin
-             (suspend)
-             (let ((a0-8 (-> self skel root-channel 0)))
-              (set!
-               (-> a0-8 param 0)
-               (the float (+ (-> a0-8 frame-group data 0 length) -1))
-               )
-              (set! (-> a0-8 param 1) 1.0)
-              (joint-control-channel-group-eval!
-               a0-8
-               (the-as art-joint-anim #f)
-               num-func-seek!
-               )
-              )
-             (ja-done? 0)
-             )
-      (empty)
-      )
-     (let ((gp-0 (-> *display* base-frame-counter)))
-      (while (let* ((s5-0 (-> *display* base-frame-counter))
-                    (f30-0 300.0)
-                    (f28-0 0.16)
-                    (f26-0 0.17000002)
-                    (v1-29
-                     (/ (the-as int (rand-uint31-gen *random-generator*)) 256)
-                     )
-                    (v1-30 (the-as number (logior #x3f800000 v1-29)))
-                    )
-              (<
-               (the-as
-                int
-                (-
-                 s5-0
-                 (the-as
-                  uint
-                  (the
-                   int
-                   (* f30-0 (+ f28-0 (* f26-0 (+ -1.0 (the-as float v1-30)))))
-                   )
-                  )
-                 )
-                )
-               (the-as int gp-0)
-               )
-              )
-       (suspend)
-       )
-      )
-     (let ((gp-1 (-> self skel root-channel 0)))
-      (set! (-> gp-1 frame-group) (if (> (-> self skel active-channels) 0)
-                                   (-> self skel root-channel 0 frame-group)
-                                   )
-       )
-      (set! (-> gp-1 param 0) (ja-aframe 0.0 0))
-      (set! (-> gp-1 param 1) 1.0)
-      (set! (-> gp-1 frame-num) (ja-aframe 16.0 0))
-      (joint-control-channel-group!
-       gp-1
-       (if (> (-> self skel active-channels) 0)
-        (-> self skel root-channel 0 frame-group)
-        )
-       num-func-seek!
-       )
-      )
-     (until (begin
-             (suspend)
-             (let ((gp-2 (-> self skel root-channel 0)))
-              (set! (-> gp-2 param 0) (ja-aframe 0.0 0))
-              (set! (-> gp-2 param 1) 1.0)
-              (joint-control-channel-group-eval!
-               gp-2
-               (the-as art-joint-anim #f)
-               num-func-seek!
-               )
-              )
-             (ja-done? 0)
-             )
-      (empty)
-      )
-     (let ((gp-3 (-> *display* base-frame-counter)))
-      (while (let* ((s5-1 (-> *display* base-frame-counter))
-                    (f30-1 300.0)
-                    (f28-1 0.16)
-                    (f26-1 0.17000002)
-                    (v1-54
-                     (/ (the-as int (rand-uint31-gen *random-generator*)) 256)
-                     )
-                    (v1-55 (the-as number (logior #x3f800000 v1-54)))
-                    )
-              (<
-               (the-as
-                int
-                (-
-                 s5-1
-                 (the-as
-                  uint
-                  (the
-                   int
-                   (* f30-1 (+ f28-1 (* f26-1 (+ -1.0 (the-as float v1-55)))))
-                   )
-                  )
-                 )
-                )
-               (the-as int gp-3)
-               )
-              )
-       (suspend)
        )
       )
      )
-    (none)
+    (let ((gp-3 (-> *display* base-frame-counter)))
+     (while (let* ((s5-1 (-> *display* base-frame-counter))
+                   (f30-1 300.0)
+                   (f28-1 0.16)
+                   (f26-1 0.17000002)
+                   (v1-54
+                    (/ (the-as int (rand-uint31-gen *random-generator*)) 256)
+                    )
+                   (v1-55 (the-as number (logior #x3f800000 v1-54)))
+                   )
+             (<
+              (the-as
+               int
+               (-
+                s5-1
+                (the-as
+                 uint
+                 (the
+                  int
+                  (* f30-1 (+ f28-1 (* f26-1 (+ -1.0 (the-as float v1-55)))))
+                  )
+                 )
+                )
+               )
+              (the-as int gp-3)
+              )
+             )
+      (suspend)
+      )
+     )
     )
+   (none)
    )
   )
 
@@ -308,7 +267,7 @@
    (-> obj evilsis)
    (the-as evilsis (entity-actor-lookup arg0 'alt-actor 0))
    )
-  ((method-of-object obj dummy-42))
+  (dummy-42 obj)
   (none)
   )
 
@@ -348,7 +307,7 @@
   )
 
 ;; definition for method 32 of type evilsis
-;; INFO: Return type mismatch art-element vs spool-anim.
+;; INFO: Return type mismatch art-element vs basic.
 (defmethod play-anim! evilsis ((obj evilsis) (arg0 symbol))
   (if arg0
    (format
@@ -358,38 +317,22 @@
     (task-status->string (the-as task-status (current-status (-> obj tasks))))
     )
    )
-  (the-as spool-anim (get-third-art-element obj))
+  (get-art-elem obj)
   )
 
 ;; definition for method 31 of type evilsis
-(defmethod get-third-art-element evilsis ((obj evilsis))
+(defmethod get-art-elem evilsis ((obj evilsis))
   (-> obj draw art-group data 3)
   )
 
 ;; failed to figure out what this is:
-(let
-  ((gp-2
-    (new 'static 'state
-     :name 'idle
-     :next #f
-     :exit #f
-     :code #f
-     :trans #f
-     :post #f
-     :enter #f
-     :event #f
-     )
-    )
-   )
-  (inherit-state gp-2 (the-as state (method-of-type process-taskable idle)))
-  (method-set! evilsis 30 (the-as function gp-2))
-  (set!
-   (-> gp-2 trans)
-   (lambda :behavior evilbro
-    ()
-    (set! (-> self will-talk) #f)
-    ((-> (the-as state (method-of-type process-taskable idle)) trans))
-    )
+(defstate idle (evilsis)
+  :virtual #t
+  :trans
+  (behavior ()
+   (set! (-> self will-talk) #f)
+   ((-> (method-of-type process-taskable idle) trans))
+   (none)
    )
   )
 
@@ -397,7 +340,7 @@
 (defmethod copy-defaults! evilsis ((obj evilsis) (arg0 res-lump))
   (dummy-40 obj arg0 *evilsis-intro-sg* 3 0 (new 'static 'vector :w 4096.0) 5)
   (set! (-> obj tasks) (get-task-control (game-task leaving-misty)))
-  ((method-of-object obj dummy-42))
+  (dummy-42 obj)
   (none)
   )
 
