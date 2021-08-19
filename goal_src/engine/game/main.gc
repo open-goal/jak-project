@@ -84,17 +84,11 @@
      ;; request the pause mask to be set in prevent-from-run.
      ;; this will block any process with pause from running, pausing most game objects.
      (if (not *debug-pause*)
-         (set! (-> *setting-control* default process-mask)
-               (logior (-> *setting-control* default process-mask) (process-mask pause))
-               )
+         (logior! (-> *setting-control* default process-mask) (process-mask pause))
          )
 
      ;; allow the menu to run.
-     (set! (-> *setting-control* default process-mask)
-           (logand (lognot (process-mask menu))
-                   (-> *setting-control* default process-mask)
-                   )
-           )
+     (logclear! (-> *setting-control* default process-mask) (process-mask menu))
 
      ;; ??
      (set! *pause-lock* #f)
@@ -103,25 +97,14 @@
      )
     (('menu)
      ;; I believe these masks are just to make the progress go away work.
-     (set! (-> *setting-control* default process-mask)
-           (logior (-> *setting-control* default process-mask) (process-mask menu))
-           )
-     (set! (-> *setting-control* default process-mask)
-           (logand (lognot (process-mask pause progress))
-                   (-> *setting-control* default process-mask)
-                   )
-           )
+     (logior! (-> *setting-control* default process-mask) (process-mask menu))
+     (logclear! (-> *setting-control* default process-mask) (process-mask pause progress))
      (set! *pause-lock* #f)
      ;;(hide-progress-screen) TODO
      )
     (('progress)
      ;; allow menu to run while in progress.
-     (set! (-> *setting-control* default process-mask)
-           (logand
-            (lognot (process-mask menu))
-            (-> *setting-control* default process-mask)
-            )
-           )
+     (logclear! (-> *setting-control* default process-mask) (process-mask menu))
 
      ;; activate the progress menu.
      (when (not *progress-process*)
@@ -133,11 +116,7 @@
      )
     (('game)
      ;; allow pausable/menu to run.
-     (set! (-> *setting-control* default process-mask)
-           (logand (lognot (process-mask pause menu))
-                   (-> *setting-control* default process-mask)
-                   )
-           )
+     (logclear! (-> *setting-control* default process-mask) (process-mask pause menu))
      ;; (sound-group-continue (the-as uint 255)) TODO (we need to flush sound commands)
      ;;(hide-progress-screen) TODO
      )
