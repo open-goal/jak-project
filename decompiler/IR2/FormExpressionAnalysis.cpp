@@ -3549,6 +3549,24 @@ FormElement* ConditionElement::make_zero_check_generic(const Env& env,
   return pool.alloc_element<GenericElement>(GenericOperator::make_compare(m_kind), source_forms);
 }
 
+FormElement* try_make_nonzero_logtest(Form* in, FormPool& pool) {
+  /*
+ (defmacro logtest? (a b)
+   "does a have any of the bits in b?"
+   `(nonzero? (logand ,a ,b))
+   )
+ */
+  auto logand_matcher = Matcher::op(GenericOpMatcher::fixed(FixedOperatorKind::LOGAND),
+                                    {Matcher::any(0), Matcher::any(1)});
+  auto mr_logand = match(logand_matcher, in);
+  if (mr_logand.matched) {
+    return pool.alloc_element<GenericElement>(
+        GenericOperator::make_fixed(FixedOperatorKind::LOGTEST), mr_logand.maps.forms.at(0),
+        mr_logand.maps.forms.at(1));
+  }
+  return nullptr;
+}
+
 FormElement* ConditionElement::make_nonzero_check_generic(const Env& env,
                                                           FormPool& pool,
                                                           const std::vector<Form*>& source_forms,
@@ -3578,19 +3596,9 @@ FormElement* ConditionElement::make_nonzero_check_generic(const Env& env,
                                               std::vector<Form*>{mr.maps.forms.at(0), value_form});
   }
 
-  /*
-   (defmacro logtest? (a b)
-     "does a have any of the bits in b?"
-     `(nonzero? (logand ,a ,b))
-     )
-   */
-  auto logand_matcher = Matcher::op(GenericOpMatcher::fixed(FixedOperatorKind::LOGAND),
-                                    {Matcher::any(0), Matcher::any(1)});
-  auto mr_logand = match(logand_matcher, source_forms.at(0));
-  if (mr_logand.matched) {
-    return pool.alloc_element<GenericElement>(
-        GenericOperator::make_fixed(FixedOperatorKind::LOGTEST), mr_logand.maps.forms.at(0),
-        mr_logand.maps.forms.at(1));
+  auto as_logand = try_make_nonzero_logtest(source_forms.at(0), pool);
+  if (as_logand) {
+    return as_logand;
   }
 
   return pool.alloc_element<GenericElement>(GenericOperator::make_compare(m_kind), source_forms);
@@ -3967,7 +3975,8 @@ void ReturnElement::push_to_stack(const Env& env, FormPool& pool, FormStack& sta
   return_code->push_back(new_entries.back());
   if (var) {
     const auto& func_type = env.func->type.last_arg();
-    if (!env.dts->ts.tc(func_type, env.get_variable_type(*var, false))) {
+    return_type = env.get_variable_type(*var, false);
+    if (func_type != return_type) {
       auto as_cast = return_code->try_as_element<CastElement>();
       if (as_cast) {
         return_code->clear();
@@ -4643,13 +4652,25 @@ void ConditionalMoveFalseElement::push_to_stack(const Env& env, FormPool& pool, 
     stack.push_form_element(this, true);
     return;
   }
-  stack.push_value_to_reg(dest,
-                          pool.alloc_single_element_form<GenericElement>(
-                              nullptr,
-                              GenericOperator::make_compare(on_zero ? IR2_Condition::Kind::NONZERO
-                                                                    : IR2_Condition::Kind::ZERO),
-                              std::vector<Form*>{popped.at(1)}),
-                          true, TypeSpec("symbol"));
+
+  Form* val = nullptr;
+
+  if (!val && on_zero) {
+    auto as_logtest = try_make_nonzero_logtest(popped.at(1), pool);
+    if (as_logtest) {
+      val = pool.alloc_single_form(nullptr, as_logtest);
+    }
+  }
+
+  if (!val) {
+    val = pool.alloc_single_element_form<GenericElement>(
+        nullptr,
+        GenericOperator::make_compare(on_zero ? IR2_Condition::Kind::NONZERO
+                                              : IR2_Condition::Kind::ZERO),
+        std::vector<Form*>{popped.at(1)});
+  }
+
+  stack.push_value_to_reg(dest, val, true, TypeSpec("symbol"));
 }
 
 ///////////////////////////
@@ -4949,6 +4970,32 @@ void DefstateElement::update_from_stack(const Env&,
                                         bool) {
   mark_popped();
   result->push_back(this);
+}
+
+void LabelDerefElement::update_from_stack(const Env& env,
+                                          FormPool& pool,
+                                          FormStack& stack,
+                                          std::vector<FormElement*>* result,
+                                          bool allow_side_effects) {
+  mark_popped();
+  auto label_var = pop_to_forms({m_var}, env, pool, stack, allow_side_effects).at(0);
+  auto atom = form_as_atom(label_var);
+  if (!atom || !atom->is_label()) {
+    throw std::runtime_error(fmt::format("LabelDerefElement didn't get a label, got {} instead",
+                                         label_var->to_string(env)));
+  }
+
+  if (atom->label() != m_lid) {
+    throw std::runtime_error(
+        fmt::format("Label ID error in LabelDerefElement: {} vs {}", atom->label(), m_lid));
+  }
+
+  auto as_label = make_label_load(m_lid, env, pool, m_size, m_load_kind);
+  if (!as_label) {
+    throw std::runtime_error(
+        fmt::format("Unable to figure out label load for {}\n", env.file->labels.at(m_lid).name));
+  }
+  result->push_back(as_label);
 }
 
 void LabelElement::push_to_stack(const Env&, FormPool&, FormStack& stack) {

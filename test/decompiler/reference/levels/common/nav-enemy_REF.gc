@@ -131,11 +131,7 @@
      obj
      )
     )
-   (if
-    (and
-     (nonzero? (-> obj neck))
-     (nonzero? (logand (-> obj nav-enemy-flags) #x4000))
-     )
+   (if (and (nonzero? (-> obj neck)) (logtest? (-> obj nav-enemy-flags) #x4000))
     (set-target!
      (-> obj neck)
      (target-pos (-> obj nav-info player-look-at-joint))
@@ -259,10 +255,11 @@
     (set! (-> a1-1 mode) arg2)
     (set! (-> v1-0 param 1) (the-as uint a1-1))
     )
-   (when (send-event-function arg0 v1-0)
-    (dummy-54 (-> self collide-info) 2 0)
-    (logior! (-> self nav-enemy-flags) 256)
-    #t
+   (the-as object (when (send-event-function arg0 v1-0)
+                   (dummy-54 (-> self collide-info) 2 0)
+                   (logior! (-> self nav-enemy-flags) 256)
+                   #t
+                   )
     )
    )
   )
@@ -456,7 +453,7 @@ nav-enemy-default-event-handler
    (if
     (or
      (logtest? (-> obj nav-enemy-flags) 128)
-     (nonzero? (logand #x80000 (-> obj nav flags)))
+     (logtest? #x80000 (-> obj nav flags))
      )
     (seek-to-point-toward-point!
      (-> obj collide-info)
@@ -487,7 +484,7 @@ nav-enemy-default-event-handler
     8192.0
     #f
     (-> obj nav-info hover-if-no-ground)
-    (nonzero? (logand (-> obj nav-enemy-flags) #x8000))
+    (logtest? (-> obj nav-enemy-flags) #x8000)
     )
    (dummy-58 (-> obj collide-info) (-> obj collide-info transv))
    )
@@ -600,7 +597,7 @@ nav-enemy-default-event-handler
 ;; definition for function nav-enemy-face-player-post
 ;; INFO: Return type mismatch int vs none.
 (defbehavior nav-enemy-face-player-post nav-enemy ()
-  (if (and *target* (nonzero? (logand (-> self nav-enemy-flags) 16)))
+  (if (and *target* (logtest? (-> self nav-enemy-flags) 16))
    (seek-to-point-toward-point!
     (-> self collide-info)
     (target-pos 0)
@@ -660,10 +657,7 @@ nav-enemy-default-event-handler
 ;; INFO: Return type mismatch int vs none.
 (defbehavior nav-enemy-neck-control-inactive nav-enemy ()
   (when
-   (and
-    (nonzero? (-> self neck))
-    (nonzero? (logand (-> self nav-enemy-flags) #x4000))
-    )
+   (and (nonzero? (-> self neck)) (logtest? (-> self nav-enemy-flags) #x4000))
    (set! (-> self nav-enemy-flags) (logand -16385 (-> self nav-enemy-flags)))
    (shut-down! (-> self neck))
    )
@@ -1087,7 +1081,7 @@ nav-enemy-default-event-handler
      (nonzero? (-> obj skel))
      (!= (-> obj skel root-channel 0) (-> obj skel channel))
      )
-    (and (nonzero? (-> obj draw)) (nonzero? (logand (-> obj draw status) 16)))
+    (and (nonzero? (-> obj draw)) (logtest? (-> obj draw status) 16))
     )
    )
   )
@@ -1139,7 +1133,7 @@ nav-enemy-default-event-handler
       (the-as int (-> self state-timeout))
       )
      (nonzero? (-> self draw))
-     (nonzero? (logand (-> self draw status) 8))
+     (logtest? (-> self draw status) 8)
      )
     (go-virtual nav-enemy-patrol)
     )
@@ -1227,11 +1221,7 @@ nav-enemy-default-event-handler
        )
       (the-as int (-> self state-timeout))
       )
-     (if
-      (and
-       (nonzero? (-> self draw))
-       (nonzero? (logand (-> self draw status) 8))
-       )
+     (if (and (nonzero? (-> self draw)) (logtest? (-> self draw status) 8))
       (set! (-> self free-time) (-> *display* base-frame-counter))
       )
      (if
@@ -1903,7 +1893,7 @@ nav-enemy-default-event-handler
     (if
      (or
       (not (TODO-RENAME-46 self (-> self nav-info stop-chase-distance)))
-      (nonzero? (logand (-> self nav-enemy-flags) 8192))
+      (logtest? (-> self nav-enemy-flags) 8192)
       )
      (go-virtual nav-enemy-stop-chase)
      )
@@ -2198,7 +2188,7 @@ nav-enemy-default-event-handler
          )
         )
        )
-      (nonzero? (logand #x20000 (-> self nav flags)))
+      (logtest? #x20000 (-> self nav flags))
       )
      (go-virtual nav-enemy-give-up)
      )
@@ -2529,7 +2519,7 @@ nav-enemy-default-event-handler
      (logior! (-> self nav-enemy-flags) 1024)
      )
     )
-   (when (and arg1 (nonzero? (logand (-> self nav-enemy-flags) 1024)))
+   (when (and arg1 (logtest? (-> self nav-enemy-flags) 1024))
     (set! (-> self nav-enemy-flags) (logand -513 (-> self nav-enemy-flags)))
     (set! f30-0 2048.0)
     )
@@ -2850,7 +2840,7 @@ nav-enemy-default-event-handler
   (if
    (or
     (logtest? (-> self nav-enemy-flags) 128)
-    (nonzero? (logand #x80000 (-> self nav flags)))
+    (logtest? #x80000 (-> self nav flags))
     )
    (seek-to-point-toward-point!
     (-> self collide-info)
@@ -2915,7 +2905,7 @@ nav-enemy-default-event-handler
        )
       150
       )
-     (nonzero? (logand #x80000 (-> self nav flags)))
+     (logtest? #x80000 (-> self nav flags))
      )
     (go-virtual nav-enemy-chase)
     )
@@ -3164,7 +3154,7 @@ nav-enemy-default-event-handler
    )
   (logior!
    (-> obj nav flags)
-   (nav-control-flags display-marks bit0 bit3 bit5 bit6 bit7)
+   (nav-control-flags display-marks bit3 bit5 bit6 bit7)
    )
   (set! (-> obj nav gap-event) 'jump)
   (dummy-26 (-> obj nav))

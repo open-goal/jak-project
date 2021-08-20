@@ -107,50 +107,46 @@
 ;; INFO: Return type mismatch int vs none.
 (defmethod TODO-RENAME-39 nav-enemy ((obj nav-enemy))
   (when
-   (and
-    (logtest? (-> obj nav-enemy-flags) 256)
-    (or
-     (not *target*)
-     (and
-      (zero? (logand (-> *target* state-flags) #x80f8))
-      (>=
-       (the-as int (- (-> *display* base-frame-counter) (-> obj touch-time)))
-       15
-       )
+    (and
+      (logtest? (-> obj nav-enemy-flags) 256)
+      (or
+        (not *target*)
+        (and
+          (zero? (logand (-> *target* state-flags) #x80f8))
+          (>=
+            (the-as int (- (-> *display* base-frame-counter) (-> obj touch-time)))
+            15
+            )
+          )
+        )
       )
-     )
+    (dummy-54 (-> obj collide-info) 2 1)
+    (set! (-> obj nav-enemy-flags) (logand -257 (-> obj nav-enemy-flags)))
     )
-   (dummy-54 (-> obj collide-info) 2 1)
-   (set! (-> obj nav-enemy-flags) (logand -257 (-> obj nav-enemy-flags)))
-   )
   ((method-of-object (-> obj draw shadow-ctrl) dummy-14))
   (when *target*
-   (if *target*
-    (look-at-enemy!
-     (-> *target* neck)
-     (the-as vector (-> obj collide-info root-prim prim-core))
-     (if (logtest? (-> obj nav-enemy-flags) 4)
-      'attacking
-      )
-     obj
-     )
+    (if *target*
+        (look-at-enemy!
+          (-> *target* neck)
+          (the-as vector (-> obj collide-info root-prim prim-core))
+          (if (logtest? (-> obj nav-enemy-flags) 4)
+              'attacking
+              )
+          obj
+          )
+        )
+    (if (and (nonzero? (-> obj neck)) (logtest? (-> obj nav-enemy-flags) #x4000))
+        (set-target!
+          (-> obj neck)
+          (target-pos (-> obj nav-info player-look-at-joint))
+          )
+        )
     )
-   (if
-    (and
-     (nonzero? (-> obj neck))
-     (nonzero? (logand (-> obj nav-enemy-flags) #x4000))
-     )
-    (set-target!
-     (-> obj neck)
-     (target-pos (-> obj nav-info player-look-at-joint))
-     )
-    )
-   )
   (when (-> obj nav-info debug-draw-neck)
-   (if (nonzero? (-> obj neck))
-    (joint-mod-debug-draw (-> obj neck))
+    (if (nonzero? (-> obj neck))
+        (joint-mod-debug-draw (-> obj neck))
+        )
     )
-   )
   (ja-post)
   0
   (none)
@@ -3168,7 +3164,7 @@ nav-enemy-default-event-handler
    )
   (logior!
    (-> obj nav flags)
-   (nav-control-flags bit0 display-marks bit3 bit5 bit6 bit7)
+   (nav-control-flags display-marks bit3 bit5 bit6 bit7)
    )
   (set! (-> obj nav gap-event) 'jump)
   (dummy-26 (-> obj nav))

@@ -2564,7 +2564,7 @@ TEST_F(FormRegressionTest, MoveFalse) {
       "    daddiu sp, sp, 16\n";
   std::string type = "(function int symbol)";
 
-  std::string expected = "(nonzero? (logand (+ arg0 12) 1))";
+  std::string expected = "(logtest? (+ arg0 12) 1)";
   test_with_expr(func, type, expected, false, "", {{"L17", "A ~A"}});
 }
 
@@ -2934,7 +2934,7 @@ TEST_F(FormRegressionTest, AshPropagation2) {
   std::string type = "(function bit-array int symbol)";
   std::string expected =
       "(let ((v1-2 (-> arg0 bytes (/ arg1 8))))\n"
-      "  (nonzero? (logand v1-2 (ash 1 (logand arg1 7))))\n"
+      "  (logtest? v1-2 (ash 1 (logand arg1 7)))\n"
       "  )";
   test_with_expr(func, type, expected);
 }

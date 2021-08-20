@@ -476,6 +476,82 @@ FormElement* StoreOp::get_as_form(FormPool& pool, const Env& env) const {
   return pool.alloc_element<StoreElement>(this);
 }
 
+FormElement* make_label_load(int label_idx,
+                             const Env& env,
+                             FormPool& pool,
+                             int load_size,
+                             LoadVarOp::Kind load_kind) {
+  auto label = env.file->labels.at(label_idx);
+  auto label_name = label.name;
+  auto hint = env.label_types().find(label_name);
+  if (hint != env.label_types().end()) {
+    if (hint->second.is_const) {
+      if ((load_kind == LoadVarOp::Kind::FLOAT || load_kind == LoadVarOp::Kind::SIGNED) &&
+          load_size == 4 && hint->second.type_name == "float") {
+        assert((label.offset % 4) == 0);
+        auto word = env.file->words_by_seg.at(label.target_segment).at(label.offset / 4);
+        assert(word.kind == LinkedWord::PLAIN_DATA);
+        float value;
+        memcpy(&value, &word.data, 4);
+        return pool.alloc_element<ConstantFloatElement>(value);
+      } else if (hint->second.type_name == "uint64" && load_kind != LoadVarOp::Kind::FLOAT &&
+                 load_size == 8) {
+        assert((label.offset % 8) == 0);
+        auto word0 = env.file->words_by_seg.at(label.target_segment).at(label.offset / 4);
+        auto word1 = env.file->words_by_seg.at(label.target_segment).at(1 + (label.offset / 4));
+        assert(word0.kind == LinkedWord::PLAIN_DATA);
+        assert(word1.kind == LinkedWord::PLAIN_DATA);
+        u64 value;
+        memcpy(&value, &word0.data, 4);
+        memcpy(((u8*)&value) + 4, &word1.data, 4);
+        return pool.alloc_element<CastElement>(TypeSpec("uint"),
+                                               pool.alloc_single_element_form<SimpleAtomElement>(
+                                                   nullptr, SimpleAtom::make_int_constant(value)));
+      }
+
+      // is it a constant bitfield?
+      auto& ts = env.dts->ts;
+      auto as_bitfield = dynamic_cast<BitFieldType*>(ts.lookup_type(hint->second.type_name));
+      if (as_bitfield && load_kind != LoadVarOp::Kind::FLOAT && load_size == 8) {
+        // get the data
+        assert((label.offset % 8) == 0);
+        auto word0 = env.file->words_by_seg.at(label.target_segment).at(label.offset / 4);
+        auto word1 = env.file->words_by_seg.at(label.target_segment).at(1 + (label.offset / 4));
+        assert(word0.kind == LinkedWord::PLAIN_DATA);
+        assert(word1.kind == LinkedWord::PLAIN_DATA);
+        u64 value;
+        memcpy(&value, &word0.data, 4);
+        memcpy(((u8*)&value) + 4, &word1.data, 4);
+        // for some reason, GOAL would use a 64-bit constant for all bitfields, even if they are
+        // smaller. We should check that the higher bits are all zero.
+        int bits = as_bitfield->get_size_in_memory() * 8;
+        assert(bits <= 64);
+        if (bits < 64) {
+          assert((value >> bits) == 0);
+          // technically ub if bits == 64.
+        }
+        TypeSpec typespec(hint->second.type_name);
+        auto defs = decompile_bitfield_from_int(typespec, ts, value);
+        return pool.alloc_element<BitfieldStaticDefElement>(typespec, defs, pool);
+      }
+    }
+  }
+
+  if (load_kind == LoadVarOp::Kind::FLOAT && load_size == 4) {
+    assert((label.offset % 4) == 0);
+    const auto& words = env.file->words_by_seg.at(label.target_segment);
+    if ((int)words.size() > label.offset / 4) {
+      auto word = words.at(label.offset / 4);
+      assert(word.kind == LinkedWord::PLAIN_DATA);
+      float value;
+      memcpy(&value, &word.data, 4);
+      return pool.alloc_element<ConstantFloatElement>(value);
+    }
+  }
+
+  return nullptr;
+}
+
 Form* LoadVarOp::get_load_src(FormPool& pool, const Env& env) const {
   if (env.has_type_analysis()) {
     IR2_RegOffset ro;
@@ -584,6 +660,12 @@ Form* LoadVarOp::get_load_src(FormPool& pool, const Env& env) const {
         return pool.alloc_single_element_form<DerefElement>(nullptr, source, rd.addr_of, tokens);
       }
 
+      if (ro.offset == 0 && input_type.kind == TP_Type::Kind::LABEL_ADDR) {
+        // we no longer resolve label stuff here because sometimes we need expressions for this
+        return pool.alloc_single_element_form<LabelDerefElement>(nullptr, input_type.label_id(),
+                                                                 m_size, m_kind, ro.var);
+      }
+
       if (ro.offset == 0 && (input_type.typespec() == TypeSpec("pointer") ||
                              input_type.kind == TP_Type::Kind::OBJECT_PLUS_PRODUCT_WITH_CONSTANT)) {
         std::string cast_type;
@@ -623,74 +705,9 @@ Form* LoadVarOp::get_load_src(FormPool& pool, const Env& env) const {
   }
 
   if (m_src.is_identity() && m_src.get_arg(0).is_label()) {
-    // try to see if we're loading a constant
-    auto label = env.file->labels.at(m_src.get_arg(0).label());
-    auto label_name = label.name;
-    auto hint = env.label_types().find(label_name);
-    if (hint != env.label_types().end()) {
-      if (hint->second.is_const) {
-        if ((m_kind == Kind::FLOAT || m_kind == Kind::SIGNED) && m_size == 4 &&
-            hint->second.type_name == "float") {
-          assert((label.offset % 4) == 0);
-          auto word = env.file->words_by_seg.at(label.target_segment).at(label.offset / 4);
-          assert(word.kind == LinkedWord::PLAIN_DATA);
-          float value;
-          memcpy(&value, &word.data, 4);
-          return pool.alloc_single_element_form<ConstantFloatElement>(nullptr, value);
-        } else if (hint->second.type_name == "uint64" && m_kind != Kind::FLOAT && m_size == 8) {
-          assert((label.offset % 8) == 0);
-          auto word0 = env.file->words_by_seg.at(label.target_segment).at(label.offset / 4);
-          auto word1 = env.file->words_by_seg.at(label.target_segment).at(1 + (label.offset / 4));
-          assert(word0.kind == LinkedWord::PLAIN_DATA);
-          assert(word1.kind == LinkedWord::PLAIN_DATA);
-          u64 value;
-          memcpy(&value, &word0.data, 4);
-          memcpy(((u8*)&value) + 4, &word1.data, 4);
-          return pool.alloc_single_element_form<CastElement>(
-              nullptr, TypeSpec("uint"),
-              pool.alloc_single_element_form<SimpleAtomElement>(
-                  nullptr, SimpleAtom::make_int_constant(value)));
-        }
-
-        // is it a constant bitfield?
-        auto& ts = env.dts->ts;
-        auto as_bitfield = dynamic_cast<BitFieldType*>(ts.lookup_type(hint->second.type_name));
-        if (as_bitfield && m_kind != Kind::FLOAT && m_size == 8) {
-          // get the data
-          assert((label.offset % 8) == 0);
-          auto word0 = env.file->words_by_seg.at(label.target_segment).at(label.offset / 4);
-          auto word1 = env.file->words_by_seg.at(label.target_segment).at(1 + (label.offset / 4));
-          assert(word0.kind == LinkedWord::PLAIN_DATA);
-          assert(word1.kind == LinkedWord::PLAIN_DATA);
-          u64 value;
-          memcpy(&value, &word0.data, 4);
-          memcpy(((u8*)&value) + 4, &word1.data, 4);
-          // for some reason, GOAL would use a 64-bit constant for all bitfields, even if they are
-          // smaller. We should check that the higher bits are all zero.
-          int bits = as_bitfield->get_size_in_memory() * 8;
-          assert(bits <= 64);
-          if (bits < 64) {
-            assert((value >> bits) == 0);
-            // technically ub if bits == 64.
-          }
-          TypeSpec typespec(hint->second.type_name);
-          auto defs = decompile_bitfield_from_int(typespec, ts, value);
-          return pool.alloc_single_element_form<BitfieldStaticDefElement>(nullptr, typespec, defs,
-                                                                          pool);
-        }
-      }
-    }
-
-    if (m_kind == Kind::FLOAT && m_size == 4) {
-      assert((label.offset % 4) == 0);
-      const auto& words = env.file->words_by_seg.at(label.target_segment);
-      if ((int)words.size() > label.offset / 4) {
-        auto word = words.at(label.offset / 4);
-        assert(word.kind == LinkedWord::PLAIN_DATA);
-        float value;
-        memcpy(&value, &word.data, 4);
-        return pool.alloc_single_element_form<ConstantFloatElement>(nullptr, value);
-      }
+    auto label_load_element = make_label_load(m_src.get_arg(0).label(), env, pool, m_size, m_kind);
+    if (label_load_element) {
+      return pool.alloc_single_form(nullptr, label_load_element);
     }
   }
 

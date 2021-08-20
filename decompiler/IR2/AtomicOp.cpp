@@ -1121,6 +1121,21 @@ void StoreOp::collect_vars(RegAccessSet& vars) const {
 // LoadVarOp
 /////////////////////////////
 
+std::string load_kind_to_string(LoadVarOp::Kind kind) {
+  switch (kind) {
+    case LoadVarOp::Kind::FLOAT:
+      return "float";
+    case LoadVarOp::Kind::VECTOR_FLOAT:
+      return "vector-float";
+    case LoadVarOp::Kind::SIGNED:
+      return "signed";
+    case LoadVarOp::Kind::UNSIGNED:
+      return "unsigned";
+    default:
+      assert(false);
+  }
+}
+
 LoadVarOp::LoadVarOp(Kind kind, int size, RegisterAccess dst, SimpleExpression src, int my_idx)
     : AtomicOp(my_idx), m_kind(kind), m_size(size), m_dst(dst), m_src(std::move(src)) {}
 

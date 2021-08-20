@@ -262,9 +262,10 @@ class TP_Type {
     return result;
   }
 
-  static TP_Type make_label_addr() {
+  static TP_Type make_label_addr(int label_id) {
     TP_Type result;
     result.kind = Kind::LABEL_ADDR;
+    result.m_int = label_id;
     return result;
   }
 
@@ -340,6 +341,11 @@ class TP_Type {
   bool flipped_add_order() const {
     assert(kind == Kind::OBJECT_PLUS_PRODUCT_WITH_CONSTANT);
     return m_flipped_order;
+  }
+
+  int label_id() const {
+    assert(kind == Kind::LABEL_ADDR);
+    return m_int;
   }
 
  private:

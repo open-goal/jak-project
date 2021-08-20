@@ -632,6 +632,7 @@ class ReturnElement : public FormElement {
   void collect_vars(RegAccessSet& vars, bool recursive) const override;
   void push_to_stack(const Env& env, FormPool& pool, FormStack& stack) override;
   void get_modified_regs(RegSet& regs) const override;
+  std::optional<TypeSpec> return_type;
 };
 
 /*!
@@ -1547,6 +1548,27 @@ class LabelElement : public FormElement {
 
  private:
   int m_lid = -1;
+};
+
+class LabelDerefElement : public FormElement {
+ public:
+  LabelDerefElement(int lid, int size, LoadVarOp::Kind load_kind, RegisterAccess var);
+  goos::Object to_form_internal(const Env& env) const override;
+  void apply(const std::function<void(FormElement*)>& f) override;
+  void apply_form(const std::function<void(Form*)>& f) override;
+  void collect_vars(RegAccessSet& vars, bool recursive) const override;
+  void get_modified_regs(RegSet& regs) const override;
+  void update_from_stack(const Env& env,
+                         FormPool& pool,
+                         FormStack& stack,
+                         std::vector<FormElement*>* result,
+                         bool allow_side_effects) override;
+
+ private:
+  int m_lid = -1;
+  int m_size = -1;
+  LoadVarOp::Kind m_load_kind = LoadVarOp::Kind::INVALID;
+  RegisterAccess m_var;
 };
 
 class GetSymbolStringPointer : public FormElement {
