@@ -158,9 +158,11 @@ class ObjectFileDB {
   void for_each_function_in_seg(int seg, Func f) {
     for_each_obj([&](ObjectFileData& data) {
       int fn = 0;
-      for (size_t j = data.linked_data.functions_by_seg.at(seg).size(); j-- > 0;) {
-        f(data.linked_data.functions_by_seg.at(seg).at(j), data);
-        fn++;
+      if (data.linked_data.segments == 3) {
+        for (size_t j = data.linked_data.functions_by_seg.at(seg).size(); j-- > 0;) {
+          f(data.linked_data.functions_by_seg.at(seg).at(j), data);
+          fn++;
+        }
       }
     });
   }
