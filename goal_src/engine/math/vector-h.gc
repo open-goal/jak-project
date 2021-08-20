@@ -5,38 +5,101 @@
 ;; name in dgo: vector-h
 ;; dgos: GAME, ENGINE
 
+
+;; Type definitions/inline functions for bit array and vector types.
+
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; bit array
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
+;; the bit-array is a dynamically sized array that is bit addressable
+
 (deftype bit-array (basic)
   ((length           int32  :offset-assert 4)
    (allocated-length int32  :offset-assert 8)
-   (_pad uint8)
+   ;; neither of these show up in the inspect.
+   ;; it seems like there's a single byte of data array
+   ;; included in the type already
+   (_pad uint8 :offset-assert 12)
+   (bytes uint8 :dynamic :offset 12)
    )
   :method-count-assert 13
   :size-assert         #xd
   :flag-assert         #xd0000000d
   (:methods
-    (dummy-9 () none 9)
-    (dummy-10 () none 10)
-    (dummy-11 () none 11)
-    (dummy-12 () none 12)
+   (new (symbol type int) _type_ 0)
+   (get-bit (_type_ int) symbol 9)
+   (clear-bit (_type_ int) int 10)
+   (set-bit (_type_ int) int 11)
+   (clear-all! (_type_) _type_ 12)
+   )
+  )
+
+(defmethod new bit-array ((allocation symbol) (type-to-make type) (length int))
+  "Allocate a new bit-array which can hold length bits.
+   Sets both the length and the allocated-length to this length."
+  (let ((obj (object-new allocation type-to-make
+                         (+ (+ (/ (logand -8 (+ length 7)) 8) -1)
+                            (the-as int (-> type-to-make size))
+                            )
+                         )
+          )
+        )
+    (set! (-> obj length) length)
+    (set! (-> obj allocated-length) length)
+    obj
     )
   )
 
-;; todo new
-;; todo 4
-;; todo 5
-;; todo 9
-;; todo 10
-;; todo 11
-;; todo 12
-;; 
+(defmethod length bit-array ((obj bit-array))
+  "Get the length (in bits)"
+  (-> obj length)
+  )
+
+(defmethod asize-of bit-array ((obj bit-array))
+  "Get the size in memory. 
+   It is wrong and says its one byte longer, which is safe."
+  (the-as int
+          (+ (-> obj type size)
+             (the-as uint (/ (logand -8 (+ (-> obj allocated-length) 7)) 8))
+             )
+          )
+  )
+
+(defmethod get-bit bit-array ((obj bit-array) (idx int))
+  "Is the bit at idx set or not?"
+  (let ((v1-2 (-> obj bytes (/ idx 8))))
+    (logtest? v1-2 (ash 1 (logand idx 7)))
+    )
+  )
+
+(defmethod clear-bit bit-array ((obj bit-array) (idx int))
+  "Clear the bit at position idx"
+  (logclear! (-> obj bytes (/ idx 8)) (ash 1 (logand idx 7)))
+  0
+  )
+
+(defmethod set-bit bit-array ((obj bit-array) (idx int))
+  "Set the bit at position idx"
+  (logior! (-> obj bytes (/ idx 8)) (the-as uint (ash 1 (logand idx 7))))
+  0
+  )
+
+(defmethod clear-all! bit-array ((obj bit-array))
+  "Set all bits to zero."
+  (countdown (idx (/ (logand -8 (+ (-> obj allocated-length) 7)) 8))
+    (nop!)
+    (nop!)
+    (set! (-> obj bytes idx) (the-as uint 0))
+    )
+  obj
+  )
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; vector types (integer)
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+;; the GOAL vector types are structures, storing values in memory.
 
 ;; Vector of 4 unsigned bytes.
 (deftype vector4ub (structure)
@@ -117,11 +180,12 @@
 
 ;; Vector of 3 signed words
 (deftype vector3w (structure)
-  ((data int32 3 :offset-assert 0)
+  ((data int32 3 :score -9999 :offset-assert 0)
    (x    int32     :offset 0)
    (y    int32     :offset 4)
    (z    int32     :offset 8)
    )
+  :allow-misaligned
   :method-count-assert 9
   :size-assert         #xc
   :flag-assert         #x90000000c
@@ -129,7 +193,7 @@
 
 ;; Vector of 4 signed words
 (deftype vector4w (structure)
-  ((data  int32 4 :offset-assert 0)
+  ((data  int32 4 :score -9999 :offset-assert 0)
    (x     int32     :offset 0)
    (y     int32     :offset 4)
    (z     int32     :offset 8)
@@ -156,7 +220,7 @@
 (deftype vector4w-2 (structure)
   ((data   int32 8 :offset-assert 0)
    (quad   uint128 2 :offset 0)
-   (vector vector4w 2 :offset 0)
+   (vector vector4w 2 :inline :offset 0)
    )
   :method-count-assert 9
   :size-assert         #x20
@@ -167,7 +231,7 @@
 (deftype vector4w-3 (structure)
   ((data   int32 12 :offset-assert 0)
    (quad   uint128 3  :offset 0)
-   (vector vector4w 3  :offset 0)
+   (vector vector4w 3  :inline :offset 0)
    )
   :method-count-assert 9
   :size-assert         #x30
@@ -178,7 +242,7 @@
 (deftype vector4w-4 (structure)
   ((data   int32 16 :offset-assert 0)
    (quad   uint128 4  :offset 0)
-   (vector vector4w 4  :offset 0)
+   (vector vector4w 4  :inline :offset 0)
    )
   :method-count-assert 9
   :size-assert         #x40
@@ -194,6 +258,7 @@
    (w    int16     :offset 6)
    (long uint64    :offset 0)
    )
+  :pack-me
   :method-count-assert 9
   :size-assert         #x8
   :flag-assert         #x900000008
@@ -211,7 +276,7 @@
 
 ;; Vector of 16 signed bytes
 (deftype vector16b (structure)
-  ((data int8 8 :offset-assert 0)
+  ((data int8    16          :offset-assert 0)
    (quad uint128   :offset 0)
    )
   :method-count-assert 9
@@ -225,11 +290,11 @@
 
 ;; Vector of 4 floats. Shortened to "vector" because it is commonly used.
 (deftype vector (structure)
-  ((data float 4 :offset-assert 0)
-   (x float :offset 0)
+  ((x float :offset 0)
    (y float :offset 4)
    (z float :offset 8)
    (w float :offset 12)
+   (data float 4 :do-not-decompile :score -9999 :offset 0)
    (quad uint128 :offset 0)
    )
   :method-count-assert 9
@@ -296,6 +361,7 @@
   :flag-assert         #x900000010
   )
 
+;; ax + by + cz = d form
 (deftype plane (vector)
   ((a    float     :offset 0)
    (b    float     :offset 4)
@@ -307,21 +373,21 @@
   :flag-assert         #x900000010
   )
 
+;; x, y, z are the origin, replaces w with r, the radius
 (deftype sphere (vector)
-  ((r    float     :offset 12)
+  ((r    float     :offset 12 :score 10) ;; prefer over w
    )
   :method-count-assert 9
   :size-assert         #x10
   :flag-assert         #x900000010
   )
 
-; todo
-; (deftype isphere (vec4s)
-;   ()
-;   :method-count-assert 9
-;   :size-assert         #x10
-;   :flag-assert         #x900000010
-;   )
+(deftype isphere (vec4s)
+  ()
+  :method-count-assert 9
+  :size-assert         #x10
+  :flag-assert         #x900000010
+  )
 
 (deftype box8s (structure)
   ((data   float 8       :offset-assert 0)
@@ -336,7 +402,8 @@
   )
 
 (deftype box8s-array (inline-array-class)
-  ()
+  ((data  box8s  :inline :dynamic :offset 16)
+   )
   :method-count-assert 9
   :size-assert         #x10
   :flag-assert         #x900000010
@@ -344,6 +411,7 @@
 
 (set! (-> box8s-array heap-base) 32)
 
+;; This is really a capsule - a cylinder with spheres at both end
 (deftype cylinder (structure)
   ((origin vector :inline :offset-assert 0)
    (axis   vector :inline :offset-assert 16)
@@ -354,11 +422,12 @@
   :size-assert         #x28
   :flag-assert         #xb00000028
   (:methods
-    (dummy-9 () none 9)
-    (dummy-10 () none 10)
-    )
+   (debug-draw (_type_ vector) none 9)
+   (ray-capsule-intersect (_type_ vector vector) float 10)
+   )
   )
 
+;; This is a normal cylinder.
 (deftype cylinder-flat (structure)
   ((origin vector :inline :offset-assert 0)
    (axis   vector :inline :offset-assert 16)
@@ -369,12 +438,11 @@
   :size-assert         #x28
   :flag-assert         #xb00000028
   (:methods
-    (dummy-9 () none 9)
-    (dummy-10 () none 10)
-    )
+   (debug-draw (_type_ vector) none 9)
+   (ray-flat-cyl-intersect (_type_ vector vector) float 10)
+   )
   )
 
-;; vector-h
 (deftype vertical-planes (structure)
   ((data uint128 4 :offset-assert 0) ;; probably wrong
    )
@@ -385,7 +453,7 @@
 
 (deftype vertical-planes-array (basic)
   ((length uint32           :offset-assert 4)
-   (data   vertical-planes :dynamic :offset 16) ;; todo, why is this here?
+   (data   vertical-planes :inline :dynamic :offset-assert 16) ;; likely inline based on alignment
    )
   :method-count-assert 9
   :size-assert         #x10
@@ -418,46 +486,137 @@
   :flag-assert         #x90000000c
   )
 
+
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;; Macros and inline functions
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+(defmacro set-vector! (v xv yv zv wv)
+  "Set all fields in a vector"
+  (with-gensyms (vec)
+     `(let ((vec ,v))
+       (set! (-> vec x) ,xv)
+       (set! (-> vec y) ,yv)
+       (set! (-> vec z) ,zv)
+       (set! (-> vec w) ,wv)
+       vec
+       )
+     )
+     )
+
 (defun vector-dot ((a vector) (b vector))
   "Take the dot product of two vectors.
    Only does the x, y, z compoments.
    Originally handwritten assembly to space out loads and use FPU accumulator"
-   (declare (inline))
-   (let ((result 0.))
-     (+! result (* (-> a x) (-> b x)))
-     (+! result (* (-> a y) (-> b y)))
-     (+! result (* (-> a z) (-> b z)))
-     result
-     )
-   )
+  (declare (inline))
+  (let ((result 0.))
+    (+! result (* (-> a x) (-> b x)))
+    (+! result (* (-> a y) (-> b y)))
+    (+! result (* (-> a z) (-> b z)))
+    result
+    )
+  )
 
 (defun vector-dot-vu ((a vector) (b vector))
   "Take the dot product of two vectors.
    Only does the x, y, z components.
    Originally implemented using VU macro ops"
-   (declare (inline))
-   (vector-dot a b)
+  (declare (inline))
+  (rlet ((vf1 :class vf)
+         (vf2 :class vf)
+         (result :class fpr :type float))
+    ;; (.lqc2 vf1 0 arg0)
+    (.lvf vf1 a)
+    ;; (.lqc2 vf2 0 arg1)
+    (.lvf vf2 b)
+    ;; (.vmul.xyzw vf1 vf1 vf2)
+    (.mul.vf vf1 vf1 vf2)
+    ;; (.vaddy.x vf1 vf1 vf1)
+    (.add.y.vf vf1 vf1 vf1 :mask #b1)
+    ;; (.vaddz.x vf1 vf1 vf1)
+    (.add.z.vf vf1 vf1 vf1 :mask #b1)
+    ;; (.qmfc2.i v0-0 vf1)
+    (.mov result vf1)
+    result
+    )
   )
 
 (defun vector4-dot ((a vector) (b vector))
   "Take the dot product of two vectors.
    Does the x, y, z, and w compoments"
-   (declare (inline))
-   (let ((result 0.))
-     (+! result (* (-> a x) (-> b x)))
-     (+! result (* (-> a y) (-> b y)))
-     (+! result (* (-> a z) (-> b z)))
-     (+! result (* (-> a w) (-> b w)))
-     result
+  (declare (inline))
+  (let ((result 0.))
+    (+! result (* (-> a x) (-> b x)))
+    (+! result (* (-> a y) (-> b y)))
+    (+! result (* (-> a z) (-> b z)))
+    (+! result (* (-> a w) (-> b w)))
+    result
+    )
+  )
+
+(defmacro print-vf (vf &key (name #f))
+  "Print out a vf register as a vector."
+  `(let ((temp (new 'stack 'vector)))
+     (.svf temp ,vf)
+     ,(if name
+          `(format #t "~A: ~`vector`P~%" (quote ,name) temp)
+          `(format #t "~`vector`P~%" temp)
+          )
      )
-   )
+  )
+
+(defmacro print-vf-hex (vf)
+  "Print out a vf register as 4x 32-bit hexadecimal integers"
+  `(let ((temp (new 'stack 'vector4w)))
+     (.svf temp ,vf)
+     (format #t "~`vector4w`P~%" temp)
+     )
+  )
 
 (defun vector4-dot-vu ((a vector) (b vector))
   "Take the dot product of two vectors.
    Does the x, y, z, and w compoments
    Originally implemented using VU macro ops"
-   (declare (inline))
-   (vector4-dot a b)
+  (declare (inline))
+  (rlet ((vf1 :class vf)
+         (vf2 :class vf)
+         (vf3 :class vf)
+         (acc :class vf)
+         (vf0 :class vf)
+         (result :class fpr :type float))
+    (.lvf vf0 (new 'static 'vector :x 0.0 :y 0.0 :z 0.0 :w 1.0))
+    ;; (.lqc2 vf1 0 arg0)
+    (.lvf vf1 a)
+    ;; (.lqc2 vf2 0 arg1)
+    (.lvf vf2 b)
+    
+    ;; (.vmul.xyzw vf1 vf1 vf2)
+    ;; set vf1 to element-wise products
+    (.mul.vf vf1 vf1 vf2)
+    
+    ;; (.vaddw.x vf3 vf0 vf0)
+    ;; set vf3x to 1
+    (.xor.vf vf3 vf3 vf3)
+    (.add.w.vf vf3 vf0 vf0 :mask #b1)
+    
+    ;; (.vmulax.x acc vf3 vf1)
+    ;; acc.x is now (xa * xb)
+    (.mul.x.vf acc vf3 vf1 :mask #b1)
+    
+    ;; (.vmadday.x acc vf3 vf1)
+    ;;  acc += thing
+    (.add.mul.y.vf acc vf3 vf1 acc :mask #b1)
+    
+    ;; (.vmaddaz.x acc vf3 vf1)
+    (.add.mul.z.vf acc vf3 vf1 acc :mask #b1)
+    
+    ;; (.vmaddw.x vf1 vf3 vf1)
+    (.add.mul.w.vf vf1 vf3 vf1 acc :mask #b1)
+    ;; (.qmfc2.i v0-0 vf1)
+    (.mov result vf1)
+    result
+    )
   )
 
 (defun vector+! ((dst vector) (a vector) (b vector))
@@ -467,18 +626,18 @@
          (vf1 :class vf :reset-here #t)
          (vf2 :class vf :reset-here #t)
          (vf3 :class vf :reset-here #t))
-        ; load vectors
-        (.lvf vf2 a)
-        (.lvf vf3 b)
-        ; set vf0 to zero
-        (.xor.vf vf0 vf0 vf0)
-        ; add
-        (.add.vf vf1 vf2 vf3)
-        ; set w = 0
-        (.blend.vf vf1 vf1 vf0 #b1000)
-        ; store
-        (.svf dst vf1)
-        )
+    ;; load vectors
+    (.lvf vf2 a)
+    (.lvf vf3 b)
+    ;; set vf0 to zero
+    (.xor.vf vf0 vf0 vf0)
+    ;; add
+    (.add.vf vf1 vf2 vf3)
+    ;; set w = 0
+    (.blend.vf vf1 vf1 vf0 :mask #b1000)
+    ;; store
+    (.svf dst vf1)
+    )
   dst
   )
 
@@ -489,18 +648,18 @@
          (vf1 :class vf :reset-here #t)
          (vf2 :class vf :reset-here #t)
          (vf3 :class vf :reset-here #t))
-        ; load vectors
-        (.lvf vf2 a)
-        (.lvf vf3 b)
-        ; set vf0 to zero
-        (.xor.vf vf0 vf0 vf0)
-        ; subtract
-        (.sub.vf vf1 vf2 vf3)
-        ; set w = 0
-        (.blend.vf vf1 vf1 vf0 #b1000)
-        ; store
-        (.svf dst vf1)
-        )
+    ;; load vectors
+    (.lvf vf2 a)
+    (.lvf vf3 b)
+    ;; set vf0 to zero
+    (.xor.vf vf0 vf0 vf0)
+    ;; subtract
+    (.sub.vf vf1 vf2 vf3)
+    ;; set w = 0
+    (.blend.vf vf1 vf1 vf0 :mask #b1000)
+    ;; store
+    (.svf dst vf1)
+    )
   dst
   )
 
@@ -508,11 +667,11 @@
   "Set xyzw to 0."
   (declare (inline))
   (rlet ((vf1 :class vf :reset-here #t))
-        ; set vf1 = 0
-        (.xor.vf vf1 vf1 vf1)
-        ; store the 0
-        (.svf dest vf1)
-        )
+    ;; set vf1 = 0
+    (.xor.vf vf1 vf1 vf1)
+    ;; store the 0
+    (.svf dest vf1)
+    )
   dest
   )
 
@@ -529,10 +688,33 @@
    The vectors must be aligned."
   (declare (inline))
   (rlet ((vf1 :class vf :reset-here #t))
-        (.lvf vf1 src)
-        (.svf dst vf1)
-        )
+    (.lvf vf1 src)
+    (.svf dst vf1)
+    )
   dst
   )
 
+(defmacro new-stack-vector0 ()
+  "Get a stack vector that's set to 0.
+   This is more efficient than (new 'stack 'vector) because
+   this doesn't call the constructor."
+  `(let ((vec (new 'stack-no-clear 'vector)))
+     (set! (-> vec quad) (the-as uint128 0))
+     vec
+     )
+  )
+
 (define *zero-vector* (new 'static 'vector :x 0. :y 0. :z 0. :w 0.))
+(define-extern vector-identity! (function vector vector))
+(define-extern vector-length (function vector float))
+(define-extern vector-xz-normalize! (function vector float vector))
+(define-extern vector-xz-length (function vector float))
+(defun-extern vector+float*! vector vector vector float vector)
+(defun-extern vector-normalize! vector float vector)
+(defun-extern vector-float*! vector vector float vector)
+(define-extern vector-normalize-copy! (function vector vector float vector))
+(define-extern vector-cross! (function vector vector vector vector))
+(define-extern vector-negate! (function vector vector vector))
+(define-extern vector-normalize-ret-len! (function vector float float))
+(define-extern vector-vector-distance (function vector vector float))
+(define-extern vector-vector-distance-squared (function vector vector float))

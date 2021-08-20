@@ -17,13 +17,15 @@
 #include "goalc/debugger/DebugInfo.h"
 #include "common/goal_constants.h"
 #include "common/versions.h"
+#include "common/type_system/TypeSystem.h"
+#include "third-party/fmt/core.h"
 
 namespace emitter {
 
 /*!
  * Build an object file with the v3 format.
  */
-ObjectFileData ObjectGenerator::generate_data_v3() {
+ObjectFileData ObjectGenerator::generate_data_v3(const TypeSystem* ts) {
   ObjectFileData out;
 
   // do functions (step 2, part 1)
@@ -93,13 +95,21 @@ ObjectFileData ObjectGenerator::generate_data_v3() {
     handle_temp_static_ptr_links(seg);
   }
 
-  // actual linking?
+  // step 4, generate the link table
   for (int seg = N_SEG; seg-- > 0;) {
-    emit_link_table(seg);
+    emit_link_table(seg, ts);
   }
 
-  // emit header
+  // step 4.5, collect final result of code/object generation for compiler debugging disassembly
+  for (int seg = 0; seg < N_SEG; seg++) {
+    for (auto& function : m_function_data_by_seg.at(seg)) {
+      auto start = m_data_by_seg.at(seg).begin() + function.instruction_to_byte_in_data.at(0);
+      auto end = start + function.debug->length;
+      function.debug->generated_code = {start, end};
+    }
+  }
 
+  // step 5, build header and combine sections
   out.header = generate_header_v3();
   out.segment_data = std::move(m_data_by_seg);
   out.link_tables = std::move(m_link_by_seg);
@@ -269,17 +279,32 @@ void ObjectGenerator::link_static_symbol_ptr(StaticRecord rec,
  * Insert a pointer to other static data. This patching will happen during runtime linking.
  * The source and destination must be in the same segment.
  */
-void ObjectGenerator::link_static_pointer(const StaticRecord& source,
-                                          int source_offset,
-                                          const StaticRecord& dest,
-                                          int dest_offset) {
-  StaticPointerLink link;
+void ObjectGenerator::link_static_pointer_to_data(const StaticRecord& source,
+                                                  int source_offset,
+                                                  const StaticRecord& dest,
+                                                  int dest_offset) {
+  StaticDataPointerLink link;
   link.source = source;
   link.dest = dest;
   link.offset_in_source = source_offset;
   link.offset_in_dest = dest_offset;
   assert(link.source.seg == link.dest.seg);
-  m_static_temp_ptr_links_by_seg.at(source.seg).push_back(link);
+  m_static_data_temp_ptr_links_by_seg.at(source.seg).push_back(link);
+}
+
+/*!
+ * Insert a pointer to a function in static data.
+ * The patching will happen during runtime linking.
+ */
+void ObjectGenerator::link_static_pointer_to_function(const StaticRecord& source,
+                                                      int source_offset,
+                                                      const FunctionRecord& target_func) {
+  StaticFunctionPointerLink link;
+  link.source = source;
+  link.offset_in_source = source_offset;
+  link.dest = target_func;
+  assert(target_func.seg == source.seg);
+  m_static_function_temp_ptr_links_by_seg.at(source.seg).push_back(link);
 }
 
 void ObjectGenerator::link_instruction_static(const InstructionRecord& instr,
@@ -331,13 +356,25 @@ void ObjectGenerator::handle_temp_static_sym_links(int seg) {
  * m_static_temp_ptr_links_by_seg -> m_pointer_links_by_seg
  */
 void ObjectGenerator::handle_temp_static_ptr_links(int seg) {
-  for (const auto& link : m_static_temp_ptr_links_by_seg.at(seg)) {
+  for (const auto& link : m_static_data_temp_ptr_links_by_seg.at(seg)) {
     const auto& source_object = m_static_data_by_seg.at(seg).at(link.source.static_id);
     const auto& dest_object = m_static_data_by_seg.at(seg).at(link.dest.static_id);
     PointerLink result_link;
     result_link.segment = seg;
     result_link.source = source_object.location + link.offset_in_source;
     result_link.dest = dest_object.location + link.offset_in_dest;
+    m_pointer_links_by_seg.at(seg).push_back(result_link);
+  }
+
+  for (const auto& link : m_static_function_temp_ptr_links_by_seg.at(seg)) {
+    const auto& source_object = m_static_data_by_seg.at(seg).at(link.source.static_id);
+    const auto& dest_function = m_function_data_by_seg.at(seg).at(link.dest.func_id);
+    assert(link.dest.seg == seg);
+    int loc = dest_function.instruction_to_byte_in_data.at(0);
+    PointerLink result_link;
+    result_link.segment = seg;
+    result_link.source = source_object.location + link.offset_in_source;
+    result_link.dest = loc;
     m_pointer_links_by_seg.at(seg).push_back(result_link);
   }
 }
@@ -430,7 +467,7 @@ uint32_t push_data(const T& data, std::vector<u8>& v) {
 }
 }  // namespace
 
-void ObjectGenerator::emit_link_type_pointer(int seg) {
+void ObjectGenerator::emit_link_type_pointer(int seg, const TypeSystem* ts) {
   auto& out = m_link_by_seg.at(seg);
   for (auto& rec : m_type_ptr_links_by_seg.at(seg)) {
     u32 size = rec.second.size();
@@ -448,7 +485,7 @@ void ObjectGenerator::emit_link_type_pointer(int seg) {
     out.push_back(0);
 
     // method count
-    out.push_back(0);  // todo!
+    out.push_back(ts->get_type_method_count(rec.first));
 
     // number of links
     push_data<u32>(size, out);
@@ -516,9 +553,9 @@ void ObjectGenerator::emit_link_rip(int seg) {
   }
 }
 
-void ObjectGenerator::emit_link_table(int seg) {
+void ObjectGenerator::emit_link_table(int seg, const TypeSystem* ts) {
   emit_link_symbol(seg);
-  emit_link_type_pointer(seg);
+  emit_link_type_pointer(seg, ts);
   emit_link_rip(seg);
   emit_link_ptr(seg);
   m_link_by_seg.at(seg).push_back(LINK_TABLE_END);
@@ -577,5 +614,13 @@ std::vector<u8> ObjectGenerator::generate_header_v3() {
   push_data<SizeOffsetTable>(table, result);
   push_data<uint32_t>(64 + 4 + total_link_size, result);  // todo, make these numbers less magic.
   return result;
+}
+
+ObjectGeneratorStats ObjectGenerator::get_stats() const {
+  return m_stats;
+}
+
+void ObjectGenerator::count_eliminated_move() {
+  m_stats.moves_eliminated++;
 }
 }  // namespace emitter

@@ -1,0 +1,411 @@
+;;-*-Lisp-*-
+(in-package goal)
+
+;; definition for symbol *texture-enable-user-menu*, type int
+(define *texture-enable-user-menu* 31)
+
+;; definition for symbol *texture-enable-user*, type int
+(define *texture-enable-user* 0)
+
+;; definition of type texture-id
+(deftype texture-id (uint32)
+  ((index uint16 :offset   8 :size  12)
+   (page  uint16 :offset  20 :size  12)
+   )
+  :method-count-assert 9
+  :size-assert         #x4
+  :flag-assert         #x900000004
+  )
+
+;; definition for method 3 of type texture-id
+(defmethod inspect texture-id ((obj texture-id))
+  (format #t "[~8x] ~A~%" obj 'texture-id)
+  (format #t "~Tindex: ~D~%" (-> obj index))
+  (format #t "~Tpage: ~D~%" (-> obj page))
+  obj
+  )
+
+;; definition of type texture-pool-segment
+(deftype texture-pool-segment (structure)
+  ((dest uint32  :offset-assert   0)
+   (size uint32  :offset-assert   4)
+   )
+  :pack-me
+  :method-count-assert 9
+  :size-assert         #x8
+  :flag-assert         #x900000008
+  )
+
+;; definition for method 3 of type texture-pool-segment
+(defmethod inspect texture-pool-segment ((obj texture-pool-segment))
+  (format #t "[~8x] ~A~%" obj 'texture-pool-segment)
+  (format #t "~Tdest: #x~X~%" (-> obj dest))
+  (format #t "~Tsize: #x~X~%" (-> obj size))
+  obj
+  )
+
+;; definition of type texture-pool
+(deftype texture-pool (basic)
+  ((top              int32                                                                 :offset-assert   4)
+   (cur              int32                                                                 :offset-assert   8)
+   (allocate-func    (function texture-pool texture-page kheap int texture-page)           :offset-assert  12)
+   (font-palette     int32                                                                 :offset-assert  16)
+   (segment-near     texture-pool-segment                                        :inline   :offset-assert  20)
+   (segment-common   texture-pool-segment                                        :inline   :offset-assert  28)
+   (segment          texture-pool-segment                                        4 :inline :offset         20)
+   (common-page      texture-page                                                32        :offset-assert  52)
+   (common-page-mask int32                                                                 :offset-assert 180)
+   (ids              uint32                                                      126       :offset-assert 184)
+   )
+  :method-count-assert 23
+  :size-assert         #x2b0
+  :flag-assert         #x17000002b0
+  (:methods
+    (new (symbol type) _type_ 0)
+    (initialize! (_type_) _type_ 9)
+    (print-usage (_type_) _type_ 10)
+    (setup-font-texture! (_type_) none 11)
+    (allocate-defaults! (_type_) none 12)
+    (login-level-textures (_type_ level int (pointer texture-id)) none 13)
+    (add-tex-to-dma! (_type_ level int) none 14)
+    (allocate-vram-words! (_type_ int) int 15)
+    (allocate-segment! (_type_ texture-pool-segment int) texture-pool-segment 16)
+    (dummy-17 () none 17)
+    (dummy-18 () none 18)
+    (dummy-19 () none 19)
+    (unload! (_type_ texture-page) int 20)
+    (upload-one-common! (_type_ level) symbol 21)
+    (lookup-boot-common-id (_type_ int) int 22)
+    )
+  )
+
+;; definition for method 3 of type texture-pool
+(defmethod inspect texture-pool ((obj texture-pool))
+  (format #t "[~8x] ~A~%" obj (-> obj type))
+  (format #t "~Ttop: #x~X~%" (-> obj top))
+  (format #t "~Tcur: #x~X~%" (-> obj cur))
+  (format #t "~Tallocate-func: ~A~%" (-> obj allocate-func))
+  (format #t "~Tfont-palette: ~D~%" (-> obj font-palette))
+  (format #t "~Tsegment[4] @ #x~X~%" (-> obj segment-near))
+  (format
+   #t
+   "~Tsegment-near: #<texture-pool-segment @ #x~X>~%"
+   (-> obj segment-near)
+   )
+  (format
+   #t
+   "~Tsegment-common: #<texture-pool-segment @ #x~X>~%"
+   (-> obj segment-common)
+   )
+  (format #t "~Tcommon-page[32] @ #x~X~%" (-> obj common-page))
+  (format #t "~Tcommon-page-mask: ~D~%" (-> obj common-page-mask))
+  (format #t "~Tids[126] @ #x~X~%" (-> obj ids))
+  obj
+  )
+
+;; definition of type texture
+(deftype texture (basic)
+  ((w            int16    :offset-assert   4)
+   (wu           uint16   :offset          4)
+   (h            int16    :offset-assert   6)
+   (hu           uint16   :offset          6)
+   (num-mips     uint8    :offset-assert   8)
+   (tex1-control uint8    :offset-assert   9)
+   (psm          gs-psm   :offset-assert  10)
+   (mip-shift    uint8    :offset-assert  11)
+   (clutpsm      uint16   :offset-assert  12)
+   (dest         uint16 7 :offset-assert  14)
+   (clutdest     uint16   :offset-assert  28)
+   (width        uint8  7 :offset-assert  30)
+   (name         string   :offset-assert  40)
+   (size         uint32   :offset-assert  44)
+   (uv-dist      float    :offset-assert  48)
+   (masks        uint32 3 :offset-assert  52)
+   )
+  :method-count-assert 9
+  :size-assert         #x40
+  :flag-assert         #x900000040
+  )
+
+;; definition for method 3 of type texture
+(defmethod inspect texture ((obj texture))
+  (format #t "[~8x] ~A~%" obj (-> obj type))
+  (format #t "~Tw: ~D~%" (-> obj w))
+  (format #t "~Th: ~D~%" (-> obj h))
+  (format #t "~Tnum-mips: ~D~%" (-> obj num-mips))
+  (format #t "~Ttex1-control: ~D~%" (-> obj tex1-control))
+  (format #t "~Tpsm: ~D~%" (-> obj psm))
+  (format #t "~Tmip-shift: ~D~%" (-> obj mip-shift))
+  (format #t "~Tclutpsm: ~D~%" (-> obj clutpsm))
+  (format #t "~Tdest[7] @ #x~X~%" (-> obj dest))
+  (format #t "~Tclutdest: ~D~%" (-> obj clutdest))
+  (format #t "~Twidth[7] @ #x~X~%" (-> obj width))
+  (format #t "~Tname: ~A~%" (-> obj name))
+  (format #t "~Tsize: #x~X~%" (-> obj size))
+  (format #t "~Tuv-dist: ~f~%" (-> obj uv-dist))
+  (format #t "~Tmasks[3] @ #x~X~%" (-> obj masks))
+  obj
+  )
+
+;; definition of type texture-page-segment
+(deftype texture-page-segment (structure)
+  ((block-data pointer  :offset-assert   0)
+   (size       uint32   :offset-assert   4)
+   (dest       uint32   :offset-assert   8)
+   )
+  :pack-me
+  :method-count-assert 9
+  :size-assert         #xc
+  :flag-assert         #x90000000c
+  )
+
+;; definition for method 3 of type texture-page-segment
+(defmethod inspect texture-page-segment ((obj texture-page-segment))
+  (format #t "[~8x] ~A~%" obj 'texture-page-segment)
+  (format #t "~Tblock-data: #x~X~%" (-> obj block-data))
+  (format #t "~Tsize: #x~X~%" (-> obj size))
+  (format #t "~Tdest: #x~X~%" (-> obj dest))
+  obj
+  )
+
+;; definition for function texture-mip->segment
+(defun texture-mip->segment ((arg0 int) (arg1 int))
+  (if (>= 2 arg1)
+   (+ (- -1 arg0) arg1)
+   (max 0 (- 2 arg0))
+   )
+  )
+
+;; definition of type texture-page
+(deftype texture-page (basic)
+  ((info      file-info                      :offset-assert   4)
+   (name      basic                          :offset-assert   8)
+   (id        uint32                         :offset-assert  12)
+   (length    int32                          :offset-assert  16)
+   (mip0-size uint32                         :offset-assert  20)
+   (size      uint32                         :offset-assert  24)
+   (segment   texture-page-segment 3 :inline :offset-assert  28)
+   (pad       uint32               16        :offset-assert  64)
+   (data      texture              :dynamic  :offset-assert 128)
+   )
+  :method-count-assert 15
+  :size-assert         #x80
+  :flag-assert         #xf00000080
+  (:methods
+    (relocate (_type_ kheap (pointer uint8)) none :replace 7)
+    (remove-from-heap (_type_ kheap) _type_ 9)
+    (get-leftover-block-count (_type_ int int) int 10)
+    (dummy-11 () none 11)
+    (relocate-dests! (_type_ int int) none 12)
+    (add-to-dma-buffer (_type_ dma-buffer int) int 13)
+    (upload-now! (_type_ int) none 14)
+    )
+  )
+
+;; definition for method 3 of type texture-page
+(defmethod inspect texture-page ((obj texture-page))
+  (format #t "[~8x] ~A~%" obj (-> obj type))
+  (format #t "~Tinfo: ~A~%" (-> obj info))
+  (format #t "~Tname: ~A~%" (-> obj name))
+  (format #t "~Tid: ~D~%" (-> obj id))
+  (format #t "~Tlength: ~D~%" (-> obj length))
+  (format #t "~Tmip0-size: ~D~%" (-> obj mip0-size))
+  (format #t "~Tsize: #x~X~%" (-> obj size))
+  (format #t "~Tsegment[3] @ #x~X~%" (-> obj segment))
+  (format #t "~Tpad[16] @ #x~X~%" (-> obj pad))
+  (format #t "~Tdata[0] @ #x~X~%" (-> obj data))
+  obj
+  )
+
+;; definition of type shader-ptr
+(deftype shader-ptr (uint32)
+  ((shader uint32 :offset   8 :size  24)
+   )
+  :method-count-assert 9
+  :size-assert         #x4
+  :flag-assert         #x900000004
+  )
+
+;; definition of type texture-link
+(deftype texture-link (structure)
+  ((next shader-ptr 1 :offset-assert   0)
+   )
+  :method-count-assert 9
+  :size-assert         #x4
+  :flag-assert         #x900000004
+  )
+
+;; definition for method 3 of type texture-link
+(defmethod inspect texture-link ((obj texture-link))
+  (format #t "[~8x] ~A~%" obj 'texture-link)
+  (format #t "~Tnext: #x~X~%" (-> obj next 0))
+  obj
+  )
+
+;; definition of type texture-page-dir-entry
+(deftype texture-page-dir-entry (structure)
+  ((length int16         :offset-assert   0)
+   (status uint16        :offset-assert   2)
+   (page   texture-page  :offset-assert   4)
+   (link   texture-link  :offset-assert   8)
+   )
+  :pack-me
+  :method-count-assert 9
+  :size-assert         #xc
+  :flag-assert         #x90000000c
+  )
+
+;; definition for method 3 of type texture-page-dir-entry
+(defmethod inspect texture-page-dir-entry ((obj texture-page-dir-entry))
+  (format #t "[~8x] ~A~%" obj 'texture-page-dir-entry)
+  (format #t "~Tlength: ~D~%" (-> obj length))
+  (format #t "~Tstatus: ~D~%" (-> obj status))
+  (format #t "~Tpage: ~A~%" (-> obj page))
+  (format #t "~Tlink: #x~X~%" (-> obj link))
+  obj
+  )
+
+;; definition of type texture-page-dir
+(deftype texture-page-dir (basic)
+  ((length  int32                            :offset-assert   4)
+   (entries texture-page-dir-entry 1 :inline :offset-assert   8)
+   )
+  :method-count-assert 10
+  :size-assert         #x14
+  :flag-assert         #xa00000014
+  (:methods
+    (relocate (_type_ kheap (pointer uint8)) none :replace 7)
+    (unlink-textures-in-heap! (_type_ kheap) int 9)
+    )
+  )
+
+;; definition of type texture-relocate-later
+(deftype texture-relocate-later (basic)
+  ((memcpy symbol                  :offset-assert   4)
+   (dest   uint32                  :offset-assert   8)
+   (source uint32                  :offset-assert  12)
+   (move   uint32                  :offset-assert  16)
+   (entry  texture-page-dir-entry  :offset-assert  20)
+   (page   texture-page            :offset-assert  24)
+   )
+  :method-count-assert 9
+  :size-assert         #x1c
+  :flag-assert         #x90000001c
+  )
+
+;; definition for method 3 of type texture-relocate-later
+(defmethod inspect texture-relocate-later ((obj texture-relocate-later))
+  (format #t "[~8x] ~A~%" obj (-> obj type))
+  (format #t "~Tmemcpy: ~A~%" (-> obj memcpy))
+  (format #t "~Tdest: ~D~%" (-> obj dest))
+  (format #t "~Tsource: ~D~%" (-> obj source))
+  (format #t "~Tmove: ~D~%" (-> obj move))
+  (format #t "~Tentry: #<texture-page-dir-entry @ #x~X>~%" (-> obj entry))
+  (format #t "~Tpage: ~A~%" (-> obj page))
+  obj
+  )
+
+;; definition for symbol *texture-relocate-later*, type texture-relocate-later
+(define *texture-relocate-later* (new 'global 'texture-relocate-later))
+
+;; failed to figure out what this is:
+(set! (-> *texture-relocate-later* memcpy) #f)
+
+;; definition for symbol *texture-page-dir*, type texture-page-dir
+(define *texture-page-dir* (the-as texture-page-dir #f))
+
+;; definition of type adgif-shader
+(deftype adgif-shader (structure)
+  ((quad       qword           5 :inline :offset   0)
+   (prims      gs-reg64        10        :offset   0)
+   (tex0       gs-tex0                   :offset   0)
+   (tex1       gs-tex1                   :offset  16)
+   (miptbp1    gs-miptbp                 :offset  32)
+   (clamp      gs-clamp                  :offset  48)
+   (clamp-reg  gs-reg64                  :offset  56)
+   (alpha      gs-miptbp                 :offset  64)
+   (link-test  link-test-flags           :offset   8)
+   (texture-id texture-id                :offset  24)
+   (next       shader-ptr                :offset  40)
+   )
+  :method-count-assert 9
+  :size-assert         #x50
+  :flag-assert         #x900000050
+  )
+
+;; definition for method 3 of type adgif-shader
+(defmethod inspect adgif-shader ((obj adgif-shader))
+  (format #t "[~8x] ~A~%" obj 'adgif-shader)
+  (format #t "~Tquad[5] @ #x~X~%" (&-> obj tex0))
+  (format #t "~Tprims[10] @ #x~X~%" (&-> obj tex0))
+  (format #t "~Ttex0: #x~X~%" (-> obj tex0))
+  (format #t "~Ttex1: #x~X~%" (-> obj tex1))
+  (format #t "~Tmiptbp1: #x~X~%" (-> obj miptbp1))
+  (format #t "~Tclamp: #x~X~%" (-> obj clamp))
+  (format #t "~Tclamp-reg: ~D~%" (-> obj clamp-reg))
+  (format #t "~Talpha: #x~X~%" (-> obj alpha))
+  (format #t "~Tlink-test: ~D~%" (-> obj link-test))
+  (format #t "~Ttexture-id: ~D~%" (-> obj texture-id))
+  (format #t "~Tnext: #x~X~%" (-> obj next))
+  obj
+  )
+
+;; definition of type adgif-shader-array
+(deftype adgif-shader-array (inline-array-class)
+  ((data adgif-shader :inline :dynamic :offset  16)
+   )
+  :method-count-assert 9
+  :size-assert         #x10
+  :flag-assert         #x900000010
+  )
+
+;; definition for method 3 of type adgif-shader-array
+(defmethod inspect adgif-shader-array ((obj adgif-shader-array))
+  (format #t "[~8x] ~A~%" obj (-> obj type))
+  (format #t "~Tlength: ~D~%" (-> obj length))
+  (format #t "~Tallocated-length: ~D~%" (-> obj allocated-length))
+  (format #t "~Tdata[0] @ #x~X~%" (-> obj data))
+  obj
+  )
+
+;; failed to figure out what this is:
+(set! (-> adgif-shader-array heap-base) (the-as uint 80))
+
+;; definition for symbol *sky-base-vram-word*, type int
+(define *sky-base-vram-word* 0)
+
+;; definition for symbol *sky-base-block*, type int
+(define *sky-base-block* 0)
+
+;; definition for symbol *sky-base-page*, type int
+(define *sky-base-page* 0)
+
+;; definition for symbol *depth-cue-base-vram-word*, type int
+(define *depth-cue-base-vram-word* 0)
+
+;; definition for symbol *depth-cue-base-block*, type int
+(define *depth-cue-base-block* 0)
+
+;; definition for symbol *depth-cue-base-page*, type int
+(define *depth-cue-base-page* 0)
+
+;; definition for symbol *eyes-base-vram-word*, type int
+(define *eyes-base-vram-word* 0)
+
+;; definition for symbol *eyes-base-block*, type int
+(define *eyes-base-block* 0)
+
+;; definition for symbol *eyes-base-page*, type int
+(define *eyes-base-page* 0)
+
+;; definition for symbol *ocean-base-vram-word*, type int
+(define *ocean-base-vram-word* 0)
+
+;; definition for symbol *ocean-base-block*, type int
+(define *ocean-base-block* 0)
+
+;; definition for symbol *ocean-base-page*, type int
+(define *ocean-base-page* 0)
+
+;; failed to figure out what this is:
+0

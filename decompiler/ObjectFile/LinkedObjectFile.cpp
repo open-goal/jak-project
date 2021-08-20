@@ -4,7 +4,7 @@
  */
 
 #include <algorithm>
-#include <cassert>
+#include "common/util/assert.h"
 #include <cstring>
 #include <numeric>
 #include "decompiler/IR/IR.h"
@@ -98,6 +98,39 @@ Function& LinkedObjectFile::get_function_at_label(int label_id) {
 
   assert(false);
   return functions_by_seg.front().front();  // to avoid error
+}
+
+/*!
+ * Get the function starting at this label, or nullptr if there is none.
+ */
+Function* LinkedObjectFile::try_get_function_at_label(int label_id) {
+  const auto& label = labels.at(label_id);
+  return try_get_function_at_label(label);
+}
+
+Function* LinkedObjectFile::try_get_function_at_label(const DecompilerLabel& label) {
+  for (auto& func : functions_by_seg.at(label.target_segment)) {
+    // + 4 to skip past type tag to the first word, which is were the label points.
+    if (func.start_word * 4 + 4 == label.offset) {
+      return &func;
+    }
+  }
+  return nullptr;
+}
+
+const Function* LinkedObjectFile::try_get_function_at_label(int label_id) const {
+  const auto& label = labels.at(label_id);
+  return try_get_function_at_label(label);
+}
+
+const Function* LinkedObjectFile::try_get_function_at_label(const DecompilerLabel& label) const {
+  for (auto& func : functions_by_seg.at(label.target_segment)) {
+    // + 4 to skip past type tag to the first word, which is were the label points.
+    if (func.start_word * 4 + 4 == label.offset) {
+      return &func;
+    }
+  }
+  return nullptr;
 }
 
 /*!
@@ -480,6 +513,11 @@ void LinkedObjectFile::process_fp_relative_links() {
               case InstructionKind::DADDU:
               case InstructionKind::ADDU: {
                 assert(prev_instr);
+                if (prev_instr->kind != InstructionKind::ORI) {
+                  lg::error("Failed to process fp relative links for (d)addu preceded by: {}",
+                            prev_instr->to_string(labels));
+                  return;
+                }
                 assert(prev_instr->kind == InstructionKind::ORI);
                 int offset_reg_src_id = instr.kind == InstructionKind::DADDU ? 0 : 1;
                 auto offset_reg = instr.get_src(offset_reg_src_id).get_reg();
@@ -509,74 +547,6 @@ void LinkedObjectFile::process_fp_relative_links() {
   }
 }
 
-std::string LinkedObjectFile::to_asm_json(const std::string& obj_file_name) {
-  nlohmann::json data;
-  std::vector<nlohmann::json::object_t> functions;
-
-  std::unordered_map<std::string, int> functions_seen;
-  for (int seg = segments; seg-- > 0;) {
-    for (size_t fi = functions_by_seg.at(seg).size(); fi--;) {
-      auto& func = functions_by_seg.at(seg).at(fi);
-      auto fname = func.guessed_name.to_string();
-      if (functions_seen.find(fname) != functions_seen.end()) {
-        lg::warn(
-            "Function {} appears multiple times in the same object file {} - it cannot be uniquely "
-            "referenced from config",
-            func.guessed_name.to_string(), obj_file_name);
-        functions_seen[fname]++;
-        fname += "-v" + std::to_string(functions_seen[fname]);
-      } else {
-        functions_seen[fname] = 0;
-      }
-
-      nlohmann::json::object_t f;
-      f["name"] = fname;
-      f["type"] = func.type.print();
-      f["segment"] = seg;
-      f["warnings"] = func.warnings;
-      f["parent_object"] = obj_file_name;
-      std::vector<nlohmann::json::object_t> ops;
-
-      for (int i = 1; i < func.end_word - func.start_word; i++) {
-        nlohmann::json::object_t op;
-        auto label_id = get_label_at(seg, (func.start_word + i) * 4);
-        if (label_id != -1) {
-          op["label"] = labels.at(label_id).name;
-        }
-        auto& instr = func.instructions.at(i);
-        op["id"] = i;
-        op["asm_op"] = instr.to_string(labels);
-
-        if (func.has_basic_ops() && func.instr_starts_basic_op(i)) {
-          op["basic_op"] = func.get_basic_op_at_instr(i)->print(*this);
-          //          if (func.has_typemaps()) {
-          //            auto& tm = func.get_typemap_by_instr_idx(i);
-          //            auto& json_type_map = op["type_map"];
-          //            for (auto& kv : tm) {
-          //              json_type_map[kv.first.to_charp()] = kv.second.print();
-          //            }
-          //          }
-        }
-
-        for (int iidx = 0; iidx < instr.n_src; iidx++) {
-          if (instr.get_src(iidx).is_label()) {
-            auto lab = labels.at(instr.get_src(iidx).get_label());
-            if (is_string(lab.target_segment, lab.offset)) {
-              op["referenced_string"] = get_goal_string(lab.target_segment, lab.offset / 4 - 1);
-            }
-          }
-        }
-
-        ops.push_back(op);
-      }
-      f["asm"] = ops;
-      functions.push_back(f);
-    }
-  }
-  data["functions"] = functions;
-  return data.dump();
-}
-
 std::string LinkedObjectFile::print_function_disassembly(Function& func,
                                                          int seg,
                                                          bool write_hex,
@@ -586,8 +556,8 @@ std::string LinkedObjectFile::print_function_disassembly(Function& func,
   result += "; .function " + func.guessed_name.to_string() + " " + extra_name + "\n";
   result += ";;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;\n";
   result += func.prologue.to_string(2) + "\n";
-  if (!func.warnings.empty()) {
-    result += ";;Warnings:\n" + func.warnings + "\n";
+  if (func.warnings.has_warnings()) {
+    result += ";; Warnings:\n" + func.warnings.get_warning_text(true) + "\n";
   }
 
   // print each instruction in the function.
@@ -728,8 +698,7 @@ std::string LinkedObjectFile::print_asm_function_disassembly(const std::string& 
 /*!
  * Print disassembled functions and data segments.
  */
-std::string LinkedObjectFile::print_disassembly() {
-  bool write_hex = get_config().write_hex_near_instructions;
+std::string LinkedObjectFile::print_disassembly(bool write_hex) {
   std::string result;
 
   assert(segments <= 3);
@@ -799,7 +768,9 @@ std::string LinkedObjectFile::get_goal_string(int seg, int word_idx, bool with_q
     char cword[4];
     memcpy(cword, &word.data, 4);
     result += cword[byte_offset];
-    assert(result.back() != 0);
+    if (result.back() == 0) {
+      return "invalid string! (check me!)";
+    }
   }
   if (with_quotes) {
     result += "\"";
@@ -1002,6 +973,6 @@ const DecompilerLabel& LinkedObjectFile::get_label_by_name(const std::string& na
       return label;
     }
   }
-  throw std::runtime_error("Can't find label " + name);
+  throw std::runtime_error("Cannot find label " + name);
 }
 }  // namespace decompiler

@@ -151,15 +151,15 @@ TEST(GoosBuiltins, Addition) {
   Interpreter i;
   // single element adding
   EXPECT_EQ(e(i, "(+ 1)"), "1");
-  EXPECT_EQ(e(i, "(+ 1.)"), "1.000000");
+  EXPECT_EQ(e(i, "(+ 1.)"), "1.0");
 
   // two element adding
   EXPECT_EQ(e(i, "(+ 1 2)"), "3");
-  EXPECT_EQ(e(i, "(+ 1.1 2.2)"), "3.300000");
+  EXPECT_EQ(e(i, "(+ 1.1 2.2)"), "3.3");
 
   // mixed
   EXPECT_EQ(e(i, "(+ 1 1.1)"), "2");
-  EXPECT_EQ(e(i, "(+ 1.1 1)"), "2.100000");
+  EXPECT_EQ(e(i, "(+ 1.1 1)"), "2.1");
 
   // many, and check rounding happens at the right time
   EXPECT_EQ(e(i, "(+ 1 1.4 1.4 1.4 1.4)"), "5");
@@ -174,15 +174,15 @@ TEST(GoosBuiltins, Multiplication) {
   Interpreter i;
   // single element adding
   EXPECT_EQ(e(i, "(* 2)"), "2");
-  EXPECT_EQ(e(i, "(* 2.)"), "2.000000");
+  EXPECT_EQ(e(i, "(* 2.)"), "2.0");
 
   // two element adding
   EXPECT_EQ(e(i, "(* 3 2)"), "6");
-  EXPECT_EQ(e(i, "(* 1.1 2.2)"), "2.420000");
+  EXPECT_EQ(e(i, "(* 1.1 2.2)"), "2.42");
 
   // mixed
   EXPECT_EQ(e(i, "(* 1 1.1)"), "1");
-  EXPECT_EQ(e(i, "(* 1.1 1)"), "1.100000");
+  EXPECT_EQ(e(i, "(* 1.1 1)"), "1.1");
 
   // many, and check rounding happens at the right time
   EXPECT_EQ(e(i, "(* 3 1.4 1.4 1.4 1.4)"), "3");
@@ -197,15 +197,15 @@ TEST(GoosBuiltins, Subtraction) {
   Interpreter i;
   // single element adding
   EXPECT_EQ(e(i, "(- 2)"), "-2");
-  EXPECT_EQ(e(i, "(- 2.)"), "-2.000000");
+  EXPECT_EQ(e(i, "(- 2.)"), "-2.0");
 
   // two element adding
   EXPECT_EQ(e(i, "(- 3 2)"), "1");
-  EXPECT_EQ(e(i, "(- 1.1 2.2)"), "-1.100000");
+  EXPECT_EQ(e(i, "(- 1.1 2.2)"), "-1.1");
 
   // mixed
   EXPECT_EQ(e(i, "(- 1 1.1)"), "0");
-  EXPECT_EQ(e(i, "(- 1.1 1)"), "0.100000");
+  EXPECT_EQ(e(i, "(- 1.1 1)"), "0.1");
 
   // many, and check rounding happens at the right time
   EXPECT_EQ(e(i, "(- 3 1.4 1.4 1.4 1.4)"), "-1");
@@ -221,11 +221,11 @@ TEST(GoosBuiltins, Division) {
 
   // two element adding
   EXPECT_EQ(e(i, "(/ 16 2)"), "8");
-  EXPECT_EQ(e(i, "(/ 9. 2.)"), "4.500000");
+  EXPECT_EQ(e(i, "(/ 9. 2.)"), "4.5");
 
   // mixed
   EXPECT_EQ(e(i, "(/ 3 2.)"), "1");
-  EXPECT_EQ(e(i, "(/ 3. 2)"), "1.500000");
+  EXPECT_EQ(e(i, "(/ 3. 2)"), "1.5");
 
   i.disable_printfs();
   for (auto x : {"(/ 1)", "(/ 1.0)", "(/)", "(/ 'a)", "(/ #\\a)", "(/ 1 :test 2)",
@@ -494,12 +494,22 @@ TEST(GoosEval, EvalSelfEvaluating) {
   EXPECT_EQ(e(i, "010"), "10");
   EXPECT_EQ(e(i, "-010"), "-10");
   EXPECT_EQ(e(i, "\"test\""), "\"test\"");
-  EXPECT_EQ(e(i, "1.2"), "1.200000");  // this depends on how we decide to print floats
+  EXPECT_EQ(e(i, "1.2"), "1.2");  // this depends on how we decide to print floats
   EXPECT_EQ(e(i, "#\\a"), "#\\a");
   EXPECT_EQ(e(i, "#\\\\n"), "#\\\\n");
 
   i.disable_printfs();
   EXPECT_ANY_THROW(e(i, "#\\\\a"));
+}
+
+TEST(GoosEval, FloatEvalAndPrinting) {
+  Interpreter i;
+  EXPECT_EQ(e(i, "0.9999979734420776"), "0.999998");
+  EXPECT_EQ(e(i, "0.999998"), e(i, "0.9999979734420776"));
+  EXPECT_EQ(e(i, "1."), "1.0");
+  EXPECT_EQ(e(i, ".03"), "0.03");
+  EXPECT_EQ(e(i, "0.02999999932944774627685546875"), e(i, "0.03"));
+  EXPECT_EQ(e(i, "0.5883"), e(i, "0.5882999897"));
 }
 
 /*!
@@ -871,7 +881,8 @@ TEST(GoosLib, Desfun) {
 
 TEST(GoosLib, Factorial) {
   Interpreter i;
-  EXPECT_EQ(e(i, "(factorial 10)"), "3628800");
+  // now large numbers are printed as hex.
+  EXPECT_EQ(e(i, "(factorial 10)"), "#x375f00");
 }
 
 TEST(GoosLib, ApplySimple) {
@@ -1019,8 +1030,8 @@ TEST(GoosObject, Float) {
   EXPECT_TRUE(different == same);
 
   // check print and inspect
-  EXPECT_EQ(different.print(), "-12.340000");
-  EXPECT_EQ(different.inspect(), "[float] -12.340000\n");
+  EXPECT_EQ(different.print(), "-12.34");
+  EXPECT_EQ(different.inspect(), "[float] -12.34\n");
 }
 
 /*!
@@ -1091,6 +1102,8 @@ TEST(GoosObject, String) {
   Object obj2 = StringObject::make_new("test2");
   Object obj3 = StringObject::make_new("test1");
 
+  Object obj4 = StringObject::make_new("test-with\"quote");
+
   EXPECT_TRUE(obj1.is_string());
 
   EXPECT_TRUE(obj1 == obj3);
@@ -1101,6 +1114,7 @@ TEST(GoosObject, String) {
 
   EXPECT_EQ(obj1.print(), "\"test1\"");
   EXPECT_EQ(obj1.inspect(), "[string] \"test1\"\n");
+  EXPECT_EQ(obj4.print(), "\"test-with\\\"quote\"");
 }
 
 /*!
@@ -1244,6 +1258,14 @@ TEST(GoosSpecialForms, Quote) {
   }
 }
 
+TEST(GoosSpecialForms, DoubleQuote) {
+  Interpreter i;
+  e(i, "(define x ''y)");
+  EXPECT_EQ(e(i, "x"), "(quote y)");
+  e(i, "(define x `'`y)");
+  EXPECT_EQ(e(i, "x"), "(quote (quasiquote y))");
+}
+
 TEST(GoosSpecialForms, QuasiQuote) {
   Interpreter i;
   e(i, "(define x 'y)");
@@ -1299,4 +1321,18 @@ TEST(GoosBuiltins, Format) {
 TEST(GoosBuiltins, Error) {
   Interpreter i;
   EXPECT_ANY_THROW(e(i, "(error \"hi\")"));
+}
+
+TEST(GoosBuiltins, Ash) {
+  Interpreter i;
+  EXPECT_EQ(e(i, "(ash 3 2)"), "12");
+  EXPECT_EQ(e(i, "(ash 3 -1)"), "1");
+}
+
+TEST(GoosBuiltins, StringUtils) {
+  Interpreter i;
+  EXPECT_EQ(e(i, "(string-ref \"test\" 2)"), "#\\s");
+  EXPECT_EQ(e(i, "(string-length \"test\")"), "4");
+  EXPECT_EQ(e(i, "(string-append \"hello\" \" \" \"world\")"), "\"hello world\"");
+  EXPECT_EQ(e(i, "(symbol->string 'test)"), "\"test\"");
 }

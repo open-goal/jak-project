@@ -4,6 +4,7 @@
  * This is used both in the compiler and in the decompiler for the type definition file.
  */
 
+#include "common/goos/ParseHelpers.h"
 #include "deftype.h"
 #include "third-party/fmt/core.h"
 
@@ -53,21 +54,7 @@ std::string deftype_parent_list(const goos::Object& list) {
 }
 
 bool is_type(const std::string& expected, const TypeSpec& actual, const TypeSystem* ts) {
-  return ts->typecheck(ts->make_typespec(expected), actual, "", false, false);
-}
-
-template <typename T>
-void for_each_in_list(const goos::Object& list, T f) {
-  const goos::Object* iter = &list;
-  while (iter->is_pair()) {
-    auto lap = iter->as_pair();
-    f(lap->car);
-    iter = &lap->cdr;
-  }
-
-  if (!iter->is_empty_list()) {
-    throw std::runtime_error("invalid list in for_each_in_list: " + list.print());
-  }
+  return ts->tc(ts->make_typespec(expected), actual);
 }
 
 std::string symbol_string(const goos::Object& obj) {
@@ -84,6 +71,15 @@ int64_t get_int(const goos::Object& obj) {
   throw std::runtime_error(obj.print() + " was supposed to be an integer, but isn't");
 }
 
+double get_float(const goos::Object& obj) {
+  if (obj.is_int()) {
+    return obj.integer_obj.value;
+  } else if (obj.is_float()) {
+    return obj.float_obj.value;
+  }
+  throw std::runtime_error(obj.print() + " was supposed to be an number, but isn't");
+}
+
 void add_field(StructureType* structure, TypeSystem* ts, const goos::Object& def) {
   auto rest = &def;
 
@@ -98,6 +94,8 @@ void add_field(StructureType* structure, TypeSystem* ts, const goos::Object& def
   bool is_dynamic = false;
   int offset_override = -1;
   int offset_assert = -1;
+  double score = 0;
+  bool skip_in_decomp = false;
 
   if (!rest->is_empty_list()) {
     if (car(rest).is_int()) {
@@ -116,12 +114,17 @@ void add_field(StructureType* structure, TypeSystem* ts, const goos::Object& def
       } else if (opt_name == ":offset") {
         offset_override = get_int(car(rest));
         rest = cdr(rest);
+      } else if (opt_name == ":score") {
+        score = get_float(car(rest));
+        rest = cdr(rest);
       } else if (opt_name == ":offset-assert") {
         offset_assert = get_int(car(rest));
         if (offset_assert == -1) {
           throw std::runtime_error("Cannot use -1 as offset-assert");
         }
         rest = cdr(rest);
+      } else if (opt_name == ":do-not-decompile") {
+        skip_in_decomp = true;
       } else {
         throw std::runtime_error("Invalid option in field specification: " + opt_name);
       }
@@ -129,7 +132,7 @@ void add_field(StructureType* structure, TypeSystem* ts, const goos::Object& def
   }
 
   int actual_offset = ts->add_field_to_type(structure, name, type, is_inline, is_dynamic,
-                                            array_size, offset_override);
+                                            array_size, offset_override, skip_in_decomp, score);
   if (offset_assert != -1 && actual_offset != offset_assert) {
     throw std::runtime_error("Field " + name + " was placed at " + std::to_string(actual_offset) +
                              " but offset-assert was set to " + std::to_string(offset_assert));
@@ -176,38 +179,57 @@ void add_bitfield(BitFieldType* bitfield_type, TypeSystem* ts, const goos::Objec
 void declare_method(Type* type, TypeSystem* type_system, const goos::Object& def) {
   for_each_in_list(def, [&](const goos::Object& _obj) {
     auto obj = &_obj;
-    // (name args return-type [id])
+    // (name args return-type [:no-virtual] [:replace] [:state] [id])
     auto method_name = symbol_string(car(obj));
     obj = cdr(obj);
     auto& args = car(obj);
     obj = cdr(obj);
     auto& return_type = car(obj);
     obj = cdr(obj);
-    int id = -1;
-    if (!obj->is_empty_list()) {
-      auto& id_obj = car(obj);
-      id = get_int(id_obj);
-      if (!cdr(obj)->is_empty_list()) {
-        throw std::runtime_error("too many things in method def: " + def.print());
-      }
-    }
 
+    bool no_virtual = false;
+    bool replace_method = false;
     TypeSpec function_typespec("function");
 
+    if (!obj->is_empty_list() && car(obj).is_symbol(":no-virtual")) {
+      obj = cdr(obj);
+      no_virtual = true;
+    }
+
+    if (!obj->is_empty_list() && car(obj).is_symbol(":replace")) {
+      obj = cdr(obj);
+      replace_method = true;
+    }
+
+    if (!obj->is_empty_list() && car(obj).is_symbol(":state")) {
+      obj = cdr(obj);
+      function_typespec = TypeSpec("state");
+    }
+
+    if (!obj->is_empty_list() && car(obj).is_symbol(":behavior")) {
+      obj = cdr(obj);
+      function_typespec.add_new_tag("behavior", symbol_string(obj->as_pair()->car));
+      obj = cdr(obj);
+    }
+
+    int id = -1;
+    if (!obj->is_empty_list() && car(obj).is_int()) {
+      auto& id_obj = car(obj);
+      id = get_int(id_obj);
+      obj = cdr(obj);
+    }
+
+    if (!obj->is_empty_list()) {
+      throw std::runtime_error("too many things in method def: " + def.print());
+    }
+
     for_each_in_list(args, [&](const goos::Object& o) {
-      if (o.is_symbol()) {
-        function_typespec.add_arg(parse_typespec(type_system, o));
-      } else {
-        auto next = cdr(&o);
-        function_typespec.add_arg(parse_typespec(type_system, car(next)));
-        if (!cdr(next)->is_empty_list()) {
-          throw std::runtime_error("too many things in method def arg type: " + def.print());
-        };
-      }
+      function_typespec.add_arg(parse_typespec(type_system, o));
     });
     function_typespec.add_arg(parse_typespec(type_system, return_type));
 
-    auto info = type_system->add_method(type, method_name, function_typespec);
+    auto info = type_system->declare_method(type, method_name, no_virtual, function_typespec,
+                                            replace_method);
 
     // check the method assert
     if (id != -1) {
@@ -225,6 +247,8 @@ struct StructureDefResult {
   TypeFlags flags;
   bool generate_runtime_type = true;
   bool pack_me = false;
+  bool allow_misaligned = false;
+  bool final = false;
 };
 
 StructureDefResult parse_structure_def(StructureType* type,
@@ -286,9 +310,11 @@ StructureDefResult parse_structure_def(StructureType* type,
         u16 hb = get_int(car(rest));
         rest = cdr(rest);
         flags.heap_base = hb;
-      }
-
-      else {
+      } else if (opt_name == ":allow-misaligned") {
+        result.allow_misaligned = true;
+      } else if (opt_name == ":final") {
+        result.final = true;
+      } else {
         throw std::runtime_error("Invalid option in field specification: " + opt_name);
       }
     }
@@ -312,6 +338,15 @@ StructureDefResult parse_structure_def(StructureType* type,
     throw std::runtime_error(
         fmt::format("Type {} has flag 0x{:x} but flag-assert was set to 0x{:x}", type->get_name(),
                     flags.flag, flag_assert));
+  }
+
+  if (result.flags.heap_base) {
+    int heap_start_1 = 112 + result.flags.heap_base;
+    int heap_start_2 = (result.flags.size + 15) & (~15);
+    if (heap_start_1 != heap_start_2) {
+      throw std::runtime_error(fmt::format("Heap base bad on {}: {} vs {}\n", type->get_name(),
+                                           heap_start_1, heap_start_2));
+    }
   }
 
   result.flags = flags;
@@ -411,15 +446,44 @@ BitFieldTypeDefResult parse_bitfield_type_def(BitFieldType* type,
 
 }  // namespace
 
-TypeSpec parse_typespec(TypeSystem* type_system, const goos::Object& src) {
+TypeSpec parse_typespec(const TypeSystem* type_system, const goos::Object& src) {
   if (src.is_symbol()) {
     return type_system->make_typespec(symbol_string(src));
   } else if (src.is_pair()) {
     TypeSpec ts = type_system->make_typespec(symbol_string(car(&src)));
-    const auto& rest = *cdr(&src);
+    const auto* rest = cdr(&src);
 
-    for_each_in_list(rest,
-                     [&](const goos::Object& o) { ts.add_arg(parse_typespec(type_system, o)); });
+    while (rest->is_pair()) {
+      auto& it = rest->as_pair()->car;
+
+      if (it.is_symbol() && it.as_symbol()->name.at(0) == ':') {
+        auto tag_name = it.as_symbol()->name.substr(1);
+        rest = &rest->as_pair()->cdr;
+
+        if (!rest->is_pair()) {
+          throw std::runtime_error("TypeSpec missing tag value");
+        }
+
+        auto& tag_val = rest->as_pair()->car;
+
+        if (tag_name == "behavior") {
+          if (!type_system->fully_defined_type_exists(tag_val.as_symbol()->name) &&
+              !type_system->partially_defined_type_exists(tag_val.as_symbol()->name)) {
+            throw std::runtime_error(
+                fmt::format("Behavior tag uses an unknown type {}", tag_val.as_symbol()->name));
+          }
+          ts.add_new_tag(tag_name, tag_val.as_symbol()->name);
+        } else {
+          throw std::runtime_error(fmt::format("Type tag {} is unknown", tag_name));
+        }
+
+      } else {
+        // normal argument.
+        ts.add_arg(parse_typespec(type_system, it));
+      }
+
+      rest = &rest->as_pair()->cdr;
+    }
 
     return ts;
   } else {
@@ -450,38 +514,64 @@ DeftypeResult parse_deftype(const goos::Object& deftype, TypeSystem* ts) {
   DeftypeResult result;
 
   if (is_type("basic", parent_type, ts)) {
-    auto new_type = std::make_unique<BasicType>(parent_type_name, name);
+    auto new_type = std::make_unique<BasicType>(parent_type_name, name, false, 0);
     auto pto = dynamic_cast<BasicType*>(ts->lookup_type(parent_type));
     assert(pto);
-    new_type->inherit(pto);
-    ts->forward_declare_type_as_basic(name);
-    auto sr = parse_structure_def(new_type.get(), ts, field_list_obj, options_obj);
-    result.flags = sr.flags;
-    result.create_runtime_type = sr.generate_runtime_type;
-    if (sr.pack_me) {
-      fmt::print("[TypeSystem] :pack-me was set on {}, which is a basic and cannot be packed.",
-                 name);
-      throw std::runtime_error("invalid pack option on basic");
+    if (pto->final()) {
+      throw std::runtime_error(
+          fmt::format("[TypeSystem] Cannot make a child type {} of final basic type {}", name,
+                      parent_type_name));
     }
-    ts->add_type(name, std::move(new_type));
-  } else if (is_type("structure", parent_type, ts)) {
-    auto new_type = std::make_unique<StructureType>(parent_type_name, name);
-    auto pto = dynamic_cast<StructureType*>(ts->lookup_type(parent_type));
-    assert(pto);
     new_type->inherit(pto);
-    ts->forward_declare_type_as_structure(name);
+    ts->forward_declare_type_as(name, "basic");
     auto sr = parse_structure_def(new_type.get(), ts, field_list_obj, options_obj);
     result.flags = sr.flags;
     result.create_runtime_type = sr.generate_runtime_type;
     if (sr.pack_me) {
       new_type->set_pack(true);
     }
+    if (sr.allow_misaligned) {
+      fmt::print(
+          "[TypeSystem] :allow-misaligned was set on {}, which is a basic and cannot "
+          "be misaligned\n",
+          name);
+      throw std::runtime_error("invalid pack option on basic");
+    }
+    new_type->set_heap_base(result.flags.heap_base);
+    if (sr.final) {
+      new_type->set_final();
+    }
+    ts->add_type(name, std::move(new_type));
+  } else if (is_type("structure", parent_type, ts)) {
+    auto new_type = std::make_unique<StructureType>(parent_type_name, name, false, false, false, 0);
+    auto pto = dynamic_cast<StructureType*>(ts->lookup_type(parent_type));
+    assert(pto);
+    new_type->inherit(pto);
+    ts->forward_declare_type_as(name, "structure");
+    auto sr = parse_structure_def(new_type.get(), ts, field_list_obj, options_obj);
+    result.flags = sr.flags;
+    result.create_runtime_type = sr.generate_runtime_type;
+    if (sr.pack_me) {
+      new_type->set_pack(true);
+    }
+    if (sr.allow_misaligned) {
+      new_type->set_allow_misalign(true);
+    }
+    if (sr.final) {
+      throw std::runtime_error(
+          fmt::format("[TypeSystem] :final option cannot be used on structure type {}", name));
+    }
+    new_type->set_heap_base(result.flags.heap_base);
     ts->add_type(name, std::move(new_type));
   } else if (is_type("integer", parent_type, ts)) {
     auto pto = ts->lookup_type(parent_type);
     assert(pto);
     auto new_type = std::make_unique<BitFieldType>(
         parent_type_name, name, pto->get_size_in_memory(), pto->get_load_signed());
+    auto parent_value = dynamic_cast<ValueType*>(pto);
+    assert(parent_value);
+    new_type->inherit(parent_value);
+    new_type->set_runtime_type(pto->get_runtime_name());
     auto sr = parse_bitfield_type_def(new_type.get(), ts, field_list_obj, options_obj);
     result.flags = sr.flags;
     result.create_runtime_type = sr.generate_runtime_type;

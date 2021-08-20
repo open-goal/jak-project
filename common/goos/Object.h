@@ -14,7 +14,7 @@
  * Object::make_<type>
  *
  * To convert an Object into a more specific object, use the as_<type> method of Object.
- * It will throw an exception is you get the type wrong.
+ * It will throw an exception if you get the type wrong.
  *
  * These are all the types:
  *
@@ -41,7 +41,7 @@
  */
 
 #include <string>
-#include <cassert>
+#include "common/util/assert.h"
 #include <memory>
 #include <unordered_map>
 #include <unordered_set>
@@ -103,6 +103,12 @@ std::string fixed_to_string<FloatType>(FloatType);
  */
 template <>
 std::string fixed_to_string<char>(char);
+
+/*!
+ * Special case to print integer
+ */
+template <>
+std::string fixed_to_string<IntType>(IntType);
 
 /*!
  * Common implementation for a fixed object
@@ -319,6 +325,7 @@ class Object {
   bool is_float() const { return type == ObjectType::FLOAT; }
   bool is_char() const { return type == ObjectType::CHAR; }
   bool is_symbol() const { return type == ObjectType::SYMBOL; }
+  bool is_symbol(const std::string& name) const;
   bool is_string() const { return type == ObjectType::STRING; }
   bool is_pair() const { return type == ObjectType::PAIR; }
   bool is_array() const { return type == ObjectType::ARRAY; }
@@ -409,9 +416,8 @@ class StringObject : public HeapObject {
     return obj;
   }
 
-  std::string print() const override { return "\"" + data + "\""; }
-
-  std::string inspect() const override { return "[string] \"" + data + "\"\n"; }
+  std::string print() const override;
+  std::string inspect() const override;
 
   ~StringObject() override = default;
 };

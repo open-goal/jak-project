@@ -1,0 +1,57 @@
+(deftype basic-elt (basic)
+  ((name string))
+  )
+
+(deftype struct-elt (structure)
+  ((thing symbol))
+  )
+
+(deftype test-basic-for-static-inline-array-field (basic)
+  ((value uint32)
+   (name string)
+   (arr basic-elt 12 :inline)
+   (arr2 struct-elt 3 :inline)
+   (lst pair)
+   )
+  )
+
+(let ((test (new 'static 'test-basic-for-static-inline-array-field
+                 :value 12
+                 :arr (new 'static 'inline-array basic-elt 12
+                           (new 'static 'basic-elt :name "first")
+                           (new 'static 'basic-elt :name "second")
+                           )
+                 :arr2 (new 'static 'inline-array struct-elt 3
+                            (new 'static 'struct-elt :thing 'asdf)
+                            (new 'static 'struct-elt :thing 'two)
+                            )
+                 )))
+  (format #t "~A ~A~%" (-> test arr 1 name) (-> test arr 0 name))
+  (format #t "~A #x~X #x~X~%" (-> test arr 1 type) (logand 15 (the int (-> test arr))) (logand 15 (the int (-> test arr 1))))
+  (format #t "~A~%" (-> test arr2 1 thing))
+  )
+
+(deftype test-struct-for-static-inline-array-field (structure)
+  ((value uint32)
+   (name string)
+   (arr basic-elt 12 :inline)
+   (arr2 struct-elt 3 :inline)
+   (lst pair)
+   )
+  )
+
+(let ((test (new 'static 'test-struct-for-static-inline-array-field
+                 :value 12
+                 :arr (new 'static 'inline-array basic-elt 12
+                           (new 'static 'basic-elt :name "first")
+                           (new 'static 'basic-elt :name "second")
+                           )
+                 :arr2 (new 'static 'inline-array struct-elt 3
+                            (new 'static 'struct-elt :thing 'asdf)
+                            (new 'static 'struct-elt :thing 'two)
+                            )
+                 )))
+  (format #t "~A ~A~%" (-> test arr 1 name) (-> test arr 0 name))
+  (format #t "~A #x~X #x~X~%" (-> test arr 1 type) (logand 15 (the int (-> test arr))) (logand 15 (the int (-> test arr 1))))
+  (format #t "~A~%" (-> test arr2 1 thing))
+  )

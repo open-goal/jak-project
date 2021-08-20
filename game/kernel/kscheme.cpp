@@ -4,7 +4,7 @@
  */
 
 #include <cstring>
-#include <cassert>
+#include "common/util/assert.h"
 #include "kscheme.h"
 #include "common/common_types.h"
 #include "common/goal_constants.h"
@@ -13,6 +13,7 @@
 #include "kmalloc.h"
 #include "kprint.h"
 #include "fileio.h"
+#include "kmemcard.h"
 #include "kboot.h"
 #include "kdsnetm.h"
 #include "kdgo.h"
@@ -21,6 +22,7 @@
 #include "common/versions.h"
 #include "common/goal_constants.h"
 #include "common/log/log.h"
+#include "common/util/Timer.h"
 
 //! Controls link mode when EnableMethodSet = 0, MasterDebug = 1, DiskBoot = 0. Will enable a
 //! warning message if EnableMethodSet = 1
@@ -164,6 +166,7 @@ u64 alloc_from_heap(u32 heapSymbol, u32 type, s32 size) {
     return kmalloc(*Ptr<Ptr<kheapinfo>>(heapSymbol), size, KMALLOC_MEMSET, gstr->data()).offset;
   } else if (heapOffset == FIX_SYM_PROCESS_TYPE) {
     assert(false);  // nyi
+    return 0;
     // allocate on current process heap
     //    Ptr start = *ptr<Ptr>(getS6() + 0x4c + 8);
     //    Ptr heapEnd = *ptr<Ptr>(getS6() + 0x4c + 4);
@@ -180,6 +183,7 @@ u64 alloc_from_heap(u32 heapSymbol, u32 type, s32 size) {
     //    }
   } else if (heapOffset == FIX_SYM_SCRATCH) {
     assert(false);  // nyi, I think unused.
+    return 0;
   } else {
     memset(Ptr<u8>(heapSymbol).c(), 0, (size_t)alignedSize);  // treat it as a stack address
     return heapSymbol;
@@ -217,8 +221,8 @@ u64 new_structure(u32 heap, u32 type) {
 /*!
  * Allocate a structure with a dynamic size
  */
-u64 new_dynamic_structure(u32 heap, u32 type, u32 size) {
-  return alloc_from_heap(heap, type, size);
+u64 new_dynamic_structure(u32 heap_symbol, u32 type, u32 size) {
+  return alloc_from_heap(heap_symbol, type, size);
 }
 
 /*!
@@ -313,39 +317,44 @@ u64 make_string_from_c(const char* c_str) {
   return mem;
 }
 
+extern "C" {
+void _arg_call_linux();
+}
+
 /*!
  * This creates an OpenGOAL function from a C++ function. Only 6 arguments can be accepted.
- * But calling this function is very fast and doesn't use the stack.
+ * But calling this function is fast. It used to be really fast but wrong.
  */
 Ptr<Function> make_function_from_c_linux(void* func) {
-  // allocate a function object on the global heap
   auto mem = Ptr<u8>(
       alloc_heap_object(s7.offset + FIX_SYM_GLOBAL_HEAP, *(s7 + FIX_SYM_FUNCTION_TYPE), 0x40));
   auto f = (uint64_t)func;
-  auto fp = (u8*)&f;
+  auto target_function = (u8*)&f;
+  auto trampoline_function_addr = _arg_call_linux;
+  auto trampoline = (u8*)&trampoline_function_addr;
 
-  int i = 0;
-  // we will put the function address in RAX with a movabs rax, imm8
-  mem.c()[i++] = 0x48;
-  mem.c()[i++] = 0xb8;
-  for (int j = 0; j < 8; j++) {
-    mem.c()[i++] = fp[j];
+  // movabs rax, target_function
+  int offset = 0;
+  mem.c()[offset++] = 0x48;
+  mem.c()[offset++] = 0xb8;
+  for (int i = 0; i < 8; i++) {
+    mem.c()[offset++] = target_function[i];
   }
 
-  // push r10
-  // push r11
-  // sub rsp, 8
-  // call rax
-  // add rsp, 8
-  // pop r11
-  // pop r10
-  // ret
-  for (auto x : {0x41, 0x52, 0x41, 0x53, 0x48, 0x83, 0xEC, 0x08, 0xFF, 0xD0, 0x48, 0x83, 0xC4, 0x08,
-                 0x41, 0x5B, 0x41, 0x5A, 0xC3}) {
-    mem.c()[i++] = x;
+  // push rax
+  mem.c()[offset++] = 0x50;
+
+  // movabs rax, trampoline
+  mem.c()[offset++] = 0x48;
+  mem.c()[offset++] = 0xb8;
+  for (int i = 0; i < 8; i++) {
+    mem.c()[offset++] = trampoline[i];
   }
 
-  // the C function's ret will return to the caller of this trampoline.
+  // jmp rax
+  mem.c()[offset++] = 0xff;
+  mem.c()[offset++] = 0xe0;
+  // the asm function's ret will return to the caller of this (GOAL code) directlyz.
 
   // CacheFlush(mem, 0x34);
 
@@ -397,8 +406,6 @@ ret
         0x83, 0xEC, 0x28, 0xFF, 0xD0, 0x48, 0x83, 0xC4, 0x28, 0x41, 0x5B, 0x41, 0x5A, 0xC3}) {
     mem.c()[i++] = x;
   }
-
-  // the C function's ret will return to the caller of this trampoline.
 
   // CacheFlush(mem, 0x34);
 
@@ -1131,7 +1138,6 @@ u64 call_method_of_type(u32 arg, Ptr<Type> type, u32 method_id) {
     }
   }
   printf("[ERROR] call_method_of_type failed!\n");
-  assert(false);
   return arg;
 }
 
@@ -1376,7 +1382,7 @@ u64 print_vu_function(u32 obj) {
  * Dynamically sized basics should override this method.
  */
 u64 asize_of_basic(u32 it) {
-  return Ptr<Type>(it - 4)->allocated_size;
+  return Ptr<Type>(*Ptr<u32>(it - BASIC_OFFSET))->allocated_size;
 }
 
 /*!
@@ -1667,6 +1673,7 @@ s32 test_function(s32 arg0, s32 arg1, s32 arg2, s32 arg3) {
  * This takes care of all initialization that isn't for the hardware itself.
  */
 s32 InitHeapAndSymbol() {
+  Timer heap_init_timer;
   // allocate memory for the symbol table
   auto symbol_table = kmalloc(kglobalheap, 0x20000, KMALLOC_MEMSET, "symbol-table").cast<u32>();
 
@@ -1712,11 +1719,9 @@ s32 InitHeapAndSymbol() {
   set_fixed_symbol(FIX_SYM_GLOBAL_HEAP, "global", kglobalheap.offset);
   set_fixed_symbol(FIX_SYM_DEBUG_HEAP, "debug", kdebugheap.offset);
   set_fixed_symbol(FIX_SYM_STATIC, "static", (s7 + FIX_SYM_STATIC).offset);
-  set_fixed_symbol(FIX_SYM_LOADING_LEVEL, "loading-level", (s7 + FIX_SYM_LOADING_LEVEL).offset);
-  set_fixed_symbol(FIX_SYM_LOADING_PACKAGE, "loading-package",
-                   (s7 + FIX_SYM_LOADING_PACKAGE).offset);
-  set_fixed_symbol(FIX_SYM_PROCESS_LEVEL_HEAP, "process-level-heap",
-                   (s7 + FIX_SYM_PROCESS_LEVEL_HEAP).offset);
+  set_fixed_symbol(FIX_SYM_LOADING_LEVEL, "loading-level", kglobalheap.offset);
+  set_fixed_symbol(FIX_SYM_LOADING_PACKAGE, "loading-package", kglobalheap.offset);
+  set_fixed_symbol(FIX_SYM_PROCESS_LEVEL_HEAP, "process-level-heap", kglobalheap.offset);
   set_fixed_symbol(FIX_SYM_STACK, "stack", (s7 + FIX_SYM_STACK).offset);
   set_fixed_symbol(FIX_SYM_SCRATCH, "scratch", (s7 + FIX_SYM_SCRATCH).offset);
   set_fixed_symbol(FIX_SYM_SCRATCH_TOP, "*scratch-top*", 0x70000000);
@@ -1920,7 +1925,7 @@ s32 InitHeapAndSymbol() {
   make_function_symbol_from_c("method-set!", (void*)method_set);
 
   // dgo
-  make_function_symbol_from_c("link", (void*)link_and_exec_wrapper);
+  make_stack_arg_function_symbol_from_c("link", (void*)link_and_exec_wrapper);
   make_function_symbol_from_c("dgo-load", (void*)load_and_link_dgo);
 
   // forward declare
@@ -1930,7 +1935,7 @@ s32 InitHeapAndSymbol() {
   make_raw_function_symbol_from_c("symlink3", 0);
 
   // game stuff
-  make_function_symbol_from_c("link-begin", (void*)link_begin);
+  make_stack_arg_function_symbol_from_c("link-begin", (void*)link_begin);
   make_function_symbol_from_c("link-resume", (void*)link_resume);
   //  make_function_symbol_from_c("mc-run", &CKernel::not_yet_implemented);
   //  make_function_symbol_from_c("mc-format", &CKernel::not_yet_implemented);
@@ -1941,7 +1946,7 @@ s32 InitHeapAndSymbol() {
   //  make_function_symbol_from_c("mc-check-result", &CKernel::not_yet_implemented);
   //  make_function_symbol_from_c("mc-get-slot-info", &CKernel::not_yet_implemented);
   //  make_function_symbol_from_c("mc-makefile", &CKernel::not_yet_implemented);
-  //  make_function_symbol_from_c("kset-language", &CKernel::not_yet_implemented);
+  make_function_symbol_from_c("kset-language", (void*)MC_set_language);
 
   // set *debug-segment*
   auto ds_symbol = intern_from_c("*debug-segment*");
@@ -1959,9 +1964,11 @@ s32 InitHeapAndSymbol() {
   // set *boot-video-mode*
   intern_from_c("*boot-video-mode*")->value = 0;
 
+  lg::info("Initialized GOAL heap in {:.2} ms", heap_init_timer.getMs());
   // load the kernel!
   // todo, remove MasterUseKernel
   if (MasterUseKernel) {
+    Timer kernel_load_timer;
     method_set_symbol->value++;
     load_and_link_dgo_from_c("kernel", kglobalheap,
                              LINK_FLAG_OUTPUT_LOAD | LINK_FLAG_EXECUTE | LINK_FLAG_PRINT_LOGIN,
@@ -1979,8 +1986,8 @@ s32 InitHeapAndSymbol() {
           (kernel_version >> 3) & 0xffff);
       return -1;
     } else {
-      lg::info("Got correct kernel version {}.{}", kernel_version >> 0x13,
-               (kernel_version >> 3) & 0xffff);
+      lg::info("Got correct kernel version {}.{}, loaded in {:.2} ms", kernel_version >> 0x13,
+               (kernel_version >> 3) & 0xffff, kernel_load_timer.getMs());
     }
   }
 

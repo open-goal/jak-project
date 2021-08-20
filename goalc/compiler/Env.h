@@ -13,7 +13,7 @@
 #include <memory>
 #include <vector>
 #include "common/type_system/TypeSpec.h"
-#include "goalc/regalloc/allocate.h"
+#include "goalc/regalloc/allocator_interface.h"
 #include "common/goos/Object.h"
 #include "StaticObject.h"
 #include "Label.h"
@@ -38,6 +38,7 @@ class Env {
   virtual std::unordered_map<std::string, Label>& get_label_map();
   RegVal* make_gpr(const TypeSpec& ts);
   RegVal* make_fpr(const TypeSpec& ts);
+  RegVal* make_vfr(const TypeSpec& ts);
   virtual ~Env() = default;
   Env* parent() { return m_parent; }
 
@@ -204,6 +205,10 @@ class FunctionEnv : public DeclareEnv {
     m_envs.push_back(std::move(new_obj));
     return (T*)m_envs.back().get();
   }
+
+  const std::vector<std::unique_ptr<RegVal>>& reg_vals() const { return m_iregs; }
+
+  RegVal* push_reg_val(std::unique_ptr<RegVal> in);
 
   int segment = -1;
   std::string method_of_type_name = "#f";

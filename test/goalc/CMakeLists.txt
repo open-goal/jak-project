@@ -1,5 +1,3 @@
-# TODO - probably a more cmakey way to do this
-
 set(GOALC_TEST_CASES
     ${CMAKE_CURRENT_LIST_DIR}/all_goalc_template_tests.cpp
     ${CMAKE_CURRENT_LIST_DIR}/test_debugger.cpp

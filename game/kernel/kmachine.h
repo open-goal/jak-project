@@ -5,9 +5,6 @@
  * GOAL Machine.  Contains low-level hardware interfaces for GOAL.
  */
 
-#ifndef RUNTIME_KMACHINE_H
-#define RUNTIME_KMACHINE_H
-
 #include "common/common_types.h"
 #include "Ptr.h"
 
@@ -92,21 +89,33 @@ void CacheFlush(void* mem, int size);
 void InitMachineScheme();
 
 //! Mirror of cpad-info
-struct CpadInfo {
+struct CPadInfo {
   u8 valid;
   u8 status;
-  s16 button0;
-  u8 rx;
-  u8 ry;
-  u8 lx;
-  u8 ly;
+  u16 button0;
+  u8 rightx;
+  u8 righty;
+  u8 leftx;
+  u8 lefty;
   u8 abutton[12];
   u8 dummy[12];
   s32 number;
   s32 cpad_file;
-  u8 _pad0[36];
+  u32 button0_abs[3];
+  u32 button0_shadow_abs[1];
+  u32 button0_rel[3];
+  float stick0_dir;
+  float stick0_speed;
   s32 new_pad;
   s32 state;
+  u8 align[6];
+  u8 direct[6];
+  u8 buzz_val[2];
+  u8 __pad[2];
+  u64 buzz_time[2];
+  u32 buzz;
+  s32 buzz_act;
+  s32 change_time;  // actually u64 in goal!
 };
 
 struct FileStream {
@@ -118,4 +127,4 @@ struct FileStream {
 
 // static_assert(offsetof(CpadInfo, new_pad) == 76, "cpad type offset");
 
-#endif  // RUNTIME_KMACHINE_H
+void vif_interrupt_callback();

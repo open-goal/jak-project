@@ -1,0 +1,164 @@
+
+(defmacro pf (x)
+  `(format #t "~f~%" ,x)
+  )
+
+(defmacro pfv (x)
+  `(format #t "~f ~f ~f ~f~%" (-> ,x x) (-> ,x y) (-> ,x z) (-> ,x w))
+  )
+
+(defmacro pr (x)
+  `(format #t "~r~%" ,x)
+  )
+
+(defconstant PI_OVER_6 0.523598)
+(defconstant PI_OVER_4 0.785398)
+(defconstant PI_OVER_3 1.047198)
+(defconstant PI_OVER_2 1.570796)
+
+;; degrees conversion and printing
+(format #t "~r~%" (degrees 2.0)) ;; 2.000
+(format #t "~r~%" (degrees -45)) ;; -45.000
+
+;; radmod
+(pf (radmod 1.2)) ;; 1.200
+(pf (radmod -1.2)) ;; -1.200
+(pf (radmod 4.0)) ;; -2.2831
+(pf (radmod -5.0)) ;; 1.2831
+(format #t "~%")
+
+;; sin
+(pf (sin (degrees 30))) ;; 0.5
+(pf (sin (degrees 90))) ;; 1
+(pf (sin (degrees (- 45)))) ;; -.707
+(pf (sin (degrees (- 60)))) ;; -.866
+(format #t "~%")
+
+;; sin-rad
+(pf (sin-rad PI_OVER_6))
+(pf (sin-rad PI_OVER_2))
+(pf (sin-rad (- PI_OVER_4)))
+(pf (sin-rad (- PI_OVER_3)))
+(format #t "~%")
+
+;; vector-sin-rad!
+(let ((in (new 'stack-no-clear 'vector))
+      (out (new 'stack-no-clear 'vector))
+      )
+  (set-vector! in PI_OVER_6 (- PI_OVER_4) PI_OVER_3 (- PI_OVER_2))
+  (vector-sin-rad! out in)
+  (pfv out)
+  )
+(format #t "~%")
+
+;; cos-rad (this one is correct)
+(pf (cos-rad PI_OVER_6))
+(pf (cos-rad PI_OVER_2))
+(pf (cos-rad (- PI_OVER_4)))
+(pf (cos-rad (- PI_OVER_3)))
+(format #t "~%")
+
+;; vector-cos-rad!
+(let ((in (new 'stack-no-clear 'vector))
+      (out (new 'stack-no-clear 'vector))
+      )
+  (set-vector! in PI_OVER_6 (- PI_OVER_4) PI_OVER_3 (- PI_OVER_2))
+  (vector-cos-rad! out in)
+  (pfv out)
+  )
+(format #t "~%")
+
+;; vector-sincos-rad!
+(let ((in (new 'stack-no-clear 'vector))
+      (out-sin (new 'stack-no-clear 'vector))
+      (out-cos (new 'stack-no-clear 'vector))
+      )
+  (set-vector! in PI_OVER_6 (- PI_OVER_4) PI_OVER_3 (- PI_OVER_2))
+  (vector-sincos-rad! out-sin out-cos in)
+  (pfv out-sin)
+  (pfv out-cos)
+  )
+(format #t "~%")
+
+;; sincos-rad! (has cosine bug)
+(let ((out (new 'stack-no-clear 'array 'float 2)))
+  (sincos-rad! out PI_OVER_4)
+  (format #t "~f ~f~%" (-> out 0) (-> out 1))
+  (sincos-rad! out (- PI_OVER_2))
+  (format #t "~f ~f~%" (-> out 0) (-> out 1))
+  )
+(format #t "~%")
+
+;; sincos! (has cosine bug)
+(format #t "sincos!~%")
+(let ((out (new 'stack-no-clear 'array 'float 2)))
+  (sincos! out (+ 0.0 (degrees 765)))
+  (format #t "~f ~f~%" (-> out 0) (-> out 1))
+  (sincos! out (+ (degrees 750) -0.0))
+  (format #t "~f ~f~%" (-> out 0) (-> out 1))
+  )
+(format #t "~%")
+
+;; vector-rad<-vector-deg!
+(let ((out (new 'stack 'vector))
+      (in (new 'stack 'vector))
+      )
+  (set-vector! in (degrees 1.0) (degrees 182.0) (degrees -183.0) (degrees 790.0))
+  (vector-rad<-vector-deg! out in)
+  (pfv out)
+  )
+(format #t "~%")
+
+;; vector-rad<-vector-deg/2!
+(let ((out (new 'stack 'vector))
+      (in (new 'stack 'vector))
+      )
+  (set-vector! in (degrees (* 2.0 1.0)) (degrees (* 2.0 182.0)) (degrees (* 2.0 -183.0)) (degrees (* 2.0 790.0)))
+  (vector-rad<-vector-deg/2! out in)
+  (pfv out)
+  )
+(format #t "~%")
+
+;; tan
+(pf (tan (degrees 0)))
+(pf (tan (degrees 45.0)))
+(pf (tan (degrees -30.0)))
+(format #t "~%")
+
+;; atan-rad
+(pf (atan-rad 0.5))
+(pf (atan-rad 0.707))
+(format #t "~%")
+
+;; atan2-rad
+(pf (atan2-rad 1.0 2.0))
+(pf (atan2-rad -2.0 4.0))
+(pf (atan2-rad 1.0 -2.0))
+(pf (atan2-rad -1.0 -2.0))
+(format #t "~%")
+
+;; exp
+(pf (exp 0.0))
+(pf (exp 0.2))
+(pf (exp 1.0))
+(pf (exp 1.3))
+(pf (exp 3.45))
+(pf (exp -1.0))
+(pf (exp -0.5))
+(pf (exp -2.34))
+(format #t "~%")
+
+;; atan2
+(pr (atan 2.0 4.0))
+(pr (atan -.707 1.0))
+(pr (atan 1.732 -2.0))
+(pr (atan -2.0 -1.0))
+(format #t "~%")
+
+;; asin
+(pr (asin 0.707))
+(pr (asin -0.866))
+(format #t "~%")
+0
+
+

@@ -1,8 +1,6 @@
 /*!
  * @file Listener.cpp
  * The Listener can connect to a Deci2Server for debugging.
- *
- * TODO - msg ID?
  */
 
 #ifdef __linux__
@@ -20,11 +18,10 @@
 #undef max
 #endif
 
-// TODO - i think im not including the dependency right..?
 #include "common/cross_sockets/xsocket.h"
 
 #include <stdexcept>
-#include <cassert>
+#include "common/util/assert.h"
 #include <cstring>
 #include <chrono>
 #include <thread>
@@ -224,8 +221,8 @@ void Listener::receive_func() {
           if (hdr->msg_id == last_sent_id) {
             printf("[Listener] Received ACK for most recent message late.\n");
             if (last_recvd_id != hdr->msg_id - 1) {
-              printf(
-                  "[Listener] WARNING: message ID jumped from %ld to %ld. Some messages may have "
+              fmt::print(
+                  "[Listener] WARNING: message ID jumped from {} to {}. Some messages may have "
                   "been lost. You must wait for an ACK before sending the next message.\n",
                   last_recvd_id, hdr->msg_id);
             }
@@ -251,9 +248,9 @@ void Listener::receive_func() {
           got_ack = true;
           last_recvd_id = hdr->msg_id;
           if (last_recvd_id > last_sent_id) {
-            printf(
-                "[Listener] ERROR: Got an ack message with id of %ld, but the last message sent "
-                "had an ID of %ld.\n",
+            fmt::print(
+                "[Listener] ERROR: Got an ack message with id of {}, but the last message sent "
+                "had an ID of {}.\n",
                 last_recvd_id, last_sent_id);
           }
         } else {
@@ -340,14 +337,21 @@ int Listener::get_received_message_count() {
 /*!
  * Send a "CODE" message for the target to execute as the Listener Function.
  * Returns once the target acks the code.
+ *
+ * The load name is not actually sent to the target.  Instead, if the target loads successfully
+ * and outputs a *listener* load message, this will be remapped to a load of the given name.
  */
-void Listener::send_code(std::vector<uint8_t>& code) {
+void Listener::send_code(std::vector<uint8_t>& code, const std::optional<std::string>& load_name) {
   got_ack = false;
   int total_size = code.size() + sizeof(ListenerMessageHeader);
   if (total_size > BUFFER_SIZE) {
     printf("[ERROR] Listener send_code got too big of a message\n");
     return;
   }
+
+  rcv_mtx.lock();
+  m_pending_listener_load_object_name = load_name;
+  rcv_mtx.unlock();
 
   auto* header = (ListenerMessageHeader*)m_buffer;
   auto* buffer_data = (char*)(header + 1);
@@ -554,10 +558,14 @@ void Listener::handle_output_message(const char* msg) {
  * Add a load to the load listing.
  */
 void Listener::add_load(const std::string& name, const LoadEntry& le) {
-  if (m_load_entries.find(name) != m_load_entries.end() && name != "*listener*") {
-    printf("[Listener Warning] The runtime has loaded %s twice!\n", name.c_str());
+  // if we load a file through the listener, the compiler will set the pending load name,
+  // and the runtime will send a load message with *listener*.
+  if (name == "*listener*" && m_pending_listener_load_object_name) {
+    m_load_entries[*m_pending_listener_load_object_name] = le;
+    m_pending_listener_load_object_name = {};
+  } else {
+    m_load_entries[name] = le;
   }
-  m_load_entries[name] = le;
 }
 
 /*!

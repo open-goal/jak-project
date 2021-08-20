@@ -1,5 +1,5 @@
 #include <cstring>
-#include <cassert>
+#include "common/util/assert.h"
 #include <cstdio>
 #include <unordered_map>
 #include "common/util/FileUtil.h"
@@ -173,6 +173,7 @@ s32 sceLseek(s32 fd, s32 offset, s32 where) {
         return ftell(kv->second);
       default:
         assert(false);
+        return -1;
     }
   }
 }

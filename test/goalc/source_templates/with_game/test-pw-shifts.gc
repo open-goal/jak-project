@@ -1,0 +1,28 @@
+(defmacro print-vf-hex (vf)
+  `(let ((temp (new 'stack 'vector4w)))
+     (.svf temp ,vf)
+     (format #t "~X ~X ~X ~X~%" (-> temp data 0) (-> temp data 1) (-> temp data 2) (-> temp data 3))
+     )
+  )
+
+(defun pw-shift-test ()
+  (let ((temp (new 'stack 'vector4w)))
+    (rlet ((vf1 :class vf)
+           (vf2 :class vf)
+           )
+      ;;(.lvf vf1 (new 'static 'vector4w :x #xfafffff0 :y #xfbfffff0 :z #xfcfffff0 :w #xfdfffff0))
+      (set-vector! temp #xaafffff0 #xbbfffff0 #xccfffff0 #xddfffff0)
+      (.lvf vf1 temp)
+      (print-vf-hex vf1) ;; unchanged
+      (.pw.sra vf2 vf1 2)
+      (print-vf-hex vf2) ;; should sign extend
+      (.pw.sll vf1 vf1 4)
+      (print-vf-hex vf1) ;; original, removing top
+      (.pw.srl vf2 vf1 2) ;; should make it positive.
+      (print-vf-hex vf2)
+      )
+    )
+  )
+
+(pw-shift-test)
+0

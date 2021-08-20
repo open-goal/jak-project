@@ -48,6 +48,10 @@ RegVal* Env::make_fpr(const TypeSpec& ts) {
   return make_ireg(coerce_to_reg_type(ts), RegClass::FLOAT);
 }
 
+RegVal* Env::make_vfr(const TypeSpec& ts) {
+  return make_ireg(coerce_to_reg_type(ts), RegClass::VECTOR_FLOAT);
+}
+
 std::unordered_map<std::string, Label>& Env::get_label_map() {
   return parent()->get_label_map();
 }
@@ -296,6 +300,11 @@ StackVarAddrVal* FunctionEnv::allocate_aligned_stack_variable(const TypeSpec& ts
   auto result = alloc_val<StackVarAddrVal>(ts, m_stack_var_slots_used, slots_used);
   m_stack_var_slots_used += slots_used;
   return result;
+}
+
+RegVal* FunctionEnv::push_reg_val(std::unique_ptr<RegVal> in) {
+  m_iregs.push_back(std::move(in));
+  return m_iregs.back().get();
 }
 
 ///////////////////

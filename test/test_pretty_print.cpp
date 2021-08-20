@@ -2,6 +2,7 @@
 #include "common/goos/Reader.h"
 #include "common/util/FileUtil.h"
 #include "common/goos/PrettyPrinter.h"
+#include "third-party/fmt/core.h"
 
 using namespace goos;
 
@@ -59,4 +60,28 @@ TEST(PrettyPrinter, ReadAgainVeryShortLines) {
                            ->car;
   auto printed_gcommon2 = pretty_print::to_string(gcommon_code);
   EXPECT_TRUE(gcommon_code == gcommon_code2);
+}
+
+TEST(PrettyPrinter, DefunNoArgs) {
+  // wrong old printing
+  std::string code =
+      "(defun looping-code () (while #t (suspend)\n"
+      "                       )\n"
+      "  (the-as symbol #f)\n"
+      "  )";
+
+  auto obj = pretty_print::get_pretty_printer_reader()
+                 .read_from_string(code)
+                 .as_pair()
+                 ->cdr.as_pair()
+                 ->car;
+  auto printed = pretty_print::to_string(obj, 80);
+
+  EXPECT_EQ(printed,
+            "(defun looping-code ()\n"
+            "  (while #t\n"
+            "   (suspend)\n"
+            "   )\n"
+            "  (the-as symbol #f)\n"
+            "  )");
 }

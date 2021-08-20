@@ -248,7 +248,11 @@ Val* Compiler::compile_cond(const goos::Object& form, const goos::Object& rest, 
     env->emit(std::move(get_false));
   }
 
-  result->set_type(coerce_to_reg_type(m_ts.lowest_common_ancestor(case_result_types)));
+  if (case_result_types.empty()) {
+    result->set_type(TypeSpec("none"));
+  } else {
+    result->set_type(coerce_to_reg_type(m_ts.lowest_common_ancestor(case_result_types)));
+  }
 
   // PATCH END
   end_label->idx = fenv->code().size();

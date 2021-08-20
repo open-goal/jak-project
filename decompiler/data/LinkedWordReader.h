@@ -1,8 +1,9 @@
 #pragma once
-#include <cassert>
+#include "common/util/assert.h"
 #include <cstring>
 #include <vector>
 #include <string>
+#include <stdexcept>
 #include "common/common_types.h"
 #include "decompiler/ObjectFile/LinkedWord.h"
 
@@ -17,6 +18,7 @@ class LinkedWordReader {
       return result;
     } else {
       assert(false);
+      throw std::runtime_error("LinkedWordReader::get_type_tag failed");
     }
   }
 

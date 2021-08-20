@@ -1,15 +1,16 @@
 #include "goalc/compiler/Compiler.h"
+#include "common/util/BitUtils.h"
 
 MathMode Compiler::get_math_mode(const TypeSpec& ts) {
-  if (m_ts.typecheck(m_ts.make_typespec("binteger"), ts, "", false, false)) {
+  if (m_ts.tc(m_ts.make_typespec("binteger"), ts)) {
     return MATH_BINT;
   }
 
-  if (m_ts.typecheck(m_ts.make_typespec("integer"), ts, "", false, false)) {
+  if (m_ts.tc(m_ts.make_typespec("integer"), ts)) {
     return MATH_INT;
   }
 
-  if (m_ts.typecheck(m_ts.make_typespec("float"), ts, "", false, false)) {
+  if (m_ts.tc(m_ts.make_typespec("float"), ts)) {
     return MATH_FLOAT;
   }
 
@@ -17,25 +18,23 @@ MathMode Compiler::get_math_mode(const TypeSpec& ts) {
 }
 
 bool Compiler::is_number(const TypeSpec& ts) {
-  return m_ts.typecheck(m_ts.make_typespec("number"), ts, "", false, false);
+  return m_ts.tc(m_ts.make_typespec("number"), ts);
 }
 
 bool Compiler::is_float(const TypeSpec& ts) {
-  return m_ts.typecheck(m_ts.make_typespec("float"), ts, "", false, false);
+  return m_ts.tc(m_ts.make_typespec("float"), ts);
 }
 
 bool Compiler::is_integer(const TypeSpec& ts) {
-  return m_ts.typecheck(m_ts.make_typespec("integer"), ts, "", false, false) &&
-         !m_ts.typecheck(m_ts.make_typespec("binteger"), ts, "", false, false);
+  return m_ts.tc(m_ts.make_typespec("integer"), ts) && !m_ts.tc(m_ts.make_typespec("binteger"), ts);
 }
 
 bool Compiler::is_binteger(const TypeSpec& ts) {
-  return m_ts.typecheck(m_ts.make_typespec("binteger"), ts, "", false, false);
+  return m_ts.tc(m_ts.make_typespec("binteger"), ts);
 }
 
 bool Compiler::is_singed_integer_or_binteger(const TypeSpec& ts) {
-  return m_ts.typecheck(m_ts.make_typespec("integer"), ts, "", false, false) &&
-         !m_ts.typecheck(m_ts.make_typespec("uinteger"), ts, "", false, false);
+  return m_ts.tc(m_ts.make_typespec("integer"), ts) && !m_ts.tc(m_ts.make_typespec("uinteger"), ts);
 }
 
 Val* Compiler::number_to_integer(const goos::Object& form, Val* in, Env* env) {
@@ -165,15 +164,27 @@ Val* Compiler::compile_mul(const goos::Object& form, const goos::Object& rest, E
   auto math_type = get_math_mode(first_type);
   switch (math_type) {
     case MATH_INT: {
-      // todo, signed vs unsigned?
       auto result = env->make_gpr(first_type);
       env->emit(std::make_unique<IR_RegSet>(result, first_val->to_gpr(env)));
 
       for (size_t i = 1; i < args.unnamed.size(); i++) {
-        env->emit(std::make_unique<IR_IntegerMath>(
-            IntegerMathKind::IMUL_32, result,
-            to_math_type(form, compile_error_guard(args.unnamed.at(i), env), math_type, env)
-                ->to_gpr(env)));
+        auto val = compile_error_guard(args.unnamed.at(i), env);
+        auto val_as_int = dynamic_cast<IntegerConstantVal*>(val);
+        int power_of_two = -1;
+        if (val_as_int && val_as_int->value().uses_gpr() && val_as_int->value().value_64() > 0) {
+          auto p = get_power_of_two(val_as_int->value().value_64());
+          if (p) {
+            power_of_two = *p;
+          }
+        }
+
+        if (power_of_two >= 0) {
+          env->emit_ir<IR_IntegerMath>(IntegerMathKind::SHL_64, result, power_of_two);
+        } else {
+          env->emit(std::make_unique<IR_IntegerMath>(
+              IntegerMathKind::IMUL_32, result,
+              to_math_type(form, val, math_type, env)->to_gpr(env)));
+        }
       }
       return result;
     }
@@ -242,6 +253,19 @@ Val* Compiler::compile_fmax(const goos::Object& form, const goos::Object& rest, 
     }
     env->emit(std::make_unique<IR_FloatMath>(FloatMathKind::MAX_SS, result, val->to_fpr(env)));
   }
+  return result;
+}
+
+Val* Compiler::compile_sqrtf(const goos::Object& form, const goos::Object& rest, Env* env) {
+  auto args = get_va(form, rest);
+  va_check(form, args, {{}}, {});
+
+  auto first_val = compile_error_guard(args.unnamed.at(0), env);
+  if (get_math_mode(first_val->type()) != MATH_FLOAT) {
+    throw_compiler_error(form, "Must use a float for sqrtf");
+  }
+  auto result = env->make_fpr(first_val->type());
+  env->emit_ir<IR_FloatMath>(FloatMathKind::SQRT_SS, result, first_val->to_fpr(env));
   return result;
 }
 
@@ -363,16 +387,44 @@ Val* Compiler::compile_div(const goos::Object& form, const goos::Object& rest, E
       auto result = env->make_gpr(first_type);
       env->emit(std::make_unique<IR_RegSet>(result, first_thing));
 
-      IRegConstraint result_rax_constraint;
-      result_rax_constraint.instr_idx = fe->code().size();
-      result_rax_constraint.ireg = result->ireg();
-      result_rax_constraint.desired_register = emitter::RAX;
-      fe->constrain(result_rax_constraint);
+      auto val = compile_error_guard(args.unnamed.at(1), env);
+      auto val_as_int = dynamic_cast<IntegerConstantVal*>(val);
+      int power_of_two = -1;
+      if (val_as_int && val_as_int->value().uses_gpr() && val_as_int->value().value_64() > 0) {
+        auto p = get_power_of_two(val_as_int->value().value_64());
+        if (p) {
+          power_of_two = *p;
+        }
+      }
 
-      env->emit(std::make_unique<IR_IntegerMath>(
-          IntegerMathKind::IDIV_32, result,
-          to_math_type(form, compile_error_guard(args.unnamed.at(1), env), math_type, env)
-              ->to_gpr(env)));
+      if (power_of_two >= 0) {
+        if (is_singed_integer_or_binteger(first_type)) {
+          env->emit_ir<IR_IntegerMath>(IntegerMathKind::SAR_64, result, power_of_two);
+        } else {
+          env->emit_ir<IR_IntegerMath>(IntegerMathKind::SHR_64, result, power_of_two);
+        }
+      } else {
+        IRegConstraint result_rax_constraint;
+        result_rax_constraint.instr_idx = fe->code().size();
+        result_rax_constraint.ireg = result->ireg();
+        result_rax_constraint.desired_register = emitter::RAX;
+        fe->constrain(result_rax_constraint);
+
+        if (is_singed_integer_or_binteger(first_type)) {
+          env->emit(std::make_unique<IR_IntegerMath>(
+              IntegerMathKind::IDIV_32, result,
+              to_math_type(form, val, math_type, env)->to_gpr(env)));
+        } else {
+          env->emit(std::make_unique<IR_IntegerMath>(
+              IntegerMathKind::UDIV_32, result,
+              to_math_type(form, val, math_type, env)->to_gpr(env)));
+        }
+
+        auto result_moved = env->make_gpr(first_type);
+        env->emit_ir<IR_RegSet>(result_moved, result);
+        return result_moved;
+      }
+
       return result;
     }
 
@@ -394,30 +446,6 @@ Val* Compiler::compile_div(const goos::Object& form, const goos::Object& rest, E
   }
   assert(false);
   return get_none();
-}
-
-Val* Compiler::compile_shlv(const goos::Object& form, const goos::Object& rest, Env* env) {
-  auto args = get_va(form, rest);
-  va_check(form, args, {{}, {}}, {});
-  auto first = compile_error_guard(args.unnamed.at(0), env)->to_gpr(env);
-  auto second = compile_error_guard(args.unnamed.at(1), env)->to_gpr(env);
-  return compile_variable_shift(form, first, second, env, IntegerMathKind::SHLV_64);
-}
-
-Val* Compiler::compile_sarv(const goos::Object& form, const goos::Object& rest, Env* env) {
-  auto args = get_va(form, rest);
-  va_check(form, args, {{}, {}}, {});
-  auto first = compile_error_guard(args.unnamed.at(0), env)->to_gpr(env);
-  auto second = compile_error_guard(args.unnamed.at(1), env)->to_gpr(env);
-  return compile_variable_shift(form, first, second, env, IntegerMathKind::SARV_64);
-}
-
-Val* Compiler::compile_shrv(const goos::Object& form, const goos::Object& rest, Env* env) {
-  auto args = get_va(form, rest);
-  va_check(form, args, {{}, {}}, {});
-  auto first = compile_error_guard(args.unnamed.at(0), env)->to_gpr(env);
-  auto second = compile_error_guard(args.unnamed.at(1), env)->to_gpr(env);
-  return compile_variable_shift(form, first, second, env, IntegerMathKind::SHRV_64);
 }
 
 Val* Compiler::compile_variable_shift(const goos::Object& form,
@@ -449,35 +477,50 @@ Val* Compiler::compile_variable_shift(const goos::Object& form,
 
 Val* Compiler::compile_shl(const goos::Object& form, const goos::Object& rest, Env* env) {
   auto args = get_va(form, rest);
-  va_check(form, args, {{}, {goos::ObjectType::INTEGER}}, {});
+  va_check(form, args, {{}, {}}, {});
   auto first = compile_error_guard(args.unnamed.at(0), env)->to_gpr(env);
-  auto sa = args.unnamed.at(1).as_int();
-  if (sa < 0 || sa > 64) {
-    throw_compiler_error(form, "Cannot shift by more than 64, or by a negative amount.");
+  int64_t constant_sa = -1;
+  if (try_getting_constant_integer(args.unnamed.at(1), &constant_sa, env)) {
+    if (constant_sa < 0 || constant_sa > 64) {
+      throw_compiler_error(form, "Cannot shift by more than 64, or by a negative amount.");
+    }
+    return compile_fixed_shift(form, first, constant_sa, env, IntegerMathKind::SHL_64);
+  } else {
+    auto second = compile_error_guard(args.unnamed.at(1), env)->to_gpr(env);
+    return compile_variable_shift(form, first, second, env, IntegerMathKind::SHLV_64);
   }
-  return compile_fixed_shift(form, first, sa, env, IntegerMathKind::SHL_64);
 }
 
 Val* Compiler::compile_shr(const goos::Object& form, const goos::Object& rest, Env* env) {
   auto args = get_va(form, rest);
-  va_check(form, args, {{}, {goos::ObjectType::INTEGER}}, {});
+  va_check(form, args, {{}, {}}, {});
   auto first = compile_error_guard(args.unnamed.at(0), env)->to_gpr(env);
-  auto sa = args.unnamed.at(1).as_int();
-  if (sa < 0 || sa > 64) {
-    throw_compiler_error(form, "Cannot shift by more than 64, or by a negative amount");
+  int64_t constant_sa = -1;
+  if (try_getting_constant_integer(args.unnamed.at(1), &constant_sa, env)) {
+    if (constant_sa < 0 || constant_sa > 64) {
+      throw_compiler_error(form, "Cannot shift by more than 64, or by a negative amount.");
+    }
+    return compile_fixed_shift(form, first, constant_sa, env, IntegerMathKind::SHR_64);
+  } else {
+    auto second = compile_error_guard(args.unnamed.at(1), env)->to_gpr(env);
+    return compile_variable_shift(form, first, second, env, IntegerMathKind::SHRV_64);
   }
-  return compile_fixed_shift(form, first, sa, env, IntegerMathKind::SHR_64);
 }
 
 Val* Compiler::compile_sar(const goos::Object& form, const goos::Object& rest, Env* env) {
   auto args = get_va(form, rest);
-  va_check(form, args, {{}, {goos::ObjectType::INTEGER}}, {});
+  va_check(form, args, {{}, {}}, {});
   auto first = compile_error_guard(args.unnamed.at(0), env)->to_gpr(env);
-  auto sa = args.unnamed.at(1).as_int();
-  if (sa < 0 || sa > 64) {
-    throw_compiler_error(form, "Cannot shift by more than 64, or by a negative amount");
+  int64_t constant_sa = -1;
+  if (try_getting_constant_integer(args.unnamed.at(1), &constant_sa, env)) {
+    if (constant_sa < 0 || constant_sa > 64) {
+      throw_compiler_error(form, "Cannot shift by more than 64, or by a negative amount.");
+    }
+    return compile_fixed_shift(form, first, constant_sa, env, IntegerMathKind::SAR_64);
+  } else {
+    auto second = compile_error_guard(args.unnamed.at(1), env)->to_gpr(env);
+    return compile_variable_shift(form, first, second, env, IntegerMathKind::SARV_64);
   }
-  return compile_fixed_shift(form, first, sa, env, IntegerMathKind::SAR_64);
 }
 
 Val* Compiler::compile_fixed_shift(const goos::Object& form,
@@ -533,13 +576,18 @@ Val* Compiler::compile_logand(const goos::Object& form, const goos::Object& rest
   va_check(form, args, {{}, {}}, {});
   auto first = compile_error_guard(args.unnamed.at(0), env)->to_gpr(env);
   auto second = compile_error_guard(args.unnamed.at(1), env)->to_gpr(env);
-  if (get_math_mode(first->type()) != MathMode::MATH_INT ||
-      get_math_mode(second->type()) != MathMode::MATH_INT) {
+  auto math_1 = get_math_mode(first->type());
+  auto math_2 = get_math_mode(second->type());
+  if (!((math_1 == MathMode::MATH_INT && math_2 == MathMode::MATH_INT) ||
+        (math_1 == MathMode::MATH_INT && m_ts.tc(TypeSpec("pointer"), second->type())) ||
+        (m_ts.tc(TypeSpec("pointer"), first->type()) && math_2 == MathMode::MATH_INT))) {
     throw_compiler_error(form, "Cannot logand a {} by a {}.", first->type().print(),
                          second->type().print());
   }
 
-  auto result = env->make_gpr(first->type());
+  // kind of a hack, but make (logand int pointer) return pointer.
+  auto result =
+      env->make_gpr(m_ts.tc(TypeSpec("pointer"), second->type()) ? second->type() : first->type());
   env->emit(std::make_unique<IR_RegSet>(result, first));
   env->emit(std::make_unique<IR_IntegerMath>(IntegerMathKind::AND_64, result, second));
   return result;
@@ -547,18 +595,23 @@ Val* Compiler::compile_logand(const goos::Object& form, const goos::Object& rest
 
 Val* Compiler::compile_logior(const goos::Object& form, const goos::Object& rest, Env* env) {
   auto args = get_va(form, rest);
-  va_check(form, args, {{}, {}}, {});
-  auto first = compile_error_guard(args.unnamed.at(0), env)->to_gpr(env);
-  auto second = compile_error_guard(args.unnamed.at(1), env)->to_gpr(env);
-  if (get_math_mode(first->type()) != MathMode::MATH_INT ||
-      get_math_mode(second->type()) != MathMode::MATH_INT) {
-    throw_compiler_error(form, "Cannot logior a {} by a {}.", first->type().print(),
-                         second->type().print());
+  if (!args.named.empty() || args.unnamed.empty()) {
+    throw_compiler_error(form, "Invalid logior form");
   }
+
+  auto first = compile_error_guard(args.unnamed.at(0), env)->to_gpr(env);
 
   auto result = env->make_gpr(first->type());
   env->emit(std::make_unique<IR_RegSet>(result, first));
-  env->emit(std::make_unique<IR_IntegerMath>(IntegerMathKind::OR_64, result, second));
+
+  for (size_t i = 1; i < args.unnamed.size(); i++) {
+    auto sec = compile_error_guard(args.unnamed.at(i), env);
+    if (!is_integer(sec->type())) {
+      throw_compiler_error(form, "Cannot logior a {} by a {}.", first->type().print(),
+                           sec->type().print());
+    }
+    env->emit(std::make_unique<IR_IntegerMath>(IntegerMathKind::OR_64, result, sec->to_gpr(env)));
+  }
   return result;
 }
 

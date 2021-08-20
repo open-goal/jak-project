@@ -5,3 +5,85 @@
 ;; name in dgo: wobbler
 ;; dgos: BEA, L1
 
+;; definition of type wobbler
+(deftype wobbler (basic)
+  ((posx    float  :offset-assert   4)
+   (posy    float  :offset-assert   8)
+   (velx    float  :offset-assert  12)
+   (vely    float  :offset-assert  16)
+   (spring  float  :offset-assert  20)
+   (damping float  :offset-assert  24)
+   (height  float  :offset-assert  28)
+   )
+  :method-count-assert 13
+  :size-assert         #x20
+  :flag-assert         #xd00000020
+  (:methods
+    (reset! (_type_ float float float) none 9)
+    (inc-xy-vel! (_type_ float float) none 10)
+    (move! (_type_) none 11)
+    (TODO-RENAME-12 (_type_ quaternion) none 12)
+    )
+  )
+
+;; definition for method 9 of type wobbler
+;; INFO: Return type mismatch int vs none.
+(defmethod reset! wobbler ((obj wobbler) (arg0 float) (arg1 float) (arg2 float))
+  (set! (-> obj posx) 0.0)
+  (set! (-> obj posy) 0.0)
+  (set! (-> obj velx) 0.0)
+  (set! (-> obj vely) 0.0)
+  (set! (-> obj spring) arg0)
+  (set! (-> obj damping) arg1)
+  (set! (-> obj height) arg2)
+  0
+  (none)
+  )
+
+;; definition for method 10 of type wobbler
+;; INFO: Return type mismatch int vs none.
+(defmethod inc-xy-vel! wobbler ((obj wobbler) (arg0 float) (arg1 float))
+  (+! (-> obj velx) arg0)
+  (+! (-> obj vely) arg1)
+  0
+  (none)
+  )
+
+;; definition for method 11 of type wobbler
+;; INFO: Return type mismatch int vs none.
+(defmethod move! wobbler ((obj wobbler))
+  (+! (-> obj posx) (* (-> obj velx) (-> *display* seconds-per-frame)))
+  (+! (-> obj posy) (* (-> obj vely) (-> *display* seconds-per-frame)))
+  (set! (-> obj velx) (* (-> obj velx) (-> obj damping)))
+  (set! (-> obj vely) (* (-> obj vely) (-> obj damping)))
+  (+! (-> obj velx) (* (* -1.0 (-> obj posx)) (-> obj spring)))
+  (+! (-> obj vely) (* (* -1.0 (-> obj posy)) (-> obj spring)))
+  0
+  (none)
+  )
+
+;; definition for method 12 of type wobbler
+;; INFO: Return type mismatch int vs none.
+(defmethod TODO-RENAME-12 wobbler ((obj wobbler) (arg0 quaternion))
+  (let ((s5-0 (new 'stack-no-clear 'vector)))
+   (set! (-> s5-0 x) (-> obj posy))
+   (set! (-> s5-0 y) 0.0)
+   (set! (-> s5-0 z) (- (-> obj posx)))
+   (vector-normalize! s5-0 1.0)
+   (let*
+    ((f0-8
+      (/
+       (sqrtf
+        (+ (* (-> obj posx) (-> obj posx)) (* (-> obj posy) (-> obj posy)))
+        )
+       (-> obj height)
+       )
+      )
+     (f0-9 (atan f0-8 1.0))
+     )
+    (quaternion-vector-angle! arg0 s5-0 f0-9)
+    )
+   )
+  0
+  (none)
+  )

@@ -7,158 +7,166 @@
 
 namespace decompiler {
 
-// TODO - remove all these and put them in the analysis methods instead.
-void clean_up_ifs(Form* top_level_form) {
-  bool changed = true;
-  while (changed) {
-    changed = false;
-    top_level_form->apply([&](FormElement* elt) {
-      auto as_cne = dynamic_cast<CondNoElseElement*>(elt);
-      if (!as_cne) {
-        return;
-      }
-
-      auto top_condition = as_cne->entries.front().condition;
-      if (!top_condition->is_single_element() && elt->parent_form) {
-        auto real_condition = top_condition->back();
-        top_condition->pop_back();
-
-        auto& parent_vector = elt->parent_form->elts();
-        // find us in the parent vector
-        auto me = std::find_if(parent_vector.begin(), parent_vector.end(),
-                               [&](FormElement* x) { return x == elt; });
-        assert(me != parent_vector.end());
-
-        // now insert the fake condition
-        parent_vector.insert(me, top_condition->elts().begin(), top_condition->elts().end());
-        top_condition->elts() = {real_condition};
-        changed = true;
-      }
-    });
-
-    top_level_form->apply([&](FormElement* elt) {
-      auto as_sc = dynamic_cast<ShortCircuitElement*>(elt);
-      if (!as_sc) {
-        return;
-      }
-
-      auto top_condition = as_sc->entries.front().condition;
-      if (!top_condition->is_single_element() && elt->parent_form) {
-        auto real_condition = top_condition->back();
-        top_condition->pop_back();
-
-        auto& parent_vector = elt->parent_form->elts();
-        // find us in the parent vector
-        auto me = std::find_if(parent_vector.begin(), parent_vector.end(),
-                               [&](FormElement* x) { return x == elt; });
-        assert(me != parent_vector.end());
-
-        // now insert the fake condition
-        parent_vector.insert(me, top_condition->elts().begin(), top_condition->elts().end());
-        top_condition->elts() = {real_condition};
-        changed = true;
-      }
-    });
-
-    top_level_form->apply([&](FormElement* elt) {
-      auto as_ge = dynamic_cast<GenericElement*>(elt);
-      if (!as_ge) {
-        return;
-      }
-
-      if (as_ge->op().kind() == GenericOperator::Kind::CONDITION_OPERATOR) {
-        if (as_ge->op().condition_kind() == IR2_Condition::Kind::TRUTHY) {
-          assert(as_ge->elts().size() == 1);
-          auto top_condition = as_ge->elts().front();
-          if (!top_condition->is_single_element() && elt->parent_form) {
-            auto real_condition = top_condition->back();
-            top_condition->pop_back();
-
-            auto& parent_vector = elt->parent_form->elts();
-            // find us in the parent vector
-            auto me = std::find_if(parent_vector.begin(), parent_vector.end(),
-                                   [&](FormElement* x) { return x == elt; });
-            assert(me != parent_vector.end());
-
-            // now insert the fake condition
-            parent_vector.insert(me, top_condition->elts().begin(), top_condition->elts().end());
-            top_condition->elts() = {real_condition};
-            changed = true;
-          }
-        }
-      }
-    });
-  }
-}
-
-bool convert_to_expressions(Form* top_level_form,
-                            FormPool& pool,
-                            Function& f,
-                            const DecompilerTypeSystem& dts) {
+/*!
+ * The main expression building pass.
+ */
+bool convert_to_expressions(
+    Form* top_level_form,
+    FormPool& pool,
+    Function& f,
+    const std::vector<std::string>& arg_names,
+    const std::unordered_map<std::string, LocalVarOverride>& var_override_map,
+    const DecompilerTypeSystem& dts) {
   assert(top_level_form);
 
-  //  fmt::print("Before anything:\n{}\n",
-  //  pretty_print::to_string(top_level_form->to_form(f.ir2.env)));
-  try {
-    //    top_level_form->apply_form([&](Form* form) {
-    //      if (form == top_level_form || !form->is_single_element()) {
-    //        FormStack stack;
-    //        for (auto& entry : form->elts()) {
-    //          fmt::print("push {} to stack\n", entry->to_form(f.ir2.env).print());
-    //          entry->push_to_stack(f.ir2.env, pool, stack);
-    //        }
-    //        std::vector<FormElement*> new_entries;
-    //        if (form == top_level_form && f.type.last_arg() != TypeSpec("none")) {
-    //          new_entries = stack.rewrite_to_get_reg(pool, Register(Reg::GPR, Reg::V0));
-    //        } else {
-    //          new_entries = stack.rewrite(pool);
-    //        }
-    //        assert(!new_entries.empty());
-    //        form->clear();
-    //        for (auto x : new_entries) {
-    //          form->push_back(x);
-    //        }
-    //      }
-    //    });
-
-    FormStack stack;
-    for (auto& entry : top_level_form->elts()) {
-      //      fmt::print("push {} to stack\n", entry->to_form(f.ir2.env).print());
-      entry->push_to_stack(f.ir2.env, pool, stack);
-      //      fmt::print("Stack is now:\n{}\n", stack.print(f.ir2.env));
+  // set argument names to some reasonable defaults. these will be used if the user doesn't
+  // give us anything more specific.
+  if (f.guessed_name.kind == FunctionName::FunctionKind::GLOBAL ||
+      f.guessed_name.kind == FunctionName::FunctionKind::UNIDENTIFIED ||
+      f.guessed_name.kind == FunctionName::FunctionKind::NV_STATE ||
+      f.guessed_name.kind == FunctionName::FunctionKind::V_STATE) {
+    f.ir2.env.set_remap_for_function(f.type);
+  } else if (f.guessed_name.kind == FunctionName::FunctionKind::METHOD) {
+    auto method_type =
+        dts.ts.lookup_method(f.guessed_name.type_name, f.guessed_name.method_id).type;
+    if (f.guessed_name.method_id == GOAL_NEW_METHOD) {
+      f.ir2.env.set_remap_for_new_method(method_type);
+    } else {
+      f.ir2.env.set_remap_for_method(method_type);
     }
+  }
+
+  // get variable names from the user.
+  f.ir2.env.map_args_from_config(arg_names, var_override_map);
+
+  // convert to typespec
+  for (auto& info : f.ir2.env.stack_slot_entries) {
+    auto rename = f.ir2.env.var_remap_map().find(info.second.name());
+    if (rename != f.ir2.env.var_remap_map().end()) {
+      info.second.name_override = rename->second;
+    }
+    //     debug
+    // fmt::print("STACK {} : {} ({})\n", info.first, info.second.typespec.print(),
+    //         info.second.tp_type.print());
+  }
+
+  // override variable types from the user.
+  std::unordered_map<std::string, TypeSpec> retype;
+  for (auto& remap : var_override_map) {
+    if (remap.second.type) {
+      retype[remap.first] = dts.parse_type_spec(*remap.second.type);
+    }
+  }
+  f.ir2.env.set_retype_map(retype);
+
+  try {
+    // create the root expression stack for the function
+    FormStack stack(true);
+    // and add all entries
+    for (auto& entry : top_level_form->elts()) {
+      entry->push_to_stack(f.ir2.env, pool, stack);
+    }
+
+    // rewrite the stack to get the correct final value
     std::vector<FormElement*> new_entries;
     if (f.type.last_arg() != TypeSpec("none")) {
       auto return_var = f.ir2.atomic_ops->end_op().return_var();
-      new_entries = stack.rewrite_to_get_var(pool, return_var, f.ir2.env);
-      auto reg_return_type =
-          f.ir2.env.get_types_after_op(f.ir2.atomic_ops->ops.size() - 1).get(return_var.reg());
-      if (!dts.ts.typecheck(f.type.last_arg(), reg_return_type.typespec(), "", false, false)) {
+      new_entries = rewrite_to_get_var(stack, pool, return_var, f.ir2.env);
+      TypeSpec return_type = f.ir2.env.get_types_after_op(f.ir2.atomic_ops->ops.size() - 1)
+                                 .get(return_var.reg())
+                                 .typespec();
+      auto back_as_atom = form_element_as_atom(new_entries.back());
+      if (back_as_atom && back_as_atom->is_var()) {
+        return_type = f.ir2.env.get_variable_type(back_as_atom->var(), true);
+        auto var_cast = f.ir2.env.get_variable_and_cast(back_as_atom->var());
+        if (var_cast.cast) {
+          return_type = *var_cast.cast;
+        }
+      }
+
+      bool needs_cast = false;
+      if (!dts.ts.tc(f.type.last_arg(), return_type)) {
         // we need to cast the final value.
+        needs_cast = true;
+
+      } else {
+        bool found_early_return = false;
+        for (auto e : new_entries) {
+          e->apply([&](FormElement* elt) {
+            auto as_ret = dynamic_cast<ReturnElement*>(elt);
+            if (as_ret) {
+              found_early_return = true;
+            }
+          });
+          if (found_early_return) {
+            break;
+          }
+        }
+
+        if (!found_early_return && f.type.last_arg() != return_type) {
+          needs_cast = true;
+        }
+      }
+
+      if (needs_cast) {
         auto to_cast = new_entries.back();
-        new_entries.pop_back();
-        auto cast = pool.alloc_element<CastElement>(f.type.last_arg(),
-                                                    pool.alloc_single_form(nullptr, to_cast));
-        new_entries.push_back(cast);
+        auto as_cast = dynamic_cast<CastElement*>(to_cast);
+        if (as_cast) {
+          as_cast->set_type(f.type.last_arg());
+        } else {
+          new_entries.pop_back();
+          auto cast = pool.alloc_element<CastElement>(f.type.last_arg(),
+                                                      pool.alloc_single_form(nullptr, to_cast));
+          new_entries.push_back(cast);
+        }
       }
     } else {
-      new_entries = stack.rewrite(pool);
+      // or just get all the expressions
+      new_entries = stack.rewrite(pool, f.ir2.env);
+      new_entries.push_back(
+          pool.alloc_element<GenericElement>(GenericOperator::make_fixed(FixedOperatorKind::NONE)));
     }
-    assert(!new_entries.empty());
+
+    // if we are a totally empty function, insert a placeholder so we don't have to handle
+    // the zero element case ever.
+    if (new_entries.empty()) {
+      new_entries.push_back(pool.alloc_element<EmptyElement>());
+    }
+
+    // turn us back into a form.
     top_level_form->clear();
     for (auto x : new_entries) {
       top_level_form->push_back(x);
     }
 
-    //    fmt::print("Before clean:\n{}\n",
-    //    pretty_print::to_string(top_level_form->to_form(f.ir2.env)));
-    // fix up stuff
-    clean_up_ifs(top_level_form);
+    // and sanity check for tree errors.
+    for (auto x : top_level_form->elts()) {
+      assert(x->parent_form == top_level_form);
+    }
+
+    // if we were don't return, make sure we didn't find a return form.
+    if (f.type.last_arg() == TypeSpec("none")) {
+      bool found_return = false;
+      top_level_form->apply([&](FormElement* elt) {
+        if (dynamic_cast<ReturnElement*>(elt)) {
+          found_return = true;
+        }
+      });
+
+      if (found_return) {
+        auto warn = fmt::format(
+            "Function {} has a return type of none, but the expression builder found a return "
+            "statement.",
+            f.guessed_name.to_string());
+        f.warnings.expression_build_warning(warn);
+        lg::warn(warn);
+        return false;
+      }
+    }
 
   } catch (std::exception& e) {
-    std::string warning = fmt::format("Expression building failed: {}", e.what());
-    lg::warn(warning);
-    f.warnings.append(";; " + warning);
+    f.warnings.expression_build_warning("In {}: {}", f.guessed_name.to_string(), e.what());
+    lg::warn("In {}: {}", f.guessed_name.to_string(), e.what());
     return false;
   }
 

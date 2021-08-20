@@ -8,6 +8,13 @@ Matcher Matcher::any_reg(int match_id) {
   return m;
 }
 
+Matcher Matcher::any_label(int match_id) {
+  Matcher m;
+  m.m_kind = Kind::ANY_LABEL;
+  m.m_label_out_id = match_id;
+  return m;
+}
+
 Matcher Matcher::op(const GenericOpMatcher& op, const std::vector<Matcher>& args) {
   Matcher m;
   m.m_kind = Kind::GENERIC_OP;
@@ -61,6 +68,13 @@ Matcher Matcher::integer(std::optional<int> value) {
   return m;
 }
 
+Matcher Matcher::any_integer(int match_id) {
+  Matcher m;
+  m.m_kind = Kind::ANY_INT;
+  m.m_int_out_id = match_id;
+  return m;
+}
+
 Matcher Matcher::any_quoted_symbol(int match_id) {
   Matcher m;
   m.m_kind = Kind::ANY_QUOTED_SYMBOL;
@@ -75,6 +89,36 @@ Matcher Matcher::any_symbol(int match_id) {
   return m;
 }
 
+Matcher Matcher::symbol(const std::string& name) {
+  Matcher m;
+  m.m_kind = Kind::SYMBOL;
+  m.m_str = name;
+  return m;
+}
+
+Matcher Matcher::if_with_else(const Matcher& condition,
+                              const Matcher& true_case,
+                              const Matcher& false_case) {
+  Matcher m;
+  m.m_kind = Kind::IF_WITH_ELSE;
+  m.m_sub_matchers = {condition, true_case, false_case};
+  return m;
+}
+
+Matcher Matcher::if_no_else(const Matcher& condition, const Matcher& true_case) {
+  Matcher m;
+  m.m_kind = Kind::IF_NO_ELSE;
+  m.m_sub_matchers = {condition, true_case};
+  return m;
+}
+
+Matcher Matcher::or_expression(const std::vector<Matcher>& elts) {
+  Matcher m;
+  m.m_kind = Kind::SC_OR;
+  m.m_sub_matchers = elts;
+  return m;
+}
+
 Matcher Matcher::deref(const Matcher& root,
                        bool is_addr_of,
                        const std::vector<DerefTokenMatcher>& tokens) {
@@ -83,6 +127,42 @@ Matcher Matcher::deref(const Matcher& root,
   m.m_sub_matchers = {root};
   m.m_deref_is_addr_of = is_addr_of;
   m.m_token_matchers = tokens;
+  return m;
+}
+
+Matcher Matcher::set(const Matcher& dst, const Matcher& src) {
+  Matcher m;
+  m.m_kind = Kind::SET;
+  m.m_sub_matchers = {dst, src};
+  return m;
+}
+
+Matcher Matcher::set_var(const Matcher& src, int dst_match_id) {
+  Matcher m;
+  m.m_kind = Kind::SET_VAR;
+  m.m_sub_matchers = {src};
+  m.m_reg_out_id = dst_match_id;
+  return m;
+}
+
+Matcher Matcher::while_loop(const Matcher& condition, const Matcher& body) {
+  Matcher m;
+  m.m_kind = Kind::WHILE_LOOP;
+  m.m_sub_matchers = {condition, body};
+  return m;
+}
+
+Matcher Matcher::any_constant_token(int match_id) {
+  Matcher m;
+  m.m_kind = Kind::ANY_CONSTANT_TOKEN;
+  m.m_string_out_id = match_id;
+  return m;
+}
+
+Matcher Matcher::begin(const std::vector<Matcher>& elts) {
+  Matcher m;
+  m.m_kind = Kind::BEGIN;
+  m.m_sub_matchers = elts;
   return m;
 }
 
@@ -95,9 +175,9 @@ bool Matcher::do_match(Form* input, MatchResult::Maps* maps_out) const {
       return true;
     case Kind::ANY_REG: {
       bool got = false;
-      Variable result;
+      RegisterAccess result;
 
-      auto as_simple_atom = dynamic_cast<SimpleAtomElement*>(input->try_as_single_element());
+      auto as_simple_atom = dynamic_cast<SimpleAtomElement*>(input->try_as_single_active_element());
       if (as_simple_atom) {
         if (as_simple_atom->atom().is_var()) {
           got = true;
@@ -105,7 +185,7 @@ bool Matcher::do_match(Form* input, MatchResult::Maps* maps_out) const {
         }
       }
 
-      auto as_expr = dynamic_cast<SimpleExpressionElement*>(input->try_as_single_element());
+      auto as_expr = dynamic_cast<SimpleExpressionElement*>(input->try_as_single_active_element());
       if (as_expr && as_expr->expr().is_identity()) {
         auto atom = as_expr->expr().get_arg(0);
         if (atom.is_var()) {
@@ -125,8 +205,39 @@ bool Matcher::do_match(Form* input, MatchResult::Maps* maps_out) const {
       }
     } break;
 
+    case Kind::ANY_LABEL: {
+      bool got = false;
+      int result;
+
+      auto as_simple_atom = dynamic_cast<SimpleAtomElement*>(input->try_as_single_active_element());
+      if (as_simple_atom) {
+        if (as_simple_atom->atom().is_label()) {
+          got = true;
+          result = as_simple_atom->atom().label();
+        }
+      }
+
+      auto as_expr = dynamic_cast<SimpleExpressionElement*>(input->try_as_single_active_element());
+      if (as_expr && as_expr->expr().is_identity()) {
+        auto atom = as_expr->expr().get_arg(0);
+        if (atom.is_label()) {
+          got = true;
+          result = atom.label();
+        }
+      }
+
+      if (got) {
+        if (m_label_out_id != -1) {
+          maps_out->label[m_label_out_id] = result;
+        }
+        return true;
+      } else {
+        return false;
+      }
+    } break;
+
     case Kind::GENERIC_OP: {
-      auto as_generic = dynamic_cast<GenericElement*>(input->try_as_single_element());
+      auto as_generic = dynamic_cast<GenericElement*>(input->try_as_single_active_element());
       if (as_generic) {
         if (!m_gen_op_matcher->do_match(as_generic->op(), maps_out)) {
           return false;
@@ -147,7 +258,7 @@ bool Matcher::do_match(Form* input, MatchResult::Maps* maps_out) const {
     } break;
 
     case Kind::GENERIC_OP_WITH_REST: {
-      auto as_generic = dynamic_cast<GenericElement*>(input->try_as_single_element());
+      auto as_generic = dynamic_cast<GenericElement*>(input->try_as_single_active_element());
       if (as_generic) {
         if (!m_gen_op_matcher->do_match(as_generic->op(), maps_out)) {
           return false;
@@ -176,8 +287,20 @@ bool Matcher::do_match(Form* input, MatchResult::Maps* maps_out) const {
       return false;
     } break;
 
+    case Kind::ANY_CONSTANT_TOKEN: {
+      auto as_ct = input->try_as_element<ConstantTokenElement>();
+      if (as_ct) {
+        if (m_string_out_id != -1) {
+          maps_out->strings[m_string_out_id] = as_ct->value();
+        }
+        return true;
+      } else {
+        return false;
+      }
+    } break;
+
     case Kind::CAST: {
-      auto as_cast = dynamic_cast<CastElement*>(input->try_as_single_element());
+      auto as_cast = dynamic_cast<CastElement*>(input->try_as_single_active_element());
       if (as_cast) {
         if (as_cast->type().print() == m_str) {
           return m_sub_matchers.at(0).do_match(as_cast->source(), maps_out);
@@ -187,7 +310,7 @@ bool Matcher::do_match(Form* input, MatchResult::Maps* maps_out) const {
     } break;
 
     case Kind::INT: {
-      auto as_simple_atom = dynamic_cast<SimpleAtomElement*>(input->try_as_single_element());
+      auto as_simple_atom = dynamic_cast<SimpleAtomElement*>(input->try_as_single_active_element());
       if (as_simple_atom) {
         if (as_simple_atom->atom().is_int()) {
           if (!m_int_match.has_value()) {
@@ -197,7 +320,7 @@ bool Matcher::do_match(Form* input, MatchResult::Maps* maps_out) const {
         }
       }
 
-      auto as_expr = dynamic_cast<SimpleExpressionElement*>(input->try_as_single_element());
+      auto as_expr = dynamic_cast<SimpleExpressionElement*>(input->try_as_single_active_element());
       if (as_expr && as_expr->expr().is_identity()) {
         auto atom = as_expr->expr().get_arg(0);
         if (atom.is_int()) {
@@ -211,8 +334,33 @@ bool Matcher::do_match(Form* input, MatchResult::Maps* maps_out) const {
       return false;
     } break;
 
+    case Kind::ANY_INT: {
+      auto as_simple_atom = dynamic_cast<SimpleAtomElement*>(input->try_as_single_active_element());
+      if (as_simple_atom) {
+        if (as_simple_atom->atom().is_int()) {
+          if (m_int_out_id != -1) {
+            maps_out->ints[m_int_out_id] = as_simple_atom->atom().get_int();
+          }
+          return true;
+        }
+      }
+
+      auto as_expr = dynamic_cast<SimpleExpressionElement*>(input->try_as_single_active_element());
+      if (as_expr && as_expr->expr().is_identity()) {
+        auto atom = as_expr->expr().get_arg(0);
+        if (atom.is_int()) {
+          if (m_int_out_id != -1) {
+            maps_out->ints[m_int_out_id] = atom.get_int();
+          }
+          return true;
+        }
+      }
+
+      return false;
+    } break;
+
     case Kind::ANY_QUOTED_SYMBOL: {
-      auto as_simple_atom = dynamic_cast<SimpleAtomElement*>(input->try_as_single_element());
+      auto as_simple_atom = dynamic_cast<SimpleAtomElement*>(input->try_as_single_active_element());
       if (as_simple_atom) {
         if (as_simple_atom->atom().is_sym_ptr()) {
           if (m_string_out_id != -1) {
@@ -222,7 +370,7 @@ bool Matcher::do_match(Form* input, MatchResult::Maps* maps_out) const {
         }
       }
 
-      auto as_expr = dynamic_cast<SimpleExpressionElement*>(input->try_as_single_element());
+      auto as_expr = dynamic_cast<SimpleExpressionElement*>(input->try_as_single_active_element());
       if (as_expr && as_expr->expr().is_identity()) {
         auto atom = as_expr->expr().get_arg(0);
         if (atom.is_sym_ptr()) {
@@ -236,7 +384,7 @@ bool Matcher::do_match(Form* input, MatchResult::Maps* maps_out) const {
     }
 
     case Kind::ANY_SYMBOL: {
-      auto as_simple_atom = dynamic_cast<SimpleAtomElement*>(input->try_as_single_element());
+      auto as_simple_atom = dynamic_cast<SimpleAtomElement*>(input->try_as_single_active_element());
       if (as_simple_atom) {
         if (as_simple_atom->atom().is_sym_val()) {
           if (m_string_out_id != -1) {
@@ -246,7 +394,7 @@ bool Matcher::do_match(Form* input, MatchResult::Maps* maps_out) const {
         }
       }
 
-      auto as_expr = dynamic_cast<SimpleExpressionElement*>(input->try_as_single_element());
+      auto as_expr = dynamic_cast<SimpleExpressionElement*>(input->try_as_single_active_element());
       if (as_expr && as_expr->expr().is_identity()) {
         auto atom = as_expr->expr().get_arg(0);
         if (atom.is_sym_val()) {
@@ -259,8 +407,26 @@ bool Matcher::do_match(Form* input, MatchResult::Maps* maps_out) const {
       return false;
     }
 
+    case Kind::SYMBOL: {
+      auto as_simple_atom = dynamic_cast<SimpleAtomElement*>(input->try_as_single_active_element());
+      if (as_simple_atom) {
+        if (as_simple_atom->atom().is_sym_val()) {
+          return as_simple_atom->atom().get_str() == m_str;
+        }
+      }
+
+      auto as_expr = dynamic_cast<SimpleExpressionElement*>(input->try_as_single_active_element());
+      if (as_expr && as_expr->expr().is_identity()) {
+        auto atom = as_expr->expr().get_arg(0);
+        if (atom.is_sym_val()) {
+          return atom.get_str() == m_str;
+        }
+      }
+      return false;
+    }
+
     case Kind::DEREF_OP: {
-      auto as_deref = dynamic_cast<DerefElement*>(input->try_as_single_element());
+      auto as_deref = dynamic_cast<DerefElement*>(input->try_as_single_active_element());
       if (as_deref) {
         if (as_deref->is_addr_of() != m_deref_is_addr_of) {
           return false;
@@ -281,8 +447,136 @@ bool Matcher::do_match(Form* input, MatchResult::Maps* maps_out) const {
       return false;
     }
 
+    case Kind::SET: {
+      auto as_set = dynamic_cast<SetFormFormElement*>(input->try_as_single_active_element());
+      if (!as_set) {
+        return false;
+      }
+      if (!m_sub_matchers.at(0).do_match(as_set->dst(), maps_out)) {
+        return false;
+      }
+
+      if (!m_sub_matchers.at(1).do_match(as_set->src(), maps_out)) {
+        return false;
+      } else {
+        return true;
+      }
+    } break;
+
+    case Kind::IF_WITH_ELSE: {
+      auto as_cond = dynamic_cast<CondWithElseElement*>(input->try_as_single_active_element());
+      if (!as_cond) {
+        return false;
+      }
+
+      if (as_cond->entries.size() != 1) {
+        return false;
+      }
+
+      if (!m_sub_matchers.at(0).do_match(as_cond->entries.front().condition, maps_out)) {
+        return false;
+      }
+
+      if (!m_sub_matchers.at(1).do_match(as_cond->entries.front().body, maps_out)) {
+        return false;
+      }
+
+      if (!m_sub_matchers.at(2).do_match(as_cond->else_ir, maps_out)) {
+        return false;
+      }
+      return true;
+    } break;
+
+    case Kind::IF_NO_ELSE: {
+      auto as_cond = dynamic_cast<CondNoElseElement*>(input->try_as_single_active_element());
+      if (!as_cond) {
+        return false;
+      }
+
+      if (as_cond->entries.size() != 1) {
+        return false;
+      }
+
+      if (!m_sub_matchers.at(0).do_match(as_cond->entries.front().condition, maps_out)) {
+        return false;
+      }
+
+      if (!m_sub_matchers.at(1).do_match(as_cond->entries.front().body, maps_out)) {
+        return false;
+      }
+
+      return true;
+    } break;
+
+    case Kind::SC_OR: {
+      auto as_sc = dynamic_cast<ShortCircuitElement*>(input->try_as_single_active_element());
+      if (!as_sc || as_sc->kind != ShortCircuitElement::OR) {
+        return false;
+      }
+      if (as_sc->entries.size() != m_sub_matchers.size()) {
+        return false;
+      }
+
+      for (size_t i = 0; i < m_sub_matchers.size(); i++) {
+        if (!m_sub_matchers.at(i).do_match(as_sc->entries.at(i).condition, maps_out)) {
+          return false;
+        }
+      }
+
+      return true;
+    } break;
+
+    case Kind::WHILE_LOOP: {
+      auto as_while = dynamic_cast<WhileElement*>(input->try_as_single_active_element());
+      if (!as_while) {
+        return false;
+      }
+
+      if (!m_sub_matchers.at(0).do_match(as_while->condition, maps_out)) {
+        return false;
+      }
+
+      if (!m_sub_matchers.at(1).do_match(as_while->body, maps_out)) {
+        return false;
+      }
+      return true;
+    } break;
+
+    case Kind::BEGIN: {
+      if ((int)m_sub_matchers.size() != input->size()) {
+        return false;
+      }
+
+      for (int i = 0; i < input->size(); i++) {
+        Form fake;
+        fake.elts().push_back(input->elts().at(i));
+        if (!m_sub_matchers.at(i).do_match(&fake, maps_out)) {
+          return false;
+        }
+      }
+      return true;
+    }
+
+    case Kind::SET_VAR: {
+      auto as_set = dynamic_cast<SetVarElement*>(input->try_as_single_active_element());
+      if (!as_set) {
+        return false;
+      }
+
+      if (!m_sub_matchers.at(0).do_match(as_set->src(), maps_out)) {
+        return false;
+      }
+
+      if (m_reg_out_id != -1) {
+        maps_out->regs.resize(std::max((int)maps_out->regs.size(), m_reg_out_id + 1));
+        maps_out->regs.at(m_reg_out_id) = as_set->dst();
+      }
+      return true;
+    }
+
     default:
       assert(false);
+      return false;
   }
 }
 
@@ -301,6 +595,13 @@ DerefTokenMatcher DerefTokenMatcher::string(const std::string& str) {
   DerefTokenMatcher result;
   result.m_kind = Kind::STRING;
   result.m_str = str;
+  return result;
+}
+
+DerefTokenMatcher DerefTokenMatcher::integer(int value) {
+  DerefTokenMatcher result;
+  result.m_kind = Kind::CONSTANT_INTEGER;
+  result.m_int = value;
   return result;
 }
 
@@ -323,8 +624,11 @@ bool DerefTokenMatcher::do_match(const DerefToken& input, MatchResult::Maps* map
         return true;
       }
       return false;
+    case Kind::CONSTANT_INTEGER:
+      return input.kind() == DerefToken::Kind::INTEGER_CONSTANT && input.is_int(m_int);
     default:
       assert(false);
+      return false;
   }
 }
 
@@ -342,6 +646,20 @@ GenericOpMatcher GenericOpMatcher::func(const Matcher& func_matcher) {
   return m;
 }
 
+GenericOpMatcher GenericOpMatcher::condition(IR2_Condition::Kind condition) {
+  GenericOpMatcher m;
+  m.m_kind = Kind::CONDITION;
+  m.m_condition_kind = condition;
+  return m;
+}
+
+GenericOpMatcher GenericOpMatcher::or_match(const std::vector<GenericOpMatcher>& matchers) {
+  GenericOpMatcher m;
+  m.m_kind = Kind::OR;
+  m.m_sub_matchers = matchers;
+  return m;
+}
+
 bool GenericOpMatcher::do_match(GenericOperator& input, MatchResult::Maps* maps_out) const {
   switch (m_kind) {
     case Kind::FIXED:
@@ -354,8 +672,22 @@ bool GenericOpMatcher::do_match(GenericOperator& input, MatchResult::Maps* maps_
         return m_func_matcher.do_match(input.func(), maps_out);
       }
       return false;
+    case Kind::CONDITION:
+      if (input.kind() == GenericOperator::Kind::CONDITION_OPERATOR) {
+        return input.condition_kind() == m_condition_kind;
+      }
+      return false;
+    case Kind::OR:
+      for (auto& m : m_sub_matchers) {
+        if (m.do_match(input, maps_out)) {
+          return true;
+        }
+      }
+      return false;
     default:
       assert(false);
+      return false;
   }
 }
+
 }  // namespace decompiler

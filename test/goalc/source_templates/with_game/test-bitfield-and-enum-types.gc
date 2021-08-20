@@ -1,0 +1,80 @@
+(defenum test-enum
+    :bitfield #f
+    :type uint16
+    (one 1)
+    (two 2)
+    )
+
+(deftype test-bitfield (uint16)
+  ((f1 uint8 :size 1 :offset 0)
+   (f2 uint8 :size 7 :offset 1))
+  )
+
+
+(defun print-test-bitfield ((obj test-bitfield))
+  (format #t "f1: ~d~%" (-> obj f1))
+  (format #t "f2: ~d~%" (-> obj f2))
+  obj
+  )
+
+(defun print-int ((obj int))
+  (format #t "int: ~d~%" obj)
+  obj)
+
+(let ((test-arr (new 'static 'boxed-array :type test-bitfield :length 12)))
+  (format #t "content type: ~A~%" (-> test-arr content-type))
+  )
+
+(let ((test-arr (new 'static 'boxed-array :type test-enum :length 12)))
+  (format #t "content type: ~A~%" (-> test-arr content-type))
+  )
+
+(deftype enum-bitfield-test-type (structure)
+  ((bf0 test-bitfield)
+   (bf1 test-bitfield)
+   (en0 test-enum)
+   (en1 test-enum)
+   (bfs test-bitfield 12)
+   (ens test-enum 12))
+  )
+
+(let ((obj (new 'stack-no-clear 'enum-bitfield-test-type)))
+  (format #t "bitfield spacing: ~d~%" (&- (&-> obj bf1) (&-> obj bf0)))
+  (format #t "enum spacing: ~d~%" (&- (&-> obj en1) (&-> obj en0)))
+  (format #t "bitfield array spacing: ~d~%" (&- (&-> obj bfs 1) (&-> obj bfs 0)))
+  (format #t "enum array spacing: ~d~%" (&- (&-> obj ens 1) (&-> obj ens 0)))
+  )
+
+(defun function-enum-test ((x test-enum))
+  (let ((obj (new 'stack-no-clear 'enum-bitfield-test-type)))
+    (set! (-> obj en0) x)
+    (set! (-> obj ens 1) x)
+    )
+  (test-enum one)
+  )
+
+(defun function-bitfield-test ((x test-bitfield))
+  (let ((obj (new 'stack-no-clear 'enum-bitfield-test-type)))
+    (set! (-> obj bf0) x)
+    (set! (-> obj bfs 1) x)
+    )
+  (new 'static 'test-bitfield :f1 1)
+  )
+
+(let ((obj (new 'stack-no-clear 'enum-bitfield-test-type))
+      (mem (new 'stack-no-clear 'array 'uint8 12))
+      )
+  (set! (-> obj bf0) (function-bitfield-test (new 'static 'test-bitfield :f1 1)))
+  (set! (-> obj bf0) (function-bitfield-test (the test-bitfield 1)))
+  (set! (-> obj en0) (function-enum-test (test-enum one)))
+  (set! (-> obj en0) (function-enum-test (the test-enum 1)))
+  (set! (-> mem 2) 4)
+  (set! (-> mem 3) 5)
+
+  (set! (-> (the (pointer test-enum) mem)) (test-enum one))
+  (set! (-> (the (pointer test-bitfield) mem)) (new 'static 'test-bitfield :f1 1))
+  (format #t "~d~%" (+ (-> mem 2) (-> mem 3)))
+
+  )
+
+(format #t "sizes: ~d ~d~%" (size-of test-enum) (size-of test-bitfield))

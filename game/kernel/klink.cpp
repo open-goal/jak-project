@@ -7,7 +7,7 @@
  */
 
 #include <cstring>
-#include <cassert>
+#include "common/util/assert.h"
 #include <cstdio>
 #include <common/versions.h>
 #include "klink.h"
@@ -833,8 +833,10 @@ Ptr<uint8_t> link_and_exec(Ptr<uint8_t> data,
 /*!
  * Wrapper so this can be called from GOAL. Not in original game.
  */
-u64 link_and_exec_wrapper(u64 data, u64 name, s64 size, u64 heap, u64 flags) {
-  return link_and_exec(Ptr<u8>(data), Ptr<char>(name).c(), size, Ptr<kheapinfo>(heap), flags)
+u64 link_and_exec_wrapper(u64* args) {
+  // data, name, size, heap, flags
+  return link_and_exec(Ptr<u8>(args[0]), Ptr<char>(args[1]).c(), args[2], Ptr<kheapinfo>(args[3]),
+                       args[4])
       .offset;
 }
 
@@ -843,13 +845,10 @@ u64 link_and_exec_wrapper(u64 data, u64 name, s64 size, u64 heap, u64 flags) {
  * 47 -> output_load, output_true, execute, 8, force fast
  * 39 -> no 8 (s7)
  */
-uint64_t link_begin(uint64_t object_data,
-                    uint64_t name,
-                    int32_t size,
-                    uint64_t heap,
-                    uint32_t flags) {
-  saved_link_control.begin(Ptr<u8>(object_data), Ptr<char>(name).c(), size, Ptr<kheapinfo>(heap),
-                           flags);
+uint64_t link_begin(u64* args) {
+  // object data, name size, heap flags
+  saved_link_control.begin(Ptr<u8>(args[0]), Ptr<char>(args[1]).c(), args[2],
+                           Ptr<kheapinfo>(args[3]), args[4]);
   auto work_result = saved_link_control.work();
   // if we managed to finish in one shot, take care of calling finish
   if (work_result) {
@@ -876,23 +875,23 @@ uint64_t link_resume() {
  * but it may use the scratchpad.  It is implemented in GOAL, and falls back to normal C memcpy
  * if GOAL isn't loaded, or if the alignment isn't good enough.
  */
-void* ultimate_memcpy(void* dst, void* src, uint32_t size) {
+void ultimate_memcpy(void* dst, void* src, uint32_t size) {
   // only possible if alignment is good.
-  if (!(u64(dst) & 0xf) && !(u64(src) & 0xf) && !(u64(size) & 0xf)) {
+  if (!(u64(dst) & 0xf) && !(u64(src) & 0xf) && !(u64(size) & 0xf) && size > 0xfff) {
     if (!gfunc_774.offset) {
       // GOAL function is unknown, lets see if its loaded:
       auto sym = find_symbol_from_c("ultimate-memcpy");
       if (sym->value == 0) {
-        return memmove(dst, src, size);
+        memmove(dst, src, size);
       }
       gfunc_774.offset = sym->value;
     }
-    printf("calling goal um\n");
-    return Ptr<u8>(call_goal(gfunc_774, make_u8_ptr(dst).offset, make_u8_ptr(src).offset, size,
-                             s7.offset, g_ee_main_mem))
+
+    Ptr<u8>(call_goal(gfunc_774, make_u8_ptr(dst).offset, make_u8_ptr(src).offset, size, s7.offset,
+                      g_ee_main_mem))
         .c();
   } else {
-    return memmove(dst, src, size);
+    memmove(dst, src, size);
   }
 }
 

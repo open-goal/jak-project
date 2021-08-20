@@ -12,7 +12,7 @@
  * Object::make_<type>
  *
  * To convert an Object into a more specific object, use the as_<type> method of Object.
- * It will throw an exception is you get the type wrong.
+ * It will throw an exception if you get the type wrong.
  *
  * These are all the types:
  *
@@ -38,8 +38,11 @@
  *
  */
 
+#include <cinttypes>
 #include "Object.h"
 #include "common/util/FileUtil.h"
+#include "third-party/fmt/core.h"
+#include "common/util/print_float.h"
 
 namespace goos {
 
@@ -81,13 +84,25 @@ std::string object_type_to_string(ObjectType type) {
 }
 
 /*!
- * Special case to print a float with the %g format specifier
+ * Special case to print a float
  */
 template <>
 std::string fixed_to_string(FloatType x) {
-  char buff[256];
-  sprintf(buff, "%.6f", x);
-  return {buff};
+  auto result = float_to_string(x);
+  assert((float)x == (float)std::stod(result));
+  return result;
+}
+
+/*!
+ * Special case to print an integer
+ */
+template <>
+std::string fixed_to_string(IntType x) {
+  if (x > 10000) {
+    return fmt::format("#x{:x}", x);
+  } else {
+    return fmt::format("{}", x);
+  }
 }
 
 /*!
@@ -198,6 +213,10 @@ bool Object::operator==(const Object& other) const {
   }
 }
 
+bool Object::is_symbol(const std::string& name) const {
+  return is_symbol() && as_symbol()->name == name;
+}
+
 template <>
 Object Object::make_number(FloatType value) {
   return Object::make_float(value);
@@ -283,6 +302,32 @@ bool Arguments::only_contains_named(const std::unordered_set<std::string>& names
     }
   }
   return true;
+}
+
+namespace {
+std::string escape_string(const std::string& in) {
+  std::string result;
+  result.reserve(in.size());
+
+  for (char c : in) {
+    if (c == '"') {
+      result.push_back('\\');
+      result.push_back('"');
+    } else {
+      result.push_back(c);
+    }
+  }
+
+  return result;
+}
+}  // namespace
+
+std::string StringObject::print() const {
+  return "\"" + escape_string(data) + "\"";
+}
+
+std::string StringObject::inspect() const {
+  return "[string] \"" + escape_string(data) + "\"\n";
 }
 
 }  // namespace goos

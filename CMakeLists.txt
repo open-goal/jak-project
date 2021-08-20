@@ -61,13 +61,25 @@ include_directories(./)
 
 include_directories(SYSTEM third-party/inja)
 
+# build repl library
+option(BUILD_SHARED_LIBS "Build shared libraries" ON)
+add_subdirectory(third-party/replxx EXCLUDE_FROM_ALL)
+
 # build common library
 add_subdirectory(common)
 
 # build decompiler
 add_subdirectory(decompiler)
 
+# build glfw library
+add_subdirectory(third-party/glfw)
+
+# build libzip
+add_subdirectory(third-party/11zip EXCLUDE_FROM_ALL)
+
 # build the game code in C++
+include_directories(third-party/glad/include)
+include_directories(third-party/glfw/include)
 add_subdirectory(game)
 
 # build the compiler
@@ -86,8 +98,8 @@ include(GoogleTest)
 # build tests
 include(test/CMakeLists.txt)
 
-# build minilzo library
-add_subdirectory(third-party/minilzo EXCLUDE_FROM_ALL)
+# build lzokay library
+add_subdirectory(third-party/lzokay EXCLUDE_FROM_ALL)
 
 # build format library
 add_subdirectory(third-party/fmt EXCLUDE_FROM_ALL)

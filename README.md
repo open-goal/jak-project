@@ -1,9 +1,14 @@
-# Jak Project
+<p align="center">
+  <img width="500" height="100%" src="./docs/img/logo-text-colored.5cda006b.png">
+</p>
 
-![Linux](https://github.com/water111/jak-project/workflows/Linux/badge.svg)
-![Windows](https://github.com/water111/jak-project/workflows/Windows/badge.svg)
-[![Coverage Status](https://coveralls.io/repos/github/water111/jak-project/badge.svg?branch=master)](https://coveralls.io/github/water111/jak-project?branch=master)
-[![Codacy Badge](https://app.codacy.com/project/badge/Grade/7c3cdc07523f43aca3433484ebc62ff9)](https://www.codacy.com/gh/water111/jak-project/dashboard?utm_source=github.com&amp;utm_medium=referral&amp;utm_content=xTVaser/jak-project&amp;utm_campaign=Badge_Grade)
+<p align="center">
+  <a href="https://water111.github.io/jak-project/" rel="nofollow"><img src="https://img.shields.io/badge/Documentation-Here-informational" alt="Documentation Badge" style="max-width:100%;"></a>
+  <a target="_blank" rel="noopener noreferrer" href="https://github.com/water111/jak-project/workflows/Linux/badge.svg"><img src="https://github.com/water111/jak-project/workflows/Linux/badge.svg" alt="Linux" style="max-width:100%;"></a>
+  <a target="_blank" rel="noopener noreferrer" href="https://github.com/water111/jak-project/workflows/Windows/badge.svg"><img src="https://github.com/water111/jak-project/workflows/Windows/badge.svg" alt="Windows" style="max-width:100%;"></a>
+  <a href="https://coveralls.io/github/water111/jak-project?branch=master" rel="nofollow"><img src="https://coveralls.io/repos/github/water111/jak-project/badge.svg?branch=master" alt="Coverage Status" style="max-width:100%;"></a>
+  <a href="https://www.codacy.com/gh/water111/jak-project/dashboard?utm_source=github.com&amp;utm_medium=referral&amp;utm_content=xTVaser/jak-project&amp;utm_campaign=Badge_Grade" rel="nofollow"><img src="https://app.codacy.com/project/badge/Grade/7c3cdc07523f43aca3433484ebc62ff9" alt="Codacy Badge" style="max-width:100%;"></a>
+</p>
 
 ## Table of Contents
 
@@ -12,12 +17,16 @@
 - [Table of Contents](#table-of-contents)
 - [Project Description](#project-description)
 - [Getting Started - Linux (Ubuntu)](#getting-started---linux-ubuntu)
+- [Getting Started - Linux (Arch)](#getting-started---linux-arch)
+- [Getting Started - Nixpkgs](#getting-started---nixpkgs)
 - [Getting Started - Windows](#getting-started---windows)
 - [Project Layout](#project-layout)
 - [Directory Layout](#directory-layout)
 - [More Documentation](#more-documentation)
 - [ASan Build](#asan-build)
+  - [On Windows / Visual Studio](#on-windows--visual-studio)
 <!-- tocstop -->
+
 ## Project Description
 
 This project is to port Jak 1 (NTSC, "black label" version) to PC. Over 99% of this game is written in GOAL, a custom Lisp language developed by Naughty Dog. Our strategy is:
@@ -27,7 +36,7 @@ This project is to port Jak 1 (NTSC, "black label" version) to PC. Over 99% of t
 - create tools to repack game assets into a format that our port uses.
 
 Our objectives are:
-- make the port a "native application" on x86-64, with high performance. It shouldn't emulated, interpreted, or transpiled. 
+- make the port a "native application" on x86-64, with high performance. It shouldn't emulated, interpreted, or transpiled.
 - Our GOAL compiler's performance should be around the same as unoptimized C.
 - try to match things from the original game and development as possible. For example, the original GOAL compiler supported live modification of code while the game is running, so we do the same, even though it's not required for just porting the game.
 - support modifications. It should be possible to make edits to the code without everything else breaking.
@@ -55,6 +64,16 @@ Run tests:
 ```sh
 ./test.sh
 ```
+
+Note: we have found that `clang` and `lld` are significantly faster to compile and link than `gcc`, generate faster code, and have better warning messages.  To install these:
+```
+sudo apt install lld clang
+```
+and run `cmake` (in a fresh build directory) with:
+```
+cmake -DCMAKE_SHARED_LINKER_FLAGS="-fuse-ld=lld" -DCMAKE_EXE_LINKER_FLAGS="-fuse-ld=lld" -DCMAKE_C_COMPILER=clang -DCMAKE_CXX_COMPILER=clang++ ..
+```
+this decreases the compile and link time from ~10 seconds to ~4 seconds.
 
 ## Getting Started - Linux (Arch)
 
@@ -137,19 +156,19 @@ git submodule update --init --recursive
 
 Open the project as a CMake project, browse for the root level `CMakeLists.txt`:
 
-![](./doc/imgs/open-cmake-vs.png)
+![](./docs/markdown/imgs/open-cmake-vs.png)
 
 In the toolbar, you should be able to select an individual component to compile, or combine within the root CMakeLists.txt. In the future we will pre-define configurations to make this easier.
 
-![](./doc/imgs/cmake-build-vs.png)
+![](./docs/markdown/imgs/cmake-build-vs.png)
 
 You may also wish to view the files that pertain to each CMake target, rather than the project as it is normally:
 
-![](./doc/imgs/cmake-target-view.png)
+![](./docs/markdown/imgs/cmake-target-view.png)
 
 
 ## Project Layout
-There are four main components to the project. 
+There are four main components to the project.
 
 The first is `goalc`, which is a GOAL compiler for x86-64. Our implementation of GOAL is called OpenGOAL. All of the compiler source code is in `goalc`. To run the compiler on Linux, there is a script `gc.sh`.  The compiler is controlled through a prompt which can be used to enter commands to compile, connect to a running GOAL program for interaction, run the OpenGOAL debugger, or, if you are connected to a running GOAL program, can be used as a REPL to run code interactively. In addition to compiling code files, the compiler has features to pack and build data files.
 
@@ -228,7 +247,7 @@ The final component is the "runtime", located in `game`. This is the part of the
   - `run-clang-tidy`
   - `zydis`: x86-64 disassembler used in the OpenGOAL debugger
   - `json`: A JSON library
-  - `linenoise`: Used for the REPL input. Support history and useful editing shortcuts.
+  - `replxx`: Used for the REPL input. Support history and useful editing shortcuts.
   - `svpng`: Save a PNG file
 
 
@@ -255,3 +274,8 @@ You will have to delete the build folder when changing compilers.  When running 
 ```
 
 Then you can run the tests, runtime, and compiler as normal and they will abort if ASan finds an error.
+
+### On Windows / Visual Studio
+
+Until 16.9 Preview 4, when attaching a debugger to the ASan build, you must disable breaking on Win32 Access Violation exceptions.  See the relevant section `Debugging - Exceptions` here https://devblogs.microsoft.com/cppblog/asan-for-windows-x64-and-debug-build-support/#known-issues
+

@@ -1,9 +1,6 @@
 #pragma once
 
-#ifndef JAK_IGEN_H
-#define JAK_IGEN_H
-
-#include <cassert>
+#include "common/util/assert.h"
 #include "Register.h"
 #include "Instruction.h"
 #include <stdexcept>
@@ -101,6 +98,34 @@ class IGen {
     instr.set_op2(0x0f);
     instr.set_op3(0x6e);
     instr.set_modrm_and_rex(dst.hw_id(), src.hw_id(), 3, false);
+    instr.swap_op0_rex();
+    return instr;
+  }
+
+  /*!
+   * Move 64-bits of xmm to 64 bits of gpr (no sign extension).
+   */
+  static Instruction movq_gpr64_xmm64(Register dst, Register src) {
+    assert(dst.is_gpr());
+    assert(src.is_xmm());
+    Instruction instr(0x66);
+    instr.set_op2(0x0f);
+    instr.set_op3(0x7e);
+    instr.set_modrm_and_rex(src.hw_id(), dst.hw_id(), 3, true);
+    instr.swap_op0_rex();
+    return instr;
+  }
+
+  /*!
+   * Move 64-bits of gpr to 64-bits of xmm (no sign extension)
+   */
+  static Instruction movq_xmm64_gpr64(Register dst, Register src) {
+    assert(dst.is_xmm());
+    assert(src.is_gpr());
+    Instruction instr(0x66);
+    instr.set_op2(0x0f);
+    instr.set_op3(0x6e);
+    instr.set_modrm_and_rex(dst.hw_id(), src.hw_id(), 3, true);
     instr.swap_op0_rex();
     return instr;
   }
@@ -714,6 +739,7 @@ class IGen {
       return storevf_gpr64_plus_gpr64_plus_s32(value, addr, off, offset);
     }
     assert(false);
+    return {0};
   }
 
   static Instruction store_goal_gpr(Register addr,
@@ -764,10 +790,11 @@ class IGen {
         }
       default:
         assert(false);
+        return {0};
     }
   }
 
-  static Instruction load_goal_vf(Register dst, Register addr, Register off, int offset) {
+  static Instruction load_goal_xmm128(Register dst, Register addr, Register off, int offset) {
     if (offset == 0) {
       return loadvf_gpr64_plus_gpr64(dst, addr, off);
     } else if (offset >= INT8_MIN && offset <= INT8_MAX) {
@@ -776,6 +803,7 @@ class IGen {
       return loadvf_gpr64_plus_gpr64_plus_s32(dst, addr, off, offset);
     } else {
       assert(false);
+      return {0};
     }
   }
 
@@ -871,6 +899,7 @@ class IGen {
         }
       default:
         assert(false);
+        return {0};
     }
   }
 
@@ -993,6 +1022,7 @@ class IGen {
       return lea_reg_plus_off32(dest, base, offset);
     } else {
       assert(false);
+      return {0};
     }
   }
 
@@ -1076,6 +1106,7 @@ class IGen {
       return load32_xmm32_gpr64_plus_gpr64_plus_s32(xmm_dest, addr, off, offset);
     } else {
       assert(false);
+      return {0};
     }
   }
 
@@ -1088,6 +1119,7 @@ class IGen {
       return store32_xmm32_gpr64_plus_gpr64_plus_s32(addr, off, xmm_value, offset);
     } else {
       assert(false);
+      return {0};
     }
   }
 
@@ -1100,6 +1132,7 @@ class IGen {
       return store32_xmm32_gpr64_plus_s32(base, xmm_value, offset);
     } else {
       assert(false);
+      return {0};
     }
   }
 
@@ -1112,6 +1145,7 @@ class IGen {
       return load32_xmm32_gpr64_plus_s32(xmm_dest, base, offset);
     } else {
       assert(false);
+      return {0};
     }
   }
 
@@ -1211,6 +1245,7 @@ class IGen {
       return load128_xmm128_gpr64_s32(xmm_dest, base, offset);
     } else {
       assert(false);
+      return {0};
     }
   }
 
@@ -1223,6 +1258,7 @@ class IGen {
       return store128_gpr64_xmm128_s32(base, xmm_val, offset);
     } else {
       assert(false);
+      return {0};
     }
   }
 
@@ -1612,7 +1648,6 @@ class IGen {
 
   /*!
    * Divide (idiv, 32 bit)
-   * todo UNTESTED
    */
   static Instruction idiv_gpr32(Register reg) {
     Instruction instr(0xf7);
@@ -1621,9 +1656,15 @@ class IGen {
     return instr;
   }
 
+  static Instruction unsigned_div_gpr32(Register reg) {
+    Instruction instr(0xf7);
+    assert(reg.is_gpr());
+    instr.set_modrm_and_rex(6, reg.hw_id(), 3, false);
+    return instr;
+  }
+
   /*!
    * Convert doubleword to quadword for division.
-   * todo UNTESTED
    */
   static Instruction cdq() {
     Instruction instr(0x99);
@@ -1897,6 +1938,17 @@ class IGen {
     return instr;
   }
 
+  static Instruction sqrts_xmm(Register dst, Register src) {
+    assert(dst.is_xmm());
+    assert(src.is_xmm());
+    Instruction instr(0xf3);
+    instr.set_op2(0x0f);
+    instr.set_op3(0x51);
+    instr.set_modrm_and_rex(dst.hw_id(), src.hw_id(), 3, false);
+    instr.swap_op0_rex();
+    return instr;
+  }
+
   /*!
    * Multiply two floats in xmm's
    */
@@ -2009,10 +2061,13 @@ class IGen {
     return instr;
   }
 
-  // eventually...
-  // sqrt
-  // rsqrt
-  // abs
+  static Instruction nop() {
+    // NOP
+    Instruction instr(0x90);
+    return instr;
+  }
+
+  // TODO - rsqrt / abs / sqrt
 
   //;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
   //   UTILITIES
@@ -2032,6 +2087,18 @@ class IGen {
   /////////////////////////////
   // AVX (VF - Vector Float) //
   /////////////////////////////
+
+  static Instruction nop_vf() {
+    Instruction instr(0xd9);  // FNOP
+    instr.set_op2(0xd0);
+    return instr;
+  }
+
+  static Instruction wait_vf() {
+    Instruction instr(0x9B);  // FWAIT / WAIT
+    return instr;
+  }
+
   static Instruction mov_vf_vf(Register dst, Register src) {
     assert(dst.is_xmm());
     assert(src.is_xmm());
@@ -2153,14 +2220,17 @@ class IGen {
     return instr;
   }
 
-  // todo, rip relative loads and stores.
+  // TODO - rip relative loads and stores.
 
-  static Instruction mul_vf(Register dst, Register src1, Register src2) {
+  static Instruction blend_vf(Register dst, Register src1, Register src2, u8 mask) {
+    assert(!(mask & 0b11110000));
     assert(dst.is_xmm());
     assert(src1.is_xmm());
     assert(src2.is_xmm());
-    Instruction instr(0x59);
-    instr.set_vex_modrm_and_rex(dst.hw_id(), src2.hw_id(), VEX3::LeadingBytes::P_0F, src1.hw_id());
+    Instruction instr(0x0c);  // VBLENDPS
+    instr.set_vex_modrm_and_rex(dst.hw_id(), src2.hw_id(), VEX3::LeadingBytes::P_0F_3A,
+                                src1.hw_id(), false, VexPrefix::P_66);
+    instr.set(Imm(1, mask));
     return instr;
   }
 
@@ -2172,12 +2242,7 @@ class IGen {
     assert(dz < 4);
     assert(dw < 4);
     u8 imm = dx + (dy << 2) + (dz << 4) + (dw << 6);
-    // we use the AVX "VEX" encoding here. This is a three-operand form, but we just set both source
-    // to the same register. It seems like this is one byte longer but is faster maybe?
-    Instruction instr(0xc6);
-    instr.set_vex_modrm_and_rex(dst.hw_id(), src.hw_id(), VEX3::LeadingBytes::P_0F, src.hw_id());
-    instr.set(Imm(1, imm));
-    return instr;
+    return swizzle_vf(dst, src, imm);
 
     // SSE encoding version:
     //    Instruction instr(0x0f);
@@ -2187,11 +2252,70 @@ class IGen {
     //    return instr;
   }
 
+  /*
+    Generic Swizzle (re-arrangment of packed FPs) operation, the control bytes are quite involved.
+    Here's a brief run-down:
+    - 8-bits / 4 groups of 2 bits
+    - Right-to-left, each group is used to determine which element in `src` gets copied into
+    `dst`'s element (W->X).
+    - GROUP OPTIONS
+    - 00b - Copy the least-significant element (X)
+    - 01b - Copy the second element (from the right)
+    - 10b - Copy the third element (from the right)
+    - 11b - Copy the most significant element (W)
+    Examples
+    ; xmm1 = (1.5, 2.5, 3.5, 4.5)
+    SHUFPS xmm1, xmm1, 0xff ; Copy the most significant element to all positions
+    > (1.5, 1.5, 1.5, 1.5)
+    SHUFPS xmm1, xmm1, 0x39 ; Rotate right
+    > (4.5, 1.5, 2.5, 3.5)
+    */
+  static Instruction swizzle_vf(Register dst, Register src, u8 controlBytes) {
+    assert(dst.is_xmm());
+    assert(src.is_xmm());
+    Instruction instr(0xC6);  // VSHUFPS
+
+    // we use the AVX "VEX" encoding here. This is a three-operand form,
+    // but we just set both source
+    // to the same register. It seems like this is one byte longer but is faster maybe?
+    instr.set_vex_modrm_and_rex(dst.hw_id(), src.hw_id(), VEX3::LeadingBytes::P_0F, src.hw_id());
+    instr.set(Imm(1, controlBytes));
+    return instr;
+  }
+
+  /*
+    Splats a single element in 'src' to all elements in 'dst'
+    For example (pseudocode):
+    xmm1 = (1.5, 2.5, 3.5, 4.5)
+    xmm2 = (1, 2, 3, 4)
+    splat_vf(xmm1, xmm2, XMM_ELEMENT::X);
+    xmm1 = (4, 4, 4, 4)
+    */
+  static Instruction splat_vf(Register dst, Register src, Register::VF_ELEMENT element) {
+    switch (element) {
+      case Register::VF_ELEMENT::X:  // Least significant element
+        return swizzle_vf(dst, src, 0b00000000);
+        break;
+      case Register::VF_ELEMENT::Y:
+        return swizzle_vf(dst, src, 0b01010101);
+        break;
+      case Register::VF_ELEMENT::Z:
+        return swizzle_vf(dst, src, 0b10101010);
+        break;
+      case Register::VF_ELEMENT::W:  // Most significant element
+        return swizzle_vf(dst, src, 0b11111111);
+        break;
+      default:
+        assert(false);
+        return {0};
+    }
+  }
+
   static Instruction xor_vf(Register dst, Register src1, Register src2) {
     assert(dst.is_xmm());
     assert(src1.is_xmm());
     assert(src2.is_xmm());
-    Instruction instr(0x57);
+    Instruction instr(0x57);  // VXORPS
     instr.set_vex_modrm_and_rex(dst.hw_id(), src2.hw_id(), VEX3::LeadingBytes::P_0F, src1.hw_id());
     return instr;
   }
@@ -2200,7 +2324,7 @@ class IGen {
     assert(dst.is_xmm());
     assert(src1.is_xmm());
     assert(src2.is_xmm());
-    Instruction instr(0x5c);
+    Instruction instr(0x5c);  // VSUBPS
     instr.set_vex_modrm_and_rex(dst.hw_id(), src2.hw_id(), VEX3::LeadingBytes::P_0F, src1.hw_id());
     return instr;
   }
@@ -2209,23 +2333,384 @@ class IGen {
     assert(dst.is_xmm());
     assert(src1.is_xmm());
     assert(src2.is_xmm());
-    Instruction instr(0x58);
+    Instruction instr(0x58);  // VADDPS
     instr.set_vex_modrm_and_rex(dst.hw_id(), src2.hw_id(), VEX3::LeadingBytes::P_0F, src1.hw_id());
     return instr;
   }
 
-  static Instruction blend_vf(Register dst, Register src1, Register src2, u8 mask) {
-    assert(!(mask & 0b11110000));
+  static Instruction mul_vf(Register dst, Register src1, Register src2) {
     assert(dst.is_xmm());
     assert(src1.is_xmm());
     assert(src2.is_xmm());
-    Instruction instr(0x0c);
-    instr.set_vex_modrm_and_rex(dst.hw_id(), src2.hw_id(), VEX3::LeadingBytes::P_0F_3A,
-                                src1.hw_id(), false, VexPrefix::P_66);
-    instr.set(Imm(1, mask));
+    Instruction instr(0x59);  // VMULPS
+    instr.set_vex_modrm_and_rex(dst.hw_id(), src2.hw_id(), VEX3::LeadingBytes::P_0F, src1.hw_id());
+    return instr;
+  }
+
+  static Instruction max_vf(Register dst, Register src1, Register src2) {
+    assert(dst.is_xmm());
+    assert(src1.is_xmm());
+    assert(src2.is_xmm());
+    Instruction instr(0x5F);  // VMAXPS
+    instr.set_vex_modrm_and_rex(dst.hw_id(), src2.hw_id(), VEX3::LeadingBytes::P_0F, src1.hw_id());
+    return instr;
+  }
+
+  static Instruction min_vf(Register dst, Register src1, Register src2) {
+    assert(dst.is_xmm());
+    assert(src1.is_xmm());
+    assert(src2.is_xmm());
+    Instruction instr(0x5D);  // VMINPS
+    instr.set_vex_modrm_and_rex(dst.hw_id(), src2.hw_id(), VEX3::LeadingBytes::P_0F, src1.hw_id());
+    return instr;
+  }
+
+  static Instruction div_vf(Register dst, Register src1, Register src2) {
+    assert(dst.is_xmm());
+    assert(src1.is_xmm());
+    assert(src2.is_xmm());
+    Instruction instr(0x5E);  // VDIVPS
+    instr.set_vex_modrm_and_rex(dst.hw_id(), src2.hw_id(), VEX3::LeadingBytes::P_0F, src1.hw_id());
+    return instr;
+  }
+
+  static Instruction sqrt_vf(Register dst, Register src) {
+    assert(dst.is_xmm());
+    assert(src.is_xmm());
+    Instruction instr(0x51);  // VSQRTPS
+    instr.set_vex_modrm_and_rex(dst.hw_id(), src.hw_id(), VEX3::LeadingBytes::P_0F, 0b0);
+    return instr;
+  }
+
+  static Instruction itof_vf(Register dst, Register src) {
+    assert(dst.is_xmm());
+    assert(src.is_xmm());
+    Instruction instr(0x5b);  // VCVTDQ2PS
+    instr.set_vex_modrm_and_rex(dst.hw_id(), src.hw_id(), VEX3::LeadingBytes::P_0F, 0);
+    return instr;
+  }
+
+  static Instruction ftoi_vf(Register dst, Register src) {
+    assert(dst.is_xmm());
+    assert(src.is_xmm());
+    // VEX.128.F3.0F.WIG 5B /r VCVTTPS2DQ xmm1, xmm2/m128
+    Instruction instr(0x5b);  // VCVTTPS2DQ
+    instr.set_vex_modrm_and_rex(dst.hw_id(), src.hw_id(), VEX3::LeadingBytes::P_0F, 0, false,
+                                VexPrefix::P_F3);
+    return instr;
+  }
+
+  static Instruction pw_sra(Register dst, Register src, u8 imm) {
+    assert(dst.is_xmm());
+    assert(src.is_xmm());
+    // VEX.128.66.0F.WIG 72 /4 ib VPSRAD xmm1, xmm2, imm8
+    Instruction instr(0x72);
+    instr.set_vex_modrm_and_rex(4, src.hw_id(), VEX3::LeadingBytes::P_0F, dst.hw_id(), false,
+                                VexPrefix::P_66);
+    instr.set(Imm(1, imm));
+    return instr;
+  }
+
+  static Instruction pw_srl(Register dst, Register src, u8 imm) {
+    assert(dst.is_xmm());
+    assert(src.is_xmm());
+    // VEX.128.66.0F.WIG 72 /2 ib VPSRLD xmm1, xmm2, imm8
+    Instruction instr(0x72);
+    instr.set_vex_modrm_and_rex(2, src.hw_id(), VEX3::LeadingBytes::P_0F, dst.hw_id(), false,
+                                VexPrefix::P_66);
+    instr.set(Imm(1, imm));
+    return instr;
+  }
+
+  static Instruction pw_sll(Register dst, Register src, u8 imm) {
+    assert(dst.is_xmm());
+    assert(src.is_xmm());
+    // VEX.128.66.0F.WIG 72 /6 ib VPSLLD xmm1, xmm2, imm8
+    Instruction instr(0x72);
+    instr.set_vex_modrm_and_rex(6, src.hw_id(), VEX3::LeadingBytes::P_0F, dst.hw_id(), false,
+                                VexPrefix::P_66);
+    instr.set(Imm(1, imm));
+    return instr;
+  }
+
+  static Instruction parallel_bitwise_or(Register dst, Register src0, Register src1) {
+    assert(dst.is_xmm());
+    assert(src0.is_xmm());
+    assert(src1.is_xmm());
+    // VEX.128.66.0F.WIG EB /r VPOR xmm1, xmm2, xmm3/m128
+    // reg, vex, r/m
+    Instruction instr(0xEB);
+    instr.set_vex_modrm_and_rex(dst.hw_id(), src1.hw_id(), VEX3::LeadingBytes::P_0F, src0.hw_id(),
+                                false, VexPrefix::P_66);
+    return instr;
+  }
+
+  static Instruction parallel_bitwise_xor(Register dst, Register src0, Register src1) {
+    assert(dst.is_xmm());
+    assert(src0.is_xmm());
+    assert(src1.is_xmm());
+    // VEX.128.66.0F.WIG EF /r VPXOR xmm1, xmm2, xmm3/m128
+    // reg, vex, r/m
+    Instruction instr(0xEF);
+    instr.set_vex_modrm_and_rex(dst.hw_id(), src1.hw_id(), VEX3::LeadingBytes::P_0F, src0.hw_id(),
+                                false, VexPrefix::P_66);
+    return instr;
+  }
+
+  static Instruction parallel_bitwise_and(Register dst, Register src0, Register src1) {
+    assert(dst.is_xmm());
+    assert(src0.is_xmm());
+    assert(src1.is_xmm());
+    // VEX.128.66.0F.WIG DB /r VPAND xmm1, xmm2, xmm3/m128
+    // reg, vex, r/m
+    Instruction instr(0xDB);
+    instr.set_vex_modrm_and_rex(dst.hw_id(), src1.hw_id(), VEX3::LeadingBytes::P_0F, src0.hw_id(),
+                                false, VexPrefix::P_66);
+    return instr;
+  }
+
+  // Reminder - a word in MIPS = 32bits = a DWORD in x86
+  //     MIPS   ||   x86
+  // -----------------------
+  // byte       || byte
+  // halfword   || word
+  // word       || dword
+  // doubleword || quadword
+
+  // -- Unpack High Data Instructions
+  static Instruction pextub_swapped(Register dst, Register src0, Register src1) {
+    assert(dst.is_xmm());
+    assert(src0.is_xmm());
+    assert(src1.is_xmm());
+    // VEX.128.66.0F.WIG 68/r VPUNPCKHBW xmm1,xmm2, xmm3/m128
+    // reg, vex, r/m
+    Instruction instr(0x68);
+    instr.set_vex_modrm_and_rex(dst.hw_id(), src1.hw_id(), VEX3::LeadingBytes::P_0F, src0.hw_id(),
+                                false, VexPrefix::P_66);
+    return instr;
+  }
+
+  static Instruction pextuh_swapped(Register dst, Register src0, Register src1) {
+    assert(dst.is_xmm());
+    assert(src0.is_xmm());
+    assert(src1.is_xmm());
+    // VEX.128.66.0F.WIG 69/r VPUNPCKHWD xmm1,xmm2, xmm3/m128
+    // reg, vex, r/m
+    Instruction instr(0x69);
+    instr.set_vex_modrm_and_rex(dst.hw_id(), src1.hw_id(), VEX3::LeadingBytes::P_0F, src0.hw_id(),
+                                false, VexPrefix::P_66);
+    return instr;
+  }
+
+  static Instruction pextuw_swapped(Register dst, Register src0, Register src1) {
+    assert(dst.is_xmm());
+    assert(src0.is_xmm());
+    assert(src1.is_xmm());
+    // VEX.128.66.0F.WIG 6A/r VPUNPCKHDQ xmm1, xmm2, xmm3/m128
+    // reg, vex, r/m
+    Instruction instr(0x6a);
+    instr.set_vex_modrm_and_rex(dst.hw_id(), src1.hw_id(), VEX3::LeadingBytes::P_0F, src0.hw_id(),
+                                false, VexPrefix::P_66);
+    return instr;
+  }
+
+  // -- Unpack Low Data Instructions
+  static Instruction pextlb_swapped(Register dst, Register src0, Register src1) {
+    assert(dst.is_xmm());
+    assert(src0.is_xmm());
+    assert(src1.is_xmm());
+    // VEX.128.66.0F.WIG 60/r VPUNPCKLBW xmm1,xmm2, xmm3/m128
+    // reg, vex, r/m
+    Instruction instr(0x60);
+    instr.set_vex_modrm_and_rex(dst.hw_id(), src1.hw_id(), VEX3::LeadingBytes::P_0F, src0.hw_id(),
+                                false, VexPrefix::P_66);
+    return instr;
+  }
+
+  static Instruction pextlh_swapped(Register dst, Register src0, Register src1) {
+    assert(dst.is_xmm());
+    assert(src0.is_xmm());
+    assert(src1.is_xmm());
+    // VEX.128.66.0F.WIG 61/r VPUNPCKLWD xmm1,xmm2, xmm3/m128
+    // reg, vex, r/m
+    Instruction instr(0x61);
+    instr.set_vex_modrm_and_rex(dst.hw_id(), src1.hw_id(), VEX3::LeadingBytes::P_0F, src0.hw_id(),
+                                false, VexPrefix::P_66);
+    return instr;
+  }
+
+  static Instruction pextlw_swapped(Register dst, Register src0, Register src1) {
+    assert(dst.is_xmm());
+    assert(src0.is_xmm());
+    assert(src1.is_xmm());
+    // VEX.128.66.0F.WIG 62/r VPUNPCKLDQ xmm1, xmm2, xmm3/m128
+    // reg, vex, r/m
+    Instruction instr(0x62);
+    instr.set_vex_modrm_and_rex(dst.hw_id(), src1.hw_id(), VEX3::LeadingBytes::P_0F, src0.hw_id(),
+                                false, VexPrefix::P_66);
+    return instr;
+  }
+
+  // Equal to than comparison as 16 bytes (8 bits)
+  static Instruction parallel_compare_e_b(Register dst, Register src0, Register src1) {
+    assert(dst.is_xmm());
+    assert(src0.is_xmm());
+    assert(src1.is_xmm());
+    // VEX.128.66.0F.WIG 74 /r VPCMPEQB xmm1, xmm2, xmm3/m128
+    // reg, vex, r/m
+    Instruction instr(0x74);
+    instr.set_vex_modrm_and_rex(dst.hw_id(), src1.hw_id(), VEX3::LeadingBytes::P_0F, src0.hw_id(),
+                                false, VexPrefix::P_66);
+    return instr;
+  }
+
+  // Equal to than comparison as 8 halfwords (16 bits)
+  static Instruction parallel_compare_e_h(Register dst, Register src0, Register src1) {
+    assert(dst.is_xmm());
+    assert(src0.is_xmm());
+    assert(src1.is_xmm());
+    // VEX.128.66.0F.WIG 75 /r VPCMPEQW xmm1, xmm2, xmm3/m128
+    // reg, vex, r/m
+    Instruction instr(0x75);
+    instr.set_vex_modrm_and_rex(dst.hw_id(), src1.hw_id(), VEX3::LeadingBytes::P_0F, src0.hw_id(),
+                                false, VexPrefix::P_66);
+    return instr;
+  }
+
+  // Equal to than comparison as 4 words (32 bits)
+  static Instruction parallel_compare_e_w(Register dst, Register src0, Register src1) {
+    assert(dst.is_xmm());
+    assert(src0.is_xmm());
+    assert(src1.is_xmm());
+    // VEX.128.66.0F.WIG 76 /r VPCMPEQD xmm1, xmm2, xmm3/m128
+    // reg, vex, r/m
+    Instruction instr(0x76);
+    instr.set_vex_modrm_and_rex(dst.hw_id(), src1.hw_id(), VEX3::LeadingBytes::P_0F, src0.hw_id(),
+                                false, VexPrefix::P_66);
+    return instr;
+  }
+
+  // Greater than comparison as 16 bytes (8 bits)
+  static Instruction parallel_compare_gt_b(Register dst, Register src0, Register src1) {
+    assert(dst.is_xmm());
+    assert(src0.is_xmm());
+    assert(src1.is_xmm());
+    // VEX.128.66.0F.WIG 64 /r VPCMPGTB xmm1, xmm2, xmm3/m128
+    // reg, vex, r/m
+    Instruction instr(0x64);
+    instr.set_vex_modrm_and_rex(dst.hw_id(), src1.hw_id(), VEX3::LeadingBytes::P_0F, src0.hw_id(),
+                                false, VexPrefix::P_66);
+    return instr;
+  }
+
+  // Greater than comparison as 8 halfwords (16 bits)
+  static Instruction parallel_compare_gt_h(Register dst, Register src0, Register src1) {
+    assert(dst.is_xmm());
+    assert(src0.is_xmm());
+    assert(src1.is_xmm());
+    // VEX.128.66.0F.WIG 65 /r VPCMPGTW xmm1, xmm2, xmm3/m128
+    // reg, vex, r/m
+    Instruction instr(0x65);
+    instr.set_vex_modrm_and_rex(dst.hw_id(), src1.hw_id(), VEX3::LeadingBytes::P_0F, src0.hw_id(),
+                                false, VexPrefix::P_66);
+    return instr;
+  }
+
+  // Greater than comparison as 4 words (32 bits)
+  static Instruction parallel_compare_gt_w(Register dst, Register src0, Register src1) {
+    assert(dst.is_xmm());
+    assert(src0.is_xmm());
+    assert(src1.is_xmm());
+    // VEX.128.66.0F.WIG 66 /r VPCMPGTD xmm1, xmm2, xmm3/m128
+    // reg, vex, r/m
+    Instruction instr(0x66);
+    instr.set_vex_modrm_and_rex(dst.hw_id(), src1.hw_id(), VEX3::LeadingBytes::P_0F, src0.hw_id(),
+                                false, VexPrefix::P_66);
+    return instr;
+  }
+
+  static Instruction vpunpcklqdq(Register dst, Register src0, Register src1) {
+    assert(dst.is_xmm());
+    assert(src0.is_xmm());
+    assert(src1.is_xmm());
+    // VEX.128.66.0F.WIG 6C/r VPUNPCKLQDQ xmm1, xmm2, xmm3/m128
+    // reg, vex, r/m
+    Instruction instr(0x6c);
+    instr.set_vex_modrm_and_rex(dst.hw_id(), src1.hw_id(), VEX3::LeadingBytes::P_0F, src0.hw_id(),
+                                false, VexPrefix::P_66);
+    return instr;
+  }
+
+  static Instruction pcpyld_swapped(Register dst, Register src0, Register src1) {
+    return vpunpcklqdq(dst, src0, src1);
+  }
+
+  static Instruction pcpyud(Register dst, Register src0, Register src1) {
+    assert(dst.is_xmm());
+    assert(src0.is_xmm());
+    assert(src1.is_xmm());
+    // VEX.128.66.0F.WIG 6D/r VPUNPCKHQDQ xmm1, xmm2, xmm3/m128
+    // reg, vex, r/m
+    Instruction instr(0x6d);
+    instr.set_vex_modrm_and_rex(dst.hw_id(), src1.hw_id(), VEX3::LeadingBytes::P_0F, src0.hw_id(),
+                                false, VexPrefix::P_66);
+    return instr;
+  }
+
+  static Instruction vpsubd(Register dst, Register src0, Register src1) {
+    assert(dst.is_xmm());
+    assert(src0.is_xmm());
+    assert(src1.is_xmm());
+    // VEX.128.66.0F.WIG FA /r VPSUBD xmm1, xmm2, xmm3/m128
+    // reg, vec, r/m
+    Instruction instr(0xfa);
+    instr.set_vex_modrm_and_rex(dst.hw_id(), src1.hw_id(), VEX3::LeadingBytes::P_0F, src0.hw_id(),
+                                false, VexPrefix::P_66);
+    return instr;
+  }
+
+  static Instruction vpsrldq(Register dst, Register src, u8 imm) {
+    assert(dst.is_xmm());
+    assert(src.is_xmm());
+    // VEX.128.66.0F.WIG 73 /3 ib VPSRLDQ xmm1, xmm2, imm8
+    Instruction instr(0x73);
+    instr.set_vex_modrm_and_rex(3, src.hw_id(), VEX3::LeadingBytes::P_0F, dst.hw_id(), false,
+                                VexPrefix::P_66);
+    instr.set(Imm(1, imm));
+    return instr;
+  }
+
+  static Instruction vpslldq(Register dst, Register src, u8 imm) {
+    assert(dst.is_xmm());
+    assert(src.is_xmm());
+    // VEX.128.66.0F.WIG 73 /7 ib VPSLLDQ xmm1, xmm2, imm8
+    Instruction instr(0x73);
+    instr.set_vex_modrm_and_rex(7, src.hw_id(), VEX3::LeadingBytes::P_0F, dst.hw_id(), false,
+                                VexPrefix::P_66);
+    instr.set(Imm(1, imm));
+    return instr;
+  }
+
+  static Instruction vpshuflw(Register dst, Register src, u8 imm) {
+    assert(dst.is_xmm());
+    assert(src.is_xmm());
+    // VEX.128.F2.0F.WIG 70 /r ib VPSHUFLW xmm1, xmm2/m128, imm8
+    Instruction instr(0x70);
+    instr.set_vex_modrm_and_rex(dst.hw_id(), src.hw_id(), VEX3::LeadingBytes::P_0F, 0, false,
+                                VexPrefix::P_F2);
+    instr.set(Imm(1, imm));
+    return instr;
+  }
+
+  static Instruction vpshufhw(Register dst, Register src, u8 imm) {
+    assert(dst.is_xmm());
+    assert(src.is_xmm());
+    // VEX.128.F3.0F.WIG 70 /r ib VPSHUFHW xmm1, xmm2/m128, imm8
+    Instruction instr(0x70);
+    instr.set_vex_modrm_and_rex(dst.hw_id(), src.hw_id(), VEX3::LeadingBytes::P_0F, 0, false,
+                                VexPrefix::P_F3);
+    instr.set(Imm(1, imm));
     return instr;
   }
 };
 }  // namespace emitter
-
-#endif  // JAK_IGEN_H

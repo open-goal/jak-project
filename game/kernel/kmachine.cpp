@@ -7,7 +7,7 @@
 
 #include <string>
 #include <cstring>
-#include <cassert>
+#include "common/util/assert.h"
 #include "kmachine.h"
 #include "kboot.h"
 #include "kprint.h"
@@ -24,8 +24,19 @@
 #include "game/sce/sif_ee.h"
 #include "game/sce/libcdvd_ee.h"
 #include "game/sce/stubs.h"
+#include "game/sce/libdma.h"
+#include "game/sce/libgraph.h"
+#include "game/sce/libpad.h"
 #include "common/symbols.h"
 #include "common/log/log.h"
+#include "common/util/Timer.h"
+#include "game/graphics/sceGraphicsInterface.h"
+#include "game/graphics/gfx.h"
+#include "game/graphics/dma/dma_chain_read.h"
+#include "game/graphics/dma/dma_copy.h"
+
+#include "game/system/vm/vm.h"
+#include "game/system/newpad.h"
 using namespace ee;
 
 /*!
@@ -43,11 +54,18 @@ u8 pad_dma_buf[2 * SCE_PAD_DMA_BUFFER_SIZE];
 
 const char* init_types[] = {"fakeiso", "deviso", "iso_cd"};
 
+Timer ee_clock_timer;
+
+// added
+u32 vif1_interrupt_handler = 0;
+
 void kmachine_init_globals() {
   isodrv = iso_cd;
   modsrc = 1;
   reboot = 1;
   memset(pad_dma_buf, 0, sizeof(pad_dma_buf));
+  ee_clock_timer = Timer();
+  vif1_interrupt_handler = 0;
 }
 
 /*!
@@ -118,7 +136,7 @@ void InitParms(int argc, const char* const* argv) {
       DebugSegment = 0;
     }
 
-    // the "debug" mode is used to set GOAL up for debugging/developemtn
+    // the "debug" mode is used to set GOAL up for debugging/development
     if (arg == "-debug") {
       Msg(6, "dkernel: debug mode\n");
       MasterDebug = 1;
@@ -366,6 +384,12 @@ int ShutdownMachine() {
   CloseListener();
   ShutdownSound();
   ShutdownGoalProto();
+
+  // OpenGOAL only - kill ps2 VM
+  if (VM::use) {
+    VM::vm_kill();
+  }
+
   Msg(6, "kernel: machine shutdown\n");
   return 0;
 }
@@ -386,32 +410,149 @@ void CacheFlush(void* mem, int size) {
  * Prints an error if it fails to open.
  */
 u64 CPadOpen(u64 cpad_info, s32 pad_number) {
-  auto info = Ptr<CpadInfo>(cpad_info).c();
-  if (info->cpad_file == 0) {
+  auto cpad = Ptr<CPadInfo>(cpad_info).c();
+  if (cpad->cpad_file == 0) {
     // not open, so we will open it
-    info->cpad_file =
+    cpad->cpad_file =
         ee::scePadPortOpen(pad_number, 0, pad_dma_buf + pad_number * SCE_PAD_DMA_BUFFER_SIZE);
-    if (info->cpad_file < 1) {
-      MsgErr("dkernel: !open cpad #%d (%d)\n", pad_number, info->cpad_file);
+    if (cpad->cpad_file < 1) {
+      MsgErr("dkernel: !open cpad #%d (%d)\n", pad_number, cpad->cpad_file);
     }
-    info->new_pad = 1;
-    info->state = 0;
+    cpad->new_pad = 1;
+    cpad->state = 0;
   }
   return cpad_info;
 }
 
-// TODO CPadGetData
-void CPadGetData() {
-  assert(false);
+u64 CPadGetData(u64 cpad_info) {
+  auto cpad = Ptr<CPadInfo>(cpad_info).c();
+  auto pad_state = scePadGetState(cpad->number, 0);
+  if (pad_state == scePadStateDiscon) {
+    cpad->state = 0;
+  }
+  cpad->valid = pad_state | 0x80;
+  switch (cpad->state) {
+    // case 99: // functional
+    default:  // controller is functioning as normal
+      if (pad_state == scePadStateStable || pad_state == scePadStateFindCTP1) {
+        scePadRead(cpad->number, 0, (u8*)cpad);
+        // ps2 controllers would send an enabled bit if the button was NOT pressed, but we don't do
+        // that here. removed code that flipped the bits.
+
+        if (cpad->change_time != 0) {
+          scePadSetActDirect(cpad->number, 0, cpad->direct);
+        }
+        cpad->valid = pad_state;
+      }
+      break;
+    case 0:  // unavailable
+      if (pad_state == scePadStateStable || pad_state == scePadStateFindCTP1) {
+        auto pad_mode = scePadInfoMode(cpad->number, 0, InfoModeCurID, 0);
+        if (pad_mode != 0) {
+          auto vibration_mode = scePadInfoMode(cpad->number, 0, InfoModeCurExID, 0);
+          if (vibration_mode > 0) {
+            // vibration supported
+            pad_mode = vibration_mode;
+          }
+          if (pad_mode == 4) {
+            // controller mode
+            cpad->state = 40;
+          } else if (pad_mode == 7) {
+            // dualshock mode
+            cpad->state = 70;
+          } else {
+            // who knows mode
+            cpad->state = 90;
+          }
+        }
+      }
+      break;
+    case 40:  // controller mode - check for extra modes
+      cpad->change_time = 0;
+      if (scePadInfoMode(cpad->number, 0, InfoModeIdTable, -1) == 0) {
+        // no controller modes
+        cpad->state = 90;
+        return cpad_info;
+      }
+      cpad->state = 41;
+    case 41:  // controller mode - change to dualshock mode!
+      // try to enter the 2nd controller mode (dualshock for ds2's)
+      if (scePadSetMainMode(cpad->number, 0, 1, 3) == 1) {
+        cpad->state = 42;
+      }
+      break;
+    case 42:  // controller mode change check
+      if (scePadGetReqState(cpad->number, 0) == scePadReqStateFailed) {
+        // failed to change to DS2
+        cpad->state = 41;
+      }
+      if (scePadGetReqState(cpad->number, 0) == scePadReqStateComplete) {
+        // change successful. go back to the beginning.
+        cpad->state = 0;
+      }
+      break;
+    case 70:  // dualshock mode - check vibration
+      // get number of actuators (2 for DS2)
+      if (scePadInfoAct(cpad->number, 0, -1, 0) < 1) {
+        // no actuators means no vibration. skip to end!
+        cpad->change_time = 0;
+        cpad->state = 99;
+      } else {
+        // we have actuators to use.
+        cpad->change_time = 1;  // remember to update vibration.
+        cpad->state = 75;
+      }
+      break;
+    case 75:  // set actuator vib param info
+      if (scePadSetActAlign(cpad->number, 0, cpad->align) != 0) {
+        if (scePadInfoPressMode(cpad->number, 0) == 1) {
+          // pressure buttons supported
+          cpad->state = 76;
+        } else {
+          // no pressure buttons, done with controller setup
+          cpad->state = 99;
+        }
+      }
+      break;
+    case 76:  // enter pressure mode
+      if (scePadEnterPressMode(cpad->number, 0) == 1) {
+        cpad->state = 78;
+      }
+      break;
+    case 78:  // pressure mode request check
+      if (scePadGetReqState(cpad->number, 0) == scePadReqStateFailed) {
+        cpad->state = 76;
+      }
+      if (scePadGetReqState(cpad->number, 0) == scePadReqStateComplete) {
+        cpad->state = 99;
+      }
+      break;
+    case 90:
+      break;  // unsupported controller. too bad!
+  }
+  return cpad_info;
 }
 
 // TODO InstallHandler
-void InstallHandler() {
-  assert(false);
+void InstallHandler(u32 handler_idx, u32 handler_func) {
+  assert(handler_idx == 5);  // vif1
+  vif1_interrupt_handler = handler_func;
 }
 // TODO InstallDebugHandler
 void InstallDebugHandler() {
   assert(false);
+}
+
+void send_gfx_dma_chain(u32 /*bank*/, u32 chain) {
+  Gfx::send_chain(g_ee_main_mem, chain);
+}
+
+void pc_texture_upload_now(u32 page, u32 mode) {
+  Gfx::texture_upload_now(Ptr<u8>(page).c(), mode, s7.offset);
+}
+
+void pc_texture_relocate(u32 dst, u32 src, u32 format) {
+  Gfx::texture_relocate(dst, src, format);
 }
 
 /*!
@@ -425,7 +566,8 @@ u64 kopen(u64 fs, u64 name, u64 mode) {
   file_stream->flags = 0;
   printf("****** CALL TO kopen() ******\n");
   char buffer[128];
-  sprintf(buffer, "host:%s", Ptr<String>(name)->data());
+  // sprintf(buffer, "host:%s", Ptr<String>(name)->data());
+  sprintf(buffer, "%s", Ptr<String>(name)->data());
   if (!strcmp(info(Ptr<Symbol>(mode))->str->data(), "read")) {
     file_stream->file = sceOpen(buffer, SCE_RDONLY);
   } else {
@@ -549,7 +691,52 @@ void DecodeTime() {
 
 // TODO PutDisplayEnv
 void PutDisplayEnv() {
-  assert(false);
+  // assert(false);
+}
+
+/*!
+ * PC Port function to get a 300MHz timer value.
+ */
+u64 read_ee_timer() {
+  u64 ns = ee_clock_timer.getNs();
+  return (ns * 3) / 10;
+}
+
+/*!
+ * PC Port function to do a fast memory copy.
+ */
+void c_memmove(u32 dst, u32 src, u32 size) {
+  memmove(Ptr<u8>(dst).c(), Ptr<u8>(src).c(), size);
+}
+
+void InitMachine_PCPort() {
+  // PC Port added functions
+  make_function_symbol_from_c("__read-ee-timer", (void*)read_ee_timer);
+  make_function_symbol_from_c("__mem-move", (void*)c_memmove);
+  make_function_symbol_from_c("__send-gfx-dma-chain", (void*)send_gfx_dma_chain);
+  make_function_symbol_from_c("__pc-texture-upload-now", (void*)pc_texture_upload_now);
+  make_function_symbol_from_c("__pc-texture-relocate", (void*)pc_texture_relocate);
+
+  // pad stuff
+  make_function_symbol_from_c("pc-pad-get-mapped-button", (void*)Gfx::get_mapped_button);
+  make_function_symbol_from_c("pc-pad-input-map-save!", (void*)Gfx::input_mode_save);
+  make_function_symbol_from_c("pc-pad-input-mode-set", (void*)Gfx::input_mode_set);
+  make_function_symbol_from_c("pc-pad-input-mode-get", (void*)Pad::input_mode_get);
+  make_function_symbol_from_c("pc-pad-input-key-get", (void*)Pad::input_mode_get_key);
+  make_function_symbol_from_c("pc-pad-input-index-get", (void*)Pad::input_mode_get_index);
+
+  // init ps2 VM
+  if (VM::use) {
+    make_function_symbol_from_c("vm-ptr", (void*)VM::get_vm_ptr);
+    VM::vm_init();
+  }
+}
+
+void vif_interrupt_callback() {
+  // added for the PC port for faking VIF interrupts from the graphics system.
+  if (vif1_interrupt_handler && MasterExit == 0) {
+    call_goal(Ptr<Function>(vif1_interrupt_handler), 0, 0, 0, s7.offset, g_ee_main_mem);
+  }
 }
 
 /*!
@@ -561,7 +748,7 @@ void PutDisplayEnv() {
  */
 void InitMachineScheme() {
   make_function_symbol_from_c("put-display-env", (void*)PutDisplayEnv);       // used in drawable
-  make_function_symbol_from_c("syncv", (void*)ee::sceGsSyncV);                // used in drawable
+  make_function_symbol_from_c("syncv", (void*)sceGsSyncV);                    // used in drawable
   make_function_symbol_from_c("sync-path", (void*)sceGsSyncPath);             // used
   make_function_symbol_from_c("reset-path", (void*)sceGsResetPath);           // used in dma
   make_function_symbol_from_c("reset-graph", (void*)sceGsResetGraph);         // used
@@ -590,6 +777,8 @@ void InitMachineScheme() {
   make_function_symbol_from_c("dma-to-iop", (void*)dma_to_iop);                           // unused
   make_function_symbol_from_c("kernel-shutdown", (void*)KernelShutdown);                  // used
   make_function_symbol_from_c("aybabtu", (void*)sceCdMmode);                              // used
+
+  InitMachine_PCPort();
   InitSoundScheme();
   intern_from_c("*stack-top*")->value = 0x07ffc000;
   intern_from_c("*stack-base*")->value = 0x07ffffff;

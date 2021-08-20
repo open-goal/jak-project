@@ -68,7 +68,13 @@ Interpreter::Interpreter() {
                    {"type?", &Interpreter::eval_type},
                    {"current-method-type", &Interpreter::eval_current_method_type},
                    {"fmt", &Interpreter::eval_format},
-                   {"error", &Interpreter::eval_error}};
+                   {"error", &Interpreter::eval_error},
+                   {"string-ref", &Interpreter::eval_string_ref},
+                   {"string-length", &Interpreter::eval_string_length},
+                   {"string-append", &Interpreter::eval_string_append},
+                   {"ash", &Interpreter::eval_ash},
+                   {"symbol->string", &Interpreter::eval_symbol_to_string},
+                   {"string->symbol", &Interpreter::eval_string_to_symbol}};
 
   string_to_type = {{"empty-list", ObjectType::EMPTY_LIST},
                     {"integer", ObjectType::INTEGER},
@@ -84,6 +90,17 @@ Interpreter::Interpreter() {
 
   // load the standard library
   load_goos_library();
+}
+
+/*!
+ * Add a user defined special form. The given function will be called with unevaluated arguments.
+ * Lookup from these forms occurs after special/builtin, but before any env lookups.
+ */
+void Interpreter::register_form(
+    const std::string& name,
+    const std::function<
+        Object(const Object&, Arguments&, const std::shared_ptr<EnvironmentObject>&)>& form) {
+  m_custom_forms[name] = form;
 }
 
 Interpreter::~Interpreter() {
@@ -125,13 +142,17 @@ Object Interpreter::intern(const std::string& name) {
 /*!
  * Display the REPL, which will run until the user executes exit.
  */
-void Interpreter::execute_repl() {
+void Interpreter::execute_repl(ReplWrapper& repl) {
+  want_exit = false;
   while (!want_exit) {
     try {
       // read something from the user
-      Object obj = reader.read_from_stdin("goos");
+      auto obj = reader.read_from_stdin("goos> ", repl);
+      if (!obj) {
+        continue;
+      }
       // evaluate
-      Object evald = eval_with_rewind(obj, global_environment.as_env());
+      Object evald = eval_with_rewind(*obj, global_environment.as_env());
       // print
       printf("%s\n", evald.print().c_str());
     } catch (std::exception& e) {
@@ -181,6 +202,19 @@ bool Interpreter::get_global_variable_by_name(const std::string& name, Object* d
     return true;
   }
   return false;
+}
+
+/*!
+ * Sets the variable to the value. Overwrites an existing value, or creates a new global.
+ */
+void Interpreter::set_global_variable_by_name(const std::string& name, const Object& value) {
+  auto sym = SymbolObject::make_new(reader.symbolTable, name).as_symbol();
+  global_environment.as_env()->vars[sym] = value;
+}
+
+void Interpreter::set_global_variable_to_symbol(const std::string& name, const std::string& value) {
+  auto sym = SymbolObject::make_new(reader.symbolTable, value);
+  set_global_variable_by_name(name, sym);
 }
 
 /*!
@@ -484,6 +518,12 @@ Object Interpreter::eval_symbol(const Object& sym, const std::shared_ptr<Environ
   return result;
 }
 
+bool Interpreter::eval_symbol(const Object& sym,
+                              const std::shared_ptr<EnvironmentObject>& env,
+                              Object* result) {
+  return try_symbol_lookup(sym, env, result);
+}
+
 /*!
  * Evaluate a pair, either as special form, builtin form, macro application, or lambda application.
  */
@@ -509,6 +549,13 @@ Object Interpreter::eval_pair(const Object& obj, const std::shared_ptr<Environme
       // all "built-in" forms expect arguments to be evaluated (that's why they aren't special)
       eval_args(&args, env);
       return ((*this).*(kv_b->second))(obj, args, env);
+    }
+
+    // try custom forms next
+    auto kv_u = m_custom_forms.find(head_sym->name);
+    if (kv_u != m_custom_forms.end()) {
+      Arguments args = get_args(obj, rest, make_varargs());
+      return (kv_u->second)(obj, args, env);
     }
 
     // try macros next
@@ -1032,6 +1079,8 @@ IntType Interpreter::number_to_integer(const Object& obj) {
       return obj.integer_obj.value;
     case ObjectType::FLOAT:
       return (int64_t)obj.float_obj.value;
+    case ObjectType::CHAR:
+      return (int8_t)obj.char_obj.value;
     default:
       throw_eval_error(obj, "object cannot be interpreted as a number!");
   }
@@ -1516,5 +1565,78 @@ Object Interpreter::eval_error(const Object& form,
   vararg_check(form, args, {ObjectType::STRING}, {});
   throw_eval_error(form, "Error: " + args.unnamed.at(0).as_string()->data);
   return EmptyListObject::make_new();
+}
+
+Object Interpreter::eval_string_ref(const Object& form,
+                                    Arguments& args,
+                                    const std::shared_ptr<EnvironmentObject>& env) {
+  (void)env;
+  vararg_check(form, args, {ObjectType::STRING, ObjectType::INTEGER}, {});
+  auto str = args.unnamed.at(0).as_string();
+  auto idx = args.unnamed.at(1).as_int();
+  if ((size_t)idx >= str->data.size()) {
+    throw_eval_error(form, fmt::format("String index {} out of range for string of size {}", idx,
+                                       str->data.size()));
+  }
+  return Object::make_char(str->data.at(idx));
+}
+
+Object Interpreter::eval_string_length(const Object& form,
+                                       Arguments& args,
+                                       const std::shared_ptr<EnvironmentObject>& env) {
+  (void)env;
+  vararg_check(form, args, {ObjectType::STRING}, {});
+  auto str = args.unnamed.at(0).as_string();
+  return Object::make_integer(str->data.length());
+}
+
+Object Interpreter::eval_string_append(const Object& form,
+                                       Arguments& args,
+                                       const std::shared_ptr<EnvironmentObject>& env) {
+  (void)env;
+  if (!args.named.empty()) {
+    throw_eval_error(form, "string-append does not accept named arguments");
+  }
+
+  std::string result;
+  for (auto& arg : args.unnamed) {
+    if (!arg.is_string()) {
+      throw_eval_error(form, "string-append can only operate on strings");
+    }
+    result += arg.as_string()->data;
+  }
+
+  return StringObject::make_new(result);
+}
+
+Object Interpreter::eval_ash(const Object& form,
+                             Arguments& args,
+                             const std::shared_ptr<EnvironmentObject>& env) {
+  (void)env;
+  vararg_check(form, args, {{}, {}}, {});
+  auto val = number_to_integer(args.unnamed.at(0));
+  auto sa = number_to_integer(args.unnamed.at(1));
+  if (sa >= 0 && sa < 64) {
+    return Object::make_integer(val << sa);
+  } else if (sa > -64) {
+    return Object::make_integer(val >> -sa);
+  } else {
+    throw_eval_error(form, fmt::format("Shift amount {} is out of range", sa));
+    return EmptyListObject::make_new();
+  }
+}
+
+Object Interpreter::eval_symbol_to_string(const Object& form,
+                                          Arguments& args,
+                                          const std::shared_ptr<EnvironmentObject>&) {
+  vararg_check(form, args, {ObjectType::SYMBOL}, {});
+  return StringObject::make_new(args.unnamed.at(0).as_symbol()->name);
+}
+
+Object Interpreter::eval_string_to_symbol(const Object& form,
+                                          Arguments& args,
+                                          const std::shared_ptr<EnvironmentObject>&) {
+  vararg_check(form, args, {ObjectType::STRING}, {});
+  return SymbolObject::make_new(reader.symbolTable, args.unnamed.at(0).as_string()->data);
 }
 }  // namespace goos

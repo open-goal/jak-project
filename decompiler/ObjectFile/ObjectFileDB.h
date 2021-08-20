@@ -7,10 +7,7 @@
  * (there may be different object files with the same name sometimes)
  */
 
-#ifndef JAK2_DISASSEMBLER_OBJECTFILEDB_H
-#define JAK2_DISASSEMBLER_OBJECTFILEDB_H
-
-#include <cassert>
+#include "common/util/assert.h"
 #include <string>
 #include <unordered_map>
 #include <vector>
@@ -49,37 +46,48 @@ class ObjectFileDB {
   ObjectFileDB(const std::vector<std::string>& _dgos,
                const std::string& obj_file_name_map_file,
                const std::vector<std::string>& object_files,
-               const std::vector<std::string>& str_files);
+               const std::vector<std::string>& str_files,
+               const Config& config);
   std::string generate_dgo_listing();
   std::string generate_obj_listing();
-  void process_link_data();
+  void process_link_data(const Config& config);
   void process_labels();
-  void find_code();
+  void find_code(const Config& config);
   void find_and_write_scripts(const std::string& output_dir);
   void dump_raw_objects(const std::string& output_dir);
 
-  void write_object_file_words(const std::string& output_dir, bool dump_v3_only);
+  void write_object_file_words(const std::string& output_dir, bool dump_data, bool dump_code);
   void write_disassembly(const std::string& output_dir,
-                         bool disassemble_objects_without_functions,
-                         bool write_json,
-                         const std::string& file_suffix = "");
+                         bool disassemble_data,
+                         bool disassemble_code,
+                         bool print_hex);
 
-  void analyze_functions_ir1();
-  void analyze_functions_ir2(const std::string& output_dir);
-  void ir2_top_level_pass();
-  void ir2_basic_block_pass();
-  void ir2_atomic_op_pass();
-  void ir2_type_analysis_pass();
-  void ir2_register_usage_pass();
-  void ir2_variable_pass();
-  void ir2_cfg_build_pass();
-  void ir2_store_current_forms();
-  void ir2_build_expressions();
-  void ir2_write_results(const std::string& output_dir);
-  std::string ir2_to_file(ObjectFileData& data);
+  void analyze_functions_ir1(const Config& config);
+  void analyze_functions_ir2(const std::string& output_dir,
+                             const Config& config,
+                             bool skip_debug_output = false);
+  void ir2_top_level_pass(const Config& config);
+  void ir2_stack_spill_slot_pass(int seg);
+  void ir2_basic_block_pass(int seg, const Config& config);
+  void ir2_atomic_op_pass(int seg, const Config& config);
+  void ir2_type_analysis_pass(int seg, const Config& config);
+  void ir2_register_usage_pass(int seg);
+  void ir2_variable_pass(int seg);
+  void ir2_cfg_build_pass(int seg);
+  void ir2_store_current_forms(int seg);
+  void ir2_build_expressions(int seg, const Config& config);
+  void ir2_insert_lets(int seg);
+  void ir2_rewrite_inline_asm_instructions(int seg);
+  void ir2_insert_anonymous_functions(int seg);
+  void ir2_symbol_definition_map(const std::string& output_dir);
+  void ir2_write_results(const std::string& output_dir, const Config& config);
+  void ir2_do_common_segment_analysis(int seg, const Config& config);
+  std::string ir2_to_file(ObjectFileData& data, const Config& config);
   std::string ir2_function_to_string(ObjectFileData& data, Function& function, int seg);
+  std::string ir2_final_out(ObjectFileData& data,
+                            const std::unordered_set<std::string>& skip_functions = {});
 
-  void process_tpages();
+  std::string process_tpages();
   std::string process_game_count_file();
   std::string process_game_text_files();
 
@@ -89,16 +97,18 @@ class ObjectFileDB {
 
   bool lookup_function_type(const FunctionName& name,
                             const std::string& obj_name,
+                            const Config& config,
                             TypeSpec* result);
 
- private:
+ public:
   void load_map_file(const std::string& map_data);
-  void get_objs_from_dgo(const std::string& filename);
+  void get_objs_from_dgo(const std::string& filename, const Config& config);
   void add_obj_from_dgo(const std::string& obj_name,
                         const std::string& name_in_dgo,
                         const uint8_t* obj_data,
                         uint32_t obj_size,
-                        const std::string& dgo_name);
+                        const std::string& dgo_name,
+                        const Config& config);
 
   /*!
    * Apply f to all ObjectFileData's. Does it in the right order.
@@ -121,12 +131,9 @@ class ObjectFileDB {
   template <typename Func>
   void for_each_function(Func f) {
     for_each_obj([&](ObjectFileData& data) {
-      //      printf("IN %s\n", data.record.to_unique_name().c_str());
       for (int i = 0; i < int(data.linked_data.segments); i++) {
-        //        printf("seg %d\n", i);
         int fn = 0;
         for (auto& goal_func : data.linked_data.functions_by_seg.at(i)) {
-          //          printf("fn %d\n", fn);
           f(goal_func, i, data);
           fn++;
         }
@@ -137,14 +144,23 @@ class ObjectFileDB {
   template <typename Func>
   void for_each_function_def_order(Func f) {
     for_each_obj([&](ObjectFileData& data) {
-      //      printf("IN %s\n", data.record.to_unique_name().c_str());
       for (int i = 0; i < int(data.linked_data.segments); i++) {
-        //        printf("seg %d\n", i);
         int fn = 0;
-        //        for (auto& goal_func : data.linked_data.functions_by_seg.at(i)) {
         for (size_t j = data.linked_data.functions_by_seg.at(i).size(); j-- > 0;) {
-          //          printf("fn %d\n", fn);
           f(data.linked_data.functions_by_seg.at(i).at(j), i, data);
+          fn++;
+        }
+      }
+    });
+  }
+
+  template <typename Func>
+  void for_each_function_in_seg(int seg, Func f) {
+    for_each_obj([&](ObjectFileData& data) {
+      int fn = 0;
+      if (data.linked_data.segments == 3) {
+        for (size_t j = data.linked_data.functions_by_seg.at(seg).size(); j-- > 0;) {
+          f(data.linked_data.functions_by_seg.at(seg).at(j), data);
           fn++;
         }
       }
@@ -166,5 +182,3 @@ class ObjectFileDB {
   } stats;
 };
 }  // namespace decompiler
-
-#endif  // JAK2_DISASSEMBLER_OBJECTFILEDB_H

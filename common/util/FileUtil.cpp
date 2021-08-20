@@ -9,10 +9,14 @@
 #include <cstdio> /* defines FILENAME_MAX */
 #include <fstream>
 #include <sstream>
-#include <cassert>
+#include "common/util/assert.h"
+#include <cstdlib>
+#include "common/util/BinaryReader.h"
 #include "BinaryWriter.h"
 #include "common/common_types.h"
 #include "third-party/svpng.h"
+#include "third-party/fmt/core.h"
+#include "third-party/lzokay/lzokay.hpp"
 
 #ifdef _WIN32
 #include <Windows.h>
@@ -22,6 +26,17 @@
 #endif
 
 namespace file_util {
+std::filesystem::path get_user_home_dir() {
+#ifdef _WIN32
+  // NOTE - on older systems, this may case issues if it cannot be found!
+  std::string home_dir = std::getenv("USERPROFILE");
+  return std::filesystem::path(home_dir);
+#else
+  std::string home_dir = std::getenv("HOME");
+  return std::filesystem::path(home_dir);
+#endif
+}
+
 std::string get_project_path() {
 #ifdef _WIN32
   char buffer[FILENAME_MAX];
@@ -70,7 +85,7 @@ bool create_dir_if_needed(const std::string& path) {
   return false;
 }
 
-void write_binary_file(const std::string& name, void* data, size_t size) {
+void write_binary_file(const std::string& name, const void* data, size_t size) {
   FILE* fp = fopen(name.c_str(), "wb");
   if (!fp) {
     throw std::runtime_error("couldn't open file " + name);
@@ -105,6 +120,21 @@ void write_text_file(const std::string& file_name, const std::string& text) {
 }
 
 std::vector<uint8_t> read_binary_file(const std::string& filename) {
+  // make sure file exists and isn't a directory
+  std::filesystem::path path(filename);
+
+  auto status = std::filesystem::status(std::filesystem::path(filename));
+
+  if (!std::filesystem::exists(status)) {
+    throw std::runtime_error(fmt::format("File {} cannot be opened: does not exist.", filename));
+  }
+
+  if (status.type() != std::filesystem::file_type::regular &&
+      status.type() != std::filesystem::file_type::symlink) {
+    throw std::runtime_error(
+        fmt::format("File {} cannot be opened: not a regular file or symlink.", filename));
+  }
+
   auto fp = fopen(filename.c_str(), "rb");
   if (!fp)
     throw std::runtime_error("File " + filename +
@@ -146,7 +176,7 @@ std::string base_name(const std::string& filename) {
   size_t pos = 0;
   assert(!filename.empty());
   for (size_t i = filename.size() - 1; i-- > 0;) {
-    if (filename.at(i) == '/') {
+    if (filename.at(i) == '/' || filename.at(i) == '\\') {
       pos = (i + 1);
       break;
     }
@@ -313,6 +343,65 @@ void assert_file_exists(const char* path, const char* error_message) {
     fprintf(stderr, "File %s was not found: %s\n", path, error_message);
     assert(false);
   }
+}
+
+/*!
+ * Check if the given DGO header (or entire file) is compressed.
+ */
+bool dgo_header_is_compressed(const std::vector<u8>& data) {
+  const char compressed_header[] = "oZlB";
+  bool is_compressed = true;
+  for (int i = 0; i < 4; i++) {
+    if (compressed_header[i] != data.at(i)) {
+      is_compressed = false;
+    }
+  }
+  return is_compressed;
+}
+
+/*!
+ * Decompress a DGO. Resulting data will start at the DGO header.
+ */
+std::vector<u8> decompress_dgo(const std::vector<u8>& data_in) {
+  constexpr int MAX_CHUNK_SIZE = 0x8000;
+  BinaryReader compressed_reader(data_in);
+  // seek past oZlB
+  compressed_reader.ffwd(4);
+  std::size_t decompressed_size = compressed_reader.read<uint32_t>();
+  std::vector<uint8_t> decompressed_data;
+  decompressed_data.resize(decompressed_size);
+  size_t output_offset = 0;
+  while (true) {
+    // seek past alignment bytes and read the next chunk size
+    uint32_t chunk_size = 0;
+    while (!chunk_size) {
+      chunk_size = compressed_reader.read<uint32_t>();
+    }
+
+    if (chunk_size < MAX_CHUNK_SIZE) {
+      std::size_t bytes_written = 0;
+      lzokay::EResult ok = lzokay::decompress(
+          compressed_reader.here(), chunk_size, decompressed_data.data() + output_offset,
+          decompressed_data.size() - output_offset, bytes_written);
+      assert(ok == lzokay::EResult::Success);
+      compressed_reader.ffwd(chunk_size);
+      output_offset += bytes_written;
+    } else {
+      // nope - sometimes chunk_size is bigger than MAX, but we should still use max.
+      //        assert(chunk_size == MAX_CHUNK_SIZE);
+      memcpy(decompressed_data.data() + output_offset, compressed_reader.here(), MAX_CHUNK_SIZE);
+      compressed_reader.ffwd(MAX_CHUNK_SIZE);
+      output_offset += MAX_CHUNK_SIZE;
+    }
+
+    if (output_offset >= decompressed_size)
+      break;
+    while (compressed_reader.get_seek() % 4) {
+      compressed_reader.ffwd(1);
+    }
+  }
+
+  return decompressed_data;
 }
 
 }  // namespace file_util

@@ -1,6 +1,7 @@
 #include "goalc/compiler/Compiler.h"
 #include "goalc/compiler/IR.h"
 #include "common/goos/ParseHelpers.h"
+#include "common/type_system/deftype.h"
 
 /*!
  * Parse arguments into a goos::Arguments format.
@@ -124,20 +125,7 @@ void Compiler::expect_empty_list(const goos::Object& o) {
 }
 
 TypeSpec Compiler::parse_typespec(const goos::Object& src) {
-  if (src.is_symbol()) {
-    return m_ts.make_typespec(symbol_string(src));
-  } else if (src.is_pair()) {
-    TypeSpec ts = m_ts.make_typespec(symbol_string(pair_car(src)));
-    const auto& rest = pair_cdr(src);
-
-    for_each_in_list(rest, [&](const goos::Object& o) { ts.add_arg(parse_typespec(o)); });
-
-    return ts;
-  } else {
-    throw_compiler_error(src, "Invalid typespec.");
-  }
-  assert(false);
-  return {};
+  return ::parse_typespec(&m_ts, src);
 }
 
 bool Compiler::is_local_symbol(const goos::Object& obj, Env* env) {
@@ -179,11 +167,11 @@ bool Compiler::is_none(Val* in) {
 }
 
 bool Compiler::is_basic(const TypeSpec& ts) {
-  return m_ts.typecheck(m_ts.make_typespec("basic"), ts, "", false, false);
+  return m_ts.tc(m_ts.make_typespec("basic"), ts);
 }
 
 bool Compiler::is_structure(const TypeSpec& ts) {
-  return m_ts.typecheck(m_ts.make_typespec("structure"), ts, "", false, false);
+  return m_ts.tc(m_ts.make_typespec("structure"), ts);
 }
 
 bool Compiler::is_bitfield(const TypeSpec& ts) {
@@ -191,7 +179,7 @@ bool Compiler::is_bitfield(const TypeSpec& ts) {
 }
 
 bool Compiler::is_pair(const TypeSpec& ts) {
-  return m_ts.typecheck(m_ts.make_typespec("pair"), ts, "", false, false);
+  return m_ts.tc(m_ts.make_typespec("pair"), ts);
 }
 
 bool Compiler::try_getting_constant_integer(const goos::Object& in, int64_t* out, Env* env) {
@@ -205,14 +193,19 @@ bool Compiler::try_getting_constant_integer(const goos::Object& in, int64_t* out
     auto head = in.as_pair()->car;
     if (head.is_symbol()) {
       auto head_sym = head.as_symbol();
-      auto enum_kv = m_enums.find(head_sym->name);
-      if (enum_kv != m_enums.end()) {
+      auto enum_type = m_ts.try_enum_lookup(head_sym->name);
+      if (enum_type) {
         bool success;
-        u64 as_enum = enum_lookup(in, enum_kv->second, in.as_pair()->cdr, false, &success);
+        u64 as_enum = enum_lookup(in, enum_type, in.as_pair()->cdr, false, &success);
         if (success) {
           *out = as_enum;
           return true;
         }
+      }
+
+      if (head_sym->name == "size-of") {
+        *out = get_size_for_size_of(in, in.as_pair()->cdr);
+        return true;
       }
     }
   }
@@ -227,11 +220,10 @@ bool Compiler::try_getting_constant_integer(const goos::Object& in, int64_t* out
     }
   }
 
-  // todo, try more things like constants before giving up.
   return false;
 }
 
-float Compiler::try_getting_constant_float(const goos::Object& in, float* out, Env* env) {
+bool Compiler::try_getting_constant_float(const goos::Object& in, float* out, Env* env) {
   (void)env;
   if (in.is_float()) {
     *out = in.as_float();
@@ -267,6 +259,8 @@ std::vector<goos::Object> Compiler::get_list_as_vector(const goos::Object& o,
     if (max_length >= 0 && n >= max_length) {
       if (rest_out) {
         *rest_out = *cur;
+      } else {
+        throw std::runtime_error("get_list_as_vector would discard arguments");
       }
       return result;
     }

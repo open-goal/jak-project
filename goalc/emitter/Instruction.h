@@ -3,7 +3,7 @@
 #ifndef JAK_INSTRUCTION_H
 #define JAK_INSTRUCTION_H
 
-#include <cassert>
+#include "common/util/assert.h"
 #include "common/common_types.h"
 
 namespace emitter {
@@ -85,6 +85,7 @@ struct VEX3 {
       return result;
     } else {
       assert(false);
+      return -1;
     }
   }
 
@@ -124,6 +125,7 @@ struct VEX2 {
       return result;
     } else {
       assert(false);
+      return -1;
     }
   }
 

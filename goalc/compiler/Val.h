@@ -5,9 +5,6 @@
  * The GOAL Value. A value represents a place (where the value is stored) and a type.
  */
 
-#ifndef JAK_VAL_H
-#define JAK_VAL_H
-
 #include <utility>
 #include <string>
 #include <stdexcept>
@@ -16,6 +13,7 @@
 #include "goalc/regalloc/IRegister.h"
 #include "Lambda.h"
 #include "StaticObject.h"
+#include "goalc/compiler/ConstantValue.h"
 
 class RegVal;
 class Env;
@@ -41,6 +39,7 @@ class Val {
   }
   virtual RegVal* to_gpr(Env* fe);
   virtual RegVal* to_fpr(Env* fe);
+  virtual RegVal* to_xmm128(Env* fe);
 
   const TypeSpec& type() const { return m_ts; }
   void set_type(TypeSpec ts) { m_ts = std::move(ts); }
@@ -71,16 +70,21 @@ class RegVal : public Val {
   RegVal(IRegister ireg, const TypeSpec& ts) : Val(coerce_to_reg_type(ts)), m_ireg(ireg) {}
   bool is_register() const override { return true; }
   IRegister ireg() const override { return m_ireg; }
+  void change_class(RegClass new_class) { m_ireg.reg_class = new_class; }
   std::string print() const override { return m_ireg.to_string(); };
   RegVal* to_reg(Env* fe) override;
   RegVal* to_gpr(Env* fe) override;
   RegVal* to_fpr(Env* fe) override;
+  RegVal* to_xmm128(Env* fe) override;
   void set_rlet_constraint(emitter::Register reg);
   const std::optional<emitter::Register>& rlet_constraint() const;
+  void force_on_stack() { m_on_stack = true; }
+  bool forced_on_stack() const { return m_on_stack; }
 
  protected:
   IRegister m_ireg;
   std::optional<emitter::Register> m_rlet_constraint = std::nullopt;
+  bool m_on_stack = false;  // this should be spilled onto the stack always
 };
 
 /*!
@@ -181,14 +185,20 @@ class StackVarAddrVal : public Val {
 
 class MemoryOffsetConstantVal : public Val {
  public:
-  MemoryOffsetConstantVal(TypeSpec ts, Val* _base, int _offset)
-      : Val(std::move(ts)), base(_base), offset(_offset) {}
+  MemoryOffsetConstantVal(TypeSpec ts, Val* _base, s64 _offset)
+      : Val(std::move(ts)), base(_base), offset(_offset) {
+    auto base_as_offset = dynamic_cast<MemoryOffsetConstantVal*>(base);
+    if (base_as_offset) {
+      offset += base_as_offset->offset;
+      base = base_as_offset->base;
+    }
+  }
   std::string print() const override {
     return "(" + base->print() + " + " + std::to_string(offset) + ")";
   }
   RegVal* to_reg(Env* fe) override;
   Val* base = nullptr;
-  int offset = 0;
+  s64 offset = 0;
 };
 
 class MemoryOffsetVal : public Val {
@@ -232,12 +242,17 @@ class AliasVal : public Val {
 
 class IntegerConstantVal : public Val {
  public:
-  IntegerConstantVal(TypeSpec ts, s64 value) : Val(std::move(ts)), m_value(value) {}
-  std::string print() const override { return "integer-constant-" + std::to_string(m_value); }
+  IntegerConstantVal(TypeSpec ts, const void* data, int size)
+      : Val(std::move(ts)), m_value(data, size) {
+    assert(size == 8 || size == 16);
+  }
+
+  std::string print() const override { return std::string("integer-constant-") + m_value.print(); }
   RegVal* to_reg(Env* fe) override;
+  const ConstantValue& value() const { return m_value; }
 
  protected:
-  s64 m_value = -1;
+  ConstantValue m_value;
 };
 
 class FloatConstantVal : public Val {
@@ -252,12 +267,13 @@ class FloatConstantVal : public Val {
 
 class BitFieldVal : public Val {
  public:
-  BitFieldVal(TypeSpec ts, Val* parent, int offset, int size, bool sign_extend)
+  BitFieldVal(TypeSpec ts, Val* parent, int offset, int size, bool sign_extend, bool use128)
       : Val(std::move(ts)),
         m_parent(parent),
         m_offset(offset),
         m_size(size),
-        m_sign_extend(sign_extend) {
+        m_sign_extend(sign_extend),
+        m_use_128(use128) {
     m_is_settable = parent->settable();
   }
   std::string print() const override;
@@ -265,6 +281,7 @@ class BitFieldVal : public Val {
   int offset() const { return m_offset; }
   int size() const { return m_size; }
   bool sext() const { return m_sign_extend; }
+  bool use_128_bit() const { return m_use_128; }
   Val* parent() { return m_parent; }
 
  protected:
@@ -272,6 +289,5 @@ class BitFieldVal : public Val {
   int m_offset = -1;
   int m_size = -1;
   bool m_sign_extend = false;
+  bool m_use_128 = false;
 };
-
-#endif  // JAK_VAL_H

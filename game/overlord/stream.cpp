@@ -4,7 +4,7 @@
  * Supports loading a file directly to the EE, or loading chunks of a chunked file.
  */
 
-#include <cassert>
+#include "common/util/assert.h"
 #include <cstring>
 #include "stream.h"
 #include "game/sce/iop.h"

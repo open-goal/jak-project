@@ -1,0 +1,49 @@
+(defun test-mem-copy ((dst pointer) (src pointer) (size int))
+  "Memory copy by quadword. More efficient, but has restrictions:
+   - dst and src should be 16-byte aligned.
+   - size in bytes will be rounded up to 16-bytes
+   - Ascending address copy."
+  (local-vars (result pointer) (qwc int))
+  (set! result dst)
+  
+  ;; round up to nearest quadword count.
+  (set! qwc (sar (+ size 15) 4))
+  (while (nonzero? qwc)
+    (set! qwc (+ qwc -1))
+    ;; Use 128-bit OpenGOAL integers to do copy by quadword.
+    (set! (-> (the (pointer uint128) dst))
+          (-> (the (pointer uint128) src)))
+
+    (set! dst (&+ dst 16))
+    (set! src (&+ src 16))
+    )
+  result
+  )
+
+(let ((arr (new 'stack-no-clear 'array 'uint8 128))
+      (arr2 (new 'stack-no-clear 'array 'uint8 128)))
+  (dotimes (i 128)
+    (set! (-> arr i) i)
+    (set! (-> arr2 (- 127 i)) i)
+    )
+
+  (test-mem-copy arr arr2 128)
+ 
+  (let ((arr128 (the (pointer uint128) arr)))
+    (dotimes (i (/ 128 16))
+      (format #t "[~d] " i)
+      (print128 (-> arr128 i))
+      (format #t "~%")
+      )
+    )
+  )
+    
+(rlet ((x :class i128 :reset-here #t)
+       (y :class vf :reset-here #t)
+       (z :class i128 :reset-here #t))
+  (set! x 12344321)
+  (set! y x)
+  (set! x 0)
+  (set! z y)
+  z
+  )

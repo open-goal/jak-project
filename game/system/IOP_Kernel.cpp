@@ -1,4 +1,4 @@
-#include <cassert>
+#include "common/util/assert.h"
 #include <cstring>
 #include "IOP_Kernel.h"
 #include "game/sce/iop.h"
@@ -209,6 +209,9 @@ void IOP_Kernel::sif_rpc(s32 rpcChannel,
     if (e.qd->serve_data->command == (u32)rpcChannel) {
       rec = &e;
     }
+  }
+  if (!rec) {
+    printf("Failed to find handler for sif channel 0x%x\n", rpcChannel);
   }
   assert(rec);
 

@@ -1,0 +1,138 @@
+(defmacro stack-vec-xyzw (x y z w)
+  `(let ((vec (new 'stack 'vector)))
+     (set! (-> vec x) ,x)
+     (set! (-> vec y) ,y)
+     (set! (-> vec z) ,z)
+     (set! (-> vec w) ,w)
+     vec
+     )
+  )
+
+(defmacro print-vec (x)
+  `(begin
+    (format #t "[~F] [~F] [~F] [~F]~%" (-> ,x x) (-> ,x y) (-> ,x z) (-> ,x w))
+    )
+  )
+
+(defmacro print-veci (x)
+  `(begin
+    (let ((veci (the (pointer int32) ,x)))
+      (format #t "~d ~d ~d ~d~%" (-> veci 0) (-> veci 1) (-> veci 2) (-> veci 3))
+      )
+    )
+  )
+
+(defmacro print-vec-deg-i (x)
+  `(begin
+    (let ((veci (the (pointer int32) ,x)))
+      (format #t "~r ~r ~r ~r~%"
+              (the float (-> veci 0))
+              (the float (-> veci 1))
+              (the float (-> veci 2))
+              (the float (-> veci 3)))
+      )
+    )
+  )
+
+(defmacro print-vec-deg-f (x)
+  `(format #t "~r ~r ~r ~r~%"
+           (-> ,x x)
+           (-> ,x y)
+           (-> ,x z)
+           (-> ,x w)
+           )
+  )
+
+(defmacro set-veci! (vec x y z w)
+  `(begin
+    (let ((veci (the (pointer int32) ,vec)))
+      (set! (-> veci 0) ,x)
+      (set! (-> veci 1) ,y)
+      (set! (-> veci 2) ,z)
+      (set! (-> veci 3) ,w)
+      )
+    )
+  )
+
+(defmacro set-vecd! (vec x y z w)
+  `(begin
+    (set! (-> ,vec x) (degrees ,x))
+    (set! (-> ,vec y) (degrees ,y))
+    (set! (-> ,vec z) (degrees ,z))
+    (set! (-> ,vec w) (degrees ,w))
+    )
+  )
+
+
+(let ((v1 (stack-vec-xyzw 1. 2. 3. 4.))
+      (v2 (stack-vec-xyzw 5. 6. 7. 8.))
+      (v4 (new 'stack 'vector))
+      (v3 (new 'stack 'vector)))
+  ;; part 1
+  ;; w gets set to junk by vector-cross!
+  (vector-cross! v3 v1 v2) (set! (-> v3 w) 0.0) (print-vec v3)
+  (vector+float! v3 v1 2.0) (print-vec v3)
+  (vector*! v3 v1 v2) (print-vec v3)
+  (vector+*! v3 v1 v2 2.0) (print-vec v3)
+  (vector-*! v3 v1 v2 2.0) (print-vec v3)
+  (vector/! v3 v1 v2) (print-vec v3)
+  (vector-float*! v3 v1 -2.0) (print-vec v3)
+  (vector-average! v3 v1 v2) (print-vec v3)
+  (vector+float*! v3 v1 v2 2.0) (print-vec v3)
+  (vector--float*! v3 v1 v2 2.0) (print-vec v3)
+  (vector-float/! v3 v1 -2.0) (print-vec v3)
+  (vector-negate! v3 v1) (print-vec v3)
+
+  
+  ;; part 2
+  (format #t "part 2~%")
+  (vector-negate-in-place! v1) (print-vec v1)
+  (vector-negate-in-place! v1)
+
+  (format #t "~A ~A ~A ~A~%"
+          (vector= v1 v2)                            ;; no
+          (vector= v1 v1)                            ;; yes
+          (vector= v1 (stack-vec-xyzw 1. 2. 3. 5.))  ;; yes
+          (vector= v1 (stack-vec-xyzw 1. 2. 3.1 4.)) ;; no
+          )
+
+  (format #t "~f~%" (vector-delta (stack-vec-xyzw 1.0 -2.0 3.0 -4.0)
+                                  (stack-vec-xyzw 2.0 -3.0 1.0 -20.0)))
+
+  ;; part 3
+  (format #t "part 3~%")
+  (vector-copy! v3 v1)
+  (vector-seek! v3 v2 0.5)
+  (print-vec v3)
+  (vector-seek! v3 v2 100.0)
+  (print-vec v3)
+
+  ;; 2,3,6 -> 7 pythagorean quadruple (is that even a thing)
+  (format #t "~f~%" (vector-length (stack-vec-xyzw 2.0 3.0 6.0 99.99)))
+  (format #t "~f~%" (vector-length-squared (stack-vec-xyzw 2.0 3.0 6.0 99.99)))
+  (format #t "~f~%" (vector-vector-distance
+                     (stack-vec-xyzw 4.0 5.0 7.0 1.0)
+                     (stack-vec-xyzw 6.0 2.0 1.0 99.99)))
+  (print-vec (vector-normalize!
+              (stack-vec-xyzw 1.0 1.5 3. 10.0)
+              49.0))
+
+  (format #t "~f~%" (vector-normalize-ret-len!
+                     (stack-vec-xyzw 1.0 1.5 3. 10.0)
+                     49.0))
+  
+  (vector-cvt.w.s! v3 (stack-vec-xyzw -1.9 2.9 -3.1 4.1))
+  (print-veci v3)
+  (vector-cvt.s.w! v3 v3)
+  (print-vec v3)
+
+  (vector-degi v3 (stack-vec-xyzw (/ 10.0 360.0) (/ 721.0 360.0) (/ 370.0 360.0) (/ -187.0 360.0)))
+  (print-vec-deg-i v3)
+
+  (set-vecd! v3 25 45 -25         (+ -360 -25))
+  (set-vecd! v4 45 25 (+ 360 -45) -45)
+
+  (vector-deg-diff v3 v3 v4)
+  (print-vec-deg-f v3)
+  
+  )

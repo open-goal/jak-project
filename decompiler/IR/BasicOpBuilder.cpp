@@ -108,8 +108,12 @@ std::shared_ptr<IR> instr_atom_to_ir(const InstructionAtom& ia, int idx) {
       return std::make_shared<IR_AsmReg>(IR_AsmReg::VU_ACC);
     case InstructionAtom::IMM:
       return make_int(ia.get_imm());
+    case InstructionAtom::VF_FIELD:
+      // not supported by IR1
+      return std::make_shared<IR_Failed>();
     default:
       assert(false);
+      return nullptr;
   }
 }
 
@@ -122,6 +126,10 @@ std::shared_ptr<IR> instr_atom_to_ir(const InstructionAtom& ia, int idx) {
  */
 std::shared_ptr<IR_Atomic> to_asm_automatic(const std::string& str, Instruction& instr, int idx) {
   auto result = std::make_shared<IR_AsmOp_Atomic>(str);
+  if (instr.n_src >= 4) {
+    // not supported by IR1
+    return std::make_shared<IR_Failed_Atomic>();
+  }
   assert(instr.n_dst < 2);
   assert(instr.n_src < 4);
   if (instr.n_dst >= 1) {
@@ -2522,11 +2530,11 @@ void add_basic_ops_to_block(Function* func, const BasicBlock& block, LinkedObjec
     // everything failed
     if (!result) {
       // temp hack for debug:
-      printf("Instruction -> BasicOp failed on %s\n", i.to_string(file->labels).c_str());
+      lg::error("Instruction -> BasicOp failed on {}", i.to_string(file->labels));
       func->add_basic_op(std::make_shared<IR_Failed_Atomic>(), instr, instr + 1);
     } else {
       if (!func->contains_asm_ops && dynamic_cast<IR_AsmOp*>(result.get())) {
-        func->warnings += ";; Function contains asm op\n";
+        func->warnings.info("Contains asm ops");
         func->contains_asm_ops = true;
       }
 

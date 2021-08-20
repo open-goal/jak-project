@@ -35,5 +35,6 @@ struct TypeInspectorResult {
 TypeInspectorResult inspect_inspect_method(Function& inspect,
                                            const std::string& type_name,
                                            DecompilerTypeSystem& dts,
-                                           LinkedObjectFile& file);
+                                           LinkedObjectFile& file,
+                                           bool skip_fields);
 }  // namespace decompiler

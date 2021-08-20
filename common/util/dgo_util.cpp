@@ -1,4 +1,4 @@
-#include <cassert>
+#include "common/util/assert.h"
 #include <cstring>
 #include "dgo_util.h"
 #include "common/versions.h"

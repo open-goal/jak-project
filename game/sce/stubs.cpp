@@ -1,33 +1,10 @@
 #include <stdexcept>
-#include <cassert>
+#include "common/util/assert.h"
 #include "stubs.h"
 
 namespace ee {
-int scePadPortOpen(int port, int slot, void* data) {
-  (void)port;
-  (void)slot;
-  (void)data;
-  assert(false);
-  return 0;
-}
-
-void sceGsSyncV() {
-  assert(false);
-}
-
-void sceGsSyncPath() {
-  assert(false);
-}
-
-void sceGsResetPath() {
-  assert(false);
-}
 
 void sceGsResetGraph() {
-  assert(false);
-}
-
-void sceDmaSync() {
   assert(false);
 }
 
@@ -43,9 +20,7 @@ void sceGsExecStoreImage() {
   assert(false);
 }
 
-void FlushCache() {
-  assert(false);
-}
+void FlushCache() {}
 
 }  // namespace ee
 

@@ -22,7 +22,7 @@ std::string reg_to_string(const T& regs) {
 
 /*!
  * Allocate a new SSA variable for the given register.
- * This should only be used to allocate the result of a non-phi instruction.
+ * This should only be used to allocate the result of a non-phi instruction (a real instruction)
  */
 VarSSA VarMapSSA::allocate(Register reg) {
   Entry new_entry;
@@ -35,7 +35,7 @@ VarSSA VarMapSSA::allocate(Register reg) {
 }
 
 /*!
- * Allocate a new SSA for the given register.
+ * Allocate a new SSA variable for the given register as a result of a phi.
  * This should only be used to allocate the result of a phi-function.
  */
 VarSSA VarMapSSA::allocate_init_phi(Register reg, int block_id) {
@@ -128,13 +128,16 @@ bool VarMapSSA::same(const VarSSA& var_a, const VarSSA& var_b) const {
 /*!
  * Get program variable ID from an SSA variable.
  */
-int VarMapSSA::var_id(const VarSSA& var) {
+int VarMapSSA::var_id(const VarSSA& var) const {
   return m_entries.at(var.m_entry_id).var_id;
 }
 
 /*!
  * For a given register and map, remap using var_id = remap[var_id]
  * For variables not in the map, set ID to INT32_MIN.
+ *
+ * This allows you to do a full remapping, without worrying new/old mappings aliasing part way
+ * through the remapping.
  */
 void VarMapSSA::remap_reg(Register reg, const std::unordered_map<int, int>& remap) {
   for (auto& entry : m_entries) {
@@ -241,6 +244,51 @@ void SSA::add_source_to_phi(int block, Register dest_reg, const VarSSA& src_var)
 
 namespace {
 
+bool is_arg_reg(Register r) {
+  if (r.get_kind() == Reg::GPR) {
+    return r.get_gpr() >= Reg::A0 && r.get_gpr() <= Reg::T3;
+  } else {
+    return false;
+  }
+}
+
+int arg_reg_idx(Register r) {
+  assert(is_arg_reg(r));
+  return (int)r.get_gpr() - (int)Reg::A0;
+}
+
+bool is_saved_reg(Register r) {
+  if (r.get_kind() == Reg::GPR) {
+    if (r.get_gpr() == Reg::GP) {
+      return true;
+    }
+    return r.get_gpr() >= Reg::S0 && r.get_gpr() <= Reg::S6;
+  } else {
+    return false;
+  }
+}
+
+bool is_possible_coloring_move(Register dst, Register src) {
+  if (is_arg_reg(src) && is_saved_reg(dst)) {
+    return true;
+  }
+
+  if (dst.get_kind() == Reg::FPR && dst.get_fpr() < 20 && is_arg_reg(src)) {
+    return true;
+  }
+  return false;
+}
+
+namespace {
+int arg_count(const Function& f) {
+  if (f.type.arg_count() > 0) {
+    return f.type.arg_count() - 1;
+  } else {
+    return 0;
+  }
+}
+}  // namespace
+
 /*!
  * Create a "really crude" SSA, as described in
  * "Aycock and Horspool Simple Generation of Static Single-Assignment Form"
@@ -252,6 +300,8 @@ namespace {
  */
 SSA make_rc_ssa(const Function& function, const RegUsageInfo& rui, const FunctionAtomicOps& ops) {
   SSA ssa(rui.block_count());
+
+  bool got_not_arg_coloring = false;
   for (int block_id = 0; block_id < rui.block_count(); block_id++) {
     const auto& block = function.basic_blocks.at(block_id);
     int start_op = ops.block_id_to_first_atomic_op.at(block_id);
@@ -270,6 +320,8 @@ SSA make_rc_ssa(const Function& function, const RegUsageInfo& rui, const Functio
     // local map: current register names at the current op.
     std::unordered_map<Register, VarSSA, Register::hash> current_regs;
 
+    // if we're block zero, write function arguments:
+
     // initialize phis. this is only done on:
     //  - variables live out at the first op
     //  - variables read by the first op
@@ -280,7 +332,9 @@ SSA make_rc_ssa(const Function& function, const RegUsageInfo& rui, const Functio
     const auto& start_op_op = ops.ops.at(start_op);
     auto init_regs = start_op_info.live;
     for (auto reg : start_op_op->read_regs()) {
-      init_regs.insert(reg);
+      if (reg.get_kind() == Reg::FPR || reg.get_kind() == Reg::GPR) {
+        init_regs.insert(reg);
+      }
     }
 
     for (auto reg : init_regs) {
@@ -294,27 +348,90 @@ SSA make_rc_ssa(const Function& function, const RegUsageInfo& rui, const Functio
       }
     }
 
+    if (block_id == 0) {
+      SSA::Ins ins(-1);
+      for (int i = 0; i < arg_count(function); i++) {
+        auto dest_reg = Register::get_arg_reg(i);
+        auto it = current_regs.find(dest_reg);
+        if (it == current_regs.end()) {
+          current_regs.insert(std::make_pair(dest_reg, ssa.get_phi_dest(block_id, dest_reg)));
+        }
+        ins.src.push_back(current_regs.at(dest_reg));
+      }
+      ssa.blocks.at(block_id).ins.push_back(ins);
+    }
+
     // loop over ops, creating and reading from variables as needed.
     for (int op_id = start_op; op_id < end_op; op_id++) {
       const auto& op = ops.ops.at(op_id);
       SSA::Ins ssa_i(op_id);
+
+      if (block_id == 0 && !got_not_arg_coloring) {
+        got_not_arg_coloring = true;
+        auto as_set = dynamic_cast<const SetVarOp*>(op.get());
+        if (as_set) {
+          auto dst = as_set->dst().reg();
+
+          if ((as_set->src().kind() == SimpleExpression::Kind::GPR_TO_FPR ||
+               as_set->src().is_identity()) &&
+              as_set->src().get_arg(0).is_var()) {
+            auto src = as_set->src().get_arg(0).var().reg();
+
+            if (is_possible_coloring_move(dst, src) &&
+                rui.op.at(op_id).consumes.find(src) != rui.op.at(op_id).consumes.end()) {
+              // an integer argument going into a fpr for int->float conversion shouldn't
+              // be recognized as a coloring move.
+              if (function.type.arg_count() > 0) {
+                auto arg_idx = arg_reg_idx(src);
+                if (dst.get_kind() != Reg::FPR ||
+                    function.type.get_arg(arg_idx) == TypeSpec("float")) {
+                  ssa_i.is_arg_coloring_move = true;
+                  if (dst.get_kind() == Reg::FPR) {
+                    ssa_i.is_gpr_fpr_coloring_move = true;
+                  }
+                  got_not_arg_coloring = false;
+                }
+              }
+            }
+          }
+        }
+      }
+
+      auto as_set = dynamic_cast<const SetVarOp*>(op.get());
+      if (as_set) {
+        auto dst = as_set->dst().reg();
+        if (as_set->src().is_var() ||
+            (as_set->src().kind() == SimpleExpression::Kind::FPR_TO_GPR)) {
+          auto src = as_set->src().get_arg(0).var().reg();
+          auto& ri = rui.op.at(op_id);
+          if (ri.consumes.find(src) != ri.consumes.end() &&
+              ri.written_and_unused.find(dst) != ri.written_and_unused.end()) {
+            ssa_i.is_dead_set = true;
+          }
+        }
+      }
+
       // todo - verify no duplicates here?
       assert(op->write_regs().size() <= 1);
       // reads:
       for (auto r : op->read_regs()) {
-        ssa_i.src.push_back(current_regs.at(r));
+        if (r.get_kind() == Reg::FPR || r.get_kind() == Reg::GPR) {
+          ssa_i.src.push_back(current_regs.at(r));
+        }
       }
       // writes:
       if (!op->write_regs().empty()) {
         auto w = op->write_regs().front();
-        auto var = ssa.map.allocate(w);
-        ssa_i.dst = var;
-        // avoid operator[] again
-        auto it = current_regs.find(w);
-        if (it != current_regs.end()) {
-          it->second = var;
-        } else {
-          current_regs.insert(std::make_pair(w, var));
+        if (w.get_kind() == Reg::FPR || w.get_kind() == Reg::GPR) {
+          auto var = ssa.map.allocate(w);
+          ssa_i.dst = var;
+          // avoid operator[] again
+          auto it = current_regs.find(w);
+          if (it != current_regs.end()) {
+            it->second = var;
+          } else {
+            current_regs.insert(std::make_pair(w, var));
+          }
         }
       }
 
@@ -322,13 +439,40 @@ SSA make_rc_ssa(const Function& function, const RegUsageInfo& rui, const Functio
     }
 
     // process succs:
-    auto& end_op_info = rui.op.at(end_op - 1);
+    // auto& end_op_info = rui.op.at(end_op - 1);
     for (auto succ : {block.succ_branch, block.succ_ft}) {
       if (succ != -1) {
+        auto first_op_in_succ_id = ops.block_id_to_first_atomic_op.at(succ);
+        const auto& first_op_info = rui.op.at(first_op_in_succ_id);
+        const auto& first_op = ops.ops.at(first_op_in_succ_id);
+        // these are the registers that will actually be used in the successor block.
+        RegSet regs;
+        for (auto& reg : first_op->read_regs()) {
+          regs.insert(reg);
+        }
+
+        for (auto& reg : first_op_info.live) {
+          if (std::find(first_op->write_regs().begin(), first_op->write_regs().end(), reg) ==
+              first_op->write_regs().end()) {
+            regs.insert(reg);
+          }
+        }
+
+        for (auto reg : regs) {
+          // only update phis for variables that are actually live at the next block.
+          if (reg.get_kind() == Reg::FPR || reg.get_kind() == Reg::GPR) {
+            ssa.add_source_to_phi(succ, reg, current_regs.at(reg));
+          }
+        }
+
+        /*
         for (auto reg : end_op_info.live) {
           // only update phis for variables that are actually live at the next block.
-          ssa.add_source_to_phi(succ, reg, current_regs.at(reg));
+          if (reg.get_kind() == Reg::FPR || reg.get_kind() == Reg::GPR) {
+            ssa.add_source_to_phi(succ, reg, current_regs.at(reg));
+          }
         }
+         */
       }
     }
   }
@@ -423,7 +567,11 @@ void SSA::merge_all_phis() {
   }
 }
 
-void SSA::remap() {
+/*!
+ * Remaps all SSA variable ids to final variable IDs.
+ * This forces you to have all positive, consecutive IDs, with 0 being the entry value.
+ */
+void SSA::remap(int) {
   // this keeps the order of variable assignments in the instruction order, not var_id order.
   struct VarIdRecord {
     std::unordered_set<int> set;
@@ -436,6 +584,23 @@ void SSA::remap() {
     }
   };
   std::unordered_map<Register, VarIdRecord, Register::hash> used_vars;
+  // we do this in two passes. the first pass collects only the B0 variables and adds those first,
+  // so these remain index 0 (expected by later decompiler passes)
+  for (auto& block : blocks) {
+    assert(block.phis.empty());
+    for (auto& instr : block.ins) {
+      if (instr.dst.has_value() && map.var_id(*instr.dst) == 0) {
+        used_vars[instr.dst->reg()].insert(map.var_id(*instr.dst));
+      }
+      for (auto& src : instr.src) {
+        if (map.var_id(src) == 0) {
+          used_vars[src.reg()].insert(map.var_id(src));
+        }
+      }
+    }
+  }
+
+  // and the second pass grabs all of them
   for (auto& block : blocks) {
     assert(block.phis.empty());
     for (auto& instr : block.ins) {
@@ -454,6 +619,15 @@ void SSA::remap() {
     for (auto var_id : reg_vars.second.order) {
       var_remap[var_id] = i++;
     }
+
+    // paranoid
+    assert(var_remap.size() == reg_vars.second.order.size());
+    std::unordered_set<int> check;
+    for (auto kv : var_remap) {
+      check.insert(kv.second);
+    }
+    assert(check.size() == var_remap.size());
+
     map.remap_reg(reg_vars.first, var_remap);
     program_read_vars[reg_vars.first].resize(i);
     program_write_vars[reg_vars.first].resize(i);
@@ -466,26 +640,64 @@ void update_var_info(VariableNames::VarInfo* info,
                      const TypeState& ts,
                      int var_id,
                      const DecompilerTypeSystem& dts) {
+  auto& type = ts.get(reg);
   if (info->initialized) {
     assert(info->reg_id.id == var_id);
     assert(info->reg_id.reg == reg);
+
     bool changed;
-    info->type = dts.tp_lca(info->type, ts.get(reg), &changed);
+    info->type = dts.tp_lca(info->type, type, &changed);
+
   } else {
     info->reg_id.id = var_id;
     info->reg_id.reg = reg;
-    info->type = ts.get(reg);
+
+    info->type = type;
     info->initialized = true;
+  }
+}
+
+bool merge_infos(VariableNames::VarInfo* info1,
+                 VariableNames::VarInfo* info2,
+                 const DecompilerTypeSystem& dts) {
+  if (info1->initialized && info2->initialized) {
+    bool changed;
+    auto new_type = dts.tp_lca(info1->type, info2->type, &changed);
+    info1->type = new_type;
+    info2->type = new_type;
+    return true;
+  }
+  return false;
+}
+
+void merge_infos(
+    std::unordered_map<Register, std::vector<VariableNames::VarInfo>, Register::hash>& info1,
+    std::unordered_map<Register, std::vector<VariableNames::VarInfo>, Register::hash>& info2,
+    const DecompilerTypeSystem& dts) {
+  for (auto& [reg, infos] : info1) {
+    auto other = info2.find(reg);
+    if (other != info2.end()) {
+      for (size_t i = 0; i < std::min(other->second.size(), infos.size()); i++) {
+        merge_infos(&infos.at(i), &other->second.at(i), dts);
+      }
+    }
   }
 }
 }  // namespace
 
+/*!
+ * Create variable info for each variable.
+ */
 void SSA::make_vars(const Function& function, const DecompilerTypeSystem& dts) {
   for (int block_id = 0; block_id < int(blocks.size()); block_id++) {
     const auto& block = blocks.at(block_id);
     const TypeState* init_types = &function.ir2.env.get_types_at_block_entry(block_id);
     for (auto& instr : block.ins) {
       auto op_id = instr.op_id;
+      if (op_id < 0) {
+        continue;
+      }
+
       const TypeState* end_types = &function.ir2.env.get_types_after_op(op_id);
 
       if (instr.dst.has_value()) {
@@ -503,9 +715,85 @@ void SSA::make_vars(const Function& function, const DecompilerTypeSystem& dts) {
       init_types = end_types;
     }
   }
+
+  // override the types of the variables for function arguments:
+  assert(function.type.arg_count() > 0);
+  for (int arg_idx = 0; arg_idx < int(function.type.arg_count()) - 1; arg_idx++) {
+    auto arg_reg = Register::get_arg_reg(arg_idx);
+    if (!program_read_vars[arg_reg].empty()) {
+      program_read_vars[arg_reg].at(0).type = TP_Type::make_from_ts(function.type.get_arg(arg_idx));
+    }
+
+    if (!program_write_vars[arg_reg].empty()) {
+      program_write_vars[arg_reg].at(0).type =
+          TP_Type::make_from_ts(function.type.get_arg(arg_idx));
+    }
+  }
+
+  //  if (function.type.last_arg() != TypeSpec("none")) {
+  //    auto return_var = function.ir2.atomic_ops->end_op().return_var();
+  //    auto return_reg = return_var.reg();
+  //    const auto& last_block = blocks.at(blocks.size() - 1);
+  //    const auto& last_ins = last_block.ins.at(last_block.ins.size() - 1);
+  //    assert(last_ins.src.size() == 1);
+  //    auto return_idx = map.var_id(last_ins.src.at(0));
+  //
+  //    if (!program_read_vars[return_reg].empty()) {
+  //      program_read_vars[return_reg].at(return_idx).type =
+  //          TP_Type::make_from_ts(function.type.last_arg());
+  //    }
+  //
+  //    if (!program_write_vars[return_reg].empty()) {
+  //      program_write_vars[return_reg].at(return_idx).type =
+  //          TP_Type::make_from_ts(function.type.last_arg());
+  //    }
+  //  }
+
+  merge_infos(program_write_vars, program_read_vars, dts);
+
+  // copy types from input argument coloring moves:
+  for (auto& instr : blocks.at(0).ins) {
+    if (instr.is_arg_coloring_move) {
+      auto src_ssa = instr.src.at(0);
+      for (int arg_idx = 0; arg_idx < int(function.type.arg_count()) - 1; arg_idx++) {
+        if (Register::get_arg_reg(arg_idx) == src_ssa.reg()) {
+          // copy the type from here.
+          auto dst = instr.dst;
+          assert(dst);
+          auto dst_reg = instr.dst->reg();
+          auto dst_varid = map.var_id(*dst);
+          if ((int)program_read_vars[dst_reg].size() > dst_varid) {
+            program_read_vars[dst_reg].at(dst_varid).type =
+                TP_Type::make_from_ts(function.type.get_arg(arg_idx));
+          }
+
+          if ((int)program_write_vars[dst_reg].size() > dst_varid) {
+            program_write_vars[dst_reg].at(dst_varid).type =
+                TP_Type::make_from_ts(function.type.get_arg(arg_idx));
+          }
+        }
+      }
+    }
+  }
 }
 
-VariableNames SSA::get_vars() {
+void remap_color_move(
+    std::unordered_map<Register, std::vector<VariableNames::VarInfo>, Register::hash>& mapping,
+    const RegId& old_var,
+    const RegId& new_var) {
+  auto old_kv = mapping.find(old_var.reg);
+  if (old_kv == mapping.end()) {
+    return;
+  }
+
+  if (int(old_kv->second.size()) <= old_var.id) {
+    return;
+  }
+
+  old_kv->second.at(old_var.id).reg_id = new_var;
+}
+
+VariableNames SSA::get_vars() const {
   VariableNames result;
   result.read_vars = program_read_vars;
   result.write_vars = program_write_vars;
@@ -514,6 +802,9 @@ VariableNames SSA::get_vars() {
     const auto& block = blocks.at(block_id);
     for (auto& instr : block.ins) {
       auto op_id = instr.op_id;
+      if (op_id < 0) {
+        continue;
+      }
       if (instr.dst.has_value()) {
         auto& ids = result.write_opid_to_varid[instr.dst->reg()];
         if (int(ids.size()) <= op_id) {
@@ -528,6 +819,9 @@ VariableNames SSA::get_vars() {
     const auto& block = blocks.at(block_id);
     for (auto& instr : block.ins) {
       auto op_id = instr.op_id;
+      if (op_id < 0) {
+        continue;
+      }
       for (auto& src : instr.src) {
         auto& ids = result.read_opid_to_varid[src.reg()];
         if (int(ids.size()) <= op_id) {
@@ -538,8 +832,187 @@ VariableNames SSA::get_vars() {
     }
   }
 
+  for (auto& instr : blocks.at(0).ins) {
+    if (instr.is_arg_coloring_move) {
+      result.eliminated_move_op_ids.insert(instr.op_id);
+      assert(instr.dst.has_value());
+      assert(instr.src.size() == 1);
+      RegId new_regid, old_regid;
+      new_regid.reg = instr.src.at(0).reg();
+      new_regid.id = map.var_id(instr.src.at(0));
+      old_regid.reg = instr.dst->reg();
+      old_regid.id = map.var_id(*instr.dst);
+      remap_color_move(result.read_vars, old_regid, new_regid);
+      remap_color_move(result.write_vars, old_regid, new_regid);
+    }
+  }
+
   return result;
 }
+
+/*!
+ * Get a map from access to SSA variable.
+ */
+RegAccessMap<int> SSA::get_ssa_mapping() {
+  RegAccessMap<int> result;
+
+  for (const auto& block : blocks) {
+    for (const auto& instr : block.ins) {
+      if (instr.dst.has_value()) {
+        RegisterAccess access(AccessMode::WRITE, instr.dst->reg(), instr.op_id, true);
+        result[access] = map.var_id(*instr.dst);
+      }
+
+      for (const auto& src : instr.src) {
+        RegisterAccess access(AccessMode::READ, src.reg(), instr.op_id, true);
+        result[access] = map.var_id(src);
+      }
+    }
+  }
+
+  return result;
+}
+
+/*!
+ * Find Program Variables that can safely be propagated.
+ */
+std::unordered_map<RegId, UseDefInfo, RegId::hash> SSA::get_use_def_info(
+    const RegAccessMap<int>& ssa_info) const {
+  std::unordered_map<RegId, UseDefInfo, RegId::hash> result;
+
+  // now, iterate through instruction
+  // for (const auto& block : blocks) {
+  for (size_t block_id = 0; block_id < blocks.size(); block_id++) {
+    const auto& block = blocks[block_id];
+    for (const auto& instr : block.ins) {
+      if (instr.is_dead_set) {
+        continue;
+      }
+
+      if (instr.dst.has_value()) {
+        // get the SSA var:
+        auto ssa_var_id =
+            ssa_info.at(RegisterAccess(AccessMode::WRITE, instr.dst->reg(), instr.op_id, true));
+        // get the info
+        auto& info = result[RegId(instr.dst->reg(), map.var_id(*instr.dst))];
+        // remember which SSA variable was in use here
+        info.defs.push_back({instr.op_id, (int)block_id, AccessMode::WRITE});
+        info.ssa_vars.insert(ssa_var_id);
+      }
+
+      for (const auto& src : instr.src) {
+        // get the SSA var:
+        auto ssa_var_id =
+            ssa_info.at(RegisterAccess(AccessMode::READ, src.reg(), instr.op_id, true));
+        // get the info
+        auto& info = result[RegId(src.reg(), map.var_id(src))];
+        // remember the variable
+        info.ssa_vars.insert(ssa_var_id);
+        info.uses.push_back({instr.op_id, (int)block_id, AccessMode::READ});
+      }
+    }
+  }
+
+  return result;
+}
+
+namespace {
+
+VariableNames::VarInfo* try_lookup_read(VariableNames* in, RegId var_id) {
+  auto kv = in->read_vars.find(var_id.reg);
+  if (kv != in->read_vars.end()) {
+    if ((int)kv->second.size() > var_id.id) {
+      auto& entry = kv->second.at(var_id.id);
+      if (entry.initialized) {
+        return &entry;
+      }
+    }
+  }
+  return nullptr;
+}
+
+VariableNames::VarInfo* try_lookup_write(VariableNames* in, RegId var_id) {
+  auto kv = in->write_vars.find(var_id.reg);
+  if (kv != in->write_vars.end()) {
+    if ((int)kv->second.size() > var_id.id) {
+      auto& entry = kv->second.at(var_id.id);
+      if (entry.initialized) {
+        return &entry;
+      }
+    }
+  }
+  return nullptr;
+}
+
+bool is_128bit(const TP_Type& type, const DecompilerTypeSystem& dts) {
+  if (dts.ts.tc(TypeSpec("uint128"), type.typespec())) {
+    return true;
+  }
+
+  if (dts.ts.tc(TypeSpec("int128"), type.typespec())) {
+    return true;
+  }
+
+  if (type.kind == TP_Type::Kind::PCPYUD_BITFIELD) {
+    return true;
+  }
+
+  if (type.kind == TP_Type::Kind::PCPYUD_BITFIELD_AND) {
+    return true;
+  }
+
+  return false;
+}
+
+void promote_register_class(const Function& func,
+                            VariableNames* result,
+                            const DecompilerTypeSystem& dts) {
+  enum class PromotionType { PROMOTE_64, PROMOTE_128 };
+  std::unordered_map<RegId, PromotionType, RegId::hash> promote_map;
+  // here we loop through ops and find cases where we need to adjust types.
+
+  auto& ao = func.ir2.atomic_ops;
+  for (size_t op_idx = 0; op_idx < ao->ops.size() - 1; op_idx++) {
+    auto* op = ao->ops.at(op_idx).get();
+    auto op_as_asm = dynamic_cast<AsmOp*>(op);
+    if (op_as_asm) {
+      auto& instr = op_as_asm->instruction();
+      if (gOpcodeInfo[(int)instr.kind].gpr_128) {
+        for (auto& reg : op_as_asm->write_regs()) {
+          if (reg.get_kind() == Reg::GPR) {
+            auto& info = result->lookup(reg, op_idx, AccessMode::WRITE);
+            promote_map[info.reg_id] = PromotionType::PROMOTE_128;
+          }
+        }
+
+        for (auto& reg : op_as_asm->read_regs()) {
+          if (reg.get_kind() == Reg::GPR) {
+            auto& info = result->lookup(reg, op_idx, AccessMode::READ);
+            promote_map[info.reg_id] = PromotionType::PROMOTE_128;
+          }
+        }
+      }
+    }
+  }
+
+  for (const auto& promotion : promote_map) {
+    // fmt::print("Promote {} to {}\n", promotion.first.print(), "uint128");
+
+    // first reads:
+    auto read_info = try_lookup_read(result, promotion.first);
+    auto write_info = try_lookup_write(result, promotion.first);
+    assert(read_info || write_info);
+
+    if (read_info && !is_128bit(read_info->type, dts)) {
+      read_info->type = TP_Type::make_from_ts("uint128");
+    }
+
+    if (write_info && !is_128bit(write_info->type, dts)) {
+      write_info->type = TP_Type::make_from_ts("uint128");
+    }
+  }
+}
+}  // namespace
 
 std::optional<VariableNames> run_variable_renaming(const Function& function,
                                                    const RegUsageInfo& rui,
@@ -589,14 +1062,17 @@ std::optional<VariableNames> run_variable_renaming(const Function& function,
     fmt::print("Basic SSA\n{}\n------------------------------------\n", ssa.print());
   }
 
-  // eliminate PHIs that are stupid.
+  // eliminate PHIs that are not needed, still keeping us in SSA.
   while (ssa.simplify()) {
   }
   if (debug_prints) {
     fmt::print("Simplified SSA\n{}-------------------------------\n", ssa.print());
   }
 
-  // Merge phis to return to executable code.
+  // remember what the SSA mapping was:
+  auto ssa_mapping = ssa.get_ssa_mapping();
+
+  // Merge phis to return to executable code and exit SSA.
   if (debug_prints) {
     ssa.map.debug_print_map();
   }
@@ -612,7 +1088,7 @@ std::optional<VariableNames> run_variable_renaming(const Function& function,
   // merge same vars (decided this made things worse)
 
   // do rename
-  ssa.remap();
+  ssa.remap(arg_count(function));
   if (debug_prints) {
     fmt::print("{}", ssa.print());
   }
@@ -620,7 +1096,12 @@ std::optional<VariableNames> run_variable_renaming(const Function& function,
   if (function.ir2.env.has_type_analysis()) {
     // make vars
     ssa.make_vars(function, dts);
-    return ssa.get_vars();
+    //
+    auto result = ssa.get_vars();
+    result.use_def_info = ssa.get_use_def_info(ssa_mapping);
+
+    promote_register_class(function, &result, dts);
+    return result;
   } else {
     return std::nullopt;
   }

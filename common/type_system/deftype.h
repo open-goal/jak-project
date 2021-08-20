@@ -9,18 +9,6 @@
 #include "TypeSystem.h"
 #include "common/goos/Object.h"
 
-struct TypeFlags {
-  union {
-    uint64_t flag = 0;
-    struct {
-      uint16_t size;
-      uint16_t heap_base;
-      uint16_t methods;
-      uint16_t pad;
-    };
-  };
-};
-
 struct DeftypeResult {
   TypeFlags flags;
   TypeSpec type;
@@ -29,4 +17,4 @@ struct DeftypeResult {
 };
 
 DeftypeResult parse_deftype(const goos::Object& deftype, TypeSystem* ts);
-TypeSpec parse_typespec(TypeSystem* type_system, const goos::Object& src);
+TypeSpec parse_typespec(const TypeSystem* type_system, const goos::Object& src);

@@ -1,12 +1,13 @@
 #pragma once
 
-#ifndef JAK_STATICOBJECT_H
-#define JAK_STATICOBJECT_H
-
 #include <string>
 #include <vector>
 #include "common/type_system/TypeSpec.h"
 #include "goalc/emitter/ObjectGenerator.h"
+#include "goalc/compiler/ConstantValue.h"
+#include "common/util/BitUtils.h"
+
+class FunctionEnv;
 
 class StaticObject {
  public:
@@ -48,6 +49,7 @@ class StaticStructure : public StaticObject {
   void generate_structure(emitter::ObjectGenerator* gen);
   void generate(emitter::ObjectGenerator* gen) override;
   int get_addr_offset() const override;
+  void set_offset(int offset) { m_offset = offset; }
 
   struct SymbolRecord {
     int offset = -1;
@@ -60,13 +62,23 @@ class StaticStructure : public StaticObject {
     int offset_in_dest = -1;
   };
 
+  struct FunctionRecord {
+    const FunctionEnv* func = nullptr;
+    int offset_in_this = -1;
+  };
+
   std::vector<SymbolRecord> types;
   std::vector<SymbolRecord> symbols;
   std::vector<PointerRecord> pointers;
+  std::vector<FunctionRecord> functions;
 
   void add_symbol_record(std::string name, int offset);
   void add_pointer_record(int offset_in_this, StaticStructure* dest, int offset_in_dest);
   void add_type_record(std::string name, int offset);
+  void add_function_record(const FunctionEnv* function, int offset);
+
+ private:
+  int m_offset = 0;
 };
 
 class StaticBasic : public StaticStructure {
@@ -84,6 +96,8 @@ class StaticString : public StaticBasic {
   void generate(emitter::ObjectGenerator* gen) override;
 };
 
+class FunctionEnv;
+
 /*!
  * Represents a "static value". Like a reference to a static structure (including pair, string,
  * basic), a symbol, or some constant (bitfield, integer, float).  Cannot be used to store a static
@@ -95,35 +109,53 @@ class StaticResult {
   StaticResult() = default;
 
   static StaticResult make_structure_reference(StaticStructure* structure, TypeSpec ts);
-  static StaticResult make_constant_data(u64 value, TypeSpec ts);
+  static StaticResult make_constant_data(const ConstantValue& data, TypeSpec ts);
+  static StaticResult make_constant_data(u64 data, const TypeSpec& ts);
   static StaticResult make_symbol(const std::string& name);
-
-  std::string print() const;
+  static StaticResult make_type_ref(const std::string& type_name, int method_count);
+  static StaticResult make_func_ref(const FunctionEnv* func, const TypeSpec& ts);
 
   const TypeSpec& typespec() const { return m_ts; }
   bool is_reference() const { return m_kind == Kind::STRUCTURE_REFERENCE; }
   bool is_constant_data() const { return m_kind == Kind::CONSTANT_DATA; }
   bool is_symbol() const { return m_kind == Kind::SYMBOL; }
+  bool is_type() const { return m_kind == Kind::TYPE; }
+  bool is_func() const { return m_kind == Kind::FUNCTION_REFERENCE; }
 
   StaticStructure* reference() const {
     assert(is_reference());
     return m_struct;
   }
 
-  s32 get_as_s32() const {
-    assert(is_constant_data());
-    // todo, check that it fits.
-    return (s32)m_constant_data;
+  s32 constant_s32() const {
+    assert(is_constant_data() && m_constant_data && m_constant_data->size() == 8 &&
+           integer_fits(m_constant_data->value_64(), 4, true));
+    return (s32)m_constant_data->value_64();
   }
 
   const std::string& symbol_name() const {
-    assert(is_symbol());
+    assert(is_symbol() || is_type());
     return m_symbol;
   }
 
-  u64 constant_data() const {
-    assert(is_constant_data());
-    return m_constant_data;
+  const FunctionEnv* function() const {
+    assert(is_func());
+    return m_func;
+  }
+
+  int method_count() const {
+    assert(is_type());
+    return m_method_count;
+  }
+
+  u64 constant_u64() const {
+    assert(is_constant_data() && m_constant_data && m_constant_data->size() == 8);
+    return m_constant_data->value_64();
+  }
+
+  const ConstantValue& constant() const {
+    assert(m_constant_data.has_value());
+    return *m_constant_data;
   }
 
  private:
@@ -133,13 +165,26 @@ class StaticResult {
   // used for only STRUCTURE_REFERENCE
   StaticStructure* m_struct = nullptr;
 
-  // used for only constant data
-  u64 m_constant_data = 0;
+  // used for only FUNCTION_REFERENCE
+  const FunctionEnv* m_func = nullptr;
 
-  // used for only symbol
+  // used for only constant data
+  std::optional<ConstantValue> m_constant_data;
+
+  // used for only symbol and type
   std::string m_symbol;
 
-  enum class Kind { STRUCTURE_REFERENCE, CONSTANT_DATA, SYMBOL, INVALID } m_kind = Kind::INVALID;
+  // used only for type
+  int m_method_count = -1;
+
+  enum class Kind {
+    STRUCTURE_REFERENCE,
+    CONSTANT_DATA,
+    SYMBOL,
+    TYPE,
+    FUNCTION_REFERENCE,
+    INVALID
+  } m_kind = Kind::INVALID;
 };
 
 class StaticPair : public StaticStructure {
@@ -152,5 +197,3 @@ class StaticPair : public StaticStructure {
  private:
   StaticResult m_car, m_cdr;
 };
-
-#endif  // JAK_STATICOBJECT_H

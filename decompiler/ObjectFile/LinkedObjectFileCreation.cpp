@@ -4,7 +4,7 @@
  * This implements a decoder for the GOAL linking format.
  */
 
-#include <cassert>
+#include "common/util/assert.h"
 #include <cstring>
 #include "LinkedObjectFileCreation.h"
 #include "decompiler/config.h"
@@ -302,7 +302,7 @@ static void link_v2_or_v4(LinkedObjectFile& f,
           for (uint8_t i = 0; i < count; i++) {
             if (!f.pointer_link_word(0, code_ptr_offset - code_offset, 0,
                                      *((const uint32_t*)(&data.at(code_ptr_offset))))) {
-              printf("WARNING bad link in %s\n", name.c_str());
+              lg::error("Skipping link in {} because it is out of range!", name.c_str());
             }
             f.stats.total_v2_pointers++;
             code_ptr_offset += 4;
@@ -609,7 +609,8 @@ static void link_v5(LinkedObjectFile& f,
 static void link_v3(LinkedObjectFile& f,
                     const std::vector<uint8_t>& data,
                     const std::string& name,
-                    DecompilerTypeSystem& dts) {
+                    DecompilerTypeSystem& dts,
+                    int game_version) {
   auto header = (const LinkHeaderV3*)(&data.at(0));
   assert(name == header->name);
   assert(header->segments == 3);
@@ -656,11 +657,11 @@ static void link_v3(LinkedObjectFile& f,
     // HACK!
     // why is this a thing?
     // HACK!
-    if (get_config().game_version == 1 && name == "level-h" && seg_id == 0) {
+    if (game_version == 1 && name == "level-h" && seg_id == 0) {
       segment_size++;
     }
 
-    if (get_config().game_version == 2) {
+    if (game_version == 2) {
       bool adjusted = false;
       while (segment_size % 4) {
         segment_size++;
@@ -759,10 +760,8 @@ static void link_v3(LinkedObjectFile& f,
         link_ptr--;
         s_name = (const char*)(&data.at(link_ptr));
       } else {
-        // methods todo
-
         s_name = (const char*)(&data.at(link_ptr));
-        // get_type_info().inform_type_method_count(s_name, reloc & 0x7f); todo
+        dts.ts.forward_declare_type_method_count(s_name, reloc & 0x7f);
         kind = SymbolLinkKind::TYPE;
       }
 
@@ -800,14 +799,15 @@ static void link_v3(LinkedObjectFile& f,
  */
 LinkedObjectFile to_linked_object_file(const std::vector<uint8_t>& data,
                                        const std::string& name,
-                                       DecompilerTypeSystem& dts) {
+                                       DecompilerTypeSystem& dts,
+                                       int game_version) {
   LinkedObjectFile result;
   const auto* header = (const LinkHeaderCommon*)&data.at(0);
 
   // use appropriate linker
   if (header->version == 3) {
     assert(header->type_tag == 0);
-    link_v3(result, data, name, dts);
+    link_v3(result, data, name, dts, game_version);
   } else if (header->version == 4 || header->version == 2) {
     assert(header->type_tag == 0xffffffff);
     link_v2_or_v4(result, data, name, dts);

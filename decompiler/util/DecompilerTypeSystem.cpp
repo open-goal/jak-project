@@ -1,5 +1,6 @@
 #include "DecompilerTypeSystem.h"
 #include "common/goos/Reader.h"
+#include "common/type_system/defenum.h"
 #include "common/type_system/deftype.h"
 #include "decompiler/Disasm/Register.h"
 #include "common/log/log.h"
@@ -17,7 +18,7 @@ goos::Object& car(goos::Object& pair) {
   if (pair.is_pair()) {
     return pair.as_pair()->car;
   } else {
-    throw std::runtime_error("car called on something that wasn't a pair: " + pair.print());
+    throw std::runtime_error("car called on something that was not a pair: " + pair.print());
   }
 }
 
@@ -25,7 +26,7 @@ goos::Object& cdr(goos::Object& pair) {
   if (pair.is_pair()) {
     return pair.as_pair()->cdr;
   } else {
-    throw std::runtime_error("cdr called on something that wasn't a pair");
+    throw std::runtime_error("cdr called on something that was not a pair");
   }
 }
 
@@ -48,41 +49,47 @@ void DecompilerTypeSystem::parse_type_defs(const std::vector<std::string>& file_
   auto data = cdr(read);
 
   for_each_in_list(data, [&](goos::Object& o) {
-    if (car(o).as_symbol()->name == "define-extern") {
-      auto* rest = &cdr(o);
-      auto sym_name = car(*rest);
-      rest = &cdr(*rest);
-      auto sym_type = car(*rest);
-      if (!cdr(*rest).is_empty_list()) {
-        throw std::runtime_error("malformed define-extern");
-      }
-      add_symbol(sym_name.as_symbol()->name, parse_typespec(&ts, sym_type));
+    try {
+      if (car(o).as_symbol()->name == "define-extern") {
+        auto* rest = &cdr(o);
+        auto sym_name = car(*rest);
+        rest = &cdr(*rest);
+        auto sym_type = car(*rest);
+        if (!cdr(*rest).is_empty_list()) {
+          throw std::runtime_error("malformed define-extern");
+        }
+        add_symbol(sym_name.as_symbol()->name, parse_typespec(&ts, sym_type));
 
-    } else if (car(o).as_symbol()->name == "deftype") {
-      auto dtr = parse_deftype(cdr(o), &ts);
-      add_symbol(dtr.type.base_type(), "type");
-    } else if (car(o).as_symbol()->name == "declare-type") {
-      auto* rest = &cdr(o);
-      auto type_name = car(*rest);
-      rest = &cdr(*rest);
-      auto type_kind = car(*rest);
-      if (!cdr(*rest).is_empty_list()) {
-        throw std::runtime_error("malformed declare-type");
-      }
-      if (type_kind.as_symbol()->name == "basic") {
-        ts.forward_declare_type_as_basic(type_name.as_symbol()->name);
-      } else if (type_kind.as_symbol()->name == "structure") {
-        ts.forward_declare_type_as_structure(type_name.as_symbol()->name);
+      } else if (car(o).as_symbol()->name == "deftype") {
+        auto dtr = parse_deftype(cdr(o), &ts);
+        if (dtr.create_runtime_type) {
+          add_symbol(dtr.type.base_type(), "type");
+        }
+
+      } else if (car(o).as_symbol()->name == "declare-type") {
+        auto* rest = &cdr(o);
+        auto type_name = car(*rest);
+        rest = &cdr(*rest);
+        auto type_kind = car(*rest);
+        if (!cdr(*rest).is_empty_list()) {
+          throw std::runtime_error("malformed declare-type");
+        }
+        ts.forward_declare_type_as(type_name.as_symbol()->name, type_kind.as_symbol()->name);
+      } else if (car(o).as_symbol()->name == "defenum") {
+        parse_defenum(cdr(o), &ts);
+        // so far, enums are never runtime types so there's no symbol for them.
       } else {
-        throw std::runtime_error("bad declare-type");
+        throw std::runtime_error("Decompiler cannot parse " + car(o).print());
       }
-    } else {
-      throw std::runtime_error("Decompiler cannot parse " + car(o).print());
+    } catch (std::exception& e) {
+      auto info = m_reader.db.get_info_for(o);
+      lg::error("{} when parsing decompiler type file:\n{}", e.what(), info);
+      throw e;
     }
   });
 }
 
-TypeSpec DecompilerTypeSystem::parse_type_spec(const std::string& str) {
+TypeSpec DecompilerTypeSystem::parse_type_spec(const std::string& str) const {
   auto read = m_reader.read_from_string(str);
   auto data = cdr(read);
   return parse_typespec(&ts, car(data));
@@ -150,7 +157,7 @@ void DecompilerTypeSystem::add_symbol(const std::string& name, const TypeSpec& t
   if (skv == symbol_types.end() || skv->second == type_spec) {
     symbol_types[name] = type_spec;
   } else {
-    if (ts.typecheck(type_spec, skv->second, "", false, false)) {
+    if (ts.tc(type_spec, skv->second)) {
     } else {
       lg::warn("Attempting to redefine type of symbol {} from {} to {}\n", name,
                skv->second.print(), type_spec.print());
@@ -167,7 +174,7 @@ TP_Type DecompilerTypeSystem::tp_lca(const TP_Type& existing,
                                      bool* changed) const {
   // starting from most vague to most specific
 
-  // simplist case, no difference.
+  // simplest case, no difference.
   if (existing == add) {
     *changed = false;
     return existing;
@@ -207,7 +214,14 @@ TP_Type DecompilerTypeSystem::tp_lca(const TP_Type& existing,
         return new_result;
       }
       case TP_Type::Kind::TYPE_OF_TYPE_OR_CHILD: {
-        auto new_result = TP_Type::make_type_object(ts.lowest_common_ancestor(
+        auto new_result = TP_Type::make_type_allow_virtual_object(ts.lowest_common_ancestor(
+            existing.get_type_objects_typespec(), add.get_type_objects_typespec()));
+        *changed = (new_result != existing);
+        return new_result;
+      }
+
+      case TP_Type::Kind::TYPE_OF_TYPE_NO_VIRTUAL: {
+        auto new_result = TP_Type::make_type_no_virtual_object(ts.lowest_common_ancestor(
             existing.get_type_objects_typespec(), add.get_type_objects_typespec()));
         *changed = (new_result != existing);
         return new_result;
@@ -246,6 +260,39 @@ TP_Type DecompilerTypeSystem::tp_lca(const TP_Type& existing,
           *changed = true;
           return TP_Type::make_from_ts(TypeSpec("string"));
         }
+      case TP_Type::Kind::INTEGER_CONSTANT_PLUS_VAR:
+        if (existing.get_integer_constant() == add.get_integer_constant()) {
+          auto new_child = TP_Type::make_from_integer_constant_plus_var(
+              existing.get_integer_constant(),
+              coerce_to_reg_type(ts.lowest_common_ancestor(existing.get_objects_typespec(),
+                                                           add.get_objects_typespec())));
+          *changed = (new_child != existing);
+          return new_child;
+        } else {
+          *changed = true;
+          return TP_Type::make_from_ts("int");
+        }
+
+      case TP_Type::Kind::INTEGER_CONSTANT_PLUS_VAR_MULT:
+        // a bit lazy here, but I don't think you can ever merge these.
+        *changed = true;
+        return TP_Type::make_from_ts("int");
+
+      case TP_Type::Kind::VIRTUAL_METHOD:
+        // never allow this to remain method
+        *changed = true;
+        return TP_Type::make_from_ts(
+            ts.lowest_common_ancestor(existing.typespec(), add.typespec()));
+
+      case TP_Type::Kind::NON_VIRTUAL_METHOD:
+        // never allow this to remain method
+        *changed = true;
+        return TP_Type::make_from_ts(
+            ts.lowest_common_ancestor(existing.typespec(), add.typespec()));
+
+      case TP_Type::Kind::LABEL_ADDR:
+        *changed = false;
+        return existing;
 
       case TP_Type::Kind::FALSE_AS_NULL:
       case TP_Type::Kind::UNINITIALIZED:
@@ -253,6 +300,7 @@ TP_Type DecompilerTypeSystem::tp_lca(const TP_Type& existing,
       case TP_Type::Kind::INVALID:
       default:
         assert(false);
+        return {};
     }
   } else {
     // trying to combine two of different types.
@@ -266,6 +314,22 @@ TP_Type DecompilerTypeSystem::tp_lca(const TP_Type& existing,
         result_type = TP_Type::make_from_ts(TypeSpec("string"));
       }
 
+      *changed = (result_type != existing);
+      return result_type;
+    }
+
+    if (existing.kind == TP_Type::Kind::TYPE_OF_TYPE_NO_VIRTUAL &&
+        add.kind == TP_Type::Kind::TYPE_OF_TYPE_OR_CHILD) {
+      auto result_type = TP_Type::make_type_no_virtual_object(ts.lowest_common_ancestor(
+          existing.get_type_objects_typespec(), add.get_type_objects_typespec()));
+      *changed = (result_type != existing);
+      return result_type;
+    }
+
+    if (existing.kind == TP_Type::Kind::TYPE_OF_TYPE_OR_CHILD &&
+        add.kind == TP_Type::Kind::TYPE_OF_TYPE_NO_VIRTUAL) {
+      auto result_type = TP_Type::make_type_no_virtual_object(ts.lowest_common_ancestor(
+          existing.get_type_objects_typespec(), add.get_type_objects_typespec()));
       *changed = (result_type != existing);
       return result_type;
     }
@@ -301,16 +365,62 @@ bool DecompilerTypeSystem::tp_lca(TypeState* combined, const TypeState& add) {
     }
   }
 
+  for (auto& x : add.spill_slots) {
+    //    auto existing = combined->spill_slots.find(x.first);
+    //    if (existing == combined->spill_slots.end()) {
+    //      result = true;
+    //      combined->spill_slots.insert({existing->first, existing->second});
+    //    }
+    bool diff = false;
+    auto new_type = tp_lca(combined->spill_slots[x.first], x.second, &diff);
+    if (diff) {
+      result = true;
+      combined->spill_slots[x.first] = new_type;
+    }
+  }
+
+  bool diff = false;
+  auto new_type = tp_lca(combined->next_state_type, add.next_state_type, &diff);
+  if (diff) {
+    result = true;
+    combined->next_state_type = new_type;
+  }
+
   return result;
 }
 
 int DecompilerTypeSystem::get_format_arg_count(const std::string& str) const {
+  auto bad_it = bad_format_strings.find(str);
+  if (bad_it != bad_format_strings.end()) {
+    return bad_it->second;
+  }
+
   int arg_count = 0;
   for (size_t i = 0; i < str.length(); i++) {
     if (str.at(i) == '~') {
       i++;  // also eat the next character.
       if (i < str.length() && (str.at(i) == '%' || str.at(i) == 'T')) {
         // newline (~%) or tab (~T) don't take an argument.
+        continue;
+      }
+
+      // ~3L, ~0L don't seem to take arguments either.
+      if (i + 1 < str.length() && (str.at(i) == '0' || str.at(i) == '3') && str.at(i + 1) == 'L') {
+        continue;
+      }
+
+      // ~1K
+      if (i + 1 < str.length() && (str.at(i) == '1') && str.at(i + 1) == 'K') {
+        continue;
+      }
+
+      // ~0k
+      if (i + 1 < str.length() && (str.at(i) == '0') && str.at(i + 1) == 'k') {
+        continue;
+      }
+
+      // ~2j
+      if (i + 1 < str.length() && (str.at(i) == '2') && str.at(i + 1) == 'j') {
         continue;
       }
       arg_count++;
@@ -325,5 +435,32 @@ int DecompilerTypeSystem::get_format_arg_count(const TP_Type& type) const {
   } else {
     return type.get_format_string_arg_count();
   }
+}
+
+TypeSpec DecompilerTypeSystem::lookup_symbol_type(const std::string& name) const {
+  auto kv = symbol_types.find(name);
+  if (kv == symbol_types.end()) {
+    throw std::runtime_error(
+        fmt::format("Decompiler type system did not know the type of symbol {}. Add it!", name));
+  } else {
+    return kv->second;
+  }
+}
+
+bool DecompilerTypeSystem::should_attempt_cast_simplify(const TypeSpec& expected,
+                                                        const TypeSpec& actual) const {
+  if (expected == TypeSpec("meters") && actual == TypeSpec("float")) {
+    return true;
+  }
+
+  if (expected == TypeSpec("seconds") && actual == TypeSpec("uint64")) {
+    return true;
+  }
+
+  if (expected == TypeSpec("degrees") && actual == TypeSpec("float")) {
+    return true;
+  }
+
+  return !ts.tc(expected, actual);
 }
 }  // namespace decompiler

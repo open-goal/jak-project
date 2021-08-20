@@ -1,10 +1,10 @@
 set(CMAKE_CXX_STANDARD 17)
 
 include(${CMAKE_CURRENT_LIST_DIR}/goalc/CMakeLists.txt)
+include(${CMAKE_CURRENT_LIST_DIR}/offline/CMakeLists.txt)
 
 add_executable(goalc-test
         ${CMAKE_CURRENT_LIST_DIR}/test_main.cpp
-        ${CMAKE_CURRENT_LIST_DIR}/test_test.cpp
         ${CMAKE_CURRENT_LIST_DIR}/test_reader.cpp
         ${CMAKE_CURRENT_LIST_DIR}/test_goos.cpp
         ${CMAKE_CURRENT_LIST_DIR}/test_listener_deci2.cpp
@@ -16,14 +16,23 @@ add_executable(goalc-test
         ${CMAKE_CURRENT_LIST_DIR}/test_emitter_avx.cpp
         ${CMAKE_CURRENT_LIST_DIR}/test_common_util.cpp
         ${CMAKE_CURRENT_LIST_DIR}/test_pretty_print.cpp
+        ${CMAKE_CURRENT_LIST_DIR}/test_math.cpp
         ${CMAKE_CURRENT_LIST_DIR}/test_zydis.cpp
         ${CMAKE_CURRENT_LIST_DIR}/goalc/test_goal_kernel.cpp
         ${CMAKE_CURRENT_LIST_DIR}/decompiler/FormRegressionTest.cpp
         ${CMAKE_CURRENT_LIST_DIR}/decompiler/test_AtomicOpBuilder.cpp
         ${CMAKE_CURRENT_LIST_DIR}/decompiler/test_FormBeforeExpressions.cpp
         ${CMAKE_CURRENT_LIST_DIR}/decompiler/test_FormExpressionBuild.cpp
+        ${CMAKE_CURRENT_LIST_DIR}/decompiler/test_FormExpressionBuild2.cpp
+        ${CMAKE_CURRENT_LIST_DIR}/decompiler/test_FormExpressionBuild3.cpp
         ${CMAKE_CURRENT_LIST_DIR}/decompiler/test_FormExpressionBuildLong.cpp
+        ${CMAKE_CURRENT_LIST_DIR}/decompiler/test_InstructionDecode.cpp
         ${CMAKE_CURRENT_LIST_DIR}/decompiler/test_InstructionParser.cpp
+        ${CMAKE_CURRENT_LIST_DIR}/decompiler/test_gkernel_decomp.cpp
+        ${CMAKE_CURRENT_LIST_DIR}/decompiler/test_math_decomp.cpp
+        ${CMAKE_CURRENT_LIST_DIR}/decompiler/test_DataParser.cpp
+        ${CMAKE_CURRENT_LIST_DIR}/decompiler/test_DisasmVifDecompile.cpp
+        ${CMAKE_CURRENT_LIST_DIR}/decompiler/test_VuDisasm.cpp
         ${GOALC_TEST_FRAMEWORK_SOURCES}
         ${GOALC_TEST_CASES})
 
@@ -33,7 +42,7 @@ if(WIN32)
   target_link_libraries(goalc-test mman)
 endif()
 
-gtest_discover_tests(goalc-test WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR})
+#gtest_discover_tests(goalc-test WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR})
 
 if(UNIX AND CMAKE_COMPILER_IS_GNUCXX AND CODE_COVERAGE)
   include(CodeCoverage)

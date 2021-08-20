@@ -1,48 +1,82 @@
 #include "Compiler.h"
-#include "common/link_types.h"
-#include "IR.h"
-#include "goalc/regalloc/allocate.h"
-#include "third-party/fmt/core.h"
-#include "CompilerException.h"
 #include <chrono>
 #include <thread>
+#include "CompilerException.h"
+#include "IR.h"
+#include "common/link_types.h"
+#include "goalc/make/Tools.h"
+#include "goalc/regalloc/Allocator.h"
+#include "goalc/regalloc/Allocator_v2.h"
+#include "third-party/fmt/core.h"
 
 using namespace goos;
 
-Compiler::Compiler() : m_debugger(&m_listener) {
+Compiler::Compiler(std::unique_ptr<ReplWrapper> repl)
+    : m_debugger(&m_listener), m_repl(std::move(repl)) {
   m_listener.add_debugger(&m_debugger);
   m_ts.add_builtin_types();
   m_global_env = std::make_unique<GlobalEnv>();
   m_none = std::make_unique<None>(m_ts.make_typespec("none"));
 
-  // todo - compile library
+  // let the build system run us
+  m_make.add_tool(std::make_shared<CompilerTool>(this));
+
+  // load GOAL library
   Object library_code = m_goos.reader.read_from_file({"goal_src", "goal-lib.gc"});
   compile_object_file("goal-lib", library_code, false);
+
+  // add built-in forms to symbol info
+  for (auto& builtin : g_goal_forms) {
+    m_symbol_info.add_builtin(builtin.first);
+  }
+
+  // load auto-complete history, only if we are running in the interactive mode.
+  if (m_repl) {
+    m_repl->load_history();
+  }
+
+  // add GOOS forms that get info from the compiler
+  setup_goos_forms();
 }
 
-void Compiler::execute_repl() {
-  while (!m_want_exit) {
+ReplStatus Compiler::execute_repl(bool auto_listen) {
+  // init repl
+  m_repl->print_welcome_message();
+  auto examples = m_repl->examples;
+  auto regex_colors = m_repl->regex_colors;
+  m_repl->init_default_settings();
+  using namespace std::placeholders;
+  m_repl->get_repl().set_completion_callback(
+      std::bind(&Compiler::find_symbols_by_prefix, this, _1, _2, std::cref(examples)));
+  m_repl->get_repl().set_hint_callback(
+      std::bind(&Compiler::find_hints_by_prefix, this, _1, _2, _3, std::cref(examples)));
+  m_repl->get_repl().set_highlighter_callback(
+      std::bind(&Compiler::repl_coloring, this, _1, _2, std::cref(regex_colors)));
+
+  if (auto_listen) {
+    m_listener.connect_to_target();
+  }
+
+  while (!m_want_exit && !m_want_reload) {
     try {
       // 1). get a line from the user (READ)
-      std::string prompt = "g";
+      std::string prompt = fmt::format(fmt::emphasis::bold | fg(fmt::color::cyan), "g > ");
       if (m_listener.is_connected()) {
-        prompt += "c";
-      } else {
-        prompt += " ";
+        prompt = fmt::format(fmt::emphasis::bold | fg(fmt::color::lime_green), "gc> ");
       }
-
       if (m_debugger.is_halted()) {
-        prompt += "s";
+        prompt = fmt::format(fmt::emphasis::bold | fg(fmt::color::magenta), "gs> ");
       } else if (m_debugger.is_attached()) {
-        prompt += "r";
-      } else {
-        prompt += " ";
+        prompt = fmt::format(fmt::emphasis::bold | fg(fmt::color::red), "gr> ");
       }
 
-      Object code = m_goos.reader.read_from_stdin(prompt);
+      auto code = m_goos.reader.read_from_stdin(prompt, *m_repl);
+      if (!code) {
+        continue;
+      }
 
       // 2). compile
-      auto obj_file = compile_object_file("repl", code, m_listener.is_connected());
+      auto obj_file = compile_object_file("repl", *code, m_listener.is_connected());
       if (m_settings.debug_print_ir) {
         obj_file->debug_print_tl();
       }
@@ -68,7 +102,20 @@ void Compiler::execute_repl() {
     }
   }
 
-  m_listener.disconnect();
+  if (m_listener.is_connected()) {
+    m_listener.send_reset(false);  // reset the target
+    m_listener.disconnect();
+  }
+
+  if (m_want_exit) {
+    return ReplStatus::WANT_EXIT;
+  }
+
+  if (m_want_reload) {
+    return ReplStatus::WANT_RELOAD;
+  }
+
+  return ReplStatus::OK;
 }
 
 FileEnv* Compiler::compile_object_file(const std::string& name,
@@ -100,7 +147,12 @@ std::unique_ptr<FunctionEnv> Compiler::compile_top_level_function(const std::str
 
   // only move to return register if we actually got a result
   if (!dynamic_cast<const None*>(result)) {
-    fe->emit(std::make_unique<IR_Return>(fe->make_gpr(result->type()), result->to_gpr(fe.get())));
+    fe->emit(std::make_unique<IR_Return>(fe->make_gpr(result->type()), result->to_gpr(fe.get()),
+                                         emitter::gRegInfo.get_gpr_ret_reg()));
+  }
+
+  if (!fe->code().empty()) {
+    fe->emit_ir<IR_Null>();
   }
 
   fe->finish();
@@ -150,6 +202,7 @@ Val* Compiler::compile_error_guard(const goos::Object& code, Env* env) {
 }
 
 void Compiler::color_object_file(FileEnv* env) {
+  int num_spills_in_file = 0;
   for (auto& f : env->functions()) {
     AllocationInput input;
     input.is_asm_function = f->is_asm_func;
@@ -158,9 +211,16 @@ void Compiler::color_object_file(FileEnv* env) {
       input.debug_instruction_names.push_back(i->print());
     }
 
+    for (auto& reg_val : f->reg_vals()) {
+      if (reg_val->forced_on_stack()) {
+        input.force_on_stack_regs.insert(reg_val->ireg().id);
+      }
+    }
+
     input.max_vars = f->max_vars();
     input.constraints = f->constraints();
     input.stack_slots_for_stack_vars = f->stack_slots_used_for_stack_vars();
+    input.function_name = f->name();
 
     if (m_settings.debug_print_regalloc) {
       input.debug_settings.print_input = true;
@@ -169,8 +229,31 @@ void Compiler::color_object_file(FileEnv* env) {
       input.debug_settings.allocate_log_level = 2;
     }
 
-    f->set_allocations(allocate_registers(input));
+    m_debug_stats.total_funcs++;
+
+    auto regalloc_result_2 = allocate_registers_v2(input);
+
+    if (regalloc_result_2.ok) {
+      if (regalloc_result_2.num_spilled_vars > 0) {
+        // fmt::print("Function {} has {} spilled vars.\n", f->name(),
+        //  regalloc_result_2.num_spilled_vars);
+      }
+      num_spills_in_file += regalloc_result_2.num_spills;
+      f->set_allocations(regalloc_result_2);
+    } else {
+      fmt::print(
+          "Warning: function {} failed register allocation with the v2 allocator. Falling back to "
+          "the v1 allocator.\n",
+          f->name());
+      m_debug_stats.funcs_requiring_v1_allocator++;
+      auto regalloc_result = allocate_registers(input);
+      m_debug_stats.num_spills_v1 += regalloc_result.num_spills;
+      num_spills_in_file += regalloc_result.num_spills;
+      f->set_allocations(regalloc_result);
+    }
   }
+
+  m_debug_stats.num_spills += num_spills_in_file;
 }
 
 std::vector<u8> Compiler::codegen_object_file(FileEnv* env) {
@@ -179,12 +262,14 @@ std::vector<u8> Compiler::codegen_object_file(FileEnv* env) {
     debug_info->clear();
     CodeGenerator gen(env, debug_info);
     bool ok = true;
-    auto result = gen.run();
+    auto result = gen.run(&m_ts);
     for (auto& f : env->functions()) {
       if (f->settings.print_asm) {
         fmt::print("{}\n", debug_info->disassemble_function_by_name(f->name(), &ok));
       }
     }
+    auto stats = gen.get_obj_stats();
+    m_debug_stats.num_moves_eliminated += stats.moves_eliminated;
     return result;
   } catch (std::exception& e) {
     throw_compiler_error_no_code("Error during codegen: {}", e.what());
@@ -198,7 +283,7 @@ bool Compiler::codegen_and_disassemble_object_file(FileEnv* env,
   auto debug_info = &m_debugger.get_debug_info_for_object(env->name());
   debug_info->clear();
   CodeGenerator gen(env, debug_info);
-  *data_out = gen.run();
+  *data_out = gen.run(&m_ts);
   bool ok = true;
   *asm_out = debug_info->disassemble_all_functions(&ok);
   return ok;
@@ -288,9 +373,33 @@ bool Compiler::connect_to_target() {
   return true;
 }
 
+/*!
+ * Just run the front end on a string. Will not do register allocation or code generation.
+ * Useful for typechecking, defining types,  or running strings that invoke the compiler again.
+ */
 void Compiler::run_front_end_on_string(const std::string& src) {
   auto code = m_goos.reader.read_from_string({src});
   compile_object_file("run-on-string", code, true);
+}
+
+/*!
+ * Just run the front end on a file. Will not do register allocation or code generation.
+ * Useful for typechecking, defining types,  or running strings that invoke the compiler again.
+ */
+void Compiler::run_front_end_on_file(const std::vector<std::string>& path) {
+  auto code = m_goos.reader.read_from_file(path);
+  compile_object_file("run-on-file", code, true);
+}
+
+/*!
+ * Run the entire compilation process on the input source code. Will generate an object file, but
+ * won't save it anywhere.
+ */
+void Compiler::run_full_compiler_on_string_no_save(const std::string& src) {
+  auto code = m_goos.reader.read_from_string({src});
+  auto compiled = compile_object_file("run-on-string", code, true);
+  color_object_file(compiled);
+  codegen_object_file(compiled);
 }
 
 std::vector<std::string> Compiler::run_test_no_load(const std::string& source_code) {
@@ -314,8 +423,9 @@ void Compiler::typecheck(const goos::Object& form,
                          const TypeSpec& actual,
                          const std::string& error_message) {
   (void)form;
-  if (!m_ts.typecheck(expected, actual, error_message, true, false)) {
-    throw_compiler_error(form, "Typecheck failed");
+  if (!m_ts.typecheck_and_throw(expected, actual, error_message, false, false)) {
+    throw_compiler_error(form, "Typecheck failed. For {}, got a \"{}\" when expecting a \"{}\"",
+                         error_message, actual.print(), expected.print());
   }
 }
 
@@ -327,11 +437,47 @@ void Compiler::typecheck_reg_type_allow_false(const goos::Object& form,
                                               const TypeSpec& expected,
                                               const Val* actual,
                                               const std::string& error_message) {
-  if (!m_ts.typecheck(m_ts.make_typespec("number"), expected, "", false, false)) {
+  if (!m_ts.typecheck_and_throw(m_ts.make_typespec("number"), expected, "", false, false)) {
     auto as_sym_val = dynamic_cast<const SymbolVal*>(actual);
     if (as_sym_val && as_sym_val->name() == "#f") {
       return;
     }
   }
   typecheck(form, expected, coerce_to_reg_type(actual->type()), error_message);
+}
+
+bool Compiler::knows_object_file(const std::string& name) {
+  return m_debugger.knows_object(name);
+}
+
+void Compiler::setup_goos_forms() {
+  m_goos.register_form("get-enum-vals", [&](const goos::Object& form, goos::Arguments& args,
+                                            const std::shared_ptr<goos::EnvironmentObject>& env) {
+    m_goos.eval_args(&args, env);
+    va_check(form, args, {goos::ObjectType::SYMBOL}, {});
+    std::vector<Object> enum_vals;
+
+    const auto& enum_name = args.unnamed.at(0).as_symbol()->name;
+    auto enum_type = m_ts.try_enum_lookup(enum_name);
+    if (!enum_type) {
+      throw_compiler_error(form, "Unknown enum {} in get-enum-vals", enum_name);
+    }
+
+    std::vector<std::pair<std::string, s64>> sorted_values;
+    for (auto& val : enum_type->entries()) {
+      sorted_values.emplace_back(val.first, val.second);
+    }
+
+    std::sort(sorted_values.begin(), sorted_values.end(),
+              [](const std::pair<std::string, s64>& a, const std::pair<std::string, s64>& b) {
+                return a.second < b.second;
+              });
+
+    for (auto& thing : sorted_values) {
+      enum_vals.push_back(PairObject::make_new(m_goos.intern(thing.first),
+                                               goos::Object::make_integer(thing.second)));
+    }
+
+    return goos::build_list(enum_vals);
+  });
 }

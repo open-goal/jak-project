@@ -5,3 +5,47 @@
 ;; name in dgo: dynamics-h
 ;; dgos: GAME, ENGINE
 
+(deftype dynamics (basic)
+  ((name           basic          :offset-assert   4)
+   (gravity-max    meters         :offset-assert   8)
+   (gravity-length meters         :offset-assert  12)
+   (gravity        vector :inline :offset-assert  16)
+   (gravity-normal vector :inline :offset-assert  32)
+   (walk-distance  meters         :offset-assert  48)
+   (run-distance   meters         :offset-assert  52)
+   )
+  :method-count-assert 9
+  :size-assert         #x38
+  :flag-assert         #x900000038
+  )
+
+(defun time-to-apex ((arg0 float) (arg1 float))
+  (the int (/ arg0 (- (vel-tick arg1))))
+  )
+
+(defun time-to-ground ((velocity float) (gravity float) (height float))
+  "How long to fall from height?"
+  (let ((height-checked 0.0)
+        (ticks 0))
+   ;; loop in ticks until we reach the ground
+   (while (< (- height) height-checked)
+    (let ((velocity (- velocity (vel-tick gravity))))
+     (+! height-checked (vel-tick velocity))
+     )
+    (+! ticks 1)
+    )
+   ticks
+   )
+  )
+
+(define *standard-dynamics*
+    (new 'static 'dynamics
+         :name 'standard
+         :gravity-max GRAVITY_MAX
+         :gravity-length GRAVITY_AMOUNT
+         :gravity  (new 'static 'vector :x 0.0 :y GRAVITY_AMOUNT :z 0.0 :w 1.0)
+         :gravity-normal (new 'static 'vector :x 0.0 :y 1.0 :z 0.0 :w 1.0)
+         :walk-distance (meters 2)
+         :run-distance (meters 5)
+         )
+  )

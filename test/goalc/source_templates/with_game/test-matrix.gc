@@ -1,0 +1,164 @@
+(defmacro inspect-mat (obj)
+  `(begin
+    (format #t "~T[~F] [~F] [~F] [~F]~%"
+            (-> ,obj data 0)
+            (-> ,obj data 1)
+            (-> ,obj data 2)
+            (-> ,obj data 3)
+            )
+    (format #t "~T[~F] [~F] [~F] [~F]~%"
+            (-> ,obj data 4)
+            (-> ,obj data 5)
+            (-> ,obj data 6)
+            (-> ,obj data 7)
+            )
+    (format #t "~T[~F] [~F] [~F] [~F]~%"
+            (-> ,obj data 8)
+            (-> ,obj data 9)
+            (-> ,obj data 10)
+            (-> ,obj data 11)
+            )
+    (format #t "~T[~F] [~F] [~F] [~F]~%"
+            (-> ,obj data 12)
+            (-> ,obj data 13)
+            (-> ,obj data 14)
+            (-> ,obj data 15)
+            )
+    )
+  )
+
+
+(format #t "mat-mult~%")
+(let ((dst (new 'stack 'matrix))
+      (src1 (new 'stack 'matrix))
+      (src2 (new 'stack 'matrix)))
+  (dotimes (i 16)
+    (set! (-> src1 data i) (the float (+ i 1)))
+    (set! (-> src2 data i) (the float (- 16 i)))
+    )
+
+  (matrix*! dst src1 src2)
+  (inspect-mat dst)
+  )
+
+(format #t "transpose~%")
+(let ((dst (new 'stack 'matrix))
+      (src (new 'stack 'matrix)))
+  (dotimes (i 16)
+    (set! (-> src data i) (the float (+ i 1)))
+    )
+
+  (matrix-transpose! dst src)
+  (inspect-mat dst)
+  )
+
+(format #t "inv-4x4~%")
+(let ((dst (new 'stack 'matrix))
+      (prod (new 'stack 'matrix))
+      (src (new 'static 'matrix :data (new 'static 'array float 16
+                                           3. 2. 1. 0.
+                                           2. -1. 3. 0.
+                                           -8. 2. 2. 0.
+                                           1. 2. 3. 1.))))
+  (matrix-4x4-inverse! dst src)
+  (matrix*! prod src dst)
+  (inspect-mat prod)
+  )
+
+
+(format #t "axis-angle~%")
+(defun test-axis-angle ((axis vector))
+  (let ((mat (new 'stack 'matrix)))
+
+    (let* ((norm-squared (+ (* (-> axis x) (-> axis x))
+                            (* (-> axis y) (-> axis y))
+                            (* (-> axis z) (-> axis z))
+                            )
+             )
+         
+           (norm (sqrtf norm-squared)))
+
+      (when (> norm-squared 0)
+        (dotimes (i 3)
+          (set! (-> axis data i) (/ (-> axis data i) norm))
+          )
+        )
+      (matrix-axis-angle! mat axis (degrees 10))
+      (inspect-mat mat)
+      (format #t "~%")
+      )
+    )
+  )
+
+
+(test-axis-angle (new 'static 'vector :x 1.0 :y 0.5 :z -0.3 :w 0.0))
+(test-axis-angle (new 'static 'vector :x 0.2))
+(test-axis-angle (new 'static 'vector :y 0.2))
+(test-axis-angle (new 'static 'vector :z 0.2))
+(test-axis-angle (new 'static 'vector :w 0.2))
+
+(format #t "3x3-inverse~%")
+(let ((dst (new 'stack 'matrix))
+      (src (new 'static 'matrix :data (new 'static 'array float 16
+                                           3. 2. 1. 0.
+                                           2. -1. 3. 0.
+                                           -8. 2. 2. 0.
+                                           0. 0. 0. 0.))))
+  (matrix-3x3-inverse! dst src)
+  (inspect-mat dst)
+  (format #t "~%")
+  (matrix3-inverse-transpose! dst src)
+  (inspect-mat dst)
+  )
+
+(deftype vec-array (structure)
+  ((data vector 32 :inline))
+  )
+
+(defmethod inspect vec-array ((obj vec-array))
+  (format #t "vec-array~%")
+  (dotimes (i 12)
+    (format #t "~T[~F] [~F] [~F] [~F]~%"
+            (-> obj data i x)
+            (-> obj data i y)
+            (-> obj data i z)
+            (-> obj data i w)
+            )
+    )
+  obj
+  )
+
+(format #t "transform-many~%")
+(let ((dst (new 'stack 'vec-array))
+      (dst-ref (new 'stack 'vec-array))
+      (src (new 'stack 'vec-array))
+      (val 0.0)
+      (mat (new 'static 'matrix :data (new 'static 'array float 16
+                                           3. 2. 1. 0.
+                                           2. -1. 3. 0.
+                                           -8. 2. 2. 0.
+                                           1. 2. 3. 1.))))
+
+  ;; init source
+  (dotimes (i 12)
+    (set! (-> dst data i quad) (the uint128 0))
+    (dotimes (j 3)
+      (set! (-> src data i data j) val)
+      (set! val (+ val 1.0))
+      )
+    (set! (-> src data i w) 1.0)
+    )
+
+  ;;(inspect src)
+
+  ;; compute reference:
+  (dotimes (i 12)
+    (vector-matrix*! (-> dst-ref data i) (-> src data i) mat)
+    )
+  ;;(inspect dst-ref)
+
+  ;; compute fancy thing
+  (transform-vectors! mat (-> dst data) (-> src data) 11)
+  (inspect dst)
+  0
+  )

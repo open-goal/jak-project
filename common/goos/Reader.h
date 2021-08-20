@@ -12,12 +12,15 @@
  */
 
 #include <memory>
-#include <cassert>
+#include "common/util/assert.h"
 #include <utility>
 #include <unordered_map>
+#include <optional>
 
 #include "common/goos/Object.h"
 #include "common/goos/TextDB.h"
+
+#include "ReplUtils.h"
 
 namespace goos {
 
@@ -68,9 +71,9 @@ class Reader {
  public:
   Reader();
   Object read_from_string(const std::string& str, bool add_top_level = true);
-  Object read_from_stdin(const std::string& prompt_name);
+  std::optional<Object> read_from_stdin(const std::string& prompt, ReplWrapper& repl);
   Object read_from_file(const std::vector<std::string>& file_path);
-
+  bool check_string_is_valid(const std::string& str) const;
   std::string get_source_dir();
 
   SymbolTable symbolTable;
@@ -94,9 +97,10 @@ class Reader {
   bool read_string(TextStream& stream, Object& obj);
   void add_reader_macro(const std::string& shortcut, std::string replacement);
 
-  char valid_symbols_chars[256];
+  bool m_valid_symbols_chars[256];
+  bool m_valid_source_text_chars[256];
 
-  std::unordered_map<std::string, std::string> reader_macros;
+  std::unordered_map<std::string, std::string> m_reader_macros;
 };
 
 std::string get_readable_string(const char* in);

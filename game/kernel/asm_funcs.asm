@@ -6,6 +6,44 @@
 
 SECTION .text
 
+;; Call C++ code on linux, from GOAL, using Linux calling convention.
+global _arg_call_linux
+_arg_call_linux:
+  pop rax
+  push r10
+  push r11
+  sub rsp, 8
+
+  ; xmm stuff
+  sub rsp, 128
+  movaps [rsp], xmm8
+  movaps [rsp + 16], xmm9
+  movaps [rsp + 32], xmm10
+  movaps [rsp + 48], xmm11
+  movaps [rsp + 64], xmm12
+  movaps [rsp + 80], xmm13
+  movaps [rsp + 96], xmm14
+  movaps [rsp + 112], xmm15
+
+  call rax
+
+  movaps xmm8, [rsp]
+  movaps xmm9, [rsp + 16]
+  movaps xmm10, [rsp + 32]
+  movaps xmm11, [rsp + 48]
+  movaps xmm12, [rsp + 64]
+  movaps xmm13, [rsp + 80]
+  movaps xmm14, [rsp + 96]
+  movaps xmm15, [rsp + 112]
+  add rsp, 128
+
+  add rsp, 8
+  pop r11
+  pop r10
+  ret
+
+
+;; Call C++ code on linux, from GOAL. Pug arguments on the stack and put a pointer to this array in the first arg.
 ;; this function pushes all 8 OpenGOAL registers into a stack array.
 ;; then it calls the function pointed to by rax with a pointer to this array.
 ;; it returns the return value of the called function.
@@ -14,6 +52,17 @@ _stack_call_linux:
   pop rax
   ; align stack
   sub rsp, 8
+
+  sub rsp, 128
+  movaps [rsp], xmm8
+  movaps [rsp + 16], xmm9
+  movaps [rsp + 32], xmm10
+  movaps [rsp + 48], xmm11
+  movaps [rsp + 64], xmm12
+  movaps [rsp + 80], xmm13
+  movaps [rsp + 96], xmm14
+  movaps [rsp + 112], xmm15
+
   ; create stack array of arguments
   push r11
   push r10
@@ -23,6 +72,7 @@ _stack_call_linux:
   push rdx
   push rsi
   push rdi
+
   ; set first argument
   mov rdi, rsp
   ; call function
@@ -36,17 +86,38 @@ _stack_call_linux:
   pop r9
   pop r10
   pop r11
+
+  movaps xmm8, [rsp]
+  movaps xmm9, [rsp + 16]
+  movaps xmm10, [rsp + 32]
+  movaps xmm11, [rsp + 48]
+  movaps xmm12, [rsp + 64]
+  movaps xmm13, [rsp + 80]
+  movaps xmm14, [rsp + 96]
+  movaps xmm15, [rsp + 112]
+  add rsp, 128
+
   ; restore stack
   add rsp, 8
   ; return!
   ret
 
-;; windows implementation of stack_call
+;; Call C++ code on windows, from GOAL. Pug arguments on the stack and put a pointer to this array in the first arg.
 global _stack_call_win32
 _stack_call_win32:
   pop rax
   ; to make sure the stack frame is aligned
   sub rsp, 8
+
+  sub rsp, 128
+  movaps [rsp], xmm8
+  movaps [rsp + 16], xmm9
+  movaps [rsp + 32], xmm10
+  movaps [rsp + 48], xmm11
+  movaps [rsp + 64], xmm12
+  movaps [rsp + 80], xmm13
+  movaps [rsp + 96], xmm14
+  movaps [rsp + 112], xmm15
 
   ; push all registers and create the register array on the stack
   push r11
@@ -76,10 +147,22 @@ _stack_call_win32:
   pop r9
   pop r10
   pop r11
+
+  movaps xmm8, [rsp]
+  movaps xmm9, [rsp + 16]
+  movaps xmm10, [rsp + 32]
+  movaps xmm11, [rsp + 48]
+  movaps xmm12, [rsp + 64]
+  movaps xmm13, [rsp + 80]
+  movaps xmm14, [rsp + 96]
+  movaps xmm15, [rsp + 112]
+  add rsp, 128
+
   add rsp, 8
   ret
 
 ;; The _call_goal_asm function is used to call a GOAL function from C.
+;; It calls on the parent stack, which is a bad idea if your stack is not already a GOAL stack.
 ;; It supports up to 3 arguments and a return value.
 ;; This should be called with the arguments:
 ;; - first goal arg
@@ -119,6 +202,7 @@ _call_goal_asm_linux:
   pop r13
   ret
 
+;; Call goal, but switch stacks.
 global _call_goal_on_stack_asm_linux
 
 _call_goal_on_stack_asm_linux:

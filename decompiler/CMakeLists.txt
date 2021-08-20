@@ -6,11 +6,20 @@ add_library(
         analysis/cfg_builder.cpp
         analysis/expression_build.cpp
         analysis/final_output.cpp
+        analysis/find_defstates.cpp
+        analysis/inline_asm_rewrite.cpp
+        analysis/insert_lets.cpp
         analysis/reg_usage.cpp
+        analysis/stack_spill.cpp
+        analysis/static_refs.cpp
+        analysis/symbol_def_map.cpp
+        analysis/type_analysis.cpp
         analysis/variable_naming.cpp
 
+        data/dir_tpages.cpp
         data/game_count.cpp
         data/game_text.cpp
+        data/streamed_audio.cpp
         data/StrFileReader.cpp
         data/tpage.cpp
 
@@ -24,7 +33,6 @@ add_library(
         Function/BasicBlocks.cpp
         Function/CfgVtx.cpp
         Function/Function.cpp
-        Function/TypeAnalysis.cpp
         Function/TypeInspector.cpp
 
         IR/BasicOpBuilder.cpp
@@ -33,37 +41,43 @@ add_library(
         IR2/AtomicOp.cpp
         IR2/AtomicOpForm.cpp
         IR2/AtomicOpTypeAnalysis.cpp
+        IR2/bitfields.cpp
         IR2/Env.cpp
         IR2/Form.cpp
         IR2/FormExpressionAnalysis.cpp
         IR2/FormStack.cpp
         IR2/GenericElementMatcher.cpp
+        IR2/OpenGoalMapping.cpp
 
         ObjectFile/LinkedObjectFile.cpp
         ObjectFile/LinkedObjectFileCreation.cpp
         ObjectFile/ObjectFileDB.cpp
         ObjectFile/ObjectFileDB_IR2.cpp
 
+        util/config_parsers.cpp
+        util/data_decompile.cpp
+        util/DataParser.cpp
         util/DecompilerTypeSystem.cpp
         util/TP_Type.cpp
 
-        config.cpp
-)
+        VuDisasm/VuDisassembler.cpp
+        VuDisasm/VuInstruction.cpp
+
+        config.cpp)
 
 target_link_libraries(decomp
-        minilzo
+        lzokay
         common
         fmt
         )
 
 add_executable(decompiler
-        main.cpp
-        )
+        main.cpp)
 
 target_link_libraries(decompiler
         decomp
         common
-        minilzo
+        lzokay
         fmt)
 
 install(TARGETS decompiler)

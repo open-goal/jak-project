@@ -3,7 +3,7 @@
   (format #t "TARGET FUNCTION ~D ~D ~D~%" a0 a1 a2)
   (format #t "~D ~D ~D~%" a3 a4 a5)
   
-  (let ((stack-arr (new 'stack 'array 'uint8 12)))
+  (let ((stack-arr (new 'stack-no-clear 'array 'uint8 12)))
     (format #t "Stack Alignemnt ~D/16~%" (logand 15 (the uint stack-arr)))
     )
   
@@ -28,7 +28,7 @@
   )
 
 (defun target-function-2 ()
-  (let ((stack-var (new 'stack 'array 'int32 1)))
+  (let ((stack-var (new 'stack-no-clear 'array 'int32 1)))
     (set! (-> stack-var) 0)
     (countdown (i 10)
       (format #t "proc2: ~D~%" (-> stack-var))
@@ -50,7 +50,8 @@
               )
   
   (define test-process-2 (get-process *nk-dead-pool* process 1024))
-  (activate test-process-2 *active-pool* 'test-2 *kernel-dram-stack*)
+  ;; test that the kernel fakes having process stacks on the scratchpad.
+  (activate test-process-2 *active-pool* 'test-2 (the pointer #x70004000))
   (set-to-run (-> test-process-2 main-thread)
               target-function-2
               0 0 0 0 0 0)
@@ -60,7 +61,7 @@
 (defun init-child-proc (a0 a1 a2 a3 a4 a5)
   (format #t "Args: ~D ~D ~D~%" a0 a1 a2)
   (format #t "~D ~D ~D~%" a3 a4 a5)
-  (let ((stack-arr (new 'stack 'array 'uint8 12)))
+  (let ((stack-arr (new 'stack-no-clear 'array 'uint8 12)))
     (format #t "Stack Alignemnt ~D/16~%" (logand 15 (the uint stack-arr)))
     )
   (if (eq? a0 (the int 0))
@@ -96,4 +97,96 @@
               1 0 0 0 0 0
               )
   0
+  )
+
+
+(defstate die-state (process)
+    :enter (lambda () (format #t "enter die~%") (none))
+    :exit (lambda () (format #t "exit die~%") (none))
+    :code (lambda ()
+            (format #t "time to die!~%")
+            (process-deactivate)
+            (format #t "don't see me~%")
+            )
+    )
+
+(defun xmm-check-code (ax ay az aw)
+  "This function relies on saved xmm register being backed up on a context switch"
+  ;; (declare (print-asm))
+  ;; compiler will put these in xmm8 and xmm9 to keep them from being clobbered
+  (let ((x 12.34)
+        (y 45.63))
+    (dotimes (i 3)
+      (format #t "run xmm-check ~f ~f ~D ~D ~D ~D~%" x y ax ay az aw)
+      ;; should preserve xmm8 and xmm9
+      (suspend)
+      )
+    ;; get the wreck process and make it go to die state.
+    (go-process (process-by-name 'wreck-proc *active-pool*) die-state)
+    (go die-state)
+    (format #t "unreachable~%")
+    )
+  )
+
+(defun xmm-wreck-code (ax ay az aw)
+  "This function intentionally overwrites xmm8 and xmm9 and suspends"
+  (while #t
+    (rlet ((x :class fpr :type float :reg xmm8)
+           (y :class fpr :type float :reg xmm9))
+      (set! x 99.0)
+      (set! y 101.0)
+      (format #t "wreck: ~D ~D ~D ~D~%" ax ay az aw)
+      (suspend)
+      (set! x (+ x 1.0))
+      (set! y (+ y 1.0))
+      )
+    )
+  )
+
+;; a state.
+(defstate xmm-check-state (process)
+    :enter (lambda (x y z w) (format #t "enter check: ~D ~D ~D ~D~%" x y z w) (none))
+    :exit (lambda () (format #t "exit check~%") (none))
+    :code xmm-check-code
+    )
+
+(defstate xmm-wreck-state (process)
+    :enter (lambda (x y z w) (format #t "enter wreck: ~D ~D ~D ~D~%" x y z w) (none))
+    :exit (lambda () (format #t "exit wreck~%") (none))
+    :code xmm-wreck-code
+    )
+
+(defun state-test ()
+  (let ((proc (get-process *nk-dead-pool* process 1024)))
+    (activate proc *active-pool* 'check-proc *kernel-dram-stack*)
+    (run-now-in-process proc (lambda (x y z w) (go xmm-check-state x y z w))
+                        9 8 7 6)
+    )
+
+  (let ((proc (get-process *nk-dead-pool* process 1024)))
+    (activate proc *active-pool* 'wreck-proc *kernel-dram-stack*)
+    (run-next-time-in-process proc (lambda (x y z w) (go xmm-wreck-state x y z w))
+                              3 4 5 6)
+    )
+  0
+  )
+
+(defun throw-backup-test ()
+  (rlet ((x :reg xmm10 :class fpr :type float))
+    (set! x 10.10)
+    (let ((proc (get-process *nk-dead-pool* process 1024)))
+      (activate proc *active-pool* 'asdf *kernel-dram-stack*)
+      (format #t "value now is ~f~%" x)
+      (run-now-in-process proc (lambda ()
+                                 (rlet ((x2 :reg xmm10 :class fpr :type float))
+                                   (set! x2 -1.0)
+                                   )
+                                 ;; this will throw back.
+                                 (process-deactivate)
+                                 )
+                          )
+      (format #t "now its ~f~%" x)
+      
+      )
+    )
   )

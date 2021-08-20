@@ -208,7 +208,7 @@ enum class InstructionKind {
   RSQRTS,
 
   // COP2
-  VMOVE,
+  VMOVE,  // first cop2 macro instruction
   VFTOI0,
   VFTOI4,
   VFTOI12,
@@ -231,6 +231,7 @@ enum class InstructionKind {
   VMUL_BC,
   VMULA_BC,
   VMADD_BC,
+
   VADDA_BC,
   VMADDA_BC,
   VMSUBA_BC,
@@ -267,10 +268,13 @@ enum class InstructionKind {
   VRNEXT,
   VNOP,
   VWAITQ,
-  VCALLMS,
+  VCALLMS,  // last cop2 macro instruction
 
   EE_OP_MAX
 };
+
+constexpr InstructionKind FIRST_COP2_MACRO = InstructionKind::VMOVE;
+constexpr InstructionKind LAST_COP2_MACRO = InstructionKind::VCALLMS;
 
 enum class FieldType {
   RS,
@@ -289,6 +293,8 @@ enum class FieldType {
   IMM5,
   IMM15,
   IL,
+  FS_F,
+  FT_F,
   ZERO
 };
 
@@ -305,6 +311,7 @@ enum class DecodeType {
   VCALLMS_TARGET,
   DEST,
   BC,
+  VF_F,
   VU_Q,
   VU_ACC,
   IL
@@ -328,6 +335,7 @@ struct OpcodeInfo {
   bool is_store = false;
   bool is_load = false;
   bool has_delay_slot = false;
+  bool gpr_128 = false;  // does it requires 128-bit registers?
 
   void step(DecodeStep& s);
 
@@ -342,6 +350,8 @@ struct OpcodeInfo {
   OpcodeInfo& dst_fpr(FieldType field);
   OpcodeInfo& dst_vf(FieldType field);
   OpcodeInfo& dst_vi(FieldType field);
+
+  OpcodeInfo& gpr128();
 
   uint8_t step_count = 0;
   DecodeStep steps[MAX_DECODE_STEPS];

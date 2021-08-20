@@ -6,7 +6,8 @@
 
 #include "Instruction.h"
 #include "decompiler/ObjectFile/LinkedObjectFile.h"
-#include <cassert>
+#include "third-party/fmt/core.h"
+#include "common/util/assert.h"
 
 namespace decompiler {
 /*!
@@ -26,6 +27,9 @@ std::string InstructionAtom::to_string(const std::vector<DecompilerLabel>& label
       return "Q";
     case IMM_SYM:
       return sym;
+    case VF_FIELD:
+      assert(imm >= 0 && imm < 4);
+      return fmt::format(".{}", "xyzw"[imm]);
     default:
       throw std::runtime_error("Unsupported InstructionAtom");
   }
@@ -78,6 +82,15 @@ void InstructionAtom::set_sym(std::string _sym) {
 }
 
 /*!
+ * Make this atom a field (x,y,z,w) of a vf.
+ */
+void InstructionAtom::set_vf_field(uint32_t value) {
+  kind = VF_FIELD;
+  imm = value;
+  assert(value < 4);
+}
+
+/*!
  * Get as register, or error if not a register.
  */
 Register InstructionAtom::get_reg() const {
@@ -90,6 +103,14 @@ Register InstructionAtom::get_reg() const {
  */
 int32_t InstructionAtom::get_imm() const {
   assert(kind == IMM);
+  return imm;
+}
+
+/*!
+ * Get the VF_FIELD as an integer immediate, or error if not applicable.
+ */
+int32_t InstructionAtom::get_vf_field() const {
+  assert(kind == VF_FIELD);
   return imm;
 }
 
@@ -132,7 +153,45 @@ bool InstructionAtom::operator==(const InstructionAtom& other) const {
       return true;
     default:
       assert(false);
+      return false;
   }
+}
+
+char Instruction::cop2_bc_to_char() const {
+  switch (cop2_bc) {
+    case 0:
+      return 'x';
+    case 1:
+      return 'y';
+    case 2:
+      return 'z';
+    case 3:
+      return 'w';
+    default:
+      return '?';
+  }
+}
+std::string Instruction::cop2_dest_to_char() const {
+  std::string dest = ".";
+  if (cop2_dest & 8)
+    dest.push_back('x');
+  if (cop2_dest & 4)
+    dest.push_back('y');
+  if (cop2_dest & 2)
+    dest.push_back('z');
+  if (cop2_dest & 1)
+    dest.push_back('w');
+  return dest;
+}
+
+int Instruction::cop2_dest_mask_intel() const {
+  int mask = 0;
+  for (int i = 0; i < 4; i++) {        // x,y,z,w order
+    if (cop2_dest & (1 << (3 - i))) {  // set for ps2
+      mask |= (1 << i);
+    }
+  }
+  return mask;
 }
 
 /*!
@@ -152,37 +211,14 @@ std::string Instruction::op_name_to_string() const {
 
   // optional "broadcast" specification for COP2 opcodes.
   if (cop2_bc != 0xff) {
-    switch (cop2_bc) {
-      case 0:
-        result.push_back('x');
-        break;
-      case 1:
-        result.push_back('y');
-        break;
-      case 2:
-        result.push_back('z');
-        break;
-      case 3:
-        result.push_back('w');
-        break;
-      default:
-        result.push_back('?');
-        break;
-    }
+    result.push_back(cop2_bc_to_char());
   }
 
   // optional "destination" specification for COP2 opcodes.
   if (cop2_dest != 0xff) {
-    result += ".";
-    if (cop2_dest & 8)
-      result.push_back('x');
-    if (cop2_dest & 4)
-      result.push_back('y');
-    if (cop2_dest & 2)
-      result.push_back('z');
-    if (cop2_dest & 1)
-      result.push_back('w');
+    result.append(cop2_dest_to_char());
   }
+
   return result;
 }
 
@@ -224,7 +260,14 @@ std::string Instruction::to_string(const std::vector<DecompilerLabel>& labels) c
     }
 
     for (uint8_t i = 0; i < n_src; i++) {
-      result += " " + src[i].to_string(labels) + ",";
+      if (src[i].kind == InstructionAtom::VF_FIELD) {
+        if (end_comma) {
+          result.pop_back();
+        }
+        result += src[i].to_string(labels) + ",";
+      } else {
+        result += " " + src[i].to_string(labels) + ",";
+      }
       end_comma = true;
     }
 

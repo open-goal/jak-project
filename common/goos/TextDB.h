@@ -91,8 +91,9 @@ class TextDb {
  public:
   void insert(const std::shared_ptr<SourceText>& frag);
   void link(const Object& o, std::shared_ptr<SourceText> frag, int offset);
-  std::string get_info_for(const Object& o, bool* terminate_compiler_error = nullptr);
-  std::string get_info_for(const std::shared_ptr<SourceText>& frag, int offset);
+  std::string get_info_for(const Object& o, bool* terminate_compiler_error = nullptr) const;
+  std::string get_info_for(const std::shared_ptr<SourceText>& frag, int offset) const;
+  void inherit_info(const Object& parent, const Object& child);
 
  private:
   std::vector<std::shared_ptr<SourceText>> fragments;

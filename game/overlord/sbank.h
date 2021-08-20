@@ -1,8 +1,16 @@
 #pragma once
 
-#ifndef JAK_V2_SBANK_H
-#define JAK_V2_SBANK_H
+#include "common/common_types.h"
+
+struct SoundBank {
+  char name[16];
+  u32 unk1;  // maybe status?
+  u32 unk2;  // maybe size
+};
+
+void sbank_init_globals();
 
 void InitBanks();
 
-#endif  // JAK_V2_SBANK_H
+SoundBank* AllocateBank();
+SoundBank* LookupBank(const char* name);

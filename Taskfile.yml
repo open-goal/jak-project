@@ -1,0 +1,63 @@
+version: '3'
+
+tasks:
+  format:
+    cmds:
+      - python ./third-party/run-clang-format/run-clang-format.py -r common decompiler game goalc test -i
+  run-game:
+    cmds:
+      - ./out/build/Debug/bin/gk.exe -fakeiso -debug -nodisplay
+  repl:
+    cmds:
+      - ./out/build/Release/bin/goalc.exe -auto-lt
+  decomp:
+    cmds:
+      - ./out/build/Release/bin/decompiler.exe "./decompiler/config/jak1_ntsc_black_label.jsonc" "./iso_data/jak1" "./decompiler_out/jak1"
+  decomp-clean:
+    cmds:
+      - rm ./decompiler_out/**/*.asm
+      - rm ./decompiler_out/**/*disasm.gc
+  decomp-file:
+    cmds:
+      - python ./scripts/next-decomp-file.py --file "{{.FILE}}"
+      - task: decomp
+  decomp-list:
+    cmds:
+      - python ./scripts/next-decomp-file.py --list "{{.LIST}}"
+    vars:
+      LIST: '{{default "0" .LIST}}'
+  # python -m pip install -U watchdog[watchmedo]
+  decomp-watch:
+    cmds:
+      - watchmedo shell-command --drop --patterns="*.gc;*.jsonc" --recursive --command='task decomp-file FILE="{{.FILE}}"' ./decompiler/config/
+  clean-all-types:
+    cmds:
+      - python ./scripts/cleanup-all-types.py
+  analyze-ee-memory:
+    cmds:
+      - ./out/build/Release/bin/memory_dump_tool.exe "{{.FILE}}" ./ > ee-analysis.log
+  watch-pcsx2:
+    cmds:
+      - watchmedo shell-command --drop --patterns="*.p2s" --recursive --command='task analyze-ee-memory FILE="${watch_src_path}"' "{{.SAVESTATE_DIR}}"
+    vars:
+      SAVESTATE_DIR: '{{default "." .SAVESTATE_DIR}}'
+  offline-tests:
+    cmds:
+      - ./out/build/Release/bin/offline-test.exe "./iso_data/jak1"
+  add-reference-test:
+    cmds:
+      - task: decomp-file
+      - python ./scripts/add-reference-test.py --file "{{.FILE}}"
+      - task: offline-tests
+  update-reference-tests:
+    cmds:
+      - cmd: python ./scripts/default-file-or-folder.py --path failures
+      - cmd: ./out/build/Release/bin/offline-test.exe "./iso_data/jak1" --dump-mode
+        ignore_error: true
+      - python ./scripts/update_decomp_reference.py ./failures ./test/decompiler/reference/
+      - task: offline-tests
+  find-label-types:
+    cmds:
+      - python ./scripts/next-decomp-file.py --file "{{.FILE}}"
+      - task: decomp
+      - python ./scripts/find-label-types.py --file "{{.FILE}}"

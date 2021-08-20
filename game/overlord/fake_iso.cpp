@@ -10,7 +10,7 @@
  */
 
 #include <cstring>
-#include <cassert>
+#include "common/util/assert.h"
 #include "fake_iso.h"
 #include "game/sce/iop.h"
 #include "isocommon.h"
@@ -301,6 +301,8 @@ uint32_t FS_BeginRead(LoadStackEntry* fd, void* buffer, int32_t len) {
 
   fd->location += (len / SECTOR_SIZE);
   read_in_progress = true;
+
+  fclose(fp);
 
   return CMD_STATUS_IN_PROGRESS;
 }

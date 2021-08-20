@@ -20,7 +20,7 @@ CodeGenerator::CodeGenerator(FileEnv* env, DebugInfo* debug_info)
 /*!
  * Generate an object file.
  */
-std::vector<u8> CodeGenerator::run() {
+std::vector<u8> CodeGenerator::run(const TypeSystem* ts) {
   std::unordered_set<std::string> function_names;
 
   // first, add each function to the ObjectGenerator (but don't add any data)
@@ -32,7 +32,7 @@ std::vector<u8> CodeGenerator::run() {
              f->name().c_str());
       throw std::runtime_error("Failed to codegen.");
     }
-    m_gen.add_function_to_seg(f->segment, &m_debug_info->add_function(f->name()));
+    m_gen.add_function_to_seg(f->segment, &m_debug_info->add_function(f->name(), m_fe->name()));
   }
 
   // next, add all static objects.
@@ -45,8 +45,8 @@ std::vector<u8> CodeGenerator::run() {
     do_function(m_fe->functions().at(i).get(), i);
   }
 
-  // generate a v3 object. TODO - support for v4 "data" objects.
-  return m_gen.generate_data_v3().to_vector();
+  // generate a v3 object.
+  return m_gen.generate_data_v3(ts).to_vector();
 }
 
 void CodeGenerator::do_function(FunctionEnv* env, int f_idx) {
@@ -63,6 +63,7 @@ void CodeGenerator::do_function(FunctionEnv* env, int f_idx) {
  */
 void CodeGenerator::do_goal_function(FunctionEnv* env, int f_idx) {
   bool use_new_xmms = true;
+  auto* debug = &m_debug_info->function_by_name(env->name());
 
   auto f_rec = m_gen.get_existing_function_record(f_idx);
   // todo, extra alignment settings
@@ -154,6 +155,7 @@ void CodeGenerator::do_goal_function(FunctionEnv* env, int f_idx) {
                             InstructionInfo::Kind::PROLOGUE);
     }
   }
+  debug->stack_usage = stack_offset;
 
   // emit each IR into x86 instructions.
   for (int ir_idx = 0; ir_idx < int(env->code().size()); ir_idx++) {
@@ -173,6 +175,11 @@ void CodeGenerator::do_goal_function(FunctionEnv* env, int f_idx) {
         } else if (op.reg.is_xmm() && op.reg_class == RegClass::FLOAT) {
           // load xmm32 off of the stack
           m_gen.add_instr(IGen::load_reg_offset_xmm32(
+                              op.reg, RSP, allocs.get_slot_for_spill(op.slot) * GPR_SIZE),
+                          i_rec);
+        } else if (op.reg.is_xmm() &&
+                   (op.reg_class == RegClass::VECTOR_FLOAT || op.reg_class == RegClass::INT_128)) {
+          m_gen.add_instr(IGen::load128_xmm128_reg_offset(
                               op.reg, RSP, allocs.get_slot_for_spill(op.slot) * GPR_SIZE),
                           i_rec);
         } else {
@@ -195,6 +202,11 @@ void CodeGenerator::do_goal_function(FunctionEnv* env, int f_idx) {
         } else if (op.reg.is_xmm() && op.reg_class == RegClass::FLOAT) {
           // store xmm32 on the stack
           m_gen.add_instr(IGen::store_reg_offset_xmm32(
+                              RSP, op.reg, allocs.get_slot_for_spill(op.slot) * GPR_SIZE),
+                          i_rec);
+        } else if (op.reg.is_xmm() &&
+                   (op.reg_class == RegClass::VECTOR_FLOAT || op.reg_class == RegClass::INT_128)) {
+          m_gen.add_instr(IGen::store128_xmm128_reg_offset(
                               RSP, op.reg, allocs.get_slot_for_spill(op.slot) * GPR_SIZE),
                           i_rec);
         } else {

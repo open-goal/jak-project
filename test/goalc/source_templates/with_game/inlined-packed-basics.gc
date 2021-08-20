@@ -1,0 +1,63 @@
+(deftype spool-anim-test (basic)
+  ((name         basic   :offset 16) ;; why?
+   (index        int32   :offset-assert 20)
+   (parts        int32   :offset-assert 24)
+   (priority     float   :offset-assert 28)
+   (owner        uint64  :offset-assert 32)
+   (command-list basic   :offset-assert 40)
+   )
+  :pack-me
+  :method-count-assert 9
+  :size-assert         #x2c
+  :flag-assert         #x90000002c
+  )
+
+(deftype external-art-control-test (basic)
+  ((buffer               basic    2         :offset-assert 4)
+   (rec                  spool-anim-test 3  :inline)
+   (spool-lock           uint64             :offset-assert 160)
+   (reserve-buffer       basic              :offset-assert 168)
+   (reserve-buffer-count int32              :offset-assert 172)
+   (active-stream        basic              :offset-assert 176)
+   (preload-stream       spool-anim-test :inline :offset-assert 184)
+   (last-preload-stream  spool-anim-test :inline :offset-assert 232)
+   (end-pad uint32)
+   )
+  :method-count-assert 17
+  :size-assert         #x118
+  :flag-assert         #x1100000118
+  (:methods
+   (dummy-9 () none 9)
+   (dummy-10 () none 10)
+   (dummy-11 () none 11)
+   (dummy-12 () none 12)
+   (dummy-13 () none 13)
+   (dummy-14 () none 14)
+   (dummy-15 () none 15)
+   (dummy-16 () none 16)
+   )
+  )
+
+(deftype simple (basic)
+  ((data float))
+  )
+
+;; 0   <- type pointer.
+;; 4   <- buffer 0
+;; 8   <- buffer 1
+;; 12  <- EMPTY
+;; 16  <- rec's type pointer
+
+(define format _format)
+(let ((test (new 'global 'external-art-control-test)))
+  (format #t "rec stride: ~D~%" (&- (-> test rec 1) (-> test rec 0)))     ;; should be 48
+  (format #t "offset of float: ~D~%" (&- (&-> test rec 0 priority) test)) ;; should be 40
+  (format #t "offset: ~D~%" (&- (-> test rec 0) test))                    ;; should be 16
+  (format #t "offset2: ~D~%" (&- (-> test preload-stream) test))          ;; should be 184
+  )
+
+(let ((sb (new 'global 'inline-array 'simple 3)))
+  (format #t "array: #x~X~%" (logand 15 (the int sb)))
+  (format #t "first: #x~X~%" (logand 15 (the int (-> sb 0))))
+  )
+0

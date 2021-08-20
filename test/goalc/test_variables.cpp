@@ -25,13 +25,15 @@ struct VariableParam {
 class VariableTests : public testing::TestWithParam<VariableParam> {
  public:
   static void SetUpTestSuite() {
-    runtime_thread = std::thread((GoalTest::runtime_no_kernel));
-    runner.c = &compiler;
+    shared_compiler = std::make_unique<SharedCompiler>();
+    shared_compiler->runtime_thread = std::thread((GoalTest::runtime_no_kernel));
+    shared_compiler->runner.c = &shared_compiler->compiler;
   }
 
   static void TearDownTestSuite() {
-    compiler.shutdown_target();
-    runtime_thread.join();
+    shared_compiler->compiler.shutdown_target();
+    shared_compiler->runtime_thread.join();
+    shared_compiler.reset();
   }
 
   void SetUp() {
@@ -41,91 +43,100 @@ class VariableTests : public testing::TestWithParam<VariableParam> {
 
   void TearDown() {}
 
-  static std::thread runtime_thread;
-  static Compiler compiler;
-  static GoalTest::CompilerTestRunner runner;
+  struct SharedCompiler {
+    std::thread runtime_thread;
+    Compiler compiler;
+    GoalTest::CompilerTestRunner runner;
+  };
+
+  static std::unique_ptr<SharedCompiler> shared_compiler;
 
   std::string testCategory = "variables";
   inja::Environment env{GoalTest::getTemplateDir(testCategory),
                         GoalTest::getGeneratedDir(testCategory)};
 };
 
-std::thread VariableTests::runtime_thread;
-Compiler VariableTests::compiler;
-GoalTest::CompilerTestRunner VariableTests::runner;
+std::unique_ptr<VariableTests::SharedCompiler> VariableTests::shared_compiler;
 
 TEST_F(VariableTests, Globals) {
-  runner.run_static_test(env, testCategory, "defglobalconstant-1.static.gc", {"17\n"});
-  runner.run_static_test(env, testCategory, "defglobalconstant-2.static.gc", {"18\n"});
+  shared_compiler->runner.run_static_test(env, testCategory, "defglobalconstant-1.static.gc",
+                                          {"17\n"});
+  shared_compiler->runner.run_static_test(env, testCategory, "defglobalconstant-2.static.gc",
+                                          {"18\n"});
 }
 
 TEST_F(VariableTests, Definitions) {
-  runner.run_static_test(env, testCategory, "define.static.gc", {"17\n"});
+  shared_compiler->runner.run_static_test(env, testCategory, "define.static.gc", {"17\n"});
 }
 
 TEST_F(VariableTests, Let) {
-  runner.run_static_test(env, testCategory, "let.static.gc", {"30\n"});
-  runner.run_static_test(env, testCategory, "let-star.static.gc", {"30\n"});
-  runner.run_static_test(env, testCategory, "mlet.static.gc", {"10\n"});
+  shared_compiler->runner.run_static_test(env, testCategory, "let.static.gc", {"30\n"});
+  shared_compiler->runner.run_static_test(env, testCategory, "let-star.static.gc", {"30\n"});
+  shared_compiler->runner.run_static_test(env, testCategory, "mlet.static.gc", {"10\n"});
 }
 
 TEST_F(VariableTests, StackVars) {
-  runner.run_static_test(env, testCategory, "stack-ints.gc", {"12\n"});
-  runner.run_static_test(env, testCategory, "stack-ints-2.gc", {"1\n"});
+  shared_compiler->runner.run_static_test(env, testCategory, "stack-ints.gc", {"12\n"});
+  shared_compiler->runner.run_static_test(env, testCategory, "stack-ints-2.gc", {"1\n"});
 }
 
 TEST_F(VariableTests, Bitfields) {
-  runner.run_static_test(env, testCategory, "bitfield-enums.gc", {"5\n"});
-  runner.run_static_test(env, testCategory, "integer-enums.gc", {"11\n"});
+  shared_compiler->runner.run_static_test(env, testCategory, "bitfield-enums.gc", {"5\n"});
+  shared_compiler->runner.run_static_test(env, testCategory, "integer-enums.gc", {"11\n"});
 }
 
 TEST_F(VariableTests, InlineAsm) {
-  runner.run_static_test(env, testCategory, "inline-asm.static.gc", {"1\n"});
+  shared_compiler->runner.run_static_test(env, testCategory, "inline-asm.static.gc", {"1\n"});
 }
 
 TEST_F(VariableTests, StaticBitfieldField) {
-  runner.run_static_test(env, testCategory, "static-bitfield-field.gc", {"22\n"});
+  shared_compiler->runner.run_static_test(env, testCategory, "static-bitfield-field.gc", {"22\n"});
 }
 
 TEST_F(VariableTests, StackArrayAlignment) {
-  runner.run_static_test(env, testCategory, "stack-array-align.gc", {"3\n"});
+  shared_compiler->runner.run_static_test(env, testCategory, "stack-array-align.gc", {"3\n"});
 }
 
 TEST_F(VariableTests, StackStructureAlignment) {
-  runner.run_static_test(env, testCategory, "stack-structure-align.gc", {"1234\n"});
+  shared_compiler->runner.run_static_test(env, testCategory, "stack-structure-align.gc",
+                                          {"1234\n"});
 }
 
 TEST_F(VariableTests, GetSymbol) {
-  runner.run_static_test(env, testCategory, "get-symbol-1.static.gc",
-                         {"1342756\n"});  // 0x147d24 in hex
-  runner.run_static_test(env, testCategory, "get-symbol-2.static.gc",
-                         {"1342764\n"});  // 0x147d2c in hex
+  shared_compiler->runner.run_static_test(env, testCategory, "get-symbol-1.static.gc",
+                                          {"1342756\n"});  // 0x147d24 in hex
+  shared_compiler->runner.run_static_test(env, testCategory, "get-symbol-2.static.gc",
+                                          {"1342764\n"});  // 0x147d2c in hex
 }
 
 TEST_F(VariableTests, Constants) {
-  // TODO - runner.run_static_test(env, testCategory, "string-constant-1.static.gc");
+  // TODO - shared_compiler->runner.run_static_test(env, testCategory,
+  // "string-constant-1.static.gc");
   std::string expected = "\"test string!\"";
-  runner.run_static_test(env, testCategory, "string-constant-2.static.gc", {expected},
-                         expected.size());
+  shared_compiler->runner.run_static_test(env, testCategory, "string-constant-2.static.gc",
+                                          {expected}, expected.size());
 }
 
 TEST_F(VariableTests, Symbols) {
-  runner.run_static_test(env, testCategory, "quote-symbol.static.gc", {"banana\n0\n"});
+  shared_compiler->runner.run_static_test(env, testCategory, "quote-symbol.static.gc",
+                                          {"banana\n0\n"});
   std::string expected = "test-string";
-  runner.run_static_test(env, testCategory, "string-symbol.static.gc", {expected}, expected.size());
+  shared_compiler->runner.run_static_test(env, testCategory, "string-symbol.static.gc", {expected},
+                                          expected.size());
 }
 
 TEST_F(VariableTests, Formatting) {
-  runner.run_static_test(env, testCategory, "format-reg-order.static.gc",
-                         {"test 1 2 3 4 5 6\n0\n"});
+  shared_compiler->runner.run_static_test(env, testCategory, "format-reg-order.static.gc",
+                                          {"test 1 2 3 4 5 6\n0\n"});
 }
 
 TEST_F(VariableTests, DeReference) {
-  runner.run_static_test(env, testCategory, "deref-simple.static.gc", {"structure\n0\n"});
+  shared_compiler->runner.run_static_test(env, testCategory, "deref-simple.static.gc",
+                                          {"structure\n0\n"});
 }
 
 TEST_F(VariableTests, Pointers) {
-  runner.run_static_test(env, testCategory, "pointers.static.gc", {"13\n"});
+  shared_compiler->runner.run_static_test(env, testCategory, "pointers.static.gc", {"13\n"});
 }
 
 //  expected =
@@ -141,4 +152,4 @@ TEST_F(VariableTests, Pointers) {
 //  expected += "test P (with type) 1447236\n";
 //
 //  // todo, finish format testing.
-//  runner.run_test_from_file("test-format.gc", {expected}, expected.size());
+//  shared_compiler->runner.run_test_from_file("test-format.gc", {expected}, expected.size());

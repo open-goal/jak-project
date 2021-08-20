@@ -5,9 +5,6 @@
  * An object file's data with linking information included.
  */
 
-#ifndef NEXT_LINKEDOBJECTFILE_H
-#define NEXT_LINKEDOBJECTFILE_H
-
 #include <cstdint>
 #include <vector>
 #include <string>
@@ -42,6 +39,11 @@ class LinkedObjectFile {
                         LinkedWord::Kind kind);
   void symbol_link_offset(int source_segment, int source_offset, const char* name);
   Function& get_function_at_label(int label_id);
+  Function* try_get_function_at_label(int label_id);
+  Function* try_get_function_at_label(const DecompilerLabel& label);
+
+  const Function* try_get_function_at_label(int label_id) const;
+  const Function* try_get_function_at_label(const DecompilerLabel& label) const;
   std::string get_label_name(int label_id) const;
   uint32_t set_ordered_label_names();
   void find_code();
@@ -50,10 +52,9 @@ class LinkedObjectFile {
   void disassemble_functions();
   void process_fp_relative_links();
   std::string print_scripts();
-  std::string print_disassembly();
+  std::string print_disassembly(bool write_hex);
   bool has_any_functions();
   void append_word_to_string(std::string& dest, const LinkedWord& word) const;
-  std::string to_asm_json(const std::string& obj_file_name);
   std::string print_function_disassembly(Function& func,
                                          int seg,
                                          bool write_hex,
@@ -135,5 +136,3 @@ class LinkedObjectFile {
   std::vector<std::unordered_map<int, int>> label_per_seg_by_offset;
 };
 }  // namespace decompiler
-
-#endif  // NEXT_LINKEDOBJECTFILE_H

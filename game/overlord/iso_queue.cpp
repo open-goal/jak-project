@@ -1,6 +1,6 @@
 #include <cstring>
 #include <cstdio>
-#include <cassert>
+#include "common/util/assert.h"
 #include "common/log/log.h"
 #include "game/sce/iop.h"
 #include "iso_queue.h"
@@ -35,7 +35,6 @@ VagCommand vag_cmds[N_VAG_CMDS];
 
 static s32 sSema;
 
-IsoBufferHeader* TryAllocateBuffer(uint32_t size);
 void ReleaseMessage(IsoMessage* cmd);
 void FreeVAGCommand(VagCommand* cmd);
 

@@ -1,4 +1,4 @@
-#include <cassert>
+#include "common/util/assert.h"
 #include <vector>
 #include "Function.h"
 #include "common/log/log.h"
@@ -75,9 +75,11 @@ void Function::analyze_prologue(const LinkedObjectFile& file) {
       auto& instr = instructions.at(idx);
       // storing stack pointer on the stack is done by some ASM kernel functions
       if (instr.kind == InstructionKind::SW && instr.get_src(0).get_reg() == make_gpr(Reg::SP)) {
-        printf("[Warning] %s Suspected ASM function based on this instruction in prologue: %s\n",
-               guessed_name.to_string().c_str(), instr.to_string(file.labels).c_str());
-        warnings += ";; Flagged as ASM function because of " + instr.to_string(file.labels) + "\n";
+        lg::warn(
+            "Function {} was flagged as asm due to this instruction: {}. Consider flagging as asm "
+            "in config!",
+            guessed_name.to_string(), instr.to_string(file.labels));
+        warnings.general_warning("Flagged as asm because of {}", instr.to_string(file.labels));
         suspected_asm = true;
         return;
       }
@@ -98,9 +100,11 @@ void Function::analyze_prologue(const LinkedObjectFile& file) {
       // storing s7 on the stack is done by interrupt handlers, which we probably don't want to
       // support
       if (instr.kind == InstructionKind::SD && instr.get_src(0).get_reg() == make_gpr(Reg::S7)) {
-        lg::warn("{} Suspected ASM function based on this instruction in prologue: {}\n",
-                 guessed_name.to_string(), instr.to_string(file.labels));
-        warnings += ";; Flagged as ASM function because of " + instr.to_string(file.labels) + "\n";
+        lg::warn(
+            "Function {} was flagged as asm due to this instruction: {}. Consider flagging as asm "
+            "in config!",
+            guessed_name.to_string(), instr.to_string(file.labels));
+        warnings.general_warning("Flagged as asm because of {}", instr.to_string(file.labels));
         suspected_asm = true;
         return;
       }
@@ -133,27 +137,12 @@ void Function::analyze_prologue(const LinkedObjectFile& file) {
     while (is_no_link_gpr_store(instructions.at(gpr_idx), 16, {}, {}, make_gpr(Reg::SP))) {
       auto store_reg = instructions.at(gpr_idx).get_src(0).get_reg();
 
-      // sometimes stack memory is zeroed immediately after gpr backups, and this fools the previous
-      // check.
-      if (store_reg == make_gpr(Reg::R0)) {
-        printf(
-            "[Warning] %s Stack Zeroing Detected in Function::analyze_prologue, prologue may be "
-            "wrong\n",
-            guessed_name.to_string().c_str());
-        warnings += ";; Stack Zeroing Detected, prologue may be wrong\n";
+      // sometimes stack memory is zeroed or a register is spilled immediately after gpr backups,
+      // and this fools the previous check.
+      if (store_reg == make_gpr(Reg::R0) || store_reg == make_gpr(Reg::A0)) {
+        warnings.general_warning("Check prologue - tricky store of {}", store_reg.to_string());
         expect_nothing_after_gprs = true;
         break;
-      }
-
-      // this also happens a few times per game.  this a0/r0 check seems to be all that's needed to
-      // avoid false positives here!
-      if (store_reg == make_gpr(Reg::A0)) {
-        suspected_asm = true;
-        printf(
-            "[Warning] %s Suspected ASM function because register $a0 was stored on the stack!\n",
-            guessed_name.to_string().c_str());
-        warnings += ";; a0 on stack detected, flagging as asm\n";
-        return;
       }
 
       n_gpr_backups++;
@@ -168,11 +157,10 @@ void Function::analyze_prologue(const LinkedObjectFile& file) {
         assert(this_offset == prologue.gpr_backup_offset + 16 * i);
         if (this_reg != get_expected_gpr_backup(i, n_gpr_backups)) {
           suspected_asm = true;
-          printf("[Warning] %s Suspected asm function that isn't flagged due to stack store %s\n",
-                 guessed_name.to_string().c_str(),
-                 instructions.at(idx + i).to_string(file.labels).c_str());
-          warnings += ";; Suspected asm function due to stack store: " +
-                      instructions.at(idx + i).to_string(file.labels) + "\n";
+          lg::warn("Function {} stores on the stack in a strange way ({}), flagging as asm!",
+                   instructions.at(idx + i).to_string(file.labels), guessed_name.to_string());
+          warnings.general_warning("Flagged as asm due to strange stack store: {}",
+                                   instructions.at(idx + i).to_string(file.labels));
           return;
         }
       }
@@ -198,11 +186,10 @@ void Function::analyze_prologue(const LinkedObjectFile& file) {
           assert(this_offset == prologue.fpr_backup_offset + 4 * i);
           if (this_reg != get_expected_fpr_backup(i, n_fpr_backups)) {
             suspected_asm = true;
-            printf("[Warning] %s Suspected asm function that isn't flagged due to stack store %s\n",
-                   guessed_name.to_string().c_str(),
-                   instructions.at(idx + i).to_string(file.labels).c_str());
-            warnings += ";; Suspected asm function due to stack store: " +
-                        instructions.at(idx + i).to_string(file.labels) + "\n";
+            lg::warn("Function {} stores on the stack in a strange way ({}), flagging as asm!",
+                     instructions.at(idx + i).to_string(file.labels), guessed_name.to_string());
+            warnings.general_warning("Flagged as asm due to strange stack store: {}",
+                                     instructions.at(idx + i).to_string(file.labels));
             return;
           }
         }
@@ -292,10 +279,45 @@ void Function::analyze_prologue(const LinkedObjectFile& file) {
   // it's fine to have the entire first basic block be the prologue - you could loop back to the
   // first instruction past the prologue.
   assert(basic_blocks.at(0).end_word >= prologue_end);
-  basic_blocks.at(0).start_word = prologue_end;
+  resize_first_block(prologue_end, file);
   prologue.decoded = true;
 
   check_epilogue(file);
+}
+
+void Function::resize_first_block(int new_start, const LinkedObjectFile&) {
+  basic_blocks.at(0).start_word = new_start;
+
+  if (basic_blocks.size() >= 2 && basic_blocks.at(1).start_word == new_start) {
+    lg::warn("Function {} loops back to the first instruction. This is rare/less tested.",
+             guessed_name.to_string());
+    // block 1 is now zero size, so we should eliminate it
+    auto& block0 = basic_blocks.at(0);
+    auto& block1 = basic_blocks.at(1);
+    block0.succ_ft = block1.succ_ft;
+    block0.succ_branch = block1.succ_branch;
+    block0.end_word = block1.end_word;
+    // it's only safe to this immediately after the basic block pass.
+    // now copy back:
+    for (size_t i = 1; i < basic_blocks.size() - 1; i++) {
+      basic_blocks[i] = basic_blocks[i + 1];
+    }
+
+    for (auto& block : basic_blocks) {
+      if (block.succ_branch > 0) {
+        block.succ_branch--;
+      }
+      if (block.succ_ft > 0) {
+        block.succ_ft--;
+      }
+      for (auto& p : block.pred) {
+        if (p > 0) {
+          p--;
+        }
+      }
+    }
+    basic_blocks.pop_back();
+  }
 }
 
 /*!
@@ -358,11 +380,9 @@ void Function::check_epilogue(const LinkedObjectFile& file) {
       idx--;
       assert(is_jr_ra(instructions.at(idx)));
       idx--;
-      printf(
-          "[Warning] %s Double Return Epilogue Hack!  This is probably an ASM function in "
-          "disguise\n",
-          guessed_name.to_string().c_str());
-      warnings += ";; Double Return Epilogue - this is probably an ASM function\n";
+      lg::warn("Function {} has a double return and is being flagged as asm.",
+               guessed_name.to_string());
+      warnings.general_warning("Flagged as asm due to double return");
     }
     // delay slot should be daddiu sp, sp, offset
     assert(is_gpr_2_imm_int(instructions.at(idx), InstructionKind::DADDIU, make_gpr(Reg::SP),
@@ -654,6 +674,7 @@ void Function::find_type_defs(LinkedObjectFile& file, DecompilerTypeSystem& dts)
         flag_label.offset += 4;
         u64 word2 = file.read_data_word(flag_label);
         word |= (word2 << 32);
+        types_defined.push_back(type_name);
         dts.add_type_flags(type_name, word);
         //        fmt::print("Flags are 0x{:x}\n", word);
         state = 0;

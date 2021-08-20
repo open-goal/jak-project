@@ -1,6 +1,7 @@
 #include "third-party/fmt/core.h"
 #include "StaticObject.h"
 #include "common/goal_constants.h"
+#include "goalc/compiler/Env.h"
 
 namespace {
 template <typename T>
@@ -90,7 +91,7 @@ StaticObject::LoadInfo StaticStructure::get_load_info() const {
 }
 
 int StaticStructure::get_addr_offset() const {
-  return 0;
+  return m_offset;
 }
 
 void StaticStructure::generate_structure(emitter::ObjectGenerator* gen) {
@@ -102,11 +103,16 @@ void StaticStructure::generate_structure(emitter::ObjectGenerator* gen) {
   }
 
   for (auto& ptr : pointers) {
-    gen->link_static_pointer(rec, ptr.offset_in_this, ptr.dest->rec, ptr.offset_in_dest);
+    gen->link_static_pointer_to_data(rec, ptr.offset_in_this, ptr.dest->rec, ptr.offset_in_dest);
   }
 
   for (auto& type : types) {
     gen->link_static_type_ptr(rec, type.offset, type.name);
+  }
+
+  for (auto& func : functions) {
+    gen->link_static_pointer_to_function(rec, func.offset_in_this,
+                                         gen->get_existing_function_record(func.func->idx_in_file));
   }
 }
 
@@ -136,6 +142,13 @@ void StaticStructure::add_type_record(std::string name, int offset) {
   srec.name = std::move(name);
   srec.offset = offset;
   types.push_back(srec);
+}
+
+void StaticStructure::add_function_record(const FunctionEnv* function, int offset) {
+  FunctionRecord frec;
+  frec.func = function;
+  frec.offset_in_this = offset;
+  functions.push_back(frec);
 }
 
 ///////////////////
@@ -180,7 +193,7 @@ void StaticPair::generate_item(const StaticResult& item, int offset) {
     // if it's a constant data, it should always be a boxed integer for a pair.
     // or I guess you could put a normal integer too. Either way, we assume signed here,
     // though we may need to allow overflow so you can store either signed/unsigned things in pairs
-    s32 value = item.get_as_s32();
+    s32 value = item.constant_s32();
     memcpy(data.data() + offset, &value, POINTER_SIZE);
   }
 }
@@ -197,12 +210,16 @@ StaticResult StaticResult::make_structure_reference(StaticStructure* structure, 
   return result;
 }
 
-StaticResult StaticResult::make_constant_data(u64 value, TypeSpec ts) {
+StaticResult StaticResult::make_constant_data(const ConstantValue& data, TypeSpec ts) {
   StaticResult result;
   result.m_kind = Kind::CONSTANT_DATA;
-  result.m_constant_data = value;
+  result.m_constant_data = data;
   result.m_ts = std::move(ts);
   return result;
+}
+
+StaticResult StaticResult::make_constant_data(u64 data, const TypeSpec& ts) {
+  return make_constant_data(ConstantValue((void*)&data, sizeof(u64)), ts);
 }
 
 StaticResult StaticResult::make_symbol(const std::string& name) {
@@ -210,5 +227,22 @@ StaticResult StaticResult::make_symbol(const std::string& name) {
   result.m_kind = Kind::SYMBOL;
   result.m_symbol = name;
   result.m_ts = TypeSpec("symbol");
+  return result;
+}
+
+StaticResult StaticResult::make_type_ref(const std::string& type_name, int method_count) {
+  StaticResult result;
+  result.m_kind = Kind::TYPE;
+  result.m_symbol = type_name;
+  result.m_method_count = method_count;
+  result.m_ts = TypeSpec("type");
+  return result;
+}
+
+StaticResult StaticResult::make_func_ref(const FunctionEnv* func, const TypeSpec& type) {
+  StaticResult result;
+  result.m_kind = Kind::FUNCTION_REFERENCE;
+  result.m_func = func;
+  result.m_ts = type;
   return result;
 }

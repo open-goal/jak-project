@@ -4,7 +4,7 @@
  * DONE!
  */
 
-#include <cassert>
+#include "common/util/assert.h"
 #include <cstring>
 #include <cstdio>
 #include "game/sce/sif_ee.h"

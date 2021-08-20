@@ -5,3 +5,186 @@
 ;; name in dgo: timer
 ;; dgos: GAME, ENGINE
 
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;; Timer (EE timers)
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+(defun timer-reset ((timer timer-bank))
+  "Reset a timer's counter to zero"
+
+  (#when PC_PORT
+    ;; just store the current offset.
+    (if (= timer TIMER1_BANK)
+        (set! *timer-reset-value* (get-bus-clock/256))
+        (format 0 "Unknown timer #x~X in timer-reset~%")
+        )
+    (return (the uint 0))
+    )
+  (.sync.l)
+  (set! (-> timer count) 0)
+  (.sync.l)
+  )
+
+(defun timer-count ((timer timer-bank))
+  "Return a timer's counter value"
+
+  (#when PC_PORT
+    (when (= timer TIMER1_BANK)
+      (return (- (get-bus-clock/256) *timer-reset-value*))
+      )
+    (format 0 "Unknown timer #x~X requested.~%" timer)
+    )
+
+  (.sync.l)
+  (let ((count (-> timer count)))
+    (.sync.l)
+    count
+    )
+  )
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;; Interrupt Control
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+;; cop0 status register "interrupt enable" flag
+;; if cop0 status is needed anywhere else, move this elsewhere
+(defconstant COP0_STATUS_IE (the-as uint #x1))
+
+(defun disable-irq ()
+  "Disable all interrupts. Has no effect on PC Port"
+  (rlet ((status :class gpr :type uint))
+    (let ((status-mask (lognot COP0_STATUS_IE)))
+      (.mfc0 status Status)
+      (logand! status status-mask) ;; should status-mask be replaced directly?
+      (.mtc0 Status status)
+      (.sync.p)
+      )
+    )
+  )
+
+(defun enable-irq ()
+  "Enable all interrupts. Has no effect on PC Port."
+  (rlet ((status :class gpr :type uint))
+    (.mfc0 status Status)
+    (logior! status COP0_STATUS_IE)
+    (.mtc0 Status status)
+    (.sync.p)
+    )
+  )
+
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;; Stopwatch (CPU clock cycle counting)
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+(defun stopwatch-init ((obj stopwatch))
+  "Init a stopwatch"
+  (set! (-> obj begin-level) 0)
+  (set! (-> obj prev-time-elapsed) 0)
+  )
+
+
+(defun stopwatch-reset ((obj stopwatch))
+  "Restart a stopwatch's times"
+  (set! (-> obj prev-time-elapsed) 0)
+  (when (> (-> obj begin-level) 0)
+    (let ((count 0))
+      (.mfc0 count Count)
+      (#when PC_PORT
+        (set! count (the int (get-cpu-clock)))
+        )
+      (set! (-> obj start-time) count)
+      )
+    )
+  )
+
+(defun stopwatch-start ((obj stopwatch))
+  "Start a stopwatch from scratch"
+  (when (zero? (-> obj begin-level))
+    (set! (-> obj begin-level) 1)
+    (let ((count 0))
+      (.mfc0 count Count)
+      (#when PC_PORT
+        (set! count (the int (get-cpu-clock)))
+        )
+      (set! (-> obj start-time) count)
+      )
+    )
+  )
+
+(defun stopwatch-stop ((obj stopwatch))
+  "Fully stop a stopwatch and save its elapsed time"
+  (when (> (-> obj begin-level) 0)
+    (set! (-> obj begin-level) 0)
+    (let ((count 0))
+      (let ((count 0))
+        (.mfc0 count Count) ;; wrong register? a typo in a rlet? who knows.
+        (#when PC_PORT
+          (set! count (the int (get-cpu-clock)))
+          )
+        (+! (-> obj prev-time-elapsed) (- count (-> obj start-time)))
+        )
+      )
+    )
+  )
+
+(defun stopwatch-begin ((obj stopwatch))
+  "Begin a stopwatch level, and starts it if it hasn't yet"
+  (when (zero? (-> obj begin-level))
+    (let ((count 0))
+      (.mfc0 count Count)
+      (#when PC_PORT
+        (set! count (the int (get-cpu-clock)))
+        )
+      (set! (-> obj start-time) count)
+      )
+    )
+  (+! (-> obj begin-level) 1)
+  )
+
+(defun stopwatch-end ((obj stopwatch))
+  "End a stopwatch level. Stops the stopwatch if it's back to level zero.
+   There is no guard against ending a stopwatch too many times, and a negative level
+   will cause errors!"
+  (+! (-> obj begin-level) -1)
+  (when (zero? (-> obj begin-level))
+    (set! (-> obj begin-level) 0)
+    (let ((count 0))
+      (.mfc0 count Count)
+      (#when PC_PORT
+        (set! count (the int (get-cpu-clock)))
+        )
+
+      (+! (-> obj prev-time-elapsed) (- count (-> obj start-time)))
+      )
+    )
+  )
+
+(defun stopwatch-elapsed-ticks ((obj stopwatch))
+  "Returns the elapsed time so far (in clock cycles) of a stopwatch"
+  (let ((elapsed (-> obj prev-time-elapsed)))
+    (when (> (-> obj begin-level) 0)
+      (let ((count (the uint 0)))
+        (.mfc0 count Count)
+        (#when PC_PORT
+          (set! count (get-cpu-clock))
+          )
+
+        (+! elapsed (- count (-> obj start-time)))
+        (set! count elapsed) ;; ??
+        )
+      )
+    elapsed
+    )
+  )
+
+(defglobalconstant EE_SECONDS_PER_TICK (/ 1.0 3000000)) ;; 300MHz is a "decent enough" estimate
+(defmacro cpu-ticks-to-seconds (ticks)
+  `(* ,EE_SECONDS_PER_TICK ,ticks)
+  )
+(defun stopwatch-elapsed-seconds ((obj stopwatch))
+  "Returns the elapsed time so far (in seconds) of a stopwatch"
+  (cpu-ticks-to-seconds (stopwatch-elapsed-ticks obj))
+  )
+

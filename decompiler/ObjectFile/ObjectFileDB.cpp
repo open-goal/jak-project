@@ -15,10 +15,10 @@
 #include "decompiler/data/tpage.h"
 #include "decompiler/data/game_text.h"
 #include "decompiler/data/StrFileReader.h"
+#include "decompiler/data/dir_tpages.h"
 #include "decompiler/data/game_count.h"
 #include "LinkedObjectFileCreation.h"
 #include "decompiler/config.h"
-#include "third-party/minilzo/minilzo.h"
 #include "common/util/BinaryReader.h"
 #include "common/util/Timer.h"
 #include "common/util/FileUtil.h"
@@ -26,7 +26,7 @@
 #include "decompiler/IR/BasicOpBuilder.h"
 #include "decompiler/Function/TypeInspector.h"
 #include "common/log/log.h"
-#include "third-party/json.hpp"
+#include "common/util/json_util.h"
 
 namespace decompiler {
 namespace {
@@ -111,7 +111,8 @@ ObjectFileData& ObjectFileDB::lookup_record(const ObjectFileRecord& rec) {
 ObjectFileDB::ObjectFileDB(const std::vector<std::string>& _dgos,
                            const std::string& obj_file_name_map_file,
                            const std::vector<std::string>& object_files,
-                           const std::vector<std::string>& str_files) {
+                           const std::vector<std::string>& str_files,
+                           const Config& config) {
   Timer timer;
 
   lg::info("-Loading types...");
@@ -129,14 +130,14 @@ ObjectFileDB::ObjectFileDB(const std::vector<std::string>& _dgos,
 
   lg::info("-Loading {} DGOs...", _dgos.size());
   for (auto& dgo : _dgos) {
-    get_objs_from_dgo(dgo);
+    get_objs_from_dgo(dgo, config);
   }
 
   lg::info("-Loading {} plain object files...", object_files.size());
   for (auto& obj : object_files) {
     auto data = file_util::read_binary_file(obj);
     auto name = obj_filename_to_name(obj);
-    add_obj_from_dgo(name, name, data.data(), data.size(), "NO-XGO");
+    add_obj_from_dgo(name, name, data.data(), data.size(), "NO-XGO", config);
   }
 
   lg::info("-Loading {} streaming object files...", str_files.size());
@@ -150,20 +151,22 @@ ObjectFileDB::ObjectFileDB(const std::vector<std::string>& _dgos,
       // append the chunk ID to the full name
       std::string name = obj_name + fmt::format("+{}", i);
       auto& data = reader.get_chunk(i);
-      add_obj_from_dgo(name, name, data.data(), data.size(), "NO-XGO");
+      add_obj_from_dgo(name, name, data.data(), data.size(), "NO-XGO", config);
     }
   }
 
   lg::info("ObjectFileDB Initialized\n");
   if (obj_files_by_name.empty()) {
-    lg::die(
+    lg::error(
         "No object files have been added. Check that there are input files and the allowed_objects "
         "list.");
   }
+
+  dts.bad_format_strings = config.bad_format_strings;
 }
 
 void ObjectFileDB::load_map_file(const std::string& map_data) {
-  auto j = nlohmann::json::parse(map_data, nullptr, true, true);
+  auto j = parse_commented_json(map_data, "ObjectFileDB Map File");
 
   for (auto& x : j) {
     auto mapped_name = x[0].get<std::string>();
@@ -187,63 +190,15 @@ void ObjectFileDB::load_map_file(const std::string& map_data) {
   }
 }
 
-constexpr int MAX_CHUNK_SIZE = 0x8000;
 /*!
  * Load the objects stored in the given DGO into the ObjectFileDB
  */
-void ObjectFileDB::get_objs_from_dgo(const std::string& filename) {
+void ObjectFileDB::get_objs_from_dgo(const std::string& filename, const Config& config) {
   auto dgo_data = file_util::read_binary_file(filename);
   stats.total_dgo_bytes += dgo_data.size();
 
-  const char jak2_header[] = "oZlB";
-  bool is_jak2 = true;
-  for (int i = 0; i < 4; i++) {
-    if (jak2_header[i] != dgo_data[i]) {
-      is_jak2 = false;
-    }
-  }
-
-  if (is_jak2) {
-    if (lzo_init() != LZO_E_OK) {
-      assert(false);
-    }
-    BinaryReader compressed_reader(dgo_data);
-    // seek past oZlB
-    compressed_reader.ffwd(4);
-    auto decompressed_size = compressed_reader.read<uint32_t>();
-    std::vector<uint8_t> decompressed_data;
-    decompressed_data.resize(decompressed_size);
-    size_t output_offset = 0;
-    while (true) {
-      // seek past alignment bytes and read the next chunk size
-      uint32_t chunk_size = 0;
-      while (!chunk_size) {
-        chunk_size = compressed_reader.read<uint32_t>();
-      }
-
-      if (chunk_size < MAX_CHUNK_SIZE) {
-        lzo_uint bytes_written;
-        auto lzo_rv =
-            lzo1x_decompress(compressed_reader.here(), chunk_size,
-                             decompressed_data.data() + output_offset, &bytes_written, nullptr);
-        assert(lzo_rv == LZO_E_OK);
-        compressed_reader.ffwd(chunk_size);
-        output_offset += bytes_written;
-      } else {
-        // nope - sometimes chunk_size is bigger than MAX, but we should still use max.
-        //        assert(chunk_size == MAX_CHUNK_SIZE);
-        memcpy(decompressed_data.data() + output_offset, compressed_reader.here(), MAX_CHUNK_SIZE);
-        compressed_reader.ffwd(MAX_CHUNK_SIZE);
-        output_offset += MAX_CHUNK_SIZE;
-      }
-
-      if (output_offset >= decompressed_size)
-        break;
-      while (compressed_reader.get_seek() % 4) {
-        compressed_reader.ffwd(1);
-      }
-    }
-    dgo_data = decompressed_data;
+  if (file_util::dgo_header_is_compressed(dgo_data)) {
+    dgo_data = file_util::decompress_dgo(dgo_data);
   }
 
   BinaryReader reader(dgo_data);
@@ -269,7 +224,8 @@ void ObjectFileDB::get_objs_from_dgo(const std::string& filename) {
 
     auto name = get_object_file_name(obj_header.name, reader.here(), obj_header.object_count);
 
-    add_obj_from_dgo(name, obj_header.name, reader.here(), obj_header.object_count, dgo_base_name);
+    add_obj_from_dgo(name, obj_header.name, reader.here(), obj_header.object_count, dgo_base_name,
+                     config);
     reader.ffwd(obj_header.object_count);
   }
 
@@ -284,8 +240,8 @@ void ObjectFileDB::add_obj_from_dgo(const std::string& obj_name,
                                     const std::string& name_in_dgo,
                                     const uint8_t* obj_data,
                                     uint32_t obj_size,
-                                    const std::string& dgo_name) {
-  const auto& config = get_config();
+                                    const std::string& dgo_name,
+                                    const Config& config) {
   if (!config.allowed_objects.empty()) {
     if (config.allowed_objects.find(obj_name) == config.allowed_objects.end()) {
       return;
@@ -337,13 +293,13 @@ void ObjectFileDB::add_obj_from_dgo(const std::string& obj_name,
   if (!dgo_obj_name_map.empty()) {
     auto dgo_kv = dgo_obj_name_map.find(strip_dgo_extension(dgo_name));
     if (dgo_kv == dgo_obj_name_map.end()) {
-      lg::error("Object {} is from DGO {}, but this DGO wasn't in the map.", obj_name, dgo_name);
+      lg::error("Object {} is from DGO {}, but this DGO was not in the map.", obj_name, dgo_name);
       assert(false);
     }
 
     auto name_kv = dgo_kv->second.find(obj_name);
     if (name_kv == dgo_kv->second.end()) {
-      lg::error("Object {} from DGO {} wasn't found in the name map.", obj_name, dgo_name);
+      lg::error("Object {} from DGO {} was not found in the name map.", obj_name, dgo_name);
       assert(false);
     }
     data.name_from_map = name_kv->second;
@@ -390,8 +346,11 @@ std::string ObjectFileDB::generate_dgo_listing() {
 
 namespace {
 std::string pad_string(const std::string& in, size_t length) {
-  assert(in.length() < length);
-  return in + std::string(length - in.length(), ' ');
+  if (in.length() < length) {
+    return in + std::string(length - in.length(), ' ');
+  } else {
+    return in;
+  }
 }
 }  // namespace
 
@@ -413,29 +372,36 @@ std::string ObjectFileDB::generate_obj_listing() {
                 pad_string(x.name_in_dgo + "\", ", 50) + std::to_string(x.obj_version) + ", " +
                 dgos + ", \"\"],\n";
       unique_count++;
+      if (all_unique_names.find(x.to_unique_name()) != all_unique_names.end()) {
+        lg::error("Object file {} appears multiple times with the same name.", x.to_unique_name());
+      }
       all_unique_names.insert(x.to_unique_name());
     }
     // this check is extremely important. It makes sure we don't have any repeat names. This could
     // be caused by two files with the same name, in the same DGOs, but different data.
-    assert(int(all_unique_names.size()) == unique_count);
+    if (int(all_unique_names.size()) != unique_count) {
+      lg::error("Object files are not named properly, data will be lost!");
+    }
   }
 
-  result.pop_back();  // kill last new line
-  result.pop_back();  // kill last comma
+  if (result.length() >= 2) {
+    result.pop_back();  // kill last new line
+    result.pop_back();  // kill last comma
+  }
   return result + "]";
 }
 
 /*!
  * Process all of the linking data of all objects.
  */
-void ObjectFileDB::process_link_data() {
+void ObjectFileDB::process_link_data(const Config& config) {
   lg::info("Processing Link Data...");
   Timer process_link_timer;
 
   LinkedObjectFile::Stats combined_stats;
 
   for_each_obj([&](ObjectFileData& obj) {
-    obj.linked_data = to_linked_object_file(obj.data, obj.record.name, dts);
+    obj.linked_data = to_linked_object_file(obj.data, obj.record.name, dts, config.game_version);
     combined_stats.add(obj.linked_data.stats);
   });
 
@@ -461,18 +427,17 @@ void ObjectFileDB::process_labels() {
 /*!
  * Dump object files and their linking data to text files for debugging
  */
-void ObjectFileDB::write_object_file_words(const std::string& output_dir, bool dump_v3_only) {
-  if (dump_v3_only) {
-    lg::info("- Writing object file dumps (v3 only)...");
-  } else {
-    lg::info("- Writing object file dumps (all)...");
-  }
+void ObjectFileDB::write_object_file_words(const std::string& output_dir,
+                                           bool dump_data,
+                                           bool dump_code) {
+  lg::info("- Writing object file dumps (code? {} data? {})...", dump_code, dump_data);
 
   Timer timer;
   uint32_t total_bytes = 0, total_files = 0;
 
   for_each_obj([&](ObjectFileData& obj) {
-    if (obj.linked_data.segments == 3 || !dump_v3_only) {
+    if ((obj.linked_data.segments == 3 && dump_code) ||
+        (obj.linked_data.segments != 3 && dump_data)) {
       auto file_text = obj.linked_data.print_words();
       auto file_name = file_util::combine_path(output_dir, obj.to_unique_name() + ".txt");
       total_bytes += file_text.size();
@@ -486,16 +451,15 @@ void ObjectFileDB::write_object_file_words(const std::string& output_dir, bool d
   lg::info(" Total {:.3f} MB", total_bytes / ((float)(1u << 20u)));
   lg::info(" Total {} ms ({:.3f} MB/sec)", timer.getMs(),
            total_bytes / ((1u << 20u) * timer.getSeconds()));
-  // printf("\n");
 }
 
 /*!
  * Dump disassembly for object files containing code.  Data zones will also be dumped.
  */
 void ObjectFileDB::write_disassembly(const std::string& output_dir,
-                                     bool disassemble_objects_without_functions,
-                                     bool write_json,
-                                     const std::string& file_suffix) {
+                                     bool disassemble_data,
+                                     bool disassemble_code,
+                                     bool print_hex) {
   lg::info("- Writing functions...");
   Timer timer;
   uint32_t total_bytes = 0, total_files = 0;
@@ -503,20 +467,10 @@ void ObjectFileDB::write_disassembly(const std::string& output_dir,
   std::string asm_functions;
 
   for_each_obj([&](ObjectFileData& obj) {
-    if (obj.linked_data.has_any_functions() || disassemble_objects_without_functions) {
-      auto file_text = obj.linked_data.print_disassembly();
+    if ((obj.obj_version == 3 && disassemble_code) || (obj.obj_version != 3 && disassemble_data)) {
+      auto file_text = obj.linked_data.print_disassembly(print_hex);
       asm_functions += obj.linked_data.print_asm_function_disassembly(obj.to_unique_name());
-      auto file_name =
-          file_util::combine_path(output_dir, obj.to_unique_name() + file_suffix + ".asm");
-
-      if (get_config().analyze_functions && write_json) {
-        auto json_asm_text = obj.linked_data.to_asm_json(obj.to_unique_name());
-        auto json_asm_file_name =
-            file_util::combine_path(output_dir, obj.to_unique_name() + "_asm.json");
-        file_util::write_text_file(json_asm_file_name, json_asm_text);
-        total_files++;
-        total_bytes += json_asm_text.size();
-      }
+      auto file_name = file_util::combine_path(output_dir, obj.to_unique_name() + ".asm");
 
       total_bytes += file_text.size();
       file_util::write_text_file(file_name, file_text);
@@ -539,7 +493,7 @@ void ObjectFileDB::write_disassembly(const std::string& output_dir,
 /*!
  * Find code/data zones, identify functions, and disassemble
  */
-void ObjectFileDB::find_code() {
+void ObjectFileDB::find_code(const Config& config) {
   lg::info("Finding code in object files...");
   LinkedObjectFile::Stats combined_stats;
   Timer timer;
@@ -550,7 +504,7 @@ void ObjectFileDB::find_code() {
     obj.linked_data.find_functions();
     obj.linked_data.disassemble_functions();
 
-    if (get_config().game_version == 1 || obj.to_unique_name() != "effect-control-v0") {
+    if (config.game_version == 1 || obj.to_unique_name() != "effect-control-v0") {
       obj.linked_data.process_fp_relative_links();
     } else {
       lg::warn("Skipping process_fp_relative_links in {}", obj.to_unique_name().c_str());
@@ -603,20 +557,35 @@ void ObjectFileDB::find_and_write_scripts(const std::string& output_dir) {
   lg::info(" Total {:.3f} ms\n", timer.getMs());
 }
 
-void ObjectFileDB::process_tpages() {
+std::string ObjectFileDB::process_tpages() {
   lg::info("- Finding textures in tpages...");
   std::string tpage_string = "tpage-";
   int total = 0, success = 0;
+  int tpage_dir_count = 0;
   Timer timer;
+
+  std::string result;
   for_each_obj([&](ObjectFileData& data) {
     if (data.name_in_dgo.substr(0, tpage_string.length()) == tpage_string) {
       auto statistics = process_tpage(data);
       total += statistics.total_textures;
       success += statistics.successful_textures;
+    } else if (data.name_in_dgo == "dir-tpages") {
+      result = process_dir_tpages(data).to_source();
+      tpage_dir_count++;
     }
   });
+
+  assert(tpage_dir_count <= 1);
+
+  if (tpage_dir_count == 0) {
+    lg::warn("Did not find tpage-dir.");
+    return {};
+  }
+
   lg::info("Processed {} / {} textures {:.2f}% in {:.2f} ms", success, total,
            100.f * float(success) / float(total), timer.getMs());
+  return result;
 }
 
 std::string ObjectFileDB::process_game_text_files() {
@@ -644,6 +613,9 @@ std::string ObjectFileDB::process_game_text_files() {
   lg::info("Processed {} text files ({} strings, {} characters) in {:.2f} ms", file_count,
            string_count, char_count, timer.getMs());
 
+  if (text_by_language_by_id.empty()) {
+    return {};
+  }
   return write_game_text(text_by_language_by_id);
 }
 
@@ -670,12 +642,11 @@ std::string ObjectFileDB::process_game_count_file() {
 /*!
  * This is the main decompiler routine which runs after we've identified functions.
  */
-void ObjectFileDB::analyze_functions_ir1() {
+void ObjectFileDB::analyze_functions_ir1(const Config& config) {
   lg::info("- Analyzing Functions...");
   Timer timer;
 
   int total_functions = 0;
-  const auto& config = get_config();
 
   // Step 1 - analyze the "top level" or "login" code for each object file.
   // this will give us type definitions, method definitions, and function definitions...
@@ -689,7 +660,7 @@ void ObjectFileDB::analyze_functions_ir1() {
 
       auto& func = data.linked_data.functions_by_seg.at(2).front();
       assert(func.guessed_name.empty());
-      func.guessed_name.set_as_top_level();
+      func.guessed_name.set_as_top_level(data.to_unique_name());
       func.find_global_function_defs(data.linked_data, dts);
       func.find_type_defs(data.linked_data, dts);
       func.find_method_defs(data.linked_data, dts);
@@ -716,8 +687,9 @@ void ObjectFileDB::analyze_functions_ir1() {
 
         unique_names.insert(name);
 
-        if (config.asm_functions_by_name.find(name) != config.asm_functions_by_name.end()) {
-          func.warnings += ";; flagged as asm by config\n";
+        if (config.hacks.asm_functions_by_name.find(name) !=
+            config.hacks.asm_functions_by_name.end()) {
+          func.warnings.info("Flagged as asm by config");
           func.suspected_asm = true;
         }
       }
@@ -730,7 +702,7 @@ void ObjectFileDB::analyze_functions_ir1() {
 
     if (duplicated_functions.find(name) != duplicated_functions.end()) {
       duplicated_functions[name].insert(data.to_unique_name());
-      func.warnings += ";; this function exists in multiple non-identical object files\n";
+      func.warnings.info("Exists in multiple non-identical object files");
     }
   });
 
@@ -765,7 +737,7 @@ void ObjectFileDB::analyze_functions_ir1() {
       // run analysis
 
       // build a control flow graph, just looking at branch instructions.
-      func.cfg = build_cfg(data.linked_data, segment_id, func);
+      func.cfg = build_cfg(data.linked_data, segment_id, func, {}, {});
 
       // convert individual basic blocks to sequences of IR Basic Ops
       for (auto& block : func.basic_blocks) {
@@ -786,13 +758,15 @@ void ObjectFileDB::analyze_functions_ir1() {
 
       // if we got an inspect method, inspect it.
       if (func.is_inspect_method) {
-        auto result = inspect_inspect_method(func, func.method_of_type, dts, data.linked_data);
+        auto result = inspect_inspect_method(
+            func, func.method_of_type, dts, data.linked_data,
+            config.hacks.types_with_bad_inspect_methods.find(func.method_of_type) !=
+                config.hacks.types_with_bad_inspect_methods.end());
         all_type_defs += ";; " + data.to_unique_name() + "\n";
         all_type_defs += result.print_as_deftype() + "\n";
       }
     } else {
       asm_funcs++;
-      func.warnings.append(";; Assembly Function. Analysis passes were not attempted.\n");
     }
   });
 
@@ -810,6 +784,9 @@ void ObjectFileDB::analyze_functions_ir1() {
 void ObjectFileDB::dump_raw_objects(const std::string& output_dir) {
   for_each_obj([&](ObjectFileData& data) {
     auto dest = output_dir + "/" + data.to_unique_name();
+    if (data.obj_version != 3) {
+      dest += ".go";
+    }
     file_util::write_binary_file(dest, data.data.data(), data.data.size());
   });
 }

@@ -10,7 +10,7 @@
 #include <mutex>
 #include <condition_variable>
 #include <atomic>
-#include <cassert>
+#include "common/util/assert.h"
 #include "common/common_types.h"
 
 class IOP_Kernel;

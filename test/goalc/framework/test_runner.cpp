@@ -34,6 +34,14 @@ std::string escaped_string(const std::string& in) {
   return result;
 }
 
+std::string CompilerTestRunner::test_file_name(std::string templateStr) {
+  const ::testing::TestInfo* const test_info =
+      ::testing::UnitTest::GetInstance()->current_test_info();
+  std::string outFile = fmt::format(templateStr, test_info->name());
+  std::replace(outFile.begin(), outFile.end(), '/', '_');
+  return outFile;
+}
+
 void CompilerTestRunner::run_static_test(inja::Environment& env,
                                          std::string& testCategory,
                                          const std::string& test_file,
@@ -91,20 +99,20 @@ void CompilerTestRunner::run_always_pass(const std::string& test_category,
 }
 
 void runtime_no_kernel() {
-  constexpr int argc = 4;
-  const char* argv[argc] = {"", "-fakeiso", "-debug", "-nokernel"};
+  constexpr int argc = 5;
+  const char* argv[argc] = {"", "-fakeiso", "-debug", "-nokernel", "-nodisplay"};
   exec_runtime(argc, const_cast<char**>(argv));
 }
 
 void runtime_with_kernel() {
-  constexpr int argc = 3;
-  const char* argv[argc] = {"", "-fakeiso", "-debug"};
+  constexpr int argc = 4;
+  const char* argv[argc] = {"", "-fakeiso", "-debug", "-nodisplay"};
   exec_runtime(argc, const_cast<char**>(argv));
 }
 
 void runtime_with_kernel_no_debug_segment() {
-  constexpr int argc = 3;
-  const char* argv[argc] = {"", "-fakeiso", "-debug-mem"};
+  constexpr int argc = 4;
+  const char* argv[argc] = {"", "-fakeiso", "-debug-mem", "-nodisplay"};
   exec_runtime(argc, const_cast<char**>(argv));
 }
 

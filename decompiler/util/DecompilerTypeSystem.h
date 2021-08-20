@@ -1,5 +1,4 @@
-#ifndef JAK_DECOMPILERTYPESYSTEM_H
-#define JAK_DECOMPILERTYPESYSTEM_H
+#pragma once
 
 #include "common/type_system/TypeSystem.h"
 #include "decompiler/Disasm/Register.h"
@@ -7,7 +6,7 @@
 
 namespace decompiler {
 class TP_Type;
-struct TypeState;
+class TypeState;
 
 class DecompilerTypeSystem {
  public:
@@ -18,6 +17,7 @@ class DecompilerTypeSystem {
   std::vector<std::string> symbol_add_order;
   std::unordered_map<std::string, u64> type_flags;
   std::unordered_map<std::string, std::string> type_parents;
+  std::unordered_map<std::string, int> bad_format_strings;
 
   void add_symbol(const std::string& name) {
     if (symbols.find(name) == symbols.end()) {
@@ -32,7 +32,7 @@ class DecompilerTypeSystem {
 
   void add_symbol(const std::string& name, const TypeSpec& type_spec);
   void parse_type_defs(const std::vector<std::string>& file_path);
-  TypeSpec parse_type_spec(const std::string& str);
+  TypeSpec parse_type_spec(const std::string& str) const;
   void add_type_flags(const std::string& name, u64 flags);
   void add_type_parent(const std::string& child, const std::string& parent);
   std::string dump_symbol_types();
@@ -42,19 +42,16 @@ class DecompilerTypeSystem {
   bool tp_lca(TypeState* combined, const TypeState& add);
   int get_format_arg_count(const std::string& str) const;
   int get_format_arg_count(const TP_Type& type) const;
+  TypeSpec lookup_symbol_type(const std::string& name) const;
+  bool should_attempt_cast_simplify(const TypeSpec& expected, const TypeSpec& actual) const;
+
+  // todo - totally eliminate this.
   struct {
-    bool locked = false;
-    bool allow_pair;
     std::string current_method_type;
-    void reset() {
-      allow_pair = false;
-      current_method_type.clear();
-    }
+    void reset() { current_method_type.clear(); }
   } type_prop_settings;
 
  private:
-  goos::Reader m_reader;
+  mutable goos::Reader m_reader;
 };
 }  // namespace decompiler
-
-#endif  // JAK_DECOMPILERTYPESYSTEM_H

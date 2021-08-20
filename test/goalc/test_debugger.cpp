@@ -17,7 +17,6 @@ TEST(Debugger, DebuggerBasicConnect) {
     EXPECT_TRUE(compiler.get_debugger().is_valid());
     EXPECT_TRUE(compiler.get_debugger().is_halted());
     compiler.shutdown_target();  // will detach/unhalt, then send the usual shutdown message
-
     // and now the child process should be done!
     EXPECT_TRUE(wait(nullptr) >= 0);
   }
@@ -182,7 +181,8 @@ TEST(Debugger, SimpleBreakpoint) {
     EXPECT_TRUE(bi.knows_object);
     EXPECT_TRUE(bi.object_name == "*listener*");
     EXPECT_TRUE(bi.function_name == "test-function");
-    EXPECT_FALSE(bi.disassembly_failed);
+    auto disasm = compiler.get_debugger().disassemble_at_rip(bi);
+    EXPECT_FALSE(disasm.failed);
     // if we change this to be before the break instruction this might need to be 0 in the future.
     EXPECT_EQ(bi.function_offset, 1);
 

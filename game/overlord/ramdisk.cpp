@@ -5,7 +5,7 @@
  */
 
 #include <cstring>
-#include <cassert>
+#include "common/util/assert.h"
 #include <cstdio>
 #include "common/common_types.h"
 #include "game/common/ramdisk_rpc_types.h"

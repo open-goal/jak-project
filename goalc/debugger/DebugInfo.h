@@ -2,20 +2,31 @@
 
 #include <vector>
 #include <string>
+#include <optional>
 #include <unordered_map>
-#include <cassert>
+#include "common/util/assert.h"
 #include "common/common_types.h"
 #include "goalc/emitter/Instruction.h"
 #include "goalc/debugger/disassemble.h"
 
+/*!
+ * FunctionDebugInfo stores per-function debugging information.
+ * For now, it is pretty basic, but it will eventually contain stuff like stack frame info
+ * and which var is in each register at each instruction.
+ */
 struct FunctionDebugInfo {
   u32 offset_in_seg;  // not including type tag.
   u32 length;
   u8 seg;
   std::string name;
+  std::string obj_name;
 
   std::vector<std::string> irs;
-  std::vector<InstructionInfo> instructions;
+  std::vector<InstructionInfo> instructions;  // contains mapping to IRs
+
+  // the actual bytes in the object file.
+  std::vector<u8> generated_code;
+  std::optional<int> stack_usage;
 
   std::string disassemble_debug_info(bool* had_failure);
 };
@@ -24,12 +35,13 @@ class DebugInfo {
  public:
   explicit DebugInfo(std::string obj_name);
 
-  FunctionDebugInfo& add_function(const std::string& name) {
+  FunctionDebugInfo& add_function(const std::string& name, const std::string& obj_name) {
     if (m_functions.find(name) != m_functions.end()) {
       assert(false);
     }
     auto& result = m_functions[name];
     result.name = name;
+    result.obj_name = obj_name;
     return result;
   }
 
@@ -45,6 +57,8 @@ class DebugInfo {
     }
     return false;
   }
+
+  FunctionDebugInfo& function_by_name(const std::string& name) { return m_functions.at(name); }
 
   void clear() { m_functions.clear(); }
 

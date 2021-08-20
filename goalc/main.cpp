@@ -4,6 +4,11 @@
 #include "common/util/FileUtil.h"
 #include "common/log/log.h"
 
+#include "third-party/fmt/core.h"
+#include "third-party/fmt/color.h"
+
+#include "common/goos/ReplUtils.h"
+
 void setup_logging(bool verbose) {
   lg::set_file(file_util::get_file_path({"log/compiler.txt"}));
   if (verbose) {
@@ -24,26 +29,41 @@ int main(int argc, char** argv) {
 
   std::string argument;
   bool verbose = false;
+  bool auto_listen = false;
   for (int i = 1; i < argc; i++) {
     if (std::string("-v") == argv[i]) {
       verbose = true;
-      break;
     }
-
     if (std::string("-cmd") == argv[i] && i < argc - 1) {
       argument = argv[++i];
+    }
+    if (std::string("-auto-lt") == argv[i]) {
+      auto_listen = true;
     }
   }
   setup_logging(verbose);
 
   lg::info("OpenGOAL Compiler {}.{}", versions::GOAL_VERSION_MAJOR, versions::GOAL_VERSION_MINOR);
 
-  Compiler compiler;
-
-  if (argument.empty()) {
-    compiler.execute_repl();
-  } else {
-    compiler.run_front_end_on_string(argument);
+  // Init REPL
+  // the compiler may throw an exception if it fails to load its standard library.
+  try {
+    std::unique_ptr<Compiler> compiler;
+    if (argument.empty()) {
+      ReplStatus status = ReplStatus::WANT_RELOAD;
+      while (status == ReplStatus::WANT_RELOAD) {
+        compiler = std::make_unique<Compiler>(std::make_unique<ReplWrapper>());
+        status = compiler->execute_repl(auto_listen);
+        if (status == ReplStatus::WANT_RELOAD) {
+          fmt::print("Reloading compiler...\n");
+        }
+      }
+    } else {
+      compiler = std::make_unique<Compiler>();
+      compiler->run_front_end_on_string(argument);
+    }
+  } catch (std::exception& e) {
+    fmt::print("Compiler Fatal Error: {}\n", e.what());
   }
 
   return 0;

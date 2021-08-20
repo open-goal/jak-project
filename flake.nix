@@ -118,7 +118,7 @@
           meta = with lib; {
             description = "OpenGOAL port of Naughty Dog's GOAL";
             homepage = "https://github.com/water111/jak-project";
-            license = lib.licenses.gpl3Plus;
+            license = lib.licenses.isc;
             maintainers = with maintainers; [ bb010g ];
             platforms = platforms.all;
           };

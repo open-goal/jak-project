@@ -3889,3 +3889,13 @@ TEST(EmitterXMM, StackStoreFull8) {
   tester.emit(IGen::store128_gpr64_xmm128_s8(RSP, XMM0 + 13, -12));
   EXPECT_EQ(tester.dump_to_hex_string(true), "660F7F5C24F466440F7F6C24F4");
 }
+
+TEST(EmitterXMM, SqrtS) {
+  CodeTester tester;
+  tester.init_code_buffer(1024);
+  tester.emit(IGen::sqrts_xmm(XMM0 + 1, XMM0 + 2));
+  tester.emit(IGen::sqrts_xmm(XMM0 + 11, XMM0 + 2));
+  tester.emit(IGen::sqrts_xmm(XMM0 + 1, XMM0 + 12));
+  tester.emit(IGen::sqrts_xmm(XMM0 + 11, XMM0 + 12));
+  EXPECT_EQ(tester.dump_to_hex_string(true), "F30F51CAF3440F51DAF3410F51CCF3450F51DC");
+}
