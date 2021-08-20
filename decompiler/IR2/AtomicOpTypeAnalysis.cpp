@@ -137,7 +137,7 @@ TP_Type SimpleAtom::get_type(const TypeState& input,
       }
       // todo: should we take out this warning?
       lg::warn("IR_StaticAddress does not know the type of {}", label.name);
-      return TP_Type::make_label_addr();
+      return TP_Type::make_label_addr(m_int);
     }
     case Kind::INVALID:
     default:

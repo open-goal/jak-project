@@ -467,7 +467,7 @@ class StoreOp : public AtomicOp {
  */
 class LoadVarOp : public AtomicOp {
  public:
-  enum class Kind { UNSIGNED, SIGNED, FLOAT, VECTOR_FLOAT };
+  enum class Kind { UNSIGNED, SIGNED, FLOAT, VECTOR_FLOAT, INVALID };
   LoadVarOp(Kind kind, int size, RegisterAccess dst, SimpleExpression src, int my_idx);
   goos::Object to_form(const std::vector<DecompilerLabel>& labels, const Env& env) const override;
   bool operator==(const AtomicOp& other) const override;
@@ -489,6 +489,13 @@ class LoadVarOp : public AtomicOp {
   SimpleExpression m_src;
   std::optional<TypeSpec> m_type;
 };
+
+std::string load_kind_to_string(LoadVarOp::Kind kind);
+FormElement* make_label_load(int label_idx,
+                             const Env& env,
+                             FormPool& pool,
+                             int load_size,
+                             LoadVarOp::Kind load_kind);
 
 /*!
  * This represents one of the possible instructions that can go in a branch delay slot.
