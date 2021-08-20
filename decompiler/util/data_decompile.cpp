@@ -588,12 +588,6 @@ goos::Object decompile_structure(const TypeSpec& type,
       continue;
     }
 
-    // OK - READ THE FIELD:
-    for (int i = field_start; i < field_end; i++) {
-      // even if our field was partially zero, we mark those zero bytes as "has data".
-      field_status_per_byte.at(i) = HAS_DATA_READ;
-    }
-
     // first, let's see if it's a value or reference
     auto field_type_info = ts.lookup_type(field.type());
     if (!field_type_info->is_reference()) {
@@ -627,6 +621,9 @@ goos::Object decompile_structure(const TypeSpec& type,
               field.name(), sp_field_init_spec_decompile(obj_words, labels, label.target_segment,
                                                          field_start, ts, field, words, file));
         } else {
+          if (obj_words.at(field_start / 4).kind != LinkedWord::PLAIN_DATA) {
+            continue;
+          }
           std::vector<u8> bytes_out;
           for (int byte_idx = field_start; byte_idx < field_end; byte_idx++) {
             bytes_out.push_back(obj_words.at(byte_idx / 4).get_byte(byte_idx % 4));
@@ -757,6 +754,12 @@ goos::Object decompile_structure(const TypeSpec& type,
                           field.name(), actual_type.print(), field.offset()));
         }
       }
+    }
+
+    // OK - READ THE FIELD:
+    for (int i = field_start; i < field_end; i++) {
+      // even if our field was partially zero, we mark those zero bytes as "has data".
+      field_status_per_byte.at(i) = HAS_DATA_READ;
     }
   }
 
