@@ -3975,7 +3975,8 @@ void ReturnElement::push_to_stack(const Env& env, FormPool& pool, FormStack& sta
   return_code->push_back(new_entries.back());
   if (var) {
     const auto& func_type = env.func->type.last_arg();
-    if (!env.dts->ts.tc(func_type, env.get_variable_type(*var, false))) {
+    return_type = env.get_variable_type(*var, false);
+    if (func_type != return_type) {
       auto as_cast = return_code->try_as_element<CastElement>();
       if (as_cast) {
         return_code->clear();

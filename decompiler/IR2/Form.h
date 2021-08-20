@@ -632,6 +632,7 @@ class ReturnElement : public FormElement {
   void collect_vars(RegAccessSet& vars, bool recursive) const override;
   void push_to_stack(const Env& env, FormPool& pool, FormStack& stack) override;
   void get_modified_regs(RegSet& regs) const override;
+  std::optional<TypeSpec> return_type;
 };
 
 /*!
