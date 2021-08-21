@@ -308,9 +308,9 @@
   (format #t "[~8x] ~A~%" obj (-> obj type))
   (format #t "~Tname: ~S~%" (-> obj name))
   (format #t "~Tmask: #x~X~%" (-> obj mask))
-  (format #t "~Tparent: ~A~%" (as-process (-> obj parent)))
-  (format #t "~Tbrother: ~A~%" (as-process (-> obj brother)))
-  (format #t "~Tchild: ~A~%" (as-process (-> obj child)))
+  (format #t "~Tparent: ~A~%" (ppointer->process (-> obj parent)))
+  (format #t "~Tbrother: ~A~%" (ppointer->process (-> obj brother)))
+  (format #t "~Tchild: ~A~%" (ppointer->process (-> obj child)))
   obj
   )
 
@@ -394,9 +394,9 @@
   (format #t "~Ttrans-hook: ~A~%" (-> obj trans-hook))
   (format #t "~Tpost-hook: ~A~%" (-> obj post-hook))
   (format #t "~Tevent-hook: ~A~%" (-> obj event-hook))
-  (format #t "~Tparent: ~A~%" (as-process (-> obj parent)))
-  (format #t "~Tbrother: ~A~%" (as-process (-> obj brother)))
-  (format #t "~Tchild: ~A~%" (as-process (-> obj child)))
+  (format #t "~Tparent: ~A~%" (ppointer->process (-> obj parent)))
+  (format #t "~Tbrother: ~A~%" (ppointer->process (-> obj brother)))
+  (format #t "~Tchild: ~A~%" (ppointer->process (-> obj child)))
   (format #t "~Tconnection-list: ~`connectable`P~%" (-> obj connection-list))
   (format #t "~Tstack-frame-top: ~A~%" (-> obj stack-frame-top))
   (format #t "~Theap-base: #x~X~%" (-> obj heap-base))
@@ -845,8 +845,8 @@
       ;; create each process
       (let ((old-bro (-> obj child))
             (next ((method-of-type process new) allocation process 'dead stack-size)))
-        (set! (-> obj child) (as-ppointer next))
-        (set! (-> next parent) (as-ppointer obj))
+        (set! (-> obj child) (process->ppointer next))
+        (set! (-> next parent) (process->ppointer obj))
         (set! (-> next pool) obj)
         (set! (-> next brother) old-bro)
         )
@@ -865,7 +865,7 @@
       (set! proc (the (pointer process-tree) (get-process *debug-dead-pool* type-to-make stack-size)))
       (when proc
         (format 0 "WARNING: ~A ~A had to be allocated from the debug pool, because ~A was empty.~%"
-                type-to-make (as-process proc) (-> obj name))
+                type-to-make (ppointer->process proc) (-> obj name))
         )
       ;; there's a bug here. proc is a process here, but will be used as a process pointer.
       ;; let's just kill the program here.
@@ -881,7 +881,7 @@
        )
       (else
        (format 0 "WARNING: ~A ~A could not be allocated, because ~A was empty.~%"
-               type-to-make (as-process proc) (-> obj name))
+               type-to-make (ppointer->process proc) (-> obj name))
        (the process #f)
        )
       )
@@ -2007,12 +2007,12 @@
     ;; need to remove obj from its current parent
     (when parent
       (let ((proc (-> (-> parent) child)))
-        (if (eq? (as-process proc) obj)
+        (if (eq? (ppointer->process proc) obj)
             ;; case where we're the first child is easy!
             (set! (-> (-> parent) child) (-> obj brother))
             ;; otherwise, look through brothers to find us.
             (begin
-             (while (not (eq? (as-process (-> (-> proc) brother)) obj))
+             (while (not (eq? (ppointer->process (-> (-> proc) brother)) obj))
                (set! proc (-> (-> proc) brother))
                )
              ;; ok, got us, splice out of list.

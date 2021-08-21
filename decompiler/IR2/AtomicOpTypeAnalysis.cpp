@@ -629,6 +629,14 @@ TP_Type SimpleExpression::get_type_int2(const TypeState& input,
     return TP_Type::make_from_ts(TypeSpec("float"));
   }
 
+  auto& name = env.func->guessed_name;
+  if (name.kind == FunctionName::FunctionKind::METHOD && name.method_id == 7 &&
+      env.func->type.arg_count() == 3) {
+    if (m_kind == Kind::ADD && arg1_type.typespec() == TypeSpec("int")) {
+      return arg0_type;
+    }
+  }
+
   throw std::runtime_error(fmt::format("Cannot get_type_int2: {}, args {} and {}",
                                        to_form(env.file->labels, env).print(), arg0_type.print(),
                                        arg1_type.print()));

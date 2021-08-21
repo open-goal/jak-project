@@ -118,6 +118,14 @@ Form* try_cast_simplify(Form* in,
     }
   }
 
+  if (new_type == TypeSpec("handle")) {
+    auto in_generic = in->try_as_element<GenericElement>();
+    if (in_generic && (in_generic->op().is_fixed(FixedOperatorKind::PROCESS_TO_HANDLE) ||
+                       in_generic->op().is_fixed(FixedOperatorKind::PPOINTER_TO_HANDLE))) {
+      return in;
+    }
+  }
+
   auto type_info = env.dts->ts.lookup_type(new_type);
   auto bitfield_info = dynamic_cast<BitFieldType*>(type_info);
   if (bitfield_info) {
@@ -1004,6 +1012,17 @@ void SimpleExpressionElement::update_from_stack_add_i(const Env& env,
     }
   }
 
+  auto& name = env.func->guessed_name;
+  if (name.kind == FunctionName::FunctionKind::METHOD && name.method_id == 7 &&
+      env.func->type.arg_count() == 3) {
+    if (env.dts->ts.tc(TypeSpec("structure"), arg0_type.typespec()) && (arg1_i || arg1_u)) {
+      auto new_form = pool.alloc_element<GenericElement>(
+          GenericOperator::make_fixed(FixedOperatorKind::ADDITION_PTR), args.at(0), args.at(1));
+      result->push_back(new_form);
+      return;
+    }
+  }
+
   if (false && ((arg0_i && arg1_i) || (arg0_u && arg1_u))) {
     auto new_form = pool.alloc_element<GenericElement>(
         GenericOperator::make_fixed(FixedOperatorKind::ADDITION), args.at(0), args.at(1));
@@ -1567,6 +1586,46 @@ void SimpleExpressionElement::update_from_stack_logor_or_logand(const Env& env,
         std::vector<Form*>{mr.maps.forms.at(a_form), mr.maps.forms.at(b_form)}));
 
     return;
+  }
+
+  auto make_handle_matcher = Matcher::op_fixed(
+      FixedOperatorKind::LOGIOR,
+      {Matcher::op_fixed(
+           FixedOperatorKind::SHL,
+           {Matcher::deref(Matcher::any_reg(0), false,
+                           {DerefTokenMatcher::integer(0), DerefTokenMatcher::string("pid")}),
+            Matcher::integer(32)}),
+       Matcher::op_fixed(FixedOperatorKind::ASM_SLLV_R0, {Matcher::any_reg(1)})});
+
+  auto handle_mr = match(make_handle_matcher, &hack_form);
+  if (handle_mr.matched) {
+    auto var_a = handle_mr.maps.regs.at(0).value();
+    auto var_b = handle_mr.maps.regs.at(1).value();
+    if (env.get_variable_name(var_a) == env.get_variable_name(var_b) &&
+        env.dts->ts.tc(TypeSpec("pointer", {TypeSpec("process")}),
+                       env.get_variable_type(var_a, true))) {
+      auto* menv = const_cast<Env*>(&env);
+      menv->disable_use(var_a);
+
+      auto repopped = stack.pop_reg(var_b, {}, env, true, stack.size() - 1);
+
+      if (!repopped) {
+        fmt::print("repop failed.\n{}\n", stack.print(env));
+        repopped = var_to_form(var_b, pool);
+      }
+
+      auto proc_to_ppointer_matcher =
+          Matcher::op_fixed(FixedOperatorKind::PROCESS_TO_PPOINTER, {Matcher::any(0)});
+      auto proc_to_ppointer_mr = match(proc_to_ppointer_matcher, repopped);
+      if (proc_to_ppointer_mr.matched) {
+        element = pool.alloc_element<GenericElement>(
+            GenericOperator::make_fixed(FixedOperatorKind::PROCESS_TO_HANDLE),
+            proc_to_ppointer_mr.maps.forms.at(0));
+      } else {
+        element = pool.alloc_element<GenericElement>(
+            GenericOperator::make_fixed(FixedOperatorKind::PPOINTER_TO_HANDLE), repopped);
+      }
+    }
   }
 
   result->push_back(element);
@@ -2994,6 +3053,57 @@ void WhileElement::push_to_stack(const Env& env, FormPool& pool, FormStack& stac
   stack.push_form_element(this, true);
 }
 
+namespace {
+// (if x (-> x ppointer)) -> (process->ppointer x)
+Form* try_rewrite_as_process_to_ppointer(CondNoElseElement* value,
+                                         FormStack& stack,
+                                         FormPool& pool,
+                                         const Env& env) {
+  if (value->entries.size() != 1) {
+    return nullptr;
+  }
+
+  auto condition = value->entries.at(0).condition;
+  auto body = value->entries[0].body;
+
+  // safe to look for a reg directly here.
+  auto condition_matcher =
+      Matcher::op(GenericOpMatcher::condition(IR2_Condition::Kind::TRUTHY), {Matcher::any_reg(0)});
+  auto condition_mr = match(condition_matcher, condition);
+  if (!condition_mr.matched) {
+    return nullptr;
+  }
+
+  auto body_matcher =
+      Matcher::deref(Matcher::any_reg(0), false, {DerefTokenMatcher::string("ppointer")});
+  auto body_mr = match(body_matcher, body);
+
+  if (!body_mr.matched) {
+    return nullptr;
+  }
+
+  auto body_var = *body_mr.maps.regs.at(0);
+  auto condition_var = *condition_mr.maps.regs.at(0);
+
+  if (env.get_variable_name(body_var) != env.get_variable_name(condition_var)) {
+    return nullptr;
+  }
+
+  // fmt::print("Matched condition {} in {}\n", condition_var.to_string(env),
+  // value->to_string(env));
+
+  auto* menv = const_cast<Env*>(&env);
+  menv->disable_use(body_var);
+  auto repopped = stack.pop_reg(condition_var, {}, env, true);
+  if (!repopped) {
+    repopped = var_to_form(condition_var, pool);
+  }
+
+  return pool.alloc_single_element_form<GenericElement>(
+      nullptr, GenericOperator::make_fixed(FixedOperatorKind::PROCESS_TO_PPOINTER), repopped);
+}
+}  // namespace
+
 ///////////////////
 // CondNoElseElement
 ///////////////////
@@ -3049,8 +3159,15 @@ void CondNoElseElement::push_to_stack(const Env& env, FormPool& pool, FormStack&
 
   if (used_as_value) {
     // TODO - is this wrong?
-    stack.push_value_to_reg(write_as_value, pool.alloc_single_form(nullptr, this), true,
-                            env.get_variable_type(final_destination, false));
+    auto as_process_to_ppointer = try_rewrite_as_process_to_ppointer(this, stack, pool, env);
+    if (as_process_to_ppointer) {
+      stack.push_value_to_reg(write_as_value, as_process_to_ppointer, true,
+                              env.get_variable_type(final_destination, false));
+    } else {
+      stack.push_value_to_reg(write_as_value, pool.alloc_single_form(nullptr, this), true,
+                              env.get_variable_type(final_destination, false));
+    }
+
   } else {
     stack.push_form_element(this, true);
   }
@@ -4324,6 +4441,22 @@ void BranchElement::push_to_stack(const Env& env, FormPool& pool, FormStack& sta
       branch_delay = pool.alloc_single_element_form<SetVarElement>(
           nullptr, dst, src_form, true, env.get_variable_type(src, true));
     } break;
+    case IR2_BranchDelay::Kind::SET_REG_FALSE: {
+      auto dst = m_op->branch_delay().var(0);
+      auto src_form = pool.alloc_single_element_form<SimpleAtomElement>(
+          nullptr, SimpleAtom::make_sym_val("#f"));
+
+      branch_delay = pool.alloc_single_element_form<SetVarElement>(nullptr, dst, src_form, true,
+                                                                   TypeSpec("symbol"));
+    } break;
+    case IR2_BranchDelay::Kind::SET_REG_TRUE: {
+      auto dst = m_op->branch_delay().var(0);
+      auto src_form = pool.alloc_single_element_form<SimpleAtomElement>(
+          nullptr, SimpleAtom::make_sym_val("#t"));
+
+      branch_delay = pool.alloc_single_element_form<SetVarElement>(nullptr, dst, src_form, true,
+                                                                   TypeSpec("symbol"));
+    } break;
     default:
       throw std::runtime_error("Unhandled branch delay in BranchElement::push_to_stack: " +
                                m_op->to_string(env));
@@ -4552,11 +4685,13 @@ void ArrayFieldAccess::update_with_val(Form* new_val,
                                       {Matcher::integer(m_expected_stride), Matcher::any(0)});
       mult_matcher = Matcher::match_or(
           {Matcher::cast("uint", mult_matcher), Matcher::cast("int", mult_matcher), mult_matcher});
-      auto add_matcher = Matcher::op(GenericOpMatcher::fixed(FixedOperatorKind::ADDITION),
-                                     {Matcher::any(1), mult_matcher});
-      add_matcher = Matcher::match_or(
-          {add_matcher, Matcher::op(GenericOpMatcher::fixed(FixedOperatorKind::ADDITION),
-                                    {mult_matcher, Matcher::any(1)})});
+
+      auto op_match =
+          GenericOpMatcher::or_match({GenericOpMatcher::fixed(FixedOperatorKind::ADDITION),
+                                      GenericOpMatcher::fixed(FixedOperatorKind::ADDITION_PTR)});
+      auto add_matcher = Matcher::op(op_match, {Matcher::any(1), mult_matcher});
+      add_matcher =
+          Matcher::match_or({add_matcher, Matcher::op(op_match, {mult_matcher, Matcher::any(1)})});
 
       auto mr = match(add_matcher, new_val);
       if (!mr.matched) {
