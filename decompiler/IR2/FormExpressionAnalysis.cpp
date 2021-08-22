@@ -4993,7 +4993,7 @@ void LabelDerefElement::update_from_stack(const Env& env,
   auto as_label = make_label_load(m_lid, env, pool, m_size, m_load_kind);
   if (!as_label) {
     throw std::runtime_error(
-        fmt::format("Unable to figure out label load for {}\n", env.file->labels.at(m_lid).name));
+        fmt::format("Unable to figure out label load for {}", env.file->labels.at(m_lid).name));
   }
   result->push_back(as_label);
 }
