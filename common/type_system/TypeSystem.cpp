@@ -1370,6 +1370,9 @@ bool TypeSystem::typecheck_base_types(const std::string& input_expected,
   }
 
   if (expected == "seconds") {
+    if (actual == "seconds") {
+      return true;
+    }
     expected = "uint";
   }
 

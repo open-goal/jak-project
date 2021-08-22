@@ -107,46 +107,43 @@
 ;; INFO: Return type mismatch int vs none.
 (defmethod TODO-RENAME-39 nav-enemy ((obj nav-enemy))
   (when
-    (and
-      (logtest? (-> obj nav-enemy-flags) 256)
-      (or
-        (not *target*)
-        (and
-          (zero? (logand (-> *target* state-flags) #x80f8))
-          (>=
-            (the-as int (- (-> *display* base-frame-counter) (-> obj touch-time)))
-            15
-            )
-          )
-        )
+   (and
+    (logtest? (-> obj nav-enemy-flags) 256)
+    (or
+     (not *target*)
+     (and
+      (zero? (logand (-> *target* state-flags) #x80f8))
+      (>= (- (-> *display* base-frame-counter) (-> obj touch-time)) 15)
       )
-    (dummy-54 (-> obj collide-info) 2 1)
-    (set! (-> obj nav-enemy-flags) (logand -257 (-> obj nav-enemy-flags)))
+     )
     )
+   (dummy-54 (-> obj collide-info) 2 1)
+   (set! (-> obj nav-enemy-flags) (logand -257 (-> obj nav-enemy-flags)))
+   )
   ((method-of-object (-> obj draw shadow-ctrl) dummy-14))
   (when *target*
-    (if *target*
-        (look-at-enemy!
-          (-> *target* neck)
-          (the-as vector (-> obj collide-info root-prim prim-core))
-          (if (logtest? (-> obj nav-enemy-flags) 4)
-              'attacking
-              )
-          obj
-          )
-        )
-    (if (and (nonzero? (-> obj neck)) (logtest? (-> obj nav-enemy-flags) #x4000))
-        (set-target!
-          (-> obj neck)
-          (target-pos (-> obj nav-info player-look-at-joint))
-          )
-        )
+   (if *target*
+    (look-at-enemy!
+     (-> *target* neck)
+     (the-as vector (-> obj collide-info root-prim prim-core))
+     (if (logtest? (-> obj nav-enemy-flags) 4)
+      'attacking
+      )
+     obj
+     )
     )
+   (if (and (nonzero? (-> obj neck)) (logtest? (-> obj nav-enemy-flags) #x4000))
+    (set-target!
+     (-> obj neck)
+     (target-pos (-> obj nav-info player-look-at-joint))
+     )
+    )
+   )
   (when (-> obj nav-info debug-draw-neck)
-    (if (nonzero? (-> obj neck))
-        (joint-mod-debug-draw (-> obj neck))
-        )
+   (if (nonzero? (-> obj neck))
+    (joint-mod-debug-draw (-> obj neck))
     )
+   )
   (ja-post)
   0
   (none)
@@ -259,10 +256,11 @@
     (set! (-> a1-1 mode) arg2)
     (set! (-> v1-0 param 1) (the-as uint a1-1))
     )
-   (when (send-event-function arg0 v1-0)
-    (dummy-54 (-> self collide-info) 2 0)
-    (logior! (-> self nav-enemy-flags) 256)
-    #t
+   (the-as object (when (send-event-function arg0 v1-0)
+                   (dummy-54 (-> self collide-info) 2 0)
+                   (logior! (-> self nav-enemy-flags) 256)
+                   #t
+                   )
     )
    )
   )
@@ -456,19 +454,19 @@ nav-enemy-default-event-handler
    (if
     (or
      (logtest? (-> obj nav-enemy-flags) 128)
-     (nonzero? (logand #x80000 (-> obj nav flags)))
+     (logtest? #x80000 (-> obj nav flags))
      )
     (seek-to-point-toward-point!
      (-> obj collide-info)
      (-> obj nav target-pos)
      (-> obj rotate-speed)
-     (the-as int (-> obj turn-time))
+     (-> obj turn-time)
      )
     (seek-toward-heading-vec!
      (-> obj collide-info)
      (-> obj nav travel)
      (-> obj rotate-speed)
-     (the-as int (-> obj turn-time))
+     (-> obj turn-time)
      )
     )
    )
@@ -487,7 +485,7 @@ nav-enemy-default-event-handler
     8192.0
     #f
     (-> obj nav-info hover-if-no-ground)
-    (nonzero? (logand (-> obj nav-enemy-flags) #x8000))
+    (logtest? (-> obj nav-enemy-flags) #x8000)
     )
    (dummy-58 (-> obj collide-info) (-> obj collide-info transv))
    )
@@ -600,12 +598,12 @@ nav-enemy-default-event-handler
 ;; definition for function nav-enemy-face-player-post
 ;; INFO: Return type mismatch int vs none.
 (defbehavior nav-enemy-face-player-post nav-enemy ()
-  (if (and *target* (nonzero? (logand (-> self nav-enemy-flags) 16)))
+  (if (and *target* (logtest? (-> self nav-enemy-flags) 16))
    (seek-to-point-toward-point!
     (-> self collide-info)
     (target-pos 0)
     (-> self rotate-speed)
-    (the-as int (-> self turn-time))
+    (-> self turn-time)
     )
    )
   (nav-enemy-simple-post)
@@ -660,10 +658,7 @@ nav-enemy-default-event-handler
 ;; INFO: Return type mismatch int vs none.
 (defbehavior nav-enemy-neck-control-inactive nav-enemy ()
   (when
-   (and
-    (nonzero? (-> self neck))
-    (nonzero? (logand (-> self nav-enemy-flags) #x4000))
-    )
+   (and (nonzero? (-> self neck)) (logtest? (-> self nav-enemy-flags) #x4000))
    (set! (-> self nav-enemy-flags) (logand -16385 (-> self nav-enemy-flags)))
    (shut-down! (-> self neck))
    )
@@ -705,8 +700,8 @@ nav-enemy-default-event-handler
     ((logtest? (-> self nav-enemy-flags) 1)
      (when
       (>=
-       (the-as int (- (-> *display* base-frame-counter) (-> self notice-time)))
-       (the-as int (-> self reaction-time))
+       (- (-> *display* base-frame-counter) (-> self notice-time))
+       (-> self reaction-time)
        )
       (set! gp-0 #t)
       (set! (-> self nav-enemy-flags) (logand -2 (-> self nav-enemy-flags)))
@@ -937,7 +932,10 @@ nav-enemy-default-event-handler
      (set! (-> v1-14 num-func) num-func-identity)
      (set! (-> v1-14 frame-num) 0.0)
      )
-    (set! (-> self state-time) (-> *display* base-frame-counter))
+    (set!
+     (-> self state-time)
+     (the-as seconds (-> *display* base-frame-counter))
+     )
     (set!
      (-> self collide-info status)
      (logand -8 (-> self collide-info status))
@@ -1019,7 +1017,7 @@ nav-enemy-default-event-handler
      (-> self collide-info)
      arg0
      (-> self rotate-speed)
-     (the-as int (-> self turn-time))
+     (-> self turn-time)
      )
     (suspend)
     (let ((a0-8 (-> self skel root-channel 0)))
@@ -1033,7 +1031,7 @@ nav-enemy-default-event-handler
     (set!
      v1-16
      (or
-      (>= (the-as int (- (-> *display* base-frame-counter) s4-0)) 3000)
+      (>= (- (-> *display* base-frame-counter) s4-0) 3000)
       (nav-enemy-facing-direction? arg0 arg1)
       )
      )
@@ -1087,7 +1085,7 @@ nav-enemy-default-event-handler
      (nonzero? (-> obj skel))
      (!= (-> obj skel root-channel 0) (-> obj skel channel))
      )
-    (and (nonzero? (-> obj draw)) (nonzero? (logand (-> obj draw status) 16)))
+    (and (nonzero? (-> obj draw)) (logtest? (-> obj draw status) 16))
     )
    )
   )
@@ -1103,7 +1101,10 @@ nav-enemy-default-event-handler
   :enter
   (behavior ()
    (nav-enemy-neck-control-inactive)
-   (set! (-> self state-time) (-> *display* base-frame-counter))
+   (set!
+    (-> self state-time)
+    (the-as seconds (-> *display* base-frame-counter))
+    )
    (if (-> self nav-info move-to-ground)
     (dummy-60
      (-> self collide-info)
@@ -1114,7 +1115,7 @@ nav-enemy-default-event-handler
      )
     )
    (set! (-> self nav-enemy-flags) (logand -7 (-> self nav-enemy-flags)))
-   (set! (-> self state-timeout) (the-as uint 300))
+   (set! (-> self state-timeout) 300)
    (none)
    )
   :trans
@@ -1132,14 +1133,11 @@ nav-enemy-default-event-handler
        )
       )
      (>=
-      (the-as
-       int
-       (- (-> *display* base-frame-counter) (the-as uint (-> self state-time)))
-       )
-      (the-as int (-> self state-timeout))
+      (- (-> *display* base-frame-counter) (the-as int (-> self state-time)))
+      (-> self state-timeout)
       )
      (nonzero? (-> self draw))
-     (nonzero? (logand (-> self draw status) 8))
+     (logtest? (-> self draw status) 8)
      )
     (go-virtual nav-enemy-patrol)
     )
@@ -1190,18 +1188,21 @@ nav-enemy-default-event-handler
    )
   :enter
   (behavior ()
-   (set! (-> self state-time) (-> *display* base-frame-counter))
+   (set!
+    (-> self state-time)
+    (the-as seconds (-> *display* base-frame-counter))
+    )
    (set!
     (-> self nav flags)
     (the-as nav-control-flags (the-as int (logior #x80000 (-> self nav flags))))
     )
    (set! (-> self nav-enemy-flags) (logand -5 (-> self nav-enemy-flags)))
    (logior! (-> self nav-enemy-flags) 8)
-   (set! (-> self state-timeout) (the-as uint 300))
+   (set! (-> self state-timeout) 300)
    (set! (-> self target-speed) (-> self nav-info walk-travel-speed))
    (set! (-> self acceleration) (-> self nav-info walk-acceleration))
    (set! (-> self rotate-speed) (-> self nav-info walk-rotate-speed))
-   (set! (-> self turn-time) (the-as uint (-> self nav-info walk-turn-time)))
+   (set! (-> self turn-time) (the-as int (-> self nav-info walk-turn-time)))
    (none)
    )
   :exit
@@ -1213,25 +1214,15 @@ nav-enemy-default-event-handler
   (behavior ()
    (when
     (>=
-     (the-as
-      int
-      (- (-> *display* base-frame-counter) (the-as uint (-> self state-time)))
-      )
+     (- (-> *display* base-frame-counter) (the-as int (-> self state-time)))
      30
      )
     (when
      (>=
-      (the-as
-       int
-       (- (-> *display* base-frame-counter) (the-as uint (-> self state-time)))
-       )
-      (the-as int (-> self state-timeout))
+      (- (-> *display* base-frame-counter) (the-as int (-> self state-time)))
+      (-> self state-timeout)
       )
-     (if
-      (and
-       (nonzero? (-> self draw))
-       (nonzero? (logand (-> self draw status) 8))
-       )
+     (if (and (nonzero? (-> self draw)) (logtest? (-> self draw status) 8))
       (set! (-> self free-time) (-> *display* base-frame-counter))
       )
      (if
@@ -1246,10 +1237,7 @@ nav-enemy-default-event-handler
           )
          )
         )
-       (>=
-        (the-as int (- (-> *display* base-frame-counter) (-> self free-time)))
-        600
-        )
+       (>= (- (-> *display* base-frame-counter) (-> self free-time)) 600)
        )
       (go-virtual nav-enemy-idle)
       )
@@ -1556,7 +1544,7 @@ nav-enemy-default-event-handler
     )
    (dummy-11 (-> self nav) (-> self nav target-pos))
    (set! (-> self rotate-speed) (-> self nav-info run-rotate-speed))
-   (set! (-> self turn-time) (the-as uint (-> self nav-info run-turn-time)))
+   (set! (-> self turn-time) (the-as int (-> self nav-info run-turn-time)))
    (none)
    )
   :code
@@ -1605,7 +1593,7 @@ nav-enemy-default-event-handler
       (-> self collide-info)
       (-> self nav travel)
       (-> self rotate-speed)
-      (the-as int (-> self turn-time))
+      (-> self turn-time)
       )
      (suspend)
      (let ((a0-4 (-> self skel root-channel 0)))
@@ -1648,18 +1636,18 @@ nav-enemy-default-event-handler
    )
   :enter
   (behavior ()
-   (set! (-> self state-time) (-> *display* base-frame-counter))
+   (set!
+    (-> self state-time)
+    (the-as seconds (-> *display* base-frame-counter))
+    )
    (none)
    )
   :trans
   (behavior ()
    (when
     (>=
-     (the-as
-      int
-      (- (-> *display* base-frame-counter) (the-as uint (-> self state-time)))
-      )
-     (the-as int (-> self reaction-time))
+     (- (-> *display* base-frame-counter) (the-as int (-> self state-time)))
+     (-> self reaction-time)
      )
     (if
      (or
@@ -1851,13 +1839,16 @@ nav-enemy-default-event-handler
   :enter
   (behavior ()
    (nav-enemy-neck-control-look-at)
-   (set! (-> self state-time) (-> *display* base-frame-counter))
+   (set!
+    (-> self state-time)
+    (the-as seconds (-> *display* base-frame-counter))
+    )
    (set! (-> self free-time) (-> *display* base-frame-counter))
    (logior! (-> self nav-enemy-flags) 4)
    (set! (-> self target-speed) (-> self nav-info run-travel-speed))
    (set! (-> self acceleration) (-> self nav-info run-acceleration))
    (set! (-> self rotate-speed) (-> self nav-info run-rotate-speed))
-   (set! (-> self turn-time) (the-as uint (-> self nav-info run-turn-time)))
+   (set! (-> self turn-time) (the-as int (-> self nav-info run-turn-time)))
    (nav-enemy-reset-frustration)
    (none)
    )
@@ -1881,39 +1872,26 @@ nav-enemy-default-event-handler
     )
    (when
     (>=
-     (the-as
-      int
-      (- (-> *display* base-frame-counter) (the-as uint (-> self state-time)))
-      )
-     (the-as int (-> self reaction-time))
+     (- (-> *display* base-frame-counter) (the-as int (-> self state-time)))
+     (-> self reaction-time)
      )
     (if
      (>=
-      (the-as
-       int
-       (- (-> *display* base-frame-counter) (-> self frustration-time))
-       )
-      (the-as
-       int
-       (+ (-> self reaction-time) (-> self nav-info frustration-time))
-       )
+      (- (-> *display* base-frame-counter) (-> self frustration-time))
+      (+ (-> self reaction-time) (-> self nav-info frustration-time))
       )
      (logior! (-> self nav-enemy-flags) 8192)
      )
     (if
      (or
       (not (TODO-RENAME-46 self (-> self nav-info stop-chase-distance)))
-      (nonzero? (logand (-> self nav-enemy-flags) 8192))
+      (logtest? (-> self nav-enemy-flags) 8192)
       )
      (go-virtual nav-enemy-stop-chase)
      )
     (cond
      ((logtest? #x20000 (-> self nav flags))
-      (if
-       (>=
-        (the-as int (- (-> *display* base-frame-counter) (-> self free-time)))
-        300
-        )
+      (if (>= (- (-> *display* base-frame-counter) (-> self free-time)) 300)
        (go-virtual nav-enemy-patrol)
        )
       )
@@ -1969,7 +1947,10 @@ nav-enemy-default-event-handler
    )
   :enter
   (behavior ()
-   (set! (-> self state-time) (-> *display* base-frame-counter))
+   (set!
+    (-> self state-time)
+    (the-as seconds (-> *display* base-frame-counter))
+    )
    (let*
     ((f30-0
       (vector-vector-distance (-> self collide-info trans) (target-pos 0))
@@ -1987,22 +1968,19 @@ nav-enemy-default-event-handler
     (if (< f30-0 40960.0)
      (go-virtual nav-enemy-stare)
      )
-    (set! (-> self state-timeout) (the-as uint gp-1))
+    (set! (-> self state-timeout) gp-1)
     )
    (set! (-> self target-speed) (-> self nav-info walk-travel-speed))
    (set! (-> self acceleration) (-> self nav-info walk-acceleration))
    (set! (-> self rotate-speed) (-> self nav-info walk-rotate-speed))
-   (set! (-> self turn-time) (the-as uint (-> self nav-info walk-turn-time)))
+   (set! (-> self turn-time) (the-as int (-> self nav-info walk-turn-time)))
    (none)
    )
   :trans
   (behavior ()
    (when
     (>=
-     (the-as
-      int
-      (- (-> *display* base-frame-counter) (the-as uint (-> self state-time)))
-      )
+     (- (-> *display* base-frame-counter) (the-as int (-> self state-time)))
      30
      )
     (if (logtest? (-> *target* state-flags) 128)
@@ -2029,11 +2007,8 @@ nav-enemy-default-event-handler
        )
       (logtest? #x20000 (-> self nav flags))
       (>=
-       (the-as
-        int
-        (- (-> *display* base-frame-counter) (the-as uint (-> self state-time)))
-        )
-       (the-as int (-> self state-timeout))
+       (- (-> *display* base-frame-counter) (the-as int (-> self state-time)))
+       (-> self state-timeout)
        )
       )
      (go-virtual nav-enemy-stare)
@@ -2086,27 +2061,27 @@ nav-enemy-default-event-handler
    )
   :enter
   (behavior ()
-   (set! (-> self state-time) (-> *display* base-frame-counter))
+   (set!
+    (-> self state-time)
+    (the-as seconds (-> *display* base-frame-counter))
+    )
    (set! (-> self nav-enemy-flags) (logand -17 (-> self nav-enemy-flags)))
    (let
     ((f0-0 (vector-vector-distance (-> self collide-info trans) (target-pos 0)))
      )
     (set!
      (-> self state-timeout)
-     (the-as
-      uint
-      (the
-       int
-       (+
-        (lerp-scale 3000.0 0.0 f0-0 12288.0 122880.0)
-        (nav-enemy-rnd-float-range 0.0 900.0)
-        )
+     (the
+      int
+      (+
+       (lerp-scale 3000.0 0.0 f0-0 12288.0 122880.0)
+       (nav-enemy-rnd-float-range 0.0 900.0)
        )
       )
      )
     )
    (set! (-> self rotate-speed) (-> self nav-info run-rotate-speed))
-   (set! (-> self turn-time) (the-as uint (-> self nav-info run-turn-time)))
+   (set! (-> self turn-time) (the-as int (-> self nav-info run-turn-time)))
    (set! (-> self collide-info transv quad) (-> *null-vector* quad))
    (none)
    )
@@ -2119,10 +2094,7 @@ nav-enemy-default-event-handler
   (behavior ()
    (when
     (>=
-     (the-as
-      int
-      (- (-> *display* base-frame-counter) (the-as uint (-> self state-time)))
-      )
+     (- (-> *display* base-frame-counter) (the-as int (-> self state-time)))
      30
      )
     (if (logtest? (-> *target* state-flags) 128)
@@ -2133,11 +2105,8 @@ nav-enemy-default-event-handler
       (if
        (and
         (>=
-         (the-as
-          int
-          (- (-> *display* base-frame-counter) (-> self notice-time))
-          )
-         (the-as int (-> self reaction-time))
+         (- (-> *display* base-frame-counter) (-> self notice-time))
+         (-> self reaction-time)
          )
         (not (nav-enemy-frustrated?))
         )
@@ -2177,11 +2146,8 @@ nav-enemy-default-event-handler
      (set! (-> self nav-enemy-flags) (logand -5 (-> self nav-enemy-flags)))
      (if
       (>=
-       (the-as
-        int
-        (- (-> *display* base-frame-counter) (the-as uint (-> self state-time)))
-        )
-       (the-as int (-> self state-timeout))
+       (- (-> *display* base-frame-counter) (the-as int (-> self state-time)))
+       (-> self state-timeout)
        )
       (go-virtual nav-enemy-give-up)
       )
@@ -2198,7 +2164,7 @@ nav-enemy-default-event-handler
          )
         )
        )
-      (nonzero? (logand #x20000 (-> self nav flags)))
+      (logtest? #x20000 (-> self nav flags))
       )
      (go-virtual nav-enemy-give-up)
      )
@@ -2224,7 +2190,10 @@ nav-enemy-default-event-handler
    )
   :enter
   (behavior ()
-   (set! (-> self state-time) (-> *display* base-frame-counter))
+   (set!
+    (-> self state-time)
+    (the-as seconds (-> *display* base-frame-counter))
+    )
    (nav-enemy-neck-control-inactive)
    (set! (-> self nav-enemy-flags) (logand -5 (-> self nav-enemy-flags)))
    (none)
@@ -2233,10 +2202,7 @@ nav-enemy-default-event-handler
   (behavior ()
    (when
     (>=
-     (the-as
-      int
-      (- (-> *display* base-frame-counter) (the-as uint (-> self state-time)))
-      )
+     (- (-> *display* base-frame-counter) (the-as int (-> self state-time)))
      30
      )
     (if (TODO-RENAME-46 self (-> self nav-info notice-distance))
@@ -2362,16 +2328,7 @@ nav-enemy-default-event-handler
     (set! (-> a1-0 from) self)
     (set! (-> a1-0 num-params) 0)
     (set! (-> a1-0 message) 'child-die)
-    (let ((t9-0 send-event-function)
-          (v1-1 (-> self parent))
-          )
-     (t9-0 (the-as process (if v1-1
-                            (-> v1-1 0 self)
-                            )
-            )
-      a1-0
-      )
-     )
+    (send-event-function (ppointer->process (-> self parent)) a1-0)
     )
    (none)
    )
@@ -2455,13 +2412,16 @@ nav-enemy-default-event-handler
     (-> self collide-info)
     (-> self jump-dest)
     (-> self rotate-speed)
-    (the-as int (-> self turn-time))
+    (-> self turn-time)
     )
    )
   (when (logtest? (-> self nav-enemy-flags) 8)
    (let
     ((f30-0
-      (the float (- (-> *display* base-frame-counter) (-> self jump-time)))
+      (the
+       float
+       (- (-> *display* base-frame-counter) (the-as int (-> self jump-time)))
+       )
       )
      )
     (let
@@ -2529,7 +2489,7 @@ nav-enemy-default-event-handler
      (logior! (-> self nav-enemy-flags) 1024)
      )
     )
-   (when (and arg1 (nonzero? (logand (-> self nav-enemy-flags) 1024)))
+   (when (and arg1 (logtest? (-> self nav-enemy-flags) 1024))
     (set! (-> self nav-enemy-flags) (logand -513 (-> self nav-enemy-flags)))
     (set! f30-0 2048.0)
     )
@@ -2608,7 +2568,7 @@ nav-enemy-default-event-handler
     )
    )
   (set! (-> self collide-info status) (logand -8 (-> self collide-info status)))
-  (set! (-> self jump-time) (-> *display* base-frame-counter))
+  (set! (-> self jump-time) (the-as uint (-> *display* base-frame-counter)))
   (logior! (-> self nav-enemy-flags) 8)
   (cond
    ((logtest? (-> self nav-enemy-flags) 1024)
@@ -2669,7 +2629,10 @@ nav-enemy-default-event-handler
    )
   (while
    (<
-    (the float (- (-> *display* base-frame-counter) (-> self jump-time)))
+    (the
+     float
+     (- (-> *display* base-frame-counter) (the-as int (-> self jump-time)))
+     )
     (-> self jump-trajectory time)
     )
    (suspend)
@@ -2785,7 +2748,10 @@ nav-enemy-default-event-handler
   nav-enemy-jump-event-handler
   :enter
   (behavior ()
-   (set! (-> self state-time) (-> *display* base-frame-counter))
+   (set!
+    (-> self state-time)
+    (the-as seconds (-> *display* base-frame-counter))
+    )
    (if
     (and
      (-> self nav-info use-jump-blocked)
@@ -2850,19 +2816,19 @@ nav-enemy-default-event-handler
   (if
    (or
     (logtest? (-> self nav-enemy-flags) 128)
-    (nonzero? (logand #x80000 (-> self nav flags)))
+    (logtest? #x80000 (-> self nav flags))
     )
    (seek-to-point-toward-point!
     (-> self collide-info)
     (-> self nav target-pos)
     (-> self rotate-speed)
-    (the-as int (-> self turn-time))
+    (-> self turn-time)
     )
    (seek-toward-heading-vec!
     (-> self collide-info)
     (-> self nav travel)
     (-> self rotate-speed)
-    (the-as int (-> self turn-time))
+    (-> self turn-time)
     )
    )
   (vector-v++!
@@ -2892,7 +2858,10 @@ nav-enemy-default-event-handler
    )
   :enter
   (behavior ()
-   (set! (-> self state-time) (-> *display* base-frame-counter))
+   (set!
+    (-> self state-time)
+    (the-as seconds (-> *display* base-frame-counter))
+    )
    (logclear! (-> self nav flags) (nav-control-flags bit19))
    (let ((gp-0 (new 'stack-no-clear 'vector)))
     (set! (-> gp-0 quad) (-> self collide-info transv quad))
@@ -2909,13 +2878,10 @@ nav-enemy-default-event-handler
    (if
     (or
      (>=
-      (the-as
-       int
-       (- (-> *display* base-frame-counter) (the-as uint (-> self state-time)))
-       )
+      (- (-> *display* base-frame-counter) (the-as int (-> self state-time)))
       150
       )
-     (nonzero? (logand #x80000 (-> self nav flags)))
+     (logtest? #x80000 (-> self nav flags))
      )
     (go-virtual nav-enemy-chase)
     )
@@ -2941,17 +2907,17 @@ nav-enemy-default-event-handler
    )
   :enter
   (behavior ()
-   (set! (-> self state-time) (-> *display* base-frame-counter))
+   (set!
+    (-> self state-time)
+    (the-as seconds (-> *display* base-frame-counter))
+    )
    (none)
    )
   :trans
   (behavior ()
    (if
     (>=
-     (the-as
-      int
-      (- (-> *display* base-frame-counter) (the-as uint (-> self state-time)))
-      )
+     (- (-> *display* base-frame-counter) (the-as int (-> self state-time)))
      150
      )
     (go (-> self jump-return-state))
@@ -3023,7 +2989,10 @@ nav-enemy-default-event-handler
    )
   :code
   (behavior ()
-   (set! (-> self state-time) (-> *display* base-frame-counter))
+   (set!
+    (-> self state-time)
+    (the-as seconds (-> *display* base-frame-counter))
+    )
    (logior! (-> self nav-enemy-flags) 2048)
    (ja-channel-push! 1 30)
    (let ((f30-0 (nav-enemy-rnd-float-range 0.8 1.2)))
@@ -3056,7 +3025,7 @@ nav-enemy-default-event-handler
     (let ((gp-0 (nav-enemy-rnd-int-range 0 150))
           (s5-0 (-> *display* base-frame-counter))
           )
-     (until (>= (the-as int (- (-> *display* base-frame-counter) s5-0)) gp-0)
+     (until (>= (- (-> *display* base-frame-counter) s5-0) gp-0)
       (let ((a0-12 (-> self skel root-channel 0)))
        (set! (-> a0-12 param 0) f30-0)
        (joint-control-channel-group-eval!
@@ -3093,7 +3062,10 @@ nav-enemy-default-event-handler
    )
   :code
   (behavior ()
-   (set! (-> self state-time) (-> *display* base-frame-counter))
+   (set!
+    (-> self state-time)
+    (the-as seconds (-> *display* base-frame-counter))
+    )
    (nav-enemy-initialize-jump (-> self event-param-point))
    (nav-enemy-neck-control-look-at)
    (logior! (-> self nav-enemy-flags) 16)
@@ -3183,7 +3155,7 @@ nav-enemy-default-event-handler
     (-> *FACT-bank* default-pill-inc)
     )
    )
-  (set! (-> obj reaction-time) (the-as uint (nav-enemy-rnd-int-range 30 240)))
+  (set! (-> obj reaction-time) (nav-enemy-rnd-int-range 30 240))
   (set! (-> obj speed-scale) 1.0)
   (logior! (-> obj nav-enemy-flags) 4216)
   0
@@ -3194,7 +3166,7 @@ nav-enemy-default-event-handler
 (defmethod TODO-RENAME-49 nav-enemy ((obj nav-enemy) (arg0 nav-enemy-info))
   (set! (-> obj nav-info) arg0)
   (set! (-> obj rotate-speed) (-> obj nav-info walk-rotate-speed))
-  (set! (-> obj turn-time) (the-as uint (-> obj nav-info walk-turn-time)))
+  (set! (-> obj turn-time) (the-as int (-> obj nav-info walk-turn-time)))
   (when (and (!= (-> obj nav-info neck-joint) -1) (zero? (-> obj neck)))
    (set!
     (-> obj neck)

@@ -233,7 +233,7 @@
          (period-float (the float period))
          ;; now + offset
          (current-time
-          (+ (the float (mod (-> *display* base-frame-counter) period))
+          (+ (the float (mod (the-as uint (-> *display* base-frame-counter)) period))
              (-> obj offset)
              )
            )
@@ -265,7 +265,7 @@
            )
          ;; with the current offset, what is the time (0, period)?
          (current-time
-          (+ (the float (mod (-> *display* base-frame-counter) period))
+          (+ (the float (mod (the-as uint (-> *display* base-frame-counter)) period))
              (-> obj offset)
              )
            )
@@ -299,7 +299,7 @@
   "Get the current phase."
   (let* ((period (-> obj period))
          (period-float (the float period))
-         (current-time (+ (the float (mod (-> *display* base-frame-counter) period)) (-> obj offset)))
+         (current-time (+ (the float (mod (the-as uint (-> *display* base-frame-counter)) period)) (-> obj offset)))
          )
     ;; don't need to wrap this again.
     (/ (- current-time (* (the float (the int (/ current-time period-float))) period-float))
@@ -314,7 +314,7 @@
   (let* ((period (-> obj period))
          (period-float (the float period))
          (max-phase 1.0)
-         (current-time (+ (the float (mod (-> *display* base-frame-counter) period)) (-> obj offset)))
+         (current-time (+ (the float (mod (the-as uint (-> *display* base-frame-counter)) period)) (-> obj offset)))
          )
     (fmin max-phase
           (/ (- current-time (* (the float (the int (/ current-time period-float))) period-float))
@@ -328,7 +328,7 @@
   "This is just get-current-phase multiplied by max-val"
   (let* ((period (-> obj period))
          (period-float (the float period))
-         (current-time (+ (the float (mod (-> *display* base-frame-counter) period)) (-> obj offset)))
+         (current-time (+ (the float (mod (the-as uint (-> *display* base-frame-counter)) period)) (-> obj offset)))
          )
     (* (/ (- current-time (* (the float (the int (/ current-time period-float))) period-float))
           period-float
@@ -348,7 +348,7 @@
   (let* ((period (-> obj period))
          (period-float (the float period))
          (max-val 2.0)
-         (current-time (+ (the float (mod (-> *display* base-frame-counter) period)) (-> obj offset)))
+         (current-time (+ (the float (mod (the-as uint (-> *display* base-frame-counter)) period)) (-> obj offset)))
          (phase-out-of-2
           (* max-val
              (/ (- current-time (* (the float (the int (/ current-time period-float))) period-float))
@@ -371,7 +371,7 @@
   (let* ((period (-> obj period))
          (period-float (the float period))
          (max-val 2.0)
-         (current-time (+ (the float (mod (-> *display* base-frame-counter) period)) (-> obj offset)))
+         (current-time (+ (the float (mod (the-as uint (-> *display* base-frame-counter)) period)) (-> obj offset)))
          (current-val
           (* max-val
              (/ (- current-time (* (the float (the int (/ current-time period-float))) period-float))
@@ -424,7 +424,7 @@
          ;; max val
          (f0-1 2.0)
          ;; current-time
-         (f2-2 (+ (the float (mod (-> *display* base-frame-counter) v1-0)) (-> obj offset)))
+         (f2-2 (+ (the float (mod (the-as uint (-> *display* base-frame-counter)) v1-0)) (-> obj offset)))
          ;; phase
          (f0-2 (* f0-1 (/ (- f2-2 (* (the float (the int (/ f2-2 f1-0))) f1-0)) f1-0)))
          ;; offset for pause
@@ -456,7 +456,7 @@
   (let* ((period (-> obj period))
          (period-float (the float period))
          (max-val 2.0)
-         (current-time (+ (the float (mod (-> *display* base-frame-counter) period)) (-> obj offset)))
+         (current-time (+ (the float (mod (the-as uint (-> *display* base-frame-counter)) period)) (-> obj offset)))
          (current-val
           (* max-val
              (/ (- current-time (* (the float (the int (/ current-time period-float))) period-float))
@@ -490,7 +490,7 @@
   (set! (-> obj min-time) min-tim)
   (set! (-> obj max-time) max-time)
   (set! (-> obj max-val) (* 0.5 max-times-two))
-  (set! (-> obj start-time) (the-as uint 0))
+  (set! (-> obj start-time) 0)
   (set! (-> obj timer) 0)
   (set! (-> obj value) 0.0)
   (-> obj value)
@@ -498,7 +498,7 @@
 
 (defmethod update! delayed-rand-float ((obj delayed-rand-float))
   "Get the value."
-  (when (>= (the-as int (- (-> *display* base-frame-counter) (-> obj start-time))) (-> obj timer))
+  (when (>= (- (-> *display* base-frame-counter) (-> obj start-time)) (-> obj timer))
     ;; only update if enough time has passed.
     (set! (-> obj start-time) (-> *display* base-frame-counter))
     ;; come up with a random end time.
@@ -609,7 +609,7 @@
   (set! (-> obj max-time) max-time)
   (set! (-> obj xz-max) (* 0.5 xz-range))
   (set! (-> obj y-max) (* 0.5 y-range))
-  (set! (-> obj start-time) (the-as uint 0))
+  (set! (-> obj start-time) 0)
   (set! (-> obj timer) 0)
   (vector-reset! (-> obj value))
   (-> obj value)
@@ -627,7 +627,7 @@
 
 (defmethod update-with-delay! delayed-rand-vector ((obj delayed-rand-vector))
   "Update, if enough time has passed"
-  (if (>= (the-as int (- (-> *display* base-frame-counter) (-> obj start-time))) (-> obj timer))
+  (if (>= (- (-> *display* base-frame-counter) (-> obj start-time)) (-> obj timer))
    (update-now! obj)
    )
   (-> obj value)
@@ -635,7 +635,7 @@
 
 (defmethod update-with-delay-or-reset! delayed-rand-vector ((obj delayed-rand-vector))
   "Update, if enough time has passed. Otherwise reset to zero."
-  (if (>= (the-as int (- (-> *display* base-frame-counter) (-> obj start-time))) (-> obj timer))
+  (if (>= (- (-> *display* base-frame-counter) (-> obj start-time)) (-> obj timer))
    (update-now! obj)
    (vector-reset! (-> obj value))
    )

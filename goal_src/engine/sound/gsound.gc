@@ -563,11 +563,11 @@
                )
              (cond
                (sound-times
-                (set! (-> obj time-base) (the-as uint (the int (* 300.0 (-> sound-times 0)))))
-                (set! (-> obj time-random) (the-as uint (the int (* 300.0 (-> sound-times 1)))))
+                (set! (-> obj time-base) (the int (* 300.0 (-> sound-times 0))))
+                (set! (-> obj time-random) (the int (* 300.0 (-> sound-times 1))))
                 )
                (else
-                (set! (-> obj time-base) (the-as uint -1))
+                (set! (-> obj time-base) -1)
                 )
                )
              (set! (-> obj trans quad) (-> sound-trans quad))
@@ -592,14 +592,13 @@
       )
   (cond
     ((-> obj spec)
-     (when (or (< (the-as int (-> obj time-base)) 0)
-               (>= (the-as int (-> *display* base-frame-counter))
-                   (the-as int (-> obj play-time)))
+     (when (or (< (-> obj time-base) 0)
+               (>= (-> *display* base-frame-counter) (-> obj play-time))
                )
-       (when (>= (the-as int (-> obj time-base)) 0)
+       (when (>= (-> obj time-base) 0)
          (set! (-> obj play-time) (+ (-> *display* base-frame-counter)
                                      (-> obj time-base)
-                                     (the-as uint (rand-vu-int-count (the-as int (-> obj time-random))))
+                                     (rand-vu-int-count (-> obj time-random))
                                      ))
          (set! (-> obj playing-id) (new-sound-id))
          )
@@ -620,7 +619,7 @@
                      (vector-vector-distance (ear-trans) (-> obj trans))))
              (return 0)
              )
-         (when (and *debug-effect-control* (>= (the-as int (-> obj time-base)) 0))
+         (when (and *debug-effect-control* (>= (-> obj time-base) 0))
            (with-pp
              (format #t "(~5D) effect sound ~A ~G "
                      (-> *display* base-frame-counter)
@@ -641,7 +640,7 @@
      )
     (else
      (cond
-       ((< (the-as int (-> obj time-base)) 0)
+       ((< (-> obj time-base) 0)
         (set! (-> obj playing-id) (sound-play-by-name
                                    (-> obj name)
                                    (-> obj playing-id)
@@ -652,8 +651,7 @@
                                    (-> obj trans)))
         )
        (else
-        (when (>= (the-as int (-> *display* base-frame-counter))
-                  (the-as int (-> obj play-time)))
+        (when (>= (-> *display* base-frame-counter) (-> obj play-time))
           (set! (-> obj playing-id) (sound-play-by-name
                                      (-> obj name)
                                      (new-sound-id)
@@ -664,7 +662,7 @@
                                      (-> obj trans)))
           (set! (-> obj play-time) (+ (-> *display* base-frame-counter)
                                       (-> obj time-base)
-                                      (the-as uint (rand-vu-int-count (the-as int (-> obj time-random))))
+                                      (rand-vu-int-count (-> obj time-random))
                                       ))
           )
         )

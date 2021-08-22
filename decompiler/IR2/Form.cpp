@@ -1834,6 +1834,8 @@ std::string fixed_operator_to_string(FixedOperatorKind kind) {
       return "ppointer->handle";
     case FixedOperatorKind::PROCESS_TO_HANDLE:
       return "process->handle";
+    case FixedOperatorKind::PPOINTER_TO_PROCESS:
+      return "ppointer->process";
     default:
       assert(false);
       return "";

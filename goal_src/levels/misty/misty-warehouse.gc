@@ -104,11 +104,7 @@
                    )
                   (camera-change-to "camera-160" 150 #f)
                   (let ((gp-0 (-> *display* base-frame-counter)))
-                   (until
-                    (>=
-                     (the-as int (- (-> *display* base-frame-counter) gp-0))
-                     900
-                     )
+                   (until (>= (- (-> *display* base-frame-counter) gp-0) 900)
                     (suspend)
                     )
                    )
@@ -144,9 +140,12 @@
           )
     (save-reminder gp-0 (logior v1-1 2) 0)
     )
-   (set! (-> self state-time) (-> *display* base-frame-counter))
+   (set!
+    (-> self state-time)
+    (the-as seconds (-> *display* base-frame-counter))
+    )
    (let ((gp-1 (-> *display* base-frame-counter)))
-    (until (>= (the-as int (- (-> *display* base-frame-counter) gp-1)) 300)
+    (until (>= (- (-> *display* base-frame-counter) gp-1) 300)
      (suspend)
      )
     )
@@ -286,9 +285,7 @@
   (if
    (and
     (-> obj entity)
-    (nonzero?
-     (logand (-> obj entity extra perm status) (entity-perm-status complete))
-     )
+    (logtest? (-> obj entity extra perm status) (entity-perm-status complete))
     )
    (go silostep-rise #t)
    (go silostep-idle)

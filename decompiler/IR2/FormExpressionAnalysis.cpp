@@ -126,6 +126,13 @@ Form* try_cast_simplify(Form* in,
     }
   }
 
+  if (new_type == TypeSpec("process")) {
+    auto in_generic = in->try_as_element<GenericElement>();
+    if (in_generic && in_generic->op().is_fixed(FixedOperatorKind::PPOINTER_TO_PROCESS)) {
+      return in;
+    }
+  }
+
   auto type_info = env.dts->ts.lookup_type(new_type);
   auto bitfield_info = dynamic_cast<BitFieldType*>(type_info);
   if (bitfield_info) {
@@ -3102,6 +3109,56 @@ Form* try_rewrite_as_process_to_ppointer(CondNoElseElement* value,
   return pool.alloc_single_element_form<GenericElement>(
       nullptr, GenericOperator::make_fixed(FixedOperatorKind::PROCESS_TO_PPOINTER), repopped);
 }
+
+// (if x (-> x 0 self)) -> (ppointer->process x)
+Form* try_rewrite_as_pppointer_to_process(CondNoElseElement* value,
+                                          FormStack& stack,
+                                          FormPool& pool,
+                                          const Env& env) {
+  if (value->entries.size() != 1) {
+    return nullptr;
+  }
+
+  auto condition = value->entries.at(0).condition;
+  auto body = value->entries[0].body;
+
+  // safe to look for a reg directly here.
+  auto condition_matcher =
+      Matcher::op(GenericOpMatcher::condition(IR2_Condition::Kind::TRUTHY), {Matcher::any_reg(0)});
+  auto condition_mr = match(condition_matcher, condition);
+  if (!condition_mr.matched) {
+    return nullptr;
+  }
+
+  auto body_matcher =
+      Matcher::deref(Matcher::any_reg(0), false,
+                     {DerefTokenMatcher::integer(0), DerefTokenMatcher::string("self")});
+  auto body_mr = match(body_matcher, body);
+
+  if (!body_mr.matched) {
+    return nullptr;
+  }
+
+  auto body_var = *body_mr.maps.regs.at(0);
+  auto condition_var = *condition_mr.maps.regs.at(0);
+
+  if (env.get_variable_name(body_var) != env.get_variable_name(condition_var)) {
+    return nullptr;
+  }
+
+  // fmt::print("Matched condition {} in {}\n", condition_var.to_string(env),
+  // value->to_string(env));
+
+  auto* menv = const_cast<Env*>(&env);
+  menv->disable_use(body_var);
+  auto repopped = stack.pop_reg(condition_var, {}, env, true);
+  if (!repopped) {
+    repopped = var_to_form(condition_var, pool);
+  }
+
+  return pool.alloc_single_element_form<GenericElement>(
+      nullptr, GenericOperator::make_fixed(FixedOperatorKind::PPOINTER_TO_PROCESS), repopped);
+}
 }  // namespace
 
 ///////////////////
@@ -3164,8 +3221,14 @@ void CondNoElseElement::push_to_stack(const Env& env, FormPool& pool, FormStack&
       stack.push_value_to_reg(write_as_value, as_process_to_ppointer, true,
                               env.get_variable_type(final_destination, false));
     } else {
-      stack.push_value_to_reg(write_as_value, pool.alloc_single_form(nullptr, this), true,
-                              env.get_variable_type(final_destination, false));
+      auto as_ppointer_to_process = try_rewrite_as_pppointer_to_process(this, stack, pool, env);
+      if (as_ppointer_to_process) {
+        stack.push_value_to_reg(write_as_value, as_ppointer_to_process, true,
+                                env.get_variable_type(final_destination, false));
+      } else {
+        stack.push_value_to_reg(write_as_value, pool.alloc_single_form(nullptr, this), true,
+                                env.get_variable_type(final_destination, false));
+      }
     }
 
   } else {
