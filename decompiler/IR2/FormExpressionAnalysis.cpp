@@ -2803,7 +2803,8 @@ void FunctionCallElement::update_from_stack(const Env& env,
         match_result = match(matcher, temp_form);
         if (match_result.matched) {
           auto alloc = match_result.maps.strings.at(allocation);
-          if (alloc != "global" && alloc != "debug" && alloc != "process") {
+          if (alloc != "global" && alloc != "debug" && alloc != "process" &&
+              alloc != "loading-level") {
             throw std::runtime_error("Unrecognized heap symbol for new: " + alloc);
           }
           auto type_2 = match_result.maps.strings.at(type_for_arg);
@@ -4156,7 +4157,8 @@ void ReturnElement::push_to_stack(const Env& env, FormPool& pool, FormStack& sta
   if (var) {
     const auto& func_type = env.func->type.last_arg();
     return_type = env.get_variable_type(*var, false);
-    if (func_type != return_type) {
+    // functions with no return can return stuff.
+    if (func_type != return_type && func_type != TypeSpec("none")) {
       auto as_cast = return_code->try_as_element<CastElement>();
       if (as_cast) {
         return_code->clear();

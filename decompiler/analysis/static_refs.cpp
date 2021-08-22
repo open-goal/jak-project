@@ -36,6 +36,10 @@ bool try_convert_lambda(const Function& parent_function,
     auto& file = env.file;
     auto other_func = file->try_get_function_at_label(atom->label());
     if (other_func && kind_for_lambda(other_func->guessed_name.kind)) {
+      if (!other_func->ir2.env.has_local_vars()) {
+        // don't bother if we don't even have vars.
+        return false;
+      }
       goos::Object result;
       if (defstate_behavior) {
         result = final_output_defstate_anonymous_behavior(*other_func);

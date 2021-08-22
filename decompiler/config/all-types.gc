@@ -812,6 +812,9 @@
   (sound-options #x129)
 
   (hidden-power-cell #x12f) ;; why is this here??
+  
+  (saving-data #x136)
+  (do-not-remove-mem-card #x138)
 
   (continue-without-saving #x13f)
   (back #x13e)
@@ -8879,7 +8882,7 @@
 
 ;; - Functions
 
-(define-extern mc-get-slot-info (function int mc-slot-info))
+(define-extern mc-get-slot-info (function int mc-slot-info none))
 (define-extern mc-run (function none))
 (define-extern mc-check-result (function int))
 (define-extern mc-sync (function int))
@@ -8983,6 +8986,29 @@
     )
   )
 
+(defenum mc-status-code
+  :type uint32
+  (busy 0)
+  (ok 1)
+  (bad-handle 2)
+  (format-failed 3)
+  (internal-error 4)
+  (write-error 5)
+  (read-error 6)
+  (new-game 7)
+  (no-memory 8)
+  (no-card 9)
+  (no-last 10)
+  (no-format 11)
+  (no-file 12)
+  (no-save 13)
+  (no-space 14)
+  (bad-version 15)
+  (no-process 16)
+  (no-auto-save 17)
+  )
+
+
 (declare-type entity-perm structure)
 (declare-type game-save basic)
 (declare-type entity-perm-array basic)
@@ -9023,7 +9049,7 @@
    (death-movie-tick      int32     :offset-assert 264)
    (want-auto-save        symbol     :offset-assert 268)
    (auto-save-proc        handle    :offset-assert 272)
-   (auto-save-status      uint32    :offset-assert 280)
+   (auto-save-status      mc-status-code    :offset-assert 280)
    (auto-save-card        int32     :offset-assert 284)
    (auto-save-which       int32     :offset-assert 288)
    (pov-camera-handle     handle    :offset-assert 296)
@@ -9052,7 +9078,7 @@
     (seen-text? (_type_ game-text-id) symbol 21)
     (mark-text-as-seen (_type_ game-text-id) none 22)
     (got-buzzer? (_type_ game-task int) symbol 23)
-    (dummy-24 () none 24)
+    (save-game! (_type_ game-save string) none 24)
     (load-game! (_type_ game-save) game-save 25)
     (clear-text-seen! (_type_ game-text-id) none 26)
     (get-death-count (_type_ symbol) int 27)
@@ -13316,14 +13342,14 @@
    (linger-duration uint16         :offset-assert 8)
    (flags           uint16         :offset-assert 10)
    (name            basic          :offset-assert 12)
-   (launcher        uint32         :offset-assert 16)
+   (launcher        sparticle-group-item         :offset-assert 16)
    (bounds          sphere :inline :offset-assert 32)
    )
   :method-count-assert 10
   :size-assert         #x30
   :flag-assert         #xa00000030
   (:methods
-    (dummy-9 (_type_ process) _type_ 9)
+    (create-launch-control (_type_ process) sparticle-launch-control 9)
     )
   )
 
@@ -13346,8 +13372,8 @@
   (:methods
     (dummy-9 () none 9)
     (dummy-10 () none 10)
-    (dummy-11 () none 11)
-    (dummy-12 () none 12)
+    (dummy-11 (_type_ vector) none 11)
+    (deactivate (_type_) none 12)
     (dummy-13 () none 13)
     )
   )
@@ -16607,12 +16633,12 @@
    (which      int32                :offset-assert 120)
    (buffer     kheap                :offset-assert 124)
    (mode       basic                :offset-assert 128)
-   (result     uint32               :offset-assert 132)
-   (save       basic                :offset-assert 136)
+   (result     mc-status-code               :offset-assert 132)
+   (save       game-save            :offset-assert 136)
    (info       mc-slot-info :inline :offset-assert 140)
-   (notify     uint64               :offset-assert 440)
+   (notify     handle               :offset-assert 440)
    (state-time uint64               :offset-assert 448)
-   (part       basic                :offset-assert 456)
+   (part       sparticle-launch-control                :offset-assert 456)
    )
   :heap-base #x160
   :method-count-assert 23
@@ -16620,37 +16646,43 @@
   :flag-assert         #x17016001cc
   ;; inherited inspect of process
   (:methods
-    (dummy-14 () none 14)
-    (dummy-15 () none 15)
-    (dummy-16 () none 16)
-    (dummy-17 () none 17)
-    (dummy-18 () none 18)
-    (dummy-19 () none 19)
-    (dummy-20 () none 20)
-    (dummy-21 () none 21)
-    (dummy-22 () none 22)
+    (get-heap () _type_ :state 14)
+    (get-card () _type_ :state 15)
+    (format-card () _type_ :state 16)
+    (create-file () _type_ :state 17)
+    (save () _type_ :state 18)
+    (restore () _type_ :state 19)
+    (error (mc-status-code) _type_ :state 20)
+    (done () _type_ :state 21)
+    (unformat-card () _type_ :state 22)
     )
   )
 
 ;; - Functions
 
 (define-extern auto-save-command (function symbol int int process-tree none)) ;; TODO - not confirmed
-(define-extern auto-save-init-by-other function)
+(define-extern auto-save-init-by-other (function symbol process-tree int int none :behavior auto-save))
 (define-extern progress-allowed? (function symbol))
 (define-extern print-game-text (function string font-context symbol int int float)) ; TODO decomp error, this seems correct though
 (define-extern get-aspect-ratio (function symbol))
 (define-extern get-task-status (function game-task task-status))
 (define-extern lookup-level-info (function symbol level-load-info))
-(define-extern calculate-completion function)
+(define-extern calculate-completion (function symbol float))
 (define-extern game-save-elt->string (function game-save-elt string))
 (define-extern progress-level-index->string (function int string))
-(define-extern auto-save-post function)
+(define-extern auto-save-post (function none :behavior auto-save))
 (define-extern auto-save-check (function none))
+
+(define-extern mc-format (function int mc-status-code))
+(define-extern mc-unformat (function int mc-status-code))
+(define-extern mc-create-file (function int uint mc-status-code))
+(define-extern mc-save (function int int pointer int mc-status-code))
+(define-extern mc-load (function int int pointer mc-status-code))
 
 ;; - Unknowns
 
-(define-extern *auto-save-info* mc-slot-info) ;; unknown type
-;;(define-extern scf-get-time object) ;; unknown type
+(define-extern *auto-save-info* mc-slot-info)
+(define-extern scf-get-time (function scf-time none))
 ;; ;; unknown type
 
 
@@ -20717,13 +20749,13 @@
 
 ;; - Types
 
-(deftype progress-global-state (basic)
-  ((junk uint8 #x44))
-  :method-count-assert 9
-  :size-assert         #x48
-  :flag-assert         #x900000048
-  ;; bad get label
-  )
+; (deftype progress-global-state (UNKNOWN)
+;   ()
+;   :method-count-assert 0
+;   :size-assert         #x0
+;   :flag-assert         #x0
+;   ;; bad get label
+;   )
 
 ;; - Functions
 
@@ -20738,15 +20770,15 @@
 
 ;; - Unknowns
 
-(define-extern progress-normal (state progress)) ;; unknown type
-(define-extern progress-going-out (state progress)) ;; unknown type
-(define-extern progress-gone (state progress)) ;; unknown type
-(define-extern *progress-state* object) ;; unknown type
-(define-extern *progress-save-info* mc-slot-info) ;; unknown type
-(define-extern progress-coming-in (state progress)) ;; unknown type
-(define-extern *progress-stack* pointer) ;; unknown type
-(define-extern progress-waiting (state progress)) ;; unknown type
-(define-extern progress-debug (state progress)) ;; unknown type
+;;(define-extern progress-normal object) ;; unknown type
+;;(define-extern progress-going-out object) ;; unknown type
+;;(define-extern progress-gone object) ;; unknown type
+;;(define-extern *progress-state* object) ;; unknown type
+;;(define-extern *progress-save-info* object) ;; unknown type
+;;(define-extern progress-coming-in object) ;; unknown type
+;;(define-extern *progress-stack* object) ;; unknown type
+;;(define-extern progress-waiting object) ;; unknown type
+;;(define-extern progress-debug object) ;; unknown type
 
 
 ;; ----------------------
