@@ -348,22 +348,23 @@
         (up up down down left right left right x x square circle square circle)
           (cpad-clear-buttons! 0 r1)
           ;; toggle!
-          (set! *cheat-mode* (not *cheat-mode*))
+          (not! *cheat-mode*)
           (cheats-sound-play *cheat-mode*)
         )
 
     ;; debug mode
-    (check-cheat-code (-> *cheat-temp* 1) 0
-        (circle square circle square x x right left right left down down up up)
-          (cpad-clear-buttons! 0 r1)
-          ;; toggle between #t and debug.
-          (set! *cheat-mode* (if (= *cheat-mode* 'debug)
-                                      #t
-                                      'debug
-                                      ))
-          (cheats-sound-play *cheat-mode*)
-        )
-
+    (when *cheat-mode*
+      (check-cheat-code (-> *cheat-temp* 1) 0
+          (circle square circle square x x right left right left down down up up)
+            (cpad-clear-buttons! 0 r1)
+            ;; toggle between #t and debug.
+            (set! *cheat-mode* (if (= *cheat-mode* 'debug)
+                                        #t
+                                        'debug
+                                        ))
+            (cheats-sound-play *cheat-mode*)
+          )
+      )
 
     ;; language cheat
     (case (scf-get-territory)
@@ -524,8 +525,11 @@
       ;; do ambients
 
       ;; math engine.
+      
+      ;; DEBUG PROF
+      (add-ee-profile-frame 'draw :r #x40 :b #x40)
       ;; debug hook
-      ;; main cheats
+      (main-cheats)
       ;; update-camera
       ;; draw hook
       ;; menu hook
