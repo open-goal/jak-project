@@ -10401,7 +10401,7 @@
     (set-zero! (_type_) _type_ 9)
     (update! (_type_) float 10)
     (get-no-update (_type_) float 11)
-    (activate! (_type_ float int int float float float) _type_ 12)
+    (activate! (_type_ float int int float float) _type_ 12) ;; TODO - double check the removal here
     (nonzero-amplitude? (_type_) symbol 13)
     (die-on-next-update! (_type_) _type_ 14)
     )
@@ -10923,7 +10923,7 @@
     (new (symbol type process collide-list-enum) _type_)
     (dummy-28 () none 28)
     (dummy-29 () none 29)
-    (dummy-30 () none 30)
+    (dummy-30 (_type_ vector) none 30) ;; TODO - vector not confirmed
     (dummy-31 () none 31)
     (dummy-32 () none 32)
     (dummy-33 (_type_ vector uint) none 33)
@@ -19069,62 +19069,42 @@
 
 ;; - Types
 
-; (deftype camera-voicebox (camera-slave)
-;   ()
-;   :method-count-assert 14
-;   :size-assert         #xa04
-;   :heap-base           #x9a0
-;   :flag-assert         #xe09a00a04
-;   ;;  not enough basic ops
-;   (:methods
-;     (dummy-9 () none 9)
-;     (dummy-10 () none 10)
-;     (dummy-11 () none 11)
-;     (dummy-12 () none 12)
-;     (dummy-13 () none 13)
-;     )
-;   )
+(deftype camera-voicebox (camera-slave)
+  ()
+  :method-count-assert 14
+  :size-assert         #xa04
+  :heap-base           #x9a0
+  :flag-assert         #xe09a00a04
+  )
 
-; (deftype voicebox (process-drawable)
-;   ((base-trans vector           :inline :offset-assert 176)
-;    (seeker     cam-float-seeker :inline :offset-assert 192)
-;    (blend      float                    :offset-assert 216)
-;    (twist      float                    :offset-assert 220)
-;    (hint       uint64                   :offset-assert 224)
-;    )
-;   :method-count-assert 23
-;   :size-assert         #xe8
-;   :heap-base           #x80
-;   :flag-assert         #x17008000e8
-;   ;; inherited inspect of process-drawable
-;   (:methods
-;     (dummy-9 () none 9)
-;     (dummy-10 () none 10)
-;     (dummy-11 () none 11)
-;     (dummy-12 () none 12)
-;     (dummy-13 () none 13)
-;     (dummy-14 () none 14)
-;     (dummy-15 () none 15)
-;     (dummy-16 () none 16)
-;     (dummy-17 () none 17)
-;     (dummy-18 () none 18)
-;     (dummy-19 () none 19)
-;     (dummy-20 () none 20)
-;     (dummy-21 () none 21)
-;     (dummy-22 () none 22)
-;     )
-;   )
+(deftype voicebox (process-drawable)
+  ((base-trans vector           :inline :offset-assert 176)
+   (seeker     cam-float-seeker :inline :offset-assert 192)
+   (blend      float                    :offset-assert 216)
+   (twist      float                    :offset-assert 220)
+   (hint       uint64                   :offset-assert 224)
+   )
+  :method-count-assert 23
+  :size-assert         #xe8
+  :heap-base           #x80
+  :flag-assert         #x17008000e8
+  (:methods
+    (unknown-state00 () _type_ :state 20)
+    (dummy-21 () none 21)
+    (dummy-22 () none 22)
+    )
+  )
 
 ;; - Functions
 
 (define-extern voicebox-init-by-other function)
-(define-extern voicebox-track function)
+(define-extern voicebox-track (function none :behavior voicebox))
 
 ;; - Unknowns
 
-;;(define-extern cam-voicebox object) ;; unknown type
+(define-extern cam-voicebox camera-voicebox) ;; unknown type
 (define-extern *voicebox-sg* skeleton-group)
-;;(define-extern empty-state object) ;; unknown type
+(define-extern empty-state state) ;; unknown type
 
 
 ;; ----------------------
@@ -20297,11 +20277,11 @@
   :flag-assert         #x1e00900100
   ;; inherited inspect of process-drawable
   (:methods
-    (wait () none 20) ;; state
-    (dummy-21 () none 21)
+    (wait ()  _type_ :state 20) ;; state
+    (unknown-state00 () _type_ :state 21)
     (dummy-22 () none 22)
-    (bounce-on () none 23) ;; state
-    (dummy-24 () none 24)
+    (bounce-on ()  _type_ :state 23) ;; state
+    (unknown-state01 () _type_ :state 24)
     (dummy-25 () none 25)
     (dummy-26 () none 26)
     (dummy-27 () none 27)
@@ -20345,8 +20325,8 @@
 
 ;; - Functions
 
-(define-extern crate-post function)
-(define-extern crate-standard-event-handler function)
+(define-extern crate-post (function int :behavior crate))
+(define-extern crate-standard-event-handler (function process int symbol event-message-block object :behavior crate))
 (define-extern crate-init-by-other function)
 
 ;; - Unknowns
@@ -20357,7 +20337,7 @@
 (define-extern *crate-barrel-sg* skeleton-group)
 (define-extern *crate-bucket-sg* skeleton-group)
 (define-extern *crate-wood-sg* skeleton-group)
-;;(define-extern *CRATE-bank* object) ;; unknown type
+(define-extern *CRATE-bank* crate-bank) ;; unknown type
 
 
 ;; ----------------------
@@ -22230,7 +22210,8 @@
 ;; - Types
 
 (deftype baseplat (process-drawable)
-  ((smush     smush-control :inline :offset-assert 176)
+  ((root-override collide-shape-moving :score 100 :offset 112)
+   (smush     smush-control :inline :offset-assert 176)
    (basetrans vector        :inline :offset-assert 208)
    (bouncing  basic                 :offset-assert 224)
    )
@@ -22240,13 +22221,13 @@
   :flag-assert         #x1b008000e4
   ;; inherited inspect of process-drawable
   (:methods
-    (dummy-20 () none 20)
-    (dummy-21 () none 21)
-    (dummy-22 () none 22)
-    (dummy-23 () none 23)
-    (dummy-24 () none 24)
-    (dummy-25 () none 25)
-    (dummy-26 () none 26)
+    (dummy-20 (_type_) none 20)
+    (dummy-21 (_type_) none 21)
+    (dummy-22 (_type_) none 22)
+    (TODO-RENAME-23 (_type_) skeleton-group 23)
+    (dummy-24 (_type_) none 24)
+    (TODO-RENAME-25 (_type_) sparticle-launch-group 25)
+    (dummy-26 (_type_) none 26)
     )
   )
 
@@ -22282,11 +22263,11 @@
 
 ;; - Functions
 
-(define-extern plat-code function)
-(define-extern plat-trans function)
-(define-extern plat-post function)
-(define-extern plat-event function)
-(define-extern eco-door-event-handler function)
+(define-extern plat-code (function none :behavior baseplat))
+(define-extern plat-trans (function none :behavior baseplat))
+(define-extern plat-post (function none :behavior baseplat))
+(define-extern plat-event (function process int symbol event-message-block object :behavior baseplat))
+(define-extern eco-door-event-handler (function process int symbol event-message-block object :behavior eco-door))
 
 
 ;; ----------------------
@@ -22664,9 +22645,9 @@
     (dummy-27 () none 27)
     (dummy-28 () none 28)
     (dummy-29 () none 29)
-    (plat-startup () none 30) ;; state
-    (plat-idle () none 31) ;; state
-    (plat-path-active () none 32) ;; state
+    (plat-startup () _type_ :state 30) ;; state
+    (plat-idle () _type_ :state 31) ;; state
+    (plat-path-active () _type_ :state 32) ;; state
     )
   )
 
@@ -22750,10 +22731,6 @@
   :size-assert         #x165
   :heap-base           #x100
   :flag-assert         #x2101000165
-  ;; inherited inspect of plat
-  (:methods
-    (plat-path-active () none 32)
-    )
   )
 
 ;; - Unknowns
