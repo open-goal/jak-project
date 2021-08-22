@@ -1004,9 +1004,7 @@
         (+ tex-dest-base-chunk (the-as uint upload-chunk-idx))
         )
        ;; can we possibly use existing data in VRAM?
-       (set! need-tex
-        (nonzero? (logand needed-mask (ash 1 upload-chunk-idx)))
-        )
+       (set! need-tex (logtest? needed-mask (ash 1 upload-chunk-idx)))
        ;; look for the start of a run of uploads.
        (if (zero? chunks-to-upload-count)
            (when (and (!= (-> pool ids current-dest-chunk) page-id) need-tex)
@@ -1579,7 +1577,7 @@
   (dotimes (v1-0 32)
     (let ((a2-0 (-> obj common-page v1-0)))
       (when (and (nonzero? a2-0) ;; known common texture page
-                 (nonzero? (logand (-> obj common-page-mask) (ash 1 v1-0))) ;; in the mask.
+                 (and (nonzero? a2-0) (logtest? (-> obj common-page-mask) (ash 1 v1-0))) ;; in the mask.
                  )
         ;; upload it!
         (upload-vram-pages obj (-> obj segment-common) a2-0 -2 (bucket-id bucket-65))

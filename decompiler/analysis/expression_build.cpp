@@ -84,8 +84,31 @@ bool convert_to_expressions(
         }
       }
 
+      bool needs_cast = false;
       if (!dts.ts.tc(f.type.last_arg(), return_type)) {
         // we need to cast the final value.
+        needs_cast = true;
+
+      } else {
+        bool found_early_return = false;
+        for (auto e : new_entries) {
+          e->apply([&](FormElement* elt) {
+            auto as_ret = dynamic_cast<ReturnElement*>(elt);
+            if (as_ret) {
+              found_early_return = true;
+            }
+          });
+          if (found_early_return) {
+            break;
+          }
+        }
+
+        if (!found_early_return && f.type.last_arg() != return_type) {
+          needs_cast = true;
+        }
+      }
+
+      if (needs_cast) {
         auto to_cast = new_entries.back();
         auto as_cast = dynamic_cast<CastElement*>(to_cast);
         if (as_cast) {
