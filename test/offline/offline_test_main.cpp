@@ -172,10 +172,7 @@ const std::unordered_set<std::string> g_functions_to_skip_compiling = {
     "slave-set-rotation!", "v-slrp2!", "v-slrp3!",  // vector-dot involving the stack
 
     // loader - decompiler bug with detecting handle macros
-    "(method 10 external-art-buffer)",
-
-    // target-util - return type issue - https://github.com/water111/jak-project/issues/772
-    "(method 16 target)"};
+    "(method 10 external-art-buffer)"};
 
 // default location for the data. It can be changed with a command line argument.
 std::string g_iso_data_path = "";
