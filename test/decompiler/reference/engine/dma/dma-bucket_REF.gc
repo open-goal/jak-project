@@ -2,7 +2,7 @@
 (in-package goal)
 
 ;; definition for function dma-buffer-add-buckets
-;; INFO: Return type mismatch pointer vs dma-bucket.
+;; INFO: Return type mismatch pointer vs (inline-array dma-bucket).
 (defun dma-buffer-add-buckets ((dma-buf dma-buffer) (count int))
   (let ((v0-0 (-> dma-buf base)))
    (let ((current-bucket (the-as dma-bucket v0-0)))
@@ -22,17 +22,17 @@
      )
     (set! (-> dma-buf base) (the-as pointer current-bucket))
     )
-   (the-as dma-bucket v0-0)
+   (the-as (inline-array dma-bucket) v0-0)
    )
   )
 
 ;; definition for function dma-buffer-patch-buckets
-(defun dma-buffer-patch-buckets ((bucket dma-bucket) (count int))
+(defun dma-buffer-patch-buckets ((bucket (inline-array dma-bucket)) (count int))
   (when (nonzero? bucket)
    (dotimes (i count)
-    (set! (-> bucket last 0 addr) (the-as int (&+ (the-as pointer bucket) 16)))
-    (set! (-> bucket last) (the-as (pointer dma-tag) 0))
-    (set! bucket (the-as dma-bucket (&+ (the-as pointer bucket) 16)))
+    (set! (-> bucket 0 last 0 addr) (the-as int (the-as pointer (-> bucket 1))))
+    (set! (-> bucket 0 last) (the-as (pointer dma-tag) 0))
+    (set! bucket (the-as (inline-array dma-bucket) (-> bucket 1)))
     )
    )
   bucket
@@ -41,12 +41,12 @@
 ;; definition for function dma-bucket-insert-tag
 (defun
   dma-bucket-insert-tag
-  ((base dma-bucket)
+  ((base (inline-array dma-bucket))
    (idx bucket-id)
    (tag-start pointer)
    (tag-end (pointer dma-tag))
    )
-  (let ((bucket (the-as dma-bucket (+ (the-as uint base) (* idx 16)))))
+  (let ((bucket (-> base idx)))
    (set! (-> (the-as dma-bucket (-> bucket last)) next) (the-as uint tag-start))
    (set! (-> bucket last) tag-end)
    )

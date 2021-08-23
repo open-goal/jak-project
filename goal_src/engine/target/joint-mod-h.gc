@@ -41,7 +41,7 @@
    (trans           vector                 :inline :offset-assert  64)
    (quat            quaternion             :inline :offset-assert  80)
    (scale           vector                 :inline :offset-assert  96)
-   (notice-time     uint64                         :offset-assert 112)
+   (notice-time     int64                          :offset-assert 112)
    (flex-blend      float                          :offset-assert 120)
    (blend           float                          :offset-assert 124)
    (max-dist        meters                         :offset-assert 128)
@@ -225,15 +225,15 @@
 
 (defmethod look-at-enemy! joint-mod ((obj joint-mod) (target-trans vector) (option symbol) (proc process))
   "Set up animation for Jak looking at an enemy. If option is 'attacking, remember when this happened.
-   Will only override an existing look-at if this one is closer, or option is 'force.
-   "
+  Will only override an existing look-at if this one is closer, or option is 'force.
+  "
   (when (= option 'attacking)
     ;; make sure we got a process-drawable
     (let* ((s3-0 proc)
            (proc-drawable
-            (if (and (nonzero? s3-0) (type-type? (-> s3-0 type) process-drawable))
-                (the-as process-drawable s3-0)
-                )
+             (if (and (nonzero? s3-0) (type-type? (-> s3-0 type) process-drawable))
+                 (the-as process-drawable s3-0)
+                 )
              )
            )
       (when proc-drawable
@@ -243,7 +243,7 @@
                                                         (the-as fact-info-enemy s0-0)
                                                         )
                                     )
-                 )
+                            )
                )
           ;; check that we have enemy facts, and that we are within the notice distance
           (when (and enemy-facts (< (vector-vector-distance (-> obj process root trans) (-> proc-drawable root trans))
@@ -253,16 +253,7 @@
             ;; success! we consider this a noticed and remember when
             (set! (-> obj notice-time) (-> *display* base-frame-counter))
             ;; and update the look at data
-       (let ((v1-12 (if proc
-                     (-> proc ppointer)
-                     )
-              )
-             )
-        (set!
-         (-> last-try-to-look-at-data who)
-         (new 'static 'handle :process v1-12 :pid (-> v1-12 0 pid))
-         )
-        )
+            (set! (-> last-try-to-look-at-data who) (process->handle proc))
             ;; not sure what these are yet.
             (if (< (-> last-try-to-look-at-data vert) (-> enemy-facts cam-vert))
                 (set! (-> last-try-to-look-at-data vert) (-> enemy-facts cam-vert))
@@ -275,21 +266,21 @@
         )
       )
     )
-
+  
   ;; in all cases,
   (let ((dist (vector-vector-distance (-> obj process root trans) target-trans)))
     (when (and
-           ;; done with previous
-           (or (= (-> obj blend) 0.0)
-               ;; closer than previous.
-               (or (< dist (vector-vector-distance (-> obj process root trans) (-> obj target)))
-                   ;; force
-                   (= option 'force)
-                   )
-               )
-           ;; and in range
-           (< dist (-> obj max-dist))
-           )
+            ;; done with previous
+            (or (= (-> obj blend) 0.0)
+                ;; closer than previous.
+                (or (< dist (vector-vector-distance (-> obj process root trans) (-> obj target)))
+                    ;; force
+                    (= option 'force)
+                    )
+                )
+            ;; and in range
+            (< dist (-> obj max-dist))
+            )
       ;; set mode, if we aren't in one
       (if (= (-> obj mode) (joint-mod-handler-mode reset))
           (set-mode! obj (joint-mod-handler-mode look-at))

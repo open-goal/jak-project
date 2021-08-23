@@ -137,7 +137,7 @@ TP_Type SimpleAtom::get_type(const TypeState& input,
       }
       // todo: should we take out this warning?
       lg::warn("IR_StaticAddress does not know the type of {}", label.name);
-      return TP_Type::make_label_addr();
+      return TP_Type::make_label_addr(m_int);
     }
     case Kind::INVALID:
     default:
@@ -261,10 +261,8 @@ TP_Type get_stack_type_at_constant_offset(int offset,
 
     if (offset == structure.hint.stack_offset) {
       // special case just getting the variable
-      if (structure.hint.container_type == StackStructureHint::ContainerType::NONE ||
-          structure.hint.container_type == StackStructureHint::ContainerType::INLINE_ARRAY) {
-        return TP_Type::make_from_ts(coerce_to_reg_type(structure.ref_type));
-      }
+
+      return TP_Type::make_from_ts(coerce_to_reg_type(structure.ref_type));
     }
 
     // Note: GOAL doesn't seem to constant propagate memory access on the stack, so the code
@@ -631,6 +629,14 @@ TP_Type SimpleExpression::get_type_int2(const TypeState& input,
     return TP_Type::make_from_ts(TypeSpec("float"));
   }
 
+  auto& name = env.func->guessed_name;
+  if (name.kind == FunctionName::FunctionKind::METHOD && name.method_id == 7 &&
+      env.func->type.arg_count() == 3) {
+    if (m_kind == Kind::ADD && arg1_type.typespec() == TypeSpec("int")) {
+      return arg0_type;
+    }
+  }
+
   throw std::runtime_error(fmt::format("Cannot get_type_int2: {}, args {} and {}",
                                        to_form(env.file->labels, env).print(), arg0_type.print(),
                                        arg1_type.print()));
@@ -993,7 +999,14 @@ TP_Type LoadVarOp::get_src_type(const TypeState& input,
       auto rd = dts.ts.reverse_field_lookup(rd_in);
 
       if (rd.success) {
-        return TP_Type::make_from_ts(coerce_to_reg_type(rd.result_type));
+        if (rd_in.base_type.base_type() == "state" && rd.tokens.size() == 1 &&
+            rd.tokens.front().kind == FieldReverseLookupOutput::Token::Kind::FIELD &&
+            rd.tokens.front().name == "enter" && rd_in.base_type.arg_count() > 0) {
+          // special case for accessing the enter field of state
+          return TP_Type::make_from_ts(state_to_go_function(rd_in.base_type));
+        } else {
+          return TP_Type::make_from_ts(coerce_to_reg_type(rd.result_type));
+        }
       }
     }
 
@@ -1180,6 +1193,13 @@ TypeState CallOp::propagate_types_internal(const TypeState& input,
         arg_count = arg_type.get_format_string_arg_count();
       }
 
+      if (arg_count + 2 > 8) {
+        throw std::runtime_error(
+            "Call to `format` pushed the arg-count beyond the acceptable arg limit (8), do you "
+            "need to add "
+            "a code to the ignore lists?");
+      }
+
       TypeSpec format_call_type("function");
       format_call_type.add_arg(TypeSpec("object"));  // destination
       format_call_type.add_arg(TypeSpec("string"));  // format string
@@ -1188,6 +1208,7 @@ TypeState CallOp::propagate_types_internal(const TypeState& input,
       }
       format_call_type.add_arg(TypeSpec("object"));
       arg_count += 2;  // for destination and format string.
+
       m_call_type = format_call_type;
       m_call_type_set = true;
 

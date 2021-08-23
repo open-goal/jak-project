@@ -96,20 +96,43 @@
 (define-extern malloc (function symbol int pointer))
 (define-extern kmalloc (function kheap int kmalloc-flags string pointer))
 (define-extern new-dynamic-structure (function symbol type int structure))
-(define-extern method-set! (function type int function none)) ;; may actually return function.
+(define-extern method-set! (function type int object none)) ;; may actually return function.
 (define-extern link (function pointer pointer int kheap int pointer))
 (define-extern dgo-load (function string kheap int int none))
 (define-extern link-begin (function pointer (pointer uint8) int kheap link-flag int))
 (define-extern link-resume (function int))
+
+(defenum mc-status-code
+  :type uint32
+  (busy 0)
+  (ok 1)
+  (bad-handle 2)
+  (format-failed 3)
+  (internal-error 4)
+  (write-error 5)
+  (read-error 6)
+  (new-game 7)
+  (no-memory 8)
+  (no-card 9)
+  (no-last 10)
+  (no-format 11)
+  (no-file 12)
+  (no-save 13)
+  (no-space 14)
+  (bad-version 15)
+  (no-process 16)
+  (no-auto-save 17)
+  )
+
 (define-extern mc-run (function none))
-;; mc-format
-;; mc-unformat
-;; mc-create-file
-;; mc-save
-;; mc-load
+(define-extern mc-format (function int mc-status-code))
+(define-extern mc-unformat (function int mc-status-code))
+(define-extern mc-create-file (function int uint mc-status-code))
+(define-extern mc-save (function int int pointer int mc-status-code))
+(define-extern mc-load (function int int pointer mc-status-code))
 (declare-type mc-slot-info structure)
 (define-extern mc-sync (function int))
-(define-extern mc-get-slot-info (function int mc-slot-info))
+(define-extern mc-get-slot-info (function int mc-slot-info none))
 
 (define-extern mc-check-result (function int))
 ;; mc-makefile
@@ -148,13 +171,11 @@
 ;; gs-get-imr
 (define-extern gs-store-image (function object object object))
 (define-extern flush-cache (function int none))
-;; cpad-open
 (declare-type cpad-info basic)
 (define-extern cpad-open (function cpad-info int cpad-info))
 (define-extern cpad-get-data (function cpad-info cpad-info))
-(define-extern install-handler (function int (function int) int)) ;; check return val
+(define-extern install-handler (function int function int)) ;; check return val
 ;; install-debug-handler
-;; file-stream-open
 (define-extern file-stream-open (function file-stream basic basic file-stream))
 (define-extern file-stream-close (function file-stream file-stream))
 (define-extern file-stream-length (function file-stream int))
@@ -162,7 +183,8 @@
 (define-extern file-stream-read (function file-stream pointer int int))
 (define-extern file-stream-write (function file-stream pointer uint uint))
 (define-extern scf-get-language (function uint))
-;; scf-get-time
+(declare-type scf-time structure)
+(define-extern scf-get-time (function scf-time none))
 (define-extern scf-get-aspect (function uint))
 (define-extern scf-get-volume (function int))
 (define-extern scf-get-territory (function int))
@@ -177,13 +199,6 @@
 (define-extern *kernel-boot-message* symbol)
 ;; *kernel-boot-mode*
 ;; *kernel-boot-level*
-
-;; PC Port functions
-(define-extern __read-ee-timer (function uint))
-(define-extern __mem-move (function pointer pointer uint none))
-(define-extern __send-gfx-dma-chain (function object object none))
-(define-extern __pc-texture-upload-now (function object object none))
-(define-extern __pc-texture-relocate (function object object object none))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;; ksound - InitSoundScheme
@@ -268,6 +283,21 @@
   :flag-assert #x90000000c
   :no-runtime-type ;; already constructed, don't do it again.
   )
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;; PC Port functions
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+(define-extern __read-ee-timer (function uint))
+(define-extern __mem-move (function pointer pointer uint none))
+(define-extern __send-gfx-dma-chain (function object object none))
+(define-extern __pc-texture-upload-now (function object object none))
+(define-extern __pc-texture-relocate (function object object object none))
+(define-extern pc-pad-input-mode-set (function symbol none))
+(define-extern pc-pad-input-mode-get (function int))
+(define-extern pc-pad-input-key-get (function int))
+(define-extern pc-pad-input-index-get (function int))
+(define-extern pc-pad-input-map-save! (function none))
+(define-extern pc-pad-get-mapped-button (function int int int))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;; vm functions

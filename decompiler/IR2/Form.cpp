@@ -1828,6 +1828,14 @@ std::string fixed_operator_to_string(FixedOperatorKind kind) {
       return "l32-false-check";
     case FixedOperatorKind::VECTOR_3_DOT:
       return "vector-dot";
+    case FixedOperatorKind::PROCESS_TO_PPOINTER:
+      return "process->ppointer";
+    case FixedOperatorKind::PPOINTER_TO_HANDLE:
+      return "ppointer->handle";
+    case FixedOperatorKind::PROCESS_TO_HANDLE:
+      return "process->handle";
+    case FixedOperatorKind::PPOINTER_TO_PROCESS:
+      return "ppointer->process";
     default:
       assert(false);
       return "";
@@ -2621,6 +2629,10 @@ goos::Object StackStructureDefElement::to_form_internal(const Env&) const {
       return pretty_print::build_list(fmt::format("new 'stack-no-clear 'inline-array '{} {}",
                                                   m_entry.ref_type.get_single_arg().print(),
                                                   m_entry.hint.container_size));
+    case StackStructureHint::ContainerType::ARRAY:
+      return pretty_print::build_list(fmt::format("new 'stack-no-clear 'array '{} {}",
+                                                  m_entry.ref_type.get_single_arg().print(),
+                                                  m_entry.hint.container_size));
     default:
       assert(false);
   }
@@ -2773,6 +2785,32 @@ void LabelElement::collect_vars(RegAccessSet&, bool) const {}
 void LabelElement::get_modified_regs(RegSet&) const {}
 
 ////////////////////////////////
+// LabelDerefElement
+///////////////////////////////
+
+LabelDerefElement::LabelDerefElement(int lid,
+                                     int size,
+                                     LoadVarOp::Kind load_kind,
+                                     RegisterAccess var)
+    : m_lid(lid), m_size(size), m_load_kind(load_kind), m_var(var) {}
+
+goos::Object LabelDerefElement::to_form_internal(const Env& env) const {
+  return pretty_print::build_list(fmt::format("label-deref {} :label {} :size {} :kind {}",
+                                              m_var.to_string(env), env.file->labels.at(m_lid).name,
+                                              m_size, load_kind_to_string(m_load_kind)));
+}
+
+void LabelDerefElement::apply(const std::function<void(FormElement*)>& f) {
+  f(this);
+}
+
+void LabelDerefElement::apply_form(const std::function<void(Form*)>&) {}
+void LabelDerefElement::collect_vars(RegAccessSet& regs, bool) const {
+  regs.insert(m_var);
+}
+void LabelDerefElement::get_modified_regs(RegSet&) const {}
+
+////////////////////////////////
 // GetSymbolStringPointer
 //////////////////////////////
 
@@ -2801,6 +2839,69 @@ void GetSymbolStringPointer::collect_vars(RegAccessSet& vars, bool recursive) co
 
 void GetSymbolStringPointer::get_modified_regs(RegSet& regs) const {
   return m_src->get_modified_regs(regs);
+}
+
+////////////////////////////////
+// DefstateElement
+////////////////////////////////
+
+DefstateElement::DefstateElement(const std::string& process_type,
+                                 const std::string& state_name,
+                                 const std::vector<Entry>& entries,
+                                 bool is_virtual)
+    : m_process_type(process_type),
+      m_state_name(state_name),
+      m_entries(entries),
+      m_is_virtual(is_virtual) {
+  for (auto& e : m_entries) {
+    e.val->parent_element = this;
+  }
+}
+
+void DefstateElement::apply(const std::function<void(FormElement*)>& f) {
+  f(this);
+  for (auto& e : m_entries) {
+    e.val->apply(f);
+  }
+}
+
+void DefstateElement::apply_form(const std::function<void(Form*)>& f) {
+  for (auto& e : m_entries) {
+    e.val->apply_form(f);
+  }
+}
+
+void DefstateElement::collect_vars(RegAccessSet& vars, bool recursive) const {
+  if (recursive) {
+    for (auto& e : m_entries) {
+      e.val->collect_vars(vars, recursive);
+    }
+  }
+}
+
+void DefstateElement::get_modified_regs(RegSet& regs) const {
+  for (auto& e : m_entries) {
+    e.val->get_modified_regs(regs);
+  }
+}
+
+goos::Object DefstateElement::to_form_internal(const Env& env) const {
+  std::vector<goos::Object> forms;
+  forms.push_back(pretty_print::to_symbol("defstate"));
+  forms.push_back(pretty_print::to_symbol(m_state_name));
+  forms.push_back(pretty_print::build_list(m_process_type));
+
+  if (m_is_virtual) {
+    forms.push_back(pretty_print::to_symbol(":virtual #t"));
+  }
+
+  for (const auto& e : m_entries) {
+    forms.push_back(pretty_print::to_symbol(fmt::format(":{}", handler_kind_to_name(e.kind))));
+    auto to_print = e.val;
+    forms.push_back(to_print->to_form(env));
+  }
+
+  return pretty_print::build_list(forms);
 }
 
 ////////////////////////////////

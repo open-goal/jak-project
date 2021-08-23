@@ -364,10 +364,10 @@
 
 ;; A protect frame is a frame which has a cleanup function called on exit.
 (deftype protect-frame (stack-frame)
-  ((exit (function object) :offset-assert 12)) ;; function to call to clean up
+  ((exit (function none) :offset-assert 12)) ;; function to call to clean up
   
   (:methods
-   (new (symbol type (function object)) protect-frame)
+   (new (symbol type (function none)) protect-frame)
    )
   :size-assert 16
   :method-count-assert 9
@@ -401,21 +401,38 @@
 (defmacro handle->process (handle)
   ;; the actual implementation is more clever than this.
   ;; Checks PID.
-  `(if (-> ,handle process)
-       (let ((proc (-> (-> ,handle process))))
-         (if (= (-> ,handle pid) (-> proc pid))
-             proc
-             )
+  `(let ((the-handle ,handle))
+     (if (-> the-handle process)
+         (let ((proc (-> (-> the-handle process))))
+           (if (= (-> the-handle pid) (-> proc pid))
+               proc
+               )
+           )
          )
-       )
+     )
+  )
+
+(defmacro ppointer->process (ppointer)
+  ;; convert a (pointer process) to a process.
+  ;; this uses the self field, which seems to always just get set to the object.
+  ;; perhaps when deleting a process you could have it set self to #f?
+  ;; I don't see this happen anywhere though, so it's not clear.
+  `(let ((the-pp ,ppointer))
+     (the process (if the-pp (-> the-pp 0 self)))
+     )
   )
 
 (defmacro process->ppointer (proc)
-  `(if ,proc (the (pointer process) (-> ,proc ppointer)))
+  ;"safely get a (pointer process) from a process, returning #f if invalid."
+  `(let ((the-proc ,proc))
+     (if the-proc (-> the-proc ppointer))
+     )
   )
 
 (defmacro ppointer->handle (pproc)
-  `(new 'static 'handle :process ,pproc :pid (-> ,pproc 0 pid))
+  `(let ((the-process ,pproc))
+      (new 'static 'handle :process the-process :pid (-> the-process 0 pid))
+      )
   )
 
 (defmacro process->handle (proc)
@@ -436,17 +453,17 @@
   )
 
 (deftype state (protect-frame)
-  ((code  function  :offset-assert 16)
-   (trans (function object)  :offset-assert 20)
-   (post  function  :offset-assert 24)
-   (enter (function object object object object object object object)  :offset-assert 28)
-   (event (function process int symbol event-message-block object)     :offset-assert 32)
+  ((code  function         :offset-assert  16)
+   (trans (function none)  :offset-assert  20)
+   (post  (function none)  :offset-assert  24)
+   (enter function         :offset-assert  28)
+   (event (function process int symbol event-message-block object)  :offset-assert  32)
    )
   (:methods
     (new (symbol type basic function
-          (function object) 
-          (function object object object object object object object)
-          (function object)
+          (function none) 
+          function
+          (function none)
           (function process int symbol event-message-block object)) _type_ 0)
     )
   :method-count-assert 9
@@ -455,7 +472,7 @@
   )
 
 
-;; Not sure what this is, but it's probably used in the event system.
+;; this is used for the event system to pass around parameters from one process to another.
 (deftype event-message-block (structure)
   ((to process :offset-assert 0)
    (from process :offset-assert 4)
@@ -467,23 +484,6 @@
   :size-assert #x48
   :method-count-assert 9
   :flag-assert #x900000048
-  )
-
-(defmacro as-process (ppointer)
-  ;; convert a (pointer process) to a process.
-  ;; this uses the self field, which seems to always just get set to the object.
-  ;; perhaps when deleting a process you could have it set self to #f?
-  ;; I don't see this happen anywhere though, so it's not clear.
-  `(if ,ppointer
-       (-> (-> ,ppointer) self)
-       )
-  )
-
-(defmacro as-ppointer (proc)
-  ;"safely get a (pointer process) from a process, returning #f if invalid."
-  `(if ,proc
-       (-> ,proc ppointer)
-       )
   )
 
 (defmacro process-stack-used (proc)

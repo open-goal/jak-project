@@ -3,10 +3,10 @@
 
 ;; definition of type ticky
 (deftype ticky (structure)
-  ((delay-til-ramp    uint64  :offset-assert   0)
-   (delay-til-timeout uint64  :offset-assert   8)
-   (starting-time     uint64  :offset-assert  16)
-   (last-tick-time    uint64  :offset-assert  24)
+  ((delay-til-ramp    int64  :offset-assert   0)
+   (delay-til-timeout int64  :offset-assert   8)
+   (starting-time     int64  :offset-assert  16)
+   (last-tick-time    int64  :offset-assert  24)
    )
   :method-count-assert 12
   :size-assert         #x20
@@ -32,9 +32,12 @@
 ;; INFO: Return type mismatch int vs none.
 (defmethod sleep ticky ((obj ticky) (arg0 uint))
   (set! (-> obj starting-time) (-> *display* base-frame-counter))
-  (set! (-> obj delay-til-timeout) arg0)
-  (set! (-> obj delay-til-ramp) (max 0 (the-as int (+ arg0 -1200))))
-  (set! (-> obj last-tick-time) (the-as uint 0))
+  (set! (-> obj delay-til-timeout) (the-as int arg0))
+  (set!
+   (-> obj delay-til-ramp)
+   (the-as int (max 0 (the-as int (+ arg0 -1200))))
+   )
+  (set! (-> obj last-tick-time) 0)
   0
   (none)
   )
@@ -44,7 +47,7 @@
   (let ((gp-0 #f))
    (let ((v1-2 (- (-> *display* base-frame-counter) (-> obj starting-time))))
     (cond
-     ((>= (the-as int v1-2) (the-as int (-> obj delay-til-timeout)))
+     ((>= v1-2 (-> obj delay-til-timeout))
       (set! gp-0 #t)
       )
      (else
@@ -53,7 +56,7 @@
          (fmin
           1.0
           (/
-           (the float (max 0 (the-as int (- v1-2 (-> obj delay-til-ramp)))))
+           (the float (max 0 (- v1-2 (-> obj delay-til-ramp))))
            (the float (- (-> obj delay-til-timeout) (-> obj delay-til-ramp)))
            )
           )
@@ -61,13 +64,7 @@
         (v1-7 (the int (lerp 105.0 41.0 f0-1)))
         )
        (when
-        (>=
-         (the-as
-          int
-          (- (-> *display* base-frame-counter) (-> obj last-tick-time))
-          )
-         v1-7
-         )
+        (>= (- (-> *display* base-frame-counter) (-> obj last-tick-time)) v1-7)
         (set! (-> obj last-tick-time) (-> *display* base-frame-counter))
         (sound-play-by-name
          (static-sound-name "stopwatch")
@@ -90,11 +87,7 @@
 ;; definition for method 10 of type ticky
 (defmethod reached-delay? ticky ((obj ticky) (arg0 uint))
   (>=
-   (the-as int (- (-> *display* base-frame-counter) (-> obj starting-time)))
+   (- (-> *display* base-frame-counter) (-> obj starting-time))
    (the-as int arg0)
    )
   )
-
-
-
-

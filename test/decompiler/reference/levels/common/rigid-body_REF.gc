@@ -450,7 +450,7 @@
    (sim-time-remaining    float                                         :offset-assert 688)
    (float-height-offset   float                                         :offset-assert 692)
    (player-attack-id      int32                                         :offset-assert 696)
-   (player-bonk-timeout   uint64                                        :offset-assert 704)
+   (player-bonk-timeout   int64                                         :offset-assert 704)
    (water-anim            water-anim                                    :offset-assert 712)
    (player-contact        basic                                         :offset-assert 716)
    (player-impulse        collide-shape-prim-mesh                       :offset-assert 720)
@@ -460,8 +460,8 @@
   :size-assert         #x2d4
   :flag-assert         #x23027002d4
   (:methods
-    (rigid-body-platform-idle () none 20)
-    (rigid-body-platform-float () none 21)
+    (rigid-body-platform-idle () _type_ :state 20)
+    (rigid-body-platform-float () _type_ :state 21)
     (TODO-RENAME-22 (_type_ vector basic) float 22)
     (TODO-RENAME-23 (_type_ basic) none 23)
     (TODO-RENAME-24 (_type_ rigid-body-control-point basic) none 24)
@@ -735,10 +735,7 @@
    (('bonk)
      (when
       (>=
-       (the-as
-        int
-        (- (-> *display* base-frame-counter) (-> self player-bonk-timeout))
-        )
+       (- (-> *display* base-frame-counter) (-> self player-bonk-timeout))
        (the-as int (-> self info player-force-timeout))
        )
       (set! (-> self player-bonk-timeout) (-> *display* base-frame-counter))
@@ -787,12 +784,9 @@
                       ((= (-> arg3 param 1) 'flop)
                        (when
                         (>=
-                         (the-as
-                          int
-                          (-
-                           (-> *display* base-frame-counter)
-                           (-> self player-bonk-timeout)
-                           )
+                         (-
+                          (-> *display* base-frame-counter)
+                          (-> self player-bonk-timeout)
                           )
                          (the-as int (-> self info player-force-timeout))
                          )
@@ -921,7 +915,7 @@
         (and
          v1-50
          (= v1-50 *target*)
-         (!= (-> *target* control unknown-surface mode) 'swim)
+         (!= (-> *target* control unknown-surface00 mode) 'swim)
          )
         (when (not (-> self player-impulse))
          (set! (-> self player-contact) #t)
@@ -976,112 +970,70 @@
   )
 
 ;; failed to figure out what this is:
-(let
-  ((gp-0
-    (new 'static 'state
-     :name 'rigid-body-platform-idle
-     :next #f
-     :exit #f
-     :code #f
-     :trans #f
-     :post #f
-     :enter #f
-     :event #f
-     )
-    )
-   )
-  (method-set! rigid-body-platform 20 (the-as function gp-0))
-  (set!
-   (-> gp-0 trans)
-   (the-as
-    (function object)
-    (lambda :behavior rigid-body-platform
-     ()
-     (when
-      (and
-       *target*
-       (>=
-        (-> self info idle-distance)
-        (vector-vector-distance
-         (-> self root-overlay trans)
-         (-> *target* control trans)
-         )
-        )
-       )
-      (let ((t9-1 (the-as (function object) enter-state)))
-       (set!
-        (-> self next-state)
-        (the-as state (method-of-object self rigid-body-platform-float))
-        )
-       (t9-1)
+(defstate rigid-body-platform-idle (rigid-body-platform)
+  :virtual #t
+  :trans
+  (behavior ()
+   (if
+    (and
+     *target*
+     (>=
+      (-> self info idle-distance)
+      (vector-vector-distance
+       (-> self root-overlay trans)
+       (-> *target* control trans)
        )
       )
-     (none)
      )
+    (go-virtual rigid-body-platform-float)
     )
+   (none)
    )
-  (set! (-> gp-0 code) (lambda :behavior rigid-body-platform () (while #t
-                                                                 (suspend)
-                                                                 )
-                        (none)
-                        )
+  :code
+  (behavior ()
+   (while #t
+    (suspend)
+    )
+   (none)
    )
-  (set! (-> gp-0 post) ja-post)
+  :post
+  (the-as (function none :behavior rigid-body-platform) ja-post)
   )
 
 ;; failed to figure out what this is:
-(let
-  ((gp-1
-    (new 'static 'state
-     :name 'rigid-body-platform-float
-     :next #f
-     :exit #f
-     :code #f
-     :trans #f
-     :post #f
-     :enter #f
-     :event #f
-     )
-    )
-   )
-  (method-set! rigid-body-platform 21 (the-as function gp-1))
-  (set! (-> gp-1 event) rigid-body-platform-event-handler)
-  (set!
-   (-> gp-1 trans)
-   (the-as
-    (function object)
-    (lambda :behavior rigid-body-platform
-     ()
-     (when
-      (or
-       (not *target*)
-       (<
-        (-> self info idle-distance)
-        (vector-vector-distance
-         (-> self root-overlay trans)
-         (-> *target* control trans)
-         )
-        )
-       )
-      (let ((t9-1 (the-as (function object) enter-state)))
-       (set!
-        (-> self next-state)
-        (the-as state (method-of-object self rigid-body-platform-idle))
-        )
-       (t9-1)
+(defstate rigid-body-platform-float (rigid-body-platform)
+  :virtual #t
+  :event
+  rigid-body-platform-event-handler
+  :trans
+  (behavior ()
+   (if
+    (or
+     (not *target*)
+     (<
+      (-> self info idle-distance)
+      (vector-vector-distance
+       (-> self root-overlay trans)
+       (-> *target* control trans)
        )
       )
-     (none)
      )
+    (go-virtual rigid-body-platform-idle)
     )
+   (none)
    )
-  (set! (-> gp-1 code) (lambda :behavior rigid-body-platform () (while #t
-                                                                 (suspend)
-                                                                 )
-                        (none)
-                        )
+  :code
+  (behavior ()
+   (while #t
+    (suspend)
+    )
+   (none)
    )
-  (set! (-> gp-1 post) rigid-body-platform-post)
+  :post
+  (the-as
+   (function none :behavior rigid-body-platform)
+   rigid-body-platform-post
+   )
   )
 
 ;; definition for method 29 of type rigid-body-platform
@@ -1170,9 +1122,9 @@
     (set! (-> s4-0 transform-index) 0)
     (set-vector! (-> s4-0 local-sphere) 0.0 0.0 0.0 20480.0)
     )
-   ((method-of-object s5-0 dummy-46))
+   (dummy-46 s5-0)
    (set! (-> s5-0 nav-radius) (* 0.75 (-> s5-0 root-prim local-sphere w)))
-   ((method-of-object s5-0 dummy-50))
+   (dummy-50 s5-0)
    (set! (-> obj root-overlay) s5-0)
    )
   0
@@ -1211,17 +1163,9 @@
 ;; definition for method 34 of type rigid-body-platform
 ;; INFO: Return type mismatch int vs none.
 (defmethod TODO-RENAME-34 rigid-body-platform ((obj rigid-body-platform))
-  (with-pp
-   (let ((t9-0 (the-as (function object) enter-state)))
-    (set!
-     (-> pp next-state)
-     (the-as state (method-of-object obj rigid-body-platform-idle))
-     )
-    (t9-0)
-    )
-   0
-   (none)
-   )
+  (go (method-of-object obj rigid-body-platform-idle))
+  0
+  (none)
   )
 
 ;; definition for method 31 of type rigid-body-platform

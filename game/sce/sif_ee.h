@@ -1,8 +1,5 @@
 #pragma once
 
-#ifndef JAK1_SIF_EE_H
-#define JAK1_SIF_EE_H
-
 #include "common/common_types.h"
 
 class IOP;
@@ -70,11 +67,41 @@ s32 sceSifBindRpc(sceSifClientData* bd, u32 request, u32 mode);
 #define SCE_NOBUF 0x4000
 #define SCE_NOWAIT 0x8000
 
+#define sceMcExecIdle (-1)
+#define sceMcExecRun 0
+#define sceMcExecFinish 1
+
+#define sceMcResSucceed 0
+#define sceMcResNoFormat (-2)
+#define sceMcResNoEntry (-4)
+#define sceMcResDeniedPermit (-5)
+#define sceMcResNotEmpty (-6)
+
+#define sceMcFuncNoCardInfo 1
+#define sceMcFuncNoOpen 2
+#define sceMcFuncNoClose 3
+#define sceMcFuncNoWrite 6
+#define sceMcFuncNoFormat 16
+#define sceMcFuncNoDelete 15
+#define sceMcFuncNoUnformat 17
+
+#define sceMcTypePS2 2
+
 s32 sceOpen(const char* filename, s32 flag);
 s32 sceClose(s32 fd);
 s32 sceRead(s32 fd, void* buf, s32 nbyte);
 s32 sceWrite(s32 fd, const void* buf, s32 nbyte);
 s32 sceLseek(s32 fd, s32 offset, s32 where);
 
+s32 sceMcMkdir(s32 port, s32 slot, const char* name);
+s32 sceMcSync(s32 mode, s32* cmd, s32* result);
+s32 sceMcOpen(s32 port, s32 slot, const char* name, s32 mode);
+s32 sceMcWrite(s32 fd, const void* buff, s32 size);
+s32 sceMcClose(s32 fd);
+
+s32 sceMcGetInfo(s32 port, s32 slot, s32* type, s32* free, s32* format);
+s32 sceMcFormat(s32 port, s32 slot);
+s32 sceMcUnformat(s32 port, s32 slot);
+s32 sceMcDelete(s32 port, s32 slot, const char* name);
+
 }  // namespace ee
-#endif  // JAK1_SIF_EE_H
