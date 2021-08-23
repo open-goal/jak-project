@@ -51,15 +51,15 @@
 
 (defmethod seek-toward-heading-vec! trsqv ((obj trsqv) (dir vector) (vel float) (frame-count int))
   "Adjust the orientation to point along dir, only changing our yaw.
-   The vel is a maximum velocity limit.
-   The frame count is the time constant (first order).
-   There's some logic to avoid rapidly changing directions"
+  The vel is a maximum velocity limit.
+  The frame count is the time constant (first order).
+  There's some logic to avoid rapidly changing directions"
   (let* ((yaw-error (deg-diff (quaternion-y-angle (-> obj quat)) (vector-y-angle dir)))
          ;; limit both on a max velocity, and a proportional to error term.
          (yaw-limit (fmin (* vel (-> *display* seconds-per-frame))
                           (/ (* 5.0 (fabs yaw-error)) (the float frame-count))
                           )
-           )
+                    )
          ;; saturate the yaw error
          (saturated-yaw (fmax (fmin yaw-error yaw-limit) (- yaw-limit)))
          )
@@ -71,10 +71,9 @@
               ((or (= old-diff 0.0)
                    (and (< 0.0 saturated-yaw) (< 0.0 old-diff))
                    (or (and (< saturated-yaw 0.0) (< old-diff 0.0))
-                       (>= (the-as int (- (-> *display* base-frame-counter)
-                                          (-> obj angle-change-time)
-                                          )
-                                   )
+                       (>=  (- (-> *display* base-frame-counter)
+                               (-> obj angle-change-time)
+                               )
                            60
                            )
                        )
@@ -83,9 +82,9 @@
                saturated-yaw
                )
               (else
-               ;; not sure why this isn't 0.
-               (* 0.000000001 saturated-yaw)
-               )
+                ;; not sure why this isn't 0.
+                (* 0.000000001 saturated-yaw)
+                )
               )
             )
       )

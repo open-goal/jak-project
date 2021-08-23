@@ -14,6 +14,7 @@
 #include "game/graphics/opengl_renderer/OpenGLRenderer.h"
 #include "game/graphics/texture/TexturePool.h"
 #include "game/graphics/dma/dma_copy.h"
+#include "game/system/newpad.h"
 #include "common/log/log.h"
 #include "common/goal_constants.h"
 #include "game/runtime.h"
@@ -49,9 +50,11 @@ std::unique_ptr<GraphicsData> g_gfx_data;
 void SetDisplayCallbacks(GLFWwindow* d) {
   glfwSetKeyCallback(d, [](GLFWwindow* /*window*/, int key, int scancode, int action, int mods) {
     if (action == GlfwKeyAction::Press) {
-      lg::debug("KEY PRESS:   key: {} scancode: {} mods: {:X}", key, scancode, mods);
+      // lg::debug("KEY PRESS:   key: {} scancode: {} mods: {:X}", key, scancode, mods);
+      Pad::OnKeyPress(key);
     } else if (action == GlfwKeyAction::Release) {
-      lg::debug("KEY RELEASE: key: {} scancode: {} mods: {:X}", key, scancode, mods);
+      // lg::debug("KEY RELEASE: key: {} scancode: {} mods: {:X}", key, scancode, mods);
+      Pad::OnKeyRelease(key);
     }
   });
 }
@@ -67,7 +70,7 @@ bool HasError() {
 }  // namespace
 
 static bool gl_inited = false;
-static int gl_init() {
+static int gl_init(GfxSettings& settings) {
   if (glfwSetErrorCallback(ErrorCallback) != NULL) {
     lg::warn("glfwSetErrorCallback has been re-set!");
   }
@@ -77,11 +80,16 @@ static int gl_init() {
     return 1;
   }
 
-  // request Debug OpenGL 3.3 Core
+  // request an OpenGL 3.3 Core context
   glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 3);  // 3.3
   glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 3);
-  // glfwWindowHint(GLFW_OPENGL_DEBUG_CONTEXT, GLFW_TRUE);           // debug
   glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);  // core profile, not compat
+  // debug check
+  if (settings.debug) {
+    glfwWindowHint(GLFW_OPENGL_DEBUG_CONTEXT, GLFW_TRUE);
+  } else {
+    glfwWindowHint(GLFW_OPENGL_DEBUG_CONTEXT, GLFW_FALSE);
+  }
 
   return 0;
 }
@@ -137,6 +145,9 @@ static void gl_kill_display(GfxDisplay* display) {
 static void gl_render_display(GfxDisplay* display) {
   GLFWwindow* window = display->window_glfw;
 
+  // poll events
+  glfwPollEvents();
+
   glfwMakeContextCurrent(window);
 
   // wait for a copied chain.
@@ -174,10 +185,9 @@ static void gl_render_display(GfxDisplay* display) {
   {
     std::unique_lock<std::mutex> lock(g_gfx_data->sync_mutex);
     g_gfx_data->frame_idx++;
+
     g_gfx_data->sync_cv.notify_all();
   }
-  // poll events TODO integrate input with cpad
-  glfwPollEvents();
 
   // exit if display window was closed
   if (glfwWindowShouldClose(window)) {
@@ -263,6 +273,10 @@ void gl_texture_relocate(u32 destination, u32 source, u32 format) {
   }
 }
 
+void gl_poll_events() {
+  glfwPollEvents();
+}
+
 const GfxRendererModule moduleOpenGL = {
     gl_init,                // init
     gl_make_main_display,   // make_main_display
@@ -274,6 +288,7 @@ const GfxRendererModule moduleOpenGL = {
     gl_send_chain,          // send_chain
     gl_texture_upload_now,  // texture_upload_now
     gl_texture_relocate,    // texture_relocate
+    gl_poll_events,         // poll_events
     GfxPipeline::OpenGL,    // pipeline
-    "OpenGL 3.0"            // name
+    "OpenGL 3.3"            // name
 };

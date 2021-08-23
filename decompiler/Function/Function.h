@@ -13,6 +13,7 @@
 #include "common/type_system/TypeSpec.h"
 #include "decompiler/config.h"
 #include "Warnings.h"
+#include "common/type_system/state.h"
 
 namespace decompiler {
 class DecompilerTypeSystem;
@@ -24,11 +25,15 @@ struct FunctionName {
     UNIDENTIFIED,  // hasn't been identified yet.
     GLOBAL,        // global named function
     METHOD,
-    TOP_LEVEL_INIT,
+    NV_STATE,
+    V_STATE,
+    TOP_LEVEL_INIT
   } kind = FunctionKind::UNIDENTIFIED;
 
   std::string function_name;  // only applicable for GLOBAL
-  std::string type_name;      // only applicable for METHOD
+  std::string type_name;      // only applicable for METHOD or v state
+  std::string state_name;     // for nv state or v state
+  StateHandler handler_kind;  // for nv state or v state
   int method_id = -1;         // only applicable for METHOD
   int unique_id = -1;
 
@@ -45,6 +50,10 @@ struct FunctionName {
         return "(top-level-login " + object_name + ")";
       case FunctionKind::UNIDENTIFIED:
         return "(anon-function " + std::to_string(id_in_object) + " " + object_name + ")";
+      case FunctionKind::NV_STATE:
+        return fmt::format("({} {})", handler_kind_to_name(handler_kind), state_name);
+      case FunctionKind::V_STATE:
+        return fmt::format("({} {} {})", handler_kind_to_name(handler_kind), state_name, type_name);
       default:
         throw std::runtime_error("Unsupported FunctionKind");
     }
@@ -71,6 +80,19 @@ struct FunctionName {
     kind = FunctionKind::METHOD;
     type_name = std::move(tn);
     method_id = id;
+  }
+
+  void set_as_nv_state(const std::string& state, StateHandler hk) {
+    state_name = state;
+    handler_kind = hk;
+    kind = FunctionKind::NV_STATE;
+  }
+
+  void set_as_v_state(const std::string& type, const std::string& state, StateHandler hk) {
+    state_name = state;
+    handler_kind = hk;
+    kind = FunctionKind::V_STATE;
+    type_name = type;
   }
 };
 

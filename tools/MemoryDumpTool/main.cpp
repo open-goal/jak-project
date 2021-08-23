@@ -188,6 +188,52 @@ std::unordered_map<std::string, std::vector<u32>> find_basics(
   return result;
 }
 
+void inspect_process_self(const Ram& ram,
+                          const std::unordered_map<std::string, std::vector<u32>>& basics,
+                          const std::unordered_map<u32, std::string>& types,
+                          const TypeSystem& type_system) {
+  std::vector<std::string> sorted_type_names;
+  for (auto& x : basics) {
+    sorted_type_names.emplace_back(x.first);
+  }
+  std::sort(sorted_type_names.begin(), sorted_type_names.end(), [&](const auto& a, const auto& b) {
+    return basics.at(a).size() < basics.at(b).size();
+  });
+
+  for (const auto& name : sorted_type_names) {
+    // first, try looking up the type.
+    if (!type_system.fully_defined_type_exists(name)) {
+      continue;
+    }
+
+    auto type = dynamic_cast<BasicType*>(type_system.lookup_type(name));
+    if (!type) {
+      continue;
+    }
+
+    for (auto& field : type->fields()) {
+      if (field.name() == "self") {
+        for (auto base_addr : basics.at(name)) {
+          int field_addr = base_addr + field.offset();
+          if (ram.word_in_memory(field_addr)) {
+            auto field_val = ram.word(field_addr);
+            if (base_addr + 4 != field_val) {
+              fmt::print("Process type {} had mismatched self #x{:x} #x{:x}\n", name, field_val,
+                         base_addr);
+              if (ram.word_in_memory(field_val - 4)) {
+                auto type_lookup = types.find(ram.word(field_val - 4));
+                if (type_lookup != types.end()) {
+                  fmt::print("  The actual thing had type {}\n", type_lookup->second);
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}
+
 void inspect_basics(const Ram& ram,
                     const std::unordered_map<std::string, std::vector<u32>>& basics,
                     const std::unordered_map<u32, std::string>& types,
@@ -438,6 +484,7 @@ int main(int argc, char** argv) {
 
   inspect_basics(ram, basics, types, symbol_map, dts.ts, results);
   inspect_symbols(ram, types, symbol_map);
+  inspect_process_self(ram, basics, types, dts.ts);
 
   if (fs::exists(output_folder / "ee-results.json")) {
     fs::remove(output_folder / "ee-results.json");

@@ -289,8 +289,6 @@ void Function::resize_first_block(int new_start, const LinkedObjectFile&) {
   basic_blocks.at(0).start_word = new_start;
 
   if (basic_blocks.size() >= 2 && basic_blocks.at(1).start_word == new_start) {
-    lg::warn("Function {} loops back to the first instruction. This is rare/less tested.",
-             guessed_name.to_string());
     // block 1 is now zero size, so we should eliminate it
     auto& block0 = basic_blocks.at(0);
     auto& block1 = basic_blocks.at(1);

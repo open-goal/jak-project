@@ -123,7 +123,9 @@ bool Debugger::attach_and_break() {
       update_break_info();
 
       auto signal_count = get_signal_count();
-      assert(signal_count == 0);
+      if (signal_count != 0) {
+        fmt::print("[Debugger] got signal count of {} in attach_and_break\n", signal_count);
+      }
       return true;
     }
   } else {

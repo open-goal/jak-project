@@ -107,21 +107,21 @@
 
 ;; definition of type fact-info
 (deftype fact-info (basic)
-  ((process             process      :offset-assert   4)
-   (pickup-type         pickup-type  :offset-assert   8)
-   (pickup-amount       float        :offset-assert  12)
-   (pickup-spawn-amount float        :offset-assert  16)
-   (options             uint64       :offset-assert  24)
-   (fade-time           uint64       :offset-assert  32)
+  ((process             process-drawable  :offset-assert   4)
+   (pickup-type         pickup-type       :offset-assert   8)
+   (pickup-amount       float             :offset-assert  12)
+   (pickup-spawn-amount float             :offset-assert  16)
+   (options             uint64            :offset-assert  24)
+   (fade-time           uint64            :offset-assert  32)
    )
   :method-count-assert 12
   :size-assert         #x28
   :flag-assert         #xc00000028
   (:methods
-    (new (symbol type process pickup-type float) _type_ 0)
+    (new (symbol type process-drawable pickup-type float) _type_ 0)
     (TODO-RENAME-9 (_type_ symbol process-tree fact-info int) uint 9)
     (reset! (_type_ symbol) none 10)
-    (dummy-11 (_type_) float 11)
+    (pickup-collectable! (_type_ pickup-type float handle) float 11)
     )
   )
 
@@ -150,7 +150,7 @@
    (eco-pill              float    :offset-assert  80)
    (eco-pill-max          float    :offset-assert  84)
    (health-pickup-time    uint64   :offset-assert  88)
-   (eco-source            uint64   :offset-assert  96)
+   (eco-source            handle   :offset-assert  96)
    (eco-source-time       uint64   :offset-assert 104)
    (money-pickup-time     uint64   :offset-assert 112)
    (buzzer-pickup-time    uint64   :offset-assert 120)
@@ -161,7 +161,7 @@
   :size-assert         #x90
   :flag-assert         #xc00000090
   (:methods
-    (new (symbol type process pickup-type float) _type_ 0)
+    (new (symbol type process-drawable pickup-type float) _type_ 0)
     )
   )
 
@@ -208,7 +208,7 @@
   :size-assert         #x44
   :flag-assert         #xc00000044
   (:methods
-    (new (symbol type process pickup-type float) _type_ 0)
+    (new (symbol type process-drawable pickup-type float) _type_ 0)
     )
   )
 
@@ -238,7 +238,7 @@
   fact-info
   ((allocation symbol)
    (type-to-make type)
-   (proc process)
+   (proc process-drawable)
    (pkup-type pickup-type)
    (pkup-amount float)
    )
@@ -343,7 +343,10 @@
   )
 
 ;; definition for method 11 of type fact-info
-(defmethod dummy-11 fact-info ((obj fact-info))
+(defmethod
+  pickup-collectable!
+  fact-info
+  ((obj fact-info) (arg0 pickup-type) (arg1 float) (arg2 handle))
   0.0
   )
 
@@ -353,7 +356,7 @@
   fact-info-enemy
   ((allocation symbol)
    (type-to-make type)
-   (arg0 process)
+   (arg0 process-drawable)
    (arg1 pickup-type)
    (arg2 float)
    )
@@ -482,7 +485,7 @@
   fact-info-target
   ((allocation symbol)
    (type-to-make type)
-   (arg0 process)
+   (arg0 process-drawable)
    (arg1 pickup-type)
    (arg2 float)
    )
@@ -494,7 +497,7 @@
       )
      )
     )
-   (set! (-> obj eco-source) (the-as uint #f))
+   (set! (-> obj eco-source) (the-as handle #f))
    (reset! obj #f)
    obj
    )

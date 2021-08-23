@@ -9,6 +9,7 @@
 #include "common/goos/Object.h"
 #include "common/type_system/TypeSystem.h"
 #include "decompiler/Disasm/DecompilerLabel.h"
+#include "common/type_system/state.h"
 
 namespace decompiler {
 class Form;
@@ -631,6 +632,7 @@ class ReturnElement : public FormElement {
   void collect_vars(RegAccessSet& vars, bool recursive) const override;
   void push_to_stack(const Env& env, FormPool& pool, FormStack& stack) override;
   void get_modified_regs(RegSet& regs) const override;
+  std::optional<TypeSpec> return_type;
 };
 
 /*!
@@ -1353,6 +1355,7 @@ class DecompiledDataElement : public FormElement {
   void collect_vars(RegAccessSet& vars, bool recursive) const override;
   void get_modified_regs(RegSet& regs) const override;
   void do_decomp(const Env& env, const LinkedObjectFile* file);
+  DecompilerLabel label() const { return m_label; }
 
  private:
   bool m_decompiled = false;
@@ -1547,6 +1550,27 @@ class LabelElement : public FormElement {
   int m_lid = -1;
 };
 
+class LabelDerefElement : public FormElement {
+ public:
+  LabelDerefElement(int lid, int size, LoadVarOp::Kind load_kind, RegisterAccess var);
+  goos::Object to_form_internal(const Env& env) const override;
+  void apply(const std::function<void(FormElement*)>& f) override;
+  void apply_form(const std::function<void(Form*)>& f) override;
+  void collect_vars(RegAccessSet& vars, bool recursive) const override;
+  void get_modified_regs(RegSet& regs) const override;
+  void update_from_stack(const Env& env,
+                         FormPool& pool,
+                         FormStack& stack,
+                         std::vector<FormElement*>* result,
+                         bool allow_side_effects) override;
+
+ private:
+  int m_lid = -1;
+  int m_size = -1;
+  LoadVarOp::Kind m_load_kind = LoadVarOp::Kind::INVALID;
+  RegisterAccess m_var;
+};
+
 class GetSymbolStringPointer : public FormElement {
  public:
   GetSymbolStringPointer(Form* src);
@@ -1564,6 +1588,37 @@ class GetSymbolStringPointer : public FormElement {
 
  private:
   Form* m_src = nullptr;
+};
+
+class DefstateElement : public FormElement {
+ public:
+  struct Entry {
+    StateHandler kind;
+    Form* val = nullptr;
+    bool is_behavior = false;
+  };
+  DefstateElement(const std::string& process_type,
+                  const std::string& state_name,
+                  const std::vector<Entry>& entries,
+                  bool is_virtual);
+
+  goos::Object to_form_internal(const Env& env) const override;
+  void apply(const std::function<void(FormElement*)>& f) override;
+  void apply_form(const std::function<void(Form*)>& f) override;
+  void collect_vars(RegAccessSet& vars, bool recursive) const override;
+  void update_from_stack(const Env& env,
+                         FormPool& pool,
+                         FormStack& stack,
+                         std::vector<FormElement*>* result,
+                         bool allow_side_effects) override;
+  void get_modified_regs(RegSet& regs) const override;
+  std::vector<Entry>& entries() { return m_entries; }
+
+ private:
+  std::string m_process_type;
+  std::string m_state_name;
+  std::vector<Entry> m_entries;
+  bool m_is_virtual = false;
 };
 
 /*!

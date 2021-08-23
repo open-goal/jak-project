@@ -616,6 +616,7 @@ void DirectRenderer::handle_xyzf2_common(u32 x,
                                          u32 z,
                                          u8 f,
                                          SharedRenderState* render_state) {
+  (void)f;  // TODO: do something with this.
   if (m_prim_buffer.is_full()) {
     flush_pending(render_state);
   }

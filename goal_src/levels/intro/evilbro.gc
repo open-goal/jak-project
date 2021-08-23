@@ -5,3 +5,315 @@
 ;; name in dgo: evilbro
 ;; dgos: INT, L1
 
+(define-extern *evilsis-intro-sg* skeleton-group)
+(define-extern *evilbro-intro-sg* skeleton-group)
+
+;; definition of type evilbro
+(declare-type evilsis process-taskable)
+(deftype evilbro (process-taskable)
+  ((evilsis evilsis  :offset-assert 380)
+   )
+  :heap-base #x110
+  :method-count-assert 53
+  :size-assert         #x180
+  :flag-assert         #x3501100180
+  )
+
+;; failed to figure out what this is:
+(let
+  ((v1-1
+    (new 'static 'skeleton-group
+     :art-group-name "evilbro"
+     :bounds (new 'static 'vector :w 16384.0)
+     :version #x6
+     :shadow 2
+     )
+    )
+   )
+  (set! (-> v1-1 jgeo) 0)
+  (set! (-> v1-1 janim) 3)
+  (set! (-> v1-1 mgeo 0) (the-as uint 1))
+  (set! (-> v1-1 lod-dist 0) 4095996000.0)
+  (set! *evilbro-intro-sg* v1-1)
+  )
+
+;; definition for method 32 of type evilbro
+;; INFO: Return type mismatch spool-anim vs basic.
+(defmethod play-anim! evilbro ((obj evilbro) (arg0 symbol))
+  (with-pp
+   (cond
+    (arg0
+     (close-specific-task!
+      (game-task leaving-misty)
+      (task-status need-introduction)
+      )
+     (let ((a1-2 (new 'stack-no-clear 'event-message-block)))
+      (set! (-> a1-2 from) pp)
+      (set! (-> a1-2 num-params) 1)
+      (set! (-> a1-2 message) 'clone)
+      (let ((v1-2 (process->ppointer obj)))
+       (set!
+        (-> a1-2 param 0)
+        (the-as
+         uint
+         (logior (shl (-> v1-2 0 pid) 32) (new 'static 'handle :process v1-2))
+         )
+        )
+       )
+      (send-event-function (-> obj evilsis ppointer 3) a1-2)
+      )
+     )
+    (else
+     (set! (-> obj will-talk) #t)
+     )
+    )
+   (the-as
+    basic
+    (new 'static 'spool-anim
+     :name "evilbro-misty-end"
+     :index 5
+     :parts 9
+     :command-list '()
+     )
+    )
+   )
+  )
+
+;; definition for method 31 of type evilbro
+(defmethod get-art-elem evilbro ((obj evilbro))
+  (-> obj draw art-group data 3)
+  )
+
+;; failed to figure out what this is:
+(defstate play-anim (evilbro)
+  :virtual #t
+  :exit
+  (behavior ()
+   (let ((a1-0 (new 'stack-no-clear 'event-message-block)))
+    (set! (-> a1-0 from) self)
+    (set! (-> a1-0 num-params) 0)
+    (set! (-> a1-0 message) 'end-mode)
+    (send-event-function (-> self evilsis ppointer 3) a1-0)
+    )
+   ((-> (method-of-type process-taskable play-anim) exit))
+   (none)
+   )
+  )
+
+;; failed to figure out what this is:
+(defstate idle (evilbro)
+  :virtual #t
+  :code
+  (behavior ()
+   (if (!= (if (> (-> self skel active-channels) 0)
+            (-> self skel root-channel 0 frame-group)
+            )
+        (get-art-elem self)
+        )
+    (ja-channel-push! 1 15)
+    )
+   (while #t
+    (let ((a0-7 (-> self skel root-channel 0)))
+     (set!
+      (-> a0-7 frame-group)
+      (the-as art-joint-anim (-> self draw art-group data 3))
+      )
+     (set!
+      (-> a0-7 param 0)
+      (the
+       float
+       (+
+        (->
+         (the-as art-joint-anim (-> self draw art-group data 3))
+         data
+         0
+         length
+         )
+        -1
+        )
+       )
+      )
+     (set! (-> a0-7 param 1) 1.0)
+     (set! (-> a0-7 frame-num) 0.0)
+     (joint-control-channel-group!
+      a0-7
+      (the-as art-joint-anim (-> self draw art-group data 3))
+      num-func-seek!
+      )
+     )
+    (until (ja-done? 0)
+     (suspend)
+     (let ((a0-8 (-> self skel root-channel 0)))
+      (set!
+       (-> a0-8 param 0)
+       (the float (+ (-> a0-8 frame-group data 0 length) -1))
+       )
+      (set! (-> a0-8 param 1) 1.0)
+      (joint-control-channel-group-eval!
+       a0-8
+       (the-as art-joint-anim #f)
+       num-func-seek!
+       )
+      )
+     )
+    (let ((gp-0 (-> *display* base-frame-counter)))
+     (while (let* ((s5-0 (-> *display* base-frame-counter))
+                   (f30-0 300.0)
+                   (f28-0 0.16)
+                   (f26-0 0.17000002)
+                   (v1-29
+                    (/ (the-as int (rand-uint31-gen *random-generator*)) 256)
+                    )
+                   (v1-30 (the-as number (logior #x3f800000 v1-29)))
+                   )
+             (<
+              (-
+               s5-0
+               (the
+                int
+                (* f30-0 (+ f28-0 (* f26-0 (+ -1.0 (the-as float v1-30)))))
+                )
+               )
+              gp-0
+              )
+             )
+      (suspend)
+      )
+     )
+    (let ((gp-1 (-> self skel root-channel 0)))
+     (set! (-> gp-1 frame-group) (if (> (-> self skel active-channels) 0)
+                                  (-> self skel root-channel 0 frame-group)
+                                  )
+      )
+     (set! (-> gp-1 param 0) (ja-aframe 0.0 0))
+     (set! (-> gp-1 param 1) 1.0)
+     (set! (-> gp-1 frame-num) (ja-aframe 16.0 0))
+     (joint-control-channel-group! gp-1 (if (> (-> self skel active-channels) 0)
+                                         (->
+                                          self
+                                          skel
+                                          root-channel
+                                          0
+                                          frame-group
+                                          )
+                                         )
+      num-func-seek!
+      )
+     )
+    (until (ja-done? 0)
+     (suspend)
+     (let ((gp-2 (-> self skel root-channel 0)))
+      (set! (-> gp-2 param 0) (ja-aframe 0.0 0))
+      (set! (-> gp-2 param 1) 1.0)
+      (joint-control-channel-group-eval!
+       gp-2
+       (the-as art-joint-anim #f)
+       num-func-seek!
+       )
+      )
+     )
+    (let ((gp-3 (-> *display* base-frame-counter)))
+     (while (let* ((s5-1 (-> *display* base-frame-counter))
+                   (f30-1 300.0)
+                   (f28-1 0.16)
+                   (f26-1 0.17000002)
+                   (v1-54
+                    (/ (the-as int (rand-uint31-gen *random-generator*)) 256)
+                    )
+                   (v1-55 (the-as number (logior #x3f800000 v1-54)))
+                   )
+             (<
+              (-
+               s5-1
+               (the
+                int
+                (* f30-1 (+ f28-1 (* f26-1 (+ -1.0 (the-as float v1-55)))))
+                )
+               )
+              gp-3
+              )
+             )
+      (suspend)
+      )
+     )
+    )
+   (none)
+   )
+  )
+
+;; definition for method 11 of type evilbro
+(defmethod copy-defaults! evilbro ((obj evilbro) (arg0 res-lump))
+  (dummy-40 obj arg0 *evilbro-intro-sg* 3 40 (new 'static 'vector :w 4096.0) 5)
+  (set! (-> obj tasks) (get-task-control (game-task leaving-misty)))
+  (set!
+   (-> obj evilsis)
+   (the-as evilsis (entity-actor-lookup arg0 'alt-actor 0))
+   )
+  (dummy-42 obj)
+  (none)
+  )
+
+;; definition of type evilsis
+(deftype evilsis (process-taskable)
+  ()
+  :heap-base #x110
+  :method-count-assert 53
+  :size-assert         #x17c
+  :flag-assert         #x350110017c
+  )
+
+;; failed to figure out what this is:
+(let
+  ((v1-7
+    (new 'static 'skeleton-group
+     :art-group-name "evilsis"
+     :bounds (new 'static 'vector :w 16384.0)
+     :version #x6
+     :shadow 2
+     )
+    )
+   )
+  (set! (-> v1-7 jgeo) 0)
+  (set! (-> v1-7 janim) 3)
+  (set! (-> v1-7 mgeo 0) (the-as uint 1))
+  (set! (-> v1-7 lod-dist 0) 4095996000.0)
+  (set! *evilsis-intro-sg* v1-7)
+  )
+
+;; definition for method 32 of type evilsis
+;; INFO: Return type mismatch art-element vs basic.
+(defmethod play-anim! evilsis ((obj evilsis) (arg0 symbol))
+  (if arg0
+   (format
+    0
+    "ERROR: <GMJ>: ~S playing anim for task status ~S~%"
+    (-> obj name)
+    (task-status->string (the-as task-status (current-status (-> obj tasks))))
+    )
+   )
+  (the-as basic (get-art-elem obj))
+  )
+
+;; definition for method 31 of type evilsis
+(defmethod get-art-elem evilsis ((obj evilsis))
+  (-> obj draw art-group data 3)
+  )
+
+;; failed to figure out what this is:
+(defstate idle (evilsis)
+  :virtual #t
+  :trans
+  (behavior ()
+   (set! (-> self will-talk) #f)
+   ((-> (method-of-type process-taskable idle) trans))
+   (none)
+   )
+  )
+
+;; definition for method 11 of type evilsis
+(defmethod copy-defaults! evilsis ((obj evilsis) (arg0 res-lump))
+  (dummy-40 obj arg0 *evilsis-intro-sg* 3 0 (new 'static 'vector :w 4096.0) 5)
+  (set! (-> obj tasks) (get-task-control (game-task leaving-misty)))
+  (dummy-42 obj)
+  (none)
+  )
