@@ -10092,9 +10092,9 @@
 
 (deftype touch-tracker (process-drawable)
   ((duration     uint64  :offset-assert 176)
-   (target       uint64  :offset-assert 184)
-   (event        basic   :offset-assert 192)
-   (run-function basic   :offset-assert 196)
+   (target       handle  :offset-assert 184)
+   (event        symbol   :offset-assert 192)
+   (run-function function   :offset-assert 196)
    (callback     basic   :offset-assert 200)
    (event-mode   basic   :offset-assert 204)
    )
@@ -16162,7 +16162,7 @@
 (define-extern kill-all-particles-with-key function)
 (define-extern sp-relaunch-setup-fields function)
 (define-extern sp-init-fields! function)
-(define-extern sp-launch-particles-var function)
+(define-extern sp-launch-particles-var (function sparticle-system sparticle-launcher vector symbol symbol float none)) ;; asm - ret not confirmed
 (define-extern sp-get-particle function)
 (define-extern particle-adgif function)
 (define-extern lookup-part-group-by-name (function string basic))
@@ -16236,8 +16236,8 @@
 ;; - Unknowns
 
 ;;(define-extern *particles-flag* object) ;; unknown type
-;;(define-extern *sp-particle-system-2d* object) ;; unknown type
-;;(define-extern *sp-particle-system-3d* object) ;; unknown type
+(define-extern *sp-particle-system-2d* sparticle-system) ;; unknown type
+(define-extern *sp-particle-system-3d* sparticle-system) ;; unknown type
 
 
 ;; ----------------------
@@ -18676,8 +18676,8 @@
 
 ;; - Functions
 
-(define-extern line-in-view-frustum? function)
-(define-extern process-drawable-random-point! function)
+(define-extern line-in-view-frustum? (function vector vector symbol)) ;; TODO - not confirmed
+(define-extern process-drawable-random-point! (function process-drawable vector vector))
 (define-extern process-drawable-from-entity! (function process-drawable object none))
 (define-extern cam-launcher-long-joystick function)
 (define-extern hide-hud-quick (function none))
@@ -18698,15 +18698,15 @@
 (define-extern camera-tracker-init (function function none)) ;; TODO - not confirmed, see misty-warehouse::camera-view
 (define-extern cam-launcher-joystick function)
 (define-extern launcher-init-by-other function)
-(define-extern touch-tracker-init function)
-(define-extern process-drawable-pair-random-point! function)
+(define-extern touch-tracker-init (function vector float uint none :behavior touch-tracker)) ;; last arg is a handle to `target`
+(define-extern process-drawable-pair-random-point! (function process-drawable process-drawable vector float vector))
 (define-extern birth-func-set-quat function)
-(define-extern draw-eco-beam function)
+(define-extern draw-eco-beam (function vector vector none))
 
 ;; - Unknowns
 
 (define-extern *particle-quat* quaternion) ;; unknown type
-(define-extern touch-tracker-idle state) ;; unknown type
+(define-extern touch-tracker-idle (state none)) ;; unknown type
 (define-extern cam-launcher-longfall state) ;; unknown type
 (define-extern cam-launcher-shortfall state) ;; unknown type
 (define-extern launcher-idle state) ;; unknown type
