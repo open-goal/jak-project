@@ -36,6 +36,11 @@ with open(file_path) as f:
             labels_with_no_type.remove(label)
             next_label_will_be_lambda = False
             break
+          # special case for pairs
+          if "(offset 2)" in line:
+            label_lines.append("[\"{}\", \"pair\", true]".format(label))
+            labels_with_no_type.remove(label)
+            break
           # Check if the previous line has a `.type`
           prev_line = content[i-1]
           if ".type" in prev_line:
