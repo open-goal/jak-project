@@ -558,10 +558,7 @@
     arg1
     "~0ky:~,,2M t:~d cy: ~,,2M my: ~,,2M impv:~,,2M "
     (-> arg0 control unknown-vector52 y)
-    (-
-     (-> *display* base-frame-counter)
-     (the-as uint (-> arg0 control unknown-dword10))
-     )
+    (- (-> *display* base-frame-counter) (-> arg0 control unknown-dword10))
     (- (-> arg0 control trans y) (-> arg0 control unknown-vector52 y))
     (-
      (-> arg0 control unknown-vector111 y)
@@ -609,7 +606,10 @@
     (-> self control unknown-vector30 quad)
     )
    (set! (-> self control unknown-float21) (-> self control unknown-float20))
-   (set! (-> self control unknown-dword00) (-> *display* real-frame-counter))
+   (set!
+    (-> self control unknown-dword00)
+    (the-as uint (-> *display* real-frame-counter))
+    )
    )
   (set! (-> arg0 x) (sin (-> self control unknown-cpad-info00 stick0-dir)))
   (set! (-> arg0 y) 0.0)
@@ -699,31 +699,25 @@
      (set! (-> self control unknown-int10) a0-3)
      (set! (-> self control unknown-float100) f1-1)
      (if (logtest? (-> self control unknown-surface01 flags) 8)
-      (set! (-> v1-6 0) (-> *display* base-frame-counter))
+      (set! (-> v1-6 0) (the-as uint (-> *display* base-frame-counter)))
       )
      (and
-      (>= (- (-> *display* base-frame-counter) (-> v1-6 0)) (the-as uint 300))
+      (>=
+       (the-as
+        uint
+        (- (-> *display* base-frame-counter) (the-as int (-> v1-6 0)))
+        )
+       (the-as uint 300)
+       )
       (< f0-1 0.0)
       (< 32768.0 f1-1)
       (< 0.7 (-> self control unknown-float20))
       (>=
-       (the-as
-        int
-        (-
-         (-> *display* base-frame-counter)
-         (the-as uint (-> self control unknown-dword20))
-         )
-        )
+       (- (-> *display* base-frame-counter) (-> self control unknown-dword20))
        90
        )
       (>=
-       (the-as
-        int
-        (-
-         (-> *display* base-frame-counter)
-         (the-as uint (-> self control unknown-dword21))
-         )
-        )
+       (- (-> *display* base-frame-counter) (-> self control unknown-dword21))
        90
        )
       (logtest? (-> self control status) 1)
@@ -753,7 +747,7 @@
           )
     (while
      (and
-      (< (the-as int (- (-> *display* base-frame-counter) (-> a1-6 time))) arg0)
+      (< (- (-> *display* base-frame-counter) (-> a1-6 time)) arg0)
       (> v1-0 0)
       )
      (vector+! s5-0 s5-0 (-> a1-6 trans))
@@ -1078,18 +1072,12 @@
          )
         (set!
          (-> self control unknown-dword60)
-         (the-as int (-> *display* base-frame-counter))
+         (-> *display* base-frame-counter)
          )
         )
        (if
         (<
-         (the-as
-          int
-          (-
-           (-> *display* base-frame-counter)
-           (the-as uint (-> self control unknown-dword60))
-           )
-          )
+         (- (-> *display* base-frame-counter) (-> self control unknown-dword60))
          60
          )
         (set! f30-4 (+ 204800.0 f30-4))
@@ -1260,34 +1248,16 @@
           )
          )
         (<
-         (the-as
-          int
-          (-
-           (-> *display* base-frame-counter)
-           (the-as uint (-> self control unknown-dword20))
-           )
-          )
+         (- (-> *display* base-frame-counter) (-> self control unknown-dword20))
          150
          )
         (!= (-> self next-state name) 'target-walk)
         (<
-         (the-as
-          int
-          (-
-           (-> *display* base-frame-counter)
-           (the-as uint (-> self state-time))
-           )
-          )
+         (- (-> *display* base-frame-counter) (the-as int (-> self state-time)))
          150
          )
         (<
-         (the-as
-          int
-          (-
-           (-> *display* base-frame-counter)
-           (the-as uint (-> self control unknown-dword21))
-           )
-          )
+         (- (-> *display* base-frame-counter) (-> self control unknown-dword21))
          150
          )
         (logtest? (-> self control unknown-surface01 flags) 16)
@@ -1421,10 +1391,7 @@
   ((-> self control unknown-surface01 active-hook))
   (cond
    ((logtest? (-> self control status) 1)
-    (set!
-     (-> self control unknown-dword10)
-     (the-as int (-> *display* base-frame-counter))
-     )
+    (set! (-> self control unknown-dword10) (-> *display* base-frame-counter))
     (set! (-> self control unknown-vector52 quad) (-> self control trans quad))
     (if
      (and
@@ -1489,9 +1456,9 @@
      (zero? (logand (-> self control root-prim prim-core action) #x7380))
      (-> *setting-control* current allow-look-around)
      (>=
-      (the-as
-       int
-       (- (-> *display* base-frame-counter) (-> self no-look-around-wait))
+      (-
+       (-> *display* base-frame-counter)
+       (the-as int (-> self no-look-around-wait))
        )
       15
       )
@@ -1662,13 +1629,7 @@
    (when
     (and
      (>=
-      (the-as
-       int
-       (-
-        (-> *display* base-frame-counter)
-        (the-as uint (-> self control unknown-dword10))
-        )
-       )
+      (- (-> *display* base-frame-counter) (-> self control unknown-dword10))
       600
       )
      (and
@@ -1712,23 +1673,14 @@
 ;; INFO: Return type mismatch int vs none.
 (defbehavior post-flag-setup target ()
   (if (logtest? (-> self control status) 40)
-   (set!
-    (-> self control unknown-dword20)
-    (the-as int (-> *display* base-frame-counter))
-    )
+   (set! (-> self control unknown-dword20) (-> *display* base-frame-counter))
    )
   (when (logtest? (-> self state-flags) 32)
    (if
     (<
-     (the-as
-      int
-      (logand
-       (-
-        (-> *display* base-frame-counter)
-        (the-as uint (-> self control unknown-dword70))
-        )
-       3
-       )
+     (logand
+      (- (-> *display* base-frame-counter) (-> self control unknown-dword70))
+      3
       )
      1
      )
@@ -1737,13 +1689,7 @@
     )
    (if
     (>=
-     (the-as
-      int
-      (-
-       (-> *display* base-frame-counter)
-       (the-as uint (-> self control unknown-dword70))
-       )
-      )
+     (- (-> *display* base-frame-counter) (-> self control unknown-dword70))
      (-> self control unknown-dword71)
      )
     (target-timed-invulnerable-off self)
@@ -1895,13 +1841,7 @@
       ((and
         (< 819.2 (-> self control unknown-float110))
         (>=
-         (the-as
-          int
-          (-
-           (-> *display* base-frame-counter)
-           (the-as uint (-> self control unknown-dword40))
-           )
-          )
+         (- (-> *display* base-frame-counter) (-> self control unknown-dword40))
          60
          )
         )
@@ -1912,26 +1852,23 @@
         s4-1
         (-> *display* frames-per-second)
         )
-       (set! (-> self control rider-time) (-> *display* base-frame-counter))
+       (set!
+        (-> self control rider-time)
+        (the-as uint (-> *display* base-frame-counter))
+        )
        (when
         (and
          (>=
-          (the-as
-           int
-           (-
-            (-> *display* base-frame-counter)
-            (the-as uint (-> self control unknown-dword41))
-            )
+          (-
+           (-> *display* base-frame-counter)
+           (-> self control unknown-dword41)
            )
           150
           )
          (>=
-          (the-as
-           int
-           (-
-            (-> *display* base-frame-counter)
-            (the-as uint (-> self control unknown-dword40))
-            )
+          (-
+           (-> *display* base-frame-counter)
+           (-> self control unknown-dword40)
            )
           150
           )
@@ -1952,7 +1889,10 @@
          s4-1
          (-> *display* frames-per-second)
          )
-        (set! (-> self control rider-time) (-> *display* base-frame-counter))
+        (set!
+         (-> self control rider-time)
+         (the-as uint (-> *display* base-frame-counter))
+         )
         (TODO-RENAME-30 (-> self control) a1-6)
         )
        (set! (-> self control unknown-float110) 0.0)
@@ -1962,7 +1902,7 @@
         )
        (set!
         (-> self control unknown-dword40)
-        (the-as int (-> *display* base-frame-counter))
+        (-> *display* base-frame-counter)
         )
        )
       )
@@ -2023,7 +1963,10 @@
      )
     )
    )
-  (set! (-> self control rider-time) (-> *display* base-frame-counter))
+  (set!
+   (-> self control rider-time)
+   (the-as uint (-> *display* base-frame-counter))
+   )
   (TODO-RENAME-28 (-> self control))
   (set! (-> self control unknown-float110) 0.0)
   (dummy-17 self)
@@ -2822,10 +2765,7 @@
    )
   (quaternion-identity! (-> self control unknown-quaternion01))
   (set! (-> self control unknown-float00) 0.0)
-  (set!
-   (-> self control unknown-dword10)
-   (the-as int (-> *display* base-frame-counter))
-   )
+  (set! (-> self control unknown-dword10) (-> *display* base-frame-counter))
   (set! (-> self control unknown-float80) 0.0)
   (set! (-> self control unknown-float82) 32.0)
   (set! (-> self cam-user-mode) 'normal)

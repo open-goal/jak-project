@@ -7,6 +7,15 @@
 namespace decompiler {
 
 namespace {
+
+bool kind_for_lambda(FunctionName::FunctionKind k) {
+  if (k == FunctionName::FunctionKind::UNIDENTIFIED || k == FunctionName::FunctionKind::NV_STATE ||
+      k == FunctionName::FunctionKind::V_STATE) {
+    return true;
+  }
+  return false;
+}
+
 bool try_convert_lambda(const Function& parent_function,
                         FormPool& pool,
                         Form* f,
@@ -17,22 +26,30 @@ bool try_convert_lambda(const Function& parent_function,
     auto& env = parent_function.ir2.env;
     auto label_kv = env.label_types().find(lab.name);
     if (label_kv != env.label_types().end()) {
-      if (label_kv->second.type_name == "_lambda_") {
-        auto& file = env.file;
-        auto other_func = file->try_get_function_at_label(atom->label());
-        if (other_func) {
-          goos::Object result;
-          if (defstate_behavior) {
-            result = final_output_defstate_anonymous_behavior(*other_func);
-          } else {
-            result = final_output_lambda(*other_func);
-          }
-
-          f->clear();
-          f->push_back(pool.alloc_element<LambdaDefinitionElement>(result));
-          return true;
-        }
+      if (label_kv->second.type_name != "_lambda_") {
+        lg::error(
+            "Label {} wasn't marked as a lambda, but it is. Marking lambdas is no longer required.",
+            lab.name);
       }
+    }
+
+    auto& file = env.file;
+    auto other_func = file->try_get_function_at_label(atom->label());
+    if (other_func && kind_for_lambda(other_func->guessed_name.kind)) {
+      if (!other_func->ir2.env.has_local_vars()) {
+        // don't bother if we don't even have vars.
+        return false;
+      }
+      goos::Object result;
+      if (defstate_behavior) {
+        result = final_output_defstate_anonymous_behavior(*other_func);
+      } else {
+        result = final_output_lambda(*other_func);
+      }
+
+      f->clear();
+      f->push_back(pool.alloc_element<LambdaDefinitionElement>(result));
+      return true;
     }
   }
   return false;
