@@ -950,7 +950,8 @@ void SimpleExpressionElement::update_from_stack_add_i(const Env& env,
           result->push_back(pool.alloc_element<DerefElement>(args.at(0), rd_ok.addr_of, tokens));
           return;
         } else {
-          throw std::runtime_error("Failed to match product_with_constant inline array access 1.");
+          throw std::runtime_error(fmt::format(
+              "Failed to match product_with_constant inline array access 1 at Op. {}", m_my_idx));
         }
       }
     } else if (arg0_type.kind == TP_Type::Kind::PRODUCT_WITH_CONSTANT &&
@@ -4105,10 +4106,9 @@ void ConditionElement::update_from_stack(const Env& env,
       }
     } else if (m_src[i]->is_sym_val() && m_src[i]->get_str() == "#f") {
       source_types.push_back(TypeSpec("symbol"));
-    }
-
-    else {
-      throw std::runtime_error("Unsupported atom in ConditionElement::update_from_stack");
+    } else {
+      throw std::runtime_error("Unsupported atom in ConditionElement::update_from_stack: " +
+                               m_src[i]->to_string(env));
     }
   }
   if (m_flipped) {

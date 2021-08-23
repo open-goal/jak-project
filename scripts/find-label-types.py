@@ -50,4 +50,3 @@ for label in labels_with_no_type:
   print("- {}".format(label))
 print("And here are the ones I could:")
 print(",\n".join(label_lines))
-
