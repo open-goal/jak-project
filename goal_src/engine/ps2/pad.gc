@@ -5,6 +5,15 @@
 ;; name in dgo: pad
 ;; dgos: GAME, ENGINE
 
+;; Interface for game controllers.
+;; the *cpad-list* contains both game controllers.
+;; Use the service-cpads functions once per frame to update the data and vibration control
+;; The cpad-set-buzz! function can be used for vibration.
+
+;; in display, but we haven't gotten to display-h.gc yet.
+(define-extern get-current-time (function int))
+(define-extern get-integral-current-time (function int))
+
 (defenum pad-buttons
     :bitfield #t
     :type uint32
@@ -25,24 +34,37 @@
     (x        14)
     (square   15)
     )
-    
-;; these forward declarations should probably go somewhere else...
-(define-extern get-current-time (function uint))
-(define-extern get-integral-current-time (function uint))
+
+(defenum pad-type
+  (normal 4)
+  (analog 5)
+  (dualshock 7)
+  (negcon 2)
+  (namco-gun 6)
+  )
 
 ;; this gets set to #f later on.
 (define *cheat-mode* #t)
 
-;; data that comes directly from hardware.
+;; data that comes directly from hardware. it's 32 bytes + type tag (ignored in C kernel).
 (deftype hw-cpad (basic)
-  ((valid   uint8     :offset-assert 4)
-   (status  uint8     :offset-assert 5)
-   (button0 uint16    :offset-assert 6)
-   (rightx  uint8     :offset-assert 8)
-   (righty  uint8     :offset-assert 9)
-   (leftx   uint8     :offset-assert 10)
-   (lefty   uint8     :offset-assert 11)
-   (abutton uint8  12 :offset-assert 12)
+  (;; BASIC CONTROLLER data
+   ;; status = 0x40 | (data length / 2)
+   (valid   uint8     :offset-assert 4) ;; 0 if success, 255 if fail
+   (status  uint8     :offset-assert 5) ;; depends on controller
+   (button0 uint16    :offset-assert 6) ;; binary button states!
+   ;; DUALSHOCK or JOYSTICK data
+   ;; status (dualshock) = 0x70 | (data length / 2)
+   ;; status (joystick)  = 0x50 | (data length / 2)
+   (rightx  uint8     :offset-assert 8) ;; right stick xdir
+   (righty  uint8     :offset-assert 9) ;; right stick ydir
+   (leftx   uint8     :offset-assert 10) ;; left stick xdir
+   (lefty   uint8     :offset-assert 11) ;; left stick ydir
+   ;; DUALSHOCK 2 data
+   ;; status = 0x70 | (data length / 2)
+   (abutton uint8  12 :offset-assert 12) ;; pressure sensitivity information
+   
+   ;; pad buffer needs to be 32 bytes large.
    (dummy   uint8  12 :offset-assert 24)
    )
   :method-count-assert 9
@@ -52,7 +74,7 @@
 
 ;; data from hardware + additional info calculated here.
 (deftype cpad-info (hw-cpad)
-  ((number             int32           :offset-assert 36)
+  ((number             int32           :offset-assert 36) ;; controller port number
    (cpad-file          int32           :offset-assert 40)
    (button0-abs        pad-buttons 3   :offset-assert 44) ;; bitmask of buttons, pressed or not, with history
    (button0-shadow-abs pad-buttons 1   :offset-assert 56) ;; modify this to change button history in the future.
@@ -61,13 +83,13 @@
    (stick0-speed       float           :offset-assert 76)
    (new-pad            int32           :offset-assert 80)
    (state              int32           :offset-assert 84)
-   (align              uint8 6         :offset-assert 88)
+   (align              uint8 6         :offset-assert 88) ;; hardware control of buzzing.
    (direct             uint8 6         :offset-assert 94) ;; hardware control of buzzing.
    (buzz-val           uint8 2         :offset-assert 100) ;; intensity for buzzing
-   (buzz-time          uint64 2        :offset-assert 104) ;; when to stop buzzing
+   (buzz-time          int64 2         :offset-assert 104) ;; when to stop buzzing
    (buzz               basic           :offset-assert 120) ;; is vibration enabled?
    (buzz-act           int32           :offset-assert 124)
-   (change-time        uint64          :offset-assert 128)
+   (change-time        int64           :offset-assert 128)
    )
   (:methods
    (new (symbol type int) _type_ 0)
@@ -77,9 +99,13 @@
   :flag-assert         #x900000088
   )
 
+(defmacro cpad-type? (type)
+  `(= (shr (-> pad status) 4) (cpad-type ,type))
+  )
+
 (defun cpad-invalid! ((pad cpad-info))
   "Reset all data in a cpad-info"
-  (set! (-> pad valid) (logior (-> pad valid) 128))
+  (logior! (-> pad valid) 128)
   (set! (-> pad button0) (the-as uint 0))
   (set! (-> pad button0-abs 0) (pad-buttons))
   (set! (-> pad button0-shadow-abs 0) (pad-buttons))
@@ -106,7 +132,7 @@
   ;; probably a bug here, this should use v1-17 as the index.
   (dotimes (v1-17 2)
     (set! (-> pad buzz-val 0) (the-as uint 0))
-    (set! (-> pad buzz-time 0) (the-as uint 0))
+    (set! (-> pad buzz-time 0) 0)
     )
   pad
   )
@@ -185,16 +211,14 @@
      ;; we are already buzzing at this intensity.
      ;; buzz for max (old_buzz, new_buzz) duration
      (set! (-> pad buzz-time buzz-idx)
-           (max (the-as int (-> pad buzz-time buzz-idx))
-                (the-as int (+ (get-current-time) (the-as uint duration)))
-                )
+           (max (-> pad buzz-time buzz-idx) (+ (get-current-time) duration))
            )
      )
     ((< (-> pad buzz-val buzz-idx) (the-as uint buzz-amount))
      ;; buzz harder than the older value, overwrite the old buzz.
      (set! (-> pad buzz-val buzz-idx) buzz-amount)
      (set! (-> pad buzz-time buzz-idx)
-           (+ (get-current-time) (the-as uint duration))
+           (+ (get-current-time) duration)
            )
      )
     )
@@ -221,9 +245,7 @@
              (cond
                ;; check if okay to buzz:
                ((and (-> pad buzz)
-                     (< (the-as int (get-current-time))
-                        (the-as int (-> pad buzz-time buzz-idx))
-                        )
+                     (< (get-current-time) (-> pad buzz-time buzz-idx))
                      (= *master-mode* 'game)
                      )
                 (let ((v1-10 buzz-idx))
@@ -233,7 +255,7 @@
                      ;; an analog control
                      (set! (-> pad direct buzz-idx)
                            (logand (ash (-> pad buzz-val buzz-idx)
-                                        (- (the-as int (logand (get-integral-current-time) 7)))
+                                        (- (logand (get-integral-current-time) 7))
                                         )
                                    1
                                    )
@@ -265,8 +287,8 @@
              )
            ;; buttons going down
            (set! (-> pad button0-rel 0)
-            (logand (-> pad button0-abs 0) (lognot (-> pad button0-abs 1)))
-            )
+                 (logclear (-> pad button0-abs 0) (-> pad button0-abs 1))
+                 )
            ;; ??
            (when *cpad-debug*
              (set! (-> pad leftx) (the-as uint 255))
@@ -325,3 +347,13 @@
   (cpad-set-buzz! (-> *cpad-list* cpads idx) 1 0 0)
   (none)
   )
+
+
+(defmacro cpad-pressed? (pad-idx &rest buttons)
+  `(logtest? (-> *cpad-list* cpads ,pad-idx button0-rel 0) (pad-buttons ,@buttons))
+  )
+
+(defmacro cpad-hold? (pad-idx &rest buttons)
+  `(logtest? (-> *cpad-list* cpads ,pad-idx button0-abs 0) (pad-buttons ,@buttons))
+  )
+

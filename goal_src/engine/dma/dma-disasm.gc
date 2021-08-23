@@ -5,6 +5,8 @@
 ;; name in dgo: dma-disasm
 ;; dgos: GAME, ENGINE
 
+;; Debug tool to print out a DMA list.
+
 (deftype vif-disasm-element (structure)
   ((mask    uint32      :offset-assert 0)
    (tag     vif-cmd-32  :offset-assert 4)
@@ -341,43 +343,7 @@
 
 (defun disasm-dma-tag ((arg0 dma-tag) (arg1 symbol))
   (format arg1 "(dma-tag ")
-  ;; this is a case statement.
-  (let ((t9-1 format)
-        (a0-2 arg1)
-        (a1-2 "~s")
-        (v1-1 (-> arg0 id))
-        )
-    (t9-1 a0-2 a1-2 (cond
-                      ((= v1-1 (dma-tag-id end))
-                       "end"
-                       )
-                      ((= v1-1 (dma-tag-id ret))
-                       "ret"
-                       )
-                      ((= v1-1 (dma-tag-id call))
-                       "call"
-                       )
-                      ((= v1-1 (dma-tag-id refs))
-                       "refs"
-                       )
-                      ((= v1-1 (dma-tag-id ref))
-                       "ref"
-                       )
-                      ((= v1-1 (dma-tag-id next))
-                       "next"
-                       )
-                      ((= v1-1 (dma-tag-id cnt))
-                       "cnt"
-                       )
-                      ((zero? v1-1)
-                       "refe"
-                       )
-                      (else
-                       "*unknown*"
-                       )
-                      )
-          )
-    )
+  (format arg1 "~s" (enum->string dma-tag-id (-> arg0 id)))
   (if (> (the-as uint (-> arg0 addr)) 0)
       (format arg1 " :addr #x~8x" (-> arg0 addr))
       )
@@ -400,6 +366,13 @@
 ;; this is unused.
 (define *dma-disasm* #t)
 
+(defmacro disasm-dma-buffer (buff)
+  `(disasm-dma-list (the dma-packet (-> ,buff data-buffer)) 'details #t #t 0)
+  )
+
+
+;; NOTE: the decompiler currently outputs something nicer looking for the nexted conds,
+;; but keeping the old version with nicer comments for now.
 (defun disasm-dma-list ((data dma-packet) (mode symbol) (verbose symbol) (stream symbol) (expected-size int))
   "Disassemble a dma list, starting from the given packet."
   (local-vars

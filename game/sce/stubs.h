@@ -3,8 +3,6 @@
 #include "common/common_types.h"
 
 namespace ee {
-void sceGsSyncV();
-void sceGsSyncPath();
 void sceGsPutIMR();
 void sceGsGetIMR();
 void sceGsExecStoreImage();

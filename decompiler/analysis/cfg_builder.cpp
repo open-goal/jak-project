@@ -178,7 +178,7 @@ void clean_up_return_final(const Function& f, ReturnElement* ir) {
 /*!
  * Remove the branch in a break (really return-from nonfunction scope)
  */
-void clean_up_break(FormPool& pool, BreakElement* ir) {
+void clean_up_break(FormPool& pool, BreakElement* ir, const Env&) {
   auto jump_to_end = get_condition_branch(ir->return_code);
   assert(jump_to_end.first);
   assert(jump_to_end.first->op()->branch_delay().kind() == IR2_BranchDelay::Kind::NOP);
@@ -192,7 +192,7 @@ void clean_up_break(FormPool& pool, BreakElement* ir) {
   }
 }
 
-void clean_up_break_final(const Function& f, BreakElement* ir) {
+void clean_up_break_final(const Function& f, BreakElement* ir, const Env& env) {
   EmptyElement* dead_empty = dynamic_cast<EmptyElement*>(ir->dead_code->try_as_single_element());
   if (dead_empty) {
     ir->dead_code = nullptr;
@@ -207,6 +207,13 @@ void clean_up_break_final(const Function& f, BreakElement* ir) {
         dead = nullptr;
         break;
       }
+    }
+  }
+
+  if (!dead) {
+    if (ir->dead_code->to_string(env) == "(nop!)") {
+      ir->dead_code = nullptr;
+      return;
     }
   }
 
@@ -604,7 +611,14 @@ bool try_splitting_nested_sc(FormPool& pool, Function& func, ShortCircuitElement
  * if there is a case like (and a (or b c))
  */
 void clean_up_sc(FormPool& pool, Function& func, ShortCircuitElement* ir) {
-  assert(ir->entries.size() > 1);
+  assert(ir->entries.size() > 0);
+  if (ir->entries.size() == 1) {
+    // need to fake the final entry.
+    ShortCircuitElement::Entry empty_final;
+    empty_final.condition = pool.alloc_single_element_form<EmptyElement>(ir);
+    ir->entries.push_back(empty_final);
+  }
+
   if (!try_clean_up_sc_as_and(pool, func, ir)) {
     if (!try_clean_up_sc_as_or(pool, func, ir)) {
       if (!try_splitting_nested_sc(pool, func, ir)) {
@@ -719,6 +733,7 @@ void clean_up_cond_no_else_final(Function& func, CondNoElseElement* cne) {
       assert(branch);
       if (branch_info_i.written_and_unused.find(reg->reg()) ==
           branch_info_i.written_and_unused.end()) {
+        lg::error("Branch delay register used improperly: {}", reg->to_string(func.ir2.env));
         throw std::runtime_error("Bad delay slot in clean_up_cond_no_else_final");
       }
       // assert(branch_info_i.written_and_unused.find(reg->reg()) !=
@@ -1379,6 +1394,31 @@ bool contains(const std::vector<T>& vec, const T& val) {
 }
 }  // namespace
 
+/*!
+ * Push x to output (can be a Form or std::vector<FormElement>).
+ * Will take of grouping the delay slots for likely asm branches into a single operation.
+ */
+template <typename T>
+void push_back_form_regroup_asm_likely_branches(T* output, FormElement* x, Function& f) {
+  std::vector<FormElement*> hack_temp;
+
+  if (output->size() > 0) {
+    auto back_as_asm = dynamic_cast<AtomicOpElement*>(output->back());
+    if (back_as_asm) {
+      auto back_as_branch = dynamic_cast<AsmBranchOp*>(back_as_asm->op());
+      if (back_as_branch && back_as_branch->is_likely()) {
+        auto& pool = *f.ir2.form_pool;
+        auto elt = pool.alloc_element<AsmBranchElement>(back_as_branch,
+                                                        pool.alloc_single_form(nullptr, x), true);
+        output->pop_back();
+        output->push_back(elt);
+        return;
+      }
+    }
+  }
+  output->push_back(x);
+}
+
 template <typename T>
 void convert_and_inline(FormPool& pool, Function& f, const BlockVtx* as_block, T* output) {
   auto start_op = f.ir2.atomic_ops->block_id_to_first_atomic_op.at(as_block->block_id);
@@ -1436,7 +1476,8 @@ void convert_and_inline(FormPool& pool, Function& f, const BlockVtx* as_block, T
     }
     if (add) {
       add_map.push_back(output->size());
-      output->push_back(op);
+      // output->push_back(op);
+      push_back_form_regroup_asm_likely_branches(output, op, f);
     } else {
       add_map.push_back(-1);
     }
@@ -1465,7 +1506,8 @@ void insert_cfg_into_list(FormPool& pool,
   } else {
     auto ir = cfg_to_ir(pool, f, vtx);
     for (auto x : ir->elts()) {
-      output->push_back(x);
+      push_back_form_regroup_asm_likely_branches(output, x, f);
+      // output->push_back(x);
     }
   }
 }
@@ -1581,9 +1623,6 @@ Form* cfg_to_ir_helper(FormPool& pool, Function& f, const CfgVtx* vtx) {
       return as_abs;
     }
 
-    if (svtx->entries.size() == 1) {
-      throw std::runtime_error("Weird short circuit form.");
-    }
     // now try as a normal and/or
     std::vector<ShortCircuitElement::Entry> entries;
     for (auto& x : svtx->entries) {
@@ -1643,7 +1682,7 @@ Form* cfg_to_ir_helper(FormPool& pool, Function& f, const CfgVtx* vtx) {
     auto result = pool.alloc_single_element_form<BreakElement>(
         nullptr, cfg_to_ir(pool, f, cvtx->body),
         cfg_to_ir_allow_null(pool, f, cvtx->unreachable_block), cvtx->dest_block_id);
-    clean_up_break(pool, dynamic_cast<BreakElement*>(result->try_as_single_element()));
+    clean_up_break(pool, dynamic_cast<BreakElement*>(result->try_as_single_element()), f.ir2.env);
     return result;
   } else if (dynamic_cast<const EmptyVtx*>(vtx)) {
     return pool.alloc_single_element_form<EmptyElement>(nullptr);
@@ -1739,7 +1778,7 @@ void build_initial_forms(Function& function) {
 
       auto as_break = dynamic_cast<BreakElement*>(form);
       if (as_break) {
-        clean_up_break_final(function, as_break);
+        clean_up_break_final(function, as_break, function.ir2.env);
       }
     });
 

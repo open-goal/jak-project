@@ -1,0 +1,28 @@
+(deftype behavior-test-type (basic)
+  ((foo int))
+  (:methods
+   (test (_type_ basic) int :behavior behavior-test-type)
+   )
+  )
+
+(defmethod test behavior-test-type ((obj behavior-test-type) (arg0 basic))
+  (format #t "method obj: ~D self: ~D~%" (-> obj foo) (-> self foo))
+  0
+  )
+
+(defbehavior test-bfunc behavior-test-type ((arg0 basic))
+  (format #t "function self: ~D~%" (-> self foo))
+  )
+
+
+(let ((obj1 (new 'static 'behavior-test-type :foo 123))
+      (obj2 (new 'static 'behavior-test-type :foo 456)))
+  (with-pp
+    (protect (pp)
+             (set! pp (the process obj1))
+             (test-bfunc #f)
+             (test obj2 #f)
+             )
+    )
+  )
+0

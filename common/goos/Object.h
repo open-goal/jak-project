@@ -416,9 +416,8 @@ class StringObject : public HeapObject {
     return obj;
   }
 
-  std::string print() const override { return "\"" + data + "\""; }
-
-  std::string inspect() const override { return "[string] \"" + data + "\"\n"; }
+  std::string print() const override;
+  std::string inspect() const override;
 
   ~StringObject() override = default;
 };

@@ -7,6 +7,7 @@
 #include "decompiler/ObjectFile/LinkedObjectFile.h"
 #include "AtomicOp.h"
 #include "OpenGoalMapping.h"
+#include "Form.h"
 
 namespace decompiler {
 /////////////////////////////
@@ -297,6 +298,12 @@ std::string get_simple_expression_op_name(SimpleExpression::Kind kind) {
       return "vector-!2";
     case SimpleExpression::Kind::VECTOR_FLOAT_PRODUCT:
       return "vector-float*!2";
+    case SimpleExpression::Kind::VECTOR_CROSS:
+      return "veccross";
+    case SimpleExpression::Kind::SUBU_L32_S7:
+      return "subu-s7";
+    case SimpleExpression::Kind::VECTOR_3_DOT:
+      return "vec3dot";
     default:
       assert(false);
       return {};
@@ -351,7 +358,12 @@ int get_simple_expression_arg_count(SimpleExpression::Kind kind) {
     case SimpleExpression::Kind::VECTOR_PLUS:
     case SimpleExpression::Kind::VECTOR_MINUS:
     case SimpleExpression::Kind::VECTOR_FLOAT_PRODUCT:
+    case SimpleExpression::Kind::VECTOR_CROSS:
       return 3;
+    case SimpleExpression::Kind::SUBU_L32_S7:
+      return 1;
+    case SimpleExpression::Kind::VECTOR_3_DOT:
+      return 2;
     default:
       assert(false);
       return -1;
@@ -527,6 +539,13 @@ goos::Object AsmOp::to_form(const std::vector<DecompilerLabel>& labels, const En
     }
   }
 
+  // note: to correctly represent a MOVN/MOVZ in our IR, we need to both read and write the
+  // destination register, so we append a read to the end here.
+  if (m_instr.kind == InstructionKind::MOVZ || m_instr.kind == InstructionKind::MOVN) {
+    RegisterAccess ra(AccessMode::READ, m_dst->reg(), m_dst->idx());
+    forms.push_back(ra.to_form(env));
+  }
+
   return pretty_print::build_list(forms);
 }
 
@@ -590,6 +609,11 @@ void AsmOp::update_register_info() {
     if (src.has_value()) {
       m_read_regs.push_back(src->reg());
     }
+  }
+
+  if (m_instr.kind == InstructionKind::MOVN || m_instr.kind == InstructionKind::MOVZ) {
+    // in the case that MOVN/MOVZ don't do the move, they effectively read the original value.
+    m_read_regs.push_back(m_dst->reg());
   }
 
   if (m_instr.kind >= FIRST_COP2_MACRO && m_instr.kind <= LAST_COP2_MACRO) {
@@ -698,6 +722,13 @@ void AsmOp::collect_vars(RegAccessSet& vars) const {
     if (x.has_value()) {
       vars.insert(*x);
     }
+  }
+
+  if (m_instr.kind == InstructionKind::MOVN || m_instr.kind == InstructionKind::MOVZ) {
+    // the conditional moves read their write register, but don't have it listed as a write
+    // in the actual ASM.  We handle this difference for the variable naming system here.
+    RegisterAccess ra(AccessMode::READ, m_dst->reg(), m_dst->idx());
+    vars.insert(ra);
   }
 }
 /////////////////////////////
@@ -1090,6 +1121,21 @@ void StoreOp::collect_vars(RegAccessSet& vars) const {
 // LoadVarOp
 /////////////////////////////
 
+std::string load_kind_to_string(LoadVarOp::Kind kind) {
+  switch (kind) {
+    case LoadVarOp::Kind::FLOAT:
+      return "float";
+    case LoadVarOp::Kind::VECTOR_FLOAT:
+      return "vector-float";
+    case LoadVarOp::Kind::SIGNED:
+      return "signed";
+    case LoadVarOp::Kind::UNSIGNED:
+      return "unsigned";
+    default:
+      assert(false);
+  }
+}
+
 LoadVarOp::LoadVarOp(Kind kind, int size, RegisterAccess dst, SimpleExpression src, int my_idx)
     : AtomicOp(my_idx), m_kind(kind), m_size(size), m_dst(dst), m_src(std::move(src)) {}
 
@@ -1368,13 +1414,26 @@ void BranchOp::collect_vars(RegAccessSet& vars) const {
 AsmBranchOp::AsmBranchOp(bool likely,
                          IR2_Condition condition,
                          int label,
+                         AtomicOp* branch_delay,
+                         int my_idx)
+    : AtomicOp(my_idx),
+      m_likely(likely),
+      m_condition(std::move(condition)),
+      m_label(label),
+      m_branch_delay(branch_delay) {}
+
+AsmBranchOp::AsmBranchOp(bool likely,
+                         IR2_Condition condition,
+                         int label,
                          std::shared_ptr<AtomicOp> branch_delay,
                          int my_idx)
     : AtomicOp(my_idx),
       m_likely(likely),
       m_condition(std::move(condition)),
       m_label(label),
-      m_branch_delay(std::move(branch_delay)) {}
+      m_branch_delay_sp(branch_delay) {
+  m_branch_delay = m_branch_delay_sp.get();
+}
 
 goos::Object AsmBranchOp::to_form(const std::vector<DecompilerLabel>& labels,
                                   const Env& env) const {
@@ -1388,7 +1447,10 @@ goos::Object AsmBranchOp::to_form(const std::vector<DecompilerLabel>& labels,
 
   forms.push_back(m_condition.to_form(labels, env));
   forms.push_back(pretty_print::to_symbol(labels.at(m_label).name));
-  forms.push_back(m_branch_delay->to_form(labels, env));
+
+  if (m_branch_delay) {
+    forms.push_back(m_branch_delay->to_form(labels, env));
+  }
 
   return pretty_print::build_list(forms);
 }
@@ -1414,23 +1476,28 @@ RegisterAccess AsmBranchOp::get_set_destination() const {
 
 void AsmBranchOp::update_register_info() {
   m_condition.get_regs(&m_read_regs);
-  m_branch_delay->update_register_info();
-  for (auto x : m_branch_delay->read_regs()) {
-    m_read_regs.push_back(x);
-  }
+  if (m_branch_delay) {
+    m_branch_delay->update_register_info();
 
-  for (auto x : m_branch_delay->write_regs()) {
-    m_write_regs.push_back(x);
-  }
+    for (auto x : m_branch_delay->read_regs()) {
+      m_read_regs.push_back(x);
+    }
 
-  for (auto x : m_branch_delay->clobber_regs()) {
-    m_clobber_regs.push_back(x);
+    for (auto x : m_branch_delay->write_regs()) {
+      m_write_regs.push_back(x);
+    }
+
+    for (auto x : m_branch_delay->clobber_regs()) {
+      m_clobber_regs.push_back(x);
+    }
   }
 }
 
 void AsmBranchOp::collect_vars(RegAccessSet& vars) const {
   m_condition.collect_vars(vars);
-  m_branch_delay->collect_vars(vars);
+  if (m_branch_delay) {
+    m_branch_delay->collect_vars(vars);
+  }
 }
 
 /////////////////////////////
@@ -1484,9 +1551,9 @@ void SpecialOp::update_register_info() {
       return;
     case Kind::SUSPEND:
       // todo - confirm this is true.
-      // the suspend operation is written in a way where it doesn't use temporaries to make the call
-      // but the actual suspend operation doesn't seem to preserve temporaries. Maybe the plan was
-      // to save temp registers at some point, but they later gave up on this?
+      // the suspend operation is written in a way where it doesn't use temporaries to make the
+      // call but the actual suspend operation doesn't seem to preserve temporaries. Maybe the
+      // plan was to save temp registers at some point, but they later gave up on this?
       clobber_temps();
       return;
     default:
@@ -1535,11 +1602,12 @@ RegisterAccess CallOp::get_set_destination() const {
 }
 
 void CallOp::update_register_info() {
-  // throw std::runtime_error("CallOp::update_register_info cannot be done until types are known");
+  // throw std::runtime_error("CallOp::update_register_info cannot be done until types are
+  // known");
   m_read_regs.push_back(Register(Reg::GPR, Reg::T9));
-  // previously, if the type analysis succeeds, it would remove this if the function doesn't return
-  // a value. however, this turned out to be not quite right because GOAL internally thinks that all
-  // functions return a value.
+  // previously, if the type analysis succeeds, it would remove this if the function doesn't
+  // return a value. however, this turned out to be not quite right because GOAL internally thinks
+  // that all functions return a value.
   m_write_regs.push_back(Register(Reg::GPR, Reg::V0));
   clobber_temps();
 }

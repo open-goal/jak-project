@@ -6,6 +6,7 @@ add_library(
         analysis/cfg_builder.cpp
         analysis/expression_build.cpp
         analysis/final_output.cpp
+        analysis/find_defstates.cpp
         analysis/inline_asm_rewrite.cpp
         analysis/insert_lets.cpp
         analysis/reg_usage.cpp
@@ -18,6 +19,7 @@ add_library(
         data/dir_tpages.cpp
         data/game_count.cpp
         data/game_text.cpp
+        data/streamed_audio.cpp
         data/StrFileReader.cpp
         data/tpage.cpp
 

@@ -22,13 +22,17 @@ bool convert_to_expressions(
   // set argument names to some reasonable defaults. these will be used if the user doesn't
   // give us anything more specific.
   if (f.guessed_name.kind == FunctionName::FunctionKind::GLOBAL ||
-      f.guessed_name.kind == FunctionName::FunctionKind::UNIDENTIFIED) {
-    f.ir2.env.set_remap_for_function(f.type.arg_count() - 1);
+      f.guessed_name.kind == FunctionName::FunctionKind::UNIDENTIFIED ||
+      f.guessed_name.kind == FunctionName::FunctionKind::NV_STATE ||
+      f.guessed_name.kind == FunctionName::FunctionKind::V_STATE) {
+    f.ir2.env.set_remap_for_function(f.type);
   } else if (f.guessed_name.kind == FunctionName::FunctionKind::METHOD) {
+    auto method_type =
+        dts.ts.lookup_method(f.guessed_name.type_name, f.guessed_name.method_id).type;
     if (f.guessed_name.method_id == GOAL_NEW_METHOD) {
-      f.ir2.env.set_remap_for_new_method(f.type.arg_count() - 1);
+      f.ir2.env.set_remap_for_new_method(method_type);
     } else {
-      f.ir2.env.set_remap_for_method(f.type.arg_count() - 1);
+      f.ir2.env.set_remap_for_method(method_type);
     }
   }
 
@@ -80,13 +84,41 @@ bool convert_to_expressions(
         }
       }
 
+      bool needs_cast = false;
       if (!dts.ts.tc(f.type.last_arg(), return_type)) {
         // we need to cast the final value.
+        needs_cast = true;
+
+      } else {
+        bool found_early_return = false;
+        for (auto e : new_entries) {
+          e->apply([&](FormElement* elt) {
+            auto as_ret = dynamic_cast<ReturnElement*>(elt);
+            if (as_ret) {
+              found_early_return = true;
+            }
+          });
+          if (found_early_return) {
+            break;
+          }
+        }
+
+        if (!found_early_return && f.type.last_arg() != return_type) {
+          needs_cast = true;
+        }
+      }
+
+      if (needs_cast) {
         auto to_cast = new_entries.back();
-        new_entries.pop_back();
-        auto cast = pool.alloc_element<CastElement>(f.type.last_arg(),
-                                                    pool.alloc_single_form(nullptr, to_cast));
-        new_entries.push_back(cast);
+        auto as_cast = dynamic_cast<CastElement*>(to_cast);
+        if (as_cast) {
+          as_cast->set_type(f.type.last_arg());
+        } else {
+          new_entries.pop_back();
+          auto cast = pool.alloc_element<CastElement>(f.type.last_arg(),
+                                                      pool.alloc_single_form(nullptr, to_cast));
+          new_entries.push_back(cast);
+        }
       }
     } else {
       // or just get all the expressions
@@ -128,7 +160,6 @@ bool convert_to_expressions(
             f.guessed_name.to_string());
         f.warnings.expression_build_warning(warn);
         lg::warn(warn);
-        return false;
       }
     }
 

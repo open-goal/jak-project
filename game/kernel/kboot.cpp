@@ -12,6 +12,7 @@
 
 #include "common/common_types.h"
 #include "common/util/Timer.h"
+#include "game/common/game_common_types.h"
 #include "game/sce/libscf.h"
 #include "kboot.h"
 #include "kmachine.h"
@@ -104,6 +105,9 @@ s32 goal_main(int argc, const char* const* argv) {
     masterConfig.language = (u16)Language::German;
   } else if (masterConfig.language == SCE_ITALIAN_LANGUAGE) {
     masterConfig.language = (u16)Language::Italian;
+  } else if (masterConfig.language == SCE_JAPANESE_LANGUAGE) {
+    // Note: this case was added so it is easier to test Japanese fonts.
+    masterConfig.language = (u16)Language::Japanese;
   } else {
     // pick english by default, if language is not supported.
     masterConfig.language = (u16)Language::English;
@@ -169,7 +173,7 @@ void KernelCheckAndDispatch() {
     }
 
     auto time_ms = kernel_dispatch_timer.getMs();
-    if (time_ms > 3) {
+    if (time_ms > 30) {
       printf("Kernel dispatch time: %.3f ms\n", time_ms);
     }
 
@@ -180,7 +184,9 @@ void KernelCheckAndDispatch() {
       SendAck();
     }
 
-    std::this_thread::sleep_for(std::chrono::microseconds(1000));
+    if (time_ms < 4) {
+      std::this_thread::sleep_for(std::chrono::microseconds(1000));
+    }
   }
 }
 

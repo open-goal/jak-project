@@ -17,6 +17,7 @@ class CodeGenerator {
  public:
   CodeGenerator(FileEnv* env, DebugInfo* debug_info);
   std::vector<u8> run(const TypeSystem* ts);
+  emitter::ObjectGeneratorStats get_obj_stats() const { return m_gen.get_stats(); }
 
  private:
   void do_function(FunctionEnv* env, int f_idx);

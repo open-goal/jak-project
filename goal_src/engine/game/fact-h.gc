@@ -9,21 +9,21 @@
 ;; All game code should reference *FACT-bank* to determine these parameters
 
 (deftype fact-bank (basic)
-  ((eco-level-max        float   :offset-assert 4)
-   (eco-single-inc       float   :offset-assert 8)
-   (eco-full-inc         float   :offset-assert 12)
-   (eco-single-timeout   uint64  :offset-assert 16) ; usec
-   (eco-full-timeout     uint64  :offset-assert 24) ; usec
-   (dummy                uint64  :offset-assert 32) ; usec
-   (health-max-default   float   :offset-assert 40)
-   (health-single-inc    float   :offset-assert 44)
-   (eco-pill-max-default float   :offset-assert 48)
-   (health-small-inc     float   :offset-assert 52)
-   (buzzer-max-default   float   :offset-assert 56)
-   (buzzer-single-inc    float   :offset-assert 60)
-   (suck-bounce-dist     float   :offset-assert 64) ; meters
-   (suck-suck-dist       float   :offset-assert 68) ; meters
-   (default-pill-inc     float   :offset-assert 72)
+  ((eco-level-max        float    :offset-assert   4)
+   (eco-single-inc       float    :offset-assert   8)
+   (eco-full-inc         float    :offset-assert  12)
+   (eco-single-timeout   seconds  :offset-assert  16)
+   (eco-full-timeout     seconds  :offset-assert  24)
+   (dummy                seconds  :offset-assert  32)
+   (health-max-default   float    :offset-assert  40)
+   (health-single-inc    float    :offset-assert  44)
+   (eco-pill-max-default float    :offset-assert  48)
+   (health-small-inc     float    :offset-assert  52)
+   (buzzer-max-default   float    :offset-assert  56)
+   (buzzer-single-inc    float    :offset-assert  60)
+   (suck-bounce-dist     meters   :offset-assert  64)
+   (suck-suck-dist       meters   :offset-assert  68)
+   (default-pill-inc     float    :offset-assert  72)
    )
   :method-count-assert 9
   :size-assert         #x4c
@@ -62,19 +62,7 @@
   )
 
 (defun pickup-type->string ((arg0 pickup-type))
-  (case arg0
-    (((pickup-type eco-pill-random)) "eco-pill-random")
-    (((pickup-type buzzer)) "buzzer")
-    (((pickup-type eco-pill)) "eco-pill")
-    (((pickup-type fuel-cell)) "fuel-cell")
-    (((pickup-type money)) "money")
-    (((pickup-type eco-green)) "eco-green")
-    (((pickup-type eco-blue)) "eco-blue")
-    (((pickup-type eco-red)) "eco-red")
-    (((pickup-type eco-yellow)) "eco-yellow")
-    (((pickup-type none)) "none")
-    (else "*unknown*")
-    )
+  (enum->string pickup-type arg0)
   )
 
 ;; Each individual enemy and pickup process will allocate a fact-info on its process heap
@@ -82,7 +70,7 @@
 ;; amounts or timings
 ;; The fact-info class stores data that is common to all fact-infos.
 (deftype fact-info (basic)
-  ((process             process :offset-assert 4)       ;; the process that this info is for
+  ((process             process-drawable :offset-assert 4)       ;; the process that this info is for
    (pickup-type         pickup-type   :offset-assert 8)
    (pickup-amount       float   :offset-assert 12)      ;; eco increment on pickup
    (pickup-spawn-amount float   :offset-assert 16)
@@ -93,122 +81,122 @@
   :size-assert         #x28
   :flag-assert         #xc00000028
   (:methods
-    (new (symbol type process pickup-type float) _type_ 0)
-    (dummy-9 () none 9)
-    (dummy-10 (_type_ symbol) none 10)
-    (dummy-11 (_type_) float 11)
+    (new (symbol type process-drawable pickup-type float) _type_ 0)
+    (TODO-RENAME-9 (_type_ symbol process-tree fact-info int) uint 9) ;; See nav-enemy::process-drawable-death-event-handler
+    (reset! (_type_ symbol) none 10)
+    (pickup-collectable! (_type_ pickup-type float handle) float 11)
     )
   )
 
 (deftype fact-info-target (fact-info)
-  ((eco-type              int32     :offset-assert 40)
-   (eco-level             float     :offset-assert 44)
-   (eco-pickup-time       uint64    :offset-assert 48)
-   (eco-timeout           uint64    :offset-assert 56) ;; usec
-   (health                float     :offset-assert 64)
-   (health-max            float     :offset-assert 68)
-   (buzzer                float     :offset-assert 72)
-   (buzzer-max            float     :offset-assert 76)
-   (eco-pill              float     :offset-assert 80)
-   (eco-pill-max          float     :offset-assert 84)
-   (health-pickup-time    uint64    :offset-assert 88)
-   (eco-source            uint64    :offset-assert 96)
-   (eco-source-time       uint64    :offset-assert 104)
-   (money-pickup-time     uint64    :offset-assert 112)
-   (buzzer-pickup-time    uint64    :offset-assert 120)
-   (fuel-cell-pickup-time uint64    :offset-assert 128)
-   (eco-pill-pickup-time  uint64    :offset-assert 136)
+  ((eco-type              int32    :offset-assert  40)
+   (eco-level             float    :offset-assert  44)
+   (eco-pickup-time       uint64   :offset-assert  48)
+   (eco-timeout           seconds  :offset-assert  56)
+   (health                float    :offset-assert  64)
+   (health-max            float    :offset-assert  68)
+   (buzzer                float    :offset-assert  72)
+   (buzzer-max            float    :offset-assert  76)
+   (eco-pill              float    :offset-assert  80)
+   (eco-pill-max          float    :offset-assert  84)
+   (health-pickup-time    uint64   :offset-assert  88)
+   (eco-source            handle   :offset-assert  96)
+   (eco-source-time       uint64   :offset-assert 104)
+   (money-pickup-time     uint64   :offset-assert 112)
+   (buzzer-pickup-time    uint64   :offset-assert 120)
+   (fuel-cell-pickup-time uint64   :offset-assert 128)
+   (eco-pill-pickup-time  uint64   :offset-assert 136)
    )
   :method-count-assert 12
   :size-assert         #x90
   :flag-assert         #xc00000090
   (:methods
-    (new (symbol type process pickup-type float) _type_ 0)
+    (new (symbol type process-drawable pickup-type float) _type_ 0)
     )
   )
 
 (deftype fact-info-enemy (fact-info)
-  ((speed               float   :offset-assert 40)
-   (idle-distance       float   :offset-assert 44) ; meters
-   (notice-top          float   :offset-assert 48) ; meters
-   (notice-bottom       float   :offset-assert 52) ; meters
-   (cam-horz            float   :offset-assert 56) ; meters
-   (cam-vert            float   :offset-assert 60) ; meters
-   (cam-notice-dist     float   :offset-assert 64) ; meters
+  ((speed           float   :offset-assert  40)
+   (idle-distance   meters  :offset-assert  44)
+   (notice-top      meters  :offset-assert  48)
+   (notice-bottom   meters  :offset-assert  52)
+   (cam-horz        meters  :offset-assert  56)
+   (cam-vert        meters  :offset-assert  60)
+   (cam-notice-dist meters  :offset-assert  64)
    )
   :method-count-assert 12
   :size-assert         #x44
   :flag-assert         #xc00000044
   (:methods
-    (new (symbol type process pickup-type float) _type_ 0)
+    (new (symbol type process-drawable pickup-type float) _type_ 0)
     )
   )
 
-(defmethod new fact-info ((allocation symbol) (type-to-make type) (proc process) (pkup-type pickup-type) (pkup-amount float))
+(declare-type process-drawable process)
+
+(defmethod new fact-info ((allocation symbol) (type-to-make type) (proc process-drawable) (pkup-type pickup-type) (pkup-amount float))
   "Create information about a pickup.  This should be called from a process which is a pickup.  This will read settings from
    the entity of the process automatically. Will attempt to read pickup-type and amount from the entity, but if this
    fails will use the values in the arguments"
   (local-vars (tag res-tag))
-  (with-pp
-    ;; allocate.
-    (let ((obj (object-new allocation type-to-make (the-as int (-> type-to-make size)))))
-      (let ((ent (the res-lump (-> proc entity))))
-        ;; confirm that we allocated successfully
-        (when (zero? obj)
-          (go process-drawable-art-error "memory")
-          ;; this is already true...
-          (set! obj (the-as fact-info 0))
-          (goto cfg-10)
-          )
-
-        ;; remember who we belong to
-        (set! (-> obj process) proc)
-
-        ;; eco may override the pickup type and amount, so try to get this.
-        (let ((v1-6 (res-lump-data ent 'eco-info (pointer int32) :tag-ptr (& tag) :time 0.0)))
-          (cond
-            (v1-6
-             ;; eco-info lookup succeeded,
-             (let ((a0-6 (-> tag elt-count)))
-               ;; first thing is pickup type, it's always there
-               (set! (-> obj pickup-type) (the-as pickup-type (-> v1-6 0)))
-               ;; pickup amount is optional.
-               (set! pkup-amount (if (< (the-as uint 1) (the-as uint a0-6))
-                                     (the float (-> v1-6 1))
-                                     pkup-amount
-                                     )
-                     )
-               )
-             (set! (-> obj pickup-amount) pkup-amount)
-             )
-            (else
-             ;; no eco-info, use stuff from args
-             (set! (-> obj pickup-type) pkup-type)
-             (set! (-> obj pickup-amount) pkup-amount)
-             )
-            )
-          )
-
-        ;; read the options
-        (set! (-> obj options) (res-lump-value ent 'options uint))
-
-        ;; TODO - some enum bitfield here.
-        (if (nonzero? (logand #x80200 (the-as int (-> obj options))))
-            (set! (-> obj fade-time) (the-as uint (the int (* 300.0 (res-lump-float ent 'timeout)))))
-            )
+  ;; allocate.
+  (let ((obj (object-new allocation type-to-make (the-as int (-> type-to-make size)))))
+    (let ((ent (the res-lump (-> proc entity))))
+      ;; confirm that we allocated successfully
+      (when (zero? obj)
+        (go process-drawable-art-error "memory")
+        ;; this is already true...
+        (set! obj (the-as fact-info 0))
+        (goto cfg-10)
         )
 
-      (label cfg-10)
-      obj
+      ;; remember who we belong to
+      (set! (-> obj process) proc)
+
+      ;; eco may override the pickup type and amount, so try to get this.
+      (let ((v1-6 (res-lump-data ent 'eco-info (pointer int32) :tag-ptr (& tag) :time 0.0)))
+        (cond
+          (v1-6
+           ;; eco-info lookup succeeded,
+           (let ((a0-6 (-> tag elt-count)))
+             ;; first thing is pickup type, it's always there
+             (set! (-> obj pickup-type) (the-as pickup-type (-> v1-6 0)))
+             ;; pickup amount is optional.
+             (set! pkup-amount (if (< (the-as uint 1) (the-as uint a0-6))
+                                   (the float (-> v1-6 1))
+                                   pkup-amount
+                                   )
+                   )
+             )
+           (set! (-> obj pickup-amount) pkup-amount)
+           )
+          (else
+           ;; no eco-info, use stuff from args
+           (set! (-> obj pickup-type) pkup-type)
+           (set! (-> obj pickup-amount) pkup-amount)
+           )
+          )
+        )
+
+      ;; read the options
+      (set! (-> obj options) (res-lump-value ent 'options uint))
+
+      ;; TODO - some enum bitfield here.
+      (if (nonzero? (logand #x80200 (the-as int (-> obj options))))
+          (set! (-> obj fade-time) (the-as uint (the int (* 300.0 (res-lump-float ent 'timeout)))))
+          )
       )
+
+    (label cfg-10)
+    obj
     )
   )
 
-(defmethod dummy-11 fact-info ((obj fact-info))
+(defmethod pickup-collectable! fact-info ((obj fact-info) (arg0 pickup-type) (arg1 float) (arg2 handle))
   0.0
   )
 
-(defmethod new fact-info-enemy ((allocation symbol) (type-to-make type) (proc process) (kind pickup-type) (amount float))
+(defmethod new fact-info-enemy ((allocation symbol) (type-to-make type) (proc process-drawable) (kind pickup-type) (amount float))
   "Create information about an enemy. Possibly includes what the enemy will drop when it is killed?"
   ;; base class ctor
   (let ((obj (the-as fact-info-enemy ((method-of-type fact-info new) allocation type-to-make proc kind amount))))
@@ -226,11 +214,11 @@
     )
   )
 
-(defmethod new fact-info-target ((allocation symbol) (type-to-make type) (arg0 process) (arg1 pickup-type) (arg2 float))
+(defmethod new fact-info-target ((allocation symbol) (type-to-make type) (arg0 process-drawable) (arg1 pickup-type) (arg2 float))
   "Create information about target. Not sure why this has stuff like pickup-type."
   (let ((obj (the-as fact-info-target ((method-of-type fact-info new) allocation type-to-make arg0 arg1 arg2))))
-    (set! (-> obj eco-source) (the-as uint #f))
-    (dummy-10 obj #f)
+    (set! (-> obj eco-source) (the-as handle #f))
+    (reset! obj #f)
     obj
     )
   )

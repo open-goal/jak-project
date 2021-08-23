@@ -13,6 +13,7 @@
 #include "kmalloc.h"
 #include "kprint.h"
 #include "fileio.h"
+#include "kmemcard.h"
 #include "kboot.h"
 #include "kdsnetm.h"
 #include "kdgo.h"
@@ -22,8 +23,6 @@
 #include "common/goal_constants.h"
 #include "common/log/log.h"
 #include "common/util/Timer.h"
-
-#include "game/system/vm/vm.h"
 
 //! Controls link mode when EnableMethodSet = 0, MasterDebug = 1, DiskBoot = 0. Will enable a
 //! warning message if EnableMethodSet = 1
@@ -1720,11 +1719,9 @@ s32 InitHeapAndSymbol() {
   set_fixed_symbol(FIX_SYM_GLOBAL_HEAP, "global", kglobalheap.offset);
   set_fixed_symbol(FIX_SYM_DEBUG_HEAP, "debug", kdebugheap.offset);
   set_fixed_symbol(FIX_SYM_STATIC, "static", (s7 + FIX_SYM_STATIC).offset);
-  set_fixed_symbol(FIX_SYM_LOADING_LEVEL, "loading-level", (s7 + FIX_SYM_LOADING_LEVEL).offset);
-  set_fixed_symbol(FIX_SYM_LOADING_PACKAGE, "loading-package",
-                   (s7 + FIX_SYM_LOADING_PACKAGE).offset);
-  set_fixed_symbol(FIX_SYM_PROCESS_LEVEL_HEAP, "process-level-heap",
-                   (s7 + FIX_SYM_PROCESS_LEVEL_HEAP).offset);
+  set_fixed_symbol(FIX_SYM_LOADING_LEVEL, "loading-level", kglobalheap.offset);
+  set_fixed_symbol(FIX_SYM_LOADING_PACKAGE, "loading-package", kglobalheap.offset);
+  set_fixed_symbol(FIX_SYM_PROCESS_LEVEL_HEAP, "process-level-heap", kglobalheap.offset);
   set_fixed_symbol(FIX_SYM_STACK, "stack", (s7 + FIX_SYM_STACK).offset);
   set_fixed_symbol(FIX_SYM_SCRATCH, "scratch", (s7 + FIX_SYM_SCRATCH).offset);
   set_fixed_symbol(FIX_SYM_SCRATCH_TOP, "*scratch-top*", 0x70000000);
@@ -1928,7 +1925,7 @@ s32 InitHeapAndSymbol() {
   make_function_symbol_from_c("method-set!", (void*)method_set);
 
   // dgo
-  make_function_symbol_from_c("link", (void*)link_and_exec_wrapper);
+  make_stack_arg_function_symbol_from_c("link", (void*)link_and_exec_wrapper);
   make_function_symbol_from_c("dgo-load", (void*)load_and_link_dgo);
 
   // forward declare
@@ -1938,18 +1935,18 @@ s32 InitHeapAndSymbol() {
   make_raw_function_symbol_from_c("symlink3", 0);
 
   // game stuff
-  make_function_symbol_from_c("link-begin", (void*)link_begin);
+  make_stack_arg_function_symbol_from_c("link-begin", (void*)link_begin);
   make_function_symbol_from_c("link-resume", (void*)link_resume);
-  //  make_function_symbol_from_c("mc-run", &CKernel::not_yet_implemented);
-  //  make_function_symbol_from_c("mc-format", &CKernel::not_yet_implemented);
-  //  make_function_symbol_from_c("mc-unformat", &CKernel::not_yet_implemented);
-  //  make_function_symbol_from_c("mc-create-file", &CKernel::not_yet_implemented);
-  //  make_function_symbol_from_c("mc-save", &CKernel::not_yet_implemented);
-  //  make_function_symbol_from_c("mc-load", &CKernel::not_yet_implemented);
-  //  make_function_symbol_from_c("mc-check-result", &CKernel::not_yet_implemented);
-  //  make_function_symbol_from_c("mc-get-slot-info", &CKernel::not_yet_implemented);
-  //  make_function_symbol_from_c("mc-makefile", &CKernel::not_yet_implemented);
-  //  make_function_symbol_from_c("kset-language", &CKernel::not_yet_implemented);
+  make_function_symbol_from_c("mc-run", (void*)MC_run);
+  make_function_symbol_from_c("mc-format", (void*)MC_format);
+  make_function_symbol_from_c("mc-unformat", (void*)MC_unformat);
+  make_function_symbol_from_c("mc-create-file", (void*)MC_createfile);
+  make_function_symbol_from_c("mc-save", (void*)MC_save);
+  make_function_symbol_from_c("mc-load", (void*)MC_load);
+  make_function_symbol_from_c("mc-check-result", (void*)MC_check_result);
+  make_function_symbol_from_c("mc-get-slot-info", (void*)MC_get_status);
+  make_function_symbol_from_c("mc-makefile", (void*)MC_makefile);
+  make_function_symbol_from_c("kset-language", (void*)MC_set_language);
 
   // set *debug-segment*
   auto ds_symbol = intern_from_c("*debug-segment*");
@@ -1966,12 +1963,6 @@ s32 InitHeapAndSymbol() {
 
   // set *boot-video-mode*
   intern_from_c("*boot-video-mode*")->value = 0;
-
-  // OpenGOAL only - init ps2 VM
-  if (VM::use) {
-    make_function_symbol_from_c("vm-ptr", (void*)VM::get_vm_ptr);
-    VM::vm_init();
-  }
 
   lg::info("Initialized GOAL heap in {:.2} ms", heap_init_timer.getMs());
   // load the kernel!

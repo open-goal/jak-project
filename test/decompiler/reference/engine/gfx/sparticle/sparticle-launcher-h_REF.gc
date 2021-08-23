@@ -5,12 +5,12 @@
 (deftype sp-field-init-spec (structure)
   ((field          uint16  :offset-assert   0)
    (flags          uint16  :offset-assert   2)
-   (initial-valuef float   :offset-assert   4)
-   (random-rangef  float   :offset-assert   8)
-   (random-multf   float   :offset-assert  12)
-   (initial-value  int32   :offset          4)
-   (random-range   int32   :offset          8)
-   (random-mult    int32   :offset         12)
+   (initial-value  int32   :offset-assert   4)
+   (random-range   int32   :offset-assert   8)
+   (random-mult    int32   :offset-assert  12)
+   (initial-valuef float   :offset          4)
+   (random-rangef  float   :offset          8)
+   (random-multf   float   :offset         12)
    (func           basic   :offset          4)
    (tex            uint32  :offset          4)
    (pntr           uint32  :offset          4)
@@ -30,9 +30,9 @@
   (format #t "~Tinitial-valuef: ~f~%" (-> obj initial-valuef))
   (format #t "~Trandom-rangef: ~f~%" (-> obj random-rangef))
   (format #t "~Trandom-multf: ~f~%" (-> obj random-multf))
-  (format #t "~Tinitial-value: ~D~%" (-> obj initial-valuef))
-  (format #t "~Trandom-range: ~D~%" (-> obj random-rangef))
-  (format #t "~Trandom-mult: ~D~%" (-> obj random-multf))
+  (format #t "~Tinitial-value: ~D~%" (-> obj initial-value))
+  (format #t "~Trandom-range: ~D~%" (-> obj random-range))
+  (format #t "~Trandom-mult: ~D~%" (-> obj random-mult))
   (format #t "~Tfunc: ~A~%" (-> obj initial-valuef))
   (format #t "~Ttex: ~D~%" (-> obj initial-valuef))
   (format #t "~Tpntr: #x~X~%" (-> obj initial-valuef))
@@ -43,9 +43,9 @@
 
 ;; definition of type sparticle-launcher
 (deftype sparticle-launcher (basic)
-  ((birthaccum float   :offset-assert   4)
-   (soundaccum float   :offset-assert   8)
-   (init-specs uint32  :offset-assert  12)
+  ((birthaccum float                              :offset-assert   4)
+   (soundaccum float                              :offset-assert   8)
+   (init-specs (inline-array sp-field-init-spec)  :offset-assert  12)
    )
   :method-count-assert 9
   :size-assert         #x10
@@ -64,8 +64,8 @@
 ;; definition of type sparticle-group-item
 (deftype sparticle-group-item (structure)
   ((launcher   uint32  :offset-assert   0)
-   (fade-after float   :offset-assert   4)
-   (falloff-to float   :offset-assert   8)
+   (fade-after meters  :offset-assert   4)
+   (falloff-to meters  :offset-assert   8)
    (flags      uint16  :offset-assert  12)
    (period     uint16  :offset-assert  14)
    (length     uint16  :offset-assert  16)
@@ -141,19 +141,19 @@
 
 ;; definition of type sparticle-launch-group
 (deftype sparticle-launch-group (basic)
-  ((length          int16          :offset-assert   4)
-   (duration        uint16         :offset-assert   6)
-   (linger-duration uint16         :offset-assert   8)
-   (flags           uint16         :offset-assert  10)
-   (name            basic          :offset-assert  12)
-   (launcher        uint32         :offset-assert  16)
-   (bounds          sphere :inline :offset-assert  32)
+  ((length          int16                        :offset-assert   4)
+   (duration        uint16                       :offset-assert   6)
+   (linger-duration uint16                       :offset-assert   8)
+   (flags           uint16                       :offset-assert  10)
+   (name            basic                        :offset-assert  12)
+   (launcher        sparticle-group-item         :offset-assert  16)
+   (bounds          sphere               :inline :offset-assert  32)
    )
   :method-count-assert 10
   :size-assert         #x30
   :flag-assert         #xa00000030
   (:methods
-    (dummy-9 () none 9)
+    (create-launch-control (_type_ process) sparticle-launch-control 9)
     )
   )
 
@@ -188,8 +188,8 @@
   (:methods
     (dummy-9 () none 9)
     (dummy-10 () none 10)
-    (dummy-11 () none 11)
-    (dummy-12 () none 12)
+    (dummy-11 (_type_ vector) none 11)
+    (deactivate (_type_) none 12)
     (dummy-13 () none 13)
     )
   )

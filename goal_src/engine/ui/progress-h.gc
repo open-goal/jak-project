@@ -5,6 +5,10 @@
 ;; name in dgo: progress-h
 ;; dgos: GAME, ENGINE
 
+;; progress screen display-state enum:
+;; 32 - nocd
+;; 33 - dirtycd
+
 (deftype count-info (structure)
   ((money-count  int32  :offset-assert 0)
    (buzzer-count int32  :offset-assert 4)
@@ -25,9 +29,9 @@
   )
 
 (deftype task-info-data (basic)
-  ((task-id                  uint8    :offset-assert 4)
-   (task-name                symbol 4 :offset-assert 8)
-   (text-index-when-resolved int32    :offset-assert 24)
+  ((task-id                  game-task      :offset-assert   4)
+   (task-name                game-text-id 4 :offset-assert   8)
+   (text-index-when-resolved int32          :offset-assert  24)
    )
   :method-count-assert 9
   :size-assert         #x1c
@@ -35,11 +39,11 @@
   )
 
 (deftype level-tasks-info (basic)
-  ((level-name-id     uint32           :offset-assert 4)
-   (text-group-index  int32            :offset-assert 8)
-   (nb-of-tasks       int32            :offset-assert 12)
-   (buzzer-task-index int32            :offset-assert 16)
-   (task-info         task-info-data 8 :offset-assert 20)
+  ((level-name-id     game-text-id     :offset-assert   4)
+   (text-group-index  int32            :offset-assert   8)
+   (nb-of-tasks       int32            :offset-assert  12)
+   (buzzer-task-index int32            :offset-assert  16)
+   (task-info         task-info-data 8 :offset-assert  20)
    )
   :method-count-assert 9
   :size-assert         #x34
@@ -47,13 +51,13 @@
   )
 
 (deftype game-option (basic)
-  ((option-type     uint64  :offset-assert 8)
-   (name            uint32  :offset-assert 16)
-   (scale           basic   :offset-assert 20)
-   (param1          float   :offset-assert 24)
-   (param2          float   :offset-assert 28)
-   (param3          int32   :offset-assert 32)
-   (value-to-modify uint32  :offset-assert 36)
+  ((option-type     uint64        :offset-assert   8)
+   (name            game-text-id  :offset-assert  16)
+   (scale           basic         :offset-assert  20)
+   (param1          float         :offset-assert  24)
+   (param2          float         :offset-assert  28)
+   (param3          int32         :offset-assert  32)
+   (value-to-modify uint32        :offset-assert  36)
    )
   :method-count-assert 9
   :size-assert         #x28
@@ -126,7 +130,7 @@
     (dummy-17 () none 17)
     (dummy-18 () none 18)
     (dummy-19 () none 19)
-    (dummy-20 () none 20)
+    (hidden? (_type_) symbol 20)
     (dummy-21 () none 21)
     (dummy-22 () none 22)
     (TODO-RENAME-23 (_type_ symbol symbol) none 23)
@@ -138,7 +142,7 @@
     (dummy-29 () none 29)
     (dummy-30 () none 30)
     (dummy-31 () none 31)
-    (dummy-32 () none 32)
+    (dummy-32 (_type_) none 32)
     (dummy-33 () none 33)
     (dummy-34 () none 34)
     (dummy-35 () none 35)
@@ -173,3 +177,11 @@
 
 (defun-extern activate-progress process int int)
 
+(define-extern *level-task-data* (array level-tasks-info))
+(define-extern *level-task-data-remap* (array int32))
+(define-extern get-game-count (function int count-info))
+(define-extern activate-orb-all (function int int)) ;; maybe in hud?
+(define-extern progress-allowed? (function symbol))
+(define-extern pause-allowed? (function symbol))
+(define-extern deactivate-progress (function none))
+(define-extern calculate-completion (function symbol float))

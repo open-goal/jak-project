@@ -157,7 +157,7 @@ ObjectFileDB::ObjectFileDB(const std::vector<std::string>& _dgos,
 
   lg::info("ObjectFileDB Initialized\n");
   if (obj_files_by_name.empty()) {
-    lg::die(
+    lg::error(
         "No object files have been added. Check that there are input files and the allowed_objects "
         "list.");
   }
@@ -580,6 +580,7 @@ std::string ObjectFileDB::process_tpages() {
 
   if (tpage_dir_count == 0) {
     lg::warn("Did not find tpage-dir.");
+    return {};
   }
 
   lg::info("Processed {} / {} textures {:.2f}% in {:.2f} ms", success, total,
@@ -612,6 +613,9 @@ std::string ObjectFileDB::process_game_text_files() {
   lg::info("Processed {} text files ({} strings, {} characters) in {:.2f} ms", file_count,
            string_count, char_count, timer.getMs());
 
+  if (text_by_language_by_id.empty()) {
+    return {};
+  }
   return write_game_text(text_by_language_by_id);
 }
 
@@ -733,7 +737,7 @@ void ObjectFileDB::analyze_functions_ir1(const Config& config) {
       // run analysis
 
       // build a control flow graph, just looking at branch instructions.
-      func.cfg = build_cfg(data.linked_data, segment_id, func, {});
+      func.cfg = build_cfg(data.linked_data, segment_id, func, {}, {});
 
       // convert individual basic blocks to sequences of IR Basic Ops
       for (auto& block : func.basic_blocks) {

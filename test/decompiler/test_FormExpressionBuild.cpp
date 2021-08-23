@@ -62,7 +62,7 @@ TEST_F(FormRegressionTest, ExprAdditionMixed1) {
       "    jr ra\n"
       "    daddu sp, sp, r0";
   std::string type = "(function int uint int)";
-  std::string expected = "(+ arg0 (the-as int arg1))";
+  std::string expected = "(+ arg0 arg1)";
   test_with_expr(func, type, expected);
 }
 
@@ -73,7 +73,7 @@ TEST_F(FormRegressionTest, ExprAdditionMixed2) {
       "    jr ra\n"
       "    daddu sp, sp, r0";
   std::string type = "(function uint int uint)";
-  std::string expected = "(+ arg0 (the-as uint arg1))";
+  std::string expected = "(+ arg0 arg1)";
   test_with_expr(func, type, expected);
 }
 
@@ -106,7 +106,7 @@ TEST_F(FormRegressionTest, ExprAdditionMixed1WrongReturn) {
       "    jr ra\n"
       "    daddu sp, sp, r0";
   std::string type = "(function int uint uint)";
-  std::string expected = "(the-as uint (+ arg0 (the-as int arg1)))";
+  std::string expected = "(the-as uint (+ arg0 arg1))";
   test_with_expr(func, type, expected);
 }
 
@@ -117,7 +117,7 @@ TEST_F(FormRegressionTest, ExprAdditionMixed2WrongReturn) {
       "    jr ra\n"
       "    daddu sp, sp, r0";
   std::string type = "(function uint int int)";
-  std::string expected = "(the-as int (+ arg0 (the-as uint arg1)))";
+  std::string expected = "(the-as int (+ arg0 arg1))";
   test_with_expr(func, type, expected);
 }
 
@@ -454,11 +454,14 @@ TEST_F(FormRegressionTest, ExprBasicTypeP) {
   std::string type = "(function basic type symbol)";
   std::string expected =
       "(begin\n"
-      "  (let\n"
-      "   ((v1-0 (-> arg0 type)) (a0-1 object))\n"
-      "   (until\n"
-      "    (begin (set! v1-0 (-> v1-0 parent)) (= v1-0 a0-1))\n"
-      "    (if (= v1-0 arg1) (return #t))\n"
+      "  (let ((v1-0 (-> arg0 type))\n"
+      "        (a0-1 object)\n"
+      "        )\n"
+      "   (until (= v1-0 a0-1)\n"
+      "    (if (= v1-0 arg1)\n"
+      "     (return #t)\n"
+      "     )\n"
+      "    (set! v1-0 (-> v1-0 parent))\n"
       "    )\n"
       "   )\n"
       "  #f\n"
@@ -494,11 +497,14 @@ TEST_F(FormRegressionTest, FinalBasicTypeP) {
   std::string type = "(function basic type symbol)";
   std::string expected =
       "(defun test-function ((arg0 basic) (arg1 type))\n"
-      "  (let\n"
-      "   ((v1-0 (-> arg0 type)) (a0-1 object))\n"
-      "   (until\n"
-      "    (begin (set! v1-0 (-> v1-0 parent)) (= v1-0 a0-1))\n"
-      "    (if (= v1-0 arg1) (return #t))\n"
+      "  (let ((v1-0 (-> arg0 type))\n"
+      "        (a0-1 object)\n"
+      "        )\n"
+      "   (until (= v1-0 a0-1)\n"
+      "    (if (= v1-0 arg1)\n"
+      "     (return #t)\n"
+      "     )\n"
+      "    (set! v1-0 (-> v1-0 parent))\n"
       "    )\n"
       "   )\n"
       "  #f\n"
@@ -547,11 +553,12 @@ TEST_F(FormRegressionTest, ExprTypeTypep) {
 
   std::string expected =
       "(begin\n"
-      "  (let\n"
-      "   ((v1-0 object))\n"
-      "   (until\n"
-      "    (begin (set! arg0 (-> arg0 parent)) (or (= arg0 v1-0) (zero? arg0)))\n"
-      "    (if (= arg0 arg1) (return #t))\n"
+      "  (let ((v1-0 object))\n"
+      "   (until (or (= arg0 v1-0) (zero? arg0))\n"
+      "    (if (= arg0 arg1)\n"
+      "     (return #t)\n"
+      "     )\n"
+      "    (set! arg0 (-> arg0 parent))\n"
       "    )\n"
       "   )\n"
       "  #f\n"
@@ -1660,12 +1667,11 @@ TEST_F(FormRegressionTest, ExprInlineArrayMethod5) {
   std::string type = "(function inline-array-class int)";
 
   std::string expected =
-      "(the-as int\n"
-      "  (+ (-> arg0 type size)\n"
-      "     (the-as uint\n"
-      "       (* (-> arg0 allocated-length)"
-      "          (the-as int (-> arg0 type heap-base)))\n"
-      "    )\n"
+      "(the-as\n"
+      "  int\n"
+      "  (+\n"
+      "   (-> arg0 type size)\n"
+      "   (* (-> arg0 allocated-length) (the-as int (-> arg0 type heap-base)))\n"
       "   )\n"
       "  )";
   test_with_expr(func, type, expected, true, "inline-array-class");
@@ -1735,12 +1741,12 @@ TEST_F(FormRegressionTest, ExprArrayMethod0) {
       "    (object-new\n"
       "     arg0\n"
       "     arg1\n"
-      "     (the-as\n"
-      "      int\n"
-      "      (+\n"
-      "       (-> arg1 size)\n"
-      "       (the-as uint (* arg3 (if (type-type? arg2 number) (the-as int (-> arg2 size)) 4)))\n"
-      "       )\n"
+      "     (the-as int (+ (-> arg1 size) (* arg3 (if (type-type? arg2 number)\n"
+      "                                            (the-as int (-> arg2 size))\n"
+      "                                            4\n"
+      "                                            )\n"
+      "                                    )\n"
+      "                  )\n"
       "      )\n"
       "     )\n"
       "    )\n"
@@ -1807,22 +1813,16 @@ TEST_F(FormRegressionTest, ExprArrayMethod5) {
   std::string type = "(function array int)";
 
   std::string expected =
-      "  (the-as\n"
-      "   int\n"
-      "   (+\n"
-      "    (-> array size)\n"
-      "    (the-as\n"
-      "     uint\n"
-      "     (*\n"
-      "      (-> arg0 allocated-length)\n"
-      "      (if\n"
-      "       (type-type? (-> arg0 content-type) number)\n"
-      "       (the-as int (-> arg0 content-type size))\n"
-      "       4\n"
-      "       )\n"
-      "      )\n"
-      "     )\n"
+      "(the-as\n"
+      "  int\n"
+      "  (+\n"
+      "   (-> array size)\n"
+      "   (* (-> arg0 allocated-length) (if (type-type? (-> arg0 content-type) number)\n"
+      "                                  (the-as int (-> arg0 content-type size))\n"
+      "                                  4\n"
+      "                                  )\n"
       "    )\n"
+      "   )\n"
       "  )";
   test_with_expr(func, type, expected, true, "array");
 }
@@ -1935,16 +1935,11 @@ TEST_F(FormRegressionTest, ExprMemOr) {
   std::string type = "(function pointer pointer int pointer)";
 
   std::string expected =
-      "(let\n"
-      "  ((v0-0 arg0))\n"
-      "  (dotimes\n"
-      "   (v1-0 arg2)\n"
-      "   (set!\n"
+      "(let ((v0-0 arg0))\n"
+      "  (dotimes (v1-0 arg2)\n"
+      "   (logior!\n"
       "    (-> (the-as (pointer uint8) arg0))\n"
-      "    (logior\n"
-      "     (-> (the-as (pointer uint8) arg0))\n"
-      "     (-> (the-as (pointer uint8) arg1))\n"
-      "     )\n"
+      "    (-> (the-as (pointer uint8) arg1))\n"
       "    )\n"
       "   (&+! arg0 1)\n"
       "   (&+! arg1 1)\n"
@@ -2569,7 +2564,7 @@ TEST_F(FormRegressionTest, MoveFalse) {
       "    daddiu sp, sp, 16\n";
   std::string type = "(function int symbol)";
 
-  std::string expected = "(nonzero? (logand (+ arg0 12) 1))";
+  std::string expected = "(logtest? (+ arg0 12) 1)";
   test_with_expr(func, type, expected, false, "", {{"L17", "A ~A"}});
 }
 
@@ -2904,10 +2899,7 @@ TEST_F(FormRegressionTest, AshPropagation) {
   std::string type = "(function bit-array int int)";
   std::string expected =
       "(begin\n"
-      "  (set!\n"
-      "   (-> arg0 bytes (/ arg1 8))\n"
-      "   (logior (-> arg0 bytes (/ arg1 8)) (the-as uint (ash 1 (logand arg1 7))))\n"
-      "   )\n"
+      "  (logior! (-> arg0 bytes (/ arg1 8)) (ash 1 (logand arg1 7)))\n"
       "  0\n"
       "  )";
   test_with_expr(func, type, expected);
@@ -2942,7 +2934,7 @@ TEST_F(FormRegressionTest, AshPropagation2) {
   std::string type = "(function bit-array int symbol)";
   std::string expected =
       "(let ((v1-2 (-> arg0 bytes (/ arg1 8))))\n"
-      "  (nonzero? (logand v1-2 (the-as uint (ash 1 (logand arg1 7)))))\n"
+      "  (logtest? v1-2 (ash 1 (logand arg1 7)))\n"
       "  )";
   test_with_expr(func, type, expected);
 }

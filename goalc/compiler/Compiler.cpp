@@ -1,11 +1,13 @@
 #include "Compiler.h"
-#include "common/link_types.h"
-#include "IR.h"
-#include "goalc/regalloc/allocate.h"
-#include "third-party/fmt/core.h"
-#include "CompilerException.h"
 #include <chrono>
 #include <thread>
+#include "CompilerException.h"
+#include "IR.h"
+#include "common/link_types.h"
+#include "goalc/make/Tools.h"
+#include "goalc/regalloc/Allocator.h"
+#include "goalc/regalloc/Allocator_v2.h"
+#include "third-party/fmt/core.h"
 
 using namespace goos;
 
@@ -16,7 +18,10 @@ Compiler::Compiler(std::unique_ptr<ReplWrapper> repl)
   m_global_env = std::make_unique<GlobalEnv>();
   m_none = std::make_unique<None>(m_ts.make_typespec("none"));
 
-  // compile GOAL library
+  // let the build system run us
+  m_make.add_tool(std::make_shared<CompilerTool>(this));
+
+  // load GOAL library
   Object library_code = m_goos.reader.read_from_file({"goal_src", "goal-lib.gc"});
   compile_object_file("goal-lib", library_code, false);
 
@@ -29,6 +34,9 @@ Compiler::Compiler(std::unique_ptr<ReplWrapper> repl)
   if (m_repl) {
     m_repl->load_history();
   }
+
+  // add GOOS forms that get info from the compiler
+  setup_goos_forms();
 }
 
 ReplStatus Compiler::execute_repl(bool auto_listen) {
@@ -194,6 +202,7 @@ Val* Compiler::compile_error_guard(const goos::Object& code, Env* env) {
 }
 
 void Compiler::color_object_file(FileEnv* env) {
+  int num_spills_in_file = 0;
   for (auto& f : env->functions()) {
     AllocationInput input;
     input.is_asm_function = f->is_asm_func;
@@ -211,6 +220,7 @@ void Compiler::color_object_file(FileEnv* env) {
     input.max_vars = f->max_vars();
     input.constraints = f->constraints();
     input.stack_slots_for_stack_vars = f->stack_slots_used_for_stack_vars();
+    input.function_name = f->name();
 
     if (m_settings.debug_print_regalloc) {
       input.debug_settings.print_input = true;
@@ -219,8 +229,31 @@ void Compiler::color_object_file(FileEnv* env) {
       input.debug_settings.allocate_log_level = 2;
     }
 
-    f->set_allocations(allocate_registers(input));
+    m_debug_stats.total_funcs++;
+
+    auto regalloc_result_2 = allocate_registers_v2(input);
+
+    if (regalloc_result_2.ok) {
+      if (regalloc_result_2.num_spilled_vars > 0) {
+        // fmt::print("Function {} has {} spilled vars.\n", f->name(),
+        //  regalloc_result_2.num_spilled_vars);
+      }
+      num_spills_in_file += regalloc_result_2.num_spills;
+      f->set_allocations(regalloc_result_2);
+    } else {
+      fmt::print(
+          "Warning: function {} failed register allocation with the v2 allocator. Falling back to "
+          "the v1 allocator.\n",
+          f->name());
+      m_debug_stats.funcs_requiring_v1_allocator++;
+      auto regalloc_result = allocate_registers(input);
+      m_debug_stats.num_spills_v1 += regalloc_result.num_spills;
+      num_spills_in_file += regalloc_result.num_spills;
+      f->set_allocations(regalloc_result);
+    }
   }
+
+  m_debug_stats.num_spills += num_spills_in_file;
 }
 
 std::vector<u8> Compiler::codegen_object_file(FileEnv* env) {
@@ -235,6 +268,8 @@ std::vector<u8> Compiler::codegen_object_file(FileEnv* env) {
         fmt::print("{}\n", debug_info->disassemble_function_by_name(f->name(), &ok));
       }
     }
+    auto stats = gen.get_obj_stats();
+    m_debug_stats.num_moves_eliminated += stats.moves_eliminated;
     return result;
   } catch (std::exception& e) {
     throw_compiler_error_no_code("Error during codegen: {}", e.what());
@@ -409,4 +444,40 @@ void Compiler::typecheck_reg_type_allow_false(const goos::Object& form,
     }
   }
   typecheck(form, expected, coerce_to_reg_type(actual->type()), error_message);
+}
+
+bool Compiler::knows_object_file(const std::string& name) {
+  return m_debugger.knows_object(name);
+}
+
+void Compiler::setup_goos_forms() {
+  m_goos.register_form("get-enum-vals", [&](const goos::Object& form, goos::Arguments& args,
+                                            const std::shared_ptr<goos::EnvironmentObject>& env) {
+    m_goos.eval_args(&args, env);
+    va_check(form, args, {goos::ObjectType::SYMBOL}, {});
+    std::vector<Object> enum_vals;
+
+    const auto& enum_name = args.unnamed.at(0).as_symbol()->name;
+    auto enum_type = m_ts.try_enum_lookup(enum_name);
+    if (!enum_type) {
+      throw_compiler_error(form, "Unknown enum {} in get-enum-vals", enum_name);
+    }
+
+    std::vector<std::pair<std::string, s64>> sorted_values;
+    for (auto& val : enum_type->entries()) {
+      sorted_values.emplace_back(val.first, val.second);
+    }
+
+    std::sort(sorted_values.begin(), sorted_values.end(),
+              [](const std::pair<std::string, s64>& a, const std::pair<std::string, s64>& b) {
+                return a.second < b.second;
+              });
+
+    for (auto& thing : sorted_values) {
+      enum_vals.push_back(PairObject::make_new(m_goos.intern(thing.first),
+                                               goos::Object::make_integer(thing.second)));
+    }
+
+    return goos::build_list(enum_vals);
+  });
 }

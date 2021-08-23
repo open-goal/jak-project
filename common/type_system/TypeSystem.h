@@ -104,6 +104,8 @@ struct FieldReverseLookupOutput {
   double total_score = 0.;
   TypeSpec result_type;
   std::vector<Token> tokens;
+
+  bool has_variable_token() const;
 };
 
 struct FieldReverseMultiLookupOutput {

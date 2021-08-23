@@ -24,6 +24,7 @@ add_library(compiler
         compiler/compilation/Function.cpp
         compiler/compilation/ControlFlow.cpp
         compiler/compilation/Type.cpp
+        compiler/compilation/State.cpp
         compiler/compilation/Static.cpp
         compiler/Util.cpp
         data_compiler/game_text.cpp
@@ -34,23 +35,26 @@ add_library(compiler
         debugger/DebugInfo.cpp
         listener/Listener.cpp
         listener/MemoryMap.cpp
+        make/MakeSystem.cpp
+        make/Tool.cpp
+        make/Tools.cpp
         regalloc/IRegister.cpp
         regalloc/Allocator.cpp
-        regalloc/allocate.cpp
-        regalloc/allocate_common.cpp
+        regalloc/allocator_interface.cpp
+        regalloc/Allocator_v2.cpp
         )
 
 target_link_libraries(compiler common Zydis)
 
-if(WIN32)
+if (WIN32)
     target_link_libraries(compiler mman)
-endif()
+endif ()
 
-if(UNIX)
+if (UNIX)
     set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -O2")
-elseif(WIN32)
+elseif (WIN32)
     set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} /O2")
-endif()
+endif ()
 
 add_executable(goalc main.cpp)
 target_link_libraries(goalc common Zydis compiler)

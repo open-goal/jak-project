@@ -39,6 +39,9 @@ class LinkedObjectFile {
                         LinkedWord::Kind kind);
   void symbol_link_offset(int source_segment, int source_offset, const char* name);
   Function& get_function_at_label(int label_id);
+  Function* try_get_function_at_label(int label_id);
+  Function* try_get_function_at_label(const DecompilerLabel& label);
+
   const Function* try_get_function_at_label(int label_id) const;
   const Function* try_get_function_at_label(const DecompilerLabel& label) const;
   std::string get_label_name(int label_id) const;

@@ -31,6 +31,10 @@
   `(if ,x #f #t)
   )
 
+(defsmacro unless (clause &rest body)
+  `(if (not ,clause) (begin ,@body) #f)
+  )
+
 (desfun factorial (x)
 	(if (= x 1)
 	    1
@@ -58,6 +62,15 @@
 (defsmacro cddr (x)
            `(cdr (cdr ,x)))
 
+(defsmacro cdddr (x)
+           `(cdr (cdr (cdr ,x))))
+
+(defsmacro caadr (x)
+  `(car (car (cdr ,x))))
+
+(defsmacro cadar (x)
+  `(car (cdr (car ,x))))
+
 (desfun first (x)
 	(car x))
 
@@ -71,11 +84,30 @@
 (desfun third (x)
         (car (cddr x)))
 
+(defsmacro push! (lst x)
+  `(set! ,lst (cons ,x ,lst))
+  )
+(defsmacro pop! (lst)
+  `(set! ,lst (cdr ,lst))
+  )
+
 (desfun apply (fun x)
 	(if (null? x)
 	    '()
 	    (cons (fun (car x))
 		        (apply fun (cdr x))
+		        )
+	    )
+	)
+
+;; same as apply but interleaves with two functions and lists
+(desfun apply2 (fun1 fun2 lst1 lst2)
+	(if (or (null? lst1) (null? lst2) (not (= (length lst1) (length lst2))))
+	    '()
+	    (cons (fun1 (car lst1))
+		        (cons (fun2 (car lst2))
+                  (apply2 fun1 fun2 (cdr lst1) (cdr lst2))
+                  )
 		        )
 	    )
 	)
@@ -92,6 +124,40 @@
 	    (assoc x (cdr a))
 	    )
 	)
+
+(desfun reverse (lst)
+  (if (null? lst)
+    '()
+    (let ((old-lst lst)
+          (new-lst '()))
+      (while (not (null? old-lst))
+        (set! new-lst (cons (car old-lst) new-lst))
+        (set! old-lst (cdr old-lst))
+        )
+      new-lst
+      )
+    )
+  )
+
+(desfun reverse-recursive (lst)
+  (if (null? lst)
+    '()
+    (let ((old-lst lst)
+          (new-lst '()))
+      (while (not (null? old-lst))
+        (let ((cur-obj (car old-lst)))
+          (set! new-lst (cons (if (pair? cur-obj)
+                                  (reverse-recursive cur-obj)
+                                  cur-obj
+                                  )
+                              new-lst))
+          (set! old-lst (cdr old-lst))
+          )
+        )
+      new-lst
+      )
+    )
+  )
 
 (defsmacro let (bindings &rest body)
   `((lambda ,(apply first bindings) ,@body)
@@ -161,10 +227,30 @@
   `(type? 'pair ,x)
   )
 
+(defsmacro symbol? (x)
+  `(type? 'symbol ,x)
+  )
+
 (defsmacro ferror (&rest args)
   `(error (fmt #f ,@args))
   )
 
+
+(desfun apply-i-fun (fun x i)
+  (if (null? x)
+      '()
+      (cons (fun (car x) i)
+            (apply-i-fun fun (cdr x) (inc! i))
+            )
+      )
+	)
+(defsmacro apply-i (fun x)
+  `(apply-i-fun ,fun ,x 0)
+  )
+
+(defsmacro string->symbol-format (str &rest args)
+  `(string->symbol (fmt #f ,str ,@args))
+  )
 
 ;; Bootstrap GOAL macro system
 
@@ -196,6 +282,49 @@
   )
 
 
+;;;;;;;;;;;;;;;;;;;
+;; enum stuff
+;;;;;;;;;;;;;;;;;;;
+
+(desfun enum-length (enum)
+  (length (get-enum-vals enum))
+  )
+
+(defsmacro doenum (bindings &rest body)
+  ;; (doenum (name-var val-var 'enum &rest result) &rest body)
+  
+  (with-gensyms (enum-vals)
+    `(let ((,enum-vals (get-enum-vals ,(third bindings))))
+        
+        (while (not (null? ,enum-vals))
+          (let ((,(first bindings) (caar ,enum-vals)) ;; name
+                (,(second bindings) (cdar ,enum-vals)) ;; value
+                )
+            ,@body
+            )
+          
+          (set! ,enum-vals (cdr ,enum-vals))
+          )
+        
+        ,@(cdddr bindings)
+        
+        )
+    )
+  
+  )
+
+(desfun enum-max (enum)
+  "get the highest value in an enum"
+  
+  (let ((max-val -999999999))
+    (doenum (name val enum)
+      (when (> val max-val)
+        (set! max-val val))
+      )
+
+    max-val
+    )
+  )
 
 
 ;; shortcut to quit GOOS

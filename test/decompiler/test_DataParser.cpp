@@ -300,7 +300,7 @@ TEST_F(DataDecompTest, ContinuePoint) {
                     "                 :z -19409498.0\n"
                     "                 :w 1.0\n"
                     "                 )\n"
-                    "     :quat (new 'static 'vector\n"
+                    "     :quat (new 'static 'quaternion\n"
                     "                :y 0.7325\n"
                     "                :w 0.6807\n"
                     "                )\n"
@@ -389,4 +389,16 @@ TEST_F(DataDecompTest, KernelContext) {
                     "  :current-process #f\n"
                     "  :relocating-process #f\n"
                     "  :low-memory-message #t)\n");
+}
+
+TEST_F(DataDecompTest, ReverseArtExt) {
+  FieldReverseLookupInput input;
+  input.base_type = TypeSpec("external-art-control");
+  input.offset = 124;
+  auto result = dts->ts.reverse_field_multi_lookup(input);
+  EXPECT_EQ(result.results.at(0).tokens.at(2).print(), "name");
+
+  input.offset = 108;
+  result = dts->ts.reverse_field_multi_lookup(input);
+  EXPECT_EQ(result.results.at(0).tokens.at(2).print(), "type");
 }

@@ -4,15 +4,15 @@
  * Uses xdbg functions to debug an OpenGOAL target.
  */
 
-#include "goalc/emitter/Register.h"
-#include "common/util/assert.h"
 #include "Debugger.h"
-#include "common/util/Timer.h"
 #include "common/goal_constants.h"
 #include "common/symbols.h"
-#include "third-party/fmt/core.h"
+#include "common/util/Timer.h"
+#include "common/util/assert.h"
 #include "goalc/debugger/disassemble.h"
+#include "goalc/emitter/Register.h"
 #include "goalc/listener/Listener.h"
+#include "third-party/fmt/core.h"
 
 /*!
  * Is the target halted? If we don't know or aren't connected, returns false.
@@ -57,6 +57,9 @@ bool Debugger::is_attached() const {
  */
 void Debugger::detach() {
   if (is_valid() && m_attached) {
+    if (!is_halted()) {
+      do_break();
+    }
     stop_watcher();
     xdbg::close_memory(m_debug_context.tid, &m_memory_handle);
     xdbg::detach_and_resume(m_debug_context.tid);
@@ -104,7 +107,9 @@ bool Debugger::attach_and_break() {
       m_continue_info.subtract_1 = false;
 
       // this may fail if you crash at exactly the wrong time. todo - remove?
-      assert(info.kind == xdbg::SignalInfo::BREAK);
+      if (info.kind != xdbg::SignalInfo::BREAK) {
+        fmt::print("[Debugger] got signal {} when expecting break.\n", (int)info.kind);
+      }
 
       // open the memory of the process
       if (!xdbg::open_memory(m_debug_context.tid, &m_memory_handle)) {
@@ -118,7 +123,9 @@ bool Debugger::attach_and_break() {
       update_break_info();
 
       auto signal_count = get_signal_count();
-      assert(signal_count == 0);
+      if (signal_count != 0) {
+        fmt::print("[Debugger] got signal count of {} in attach_and_break\n", signal_count);
+      }
       return true;
     }
   } else {
@@ -216,7 +223,7 @@ std::vector<BacktraceFrame> Debugger::get_backtrace(u64 rip, u64 rsp) {
 
     if (frame.rip_info.knows_function && frame.rip_info.func_debug &&
         frame.rip_info.func_debug->stack_usage) {
-      fmt::print("{}\n", frame.rip_info.function_name);
+      fmt::print("{} from {}\n", frame.rip_info.function_name, frame.rip_info.func_debug->obj_name);
       // we're good!
       u64 rsp_at_call = rsp + *frame.rip_info.func_debug->stack_usage;
 
@@ -597,6 +604,12 @@ void Debugger::watcher() {
         case xdbg::SignalInfo::BREAK:
           printf("Target has stopped. Run (:di) to get more information.\n");
           break;
+        case xdbg::SignalInfo::MATH_EXCEPTION:
+          printf("Target has crashed with a MATH_EXCEPTION! Run (:di) to get more information.\n");
+          break;
+        case xdbg::SignalInfo::DISAPPEARED:
+          printf("Target has disappeared. Maybe it quit or was killed.\n");
+          break;
         default:
           printf("[Debugger] unhandled signal in watcher: %d\n", int(signal_info.kind));
           assert(false);
@@ -751,4 +764,8 @@ DebugInfo& Debugger::get_debug_info_for_object(const std::string& object_name) {
   }
 
   return m_debug_info.insert(std::make_pair(object_name, DebugInfo(object_name))).first->second;
+}
+
+bool Debugger::knows_object(const std::string& object_name) const {
+  return m_debug_info.find(object_name) != m_debug_info.end();
 }

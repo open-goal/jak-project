@@ -101,6 +101,10 @@ class BitfieldAccessElement : public FormElement {
                          FormPool& pool,
                          const Env& env);
   void push_pcpyud(const TypeSystem& ts, FormPool& pool, const Env& env);
+  std::string debug_print(const Env& env) const;
+  bool has_pcpyud() const { return m_got_pcpyud; }
+  const std::vector<BitfieldManip>& steps() const { return m_steps; }
+  std::optional<BitField> get_set_field_0(const TypeSystem& ts) const;
 
  private:
   bool m_got_pcpyud = false;
@@ -141,6 +145,9 @@ class BitfieldStaticDefElement : public FormElement {
     result->push_back(this);
   }
 
+  const TypeSpec& bitfield_type() const { return m_type; }
+  const std::vector<BitFieldDef>& defs() const { return m_field_defs; }
+
  private:
   TypeSpec m_type;
   std::vector<BitFieldDef> m_field_defs;
@@ -155,6 +162,7 @@ class ModifiedCopyBitfieldElement : public FormElement {
  public:
   ModifiedCopyBitfieldElement(const TypeSpec& type,
                               Form* base,
+                              bool from_pcpyud,
                               const std::vector<BitFieldDef>& field_modifications);
   goos::Object to_form_internal(const Env& env) const override;
   void apply(const std::function<void(FormElement*)>& f) override;
@@ -164,11 +172,17 @@ class ModifiedCopyBitfieldElement : public FormElement {
 
   Form* base() const { return m_base; }
   const std::vector<BitFieldDef> mods() const { return m_field_modifications; }
+  bool from_pcpyud() const { return m_from_pcpyud; }
+  void clear_pcpyud_flag() {
+    assert(m_from_pcpyud);
+    m_from_pcpyud = false;
+  }
 
  private:
   TypeSpec m_type;
   Form* m_base = nullptr;
   std::vector<BitFieldDef> m_field_modifications;
+  bool m_from_pcpyud = false;
 };
 
 Form* cast_to_bitfield(const BitFieldType* type_info,

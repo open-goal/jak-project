@@ -5,6 +5,15 @@
 ;; name in dgo: gkernel
 ;; dgos: KERNEL
 
+;; The GOAL kernel provides:
+;;  - threads/stack management
+;;  - processes, and the process pools
+;;  - actor heap compacting GC
+;;  - process suspend
+;;  - executing the listener function and printing the result in the REPL
+;;  - catch/throw and stack frame utilities for the state system
+;;  - package loading (mostly unused loading system separate from levels)
+
 ;; Fwd
 (define-extern change-parent (function process-tree process-tree process-tree))
 
@@ -12,7 +21,7 @@
 ;; System Globals
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-;; HACK ADDED
+;; Set to #f to not use the fancy printing of results
 (define *use-old-listener-print* #f)
 
 ;; Set version number symbols
@@ -113,6 +122,10 @@
   ;; it might be possible to also throw them on the *dram-stack*, but they might depend on these
   ;; not overlapping. We can spare the 16k of memory.
   (define *fake-scratchpad-stack* (new 'global 'array 'uint8 (* 16 1024)))
+  
+  ;; similar thing for the scratchpad data.
+  ;; in 
+  (define *fake-scratchpad-data*  (new 'global 'array 'uint8 (* 16 1024)))
   )
 
 
@@ -249,13 +262,10 @@
 ;; Remove Exit
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-(defun remove-exit ()
-  "This is likely a defbehavior for process.
-  Pops a single stack frame, if there is one."
-  (rlet ((self :reg r13 :type process))
-    (when (-> self stack-frame-top)
-      (set! (-> self stack-frame-top) (-> self stack-frame-top next))
-      )
+(defbehavior remove-exit process ()
+  "Pops a single stack frame, if there is one."
+  (when (-> self stack-frame-top)
+    (set! (-> self stack-frame-top) (-> self stack-frame-top next))
     )
   )
 
@@ -268,83 +278,9 @@
 ;; The base class of process is process-tree.
 ;; Each process-tree element has a process-mask which indicates what type of node it is.
 
-(defun-debug stream<-process-mask (stream (mask int))
-  "Print out a process mask. This function may have been auto-generated?"
-                                        ; 24
-  (if (not (eq? 0 (logand mask (process-mask death))))
-      (format stream "death "))
-                                        ; 23
-  (if (not (eq? 0 (logand mask (process-mask attackable))))
-      (format stream "attackable "))  
-                                        ; 22
-  (if (not (eq? 0 (logand mask (process-mask projectile))))
-      (format stream "projectile "))  
-                                        ; 21
-  (if (not (eq? 0 (logand mask (process-mask entity))))
-      (format stream "entity "))
-                                        ; 20
-  (if (not (eq? 0 (logand mask (process-mask ambient))))
-      (format stream "ambient "))    
-                                        ; 19
-  (if (not (eq? 0 (logand mask (process-mask platform))))
-      (format stream "platform "))
-                                        ; 18
-  (if (not (eq? 0 (logand mask (process-mask camera))))
-      (format stream "camera "))  
-                                        ; 17
-  (if (not (eq? 0 (logand mask (process-mask enemy))))
-      (format stream "enemy "))  
-                                        ; 16
-  (if (not (eq? 0 (logand mask (process-mask collectable))))
-      (format stream "collectable "))
-                                        ; 15
-  (if (not (eq? 0 (logand mask (process-mask crate))))
-      (format stream "crate "))  
-                                        ; 14
-  (if (not (eq? 0 (logand mask (process-mask sidekick))))
-      (format stream "sidekick "))
-                                        ; 13
-  (if (not (eq? 0 (logand mask (process-mask target))))
-      (format stream "target "))  
-                                        ; 12
-  (if (not (eq? 0 (logand mask (process-mask movie-subject))))
-      (format stream "movie-subject "))
-                                        ; 11
-  (if (not (eq? 0 (logand mask (process-mask movie))))
-      (format stream "movie "))
-                                        ; 10
-  (if (not (eq? 0 (logand mask (process-mask going))))
-      (format stream "going "))  
-                                        ; 9
-  (if (not (eq? 0 (logand mask (process-mask heap-shrunk))))
-      (format stream "heap-shrunk "))
-                                        ; 8
-  (if (not (eq? 0 (logand mask (process-mask process-tree))))
-      (format stream "process-tree "))  
-                                        ; 7
-  (if (not (eq? 0 (logand mask (process-mask sleep-code))))
-      (format stream "sleep-code "))
-                                        ; 6
-  (if (not (eq? 0 (logand mask (process-mask sleep))))
-      (format stream "sleep "))  
-                                        ; 5
-  (if (not (eq? 0 (logand mask (process-mask actor-pause))))
-      (format stream "actor-pause "))  
-                                        ; 4
-  (if (not (eq? 0 (logand mask (process-mask progress))))
-      (format stream "progress "))
-                                        ; 3
-  (if (not (eq? 0 (logand mask (process-mask menu))))
-      (format stream "menu "))    
-                                        ; 2
-  (if (not (eq? 0 (logand mask (process-mask pause))))
-      (format stream "pause "))
-                                        ; 1
-  (if (not (eq? 0 (logand mask (process-mask draw))))
-      (format stream "draw "))  
-                                        ; 0
-  (if (not (eq? 0 (logand mask (process-mask execute))))
-      (format stream "execute "))  
+(defun-debug stream<-process-mask ((arg0 object) (arg1 process-mask))
+  (bit-enum->string process-mask arg1 arg0)
+  arg1
   )
 
 ;; game state
@@ -362,7 +298,7 @@
     (set! (-> obj child) #f)
     
     (set! (-> obj self) obj)
-    (set! (-> obj ppointer) (&-> obj self))
+    (set! (-> obj ppointer) (the (pointer process) (&-> obj self)))
     obj
     )
   )
@@ -372,9 +308,9 @@
   (format #t "[~8x] ~A~%" obj (-> obj type))
   (format #t "~Tname: ~S~%" (-> obj name))
   (format #t "~Tmask: #x~X~%" (-> obj mask))
-  (format #t "~Tparent: ~A~%" (as-process (-> obj parent)))
-  (format #t "~Tbrother: ~A~%" (as-process (-> obj brother)))
-  (format #t "~Tchild: ~A~%" (as-process (-> obj child)))
+  (format #t "~Tparent: ~A~%" (ppointer->process (-> obj parent)))
+  (format #t "~Tbrother: ~A~%" (ppointer->process (-> obj brother)))
+  (format #t "~Tchild: ~A~%" (ppointer->process (-> obj child)))
   obj
   )
 
@@ -427,7 +363,7 @@
     
     ;; setup reference stuff.
     (set! (-> obj self) obj)
-    (set! (-> obj ppointer) (&-> obj self))
+    (set! (-> obj ppointer) (the (pointer process) (&-> obj self)))
     obj
     )            
   )
@@ -440,7 +376,7 @@
       ;; inspect the object
       (inspect (the basic ptr))
       ;; seek to the next object on the heap.
-      (set! ptr (&+ ptr (align16 (asize-of (the basic ptr)))))
+      (&+! ptr (the int (align16 (asize-of (the basic ptr)))))
       )
     )
   )
@@ -458,9 +394,9 @@
   (format #t "~Ttrans-hook: ~A~%" (-> obj trans-hook))
   (format #t "~Tpost-hook: ~A~%" (-> obj post-hook))
   (format #t "~Tevent-hook: ~A~%" (-> obj event-hook))
-  (format #t "~Tparent: ~A~%" (as-process (-> obj parent)))
-  (format #t "~Tbrother: ~A~%" (as-process (-> obj brother)))
-  (format #t "~Tchild: ~A~%" (as-process (-> obj child)))
+  (format #t "~Tparent: ~A~%" (ppointer->process (-> obj parent)))
+  (format #t "~Tbrother: ~A~%" (ppointer->process (-> obj brother)))
+  (format #t "~Tchild: ~A~%" (ppointer->process (-> obj child)))
   (format #t "~Tconnection-list: ~`connectable`P~%" (-> obj connection-list))
   (format #t "~Tstack-frame-top: ~A~%" (-> obj stack-frame-top))
   (format #t "~Theap-base: #x~X~%" (-> obj heap-base))
@@ -876,6 +812,8 @@
     (set! obj (the cpu-thread (-> obj process)))
     ;; resume!
     (.jr temp)
+    (.add a4 a4)
+    (.add a5 a5)
     )
   (none)
   )
@@ -901,14 +839,14 @@
     (set! (-> obj child) #f)
     ;; setup ref
     (set! (-> obj self) obj)
-    (set! (-> obj ppointer) (&-> obj self))
+    (set! (-> obj ppointer) (the (pointer process) (&-> obj self)))
     
     (dotimes (i count)
       ;; create each process
       (let ((old-bro (-> obj child))
             (next ((method-of-type process new) allocation process 'dead stack-size)))
-        (set! (-> obj child) (as-ppointer next))
-        (set! (-> next parent) (as-ppointer obj))
+        (set! (-> obj child) (process->ppointer next))
+        (set! (-> next parent) (process->ppointer obj))
         (set! (-> next pool) obj)
         (set! (-> next brother) old-bro)
         )
@@ -927,7 +865,7 @@
       (set! proc (the (pointer process-tree) (get-process *debug-dead-pool* type-to-make stack-size)))
       (when proc
         (format 0 "WARNING: ~A ~A had to be allocated from the debug pool, because ~A was empty.~%"
-                type-to-make (as-process proc) (-> obj name))
+                type-to-make (ppointer->process proc) (-> obj name))
         )
       ;; there's a bug here. proc is a process here, but will be used as a process pointer.
       ;; let's just kill the program here.
@@ -943,7 +881,7 @@
        )
       (else
        (format 0 "WARNING: ~A ~A could not be allocated, because ~A was empty.~%"
-               type-to-make (as-process proc) (-> obj name))
+               type-to-make (ppointer->process proc) (-> obj name))
        (the process #f)
        )
       )
@@ -975,7 +913,7 @@
 (defmethod new dead-pool-heap ((allocation symbol) (type-to-make type) (name basic) (allocated-length int) (heap-size int))
   "Create a new dead pool heap. It will support allocated-length processes and have a total heap size of heap-size"
   (let ((obj (object-new allocation type-to-make (+ (the int (-> type-to-make size))
-                                                    (align16 (* allocated-length 12))
+                                                    (the int (align16 (* allocated-length 12)))
                                                     heap-size))))
     (set! (-> obj name) name)
     (set! (-> obj mask) (process-mask process-tree))
@@ -985,7 +923,7 @@
     (set! (-> obj child) #f)
     
     (set! (-> obj self) obj)
-    (set! (-> obj ppointer) (&-> obj self))
+    (set! (-> obj ppointer) (the (pointer process) (&-> obj self)))
     
     ;; initialize each process handle
     ;; build them into a linked list of null-process
@@ -2019,7 +1957,7 @@
   (break)
   )
 
-(defmethod new protect-frame ((allocation symbol) (type-to-make type) (func (function object)))
+(defmethod new protect-frame ((allocation symbol) (type-to-make type) (func (function none)))
   (let ((obj (the protect-frame (&+ allocation *gtype-basic-offset*))))
     (set! (-> obj type) type-to-make)
     (set! (-> obj name) 'protect-frame)
@@ -2069,12 +2007,12 @@
     ;; need to remove obj from its current parent
     (when parent
       (let ((proc (-> (-> parent) child)))
-        (if (eq? (as-process proc) obj)
+        (if (eq? (ppointer->process proc) obj)
             ;; case where we're the first child is easy!
             (set! (-> (-> parent) child) (-> obj brother))
             ;; otherwise, look through brothers to find us.
             (begin
-             (while (not (eq? (as-process (-> (-> proc) brother)) obj))
+             (while (not (eq? (ppointer->process (-> (-> proc) brother)) obj))
                (set! proc (-> (-> proc) brother))
                )
              ;; ok, got us, splice out of list.
@@ -2252,7 +2190,7 @@
   This will then return the value of the function you called!"
   (rlet ((pp :reg r13 :type process))
     
-    (let ((param-array (new 'stack 'array 'uint64 6))
+    (let ((param-array (new 'stack-no-clear 'array 'uint64 6))
           )
       ;; copy params to the stack.
       
@@ -2309,7 +2247,7 @@
    This stub remaps these saved registers to argument registers.
    It also creates a return trampoline to return-from-thread-dead"
   (declare (asm-func none)
-                                        ;(print-asm)
+           ;;(print-asm)
            )
   
   (rlet ((s0 :reg rbx :type uint)
@@ -2317,11 +2255,13 @@
          (s2 :reg r10 :type uint)
          (s3 :reg r11 :type uint)
          (s4 :reg r12 :type uint)
-         (a0 :reg rdi :type uint) ; ok
-         (a1 :reg rsi :type uint) ; ok 
-         (a2 :reg rdx :type uint) ; ok
-         (a3 :reg rcx :type uint) ; ok
+         (a0 :reg rdi :type uint)       ; ok
+         (a1 :reg rsi :type uint)       ; ok 
+         (a2 :reg rdx :type uint)       ; ok
+         (a3 :reg rcx :type uint)       ; ok
          (off :reg r15 :type uint)
+         (a4 :reg r8 :type uint)
+         (a5 :reg r9 :type uint)
          (temp :reg rax)
          )
 
@@ -2339,7 +2279,9 @@
     
     (.add :color #f s0 off)
     (.jr :color #f s0)
-    
+
+    (.add a4 a4)
+    (.add a5 a5)
     )
   
   )
@@ -2380,15 +2322,15 @@
 
 ;; The defstate macro isn't defined yet, so we do it manually.
 (define dead-state 
-    (new 'static 'state
-         :name #f
-         :next #f
-         :exit #f
-         :code #f
-         :trans #f
-         :post #f
-         :enter #f
-         :event #f))
+        (the (state process) (new 'static 'state
+                                  :name #f
+                                  :next #f
+                                  :exit #f
+                                  :code #f
+                                  :trans #f
+                                  :post #f
+                                  :enter #f
+                                  :event #f)))
 
 (set! (-> dead-state code) nothing)
 
@@ -2425,12 +2367,11 @@
         (set! pp obj)
         (let ((cur (-> pp stack-frame-top)))
           (while cur
-            (when (or
-                   (= (-> cur type) protect-frame)
-                   (= (-> cur type) state)
-                   )
-              ;; we're a state or protect-frame, we can exit.
-              ((-> (the protect-frame cur) exit))
+            (case (-> cur type) 
+              ((protect-frame state)
+               ;; we're a state or protect-frame, we can exit.
+               ((-> (the-as protect-frame cur) exit))
+               )
               )
             (set! cur (-> cur next))
             )

@@ -57,7 +57,7 @@
     (when (zero? a3-0)
      (set! (-> a2-1 v1-1 effect) arg1)
      (set! (-> a2-1 v1-1 waveform) arg0)
-     (set! (-> *ripple-globals* count) (+ (-> *ripple-globals* count) 1))
+     (+! (-> *ripple-globals* count) 1)
      )
     )
    )
@@ -70,17 +70,26 @@
 (defun ripple-update-waveform-offs ((arg0 ripple-wave-set))
   (let
    ((f0-1
-     (the float (- (-> *display* integral-frame-counter) (-> arg0 frame-save)))
+     (the
+      float
+      (-
+       (-> *display* integral-frame-counter)
+       (the-as int (-> arg0 frame-save))
+       )
+      )
      )
     )
    (when (!= f0-1 0.0)
     (dotimes (v1-4 (-> arg0 count))
      (let ((a1-4 (-> arg0 wave v1-4)))
-      (set! (-> a1-4 offs) (+ (-> a1-4 offs) (* f0-1 (-> a1-4 delta))))
+      (+! (-> a1-4 offs) (* f0-1 (-> a1-4 delta)))
       (set! (-> a1-4 offs) (the float (logand (the int (-> a1-4 offs)) #xffff)))
       )
      )
-    (set! (-> arg0 frame-save) (-> *display* integral-frame-counter))
+    (set!
+     (-> arg0 frame-save)
+     (the-as uint (-> *display* integral-frame-counter))
+     )
     )
    )
   0
@@ -183,7 +192,7 @@
   )
 
 ;; definition for function ripple-find-height
-(defun ripple-find-height ((arg0 process-drawable) (arg1 basic) (arg2 vector))
+(defun ripple-find-height ((arg0 process-drawable) (arg1 int) (arg2 vector))
   (local-vars (sv-16 float) (sv-32 float))
   (let* ((f30-0 (-> arg0 root trans y))
          (v1-1 (-> arg0 draw))
@@ -196,7 +205,7 @@
           (s4-0
            (the-as
             mei-ripple
-            (+ (the-as uint a1-6) (the-as uint (* (-> a1-6 ripple-offset) 16)))
+            (+ (the-as uint a1-6) (* (-> a1-6 ripple-offset) 16))
             )
            )
           (gp-0 (-> v1-1 ripple))
