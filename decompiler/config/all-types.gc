@@ -812,6 +812,9 @@
   (sound-options #x129)
 
   (hidden-power-cell #x12f) ;; why is this here??
+  
+  (saving-data #x136)
+  (do-not-remove-mem-card #x138)
 
   (continue-without-saving #x13f)
   (back #x13e)
@@ -2199,7 +2202,7 @@
    (rotv                  vector     :inline :offset-assert 80)
    (scalev                vector     :inline :offset-assert 96)
    (dir-targ              quaternion :inline :offset-assert 112)
-   (angle-change-time     uint64             :offset-assert 128)
+   (angle-change-time     int64              :offset-assert 128)
    (old-y-angle-diff      float              :offset-assert 136)
    )
   :method-count-assert 28
@@ -2849,9 +2852,9 @@
    (playing-id   sound-id         :offset-assert 8)
    (trans        vector   :inline :offset-assert 16)
    (name         sound-name       :offset-assert 32)
-   (play-time    uint64           :offset-assert 48)
-   (time-base    uint64           :offset-assert 56)
-   (time-random  uint64           :offset-assert 64)
+   (play-time    int64            :offset-assert 48)
+   (time-base    int64            :offset-assert 56)
+   (time-random  int64            :offset-assert 64)
    (volume       int32            :offset-assert 72)
    (pitch        int32            :offset-assert 76)
    (falloff-near int32            :offset-assert 80)
@@ -3552,10 +3555,10 @@
    (align              uint8 6  :offset-assert 88)
    (direct             uint8 6  :offset-assert 94)
    (buzz-val           uint8 2  :offset-assert 100)
-   (buzz-time          uint64 2  :offset-assert 104)
+   (buzz-time          int64 2  :offset-assert 104)
    (buzz               basic      :offset-assert 120)
    (buzz-act           int32      :offset-assert 124)
-   (change-time        uint64     :offset-assert 128)
+   (change-time        int64     :offset-assert 128)
    )
   (:methods
     (new (symbol type int) _type_ 0)
@@ -3580,8 +3583,8 @@
 
 (define-extern cpad-set-buzz! (function cpad-info int int int none))
 (define-extern cpad-get-data (function cpad-info cpad-info))
-(define-extern get-current-time (function uint))
-(define-extern get-integral-current-time (function uint))
+(define-extern get-current-time (function int))
+(define-extern get-integral-current-time (function int))
 (define-extern cpad-invalid! (function cpad-info cpad-info))
 ;; in the kernel.
 (define-extern cpad-open (function cpad-info int cpad-info))
@@ -4323,22 +4326,22 @@
    (last-screen                     int32               :offset-assert 564)
    (frames                          virtual-frame 6 :inline :offset-assert 568)
    (bg-clear-color                  rgba         4      :offset-assert 760)
-   (real-frame-counter              uint64              :offset-assert 776)
-   (base-frame-counter              uint64              :offset-assert 784)
-   (game-frame-counter              uint64              :offset-assert 792)
-   (integral-frame-counter          uint64              :offset-assert 800)
-   (real-integral-frame-counter     uint64              :offset-assert 808)
-   (actual-frame-counter            uint64              :offset-assert 816)
-   (real-actual-frame-counter       uint64              :offset-assert 824)
-   (part-frame-counter              uint64              :offset-assert 832)
-   (old-real-frame-counter          uint64              :offset-assert 840)
-   (old-base-frame-counter          uint64              :offset-assert 848)
-   (old-game-frame-counter          uint64              :offset-assert 856)
-   (old-integral-frame-counter      uint64              :offset-assert 864)
-   (old-real-integral-frame-counter uint64              :offset-assert 872)
-   (old-actual-frame-counter        uint64              :offset-assert 880)
-   (old-real-actual-frame-counter   uint64              :offset-assert 888)
-   (old-part-frame-counter          uint64              :offset-assert 896)
+   (real-frame-counter              int64               :offset-assert 776)
+   (base-frame-counter              int64               :offset-assert 784);; todo, change to signed?
+   (game-frame-counter              int64               :offset-assert 792)
+   (integral-frame-counter          int64               :offset-assert 800)
+   (real-integral-frame-counter     int64               :offset-assert 808)
+   (actual-frame-counter            int64               :offset-assert 816)
+   (real-actual-frame-counter       int64               :offset-assert 824)
+   (part-frame-counter              int64               :offset-assert 832)
+   (old-real-frame-counter          int64               :offset-assert 840)
+   (old-base-frame-counter          int64               :offset-assert 848)
+   (old-game-frame-counter          int64               :offset-assert 856)
+   (old-integral-frame-counter      int64               :offset-assert 864)
+   (old-real-integral-frame-counter int64               :offset-assert 872)
+   (old-actual-frame-counter        int64               :offset-assert 880)
+   (old-real-actual-frame-counter   int64               :offset-assert 888)
+   (old-part-frame-counter          int64               :offset-assert 896)
    (time-ratio                      float               :offset-assert 904)
    (seconds-per-frame               float               :offset-assert 908)
    (frames-per-second               float               :offset-assert 912)
@@ -5463,7 +5466,7 @@
   ((name basic :offset-assert 4)
    (length int16 :offset-assert 8)             ;; in use elts of the data array
    (allocated-length int16 :offset-assert 10)  ;; size of the data array
-   (engine-time uint64 :offset-assert 16)      ;; frame that we last executed
+   (engine-time int64 :offset-assert 16)      ;; frame that we last executed
    ;; terminating nodes for the next0/prev0 linked lists
    (alive-list connectable :inline :offset-assert 32)
    (alive-list-end connectable :inline :offset-assert 48)
@@ -6243,8 +6246,8 @@
    (num-success-before-killing  int8    :offset-assert 13)
    (num-attempts                int8    :offset-assert 14)
    (num-success                 int8    :offset-assert 15)
-   (start-time                  uint64  :offset-assert 16)
-   (last-time-called            uint64  :offset-assert 24)
+   (start-time                  int64  :offset-assert 16)
+   (last-time-called            int64  :offset-assert 24)
    )
   :method-count-assert 9
   :size-assert         #x20
@@ -8879,7 +8882,7 @@
 
 ;; - Functions
 
-(define-extern mc-get-slot-info (function int mc-slot-info))
+(define-extern mc-get-slot-info (function int mc-slot-info none))
 (define-extern mc-run (function none))
 (define-extern mc-check-result (function int))
 (define-extern mc-sync (function int))
@@ -8983,6 +8986,29 @@
     )
   )
 
+(defenum mc-status-code
+  :type uint32
+  (busy 0)
+  (ok 1)
+  (bad-handle 2)
+  (format-failed 3)
+  (internal-error 4)
+  (write-error 5)
+  (read-error 6)
+  (new-game 7)
+  (no-memory 8)
+  (no-card 9)
+  (no-last 10)
+  (no-format 11)
+  (no-file 12)
+  (no-save 13)
+  (no-space 14)
+  (bad-version 15)
+  (no-process 16)
+  (no-auto-save 17)
+  )
+
+
 (declare-type entity-perm structure)
 (declare-type game-save basic)
 (declare-type entity-perm-array basic)
@@ -9023,7 +9049,7 @@
    (death-movie-tick      int32     :offset-assert 264)
    (want-auto-save        symbol     :offset-assert 268)
    (auto-save-proc        handle    :offset-assert 272)
-   (auto-save-status      uint32    :offset-assert 280)
+   (auto-save-status      mc-status-code    :offset-assert 280)
    (auto-save-card        int32     :offset-assert 284)
    (auto-save-which       int32     :offset-assert 288)
    (pov-camera-handle     handle    :offset-assert 296)
@@ -9052,7 +9078,7 @@
     (seen-text? (_type_ game-text-id) symbol 21)
     (mark-text-as-seen (_type_ game-text-id) none 22)
     (got-buzzer? (_type_ game-task int) symbol 23)
-    (dummy-24 () none 24)
+    (save-game! (_type_ game-save string) none 24)
     (load-game! (_type_ game-save) game-save 25)
     (clear-text-seen! (_type_ game-text-id) none 26)
     (get-death-count (_type_ symbol) int 27)
@@ -9767,8 +9793,9 @@
   :flag-assert         #x90000004c
   )
 
+(declare-type process-drawable process)
 (deftype fact-info (basic)
-  ((process             process :offset-assert 4)
+  ((process             process-drawable :offset-assert 4)
    (pickup-type         pickup-type   :offset-assert 8)
    (pickup-amount       float   :offset-assert 12)
    (pickup-spawn-amount float   :offset-assert 16)
@@ -9779,10 +9806,10 @@
   :size-assert         #x28
   :flag-assert         #xc00000028
   (:methods
-    (new (symbol type process pickup-type float) _type_ 0)
+    (new (symbol type process-drawable pickup-type float) _type_ 0)
     (TODO-RENAME-9 (_type_ symbol process-tree fact-info int) uint 9) ;; See nav-enemy::process-drawable-death-event-handler
     (reset! (_type_ symbol) none 10)
-    (dummy-11 (_type_) float 11)
+    (pickup-collectable! (_type_ pickup-type float handle) float 11)
     )
   )
 
@@ -9798,7 +9825,7 @@
    (eco-pill              float     :offset-assert 80)
    (eco-pill-max          float     :offset-assert 84)
    (health-pickup-time    uint64    :offset-assert 88)
-   (eco-source            uint64    :offset-assert 96)
+   (eco-source            handle    :offset-assert 96)
    (eco-source-time       uint64    :offset-assert 104)
    (money-pickup-time     uint64    :offset-assert 112)
    (buzzer-pickup-time    uint64    :offset-assert 120)
@@ -9809,7 +9836,7 @@
   :size-assert         #x90
   :flag-assert         #xc00000090
   (:methods
-    (new (symbol type process pickup-type float) _type_ 0)
+    (new (symbol type process-drawable pickup-type float) _type_ 0)
     )
   )
 
@@ -9826,7 +9853,7 @@
   :size-assert         #x44
   :flag-assert         #xc00000044
   (:methods
-    (new (symbol type process pickup-type float) _type_ 0)
+    (new (symbol type process-drawable pickup-type float) _type_ 0)
     )
   )
 
@@ -10292,7 +10319,7 @@
    (max-time   int32   :offset-assert 4)
    (max-val    float   :offset-assert 8)
    (timer      int32   :offset-assert 12)
-   (start-time uint64  :offset-assert 16)
+   (start-time int64   :offset-assert 16)
    (value      float   :offset-assert 24)
    )
   :method-count-assert 11
@@ -10345,7 +10372,7 @@
    (xz-max     float          :offset-assert 8)
    (y-max      float          :offset-assert 12)
    (timer      int32          :offset-assert 16)
-   (start-time uint64         :offset-assert 24)
+   (start-time int64          :offset-assert 24)
    (value      vector :inline :offset-assert 32)
    )
   :method-count-assert 13
@@ -10386,7 +10413,7 @@
 ;; - Types
 
 (deftype smush-control (structure)
-  ((start-time  uint64  :offset-assert 0)
+  ((start-time  int64   :offset-assert 0)
    (period      float   :offset-assert 8)
    (duration    float   :offset-assert 12)
    (amp         float   :offset-assert 16)
@@ -10493,7 +10520,7 @@
    (trans           vector     :inline     :offset-assert 64)
    (quat            quaternion :inline     :offset-assert 80)
    (scale           vector     :inline     :offset-assert 96)
-   (notice-time     uint64                 :offset-assert 112)
+   (notice-time     int64                  :offset-assert 112)
    (flex-blend      float                  :offset-assert 120)
    (blend           float                  :offset-assert 124)
    (max-dist        meters                 :offset-assert 128)
@@ -11020,7 +11047,7 @@
    (transv-out     vector :inline :offset-assert 48)
    (local-normal   vector :inline :offset-assert 64)
    (surface-normal vector :inline :offset-assert 80)
-   (time           uint64         :offset-assert 96)
+   (time           int64          :offset-assert 96)
    (status         uint64         :offset-assert 104)
    (pat            pat-surface    :offset-assert 112)
    (reaction-flag  uint32         :offset-assert 116)
@@ -13315,14 +13342,14 @@
    (linger-duration uint16         :offset-assert 8)
    (flags           uint16         :offset-assert 10)
    (name            basic          :offset-assert 12)
-   (launcher        uint32         :offset-assert 16)
+   (launcher        sparticle-group-item         :offset-assert 16)
    (bounds          sphere :inline :offset-assert 32)
    )
   :method-count-assert 10
   :size-assert         #x30
   :flag-assert         #xa00000030
   (:methods
-    (dummy-9 (_type_ process) _type_ 9)
+    (create-launch-control (_type_ process) sparticle-launch-control 9)
     )
   )
 
@@ -13345,8 +13372,8 @@
   (:methods
     (dummy-9 () none 9)
     (dummy-10 () none 10)
-    (dummy-11 () none 11)
-    (dummy-12 () none 12)
+    (dummy-11 (_type_ vector) none 11)
+    (deactivate (_type_) none 12)
     (dummy-13 () none 13)
     )
   )
@@ -14594,7 +14621,7 @@
 
 (define-extern *dgo-name* string)
 (define-extern *load-dgo-rpc* rpc-buffer-pair)
-(define-extern *dgo-time* uint)
+(define-extern *dgo-time* int)
 (define-extern *play-str-rpc* rpc-buffer-pair)
 (define-extern *que-str-lock* symbol)
 (define-extern *load-str-lock* symbol)
@@ -16606,12 +16633,12 @@
    (which      int32                :offset-assert 120)
    (buffer     kheap                :offset-assert 124)
    (mode       basic                :offset-assert 128)
-   (result     uint32               :offset-assert 132)
-   (save       basic                :offset-assert 136)
+   (result     mc-status-code               :offset-assert 132)
+   (save       game-save            :offset-assert 136)
    (info       mc-slot-info :inline :offset-assert 140)
-   (notify     uint64               :offset-assert 440)
+   (notify     handle               :offset-assert 440)
    (state-time uint64               :offset-assert 448)
-   (part       basic                :offset-assert 456)
+   (part       sparticle-launch-control                :offset-assert 456)
    )
   :heap-base #x160
   :method-count-assert 23
@@ -16619,37 +16646,43 @@
   :flag-assert         #x17016001cc
   ;; inherited inspect of process
   (:methods
-    (dummy-14 () none 14)
-    (dummy-15 () none 15)
-    (dummy-16 () none 16)
-    (dummy-17 () none 17)
-    (dummy-18 () none 18)
-    (dummy-19 () none 19)
-    (dummy-20 () none 20)
-    (dummy-21 () none 21)
-    (dummy-22 () none 22)
+    (get-heap () _type_ :state 14)
+    (get-card () _type_ :state 15)
+    (format-card () _type_ :state 16)
+    (create-file () _type_ :state 17)
+    (save () _type_ :state 18)
+    (restore () _type_ :state 19)
+    (error (mc-status-code) _type_ :state 20)
+    (done () _type_ :state 21)
+    (unformat-card () _type_ :state 22)
     )
   )
 
 ;; - Functions
 
 (define-extern auto-save-command (function symbol int int process-tree none)) ;; TODO - not confirmed
-(define-extern auto-save-init-by-other function)
+(define-extern auto-save-init-by-other (function symbol process-tree int int none :behavior auto-save))
 (define-extern progress-allowed? (function symbol))
 (define-extern print-game-text (function string font-context symbol int int float)) ; TODO decomp error, this seems correct though
 (define-extern get-aspect-ratio (function symbol))
 (define-extern get-task-status (function game-task task-status))
 (define-extern lookup-level-info (function symbol level-load-info))
-(define-extern calculate-completion function)
+(define-extern calculate-completion (function symbol float))
 (define-extern game-save-elt->string (function game-save-elt string))
 (define-extern progress-level-index->string (function int string))
-(define-extern auto-save-post function)
+(define-extern auto-save-post (function none :behavior auto-save))
 (define-extern auto-save-check (function none))
+
+(define-extern mc-format (function int mc-status-code))
+(define-extern mc-unformat (function int mc-status-code))
+(define-extern mc-create-file (function int uint mc-status-code))
+(define-extern mc-save (function int int pointer int mc-status-code))
+(define-extern mc-load (function int int pointer mc-status-code))
 
 ;; - Unknowns
 
-(define-extern *auto-save-info* mc-slot-info) ;; unknown type
-;;(define-extern scf-get-time object) ;; unknown type
+(define-extern *auto-save-info* mc-slot-info)
+(define-extern scf-get-time (function scf-time none))
 ;; ;; unknown type
 
 
@@ -19601,7 +19634,7 @@
 (define-extern pause-allowed? (function symbol))
 (define-extern menu-respond-to-pause (function symbol))
 (define-extern hide-progress-screen (function int))
-(define-extern set-letterbox-frames (function uint uint))
+(define-extern set-letterbox-frames (function int int))
 (define-extern letterbox (function none))
 (define-extern blackout (function none))
 (define-extern main-cheats (function int))
@@ -21959,7 +21992,7 @@
    (sim-time-remaining    float                                 :offset-assert 688)
    (float-height-offset   float                                 :offset-assert 692)
    (player-attack-id      int32                                 :offset-assert 696)
-   (player-bonk-timeout   uint64                                :offset-assert 704)
+   (player-bonk-timeout   int64                                 :offset-assert 704)
    (water-anim            water-anim                            :offset-assert 712)
    (player-contact        basic                                 :offset-assert 716) ; not a basic
    (player-impulse        collide-shape-prim-mesh               :offset-assert 720)
@@ -22080,15 +22113,15 @@
    (momentum-speed      float              :offset-assert 296)
    (acceleration        float              :offset-assert 300)
    (rotate-speed        float              :offset-assert 304)
-   (turn-time           uint64             :offset-assert 312)
-   (frustration-time    uint64             :offset-assert 320)
+   (turn-time           int64              :offset-assert 312)
+   (frustration-time    int64              :offset-assert 320)
    (speed-scale         float              :offset-assert 328)
    (neck                joint-mod          :offset-assert 332) ; this is what `neck` is on the pelican
-   (reaction-time       uint64             :offset-assert 336)
-   (notice-time         uint64             :offset-assert 344)
-   (state-timeout       uint64             :offset-assert 352)
-   (free-time           uint64             :offset-assert 360)
-   (touch-time          uint64             :offset-assert 368)
+   (reaction-time       int64              :offset-assert 336)
+   (notice-time         int64              :offset-assert 344)
+   (state-timeout       int64              :offset-assert 352)
+   (free-time           int64              :offset-assert 360)
+   (touch-time          int64              :offset-assert 368)
    (nav-enemy-flags     uint32             :offset-assert 376)
    (incomming-attack-id handle             :offset-assert 384)
    (jump-return-state   (state process)    :offset-assert 392)
@@ -22879,10 +22912,10 @@
 ;; - Types
 
 (deftype ticky (structure)
-  ((delay-til-ramp    uint64  :offset-assert 0)
-   (delay-til-timeout uint64  :offset-assert 8)
-   (starting-time     uint64  :offset-assert 16)
-   (last-tick-time    uint64  :offset-assert 24)
+  ((delay-til-ramp    int64  :offset-assert 0)
+   (delay-til-timeout int64  :offset-assert 8)
+   (starting-time     int64  :offset-assert 16)
+   (last-tick-time    int64  :offset-assert 24)
    )
   :method-count-assert 12
   :size-assert         #x20

@@ -685,7 +685,7 @@ Val* Compiler::compile_deref(const goos::Object& form, const goos::Object& _rest
   while (!rest->is_empty_list()) {
     auto field_obj = pair_car(*rest);
     rest = &pair_cdr(*rest);
-    auto type_info = m_ts.lookup_type(result->type());
+    auto type_info = m_ts.lookup_type_allow_partial_def(result->type());
 
     // attempt to treat it as a field. May not succeed if we're actually an array.
     if (field_obj.is_symbol()) {
