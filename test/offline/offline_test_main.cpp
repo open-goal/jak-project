@@ -271,7 +271,7 @@ class OfflineDecompilation : public ::testing::Test {
     config->generate_symbol_definition_map = false;
 
     std::vector<std::string> dgos = {"CGO/KERNEL.CGO", "CGO/ENGINE.CGO", "CGO/GAME.CGO",
-                                     "DGO/BEA.DGO", "CGO/L1.CGO"};
+                                     "DGO/BEA.DGO",    "CGO/L1.CGO",     "DGO/INT.DGO"};
     std::vector<std::string> dgo_paths;
     if (g_iso_data_path.empty()) {
       for (auto& x : dgos) {
