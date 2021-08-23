@@ -99,7 +99,7 @@ const std::unordered_set<std::string> g_functions_to_skip_compiling = {
 
     /// GKERNEL
     // asm
-    "(method 10 process)",
+    "(method 10 process)", "(method 14 dead-pool)",
 
     /// GSTATE
     "enter-state",  // stack pointer asm

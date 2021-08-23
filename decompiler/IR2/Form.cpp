@@ -1828,6 +1828,14 @@ std::string fixed_operator_to_string(FixedOperatorKind kind) {
       return "l32-false-check";
     case FixedOperatorKind::VECTOR_3_DOT:
       return "vector-dot";
+    case FixedOperatorKind::PROCESS_TO_PPOINTER:
+      return "process->ppointer";
+    case FixedOperatorKind::PPOINTER_TO_HANDLE:
+      return "ppointer->handle";
+    case FixedOperatorKind::PROCESS_TO_HANDLE:
+      return "process->handle";
+    case FixedOperatorKind::PPOINTER_TO_PROCESS:
+      return "ppointer->process";
     default:
       assert(false);
       return "";
@@ -2775,6 +2783,32 @@ void LabelElement::apply(const std::function<void(FormElement*)>& f) {
 void LabelElement::apply_form(const std::function<void(Form*)>&) {}
 void LabelElement::collect_vars(RegAccessSet&, bool) const {}
 void LabelElement::get_modified_regs(RegSet&) const {}
+
+////////////////////////////////
+// LabelDerefElement
+///////////////////////////////
+
+LabelDerefElement::LabelDerefElement(int lid,
+                                     int size,
+                                     LoadVarOp::Kind load_kind,
+                                     RegisterAccess var)
+    : m_lid(lid), m_size(size), m_load_kind(load_kind), m_var(var) {}
+
+goos::Object LabelDerefElement::to_form_internal(const Env& env) const {
+  return pretty_print::build_list(fmt::format("label-deref {} :label {} :size {} :kind {}",
+                                              m_var.to_string(env), env.file->labels.at(m_lid).name,
+                                              m_size, load_kind_to_string(m_load_kind)));
+}
+
+void LabelDerefElement::apply(const std::function<void(FormElement*)>& f) {
+  f(this);
+}
+
+void LabelDerefElement::apply_form(const std::function<void(Form*)>&) {}
+void LabelDerefElement::collect_vars(RegAccessSet& regs, bool) const {
+  regs.insert(m_var);
+}
+void LabelDerefElement::get_modified_regs(RegSet&) const {}
 
 ////////////////////////////////
 // GetSymbolStringPointer

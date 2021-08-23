@@ -137,7 +137,7 @@ TP_Type SimpleAtom::get_type(const TypeState& input,
       }
       // todo: should we take out this warning?
       lg::warn("IR_StaticAddress does not know the type of {}", label.name);
-      return TP_Type::make_label_addr();
+      return TP_Type::make_label_addr(m_int);
     }
     case Kind::INVALID:
     default:
@@ -627,6 +627,14 @@ TP_Type SimpleExpression::get_type_int2(const TypeState& input,
     // returning int instead of uint because they like to use the float sign bit as an integer sign
     // bit.
     return TP_Type::make_from_ts(TypeSpec("float"));
+  }
+
+  auto& name = env.func->guessed_name;
+  if (name.kind == FunctionName::FunctionKind::METHOD && name.method_id == 7 &&
+      env.func->type.arg_count() == 3) {
+    if (m_kind == Kind::ADD && arg1_type.typespec() == TypeSpec("int")) {
+      return arg0_type;
+    }
   }
 
   throw std::runtime_error(fmt::format("Cannot get_type_int2: {}, args {} and {}",

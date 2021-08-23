@@ -126,6 +126,10 @@ Val* Compiler::compile_rlet(const goos::Object& form, const goos::Object& rest, 
     lenv->emit_ir<IR_ValueReset>(reset_regs);
   }
 
+  for (auto c : constraints) {
+    fenv->constrain(c);
+  }
+
   Val* result = get_none();
   for (u64 i = 1; i < args.unnamed.size(); i++) {
     auto& o = args.unnamed.at(i);
@@ -133,10 +137,6 @@ Val* Compiler::compile_rlet(const goos::Object& form, const goos::Object& rest, 
     if (!dynamic_cast<None*>(result)) {
       result = result->to_reg(lenv);
     }
-  }
-
-  for (auto c : constraints) {
-    fenv->constrain(c);
   }
 
   return result;

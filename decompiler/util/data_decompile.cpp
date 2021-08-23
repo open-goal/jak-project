@@ -588,12 +588,6 @@ goos::Object decompile_structure(const TypeSpec& type,
       continue;
     }
 
-    // OK - READ THE FIELD:
-    for (int i = field_start; i < field_end; i++) {
-      // even if our field was partially zero, we mark those zero bytes as "has data".
-      field_status_per_byte.at(i) = HAS_DATA_READ;
-    }
-
     // first, let's see if it's a value or reference
     auto field_type_info = ts.lookup_type(field.type());
     if (!field_type_info->is_reference()) {
@@ -627,6 +621,9 @@ goos::Object decompile_structure(const TypeSpec& type,
               field.name(), sp_field_init_spec_decompile(obj_words, labels, label.target_segment,
                                                          field_start, ts, field, words, file));
         } else {
+          if (obj_words.at(field_start / 4).kind != LinkedWord::PLAIN_DATA) {
+            continue;
+          }
           std::vector<u8> bytes_out;
           for (int byte_idx = field_start; byte_idx < field_end; byte_idx++) {
             bytes_out.push_back(obj_words.at(byte_idx / 4).get_byte(byte_idx % 4));
@@ -757,6 +754,12 @@ goos::Object decompile_structure(const TypeSpec& type,
                           field.name(), actual_type.print(), field.offset()));
         }
       }
+    }
+
+    // OK - READ THE FIELD:
+    for (int i = field_start; i < field_end; i++) {
+      // even if our field was partially zero, we mark those zero bytes as "has data".
+      field_status_per_byte.at(i) = HAS_DATA_READ;
     }
   }
 
@@ -1255,11 +1258,22 @@ std::vector<std::string> decompile_bitfield_enum_from_int(const TypeSpec& type,
               return type_info->entries().at(a) < type_info->entries().at(b);
             });
 
-  for (auto& field_name : bit_sorted_names) {
-    u64 mask = ((u64)1) << type_info->entries().at(field_name);
+  for (auto& kv : type_info->entries()) {
+    u64 mask = ((u64)1) << kv.second;
     if (value & mask) {
       reconstructed |= mask;
-      result.push_back(field_name);
+      result.push_back(kv.first);
+    }
+  }
+
+  int bit_count = 0;
+  {
+    u64 x = value;
+    while (x) {
+      if (x & 1) {
+        bit_count++;
+      }
+      x >>= 1;
     }
   }
 
@@ -1270,10 +1284,18 @@ std::vector<std::string> decompile_bitfield_enum_from_int(const TypeSpec& type,
         type.print(), value, reconstructed));
   }
 
-  // unordered map will give us these fields in a weird order, let's order them explicitly.
-  std::sort(result.begin(), result.end(), [&](const std::string& a, const std::string& b) {
-    return type_info->entries().at(a) < type_info->entries().at(b);
-  });
+  if (bit_count == (int)result.size()) {
+    // unordered map will give us these fields in a weird order, let's order them explicitly.
+    // because we have exactly one name per bit, we can just order them in bit order.
+    std::sort(result.begin(), result.end(), [&](const std::string& a, const std::string& b) {
+      return type_info->entries().at(a) < type_info->entries().at(b);
+    });
+  } else {
+    // we have multiple. Just sort alphabetically and complain.
+    lg::warn("Enum type {} has multiple entries with the same value.", type_info->get_name());
+    std::sort(result.begin(), result.end());
+  }
+
   return result;
 }
 
