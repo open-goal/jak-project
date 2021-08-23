@@ -3,7 +3,7 @@
 
 ;; definition of type evilbro
 (deftype evilbro (process-taskable)
-  ((evilsis evilsis  :offset-assert 380)
+  ((evilsis entity  :offset-assert 380)
    )
   :heap-base #x110
   :method-count-assert 53
@@ -52,16 +52,8 @@
       (set! (-> a1-2 from) pp)
       (set! (-> a1-2 num-params) 1)
       (set! (-> a1-2 message) 'clone)
-      (let ((v1-2 (process->ppointer obj)))
-       (set!
-        (-> a1-2 param 0)
-        (the-as
-         uint
-         (logior (shl (-> v1-2 0 pid) 32) (new 'static 'handle :process v1-2))
-         )
-        )
-       )
-      (send-event-function (-> obj evilsis ppointer 3) a1-2)
+      (set! (-> a1-2 param 0) (the-as uint (process->handle obj)))
+      (send-event-function (-> obj evilsis extra process) a1-2)
       )
      )
     (else
@@ -94,7 +86,7 @@
     (set! (-> a1-0 from) self)
     (set! (-> a1-0 num-params) 0)
     (set! (-> a1-0 message) 'end-mode)
-    (send-event-function (-> self evilsis ppointer 3) a1-0)
+    (send-event-function (-> self evilsis extra process) a1-0)
     )
    ((-> (method-of-type process-taskable play-anim) exit))
    (none)
@@ -246,10 +238,7 @@
 (defmethod copy-defaults! evilbro ((obj evilbro) (arg0 res-lump))
   (dummy-40 obj arg0 *evilbro-intro-sg* 3 40 (new 'static 'vector :w 4096.0) 5)
   (set! (-> obj tasks) (get-task-control (game-task leaving-misty)))
-  (set!
-   (-> obj evilsis)
-   (the-as evilsis (entity-actor-lookup arg0 'alt-actor 0))
-   )
+  (set! (-> obj evilsis) (entity-actor-lookup arg0 'alt-actor 0))
   (dummy-42 obj)
   (none)
   )
