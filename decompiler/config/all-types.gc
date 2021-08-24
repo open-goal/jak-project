@@ -864,6 +864,8 @@
 
   (MISSING-orb-hint #x233)
 
+  (daxter-launcher-no-eco #x25c)
+
   (beach-gimmie #x262)
   (beach-sentinel #x263)
   (jungle-canyon-end #x264)
@@ -10052,6 +10054,7 @@
 
 ;; - Types
 
+;; NOTE - root can also be a collide-shape
 (deftype manipy (process-drawable)
   ((new-trans-hook       (function none)        :offset-assert 176) ;; TODO - no idea on these types
    (cur-trans-hook       (function none)        :offset-assert 180) ;; TODO - no idea on these types
@@ -10076,9 +10079,10 @@
   ;; inherited inspect of process-drawable
   )
 
+(declare-type sparticle-launch-group structure)
 (deftype part-spawner (process-drawable)
-  ((mode         uint32         :offset-assert 176)
-   (enable       basic          :offset-assert 180)
+  ((mode         sparticle-launch-group         :offset-assert 176) ;; takes a part-spawner as it's first arg in method 9
+   (enable       symbol         :offset-assert 180)
    (radius       meters         :offset-assert 184)
    (world-sphere sphere :inline :offset-assert 192)
    )
@@ -10088,12 +10092,12 @@
   :flag-assert         #x15006000d0
   ;; inherited inspect of process-drawable
   (:methods
-    (dummy-20 () none 20)
+    (dummy-20 (_type_) none 20)
     )
   )
 
 (deftype part-tracker (process)
-  ((root-override             trsqv               :offset-assert 112)
+  ((root-override    trsqv               :offset-assert 112)
    (part             sparticle-launch-control               :offset-assert 116)
    (target           handle              :offset-assert 120)
    (callback         (function part-tracker none)               :offset-assert 128)
@@ -10134,8 +10138,8 @@
    (border-value    basic   :offset-assert 204)
    (mask-to-clear   uint32  :offset-assert 208)
    (script          basic   :offset-assert 212)
-   (script-line     basic   :offset-assert 216)
-   (script-func     basic   :offset-assert 220)
+   (script-line     pair   :offset-assert 216)
+   (script-func     (function none)   :offset-assert 220) ;; TODO - unconfirmed, see generic-obs::lambda::33
    )
   :heap-base #x70
   :method-count-assert 15
@@ -10144,7 +10148,7 @@
   ;; inherited inspect of process
   ;; field ~Tuserdata is a basic loaded with a signed load
   (:methods
-    (dummy-14 () none 14)
+    (dummy-14 (_type_ pair) none 14) ;; TODO - pair garbage, probably related to the `script`, find the caller
     )
   )
 
@@ -16309,7 +16313,7 @@
 
 ;; - Functions
 
-(define-extern sphere-in-view-frustum? function)
+(define-extern sphere-in-view-frustum? (function sphere none)) ;; TODO - not confirmed
 (define-extern kill-all-particles-with-key function)
 (define-extern sp-relaunch-setup-fields function)
 (define-extern sp-init-fields! function)
@@ -17424,7 +17428,7 @@
 (define-extern load-state-want-force-vis (function symbol symbol int))
 (define-extern command-get-param (function object symbol symbol))
 (define-extern entity-birth-no-kill (function entity none))
-(define-extern part-tracker-init (function basic basic basic basic basic vector none :behavior part-tracker))
+(define-extern part-tracker-init (function sparticle-launch-group int (function part-tracker none) (pointer process-drawable) basic vector none :behavior part-tracker)) ;; TODO - basic is ALWAYS none, and yet its used :/
 (define-extern command-list-get-process (function object process))
 (define-extern command-get-quoted-param (function object symbol symbol))
 (define-extern command-get-int (function pair int int))
@@ -18807,8 +18811,8 @@
   )
 
 (deftype med-res-level (process-drawable)
-  ((level     basic  :offset-assert 176)
-   (part-mode basic  :offset-assert 180)
+  ((level     symbol  :offset-assert 176)
+   (part-mode basic  :offset-assert 180) ;; sometimes a sound-mode, but too low a sample size to know for sure
    (index     int32  :offset-assert 184)
    )
   :method-count-assert 20
@@ -18818,8 +18822,9 @@
   )
 
 (deftype launcher (process-drawable)
-  ((spring-height   meters         :offset-assert 176)
-   (camera          basic          :offset-assert 180)
+  ((root-override   collide-shape  :score 100 :offset 112)
+   (spring-height   meters         :offset-assert 176)
+   (camera          state          :offset-assert 180)
    (active-distance float          :offset-assert 184)
    (seek-time       uint64         :offset-assert 192)
    (dest            vector :inline :offset-assert 208)
@@ -18836,14 +18841,14 @@
 (define-extern line-in-view-frustum? (function vector vector symbol)) ;; TODO - not confirmed
 (define-extern process-drawable-random-point! (function process-drawable vector vector))
 (define-extern process-drawable-from-entity! (function process-drawable object none))
-(define-extern cam-launcher-long-joystick function)
+(define-extern cam-launcher-long-joystick (function vector :behavior camera-slave))
 (define-extern hide-hud-quick (function none))
 (define-extern command-get-process (function pair process-drawable process))
 (define-extern camera-change-to (function string int symbol symbol))
 (define-extern camera-look-at (function pair uint process :behavior camera-tracker))
 (define-extern camera-pov-from (function pair uint process :behavior camera-tracker))
 (define-extern command-get-trans (function pair vector none))
-(define-extern manipy-init (function trsqv vector entity skeleton-group symbol none)) ;; TODO - not confirmed yet
+(define-extern manipy-init (function vector vector entity vector symbol symbol none :behavior manipy)) ;; TODO - not confirmed yet
 (define-extern part-tracker-notify (function object :behavior part-tracker))
 (define-extern clone-anim-once (function uint basic string none))
 (define-extern convert-to-hud-object function)
@@ -18851,10 +18856,10 @@
 (define-extern clone-anim function)
 (define-extern command-get-camera (function string state object))
 (define-extern ja-anim-done? (function int symbol)) ;; TODO - has a behavior, no idea what it is
-(define-extern camera-anim function)
-(define-extern camera-tracker-init (function function none)) ;; TODO - not confirmed, see misty-warehouse::camera-view
-(define-extern cam-launcher-joystick function)
-(define-extern launcher-init-by-other function)
+(define-extern camera-anim (function symbol basic entity (pointer process) :behavior camera-tracker)) ;; unused
+(define-extern camera-tracker-init (function function none)) ;; TODO - nested SC
+(define-extern cam-launcher-joystick (function vector :behavior camera-slave))
+(define-extern launcher-init-by-other (function vector float int float none :behavior launcher))
 (define-extern touch-tracker-init (function vector float uint none :behavior touch-tracker)) ;; last arg is a handle to `target`
 (define-extern process-drawable-pair-random-point! (function process-drawable process-drawable vector float vector))
 (define-extern birth-func-set-quat function)
@@ -18866,16 +18871,16 @@
 (define-extern touch-tracker-idle (state none)) ;; unknown type
 (define-extern cam-launcher-longfall state) ;; unknown type
 (define-extern cam-launcher-shortfall state) ;; unknown type
-(define-extern launcher-idle state) ;; unknown type
-(define-extern launcher-deactivated state) ;; unknown type
-(define-extern launcher-active state) ;; unknown type
+(define-extern launcher-idle (state none)) ;; unknown type
+(define-extern launcher-deactivated (state none)) ;; unknown type
+(define-extern launcher-active (state none)) ;; unknown type
 ;;(define-extern beach-part-grotto-1 object) ;; unknown type
 (define-extern part-spawner-active state) ;; unknown type
 (define-extern *lev-string* string) ;; unknown type
 (define-extern med-res-level-idle state) ;; unknown type
-(define-extern camera-tracker-process state) ;; unknown type
+(define-extern camera-tracker-process (state none)) ;; unknown type
 (define-extern part-tracker-process state) ;; unknown type
-(define-extern manipy-idle state) ;; unknown type
+(define-extern manipy-idle (state none)) ;; unknown type
 (define-extern swingpole-stance state) ;; unknown type
 (define-extern swingpole-active state) ;; unknown type
 
@@ -32215,28 +32220,13 @@
 
 ;; - Types
 
-; (deftype training-part (part-spawner)
-;   ()
-;   :method-count-assert 21
-;   :size-assert         #xd0
-;   :heap-base           #x60
-;   :flag-assert         #x15006000d0
-;   ;;  not enough basic ops
-;   (:methods
-;     (dummy-9 () none 9)
-;     (dummy-10 () none 10)
-;     (dummy-11 () none 11)
-;     (dummy-12 () none 12)
-;     (dummy-13 () none 13)
-;     (dummy-14 () none 14)
-;     (dummy-15 () none 15)
-;     (dummy-16 () none 16)
-;     (dummy-17 () none 17)
-;     (dummy-18 () none 18)
-;     (dummy-19 () none 19)
-;     (dummy-20 () none 20)
-;     )
-;   )
+(deftype training-part (part-spawner)
+  ()
+  :method-count-assert 21
+  :size-assert         #xd0
+  :heap-base           #x60
+  :flag-assert         #x15006000d0
+  )
 
 ;; - Functions
 
