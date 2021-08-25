@@ -1,5 +1,6 @@
 #include "goalc/compiler/Compiler.h"
 #include "third-party/fmt/core.h"
+#include "common/goos/PrettyPrinter.h"
 
 using namespace goos;
 
@@ -9,7 +10,7 @@ using namespace goos;
 bool Compiler::try_getting_macro_from_goos(const goos::Object& macro_name, goos::Object* dest) {
   Object macro_obj;
   bool got_macro = false;
-  if (m_goos.eval_symbol(macro_name, m_goos.goal_env.as_env(), &macro_obj) &&
+  if (m_goos.eval_symbol(macro_name, m_goos.goal_env.as_env_ptr(), &macro_obj) &&
       macro_obj.is_macro()) {
     got_macro = true;
   }
@@ -26,20 +27,60 @@ bool Compiler::try_getting_macro_from_goos(const goos::Object& macro_name, goos:
 Val* Compiler::compile_goos_macro(const goos::Object& o,
                                   const goos::Object& macro_obj,
                                   const goos::Object& rest,
+                                  const goos::Object& name,
                                   Env* env) {
   auto macro = macro_obj.as_macro();
   Arguments args = m_goos.get_args(o, rest, macro->args);
   auto mac_env_obj = EnvironmentObject::make_new();
-  auto mac_env = mac_env_obj.as_env();
-  mac_env->parent_env = m_goos.global_environment.as_env();
+  auto mac_env = mac_env_obj.as_env_ptr();
+  mac_env->parent_env = m_goos.global_environment.as_env_ptr();
   m_goos.set_args_in_env(o, args, macro->args, mac_env);
-  m_goos.goal_to_goos.enclosing_method_type =
-      get_parent_env_of_type<FunctionEnv>(env)->method_of_type_name;
+  m_goos.goal_to_goos.enclosing_method_type = env->function_env()->method_of_type_name;
   auto goos_result = m_goos.eval_list_return_last(macro->body, macro->body, mac_env);
   // make the macro expanded form point to the source where the macro was used for error messages.
-  m_goos.reader.db.inherit_info(o, goos_result);
+  // m_goos.reader.db.inherit_info(o, goos_result);
   m_goos.goal_to_goos.reset();
-  return compile_error_guard(goos_result, env);
+
+  auto compile_env_for_macro =
+      env->function_env()->alloc_env<MacroExpandEnv>(env, name.as_symbol(), macro->body, o);
+  try {
+    return compile(goos_result, compile_env_for_macro);
+  } catch (CompilerException& ce) {
+    if (ce.print_err_stack) {
+      bool good_info = false;
+      auto info = m_goos.reader.db.get_info_for(o, &good_info);
+      fmt::print(fg(fmt::color::yellow) | fmt::emphasis::bold, "Code:\n");
+      fmt::print("{}\n", pretty_print::to_string(goos_result, 120));
+      fmt::print(fg(fmt::color::yellow) | fmt::emphasis::bold, "From macro: ");
+      fmt::print(fg(fmt::color::orange), "{}\n", name.print());
+      if (good_info) {
+        fmt::print(fg(fmt::color::yellow) | fmt::emphasis::bold, "Used in:\n");
+        fmt::print("{}\n", info);
+        ce.print_err_stack = false;
+      }
+      std::string line(80, '-');
+      line.push_back('\n');
+      fmt::print(line);
+    }
+
+    throw;
+  } catch (std::runtime_error& e) {
+    bool good_info = false;
+    auto info = m_goos.reader.db.get_info_for(o, &good_info);
+    fmt::print(fg(fmt::color::yellow) | fmt::emphasis::bold, "Code:\n");
+    fmt::print("{}\n", pretty_print::to_string(goos_result, 120));
+    fmt::print(fg(fmt::color::yellow) | fmt::emphasis::bold, "From macro: ");
+    fmt::print(fg(fmt::color::orange), "{}\n", name.print());
+    if (good_info) {
+      fmt::print(fg(fmt::color::yellow) | fmt::emphasis::bold, "Used in:\n");
+      fmt::print("{}\n", info);
+    }
+    std::string line(80, '-');
+    line.push_back('\n');
+    fmt::print(line);
+
+    throw;
+  }
 }
 
 /*!
@@ -60,8 +101,8 @@ Val* Compiler::compile_gscond(const goos::Object& form, const goos::Object& rest
       }
 
       // check condition:
-      Object condition_result =
-          m_goos.eval_with_rewind(current_case.as_pair()->car, m_goos.global_environment.as_env());
+      Object condition_result = m_goos.eval_with_rewind(current_case.as_pair()->car,
+                                                        m_goos.global_environment.as_env_ptr());
       if (m_goos.truthy(condition_result)) {
         if (current_case.as_pair()->cdr.is_empty_list()) {
           return get_none();
@@ -176,7 +217,7 @@ Val* Compiler::compile_mlet(const goos::Object& form, const goos::Object& rest, 
   auto defs = pair_car(rest);
   auto body = pair_cdr(rest);
 
-  auto fenv = get_parent_env_of_type<FunctionEnv>(env);
+  auto fenv = env->function_env();
   auto menv = fenv->alloc_env<SymbolMacroEnv>(env);
 
   for_each_in_list(defs, [&](const goos::Object& o) {
@@ -214,13 +255,13 @@ bool Compiler::expand_macro_once(const goos::Object& src, goos::Object* out, Env
   auto macro = macro_obj.as_macro();
   Arguments args = m_goos.get_args(src, rest, macro->args);
   auto mac_env_obj = EnvironmentObject::make_new();
-  auto mac_env = mac_env_obj.as_env();
-  mac_env->parent_env = m_goos.global_environment.as_env();
+  auto mac_env = mac_env_obj.as_env_ptr();
+  mac_env->parent_env = m_goos.global_environment.as_env_ptr();
   m_goos.set_args_in_env(src, args, macro->args, mac_env);
 
   auto goos_result = m_goos.eval_list_return_last(macro->body, macro->body, mac_env);
   // make the macro expanded form point to the source where the macro was used for error messages.
-  m_goos.reader.db.inherit_info(src, goos_result);
+  // m_goos.reader.db.inherit_info(src, goos_result);
 
   *out = goos_result;
   return true;

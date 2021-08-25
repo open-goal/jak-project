@@ -43,7 +43,7 @@ Val* Compiler::number_to_integer(const goos::Object& form, Val* in, Env* env) {
   if (is_binteger(ts)) {
     throw_compiler_error(form, "Cannot convert {} (a binteger) to an integer yet.", in->print());
   } else if (is_float(ts)) {
-    auto fe = get_parent_env_of_type<FunctionEnv>(env);
+    auto fe = env->function_env();
     auto result = fe->make_gpr(m_ts.make_typespec("int"));
     env->emit(std::make_unique<IR_FloatToInt>(result, in->to_fpr(env)));
     return result;
@@ -62,7 +62,7 @@ Val* Compiler::number_to_binteger(const goos::Object& form, Val* in, Env* env) {
   } else if (is_float(ts)) {
     throw_compiler_error(form, "Cannot convert {} (a float) to an integer yet.", in->print());
   } else if (is_integer(ts)) {
-    auto fe = get_parent_env_of_type<FunctionEnv>(env);
+    auto fe = env->function_env();
     RegVal* input = in->to_reg(env);
     auto sa = fe->make_gpr(m_ts.make_typespec("int"));
     env->emit(std::make_unique<IR_LoadConstant64>(sa, 3));
@@ -82,7 +82,7 @@ Val* Compiler::number_to_float(const goos::Object& form, Val* in, Env* env) {
   } else if (is_float(ts)) {
     return in;
   } else if (is_integer(ts)) {
-    auto fe = get_parent_env_of_type<FunctionEnv>(env);
+    auto fe = env->function_env();
     auto result = fe->make_fpr(m_ts.make_typespec("float"));
     env->emit(std::make_unique<IR_IntToFloat>(result, in->to_gpr(env)));
     return result;
@@ -339,8 +339,7 @@ Val* Compiler::compile_sub(const goos::Object& form, const goos::Object& rest, E
 
     case MATH_FLOAT:
       if (args.unnamed.size() == 1) {
-        auto result =
-            compile_float(0, env, get_parent_env_of_type<FunctionEnv>(env)->segment)->to_fpr(env);
+        auto result = compile_float(0, env, env->function_env()->segment)->to_fpr(env);
         env->emit(std::make_unique<IR_FloatMath>(
             FloatMathKind::SUB_SS, result,
             to_math_type(form, compile_error_guard(args.unnamed.at(0), env), math_type, env)
@@ -382,7 +381,7 @@ Val* Compiler::compile_div(const goos::Object& form, const goos::Object& rest, E
   auto math_type = get_math_mode(first_type);
   switch (math_type) {
     case MATH_INT: {
-      auto fe = get_parent_env_of_type<FunctionEnv>(env);
+      auto fe = env->function_env();
       auto first_thing = first_val->to_gpr(env);
       auto result = env->make_gpr(first_type);
       env->emit(std::make_unique<IR_RegSet>(result, first_thing));
@@ -458,7 +457,7 @@ Val* Compiler::compile_variable_shift(const goos::Object& form,
 
   env->emit(std::make_unique<IR_RegSet>(result, in));
   env->emit(std::make_unique<IR_RegSet>(sa_in, sa));
-  auto fenv = get_parent_env_of_type<FunctionEnv>(env);
+  auto fenv = env->function_env();
 
   IRegConstraint sa_con;
   sa_con.ireg = sa_in->ireg();
@@ -550,7 +549,7 @@ Val* Compiler::compile_mod(const goos::Object& form, const goos::Object& rest, E
   va_check(form, args, {{}, {}}, {});
   auto first = compile_error_guard(args.unnamed.at(0), env)->to_gpr(env);
   auto second = compile_error_guard(args.unnamed.at(1), env)->to_gpr(env);
-  auto fenv = get_parent_env_of_type<FunctionEnv>(env);
+  auto fenv = env->function_env();
 
   if (get_math_mode(first->type()) != MathMode::MATH_INT ||
       get_math_mode(second->type()) != MathMode::MATH_INT) {

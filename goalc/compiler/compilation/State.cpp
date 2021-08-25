@@ -73,8 +73,7 @@ Val* Compiler::compile_define_state_hook(const goos::Object& form,
                          state_name, existing_var->second.print(), state_type.print());
   }
   m_symbol_types[state_name] = state_type;
-  auto sym_val =
-      get_parent_env_of_type<FunctionEnv>(env)->alloc_val<SymbolVal>(state_name, state_type);
+  auto sym_val = env->function_env()->alloc_val<SymbolVal>(state_name, state_type);
   env->emit(std::make_unique<IR_SetSymbolValue>(sym_val, state_object));
 
   return get_none();

@@ -8,17 +8,6 @@
 #include "third-party/fmt/core.h"
 
 namespace {
-/*!
- * Get the preference to inline of the given environment.
- */
-bool get_inline_preference(Env* env) {
-  auto ile = get_parent_env_of_type<WithInlineEnv>(env);
-  if (ile) {
-    return ile->inline_preference;
-  } else {
-    return false;
-  }
-}
 
 /*!
  * Hacky function to seek past arguments to get a goos::Object containing the body of a lambda.
@@ -61,12 +50,12 @@ Val* Compiler::compile_inline(const goos::Object& form, const goos::Object& rest
     throw_compiler_error(form,
                          "Cannot inline {} because inlining of this function was disallowed.");
   }
-  auto fe = get_parent_env_of_type<FunctionEnv>(env);
+  auto fe = env->function_env();
   return fe->alloc_val<InlinedLambdaVal>(kv->second->type(), kv->second);
 }
 
 Val* Compiler::compile_local_vars(const goos::Object& form, const goos::Object& rest, Env* env) {
-  auto fe = get_parent_env_of_type<FunctionEnv>(env);
+  auto fe = env->function_env();
 
   for_each_in_list(rest, [&](const goos::Object& o) {
     if (o.is_symbol()) {
@@ -112,8 +101,8 @@ Val* Compiler::compile_local_vars(const goos::Object& form, const goos::Object& 
  * confusing special cases...
  */
 Val* Compiler::compile_lambda(const goos::Object& form, const goos::Object& rest, Env* env) {
-  auto fe = get_parent_env_of_type<FunctionEnv>(env);
-  auto obj_env = get_parent_env_of_type<FileEnv>(env);
+  auto fe = env->function_env();
+  auto obj_env = env->file_env();
   auto args = get_va(form, rest);
   if (args.unnamed.empty() || !args.unnamed.front().is_list() ||
       !args.only_contains_named({"name", "inline-only", "segment", "behavior"})) {
@@ -329,7 +318,7 @@ Val* Compiler::compile_lambda(const goos::Object& form, const goos::Object& rest
  */
 Val* Compiler::compile_function_or_method_call(const goos::Object& form, Env* env) {
   goos::Object f = form;
-  auto fe = get_parent_env_of_type<FunctionEnv>(env);
+  auto fe = env->function_env();
 
   auto args = get_va(form, form);
   auto uneval_head = args.unnamed.at(0);
@@ -347,9 +336,8 @@ Val* Compiler::compile_function_or_method_call(const goos::Object& form, Env* en
       if (kv->second->func ==
               nullptr ||  // only-inline, we must inline it as there is no code generated for it
           kv->second->func->settings
-              .inline_by_default ||  // inline when possible, so we should inline
-          (kv->second->func->settings.allow_inline &&
-           get_inline_preference(env))) {  // inline is allowed, and we prefer it locally
+              .inline_by_default) {  // inline when possible, so we should inline
+
         auto_inline = true;
         head = kv->second;
       }
@@ -588,7 +576,7 @@ Val* Compiler::compile_real_function_call(const goos::Object& form,
                                           const std::vector<RegVal*>& args,
                                           Env* env,
                                           const std::string& method_type_name) {
-  auto fe = get_parent_env_of_type<FunctionEnv>(env);
+  auto fe = env->function_env();
   fe->require_aligned_stack();
   TypeSpec return_ts;
   if (function->type().arg_count() == 0) {
@@ -660,7 +648,7 @@ Val* Compiler::compile_real_function_call(const goos::Object& form,
  * Currently there aren't many useful settings, but more may be added in the future.
  */
 Val* Compiler::compile_declare(const goos::Object& form, const goos::Object& rest, Env* env) {
-  auto& settings = get_parent_env_of_type<DeclareEnv>(env)->settings;
+  auto& settings = get_parent_env_of_type_slow<DeclareEnv>(env)->settings;
 
   if (settings.is_set) {
     throw_compiler_error(form, "Function cannot have multiple declares");
@@ -696,7 +684,7 @@ Val* Compiler::compile_declare(const goos::Object& form, const goos::Object& res
       settings.inline_by_default = false;
       settings.save_code = true;
     } else if (first.as_symbol()->name == "asm-func") {
-      auto fe = get_parent_env_of_type<FunctionEnv>(env);
+      auto fe = env->function_env();
       fe->is_asm_func = true;
       if (!rrest->is_pair()) {
         throw_compiler_error(
@@ -716,7 +704,7 @@ Val* Compiler::compile_declare(const goos::Object& form, const goos::Object& res
       if (!rrest->is_empty_list()) {
         throw_compiler_error(first, "Invalid allow-saved-regs declare");
       }
-      auto fe = get_parent_env_of_type<FunctionEnv>(env);
+      auto fe = env->function_env();
       fe->asm_func_saved_regs = true;
 
     } else {

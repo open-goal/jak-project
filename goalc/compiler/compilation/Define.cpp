@@ -24,7 +24,7 @@ Val* Compiler::compile_define(const goos::Object& form, const goos::Object& rest
         sym.print(), global_constant->second.print());
   }
 
-  auto fe = get_parent_env_of_type<FunctionEnv>(env);
+  auto fe = env->function_env();
   auto sym_val = fe->alloc_val<SymbolVal>(symbol_string(sym), m_ts.make_typespec("symbol"));
   auto compiled_val = compile_error_guard(val, env);
   auto as_lambda = dynamic_cast<LambdaVal*>(compiled_val);
@@ -137,7 +137,7 @@ void Compiler::set_bitfield(const goos::Object& form, BitFieldVal* dst, RegVal* 
     return;
   }
 
-  auto fe = get_parent_env_of_type<FunctionEnv>(env);
+  auto fe = env->function_env();
 
   // first, get the value we want to modify:
   auto original_original = dst->parent()->to_gpr(env);
@@ -151,7 +151,7 @@ void Compiler::set_bitfield(const goos::Object& form, BitFieldVal* dst, RegVal* 
 }
 
 void Compiler::set_bitfield_128(const goos::Object& form, BitFieldVal* dst, RegVal* src, Env* env) {
-  auto fe = get_parent_env_of_type<FunctionEnv>(env);
+  auto fe = env->function_env();
 
   bool get_top = dst->offset() >= 64;
 
@@ -220,7 +220,7 @@ Val* Compiler::do_set(const goos::Object& form, Val* dest, RegVal* src_in_reg, V
 
     // we want to allow setting a 128-bit field from a 64-bit variable.
     if (as_mem_deref->info.size == 16) {
-      auto fe = get_parent_env_of_type<FunctionEnv>(env);
+      auto fe = env->function_env();
       auto src_128 = fe->make_ireg(src_in_reg->type(), RegClass::INT_128);
       env->emit_ir<IR_RegSet>(src_128, src_in_reg);
       src_in_reg = src_128;
@@ -229,7 +229,7 @@ Val* Compiler::do_set(const goos::Object& form, Val* dest, RegVal* src_in_reg, V
     // we want to allow setting a smaller thing from a 128-bit variable
     if (as_mem_deref->info.size != 16 && (src_in_reg->ireg().reg_class == RegClass::VECTOR_FLOAT ||
                                           src_in_reg->ireg().reg_class == RegClass::INT_128)) {
-      auto fe = get_parent_env_of_type<FunctionEnv>(env);
+      auto fe = env->function_env();
       auto src_gpr = fe->make_ireg(src_in_reg->type(), RegClass::GPR_64);
       env->emit_ir<IR_RegSet>(src_gpr, src_in_reg);
       src_in_reg = src_gpr;
@@ -237,7 +237,7 @@ Val* Compiler::do_set(const goos::Object& form, Val* dest, RegVal* src_in_reg, V
 
     // we want to allow setting a 64-bit place to a float
     if (as_mem_deref->info.size == 8 && src_in_reg->ireg().reg_class == RegClass::FLOAT) {
-      auto fe = get_parent_env_of_type<FunctionEnv>(env);
+      auto fe = env->function_env();
       auto src_gpr = fe->make_ireg(src_in_reg->type(), RegClass::GPR_64);
       env->emit_ir<IR_RegSet>(src_gpr, src_in_reg);
       src_in_reg = src_gpr;

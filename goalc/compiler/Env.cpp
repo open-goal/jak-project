@@ -18,8 +18,8 @@ void Env::emit(std::unique_ptr<IR> ir) {
 /*!
  * Allocate an IRegister with the given type.
  */
-RegVal* Env::make_ireg(TypeSpec ts, RegClass reg_class) {
-  return m_parent->make_ireg(std::move(ts), reg_class);
+RegVal* Env::make_ireg(const TypeSpec& ts, RegClass reg_class) {
+  return m_parent->make_ireg(ts, reg_class);
 }
 
 /*!
@@ -63,7 +63,7 @@ std::unordered_map<std::string, Label>& Env::get_label_map() {
 // Because this is the top of the environment chain, all these end the parent calls and provide
 // errors, or return that the items were not found.
 
-GlobalEnv::GlobalEnv() : Env(nullptr) {}
+GlobalEnv::GlobalEnv() : Env(EnvKind::OTHER_ENV, nullptr) {}
 
 std::string GlobalEnv::print() {
   return "global-env";
@@ -81,7 +81,7 @@ void GlobalEnv::emit(std::unique_ptr<IR> ir) {
 /*!
  * Allocate an IRegister with the given type.
  */
-RegVal* GlobalEnv::make_ireg(TypeSpec ts, RegClass reg_class) {
+RegVal* GlobalEnv::make_ireg(const TypeSpec& ts, RegClass reg_class) {
   (void)ts;
   (void)reg_class;
   throw std::runtime_error("cannot alloc reg in GlobalEnv");
@@ -136,7 +136,8 @@ void NoEmitEnv::emit(std::unique_ptr<IR> ir) {
 // BlockEnv
 ///////////////////
 
-BlockEnv::BlockEnv(Env* parent, std::string _name) : Env(parent), name(std::move(_name)) {}
+BlockEnv::BlockEnv(Env* parent, std::string _name)
+    : Env(EnvKind::OTHER_ENV, parent), name(std::move(_name)) {}
 
 std::string BlockEnv::print() {
   return "block-" + name;
@@ -154,7 +155,8 @@ BlockEnv* BlockEnv::find_block(const std::string& block) {
 // FileEnv
 ///////////////////
 
-FileEnv::FileEnv(Env* parent, std::string name) : Env(parent), m_name(std::move(name)) {}
+FileEnv::FileEnv(Env* parent, std::string name)
+    : Env(EnvKind::FILE_ENV, parent), m_name(std::move(name)) {}
 
 std::string FileEnv::print() {
   return "file-" + m_name;
@@ -202,7 +204,7 @@ bool FileEnv::is_empty() {
 ///////////////////
 
 FunctionEnv::FunctionEnv(Env* parent, std::string name)
-    : DeclareEnv(parent), m_name(std::move(name)) {}
+    : DeclareEnv(EnvKind::FUNCTION_ENV, parent), m_name(std::move(name)) {}
 
 std::string FunctionEnv::print() {
   return "function-" + m_name;
@@ -235,7 +237,7 @@ void FunctionEnv::resolve_gotos() {
   }
 }
 
-RegVal* FunctionEnv::make_ireg(TypeSpec ts, RegClass reg_class) {
+RegVal* FunctionEnv::make_ireg(const TypeSpec& ts, RegClass reg_class) {
   IRegister ireg;
   ireg.reg_class = reg_class;
   ireg.id = m_iregs.size();

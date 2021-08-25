@@ -265,7 +265,7 @@ StaticResult Compiler::compile_new_static_structure(const goos::Object& form,
 
   obj->data.resize(type_info->get_size_in_memory());
   compile_static_structure_inline(form, type, _field_defs, obj.get(), 0, env);
-  auto fie = get_parent_env_of_type<FileEnv>(env);
+  auto fie = env->file_env();
   auto result = StaticResult::make_structure_reference(obj.get(), type);
   fie->add_static(std::move(obj));
   return result;
@@ -444,7 +444,7 @@ Val* Compiler::compile_bitfield_definition(const goos::Object& form,
     if (use_128) {
       auto integer_lo = compile_integer(constant_integer_part.lo, env)->to_gpr(env);
       auto integer_hi = compile_integer(constant_integer_part.hi, env)->to_gpr(env);
-      auto fe = get_parent_env_of_type<FunctionEnv>(env);
+      auto fe = env->function_env();
       auto rv = fe->make_ireg(type, RegClass::INT_128);
       auto xmm_temp = fe->make_ireg(TypeSpec("object"), RegClass::INT_128);
 
@@ -529,8 +529,8 @@ Val* Compiler::compile_bitfield_definition(const goos::Object& form,
  * - Strings
  */
 StaticResult Compiler::compile_static_no_eval_for_pairs(const goos::Object& form, Env* env) {
-  auto fie = get_parent_env_of_type<FileEnv>(env);
-  auto fe = get_parent_env_of_type<FunctionEnv>(env);
+  auto fie = env->file_env();
+  auto fe = env->function_env();
   auto segment = fe->segment;
   if (segment == TOP_LEVEL_SEGMENT) {
     segment = MAIN_SEGMENT;
@@ -586,8 +586,8 @@ StaticResult Compiler::compile_static_no_eval_for_pairs(const goos::Object& form
  */
 StaticResult Compiler::compile_static(const goos::Object& form_before_macro, Env* env) {
   auto form = expand_macro_completely(form_before_macro, env);
-  auto fie = get_parent_env_of_type<FileEnv>(env);
-  auto fe = get_parent_env_of_type<FunctionEnv>(env);
+  auto fie = env->file_env();
+  auto fe = env->function_env();
   auto segment = fe->segment;
   if (segment == TOP_LEVEL_SEGMENT) {
     segment = MAIN_SEGMENT;
@@ -804,7 +804,7 @@ void Compiler::fill_static_array_inline(const goos::Object& form,
 StaticResult Compiler::fill_static_array(const goos::Object& form,
                                          const goos::Object& rest,
                                          Env* env) {
-  auto fie = get_parent_env_of_type<FileEnv>(env);
+  auto fie = env->file_env();
   // (new 'static 'boxed-array ...)
   // get all arguments now
   auto args = get_list_as_vector(rest);
@@ -843,7 +843,7 @@ StaticResult Compiler::fill_static_array(const goos::Object& form,
 StaticResult Compiler::fill_static_boxed_array(const goos::Object& form,
                                                const goos::Object& rest,
                                                Env* env) {
-  auto fie = get_parent_env_of_type<FileEnv>(env);
+  auto fie = env->file_env();
   // (new 'static 'boxed-array ...)
   // get all arguments now
   // auto args = get_list_as_vector(rest);
@@ -975,7 +975,7 @@ void Compiler::fill_static_inline_array_inline(const goos::Object& form,
 StaticResult Compiler::fill_static_inline_array(const goos::Object& form,
                                                 const goos::Object& rest,
                                                 Env* env) {
-  auto fie = get_parent_env_of_type<FileEnv>(env);
+  auto fie = env->file_env();
   // (new 'static 'inline-array ...)
   // get all arguments now
   auto args = get_list_as_vector(rest);
@@ -1011,7 +1011,7 @@ Val* Compiler::compile_static_pair(const goos::Object& form, Env* env) {
   assert(form.is_pair());  // (quote PAIR)
   auto result = compile_static_no_eval_for_pairs(form, env);
   assert(result.is_reference());
-  auto fe = get_parent_env_of_type<FunctionEnv>(env);
+  auto fe = env->function_env();
   auto static_result = fe->alloc_val<StaticVal>(result.reference(), result.typespec());
   return static_result;
 }
@@ -1020,7 +1020,7 @@ Val* Compiler::compile_new_static_structure_or_basic(const goos::Object& form,
                                                      const TypeSpec& type,
                                                      const goos::Object& field_defs,
                                                      Env* env) {
-  auto fe = get_parent_env_of_type<FunctionEnv>(env);
+  auto fe = env->function_env();
   auto sr = compile_new_static_structure(form, type, field_defs, env);
   auto result = fe->alloc_val<StaticVal>(sr.reference(), type);
   return result;

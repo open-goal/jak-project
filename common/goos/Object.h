@@ -167,6 +167,8 @@ class ArrayObject;
 class Object {
  public:
   std::shared_ptr<HeapObject> heap_obj = nullptr;
+  friend Object build_list(const std::vector<Object>& objects);
+  friend Object build_list(std::vector<Object>&& objects);
 
   union {
     IntegerObject integer_obj;
@@ -226,60 +228,14 @@ class Object {
     return o;
   }
 
-  std::shared_ptr<PairObject> as_pair() const {
-    if (type != ObjectType::PAIR) {
-      throw std::runtime_error("as_pair called on a " + object_type_to_string(type) + " " +
-                               print());
-    }
-    return std::dynamic_pointer_cast<PairObject>(heap_obj);
-  }
-
-  std::shared_ptr<EnvironmentObject> as_env() const {
-    if (type != ObjectType::ENVIRONMENT) {
-      throw std::runtime_error("as_env called on a " + object_type_to_string(type) + " " + print());
-    }
-    return std::dynamic_pointer_cast<EnvironmentObject>(heap_obj);
-  }
-
-  std::shared_ptr<SymbolObject> as_symbol() const {
-    if (type != ObjectType::SYMBOL) {
-      throw std::runtime_error("as_symbol called on a " + object_type_to_string(type) + " " +
-                               print());
-    }
-    return std::dynamic_pointer_cast<SymbolObject>(heap_obj);
-  }
-
-  std::shared_ptr<StringObject> as_string() const {
-    if (type != ObjectType::STRING) {
-      throw std::runtime_error("as_string called on a " + object_type_to_string(type) + " " +
-                               print());
-    }
-    return std::dynamic_pointer_cast<StringObject>(heap_obj);
-  }
-
-  std::shared_ptr<LambdaObject> as_lambda() const {
-    if (type != ObjectType::LAMBDA) {
-      throw std::runtime_error("as_lambda called on a " + object_type_to_string(type) + " " +
-                               print());
-    }
-    return std::dynamic_pointer_cast<LambdaObject>(heap_obj);
-  }
-
-  std::shared_ptr<MacroObject> as_macro() const {
-    if (type != ObjectType::MACRO) {
-      throw std::runtime_error("as_macro called on a " + object_type_to_string(type) + " " +
-                               print());
-    }
-    return std::dynamic_pointer_cast<MacroObject>(heap_obj);
-  }
-
-  std::shared_ptr<ArrayObject> as_array() const {
-    if (type != ObjectType::ARRAY) {
-      throw std::runtime_error("as_array called on a " + object_type_to_string(type) + " " +
-                               print());
-    }
-    return std::dynamic_pointer_cast<ArrayObject>(heap_obj);
-  }
+  PairObject* as_pair() const;
+  EnvironmentObject* as_env() const;
+  std::shared_ptr<EnvironmentObject> as_env_ptr() const;
+  SymbolObject* as_symbol() const;
+  StringObject* as_string() const;
+  LambdaObject* as_lambda() const;
+  MacroObject* as_macro() const;
+  ArrayObject* as_array() const;
 
   IntType& as_int() {
     if (type != ObjectType::INTEGER) {
@@ -346,9 +302,6 @@ class EmptyListObject : public HeapObject {
   static Object make_new() {
     Object obj;
     obj.type = ObjectType::EMPTY_LIST;
-    if (!get_empty_list()) {
-      get_empty_list() = std::make_shared<EmptyListObject>();
-    }
     obj.heap_obj = get_empty_list();
     return obj;
   }
@@ -388,8 +341,8 @@ class SymbolObject : public HeapObject {
  */
 class SymbolTable {
  public:
-  std::shared_ptr<SymbolObject> intern(const std::string& name) {
-    auto kv = table.find(name);
+  std::shared_ptr<HeapObject> intern(const std::string& name) {
+    const auto& kv = table.find(name);
     if (kv == table.end()) {
       auto iter = table.insert({name, std::make_shared<SymbolObject>(name)});
       return (*iter.first).second;
@@ -398,10 +351,20 @@ class SymbolTable {
     }
   }
 
+  HeapObject* intern_ptr(const std::string& name) {
+    const auto& kv = table.find(name);
+    if (kv == table.end()) {
+      auto iter = table.insert({name, std::make_shared<SymbolObject>(name)});
+      return (*iter.first).second.get();
+    } else {
+      return kv->second.get();
+    }
+  }
+
   ~SymbolTable() = default;
 
  private:
-  std::unordered_map<std::string, std::shared_ptr<SymbolObject>> table;
+  std::unordered_map<std::string, std::shared_ptr<HeapObject>> table;
 };
 
 class StringObject : public HeapObject {
@@ -426,9 +389,10 @@ class PairObject : public HeapObject {
  public:
   Object car, cdr;
 
-  PairObject(Object car_, Object cdr_) : car(car_), cdr(cdr_) {}
+  PairObject(const Object& car_, const Object& cdr_) : car(car_), cdr(cdr_) {}
+  PairObject() = default;
 
-  static Object make_new(Object a, Object b) {
+  static Object make_new(const Object& a, const Object& b) {
     Object obj;
     obj.type = ObjectType::PAIR;
     obj.heap_obj = std::make_shared<PairObject>(a, b);
@@ -481,7 +445,10 @@ class EnvironmentObject : public HeapObject {
  public:
   std::string name;
   std::shared_ptr<EnvironmentObject> parent_env;
-  std::unordered_map<std::shared_ptr<SymbolObject>, Object> vars;
+
+  // the symbols will be stored in the symbol table and never removed, so we don't need shared
+  // pointers here.
+  std::unordered_map<HeapObject*, Object> vars;
 
   EnvironmentObject() = default;
 
@@ -641,5 +608,64 @@ class ArrayObject : public HeapObject {
 };
 
 Object build_list(const std::vector<Object>& objects);
+Object build_list(std::vector<Object>&& objects);
 
+inline PairObject* Object::as_pair() const {
+  if (type != ObjectType::PAIR) {
+    throw std::runtime_error("as_pair called on a " + object_type_to_string(type) + " " + print());
+  }
+  return static_cast<PairObject*>(heap_obj.get());
+}
+
+inline EnvironmentObject* Object::as_env() const {
+  if (type != ObjectType::ENVIRONMENT) {
+    throw std::runtime_error("as_env called on a " + object_type_to_string(type) + " " + print());
+  }
+  return static_cast<EnvironmentObject*>(heap_obj.get());
+}
+
+inline std::shared_ptr<EnvironmentObject> Object::as_env_ptr() const {
+  if (type != ObjectType::ENVIRONMENT) {
+    throw std::runtime_error("as_env called on a " + object_type_to_string(type) + " " + print());
+  }
+  return std::dynamic_pointer_cast<EnvironmentObject>(heap_obj);
+}
+
+inline SymbolObject* Object::as_symbol() const {
+  if (type != ObjectType::SYMBOL) {
+    throw std::runtime_error("as_symbol called on a " + object_type_to_string(type) + " " +
+                             print());
+  }
+  return static_cast<SymbolObject*>(heap_obj.get());
+}
+
+inline StringObject* Object::as_string() const {
+  if (type != ObjectType::STRING) {
+    throw std::runtime_error("as_string called on a " + object_type_to_string(type) + " " +
+                             print());
+  }
+  return static_cast<StringObject*>(heap_obj.get());
+}
+
+inline LambdaObject* Object::as_lambda() const {
+  if (type != ObjectType::LAMBDA) {
+    throw std::runtime_error("as_lambda called on a " + object_type_to_string(type) + " " +
+                             print());
+  }
+  return static_cast<LambdaObject*>(heap_obj.get());
+}
+
+inline MacroObject* Object::as_macro() const {
+  if (type != ObjectType::MACRO) {
+    throw std::runtime_error("as_macro called on a " + object_type_to_string(type) + " " + print());
+  }
+  return static_cast<MacroObject*>(heap_obj.get());
+}
+
+inline ArrayObject* Object::as_array() const {
+  if (type != ObjectType::ARRAY) {
+    throw std::runtime_error("as_array called on a " + object_type_to_string(type) + " " + print());
+  }
+  return static_cast<ArrayObject*>(heap_obj.get());
+}
 }  // namespace goos

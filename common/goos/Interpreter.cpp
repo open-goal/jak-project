@@ -122,14 +122,14 @@ void Interpreter::disable_printfs() {
  */
 void Interpreter::load_goos_library() {
   auto cmd = "(load-file \"goal_src/goos-lib.gs\")";
-  eval_with_rewind(reader.read_from_string(cmd), global_environment.as_env());
+  eval_with_rewind(reader.read_from_string(cmd), global_environment.as_env_ptr());
 }
 
 /*!
  * In env, set the variable named "name" to the value var.
  */
 void Interpreter::define_var_in_env(Object& env, Object& var, const std::string& name) {
-  env.as_env()->vars[intern(name).as_symbol()] = var;
+  env.as_env()->vars[intern_ptr(name)] = var;
 }
 
 /*!
@@ -137,6 +137,10 @@ void Interpreter::define_var_in_env(Object& env, Object& var, const std::string&
  */
 Object Interpreter::intern(const std::string& name) {
   return SymbolObject::make_new(reader.symbolTable, name);
+}
+
+HeapObject* Interpreter::intern_ptr(const std::string& name) {
+  return reader.symbolTable.intern_ptr(name);
 }
 
 /*!
@@ -152,7 +156,7 @@ void Interpreter::execute_repl(ReplWrapper& repl) {
         continue;
       }
       // evaluate
-      Object evald = eval_with_rewind(*obj, global_environment.as_env());
+      Object evald = eval_with_rewind(*obj, global_environment.as_env_ptr());
       // print
       printf("%s\n", evald.print().c_str());
     } catch (std::exception& e) {
@@ -489,7 +493,7 @@ bool try_symbol_lookup(const Object& sym,
   }
 
   // loop up envs until we find it.
-  std::shared_ptr<EnvironmentObject> search_env = env;
+  EnvironmentObject* search_env = env.get();
   for (;;) {
     auto kv = search_env->vars.find(sym.as_symbol());
     if (kv != search_env->vars.end()) {
@@ -497,7 +501,7 @@ bool try_symbol_lookup(const Object& sym,
       return true;
     }
 
-    auto pe = search_env->parent_env;
+    auto pe = search_env->parent_env.get();
     if (pe) {
       search_env = pe;
     } else {
@@ -565,7 +569,7 @@ Object Interpreter::eval_pair(const Object& obj, const std::shared_ptr<Environme
       Arguments args = get_args(obj, rest, macro->args);
 
       auto mac_env_obj = EnvironmentObject::make_new();
-      auto mac_env = mac_env_obj.as_env();
+      auto mac_env = mac_env_obj.as_env_ptr();
       mac_env->parent_env = env;  // not 100% clear that this is right
       set_args_in_env(obj, args, macro->args, mac_env);
       // expand the macro!
@@ -583,7 +587,7 @@ Object Interpreter::eval_pair(const Object& obj, const std::shared_ptr<Environme
   Arguments args = get_args(obj, rest, lam->args);
   eval_args(&args, env);
   auto lam_env_obj = EnvironmentObject::make_new();
-  auto lam_env = lam_env_obj.as_env();
+  auto lam_env = lam_env_obj.as_env_ptr();
   lam_env->parent_env = lam->parent_env;
   set_args_in_env(obj, args, lam->args, lam_env);
   return eval_list_return_last(lam->body, lam->body, lam_env);
@@ -641,7 +645,7 @@ Object Interpreter::eval_define(const Object& form,
   if (args.has_named("env")) {
     auto result = eval_with_rewind(args.get_named("env"), env);
     expect_env(form, result);
-    define_env = result.as_env();
+    define_env = result.as_env_ptr();
   }
 
   Object value = eval_with_rewind(args.unnamed[1], env);
@@ -1018,7 +1022,7 @@ Object Interpreter::eval_load_file(const Object& form,
   }
 
   try {
-    return eval_with_rewind(o, global_environment.as_env());
+    return eval_with_rewind(o, global_environment.as_env_ptr());
   } catch (std::runtime_error& e) {
     throw_eval_error(form, std::string("eval error inside of load-file:\n") + e.what());
   }

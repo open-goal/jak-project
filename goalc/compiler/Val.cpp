@@ -250,7 +250,7 @@ std::string BitFieldVal::print() const {
 
 RegVal* BitFieldVal::to_reg(Env* env) {
   int start_bit = -1;
-  auto fe = get_parent_env_of_type<FunctionEnv>(env);
+  auto fe = env->function_env();
   RegVal* result = fe->make_ireg(coerce_to_reg_type(m_ts), RegClass::GPR_64);
 
   // this first step gets the right 64-bits into a GPR that is also used as the result.

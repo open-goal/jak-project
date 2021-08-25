@@ -33,7 +33,7 @@ RegVal* Compiler::compile_get_method_of_type(const goos::Object& /*form*/,
   auto offset_of_method = get_offset_of_method(info.id);
   assert(type->type() == TypeSpec("type"));
 
-  auto fe = get_parent_env_of_type<FunctionEnv>(env);
+  auto fe = env->function_env();
 
   MemLoadInfo load_info;
   load_info.sign_extend = false;
@@ -87,7 +87,7 @@ RegVal* Compiler::compile_get_method_of_object(const goos::Object& form,
   }
 
   method_info.type = method_info.type.substitute_for_method_call(compile_time_type.base_type());
-  auto fe = get_parent_env_of_type<FunctionEnv>(env);
+  auto fe = env->function_env();
 
   RegVal* runtime_type = nullptr;
   if (m_ts.should_use_virtual_methods(compile_time_type, method_info.id)) {
@@ -126,8 +126,7 @@ Val* Compiler::compile_format_string(const goos::Object& form,
                                      const std::string& out_stream) {
   // Add first two format args
   args.insert(args.begin(),
-              compile_string(fmt_template, env, get_parent_env_of_type<FunctionEnv>(env)->segment)
-                  ->to_gpr(env));
+              compile_string(fmt_template, env, env->function_env()->segment)->to_gpr(env));
   args.insert(args.begin(), compile_get_sym_obj(out_stream, env)->to_gpr(env));
 
   // generate code in the method_env
@@ -268,10 +267,10 @@ Val* Compiler::generate_inspector_for_structure_type(const goos::Object& form,
                                  emitter::gRegInfo.get_gpr_ret_reg());
 
   // add this function to the object file
-  auto fe = get_parent_env_of_type<FunctionEnv>(env);
+  auto fe = env->function_env();
   auto method = fe->alloc_val<LambdaVal>(m_ts.make_typespec("function"));
   method->func = method_env.get();
-  auto obj_env_inspect = get_parent_env_of_type<FileEnv>(method_env.get());
+  auto obj_env_inspect = method_env->file_env();
   obj_env_inspect->add_function(std::move(method_env));
 
   // call method-set!
@@ -339,10 +338,10 @@ Val* Compiler::generate_inspector_for_bitfield_type(const goos::Object& form,
   }
 
   // add this function to the object file
-  auto fe = get_parent_env_of_type<FunctionEnv>(env);
+  auto fe = env->function_env();
   auto method = fe->alloc_val<LambdaVal>(m_ts.make_typespec("function"));
   method->func = method_env.get();
-  auto obj_env_inspect = get_parent_env_of_type<FileEnv>(method_env.get());
+  auto obj_env_inspect = method_env->file_env();
   obj_env_inspect->add_function(std::move(method_env));
 
   // call method-set!
@@ -407,7 +406,7 @@ Val* Compiler::compile_deftype(const goos::Object& form, const goos::Object& res
  * Compile a (defmethod ...) form
  */
 Val* Compiler::compile_defmethod(const goos::Object& form, const goos::Object& _rest, Env* env) {
-  auto fe = get_parent_env_of_type<FunctionEnv>(env);
+  auto fe = env->function_env();
   auto* rest = &_rest;
 
   auto& method_name = pair_car(*rest);
@@ -576,7 +575,7 @@ Val* Compiler::compile_defmethod(const goos::Object& form, const goos::Object& _
   new_func_env->emit(std::make_unique<IR_Null>());
   new_func_env->finish();
 
-  auto obj_env = get_parent_env_of_type<FileEnv>(new_func_env.get());
+  auto obj_env = new_func_env->file_env();
   assert(obj_env);
   if (new_func_env->settings.save_code) {
     obj_env->add_function(std::move(new_func_env));
@@ -600,7 +599,7 @@ Val* Compiler::get_field_of_structure(const StructureType* type,
                                       Val* object,
                                       const std::string& field_name,
                                       Env* env) {
-  auto fe = get_parent_env_of_type<FunctionEnv>(env);
+  auto fe = env->function_env();
   Val* result = nullptr;
   int offset = -type->get_offset();
   auto field = m_ts.lookup_field_info(type->get_name(), field_name);
@@ -630,7 +629,7 @@ Val* Compiler::get_field_of_bitfield(const BitFieldType* type,
                                      Val* object,
                                      const std::string& field_name,
                                      Env* env) {
-  auto fe = get_parent_env_of_type<FunctionEnv>(env);
+  auto fe = env->function_env();
   Val* result = nullptr;
   auto bitfield_info = m_ts.lookup_bitfield_info(type->get_name(), field_name);
   result = fe->alloc_val<BitFieldVal>(bitfield_info.result_type, object, bitfield_info.offset,
@@ -653,7 +652,7 @@ Val* Compiler::get_field_of_bitfield(const BitFieldType* type,
  * location. Otherwise set! or & won't work.
  */
 Val* Compiler::compile_deref(const goos::Object& form, const goos::Object& _rest, Env* env) {
-  auto fe = get_parent_env_of_type<FunctionEnv>(env);
+  auto fe = env->function_env();
   if (_rest.is_empty_list()) {
     throw_compiler_error(form, "-> must get at least one argument");
   }
@@ -859,7 +858,7 @@ Val* Compiler::compile_the_as(const goos::Object& form, const goos::Object& rest
   va_check(form, args, {{}, {}}, {});
   auto desired_ts = parse_typespec(args.unnamed.at(0));
   auto base = compile_error_guard(args.unnamed.at(1), env);
-  auto result = get_parent_env_of_type<FunctionEnv>(env)->alloc_val<AliasVal>(desired_ts, base);
+  auto result = env->function_env()->alloc_val<AliasVal>(desired_ts, base);
   if (base->settable()) {
     result->mark_as_settable();
   }
@@ -888,7 +887,7 @@ Val* Compiler::compile_the(const goos::Object& form, const goos::Object& rest, E
         result->set_type(desired_ts);
         return result;
       } else {
-        result = get_parent_env_of_type<FunctionEnv>(env)->alloc_val<AliasVal>(desired_ts, base);
+        result = env->function_env()->alloc_val<AliasVal>(desired_ts, base);
         return result;
       }
     }
@@ -898,7 +897,7 @@ Val* Compiler::compile_the(const goos::Object& form, const goos::Object& rest, E
     }
   }
 
-  auto result = get_parent_env_of_type<FunctionEnv>(env)->alloc_val<AliasVal>(desired_ts, base);
+  auto result = env->function_env()->alloc_val<AliasVal>(desired_ts, base);
   if (base->settable()) {
     result->mark_as_settable();
   }
@@ -1020,7 +1019,7 @@ Val* Compiler::compile_static_new(const goos::Object& form,
   if (unquoted.is_symbol() &&
       (unquoted.as_symbol()->name == "boxed-array" || unquoted.as_symbol()->name == "array" ||
        unquoted.as_symbol()->name == "inline-array")) {
-    auto fe = get_parent_env_of_type<FunctionEnv>(env);
+    auto fe = env->function_env();
     auto sr = compile_static(form, env);
     auto result = fe->alloc_val<StaticVal>(sr.reference(), sr.typespec());
     return result;
@@ -1045,7 +1044,7 @@ Val* Compiler::compile_stack_new(const goos::Object& form,
                                  Env* env,
                                  bool call_constructor) {
   auto type_of_object = parse_typespec(unquote(type));
-  auto fe = get_parent_env_of_type<FunctionEnv>(env);
+  auto fe = env->function_env();
   if (type_of_object == TypeSpec("inline-array") || type_of_object == TypeSpec("array")) {
     if (call_constructor) {
       throw_compiler_error(form, "Constructing stack arrays is not yet supported");
@@ -1166,7 +1165,7 @@ Val* Compiler::compile_new(const goos::Object& form, const goos::Object& _rest, 
 Val* Compiler::compile_car(const goos::Object& form, const goos::Object& rest, Env* env) {
   auto args = get_va(form, rest);
   va_check(form, args, {{}}, {});
-  auto fe = get_parent_env_of_type<FunctionEnv>(env);
+  auto fe = env->function_env();
   auto pair = compile_error_guard(args.unnamed.at(0), env);
   if (pair->type() != m_ts.make_typespec("object")) {
     typecheck(form, m_ts.make_typespec("pair"), pair->type(), "Type of argument to car");
@@ -1179,7 +1178,7 @@ Val* Compiler::compile_car(const goos::Object& form, const goos::Object& rest, E
 Val* Compiler::compile_cdr(const goos::Object& form, const goos::Object& rest, Env* env) {
   auto args = get_va(form, rest);
   va_check(form, args, {{}}, {});
-  auto fe = get_parent_env_of_type<FunctionEnv>(env);
+  auto fe = env->function_env();
   auto pair = compile_error_guard(args.unnamed.at(0), env);
   if (pair->type() != m_ts.make_typespec("object")) {
     typecheck(form, m_ts.make_typespec("pair"), pair->type(), "Type of argument to cdr");

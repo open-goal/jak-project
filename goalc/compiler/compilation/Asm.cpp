@@ -33,7 +33,7 @@ Val* Compiler::compile_rlet(const goos::Object& form, const goos::Object& rest, 
 
   auto defs = args.unnamed.front();
 
-  auto fenv = get_parent_env_of_type<FunctionEnv>(env);
+  auto fenv = env->function_env();
   auto lenv = fenv->alloc_env<LexicalEnv>(env);
 
   std::vector<IRegConstraint> constraints;

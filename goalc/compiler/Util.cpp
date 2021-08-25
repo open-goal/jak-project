@@ -130,12 +130,12 @@ TypeSpec Compiler::parse_typespec(const goos::Object& src) {
 
 bool Compiler::is_local_symbol(const goos::Object& obj, Env* env) {
   // check in the symbol macro env.
-  auto mlet_env = get_parent_env_of_type<SymbolMacroEnv>(env);
+  auto mlet_env = env->symbol_macro_env();
   while (mlet_env) {
     if (mlet_env->macros.find(obj.as_symbol()) != mlet_env->macros.end()) {
       return true;
     }
-    mlet_env = get_parent_env_of_type<SymbolMacroEnv>(mlet_env->parent());
+    mlet_env = mlet_env->parent()->symbol_macro_env();
   }
 
   // check lexical
