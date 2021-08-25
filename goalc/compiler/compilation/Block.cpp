@@ -47,7 +47,7 @@ Val* Compiler::compile_block(const goos::Object& form, const goos::Object& _rest
     throw_compiler_error(form, "Block form has an empty or invalid body");
   }
 
-  auto fe = get_parent_env_of_type<FunctionEnv>(env);
+  auto fe = env->function_env();
 
   // create environment
   auto block_env = fe->alloc_env<BlockEnv>(env, symbol_string(name));
@@ -116,7 +116,7 @@ Val* Compiler::compile_return_from(const goos::Object& form, const goos::Object&
 
   // evaluate expression to return
   auto result = compile_error_guard(value_expression, env);
-  auto fe = get_parent_env_of_type<FunctionEnv>(env);
+  auto fe = env->function_env();
 
   // find block to return from
   auto block = dynamic_cast<BlockEnv*>(env->find_block(block_name));
@@ -163,7 +163,7 @@ Val* Compiler::compile_label(const goos::Object& form, const goos::Object& rest,
 
   // make a label pointing to the end of the current function env. safe because we'll always add
   // a terminating "null" instruction at the end.
-  auto func_env = get_parent_env_of_type<FunctionEnv>(env);
+  auto func_env = env->function_env();
   labels[label_name] = Label(func_env, func_env->code().size());
   return get_none();
 }
@@ -182,7 +182,7 @@ Val* Compiler::compile_goto(const goos::Object& form, const goos::Object& rest, 
 
   // add this goto to the list of gotos to resolve after the function is done.
   // it's safe to have this reference, as the FunctionEnv also owns the goto.
-  get_parent_env_of_type<FunctionEnv>(env)->unresolved_gotos.push_back({ir_goto.get(), label_name});
+  env->function_env()->unresolved_gotos.push_back({ir_goto.get(), label_name});
   env->emit(std::move(ir_goto));
   return get_none();
 }

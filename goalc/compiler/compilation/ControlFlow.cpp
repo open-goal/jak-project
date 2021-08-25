@@ -125,7 +125,7 @@ Val* Compiler::compile_condition_as_bool(const goos::Object& form,
   (void)rest;
   auto c = compile_condition(form, env, true);
   auto result = compile_get_sym_obj("#f", env)->to_gpr(env);  // todo - can be optimized.
-  Label label(get_parent_env_of_type<FunctionEnv>(env), -5);
+  Label label(env->function_env(), -5);
   auto branch_ir = std::make_unique<IR_ConditionalBranch>(c, label);
   auto branch_ir_ref = branch_ir.get();
   env->emit(std::move(branch_ir));
@@ -155,7 +155,7 @@ Val* Compiler::compile_when_goto(const goos::Object& form, const goos::Object& _
   // compile as condition (will set flags register with a cmp instruction)
   auto condition = compile_condition(condition_code, env, false);
   auto branch = std::make_unique<IR_ConditionalBranch>(condition, Label());
-  get_parent_env_of_type<FunctionEnv>(env)->unresolved_cond_gotos.push_back({branch.get(), label});
+  env->function_env()->unresolved_cond_gotos.push_back({branch.get(), label});
   env->emit(std::move(branch));
   return get_none();
 }
@@ -169,7 +169,7 @@ Val* Compiler::compile_when_goto(const goos::Object& form, const goos::Object& _
 Val* Compiler::compile_cond(const goos::Object& form, const goos::Object& rest, Env* env) {
   auto result = env->make_gpr(m_ts.make_typespec("object"));
 
-  auto fenv = get_parent_env_of_type<FunctionEnv>(env);
+  auto fenv = env->function_env();
   auto end_label = fenv->alloc_unnamed_label();
   end_label->func = fenv;
   end_label->idx = -3;  // placeholder
@@ -276,7 +276,7 @@ Val* Compiler::compile_and_or(const goos::Object& form, const goos::Object& rest
   }
 
   auto result = env->make_gpr(m_ts.make_typespec("object"));  // temp type for now.
-  auto fenv = get_parent_env_of_type<FunctionEnv>(env);
+  auto fenv = env->function_env();
   auto end_label = fenv->alloc_unnamed_label();
   end_label->func = fenv;
   end_label->idx = -4;  // placeholder

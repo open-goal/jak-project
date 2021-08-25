@@ -302,7 +302,7 @@ Val* Compiler::compile_pair(const goos::Object& code, Env* env) {
     // next try as a macro
     goos::Object macro_obj;
     if (try_getting_macro_from_goos(head, &macro_obj)) {
-      return compile_goos_macro(code, macro_obj, rest, env);
+      return compile_goos_macro(code, macro_obj, rest, head, env);
     }
 
     // next try as an enum
@@ -339,12 +339,12 @@ Val* Compiler::compile_char(const goos::Object& code, Env* env) {
  * The type is always int.
  */
 Val* Compiler::compile_integer(s64 value, Env* env) {
-  auto fe = get_parent_env_of_type<FunctionEnv>(env);
+  auto fe = env->function_env();
   return fe->alloc_val<IntegerConstantVal>(m_ts.make_typespec("int"), &value, 8);
 }
 
 Val* Compiler::compile_integer(const U128& value, Env* env) {
-  auto fe = get_parent_env_of_type<FunctionEnv>(env);
+  auto fe = env->function_env();
   return fe->alloc_val<IntegerConstantVal>(m_ts.make_typespec("int"), &value, 16);
 }
 
@@ -352,7 +352,7 @@ Val* Compiler::compile_integer(const U128& value, Env* env) {
  * Get a SymbolVal representing a GOAL symbol object.
  */
 SymbolVal* Compiler::compile_get_sym_obj(const std::string& name, Env* env) {
-  auto fe = get_parent_env_of_type<FunctionEnv>(env);
+  auto fe = env->function_env();
   return fe->alloc_val<SymbolVal>(name, m_ts.make_typespec("symbol"));
 }
 
@@ -372,7 +372,7 @@ Val* Compiler::compile_get_symbol_value(const goos::Object& form,
 
   auto ts = existing_symbol->second;
   auto sext = m_ts.lookup_type(ts)->get_load_signed();
-  auto fe = get_parent_env_of_type<FunctionEnv>(env);
+  auto fe = env->function_env();
   auto sym = fe->alloc_val<SymbolVal>(name, m_ts.make_typespec("symbol"));
   auto re = fe->alloc_val<SymbolValueVal>(sym, ts, sext);
   return re;
@@ -391,13 +391,13 @@ Val* Compiler::compile_symbol(const goos::Object& form, Env* env) {
   }
 
   // see if the symbol is defined in any enclosing symbol macro envs (mlet's).
-  auto mlet_env = get_parent_env_of_type<SymbolMacroEnv>(env);
+  auto mlet_env = env->symbol_macro_env();
   while (mlet_env) {
     auto mlkv = mlet_env->macros.find(form.as_symbol());
     if (mlkv != mlet_env->macros.end()) {
       return compile_error_guard(mlkv->second, env);
     }
-    mlet_env = get_parent_env_of_type<SymbolMacroEnv>(mlet_env->parent());
+    mlet_env = mlet_env->parent()->symbol_macro_env();
   }
 
   // see if it's a local variable
@@ -430,7 +430,7 @@ Val* Compiler::compile_symbol(const goos::Object& form, Env* env) {
  * Compile a string constant. The constant is placed in the same segment as the parent function.
  */
 Val* Compiler::compile_string(const goos::Object& form, Env* env) {
-  auto segment = get_parent_env_of_type<FunctionEnv>(env)->segment;
+  auto segment = env->function_env()->segment;
   if (segment == TOP_LEVEL_SEGMENT) {
     segment = MAIN_SEGMENT;
   }
@@ -442,9 +442,9 @@ Val* Compiler::compile_string(const goos::Object& form, Env* env) {
  */
 Val* Compiler::compile_string(const std::string& str, Env* env, int seg) {
   auto obj = std::make_unique<StaticString>(str, seg);
-  auto fe = get_parent_env_of_type<FunctionEnv>(env);
+  auto fe = env->function_env();
   auto result = fe->alloc_val<StaticVal>(obj.get(), m_ts.make_typespec("string"));
-  auto fie = get_parent_env_of_type<FileEnv>(env);
+  auto fie = env->file_env();
   fie->add_static(std::move(obj));
   return result;
 }
@@ -455,7 +455,7 @@ Val* Compiler::compile_string(const std::string& str, Env* env, int seg) {
  * of the code, at least in Jak 1.
  */
 Val* Compiler::compile_float(const goos::Object& code, Env* env) {
-  auto segment = get_parent_env_of_type<FunctionEnv>(env)->segment;
+  auto segment = env->function_env()->segment;
   if (segment == TOP_LEVEL_SEGMENT) {
     segment = MAIN_SEGMENT;
   }
@@ -470,9 +470,9 @@ Val* Compiler::compile_float(const goos::Object& code, Env* env) {
  */
 Val* Compiler::compile_float(float value, Env* env, int seg) {
   auto obj = std::make_unique<StaticFloat>(value, seg);
-  auto fe = get_parent_env_of_type<FunctionEnv>(env);
+  auto fe = env->function_env();
   auto result = fe->alloc_val<FloatConstantVal>(m_ts.make_typespec("float"), obj.get());
-  auto fie = get_parent_env_of_type<FileEnv>(env);
+  auto fie = env->file_env();
   fie->add_static(std::move(obj));
   return result;
 }

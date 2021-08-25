@@ -12,6 +12,7 @@
  */
 
 #include "common/util/FileUtil.h"
+#include "third-party/fmt/core.h"
 
 #include "TextDB.h"
 
@@ -64,6 +65,10 @@ int SourceText::get_line_idx(int offset) {
                            std::to_string(offset));
 }
 
+int SourceText::get_offset_of_line(int line_idx) {
+  return offset_by_line.at(line_idx);
+}
+
 /*!
  * Gets the [start, end) character offset of the line containing the given offset.
  */
@@ -79,8 +84,9 @@ std::pair<int, int> SourceText::get_containing_line(int offset) {
 /*!
  * Read text from a file.
  */
-FileText::FileText(std::string filename_) : filename(std::move(filename_)) {
-  text = file_util::read_text_file(filename);
+FileText::FileText(const std::string& filename, const std::string& description_name)
+    : m_filename(filename), m_desc_name(description_name) {
+  text = file_util::read_text_file(m_filename);
   build_offsets();
 }
 
@@ -134,10 +140,14 @@ std::string TextDb::get_info_for(const Object& o, bool* terminate_compiler_error
  * Given a source text and an offset, print a description of where it is.
  */
 std::string TextDb::get_info_for(const std::shared_ptr<SourceText>& frag, int offset) const {
-  std::string result = "text from " + frag->get_description() +
-                       ", line: " + std::to_string(frag->get_line_idx(offset) + 1) + "\n";
+  int line_idx = frag->get_line_idx(offset);
+  std::string result = frag->get_description() + ", line: " + std::to_string(line_idx + 1) + "\n";
   result += frag->get_line_containing_offset(offset) + "\n";
-  return result;
+  int offset_in_line = std::max(offset - frag->get_offset_of_line(line_idx), 1) - 1;
+
+  std::string pointer(offset_in_line, ' ');
+  pointer += "^\n";
+  return result + pointer;
 }
 
 /*!
@@ -156,14 +166,13 @@ void TextDb::inherit_info(const Object& parent, const Object& child) {
       while (!children.empty()) {
         auto top = children.back();
         children.pop_back();
-        if (map.find(top->heap_obj) == map.end()) {
-          map[top->heap_obj] = parent_kv->second;
-        }
-        if (top->as_pair()->car.is_pair()) {
-          children.push_back(&top->as_pair()->car);
-        }
-        if (top->as_pair()->cdr.is_pair()) {
-          children.push_back(&top->as_pair()->cdr);
+        if (map.insert({top->heap_obj, parent_kv->second}).second) {
+          if (top->as_pair()->car.is_pair()) {
+            children.push_back(&top->as_pair()->car);
+          }
+          if (top->as_pair()->cdr.is_pair()) {
+            children.push_back(&top->as_pair()->cdr);
+          }
         }
       }
     }

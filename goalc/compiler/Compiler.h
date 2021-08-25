@@ -71,8 +71,8 @@ class Compiler {
   Debugger m_debugger;
   goos::Interpreter m_goos;
   std::unordered_map<std::string, TypeSpec> m_symbol_types;
-  std::unordered_map<std::shared_ptr<goos::SymbolObject>, goos::Object> m_global_constants;
-  std::unordered_map<std::shared_ptr<goos::SymbolObject>, LambdaVal*> m_inlineable_functions;
+  std::unordered_map<goos::HeapObject*, goos::Object> m_global_constants;
+  std::unordered_map<goos::HeapObject*, LambdaVal*> m_inlineable_functions;
   CompilerSettings m_settings;
   bool m_throw_on_define_extern_redefinition = false;
   SymbolInfoMap m_symbol_info;
@@ -109,6 +109,7 @@ class Compiler {
   Val* compile_goos_macro(const goos::Object& o,
                           const goos::Object& macro_obj,
                           const goos::Object& rest,
+                          const goos::Object& name_symbol,
                           Env* env);
   Val* compile_pair(const goos::Object& code, Env* env);
   Val* compile_integer(const goos::Object& code, Env* env);
@@ -357,9 +358,9 @@ class Compiler {
   void throw_compiler_error(const goos::Object& code, const std::string& str, Args&&... args) {
     fmt::print(fg(fmt::color::crimson) | fmt::emphasis::bold, "-- Compilation Error! --\n");
     if (!str.empty() && str.back() == '\n') {
-      fmt::print(str, std::forward<Args>(args)...);
+      fmt::print(fmt::emphasis::bold, str, std::forward<Args>(args)...);
     } else {
-      fmt::print(str + '\n', std::forward<Args>(args)...);
+      fmt::print(fmt::emphasis::bold, str + '\n', std::forward<Args>(args)...);
     }
 
     fmt::print(fg(fmt::color::yellow) | fmt::emphasis::bold, "Form:\n");
@@ -371,9 +372,9 @@ class Compiler {
   void throw_compiler_error_no_code(const std::string& str, Args&&... args) {
     fmt::print(fg(fmt::color::crimson) | fmt::emphasis::bold, "-- Compilation Error! --\n");
     if (!str.empty() && str.back() == '\n') {
-      fmt::print(str, std::forward<Args>(args)...);
+      fmt::print(fmt::emphasis::bold, str, std::forward<Args>(args)...);
     } else {
-      fmt::print(str + '\n', std::forward<Args>(args)...);
+      fmt::print(fmt::emphasis::bold, str + '\n', std::forward<Args>(args)...);
     }
 
     fmt::print(fg(fmt::color::yellow) | fmt::emphasis::bold, "Form:\n");

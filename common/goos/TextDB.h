@@ -34,6 +34,7 @@ class SourceText {
   virtual std::string get_description() = 0;
   std::string get_line_containing_offset(int offset);
   int get_line_idx(int offset);
+  int get_offset_of_line(int line_idx);
   // should the compiler keep looking up the stack when printing errors on this, or not?
   // this should return true if the text source is specific enough so that they can find what they
   // want
@@ -73,13 +74,14 @@ class ProgramString : public SourceText {
  */
 class FileText : public SourceText {
  public:
-  FileText(std::string filename_);
+  FileText(const std::string& filename, const std::string& description_name);
 
-  std::string get_description() { return filename; }
+  std::string get_description() { return m_desc_name; }
   ~FileText() = default;
 
  private:
-  std::string filename;
+  std::string m_filename;
+  std::string m_desc_name;
 };
 
 struct TextRef {

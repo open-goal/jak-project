@@ -170,10 +170,15 @@ Val* Compiler::compile_error_guard(const goos::Object& code, Env* env) {
         obj_print += "...";
       }
       bool term;
-      fmt::print(fg(fmt::color::yellow) | fmt::emphasis::bold, "Location:\n");
-      fmt::print(m_goos.reader.db.get_info_for(code, &term));
+      auto loc_info = m_goos.reader.db.get_info_for(code, &term);
+      if (term) {
+        fmt::print(fg(fmt::color::yellow) | fmt::emphasis::bold, "Location:\n");
+        fmt::print(loc_info);
+      }
+
       fmt::print(fg(fmt::color::yellow) | fmt::emphasis::bold, "Code:\n");
       fmt::print("{}\n", obj_print);
+
       if (term) {
         ce.print_err_stack = false;
       }
@@ -190,14 +195,24 @@ Val* Compiler::compile_error_guard(const goos::Object& code, Env* env) {
       obj_print = obj_print.substr(0, 80);
       obj_print += "...";
     }
-    fmt::print(fg(fmt::color::yellow) | fmt::emphasis::bold, "Location:\n");
-    fmt::print(m_goos.reader.db.get_info_for(code));
+    bool term;
+    auto loc_info = m_goos.reader.db.get_info_for(code, &term);
+    if (term) {
+      fmt::print(fg(fmt::color::yellow) | fmt::emphasis::bold, "Location:\n");
+      fmt::print(loc_info);
+    }
+
     fmt::print(fg(fmt::color::yellow) | fmt::emphasis::bold, "Code:\n");
     fmt::print("{}\n", obj_print);
+
+    CompilerException ce("Compiler Exception");
+    if (term) {
+      ce.print_err_stack = false;
+    }
     std::string line(80, '-');
     line.push_back('\n');
     fmt::print(line);
-    throw e;
+    throw ce;
   }
 }
 
@@ -239,7 +254,7 @@ void Compiler::color_object_file(FileEnv* env) {
         //  regalloc_result_2.num_spilled_vars);
       }
       num_spills_in_file += regalloc_result_2.num_spills;
-      f->set_allocations(regalloc_result_2);
+      f->set_allocations(std::move(regalloc_result_2));
     } else {
       fmt::print(
           "Warning: function {} failed register allocation with the v2 allocator. Falling back to "
@@ -249,7 +264,7 @@ void Compiler::color_object_file(FileEnv* env) {
       auto regalloc_result = allocate_registers(input);
       m_debug_stats.num_spills_v1 += regalloc_result.num_spills;
       num_spills_in_file += regalloc_result.num_spills;
-      f->set_allocations(regalloc_result);
+      f->set_allocations(std::move(regalloc_result));
     }
   }
 
