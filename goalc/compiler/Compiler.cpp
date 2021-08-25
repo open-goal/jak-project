@@ -123,9 +123,6 @@ FileEnv* Compiler::compile_object_file(const std::string& name,
                                        bool allow_emit) {
   auto file_env = m_global_env->add_file(name);
   Env* compilation_env = file_env;
-  if (!allow_emit) {
-    compilation_env = file_env->add_no_emit_env();
-  }
 
   file_env->add_top_level_function(
       compile_top_level_function("top-level", std::move(code), compilation_env));

@@ -1,6 +1,8 @@
 #include "disassemble.h"
 #include "Zydis/Zydis.h"
 #include "third-party/fmt/core.h"
+#include "goalc/compiler/Env.h"
+#include "goalc/compiler/IR.h"
 
 std::string disassemble_x86(u8* data, int len, u64 base_addr) {
   std::string result;
@@ -63,7 +65,7 @@ std::string disassemble_x86_function(u8* data,
                                      u64 base_addr,
                                      u64 highlight_addr,
                                      const std::vector<InstructionInfo>& x86_instructions,
-                                     const std::vector<std::string>& irs,
+                                     const FunctionEnv* fenv,
                                      bool* had_failure) {
   std::string result;
   ZydisDecoder decoder;
@@ -71,6 +73,8 @@ std::string disassemble_x86_function(u8* data,
   ZydisFormatter formatter;
   ZydisFormatterInit(&formatter, ZYDIS_FORMATTER_STYLE_INTEL);
   ZydisDecodedInstruction instr;
+
+  const auto& irs = fenv->code();
 
   constexpr int print_buff_size = 512;
   char print_buff[print_buff_size];
@@ -130,7 +134,7 @@ std::string disassemble_x86_function(u8* data,
           line.append(50 - line.size(), ' ');
         }
         line += " ";
-        line += irs.at(current_ir_idx);
+        line += irs.at(current_ir_idx)->print();
       }
 
       if (warn_messed_up) {

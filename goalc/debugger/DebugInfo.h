@@ -3,11 +3,15 @@
 #include <vector>
 #include <string>
 #include <optional>
+#include <memory>
 #include <unordered_map>
 #include "common/util/assert.h"
 #include "common/common_types.h"
 #include "goalc/emitter/Instruction.h"
 #include "goalc/debugger/disassemble.h"
+
+
+class FunctionEnv;
 
 /*!
  * FunctionDebugInfo stores per-function debugging information.
@@ -21,7 +25,7 @@ struct FunctionDebugInfo {
   std::string name;
   std::string obj_name;
 
-  std::vector<std::string> irs;
+  std::shared_ptr<FunctionEnv> function;
   std::vector<InstructionInfo> instructions;  // contains mapping to IRs
 
   // the actual bytes in the object file.

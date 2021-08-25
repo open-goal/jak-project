@@ -8,14 +8,6 @@
 ///////////////////
 
 /*!
- * Emit IR into the function currently being compiled.
- */
-void Env::emit(std::unique_ptr<IR> ir) {
-  // by default, we don't know how, so pass it up and hope for the best.
-  m_parent->emit(std::move(ir));
-}
-
-/*!
  * Allocate an IRegister with the given type.
  */
 RegVal* Env::make_ireg(const TypeSpec& ts, RegClass reg_class) {
@@ -56,6 +48,12 @@ std::unordered_map<std::string, Label>& Env::get_label_map() {
   return parent()->get_label_map();
 }
 
+void Env::emit(std::unique_ptr<IR> ir) {
+  auto e = function_env();
+  assert(e);
+  e->emit(std::move(ir));
+}
+
 ///////////////////
 // GlobalEnv
 ///////////////////
@@ -67,15 +65,6 @@ GlobalEnv::GlobalEnv() : Env(EnvKind::OTHER_ENV, nullptr) {}
 
 std::string GlobalEnv::print() {
   return "global-env";
-}
-
-/*!
- * Emit IR into the function currently being compiled.
- */
-void GlobalEnv::emit(std::unique_ptr<IR> ir) {
-  // by default, we don't know how, so pass it up and hope for the best.
-  (void)ir;
-  throw std::runtime_error("cannot emit to GlobalEnv");
 }
 
 /*!
@@ -111,25 +100,6 @@ BlockEnv* GlobalEnv::find_block(const std::string& name) {
 FileEnv* GlobalEnv::add_file(std::string name) {
   m_files.push_back(std::make_unique<FileEnv>(this, std::move(name)));
   return m_files.back().get();
-}
-
-///////////////////
-// NoEmitEnv
-///////////////////
-
-/*!
- * Get the name of a NoEmitEnv
- */
-std::string NoEmitEnv::print() {
-  return "no-emit-env";
-}
-
-/*!
- * Emit - which is invalid - into a NoEmitEnv and throw an exception.
- */
-void NoEmitEnv::emit(std::unique_ptr<IR> ir) {
-  (void)ir;
-  throw std::runtime_error("emit into a no-emit env!");
 }
 
 ///////////////////
@@ -177,12 +147,6 @@ void FileEnv::add_top_level_function(std::unique_ptr<FunctionEnv> fe) {
   // todo, set FE as top level segment
   m_functions.push_back(std::move(fe));
   m_top_level_func = m_functions.back().get();
-}
-
-NoEmitEnv* FileEnv::add_no_emit_env() {
-  assert(!m_no_emit_env);
-  m_no_emit_env = std::make_unique<NoEmitEnv>(this);
-  return m_no_emit_env.get();
 }
 
 void FileEnv::debug_print_tl() {

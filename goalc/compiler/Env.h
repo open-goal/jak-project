@@ -32,7 +32,7 @@ class Env {
  public:
   explicit Env(EnvKind kind, Env* parent);
   virtual std::string print() = 0;
-  virtual void emit(std::unique_ptr<IR> ir);
+  void emit(std::unique_ptr<IR> ir);
   virtual RegVal* make_ireg(const TypeSpec& ts, RegClass reg_class);
   virtual void constrain_reg(IRegConstraint constraint);  // todo, remove!
   virtual RegVal* lexical_lookup(goos::Object sym);
@@ -74,7 +74,6 @@ class GlobalEnv : public Env {
  public:
   GlobalEnv();
   std::string print() override;
-  void emit(std::unique_ptr<IR> ir) override;
   RegVal* make_ireg(const TypeSpec& ts, RegClass reg_class) override;
   void constrain_reg(IRegConstraint constraint) override;
   RegVal* lexical_lookup(goos::Object sym) override;
@@ -88,18 +87,6 @@ class GlobalEnv : public Env {
 };
 
 /*!
- * An Env that doesn't allow emitting to go past it. Used to make sure source code that shouldn't
- * generate machine code actually does this.
- */
-class NoEmitEnv : public Env {
- public:
-  explicit NoEmitEnv(Env* parent) : Env(EnvKind::OTHER_ENV, parent) {}
-  std::string print() override;
-  void emit(std::unique_ptr<IR> ir) override;
-  ~NoEmitEnv() = default;
-};
-
-/*!
  * An Env for an entire file (or input to the REPL)
  */
 class FileEnv : public Env {
@@ -109,9 +96,8 @@ class FileEnv : public Env {
   void add_function(std::unique_ptr<FunctionEnv> fe);
   void add_top_level_function(std::unique_ptr<FunctionEnv> fe);
   void add_static(std::unique_ptr<StaticObject> s);
-  NoEmitEnv* add_no_emit_env();
   void debug_print_tl();
-  const std::vector<std::unique_ptr<FunctionEnv>>& functions() { return m_functions; }
+  const std::vector<std::shared_ptr<FunctionEnv>>& functions() { return m_functions; }
   const std::vector<std::unique_ptr<StaticObject>>& statics() { return m_statics; }
   std::string get_anon_function_name() {
     return "anon-function-" + std::to_string(m_anon_func_counter++);
@@ -134,9 +120,8 @@ class FileEnv : public Env {
 
  protected:
   std::string m_name;
-  std::vector<std::unique_ptr<FunctionEnv>> m_functions;
+  std::vector<std::shared_ptr<FunctionEnv>> m_functions;
   std::vector<std::unique_ptr<StaticObject>> m_statics;
-  std::unique_ptr<NoEmitEnv> m_no_emit_env = nullptr;
   int m_anon_func_counter = 0;
   std::vector<std::unique_ptr<Val>> m_vals;
 
@@ -182,7 +167,7 @@ class FunctionEnv : public DeclareEnv {
   std::string print() override;
   std::unordered_map<std::string, Label>& get_label_map() override;
   void set_segment(int seg) { segment = seg; }
-  void emit(std::unique_ptr<IR> ir) override;
+  void emit(std::unique_ptr<IR> ir);
   void finish();
   RegVal* make_ireg(const TypeSpec& ts, RegClass reg_class) override;
   const std::vector<std::unique_ptr<IR>>& code() const { return m_code; }
@@ -243,7 +228,7 @@ class FunctionEnv : public DeclareEnv {
   std::vector<std::unique_ptr<Val>> m_vals;
   std::vector<std::unique_ptr<Env>> m_envs;
   std::vector<IRegConstraint> m_constraints;
-  // todo, unresolved gotos
+
   AllocationResult m_regalloc_result;
 
   bool m_aligned_stack_required = false;

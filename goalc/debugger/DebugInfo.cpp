@@ -7,7 +7,7 @@ DebugInfo::DebugInfo(std::string obj_name) : m_obj_name(std::move(obj_name)) {}
 std::string FunctionDebugInfo::disassemble_debug_info(bool* had_failure) {
   std::string result = fmt::format("[{}]\n", name);
   result += disassemble_x86_function(generated_code.data(), generated_code.size(), 0x10000, 0x10000,
-                                     instructions, irs, had_failure);
+                                     instructions, function.get(), had_failure);
 
   return result;
 }

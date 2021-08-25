@@ -5,6 +5,8 @@
 #include "common/common_types.h"
 #include "goalc/emitter/Instruction.h"
 
+class FunctionEnv;
+
 struct InstructionInfo {
   emitter::Instruction instruction;  //! the actual x86 instruction
   enum class Kind { PROLOGUE, IR, EPILOGUE } kind;
@@ -26,5 +28,5 @@ std::string disassemble_x86_function(u8* data,
                                      u64 base_addr,
                                      u64 highlight_addr,
                                      const std::vector<InstructionInfo>& x86_instructions,
-                                     const std::vector<std::string>& irs,
+                                     const FunctionEnv* fenv,
                                      bool* had_failure);
