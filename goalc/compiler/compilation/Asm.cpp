@@ -123,7 +123,7 @@ Val* Compiler::compile_rlet(const goos::Object& form, const goos::Object& rest, 
   });
 
   if (!reset_regs.empty()) {
-    lenv->emit_ir<IR_ValueReset>(reset_regs);
+    lenv->emit_ir<IR_ValueReset>(form, reset_regs);
   }
 
   for (auto c : constraints) {
@@ -135,7 +135,7 @@ Val* Compiler::compile_rlet(const goos::Object& form, const goos::Object& rest, 
     auto& o = args.unnamed.at(i);
     result = compile_error_guard(o, lenv);
     if (!dynamic_cast<None*>(result)) {
-      result = result->to_reg(lenv);
+      result = result->to_reg(o, lenv);
     }
   }
 
@@ -150,7 +150,7 @@ Val* Compiler::compile_asm_ret(const goos::Object& form, const goos::Object& res
     color = get_true_or_false(form, args.named.at("color"));
   }
 
-  env->emit_ir<IR_AsmRet>(color);
+  env->emit_ir<IR_AsmRet>(form, color);
   return get_none();
 }
 
@@ -161,11 +161,11 @@ Val* Compiler::compile_asm_pop(const goos::Object& form, const goos::Object& res
   if (args.has_named("color")) {
     color = get_true_or_false(form, args.named.at("color"));
   }
-  auto pop_dest = compile_error_guard(args.unnamed.at(0), env)->to_gpr(env);
+  auto pop_dest = compile_error_guard(args.unnamed.at(0), env)->to_gpr(form, env);
   if (!pop_dest->settable()) {
     throw_compiler_error(form, "Cannot pop into this destination. Got a {}.", pop_dest->print());
   }
-  env->emit_ir<IR_AsmPop>(color, pop_dest);
+  env->emit_ir<IR_AsmPop>(form, color, pop_dest);
   return get_none();
 }
 
@@ -176,7 +176,8 @@ Val* Compiler::compile_asm_push(const goos::Object& form, const goos::Object& re
   if (args.has_named("color")) {
     color = get_true_or_false(form, args.named.at("color"));
   }
-  env->emit_ir<IR_AsmPush>(color, compile_error_guard(args.unnamed.at(0), env)->to_gpr(env));
+  env->emit_ir<IR_AsmPush>(form, color,
+                           compile_error_guard(args.unnamed.at(0), env)->to_gpr(form, env));
   return get_none();
 }
 
@@ -187,12 +188,12 @@ Val* Compiler::compile_asm_sub(const goos::Object& form, const goos::Object& res
   if (args.has_named("color")) {
     color = get_true_or_false(form, args.named.at("color"));
   }
-  auto dest = compile_error_guard(args.unnamed.at(0), env)->to_gpr(env);
+  auto dest = compile_error_guard(args.unnamed.at(0), env)->to_gpr(form, env);
   if (!dest->settable()) {
     throw_compiler_error(form, "Cannot .sub this. Got a {}.", dest->print());
   }
-  auto src = compile_error_guard(args.unnamed.at(1), env)->to_gpr(env);
-  env->emit_ir<IR_AsmSub>(color, dest, src);
+  auto src = compile_error_guard(args.unnamed.at(1), env)->to_gpr(form, env);
+  env->emit_ir<IR_AsmSub>(form, color, dest, src);
   return get_none();
 }
 
@@ -203,12 +204,12 @@ Val* Compiler::compile_asm_add(const goos::Object& form, const goos::Object& res
   if (args.has_named("color")) {
     color = get_true_or_false(form, args.named.at("color"));
   }
-  auto dest = compile_error_guard(args.unnamed.at(0), env)->to_gpr(env);
+  auto dest = compile_error_guard(args.unnamed.at(0), env)->to_gpr(form, env);
   if (!dest->settable()) {
     throw_compiler_error(form, "Cannot .add this. Got a {}.", dest->print());
   }
-  auto src = compile_error_guard(args.unnamed.at(1), env)->to_gpr(env);
-  env->emit_ir<IR_AsmAdd>(color, dest, src);
+  auto src = compile_error_guard(args.unnamed.at(1), env)->to_gpr(form, env);
+  env->emit_ir<IR_AsmAdd>(form, color, dest, src);
   return get_none();
 }
 
@@ -233,12 +234,12 @@ Val* Compiler::compile_asm_load_sym(const goos::Object& form, const goos::Object
     color = get_true_or_false(form, args.named.at("color"));
   }
 
-  auto dest = compile_error_guard(args.unnamed.at(0), env)->to_gpr(env);
+  auto dest = compile_error_guard(args.unnamed.at(0), env)->to_gpr(form, env);
   if (!dest->settable()) {
     throw_compiler_error(form, "Cannot .load-sym this. Got a {}.", dest->print());
   }
 
-  env->emit_ir<IR_GetSymbolValueAsm>(color, dest, sym_name, sext);
+  env->emit_ir<IR_GetSymbolValueAsm>(form, color, dest, sym_name, sext);
   return get_none();
 }
 
@@ -250,8 +251,8 @@ Val* Compiler::compile_asm_jr(const goos::Object& form, const goos::Object& rest
     color = get_true_or_false(form, args.named.at("color"));
   }
 
-  auto src = compile_error_guard(args.unnamed.at(0), env)->to_gpr(env);
-  env->emit_ir<IR_JumpReg>(color, src);
+  auto src = compile_error_guard(args.unnamed.at(0), env)->to_gpr(form, env);
+  env->emit_ir<IR_JumpReg>(form, color, src);
   return get_none();
 }
 
@@ -262,12 +263,12 @@ Val* Compiler::compile_asm_mov(const goos::Object& form, const goos::Object& res
   if (args.has_named("color")) {
     color = get_true_or_false(form, args.named.at("color"));
   }
-  auto dest = compile_error_guard(args.unnamed.at(0), env)->to_reg(env);
+  auto dest = compile_error_guard(args.unnamed.at(0), env)->to_reg(form, env);
   if (!dest->settable()) {
     throw_compiler_error(form, "Cannot .mov this. Got a {}.", dest->print());
   }
-  auto src = compile_error_guard(args.unnamed.at(1), env)->to_reg(env);
-  env->emit_ir<IR_RegSetAsm>(color, dest, src);
+  auto src = compile_error_guard(args.unnamed.at(1), env)->to_reg(form, env);
+  env->emit_ir<IR_RegSetAsm>(form, color, dest, src);
   return get_none();
 }
 
@@ -275,7 +276,7 @@ Val* Compiler::compile_asm_nop_vf(const goos::Object& form, const goos::Object& 
   auto args = get_va(form, rest);
   va_check(form, args, {}, {});
 
-  env->emit_ir<IR_AsmFNop>();
+  env->emit_ir<IR_AsmFNop>(form);
   return get_none();
 }
 
@@ -283,7 +284,7 @@ Val* Compiler::compile_asm_wait_vf(const goos::Object& form, const goos::Object&
   auto args = get_va(form, rest);
   va_check(form, args, {}, {});
 
-  env->emit_ir<IR_AsmFWait>();
+  env->emit_ir<IR_AsmFWait>(form);
   return get_none();
 }
 
@@ -300,7 +301,7 @@ Val* Compiler::compile_asm_lvf(const goos::Object& form, const goos::Object& res
     color = get_true_or_false(form, args.named.at("color"));
   }
 
-  auto dest = compile_error_guard(args.unnamed.at(0), env)->to_reg(env);
+  auto dest = compile_error_guard(args.unnamed.at(0), env)->to_reg(form, env);
   if (!dest->settable() || dest->ireg().reg_class != RegClass::VECTOR_FLOAT) {
     throw_compiler_error(form, "Cannot .lvf into this. Got a {}.", dest->print());
   }
@@ -311,12 +312,12 @@ Val* Compiler::compile_asm_lvf(const goos::Object& form, const goos::Object& res
   if (as_sv && args.has_named("offset")) {
     throw_compiler_error(form, "Cannot .lvf from a static value");
   } else if (as_sv && !args.has_named("offset")) {
-    env->emit_ir<IR_StaticVarLoad>(dest, as_sv->obj);
+    env->emit_ir<IR_StaticVarLoad>(form, dest, as_sv->obj);
     return get_none();
   }
 
   auto as_co = dynamic_cast<MemoryOffsetConstantVal*>(src);
-  RegVal* baseReg = as_co ? as_co->base->to_gpr(env) : src->to_gpr(env);
+  RegVal* baseReg = as_co ? as_co->base->to_gpr(form, env) : src->to_gpr(form, env);
   int offset = 0;
 
   if (as_co) {
@@ -333,7 +334,7 @@ Val* Compiler::compile_asm_lvf(const goos::Object& form, const goos::Object& res
   info.sign_extend = false;
   info.size = 16;
   info.reg = RegClass::VECTOR_FLOAT;
-  env->emit_ir<IR_LoadConstOffset>(dest, offset, baseReg, info, color);
+  env->emit_ir<IR_LoadConstOffset>(form, dest, offset, baseReg, info, color);
 
   return get_none();
 }
@@ -352,14 +353,14 @@ Val* Compiler::compile_asm_svf(const goos::Object& form, const goos::Object& res
   }
 
   auto dest = compile_error_guard(args.unnamed.at(0), env);
-  auto src = compile_error_guard(args.unnamed.at(1), env)->to_reg(env);
+  auto src = compile_error_guard(args.unnamed.at(1), env)->to_reg(form, env);
 
   if (!src->settable() || src->ireg().reg_class != RegClass::VECTOR_FLOAT) {
     throw_compiler_error(form, "Cannot .svf from this. Got a {}.", dest->print());
   }
 
   auto as_co = dynamic_cast<MemoryOffsetConstantVal*>(dest);
-  RegVal* baseReg = as_co ? as_co->base->to_gpr(env) : dest->to_gpr(env);
+  RegVal* baseReg = as_co ? as_co->base->to_gpr(form, env) : dest->to_gpr(form, env);
   int offset = 0;
 
   if (as_co) {
@@ -376,7 +377,7 @@ Val* Compiler::compile_asm_svf(const goos::Object& form, const goos::Object& res
   info.sign_extend = false;
   info.size = 16;
   info.reg = RegClass::VECTOR_FLOAT;
-  env->emit_ir<IR_StoreConstOffset>(src, offset, baseReg, info.size, color);
+  env->emit_ir<IR_StoreConstOffset>(form, src, offset, baseReg, info.size, color);
   return get_none();
 }
 
@@ -401,8 +402,8 @@ Val* Compiler::compile_asm_mov_vf(const goos::Object& form, const goos::Object& 
     color = get_true_or_false(form, args.named.at("color"));
   }
 
-  auto dest = compile_error_guard(args.unnamed.at(0), env)->to_reg(env);
-  auto src = compile_error_guard(args.unnamed.at(1), env)->to_reg(env);
+  auto dest = compile_error_guard(args.unnamed.at(0), env)->to_reg(form, env);
+  auto src = compile_error_guard(args.unnamed.at(1), env)->to_reg(form, env);
   check_vector_float_regs(form, env, {{"destination", dest}, {"source", src}});
 
   u8 mask = 0b1111;
@@ -414,7 +415,7 @@ Val* Compiler::compile_asm_mov_vf(const goos::Object& form, const goos::Object& 
     }
   }
 
-  env->emit_ir<IR_BlendVF>(color, dest, dest, src, mask);
+  env->emit_ir<IR_BlendVF>(form, color, dest, dest, src, mask);
   return get_none();
 }
 
@@ -428,9 +429,9 @@ Val* Compiler::compile_asm_blend_vf(const goos::Object& form, const goos::Object
     color = get_true_or_false(form, args.named.at("color"));
   }
 
-  auto dest = compile_error_guard(args.unnamed.at(0), env)->to_reg(env);
-  auto src1 = compile_error_guard(args.unnamed.at(1), env)->to_reg(env);
-  auto src2 = compile_error_guard(args.unnamed.at(2), env)->to_reg(env);
+  auto dest = compile_error_guard(args.unnamed.at(0), env)->to_reg(form, env);
+  auto src1 = compile_error_guard(args.unnamed.at(1), env)->to_reg(form, env);
+  auto src2 = compile_error_guard(args.unnamed.at(2), env)->to_reg(form, env);
   check_vector_float_regs(form, env,
                           {{"destination", dest}, {"first source", src1}, {"second source", src2}});
 
@@ -443,7 +444,7 @@ Val* Compiler::compile_asm_blend_vf(const goos::Object& form, const goos::Object
     }
   }
 
-  env->emit_ir<IR_BlendVF>(color, dest, src1, src2, mask);
+  env->emit_ir<IR_BlendVF>(form, color, dest, src1, src2, mask);
   return get_none();
 }
 
@@ -461,9 +462,9 @@ Val* Compiler::compile_asm_vf_math3(const goos::Object& form,
     color = get_true_or_false(form, args.named.at("color"));
   }
 
-  auto dest = compile_error_guard(args.unnamed.at(0), env)->to_reg(env);
-  auto src1 = compile_error_guard(args.unnamed.at(1), env)->to_reg(env);
-  auto src2 = compile_error_guard(args.unnamed.at(2), env)->to_reg(env);
+  auto dest = compile_error_guard(args.unnamed.at(0), env)->to_reg(form, env);
+  auto src1 = compile_error_guard(args.unnamed.at(1), env)->to_reg(form, env);
+  auto src2 = compile_error_guard(args.unnamed.at(2), env)->to_reg(form, env);
   check_vector_float_regs(form, env,
                           {{"destination", dest}, {"first source", src1}, {"second source", src2}});
 
@@ -484,27 +485,27 @@ Val* Compiler::compile_asm_vf_math3(const goos::Object& form,
   // vf10[w] = vf20[w] + vf30[x]
   if (broadcastElement != emitter::Register::VF_ELEMENT::NONE) {
     auto temp_reg = env->make_vfr(dest->type());
-    env->emit_ir<IR_SplatVF>(color, temp_reg, src2, broadcastElement);
+    env->emit_ir<IR_SplatVF>(form, color, temp_reg, src2, broadcastElement);
 
     // If the entire destination is to be copied, we can optimize out the blend
     if (mask == 0b1111) {
-      env->emit_ir<IR_VFMath3Asm>(color, dest, src1, temp_reg, kind);
+      env->emit_ir<IR_VFMath3Asm>(form, color, dest, src1, temp_reg, kind);
     } else {
       // Perform the arithmetic operation on the two vectors into a temporary register
-      env->emit_ir<IR_VFMath3Asm>(color, temp_reg, src1, temp_reg, kind);
+      env->emit_ir<IR_VFMath3Asm>(form, color, temp_reg, src1, temp_reg, kind);
       // Blend the result back into the destination register using the mask
-      env->emit_ir<IR_BlendVF>(color, dest, dest, temp_reg, mask);
+      env->emit_ir<IR_BlendVF>(form, color, dest, dest, temp_reg, mask);
     }
   } else {
     // If the entire destination is to be copied, we can optimize out the blend
     if (mask == 0b1111) {
-      env->emit_ir<IR_VFMath3Asm>(color, dest, src1, src2, kind);
+      env->emit_ir<IR_VFMath3Asm>(form, color, dest, src1, src2, kind);
     } else {
       auto temp_reg = env->make_vfr(dest->type());
       // Perform the arithmetic operation on the two vectors into a temporary register
-      env->emit_ir<IR_VFMath3Asm>(color, temp_reg, src1, src2, kind);
+      env->emit_ir<IR_VFMath3Asm>(form, color, temp_reg, src1, src2, kind);
       // Blend the result back into the destination register using the mask
-      env->emit_ir<IR_BlendVF>(color, dest, dest, temp_reg, mask);
+      env->emit_ir<IR_BlendVF>(form, color, dest, dest, temp_reg, mask);
     }
   }
 
@@ -522,14 +523,14 @@ Val* Compiler::compile_asm_int128_math3(const goos::Object& form,
     color = get_true_or_false(form, args.named.at("color"));
   }
 
-  auto dest = compile_error_guard(args.unnamed.at(0), env)->to_reg(env);
-  auto src1 = compile_error_guard(args.unnamed.at(1), env)->to_reg(env);
-  auto src2 = compile_error_guard(args.unnamed.at(2), env)->to_reg(env);
+  auto dest = compile_error_guard(args.unnamed.at(0), env)->to_reg(form, env);
+  auto src1 = compile_error_guard(args.unnamed.at(1), env)->to_reg(form, env);
+  auto src2 = compile_error_guard(args.unnamed.at(2), env)->to_reg(form, env);
 
   if (!dest->settable()) {
     throw_compiler_error(form, "Cannot set destination");
   }
-  env->emit_ir<IR_Int128Math3Asm>(color, dest, src1, src2, kind);
+  env->emit_ir<IR_Int128Math3Asm>(form, color, dest, src1, src2, kind);
   return get_none();
 }
 
@@ -546,8 +547,8 @@ Val* Compiler::compile_asm_vf_math2(const goos::Object& form,
     color = get_true_or_false(form, args.named.at("color"));
   }
 
-  auto dest = compile_error_guard(args.unnamed.at(0), env)->to_reg(env);
-  auto src = compile_error_guard(args.unnamed.at(1), env)->to_reg(env);
+  auto dest = compile_error_guard(args.unnamed.at(0), env)->to_reg(form, env);
+  auto src = compile_error_guard(args.unnamed.at(1), env)->to_reg(form, env);
   check_vector_float_regs(form, env, {{"destination", dest}, {"source", src}});
 
   u8 mask = 0b1111;
@@ -561,13 +562,13 @@ Val* Compiler::compile_asm_vf_math2(const goos::Object& form,
 
   // If the entire destination is to be copied, we can optimize out the blend
   if (mask == 0b1111) {
-    env->emit_ir<IR_VFMath2Asm>(color, dest, src, kind);
+    env->emit_ir<IR_VFMath2Asm>(form, color, dest, src, kind);
   } else {
     auto temp_reg = env->make_vfr(dest->type());
     // Perform the arithmetic operation on the two vectors into a temporary register
-    env->emit_ir<IR_VFMath2Asm>(color, temp_reg, src, kind);
+    env->emit_ir<IR_VFMath2Asm>(form, color, temp_reg, src, kind);
     // Blend the result back into the destination register using the mask
-    env->emit_ir<IR_BlendVF>(color, dest, dest, temp_reg, mask);
+    env->emit_ir<IR_BlendVF>(form, color, dest, dest, temp_reg, mask);
   }
 
   return get_none();
@@ -586,8 +587,8 @@ Val* Compiler::compile_asm_int128_math2_imm_u8(const goos::Object& form,
     color = get_true_or_false(form, args.named.at("color"));
   }
 
-  auto dest = compile_error_guard(args.unnamed.at(0), env)->to_reg(env);
-  auto src = compile_error_guard(args.unnamed.at(1), env)->to_reg(env);
+  auto dest = compile_error_guard(args.unnamed.at(0), env)->to_reg(form, env);
+  auto src = compile_error_guard(args.unnamed.at(1), env)->to_reg(form, env);
   s64 imm;
   if (!try_getting_constant_integer(args.unnamed.at(2), &imm, env)) {
     throw_compiler_error(form, "Could not evaluate {} as a compile-time integer.",
@@ -610,13 +611,13 @@ Val* Compiler::compile_asm_int128_math2_imm_u8(const goos::Object& form,
 
   // If the entire destination is to be copied, we can optimize out the blend
   if (mask == 0b1111) {
-    env->emit_ir<IR_Int128Math2Asm>(color, dest, src, kind, imm);
+    env->emit_ir<IR_Int128Math2Asm>(form, color, dest, src, kind, imm);
   } else {
     auto temp_reg = env->make_vfr(dest->type());
     // Perform the arithmetic operation on the two vectors into a temporary register
-    env->emit_ir<IR_Int128Math2Asm>(color, temp_reg, src, kind, imm);
+    env->emit_ir<IR_Int128Math2Asm>(form, color, temp_reg, src, kind, imm);
     // Blend the result back into the destination register using the mask
-    env->emit_ir<IR_BlendVF>(color, dest, dest, temp_reg, mask);
+    env->emit_ir<IR_BlendVF>(form, color, dest, dest, temp_reg, mask);
   }
 
   return get_none();
@@ -646,9 +647,9 @@ Val* Compiler::compile_asm_pnor(const goos::Object& form, const goos::Object& re
   auto args = get_va(form, rest);
   va_check(form, args, {{}, {}, {}}, {});
 
-  auto dest = compile_error_guard(args.unnamed.at(0), env)->to_reg(env);
-  auto src1 = compile_error_guard(args.unnamed.at(1), env)->to_reg(env);  // rs
-  auto src2 = compile_error_guard(args.unnamed.at(2), env)->to_reg(env);  // rt
+  auto dest = compile_error_guard(args.unnamed.at(0), env)->to_reg(form, env);
+  auto src1 = compile_error_guard(args.unnamed.at(1), env)->to_reg(form, env);  // rs
+  auto src2 = compile_error_guard(args.unnamed.at(2), env)->to_reg(form, env);  // rt
   auto temp = env->make_ireg(TypeSpec("uint128"), RegClass::INT_128);
 
   if (!ireg_is_128_ok(dest->ireg())) {
@@ -671,13 +672,13 @@ Val* Compiler::compile_asm_pnor(const goos::Object& form, const goos::Object& re
   // Remember - we do not want to mutate the source registers!
 
   // How do we create an all-ones-register? Compare it with itself
-  env->emit_ir<IR_Int128Math3Asm>(true, temp, temp, temp, IR_Int128Math3Asm::Kind::PCEQW);
+  env->emit_ir<IR_Int128Math3Asm>(form, true, temp, temp, temp, IR_Int128Math3Asm::Kind::PCEQW);
   // Then NOT the first input, store in destination
-  env->emit_ir<IR_Int128Math3Asm>(true, dest, temp, src1, IR_Int128Math3Asm::Kind::PXOR);
+  env->emit_ir<IR_Int128Math3Asm>(form, true, dest, temp, src1, IR_Int128Math3Asm::Kind::PXOR);
   // NOT the second input, we not longer require the all-ones-register
-  env->emit_ir<IR_Int128Math3Asm>(true, temp, temp, src2, IR_Int128Math3Asm::Kind::PXOR);
+  env->emit_ir<IR_Int128Math3Asm>(form, true, temp, temp, src2, IR_Int128Math3Asm::Kind::PXOR);
   // Preform the AND aka NOR
-  env->emit_ir<IR_Int128Math3Asm>(true, dest, dest, temp, IR_Int128Math3Asm::Kind::PAND);
+  env->emit_ir<IR_Int128Math3Asm>(form, true, dest, dest, temp, IR_Int128Math3Asm::Kind::PAND);
 
   return get_none();
 }
@@ -750,23 +751,23 @@ Val* Compiler::compile_asm_ppach(const goos::Object& form, const goos::Object& r
   auto args = get_va(form, rest);
   va_check(form, args, {{}, {}, {}}, {});
 
-  auto dest = compile_error_guard(args.unnamed.at(0), env)->to_reg(env);
-  auto src1 = compile_error_guard(args.unnamed.at(1), env)->to_reg(env);  // rs
-  auto src2 = compile_error_guard(args.unnamed.at(2), env)->to_reg(env);  // rt
+  auto dest = compile_error_guard(args.unnamed.at(0), env)->to_reg(form, env);
+  auto src1 = compile_error_guard(args.unnamed.at(1), env)->to_reg(form, env);  // rs
+  auto src2 = compile_error_guard(args.unnamed.at(2), env)->to_reg(form, env);  // rt
   auto temp = env->make_ireg(TypeSpec("uint128"), RegClass::INT_128);
 
   if (!dest->settable()) {
     throw_compiler_error(form, "Cannot set destination");
   }
 
-  env->emit_ir<IR_Int128Math2Asm>(true, temp, src1, IR_Int128Math2Asm::Kind::VPSHUFLW, 0x88);
-  env->emit_ir<IR_Int128Math2Asm>(true, dest, src2, IR_Int128Math2Asm::Kind::VPSHUFLW, 0x88);
-  env->emit_ir<IR_Int128Math2Asm>(true, temp, temp, IR_Int128Math2Asm::Kind::VPSHUFHW, 0x88);
-  env->emit_ir<IR_Int128Math2Asm>(true, dest, dest, IR_Int128Math2Asm::Kind::VPSHUFHW, 0x88);
-  env->emit_ir<IR_Int128Math2Asm>(true, temp, temp, IR_Int128Math2Asm::Kind::VPSRLDQ, 4);
-  env->emit_ir<IR_Int128Math2Asm>(true, dest, dest, IR_Int128Math2Asm::Kind::VPSRLDQ, 4);
+  env->emit_ir<IR_Int128Math2Asm>(form, true, temp, src1, IR_Int128Math2Asm::Kind::VPSHUFLW, 0x88);
+  env->emit_ir<IR_Int128Math2Asm>(form, true, dest, src2, IR_Int128Math2Asm::Kind::VPSHUFLW, 0x88);
+  env->emit_ir<IR_Int128Math2Asm>(form, true, temp, temp, IR_Int128Math2Asm::Kind::VPSHUFHW, 0x88);
+  env->emit_ir<IR_Int128Math2Asm>(form, true, dest, dest, IR_Int128Math2Asm::Kind::VPSHUFHW, 0x88);
+  env->emit_ir<IR_Int128Math2Asm>(form, true, temp, temp, IR_Int128Math2Asm::Kind::VPSRLDQ, 4);
+  env->emit_ir<IR_Int128Math2Asm>(form, true, dest, dest, IR_Int128Math2Asm::Kind::VPSRLDQ, 4);
   // is actually a VPUNPCKLQDQ with srcs swapped.
-  env->emit_ir<IR_Int128Math3Asm>(true, dest, temp, dest, IR_Int128Math3Asm::Kind::PCPYLD);
+  env->emit_ir<IR_Int128Math3Asm>(form, true, dest, temp, dest, IR_Int128Math3Asm::Kind::PCPYLD);
 
   return get_none();
 }
@@ -775,15 +776,15 @@ Val* Compiler::compile_asm_xorp(const goos::Object& form, const goos::Object& re
   auto args = get_va(form, rest);
   va_check(form, args, {{}, {}, {}}, {});
 
-  auto dest = compile_error_guard(args.unnamed.at(0), env)->to_reg(env);
-  auto src1 = compile_error_guard(args.unnamed.at(1), env)->to_reg(env);  // rs
-  auto src2 = compile_error_guard(args.unnamed.at(2), env)->to_reg(env);  // rt
+  auto dest = compile_error_guard(args.unnamed.at(0), env)->to_reg(form, env);
+  auto src1 = compile_error_guard(args.unnamed.at(1), env)->to_reg(form, env);  // rs
+  auto src2 = compile_error_guard(args.unnamed.at(2), env)->to_reg(form, env);  // rt
 
   if (!dest->settable()) {
     throw_compiler_error(form, "Cannot set destination");
   }
 
-  env->emit_ir<IR_VFMath3Asm>(true, dest, src1, src2, IR_VFMath3Asm::Kind::XOR);
+  env->emit_ir<IR_VFMath3Asm>(form, true, dest, src1, src2, IR_VFMath3Asm::Kind::XOR);
   return get_none();
 }
 
@@ -940,16 +941,16 @@ Val* Compiler::compile_asm_vf_math4_two_operation(const goos::Object& form,
     color = get_true_or_false(form, args.named.at("color"));
   }
 
-  auto dest = compile_error_guard(args.unnamed.at(0), env)->to_reg(env);
-  auto src1 = compile_error_guard(args.unnamed.at(1), env)->to_reg(env);
-  auto src2 = compile_error_guard(args.unnamed.at(2), env)->to_reg(env);
+  auto dest = compile_error_guard(args.unnamed.at(0), env)->to_reg(form, env);
+  auto src1 = compile_error_guard(args.unnamed.at(1), env)->to_reg(form, env);
+  auto src2 = compile_error_guard(args.unnamed.at(2), env)->to_reg(form, env);
   // This third register is intended for the ACC/Q/ETC, and is used to temporarily store the value
   // that eventually goes into the destination
   //
   // For example VMADDA:
   // > ACC += src1 * src2
   // > DEST = ACC
-  auto src3 = compile_error_guard(args.unnamed.at(3), env)->to_reg(env);
+  auto src3 = compile_error_guard(args.unnamed.at(3), env)->to_reg(form, env);
   check_vector_float_regs(form, env,
                           {{"destination", dest},
                            {"first source", src1},
@@ -975,32 +976,32 @@ Val* Compiler::compile_asm_vf_math4_two_operation(const goos::Object& form,
   // vf10[z] = vf20[z] + vf30[x]
   // vf10[w] = vf20[w] + vf30[x]
   if (broadcastElement != emitter::Register::VF_ELEMENT::NONE) {
-    env->emit_ir<IR_SplatVF>(color, temp_reg, src2, broadcastElement);
+    env->emit_ir<IR_SplatVF>(form, color, temp_reg, src2, broadcastElement);
 
     // Perform the first operation
-    env->emit_ir<IR_VFMath3Asm>(color, temp_reg, src1, temp_reg, first_op_kind);
+    env->emit_ir<IR_VFMath3Asm>(form, color, temp_reg, src1, temp_reg, first_op_kind);
 
     // If the entire destination is to be copied, we can optimize out the blend
     if (mask == 0b1111) {
-      env->emit_ir<IR_VFMath3Asm>(color, dest, src3, temp_reg, second_op_kind);
+      env->emit_ir<IR_VFMath3Asm>(form, color, dest, src3, temp_reg, second_op_kind);
     } else {
       // Perform the second operation on the two vectors into the temporary register
-      env->emit_ir<IR_VFMath3Asm>(color, temp_reg, src3, temp_reg, second_op_kind);
+      env->emit_ir<IR_VFMath3Asm>(form, color, temp_reg, src3, temp_reg, second_op_kind);
       // Blend the result back into the destination register using the mask
-      env->emit_ir<IR_BlendVF>(color, dest, dest, temp_reg, mask);
+      env->emit_ir<IR_BlendVF>(form, color, dest, dest, temp_reg, mask);
     }
   } else {
     // Perform the first operation
-    env->emit_ir<IR_VFMath3Asm>(color, temp_reg, src1, src2, first_op_kind);
+    env->emit_ir<IR_VFMath3Asm>(form, color, temp_reg, src1, src2, first_op_kind);
 
     // If the entire destination is to be copied, we can optimize out the blend
     if (mask == 0b1111) {
-      env->emit_ir<IR_VFMath3Asm>(color, dest, src3, temp_reg, second_op_kind);
+      env->emit_ir<IR_VFMath3Asm>(form, color, dest, src3, temp_reg, second_op_kind);
     } else {
       // Perform the second operation on the two vectors into the temporary register
-      env->emit_ir<IR_VFMath3Asm>(color, temp_reg, src3, temp_reg, second_op_kind);
+      env->emit_ir<IR_VFMath3Asm>(form, color, temp_reg, src3, temp_reg, second_op_kind);
       // Blend the result back into the destination register using the mask
-      env->emit_ir<IR_BlendVF>(color, dest, dest, temp_reg, mask);
+      env->emit_ir<IR_BlendVF>(form, color, dest, dest, temp_reg, mask);
     }
   }
 
@@ -1097,8 +1098,8 @@ Val* Compiler::compile_asm_abs_vf(const goos::Object& form, const goos::Object& 
     color = get_true_or_false(form, args.named.at("color"));
   }
 
-  auto dest = compile_error_guard(args.unnamed.at(0), env)->to_reg(env);
-  auto src = compile_error_guard(args.unnamed.at(1), env)->to_reg(env);
+  auto dest = compile_error_guard(args.unnamed.at(0), env)->to_reg(form, env);
+  auto src = compile_error_guard(args.unnamed.at(1), env)->to_reg(form, env);
   check_vector_float_regs(form, env, {{"destination", dest}, {"source", src}});
 
   u8 mask = 0b1111;
@@ -1115,21 +1116,21 @@ Val* Compiler::compile_asm_abs_vf(const goos::Object& form, const goos::Object& 
 
   // First we clear a temporary register, XOR'ing itself
   auto temp_reg = env->make_vfr(dest->type());
-  env->emit_ir<IR_VFMath3Asm>(color, temp_reg, temp_reg, temp_reg, IR_VFMath3Asm::Kind::XOR);
+  env->emit_ir<IR_VFMath3Asm>(form, color, temp_reg, temp_reg, temp_reg, IR_VFMath3Asm::Kind::XOR);
 
   // Next, find the difference between our source operand and 0, use the same temp register, no need
   // to use another <0, 0, 0, 0> - <1, -2, -3, 4> = <-1, 2, 3, 4>
-  env->emit_ir<IR_VFMath3Asm>(color, temp_reg, temp_reg, src, IR_VFMath3Asm::Kind::SUB);
+  env->emit_ir<IR_VFMath3Asm>(form, color, temp_reg, temp_reg, src, IR_VFMath3Asm::Kind::SUB);
 
   // Finally, find the maximum between our difference, and the original value
   // MAX_OF(<-1, 2, 3, 4>, <1, -2, -3, 4>) = <1, 2, 3, 4>
   if (mask == 0b1111) {  // If the entire destination is to be copied, we can optimize out the blend
-    env->emit_ir<IR_VFMath3Asm>(color, dest, src, temp_reg, IR_VFMath3Asm::Kind::MAX);
+    env->emit_ir<IR_VFMath3Asm>(form, color, dest, src, temp_reg, IR_VFMath3Asm::Kind::MAX);
   } else {
-    env->emit_ir<IR_VFMath3Asm>(color, temp_reg, src, temp_reg, IR_VFMath3Asm::Kind::MAX);
+    env->emit_ir<IR_VFMath3Asm>(form, color, temp_reg, src, temp_reg, IR_VFMath3Asm::Kind::MAX);
 
     // Blend the result back into the destination register using the mask
-    env->emit_ir<IR_BlendVF>(color, dest, dest, temp_reg, mask);
+    env->emit_ir<IR_BlendVF>(form, color, dest, dest, temp_reg, mask);
   }
 
   return get_none();
@@ -1174,9 +1175,9 @@ Val* Compiler::compile_asm_div_vf(const goos::Object& form, const goos::Object& 
     color = get_true_or_false(form, args.named.at("color"));
   }
 
-  auto dest = compile_error_guard(args.unnamed.at(0), env)->to_reg(env);
-  auto src1 = compile_error_guard(args.unnamed.at(1), env)->to_reg(env);
-  auto src2 = compile_error_guard(args.unnamed.at(2), env)->to_reg(env);
+  auto dest = compile_error_guard(args.unnamed.at(0), env)->to_reg(form, env);
+  auto src1 = compile_error_guard(args.unnamed.at(1), env)->to_reg(form, env);
+  auto src2 = compile_error_guard(args.unnamed.at(2), env)->to_reg(form, env);
   check_vector_float_regs(form, env,
                           {{"destination", dest}, {"first source", src1}, {"second source", src2}});
 
@@ -1204,12 +1205,12 @@ Val* Compiler::compile_asm_div_vf(const goos::Object& form, const goos::Object& 
 
   // Splat src1's value into the dest reg, keep it simple, this way no matter which vector component
   // is accessed from the final result will be the correct answer
-  env->emit_ir<IR_SplatVF>(color, dest, src1, ftf_fsf_to_vector_element(fsf));
+  env->emit_ir<IR_SplatVF>(form, color, dest, src1, ftf_fsf_to_vector_element(fsf));
   // Splat src1's value into the the temp reg
-  env->emit_ir<IR_SplatVF>(color, temp_reg, src2, ftf_fsf_to_vector_element(ftf));
+  env->emit_ir<IR_SplatVF>(form, color, temp_reg, src2, ftf_fsf_to_vector_element(ftf));
 
   // Perform the Division
-  env->emit_ir<IR_VFMath3Asm>(color, dest, dest, temp_reg, IR_VFMath3Asm::Kind::DIV);
+  env->emit_ir<IR_VFMath3Asm>(form, color, dest, dest, temp_reg, IR_VFMath3Asm::Kind::DIV);
   return get_none();
 }
 
@@ -1223,8 +1224,8 @@ Val* Compiler::compile_asm_sqrt_vf(const goos::Object& form, const goos::Object&
     color = get_true_or_false(form, args.named.at("color"));
   }
 
-  auto dest = compile_error_guard(args.unnamed.at(0), env)->to_reg(env);
-  auto src = compile_error_guard(args.unnamed.at(1), env)->to_reg(env);
+  auto dest = compile_error_guard(args.unnamed.at(0), env)->to_reg(form, env);
+  auto src = compile_error_guard(args.unnamed.at(1), env)->to_reg(form, env);
   check_vector_float_regs(form, env, {{"destination", dest}, {"source", src}});
 
   u8 ftf = args.named.at("ftf").as_int();
@@ -1243,9 +1244,9 @@ Val* Compiler::compile_asm_sqrt_vf(const goos::Object& form, const goos::Object&
 
   // Splat src's value into the dest reg, keep it simple, this way no matter which vector component
   // is accessed from the final result will be the correct answer
-  env->emit_ir<IR_SplatVF>(color, dest, src, ftf_fsf_to_vector_element(ftf));
+  env->emit_ir<IR_SplatVF>(form, color, dest, src, ftf_fsf_to_vector_element(ftf));
 
-  env->emit_ir<IR_SqrtVF>(color, dest, dest);
+  env->emit_ir<IR_SqrtVF>(form, color, dest, dest);
   return get_none();
 }
 
@@ -1264,9 +1265,9 @@ Val* Compiler::compile_asm_inv_sqrt_vf(const goos::Object& form,
     color = get_true_or_false(form, args.named.at("color"));
   }
 
-  auto dest = compile_error_guard(args.unnamed.at(0), env)->to_reg(env);
-  auto src1 = compile_error_guard(args.unnamed.at(1), env)->to_reg(env);
-  auto src2 = compile_error_guard(args.unnamed.at(2), env)->to_reg(env);
+  auto dest = compile_error_guard(args.unnamed.at(0), env)->to_reg(form, env);
+  auto src1 = compile_error_guard(args.unnamed.at(1), env)->to_reg(form, env);
+  auto src2 = compile_error_guard(args.unnamed.at(2), env)->to_reg(form, env);
   check_vector_float_regs(form, env,
                           {{"destination", dest}, {"first source", src1}, {"second source", src2}});
 
@@ -1284,14 +1285,14 @@ Val* Compiler::compile_asm_inv_sqrt_vf(const goos::Object& form,
 
   // Splat src1's value into the dest reg, keep it simple, this way no matter which vector component
   // is accessed from the final result will be the correct answer
-  env->emit_ir<IR_SplatVF>(color, dest, src1, ftf_fsf_to_vector_element(fsf));
+  env->emit_ir<IR_SplatVF>(form, color, dest, src1, ftf_fsf_to_vector_element(fsf));
   // Splat src1's value into the the temp reg
-  env->emit_ir<IR_SplatVF>(color, temp_reg, src2, ftf_fsf_to_vector_element(ftf));
+  env->emit_ir<IR_SplatVF>(form, color, temp_reg, src2, ftf_fsf_to_vector_element(ftf));
   // Square Root the temp reg
-  env->emit_ir<IR_SqrtVF>(color, temp_reg, temp_reg);
+  env->emit_ir<IR_SqrtVF>(form, color, temp_reg, temp_reg);
 
   // Perform the Division
-  env->emit_ir<IR_VFMath3Asm>(color, dest, dest, temp_reg, IR_VFMath3Asm::Kind::DIV);
+  env->emit_ir<IR_VFMath3Asm>(form, color, dest, dest, temp_reg, IR_VFMath3Asm::Kind::DIV);
   return get_none();
 }
 
@@ -1305,9 +1306,9 @@ Val* Compiler::compile_asm_outer_product_vf(const goos::Object& form,
     color = get_true_or_false(form, args.named.at("color"));
   }
 
-  auto dest = compile_error_guard(args.unnamed.at(0), env)->to_reg(env);
-  auto src1 = compile_error_guard(args.unnamed.at(1), env)->to_reg(env);
-  auto src2 = compile_error_guard(args.unnamed.at(2), env)->to_reg(env);
+  auto dest = compile_error_guard(args.unnamed.at(0), env)->to_reg(form, env);
+  auto src1 = compile_error_guard(args.unnamed.at(1), env)->to_reg(form, env);
+  auto src2 = compile_error_guard(args.unnamed.at(2), env)->to_reg(form, env);
   check_vector_float_regs(form, env,
                           {{"destination", dest}, {"first source", src1}, {"second source", src2}});
 
@@ -1332,28 +1333,28 @@ Val* Compiler::compile_asm_outer_product_vf(const goos::Object& form,
 
   // First Portion
   // - Swizzle src1 appropriately
-  env->emit_ir<IR_SwizzleVF>(color, temp1, src1, 0b00001001);
+  env->emit_ir<IR_SwizzleVF>(form, color, temp1, src1, 0b00001001);
   // - Move it into 'dest' safely (avoid mutating `w`)
-  env->emit_ir<IR_BlendVF>(color, temp_dst, temp_dst, temp1, 0b0111);
+  env->emit_ir<IR_BlendVF>(form, color, temp_dst, temp_dst, temp1, 0b0111);
   // - Swizzle src2 appropriately
-  env->emit_ir<IR_SwizzleVF>(color, temp1, src2, 0b00010010);
+  env->emit_ir<IR_SwizzleVF>(form, color, temp1, src2, 0b00010010);
   // - Multiply - Result in `dest`
-  env->emit_ir<IR_VFMath3Asm>(color, temp1, temp_dst, temp1, IR_VFMath3Asm::Kind::MUL);
+  env->emit_ir<IR_VFMath3Asm>(form, color, temp1, temp_dst, temp1, IR_VFMath3Asm::Kind::MUL);
   // - Move it into 'dest' safely (avoid mutating `w`)
-  env->emit_ir<IR_BlendVF>(color, temp_dst, temp_dst, temp1, 0b0111);
+  env->emit_ir<IR_BlendVF>(form, color, temp_dst, temp_dst, temp1, 0b0111);
 
   // Second Portion
   // - Swizzle src2 appropriately
-  env->emit_ir<IR_SwizzleVF>(color, temp1, src2, 0b00001001);
+  env->emit_ir<IR_SwizzleVF>(form, color, temp1, src2, 0b00001001);
   // - Swizzle src1 appropriately
-  env->emit_ir<IR_SwizzleVF>(color, temp2, src1, 0b00010010);
+  env->emit_ir<IR_SwizzleVF>(form, color, temp2, src1, 0b00010010);
   // - Multiply - Result in `temp1`
-  env->emit_ir<IR_VFMath3Asm>(color, temp1, temp1, temp2, IR_VFMath3Asm::Kind::MUL);
+  env->emit_ir<IR_VFMath3Asm>(form, color, temp1, temp1, temp2, IR_VFMath3Asm::Kind::MUL);
 
   // Finalize
   // - Subtract
-  env->emit_ir<IR_VFMath3Asm>(color, temp2, temp_dst, temp1, IR_VFMath3Asm::Kind::SUB);
+  env->emit_ir<IR_VFMath3Asm>(form, color, temp2, temp_dst, temp1, IR_VFMath3Asm::Kind::SUB);
   // - Blend result, as to avoid not modifying dest's `w` component
-  env->emit_ir<IR_BlendVF>(color, dest, dest, temp2, 0b0111);
+  env->emit_ir<IR_BlendVF>(form, color, dest, dest, temp2, 0b0111);
   return get_none();
 }

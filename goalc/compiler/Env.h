@@ -32,7 +32,7 @@ class Env {
  public:
   explicit Env(EnvKind kind, Env* parent);
   virtual std::string print() = 0;
-  void emit(std::unique_ptr<IR> ir);
+  void emit(const goos::Object& form, std::unique_ptr<IR> ir);
   virtual RegVal* make_ireg(const TypeSpec& ts, RegClass reg_class);
   virtual void constrain_reg(IRegConstraint constraint);  // todo, remove!
   virtual RegVal* lexical_lookup(goos::Object sym);
@@ -45,8 +45,8 @@ class Env {
   Env* parent() { return m_parent; }
 
   template <typename IR_Type, typename... Args>
-  void emit_ir(Args&&... args) {
-    emit(std::make_unique<IR_Type>(std::forward<Args>(args)...));
+  void emit_ir(const goos::Object& form, Args&&... args) {
+    emit(form, std::make_unique<IR_Type>(std::forward<Args>(args)...));
   }
 
   FileEnv* file_env() { return m_lowest_envs.file_env; }
@@ -167,10 +167,11 @@ class FunctionEnv : public DeclareEnv {
   std::string print() override;
   std::unordered_map<std::string, Label>& get_label_map() override;
   void set_segment(int seg) { segment = seg; }
-  void emit(std::unique_ptr<IR> ir);
+  void emit(const goos::Object& form, std::unique_ptr<IR> ir);
   void finish();
   RegVal* make_ireg(const TypeSpec& ts, RegClass reg_class) override;
   const std::vector<std::unique_ptr<IR>>& code() const { return m_code; }
+  const std::vector<goos::Object>& code_source() const { return m_code_debug_source; }
   int max_vars() const { return m_iregs.size(); }
   const std::vector<IRegConstraint>& constraints() { return m_constraints; }
   void constrain(const IRegConstraint& c) { m_constraints.push_back(c); }
@@ -224,6 +225,8 @@ class FunctionEnv : public DeclareEnv {
   void resolve_gotos();
   std::string m_name;
   std::vector<std::unique_ptr<IR>> m_code;
+  std::vector<goos::Object> m_code_debug_source;
+
   std::vector<std::unique_ptr<RegVal>> m_iregs;
   std::vector<std::unique_ptr<Val>> m_vals;
   std::vector<std::unique_ptr<Env>> m_envs;

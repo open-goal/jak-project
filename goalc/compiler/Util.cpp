@@ -278,25 +278,29 @@ std::vector<goos::Object> Compiler::get_list_as_vector(const goos::Object& o,
   }
 }
 
-void Compiler::compile_constant_product(RegVal* dest, RegVal* src, int stride, Env* env) {
+void Compiler::compile_constant_product(const goos::Object& form,
+                                        RegVal* dest,
+                                        RegVal* src,
+                                        int stride,
+                                        Env* env) {
   // todo - support imul with an imm.
   assert(stride);
 
   bool is_power_of_two = (stride & (stride - 1)) == 0;
   if (stride == 1) {
-    env->emit_ir<IR_RegSet>(dest, src);
+    env->emit_ir<IR_RegSet>(form, dest, src);
   } else if (is_power_of_two) {
     for (int i = 0; i < 16; i++) {
       if (stride == (1 << i)) {
-        env->emit_ir<IR_RegSet>(dest, src);
-        env->emit_ir<IR_IntegerMath>(IntegerMathKind::SHL_64, dest, i);
+        env->emit_ir<IR_RegSet>(form, dest, src);
+        env->emit_ir<IR_IntegerMath>(form, IntegerMathKind::SHL_64, dest, i);
         return;
       }
     }
     assert(false);
   } else {
     // get the multiplier
-    env->emit_ir<IR_LoadConstant64>(dest, stride);
-    env->emit_ir<IR_IntegerMath>(IntegerMathKind::IMUL_32, dest, src);
+    env->emit_ir<IR_LoadConstant64>(form, dest, stride);
+    env->emit_ir<IR_IntegerMath>(form, IntegerMathKind::IMUL_32, dest, src);
   }
 }

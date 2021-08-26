@@ -10,7 +10,6 @@
 #include "goalc/emitter/Instruction.h"
 #include "goalc/debugger/disassemble.h"
 
-
 class FunctionEnv;
 
 /*!
@@ -32,7 +31,7 @@ struct FunctionDebugInfo {
   std::vector<u8> generated_code;
   std::optional<int> stack_usage;
 
-  std::string disassemble_debug_info(bool* had_failure);
+  std::string disassemble_debug_info(bool* had_failure, const goos::Reader* reader);
 };
 
 class DebugInfo {
@@ -66,8 +65,10 @@ class DebugInfo {
 
   void clear() { m_functions.clear(); }
 
-  std::string disassemble_all_functions(bool* had_failure);
-  std::string disassemble_function_by_name(const std::string& name, bool* had_failure);
+  std::string disassemble_all_functions(bool* had_failure, const goos::Reader* reader);
+  std::string disassemble_function_by_name(const std::string& name,
+                                           bool* had_failure,
+                                           const goos::Reader* reader);
 
  private:
   std::string m_obj_name;

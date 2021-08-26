@@ -91,12 +91,12 @@ Condition Compiler::compile_condition(const goos::Object& condition, Env* env, b
 
         // pick between a floating point and an integer comparison.
         if (is_float(first_arg->type())) {
-          gc.a = first_arg->to_fpr(env);
-          gc.b = second_arg->to_fpr(env);
+          gc.a = first_arg->to_fpr(condition, env);
+          gc.b = second_arg->to_fpr(condition, env);
           gc.is_float = true;
         } else {
-          gc.a = first_arg->to_gpr(env);
-          gc.b = second_arg->to_gpr(env);
+          gc.a = first_arg->to_gpr(condition, env);
+          gc.b = second_arg->to_gpr(condition, env);
         }
 
         return gc;
@@ -107,8 +107,8 @@ Condition Compiler::compile_condition(const goos::Object& condition, Env* env, b
   // not something we can process more.  Just evaluate as normal and check if we get false.
   // todo - it's possible to optimize a false comparison because the false offset is zero
   gc.kind = invert ? ConditionKind::EQUAL : ConditionKind::NOT_EQUAL;
-  gc.a = compile_error_guard(condition, env)->to_gpr(env);
-  gc.b = compile_get_sym_obj("#f", env)->to_gpr(env);
+  gc.a = compile_error_guard(condition, env)->to_gpr(condition, env);
+  gc.b = compile_get_sym_obj("#f", env)->to_gpr(condition, env);
 
   return gc;
 }
@@ -124,15 +124,15 @@ Val* Compiler::compile_condition_as_bool(const goos::Object& form,
                                          Env* env) {
   (void)rest;
   auto c = compile_condition(form, env, true);
-  auto result = compile_get_sym_obj("#f", env)->to_gpr(env);  // todo - can be optimized.
+  auto result = compile_get_sym_obj("#f", env)->to_gpr(form, env);  // todo - can be optimized.
   Label label(env->function_env(), -5);
   auto branch_ir = std::make_unique<IR_ConditionalBranch>(c, label);
   auto branch_ir_ref = branch_ir.get();
-  env->emit(std::move(branch_ir));
+  env->emit(form, std::move(branch_ir));
 
   // move true
-  env->emit(std::make_unique<IR_RegSet>(
-      result, compile_get_sym_obj("#t", env)->to_gpr(env)));  // todo, can be optimized
+  env->emit(form, std::make_unique<IR_RegSet>(result, compile_get_sym_obj("#t", env)->to_gpr(
+                                                          form, env)));  // todo, can be optimized
   branch_ir_ref->label.idx = branch_ir_ref->label.func->code().size();
   branch_ir_ref->mark_as_resolved();
 
@@ -156,7 +156,7 @@ Val* Compiler::compile_when_goto(const goos::Object& form, const goos::Object& _
   auto condition = compile_condition(condition_code, env, false);
   auto branch = std::make_unique<IR_ConditionalBranch>(condition, Label());
   env->function_env()->unresolved_cond_gotos.push_back({branch.get(), label});
-  env->emit(std::move(branch));
+  env->emit(form, std::move(branch));
   return get_none();
 }
 
@@ -196,7 +196,7 @@ Val* Compiler::compile_cond(const goos::Object& form, const goos::Object& rest, 
       for_each_in_list(clauses, [&](const goos::Object& clause) {
         case_result = compile_error_guard(clause, env);
         if (!dynamic_cast<None*>(case_result)) {
-          case_result = case_result->to_reg(env);
+          case_result = case_result->to_reg(clause, env);
         }
       });
 
@@ -205,7 +205,7 @@ Val* Compiler::compile_cond(const goos::Object& form, const goos::Object& rest, 
       // optimization - if we get junk, don't bother moving it, just leave junk in return.
       if (!is_none(case_result)) {
         // todo, what does GOAL do here? does it matter?
-        env->emit(std::make_unique<IR_RegSet>(result, case_result->to_gpr(env)));
+        env->emit(o, std::make_unique<IR_RegSet>(result, case_result->to_gpr(o, env)));
       }
 
     } else {
@@ -216,26 +216,26 @@ Val* Compiler::compile_cond(const goos::Object& form, const goos::Object& rest, 
       auto branch_ir = std::make_unique<IR_ConditionalBranch>(condition, Label());
       auto branch_ir_ref = branch_ir.get();
       branch_ir->mark_as_resolved();
-      env->emit(std::move(branch_ir));
+      env->emit(test, std::move(branch_ir));
 
       // CODE
       Val* case_result = get_none();
       for_each_in_list(clauses, [&](const goos::Object& clause) {
         case_result = compile_error_guard(clause, env);
         if (!dynamic_cast<None*>(case_result)) {
-          case_result = case_result->to_reg(env);
+          case_result = case_result->to_reg(clause, env);
         }
       });
 
       case_result_types.push_back(case_result->type());
       if (!is_none(case_result)) {
         // todo, what does GOAL do here?
-        env->emit(std::make_unique<IR_RegSet>(result, case_result->to_gpr(env)));
+        env->emit(o, std::make_unique<IR_RegSet>(result, case_result->to_gpr(o, env)));
       }
 
       // GO TO END
       auto ir_goto_end = std::make_unique<IR_GotoLabel>(end_label);
-      env->emit(std::move(ir_goto_end));
+      env->emit(o, std::move(ir_goto_end));
 
       // PATCH BRANCH FWD
       branch_ir_ref->label.idx = fenv->code().size();
@@ -245,7 +245,7 @@ Val* Compiler::compile_cond(const goos::Object& form, const goos::Object& rest, 
   if (!got_else) {
     // if no else, clause, return #f.  But don't retype. todo what does goal do here?
     auto get_false = std::make_unique<IR_LoadSymbolPointer>(result, "#f");
-    env->emit(std::move(get_false));
+    env->emit(form, std::move(get_false));
   }
 
   if (case_result_types.empty()) {
@@ -289,9 +289,9 @@ Val* Compiler::compile_and_or(const goos::Object& form, const goos::Object& rest
   int i = 0;
   for_each_in_list(rest, [&](const goos::Object& o) {
     // get the result of this case, put it in the main result and remember the type
-    auto temp = compile_error_guard(o, env)->to_gpr(env);
+    auto temp = compile_error_guard(o, env)->to_gpr(o, env);
     case_result_types.push_back(temp->type());
-    env->emit_ir<IR_RegSet>(result, temp);
+    env->emit_ir<IR_RegSet>(o, result, temp);
 
     // no need check if we are the last element.
     if (i != n_elts - 1) {
@@ -300,7 +300,7 @@ Val* Compiler::compile_and_or(const goos::Object& form, const goos::Object& rest
       gc.is_signed = false;
       gc.is_float = false;
       gc.a = result;
-      gc.b = compile_get_sym_obj("#f", env)->to_gpr(env);  // todo, optimize
+      gc.b = compile_get_sym_obj("#f", env)->to_gpr(o, env);  // todo, optimize
       if (is_and) {
         // for and we abort if we get a false:
         gc.kind = ConditionKind::EQUAL;
@@ -311,7 +311,7 @@ Val* Compiler::compile_and_or(const goos::Object& form, const goos::Object& rest
       // jump to end
       auto branch = std::make_unique<IR_ConditionalBranch>(gc, Label());
       branch_irs.push_back(branch.get());
-      env->emit(std::move(branch));
+      env->emit(o, std::move(branch));
     }
     i++;
   });

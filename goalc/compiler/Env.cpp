@@ -48,10 +48,10 @@ std::unordered_map<std::string, Label>& Env::get_label_map() {
   return parent()->get_label_map();
 }
 
-void Env::emit(std::unique_ptr<IR> ir) {
+void Env::emit(const goos::Object& form, std::unique_ptr<IR> ir) {
   auto e = function_env();
   assert(e);
-  e->emit(std::move(ir));
+  e->emit(form, std::move(ir));
 }
 
 ///////////////////
@@ -174,10 +174,12 @@ std::string FunctionEnv::print() {
   return "function-" + m_name;
 }
 
-void FunctionEnv::emit(std::unique_ptr<IR> ir) {
+void FunctionEnv::emit(const goos::Object& form, std::unique_ptr<IR> ir) {
   ir->add_constraints(&m_constraints, m_code.size());
   m_code.push_back(std::move(ir));
+  m_code_debug_source.push_back(form);
 }
+
 void FunctionEnv::finish() {
   resolve_gotos();
 }

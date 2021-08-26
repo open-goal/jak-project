@@ -482,7 +482,7 @@ Val* Compiler::compile_pointer_add(const goos::Object& form, const goos::Object&
   if (args.unnamed.size() < 2 || !args.named.empty()) {
     throw_compiler_error(form, "&+ must be used with at least two arguments.");
   }
-  auto first = compile_error_guard(args.unnamed.at(0), env)->to_gpr(env);
+  auto first = compile_error_guard(args.unnamed.at(0), env)->to_gpr(form, env);
 
   bool ok_type = false;
   for (auto& type : {"pointer", "structure", "inline-array"}) {
@@ -499,12 +499,12 @@ Val* Compiler::compile_pointer_add(const goos::Object& form, const goos::Object&
   }
 
   auto result = env->make_gpr(first->type());
-  env->emit(std::make_unique<IR_RegSet>(result, first));
+  env->emit_ir<IR_RegSet>(form, result, first);
 
   for (size_t i = 1; i < args.unnamed.size(); i++) {
-    auto second = compile_error_guard(args.unnamed.at(i), env)->to_gpr(env);
+    auto second = compile_error_guard(args.unnamed.at(i), env)->to_gpr(form, env);
     typecheck(form, m_ts.make_typespec("integer"), second->type(), "&+ second argument");
-    env->emit(std::make_unique<IR_IntegerMath>(IntegerMathKind::ADD_64, result, second));
+    env->emit_ir<IR_IntegerMath>(form, IntegerMathKind::ADD_64, result, second);
   }
 
   return result;

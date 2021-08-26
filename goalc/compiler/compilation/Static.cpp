@@ -442,14 +442,14 @@ Val* Compiler::compile_bitfield_definition(const goos::Object& form,
     assert(allow_dynamic_construction);
 
     if (use_128) {
-      auto integer_lo = compile_integer(constant_integer_part.lo, env)->to_gpr(env);
-      auto integer_hi = compile_integer(constant_integer_part.hi, env)->to_gpr(env);
+      auto integer_lo = compile_integer(constant_integer_part.lo, env)->to_gpr(form, env);
+      auto integer_hi = compile_integer(constant_integer_part.hi, env)->to_gpr(form, env);
       auto fe = env->function_env();
       auto rv = fe->make_ireg(type, RegClass::INT_128);
       auto xmm_temp = fe->make_ireg(TypeSpec("object"), RegClass::INT_128);
 
       for (auto& def : dynamic_defs) {
-        auto field_val = compile_error_guard(def.definition, env)->to_gpr(env);
+        auto field_val = compile_error_guard(def.definition, env)->to_gpr(def.definition, env);
         if (!m_ts.tc(def.expected_type, field_val->type())) {
           throw_compiler_error(form, "Typecheck failed for bitfield {}! Got a {} but expected a {}",
                                def.field_name, field_val->type().print(),
@@ -471,27 +471,25 @@ Val* Compiler::compile_bitfield_definition(const goos::Object& form,
         assert(right_shift_amnt >= 0);
 
         if (left_shift_amnt > 0) {
-          env->emit(std::make_unique<IR_IntegerMath>(IntegerMathKind::SHL_64, field_val,
-                                                     left_shift_amnt));
+          env->emit_ir<IR_IntegerMath>(form, IntegerMathKind::SHL_64, field_val, left_shift_amnt);
         }
 
         if (right_shift_amnt > 0) {
-          env->emit(std::make_unique<IR_IntegerMath>(IntegerMathKind::SHR_64, field_val,
-                                                     right_shift_amnt));
+          env->emit_ir<IR_IntegerMath>(form, IntegerMathKind::SHR_64, field_val, right_shift_amnt);
         }
 
-        env->emit(std::make_unique<IR_IntegerMath>(IntegerMathKind::OR_64,
-                                                   start_lo ? integer_lo : integer_hi, field_val));
+        env->emit_ir<IR_IntegerMath>(form, IntegerMathKind::OR_64,
+                                     start_lo ? integer_lo : integer_hi, field_val);
       }
 
-      fe->emit_ir<IR_RegSet>(xmm_temp, integer_lo);
-      fe->emit_ir<IR_RegSet>(rv, integer_hi);
-      fe->emit_ir<IR_Int128Math3Asm>(true, rv, rv, xmm_temp, IR_Int128Math3Asm::Kind::PCPYLD);
+      fe->emit_ir<IR_RegSet>(form, xmm_temp, integer_lo);
+      fe->emit_ir<IR_RegSet>(form, rv, integer_hi);
+      fe->emit_ir<IR_Int128Math3Asm>(form, true, rv, rv, xmm_temp, IR_Int128Math3Asm::Kind::PCPYLD);
       return rv;
     } else {
-      RegVal* integer_reg = integer->to_gpr(env);
+      RegVal* integer_reg = integer->to_gpr(form, env);
       for (auto& def : dynamic_defs) {
-        auto field_val = compile_error_guard(def.definition, env)->to_gpr(env);
+        auto field_val = compile_error_guard(def.definition, env)->to_gpr(def.definition, env);
         if (!m_ts.tc(def.expected_type, field_val->type())) {
           throw_compiler_error(form, "Typecheck failed for bitfield {}! Got a {} but expected a {}",
                                def.field_name, field_val->type().print(),
@@ -502,16 +500,14 @@ Val* Compiler::compile_bitfield_definition(const goos::Object& form,
         assert(right_shift_amnt >= 0);
 
         if (left_shift_amnt > 0) {
-          env->emit(std::make_unique<IR_IntegerMath>(IntegerMathKind::SHL_64, field_val,
-                                                     left_shift_amnt));
+          env->emit_ir<IR_IntegerMath>(form, IntegerMathKind::SHL_64, field_val, left_shift_amnt);
         }
 
         if (right_shift_amnt > 0) {
-          env->emit(std::make_unique<IR_IntegerMath>(IntegerMathKind::SHR_64, field_val,
-                                                     right_shift_amnt));
+          env->emit_ir<IR_IntegerMath>(form, IntegerMathKind::SHR_64, field_val, right_shift_amnt);
         }
 
-        env->emit(std::make_unique<IR_IntegerMath>(IntegerMathKind::OR_64, integer_reg, field_val));
+        env->emit_ir<IR_IntegerMath>(form, IntegerMathKind::OR_64, integer_reg, field_val);
       }
 
       integer_reg->set_type(type);
