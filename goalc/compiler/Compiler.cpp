@@ -12,7 +12,7 @@
 using namespace goos;
 
 Compiler::Compiler(std::unique_ptr<ReplWrapper> repl)
-    : m_debugger(&m_listener), m_repl(std::move(repl)) {
+    : m_debugger(&m_listener, &m_goos.reader), m_repl(std::move(repl)) {
   m_listener.add_debugger(&m_debugger);
   m_ts.add_builtin_types();
   m_global_env = std::make_unique<GlobalEnv>();
@@ -123,9 +123,6 @@ FileEnv* Compiler::compile_object_file(const std::string& name,
                                        bool allow_emit) {
   auto file_env = m_global_env->add_file(name);
   Env* compilation_env = file_env;
-  if (!allow_emit) {
-    compilation_env = file_env->add_no_emit_env();
-  }
 
   file_env->add_top_level_function(
       compile_top_level_function("top-level", std::move(code), compilation_env));
@@ -140,19 +137,19 @@ FileEnv* Compiler::compile_object_file(const std::string& name,
 std::unique_ptr<FunctionEnv> Compiler::compile_top_level_function(const std::string& name,
                                                                   const goos::Object& code,
                                                                   Env* env) {
-  auto fe = std::make_unique<FunctionEnv>(env, name);
+  auto fe = std::make_unique<FunctionEnv>(env, name, &m_goos.reader);
   fe->set_segment(TOP_LEVEL_SEGMENT);
 
   auto result = compile_error_guard(code, fe.get());
 
   // only move to return register if we actually got a result
   if (!dynamic_cast<const None*>(result)) {
-    fe->emit(std::make_unique<IR_Return>(fe->make_gpr(result->type()), result->to_gpr(fe.get()),
-                                         emitter::gRegInfo.get_gpr_ret_reg()));
+    fe->emit_ir<IR_Return>(code, fe->make_gpr(result->type()), result->to_gpr(code, fe.get()),
+                           emitter::gRegInfo.get_gpr_ret_reg());
   }
 
   if (!fe->code().empty()) {
-    fe->emit_ir<IR_Null>();
+    fe->emit_ir<IR_Null>(code);
   }
 
   fe->finish();
@@ -190,6 +187,9 @@ Val* Compiler::compile_error_guard(const goos::Object& code, Env* env) {
   }
 
   catch (std::runtime_error& e) {
+    fmt::print(fg(fmt::color::crimson) | fmt::emphasis::bold, "-- Compilation Error! --\n");
+    fmt::print(fmt::emphasis::bold, "{}\n", e.what());
+
     auto obj_print = code.print();
     if (obj_print.length() > 80) {
       obj_print = obj_print.substr(0, 80);
@@ -280,7 +280,8 @@ std::vector<u8> Compiler::codegen_object_file(FileEnv* env) {
     auto result = gen.run(&m_ts);
     for (auto& f : env->functions()) {
       if (f->settings.print_asm) {
-        fmt::print("{}\n", debug_info->disassemble_function_by_name(f->name(), &ok));
+        fmt::print("{}\n",
+                   debug_info->disassemble_function_by_name(f->name(), &ok, &m_goos.reader));
       }
     }
     auto stats = gen.get_obj_stats();
@@ -300,7 +301,7 @@ bool Compiler::codegen_and_disassemble_object_file(FileEnv* env,
   CodeGenerator gen(env, debug_info);
   *data_out = gen.run(&m_ts);
   bool ok = true;
-  *asm_out = debug_info->disassemble_all_functions(&ok);
+  *asm_out = debug_info->disassemble_all_functions(&ok, &m_goos.reader);
   return ok;
 }
 

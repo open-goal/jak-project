@@ -36,7 +36,7 @@ Val* Compiler::compile_define_state_hook(const goos::Object& form,
   }
 
   // get state object
-  auto state_object = compile_error_guard(args.unnamed.at(2), env)->to_gpr(env);
+  auto state_object = compile_error_guard(args.unnamed.at(2), env)->to_gpr(form, env);
   if (state_object->type() != TypeSpec("state")) {
     throw_compiler_error(form, "define-state-hook got an invalid state object: had type {}",
                          state_object->type().print());
@@ -48,16 +48,16 @@ Val* Compiler::compile_define_state_hook(const goos::Object& form,
   for (auto name : {"exit", "trans", "post", "event"}) {
     auto field = get_field_of_structure(state_type_info, state_object, name, env);
     auto value = compile_error_guard(args.named.at(name), env);
-    do_set(form, field, value->to_gpr(env), value, env);
+    do_set(form, field, value->to_gpr(form, env), value, env);
   }
 
   auto enter_field = get_field_of_structure(state_type_info, state_object, "enter", env);
   auto enter_value = compile_error_guard(args.named.at("enter"), env);
-  do_set(form, enter_field, enter_value->to_gpr(env), enter_value, env);
+  do_set(form, enter_field, enter_value->to_gpr(form, env), enter_value, env);
 
   auto code_field = get_field_of_structure(state_type_info, state_object, "code", env);
   auto code_value = compile_error_guard(args.named.at("code"), env);
-  do_set(form, code_field, code_value->to_gpr(env), code_value, env);
+  do_set(form, code_field, code_value->to_gpr(form, env), code_value, env);
 
   // state name
   TypeSpec state_type("state");
@@ -74,7 +74,7 @@ Val* Compiler::compile_define_state_hook(const goos::Object& form,
   }
   m_symbol_types[state_name] = state_type;
   auto sym_val = env->function_env()->alloc_val<SymbolVal>(state_name, state_type);
-  env->emit(std::make_unique<IR_SetSymbolValue>(sym_val, state_object));
+  env->emit_ir<IR_SetSymbolValue>(form, sym_val, state_object);
 
   return get_none();
 }
@@ -114,7 +114,7 @@ Val* Compiler::compile_define_virtual_state_hook(const goos::Object& form,
   }
 
   // get state object
-  auto state_object = compile_error_guard(args.unnamed.at(2), env)->to_gpr(env);
+  auto state_object = compile_error_guard(args.unnamed.at(2), env)->to_gpr(form, env);
   if (state_object->type() != TypeSpec("state")) {
     throw_compiler_error(form, "define-state-hook got an invalid state object: had type {}",
                          state_object->type().print());
@@ -126,16 +126,16 @@ Val* Compiler::compile_define_virtual_state_hook(const goos::Object& form,
   for (auto name : {"exit", "trans", "post", "event"}) {
     auto field = get_field_of_structure(state_type_info, state_object, name, env);
     auto value = compile_error_guard(args.named.at(name), env);
-    do_set(form, field, value->to_gpr(env), value, env);
+    do_set(form, field, value->to_gpr(form, env), value, env);
   }
 
   auto enter_field = get_field_of_structure(state_type_info, state_object, "enter", env);
   auto enter_value = compile_error_guard(args.named.at("enter"), env);
-  do_set(form, enter_field, enter_value->to_gpr(env), enter_value, env);
+  do_set(form, enter_field, enter_value->to_gpr(form, env), enter_value, env);
 
   auto code_field = get_field_of_structure(state_type_info, state_object, "code", env);
   auto code_value = compile_error_guard(args.named.at("code"), env);
-  do_set(form, code_field, code_value->to_gpr(env), code_value, env);
+  do_set(form, code_field, code_value->to_gpr(form, env), code_value, env);
 
   // state name
   TypeSpec state_type("state");
@@ -164,18 +164,19 @@ Val* Compiler::compile_define_virtual_state_hook(const goos::Object& form,
   auto parent_of_parent_type = m_ts.lookup_type(state_parent)->get_parent();
   if (m_ts.try_lookup_method(parent_of_parent_type, state_name, &parent_method_info)) {
     // need to call inherit state TODO
-    auto inherit_state_func = compile_get_symbol_value(form, "inherit-state", env)->to_gpr(env);
+    auto inherit_state_func =
+        compile_get_symbol_value(form, "inherit-state", env)->to_gpr(form, env);
     auto parents_state =
         compile_get_method_of_type(form, TypeSpec(parent_of_parent_type), state_name, env)
-            ->to_gpr(env);
+            ->to_gpr(form, env);
     compile_real_function_call(form, inherit_state_func, {state_object, parents_state}, env);
   }
 
   // call method set.
   // (method-set! sunken-elevator 22 (the-as function gp-0))
-  auto method_set_func = compile_get_symbol_value(form, "method-set!", env)->to_gpr(env);
-  auto type_obj = compile_get_symbol_value(form, state_parent, env)->to_gpr(env);
-  auto method_id = compile_integer(child_method_info.id, env)->to_gpr(env);
+  auto method_set_func = compile_get_symbol_value(form, "method-set!", env)->to_gpr(form, env);
+  auto type_obj = compile_get_symbol_value(form, state_parent, env)->to_gpr(form, env);
+  auto method_id = compile_integer(child_method_info.id, env)->to_gpr(form, env);
   compile_real_function_call(form, method_set_func, {type_obj, method_id, state_object}, env);
 
   return get_none();
@@ -199,14 +200,14 @@ Val* Compiler::compile_go_hook(const goos::Object& form, const goos::Object& res
   }
 
   // get the process
-  auto proc = compile_error_guard(args.unnamed.at(0), env)->to_gpr(env);
+  auto proc = compile_error_guard(args.unnamed.at(0), env)->to_gpr(form, env);
   if (!m_ts.tc(TypeSpec("process"), proc->type())) {
     throw_compiler_error(form, "First argument to go-hook should be a process, got {} instead",
                          proc->type().print());
   }
 
   // get the state
-  auto state = compile_error_guard(args.unnamed.at(1), env)->to_gpr(env);
+  auto state = compile_error_guard(args.unnamed.at(1), env)->to_gpr(form, env);
   if (!m_ts.tc(TypeSpec("state"), state->type())) {
     throw_compiler_error(form, "Second argument to go-hook should be a state, got {} instead",
                          state->type().print());
@@ -235,11 +236,11 @@ Val* Compiler::compile_go_hook(const goos::Object& form, const goos::Object& res
 
   std::vector<RegVal*> function_arguments;
   for (size_t i = 2; i < args.unnamed.size(); i++) {
-    function_arguments.push_back(compile_error_guard(args.unnamed.at(i), env)->to_gpr(env));
+    function_arguments.push_back(compile_error_guard(args.unnamed.at(i), env)->to_gpr(form, env));
   }
 
   // typechecking here will make sure the go is possible.
-  compile_real_function_call(form, enter_state_func->to_gpr(env), function_arguments, env);
+  compile_real_function_call(form, enter_state_func->to_gpr(form, env), function_arguments, env);
 
   return get_none();
 }

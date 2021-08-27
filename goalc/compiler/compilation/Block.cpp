@@ -25,7 +25,7 @@ Val* Compiler::compile_begin(const goos::Object& form, const goos::Object& rest,
   for_each_in_list(rest, [&](const Object& o) {
     result = compile_error_guard(o, env);
     if (!dynamic_cast<None*>(result)) {
-      result = result->to_reg(env);
+      result = result->to_reg(o, env);
     }
   });
   return result;
@@ -65,7 +65,7 @@ Val* Compiler::compile_block(const goos::Object& form, const goos::Object& _rest
   for_each_in_list(*rest, [&](const Object& o) {
     result = compile_error_guard(o, block_env);
     if (!dynamic_cast<None*>(result)) {
-      result = result->to_reg(env);
+      result = result->to_reg(o, env);
     }
   });
 
@@ -87,12 +87,13 @@ Val* Compiler::compile_block(const goos::Object& form, const goos::Object& _rest
   if (!dynamic_cast<None*>(result)) {
     // an IR to move the result of the block into the block's return register (if no return-from's
     // are taken)
-    auto ir_move_rv = std::make_unique<IR_RegSet>(block_env->return_value, result->to_gpr(fe));
+    auto ir_move_rv =
+        std::make_unique<IR_RegSet>(block_env->return_value, result->to_gpr(form, fe));
 
     // note - one drawback of doing this single pass is that a block always evaluates to a gpr.
     // so we may have an unneeded xmm -> gpr move that could have been an xmm -> xmm that could have
     // been eliminated.
-    env->emit(std::move(ir_move_rv));
+    env->emit(form, std::move(ir_move_rv));
   }
 
   // now we know the end of the block, so we set the label index to be on whatever comes after the
@@ -126,16 +127,16 @@ Val* Compiler::compile_return_from(const goos::Object& form, const goos::Object&
   }
 
   // move result into return register
-  auto ir_move_rv = std::make_unique<IR_RegSet>(block->return_value, result->to_gpr(fe));
+  auto ir_move_rv = std::make_unique<IR_RegSet>(block->return_value, result->to_gpr(form, fe));
 
   // inform block of our possible return type
   block->return_types.push_back(result->type());
 
-  env->emit(std::move(ir_move_rv));
+  env->emit(form, std::move(ir_move_rv));
 
   // jump to end of block (by label object)
   auto ir_jump = std::make_unique<IR_GotoLabel>(&block->end_label);
-  env->emit(std::move(ir_jump));
+  env->emit(form, std::move(ir_jump));
 
   // In the real GOAL, there is likely a bug here where a non-none value is returned and to_gpr'd
   // todo, determine if we should replicate this bug and if it can have side effects.
@@ -183,13 +184,13 @@ Val* Compiler::compile_goto(const goos::Object& form, const goos::Object& rest, 
   // add this goto to the list of gotos to resolve after the function is done.
   // it's safe to have this reference, as the FunctionEnv also owns the goto.
   env->function_env()->unresolved_gotos.push_back({ir_goto.get(), label_name});
-  env->emit(std::move(ir_goto));
+  env->emit(form, std::move(ir_goto));
   return get_none();
 }
 
 Val* Compiler::compile_nop(const goos::Object& form, const goos::Object& rest, Env* env) {
   auto args = get_va(form, rest);
   va_check(form, args, {}, {});
-  env->emit_ir<IR_Nop>();
+  env->emit_ir<IR_Nop>(form);
   return get_none();
 }

@@ -113,7 +113,7 @@ Val* Compiler::compile_gscond(const goos::Object& form, const goos::Object& rest
         for_each_in_list(current_case.as_pair()->cdr, [&](const Object& o) {
           result = compile_error_guard(o, env);
           if (!dynamic_cast<None*>(result)) {
-            result = result->to_reg(env);
+            result = result->to_reg(o, env);
           }
         });
         return result;
@@ -230,7 +230,7 @@ Val* Compiler::compile_mlet(const goos::Object& form, const goos::Object& rest, 
   for_each_in_list(body, [&](const goos::Object& o) {
     result = compile_error_guard(o, menv);
     if (!dynamic_cast<None*>(result)) {
-      result = result->to_reg(menv);
+      result = result->to_reg(o, menv);
     }
   });
   return result;

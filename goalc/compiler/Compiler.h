@@ -68,8 +68,8 @@ class Compiler {
   bool m_want_exit = false;
   bool m_want_reload = false;
   listener::Listener m_listener;
-  Debugger m_debugger;
   goos::Interpreter m_goos;
+  Debugger m_debugger;
   std::unordered_map<std::string, TypeSpec> m_symbol_types;
   std::unordered_map<goos::HeapObject*, goos::Object> m_global_constants;
   std::unordered_map<goos::HeapObject*, LambdaVal*> m_inlineable_functions;
@@ -98,7 +98,8 @@ class Compiler {
   void set_bitfield(const goos::Object& form, BitFieldVal* dst, RegVal* src, Env* env);
   void set_bitfield_128(const goos::Object& form, BitFieldVal* dst, RegVal* src, Env* env);
 
-  void set_bits_in_bitfield(int size,
+  void set_bits_in_bitfield(const goos::Object& form,
+                            int size,
                             int offset,
                             RegVal* dst,
                             RegVal* src,
@@ -346,7 +347,11 @@ class Compiler {
                                        StaticStructure* structure,
                                        int offset,
                                        Env* env);
-  void compile_constant_product(RegVal* dest, RegVal* src, int stride, Env* env);
+  void compile_constant_product(const goos::Object& form,
+                                RegVal* dest,
+                                RegVal* src,
+                                int stride,
+                                Env* env);
   void check_vector_float_regs(const goos::Object& form,
                                Env* env,
                                std::vector<std::pair<std::string, RegVal*>> args);

@@ -32,7 +32,7 @@ class Env {
  public:
   explicit Env(EnvKind kind, Env* parent);
   virtual std::string print() = 0;
-  virtual void emit(std::unique_ptr<IR> ir);
+  void emit(const goos::Object& form, std::unique_ptr<IR> ir);
   virtual RegVal* make_ireg(const TypeSpec& ts, RegClass reg_class);
   virtual void constrain_reg(IRegConstraint constraint);  // todo, remove!
   virtual RegVal* lexical_lookup(goos::Object sym);
@@ -45,8 +45,8 @@ class Env {
   Env* parent() { return m_parent; }
 
   template <typename IR_Type, typename... Args>
-  void emit_ir(Args&&... args) {
-    emit(std::make_unique<IR_Type>(std::forward<Args>(args)...));
+  void emit_ir(const goos::Object& form, Args&&... args) {
+    emit(form, std::make_unique<IR_Type>(std::forward<Args>(args)...));
   }
 
   FileEnv* file_env() { return m_lowest_envs.file_env; }
@@ -74,7 +74,6 @@ class GlobalEnv : public Env {
  public:
   GlobalEnv();
   std::string print() override;
-  void emit(std::unique_ptr<IR> ir) override;
   RegVal* make_ireg(const TypeSpec& ts, RegClass reg_class) override;
   void constrain_reg(IRegConstraint constraint) override;
   RegVal* lexical_lookup(goos::Object sym) override;
@@ -88,18 +87,6 @@ class GlobalEnv : public Env {
 };
 
 /*!
- * An Env that doesn't allow emitting to go past it. Used to make sure source code that shouldn't
- * generate machine code actually does this.
- */
-class NoEmitEnv : public Env {
- public:
-  explicit NoEmitEnv(Env* parent) : Env(EnvKind::OTHER_ENV, parent) {}
-  std::string print() override;
-  void emit(std::unique_ptr<IR> ir) override;
-  ~NoEmitEnv() = default;
-};
-
-/*!
  * An Env for an entire file (or input to the REPL)
  */
 class FileEnv : public Env {
@@ -109,9 +96,8 @@ class FileEnv : public Env {
   void add_function(std::unique_ptr<FunctionEnv> fe);
   void add_top_level_function(std::unique_ptr<FunctionEnv> fe);
   void add_static(std::unique_ptr<StaticObject> s);
-  NoEmitEnv* add_no_emit_env();
   void debug_print_tl();
-  const std::vector<std::unique_ptr<FunctionEnv>>& functions() { return m_functions; }
+  const std::vector<std::shared_ptr<FunctionEnv>>& functions() { return m_functions; }
   const std::vector<std::unique_ptr<StaticObject>>& statics() { return m_statics; }
   std::string get_anon_function_name() {
     return "anon-function-" + std::to_string(m_anon_func_counter++);
@@ -134,9 +120,8 @@ class FileEnv : public Env {
 
  protected:
   std::string m_name;
-  std::vector<std::unique_ptr<FunctionEnv>> m_functions;
+  std::vector<std::shared_ptr<FunctionEnv>> m_functions;
   std::vector<std::unique_ptr<StaticObject>> m_statics;
-  std::unique_ptr<NoEmitEnv> m_no_emit_env = nullptr;
   int m_anon_func_counter = 0;
   std::vector<std::unique_ptr<Val>> m_vals;
 
@@ -178,14 +163,15 @@ struct UnresolvedConditionalGoto {
 
 class FunctionEnv : public DeclareEnv {
  public:
-  FunctionEnv(Env* parent, std::string name);
+  FunctionEnv(Env* parent, std::string name, const goos::Reader* reader);
   std::string print() override;
   std::unordered_map<std::string, Label>& get_label_map() override;
   void set_segment(int seg) { segment = seg; }
-  void emit(std::unique_ptr<IR> ir) override;
+  void emit(const goos::Object& form, std::unique_ptr<IR> ir, Env* lowest_env);
   void finish();
   RegVal* make_ireg(const TypeSpec& ts, RegClass reg_class) override;
   const std::vector<std::unique_ptr<IR>>& code() const { return m_code; }
+  const std::vector<goos::Object>& code_source() const { return m_code_debug_source; }
   int max_vars() const { return m_iregs.size(); }
   const std::vector<IRegConstraint>& constraints() { return m_constraints; }
   void constrain(const IRegConstraint& c) { m_constraints.push_back(c); }
@@ -239,17 +225,20 @@ class FunctionEnv : public DeclareEnv {
   void resolve_gotos();
   std::string m_name;
   std::vector<std::unique_ptr<IR>> m_code;
+  std::vector<goos::Object> m_code_debug_source;
+
   std::vector<std::unique_ptr<RegVal>> m_iregs;
   std::vector<std::unique_ptr<Val>> m_vals;
   std::vector<std::unique_ptr<Env>> m_envs;
   std::vector<IRegConstraint> m_constraints;
-  // todo, unresolved gotos
+
   AllocationResult m_regalloc_result;
 
   bool m_aligned_stack_required = false;
   int m_stack_var_slots_used = 0;
   std::unordered_map<std::string, Label> m_labels;
   std::vector<std::unique_ptr<Label>> m_unnamed_labels;
+  const goos::Reader* m_reader = nullptr;
 };
 
 class BlockEnv : public Env {
