@@ -163,11 +163,11 @@ struct UnresolvedConditionalGoto {
 
 class FunctionEnv : public DeclareEnv {
  public:
-  FunctionEnv(Env* parent, std::string name);
+  FunctionEnv(Env* parent, std::string name, const goos::Reader* reader);
   std::string print() override;
   std::unordered_map<std::string, Label>& get_label_map() override;
   void set_segment(int seg) { segment = seg; }
-  void emit(const goos::Object& form, std::unique_ptr<IR> ir);
+  void emit(const goos::Object& form, std::unique_ptr<IR> ir, Env* lowest_env);
   void finish();
   RegVal* make_ireg(const TypeSpec& ts, RegClass reg_class) override;
   const std::vector<std::unique_ptr<IR>>& code() const { return m_code; }
@@ -238,6 +238,7 @@ class FunctionEnv : public DeclareEnv {
   int m_stack_var_slots_used = 0;
   std::unordered_map<std::string, Label> m_labels;
   std::vector<std::unique_ptr<Label>> m_unnamed_labels;
+  const goos::Reader* m_reader = nullptr;
 };
 
 class BlockEnv : public Env {

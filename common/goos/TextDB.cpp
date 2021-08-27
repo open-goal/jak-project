@@ -188,6 +188,10 @@ std::optional<TextDb::ShortInfo> TextDb::try_get_short_info(const Object& o) con
   return {};
 }
 
+bool TextDb::has_info(const Object& o) const {
+  return o.is_pair() && (m_map.find(o.heap_obj) != m_map.end());
+}
+
 /*!
  * Make child have the same location in the source as parent.  For example, if parent generates
  * code that we want to be associated with the parent's location in source.

@@ -137,7 +137,7 @@ FileEnv* Compiler::compile_object_file(const std::string& name,
 std::unique_ptr<FunctionEnv> Compiler::compile_top_level_function(const std::string& name,
                                                                   const goos::Object& code,
                                                                   Env* env) {
-  auto fe = std::make_unique<FunctionEnv>(env, name);
+  auto fe = std::make_unique<FunctionEnv>(env, name, &m_goos.reader);
   fe->set_segment(TOP_LEVEL_SEGMENT);
 
   auto result = compile_error_guard(code, fe.get());
@@ -187,6 +187,9 @@ Val* Compiler::compile_error_guard(const goos::Object& code, Env* env) {
   }
 
   catch (std::runtime_error& e) {
+    fmt::print(fg(fmt::color::crimson) | fmt::emphasis::bold, "-- Compilation Error! --\n");
+    fmt::print(fmt::emphasis::bold, "{}\n", e.what());
+
     auto obj_print = code.print();
     if (obj_print.length() > 80) {
       obj_print = obj_print.substr(0, 80);

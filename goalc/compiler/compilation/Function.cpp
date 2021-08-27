@@ -173,7 +173,7 @@ Val* Compiler::compile_lambda(const goos::Object& form, const goos::Object& rest
     if (function_name.empty()) {
       function_name = obj_env->get_anon_function_name();
     }
-    auto new_func_env = std::make_unique<FunctionEnv>(env, function_name);
+    auto new_func_env = std::make_unique<FunctionEnv>(env, function_name, &m_goos.reader);
     new_func_env->set_segment(segment);
 
     // set up arguments
