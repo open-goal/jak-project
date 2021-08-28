@@ -118,7 +118,8 @@ TP_Type SimpleAtom::get_type(const TypeState& input,
       }
       if (hint.is_value) {
         // todo, do we really need this? should be use something else instead?
-        return TP_Type::make_from_ts(TypeSpec("pointer", {hint.result_type}));
+        // return TP_Type::make_from_ts(TypeSpec("pointer", {hint.result_type}));
+        return TP_Type::make_label_addr(m_int);
       } else {
         return TP_Type::make_from_ts(hint.result_type);
       }

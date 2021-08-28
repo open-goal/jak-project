@@ -25,16 +25,16 @@ bool try_convert_lambda(const Function& parent_function,
     auto lab = parent_function.ir2.env.file->labels.at(atom->label());
     auto& env = parent_function.ir2.env;
     const auto& info = parent_function.ir2.env.file->label_db->lookup(lab.name);
-    if (info.from_user) {
-      lg::error(
-          "Label {} had an entry in config, but it is a function. This will be "
-          "ignored and is no longer required.",
-          lab.name);
-    }
 
     auto& file = env.file;
     auto other_func = file->try_get_function_at_label(atom->label());
     if (other_func && kind_for_lambda(other_func->guessed_name.kind)) {
+      if (info.from_user) {
+        lg::error(
+            "Label {} had an entry in config, but it is a function. This will be "
+            "ignored and is no longer required.",
+            lab.name);
+      }
       if (!other_func->ir2.env.has_local_vars()) {
         // don't bother if we don't even have vars.
         return false;

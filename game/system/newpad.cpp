@@ -135,6 +135,10 @@ void DefaultMapping(MappingInfo& mapping) {
   MapButton(mapping, Button::Right, 0, GLFW_KEY_RIGHT);
   MapButton(mapping, Button::Down, 0, GLFW_KEY_DOWN);
   MapButton(mapping, Button::Left, 0, GLFW_KEY_LEFT);
+
+  // l3/r3 for menu
+  MapButton(mapping, Button::L3, 0, GLFW_KEY_COMMA);
+  MapButton(mapping, Button::R3, 0, GLFW_KEY_PERIOD);
 }
 
 void EnterInputMode() {

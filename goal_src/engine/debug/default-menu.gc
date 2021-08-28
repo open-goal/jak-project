@@ -5,3 +5,122 @@
 ;; name in dgo: default-menu
 ;; dgos: GAME, ENGINE
 
+(define *popup-menu-context* (new 'debug 'debug-menu-context))
+
+(defun popup-menu-context-make-default-menus ((arg0 debug-menu-context))
+  (debug-menu-make-from-template
+    arg0
+    '(
+      main-menu "Popup"
+      (menu
+        "Test Menu"
+        (menu
+          "Another Menu"
+          )
+        (menu
+          "Another Menu 2"
+          (flag
+            "Profiler"
+            #f
+            (lambda ((arg0 int) (event int))
+              (when (= event 4)
+                (set! *display-profile* (not *display-profile*))
+                )
+              *display-profile*
+              )
+            )
+          )
+        )
+      (flag
+        "Cam 1"
+        pad-1
+        true-func
+        )
+      (flag "Target" #f (lambda ((arg0 int) (arg1 int))
+                          (when (= arg1 4)
+                            (format #t "target is ~A~%" *target*)
+                            (if *target*
+                                (stop 'debug)
+                                (start 'debug (get-or-create-continue! *game-info*))
+                                )
+                            )
+                          *target*
+                          )
+            )
+      (flag "Game" #f (lambda ((arg0 int) (arg1 int))
+                        (when (= arg1 4)
+                          (let ((v1-3 (-> *game-info* mode)))
+                            (set! (-> *game-info* mode) (cond
+                                                          ((= v1-3 'play)
+                                                           'debug
+                                                           )
+                                                          ((= v1-3 'debug)
+                                                           'play
+                                                           )
+                                                          (else
+                                                            (-> *game-info* mode)
+                                                            )
+                                                          )
+                                  )
+                            )
+                          )
+                        (= (-> *game-info* mode) 'play)
+                        )
+            )
+      (function "Clean" #f (lambda ((arg0 int) (arg1 int))
+                             (set! *display-entity-errors* #f)
+                             (set! *display-profile* #f)
+                             (set! *display-actor-marks* #f)
+                             #f
+                             )
+                )
+      (flag
+        "Stats"
+        *stats-target*
+        false-func
+        )
+      (flag
+        "asdfasfd"
+        *stats-target*
+        false-func
+        )
+      (function "Reset" #f (lambda ()
+                             (reset-actors 'debug)
+                             (none)
+                             )
+                )
+      )
+    )
+  arg0
+  )
+
+(popup-menu-context-make-default-menus *popup-menu-context*)
+
+(defun menu-respond-to-pause ()
+  (case *master-mode* 
+   (('menu)
+     (if (logtest? (-> *cpad-list* cpads 0 button0-abs 0) (pad-buttons l3))
+      (debug-menu-context-send-msg
+       *popup-menu-context*
+       (debug-menu-msg activate)
+       (debug-menu-dest activation)
+       )
+      ;; (debug-menu-context-send-msg *debug-menu-context* 1 0) TODO
+      )
+     )
+   (else
+    ;; (debug-menu-context-send-msg *debug-menu-context* 2 0) TODO
+    (debug-menu-context-send-msg
+     *popup-menu-context*
+     (debug-menu-msg deactivate)
+     (debug-menu-dest activation)
+     )
+    )
+   )
+  #f
+  )
+
+(defun *menu-hook* ()
+  ;;(debug-menus-handler *debug-menu-context*)
+  (debug-menus-handler *popup-menu-context*)
+  )
