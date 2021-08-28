@@ -10,6 +10,7 @@
 #include "common/type_system/TypeSystem.h"
 #include "decompiler/Disasm/DecompilerLabel.h"
 #include "common/type_system/state.h"
+#include "decompiler/IR2/LabelDB.h"
 
 namespace decompiler {
 class Form;
@@ -1348,7 +1349,7 @@ class DecompiledDataElement : public FormElement {
  public:
   // DecompiledDataElement(goos::Object description);
   DecompiledDataElement(const DecompilerLabel& label,
-                        const std::optional<LabelType>& type_hint = {});
+                        const std::optional<LabelInfo>& label_info = {});
   goos::Object to_form_internal(const Env& env) const override;
   void apply(const std::function<void(FormElement*)>& f) override;
   void apply_form(const std::function<void(Form*)>& f) override;
@@ -1361,7 +1362,7 @@ class DecompiledDataElement : public FormElement {
   bool m_decompiled = false;
   goos::Object m_description;
   DecompilerLabel m_label;
-  std::optional<LabelType> m_type_hint;
+  std::optional<LabelInfo> m_label_info;
 };
 
 class LetElement : public FormElement {

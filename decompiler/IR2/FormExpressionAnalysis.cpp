@@ -554,6 +554,7 @@ void SimpleExpressionElement::update_from_stack_identity(const Env& env,
       result->push_back(pool.alloc_element<StringConstantElement>(str));
     } else {
       // look for a label hint:
+      /*
       auto kv = env.label_types().find(lab.name);
       if (kv != env.label_types().end()) {
         auto type_name = kv->second.type_name;
@@ -565,8 +566,23 @@ void SimpleExpressionElement::update_from_stack_identity(const Env& env,
         } else {
           result->push_back(pool.alloc_element<DecompiledDataElement>(lab, kv->second));
         }
-      } else {
+              } else {
         result->push_back(this);
+      }
+        */
+      const auto& hint = env.file->label_db->lookup(lab.name);
+      if (!hint.known) {
+        throw std::runtime_error(
+            fmt::format("Label {} was unknown in FormExpressionAnalysis.", hint.name));
+      }
+      if (hint.is_value) {
+        throw std::runtime_error(
+            fmt::format("Label {} was used as a reference, but wasn't marked as one", hint.name));
+      }
+      if (hint.result_type.base_type() == "function") {
+        result->push_back(this);
+      } else {
+        result->push_back(pool.alloc_element<DecompiledDataElement>(lab, hint));
       }
     }
 

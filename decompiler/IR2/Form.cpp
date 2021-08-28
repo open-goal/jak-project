@@ -2417,8 +2417,8 @@ void StoreArrayAccess::get_modified_regs(RegSet& regs) const {
 /////////////////////////////
 
 DecompiledDataElement::DecompiledDataElement(const DecompilerLabel& label,
-                                             const std::optional<LabelType>& type_hint)
-    : m_label(label), m_type_hint(type_hint) {}
+                                             const std::optional<LabelInfo>& label_info)
+    : m_label(label), m_label_info(label_info) {}
 
 goos::Object DecompiledDataElement::to_form_internal(const Env&) const {
   if (m_decompiled) {
@@ -2439,8 +2439,8 @@ void DecompiledDataElement::collect_vars(RegAccessSet&, bool) const {}
 void DecompiledDataElement::get_modified_regs(RegSet&) const {}
 
 void DecompiledDataElement::do_decomp(const Env& env, const LinkedObjectFile* file) {
-  if (m_type_hint) {
-    m_description = decompile_at_label_with_hint(*m_type_hint, m_label, env.file->labels,
+  if (m_label_info) {
+    m_description = decompile_at_label_with_hint(*m_label_info, m_label, env.file->labels,
                                                  env.file->words_by_seg, *env.dts, file);
 
   } else {
