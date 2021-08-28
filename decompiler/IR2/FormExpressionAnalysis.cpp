@@ -4232,7 +4232,8 @@ void push_asm_srl_to_stack(const AsmOp* op,
       stack.push_value_to_reg(*dst, pool.alloc_single_form(nullptr, other), true,
                               env.get_variable_type(*dst, true));
     } else {
-      throw std::runtime_error("Got invalid bitfield manip for srl");
+      throw std::runtime_error(fmt::format("Got invalid bitfield manip for srl: {} type was {}",
+                                           src_var->to_string(env), arg0_type.print()));
     }
   }
 }
@@ -4765,8 +4766,12 @@ void ArrayFieldAccess::update_with_val(Form* new_val,
       result->push_back(deref);
     } else {
       // (+ v0-0 (the-as uint (* 12 (+ a3-0 -1))))
-      auto mult_matcher = Matcher::op(GenericOpMatcher::fixed(FixedOperatorKind::MULTIPLICATION),
-                                      {Matcher::integer(m_expected_stride), Matcher::any(0)});
+      // (+ (the-as uint *texture-page-dir*) (* (the-as uint 12) (-> arg0 page))
+      auto mult_matcher = Matcher::op(
+          GenericOpMatcher::fixed(FixedOperatorKind::MULTIPLICATION),
+          {Matcher::match_or({Matcher::cast("uint", Matcher::integer(m_expected_stride)),
+                              Matcher::integer(m_expected_stride)}),
+           Matcher::any(0)});
       mult_matcher = Matcher::match_or(
           {Matcher::cast("uint", mult_matcher), Matcher::cast("int", mult_matcher), mult_matcher});
 

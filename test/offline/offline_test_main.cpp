@@ -172,7 +172,9 @@ const std::unordered_set<std::string> g_functions_to_skip_compiling = {
     "slave-set-rotation!", "v-slrp2!", "v-slrp3!",  // vector-dot involving the stack
 
     // loader - decompiler bug with detecting handle macros
-    "(method 10 external-art-buffer)"};
+    "(method 10 external-art-buffer)",
+    "debug-menu-item-var-make-float"
+};
 
 // default location for the data. It can be changed with a command line argument.
 std::string g_iso_data_path = "";
