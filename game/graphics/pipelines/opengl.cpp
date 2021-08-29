@@ -52,15 +52,16 @@ struct GraphicsData {
 std::unique_ptr<GraphicsData> g_gfx_data;
 
 void SetDisplayCallbacks(GLFWwindow* d) {
-  glfwSetKeyCallback(d, [](GLFWwindow* /*window*/, int key, int scancode, int action, int mods) {
-    if (action == GlfwKeyAction::Press) {
-      // lg::debug("KEY PRESS:   key: {} scancode: {} mods: {:X}", key, scancode, mods);
-      Pad::OnKeyPress(key);
-    } else if (action == GlfwKeyAction::Release) {
-      // lg::debug("KEY RELEASE: key: {} scancode: {} mods: {:X}", key, scancode, mods);
-      Pad::OnKeyRelease(key);
-    }
-  });
+  glfwSetKeyCallback(
+      d, [](GLFWwindow* /*window*/, int key, int /*scancode*/, int action, int /*mods*/) {
+        if (action == GlfwKeyAction::Press) {
+          // lg::debug("KEY PRESS:   key: {} scancode: {} mods: {:X}", key, scancode, mods);
+          Pad::OnKeyPress(key);
+        } else if (action == GlfwKeyAction::Release) {
+          // lg::debug("KEY RELEASE: key: {} scancode: {} mods: {:X}", key, scancode, mods);
+          Pad::OnKeyRelease(key);
+        }
+      });
 }
 
 void ErrorCallback(int err, const char* msg) {
@@ -68,7 +69,13 @@ void ErrorCallback(int err, const char* msg) {
 }
 
 bool HasError() {
-  return glfwGetError(NULL) != GLFW_NO_ERROR;
+  const char* ptr;
+  if (glfwGetError(&ptr) != GLFW_NO_ERROR) {
+    lg::error("glfw error: {}", ptr);
+    return true;
+  } else {
+    return false;
+  }
 }
 
 }  // namespace
@@ -149,6 +156,11 @@ static std::shared_ptr<GfxDisplay> gl_make_main_display(int width,
 
   // set up to get inputs for this window
   ImGui_ImplGlfw_InitForOpenGL(window, true);
+
+  // NOTE: imgui's setup calls functions that may fail intentionally, and attempts to disable error
+  // reporting so these errors are invisible. But it does not work, and some weird X11 default
+  // cursor error is set here that we clear.
+  glfwGetError(nullptr);
 
   // set up the renderer
   ImGui_ImplOpenGL3_Init("#version 130");

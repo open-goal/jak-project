@@ -45,6 +45,9 @@
 #include "imgui_impl_glfw.h"
 
 // GLFW
+
+#define GLFW_INCLUDE_NONE
+#include "third-party/glad/include/glad/glad.h"
 #include "third-party/glfw/include/GLFW/glfw3.h"
 #ifdef _WIN32
 #undef APIENTRY

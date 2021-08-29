@@ -167,6 +167,7 @@ class DirectRenderer : public BucketRenderer {
   } m_debug_state;
 
   int m_triangles = 0;
+  int m_draw_calls = 0;
 
   bool m_prim_gl_state_needs_gl_update = true;
   bool m_test_state_needs_gl_update = true;

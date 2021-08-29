@@ -36,7 +36,8 @@ DirectRenderer::~DirectRenderer() {
  */
 void DirectRenderer::render(DmaFollower& dma, SharedRenderState* render_state) {
   m_triangles = 0;
-  //  fmt::print("direct: {}\n", m_my_id);
+  m_draw_calls = 0;
+
   // if we're rendering from a bucket, we should start off we a totally reset state:
   reset_state();
   setup_common_state(render_state);
@@ -66,6 +67,8 @@ void DirectRenderer::draw_debug_window() {
   ImGui::SameLine();
   ImGui::Checkbox("No-texture", &m_debug_state.disable_texture);
   ImGui::Text("Triangles: %d", m_triangles);
+  ImGui::SameLine();
+  ImGui::Text("Draws: %d", m_draw_calls);
 }
 
 void DirectRenderer::flush_pending(SharedRenderState* render_state) {
@@ -157,6 +160,7 @@ void DirectRenderer::flush_pending(SharedRenderState* render_state) {
   glDrawArrays(GL_TRIANGLES, 0, m_prim_buffer.vert_count);
   glBindVertexArray(0);
   m_triangles += m_prim_buffer.vert_count / 3;
+  m_draw_calls++;
   m_prim_buffer.vert_count = 0;
 
   glDeleteVertexArrays(1, &vao);
