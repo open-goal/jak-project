@@ -7,7 +7,7 @@
 
 #define GLFW_INCLUDE_NONE
 #include <glad/glad.h>
-#include <GLFW/glfw3.h>
+#include "third-party/glfw/include/GLFW/glfw3.h"
 
 #include "game/graphics/gfx.h"
 
