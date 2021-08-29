@@ -21,7 +21,7 @@ TEST_F(FormRegressionTest, ExprFloatingPoint) {
       "    daddiu sp, sp, -16\n"
       "    sd fp, 8(sp)\n"
       "    or fp, t9, r0\n"
-      "    lwc1 f0, L345(fp)\n"
+      "    mtc1 f0, r0\n"
       "    mtc1 f1, a0\n"
       "    div.s f0, f0, f1\n"
       "    mfc1 v0, f0\n"
@@ -29,7 +29,7 @@ TEST_F(FormRegressionTest, ExprFloatingPoint) {
       "    jr ra\n"
       "    daddiu sp, sp, 16";
   std::string type = "(function float float)";
-  std::string expected = "(/ (l.f L345) arg0)";
+  std::string expected = "(/ 0.0 arg0)";
   test_with_expr(func, type, expected);
 }
 
@@ -412,7 +412,8 @@ TEST_F(FormRegressionTest, ExprSizeOfType) {
       "    daddiu sp, sp, -16\n"
       "    sd fp, 8(sp)\n"
       "    or fp, t9, r0\n"
-      "    ld v1, L346(fp)\n"
+      //"    ld v1, L346(fp)\n"
+      "    addiu v1, r0, 3\n"
       "    lhu a0, 14(a0)\n"
       "    dsll a0, a0, 2\n"
       "    daddiu a0, a0, 43\n"
@@ -422,7 +423,7 @@ TEST_F(FormRegressionTest, ExprSizeOfType) {
       "    daddiu sp, sp, 16";
   std::string type = "(function type uint)";
 
-  std::string expected = "(logand (l.d L346) (+ (* (-> arg0 allocated-length) 4) 43))";
+  std::string expected = "(logand 3 (+ (* (-> arg0 allocated-length) 4) 43))";
   test_with_expr(func, type, expected, false, "");
 }
 
@@ -2311,7 +2312,8 @@ TEST_F(FormRegressionTest, ExprStopwatchElapsedSeconds) {
       "    sll v0, ra, 0\n"
       "\n"
       "    or v1, v0, r0\n"
-      "    lwc1 f0, L20(fp)\n"
+      //"    lwc1 f0, L20(fp)\n"
+      "    mtc1 f0, r0\n"
       "    mtc1 f1, v1\n"
       "    cvt.s.w f1, f1\n"
       "    mul.s f0, f0, f1\n"
@@ -2322,7 +2324,7 @@ TEST_F(FormRegressionTest, ExprStopwatchElapsedSeconds) {
       "    daddiu sp, sp, 16";
   std::string type = "(function int float)";
 
-  std::string expected = "(let ((v1-0 (abs arg0))) (* (l.f L20) (the float v1-0)))";
+  std::string expected = "(let ((v1-0 (abs arg0))) (* 0.0 (the float v1-0)))";
   test_with_expr(func, type, expected, false, "");
 }
 

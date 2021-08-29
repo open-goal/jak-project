@@ -145,6 +145,15 @@ std::unique_ptr<FormRegressionTest::TestData> FormRegressionTest::make_function(
     test->add_string_at_label(str.first, str.second);
   }
 
+  // set up LabelDB:
+  test->file.label_db = std::make_unique<LabelDB>(
+      std::unordered_map<std::string, LabelConfigInfo>{}, test->file.labels, *dts);
+
+  for (auto& str : settings.strings) {
+    test->file.label_db->set_and_get_previous(test->file.label_db->get_index_by_name(str.first),
+                                              TypeSpec("string"), false, {});
+  }
+
   // find basic blocks
   test->func.basic_blocks = find_blocks_in_function(test->file, 0, test->func);
   // analyze function prologue/epilogue

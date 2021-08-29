@@ -6,7 +6,7 @@
 namespace decompiler {
 
 namespace {
-void scan_loads(LabelDB* db, LinkedObjectFile* file, Function* func) {
+void scan_loads(LabelDB* db, Function* func) {
   if (!func->ir2.atomic_ops_succeeded) {
     return;
   }
@@ -63,12 +63,12 @@ void find_functions(LabelDB* db, LinkedObjectFile* file) {
       }
 
       // next, labels for things loaded (value labels)
-      scan_loads(db, file, &func);
+      scan_loads(db, &func);
     }
   }
 }
 
-void find_boxed(LabelDB* db, LinkedObjectFile* file, const DecompilerTypeSystem& dts) {
+void find_boxed(LabelDB* db, LinkedObjectFile* file) {
   for (auto& lab : file->labels) {
     if ((lab.offset & 7) == BASIC_OFFSET) {
       // it's a basic! probably.
@@ -99,8 +99,8 @@ void find_boxed(LabelDB* db, LinkedObjectFile* file, const DecompilerTypeSystem&
 }
 
 }  // namespace
-void analyze_labels(LabelDB* db, LinkedObjectFile* file, const DecompilerTypeSystem& dts) {
+void analyze_labels(LabelDB* db, LinkedObjectFile* file) {
   find_functions(db, file);
-  find_boxed(db, file, dts);
+  find_boxed(db, file);
 }
 }  // namespace decompiler

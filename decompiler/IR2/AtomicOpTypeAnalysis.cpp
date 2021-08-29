@@ -874,7 +874,7 @@ TP_Type LoadVarOp::get_src_type(const TypeState& input,
       const auto& hint = env.file->label_db->lookup(label_name);
       if (!hint.known) {
         throw std::runtime_error(
-            fmt::format("Label {} was unknown in AtomicOpTypeAnalysis.", hint.name));
+            fmt::format("Label {} was unknown in AtomicOpTypeAnalysis (type).", hint.name));
       }
 
       if (!hint.is_value) {

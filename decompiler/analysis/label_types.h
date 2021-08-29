@@ -6,5 +6,5 @@ class LabelDB;
 class LinkedObjectFile;
 class DecompilerTypeSystem;
 
-void analyze_labels(LabelDB* db, LinkedObjectFile* file, const DecompilerTypeSystem& dts);
+void analyze_labels(LabelDB* db, LinkedObjectFile* file);
 }  // namespace decompiler
