@@ -70,7 +70,6 @@ class DirectRenderer : public BucketRenderer {
   void update_gl_test();
   void update_gl_texture(SharedRenderState* render_state);
 
-  void upload_texture(TextureRecord* tex);
   void draw_debug_window() override;
 
   struct TestState {

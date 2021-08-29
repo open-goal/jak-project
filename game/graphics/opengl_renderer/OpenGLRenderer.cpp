@@ -76,6 +76,8 @@ void OpenGLRenderer::render(DmaFollower dma, int window_width_px, int window_hei
   dispatch_buckets(dma);
 
   draw_renderer_selection_window();
+  // add a profile bar for the imgui stuff
+  vif_interrupt_callback();
 }
 
 void OpenGLRenderer::draw_renderer_selection_window() {
@@ -90,6 +92,9 @@ void OpenGLRenderer::draw_renderer_selection_window() {
       }
       ImGui::PopID();
     }
+  }
+  if (ImGui::CollapsingHeader("Texture Pool")) {
+    m_render_state.texture_pool->draw_debug_window();
   }
   ImGui::End();
 }

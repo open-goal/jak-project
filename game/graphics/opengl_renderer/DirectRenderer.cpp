@@ -192,18 +192,6 @@ void DirectRenderer::update_gl_prim(SharedRenderState* render_state) {
   }
 }
 
-void DirectRenderer::upload_texture(TextureRecord* tex) {
-  assert(!tex->on_gpu);
-  GLuint tex_id;
-  glGenTextures(1, &tex_id);
-  tex->gpu_texture = tex_id;
-  glBindTexture(GL_TEXTURE_2D, tex_id);
-  glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, tex->w, tex->h, 0, GL_RGBA, GL_UNSIGNED_INT_8_8_8_8_REV,
-               tex->data.data());
-  glBindTexture(GL_TEXTURE_2D, 0);
-  tex->on_gpu = true;
-}
-
 void DirectRenderer::update_gl_texture(SharedRenderState* render_state) {
   TextureRecord* tex = nullptr;
   if (m_texture_state.using_mt4hh) {
@@ -216,7 +204,7 @@ void DirectRenderer::update_gl_texture(SharedRenderState* render_state) {
 
   // first: do we need to load the texture?
   if (!tex->on_gpu) {
-    upload_texture(tex);
+    render_state->texture_pool->upload_to_gpu(tex);
   }
 
   glActiveTexture(GL_TEXTURE0);

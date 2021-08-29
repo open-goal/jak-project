@@ -18,6 +18,7 @@ class OpenGLRenderer {
   void dispatch_buckets(DmaFollower dma);
   void init_bucket_renderers();
   void draw_renderer_selection_window();
+  void draw_texture_window();
 
   template <typename T, class... Args>
   void init_bucket_renderer(const std::string& name, BucketId id, Args&&... args) {
