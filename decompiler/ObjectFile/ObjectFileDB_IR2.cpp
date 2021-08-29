@@ -12,6 +12,7 @@
 #include "decompiler/analysis/type_analysis.h"
 #include "decompiler/analysis/reg_usage.h"
 #include "decompiler/analysis/insert_lets.h"
+#include "decompiler/analysis/label_types.h"
 #include "decompiler/analysis/find_defstates.h"
 #include "decompiler/analysis/variable_naming.h"
 #include "decompiler/analysis/cfg_builder.h"
@@ -40,7 +41,13 @@ void ObjectFileDB::analyze_functions_ir2(const std::string& output_dir,
   lg::info("Processing top-level functions...");
   ir2_top_level_pass(config);
 
-  ir2_do_common_segment_analysis(TOP_LEVEL_SEGMENT, config);
+  ir2_do_segment_analysis_phase1(TOP_LEVEL_SEGMENT, config);
+  ir2_do_segment_analysis_phase1(DEBUG_SEGMENT, config);
+  ir2_do_segment_analysis_phase1(MAIN_SEGMENT, config);
+
+  ir2_setup_labels(config);
+
+  ir2_do_segment_analysis_phase2(TOP_LEVEL_SEGMENT, config);
 
   for_each_obj([&](ObjectFileData& data) {
     try {
@@ -50,8 +57,8 @@ void ObjectFileDB::analyze_functions_ir2(const std::string& output_dir,
     }
   });
 
-  ir2_do_common_segment_analysis(DEBUG_SEGMENT, config);
-  ir2_do_common_segment_analysis(MAIN_SEGMENT, config);
+  ir2_do_segment_analysis_phase2(DEBUG_SEGMENT, config);
+  ir2_do_segment_analysis_phase2(MAIN_SEGMENT, config);
 
   if (config.generate_symbol_definition_map) {
     lg::info("Generating symbol definition map...");
@@ -75,13 +82,20 @@ void ObjectFileDB::analyze_functions_ir2(const std::string& output_dir,
   }
 }
 
-void ObjectFileDB::ir2_do_common_segment_analysis(int seg, const Config& config) {
+void ObjectFileDB::ir2_do_segment_analysis_phase1(int seg, const Config& config) {
+  lg::info("COMMON ANALYSIS 1 {}", seg);
+
   lg::info("Processing basic blocks and control flow graph...");
   ir2_basic_block_pass(seg, config);
   lg::info("Finding stack spills...");
   ir2_stack_spill_slot_pass(seg);
   lg::info("Converting to atomic ops...");
   ir2_atomic_op_pass(seg, config);
+}
+
+void ObjectFileDB::ir2_do_segment_analysis_phase2(int seg, const Config& config) {
+  lg::info("COMMON ANALYSIS 2 {}", seg);
+
   lg::info("Running type analysis...");
   ir2_type_analysis_pass(seg, config);
   lg::info("Register usage analysis...");
@@ -98,6 +112,25 @@ void ObjectFileDB::ir2_do_common_segment_analysis(int seg, const Config& config)
 
   lg::info("Inserting lets...");
   ir2_insert_lets(seg);
+}
+
+void ObjectFileDB::ir2_setup_labels(const Config& config) {
+  for_each_obj([&](ObjectFileData& data) {
+    if (data.linked_data.segments == 3) {
+      std::unordered_map<std::string, LabelConfigInfo> config_labels;
+      auto config_it = config.label_types.find(data.to_unique_name());
+      if (config_it != config.label_types.end()) {
+        config_labels = config_it->second;
+      }
+      try {
+        data.linked_data.label_db =
+            std::make_unique<LabelDB>(config_labels, data.linked_data.labels, dts);
+        analyze_labels(data.linked_data.label_db.get(), &data.linked_data);
+      } catch (const std::exception& e) {
+        lg::die("Error parsing labels for {}: {}\n", data.to_unique_name(), e.what());
+      }
+    }
+  });
 }
 
 /*!
@@ -411,8 +444,6 @@ void ObjectFileDB::ir2_type_analysis_pass(int seg, const Config& config) {
         auto register_casts =
             try_lookup(config.register_type_casts_by_function_by_atomic_op_idx, func_name);
         func.ir2.env.set_type_casts(register_casts);
-        auto label_types = try_lookup(config.label_types, data.to_unique_name());
-        func.ir2.env.set_label_types(label_types);
         auto stack_casts =
             try_lookup(config.stack_type_casts_by_function_by_stack_offset, func_name);
         func.ir2.env.set_stack_casts(stack_casts);

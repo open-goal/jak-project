@@ -172,7 +172,9 @@ const std::unordered_set<std::string> g_functions_to_skip_compiling = {
     "slave-set-rotation!", "v-slrp2!", "v-slrp3!",  // vector-dot involving the stack
 
     // loader - decompiler bug with detecting handle macros
-    "(method 10 external-art-buffer)"};
+    "(method 10 external-art-buffer)",
+    // function returning float with a weird cast.
+    "debug-menu-item-var-make-float"};
 
 // default location for the data. It can be changed with a command line argument.
 std::string g_iso_data_path = "";
@@ -226,11 +228,18 @@ int main(int argc, char** argv) {
 
   // look for an argument that's not a gtest option
   bool got_arg = false;
+  int max_files = -1;
   for (int i = 1; i < argc; i++) {
     auto arg = std::string(argv[i]);
     if (arg == "--dump-mode") {
       g_dump_mode = true;
       continue;
+    }
+    if (arg == "--max-files") {
+      i++;
+      assert(i < argc);
+      max_files = atoi(argv[i]);
+      printf("Limiting to %d files\n", max_files);
     }
     if (arg.length() > 2 && arg[0] == '-' && arg[1] == '-') {
       continue;
@@ -242,6 +251,14 @@ int main(int argc, char** argv) {
     g_iso_data_path = arg;
     lg::warn("Using path {} for iso_data", g_iso_data_path);
     got_arg = true;
+  }
+
+  if (max_files >= 0) {
+    if ((int)g_object_files_to_decompile_or_ref_check.size() > max_files) {
+      g_object_files_to_decompile_or_ref_check.erase(
+          g_object_files_to_decompile_or_ref_check.begin() + max_files,
+          g_object_files_to_decompile_or_ref_check.end());
+    }
   }
 
   ::testing::InitGoogleTest(&argc, argv);

@@ -554,6 +554,7 @@ void SimpleExpressionElement::update_from_stack_identity(const Env& env,
       result->push_back(pool.alloc_element<StringConstantElement>(str));
     } else {
       // look for a label hint:
+      /*
       auto kv = env.label_types().find(lab.name);
       if (kv != env.label_types().end()) {
         auto type_name = kv->second.type_name;
@@ -565,13 +566,31 @@ void SimpleExpressionElement::update_from_stack_identity(const Env& env,
         } else {
           result->push_back(pool.alloc_element<DecompiledDataElement>(lab, kv->second));
         }
-      } else {
+              } else {
         result->push_back(this);
+      }
+        */
+      const auto& hint = env.file->label_db->lookup(lab.name);
+      if (!hint.known) {
+        throw std::runtime_error(
+            fmt::format("Label {} was unknown in FormExpressionAnalysis.", hint.name));
+      }
+      if (hint.is_value) {
+        result->push_back(this);
+        return;
+      }
+      if (hint.result_type.base_type() == "function") {
+        result->push_back(this);
+        return;
+      } else {
+        result->push_back(pool.alloc_element<DecompiledDataElement>(lab, hint));
+        return;
       }
     }
 
   } else if (arg.is_sym_ptr() || arg.is_sym_val() || arg.is_int() || arg.is_empty_list()) {
     result->push_back(this);
+    return;
   } else {
     throw std::runtime_error(fmt::format(
         "SimpleExpressionElement::update_from_stack_identity NYI for {}", to_string(env)));
@@ -4213,7 +4232,8 @@ void push_asm_srl_to_stack(const AsmOp* op,
       stack.push_value_to_reg(*dst, pool.alloc_single_form(nullptr, other), true,
                               env.get_variable_type(*dst, true));
     } else {
-      throw std::runtime_error("Got invalid bitfield manip for srl");
+      throw std::runtime_error(fmt::format("Got invalid bitfield manip for srl: {} type was {}",
+                                           src_var->to_string(env), arg0_type.print()));
     }
   }
 }
@@ -4746,8 +4766,12 @@ void ArrayFieldAccess::update_with_val(Form* new_val,
       result->push_back(deref);
     } else {
       // (+ v0-0 (the-as uint (* 12 (+ a3-0 -1))))
-      auto mult_matcher = Matcher::op(GenericOpMatcher::fixed(FixedOperatorKind::MULTIPLICATION),
-                                      {Matcher::integer(m_expected_stride), Matcher::any(0)});
+      // (+ (the-as uint *texture-page-dir*) (* (the-as uint 12) (-> arg0 page))
+      auto mult_matcher = Matcher::op(
+          GenericOpMatcher::fixed(FixedOperatorKind::MULTIPLICATION),
+          {Matcher::match_or({Matcher::cast("uint", Matcher::integer(m_expected_stride)),
+                              Matcher::integer(m_expected_stride)}),
+           Matcher::any(0)});
       mult_matcher = Matcher::match_or(
           {Matcher::cast("uint", mult_matcher), Matcher::cast("int", mult_matcher), mult_matcher});
 

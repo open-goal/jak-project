@@ -533,7 +533,8 @@ StaticResult Compiler::compile_static_no_eval_for_pairs(const goos::Object& form
   }
   if (form.is_pair()) {
     if (form.as_pair()->car.is_symbol() && (form.as_pair()->car.as_symbol()->name == "new" ||
-                                            form.as_pair()->car.as_symbol()->name == "the")) {
+                                            form.as_pair()->car.as_symbol()->name == "the" ||
+                                            form.as_pair()->car.as_symbol()->name == "lambda")) {
       return compile_static(form, env);
     }
     auto car = compile_static_no_eval_for_pairs(form.as_pair()->car, env);

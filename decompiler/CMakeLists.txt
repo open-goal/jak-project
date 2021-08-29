@@ -9,6 +9,7 @@ add_library(
         analysis/find_defstates.cpp
         analysis/inline_asm_rewrite.cpp
         analysis/insert_lets.cpp
+        analysis/label_types.cpp
         analysis/reg_usage.cpp
         analysis/stack_spill.cpp
         analysis/static_refs.cpp
@@ -47,6 +48,7 @@ add_library(
         IR2/FormExpressionAnalysis.cpp
         IR2/FormStack.cpp
         IR2/GenericElementMatcher.cpp
+        IR2/LabelDB.cpp
         IR2/OpenGoalMapping.cpp
 
         ObjectFile/LinkedObjectFile.cpp
