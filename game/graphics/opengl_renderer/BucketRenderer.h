@@ -41,10 +41,14 @@ class BucketRenderer {
   virtual void render(DmaFollower& dma, SharedRenderState* render_state) = 0;
   std::string name_and_id() const;
   virtual ~BucketRenderer() = default;
+  bool& enabled() { return m_enabled; }
+  virtual bool empty() const { return false; }
+  virtual void draw_debug_window() {}
 
  protected:
   std::string m_name;
   BucketId m_my_id;
+  bool m_enabled = true;
 };
 
 /*!
@@ -54,4 +58,5 @@ class EmptyBucketRenderer : public BucketRenderer {
  public:
   EmptyBucketRenderer(const std::string& name, BucketId my_id);
   void render(DmaFollower& dma, SharedRenderState* render_state) override;
+  bool empty() const override { return true; }
 };
