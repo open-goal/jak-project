@@ -3,6 +3,7 @@
 #include "common/log/log.h"
 #include "game/graphics/pipelines/opengl.h"
 #include "game/graphics/opengl_renderer/DirectRenderer.h"
+#include "third-party/imgui/imgui.h"
 
 // for the vif callback
 #include "game/kernel/kmachine.h"
@@ -73,6 +74,24 @@ void OpenGLRenderer::render(DmaFollower dma, int window_width_px, int window_hei
   // draw_test_triangle();
   // render the buckets!
   dispatch_buckets(dma);
+
+  draw_renderer_selection_window();
+}
+
+void OpenGLRenderer::draw_renderer_selection_window() {
+  ImGui::Begin("Renderer Debug");
+  for (size_t i = 0; i < m_bucket_renderers.size(); i++) {
+    auto renderer = m_bucket_renderers[i].get();
+    if (renderer && !renderer->empty()) {
+      ImGui::PushID(i);
+      if (ImGui::CollapsingHeader(renderer->name_and_id().c_str())) {
+        ImGui::Checkbox("Enable", &renderer->enabled());
+        renderer->draw_debug_window();
+      }
+      ImGui::PopID();
+    }
+  }
+  ImGui::End();
 }
 
 /*!

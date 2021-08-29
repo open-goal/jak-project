@@ -3,6 +3,7 @@
 #include "common/log/log.h"
 #include "third-party/fmt/core.h"
 #include "game/graphics/pipelines/opengl.h"
+#include "third-party/imgui/imgui.h"
 
 DirectRenderer::DirectRenderer(const std::string& name, BucketId my_id, int batch_size)
     : BucketRenderer(name, my_id), m_prim_buffer(batch_size) {
@@ -43,7 +44,7 @@ void DirectRenderer::render(DmaFollower& dma, SharedRenderState* render_state) {
   // just dump the DMA data into the other the render function
   while (dma.current_tag_offset() != render_state->next_bucket) {
     auto data = dma.read_and_advance();
-    if (data.size_bytes) {
+    if (data.size_bytes && m_enabled) {
       render_vif(data.vif0(), data.vif1(), data.data, data.size_bytes, render_state);
     }
 
@@ -55,7 +56,16 @@ void DirectRenderer::render(DmaFollower& dma, SharedRenderState* render_state) {
     }
   }
 
-  flush_pending(render_state);
+  if (m_enabled) {
+    flush_pending(render_state);
+  }
+}
+
+void DirectRenderer::draw_debug_window() {
+  ImGui::Checkbox("Wireframe", &m_debug_state.wireframe);
+  ImGui::SameLine();
+  ImGui::Checkbox("No-texture", &m_debug_state.disable_texture);
+  ImGui::Text("Triangles: %d", m_triangles);
 }
 
 void DirectRenderer::flush_pending(SharedRenderState* render_state) {
@@ -77,6 +87,17 @@ void DirectRenderer::flush_pending(SharedRenderState* render_state) {
   if (m_test_state_needs_gl_update) {
     update_gl_test();
     m_test_state_needs_gl_update = false;
+  }
+
+  if (m_debug_state.wireframe) {
+    glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
+  } else {
+    glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
+  }
+
+  if (m_debug_state.disable_texture) {
+    // a bit of a hack, this forces the non-textured shader always.
+    render_state->shaders[ShaderId::DIRECT_BASIC].activate();
   }
 
   // hacks

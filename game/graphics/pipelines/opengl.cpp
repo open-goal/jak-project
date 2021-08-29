@@ -7,6 +7,10 @@
 #include <mutex>
 #include <condition_variable>
 
+#include "third-party/imgui/imgui.h"
+#include "third-party/imgui/imgui_impl_glfw.h"
+#include "third-party/imgui/imgui_impl_opengl3.h"
+
 #include "opengl.h"
 
 #include "game/graphics/gfx.h"
@@ -135,10 +139,27 @@ static std::shared_ptr<GfxDisplay> gl_make_main_display(int width,
   std::shared_ptr<GfxDisplay> display = std::make_shared<GfxDisplay>(window);
   // lg::debug("init display #x{:x}", (uintptr_t)display);
 
+  // setup imgui
+
+  // check that version of the library is okay
+  IMGUI_CHECKVERSION();
+
+  // this does initialization for stuff like the font data
+  ImGui::CreateContext();
+
+  // set up to get inputs for this window
+  ImGui_ImplGlfw_InitForOpenGL(window, true);
+
+  // set up the renderer
+  ImGui_ImplOpenGL3_Init("#version 130");
+
   return display;
 }
 
 static void gl_kill_display(GfxDisplay* display) {
+  ImGui_ImplOpenGL3_Shutdown();
+  ImGui_ImplGlfw_Shutdown();
+  ImGui::DestroyContext();
   glfwDestroyWindow(display->window_glfw);
 }
 
@@ -147,8 +168,12 @@ static void gl_render_display(GfxDisplay* display) {
 
   // poll events
   glfwPollEvents();
-
   glfwMakeContextCurrent(window);
+
+  // imgui start of frame
+  ImGui_ImplOpenGL3_NewFrame();
+  ImGui_ImplGlfw_NewFrame();
+  ImGui::NewFrame();
 
   // wait for a copied chain.
   bool got_chain = false;
@@ -177,6 +202,10 @@ static void gl_render_display(GfxDisplay* display) {
     g_gfx_data->has_data_to_render = false;
     g_gfx_data->sync_cv.notify_all();
   }
+
+  // render imgui
+  ImGui::Render();
+  ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
 
   // actual vsync
   glfwSwapBuffers(window);
