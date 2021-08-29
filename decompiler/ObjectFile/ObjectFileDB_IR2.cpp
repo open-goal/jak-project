@@ -125,7 +125,7 @@ void ObjectFileDB::ir2_setup_labels(const Config& config) {
       try {
         data.linked_data.label_db =
             std::make_unique<LabelDB>(config_labels, data.linked_data.labels, dts);
-        analyze_labels(data.linked_data.label_db.get(), &data.linked_data, dts);
+        analyze_labels(data.linked_data.label_db.get(), &data.linked_data);
       } catch (const std::exception& e) {
         lg::die("Error parsing labels for {}: {}\n", data.to_unique_name(), e.what());
       }

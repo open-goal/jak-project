@@ -6,9 +6,7 @@ using namespace decompiler;
 TEST_F(FormRegressionTest, StringTest) {
   std::string func =
       "    sll r0, r0, 0\n"
-      "L100:\n"
       "    or v0, a0, r0\n"
-      "L101:\n"
       "    jr ra\n"
       "    daddu sp, sp, r0";
   TestSettings settings;
@@ -29,32 +27,6 @@ TEST_F(FormRegressionTest, SimplestTest) {
       "    daddu sp, sp, r0";
   std::string type = "(function object object)";
   std::string expected = "(begin (set! v0-0 a0-0) (ret-value v0-0))";
-  test_no_expr(func, type, expected);
-}
-
-TEST_F(FormRegressionTest, FloatingPointBasic) {
-  std::string func =
-      "    sll r0, r0, 0\n"
-      "L345:\n"
-      "    daddiu sp, sp, -16\n"
-      "    sd fp, 8(sp)\n"
-      "    or fp, t9, r0\n"
-      "    lwc1 f0, L345(fp)\n"
-      "    mtc1 f1, a0\n"
-      "    div.s f0, f0, f1\n"
-      "    mfc1 v0, f0\n"
-      "    ld fp, 8(sp)\n"
-      "    jr ra\n"
-      "    daddiu sp, sp, 16";
-  std::string type = "(function float float)";
-  std::string expected =
-      "(begin\n"
-      "  (set! f0-0 (l.f L345))\n"
-      "  (set! f1-0 (gpr->fpr a0-0))\n"
-      "  (set! f0-1 (/.s f0-0 f1-0))\n"
-      "  (set! v0-0 (fpr->gpr f0-1))\n"
-      "  (ret-value v0-0)\n"
-      "  )";
   test_no_expr(func, type, expected);
 }
 
@@ -163,7 +135,6 @@ TEST_F(FormRegressionTest, Max) {
 TEST_F(FormRegressionTest, FormatString) {
   std::string func =
       "    sll r0, r0, 0\n"
-      "L343:\n"
       "    daddiu sp, sp, -32\n"
       "    sd ra, 0(sp)\n"
       "    sd fp, 8(sp)\n"
