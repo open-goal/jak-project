@@ -115,6 +115,12 @@ class SimpleExpressionElement : public FormElement {
                                  FormStack& stack,
                                  std::vector<FormElement*>* result,
                                  bool allow_side_effects);
+  void update_from_stack_float_2_nestable(const Env& env,
+                                          FixedOperatorKind kind,
+                                          FormPool& pool,
+                                          FormStack& stack,
+                                          std::vector<FormElement*>* result,
+                                          bool allow_side_effects);
   void update_from_stack_float_1(const Env& env,
                                  FixedOperatorKind kind,
                                  FormPool& pool,
