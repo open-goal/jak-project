@@ -1630,7 +1630,7 @@ class DefstateElement : public FormElement {
 
 class ResLumpMacroElement : public FormElement {
  public:
-  enum class Kind { DATA, INVALID };
+  enum class Kind { DATA, STRUCT, VALUE, INVALID };
   ResLumpMacroElement(Kind kind,
                       Form* lump_object,
                       Form* property_name,

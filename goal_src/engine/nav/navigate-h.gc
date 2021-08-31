@@ -297,16 +297,7 @@
              ;; now construct the engine, looking up the size from the res-lump.
              (set! (-> entity-nav-mesh user-list)
                    (new 'process-level-heap 'engine 'nav-engine
-                        (the int ((method-of-type res-lump get-property-value)
-                                  (the-as res-lump ent)
-                                  'nav-max-users
-                                  'interp
-                                  -1000000000.0
-                                  (the-as uint128 32)
-                                  (the-as (pointer res-tag) #f)
-                                  *res-static-buf*
-                                  )
-                             )
+                        (res-lump-value ent 'nav-max-users int :default (the-as uint128 32))
                         )
                    )
 
@@ -405,17 +396,6 @@
    the res-lump."
   (the-as
    symbol
-   (or (-> arg0 nav-mesh) ;; has it loaded already
-       ;; has it in the res-lump
-       ((method-of-type res-lump get-property-struct)
-        arg0
-        'nav-mesh-actor
-        'interp
-        -1000000000.0
-        #f
-        (the-as (pointer res-tag) #f)
-        *res-static-buf*
-        )
-       )
+   (or (-> arg0 nav-mesh) (res-lump-struct arg0 'nav-mesh-actor structure))
    )
   )

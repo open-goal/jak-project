@@ -77,9 +77,13 @@ FormElement* handle_get_property_value_float(const std::vector<Form*>& forms,
   return pool.alloc_element<GenericElement>(op, macro_args);
 }
 
-FormElement* handle_get_property_value_data(const std::vector<Form*>& forms,
-                                            FormPool& pool,
-                                            const Env& env) {
+namespace {
+FormElement* handle_get_property_data_or_structure(const std::vector<Form*>& forms,
+                                                   FormPool& pool,
+                                                   const Env& env,
+                                                   ResLumpMacroElement::Kind kind,
+                                                   const std::string& expcted_default,
+                                                   const TypeSpec& default_type) {
   //   (-> obj entity)
   //   'water-anim-fade-dist
   //   'interp
@@ -111,7 +115,7 @@ FormElement* handle_get_property_value_data(const std::vector<Form*>& forms,
   // get the default value. It must be (the-as pointer #f)
   Form* default_value = forms.at(4);
   // but let's see if it's 0, because that's the default in the macro
-  if (default_value->to_string(env) != "(the-as pointer #f)") {
+  if (default_value->to_string(env) != expcted_default) {
     fmt::print("fail data: bad default {}\n", default_value->to_string(env));
     return nullptr;
   }
@@ -129,9 +133,71 @@ FormElement* handle_get_property_value_data(const std::vector<Form*>& forms,
     return nullptr;
   }
 
-  return pool.alloc_element<ResLumpMacroElement>(ResLumpMacroElement::Kind::DATA, lump_object,
-                                                 property_name,
+  return pool.alloc_element<ResLumpMacroElement>(kind, lump_object, property_name,
                                                  nullptr,  // default, must be #f
-                                                 tag_pointer, time, TypeSpec("pointer"));
+                                                 tag_pointer, time, default_type);
+}
+}  // namespace
+
+FormElement* handle_get_property_data(const std::vector<Form*>& forms,
+                                      FormPool& pool,
+                                      const Env& env) {
+  return handle_get_property_data_or_structure(forms, pool, env, ResLumpMacroElement::Kind::DATA,
+                                               "(the-as pointer #f)", TypeSpec("pointer"));
+}
+
+FormElement* handle_get_property_struct(const std::vector<Form*>& forms,
+                                        FormPool& pool,
+                                        const Env& env) {
+  return handle_get_property_data_or_structure(forms, pool, env, ResLumpMacroElement::Kind::STRUCT,
+                                               "#f", TypeSpec("structure"));
+}
+
+FormElement* handle_get_property_value(const std::vector<Form*>& forms,
+                                       FormPool& pool,
+                                       const Env& env) {
+  // get the res-lump. This can be anything.
+  Form* lump_object = forms.at(0);
+
+  // get the name of the the thing we're looking up. This can be anything.
+  Form* property_name = forms.at(1);
+
+  // get the mode. It must be interp.
+  auto mode_atom = form_as_atom(forms.at(2));
+  if (!mode_atom || !mode_atom->is_sym_ptr("interp")) {
+    fmt::print("fail data: bad mode {}\n", forms.at(2)->to_string(env));
+    return nullptr;
+  }
+
+  // get the time. It can be anything, but there's a default.
+  auto time = forms.at(3);
+  auto lookup_time = time->try_as_element<ConstantFloatElement>();
+  if (lookup_time && lookup_time->value() == DEFAULT_RES_TIME) {
+    time = nullptr;
+  }
+
+  // get the default value. It can be whatever.
+  Form* default_value = forms.at(4);
+  // but let's see if it's 0, because that's the default in the macro
+  if (default_value->to_string(env) == "(the-as uint128 0)") {
+    default_value = nullptr;
+  }
+
+  // get the tag pointer. It can be anything...
+  Form* tag_pointer = forms.at(5);
+  // but let's see if it's (the-as (pointer res-tag) #f)
+  if (tag_pointer->to_string(env) == "(the-as (pointer res-tag) #f)") {
+    tag_pointer = nullptr;
+  }
+
+  // get the buffer. It should be *res-static-buf*
+  auto buf_atom = form_as_atom(forms.at(6));
+  if (!buf_atom || !buf_atom->is_sym_val("*res-static-buf*")) {
+    return nullptr;
+  }
+
+  return pool.alloc_element<ResLumpMacroElement>(ResLumpMacroElement::Kind::VALUE, lump_object,
+                                                 property_name, default_value, tag_pointer, time,
+                                                 TypeSpec("uint128"));
 }
 }  // namespace decompiler

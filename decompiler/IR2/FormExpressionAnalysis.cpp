@@ -2926,6 +2926,32 @@ void FunctionCallElement::update_from_stack(const Env& env,
 
       auto type_source_form = match_result.maps.forms.at(type_source);
 
+      if (name == "get-property-value-float" && type_source_form->to_string(env) == "res-lump") {
+        auto as_macro = handle_get_property_value_float(arg_forms, pool, env);
+        if (as_macro) {
+          result->push_back(as_macro);
+          return;
+        }
+      } else if (name == "get-property-data" && type_source_form->to_string(env) == "res-lump") {
+        auto as_macro = handle_get_property_data(arg_forms, pool, env);
+        if (as_macro) {
+          result->push_back(as_macro);
+          return;
+        }
+      } else if (name == "get-property-struct" && type_source_form->to_string(env) == "res-lump") {
+        auto as_macro = handle_get_property_struct(arg_forms, pool, env);
+        if (as_macro) {
+          result->push_back(as_macro);
+          return;
+        }
+      } else if (name == "get-property-value" && type_source_form->to_string(env) == "res-lump") {
+        auto as_macro = handle_get_property_value(arg_forms, pool, env);
+        if (as_macro) {
+          result->push_back(as_macro);
+          return;
+        }
+      }
+
       // if the type is the exact type of the argument, we want to build it into a method call
       if (type_source_form->to_string(env) == first_arg_type.base_type() && name != "new") {
         if (env.dts->ts.should_use_virtual_methods(tp_type.method_from_type(),
@@ -2982,19 +3008,6 @@ void FunctionCallElement::update_from_stack(const Env& env,
         }
       }
 
-      if (name == "get-property-value-float" && type_source_form->to_string(env) == "res-lump") {
-        auto as_macro = handle_get_property_value_float(arg_forms, pool, env);
-        if (as_macro) {
-          result->push_back(as_macro);
-          return;
-        }
-      } else if (name == "get-property-data" && type_source_form->to_string(env) == "res-lump") {
-        auto as_macro = handle_get_property_value_data(arg_forms, pool, env);
-        if (as_macro) {
-          result->push_back(as_macro);
-          return;
-        }
-      }
       auto method_op =
           pool.alloc_single_element_form<GetMethodElement>(nullptr, type_source_form, name, false);
       auto gop = GenericOperator::make_function(method_op);
