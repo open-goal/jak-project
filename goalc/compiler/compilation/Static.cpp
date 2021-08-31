@@ -418,9 +418,21 @@ Val* Compiler::compile_bitfield_definition(const goos::Object& form,
             form, "Field {} is a symbol, which cannot be constructed at compile time yet.",
             field_name_def);
       }
-    }
-
-    else {
+    } else if (m_ts.tc(TypeSpec("structure"), field_info.result_type)) {
+      if (allow_dynamic_construction) {
+        DynamicDef dyn;
+        dyn.definition = field_value;
+        dyn.field_offset = field_offset;
+        dyn.field_size = field_size;
+        dyn.field_name = field_name_def;
+        dyn.expected_type = coerce_to_reg_type(field_info.result_type);
+        dynamic_defs.push_back(dyn);
+      } else {
+        throw_compiler_error(
+            form, "Field {} is a structure, which cannot be constructed at compile time yet.",
+            field_name_def);
+      }
+    } else {
       throw_compiler_error(form, "Bitfield field {} with type {} cannot be set statically.",
                            field_name_def, field_info.result_type.print());
     }

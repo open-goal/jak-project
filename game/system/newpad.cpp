@@ -124,6 +124,10 @@ void DefaultMapping(MappingInfo& mapping) {
     }
   }
 
+  // r1/l1
+  MapButton(mapping, Button::L1, 0, GLFW_KEY_U);
+  MapButton(mapping, Button::R1, 0, GLFW_KEY_I);
+
   // face buttons
   MapButton(mapping, Button::Ecks, 0, GLFW_KEY_Z);
   MapButton(mapping, Button::Square, 0, GLFW_KEY_X);
