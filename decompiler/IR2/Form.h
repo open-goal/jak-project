@@ -1789,6 +1789,14 @@ class FormPool {
     return form;
   }
 
+  template <typename T, class... Args>
+  Form* form(Args&&... args) {
+    auto elt = new T(std::forward<Args>(args)...);
+    m_elements.emplace_back(elt);
+    auto form = alloc_single_form(nullptr, elt);
+    return form;
+  }
+
   Form* alloc_single_form(FormElement* parent, FormElement* elt) {
     auto form = new Form(parent, elt);
     m_forms.push_back(form);

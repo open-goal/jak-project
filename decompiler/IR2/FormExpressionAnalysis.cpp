@@ -8,6 +8,7 @@
 #include "decompiler/IR2/bitfields.h"
 #include "common/util/BitUtils.h"
 #include "common/type_system/state.h"
+#include "decompiler/IR2/ExpressionHelpers.h"
 
 /*
  * TODO
@@ -554,22 +555,6 @@ void SimpleExpressionElement::update_from_stack_identity(const Env& env,
       result->push_back(pool.alloc_element<StringConstantElement>(str));
     } else {
       // look for a label hint:
-      /*
-      auto kv = env.label_types().find(lab.name);
-      if (kv != env.label_types().end()) {
-        auto type_name = kv->second.type_name;
-        // the actual decompilation is deferred until later, once static lambdas are done.
-        if (type_name == "_auto_") {
-          result->push_back(pool.alloc_element<DecompiledDataElement>(lab));
-        } else if (type_name == "_lambda_") {
-          result->push_back(this);
-        } else {
-          result->push_back(pool.alloc_element<DecompiledDataElement>(lab, kv->second));
-        }
-              } else {
-        result->push_back(this);
-      }
-        */
       const auto& hint = env.file->label_db->lookup(lab.name);
       if (!hint.known) {
         throw std::runtime_error(
@@ -2991,11 +2976,19 @@ void FunctionCallElement::update_from_stack(const Env& env,
         }
       }
 
+      if (name == "get-property-value-float" && type_source_form->to_string(env) == "res-lump") {
+        auto as_macro = handle_get_property_value_float(arg_forms, pool, env);
+        if (as_macro) {
+          result->push_back(as_macro);
+          return;
+        }
+      }
       auto method_op =
           pool.alloc_single_element_form<GetMethodElement>(nullptr, type_source_form, name, false);
       auto gop = GenericOperator::make_function(method_op);
 
       result->push_back(pool.alloc_element<GenericElement>(gop, arg_forms));
+
       return;
     }
   }
