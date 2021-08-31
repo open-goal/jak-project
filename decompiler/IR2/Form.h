@@ -1628,6 +1628,38 @@ class DefstateElement : public FormElement {
   bool m_is_virtual = false;
 };
 
+class ResLumpMacroElement : public FormElement {
+ public:
+  enum class Kind { DATA, INVALID };
+  ResLumpMacroElement(Kind kind,
+                      Form* lump_object,
+                      Form* property_name,
+                      Form* default_arg,
+                      Form* tag_ptr,
+                      Form* time,
+                      const TypeSpec& result_type);
+  goos::Object to_form_internal(const Env& env) const override;
+  void apply(const std::function<void(FormElement*)>& f) override;
+  void apply_form(const std::function<void(Form*)>& f) override;
+  void collect_vars(RegAccessSet& vars, bool recursive) const override;
+  void update_from_stack(const Env& env,
+                         FormPool& pool,
+                         FormStack& stack,
+                         std::vector<FormElement*>* result,
+                         bool allow_side_effects) override;
+  void get_modified_regs(RegSet& regs) const override;
+  void apply_cast(const TypeSpec& new_type) { m_result_type = new_type; }
+
+ private:
+  Kind m_kind = Kind::INVALID;
+  Form* m_lump_object = nullptr;
+  Form* m_property_name = nullptr;
+  Form* m_default_arg = nullptr;  // may be null
+  Form* m_tag_ptr = nullptr;      // may be null
+  Form* m_time = nullptr;         // may be null
+  TypeSpec m_result_type;
+};
+
 /*!
  * A Form is a wrapper around one or more FormElements.
  * This is done for two reasons:

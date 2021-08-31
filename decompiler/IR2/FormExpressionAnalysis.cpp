@@ -86,6 +86,12 @@ Form* try_cast_simplify(Form* in,
     return in;  // no need to cast again, it already has it!
   }
 
+  auto in_as_reslump = in->try_as_element<ResLumpMacroElement>();
+  if (in_as_reslump) {
+    in_as_reslump->apply_cast(new_type);
+    return in;
+  }
+
   if (new_type == TypeSpec("meters")) {
     auto fc = get_goal_float_constant(in);
 
@@ -2982,6 +2988,12 @@ void FunctionCallElement::update_from_stack(const Env& env,
           result->push_back(as_macro);
           return;
         }
+      } else if (name == "get-property-data" && type_source_form->to_string(env) == "res-lump") {
+        auto as_macro = handle_get_property_value_data(arg_forms, pool, env);
+        if (as_macro) {
+          result->push_back(as_macro);
+          return;
+        }
       }
       auto method_op =
           pool.alloc_single_element_form<GetMethodElement>(nullptr, type_source_form, name, false);
@@ -5225,6 +5237,15 @@ void DefstateElement::update_from_stack(const Env&,
                                         FormStack&,
                                         std::vector<FormElement*>* result,
                                         bool) {
+  mark_popped();
+  result->push_back(this);
+}
+
+void ResLumpMacroElement::update_from_stack(const Env&,
+                                            FormPool&,
+                                            FormStack&,
+                                            std::vector<FormElement*>* result,
+                                            bool) {
   mark_popped();
   result->push_back(this);
 }
