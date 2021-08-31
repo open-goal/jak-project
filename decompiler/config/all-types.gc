@@ -624,6 +624,7 @@
   (bit-7 7)
   (real-complete 8)
   (bit-9 9)
+  (bit-10 10)
   )
 
 (defenum path-control-flag
@@ -1262,7 +1263,7 @@
 
 ;; - Functions
 
-(define-extern entity-deactivate-handler (function process object none))
+(define-extern entity-deactivate-handler (function process entity none))
 (define-extern process-disconnect (function process int))
 (define-extern throw (function symbol object int))
 (define-extern set-to-run-bootstrap (function none))
@@ -4968,7 +4969,7 @@
   :flag-assert         #x1d00000a30
   (:methods
     (deactivate (_type_) _type_ 9)
-    (dummy-10 (_type_ int) symbol 10)
+    (is-object-visible? (_type_ int) symbol 10)
     (add-irq-to-tex-buckets! (_type_) none 11)
     (unload! (_type_) _type_ 12)
     (bsp-name (_type_) symbol 13)
@@ -5021,18 +5022,18 @@
     (level-get-with-status (_type_ symbol) level 10)
     (level-get-for-use (_type_ symbol symbol) level 11)
     (activate-levels! (_type_) int 12)
-    (dummy-13 () none 13)
-    (dummy-14 (_type_ object) none 14)
-    (dummy-15 () none 15)
+    (debug-print-entities (_type_ symbol type) none 13)
+    (debug-draw-actors (_type_ symbol) none 14)
+    (dummy-15 (_type_) object 15)
     (dummy-16 (_type_) int 16)
     (level-get-target-inside (_type_) level 17)
     (alloc-levels! (_type_ symbol) int 18)
     (load-commands-set! (_type_ pair) pair 19)
     (art-group-get-by-name (_type_ string) art-group 20)
     (load-command-get-index (_type_ symbol int) pair 21)
-    (dummy-22 () none 22)
-    (dummy-23 () none 23)
-    (dummy-24 () none 24)
+    (update-vis-volumes (_type_) none 22)
+    (update-vis-volumes-from-nav-mesh (_type_) none 23)
+    (print-volume-sizes (_type_) none 24)
     (level-status (_type_ symbol) symbol 25)
     (level-get-most-disposable (_type_) level 26)
     )
@@ -10094,8 +10095,8 @@
   )
 
 (deftype part-tracker (process)
-  ((root             basic               :offset-assert 112)
-   (part             basic               :offset-assert 116)
+  ((root             trsqv               :offset-assert 112)
+   (part             sparticle-launch-control :offset-assert 116)
    (target           uint64              :offset-assert 120)
    (callback         basic               :offset-assert 128)
    (linger-callback  basic               :offset-assert 132)
@@ -11819,7 +11820,7 @@
    (unk-data-4 float :offset-assert 160)
    (unk-data-5 float :offset-assert 164)
    (adgifs adgif-shader-array :offset-assert 168)
-   (unk-data-6 pointer :offset-assert 172)
+   (actor-birth-order (pointer uint32) :offset-assert 172)
    (unk-data-7 pointer :offset-assert 176)
    (unk-data-8 uint32 55 :offset-assert 180)
 
@@ -11829,7 +11830,7 @@
   :flag-assert         #x1400000190
   (:methods
     (relocate (_type_ kheap (pointer uint8)) none :replace 7)
-    (dummy-18 (_type_) none 18)
+    (birth (_type_) none 18)
     (dummy-19 (_type_) none 19)
     )
   )
@@ -13027,7 +13028,7 @@
   :size-assert         #x40
   :flag-assert         #xa00000040
   (:methods
-    (dummy-9 () none 9)
+    (dummy-9 (_type_ vector) none 9)
     )
   )
 
@@ -13055,11 +13056,11 @@
   :flag-assert         #x1b00000034
   ;; unrecognized get op: (set! t9 find-parent-method) parent was res-lump
   (:methods
-    (dummy-22 () none 22)
-    (dummy-23 () none 23)
-    (dummy-24 () none 24)
-    (dummy-25 () none 25)
-    (dummy-26 () none 26)
+    (birth! (_type_) _type_ 22)
+    (kill! (_type_) _type_ 23)
+    (add-to-level! (_type_ level-group level actor-id) none 24)
+    (remove-from-level! (_type_ level-group) _type_ 25)
+    (get-level (_type_) level 26)
     )
   )
 
@@ -13093,7 +13094,7 @@
   )
 
 (deftype entity-ambient-data-array (inline-array-class)
-  ()
+  ((data entity-ambient-data :dynamic :inline))
   :method-count-assert 9
   :size-assert         #x10
   :flag-assert         #x900000010
@@ -13106,7 +13107,7 @@
   :flag-assert #x1d00000034
   (:methods
     (dummy-27 () none 27)
-    (dummy-28 () none 28)
+    (birth-ambient! (_type_) none 28)
     )
   )
 
@@ -13117,6 +13118,7 @@
     (etype type :offset-assert 56) ;; probably type
     (task uint8 :offset-assert 60)
     (vis-id uint16 :offset-assert 62)
+    (vis-id-signed int16 :offset 62) ;; added
     (quat quaternion :inline :offset-assert 64)
   )
   :method-count-assert 31
@@ -13126,8 +13128,8 @@
   (:methods
     (next-actor (_type_) entity-actor 27)
     (prev-actor (_type_) entity-actor 28)
-    (dummy-29 () none 29)
-    (dummy-30 () none 30)
+    (debug-print (_type_ symbol type) none 29)
+    (dummy-30 (_type_ entity-perm-status symbol) none 30)
     )
   )
 
@@ -14519,7 +14521,7 @@
    (node-count          int32           :offset-assert 176)
    (nodes               uint32          :offset-assert 180)
    (vertex-count        int32           :offset-assert 184)
-   (vertex              uint32          :offset-assert 188)
+   (vertex              (inline-array vector)          :offset-assert 188)
    (poly-count          int32           :offset-assert 192)
    (poly                uint32          :offset-assert 196)
    (route               uint32          :offset-assert 200)
@@ -14538,7 +14540,7 @@
     (dummy-16 () none 16)
     (dummy-17 (_type_) none 17)
     (dummy-18 () none 18)
-    (dummy-19 () none 19)
+    (compute-bounding-box (_type_ vector vector) none 19)
     (dummy-20 () none 20)
     (dummy-21 () none 21)
     (dummy-22 () none 22)
@@ -17434,7 +17436,7 @@
 (define-extern command-get-int (function object int int))
 (define-extern ambient-hint-spawn (function symbol symbol process-tree none))
 (define-extern command-get-float (function object float float))
-(define-extern process-by-ename function)
+(define-extern process-by-ename (function string process))
 (define-extern point-in-polygon function)
 (define-extern try-corner function)
 (define-extern split-monotone-polygon function)
@@ -18627,7 +18629,7 @@
 (define-extern camera-fov-draw function)
 (define-extern cam-line-dma function)
 (define-extern camera-line2d function)
-(define-extern camera-plot-float-func function)
+(define-extern camera-plot-float-func (function float float float float (function float float) vector4w none))
 (define-extern cam-debug-add-coll-tri function)
 (define-extern debug-euler function)
 (define-extern bike-cam-limit function)
@@ -18905,7 +18907,7 @@
 
 (define-extern line-in-view-frustum? function)
 (define-extern process-drawable-random-point! function)
-(define-extern process-drawable-from-entity! (function process-drawable object none))
+(define-extern process-drawable-from-entity! (function process-drawable res-lump none))
 (define-extern cam-launcher-long-joystick function)
 (define-extern hide-hud-quick (function none))
 (define-extern command-get-process function)
@@ -19649,7 +19651,7 @@
 (define-extern dma-add-process-drawable-hud function)
 (define-extern foreground-engine-execute (function engine display-frame int int none))
 (define-extern main-debug-hook function)
-(define-extern main-draw-hook function)
+(define-extern main-draw-hook (function none))
 (define-extern swap-display (function display none))
 (define-extern marks-cam-restore function)
 (define-extern eddie-cam-restore function)
@@ -19840,23 +19842,23 @@
 ;; - Functions
 
 (define-extern task-control-reset (function symbol none))
-(define-extern init-entity function)
-(define-extern birth-viewer function)
-(define-extern update-actor-vis-box function)
-(define-extern process-status-bits function)
-(define-extern entity-by-meters function)
-(define-extern entity-process-count function)
-(define-extern entity-count function)
-(define-extern entity-remap-names function)
-(define-extern expand-vis-box-with-point function)
-(define-extern entity-task-complete-on function)
-(define-extern entity-task-complete-off function)
-(define-extern entity-speed-test function)
+(define-extern init-entity (function process entity none))
+(define-extern birth-viewer (function process entity object))
+(define-extern update-actor-vis-box (function process-drawable vector vector none))
+(define-extern process-status-bits (function process symbol none))
+(define-extern entity-by-meters (function float float float entity-actor))
+(define-extern entity-process-count (function symbol int))
+(define-extern entity-count (function int))
+(define-extern entity-remap-names (function pair none))
+(define-extern expand-vis-box-with-point (function entity vector none))
+(define-extern entity-task-complete-on (function entity none))
+(define-extern entity-task-complete-off (function entity none))
+(define-extern entity-speed-test (function string none))
 
 ;; - Unknowns
 
 (define-extern *compact-actors* symbol)
-;;(define-extern *vis-actors* object) ;; unknown type
+(define-extern *vis-actors* symbol)
 
 
 ;; ----------------------
@@ -21418,28 +21420,15 @@
 
 ;; - Types
 
-; (deftype viewer (process-drawable)
-;   ((janim basic  :offset-assert 176)
-;    )
-;   :method-count-assert 20
-;   :size-assert         #xb4
-;   :heap-base           #x50
-;   :flag-assert         #x14005000b4
-;   ;; inherited inspect of process-drawable
-;   (:methods
-;     (dummy-9 () none 9)
-;     (dummy-10 () none 10)
-;     (dummy-11 () none 11)
-;     (dummy-12 () none 12)
-;     (dummy-13 () none 13)
-;     (dummy-14 () none 14)
-;     (dummy-15 () none 15)
-;     (dummy-16 () none 16)
-;     (dummy-17 () none 17)
-;     (dummy-18 () none 18)
-;     (dummy-19 () none 19)
-;     )
-;   )
+(deftype viewer (process-drawable)
+  ((janim art-joint-anim  :offset-assert 176)
+   )
+  :method-count-assert 20
+  :size-assert         #xb4
+  :heap-base           #x50
+  :flag-assert         #x14005000b4
+  ;; inherited inspect of process-drawable
+  )
 
 ;; - Functions
 
@@ -21452,11 +21441,11 @@
 ;; - Unknowns
 
 ;;(define-extern *viewer* object) ;; unknown type
-;;(define-extern viewer-ja-name object) ;; unknown type
-;;(define-extern viewer-geo-name object) ;; unknown type
+(define-extern viewer-ja-name string)
+(define-extern viewer-geo-name string)
 (define-extern *viewer-sg* skeleton-group)
-;;(define-extern viewer-process object) ;; unknown type
-;;(define-extern viewer-string object) ;; unknown type
+(define-extern viewer-process (state viewer))
+(define-extern viewer-string string)
 
 
 ;; ----------------------
@@ -29150,29 +29139,16 @@
 
 ;; - Types
 
-; (deftype springbox (process-drawable)
-;   ((spring-height meters  :offset-assert 176)
-;    (smush         float   :offset-assert 180)
-;    )
-;   :method-count-assert 20
-;   :size-assert         #xb8
-;   :heap-base           #x50
-;   :flag-assert         #x14005000b8
-;   ;; inherited inspect of process-drawable
-;   (:methods
-;     (dummy-9 () none 9)
-;     (dummy-10 () none 10)
-;     (dummy-11 () none 11)
-;     (dummy-12 () none 12)
-;     (dummy-13 () none 13)
-;     (dummy-14 () none 14)
-;     (dummy-15 () none 15)
-;     (dummy-16 () none 16)
-;     (dummy-17 () none 17)
-;     (dummy-18 () none 18)
-;     (dummy-19 () none 19)
-;     )
-;   )
+(deftype springbox (process-drawable)
+  ((spring-height meters  :offset-assert 176)
+   (smush         float   :offset-assert 180)
+   )
+  :method-count-assert 20
+  :size-assert         #xb8
+  :heap-base           #x50
+  :flag-assert         #x14005000b8
+  ;; inherited inspect of process-drawable
+  )
 
 ;; - Unknowns
 

@@ -1192,23 +1192,36 @@ std::optional<std::vector<BitFieldConstantDef>> try_decompile_bitfield_from_int(
     const TypeSpec& type,
     const TypeSystem& ts,
     u64 value,
-    bool require_success) {
+    bool require_success,
+    std::optional<int> offset) {
   u64 touched_bits = 0;
   std::vector<BitFieldConstantDef> result;
 
   auto type_info = dynamic_cast<BitFieldType*>(ts.lookup_type(type));
   assert(type_info);
 
+  int start_bit = 0;
+
+  if (offset) {
+    start_bit = *offset;
+  }
+  int end_bit = 64 + start_bit;
+
   for (auto& field : type_info->fields()) {
+    if (field.offset() < start_bit || (field.offset() + field.size()) > end_bit) {
+      continue;
+    }
+
     u64 bitfield_value;
     bool is_signed = ts.tc(TypeSpec("int"), field.type()) && !ts.tc(TypeSpec("uint"), field.type());
     if (is_signed) {
       // signed
       s64 signed_value = value;
-      bitfield_value = extract_bitfield<s64>(signed_value, field.offset(), field.size());
+      bitfield_value =
+          extract_bitfield<s64>(signed_value, field.offset() - start_bit, field.size());
     } else {
       // unsigned
-      bitfield_value = extract_bitfield<u64>(value, field.offset(), field.size());
+      bitfield_value = extract_bitfield<u64>(value, field.offset() - start_bit, field.size());
     }
 
     if (bitfield_value != 0) {
@@ -1226,13 +1239,15 @@ std::optional<std::vector<BitFieldConstantDef>> try_decompile_bitfield_from_int(
       if (nested_bitfield_type) {
         BitFieldConstantDef::NestedField nested;
         nested.field_type = field.type();
-        nested.fields = *try_decompile_bitfield_from_int(field.type(), ts, bitfield_value, true);
+        // never nested 128-bit bitfields
+        nested.fields =
+            *try_decompile_bitfield_from_int(field.type(), ts, bitfield_value, true, {});
         def.nested_field = nested;
       }
       result.push_back(def);
     }
 
-    for (int i = field.offset(); i < field.offset() + field.size(); i++) {
+    for (int i = field.offset() - start_bit; i < field.offset() + field.size() - start_bit; i++) {
       touched_bits |= (u64(1) << i);
     }
   }
@@ -1254,7 +1269,7 @@ std::optional<std::vector<BitFieldConstantDef>> try_decompile_bitfield_from_int(
 std::vector<BitFieldConstantDef> decompile_bitfield_from_int(const TypeSpec& type,
                                                              const TypeSystem& ts,
                                                              u64 value) {
-  return *try_decompile_bitfield_from_int(type, ts, value, true);
+  return *try_decompile_bitfield_from_int(type, ts, value, true, {});
 }
 
 std::vector<std::string> decompile_bitfield_enum_from_int(const TypeSpec& type,
