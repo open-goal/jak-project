@@ -14,6 +14,7 @@
 #include "decompiler/Disasm/DecompilerLabel.h"
 #include "decompiler/Function/Function.h"
 #include "common/common_types.h"
+#include "decompiler/IR2/LabelDB.h"
 
 namespace decompiler {
 /*!
@@ -127,6 +128,8 @@ class LinkedObjectFile {
   std::vector<uint32_t> offset_of_data_zone_by_seg;
   std::vector<std::vector<Function>> functions_by_seg;
   std::vector<DecompilerLabel> labels;
+
+  std::unique_ptr<LabelDB> label_db;
 
  private:
   goos::Object to_form_script(int seg, int word_idx, std::vector<bool>& seen);

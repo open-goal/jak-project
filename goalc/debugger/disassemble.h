@@ -5,6 +5,12 @@
 #include "common/common_types.h"
 #include "goalc/emitter/Instruction.h"
 
+class FunctionEnv;
+
+namespace goos {
+class Reader;
+}
+
 struct InstructionInfo {
   emitter::Instruction instruction;  //! the actual x86 instruction
   enum class Kind { PROLOGUE, IR, EPILOGUE } kind;
@@ -23,8 +29,9 @@ std::string disassemble_x86(u8* data, int len, u64 base_addr, u64 highlight_addr
 
 std::string disassemble_x86_function(u8* data,
                                      int len,
+                                     const goos::Reader* reader,
                                      u64 base_addr,
                                      u64 highlight_addr,
                                      const std::vector<InstructionInfo>& x86_instructions,
-                                     const std::vector<std::string>& irs,
+                                     const FunctionEnv* fenv,
                                      bool* had_failure);

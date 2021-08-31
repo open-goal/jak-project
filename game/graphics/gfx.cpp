@@ -20,7 +20,6 @@
 #include "game/system/newpad.h"
 
 namespace {
-
 // initializes a gfx settings.
 // TODO save and load from file
 void InitSettings(GfxSettings& settings) {
@@ -55,15 +54,16 @@ void LoadSettings() {
   const auto filename = file_util::get_file_path({GAME_CONFIG_DIR_NAME, SETTINGS_GFX_FILE_NAME});
   if (std::filesystem::exists(filename)) {
     FILE* fp = fopen(filename.c_str(), "rb");
+    lg::info("Found graphics configuration file. Checking version.");
     u64 version;
     fread(&version, sizeof(u64), 1, fp);
     if (version == GfxSettings::CURRENT_VERSION) {
       fseek(fp, 0, SEEK_SET);
       fread(&g_settings, sizeof(GfxSettings), 1, fp);
-      lg::info("Loaded gfx settings.");
+      lg::info("Loaded graphics configuration file.");
     } else {
       // TODO upgrade func
-      lg::info("Detected gfx settings from old version. Ignoring.");
+      lg::info("Detected graphics configuration file from old version. Ignoring.");
     }
     fclose(fp);
   }
@@ -75,7 +75,7 @@ void SaveSettings() {
   FILE* fp = fopen(filename.c_str(), "wb");
   fwrite(&g_settings, sizeof(GfxSettings), 1, fp);
   fclose(fp);
-  lg::info("Saved gfx settings.");
+  lg::info("Saved graphics configuration file.");
 }
 
 const GfxRendererModule* GetRenderer(GfxPipeline pipeline) {
@@ -111,9 +111,9 @@ u32 Init() {
   }
 
   if (g_main_thread_id != std::this_thread::get_id()) {
-    lg::warn("ran Gfx::Init outside main thread. Init display elsewhere?");
+    lg::warn("Ran Gfx::Init outside main thread. Init display elsewhere?");
   } else {
-    Display::InitMainDisplay(640, 480, "testy", g_settings);
+    Display::InitMainDisplay(640, 480, "OpenGOAL GL Window", g_settings);
   }
 
   return 0;

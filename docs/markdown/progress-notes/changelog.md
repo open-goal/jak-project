@@ -194,3 +194,4 @@
 - It is possible to access fields of the parent of a forward declared type
 - Fixed a bug where casting a value to seconds, then setting a field of type seconds would incorrectly fail type-check
 - Fixed a bug where nested rlet's didn't properly share register constraints, leading to inefficient register allocation, and some rare cases a regalloc constraint error
+- Lambdas may now be used in static pairs.

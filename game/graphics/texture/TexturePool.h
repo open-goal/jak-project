@@ -27,6 +27,7 @@ class TexturePool {
   void handle_upload_now(const u8* tpage, int mode, const u8* memory_base, u32 s7_ptr);
   void set_texture(u32 location, std::unique_ptr<TextureRecord>&& record);
   void set_mt4hh_texture(u32 location, std::unique_ptr<TextureRecord>&& record);
+  void draw_debug_window();
   TextureRecord* lookup(u32 location) {
     if (m_textures.at(location).normal_texture) {
       return m_textures[location].normal_texture.get();
@@ -43,9 +44,12 @@ class TexturePool {
     }
   }
 
+  void upload_to_gpu(TextureRecord* rec);
+
   void relocate(u32 destination, u32 source, u32 format);
 
  private:
+  void draw_debug_for_tex(const std::string& name, TextureRecord& tex);
   TextureConverter m_tex_converter;
 
   // uses tex.dest[mip] indexing. (bytes / 256). Currently only sets the base of a texture.
