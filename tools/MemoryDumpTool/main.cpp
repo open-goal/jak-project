@@ -234,6 +234,80 @@ void inspect_process_self(const Ram& ram,
   }
 }
 
+void follow_references_to_find_pointers(
+    const Ram& ram,
+    const TypeSystem& type_system,
+    std::unordered_map<std::string, std::vector<u32>>& basics_in,
+    u32 st_addr) {
+  // all the objects.
+  std::unordered_map<std::string, std::unordered_set<u32>> found;
+  // things to check.
+  std::vector<std::pair<std::string, u32>> stack;
+
+  // insert the basics
+  for (auto& kv : basics_in) {
+    for (auto addr : kv.second) {
+      found[kv.first].insert(addr);
+      stack.push_back({kv.first, addr});
+    }
+  }
+
+  // dfs
+  while (!stack.empty()) {
+    auto to_check = stack.back();
+    stack.pop_back();
+
+    if (type_system.fully_defined_type_exists(to_check.first)) {
+      auto type_info = dynamic_cast<StructureType*>(type_system.lookup_type(to_check.first));
+      assert(type_info);
+      for (auto& field : type_info->fields()) {
+        if (type_system.fully_defined_type_exists(field.type())) {
+          auto field_info = type_system.lookup_type(field.type());
+          auto field_as_structure = dynamic_cast<StructureType*>(field_info);
+          auto field_as_basic = dynamic_cast<BasicType*>(field_info);
+          if (field_as_structure && !field_as_basic) {
+            u32 field_address = to_check.second + field.offset();
+            if (field.is_inline()) {
+              if (ram.word_in_memory(field_address) && field_address > st_addr) {
+                if (found[field.type().base_type()].insert(field_address).second) {
+                  // fmt::print("In type {} field {} (inline), found an {} at {} {}\n",
+                  // to_check.first,
+                  //            field.name(), field.type().print(), field_address,
+                  //            field_address & 0xf);
+                  stack.push_back({field.type().base_type(), field_address});
+                }
+              }
+
+            } else {
+              if (ram.word_in_memory(field_address)) {
+                u32 field_value = ram.word(field_address);
+                if (ram.word_in_memory(field_value) && field_value > st_addr) {
+                  if (found[field.type().base_type()].insert(field_value).second) {
+                    // fmt::print("In type {} field {}, found an {} at {} {}\n", to_check.first,
+                    //            field.name(), field.type().print(), field_value, field_value &
+                    //            0xf);
+                    stack.push_back({field.type().base_type(), field_value});
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+
+  int total_found = 0;
+  for (const auto& kv : found) {
+    for (auto addr : kv.second) {
+      basics_in[kv.first].push_back(addr);
+      total_found++;
+    }
+  }
+
+  fmt::print("Following points found {} objects.\n", total_found++);
+}
+
 void inspect_basics(const Ram& ram,
                     const std::unordered_map<std::string, std::vector<u32>>& basics,
                     const std::unordered_map<u32, std::string>& types,
@@ -271,12 +345,16 @@ void inspect_basics(const Ram& ram,
       continue;
     }
 
-    auto type = dynamic_cast<BasicType*>(type_system.lookup_type(name));
+    auto type = dynamic_cast<StructureType*>(type_system.lookup_type(name));
     if (!type) {
       fmt::print("Could not cast Type! Skipping!!\n");
       type_results["__metadata"]["failedToCast?"] = true;
       results[name] = type_results;
       continue;
+    }
+
+    if (!dynamic_cast<BasicType*>(type)) {
+      fmt::print("NOTE: Not a basic.\n");
     }
 
     for (auto& field : type->fields()) {
@@ -481,6 +559,8 @@ int main(int argc, char** argv) {
   auto symbol_map = build_symbol_map(ram, s7);
   auto types = build_type_map(ram, symbol_map, s7);
   auto basics = find_basics(ram, types);
+
+  follow_references_to_find_pointers(ram, dts.ts, basics, s7 + 0x100);
 
   inspect_basics(ram, basics, types, symbol_map, dts.ts, results);
   inspect_symbols(ram, types, symbol_map);
