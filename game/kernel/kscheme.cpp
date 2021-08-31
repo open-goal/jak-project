@@ -1937,15 +1937,15 @@ s32 InitHeapAndSymbol() {
   // game stuff
   make_stack_arg_function_symbol_from_c("link-begin", (void*)link_begin);
   make_function_symbol_from_c("link-resume", (void*)link_resume);
-  //  make_function_symbol_from_c("mc-run", &CKernel::not_yet_implemented);
-  //  make_function_symbol_from_c("mc-format", &CKernel::not_yet_implemented);
-  //  make_function_symbol_from_c("mc-unformat", &CKernel::not_yet_implemented);
-  //  make_function_symbol_from_c("mc-create-file", &CKernel::not_yet_implemented);
-  //  make_function_symbol_from_c("mc-save", &CKernel::not_yet_implemented);
-  //  make_function_symbol_from_c("mc-load", &CKernel::not_yet_implemented);
-  //  make_function_symbol_from_c("mc-check-result", &CKernel::not_yet_implemented);
-  //  make_function_symbol_from_c("mc-get-slot-info", &CKernel::not_yet_implemented);
-  //  make_function_symbol_from_c("mc-makefile", &CKernel::not_yet_implemented);
+  make_function_symbol_from_c("mc-run", (void*)MC_run);
+  make_function_symbol_from_c("mc-format", (void*)MC_format);
+  make_function_symbol_from_c("mc-unformat", (void*)MC_unformat);
+  make_function_symbol_from_c("mc-create-file", (void*)MC_createfile);
+  make_function_symbol_from_c("mc-save", (void*)MC_save);
+  make_function_symbol_from_c("mc-load", (void*)MC_load);
+  make_function_symbol_from_c("mc-check-result", (void*)MC_check_result);
+  make_function_symbol_from_c("mc-get-slot-info", (void*)MC_get_status);
+  make_function_symbol_from_c("mc-makefile", (void*)MC_makefile);
   make_function_symbol_from_c("kset-language", (void*)MC_set_language);
 
   // set *debug-segment*

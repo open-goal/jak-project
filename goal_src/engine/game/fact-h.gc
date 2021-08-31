@@ -70,7 +70,7 @@
 ;; amounts or timings
 ;; The fact-info class stores data that is common to all fact-infos.
 (deftype fact-info (basic)
-  ((process             process :offset-assert 4)       ;; the process that this info is for
+  ((process             process-drawable :offset-assert 4)       ;; the process that this info is for
    (pickup-type         pickup-type   :offset-assert 8)
    (pickup-amount       float   :offset-assert 12)      ;; eco increment on pickup
    (pickup-spawn-amount float   :offset-assert 16)
@@ -81,10 +81,10 @@
   :size-assert         #x28
   :flag-assert         #xc00000028
   (:methods
-    (new (symbol type process pickup-type float) _type_ 0)
+    (new (symbol type process-drawable pickup-type float) _type_ 0)
     (TODO-RENAME-9 (_type_ symbol process-tree fact-info int) uint 9) ;; See nav-enemy::process-drawable-death-event-handler
     (reset! (_type_ symbol) none 10)
-    (dummy-11 (_type_) float 11)
+    (pickup-collectable! (_type_ pickup-type float handle) float 11)
     )
   )
 
@@ -100,7 +100,7 @@
    (eco-pill              float    :offset-assert  80)
    (eco-pill-max          float    :offset-assert  84)
    (health-pickup-time    uint64   :offset-assert  88)
-   (eco-source            uint64   :offset-assert  96)
+   (eco-source            handle   :offset-assert  96)
    (eco-source-time       uint64   :offset-assert 104)
    (money-pickup-time     uint64   :offset-assert 112)
    (buzzer-pickup-time    uint64   :offset-assert 120)
@@ -111,7 +111,7 @@
   :size-assert         #x90
   :flag-assert         #xc00000090
   (:methods
-    (new (symbol type process pickup-type float) _type_ 0)
+    (new (symbol type process-drawable pickup-type float) _type_ 0)
     )
   )
 
@@ -128,11 +128,13 @@
   :size-assert         #x44
   :flag-assert         #xc00000044
   (:methods
-    (new (symbol type process pickup-type float) _type_ 0)
+    (new (symbol type process-drawable pickup-type float) _type_ 0)
     )
   )
 
-(defmethod new fact-info ((allocation symbol) (type-to-make type) (proc process) (pkup-type pickup-type) (pkup-amount float))
+(declare-type process-drawable process)
+
+(defmethod new fact-info ((allocation symbol) (type-to-make type) (proc process-drawable) (pkup-type pickup-type) (pkup-amount float))
   "Create information about a pickup.  This should be called from a process which is a pickup.  This will read settings from
    the entity of the process automatically. Will attempt to read pickup-type and amount from the entity, but if this
    fails will use the values in the arguments"
@@ -190,11 +192,11 @@
     )
   )
 
-(defmethod dummy-11 fact-info ((obj fact-info))
+(defmethod pickup-collectable! fact-info ((obj fact-info) (arg0 pickup-type) (arg1 float) (arg2 handle))
   0.0
   )
 
-(defmethod new fact-info-enemy ((allocation symbol) (type-to-make type) (proc process) (kind pickup-type) (amount float))
+(defmethod new fact-info-enemy ((allocation symbol) (type-to-make type) (proc process-drawable) (kind pickup-type) (amount float))
   "Create information about an enemy. Possibly includes what the enemy will drop when it is killed?"
   ;; base class ctor
   (let ((obj (the-as fact-info-enemy ((method-of-type fact-info new) allocation type-to-make proc kind amount))))
@@ -212,10 +214,10 @@
     )
   )
 
-(defmethod new fact-info-target ((allocation symbol) (type-to-make type) (arg0 process) (arg1 pickup-type) (arg2 float))
+(defmethod new fact-info-target ((allocation symbol) (type-to-make type) (arg0 process-drawable) (arg1 pickup-type) (arg2 float))
   "Create information about target. Not sure why this has stuff like pickup-type."
   (let ((obj (the-as fact-info-target ((method-of-type fact-info new) allocation type-to-make arg0 arg1 arg2))))
-    (set! (-> obj eco-source) (the-as uint #f))
+    (set! (-> obj eco-source) (the-as handle #f))
     (reset! obj #f)
     obj
     )

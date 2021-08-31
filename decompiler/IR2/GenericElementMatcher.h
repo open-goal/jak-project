@@ -27,6 +27,7 @@ class Matcher {
   static Matcher any_reg(int match_id = -1);
   static Matcher any_label(int match_id = -1);
   static Matcher op(const GenericOpMatcher& op, const std::vector<Matcher>& args);
+  static Matcher op_fixed(FixedOperatorKind op, const std::vector<Matcher>& args);
   static Matcher op_with_rest(const GenericOpMatcher& op, const std::vector<Matcher>& args);
   static Matcher set(const Matcher& dst, const Matcher& src);    // form-form
   static Matcher set_var(const Matcher& src, int dst_match_id);  // var-form

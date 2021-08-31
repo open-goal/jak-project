@@ -77,9 +77,12 @@ add_subdirectory(third-party/glfw)
 # build libzip
 add_subdirectory(third-party/11zip EXCLUDE_FROM_ALL)
 
-# build the game code in C++
+# build imgui
 include_directories(third-party/glad/include)
 include_directories(third-party/glfw/include)
+add_subdirectory(third-party/imgui)
+
+# build the game code in C++
 add_subdirectory(game)
 
 # build the compiler

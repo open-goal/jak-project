@@ -1,6 +1,10 @@
 #include "disassemble.h"
 #include "Zydis/Zydis.h"
 #include "third-party/fmt/core.h"
+#include "goalc/compiler/Env.h"
+#include "goalc/compiler/IR.h"
+#include "common/goos/Reader.h"
+#include "third-party/fmt/color.h"
 
 std::string disassemble_x86(u8* data, int len, u64 base_addr) {
   std::string result;
@@ -60,10 +64,11 @@ std::string disassemble_x86(u8* data, int len, u64 base_addr, u64 highlight_addr
 
 std::string disassemble_x86_function(u8* data,
                                      int len,
+                                     const goos::Reader* reader,
                                      u64 base_addr,
                                      u64 highlight_addr,
                                      const std::vector<InstructionInfo>& x86_instructions,
-                                     const std::vector<std::string>& irs,
+                                     const FunctionEnv* fenv,
                                      bool* had_failure) {
   std::string result;
   ZydisDecoder decoder;
@@ -72,12 +77,18 @@ std::string disassemble_x86_function(u8* data,
   ZydisFormatterInit(&formatter, ZYDIS_FORMATTER_STYLE_INTEL);
   ZydisDecodedInstruction instr;
 
+  const auto& irs = fenv->code();
+
   constexpr int print_buff_size = 512;
   char print_buff[print_buff_size];
   int offset = 0;
 
   int current_instruction_idx = -1;
   int current_ir_idx = -1;
+
+  std::string current_filename;
+  int current_file_line = -1;
+  int current_offset_in_line = -1;
 
   assert(highlight_addr >= base_addr);
   int mark_offset = int(highlight_addr - base_addr);
@@ -119,6 +130,25 @@ std::string disassemble_x86_function(u8* data,
         }
       }
 
+      if (current_ir_idx >= 0 && current_ir_idx < int(irs.size())) {
+        auto source = reader->db.try_get_short_info(fenv->code_source().at(current_ir_idx));
+        if (source) {
+          if (source->filename != current_filename ||
+              source->line_idx_to_display != current_file_line ||
+              source->pos_in_line != current_offset_in_line) {
+            current_filename = source->filename;
+            current_file_line = source->line_idx_to_display;
+            current_offset_in_line = source->pos_in_line;
+            result +=
+                fmt::format(fmt::emphasis::bold, "\n{}:{}\n", current_filename, current_file_line);
+            result += fmt::format(fg(fmt::color::orange), "-> {}\n", source->line_text);
+            std::string pointer(current_offset_in_line + 3, ' ');
+            pointer += "^\n";
+            result += fmt::format(fmt::emphasis::bold | fg(fmt::color::lime_green), "{}", pointer);
+          }
+        }
+      }
+
       std::string line;
 
       line += fmt::format("{:c} [0x{:X}] ", prefix, base_addr);
@@ -130,7 +160,7 @@ std::string disassemble_x86_function(u8* data,
           line.append(50 - line.size(), ' ');
         }
         line += " ";
-        line += irs.at(current_ir_idx);
+        line += irs.at(current_ir_idx)->print();
       }
 
       if (warn_messed_up) {

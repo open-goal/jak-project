@@ -81,7 +81,9 @@ class ObjectFileDB {
   void ir2_insert_anonymous_functions(int seg);
   void ir2_symbol_definition_map(const std::string& output_dir);
   void ir2_write_results(const std::string& output_dir, const Config& config);
-  void ir2_do_common_segment_analysis(int seg, const Config& config);
+  void ir2_do_segment_analysis_phase1(int seg, const Config& config);
+  void ir2_do_segment_analysis_phase2(int seg, const Config& config);
+  void ir2_setup_labels(const Config& config);
   std::string ir2_to_file(ObjectFileData& data, const Config& config);
   std::string ir2_function_to_string(ObjectFileData& data, Function& function, int seg);
   std::string ir2_final_out(ObjectFileData& data,
@@ -158,9 +160,11 @@ class ObjectFileDB {
   void for_each_function_in_seg(int seg, Func f) {
     for_each_obj([&](ObjectFileData& data) {
       int fn = 0;
-      for (size_t j = data.linked_data.functions_by_seg.at(seg).size(); j-- > 0;) {
-        f(data.linked_data.functions_by_seg.at(seg).at(j), data);
-        fn++;
+      if (data.linked_data.segments == 3) {
+        for (size_t j = data.linked_data.functions_by_seg.at(seg).size(); j-- > 0;) {
+          f(data.linked_data.functions_by_seg.at(seg).at(j), data);
+          fn++;
+        }
       }
     });
   }
