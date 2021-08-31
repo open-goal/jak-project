@@ -195,3 +195,5 @@
 - Fixed a bug where casting a value to seconds, then setting a field of type seconds would incorrectly fail type-check
 - Fixed a bug where nested rlet's didn't properly share register constraints, leading to inefficient register allocation, and some rare cases a regalloc constraint error
 - Lambdas may now be used in static pairs.
+- Dynamically constructed bitfields created with `(new 'static ...` may now set fields with `structure` type.
+- Allocations on `'loading-level` are now permitted.

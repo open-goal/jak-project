@@ -11,6 +11,12 @@
 (lg)                ;; have the runtime load the game engine
 (test-play)         ;; start the game loop
 (ml "goal_src/examples/debug-draw-example.gc")  ;; build and load this file.
+
+;; to get control of camera from keyboard
+(kill-test-procs)
+(launch-wasd-process)
+
+;; you can turn on actor marks (full) or visibilty boxes in the debug menu.
 |#
 
 (defun hack-update-camera ((location vector) (inv-rot matrix))
@@ -104,6 +110,94 @@
   )
 
 
+(define *wasd-camera-transform* (new 'global 'transform))
+
+
+(defun wasd-camera-update ()
+  (let ((local-trans (new-stack-vector0))
+        (trans *wasd-camera-transform*)
+        (pad-idx 0))
+    ;; circle/square move camera relative x (left and right)
+    (set! (-> local-trans x)
+          (cond
+            ((logtest? (-> *cpad-list* cpads pad-idx button0-abs 0) (pad-buttons circle))
+             -80.0
+             )
+            ((logtest? (-> *cpad-list* cpads pad-idx button0-abs 0) (pad-buttons square))
+             80.0
+             )
+            (else
+              0.0
+              )
+            )
+          )
+    
+    ;; no way to move camera relative y (up/down)
+    (set! (-> local-trans y) 0.0)
+    
+    ;; in and out movement
+    (set! (-> local-trans z)
+          (cond
+            ((logtest? (-> *cpad-list* cpads pad-idx button0-abs 0) (pad-buttons down))
+             -800.0
+             )
+            ((logtest? (-> *cpad-list* cpads pad-idx button0-abs 0) (pad-buttons up))
+             800.0
+             )
+            (else
+              0.0
+              )
+            )
+          )
+    (set! (-> local-trans w) 1.0)
+    
+    ;; rotate this into world frame
+    (let ((inv-cam-rot (new-stack-vector0))
+          (cam-rot-mat (new-stack-matrix0)))
+      ;; unused.
+      (vector-negate! inv-cam-rot (-> trans rot))
+      ;; convert rotation to rotation matrix.
+      (matrix-rotate-zyx! cam-rot-mat (-> trans rot))
+      ;; and rotate the translation.
+      (vector-matrix*! local-trans local-trans cam-rot-mat)
+      )
+    
+    ;; and update the transform
+    (vector+! (-> trans trans) (-> trans trans) local-trans)
+    
+    
+    ;; don't forget to fix w.
+    (set! (-> trans trans w) 1.0)
+    
+    ;; global translation
+    (if (logtest? (-> *cpad-list* cpads pad-idx button0-abs 0) (pad-buttons l1))
+        (set! (-> trans trans y) (+ 800.0 (-> trans trans y)))
+        )
+    (if (logtest? (-> *cpad-list* cpads pad-idx button0-abs 0) (pad-buttons r1))
+        (set! (-> trans trans y) (+ -800.0 (-> trans trans y)))
+        )
+    
+    ;; rotation (don't allow camera roll)
+    (if (logtest? (-> *cpad-list* cpads pad-idx button0-abs 0) (pad-buttons x))
+        (set! (-> trans rot x) (+ 54.13336 (-> trans rot x)))
+        )
+    (if (logtest? (-> *cpad-list* cpads pad-idx button0-abs 0) (pad-buttons triangle))
+        (set! (-> trans rot x) (+ -54.13336 (-> trans rot x)))
+        )
+    (if (logtest? (-> *cpad-list* cpads pad-idx button0-abs 0) (pad-buttons left))
+        (set! (-> trans rot y) (+ 546.13336 (-> trans rot y)))
+        )
+    (if (logtest? (-> *cpad-list* cpads pad-idx button0-abs 0) (pad-buttons right))
+        (set! (-> trans rot y) (+ -546.13336 (-> trans rot y)))
+        )
+    
+    (set! (-> trans scale x) 1.)
+    (set! (-> trans scale y) 1.)
+    (set! (-> trans scale z) 1.)
+    (set! (-> trans scale w) 1.)
+    )
+  )
+
 (defun launch-test-process ()
   "Call this to launch a process that draws the debug demo"
   (let ((proc (get-process *nk-dead-pool* process 1024)))
@@ -120,6 +214,41 @@
                               )
     proc)
 
+  )
+
+
+(defun launch-wasd-process ()
+  "Launch a process to control the camera with keyboard.
+   Note that the test process above also controls the camera and should be killed first.
+   For example, after loading this file, do
+   (kill-test-procs)
+   (launch-wasd-process)"
+  (let ((proc (get-process *nk-dead-pool* process 1024)))
+    (activate proc *active-pool* 'test *kernel-dram-stack*)
+    (set! (-> *wasd-camera-transform* trans y) (meters 4.0))
+    (run-next-time-in-process proc (lambda ()
+                                     (let ((iter 0))
+                                       (while #t
+                                         (wasd-camera-update)
+                                         (let ((mat (new-stack-matrix0)))
+                                           (transform-matrix-calc! *wasd-camera-transform* mat)
+                                           (set! (-> mat data 3) 0.)
+                                           (set! (-> mat data 7) 0.)
+                                           (set! (-> mat data 11) 0.)
+                                           (set! (-> mat data 12) 0.)
+                                           (set! (-> mat data 13) 0.)
+                                           (set! (-> mat data 14) 0.)
+                                           (set! (-> mat data 15) 1.)
+                                           ;;(matrix-transpose! mat mat)
+                                           (hack-update-camera (-> *wasd-camera-transform* trans) mat)
+                                           )
+                                         (suspend)
+                                         (+! iter 1)
+                                         )
+                                       )
+                                     )
+                              )
+    proc)
   )
 
 ;; This will spawn a process the first time this file is loaded
