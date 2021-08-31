@@ -15,23 +15,32 @@ namespace decompiler {
 /*!
  * Entry point from the decompiler to decompile data.
  */
-goos::Object decompile_at_label_with_hint(const LabelType& hint,
+goos::Object decompile_at_label_with_hint(const LabelInfo& hint,
                                           const DecompilerLabel& label,
                                           const std::vector<DecompilerLabel>& labels,
                                           const std::vector<std::vector<LinkedWord>>& words,
                                           DecompilerTypeSystem& dts,
                                           const LinkedObjectFile* file) {
-  auto type = dts.parse_type_spec(hint.type_name);
+  const auto& type = hint.result_type;
   if (!hint.array_size.has_value()) {
     // if we don't have an array size, treat it as just a normal type.
+    if (hint.is_value) {
+      throw std::runtime_error(fmt::format(
+          "Label {} was marked as a value, but is being decompiled as a reference.", hint.name));
+    }
     return decompile_at_label(type, label, labels, words, dts.ts, file);
   }
 
   if (type.base_type() == "pointer") {
+    if (hint.is_value) {
+      throw std::runtime_error(fmt::format(
+          "Label {} was marked as a value, but is being decompiled as a reference.", hint.name));
+    }
     auto field_type_info = dts.ts.lookup_type(type.get_single_arg());
     if (field_type_info->is_reference()) {
       throw std::runtime_error(
-          fmt::format("Type {} is not yet supported by the data decompiler.", hint.type_name));
+          fmt::format("Type {} label {} is not yet supported by the data decompiler.", type.print(),
+                      hint.name));
     } else {
       auto stride = field_type_info->get_size_in_memory();
 
@@ -47,10 +56,15 @@ goos::Object decompile_at_label_with_hint(const LabelType& hint,
   }
 
   if (type.base_type() == "inline-array") {
+    if (hint.is_value) {
+      throw std::runtime_error(fmt::format(
+          "Label {} was marked as a value, but is being decompiled as a reference.", hint.name));
+    }
     auto field_type_info = dts.ts.lookup_type(type.get_single_arg());
     if (!field_type_info->is_reference()) {
       throw std::runtime_error(
-          fmt::format("Type {} is invalid, the element type is not inlineable.", hint.type_name));
+          fmt::format("Type {} for label {} is invalid, the element type is not inlineable.",
+                      hint.result_type.print(), hint.name));
     } else {
       // it's an inline array.  let's figure out the len and stride
       auto len = *hint.array_size;
@@ -77,9 +91,9 @@ goos::Object decompile_at_label_with_hint(const LabelType& hint,
     }
   }
 
-  throw std::runtime_error(
-      fmt::format("Type `{}` with length {} is not yet supported by the data decompiler.",
-                  hint.type_name, *hint.array_size));
+  throw std::runtime_error(fmt::format(
+      "Type `{}` with length {} is not yet supported by the data decompiler. (label {})",
+      hint.result_type.print(), *hint.array_size, hint.name));
 }
 
 /*!
@@ -1047,8 +1061,11 @@ goos::Object decompile_pair_elt(const LinkedWord& word,
     return pretty_print::to_symbol("'()");
   } else if (word.kind == LinkedWord::PLAIN_DATA && (word.data & 0b111) == 0) {
     return pretty_print::to_symbol(fmt::format("(the binteger {})", ((s32)word.data) >> 3));
+  } else if (word.kind == LinkedWord::PLAIN_DATA) {
+    return pretty_print::to_symbol(fmt::format("#x{:x}", word.data));
   } else {
-    throw std::runtime_error(fmt::format("Pair elt did not have a good word kind"));
+    throw std::runtime_error(fmt::format("Pair elt did not have a good word kind: k {} d {}",
+                                         (int)word.kind, word.data));
   }
 }
 }  // namespace

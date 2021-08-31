@@ -230,12 +230,12 @@
   (set-draw-env (-> disp draw1) psm w h ztest zpsm 320)
 
   ;; initialize a bunch of counters
-  (set! (-> disp base-frame-counter) (the-as uint #x493e0))
-  (set! (-> disp game-frame-counter) (the-as uint #x493e0))
-  (set! (-> disp real-frame-counter) (the-as uint #x493e0))
-  (set! (-> disp part-frame-counter) (the-as uint #x493e0))
-  (set! (-> disp integral-frame-counter) (the-as uint #x493e0))
-  (set! (-> disp real-integral-frame-counter) (the-as uint #x493e0))
+  (set! (-> disp base-frame-counter) #x493e0)
+  (set! (-> disp game-frame-counter) #x493e0)
+  (set! (-> disp real-frame-counter) #x493e0)
+  (set! (-> disp part-frame-counter) #x493e0)
+  (set! (-> disp integral-frame-counter) #x493e0)
+  (set! (-> disp real-integral-frame-counter) #x493e0)
 
   ;; and the "old" version, which I think was their value on the last... frame?
   (set! (-> disp old-base-frame-counter) (+ (-> disp base-frame-counter) -1))
@@ -403,7 +403,7 @@
               (>= end-time (the-as int (-> worst-time-cache (/ bar-pos 10))))
               )
       (set! (-> worst-time-cache (/ bar-pos 10)) (the-as uint end-time))
-      (set! (-> obj cache-time) (-> *display* real-frame-counter))
+      (set! (-> obj cache-time) (the uint (-> *display* real-frame-counter)))
       )
 
     ;; draw the time, either in ticks or percent.
@@ -447,7 +447,7 @@
 
 (defun draw-sprite2d-xy ((buf dma-buffer) (x int) (y int) (w int) (h int) (color rgba))
   "Draw a sprite primitive with the given color and dimensions."
-
+  
   ;; create context and clip dimensions.
   (let* ((context (new 'stack 'draw-context x y w h color))
          (draw-x (max 1792 (min 2304 (+ (-> context orgx) 1792))))
@@ -456,7 +456,7 @@
                            )
                       (-> *video-parms* screen-miny)
                       )
-           )
+                 )
          (draw-w (-> context width))
          (draw-h (-> context height))
          ;; remember the address of the first dma-tag
@@ -464,13 +464,14 @@
     (with-cnt-vif-block (buf)
       
       (dma-buffer-add-gif-tag buf (new 'static 'gif-tag64 :nloop 1 :eop 1 :flg (gif-flag reg-list) :nreg 4)
-                                  (gs-reg-list prim rgbaq xyzf2 xyzf2)
-                                  )
+                              (gs-reg-list prim rgbaq xyzf2 xyzf2)
+                              )
       (dma-buffer-add-uint64 buf (new 'static 'gs-prim :prim (gs-prim-type sprite) :abe 1)
-                                 (-> context color 0)
-                                 (new 'static 'gs-xyzf :x (* draw-x 16) :y (* draw-y 16) :z #x3fffff)
-                                 (new 'static 'gs-xyzf :x (* (minmax (+ draw-x draw-w) 1792 2304) 16) :y (* (minmax (+ draw-y draw-h) (-> *video-parms* screen-maxy) (-> *video-parms* screen-miny)) 16) :z #x3fffff)
-                                 )
+                             (-> context color 0)
+                             (new 'static 'gs-xyzf :x (* draw-x 16) :y (* draw-y 16) :z #x3fffff)
+                             (new 'static 'gs-xyzf :x (* (minmax (+ draw-x draw-w) 1792 2304) 16) 
+                                  :y (* (minmax (+ draw-y draw-h) (-> *video-parms* screen-miny) (-> *video-parms* screen-maxy)) 16) :z #x3fffff)
+                             )
       )
     )
   (none)

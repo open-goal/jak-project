@@ -10,6 +10,10 @@
 ;; Use the service-cpads functions once per frame to update the data and vibration control
 ;; The cpad-set-buzz! function can be used for vibration.
 
+;; in display, but we haven't gotten to display-h.gc yet.
+(define-extern get-current-time (function int))
+(define-extern get-integral-current-time (function int))
+
 (defenum pad-buttons
     :bitfield #t
     :type uint32
@@ -38,10 +42,6 @@
   (negcon 2)
   (namco-gun 6)
   )
-
-;; these forward declarations should probably go somewhere else...
-(define-extern get-current-time (function uint))
-(define-extern get-integral-current-time (function uint))
 
 ;; this gets set to #f later on.
 (define *cheat-mode* #t)
@@ -86,10 +86,10 @@
    (align              uint8 6         :offset-assert 88) ;; hardware control of buzzing.
    (direct             uint8 6         :offset-assert 94) ;; hardware control of buzzing.
    (buzz-val           uint8 2         :offset-assert 100) ;; intensity for buzzing
-   (buzz-time          uint64 2        :offset-assert 104) ;; when to stop buzzing
+   (buzz-time          int64 2         :offset-assert 104) ;; when to stop buzzing
    (buzz               basic           :offset-assert 120) ;; is vibration enabled?
    (buzz-act           int32           :offset-assert 124)
-   (change-time        uint64          :offset-assert 128)
+   (change-time        int64           :offset-assert 128)
    )
   (:methods
    (new (symbol type int) _type_ 0)
@@ -132,7 +132,7 @@
   ;; probably a bug here, this should use v1-17 as the index.
   (dotimes (v1-17 2)
     (set! (-> pad buzz-val 0) (the-as uint 0))
-    (set! (-> pad buzz-time 0) (the-as uint 0))
+    (set! (-> pad buzz-time 0) 0)
     )
   pad
   )
@@ -211,16 +211,14 @@
      ;; we are already buzzing at this intensity.
      ;; buzz for max (old_buzz, new_buzz) duration
      (set! (-> pad buzz-time buzz-idx)
-           (max (the-as int (-> pad buzz-time buzz-idx))
-                (the-as int (+ (get-current-time) (the-as uint duration)))
-                )
+           (max (-> pad buzz-time buzz-idx) (+ (get-current-time) duration))
            )
      )
     ((< (-> pad buzz-val buzz-idx) (the-as uint buzz-amount))
      ;; buzz harder than the older value, overwrite the old buzz.
      (set! (-> pad buzz-val buzz-idx) buzz-amount)
      (set! (-> pad buzz-time buzz-idx)
-           (+ (get-current-time) (the-as uint duration))
+           (+ (get-current-time) duration)
            )
      )
     )
@@ -247,9 +245,7 @@
              (cond
                ;; check if okay to buzz:
                ((and (-> pad buzz)
-                     (< (the-as int (get-current-time))
-                        (the-as int (-> pad buzz-time buzz-idx))
-                        )
+                     (< (get-current-time) (-> pad buzz-time buzz-idx))
                      (= *master-mode* 'game)
                      )
                 (let ((v1-10 buzz-idx))
@@ -259,7 +255,7 @@
                      ;; an analog control
                      (set! (-> pad direct buzz-idx)
                            (logand (ash (-> pad buzz-val buzz-idx)
-                                        (- (the-as int (logand (get-integral-current-time) 7)))
+                                        (- (logand (get-integral-current-time) 7))
                                         )
                                    1
                                    )

@@ -342,8 +342,12 @@ TEST_F(DataDecompTest, FloatArray) {
       "    .word 0x0\n"
       "    .word 0x3f800000\n\n";
   auto parsed = parse_data(input);
-  auto decomp = decompile_at_label_with_hint({"(pointer float)", true, 7}, parsed.label("L63"),
-                                             parsed.labels, {parsed.words}, *dts, nullptr);
+  LabelInfo info;
+  info.result_type = TypeSpec("pointer", {TypeSpec("float")});
+  info.array_size = 7;
+  info.is_value = false;
+  auto decomp = decompile_at_label_with_hint(info, parsed.label("L63"), parsed.labels,
+                                             {parsed.words}, *dts, nullptr);
   check_forms_equal(decomp.print(),
                     "(new 'static 'array float 7\n"
                     "1.0 0.0 1.0 0.0 1.0 0.0 1.0)");

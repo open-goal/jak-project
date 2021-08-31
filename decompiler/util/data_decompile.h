@@ -8,6 +8,7 @@
 #include "common/type_system/TypeSystem.h"
 #include "decompiler/config.h"
 #include "decompiler/util/DecompilerTypeSystem.h"
+#include "decompiler/IR2/LabelDB.h"
 
 namespace decompiler {
 class LinkedObjectFile;
@@ -22,7 +23,7 @@ goos::Object decompile_at_label(const TypeSpec& type,
                                 const std::vector<std::vector<LinkedWord>>& words,
                                 const TypeSystem& ts,
                                 const LinkedObjectFile* file);
-goos::Object decompile_at_label_with_hint(const LabelType& hint,
+goos::Object decompile_at_label_with_hint(const LabelInfo& hint,
                                           const DecompilerLabel& label,
                                           const std::vector<DecompilerLabel>& labels,
                                           const std::vector<std::vector<LinkedWord>>& words,

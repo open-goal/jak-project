@@ -2,24 +2,17 @@
 #include "third-party/fmt/core.h"
 #include "Env.h"
 #include "IR.h"
+#include "common/goos/Reader.h"
 
 ///////////////////
 // Env
 ///////////////////
 
 /*!
- * Emit IR into the function currently being compiled.
- */
-void Env::emit(std::unique_ptr<IR> ir) {
-  // by default, we don't know how, so pass it up and hope for the best.
-  m_parent->emit(std::move(ir));
-}
-
-/*!
  * Allocate an IRegister with the given type.
  */
-RegVal* Env::make_ireg(TypeSpec ts, RegClass reg_class) {
-  return m_parent->make_ireg(std::move(ts), reg_class);
+RegVal* Env::make_ireg(const TypeSpec& ts, RegClass reg_class) {
+  return m_parent->make_ireg(ts, reg_class);
 }
 
 /*!
@@ -56,6 +49,12 @@ std::unordered_map<std::string, Label>& Env::get_label_map() {
   return parent()->get_label_map();
 }
 
+void Env::emit(const goos::Object& form, std::unique_ptr<IR> ir) {
+  auto e = function_env();
+  assert(e);
+  e->emit(form, std::move(ir), this);
+}
+
 ///////////////////
 // GlobalEnv
 ///////////////////
@@ -63,25 +62,16 @@ std::unordered_map<std::string, Label>& Env::get_label_map() {
 // Because this is the top of the environment chain, all these end the parent calls and provide
 // errors, or return that the items were not found.
 
-GlobalEnv::GlobalEnv() : Env(nullptr) {}
+GlobalEnv::GlobalEnv() : Env(EnvKind::OTHER_ENV, nullptr) {}
 
 std::string GlobalEnv::print() {
   return "global-env";
 }
 
 /*!
- * Emit IR into the function currently being compiled.
- */
-void GlobalEnv::emit(std::unique_ptr<IR> ir) {
-  // by default, we don't know how, so pass it up and hope for the best.
-  (void)ir;
-  throw std::runtime_error("cannot emit to GlobalEnv");
-}
-
-/*!
  * Allocate an IRegister with the given type.
  */
-RegVal* GlobalEnv::make_ireg(TypeSpec ts, RegClass reg_class) {
+RegVal* GlobalEnv::make_ireg(const TypeSpec& ts, RegClass reg_class) {
   (void)ts;
   (void)reg_class;
   throw std::runtime_error("cannot alloc reg in GlobalEnv");
@@ -114,29 +104,11 @@ FileEnv* GlobalEnv::add_file(std::string name) {
 }
 
 ///////////////////
-// NoEmitEnv
-///////////////////
-
-/*!
- * Get the name of a NoEmitEnv
- */
-std::string NoEmitEnv::print() {
-  return "no-emit-env";
-}
-
-/*!
- * Emit - which is invalid - into a NoEmitEnv and throw an exception.
- */
-void NoEmitEnv::emit(std::unique_ptr<IR> ir) {
-  (void)ir;
-  throw std::runtime_error("emit into a no-emit env!");
-}
-
-///////////////////
 // BlockEnv
 ///////////////////
 
-BlockEnv::BlockEnv(Env* parent, std::string _name) : Env(parent), name(std::move(_name)) {}
+BlockEnv::BlockEnv(Env* parent, std::string _name)
+    : Env(EnvKind::OTHER_ENV, parent), name(std::move(_name)) {}
 
 std::string BlockEnv::print() {
   return "block-" + name;
@@ -154,7 +126,8 @@ BlockEnv* BlockEnv::find_block(const std::string& block) {
 // FileEnv
 ///////////////////
 
-FileEnv::FileEnv(Env* parent, std::string name) : Env(parent), m_name(std::move(name)) {}
+FileEnv::FileEnv(Env* parent, std::string name)
+    : Env(EnvKind::FILE_ENV, parent), m_name(std::move(name)) {}
 
 std::string FileEnv::print() {
   return "file-" + m_name;
@@ -177,12 +150,6 @@ void FileEnv::add_top_level_function(std::unique_ptr<FunctionEnv> fe) {
   m_top_level_func = m_functions.back().get();
 }
 
-NoEmitEnv* FileEnv::add_no_emit_env() {
-  assert(!m_no_emit_env);
-  m_no_emit_env = std::make_unique<NoEmitEnv>(this);
-  return m_no_emit_env.get();
-}
-
 void FileEnv::debug_print_tl() {
   if (m_top_level_func) {
     for (auto& code : m_top_level_func->code()) {
@@ -201,17 +168,42 @@ bool FileEnv::is_empty() {
 // FunctionEnv
 ///////////////////
 
-FunctionEnv::FunctionEnv(Env* parent, std::string name)
-    : DeclareEnv(parent), m_name(std::move(name)) {}
+FunctionEnv::FunctionEnv(Env* parent, std::string name, const goos::Reader* reader)
+    : DeclareEnv(EnvKind::FUNCTION_ENV, parent), m_name(std::move(name)), m_reader(reader) {}
 
 std::string FunctionEnv::print() {
   return "function-" + m_name;
 }
 
-void FunctionEnv::emit(std::unique_ptr<IR> ir) {
+void FunctionEnv::emit(const goos::Object& form, std::unique_ptr<IR> ir, Env* lowest_env) {
   ir->add_constraints(&m_constraints, m_code.size());
   m_code.push_back(std::move(ir));
+  if (m_reader->db.has_info(form)) {
+    // if we have info, it means we came from real code and we can just use that.
+    m_code_debug_source.push_back(form);
+  } else {
+    // let's see if we're in a macro:
+    auto mac_env = lowest_env->macro_expand_env();
+    if (mac_env) {
+      while (mac_env) {
+        if (m_reader->db.has_info(mac_env->macro_use_location())) {
+          m_code_debug_source.push_back(mac_env->macro_use_location());
+          return;
+        }
+        auto parent = mac_env->parent();
+        if (parent) {
+          mac_env = parent->macro_expand_env();
+        } else {
+          m_code_debug_source.push_back(form);
+          return;
+        }
+      }
+    } else {
+      m_code_debug_source.push_back(form);
+    }
+  }
 }
+
 void FunctionEnv::finish() {
   resolve_gotos();
 }
@@ -235,7 +227,7 @@ void FunctionEnv::resolve_gotos() {
   }
 }
 
-RegVal* FunctionEnv::make_ireg(TypeSpec ts, RegClass reg_class) {
+RegVal* FunctionEnv::make_ireg(const TypeSpec& ts, RegClass reg_class) {
   IRegister ireg;
   ireg.reg_class = reg_class;
   ireg.id = m_iregs.size();

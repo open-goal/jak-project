@@ -482,6 +482,10 @@ class LoadVarOp : public AtomicOp {
   TP_Type get_src_type(const TypeState& input, const Env& env, DecompilerTypeSystem& dts) const;
   void collect_vars(RegAccessSet& vars) const override;
 
+  const SimpleExpression& src() const { return m_src; }
+  Kind kind() const { return m_kind; }
+  int size() const { return m_size; }
+
  private:
   Kind m_kind;
   int m_size = -1;

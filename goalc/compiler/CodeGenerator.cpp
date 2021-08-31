@@ -32,7 +32,9 @@ std::vector<u8> CodeGenerator::run(const TypeSystem* ts) {
              f->name().c_str());
       throw std::runtime_error("Failed to codegen.");
     }
-    m_gen.add_function_to_seg(f->segment, &m_debug_info->add_function(f->name(), m_fe->name()));
+    auto rec =
+        m_gen.add_function_to_seg(f->segment, &m_debug_info->add_function(f->name(), m_fe->name()));
+    rec.debug->function = f;
   }
 
   // next, add all static objects.
@@ -42,14 +44,14 @@ std::vector<u8> CodeGenerator::run(const TypeSystem* ts) {
 
   // next, add instructions to functions
   for (size_t i = 0; i < m_fe->functions().size(); i++) {
-    do_function(m_fe->functions().at(i).get(), i);
+    do_function(m_fe->functions().at(i), i);
   }
 
   // generate a v3 object.
   return m_gen.generate_data_v3(ts).to_vector();
 }
 
-void CodeGenerator::do_function(FunctionEnv* env, int f_idx) {
+void CodeGenerator::do_function(const std::shared_ptr<FunctionEnv>& env, int f_idx) {
   if (env->is_asm_func) {
     do_asm_function(env, f_idx, env->asm_func_saved_regs);
   } else {
@@ -61,7 +63,7 @@ void CodeGenerator::do_function(FunctionEnv* env, int f_idx) {
  * Add instructions to the function, specified by index.
  * Generates prologues / epilogues.
  */
-void CodeGenerator::do_goal_function(FunctionEnv* env, int f_idx) {
+void CodeGenerator::do_goal_function(const std::shared_ptr<FunctionEnv>& env, int f_idx) {
   bool use_new_xmms = true;
   auto* debug = &m_debug_info->function_by_name(env->name());
 
@@ -161,7 +163,7 @@ void CodeGenerator::do_goal_function(FunctionEnv* env, int f_idx) {
   for (int ir_idx = 0; ir_idx < int(env->code().size()); ir_idx++) {
     auto& ir = env->code().at(ir_idx);
     // start of IR
-    auto i_rec = m_gen.add_ir(f_rec, ir->print());
+    auto i_rec = m_gen.add_ir(f_rec);
 
     // load anything off the stack that was spilled and is needed.
     auto& bonus = allocs.stack_ops.at(ir_idx);
@@ -269,7 +271,9 @@ void CodeGenerator::do_goal_function(FunctionEnv* env, int f_idx) {
   m_gen.add_instr_no_ir(f_rec, IGen::ret(), InstructionInfo::Kind::EPILOGUE);
 }
 
-void CodeGenerator::do_asm_function(FunctionEnv* env, int f_idx, bool allow_saved_regs) {
+void CodeGenerator::do_asm_function(const std::shared_ptr<FunctionEnv>& env,
+                                    int f_idx,
+                                    bool allow_saved_regs) {
   auto f_rec = m_gen.get_existing_function_record(f_idx);
   const auto& allocs = env->alloc_result();
 
@@ -297,7 +301,7 @@ void CodeGenerator::do_asm_function(FunctionEnv* env, int f_idx, bool allow_save
   for (int ir_idx = 0; ir_idx < int(env->code().size()); ir_idx++) {
     auto& ir = env->code().at(ir_idx);
     // start of IR
-    auto i_rec = m_gen.add_ir(f_rec, ir->print());
+    auto i_rec = m_gen.add_ir(f_rec);
 
     // Make sure we aren't automatically accessing the stack.
     if (!allocs.stack_ops.at(ir_idx).ops.empty()) {
