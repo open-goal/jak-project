@@ -297,16 +297,7 @@
              ;; now construct the engine, looking up the size from the res-lump.
              (set! (-> entity-nav-mesh user-list)
                    (new 'process-level-heap 'engine 'nav-engine
-                        (the int ((method-of-type res-lump get-property-value)
-                                  (the-as res-lump ent)
-                                  'nav-max-users
-                                  'interp
-                                  -1000000000.0
-                                  (the-as uint128 32)
-                                  (the-as (pointer res-tag) #f)
-                                  *res-static-buf*
-                                  )
-                             )
+                        (res-lump-value ent 'nav-max-users int :default (the-as uint128 32))
                         )
                    )
 
@@ -346,54 +337,34 @@
     )
   )
 
-;; todo fix up this
 (defmethod new nav-control ((allocation symbol) (type-to-make type) (shape collide-shape) (sphere-count int) (nearest-y-threshold-default float))
-  (with-pp
-    (let ((obj (object-new allocation type-to-make
-                           (the-as int (+ (-> type-to-make size) (* sphere-count 16)))
-                           )
-            )
-          )
-      ;; check for alloc fail.
-      (when (zero? obj)
-        (go process-drawable-art-error "memory")
-        (set! obj (the-as nav-control 0))
-        (goto cfg-4)
-        )
-      ;; set up fields
-      (set! (-> obj max-spheres) sphere-count)
-      (set! (-> obj flags) (nav-control-flags bit8 bit13))
-      ;; connect things
-      (set! (-> obj mesh) (nav-mesh-connect (-> shape process) shape obj))
-
-      ;; get the nearest-y-threshold
-      (let ((ent (-> shape process entity)))
-        (set! (-> obj nearest-y-threshold)
-              ((method-of-type res-lump get-property-value-float)
-               (the-as res-lump ent)
-               'nearest-y-threshold
-               'interp
-               -1000000000.0
-               nearest-y-threshold-default
-               (the-as (pointer res-tag) #f)
-               *res-static-buf*
-               )
-              )
-        )
-      (set! (-> obj shape) shape)
-      (set! (-> obj process) (-> shape process))
-      (set! (-> obj gap-event) #f)
-      (set! (-> obj current-poly) #f)
-      (set! (-> obj next-poly) #f)
-      (set! (-> obj target-poly) #f)
-      (set! (-> obj user-poly) #f)
-      (set! (-> obj portal 0) #f)
-      (set! (-> obj portal 1) #f)
-      (set! (-> obj nav-cull-radius) 40960.0)
-      (label cfg-4)
-      (the-as nav-control obj)
-      )
+  (let ((obj (object-new allocation type-to-make (the-as int (+ (-> type-to-make size) (* sphere-count 16))))))
+   (when (zero? obj)
+    (go process-drawable-art-error "memory")
+    (set! obj (the-as nav-control 0))
+    (goto cfg-4)
     )
+   (set! (-> obj max-spheres) sphere-count)
+   (set! (-> obj flags) (nav-control-flags bit8 bit13))
+   (set! (-> obj mesh) (nav-mesh-connect (-> shape process) shape obj))
+   (let ((ent (-> shape process entity)))
+    (set! (-> obj nearest-y-threshold)
+     (res-lump-float ent 'nearest-y-threshold :default nearest-y-threshold-default)
+     )
+    )
+   (set! (-> obj shape) shape)
+   (set! (-> obj process) (-> shape process))
+   (set! (-> obj gap-event) #f)
+   (set! (-> obj current-poly) #f)
+   (set! (-> obj next-poly) #f)
+   (set! (-> obj target-poly) #f)
+   (set! (-> obj user-poly) #f)
+   (set! (-> obj portal 0) #f)
+   (set! (-> obj portal 1) #f)
+   (set! (-> obj nav-cull-radius) 40960.0)
+   (label cfg-4)
+   (the-as nav-control obj)
+   )
   )
 
 
@@ -425,17 +396,6 @@
    the res-lump."
   (the-as
    symbol
-   (or (-> arg0 nav-mesh) ;; has it loaded already
-       ;; has it in the res-lump
-       ((method-of-type res-lump get-property-struct)
-        arg0
-        'nav-mesh-actor
-        'interp
-        -1000000000.0
-        #f
-        (the-as (pointer res-tag) #f)
-        *res-static-buf*
-        )
-       )
+   (or (-> arg0 nav-mesh) (res-lump-struct arg0 'nav-mesh-actor structure))
    )
   )

@@ -439,3 +439,58 @@
 (defmacro .sra (result in sa)
   `(set! ,result (sext32 (sar (logand #xffffffff (the-as int ,in)) ,sa)))
   )
+
+(defmacro res-lump-float (lump name &key (tag-ptr (the-as (pointer res-tag) #f)) &key (default 0.0))
+  "Helper macro to get a float from a res-lump with no interpolation."
+  `((method-of-type res-lump get-property-value-float)
+                  ,lump
+                  ,name
+                  'interp
+                  -1000000000.0
+                  ,default
+                  ,tag-ptr
+                  *res-static-buf*
+                  )
+  )
+
+(defmacro res-lump-data (lump name type &key (tag-ptr (the-as (pointer res-tag) #f)) &key (time -1000000000.0))
+  "Helper macro to get data from a res-lump without interpolation."
+  `(the-as ,type ((method-of-type res-lump get-property-data)
+                  ,lump
+                  ,name
+                  'interp
+                  ,time
+                  (the-as pointer #f)
+                  ,tag-ptr
+                  *res-static-buf*
+                  )
+           )
+  )
+
+
+(defmacro res-lump-struct (lump name type &key (tag-ptr (the-as (pointer res-tag) #f)))
+  `(the-as ,type ((method-of-type res-lump get-property-struct)
+                  ,lump
+                  ,name
+                  'interp
+                  -1000000000.0
+                  (the-as structure #f)
+                  ,tag-ptr
+                  *res-static-buf*
+                  )
+           )
+  )
+
+(defmacro res-lump-value (lump name type &key (tag-ptr (the-as (pointer res-tag) #f)) &key (default (the-as uint128 0)))
+  "Helper macro to get a value from a res-lump with no interpolation."
+  `(the-as ,type ((method-of-type res-lump get-property-value)
+                  ,lump
+                  ,name
+                  'interp
+                  -1000000000.0
+                  ,default
+                  ,tag-ptr
+                  *res-static-buf*
+                  )
+           )
+  )

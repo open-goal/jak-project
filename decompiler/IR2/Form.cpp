@@ -2905,6 +2905,135 @@ goos::Object DefstateElement::to_form_internal(const Env& env) const {
 }
 
 ////////////////////////////////
+// ResLumpMacroElement
+////////////////////////////////
+
+ResLumpMacroElement::ResLumpMacroElement(Kind kind,
+                                         Form* lump_object,
+                                         Form* property_name,
+                                         Form* default_arg,
+                                         Form* tag_ptr,
+                                         Form* time,
+                                         const TypeSpec& result_type)
+    : m_kind(kind),
+      m_lump_object(lump_object),
+      m_property_name(property_name),
+      m_default_arg(default_arg),
+      m_tag_ptr(tag_ptr),
+      m_time(time),
+      m_result_type(result_type) {
+  m_lump_object->parent_element = this;
+  m_property_name->parent_element = this;
+  if (m_default_arg) {
+    m_default_arg->parent_element = this;
+  }
+  if (m_tag_ptr) {
+    m_tag_ptr->parent_element = this;
+  }
+  if (m_time) {
+    m_time->parent_element = this;
+  }
+}
+
+void ResLumpMacroElement::apply(const std::function<void(FormElement*)>& f) {
+  f(this);
+  m_lump_object->apply(f);
+  m_property_name->apply(f);
+  if (m_default_arg) {
+    m_default_arg->apply(f);
+  }
+  if (m_tag_ptr) {
+    m_tag_ptr->apply(f);
+  }
+  if (m_time) {
+    m_time->apply(f);
+  }
+}
+
+void ResLumpMacroElement::apply_form(const std::function<void(Form*)>& f) {
+  m_lump_object->apply_form(f);
+  m_property_name->apply_form(f);
+  if (m_default_arg) {
+    m_default_arg->apply_form(f);
+  }
+  if (m_tag_ptr) {
+    m_tag_ptr->apply_form(f);
+  }
+  if (m_time) {
+    m_time->apply_form(f);
+  }
+}
+
+void ResLumpMacroElement::collect_vars(RegAccessSet& vars, bool recursive) const {
+  if (recursive) {
+    m_lump_object->collect_vars(vars, recursive);
+    m_property_name->collect_vars(vars, recursive);
+    if (m_default_arg) {
+      m_default_arg->collect_vars(vars, recursive);
+    }
+    if (m_tag_ptr) {
+      m_tag_ptr->collect_vars(vars, recursive);
+    }
+    if (m_time) {
+      m_time->collect_vars(vars, recursive);
+    }
+  }
+}
+
+void ResLumpMacroElement::get_modified_regs(RegSet& regs) const {
+  m_lump_object->get_modified_regs(regs);
+  m_property_name->get_modified_regs(regs);
+  if (m_default_arg) {
+    m_default_arg->get_modified_regs(regs);
+  }
+  if (m_tag_ptr) {
+    m_tag_ptr->get_modified_regs(regs);
+  }
+  if (m_time) {
+    m_time->get_modified_regs(regs);
+  }
+}
+
+goos::Object ResLumpMacroElement::to_form_internal(const Env& env) const {
+  std::vector<goos::Object> forms;
+
+  switch (m_kind) {
+    case Kind::DATA:
+      forms.push_back(pretty_print::to_symbol("res-lump-data"));
+      break;
+    case Kind::STRUCT:
+      forms.push_back(pretty_print::to_symbol("res-lump-struct"));
+      break;
+    case Kind::VALUE:
+      forms.push_back(pretty_print::to_symbol("res-lump-value"));
+      break;
+    default:
+      assert(false);
+  }
+
+  forms.push_back(m_lump_object->to_form(env));
+  forms.push_back(m_property_name->to_form(env));
+
+  forms.push_back(pretty_print::to_symbol(m_result_type.print()));
+
+  if (m_default_arg) {
+    forms.push_back(pretty_print::to_symbol(":default"));
+    forms.push_back(m_default_arg->to_form(env));
+  }
+
+  if (m_tag_ptr) {
+    forms.push_back(pretty_print::to_symbol(":tag-ptr"));
+    forms.push_back(m_tag_ptr->to_form(env));
+  }
+
+  if (m_time) {
+    forms.push_back(pretty_print::to_symbol(":time"));
+    forms.push_back(m_time->to_form(env));
+  }
+
+  return pretty_print::build_list(forms);
+}
+////////////////////////////////
 // Utilities
 ////////////////////////////////
 

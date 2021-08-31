@@ -1838,62 +1838,30 @@
 ;; definition for method 25 of type water-anim
 ;; Used lq/sq
 (defmethod TODO-RENAME-25 water-anim ((obj water-anim))
-  (local-vars (sv-16 int))
+  (local-vars (sv-16 res-tag))
   (set! (-> obj play-ambient-sound?) #t)
-  (set!
-   (-> obj look)
-   (the-as
-    int
-    ((method-of-type res-lump get-property-value)
-     (-> obj entity)
-     'look
-     'interp
-     -1000000000.0
-     (the-as uint128 -1)
-     (the-as (pointer res-tag) #f)
-     *res-static-buf*
-     )
-    )
+  (set! (-> obj look)
+   (res-lump-value (-> obj entity) 'look int :default (the-as uint128 -1))
    )
-  (set! sv-16 0)
+  (set! sv-16 (new 'static 'res-tag))
   (let
    ((v1-3
-     (the-as
-      object
-      ((method-of-type res-lump get-property-data)
-       (-> obj entity)
-       'trans-offset
-       'interp
-       -1000000000.0
-       (the-as pointer #f)
-       (the-as (pointer res-tag) (& sv-16))
-       *res-static-buf*
-       )
+     (res-lump-data
+      (-> obj entity)
+      'trans-offset
+      (pointer float)
+      :tag-ptr
+      (& sv-16)
       )
      )
     )
-   (when (the-as pointer v1-3)
-    (+! (-> obj root trans x) (-> (the-as transform v1-3) trans x))
-    (+! (-> obj root trans y) (-> (the-as transform v1-3) trans y))
-    (set!
-     (-> (the-as transform (-> obj root)) rot y)
-     (+ (-> obj root trans z) (-> (the-as transform v1-3) trans z))
-     )
+   (when v1-3
+    (+! (-> obj root trans x) (-> v1-3 0))
+    (+! (-> obj root trans y) (-> v1-3 1))
+    (+! (-> obj root trans z) (-> v1-3 2))
     )
    )
-  (let
-   ((f0-6
-     ((method-of-type res-lump get-property-value-float)
-      (-> obj entity)
-      'rotoffset
-      'interp
-      -1000000000.0
-      0.0
-      (the-as (pointer res-tag) #f)
-      *res-static-buf*
-      )
-     )
-    )
+  (let ((f0-6 (res-lump-float (-> obj entity) 'rotoffset)))
    (if (!= f0-6 0.0)
     (quaternion-rotate-y! (-> obj root quat) (-> obj root quat) f0-6)
     )

@@ -8,6 +8,7 @@
 #include "decompiler/IR2/bitfields.h"
 #include "common/util/BitUtils.h"
 #include "common/type_system/state.h"
+#include "decompiler/IR2/ExpressionHelpers.h"
 
 /*
  * TODO
@@ -83,6 +84,12 @@ Form* try_cast_simplify(Form* in,
   auto in_as_cast = dynamic_cast<CastElement*>(in->try_as_single_element());
   if (in_as_cast && in_as_cast->type() == new_type) {
     return in;  // no need to cast again, it already has it!
+  }
+
+  auto in_as_reslump = in->try_as_element<ResLumpMacroElement>();
+  if (in_as_reslump) {
+    in_as_reslump->apply_cast(new_type);
+    return in;
   }
 
   if (new_type == TypeSpec("meters")) {
@@ -554,22 +561,6 @@ void SimpleExpressionElement::update_from_stack_identity(const Env& env,
       result->push_back(pool.alloc_element<StringConstantElement>(str));
     } else {
       // look for a label hint:
-      /*
-      auto kv = env.label_types().find(lab.name);
-      if (kv != env.label_types().end()) {
-        auto type_name = kv->second.type_name;
-        // the actual decompilation is deferred until later, once static lambdas are done.
-        if (type_name == "_auto_") {
-          result->push_back(pool.alloc_element<DecompiledDataElement>(lab));
-        } else if (type_name == "_lambda_") {
-          result->push_back(this);
-        } else {
-          result->push_back(pool.alloc_element<DecompiledDataElement>(lab, kv->second));
-        }
-              } else {
-        result->push_back(this);
-      }
-        */
       const auto& hint = env.file->label_db->lookup(lab.name);
       if (!hint.known) {
         throw std::runtime_error(
@@ -2935,6 +2926,32 @@ void FunctionCallElement::update_from_stack(const Env& env,
 
       auto type_source_form = match_result.maps.forms.at(type_source);
 
+      if (name == "get-property-value-float" && type_source_form->to_string(env) == "res-lump") {
+        auto as_macro = handle_get_property_value_float(arg_forms, pool, env);
+        if (as_macro) {
+          result->push_back(as_macro);
+          return;
+        }
+      } else if (name == "get-property-data" && type_source_form->to_string(env) == "res-lump") {
+        auto as_macro = handle_get_property_data(arg_forms, pool, env);
+        if (as_macro) {
+          result->push_back(as_macro);
+          return;
+        }
+      } else if (name == "get-property-struct" && type_source_form->to_string(env) == "res-lump") {
+        auto as_macro = handle_get_property_struct(arg_forms, pool, env);
+        if (as_macro) {
+          result->push_back(as_macro);
+          return;
+        }
+      } else if (name == "get-property-value" && type_source_form->to_string(env) == "res-lump") {
+        auto as_macro = handle_get_property_value(arg_forms, pool, env);
+        if (as_macro) {
+          result->push_back(as_macro);
+          return;
+        }
+      }
+
       // if the type is the exact type of the argument, we want to build it into a method call
       if (type_source_form->to_string(env) == first_arg_type.base_type() && name != "new") {
         if (env.dts->ts.should_use_virtual_methods(tp_type.method_from_type(),
@@ -2996,6 +3013,7 @@ void FunctionCallElement::update_from_stack(const Env& env,
       auto gop = GenericOperator::make_function(method_op);
 
       result->push_back(pool.alloc_element<GenericElement>(gop, arg_forms));
+
       return;
     }
   }
@@ -5232,6 +5250,15 @@ void DefstateElement::update_from_stack(const Env&,
                                         FormStack&,
                                         std::vector<FormElement*>* result,
                                         bool) {
+  mark_popped();
+  result->push_back(this);
+}
+
+void ResLumpMacroElement::update_from_stack(const Env&,
+                                            FormPool&,
+                                            FormStack&,
+                                            std::vector<FormElement*>* result,
+                                            bool) {
   mark_popped();
   result->push_back(this);
 }
