@@ -70,7 +70,7 @@ class DirectRenderer : public BucketRenderer {
   void update_gl_test();
   void update_gl_texture(SharedRenderState* render_state);
 
-  void upload_texture(TextureRecord* tex);
+  void draw_debug_window() override;
 
   struct TestState {
     void from_register(GsTest reg);
@@ -160,7 +160,13 @@ class DirectRenderer : public BucketRenderer {
     u32 st_buffer_bytes = 0;
   } m_ogl;
 
+  struct {
+    bool disable_texture = false;
+    bool wireframe = false;
+  } m_debug_state;
+
   int m_triangles = 0;
+  int m_draw_calls = 0;
 
   bool m_prim_gl_state_needs_gl_update = true;
   bool m_test_state_needs_gl_update = true;

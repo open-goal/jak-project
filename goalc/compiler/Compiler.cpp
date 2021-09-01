@@ -12,7 +12,7 @@
 using namespace goos;
 
 Compiler::Compiler(std::unique_ptr<ReplWrapper> repl)
-    : m_debugger(&m_listener), m_repl(std::move(repl)) {
+    : m_debugger(&m_listener, &m_goos.reader), m_repl(std::move(repl)) {
   m_listener.add_debugger(&m_debugger);
   m_ts.add_builtin_types();
   m_global_env = std::make_unique<GlobalEnv>();
@@ -123,9 +123,6 @@ FileEnv* Compiler::compile_object_file(const std::string& name,
                                        bool allow_emit) {
   auto file_env = m_global_env->add_file(name);
   Env* compilation_env = file_env;
-  if (!allow_emit) {
-    compilation_env = file_env->add_no_emit_env();
-  }
 
   file_env->add_top_level_function(
       compile_top_level_function("top-level", std::move(code), compilation_env));
@@ -140,19 +137,19 @@ FileEnv* Compiler::compile_object_file(const std::string& name,
 std::unique_ptr<FunctionEnv> Compiler::compile_top_level_function(const std::string& name,
                                                                   const goos::Object& code,
                                                                   Env* env) {
-  auto fe = std::make_unique<FunctionEnv>(env, name);
+  auto fe = std::make_unique<FunctionEnv>(env, name, &m_goos.reader);
   fe->set_segment(TOP_LEVEL_SEGMENT);
 
   auto result = compile_error_guard(code, fe.get());
 
   // only move to return register if we actually got a result
   if (!dynamic_cast<const None*>(result)) {
-    fe->emit(std::make_unique<IR_Return>(fe->make_gpr(result->type()), result->to_gpr(fe.get()),
-                                         emitter::gRegInfo.get_gpr_ret_reg()));
+    fe->emit_ir<IR_Return>(code, fe->make_gpr(result->type()), result->to_gpr(code, fe.get()),
+                           emitter::gRegInfo.get_gpr_ret_reg());
   }
 
   if (!fe->code().empty()) {
-    fe->emit_ir<IR_Null>();
+    fe->emit_ir<IR_Null>(code);
   }
 
   fe->finish();
@@ -170,10 +167,15 @@ Val* Compiler::compile_error_guard(const goos::Object& code, Env* env) {
         obj_print += "...";
       }
       bool term;
-      fmt::print(fg(fmt::color::yellow) | fmt::emphasis::bold, "Location:\n");
-      fmt::print(m_goos.reader.db.get_info_for(code, &term));
+      auto loc_info = m_goos.reader.db.get_info_for(code, &term);
+      if (term) {
+        fmt::print(fg(fmt::color::yellow) | fmt::emphasis::bold, "Location:\n");
+        fmt::print(loc_info);
+      }
+
       fmt::print(fg(fmt::color::yellow) | fmt::emphasis::bold, "Code:\n");
       fmt::print("{}\n", obj_print);
+
       if (term) {
         ce.print_err_stack = false;
       }
@@ -185,19 +187,32 @@ Val* Compiler::compile_error_guard(const goos::Object& code, Env* env) {
   }
 
   catch (std::runtime_error& e) {
+    fmt::print(fg(fmt::color::crimson) | fmt::emphasis::bold, "-- Compilation Error! --\n");
+    fmt::print(fmt::emphasis::bold, "{}\n", e.what());
+
     auto obj_print = code.print();
     if (obj_print.length() > 80) {
       obj_print = obj_print.substr(0, 80);
       obj_print += "...";
     }
-    fmt::print(fg(fmt::color::yellow) | fmt::emphasis::bold, "Location:\n");
-    fmt::print(m_goos.reader.db.get_info_for(code));
+    bool term;
+    auto loc_info = m_goos.reader.db.get_info_for(code, &term);
+    if (term) {
+      fmt::print(fg(fmt::color::yellow) | fmt::emphasis::bold, "Location:\n");
+      fmt::print(loc_info);
+    }
+
     fmt::print(fg(fmt::color::yellow) | fmt::emphasis::bold, "Code:\n");
     fmt::print("{}\n", obj_print);
+
+    CompilerException ce("Compiler Exception");
+    if (term) {
+      ce.print_err_stack = false;
+    }
     std::string line(80, '-');
     line.push_back('\n');
     fmt::print(line);
-    throw e;
+    throw ce;
   }
 }
 
@@ -239,7 +254,7 @@ void Compiler::color_object_file(FileEnv* env) {
         //  regalloc_result_2.num_spilled_vars);
       }
       num_spills_in_file += regalloc_result_2.num_spills;
-      f->set_allocations(regalloc_result_2);
+      f->set_allocations(std::move(regalloc_result_2));
     } else {
       fmt::print(
           "Warning: function {} failed register allocation with the v2 allocator. Falling back to "
@@ -249,7 +264,7 @@ void Compiler::color_object_file(FileEnv* env) {
       auto regalloc_result = allocate_registers(input);
       m_debug_stats.num_spills_v1 += regalloc_result.num_spills;
       num_spills_in_file += regalloc_result.num_spills;
-      f->set_allocations(regalloc_result);
+      f->set_allocations(std::move(regalloc_result));
     }
   }
 
@@ -265,7 +280,8 @@ std::vector<u8> Compiler::codegen_object_file(FileEnv* env) {
     auto result = gen.run(&m_ts);
     for (auto& f : env->functions()) {
       if (f->settings.print_asm) {
-        fmt::print("{}\n", debug_info->disassemble_function_by_name(f->name(), &ok));
+        fmt::print("{}\n",
+                   debug_info->disassemble_function_by_name(f->name(), &ok, &m_goos.reader));
       }
     }
     auto stats = gen.get_obj_stats();
@@ -285,7 +301,7 @@ bool Compiler::codegen_and_disassemble_object_file(FileEnv* env,
   CodeGenerator gen(env, debug_info);
   *data_out = gen.run(&m_ts);
   bool ok = true;
-  *asm_out = debug_info->disassemble_all_functions(&ok);
+  *asm_out = debug_info->disassemble_all_functions(&ok, &m_goos.reader);
   return ok;
 }
 

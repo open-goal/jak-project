@@ -124,6 +124,10 @@ void DefaultMapping(MappingInfo& mapping) {
     }
   }
 
+  // r1/l1
+  MapButton(mapping, Button::L1, 0, GLFW_KEY_U);
+  MapButton(mapping, Button::R1, 0, GLFW_KEY_I);
+
   // face buttons
   MapButton(mapping, Button::Ecks, 0, GLFW_KEY_Z);
   MapButton(mapping, Button::Square, 0, GLFW_KEY_X);
@@ -135,6 +139,10 @@ void DefaultMapping(MappingInfo& mapping) {
   MapButton(mapping, Button::Right, 0, GLFW_KEY_RIGHT);
   MapButton(mapping, Button::Down, 0, GLFW_KEY_DOWN);
   MapButton(mapping, Button::Left, 0, GLFW_KEY_LEFT);
+
+  // l3/r3 for menu
+  MapButton(mapping, Button::L3, 0, GLFW_KEY_COMMA);
+  MapButton(mapping, Button::R3, 0, GLFW_KEY_PERIOD);
 }
 
 void EnterInputMode() {

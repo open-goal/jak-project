@@ -210,6 +210,7 @@
        "out/iso/KERNEL.CGO"
        "out/iso/GAME.CGO"
        "out/iso/VI1.DGO"
+       "out/iso/VI3.DGO"
        )
 
 
@@ -287,6 +288,51 @@
  "village1-vis"
  )
  
+;;;;;;;;;;;;;;;;;;;;;
+;; Village 3
+;;;;;;;;;;;;;;;;;;;;;
+
+;; the definition for the DGO file.
+(cgo "VI3.DGO""vi3.gd")
+
+;; the code
+(goal-src-sequence
+ "levels/"
+ :deps ;; no idea what these depend on, make it depend on the whole engine
+ ("out/obj/default-menu.o")
+ "village3/village3-part.gc"
+ "village3/village3-obs.gc"
+ "village3/minecart.gc"
+ "village3/miners.gc"
+ "village3/assistant-village3.gc"
+ "village3/sage-village3.gc"
+ )
+
+(copy-textures 1208 1210 1209 1194)
+
+(copy-gos
+  "assistant-village3-ag"
+  "cavegem-ag"
+  "evilbro-village3-ag"
+  "evilsis-village3-ag"
+  "gondola-ag"
+  "gondolacables-ag"
+  "lavaspoutdrip-ag"
+  "medres-finalboss-ag"
+  "medres-ogre-ag"
+  "medres-ogre2-ag"
+  "medres-ogre3-ag"
+  "minecartsteel-ag"
+  "minershort-ag"
+  "minertall-ag"
+  "oracle-ag-VI3"
+  "pistons-ag"
+  "sage-village3-ag"
+  "vil3-bridge-36-ag"
+  "village-cam-ag-VI3"
+  "water-anim-village3-ag"
+  "village3-vis"
+  )
 
 ;;;;;;;;;;;;;;;;;;;;;
 ;; Game Engine Code

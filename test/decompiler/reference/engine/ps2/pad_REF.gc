@@ -50,10 +50,10 @@
    (align              uint8       6 :offset-assert  88)
    (direct             uint8       6 :offset-assert  94)
    (buzz-val           uint8       2 :offset-assert 100)
-   (buzz-time          uint64      2 :offset-assert 104)
+   (buzz-time          int64       2 :offset-assert 104)
    (buzz               basic         :offset-assert 120)
    (buzz-act           int32         :offset-assert 124)
-   (change-time        uint64        :offset-assert 128)
+   (change-time        int64         :offset-assert 128)
    )
   :method-count-assert 9
   :size-assert         #x88
@@ -122,7 +122,7 @@
    )
   (dotimes (v1-17 2)
    (set! (-> pad buzz-val 0) (the-as uint 0))
-   (set! (-> pad buzz-time 0) (the-as uint 0))
+   (set! (-> pad buzz-time 0) 0)
    )
   pad
   )
@@ -214,10 +214,7 @@
    ((= buzz-amount (-> pad buzz-val buzz-idx))
     (set!
      (-> pad buzz-time buzz-idx)
-     (max
-      (the-as int (-> pad buzz-time buzz-idx))
-      (the-as int (+ (get-current-time) duration))
-      )
+     (max (-> pad buzz-time buzz-idx) (+ (get-current-time) duration))
      )
     )
    ((< (-> pad buzz-val buzz-idx) (the-as uint buzz-amount))
@@ -247,10 +244,7 @@
         (cond
          ((and
            (-> pad buzz)
-           (<
-            (the-as int (get-current-time))
-            (the-as int (-> pad buzz-time buzz-idx))
-            )
+           (< (get-current-time) (-> pad buzz-time buzz-idx))
            (= *master-mode* 'game)
            )
           (let ((v1-10 buzz-idx))
@@ -261,7 +255,7 @@
               (logand
                (ash
                 (-> pad buzz-val buzz-idx)
-                (- (the-as int (logand (get-integral-current-time) 7)))
+                (- (logand (get-integral-current-time) 7))
                 )
                1
                )

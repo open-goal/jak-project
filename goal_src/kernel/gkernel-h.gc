@@ -401,17 +401,32 @@
 (defmacro handle->process (handle)
   ;; the actual implementation is more clever than this.
   ;; Checks PID.
-  `(if (-> ,handle process)
-       (let ((proc (-> (-> ,handle process))))
-         (if (= (-> ,handle pid) (-> proc pid))
-             proc
-             )
+  `(let ((the-handle ,handle))
+     (if (-> the-handle process)
+         (let ((proc (-> (-> the-handle process))))
+           (if (= (-> the-handle pid) (-> proc pid))
+               proc
+               )
+           )
          )
-       )
+     )
+  )
+
+(defmacro ppointer->process (ppointer)
+  ;; convert a (pointer process) to a process.
+  ;; this uses the self field, which seems to always just get set to the object.
+  ;; perhaps when deleting a process you could have it set self to #f?
+  ;; I don't see this happen anywhere though, so it's not clear.
+  `(let ((the-pp ,ppointer))
+     (the process (if the-pp (-> the-pp 0 self)))
+     )
   )
 
 (defmacro process->ppointer (proc)
-  `(if ,proc (the (pointer process) (-> ,proc ppointer)))
+  ;"safely get a (pointer process) from a process, returning #f if invalid."
+  `(let ((the-proc ,proc))
+     (if the-proc (-> the-proc ppointer))
+     )
   )
 
 (defmacro ppointer->handle (pproc)
@@ -440,7 +455,7 @@
 (deftype state (protect-frame)
   ((code  function         :offset-assert  16)
    (trans (function none)  :offset-assert  20)
-   (post  (function none)         :offset-assert  24)
+   (post  (function none)  :offset-assert  24)
    (enter function         :offset-assert  28)
    (event (function process int symbol event-message-block object)  :offset-assert  32)
    )
@@ -469,23 +484,6 @@
   :size-assert #x48
   :method-count-assert 9
   :flag-assert #x900000048
-  )
-
-(defmacro as-process (ppointer)
-  ;; convert a (pointer process) to a process.
-  ;; this uses the self field, which seems to always just get set to the object.
-  ;; perhaps when deleting a process you could have it set self to #f?
-  ;; I don't see this happen anywhere though, so it's not clear.
-  `(if ,ppointer
-       (-> (-> ,ppointer) self)
-       )
-  )
-
-(defmacro as-ppointer (proc)
-  ;"safely get a (pointer process) from a process, returning #f if invalid."
-  `(if ,proc
-       (-> ,proc ppointer)
-       )
   )
 
 (defmacro process-stack-used (proc)

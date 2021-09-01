@@ -914,26 +914,18 @@ bool ControlFlowGraph::find_infinite_continue() {
       int my_block = b0->get_first_block_id();
       int dest_block = b0->succ_branch->get_first_block_id();
 
-      fmt::print("Considering {} as an infinite continue:\n", b0->to_string());
+      // fmt::print("Considering {} as an infinite continue:\n", b0->to_string());
 
       if (b0->end_branch.asm_branch) {
         return true;
       }
       if (dest_block >= my_block) {
-        fmt::print("  Rejecting because destination block {} comes after me {}\n", dest_block,
-                   my_block);
         return true;
-      } else {
-        fmt::print("  Order OK {} -> {}\n", my_block, dest_block);
       }
 
       int prev_count = get_prev_count(b0, b0->succ_branch);
       if (prev_count == -1) {
-        fmt::print(
-            "  Rejecting because we can't find the destination in the current ungrouped sequence.");
         return true;
-      } else {
-        fmt::print("  Sequencing OK: {} prev's\n", prev_count);
       }
       replaced = true;
 
@@ -1232,6 +1224,7 @@ bool ControlFlowGraph::clean_up_asm_branches() {
       else {
         lg::error("unhandled sequences in clean_up_asm_branches likely seq: {} {}", !!b0_seq,
                   !!b1_seq);
+        lg::error("{} {}\n", b0->get_first_block_id(), b1->get_first_block_id());
       }
 
     } else {

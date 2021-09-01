@@ -152,7 +152,13 @@ class SimpleAtom {
   bool is_int() const { return m_kind == Kind::INTEGER_CONSTANT; };
   bool is_int(s64 integer) const { return is_int() && get_int() == integer; }
   bool is_sym_ptr() const { return m_kind == Kind::SYMBOL_PTR; };
+  bool is_sym_ptr(const std::string& str) const {
+    return m_kind == Kind::SYMBOL_PTR && m_string == str;
+  }
   bool is_sym_val() const { return m_kind == Kind::SYMBOL_VAL; };
+  bool is_sym_val(const std::string& str) const {
+    return m_kind == Kind::SYMBOL_VAL && m_string == str;
+  }
   bool is_empty_list() const { return m_kind == Kind::EMPTY_LIST; };
   bool is_static_addr() const { return m_kind == Kind::STATIC_ADDRESS; };
   Kind get_kind() const { return m_kind; }
@@ -481,6 +487,10 @@ class LoadVarOp : public AtomicOp {
                                      DecompilerTypeSystem& dts) override;
   TP_Type get_src_type(const TypeState& input, const Env& env, DecompilerTypeSystem& dts) const;
   void collect_vars(RegAccessSet& vars) const override;
+
+  const SimpleExpression& src() const { return m_src; }
+  Kind kind() const { return m_kind; }
+  int size() const { return m_size; }
 
  private:
   Kind m_kind;

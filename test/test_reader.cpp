@@ -349,8 +349,6 @@ TEST(GoosReader, TextDb) {
                     .as_pair()
                     ->cdr.as_pair()
                     ->car;
-  std::string expected = "text from " +
-                         file_util::get_file_path({"test", "test_data", "test_reader_file0.gc"}) +
-                         ", line: 5\n(1 2 3 4)\n";
+  std::string expected = "test/test_data/test_reader_file0.gc, line: 5\n(1 2 3 4)\n ^\n";
   EXPECT_EQ(expected, reader.db.get_info_for(result));
 }

@@ -70,7 +70,13 @@
 (defun ripple-update-waveform-offs ((arg0 ripple-wave-set))
   (let
    ((f0-1
-     (the float (- (-> *display* integral-frame-counter) (-> arg0 frame-save)))
+     (the
+      float
+      (-
+       (-> *display* integral-frame-counter)
+       (the-as int (-> arg0 frame-save))
+       )
+      )
      )
     )
    (when (!= f0-1 0.0)
@@ -80,7 +86,10 @@
       (set! (-> a1-4 offs) (the float (logand (the int (-> a1-4 offs)) #xffff)))
       )
      )
-    (set! (-> arg0 frame-save) (-> *display* integral-frame-counter))
+    (set!
+     (-> arg0 frame-save)
+     (the-as uint (-> *display* integral-frame-counter))
+     )
     )
    )
   0
@@ -169,10 +178,7 @@
    (dotimes (s3-0 (-> arg0 count))
     (let* ((v1-3 (-> arg0 wave s3-0))
            (f0-2
-            (+
-             (+ (-> v1-3 offs) (* arg1 (-> v1-3 xmul)))
-             (* arg2 (-> v1-3 zmul))
-             )
+            (+ (-> v1-3 offs) (* arg1 (-> v1-3 xmul)) (* arg2 (-> v1-3 zmul)))
             )
            )
      (+! f30-0 (* (-> v1-3 scale) (cos f0-2)))
@@ -236,7 +242,7 @@
        (if (< f0-23 0.0)
         (set! f0-23 (-> gp-0 global-scale))
         )
-       (+ f30-0 (* (* 0.0078125 f1-12) f0-23))
+       (+ f30-0 (* 0.0078125 f1-12 f0-23))
        )
       )
      )

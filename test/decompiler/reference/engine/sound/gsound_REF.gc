@@ -702,18 +702,7 @@
         )
        (set!
         sv-48
-        (the-as
-         (pointer float)
-         ((method-of-type res-lump get-property-data)
-          (the-as res-lump arg0)
-          'cycle-speed
-          'interp
-          -1000000000.0
-          (the-as pointer #f)
-          (the-as (pointer res-tag) #f)
-          *res-static-buf*
-          )
-         )
+        (res-lump-data (the-as res-lump arg0) 'cycle-speed (pointer float))
         )
        (set! sv-16 *ambient-spec*)
        (set! sv-64 (new 'static 'res-tag))
@@ -797,15 +786,15 @@
                             (sv-48
                              (set!
                               (-> obj time-base)
-                              (the-as uint (the int (* 300.0 (-> sv-48 0))))
+                              (the int (* 300.0 (-> sv-48 0)))
                               )
                              (set!
                               (-> obj time-random)
-                              (the-as uint (the int (* 300.0 (-> sv-48 1))))
+                              (the int (* 300.0 (-> sv-48 1)))
                               )
                              )
                             (else
-                             (set! (-> obj time-base) (the-as uint -1))
+                             (set! (-> obj time-base) -1)
                              )
                             )
                            (set! (-> obj trans quad) (-> arg1 quad))
@@ -830,19 +819,16 @@
     ((-> obj spec)
      (when
       (or
-       (< (the-as int (-> obj time-base)) 0)
-       (>=
-        (the-as int (-> *display* base-frame-counter))
-        (the-as int (-> obj play-time))
-        )
+       (< (-> obj time-base) 0)
+       (>= (-> *display* base-frame-counter) (-> obj play-time))
        )
-      (when (>= (the-as int (-> obj time-base)) 0)
+      (when (>= (-> obj time-base) 0)
        (set!
         (-> obj play-time)
         (+
          (-> *display* base-frame-counter)
          (-> obj time-base)
-         (rand-vu-int-count (the-as int (-> obj time-random)))
+         (rand-vu-int-count (-> obj time-random))
          )
         )
        (set! (-> obj playing-id) (new-sound-id))
@@ -869,7 +855,7 @@
          )
         (return 0)
         )
-       (when (and *debug-effect-control* (>= (the-as int (-> obj time-base)) 0))
+       (when (and *debug-effect-control* (>= (-> obj time-base) 0))
         (format
          #t
          "(~5D) effect sound ~A ~G "
@@ -895,7 +881,7 @@
        )
       )
      )
-    ((< (the-as int (-> obj time-base)) 0)
+    ((< (-> obj time-base) 0)
      (set!
       (-> obj playing-id)
       (sound-play-by-name
@@ -910,11 +896,7 @@
       )
      )
     (else
-     (when
-      (>=
-       (the-as int (-> *display* base-frame-counter))
-       (the-as int (-> obj play-time))
-       )
+     (when (>= (-> *display* base-frame-counter) (-> obj play-time))
       (set!
        (-> obj playing-id)
        (sound-play-by-name
@@ -932,7 +914,7 @@
        (+
         (-> *display* base-frame-counter)
         (-> obj time-base)
-        (rand-vu-int-count (the-as int (-> obj time-random)))
+        (rand-vu-int-count (-> obj time-random))
         )
        )
       )

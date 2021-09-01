@@ -145,6 +145,9 @@ class BitfieldStaticDefElement : public FormElement {
     result->push_back(this);
   }
 
+  const TypeSpec& bitfield_type() const { return m_type; }
+  const std::vector<BitFieldDef>& defs() const { return m_field_defs; }
+
  private:
   TypeSpec m_type;
   std::vector<BitFieldDef> m_field_defs;
