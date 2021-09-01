@@ -228,6 +228,7 @@ TP_Type SimpleExpression::get_type(const TypeState& input,
     case Kind::SUBU_L32_S7:
       return TP_Type::make_from_ts("int");
     case Kind::VECTOR_3_DOT:
+    case Kind::VECTOR_4_DOT:
       return TP_Type::make_from_ts("float");
     default:
       throw std::runtime_error("Simple expression cannot get_type: " +
