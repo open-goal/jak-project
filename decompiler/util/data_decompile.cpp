@@ -330,7 +330,7 @@ goos::Object decomp_ref_to_inline_array_guess_size(
     const LinkedObjectFile* file,
     const TypeSpec& array_elt_type,
     int stride) {
-  fmt::print("Decomp decomp_ref_to_inline_array_guess_size {}\n", array_elt_type.print());
+  // fmt::print("Decomp decomp_ref_to_inline_array_guess_size {}\n", array_elt_type.print());
 
   // verify that the field is the right type.
   assert(data_field.type() == TypeSpec("inline-array", {array_elt_type}));
@@ -353,13 +353,13 @@ goos::Object decomp_ref_to_inline_array_guess_size(
       index_of_closest_following_label_in_segment(start_label.offset, my_seg, labels);
   assert(end_label_idx >= 0);
   const auto& end_label = labels.at(end_label_idx);
-  fmt::print("Data is from {} to {}\n", start_label.name, end_label.name);
+  // fmt::print("Data is from {} to {}\n", start_label.name, end_label.name);
 
   // now we can figure out the size
   int size_bytes = end_label.offset - start_label.offset;
   int size_elts = size_bytes / stride;  // 32 bytes per ocean-near-index
   int leftover_bytes = size_bytes % stride;
-  fmt::print("Size is {} bytes: {} elts, {} left over\n", size_bytes, size_elts, leftover_bytes);
+  // fmt::print("Size is {} bytes: {} elts, {} left over\n", size_bytes, size_elts, leftover_bytes);
 
   // if we have leftover, should verify that its all zeros, or that it's the type pointer
   // of the next basic in the data section.
