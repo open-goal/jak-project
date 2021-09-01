@@ -447,6 +447,19 @@ goos::Object sp_field_init_spec_decompile(const std::vector<LinkedWord>& words,
                                                TypeSpec("sp-field-init-spec"), 16);
 }
 
+goos::Object sp_launch_grp_launcher_decompile(const std::vector<LinkedWord>& words,
+                                              const std::vector<DecompilerLabel>& labels,
+                                              int my_seg,
+                                              int field_location,
+                                              const TypeSystem& ts,
+                                              const Field& data_field,
+                                              const std::vector<std::vector<LinkedWord>>& all_words,
+                                              const LinkedObjectFile* file) {
+  return decomp_ref_to_inline_array_guess_size(words, labels, my_seg, field_location, ts,
+                                               data_field, all_words, file,
+                                               TypeSpec("sparticle-group-item"), 32);
+}
+
 }  // namespace
 
 goos::Object decompile_structure(const TypeSpec& type,
@@ -634,6 +647,10 @@ goos::Object decompile_structure(const TypeSpec& type,
           field_defs_out.emplace_back(
               field.name(), sp_field_init_spec_decompile(obj_words, labels, label.target_segment,
                                                          field_start, ts, field, words, file));
+        } else if (field.name() == "launcher" && type.print() == "sparticle-launch-group") {
+          field_defs_out.emplace_back(field.name(), sp_launch_grp_launcher_decompile(
+                                                        obj_words, labels, label.target_segment,
+                                                        field_start, ts, field, words, file));
         } else {
           if (obj_words.at(field_start / 4).kind != LinkedWord::PLAIN_DATA) {
             continue;

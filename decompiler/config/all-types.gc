@@ -7387,11 +7387,12 @@
   :size-assert         #x110
   :flag-assert         #xb00000110
   (:methods
-    (dummy-9 () none 9)
-    (dummy-10 () none 10)
+    (reset! (_type_) symbol 9)
+    (TODO-RENAME-10 (_type_ int float float vector) object 10) ; returns float or error string
     )
   )
 
+(declare-type sparticle-launch-control basic)
 (deftype time-of-day-proc (process)
   ((year            int32  :offset-assert 112)
    (month           int32  :offset-assert 116)
@@ -7404,13 +7405,13 @@
    (time-of-day     float  :offset-assert 144)
    (time-ratio      float  :offset-assert 148)
    (star-count      int32  :offset-assert 152)
-   (stars           basic  :offset-assert 156)
+   (stars           sparticle-launch-control  :offset-assert 156)
    (sun-count       int32  :offset-assert 160)
-   (sun             basic  :offset-assert 164)
+   (sun             sparticle-launch-control  :offset-assert 164)
    (green-sun-count int32  :offset-assert 168)
-   (green-sun       basic  :offset-assert 172)
+   (green-sun       sparticle-launch-control  :offset-assert 172)
    (moon-count      int32  :offset-assert 176)
-   (moon            basic  :offset-assert 180)
+   (moon            sparticle-launch-control  :offset-assert 180)
    )
   :heap-base #x50
   :method-count-assert 14
@@ -7449,7 +7450,7 @@
    (light-masks-0        uint8       2         :offset-assert 2096)
    (light-masks-1        uint8       2         :offset-assert 2098)
    (light-interp         uint32      2         :offset-assert 2100)
-   (sky                  basic                 :offset-assert 2108)
+   (sky                  symbol                 :offset-assert 2108)
    (sun-fade             float                 :offset-assert 2112)
    (title-updated        symbol                :offset-assert 2116)
    )
@@ -13377,7 +13378,7 @@
    (initial-valuef float   :offset 4) ;; TODO - floats suck - some of these values end up being NaN - these should come before the int32 fields
    (random-rangef  float   :offset 8) ;; TODO - floats suck - some of these values end up being NaN - these should come before the int32 fields
    (random-multf   float   :offset 12) ;; TODO - floats suck - some of these values end up being NaN - these should come before the int32 fields
-   (func           basic   :offset 4)
+   (func           symbol   :offset 4)
    (tex            uint32  :offset 4)
    (pntr           uint32  :offset 4)
    (sym            basic   :offset 4)
@@ -13441,7 +13442,7 @@
    (linger-duration uint16         :offset-assert 8)
    (flags           uint16         :offset-assert 10)
    (name            basic          :offset-assert 12)
-   (launcher        sparticle-group-item         :offset-assert 16)
+   (launcher        (inline-array sparticle-group-item)         :offset-assert 16)
    (bounds          sphere :inline :offset-assert 32)
    )
   :method-count-assert 10
@@ -13507,7 +13508,7 @@
    (flags         uint32                         :offset-assert 104)
    (user-int32    int32                          :offset-assert 108)
    (user-uint32   uint32                         :offset 108)
-   (user-float    float                          :offset 108)
+   (user-float    float                          :score 100 :offset 108)
    (user-pntr     uint32                         :offset 108)
    (user-sprite   sprite-vec-data-2d             :offset 108)
    (func          basic                          :offset-assert 112)
@@ -13540,13 +13541,13 @@
   )
 
 (deftype sparticle-system (basic)
-  ((blocks          uint32 2 :offset-assert 4)
+  ((blocks          int32 2 :offset-assert 4)
    (length          uint32 2 :offset-assert 12)
    (num-alloc       uint32 2 :offset-assert 20)
    (is-3d           basic     :offset-assert 28)
    (flags           uint32    :offset-assert 32)
    (alloc-table     uint32    :offset-assert 36)
-   (cpuinfo-table   uint32    :offset-assert 40)
+   (cpuinfo-table   sparticle-cpuinfo    :offset-assert 40)
    (vecdata-table   uint32    :offset-assert 44)
    (adgifdata-table uint32    :offset-assert 48)
    )
@@ -13893,7 +13894,7 @@
    (outro-t-step        float                     :offset-assert 2376)
    (outro-exit-value    float                     :offset-assert 2380)
    (water-drip-time     uint64                    :offset-assert 2384)
-   (water-drip          basic                     :offset-assert 2392)
+   (water-drip          sparticle-launch-control  :offset-assert 2392)
    (water-drip-mult     float                     :offset-assert 2396)
    (water-drip-speed    float                     :offset-assert 2400)
    )
@@ -16344,7 +16345,7 @@
 ;; - Unknowns
 
 ;;(define-extern *global-toggle* object) ;; unknown type
-(define-extern *part-id-table* (array sparticle-launcher)) ;; unknown type
+(define-extern *part-id-table* (array sparticle-launcher))
 ;;(define-extern *particle-300hz-timer* object) ;; unknown type
 ;;(define-extern *sp-launch-queue* object) ;; unknown type
 ;;(define-extern *death-adgif* object) ;; unknown type
@@ -16371,9 +16372,9 @@
 (define-extern forall-particles function)
 (define-extern sparticle-kill-it-level0 function)
 (define-extern sparticle-kill-it-level1 function)
-(define-extern forall-particles-with-key function)
-(define-extern sparticle-kill-it function)
-(define-extern forall-particles-with-key-runner function)
+(define-extern forall-particles-with-key (function sparticle-launch-control function symbol symbol none))
+(define-extern sparticle-kill-it (function sparticle-system sparticle-cpuinfo none))
+(define-extern forall-particles-with-key-runner (function sparticle-launch-control function sparticle-system none)) ;; TODO - not complete!
 (define-extern sp-get-approx-alloc-size function)
 (define-extern sp-process-block function)
 (define-extern sp-copy-to-spr function)
@@ -16383,7 +16384,7 @@
 (define-extern sp-free-particle function)
 (define-extern sp-particle-copy! function)
 (define-extern sp-get-block-size function)
-(define-extern sp-kill-particle (function process sparticle-cpuinfo none)) ;; TODO - not confirmed
+(define-extern sp-kill-particle (function sparticle-system sparticle-cpuinfo none))
 (define-extern sp-orbiter function)
 (define-extern memcpy function)
 (define-extern kill-all-particles-in-level (function int))
@@ -16393,7 +16394,7 @@
 ;; - Unknowns
 
 ;;(define-extern *particles-flag* object) ;; unknown type
-(define-extern *sp-particle-system-2d* sparticle-system) ;; unknown type
+(define-extern *sp-particle-system-2d* sparticle-system)
 (define-extern *sp-particle-system-3d* sparticle-system) ;; unknown type
 
 
@@ -17205,15 +17206,15 @@
 ;; - Functions
 
 (define-extern matrix-local->world (function symbol symbol matrix))
-(define-extern update-snow function)
-(define-extern check-drop-level-rain function)
-(define-extern update-rain function)
-(define-extern cam-master-effect function)
-(define-extern sparticle-track-sun function)
+(define-extern update-snow (function target none))
+(define-extern check-drop-level-rain (function int sparticle-cpuinfo vector none)) ;; second arg is a guess, it's passed as `a1` to `sp-kill-particle`
+(define-extern update-rain (function target none))
+(define-extern cam-master-effect (function none :behavior camera-master))
+(define-extern sparticle-track-sun (function int sparticle-cpuinfo matrix none)) ;; TODO - unused / first arg is unknown / matrix is probably wrong
 
-;; - Unknowns
+;; - Symbols
 
-(define-extern group-rain-screend-drop sparticle-launch-group) ;; not confirmed
+(define-extern group-rain-screend-drop sparticle-launch-group)
 
 
 ;; ----------------------
@@ -17225,20 +17226,23 @@
 ;; - Functions
 
 (define-extern make-sky-textures function)
-(define-extern init-time-of-day function)
-(define-extern update-sky-tng-data function)
-(define-extern time-of-day-update function)
+(define-extern init-time-of-day (function none))
+(define-extern update-sky-tng-data (function float none))
+(define-extern time-of-day-update (function none))
 (define-extern start-time-of-day (function int))
-(define-extern time-of-day-setup (function symbol none)) ;; not confirmed
-(define-extern set-time-of-day function)
-(define-extern init-time-of-day-context (function time-of-day-context none))
+(define-extern time-of-day-setup (function symbol none))
+(define-extern set-time-of-day (function float none))
+(define-extern init-time-of-day-context (function time-of-day-context float))
 (define-extern update-time-of-day (function time-of-day-context none))
+
+;; - Symbols
+
+(define-extern time-of-day-tick state)
+(define-extern time-of-day-effect (function none)) ;; only 'nothing' is stored here, looks like dead code
 
 ;; - Unknowns
 
 ;;(define-extern sky-base-polygons object) ;; unknown type
-;;(define-extern time-of-day-tick object) ;; unknown type
-;;(define-extern time-of-day-effect object) ;; unknown type
 
 
 ;; ----------------------
@@ -17290,8 +17294,8 @@
 ;; - Functions
 
 (define-extern sky-add-frame-data function)
-(define-extern sky-make-sun-data function)
-(define-extern sky-make-moon-data function)
+(define-extern sky-make-sun-data (function sky-parms int float none))
+(define-extern sky-make-moon-data (function sky-parms float none))
 (define-extern sky-make-light function)
 (define-extern sky-init-upload-data function)
 (define-extern sky-upload function)
@@ -17329,7 +17333,7 @@
 ;; - Unknowns
 
 ;;(define-extern *sky-work* object) ;; unknown type
-;;(define-extern *sky-tng-data* object) ;; unknown type
+(define-extern *sky-tng-data* sky-tng-data) ;; unknown type
 ;;(define-extern sky-roof-polygons object) ;; unknown type
 ;;(define-extern sky-cloud-polygons object) ;; unknown type
 ;;(define-extern sky-cloud-polygon-indices object) ;; unknown type
