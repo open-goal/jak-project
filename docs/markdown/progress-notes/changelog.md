@@ -197,3 +197,7 @@
 - Lambdas may now be used in static pairs.
 - Dynamically constructed bitfields created with `(new 'static ...` may now set fields with `structure` type.
 - Allocations on `'loading-level` are now permitted.
+- Converting a float larger than `INT32_MAX` now saturates to INT32_MAX, like on a real PS2.
+- Treating a float as a 64-bit integer now sign extends, like on a real PS2
+- It is now an error to have two arguments with the same name.
+- It is now a warning to redefine a constant.
