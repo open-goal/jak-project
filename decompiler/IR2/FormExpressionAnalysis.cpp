@@ -2146,13 +2146,6 @@ void SetVarElement::push_to_stack(const Env& env, FormPool& pool, FormStack& sta
     return;
   }
 
-  // bool skip = false;
-  //  auto dst_type = env.get_variable_type(m_dst, false);
-  //  auto as_bitfield = dynamic_cast<BitFieldType*>(env.dts->ts.lookup_type(dst_type));
-  //  if (as_bitfield && as_bitfield->get_load_size() == 16) {
-  //    skip = true;
-  //  }
-
   // if we are a reg-reg move that consumes the original, push it without popping from stack.
   // it is the Stack's responsibility to untangle these later on.
   if (m_src->is_single_element()) {
@@ -2168,7 +2161,8 @@ void SetVarElement::push_to_stack(const Env& env, FormPool& pool, FormStack& sta
 
         auto var = src_as_se->expr().get_arg(0).var();
         auto& info = env.reg_use().op.at(var.idx());
-        if (info.consumes.find(var.reg()) != info.consumes.end()) {
+        if (var.reg() == Register(Reg::GPR, Reg::S6) ||
+            info.consumes.find(var.reg()) != info.consumes.end()) {
           stack.push_non_seq_reg_to_reg(m_dst, src_as_se->expr().get_arg(0).var(), m_src,
                                         m_src_type, m_var_info);
           return;
@@ -2179,28 +2173,6 @@ void SetVarElement::push_to_stack(const Env& env, FormPool& pool, FormStack& sta
 
   // we aren't a reg-reg move, so update our source
   m_src->update_children_from_stack(env, pool, stack, true);
-
-  /*
-  auto src_as_bf_set = dynamic_cast<ModifiedCopyBitfieldElement*>(m_src->try_as_single_element());
-  if (src_as_bf_set && !src_as_bf_set->from_pcpyud() && src_as_bf_set->mods().size() == 1) {
-    auto dst_form = m_dst.to_form(env, RegisterAccess::Print::AS_VARIABLE_NO_CAST);
-    auto src_form = src_as_bf_set->base()->to_form(env);
-    if (dst_form == src_form) {
-      // success!
-      auto value = src_as_bf_set->mods().at(0).value;
-      value->parent_element = this;
-
-      // make the (-> thing bitfield)
-      auto field_token = DerefToken::make_field_name(src_as_bf_set->mods().at(0).field_name);
-      auto dst_dform = pool.alloc_single_element_form<SimpleAtomElement>(nullptr,
-  SimpleAtom::make_var(m_dst)); auto loc_elt = pool.alloc_element<DerefElement>(dst_dform, false,
-  field_token); loc_elt->inline_nested(); auto loc = pool.alloc_single_form(nullptr, loc_elt); auto
-  new_form_el = pool.alloc_element<SetFormFormElement>(loc, value);
-      stack.push_form_element(new_form_el, true);
-      return;
-    }
-  }
-   */
 
   for (auto x : m_src->elts()) {
     assert(x->parent_form == m_src);
