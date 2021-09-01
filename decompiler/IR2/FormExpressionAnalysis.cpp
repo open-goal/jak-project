@@ -1321,11 +1321,12 @@ void SimpleExpressionElement::update_from_stack_vector_float_product(
   result->push_back(new_form);
 }
 
-void SimpleExpressionElement::update_from_stack_vector_3_dot(const Env& env,
-                                                             FormPool& pool,
-                                                             FormStack& stack,
-                                                             std::vector<FormElement*>* result,
-                                                             bool allow_side_effects) {
+void SimpleExpressionElement::update_from_stack_vector_dot(FixedOperatorKind kind,
+                                                           const Env& env,
+                                                           FormPool& pool,
+                                                           FormStack& stack,
+                                                           std::vector<FormElement*>* result,
+                                                           bool allow_side_effects) {
   std::vector<Form*> popped_args = pop_to_forms({m_expr.get_arg(0).var(), m_expr.get_arg(1).var()},
                                                 env, pool, stack, allow_side_effects);
 
@@ -1337,8 +1338,7 @@ void SimpleExpressionElement::update_from_stack_vector_3_dot(const Env& env,
   }
 
   auto new_form = pool.alloc_element<GenericElement>(
-      GenericOperator::make_fixed(FixedOperatorKind::VECTOR_3_DOT),
-      std::vector<Form*>{popped_args.at(0), popped_args.at(1)});
+      GenericOperator::make_fixed(kind), std::vector<Form*>{popped_args.at(0), popped_args.at(1)});
   result->push_back(new_form);
 }
 
@@ -2116,7 +2116,12 @@ void SimpleExpressionElement::update_from_stack(const Env& env,
       update_from_stack_subu_l32_s7(env, pool, stack, result, allow_side_effects);
       break;
     case SimpleExpression::Kind::VECTOR_3_DOT:
-      update_from_stack_vector_3_dot(env, pool, stack, result, allow_side_effects);
+      update_from_stack_vector_dot(FixedOperatorKind::VECTOR_3_DOT, env, pool, stack, result,
+                                   allow_side_effects);
+      break;
+    case SimpleExpression::Kind::VECTOR_4_DOT:
+      update_from_stack_vector_dot(FixedOperatorKind::VECTOR_4_DOT, env, pool, stack, result,
+                                   allow_side_effects);
       break;
     default:
       throw std::runtime_error(
@@ -4290,8 +4295,9 @@ void push_asm_srl_to_stack(const AsmOp* op,
       stack.push_value_to_reg(*dst, pool.alloc_single_form(nullptr, other), true,
                               env.get_variable_type(*dst, true));
     } else {
-      throw std::runtime_error(fmt::format("Got invalid bitfield manip for srl: {} type was {}",
-                                           src_var->to_string(env), arg0_type.print()));
+      throw std::runtime_error(
+          fmt::format("Got invalid bitfield manip for srl at op {}: {} type was {}", op->op_id(),
+                      src_var->to_string(env), arg0_type.print()));
     }
   }
 }
