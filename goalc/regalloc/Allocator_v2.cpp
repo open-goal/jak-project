@@ -754,13 +754,16 @@ bool check_register_assign(const AllocationInput& input,
   // so in some cases it's okay to clobber.
 
   // loop over our live range
-  for (int instr_idx = this_var.first_live(); instr_idx < this_var.last_live(); instr_idx++) {
+  for (int instr_idx = this_var.first_live(); instr_idx <= this_var.last_live(); instr_idx++) {
+    const auto& instr = input.instructions.at(instr_idx);
+    if (vector_contains(instr.exclude, reg)) {
+      return false;
+    }
+
     // and leave out the ones where we're dead
     if (!this_var.live(instr_idx)) {
       continue;
     }
-
-    const auto& instr = input.instructions.at(instr_idx);
 
     if (vector_contains(instr.clobber, reg)) {
       // there's two cases where this is okay.
@@ -774,10 +777,6 @@ bool check_register_assign(const AllocationInput& input,
         }
         // 2: we write it after the clobber.
       }
-    }
-
-    if (vector_contains(instr.exclude, reg)) {
-      return false;
     }
   }
 

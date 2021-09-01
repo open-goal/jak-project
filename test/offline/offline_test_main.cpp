@@ -99,7 +99,7 @@ const std::unordered_set<std::string> g_functions_to_skip_compiling = {
 
     /// GKERNEL
     // asm
-    "(method 10 process)",
+    "(method 10 process)", "(method 14 dead-pool)",
 
     /// GSTATE
     "enter-state",  // stack pointer asm
@@ -143,6 +143,9 @@ const std::unordered_set<std::string> g_functions_to_skip_compiling = {
     // stats-h
     "(method 11 perf-stat)", "(method 12 perf-stat)",
 
+    // sprite-distorter
+    "sprite-draw-distorters",  // uses clipping flag.
+
     // sync-info
     "(method 15 sync-info)",         // needs display stuff first
     "(method 15 sync-info-eased)",   // needs display stuff first
@@ -169,7 +172,9 @@ const std::unordered_set<std::string> g_functions_to_skip_compiling = {
     "slave-set-rotation!", "v-slrp2!", "v-slrp3!",  // vector-dot involving the stack
 
     // loader - decompiler bug with detecting handle macros
-    "(method 10 external-art-buffer)"};
+    "(method 10 external-art-buffer)",
+    // function returning float with a weird cast.
+    "debug-menu-item-var-make-float"};
 
 // default location for the data. It can be changed with a command line argument.
 std::string g_iso_data_path = "";
@@ -223,11 +228,18 @@ int main(int argc, char** argv) {
 
   // look for an argument that's not a gtest option
   bool got_arg = false;
+  int max_files = -1;
   for (int i = 1; i < argc; i++) {
     auto arg = std::string(argv[i]);
     if (arg == "--dump-mode") {
       g_dump_mode = true;
       continue;
+    }
+    if (arg == "--max-files") {
+      i++;
+      assert(i < argc);
+      max_files = atoi(argv[i]);
+      printf("Limiting to %d files\n", max_files);
     }
     if (arg.length() > 2 && arg[0] == '-' && arg[1] == '-') {
       continue;
@@ -239,6 +251,14 @@ int main(int argc, char** argv) {
     g_iso_data_path = arg;
     lg::warn("Using path {} for iso_data", g_iso_data_path);
     got_arg = true;
+  }
+
+  if (max_files >= 0) {
+    if ((int)g_object_files_to_decompile_or_ref_check.size() > max_files) {
+      g_object_files_to_decompile_or_ref_check.erase(
+          g_object_files_to_decompile_or_ref_check.begin() + max_files,
+          g_object_files_to_decompile_or_ref_check.end());
+    }
   }
 
   ::testing::InitGoogleTest(&argc, argv);
@@ -268,7 +288,7 @@ class OfflineDecompilation : public ::testing::Test {
     config->generate_symbol_definition_map = false;
 
     std::vector<std::string> dgos = {"CGO/KERNEL.CGO", "CGO/ENGINE.CGO", "CGO/GAME.CGO",
-                                     "DGO/BEA.DGO"};
+                                     "DGO/BEA.DGO",    "CGO/L1.CGO",     "DGO/INT.DGO"};
     std::vector<std::string> dgo_paths;
     if (g_iso_data_path.empty()) {
       for (auto& x : dgos) {
@@ -322,46 +342,6 @@ TEST_F(OfflineDecompilation, CheckBasicDecode) {
   });
 
   EXPECT_EQ(obj_count, config->allowed_objects.size());
-}
-
-/*!
- * Not a super great test, but check that we find functions, methods, and logins.
- * This is a test of ir2_top_level_pass, which isn't tested as part of the normal decompiler
- tests.
- */
-TEST_F(OfflineDecompilation, FunctionDetect) {
-  int function_count = 0;  // global functions
-  int method_count = 0;    // methods
-  int login_count = 0;     // top-level logins
-  int unknown_count = 0;   // unknown functions, like anonymous lambdas
-
-  db->for_each_function(
-      [&](decompiler::Function& func, int segment_id, decompiler::ObjectFileData&) {
-        if (segment_id == TOP_LEVEL_SEGMENT) {
-          EXPECT_EQ(func.guessed_name.kind, decompiler::FunctionName::FunctionKind::TOP_LEVEL_INIT);
-        } else {
-          EXPECT_NE(func.guessed_name.kind, decompiler::FunctionName::FunctionKind::TOP_LEVEL_INIT);
-        }
-        switch (func.guessed_name.kind) {
-          case decompiler::FunctionName::FunctionKind::GLOBAL:
-            function_count++;
-            break;
-          case decompiler::FunctionName::FunctionKind::METHOD:
-            method_count++;
-            break;
-          case decompiler::FunctionName::FunctionKind::TOP_LEVEL_INIT:
-            login_count++;
-            break;
-          case decompiler::FunctionName::FunctionKind::UNIDENTIFIED:
-            unknown_count++;
-            break;
-          default:
-            assert(false);
-        }
-      });
-
-  // one login per object file
-  EXPECT_EQ(config->allowed_objects.size(), login_count);
 }
 
 TEST_F(OfflineDecompilation, AsmFunction) {

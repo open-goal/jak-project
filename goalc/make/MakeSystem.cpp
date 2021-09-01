@@ -65,7 +65,7 @@ void MakeSystem::load_project_file(const std::string& file_path) {
   // read the file
   auto data = m_goos.reader.read_from_file({file_path});
   // interpret it, which will call various handlers.
-  m_goos.eval(data, m_goos.global_environment.as_env());
+  m_goos.eval(data, m_goos.global_environment.as_env_ptr());
 }
 
 goos::Object MakeSystem::handle_defstep(const goos::Object& form,

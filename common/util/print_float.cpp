@@ -4,6 +4,7 @@
 #include "common/common_types.h"
 #include "third-party/dragonbox.h"
 #include "print_float.h"
+#include "common/util/assert.h"
 
 /*!
  * Convert a float to a string. The string is _always_ in this format:

@@ -6,9 +6,6 @@
  * manages the memory for stuff generated during compiling.
  */
 
-#ifndef JAK_ENV_H
-#define JAK_ENV_H
-
 #include <string>
 #include <memory>
 #include <vector>
@@ -21,17 +18,22 @@
 
 class FileEnv;
 class BlockEnv;
+class FunctionEnv;
+class SymbolMacroEnv;
+class MacroExpandEnv;
 class IR;
+
+enum class EnvKind { FILE_ENV, FUNCTION_ENV, SYMBOL_MACRO_ENV, MACRO_EXPAND_ENV, OTHER_ENV };
 
 /*!
  * Parent class for Env's
  */
 class Env {
  public:
-  explicit Env(Env* parent) : m_parent(parent) {}
+  explicit Env(EnvKind kind, Env* parent);
   virtual std::string print() = 0;
-  virtual void emit(std::unique_ptr<IR> ir);
-  virtual RegVal* make_ireg(TypeSpec ts, RegClass reg_class);
+  void emit(const goos::Object& form, std::unique_ptr<IR> ir);
+  virtual RegVal* make_ireg(const TypeSpec& ts, RegClass reg_class);
   virtual void constrain_reg(IRegConstraint constraint);  // todo, remove!
   virtual RegVal* lexical_lookup(goos::Object sym);
   virtual BlockEnv* find_block(const std::string& name);
@@ -43,12 +45,26 @@ class Env {
   Env* parent() { return m_parent; }
 
   template <typename IR_Type, typename... Args>
-  void emit_ir(Args&&... args) {
-    emit(std::make_unique<IR_Type>(std::forward<Args>(args)...));
+  void emit_ir(const goos::Object& form, Args&&... args) {
+    emit(form, std::make_unique<IR_Type>(std::forward<Args>(args)...));
   }
 
+  FileEnv* file_env() { return m_lowest_envs.file_env; }
+  FunctionEnv* function_env() { return m_lowest_envs.function_env; }
+  SymbolMacroEnv* symbol_macro_env() { return m_lowest_envs.symbol_macro_env; }
+  MacroExpandEnv* macro_expand_env() { return m_lowest_envs.macro_expand_env; }
+
  protected:
+  EnvKind m_kind;
   Env* m_parent = nullptr;
+
+  // cache of the lowest env of the given type, possibly including ourselves
+  struct {
+    FileEnv* file_env = nullptr;
+    FunctionEnv* function_env = nullptr;
+    SymbolMacroEnv* symbol_macro_env = nullptr;
+    MacroExpandEnv* macro_expand_env = nullptr;
+  } m_lowest_envs;
 };
 
 /*!
@@ -58,8 +74,7 @@ class GlobalEnv : public Env {
  public:
   GlobalEnv();
   std::string print() override;
-  void emit(std::unique_ptr<IR> ir) override;
-  RegVal* make_ireg(TypeSpec ts, RegClass reg_class) override;
+  RegVal* make_ireg(const TypeSpec& ts, RegClass reg_class) override;
   void constrain_reg(IRegConstraint constraint) override;
   RegVal* lexical_lookup(goos::Object sym) override;
   BlockEnv* find_block(const std::string& name) override;
@@ -72,18 +87,6 @@ class GlobalEnv : public Env {
 };
 
 /*!
- * An Env that doesn't allow emitting to go past it. Used to make sure source code that shouldn't
- * generate machine code actually does this.
- */
-class NoEmitEnv : public Env {
- public:
-  explicit NoEmitEnv(Env* parent) : Env(parent) {}
-  std::string print() override;
-  void emit(std::unique_ptr<IR> ir) override;
-  ~NoEmitEnv() = default;
-};
-
-/*!
  * An Env for an entire file (or input to the REPL)
  */
 class FileEnv : public Env {
@@ -93,9 +96,8 @@ class FileEnv : public Env {
   void add_function(std::unique_ptr<FunctionEnv> fe);
   void add_top_level_function(std::unique_ptr<FunctionEnv> fe);
   void add_static(std::unique_ptr<StaticObject> s);
-  NoEmitEnv* add_no_emit_env();
   void debug_print_tl();
-  const std::vector<std::unique_ptr<FunctionEnv>>& functions() { return m_functions; }
+  const std::vector<std::shared_ptr<FunctionEnv>>& functions() { return m_functions; }
   const std::vector<std::unique_ptr<StaticObject>>& statics() { return m_statics; }
   std::string get_anon_function_name() {
     return "anon-function-" + std::to_string(m_anon_func_counter++);
@@ -118,9 +120,8 @@ class FileEnv : public Env {
 
  protected:
   std::string m_name;
-  std::vector<std::unique_ptr<FunctionEnv>> m_functions;
+  std::vector<std::shared_ptr<FunctionEnv>> m_functions;
   std::vector<std::unique_ptr<StaticObject>> m_statics;
-  std::unique_ptr<NoEmitEnv> m_no_emit_env = nullptr;
   int m_anon_func_counter = 0;
   std::vector<std::unique_ptr<Val>> m_vals;
 
@@ -133,7 +134,7 @@ class FileEnv : public Env {
  */
 class DeclareEnv : public Env {
  public:
-  explicit DeclareEnv(Env* parent) : Env(parent) {}
+  explicit DeclareEnv(EnvKind kind, Env* parent) : Env(kind, parent) {}
   virtual std::string print() = 0;
   ~DeclareEnv() = default;
 
@@ -162,18 +163,19 @@ struct UnresolvedConditionalGoto {
 
 class FunctionEnv : public DeclareEnv {
  public:
-  FunctionEnv(Env* parent, std::string name);
+  FunctionEnv(Env* parent, std::string name, const goos::Reader* reader);
   std::string print() override;
   std::unordered_map<std::string, Label>& get_label_map() override;
   void set_segment(int seg) { segment = seg; }
-  void emit(std::unique_ptr<IR> ir) override;
+  void emit(const goos::Object& form, std::unique_ptr<IR> ir, Env* lowest_env);
   void finish();
-  RegVal* make_ireg(TypeSpec ts, RegClass reg_class) override;
+  RegVal* make_ireg(const TypeSpec& ts, RegClass reg_class) override;
   const std::vector<std::unique_ptr<IR>>& code() const { return m_code; }
+  const std::vector<goos::Object>& code_source() const { return m_code_debug_source; }
   int max_vars() const { return m_iregs.size(); }
   const std::vector<IRegConstraint>& constraints() { return m_constraints; }
   void constrain(const IRegConstraint& c) { m_constraints.push_back(c); }
-  void set_allocations(const AllocationResult& result) { m_regalloc_result = result; }
+  void set_allocations(AllocationResult&& result) { m_regalloc_result = std::move(result); }
   RegVal* lexical_lookup(goos::Object sym) override;
   const AllocationResult& alloc_result() { return m_regalloc_result; }
   bool needs_aligned_stack() const { return m_aligned_stack_required; }
@@ -223,17 +225,20 @@ class FunctionEnv : public DeclareEnv {
   void resolve_gotos();
   std::string m_name;
   std::vector<std::unique_ptr<IR>> m_code;
+  std::vector<goos::Object> m_code_debug_source;
+
   std::vector<std::unique_ptr<RegVal>> m_iregs;
   std::vector<std::unique_ptr<Val>> m_vals;
   std::vector<std::unique_ptr<Env>> m_envs;
   std::vector<IRegConstraint> m_constraints;
-  // todo, unresolved gotos
+
   AllocationResult m_regalloc_result;
 
   bool m_aligned_stack_required = false;
   int m_stack_var_slots_used = 0;
   std::unordered_map<std::string, Label> m_labels;
   std::vector<std::unique_ptr<Label>> m_unnamed_labels;
+  const goos::Reader* m_reader = nullptr;
 };
 
 class BlockEnv : public Env {
@@ -250,7 +255,7 @@ class BlockEnv : public Env {
 
 class LexicalEnv : public DeclareEnv {
  public:
-  explicit LexicalEnv(Env* parent) : DeclareEnv(parent) {}
+  explicit LexicalEnv(Env* parent) : DeclareEnv(EnvKind::OTHER_ENV, parent) {}
   RegVal* lexical_lookup(goos::Object sym) override;
   std::string print() override;
   std::unordered_map<std::string, RegVal*> vars;
@@ -258,7 +263,7 @@ class LexicalEnv : public DeclareEnv {
 
 class LabelEnv : public Env {
  public:
-  explicit LabelEnv(Env* parent) : Env(parent) {}
+  explicit LabelEnv(Env* parent) : Env(EnvKind::OTHER_ENV, parent) {}
   std::string print() override { return "labelenv"; }
   std::unordered_map<std::string, Label>& get_label_map() override;
   BlockEnv* find_block(const std::string& name) override;
@@ -267,22 +272,51 @@ class LabelEnv : public Env {
   std::unordered_map<std::string, Label> m_labels;
 };
 
-class WithInlineEnv : public Env {
- public:
-  WithInlineEnv(Env* parent, bool _inline_preference)
-      : Env(parent), inline_preference(_inline_preference) {}
-  bool inline_preference = false;
-};
-
 class SymbolMacroEnv : public Env {
  public:
-  explicit SymbolMacroEnv(Env* parent) : Env(parent) {}
-  std::unordered_map<std::shared_ptr<goos::SymbolObject>, goos::Object> macros;
+  explicit SymbolMacroEnv(Env* parent) : Env(EnvKind::SYMBOL_MACRO_ENV, parent) {}
+  // key is goos symbols.
+  std::unordered_map<goos::HeapObject*, goos::Object> macros;
   std::string print() override { return "symbol-macro-env"; }
 };
 
+class MacroExpandEnv : public Env {
+ public:
+  MacroExpandEnv(Env* parent,
+                 const goos::HeapObject* macro_name,
+                 const goos::Object& macro_body,
+                 const goos::Object& macro_use)
+      : Env(EnvKind::MACRO_EXPAND_ENV, parent),
+        m_macro_name(macro_name),
+        m_macro_body(macro_body),
+        m_macro_use_location(macro_use) {
+    MacroExpandEnv* parent_macro = nullptr;
+    if (parent) {
+      parent_macro = parent->macro_expand_env();
+    }
+    if (parent_macro) {
+      m_root_form = parent_macro->m_root_form;
+    } else {
+      m_root_form = m_macro_use_location;
+    }
+  }
+
+  std::string print() override { return "macro-env"; }
+
+  const goos::HeapObject* name() const { return m_macro_name; }
+  const goos::Object& macro_body() const { return m_macro_body; }
+  const goos::Object& macro_use_location() const { return m_macro_use_location; }
+  const goos::Object& root_form() const { return m_root_form; }
+
+ private:
+  const goos::HeapObject* m_macro_name = nullptr;
+  goos::Object m_macro_body;
+  goos::Object m_macro_use_location;
+  goos::Object m_root_form;
+};
+
 template <typename T>
-T* get_parent_env_of_type(Env* in) {
+T* get_parent_env_of_type_slow(Env* in) {
   for (;;) {
     auto attempt = dynamic_cast<T*>(in);
     if (attempt)
@@ -293,11 +327,29 @@ T* get_parent_env_of_type(Env* in) {
     in = in->parent();
   }
 }
-// function
-// block
-// lexical
-// label
-// symbolmacro
-// get parent env of type.
 
-#endif  // JAK_ENV_H
+inline Env::Env(EnvKind kind, Env* parent) : m_kind(kind), m_parent(parent) {
+  if (m_kind == EnvKind::FILE_ENV) {
+    m_lowest_envs.file_env = static_cast<FileEnv*>(this);
+  } else {
+    m_lowest_envs.file_env = m_parent ? m_parent->m_lowest_envs.file_env : nullptr;
+  }
+
+  if (m_kind == EnvKind::FUNCTION_ENV) {
+    m_lowest_envs.function_env = static_cast<FunctionEnv*>(this);
+  } else {
+    m_lowest_envs.function_env = m_parent ? m_parent->m_lowest_envs.function_env : nullptr;
+  }
+
+  if (m_kind == EnvKind::SYMBOL_MACRO_ENV) {
+    m_lowest_envs.symbol_macro_env = static_cast<SymbolMacroEnv*>(this);
+  } else {
+    m_lowest_envs.symbol_macro_env = m_parent ? m_parent->m_lowest_envs.symbol_macro_env : nullptr;
+  }
+
+  if (m_kind == EnvKind::MACRO_EXPAND_ENV) {
+    m_lowest_envs.macro_expand_env = static_cast<MacroExpandEnv*>(this);
+  } else {
+    m_lowest_envs.macro_expand_env = m_parent ? m_parent->m_lowest_envs.macro_expand_env : nullptr;
+  }
+}

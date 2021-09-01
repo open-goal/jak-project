@@ -195,6 +195,10 @@ void StaticPair::generate_item(const StaticResult& item, int offset) {
     // though we may need to allow overflow so you can store either signed/unsigned things in pairs
     s32 value = item.constant_s32();
     memcpy(data.data() + offset, &value, POINTER_SIZE);
+  } else if (item.is_func()) {
+    add_function_record(item.function(), offset);
+  } else {
+    throw std::runtime_error("Unsupported item kind in StaticPair::generate_item");
   }
 }
 

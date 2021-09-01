@@ -81,7 +81,7 @@
   :size-assert         #x18
   :flag-assert         #xa00000018
   (:methods
-    (dummy-9 () none 9)
+    (login-adgifs (_type_) none 9)
     )
   )
 
@@ -160,10 +160,10 @@
   )
 
 ;; definition for function merc-fragment-fp-data
-;; INFO: Return type mismatch int vs pointer.
+;; INFO: Return type mismatch int vs merc-fp-header.
 (defun merc-fragment-fp-data ((arg0 merc-fragment))
   (the-as
-   pointer
+   merc-fp-header
    (+ (the-as uint arg0) (* (-> arg0 header mm-quadword-fp-off) 16))
    )
   )
@@ -173,6 +173,7 @@
   ((matrix-number uint8  :offset-assert   0)
    (matrix-dest   uint8  :offset-assert   1)
    )
+  :pack-me
   :method-count-assert 9
   :size-assert         #x2
   :flag-assert         #x900000002
@@ -188,11 +189,11 @@
 
 ;; definition of type merc-fragment-control
 (deftype merc-fragment-control (structure)
-  ((unsigned-four-count uint8          :offset-assert   0)
-   (lump-four-count     uint8          :offset-assert   1)
-   (fp-qwc              uint8          :offset-assert   2)
-   (mat-xfer-count      uint8          :offset-assert   3)
-   (mat-dest-data       uint8 :dynamic :offset-assert   4)
+  ((unsigned-four-count uint8                          :offset-assert   0)
+   (lump-four-count     uint8                          :offset-assert   1)
+   (fp-qwc              uint8                          :offset-assert   2)
+   (mat-xfer-count      uint8                          :offset-assert   3)
+   (mat-dest-data       merc-mat-dest :inline :dynamic :offset-assert   4)
    )
   :method-count-assert 9
   :size-assert         #x4
@@ -200,6 +201,7 @@
   )
 
 ;; definition for method 3 of type merc-fragment-control
+;; INFO: this function exists in multiple non-identical object files
 (defmethod inspect merc-fragment-control ((obj merc-fragment-control))
   (format #t "[~8x] ~A~%" obj 'merc-fragment-control)
   (format #t "~Tunsigned-four-count: ~D~%" (-> obj unsigned-four-count))
@@ -344,25 +346,26 @@
 
 ;; definition of type merc-effect
 (deftype merc-effect (structure)
-  ((frag-geo         merc-fragment          :offset-assert   0)
-   (frag-ctrl        merc-fragment-control  :offset-assert   4)
-   (blend-data       merc-blend-data        :offset-assert   8)
-   (blend-ctrl       merc-blend-ctrl        :offset-assert  12)
-   (dummy0           uint8                  :offset-assert  16)
-   (effect-bits      uint8                  :offset-assert  17)
-   (frag-count       uint16                 :offset-assert  18)
-   (blend-frag-count uint16                 :offset-assert  20)
-   (tri-count        uint16                 :offset-assert  22)
-   (dvert-count      uint16                 :offset-assert  24)
-   (dummy1           uint8                  :offset-assert  26)
-   (envmap-usage     uint8                  :offset-assert  27)
-   (extra-info       merc-extra-info        :offset-assert  28)
+  ((frag-geo         merc-fragment           :offset-assert   0)
+   (frag-ctrl        merc-fragment-control   :offset-assert   4)
+   (blend-data       merc-blend-data         :offset-assert   8)
+   (blend-ctrl       merc-blend-ctrl         :offset-assert  12)
+   (dummy0           uint8                   :offset-assert  16)
+   (effect-bits      uint8                   :offset-assert  17)
+   (frag-count       uint16                  :offset-assert  18)
+   (blend-frag-count uint16                  :offset-assert  20)
+   (tri-count        uint16                  :offset-assert  22)
+   (dvert-count      uint16                  :offset-assert  24)
+   (dummy1           uint8                   :offset-assert  26)
+   (envmap-usage     uint8                   :offset-assert  27)
+   (extra-info       merc-extra-info         :offset-assert  28)
+   (data             uint64                4 :offset          0)
    )
   :method-count-assert 10
   :size-assert         #x20
   :flag-assert         #xa00000020
   (:methods
-    (dummy-9 () none 9)
+    (login-adgifs (_type_) none 9)
     )
   )
 
@@ -569,6 +572,7 @@
   )
 
 ;; definition for method 3 of type merc-ctrl
+;; INFO: this function exists in multiple non-identical object files
 (defmethod inspect merc-ctrl ((obj merc-ctrl))
   (format #t "[~8x] ~A~%" obj (-> obj type))
   (format #t "~Tname: ~A~%" (-> obj name))
@@ -582,11 +586,11 @@
 
 ;; definition of type merc-vu1-low-mem
 (deftype merc-vu1-low-mem (structure)
-  ((tri-strip-gif qword   :inline :offset-assert   0)
-   (ad-gif        qword   :inline :offset-assert  16)
-   (hvdf-offset   vector  :inline :offset-assert  32)
-   (perspective   uint128 4       :offset-assert  48)
-   (fog           vector  :inline :offset-assert 112)
+  ((tri-strip-gif gs-gif-tag :inline :offset-assert   0)
+   (ad-gif        gs-gif-tag :inline :offset-assert  16)
+   (hvdf-offset   vector     :inline :offset-assert  32)
+   (perspective   uint128    4       :offset-assert  48)
+   (fog           vector     :inline :offset-assert 112)
    )
   :method-count-assert 9
   :size-assert         #x80

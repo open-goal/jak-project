@@ -6,9 +6,6 @@
  * Not meant to work as a full DMAC emulator, just enough to inspect DMA packets.
  */
 
-#ifndef VM_DMAC_H
-#define VM_DMAC_H
-
 #include "common/common_types.h"
 #include "game/kernel/Ptr.h"
 
@@ -73,5 +70,3 @@ static_assert(alignof(DmaChannelRegisters) == 0x10, "DmaChannelRegisters unalign
 void dmac_init_globals();
 
 }  // namespace VM
-
-#endif  // VM_DMAC_H

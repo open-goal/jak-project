@@ -5,8 +5,6 @@
 ;; name in dgo: display
 ;; dgos: GAME, ENGINE
 
-;; todo - move to font-h
-(define-extern draw-string-xy (function string dma-buffer int int int int none))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; TIME
@@ -232,12 +230,12 @@
   (set-draw-env (-> disp draw1) psm w h ztest zpsm 320)
 
   ;; initialize a bunch of counters
-  (set! (-> disp base-frame-counter) (the-as uint #x493e0))
-  (set! (-> disp game-frame-counter) (the-as uint #x493e0))
-  (set! (-> disp real-frame-counter) (the-as uint #x493e0))
-  (set! (-> disp part-frame-counter) (the-as uint #x493e0))
-  (set! (-> disp integral-frame-counter) (the-as uint #x493e0))
-  (set! (-> disp real-integral-frame-counter) (the-as uint #x493e0))
+  (set! (-> disp base-frame-counter) #x493e0)
+  (set! (-> disp game-frame-counter) #x493e0)
+  (set! (-> disp real-frame-counter) #x493e0)
+  (set! (-> disp part-frame-counter) #x493e0)
+  (set! (-> disp integral-frame-counter) #x493e0)
+  (set! (-> disp real-integral-frame-counter) #x493e0)
 
   ;; and the "old" version, which I think was their value on the last... frame?
   (set! (-> disp old-base-frame-counter) (+ (-> disp base-frame-counter) -1))
@@ -282,8 +280,8 @@
   )
 
 
-(define *font-context* (new 'global 'font-context *font-default-matrix* 0 24 0.0 0 (the uint 3)))
-(define *pause-context* (new 'global 'font-context *font-default-matrix* 256 170 0.0 3 (the uint 3)))
+(define *font-context* (new 'global 'font-context *font-default-matrix* 0 24 0.0 (font-color default) (font-flags shadow kerning)))
+(define *pause-context* (new 'global 'font-context *font-default-matrix* 256 170 0.0 (font-color orange-red) (font-flags shadow kerning)))
 
 
 
@@ -405,14 +403,14 @@
               (>= end-time (the-as int (-> worst-time-cache (/ bar-pos 10))))
               )
       (set! (-> worst-time-cache (/ bar-pos 10)) (the-as uint end-time))
-      (set! (-> obj cache-time) (-> *display* real-frame-counter))
+      (set! (-> obj cache-time) (the uint (-> *display* real-frame-counter)))
       )
 
     ;; draw the time, either in ticks or percent.
     (cond
       (*profile-ticks*
        (draw-string-xy (string-format "~5D" (-> worst-time-cache (/ bar-pos 10)))
-                      buf 488 (+ bar-pos 8) 0 17)
+                      buf 488 (+ bar-pos 8) (font-color default) (font-flags shadow right))
        (the float (-> worst-time-cache (/ bar-pos 10)))
        )
       (else
@@ -424,8 +422,8 @@
                        (the float *ticks-per-frame*)
                        )))
          (draw-string-xy (string-format "~5,,2f" f30-0) buf 488 (+ bar-pos 8)
-               (if (>= f30-0 100.0) 3 0) ;; turn red if over 100.
-               17
+               (if (>= f30-0 100.0) (font-color orange-red) (font-color default)) ;; turn red if over 100.
+               (font-flags shadow right)
                )
          f30-0
          )
@@ -449,7 +447,7 @@
 
 (defun draw-sprite2d-xy ((buf dma-buffer) (x int) (y int) (w int) (h int) (color rgba))
   "Draw a sprite primitive with the given color and dimensions."
-
+  
   ;; create context and clip dimensions.
   (let* ((context (new 'stack 'draw-context x y w h color))
          (draw-x (max 1792 (min 2304 (+ (-> context orgx) 1792))))
@@ -458,7 +456,7 @@
                            )
                       (-> *video-parms* screen-miny)
                       )
-           )
+                 )
          (draw-w (-> context width))
          (draw-h (-> context height))
          ;; remember the address of the first dma-tag
@@ -466,13 +464,14 @@
     (with-cnt-vif-block (buf)
       
       (dma-buffer-add-gif-tag buf (new 'static 'gif-tag64 :nloop 1 :eop 1 :flg (gif-flag reg-list) :nreg 4)
-                                  (gs-reg-list prim rgbaq xyzf2 xyzf2)
-                                  )
+                              (gs-reg-list prim rgbaq xyzf2 xyzf2)
+                              )
       (dma-buffer-add-uint64 buf (new 'static 'gs-prim :prim (gs-prim-type sprite) :abe 1)
-                                 (-> context color 0)
-                                 (new 'static 'gs-xyzf :x (* draw-x 16) :y (* draw-y 16) :z #x3fffff)
-                                 (new 'static 'gs-xyzf :x (* (minmax (+ draw-x draw-w) 1792 2304) 16) :y (* (minmax (+ draw-y draw-h) (-> *video-parms* screen-maxy) (-> *video-parms* screen-miny)) 16) :z #x3fffff)
-                                 )
+                             (-> context color 0)
+                             (new 'static 'gs-xyzf :x (* draw-x 16) :y (* draw-y 16) :z #x3fffff)
+                             (new 'static 'gs-xyzf :x (* (minmax (+ draw-x draw-w) 1792 2304) 16) 
+                                  :y (* (minmax (+ draw-y draw-h) (-> *video-parms* screen-miny) (-> *video-parms* screen-maxy)) 16) :z #x3fffff)
+                             )
       )
     )
   (none)
@@ -531,6 +530,27 @@
 ;; in non-debug, there was a vif interrupt handler that did nothing.
 
 ;; There was also a vblank hanlder that incremented *vblank-counter*, but it is disabled.
+
+(defun-debug vif1-handler-debug ()
+  "Add a profile bar to the VU1 profiler. This will be called from the graphics thread, which will grab it
+   directly from the symbol table, no need to register this handler."
+  (let ((c0 (/ (* 128 (-> *display* frames (-> *display* on-screen) frame profile-bar 1 profile-frame-count)) 69))
+        (c1 (* 64 (logand (-> *display* frames (-> *display* on-screen) frame profile-bar 1 profile-frame-count) 3)))
+        )
+    (add-frame
+     (-> *display* frames (-> *display* on-screen) frame profile-bar 1)
+     'end-calc
+     (new 'static 'rgba
+          :r c0
+          :b (- 128 c0)
+          :g c1
+          :a #x80)))
+   (none)
+  )
+
+(if *debug-segment*
+    (install-handler 5 vif1-handler-debug)
+    )
 
 (define *oddeven* 0)
 

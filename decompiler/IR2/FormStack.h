@@ -128,6 +128,8 @@ class FormStack {
     assert(false);
   }
 
+  int size() const { return m_stack.size(); }
+
  private:
   std::vector<StackEntry> m_stack;
   bool m_is_root_stack = false;

@@ -105,6 +105,26 @@ TP_Type SimpleAtom::get_type(const TypeState& input,
       return TP_Type::make_from_ts(type->second);
     }
     case Kind::STATIC_ADDRESS: {
+      const auto& hint = env.file->label_db->lookup(m_int);
+      if (!hint.known) {
+        throw std::runtime_error(
+            fmt::format("Label {} was unknown in AtomicOpTypeAnalysis.", hint.name));
+      }
+      if (hint.result_type.base_type() == "string") {
+        // we special case strings because the type pass will constant propagate them as needed to
+        // figure out the argument count for calls for format.
+        auto label = env.file->labels.at(m_int);
+        return TP_Type::make_from_string(env.file->get_goal_string_by_label(label));
+      }
+      if (hint.is_value) {
+        // todo, do we really need this? should be use something else instead?
+        // return TP_Type::make_from_ts(TypeSpec("pointer", {hint.result_type}));
+        return TP_Type::make_label_addr(m_int);
+      } else {
+        return TP_Type::make_from_ts(hint.result_type);
+      }
+
+      /*
       auto label = env.file->labels.at(m_int);
       // strings are 16-byte aligned, but functions are 8 byte aligned?
       if ((label.offset & 7) == BASIC_OFFSET) {
@@ -137,7 +157,8 @@ TP_Type SimpleAtom::get_type(const TypeState& input,
       }
       // todo: should we take out this warning?
       lg::warn("IR_StaticAddress does not know the type of {}", label.name);
-      return TP_Type::make_label_addr();
+      return TP_Type::make_label_addr(m_int);
+       */
     }
     case Kind::INVALID:
     default:
@@ -261,10 +282,8 @@ TP_Type get_stack_type_at_constant_offset(int offset,
 
     if (offset == structure.hint.stack_offset) {
       // special case just getting the variable
-      if (structure.hint.container_type == StackStructureHint::ContainerType::NONE ||
-          structure.hint.container_type == StackStructureHint::ContainerType::INLINE_ARRAY) {
-        return TP_Type::make_from_ts(coerce_to_reg_type(structure.ref_type));
-      }
+
+      return TP_Type::make_from_ts(coerce_to_reg_type(structure.ref_type));
     }
 
     // Note: GOAL doesn't seem to constant propagate memory access on the stack, so the code
@@ -631,6 +650,14 @@ TP_Type SimpleExpression::get_type_int2(const TypeState& input,
     return TP_Type::make_from_ts(TypeSpec("float"));
   }
 
+  auto& name = env.func->guessed_name;
+  if (name.kind == FunctionName::FunctionKind::METHOD && name.method_id == 7 &&
+      env.func->type.arg_count() == 3) {
+    if (m_kind == Kind::ADD && arg1_type.typespec() == TypeSpec("int")) {
+      return arg0_type;
+    }
+  }
+
   throw std::runtime_error(fmt::format("Cannot get_type_int2: {}, args {} and {}",
                                        to_form(env.file->labels, env).print(), arg0_type.print(),
                                        arg1_type.print()));
@@ -770,6 +797,20 @@ TypeState AsmOp::propagate_types_internal(const TypeState& input,
     }
   }
 
+  // srl out, bitfield, int
+  if (m_instr.kind == InstructionKind::SRL) {
+    auto type = dts.ts.lookup_type(result.get(m_src[0]->reg()).typespec());
+    auto as_bitfield = dynamic_cast<BitFieldType*>(type);
+    if (as_bitfield) {
+      int sa = m_instr.src[1].get_imm();
+      int offset = sa;
+      int size = 32 - offset;
+      auto field = find_field(dts.ts, as_bitfield, offset, size, {});
+      result.get(m_dst->reg()) = TP_Type::make_from_ts(coerce_to_reg_type(field.type()));
+      return result;
+    }
+  }
+
   if (m_dst.has_value()) {
     auto kind = m_dst->reg().get_kind();
     if (kind == Reg::FPR) {
@@ -828,18 +869,26 @@ TP_Type LoadVarOp::get_src_type(const TypeState& input,
         return TP_Type::make_from_ts("float");
       }
 
+      // todo labeldb
       auto label_name = env.file->labels.at(src.label()).name;
-      auto hint = env.label_types().find(label_name);
-      if (hint != env.label_types().end()) {
-        return TP_Type::make_from_ts(
-            coerce_to_reg_type(env.dts->parse_type_spec(hint->second.type_name)));
+      const auto& hint = env.file->label_db->lookup(label_name);
+      if (!hint.known) {
+        throw std::runtime_error(
+            fmt::format("Label {} was unknown in AtomicOpTypeAnalysis (type).", hint.name));
       }
 
-      if (m_size == 8) {
-        // 8 byte integer constants are always loaded from a static pool
-        // this could technically hide loading a different type from inside of a static basic.
-        return TP_Type::make_from_ts(dts.ts.make_typespec("uint"));
+      if (!hint.is_value) {
+        throw std::runtime_error(
+            fmt::format("Label {} was used as a value, but wasn't marked as one", hint.name));
       }
+
+      return TP_Type::make_from_ts(coerce_to_reg_type(hint.result_type));
+
+      //      if (m_size == 8) {
+      //        // 8 byte integer constants are always loaded from a static pool
+      //        // this could technically hide loading a different type from inside of a static
+      //        basic. return TP_Type::make_from_ts(dts.ts.make_typespec("uint"));
+      //      }
     }
   }
 
@@ -979,7 +1028,14 @@ TP_Type LoadVarOp::get_src_type(const TypeState& input,
       auto rd = dts.ts.reverse_field_lookup(rd_in);
 
       if (rd.success) {
-        return TP_Type::make_from_ts(coerce_to_reg_type(rd.result_type));
+        if (rd_in.base_type.base_type() == "state" && rd.tokens.size() == 1 &&
+            rd.tokens.front().kind == FieldReverseLookupOutput::Token::Kind::FIELD &&
+            rd.tokens.front().name == "enter" && rd_in.base_type.arg_count() > 0) {
+          // special case for accessing the enter field of state
+          return TP_Type::make_from_ts(state_to_go_function(rd_in.base_type));
+        } else {
+          return TP_Type::make_from_ts(coerce_to_reg_type(rd.result_type));
+        }
       }
     }
 
@@ -1166,6 +1222,13 @@ TypeState CallOp::propagate_types_internal(const TypeState& input,
         arg_count = arg_type.get_format_string_arg_count();
       }
 
+      if (arg_count + 2 > 8) {
+        throw std::runtime_error(
+            "Call to `format` pushed the arg-count beyond the acceptable arg limit (8), do you "
+            "need to add "
+            "a code to the ignore lists?");
+      }
+
       TypeSpec format_call_type("function");
       format_call_type.add_arg(TypeSpec("object"));  // destination
       format_call_type.add_arg(TypeSpec("string"));  // format string
@@ -1174,6 +1237,7 @@ TypeState CallOp::propagate_types_internal(const TypeState& input,
       }
       format_call_type.add_arg(TypeSpec("object"));
       arg_count += 2;  // for destination and format string.
+
       m_call_type = format_call_type;
       m_call_type_set = true;
 

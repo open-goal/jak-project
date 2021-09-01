@@ -24,6 +24,7 @@ add_library(compiler
         compiler/compilation/Function.cpp
         compiler/compilation/ControlFlow.cpp
         compiler/compilation/Type.cpp
+        compiler/compilation/State.cpp
         compiler/compilation/Static.cpp
         compiler/Util.cpp
         data_compiler/game_text.cpp

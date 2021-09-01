@@ -19,6 +19,7 @@
 
 (set! (-> ripple-merc-query heap-base) 16)
 
+;; header to fragments uploaded to VU.
 (deftype merc-byte-header (structure)
   ((srcdest-off        uint8    :offset-assert 0)
    (rgba-off           uint8    :offset-assert 1)
@@ -40,6 +41,12 @@
   :flag-assert         #x900000017
   )
 
+;; merc VU fragment.
+;; The mm-quadword-size includes the header.
+;; The data itself is split into two parts:
+;; - ??
+;; - fp data, containing a merc-fp-data then "fp" data.
+;; the merc-fragment-fp-data function will get a pointer to fp data.
 (deftype merc-fragment (structure)
   ((header merc-byte-header :inline :offset-assert 0)
    (rest   uint8            1       :offset-assert 23)
@@ -48,7 +55,7 @@
   :size-assert         #x18
   :flag-assert         #xa00000018
   (:methods
-    (dummy-9 () none 9)
+    (login-adgifs (_type_) none 9)
     )
   )
 
@@ -71,11 +78,13 @@
   :flag-assert         #x90000000c
   )
 
+;; header for fp data within a fragment. Is included in fp data.
+;; adgifs come right after the header
 (deftype merc-fp-header (structure)
   ((x-add            float  :offset-assert 0)
    (y-add            float  :offset-assert 4)
    (z-add            float  :offset-assert 8)
-   (shader-cnt       uint8  :offset-assert 12)
+   (shader-cnt       uint8  :offset-assert 12) ;; number of adgifs
    (kick-info-offset uint8  :offset-assert 13)
    (kick-info-step   uint8  :offset-assert 14)
    (hword-cnt        uint8  :offset-assert 15)
@@ -87,24 +96,27 @@
 
 (defun merc-fragment-fp-data ((arg0 merc-fragment))
   "Get the floating-point data of a merc-fragment"
-  (the pointer (&+ arg0 (the-as uint (shl (-> arg0 header mm-quadword-fp-off) 4))))
+  (the merc-fp-header (&+ arg0 (the-as uint (shl (-> arg0 header mm-quadword-fp-off) 4))))
   )
 
 (deftype merc-mat-dest (structure)
   ((matrix-number uint8  :offset-assert 0)
    (matrix-dest   uint8  :offset-assert 1)
    )
+  :pack-me
   :method-count-assert 9
   :size-assert         #x2
   :flag-assert         #x900000002
   )
 
+;; some info about a merc fragment that will stay on the EE.
+;; the merc-effect contains a ref to one of these
 (deftype merc-fragment-control (structure)
   ((unsigned-four-count uint8          :offset-assert 0)
    (lump-four-count     uint8          :offset-assert 1)
    (fp-qwc              uint8          :offset-assert 2)
    (mat-xfer-count      uint8          :offset-assert 3)
-   (mat-dest-data       uint8 :dynamic :offset-assert 4)
+   (mat-dest-data       merc-mat-dest :inline :dynamic :offset-assert 4)
    )
   :method-count-assert 9
   :size-assert         #x4
@@ -188,12 +200,15 @@
    (dummy1           uint8                  :offset-assert 26)
    (envmap-usage     uint8                  :offset-assert 27)
    (extra-info       merc-extra-info        :offset-assert 28)
+   
+   ;; added
+   (data uint64 4 :offset 0)
    )
   :method-count-assert 10
   :size-assert         #x20
   :flag-assert         #xa00000020
   (:methods
-    (dummy-9 () none 9)
+    (login-adgifs (_type_) none 9)
     )
   )
 
@@ -234,6 +249,8 @@
   :flag-assert         #x900000008
   )
 
+
+;; metadata for merc art
 (deftype merc-ctrl-header (structure)
   ((xyz-scale              float            :offset-assert 0)
    (st-magic               uint32           :offset-assert 4)
@@ -282,6 +299,7 @@
   ;; field xyz-scale is a float printed as hex? 
   )
 
+;; the actual merc art object.
 (deftype merc-ctrl (art-element)
   ((num-joints int32                     :offset 20)
    (header     merc-ctrl-header :inline  :offset-assert 32)
@@ -293,8 +311,8 @@
   )
 
 (deftype merc-vu1-low-mem (structure)
-  ((tri-strip-gif qword   :inline :offset-assert 0)
-   (ad-gif        qword   :inline :offset-assert 16)
+  ((tri-strip-gif gs-gif-tag   :inline :offset-assert 0) ;; was qword
+   (ad-gif        gs-gif-tag   :inline :offset-assert 16) ;; was qword
    (hvdf-offset   vector  :inline :offset-assert 32)
    (perspective   uint128 4       :offset-assert 48)
    (fog           vector  :inline :offset-assert 112)

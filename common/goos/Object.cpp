@@ -46,7 +46,7 @@
 
 namespace goos {
 
-std::shared_ptr<EmptyListObject> gEmptyList = nullptr;
+std::shared_ptr<EmptyListObject> gEmptyList = std::make_shared<EmptyListObject>();
 std::shared_ptr<EmptyListObject>& get_empty_list() {
   return gEmptyList;
 }
@@ -154,16 +154,57 @@ Object build_list(const std::vector<Object>& objects) {
     return EmptyListObject::make_new();
   }
 
-  Object empty = EmptyListObject::make_new();
-  Object head = PairObject::make_new(objects[0], empty);
-  Object last = head;
+  // this is by far the most expensive part of parsing, so this is done a bit carefully.
+  // we maintain a std::shared_ptr<PairObject> that represents the list, built from back to front.
+  std::shared_ptr<PairObject> head =
+      std::make_shared<PairObject>(objects.back(), EmptyListObject::make_new());
 
-  for (std::size_t i = 1; i < objects.size(); i++) {
-    last.as_pair()->cdr = PairObject::make_new(objects[i], empty);
-    last = last.as_pair()->cdr;
+  s64 idx = ((s64)objects.size()) - 2;
+  while (idx >= 0) {
+    Object next;
+    next.type = ObjectType::PAIR;
+    next.heap_obj = std::move(head);
+
+    head = std::make_shared<PairObject>();
+    head->car = objects[idx];
+    head->cdr = std::move(next);
+
+    idx--;
   }
 
-  return head;
+  Object result;
+  result.type = ObjectType::PAIR;
+  result.heap_obj = head;
+  return result;
+}
+
+Object build_list(std::vector<Object>&& objects) {
+  if (objects.empty()) {
+    return EmptyListObject::make_new();
+  }
+
+  // this is by far the most expensive part of parsing, so this is done a bit carefully.
+  // we maintain a std::shared_ptr<PairObject> that represents the list, built from back to front.
+  std::shared_ptr<PairObject> head =
+      std::make_shared<PairObject>(objects.back(), EmptyListObject::make_new());
+
+  s64 idx = ((s64)objects.size()) - 2;
+  while (idx >= 0) {
+    Object next;
+    next.type = ObjectType::PAIR;
+    next.heap_obj = std::move(head);
+
+    head = std::make_shared<PairObject>();
+    head->car = std::move(objects[idx]);
+    head->cdr = std::move(next);
+
+    idx--;
+  }
+
+  Object result;
+  result.type = ObjectType::PAIR;
+  result.heap_obj = head;
+  return result;
 }
 
 /*!
