@@ -2666,6 +2666,35 @@ void FunctionCallElement::update_from_stack(const Env& env,
     std::swap(all_pop_vars.at(0), all_pop_vars.at(1));
   }
 
+  if (tp_type.kind == TP_Type::Kind::RUN_FUNCTION_IN_PROCESS_FUNCTION) {
+    if (unstacked.at(0)->to_string(env) != "run-function-in-process") {
+      throw std::runtime_error(
+          fmt::format("Expression pass could not find the run-function-in-process function. Found "
+                      "{} instead. Make sure there are no casts on this function.",
+                      all_pop_vars.at(0).to_string(env)));
+    }
+    unstacked.at(0) = pool.form<ConstantTokenElement>("run-now-in-process");
+  }
+
+  if (tp_type.kind == TP_Type::Kind::SET_TO_RUN_FUNCTION) {
+    if (unstacked.at(0)->to_string(env) != "set-to-run") {
+      throw std::runtime_error(
+          fmt::format("Expression pass could not find the set-to-run function. Found "
+                      "{} instead. Make sure there are no casts on this function.",
+                      all_pop_vars.at(0).to_string(env)));
+    }
+    unstacked.at(0) = pool.form<ConstantTokenElement>("run-next-time-in-process");
+    // also need to clean up (-> <blah> main-thread) to just <blah>
+    auto matcher =
+        Matcher::deref(Matcher::any(0), false, {DerefTokenMatcher::string("main-thread")});
+    auto mr = match(matcher, unstacked.at(1));
+    if (!mr.matched) {
+      throw std::runtime_error(fmt::format("set-to-run called on a strange thread: {}",
+                                           unstacked.at(1)->to_string(env)));
+    }
+    unstacked.at(1) = mr.maps.forms.at(0);
+  }
+
   std::vector<Form*> arg_forms;
   bool has_good_types = env.has_type_analysis() && function_type.arg_count() == nargs + 1;
   TypeSpec first_arg_type;
