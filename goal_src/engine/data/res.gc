@@ -442,33 +442,7 @@ This is updated from the entity system used in Crash 2, which had most of these 
   default
   )
 
-(defmacro res-lump-data (lump name type &key (tag-ptr (the-as (pointer res-tag) #f)) &key (time -1000000000.0))
-  "Helper macro to get data from a res-lump without interpolation."
-  `(the-as ,type ((method-of-type res-lump get-property-data)
-                  ,lump
-                  ,name
-                  'interp
-                  ,time
-                  (the-as pointer #f)
-                  ,tag-ptr
-                  *res-static-buf*
-                  )
-           )
-  )
 
-(defmacro res-lump-data-exact (lump name type &key (tag-ptr (the-as (pointer res-tag) #f)))
-  "Helper macro to get start of data from a res-lump."
-  `(the-as ,type ((method-of-type res-lump get-property-data)
-                  ,lump
-                  ,name
-                  'exact
-                  0.0
-                  (the-as pointer #f)
-                  ,tag-ptr
-                  *res-static-buf*
-                  )
-           )
-  )
 
 (defmethod get-property-struct res-lump ((obj res-lump) (name symbol) (mode symbol) (time float) (default structure) (tag-addr (pointer res-tag)) (buf-addr pointer))
   "Returns a given struct property's value at a specific time stamp, or default on error.
@@ -499,31 +473,7 @@ This is updated from the entity system used in Crash 2, which had most of these 
   default
   )
 
-(defmacro res-lump-struct (lump name type &key (tag-ptr (the-as (pointer res-tag) #f)))
-  `(the-as ,type ((method-of-type res-lump get-property-struct)
-                  ,lump
-                  ,name
-                  'interp
-                  -1000000000.0
-                  (the-as structure #f)
-                  ,tag-ptr
-                  *res-static-buf*
-                  )
-           )
-  )
 
-(defmacro res-lump-struct-exact (lump name type &key (tag-ptr (the-as (pointer res-tag) #f)))
-  `(the-as ,type ((method-of-type res-lump get-property-struct)
-                  ,lump
-                  ,name
-                  'exact
-                  0.0
-                  (the-as structure #f)
-                  ,tag-ptr
-                  *res-static-buf*
-                  )
-           )
-  )
 
 (defmethod get-property-value res-lump ((obj res-lump) (name symbol) (mode symbol) (time float) (default uint128) (tag-addr (pointer res-tag)) (buf-addr pointer))
   "Returns a given value property's value at a specific time stamp, or default on error.
@@ -578,19 +528,6 @@ This is updated from the entity system used in Crash 2, which had most of these 
   default
   )
 
-(defmacro res-lump-value (lump name type &key (tag-ptr (the-as (pointer res-tag) #f)))
-  "Helper macro to get a value from a res-lump with no interpolation."
-  `(the-as ,type ((method-of-type res-lump get-property-value)
-                  ,lump
-                  ,name
-                  'interp
-                  -1000000000.0
-                  (the-as uint128 0)
-                  ,tag-ptr
-                  *res-static-buf*
-                  )
-           )
-  )
 
 (defmethod get-property-value-float res-lump ((obj res-lump) (name symbol) (mode symbol) (time float) (default float) (tag-addr (pointer res-tag)) (buf-addr pointer))
   "same as get-property-value but float type is checked first?"
@@ -639,19 +576,6 @@ This is updated from the entity system used in Crash 2, which had most of these 
         )
       )
   default
-  )
-
-(defmacro res-lump-float (lump name &key (tag-ptr (the-as (pointer res-tag) #f)) &key (default 0.0))
-  "Helper macro to get a float from a res-lump with no interpolation."
-  `((method-of-type res-lump get-property-value-float)
-                  ,lump
-                  ,name
-                  'interp
-                  -1000000000.0
-                  ,default
-                  ,tag-ptr
-                  *res-static-buf*
-                  )
   )
 
 (defmethod sort! res-lump ((obj res-lump))
@@ -999,3 +923,89 @@ This is updated from the entity system used in Crash 2, which had most of these 
 
 (define *res-static-buf* (malloc 'global 128))
 
+;; There are four common types of lookup:
+;; data. This is something like (pointer int32) or (inline-array vector), it should have a size.
+;; struct. This will get a GOAL struct or basic. Like a string.
+;; value. This will get a value. Possibly even a 128-bit value, though this does not appear to work properly.
+;; float. This will get a float. If the value stored is an int, it will converted to a float.
+
+(defmacro res-lump-data (lump name type &key (tag-ptr (the-as (pointer res-tag) #f)) &key (time -1000000000.0))
+  "Helper macro to get data from a res-lump without interpolation."
+  `(the-as ,type ((method-of-type res-lump get-property-data)
+                  ,lump
+                  ,name
+                  'interp
+                  ,time
+                  (the-as pointer #f)
+                  ,tag-ptr
+                  *res-static-buf*
+                  )
+           )
+  )
+
+(defmacro res-lump-data-exact (lump name type &key (tag-ptr (the-as (pointer res-tag) #f)))
+  "Helper macro to get start of data from a res-lump."
+  `(the-as ,type ((method-of-type res-lump get-property-data)
+                  ,lump
+                  ,name
+                  'exact
+                  0.0
+                  (the-as pointer #f)
+                  ,tag-ptr
+                  *res-static-buf*
+                  )
+           )
+  )
+
+(defmacro res-lump-struct (lump name type &key (tag-ptr (the-as (pointer res-tag) #f)))
+  `(the-as ,type ((method-of-type res-lump get-property-struct)
+                  ,lump
+                  ,name
+                  'interp
+                  -1000000000.0
+                  (the-as structure #f)
+                  ,tag-ptr
+                  *res-static-buf*
+                  )
+           )
+  )
+
+(defmacro res-lump-struct-exact (lump name type &key (tag-ptr (the-as (pointer res-tag) #f)))
+  `(the-as ,type ((method-of-type res-lump get-property-struct)
+                  ,lump
+                  ,name
+                  'exact
+                  0.0
+                  (the-as structure #f)
+                  ,tag-ptr
+                  *res-static-buf*
+                  )
+           )
+  )
+
+(defmacro res-lump-value (lump name type &key (tag-ptr (the-as (pointer res-tag) #f)) &key (default (the-as uint128 0)))
+  "Helper macro to get a value from a res-lump with no interpolation."
+  `(the-as ,type ((method-of-type res-lump get-property-value)
+                  ,lump
+                  ,name
+                  'interp
+                  -1000000000.0
+                  ,default
+                  ,tag-ptr
+                  *res-static-buf*
+                  )
+           )
+  )
+
+(defmacro res-lump-float (lump name &key (tag-ptr (the-as (pointer res-tag) #f)) &key (default 0.0))
+  "Helper macro to get a float from a res-lump with no interpolation."
+  `((method-of-type res-lump get-property-value-float)
+                  ,lump
+                  ,name
+                  'interp
+                  -1000000000.0
+                  ,default
+                  ,tag-ptr
+                  *res-static-buf*
+                  )
+  )

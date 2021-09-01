@@ -330,7 +330,7 @@ goos::Object decomp_ref_to_inline_array_guess_size(
     const LinkedObjectFile* file,
     const TypeSpec& array_elt_type,
     int stride) {
-  fmt::print("Decomp decomp_ref_to_inline_array_guess_size {}\n", array_elt_type.print());
+  // fmt::print("Decomp decomp_ref_to_inline_array_guess_size {}\n", array_elt_type.print());
 
   // verify that the field is the right type.
   assert(data_field.type() == TypeSpec("inline-array", {array_elt_type}));
@@ -353,13 +353,13 @@ goos::Object decomp_ref_to_inline_array_guess_size(
       index_of_closest_following_label_in_segment(start_label.offset, my_seg, labels);
   assert(end_label_idx >= 0);
   const auto& end_label = labels.at(end_label_idx);
-  fmt::print("Data is from {} to {}\n", start_label.name, end_label.name);
+  // fmt::print("Data is from {} to {}\n", start_label.name, end_label.name);
 
   // now we can figure out the size
   int size_bytes = end_label.offset - start_label.offset;
   int size_elts = size_bytes / stride;  // 32 bytes per ocean-near-index
   int leftover_bytes = size_bytes % stride;
-  fmt::print("Size is {} bytes: {} elts, {} left over\n", size_bytes, size_elts, leftover_bytes);
+  // fmt::print("Size is {} bytes: {} elts, {} left over\n", size_bytes, size_elts, leftover_bytes);
 
   // if we have leftover, should verify that its all zeros, or that it's the type pointer
   // of the next basic in the data section.
@@ -445,6 +445,19 @@ goos::Object sp_field_init_spec_decompile(const std::vector<LinkedWord>& words,
   return decomp_ref_to_inline_array_guess_size(words, labels, my_seg, field_location, ts,
                                                data_field, all_words, file,
                                                TypeSpec("sp-field-init-spec"), 16);
+}
+
+goos::Object sp_launch_grp_launcher_decompile(const std::vector<LinkedWord>& words,
+                                              const std::vector<DecompilerLabel>& labels,
+                                              int my_seg,
+                                              int field_location,
+                                              const TypeSystem& ts,
+                                              const Field& data_field,
+                                              const std::vector<std::vector<LinkedWord>>& all_words,
+                                              const LinkedObjectFile* file) {
+  return decomp_ref_to_inline_array_guess_size(words, labels, my_seg, field_location, ts,
+                                               data_field, all_words, file,
+                                               TypeSpec("sparticle-group-item"), 32);
 }
 
 }  // namespace
@@ -634,6 +647,10 @@ goos::Object decompile_structure(const TypeSpec& type,
           field_defs_out.emplace_back(
               field.name(), sp_field_init_spec_decompile(obj_words, labels, label.target_segment,
                                                          field_start, ts, field, words, file));
+        } else if (field.name() == "launcher" && type.print() == "sparticle-launch-group") {
+          field_defs_out.emplace_back(field.name(), sp_launch_grp_launcher_decompile(
+                                                        obj_words, labels, label.target_segment,
+                                                        field_start, ts, field, words, file));
         } else {
           if (obj_words.at(field_start / 4).kind != LinkedWord::PLAIN_DATA) {
             continue;
@@ -1192,23 +1209,36 @@ std::optional<std::vector<BitFieldConstantDef>> try_decompile_bitfield_from_int(
     const TypeSpec& type,
     const TypeSystem& ts,
     u64 value,
-    bool require_success) {
+    bool require_success,
+    std::optional<int> offset) {
   u64 touched_bits = 0;
   std::vector<BitFieldConstantDef> result;
 
   auto type_info = dynamic_cast<BitFieldType*>(ts.lookup_type(type));
   assert(type_info);
 
+  int start_bit = 0;
+
+  if (offset) {
+    start_bit = *offset;
+  }
+  int end_bit = 64 + start_bit;
+
   for (auto& field : type_info->fields()) {
+    if (field.offset() < start_bit || (field.offset() + field.size()) > end_bit) {
+      continue;
+    }
+
     u64 bitfield_value;
     bool is_signed = ts.tc(TypeSpec("int"), field.type()) && !ts.tc(TypeSpec("uint"), field.type());
     if (is_signed) {
       // signed
       s64 signed_value = value;
-      bitfield_value = extract_bitfield<s64>(signed_value, field.offset(), field.size());
+      bitfield_value =
+          extract_bitfield<s64>(signed_value, field.offset() - start_bit, field.size());
     } else {
       // unsigned
-      bitfield_value = extract_bitfield<u64>(value, field.offset(), field.size());
+      bitfield_value = extract_bitfield<u64>(value, field.offset() - start_bit, field.size());
     }
 
     if (bitfield_value != 0) {
@@ -1226,13 +1256,15 @@ std::optional<std::vector<BitFieldConstantDef>> try_decompile_bitfield_from_int(
       if (nested_bitfield_type) {
         BitFieldConstantDef::NestedField nested;
         nested.field_type = field.type();
-        nested.fields = *try_decompile_bitfield_from_int(field.type(), ts, bitfield_value, true);
+        // never nested 128-bit bitfields
+        nested.fields =
+            *try_decompile_bitfield_from_int(field.type(), ts, bitfield_value, true, {});
         def.nested_field = nested;
       }
       result.push_back(def);
     }
 
-    for (int i = field.offset(); i < field.offset() + field.size(); i++) {
+    for (int i = field.offset() - start_bit; i < field.offset() + field.size() - start_bit; i++) {
       touched_bits |= (u64(1) << i);
     }
   }
@@ -1254,7 +1286,7 @@ std::optional<std::vector<BitFieldConstantDef>> try_decompile_bitfield_from_int(
 std::vector<BitFieldConstantDef> decompile_bitfield_from_int(const TypeSpec& type,
                                                              const TypeSystem& ts,
                                                              u64 value) {
-  return *try_decompile_bitfield_from_int(type, ts, value, true);
+  return *try_decompile_bitfield_from_int(type, ts, value, true, {});
 }
 
 std::vector<std::string> decompile_bitfield_enum_from_int(const TypeSpec& type,

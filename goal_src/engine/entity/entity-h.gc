@@ -9,21 +9,6 @@
 (define *generate-actor-vis-start* #f)
 (define *generate-actor-vis-output* #f)
 
-(defenum entity-perm-status
-  :bitfield #t
-  :type uint16
-  (bit-0 0)
-  (bit-1 1)
-  (dead 2)
-  (bit-3 3)
-  (bit-4 4)
-  (user-set-from-cstage 5)
-  (complete 6)
-  (bit-7 7)
-  (real-complete 8)
-  (bit-9 9)
-  )
-
 ;; definition of type entity-perm
 (deftype entity-perm (structure)
   ((user-object object             2 :offset-assert   0)
@@ -67,7 +52,7 @@
   :size-assert         #x40
   :flag-assert         #xa00000040
   (:methods
-    (dummy-9 () none 9)
+    (dummy-9 (_type_ vector) none 9)
     )
   )
 
@@ -97,11 +82,11 @@
   :size-assert         #x34
   :flag-assert         #x1b00000034
   (:methods
-    (dummy-22 () none 22)
-    (dummy-23 () none 23)
-    (dummy-24 () none 24)
-    (dummy-25 () none 25)
-    (dummy-26 () none 26)
+    (birth! (_type_) _type_ 22)
+    (kill! (_type_) _type_ 23)
+    (add-to-level! (_type_ level-group level actor-id) none 24)
+    (remove-from-level! (_type_ level-group) _type_ 25)
+    (get-level (_type_) level 26)
     )
   )
 
@@ -132,7 +117,7 @@
   )
 
 (deftype entity-ambient-data-array (inline-array-class)
-  ()
+  ((data entity-ambient-data :inline :dynamic))
   :method-count-assert 9
   :size-assert         #x10
   :flag-assert         #x900000010
@@ -146,7 +131,7 @@
   :flag-assert         #x1d00000034
   (:methods
     (dummy-27 () none 27)
-    (dummy-28 () none 28)
+    (birth-ambient! (_type_) none 28)
     )
   )
 
@@ -155,6 +140,7 @@
    (etype    type               :offset-assert  56)
    (task     uint8              :offset-assert  60)
    (vis-id   uint16             :offset-assert  62)
+   (vis-id-signed int16 :offset 62) ;; added
    (quat     quaternion :inline :offset-assert  64)
    )
   :method-count-assert 31
@@ -163,8 +149,8 @@
   (:methods
     (next-actor (_type_) entity-actor 27)
     (prev-actor (_type_) entity-actor 28)
-    (dummy-29 () none 29)
-    (dummy-30 () none 30)
+    (debug-print (_type_ symbol type) none 29)
+    (dummy-30 (_type_ entity-perm-status symbol) none 30)
     )
   )
 

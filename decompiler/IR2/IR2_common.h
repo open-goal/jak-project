@@ -164,6 +164,7 @@ enum class FixedOperatorKind {
   PPOINTER_TO_HANDLE,
   PROCESS_TO_HANDLE,
   PPOINTER_TO_PROCESS,
+  VECTOR_4_DOT,
   INVALID
 };
 
