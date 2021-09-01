@@ -1828,6 +1828,8 @@ std::string fixed_operator_to_string(FixedOperatorKind kind) {
       return "l32-false-check";
     case FixedOperatorKind::VECTOR_3_DOT:
       return "vector-dot";
+    case FixedOperatorKind::VECTOR_4_DOT:
+      return "vector4-dot";
     case FixedOperatorKind::PROCESS_TO_PPOINTER:
       return "process->ppointer";
     case FixedOperatorKind::PPOINTER_TO_HANDLE:

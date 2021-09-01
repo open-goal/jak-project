@@ -1321,11 +1321,12 @@ void SimpleExpressionElement::update_from_stack_vector_float_product(
   result->push_back(new_form);
 }
 
-void SimpleExpressionElement::update_from_stack_vector_3_dot(const Env& env,
-                                                             FormPool& pool,
-                                                             FormStack& stack,
-                                                             std::vector<FormElement*>* result,
-                                                             bool allow_side_effects) {
+void SimpleExpressionElement::update_from_stack_vector_dot(FixedOperatorKind kind,
+                                                           const Env& env,
+                                                           FormPool& pool,
+                                                           FormStack& stack,
+                                                           std::vector<FormElement*>* result,
+                                                           bool allow_side_effects) {
   std::vector<Form*> popped_args = pop_to_forms({m_expr.get_arg(0).var(), m_expr.get_arg(1).var()},
                                                 env, pool, stack, allow_side_effects);
 
@@ -1337,8 +1338,7 @@ void SimpleExpressionElement::update_from_stack_vector_3_dot(const Env& env,
   }
 
   auto new_form = pool.alloc_element<GenericElement>(
-      GenericOperator::make_fixed(FixedOperatorKind::VECTOR_3_DOT),
-      std::vector<Form*>{popped_args.at(0), popped_args.at(1)});
+      GenericOperator::make_fixed(kind), std::vector<Form*>{popped_args.at(0), popped_args.at(1)});
   result->push_back(new_form);
 }
 
@@ -2116,7 +2116,12 @@ void SimpleExpressionElement::update_from_stack(const Env& env,
       update_from_stack_subu_l32_s7(env, pool, stack, result, allow_side_effects);
       break;
     case SimpleExpression::Kind::VECTOR_3_DOT:
-      update_from_stack_vector_3_dot(env, pool, stack, result, allow_side_effects);
+      update_from_stack_vector_dot(FixedOperatorKind::VECTOR_3_DOT, env, pool, stack, result,
+                                   allow_side_effects);
+      break;
+    case SimpleExpression::Kind::VECTOR_4_DOT:
+      update_from_stack_vector_dot(FixedOperatorKind::VECTOR_4_DOT, env, pool, stack, result,
+                                   allow_side_effects);
       break;
     default:
       throw std::runtime_error(
@@ -2141,13 +2146,6 @@ void SetVarElement::push_to_stack(const Env& env, FormPool& pool, FormStack& sta
     return;
   }
 
-  // bool skip = false;
-  //  auto dst_type = env.get_variable_type(m_dst, false);
-  //  auto as_bitfield = dynamic_cast<BitFieldType*>(env.dts->ts.lookup_type(dst_type));
-  //  if (as_bitfield && as_bitfield->get_load_size() == 16) {
-  //    skip = true;
-  //  }
-
   // if we are a reg-reg move that consumes the original, push it without popping from stack.
   // it is the Stack's responsibility to untangle these later on.
   if (m_src->is_single_element()) {
@@ -2163,7 +2161,8 @@ void SetVarElement::push_to_stack(const Env& env, FormPool& pool, FormStack& sta
 
         auto var = src_as_se->expr().get_arg(0).var();
         auto& info = env.reg_use().op.at(var.idx());
-        if (info.consumes.find(var.reg()) != info.consumes.end()) {
+        if (var.reg() == Register(Reg::GPR, Reg::S6) ||
+            info.consumes.find(var.reg()) != info.consumes.end()) {
           stack.push_non_seq_reg_to_reg(m_dst, src_as_se->expr().get_arg(0).var(), m_src,
                                         m_src_type, m_var_info);
           return;
@@ -2174,28 +2173,6 @@ void SetVarElement::push_to_stack(const Env& env, FormPool& pool, FormStack& sta
 
   // we aren't a reg-reg move, so update our source
   m_src->update_children_from_stack(env, pool, stack, true);
-
-  /*
-  auto src_as_bf_set = dynamic_cast<ModifiedCopyBitfieldElement*>(m_src->try_as_single_element());
-  if (src_as_bf_set && !src_as_bf_set->from_pcpyud() && src_as_bf_set->mods().size() == 1) {
-    auto dst_form = m_dst.to_form(env, RegisterAccess::Print::AS_VARIABLE_NO_CAST);
-    auto src_form = src_as_bf_set->base()->to_form(env);
-    if (dst_form == src_form) {
-      // success!
-      auto value = src_as_bf_set->mods().at(0).value;
-      value->parent_element = this;
-
-      // make the (-> thing bitfield)
-      auto field_token = DerefToken::make_field_name(src_as_bf_set->mods().at(0).field_name);
-      auto dst_dform = pool.alloc_single_element_form<SimpleAtomElement>(nullptr,
-  SimpleAtom::make_var(m_dst)); auto loc_elt = pool.alloc_element<DerefElement>(dst_dform, false,
-  field_token); loc_elt->inline_nested(); auto loc = pool.alloc_single_form(nullptr, loc_elt); auto
-  new_form_el = pool.alloc_element<SetFormFormElement>(loc, value);
-      stack.push_form_element(new_form_el, true);
-      return;
-    }
-  }
-   */
 
   for (auto x : m_src->elts()) {
     assert(x->parent_form == m_src);
@@ -2687,6 +2664,35 @@ void FunctionCallElement::update_from_stack(const Env& env,
   if (swap_function) {
     std::swap(unstacked.at(0), unstacked.at(1));
     std::swap(all_pop_vars.at(0), all_pop_vars.at(1));
+  }
+
+  if (tp_type.kind == TP_Type::Kind::RUN_FUNCTION_IN_PROCESS_FUNCTION) {
+    if (unstacked.at(0)->to_string(env) != "run-function-in-process") {
+      throw std::runtime_error(
+          fmt::format("Expression pass could not find the run-function-in-process function. Found "
+                      "{} instead. Make sure there are no casts on this function.",
+                      all_pop_vars.at(0).to_string(env)));
+    }
+    unstacked.at(0) = pool.form<ConstantTokenElement>("run-now-in-process");
+  }
+
+  if (tp_type.kind == TP_Type::Kind::SET_TO_RUN_FUNCTION) {
+    if (unstacked.at(0)->to_string(env) != "set-to-run") {
+      throw std::runtime_error(
+          fmt::format("Expression pass could not find the set-to-run function. Found "
+                      "{} instead. Make sure there are no casts on this function.",
+                      all_pop_vars.at(0).to_string(env)));
+    }
+    unstacked.at(0) = pool.form<ConstantTokenElement>("run-next-time-in-process");
+    // also need to clean up (-> <blah> main-thread) to just <blah>
+    auto matcher =
+        Matcher::deref(Matcher::any(0), false, {DerefTokenMatcher::string("main-thread")});
+    auto mr = match(matcher, unstacked.at(1));
+    if (!mr.matched) {
+      throw std::runtime_error(fmt::format("set-to-run called on a strange thread: {}",
+                                           unstacked.at(1)->to_string(env)));
+    }
+    unstacked.at(1) = mr.maps.forms.at(0);
   }
 
   std::vector<Form*> arg_forms;
@@ -4290,8 +4296,9 @@ void push_asm_srl_to_stack(const AsmOp* op,
       stack.push_value_to_reg(*dst, pool.alloc_single_form(nullptr, other), true,
                               env.get_variable_type(*dst, true));
     } else {
-      throw std::runtime_error(fmt::format("Got invalid bitfield manip for srl: {} type was {}",
-                                           src_var->to_string(env), arg0_type.print()));
+      throw std::runtime_error(
+          fmt::format("Got invalid bitfield manip for srl at op {}: {} type was {}", op->op_id(),
+                      src_var->to_string(env), arg0_type.print()));
     }
   }
 }
