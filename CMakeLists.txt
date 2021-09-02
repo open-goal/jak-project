@@ -30,7 +30,7 @@ if(UNIX)
         -Wsign-promo")
 else()
     set(CMAKE_CXX_FLAGS "/EHsc")
-    set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} /STACK:3276800")
+    set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} /STACK:10000000")
 endif(UNIX)
 
 if(WIN32)
