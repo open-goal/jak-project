@@ -450,7 +450,7 @@
    (sim-time-remaining    float                                         :offset-assert 688)
    (float-height-offset   float                                         :offset-assert 692)
    (player-attack-id      int32                                         :offset-assert 696)
-   (player-bonk-timeout   uint64                                        :offset-assert 704)
+   (player-bonk-timeout   int64                                         :offset-assert 704)
    (water-anim            water-anim                                    :offset-assert 712)
    (player-contact        basic                                         :offset-assert 716)
    (player-impulse        collide-shape-prim-mesh                       :offset-assert 720)
@@ -583,13 +583,10 @@
      s4-0
      *y-vector*
      (*
-      (*
-       (*
-        (* (-> obj rbody mass) (fmin 1.0 f30-0))
-        (/ (-> obj info gravity) (the float (-> obj info control-point-count)))
-        )
-       (-> obj info gravity-factor)
-       )
+      (-> obj rbody mass)
+      (fmin 1.0 f30-0)
+      (/ (-> obj info gravity) (the float (-> obj info control-point-count)))
+      (-> obj info gravity-factor)
       (-> obj info buoyancy-factor)
       )
      )
@@ -597,7 +594,7 @@
     (vector-float*!
      s4-0
      (-> arg0 velocity)
-     (* (* -1.0 (-> obj info drag-factor)) (fmin 1.0 f30-0))
+     (* -1.0 (-> obj info drag-factor) (fmin 1.0 f30-0))
      )
     (TODO-RENAME-13 (-> obj rbody) (-> arg0 world-pos) s4-0)
     )
@@ -631,7 +628,9 @@
     a1-0
     *y-vector*
     (*
-     (* (* -1.0 (-> obj info gravity-factor)) (-> obj info gravity))
+     -1.0
+     (-> obj info gravity-factor)
+     (-> obj info gravity)
      (-> obj rbody mass)
      )
     )
@@ -735,10 +734,7 @@
    (('bonk)
      (when
       (>=
-       (the-as
-        int
-        (- (-> *display* base-frame-counter) (-> self player-bonk-timeout))
-        )
+       (- (-> *display* base-frame-counter) (-> self player-bonk-timeout))
        (the-as int (-> self info player-force-timeout))
        )
       (set! (-> self player-bonk-timeout) (-> *display* base-frame-counter))
@@ -763,10 +759,9 @@
          ((f0-4
            (fmin
             (*
-             (*
-              (* 0.00012207031 (the-as float (-> arg3 param 1)))
-              (-> self info player-bonk-factor)
-              )
+             0.00012207031
+             (the-as float (-> arg3 param 1))
+             (-> self info player-bonk-factor)
              (-> self info player-weight)
              )
             (-> self info player-force-clamp)
@@ -787,12 +782,9 @@
                       ((= (-> arg3 param 1) 'flop)
                        (when
                         (>=
-                         (the-as
-                          int
-                          (-
-                           (-> *display* base-frame-counter)
-                           (-> self player-bonk-timeout)
-                           )
+                         (-
+                          (-> *display* base-frame-counter)
+                          (-> self player-bonk-timeout)
                           )
                          (the-as int (-> self info player-force-timeout))
                          )
@@ -824,7 +816,8 @@
                            ((f0-9
                              (fmin
                               (*
-                               (* 16.0 (-> self info player-weight))
+                               16.0
+                               (-> self info player-weight)
                                (-> self info player-dive-factor)
                                )
                               (-> self info player-force-clamp)
@@ -921,7 +914,7 @@
         (and
          v1-50
          (= v1-50 *target*)
-         (!= (-> *target* control unknown-surface mode) 'swim)
+         (!= (-> *target* control unknown-surface00 mode) 'swim)
          )
         (when (not (-> self player-impulse))
          (set! (-> self player-contact) #t)
@@ -1106,10 +1099,7 @@
    (set! (-> s5-0 dynam) (copy *standard-dynamics* 'process))
    (set! (-> s5-0 reaction) default-collision-reaction)
    (set! (-> s5-0 no-reaction) nothing)
-   (let ((t9-2 (method-of-object s5-0 dummy-29)))
-    1
-    (t9-2)
-    )
+   (dummy-29 s5-0 1)
    (let
     ((s4-0
       (new
@@ -1128,9 +1118,9 @@
     (set! (-> s4-0 transform-index) 0)
     (set-vector! (-> s4-0 local-sphere) 0.0 0.0 0.0 20480.0)
     )
-   ((method-of-object s5-0 dummy-46))
+   (dummy-46 s5-0)
    (set! (-> s5-0 nav-radius) (* 0.75 (-> s5-0 root-prim local-sphere w)))
-   ((method-of-object s5-0 dummy-50))
+   (dummy-50 s5-0)
    (set! (-> obj root-overlay) s5-0)
    )
   0
@@ -1201,7 +1191,7 @@
   copy-defaults!
   rigid-body-platform
   ((obj rigid-body-platform) (arg0 res-lump))
-  (set! (-> obj mask) (the-as process-mask (logior #x80000 (-> obj mask))))
+  (set! (-> obj mask) (logior (process-mask platform) (-> obj mask)))
   (TODO-RENAME-30 obj)
   (process-drawable-from-entity! obj arg0)
   (TODO-RENAME-31 obj)

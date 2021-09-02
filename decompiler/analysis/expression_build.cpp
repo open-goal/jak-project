@@ -160,7 +160,6 @@ bool convert_to_expressions(
             f.guessed_name.to_string());
         f.warnings.expression_build_warning(warn);
         lg::warn(warn);
-        return false;
       }
     }
 

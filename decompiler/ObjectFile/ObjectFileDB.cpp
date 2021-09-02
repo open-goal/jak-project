@@ -331,7 +331,7 @@ std::string ObjectFileDB::generate_dgo_listing() {
   for (const auto& name : dgo_names) {
     result += "(\"" + name + "\"\n";
     for (auto& obj_rec : obj_files_by_dgo[name]) {
-      auto obj = lookup_record(obj_rec);
+      auto& obj = lookup_record(obj_rec);
       std::string extension = ".o";
       if (obj.obj_version == 4 || obj.obj_version == 2) {
         extension = ".go";

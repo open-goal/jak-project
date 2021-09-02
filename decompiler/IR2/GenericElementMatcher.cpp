@@ -23,6 +23,10 @@ Matcher Matcher::op(const GenericOpMatcher& op, const std::vector<Matcher>& args
   return m;
 }
 
+Matcher Matcher::op_fixed(FixedOperatorKind op, const std::vector<Matcher>& args) {
+  return Matcher::op(GenericOpMatcher::fixed(op), args);
+}
+
 Matcher Matcher::op_with_rest(const GenericOpMatcher& op, const std::vector<Matcher>& args) {
   Matcher m;
   m.m_kind = Kind::GENERIC_OP_WITH_REST;

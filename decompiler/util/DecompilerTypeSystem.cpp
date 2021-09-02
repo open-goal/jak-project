@@ -395,35 +395,34 @@ int DecompilerTypeSystem::get_format_arg_count(const std::string& str) const {
     return bad_it->second;
   }
 
+  std::vector<char> single_char_ignore_list = {'%', 'T'};
+  std::vector<std::string> double_two_char_ignore_list = {"0L", "3L", "1K", "2j", "0k"};
+
   int arg_count = 0;
   for (size_t i = 0; i < str.length(); i++) {
     if (str.at(i) == '~') {
       i++;  // also eat the next character.
-      if (i < str.length() && (str.at(i) == '%' || str.at(i) == 'T')) {
-        // newline (~%) or tab (~T) don't take an argument.
-        continue;
+
+      // Check for codes that take no args
+      bool code_takes_no_arg = false;
+      for (char c : single_char_ignore_list) {
+        if (i < str.length() && str.at(i) == c) {
+          code_takes_no_arg = true;
+          break;
+        }
       }
 
-      // ~3L, ~0L don't seem to take arguments either.
-      if (i + 1 < str.length() && (str.at(i) == '0' || str.at(i) == '3') && str.at(i + 1) == 'L') {
-        continue;
+      for (std::string code : double_two_char_ignore_list) {
+        if (i + 1 < str.length() && code.length() == 2 && (str.at(i) == code.at(0)) &&
+            str.at(i + 1) == code.at(1)) {
+          code_takes_no_arg = true;
+          break;
+        }
       }
 
-      // ~1K
-      if (i + 1 < str.length() && (str.at(i) == '1') && str.at(i + 1) == 'K') {
-        continue;
+      if (!code_takes_no_arg) {
+        arg_count++;
       }
-
-      // ~0k
-      if (i + 1 < str.length() && (str.at(i) == '0') && str.at(i + 1) == 'k') {
-        continue;
-      }
-
-      // ~2j
-      if (i + 1 < str.length() && (str.at(i) == '2') && str.at(i + 1) == 'j') {
-        continue;
-      }
-      arg_count++;
     }
   }
   return arg_count;

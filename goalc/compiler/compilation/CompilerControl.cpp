@@ -49,7 +49,7 @@ Val* Compiler::compile_seval(const goos::Object& form, const goos::Object& rest,
   (void)env;
   try {
     for_each_in_list(rest, [&](const goos::Object& o) {
-      m_goos.eval_with_rewind(o, m_goos.global_environment.as_env());
+      m_goos.eval_with_rewind(o, m_goos.global_environment.as_env_ptr());
     });
   } catch (std::runtime_error& e) {
     throw_compiler_error(form, "Error while evaluating GOOS: {}", e.what());
@@ -398,7 +398,7 @@ std::string Compiler::make_symbol_info_description(const SymbolInfo& info) {
     case SymbolInfo::Kind::CONSTANT:
       return fmt::format(
           "[Constant] Name: {} Value: {} Defined: {}", info.name(),
-          m_global_constants.at(m_goos.reader.symbolTable.intern(info.name())).print(),
+          m_global_constants.at(m_goos.reader.symbolTable.intern_ptr(info.name())).print(),
           m_goos.reader.db.get_info_for(info.src_form()));
     case SymbolInfo::Kind::FUNCTION:
       return fmt::format("[Function] Name: {} Defined: {}", info.name(),

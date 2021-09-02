@@ -11,7 +11,7 @@ using namespace goos;
 namespace {
 // helper to evaluate a string as a goos expression.
 std::string e(Interpreter& interp, const std::string& in) {
-  return interp.eval(interp.reader.read_from_string(in), interp.global_environment.as_env())
+  return interp.eval(interp.reader.read_from_string(in), interp.global_environment.as_env_ptr())
       .print();
 }
 }  // namespace

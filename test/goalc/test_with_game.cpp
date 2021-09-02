@@ -354,7 +354,7 @@ TEST_F(WithGameTests, DebuggerMemoryMap) {
 TEST_F(WithGameTests, DebuggerDisassemble) {
   auto di = shared_compiler->compiler.get_debugger().get_debug_info_for_object("gcommon");
   bool fail = false;
-  auto result = di.disassemble_all_functions(&fail);
+  auto result = di.disassemble_all_functions(&fail, &shared_compiler->compiler.get_goos().reader);
   // printf("Got\n%s\n", result.c_str());
   EXPECT_FALSE(fail);
 }
@@ -872,8 +872,14 @@ TEST_F(WithGameTests, GetEnumVals) {
 }
 
 TEST_F(WithGameTests, SetU64FromFloat) {
-  shared_compiler->runner.run_static_test(env, testCategory, "test-set-u64-from-float.gc",
-                                          {"-12.0000 #xc1400000 #xc1400000 #x0\n0\n"});
+  shared_compiler->runner.run_static_test(
+      env, testCategory, "test-set-u64-from-float.gc",
+      {"-12.0000 #xffffffffc1400000 #xc1400000 #xffffffff\n0\n"});
+}
+
+TEST_F(WithGameTests, TrickyFloatBehavior) {
+  shared_compiler->runner.run_static_test(env, testCategory, "tricky-floats.gc",
+                                          {"#x80000000 1.0000 #xffffffffbf800000\n0\n"});
 }
 
 TEST(TypeConsistency, TypeConsistency) {
