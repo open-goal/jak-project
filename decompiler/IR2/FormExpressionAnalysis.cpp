@@ -1588,12 +1588,21 @@ FormElement* SimpleExpressionElement::update_from_stack_logor_or_logand_helper(
       bool arg1_int_like = env.dts->ts.tc(TypeSpec("integer"), arg1_type);
 
       if ((arg0_int_like) && (arg1_int_like)) {
-        auto new_form = pool.alloc_element<GenericElement>(GenericOperator::make_fixed(kind),
-                                                           args.at(0), args.at(1));
-        return new_form;
-        // types bad, insert cast.
+        // we might have a bitfield in arg1.
+        auto arg1_bitfield = dynamic_cast<BitFieldType*>(env.dts->ts.lookup_type(arg1_type));
+        auto arg1_enum = dynamic_cast<EnumType*>(env.dts->ts.lookup_type(arg1_type));
+        if ((arg1_bitfield || arg1_enum) && arg0_type != arg1_type) {
+          auto new_form = pool.alloc_element<GenericElement>(
+              GenericOperator::make_fixed(kind), cast_form(args.at(0), arg1_type, pool, env),
+              args.at(1));
+          return new_form;
+        } else {
+          auto new_form = pool.alloc_element<GenericElement>(GenericOperator::make_fixed(kind),
+                                                             args.at(0), args.at(1));
+          return new_form;
+        }
       }
-
+      // types bad, insert cast.
       auto cast = pool.alloc_single_element_form<CastElement>(
           nullptr, TypeSpec(arg0_i ? "int" : "uint"), args.at(1));
       auto new_form =

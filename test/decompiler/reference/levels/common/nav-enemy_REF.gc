@@ -450,7 +450,7 @@ nav-enemy-default-event-handler
    (if
     (or
      (logtest? (-> obj nav-enemy-flags) 128)
-     (logtest? #x80000 (-> obj nav flags))
+     (logtest? (nav-control-flags bit19) (-> obj nav flags))
      )
     (seek-to-point-toward-point!
      (-> obj collide-info)
@@ -527,7 +527,10 @@ nav-enemy-default-event-handler
 ;; INFO: Return type mismatch int vs none.
 (defbehavior nav-enemy-patrol-post nav-enemy ()
   (when
-   (or (logtest? #x80000 (-> self nav flags)) (< 2.0 (-> self nav block-count)))
+   (or
+    (logtest? (nav-control-flags bit19) (-> self nav flags))
+    (< 2.0 (-> self nav block-count))
+    )
    (set! (-> self nav block-count) 2.0)
    (logior! (-> self nav flags) (nav-control-flags bit10))
    (nav-enemy-get-new-patrol-point)
@@ -539,7 +542,7 @@ nav-enemy-default-event-handler
    (-> self nav destination-pos)
    (-> self rotate-speed)
    )
-  (if (logtest? #x200000 (-> self nav flags))
+  (if (logtest? (nav-control-flags bit21) (-> self nav flags))
    (logclear! (-> self nav flags) (nav-control-flags bit10))
    )
   (nav-enemy-travel-post)
@@ -1190,7 +1193,10 @@ nav-enemy-default-event-handler
     )
    (set!
     (-> self nav flags)
-    (the-as nav-control-flags (the-as int (logior #x80000 (-> self nav flags))))
+    (the-as
+     nav-control-flags
+     (the-as int (logior (nav-control-flags bit19) (-> self nav flags)))
+     )
     )
    (set! (-> self nav-enemy-flags) (logand -5 (-> self nav-enemy-flags)))
    (logior! (-> self nav-enemy-flags) 8)
@@ -1886,7 +1892,7 @@ nav-enemy-default-event-handler
      (go-virtual nav-enemy-stop-chase)
      )
     (cond
-     ((logtest? #x20000 (-> self nav flags))
+     ((logtest? (nav-control-flags bit17) (-> self nav flags))
       (if (>= (- (-> *display* base-frame-counter) (-> self free-time)) 300)
        (go-virtual nav-enemy-patrol)
        )
@@ -2001,7 +2007,7 @@ nav-enemy-default-event-handler
          )
         )
        )
-      (logtest? #x20000 (-> self nav flags))
+      (logtest? (nav-control-flags bit17) (-> self nav flags))
       (>=
        (- (-> *display* base-frame-counter) (the-as int (-> self state-time)))
        (-> self state-timeout)
@@ -2160,7 +2166,7 @@ nav-enemy-default-event-handler
          )
         )
        )
-      (logtest? #x20000 (-> self nav flags))
+      (logtest? (nav-control-flags bit17) (-> self nav flags))
       )
      (go-virtual nav-enemy-give-up)
      )
@@ -2811,7 +2817,7 @@ nav-enemy-default-event-handler
   (if
    (or
     (logtest? (-> self nav-enemy-flags) 128)
-    (logtest? #x80000 (-> self nav flags))
+    (logtest? (nav-control-flags bit19) (-> self nav flags))
     )
    (seek-to-point-toward-point!
     (-> self collide-info)
@@ -2876,7 +2882,7 @@ nav-enemy-default-event-handler
       (- (-> *display* base-frame-counter) (the-as int (-> self state-time)))
       150
       )
-     (logtest? #x80000 (-> self nav flags))
+     (logtest? (nav-control-flags bit19) (-> self nav flags))
      )
     (go-virtual nav-enemy-chase)
     )
@@ -3101,7 +3107,10 @@ nav-enemy-default-event-handler
 (defmethod TODO-RENAME-45 nav-enemy ((obj nav-enemy) (arg0 nav-enemy-info))
   (set! (-> obj rand-gen) (new 'process 'random-generator))
   (set! (-> obj rand-gen seed) (the-as uint #x666edd1e))
-  (set! (-> obj mask) (the-as process-mask (logior #x20000 (-> obj mask))))
+  (set!
+   (-> obj mask)
+   (the-as process-mask (logior (process-mask enemy) (-> obj mask)))
+   )
   (TODO-RENAME-49 obj arg0)
   (if (-> obj draw shadow)
    (set!
