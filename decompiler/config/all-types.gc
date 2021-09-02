@@ -20117,7 +20117,8 @@
 ;; - Types
 
 (deftype collectable (process-drawable)
-  ((pickup-type     int32          :offset-assert 176)
+  ((root-override   collide-shape-moving :score 100 :offset 112)
+   (pickup-type     pickup-type          :offset-assert 176)
    (pickup-amount   float          :offset-assert 180)
    (notify-parent   basic          :offset-assert 184)
    (old-base        vector :inline :offset-assert 192)
@@ -20131,12 +20132,11 @@
    (bob-offset      uint64         :offset-assert 288)
    (bob-amount      float          :offset-assert 296)
    (pickup-handle   handle         :offset-assert 304) ;; not sure it's a handle
-   (actor-pause     basic          :offset-assert 312)
+   (actor-pause     symbol          :offset-assert 312)
    )
-
   (:methods
-    (dummy-20 () none 20)
-    (dummy-21 () none 21)
+    (TODO-RENAME-20 (_type_) _type_ 20)
+    (dummy-21 (_type_ uint float) none 21) ;; TODO - weird math issue
     )
   :heap-base #xd0
 
@@ -20146,12 +20146,12 @@
   )
 
 (deftype eco-collectable (collectable)
-  ((eco-effect          basic          :offset-assert 316)
-   (collect-effect      basic          :offset-assert 320)
-   (collect-effect2     basic          :offset-assert 324)
+  ((eco-effect          sparticle-launch-group          :offset-assert 316)
+   (collect-effect      sparticle-launch-group          :offset-assert 320)
+   (collect-effect2     sparticle-launch-group          :offset-assert 324)
    (collect-effect-time uint64         :offset-assert 328)
    (respawn-delay       uint64         :offset-assert 336)
-   (sound-name          basic          :offset-assert 344)
+   (sound-name          sound-spec          :offset-assert 344)
    (target              uint64         :offset-assert 352)
    (suck-time           uint64         :offset-assert 360)
    (suck-y-offset       float          :offset-assert 368)
@@ -20159,14 +20159,14 @@
    (movie-pos-index     int32          :offset-assert 400)
    )
   (:methods
-    (wait () none 22) ;; state
-    (pickup () none 23) ;; state
-    (die () none 24) ;; state
+    (wait () _type_ :state 22) ;; state
+    (pickup () _type_ :state 23) ;; state
+    (die () _type_ :state 24) ;; state
     (dummy-25 () none 25)
-    (notice-blue () none 26) ;; state
-    (dummy-27 () none 27)
-    (dummy-28 () none 28)
-    (dummy-29 () none 29)
+    (notice-blue () _type_ :state 26) ;; state
+    (get-pickup-sound (_type_ pickup-type) ambient-sound 27)
+    (dummy-28 (_type_ basic pickup-type float) none 28)
+    (update-sound! (_type_) none 29) ;; something to do with particles too
     (dummy-30 () none 30)
     )
 
@@ -20233,8 +20233,8 @@
   )
 
 (deftype fuel-cell (eco-collectable)
-  ((victory-anim basic :offset-assert 404)
-   (state-object basic :offset-assert 408))
+  ((victory-anim spool-anim :offset-assert 404)
+   (state-object symbol :offset-assert 408))
   :heap-base #x130
   :method-count-assert 31
   :size-assert         #x19c
@@ -20242,7 +20242,7 @@
   )
 
 (deftype buzzer (eco-collectable)
-  ((victory-anim basic :offset-assert 404))
+  ((victory-anim spool-anim :offset-assert 404))
 
   :heap-base #x130
   :method-count-assert 31
@@ -20253,7 +20253,7 @@
 (deftype ecovalve (process-drawable)
   ((offset        vector :inline :offset-assert 176)
    (offset-target vector :inline :offset-assert 192)
-   (block-func basic :offset-assert 208))
+   (block-func function :offset-assert 208))
   :heap-base #x70
   :method-count-assert 20
   :size-assert         #xd4
@@ -20261,12 +20261,12 @@
   )
 
 (deftype vent (process-drawable)
-  ((show-particles      basic  :offset-assert 176)
-   (collect-effect      basic  :offset-assert 180)
-   (collect-effect2     basic  :offset-assert 184)
+  ((show-particles      symbol  :offset-assert 176)
+   (collect-effect      sparticle-launch-group  :offset-assert 180)
+   (collect-effect2     sparticle-launch-group  :offset-assert 184)
    (collect-effect-time uint64 :offset-assert 192)
-   (blocker             basic  :offset-assert 200)
-   (block-func          basic  :offset-assert 204)
+   (blocker             entity-actor  :offset-assert 200)
+   (block-func          function  :offset-assert 204)
    (pickup-handle       handle :offset-assert 208)) ;; not sure handle
 
   (:methods
@@ -20319,10 +20319,10 @@
 (define-extern fuel-cell-pick-anim function)
 (define-extern othercam-init-by-other function)
 (define-extern fuel-cell-animate function)
-(define-extern add-blue-motion function)
-(define-extern check-blue-suck function)
-(define-extern initialize-eco-by-other function)
-(define-extern add-blue-shake function)
+(define-extern add-blue-motion (function symbol symbol symbol symbol none :behavior eco-blue))
+(define-extern check-blue-suck (function eco-blue uint :behavior eco-blue))
+(define-extern initialize-eco-by-other (function eco vector none :behavior eco))
+(define-extern add-blue-shake (function vector vector vector vector))
 (define-extern money-init-by-other function)
 (define-extern money-init-by-other-no-bob function)
 (define-extern fuel-cell-init-by-other function)
