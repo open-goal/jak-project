@@ -449,7 +449,7 @@ int DecompilerTypeSystem::get_dynamic_format_arg_count(const std::string& func_n
     throw std::runtime_error(fmt::format("Unknown dynamic format string."));
   } else {
     auto& formats = kv->second;
-    auto& the_format =
+    auto the_format =
         std::find_if(formats.begin(), formats.end(),
                      [op_idx](const std::vector<int> vec) { return vec.at(0) == op_idx; });
     if (the_format == formats.end()) {
