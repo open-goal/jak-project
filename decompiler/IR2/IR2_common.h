@@ -180,7 +180,7 @@ struct UseDefInfo {
   std::vector<AccessRecord> uses;
   std::vector<AccessRecord> defs;
 
-  void disable_use(int op_id) {
+  void disable_use(int op_id, const Register& this_reg) {
     for (auto& x : uses) {
       if (x.op_id == op_id) {
         if (x.disabled) {
@@ -191,7 +191,11 @@ struct UseDefInfo {
       }
     }
 
-    throw std::runtime_error("Invalid disable use");
+    throw std::runtime_error(
+        fmt::format("Invalid disable use on register {} at op {}. The decompiler expects something "
+                    "to use the value stored in this register, but nothing does.  This could be "
+                    "caused by a missing return type or function argument.",
+                    this_reg.to_charp(), op_id));
   }
 
   void disable_def(int op_id, DecompWarnings& warnings) {
@@ -259,7 +263,7 @@ struct VariableNames {
   void disable_use(const RegisterAccess& access) {
     assert(access.mode() == AccessMode::READ);
     auto var_id = read_opid_to_varid.at(access.reg()).at(access.idx());
-    use_def_info.at(RegId(access.reg(), var_id)).disable_use(access.idx());
+    use_def_info.at(RegId(access.reg(), var_id)).disable_use(access.idx(), access.reg());
   }
 
   void disable_def(const RegisterAccess& access, DecompWarnings& warnings) {
