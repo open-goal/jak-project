@@ -225,7 +225,6 @@ Val* Compiler::compile_lambda(const goos::Object& form, const goos::Object& rest
     place->func = new_func_env.get();
 
     // nasty function block env setup
-    // TODO use calling convention
     auto return_reg = new_func_env->make_gpr(get_none()->type());
     auto func_block_env = new_func_env->alloc_env<BlockEnv>(new_func_env.get(), "#f");
     func_block_env->return_value = return_reg;
@@ -236,7 +235,10 @@ Val* Compiler::compile_lambda(const goos::Object& form, const goos::Object& rest
       auto ireg = new_func_env->make_ireg(
           lambda.params.at(i).type, arg_regs.at(i).is_gpr() ? RegClass::GPR_64 : RegClass::INT_128);
       ireg->mark_as_settable();
-      new_func_env->params[lambda.params.at(i).name] = ireg;
+      if (!new_func_env->params.insert({lambda.params.at(i).name, ireg}).second) {
+        throw_compiler_error(form, "lambda has multiple arguments named {}",
+                             lambda.params.at(i).name);
+      }
       new_func_env->emit_ir<IR_RegSet>(form, ireg, reset_args_for_coloring.at(i));
     }
 

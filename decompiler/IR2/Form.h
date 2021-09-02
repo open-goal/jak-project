@@ -224,11 +224,12 @@ class SimpleExpressionElement : public FormElement {
                                               FormStack& stack,
                                               std::vector<FormElement*>* result,
                                               bool allow_side_effects);
-  void update_from_stack_vector_3_dot(const Env& env,
-                                      FormPool& pool,
-                                      FormStack& stack,
-                                      std::vector<FormElement*>* result,
-                                      bool allow_side_effects);
+  void update_from_stack_vector_dot(FixedOperatorKind kind,
+                                    const Env& env,
+                                    FormPool& pool,
+                                    FormStack& stack,
+                                    std::vector<FormElement*>* result,
+                                    bool allow_side_effects);
 
   const SimpleExpression& expr() const { return m_expr; }
 
