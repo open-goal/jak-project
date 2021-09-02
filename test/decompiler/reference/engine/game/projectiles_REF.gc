@@ -66,7 +66,11 @@
                               )
     )
    (iterate-process-tree *entity-pool* (lambda ((arg0 projectile))
-                                        (when (logtest? #x828000 (-> arg0 mask))
+                                        (when
+                                         (logtest?
+                                          (process-mask crate enemy attackable)
+                                          (-> arg0 mask)
+                                          )
                                          (let* ((gp-0 *search-info*)
                                                 (s4-0 arg0)
                                                 (s5-0
@@ -137,7 +141,7 @@
                                                      )
                                                 (if
                                                  (logtest?
-                                                  #x20000
+                                                  (process-mask enemy)
                                                   (-> s5-0 mask)
                                                   )
                                                  (set! s4-2 (logior s4-2 1))
@@ -2620,7 +2624,7 @@
        (the-as pointer #x70004000)
        )
       )
-     (run-function-in-process
+     (run-now-in-process
       gp-0
       part-tracker-init
       (-> *part-group-id-table* 104)
@@ -2666,7 +2670,7 @@
        (the-as pointer #x70004000)
        )
       )
-     (run-function-in-process
+     (run-now-in-process
       gp-0
       part-tracker-init
       (-> *part-group-id-table* 104)
@@ -2775,9 +2779,9 @@
 ;; Used lq/sq
 (defbehavior
   projectile-init-by-other projectile
-  ((arg0 projectile) (arg1 vector) (arg2 vector) (arg3 uint) (arg4 handle))
+  ((arg0 entity) (arg1 vector) (arg2 vector) (arg3 uint) (arg4 handle))
   (stack-size-set! (-> self main-thread) 512)
-  (set! (-> self entity) (the-as entity arg0))
+  (set! (-> self entity) arg0)
   (set! (-> self attack-mode) #f)
   (set! (-> self update-velocity) projectile-update-velocity-space-wars)
   (set! (-> self max-speed) 40960.0)
@@ -2862,7 +2866,10 @@
       (the float (sar (shl (the int (y-angle (-> obj root-override))) 48) 48))
       )
      )
-    (set! (-> obj mask) (the-as process-mask (logior #x400000 (-> obj mask))))
+    (set!
+     (-> obj mask)
+     (the-as process-mask (logior (process-mask projectile) (-> obj mask)))
+     )
     (if (logtest? (-> obj options) 16)
      (set! (-> obj max-hits) 1)
      )
@@ -2906,7 +2913,7 @@
          (the-as pointer #x70004000)
          )
         )
-       (run-function-in-process
+       (run-now-in-process
         s4-2
         part-tracker-init
         (-> *part-group-id-table* 103)
@@ -3195,7 +3202,10 @@
    2.0
    )
   (set! (-> obj target-base quad) (-> obj target quad))
-  (set! (-> obj mask) (the-as process-mask (logior #x100000 (-> obj mask))))
+  (set!
+   (-> obj mask)
+   (the-as process-mask (logior (process-mask ambient) (-> obj mask)))
+   )
   (set! (-> obj part) (create-launch-control (-> *part-group-id-table* 42) obj))
   (set! (-> obj root-override root-prim collide-with) (the-as uint 1))
   (let* ((s5-1 (handle->process (-> obj last-target)))
@@ -3275,7 +3285,7 @@
          (the-as pointer #x70004000)
          )
         )
-       (let ((s2-0 (the-as function run-function-in-process))
+       (let ((s2-0 run-function-in-process)
              (s1-0 s4-1)
              (s0-0 projectile-init-by-other)
              )
