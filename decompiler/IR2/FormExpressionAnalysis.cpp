@@ -1926,7 +1926,8 @@ void SimpleExpressionElement::update_from_stack_int_to_float(const Env& env,
   auto fpr_convert_matcher =
       Matcher::op(GenericOpMatcher::fixed(FixedOperatorKind::GPR_TO_FPR), {Matcher::any(0)});
   auto type = env.get_types_before_op(var.idx()).get(var.reg()).typespec();
-  if (type == TypeSpec("int") || type == TypeSpec("uint") || type == TypeSpec("seconds")) {
+  // want to allow any child of integer so integer enums can also be converted to floats.
+  if (env.dts->ts.tc(TypeSpec("integer"), type) || type == TypeSpec("seconds")) {
     auto mr = match(fpr_convert_matcher, arg);
     if (mr.matched) {
       arg = mr.maps.forms.at(0);
