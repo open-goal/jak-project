@@ -436,6 +436,25 @@ int DecompilerTypeSystem::get_format_arg_count(const TP_Type& type) const {
   }
 }
 
+int DecompilerTypeSystem::get_dynamic_format_arg_count(const std::string& func_name, int op_idx) const {
+  auto kv = format_ops_with_dynamic_string_by_func_name.find(func_name);
+  if (kv == format_ops_with_dynamic_string_by_func_name.end()) {
+    throw std::runtime_error(fmt::format(
+        "Unknown dynamic format string. No dynamic format string information for {}", func_name));
+  } else {
+    auto& formats = kv->second;
+    auto& the_format =
+        std::find_if(formats.begin(), formats.end(),
+                     [&](const std::vector<int> vec) { return vec.at(0) == op_idx; });
+    if (the_format == formats.end()) {
+      throw std::runtime_error(fmt::format(
+          "Unknown dynamic format string. No dynamic format string information for {} at op {}",
+          func_name, op_idx));
+    }
+    return the_format->at(1);
+  }
+}
+
 TypeSpec DecompilerTypeSystem::lookup_symbol_type(const std::string& name) const {
   auto kv = symbol_types.find(name);
   if (kv == symbol_types.end()) {
