@@ -1933,8 +1933,9 @@ void SimpleExpressionElement::update_from_stack_int_to_float(const Env& env,
     }
     result->push_back(pool.alloc_element<CastElement>(TypeSpec("float"), arg, true));
   } else {
-    throw std::runtime_error(fmt::format("Used int to float on a {} from {}: {}", type.print(),
-                                         var.to_form(env).print(), arg->to_string(env)));
+    throw std::runtime_error(fmt::format("At op {}, used int to float on a {} from {}: {}",
+                                         m_my_idx, type.print(), var.to_form(env).print(),
+                                         arg->to_string(env)));
   }
 }
 
@@ -4945,7 +4946,7 @@ void ConditionalMoveFalseElement::push_to_stack(const Env& env, FormPool& pool, 
   // pop the value and the original
   auto popped = pop_to_forms({old_value, source}, env, pool, stack, true);
   if (!is_symbol_true(popped.at(0))) {
-    lg::warn("Failed to ConditionalMoveFalseElement::push_to_stack");
+    lg::warn("{}: Failed to ConditionalMoveFalseElement::push_to_stack", env.func->guessed_name.to_string());
     stack.push_value_to_reg(source, popped.at(1), true, TypeSpec("symbol"));
     stack.push_form_element(this, true);
     return;

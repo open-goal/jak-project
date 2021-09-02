@@ -172,7 +172,7 @@ Config read_config_file(const std::string& path_to_config_file) {
                                           .get<std::unordered_set<std::string>>();
   config.hacks.blocks_ending_in_asm_branch_by_func_name =
       hacks_json.at("blocks_ending_in_asm_branch")
-          .get<std::unordered_map<std::string, std::unordered_set<int>>>(); 
+          .get<std::unordered_map<std::string, std::unordered_set<int>>>();
   config.hacks.format_ops_with_dynamic_string_by_func_name =
       hacks_json.at("dynamic_format_arg_counts")
           .get<std::unordered_map<std::string, std::vector<std::vector<int>>>>();
