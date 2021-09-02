@@ -14,14 +14,7 @@
   (let ((v1-0 *target*))
    (when v1-0
     (let ((s5-0 (new-stack-matrix0)))
-     (let
-      ((f0-1
-        (+
-         (-> (new 'static 'array float 1 -16384.0) 0)
-         (y-angle (-> v1-0 control))
-         )
-        )
-       )
+     (let ((f0-1 (+ -16384.0 (y-angle (-> v1-0 control)))))
       (matrix-rotate-y! s5-0 f0-1)
       )
      (vector3s-rotate*!
@@ -58,16 +51,13 @@
     (let ((s3-0 (new 'stack-no-clear 'bone))
           (s5-0 *target*)
           )
-     (set!
-      (-> a1-1 y)
-      (+ (-> (new 'static 'array float 1 4096.0) 0) (-> a1-1 y))
-      )
+     (set! (-> a1-1 y) (+ 4096.0 (-> a1-1 y)))
      (when
       (>=
        (dummy-12
         *collide-cache*
         a1-1
-        (-> (new 'static 'array float 1 20480.0) 0)
+        (the-as float 20480.0)
         (the-as uint #x2bef)
         s5-0
         s3-0
@@ -81,16 +71,13 @@
        (set! (-> s2-0 x) (-> s3-0 scale z))
        (set! (-> s2-0 y) 0.0)
        (set! (-> s2-0 z) (- (-> s3-0 scale x)))
-       (vector-normalize! s2-0 (-> (new 'static 'array float 1 1.0) 0))
+       (vector-normalize! s2-0 (the-as float 1.0))
        (quaternion-vector-angle! s4-1 s2-0 (acos (-> s3-0 scale y)))
        (let ((s3-1 (new 'stack-no-clear 'quaternion)))
         (quaternion-vector-angle!
          s3-1
          *up-vector*
-         (+
-          (-> (new 'static 'array float 1 32768.0) 0)
-          (y-angle (-> s5-0 control))
-          )
+         (+ 32768.0 (y-angle (-> s5-0 control)))
          )
         (quaternion-normalize! (quaternion*! s4-1 s3-1 s4-1))
         )
@@ -133,43 +120,33 @@
    (set! sv-16 *target*)
    (let ((s3-0 (new 'stack-no-clear 'vector)))
     (new 'stack-no-clear 'vector)
-    (let ((s5-0 (new 'stack-no-clear 'vector)))
+    (let ((s5-0 (new 'stack-no-clear 'quaternion)))
      (let ((s2-0 (-> sv-16 control local-normal)))
       (set! (-> s3-0 x) (-> s2-0 z))
       (set! (-> s3-0 y) 0.0)
       (set! (-> s3-0 z) (- (-> s2-0 x)))
-      (vector-normalize! s3-0 (-> (new 'static 'array float 1 1.0) 0))
-      (quaternion-vector-angle!
-       (the-as quaternion s5-0)
-       s3-0
-       (acos (-> s2-0 y))
-       )
+      (vector-normalize! s3-0 (the-as float 1.0))
+      (quaternion-vector-angle! s5-0 s3-0 (acos (-> s2-0 y)))
       )
      (let ((s3-1 (new 'stack-no-clear 'quaternion)))
       (quaternion-vector-angle!
        s3-1
        *up-vector*
-       (+
-        (-> (new 'static 'array float 1 32768.0) 0)
-        (-> arg1 user-float)
-        (y-angle (-> sv-16 control))
-        )
+       (+ 32768.0 (-> arg1 user-float) (y-angle (-> sv-16 control)))
        )
-      (quaternion-normalize!
-       (quaternion*! (the-as quaternion s5-0) (the-as quaternion s5-0) s3-1)
-       )
+      (quaternion-normalize! (quaternion*! s5-0 s5-0 s3-1))
       )
      (cond
       ((< (-> s5-0 w) 0.0)
        (.lvf vf1 (&-> arg2 conerot quad))
-       (.lvf vf2 (&-> s5-0 quad))
+       (.lvf vf2 (&-> s5-0 vec quad))
        (.sub.vf vf1 vf0 vf2 :mask #b111)
        (.svf (&-> arg2 conerot quad) vf1)
        (.mov v1-10 vf1)
        )
       (else
        (.lvf vf1 (&-> arg2 conerot quad))
-       (.lvf vf2 (&-> s5-0 quad))
+       (.lvf vf2 (&-> s5-0 vec quad))
        (.add.vf vf1 vf0 vf2 :mask #b111)
        (.svf (&-> arg2 conerot quad) vf1)
        (.mov v1-11 vf1)
@@ -203,7 +180,7 @@
       (set! (-> s4-0 x) (-> (the-as sprite-vec-data-2d s3-0) z))
       (set! (-> s4-0 y) 0.0)
       (set! (-> s4-0 z) (- (-> (the-as sprite-vec-data-2d s3-0) x)))
-      (vector-normalize! s4-0 (-> (new 'static 'array float 1 1.0) 0))
+      (vector-normalize! s4-0 (the-as float 1.0))
       (quaternion-vector-angle!
        s5-0
        s4-0
@@ -9276,10 +9253,7 @@
 ;; Used lq/sq
 (defbehavior process-drawable-burn-effect target ((arg0 int))
   (sound-play-by-name
-   (the-as
-    sound-name
-    (make-u128 #x6465 (-> (new 'static 'array uint64 1 #x6e7275622d746567) 0))
-    )
+   (static-sound-name "get-burned")
    (new-sound-id)
    1024
    0
@@ -9317,10 +9291,7 @@
         (-> (the-as process-drawable (-> s4-1 0)) draw color-mult)
         s5-1
         s2-1
-        (-
-         (-> (new 'static 'array float 1 1.0) 0)
-         (/ (the float v1-8) (the float arg0))
-         )
+        (- 1.0 (/ (the float v1-8) (the float arg0)))
         )
        )
       )
@@ -9338,7 +9309,7 @@
        a2-3
        #f
        #f
-       (-> (new 'static 'array float 1 1.0) 0)
+       (the-as float 1.0)
        )
       )
      (suspend)
