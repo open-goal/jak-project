@@ -102,6 +102,15 @@ int LabelDB::get_index_by_offset(int seg, int offset) const {
   return m_labels_by_offset_into_seg.at(seg).at(offset);
 }
 
+std::optional<int> LabelDB::try_get_index_by_offset(int seg, int offset) const {
+  auto it = m_labels_by_offset_into_seg.at(seg).find(offset);
+  if (it == m_labels_by_offset_into_seg.at(seg).end()) {
+    return {};
+  } else {
+    return it->second;
+  }
+}
+
 int LabelDB::get_index_by_name(const std::string& name) const {
   return m_labels_by_name.at(name);
 }
