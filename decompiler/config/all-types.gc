@@ -10017,13 +10017,13 @@
    (attacker     handle         :offset-assert 48)
    (invinc-time  uint64         :offset-assert 56) ;; likely useconds?
    (mask         uint32         :offset-assert 64)
-   (mode         symbol          :offset-assert 68)
+   (mode         symbol         :offset-assert 68)
    (shove-back   meters         :offset-assert 72)
    (shove-up     meters         :offset-assert 76)
    (speed        meters         :offset-assert 80)
    (dist         meters         :offset-assert 84)
    (control      float          :offset-assert 88)
-   (angle        symbol          :offset-assert 92)
+   (angle        symbol         :offset-assert 92)
    (rotate-to    degrees        :offset-assert 96)
    (prev-state   state          :offset-assert 100)
    )
@@ -10937,6 +10937,7 @@
     )
   )
 
+(declare-type collide-edge-hold-list structure)
 (deftype collide-shape (trsqv)
   ((process               process            :offset-assert 140)
    (max-iteration-count   uint8              :offset-assert 144)
@@ -10967,7 +10968,7 @@
     (dummy-37 () none 37)
     (dummy-38 () none 38)
     (dummy-39 () none 39)
-    (dummy-40 (_type_ object) none 40) ;; TODO - object unknown, asm function, passed to a method 15...of a type ??
+    (dummy-40 (_type_ collide-edge-hold-list) none 40) ;; a guess!
     (dummy-41 () none 41)
     (dummy-42 () none 42)
     (dummy-43 () none 43)
@@ -11017,7 +11018,7 @@
   :size-assert         #x1bc
   :flag-assert         #x41000001bc
   (:methods
-    (dummy-56 () none 56)
+    (dummy-56 (_type_ pat-surface) none 56)
     (dummy-57 (_type_ vector) none 57)
     (dummy-58 (_type_ vector) none 58)
     (dummy-59 (_type_ vector uint float symbol symbol symbol) none 59)
@@ -11540,7 +11541,8 @@
 ;; - Types
 
 (deftype projectile (process-drawable)
-  ((base-trans      vector  :inline :offset-assert 176)
+  ((root-override   collide-shape-moving :score 100 :offset 112)
+   (base-trans      vector  :inline :offset-assert 176)
    (target          vector  :inline :offset-assert 192)
    (target-base     vector  :inline :offset-assert 208)
    (parent-base     vector  :inline :offset-assert 224)
@@ -11548,8 +11550,8 @@
    (base-vector     vector  :inline :offset-assert 256)
    (timeout         uint64          :offset-assert 272)
    (options         uint64          :offset-assert 280)
-   (last-target     uint64          :offset-assert 288)
-   (notify-handle   uint64          :offset-assert 296)
+   (last-target     handle          :offset-assert 288)
+   (notify-handle   handle          :offset-assert 296)
    (max-speed       float           :offset-assert 304)
    (max-turn        float           :offset-assert 308)
    (old-dist        float   16      :offset-assert 312)
@@ -11557,8 +11559,8 @@
    (hits            int32           :offset-assert 380)
    (max-hits        int32           :offset-assert 384)
    (tween           float           :offset-assert 388)
-   (attack-mode     basic           :offset-assert 392)
-   (update-velocity basic           :offset-assert 396)
+   (attack-mode     symbol           :offset-assert 392)
+   (update-velocity (function projectile none)           :offset-assert 396)
    (counter         int32           :offset-assert 400)
    (target-count    int32           :offset-assert 404)
    (sound-id        sound-id        :offset-assert 408)
@@ -11569,15 +11571,15 @@
   :flag-assert         #x1d0130019c
   ;; inherited inspect of process-drawable
   (:methods
-    (dummy-20 () none 20)
-    (projectile-dissipate () none 21) ;; state
-    (projectile-impact () none 22) ;; state
-    (dummy-23 () none 23)
-    (dummy-24 (_type_ ) none 24)
-    (dummy-25 () none 25)
-    (dummy-26 () none 26)
-    (dummy-27 () none 27)
-    (dummy-28 () none 28)
+    (projectile-die () _type_ :state 20) ;; state - sound related?
+    (projectile-dissipate () _type_ :state 21) ;; state
+    (projectile-impact () _type_ :state 22) ;; state
+    (projectile-moving () _type_ :state 23) ;; state
+    (dummy-24 (_type_) none 24)
+    (dummy-25 (_type_) none 25)
+    (dummy-26 (_type_) none 26)
+    (dummy-27 (_type_) none 27)
+    (dummy-28 (_type_) none 28)
     )
   )
 
@@ -19382,7 +19384,7 @@
 ;; - Functions
 
 (define-extern target-swim-tilt function)
-(define-extern projectile-init-by-other function)
+(define-extern projectile-init-by-other (function entity vector vector uint handle none :behavior projectile)) ;; 4th arg is `options`, 5th is `last-target`
 (define-extern first-person-hud-init-by-other function)
 (define-extern disable-hud function)
 (define-extern enable-hud function)
@@ -20418,7 +20420,7 @@
 
 ;; - Functions
 
-(define-extern eco-blue-glow function)
+(define-extern eco-blue-glow (function collide-shape-prim none))
 (define-extern cloud-track (function none))
 
 
@@ -20933,35 +20935,35 @@
 
 ;; - Types
 
-; (deftype search-info (structure)
-;   ((point        vector :inline :offset-assert 0)
-;    (best-point   vector :inline :offset-assert 16)
-;    (match-handle uint64         :offset-assert 32)
-;    (match        basic          :offset-assert 40)
-;    (best         float          :offset-assert 44)
-;    (radius       float          :offset-assert 48)
-;    (rating       uint32         :offset-assert 52)
-;    (require      uint32         :offset-assert 56)
-;    (mask         uint32         :offset-assert 60)
-;    (rot-base     vector :inline :offset-assert 64)
-;    (rot-range    float          :offset-assert 80)
-;    )
-;   :method-count-assert 9
-;   :size-assert         #x54
-;   :flag-assert         #x900000054
-;   )
+(deftype search-info (structure)
+  ((point        vector :inline :offset-assert 0)
+   (best-point   vector :inline :offset-assert 16)
+   (match-handle uint64         :offset-assert 32)
+   (match        projectile          :offset-assert 40)
+   (best         float          :offset-assert 44)
+   (radius       float          :offset-assert 48)
+   (rating       uint32         :offset-assert 52)
+   (require      uint32         :offset-assert 56)
+   (mask         uint32         :offset-assert 60)
+   (rot-base     vector :inline :offset-assert 64)
+   (rot-range    float          :offset-assert 80)
+   )
+  :method-count-assert 9
+  :size-assert         #x54
+  :flag-assert         #x900000054
+  )
 
 ;; - Functions
 
-(define-extern projectile-collision-reaction function)
-(define-extern projectile-update-velocity-space-wars function)
-(define-extern find-nearest-attackable function)
+(define-extern projectile-collision-reaction (function collide-shape-moving collide-shape-intersect vector vector none))
+(define-extern projectile-update-velocity-space-wars (function projectile none))
+(define-extern find-nearest-attackable (function vector float uint uint vector float projectile)) ;; Whatever te search returns (match from search-info)
 (define-extern find-ground-and-draw-shadow (function vector vector float uint process float float none))
-(define-extern spawn-projectile-blue function)
+(define-extern spawn-projectile-blue (function target none))
 
 ;; - Unknowns
 
-;;(define-extern *search-info* object) ;; unknown type
+(define-extern *search-info* search-info) ;; unknown type
 
 
 ;; ----------------------
