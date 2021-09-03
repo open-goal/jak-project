@@ -639,7 +639,14 @@ void ObjectFileDB::ir2_insert_lets(int seg) {
   for_each_function_in_seg(seg, [&](Function& func, ObjectFileData&) {
     if (func.ir2.expressions_succeeded) {
       attempted++;
-      combined_stats += insert_lets(func, func.ir2.env, *func.ir2.form_pool, func.ir2.top_form);
+      try {
+        combined_stats += insert_lets(func, func.ir2.env, *func.ir2.form_pool, func.ir2.top_form);
+      } catch (const std::exception& e) {
+        func.warnings.general_warning(
+            fmt::format("Error while inserting lets: {}\n Make sure that the return type is not "
+                        "none if something is actually returned.",
+                        e.what()));
+      }
     }
   });
 
