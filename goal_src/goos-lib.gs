@@ -119,11 +119,18 @@
         (#t (filter pred (cdr lst)))))
 
 (desfun assoc (x a)
-	(if (eq? (caar a) x)
-	    (car a)
-	    (assoc x (cdr a))
-	    )
+  (if (null? a)
+      '()
+      (if (eq? (caar a) x)
+          (car a)
+          (assoc x (cdr a))
+          )
+      )
 	)
+
+(desfun list (&rest items)
+  (apply (lambda (x) x) items)
+  )
 
 (desfun reverse (lst)
   (if (null? lst)
