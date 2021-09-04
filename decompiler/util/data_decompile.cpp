@@ -351,7 +351,12 @@ goos::Object decomp_ref_to_inline_array_guess_size(
   const auto& start_label = labels.at(pointer_to_data.label_id);
   int end_label_idx =
       index_of_closest_following_label_in_segment(start_label.offset, my_seg, labels);
-  assert(end_label_idx >= 0);
+
+  if (end_label_idx < 0) {
+    throw std::runtime_error(
+        "Failed to find label: likely just an unimplemented case for when the data is the last "
+        "thing in the file.");
+  }
   const auto& end_label = labels.at(end_label_idx);
   // fmt::print("Data is from {} to {}\n", start_label.name, end_label.name);
 
