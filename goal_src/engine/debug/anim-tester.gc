@@ -5,3 +5,108 @@
 ;; name in dgo: anim-tester
 ;; dgos: GAME, ENGINE
 
+(deftype list-control (structure)
+  ((listfunc             (function int list-control symbol)  :offset-assert 0)
+   (list-owner           uint32     :offset-assert 4)
+   (top                  int32      :offset-assert 8)
+   (left                 int32      :offset-assert 12)
+   (list                 glst-list  :offset-assert 16)
+   (the-node             glst-node  :offset-assert 20)
+   (top-index            int32      :offset-assert 24)
+   (the-index            int32      :offset-assert 28)
+   (the-disp-line        int32      :offset-assert 32)
+   (highlight-index      int32      :offset-assert 36)
+   (current-index        int32      :offset-assert 40)
+   (numlines             int32      :offset-assert 44)
+   (lines-to-disp        int32      :offset-assert 48)
+   (charswide            int32      :offset-assert 52)
+   (highlight-disp-line  int32      :offset-assert 56)
+   (field-id             int32      :offset-assert 60)
+   (xpos                 int32      :offset-assert 64)
+   (ypos                 int32      :offset-assert 68)
+   (user-info            int32      :offset-assert 72)
+   (user-info-u          uint32     :offset 72) ;; custom
+   (return-int           int32      :offset-assert 76)
+   )
+  :allow-misaligned
+  :method-count-assert 9
+  :size-assert         #x50
+  :flag-assert         #x900000050
+  )
+
+(deftype list-field (structure)
+  ((left   int32  :offset-assert 0)
+   (width  int32  :offset-assert 4)
+   )
+  :method-count-assert 9
+  :size-assert         #x8
+  :flag-assert         #x900000008
+  )
+
+(deftype DISP_LIST-bank (basic)
+  ((TV_SPACING     int32  :offset-assert 4)
+   (BORDER_WIDTH   int32  :offset-assert 8)
+   (BORDER_HEIGHT  int32  :offset-assert 12)
+   (MAX_LINES      int32  :offset-assert 16)
+   (CHAR_WIDTH     int32  :offset-assert 20)
+   (INC_DELAY      int32  :offset-assert 24)
+   (BORDER_LINES   int32  :offset-assert 28)
+   (CXOFF          int32  :offset-assert 32)
+   (CYOFF          int32  :offset-assert 36)
+   (BXOFF          int32  :offset-assert 40)
+   (BYOFF          int32  :offset-assert 44)
+   )
+  :method-count-assert 9
+  :size-assert         #x30
+  :flag-assert         #x900000030
+  )
+
+(deftype anim-tester-bank (basic)
+  ((ANIM_SPEED             float  :offset-assert 4)
+   (BLEND                  float  :offset-assert 8)
+   (OBJECT_LIST_X          int32  :offset-assert 12)
+   (OBJECT_LIST_Y          int32  :offset-assert 16)
+   (OBJECT_LIST_MIN_WIDTH  int32  :offset-assert 20)
+   (ANIM_LIST_X            int32  :offset-assert 24)
+   (ANIM_LIST_Y            int32  :offset-assert 28)
+   (ANIM_LIST_MIN_WIDTH    int32  :offset-assert 32)
+   (PICK_LIST_X            int32  :offset-assert 36)
+   (PICK_LIST_Y            int32  :offset-assert 40)
+   (PICK_LIST_MIN_WIDTH    int32  :offset-assert 44)
+   (EDIT_LIST_X            int32  :offset-assert 48)
+   (EDIT_LIST_Y            int32  :offset-assert 52)
+   (EDIT_STATS_X           int32  :offset-assert 56)
+   (EDIT_LIST_MIN_WIDTH    int32  :offset-assert 60)
+   (EDIT_PICK_X            int32  :offset-assert 64)
+   )
+  :method-count-assert 9
+  :size-assert         #x44
+  :flag-assert         #x900000044
+  )
+
+(deftype anim-tester (process-drawable)
+  ((flags        int32                 :offset-assert 176)
+   (obj-list     glst-list     :inline :offset-assert 180)
+   (current-obj  string                :offset-assert 196)
+   (speed        int32                 :offset-assert 200)
+   (list-con     list-control  :inline :offset-assert 204)
+   (pick-con     list-control  :inline :offset-assert 284)
+   (item-field   int64                 :offset-assert 368)
+   (inc-delay    int32                 :offset-assert 376)
+   (inc-timer    int32                 :offset-assert 380)
+   (edit-mode    int32                 :offset-assert 384)
+   (old-mode     int32                 :offset-assert 388)
+   (anim-speed   float                 :offset-assert 392)
+   (anim-gspeed  float                 :offset-assert 396)
+   (anim-first   float                 :offset-assert 400)
+   (anim-last    float                 :offset-assert 404)
+   )
+  :method-count-assert 20
+  :size-assert         #x198
+  :heap-base           #x130
+  :flag-assert         #x1401300198
+  )
+
+(define-extern *anim-tester* (pointer anim-tester))
+;; TODO temporary.
+(set! *anim-tester* #f)

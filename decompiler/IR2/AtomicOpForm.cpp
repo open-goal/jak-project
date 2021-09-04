@@ -483,60 +483,67 @@ FormElement* make_label_load(int label_idx,
                              LoadVarOp::Kind load_kind) {
   auto label = env.file->labels.at(label_idx);
   auto label_name = label.name;
-  auto hint = env.label_types().find(label_name);
-  if (hint != env.label_types().end()) {
-    if (hint->second.is_const) {
-      if ((load_kind == LoadVarOp::Kind::FLOAT || load_kind == LoadVarOp::Kind::SIGNED) &&
-          load_size == 4 && hint->second.type_name == "float") {
-        assert((label.offset % 4) == 0);
-        auto word = env.file->words_by_seg.at(label.target_segment).at(label.offset / 4);
-        assert(word.kind == LinkedWord::PLAIN_DATA);
-        float value;
-        memcpy(&value, &word.data, 4);
-        return pool.alloc_element<ConstantFloatElement>(value);
-      } else if (hint->second.type_name == "uint64" && load_kind != LoadVarOp::Kind::FLOAT &&
-                 load_size == 8) {
-        assert((label.offset % 8) == 0);
-        auto word0 = env.file->words_by_seg.at(label.target_segment).at(label.offset / 4);
-        auto word1 = env.file->words_by_seg.at(label.target_segment).at(1 + (label.offset / 4));
-        assert(word0.kind == LinkedWord::PLAIN_DATA);
-        assert(word1.kind == LinkedWord::PLAIN_DATA);
-        u64 value;
-        memcpy(&value, &word0.data, 4);
-        memcpy(((u8*)&value) + 4, &word1.data, 4);
-        return pool.alloc_element<CastElement>(TypeSpec("uint"),
-                                               pool.alloc_single_element_form<SimpleAtomElement>(
-                                                   nullptr, SimpleAtom::make_int_constant(value)));
-      }
+  // auto hint = env.label_types().find(label_name);
+  auto hint = env.file->label_db->lookup(label_idx);
 
-      // is it a constant bitfield?
-      auto& ts = env.dts->ts;
-      auto as_bitfield = dynamic_cast<BitFieldType*>(ts.lookup_type(hint->second.type_name));
-      if (as_bitfield && load_kind != LoadVarOp::Kind::FLOAT && load_size == 8) {
-        // get the data
-        assert((label.offset % 8) == 0);
-        auto word0 = env.file->words_by_seg.at(label.target_segment).at(label.offset / 4);
-        auto word1 = env.file->words_by_seg.at(label.target_segment).at(1 + (label.offset / 4));
-        assert(word0.kind == LinkedWord::PLAIN_DATA);
-        assert(word1.kind == LinkedWord::PLAIN_DATA);
-        u64 value;
-        memcpy(&value, &word0.data, 4);
-        memcpy(((u8*)&value) + 4, &word1.data, 4);
-        // for some reason, GOAL would use a 64-bit constant for all bitfields, even if they are
-        // smaller. We should check that the higher bits are all zero.
-        int bits = as_bitfield->get_size_in_memory() * 8;
-        assert(bits <= 64);
-        if (bits < 64) {
-          assert((value >> bits) == 0);
-          // technically ub if bits == 64.
-        }
-        TypeSpec typespec(hint->second.type_name);
-        auto defs = decompile_bitfield_from_int(typespec, ts, value);
-        return pool.alloc_element<BitfieldStaticDefElement>(typespec, defs, pool);
-      }
-    }
+  if (!hint.known) {
+    throw std::runtime_error(fmt::format("Label {} was unknown in AtomicOpForm.", hint.name));
   }
 
+  if (!hint.is_value) {
+    throw std::runtime_error(fmt::format(
+        "Label {} was marked as reference, but is being loaded like it's a value.", label_name));
+  }
+
+  if ((load_kind == LoadVarOp::Kind::FLOAT || load_kind == LoadVarOp::Kind::SIGNED) &&
+      load_size == 4 && hint.result_type == TypeSpec("float")) {
+    assert((label.offset % 4) == 0);
+    auto word = env.file->words_by_seg.at(label.target_segment).at(label.offset / 4);
+    assert(word.kind == LinkedWord::PLAIN_DATA);
+    float value;
+    memcpy(&value, &word.data, 4);
+    return pool.alloc_element<ConstantFloatElement>(value);
+  } else if (hint.result_type == TypeSpec("uint64") && load_kind != LoadVarOp::Kind::FLOAT &&
+             load_size == 8) {
+    assert((label.offset % 8) == 0);
+    auto word0 = env.file->words_by_seg.at(label.target_segment).at(label.offset / 4);
+    auto word1 = env.file->words_by_seg.at(label.target_segment).at(1 + (label.offset / 4));
+    assert(word0.kind == LinkedWord::PLAIN_DATA);
+    assert(word1.kind == LinkedWord::PLAIN_DATA);
+    u64 value;
+    memcpy(&value, &word0.data, 4);
+    memcpy(((u8*)&value) + 4, &word1.data, 4);
+    return pool.alloc_element<CastElement>(TypeSpec("uint"),
+                                           pool.alloc_single_element_form<SimpleAtomElement>(
+                                               nullptr, SimpleAtom::make_int_constant(value)));
+  }
+
+  // is it a constant bitfield?
+  auto& ts = env.dts->ts;
+  auto as_bitfield = dynamic_cast<BitFieldType*>(ts.lookup_type(hint.result_type));
+  if (as_bitfield && load_kind != LoadVarOp::Kind::FLOAT && load_size == 8) {
+    // get the data
+    assert((label.offset % 8) == 0);
+    auto word0 = env.file->words_by_seg.at(label.target_segment).at(label.offset / 4);
+    auto word1 = env.file->words_by_seg.at(label.target_segment).at(1 + (label.offset / 4));
+    assert(word0.kind == LinkedWord::PLAIN_DATA);
+    assert(word1.kind == LinkedWord::PLAIN_DATA);
+    u64 value;
+    memcpy(&value, &word0.data, 4);
+    memcpy(((u8*)&value) + 4, &word1.data, 4);
+    // for some reason, GOAL would use a 64-bit constant for all bitfields, even if they are
+    // smaller. We should check that the higher bits are all zero.
+    int bits = as_bitfield->get_size_in_memory() * 8;
+    assert(bits <= 64);
+    if (bits < 64) {
+      assert((value >> bits) == 0);
+      // technically ub if bits == 64.
+    }
+    auto defs = decompile_bitfield_from_int(hint.result_type, ts, value);
+    return pool.alloc_element<BitfieldStaticDefElement>(hint.result_type, defs, pool);
+  }
+
+  /*
   if (load_kind == LoadVarOp::Kind::FLOAT && load_size == 4) {
     assert((label.offset % 4) == 0);
     const auto& words = env.file->words_by_seg.at(label.target_segment);
@@ -564,6 +571,7 @@ FormElement* make_label_load(int label_idx,
                                                  nullptr, SimpleAtom::make_int_constant(value)));
     }
   }
+   */
 
   return nullptr;
 }

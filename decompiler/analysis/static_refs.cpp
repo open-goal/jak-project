@@ -24,18 +24,17 @@ bool try_convert_lambda(const Function& parent_function,
   if (atom && atom->is_static_addr()) {
     auto lab = parent_function.ir2.env.file->labels.at(atom->label());
     auto& env = parent_function.ir2.env;
-    auto label_kv = env.label_types().find(lab.name);
-    if (label_kv != env.label_types().end()) {
-      if (label_kv->second.type_name != "_lambda_") {
-        lg::error(
-            "Label {} wasn't marked as a lambda, but it is. Marking lambdas is no longer required.",
-            lab.name);
-      }
-    }
+    const auto& info = parent_function.ir2.env.file->label_db->lookup(lab.name);
 
     auto& file = env.file;
     auto other_func = file->try_get_function_at_label(atom->label());
     if (other_func && kind_for_lambda(other_func->guessed_name.kind)) {
+      if (info.from_user) {
+        lg::error(
+            "Label {} had an entry in config, but it is a function. This will be "
+            "ignored and is no longer required.",
+            lab.name);
+      }
       if (!other_func->ir2.env.has_local_vars()) {
         // don't bother if we don't even have vars.
         return false;

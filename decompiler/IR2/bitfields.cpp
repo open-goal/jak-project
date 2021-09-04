@@ -728,6 +728,77 @@ Form* cast_sound_name(FormPool& pool, const Env& env, Form* in) {
   return pool.alloc_single_element_form<ConstantTokenElement>(
       nullptr, fmt::format("(static-sound-name \"{}\")", name));
 }
+
+std::optional<std::vector<BitFieldDef>> get_field_defs_from_expr(const BitFieldType* type_info,
+                                                                 Form* in,
+                                                                 const TypeSpec& typespec,
+                                                                 FormPool& pool,
+                                                                 const Env& env,
+                                                                 std::optional<int> offset) {
+  auto in_as_generic = strip_int_or_uint_cast(in)->try_as_element<GenericElement>();
+  std::vector<Form*> args;
+  if (in_as_generic && in_as_generic->op().is_fixed(FixedOperatorKind::LOGIOR)) {
+    args = compact_nested_logiors(in_as_generic, env);
+  } else {
+    args = {strip_int_or_uint_cast(in)};
+  }
+
+  if (!args.empty()) {
+    std::vector<BitFieldDef> field_defs;
+
+    for (auto it = args.begin(); it != args.end(); it++) {
+      auto constant = get_goal_integer_constant(*it, env);
+      if (constant) {
+        auto constant_defs =
+            try_decompile_bitfield_from_int(typespec, env.dts->ts, *constant, false, offset);
+        if (!constant_defs) {
+          return std::nullopt;  // failed
+        }
+        for (auto& x : *constant_defs) {
+          field_defs.push_back(BitFieldDef::from_constant(x, pool));
+        }
+
+        args.erase(it);
+        break;
+      }
+    }
+
+    // now variables
+    for (auto& arg : args) {
+      // it's a 64-bit constant so correct to set offset 0 here.
+      auto maybe_field = get_bitfield_initial_set(strip_int_or_uint_cast(arg), type_info,
+                                                  env.dts->ts, offset ? *offset : 0);
+      if (!maybe_field) {
+        // failed, just return cast.
+        return std::nullopt;
+      }
+
+      BitField field_info;
+      if (!type_info->lookup_field(maybe_field->field_name, &field_info)) {
+        assert(false);
+      }
+      if (field_info.type() == TypeSpec("symbol") || field_info.type() == TypeSpec("type")) {
+        maybe_field->value = strip_int_or_uint_cast(maybe_field->value);
+      }
+
+      if (field_info.type() == TypeSpec("float")) {
+        auto stripped = strip_int_or_uint_cast(maybe_field->value);
+        auto integer = get_goal_integer_constant(stripped, env);
+        if (integer) {
+          float value_f;
+          u32 value_i = *integer;
+          memcpy(&value_f, &value_i, 4);
+          maybe_field->value =
+              pool.alloc_single_element_form<ConstantFloatElement>(nullptr, value_f);
+        }
+      }
+
+      field_defs.push_back(*maybe_field);
+    }
+    return field_defs;
+  }
+  return std::vector<BitFieldDef>();
+}
 }  // namespace
 
 /*!
@@ -752,8 +823,9 @@ Form* cast_to_bitfield(const BitFieldType* type_info,
   // check if it's just a constant:
   auto in_as_atom = form_as_atom(in);
   if (in_as_atom && in_as_atom->is_int()) {
+    // will always be 64-bits
     auto fields =
-        try_decompile_bitfield_from_int(typespec, env.dts->ts, in_as_atom->get_int(), false);
+        try_decompile_bitfield_from_int(typespec, env.dts->ts, in_as_atom->get_int(), false, {});
     if (!fields) {
       return pool.alloc_single_element_form<CastElement>(nullptr, typespec, in);
     }
@@ -761,46 +833,32 @@ Form* cast_to_bitfield(const BitFieldType* type_info,
                                                                     pool);
   }
 
-  auto in_as_generic = strip_int_or_uint_cast(in)->try_as_element<GenericElement>();
-  std::vector<Form*> args;
-  if (in_as_generic && in_as_generic->op().is_fixed(FixedOperatorKind::LOGIOR)) {
-    args = compact_nested_logiors(in_as_generic, env);
+  bool bitfield_128 = type_info->get_size_in_memory() == 16;
+  if (bitfield_128) {
+    auto in_no_cast = strip_int_or_uint_cast(in);
+    auto pcpyld_matcher =
+        Matcher::fixed_op(FixedOperatorKind::PCPYLD, {Matcher::any(0), Matcher::any(1)});
+    auto mr = match(pcpyld_matcher, in_no_cast);
+    if (mr.matched) {
+      auto upper = mr.maps.forms.at(0);
+      auto lower = mr.maps.forms.at(1);
+
+      auto upper_defs = get_field_defs_from_expr(type_info, upper, typespec, pool, env, 64);
+      auto lower_defs = get_field_defs_from_expr(type_info, lower, typespec, pool, env, 0);
+
+      if (upper_defs && lower_defs) {
+        lower_defs->insert(lower_defs->end(), upper_defs->begin(), upper_defs->end());
+        return pool.alloc_single_element_form<BitfieldStaticDefElement>(nullptr, typespec,
+                                                                        *lower_defs);
+      }
+    }
+    return pool.alloc_single_element_form<CastElement>(nullptr, typespec, in);
   } else {
-    args = {strip_int_or_uint_cast(in)};
-  }
-
-  if (!args.empty()) {
-    std::vector<BitFieldDef> field_defs;
-
-    for (auto it = args.begin(); it != args.end(); it++) {
-      auto constant = get_goal_integer_constant(*it, env);
-      if (constant) {
-        auto constant_defs =
-            try_decompile_bitfield_from_int(typespec, env.dts->ts, *constant, false);
-        if (!constant_defs) {
-          return pool.alloc_single_element_form<CastElement>(nullptr, typespec, in);
-        }
-        for (auto& x : *constant_defs) {
-          field_defs.push_back(BitFieldDef::from_constant(x, pool));
-        }
-
-        args.erase(it);
-        break;
-      }
+    auto field_defs = get_field_defs_from_expr(type_info, in, typespec, pool, env, {});
+    if (field_defs) {
+      return pool.alloc_single_element_form<BitfieldStaticDefElement>(nullptr, typespec,
+                                                                      *field_defs);
     }
-
-    // now variables
-    for (auto& arg : args) {
-      // it's a 64-bit constant so correct to set offset 0 here.
-      auto maybe_field =
-          get_bitfield_initial_set(strip_int_or_uint_cast(arg), type_info, env.dts->ts, 0);
-      if (!maybe_field) {
-        // failed, just return cast.
-        return pool.alloc_single_element_form<CastElement>(nullptr, typespec, in);
-      }
-      field_defs.push_back(*maybe_field);
-    }
-    return pool.alloc_single_element_form<BitfieldStaticDefElement>(nullptr, typespec, field_defs);
   }
 
   // all failed, just return whatever.

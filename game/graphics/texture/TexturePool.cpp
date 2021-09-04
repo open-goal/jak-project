@@ -1,10 +1,12 @@
 #include "TexturePool.h"
 
 #include "third-party/fmt/core.h"
+#include "third-party/imgui/imgui.h"
 #include "common/util/assert.h"
 #include "common/util/FileUtil.h"
 #include "common/util/Timer.h"
 #include "common/log/log.h"
+#include "game/graphics/pipelines/opengl.h"
 
 ////////////////////////////////
 // Extraction of textures
@@ -202,4 +204,73 @@ void TexturePool::relocate(u32 destination, u32 source, u32 format) {
   } else {
     m_textures.at(destination).normal_texture = std::move(src);
   }
+}
+
+void TexturePool::draw_debug_window() {
+  int id = 0;
+  int total_vram_bytes = 0;
+  int total_textures = 0;
+  int total_uploaded_textures = 0;
+  for (auto& record : m_textures) {
+    if (record.normal_texture) {
+      ImGui::PushID(id++);
+      auto& tex = *record.normal_texture;
+      draw_debug_for_tex(tex.name, tex);
+      ImGui::PopID();
+      total_textures++;
+      if (tex.on_gpu) {
+        total_vram_bytes += tex.w * tex.h * 4;  // todo, if we support other formats
+        total_uploaded_textures++;
+      }
+    }
+
+    if (record.mt4hh_texture) {
+      ImGui::PushID(id++);
+      auto& tex = *record.mt4hh_texture;
+      draw_debug_for_tex(tex.name, tex);
+      ImGui::PopID();
+      total_textures++;
+      if (tex.on_gpu) {
+        total_vram_bytes += tex.w * tex.h * 4;  // todo, if we support other formats
+        total_uploaded_textures++;
+      }
+    }
+  }
+  ImGui::Text("Total Textures: %d Uploaded: %d VRAM: %.3f MB", total_textures,
+              total_uploaded_textures, (float)total_vram_bytes / (1024 * 1024));
+}
+
+void TexturePool::draw_debug_for_tex(const std::string& name, TextureRecord& tex) {
+  if (ImGui::CollapsingHeader(name.c_str())) {
+    ImGui::Text("Page: %s Size: %d x %d mip %d On GPU? %d", tex.page_name.c_str(), tex.w, tex.h,
+                tex.mip_level, tex.on_gpu);
+    if (tex.on_gpu) {
+      ImGui::Image((void*)tex.gpu_texture, ImVec2(tex.w, tex.h));
+    } else {
+      if (ImGui::Button("Upload to GPU!")) {
+        upload_to_gpu(&tex);
+      }
+    }
+  }
+}
+
+void TexturePool::upload_to_gpu(TextureRecord* tex) {
+  assert(!tex->on_gpu);
+  GLuint tex_id;
+  glGenTextures(1, &tex_id);
+  tex->gpu_texture = tex_id;
+  glBindTexture(GL_TEXTURE_2D, tex_id);
+  glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, tex->w, tex->h, 0, GL_RGBA, GL_UNSIGNED_INT_8_8_8_8_REV,
+               tex->data.data());
+  glBindTexture(GL_TEXTURE_2D, 0);
+
+  // we have to set these, imgui won't do it automatically
+  glActiveTexture(GL_TEXTURE0);
+  glBindTexture(GL_TEXTURE_2D, tex->gpu_texture);
+  glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
+  glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
+  glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+  glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+
+  tex->on_gpu = true;
 }

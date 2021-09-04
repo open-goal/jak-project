@@ -135,12 +135,17 @@ Config read_config_file(const std::string& path_to_config_file) {
     for (auto& x : types) {
       const auto& name = x.at(0).get<std::string>();
       const auto& type_name = x.at(1).get<std::string>();
-      bool is_const = x.at(2).get<bool>();
-      auto& config_entry = config.label_types[obj_name][name];
-      config_entry = {type_name, is_const, {}};
-      if (x.size() > 3) {
-        config_entry.array_size = x.at(3).get<int>();
+      bool is_val = false;
+      std::optional<int> array_size;
+      if (x.size() > 2) {
+        if (x.at(2).is_boolean()) {
+          is_val = x.at(2).get<bool>();
+        } else {
+          array_size = x.at(2).get<int>();
+        }
       }
+      auto& config_entry = config.label_types[obj_name][name];
+      config_entry = {is_val, type_name, array_size};
     }
   }
 

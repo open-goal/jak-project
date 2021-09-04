@@ -288,7 +288,8 @@ bool is_gpr_2_imm_int(const Instruction& instr,
                       MatchParam<Register> src,
                       MatchParam<int32_t> imm) {
   return kind == instr.kind && dst == instr.get_dst(0).get_reg() &&
-         src == instr.get_src(0).get_reg() && imm == instr.get_src(1).get_imm();
+         src == instr.get_src(0).get_reg() && instr.get_src(1).is_imm() &&
+         imm == instr.get_src(1).get_imm();
 }
 
 /*!
