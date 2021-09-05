@@ -415,7 +415,10 @@
 
 ;; definition for method 35 of type progress
 ;; INFO: Return type mismatch int vs none.
-(defmethod dummy-35 progress ((obj progress) (arg0 font-context))
+(defmethod
+  draw-memcard-storage-error
+  progress
+  ((obj progress) (arg0 font-context))
   (let ((v1-0 arg0))
    (set! (-> v1-0 scale) 0.55)
    )
@@ -426,21 +429,17 @@
    (set! (-> v1-2 height) (the float 55))
    )
   (set! (-> arg0 flags) (font-flags shadow kerning middle left large))
-  (let ((s4-0 306))
+  (let ((s4-0 (game-text-id card-not-formatted-title)))
    (case (-> obj display-state) 
-    ((7)
-      (set! s4-0 304)
+    (((progress-screen memcard-no-space))
+      (set! s4-0 (game-text-id memcard-no-space))
       )
-    ((8)
-     (set! s4-0 305)
+    (((progress-screen memcard-not-inserted))
+     (set! s4-0 (game-text-id memcard-not-inserted))
      )
     )
    (let ((s3-0 print-game-text-scaled))
-    (format
-     (clear *temp-string*)
-     (lookup-text! *common-text* (the-as game-text-id s4-0) #f)
-     1
-     )
+    (format (clear *temp-string*) (lookup-text! *common-text* s4-0 #f) 1)
     (s3-0 *temp-string* (-> obj transition-percentage-invert) arg0 128)
     )
    )
@@ -455,7 +454,7 @@
   (let ((s4-1 print-game-text-scaled))
    (format
     (clear *temp-string*)
-    (lookup-text! *common-text* (game-text-id requires-free-space-title) #f)
+    (lookup-text! *common-text* (game-text-id memcard-space-requirement1) #f)
     (if (-> obj card-info)
      (-> obj card-info mem-required)
      0
@@ -468,7 +467,7 @@
    (set! (-> v1-17 height) (the float 60))
    )
   (print-game-text-scaled
-   (lookup-text! *common-text* (game-text-id requires-free-space-msg) #f)
+   (lookup-text! *common-text* (game-text-id memcard-space-requirement2) #f)
    (-> obj transition-percentage-invert)
    arg0
    128
@@ -489,7 +488,7 @@
 
 ;; definition for method 49 of type progress
 ;; INFO: Return type mismatch int vs none.
-(defmethod dummy-49 progress ((obj progress) (arg0 font-context))
+(defmethod draw-memcard-format progress ((obj progress) (arg0 font-context))
   (set! (-> arg0 origin y) 35.0)
   (let ((v1-0 arg0))
    (set! (-> v1-0 scale) 0.55)
@@ -542,7 +541,7 @@
 
 ;; definition for method 36 of type progress
 ;; INFO: Return type mismatch int vs none.
-(defmethod dummy-36 progress ((obj progress) (arg0 font-context))
+(defmethod draw-memcard-data-exists progress ((obj progress) (arg0 font-context))
   (let ((v1-0 arg0))
    (set! (-> v1-0 scale) 0.65)
    )
@@ -580,7 +579,7 @@
 
 ;; definition for method 37 of type progress
 ;; INFO: Return type mismatch int vs none.
-(defmethod dummy-37 progress ((obj progress) (arg0 font-context))
+(defmethod draw-memcard-no-data progress ((obj progress) (arg0 font-context))
   (let ((v1-0 arg0))
    (set! (-> v1-0 scale) 0.65)
    )
@@ -620,7 +619,7 @@
 
 ;; definition for method 38 of type progress
 ;; INFO: Return type mismatch int vs none.
-(defmethod dummy-38 progress ((obj progress) (arg0 font-context))
+(defmethod draw-memcard-accessing progress ((obj progress) (arg0 font-context))
   (let ((v1-0 arg0))
    (set! (-> v1-0 scale) 1.0)
    )
@@ -638,20 +637,20 @@
     (< (mod (-> *display* real-frame-counter) 300) 150)
     (!= (-> obj transition-percentage-invert) 1.0)
     )
-   (let ((a1-1 311))
+   (let ((a1-1 (game-text-id loading-data)))
     (case (-> obj display-state) 
-     ((13)
-       (set! a1-1 310)
+     (((progress-screen memcard-saving))
+       (set! a1-1 (game-text-id saving-data))
        )
-     ((14)
-      (set! a1-1 333)
+     (((progress-screen memcard-formatting))
+      (set! a1-1 (game-text-id formatting))
       )
-     ((15)
-      (set! a1-1 334)
+     (((progress-screen memcard-creating))
+      (set! a1-1 (game-text-id creating-save-data))
       )
      )
     (print-game-text-scaled
-     (lookup-text! *common-text* (the-as game-text-id a1-1) #f)
+     (lookup-text! *common-text* a1-1 #f)
      (-> obj transition-percentage-invert)
      arg0
      128
@@ -684,7 +683,7 @@
 
 ;; definition for method 39 of type progress
 ;; INFO: Return type mismatch int vs none.
-(defmethod dummy-39 progress ((obj progress) (arg0 font-context))
+(defmethod draw-memcard-insert progress ((obj progress) (arg0 font-context))
   (let ((v1-0 arg0))
    (set! (-> v1-0 scale) 0.65)
    )
@@ -725,7 +724,7 @@
 ;; definition for method 40 of type progress
 ;; INFO: Return type mismatch int vs none.
 ;; Used lq/sq
-(defmethod dummy-40 progress ((obj progress) (arg0 font-context))
+(defmethod draw-memcard-file-select progress ((obj progress) (arg0 font-context))
   (local-vars
    (sv-16 (function _varargs_ object))
    (sv-32 (function _varargs_ object))
@@ -792,10 +791,12 @@
     (print-game-text
      (lookup-text!
       *common-text*
-      (the-as game-text-id (if (= (-> obj display-state) 16)
-                            321
-                            320
-                            )
+      (the-as
+       game-text-id
+       (if (= (-> obj display-state) (progress-screen load-game))
+        321
+        320
+        )
        )
       #f
       )
@@ -865,7 +866,7 @@
             600
             (-
              (-> *display* real-frame-counter)
-             (the-as int (-> obj last-option-index-change))
+             (-> obj last-option-index-change)
              )
             )
            (or
@@ -873,7 +874,7 @@
              (mod
               (-
                (-> *display* real-frame-counter)
-               (the-as int (-> obj last-option-index-change))
+               (-> obj last-option-index-change)
                )
               1200
               )
@@ -1061,7 +1062,10 @@
 
 ;; definition for method 41 of type progress
 ;; INFO: Return type mismatch int vs none.
-(defmethod dummy-41 progress ((obj progress) (arg0 font-context))
+(defmethod
+  draw-memcard-auto-save-error
+  progress
+  ((obj progress) (arg0 font-context))
   (let ((v1-0 arg0))
    (set! (-> v1-0 scale) 0.6)
    )
@@ -1141,7 +1145,7 @@
 
 ;; definition for method 42 of type progress
 ;; INFO: Return type mismatch int vs none.
-(defmethod dummy-42 progress ((obj progress) (arg0 font-context))
+(defmethod draw-memcard-removed progress ((obj progress) (arg0 font-context))
   (let ((v1-0 arg0))
    (set! (-> v1-0 scale) 0.6)
    )
@@ -1208,7 +1212,7 @@
 
 ;; definition for method 43 of type progress
 ;; INFO: Return type mismatch int vs none.
-(defmethod dummy-43 progress ((obj progress) (arg0 font-context))
+(defmethod draw-memcard-error progress ((obj progress) (arg0 font-context))
   (set! (-> arg0 origin y) 15.0)
   (let ((v1-0 arg0))
    (set! (-> v1-0 scale) 0.7)
@@ -1220,24 +1224,20 @@
    (set! (-> v1-2 height) (the float 55))
    )
   (set! (-> arg0 flags) (font-flags shadow kerning middle left large))
-  (let ((s4-0 337))
+  (let ((s4-0 (game-text-id error-loading)))
    (case (-> obj display-state) 
-    ((21)
-      (set! s4-0 338)
+    (((progress-screen memcard-error-saving))
+      (set! s4-0 (game-text-id error-saving))
       )
-    ((24)
-     (set! s4-0 339)
+    (((progress-screen memcard-error-formatting))
+     (set! s4-0 (game-text-id error-formatting))
      )
-    ((25)
-     (set! s4-0 340)
+    (((progress-screen memcard-error-creating))
+     (set! s4-0 (game-text-id error-creating-data))
      )
     )
    (let ((s3-0 print-game-text-scaled))
-    (format
-     (clear *temp-string*)
-     (lookup-text! *common-text* (the-as game-text-id s4-0) #f)
-     1
-     )
+    (format (clear *temp-string*) (lookup-text! *common-text* s4-0 #f) 1)
     (s3-0 *temp-string* (-> obj transition-percentage-invert) arg0 128)
     )
    )
@@ -1276,7 +1276,7 @@
 
 ;; definition for method 50 of type progress
 ;; INFO: Return type mismatch int vs none.
-(defmethod dummy-50 progress ((obj progress) (arg0 font-context))
+(defmethod draw-auto-save progress ((obj progress) (arg0 font-context))
   (set! (-> arg0 origin x) (the float (- 35 (-> obj left-x-offset))))
   (set! (-> arg0 origin y) 18.0)
   (let ((v1-2 arg0))
@@ -1353,7 +1353,7 @@
 
 ;; definition for method 54 of type progress
 ;; INFO: Return type mismatch int vs none.
-(defmethod dummy-54 progress ((obj progress) (arg0 font-context))
+(defmethod draw-pal-change-to-60hz progress ((obj progress) (arg0 font-context))
   (set! (-> arg0 origin x) (the float (- 50 (-> obj left-x-offset))))
   (set! (-> arg0 origin y) 20.0)
   (let ((v1-2 arg0))
@@ -1415,7 +1415,7 @@
 
 ;; definition for method 56 of type progress
 ;; INFO: Return type mismatch int vs none.
-(defmethod dummy-56 progress ((obj progress) (arg0 font-context))
+(defmethod draw-no-disc progress ((obj progress) (arg0 font-context))
   (set! (-> arg0 origin x) (the float (- 50 (-> obj left-x-offset))))
   (set! (-> arg0 origin y) 50.0)
   (let ((v1-2 arg0))
@@ -1469,7 +1469,7 @@
 
 ;; definition for method 57 of type progress
 ;; INFO: Return type mismatch int vs none.
-(defmethod dummy-57 progress ((obj progress) (arg0 font-context))
+(defmethod draw-bad-disc progress ((obj progress) (arg0 font-context))
   (set! (-> arg0 origin x) (the float (- 50 (-> obj left-x-offset))))
   (set! (-> arg0 origin y) 50.0)
   (let ((v1-2 arg0))
@@ -1521,7 +1521,7 @@
 
 ;; definition for method 58 of type progress
 ;; INFO: Return type mismatch int vs none.
-(defmethod dummy-58 progress ((obj progress) (arg0 font-context))
+(defmethod draw-quit progress ((obj progress) (arg0 font-context))
   (set! (-> arg0 origin x) (the float (- 50 (-> obj left-x-offset))))
   (set! (-> arg0 origin y) 70.0)
   (let ((v1-2 arg0))
@@ -1546,7 +1546,7 @@
 
 ;; definition for method 55 of type progress
 ;; INFO: Return type mismatch int vs none.
-(defmethod dummy-55 progress ((obj progress) (arg0 font-context))
+(defmethod draw-pal-now-60hz progress ((obj progress) (arg0 font-context))
   (set! (-> arg0 origin x) (the float (- 50 (-> obj left-x-offset))))
   (set! (-> arg0 origin y) 45.0)
   (let ((v1-2 arg0))
@@ -1581,7 +1581,7 @@
 
 ;; definition for method 27 of type progress
 ;; INFO: Return type mismatch int vs none.
-(defmethod dummy-27 progress ((obj progress))
+(defmethod draw-notice-screen progress ((obj progress))
   (hide-progress-icons)
   (when *common-text*
    (let
@@ -1599,53 +1599,67 @@
       )
      )
     (case (-> obj display-state) 
-     ((10)
-       (dummy-49 obj a1-1)
+     (((progress-screen memcard-format))
+       (draw-memcard-format obj a1-1)
        )
-     ((7 8 9)
-      (dummy-35 obj a1-1)
+     (((progress-screen memcard-no-space)
+       (progress-screen memcard-not-inserted)
+       (progress-screen memcard-not-formatted)
+       )
+      (draw-memcard-storage-error obj a1-1)
       )
-     ((11)
-      (dummy-36 obj a1-1)
+     (((progress-screen memcard-data-exists))
+      (draw-memcard-data-exists obj a1-1)
       )
-     ((23)
-      (dummy-37 obj a1-1)
+     (((progress-screen memcard-no-data))
+      (draw-memcard-no-data obj a1-1)
       )
-     ((12 13 14 15)
-      (dummy-38 obj a1-1)
+     (((progress-screen memcard-loading)
+       (progress-screen memcard-saving)
+       (progress-screen memcard-formatting)
+       (progress-screen memcard-creating)
+       )
+      (draw-memcard-accessing obj a1-1)
       )
-     ((19)
-      (dummy-39 obj a1-1)
+     (((progress-screen memcard-insert))
+      (draw-memcard-insert obj a1-1)
       )
-     ((16 17 18)
-      (dummy-40 obj a1-1)
+     (((progress-screen load-game)
+       (progress-screen save-game)
+       (progress-screen save-game-title)
+       )
+      (draw-memcard-file-select obj a1-1)
       )
-     ((26)
-      (dummy-41 obj a1-1)
+     (((progress-screen memcard-auto-save-error))
+      (draw-memcard-auto-save-error obj a1-1)
       )
-     ((22)
-      (dummy-42 obj a1-1)
+     (((progress-screen memcard-removed))
+      (draw-memcard-removed obj a1-1)
       )
-     ((20 21 24 25)
-      (dummy-43 obj a1-1)
+     (((progress-screen memcard-error-loading)
+       (progress-screen memcard-error-saving)
+       (progress-screen memcard-error-formatting)
+       (progress-screen memcard-error-creating)
+       )
+      (draw-memcard-error obj a1-1)
       )
-     ((29)
-      (dummy-50 obj a1-1)
+     (((progress-screen auto-save))
+      (draw-auto-save obj a1-1)
       )
-     ((30)
-      (dummy-54 obj a1-1)
+     (((progress-screen pal-change-to-60hz))
+      (draw-pal-change-to-60hz obj a1-1)
       )
-     ((31)
-      (dummy-55 obj a1-1)
+     (((progress-screen pal-now-60hz))
+      (draw-pal-now-60hz obj a1-1)
       )
-     ((32)
-      (dummy-56 obj a1-1)
+     (((progress-screen no-disc))
+      (draw-no-disc obj a1-1)
       )
-     ((33)
-      (dummy-57 obj a1-1)
+     (((progress-screen bad-disc))
+      (draw-bad-disc obj a1-1)
       )
-     ((34)
-      (dummy-58 obj a1-1)
+     (((progress-screen quit))
+      (draw-quit obj a1-1)
       )
      )
     )
@@ -1716,7 +1730,10 @@
 ;; definition for method 28 of type progress
 ;; INFO: Return type mismatch int vs none.
 ;; Used lq/sq
-(defmethod dummy-28 progress ((obj progress) (arg0 int) (arg1 int) (arg2 float))
+(defmethod
+  draw-options
+  progress
+  ((obj progress) (arg0 int) (arg1 int) (arg2 float))
   (local-vars
    (sv-112 font-context)
    (sv-128 int)
@@ -2250,7 +2267,7 @@
 
 ;; definition for method 17 of type progress
 ;; INFO: Return type mismatch int vs none.
-(defmethod dummy-17 progress ((obj progress))
+(defmethod draw-progress progress ((obj progress))
   (let
    ((f30-0
      (+

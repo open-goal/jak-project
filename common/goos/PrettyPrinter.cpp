@@ -31,7 +31,7 @@ goos::Object float_representation(float value) {
   u32 int_value;
   memcpy(&int_value, &value, 4);
   u8 exp = (int_value >> 23) & 0xff;
-  u8 mant = int_value & 0x7fffff;
+  u32 mant = int_value & 0x7fffff;
   if ((exp == 0 && mant != 0) || exp == 0xff) {
     if (exp == 0) {
       lg::warn("Zero-exponent float (0x{:08X}) detected! Unsupported on the PS2.", int_value);
