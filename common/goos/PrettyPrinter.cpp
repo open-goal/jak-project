@@ -34,11 +34,11 @@ goos::Object float_representation(float value) {
   u8 mant = int_value & 0x7fffff;
   if ((exp == 0 && mant != 0) || exp == 0xff) {
     if (exp == 0) {
-      lg::warn("Zero-exponent float (0x{:08x}) detected! Unsupported on the PS2.", int_value);
+      lg::warn("Zero-exponent float (0x{:08X}) detected! Unsupported on the PS2.", int_value);
     } else if (exp == 255) {
       // needlessly complicated
-      lg::warn("{} (0x{:08x}) detected! Unsupported on the PS2.",
-               mant == 0 ? "Infinity" : "NaN", int_value);
+      lg::warn("{} (0x{:08X}) detected! Unsupported on the PS2.", mant == 0 ? "Infinity" : "NaN",
+               int_value);
     }
     return pretty_print::build_list("the-as", "float", fmt::format("#x{:x}", int_value));
   } else if (const_floats.find(int_value) != const_floats.end()) {
