@@ -136,7 +136,10 @@ It type checks the arguments for the entry function.
     (push! *defstate-type-stack* beh-type)
     )
   )
-
+(defmacro clear-def-state-stack ()
+  (set! *defstate-type-stack* '())
+  `(none)
+  )
 (defmacro defstate (state-name parents
                                &key (virtual #f)
                                &key (event #f)
@@ -151,7 +154,7 @@ It type checks the arguments for the entry function.
   (with-gensyms (new-state)
     (let ((defstate-type (first parents)))
       (when (not (null? *defstate-type-stack*))
-        (ferror "*defstate-type-stack* leaked! An error probably happened in a previous defstate. stack is: {}"
+        (fmt #t "*defstate-type-stack* leaked! An error probably happened in a previous defstate. stack is: {}"
                  *defstate-type-stack*)
         )
       (set! *defstate-type-stack* '())
