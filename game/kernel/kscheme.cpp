@@ -428,10 +428,10 @@ Ptr<Function> make_function_from_c_win32(void* func, bool arg3_is_pp) {
   }
 
   if (arg3_is_pp) {
-    // mov rcx, r13. Puts pp in the third argument.
-    mem.c()[i++] = 0x4c;
+    // mov r8, r13. Puts pp in the third argument.
+    mem.c()[i++] = 0x43;
     mem.c()[i++] = 0x89;
-    mem.c()[i++] = 0xe9;
+    mem.c()[i++] = 0xe8;
   }
 
   /*
