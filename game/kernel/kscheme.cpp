@@ -126,8 +126,11 @@ u64 goal_malloc(u32 heap, u32 size, u32 flags, u32 name) {
  * If it's not a heap, treat it as a stack allocation and just memset it to zero.
  * Type is only used to print a debug message if the allocation fails, so it can be null or not
  * completely defined.
+ *
+ * The pp argument is added.  It contains the current process.  If it is unknown, it is set to
+ * UNKNOWN_PROCESS (UINT32_MAX).
  */
-u64 alloc_from_heap(u32 heapSymbol, u32 type, s32 size) {
+u64 alloc_from_heap(u32 heapSymbol, u32 type, s32 size, u32 pp) {
   assert(size > 0);
 
   // align to 16 bytes (part one)
@@ -165,22 +168,34 @@ u64 alloc_from_heap(u32 heapSymbol, u32 type, s32 size) {
 
     return kmalloc(*Ptr<Ptr<kheapinfo>>(heapSymbol), size, KMALLOC_MEMSET, gstr->data()).offset;
   } else if (heapOffset == FIX_SYM_PROCESS_TYPE) {
-    assert(false);  // nyi
-    return 0;
+    if (pp == UNKNOWN_PP) {
+      // added
+      MsgErr(
+          "Attempted to do a process allocation, but pp was UNKNOWN_PP. This is not yet supported "
+          "by kscheme.cpp.\n");
+      assert(false);
+    }
+
+    if (pp == 0) {
+      // added
+      MsgErr("Attempted to do a process allocation, but pp was 0.\n");
+      assert(false);
+    }
+
     // allocate on current process heap
-    //    Ptr start = *ptr<Ptr>(getS6() + 0x4c + 8);
-    //    Ptr heapEnd = *ptr<Ptr>(getS6() + 0x4c + 4);
-    //    Ptr allocEnd = start + alignedSize;
-    //
-    //    // there's room, bump allocate
-    //    if(allocEnd < heapEnd) {
-    //      *ptr<Ptr>(getS6() + 0x4c + 8) = allocEnd;
-    //      memset(vptr(start), 0, (size_t)alignedSize);
-    //      return start;
-    //    } else {
-    //      MsgErr("kmalloc: !alloc mem in heap for #<process @ #x%x> (%d bytes)\n", getS6(),
-    //      alignedSize); return 0;
-    //    }
+    u32 start = *Ptr<u32>(pp + 0x4c + 8);
+    u32 heapEnd = *Ptr<u32>(pp + 0x4c + 4);
+    u32 allocEnd = start + alignedSize;
+
+    // there's room, bump allocate
+    if (allocEnd < heapEnd) {
+      *Ptr<u32>(pp + 0x4c + 8) = allocEnd;
+      memset(Ptr<u8>(start).c(), 0, (size_t)alignedSize);
+      return start;
+    } else {
+      MsgErr("kmalloc: !alloc mem in heap for #<process @ #x%x> (%d bytes)\n", pp, alignedSize);
+      return 0;
+    }
   } else if (heapOffset == FIX_SYM_SCRATCH) {
     assert(false);  // nyi, I think unused.
     return 0;
@@ -194,15 +209,17 @@ u64 alloc_from_heap(u32 heapSymbol, u32 type, s32 size) {
  * Allocate untyped memory.
  */
 u64 alloc_heap_memory(u32 heap, u32 size) {
-  return alloc_from_heap(heap, 0, size);
+  // should never happen on process heap
+  return alloc_from_heap(heap, 0, size, UNKNOWN_PP);
 }
 
 /*!
  * Allocate memory and add type tag for an object.
  * For allocating basics.
+ * Called from GOAL.
  */
-u64 alloc_heap_object(u32 heap, u32 type, u32 size) {
-  auto mem = alloc_from_heap(heap, type, size);
+u64 alloc_heap_object(u32 heap, u32 type, u32 size, u32 pp) {
+  auto mem = alloc_from_heap(heap, type, size, pp);
   if (!mem) {
     return 0;
   }
@@ -215,14 +232,16 @@ u64 alloc_heap_object(u32 heap, u32 type, u32 size) {
  * Allocate a structure and get the structure size from the type.
  */
 u64 new_structure(u32 heap, u32 type) {
-  return alloc_from_heap(heap, type, Ptr<Type>(type)->allocated_size);
+  // should never happen on process heap
+  return alloc_from_heap(heap, type, Ptr<Type>(type)->allocated_size, UNKNOWN_PP);
 }
 
 /*!
  * Allocate a structure with a dynamic size
  */
 u64 new_dynamic_structure(u32 heap_symbol, u32 type, u32 size) {
-  return alloc_from_heap(heap_symbol, type, size);
+  // should never happen on process heap
+  return alloc_from_heap(heap_symbol, type, size, UNKNOWN_PP);
 }
 
 /*!
@@ -235,8 +254,8 @@ void delete_structure(u32 s) {
 /*!
  * Allocate a basic of fixed size.
  */
-u64 new_basic(u32 heap, u32 type) {
-  return alloc_heap_object(heap, type, Ptr<Type>(type)->allocated_size);
+u64 new_basic(u32 heap, u32 type, u32 /*unused*/, u32 pp) {
+  return alloc_heap_object(heap, type, Ptr<Type>(type)->allocated_size, pp);
 }
 
 /*!
@@ -254,7 +273,7 @@ void delete_basic(u32 s) {
  * Allocate a new pair and set its car and cdr.
  */
 u64 new_pair(u32 heap, u32 type, u32 car, u32 cdr) {
-  auto mem = alloc_from_heap(heap, type, Ptr<Type>(type)->allocated_size);
+  auto mem = alloc_from_heap(heap, type, Ptr<Type>(type)->allocated_size, UNKNOWN_PP);
   if (!mem) {
     return 0;
   }
@@ -285,7 +304,7 @@ u64 make_string(u32 size) {
 
   // total size is mem_size (chars + null term), plus basic_offset (type tag) + 4 (string size)
   auto mem = alloc_heap_object((s7 + FIX_SYM_GLOBAL_HEAP).offset, *(s7 + FIX_SYM_STRING_TYPE),
-                               mem_size + BASIC_OFFSET + sizeof(uint32_t));
+                               mem_size + BASIC_OFFSET + sizeof(uint32_t), UNKNOWN_PP);
 
   // set the string size field.
   if (mem) {
@@ -306,7 +325,7 @@ u64 make_string_from_c(const char* c_str) {
   }
 
   auto mem = alloc_heap_object((s7 + FIX_SYM_GLOBAL_HEAP).offset, *(s7 + FIX_SYM_STRING_TYPE),
-                               mem_size + BASIC_OFFSET + 4);
+                               mem_size + BASIC_OFFSET + 4, UNKNOWN_PP);
   // there's no check for failed allocation here!
 
   // string size field
@@ -325,9 +344,9 @@ void _arg_call_linux();
  * This creates an OpenGOAL function from a C++ function. Only 6 arguments can be accepted.
  * But calling this function is fast. It used to be really fast but wrong.
  */
-Ptr<Function> make_function_from_c_linux(void* func) {
-  auto mem = Ptr<u8>(
-      alloc_heap_object(s7.offset + FIX_SYM_GLOBAL_HEAP, *(s7 + FIX_SYM_FUNCTION_TYPE), 0x40));
+Ptr<Function> make_function_from_c_linux(void* func, bool arg3_is_pp) {
+  auto mem = Ptr<u8>(alloc_heap_object(s7.offset + FIX_SYM_GLOBAL_HEAP,
+                                       *(s7 + FIX_SYM_FUNCTION_TYPE), 0x40, UNKNOWN_PP));
   auto f = (uint64_t)func;
   auto target_function = (u8*)&f;
   auto trampoline_function_addr = _arg_call_linux;
@@ -351,6 +370,13 @@ Ptr<Function> make_function_from_c_linux(void* func) {
     mem.c()[offset++] = trampoline[i];
   }
 
+  if (arg3_is_pp) {
+    // mov rcx, r13. Puts pp in the third argument.
+    mem.c()[offset++] = 0x4c;
+    mem.c()[offset++] = 0x89;
+    mem.c()[offset++] = 0xe9;
+  }
+
   // jmp rax
   mem.c()[offset++] = 0xff;
   mem.c()[offset++] = 0xe0;
@@ -368,10 +394,10 @@ Ptr<Function> make_function_from_c_linux(void* func) {
  * This creates a simple trampoline function which jumps to the C function and reorders the
  * arguments to be correct for Windows.
  */
-Ptr<Function> make_function_from_c_win32(void* func) {
+Ptr<Function> make_function_from_c_win32(void* func, bool arg3_is_pp) {
   // allocate a function object on the global heap
-  auto mem = Ptr<u8>(
-      alloc_heap_object(s7.offset + FIX_SYM_GLOBAL_HEAP, *(s7 + FIX_SYM_FUNCTION_TYPE), 0x80));
+  auto mem = Ptr<u8>(alloc_heap_object(s7.offset + FIX_SYM_GLOBAL_HEAP,
+                                       *(s7 + FIX_SYM_FUNCTION_TYPE), 0x80, UNKNOWN_PP));
   auto f = (uint64_t)func;
   auto fp = (u8*)&f;
 
@@ -384,26 +410,38 @@ Ptr<Function> make_function_from_c_win32(void* func) {
   }
 
   /*
-push rdi
-push rsi
-push rdx
-push rcx
-pop r9
-pop r8
-pop rdx
-pop rcx
-push r10
-push r11
-sub rsp, 40
-call rax
-add rsp, 40
-pop r11
-pop r10
-ret
+    push rdi
+    push rsi
+    push rdx
+    push rcx
+    pop r9
+    pop r8
+    pop rdx
+    pop rcx
+    push r10
+    push r11
+    sub rsp, 40
    */
-  for (auto x :
-       {0x57, 0x56, 0x52, 0x51, 0x41, 0x59, 0x41, 0x58, 0x5A, 0x59, 0x41, 0x52, 0x41, 0x53, 0x48,
-        0x83, 0xEC, 0x28, 0xFF, 0xD0, 0x48, 0x83, 0xC4, 0x28, 0x41, 0x5B, 0x41, 0x5A, 0xC3}) {
+  for (auto x : {0x57, 0x56, 0x52, 0x51, 0x41, 0x59, 0x41, 0x58, 0x5A, 0x59, 0x41, 0x52, 0x41, 0x53,
+                 0x48, 0x83, 0xEC, 0x28}) {
+    mem.c()[i++] = x;
+  }
+
+  if (arg3_is_pp) {
+    // mov r9, r13. Puts pp in the third argument.
+    mem.c()[i++] = 0x4d;
+    mem.c()[i++] = 0x89;
+    mem.c()[i++] = 0xe9;
+  }
+
+  /*
+    call rax
+    add rsp, 40
+    pop r11
+    pop r10
+    ret
+   */
+  for (auto x : {0xFF, 0xD0, 0x48, 0x83, 0xC4, 0x28, 0x41, 0x5B, 0x41, 0x5A, 0xC3}) {
     mem.c()[i++] = x;
   }
 
@@ -419,8 +457,8 @@ void _stack_call_win32();
 
 Ptr<Function> make_stack_arg_function_from_c_linux(void* func) {
   // allocate a function object on the global heap
-  auto mem = Ptr<u8>(
-      alloc_heap_object(s7.offset + FIX_SYM_GLOBAL_HEAP, *(s7 + FIX_SYM_FUNCTION_TYPE), 0x40));
+  auto mem = Ptr<u8>(alloc_heap_object(s7.offset + FIX_SYM_GLOBAL_HEAP,
+                                       *(s7 + FIX_SYM_FUNCTION_TYPE), 0x40, UNKNOWN_PP));
   auto f = (uint64_t)func;
   auto target_function = (u8*)&f;
   auto trampoline_function_addr = _stack_call_linux;
@@ -459,8 +497,8 @@ Ptr<Function> make_stack_arg_function_from_c_linux(void* func) {
  */
 Ptr<Function> make_stack_arg_function_from_c_win32(void* func) {
   // allocate a function object on the global heap
-  auto mem = Ptr<u8>(
-      alloc_heap_object(s7.offset + FIX_SYM_GLOBAL_HEAP, *(s7 + FIX_SYM_FUNCTION_TYPE), 0x80));
+  auto mem = Ptr<u8>(alloc_heap_object(s7.offset + FIX_SYM_GLOBAL_HEAP,
+                                       *(s7 + FIX_SYM_FUNCTION_TYPE), 0x80, UNKNOWN_PP));
   auto f = (uint64_t)func;
   auto fp = (u8*)&f;
   auto trampoline_function_addr = _stack_call_win32;
@@ -500,11 +538,11 @@ Ptr<Function> make_stack_arg_function_from_c_win32(void* func) {
  *
  * The implementation is to create a simple trampoline function which jumps to the C function.
  */
-Ptr<Function> make_function_from_c(void* func) {
+Ptr<Function> make_function_from_c(void* func, bool arg3_is_pp = false) {
 #ifdef __linux__
-  return make_function_from_c_linux(func);
+  return make_function_from_c_linux(func, arg3_is_pp);
 #elif _WIN32
-  return make_function_from_c_win32(func);
+  return make_function_from_c_win32(func, arg3_is_pp);
 #endif
 }
 
@@ -520,8 +558,8 @@ Ptr<Function> make_stack_arg_function_from_c(void* func) {
  * Create a GOAL function which does nothing and immediately returns.
  */
 Ptr<Function> make_nothing_func() {
-  auto mem = Ptr<u8>(
-      alloc_heap_object(s7.offset + FIX_SYM_GLOBAL_HEAP, *(s7 + FIX_SYM_FUNCTION_TYPE), 0x14));
+  auto mem = Ptr<u8>(alloc_heap_object(s7.offset + FIX_SYM_GLOBAL_HEAP,
+                                       *(s7 + FIX_SYM_FUNCTION_TYPE), 0x14, UNKNOWN_PP));
 
   // a single x86-64 ret.
   mem.c()[0] = 0xc3;
@@ -533,8 +571,8 @@ Ptr<Function> make_nothing_func() {
  * Create a GOAL function which returns 0.
  */
 Ptr<Function> make_zero_func() {
-  auto mem = Ptr<u8>(
-      alloc_heap_object(s7.offset + FIX_SYM_GLOBAL_HEAP, *(s7 + FIX_SYM_FUNCTION_TYPE), 0x14));
+  auto mem = Ptr<u8>(alloc_heap_object(s7.offset + FIX_SYM_GLOBAL_HEAP,
+                                       *(s7 + FIX_SYM_FUNCTION_TYPE), 0x14, UNKNOWN_PP));
   // xor eax, eax
   mem.c()[0] = 0x31;
   mem.c()[1] = 0xc0;
@@ -754,7 +792,7 @@ u32 size_of_type(u32 method_count) {
 Ptr<Type> alloc_and_init_type(Ptr<Symbol> sym, u32 method_count) {
   // allocate from the global heap
   u32 new_type = alloc_heap_object((s7 + FIX_SYM_GLOBAL_HEAP).offset, *(s7 + FIX_SYM_TYPE_TYPE),
-                                   size_of_type(method_count));
+                                   size_of_type(method_count), UNKNOWN_PP);
 
   // add to symbol table.
   sym->value = new_type;
@@ -1407,7 +1445,7 @@ u64 copy_structure(u32 it, u32 unknown) {
  * and checks it against the symbol type pointer to see if its a symbol. It seems possible to have a
  * false positive for this check.
  */
-u64 copy_basic(u32 obj, u32 heap) {
+u64 copy_basic(u32 obj, u32 heap, u32 /*unused*/, u32 pp) {
   // determine size of basic. We call a method instead of using asize_of_basic in case the type has
   // overridden the default asize_of method.
   u32 size = call_method_of_type(obj, Ptr<Type>(*Ptr<u32>(obj - BASIC_OFFSET)), GOAL_ASIZE_METHOD);
@@ -1415,7 +1453,7 @@ u64 copy_basic(u32 obj, u32 heap) {
 
   if (*Ptr<u32>(heap - 4) == *(s7 + FIX_SYM_SYMBOL_TYPE)) {
     // we think we're creating a new copy on a heap.  First allocate memory...
-    result = alloc_heap_object(heap, *Ptr<u32>(obj - BASIC_OFFSET), size);
+    result = alloc_heap_object(heap, *Ptr<u32>(obj - BASIC_OFFSET), size, pp);
     // then copy! (minus the type tag, alloc_heap_object already did it for us)
     memcpy(Ptr<u32>(result).c(), Ptr<u32>(obj).c(), size - BASIC_OFFSET);
   } else {
@@ -1711,7 +1749,7 @@ s32 InitHeapAndSymbol() {
                    make_function_from_c((void*)asize_of_basic).offset);
   // NOTE: this is a typo in the game too.
   set_fixed_symbol(FIX_SYM_COPY_BASIC_FUNC, "asize-of-basic-func",
-                   make_function_from_c((void*)copy_basic).offset);
+                   make_function_from_c((void*)copy_basic, true).offset);
   set_fixed_symbol(FIX_SYM_DEL_BASIC_FUNC, "delete-basic",
                    make_function_from_c((void*)delete_basic).offset);
 
@@ -1766,7 +1804,7 @@ s32 InitHeapAndSymbol() {
   auto inspect_basic_function = make_function_from_c((void*)inspect_basic);
   set_fixed_type(FIX_SYM_BASIC_TYPE, "basic", (s7 + FIX_SYM_STRUCTURE_TYPE).cast<Symbol>(),
                  pack_type_flag(9, 0, 4), print_basic_func.offset, inspect_basic_function.offset);
-  auto new_basic_func = make_function_from_c((void*)new_basic);
+  auto new_basic_func = make_function_from_c((void*)new_basic, true);
   auto basicType = Ptr<Type>(*(s7 + FIX_SYM_BASIC_TYPE));
   basicType->new_method = new_basic_func;
   basicType->delete_method.offset = *(s7 + FIX_SYM_DEL_BASIC_FUNC);
@@ -1902,7 +1940,7 @@ s32 InitHeapAndSymbol() {
                  pack_type_flag(9, 0, 0x10), 0, 0);
 
   // Object new macro
-  auto goal_new_object_func = make_function_from_c((void*)alloc_heap_object);
+  auto goal_new_object_func = make_function_from_c((void*)alloc_heap_object, true);
   object_type->new_method = goal_new_object_func;
 
   // Stuff that isn't in a fixed spot:

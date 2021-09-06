@@ -882,6 +882,11 @@ TEST_F(WithGameTests, TrickyFloatBehavior) {
                                           {"#x80000000 1.0000 #xffffffffbf800000\n0\n"});
 }
 
+TEST_F(WithGameTests, ProcessAllocation) {
+  shared_compiler->runner.run_static_test(env, testCategory, "test-kernel-alloc.gc",
+                                          {"diff is 16\n0\n"});
+}
+
 TEST(TypeConsistency, TypeConsistency) {
   Compiler compiler;
   compiler.enable_throw_on_redefines();
