@@ -13270,8 +13270,8 @@
 (deftype sprite-array-2d (basic)
   ((num-sprites int32 2 :offset-assert 4)
    (num-valid   int32 2 :offset-assert 12)
-   (vec-data    uint32    :offset-assert 20)
-   (adgif-data  uint32    :offset-assert 24)
+   (vec-data    pointer   :offset-assert 20)
+   (adgif-data  (inline-array adgif-shader)   :offset-assert 24)
    (pad         uint128 4 :offset-assert 32)
    (data        uint128 1 :offset-assert 96)
    )
@@ -13312,8 +13312,8 @@
 (deftype sprite-array-3d (basic)
   ((num-sprites int32 2 :offset-assert 4)
    (num-valid   int32 2 :offset-assert 12)
-   (vec-data    uint32    :offset-assert 20)
-   (adgif-data  uint32    :offset-assert 24)
+   (vec-data    pointer   :offset-assert 20)
+   (adgif-data  (inline-array adgif-shader)   :offset-assert 24)
    (data        uint128 1 :offset-assert 32)
    )
   (:methods
@@ -13527,8 +13527,6 @@
    (last-spawn-frame int32            :offset-assert 36)
    (last-spawn-time  int32            :offset-assert 40)
    (center           vector  :inline  :offset-assert 48)
-   ;; todo - what's the real type?
-   ;; maybe its sparticle-launch-state based on heap-base.
    (data             sparticle-launch-state :inline :dynamic :offset-assert 64)
    )
   :method-count-assert 14
@@ -13611,14 +13609,17 @@
    (num-alloc       uint32 2 :offset-assert 20)
    (is-3d           basic     :offset-assert 28)
    (flags           uint32    :offset-assert 32)
-   (alloc-table     uint32    :offset-assert 36)
-   (cpuinfo-table   sparticle-cpuinfo    :offset-assert 40)
-   (vecdata-table   uint32    :offset-assert 44)
-   (adgifdata-table uint32    :offset-assert 48)
+   (alloc-table     (pointer uint64)    :offset-assert 36)
+   (cpuinfo-table   (inline-array sparticle-cpuinfo)    :offset-assert 40)
+   (vecdata-table   pointer    :offset-assert 44) ;; sprite-vec-data-2d or sprite-vec-data-3d
+   (adgifdata-table (inline-array adgif-shader)    :offset-assert 48)
    )
   :method-count-assert 9
   :size-assert         #x34
   :flag-assert         #x900000034
+  (:methods
+    (new (symbol type int int symbol pointer (inline-array adgif-shader)) _type_ 0)
+    )
   )
 
 ;; - Symbols
@@ -14357,8 +14358,8 @@
     (respond-progress (_type_) none 30)
     (dummy-31 (_type_) none 31)
     (dummy-32 (_type_) symbol 32)
-    (init-manipys (_type_) none 33)
-    (init-particles (_type_) none 34)
+    (initialize-icons (_type_) none 33)
+    (initialize-particles (_type_) none 34)
     (draw-memcard-storage-error (_type_ font-context) none 35)
     (draw-memcard-data-exists (_type_ font-context) none 36)
     (draw-memcard-no-data (_type_ font-context) none 37)
@@ -16421,7 +16422,7 @@
 ;; - Functions
 
 (define-extern sphere-in-view-frustum? function)
-(define-extern kill-all-particles-with-key function)
+(define-extern kill-all-particles-with-key (function sparticle-launch-control none))
 (define-extern sp-relaunch-setup-fields function)
 (define-extern sp-init-fields! function)
 (define-extern sp-launch-particles-var (function sparticle-system sparticle-launcher vector symbol symbol float none)) ;; asm - ret not confirmed
@@ -16474,11 +16475,11 @@
 (define-extern sparticle-60-to-50 function)
 (define-extern sparticle-50-to-60 function)
 (define-extern forall-particles function)
-(define-extern sparticle-kill-it-level0 function)
-(define-extern sparticle-kill-it-level1 function)
-(define-extern forall-particles-with-key (function sparticle-launch-control function symbol symbol none))
+(define-extern sparticle-kill-it-level0 (function sparticle-system sparticle-cpuinfo none))
+(define-extern sparticle-kill-it-level1 (function sparticle-system sparticle-cpuinfo none))
+(define-extern forall-particles-with-key (function sparticle-launch-control (function sparticle-system sparticle-cpuinfo none) symbol symbol none))
 (define-extern sparticle-kill-it (function sparticle-system sparticle-cpuinfo none))
-(define-extern forall-particles-with-key-runner (function sparticle-launch-control function sparticle-system none)) ;; TODO - not complete!
+(define-extern forall-particles-with-key-runner (function sparticle-launch-control (function sparticle-system sparticle-cpuinfo none) sparticle-system none))
 (define-extern sp-get-approx-alloc-size function)
 (define-extern sp-process-block function)
 (define-extern sp-copy-to-spr function)
@@ -16497,7 +16498,7 @@
 
 ;; - Unknowns
 
-;;(define-extern *particles-flag* object) ;; unknown type
+(define-extern *particles-flag* symbol)
 (define-extern *sp-particle-system-2d* sparticle-system)
 (define-extern *sp-particle-system-3d* sparticle-system)
 

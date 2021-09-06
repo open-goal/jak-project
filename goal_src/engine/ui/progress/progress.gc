@@ -378,7 +378,7 @@
                         :stack *scratch-memory-top*
                         )))
       (when new-manipy
-       ;;(set! (-> (-> new-manipy) draw dma-add-func) dma-add-process-drawable-hud)
+       ;;(set! (-> (-> new-manipy) draw dma-add-func) dma-add-process-drawable-hud) TODO
        (set-vector! (-> (-> new-manipy) root trans) 0.0 0.0 0.0 1.0)
        (set-vector! (-> (-> new-manipy) root scale) ,scale-x ,scale-y ,scale-x 1.0)
        (when #f
@@ -403,7 +403,7 @@
    )
   )
 
-(defmethod init-manipys progress ((obj progress))
+(defmethod initialize-icons progress ((obj progress))
   (progress-make-manipy-icon obj :skel *fuelcell-naked-sg*
                                  :x 256
                                  :y 77
@@ -545,10 +545,6 @@
   (none)
   )
 
-(defmacro progress-dbg (fmt-str &rest args)
-  `(format 0 ,(string-append "[PROGRESS] " fmt-str) ,@args)
-  )
-
 (define-extern progress-waiting (state progress))
 (defbehavior progress-init-by-other progress ()
   (logclear! (-> self mask) (process-mask menu progress))
@@ -577,8 +573,8 @@
    (set! (-> self display-state-stack v1-6) (the progress-screen 0))
    )
   (init-game-options self)
-  (init-manipys self)
-  (init-particles self)
+  (initialize-icons self)
+  (initialize-particles self)
   (set! (-> self particle-state 0) 0)
   (set! (-> self particle-state 1) 0)
   (set! (-> self particle-state 2) 0)
@@ -686,16 +682,12 @@
   (when (and *progress-process*
              (= (-> *progress-process* 0 next-state name) 'progress-gone)
              )
-   (progress-dbg "deactivate being~%")
    (copy-settings-from-target! *setting-control*)
-   (progress-dbg "deactivate parts~%")
    (dotimes (gp-0 (-> *progress-process* 0 nb-of-particles))
-    (progress-dbg "deactivate part #x~X (~A)%" (-> *progress-process* 0 particles gp-0 part))
     (deactivate (-> *progress-process* 0 particles gp-0 part))
     (set! (-> *progress-process* 0 particles gp-0 part matrix) -1)
     )
    (set! (-> *progress-process* 0 nb-of-particles) 0)
-   (progress-dbg "deactivate proc~%")
    (deactivate (-> *progress-process* 0))
    (set! *progress-process* (the-as (pointer progress) #f))
    (enable-level-text-file-loading)
@@ -942,14 +934,10 @@
 
 (defstate progress-gone (progress)
   :code (behavior ()
-   (progress-dbg "progress-gone!~%")
    (clear-pending-settings-from-process *setting-control* self 'process-mask)
-   (progress-dbg "progress-gone settings cleared!~%")
    (copy-settings-from-target! *setting-control*)
-   (progress-dbg "progress-gone settings copyd!~%")
    (logior! (-> self mask) (process-mask sleep))
    (suspend)
-   (progress-dbg "progress-gone-2!~%")
    (none)
    )
   )
