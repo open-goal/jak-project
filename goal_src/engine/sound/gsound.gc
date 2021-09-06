@@ -5,6 +5,9 @@
 ;; name in dgo: gsound
 ;; dgos: GAME, ENGINE
 
+;; use this constant to enable/disable the sound functions. debug purposes.
+(defglobalconstant PC_DEBUG_SOUND_ENABLE #f)
+
 ;; The sound playback stuff is all on the IOP so we use IOP RPCs to control it.
 ;; Ther is a "player" that plays sound effects, and a "loader" that takes care of loading banks.
 (define *sound-player-rpc* (new 'global 'rpc-buffer-pair (the uint (size-of sound-rpc-union)) (the-as uint 128) RPC-SOUND-PLAYER))
@@ -261,7 +264,9 @@
   )
 
 (defun sound-trans-convert ((dest vector3w) (src vector))
+  (format 0 "dest is ~A src is ~A~%" dest src)
   (let ((vec (if src src (ear-trans))))
+      (format 0 "vec is now ~A~%" vec)
       (set! (-> dest x) (the int (* (1/ 16) (-> vec x))))
       (set! (-> dest y) (the int (* (1/ 16) (-> vec y))))
       (set! (-> dest z) (the int (* (1/ 16) (-> vec z))))
@@ -334,20 +339,22 @@
 (defmacro sound-trans-from-process (cmd sound-trans)
   "Macro for getting an appropriate sound-trans from a process-drawable, if possible"
 
-  `(begin
-    (with-pp
-      (let ((proc (the process-drawable pp)))
-        (when (= ,sound-trans #t)
-          (if (and proc
-                   (type-type? (-> proc type) process-drawable)
-                   (nonzero? (-> proc root)))
-            (set! ,sound-trans (-> proc root trans))
-            (set! ,sound-trans (the vector #f))
-            )
+  `(with-pp
+    (let ((proc (the process-drawable pp)))
+      (format 0 "get proc~%")
+      (when (= ,sound-trans #t)
+        (format 0 "trans #t~%")
+        (if (and proc
+                 (type-type? (-> proc type) process-drawable)
+                 (nonzero? (-> proc root)))
+          (set! ,sound-trans (-> proc root trans))
+          (set! ,sound-trans (the vector #f))
           )
+        (format 0 "trans is ~A~%" ,sound-trans)
         )
       )
 
+    (format 0 "convert~%" ,sound-trans)
     (sound-trans-convert (-> ,cmd parms trans) ,sound-trans)
     )
   )
@@ -368,6 +375,7 @@
             (set! (-> cmd parms pitch-mod) pitch)
             (set! (-> cmd parms bend) bend)
 
+            (format 0 "stfp~%")
             (sound-trans-from-process cmd sound-trans)
             )
         )
@@ -858,7 +866,7 @@
 2 : flutflut
 3 : to-maincave
 4 : to-snow
-5 : sage-green
+5 : sage
 6 : assistant
 7 : birdlady
 8 : mayor

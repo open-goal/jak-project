@@ -551,7 +551,6 @@
 
 (define-extern progress-waiting (state progress))
 (defbehavior progress-init-by-other progress ()
-  (progress-dbg "initing...~%")
   (logclear! (-> self mask) (process-mask menu progress))
   (set! (-> self nb-of-particles) 0)
   (set! (-> self max-nb-of-particles) 40)
@@ -577,11 +576,8 @@
   (dotimes (v1-6 5)
    (set! (-> self display-state-stack v1-6) (the progress-screen 0))
    )
-  (progress-dbg "init-game-options~%")
   (init-game-options self)
-  (progress-dbg "init-manipys~%")
   (init-manipys self)
-  (progress-dbg "init-particles~%")
   (init-particles self)
   (set! (-> self particle-state 0) 0)
   (set! (-> self particle-state 1) 0)
@@ -615,7 +611,6 @@
   (set! (-> self particle-state 29) 0)
   (set! (-> self particle-state 30) 0)
   (set! (-> self particle-state 31) 0)
-  (progress-dbg "make quaternions~%")
   (let ((gp-0 (new 'stack-no-clear 'quaternion)))
    (quaternion-axis-angle! gp-0 0.0 1.0 0.0 16384.0)
    (quaternion*! (-> self icons 0 icon 0 root quat) gp-0 (-> self icons 0 icon 0 root quat))
@@ -626,12 +621,9 @@
    (quaternion-axis-angle! gp-0 0.0 1.0 0.0 0.0)
    (quaternion*! (-> self icons 3 icon 0 root quat) gp-0 (-> self icons 3 icon 0 root quat))
    )
-  (progress-dbg "adjust-ratios~%")
   (adjust-ratios self (get-aspect-ratio) (get-video-mode))
-  (progress-dbg "adjust-icons~%")
   (adjust-icons self)
   (set! (-> self event-hook) (-> progress-waiting event))
-  (progress-dbg "go!~%")
   (go progress-waiting)
   (none)
   )
@@ -648,7 +640,6 @@
       (make-levels-with-tasks-available-to-progress)
       (disable-level-text-file-loading)
       (set! (-> *progress-state* starting-state) screen)
-      (progress-dbg "activate.~%")
       (set! *progress-process* (make-init-process progress progress-init-by-other
                                                   :to creator
                                                   :stack *progress-stack-top*))
@@ -661,7 +652,8 @@
          ((!= *kernel-boot-message* 'play)
           (set! (-> s5-1 0 display-level-index) 4) ;; default misty on demo
           )
-         ((or (= s4-1 #f)
+         ((or (= s4-1 #f) (zero? s4-1) ;; temp
+         ;((or (= s4-1 #f)
               (< (length *level-task-data-remap*) (-> s4-1 info index))
               )
           (set! (-> s5-1 0 display-level-index) 0) ;; geyser rock
@@ -790,7 +782,7 @@
      (set! (-> v1-53 vector w) (-> *math-camera* hvdf-off w))
      )
     )
-   (dummy-11 (-> obj particles s5-0 part) *null-vector*)
+   ;(dummy-11 (-> obj particles s5-0 part) *null-vector*)
    )
   (none)
   )
@@ -905,6 +897,17 @@
       )
   )
 
+(defmacro test-make-target ()
+  `(begin
+    (set! *target* (-> (make-function-process target (lambda () (loop (suspend))) :from *target-dead-pool* :to *target-pool*)))
+    (set! (-> *target* control) (new 'global 'control-info *target* (collide-list-enum player)))
+    (set! (-> *target* fact-info-target) (new 'global 'fact-info-target *target* (pickup-type eco-pill-random)
+                                                                                 (-> *FACT-bank* default-pill-inc)))
+    (set! (-> *target* current-level) #f)
+    (set! (-> *target* game) *game-info*)
+    )
+  )
+
 (define-extern progress-gone (state progress))
 (define-extern progress-coming-in (state progress))
 (define-extern progress-going-out (state progress))
@@ -918,19 +921,19 @@
     #f
    )
   :code (behavior ()
-   (progress-dbg "progress-waiting begin")
+   (progress-dbg "progress-waiting begin~%")
    (loop
     (when (hud-hidden?)
-     (progress-dbg "progress-waiting rdy")
+     (progress-dbg "progress-waiting rdy~%")
      (dotimes (gp-0 (-> self nb-of-particles))
       (if (= (-> self particles gp-0 part matrix) -1)
        (set! (-> self particles gp-0 part matrix) (sprite-allocate-user-hvdf))
        )
       )
      (set-setting! *setting-control* self 'common-page 'set 0.0 1)
-     (progress-dbg "progress-waiting susp")
+     (progress-dbg "progress-waiting sp~%")
      (suspend)
-     (progress-dbg "progress-waiting go")
+     (progress-dbg "progress-waiting go~%")
      (go progress-coming-in)
      )
     (suspend)
@@ -3086,9 +3089,11 @@
           (gp-0 (-> *level-task-data* a1-0))
           )
     #t
+    (progress-dbg "on normal post and state is ~S~%" (enum->string progress-screen (-> self display-state)))
     (let ((s5-0 #f))
-     (case (-> self display-state) 
+     (case (-> self display-state)
       (((progress-screen fuel-cell))
+        (progress-dbg "draw fuel-cell~%")
         (set! s5-0 #t)
         (draw-fuel-cell-screen self a1-0)
         )
@@ -3257,11 +3262,15 @@
      (progress-screen money)
      (progress-screen buzzer)
      )
+        (progress-dbg "draw progress~%")
       (draw-progress self)
       )
     )
+   (progress-dbg "adjust sprites~%")
    (adjust-sprites self)
+   (progress-dbg "adjust icons~%")
    (adjust-icons self)
+   (progress-dbg "draw done~%")
    (none)
    )
   )
@@ -3271,11 +3280,10 @@
   (-> progress-waiting event)
   :enter
   (behavior ()
+   (progress-dbg "coming in~%")
    (sound-group-pause (the-as uint 255))
-   (logclear!
-    (-> *setting-control* default process-mask)
-    (process-mask pause menu)
-    )
+   (logclear! (-> *setting-control* default process-mask) (process-mask pause menu))
+   (progress-dbg "push setting~%")
    (push-setting!
     *setting-control*
     self
@@ -3284,7 +3292,9 @@
     0.0
     16
     )
+   (progress-dbg "copy settings~%")
    (copy-settings-from-target! *setting-control*)
+   (progress-dbg "snd~%")
    (sound-play-by-name
     (static-sound-name "select-menu")
     (new-sound-id)
@@ -3294,8 +3304,10 @@
     (the-as uint 1)
     (the-as vector #t)
     )
+   (progress-dbg "blackout~%")
    (set-blackout-frames 0)
    (set! *pause-lock* #f)
+   (progress-dbg "coming in enter done~%")
    (none)
    )
   :code

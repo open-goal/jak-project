@@ -2223,13 +2223,7 @@
 
 (defmethod draw-progress progress ((obj progress))
   (let
-   ((f30-0
-     (+
-      -409.0
-      (-> obj particles 2 init-pos x)
-      (* 0.8 (the float (-> obj left-x-offset)))
-      )
-     )
+   ((f30-0 (+ -409.0 (-> obj particles 2 init-pos x) (* 0.8 (the float (-> obj left-x-offset)))))
     (s5-0 (if (or (-> obj stat-transition) (nonzero? (-> obj level-transition)))
            0
            (-> obj transition-offset)
@@ -2244,25 +2238,11 @@
        )
       )
      )
-    (let*
-     ((s3-0 (-> *display* frames (-> *display* on-screen) frame global-buf))
-      (s4-0 (-> s3-0 base))
-      )
-     (let ((s2-0 draw-string-xy))
-      (format
-       (clear *temp-string*)
-       "~D"
-       (the int (+ 0.5 (-> *target* game money)))
-       )
-      (s2-0
-       *temp-string*
-       s3-0
-       (the int (+ 428.0 (the float s5-0) f30-0))
-       (- 12 (the int (* 0.16666667 f30-0)))
-       (font-color default)
-       (font-flags shadow kerning large)
-       )
-      )
+    (with-dma-buffer-add-bucket ((s3-0 (-> (current-frame) global-buf))
+                                 (bucket-id debug-draw0))
+     (draw-string-xy (string-format "~D" (the int (+ 0.5 (-> *target* game money)))) s3-0
+           (the int (+ 428.0 (the float s5-0) f30-0)) (- 12 (the int (* 0.16666667 f30-0)))
+           (font-color default) (font-flags shadow kerning large))
      (let ((s2-1 draw-string-xy))
       (format
        (clear *temp-string*)
@@ -2291,23 +2271,6 @@
        89
        (font-color default)
        (font-flags shadow kerning large)
-       )
-      )
-     (let ((a3-4 (-> s3-0 base)))
-      (let ((v1-20 (the-as object (-> s3-0 base))))
-       (set!
-        (-> (the-as dma-packet v1-20) dma)
-        (new 'static 'dma-tag :id (dma-tag-id next))
-        )
-       (set! (-> (the-as dma-packet v1-20) vif0) (new 'static 'vif-tag))
-       (set! (-> (the-as dma-packet v1-20) vif1) (new 'static 'vif-tag))
-       (set! (-> s3-0 base) (&+ (the-as pointer v1-20) 16))
-       )
-      (dma-bucket-insert-tag
-       (-> *display* frames (-> *display* on-screen) frame bucket-group)
-       (bucket-id debug-draw0)
-       s4-0
-       (the-as (pointer dma-tag) a3-4)
        )
       )
      )
@@ -2548,7 +2511,6 @@
     )
    )
   (set! (-> obj particles 17 init-pos y) 193.0)
-  0
   (none)
   )
 
