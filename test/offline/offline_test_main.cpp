@@ -289,7 +289,7 @@ class OfflineDecompilation : public ::testing::Test {
 
     std::vector<std::string> dgos = {"CGO/KERNEL.CGO", "CGO/ENGINE.CGO", "CGO/GAME.CGO",
                                      "DGO/BEA.DGO",    "CGO/L1.CGO",     "DGO/INT.DGO",
-                                     "DGO/VI1.DGO"};
+                                     "DGO/VI1.DGO",    "DGO/DEM.DGO"};
     std::vector<std::string> dgo_paths;
     if (g_iso_data_path.empty()) {
       for (auto& x : dgos) {
