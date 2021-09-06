@@ -867,6 +867,8 @@
 
   (MISSING-orb-hint #x233)
 
+  (firecanyon-not-enough-cells #x24f)
+
   (beach-gimmie #x262)
   (beach-sentinel #x263)
   (jungle-canyon-end #x264)
@@ -877,6 +879,8 @@
   (beach-seagulls-avalanche #x273)
 
   (misty-teetertotter-bonk-dax-tutorial #x2a4)
+
+  (firecanyon-collect-cells-text #x2b3)
 
   (village2-gambler-money #x300)
   (village2-geologist-money #x301)
@@ -16581,7 +16585,7 @@
     (initialize-collision (_type_ int) none 41)
     (dummy-42 (_type_) none 42)
     (TODO-RENAME-43 (_type_) none 43)
-    (dummy-44 (_type_) none 44)
+    (play-reminder (_type_) symbol 44)
     (dummy-45 (_type_) none 45)
     (dummy-46 (_type_) none 46)
     (target-above-threshold? (_type_) symbol 47)
@@ -18772,8 +18776,8 @@
 (define-extern ambient-hint-init-by-other (function none))
 (define-extern level-hint-process-cmd function)
 (define-extern task-known? (function game-task symbol))
-(define-extern can-grab-display? function)
-(define-extern level-hint-displayed? function)
+(define-extern can-grab-display? (function process-taskable symbol)) ;; unconfirmed, see assistant-firecanyon
+(define-extern level-hint-displayed? (function symbol)) ;; unconfirmed, see assistant-firecanyon
 (define-extern ambient-inspect function)
 
 ;; - Unknowns
@@ -20384,8 +20388,8 @@
 
 (define-extern othercam-calc function)
 (define-extern vector-for-ambient (function process-drawable vector vector))
-(define-extern hide-hud function)
-(define-extern hud-hidden? function)
+(define-extern hide-hud (function none)) ;; unconfirmed, see assistant-firecanyon
+(define-extern hud-hidden? (function symbol)) ;; unconfirmed, see assistant-firecanyon
 (define-extern process-taskable-clean-up-after-talking function)
 (define-extern process-taskable-hide-exit function)
 (define-extern process-taskable-play-anim-code function)
@@ -22852,16 +22856,16 @@
   :flag-assert         #x21008000f0
   ;; inherited inspect of process-drawable
   (:methods
-    (plat-button-at-end () none 20) ;; state
+    (plat-button-at-end () _type_ :state 20) ;; state
     (dummy-21 () none 21)
     (plat-button-pressed () _type_ :state 22)
     (plat-button-move-downward () _type_ :state 23)
     (plat-button-move-upward () _type_ :state 24)
     (dummy-25 () none 25)
-    (dummy-26 () none 26)
+    (can-activate? (_type_) symbol 26)
     (TODO-RENAME-27 (_type_) none 27)
     (dummy-28 () none 28)
-    (TODO-RENAME-29 (_type_) float 29)
+    (can-target-move? (_type_) symbol 29)
     (should-teleport? (_type_) symbol 30)
     (TODO-RENAME-31 (_type_) none 31) ;; TODO - need to know super::14
     (dummy-32 () none 32)
@@ -29073,43 +29077,16 @@
 
 ;; - Types
 
-; (deftype jungle-elevator (plat-button)
-;   ((bottom-height       float  :offset-assert 240)
-;    (teleport-if-below-y float  :offset-assert 244)
-;    (teleport-if-above-y float  :offset-assert 248)
-;    )
-;   :method-count-assert 33
-;   :size-assert         #xfc
-;   :heap-base           #x90
-;   :flag-assert         #x21009000fc
-;   ;; inherited inspect of plat-button
-;   (:methods
-;     (dummy-9 () none 9)
-;     (dummy-10 () none 10)
-;     (dummy-11 () none 11)
-;     (dummy-12 () none 12)
-;     (dummy-13 () none 13)
-;     (dummy-14 () none 14)
-;     (dummy-15 () none 15)
-;     (dummy-16 () none 16)
-;     (dummy-17 () none 17)
-;     (dummy-18 () none 18)
-;     (dummy-19 () none 19)
-;     (dummy-20 () none 20)
-;     (dummy-21 () none 21)
-;     (dummy-22 () none 22)
-;     (dummy-23 () none 23)
-;     (dummy-24 () none 24)
-;     (dummy-25 () none 25)
-;     (dummy-26 () none 26)
-;     (dummy-27 () none 27)
-;     (dummy-28 () none 28)
-;     (dummy-29 () none 29)
-;     (dummy-30 () none 30)
-;     (dummy-31 () none 31)
-;     (dummy-32 () none 32)
-;     )
-;   )
+(deftype jungle-elevator (plat-button)
+  ((bottom-height       float  :offset-assert 240)
+   (teleport-if-below-y float  :offset-assert 244)
+   (teleport-if-above-y float  :offset-assert 248)
+   )
+  :method-count-assert 33
+  :size-assert         #xfc
+  :heap-base           #x90
+  :flag-assert         #x21009000fc
+  )
 
 
 ;; ----------------------
@@ -29134,9 +29111,9 @@
 ;; - Unknowns
 
 (define-extern *bouncer-sg* skeleton-group)
-;;(define-extern bouncer-wait object) ;; unknown type
-;;(define-extern bouncer-fire object) ;; unknown type
-;;(define-extern bouncer-smush object) ;; unknown type
+(define-extern bouncer-wait (state springbox)) ;; unknown type
+(define-extern bouncer-fire (state springbox)) ;; unknown type
+(define-extern bouncer-smush (state springbox)) ;; unknown type
 
 
 ;; ----------------------
@@ -29159,9 +29136,9 @@
 
 ;; - Functions
 
-(define-extern hopper-do-jump function)
-(define-extern hopper-jump-to function)
-(define-extern hopper-find-ground function)
+(define-extern hopper-do-jump (function none :behavior hopper))
+(define-extern hopper-jump-to (function vector none :behavior hopper))
+(define-extern hopper-find-ground (function vector object :behavior hopper))
 
 ;; - Unknowns
 
@@ -29869,83 +29846,13 @@
 
 ;; - Types
 
-; (deftype junglefish (nav-enemy)
-;   ()
-;   :method-count-assert 76
-;   :size-assert         #x190
-;   :heap-base           #x120
-;   :flag-assert         #x4c01200190
-;   ;;  not enough basic ops
-;   (:methods
-;     (dummy-9 () none 9)
-;     (dummy-10 () none 10)
-;     (dummy-11 () none 11)
-;     (dummy-12 () none 12)
-;     (dummy-13 () none 13)
-;     (dummy-14 () none 14)
-;     (dummy-15 () none 15)
-;     (dummy-16 () none 16)
-;     (dummy-17 () none 17)
-;     (dummy-18 () none 18)
-;     (dummy-19 () none 19)
-;     (dummy-20 () none 20)
-;     (dummy-21 () none 21)
-;     (dummy-22 () none 22)
-;     (dummy-23 () none 23)
-;     (dummy-24 () none 24)
-;     (dummy-25 () none 25)
-;     (dummy-26 () none 26)
-;     (dummy-27 () none 27)
-;     (dummy-28 () none 28)
-;     (dummy-29 () none 29)
-;     (dummy-30 () none 30)
-;     (dummy-31 () none 31)
-;     (dummy-32 () none 32)
-;     (dummy-33 () none 33)
-;     (dummy-34 () none 34)
-;     (dummy-35 () none 35)
-;     (dummy-36 () none 36)
-;     (dummy-37 () none 37)
-;     (dummy-38 () none 38)
-;     (dummy-39 () none 39)
-;     (dummy-40 () none 40)
-;     (dummy-41 () none 41)
-;     (dummy-42 () none 42)
-;     (dummy-43 () none 43)
-;     (dummy-44 () none 44)
-;     (dummy-45 () none 45)
-;     (dummy-46 () none 46)
-;     (dummy-47 () none 47)
-;     (dummy-48 () none 48)
-;     (dummy-49 () none 49)
-;     (dummy-50 () none 50)
-;     (dummy-51 () none 51)
-;     (dummy-52 () none 52)
-;     (dummy-53 () none 53)
-;     (dummy-54 () none 54)
-;     (dummy-55 () none 55)
-;     (dummy-56 () none 56)
-;     (dummy-57 () none 57)
-;     (dummy-58 () none 58)
-;     (dummy-59 () none 59)
-;     (dummy-60 () none 60)
-;     (dummy-61 () none 61)
-;     (dummy-62 () none 62)
-;     (dummy-63 () none 63)
-;     (dummy-64 () none 64)
-;     (dummy-65 () none 65)
-;     (dummy-66 () none 66)
-;     (dummy-67 () none 67)
-;     (dummy-68 () none 68)
-;     (dummy-69 () none 69)
-;     (dummy-70 () none 70)
-;     (dummy-71 () none 71)
-;     (dummy-72 () none 72)
-;     (dummy-73 () none 73)
-;     (dummy-74 () none 74)
-;     (dummy-75 () none 75)
-;     )
-;   )
+(deftype junglefish (nav-enemy)
+  ()
+  :method-count-assert 76
+  :size-assert         #x190
+  :heap-base           #x120
+  :flag-assert         #x4c01200190
+  )
 
 ;; - Unknowns
 
@@ -30798,9 +30705,9 @@
 
 ;; - Functions
 
-(define-extern blocking-plane-spawn function)
+(define-extern blocking-plane-spawn (function curve-control none))
 (define-extern racer-effect function)
-(define-extern blocking-plane-destroy function)
+(define-extern blocking-plane-destroy (function none))
 
 ;; - Unknowns
 
@@ -30923,36 +30830,22 @@
 
 ;; - Types
 
-; (deftype blocking-plane (process-drawable)
-;   ()
-;   :method-count-assert 20
-;   :size-assert         #xb0
-;   :heap-base           #x40
-;   :flag-assert         #x14004000b0
-;   ;;  not enough basic ops
-;   (:methods
-;     (dummy-9 () none 9)
-;     (dummy-10 () none 10)
-;     (dummy-11 () none 11)
-;     (dummy-12 () none 12)
-;     (dummy-13 () none 13)
-;     (dummy-14 () none 14)
-;     (dummy-15 () none 15)
-;     (dummy-16 () none 16)
-;     (dummy-17 () none 17)
-;     (dummy-18 () none 18)
-;     (dummy-19 () none 19)
-;     )
-;   )
+(deftype blocking-plane (process-drawable)
+  ()
+  :method-count-assert 20
+  :size-assert         #xb0
+  :heap-base           #x40
+  :flag-assert         #x14004000b0
+  )
 
 ;; - Functions
 
-(define-extern blocking-plane-init-by-other function)
+(define-extern blocking-plane-init-by-other (function curve-control int none :behavior blocking-plane))
 
 ;; - Unknowns
 
 (define-extern *ef-plane-sg* skeleton-group)
-;;(define-extern blocking-plane-idle object) ;; unknown type
+(define-extern blocking-plane-idle (state blocking-plane)) ;; unknown type
 
 
 ;; ----------------------
@@ -32841,84 +32734,14 @@
 
 ;; - Types
 
-; (deftype bonelurker (nav-enemy)
-;   ((bump-player-time uint64  :offset-assert 400)
-;    )
-;   :method-count-assert 76
-;   :size-assert         #x198
-;   :heap-base           #x130
-;   :flag-assert         #x4c01300198
-;   ;; inherited inspect of nav-enemy
-;   (:methods
-;     (dummy-9 () none 9)
-;     (dummy-10 () none 10)
-;     (dummy-11 () none 11)
-;     (dummy-12 () none 12)
-;     (dummy-13 () none 13)
-;     (dummy-14 () none 14)
-;     (dummy-15 () none 15)
-;     (dummy-16 () none 16)
-;     (dummy-17 () none 17)
-;     (dummy-18 () none 18)
-;     (dummy-19 () none 19)
-;     (dummy-20 () none 20)
-;     (dummy-21 () none 21)
-;     (dummy-22 () none 22)
-;     (dummy-23 () none 23)
-;     (dummy-24 () none 24)
-;     (dummy-25 () none 25)
-;     (dummy-26 () none 26)
-;     (dummy-27 () none 27)
-;     (dummy-28 () none 28)
-;     (dummy-29 () none 29)
-;     (dummy-30 () none 30)
-;     (dummy-31 () none 31)
-;     (dummy-32 () none 32)
-;     (dummy-33 () none 33)
-;     (dummy-34 () none 34)
-;     (dummy-35 () none 35)
-;     (dummy-36 () none 36)
-;     (dummy-37 () none 37)
-;     (dummy-38 () none 38)
-;     (dummy-39 () none 39)
-;     (dummy-40 () none 40)
-;     (dummy-41 () none 41)
-;     (dummy-42 () none 42)
-;     (dummy-43 () none 43)
-;     (dummy-44 () none 44)
-;     (dummy-45 () none 45)
-;     (dummy-46 () none 46)
-;     (dummy-47 () none 47)
-;     (dummy-48 () none 48)
-;     (dummy-49 () none 49)
-;     (dummy-50 () none 50)
-;     (dummy-51 () none 51)
-;     (dummy-52 () none 52)
-;     (dummy-53 () none 53)
-;     (dummy-54 () none 54)
-;     (dummy-55 () none 55)
-;     (dummy-56 () none 56)
-;     (dummy-57 () none 57)
-;     (dummy-58 () none 58)
-;     (dummy-59 () none 59)
-;     (dummy-60 () none 60)
-;     (dummy-61 () none 61)
-;     (dummy-62 () none 62)
-;     (dummy-63 () none 63)
-;     (dummy-64 () none 64)
-;     (dummy-65 () none 65)
-;     (dummy-66 () none 66)
-;     (dummy-67 () none 67)
-;     (dummy-68 () none 68)
-;     (dummy-69 () none 69)
-;     (dummy-70 () none 70)
-;     (dummy-71 () none 71)
-;     (dummy-72 () none 72)
-;     (dummy-73 () none 73)
-;     (dummy-74 () none 74)
-;     (dummy-75 () none 75)
-;     )
-;   )
+(deftype bonelurker (nav-enemy)
+  ((bump-player-time uint64  :offset-assert 400)
+   )
+  :method-count-assert 76
+  :size-assert         #x198
+  :heap-base           #x130
+  :flag-assert         #x4c01300198
+  )
 
 ;; - Functions
 
@@ -33235,51 +33058,60 @@
 
 ;; - Types
 
-; (deftype sequenceA (UNKNOWN)
-;   ()
-;   :method-count-assert 0
-;   :size-assert         #x0
-;   :flag-assert         #x0
-;   ;; bad get label
-;   )
+(deftype sequenceA (process-hidden)
+  ()
+  :method-count-assert 15
+  :size-assert         #x70
+  :flag-assert         #xf00000070
+  )
 
-; (deftype sequenceB (UNKNOWN)
-;   ()
-;   :method-count-assert 0
-;   :size-assert         #x0
-;   :flag-assert         #x0
-;   ;; unrecognized get op: (set! v1 process-taskable) parent was UNKNOWN
-;   )
+(deftype sequenceB (process-taskable)
+  ((bonelurker  handle   :offset-assert 384) ;; bonelurker
+   (evilbro     handle   :offset-assert 392) ;; evilbro
+   (evilsis     handle   :offset-assert 400) ;; evilsis
+   (lurker-army handle 9 :offset-assert 408) ;; babak?
+   )
+  :heap-base #x170
+  :method-count-assert 53
+  :size-assert         #x1e0
+  :flag-assert         #x35017001e0
+  )
 
-; (deftype sequenceC (UNKNOWN)
-;   ()
-;   :method-count-assert 0
-;   :size-assert         #x0
-;   :flag-assert         #x0
-;   ;; unrecognized get op: (set! v1 process-taskable) parent was UNKNOWN
-;   )
+(deftype sequenceC (process-taskable)
+  ((bonelurker              handle          :offset-assert 384) ;; bonelurker likely
+   (darkecocan              handle          :offset-assert 392) ;; darkecobarrel-base likely
+   (darkecocan-glowing-look lod-set :inline :offset-assert 400)
+   )
+  :heap-base #x150
+  :method-count-assert 53
+  :size-assert         #x1b1
+  :flag-assert         #x35015001b1
+  )
 
-; (deftype army-info (UNKNOWN)
-;   ()
-;   :method-count-assert 0
-;   :size-assert         #x0
-;   :flag-assert         #x0
-;   ;; bad get label
-;   )
+(deftype army-info (structure)
+  ((pos         vector  :offset-assert   0)
+   (rot         float   :offset-assert   4)
+   (start-frame float   :offset-assert   8)
+   (skel        symbol  :offset-assert  12)
+   )
+  :method-count-assert 9
+  :size-assert         #x10
+  :flag-assert         #x900000010
+  )
 
 ;; - Functions
 
-(define-extern sequenceC-trans-hook function)
-(define-extern sequenceC-can-trans-hook function)
-(define-extern sequenceC-can-trans-hook-2 function)
-(define-extern evilsib-trans-hook-wait function)
-(define-extern evilsib-trans-hook-hover function)
+(define-extern sequenceC-trans-hook (function none :behavior sequenceC))
+(define-extern sequenceC-can-trans-hook (function none :behavior sequenceC))
+(define-extern sequenceC-can-trans-hook-2 (function none :behavior sequenceC))
+(define-extern evilsib-trans-hook-wait (function none :behavior evilbro))
+(define-extern evilsib-trans-hook-hover (function none :behavior evilbro))
 
 ;; - Unknowns
 
 (define-extern *darkecocan-sg* skeleton-group)
 (define-extern *darkecocan-glow-sg* skeleton-group)
-;;(define-extern *lurker-army* object) ;; unknown type
+(define-extern *lurker-army* (array army-info)) ;; unknown type
 (define-extern *evilbro-sg* skeleton-group)
 (define-extern *evilsis-sg* skeleton-group)
 
@@ -33324,60 +33156,13 @@
 
 ;; - Types
 
-; (deftype assistant-firecanyon (process-taskable)
-;   ()
-;   :method-count-assert 53
-;   :size-assert         #x17c
-;   :heap-base           #x110
-;   :flag-assert         #x350110017c
-;   ;;  not enough basic ops
-;   (:methods
-;     (dummy-9 () none 9)
-;     (dummy-10 () none 10)
-;     (dummy-11 () none 11)
-;     (dummy-12 () none 12)
-;     (dummy-13 () none 13)
-;     (dummy-14 () none 14)
-;     (dummy-15 () none 15)
-;     (dummy-16 () none 16)
-;     (dummy-17 () none 17)
-;     (dummy-18 () none 18)
-;     (dummy-19 () none 19)
-;     (dummy-20 () none 20)
-;     (dummy-21 () none 21)
-;     (dummy-22 () none 22)
-;     (dummy-23 () none 23)
-;     (dummy-24 () none 24)
-;     (dummy-25 () none 25)
-;     (dummy-26 () none 26)
-;     (dummy-27 () none 27)
-;     (dummy-28 () none 28)
-;     (dummy-29 () none 29)
-;     (dummy-30 () none 30)
-;     (dummy-31 () none 31)
-;     (dummy-32 () none 32)
-;     (dummy-33 () none 33)
-;     (dummy-34 () none 34)
-;     (dummy-35 () none 35)
-;     (dummy-36 () none 36)
-;     (dummy-37 () none 37)
-;     (dummy-38 () none 38)
-;     (dummy-39 () none 39)
-;     (dummy-40 () none 40)
-;     (dummy-41 () none 41)
-;     (dummy-42 () none 42)
-;     (dummy-43 () none 43)
-;     (dummy-44 () none 44)
-;     (dummy-45 () none 45)
-;     (dummy-46 () none 46)
-;     (dummy-47 () none 47)
-;     (dummy-48 () none 48)
-;     (dummy-49 () none 49)
-;     (dummy-50 () none 50)
-;     (dummy-51 () none 51)
-;     (dummy-52 () none 52)
-;     )
-;   )
+(deftype assistant-firecanyon (process-taskable)
+  ()
+  :method-count-assert 53
+  :size-assert         #x17c
+  :heap-base           #x110
+  :flag-assert         #x350110017c
+  )
 
 ;; - Unknowns
 
@@ -33994,121 +33779,27 @@
 
 ;; - Types
 
-; (deftype assistant-bluehut (process-taskable)
-;   ((sound-id   sound-id  :offset-assert 380)
-;    (jaws       uint64  :offset-assert 384)
-;    (sage       basic   :offset-assert 392)
-;    (im-talking basic   :offset-assert 396)
-;    )
-;   :method-count-assert 53
-;   :size-assert         #x190
-;   :heap-base           #x120
-;   :flag-assert         #x3501200190
-;   ;; inherited inspect of process-taskable
-;   (:methods
-;     (dummy-9 () none 9)
-;     (dummy-10 () none 10)
-;     (dummy-11 () none 11)
-;     (dummy-12 () none 12)
-;     (dummy-13 () none 13)
-;     (dummy-14 () none 14)
-;     (dummy-15 () none 15)
-;     (dummy-16 () none 16)
-;     (dummy-17 () none 17)
-;     (dummy-18 () none 18)
-;     (dummy-19 () none 19)
-;     (dummy-20 () none 20)
-;     (dummy-21 () none 21)
-;     (dummy-22 () none 22)
-;     (dummy-23 () none 23)
-;     (dummy-24 () none 24)
-;     (dummy-25 () none 25)
-;     (dummy-26 () none 26)
-;     (dummy-27 () none 27)
-;     (dummy-28 () none 28)
-;     (dummy-29 () none 29)
-;     (dummy-30 () none 30)
-;     (dummy-31 () none 31)
-;     (dummy-32 () none 32)
-;     (dummy-33 () none 33)
-;     (dummy-34 () none 34)
-;     (dummy-35 () none 35)
-;     (dummy-36 () none 36)
-;     (dummy-37 () none 37)
-;     (dummy-38 () none 38)
-;     (dummy-39 () none 39)
-;     (dummy-40 () none 40)
-;     (dummy-41 () none 41)
-;     (dummy-42 () none 42)
-;     (dummy-43 () none 43)
-;     (dummy-44 () none 44)
-;     (dummy-45 () none 45)
-;     (dummy-46 () none 46)
-;     (dummy-47 () none 47)
-;     (dummy-48 () none 48)
-;     (dummy-49 () none 49)
-;     (dummy-50 () none 50)
-;     (dummy-51 () none 51)
-;     (dummy-52 () none 52)
-;     )
-;   )
+(deftype assistant-bluehut (process-taskable)
+  ((sound-id   sound-id  :offset-assert 380)
+   (jaws       uint64  :offset-assert 384)
+   (sage       entity-actor   :offset-assert 392)
+   (im-talking symbol   :offset-assert 396)
+   )
+  :method-count-assert 53
+  :size-assert         #x190
+  :heap-base           #x120
+  :flag-assert         #x3501200190
+  )
 
-; (deftype sage-bluehut (process-taskable)
-;   ((reminder-played basic  :offset-assert 380)
-;    (assistant       basic  :offset-assert 384)
-;    )
-;   :method-count-assert 53
-;   :size-assert         #x184
-;   :heap-base           #x120
-;   :flag-assert         #x3501200184
-;   ;; inherited inspect of process-taskable
-;   (:methods
-;     (dummy-9 () none 9)
-;     (dummy-10 () none 10)
-;     (dummy-11 () none 11)
-;     (dummy-12 () none 12)
-;     (dummy-13 () none 13)
-;     (dummy-14 () none 14)
-;     (dummy-15 () none 15)
-;     (dummy-16 () none 16)
-;     (dummy-17 () none 17)
-;     (dummy-18 () none 18)
-;     (dummy-19 () none 19)
-;     (dummy-20 () none 20)
-;     (dummy-21 () none 21)
-;     (dummy-22 () none 22)
-;     (dummy-23 () none 23)
-;     (dummy-24 () none 24)
-;     (dummy-25 () none 25)
-;     (dummy-26 () none 26)
-;     (dummy-27 () none 27)
-;     (dummy-28 () none 28)
-;     (dummy-29 () none 29)
-;     (dummy-30 () none 30)
-;     (dummy-31 () none 31)
-;     (dummy-32 () none 32)
-;     (dummy-33 () none 33)
-;     (dummy-34 () none 34)
-;     (dummy-35 () none 35)
-;     (dummy-36 () none 36)
-;     (dummy-37 () none 37)
-;     (dummy-38 () none 38)
-;     (dummy-39 () none 39)
-;     (dummy-40 () none 40)
-;     (dummy-41 () none 41)
-;     (dummy-42 () none 42)
-;     (dummy-43 () none 43)
-;     (dummy-44 () none 44)
-;     (dummy-45 () none 45)
-;     (dummy-46 () none 46)
-;     (dummy-47 () none 47)
-;     (dummy-48 () none 48)
-;     (dummy-49 () none 49)
-;     (dummy-50 () none 50)
-;     (dummy-51 () none 51)
-;     (dummy-52 () none 52)
-;     )
-;   )
+(deftype sage-bluehut (process-taskable)
+  ((reminder-played symbol  :offset-assert 380)
+   (assistant       entity-actor  :offset-assert 384)
+   )
+  :method-count-assert 53
+  :size-assert         #x184
+  :heap-base           #x120
+  :flag-assert         #x3501200184
+  )
 
 ;; - Unknowns
 
@@ -34123,60 +33814,13 @@
 
 ;; - Types
 
-; (deftype flutflut-bluehut (process-taskable)
-;   ()
-;   :method-count-assert 53
-;   :size-assert         #x17c
-;   :heap-base           #x110
-;   :flag-assert         #x350110017c
-;   ;;  not enough basic ops
-;   (:methods
-;     (dummy-9 () none 9)
-;     (dummy-10 () none 10)
-;     (dummy-11 () none 11)
-;     (dummy-12 () none 12)
-;     (dummy-13 () none 13)
-;     (dummy-14 () none 14)
-;     (dummy-15 () none 15)
-;     (dummy-16 () none 16)
-;     (dummy-17 () none 17)
-;     (dummy-18 () none 18)
-;     (dummy-19 () none 19)
-;     (dummy-20 () none 20)
-;     (dummy-21 () none 21)
-;     (dummy-22 () none 22)
-;     (dummy-23 () none 23)
-;     (dummy-24 () none 24)
-;     (dummy-25 () none 25)
-;     (dummy-26 () none 26)
-;     (dummy-27 () none 27)
-;     (dummy-28 () none 28)
-;     (dummy-29 () none 29)
-;     (dummy-30 () none 30)
-;     (dummy-31 () none 31)
-;     (dummy-32 () none 32)
-;     (dummy-33 () none 33)
-;     (dummy-34 () none 34)
-;     (dummy-35 () none 35)
-;     (dummy-36 () none 36)
-;     (dummy-37 () none 37)
-;     (dummy-38 () none 38)
-;     (dummy-39 () none 39)
-;     (dummy-40 () none 40)
-;     (dummy-41 () none 41)
-;     (dummy-42 () none 42)
-;     (dummy-43 () none 43)
-;     (dummy-44 () none 44)
-;     (dummy-45 () none 45)
-;     (dummy-46 () none 46)
-;     (dummy-47 () none 47)
-;     (dummy-48 () none 48)
-;     (dummy-49 () none 49)
-;     (dummy-50 () none 50)
-;     (dummy-51 () none 51)
-;     (dummy-52 () none 52)
-;     )
-;   )
+(deftype flutflut-bluehut (process-taskable)
+  ()
+  :method-count-assert 53
+  :size-assert         #x17c
+  :heap-base           #x110
+  :flag-assert         #x350110017c
+  )
 
 ;; - Unknowns
 
@@ -41761,29 +41405,15 @@
 ;   :flag-assert         #x900000014
 ;   )
 
-; (deftype darkecobarrel-base (process-drawable)
-;   ((speed float   :offset-assert 176)
-;    (sync  uint64  :offset-assert 184)
-;    )
-;   :method-count-assert 20
-;   :size-assert         #xc0
-;   :heap-base           #x50
-;   :flag-assert         #x14005000c0
-;   ;; inherited inspect of process-drawable
-;   (:methods
-;     (dummy-9 () none 9)
-;     (dummy-10 () none 10)
-;     (dummy-11 () none 11)
-;     (dummy-12 () none 12)
-;     (dummy-13 () none 13)
-;     (dummy-14 () none 14)
-;     (dummy-15 () none 15)
-;     (dummy-16 () none 16)
-;     (dummy-17 () none 17)
-;     (dummy-18 () none 18)
-;     (dummy-19 () none 19)
-;     )
-;   )
+(deftype darkecobarrel-base (process-drawable)
+  ((speed float   :offset-assert 176)
+   (sync  uint64  :offset-assert 184)
+   )
+  :method-count-assert 20
+  :size-assert         #xc0
+  :heap-base           #x50
+  :flag-assert         #x14005000c0
+  )
 
 ; (deftype darkecobarrel-mover (darkecobarrel-base)
 ;   ((start-time   uint64                      :offset-assert 192)
