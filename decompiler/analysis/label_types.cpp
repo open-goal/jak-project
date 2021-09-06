@@ -53,12 +53,17 @@ void find_functions(LabelDB* db, LinkedObjectFile* file) {
         // first, the label for the start of the function
         // + 4 bytes for the type tag.
         int offset_of_function = func.start_word * 4 + 4;
-        int idx_of_label = db->get_index_by_offset(seg, offset_of_function);
-        auto old = db->set_and_get_previous(idx_of_label, func.type, false, {});
-        if (old.known) {
-          throw std::runtime_error(fmt::format(
-              "There is a config entry for label {}, but it's a function. Remove the config.",
-              old.name));
+        auto idx_of_label = db->try_get_index_by_offset(seg, offset_of_function);
+        if (!idx_of_label) {
+          func.warnings.general_warning("Could not find any references to this function: {}",
+                                        func.guessed_name.to_string());
+        } else {
+          auto old = db->set_and_get_previous(*idx_of_label, func.type, false, {});
+          if (old.known) {
+            throw std::runtime_error(fmt::format(
+                "There is a config entry for label {}, but it's a function. Remove the config.",
+                old.name));
+          }
         }
       }
 
@@ -73,7 +78,9 @@ void find_boxed(LabelDB* db, LinkedObjectFile* file) {
     if ((lab.offset & 7) == BASIC_OFFSET) {
       // it's a basic! probably.
       const auto& word = file->words_by_seg.at(lab.target_segment).at((lab.offset - 4) / 4);
-      if (word.kind == LinkedWord::TYPE_PTR) {
+      // the snowball-bank is a weird basic with no fields other than the built-in type.
+      // so it can actually share a label with something else.
+      if (word.kind == LinkedWord::TYPE_PTR && word.symbol_name != "snowball-bank") {
         TypeSpec basic_type(word.symbol_name);
         const auto& existing = db->lookup(lab.name);
         if (existing.known) {
