@@ -26,6 +26,13 @@ jobs:
     # Set some sort of timeout in the event of run-away builds.  We are limited on concurrent jobs so, get rid of them.
     timeout-minutes: 20
 
+    env: # overrides: https://github.com/mbitsnbites/buildcache/blob/master/doc/configuration.md
+      BUILDCACHE_MAX_CACHE_SIZE: 1000000000 # 1gb
+      BUILDCACHE_COMPRESS_FORMAT: ZSTD
+      BUILDCACHE_COMPRESS_LEVEL: 19
+      BUILDCACHE_DIRECT_MODE: true
+      BUILDCACHE_LOG_FILE: ${{ github.workspace }}/buildcache.log
+
     steps:
       # NOTE - useful for debugging
       # - name: Dump GitHub context
@@ -37,46 +44,22 @@ jobs:
       - name: Checkout Repository
         uses: actions/checkout@v2
 
-      - name: Cache Submodules
-        id: cache-submodules
-        uses: actions/cache@v2
-        with:
-          key: submodules-${{ hashFiles('./.gitmodules') }}
-          path: |
-            ./third-party/googletest
-            ./third-party/zydis
-            ./third-party/glfw
-            ./.git/modules/
-
       - name: Checkout Submodules
-        if: steps.cache-submodules.outputs.cache-hit != 'true'
-        run: git submodule update --init --recursive --jobs 2
+        run: git submodule update --init --recursive -j 2
 
-      - name: Prepare Artifact Git Info
-        shell: bash
-        run: |
-          echo "##[set-output name=branch;]${GITHUB_REF#refs/heads/}"
-          ARTIFACT_NAME="commit-$(git rev-parse --short "$GITHUB_SHA")"
-          if [ ${{ github.event_name == 'pull_request' }} ]; then
-            echo "##[set-output name=short-sha;]$(git rev-parse --short "${{ github.event.pull_request.head.sha }}")"
-            if [ ! -z "${{ github.event.pull_request.number }}" ]; then
-              ARTIFACT_NAME="pr-${{ github.event.pull_request.number }}-commit-$(git rev-parse --short "${{ github.event.pull_request.head.sha }}")"
-            fi
-          else
-            echo "##[set-output name=short-sha;]$(git rev-parse --short "$GITHUB_SHA")"
-          fi
-          echo "##[set-output name=artifact-metadata;]${ARTIFACT_NAME}"
-        id: git-vars
+      - name: Install Dependencies
+        run: choco install nasm
 
-      # https://github.com/ilammy/setup-nasm
-      - uses: ilammy/setup-nasm@v1
+      - name: Setup Buildcache
+        uses: mikehardy/buildcache-action@v1.2.2
+        with:
+          cache_key: ${{ matrix.os }}-${{ matrix.config }}
 
       - name: CMake Generation
         shell: cmd # ideally id like everything to be powershell but running this bat file is finicky
         run: |
           call "C:/Program Files (x86)/Microsoft Visual Studio/2019/Enterprise/VC/Auxiliary/Build/vcvars64.bat"
-          cmake --version
-          cmake -B build -DCMAKE_BUILD_TYPE=Release -G "NMake Makefiles" .
+          cmake -B build -G "NMake Makefiles" -DCMAKE_BUILD_TYPE=Release -DCMAKE_C_COMPILER_LAUNCHER="${{ github.workspace }}"/buildcache/bin/buildcache.exe -DCMAKE_CXX_COMPILER_LAUNCHER="${{ github.workspace }}"/buildcache/bin/buildcache.exe .
 
       - name: Build Project
         working-directory: ./build
@@ -88,7 +71,7 @@ jobs:
 
       - name: Run Tests
         timeout-minutes: 5
-        run: |
-          $env:NEXT_DIR = $pwd
-          $env:FAKE_ISO_PATH = "/game/fake_iso.txt"
-          ./build/bin/goalc-test.exe --gtest_color=yes
+        env:
+          NEXT_DIR: ${{ github.workspace }}
+          FAKE_ISO_PATH: ${{ github.workspace }}/game/fake_iso.txt
+        run: ./build/bin/goalc-test.exe --gtest_color=yes
