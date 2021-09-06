@@ -264,9 +264,7 @@
   )
 
 (defun sound-trans-convert ((dest vector3w) (src vector))
-  (format 0 "dest is ~A src is ~A~%" dest src)
   (let ((vec (if src src (ear-trans))))
-      (format 0 "vec is now ~A~%" vec)
       (set! (-> dest x) (the int (* (1/ 16) (-> vec x))))
       (set! (-> dest y) (the int (* (1/ 16) (-> vec y))))
       (set! (-> dest z) (the int (* (1/ 16) (-> vec z))))
@@ -306,15 +304,18 @@
 
 (defun sound-set-volume ((group uint) (volume float))
 
+  (#when PC_DEBUG_SOUND_ENABLE
   (let ((cmd (the sound-rpc-set-master-volume (get-sound-buffer-entry))))
       (set! (-> cmd command) (sound-command set-master-volume))
       (set! (-> cmd group) group)
       (set! (-> cmd volume) (the int (* 10.24 volume)))
       )
+  )
   0
   )
 
 (defun sound-set-reverb ((arg0 int) (arg1 float) (arg2 float) (arg3 uint))
+  (#when PC_DEBUG_SOUND_ENABLE
   (let ((cmd (the-as sound-rpc-set-reverb (get-sound-buffer-entry))))
     (set! (-> cmd command) (sound-command set-reverb))
     (set! (-> cmd core) arg3)
@@ -322,17 +323,20 @@
     (set! (-> cmd left) (the-as uint (the int (* 32767.0 arg1))))
     (set! (-> cmd right) (the-as uint (the int (* 32767.0 arg2))))
     )
+  )
   0
   )
 
 (defun sound-set-ear-trans ((ear-trans vector) (cam-trans vector) (cam-angle float))
 
+  (#when PC_DEBUG_SOUND_ENABLE
   (let ((cmd (the sound-rpc-set-ear-trans (get-sound-buffer-entry))))
       (set! (-> cmd command) (sound-command set-ear-trans))
       (sound-trans-convert (-> cmd ear-trans) ear-trans)
       (sound-trans-convert (-> cmd cam-trans) cam-trans)
       (set! (-> cmd cam-angle) (sound-angle-convert cam-angle))
       )
+  )
   0
   )
 
@@ -362,6 +366,7 @@
 (defun sound-play-by-name ((name sound-name) (id sound-id) (vol int) (pitch int) (bend int) (group uint) (trans vector))
   "Play a sound called name with the specified params"
 
+  (#when PC_DEBUG_SOUND_ENABLE
   (let ((sound-trans trans))
       (when *sound-player-enable*
         (let ((cmd (the sound-rpc-play (get-sound-buffer-entry))))
@@ -380,12 +385,14 @@
             )
         )
       )
+  )
   id
   )
 
 (defun sound-play-by-spec ((spec sound-spec) (id sound-id) (sound-trans vector))
   "Play a sound from the given spec"
 
+  (#when PC_DEBUG_SOUND_ENABLE
   (when *sound-player-enable*
     (let ((cmd (the sound-rpc-play (get-sound-buffer-entry))))
 
@@ -405,76 +412,92 @@
         (sound-trans-from-process cmd sound-trans)
         )
     )
+  )
   id
   )
 
 (defun sound-pause ((id sound-id))
 
+  (#when PC_DEBUG_SOUND_ENABLE
   (let ((cmd (the sound-rpc-pause-sound (get-sound-buffer-entry))))
       (set! (-> cmd command) (sound-command pause-sound))
       (set! (-> cmd id) id)
       )
+  )
   0
   )
 
 (defun sound-stop ((id sound-id))
 
+  (#when PC_DEBUG_SOUND_ENABLE
   (let ((cmd (the sound-rpc-stop-sound (get-sound-buffer-entry))))
       (set! (-> cmd command) (sound-command stop-sound))
       (set! (-> cmd id) id)
       )
+  )
   0
   )
 
 (defun sound-continue ((id sound-id))
 
+  (#when PC_DEBUG_SOUND_ENABLE
   (let ((cmd (the sound-rpc-continue-sound (get-sound-buffer-entry))))
       (set! (-> cmd command) (sound-command continue-sound))
       (set! (-> cmd id) id)
       )
+  )
   0
   )
 
 (defun sound-group-pause ((group uint))
 
+  (#when PC_DEBUG_SOUND_ENABLE
   (let ((cmd (the sound-rpc-pause-group (get-sound-buffer-entry))))
       (set! (-> cmd command) (sound-command pause-group))
       (set! (-> cmd group) group)
       )
+  )
   0
   )
 
 (defun sound-group-stop ((group uint))
 
+  (#when PC_DEBUG_SOUND_ENABLE
   (let ((cmd (the sound-rpc-stop-group (get-sound-buffer-entry))))
       (set! (-> cmd command) (sound-command stop-group))
       (set! (-> cmd group) group)
       )
+  )
   0
   )
 
 (defun sound-group-continue ((group uint))
 
+  (#when PC_DEBUG_SOUND_ENABLE
   (let ((cmd (the sound-rpc-continue-group (get-sound-buffer-entry))))
       (set! (-> cmd command) (sound-command continue-group))
       (set! (-> cmd group) group)
       )
+  )
   0
   )
 
 (defun sound-set-falloff-curve ((curve int) (falloff float) (ease float))
 
+  (#when PC_DEBUG_SOUND_ENABLE
   (let ((cmd (the sound-rpc-set-falloff-curve (get-sound-buffer-entry))))
       (set! (-> cmd command) (sound-command set-falloff-curve))
       (set! (-> cmd curve) curve)
       (set! (-> cmd falloff) (the int (* 4096.0 falloff)))
       (set! (-> cmd ease) (the int (* 4096.0 ease)))
       )
+  )
   0
   )
 
 (defun sound-set-sound-falloff ((name sound-name) (falloff-min int) (falloff-max int) (curve int))
 
+  (#when PC_DEBUG_SOUND_ENABLE
   (let ((cmd (the sound-rpc-set-sound-falloff (get-sound-buffer-entry))))
       (set! (-> cmd command) (sound-command set-sound-falloff))
       (set! (-> cmd name) name)
@@ -482,15 +505,18 @@
       (set! (-> cmd max) falloff-max)
       (set! (-> cmd curve) curve)
       )
+  )
   0
   )
 
 (defun sound-set-flava ((flava uint))
 
+  (#when PC_DEBUG_SOUND_ENABLE
   (let ((cmd (the sound-rpc-set-flava (get-sound-buffer-entry))))
       (set! (-> cmd command) (sound-command set-flava))
       (set! (-> cmd flava) flava)
       )
+  )
   0
   )
 
