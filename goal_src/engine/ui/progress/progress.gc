@@ -643,7 +643,6 @@
       (set! *progress-process* (make-init-process progress progress-init-by-other
                                                   :to creator
                                                   :stack *progress-stack-top*))
-      (progress-dbg "activated!~%")
       (let ((s5-1 *progress-process*))
        (set! (-> s5-1 0 completion-percentage) (calculate-completion (-> s5-1 0)))
        (set! *master-mode* 'progress)
@@ -652,8 +651,7 @@
          ((!= *kernel-boot-message* 'play)
           (set! (-> s5-1 0 display-level-index) 4) ;; default misty on demo
           )
-         ((or (= s4-1 #f) (zero? s4-1) ;; temp
-         ;((or (= s4-1 #f)
+         ((or (= s4-1 #f)
               (< (length *level-task-data-remap*) (-> s4-1 info index))
               )
           (set! (-> s5-1 0 display-level-index) 0) ;; geyser rock
@@ -688,12 +686,16 @@
   (when (and *progress-process*
              (= (-> *progress-process* 0 next-state name) 'progress-gone)
              )
+   (progress-dbg "deactivate being~%")
    (copy-settings-from-target! *setting-control*)
+   (progress-dbg "deactivate parts~%")
    (dotimes (gp-0 (-> *progress-process* 0 nb-of-particles))
+    (progress-dbg "deactivate part #x~X (~A)%" (-> *progress-process* 0 particles gp-0 part))
     (deactivate (-> *progress-process* 0 particles gp-0 part))
     (set! (-> *progress-process* 0 particles gp-0 part matrix) -1)
     )
    (set! (-> *progress-process* 0 nb-of-particles) 0)
+   (progress-dbg "deactivate proc~%")
    (deactivate (-> *progress-process* 0))
    (set! *progress-process* (the-as (pointer progress) #f))
    (enable-level-text-file-loading)
@@ -874,12 +876,12 @@
        (= a1-1 (progress-screen title))
        )
       (or
-       (= v1-2 (progress-screen main-menu))
+       (= v1-2 (progress-screen settings))
        (= v1-2 (progress-screen game-settings))
        (= v1-2 (progress-screen graphic-settings))
        (= v1-2 (progress-screen sound-settings))
        (= v1-2 (progress-screen title))
-       (= v1-2 (progress-screen UNKNOWN-SCREEN-28))
+       (= v1-2 (progress-screen settings-title))
        )
       )
      )
@@ -921,19 +923,15 @@
     #f
    )
   :code (behavior ()
-   (progress-dbg "progress-waiting begin~%")
    (loop
     (when (hud-hidden?)
-     (progress-dbg "progress-waiting rdy~%")
      (dotimes (gp-0 (-> self nb-of-particles))
       (if (= (-> self particles gp-0 part matrix) -1)
        (set! (-> self particles gp-0 part matrix) (sprite-allocate-user-hvdf))
        )
       )
      (set-setting! *setting-control* self 'common-page 'set 0.0 1)
-     (progress-dbg "progress-waiting sp~%")
      (suspend)
-     (progress-dbg "progress-waiting go~%")
      (go progress-coming-in)
      )
     (suspend)
@@ -944,10 +942,14 @@
 
 (defstate progress-gone (progress)
   :code (behavior ()
+   (progress-dbg "progress-gone!~%")
    (clear-pending-settings-from-process *setting-control* self 'process-mask)
+   (progress-dbg "progress-gone settings cleared!~%")
    (copy-settings-from-target! *setting-control*)
+   (progress-dbg "progress-gone settings copyd!~%")
    (logior! (-> self mask) (process-mask sleep))
    (suspend)
+   (progress-dbg "progress-gone-2!~%")
    (none)
    )
   )
@@ -2229,7 +2231,7 @@
          (-> *cpad-list* cpads 0 button0-rel 0)
          (pad-buttons triangle)
          )
-        (if (= (-> obj display-state) (progress-screen main-menu))
+        (if (= (-> obj display-state) (progress-screen settings))
          (sound-play-by-name
           (static-sound-name "menu-stats")
           (new-sound-id)
@@ -2307,7 +2309,7 @@
             (set-master-mode 'game)
             )
            ((= (-> s5-0 (-> obj option-index) name) (game-text-id back))
-            (if (= (-> obj display-state) (progress-screen main-menu))
+            (if (= (-> obj display-state) (progress-screen settings))
              (sound-play-by-name
               (static-sound-name "menu-stats")
               (new-sound-id)
@@ -2608,7 +2610,7 @@
       (the-as vector #t)
       )
      (push! obj)
-     (set! (-> obj next-display-state) (progress-screen main-menu))
+     (set! (-> obj next-display-state) (progress-screen settings))
      )
     ((= (-> obj display-state) (progress-screen fuel-cell))
      (cond
@@ -3089,11 +3091,9 @@
           (gp-0 (-> *level-task-data* a1-0))
           )
     #t
-    (progress-dbg "on normal post and state is ~S~%" (enum->string progress-screen (-> self display-state)))
     (let ((s5-0 #f))
      (case (-> self display-state)
       (((progress-screen fuel-cell))
-        (progress-dbg "draw fuel-cell~%")
         (set! s5-0 #t)
         (draw-fuel-cell-screen self a1-0)
         )
@@ -3105,13 +3105,13 @@
        (set! s5-0 #t)
        (draw-buzzer-screen self a1-0)
        )
-      (((progress-screen game-settings) (progress-screen main-menu))
+      (((progress-screen game-settings) (progress-screen settings))
        (hide-progress-icons)
        (draw-options self 115 30 0.82)
        )
       (((progress-screen graphic-settings)
         (progress-screen sound-settings)
-        (progress-screen UNKNOWN-SCREEN-28)
+        (progress-screen settings-title)
         (progress-screen title)
         )
        (hide-progress-icons)
@@ -3262,15 +3262,11 @@
      (progress-screen money)
      (progress-screen buzzer)
      )
-        (progress-dbg "draw progress~%")
       (draw-progress self)
       )
     )
-   (progress-dbg "adjust sprites~%")
    (adjust-sprites self)
-   (progress-dbg "adjust icons~%")
    (adjust-icons self)
-   (progress-dbg "draw done~%")
    (none)
    )
   )
@@ -3280,10 +3276,8 @@
   (-> progress-waiting event)
   :enter
   (behavior ()
-   (progress-dbg "coming in~%")
    (sound-group-pause (the-as uint 255))
    (logclear! (-> *setting-control* default process-mask) (process-mask pause menu))
-   (progress-dbg "push setting~%")
    (push-setting!
     *setting-control*
     self
@@ -3292,9 +3286,7 @@
     0.0
     16
     )
-   (progress-dbg "copy settings~%")
    (copy-settings-from-target! *setting-control*)
-   (progress-dbg "snd~%")
    (sound-play-by-name
     (static-sound-name "select-menu")
     (new-sound-id)
@@ -3304,10 +3296,8 @@
     (the-as uint 1)
     (the-as vector #t)
     )
-   (progress-dbg "blackout~%")
    (set-blackout-frames 0)
    (set! *pause-lock* #f)
-   (progress-dbg "coming in enter done~%")
    (none)
    )
   :code
