@@ -84,6 +84,9 @@ int scePadRead(int port, int /*slot*/, u8* rdata) {
     cpad->button0 |= Gfx::PadIsPressed((Pad::Button)i, port) << i;
   }
 
+  // keys polled and read, prepare for new ones.
+  Pad::ClearKeys();
+
   return 32;
 }
 

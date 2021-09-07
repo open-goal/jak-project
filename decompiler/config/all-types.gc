@@ -802,6 +802,9 @@
   (vibrations #x10e)
   (play-hints #x10f)
   (center-screen #x110)
+  (on #x111)
+  (off #x112)
+  (move-dpad #x113)
   (english #x114)
   (french #x115)
   (german #x116)
@@ -813,22 +816,71 @@
   (game-options #x127)
   (graphic-options #x128)
   (sound-options #x129)
-
+  (4x3 #x12a)
+  (16x9 #x12b)
+  (60hz #x12c)
+  (50hz #x12d)
+  (game-title #x12e)
   (hidden-power-cell #x12f) ;; why is this here??
-  
+  (memcard-no-space #x130)
+  (memcard-not-inserted #x131)
+  (card-not-formatted-title #x132)
+  (memcard-space-requirement1 #x133)
+  (memcard-space-requirement2 #x134)
+  (card-not-formatted-msg #x135)
   (saving-data #x136)
+  (loading-data #x137)
   (do-not-remove-mem-card #x138)
+  (overwrite? #x139)
+  (format? #x13a)
 
-  (continue-without-saving #x13f)
+  (yes #x13c)
+  (no #x13d)
   (back #x13e)
+  (continue-without-saving #x13f)
+  (select-file-to-save #x140)
+  (select-file-to-load #x141)
+  (save-data-already-exists #x142)
+  (insert-memcard #x143)
+  (continue? #x144)
   (load-game #x14b)
   (save-game #x14c)
+  (formatting #x14d)
+  (creating-save-data #x14e)
+  (empty #x14f)
   (options #x150)
+  (error-loading #x151)
+  (error-saving #x152)
+  (error-formatting #x153)
+  (error-creating-data #x154)
+  (memcard-removed #x156)
+  (autosave-disabled-title #x157)
+  (autosave-disabled-msg #x158)
+  (no-save-data #x159)
+  (create-save-data? #x15a)
+  (check-memcard #x15b)
   (new-game #x15c)
+  (back? #x15d)
   (ok #x15e)
   (exit-demo #x15f)
+  (autosave-warn-title #x160)
+  (autosave-warn-msg #x161)
+  (task-completed #x162)
+  (check-memcard-and-retry #x163)
+  (screen-change-to-60hz #x164)
+  (screen-60hz-warn-support #x165)
+  (screen-60hz-warn-timer #x166)
+  (screen-now-60hz #x167)
+  (screen-60hz-keep? #x168)
+  (warp-gate-use-dpad #x169)
+  (no-disc-title #x16a)
+  (no-disc-msg #x16b)
+  (bad-disc-title #x16c)
+  (bad-disc-msg #x16d)
   (press-start #x16e)
   (quit-game #x16f)
+  (quit? #x170)
+  (total-collected #x171)
 
   (village1-mayor-money #x200)
   (vollage1-uncle-money #x201)
@@ -1194,11 +1246,11 @@
 
 (declare-type event-message-block structure)
 (deftype state (protect-frame)
-  ((code  function  :offset-assert 16)
-   (trans (function none)  :offset-assert 20)
-   (post  (function none)  :offset-assert 24)
-   (enter function :offset-assert 28)
-   (event (function process int symbol event-message-block object)  :offset-assert 32)
+  ((code  function         :offset-assert  16)
+   (trans (function none)  :offset-assert  20)
+   (post  function         :offset-assert  24)
+   (enter function         :offset-assert  28)
+   (event (function process int symbol event-message-block object)  :offset-assert  32)
    )
   (:methods
     (new (symbol type basic function
@@ -5254,7 +5306,7 @@
   (light-yellow 32)
   (red-orange 33)
   (another-orange-red 34)
-  
+
   (red 3)
   (red2 4)
   (yellow 5)
@@ -5560,6 +5612,16 @@
 
 ;; - Types
 
+(defenum language-enum
+  :type int64
+  (english)
+  (french)
+  (german)
+  (spanish)
+  (italian)
+  (japanese)
+  (uk-english)
+  )
 ;; was manually done
 (deftype setting-data (structure)
   ((border-mode symbol :offset-assert 0)
@@ -5568,7 +5630,7 @@
    (dialog-volume float :offset-assert 12)
    (process-mask process-mask :offset-assert 16)
    (common-page int32 :offset-assert 20)
-   (language int64 :offset-assert 24)
+   (language language-enum :offset-assert 24)
    (screenx int32 :offset-assert 32)
    (screeny int32 :offset-assert 36)
    (vibration symbol :offset-assert 40)
@@ -5817,7 +5879,7 @@
   :size-assert         #xc
   :flag-assert         #xa0000000c
   (:methods
-    (dummy-9 (_type_) none 9)
+    (draw (_type_) none 9)
     )
   )
 
@@ -8020,7 +8082,7 @@
    (dummy1           uint8                  :offset-assert 26)
    (envmap-usage     uint8                  :offset-assert 27)
    (extra-info       merc-extra-info        :offset-assert 28)
-   
+
    ;; added
    (data uint64 4 :offset 0)
    )
@@ -8852,6 +8914,14 @@
 
 ;; - Types
 
+(deftype mc-handle (int32)
+  (
+   )
+  :method-count-assert 9
+  :size-assert         #x4
+  :flag-assert         #x900000004
+  )
+
 (deftype mc-file-info (structure)
   ((present               int32      :offset-assert 0)
    (blind-data            float 16 :offset-assert 4)
@@ -8901,10 +8971,6 @@
 ;; - Symbols
 
 (define-extern int32 type)
-
-;; - Unknowns
-
-;;(define-extern mc-handle UNKNOWN)
 
 
 ;; ----------------------
@@ -10070,8 +10136,8 @@
    (new-joint-anim       art-joint-anim  :offset-assert 188)
    (new-joint-anim-blend uint64          :offset-assert 192)
    (anim-mode            symbol          :offset-assert 200)
-   (cur-grab-handle      uint64          :offset-assert 208)
-   (cur-target-handle    uint64          :offset-assert 216)
+   (cur-grab-handle      handle          :offset-assert 208)
+   (cur-target-handle    handle          :offset-assert 216)
    (old-grab-pos         vector  :inline :offset-assert 224)
    (joint                joint 4         :offset-assert 240)
    (new-post-hook        function        :offset-assert 256)
@@ -10084,7 +10150,6 @@
   :method-count-assert 20
   :size-assert         #x114
   :flag-assert         #x1400b00114
-  ;; inherited inspect of process-drawable
   )
 
 (deftype part-spawner (process-drawable)
@@ -10097,7 +10162,6 @@
   :method-count-assert 21
   :size-assert         #xd0
   :flag-assert         #x15006000d0
-  ;; inherited inspect of process-drawable
   (:methods
     (dummy-20 () none 20)
     )
@@ -10122,9 +10186,6 @@
   :method-count-assert 14
   :size-assert         #xf8
   :flag-assert         #xe009000f8
-  ;; inherited inspect of process
-  (:methods
-    )
   )
 
 (deftype camera-tracker (process)
@@ -10152,7 +10213,6 @@
   :method-count-assert 15
   :size-assert         #xe0
   :flag-assert         #xf007000e0
-  ;; inherited inspect of process
   ;; field ~Tuserdata is a basic loaded with a signed load
   (:methods
     (dummy-14 () none 14)
@@ -10171,7 +10231,6 @@
   :method-count-assert 20
   :size-assert         #xd0
   :flag-assert         #x14006000d0
-  ;; inherited inspect of process-drawable
   )
 
 (deftype swingpole (process)
@@ -10184,7 +10243,6 @@
   :method-count-assert 14
   :size-assert         #x98
   :flag-assert         #xe00300098
-  ;; inherited inspect of process
   )
 
 (deftype gui-query (structure)
@@ -10232,7 +10290,7 @@
   :size-assert         #x70
   :flag-assert         #xf00000070
   (:methods
-    (dummy-14 () none 14)
+    (die () _type_ :state 14)
     )
   )
 
@@ -11279,7 +11337,7 @@
     (dummy-11 () none 11)
     (dummy-12 () none 12)
     (dummy-13 () none 13)
-    (dummy-14 () none 14)
+    (dummy-14 (_type_) none 14)
     )
   )
 
@@ -13216,8 +13274,8 @@
 (deftype sprite-array-2d (basic)
   ((num-sprites int32 2 :offset-assert 4)
    (num-valid   int32 2 :offset-assert 12)
-   (vec-data    uint32    :offset-assert 20)
-   (adgif-data  uint32    :offset-assert 24)
+   (vec-data    pointer   :offset-assert 20)
+   (adgif-data  (inline-array adgif-shader)   :offset-assert 24)
    (pad         uint128 4 :offset-assert 32)
    (data        uint128 1 :offset-assert 96)
    )
@@ -13258,8 +13316,8 @@
 (deftype sprite-array-3d (basic)
   ((num-sprites int32 2 :offset-assert 4)
    (num-valid   int32 2 :offset-assert 12)
-   (vec-data    uint32    :offset-assert 20)
-   (adgif-data  uint32    :offset-assert 24)
+   (vec-data    pointer   :offset-assert 20)
+   (adgif-data  (inline-array adgif-shader)   :offset-assert 24)
    (data        uint128 1 :offset-assert 32)
    )
   (:methods
@@ -13382,16 +13440,17 @@
 (deftype sp-field-init-spec (structure)
   ((field          uint16  :offset-assert 0)
    (flags          uint16  :offset-assert 2)
-   (initial-value  int32   :offset-assert 4)
-   (random-range   int32   :offset-assert 8)
-   (random-mult    int32   :offset-assert 12)
-   (initial-valuef float   :offset 4) ;; TODO - floats suck - some of these values end up being NaN - these should come before the int32 fields
-   (random-rangef  float   :offset 8) ;; TODO - floats suck - some of these values end up being NaN - these should come before the int32 fields
-   (random-multf   float   :offset 12) ;; TODO - floats suck - some of these values end up being NaN - these should come before the int32 fields
-   (func           symbol   :offset 4)
+   (initial-valuef float   :offset-assert 4)
+   (random-rangef  float   :offset-assert 8)
+   (random-multf   float   :offset-assert 12)
+   (initial-value  int32   :offset 4)
+   (random-range   int32   :offset 8)
+   (random-mult    int32   :offset 12)
+   (sym            symbol  :offset 4) ;; moved
+   (func           function  :offset 4)
    (tex            uint32  :offset 4)
-   (pntr           uint32  :offset 4)
-   (sym            basic   :offset 4)
+   (pntr           pointer :offset 4)
+   ;; gap
    (sound          basic   :offset 4)
    )
   :method-count-assert 9
@@ -13464,23 +13523,21 @@
   )
 
 (deftype sparticle-launch-control (inline-array-class)
-  ((group            basic            :offset-assert 16)
-   (proc             basic            :offset-assert 20)
+  ((group            sparticle-launch-group  :offset-assert 16)
+   (proc             process          :offset-assert 20)
    (local-clock      int32            :offset-assert 24)
    (fade             float            :offset-assert 28)
    (matrix           int32            :offset-assert 32)
    (last-spawn-frame int32            :offset-assert 36)
    (last-spawn-time  int32            :offset-assert 40)
    (center           vector  :inline  :offset-assert 48)
-   ;; todo - what's the real type?
-   ;; maybe its sparticle-launch-state based on heap-base.
-   (data             uint8 :dynamic :offset-assert 64)
+   (data             sparticle-launch-state :inline :dynamic :offset-assert 64)
    )
   :method-count-assert 14
   :size-assert         #x40
   :flag-assert         #xe00000040
   (:methods
-    (dummy-9 () none 9)
+    (initialize (_type_ sparticle-launch-group process) none 9)
     (dummy-10 () none 10)
     (dummy-11 (_type_ vector) none 11)
     (deactivate (_type_) none 12)
@@ -13526,7 +13583,7 @@
    (next-launcher basic                          :offset-assert 120)
    (cache-alpha   float                          :offset-assert 124)
    (valid         basic                          :offset-assert 128)
-   (key           basic                          :offset-assert 132)
+   (key           sparticle-launch-control       :offset-assert 132)
    (binding       sparticle-launch-state         :offset-assert 136)
    (data          uint32                 1       :offset 12)
    (dataf         float                  1       :offset 12)
@@ -13556,14 +13613,17 @@
    (num-alloc       uint32 2 :offset-assert 20)
    (is-3d           basic     :offset-assert 28)
    (flags           uint32    :offset-assert 32)
-   (alloc-table     uint32    :offset-assert 36)
-   (cpuinfo-table   sparticle-cpuinfo    :offset-assert 40)
-   (vecdata-table   uint32    :offset-assert 44)
-   (adgifdata-table uint32    :offset-assert 48)
+   (alloc-table     (pointer uint64)    :offset-assert 36)
+   (cpuinfo-table   (inline-array sparticle-cpuinfo)    :offset-assert 40)
+   (vecdata-table   pointer    :offset-assert 44) ;; sprite-vec-data-2d or sprite-vec-data-3d
+   (adgifdata-table (inline-array adgif-shader)    :offset-assert 48)
    )
   :method-count-assert 9
   :size-assert         #x34
   :flag-assert         #x900000034
+  (:methods
+    (new (symbol type int int symbol pointer (inline-array adgif-shader)) _type_ 0)
+    )
   )
 
 ;; - Symbols
@@ -14025,7 +14085,7 @@
 ;; - Types
 
 (deftype hud-icon (basic)
-  ((icon    uint32  :offset-assert 4)
+  ((icon    (pointer manipy)  :offset-assert 4)
    (icon-y  int32   :offset-assert 8)
    (icon-x  int32   :offset-assert 12)
    (icon-z  int32   :offset-assert 16)
@@ -14038,7 +14098,7 @@
   )
 
 (deftype hud-particle (basic)
-  ((part     basic          :offset-assert 4)
+  ((part     sparticle-launch-control  :offset-assert 4)
    (init-pos vector :inline :offset-assert 16)
    (pos      vector :inline :offset-assert 32)
    (prev-pos vector :inline :offset-assert 48)
@@ -14176,20 +14236,59 @@
    (param1          float   :offset-assert 24)
    (param2          float   :offset-assert 28)
    (param3          int32   :offset-assert 32)
-   (value-to-modify uint32  :offset-assert 36)
+   (value-to-modify pointer  :offset-assert 36)
    )
   :method-count-assert 9
   :size-assert         #x28
   :flag-assert         #x900000028
   )
 
+(defenum progress-screen
+  :type int64
+  (invalid -1)
+  (fuel-cell 0)
+  (money 1)
+  (buzzer 2)
+  (settings 3)
+  (game-settings 4)
+  (graphic-settings 5)
+  (sound-settings 6)
+  (memcard-no-space 7)
+  (memcard-not-inserted 8)
+  (memcard-not-formatted 9)
+  (memcard-format 10)
+  (memcard-data-exists 11)
+  (memcard-loading 12)
+  (memcard-saving 13)
+  (memcard-formatting 14)
+  (memcard-creating 15)
+  (load-game 16)
+  (save-game 17)
+  (save-game-title 18)
+  (memcard-insert 19)
+  (memcard-error-loading 20)
+  (memcard-error-saving 21)
+  (memcard-removed 22)
+  (memcard-no-data 23)
+  (memcard-error-formatting 24)
+  (memcard-error-creating 25)
+  (memcard-auto-save-error 26)
+  (title 27)
+  (settings-title 28)
+  (auto-save 29)
+  (pal-change-to-60hz 30)
+  (pal-now-60hz 31)
+  (no-disc 32)
+  (bad-disc 33)
+  (quit 34)
+  )
 (deftype progress (process)
   ((current-debug-string         int32           :offset-assert 112)
    (current-debug-language       int32           :offset-assert 116)
    (current-debug-group          int32           :offset-assert 120)
    (in-out-position              int32           :offset-assert 124)
-   (display-state                uint64          :offset-assert 128)
-   (next-display-state           uint64          :offset-assert 136)
+   (display-state                progress-screen :offset-assert 128)
+   (next-display-state           progress-screen :offset-assert 136)
    (option-index                 int32           :offset-assert 144)
    (selected-option              basic           :offset-assert 148)
    (completion-percentage        float           :offset-assert 152)
@@ -14227,68 +14326,68 @@
    (total-nb-of-orbs             int32           :offset-assert 284)
    (total-nb-of-buzzers          int32           :offset-assert 288)
    (card-info                    mc-slot-info    :offset-assert 292)
-   (last-option-index-change     uint64          :offset-assert 296)
+   (last-option-index-change     int64           :offset-assert 296)
    (video-mode-timeout           uint64          :offset-assert 304)
-   (display-state-stack          uint64       5  :offset-assert 312)
-   (option-index-stack           uint32       5  :offset-assert 352)
+   (display-state-stack          progress-screen 5  :offset-assert 312)
+   (option-index-stack           int32        5  :offset-assert 352)
    (display-state-pos            int32           :offset-assert 372)
    (nb-of-icons                  int32           :offset-assert 376)
-   (icons                        uint32       6  :offset-assert 380)
+   (icons                        hud-icon     6  :offset-assert 380)
    (max-nb-of-particles          int32           :offset-assert 404)
    (nb-of-particles              int32           :offset-assert 408)
-   (particles                    uint32       40 :offset-assert 412)
-   (particle-state               uint32       40 :offset-assert 572)
+   (particles                    hud-particle 40 :offset-assert 412)
+   (particle-state               int32        40 :offset-assert 572)
    )
   :method-count-assert 59
   :size-assert         #x2dc
-  :flag-assert         #x3b000002dc
-  ;; inherited inspect of process
+  :heap-base           #x270
+  :flag-assert         #x3b027002dc
   (:methods
-    (dummy-14 () none 14)
-    (dummy-15 () none 15)
-    (dummy-16 () none 16)
-    (dummy-17 () none 17)
+    (dummy-14 (_type_) none 14)
+    (dummy-15 (_type_) none 15)
+    (dummy-16 (_type_) none 16)
+    (draw-progress (_type_) none 17)
     (dummy-18 () none 18)
-    (dummy-19 () none 19)
+    (dummy-19 (_type_) symbol 19)
     (hidden? (_type_) symbol 20)
-    (dummy-21 () none 21)
-    (dummy-22 () none 22)
-    (TODO-RENAME-23 (_type_ symbol symbol) none 23)
-    (dummy-24 () none 24)
-    (dummy-25 () none 25)
-    (dummy-26 () none 26)
-    (dummy-27 () none 27)
-    (dummy-28 () none 28)
-    (dummy-29 () none 29)
-    (dummy-30 () none 30)
-    (dummy-31 () none 31)
-    (dummy-32 (_type_) none 32)
-    (dummy-33 () none 33)
-    (dummy-34 () none 34)
-    (dummy-35 () none 35)
-    (dummy-36 () none 36)
-    (dummy-37 () none 37)
-    (dummy-38 () none 38)
-    (dummy-39 () none 39)
-    (dummy-40 () none 40)
-    (dummy-41 () none 41)
-    (dummy-42 () none 42)
-    (dummy-43 () none 43)
-    (dummy-44 () none 44)
-    (dummy-45 () none 45)
-    (dummy-46 () none 46)
-    (dummy-47 () none 47)
-    (dummy-48 () none 48)
-    (dummy-49 () none 49)
-    (dummy-50 () none 50)
-    (dummy-51 () none 51)
-    (dummy-52 () none 52)
-    (dummy-53 () none 53)
-    (dummy-54 () none 54)
-    (dummy-55 () none 55)
-    (dummy-56 () none 56)
-    (dummy-57 () none 57)
-    (dummy-58 () none 58)
+    (adjust-sprites (_type_) none 21)
+    (adjust-icons (_type_) none 22)
+    (adjust-ratios (_type_ symbol symbol) none 23)
+    (draw-fuel-cell-screen (_type_ int) none 24)
+    (draw-money-screen (_type_ int) none 25)
+    (draw-buzzer-screen (_type_ int) none 26)
+    (draw-notice-screen (_type_) none 27)
+    (draw-options (_type_ int int float) none 28)
+    (dummy-29 (_type_) none 29)
+    (respond-progress (_type_) none 30)
+    (dummy-31 (_type_) none 31)
+    (dummy-32 (_type_) symbol 32)
+    (initialize-icons (_type_) none 33)
+    (initialize-particles (_type_) none 34)
+    (draw-memcard-storage-error (_type_ font-context) none 35)
+    (draw-memcard-data-exists (_type_ font-context) none 36)
+    (draw-memcard-no-data (_type_ font-context) none 37)
+    (draw-memcard-accessing (_type_ font-context) none 38)
+    (draw-memcard-insert (_type_ font-context) none 39)
+    (draw-memcard-file-select (_type_ font-context) none 40)
+    (draw-memcard-auto-save-error (_type_ font-context) none 41)
+    (draw-memcard-removed (_type_ font-context) none 42)
+    (draw-memcard-error (_type_ font-context) none 43)
+    (dummy-44 (_type_) none 44)
+    (push! (_type_) none 45)
+    (pop! (_type_) none 46)
+    (dummy-47 (_type_) none 47)
+    (enter! (_type_ progress-screen int) none 48)
+    (draw-memcard-format (_type_ font-context) none 49)
+    (draw-auto-save (_type_ font-context) none 50)
+    (set-transition-progress! (_type_ int) none 51)
+    (set-transition-speed! (_type_) none 52)
+    (dummy-53 (_type_ progress-screen) progress-screen 53)
+    (draw-pal-change-to-60hz (_type_ font-context) none 54)
+    (draw-pal-now-60hz (_type_ font-context) none 55)
+    (draw-no-disc (_type_ font-context) none 56)
+    (draw-bad-disc (_type_ font-context) none 57)
+    (draw-quit (_type_ font-context) none 58)
     )
   )
 
@@ -14854,8 +14953,8 @@
 (define-extern sound-play-by-name (function sound-name sound-id int int int uint vector sound-id))
 (define-extern sound-angle-convert (function float int))
 (define-extern sound-set-ear-trans (function vector vector float int))
-(define-extern activate-progress (function process int int))
-(define-extern kset-language (function int int)) ;; unknown type
+(define-extern activate-progress (function process progress-screen none))
+(define-extern kset-language (function language-enum int))
 (define-extern sound-command->string (function sound-command string))
 (define-extern sound-name= (function sound-name sound-name symbol))
 (define-extern str-is-playing? (function symbol))
@@ -14868,7 +14967,7 @@
 (define-extern sound-music-load (function sound-name int))
 (define-extern sound-music-unload (function int))
 (define-extern sound-reload-info (function int))
-(define-extern set-language (function int int))
+(define-extern set-language (function language-enum int))
 (define-extern list-sounds (function int))
 (define-extern sound-buffer-dump (function int))
 (define-extern swap-sound-buffers (function vector vector float int))
@@ -15623,7 +15722,7 @@
 (define-extern draw-bones-check-longest-edge function)
 (define-extern draw-bones-check-longest-edge-asm function)
 (define-extern draw-bones function)
-(define-extern draw-bones-hud function)
+(define-extern draw-bones-hud (function draw-control dma-buffer none))
 
 ;; - Unknowns
 
@@ -16327,7 +16426,7 @@
 ;; - Functions
 
 (define-extern sphere-in-view-frustum? function)
-(define-extern kill-all-particles-with-key function)
+(define-extern kill-all-particles-with-key (function sparticle-launch-control none))
 (define-extern sp-relaunch-setup-fields function)
 (define-extern sp-init-fields! function)
 (define-extern sp-launch-particles-var (function sparticle-system sparticle-launcher vector symbol symbol float none)) ;; asm - ret not confirmed
@@ -16356,12 +16455,12 @@
 
 ;;(define-extern *global-toggle* object) ;; unknown type
 (define-extern *part-id-table* (array sparticle-launcher))
-;;(define-extern *particle-300hz-timer* object) ;; unknown type
+(define-extern *particle-300hz-timer* int)
 ;;(define-extern *sp-launch-queue* object) ;; unknown type
 ;;(define-extern *death-adgif* object) ;; unknown type
 (define-extern *part-group-id-table* (array sparticle-launch-group))
 ;;(define-extern *sp-launcher-lock* object) ;; unknown type
-;;(define-extern *sp-launcher-enable* object) ;; unknown type
+(define-extern *sp-launcher-enable* symbol)
 ;;(define-extern *particle-adgif-cache* object) ;; unknown type
 
 
@@ -16380,11 +16479,11 @@
 (define-extern sparticle-60-to-50 function)
 (define-extern sparticle-50-to-60 function)
 (define-extern forall-particles function)
-(define-extern sparticle-kill-it-level0 function)
-(define-extern sparticle-kill-it-level1 function)
-(define-extern forall-particles-with-key (function sparticle-launch-control function symbol symbol none))
+(define-extern sparticle-kill-it-level0 (function sparticle-system sparticle-cpuinfo none))
+(define-extern sparticle-kill-it-level1 (function sparticle-system sparticle-cpuinfo none))
+(define-extern forall-particles-with-key (function sparticle-launch-control (function sparticle-system sparticle-cpuinfo none) symbol symbol none))
 (define-extern sparticle-kill-it (function sparticle-system sparticle-cpuinfo none))
-(define-extern forall-particles-with-key-runner (function sparticle-launch-control function sparticle-system none)) ;; TODO - not complete!
+(define-extern forall-particles-with-key-runner (function sparticle-launch-control (function sparticle-system sparticle-cpuinfo none) sparticle-system none))
 (define-extern sp-get-approx-alloc-size function)
 (define-extern sp-process-block function)
 (define-extern sp-copy-to-spr function)
@@ -16403,7 +16502,7 @@
 
 ;; - Unknowns
 
-;;(define-extern *particles-flag* object) ;; unknown type
+(define-extern *particles-flag* symbol)
 (define-extern *sp-particle-system-2d* sparticle-system)
 (define-extern *sp-particle-system-3d* sparticle-system)
 
@@ -16747,7 +16846,7 @@
    (save       game-save            :offset-assert 136)
    (info       mc-slot-info :inline :offset-assert 140)
    (notify     handle               :offset-assert 440)
-   (state-time uint64               :offset-assert 448)
+   (state-time int64                :offset-assert 448)
    (part       sparticle-launch-control                :offset-assert 456)
    )
   :heap-base #x160
@@ -16770,14 +16869,14 @@
 
 ;; - Functions
 
-(define-extern auto-save-command (function symbol int int process-tree none)) ;; TODO - not confirmed
+(define-extern auto-save-command (function symbol int int process-tree none))
 (define-extern auto-save-init-by-other (function symbol process-tree int int none :behavior auto-save))
 (define-extern progress-allowed? (function symbol))
 (define-extern print-game-text (function string font-context symbol int int float)) ; TODO decomp error, this seems correct though
 (define-extern get-aspect-ratio (function symbol))
 (define-extern get-task-status (function game-task task-status))
 (define-extern lookup-level-info (function symbol level-load-info))
-(define-extern calculate-completion (function symbol float))
+(define-extern calculate-completion (function progress float))
 (define-extern game-save-elt->string (function game-save-elt string))
 (define-extern progress-level-index->string (function int string))
 (define-extern auto-save-post (function none :behavior auto-save))
@@ -16793,7 +16892,6 @@
 
 (define-extern *auto-save-info* mc-slot-info)
 (define-extern scf-get-time (function scf-time none))
-;; ;; unknown type
 
 
 ;; ----------------------
@@ -16807,7 +16905,7 @@
 (define-extern set-aspect-ratio (function symbol none))
 (define-extern set-video-mode (function symbol none))
 (define-extern scf-get-volume (function int))
-(define-extern scf-get-language (function uint))
+(define-extern scf-get-language (function language-enum))
 (define-extern scf-get-aspect (function uint))
 
 ;; - Symbols
@@ -18692,7 +18790,7 @@
 (define-extern process-entity-status! (function process entity-perm-status symbol int))
 (define-extern process-grab? (function process symbol))
 (define-extern process-release? (function process symbol))
-(define-extern ja-post (function int))
+(define-extern ja-post (function none :behavior process-drawable))
 (define-extern make-nodes-from-jg (function object pair symbol int))
 (define-extern dma-add-process-drawable function)
 (define-extern add-process-drawable function)
@@ -18816,46 +18914,12 @@
 
 ;; - Types
 
-; (deftype target-start (process-hidden)
-;   ((name             basic                 :offset-assert 4)
-;    (mask             uint32                :offset-assert 8)
-;    (parent           uint32                :offset-assert 12)
-;    (brother          uint32                :offset-assert 16)
-;    (child            uint32                :offset-assert 20)
-;    (ppointer         uint32                :offset-assert 24)
-;    (self             basic                 :offset-assert 28)
-;    (pool             basic                 :offset-assert 32)
-;    (status           basic                 :offset-assert 36)
-;    (pid              int32                 :offset-assert 40)
-;    (main-thread      basic                 :offset-assert 44)
-;    (top-thread       basic                 :offset-assert 48)
-;    (entity           basic                 :offset-assert 52)
-;    (state            basic                 :offset-assert 56)
-;    (trans-hook       basic                 :offset-assert 60)
-;    (post-hook        basic                 :offset-assert 64)
-;    (event-hook       basic                 :offset-assert 68)
-;    (allocated-length int32                 :offset-assert 72)
-;    (next-state       basic                 :offset-assert 76)
-;    (heap-base        uint32                :offset-assert 80)
-;    (heap-top         uint32                :offset-assert 84)
-;    (heap-cur         uint32                :offset-assert 88)
-;    (stack-frame-top  basic                 :offset-assert 92)
-;    (heap             kheap        :inline  :offset-assert 80)
-;    (connection-list  'connectable :inline  :offset-assert 96)
-;    (stack            UNKNOWN      :dynamic :offset-assert 112)
-;    )
-;   :method-count-assert 15
-;   :size-assert         #x70
-;   :flag-assert         #xf00000070
-;   (:methods
-;     (dummy-9 () none 9)
-;     (dummy-10 () none 10)
-;     (dummy-11 () none 11)
-;     (dummy-12 () none 12)
-;     (dummy-13 () none 13)
-;     (dummy-14 () none 14)
-;     )
-;   )
+(deftype target-start (process-hidden)
+  ()
+  :method-count-assert 15
+  :size-assert         #x70
+  :flag-assert         #xf00000070
+  )
 
 (deftype camera-start (process-hidden)
   ()
@@ -18864,58 +18928,30 @@
   :flag-assert         #xf00000070
   )
 
-; (deftype med-res-level (process-drawable)
-;   ((level     basic  :offset-assert 176)
-;    (part-mode basic  :offset-assert 180)
-;    (index     int32  :offset-assert 184)
-;    )
-;   :method-count-assert 20
-;   :size-assert         #xbc
-;   :heap-base           #x50
-;   :flag-assert         #x14005000bc
-;   ;; inherited inspect of process-drawable
-;   (:methods
-;     (dummy-9 () none 9)
-;     (dummy-10 () none 10)
-;     (dummy-11 () none 11)
-;     (dummy-12 () none 12)
-;     (dummy-13 () none 13)
-;     (dummy-14 () none 14)
-;     (dummy-15 () none 15)
-;     (dummy-16 () none 16)
-;     (dummy-17 () none 17)
-;     (dummy-18 () none 18)
-;     (dummy-19 () none 19)
-;     )
-;   )
+(deftype med-res-level (process-drawable)
+  ((level     basic  :offset-assert 176)
+   (part-mode basic  :offset-assert 180)
+   (index     int32  :offset-assert 184)
+   )
+  :method-count-assert 20
+  :size-assert         #xbc
+  :heap-base           #x50
+  :flag-assert         #x14005000bc
+  )
 
-; (deftype launcher (process-drawable)
-;   ((spring-height   meters         :offset-assert 176)
-;    (camera          basic          :offset-assert 180)
-;    (active-distance float          :offset-assert 184)
-;    (seek-time       uint64         :offset-assert 192)
-;    (dest            vector :inline :offset-assert 208)
-;    (sound-id        sound-id       :offset-assert 224)
-;    )
-;   :method-count-assert 20
-;   :size-assert         #xe4
-;   :heap-base           #x80
-;   :flag-assert         #x14008000e4
-;   ;; inherited inspect of process-drawable
-;   (:methods
-;     (dummy-9 () none 9)
-;     (dummy-10 () none 10)
-;     (dummy-11 () none 11)
-;     (dummy-12 () none 12)
-;     (dummy-13 () none 13)
-;     (dummy-14 () none 14)
-;     (dummy-15 () none 15)
-;     (dummy-16 () none 16)
-;     (dummy-17 () none 17)
-;     (dummy-18 () none 18)
-;     (dummy-19 () none 19)
-;     )
-;   )
+(deftype launcher (process-drawable)
+  ((spring-height   meters         :offset-assert 176)
+   (camera          basic          :offset-assert 180)
+   (active-distance float          :offset-assert 184)
+   (seek-time       int64          :offset-assert 192)
+   (dest            vector :inline :offset-assert 208)
+   (sound-id        sound-id       :offset-assert 224)
+   )
+  :method-count-assert 20
+  :size-assert         #xe4
+  :heap-base           #x80
+  :flag-assert         #x14008000e4
+  )
 
 ;; - Functions
 
@@ -18929,7 +18965,7 @@
 (define-extern camera-look-at function)
 (define-extern camera-pov-from function)
 (define-extern command-get-trans function)
-(define-extern manipy-init (function trsqv vector entity skeleton-group none)) ;; TODO - not confirmed yet
+(define-extern manipy-init (function vector entity skeleton-group vector none :behavior manipy))
 (define-extern part-tracker-notify function)
 (define-extern clone-anim-once function)
 (define-extern convert-to-hud-object function)
@@ -18948,22 +18984,22 @@
 
 ;; - Unknowns
 
-;;(define-extern *particle-quat* object) ;; unknown type
-;;(define-extern touch-tracker-idle object) ;; unknown type
-;;(define-extern cam-launcher-longfall object) ;; unknown type
-;;(define-extern cam-launcher-shortfall object) ;; unknown type
-;;(define-extern launcher-idle object) ;; unknown type
-;;(define-extern launcher-deactivated object) ;; unknown type
-;;(define-extern launcher-active object) ;; unknown type
+(define-extern *particle-quat* quaternion) ;; unknown type
+(define-extern touch-tracker-idle (state touch-tracker)) ;; unknown type
+(define-extern cam-launcher-longfall (state camera-tracker)) ;; unknown type
+(define-extern cam-launcher-shortfall (state camera-tracker)) ;; unknown type
+(define-extern launcher-idle (state launcher)) ;; unknown type
+(define-extern launcher-deactivated (state launcher)) ;; unknown type
+(define-extern launcher-active (state launcher)) ;; unknown type
 ;;(define-extern beach-part-grotto-1 object) ;; unknown type
-;;(define-extern part-spawner-active object) ;; unknown type
-;;(define-extern *lev-string* object) ;; unknown type
-;;(define-extern med-res-level-idle object) ;; unknown type
-;;(define-extern camera-tracker-process object) ;; unknown type
-;;(define-extern part-tracker-process object) ;; unknown type
-;;(define-extern manipy-idle object) ;; unknown type
-;;(define-extern swingpole-stance object) ;; unknown type
-;;(define-extern swingpole-active object) ;; unknown type
+(define-extern part-spawner-active (state part-spawner)) ;; unknown type
+(define-extern *lev-string* string) ;; unknown type
+(define-extern med-res-level-idle (state med-res-level)) ;; unknown type
+(define-extern camera-tracker-process camera-tracker) ;; unknown type
+(define-extern part-tracker-process part-tracker) ;; unknown type
+(define-extern manipy-idle (state manipy))
+(define-extern swingpole-stance (state swingpole)) ;; unknown type
+(define-extern swingpole-active (state swingpole)) ;; unknown type
 
 
 ;; ----------------------
@@ -19662,7 +19698,7 @@
 (define-extern guard-band-cull function)
 (define-extern find-instance-by-index function)
 (define-extern prototype-bucket-recalc-fields (function instance none)) ;; TODO - ret not confirmed
-(define-extern dma-add-process-drawable-hud function)
+(define-extern dma-add-process-drawable-hud (function process-drawable draw-control symbol dma-buffer none))
 (define-extern foreground-engine-execute (function engine display-frame int int none))
 (define-extern main-debug-hook function)
 (define-extern main-draw-hook (function none))
@@ -19760,12 +19796,12 @@
 
 ;; - Functions
 
-(define-extern display-loop (function int))
+(define-extern display-loop (function int :behavior process))
 (define-extern entity-by-type (function type entity-actor))
 (define-extern scf-get-territory (function int))
 (define-extern pause-allowed? (function symbol))
 (define-extern menu-respond-to-pause (function symbol))
-(define-extern hide-progress-screen (function int))
+(define-extern hide-progress-screen (function none))
 (define-extern set-letterbox-frames (function int int))
 (define-extern letterbox (function none))
 (define-extern blackout (function none))
@@ -20388,8 +20424,8 @@
 
 (define-extern othercam-calc function)
 (define-extern vector-for-ambient (function process-drawable vector vector))
-(define-extern hide-hud (function none)) ;; unconfirmed, see assistant-firecanyon
-(define-extern hud-hidden? (function symbol)) ;; unconfirmed, see assistant-firecanyon
+(define-extern hide-hud (function none))
+(define-extern hud-hidden? (function symbol))
 (define-extern process-taskable-clean-up-after-talking function)
 (define-extern process-taskable-hide-exit function)
 (define-extern process-taskable-play-anim-code function)
@@ -20538,14 +20574,14 @@
 
 ;; - Symbols
 
-(define-extern hud-arriving state) ;; unknown type
+(define-extern hud-arriving (state hud)) ;; unknown type
 
 ;; - Unknowns
 
-;;(define-extern hud-hidden object) ;; unknown type
-;;(define-extern hud-leaving object) ;; unknown type
-;;(define-extern hud-in object) ;; unknown type
-;;(define-extern hud-collecting object) ;; unknown type
+(define-extern hud-hidden (state hud))
+(define-extern hud-leaving (state hud))
+(define-extern hud-in (state hud))
+(define-extern hud-collecting (state hud))
 
 
 ;; ----------------------
@@ -20828,7 +20864,7 @@
 (define-extern *load-options* (array game-option))
 (define-extern *save-options* (array game-option))
 (define-extern *save-options-title* (array game-option))
-(define-extern *options-remap* (array array))
+(define-extern *options-remap* (array (array game-option)))
 (define-extern *language-name-remap* (array game-text-id))
 (define-extern *task-egg-starting-x* (array int32))
 (define-extern *game-counts* game-count-info)
@@ -20844,19 +20880,19 @@
 
 ;; - Functions
 
-(define-extern part-progress-hud-left-func function)
-(define-extern part-progress-hud-right-func function)
-(define-extern part-progress-hud-orb-func function)
-(define-extern part-progress-hud-buzzer-func function)
-(define-extern part-progress-hud-button-func function)
-(define-extern part-progress-hud-tint-func function)
-(define-extern part-progress-card-slot-01-func function)
-(define-extern part-progress-card-slot-02-func function)
-(define-extern part-progress-card-slot-03-func function)
-(define-extern part-progress-card-slot-04-func function)
-(define-extern part-progress-card-cell-func function)
-(define-extern part-progress-save-icon-func function)
-(define-extern fuel-cell-progress-hud-orbit-callback function)
+(define-extern part-progress-hud-left-func (function sparticle-system sparticle-cpuinfo matrix none))
+(define-extern part-progress-hud-right-func (function sparticle-system sparticle-cpuinfo matrix none))
+(define-extern part-progress-hud-orb-func (function sparticle-system sparticle-cpuinfo matrix none))
+(define-extern part-progress-hud-buzzer-func (function sparticle-system sparticle-cpuinfo matrix none))
+(define-extern part-progress-hud-button-func (function sparticle-system sparticle-cpuinfo matrix none))
+(define-extern part-progress-hud-tint-func (function sparticle-system sparticle-cpuinfo matrix none))
+(define-extern part-progress-card-slot-01-func (function sparticle-system sparticle-cpuinfo matrix none))
+(define-extern part-progress-card-slot-02-func (function sparticle-system sparticle-cpuinfo matrix none))
+(define-extern part-progress-card-slot-03-func (function sparticle-system sparticle-cpuinfo matrix none))
+(define-extern part-progress-card-slot-04-func (function sparticle-system sparticle-cpuinfo matrix none))
+(define-extern part-progress-card-cell-func (function sparticle-system sparticle-cpuinfo matrix none))
+(define-extern part-progress-save-icon-func (function sparticle-system sparticle-cpuinfo matrix none))
+(define-extern fuel-cell-progress-hud-orbit-callback (function sparticle-system sparticle-cpuinfo matrix none))
 
 
 ;; ----------------------
@@ -20867,10 +20903,10 @@
 
 ;; - Functions
 
-(define-extern adjust-pos function)
-(define-extern draw-percent-bar function)
-(define-extern print-language-name function)
-(define-extern hide-progress-icons function)
+(define-extern adjust-pos (function int int int))
+(define-extern draw-percent-bar (function int int float int none))
+(define-extern print-language-name (function int font-context int symbol font-context))
+(define-extern hide-progress-icons (function none))
 
 
 ;; ----------------------
@@ -20881,36 +20917,48 @@
 
 ;; - Types
 
-; (deftype progress-global-state (UNKNOWN)
-;   ()
-;   :method-count-assert 0
-;   :size-assert         #x0
-;   :flag-assert         #x0
-;   ;; bad get label
-;   )
+(deftype progress-global-state (basic)
+  ((aspect-ratio-choice   symbol  :offset-assert  4)
+   (video-mode-choice     symbol  :offset-assert  8)
+   (yes-no-choice         symbol  :offset-assert 12)
+   (which                 int32   :offset-assert 16)
+   (starting-state        progress-screen   :offset-assert 24)
+   (last-slot-saved       int32   :offset-assert 32)
+   (slider-backup         float   :offset-assert 36)
+   (language-backup       int64   :offset-assert 40)
+   (on-off-backup         symbol  :offset-assert 48)
+   (center-x-backup       int32   :offset-assert 52)
+   (center-y-backup       int32   :offset-assert 56)
+   (aspect-ratio-backup   symbol  :offset-assert 60)
+   (last-slider-sound     int64   :offset-assert 64)
+   )
+  :method-count-assert 9
+  :size-assert         #x48
+  :flag-assert         #x900000048
+  )
 
 ;; - Functions
 
-(define-extern get-next-task-up function)
-(define-extern get-next-level-up function)
-(define-extern get-next-level-down function)
-(define-extern get-next-task-down function)
-(define-extern make-levels-with-tasks-available-to-progress function)
-(define-extern progress-init-by-other function)
-(define-extern init-game-options function)
+(define-extern get-next-task-up (function int int int))
+(define-extern get-next-level-up (function int int))
+(define-extern get-next-level-down (function int int))
+(define-extern get-next-task-down (function int int int))
+(define-extern make-levels-with-tasks-available-to-progress (function none))
+(define-extern progress-init-by-other (function none :behavior progress))
+(define-extern init-game-options (function progress none))
 (define-extern make-current-level-available-to-progress (function none))
 
 ;; - Unknowns
 
-;;(define-extern progress-normal object) ;; unknown type
-;;(define-extern progress-going-out object) ;; unknown type
-;;(define-extern progress-gone object) ;; unknown type
-;;(define-extern *progress-state* object) ;; unknown type
-;;(define-extern *progress-save-info* object) ;; unknown type
-;;(define-extern progress-coming-in object) ;; unknown type
-;;(define-extern *progress-stack* object) ;; unknown type
-;;(define-extern progress-waiting object) ;; unknown type
-;;(define-extern progress-debug object) ;; unknown type
+(define-extern progress-normal (state progress))
+(define-extern progress-going-out (state progress))
+(define-extern progress-gone (state progress))
+(define-extern *progress-state* progress-global-state)
+(define-extern *progress-save-info* mc-slot-info)
+(define-extern progress-coming-in (state progress))
+(define-extern *progress-stack* (pointer uint8))
+(define-extern progress-waiting (state progress))
+(define-extern progress-debug (state progress))
 
 
 ;; ----------------------
@@ -22139,7 +22187,7 @@
     (TODO-RENAME-34 (_type_) none 34)
     )
   )
-    
+
 
 ;; - Functions
 

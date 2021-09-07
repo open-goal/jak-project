@@ -18,9 +18,114 @@
 (define-extern process-grab? (function process symbol))
 (define-extern camera-change-to (function string int symbol none)) ;; TODO - not confirmed yet
 (define-extern process-release? (function process symbol))
-;; TODO - for bird-lady-beach
-(define-extern manipy-init (function trsqv vector entity skeleton-group none)) ;; TODO - not confirmed yet
 ;; TODO - for projectiles | dark-eco-pool
 (define-extern part-tracker-init (function sparticle-launch-group int basic basic basic vector none)) ;; TODO - not confirmed
 ;; TODO - for target-part
 (define-extern process-drawable-random-point! (function process-drawable vector vector))
+
+
+;; TODO PLACEHOLDER STATE
+(defstate manipy-idle (manipy)
+  :code (behavior ()
+    (loop
+      (suspend)
+      )
+    )
+  )
+(defbehavior manipy-init manipy ((arg0 vector) (arg1 entity) (arg2 skeleton-group) (arg3 vector))
+
+  (stack-size-set! (-> self main-thread) 128)
+  (logior! (-> self mask) (process-mask heap-shrunk))
+  (set! (-> self entity) arg1)
+  (cond
+   ((= arg3 'collide-shape-moving)
+    (let
+     ((s4-1
+       (new
+        'process
+        'collide-shape-moving
+        self
+        (collide-list-enum hit-by-player)
+        )
+       )
+      )
+     (set! (-> s4-1 dynam) (copy *standard-dynamics* 'process))
+     (set! (-> s4-1 reaction) default-collision-reaction)
+     (set! (-> s4-1 no-reaction) nothing)
+     (set-vector!
+      (->
+       (new 'process 'collide-shape-prim-sphere s4-1 (the-as uint 0))
+       local-sphere
+       )
+      0.0
+      0.0
+      0.0
+      4096.0
+      )
+     (dummy-46 s4-1)
+     (set! (-> s4-1 nav-radius) (* 0.75 (-> s4-1 root-prim local-sphere w)))
+     (dummy-50 s4-1)
+     (set! (-> self root) s4-1)
+     )
+    )
+   (arg3
+    (let
+     ((s4-2
+       (new 'process 'collide-shape self (collide-list-enum hit-by-player))
+       )
+      )
+     (let
+      ((s2-0 (new 'process 'collide-shape-prim-sphere s4-2 (the-as uint 0))))
+      (set! (-> s2-0 prim-core collide-as) (the-as uint #x8040))
+      (set! (-> s2-0 collide-with) (the-as uint 16))
+      (set-vector!
+       (-> s2-0 local-sphere)
+       (-> arg3 x)
+       (-> arg3 y)
+       (-> arg3 z)
+       (-> arg3 w)
+       )
+      )
+     (dummy-46 s4-2)
+     (set! (-> s4-2 nav-radius) (* 0.75 (-> s4-2 root-prim local-sphere w)))
+     (dummy-50 s4-2)
+     (set! (-> self root) s4-2)
+     )
+    )
+   (else
+    (set! (-> self root) (new 'process 'trsqv))
+    )
+   )
+  ;;(set! (-> self root trans quad) (-> arg0 quad))
+  ;;(dummy-14 self arg2 '())
+  ;;(if (type-type? (-> self root type) collide-shape)
+   ;;(dummy-47 (-> self root))
+   ;;)
+  ;;(set! (-> self shadow-backup) (-> self draw shadow))
+  (set! (-> self new-trans-hook) nothing)
+  (set! (-> self cur-trans-hook) nothing)
+  (set! (-> self new-post-hook) nothing)
+  (set! (-> self cur-post-hook) nothing)
+  (set! (-> self cur-event-hook) #f)
+  (set! (-> self cur-grab-handle) (the-as handle #f))
+  (set! (-> self cur-target-handle) (the-as handle #f))
+  (set! (-> self clone-copy-trans) #t)
+  (set! (-> self draw?) #t)
+  (cond
+   ((nonzero? (-> self skel))
+    (set! (-> self new-joint-anim) (if (> (-> self skel active-channels) 0)
+                                    (-> self skel root-channel 0 frame-group)
+                                    )
+     )
+    (set! (-> self anim-mode) 'loop)
+    )
+   (else
+    (set! (-> self anim-mode) 'still)
+    )
+   )
+  (set! (-> self event-hook) (-> manipy-idle event))
+  (go manipy-idle)
+  (none)
+  )
+
+

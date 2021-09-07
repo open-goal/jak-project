@@ -140,7 +140,7 @@
   (local-vars
    (v0-2 int)
    (heap-sym-heap game-text-info)
-   (lang int)
+   (lang language-enum)
    (load-status int)
    (heap-free int)
    )
@@ -149,13 +149,13 @@
   (set! load-status 0)
   (set! heap-free (&- (-> heap top) (the-as uint (-> heap base))))
   ;; english -> UK english in PAL (I think?)
-  (if (and (= (scf-get-territory) 1) (zero? lang))
-      (set! lang 6)
+  (if (and (= (scf-get-territory) GAME_TERRITORY_SCEE) (= lang (language-enum english)))
+      (set! lang (language-enum uk-english))
       )
 
   ;; only load if we actually need to
   (when (or (= heap-sym-heap #f) ;; nothing loaded
-            (!= (-> heap-sym-heap language-id) lang) ;; loaded, but wrong lang
+            (!= (-> heap-sym-heap language-id) (the-as uint lang)) ;; loaded, but wrong lang
             (not (string= (-> heap-sym-heap group-name) txt-name)) ;; loaded, but wrong group
             )
 

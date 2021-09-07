@@ -108,7 +108,7 @@ void initialize() {
 
   // VIRTUAL_TERMINAL_PROCESSING enables support for ANSI colors in the stdout text, used by the
   // logging tool.
-  // ENABLE_QUICK_EDIT_MODE enables various mouse-related stdin functions, such as right-click for
+  // QUICK_EDIT_MODE enables various mouse-related stdin functions, such as right-click for
   // copy-paste, scroll wheel to - shocker - scroll, etc.
 
   // Get handle to stdout

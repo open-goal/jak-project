@@ -8,9 +8,35 @@
 ;; TODO - for shadow
 (define *part-id-table* (new 'global 'boxed-array sparticle-launcher 3584))
 (define *part-group-id-table* (new 'global 'boxed-array sparticle-launch-group 1024))
+(define *particle-300hz-timer* 0)
 
 ;; TODO - for particle related code
 (define-extern sp-launch-particles-var (function sparticle-system sparticle-launcher vector symbol symbol float none))
 
-;; TODO - for static-screen
+(defmethod create-launch-control sparticle-launch-group ((obj sparticle-launch-group) (arg0 process))
+  (let ((gp-0 (new 'process 'sparticle-launch-control (-> obj length))))
+   (when (zero? gp-0)
+    (go process-drawable-art-error "memory")
+    (return (the-as sparticle-launch-control 0))
+    )
+   ;;(initialize gp-0 obj arg0)
+   gp-0
+   )
+  )
+
+(defmethod deactivate sparticle-launch-control ((obj sparticle-launch-control))
+  (countdown (v1-0 (-> obj length))
+   (let ((a0-3 (-> obj data v1-0)))
+    (set! (-> a0-3 flags) (logand -3 (-> a0-3 flags)))
+    )
+   )
+  (set! (-> obj local-clock) 0)
+  (set! (-> obj fade) 1.0)
+  (kill-all-particles-with-key obj)
+  (if (> (-> obj matrix) 0)
+   (sprite-release-user-hvdf (-> obj matrix))
+   )
+  (none)
+  )
+
 (define-extern lookup-part-group-by-name (function string basic))

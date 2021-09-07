@@ -398,15 +398,15 @@
     (set! (-> v0-0 num-valid 1) 0)
 
     ;; internally, we put the vec-data and then the adgif-data
-    (set! (-> v0-0 vec-data) (the-as uint (-> v0-0 data)))
-    (set! (-> v0-0 adgif-data) (the-as uint (&-> v0-0 data vec-data-size)))
+    (set! (-> v0-0 vec-data) (-> v0-0 data))
+    (set! (-> v0-0 adgif-data) (the-as (inline-array adgif-shader) (&-> v0-0 data vec-data-size)))
     v0-0
     )
   )
 
 (defmethod new sprite-array-3d ((allocation symbol) (type-to-make type) (group-0-size int) (group-1-size int))
   "Allocate a sprite-array for 3d sprites.  There are two groups, each can contain the given number of sprites.
-   Group 1 size is zero in practive for 3d."
+   Group 1 size is zero in practice for 3d."
   (let* ((sprite-count (+ group-0-size group-1-size))
          (vec-data-size (* 3 sprite-count))
          (adgif-data-size (* 5 sprite-count))
@@ -419,8 +419,8 @@
    (set! (-> v0-0 num-sprites 1) group-1-size)
    (set! (-> v0-0 num-valid 0) 0)
    (set! (-> v0-0 num-valid 1) 0)
-   (set! (-> v0-0 vec-data) (the-as uint (-> v0-0 data)))
-   (set! (-> v0-0 adgif-data) (the-as uint (&-> v0-0 data vec-data-size)))
+   (set! (-> v0-0 vec-data) (-> v0-0 data))
+   (set! (-> v0-0 adgif-data) (the-as (inline-array adgif-shader) (&-> v0-0 data vec-data-size)))
    v0-0
    )
   )
@@ -606,7 +606,7 @@
   ;; second packet is vector data (3 qw / sprite)
   (let ((qwc-pkt2 (* 3 num-sprites)))
     ;; we do a ref to the vec-data and don't actually copy it into the dma-buffer
-    (dma-buffer-add-ref-vif2 dma-buff qwc-pkt2 (+ (-> sprites vec-data) (the-as uint (* 48 start-sprite-idx)))
+    (dma-buffer-add-ref-vif2 dma-buff qwc-pkt2 (&+ (-> sprites vec-data) (* 48 start-sprite-idx))
                (new 'static 'vif-tag :cmd (vif-cmd nop))
                (new 'static 'vif-tag :cmd (vif-cmd unpack-v4-32) :num qwc-pkt2
                                      :imm (new 'static 'vif-unpack-imm :flg 1 :addr 1))
@@ -615,7 +615,7 @@
 
   ;; third packet is adgif data (5 qw/sprite)
   (let ((qwc-pkt3 (* 5 num-sprites)))
-    (dma-buffer-add-ref-vif2 dma-buff qwc-pkt3 (+ (-> sprites adgif-data) (the-as uint (* 80 start-sprite-idx)))
+    (dma-buffer-add-ref-vif2 dma-buff qwc-pkt3 (&+ (-> sprites adgif-data) (* 80 start-sprite-idx))
                (new 'static 'vif-tag :cmd (vif-cmd nop))
                (new 'static 'vif-tag :cmd (vif-cmd unpack-v4-32) :num qwc-pkt3
                                      :imm (new 'static 'vif-unpack-imm :flg 1 :addr 145))
@@ -676,7 +676,7 @@
   ;; second packet is vector data (3 qw / sprite)
   (let ((qwc-pkt2 (* 3 num-sprites)))
     ;; we do a ref to the vec-data and don't actually copy it into the dma-buffer
-    (dma-buffer-add-ref-vif2 dma-buff qwc-pkt2 (+ (-> sprites vec-data) (the-as uint (* 48 start-sprite-idx)))
+    (dma-buffer-add-ref-vif2 dma-buff qwc-pkt2 (&+ (-> sprites vec-data) (* 48 start-sprite-idx))
                (new 'static 'vif-tag :cmd (vif-cmd nop))
                (new 'static 'vif-tag :cmd (vif-cmd unpack-v4-32) :num qwc-pkt2
                                      :imm (new 'static 'vif-unpack-imm :flg 1 :addr 1))
@@ -685,7 +685,7 @@
 
   ;; third packet is adgif data (5 qw/sprite)
   (let ((qwc-pkt3 (* 5 num-sprites)))
-    (dma-buffer-add-ref-vif2 dma-buff qwc-pkt3 (+ (-> sprites adgif-data) (the-as uint (* 80 start-sprite-idx)))
+    (dma-buffer-add-ref-vif2 dma-buff qwc-pkt3 (&+ (-> sprites adgif-data) (* 80 start-sprite-idx))
                (new 'static 'vif-tag :cmd (vif-cmd nop))
                (new 'static 'vif-tag :cmd (vif-cmd unpack-v4-32) :num qwc-pkt3
                                      :imm (new 'static 'vif-unpack-imm :flg 1 :addr 145))

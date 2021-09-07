@@ -92,31 +92,31 @@ It type checks the arguments for the entry function.
     )
   )
 
-(defmacro make-function-process (dead-pool new-pool proc-type func &key (name #f) &key (stack-size #x4000) &key (stack *kernel-dram-stack*) &rest args)
+(defmacro make-function-process (proc-type func &key (from *default-dead-pool*) &key (to *default-pool*) &key (name #f) &key (stack-size #x4000) &key (stack *kernel-dram-stack*) &rest args)
   "Start a new process that runs a function on its main thread.
    Returns a pointer to the new process (or #f? on error)."
   
   (with-gensyms (new-proc)
-    `(let ((,new-proc (the-as ,proc-type (get-process ,dead-pool ,proc-type ,stack-size))))
+    `(let ((,new-proc (the-as ,proc-type (get-process ,from ,proc-type ,stack-size))))
         (when ,new-proc
-          ((method-of-type ,proc-type activate) ,new-proc ,new-pool ,(if name name `(quote ,proc-type)) ,stack)
+          ((method-of-type ,proc-type activate) ,new-proc ,to ,(if name name `(quote ,proc-type)) ,stack)
           (run-next-time-in-process ,new-proc ,func ,@args)
-          (-> ,new-proc ppointer)
+          (the (pointer ,proc-type) (-> ,new-proc ppointer))
           )
         )
     )
   )
 
-(defmacro make-init-process (dead-pool new-pool proc-type func &key (name #f) &key (stack-size #x4000) &key (stack *kernel-dram-stack*) &rest args)
+(defmacro make-init-process (proc-type func &key (from *default-dead-pool*) &key (to *default-pool*) &key (name #f) &key (stack-size #x4000) &key (stack *kernel-dram-stack*) &rest args)
   "Start a new process and run an init function on it.
    Returns a pointer to the new process, or #f (or is it 0?) if something goes wrong."
   
   (with-gensyms (new-proc)
-    `(let ((,new-proc (the-as ,proc-type (get-process ,dead-pool ,proc-type ,stack-size))))
+    `(let ((,new-proc (the-as ,proc-type (get-process ,from ,proc-type ,stack-size))))
         (when ,new-proc
-          ((method-of-type ,proc-type activate) ,new-proc ,new-pool ,(if name name `(quote ,proc-type)) ,stack)
+          ((method-of-type ,proc-type activate) ,new-proc ,to ,(if name name `(quote ,proc-type)) ,stack)
           (run-now-in-process ,new-proc ,func ,@args)
-          (-> ,new-proc ppointer)
+          (the (pointer ,proc-type) (-> ,new-proc ppointer))
           )
         )
     )
@@ -136,7 +136,10 @@ It type checks the arguments for the entry function.
     (push! *defstate-type-stack* beh-type)
     )
   )
-
+(defmacro clear-def-state-stack ()
+  (set! *defstate-type-stack* '())
+  `(none)
+  )
 (defmacro defstate (state-name parents
                                &key (virtual #f)
                                &key (event #f)
@@ -151,9 +154,34 @@ It type checks the arguments for the entry function.
   (with-gensyms (new-state)
     (let ((defstate-type (first parents)))
       (when (not (null? *defstate-type-stack*))
-        (ferror "*defstate-type-stack* leaked! An error probably happened in a previous defstate. stack is: {}" *defstate-type-stack*)
+        (fmt #t "*defstate-type-stack* leaked! An error probably happened in a previous defstate. stack is: {}"
+                 *defstate-type-stack*)
         )
       (set! *defstate-type-stack* '())
+      ;; check for default handlers
+      (let ((default-handlers (assoc defstate-type *default-state-handlers*)))
+          (when (not (null? default-handlers))
+              (set! default-handlers (cdr default-handlers))
+              (when (and (not event) (car default-handlers))
+                  (set! event (car default-handlers)))
+              (set! default-handlers (cdr default-handlers))
+              (when (and (not enter) (car default-handlers))
+                  (set! enter (car default-handlers)))
+              (set! default-handlers (cdr default-handlers))
+              (when (and (not trans) (car default-handlers))
+                  (set! trans (car default-handlers)))
+              (set! default-handlers (cdr default-handlers))
+              (when (and (not exit) (car default-handlers))
+                  (set! exit (car default-handlers)))
+              (set! default-handlers (cdr default-handlers))
+              (when (and (not code) (car default-handlers))
+                  (set! code (car default-handlers)))
+              (set! default-handlers (cdr default-handlers))
+              (when (and (not post) (car default-handlers))
+                  (set! post (car default-handlers)))
+              (set! default-handlers (cdr default-handlers))
+              )
+          )
       (def-state-check-behavior event defstate-type)
       (def-state-check-behavior enter defstate-type)
       (def-state-check-behavior trans defstate-type)
@@ -191,6 +219,22 @@ It type checks the arguments for the entry function.
     (pop! *defstate-type-stack*)
     `(lambda :behavior ,behavior-type ,bindings ,@body)
     )
+  )
+
+;; set the default handler functions for a process's state handlers
+(seval (define *default-state-handlers* '()))
+(defmacro defstatehandler (proc
+                           &key (event #f)
+                           &key (enter #f)
+                           &key (trans #f)
+                           &key (exit #f)
+                           &key (code #f)
+                           &key (post #f))
+  (if (null? (assoc proc *default-state-handlers*))
+      (push! *default-state-handlers* (cons proc (list event enter trans exit code post)))
+      (fmt #t "default state handlers for {} already defined, ignoring duplicate.\n" proc (cadr (assoc proc *default-state-handlers*)))
+      )
+  `(none)
   )
 
 (defmethod new state

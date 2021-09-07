@@ -11,7 +11,7 @@
 
 (defun set-letterbox-frames ((arg0 int))
   "Set the letterbox frame counter for arg0 frames in the future"
-  (let ((v0-0 (+ (-> *display* base-frame-counter) arg0)))
+  (let ((v0-0 (+ (current-time) arg0)))
     (set! (-> *game-info* letterbox-time) v0-0)
     v0-0
     )
@@ -33,11 +33,11 @@
    Otherwise, this can only be used to increase the blackout period."
   (cond
     ((zero? arg0)
-     (set! (-> *game-info* blackout-time) (-> *display* base-frame-counter))
+     (set! (-> *game-info* blackout-time) (current-time))
      )
     (else
      (set! (-> *game-info* blackout-time) (max (the int (-> *game-info* blackout-time))
-                                               (the int (+ (-> *display* base-frame-counter) arg0))))
+                                               (the int (+ (current-time) arg0))))
      )
     )
   )
@@ -78,54 +78,37 @@
   (if *debug-segment*
       (menu-respond-to-pause)
       )
-  (case *master-mode* 
+  (case *master-mode*
     (('pause)
 
      ;; request the pause mask to be set in prevent-from-run.
      ;; this will block any process with pause from running, pausing most game objects.
      (if (not *debug-pause*)
-         (set! (-> *setting-control* default process-mask)
-               (logior (-> *setting-control* default process-mask) (process-mask pause))
-               )
+         (logior! (-> *setting-control* default process-mask) (process-mask pause))
          )
 
      ;; allow the menu to run.
-     (set! (-> *setting-control* default process-mask)
-           (logand (lognot (process-mask menu))
-                   (-> *setting-control* default process-mask)
-                   )
-           )
+     (logclear! (-> *setting-control* default process-mask) (process-mask menu))
 
      ;; ??
      (set! *pause-lock* #f)
      (sound-group-pause (the-as uint 255))
-     ;;(hide-progress-screen) TODO
+     (hide-progress-screen)
      )
     (('menu)
      ;; I believe these masks are just to make the progress go away work.
-     (set! (-> *setting-control* default process-mask)
-           (logior (-> *setting-control* default process-mask) (process-mask menu))
-           )
-     (set! (-> *setting-control* default process-mask)
-           (logand (lognot (process-mask pause progress))
-                   (-> *setting-control* default process-mask)
-                   )
-           )
+     (logior! (-> *setting-control* default process-mask) (process-mask menu))
+     (logclear! (-> *setting-control* default process-mask) (process-mask pause progress))
      (set! *pause-lock* #f)
-     ;;(hide-progress-screen) TODO
+     (hide-progress-screen)
      )
     (('progress)
      ;; allow menu to run while in progress.
-     (set! (-> *setting-control* default process-mask)
-           (logand
-            (lognot (process-mask menu))
-            (-> *setting-control* default process-mask)
-            )
-           )
+     (logclear! (-> *setting-control* default process-mask) (process-mask menu))
 
      ;; activate the progress menu.
      (when (not *progress-process*)
-       (activate-progress *dproc* 0)
+       (activate-progress *dproc* (progress-screen fuel-cell))
        (if (not *progress-process*) ;; if it doesn't want to activate, back to game.
            (set-master-mode 'game)
            )
@@ -133,13 +116,9 @@
      )
     (('game)
      ;; allow pausable/menu to run.
-     (set! (-> *setting-control* default process-mask)
-           (logand (lognot (process-mask pause menu))
-                   (-> *setting-control* default process-mask)
-                   )
-           )
+     (logclear! (-> *setting-control* default process-mask) (process-mask pause menu))
      ;; (sound-group-continue (the-as uint 255)) TODO (we need to flush sound commands)
-     ;;(hide-progress-screen) TODO
+     (hide-progress-screen)
      )
     )
   ;; apply settings now.
@@ -152,7 +131,7 @@
 
 (defun toggle-pause ()
   "Do pause/menu/progress transitions"
-  (case *master-mode* 
+  (case *master-mode*
     (('game)
      ;; coming from normal gameplay
      (set! *last-master-mode* *master-mode*)
@@ -170,7 +149,7 @@
         (else
          (cond
            ;; try to open the debug menu:
-           ((nonzero? (logand (-> *cpad-list* cpads 0 button0-abs 0) (pad-buttons r3)))
+           ((cpad-hold? 0 r3)
             ;; R3 pushed, no target.
             (if *debug-segment*
                 'menu ;; go to debug menu, when in debug mode.
@@ -180,8 +159,8 @@
            (else
             (cond
               ;; debug mode pause allowed with select or R2.
-              ((and (or (nonzero? (logand (-> *cpad-list* cpads 0 button0-abs 0) (pad-buttons select)))
-                        (nonzero? (logand (-> *cpad-list* cpads 0 button0-abs 0) (pad-buttons r2)))
+              ((and (or (cpad-hold? 0 select)
+                        (cpad-hold? 0 r2)
                         )
                     *debug-segment*
                     )
@@ -206,7 +185,7 @@
                   )
 
                  ;; pushing start.
-                 ((nonzero? (logand (-> *cpad-list* cpads 0 button0-abs 0) (pad-buttons start)))
+                 ((cpad-hold? 0 start)
                   ;; toggle between progress/game
                   (if *progress-process*
                       'game
@@ -231,11 +210,11 @@
      (set-master-mode
       (cond
         ;; push R3 to exit to previous master mode.
-        ((nonzero? (logand (-> *cpad-list* cpads 0 button0-abs 0) (pad-buttons r3)))
+        ((cpad-hold? 0 r3)
          *last-master-mode*
          )
         ;; select/R2 to pause.
-        ((nonzero? (logand (-> *cpad-list* cpads 0 button0-abs 0) (pad-buttons select r2)))
+        ((cpad-hold? 0 select r2)
          (if *debug-segment*
              'pause
              *master-mode* ;; not sure we can get to menu in non-debug...
@@ -269,7 +248,7 @@
      (set-master-mode
       (cond
         ;; pause -> debug menu
-        ((nonzero? (logand (-> *cpad-list* cpads 0 button0-abs 0) (pad-buttons r3)))
+        ((cpad-hold? 0 r3)
          (if *debug-segment*
              'menu
              *master-mode*
@@ -279,12 +258,12 @@
          (cond
            ;; pause -> single frame advance (R2)
            ((and *cheat-mode*
-                 (nonzero? (logand (-> *cpad-list* cpads 0 button0-abs 0) (pad-buttons select r2)))
+                 (cpad-hold? 0 select r2)
                  )
             'game
             )
            ;; pause -> game
-           ((nonzero? (logand (-> *cpad-list* cpads 0 button0-abs 0) (pad-buttons start)))
+           ((cpad-hold? 0 start)
             'game
             )
            (else
@@ -295,14 +274,14 @@
         )
       )
      (set! *pause-lock*
-           (and *cheat-mode* (nonzero? (logand (-> *cpad-list* cpads 0 button0-abs 0) (pad-buttons r2))))
+           (and *cheat-mode* (cpad-hold? 0 r2))
            )
      )
     (('progress)
      (set-master-mode
       (cond
         ;; progress -> debug
-        ((nonzero? (logand (-> *cpad-list* cpads 0 button0-abs 0) (pad-buttons r3)))
+        ((cpad-hold? 0 r3)
          (if *debug-segment*
              'menu
              *master-mode*
@@ -310,7 +289,7 @@
          )
         (else
          ;; un-progress
-         (if (nonzero? (logand (-> *cpad-list* cpads 0 button0-abs 0) (pad-buttons start)))
+         (if (cpad-hold? 0 start)
              *last-master-mode*
              *master-mode*
              )
@@ -318,7 +297,7 @@
         )
       )
      (set! *pause-lock*
-           (and *cheat-mode* (nonzero? (logand (-> *cpad-list* cpads 0 button0-abs 0) (pad-buttons r2))))
+           (and *cheat-mode* (cpad-hold? 0 r2))
            )
      )
     )
@@ -332,6 +311,13 @@
          )
   )
 
+(defmethod draw screen-filter ((obj screen-filter))
+  (with-dma-buffer-add-bucket ((buf (-> (current-frame) global-buf)) (bucket-id debug-draw1))
+    (draw-sprite2d-xy buf -256 (- (-> *video-parms* screen-hy)) 512 (-> *video-parms* screen-sy) (-> obj color))
+    )
+  (none)
+  )
+
 ;;;;;;;;;;;;;;;;;;;;;;
 ;; Cheat Codes
 ;;;;;;;;;;;;;;;;;;;;;;
@@ -340,495 +326,86 @@
 (define *master-exit* #f)
 (define *progress-cheat* #f)
 
+(defmacro cheats-sound-play (cheat?)
+  "play the appropriate sound for inputting a cheat code"
+
+  `(if ,cheat?
+      (sound-play-by-name (static-sound-name "select-menu") (new-sound-id) 1024 0 0 (the-as uint 1) (the-as vector #t))
+      (sound-play-by-name (static-sound-name "cursor-options") (new-sound-id) 1024 0 0 (the-as uint 1) (the-as vector #t))
+      )
+  )
+
 (defun main-cheats ()
   "Handle cheat codes and timeout"
 
   ;; look for codes when L3 is pushed
-  (when (and (nonzero? (logand (-> *cpad-list* cpads 0 button0-abs 0) (pad-buttons l3)))
+  (when (and (cpad-hold? 0 l3)
              (or *cheat-mode* (= *kernel-boot-message* 'play)) ;; not in demo
              )
-    (when (nonzero? (-> *cpad-list* cpads 0 button0-rel 0))
-      (let ((cheatmode-state (-> *cheat-temp* 0)))
-        (cond
-          ((zero? cheatmode-state)
-           (cond
-             ((nonzero? (logand (-> *cpad-list* cpads 0 button0-rel 0) (pad-buttons up)))
-              (set! (-> *cheat-temp* 0) (+ (-> *cheat-temp* 0) 1))
-              )
-             (else (set! (-> *cheat-temp* 0) 0))
-             )
-           )
-          ((= cheatmode-state 1)
-           (cond
-             ((nonzero? (logand (-> *cpad-list* cpads 0 button0-rel 0) (pad-buttons up)))
-              (set! (-> *cheat-temp* 0) (+ (-> *cheat-temp* 0) 1))
-              )
-             (else (set! (-> *cheat-temp* 0) 0))
-             )
-           )
-          ((= cheatmode-state 2)
-           (cond
-             ((nonzero? (logand (-> *cpad-list* cpads 0 button0-rel 0) (pad-buttons down)))
-              (set! (-> *cheat-temp* 0) (+ (-> *cheat-temp* 0) 1))
-              )
-             (else (set! (-> *cheat-temp* 0) 0))
-             )
-           )
-          ((= cheatmode-state 3)
-           (cond
-             ((nonzero? (logand (-> *cpad-list* cpads 0 button0-rel 0) (pad-buttons down)))
-              (set! (-> *cheat-temp* 0) (+ (-> *cheat-temp* 0) 1))
-              )
-             (else (set! (-> *cheat-temp* 0) 0))
-             )
-           )
-          ((= cheatmode-state 4)
-           (cond
-             ((nonzero? (logand (-> *cpad-list* cpads 0 button0-rel 0) (pad-buttons left)))
-              (set! (-> *cheat-temp* 0) (+ (-> *cheat-temp* 0) 1))
-              )
-             (else (set! (-> *cheat-temp* 0) 0))
-             )
-           )
-          ((= cheatmode-state 5)
-           (cond
-             ((nonzero? (logand (-> *cpad-list* cpads 0 button0-rel 0) (pad-buttons right)))
-              (set! (-> *cheat-temp* 0) (+ (-> *cheat-temp* 0) 1))
-              )
-             (else (set! (-> *cheat-temp* 0) 0))
-             )
-           )
-          ((= cheatmode-state 6)
-           (cond
-             ((nonzero? (logand (-> *cpad-list* cpads 0 button0-rel 0) (pad-buttons left)))
-              (set! (-> *cheat-temp* 0) (+ (-> *cheat-temp* 0) 1))
-              )
-             (else (set! (-> *cheat-temp* 0) 0))
-             )
-           )
-          ((= cheatmode-state 7)
-           (cond
-             ((nonzero? (logand (-> *cpad-list* cpads 0 button0-rel 0) (pad-buttons right)))
-              (set! (-> *cheat-temp* 0) (+ (-> *cheat-temp* 0) 1))
-              )
-             (else (set! (-> *cheat-temp* 0) 0))
-             )
-           )
-          ((= cheatmode-state 8)
-           (cond
-             ((nonzero? (logand (-> *cpad-list* cpads 0 button0-rel 0) (pad-buttons x)))
-              (set! (-> *cheat-temp* 0) (+ (-> *cheat-temp* 0) 1))
-              )
-             (else (set! (-> *cheat-temp* 0) 0))
-             )
-           )
-          ((= cheatmode-state 9)
-           (cond
-             ((nonzero? (logand (-> *cpad-list* cpads 0 button0-rel 0) (pad-buttons x)))
-              (set! (-> *cheat-temp* 0) (+ (-> *cheat-temp* 0) 1))
-              )
-             (else (set! (-> *cheat-temp* 0) 0))
-             )
-           )
-          ((= cheatmode-state 10)
-           (cond
-             ((nonzero? (logand (-> *cpad-list* cpads 0 button0-rel 0) (pad-buttons square)))
-              (set! (-> *cheat-temp* 0) (+ (-> *cheat-temp* 0) 1))
-              )
-             (else (set! (-> *cheat-temp* 0) 0))
-             )
-           )
-          ((= cheatmode-state 11)
-           (cond
-             ((nonzero? (logand (-> *cpad-list* cpads 0 button0-rel 0) (pad-buttons circle)))
-              (set! (-> *cheat-temp* 0) (+ (-> *cheat-temp* 0) 1))
-              )
-             (else (set! (-> *cheat-temp* 0) 0))
-             )
-           )
-          ((= cheatmode-state 12)
-           (cond
-             ((nonzero? (logand (-> *cpad-list* cpads 0 button0-rel 0) (pad-buttons square)))
-              (set! (-> *cheat-temp* 0) (+ (-> *cheat-temp* 0) 1))
-              )
-             (else (set! (-> *cheat-temp* 0) 0))
-             )
-           )
-          ((= cheatmode-state 13)
-           (cond
-             ((nonzero? (logand (-> *cpad-list* cpads 0 button0-rel 0) (pad-buttons circle)))
-              ;; got the code!
-              ;; not sure what this does, but prevents you from having r1 pressed on entry.
-              (set! (-> *cpad-list* cpads 0 button0-abs 0)
-                    (logand (lognot (pad-buttons r1)) (-> *cpad-list* cpads 0 button0-abs 0))
-                    )
-              (set! (-> *cpad-list* cpads 0 button0-rel 0)
-                    (logand (lognot (pad-buttons r1)) (-> *cpad-list* cpads 0 button0-rel 0))
-                    )
 
-              ;; toggle!
-              (set! *cheat-mode* (not *cheat-mode*))
-              (if *cheat-mode*
-                  (sound-play-by-name (static-sound-name "select-menu") (new-sound-id) 1024 0 0 (the-as uint 1) (the-as vector #t))
-                  (sound-play-by-name (static-sound-name "cursor-options") (new-sound-id) 1024 0 0 (the-as uint 1) (the-as vector #t))
-                  )
-              (set! (-> *cheat-temp* 0) 0)
-              )
-             (else
-              ;; bad code, reset.
-              (set! (-> *cheat-temp* 0) 0)
-              )
-             )
-           )
-          )
+    ;; cheat mode
+    (check-cheat-code (-> *cheat-temp* 0) 0
+        (up up down down left right left right x x square circle square circle)
+          (cpad-clear-buttons! 0 r1)
+          ;; toggle!
+          (not! *cheat-mode*)
+          (cheats-sound-play *cheat-mode*)
         )
-      )
 
-    ;; cheat mode, part 2
+    ;; debug mode
     (when *cheat-mode*
-      (when (nonzero? (-> *cpad-list* cpads 0 button0-rel 0))
-        (let ((cheatmode-debug-state (-> *cheat-temp* 1)))
-          (cond
-            ((zero? cheatmode-debug-state)
-             (cond
-               ((nonzero? (logand (-> *cpad-list* cpads 0 button0-rel 0) (pad-buttons circle)))
-                (set! (-> *cheat-temp* 1) (+ (-> *cheat-temp* 1) 1))
-                )
-               (else (set! (-> *cheat-temp* 1) 0))
-               )
-             )
-            ((= cheatmode-debug-state 1)
-             (cond
-               ((nonzero? (logand (-> *cpad-list* cpads 0 button0-rel 0) (pad-buttons square)))
-                (set! (-> *cheat-temp* 1) (+ (-> *cheat-temp* 1) 1))
-                )
-               (else (set! (-> *cheat-temp* 1) 0))
-               )
-             )
-            ((= cheatmode-debug-state 2)
-             (cond
-               ((nonzero? (logand (-> *cpad-list* cpads 0 button0-rel 0) (pad-buttons circle)))
-                (set! (-> *cheat-temp* 1) (+ (-> *cheat-temp* 1) 1))
-                )
-               (else (set! (-> *cheat-temp* 1) 0))
-               )
-             )
-            ((= cheatmode-debug-state 3)
-             (cond
-               ((nonzero? (logand (-> *cpad-list* cpads 0 button0-rel 0) (pad-buttons square)))
-                (set! (-> *cheat-temp* 1) (+ (-> *cheat-temp* 1) 1))
-                )
-               (else (set! (-> *cheat-temp* 1) 0))
-               )
-             )
-            ((= cheatmode-debug-state 4)
-             (cond
-               ((nonzero? (logand (-> *cpad-list* cpads 0 button0-rel 0) (pad-buttons x)))
-                (set! (-> *cheat-temp* 1) (+ (-> *cheat-temp* 1) 1))
-                )
-               (else (set! (-> *cheat-temp* 1) 0))
-               )
-             )
-            ((= cheatmode-debug-state 5)
-             (cond
-               ((nonzero? (logand (-> *cpad-list* cpads 0 button0-rel 0) (pad-buttons x)))
-                (set! (-> *cheat-temp* 1) (+ (-> *cheat-temp* 1) 1))
-                )
-               (else (set! (-> *cheat-temp* 1) 0))
-               )
-             )
-            ((= cheatmode-debug-state 6)
-             (cond
-               ((nonzero? (logand (-> *cpad-list* cpads 0 button0-rel 0) (pad-buttons right)))
-                (set! (-> *cheat-temp* 1) (+ (-> *cheat-temp* 1) 1))
-                )
-               (else (set! (-> *cheat-temp* 1) 0))
-               )
-             )
-            ((= cheatmode-debug-state 7)
-             (cond
-               ((nonzero? (logand (-> *cpad-list* cpads 0 button0-rel 0) (pad-buttons left)))
-                (set! (-> *cheat-temp* 1) (+ (-> *cheat-temp* 1) 1))
-                )
-               (else (set! (-> *cheat-temp* 1) 0))
-               )
-             )
-            ((= cheatmode-debug-state 8)
-             (cond
-               ((nonzero? (logand (-> *cpad-list* cpads 0 button0-rel 0) (pad-buttons right)))
-                (set! (-> *cheat-temp* 1) (+ (-> *cheat-temp* 1) 1))
-                )
-               (else (set! (-> *cheat-temp* 1) 0))
-               )
-             )
-            ((= cheatmode-debug-state 9)
-             (cond
-               ((nonzero? (logand (-> *cpad-list* cpads 0 button0-rel 0) (pad-buttons left)))
-                (set! (-> *cheat-temp* 1) (+ (-> *cheat-temp* 1) 1))
-                )
-               (else (set! (-> *cheat-temp* 1) 0))
-               )
-             )
-            ((= cheatmode-debug-state 10)
-             (cond
-               ((nonzero? (logand (-> *cpad-list* cpads 0 button0-rel 0) (pad-buttons down)))
-                (set! (-> *cheat-temp* 1) (+ (-> *cheat-temp* 1) 1))
-                )
-               (else (set! (-> *cheat-temp* 1) 0))
-               )
-             )
-            ((= cheatmode-debug-state 11)
-             (cond
-               ((nonzero? (logand (-> *cpad-list* cpads 0 button0-rel 0) (pad-buttons down)))
-                (set! (-> *cheat-temp* 1) (+ (-> *cheat-temp* 1) 1))
-                )
-               (else (set! (-> *cheat-temp* 1) 0))
-               )
-             )
-            ((= cheatmode-debug-state 12)
-             (cond
-               ((nonzero? (logand (-> *cpad-list* cpads 0 button0-rel 0) (pad-buttons up)))
-                (set! (-> *cheat-temp* 1) (+ (-> *cheat-temp* 1) 1))
-                )
-               (else (set! (-> *cheat-temp* 1) 0))
-               )
-             )
-            ((= cheatmode-debug-state 13)
-             (cond
-               ((nonzero? (logand (-> *cpad-list* cpads 0 button0-rel 0) (pad-buttons up)))
-                ;; got the code!
-                (set! (-> *cpad-list* cpads 0 button0-abs 0)
-                      (logand (lognot (pad-buttons r1)) (-> *cpad-list* cpads 0 button0-abs 0))
-                      )
-                (set! (-> *cpad-list* cpads 0 button0-rel 0)
-                      (logand (lognot (pad-buttons r1)) (-> *cpad-list* cpads 0 button0-rel 0))
-                      )
-                ;; toggle between #t and debug.
-                (set! *cheat-mode*
-                      (if (= *cheat-mode* 'debug)
-                          #t
-                          'debug
-                          )
-                      )
-                (if *cheat-mode*
-                    (sound-play-by-name (static-sound-name "select-menu") (new-sound-id) 1024 0 0 (the-as uint 1) (the-as vector #t))
-                    (sound-play-by-name (static-sound-name "cursor-options") (new-sound-id) 1024 0 0 (the-as uint 1) (the-as vector #t))
-                    )
-                (set! (-> *cheat-temp* 1) 0)
-                0
-                )
-               (else
-                (set! (-> *cheat-temp* 1) 0)
-                0
-                )
-               )
-             )
-            )
+      (check-cheat-code (-> *cheat-temp* 1) 0
+          (circle square circle square x x right left right left down down up up)
+            (cpad-clear-buttons! 0 r1)
+            ;; toggle between #t and debug.
+            (set! *cheat-mode* (if (= *cheat-mode* 'debug)
+                                        #t
+                                        'debug
+                                        ))
+            (cheats-sound-play *cheat-mode*)
           )
-        )
       )
 
     ;; language cheat
-    (case (scf-get-territory) 
-      ((2)
-       (when (nonzero? (-> *cpad-list* cpads 0 button0-rel 0))
-         (let ((cheat-language-state (-> *cheat-temp* 2)))
-           (cond
-             ((zero? cheat-language-state)
-              (cond
-                ((nonzero? (logand (-> *cpad-list* cpads 0 button0-rel 0) (pad-buttons l1)))
-                 (set! (-> *cheat-temp* 2) (+ (-> *cheat-temp* 2) 1))
-                 )
-                (else (set! (-> *cheat-temp* 2) 0))
-                )
-              )
-             ((= cheat-language-state 1)
-              (cond
-                ((nonzero? (logand (-> *cpad-list* cpads 0 button0-rel 0) (pad-buttons r1)))
-                 (set! (-> *cheat-temp* 2) (+ (-> *cheat-temp* 2) 1))
-                 )
-                (else (set! (-> *cheat-temp* 2) 0))
-                )
-              )
-             ((= cheat-language-state 2)
-              (cond
-                ((nonzero? (logand (-> *cpad-list* cpads 0 button0-rel 0) (pad-buttons l1)))
-                 (set! (-> *cheat-temp* 2) (+ (-> *cheat-temp* 2) 1))
-                 )
-                (else (set! (-> *cheat-temp* 2) 0))
-                )
-              )
-             ((= cheat-language-state 3)
-              (cond
-                ((nonzero? (logand (-> *cpad-list* cpads 0 button0-rel 0) (pad-buttons r1)))
-                 (set! (-> *cheat-temp* 2) (+ (-> *cheat-temp* 2) 1))
-                 )
-                (else (set! (-> *cheat-temp* 2) 0))
-                )
-              )
-             ((= cheat-language-state 4)
-              (cond
-                ((nonzero? (logand (-> *cpad-list* cpads 0 button0-rel 0) (pad-buttons triangle)))
-                 (set! (-> *cheat-temp* 2) (+ (-> *cheat-temp* 2) 1))
-                 )
-                (else (set! (-> *cheat-temp* 2) 0))
-                )
-              )
-             ((= cheat-language-state 5)
-              (cond
-                ((nonzero? (logand (-> *cpad-list* cpads 0 button0-rel 0) (pad-buttons circle)))
-                 (set! (-> *cheat-temp* 2) (+ (-> *cheat-temp* 2) 1))
-                 )
-                (else (set! (-> *cheat-temp* 2) 0))
-                )
-              )
-             ((= cheat-language-state 6)
-              (cond
-                ((nonzero? (logand (-> *cpad-list* cpads 0 button0-rel 0) (pad-buttons x)))
-                 (set! (-> *cheat-temp* 2) (+ (-> *cheat-temp* 2) 1))
-                 )
-                (else (set! (-> *cheat-temp* 2) 0))
-                )
-              )
-             ((= cheat-language-state 7)
-              (cond
-                ((nonzero? (logand (-> *cpad-list* cpads 0 button0-rel 0) (pad-buttons square)))
-                 ;; got it!
-                 (set! (-> *cpad-list* cpads 0 button0-abs 0)
-                       (logand (lognot (pad-buttons r1)) (-> *cpad-list* cpads 0 button0-abs 0))
-                       )
-                 (set! (-> *cpad-list* cpads 0 button0-rel 0)
-                       (logand (lognot (pad-buttons r1)) (-> *cpad-list* cpads 0 button0-rel 0))
-                       )
-
-                 (set! *progress-cheat* (if *progress-cheat*
-                                            #f
-                                            'language
-                                            )
-                       )
-                 (if *progress-cheat*
-                     (sound-play-by-name (static-sound-name "select-menu") (new-sound-id) 1024 0 0 (the-as uint 1) (the-as vector #t))
-                     (sound-play-by-name (static-sound-name "cursor-options") (new-sound-id) 1024 0 0 (the-as uint 1) (the-as vector #t))
-                     )
-                 (set! (-> *cheat-temp* 2) 0)
-                 )
-                (else
-                 ;; invalid code.
-                 (set! (-> *cheat-temp* 2) 0)
-                 )
-                )
-              )
-             )
-           )
-         )
+    (case (scf-get-territory)
+      ;; japan-only
+      ((GAME_TERRITORY_SCEI)
+        (check-cheat-code (-> *cheat-temp* 2) 0
+            (l1 r1 l1 r1 triangle circle x square)
+              (cpad-clear-buttons! 0 r1)
+              (set! *progress-cheat* (if *progress-cheat*
+                                           #f
+                                           'language
+                                           ))
+              (cheats-sound-play *progress-cheat*)
+            )
        )
       )
 
 
-    ;; debug only PAL code
+    ;; debug only PAL cheat
     (when *debug-segment*
-      (when (nonzero? (-> *cpad-list* cpads 0 button0-rel 0))
-        (let ((cheat-pal-state (-> *cheat-temp* 3)))
-          (cond
-            ((zero? cheat-pal-state)
-             (cond
-               ((nonzero? (logand (-> *cpad-list* cpads 0 button0-rel 0) (pad-buttons x)))
-                (set! (-> *cheat-temp* 3) (+ (-> *cheat-temp* 3) 1))
-                )
-               (else (set! (-> *cheat-temp* 3) 0))
-               )
-             )
-            ((= cheat-pal-state 1)
-             (cond
-               ((nonzero? (logand (-> *cpad-list* cpads 0 button0-rel 0) (pad-buttons square)))
-                (set! (-> *cheat-temp* 3) (+ (-> *cheat-temp* 3) 1))
-                )
-               (else (set! (-> *cheat-temp* 3) 0))
-               )
-             )
-            ((= cheat-pal-state 2)
-             (cond
-               ((nonzero? (logand (-> *cpad-list* cpads 0 button0-rel 0) (pad-buttons triangle)))
-                (set! (-> *cheat-temp* 3) (+ (-> *cheat-temp* 3) 1))
-                )
-               (else (set! (-> *cheat-temp* 3) 0))
-               )
-             )
-            ((= cheat-pal-state 3)
-             (cond
-               ((nonzero? (logand (-> *cpad-list* cpads 0 button0-rel 0) (pad-buttons circle)))
-                (set! (-> *cheat-temp* 3) (+ (-> *cheat-temp* 3) 1))
-                )
-               (else (set! (-> *cheat-temp* 3) 0))
-               )
-             )
-            ((= cheat-pal-state 4)
-             (cond
-               ((nonzero? (logand (-> *cpad-list* cpads 0 button0-rel 0) (pad-buttons x)))
-                (set! (-> *cheat-temp* 3) (+ (-> *cheat-temp* 3) 1))
-                )
-               (else (set! (-> *cheat-temp* 3) 0))
-               )
-             )
-            ((= cheat-pal-state 5)
-             (cond
-               ((nonzero? (logand (-> *cpad-list* cpads 0 button0-rel 0) (pad-buttons square)))
-                (set! (-> *cheat-temp* 3) (+ (-> *cheat-temp* 3) 1))
-                )
-               (else (set! (-> *cheat-temp* 3) 0))
-               )
-             )
-            ((= cheat-pal-state 6)
-             (cond
-               ((nonzero? (logand (-> *cpad-list* cpads 0 button0-rel 0) (pad-buttons triangle)))
-                (set! (-> *cheat-temp* 3) (+ (-> *cheat-temp* 3) 1))
-                )
-               (else (set! (-> *cheat-temp* 3) 0))
-               )
-             )
-            ((= cheat-pal-state 7)
-             (cond
-               ((nonzero? (logand (-> *cpad-list* cpads 0 button0-rel 0) (pad-buttons circle)))
-                (set! (-> *cpad-list* cpads 0 button0-abs 0)
-                      (logand (lognot (pad-buttons r1)) (-> *cpad-list* cpads 0 button0-abs 0))
-                      )
-                (set! (-> *cpad-list* cpads 0 button0-rel 0)
-                      (logand (lognot (pad-buttons r1)) (-> *cpad-list* cpads 0 button0-rel 0))
-                      )
-                (set! *progress-cheat*
-                      (if *progress-cheat*
-                          #f
-                          'pal
-                          )
-                      )
-                (if *progress-cheat*
-                    (sound-play-by-name (static-sound-name "select-menu") (new-sound-id) 1024 0 0 (the-as uint 1) (the-as vector #t))
-                    (sound-play-by-name (static-sound-name "cursor-options") (new-sound-id) 1024 0 0 (the-as uint 1) (the-as vector #t))
-                    )
-                (set! (-> *cheat-temp* 3) 0)
-                )
-               (else
-                ;; bad code.
-                (set! (-> *cheat-temp* 3) 0)
-                0
-                )
-               )
-             )
-            )
+      (check-cheat-code (-> *cheat-temp* 3) 0
+          (x square triangle circle x square triangle circle)
+            (cpad-clear-buttons! 0 r1)
+            (set! *progress-cheat* (if *progress-cheat*
+                                         #f
+                                         'pal
+                                         ))
+            (cheats-sound-play *progress-cheat*)
           )
-        )
       )
     )
 
 
-  ;; if cheating, handle the inputs
+  ;; debug cheats on retail builds
   (when (and (= *cheat-mode* 'debug) (not *debug-segment*))
 
     ;; target start/stop with l1/r1/l2/r2
-    (when (and (nonzero? (logand (-> *cpad-list* cpads 0 button0-abs 0) (pad-buttons l1)))
-               (nonzero? (logand (-> *cpad-list* cpads 0 button0-abs 0) (pad-buttons l2)))
-               (nonzero? (logand (-> *cpad-list* cpads 0 button0-abs 0) (pad-buttons r1)))
-               (nonzero? (logand (-> *cpad-list* cpads 0 button0-rel 0) (pad-buttons r2)))
+    (when (and (cpad-hold? 0 l1)
+               (cpad-hold? 0 l2)
+               (cpad-hold? 0 r1)
+               (cpad-pressed? 0 r2)
                )
       (if *target*
           (stop 'debug)
@@ -838,20 +415,20 @@
 
 
     ;; reinitialize to title-start with left, up, select
-    (if (and (nonzero? (logand (-> *cpad-list* cpads 0 button0-abs 0) (pad-buttons left)))
-             (nonzero? (logand (-> *cpad-list* cpads 0 button0-abs 0) (pad-buttons up)))
-             (nonzero? (logand (-> *cpad-list* cpads 0 button0-rel 0) (pad-buttons select)))
+    (if (and (cpad-hold? 0 left)
+             (cpad-hold? 0 up)
+             (cpad-pressed? 0 select)
              )
         (initialize! *game-info* 'game (the-as game-save #f) "title-start")
         )
 
     ;; push R3 to print global heap status. not very useful.
-    (if (nonzero? (logand (-> *cpad-list* cpads 1 button0-rel 0) (pad-buttons r3)))
+    (if (cpad-pressed? 1 r3)
      (inspect global)
      )
 
     ;; push R3 to display IOP memory stats
-    (when (nonzero? (logand (-> *cpad-list* cpads 1 button0-abs 0) (pad-buttons r3)))
+    (when (cpad-hold? 1 r3)
       ;; grab a dma buffer
       (with-dma-buffer-add-bucket ((dma-buff (if *debug-segment*
                                                (-> (current-frame) debug-buf)
@@ -864,90 +441,69 @@
 
 
     ;; push triangle to see level info
-    (if (nonzero? (logand (-> *cpad-list* cpads 1 button0-rel 0) (pad-buttons triangle)))
-     (set! *display-level-border* (not *display-level-border*))
-     )
+    (if (cpad-pressed? 1 triangle)
+      (not! *display-level-border*)
+      )
     )
 
   ;; handle timeouts
-  (when (!= *kernel-boot-message* 'play)
-   (let ((timeout (scf-get-timeout))
-         (inactive-timeout (scf-get-inactive-timeout))
-         )
-     (when (and (or
-                 ;; aboslute timout elapsed.
-                 (and (nonzero? timeout)
-                      (>= (the-as int (+ -300000 (the-as int (-> *display* real-frame-counter)))) (the int (* 300.0 (the float timeout))))
-                      )
-                 (and (nonzero? inactive-timeout)
-                      (>= (the-as int (-
-                                       (-> *display* base-frame-counter)
-                                       (-> *cpad-list* cpads 0 change-time)
-                                       )
-                                  )
-                          (the int (* 300.0 (the float inactive-timeout)))
-                          )
-                      )
-                 (= *master-exit* 'force)
-                 )
-                (progress-allowed?)
-                (!= *master-exit* #t)
-                )
-
-       ;; spawn a process that blacks out the screen, turns things off, and kills the game.
-       (let ((game-end-proc (get-process *default-dead-pool* process #x4000)))
-         (if (when game-end-proc
-               (let ((t9-28 (method-of-type process activate)))
-                 (t9-28
-                   game-end-proc
-                   *default-pool*
-                   'process
-                   (the-as pointer #x70004000)
-                   )
-                 )
-               (run-next-time-in-process
-                 game-end-proc
-                 (lambda ()
-                   (set-blackout-frames #x7530)
-                   (set! (-> *setting-control* default allow-pause) #f)
-                   (set! (-> *setting-control* default allow-progress) #f)
-                   (copy-settings-from-target! *setting-control*)
-                   (set! (-> *setting-control* default sfx-volume) 0.0)
-                   (set! (-> *setting-control* default music-volume) 0.0)
-                   (set! (-> *setting-control* default dialog-volume) 0.0)
-                   (set! (-> *setting-control* default ambient-volume) 0.0)
-                   (let ((gp-0 (-> *display* base-frame-counter)))
-                     (until (begin
-                              (suspend)
-                              (>= (the-as int (- (-> *display* base-frame-counter) gp-0)) 30)
-                              )
-                       (empty)
+  (when (!= *kernel-boot-message* 'play) ;; not regular game mode?
+    (let ((timeout (scf-get-timeout))
+          (inactive-timeout (scf-get-inactive-timeout))
+          )
+      (when (and (or
+                  ;; aboslute timout elapsed.
+                  (and (nonzero? timeout)
+                       (>= (the-as int (+ -300000 (the-as int (-> *display* real-frame-counter))))
+                           (the int (* 300.0 (the float timeout)))
+                           )
                        )
-                     )
-                   (kernel-shutdown)
-                   (none)
-                   )
+                  (and (nonzero? inactive-timeout)
+                       (>= (the-as int (- (current-time) (cpad-change-time 0)))
+                           (the int (* 300.0 (the float inactive-timeout)))
+                           )
+                       )
+                  (= *master-exit* 'force)
+                  )
+                 (progress-allowed?)
+                 (!= *master-exit* #t)
                  )
-               (-> game-end-proc ppointer)
-               )
-             ;; failed to create process, just die.
-             (set! *master-exit* #t)
-             )
-         )
-       )
+
+        ;; spawn a process that blacks out the screen, turns things off, and kills the game.
+        (if (make-function-process process :stack *scratch-memory-top*
+              (lambda :behavior process ()
+                (set-blackout-frames (seconds 100))
+                (set! (-> *setting-control* default allow-pause) #f)
+                (set! (-> *setting-control* default allow-progress) #f)
+                (copy-settings-from-target! *setting-control*)
+                (set! (-> *setting-control* default sfx-volume) 0.0)
+                (set! (-> *setting-control* default music-volume) 0.0)
+                (set! (-> *setting-control* default dialog-volume) 0.0)
+                (set! (-> *setting-control* default ambient-volume) 0.0)
+                (let ((gp-0 (current-time)))
+                  (until (>= (the-as int (- (current-time) gp-0)) (seconds 0.1))
+                    (suspend)
+                    )
+                  )
+                (kernel-shutdown)
+                (none)
+                )
+              )
+
+            (set! *master-exit* #t) ;; process created successfully, set to exit
+            )
+        )
+      )
     )
-   )
   0
   )
 
 
-(defun display-loop ()
+(defbehavior display-loop process ()
   "This is in progress..."
 
   ;; increase our stack size.
-  (with-pp
-    (stack-size-set! (-> pp main-thread) 512)
-    )
+  (stack-size-set! (-> self main-thread) 512)
 
   (let ((disp *display*))
     ;; todo spad terrain context
@@ -967,20 +523,22 @@
       ;; music pick
       ;; sound/flava
       ;; do ambients
-      
+
       ;; math engine.
+
+      ;; DEBUG PROF
+      (add-ee-profile-frame 'draw :r #x40 :b #x40)
       ;; debug hook
-      ;; main cheats
+      (main-cheats)
       ;; update-camera
-      ;; draw hook
       (*draw-hook*)
       (add-ee-profile-frame 'draw :g #x80)
-      ;; menu hook
+
       (*menu-hook*)
       (add-ee-profile-frame 'draw :g #x40)
-       
-      ;; make-current-level-availabe-to-progress
-      ;; update-task-hitns
+
+      ;; (make-current-level-available-to-progress) TODO target
+      ;; update-task-hints
       (load-level-text-files -1)
 
       (add-ee-profile-frame 'unknown-cpu-time)
@@ -991,19 +549,7 @@
         (*dma-timeout-hook*)
         (reset-vif1-path)
         (if *debug-segment*
-            (format
-             0
-             "profile bar at ~D.~%"
-             (->
-              *display*
-              frames
-              (-> *display* on-screen)
-              frame
-              profile-bar
-              1
-              profile-frame-count
-              )
-             )
+            (format 0 "profile bar at ~D.~%" (-> (current-frame) profile-bar 1 profile-frame-count))
             )
         )
       (reset! (-> *perf-stats* data (perf-stat-bucket all-code)))
@@ -1013,14 +559,14 @@
 
       ;; run letterbox if needed
       (when (or (movie?)
-                (< (the-as int (-> *display* base-frame-counter))
+                (< (the-as int (current-time))
                    (the-as int (-> *game-info* letterbox-time))
                    )
                 )
         (if (< (the-as int (-> *game-info* letterbox-time))
-               (the-as int (-> *display* base-frame-counter))
+               (the-as int (current-time))
                )
-            (set! (-> *game-info* letterbox-time) (-> *display* base-frame-counter))
+            (set! (-> *game-info* letterbox-time) (current-time))
             )
         (if (= (-> *setting-control* current aspect-ratio) 'aspect4x3)
             (letterbox)
@@ -1028,7 +574,7 @@
         )
 
       ;; do blackout if needed.
-      (if (< (the-as int (-> *display* base-frame-counter))
+      (if (< (the-as int (current-time))
              (the-as int (-> *game-info* blackout-time))
              )
           (set! (-> *setting-control* default bg-a-force) 1.0)
@@ -1053,148 +599,58 @@
           (debug-draw-buffers) ;; lines/text
 
           ;; debug dma
-          (let* ((debug-buf (-> disp frames (-> disp on-screen) frame debug-buf))
-                 (s4-3 (-> debug-buf base))
-                 )
+          (with-dma-buffer-add-bucket ((debug-buf (-> disp frames (-> disp on-screen) frame debug-buf))
+                                       (bucket-id debug-draw1))
             (when *display-profile*
-              (let* ((v1-172 debug-buf)
-                     (a0-77 (the-as object (-> v1-172 base)))
-                     )
-                (set! (-> (the-as dma-packet a0-77) dma) (new 'static 'dma-tag :qwc #xa :id (dma-tag-id cnt)))
-                (set! (-> (the-as dma-packet a0-77) vif0) (new 'static 'vif-tag))
-                (set! (-> (the-as dma-packet a0-77) vif1) (new 'static 'vif-tag :imm #xa :cmd (vif-cmd direct) :msk #x1))
-                (set! (-> v1-172 base) (&+ (the-as pointer a0-77) 16))
-                )
-              (let* ((v1-173 debug-buf)
-                     (a0-79 (the-as object (-> v1-173 base)))
-                     )
-                (set! (-> (the-as gs-gif-tag a0-79) tag) (new 'static 'gif-tag64 :nloop #x1 :eop #x1 :nreg #x9))
-                (set! (-> (the-as gs-gif-tag a0-79) regs)
-                 (new 'static 'gif-tag-regs
-                      :regs0 (gif-reg-id a+d)
-                      :regs1 (gif-reg-id a+d)
-                      :regs2 (gif-reg-id a+d)
-                      :regs3 (gif-reg-id a+d)
-                      :regs4 (gif-reg-id a+d)
-                      :regs5 (gif-reg-id a+d)
-                      :regs6 (gif-reg-id a+d)
-                      :regs7 (gif-reg-id a+d)
-                      :regs8 (gif-reg-id a+d)
-                      :regs9 (gif-reg-id a+d)
-                      :regs10 (gif-reg-id a+d)
-                      :regs11 (gif-reg-id a+d)
-                      :regs12 (gif-reg-id a+d)
-                      :regs13 (gif-reg-id a+d)
-                      :regs14 (gif-reg-id a+d)
-                      :regs15 (gif-reg-id a+d)
+              (dma-buffer-add-gs-set debug-buf
+                      (alpha-1 (new 'static 'gs-alpha :b 1 :d 1))
+                      (zbuf-1 (new 'static 'gs-zbuf :zbp #x1c0 :psm (gs-psm ct24) :zmsk 1))
+                      (test-1 (new 'static 'gs-test :zte 1 :ztst (gs-ztest always)))
+                      (pabe 0)
+                      (clamp-1 (new 'static 'gs-clamp :wms (gs-tex-wrap-mode clamp) :wmt (gs-tex-wrap-mode clamp)))
+                      (tex1-1 (new 'static 'gs-tex1 :mmag 1 :mmin 1))
+                      (texa (new 'static 'gs-texa :ta1 #x80))
+                      (texclut (new 'static 'gs-texclut :cbw 4))
+                      (fogcol *fog-color*)
                       )
-                 )
-                (set! (-> v1-173 base) (&+ (the-as pointer a0-79) 16))
-                )
-              (let* ((v1-174 debug-buf)
-                     (a0-81 (-> v1-174 base))
-                     )
-                (set! (-> (the-as (pointer gs-alpha) a0-81) 0) (new 'static 'gs-alpha :b #x1 :d #x1))
-                (set! (-> (the-as (pointer gs-reg64) a0-81) 1) (gs-reg64 alpha-1))
-                (set! (-> (the-as (pointer gs-zbuf) a0-81) 2) (new 'static 'gs-zbuf :zbp #x1c0 :psm (gs-psm ct24) :zmsk #x1))
-                (set! (-> (the-as (pointer gs-reg64) a0-81) 3) (gs-reg64 zbuf-1))
-                (set! (-> (the-as (pointer gs-test) a0-81) 4) (new 'static 'gs-test :zte #x1 :ztst (gs-ztest always)))
-                (set! (-> (the-as (pointer gs-reg64) a0-81) 5) (gs-reg64 test-1))
-                (set! (-> (the-as (pointer uint64) a0-81) 6) (the-as uint 0))
-                (set! (-> (the-as (pointer gs-reg64) a0-81) 7) (gs-reg64 pabe))
-                (set! (-> (the-as (pointer gs-clamp) a0-81) 8)
-                 (new 'static 'gs-clamp
-                      :wms (gs-tex-wrap-mode clamp)
-                      :wmt (gs-tex-wrap-mode clamp)
-                      )
-                 )
-                (set! (-> (the-as (pointer gs-reg64) a0-81) 9) (gs-reg64 clamp-1))
-                (set! (-> (the-as (pointer gs-tex1) a0-81) 10)
-                 (new 'static 'gs-tex1 :mmag #x1 :mmin #x1)
-                 )
-                (set! (-> (the-as (pointer gs-reg64) a0-81) 11) (gs-reg64 tex1-1))
-                (set! (-> (the-as (pointer gs-texa) a0-81) 12)
-                 (new 'static 'gs-texa :ta1 #x80)
-                 )
-                (set! (-> (the-as (pointer gs-reg64) a0-81) 13) (gs-reg64 texa))
-                (set! (-> (the-as (pointer gs-texclut) a0-81) 14)
-                 (new 'static 'gs-texclut :cbw #x4)
-                 )
-                (set! (-> (the-as (pointer gs-reg64) a0-81) 15) (gs-reg64 texclut))
-                (set! (-> (the-as (pointer gs-fogcol) a0-81) 16)
-                 (the-as gs-fogcol *fog-color*)
-                 )
-                (set! (-> (the-as (pointer gs-reg64) a0-81) 17) (gs-reg64 fogcol))
-                (set! (-> v1-174 base) (&+ a0-81 144))
-                )
 
               ;; draw the profile bars
               (dotimes (s2-0 2)
                 (let ((s1-0 (-> disp frames (-> disp on-screen) frame profile-bar s2-0)))
-                  (add-end-frame
-                   s1-0
-                   'end-draw
-                   (new 'static 'rgba :r #x40 :g #x40 :b #x40 :a #x40)
-                   )
+                  (add-end-frame s1-0 'end-draw (static-rgba #x40 #x40 #x40 #x40))
                   (draw s1-0 debug-buf (* 10 s2-0))
                   )
                 0
                 )
               ) ;; end profiler draw
 
-            
+
             (when *display-deci-count*
-              (let ((s2-1 draw-string-xy))
-                (format (clear *temp-string*) "~D" *deci-count*)
-                (s2-1 *temp-string* debug-buf 448 210 (font-color default) (font-flags shadow kerning))
-                )
+              (draw-string-xy (string-format "~D" *deci-count*) debug-buf 448 210 (font-color default) (font-flags shadow kerning))
               )
+
+            ;; added
+            (format *stdcon* "~3Lglobal heap at ~,,2fK remaining~0L~%"
+                              (* (1/ 1024) (&- (-> global top) (-> global current))))
 
             (display-file-info)
-
-            ;; add it all to debug-draw1
-            (let ((a3-6 (-> debug-buf base)))
-              (let ((v1-188 (the-as object (-> debug-buf base))))
-                (set! (-> (the-as dma-packet v1-188) dma)
-                 (new 'static 'dma-tag :id (dma-tag-id next))
-                 )
-                (set! (-> (the-as dma-packet v1-188) vif0) (new 'static 'vif-tag))
-                (set! (-> (the-as dma-packet v1-188) vif1) (new 'static 'vif-tag))
-                (set! (-> debug-buf base) (&+ (the-as pointer v1-188) 16))
-                )
-              (dma-bucket-insert-tag
-               (-> *display* frames (-> *display* on-screen) frame bucket-group)
-               (bucket-id debug-draw1)
-               s4-3
-               (the-as (pointer dma-tag) a3-6)
-               )
-              )
             ) ;; end dma let
           ) ;; end debug-segment
 
         ;; draw pause text.
-        (let* ((s3-1 (if *debug-segment*
-                         (-> disp frames (-> disp on-screen) frame debug-buf)
-                         (-> disp frames (-> disp on-screen) frame global-buf)
-                         )
-                 )
-               (s4-4 (-> s3-1 base))
-               )
+        (with-dma-buffer-add-bucket ((s3-1 (if *debug-segment*
+                                               (-> disp frames (-> disp on-screen) frame debug-buf)
+                                               (-> disp frames (-> disp on-screen) frame global-buf)
+                                               ))
+                                     (bucket-id debug-draw0))
           (if (= *master-mode* 'pause)
-              (draw-string-xy
-               (lookup-text! *common-text* (game-text-id pause) #f)
+              (draw-string-xy (lookup-text! *common-text* (game-text-id pause) #f)
                s3-1 256 160 (font-color orange-red) (font-flags shadow kerning middle large))
               )
 
           ;; draw console text on screen
           (let ((a3-8 (the int (draw-string *stdcon0* s3-1 *font-context*))))
-            (draw-string-xy *stdcon1*
-             s3-1
-             (the int (-> *font-context* origin x))
-             a3-8
-             (font-color default)
-             (font-flags shadow kerning)
-             )
+            (draw-string-xy *stdcon1* s3-1 (the int (-> *font-context* origin x)) a3-8 (font-color default) (font-flags shadow kerning))
             )
 
           ;; draw misc info
@@ -1204,24 +660,6 @@
           (if *display-memcard-info*
               (show-mc-info s3-1)
               )
-
-          ;; draw to debug0
-          (let ((a3-9 (-> s3-1 base)))
-            (let ((v1-215 (the-as object (-> s3-1 base))))
-              (set! (-> (the-as dma-packet v1-215) dma)
-               (new 'static 'dma-tag :id (dma-tag-id next))
-               )
-              (set! (-> (the-as dma-packet v1-215) vif0) (new 'static 'vif-tag))
-              (set! (-> (the-as dma-packet v1-215) vif1) (new 'static 'vif-tag))
-              (set! (-> s3-1 base) (&+ (the-as pointer v1-215) 16))
-              )
-            (dma-bucket-insert-tag
-             (-> *display* frames (-> *display* on-screen) frame bucket-group)
-             (bucket-id debug-draw0)
-             s4-4
-             (the-as (pointer dma-tag) a3-9)
-             )
-            )
           )
         (let ((v1-220 *dma-mem-usage*))
           (when (nonzero? v1-220)
@@ -1242,7 +680,7 @@
             )
           )
         )
-      
+
       ;; console buffers
       (set! *stdcon* (clear *stdcon0*))
 
@@ -1258,7 +696,7 @@
       ;; run mc
       ;; auto save check
       ;; suspend
-      
+
       (suspend)
       )
     )
@@ -1277,7 +715,8 @@
         )
       )
     (set! *run* #t)
-    (let ((new-dproc (make-function-process *4k-dead-pool* *display-pool* process display-loop :name 'display)))
+    (let ((new-dproc (make-function-process process display-loop :name 'display
+                                                                 :from *4k-dead-pool* :to *display-pool*)))
       (set! *dproc* (the process (ppointer->process new-dproc)))
       )
     (cond
@@ -1319,6 +758,3 @@
   (set! *run* #f)
   0
   )
-
-;; TODO - for credits
-(define-extern scf-get-territory (function int))

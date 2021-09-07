@@ -11,6 +11,7 @@
 #include "PrettyPrinter.h"
 #include "Reader.h"
 #include "third-party/fmt/core.h"
+#include "common/log/log.h"
 
 namespace pretty_print {
 
@@ -29,7 +30,12 @@ const std::unordered_map<u32, std::string> const_floats = {{0x40490fda, "PI"},
 goos::Object float_representation(float value) {
   u32 int_value;
   memcpy(&int_value, &value, 4);
-  if (const_floats.find(int_value) != const_floats.end()) {
+  u8 exp = (int_value >> 23) & 0xff;
+  u32 mant = int_value & 0x7fffff;
+  if ((exp == 0 && mant != 0) || exp == 0xff) {
+    lg::warn("PS2-incompatible float (0x{:08X}) detected! Writing as the-as cast.", int_value);
+    return pretty_print::build_list("the-as", "float", fmt::format("#x{:x}", int_value));
+  } else if (const_floats.find(int_value) != const_floats.end()) {
     return pretty_print::to_symbol(const_floats.at(int_value));
   } else if (banned_floats.find(int_value) == banned_floats.end()) {
     return goos::Object::make_float(value);
