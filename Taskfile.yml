@@ -19,7 +19,7 @@ tasks:
       - rm ./decompiler_out/**/*disasm.gc
   decomp-file:
     cmds:
-      - python ./scripts/next-decomp-file.py --file "{{.FILE}}"
+      - python ./scripts/next-decomp-file.py --files "{{.FILES}}"
       - task: decomp
   decomp-list:
     cmds:
@@ -58,10 +58,15 @@ tasks:
       - task: offline-tests
   find-label-types:
     cmds:
-      - python ./scripts/next-decomp-file.py --file "{{.FILE}}"
+      - python ./scripts/next-decomp-file.py --files "{{.FILES}}"
       - task: decomp
       - python ./scripts/find-label-types.py --file "{{.FILE}}"
   type-test:
     cmds:
       - ./out/build/Release/bin/goalc-test.exe --gtest_brief=0 --gtest_filter="*TypeConsistency*"
-
+  update-gsrc:
+    cmds:
+      - python ./scripts/next-decomp-file.py --files "{{.FILES}}"
+      - task: decomp
+      - python ./scripts/update-goal-src.py --files "{{.FILES}}"
+      - task: type-test
