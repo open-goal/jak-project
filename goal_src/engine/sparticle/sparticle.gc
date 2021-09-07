@@ -8,6 +8,92 @@
 ;; TODO - for particle code
 (define-extern sp-kill-particle (function sparticle-system sparticle-cpuinfo none))
 
+(defmethod new sparticle-system
+  ((allocation symbol)
+   (type-to-make type)
+   (arg0 int)
+   (arg1 int)
+   (arg2 symbol)
+   (arg3 pointer)
+   (arg4 (inline-array adgif-shader))
+   )
+  (let
+   ((gp-0
+     (object-new allocation type-to-make (the-as int (-> type-to-make size)))
+     )
+    )
+   (let* ((v1-3 (/ (+ arg0 63) 64))
+          (a0-2 (/ (+ arg1 63) 64))
+          (a1-2 (* v1-3 64))
+          (a2-2 (* a0-2 64))
+          (s2-1 (+ v1-3 a0-2))
+          (s5-1 (+ a1-2 a2-2))
+          )
+    (set! (-> gp-0 blocks 0) v1-3)
+    (set! (-> gp-0 length 0) (the-as uint a1-2))
+    (set! (-> gp-0 num-alloc 0) (the-as uint 0))
+    (set! (-> gp-0 blocks 1) a0-2)
+    (set! (-> gp-0 length 1) (the-as uint a2-2))
+    (set! (-> gp-0 num-alloc 1) (the-as uint 0))
+    (set! (-> gp-0 is-3d) arg2)
+    (set!
+     (-> gp-0 alloc-table)
+     (the-as (pointer uint64) (malloc 'global (* s2-1 8)))
+     )
+    (set!
+     (-> gp-0 cpuinfo-table)
+     (the-as (inline-array sparticle-cpuinfo) (malloc 'global (* 144 s5-1)))
+     )
+    (set! (-> gp-0 vecdata-table) arg3)
+    (set! (-> gp-0 adgifdata-table) arg4)
+    (dotimes (v1-5 s2-1)
+     (set! (-> gp-0 alloc-table v1-5) (the-as uint -1))
+     )
+    (dotimes (s4-1 s5-1)
+     (set! (-> gp-0 cpuinfo-table s4-1 valid) #f)
+     (set!
+      (-> gp-0 cpuinfo-table s4-1 sprite)
+      (the-as sprite-vec-data-2d (&+ (-> gp-0 vecdata-table) (* 48 s4-1)))
+      )
+     (set! (-> gp-0 cpuinfo-table s4-1 adgif) (-> gp-0 adgifdata-table s4-1))
+     (adgif-shader<-texture-simple!
+      (-> gp-0 adgifdata-table s4-1)
+      (the-as texture #f)
+      )
+     (set!
+      (-> gp-0 adgifdata-table s4-1 alpha)
+      (new 'static 'gs-miptbp :tbp1 #x48)
+      )
+     )
+    )
+   gp-0
+   )
+  )
+
+(define *sp-particle-system-2d*
+  (new
+   'global
+   'sparticle-system
+   1920
+   128
+   #f
+   (-> *sprite-array-2d* vec-data)
+   (-> *sprite-array-2d* adgif-data)
+   )
+  )
+
+(define *sp-particle-system-3d*
+  (new
+   'global
+   'sparticle-system
+   256
+   0
+   #t
+   (-> *sprite-array-3d* vec-data)
+   (-> *sprite-array-3d* adgif-data)
+   )
+  )
+
 (defun set-particle-frame-time ((arg0 int))
   (cond
    ((= arg0 5)
@@ -50,3 +136,63 @@
   0
   (none)
   )
+
+(defun sparticle-kill-it ((arg0 sparticle-system) (arg1 sparticle-cpuinfo))
+  (set! (-> arg1 timer) 0)
+  (set! (-> arg1 func) (the-as basic 0))
+  (when (and (-> arg1 binding) (nonzero? (-> arg1 binding)))
+   (set! (-> arg1 binding flags) (logand -4 (-> arg1 binding flags)))
+   (set! (-> arg1 binding) #f)
+   )
+  (none)
+  )
+
+(defun forall-particles-with-key-runner ((arg0 sparticle-launch-control) (arg1 (function sparticle-system sparticle-cpuinfo none)) (arg2 sparticle-system))
+  (local-vars (sv-16 int))
+  (let ((s3-0 (the-as object (-> arg2 cpuinfo-table 0)))
+        (s2-0 (&+ (-> arg2 vecdata-table) 0))
+        (s1-0 (+ (-> arg2 blocks 0) (-> arg2 blocks 1)))
+        )
+   (dotimes (s0-0 s1-0)
+    (cond
+     ((!= (-> arg2 alloc-table s0-0) -1)
+      (set! sv-16 0)
+      (while (< sv-16 64)
+       (if
+        (and
+         (-> (the-as sparticle-cpuinfo s3-0) valid)
+         (= (-> (the-as sparticle-cpuinfo s3-0) key) arg0)
+         )
+        (arg1 arg2 (the-as sparticle-cpuinfo s3-0))
+        )
+       (set! s3-0 (-> (the-as (inline-array sparticle-cpuinfo) s3-0) 1))
+       (&+! s2-0 48)
+       (set! sv-16 (+ sv-16 1))
+       )
+      )
+     (else
+      (set! s3-0 (-> (the-as (inline-array sparticle-cpuinfo) s3-0) 64))
+      (&+! s2-0 3072)
+      )
+     )
+    )
+   )
+  (none)
+  )
+
+(defun forall-particles-with-key ((arg0 sparticle-launch-control) (arg1 (function sparticle-system sparticle-cpuinfo none)) (arg2 symbol) (arg3 symbol))
+  (if arg2
+   (forall-particles-with-key-runner arg0 arg1 *sp-particle-system-2d*)
+   )
+  (if arg3
+   (forall-particles-with-key-runner arg0 arg1 *sp-particle-system-3d*)
+   )
+  (none)
+  )
+
+(defun kill-all-particles-with-key ((arg0 sparticle-launch-control))
+  (forall-particles-with-key arg0 sparticle-kill-it #t #t)
+  (none)
+  )
+
+

@@ -173,6 +173,9 @@ Config read_config_file(const std::string& path_to_config_file) {
   config.hacks.blocks_ending_in_asm_branch_by_func_name =
       hacks_json.at("blocks_ending_in_asm_branch")
           .get<std::unordered_map<std::string, std::unordered_set<int>>>();
+  config.hacks.format_ops_with_dynamic_string_by_func_name =
+      hacks_json.at("dynamic_format_arg_counts")
+          .get<std::unordered_map<std::string, std::vector<std::vector<int>>>>();
 
   for (auto& entry : hacks_json.at("cond_with_else_max_lengths")) {
     auto func_name = entry.at(0).get<std::string>();

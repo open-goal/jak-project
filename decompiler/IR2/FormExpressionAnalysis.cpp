@@ -1934,9 +1934,9 @@ void SimpleExpressionElement::update_from_stack_int_to_float(const Env& env,
     }
     result->push_back(pool.alloc_element<CastElement>(TypeSpec("float"), arg, true));
   } else {
-    throw std::runtime_error(fmt::format("Used int to float on a {} from {}: {} (op {})",
-                                         type.print(), var.to_form(env).print(),
-                                         arg->to_string(env), m_my_idx));
+    throw std::runtime_error(fmt::format("At op {}, used int to float on a {} from {}: {}",
+                                         m_my_idx, type.print(), var.to_form(env).print(),
+                                         arg->to_string(env)));
   }
 }
 
@@ -4947,7 +4947,8 @@ void ConditionalMoveFalseElement::push_to_stack(const Env& env, FormPool& pool, 
   // pop the value and the original
   auto popped = pop_to_forms({old_value, source}, env, pool, stack, true);
   if (!is_symbol_true(popped.at(0))) {
-    lg::warn("Failed to ConditionalMoveFalseElement::push_to_stack");
+    lg::warn("{}: Failed to ConditionalMoveFalseElement::push_to_stack",
+             env.func->guessed_name.to_string());
     stack.push_value_to_reg(source, popped.at(1), true, TypeSpec("symbol"));
     stack.push_form_element(this, true);
     return;
@@ -5302,7 +5303,7 @@ void LabelDerefElement::update_from_stack(const Env& env,
   auto as_label = make_label_load(m_lid, env, pool, m_size, m_load_kind);
   if (!as_label) {
     throw std::runtime_error(
-        fmt::format("Unable to figure out label load for {}\n", env.file->labels.at(m_lid).name));
+        fmt::format("Unable to figure out label load for {}", env.file->labels.at(m_lid).name));
   }
   result->push_back(as_label);
 }

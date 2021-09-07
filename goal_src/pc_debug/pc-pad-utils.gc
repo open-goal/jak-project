@@ -19,6 +19,10 @@
 
 (cond (*debug-segment*
 
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;; types
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
 ;; a structure to hold the handles used in this file
 (deftype pc-pad-proc-list (structure)
   ((show   handle)
@@ -31,10 +35,11 @@
 
 ;; a pc pad process
 (deftype pc-pad-proc (process)
-  ((state-time   seconds)
+  ((state-time   int64)
    (input-index  uint64)
+   (pad-idx      uint64)
    )
-  :heap-base #x10
+  :heap-base #x20
   )
 
 (define *pc-pad-button-names*
@@ -66,12 +71,33 @@
   (canceled)
   )
 
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;; forward declarations
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+(define-extern pc-pi-mapping-button (state pc-pad-proc))
+
+
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;; constants
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+(defconstant PC_PAD_INPUT_NOTICE_TIME (seconds 1.5))
+
+
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;; functions
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
 (defun-debug pc-pad-show-start ()
   "Start the PC port pad debug display"
 
   (if (not (handle->process (-> *pc-pad-proc-list* show)))
     (let ((procp
-      (make-function-process *nk-dead-pool* *active-pool* pc-pad-proc :name 'pc-pad-show
+      (make-function-process pc-pad-proc :name 'pc-pad-show
         (lambda :behavior pc-pad-proc ()
           (stack-size-set! (-> self main-thread) 512)
           (loop
@@ -99,11 +125,54 @@
   (kill-by-name 'pc-pad-show *active-pool*)
   )
 
+(defun-debug pc-pad-input-start ()
+  "Start the PC port pad debug key mapping"
+  
+  (if (not (handle->process (-> *pc-pad-proc-list* input)))
+    (let ((procp
+      (make-init-process pc-pad-proc :name 'pc-pad-input
+        (lambda :behavior pc-pad-proc ()
+          (set! (-> self pad-idx) 0)
+          (pc-pad-input-mode-set #t)
+          (go pc-pi-mapping-button)
+          )
+        )
+      ))
+      (set! (-> *pc-pad-proc-list* input) (ppointer->handle procp))
+      )
+    
+    (format #t "That process is already running. :-)~%")
+    )
+  )
 
-(defconstant PC_PAD_INPUT_NOTICE_TIME (seconds 1.5))
+(defun-debug pc-pad-input-stop ()
+  "Stop the PC port pad debug key mapping"
+  
+  (kill-by-name 'pc-pad-input *active-pool*)
+  (pc-pad-input-mode-set 'canceled)
+  )
 
 
-(define-extern pc-pi-mapping-button (state pc-pad-proc))
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;; behaviors
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+(defbehavior pc-pi-post pc-pad-proc ()
+  (with-dma-buffer-add-bucket ((buf (-> (current-frame) debug-buf))
+                               (bucket-id debug-draw1))
+    (draw-string-xy (string-format "MAPPING PAD ~D" (-> self pad-idx)) buf 256 32
+          (font-color red) (font-flags shadow kerning large middle))
+    )
+  )
+
+
+(defstatehandler pc-pad-proc :post pc-pi-post)
+
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;; states
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 (defstate pc-pi-new-mapping (pc-pad-proc)
     
@@ -174,13 +243,9 @@
 (defstate pc-pi-mapping-button (pc-pad-proc)
     
     :code (behavior ()
-      (set-state-time)
       (loop
         (with-dma-buffer-add-bucket ((buf (-> (current-frame) debug-buf))
                                      (bucket-id debug-draw1))
-          (if (< (mod (time-passed) (seconds 2)) (seconds 1))
-            (draw-string-xy "NOW MAPPING PAD" buf 256 32 (font-color red) (font-flags shadow kerning large middle))
-            )
           (draw-string-xy "PRESS ESCAPE TO EXIT" buf 256 64 (font-color default) (font-flags shadow kerning large middle))
           (draw-string-xy (string-format "PRESS KEY FOR ~S" (-> *pc-pad-button-names* (-> self input-index)))
                               buf 256 96 (font-color default) (font-flags shadow kerning large middle))
@@ -214,32 +279,5 @@
       )
     
     )
-
-(defun-debug pc-pad-input-start ()
-  "Start the PC port pad debug key mapping"
-  
-  (if (not (handle->process (-> *pc-pad-proc-list* input)))
-    (let ((procp
-      (make-init-process *nk-dead-pool* *active-pool* pc-pad-proc :name 'pc-pad-input
-        (lambda :behavior pc-pad-proc ()
-          (pc-pad-input-mode-set #t)
-          (go pc-pi-mapping-button)
-          )
-        )
-      ))
-      (set! (-> *pc-pad-proc-list* input) (ppointer->handle procp))
-      )
-    
-    (format #t "That process is already running. :-)~%")
-    )
-  )
-
-(defun-debug pc-pad-input-stop ()
-  "Stop the PC port pad debug key mapping"
-  
-  (kill-by-name 'pc-pad-input *active-pool*)
-  (pc-pad-input-mode-set 'canceled)
-  )
-
 )
 (else (format #t "No debug memory in use. pc-pad-utils not loaded.")))

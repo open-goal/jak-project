@@ -364,7 +364,8 @@ goos::Object decomp_ref_to_inline_array_guess_size(
   int size_bytes = end_label.offset - start_label.offset;
   int size_elts = size_bytes / stride;  // 32 bytes per ocean-near-index
   int leftover_bytes = size_bytes % stride;
-  // fmt::print("Size is {} bytes: {} elts, {} left over\n", size_bytes, size_elts, leftover_bytes);
+  // fmt::print("Size is {} bytes ({} elts), with {} bytes left over\n", size_bytes,
+  // size_elts,leftover_bytes);
 
   // if we have leftover, should verify that its all zeros, or that it's the type pointer
   // of the next basic in the data section.
