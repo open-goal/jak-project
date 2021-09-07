@@ -259,7 +259,9 @@ void follow_references_to_find_pointers(
 
     if (type_system.fully_defined_type_exists(to_check.first)) {
       auto type_info = dynamic_cast<StructureType*>(type_system.lookup_type(to_check.first));
-      assert(type_info);
+      if (type_info == NULL) {
+        continue;
+      }
       for (auto& field : type_info->fields()) {
         if (type_system.fully_defined_type_exists(field.type())) {
           auto field_info = type_system.lookup_type(field.type());
