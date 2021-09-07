@@ -56,6 +56,7 @@ for file in files:
     ";; definition",
     ";; INFO:",
     ";; failed to figure",
+    ";; Used lq/sq"
   ]
   def skippable_line(line):
     for prefix in lines_to_ignore:

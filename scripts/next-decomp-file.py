@@ -30,7 +30,7 @@ if args.files:
       if file[0] == inFile:
         decomp_list.append(file[0])
         break
-      elif file[1] == args.file:
+      elif file[1] == inFile:
         # NOTE - kinda a hack, assumes -ag files always come after
         decomp_list.append(file[1])
         break
