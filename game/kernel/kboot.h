@@ -7,6 +7,10 @@
 
 #include "common/common_types.h"
 
+#define GAME_TERRITORY_SCEA 0  // sony america
+#define GAME_TERRITORY_SCEE 1  // sony europe
+#define GAME_TERRITORY_SCEI 2  // sony inc. (japan)
+
 struct MasterConfig {
   u16 language;          //! GOAL language 0
   u16 aspect;            //! SCE_ASPECT    2
@@ -14,6 +18,8 @@ struct MasterConfig {
   u16 inactive_timeout;  // todo           6
   u16 timeout;           // todo           8
   u16 volume;            // todo           12
+
+  u16 territory;  // added. this is normally burnt onto the disc executable.
 };
 
 // Level to load on boot

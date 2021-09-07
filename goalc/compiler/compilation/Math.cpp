@@ -566,7 +566,10 @@ Val* Compiler::compile_mod(const goos::Object& form, const goos::Object& rest, E
 
   fenv->constrain(con);
   env->emit_ir<IR_IntegerMath>(form, IntegerMathKind::IMOD_32, result, second);
-  return result;
+
+  auto result_moved = env->make_gpr(first->type());
+  env->emit_ir<IR_RegSet>(form, result_moved, result);
+  return result_moved;
 }
 
 Val* Compiler::compile_logand(const goos::Object& form, const goos::Object& rest, Env* env) {

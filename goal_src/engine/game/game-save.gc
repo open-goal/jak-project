@@ -318,7 +318,7 @@
   (set! (-> arg0 fuel-cell-count) (-> obj fuel))
   (set! (-> arg0 money-count) (-> obj money-total))
   (set! (-> arg0 buzzer-count) (-> obj buzzer-total))
-  (set! (-> arg0 completion-percentage) (calculate-completion #f))
+  (set! (-> arg0 completion-percentage) (calculate-completion (the-as progress #f)))
   (when (string= (-> obj current-continue name) "title-start")
    (set! (-> arg0 new-game) 1)
    (set! (-> arg0 level-index) (-> (lookup-level-info 'training) index))
@@ -1262,7 +1262,7 @@
            (set! (-> *setting-control* default dialog-volume) (-> save-data user-float0))
            )
           ((= a0-1 (game-save-elt language))
-           (set! (-> *setting-control* default language) (the-as int (-> save-data user-uint64)))
+           (set! (-> *setting-control* default language) (the-as language-enum (-> save-data user-uint64)))
            )
           ((= a0-1 (game-save-elt vibration))
            (set! (-> *setting-control* default vibration) (= (-> save-data user-uint64) 1))
@@ -1612,8 +1612,7 @@
 
 ;; used for the flashing auto-save icon, I think.
 
-(set!
-  (-> *part-group-id-table* 656)
+(set! (-> *part-group-id-table* 656)
   (new 'static 'sparticle-launch-group
    :length 1
    :duration #xbb8
@@ -1629,8 +1628,7 @@
   )
 
 ;; todo floats/ints for these values.
-(set!
-  (-> *part-id-table* 2662)
+(set! (-> *part-id-table* 2662)
   (new 'static 'sparticle-launcher
    :init-specs
    (new 'static 'inline-array sp-field-init-spec 11
@@ -1700,17 +1698,17 @@
 (define *auto-save-info* (new 'global 'mc-slot-info))
 
 (deftype auto-save (process)
-  ((card       int32                            :offset-assert 112)
-   (slot       int32                            :offset-assert 116)
-   (which      int32                            :offset-assert 120)
-   (buffer     kheap                            :offset-assert 124)
-   (mode       basic                            :offset-assert 128)
-   (result     mc-status-code                   :offset-assert 132)
-   (save       game-save                        :offset-assert 136)
-   (info       mc-slot-info             :inline :offset-assert 140)
-   (notify     handle                           :offset-assert 440)
-   (state-time uint64                           :offset-assert 448)
-   (part       sparticle-launch-control         :offset-assert 456)
+  ((card       int32                     :offset-assert 112)
+   (slot       int32                     :offset-assert 116)
+   (which      int32                     :offset-assert 120)
+   (buffer     kheap                     :offset-assert 124)
+   (mode       basic                     :offset-assert 128)
+   (result     mc-status-code            :offset-assert 132)
+   (save       game-save                 :offset-assert 136)
+   (info       mc-slot-info      :inline :offset-assert 140)
+   (notify     handle                    :offset-assert 440)
+   (state-time int64                     :offset-assert 448)
+   (part       sparticle-launch-control  :offset-assert 456)
    )
   :heap-base #x160
   :method-count-assert 23
@@ -1752,6 +1750,202 @@
   (the-as auto-save ((method-of-type process relocate) obj arg0))
   )
 
+(defbehavior auto-save-post auto-save ()
+  (when
+   (and
+    (= *cheat-mode* 'debug)
+    (logtest? (-> *cpad-list* cpads 0 button0-abs 0) (pad-buttons l3))
+    )
+   (let
+    ((gp-0
+      (new
+       'stack
+       'font-context
+       *font-default-matrix*
+       32
+       160
+       0.0
+       (font-color default)
+       (font-flags shadow kerning)
+       )
+      )
+     )
+    (let ((v1-5 gp-0))
+     (set! (-> v1-5 width) (the float 440))
+     )
+    (let ((v1-6 gp-0))
+     (set! (-> v1-6 height) (the float 80))
+     )
+    (set! (-> gp-0 flags) (font-flags shadow kerning))
+    (format
+     (clear *temp-string*)
+     "~S / ~S ~D~%"
+     (-> self mode)
+     (-> self state name)
+     (-> self which)
+     )
+    (print-game-text *temp-string* gp-0 #f 128 22)
+    )
+   )
+  (when (and (= (-> self mode) 'auto-save) (!= (-> self next-state name) 'done))
+   (let
+    ((gp-1
+      (new
+       'stack
+       'font-context
+       *font-default-matrix*
+       20
+       40
+       0.0
+       (font-color default)
+       (font-flags shadow kerning)
+       )
+      )
+     )
+    (let ((v1-15 gp-1))
+     (set! (-> v1-15 scale) 0.8)
+     )
+    (let ((v1-16 gp-1))
+     (set! (-> v1-16 width) (the float 472))
+     )
+    (let ((v1-17 gp-1))
+     (set! (-> v1-17 height) (the float 20))
+     )
+    (set! (-> gp-1 flags) (font-flags shadow kerning middle left large))
+    (when (zero? (-> *game-info* auto-save-count))
+     (print-game-text
+      (lookup-text! *common-text* (game-text-id saving-data) #f)
+      gp-1
+      #f
+      128
+      22
+      )
+     (set! (-> gp-1 origin x) 20.0)
+     (set! (-> gp-1 origin y) 130.0)
+     (let ((v1-23 gp-1))
+      (set! (-> v1-23 scale) 0.7)
+      )
+     (let ((v1-24 gp-1))
+      (set! (-> v1-24 height) (the float 40))
+      )
+     (let ((s5-2 print-game-text))
+      ((the-as (function object string object none) format)
+       (clear *temp-string*)
+       (lookup-text! *common-text* (game-text-id do-not-remove-mem-card) #f)
+       1
+       )
+      (s5-2 *temp-string* gp-1 #f 128 22)
+      )
+     )
+    )
+   (when (< (mod (-> *display* real-frame-counter) 300) 270)
+    (when (> (-> self part matrix) 0)
+     (let ((gp-2 (sprite-get-user-hvdf (-> self part matrix))))
+      (set! (-> gp-2 vector4w x) (the-as int 1842.0))
+      (set!
+       (-> gp-2 vector4w y)
+       (the-as
+        int
+        (the
+         float
+         (+ (the int (* 0.5 (- (* (if (= (get-aspect-ratio) 'aspect16x9)
+                                   370.0
+                                   360.0
+                                   )
+                                (-> *video-parms* relative-y-scale)
+                                )
+                             (the float (-> *video-parms* screen-sy))
+                             )
+                      )
+             )
+          2048
+          )
+         )
+        )
+       )
+      (set!
+       (-> gp-2 vector4w z)
+       (the-as int (+ -1024.0 (-> *math-camera* hvdf-off z)))
+       )
+      (set! (-> gp-2 vector4w w) (the-as int (-> *math-camera* hvdf-off w)))
+      )
+     )
+    (dummy-11 (-> self part) *zero-vector*)
+    )
+   )
+  (none)
+  )
 
-;; TODO - for credits
-(define-extern print-game-text (function string font-context symbol int int float)) ; TODO decomp error, this seems correct though
+(defstatehandler auto-save :post auto-save-post)
+
+(defbehavior auto-save-init-by-other auto-save ((desired-mode symbol) (notify-proc process-tree) (card-idx int) (file-idx int))
+  
+  ;; stubbing for now.
+  (return #f)
+
+  (when (handle->process (-> *game-info* auto-save-proc))
+   (let ((a1-2 (new 'stack-no-clear 'event-message-block)))
+    (set! (-> a1-2 from) self)
+    (set! (-> a1-2 num-params) 2)
+    (set! (-> a1-2 message) 'notify)
+    (set! (-> a1-2 param 0) (the-as uint 'error))
+    (set! (-> a1-2 param 1) (the-as uint 16))
+    (send-event-function (the-as process notify-proc) a1-2)
+    )
+   (return #f)
+   )
+  (set! (-> *game-info* auto-save-proc) (process->handle self))
+  (set! (-> *game-info* auto-save-status) (mc-status-code ok))
+  (stack-size-set! (-> self main-thread) 512)
+  (logclear! (-> self mask) (process-mask pause menu progress))
+  (set! (-> self card) card-idx)
+  (set! (-> self which) file-idx)
+  (set! (-> self buffer) #f)
+  (set! (-> self mode) desired-mode)
+  (set! (-> self result) (mc-status-code ok))
+  (set! (-> self save) #f)
+  (set! (-> self notify) (process->handle notify-proc))
+  (set! (-> self part) (create-launch-control (-> *part-group-id-table* 656) self))
+  (set! (-> self part matrix) (sprite-allocate-user-hvdf))
+  (cond
+   ((= desired-mode 'auto-save)
+    (if (not (-> *setting-control* current auto-save))
+     (go-virtual error (mc-status-code no-auto-save))
+     )
+    (when (and (zero? (-> self card)) (-> *setting-control* current auto-save))
+     (set! (-> self card) (-> *game-info* auto-save-card))
+     (set! (-> self which) (-> *game-info* auto-save-which))
+     )
+    )
+   ((= desired-mode 'error)
+    (set! (-> *setting-control* default auto-save) #f)
+    (go-virtual error (mc-status-code no-card))
+    )
+   )
+  (set! (-> *setting-control* default auto-save) #f)
+  (go-virtual get-heap)
+  (none)
+  )
+
+(defun auto-save-command ((arg0 symbol) (arg1 int) (arg2 int) (arg3 process-tree))
+  (make-init-process auto-save auto-save-init-by-other arg0 arg3 arg1 arg2)
+  (none)
+  )
+
+(defun auto-save-check ()
+  (when (and (-> *setting-control* current auto-save)
+             (not (handle->process (-> *game-info* auto-save-proc)))
+             )
+    (mc-get-slot-info 0 *auto-save-info*)
+    (if (and (nonzero? (-> *auto-save-info* known))
+             (or (zero? (-> *auto-save-info* handle))
+                 (!= (-> *auto-save-info* handle) (-> *game-info* auto-save-card))
+                 )
+             )
+      (auto-save-command 'error 0 0 (the-as process *default-pool*))
+      )
+   )
+  0
+  (none)
+  )
+

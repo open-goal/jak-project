@@ -163,6 +163,8 @@ ObjectFileDB::ObjectFileDB(const std::vector<std::string>& _dgos,
   }
 
   dts.bad_format_strings = config.bad_format_strings;
+  dts.format_ops_with_dynamic_string_by_func_name =
+      config.hacks.format_ops_with_dynamic_string_by_func_name;
 }
 
 void ObjectFileDB::load_map_file(const std::string& map_data) {
