@@ -452,6 +452,62 @@ void inspect_basics(const Ram& ram,
         }
 
         type_results[field.name()] = field_results;
+      } else if (field.type().base_type() == "handle" && !field.is_array()) {
+        // check the types of handles.
+        // auto proc_type = type_system.lookup_type("process");
+        std::unordered_map<std::string, int> type_frequency;
+        fmt::print("  field {}\n", field.name());
+
+        for (auto base_addr : basics.at(name)) {
+          int field_addr = base_addr + field.offset();
+          if (ram.word_in_memory(field_addr)) {
+            auto proc_pointer = ram.word(field_addr);  // pointer process
+            auto pid = ram.word(field_addr + 4);
+            if (ram.word_in_memory(proc_pointer)) {
+              auto proc = ram.word(proc_pointer);
+              auto proc_type_tag_addr = proc - 4;
+              if (ram.word_in_memory(proc_type_tag_addr)) {
+                auto type_tag_value = ram.word(proc_type_tag_addr);
+                auto type_it = types.find(type_tag_value);
+                if (type_it != types.end()) {
+                  if (type_it->second == "symbol") {
+                    auto sym_iter = symbols.addr_to_name.find(proc);
+                    if (sym_iter != symbols.addr_to_name.end()) {
+                      type_frequency[fmt::format("(symbol {})", sym_iter->second)]++;
+                    }
+                  } else {
+                    type_frequency[type_it->second]++;
+                  }
+                }
+              }
+            }
+          }
+        }
+
+        std::vector<std::string> sorted_field_types;
+        for (const auto& x : type_frequency) {
+          sorted_field_types.push_back(x.first);
+        }
+        std::sort(sorted_field_types.begin(), sorted_field_types.end(),
+                  [&](const auto& a, const auto& b) {
+                    return type_frequency.at(a) > type_frequency.at(b);
+                  });
+        nlohmann::json field_results;
+        if (type_results.contains(field.name())) {
+          field_results = type_results.at(field.name());
+        } else {
+          field_results = {};
+        }
+        for (const auto& field_type : sorted_field_types) {
+          int freq = type_frequency.at(field_type);
+          if (field_results.contains(field_type)) {
+            field_results[field_type] = field_results[field_type].get<int>() + freq;
+          } else {
+            field_results[field_type] = freq;
+          }
+          fmt::print("     [{}] {} (handle)\n", type_frequency.at(field_type), field_type);
+        }
+        type_results[field.name()] = field_results;
       }
     }
 
