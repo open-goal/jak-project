@@ -259,7 +259,7 @@ void follow_references_to_find_pointers(
 
     if (type_system.fully_defined_type_exists(to_check.first)) {
       auto type_info = dynamic_cast<StructureType*>(type_system.lookup_type(to_check.first));
-      if (!type_info) {
+      if (type_info == NULL) {
         continue;
       }
       for (auto& field : type_info->fields()) {

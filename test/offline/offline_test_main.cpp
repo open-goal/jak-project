@@ -181,7 +181,18 @@ std::string g_iso_data_path = "";
 
 bool g_dump_mode = false;
 
-std::vector<std::pair<std::string, fs::path>> g_object_files_to_decompile_or_ref_check;
+struct decomp_meta {
+  std::string fileName;
+  std::string fileNameOverride;
+  fs::path filePath;
+};
+
+std::vector<decomp_meta> g_object_files_to_decompile_or_ref_check;
+
+std::vector<std::string> dgos = {"CGO/KERNEL.CGO", "CGO/ENGINE.CGO", "CGO/GAME.CGO", "DGO/BEA.DGO",
+                                 "DGO/INT.DGO",    "DGO/VI1.DGO",    "DGO/VI2.DGO",  "DGO/VI3.DGO",
+                                 "DGO/CIT.DGO",    "DGO/MIS.DGO",    "DGO/JUB.DGO",  "DGO/SUN.DGO",
+                                 "DGO/DEM.DGO",    "DGO/FIN.DGO",    "DGO/JUN.DGO",  "DGO/FIC.DGO"};
 
 }  // namespace
 
@@ -200,7 +211,7 @@ int main(int argc, char** argv) {
   // Determine the files to decompile and reference check by scanning the reference directory
   // All relevant files are assumed to end with `_REF.g[c|d]`
   // First rough order them
-  std::vector<std::pair<std::string, fs::path>> reference_files_rough_order;
+  std::vector<decomp_meta> reference_files_rough_order;
   for (auto& p : fs::recursive_directory_iterator(
            file_util::get_file_path({"test", "decompiler", "reference"}))) {
     if (p.is_regular_file()) {
@@ -209,7 +220,7 @@ int main(int argc, char** argv) {
         continue;
       }
       std::string object_name = replaceFirstOccurrence(file_name, "_REF", "");
-      reference_files_rough_order.push_back({object_name, p.path()});
+      reference_files_rough_order.push_back({object_name, "", p.path()});
     }
   }
   // use the all_objs.json file to place them in the correct build order
@@ -218,8 +229,33 @@ int main(int argc, char** argv) {
       "all_objs.json");
   for (auto& x : j) {
     auto mapped_name = x[0].get<std::string>();
+    std::vector<std::string> dgoList = x[3].get<std::vector<std::string>>();
     for (auto& p : reference_files_rough_order) {
-      if (p.first == mapped_name) {
+      if (p.fileName == mapped_name) {
+        // Check to see if we've included atleast one of the DGO/CGOs in our hardcoded list
+        // If not BLOW UP
+        bool dgoValidated = false;
+        for (int i = 0; i < dgoList.size(); i++) {
+          std::string& dgo = dgoList.at(i);
+          // can either be in the DGO or CGO folder, and can either end with .CGO or .DGO
+          if (std::find(dgos.begin(), dgos.end(), fmt::format("DGO/{}.DGO", dgo)) != dgos.end() ||
+              std::find(dgos.begin(), dgos.end(), fmt::format("DGO/{}.CGO", dgo)) != dgos.end() ||
+              std::find(dgos.begin(), dgos.end(), fmt::format("CGO/{}.DGO", dgo)) != dgos.end() ||
+              std::find(dgos.begin(), dgos.end(), fmt::format("CGO/{}.CGO", dgo)) != dgos.end()) {
+            dgoValidated = true;
+          }
+        }
+        if (!dgoValidated) {
+          fmt::print(
+              "File [{}] is in the following DGOs [{}], and not one of these is in our list! Add "
+              "it!\n",
+              mapped_name, fmt::join(dgoList, ", "));
+          return 1;
+        }
+        // Hack for working around multi-DGO files
+        if (mapped_name != x[1]) {
+          p.fileNameOverride = x[1];
+        }
         g_object_files_to_decompile_or_ref_check.push_back(p);
         break;
       }
@@ -281,15 +317,13 @@ class OfflineDecompilation : public ::testing::Test {
 
     std::unordered_set<std::string> object_files;
     for (auto& p : g_object_files_to_decompile_or_ref_check) {
-      object_files.insert(p.first);
+      std::string fileName = p.fileNameOverride == "" ? p.fileName : p.fileNameOverride;
+      object_files.insert(fileName);
     }
     config->allowed_objects = object_files;
     // don't try to do this because we can't write the file
     config->generate_symbol_definition_map = false;
 
-    std::vector<std::string> dgos = {"CGO/KERNEL.CGO", "CGO/ENGINE.CGO", "CGO/GAME.CGO",
-                                     "DGO/BEA.DGO",    "CGO/L1.CGO",     "DGO/INT.DGO",
-                                     "DGO/VI1.DGO",    "DGO/DEM.DGO"};
     std::vector<std::string> dgo_paths;
     if (g_iso_data_path.empty()) {
       for (auto& x : dgos) {
@@ -476,16 +510,17 @@ void strip_trailing_newlines(std::string& in) {
 }  // namespace
 
 TEST_F(OfflineDecompilation, Reference) {
-  for (auto& file : g_object_files_to_decompile_or_ref_check) {
-    auto& obj_l = db->obj_files_by_name.at(file.first);
+  for (decomp_meta& file : g_object_files_to_decompile_or_ref_check) {
+    std::string fileName = file.fileNameOverride == "" ? file.fileName : file.fileNameOverride;
+    auto& obj_l = db->obj_files_by_name.at(fileName);
     ASSERT_EQ(obj_l.size(), 1);
 
     std::string src = db->ir2_final_out(obj_l.at(0));
 
-    lg::info("Comparing {}...", file.first);
+    lg::info("Comparing {}...", fileName);
 
     // NOTE - currently only handles .gc files!
-    auto reference = file_util::read_text_file(file.second.string());
+    auto reference = file_util::read_text_file(file.filePath.string());
 
     bool can_cache = true;
     for (auto& func_list : obj_l.at(0).linked_data.functions_by_seg) {
@@ -499,8 +534,8 @@ TEST_F(OfflineDecompilation, Reference) {
     }
 
     if (can_cache) {
-      EXPECT_EQ(final_output_cache->count(file.first), 0);
-      final_output_cache->insert({file.first, src});
+      EXPECT_EQ(final_output_cache->count(fileName), 0);
+      final_output_cache->insert({file.fileName, src});
     }
 
     strip_trailing_newlines(reference);
@@ -509,7 +544,7 @@ TEST_F(OfflineDecompilation, Reference) {
     if (g_dump_mode) {
       if (reference != src) {
         file_util::create_dir_if_needed("./failures");
-        file_util::write_text_file("./failures/" + file.first + "_REF.gc", src);
+        file_util::write_text_file("./failures/" + file.fileName + "_REF.gc", src);
         EXPECT_TRUE(false);
       }
     } else {
@@ -538,17 +573,18 @@ TEST_F(OfflineDecompilation, Compile) {
 
   Timer timer;
   int total_lines = 0;
-  for (auto& file : g_object_files_to_decompile_or_ref_check) {
-    if (g_files_to_skip_compiling.find(file.first) != g_files_to_skip_compiling.end()) {
+  for (decomp_meta& file : g_object_files_to_decompile_or_ref_check) {
+    std::string fileName = file.fileNameOverride == "" ? file.fileName : file.fileNameOverride;
+    if (g_files_to_skip_compiling.find(fileName) != g_files_to_skip_compiling.end()) {
       continue;
     }
 
-    lg::info("Compiling {}...", file.first);
+    lg::info("Compiling {}...", fileName);
 
-    auto& obj_l = db->obj_files_by_name.at(file.first);
+    auto& obj_l = db->obj_files_by_name.at(fileName);
     ASSERT_EQ(obj_l.size(), 1);
 
-    const auto& cache = final_output_cache->find(file.first);
+    const auto& cache = final_output_cache->find(fileName);
     if (cache != final_output_cache->end()) {
       const auto& src = cache->second;
       total_lines += line_count(src);

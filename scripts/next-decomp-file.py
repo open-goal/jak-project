@@ -28,7 +28,12 @@ if args.files:
   for inFile in input_list:
     for file in file_list:
       if file[0] == inFile:
-        decomp_list.append(inFile)
+        decomp_list.append(file[0])
+        break
+      elif file[1] == args.file:
+        # NOTE - kinda a hack, assumes -ag files always come after
+        decomp_list.append(file[1])
+        break
   if len(decomp_list) > 0:
     update_json_file(decomp_list)
 else:
