@@ -374,6 +374,9 @@ TEST_F(WithGameTests, GameCount) {
   shared_compiler->compiler.run_test_from_string("(dgo-load \"game\" global #xf #x200000)");
   shared_compiler->runner.run_static_test(env, testCategory, "test-game-count.gc",
                                           get_test_pass_string("game-count", 4));
+  // don't leave behind a weird version of the game-count file.
+  std::filesystem::remove(file_util::get_file_path({"out", "iso", "GAME.CGO"}));
+  std::filesystem::remove(file_util::get_file_path({"out", "obj", "game-cnt.go"}));
 }
 
 TEST_F(WithGameTests, BitFieldAccess) {
