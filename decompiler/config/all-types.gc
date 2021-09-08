@@ -986,6 +986,8 @@
 
   (sunken-qbert-hint #x34a)
 
+  (swamp-rats-nest-hint #x358)
+
   (swamp-bats-hint #x364) ;; maybe we can ???? the bats. lol
   (flutflut-reminder #x368)
 
@@ -33392,6 +33394,7 @@
 
 ;; - Types
 
+(declare-type swamp-rat-nest process-drawable)
 (deftype swamp-rat (nav-enemy)
   ((up-vector          vector :inline :offset-assert 400)
    (state-float        float          :offset-assert 416)
@@ -33418,7 +33421,7 @@
 (define-extern swamp-rat-update-wiggle-target (function target vector :behavior swamp-rat))
 (define-extern swamp-rat-update-wiggle-params (function float :behavior swamp-rat))
 (define-extern swamp-rat-default-event-handler (function process int symbol event-message-block object :behavior swamp-rat))
-(define-extern swamp-rat-init-by-other (function swamp-rat vector vector pickup-type symbol none :behavior swamp-rat))
+(define-extern swamp-rat-init-by-other (function swamp-rat-nest vector vector pickup-type none :behavior swamp-rat))
 
 ;; - Unknowns
 
@@ -33436,164 +33439,95 @@
 
 ;; - Types
 
-; (deftype swamp-rat-nest (process-drawable)
-;   ((dummy               uint32  :offset-assert 176)
-;    (damaged             basic   :offset-assert 180)
-;    (dummy-type          int8    :offset-assert 184)
-;    (rat-count           int8    :offset-assert 185)
-;    (hit-points          int8    :offset-assert 186)
-;    (defensive-rat-count int8    :offset-assert 187)
-;    (spawn-period        float   :offset-assert 188)
-;    (spawn-period-scale  float   :offset-assert 192)
-;    (test-interval       uint64  :offset-assert 200)
-;    (player-attack-id    int32   :offset-assert 208)
-;    )
-;   :method-count-assert 20
-;   :size-assert         #xd4
-;   :heap-base           #x70
-;   :flag-assert         #x14007000d4
-;   ;; inherited inspect of process-drawable
-;   (:methods
-;     (dummy-9 () none 9)
-;     (dummy-10 () none 10)
-;     (dummy-11 () none 11)
-;     (dummy-12 () none 12)
-;     (dummy-13 () none 13)
-;     (dummy-14 () none 14)
-;     (dummy-15 () none 15)
-;     (dummy-16 () none 16)
-;     (dummy-17 () none 17)
-;     (dummy-18 () none 18)
-;     (dummy-19 () none 19)
-;     )
-;   )
+(declare-type swamp-rat-nest-dummy process-drawable)
+(deftype swamp-rat-nest (process-drawable)
+  ((child-process       (pointer swamp-rat-nest-dummy)  :score 100 :offset 20)
+   (fact-override       fact-info-enemy         :score 100 :offset 144)
+   (dummy               (pointer swamp-rat-nest-dummy)  :offset-assert 176)
+   (damaged             symbol   :offset-assert 180)
+   (dummy-type          int8    :offset-assert 184)
+   (rat-count           int8    :offset-assert 185)
+   (hit-points          int8    :offset-assert 186)
+   (defensive-rat-count int8    :offset-assert 187)
+   (spawn-period        float   :offset-assert 188)
+   (spawn-period-scale  float   :offset-assert 192)
+   (test-interval       uint64  :offset-assert 200)
+   (player-attack-id    int32   :offset-assert 208)
+   )
+  :method-count-assert 20
+  :size-assert         #xd4
+  :heap-base           #x70
+  :flag-assert         #x14007000d4
+  )
 
-; (deftype swamp-rat-nest-dummy (process-drawable)
-;   ((top-sphere           sphere  :inline :offset-assert 176)
-;    (death-part           basic           :offset-assert 192)
-;    (spawn-joint-array    UNKNOWN 6       :offset-assert 196)
-;    (spawn-joint-count    int8            :offset-assert 202)
-;    (particle-spawn-joint int8            :offset-assert 203)
-;    )
-;   :method-count-assert 22
-;   :size-assert         #xcc
-;   :heap-base           #x60
-;   :flag-assert         #x16006000cc
-;   ;; inherited inspect of process-drawable
-;   (:methods
-;     (dummy-9 () none 9)
-;     (dummy-10 () none 10)
-;     (dummy-11 () none 11)
-;     (dummy-12 () none 12)
-;     (dummy-13 () none 13)
-;     (dummy-14 () none 14)
-;     (dummy-15 () none 15)
-;     (dummy-16 () none 16)
-;     (dummy-17 () none 17)
-;     (dummy-18 () none 18)
-;     (dummy-19 () none 19)
-;     (dummy-20 () none 20)
-;     (dummy-21 () none 21)
-;     )
-;   )
+(deftype swamp-rat-nest-dummy (process-drawable)
+  ((parent-process       (pointer swamp-rat-nest)  :score 100 :offset 12)
+   (root-override        collide-shape        :score 100 :offset 112)
+   (top-sphere           sphere  :inline :offset-assert 176)
+   (death-part           sparticle-launch-group           :offset-assert 192)
+   (spawn-joint-array    int8    6       :offset-assert 196)
+   (spawn-joint-count    int8            :offset-assert 202)
+   (particle-spawn-joint int8            :offset-assert 203)
+   )
+  :method-count-assert 22
+  :size-assert         #xcc
+  :heap-base           #x60
+  :flag-assert         #x16006000cc
+  (:methods
+    (dummy-20 (_type_) none 20)
+    (dummy-21 (_type_) int 21)
+    )
+  )
 
-; (deftype swamp-rat-nest-dummy-a (swamp-rat-nest-dummy)
-;   ()
-;   :method-count-assert 22
-;   :size-assert         #xcc
-;   :heap-base           #x60
-;   :flag-assert         #x16006000cc
-;   ;;  not enough basic ops
-;   (:methods
-;     (dummy-9 () none 9)
-;     (dummy-10 () none 10)
-;     (dummy-11 () none 11)
-;     (dummy-12 () none 12)
-;     (dummy-13 () none 13)
-;     (dummy-14 () none 14)
-;     (dummy-15 () none 15)
-;     (dummy-16 () none 16)
-;     (dummy-17 () none 17)
-;     (dummy-18 () none 18)
-;     (dummy-19 () none 19)
-;     (dummy-20 () none 20)
-;     (dummy-21 () none 21)
-;     )
-;   )
+(deftype swamp-rat-nest-dummy-a (swamp-rat-nest-dummy)
+  ()
+  :method-count-assert 22
+  :size-assert         #xcc
+  :heap-base           #x60
+  :flag-assert         #x16006000cc
+  )
 
-; (deftype swamp-rat-nest-dummy-b (swamp-rat-nest-dummy)
-;   ()
-;   :method-count-assert 22
-;   :size-assert         #xcc
-;   :heap-base           #x60
-;   :flag-assert         #x16006000cc
-;   ;;  not enough basic ops
-;   (:methods
-;     (dummy-9 () none 9)
-;     (dummy-10 () none 10)
-;     (dummy-11 () none 11)
-;     (dummy-12 () none 12)
-;     (dummy-13 () none 13)
-;     (dummy-14 () none 14)
-;     (dummy-15 () none 15)
-;     (dummy-16 () none 16)
-;     (dummy-17 () none 17)
-;     (dummy-18 () none 18)
-;     (dummy-19 () none 19)
-;     (dummy-20 () none 20)
-;     (dummy-21 () none 21)
-;     )
-;   )
+(deftype swamp-rat-nest-dummy-b (swamp-rat-nest-dummy)
+  ()
+  :method-count-assert 22
+  :size-assert         #xcc
+  :heap-base           #x60
+  :flag-assert         #x16006000cc
+  )
 
-; (deftype swamp-rat-nest-dummy-c (swamp-rat-nest-dummy)
-;   ()
-;   :method-count-assert 22
-;   :size-assert         #xcc
-;   :heap-base           #x60
-;   :flag-assert         #x16006000cc
-;   ;;  not enough basic ops
-;   (:methods
-;     (dummy-9 () none 9)
-;     (dummy-10 () none 10)
-;     (dummy-11 () none 11)
-;     (dummy-12 () none 12)
-;     (dummy-13 () none 13)
-;     (dummy-14 () none 14)
-;     (dummy-15 () none 15)
-;     (dummy-16 () none 16)
-;     (dummy-17 () none 17)
-;     (dummy-18 () none 18)
-;     (dummy-19 () none 19)
-;     (dummy-20 () none 20)
-;     (dummy-21 () none 21)
-;     )
-;   )
+(deftype swamp-rat-nest-dummy-c (swamp-rat-nest-dummy)
+  ()
+  :method-count-assert 22
+  :size-assert         #xcc
+  :heap-base           #x60
+  :flag-assert         #x16006000cc
+  )
 
 ;; - Functions
 
-(define-extern swamp-rat-nest-check-dummy function)
-(define-extern swamp-rat-nest-spawn-rat function)
-(define-extern swamp-rat-nest-dummy-init-by-other function)
-(define-extern swamp-rat-nest-pick-spawn-joint function)
-(define-extern swamp-rat-nest-dummy-take-damage function)
-(define-extern swamp-rat-nest-dummy-draw-spawn-joints function)
-(define-extern swamp-rat-nest-dummy-event-handler function)
-(define-extern swamp-rat-nest-default-event-handler function)
+(define-extern swamp-rat-nest-check-dummy (function none :behavior swamp-rat-nest))
+(define-extern swamp-rat-nest-spawn-rat (function (pointer process) :behavior swamp-rat-nest))
+(define-extern swamp-rat-nest-dummy-init-by-other (function swamp-rat-nest-dummy none :behavior swamp-rat-nest-dummy))
+(define-extern swamp-rat-nest-pick-spawn-joint (function int :behavior swamp-rat-nest))
+(define-extern swamp-rat-nest-dummy-take-damage (function int int :behavior swamp-rat-nest-dummy))
+(define-extern swamp-rat-nest-dummy-draw-spawn-joints (function symbol :behavior swamp-rat-nest-dummy))
+(define-extern swamp-rat-nest-dummy-event-handler (function process int symbol event-message-block object :behavior swamp-rat-nest-dummy))
+(define-extern swamp-rat-nest-default-event-handler (function process int symbol event-message-block object :behavior swamp-rat-nest))
 
 ;; - Unknowns
 
 (define-extern *swamp-rat-nest-dummy-c-sg* skeleton-group)
 (define-extern *swamp-rat-nest-dummy-b-sg* skeleton-group)
 (define-extern *swamp-rat-nest-dummy-a-sg* skeleton-group)
-;;(define-extern swamp-rat-nest-idle object) ;; unknown type
-;;(define-extern swamp-rat-nest-active object) ;; unknown type
-;;(define-extern swamp-rat-nest-gestate object) ;; unknown type
-;;(define-extern swamp-rat-nest-die object) ;; unknown type
-;;(define-extern swamp-rat-nest-victory object) ;; unknown type
-;;(define-extern swamp-rat-nest-dummy-idle object) ;; unknown type
-;;(define-extern swamp-rat-nest-dummy-hit object) ;; unknown type
-;;(define-extern swamp-rat-nest-dummy-die object) ;; unknown type
-;;(define-extern swamp-rat-nest-dummy-shake object) ;; unknown type
+(define-extern swamp-rat-nest-idle (state swamp-rat-nest)) ;; unknown type
+(define-extern swamp-rat-nest-active (state swamp-rat-nest)) ;; unknown type
+(define-extern swamp-rat-nest-gestate (state swamp-rat-nest)) ;; unknown type
+(define-extern swamp-rat-nest-die (state swamp-rat-nest)) ;; unknown type
+(define-extern swamp-rat-nest-victory (state swamp-rat-nest)) ;; unknown type
+(define-extern swamp-rat-nest-dummy-idle (state swamp-rat-nest-dummy)) ;; unknown type
+(define-extern swamp-rat-nest-dummy-hit (state swamp-rat-nest-dummy)) ;; unknown type
+(define-extern swamp-rat-nest-dummy-die (state swamp-rat-nest-dummy)) ;; unknown type
+(define-extern swamp-rat-nest-dummy-shake (state swamp-rat-nest-dummy)) ;; unknown type
 
 
 ;; ----------------------
