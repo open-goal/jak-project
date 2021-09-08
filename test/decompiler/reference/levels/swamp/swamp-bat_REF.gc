@@ -1,25 +1,7 @@
 ;;-*-Lisp-*-
 (in-package goal)
 
-;; name: swamp-bat.gc
-;; name in dgo: swamp-bat
-;; dgos: L1, SWA
-
-(define-extern *swamp-bat-slave-sg* skeleton-group)
-
-(declare-type swamp-bat-slave process-drawable)
-(define-extern swamp-bat-slave-idle (state swamp-bat-slave)) ;; unknown type
-(define-extern swamp-bat-slave-return (state swamp-bat-slave)) ;; unknown type
-(define-extern swamp-bat-slave-strafe (state swamp-bat-slave)) ;; unknown type
-(define-extern swamp-bat-slave-swoop (state swamp-bat-slave)) ;; unknown type
-(define-extern swamp-bat-slave-die (state handle swamp-bat-slave)) ;; unknown type
-(define-extern swamp-bat-slave-launch (state swamp-bat-slave)) ;; unknown type
-(declare-type swamp-bat process-drawable)
-(define-extern swamp-bat-idle (state swamp-bat)) ;; unknown type
-(define-extern swamp-bat-launch-slaves (state swamp-bat)) ;; unknown type
-
-;; DECOMP BEGINS
-
+;; definition of type swamp-bat-idle-path
 (deftype swamp-bat-idle-path (structure)
   ((origin vector :inline :offset-assert   0)
    (x-axis vector :inline :offset-assert  16)
@@ -33,7 +15,17 @@
     )
   )
 
+;; definition for method 3 of type swamp-bat-idle-path
+(defmethod inspect swamp-bat-idle-path ((obj swamp-bat-idle-path))
+  (format #t "[~8x] ~A~%" obj 'swamp-bat-idle-path)
+  (format #t "~Torigin: #<vector @ #x~X>~%" (-> obj origin))
+  (format #t "~Tx-axis: #<vector @ #x~X>~%" (-> obj x-axis))
+  (format #t "~Ty-axis: #<vector @ #x~X>~%" (-> obj y-axis))
+  obj
+  )
 
+;; definition for method 9 of type swamp-bat-idle-path
+;; Used lq/sq
 (defmethod
   TODO-RENAME-9
   swamp-bat-idle-path
@@ -46,6 +38,7 @@
   arg0
   )
 
+;; definition of type swamp-bat
 (deftype swamp-bat (process-drawable)
   ((child-process       (pointer swamp-bat-slave)           :offset         20)
    (root-override       collide-shape                       :offset        112)
@@ -64,7 +57,23 @@
   :flag-assert         #x1400a0010b
   )
 
+;; definition for method 3 of type swamp-bat
+(defmethod inspect swamp-bat ((obj swamp-bat))
+  (let ((t9-0 (method-of-type process-drawable inspect)))
+   (t9-0 obj)
+   )
+  (format #t "~T~Tpath-origin: #<vector @ #x~X>~%" (-> obj path-origin))
+  (format #t "~T~Tidle-position-angle[8] @ #x~X~%" (-> obj idle-position-angle))
+  (format #t "~T~Tpath-select-plane[2] @ #x~X~%" (-> obj path-select-plane))
+  (format #t "~T~Tpath-list[2] @ #x~X~%" (-> obj path-list))
+  (format #t "~T~Tpath-select: ~D~%" (-> obj path-select))
+  (format #t "~T~Tslave-count: ~D~%" (-> obj slave-count))
+  (format #t "~T~Tpath-count: ~D~%" (-> obj path-count))
+  obj
+  )
 
+;; definition for method 7 of type swamp-bat
+;; INFO: Return type mismatch process-drawable vs swamp-bat.
 (defmethod relocate swamp-bat ((obj swamp-bat) (arg0 int))
   (dotimes (v1-0 2)
    (if (nonzero? (-> obj path-list v1-0))
@@ -83,6 +92,7 @@
    )
   )
 
+;; definition of type swamp-bat-slave
 (deftype swamp-bat-slave (process-drawable)
   ((parent-process      (pointer swamp-bat)          :offset         12)
    (root-override       collide-shape-moving         :offset        112)
@@ -106,7 +116,30 @@
     )
   )
 
+;; definition for method 3 of type swamp-bat-slave
+(defmethod inspect swamp-bat-slave ((obj swamp-bat-slave))
+  (let ((t9-0 (method-of-type process-drawable inspect)))
+   (t9-0 obj)
+   )
+  (format #t "~T~Tsync: #<sync-info @ #x~X>~%" (-> obj sync))
+  (format #t "~T~Tidle-anim-speed: ~f~%" (-> obj idle-anim-speed))
+  (format #t "~T~Tstrafe-envelope: ~f~%" (-> obj strafe-envelope))
+  (format #t "~T~Tstrafe-distance: ~f~%" (-> obj strafe-distance))
+  (format #t "~T~Tpath-point-count: ~f~%" (-> obj path-point-count))
+  (format
+   #t
+   "~T~Tidle-path: #<swamp-bat-idle-path @ #x~X>~%"
+   (-> obj idle-path)
+   )
+  (format #t "~T~Tidle-position: #<vector @ #x~X>~%" (-> obj idle-position))
+  (format #t "~T~Tidle-position-index: ~D~%" (-> obj idle-position-index))
+  (format #t "~T~Tpath-select: ~D~%" (-> obj path-select))
+  (format #t "~T~Tlaunch-ready: ~A~%" (-> obj launch-ready))
+  obj
+  )
 
+;; definition for function swamp-bat-slave-event-handler
+;; INFO: Return type mismatch none vs object.
 ;; WARN: rewrite_to_get_var got a none typed variable. Is there unreachable code?
 (defbehavior
   swamp-bat-slave-event-handler swamp-bat-slave
@@ -147,16 +180,21 @@
    )
   )
 
+;; failed to figure out what this is:
 swamp-bat-slave-event-handler
 
+;; definition for function swamp-bat-slave-post
 (defbehavior swamp-bat-slave-post swamp-bat-slave ()
   (transform-post)
   )
 
+;; definition for method 20 of type swamp-bat-slave
 (defmethod dummy-20 swamp-bat-slave ((obj swamp-bat-slave))
   (* (get-current-phase (-> obj sync)) (-> obj path-point-count))
   )
 
+;; definition for function swamp-bat-slave-path-post
+;; Used lq/sq
 (defbehavior swamp-bat-slave-path-post swamp-bat-slave ()
   (let ((s2-0 (-> self parent-process 0 path-list (-> self path-select)))
         (s5-0 (new-stack-vector0))
@@ -196,6 +234,7 @@ swamp-bat-slave-event-handler
   (swamp-bat-slave-post)
   )
 
+;; failed to figure out what this is:
 (let
   ((v1-7
     (new 'static 'skeleton-group
@@ -217,6 +256,8 @@ swamp-bat-slave-event-handler
   (set! *swamp-bat-slave-sg* v1-7)
   )
 
+;; definition for function swamp-bat-slave-get-new-path
+;; Used lq/sq
 (defbehavior swamp-bat-slave-get-new-path swamp-bat-slave ()
   (set! (-> self path-select) (-> self parent-process 0 path-select))
   (set!
@@ -277,6 +318,7 @@ swamp-bat-slave-event-handler
    )
   )
 
+;; failed to figure out what this is:
 (defstate swamp-bat-slave-idle (swamp-bat-slave)
   :event
   swamp-bat-slave-event-handler
@@ -421,6 +463,7 @@ swamp-bat-slave-event-handler
   (the-as (function none :behavior swamp-bat-slave) swamp-bat-slave-post)
   )
 
+;; failed to figure out what this is:
 (defstate swamp-bat-slave-launch (swamp-bat-slave)
   :event
   swamp-bat-slave-event-handler
@@ -479,6 +522,7 @@ swamp-bat-slave-event-handler
   (the-as (function none :behavior swamp-bat-slave) swamp-bat-slave-post)
   )
 
+;; failed to figure out what this is:
 (defstate swamp-bat-slave-swoop (swamp-bat-slave)
   :event
   swamp-bat-slave-event-handler
@@ -540,6 +584,7 @@ swamp-bat-slave-event-handler
   (the-as (function none :behavior swamp-bat-slave) swamp-bat-slave-path-post)
   )
 
+;; failed to figure out what this is:
 (defstate swamp-bat-slave-strafe (swamp-bat-slave)
   :event
   swamp-bat-slave-event-handler
@@ -573,6 +618,7 @@ swamp-bat-slave-event-handler
   (the-as (function none :behavior swamp-bat-slave) swamp-bat-slave-path-post)
   )
 
+;; failed to figure out what this is:
 (defstate swamp-bat-slave-return (swamp-bat-slave)
   :event
   swamp-bat-slave-event-handler
@@ -619,6 +665,7 @@ swamp-bat-slave-event-handler
   (the-as (function none :behavior swamp-bat-slave) swamp-bat-slave-path-post)
   )
 
+;; failed to figure out what this is:
 (defstate swamp-bat-slave-die (swamp-bat-slave)
   :event
   (the-as
@@ -670,6 +717,8 @@ swamp-bat-slave-event-handler
   (the-as (function none :behavior swamp-bat-slave) swamp-bat-slave-post)
   )
 
+;; definition for function swamp-bat-slave-init-by-other
+;; Used lq/sq
 (defbehavior
   swamp-bat-slave-init-by-other swamp-bat-slave
   ((arg0 swamp-bat-slave) (arg1 int))
@@ -737,6 +786,7 @@ swamp-bat-slave-event-handler
   (none)
   )
 
+;; definition for function swamp-bat-setup-new-path
 (defbehavior swamp-bat-setup-new-path swamp-bat ((arg0 int))
   (when *run-time-assert-enable*
    (set-pos
@@ -772,6 +822,7 @@ swamp-bat-slave-event-handler
    )
   )
 
+;; definition for function swamp-bat-make-path-select-plane
 (defbehavior swamp-bat-make-path-select-plane swamp-bat ((arg0 int))
   (when *run-time-assert-enable*
    (set-pos
@@ -802,6 +853,8 @@ swamp-bat-slave-event-handler
    )
   )
 
+;; definition for function swamp-bat-update-path
+;; INFO: Return type mismatch symbol vs none.
 (defbehavior swamp-bat-update-path swamp-bat ()
   (dotimes (gp-0 (-> self path-count))
    (when (!= (-> self path-select) gp-0)
@@ -819,11 +872,14 @@ swamp-bat-slave-event-handler
   (none)
   )
 
+;; definition for function swamp-bat-debug
+;; INFO: Return type mismatch int vs none.
 (defbehavior swamp-bat-debug swamp-bat ()
   0
   (none)
   )
 
+;; definition for function swamp-bat-check-slave-paths-match?
 (defbehavior swamp-bat-check-slave-paths-match? swamp-bat ((arg0 int))
   (let ((v1-0 (the-as (pointer process-tree) (-> self child-process))))
    (while v1-0
@@ -840,6 +896,7 @@ swamp-bat-slave-event-handler
   #t
   )
 
+;; failed to figure out what this is:
 (defstate swamp-bat-idle (swamp-bat)
   :trans
   swamp-bat-debug
@@ -893,6 +950,7 @@ swamp-bat-slave-event-handler
   (the-as (function none :behavior swamp-bat) #f)
   )
 
+;; definition for function swamp-bat-launch-slave
 (defbehavior swamp-bat-launch-slave swamp-bat ()
   (let ((gp-0 (the-as (pointer process-tree) (-> self child-process)))
         (v0-0 (the-as object #f))
@@ -910,6 +968,7 @@ swamp-bat-slave-event-handler
    )
   )
 
+;; failed to figure out what this is:
 (defstate swamp-bat-launch-slaves (swamp-bat)
   :trans
   swamp-bat-debug
@@ -942,6 +1001,7 @@ swamp-bat-slave-event-handler
   (the-as (function none :behavior swamp-bat) #f)
   )
 
+;; definition for method 11 of type swamp-bat
 (defmethod copy-defaults! swamp-bat ((obj swamp-bat) (arg0 res-lump))
   (let
    ((s4-0 (new 'process 'collide-shape obj (collide-list-enum hit-by-player))))
