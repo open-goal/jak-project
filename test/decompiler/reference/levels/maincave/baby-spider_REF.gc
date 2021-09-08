@@ -1,21 +1,7 @@
 ;;-*-Lisp-*-
 (in-package goal)
 
-;; name: baby-spider.gc
-;; name in dgo: baby-spider
-;; dgos: L1, MAI, MAINCAVE
-
-(define-extern *baby-spider-sg* skeleton-group)
-
-(declare-type baby-spider nav-enemy)
-(define-extern baby-spider-hatching (state baby-spider)) ;; unknown type
-(define-extern baby-spider-resume (state baby-spider)) ;; unknown type
-(define-extern baby-spider-die-fast (state baby-spider)) ;; unknown type
-
-(declare-type cave-trap process-drawable)
-
-;; DECOMP BEGINS
-
+;; definition of type baby-spider-spawn-params
 (deftype baby-spider-spawn-params (structure)
   ((hatched?                          symbol  :offset-assert   0)
    (fast-start?                       symbol  :offset-assert   4)
@@ -35,7 +21,25 @@
     )
   )
 
+;; definition for method 3 of type baby-spider-spawn-params
+(defmethod inspect baby-spider-spawn-params ((obj baby-spider-spawn-params))
+  (format #t "[~8x] ~A~%" obj 'baby-spider-spawn-params)
+  (format #t "~Thatched?: ~A~%" (-> obj hatched?))
+  (format #t "~Tfast-start?: ~A~%" (-> obj fast-start?))
+  (format #t "~Thack-move-above-ground?: ~A~%" (-> obj hack-move-above-ground?))
+  (format #t "~Tdie-if-not-visible?: ~A~%" (-> obj die-if-not-visible?))
+  (format #t "~Tpickup: ~D~%" (-> obj pickup))
+  (format #t "~Tpickup-amount: ~D~%" (-> obj pickup-amount))
+  (format #t "~Tevent-death: ~A~%" (-> obj event-death))
+  (format
+   #t
+   "~Tdelay-before-dying-if-not-visible: ~D~%"
+   (-> obj delay-before-dying-if-not-visible)
+   )
+  obj
+  )
 
+;; definition of type baby-spider
 (deftype baby-spider (nav-enemy)
   ((die-if-not-visible?               symbol         :offset-assert 400)
    (hack-move-above-ground?           symbol         :offset-assert 404)
@@ -60,7 +64,38 @@
   :flag-assert         #x4c01900200
   )
 
+;; definition for method 3 of type baby-spider
+(defmethod inspect baby-spider ((obj baby-spider))
+  (let ((t9-0 (method-of-type nav-enemy inspect)))
+   (t9-0 obj)
+   )
+  (format #t "~T~Tdie-if-not-visible?: ~A~%" (-> obj die-if-not-visible?))
+  (format
+   #t
+   "~T~Thack-move-above-ground?: ~A~%"
+   (-> obj hack-move-above-ground?)
+   )
+  (format #t "~T~Tstate-float: ~f~%" (-> obj state-float))
+  (format #t "~T~Twiggle-angle: ~f~%" (-> obj wiggle-angle))
+  (format #t "~T~Tdelta-wiggle-angle: ~f~%" (-> obj delta-wiggle-angle))
+  (format #t "~T~Twiggle-factor: ~f~%" (-> obj wiggle-factor))
+  (format #t "~T~Tevent-death: ~A~%" (-> obj event-death))
+  (format
+   #t
+   "~T~Tdelay-before-dying-if-not-visible: ~D~%"
+   (-> obj delay-before-dying-if-not-visible)
+   )
+  (format #t "~T~Tchase-rest-time: ~D~%" (-> obj chase-rest-time))
+  (format #t "~T~Ttarget-nav-time: ~D~%" (-> obj target-nav-time))
+  (format #t "~T~Tfree-time: ~D~%" (-> obj free-time))
+  (format #t "~T~Twiggle-time: ~D~%" (-> obj wiggle-time))
+  (format #t "~T~Tlast-visible-time: ~D~%" (-> obj last-visible-time))
+  (format #t "~T~Tup-vector: #<vector @ #x~X>~%" (-> obj up-vector))
+  (format #t "~T~Tstate-vector: ~`vector`P~%" (-> obj state-vector))
+  obj
+  )
 
+;; failed to figure out what this is:
 (let
   ((v1-2
     (new 'static 'skeleton-group
@@ -84,6 +119,7 @@
   (set! *baby-spider-sg* v1-2)
   )
 
+;; definition for symbol *baby-spider-nav-enemy-info*, type nav-enemy-info
 (define
   *baby-spider-nav-enemy-info*
   (new 'static 'nav-enemy-info
@@ -139,6 +175,7 @@
    )
   )
 
+;; definition for symbol *baby-spider-nav-enemy-info-for-cave-trap*, type nav-enemy-info
 (define
   *baby-spider-nav-enemy-info-for-cave-trap*
   (new 'static 'nav-enemy-info
@@ -194,6 +231,7 @@
    )
   )
 
+;; definition for method 9 of type baby-spider-spawn-params
 (defmethod
   init!
   baby-spider-spawn-params
@@ -219,6 +257,7 @@
    )
   )
 
+;; definition for method 10 of type baby-spider-spawn-params
 (defmethod
   set-delay!
   baby-spider-spawn-params
@@ -227,6 +266,8 @@
   arg0
   )
 
+;; definition for method 44 of type baby-spider
+;; INFO: Return type mismatch none vs object.
 (defmethod
   dummy-44
   baby-spider
@@ -251,6 +292,8 @@
    )
   )
 
+;; definition for function baby-spider-default-event-handler
+;; INFO: Return type mismatch none vs object.
 (defbehavior
   baby-spider-default-event-handler baby-spider
   ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
@@ -263,8 +306,11 @@
    )
   )
 
+;; failed to figure out what this is:
 baby-spider-default-event-handler
 
+;; definition for method 39 of type baby-spider
+;; Used lq/sq
 (defmethod TODO-RENAME-39 baby-spider ((obj baby-spider))
   (when (logtest? (-> obj collide-info status) 1)
    (vector-deg-seek
@@ -284,6 +330,7 @@ baby-spider-default-event-handler
   (none)
   )
 
+;; definition for method 38 of type baby-spider
 (defmethod TODO-RENAME-38 baby-spider ((obj baby-spider))
   (dummy-59
    (-> obj collide-info)
@@ -297,6 +344,7 @@ baby-spider-default-event-handler
   (none)
   )
 
+;; definition for method 51 of type baby-spider
 (defmethod dummy-51 baby-spider ((obj baby-spider))
   (let* ((f0-0 (rand-vu-float-range 0.0 1.0))
          (f1-1 (+ 1.0 (* 2.0 f0-0)))
@@ -313,6 +361,8 @@ baby-spider-default-event-handler
    )
   )
 
+;; definition for method 52 of type baby-spider
+;; Used lq/sq
 (defmethod dummy-52 baby-spider ((obj baby-spider) (arg0 vector))
   (+! (-> obj wiggle-angle) (-> obj delta-wiggle-angle))
   (if (< 65536.0 (-> obj wiggle-angle))
@@ -338,6 +388,7 @@ baby-spider-default-event-handler
    )
   )
 
+;; definition for method 53 of type baby-spider
 (defmethod dummy-53 baby-spider ((obj baby-spider))
   (cond
    ((logtest? (-> obj draw status) 8)
@@ -364,6 +415,7 @@ baby-spider-default-event-handler
   #f
   )
 
+;; failed to figure out what this is:
 (defstate baby-spider-hatching (baby-spider)
   :event
   baby-spider-default-event-handler
@@ -423,6 +475,7 @@ baby-spider-default-event-handler
   (the-as (function none :behavior baby-spider) nav-enemy-simple-post)
   )
 
+;; failed to figure out what this is:
 (defstate baby-spider-resume (baby-spider)
   :event
   baby-spider-default-event-handler
@@ -461,6 +514,7 @@ baby-spider-default-event-handler
    )
   )
 
+;; failed to figure out what this is:
 (defstate nav-enemy-idle (baby-spider)
   :virtual #t
   :event
@@ -499,6 +553,7 @@ baby-spider-default-event-handler
    )
   )
 
+;; failed to figure out what this is:
 (defstate nav-enemy-patrol (baby-spider)
   :virtual #t
   :event
@@ -577,6 +632,7 @@ baby-spider-default-event-handler
    )
   )
 
+;; failed to figure out what this is:
 (defstate nav-enemy-notice (baby-spider)
   :virtual #t
   :event
@@ -665,6 +721,7 @@ baby-spider-default-event-handler
    )
   )
 
+;; failed to figure out what this is:
 (defstate nav-enemy-chase (baby-spider)
   :virtual #t
   :event
@@ -741,6 +798,7 @@ baby-spider-default-event-handler
    )
   )
 
+;; failed to figure out what this is:
 (defstate nav-enemy-stop-chase (baby-spider)
   :virtual #t
   :event
@@ -761,6 +819,7 @@ baby-spider-default-event-handler
   (-> (method-of-type nav-enemy nav-enemy-stop-chase) code)
   )
 
+;; failed to figure out what this is:
 (defstate nav-enemy-stare (baby-spider)
   :virtual #t
   :event
@@ -856,6 +915,7 @@ baby-spider-default-event-handler
    )
   )
 
+;; failed to figure out what this is:
 (defstate nav-enemy-give-up (baby-spider)
   :virtual #t
   :event
@@ -974,6 +1034,7 @@ baby-spider-default-event-handler
    )
   )
 
+;; failed to figure out what this is:
 (defstate nav-enemy-attack (baby-spider)
   :virtual #t
   :event
@@ -1041,6 +1102,7 @@ baby-spider-default-event-handler
    )
   )
 
+;; failed to figure out what this is:
 (defstate nav-enemy-victory (baby-spider)
   :virtual #t
   :event
@@ -1061,6 +1123,7 @@ baby-spider-default-event-handler
   (-> (method-of-type nav-enemy nav-enemy-victory) code)
   )
 
+;; failed to figure out what this is:
 (defstate nav-enemy-die (baby-spider)
   :virtual #t
   :event
@@ -1091,6 +1154,7 @@ baby-spider-default-event-handler
    )
   )
 
+;; failed to figure out what this is:
 (defstate baby-spider-die-fast (baby-spider)
   :event
   baby-spider-default-event-handler
@@ -1111,6 +1175,8 @@ baby-spider-default-event-handler
    )
   )
 
+;; definition for method 47 of type baby-spider
+;; INFO: Return type mismatch int vs none.
 (defmethod TODO-RENAME-47 baby-spider ((obj baby-spider))
   (let
    ((s5-0
@@ -1141,6 +1207,9 @@ baby-spider-default-event-handler
   (none)
   )
 
+;; definition for method 48 of type baby-spider
+;; INFO: Return type mismatch int vs none.
+;; Used lq/sq
 (defmethod TODO-RENAME-48 baby-spider ((obj baby-spider))
   (set!
    (-> obj last-visible-time)
@@ -1169,6 +1238,8 @@ baby-spider-default-event-handler
   (none)
   )
 
+;; definition for function baby-spider-init-by-other
+;; Used lq/sq
 (defbehavior
   baby-spider-init-by-other baby-spider
   ((arg0 baby-spider)
@@ -1218,6 +1289,7 @@ baby-spider-default-event-handler
   (none)
   )
 
+;; definition for method 11 of type baby-spider
 (defmethod copy-defaults! baby-spider ((obj baby-spider) (arg0 res-lump))
   (set! (-> obj die-if-not-visible?) #f)
   (set! (-> obj delay-before-dying-if-not-visible) (the-as uint 600))
