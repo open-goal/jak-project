@@ -1,24 +1,7 @@
 ;;-*-Lisp-*-
 (in-package goal)
 
-;; name: qbert-plat.gc
-;; name in dgo: qbert-plat
-;; dgos: L1, SUN, SUNKEN
-
-(define-extern *qbert-plat-sg* skeleton-group)
-(define-extern *qbert-plat-on-sg* skeleton-group)
-
-(declare-type qbert-plat-master process-drawable)
-(declare-type qbert-plat rigid-body-platform)
-(define-extern qbert-plat-master-wait-for-door (state qbert-plat-master)) ;; unknown type
-(define-extern qbert-plat-master-idle (state qbert-plat-master)) ;; unknown type
-(define-extern qbert-plat-master-do-door (state symbol qbert-plat-master)) ;; unknown type
-(define-extern qbert-plat-wait-for-master (state qbert-plat)) ;; unknown type
-(define-extern qbert-plat-on-mimic (state qbert-plat)) ;; unknown type
-(define-extern qbert-plat-on-die (state qbert-plat)) ;; unknown type
-
-;; DECOMP BEGINS
-
+;; definition of type qbert-plat-on
 (deftype qbert-plat-on (process-drawable)
   ()
   :heap-base #x40
@@ -27,7 +10,15 @@
   :flag-assert         #x14004000b0
   )
 
+;; definition for method 3 of type qbert-plat-on
+(defmethod inspect qbert-plat-on ((obj qbert-plat-on))
+  (let ((t9-0 (method-of-type process-drawable inspect)))
+   (t9-0 obj)
+   )
+  obj
+  )
 
+;; failed to figure out what this is:
 (let
   ((v1-1
     (new 'static 'skeleton-group
@@ -45,6 +36,7 @@
   (set! *qbert-plat-on-sg* v1-1)
   )
 
+;; definition of type qbert-plat
 (deftype qbert-plat (rigid-body-platform)
   ((anchor-point      vector       :inline :offset-assert 736)
    (plat-id           int32                :offset-assert 752)
@@ -58,7 +50,20 @@
   :flag-assert         #x2302900300
   )
 
+;; definition for method 3 of type qbert-plat
+(defmethod inspect qbert-plat ((obj qbert-plat))
+  (let ((t9-0 (method-of-type rigid-body-platform inspect)))
+   (t9-0 obj)
+   )
+  (format #t "~T~Tanchor-point: #<vector @ #x~X>~%" (-> obj anchor-point))
+  (format #t "~T~Tplat-id: ~D~%" (-> obj plat-id))
+  (format #t "~T~Ton?: ~A~%" (-> obj on?))
+  (format #t "~T~Tplayer-is-riding?: ~A~%" (-> obj player-is-riding?))
+  (format #t "~T~Tmaster: ~A~%" (-> obj master))
+  obj
+  )
 
+;; failed to figure out what this is:
 (let
   ((v1-3
     (new 'static 'skeleton-group
@@ -76,6 +81,7 @@
   (set! *qbert-plat-sg* v1-3)
   )
 
+;; definition for symbol *qbert-plat-constants*, type rigid-body-platform-constants
 (define
   *qbert-plat-constants*
   (new 'static 'rigid-body-platform-constants
@@ -104,6 +110,7 @@
    )
   )
 
+;; definition of type qbert-plat-master
 (deftype qbert-plat-master (process-drawable)
   ((last-plat-triggered             int32                :offset-assert 176)
    (plat-states                     uint32               :offset-assert 180)
@@ -126,7 +133,30 @@
     )
   )
 
+;; definition for method 3 of type qbert-plat-master
+(defmethod inspect qbert-plat-master ((obj qbert-plat-master))
+  (let ((t9-0 (method-of-type process-drawable inspect)))
+   (t9-0 obj)
+   )
+  (format #t "~T~Tlast-plat-triggered: ~D~%" (-> obj last-plat-triggered))
+  (format #t "~T~Tplat-states: ~D~%" (-> obj plat-states))
+  (format
+   #t
+   "~T~Tplat-states-needed-to-open-door: ~D~%"
+   (-> obj plat-states-needed-to-open-door)
+   )
+  (format #t "~T~Tplayer-in-bounds?: ~A~%" (-> obj player-in-bounds?))
+  (format #t "~T~Tplayer-in-water?: ~A~%" (-> obj player-in-water?))
+  (format #t "~T~Tplay-door-cam?: ~A~%" (-> obj play-door-cam?))
+  (format #t "~T~Tpuzzle-beaten?: ~A~%" (-> obj puzzle-beaten?))
+  (format #t "~T~Tdoor: ~A~%" (-> obj door))
+  (format #t "~T~Tdoor-plat: ~A~%" (-> obj door-plat))
+  (format #t "~T~Tbounds-start: #<vector @ #x~X>~%" (-> obj bounds-start))
+  (format #t "~T~Tbounds-end: #<vector @ #x~X>~%" (-> obj bounds-end))
+  obj
+  )
 
+;; failed to figure out what this is:
 (defstate qbert-plat-on-mimic (qbert-plat)
   :event
   (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
@@ -163,6 +193,7 @@
   (the-as (function none :behavior qbert-plat) ja-post)
   )
 
+;; failed to figure out what this is:
 (defstate qbert-plat-on-die (qbert-plat)
   :code
   (behavior ()
@@ -171,6 +202,8 @@
    )
   )
 
+;; definition for function qbert-plat-on-init-by-other
+;; Used lq/sq
 (defbehavior
   qbert-plat-on-init-by-other qbert-plat
   ((arg0 entity) (arg1 qbert-plat))
@@ -198,6 +231,7 @@
   (none)
   )
 
+;; definition for function qbert-plat-event-handler
 (defbehavior
   qbert-plat-event-handler qbert-plat
   ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
@@ -211,6 +245,7 @@
    )
   )
 
+;; definition for method 33 of type qbert-plat
 (defmethod dummy-33 qbert-plat ((obj qbert-plat))
   (with-pp
    (let* ((a1-0 (-> obj master))
@@ -232,6 +267,7 @@
    )
   )
 
+;; definition for method 32 of type qbert-plat
 (defmethod dummy-32 qbert-plat ((obj qbert-plat))
   (with-pp
    (let* ((v1-0 (-> obj master))
@@ -312,6 +348,7 @@
    )
   )
 
+;; failed to figure out what this is:
 (defstate qbert-plat-wait-for-master (qbert-plat)
   :code
   (behavior ()
@@ -334,6 +371,7 @@
   (the-as (function none :behavior qbert-plat) ja-post)
   )
 
+;; failed to figure out what this is:
 (defstate rigid-body-platform-idle (qbert-plat)
   :virtual #t
   :event
@@ -349,6 +387,7 @@
   (the-as (function none :behavior qbert-plat) ja-post)
   )
 
+;; failed to figure out what this is:
 (defstate rigid-body-platform-float (qbert-plat)
   :virtual #t
   :event
@@ -390,6 +429,7 @@
    )
   )
 
+;; definition for method 22 of type qbert-plat
 (defmethod
   TODO-RENAME-22
   qbert-plat
@@ -406,6 +446,8 @@
    )
   )
 
+;; definition for method 23 of type qbert-plat
+;; INFO: Return type mismatch int vs none.
 (defmethod TODO-RENAME-23 qbert-plat ((obj qbert-plat) (arg0 float))
   ((the-as
     (function rigid-body-platform float none)
@@ -419,6 +461,8 @@
   (none)
   )
 
+;; definition for method 30 of type qbert-plat
+;; INFO: Return type mismatch int vs none.
 (defmethod TODO-RENAME-30 qbert-plat ((obj qbert-plat))
   (let
    ((s5-0
@@ -456,6 +500,9 @@
   (none)
   )
 
+;; definition for method 31 of type qbert-plat
+;; INFO: Return type mismatch int vs none.
+;; Used lq/sq
 (defmethod TODO-RENAME-31 qbert-plat ((obj qbert-plat))
   (dummy-14 obj *qbert-plat-sg* '())
   (set! (-> obj anchor-point quad) (-> obj root-overlay trans quad))
@@ -496,6 +543,7 @@
   (none)
   )
 
+;; definition for method 11 of type qbert-plat
 (defmethod copy-defaults! qbert-plat ((obj qbert-plat) (arg0 res-lump))
   (set! (-> obj mask) (logior (process-mask platform) (-> obj mask)))
   (TODO-RENAME-30 obj)
@@ -505,6 +553,7 @@
   (none)
   )
 
+;; definition for method 20 of type qbert-plat-master
 (defmethod
   plat-state-set?
   qbert-plat-master
@@ -512,6 +561,7 @@
   (logtest? (-> obj plat-states) (ash 1 arg0))
   )
 
+;; failed to figure out what this is:
 (defstate qbert-plat-master-idle (qbert-plat-master)
   :event
   (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
@@ -697,6 +747,7 @@
    )
   )
 
+;; failed to figure out what this is:
 (defstate qbert-plat-master-do-door (qbert-plat-master)
   :code
   (behavior ((arg0 symbol))
@@ -919,6 +970,7 @@
    )
   )
 
+;; failed to figure out what this is:
 (defstate qbert-plat-master-wait-for-door (qbert-plat-master)
   :code
   (behavior ()
@@ -960,6 +1012,7 @@
    )
   )
 
+;; definition for method 11 of type qbert-plat-master
 (defmethod
   copy-defaults!
   qbert-plat-master
