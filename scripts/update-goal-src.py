@@ -66,9 +66,9 @@ for file in files:
   with open(disasm_path) as f:
     lines = f.readlines()
     in_inspect_method = False
-    for line in lines:
+    for i, line in enumerate(lines):
       # strip inspect methods
-      if line.startswith("(defmethod inspect"):
+      if line.startswith("(defmethod inspect") or (line.startswith("(defmethod") and (i + 1 < len(lines) and "inspect" in lines[i+1])):
         in_inspect_method = True
         continue
       if in_inspect_method and line == "\n":
