@@ -202,3 +202,4 @@
 - It is now an error to have two arguments with the same name.
 - It is now a warning to redefine a constant.
 - Fix a bug where the size of static boxed arrays was only `length` and not `allocated-length`
+- It is now possible to call a method on a forward declared type. The forward declared type must be a basic.
