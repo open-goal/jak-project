@@ -3924,9 +3924,18 @@ FormElement* ConditionElement::make_not_equal_check_generic(
         pool.alloc_single_element_form<GenericElement>(
             nullptr, GenericOperator::make_fixed(FixedOperatorKind::NULLP), source_forms.at(0)));
   } else {
-    return pool.alloc_element<GenericElement>(
-        GenericOperator::make_fixed(FixedOperatorKind::NEQ),
-        cast_to_64_bit(source_forms, source_types, pool, env));
+    auto nice_constant =
+        try_make_constant_for_compare(source_forms.at(1), source_types.at(0), pool, env);
+    if (nice_constant) {
+      auto forms_with_cast = source_forms;
+      forms_with_cast.at(1) = nice_constant;
+      return pool.alloc_element<GenericElement>(GenericOperator::make_fixed(FixedOperatorKind::NEQ),
+                                                forms_with_cast);
+    } else {
+      return pool.alloc_element<GenericElement>(
+          GenericOperator::make_fixed(FixedOperatorKind::NEQ),
+          cast_to_64_bit(source_forms, source_types, pool, env));
+    }
   }
 }
 

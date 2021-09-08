@@ -901,7 +901,7 @@ StaticResult Compiler::fill_static_boxed_array(const goos::Object& form,
   auto deref_info = m_ts.get_deref_info(pointer_type);
   assert(deref_info.can_deref);
   assert(deref_info.mem_deref);
-  auto array_data_size_bytes = length * deref_info.stride;
+  auto array_data_size_bytes = allocated_length * deref_info.stride;
   // todo, segments
   std::unique_ptr<StaticStructure> obj;
   obj = std::make_unique<StaticBasic>(MAIN_SEGMENT, "array");

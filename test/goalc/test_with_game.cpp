@@ -890,6 +890,11 @@ TEST_F(WithGameTests, ProcessAllocation) {
                                           {"diff is 16\n0\n"});
 }
 
+TEST_F(WithGameTests, MethodCallForwardDeclared) {
+  shared_compiler->runner.run_static_test(env, testCategory, "test-forward-declared-method.gc",
+                                          {"4 12\n0\n"});
+}
+
 TEST(TypeConsistency, TypeConsistency) {
   Compiler compiler;
   compiler.enable_throw_on_redefines();
