@@ -13,6 +13,7 @@ enum class BucketId {
   BUCKET0 = 0,
   BUCKET1 = 1,
   // ...
+  SPRITE = 66,
   DEBUG_DRAW_0 = 67,
   DEBUG_DRAW_1 = 68,
   MAX_BUCKETS = 69
