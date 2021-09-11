@@ -1,6 +1,7 @@
 //--------------------------MIPS2C---------------------
 #include "game/mips2c/mips2c_private.h"
 #include "game/kernel/kscheme.h"
+#include "third-party/fmt/core.h"
 namespace Mips2C {
 namespace draw_string {
 struct Cache {
@@ -13,9 +14,11 @@ struct Cache {
 
 u64 execute(void* ctxt) {
   auto* c = (ExecutionContext*)ctxt;
+  fmt::print("{} {} {}\n", c->sgpr64(a0), c->sgpr64(a1), c->sgpr64(a2));
   bool bc = false;
   c->load_symbol(v1, cache.math_camera);         // lw v1, *math-camera*(s7)
   c->lqc2(vf26, 732, v1);                        // lqc2 vf26, 732(v1)
+  //fmt::print("{} {} {} {}\n", c->vfs[vf26].f[0], c->vfs[vf26].f[1], c->vfs[vf26].f[2], c->vfs[vf26].f[3]);
   c->lqc2(vf27, 732, v1);                        // lqc2 vf27, 732(v1)
   c->vadd_bc(DEST::xy, BC::w, vf26, vf26, vf0);  // vaddw.xy vf26, vf26, vf0
   c->vadd_bc(DEST::x, BC::w, vf26, vf26, vf0);   // vaddw.x vf26, vf26, vf0
@@ -1790,16 +1793,18 @@ block_189:
   goto end_of_function;  // return
 
 end_of_function:
+  fmt::print("result is {}\n", c->gprs[v0].f[0]);
   return c->gprs[v0].du64[0];
 }
 
 void link() {
+  fprintf(stderr, "link draw_string.\n");
   cache.font_work = intern_from_c("*font-work*").c();
   cache.font12_table = intern_from_c("*font12-table*").c();
   cache.font24_table = intern_from_c("*font24-table*").c();
   cache.math_camera = intern_from_c("*math-camera*").c();
   cache.video_parms = intern_from_c("*video-parms*").c();
-  gLinkedFunctionTable.reg("draw-string", execute);
+  gLinkedFunctionTable.reg("draw-string", execute, 0);
 }
 }  // namespace draw_string
 }  // namespace Mips2C

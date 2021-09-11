@@ -149,8 +149,6 @@ struct ExecutionContext {
   float fprs[16];
   // VU0 vf registers
   u128 vfs[32];
-  // The stack. This just runs off the end of the array.
-  u8 stack[1024];
 
   u128 acc;
 

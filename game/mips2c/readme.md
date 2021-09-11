@@ -20,7 +20,7 @@ When the linker links the `font` object file, it will call the `link` function d
 
 Replace the `defun` with:
 ```
-(define my-func (the (function <whatever>) (__pc-port-get-mips2c "draw-string")))
+(define my-func (the (function <whatever>) (__pc-get-mips2c "draw-string")))
 ```
 
 You can use the same idea for methods with `method-set!`.
