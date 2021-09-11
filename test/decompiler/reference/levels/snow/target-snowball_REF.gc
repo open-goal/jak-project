@@ -1,14 +1,7 @@
 ;;-*-Lisp-*-
 (in-package goal)
 
-;; name: target-snowball.gc
-;; name in dgo: target-snowball
-;; dgos: L1, SNO
-
-(define-extern target-snowball (state target)) ;; unknown type
-
-;; DECOMP BEGINS
-
+;; definition of type snowball-info
 (deftype snowball-info (basic)
   ((entity basic  :offset-assert   4)
    )
@@ -17,7 +10,14 @@
   :flag-assert         #x900000008
   )
 
+;; definition for method 3 of type snowball-info
+(defmethod inspect snowball-info ((obj snowball-info))
+  (format #t "[~8x] ~A~%" obj (-> obj type))
+  (format #t "~Tentity: ~A~%" (-> obj entity))
+  obj
+  )
 
+;; definition of type snowball-bank
 (deftype snowball-bank (basic)
   ()
   :method-count-assert 9
@@ -25,8 +25,17 @@
   :flag-assert         #x900000004
   )
 
-(define *SNOWBALL-bank* (new 'static 'snowball-bank))
+;; definition for method 3 of type snowball-bank
+(defmethod inspect snowball-bank ((obj snowball-bank))
+  (format #t "[~8x] ~A~%" obj (-> obj type))
+  obj
+  )
 
+;; definition for symbol *SNOWBALL-bank*, type (inline-array float)
+(define *SNOWBALL-bank* (the-as (inline-array float) L24))
+
+;; definition for function target-snowball-post
+;; INFO: Return type mismatch int vs none.
 (defbehavior target-snowball-post target ()
   (let ((gp-0 (the int (-> *display* time-ratio))))
    (set-time-ratios *display* 1.0)
@@ -48,6 +57,7 @@
   (none)
   )
 
+;; failed to figure out what this is:
 (defstate target-snowball-start (target)
   :event
   (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
@@ -138,6 +148,7 @@
   (the-as (function none :behavior target) target-post)
   )
 
+;; failed to figure out what this is:
 (defstate target-snowball (target)
   :event
   (-> target-snowball-start event)
