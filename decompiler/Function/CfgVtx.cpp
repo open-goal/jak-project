@@ -59,6 +59,18 @@ void CfgVtx::replace_succ_and_check(CfgVtx* old_succ, CfgVtx* new_succ) {
   assert(replaced);
 }
 
+void CfgVtx::remove_pred(CfgVtx* to_remove) {
+  bool found = false;
+  for (auto it = pred.begin(); it != pred.end(); it++) {
+    if (*it == to_remove) {
+      pred.erase(it);
+      found = true;
+      break;
+    }
+  }
+  assert(found);
+}
+
 /*!
  * Replace references to old_preds with a single new_pred.
  * Doesn't insert duplicates.
@@ -477,7 +489,15 @@ bool ControlFlowGraph::is_while_loop(CfgVtx* b0, CfgVtx* b1, CfgVtx* b2) {
   if (!b0 || !b1 || !b2)
     return false;
 
+  bool debug = b0->to_string() == "Seq CONDNE104 ... Block 18100";
+
+  if (debug) {
+    fmt::print("try while: {} | {} | {}\n", b0->to_string(), b1->to_string(), b2->to_string());
+  }
+
+
   if (b0->end_branch.asm_branch || b1->end_branch.asm_branch) {
+    if (debug) fmt::print("reject 1 {} {}\n", b0->end_branch.asm_branch , b1->end_branch.asm_branch);
     return false;
   }
 
@@ -490,6 +510,8 @@ bool ControlFlowGraph::is_while_loop(CfgVtx* b0, CfgVtx* b1, CfgVtx* b2) {
     return false;
   if (b1->prev != b0)
     return false;
+
+  if (debug) fmt::print("made it here\n");
 
   //  // check branch to condition at the beginning
   if (b0->succ_ft)
@@ -1105,11 +1127,25 @@ bool ControlFlowGraph::clean_up_asm_branches() {
       return true;
     }
 
+    if (b1->succ_branch == b1) {
+      // asm branch to yourself. just remove it.
+      b1->succ_branch = nullptr;
+      b1->end_branch.has_branch = false;
+      b1->remove_pred(b1);
+      replaced = true;
+      return false;
+    }
+
     // don't want to combine two with an incoming edge in between.
     if (b1->pred.size() > 1) {
+      fmt::print("reject {} {} case 1. Preds are:\n", b0->to_string(), b1->to_string());
+      for (auto& p : b1->pred) {
+        fmt::print("  {}\n", p->to_string());
+      }
       return true;
     } else {
       if (b1->pred.size() == 1 && !b1->has_pred(b1->prev)) {
+        fmt::print("reject {} {} case 2\n", b0->to_string(), b1->to_string());
         return true;
       }
     }
@@ -2091,6 +2127,10 @@ bool ControlFlowGraph::find_cond_n_else() {
         // if we are a not, we can have only one case. (I think).
         if (prev_condition->end_branch.kind == CfgVtx::DelaySlotKind::SET_REG_TRUE &&
             entries.size() > 1) {
+          return true;
+        }
+
+        if (prev_condition->end_branch.asm_branch) {
           return true;
         }
 

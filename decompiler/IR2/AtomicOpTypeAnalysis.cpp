@@ -319,6 +319,12 @@ TP_Type get_stack_type_at_constant_offset(int offset,
   throw std::runtime_error(
       fmt::format("Failed to find a stack variable or structure at offset {}", offset));
 }
+
+
+uint32_t align16(uint32_t in) {
+  return (in + 15) & (~15);
+}
+
 }  // namespace
 
 /*!
@@ -602,6 +608,10 @@ TP_Type SimpleExpression::get_type_int2(const TypeState& input,
       arg1_type.is_integer_constant()) {
     auto type_info = dts.ts.lookup_type(arg0_type.typespec());
     if ((u64)type_info->get_size_in_memory() == arg1_type.get_integer_constant()) {
+      return TP_Type::make_from_ts(arg0_type.typespec());
+    }
+
+    if ((u64)align16(type_info->get_size_in_memory()) == arg1_type.get_integer_constant()) {
       return TP_Type::make_from_ts(arg0_type.typespec());
     }
   }
