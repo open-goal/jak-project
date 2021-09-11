@@ -113,6 +113,7 @@ class Function {
   int get_basic_op_count();
   int get_failed_basic_op_count();
   BlockTopologicalSort bb_topo_sort();
+  std::string name() const;
 
   TypeSpec type;
 

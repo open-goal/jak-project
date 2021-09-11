@@ -1,10 +1,10 @@
 #include <algorithm>
-#include <limits>
 #include <array>
+#include <limits>
 
-#include "insert_lets.h"
 #include "decompiler/IR2/GenericElementMatcher.h"
 #include "decompiler/util/DecompilerTypeSystem.h"
+#include "insert_lets.h"
 
 namespace decompiler {
 
@@ -79,8 +79,7 @@ Form* lca_form(Form* a, Form* b, const Env& env) {
     bi--;
   }
   if (!result) {
-    fmt::print("{} bad form is {}\n\n{}\n", env.func->guessed_name.to_string(), a->to_string(env),
-               b->to_string(env));
+    fmt::print("{} bad form is {}\n\n{}\n", env.func->name(), a->to_string(env), b->to_string(env));
   }
   assert(result);
 
@@ -733,7 +732,7 @@ FormElement* rewrite_multi_let_as_vector_dot(LetElement* in, const Env& env, For
   }
 
   // don't inline in the actual function...
-  if (env.func->guessed_name.to_string() == "vector-dot") {
+  if (env.func->name() == "vector-dot") {
     return nullptr;
   }
 
@@ -804,7 +803,7 @@ bool register_can_hold_var(const Register& reg) {
 
 LetStats insert_lets(const Function& func, Env& env, FormPool& pool, Form* top_level_form) {
   (void)func;
-  //    if (func.guessed_name.to_string() != "(method 4 pair)") {
+  //    if (func.name() != "(method 4 pair)") {
   //      return {};
   //    }
   LetStats stats;

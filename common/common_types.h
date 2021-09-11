@@ -5,9 +5,6 @@
  * Common Integer Types.
  */
 
-#ifndef JAK1_COMMON_TYPES_H
-#define JAK1_COMMON_TYPES_H
-
 #include <cstdint>
 
 using u8 = uint8_t;
@@ -22,12 +19,14 @@ using s64 = int64_t;
 struct u128 {
   union {
     u64 du64[2];
+    s64 ds64[2];
     u32 du32[4];
+    s32 ds32[4];
     u16 du16[8];
+    s16 ds16[8];
     u8 du8[16];
+    s8 ds8[16];
     float f[4];
   };
 };
 static_assert(sizeof(u128) == 16, "u128");
-
-#endif  // JAK1_COMMON_TYPES_H

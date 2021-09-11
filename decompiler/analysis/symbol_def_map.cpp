@@ -1,7 +1,7 @@
-#include "common/link_types.h"
 #include "symbol_def_map.h"
-#include "third-party/json.hpp"
+#include "common/link_types.h"
 #include "decompiler/ObjectFile/ObjectFileDB.h"
+#include "third-party/json.hpp"
 
 namespace decompiler {
 
@@ -92,7 +92,12 @@ std::optional<std::string> get_loaded_or_stored_symbol_name(const AtomicOp* op) 
 
 void SymbolMapBuilder::add_load_store_from_function(const Function& f, ObjectSymbolList* output) {
   if (!f.ir2.atomic_ops_succeeded) {
-    lg::error("Atomic ops failed in {}", f.guessed_name.to_string());
+    if (!f.suspected_asm) {
+      // some asm functions will use mips2c which doesn't require atomic ops.
+      // we can't do anything with these, but we shouldn't warn.
+      lg::error("Atomic ops failed in {}", f.name());
+    }
+
     return;
   }
 
