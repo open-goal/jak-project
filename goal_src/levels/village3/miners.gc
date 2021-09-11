@@ -5,26 +5,10 @@
 ;; name in dgo: miners
 ;; dgos: L1, VI3
 
+(declare-type minershort process-taskable)
 (define-extern *cavegem-sg* skeleton-group)
 (define-extern *minershort-sg* skeleton-group)
 (define-extern *minertall-sg* skeleton-group)
-
-(deftype minertall (process-taskable)
-  ()
-  :heap-base #x110
-  :method-count-assert 53
-  :size-assert         #x17c
-  :flag-assert         #x350110017c
-  )
-
-(deftype minershort (process-taskable)
-  ((other-miner minertall  :offset-assert 380)
-   )
-  :heap-base #x110
-  :method-count-assert 53
-  :size-assert         #x180
-  :flag-assert         #x3501100180
-  )
 
 ;; DECOMP BEGINS
 
@@ -55,6 +39,14 @@
    )
   (the-as none 0)
   (none)
+  )
+
+(deftype minertall (process-taskable)
+  ()
+  :heap-base #x110
+  :method-count-assert 53
+  :size-assert         #x17c
+  :flag-assert         #x350110017c
   )
 
 
@@ -154,6 +146,15 @@
   (set! (-> obj draw light-index) (the-as uint 1))
   (dummy-42 obj)
   (none)
+  )
+
+(deftype minershort (process-taskable)
+  ((other-miner minertall  :offset-assert 380)
+   )
+  :heap-base #x110
+  :method-count-assert 53
+  :size-assert         #x180
+  :flag-assert         #x3501100180
   )
 
 
@@ -876,7 +877,11 @@
            )
           )
          ((= v1-59 1)
-          (if (!= (get-task-status (game-task cave-gnawers)) 5)
+          (if
+           (!=
+            (get-task-status (game-task cave-gnawers))
+            (task-status need-reminder)
+            )
            (set! s4-2 2)
            )
           )
@@ -906,7 +911,11 @@
            )
           )
          (else
-          (if (!= (get-task-status (game-task snow-eggtop)) 5)
+          (if
+           (!=
+            (get-task-status (game-task snow-eggtop))
+            (task-status need-reminder)
+            )
            (set! s4-2 0)
            )
           )
