@@ -14,11 +14,9 @@ struct Cache {
 
 u64 execute(void* ctxt) {
   auto* c = (ExecutionContext*)ctxt;
-  fmt::print("{} {} {}\n", c->sgpr64(a0), c->sgpr64(a1), c->sgpr64(a2));
   bool bc = false;
   c->load_symbol(v1, cache.math_camera);         // lw v1, *math-camera*(s7)
   c->lqc2(vf26, 732, v1);                        // lqc2 vf26, 732(v1)
-  //fmt::print("{} {} {} {}\n", c->vfs[vf26].f[0], c->vfs[vf26].f[1], c->vfs[vf26].f[2], c->vfs[vf26].f[3]);
   c->lqc2(vf27, 732, v1);                        // lqc2 vf27, 732(v1)
   c->vadd_bc(DEST::xy, BC::w, vf26, vf26, vf0);  // vaddw.xy vf26, vf26, vf0
   c->vadd_bc(DEST::x, BC::w, vf26, vf26, vf0);   // vaddw.x vf26, vf26, vf0
@@ -1023,7 +1021,8 @@ block_125:
   // nop                                            // sll r0, r0, 0
   c->vmadd_bc(DEST::xyzw, BC::z, vf4, vf30, vf4);  // vmaddz.xyzw vf4, vf30, vf4
   c->vdiv(vf25, BC::z, vf1, BC::w);                // vdiv Q, vf25.z, vf1.w
-  c->lq(t5, 32, v1);                               // lq t5, 32(v1)
+  // fmt::print("first div is {}\n", c->Q); okay, it's 1.0
+  c->lq(t5, 32, v1);  // lq t5, 32(v1)
   // nop                                            // sll r0, r0, 0
   c->lq(t6, 48, v1);  // lq t6, 48(v1)
   // nop                                            // sll r0, r0, 0
@@ -1037,6 +1036,7 @@ block_125:
   c->lqc2(vf7, 528, v1);          // lqc2 vf7, 528(v1)
   c->movn(t5, t1, t4);            // movn t5, t1, t4
   c->vmulq(DEST::xyz, vf1, vf1);  // vmulq.xyz vf1, vf1, Q
+  // fmt::print("vf1: ");
   c->sq(t5, 32, a1);              // sq t5, 32(a1)
   c->vmulq(DEST::xyz, vf5, vf5);  // vmulq.xyz vf5, vf5, Q
   // nop                                            // sll r0, r0, 0
@@ -1793,7 +1793,6 @@ block_189:
   goto end_of_function;  // return
 
 end_of_function:
-  fmt::print("result is {}\n", c->gprs[v0].f[0]);
   return c->gprs[v0].du64[0];
 }
 

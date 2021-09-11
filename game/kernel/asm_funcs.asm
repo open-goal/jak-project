@@ -144,6 +144,7 @@ _mips2c_call_linux:
 
   ;;sub rsp, rax ;; allocate space on the stack for GOAL fake stack
   push rax     ;; and remember this so we can find our way back
+  push rax
 
   movq rax, xmm0
 
@@ -151,8 +152,10 @@ _mips2c_call_linux:
 
   ;; unallocate
   pop rax
+  pop rax
   ;; add rsp, rax
 
+  mov rax, [rsp + 32]
 
   add rsp, 1280
   pop r11

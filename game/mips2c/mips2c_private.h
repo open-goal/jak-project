@@ -323,7 +323,7 @@ struct ExecutionContext {
 
     for (int i = 0; i < 4; i++) {
       if ((u64)mask & (1 << i)) {
-        vfs[dst].f[i] += acc.f[i] + s0.f[i] * s1.f[(int)bc];
+        vfs[dst].f[i] = acc.f[i] + s0.f[i] * s1.f[(int)bc];
       }
     }
   }
@@ -448,7 +448,7 @@ struct ExecutionContext {
     auto s = vf_src(src);
     for (int i = 0; i < 4; i++) {
       if ((u64)mask & (1 << i)) {
-        vfs[dst].ds32[i] = s.f[i] * 4.f;
+        vfs[dst].ds32[i] = s.f[i] * 16.f;
       }
     }
   }
