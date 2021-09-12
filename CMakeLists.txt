@@ -27,7 +27,8 @@ if(UNIX)
         -Woverloaded-virtual \
         -Wredundant-decls \
         -Wshadow \
-        -Wsign-promo")
+        -Wsign-promo \
+        -fdiagnostics-color=always")
 else()
     set(CMAKE_CXX_FLAGS "/EHsc")
     set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} /STACK:10000000")

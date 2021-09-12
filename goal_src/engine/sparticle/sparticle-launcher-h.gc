@@ -121,13 +121,23 @@
   (spt-end 67)
   )
 
+(defenum sp-flag
+  :type uint16
+  (plain-v1 0) ;; just a plain signed integer. No random crap.
+  (float-with-rand 1)
+  (int-with-rand 2)
+  (copy-from-other-field 3)
+  (plain-v2 4)
+  (from-pointer 5)
+  (part-by-id 6)
+  )
 
 ;; This describes the initial value and some more info for a single field
 ;; Note that there are overlays here and some values only make sense in some
 ;; cases.
 (deftype sp-field-init-spec (structure)
   ((field          sp-field-id  :offset-assert 0)
-   (flags          uint16  :offset-assert 2)
+   (flags          sp-flag  :offset-assert 2)
    (initial-valuef float   :offset-assert 4)
    (random-rangef  float   :offset-assert 8)
    (random-multf   float   :offset-assert 12)
@@ -156,11 +166,20 @@
   :flag-assert         #x900000010
   )
 
+(defenum sp-group-item-flag
+  :bitfield #t
+  :type uint16
+  (is-3d 0)
+  (bit1 1)
+  (activate-immediately 2)
+  (use-simple-timing 3)
+  )
+
 (deftype sparticle-group-item (structure)
   ((launcher   uint32  :offset-assert 0)
    (fade-after meters  :offset-assert 4)
    (falloff-to meters  :offset-assert 8)
-   (flags      uint16  :offset-assert 12)
+   (flags      sp-group-item-flag  :offset-assert 12)
    (period     uint16  :offset-assert 14)
    (length     uint16  :offset-assert 16)
    (offset     uint16  :offset-assert 18)
@@ -172,13 +191,23 @@
   :flag-assert         #x90000001c
   )
 
+(defenum sp-launch-state-flags
+  :bitfield #t
+  :type uint16
+  (launcher-active 0)        ;; active
+  (particles-active 1) ;; wants to launch
+  (bit2 2)
+  )
+
+(declare-type sparticle-cpuinfo structure)
+
 (deftype sparticle-launch-state (structure)
   ((group-item sparticle-group-item  :offset-assert 0)
-   (flags      uint16                :offset-assert 4)
+   (flags      sp-launch-state-flags :offset-assert 4)
    (randomize  uint16                :offset-assert 6)
    (origin     vector                :offset-assert 8)
    (sprite3d   sprite-vec-data-3d    :offset-assert 12)
-   (sprite     basic                 :offset-assert 16)
+   (sprite     sparticle-cpuinfo     :offset-assert 16)
    (offset     uint32                :offset-assert 20)
    (accum      float                 :offset-assert 24)
    (spawn-time uint32                :offset-assert 28)
@@ -193,12 +222,20 @@
   :flag-assert         #x900000020
   )
 
+(defenum sp-group-flag
+  :bitfield #t
+  :type uint16
+  (use-local-clock 0)
+  (bit1 1) ;; hide
+  (bit2 2) ;; also hide
+  )
+
 (deftype sparticle-launch-group (basic)
   ((length          int16          :offset-assert 4)
    (duration        uint16         :offset-assert 6)
    (linger-duration uint16         :offset-assert 8)
-   (flags           uint16         :offset-assert 10)
-   (name            basic          :offset-assert 12)
+   (flags           sp-group-flag  :offset-assert 10)
+   (name            string         :offset-assert 12)
    (launcher        (inline-array sparticle-group-item)         :offset-assert 16)
    (bounds          sphere :inline :offset-assert 32)
    )
@@ -226,10 +263,10 @@
   :flag-assert         #xe00000040
   (:methods
     (initialize (_type_ sparticle-launch-group process) none 9)
-    (dummy-10 () none 10)
-    (dummy-11 (_type_ vector) none 11)
-    (deactivate (_type_) none 12)
-    (dummy-13 () none 13)
+    (is-visible? (_type_ vector) symbol 10)
+    (spawn (_type_ vector) object 11)
+    (kill-and-free-particles (_type_) none 12)
+    (kill-particles (_type_) none 13)
     )
   )
 (set! (-> sparticle-launch-control heap-base) (the-as uint 32))
