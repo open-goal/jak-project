@@ -64,6 +64,8 @@ the first thing in the list is the name of the source file that should contain t
 
 When the linker links the `font` object file, it will call the `link` function defined there.  This will add the function to the table of available mips2c functions.  Note: this does **not** define the function.
 
+Note: you will need to add a third argument to `gLinkedFunctionTable.reg(` in the auto-generated code with the maximum amount of stack space that the function can use (not including functions it calls, just local use).
+
 ## Accessing the m2c from GOAL
 
 Replace the `defun` with:
