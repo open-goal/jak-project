@@ -133,7 +133,7 @@ void ObjectFileDB::ir2_setup_labels(const Config& config) {
 }
 
 void ObjectFileDB::ir2_run_mips2c(const Config& config) {
-  for_each_function_def_order([&](Function& func, int seg, ObjectFileData& data) {
+  for_each_function_def_order([&](Function& func, int, ObjectFileData&) {
     if (config.hacks.mips2c_functions_by_name.count(func.name())) {
       lg::info("MIPS2C on {}", func.name());
       run_mips2c(&func);
@@ -1001,6 +1001,10 @@ std::string ObjectFileDB::ir2_function_to_string(ObjectFileData& data, Function&
       result += func.cfg->to_dot();
       result += "\n";
     }
+  }
+
+  if (func.mips2c_output) {
+    result += *func.mips2c_output;
   }
 
   result += "\n";

@@ -425,7 +425,7 @@ Mips2C_Line handle_lw(Mips2C_Output& out, const Instruction& i0, const std::stri
   }
 }
 
-Mips2C_Line handle_generic_store(Mips2C_Output& out,
+Mips2C_Line handle_generic_store(Mips2C_Output& /*out*/,
                                  const Instruction& i0,
                                  const std::string& instr_str) {
   if (i0.get_src(2).is_reg(Register(Reg::GPR, Reg::SP))) {
@@ -695,6 +695,7 @@ Mips2C_Line handle_normal_instr(Mips2C_Output& output,
 }
 
 void run_mips2c(Function* f) {
+  g_unknown = 0;
   auto* file = f->ir2.env.file;
   auto blocks = setup_preds_and_succs(*f, *file);
   Mips2C_Output output;
@@ -770,9 +771,9 @@ void run_mips2c(Function* f) {
     }
   }
 
-  fmt::print("{}", output.write_to_string(f->guessed_name));
+  f->mips2c_output = output.write_to_string(f->guessed_name);
   if (g_unknown > 0) {
-    fmt::print("// TOTAL: {} unknown instructions.\n", g_unknown);
+    lg::error("Mips to C pass in {} hit {} unknown instructions", f->name(), g_unknown);
   }
 }
 }  // namespace decompiler
