@@ -1,7 +1,7 @@
 //--------------------------MIPS2C---------------------
 #include "game/mips2c/mips2c_private.h"
 #include "game/kernel/kscheme.h"
-#include "third-party/fmt/core.h"
+
 namespace Mips2C {
 namespace draw_string {
 struct Cache {

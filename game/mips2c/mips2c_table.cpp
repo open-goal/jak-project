@@ -7,6 +7,7 @@
 
 extern "C" {
 void _mips2c_call_linux();
+void _mips2c_call_windows();
 }
 
 namespace Mips2C {
@@ -60,7 +61,12 @@ void LinkedFunctionTable::reg(const std::string& name, u64 (*exec)(void*), u32 s
     ptr++;
 
     // call the other function
+#ifdef __linux__
     addr = (u64)_mips2c_call_linux;
+#elif _WIN32
+    addr = (u64)_mips2c_call_windows;
+#endif
+
     *ptr = 0x48;
     ptr++;
     *ptr = 0xb8;
