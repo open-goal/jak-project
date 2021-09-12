@@ -1,6 +1,7 @@
 #pragma once
 
 #include <cstring>
+#include <cmath>
 
 #include "common/common_types.h"
 #include "game/mips2c/mips2c_table.h"
@@ -204,6 +205,12 @@ struct ExecutionContext {
     gprs[dst].ds64[0] = val;
   }
 
+  void lh(int dst, int offset, int src) {
+    s16 val;
+    memcpy(&val, g_ee_main_mem + gpr_src(src).du32[0] + offset, 2);
+    gprs[dst].ds64[0] = val;
+  }
+
   void lwu(int dst, int offset, int src) {
     u32 val;
     memcpy(&val, g_ee_main_mem + gpr_src(src).du32[0] + offset, 4);
@@ -332,11 +339,43 @@ struct ExecutionContext {
     Q = vf_src(src0).f[(int)bc0] / vf_src(src1).f[(int)bc1];
   }
 
+  void vsqrt(int src, BC bc) { Q = std::sqrt(std::abs(vf_src(src).f[(int)bc])); }
+
   void vmulq(DEST mask, int dst, int src) {
     auto s0 = vf_src(src);
     for (int i = 0; i < 4; i++) {
       if ((u64)mask & (1 << i)) {
         vfs[dst].f[i] = s0.f[i] * Q;
+      }
+    }
+  }
+
+  void vrget(DEST mask, int dst) {
+    float r = gRng.R;
+    for (int i = 0; i < 4; i++) {
+      if ((u64)mask & (1 << i)) {
+        vfs[dst].f[i] = r;
+      }
+    }
+  }
+
+  void vrxor(int src, BC bc) { gRng.rxor(vf_src(src).du32[(int)bc]); }
+
+  void vaddq(DEST mask, int dst, int src) {
+    auto s = vf_src(src);
+    for (int i = 0; i < 4; i++) {
+      if ((u64)mask & (1 << i)) {
+        vfs[dst].f[i] = s.f[i] + Q;
+      }
+    }
+  }
+
+  void vrnext(DEST mask, int dst) {
+    gRng.advance();
+    float r = gRng.R;
+    for (int i = 0; i < 4; i++) {
+      if ((u64)mask & (1 << i)) {
+        vfs[dst].f[i] = r;
       }
     }
   }
@@ -359,6 +398,7 @@ struct ExecutionContext {
   }
 
   void sra(int dst, int src, int sa) { gprs[dst].ds64[0] = gpr_src(src).ds32[0] >> sa; }
+  void dsll(int dst, int src0, int sa) { gprs[dst].du64[0] = gpr_src(src0).du64[0] << sa; }
 
   void daddu(int dst, int src0, int src1) { gprs[dst].du64[0] = sgpr64(src0) + sgpr64(src1); }
   void daddiu(int dst, int src0, s64 imm) { gprs[dst].du64[0] = sgpr64(src0) + imm; }
@@ -372,6 +412,8 @@ struct ExecutionContext {
     gprs[dst].ds64[0] = temp;
   }
 
+  void dsubu(int dst, int src0, int src1) { gprs[dst].du64[0] = sgpr64(src0) - sgpr64(src1); }
+
   void movz(int dst, int src0, int src1) {
     if (sgpr64(src1) == 0) {
       gprs[dst].du64[0] = sgpr64(src0);
@@ -382,6 +424,12 @@ struct ExecutionContext {
     if (sgpr64(src1) != 0) {
       gprs[dst].du64[0] = sgpr64(src0);
     }
+  }
+
+  void mult3(int dst, int src0, int src1) {
+    u32 result = gpr_src(src0).du32[0] * gpr_src(src1).du32[0];
+    s32 sresult = result;
+    gprs[dst].ds64[0] = sresult;
   }
 
   void andi(int dest, int src, u64 imm) { gprs[dest].du64[0] = gpr_src(src).du64[0] & imm; }
@@ -449,6 +497,15 @@ struct ExecutionContext {
     for (int i = 0; i < 4; i++) {
       if ((u64)mask & (1 << i)) {
         vfs[dst].ds32[i] = s.f[i] * 16.f;
+      }
+    }
+  }
+
+  void vftoi0(DEST mask, int dst, int src) {
+    auto s = vf_src(src);
+    for (int i = 0; i < 4; i++) {
+      if ((u64)mask & (1 << i)) {
+        vfs[dst].ds32[i] = s.f[i];
       }
     }
   }

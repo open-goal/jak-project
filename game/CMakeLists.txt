@@ -60,6 +60,7 @@ set(RUNTIME_SOURCE
         kernel/ksound.cpp
         mips2c/mips2c_table.cpp
         mips2c/functions/draw_string.cpp
+        mips2c/functions/sparticle_launcher.cpp
         mips2c/functions/test_func.cpp
         overlord/dma.cpp
         overlord/fake_iso.cpp

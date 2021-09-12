@@ -5,9 +5,6 @@
  * Representation of an x86-64 Register.
  */
 
-#ifndef JAK_REGISTER_H
-#define JAK_REGISTER_H
-
 #include "common/util/assert.h"
 #include <array>
 #include <vector>
@@ -165,5 +162,3 @@ class RegisterInfo {
 extern RegisterInfo gRegInfo;
 
 }  // namespace emitter
-
-#endif  // JAK_REGISTER_H

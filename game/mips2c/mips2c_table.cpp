@@ -16,9 +16,15 @@ namespace draw_string {
 extern void link();
 }
 
+namespace sp_init_fields {
+extern void link();
+}
+
 LinkedFunctionTable gLinkedFunctionTable;
+Rng gRng;
 std::unordered_map<std::string, std::vector<void (*)()>> gMips2CLinkCallbacks = {
-    {"font", {draw_string::link}}};
+    {"font", {draw_string::link}},
+    {"sparticle-launcher", {sp_init_fields::link}}};
 
 void LinkedFunctionTable::reg(const std::string& name, u64 (*exec)(void*), u32 stack_size) {
   const auto& it = m_executes.insert({name, {exec, Ptr<u8>()}});
