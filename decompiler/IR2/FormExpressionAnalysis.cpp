@@ -4956,8 +4956,7 @@ void ConditionalMoveFalseElement::push_to_stack(const Env& env, FormPool& pool, 
   // pop the value and the original
   auto popped = pop_to_forms({old_value, source}, env, pool, stack, true);
   if (!is_symbol_true(popped.at(0))) {
-    lg::warn("{}: Failed to ConditionalMoveFalseElement::push_to_stack",
-             env.func->guessed_name.to_string());
+    lg::warn("{}: Failed to ConditionalMoveFalseElement::push_to_stack", env.func->name());
     stack.push_value_to_reg(source, popped.at(1), true, TypeSpec("symbol"));
     stack.push_form_element(this, true);
     return;
@@ -5139,7 +5138,7 @@ void VectorFloatLoadStoreElement::push_to_stack(const Env& env, FormPool& pool, 
     }
   }
 
-  auto name = env.func->guessed_name.to_string();
+  auto name = env.func->name();
   // don't find vector-! inside of vector-!.
   if (!m_is_load && name != "vector-!" && name != "vector+!" && name != "vector-reset!") {
     if (try_vector_reset_inline(env, pool, stack, this)) {

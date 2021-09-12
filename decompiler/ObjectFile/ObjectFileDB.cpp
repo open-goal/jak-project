@@ -681,7 +681,7 @@ void ObjectFileDB::analyze_functions_ir1(const Config& config) {
         func.guessed_name.unique_id = uid++;
         func.guessed_name.id_in_object = func_in_obj++;
         func.guessed_name.object_name = data.to_unique_name();
-        auto name = func.guessed_name.to_string();
+        auto name = func.name();
 
         if (unique_names.find(name) != unique_names.end()) {
           duplicated_functions[name].insert(data.to_unique_name());
@@ -700,7 +700,7 @@ void ObjectFileDB::analyze_functions_ir1(const Config& config) {
 
   for_each_function([&](Function& func, int segment_id, ObjectFileData& data) {
     (void)segment_id;
-    auto name = func.guessed_name.to_string();
+    auto name = func.name();
 
     if (duplicated_functions.find(name) != duplicated_functions.end()) {
       duplicated_functions[name].insert(data.to_unique_name());

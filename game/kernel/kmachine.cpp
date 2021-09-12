@@ -34,7 +34,7 @@
 #include "game/graphics/gfx.h"
 #include "game/graphics/dma/dma_chain_read.h"
 #include "game/graphics/dma/dma_copy.h"
-
+#include "game/mips2c/mips2c_table.h"
 #include "game/system/vm/vm.h"
 #include "game/system/newpad.h"
 using namespace ee;
@@ -555,6 +555,12 @@ void pc_texture_relocate(u32 dst, u32 src, u32 format) {
   Gfx::texture_relocate(dst, src, format);
 }
 
+u64 pc_get_mips2c(u32 name) {
+  const char* n = Ptr<String>(name).c()->data();
+  fmt::print("Getting mips: {}\n", n);
+  return Mips2C::gLinkedFunctionTable.get(n);
+}
+
 /*!
  * Open a file-stream.  Name is a GOAL string. Mode is a GOAL symbol.  Use 'read for readonly
  * and anything else for write only.
@@ -718,6 +724,7 @@ void InitMachine_PCPort() {
   make_function_symbol_from_c("__send-gfx-dma-chain", (void*)send_gfx_dma_chain);
   make_function_symbol_from_c("__pc-texture-upload-now", (void*)pc_texture_upload_now);
   make_function_symbol_from_c("__pc-texture-relocate", (void*)pc_texture_relocate);
+  make_function_symbol_from_c("__pc-get-mips2c", (void*)pc_get_mips2c);
 
   // pad stuff
   make_function_symbol_from_c("pc-pad-get-mapped-button", (void*)Gfx::get_mapped_button);
