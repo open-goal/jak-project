@@ -1,8 +1,8 @@
 #pragma once
 
+#include <string>
 #include <unordered_map>
 #include <vector>
-#include <string>
 
 namespace decompiler {
 class Form;

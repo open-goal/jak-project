@@ -78,6 +78,7 @@ u32 crc32(const u8* data, s32 size);
 void kscheme_init_globals();
 void init_crc();
 u64 alloc_from_heap(u32 heapSymbol, u32 type, s32 size, u32 pp);
+u64 alloc_heap_object(u32 heap, u32 type, u32 size, u32 pp);
 Ptr<Symbol> intern_from_c(const char* name);
 Ptr<Type> intern_type_from_c(const char* name, u64 methods);
 Ptr<Type> set_type_values(Ptr<Type> type, Ptr<Type> parent, u64 flags);

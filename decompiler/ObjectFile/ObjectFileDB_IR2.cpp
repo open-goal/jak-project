@@ -3,7 +3,7 @@
  * This runs the IR2 analysis passes.
  */
 
-#include <common/link_types.h>
+#include "common/link_types.h"
 #include "ObjectFileDB.h"
 #include "common/log/log.h"
 #include "common/util/Timer.h"
@@ -24,6 +24,7 @@
 #include "decompiler/analysis/symbol_def_map.h"
 #include "common/goos/PrettyPrinter.h"
 #include "decompiler/IR2/Form.h"
+#include "decompiler/analysis/mips2c.h"
 
 namespace decompiler {
 
@@ -65,16 +66,14 @@ void ObjectFileDB::analyze_functions_ir2(const std::string& output_dir,
     ir2_symbol_definition_map(output_dir);
   }
 
-  //  if (!skip_debug_output) {
-  //    lg::info("Storing temporary form result...");
-  //    ir2_store_current_forms();
-  //  }
-
   lg::info("Inserting anonymous function definitions...");
 
   ir2_insert_anonymous_functions(DEBUG_SEGMENT);
   ir2_insert_anonymous_functions(MAIN_SEGMENT);
   ir2_insert_anonymous_functions(TOP_LEVEL_SEGMENT);
+
+  // doesn't really matter where we do this.
+  ir2_run_mips2c(config);
 
   if (!output_dir.empty()) {
     lg::info("Writing results...");
@@ -83,7 +82,7 @@ void ObjectFileDB::analyze_functions_ir2(const std::string& output_dir,
 }
 
 void ObjectFileDB::ir2_do_segment_analysis_phase1(int seg, const Config& config) {
-  lg::info("COMMON ANALYSIS 1 {}", seg);
+  lg::info("ASM analysis for {} segment", SEGMENT_NAMES[seg]);
 
   lg::info("Processing basic blocks and control flow graph...");
   ir2_basic_block_pass(seg, config);
@@ -94,7 +93,7 @@ void ObjectFileDB::ir2_do_segment_analysis_phase1(int seg, const Config& config)
 }
 
 void ObjectFileDB::ir2_do_segment_analysis_phase2(int seg, const Config& config) {
-  lg::info("COMMON ANALYSIS 2 {}", seg);
+  lg::info("GOAL analysis for {} segment", SEGMENT_NAMES[seg]);
 
   lg::info("Running type analysis...");
   ir2_type_analysis_pass(seg, config);
@@ -129,6 +128,15 @@ void ObjectFileDB::ir2_setup_labels(const Config& config) {
       } catch (const std::exception& e) {
         lg::die("Error parsing labels for {}: {}\n", data.to_unique_name(), e.what());
       }
+    }
+  });
+}
+
+void ObjectFileDB::ir2_run_mips2c(const Config& config) {
+  for_each_function_def_order([&](Function& func, int, ObjectFileData&) {
+    if (config.hacks.mips2c_functions_by_name.count(func.name())) {
+      lg::info("MIPS2C on {}", func.name());
+      run_mips2c(&func);
     }
   });
 }
@@ -174,7 +182,7 @@ void ObjectFileDB::ir2_top_level_pass(const Config& config) {
         func.guessed_name.unique_id = uid++;
         func.guessed_name.id_in_object = func_in_obj++;
         func.guessed_name.object_name = data.to_unique_name();
-        auto name = func.guessed_name.to_string();
+        auto name = func.name();
 
         switch (func.guessed_name.kind) {
           case FunctionName::FunctionKind::METHOD:
@@ -212,6 +220,12 @@ void ObjectFileDB::ir2_top_level_pass(const Config& config) {
           func.warnings.info("Flagged as asm by config");
           func.suspected_asm = true;
         }
+
+        if (config.hacks.mips2c_functions_by_name.find(name) !=
+            config.hacks.mips2c_functions_by_name.end()) {
+          func.warnings.info("Flagged as mips2c by config");
+          func.suspected_asm = true;
+        }
       }
     }
   });
@@ -219,7 +233,7 @@ void ObjectFileDB::ir2_top_level_pass(const Config& config) {
   // we remember duplicates like this so we can warn on all occurances of the duplicate name
   for_each_function([&](Function& func, int segment_id, ObjectFileData& data) {
     (void)segment_id;
-    auto name = func.guessed_name.to_string();
+    auto name = func.name();
 
     if (duplicated_functions.find(name) != duplicated_functions.end()) {
       duplicated_functions[name].insert(data.to_unique_name());
@@ -280,23 +294,21 @@ void ObjectFileDB::ir2_basic_block_pass(int seg, const Config& config) {
 
       // build a control flow graph, just looking at branch instructions.
       CondWithElseLengthHack hack;
-      auto lookup =
-          config.hacks.cond_with_else_len_by_func_name.find(func.guessed_name.to_string());
+      auto lookup = config.hacks.cond_with_else_len_by_func_name.find(func.name());
       if (lookup != config.hacks.cond_with_else_len_by_func_name.end()) {
         hack = lookup->second;
       }
 
       std::unordered_set<int> asm_br_blocks;
-      auto asm_lookup =
-          config.hacks.blocks_ending_in_asm_branch_by_func_name.find(func.guessed_name.to_string());
+      auto asm_lookup = config.hacks.blocks_ending_in_asm_branch_by_func_name.find(func.name());
       if (asm_lookup != config.hacks.blocks_ending_in_asm_branch_by_func_name.end()) {
         asm_br_blocks = asm_lookup->second;
       }
 
       func.cfg = build_cfg(data.linked_data, seg, func, hack, asm_br_blocks);
       if (!func.cfg->is_fully_resolved()) {
-        lg::warn("Function {} from {} failed to build control flow graph!",
-                 func.guessed_name.to_string(), data.to_unique_name());
+        lg::warn("Function {} from {} failed to build control flow graph!", func.name(),
+                 data.to_unique_name());
         failed_to_build_cfg++;
       } else {
         func.cfg_ok = true;
@@ -363,13 +375,12 @@ void ObjectFileDB::ir2_atomic_op_pass(int seg, const Config& config) {
       func.ir2.atomic_ops_attempted = true;
       attempted++;
       try {
-        bool inline_asm =
-            config.hacks.hint_inline_assembly_functions.find(func.guessed_name.to_string()) !=
-            config.hacks.hint_inline_assembly_functions.end();
+        bool inline_asm = config.hacks.hint_inline_assembly_functions.find(func.name()) !=
+                          config.hacks.hint_inline_assembly_functions.end();
 
         std::unordered_set<int> blocks_ending_in_asm_branch;
-        auto asm_branch_it = config.hacks.blocks_ending_in_asm_branch_by_func_name.find(
-            func.guessed_name.to_string());
+        auto asm_branch_it =
+            config.hacks.blocks_ending_in_asm_branch_by_func_name.find(func.name());
 
         if (asm_branch_it != config.hacks.blocks_ending_in_asm_branch_by_func_name.end()) {
           blocks_ending_in_asm_branch = asm_branch_it->second;
@@ -382,8 +393,8 @@ void ObjectFileDB::ir2_atomic_op_pass(int seg, const Config& config) {
         func.ir2.env.set_end_var(func.ir2.atomic_ops->end_op().return_var());
         successful++;
       } catch (std::exception& e) {
-        lg::warn("Function {} from {} could not be converted to atomic ops: {}",
-                 func.guessed_name.to_string(), data.to_unique_name(), e.what());
+        lg::warn("Function {} from {} could not be converted to atomic ops: {}", func.name(),
+                 data.to_unique_name(), e.what());
         func.warnings.general_warning("Failed to convert to atomic ops: {}", e.what());
       }
     }
@@ -440,7 +451,7 @@ void ObjectFileDB::ir2_type_analysis_pass(int seg, const Config& config) {
         func.type = ts;
         attempted_functions++;
         // try type analysis here.
-        auto func_name = func.guessed_name.to_string();
+        auto func_name = func.name();
         auto register_casts =
             try_lookup(config.register_type_casts_by_function_by_atomic_op_idx, func_name);
         func.ir2.env.set_type_casts(register_casts);
@@ -465,9 +476,8 @@ void ObjectFileDB::ir2_type_analysis_pass(int seg, const Config& config) {
           func.warnings.type_prop_warning("Type analysis failed");
         }
       } else {
-        lg::warn("Function {} didn't know its type", func.guessed_name.to_string());
-        func.warnings.type_prop_warning("Function {} has unknown type",
-                                        func.guessed_name.to_string());
+        lg::warn("Function {} didn't know its type", func.name());
+        func.warnings.type_prop_warning("Function {} has unknown type", func.name());
       }
     }
   });
@@ -505,7 +515,7 @@ void ObjectFileDB::ir2_register_usage_pass(int seg) {
 
         for (auto& x : dep_regs) {
           if ((x.get_kind() == Reg::VF && x.get_vf() != 0) || x.get_kind() == Reg::SPECIAL) {
-            lg::error("Bad vf dependency on {} in {}", x.to_charp(), func.guessed_name.to_string());
+            lg::error("Bad vf dependency on {} in {}", x.to_charp(), func.name());
             func.warnings.bad_vf_dependency("{}", x.to_string());
             continue;
           }
@@ -519,8 +529,7 @@ void ObjectFileDB::ir2_register_usage_pass(int seg) {
             continue;
           }
 
-          lg::error("Bad register dependency on {} in {}", x.to_charp(),
-                    func.guessed_name.to_string());
+          lg::error("Bad register dependency on {} in {}", x.to_charp(), func.name());
           func.warnings.general_warning("Function may read a register that is not set: {}",
                                         x.to_string());
         }
@@ -548,7 +557,7 @@ void ObjectFileDB::ir2_variable_pass(int seg) {
           func.ir2.env.set_local_vars(*result);
         }
       } catch (const std::exception& e) {
-        lg::warn("variable pass failed on {}: {}", func.guessed_name.to_string(), e.what());
+        lg::warn("variable pass failed on {}: {}", func.name(), e.what());
       }
     }
   });
@@ -610,7 +619,7 @@ void ObjectFileDB::ir2_build_expressions(int seg, const Config& config) {
     if (func.ir2.top_form && func.ir2.env.has_type_analysis() && func.ir2.env.has_local_vars() &&
         func.ir2.env.types_succeeded) {
       attempted++;
-      auto name = func.guessed_name.to_string();
+      auto name = func.name();
       auto arg_config = config.function_arg_names.find(name);
       auto var_config = config.function_var_overrides.find(name);
       if (convert_to_expressions(func.ir2.top_form, *func.ir2.form_pool, func,
@@ -685,7 +694,7 @@ void ObjectFileDB::ir2_insert_anonymous_functions(int seg) {
         total += insert_static_refs(func.ir2.top_form, *func.ir2.form_pool, func, dts);
       } catch (std::exception& e) {
         func.warnings.general_warning("Failed static ref finding: {}\n", e.what());
-        lg::error("Function {} failed static ref: {}\n", func.guessed_name.to_string(), e.what());
+        lg::error("Function {} failed static ref: {}\n", func.name(), e.what());
       }
     }
   });
@@ -733,7 +742,7 @@ std::string ObjectFileDB::ir2_to_file(ObjectFileData& data, const Config& config
         result += ir2_function_to_string(data, func, seg);
       } catch (std::exception& e) {
         result += "Failed to write";
-        result += func.guessed_name.to_string();
+        result += func.name();
         result += ": ";
         result += e.what();
         result += "\n";
@@ -856,7 +865,7 @@ void append_commented(std::string& line,
 std::string ObjectFileDB::ir2_function_to_string(ObjectFileData& data, Function& func, int seg) {
   std::string result;
   result += ";;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;\n";
-  result += "; .function " + func.guessed_name.to_string() + "\n";
+  result += "; .function " + func.name() + "\n";
   result += ";;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;\n";
   result += func.prologue.to_string(2) + "\n";
   if (func.warnings.has_warnings()) {
@@ -992,6 +1001,10 @@ std::string ObjectFileDB::ir2_function_to_string(ObjectFileData& data, Function&
       result += func.cfg->to_dot();
       result += "\n";
     }
+  }
+
+  if (func.mips2c_output) {
+    result += *func.mips2c_output;
   }
 
   result += "\n";

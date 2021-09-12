@@ -5,6 +5,7 @@
 #include "game/runtime.h"
 #include "goalc/listener/Listener.h"
 #include "goalc/compiler/Compiler.h"
+#include "game/mips2c/mips2c_table.h"
 
 #include "inja.hpp"
 #include "third-party/json.hpp"
@@ -893,6 +894,17 @@ TEST_F(WithGameTests, ProcessAllocation) {
 TEST_F(WithGameTests, MethodCallForwardDeclared) {
   shared_compiler->runner.run_static_test(env, testCategory, "test-forward-declared-method.gc",
                                           {"4 12\n0\n"});
+}
+
+namespace Mips2C {
+namespace test_func {
+extern u64 execute(void*);
+}
+}  // namespace Mips2C
+
+TEST_F(WithGameTests, Mips2C) {
+  Mips2C::gLinkedFunctionTable.reg("test-func", Mips2C::test_func::execute, 0);
+  shared_compiler->runner.run_static_test(env, testCategory, "test-mips2c-call.gc", {"36\n0\n"});
 }
 
 TEST(TypeConsistency, TypeConsistency) {

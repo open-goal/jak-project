@@ -1,11 +1,11 @@
 
 
 #include "find_defstates.h"
-#include "decompiler/IR2/Form.h"
 #include "common/goos/PrettyPrinter.h"
+#include "common/type_system/state.h"
+#include "decompiler/IR2/Form.h"
 #include "decompiler/IR2/GenericElementMatcher.h"
 #include "decompiler/ObjectFile/LinkedObjectFile.h"
-#include "common/type_system/state.h"
 
 namespace decompiler {
 
@@ -129,7 +129,7 @@ std::vector<DefstateElement::Entry> get_defstate_entries(
 
       this_entry.is_behavior = true;
       if (print_renames) {
-        fmt::print("RENAME: {} to ", handler_func->guessed_name.to_string());
+        fmt::print("RENAME: {} to ", handler_func->name());
       }
 
       if (virtual_child) {
@@ -138,7 +138,7 @@ std::vector<DefstateElement::Entry> get_defstate_entries(
         handler_func->guessed_name.set_as_nv_state(state_name, handler_kind);
       }
       if (print_renames) {
-        fmt::print("{}\n", handler_func->guessed_name.to_string());
+        fmt::print("{}\n", handler_func->name());
       }
 
       // scary part - modify the function type!
