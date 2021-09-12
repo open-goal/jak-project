@@ -37,3 +37,5 @@ constexpr double METER_LENGTH = 4096.0;
 constexpr double DEGREES_PER_ROT = 65536.0;
 constexpr double DEGREES_LENGTH = DEGREES_PER_ROT / 360.0;
 constexpr u64 TICKS_PER_SECOND = 300.0;
+
+constexpr float DEFAULT_RES_TIME = -1000000000.0;

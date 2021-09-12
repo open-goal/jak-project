@@ -17,11 +17,12 @@ class CodeGenerator {
  public:
   CodeGenerator(FileEnv* env, DebugInfo* debug_info);
   std::vector<u8> run(const TypeSystem* ts);
+  emitter::ObjectGeneratorStats get_obj_stats() const { return m_gen.get_stats(); }
 
  private:
-  void do_function(FunctionEnv* env, int f_idx);
-  void do_goal_function(FunctionEnv* env, int f_idx);
-  void do_asm_function(FunctionEnv* env, int f_idx, bool allow_saved_regs);
+  void do_function(const std::shared_ptr<FunctionEnv>& env, int f_idx);
+  void do_goal_function(const std::shared_ptr<FunctionEnv>& env, int f_idx);
+  void do_asm_function(const std::shared_ptr<FunctionEnv>& env, int f_idx, bool allow_saved_regs);
   emitter::ObjectGenerator m_gen;
   FileEnv* m_fe = nullptr;
   DebugInfo* m_debug_info = nullptr;

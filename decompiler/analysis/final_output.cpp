@@ -62,6 +62,16 @@ goos::Object final_output_lambda(const Function& func) {
   }
 }
 
+goos::Object final_output_defstate_anonymous_behavior(const Function& func) {
+  std::vector<goos::Object> inline_body;
+  func.ir2.top_form->inline_forms(inline_body, func.ir2.env);
+  auto var_dec = func.ir2.env.local_var_type_list(func.ir2.top_form, func.type.arg_count() - 1);
+
+  auto result = pretty_print::build_list("behavior", get_arg_list_for_function(func, func.ir2.env));
+  append_body_to_function_definition(&result, inline_body, var_dec, func.type);
+  return result;
+}
+
 std::string final_defun_out(const Function& func,
                             const Env& env,
                             const DecompilerTypeSystem& dts,
@@ -144,6 +154,21 @@ std::string final_defun_out(const Function& func,
     append_body_to_function_definition(&top_form, inline_body, var_dec, func.type);
     return pretty_print::to_string(top_form);
   }
+
+  if (func.guessed_name.kind == FunctionName::FunctionKind::NV_STATE ||
+      func.guessed_name.kind == FunctionName::FunctionKind::V_STATE) {
+    std::vector<goos::Object> top;
+    top.push_back(pretty_print::to_symbol("state-handler"));
+
+    top.push_back(pretty_print::to_symbol(func.guessed_name.to_string()));
+
+    top.push_back(arguments);
+    auto top_form = pretty_print::build_list(top);
+
+    append_body_to_function_definition(&top_form, inline_body, var_dec, func.type);
+    return pretty_print::to_string(top_form);
+  }
+
   return "nyi";
 }
 
@@ -199,28 +224,11 @@ std::string add_indent(const std::string& in, int indent, bool indent_first_line
   return result;
 }
 
-std::string write_from_top_level(const Function& top_level,
-                                 const DecompilerTypeSystem& dts,
-                                 const LinkedObjectFile& file,
-                                 const std::unordered_set<std::string>& skip_functions) {
-  auto top_form = top_level.ir2.top_form;
-  if (!top_form) {
-    return ";; ERROR: top level function was not converted to expressions. Cannot decompile.\n\n";
-  }
-
-  auto& env = top_level.ir2.env;
-  if (!env.has_type_analysis()) {
-    return ";; ERROR: top level has no type analysis. Cannot decompile.\n\n";
-  }
-
-  if (!env.has_local_vars()) {
-    return ";; ERROR: top level has no local vars. Cannot decompile.\n\n";
-  }
-
-  if (!env.has_reg_use()) {
-    return ";; ERROR: top level has no register use analysis. Cannot decompile.\n\n";
-  }
-
+std::string write_from_top_level_form(Form* top_form,
+                                      const DecompilerTypeSystem& dts,
+                                      const LinkedObjectFile& file,
+                                      const std::unordered_set<std::string>& skip_functions,
+                                      const Env& env) {
   std::vector<FormElement*> forms = top_form->elts();
   assert(!forms.empty());
 
@@ -232,7 +240,7 @@ std::string write_from_top_level(const Function& top_level,
 
   std::string result;
   // local vars:
-  auto var_dec = env.local_var_type_list(top_level.ir2.top_form, 0);
+  auto var_dec = env.local_var_type_list(top_form, 0);
   if (var_dec.local_vars) {
     result += pretty_print::to_string(*var_dec.local_vars);
     result += '\n';
@@ -425,6 +433,24 @@ std::string write_from_top_level(const Function& top_level,
     }
 
     if (!something_matched) {
+      auto as_cne = f.try_as_element<CondNoElseElement>();
+      if (as_cne && as_cne->entries.size() == 1) {
+        auto& entry = as_cne->entries.at(0);
+        // a bit gross...
+        if (entry.condition->to_string(env) == "*debug-segment*") {
+          something_matched = true;
+          // forms = entry.body->elts();
+          result += ";; this part is debug only\n";
+          result += "(when *debug-segment*\n";
+
+          result += write_from_top_level_form(entry.body, dts, file, skip_functions, env);
+
+          result += ")\n";
+        }
+      }
+    }
+
+    if (!something_matched) {
       auto empty = dynamic_cast<EmptyElement*>(x);
       if (empty) {
         something_matched = true;
@@ -449,5 +475,30 @@ std::string write_from_top_level(const Function& top_level,
   }
 
   return result;
+}
+
+std::string write_from_top_level(const Function& top_level,
+                                 const DecompilerTypeSystem& dts,
+                                 const LinkedObjectFile& file,
+                                 const std::unordered_set<std::string>& skip_functions) {
+  auto top_form = top_level.ir2.top_form;
+  if (!top_form) {
+    return ";; ERROR: top level function was not converted to expressions. Cannot decompile.\n\n";
+  }
+
+  auto& env = top_level.ir2.env;
+  if (!env.has_type_analysis()) {
+    return ";; ERROR: top level has no type analysis. Cannot decompile.\n\n";
+  }
+
+  if (!env.has_local_vars()) {
+    return ";; ERROR: top level has no local vars. Cannot decompile.\n\n";
+  }
+
+  if (!env.has_reg_use()) {
+    return ";; ERROR: top level has no register use analysis. Cannot decompile.\n\n";
+  }
+
+  return write_from_top_level_form(top_form, dts, file, skip_functions, env);
 }
 }  // namespace decompiler

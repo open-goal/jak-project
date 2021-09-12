@@ -239,21 +239,21 @@
 
 ;; definition of type nav-mesh
 (deftype nav-mesh (basic)
-  ((user-list           engine                    :offset-assert   4)
-   (poly-lookup-history uint8           2         :offset-assert   8)
-   (debug-time          uint8                     :offset-assert  10)
-   (static-sphere-count uint8                     :offset-assert  11)
-   (static-sphere       uint32                    :offset-assert  12)
-   (bounds              sphere          :inline   :offset-assert  16)
-   (origin              vector          :inline   :offset-assert  32)
-   (cache               nav-lookup-elem 4 :inline :offset-assert  48)
-   (node-count          int32                     :offset-assert 176)
-   (nodes               uint32                    :offset-assert 180)
-   (vertex-count        int32                     :offset-assert 184)
-   (vertex              uint32                    :offset-assert 188)
-   (poly-count          int32                     :offset-assert 192)
-   (poly                uint32                    :offset-assert 196)
-   (route               uint32                    :offset-assert 200)
+  ((user-list           engine                          :offset-assert   4)
+   (poly-lookup-history uint8                 2         :offset-assert   8)
+   (debug-time          uint8                           :offset-assert  10)
+   (static-sphere-count uint8                           :offset-assert  11)
+   (static-sphere       uint32                          :offset-assert  12)
+   (bounds              sphere                :inline   :offset-assert  16)
+   (origin              vector                :inline   :offset-assert  32)
+   (cache               nav-lookup-elem       4 :inline :offset-assert  48)
+   (node-count          int32                           :offset-assert 176)
+   (nodes               uint32                          :offset-assert 180)
+   (vertex-count        int32                           :offset-assert 184)
+   (vertex              (inline-array vector)           :offset-assert 188)
+   (poly-count          int32                           :offset-assert 192)
+   (poly                uint32                          :offset-assert 196)
+   (route               uint32                          :offset-assert 200)
    )
   :method-count-assert 30
   :size-assert         #xcc
@@ -269,7 +269,7 @@
     (dummy-16 () none 16)
     (dummy-17 (_type_) none 17)
     (dummy-18 () none 18)
-    (dummy-19 () none 19)
+    (compute-bounding-box (_type_ vector vector) none 19)
     (dummy-20 () none 20)
     (dummy-21 () none 21)
     (dummy-22 () none 22)
@@ -381,24 +381,24 @@
     (new (symbol type collide-shape int float) _type_ 0)
     (dummy-9 () none 9)
     (point-in-bounds? (_type_ vector) symbol 10)
-    (dummy-11 () none 11)
+    (dummy-11 (_type_ vector) none 11)
     (dummy-12 () none 12)
     (dummy-13 () none 13)
-    (dummy-14 () none 14)
+    (dummy-14 (_type_) none 14)
     (set-target-pos! (_type_ vector) none 15)
-    (dummy-16 () none 16)
+    (dummy-16 (_type_ vector) nav-poly 16)
     (dummy-17 () none 17)
     (dummy-18 () none 18)
-    (dummy-19 () none 19)
+    (dummy-19 (_type_ vector collide-shape-moving vector float) none 19)
     (dummy-20 () none 20)
     (dummy-21 () none 21)
     (dummy-22 () none 22)
     (dummy-23 () none 23)
-    (dummy-24 () none 24)
-    (dummy-25 () none 25)
-    (dummy-26 () none 26)
+    (dummy-24 (_type_ float symbol) none 24)
+    (dummy-25 (_type_ vector float) symbol 25)
+    (dummy-26 (_type_) none 26)
     (dummy-27 () none 27)
-    (dummy-28 () none 28)
+    (dummy-28 (_type_ int) none 28)
     (should-display? (_type_) symbol 29)
     (dummy-30 () none 30)
     (dummy-31 () none 31)
@@ -481,14 +481,12 @@
          (set! sv-32 'nav-engine)
          (let
           ((a3-1
-            ((method-of-type res-lump get-property-value)
+            (res-lump-value
              ent
              'nav-max-users
-             'interp
-             -1000000000.0
+             uint128
+             :default
              (the-as uint128 32)
-             (the-as (pointer res-tag) #f)
-             *res-static-buf*
              )
             )
            )
@@ -546,7 +544,7 @@
      (object-new
       allocation
       type-to-make
-      (the-as int (+ (-> type-to-make size) (the-as uint (* sphere-count 16))))
+      (the-as int (+ (-> type-to-make size) (* sphere-count 16)))
       )
      )
     )
@@ -561,14 +559,11 @@
    (let ((ent (-> shape process entity)))
     (set!
      (-> obj nearest-y-threshold)
-     ((method-of-type res-lump get-property-value-float)
+     (res-lump-float
       ent
       'nearest-y-threshold
-      'interp
-      -1000000000.0
+      :default
       nearest-y-threshold-default
-      (the-as (pointer res-tag) #f)
-      *res-static-buf*
       )
      )
     )
@@ -591,7 +586,7 @@
 (defmethod should-display? nav-control ((obj nav-control))
   (and
    *display-nav-marks*
-   (nonzero? (logand (-> obj flags) (nav-control-flags display-marks)))
+   (logtest? (-> obj flags) (nav-control-flags display-marks))
    )
   )
 
@@ -615,17 +610,6 @@
 (defun has-nav-mesh? ((arg0 entity-actor))
   (the-as
    symbol
-   (or
-    (-> arg0 nav-mesh)
-    ((method-of-type res-lump get-property-struct)
-     arg0
-     'nav-mesh-actor
-     'interp
-     -1000000000.0
-     #f
-     (the-as (pointer res-tag) #f)
-     *res-static-buf*
-     )
-    )
+   (or (-> arg0 nav-mesh) (res-lump-struct arg0 'nav-mesh-actor structure))
    )
   )

@@ -92,8 +92,8 @@ s32 goal_main(int argc, const char* const* argv) {
   // Set up game configurations
   masterConfig.aspect = (u16)sceScfGetAspect();
   masterConfig.language = (u16)sceScfGetLanguage();
-  masterConfig.inactive_timeout = 0;
-  masterConfig.timeout = 0;
+  masterConfig.inactive_timeout = 0;  // demo thing
+  masterConfig.timeout = 0;           // demo thing
   masterConfig.volume = 100;
 
   // Set up language configuration
@@ -105,6 +105,9 @@ s32 goal_main(int argc, const char* const* argv) {
     masterConfig.language = (u16)Language::German;
   } else if (masterConfig.language == SCE_ITALIAN_LANGUAGE) {
     masterConfig.language = (u16)Language::Italian;
+  } else if (masterConfig.language == SCE_JAPANESE_LANGUAGE) {
+    // Note: this case was added so it is easier to test Japanese fonts.
+    masterConfig.language = (u16)Language::Japanese;
   } else {
     // pick english by default, if language is not supported.
     masterConfig.language = (u16)Language::English;
@@ -114,6 +117,9 @@ s32 goal_main(int argc, const char* const* argv) {
   if (!strcmp(DebugBootMessage, "demo") || !strcmp(DebugBootMessage, "demo-shared")) {
     masterConfig.aspect = SCE_ASPECT_FULL;
   }
+
+  // Added - the territory is originally hardcoded. this allows us to change it whenever.
+  masterConfig.territory = GAME_TERRITORY_SCEA;
 
   // In retail game, disable debugging modes, and force on DiskBoot
   // MasterDebug = 0;
@@ -170,7 +176,7 @@ void KernelCheckAndDispatch() {
     }
 
     auto time_ms = kernel_dispatch_timer.getMs();
-    if (time_ms > 3) {
+    if (time_ms > 30) {
       printf("Kernel dispatch time: %.3f ms\n", time_ms);
     }
 
@@ -181,7 +187,9 @@ void KernelCheckAndDispatch() {
       SendAck();
     }
 
-    std::this_thread::sleep_for(std::chrono::microseconds(1000));
+    if (time_ms < 4) {
+      std::this_thread::sleep_for(std::chrono::microseconds(1000));
+    }
   }
 }
 

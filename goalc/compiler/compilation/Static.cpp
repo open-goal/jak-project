@@ -265,7 +265,7 @@ StaticResult Compiler::compile_new_static_structure(const goos::Object& form,
 
   obj->data.resize(type_info->get_size_in_memory());
   compile_static_structure_inline(form, type, _field_defs, obj.get(), 0, env);
-  auto fie = get_parent_env_of_type<FileEnv>(env);
+  auto fie = env->file_env();
   auto result = StaticResult::make_structure_reference(obj.get(), type);
   fie->add_static(std::move(obj));
   return result;
@@ -418,9 +418,21 @@ Val* Compiler::compile_bitfield_definition(const goos::Object& form,
             form, "Field {} is a symbol, which cannot be constructed at compile time yet.",
             field_name_def);
       }
-    }
-
-    else {
+    } else if (m_ts.tc(TypeSpec("structure"), field_info.result_type)) {
+      if (allow_dynamic_construction) {
+        DynamicDef dyn;
+        dyn.definition = field_value;
+        dyn.field_offset = field_offset;
+        dyn.field_size = field_size;
+        dyn.field_name = field_name_def;
+        dyn.expected_type = coerce_to_reg_type(field_info.result_type);
+        dynamic_defs.push_back(dyn);
+      } else {
+        throw_compiler_error(
+            form, "Field {} is a structure, which cannot be constructed at compile time yet.",
+            field_name_def);
+      }
+    } else {
       throw_compiler_error(form, "Bitfield field {} with type {} cannot be set statically.",
                            field_name_def, field_info.result_type.print());
     }
@@ -442,14 +454,14 @@ Val* Compiler::compile_bitfield_definition(const goos::Object& form,
     assert(allow_dynamic_construction);
 
     if (use_128) {
-      auto integer_lo = compile_integer(constant_integer_part.lo, env)->to_gpr(env);
-      auto integer_hi = compile_integer(constant_integer_part.hi, env)->to_gpr(env);
-      auto fe = get_parent_env_of_type<FunctionEnv>(env);
+      auto integer_lo = compile_integer(constant_integer_part.lo, env)->to_gpr(form, env);
+      auto integer_hi = compile_integer(constant_integer_part.hi, env)->to_gpr(form, env);
+      auto fe = env->function_env();
       auto rv = fe->make_ireg(type, RegClass::INT_128);
       auto xmm_temp = fe->make_ireg(TypeSpec("object"), RegClass::INT_128);
 
       for (auto& def : dynamic_defs) {
-        auto field_val = compile_error_guard(def.definition, env)->to_gpr(env);
+        auto field_val = compile_error_guard(def.definition, env)->to_gpr(def.definition, env);
         if (!m_ts.tc(def.expected_type, field_val->type())) {
           throw_compiler_error(form, "Typecheck failed for bitfield {}! Got a {} but expected a {}",
                                def.field_name, field_val->type().print(),
@@ -471,27 +483,25 @@ Val* Compiler::compile_bitfield_definition(const goos::Object& form,
         assert(right_shift_amnt >= 0);
 
         if (left_shift_amnt > 0) {
-          env->emit(std::make_unique<IR_IntegerMath>(IntegerMathKind::SHL_64, field_val,
-                                                     left_shift_amnt));
+          env->emit_ir<IR_IntegerMath>(form, IntegerMathKind::SHL_64, field_val, left_shift_amnt);
         }
 
         if (right_shift_amnt > 0) {
-          env->emit(std::make_unique<IR_IntegerMath>(IntegerMathKind::SHR_64, field_val,
-                                                     right_shift_amnt));
+          env->emit_ir<IR_IntegerMath>(form, IntegerMathKind::SHR_64, field_val, right_shift_amnt);
         }
 
-        env->emit(std::make_unique<IR_IntegerMath>(IntegerMathKind::OR_64,
-                                                   start_lo ? integer_lo : integer_hi, field_val));
+        env->emit_ir<IR_IntegerMath>(form, IntegerMathKind::OR_64,
+                                     start_lo ? integer_lo : integer_hi, field_val);
       }
 
-      fe->emit_ir<IR_RegSet>(xmm_temp, integer_lo);
-      fe->emit_ir<IR_RegSet>(rv, integer_hi);
-      fe->emit_ir<IR_Int128Math3Asm>(true, rv, rv, xmm_temp, IR_Int128Math3Asm::Kind::PCPYLD);
+      fe->emit_ir<IR_RegSet>(form, xmm_temp, integer_lo);
+      fe->emit_ir<IR_RegSet>(form, rv, integer_hi);
+      fe->emit_ir<IR_Int128Math3Asm>(form, true, rv, rv, xmm_temp, IR_Int128Math3Asm::Kind::PCPYLD);
       return rv;
     } else {
-      RegVal* integer_reg = integer->to_gpr(env);
+      RegVal* integer_reg = integer->to_gpr(form, env);
       for (auto& def : dynamic_defs) {
-        auto field_val = compile_error_guard(def.definition, env)->to_gpr(env);
+        auto field_val = compile_error_guard(def.definition, env)->to_gpr(def.definition, env);
         if (!m_ts.tc(def.expected_type, field_val->type())) {
           throw_compiler_error(form, "Typecheck failed for bitfield {}! Got a {} but expected a {}",
                                def.field_name, field_val->type().print(),
@@ -502,16 +512,14 @@ Val* Compiler::compile_bitfield_definition(const goos::Object& form,
         assert(right_shift_amnt >= 0);
 
         if (left_shift_amnt > 0) {
-          env->emit(std::make_unique<IR_IntegerMath>(IntegerMathKind::SHL_64, field_val,
-                                                     left_shift_amnt));
+          env->emit_ir<IR_IntegerMath>(form, IntegerMathKind::SHL_64, field_val, left_shift_amnt);
         }
 
         if (right_shift_amnt > 0) {
-          env->emit(std::make_unique<IR_IntegerMath>(IntegerMathKind::SHR_64, field_val,
-                                                     right_shift_amnt));
+          env->emit_ir<IR_IntegerMath>(form, IntegerMathKind::SHR_64, field_val, right_shift_amnt);
         }
 
-        env->emit(std::make_unique<IR_IntegerMath>(IntegerMathKind::OR_64, integer_reg, field_val));
+        env->emit_ir<IR_IntegerMath>(form, IntegerMathKind::OR_64, integer_reg, field_val);
       }
 
       integer_reg->set_type(type);
@@ -529,15 +537,16 @@ Val* Compiler::compile_bitfield_definition(const goos::Object& form,
  * - Strings
  */
 StaticResult Compiler::compile_static_no_eval_for_pairs(const goos::Object& form, Env* env) {
-  auto fie = get_parent_env_of_type<FileEnv>(env);
-  auto fe = get_parent_env_of_type<FunctionEnv>(env);
+  auto fie = env->file_env();
+  auto fe = env->function_env();
   auto segment = fe->segment;
   if (segment == TOP_LEVEL_SEGMENT) {
     segment = MAIN_SEGMENT;
   }
   if (form.is_pair()) {
     if (form.as_pair()->car.is_symbol() && (form.as_pair()->car.as_symbol()->name == "new" ||
-                                            form.as_pair()->car.as_symbol()->name == "the")) {
+                                            form.as_pair()->car.as_symbol()->name == "the" ||
+                                            form.as_pair()->car.as_symbol()->name == "lambda")) {
       return compile_static(form, env);
     }
     auto car = compile_static_no_eval_for_pairs(form.as_pair()->car, env);
@@ -586,8 +595,8 @@ StaticResult Compiler::compile_static_no_eval_for_pairs(const goos::Object& form
  */
 StaticResult Compiler::compile_static(const goos::Object& form_before_macro, Env* env) {
   auto form = expand_macro_completely(form_before_macro, env);
-  auto fie = get_parent_env_of_type<FileEnv>(env);
-  auto fe = get_parent_env_of_type<FunctionEnv>(env);
+  auto fie = env->file_env();
+  auto fe = env->function_env();
   auto segment = fe->segment;
   if (segment == TOP_LEVEL_SEGMENT) {
     segment = MAIN_SEGMENT;
@@ -804,7 +813,7 @@ void Compiler::fill_static_array_inline(const goos::Object& form,
 StaticResult Compiler::fill_static_array(const goos::Object& form,
                                          const goos::Object& rest,
                                          Env* env) {
-  auto fie = get_parent_env_of_type<FileEnv>(env);
+  auto fie = env->file_env();
   // (new 'static 'boxed-array ...)
   // get all arguments now
   auto args = get_list_as_vector(rest);
@@ -843,7 +852,7 @@ StaticResult Compiler::fill_static_array(const goos::Object& form,
 StaticResult Compiler::fill_static_boxed_array(const goos::Object& form,
                                                const goos::Object& rest,
                                                Env* env) {
-  auto fie = get_parent_env_of_type<FileEnv>(env);
+  auto fie = env->file_env();
   // (new 'static 'boxed-array ...)
   // get all arguments now
   // auto args = get_list_as_vector(rest);
@@ -892,7 +901,7 @@ StaticResult Compiler::fill_static_boxed_array(const goos::Object& form,
   auto deref_info = m_ts.get_deref_info(pointer_type);
   assert(deref_info.can_deref);
   assert(deref_info.mem_deref);
-  auto array_data_size_bytes = length * deref_info.stride;
+  auto array_data_size_bytes = allocated_length * deref_info.stride;
   // todo, segments
   std::unique_ptr<StaticStructure> obj;
   obj = std::make_unique<StaticBasic>(MAIN_SEGMENT, "array");
@@ -975,7 +984,7 @@ void Compiler::fill_static_inline_array_inline(const goos::Object& form,
 StaticResult Compiler::fill_static_inline_array(const goos::Object& form,
                                                 const goos::Object& rest,
                                                 Env* env) {
-  auto fie = get_parent_env_of_type<FileEnv>(env);
+  auto fie = env->file_env();
   // (new 'static 'inline-array ...)
   // get all arguments now
   auto args = get_list_as_vector(rest);
@@ -1011,7 +1020,7 @@ Val* Compiler::compile_static_pair(const goos::Object& form, Env* env) {
   assert(form.is_pair());  // (quote PAIR)
   auto result = compile_static_no_eval_for_pairs(form, env);
   assert(result.is_reference());
-  auto fe = get_parent_env_of_type<FunctionEnv>(env);
+  auto fe = env->function_env();
   auto static_result = fe->alloc_val<StaticVal>(result.reference(), result.typespec());
   return static_result;
 }
@@ -1020,7 +1029,7 @@ Val* Compiler::compile_new_static_structure_or_basic(const goos::Object& form,
                                                      const TypeSpec& type,
                                                      const goos::Object& field_defs,
                                                      Env* env) {
-  auto fe = get_parent_env_of_type<FunctionEnv>(env);
+  auto fe = env->function_env();
   auto sr = compile_new_static_structure(form, type, field_defs, env);
   auto result = fe->alloc_val<StaticVal>(sr.reference(), type);
   return result;

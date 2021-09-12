@@ -14,6 +14,7 @@
 #include "decompiler/Disasm/DecompilerLabel.h"
 #include "decompiler/Function/Function.h"
 #include "common/common_types.h"
+#include "decompiler/IR2/LabelDB.h"
 
 namespace decompiler {
 /*!
@@ -39,6 +40,9 @@ class LinkedObjectFile {
                         LinkedWord::Kind kind);
   void symbol_link_offset(int source_segment, int source_offset, const char* name);
   Function& get_function_at_label(int label_id);
+  Function* try_get_function_at_label(int label_id);
+  Function* try_get_function_at_label(const DecompilerLabel& label);
+
   const Function* try_get_function_at_label(int label_id) const;
   const Function* try_get_function_at_label(const DecompilerLabel& label) const;
   std::string get_label_name(int label_id) const;
@@ -124,6 +128,8 @@ class LinkedObjectFile {
   std::vector<uint32_t> offset_of_data_zone_by_seg;
   std::vector<std::vector<Function>> functions_by_seg;
   std::vector<DecompilerLabel> labels;
+
+  std::unique_ptr<LabelDB> label_db;
 
  private:
   goos::Object to_form_script(int seg, int word_idx, std::vector<bool>& seen);

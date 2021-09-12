@@ -6,8 +6,10 @@ add_library(
         analysis/cfg_builder.cpp
         analysis/expression_build.cpp
         analysis/final_output.cpp
+        analysis/find_defstates.cpp
         analysis/inline_asm_rewrite.cpp
         analysis/insert_lets.cpp
+        analysis/label_types.cpp
         analysis/reg_usage.cpp
         analysis/stack_spill.cpp
         analysis/static_refs.cpp
@@ -42,10 +44,12 @@ add_library(
         IR2/AtomicOpTypeAnalysis.cpp
         IR2/bitfields.cpp
         IR2/Env.cpp
+        IR2/ExpressionHelpers.cpp
         IR2/Form.cpp
         IR2/FormExpressionAnalysis.cpp
         IR2/FormStack.cpp
         IR2/GenericElementMatcher.cpp
+        IR2/LabelDB.cpp
         IR2/OpenGoalMapping.cpp
 
         ObjectFile/LinkedObjectFile.cpp

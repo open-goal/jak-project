@@ -304,6 +304,8 @@ std::string get_simple_expression_op_name(SimpleExpression::Kind kind) {
       return "subu-s7";
     case SimpleExpression::Kind::VECTOR_3_DOT:
       return "vec3dot";
+    case SimpleExpression::Kind::VECTOR_4_DOT:
+      return "vec4dot";
     default:
       assert(false);
       return {};
@@ -363,6 +365,7 @@ int get_simple_expression_arg_count(SimpleExpression::Kind kind) {
     case SimpleExpression::Kind::SUBU_L32_S7:
       return 1;
     case SimpleExpression::Kind::VECTOR_3_DOT:
+    case SimpleExpression::Kind::VECTOR_4_DOT:
       return 2;
     default:
       assert(false);
@@ -539,6 +542,13 @@ goos::Object AsmOp::to_form(const std::vector<DecompilerLabel>& labels, const En
     }
   }
 
+  // note: to correctly represent a MOVN/MOVZ in our IR, we need to both read and write the
+  // destination register, so we append a read to the end here.
+  if (m_instr.kind == InstructionKind::MOVZ || m_instr.kind == InstructionKind::MOVN) {
+    RegisterAccess ra(AccessMode::READ, m_dst->reg(), m_dst->idx());
+    forms.push_back(ra.to_form(env));
+  }
+
   return pretty_print::build_list(forms);
 }
 
@@ -602,6 +612,11 @@ void AsmOp::update_register_info() {
     if (src.has_value()) {
       m_read_regs.push_back(src->reg());
     }
+  }
+
+  if (m_instr.kind == InstructionKind::MOVN || m_instr.kind == InstructionKind::MOVZ) {
+    // in the case that MOVN/MOVZ don't do the move, they effectively read the original value.
+    m_read_regs.push_back(m_dst->reg());
   }
 
   if (m_instr.kind >= FIRST_COP2_MACRO && m_instr.kind <= LAST_COP2_MACRO) {
@@ -710,6 +725,13 @@ void AsmOp::collect_vars(RegAccessSet& vars) const {
     if (x.has_value()) {
       vars.insert(*x);
     }
+  }
+
+  if (m_instr.kind == InstructionKind::MOVN || m_instr.kind == InstructionKind::MOVZ) {
+    // the conditional moves read their write register, but don't have it listed as a write
+    // in the actual ASM.  We handle this difference for the variable naming system here.
+    RegisterAccess ra(AccessMode::READ, m_dst->reg(), m_dst->idx());
+    vars.insert(ra);
   }
 }
 /////////////////////////////
@@ -1101,6 +1123,21 @@ void StoreOp::collect_vars(RegAccessSet& vars) const {
 /////////////////////////////
 // LoadVarOp
 /////////////////////////////
+
+std::string load_kind_to_string(LoadVarOp::Kind kind) {
+  switch (kind) {
+    case LoadVarOp::Kind::FLOAT:
+      return "float";
+    case LoadVarOp::Kind::VECTOR_FLOAT:
+      return "vector-float";
+    case LoadVarOp::Kind::SIGNED:
+      return "signed";
+    case LoadVarOp::Kind::UNSIGNED:
+      return "unsigned";
+    default:
+      assert(false);
+  }
+}
 
 LoadVarOp::LoadVarOp(Kind kind, int size, RegisterAccess dst, SimpleExpression src, int my_idx)
     : AtomicOp(my_idx), m_kind(kind), m_size(size), m_dst(dst), m_src(std::move(src)) {}

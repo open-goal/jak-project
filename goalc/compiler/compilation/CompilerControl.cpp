@@ -49,7 +49,7 @@ Val* Compiler::compile_seval(const goos::Object& form, const goos::Object& rest,
   (void)env;
   try {
     for_each_in_list(rest, [&](const goos::Object& o) {
-      m_goos.eval_with_rewind(o, m_goos.global_environment.as_env());
+      m_goos.eval_with_rewind(o, m_goos.global_environment.as_env_ptr());
     });
   } catch (std::runtime_error& e) {
     throw_compiler_error(form, "Error while evaluating GOOS: {}", e.what());
@@ -398,7 +398,7 @@ std::string Compiler::make_symbol_info_description(const SymbolInfo& info) {
     case SymbolInfo::Kind::CONSTANT:
       return fmt::format(
           "[Constant] Name: {} Value: {} Defined: {}", info.name(),
-          m_global_constants.at(m_goos.reader.symbolTable.intern(info.name())).print(),
+          m_global_constants.at(m_goos.reader.symbolTable.intern_ptr(info.name())).print(),
           m_goos.reader.db.get_info_for(info.src_form()));
     case SymbolInfo::Kind::FUNCTION:
       return fmt::format("[Function] Name: {} Defined: {}", info.name(),
@@ -603,5 +603,21 @@ Val* Compiler::compile_make(const goos::Object& form, const goos::Object& rest, 
   }
 
   m_make.make(args.unnamed.at(0).as_string()->data, force, verbose);
+  return get_none();
+}
+
+Val* Compiler::compile_print_debug_compiler_stats(const goos::Object& form,
+                                                  const goos::Object& rest,
+                                                  Env*) {
+  auto args = get_va(form, rest);
+  va_check(form, args, {}, {});
+
+  fmt::print("Spill operations (total): {}\n", m_debug_stats.num_spills);
+  fmt::print("Spill operations (v1 only): {}\n", m_debug_stats.num_spills_v1);
+  fmt::print("Eliminated moves: {}\n", m_debug_stats.num_moves_eliminated);
+  fmt::print("Total functions: {}\n", m_debug_stats.total_funcs);
+  fmt::print("Functions requiring v1: {}\n", m_debug_stats.funcs_requiring_v1_allocator);
+  fmt::print("Size of autocomplete prefix tree: {}\n", m_symbol_info.symbol_count());
+
   return get_none();
 }

@@ -19,9 +19,22 @@ struct StackTypeCast {
   std::string type_name;
 };
 
-struct LabelType {
+struct LabelConfigInfo {
+  // if the label is a "value" type, it will be loaded directly into a register.
+  // in all cases, this is a constant, either a 64-bit integer or a float.
+  // For example:
+  //  ld v1, L346(fp)
+  //  lwc1 f0, L345(fp)
+  //  lw a0, L41(fp)
+
+  // if the label is not a value type, it's a reference type, and the GOAL variable is a pointer.
+  bool is_value = false;
+
+  // the type of the resulting GOAL variable.
   std::string type_name;
-  bool is_const = false;
+
+  // if the type is a (pointer x) or (inline-array x), the size must be specified here.
+  // For a boxed array (array x), the size will be figured out automatically
   std::optional<int> array_size;
 };
 
@@ -60,6 +73,8 @@ struct DecompileHacks {
   std::unordered_map<std::string, CondWithElseLengthHack> cond_with_else_len_by_func_name;
   std::unordered_set<std::string> reject_cond_to_value;
   std::unordered_map<std::string, std::unordered_set<int>> blocks_ending_in_asm_branch_by_func_name;
+  std::unordered_map<std::string, std::vector<std::vector<int>>>
+      format_ops_with_dynamic_string_by_func_name;
 };
 
 struct Config {
@@ -100,7 +115,7 @@ struct Config {
   std::unordered_map<std::string, std::vector<std::string>> function_arg_names;
   std::unordered_map<std::string, std::unordered_map<std::string, LocalVarOverride>>
       function_var_overrides;
-  std::unordered_map<std::string, std::unordered_map<std::string, LabelType>> label_types;
+  std::unordered_map<std::string, std::unordered_map<std::string, LabelConfigInfo>> label_types;
   std::unordered_map<std::string, std::vector<StackStructureHint>>
       stack_structure_hints_by_function;
 

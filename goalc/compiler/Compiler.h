@@ -68,17 +68,26 @@ class Compiler {
   bool m_want_exit = false;
   bool m_want_reload = false;
   listener::Listener m_listener;
-  Debugger m_debugger;
   goos::Interpreter m_goos;
+  Debugger m_debugger;
   std::unordered_map<std::string, TypeSpec> m_symbol_types;
-  std::unordered_map<std::shared_ptr<goos::SymbolObject>, goos::Object> m_global_constants;
-  std::unordered_map<std::shared_ptr<goos::SymbolObject>, LambdaVal*> m_inlineable_functions;
+  std::unordered_map<goos::HeapObject*, goos::Object> m_global_constants;
+  std::unordered_map<goos::HeapObject*, LambdaVal*> m_inlineable_functions;
   CompilerSettings m_settings;
   bool m_throw_on_define_extern_redefinition = false;
   SymbolInfoMap m_symbol_info;
   std::unique_ptr<ReplWrapper> m_repl;
   MakeSystem m_make;
 
+  struct DebugStats {
+    int num_spills = 0;
+    int num_spills_v1 = 0;
+    int num_moves_eliminated = 0;
+    int total_funcs = 0;
+    int funcs_requiring_v1_allocator = 0;
+  } m_debug_stats;
+
+  void setup_goos_forms();
   std::set<std::string> lookup_symbol_infos_starting_with(const std::string& prefix) const;
   std::vector<SymbolInfo>* lookup_exact_name_info(const std::string& name) const;
   bool get_true_or_false(const goos::Object& form, const goos::Object& boolean);
@@ -89,7 +98,8 @@ class Compiler {
   void set_bitfield(const goos::Object& form, BitFieldVal* dst, RegVal* src, Env* env);
   void set_bitfield_128(const goos::Object& form, BitFieldVal* dst, RegVal* src, Env* env);
 
-  void set_bits_in_bitfield(int size,
+  void set_bits_in_bitfield(const goos::Object& form,
+                            int size,
                             int offset,
                             RegVal* dst,
                             RegVal* src,
@@ -100,6 +110,7 @@ class Compiler {
   Val* compile_goos_macro(const goos::Object& o,
                           const goos::Object& macro_obj,
                           const goos::Object& rest,
+                          const goos::Object& name_symbol,
                           Env* env);
   Val* compile_pair(const goos::Object& code, Env* env);
   Val* compile_integer(const goos::Object& code, Env* env);
@@ -336,7 +347,11 @@ class Compiler {
                                        StaticStructure* structure,
                                        int offset,
                                        Env* env);
-  void compile_constant_product(RegVal* dest, RegVal* src, int stride, Env* env);
+  void compile_constant_product(const goos::Object& form,
+                                RegVal* dest,
+                                RegVal* src,
+                                int stride,
+                                Env* env);
   void check_vector_float_regs(const goos::Object& form,
                                Env* env,
                                std::vector<std::pair<std::string, RegVal*>> args);
@@ -348,9 +363,9 @@ class Compiler {
   void throw_compiler_error(const goos::Object& code, const std::string& str, Args&&... args) {
     fmt::print(fg(fmt::color::crimson) | fmt::emphasis::bold, "-- Compilation Error! --\n");
     if (!str.empty() && str.back() == '\n') {
-      fmt::print(str, std::forward<Args>(args)...);
+      fmt::print(fmt::emphasis::bold, str, std::forward<Args>(args)...);
     } else {
-      fmt::print(str + '\n', std::forward<Args>(args)...);
+      fmt::print(fmt::emphasis::bold, str + '\n', std::forward<Args>(args)...);
     }
 
     fmt::print(fg(fmt::color::yellow) | fmt::emphasis::bold, "Form:\n");
@@ -362,9 +377,9 @@ class Compiler {
   void throw_compiler_error_no_code(const std::string& str, Args&&... args) {
     fmt::print(fg(fmt::color::crimson) | fmt::emphasis::bold, "-- Compilation Error! --\n");
     if (!str.empty() && str.back() == '\n') {
-      fmt::print(str, std::forward<Args>(args)...);
+      fmt::print(fmt::emphasis::bold, str, std::forward<Args>(args)...);
     } else {
-      fmt::print(str + '\n', std::forward<Args>(args)...);
+      fmt::print(fmt::emphasis::bold, str + '\n', std::forward<Args>(args)...);
     }
 
     fmt::print(fg(fmt::color::yellow) | fmt::emphasis::bold, "Form:\n");
@@ -517,6 +532,9 @@ class Compiler {
                                          Env* env);
   Val* compile_load_project(const goos::Object& form, const goos::Object& rest, Env* env);
   Val* compile_make(const goos::Object& form, const goos::Object& rest, Env* env);
+  Val* compile_print_debug_compiler_stats(const goos::Object& form,
+                                          const goos::Object& rest,
+                                          Env* env);
 
   // ControlFlow
   Condition compile_condition(const goos::Object& condition, Env* env, bool invert);
@@ -593,6 +611,13 @@ class Compiler {
   Val* compile_defenum(const goos::Object& form, const goos::Object& rest, Env* env);
   Val* compile_size_of(const goos::Object& form, const goos::Object& rest, Env* env);
   Val* compile_psize_of(const goos::Object& form, const goos::Object& rest, Env* env);
+
+  // State
+  Val* compile_define_state_hook(const goos::Object& form, const goos::Object& rest, Env* env);
+  Val* compile_define_virtual_state_hook(const goos::Object& form,
+                                         const goos::Object& rest,
+                                         Env* env);
+  Val* compile_go_hook(const goos::Object& form, const goos::Object& rest, Env* env);
 };
 
 extern const std::unordered_map<

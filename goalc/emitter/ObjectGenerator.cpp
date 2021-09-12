@@ -143,15 +143,13 @@ FunctionRecord ObjectGenerator::get_existing_function_record(int f_idx) {
  * actual Instructions. These Instructions can be added with add_instruction.  The IR_Record
  * can be used as a label for jump targets.
  */
-IR_Record ObjectGenerator::add_ir(const FunctionRecord& func, const std::string& debug_print) {
+IR_Record ObjectGenerator::add_ir(const FunctionRecord& func) {
   IR_Record rec;
   rec.seg = func.seg;
   rec.func_id = func.func_id;
   auto& func_data = m_function_data_by_seg.at(rec.seg).at(rec.func_id);
   rec.ir_id = int(func_data.ir_to_instruction.size());
   func_data.ir_to_instruction.push_back(int(func_data.instructions.size()));
-  assert(int(func.debug->irs.size()) == rec.ir_id);
-  func.debug->irs.push_back(debug_print);
   return rec;
 }
 
@@ -614,5 +612,13 @@ std::vector<u8> ObjectGenerator::generate_header_v3() {
   push_data<SizeOffsetTable>(table, result);
   push_data<uint32_t>(64 + 4 + total_link_size, result);  // todo, make these numbers less magic.
   return result;
+}
+
+ObjectGeneratorStats ObjectGenerator::get_stats() const {
+  return m_stats;
+}
+
+void ObjectGenerator::count_eliminated_move() {
+  m_stats.moves_eliminated++;
 }
 }  // namespace emitter

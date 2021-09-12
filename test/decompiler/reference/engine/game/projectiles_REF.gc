@@ -1,0 +1,3382 @@
+;;-*-Lisp-*-
+(in-package goal)
+
+;; definition of type search-info
+(deftype search-info (structure)
+  ((point        vector     :inline :offset-assert   0)
+   (best-point   vector     :inline :offset-assert  16)
+   (match-handle uint64             :offset-assert  32)
+   (match        projectile         :offset-assert  40)
+   (best         float              :offset-assert  44)
+   (radius       float              :offset-assert  48)
+   (rating       uint32             :offset-assert  52)
+   (require      uint32             :offset-assert  56)
+   (mask         uint32             :offset-assert  60)
+   (rot-base     vector     :inline :offset-assert  64)
+   (rot-range    float              :offset-assert  80)
+   )
+  :method-count-assert 9
+  :size-assert         #x54
+  :flag-assert         #x900000054
+  )
+
+;; definition for method 3 of type search-info
+(defmethod inspect search-info ((obj search-info))
+  (format #t "[~8x] ~A~%" obj 'search-info)
+  (format #t "~Tpoint: ~`vector`P~%" (-> obj point))
+  (format #t "~Tbest-point: ~`vector`P~%" (-> obj best-point))
+  (format #t "~Tmatch-handle: ~D~%" (-> obj match-handle))
+  (format #t "~Tmatch: ~A~%" (-> obj match))
+  (format #t "~Tbest: ~f~%" (-> obj best))
+  (format #t "~Tradius: ~f~%" (-> obj radius))
+  (format #t "~Trating: ~D~%" (-> obj rating))
+  (format #t "~Trequire: ~D~%" (-> obj require))
+  (format #t "~Tmask: ~D~%" (-> obj mask))
+  (format #t "~Trot-base: ~`vector`P~%" (-> obj rot-base))
+  (format #t "~Trot-range: ~f~%" (-> obj rot-range))
+  obj
+  )
+
+;; definition for symbol *search-info*, type search-info
+(define *search-info* (new 'global 'search-info))
+
+;; definition for function find-nearest-attackable
+;; Used lq/sq
+(defun
+  find-nearest-attackable
+  ((arg0 vector)
+   (arg1 float)
+   (arg2 uint)
+   (arg3 uint)
+   (arg4 vector)
+   (arg5 float)
+   )
+  (let ((gp-0 *search-info*))
+   (set! (-> gp-0 match) #f)
+   (set! (-> gp-0 point quad) (-> arg0 quad))
+   (set! (-> gp-0 radius) arg1)
+   (set! (-> gp-0 best) arg1)
+   (set! (-> gp-0 rating) (the-as uint 0))
+   (set! (-> gp-0 require) arg3)
+   (set! (-> gp-0 mask) arg2)
+   (set! (-> gp-0 rot-base quad) (-> arg4 quad))
+   (set! (-> gp-0 rot-range) (if (= arg5 65536.0)
+                              -2.0
+                              (cos arg5)
+                              )
+    )
+   (iterate-process-tree *entity-pool* (lambda ((arg0 projectile))
+                                        (when
+                                         (logtest?
+                                          (process-mask crate enemy attackable)
+                                          (-> arg0 mask)
+                                          )
+                                         (let* ((gp-0 *search-info*)
+                                                (s4-0 arg0)
+                                                (s5-0
+                                                 (if
+                                                  (and
+                                                   (nonzero? s4-0)
+                                                   (type-type?
+                                                    (-> s4-0 type)
+                                                    process-drawable
+                                                    )
+                                                   )
+                                                  s4-0
+                                                  )
+                                                 )
+                                                )
+                                          (when s5-0
+                                           (let* ((s3-0 (-> s5-0 root-override))
+                                                  (s4-1
+                                                   (if
+                                                    (and
+                                                     (nonzero? s3-0)
+                                                     (type-type?
+                                                      (-> s3-0 type)
+                                                      collide-shape
+                                                      )
+                                                     )
+                                                    s3-0
+                                                    )
+                                                   )
+                                                  )
+                                            (when
+                                             (the-as collide-shape-moving s4-1)
+                                             (let*
+                                              ((s3-1
+                                                (-> s4-1 root-prim prim-core)
+                                                )
+                                               (f30-0
+                                                (-
+                                                 (vector-vector-distance
+                                                  (-> gp-0 point)
+                                                  (the-as vector s3-1)
+                                                  )
+                                                 (-> s3-1 world-sphere w)
+                                                 )
+                                                )
+                                               )
+                                              (when
+                                               (nonzero?
+                                                (->
+                                                 s4-1
+                                                 root-prim
+                                                 prim-core
+                                                 collide-as
+                                                 )
+                                                )
+                                               (let ((s4-2 0)
+                                                     (v1-8
+                                                      (vector-normalize!
+                                                       (vector-!
+                                                        (new 'stack-no-clear 'vector
+                                                         )
+                                                        (the-as vector s3-1)
+                                                        (-> gp-0 point)
+                                                        )
+                                                       1.0
+                                                       )
+                                                      )
+                                                     )
+                                                (if
+                                                 (logtest?
+                                                  (process-mask enemy)
+                                                  (-> s5-0 mask)
+                                                  )
+                                                 (set! s4-2 (logior s4-2 1))
+                                                 )
+                                                (if
+                                                 (and
+                                                  (nonzero? (-> s5-0 draw))
+                                                  (logtest?
+                                                   (-> s5-0 draw status)
+                                                   8
+                                                   )
+                                                  )
+                                                 (set! s4-2 (logior s4-2 2))
+                                                 )
+                                                (let
+                                                 ((a0-16
+                                                   (logand s4-2 (-> gp-0 mask))
+                                                   )
+                                                  )
+                                                 (when
+                                                  (and
+                                                   (>=
+                                                    a0-16
+                                                    (the-as
+                                                     int
+                                                     (-> gp-0 rating)
+                                                     )
+                                                    )
+                                                   (or
+                                                    (zero? (-> gp-0 require))
+                                                    (logtest?
+                                                     a0-16
+                                                     (-> gp-0 require)
+                                                     )
+                                                    )
+                                                   (< f30-0 (-> gp-0 best))
+                                                   (>=
+                                                    (vector-dot
+                                                     v1-8
+                                                     (-> gp-0 rot-base)
+                                                     )
+                                                    (-> gp-0 rot-range)
+                                                    )
+                                                   )
+                                                  (set! (-> gp-0 match) s5-0)
+                                                  (set! (-> gp-0 best) f30-0)
+                                                  (set!
+                                                   (-> gp-0 rating)
+                                                   (the-as uint a0-16)
+                                                   )
+                                                  a0-16
+                                                  )
+                                                 )
+                                                )
+                                               )
+                                              )
+                                             )
+                                            )
+                                           )
+                                          )
+                                         )
+                                        )
+    *null-kernel-context*
+    )
+   (-> gp-0 match)
+   )
+  )
+
+;; definition for function projectile-collision-reaction
+;; INFO: Return type mismatch int vs none.
+;; Used lq/sq
+(defun
+  projectile-collision-reaction
+  ((arg0 collide-shape-moving)
+   (arg1 collide-shape-intersect)
+   (arg2 vector)
+   (arg3 vector)
+   )
+  (local-vars
+   (sv-64 vector)
+   (sv-68 vector)
+   (sv-72 matrix)
+   (sv-80 int)
+   (sv-224 symbol)
+   )
+  (with-pp
+   (set! sv-64 (new-stack-vector0))
+   (set! sv-68 (new-stack-vector0))
+   (set! sv-72 (new 'stack-no-clear 'matrix))
+   (set! sv-80 0)
+   (set! (-> sv-72 vector 0 quad) (-> arg3 quad))
+   (vector-float*!
+    (new 'stack-no-clear 'vector)
+    (-> arg1 move-vec)
+    (-> arg1 best-u)
+    )
+   (TODO-RENAME-28 arg0)
+   (dummy-56 arg0 (-> arg1 best-tri pat))
+   (case (-> arg1 best-tri pat material) 
+    (((pat-material stopproj))
+      (let ((a1-3 (new 'stack-no-clear 'event-message-block)))
+       (set! (-> a1-3 from) pp)
+       (set! (-> a1-3 num-params) 0)
+       (set! (-> a1-3 message) 'die)
+       (send-event-function (-> arg0 process) a1-3)
+       )
+      )
+    )
+   (vector-!
+    sv-64
+    (the-as vector (-> arg1 best-from-prim prim-core))
+    (-> arg1 best-tri intersect)
+    )
+   (set! (-> sv-64 w) 1.0)
+   (vector-normalize! sv-64 1.0)
+   (set! (-> arg0 coverage) (vector-dot sv-64 (-> arg1 best-tri normal)))
+   (let ((v1-22 (-> sv-64 quad)))
+    (set! (-> sv-68 quad) v1-22)
+    )
+   (when (= (-> arg1 best-u) 0.0)
+    (vector-float*! (new 'stack-no-clear 'vector) sv-68 32.0)
+    (TODO-RENAME-28 arg0)
+    )
+   (set! (-> arg0 surface-normal quad) (-> sv-68 quad))
+   (set! (-> arg0 poly-normal quad) (-> arg1 best-tri normal quad))
+   (set!
+    (-> arg0 surface-angle)
+    (vector-dot sv-68 (-> arg0 dynam gravity-normal))
+    )
+   (set!
+    (-> arg0 poly-angle)
+    (vector-dot (-> arg0 poly-normal) (-> arg0 dynam gravity-normal))
+    )
+   (set!
+    (-> arg0 touch-angle)
+    (vector-dot
+     sv-68
+     (vector-normalize!
+      (vector-negate! (new-stack-vector0) (the-as vector sv-72))
+      1.0
+      )
+     )
+    )
+   (if (< (-> arg0 poly-angle) -0.2)
+    (set! sv-80 (logior sv-80 16))
+    )
+   (set!
+    sv-224
+    (<
+     (fabs (-> arg0 surface-angle))
+     (-> *pat-mode-info* (-> arg0 cur-pat mode) wall-angle)
+     )
+    )
+   (if (zero? (logand (-> arg0 prev-status) 1))
+    (set!
+     (-> arg0 ground-impact-vel)
+     (- (vector-dot (-> arg0 transv) (-> arg0 dynam gravity-normal)))
+     )
+    )
+   (set! sv-80 (logior sv-80 4))
+   (if (-> arg1 best-to-prim)
+    (set! sv-80 (logior sv-80 32))
+    )
+   (cond
+    (sv-224
+     (set! sv-80 (logior sv-80 8))
+     (set! (-> arg0 cur-pat mode) 1)
+     (set! (-> arg0 local-normal quad) (-> sv-68 quad))
+     )
+    (else
+     (set! sv-80 (logior sv-80 1))
+     (set! (-> arg0 local-normal quad) (-> sv-68 quad))
+     )
+    )
+   (vector-reflect-flat-above! arg2 (the-as vector sv-72) sv-68)
+   (when (and (not sv-224) (>= (-> arg0 coverage) 0.9))
+    (set! sv-80 (logior sv-80 2))
+    (set! (-> arg0 ground-poly-normal quad) (-> arg0 poly-normal quad))
+    (when (!= (-> arg0 poly-pat mode) (pat-mode wall))
+     (set! (-> arg0 ground-pat) (-> arg0 poly-pat))
+     (set! (-> arg0 ground-touch-point quad) (-> arg1 best-tri intersect quad))
+     )
+    )
+   (logior! (-> arg0 status) sv-80)
+   sv-80
+   (none)
+   )
+  )
+
+;; failed to figure out what this is:
+(set!
+  (-> *part-group-id-table* 102)
+  (new 'static 'sparticle-launch-group
+   :length 34
+   :duration #x12c
+   :linger-duration #x5dc
+   :name "group-yellow-eco-fireball"
+   :launcher
+   (new 'static 'inline-array sparticle-group-item 34
+    (new 'static 'sparticle-group-item
+     :launcher #x15d
+     :flags #x8
+     :binding #x15e
+     )
+    (new 'static 'sparticle-group-item
+     :launcher #x15e
+     :flags #xc
+     :binding #x15f
+     )
+    (new 'static 'sparticle-group-item
+     :launcher #x15f
+     :flags #xc
+     :binding #x160
+     )
+    (new 'static 'sparticle-group-item
+     :launcher #x160
+     :flags #x4
+     :binding #x161
+     )
+    (new 'static 'sparticle-group-item
+     :launcher #x160
+     :flags #x4
+     :binding #x161
+     )
+    (new 'static 'sparticle-group-item
+     :launcher #x160
+     :flags #x4
+     :binding #x161
+     )
+    (new 'static 'sparticle-group-item
+     :launcher #x160
+     :flags #x4
+     :binding #x161
+     )
+    (new 'static 'sparticle-group-item
+     :launcher #x160
+     :flags #x4
+     :binding #x161
+     )
+    (new 'static 'sparticle-group-item
+     :launcher #x160
+     :flags #x4
+     :binding #x161
+     )
+    (new 'static 'sparticle-group-item
+     :launcher #x160
+     :flags #x4
+     :binding #x161
+     )
+    (new 'static 'sparticle-group-item
+     :launcher #x160
+     :flags #x4
+     :binding #x161
+     )
+    (new 'static 'sparticle-group-item
+     :launcher #x160
+     :flags #x4
+     :binding #x161
+     )
+    (new 'static 'sparticle-group-item
+     :launcher #x160
+     :flags #x4
+     :binding #x161
+     )
+    (new 'static 'sparticle-group-item
+     :launcher #x160
+     :flags #x4
+     :binding #x161
+     )
+    (new 'static 'sparticle-group-item
+     :launcher #x161
+     :fade-after (meters 100.0)
+     :falloff-to (meters 100.0)
+     :flags #x4
+     )
+    (new 'static 'sparticle-group-item
+     :launcher #x161
+     :fade-after (meters 100.0)
+     :falloff-to (meters 100.0)
+     :flags #x4
+     )
+    (new 'static 'sparticle-group-item
+     :launcher #x161
+     :fade-after (meters 100.0)
+     :falloff-to (meters 100.0)
+     :flags #x4
+     )
+    (new 'static 'sparticle-group-item
+     :launcher #x161
+     :fade-after (meters 100.0)
+     :falloff-to (meters 100.0)
+     :flags #x4
+     )
+    (new 'static 'sparticle-group-item
+     :launcher #x161
+     :fade-after (meters 100.0)
+     :falloff-to (meters 100.0)
+     :flags #x4
+     )
+    (new 'static 'sparticle-group-item
+     :launcher #x161
+     :fade-after (meters 100.0)
+     :falloff-to (meters 100.0)
+     :flags #x4
+     )
+    (new 'static 'sparticle-group-item
+     :launcher #x161
+     :fade-after (meters 100.0)
+     :falloff-to (meters 100.0)
+     :flags #x4
+     )
+    (new 'static 'sparticle-group-item
+     :launcher #x161
+     :fade-after (meters 100.0)
+     :falloff-to (meters 100.0)
+     :flags #x4
+     )
+    (new 'static 'sparticle-group-item
+     :launcher #x161
+     :fade-after (meters 100.0)
+     :falloff-to (meters 100.0)
+     :flags #x4
+     )
+    (new 'static 'sparticle-group-item
+     :launcher #x161
+     :fade-after (meters 100.0)
+     :falloff-to (meters 100.0)
+     :flags #x4
+     )
+    (new 'static 'sparticle-group-item
+     :launcher #x161
+     :fade-after (meters 100.0)
+     :falloff-to (meters 100.0)
+     :flags #x4
+     )
+    (new 'static 'sparticle-group-item
+     :launcher #x161
+     :fade-after (meters 100.0)
+     :falloff-to (meters 100.0)
+     :flags #x4
+     )
+    (new 'static 'sparticle-group-item
+     :launcher #x161
+     :fade-after (meters 100.0)
+     :falloff-to (meters 100.0)
+     :flags #x4
+     )
+    (new 'static 'sparticle-group-item
+     :launcher #x161
+     :fade-after (meters 100.0)
+     :falloff-to (meters 100.0)
+     :flags #x4
+     )
+    (new 'static 'sparticle-group-item
+     :launcher #x161
+     :fade-after (meters 100.0)
+     :falloff-to (meters 100.0)
+     :flags #x4
+     )
+    (new 'static 'sparticle-group-item
+     :launcher #x161
+     :fade-after (meters 100.0)
+     :falloff-to (meters 100.0)
+     :flags #x4
+     )
+    (new 'static 'sparticle-group-item
+     :launcher #x161
+     :fade-after (meters 100.0)
+     :falloff-to (meters 100.0)
+     :flags #x4
+     )
+    (new 'static 'sparticle-group-item
+     :launcher #x161
+     :fade-after (meters 100.0)
+     :falloff-to (meters 100.0)
+     :flags #x4
+     )
+    (new 'static 'sparticle-group-item
+     :launcher #x161
+     :fade-after (meters 100.0)
+     :falloff-to (meters 100.0)
+     :flags #x4
+     )
+    (new 'static 'sparticle-group-item
+     :launcher #x161
+     :fade-after (meters 100.0)
+     :falloff-to (meters 100.0)
+     :flags #x4
+     )
+    )
+   :bounds (new 'static 'sphere :w 12288.0)
+   )
+  )
+
+;; failed to figure out what this is:
+(set!
+  (-> *part-id-table* 349)
+  (new 'static 'sparticle-launcher
+   :init-specs
+   (new 'static 'inline-array sp-field-init-spec 9
+    (new 'static 'sp-field-init-spec
+     :field #x1
+     :initial-valuef (the-as float #x201200)
+     )
+    (new 'static 'sp-field-init-spec
+     :field #x6
+     :flags #x1
+     :initial-valuef 1.0
+     :random-multf 1.0
+     )
+    (new 'static 'sp-field-init-spec
+     :field #xd
+     :flags #x1
+     :initial-valuef 40.96
+     :random-multf 1.0
+     )
+    (new 'static 'sp-field-init-spec
+     :field #x11
+     :flags #x3
+     :initial-valuef (the-as float #xfffffffc)
+     :random-multf (the-as float #x1)
+     )
+    (new 'static 'sp-field-init-spec :field #x15 :flags #x1 :random-multf 1.0)
+    (new 'static 'sp-field-init-spec
+     :field #x2e
+     :initial-valuef (the-as float #x4b0)
+     :random-multf (the-as float #x1)
+     )
+    (new 'static 'sp-field-init-spec
+     :field #x2f
+     :initial-valuef (the-as float #x8)
+     :random-multf (the-as float #x1)
+     )
+    (new 'static 'sp-field-init-spec
+     :field #x31
+     :flags #x5
+     :sym 'sparticle-track-root-prim
+     )
+    (new 'static 'sp-field-init-spec :field #x43)
+    )
+   )
+  )
+
+;; failed to figure out what this is:
+(set!
+  (-> *part-id-table* 350)
+  (new 'static 'sparticle-launcher
+   :init-specs
+   (new 'static 'inline-array sp-field-init-spec 16
+    (new 'static 'sp-field-init-spec
+     :field #x1
+     :initial-valuef (the-as float #x201200)
+     )
+    (new 'static 'sp-field-init-spec
+     :field #x6
+     :flags #x1
+     :initial-valuef 1.0
+     :random-multf 1.0
+     )
+    (new 'static 'sp-field-init-spec
+     :field #xa
+     :flags #x1
+     :random-rangef 65536.0
+     :random-multf 1.0
+     )
+    (new 'static 'sp-field-init-spec
+     :field #xb
+     :flags #x1
+     :initial-valuef 16384.0
+     :random-rangef 65536.0
+     :random-multf 1.0
+     )
+    (new 'static 'sp-field-init-spec :field #xc :flags #x1 :random-multf 1.0)
+    (new 'static 'sp-field-init-spec
+     :field #xd
+     :flags #x1
+     :initial-valuef 20480.0
+     :random-multf 1.0
+     )
+    (new 'static 'sp-field-init-spec
+     :field #x10
+     :flags #x1
+     :random-rangef 65536.0
+     :random-multf 1.0
+     )
+    (new 'static 'sp-field-init-spec
+     :field #x11
+     :flags #x3
+     :initial-valuef (the-as float #xfffffffc)
+     :random-multf (the-as float #x1)
+     )
+    (new 'static 'sp-field-init-spec
+     :field #x12
+     :flags #x1
+     :initial-valuef 128.0
+     :random-rangef 128.0
+     :random-multf 1.0
+     )
+    (new 'static 'sp-field-init-spec
+     :field #x13
+     :flags #x1
+     :initial-valuef 64.0
+     :random-rangef 64.0
+     :random-multf 1.0
+     )
+    (new 'static 'sp-field-init-spec
+     :field #x15
+     :flags #x1
+     :initial-valuef 32.0
+     :random-multf 1.0
+     )
+    (new 'static 'sp-field-init-spec
+     :field #x19
+     :flags #x2
+     :initial-valuef -436.90668
+     :random-rangef (the-as float #x1)
+     :random-multf 873.81335
+     )
+    (new 'static 'sp-field-init-spec
+     :field #x1f
+     :flags #x2
+     :initial-valuef -72.81778
+     :random-rangef (the-as float #x1)
+     :random-multf 145.63556
+     )
+    (new 'static 'sp-field-init-spec
+     :field #x2e
+     :initial-valuef (the-as float #x4b0)
+     :random-multf (the-as float #x1)
+     )
+    (new 'static 'sp-field-init-spec
+     :field #x2f
+     :initial-valuef (the-as float #x8c)
+     :random-multf (the-as float #x1)
+     )
+    (new 'static 'sp-field-init-spec :field #x43)
+    )
+   )
+  )
+
+;; failed to figure out what this is:
+(set!
+  (-> *part-id-table* 351)
+  (new 'static 'sparticle-launcher
+   :init-specs
+   (new 'static 'inline-array sp-field-init-spec 16
+    (new 'static 'sp-field-init-spec
+     :field #x1
+     :initial-valuef (the-as float #x200000)
+     )
+    (new 'static 'sp-field-init-spec
+     :field #x6
+     :flags #x1
+     :initial-valuef 2.0
+     :random-multf 1.0
+     )
+    (new 'static 'sp-field-init-spec
+     :field #xb
+     :flags #x1
+     :random-rangef 65536.0
+     :random-multf 1.0
+     )
+    (new 'static 'sp-field-init-spec :field #xc :flags #x1 :random-multf 1.0)
+    (new 'static 'sp-field-init-spec
+     :field #xd
+     :flags #x1
+     :initial-valuef 6144.0
+     :random-rangef 2048.0
+     :random-multf 1.0
+     )
+    (new 'static 'sp-field-init-spec
+     :field #x10
+     :flags #x1
+     :random-rangef 65536.0
+     :random-multf 1.0
+     )
+    (new 'static 'sp-field-init-spec
+     :field #x11
+     :flags #x3
+     :initial-valuef (the-as float #xfffffffc)
+     :random-multf (the-as float #x1)
+     )
+    (new 'static 'sp-field-init-spec
+     :field #x12
+     :flags #x1
+     :initial-valuef 128.0
+     :random-rangef 128.0
+     :random-multf 1.0
+     )
+    (new 'static 'sp-field-init-spec
+     :field #x13
+     :flags #x1
+     :initial-valuef 64.0
+     :random-rangef 64.0
+     :random-multf 1.0
+     )
+    (new 'static 'sp-field-init-spec
+     :field #x15
+     :flags #x1
+     :initial-valuef 64.0
+     :random-multf 1.0
+     )
+    (new 'static 'sp-field-init-spec
+     :field #x18
+     :flags #x1
+     :random-rangef 65536.0
+     :random-multf 1.0
+     )
+    (new 'static 'sp-field-init-spec
+     :field #x19
+     :flags #x1
+     :initial-valuef 461.17926
+     :random-multf 1.0
+     )
+    (new 'static 'sp-field-init-spec
+     :field #x1f
+     :flags #x2
+     :initial-valuef -54.613335
+     :random-rangef (the-as float #x1)
+     :random-multf 109.22667
+     )
+    (new 'static 'sp-field-init-spec
+     :field #x2e
+     :initial-valuef (the-as float #x4b0)
+     :random-multf (the-as float #x1)
+     )
+    (new 'static 'sp-field-init-spec
+     :field #x2f
+     :initial-valuef (the-as float #x8c)
+     :random-multf (the-as float #x1)
+     )
+    (new 'static 'sp-field-init-spec :field #x43)
+    )
+   )
+  )
+
+;; failed to figure out what this is:
+(set!
+  (-> *part-id-table* 352)
+  (new 'static 'sparticle-launcher
+   :init-specs
+   (new 'static 'inline-array sp-field-init-spec 15
+    (new 'static 'sp-field-init-spec
+     :field #x1
+     :initial-valuef (the-as float #x200000)
+     )
+    (new 'static 'sp-field-init-spec
+     :field #x6
+     :flags #x1
+     :initial-valuef 1.0
+     :random-multf 1.0
+     )
+    (new 'static 'sp-field-init-spec
+     :field #xd
+     :flags #x1
+     :initial-valuef 6144.0
+     :random-rangef 2048.0
+     :random-multf 1.0
+     )
+    (new 'static 'sp-field-init-spec
+     :field #x10
+     :flags #x1
+     :random-rangef 65536.0
+     :random-multf 1.0
+     )
+    (new 'static 'sp-field-init-spec
+     :field #x11
+     :flags #x3
+     :initial-valuef (the-as float #xfffffffc)
+     :random-multf (the-as float #x1)
+     )
+    (new 'static 'sp-field-init-spec
+     :field #x12
+     :flags #x1
+     :initial-valuef 128.0
+     :random-rangef 128.0
+     :random-multf 1.0
+     )
+    (new 'static 'sp-field-init-spec
+     :field #x13
+     :flags #x1
+     :initial-valuef 64.0
+     :random-rangef 64.0
+     :random-multf 1.0
+     )
+    (new 'static 'sp-field-init-spec
+     :field #x15
+     :flags #x1
+     :initial-valuef 64.0
+     :random-multf 1.0
+     )
+    (new 'static 'sp-field-init-spec
+     :field #x1c
+     :flags #x1
+     :initial-valuef -81.92
+     :random-multf 1.0
+     )
+    (new 'static 'sp-field-init-spec
+     :field #x1f
+     :flags #x2
+     :initial-valuef -54.613335
+     :random-rangef (the-as float #x1)
+     :random-multf 109.22667
+     )
+    (new 'static 'sp-field-init-spec
+     :field #x20
+     :flags #x3
+     :initial-valuef (the-as float #xfffffffc)
+     :random-multf (the-as float #x1)
+     )
+    (new 'static 'sp-field-init-spec
+     :field #x24
+     :flags #x1
+     :initial-valuef -1.0
+     :random-multf 1.0
+     )
+    (new 'static 'sp-field-init-spec
+     :field #x2e
+     :initial-valuef (the-as float #x36)
+     :random-multf (the-as float #x1)
+     )
+    (new 'static 'sp-field-init-spec
+     :field #x2f
+     :initial-valuef (the-as float #xc)
+     :random-multf (the-as float #x1)
+     )
+    (new 'static 'sp-field-init-spec :field #x43)
+    )
+   )
+  )
+
+;; failed to figure out what this is:
+(set!
+  (-> *part-id-table* 353)
+  (new 'static 'sparticle-launcher
+   :init-specs
+   (new 'static 'inline-array sp-field-init-spec 24
+    (new 'static 'sp-field-init-spec
+     :field #x1
+     :initial-valuef (the-as float #x200f00)
+     )
+    (new 'static 'sp-field-init-spec
+     :field #x6
+     :flags #x1
+     :initial-valuef 0.5
+     :random-rangef 0.5
+     :random-multf 1.0
+     )
+    (new 'static 'sp-field-init-spec
+     :field #xb
+     :flags #x1
+     :initial-valuef -204.8
+     :random-multf 1.0
+     )
+    (new 'static 'sp-field-init-spec
+     :field #xd
+     :flags #x1
+     :initial-valuef 1228.8
+     :random-rangef 409.6
+     :random-multf 1.0
+     )
+    (new 'static 'sp-field-init-spec
+     :field #x11
+     :flags #x3
+     :initial-valuef (the-as float #xfffffffc)
+     :random-multf (the-as float #x1)
+     )
+    (new 'static 'sp-field-init-spec
+     :field #x12
+     :flags #x1
+     :initial-valuef 100.0
+     :random-rangef 28.0
+     :random-multf 1.0
+     )
+    (new 'static 'sp-field-init-spec
+     :field #x13
+     :flags #x1
+     :initial-valuef 64.0
+     :random-rangef 64.0
+     :random-multf 1.0
+     )
+    (new 'static 'sp-field-init-spec :field #x14 :flags #x1 :random-multf 1.0)
+    (new 'static 'sp-field-init-spec
+     :field #x15
+     :flags #x1
+     :initial-valuef 96.0
+     :random-multf 1.0
+     )
+    (new 'static 'sp-field-init-spec
+     :field #x1a
+     :flags #x1
+     :initial-valuef 20.48
+     :random-rangef 47.786667
+     :random-multf 1.0
+     )
+    (new 'static 'sp-field-init-spec
+     :field #x1c
+     :flags #x1
+     :initial-valuef -3.7236366
+     :random-multf 1.0
+     )
+    (new 'static 'sp-field-init-spec
+     :field #x20
+     :flags #x3
+     :initial-valuef (the-as float #xfffffffc)
+     :random-multf (the-as float #x1)
+     )
+    (new 'static 'sp-field-init-spec
+     :field #x22
+     :flags #x1
+     :initial-valuef -0.4
+     :random-multf 1.0
+     )
+    (new 'static 'sp-field-init-spec
+     :field #x24
+     :flags #x1
+     :initial-valuef -0.024242423
+     :random-multf 1.0
+     )
+    (new 'static 'sp-field-init-spec
+     :field #x26
+     :flags #x1
+     :initial-valuef -0.40960002
+     :random-rangef -1.2288
+     :random-multf 1.0
+     )
+    (new 'static 'sp-field-init-spec
+     :field #x2d
+     :flags #x1
+     :initial-valuef 0.93
+     :random-multf 1.0
+     )
+    (new 'static 'sp-field-init-spec
+     :field #x2e
+     :initial-valuef (the-as float #x1e)
+     :random-rangef (the-as float #x12b)
+     :random-multf (the-as float #x1)
+     )
+    (new 'static 'sp-field-init-spec
+     :field #x2f
+     :initial-valuef (the-as float #xc)
+     :random-multf (the-as float #x1)
+     )
+    (new 'static 'sp-field-init-spec
+     :field #x32
+     :initial-valuef (the-as float #x5a)
+     :random-multf (the-as float #x1)
+     )
+    (new 'static 'sp-field-init-spec
+     :field #x33
+     :flags #x6
+     :initial-valuef (the-as float #x162)
+     )
+    (new 'static 'sp-field-init-spec
+     :field #x3a
+     :flags #x1
+     :random-rangef 32768.0
+     :random-multf 1.0
+     )
+    (new 'static 'sp-field-init-spec
+     :field #x3b
+     :flags #x1
+     :random-rangef 65536.0
+     :random-multf 1.0
+     )
+    (new 'static 'sp-field-init-spec
+     :field #x3e
+     :flags #x1
+     :initial-valuef 1228.8
+     :random-multf 1.0
+     )
+    (new 'static 'sp-field-init-spec :field #x43)
+    )
+   )
+  )
+
+;; failed to figure out what this is:
+(set!
+  (-> *part-id-table* 354)
+  (new 'static 'sparticle-launcher
+   :init-specs
+   (new 'static 'inline-array sp-field-init-spec 2
+    (new 'static 'sp-field-init-spec :field #x21 :flags #x1 :random-multf 1.0)
+    (new 'static 'sp-field-init-spec :field #x43)
+    )
+   )
+  )
+
+;; failed to figure out what this is:
+(set!
+  (-> *part-group-id-table* 103)
+  (new 'static 'sparticle-launch-group
+   :length 20
+   :duration #x258
+   :linger-duration #x5dc
+   :name
+   "group-part-yellow-eco-fireball-launcher"
+   :launcher
+   (new 'static 'inline-array sparticle-group-item 20
+    (new 'static 'sparticle-group-item :launcher #x163 :flags #x8)
+    (new 'static 'sparticle-group-item
+     :launcher #x164
+     :flags #x2
+     :period #x276
+     :length #xf
+     )
+    (new 'static 'sparticle-group-item :launcher #x165 :flags #x8)
+    (new 'static 'sparticle-group-item
+     :launcher #x166
+     :flags #x8
+     :binding #x167
+     )
+    (new 'static 'sparticle-group-item :launcher #x167 :flags #xc)
+    (new 'static 'sparticle-group-item :launcher #x167 :flags #xc)
+    (new 'static 'sparticle-group-item :launcher #x167 :flags #xc)
+    (new 'static 'sparticle-group-item :launcher #x167 :flags #xc)
+    (new 'static 'sparticle-group-item :launcher #x167 :flags #xc)
+    (new 'static 'sparticle-group-item :launcher #x167 :flags #xc)
+    (new 'static 'sparticle-group-item :launcher #x167 :flags #xc)
+    (new 'static 'sparticle-group-item :launcher #x167 :flags #xc)
+    (new 'static 'sparticle-group-item :launcher #x167 :flags #xc)
+    (new 'static 'sparticle-group-item :launcher #x167 :flags #xc)
+    (new 'static 'sparticle-group-item :launcher #x167 :flags #xc)
+    (new 'static 'sparticle-group-item :launcher #x167 :flags #xc)
+    (new 'static 'sparticle-group-item :launcher #x167 :flags #xc)
+    (new 'static 'sparticle-group-item :launcher #x167 :flags #xc)
+    (new 'static 'sparticle-group-item :launcher #x167 :flags #xc)
+    (new 'static 'sparticle-group-item :launcher #x167 :flags #xc)
+    )
+   :bounds (new 'static 'sphere :w 24576.0)
+   )
+  )
+
+;; failed to figure out what this is:
+(set!
+  (-> *part-id-table* 355)
+  (new 'static 'sparticle-launcher
+   :init-specs
+   (new 'static 'inline-array sp-field-init-spec 15
+    (new 'static 'sp-field-init-spec
+     :field #x1
+     :initial-valuef (the-as float #x201200)
+     )
+    (new 'static 'sp-field-init-spec
+     :field #x6
+     :flags #x1
+     :initial-valuef 1.0
+     :random-multf 1.0
+     )
+    (new 'static 'sp-field-init-spec
+     :field #xd
+     :flags #x1
+     :initial-valuef 32768.0
+     :random-multf 1.0
+     )
+    (new 'static 'sp-field-init-spec
+     :field #x10
+     :flags #x1
+     :random-rangef 65536.0
+     :random-multf 1.0
+     )
+    (new 'static 'sp-field-init-spec
+     :field #x11
+     :flags #x3
+     :initial-valuef (the-as float #xfffffffc)
+     :random-multf (the-as float #x1)
+     )
+    (new 'static 'sp-field-init-spec
+     :field #x12
+     :flags #x1
+     :initial-valuef 255.0
+     :random-multf 1.0
+     )
+    (new 'static 'sp-field-init-spec
+     :field #x13
+     :flags #x1
+     :initial-valuef 128.0
+     :random-multf 1.0
+     )
+    (new 'static 'sp-field-init-spec
+     :field #x15
+     :flags #x1
+     :initial-valuef 64.0
+     :random-multf 1.0
+     )
+    (new 'static 'sp-field-init-spec
+     :field #x1c
+     :flags #x1
+     :initial-valuef -273.06668
+     :random-multf 1.0
+     )
+    (new 'static 'sp-field-init-spec
+     :field #x1f
+     :flags #x2
+     :initial-valuef -37282.703
+     :random-rangef (the-as float #x1)
+     :random-multf 74565.41
+     )
+    (new 'static 'sp-field-init-spec
+     :field #x20
+     :flags #x3
+     :initial-valuef (the-as float #xfffffffc)
+     :random-multf (the-as float #x1)
+     )
+    (new 'static 'sp-field-init-spec :field #x24 :flags #x1 :random-multf 1.0)
+    (new 'static 'sp-field-init-spec
+     :field #x2e
+     :initial-valuef (the-as float #x3c)
+     :random-multf (the-as float #x1)
+     )
+    (new 'static 'sp-field-init-spec
+     :field #x2f
+     :initial-valuef (the-as float #xc)
+     :random-multf (the-as float #x1)
+     )
+    (new 'static 'sp-field-init-spec :field #x43)
+    )
+   )
+  )
+
+;; failed to figure out what this is:
+(set!
+  (-> *part-id-table* 357)
+  (new 'static 'sparticle-launcher
+   :init-specs
+   (new 'static 'inline-array sp-field-init-spec 21
+    (new 'static 'sp-field-init-spec
+     :field #x1
+     :initial-valuef (the-as float #x200000)
+     )
+    (new 'static 'sp-field-init-spec
+     :field #x6
+     :flags #x1
+     :initial-valuef 5.0
+     :random-multf 1.0
+     )
+    (new 'static 'sp-field-init-spec
+     :field #xa
+     :flags #x1
+     :initial-valuef -2457.6
+     :random-rangef 4915.2
+     :random-multf 1.0
+     )
+    (new 'static 'sp-field-init-spec
+     :field #xb
+     :flags #x1
+     :initial-valuef -2457.6
+     :random-rangef 4915.2
+     :random-multf 1.0
+     )
+    (new 'static 'sp-field-init-spec
+     :field #xc
+     :flags #x1
+     :initial-valuef -2457.6
+     :random-rangef 4915.2
+     :random-multf 1.0
+     )
+    (new 'static 'sp-field-init-spec
+     :field #xd
+     :flags #x1
+     :initial-valuef 6144.0
+     :random-rangef 3072.0
+     :random-multf 1.0
+     )
+    (new 'static 'sp-field-init-spec
+     :field #x10
+     :flags #x1
+     :random-rangef 65536.0
+     :random-multf 1.0
+     )
+    (new 'static 'sp-field-init-spec
+     :field #x11
+     :flags #x3
+     :initial-valuef (the-as float #xfffffffc)
+     :random-multf (the-as float #x1)
+     )
+    (new 'static 'sp-field-init-spec
+     :field #x12
+     :flags #x1
+     :initial-valuef 100.0
+     :random-rangef 28.0
+     :random-multf 1.0
+     )
+    (new 'static 'sp-field-init-spec
+     :field #x13
+     :flags #x1
+     :initial-valuef 64.0
+     :random-rangef 64.0
+     :random-multf 1.0
+     )
+    (new 'static 'sp-field-init-spec
+     :field #x14
+     :flags #x1
+     :initial-valuef 32.0
+     :random-multf 1.0
+     )
+    (new 'static 'sp-field-init-spec
+     :field #x15
+     :flags #x1
+     :initial-valuef 32.0
+     :random-rangef 32.0
+     :random-multf 1.0
+     )
+    (new 'static 'sp-field-init-spec
+     :field #x1c
+     :flags #x1
+     :initial-valuef 18.204445
+     :random-multf 1.0
+     )
+    (new 'static 'sp-field-init-spec
+     :field #x1f
+     :flags #x1
+     :initial-valuef -54.613335
+     :random-rangef 109.22667
+     :random-multf 1.0
+     )
+    (new 'static 'sp-field-init-spec
+     :field #x20
+     :flags #x3
+     :initial-valuef (the-as float #xfffffffc)
+     :random-multf (the-as float #x1)
+     )
+    (new 'static 'sp-field-init-spec
+     :field #x22
+     :flags #x1
+     :initial-valuef -0.14222223
+     :random-multf 1.0
+     )
+    (new 'static 'sp-field-init-spec
+     :field #x24
+     :flags #x1
+     :initial-valuef -0.14222223
+     :random-multf 1.0
+     )
+    (new 'static 'sp-field-init-spec
+     :field #x26
+     :flags #x1
+     :initial-valuef -0.06826667
+     :random-multf 1.0
+     )
+    (new 'static 'sp-field-init-spec
+     :field #x2e
+     :initial-valuef (the-as float #x1c2)
+     :random-multf (the-as float #x1)
+     )
+    (new 'static 'sp-field-init-spec
+     :field #x2f
+     :initial-valuef (the-as float #xc)
+     :random-multf (the-as float #x1)
+     )
+    (new 'static 'sp-field-init-spec :field #x43)
+    )
+   )
+  )
+
+;; failed to figure out what this is:
+(set!
+  (-> *part-id-table* 356)
+  (new 'static 'sparticle-launcher
+   :init-specs
+   (new 'static 'inline-array sp-field-init-spec 20
+    (new 'static 'sp-field-init-spec
+     :field #x1
+     :initial-valuef (the-as float #x201200)
+     )
+    (new 'static 'sp-field-init-spec
+     :field #x6
+     :flags #x1
+     :initial-valuef 12.0
+     :random-multf 1.0
+     )
+    (new 'static 'sp-field-init-spec
+     :field #xd
+     :flags #x1
+     :initial-valuef 1228.8
+     :random-rangef 409.6
+     :random-multf 1.0
+     )
+    (new 'static 'sp-field-init-spec
+     :field #x11
+     :flags #x3
+     :initial-valuef (the-as float #xfffffffc)
+     :random-multf (the-as float #x1)
+     )
+    (new 'static 'sp-field-init-spec
+     :field #x12
+     :flags #x1
+     :initial-valuef 100.0
+     :random-rangef 28.0
+     :random-multf 1.0
+     )
+    (new 'static 'sp-field-init-spec
+     :field #x13
+     :flags #x1
+     :initial-valuef 64.0
+     :random-rangef 64.0
+     :random-multf 1.0
+     )
+    (new 'static 'sp-field-init-spec :field #x14 :flags #x1 :random-multf 1.0)
+    (new 'static 'sp-field-init-spec
+     :field #x15
+     :flags #x1
+     :initial-valuef 128.0
+     :random-multf 1.0
+     )
+    (new 'static 'sp-field-init-spec
+     :field #x1a
+     :flags #x1
+     :random-rangef 218.45334
+     :random-multf 1.0
+     )
+    (new 'static 'sp-field-init-spec
+     :field #x1c
+     :flags #x1
+     :initial-valuef -10.240001
+     :random-multf 1.0
+     )
+    (new 'static 'sp-field-init-spec
+     :field #x20
+     :flags #x3
+     :initial-valuef (the-as float #xfffffffc)
+     :random-multf (the-as float #x1)
+     )
+    (new 'static 'sp-field-init-spec
+     :field #x22
+     :flags #x1
+     :initial-valuef -1.0666667
+     :random-multf 1.0
+     )
+    (new 'static 'sp-field-init-spec
+     :field #x24
+     :flags #x1
+     :initial-valuef -0.17777778
+     :random-multf 1.0
+     )
+    (new 'static 'sp-field-init-spec
+     :field #x26
+     :flags #x1
+     :initial-valuef -4.096
+     :random-multf 1.0
+     )
+    (new 'static 'sp-field-init-spec
+     :field #x2d
+     :flags #x1
+     :initial-valuef 0.99
+     :random-multf 1.0
+     )
+    (new 'static 'sp-field-init-spec
+     :field #x2e
+     :initial-valuef (the-as float #x3c)
+     :random-rangef (the-as float #x3b)
+     :random-multf (the-as float #x1)
+     )
+    (new 'static 'sp-field-init-spec
+     :field #x2f
+     :initial-valuef (the-as float #xc)
+     :random-multf (the-as float #x1)
+     )
+    (new 'static 'sp-field-init-spec
+     :field #x3a
+     :flags #x1
+     :random-rangef 21845.334
+     :random-multf 1.0
+     )
+    (new 'static 'sp-field-init-spec
+     :field #x3b
+     :flags #x1
+     :initial-valuef 16384.0
+     :random-rangef 32768.0
+     :random-multf 1.0
+     )
+    (new 'static 'sp-field-init-spec :field #x43)
+    )
+   )
+  )
+
+;; failed to figure out what this is:
+(set!
+  (-> *part-id-table* 360)
+  (new 'static 'sparticle-launcher
+   :init-specs
+   (new 'static 'inline-array sp-field-init-spec 20
+    (new 'static 'sp-field-init-spec
+     :field #x1
+     :initial-valuef (the-as float #x201200)
+     )
+    (new 'static 'sp-field-init-spec
+     :field #x6
+     :flags #x1
+     :initial-valuef 24.0
+     :random-multf 1.0
+     )
+    (new 'static 'sp-field-init-spec
+     :field #xd
+     :flags #x1
+     :initial-valuef 1228.8
+     :random-rangef 409.6
+     :random-multf 1.0
+     )
+    (new 'static 'sp-field-init-spec
+     :field #x11
+     :flags #x3
+     :initial-valuef (the-as float #xfffffffc)
+     :random-multf (the-as float #x1)
+     )
+    (new 'static 'sp-field-init-spec
+     :field #x12
+     :flags #x1
+     :initial-valuef 100.0
+     :random-rangef 28.0
+     :random-multf 1.0
+     )
+    (new 'static 'sp-field-init-spec
+     :field #x13
+     :flags #x1
+     :initial-valuef 64.0
+     :random-rangef 64.0
+     :random-multf 1.0
+     )
+    (new 'static 'sp-field-init-spec :field #x14 :flags #x1 :random-multf 1.0)
+    (new 'static 'sp-field-init-spec
+     :field #x15
+     :flags #x1
+     :initial-valuef 128.0
+     :random-multf 1.0
+     )
+    (new 'static 'sp-field-init-spec
+     :field #x1a
+     :flags #x1
+     :random-rangef 218.45334
+     :random-multf 1.0
+     )
+    (new 'static 'sp-field-init-spec
+     :field #x1c
+     :flags #x1
+     :initial-valuef -10.240001
+     :random-multf 1.0
+     )
+    (new 'static 'sp-field-init-spec
+     :field #x20
+     :flags #x3
+     :initial-valuef (the-as float #xfffffffc)
+     :random-multf (the-as float #x1)
+     )
+    (new 'static 'sp-field-init-spec
+     :field #x22
+     :flags #x1
+     :initial-valuef -1.0666667
+     :random-multf 1.0
+     )
+    (new 'static 'sp-field-init-spec
+     :field #x24
+     :flags #x1
+     :initial-valuef -0.17777778
+     :random-multf 1.0
+     )
+    (new 'static 'sp-field-init-spec
+     :field #x26
+     :flags #x1
+     :initial-valuef -4.096
+     :random-multf 1.0
+     )
+    (new 'static 'sp-field-init-spec
+     :field #x2d
+     :flags #x1
+     :initial-valuef 0.99
+     :random-multf 1.0
+     )
+    (new 'static 'sp-field-init-spec
+     :field #x2e
+     :initial-valuef (the-as float #x3c)
+     :random-rangef (the-as float #x3b)
+     :random-multf (the-as float #x1)
+     )
+    (new 'static 'sp-field-init-spec
+     :field #x2f
+     :initial-valuef (the-as float #xc)
+     :random-multf (the-as float #x1)
+     )
+    (new 'static 'sp-field-init-spec
+     :field #x3a
+     :flags #x1
+     :random-rangef 32768.0
+     :random-multf 1.0
+     )
+    (new 'static 'sp-field-init-spec
+     :field #x3b
+     :flags #x1
+     :random-rangef 65536.0
+     :random-multf 1.0
+     )
+    (new 'static 'sp-field-init-spec :field #x43)
+    )
+   )
+  )
+
+;; failed to figure out what this is:
+(set!
+  (-> *part-id-table* 358)
+  (new 'static 'sparticle-launcher
+   :init-specs
+   (new 'static 'inline-array sp-field-init-spec 13
+    (new 'static 'sp-field-init-spec
+     :field #x1
+     :initial-valuef (the-as float #x201200)
+     )
+    (new 'static 'sp-field-init-spec
+     :field #x6
+     :flags #x1
+     :initial-valuef 16.0
+     :random-multf 1.0
+     )
+    (new 'static 'sp-field-init-spec
+     :field #xd
+     :flags #x1
+     :initial-valuef 409.6
+     :random-multf 1.0
+     )
+    (new 'static 'sp-field-init-spec
+     :field #x11
+     :flags #x3
+     :initial-valuef (the-as float #xfffffffc)
+     :random-multf (the-as float #x1)
+     )
+    (new 'static 'sp-field-init-spec
+     :field #x15
+     :flags #x1
+     :initial-valuef 1.0
+     :random-multf 1.0
+     )
+    (new 'static 'sp-field-init-spec
+     :field #x1a
+     :flags #x1
+     :initial-valuef 81.92
+     :random-rangef 54.613335
+     :random-multf 1.0
+     )
+    (new 'static 'sp-field-init-spec
+     :field #x26
+     :flags #x1
+     :initial-valuef -2.048
+     :random-multf 1.0
+     )
+    (new 'static 'sp-field-init-spec
+     :field #x2d
+     :flags #x1
+     :initial-valuef 0.99
+     :random-multf 1.0
+     )
+    (new 'static 'sp-field-init-spec
+     :field #x2e
+     :initial-valuef (the-as float #x14a)
+     :random-multf (the-as float #x1)
+     )
+    (new 'static 'sp-field-init-spec
+     :field #x2f
+     :initial-valuef (the-as float #xc)
+     :random-multf (the-as float #x1)
+     )
+    (new 'static 'sp-field-init-spec
+     :field #x3a
+     :flags #x1
+     :random-rangef 18204.445
+     :random-multf 1.0
+     )
+    (new 'static 'sp-field-init-spec
+     :field #x3b
+     :flags #x1
+     :initial-valuef 16384.0
+     :random-rangef 32768.0
+     :random-multf 1.0
+     )
+    (new 'static 'sp-field-init-spec :field #x43)
+    )
+   )
+  )
+
+;; failed to figure out what this is:
+(set!
+  (-> *part-id-table* 361)
+  (new 'static 'sparticle-launcher
+   :init-specs
+   (new 'static 'inline-array sp-field-init-spec 13
+    (new 'static 'sp-field-init-spec
+     :field #x1
+     :initial-valuef (the-as float #x201200)
+     )
+    (new 'static 'sp-field-init-spec
+     :field #x6
+     :flags #x1
+     :initial-valuef 32.0
+     :random-multf 1.0
+     )
+    (new 'static 'sp-field-init-spec
+     :field #xd
+     :flags #x1
+     :initial-valuef 409.6
+     :random-multf 1.0
+     )
+    (new 'static 'sp-field-init-spec
+     :field #x11
+     :flags #x3
+     :initial-valuef (the-as float #xfffffffc)
+     :random-multf (the-as float #x1)
+     )
+    (new 'static 'sp-field-init-spec
+     :field #x15
+     :flags #x1
+     :initial-valuef 1.0
+     :random-multf 1.0
+     )
+    (new 'static 'sp-field-init-spec
+     :field #x1a
+     :flags #x1
+     :initial-valuef 81.92
+     :random-rangef 54.613335
+     :random-multf 1.0
+     )
+    (new 'static 'sp-field-init-spec
+     :field #x26
+     :flags #x1
+     :initial-valuef -2.048
+     :random-multf 1.0
+     )
+    (new 'static 'sp-field-init-spec
+     :field #x2d
+     :flags #x1
+     :initial-valuef 0.99
+     :random-multf 1.0
+     )
+    (new 'static 'sp-field-init-spec
+     :field #x2e
+     :initial-valuef (the-as float #x14a)
+     :random-multf (the-as float #x1)
+     )
+    (new 'static 'sp-field-init-spec
+     :field #x2f
+     :initial-valuef (the-as float #xc)
+     :random-multf (the-as float #x1)
+     )
+    (new 'static 'sp-field-init-spec
+     :field #x3a
+     :flags #x1
+     :random-rangef 32768.0
+     :random-multf 1.0
+     )
+    (new 'static 'sp-field-init-spec
+     :field #x3b
+     :flags #x1
+     :random-rangef 65536.0
+     :random-multf 1.0
+     )
+    (new 'static 'sp-field-init-spec :field #x43)
+    )
+   )
+  )
+
+;; failed to figure out what this is:
+(set!
+  (-> *part-id-table* 359)
+  (new 'static 'sparticle-launcher
+   :init-specs
+   (new 'static 'inline-array sp-field-init-spec 21
+    (new 'static 'sp-field-init-spec
+     :field #x1
+     :initial-valuef (the-as float #x200f00)
+     )
+    (new 'static 'sp-field-init-spec
+     :field #x6
+     :flags #x1
+     :initial-valuef 1.0
+     :random-multf 1.0
+     )
+    (new 'static 'sp-field-init-spec
+     :field #xb
+     :flags #x1
+     :random-rangef 65536.0
+     :random-multf 1.0
+     )
+    (new 'static 'sp-field-init-spec
+     :field #xc
+     :flags #x1
+     :initial-valuef 409.6
+     :random-rangef 819.2
+     :random-multf 1.0
+     )
+    (new 'static 'sp-field-init-spec
+     :field #xd
+     :flags #x1
+     :initial-valuef 1228.8
+     :random-rangef 409.6
+     :random-multf 1.0
+     )
+    (new 'static 'sp-field-init-spec
+     :field #x10
+     :flags #x1
+     :random-rangef 65536.0
+     :random-multf 1.0
+     )
+    (new 'static 'sp-field-init-spec
+     :field #x11
+     :flags #x3
+     :initial-valuef (the-as float #xfffffffc)
+     :random-multf (the-as float #x1)
+     )
+    (new 'static 'sp-field-init-spec
+     :field #x12
+     :flags #x1
+     :initial-valuef 100.0
+     :random-rangef 28.0
+     :random-multf 1.0
+     )
+    (new 'static 'sp-field-init-spec
+     :field #x13
+     :flags #x1
+     :initial-valuef 64.0
+     :random-rangef 64.0
+     :random-multf 1.0
+     )
+    (new 'static 'sp-field-init-spec :field #x14 :flags #x1 :random-multf 1.0)
+    (new 'static 'sp-field-init-spec
+     :field #x15
+     :flags #x1
+     :initial-valuef 64.0
+     :random-rangef 64.0
+     :random-multf 1.0
+     )
+    (new 'static 'sp-field-init-spec
+     :field #x18
+     :flags #x1
+     :random-rangef 65536.0
+     :random-multf 1.0
+     )
+    (new 'static 'sp-field-init-spec
+     :field #x19
+     :flags #x1
+     :initial-valuef 436.90668
+     :random-multf 1.0
+     )
+    (new 'static 'sp-field-init-spec
+     :field #x1c
+     :flags #x1
+     :initial-valuef -3.7236366
+     :random-multf 1.0
+     )
+    (new 'static 'sp-field-init-spec
+     :field #x1f
+     :flags #x2
+     :initial-valuef -54.613335
+     :random-rangef (the-as float #x1)
+     :random-multf 109.22667
+     )
+    (new 'static 'sp-field-init-spec
+     :field #x20
+     :flags #x3
+     :initial-valuef (the-as float #xfffffffc)
+     :random-multf (the-as float #x1)
+     )
+    (new 'static 'sp-field-init-spec
+     :field #x22
+     :flags #x1
+     :initial-valuef -0.26666668
+     :random-multf 1.0
+     )
+    (new 'static 'sp-field-init-spec
+     :field #x24
+     :flags #x1
+     :initial-valuef -0.19393939
+     :random-multf 1.0
+     )
+    (new 'static 'sp-field-init-spec
+     :field #x2e
+     :initial-valuef (the-as float #x5a)
+     :random-rangef (the-as float #xef)
+     :random-multf (the-as float #x1)
+     )
+    (new 'static 'sp-field-init-spec
+     :field #x2f
+     :initial-valuef (the-as float #x8c)
+     :random-multf (the-as float #x1)
+     )
+    (new 'static 'sp-field-init-spec :field #x43)
+    )
+   )
+  )
+
+;; failed to figure out what this is:
+(set!
+  (-> *part-group-id-table* 104)
+  (new 'static 'sparticle-launch-group
+   :length 4
+   :duration #x258
+   :linger-duration #x5dc
+   :flags #x1
+   :name "group-part-yellow-eco-fireball-hit"
+   :launcher
+   (new 'static 'inline-array sparticle-group-item 4
+    (new 'static 'sparticle-group-item
+     :launcher #x80b
+     :period #x258
+     :length #x5
+     )
+    (new 'static 'sparticle-group-item
+     :launcher #x80c
+     :fade-after (meters 80.0)
+     :falloff-to (meters 80.0)
+     :period #x258
+     :length #x28
+     )
+    (new 'static 'sparticle-group-item
+     :launcher #x80d
+     :period #x258
+     :length #x14
+     )
+    (new 'static 'sparticle-group-item
+     :launcher #x80e
+     :fade-after (meters 120.0)
+     :falloff-to (meters 120.0)
+     :period #x258
+     :length #x14
+     )
+    )
+   :bounds (new 'static 'sphere :w 24576.0)
+   )
+  )
+
+;; failed to figure out what this is:
+(set!
+  (-> *part-id-table* 2060)
+  (new 'static 'sparticle-launcher
+   :init-specs
+   (new 'static 'inline-array sp-field-init-spec 21
+    (new 'static 'sp-field-init-spec
+     :field #x1
+     :initial-valuef (the-as float #x200f00)
+     )
+    (new 'static 'sp-field-init-spec
+     :field #x6
+     :flags #x1
+     :initial-valuef 6.0
+     :random-multf 1.0
+     )
+    (new 'static 'sp-field-init-spec
+     :field #xd
+     :flags #x1
+     :initial-valuef 819.2
+     :random-rangef 1638.4
+     :random-multf 1.0
+     )
+    (new 'static 'sp-field-init-spec
+     :field #x11
+     :flags #x3
+     :initial-valuef (the-as float #xfffffffc)
+     :random-multf (the-as float #x1)
+     )
+    (new 'static 'sp-field-init-spec
+     :field #x12
+     :flags #x1
+     :initial-valuef 192.0
+     :random-rangef 64.0
+     :random-multf 1.0
+     )
+    (new 'static 'sp-field-init-spec
+     :field #x13
+     :flags #x1
+     :initial-valuef 192.0
+     :random-rangef 64.0
+     :random-multf 1.0
+     )
+    (new 'static 'sp-field-init-spec :field #x14 :flags #x1 :random-multf 1.0)
+    (new 'static 'sp-field-init-spec
+     :field #x15
+     :flags #x1
+     :initial-valuef 32.0
+     :random-rangef 96.0
+     :random-multf 1.0
+     )
+    (new 'static 'sp-field-init-spec
+     :field #x1a
+     :flags #x1
+     :initial-valuef 109.22667
+     :random-rangef 436.90668
+     :random-multf 1.0
+     )
+    (new 'static 'sp-field-init-spec
+     :field #x1c
+     :flags #x1
+     :initial-valuef -6.826667
+     :random-multf 1.0
+     )
+    (new 'static 'sp-field-init-spec
+     :field #x20
+     :flags #x3
+     :initial-valuef (the-as float #xfffffffc)
+     :random-multf (the-as float #x1)
+     )
+    (new 'static 'sp-field-init-spec
+     :field #x26
+     :flags #x1
+     :initial-valuef -0.68266666
+     :random-rangef -0.68266666
+     :random-multf 1.0
+     )
+    (new 'static 'sp-field-init-spec
+     :field #x2d
+     :flags #x1
+     :initial-valuef 0.9
+     :random-multf 1.0
+     )
+    (new 'static 'sp-field-init-spec
+     :field #x2e
+     :initial-valuef (the-as float #x12c)
+     :random-multf (the-as float #x1)
+     )
+    (new 'static 'sp-field-init-spec
+     :field #x2f
+     :initial-valuef (the-as float #x4004)
+     :random-multf (the-as float #x1)
+     )
+    (new 'static 'sp-field-init-spec
+     :field #x32
+     :initial-valuef (the-as float #x1e)
+     :random-rangef (the-as float #x1d)
+     :random-multf (the-as float #x1)
+     )
+    (new 'static 'sp-field-init-spec
+     :field #x33
+     :flags #x6
+     :initial-valuef (the-as float #x80f)
+     )
+    (new 'static 'sp-field-init-spec
+     :field #x3a
+     :flags #x1
+     :random-rangef 32768.0
+     :random-multf 1.0
+     )
+    (new 'static 'sp-field-init-spec
+     :field #x3b
+     :flags #x1
+     :random-rangef 65536.0
+     :random-multf 1.0
+     )
+    (new 'static 'sp-field-init-spec
+     :field #x3e
+     :flags #x1
+     :initial-valuef 8192.0
+     :random-rangef 16384.0
+     :random-multf 1.0
+     )
+    (new 'static 'sp-field-init-spec :field #x43)
+    )
+   )
+  )
+
+;; failed to figure out what this is:
+(set!
+  (-> *part-id-table* 2063)
+  (new 'static 'sparticle-launcher
+   :init-specs
+   (new 'static 'inline-array sp-field-init-spec 5
+    (new 'static 'sp-field-init-spec :field #x21 :flags #x1 :random-multf 1.0)
+    (new 'static 'sp-field-init-spec :field #x22 :flags #x1 :random-multf 1.0)
+    (new 'static 'sp-field-init-spec :field #x23 :flags #x1 :random-multf 1.0)
+    (new 'static 'sp-field-init-spec
+     :field #x24
+     :flags #x1
+     :initial-valuef -1.4222223
+     :random-multf 1.0
+     )
+    (new 'static 'sp-field-init-spec :field #x43)
+    )
+   )
+  )
+
+;; failed to figure out what this is:
+(set!
+  (-> *part-id-table* 2062)
+  (new 'static 'sparticle-launcher
+   :init-specs
+   (new 'static 'inline-array sp-field-init-spec 14
+    (new 'static 'sp-field-init-spec
+     :field #x1
+     :initial-valuef (the-as float #x200f00)
+     )
+    (new 'static 'sp-field-init-spec
+     :field #x6
+     :flags #x1
+     :initial-valuef 3.0
+     :random-multf 1.0
+     )
+    (new 'static 'sp-field-init-spec
+     :field #xd
+     :flags #x1
+     :initial-valuef 819.2
+     :random-multf 1.0
+     )
+    (new 'static 'sp-field-init-spec
+     :field #x10
+     :flags #x1
+     :random-rangef 32768.0
+     :random-multf 1.0
+     )
+    (new 'static 'sp-field-init-spec
+     :field #x11
+     :flags #x1
+     :initial-valuef 32768.0
+     :random-multf 1.0
+     )
+    (new 'static 'sp-field-init-spec
+     :field #x12
+     :flags #x1
+     :initial-valuef 255.0
+     :random-multf 1.0
+     )
+    (new 'static 'sp-field-init-spec
+     :field #x13
+     :flags #x1
+     :initial-valuef 196.0
+     :random-multf 1.0
+     )
+    (new 'static 'sp-field-init-spec :field #x14 :flags #x1 :random-multf 1.0)
+    (new 'static 'sp-field-init-spec
+     :field #x15
+     :flags #x1
+     :initial-valuef 32.0
+     :random-rangef 64.0
+     :random-multf 1.0
+     )
+    (new 'static 'sp-field-init-spec
+     :field #x20
+     :flags #x1
+     :initial-valuef 1747.6267
+     :random-multf 1.0
+     )
+    (new 'static 'sp-field-init-spec
+     :field #x24
+     :flags #x1
+     :initial-valuef -1.6
+     :random-multf 1.0
+     )
+    (new 'static 'sp-field-init-spec
+     :field #x2e
+     :initial-valuef (the-as float #x3c)
+     :random-multf (the-as float #x1)
+     )
+    (new 'static 'sp-field-init-spec
+     :field #x2f
+     :initial-valuef (the-as float #x400c)
+     :random-multf (the-as float #x1)
+     )
+    (new 'static 'sp-field-init-spec :field #x43)
+    )
+   )
+  )
+
+;; failed to figure out what this is:
+(set!
+  (-> *part-id-table* 2059)
+  (new 'static 'sparticle-launcher
+   :init-specs
+   (new 'static 'inline-array sp-field-init-spec 12
+    (new 'static 'sp-field-init-spec
+     :field #x1
+     :initial-valuef (the-as float #x201200)
+     )
+    (new 'static 'sp-field-init-spec
+     :field #x6
+     :flags #x1
+     :initial-valuef 1.0
+     :random-multf 1.0
+     )
+    (new 'static 'sp-field-init-spec
+     :field #xd
+     :flags #x1
+     :initial-valuef 65536.0
+     :random-multf 1.0
+     )
+    (new 'static 'sp-field-init-spec
+     :field #x11
+     :flags #x3
+     :initial-valuef (the-as float #xfffffffc)
+     :random-multf (the-as float #x1)
+     )
+    (new 'static 'sp-field-init-spec
+     :field #x12
+     :flags #x1
+     :initial-valuef 255.0
+     :random-multf 1.0
+     )
+    (new 'static 'sp-field-init-spec
+     :field #x13
+     :flags #x1
+     :initial-valuef 192.0
+     :random-rangef 32.0
+     :random-multf 1.0
+     )
+    (new 'static 'sp-field-init-spec :field #x14 :flags #x1 :random-multf 1.0)
+    (new 'static 'sp-field-init-spec
+     :field #x15
+     :flags #x1
+     :initial-valuef 96.0
+     :random-multf 1.0
+     )
+    (new 'static 'sp-field-init-spec
+     :field #x24
+     :flags #x1
+     :initial-valuef -1.7454545
+     :random-multf 1.0
+     )
+    (new 'static 'sp-field-init-spec
+     :field #x2e
+     :initial-valuef (the-as float #x36)
+     :random-multf (the-as float #x1)
+     )
+    (new 'static 'sp-field-init-spec
+     :field #x2f
+     :initial-valuef (the-as float #x400c)
+     :random-multf (the-as float #x1)
+     )
+    (new 'static 'sp-field-init-spec :field #x43)
+    )
+   )
+  )
+
+;; failed to figure out what this is:
+(set!
+  (-> *part-id-table* 2061)
+  (new 'static 'sparticle-launcher
+   :init-specs
+   (new 'static 'inline-array sp-field-init-spec 23
+    (new 'static 'sp-field-init-spec
+     :field #x1
+     :initial-valuef (the-as float #x200000)
+     )
+    (new 'static 'sp-field-init-spec
+     :field #x6
+     :flags #x1
+     :initial-valuef 4.0
+     :random-multf 1.0
+     )
+    (new 'static 'sp-field-init-spec
+     :field #xd
+     :flags #x1
+     :initial-valuef 10240.0
+     :random-rangef 6144.0
+     :random-multf 1.0
+     )
+    (new 'static 'sp-field-init-spec
+     :field #x10
+     :flags #x1
+     :random-rangef 65536.0
+     :random-multf 1.0
+     )
+    (new 'static 'sp-field-init-spec
+     :field #x11
+     :flags #x3
+     :initial-valuef (the-as float #xfffffffc)
+     :random-multf (the-as float #x1)
+     )
+    (new 'static 'sp-field-init-spec
+     :field #x12
+     :flags #x1
+     :initial-valuef 255.0
+     :random-multf 1.0
+     )
+    (new 'static 'sp-field-init-spec
+     :field #x13
+     :flags #x1
+     :initial-valuef 192.0
+     :random-rangef 64.0
+     :random-multf 1.0
+     )
+    (new 'static 'sp-field-init-spec
+     :field #x14
+     :flags #x1
+     :initial-valuef 128.0
+     :random-multf 1.0
+     )
+    (new 'static 'sp-field-init-spec
+     :field #x15
+     :flags #x1
+     :initial-valuef 64.0
+     :random-rangef 64.0
+     :random-multf 1.0
+     )
+    (new 'static 'sp-field-init-spec
+     :field #x1a
+     :flags #x1
+     :initial-valuef 218.45334
+     :random-rangef 54.613335
+     :random-multf 1.0
+     )
+    (new 'static 'sp-field-init-spec
+     :field #x1c
+     :flags #x1
+     :initial-valuef 54.613335
+     :random-multf 1.0
+     )
+    (new 'static 'sp-field-init-spec
+     :field #x1f
+     :flags #x1
+     :initial-valuef -54.613335
+     :random-rangef 109.22667
+     :random-multf 1.0
+     )
+    (new 'static 'sp-field-init-spec
+     :field #x20
+     :flags #x3
+     :initial-valuef (the-as float #xfffffffc)
+     :random-multf (the-as float #x1)
+     )
+    (new 'static 'sp-field-init-spec
+     :field #x24
+     :flags #x1
+     :initial-valuef -1.6
+     :random-multf 1.0
+     )
+    (new 'static 'sp-field-init-spec
+     :field #x26
+     :flags #x1
+     :initial-valuef 0.68266666
+     :random-rangef 0.68266666
+     :random-multf 1.0
+     )
+    (new 'static 'sp-field-init-spec
+     :field #x2d
+     :flags #x1
+     :initial-valuef 0.8
+     :random-multf 1.0
+     )
+    (new 'static 'sp-field-init-spec
+     :field #x2e
+     :initial-valuef (the-as float #x1fe)
+     :random-multf (the-as float #x1)
+     )
+    (new 'static 'sp-field-init-spec
+     :field #x2f
+     :initial-valuef (the-as float #x4004)
+     :random-multf (the-as float #x1)
+     )
+    (new 'static 'sp-field-init-spec
+     :field #x32
+     :initial-valuef (the-as float #x2a)
+     :random-multf (the-as float #x1)
+     )
+    (new 'static 'sp-field-init-spec
+     :field #x33
+     :flags #x6
+     :initial-valuef (the-as float #x810)
+     )
+    (new 'static 'sp-field-init-spec
+     :field #x3a
+     :flags #x1
+     :random-rangef 32768.0
+     :random-multf 1.0
+     )
+    (new 'static 'sp-field-init-spec
+     :field #x3b
+     :flags #x1
+     :random-rangef 65536.0
+     :random-multf 1.0
+     )
+    (new 'static 'sp-field-init-spec :field #x43)
+    )
+   )
+  )
+
+;; failed to figure out what this is:
+(set!
+  (-> *part-id-table* 2064)
+  (new 'static 'sparticle-launcher
+   :init-specs
+   (new 'static 'inline-array sp-field-init-spec 5
+    (new 'static 'sp-field-init-spec
+     :field #x21
+     :flags #x1
+     :initial-valuef -0.53333336
+     :random-multf 1.0
+     )
+    (new 'static 'sp-field-init-spec
+     :field #x22
+     :flags #x1
+     :initial-valuef -0.53333336
+     :random-multf 1.0
+     )
+    (new 'static 'sp-field-init-spec
+     :field #x23
+     :flags #x1
+     :initial-valuef -1.0666667
+     :random-multf 1.0
+     )
+    (new 'static 'sp-field-init-spec
+     :field #x24
+     :flags #x1
+     :initial-valuef -0.53333336
+     :random-multf 1.0
+     )
+    (new 'static 'sp-field-init-spec :field #x43)
+    )
+   )
+  )
+
+;; definition for method 24 of type projectile
+;; INFO: Return type mismatch int vs none.
+(defmethod dummy-24 projectile ((obj projectile))
+  (dummy-11
+   (-> obj part)
+   (the-as vector (-> obj root-override root-prim prim-core))
+   )
+  0
+  (none)
+  )
+
+;; definition for method 28 of type projectile
+;; INFO: Return type mismatch int vs none.
+(defmethod dummy-28 projectile ((obj projectile))
+  0
+  (none)
+  )
+
+;; failed to figure out what this is:
+(defstate projectile-moving (projectile)
+  :virtual #t
+  :event
+  (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
+   (let ((v1-0 arg2))
+    (the-as object (cond
+                    ((= v1-0 'touched)
+                     (when (-> self attack-mode)
+                      (when (cond
+                             ((= (-> arg0 type) target)
+                              (let
+                               ((a1-1
+                                 (new 'stack-no-clear 'event-message-block)
+                                 )
+                                )
+                               (set! (-> a1-1 from) self)
+                               (set! (-> a1-1 num-params) 2)
+                               (set! (-> a1-1 message) 'attack)
+                               (set! (-> a1-1 param 0) (-> arg3 param 0))
+                               (let
+                                ((a0-4 (new 'static 'attack-info :mask #x20)))
+                                (set! (-> a0-4 mode) (-> self attack-mode))
+                                (set! (-> a1-1 param 1) (the-as uint a0-4))
+                                )
+                               (send-event-function arg0 a1-1)
+                               )
+                              )
+                             (else
+                              (let
+                               ((a1-2
+                                 (new 'stack-no-clear 'event-message-block)
+                                 )
+                                )
+                               (set! (-> a1-2 from) self)
+                               (set! (-> a1-2 num-params) 4)
+                               (set! (-> a1-2 message) 'attack)
+                               (set! (-> a1-2 param 0) (-> arg3 param 0))
+                               (set!
+                                (-> a1-2 param 1)
+                                (the-as uint (-> self attack-mode))
+                                )
+                               (let ((v1-13 (+ *global-attack-id* 1)))
+                                (set! *global-attack-id* v1-13)
+                                (set! (-> a1-2 param 2) (the-as uint v1-13))
+                                )
+                               (set! (-> a1-2 param 3) (the-as uint 0))
+                               (send-event-function arg0 a1-2)
+                               )
+                              )
+                             )
+                       (let ((v1-14 (-> self notify-handle)))
+                        (when (handle->process v1-14)
+                         (let
+                          ((a1-7 (new 'stack-no-clear 'event-message-block)))
+                          (set! (-> a1-7 from) self)
+                          (set! (-> a1-7 num-params) 2)
+                          (set! (-> a1-7 message) 'notify)
+                          (set! (-> a1-7 param 0) (the-as uint 'attack))
+                          (set! (-> a1-7 param 1) (the-as uint arg0))
+                          (send-event-function (-> v1-14 process 0) a1-7)
+                          )
+                         )
+                        )
+                       (+! (-> self hits) 1)
+                       (if (>= (-> self hits) (-> self max-hits))
+                        (go-virtual projectile-impact)
+                        )
+                       )
+                      )
+                     )
+                    ((= v1-0 'die)
+                     (go-virtual projectile-impact)
+                     )
+                    )
+     )
+    )
+   )
+  :enter
+  (behavior ()
+   (set!
+    (-> self state-time)
+    (the-as seconds (-> *display* base-frame-counter))
+    )
+   (none)
+   )
+  :code
+  (behavior ()
+   (let ((gp-0 #f))
+    (while
+     (<
+      (- (-> *display* base-frame-counter) (the-as int (-> self state-time)))
+      (the-as int (-> self timeout))
+      )
+     (let ((s5-0 (the int (-> *display* time-ratio))))
+      (set-time-ratios *display* 1.0)
+      (countdown (s4-0 s5-0)
+       (if gp-0
+        (go-virtual projectile-impact)
+        )
+       (dummy-28 self)
+       ((-> self update-velocity) self)
+       (when (logtest? (-> self options) 2)
+        (set!
+         (-> self tween)
+         (seek (-> self tween) 1.0 (* 0.5 (-> *display* seconds-per-frame)))
+         )
+        (let
+         ((f0-6
+           (vector-vector-distance
+            (-> self root-override trans)
+            (-> self target)
+            )
+           )
+          )
+         (cond
+          ((< f0-6 20480.0)
+           (set!
+            (-> self tween)
+            (seek (-> self tween) 1.0 (* 3.0 (-> *display* seconds-per-frame)))
+            )
+           )
+          ((< f0-6 40960.0)
+           (set!
+            (-> self tween)
+            (seek (-> self tween) 1.0 (-> *display* seconds-per-frame))
+            )
+           )
+          )
+         )
+        )
+       (let ((s3-0 (new 'stack-no-clear 'vector)))
+        (set! (-> s3-0 quad) (-> self root-override trans quad))
+        (dummy-33
+         (-> self root-override)
+         (-> self root-override transv)
+         (-> self root-override root-prim collide-with)
+         )
+        (set!
+         (-> self old-dist (-> self old-dist-count))
+         (* 0.0625 (vector-vector-distance s3-0 (-> self root-override trans)))
+         )
+        )
+       (set!
+        (-> self old-dist-count)
+        (logand (+ (-> self old-dist-count) 1) 15)
+        )
+       (let ((f0-16 0.0))
+        (countdown (v1-35 16)
+         (+! f0-16 (-> self old-dist v1-35))
+         )
+        (if
+         (or
+          (and (logtest? (-> self root-override status) 8) (< f0-16 2048.0))
+          (< f0-16 204.8)
+          )
+         (set! gp-0 #t)
+         )
+        )
+       )
+      (set-time-ratios *display* (the float s5-0))
+      )
+     (dummy-24 self)
+     (suspend)
+     )
+    )
+   (go-virtual projectile-dissipate)
+   (none)
+   )
+  )
+
+;; definition for function projectile-update-velocity-space-wars
+;; INFO: Return type mismatch int vs none.
+;; Used lq/sq
+(defun projectile-update-velocity-space-wars ((arg0 projectile))
+  (let
+   ((s5-1
+     (vector-!
+      (new 'stack-no-clear 'vector)
+      (-> arg0 target)
+      (-> arg0 root-override trans)
+      )
+     )
+    )
+   (let ((s4-0 (new 'stack-no-clear 'vector))
+         (s3-0
+          (vector-normalize-copy!
+           (new 'stack-no-clear 'vector)
+           (-> arg0 root-override transv)
+           1.0
+           )
+          )
+         (f30-0 (vector-length (-> arg0 root-override transv)))
+         )
+    (if (logtest? (-> arg0 root-override status) 4)
+     (vector-flatten! s5-1 s5-1 (-> arg0 root-override local-normal))
+     )
+    (vector-normalize-copy! s4-0 s5-1 1.0)
+    (if
+     (and
+      (or
+       (not (handle->process (-> arg0 last-target)))
+       (zero?
+        (->
+         (the-as target (handle->process (-> arg0 last-target)))
+         control
+         root-prim
+         prim-core
+         collide-as
+         )
+        )
+       )
+      (< (vector-dot s4-0 s3-0) 0.0)
+      )
+     (go (method-of-object arg0 projectile-dissipate))
+     )
+    (vector-deg-slerp (-> arg0 root-override transv) s3-0 s4-0 (-> arg0 tween))
+    (vector-normalize! (-> arg0 root-override transv) f30-0)
+    )
+   (vector+! (-> arg0 root-override transv) (-> arg0 root-override transv) s5-1)
+   )
+  (vector-v++!
+   (-> arg0 root-override transv)
+   (dummy-62 (-> arg0 root-override) (new-stack-vector0) 0.0)
+   )
+  (if (< (-> arg0 max-speed) (vector-length (-> arg0 root-override transv)))
+   (vector-normalize! (-> arg0 root-override transv) (-> arg0 max-speed))
+   )
+  (if (logtest? (-> arg0 options) 1)
+   (set! (-> arg0 root-override transv y) -40960.0)
+   )
+  0
+  (none)
+  )
+
+;; failed to figure out what this is:
+(defstate projectile-impact (projectile)
+  :virtual #t
+  :code
+  (behavior ()
+   (let ((gp-0 (get-process *default-dead-pool* part-tracker #x4000)))
+    (when gp-0
+     (let ((t9-1 (method-of-type part-tracker activate)))
+      (t9-1
+       (the-as part-tracker gp-0)
+       *entity-pool*
+       'part-tracker
+       (the-as pointer #x70004000)
+       )
+      )
+     (run-now-in-process
+      gp-0
+      part-tracker-init
+      (-> *part-group-id-table* 104)
+      -1
+      #f
+      #f
+      #f
+      (-> self root-override root-prim prim-core)
+      )
+     (-> gp-0 ppointer)
+     )
+    )
+   (if (nonzero? (-> self sound-id))
+    (sound-stop (-> self sound-id))
+    )
+   (sound-play-by-name
+    (static-sound-name "yellow-explode")
+    (new-sound-id)
+    1024
+    0
+    0
+    (the-as uint 1)
+    (the-as vector #t)
+    )
+   (suspend)
+   (go-virtual projectile-die)
+   (none)
+   )
+  )
+
+;; failed to figure out what this is:
+(defstate projectile-dissipate (projectile)
+  :virtual #t
+  :code
+  (behavior ()
+   (let ((gp-0 (get-process *default-dead-pool* part-tracker #x4000)))
+    (when gp-0
+     (let ((t9-1 (method-of-type part-tracker activate)))
+      (t9-1
+       (the-as part-tracker gp-0)
+       *entity-pool*
+       'part-tracker
+       (the-as pointer #x70004000)
+       )
+      )
+     (run-now-in-process
+      gp-0
+      part-tracker-init
+      (-> *part-group-id-table* 104)
+      -1
+      #f
+      #f
+      #f
+      (-> self root-override root-prim prim-core)
+      )
+     (-> gp-0 ppointer)
+     )
+    )
+   (if (nonzero? (-> self sound-id))
+    (sound-stop (-> self sound-id))
+    )
+   (sound-play-by-name
+    (static-sound-name "yellow-fizzle")
+    (new-sound-id)
+    1024
+    0
+    0
+    (the-as uint 1)
+    (the-as vector #t)
+    )
+   (suspend)
+   (go-virtual projectile-die)
+   (none)
+   )
+  )
+
+;; definition for method 27 of type projectile
+;; INFO: Return type mismatch int vs none.
+(defmethod dummy-27 projectile ((obj projectile))
+  0
+  (none)
+  )
+
+;; definition for method 26 of type projectile
+;; INFO: Return type mismatch int vs none.
+(defmethod dummy-26 projectile ((obj projectile))
+  (let
+   ((s5-0
+     (new 'process 'collide-shape-moving obj (collide-list-enum hit-by-player))
+     )
+    )
+   (set! (-> s5-0 dynam) (copy *standard-dynamics* 'process))
+   (set! (-> s5-0 reaction) projectile-collision-reaction)
+   (set! (-> s5-0 no-reaction) nothing)
+   (let ((s4-0 (new 'process 'collide-shape-prim-sphere s5-0 (the-as uint 0))))
+    (set! (-> s4-0 prim-core collide-as) (the-as uint 1024))
+    (set! (-> s4-0 collide-with) (the-as uint 2957))
+    (set! (-> s4-0 prim-core action) (the-as uint 1))
+    (set! (-> s4-0 prim-core offense) 3)
+    (set-vector! (-> s4-0 local-sphere) 0.0 5324.8 0.0 5324.8)
+    )
+   (dummy-46 s5-0)
+   (set! (-> s5-0 nav-radius) (* 0.75 (-> s5-0 root-prim local-sphere w)))
+   (dummy-50 s5-0)
+   (set! (-> s5-0 max-iteration-count) (the-as uint 2))
+   (set! (-> s5-0 event-self) 'touched)
+   (set! (-> obj root-override) s5-0)
+   )
+  0
+  (none)
+  )
+
+;; definition for method 25 of type projectile
+;; INFO: Return type mismatch int vs none.
+(defmethod dummy-25 projectile ((obj projectile))
+  (go (method-of-object obj projectile-moving))
+  0
+  (none)
+  )
+
+;; failed to figure out what this is:
+(defstate projectile-die (projectile)
+  :virtual #t
+  :code
+  (behavior ()
+   (let ((v1-0 (-> self notify-handle)))
+    (when (handle->process v1-0)
+     (let ((a1-4 (new 'stack-no-clear 'event-message-block)))
+      (set! (-> a1-4 from) self)
+      (set! (-> a1-4 num-params) 1)
+      (set! (-> a1-4 message) 'notify)
+      (set! (-> a1-4 param 0) (the-as uint 'die))
+      (send-event-function (-> v1-0 process 0) a1-4)
+      )
+     )
+    )
+   (dummy-18 self)
+   (none)
+   )
+  )
+
+;; definition for method 10 of type projectile
+(defmethod deactivate projectile ((obj projectile))
+  (if (nonzero? (-> obj sound-id))
+   (sound-stop (-> obj sound-id))
+   )
+  ((method-of-type process-drawable deactivate) obj)
+  (none)
+  )
+
+;; definition for function projectile-init-by-other
+;; Used lq/sq
+(defbehavior
+  projectile-init-by-other projectile
+  ((arg0 entity) (arg1 vector) (arg2 vector) (arg3 uint) (arg4 handle))
+  (stack-size-set! (-> self main-thread) 512)
+  (set! (-> self entity) arg0)
+  (set! (-> self attack-mode) #f)
+  (set! (-> self update-velocity) projectile-update-velocity-space-wars)
+  (set! (-> self max-speed) 40960.0)
+  (set! (-> self max-turn) 18204.445)
+  (set! (-> self tween) 1.0)
+  (set! (-> self last-target) arg4)
+  (set! (-> self timeout) (the-as uint 1200))
+  (set! (-> self options) arg3)
+  (set! (-> self notify-handle) (the-as handle #f))
+  (countdown (v1-4 16)
+   (set! (-> self old-dist v1-4) 4095996000.0)
+   )
+  (dummy-26 self)
+  (set! (-> self root-override dynam gravity y) 1228800.0)
+  (set! (-> self root-override dynam gravity-length) 1228800.0)
+  (set! (-> self root-override dynam gravity-max) 1228800.0)
+  (set! (-> self root-override trans quad) (-> arg1 quad))
+  (set! (-> self base-trans quad) (-> arg1 quad))
+  (set! (-> self parent-base quad) (-> arg1 quad))
+  (quaternion-copy!
+   (-> self root-override quat)
+   (-> (the-as process-drawable (-> self parent 0)) root quat)
+   )
+  (quaternion-copy!
+   (the-as quaternion (-> self parent-quat))
+   (-> (the-as process-drawable (-> self parent 0)) root quat)
+   )
+  (vector-identity! (-> self root-override scale))
+  (set! (-> self root-override transv quad) (-> arg2 quad))
+  (vector-normalize-copy! (-> self base-vector) arg2 1.0)
+  (vector+float*!
+   (-> self target)
+   (-> self root-override trans)
+   (-> self root-override transv)
+   2.0
+   )
+  (set! (-> self target-base quad) (-> self target quad))
+  (dummy-27 self)
+  (dummy-24 self)
+  (when (not (type-type? (-> self type) projectile-blue))
+   (let ((a1-8 (new 'stack-no-clear 'collide-edge-hold-list)))
+    (set! (-> a1-8 num-allocs) (the-as uint 1))
+    (set! (-> a1-8 num-attempts) (the-as uint *touching-list*))
+    (dummy-40 (-> self root-override) a1-8)
+    )
+   )
+  (set!
+   (-> self event-hook)
+   (-> (method-of-object self projectile-moving) event)
+   )
+  (dummy-25 self)
+  (none)
+  )
+
+;; definition for method 27 of type projectile-yellow
+;; INFO: Return type mismatch int vs none.
+;; Used lq/sq
+(defmethod dummy-27 projectile-yellow ((obj projectile-yellow))
+  (cpad-set-buzz! (-> *cpad-list* cpads 0) 1 204 30)
+  (set! (-> obj attack-mode) 'eco-yellow)
+  (set! (-> obj mode) 1)
+  (set! (-> obj max-speed) (vector-length (-> obj root-override transv)))
+  (set! (-> obj update-velocity) projectile-update-velocity-space-wars)
+  (set! (-> obj angle) (vector-y-angle (-> obj root-override transv)))
+  (set! (-> obj tween) 0.05)
+  (logior! (-> obj options) 2)
+  (let ((s5-0 (new 'stack-no-clear 'vector)))
+   (set! (-> s5-0 quad) (-> obj root-override trans quad))
+   (set!
+    (-> obj root-override trans y)
+    (+ -5324.8 (-> obj root-override trans y))
+    )
+   (vector+float*!
+    (-> obj target)
+    (-> obj root-override trans)
+    (-> obj root-override transv)
+    2.0
+    )
+   (set! (-> obj target-base quad) (-> obj target quad))
+   (let
+    ((f30-0
+      (the float (sar (shl (the int (y-angle (-> obj root-override))) 48) 48))
+      )
+     )
+    (set!
+     (-> obj mask)
+     (the-as process-mask (logior (process-mask projectile) (-> obj mask)))
+     )
+    (if (logtest? (-> obj options) 16)
+     (set! (-> obj max-hits) 1)
+     )
+    (set!
+     (-> *part-id-table* 356 init-specs 18 initial-valuef)
+     (the float (sar (shl (the int (+ -16384.0 f30-0)) 48) 48))
+     )
+    (set!
+     (-> *part-id-table* 358 init-specs 11 initial-valuef)
+     (the float (sar (shl (the int (+ -16384.0 f30-0)) 48) 48))
+     )
+    (sound-play-by-name
+     (static-sound-name "yellow-fire")
+     (new-sound-id)
+     1024
+     0
+     0
+     (the-as uint 1)
+     (the-as vector #t)
+     )
+    (set!
+     (-> obj sound-id)
+     (sound-play-by-name
+      (static-sound-name "yellow-buzz")
+      (new-sound-id)
+      1024
+      0
+      0
+      (the-as uint 1)
+      (the-as vector #t)
+      )
+     )
+    (when (zero? (logand (-> obj options) 416))
+     (let ((s4-2 (get-process *default-dead-pool* part-tracker #x4000)))
+      (when s4-2
+       (let ((t9-10 (method-of-type part-tracker activate)))
+        (t9-10
+         (the-as part-tracker s4-2)
+         obj
+         'part-tracker
+         (the-as pointer #x70004000)
+         )
+        )
+       (run-now-in-process
+        s4-2
+        part-tracker-init
+        (-> *part-group-id-table* 103)
+        -1
+        #f
+        #f
+        #f
+        s5-0
+        )
+       (-> s4-2 ppointer)
+       )
+      )
+     )
+    (set! (-> *part-id-table* 350 init-specs 2 initial-valuef) f30-0)
+    )
+   )
+  (set!
+   (-> obj part)
+   (create-launch-control (-> *part-group-id-table* 102) obj)
+   )
+  (when *target*
+   (case (-> *target* current-level name) 
+    (('swamp)
+      (set!
+       (-> obj water)
+       (new 'process 'water-control obj 0 0.0 8192.0 2048.0)
+       )
+      (set! (-> obj water flags) (the-as uint 146))
+      (set! (-> obj water height) (if (logtest? (-> obj options) 64)
+                                   8192.0
+                                   10240.0
+                                   )
+       )
+      (logior! (-> obj root-override root-prim collide-with) 32)
+      )
+    (('ogre)
+     (when (zero? (logand (-> obj options) 128))
+      (set!
+       (-> obj water)
+       (new 'process 'water-control obj 0 0.0 8192.0 2048.0)
+       )
+      (set! (-> obj water flags) (the-as uint 146))
+      (set! (-> obj water height) 129024.0)
+      (logior! (-> obj root-override root-prim collide-with) 32)
+      )
+     )
+    (('finalboss)
+     (set!
+      (-> obj root-override trans y)
+      (+ 4096.0 (-> obj root-override trans y))
+      )
+     (set! (-> obj water) (new 'process 'water-control obj 0 0.0 8192.0 2048.0))
+     (set! (-> obj water flags) (the-as uint 146))
+     (set! (-> obj water height) 1977958.4)
+     (logior! (-> obj root-override root-prim collide-with) 32)
+     )
+    )
+   )
+  0
+  (none)
+  )
+
+;; definition for method 26 of type projectile-yellow
+;; INFO: Return type mismatch uint vs none.
+(defmethod dummy-26 projectile-yellow ((obj projectile-yellow))
+  (let ((t9-0 (method-of-type projectile dummy-26)))
+   (t9-0 obj)
+   )
+  (logior! (-> obj root-override root-prim collide-with) 8192)
+  (none)
+  )
+
+;; definition for method 24 of type projectile-yellow
+;; INFO: Return type mismatch int vs none.
+(defmethod dummy-24 projectile-yellow ((obj projectile-yellow))
+  (with-pp
+   (find-ground-and-draw-shadow
+    (-> obj root-override trans)
+    (-> obj root-override shadow-pos)
+    8192.0
+    (the-as uint 1)
+    (the-as process #f)
+    12288.0
+    81920.0
+    )
+   (if (< (-> obj root-override trans y) (-> obj root-override shadow-pos y))
+    (set!
+     (-> obj root-override trans y)
+     (+ 1228.8 (-> obj root-override shadow-pos y))
+     )
+    )
+   (dummy-47 (-> obj root-override))
+   (set!
+    (-> *part-id-table* 353 init-specs 16 initial-valuef)
+    (the-as float 30)
+    )
+   (set!
+    (-> *part-id-table* 353 init-specs 16 random-rangef)
+    (the-as float 300)
+    )
+   (cond
+    ((logtest? (-> obj options) 32)
+     (when
+      (>=
+       (- (-> *display* base-frame-counter) (the-as int (-> obj state-time)))
+       15
+       )
+      (when
+       (<
+        (- (-> *display* base-frame-counter) (the-as int (-> obj state-time)))
+        150
+        )
+       (set!
+        (-> *part-id-table* 353 init-specs 16 initial-valuef)
+        (the-as float 0)
+        )
+       (set!
+        (-> *part-id-table* 353 init-specs 16 random-rangef)
+        (the-as float 0)
+        )
+       0
+       )
+      (dummy-11
+       (-> obj part)
+       (the-as vector (-> obj root-override root-prim prim-core))
+       )
+      )
+     )
+    (else
+     (dummy-11
+      (-> obj part)
+      (the-as vector (-> obj root-override root-prim prim-core))
+      )
+     )
+    )
+   (let ((s5-0 (the-as sound-rpc-set-param (get-sound-buffer-entry))))
+    (set! (-> s5-0 command) (sound-command set-param))
+    (set! (-> s5-0 id) (-> obj sound-id))
+    (let ((a1-3 (-> obj root-override trans)))
+     (let ((gp-1 pp))
+      (when (= a1-3 #t)
+       (if
+        (and
+         gp-1
+         (type-type? (-> gp-1 type) process-drawable)
+         (nonzero? (-> (the-as process-drawable gp-1) root))
+         )
+        (set! a1-3 (-> (the-as process-drawable gp-1) root trans))
+        (set! a1-3 (the-as vector #f))
+        )
+       )
+      )
+     (sound-trans-convert (-> s5-0 parms trans) a1-3)
+     )
+    (set! (-> s5-0 parms mask) (the-as uint 32))
+    (-> s5-0 id)
+    )
+   0
+   (none)
+   )
+  )
+
+;; definition for method 28 of type projectile-yellow
+;; INFO: Return type mismatch int vs none.
+;; Used lq/sq
+(defmethod dummy-28 projectile-yellow ((obj projectile-yellow))
+  (cond
+   ((or
+     (not (handle->process (-> obj last-target)))
+     (zero?
+      (->
+       (the-as target (handle->process (-> obj last-target)))
+       control
+       root-prim
+       prim-core
+       collide-as
+       )
+      )
+     )
+    (cond
+     ((zero? (-> obj target-count))
+      (let
+       ((s5-0
+         (find-nearest-attackable
+          (-> obj parent-base)
+          409600.0
+          (the-as uint 0)
+          (the-as uint 0)
+          (-> obj base-vector)
+          (if (logtest? (-> obj options) 160)
+           546.13336
+           8192.0
+           )
+          )
+         )
+        )
+       (let
+        ((s4-0
+          (find-nearest-attackable
+           (-> obj parent-base)
+           163840.0
+           (the-as uint 1)
+           (the-as uint 0)
+           (-> obj base-vector)
+           (if (logtest? (-> obj options) 160)
+            910.2222
+            8192.0
+            )
+           )
+          )
+         (v1-10
+          (find-nearest-attackable
+           (-> obj parent-base)
+           28672.0
+           (the-as uint 1)
+           (the-as uint 0)
+           (-> obj base-vector)
+           16384.0
+           )
+          )
+         )
+        (if s4-0
+         (set! s5-0 s4-0)
+         )
+        (if v1-10
+         (set! s5-0 v1-10)
+         )
+        )
+       (set! (-> obj last-target) (process->handle s5-0))
+       (when s5-0
+        (set!
+         (-> obj target quad)
+         (-> s5-0 root-override root-prim prim-core world-sphere quad)
+         )
+        (if (= (-> s5-0 type symbol) 'mother-spider)
+         (set! (-> obj options) (logand -2 (-> obj options)))
+         )
+        )
+       )
+      )
+     (else
+      (set! (-> obj target quad) (-> obj target-base quad))
+      )
+     )
+    )
+   (else
+    (let ((a1-8 (handle->process (-> obj last-target))))
+     (set!
+      (-> obj target quad)
+      (-> (the-as target a1-8) control root-prim prim-core world-sphere quad)
+      )
+     )
+    (if
+     (and
+      (<
+       (vector-vector-xz-distance (-> obj root-override trans) (-> obj target))
+       20480.0
+       )
+      (< 24576.0 (fabs (- (-> obj target y) (-> obj root-override trans y))))
+      )
+     (set! (-> obj last-target) (the-as handle #f))
+     )
+    )
+   )
+  (+! (-> obj target-count) 1)
+  0
+  (none)
+  )
+
+;; definition for method 27 of type projectile-blue
+;; INFO: Return type mismatch int vs none.
+;; Used lq/sq
+(defmethod dummy-27 projectile-blue ((obj projectile-blue))
+  (cpad-set-buzz! (-> *cpad-list* cpads 0) 1 204 30)
+  (sound-play-by-name
+   (static-sound-name "blue-eco-on")
+   (new-sound-id)
+   1024
+   0
+   0
+   (the-as uint 1)
+   (the-as vector #t)
+   )
+  (set! (-> obj mode) 2)
+  (set! (-> obj max-speed) (-> *TARGET-bank* yellow-projectile-speed))
+  (set! (-> obj update-velocity) projectile-update-velocity-space-wars)
+  (set!
+   (-> obj root-override trans y)
+   (+ -5324.8 (-> obj root-override trans y))
+   )
+  (vector+float*!
+   (-> obj target)
+   (-> obj root-override trans)
+   (-> obj root-override transv)
+   2.0
+   )
+  (set! (-> obj target-base quad) (-> obj target quad))
+  (set!
+   (-> obj mask)
+   (the-as process-mask (logior (process-mask ambient) (-> obj mask)))
+   )
+  (set! (-> obj part) (create-launch-control (-> *part-group-id-table* 42) obj))
+  (set! (-> obj root-override root-prim collide-with) (the-as uint 1))
+  (let* ((s5-1 (handle->process (-> obj last-target)))
+         (v1-20
+          (if (and (nonzero? s5-1) (type-type? (-> s5-1 type) process-drawable))
+           s5-1
+           )
+          )
+         )
+   (if v1-20
+    (set!
+     (-> obj joint-num)
+     (rand-vu-int-range
+      3
+      (+ (-> (the-as process-drawable v1-20) node-list length) -1)
+      )
+     )
+    )
+   )
+  0
+  (none)
+  )
+
+;; definition for method 26 of type projectile-blue
+;; INFO: Return type mismatch int vs none.
+(defmethod dummy-26 projectile-blue ((obj projectile-blue))
+  (let
+   ((s5-0
+     (new 'process 'collide-shape-moving obj (collide-list-enum hit-by-player))
+     )
+    )
+   (set! (-> s5-0 dynam) (copy *standard-dynamics* 'process))
+   (set! (-> s5-0 reaction) projectile-collision-reaction)
+   (set! (-> s5-0 no-reaction) nothing)
+   (let ((s4-0 (new 'process 'collide-shape-prim-sphere s5-0 (the-as uint 0))))
+    (set! (-> s4-0 prim-core collide-as) (the-as uint 1024))
+    (set! (-> s4-0 collide-with) (the-as uint 1))
+    (set! (-> s4-0 prim-core action) (the-as uint 1))
+    (set! (-> s4-0 prim-core offense) 3)
+    (set-vector! (-> s4-0 local-sphere) 0.0 5324.8 0.0 5324.8)
+    )
+   (dummy-46 s5-0)
+   (set! (-> s5-0 nav-radius) (* 0.75 (-> s5-0 root-prim local-sphere w)))
+   (dummy-50 s5-0)
+   (set! (-> s5-0 max-iteration-count) (the-as uint 2))
+   (set! (-> s5-0 event-self) 'touched)
+   (set! (-> obj root-override) s5-0)
+   )
+  0
+  (none)
+  )
+
+;; definition for function spawn-projectile-blue
+;; INFO: Return type mismatch int vs none.
+;; Used lq/sq
+(defun spawn-projectile-blue ((arg0 target))
+  (local-vars (sv-48 entity))
+  (with-pp
+   (when arg0
+    (let ((s3-0 (rand-vu-int-range 3 (+ (-> arg0 node-list length) -1)))
+          (gp-0 (new-stack-vector0))
+          )
+     (set-vector!
+      gp-0
+      (rand-vu-float-range -81920.0 81920.0)
+      (rand-vu-float-range -81920.0 81920.0)
+      (rand-vu-float-range -81920.0 81920.0)
+      1.0
+      )
+     (let ((s4-1 (get-process *default-dead-pool* projectile-blue #x4000)))
+      (when s4-1
+       (let ((t9-5 (method-of-type projectile-blue activate)))
+        (t9-5
+         (the-as projectile-blue s4-1)
+         pp
+         'projectile-blue
+         (the-as pointer #x70004000)
+         )
+        )
+       (let ((s2-0 run-function-in-process)
+             (s1-0 s4-1)
+             (s0-0 projectile-init-by-other)
+             )
+        (set! sv-48 (-> pp entity))
+        (let
+         ((a3-1
+           (vector<-cspace!
+            (new 'stack-no-clear 'vector)
+            (-> arg0 node-list data s3-0)
+            )
+           )
+          (t1-0 8)
+          (t2-0 (process->handle pp))
+          )
+         ((the-as
+           (function process function object object object object object object)
+           s2-0
+           )
+          s1-0
+          s0-0
+          sv-48
+          a3-1
+          gp-0
+          t1-0
+          t2-0
+          )
+         )
+        )
+       (-> s4-1 ppointer)
+       )
+      )
+     )
+    )
+   0
+   (none)
+   )
+  )
+
+;; definition for method 28 of type projectile-blue
+;; INFO: Return type mismatch int vs none.
+(defmethod dummy-28 projectile-blue ((obj projectile-blue))
+  (let* ((s5-0 (handle->process (-> obj last-target)))
+         (v1-4
+          (if (and (nonzero? s5-0) (type-type? (-> s5-0 type) process-drawable))
+           s5-0
+           )
+          )
+         )
+   (if v1-4
+    (vector<-cspace!
+     (-> obj target)
+     (-> (the-as process-drawable v1-4) node-list data (-> obj joint-num))
+     )
+    )
+   )
+  (if
+   (<
+    (vector-vector-distance (-> obj target) (-> obj root-override trans))
+    4096.0
+    )
+   (go (method-of-object obj projectile-impact))
+   )
+  0
+  (none)
+  )
+
+;; definition for method 24 of type projectile-blue
+;; INFO: Return type mismatch int vs none.
+(defmethod dummy-24 projectile-blue ((obj projectile-blue))
+  (if (rand-vu-percent? 0.75)
+   (eco-blue-glow
+    (the-as collide-shape-prim (-> obj root-override root-prim prim-core))
+    )
+   )
+  0
+  (none)
+  )
+
+;; failed to figure out what this is:
+(defstate projectile-impact (projectile-blue)
+  :virtual #t
+  :code
+  (behavior ()
+   (dummy-18 self)
+   (none)
+   )
+  )
+
+;; failed to figure out what this is:
+(defstate projectile-dissipate (projectile-blue)
+  :virtual #t
+  :code
+  (behavior ()
+   (go-virtual projectile-die)
+   (none)
+   )
+  )

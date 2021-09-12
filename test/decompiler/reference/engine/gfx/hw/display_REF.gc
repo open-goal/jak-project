@@ -185,12 +185,12 @@
    )
   (set-draw-env (-> disp draw0) psm w h ztest zpsm 384)
   (set-draw-env (-> disp draw1) psm w h ztest zpsm 320)
-  (set! (-> disp base-frame-counter) (the-as uint #x493e0))
-  (set! (-> disp game-frame-counter) (the-as uint #x493e0))
-  (set! (-> disp real-frame-counter) (the-as uint #x493e0))
-  (set! (-> disp part-frame-counter) (the-as uint #x493e0))
-  (set! (-> disp integral-frame-counter) (the-as uint #x493e0))
-  (set! (-> disp real-integral-frame-counter) (the-as uint #x493e0))
+  (set! (-> disp base-frame-counter) #x493e0)
+  (set! (-> disp game-frame-counter) #x493e0)
+  (set! (-> disp real-frame-counter) #x493e0)
+  (set! (-> disp part-frame-counter) #x493e0)
+  (set! (-> disp integral-frame-counter) #x493e0)
+  (set! (-> disp real-integral-frame-counter) #x493e0)
   (set! (-> disp old-base-frame-counter) (+ (-> disp base-frame-counter) -1))
   (set! (-> disp old-game-frame-counter) (+ (-> disp game-frame-counter) -1))
   (set! (-> disp old-real-frame-counter) (+ (-> disp real-frame-counter) -1))
@@ -259,7 +259,16 @@
 ;; definition for symbol *font-context*, type font-context
 (define
   *font-context*
-  (new 'global 'font-context *font-default-matrix* 0 24 0.0 0 (the-as uint 3))
+  (new
+   'global
+   'font-context
+   *font-default-matrix*
+   0
+   24
+   0.0
+   (font-color default)
+   (font-flags shadow kerning)
+   )
   )
 
 ;; definition for symbol *pause-context*, type font-context
@@ -272,8 +281,8 @@
    256
    170
    0.0
-   3
-   (the-as uint 3)
+   (font-color orange-red)
+   (font-flags shadow kerning)
    )
   )
 
@@ -371,7 +380,7 @@
       (-> start-gif-tag tag)
       (new 'static 'gif-tag64
        :eop #x1
-       :flg #x1
+       :flg (gif-flag reg-list)
        :nreg #x4
        :nloop (+ block-count -1)
        )
@@ -417,12 +426,9 @@
        (*
         (+
          *profile-x*
-         (the-as
-          int
-          (/
-           (* (-> block time-stamp) (the-as uint *profile-w*))
-           (the-as uint *ticks-per-frame*)
-           )
+         (/
+          (* (-> block time-stamp) (the-as uint *profile-w*))
+          (the-as uint *ticks-per-frame*)
           )
          )
         16
@@ -436,7 +442,7 @@
        (-> (the-as (pointer gs-xyzf) t2-8) 0)
        (new 'static 'gs-xyzf
         :z #x3fffff
-        :y (* (+ (+ *profile-y* screen-y) *profile-h*) 16)
+        :y (* (+ *profile-y* screen-y *profile-h*) 16)
         :x left
         )
        )
@@ -449,18 +455,25 @@
     (or
      (<
       75
-      (the-as int (- (-> *display* real-frame-counter) (-> obj cache-time)))
+      (- (-> *display* real-frame-counter) (the-as int (-> obj cache-time)))
       )
      (>= end-time (the-as int (-> worst-time-cache (/ bar-pos 10))))
      )
     (set! (-> worst-time-cache (/ bar-pos 10)) (the-as uint end-time))
-    (set! (-> obj cache-time) (-> *display* real-frame-counter))
+    (set! (-> obj cache-time) (the-as uint (-> *display* real-frame-counter)))
     )
    (cond
     (*profile-ticks*
      (let ((s3-0 draw-string-xy))
       (format (clear *temp-string*) "~5D" (-> worst-time-cache (/ bar-pos 10)))
-      (s3-0 *temp-string* buf 488 (+ bar-pos 8) 0 17)
+      (s3-0
+       *temp-string*
+       buf
+       488
+       (+ bar-pos 8)
+       (font-color default)
+       (font-flags shadow right)
+       )
       )
      (the float (-> worst-time-cache (/ bar-pos 10)))
      )
@@ -475,11 +488,17 @@
        )
       (let ((s4-1 draw-string-xy))
        (format (clear *temp-string*) "~5,,2f" f30-0)
-       (s4-1 *temp-string* buf 488 (+ bar-pos 8) (if (>= f30-0 100.0)
-                                                  3
-                                                  0
-                                                  )
-        17
+       (s4-1
+        *temp-string*
+        buf
+        488
+        (+ bar-pos 8)
+        (the-as font-color (if (>= f30-0 100.0)
+                            3
+                            0
+                            )
+         )
+        (font-flags shadow right)
         )
        )
       f30-0
@@ -530,7 +549,12 @@
           )
     (set!
      (-> gif tag)
-     (new 'static 'gif-tag64 :nloop #x1 :eop #x1 :flg #x1 :nreg #x4)
+     (new 'static 'gif-tag64
+      :nloop #x1
+      :eop #x1
+      :flg (gif-flag reg-list)
+      :nreg #x4
+      )
      )
     (set!
      (-> gif regs)
@@ -618,7 +642,12 @@
           )
     (set!
      (-> gif tag)
-     (new 'static 'gif-tag64 :nloop #x1 :eop #x1 :flg #x1 :nreg #x9)
+     (new 'static 'gif-tag64
+      :nloop #x1
+      :eop #x1
+      :flg (gif-flag reg-list)
+      :nreg #x9
+      )
      )
     (set!
      (-> gif regs)
@@ -737,7 +766,7 @@
 ;; failed to figure out what this is:
 (when #f
   (set! *vblank-counter* 0)
-  (set! vblank-handler (the-as (function int) L5))
+  (set! vblank-handler L5)
   (install-handler 3 vblank-handler)
   )
 
@@ -807,7 +836,7 @@
     (set! (-> (the-as (pointer gs-reg64) gif-buf) 5) (gs-reg64 frame-1))
     (set!
      (-> (the-as (pointer gs-test) gif-buf) 6)
-     (new 'static 'gs-test :zte #x1 :ztst #x1)
+     (new 'static 'gs-test :zte #x1 :ztst (gs-ztest always))
      )
     (set! (-> (the-as (pointer gs-reg64) gif-buf) 7) (gs-reg64 test-1))
     (set!
@@ -817,7 +846,7 @@
     (set! (-> (the-as (pointer gs-reg64) gif-buf) 9) (gs-reg64 texa))
     (set!
      (-> (the-as (pointer gs-zbuf) gif-buf) 10)
-     (new 'static 'gs-zbuf :zbp #x1c0 :psm #x1 :zmsk #x1)
+     (new 'static 'gs-zbuf :zbp #x1c0 :psm (gs-psm ct24) :zmsk #x1)
      )
     (set! (-> (the-as (pointer gs-reg64) gif-buf) 11) (gs-reg64 zbuf-1))
     (set! (-> (the-as (pointer uint64) gif-buf) 12) (the-as uint 0))
@@ -899,7 +928,7 @@
     (set! (-> (the-as (pointer gs-reg64) gif-data) 5) (gs-reg64 frame-1))
     (set!
      (-> (the-as (pointer gs-test) gif-data) 6)
-     (new 'static 'gs-test :zte #x1 :ztst #x1)
+     (new 'static 'gs-test :zte #x1 :ztst (gs-ztest always))
      )
     (set! (-> (the-as (pointer gs-reg64) gif-data) 7) (gs-reg64 test-1))
     (set!
@@ -909,7 +938,7 @@
     (set! (-> (the-as (pointer gs-reg64) gif-data) 9) (gs-reg64 texa))
     (set!
      (-> (the-as (pointer gs-zbuf) gif-data) 10)
-     (new 'static 'gs-zbuf :zbp #x1c0 :psm #x1 :zmsk #x1)
+     (new 'static 'gs-zbuf :zbp #x1c0 :psm (gs-psm ct24) :zmsk #x1)
      )
     (set! (-> (the-as (pointer gs-reg64) gif-data) 11) (gs-reg64 zbuf-1))
     (set! (-> gif-data 12) (the-as uint 0))
@@ -921,7 +950,6 @@
   )
 
 ;; definition for function reset-display-gs-state
-;; INFO: Return type mismatch display vs none.
 (defun reset-display-gs-state ((disp display) (dma-buf dma-buffer) (oddeven int))
   (let* ((onscreen (-> disp on-screen))
          (hoff (* oddeven 8))
@@ -989,7 +1017,11 @@
     (set! (-> (the-as (pointer gs-reg64) gif-data) 5) (gs-reg64 frame-1))
     (set!
      (-> (the-as (pointer gs-test) gif-data) 6)
-     (new 'static 'gs-test :atst #x7 :zte #x1 :ztst #x2)
+     (new 'static 'gs-test
+      :atst (gs-atest not-equal)
+      :zte #x1
+      :ztst (gs-ztest greater-equal)
+      )
      )
     (set! (-> (the-as (pointer gs-reg64) gif-data) 7) (gs-reg64 test-1))
     (set!
@@ -999,7 +1031,7 @@
     (set! (-> (the-as (pointer gs-reg64) gif-data) 9) (gs-reg64 texa))
     (set!
      (-> (the-as (pointer gs-zbuf) gif-data) 10)
-     (new 'static 'gs-zbuf :zbp #x1c0 :psm #x1)
+     (new 'static 'gs-zbuf :zbp #x1c0 :psm (gs-psm ct24))
      )
     (set! (-> (the-as (pointer gs-reg64) gif-data) 11) (gs-reg64 zbuf-1))
     (set! (-> gif-data 12) (the-as uint 0))
@@ -1007,7 +1039,7 @@
     (set! (-> dma-buf base) (&+ (the-as pointer gif-data) 112))
     )
    )
-  (none)
+  disp
   )
 
 ;; definition for symbol *vu0-dma-list*, type dma-buffer

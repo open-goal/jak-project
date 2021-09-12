@@ -35,10 +35,7 @@
      (object-new
       allocation
       type-to-make
-      (+
-       (+ (/ (logand -8 (+ length 7)) 8) -1)
-       (the-as int (-> type-to-make size))
-       )
+      (+ (/ (logand -8 (+ length 7)) 8) -1 (-> type-to-make size))
       )
      )
     )
@@ -58,17 +55,14 @@
 (defmethod asize-of bit-array ((obj bit-array))
   (the-as
    int
-   (+
-    (-> obj type size)
-    (the-as uint (/ (logand -8 (+ (-> obj allocated-length) 7)) 8))
-    )
+   (+ (-> obj type size) (/ (logand -8 (+ (-> obj allocated-length) 7)) 8))
    )
   )
 
 ;; definition for method 9 of type bit-array
 (defmethod get-bit bit-array ((obj bit-array) (arg0 int))
   (let ((v1-2 (-> obj bytes (/ arg0 8))))
-   (nonzero? (logand v1-2 (ash 1 (logand arg0 7))))
+   (logtest? v1-2 (ash 1 (logand arg0 7)))
    )
   )
 
@@ -832,27 +826,8 @@
   )
 
 ;; definition for function vector4-dot
-;; WARN: Unsupported inline assembly instruction kind - [mula.s f0, f4]
-;; WARN: Unsupported inline assembly instruction kind - [madda.s f1, f5]
-;; WARN: Unsupported inline assembly instruction kind - [madda.s f2, f6]
-;; WARN: Unsupported inline assembly instruction kind - [madd.s f0, f3, f7]
 (defun vector4-dot ((arg0 vector) (arg1 vector))
-  (local-vars (f0-1 float))
-  (let ((f0-0 (-> arg0 x))
-        (f1-0 (-> arg0 y))
-        (f2-0 (-> arg0 z))
-        (f3-0 (-> arg0 w))
-        (f4-0 (-> arg1 x))
-        (f5-0 (-> arg1 y))
-        (f6-0 (-> arg1 z))
-        (f7-0 (-> arg1 w))
-        )
-   (.mula.s f0-0 f4-0)
-   (.madda.s f1-0 f5-0)
-   (.madda.s f2-0 f6-0)
-   (.madd.s f0-1 f3-0 f7-0)
-   )
-  f0-1
+  (vector4-dot arg0 arg1)
   )
 
 ;; definition for function vector4-dot-vu

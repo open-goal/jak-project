@@ -52,6 +52,10 @@ tasks:
       - task: decomp-file
       - python ./scripts/add-reference-test.py --file "{{.FILE}}"
       - task: offline-tests
+  add-reference-test-no-decomp:
+    cmds:
+      - python ./scripts/add-reference-test.py --file "{{.FILE}}"
+      - task: offline-tests
   update-reference-tests:
     cmds:
       - cmd: python ./scripts/default-file-or-folder.py --path failures
@@ -59,6 +63,21 @@ tasks:
         ignore_error: true
       - python ./scripts/update_decomp_reference.py ./failures ./test/decompiler/reference/
       - task: offline-tests
+  find-label-types:
+    cmds:
+      - python ./scripts/next-decomp-file.py --file "{{.FILE}}"
+      - task: decomp
+      - python ./scripts/find-label-types.py --file "{{.FILE}}"
+  type-test:
+    cmds:
+      - ./out/build/Release/bin/goalc-test.exe --gtest_brief=0 --gtest_filter="*TypeConsistency*"
+  # TODO - make a script that checks for function/method splits
+  # TODO - make a script to cleanup common cruft from finished file
+  file-good?:
+    cmds:
+      - task: type-test
+      - task: offline-tests
+      - task: find-label-types
   cast-repl:
     cmds:
       - cmd: python ./scripts/cast-repl.py

@@ -7,7 +7,7 @@ parser.add_argument("--file")
 parser.add_argument("--list", type=int)
 args = parser.parse_args()
 
-def update_file(file):
+def update_file(file, hack):
   new_file_contents = []
   print("Next file to decompile is - " + file[0])
   print("Target is - " + "goal_src/" + file[4] + "/" + file[0] + ".gc")
@@ -16,8 +16,10 @@ def update_file(file):
   with open("decompiler\config\jak1_ntsc_black_label.jsonc", "r") as config_file:
     cfg_lines = config_file.readlines()
     for line in cfg_lines:
-      if "allowed_objects" in line:
+      if "allowed_objects" in line and hack == False:
         line = "  \"allowed_objects\": [\"" + file[0] + "\"],\n"
+      elif "allowed_objects" in line and hack == True:
+        line = "  \"allowed_objects\": [\"" + file[1] + "\"],\n"
       new_file_contents.append(line)
   if len(new_file_contents) > 0:
     with open("decompiler\config\jak1_ntsc_black_label.jsonc", "w") as f:
@@ -27,7 +29,12 @@ def update_file(file):
 if args.file:
   for file in file_list:
     if file[0] == args.file:
-      update_file(file)
+      update_file(file, False)
+      break
+    elif file[1] == args.file:
+      # NOTE - kinda a hack, assumes -ag files always come after
+      update_file(file, True)
+      break
 else:
   list_eligible = []
   for file in file_list:

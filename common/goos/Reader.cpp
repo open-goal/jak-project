@@ -189,7 +189,17 @@ Object Reader::read_from_string(const std::string& str, bool add_top_level) {
  * Read a file
  */
 Object Reader::read_from_file(const std::vector<std::string>& file_path) {
-  auto textFrag = std::make_shared<FileText>(file_util::get_file_path(file_path));
+  std::string joined_name;
+
+  for (const auto& thing : file_path) {
+    if (!joined_name.empty()) {
+      joined_name += '/';
+    }
+
+    joined_name += thing;
+  }
+
+  auto textFrag = std::make_shared<FileText>(file_util::get_file_path(file_path), joined_name);
   db.insert(textFrag);
 
   auto result = internal_read(textFrag);
@@ -524,7 +534,7 @@ Object Reader::read_list(TextStream& ts, bool expect_close_paren) {
     db.link(rv, ts.text, start_offset);
     return rv;
   } else {
-    auto rv = build_list(objects);
+    auto rv = build_list(std::move(objects));
     db.link(rv, ts.text, start_offset);
     return rv;
   }

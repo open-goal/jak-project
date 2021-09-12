@@ -525,8 +525,9 @@ MethodInfo TypeSystem::declare_method(Type* type,
       if (!existing_info.type.is_compatible_child_method(ts, type->get_name())) {
         throw_typesystem_error(
             "The method {} of type {} was originally declared as {}, but has been "
-            "redeclared as {}\n",
-            method_name, type->get_name(), existing_info.type.print(), ts.print());
+            "redeclared as {}. Originally declared in {}\n",
+            method_name, type->get_name(), existing_info.type.print(), ts.print(),
+            existing_info.defined_in_type);
       }
 
       if ((existing_info.no_virtual || no_virtual) &&
@@ -655,6 +656,12 @@ bool TypeSystem::try_lookup_method(const std::string& type_name,
                                    MethodInfo* info) const {
   auto kv = m_types.find(type_name);
   if (kv == m_types.end()) {
+    // try to look up a forward declared type.
+    auto fwd_dec_type = lookup_type_allow_partial_def(type_name);
+    if (tc(TypeSpec("basic"), TypeSpec(fwd_dec_type->get_name()))) {
+      // only allow this for basics. It technically should be safe for structures as well.
+      return try_lookup_method(fwd_dec_type, method_name, info);
+    }
     return false;
   }
 
@@ -1369,6 +1376,9 @@ bool TypeSystem::typecheck_base_types(const std::string& input_expected,
   }
 
   if (expected == "seconds") {
+    if (actual == "seconds") {
+      return true;
+    }
     expected = "uint";
   }
 
@@ -1665,6 +1675,10 @@ std::string TypeSystem::generate_deftype_footer(const Type* type) const {
       methods_string.append(fmt::format(":behavior {} ", *behavior));
     }
 
+    if (info.type.base_type() == "state") {
+      methods_string.append(":state ");
+    }
+
     methods_string.append(fmt::format("{})\n    ", info.id));
   }
 
@@ -1826,5 +1840,22 @@ bool TypeSystem::should_use_virtual_methods(const Type* type, int method_id) con
 }
 
 bool TypeSystem::should_use_virtual_methods(const TypeSpec& type, int method_id) const {
-  return should_use_virtual_methods(lookup_type(type), method_id);
+  auto it = m_types.find(type.base_type());
+  if (it != m_types.end()) {
+    // it's a fully defined type
+    return should_use_virtual_methods(it->second.get(), method_id);
+  } else {
+    // it's a partially defined type.
+    // for now, we will prohibit calling a method on something that's defined only as a structure
+    // because we don't know if it's actually a basic, and should use virtual methods.
+    auto fwd_dec_type = lookup_type_allow_partial_def(type);
+    if (fwd_dec_type->get_name() == "structure") {
+      throw_typesystem_error(
+          "Type {} was forward declared as structure and it is not safe to call a method.",
+          type.print());
+      return false;
+    } else {
+      return should_use_virtual_methods(fwd_dec_type, method_id);
+    }
+  }
 }

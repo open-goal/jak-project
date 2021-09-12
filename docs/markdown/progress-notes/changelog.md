@@ -185,3 +185,21 @@
 - Stack arrays of uint128 will now be 16-byte aligned instead of sometimes only 8.
 - Inline arrays of structures are now allowed with `stack-no-clear`.
 - Creating arrays on the stack now must be done with `stack-no-clear` as they are not memset to 0 or constructed in any way.
+- The register allocator has been dramatically improved and generates ~5x fewer spill instructions and is able to eliminate more moves.
+- Added a `(print-debug-compiler-stats)` form to print out statistics related to register allocation and move elimination
+- Added `get-enum-vals` which returns a list of pairs. Each pair is the name (symbol) and value (int) for each value in the enum
+- It is now possible to set a 64-bit memory location from a float, if you insert a cast. It will zero-extend the float, just like any other float -> 64-bit conversion.
+- Added `:state` option to `:methods`.
+- Accessing the `enter` field of `state` will now magically give you a function with the right type.
+- It is possible to access fields of the parent of a forward declared type
+- Fixed a bug where casting a value to seconds, then setting a field of type seconds would incorrectly fail type-check
+- Fixed a bug where nested rlet's didn't properly share register constraints, leading to inefficient register allocation, and some rare cases a regalloc constraint error
+- Lambdas may now be used in static pairs.
+- Dynamically constructed bitfields created with `(new 'static ...` may now set fields with `structure` type.
+- Allocations on `'loading-level` are now permitted.
+- Converting a float larger than `INT32_MAX` now saturates to INT32_MAX, like on a real PS2.
+- Treating a float as a 64-bit integer now sign extends, like on a real PS2
+- It is now an error to have two arguments with the same name.
+- It is now a warning to redefine a constant.
+- Fix a bug where the size of static boxed arrays was only `length` and not `allocated-length`
+- It is now possible to call a method on a forward declared type. The forward declared type must be a basic.

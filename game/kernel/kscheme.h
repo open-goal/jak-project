@@ -5,9 +5,6 @@
  * Implementation of GOAL runtime.
  */
 
-#ifndef JAK_KSCHEME_H
-#define JAK_KSCHEME_H
-
 #include "common/common_types.h"
 #include "common/goal_constants.h"
 #include "kmachine.h"
@@ -75,10 +72,12 @@ struct Type {
   }
 };
 
+constexpr uint32_t UNKNOWN_PP = UINT32_MAX;
+
 u32 crc32(const u8* data, s32 size);
 void kscheme_init_globals();
 void init_crc();
-u64 alloc_from_heap(u32 heapSymbol, u32 type, s32 size);
+u64 alloc_from_heap(u32 heapSymbol, u32 type, s32 size, u32 pp);
 Ptr<Symbol> intern_from_c(const char* name);
 Ptr<Type> intern_type_from_c(const char* name, u64 methods);
 Ptr<Type> set_type_values(Ptr<Type> type, Ptr<Type> parent, u64 flags);
@@ -106,5 +105,3 @@ u64 call_goal_function_by_name(const char* name);
 u64 call_method_of_type_arg2(u32 arg, Ptr<Type> type, u32 method_id, u32 a1, u32 a2);
 Ptr<Type> alloc_and_init_type(Ptr<Symbol> sym, u32 method_count);
 Ptr<Symbol> set_fixed_symbol(u32 offset, const char* name, u32 value);
-
-#endif  // JAK_KSCHEME_H

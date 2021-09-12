@@ -9,6 +9,8 @@
 #include "common/goos/Object.h"
 #include "common/type_system/TypeSystem.h"
 #include "decompiler/Disasm/DecompilerLabel.h"
+#include "common/type_system/state.h"
+#include "decompiler/IR2/LabelDB.h"
 
 namespace decompiler {
 class Form;
@@ -113,6 +115,12 @@ class SimpleExpressionElement : public FormElement {
                                  FormStack& stack,
                                  std::vector<FormElement*>* result,
                                  bool allow_side_effects);
+  void update_from_stack_float_2_nestable(const Env& env,
+                                          FixedOperatorKind kind,
+                                          FormPool& pool,
+                                          FormStack& stack,
+                                          std::vector<FormElement*>* result,
+                                          bool allow_side_effects);
   void update_from_stack_float_1(const Env& env,
                                  FixedOperatorKind kind,
                                  FormPool& pool,
@@ -216,11 +224,12 @@ class SimpleExpressionElement : public FormElement {
                                               FormStack& stack,
                                               std::vector<FormElement*>* result,
                                               bool allow_side_effects);
-  void update_from_stack_vector_3_dot(const Env& env,
-                                      FormPool& pool,
-                                      FormStack& stack,
-                                      std::vector<FormElement*>* result,
-                                      bool allow_side_effects);
+  void update_from_stack_vector_dot(FixedOperatorKind kind,
+                                    const Env& env,
+                                    FormPool& pool,
+                                    FormStack& stack,
+                                    std::vector<FormElement*>* result,
+                                    bool allow_side_effects);
 
   const SimpleExpression& expr() const { return m_expr; }
 
@@ -631,6 +640,7 @@ class ReturnElement : public FormElement {
   void collect_vars(RegAccessSet& vars, bool recursive) const override;
   void push_to_stack(const Env& env, FormPool& pool, FormStack& stack) override;
   void get_modified_regs(RegSet& regs) const override;
+  std::optional<TypeSpec> return_type;
 };
 
 /*!
@@ -1346,19 +1356,20 @@ class DecompiledDataElement : public FormElement {
  public:
   // DecompiledDataElement(goos::Object description);
   DecompiledDataElement(const DecompilerLabel& label,
-                        const std::optional<LabelType>& type_hint = {});
+                        const std::optional<LabelInfo>& label_info = {});
   goos::Object to_form_internal(const Env& env) const override;
   void apply(const std::function<void(FormElement*)>& f) override;
   void apply_form(const std::function<void(Form*)>& f) override;
   void collect_vars(RegAccessSet& vars, bool recursive) const override;
   void get_modified_regs(RegSet& regs) const override;
   void do_decomp(const Env& env, const LinkedObjectFile* file);
+  DecompilerLabel label() const { return m_label; }
 
  private:
   bool m_decompiled = false;
   goos::Object m_description;
   DecompilerLabel m_label;
-  std::optional<LabelType> m_type_hint;
+  std::optional<LabelInfo> m_label_info;
 };
 
 class LetElement : public FormElement {
@@ -1547,6 +1558,27 @@ class LabelElement : public FormElement {
   int m_lid = -1;
 };
 
+class LabelDerefElement : public FormElement {
+ public:
+  LabelDerefElement(int lid, int size, LoadVarOp::Kind load_kind, RegisterAccess var);
+  goos::Object to_form_internal(const Env& env) const override;
+  void apply(const std::function<void(FormElement*)>& f) override;
+  void apply_form(const std::function<void(Form*)>& f) override;
+  void collect_vars(RegAccessSet& vars, bool recursive) const override;
+  void get_modified_regs(RegSet& regs) const override;
+  void update_from_stack(const Env& env,
+                         FormPool& pool,
+                         FormStack& stack,
+                         std::vector<FormElement*>* result,
+                         bool allow_side_effects) override;
+
+ private:
+  int m_lid = -1;
+  int m_size = -1;
+  LoadVarOp::Kind m_load_kind = LoadVarOp::Kind::INVALID;
+  RegisterAccess m_var;
+};
+
 class GetSymbolStringPointer : public FormElement {
  public:
   GetSymbolStringPointer(Form* src);
@@ -1564,6 +1596,69 @@ class GetSymbolStringPointer : public FormElement {
 
  private:
   Form* m_src = nullptr;
+};
+
+class DefstateElement : public FormElement {
+ public:
+  struct Entry {
+    StateHandler kind;
+    Form* val = nullptr;
+    bool is_behavior = false;
+  };
+  DefstateElement(const std::string& process_type,
+                  const std::string& state_name,
+                  const std::vector<Entry>& entries,
+                  bool is_virtual);
+
+  goos::Object to_form_internal(const Env& env) const override;
+  void apply(const std::function<void(FormElement*)>& f) override;
+  void apply_form(const std::function<void(Form*)>& f) override;
+  void collect_vars(RegAccessSet& vars, bool recursive) const override;
+  void update_from_stack(const Env& env,
+                         FormPool& pool,
+                         FormStack& stack,
+                         std::vector<FormElement*>* result,
+                         bool allow_side_effects) override;
+  void get_modified_regs(RegSet& regs) const override;
+  std::vector<Entry>& entries() { return m_entries; }
+
+ private:
+  std::string m_process_type;
+  std::string m_state_name;
+  std::vector<Entry> m_entries;
+  bool m_is_virtual = false;
+};
+
+class ResLumpMacroElement : public FormElement {
+ public:
+  enum class Kind { DATA, STRUCT, VALUE, INVALID };
+  ResLumpMacroElement(Kind kind,
+                      Form* lump_object,
+                      Form* property_name,
+                      Form* default_arg,
+                      Form* tag_ptr,
+                      Form* time,
+                      const TypeSpec& result_type);
+  goos::Object to_form_internal(const Env& env) const override;
+  void apply(const std::function<void(FormElement*)>& f) override;
+  void apply_form(const std::function<void(Form*)>& f) override;
+  void collect_vars(RegAccessSet& vars, bool recursive) const override;
+  void update_from_stack(const Env& env,
+                         FormPool& pool,
+                         FormStack& stack,
+                         std::vector<FormElement*>* result,
+                         bool allow_side_effects) override;
+  void get_modified_regs(RegSet& regs) const override;
+  void apply_cast(const TypeSpec& new_type) { m_result_type = new_type; }
+
+ private:
+  Kind m_kind = Kind::INVALID;
+  Form* m_lump_object = nullptr;
+  Form* m_property_name = nullptr;
+  Form* m_default_arg = nullptr;  // may be null
+  Form* m_tag_ptr = nullptr;      // may be null
+  Form* m_time = nullptr;         // may be null
+  TypeSpec m_result_type;
 };
 
 /*!
@@ -1724,6 +1819,14 @@ class FormPool {
     auto elt = new T(std::forward<Args>(args)...);
     m_elements.emplace_back(elt);
     auto form = alloc_single_form(parent, elt);
+    return form;
+  }
+
+  template <typename T, class... Args>
+  Form* form(Args&&... args) {
+    auto elt = new T(std::forward<Args>(args)...);
+    m_elements.emplace_back(elt);
+    auto form = alloc_single_form(nullptr, elt);
     return form;
   }
 

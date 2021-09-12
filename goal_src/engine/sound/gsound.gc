@@ -5,6 +5,9 @@
 ;; name in dgo: gsound
 ;; dgos: GAME, ENGINE
 
+;; use this constant to enable/disable the sound functions. debug purposes.
+(defglobalconstant PC_DEBUG_SOUND_ENABLE #f)
+
 ;; The sound playback stuff is all on the IOP so we use IOP RPCs to control it.
 ;; Ther is a "player" that plays sound effects, and a "loader" that takes care of loading banks.
 (define *sound-player-rpc* (new 'global 'rpc-buffer-pair (the uint (size-of sound-rpc-union)) (the-as uint 128) RPC-SOUND-PLAYER))
@@ -163,7 +166,7 @@
   0
   )
 
-(defun set-language ((lang int))
+(defun set-language ((lang language-enum))
   (kset-language lang)
   (let ((cmd (the sound-rpc-set-language (add-element *sound-loader-rpc*))))
    (set! (-> cmd command) (sound-command set-language))
@@ -182,32 +185,7 @@
   )
 
 (defun-debug sound-command->string ((cmd sound-command))
-  (case cmd
-    (((sound-command unload-music)) "unload-music")
-    (((sound-command list-sounds)) "list-sounds")
-    (((sound-command shutdown)) "shutdown")
-    (((sound-command set-ear-trans)) "set-ear-trans")
-    (((sound-command set-reverb)) "set-reverb")
-    (((sound-command set-flava)) "set-flava")
-    (((sound-command set-language)) "set-language")
-    (((sound-command reload-info)) "reload-info")
-    (((sound-command set-sound-falloff)) "set-sound-falloff")
-    (((sound-command set-falloff-curve)) "set-falloff-curve")
-    (((sound-command get-irx-version)) "get-irx-version")
-    (((sound-command continue-group)) "continue-group")
-    (((sound-command stop-group)) "stop-group")
-    (((sound-command pause-group)) "pause-group")
-    (((sound-command set-master-volume)) "set-master-volume")
-    (((sound-command set-param)) "set-param")
-    (((sound-command continue-sound)) "continue-sound")
-    (((sound-command stop-sound)) "stop-sound")
-    (((sound-command pause-sound)) "pause-sound")
-    (((sound-command play)) "play")
-    (((sound-command unload-bank)) "unload-bank")
-    (((sound-command load-music)) "load-music")
-    (((sound-command load-bank)) "load-bank")
-    (else "*unknown*")
-    )
+  (enum->string sound-command cmd)
   )
 
 (defun sound-buffer-dump ()
@@ -253,17 +231,17 @@
   (cond
     ((not (is-cd-in?))
      (if (or (not *progress-process*)
-             (!= (-> *progress-process* 0 display-state) 32))
+             (!= (-> *progress-process* 0 display-state) (progress-screen no-disc)))
 
-       (activate-progress *dproc* 32)
+       (activate-progress *dproc* (progress-screen no-disc))
        )
      )
 
     ((not (is-cd-good?))
      (if (or (not *progress-process*)
-             (!= (-> *progress-process* 0 display-state) 33))
+             (!= (-> *progress-process* 0 display-state) (progress-screen bad-disc)))
 
-       (activate-progress *dproc* 33)
+       (activate-progress *dproc* (progress-screen bad-disc))
        )
      )
     )
@@ -326,15 +304,18 @@
 
 (defun sound-set-volume ((group uint) (volume float))
 
+  (#when PC_DEBUG_SOUND_ENABLE
   (let ((cmd (the sound-rpc-set-master-volume (get-sound-buffer-entry))))
       (set! (-> cmd command) (sound-command set-master-volume))
       (set! (-> cmd group) group)
       (set! (-> cmd volume) (the int (* 10.24 volume)))
       )
+  )
   0
   )
 
 (defun sound-set-reverb ((arg0 int) (arg1 float) (arg2 float) (arg3 uint))
+  (#when PC_DEBUG_SOUND_ENABLE
   (let ((cmd (the-as sound-rpc-set-reverb (get-sound-buffer-entry))))
     (set! (-> cmd command) (sound-command set-reverb))
     (set! (-> cmd core) arg3)
@@ -342,37 +323,42 @@
     (set! (-> cmd left) (the-as uint (the int (* 32767.0 arg1))))
     (set! (-> cmd right) (the-as uint (the int (* 32767.0 arg2))))
     )
+  )
   0
   )
 
 (defun sound-set-ear-trans ((ear-trans vector) (cam-trans vector) (cam-angle float))
 
+  (#when PC_DEBUG_SOUND_ENABLE
   (let ((cmd (the sound-rpc-set-ear-trans (get-sound-buffer-entry))))
       (set! (-> cmd command) (sound-command set-ear-trans))
       (sound-trans-convert (-> cmd ear-trans) ear-trans)
       (sound-trans-convert (-> cmd cam-trans) cam-trans)
       (set! (-> cmd cam-angle) (sound-angle-convert cam-angle))
       )
+  )
   0
   )
 
 (defmacro sound-trans-from-process (cmd sound-trans)
   "Macro for getting an appropriate sound-trans from a process-drawable, if possible"
 
-  `(begin
-    (with-pp
-      (let ((proc (the process-drawable pp)))
-        (when (= ,sound-trans #t)
-          (if (and proc
-                   (type-type? (-> proc type) process-drawable)
-                   (nonzero? (-> proc root)))
-            (set! ,sound-trans (-> proc root trans))
-            (set! ,sound-trans (the vector #f))
-            )
+  `(with-pp
+    (let ((proc (the process-drawable pp)))
+      (format 0 "get proc~%")
+      (when (= ,sound-trans #t)
+        (format 0 "trans #t~%")
+        (if (and proc
+                 (type-type? (-> proc type) process-drawable)
+                 (nonzero? (-> proc root)))
+          (set! ,sound-trans (-> proc root trans))
+          (set! ,sound-trans (the vector #f))
           )
+        (format 0 "trans is ~A~%" ,sound-trans)
         )
       )
 
+    (format 0 "convert~%" ,sound-trans)
     (sound-trans-convert (-> ,cmd parms trans) ,sound-trans)
     )
   )
@@ -380,6 +366,7 @@
 (defun sound-play-by-name ((name sound-name) (id sound-id) (vol int) (pitch int) (bend int) (group uint) (trans vector))
   "Play a sound called name with the specified params"
 
+  (#when PC_DEBUG_SOUND_ENABLE
   (let ((sound-trans trans))
       (when *sound-player-enable*
         (let ((cmd (the sound-rpc-play (get-sound-buffer-entry))))
@@ -393,16 +380,19 @@
             (set! (-> cmd parms pitch-mod) pitch)
             (set! (-> cmd parms bend) bend)
 
+            (format 0 "stfp~%")
             (sound-trans-from-process cmd sound-trans)
             )
         )
       )
+  )
   id
   )
 
 (defun sound-play-by-spec ((spec sound-spec) (id sound-id) (sound-trans vector))
   "Play a sound from the given spec"
 
+  (#when PC_DEBUG_SOUND_ENABLE
   (when *sound-player-enable*
     (let ((cmd (the sound-rpc-play (get-sound-buffer-entry))))
 
@@ -422,76 +412,92 @@
         (sound-trans-from-process cmd sound-trans)
         )
     )
+  )
   id
   )
 
 (defun sound-pause ((id sound-id))
 
+  (#when PC_DEBUG_SOUND_ENABLE
   (let ((cmd (the sound-rpc-pause-sound (get-sound-buffer-entry))))
       (set! (-> cmd command) (sound-command pause-sound))
       (set! (-> cmd id) id)
       )
+  )
   0
   )
 
 (defun sound-stop ((id sound-id))
 
+  (#when PC_DEBUG_SOUND_ENABLE
   (let ((cmd (the sound-rpc-stop-sound (get-sound-buffer-entry))))
       (set! (-> cmd command) (sound-command stop-sound))
       (set! (-> cmd id) id)
       )
+  )
   0
   )
 
 (defun sound-continue ((id sound-id))
 
+  (#when PC_DEBUG_SOUND_ENABLE
   (let ((cmd (the sound-rpc-continue-sound (get-sound-buffer-entry))))
       (set! (-> cmd command) (sound-command continue-sound))
       (set! (-> cmd id) id)
       )
+  )
   0
   )
 
 (defun sound-group-pause ((group uint))
 
+  (#when PC_DEBUG_SOUND_ENABLE
   (let ((cmd (the sound-rpc-pause-group (get-sound-buffer-entry))))
       (set! (-> cmd command) (sound-command pause-group))
       (set! (-> cmd group) group)
       )
+  )
   0
   )
 
 (defun sound-group-stop ((group uint))
 
+  (#when PC_DEBUG_SOUND_ENABLE
   (let ((cmd (the sound-rpc-stop-group (get-sound-buffer-entry))))
       (set! (-> cmd command) (sound-command stop-group))
       (set! (-> cmd group) group)
       )
+  )
   0
   )
 
 (defun sound-group-continue ((group uint))
 
+  (#when PC_DEBUG_SOUND_ENABLE
   (let ((cmd (the sound-rpc-continue-group (get-sound-buffer-entry))))
       (set! (-> cmd command) (sound-command continue-group))
       (set! (-> cmd group) group)
       )
+  )
   0
   )
 
 (defun sound-set-falloff-curve ((curve int) (falloff float) (ease float))
 
+  (#when PC_DEBUG_SOUND_ENABLE
   (let ((cmd (the sound-rpc-set-falloff-curve (get-sound-buffer-entry))))
       (set! (-> cmd command) (sound-command set-falloff-curve))
       (set! (-> cmd curve) curve)
       (set! (-> cmd falloff) (the int (* 4096.0 falloff)))
       (set! (-> cmd ease) (the int (* 4096.0 ease)))
       )
+  )
   0
   )
 
 (defun sound-set-sound-falloff ((name sound-name) (falloff-min int) (falloff-max int) (curve int))
 
+  (#when PC_DEBUG_SOUND_ENABLE
   (let ((cmd (the sound-rpc-set-sound-falloff (get-sound-buffer-entry))))
       (set! (-> cmd command) (sound-command set-sound-falloff))
       (set! (-> cmd name) name)
@@ -499,15 +505,18 @@
       (set! (-> cmd max) falloff-max)
       (set! (-> cmd curve) curve)
       )
+  )
   0
   )
 
 (defun sound-set-flava ((flava uint))
 
+  (#when PC_DEBUG_SOUND_ENABLE
   (let ((cmd (the sound-rpc-set-flava (get-sound-buffer-entry))))
       (set! (-> cmd command) (sound-command set-flava))
       (set! (-> cmd flava) flava)
       )
+  )
   0
   )
 
@@ -588,11 +597,11 @@
                )
              (cond
                (sound-times
-                (set! (-> obj time-base) (the-as uint (the int (* 300.0 (-> sound-times 0)))))
-                (set! (-> obj time-random) (the-as uint (the int (* 300.0 (-> sound-times 1)))))
+                (set! (-> obj time-base) (the int (* 300.0 (-> sound-times 0))))
+                (set! (-> obj time-random) (the int (* 300.0 (-> sound-times 1))))
                 )
                (else
-                (set! (-> obj time-base) (the-as uint -1))
+                (set! (-> obj time-base) -1)
                 )
                )
              (set! (-> obj trans quad) (-> sound-trans quad))
@@ -617,14 +626,13 @@
       )
   (cond
     ((-> obj spec)
-     (when (or (< (the-as int (-> obj time-base)) 0)
-               (>= (the-as int (-> *display* base-frame-counter))
-                   (the-as int (-> obj play-time)))
+     (when (or (< (-> obj time-base) 0)
+               (>= (-> *display* base-frame-counter) (-> obj play-time))
                )
-       (when (>= (the-as int (-> obj time-base)) 0)
+       (when (>= (-> obj time-base) 0)
          (set! (-> obj play-time) (+ (-> *display* base-frame-counter)
                                      (-> obj time-base)
-                                     (the-as uint (rand-vu-int-count (the-as int (-> obj time-random))))
+                                     (rand-vu-int-count (-> obj time-random))
                                      ))
          (set! (-> obj playing-id) (new-sound-id))
          )
@@ -645,7 +653,7 @@
                      (vector-vector-distance (ear-trans) (-> obj trans))))
              (return 0)
              )
-         (when (and *debug-effect-control* (>= (the-as int (-> obj time-base)) 0))
+         (when (and *debug-effect-control* (>= (-> obj time-base) 0))
            (with-pp
              (format #t "(~5D) effect sound ~A ~G "
                      (-> *display* base-frame-counter)
@@ -666,7 +674,7 @@
      )
     (else
      (cond
-       ((< (the-as int (-> obj time-base)) 0)
+       ((< (-> obj time-base) 0)
         (set! (-> obj playing-id) (sound-play-by-name
                                    (-> obj name)
                                    (-> obj playing-id)
@@ -677,8 +685,7 @@
                                    (-> obj trans)))
         )
        (else
-        (when (>= (the-as int (-> *display* base-frame-counter))
-                  (the-as int (-> obj play-time)))
+        (when (>= (-> *display* base-frame-counter) (-> obj play-time))
           (set! (-> obj playing-id) (sound-play-by-name
                                      (-> obj name)
                                      (new-sound-id)
@@ -689,7 +696,7 @@
                                      (-> obj trans)))
           (set! (-> obj play-time) (+ (-> *display* base-frame-counter)
                                       (-> obj time-base)
-                                      (the-as uint (rand-vu-int-count (the-as int (-> obj time-random))))
+                                      (rand-vu-int-count (-> obj time-random))
                                       ))
           )
         )
@@ -759,12 +766,12 @@
   (dotimes (ch 24)
     (draw-string-xy
         (if (zero? (-> *sound-iop-info* chinfo ch)) "." "X")
-        buf (+ (* ch 16) 16) 48 0 1)
+        buf (+ (* ch 16) 16) 48 (font-color default) (font-flags shadow))
     )
   (dotimes (ch 24)
     (draw-string-xy
         (if (zero? (-> *sound-iop-info* chinfo (+ ch 24))) "." "X")
-        buf (+ (* ch 16) 16) 64 0 1)
+        buf (+ (* ch 16) 16) 64 (font-color default) (font-flags shadow))
     )
   0
   )
@@ -773,11 +780,11 @@
   (draw-string-xy
       (string-format "~8D [~4D]" (-> *sound-iop-info* freemem)
                                  (shr (-> *sound-iop-info* freemem) 10))
-      buf 32 96 0 1)
+      buf 32 96 (font-color default) (font-flags shadow))
   (draw-string-xy
       (string-format "~8D [~4D]" (-> *sound-iop-info* freemem2)
                                  (shr (-> *sound-iop-info* freemem2) 10))
-      buf 32 64 0 1)
+      buf 32 64 (font-color default) (font-flags shadow))
   0
   )
 
@@ -851,7 +858,7 @@
 
   (dotimes (i (-> *flava-table* count))
     (if (= (-> *flava-table* row i music) music)
-      (return (-> *flava-table* row i flava n))
+      (return (the-as int (-> *flava-table* row i flava n)))
       )
     )
   0
@@ -885,7 +892,7 @@
 2 : flutflut
 3 : to-maincave
 4 : to-snow
-5 : sage-green
+5 : sage
 6 : assistant
 7 : birdlady
 8 : mayor

@@ -37,6 +37,8 @@ class TP_Type {
     LEFT_SHIFTED_BITFIELD,  // (bitfield << some-constant)
     LABEL_ADDR,
     ENTER_STATE_FUNCTION,
+    RUN_FUNCTION_IN_PROCESS_FUNCTION,
+    SET_TO_RUN_FUNCTION,
     INVALID
   } kind = Kind::UNINITIALIZED;
   TP_Type() = default;
@@ -67,6 +69,8 @@ class TP_Type {
       case Kind::PCPYUD_BITFIELD_AND:
       case Kind::LABEL_ADDR:
       case Kind::ENTER_STATE_FUNCTION:
+      case Kind::RUN_FUNCTION_IN_PROCESS_FUNCTION:
+      case Kind::SET_TO_RUN_FUNCTION:
         return false;
       case Kind::UNINITIALIZED:
       case Kind::OBJECT_NEW_METHOD:
@@ -262,9 +266,22 @@ class TP_Type {
     return result;
   }
 
-  static TP_Type make_label_addr() {
+  static TP_Type make_label_addr(int label_id) {
     TP_Type result;
     result.kind = Kind::LABEL_ADDR;
+    result.m_int = label_id;
+    return result;
+  }
+
+  static TP_Type make_run_function_in_process_function() {
+    TP_Type result;
+    result.kind = Kind::RUN_FUNCTION_IN_PROCESS_FUNCTION;
+    return result;
+  }
+
+  static TP_Type make_set_to_run_function() {
+    TP_Type result;
+    result.kind = Kind::SET_TO_RUN_FUNCTION;
     return result;
   }
 
@@ -340,6 +357,11 @@ class TP_Type {
   bool flipped_add_order() const {
     assert(kind == Kind::OBJECT_PLUS_PRODUCT_WITH_CONSTANT);
     return m_flipped_order;
+  }
+
+  int label_id() const {
+    assert(kind == Kind::LABEL_ADDR);
+    return m_int;
   }
 
  private:

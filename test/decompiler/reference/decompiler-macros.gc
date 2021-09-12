@@ -94,14 +94,44 @@
 (defmacro handle->process (handle)
   ;; the actual implementation is more clever than this.
   ;; Checks PID.
-  `(if (-> ,handle process)
-       (let ((proc (-> (-> ,handle process))))
-         (if (= (-> ,handle pid) (-> proc pid))
-             proc
-             )
+  `(let ((the-handle ,handle))
+     (if (-> the-handle process)
+         (let ((proc (-> (-> the-handle process))))
+           (if (= (-> the-handle pid) (-> proc pid))
+               proc
+               )
+           )
          )
-       )
+     )
   )
+
+(defmacro ppointer->process (ppointer)
+  ;; convert a (pointer process) to a process.
+  ;; this uses the self field, which seems to always just get set to the object.
+  ;; perhaps when deleting a process you could have it set self to #f?
+  ;; I don't see this happen anywhere though, so it's not clear.
+  `(let ((the-pp ,ppointer))
+     (the process (if the-pp (-> the-pp 0 self)))
+     )
+  )
+
+(defmacro process->ppointer (proc)
+  ;"safely get a (pointer process) from a process, returning #f if invalid."
+  `(let ((the-proc ,proc))
+     (if the-proc (-> the-proc ppointer))
+     )
+  )
+
+(defmacro ppointer->handle (pproc)
+  `(let ((the-process ,pproc))
+      (new 'static 'handle :process the-process :pid (-> the-process 0 pid))
+      )
+  )
+
+(defmacro process->handle (proc)
+  `(ppointer->handle (process->ppointer ,proc))
+  )
+
 
 (defmacro defbehavior (name process-type bindings &rest body)
   (if (and
@@ -212,6 +242,11 @@
      (set! (-> pp next-state) ,next-state)
      ((the (function _varargs_ object) enter-state) ,@args)
      )
+  )
+
+(defmacro go-virtual (state-name &key (proc self) &rest args)
+  "Change the current process to the virtual state of the given process."
+  `(go (method-of-object ,proc ,state-name) ,@args)
   )
 
 (defmacro static-sound-name (str)
@@ -328,5 +363,154 @@
       (.mul.x.vf temp ,src temp)
       (.ftoi.vf ,dst temp)
       )
+    )
+  )
+
+;; use a compile-time list to keep track of the type of an anonymous behavior.
+(seval (define *defstate-type-stack* '()))
+(desfun def-state-check-behavior (beh-form beh-type)
+  "check if code block is an anonymous behavior. needed for anonymous behaviors on defstate."
+
+  (when (and (pair? beh-form) (eq? (first beh-form) 'behavior))
+    (push! *defstate-type-stack* beh-type)
+    )
+  )
+(defmacro defstate (state-name parents
+                               &key (virtual #f)
+                               &key (event #f)
+                               &key (enter #f)
+                               &key (trans #f)
+                               &key (exit #f)
+                               &key (code #f)
+                               &key (post #f)
+                               )
+  "Define a new state!"
+  
+  (with-gensyms (new-state)
+    (let ((defstate-type (first parents)))
+      (when (not (null? *defstate-type-stack*))
+        (ferror "*defstate-type-stack* leaked! An error probably happened in a previous defstate. stack is: {}" *defstate-type-stack*)
+        )
+      (set! *defstate-type-stack* '())
+      (def-state-check-behavior event defstate-type)
+      (def-state-check-behavior enter defstate-type)
+      (def-state-check-behavior trans defstate-type)
+      (def-state-check-behavior exit defstate-type)
+      (def-state-check-behavior code defstate-type)
+      (def-state-check-behavior post defstate-type)
+      `(let ((,new-state (new 'static 'state
+                              :name (quote ,state-name)
+                              :next #f
+                              :exit #f
+                              :code #f
+                              :trans #f
+                              :post #f
+                              :enter #f
+                              :event #f
+                              )
+                         ))
+         ;; the compiler will set the fields of the given state and define the symbol.
+         ;; This way it can check the individual function types, make sure they make sense, and create
+         ;; a state with the appropriate type.
+         ,(if virtual
+              `(define-virtual-state-hook ,state-name ,defstate-type ,new-state :event ,event :enter ,enter :trans ,trans :exit ,exit :code ,code :post ,post)
+              `(define-state-hook ,state-name ,defstate-type ,new-state :event ,event :enter ,enter :trans ,trans :exit ,exit :code ,code :post ,post)
+              )
+         
+         )
+      )
+    )
+  )
+
+
+(defmacro behavior (bindings &rest body)
+  "Define an anonymous behavior for a process state. This may only be used inside a defstate!"
+
+  (let ((behavior-type (first *defstate-type-stack*)))
+      (pop! *defstate-type-stack*)
+      `(lambda :behavior ,behavior-type ,bindings ,@body)
+      )
+  )
+
+(defmacro sext32 (in)
+  `(sar (shl ,in 32) 32)
+  )
+
+(defmacro .sra (result in sa)
+  `(set! ,result (sext32 (sar (logand #xffffffff (the-as int ,in)) ,sa)))
+  )
+
+(defmacro res-lump-float (lump name &key (tag-ptr (the-as (pointer res-tag) #f)) &key (default 0.0))
+  "Helper macro to get a float from a res-lump with no interpolation."
+  `((method-of-type res-lump get-property-value-float)
+                  ,lump
+                  ,name
+                  'interp
+                  -1000000000.0
+                  ,default
+                  ,tag-ptr
+                  *res-static-buf*
+                  )
+  )
+
+(defmacro res-lump-data (lump name type &key (tag-ptr (the-as (pointer res-tag) #f)) &key (time -1000000000.0))
+  "Helper macro to get data from a res-lump without interpolation."
+  `(the-as ,type ((method-of-type res-lump get-property-data)
+                  ,lump
+                  ,name
+                  'interp
+                  ,time
+                  (the-as pointer #f)
+                  ,tag-ptr
+                  *res-static-buf*
+                  )
+           )
+  )
+
+
+(defmacro res-lump-struct (lump name type &key (tag-ptr (the-as (pointer res-tag) #f)))
+  `(the-as ,type ((method-of-type res-lump get-property-struct)
+                  ,lump
+                  ,name
+                  'interp
+                  -1000000000.0
+                  (the-as structure #f)
+                  ,tag-ptr
+                  *res-static-buf*
+                  )
+           )
+  )
+
+(defmacro res-lump-value (lump name type &key (tag-ptr (the-as (pointer res-tag) #f)) &key (default (the-as uint128 0)))
+  "Helper macro to get a value from a res-lump with no interpolation."
+  `(the-as ,type ((method-of-type res-lump get-property-value)
+                  ,lump
+                  ,name
+                  'interp
+                  -1000000000.0
+                  ,default
+                  ,tag-ptr
+                  *res-static-buf*
+                  )
+           )
+  )
+
+;; run the given function in a process right now.
+;; will return to here when:
+;;  - you return
+;;  - you deactivate
+;;  - you go
+;;  - you throw to 'initialize
+(defmacro run-now-in-process (proc func &rest args)
+  `((the (function _varargs_ object) run-function-in-process)
+    ,proc ,func ,@args
+    )
+  )
+
+;; sets the main thread of the given process to run the given thing.
+;; this resets the main thread stack back to the top
+(defmacro run-next-time-in-process (proc func &rest args)
+  `((the (function _varargs_ object) set-to-run)
+    (-> ,proc main-thread) ,func ,@args
     )
   )

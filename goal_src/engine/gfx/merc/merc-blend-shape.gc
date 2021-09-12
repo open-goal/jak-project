@@ -5,3 +5,118 @@
 ;; name in dgo: merc-blend-shape
 ;; dgos: GAME, ENGINE
 
+;; The merc-blend-shape renderer does face animations.
+;; This is missing most functions right now, but just has the types that we need for
+;; looking into merc.
+
+(define *stats-blerc* #f)
+
+(deftype blerc-block-header (structure)
+  ((tag       generic-merc-tag :inline :offset-assert   0)
+   (vtx-count uint32                   :offset-assert  16)
+   (overlap   uint32                   :offset-assert  20)
+   (lump-dest uint32                   :offset-assert  24)
+   (lump-qwc  uint32                   :offset-assert  28)
+   )
+  :method-count-assert 9
+  :size-assert         #x20
+  :flag-assert         #x900000020
+  )
+
+(deftype blerc-block (structure)
+  ((output uint8              848     :offset-assert   0)
+   (header blerc-block-header :inline :offset-assert 848)
+   )
+  :method-count-assert 9
+  :size-assert         #x370
+  :flag-assert         #x900000370
+  )
+
+(deftype blerc-dcache (structure)
+  ((repl-mult vector 40 :inline :offset-assert   0)
+   )
+  :method-count-assert 9
+  :size-assert         #x280
+  :flag-assert         #x900000280
+  )
+
+(deftype blerc-globals (structure)
+  ((first            uint32  :offset-assert   0)
+   (next             uint32  :offset-assert   4)
+   (min-val          int16   :offset-assert   8)
+   (max-val          int16   :offset-assert  10)
+   (fragment-count   int32   :offset-assert  12)
+   (vtx-count        int32   :offset-assert  16)
+   (target-vtx-count int32   :offset-assert  20)
+   )
+  :method-count-assert 9
+  :size-assert         #x18
+  :flag-assert         #x900000018
+  )
+
+(define *blerc-globals* (new 'global 'blerc-globals))
+
+(deftype blerc-context (structure)
+  ((block-a blerc-block :inline :offset-assert   0)
+   (dummy   uint8       7312    :offset-assert 880)
+   (block-b blerc-block :inline :offset-assert 8192)
+   )
+  :method-count-assert 9
+  :size-assert         #x2370
+  :flag-assert         #x900002370
+  )
+
+(defun-debug blerc-stats-init ()
+  (when *stats-blerc*
+   (when (nonzero? (-> *blerc-globals* fragment-count))
+    (format *stdcon* "~%BLERC (merc blend target) STATS~%")
+    (format *stdcon* "  ~D fragments, ~D vertices~%"
+     (-> *blerc-globals* fragment-count)
+     (-> *blerc-globals* vtx-count)
+     )
+    (format *stdcon* "  ~D blend target computations (~F average)~%"
+     (-> *blerc-globals* target-vtx-count)
+     (/ (the float (-> *blerc-globals* target-vtx-count))
+      (the float (-> *blerc-globals* vtx-count))
+      )
+     )
+    (if (< (-> *blerc-globals* min-val) 0)
+     (format *stdcon* "MINIMUM OUT OF RANGE: ~D~%" (-> *blerc-globals* min-val))
+     )
+    (if (< 255 (-> *blerc-globals* max-val))
+     (format *stdcon* "MAXIMUM OUT OF RANGE: ~D~%" (-> *blerc-globals* max-val))
+     )
+    )
+   (let ((a0-7 *blerc-globals*))
+    (set! (-> a0-7 min-val) 255)
+    (set! (-> a0-7 max-val) 0)
+    (set! (-> a0-7 fragment-count) 0)
+    (set! (-> a0-7 vtx-count) 0)
+    (set! (-> a0-7 target-vtx-count) 0)
+    )
+   )
+  0
+  (none)
+  )
+
+(defun blerc-init ()
+  (blerc-stats-init)
+  (let ((v1-0 *blerc-globals*))
+   (set! (-> v1-0 first) (the-as uint 0))
+   (set! (-> v1-0 next) (the-as uint 0))
+   )
+  0
+  (none)
+  )
+
+;; todo blerc-a-fragment (unused)
+
+;; todo dma-from-spr (unused)
+
+;; todo merc-dma-chain-to-spr (unused)
+
+;; todo blerc-execute
+
+;; todo merc-blend-shape
+
+;; todo setup-blerc-chains

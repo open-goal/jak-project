@@ -3,11 +3,14 @@
 #include <vector>
 #include <string>
 #include <optional>
+#include <memory>
 #include <unordered_map>
 #include "common/util/assert.h"
 #include "common/common_types.h"
 #include "goalc/emitter/Instruction.h"
 #include "goalc/debugger/disassemble.h"
+
+class FunctionEnv;
 
 /*!
  * FunctionDebugInfo stores per-function debugging information.
@@ -19,27 +22,29 @@ struct FunctionDebugInfo {
   u32 length;
   u8 seg;
   std::string name;
+  std::string obj_name;
 
-  std::vector<std::string> irs;
+  std::shared_ptr<FunctionEnv> function;
   std::vector<InstructionInfo> instructions;  // contains mapping to IRs
 
   // the actual bytes in the object file.
   std::vector<u8> generated_code;
   std::optional<int> stack_usage;
 
-  std::string disassemble_debug_info(bool* had_failure);
+  std::string disassemble_debug_info(bool* had_failure, const goos::Reader* reader);
 };
 
 class DebugInfo {
  public:
   explicit DebugInfo(std::string obj_name);
 
-  FunctionDebugInfo& add_function(const std::string& name) {
+  FunctionDebugInfo& add_function(const std::string& name, const std::string& obj_name) {
     if (m_functions.find(name) != m_functions.end()) {
       assert(false);
     }
     auto& result = m_functions[name];
     result.name = name;
+    result.obj_name = obj_name;
     return result;
   }
 
@@ -60,8 +65,10 @@ class DebugInfo {
 
   void clear() { m_functions.clear(); }
 
-  std::string disassemble_all_functions(bool* had_failure);
-  std::string disassemble_function_by_name(const std::string& name, bool* had_failure);
+  std::string disassemble_all_functions(bool* had_failure, const goos::Reader* reader);
+  std::string disassemble_function_by_name(const std::string& name,
+                                           bool* had_failure,
+                                           const goos::Reader* reader);
 
  private:
   std::string m_obj_name;

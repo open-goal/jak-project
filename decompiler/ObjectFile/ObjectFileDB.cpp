@@ -163,6 +163,8 @@ ObjectFileDB::ObjectFileDB(const std::vector<std::string>& _dgos,
   }
 
   dts.bad_format_strings = config.bad_format_strings;
+  dts.format_ops_with_dynamic_string_by_func_name =
+      config.hacks.format_ops_with_dynamic_string_by_func_name;
 }
 
 void ObjectFileDB::load_map_file(const std::string& map_data) {
@@ -331,7 +333,7 @@ std::string ObjectFileDB::generate_dgo_listing() {
   for (const auto& name : dgo_names) {
     result += "(\"" + name + "\"\n";
     for (auto& obj_rec : obj_files_by_dgo[name]) {
-      auto obj = lookup_record(obj_rec);
+      auto& obj = lookup_record(obj_rec);
       std::string extension = ".o";
       if (obj.obj_version == 4 || obj.obj_version == 2) {
         extension = ".go";

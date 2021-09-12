@@ -1215,7 +1215,7 @@
       "sv-48": "page-id",
       "s0-0": "upload-chunk-idx",
       "sv-52": "current-dest-chunk",
-      "sv-56": "allow-cached",
+      "sv-56": "need-tex",
       "gp-0": "total-upload-size",
       "a0-21": ["dma", "dma-packet"],
       "a0-23": ["gif", "gs-gif-tag"],
@@ -1385,7 +1385,11 @@
   },
 
   "display-loop": {
-    "vars": {}
+    "vars": {
+      "s3-0": "debug-buf",
+      "gp-0": "disp",
+      "s5-2": "debug-txt-buf"
+    }
   },
 
   "adgif-shader-login": {
@@ -2171,7 +2175,8 @@
       "a3-4": ["a3-4", "vector4w-2"],
       "a3-6": ["a3-6", "vector4w-2"],
       "a3-8": ["a3-8", "vector4w-2"],
-      "a1-30": ["a1-30", "vector4w-2"]
+      "a1-30": ["a1-30", "vector4w-2"],
+      "v1-7": "buf"
     }
   },
   "internal-draw-debug-line": {
@@ -2219,11 +2224,12 @@
       "v1-11": ["v1-11", "dma-packet"]
     }
   },
-  "add-debug-light": { "vars": { "s1-0": ["s1-0", "rgba"] } },
 
   "generic-init-buffers": {
     "vars": {
-      "v1-8": ["packet", "dma-packet"]
+      "v1-8": ["packet", "dma-packet"],
+      "gp-0": ["gp-0", "gs-zbuf"],
+      "s5-0": ["s5-0", "gs-zbuf"]
     }
   },
 
@@ -2698,14 +2704,14 @@
   "sprite-add-shadow-chunk": {
     "args": ["shadow-buff", "start-idx", "num-sprites", "dma-buff"],
     "vars": {
-      "s2-0": "pkt1-qwc",
+      "s2-0": "qwc-pkt1",
       "a0-1": ["pkt1", "dma-packet"],
-      "a1-7": "pkt2-qwc",
+      "a1-7": "qwc-pkt2",
       "a0-5": ["pkt2", "dma-packet"],
       "v1-5": "sprite-idx",
       "a0-7": "dma-vec-data",
       "a1-14": "in-vec-data",
-      "a1-5": "pkt3-qwc",
+      "a1-15": "qwc-pkt3",
       "a0-11": ["pkt3", "dma-packet"],
       "s2-1": "si",
       "s1-0": "dma-adgif-data",
@@ -2781,6 +2787,33 @@
     }
   },
 
+  "debug-menu-make-from-template": {
+    "vars": {
+      "s5-1": ["s5-1", "string"]
+    }
+  },
+
+  "debug-menu-item-var-render": {
+    "vars": {
+      "v1-14": ["v1-14", "dma-packet"]
+    }
+  },
+
+  "generic-add-constants": {
+    "vars": {
+      "a0-1": ["a0-1", "dma-packet"]
+    }
+  },
+
+  "generic-init-buf": {
+    "vars": {
+      "a0-2": ["a0-2", "dma-packet"],
+      "a0-4": ["a0-4", "gs-gif-tag"],
+      "a0-9": ["a0-9", "dma-packet"],
+      "v1-7": ["v1-7", "(pointer int32)"]
+    }
+  },
+
   "(anon-function 1 cam-combiner)": {
     "vars": {
       "pp": ["pp", "process"]
@@ -2790,6 +2823,641 @@
   "(anon-function 2 cam-combiner)": {
     "vars": {
       "a0-3": ["vec", "(pointer vector)"]
+    }
+  },
+
+  "(method 14 sync-info)": {
+    "args": ["obj", "period", "phase"],
+    "vars": {
+      "f0-1": "period-float",
+      "f1-1": "value"
+    }
+  },
+
+  "(method 14 sync-info-eased)": {
+    "args": ["obj", "period", "phase", "out-param", "in-param"],
+    "vars": {
+      "f0-9": "total-easing-phase",
+      "f1-11": "total-normal-phase",
+      "f0-1": "period-float",
+      "f1-1": "value",
+      "f3-4": "y-end"
+    }
+  },
+
+  "(method 14 sync-info-paused)": {
+    "args": ["obj", "period", "phase", "out-param", "in-param"]
+  },
+
+  "(method 15 sync-info)": {
+    "args": [
+      "obj",
+      "proc",
+      "default-period",
+      "default-phase",
+      "default-out",
+      "default-in"
+    ]
+  },
+
+  "(method 15 sync-info-eased)": {
+    "args": [
+      "obj",
+      "proc",
+      "default-period",
+      "default-phase",
+      "default-out",
+      "default-in"
+    ]
+  },
+
+  "(method 15 sync-info-paused)": {
+    "args": [
+      "obj",
+      "proc",
+      "default-period",
+      "default-phase",
+      "default-out",
+      "default-in"
+    ]
+  },
+
+  "(method 10 sync-info)": {
+    "vars": {
+      "v1-0": "period",
+      "f0-1": "period-float",
+      "f1-2": "current-time"
+    }
+  },
+
+  "(method 16 sync-info)": {
+    "args": ["obj", "user-time-offset"],
+    "vars": {
+      "a2-0": "period",
+      "f0-1": "period-float",
+      "v1-0": "wrapped-user-offset",
+      "f1-4": "current-time",
+      "f1-6": "current-time-wrapped",
+      "f1-10": "combined-offset",
+      "f0-3": "combined-offset-wrapped"
+    }
+  },
+
+  "(method 11 sync-info)": {
+    "vars": {
+      "v1-0": "period",
+      "f0-1": "period-float",
+      "f1-2": "current-time"
+    }
+  },
+
+  "(method 11 sync-info-paused)": {
+    "vars": {
+      "v1-0": "period",
+      "f1-0": "period-float",
+      "f0-1": "max-phase",
+      "f2-2": "current-time"
+    }
+  },
+
+  "(method 9 sync-info)": {
+    "args": ["obj", "max-val"],
+    "vars": {
+      "v1-0": "period",
+      "f0-1": "period-float",
+      "f1-2": "current-time"
+    }
+  },
+
+  "(method 13 sync-info)": {
+    "args": ["obj"],
+    "vars": {
+      "v1-0": "period",
+      "f1-0": "period-float",
+      "f2-2": "current-time",
+      "f0-1": "max-val",
+      "f0-2": "phase-out-of-2"
+    }
+  },
+
+  "(method 13 sync-info-eased)": {
+    "args": ["obj"],
+    "vars": {
+      "v1-0": "period",
+      "f1-0": "period-float",
+      "f0-1": "max-val",
+      "f2-2": "current-time",
+      "f0-2": "current-val",
+      "v1-2": "in-mirror?",
+      "f1-4": "tlo",
+      "f0-7": "eased-phase"
+    }
+  },
+
+  "(method 12 sync-info)": {
+    "args": ["obj", "max-out-val"],
+    "vars": {
+      "v1-0": "period",
+      "f1-0": "period-float",
+      "f0-1": "max-val",
+      "f2-2": "current-time",
+      "f0-2": "current-val"
+    }
+  },
+
+  "(method 12 sync-info-eased)": {
+    "args": ["obj", "max-out-val"]
+  },
+  "(method 12 sync-info-paused)": {
+    "args": ["obj", "max-out-val"]
+  },
+
+  "(method 9 delayed-rand-float)": {
+    "args": ["obj", "min-tim", "max-time", "max-times-two"]
+  },
+
+  "(method 10 oscillating-float)": {
+    "args": ["obj", "target-offset"],
+    "vars": { "f0-3": "acc" }
+  },
+
+  "(method 9 oscillating-float)": {
+    "args": ["obj", "init-val", "accel", "max-vel", "damping"]
+  },
+
+  "(method 9 bouncing-float)": {
+    "args": [
+      "obj",
+      "init-val",
+      "max-val",
+      "min-val",
+      "elast",
+      "accel",
+      "max-vel",
+      "damping"
+    ]
+  },
+
+  "(method 9 delayed-rand-vector)": {
+    "args": ["obj", "min-time", "max-time", "xz-range", "y-range"]
+  },
+
+  "(method 9 oscillating-vector)": {
+    "args": ["obj", "init-val", "accel", "max-vel", "damping"]
+  },
+
+  "(method 10 oscillating-vector)": {
+    "args": ["obj", "target-offset"],
+    "vars": { "f0-2": "vel" }
+  },
+
+  "(method 9 trajectory)": {
+    "args": ["obj", "time", "result"]
+  },
+
+  "(method 10 trajectory)": {
+    "args": ["obj", "time", "result"]
+  },
+
+  "(method 11 trajectory)": {
+    "args": ["obj", "from", "to", "duration", "grav"],
+    "vars": { "f0-3": "xz-vel" }
+  },
+
+  "(method 12 trajectory)": {
+    "args": ["obj", "from", "to", "xz-vel", "grav"],
+    "vars": { "f0-1": "duration" }
+  },
+
+  "(method 13 trajectory)": {
+    "args": ["obj", "from", "to", "y-vel", "grav"]
+  },
+
+  "(method 15 trajectory)": {
+    "vars": {
+      "s5-0": "prev-pos",
+      "s4-0": "pos",
+      "s3-0": "num-segments",
+      "f0-1": "t-eval"
+    }
+  },
+
+  "set-font-color-alpha": {
+    "args": ["idx", "alpha"]
+  },
+
+  "print-game-text-scaled": {
+    "args": ["str", "scale", "font-ctxt", "alpha"]
+  },
+
+  "print-game-text": {
+    "args": ["str", "font-ctxt", "alpha", "offset-thing"]
+  },
+
+  "display-frame-start": {
+    "args": ["disp", "new-frame-idx", "odd-even"],
+    "vars": {
+      "f30-0": "time-ratio",
+      "s3-0": "scaled-seconds",
+      "s3-1": "new-frame"
+    }
+  },
+
+  "display-frame-finish": {
+    "args": ["disp"],
+    "vars": {
+      "s4-0": "this-frame",
+      "s5-0": "this-calc-buf",
+      "s3-0": "bucket-idx",
+      "v1-7": "this-global-buf",
+      "a0-16": "global-buf",
+      "v1-19": "calc-current",
+      "a2-1": "calc-start",
+      "s4-1": "global-current",
+      "s5-1": "global-start",
+      "s3-1": "global-end"
+    }
+  },
+
+  "display-sync": {
+    "args": ["disp"],
+    "vars": {
+      "s4-0": "frame-idx",
+      "s5-0": "syncv-result",
+      "s3-0": "dma-buf-to-send",
+      "a1-4": "next-frame"
+    }
+  },
+
+  "draw-string": {
+    "args": ["str-in", "context"],
+    "vars": {
+      "v1-5": "fw",
+      "a1-1": "dma-out",
+      "t2-0": "flags",
+      "a3-0": "has-flag-size24",
+      "a3-1": "font-table-12",
+      "a3-2": "font-table-to-use",
+      "t0-0": "q-lo-tmpl",
+      "t1-0": "q-hi-tmpl",
+      "t3-0": "in-color",
+      "t3-1": "color-array-prod",
+      "t4-0": "fw+col",
+      "t3-2": "q-verts-0p",
+      "t5-0": "q-verts-1p",
+      "t3-3": "q-verts-2p",
+      "t4-1": "q-verts-3p",
+      "t5-1": "q-verts-1t",
+      "t5-2": "q-verts-1",
+      "t3-4": "q-verts-2t",
+      "t3-5": "q-verts-2",
+      "t6-0": "q-verts-0t",
+      "t6-1": "q-verts-0",
+      "t4-2": "q-verts-3t",
+      "t4-3": "q-verts-3",
+      "t3-6": "fw2",
+      "t4-4": "str-char",
+      "t5-3": "not-sc-lit1",
+      "t5-4": "not-sc-~",
+      "t4-14": "fc-cr",
+      "r0-0": "r0",
+      "r0-1": "r0",
+      "r0-2": "r0",
+      "r0-3": "r0"
+    }
+  },
+
+  "add-debug-outline-triangle": {
+    "args":["enable", "bucket", "p0", "p1", "p2", "color"]
+  },
+
+  "unpack-comp-rle": {
+    "args":["out", "in"],
+    "vars":{
+      "v1-2":"current-input",
+      "a2-0":"repeated-value",
+      "v1-3":"copy-length",
+      "a2-1":"src-val"
+    }
+  },
+
+  "(method 16 level)": {
+    "args":["obj", "vis-info"],
+    "vars":{
+      "a0-1":"cam-leaf-idx",
+      "v1-1":"curr-vis-str",
+      "s4-0":"desired-vis-str",
+      "s4-1":"vis-buffer",
+      "s3-1":"vis-load-result",
+      "v1-28":"dest-bits",
+      "a1-3":"len",
+      "a0-19":"bsp-bits",
+      "a1-5":"len-qw",
+      "s2-0":"lower-flag-bits",
+      "s1-0":"spad-start",
+      "s0-0":"spad-end",
+      "s3-2":"list-len",
+      "v1-49":"list-qwc",
+      "v0-1":"result"
+    }
+  },
+
+  "(method 9 merc-fragment)": {
+    "vars":{
+      "s5-0":"fp-data",
+      "s4-0":"eye-ctrl",
+      "s3-0":"shader",
+      "v1-7":"eye-tex-block",
+      "v1-34":"eye-tex-block-2",
+      "v1-57":"tex",
+      "a0-36":"seg"
+    }
+  },
+
+  "(method 9 merc-effect)": {
+    "vars":{
+      "v1-0":"data",
+      "v1-1":"tex",
+      "a0-8":"seg",
+      "s3-0":"frag-idx",
+      "s2-0":"ctrl-size",
+      "s1-0":"geo-size",
+      "s4-0":["geo", "merc-fragment"],
+      "s5-0":["ctrl", "merc-fragment-control"]
+    }
+  },
+
+  "merc-vu1-add-vu-function": {
+    "args":["dma", "func", "flush-mode"],
+    "vars": {
+      "v1-0":"func-data",
+      "a3-0":"qwc",
+      "a1-1":"dst",
+      "t0-1":"qwc-this-time"
+    }
+  },
+
+  "(method 8 merc-ctrl)": {
+    "vars": {
+      "s4-0":"ctrl-mem",
+      "s3-0":"effect-idx",
+      "s2-0":["fctrl", "merc-fragment-control"],
+      "s1-0":"frag-idx",
+      "v1-35":"effect-mem",
+      "a0-15":"effect-idx2",
+      "a1-9":["bctrl", "merc-blend-ctrl"],
+      "a2-1":"blend-frag-idx"
+    }
+  },
+
+  "(method 9 merc-ctrl)": {
+    "vars":{
+      "v1-3":"seg",
+      "s5-0":"effect-idx",
+      "a0-4":"idx-with-bit1",
+      "a0-7":"this-effect",
+      "a1-5":"last-effect",
+      "a2-6":"copy-idx"
+    }
+  },
+
+  "merc-vu1-init-buffer": {
+    "args":["dma-bucket", "test"],
+    "vars": {
+      "gp-0":"bucket",
+      "s4-0":"dma-buf"
+    }
+  },
+
+  "(method 9 screen-filter)": {
+    "vars": {
+      "v1-4":["v1-4", "dma-packet"],
+      "s5-0":"buf"
+    }
+  },
+
+  "(method 11 fact-info-target)": {
+    "args":["obj", "kind", "amount", "source-handle"],
+    "vars":{"f0-29":"buzz-count","f30-0":"eco-lev"}
+  },
+
+  "auto-save-init-by-other": {
+    "args":["desired-mode", "notify-proc", "card-idx", "file-idx"]
+  },
+
+  "debug-menu-item-var-make-int": {
+    "args":["item", "callback", "inc", "has-range", "range-min", "range-max", "hex"]
+  },
+
+  "debug-menu-item-var-make-float": {
+    "args":["item", "callback", "inc", "has-range", "range-min", "range-max", "precision"]
+  },
+
+  "(method 0 debug-menu-item-var)": {
+    "args":["allocation", "type-to-make", "name", "id", "max-width"]
+  },
+
+  "debug-menu-context-grab-joypad": {
+    "args":["menu", "callback-arg", "callback-func"]
+  },
+  
+  "debug-menu-context-default-selection": {
+    "args": ["ctxt", "keep-current"],
+    "vars": {
+      "s5-0":"menu",
+      "s4-0":"currently-active"
+    }
+  },
+
+  "debug-menu-rebuild": {
+    "args":["menu"],
+    "vars": {
+      "s4-0":"max-width",
+      "s5-0":"entry-count",
+      "s3-0":"iter",
+      "a0-1":"current-item"
+    }
+  },
+
+  "debug-menu-context-set-root-menu":{
+    "args":["context", "menu"],
+    "vars":{
+      "s4-0":"active"
+    }
+  },
+
+  "debug-menu-append-item": {
+    "args":["menu", "item"],
+    "vars": {
+      "gp-0":"context",
+      "s4-0":"was-active"
+    }
+  },
+
+  "(anon-function 82 default-menu)": {
+    "vars":{"s4-0":["s4-0", "texture-id"]}
+  },
+
+  "process-status-bits": {
+    "vars":{"s3-0":["proc-draw", "process-drawable"]}
+  },
+
+  "(method 29 entity-actor)":{
+    "args":["obj", "mode", "expected-type"]
+  },
+
+  "(method 13 level-group)":{
+    "args":["obj", "mode", "expected-type"]
+  },
+
+  "(method 24 entity)": {
+    "args":["obj", "lev-group", "lev", "aid"],
+    "vars":{
+      "v1-4":"level-link",
+      "t0-5":"other-prev",
+      "t1-1":"other-front"
+    }
+  },
+
+  "update-actor-vis-box": {
+    "args":["proc", "min-pt", "max-pt"],
+    "vars":{"v1-4":"world-bounds-origin", "f0-0":"radius"}
+  },
+
+  "init-entity": {
+    "args":["proc", "ent"]
+  },
+
+  "(method 22 entity-actor)": {
+    "vars":{
+      "s5-0":"entity-type",
+      "v1-0":"info",
+      "s4-0":"entity-process"
+    }
+  },
+
+  "(method 18 bsp-header)": {
+    "vars":{
+      "a2-0":"existing-actor-count",
+      "s4-0":"birth-idx",
+      "a0-4":"idx-to-birth",
+      "v1-25":"actor-to-birth",
+      "a2-5":"existing-amb-count",
+      "s4-1":"amb-array",
+      "s3-0":"bsp-ambs",
+      "a0-10":"amb-to-birth",
+      "s4-2":"cams"
+    }
+  },
+
+  "(code falling beach-rock)": {
+    "vars": {
+      "gp-2": ["gp-2", "handle"],
+      "s5-1": ["s5-1", "handle"]
+    }
+  },
+  
+  "draw-percent-bar": {
+    "vars": {
+      "v1-3": ["v1-3", "dma-packet"]
+    }
+  },
+  
+  "(dummy-17 progress)": {
+    "vars": {
+      "v1-20": ["v1-20", "dma-packet"],
+      "v1-81": ["v1-81", "dma-packet"]
+    }
+  },
+  
+  "make-current-level-available-to-progress": {
+    "vars": {
+      "a0-0": "cur-lev",
+      "v1-7": "lev-idx"
+    }
+  },
+  
+  "make-levels-with-tasks-available-to-progress": {
+    "vars": {
+      "gp-0": "i",
+      "s4-0": "ii",
+      "s5-0": "tasks"
+    }
+  },
+  
+  "get-next-task-up": {
+    "args": ["cur-task-idx", "lev-idx"]
+  },
+  "get-next-task-down": {
+    "args": ["cur-task-idx", "lev-idx"]
+  },
+  "get-next-level-up": {
+    "args": ["lev-idx"]
+  },
+  "get-next-level-down": {
+    "args": ["lev-idx"]
+  },
+  
+  "calculate-completion": {
+    "args": ["the-progress"],
+    "vars": {
+      "sv-40":"total-cells",
+      "sv-48":"total-buzzers",
+      "sv-56":"total-orbs",
+      "sv-16":"current-cells",
+      "sv-24":"current-buzzers",
+      "sv-32":"current-orbs"
+    }
+  },
+
+  "(method 48 progress)": {
+    "args": ["obj", "screen", "option"]
+  },
+
+  "activate-progress": {
+    "args": ["creator", "screen"]
+  },
+
+  "(method 23 progress)": {
+    "args": ["obj", "aspect", "video-mode"]
+  },
+
+  "(method 35 progress)": {
+    "vars": {
+      "s4-0": ["s4-0", "game-text-id"]
+    }
+  },
+
+  "(method 43 progress)": {
+    "vars": {
+      "s4-0": ["s4-0", "game-text-id"]
+    }
+  },
+
+  "(method 38 progress)": {
+    "vars": {
+      "a1-1": ["a1-1", "game-text-id"]
+    }
+  },
+  
+  "(post progress-debug)": {
+    "vars": {
+      "v1-7": ["v1-7", "dma-packet"],
+      "v1-16": ["v1-16", "dma-packet"],
+      "v1-25": ["v1-25", "dma-packet"],
+      "v1-34": ["v1-34", "dma-packet"]
+    }
+  },
+  
+  "voicebox-track": {
+    "vars": {
+      "a0-1": "target"
+    }
+  },
+
+  "citb-drop-plat-drop-children": {
+    "vars": {
+      "v1-4": ["v1-4", "handle"]
     }
   },
 

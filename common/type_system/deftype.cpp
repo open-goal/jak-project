@@ -179,7 +179,7 @@ void add_bitfield(BitFieldType* bitfield_type, TypeSystem* ts, const goos::Objec
 void declare_method(Type* type, TypeSystem* type_system, const goos::Object& def) {
   for_each_in_list(def, [&](const goos::Object& _obj) {
     auto obj = &_obj;
-    // (name args return-type [:no-virtual] [id])
+    // (name args return-type [:no-virtual] [:replace] [:state] [id])
     auto method_name = symbol_string(car(obj));
     obj = cdr(obj);
     auto& args = car(obj);
@@ -199,6 +199,11 @@ void declare_method(Type* type, TypeSystem* type_system, const goos::Object& def
     if (!obj->is_empty_list() && car(obj).is_symbol(":replace")) {
       obj = cdr(obj);
       replace_method = true;
+    }
+
+    if (!obj->is_empty_list() && car(obj).is_symbol(":state")) {
+      obj = cdr(obj);
+      function_typespec = TypeSpec("state");
     }
 
     if (!obj->is_empty_list() && car(obj).is_symbol(":behavior")) {
