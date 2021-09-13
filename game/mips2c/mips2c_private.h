@@ -199,6 +199,10 @@ struct ExecutionContext {
     memcpy(&vfs[vf], g_ee_main_mem + gpr_src(gpr).du32[0] + offset, 16);
   }
 
+  void lwc1(int dst, int offset, int gpr) {
+    memcpy(&fprs[dst], g_ee_main_mem + gpr_src(gpr).du32[0] + offset, 4);
+  }
+
   void lw(int dst, int offset, int src) {
     s32 val;
     memcpy(&val, g_ee_main_mem + gpr_src(src).du32[0] + offset, 4);
@@ -209,6 +213,12 @@ struct ExecutionContext {
     s16 val;
     memcpy(&val, g_ee_main_mem + gpr_src(src).du32[0] + offset, 2);
     gprs[dst].ds64[0] = val;
+  }
+
+  void lhu(int dst, int offset, int src) {
+    u16 val;
+    memcpy(&val, g_ee_main_mem + gpr_src(src).du32[0] + offset, 2);
+    gprs[dst].du64[0] = val;
   }
 
   void lwu(int dst, int offset, int src) {
@@ -226,6 +236,21 @@ struct ExecutionContext {
     memcpy(g_ee_main_mem + gpr_addr(addr) + offset, &s.du32[0], 4);
   }
 
+  void jalr(int src) {
+    (void)src;
+    assert(false);
+  }  // todo
+
+  void sh(int src, int offset, int addr) {
+    auto s = gpr_src(src);
+    memcpy(g_ee_main_mem + gpr_addr(addr) + offset, &s.du32[0], 2);
+  }
+
+  void sd(int src, int offset, int addr) {
+    auto s = gpr_src(src);
+    memcpy(g_ee_main_mem + gpr_addr(addr) + offset, &s.du32[0], 8);
+  }
+
   void sq(int src, int offset, int addr) {
     auto s = gpr_src(src);
     memcpy(g_ee_main_mem + gpr_addr(addr) + offset, &s.du32[0], 16);
@@ -236,6 +261,10 @@ struct ExecutionContext {
     memcpy(g_ee_main_mem + gpr_addr(addr) + offset, &s.du32[0], 16);
   }
 
+  void swc1(int src, int offset, int addr) {
+    memcpy(g_ee_main_mem + gpr_addr(addr) + offset, &fprs[src], 4);
+  }
+
   void vadd_bc(DEST mask, BC bc, int dest, int src0, int src1) {
     auto s0 = vf_src(src0);
     auto s1 = vf_src(src1);
@@ -243,6 +272,17 @@ struct ExecutionContext {
     for (int i = 0; i < 4; i++) {
       if ((u64)mask & (1 << i)) {
         vfs[dest].f[i] = s0.f[i] + s1.f[(int)bc];
+      }
+    }
+  }
+
+  void vmini_bc(DEST mask, BC bc, int dest, int src0, int src1) {
+    auto s0 = vf_src(src0);
+    auto s1 = vf_src(src1);
+
+    for (int i = 0; i < 4; i++) {
+      if ((u64)mask & (1 << i)) {
+        vfs[dest].f[i] = std::min(s0.f[i], s1.f[(int)bc]);
       }
     }
   }
@@ -397,8 +437,11 @@ struct ExecutionContext {
     gprs[dst].ds64[0] = value_signed;
   }
 
+  void dsra(int dst, int src, int sa) { gprs[dst].ds64[0] = gpr_src(src).ds64[0] >> sa; }
+  void dsra32(int dst, int src, int sa) { gprs[dst].ds64[0] = gpr_src(src).ds64[0] >> (32 + sa); }
   void sra(int dst, int src, int sa) { gprs[dst].ds64[0] = gpr_src(src).ds32[0] >> sa; }
   void dsll(int dst, int src0, int sa) { gprs[dst].du64[0] = gpr_src(src0).du64[0] << sa; }
+  void dsll32(int dst, int src0, int sa) { gprs[dst].du64[0] = gpr_src(src0).du64[0] << (32 + sa); }
 
   void daddu(int dst, int src0, int src1) { gprs[dst].du64[0] = sgpr64(src0) + sgpr64(src1); }
   void daddiu(int dst, int src0, s64 imm) { gprs[dst].du64[0] = sgpr64(src0) + imm; }
@@ -407,12 +450,18 @@ struct ExecutionContext {
     gprs[dst].ds64[0] = temp;
   }
 
+  void lui(int dst, u32 src) {
+    s32 val = (src << 16);
+    gprs[dst].ds64[0] = val;
+  }
+
   void addu(int dst, int src0, int src1) {
     s32 temp = sgpr64(src0) + sgpr64(src1);
     gprs[dst].ds64[0] = temp;
   }
 
   void dsubu(int dst, int src0, int src1) { gprs[dst].du64[0] = sgpr64(src0) - sgpr64(src1); }
+  void xor_(int dst, int src0, int src1) { gprs[dst].du64[0] = sgpr64(src0) ^ sgpr64(src1); }
 
   void movz(int dst, int src0, int src1) {
     if (sgpr64(src1) == 0) {
@@ -479,6 +528,22 @@ struct ExecutionContext {
     gprs[dst].du64[1] = s0.du64[1] | s1.du64[1];
   }
 
+  void pmaxw(int dst, int src0, int src1) {
+    auto s0 = gpr_src(src0);
+    auto s1 = gpr_src(src1);
+    for (int i = 0; i < 4; i++) {
+      gprs[dst].ds32[i] = std::max(s0.ds32[i], s1.ds32[i]);
+    }
+  }
+
+  void pminw(int dst, int src0, int src1) {
+    auto s0 = gpr_src(src0);
+    auto s1 = gpr_src(src1);
+    for (int i = 0; i < 4; i++) {
+      gprs[dst].ds32[i] = std::min(s0.ds32[i], s1.ds32[i]);
+    }
+  }
+
   void mov128_vf_gpr(int dst, int src) { vfs[dst] = gpr_src(src); }
   void mov128_gpr_vf(int dst, int src) { gprs[dst] = vf_src(src); }
   void mov128_gpr_gpr(int dst, int src) { gprs[dst] = gpr_src(src); }
@@ -514,6 +579,28 @@ struct ExecutionContext {
     s32 val;
     memcpy(&val, &fprs[src], 4);
     gprs[dst].ds64[0] = val;
+  }
+
+  void mtc1(int dst, int src) {
+    u32 val = gpr_src(src).du32[0];
+    memcpy(&fprs[dst], &val, 4);
+  }
+
+  void muls(int dst, int src0, int src1) { fprs[dst] = fprs[src0] * fprs[src1]; }
+  void adds(int dst, int src0, int src1) { fprs[dst] = fprs[src0] + fprs[src1]; }
+  void subs(int dst, int src0, int src1) { fprs[dst] = fprs[src0] - fprs[src1]; }
+
+  void cvtws(int dst, int src) {
+    // float to int
+    s32 value = fprs[src];
+    memcpy(&fprs[dst], &value, 4);
+  }
+
+  void cvtsw(int dst, int src) {
+    // int to float
+    s32 value;
+    memcpy(&value, &fprs[src], 4);
+    fprs[dst] = value;
   }
 };
 

@@ -114,6 +114,7 @@ struct Mips2C_Output {
     result += "u64 execute(void* ctxt) {\n";
     result += "  auto* c = (ExecutionContext*)ctxt;\n";
     result += "  bool bc = false;\n";
+    result += "  u32 call_addr = 0;\n";
     for (auto& line : lines) {
       result += "  ";
       result += line.code;
@@ -408,17 +409,14 @@ bool block_requires_label(const Function* f,
 int g_unknown = 0;
 Mips2C_Line handle_unknown(const std::string& instr_str) {
   g_unknown++;
+  lg::warn("mips2c unknown: {}", instr_str);
   return fmt::format("// Unknown instr: {}", instr_str);
 }
 
 Mips2C_Line handle_generic_load(const Instruction& i0, const std::string& instr_str) {
-  if (i0.get_src(1).is_reg(rsp())) {
-    return handle_unknown(instr_str);
-  } else {
-    return {fmt::format("c->{}({}, {}, {});", i0.op_name_to_string(), reg_to_name(i0.get_dst(0)),
-                        i0.get_src(0).get_imm(), reg_to_name(i0.get_src(1))),
-            instr_str};
-  }
+  return {fmt::format("c->{}({}, {}, {});", i0.op_name_to_string(), reg_to_name(i0.get_dst(0)),
+                      i0.get_src(0).get_imm(), reg_to_name(i0.get_src(1))),
+          instr_str};
 }
 
 Mips2C_Line handle_lw(Mips2C_Output& out, const Instruction& i0, const std::string& instr_str) {
@@ -438,13 +436,9 @@ Mips2C_Line handle_lw(Mips2C_Output& out, const Instruction& i0, const std::stri
 Mips2C_Line handle_generic_store(Mips2C_Output& /*out*/,
                                  const Instruction& i0,
                                  const std::string& instr_str) {
-  if (i0.get_src(2).is_reg(Register(Reg::GPR, Reg::SP))) {
-    return handle_unknown(instr_str);
-  } else {
-    return {fmt::format("c->{}({}, {}, {});", i0.op_name_to_string(), reg_to_name(i0.get_src(0)),
-                        i0.get_src(1).get_imm(), reg_to_name(i0.get_src(2))),
-            instr_str};
-  }
+  return {fmt::format("c->{}({}, {}, {});", i0.op_name_to_string(), reg_to_name(i0.get_src(0)),
+                      i0.get_src(1).get_imm(), reg_to_name(i0.get_src(2))),
+          instr_str};
 }
 
 Mips2C_Line handle_generic_op2_u16(const Instruction& i0, const std::string& instr_str) {
@@ -538,10 +532,12 @@ Mips2C_Line handle_generic_op2(const Instruction& i0,
 Mips2C_Line handle_or(const Instruction& i0, const std::string& instr_str) {
   if (is_gpr_3(i0, InstructionKind::OR, {}, rs7(), rr0())) {
     // set reg_dest to #f : or reg_dest, s7, r0
-    return handle_unknown(instr_str);
+    return {
+        fmt::format("c->mov64({}, {});", reg_to_name(i0.get_dst(0)), reg_to_name(i0.get_src(0))),
+        instr_str};
   } else if (is_gpr_3(i0, InstructionKind::OR, {}, rr0(), rr0())) {
     // set reg_dest to 0 : or reg_dest, r0, r0
-    return handle_unknown(instr_str);
+    return {fmt::format("c->gprs[{}].du64[0] = 0;", reg_to_name(i0.get_dst(0))), instr_str};
   } else if (is_gpr_3(i0, InstructionKind::OR, {}, {}, rr0())) {
     // set dst to src : or dst, src, r0
     return {
@@ -659,6 +655,11 @@ Mips2C_Line handle_por(const Instruction& i0, const std::string& instr_string) {
   }
 }
 
+Mips2C_Line handle_lui(const Instruction& i0, const std::string& instr_string) {
+  return {fmt::format("c->lui({}, {});", reg_to_name(i0.get_dst(0)), i0.get_src(0).get_imm()),
+          instr_string};
+}
+
 Mips2C_Line handle_normal_instr(Mips2C_Output& output,
                                 const Instruction& i0,
                                 const std::string& instr_str,
@@ -671,12 +672,19 @@ Mips2C_Line handle_normal_instr(Mips2C_Output& output,
     case InstructionKind::LQ:
     case InstructionKind::LQC2:
     case InstructionKind::LH:
+    case InstructionKind::LHU:
+    case InstructionKind::LWC1:
       return handle_generic_load(i0, instr_str);
     case InstructionKind::SQ:
     case InstructionKind::SQC2:
+    case InstructionKind::SH:
+    case InstructionKind::SD:
+    case InstructionKind::SWC1:
       return handle_generic_store(output, i0, instr_str);
     case InstructionKind::VADD_BC:
       return handle_generic_op3_bc_mask(i0, instr_str, "vadd_bc");
+    case InstructionKind::VMINI_BC:
+      return handle_generic_op3_bc_mask(i0, instr_str, "vmini_bc");
     case InstructionKind::VSUB_BC:
       return handle_generic_op3_bc_mask(i0, instr_str, "vsub_bc");
     case InstructionKind::VMUL_BC:
@@ -705,6 +713,9 @@ Mips2C_Line handle_normal_instr(Mips2C_Output& output,
     case InstructionKind::ORI:
     case InstructionKind::SRA:
     case InstructionKind::DSLL:
+    case InstructionKind::DSLL32:
+    case InstructionKind::DSRA:
+    case InstructionKind::DSRA32:
       return handle_generic_op2_u16(i0, instr_str);
     case InstructionKind::SLL:
       return handle_sll(i0, instr_str);
@@ -716,7 +727,17 @@ Mips2C_Line handle_normal_instr(Mips2C_Output& output,
     case InstructionKind::MOVN:
     case InstructionKind::MOVZ:
     case InstructionKind::MULT3:
+    case InstructionKind::PMINW:
+    case InstructionKind::PMAXW:
       return handle_generic_op3(i0, instr_str, {});
+    case InstructionKind::MULS:
+      return handle_generic_op3(i0, instr_str, "muls");
+    case InstructionKind::ADDS:
+      return handle_generic_op3(i0, instr_str, "adds");
+    case InstructionKind::SUBS:
+      return handle_generic_op3(i0, instr_str, "subs");
+    case InstructionKind::XOR:
+      return handle_generic_op3(i0, instr_str, "xor_");
     case InstructionKind::AND:
       return handle_generic_op3(i0, instr_str, "and_");  // and isn't allowed in C++
     case InstructionKind::DADDIU:
@@ -750,6 +771,14 @@ Mips2C_Line handle_normal_instr(Mips2C_Output& output,
       return {"// nop", instr_str};
     case InstructionKind::MFC1:
       return handle_generic_op2(i0, instr_str, "mfc1");
+    case InstructionKind::MTC1:
+      return handle_generic_op2(i0, instr_str, "mtc1");
+    case InstructionKind::CVTWS:
+      return handle_generic_op2(i0, instr_str, "cvtws");
+    case InstructionKind::CVTSW:
+      return handle_generic_op2(i0, instr_str, "cvtsw");
+    case InstructionKind::LUI:
+      return handle_lui(i0, instr_str);
     default:
       unknown_count++;
       return handle_unknown(instr_str);
@@ -800,7 +829,6 @@ void run_mips2c(Function* f) {
               handle_normal_instr(output, delay_instr, delay_instr_str, unknown_count);
           output.lines.emplace_back(fmt::format("  {}", delay_instr_line.code),
                                     delay_instr_line.comment);
-          fmt::print("sb of {}: {}\n", delay_block.idx, delay_block.succ_branch);
           assert(delay_block.succ_ft == -1);
           output.lines.emplace_back(fmt::format("  goto block_{};", delay_block.succ_branch), "");
           output.lines.emplace_back("}", "");
@@ -848,6 +876,17 @@ void run_mips2c(Function* f) {
         // then the goto
         output.lines.emplace_back(fmt::format("goto end_of_function;", block.succ_branch),
                                   "return\n");
+      } else if (instr.kind == InstructionKind::JALR) {
+        assert(instr.get_dst(0).is_reg(Register(Reg::GPR, Reg::RA)));
+        assert(i < block.end_instr - 1);
+        output.lines.emplace_back(
+            fmt::format("call_addr = c->gprs[{}].du32[0];", reg_to_name(instr.get_src(0))),
+            "function call:");
+        i++;
+        auto& delay_i = f->instructions.at(i);
+        auto delay_i_str = delay_i.to_string(file->labels);
+        output.lines.push_back(handle_normal_instr(output, delay_i, delay_i_str, unknown_count));
+        output.lines.emplace_back("c->jalr(call_addr);", instr_str);
       } else {
         output.lines.push_back(handle_normal_instr(output, instr, instr_str, unknown_count));
       }

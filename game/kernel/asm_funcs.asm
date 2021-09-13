@@ -138,7 +138,10 @@ _mips2c_call_linux:
   mov [rsp + 160], r10 ;; arg6
   mov [rsp + 176], r11 ;; arg7
   mov [rsp + 368], r14 ;; s7
-  mov [rsp + 464], rsp ;; mip2c code's MIPS stack
+
+  mov rdi, rsp
+  add rdi, r15
+  mov [rsp + 464], rdi ;; mip2c code's MIPS stack
 
   mov rdi, rsp
 
@@ -207,7 +210,9 @@ _mips2c_call_windows:
   mov [rsp + 160], r10 ;; arg6
   mov [rsp + 176], r11 ;; arg7
   mov [rsp + 368], r14 ;; s7
-  mov [rsp + 464], rsp ;; mip2c code's MIPS stack
+  mov rdi, rsp
+  add rdi, r15
+  mov [rsp + 464], rdi ;; mip2c code's MIPS stack
 
   mov rcx, rsp
 
