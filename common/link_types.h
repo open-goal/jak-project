@@ -18,6 +18,8 @@ enum LinkKind {
 
 enum SegmentTypes { MAIN_SEGMENT = 0, DEBUG_SEGMENT = 1, TOP_LEVEL_SEGMENT = 2 };
 
+constexpr const char* SEGMENT_NAMES[3] = {"main", "debug", "top-level"};
+
 constexpr int N_SEG = 3;
 
 /*!

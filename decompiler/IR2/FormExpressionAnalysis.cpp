@@ -3924,9 +3924,18 @@ FormElement* ConditionElement::make_not_equal_check_generic(
         pool.alloc_single_element_form<GenericElement>(
             nullptr, GenericOperator::make_fixed(FixedOperatorKind::NULLP), source_forms.at(0)));
   } else {
-    return pool.alloc_element<GenericElement>(
-        GenericOperator::make_fixed(FixedOperatorKind::NEQ),
-        cast_to_64_bit(source_forms, source_types, pool, env));
+    auto nice_constant =
+        try_make_constant_for_compare(source_forms.at(1), source_types.at(0), pool, env);
+    if (nice_constant) {
+      auto forms_with_cast = source_forms;
+      forms_with_cast.at(1) = nice_constant;
+      return pool.alloc_element<GenericElement>(GenericOperator::make_fixed(FixedOperatorKind::NEQ),
+                                                forms_with_cast);
+    } else {
+      return pool.alloc_element<GenericElement>(
+          GenericOperator::make_fixed(FixedOperatorKind::NEQ),
+          cast_to_64_bit(source_forms, source_types, pool, env));
+    }
   }
 }
 
@@ -4947,8 +4956,7 @@ void ConditionalMoveFalseElement::push_to_stack(const Env& env, FormPool& pool, 
   // pop the value and the original
   auto popped = pop_to_forms({old_value, source}, env, pool, stack, true);
   if (!is_symbol_true(popped.at(0))) {
-    lg::warn("{}: Failed to ConditionalMoveFalseElement::push_to_stack",
-             env.func->guessed_name.to_string());
+    lg::warn("{}: Failed to ConditionalMoveFalseElement::push_to_stack", env.func->name());
     stack.push_value_to_reg(source, popped.at(1), true, TypeSpec("symbol"));
     stack.push_form_element(this, true);
     return;
@@ -5130,7 +5138,7 @@ void VectorFloatLoadStoreElement::push_to_stack(const Env& env, FormPool& pool, 
     }
   }
 
-  auto name = env.func->guessed_name.to_string();
+  auto name = env.func->name();
   // don't find vector-! inside of vector-!.
   if (!m_is_load && name != "vector-!" && name != "vector+!" && name != "vector-reset!") {
     if (try_vector_reset_inline(env, pool, stack, this)) {

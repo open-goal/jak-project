@@ -464,7 +464,7 @@ void inspect_basics(const Ram& ram,
           int field_addr = base_addr + field.offset();
           if (ram.word_in_memory(field_addr)) {
             auto proc_pointer = ram.word(field_addr);  // pointer process
-            auto pid = ram.word(field_addr + 4);
+            // auto pid = ram.word(field_addr + 4);
             if (ram.word_in_memory(proc_pointer)) {
               auto proc = ram.word(proc_pointer);
               auto proc_type_tag_addr = proc - 4;

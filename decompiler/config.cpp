@@ -176,6 +176,8 @@ Config read_config_file(const std::string& path_to_config_file) {
   config.hacks.format_ops_with_dynamic_string_by_func_name =
       hacks_json.at("dynamic_format_arg_counts")
           .get<std::unordered_map<std::string, std::vector<std::vector<int>>>>();
+  config.hacks.mips2c_functions_by_name =
+      hacks_json.at("mips2c_functions_by_name").get<std::unordered_set<std::string>>();
 
   for (auto& entry : hacks_json.at("cond_with_else_max_lengths")) {
     auto func_name = entry.at(0).get<std::string>();

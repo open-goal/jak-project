@@ -55,6 +55,7 @@ void OpenGLRenderer::init_bucket_renderers() {
   init_bucket_renderer<EmptyBucketRenderer>("bucket0", BucketId::BUCKET0);
 
   // TODO what the heck is drawing to debug-draw-0 on init?
+  init_bucket_renderer<DirectRenderer>("sprite", BucketId::SPRITE, 102);
   init_bucket_renderer<DirectRenderer>("debug-draw-0", BucketId::DEBUG_DRAW_0, 102);
   init_bucket_renderer<DirectRenderer>("debug-draw-1", BucketId::DEBUG_DRAW_1, 102);
 
