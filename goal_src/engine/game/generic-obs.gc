@@ -6,6 +6,113 @@
 ;; dgos: GAME, ENGINE
 
 
+;; definition for function clone-anim-once
+;; INFO: Return type mismatch int vs none.
+;; Used lq/sq
+(defbehavior
+  clone-anim-once process-drawable
+  ((arg0 handle) (arg1 int) (arg2 symbol) (arg3 string))
+  (set! (-> self skel status) (logand -33 (-> self skel status)))
+  (let ((s5-0 (handle->process arg0)))
+   (if (the-as process-drawable s5-0)
+    (joint-control-copy!
+     (-> self skel)
+     (-> (the-as process-drawable s5-0) skel)
+     )
+    )
+   (cond
+    ((and
+      (the-as process-drawable s5-0)
+      (joint-control-remap!
+       (-> self skel)
+       (-> self draw art-group)
+       (-> (the-as process-drawable s5-0) draw art-group)
+       '()
+       0
+       arg3
+       )
+      )
+     (when arg2
+      (let* ((s4-1 (-> self root))
+             (a0-7
+              (if
+               (and (nonzero? s4-1) (type-type? (-> s4-1 type) collide-shape))
+               (the-as collide-shape s4-1)
+               )
+              )
+             )
+       (if a0-7
+        (TODO-RENAME-30 a0-7 (-> (the-as process-drawable s5-0) root trans))
+        (set!
+         (-> self root trans quad)
+         (-> (the-as process-drawable s5-0) root trans quad)
+         )
+        )
+       )
+      (quaternion-copy!
+       (-> self root quat)
+       (-> (the-as process-drawable s5-0) root quat)
+       )
+      )
+     (if (logtest? (-> (the-as process-drawable s5-0) skel status) 32)
+      (logior! (-> self skel status) 32)
+      )
+     (set! (-> self draw status) (logand -7 (-> self draw status)))
+     (if (not (-> self skel root-channel 0 frame-group))
+      (logior! (-> self draw status) 4)
+      )
+     (let* ((s5-1 self)
+            (v1-37 (if (and (nonzero? s5-1) (type-type? (-> s5-1 type) manipy))
+                    s5-1
+                    )
+             )
+            )
+      (if (and manipy (not (-> (the-as manipy v1-37) draw?)))
+       (logior! (-> self draw status) 4)
+       )
+      )
+     (dummy-17 self)
+     (let ((a0-22 (-> self skel effect)))
+      (if a0-22
+       ((method-of-object a0-22 dummy-9))
+       )
+      )
+     (if (logtest? (-> self skel status) 72)
+      (merc-blend-shape self)
+      )
+     (if (logtest? (-> self skel status) 384)
+      (merc-eye-anim self)
+      )
+     )
+    (else
+     (logior! (-> self draw status) 2)
+     (ja-post)
+     )
+    )
+   )
+  (if (>= arg1 0)
+   (vector<-cspace! (-> self draw origin) (-> self node-list data arg1))
+   )
+  0
+  (none)
+  )
+
+;; definition for function clone-anim
+;; INFO: Return type mismatch int vs none.
+(defbehavior
+  clone-anim process-drawable
+  ((arg0 handle) (arg1 int) (arg2 symbol) (arg3 string))
+  (ja-post)
+  (while (handle->process arg0)
+   (clone-anim-once arg0 arg1 #t arg3)
+   (suspend)
+   )
+  (set! (-> self skel status) (logand -33 (-> self skel status)))
+  0
+  (none)
+  )
+
+
 (deftype camera-start (process-hidden)
   ()
   :method-count-assert 15
