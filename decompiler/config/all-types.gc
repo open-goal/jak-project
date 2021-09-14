@@ -13762,8 +13762,8 @@
   (:methods
     (TODO-RENAME-9 (_type_) none 9)
     (TODO-RENAME-10 (_type_ vector) none 10)
-    (dummy-11 () none 11)
-    (dummy-12 () none 12)
+    (print-nth-point (_type_ int) none 11)
+    (TODO-RENAME-12 (_type_) none 12)
     (TODO-RENAME-13 (_type_ int) none 13)
     (TODO-RENAME-14 (_type_ vector) none 14)
     (TODO-RENAME-15 (_type_) none 15)
@@ -13774,7 +13774,7 @@
     (TODO-RENAME-20 (_type_ vector int) none 20)
     (TODO-RENAME-21 (_type_ vector float float) vector 21)
     (TODO-RENAME-22 (_type_ float) none 22)
-    (dummy-23 () none 23)
+    (TODO-RENAME-23 (_type_) none 23)
     )
   )
 
@@ -15107,7 +15107,7 @@
 ;; - Functions
 
 (define-extern ray-arbitrary-circle-intersect (function vector vector vector vector float float))
-(define-extern camera-line (function vector vector vector none))
+(define-extern camera-line (function vector vector rgba none))
 
 
 ;; ----------------------
@@ -15427,7 +15427,7 @@
 
 ;; - Functions
 
-(define-extern debug-set-camera-pos-rot! (function vector matrix int))
+(define-extern debug-set-camera-pos-rot! (function vector matrix vector))
 (define-extern drawable-frag-count (function drawable int))
 (define-extern add-debug-light (function symbol bucket-id light vector string symbol))
 (define-extern add-debug-text-3d (function symbol bucket-id string vector font-color vector2h symbol))
@@ -17894,10 +17894,10 @@
 
 ;; - Functions
 
-(define-extern camera-bounding-box-draw function)
+(define-extern camera-bounding-box-draw (function bounding-box basic rgba none))
 (define-extern collide-planes-test0 function)
 (define-extern collide-planes-test1 function)
-(define-extern camera-cross function)
+(define-extern camera-cross (function vector vector vector rgba float basic))
 (define-extern collide-planes-intersect function)
 (define-extern collide-planes function)
 
@@ -18043,7 +18043,7 @@
 (define-extern cam-slave-init-vars (function none :behavior camera-slave))
 (define-extern cam-calc-follow! (function cam-rotation-tracker vector symbol vector))
 (define-extern slave-set-rotation! (function cam-rotation-tracker vector float float symbol none))
-(define-extern camera-slave-debug (function object object object object object)) ;; passed to engine::method-15
+(define-extern camera-slave-debug (function camera-slave object object object object)) ;; passed to engine::method-15
 (define-extern camera-line-rel-len (function tracking-point vector float rgba none))
 (define-extern cam-slave-get-flags (function entity symbol uint128))
 (define-extern cam-slave-get-vector-with-offset (function entity-actor vector symbol symbol))
@@ -18130,7 +18130,7 @@
 (define-extern list-keeper-init (function none :behavior camera-master))
 (define-extern master-track-target (function symbol :behavior camera-master)) ;; TODO - go get that collide-cache function
 (define-extern master-check-regions (function none :behavior camera-master))
-(define-extern camera-master-debug function)
+(define-extern camera-master-debug (function camera-master symbol symbol none))
 (define-extern master-unset-region (function object :behavior camera-master))
 (define-extern reset-target-tracking (function none :behavior camera-master))
 (define-extern reset-drawable-tracking (function none :behavior camera-master))
@@ -18294,7 +18294,7 @@
 (define-extern cam-string-line-of-sight (function vector :behavior camera-slave))
 (define-extern cam-string-joystick (function vector :behavior camera-slave))
 (define-extern cam-string-find-hidden (function none :behavior camera-slave))
-(define-extern cam-collision-record-save (function vector vector int camera-slave none))
+(define-extern cam-collision-record-save (function vector vector int basic camera-slave none))
 (define-extern cam-string-move (function object :behavior camera-slave))
 (define-extern cam-dist-analog-input (function int float float))
 (define-extern cam-los-collide (function vector vector clip-travel-vector-to-mesh-return-info int symbol :behavior camera-slave))
@@ -18511,7 +18511,7 @@
 
 ;; - Types
 
-; (deftype cam-layout (UNKNOWN)
+; (deftype cam-layout (process)
 ;   ()
 ;   :method-count-assert 0
 ;   :size-assert         #x0
@@ -18591,13 +18591,13 @@
 ;   ;; bad get label
 ;   )
 
-; (deftype volume-descriptor-array (UNKNOWN)
-;   ()
-;   :method-count-assert 0
-;   :size-assert         #x0
-;   :flag-assert         #x0
-;   ;; bad get label
-;   )
+(deftype volume-descriptor-array (inline-array-class)
+  ((data  structure  :inline :dynamic :offset 16)
+   )
+  :method-count-assert 9
+  :size-assert         #x10
+  :flag-assert         #x900000010
+  )
 
 ;; - Functions
 
@@ -18635,18 +18635,18 @@
 (define-extern cam-layout-save-maxAngle function)
 (define-extern cam-layout-save-campoints-flags function)
 (define-extern cam-layout-save-focalpull-flags function)
-(define-extern cam-index-options->string function)
-(define-extern cam-slave-options->string function)
+(define-extern cam-index-options->string (function uint string string))
+(define-extern cam-slave-options->string (function uint string string))
 (define-extern fov->maya function)
 (define-extern cam-layout-entity-volume-info-create function)
 (define-extern clmf-next-volume function)
 (define-extern clmf-input function)
-(define-extern camera-fov-frame function)
+(define-extern camera-fov-frame (function matrix vector float float float vector none)) ;; probably final rgba
 (define-extern interp-test function)
 (define-extern v-slrp! function)
 (define-extern interp-test-deg function)
 (define-extern camera-line-setup (function vector none))
-(define-extern camera-line-draw (function vector vector rgba none))
+(define-extern camera-line-draw (function vector vector rgba symbol))
 (define-extern cam-layout-intersect-dist function)
 (define-extern clmf-button-test function)
 (define-extern clmf-bna function)
@@ -18715,38 +18715,38 @@
 
 ;; - Types
 
-; (deftype cam-dbg-scratch (structure)
-;   ((linevec4w      UNKNOWN 2       :offset-assert 0)
-;    (color          vector  :inline :offset-assert 32)
-;    (plotvec        UNKNOWN 2       :offset-assert 48)
-;    (linevec        UNKNOWN 2       :offset-assert 80)
-;    (rel-vec        vector  :inline :offset-assert 112)
-;    (sphere-v-start vector  :inline :offset-assert 128)
-;    (sphere-v-end   vector  :inline :offset-assert 144)
-;    (sphere-v-down  vector  :inline :offset-assert 160)
-;    (sphere-vec     vector  :inline :offset-assert 176)
-;    (crossvec       UNKNOWN 3       :offset-assert 192)
-;    (bboxvec        UNKNOWN 6       :offset-assert 240)
-;    (fov-vv         UNKNOWN 4       :offset-assert 336)
-;    (fov-src        vector  :inline :offset-assert 400)
-;    (fov-dest       vector  :inline :offset-assert 416)
-;    (fov-vert       vector  :inline :offset-assert 432)
-;    (fov-horz       vector  :inline :offset-assert 448)
-;    )
-;   :method-count-assert 9
-;   :size-assert         #x1d0
-;   :flag-assert         #x9000001d0
-;   )
+(deftype cam-dbg-scratch (structure)
+  ((linevec4w      vector4w 2    :inline   :offset-assert 0)
+   (color          vector  :inline :offset-assert 32)
+   (plotvec        vector 2  :inline     :offset-assert 48)
+   (linevec        vector 2   :inline    :offset-assert 80)
+   (rel-vec        vector  :inline :offset-assert 112)
+   (sphere-v-start vector  :inline :offset-assert 128)
+   (sphere-v-end   vector  :inline :offset-assert 144)
+   (sphere-v-down  vector  :inline :offset-assert 160)
+   (sphere-vec     vector  :inline :offset-assert 176)
+   (crossvec       vector 3   :inline     :offset-assert 192)
+   (bboxvec        vector 6    :inline   :offset-assert 240)
+   (fov-vv         vector 4    :inline   :offset-assert 336)
+   (fov-src        vector  :inline :offset-assert 400)
+   (fov-dest       vector  :inline :offset-assert 416)
+   (fov-vert       vector  :inline :offset-assert 432)
+   (fov-horz       vector  :inline :offset-assert 448)
+   )
+  :method-count-assert 9
+  :size-assert         #x1d0
+  :flag-assert         #x9000001d0
+  )
 
-; (deftype cam-debug-tri (structure)
-;   ((vertex    UNKNOWN  3       :offset-assert 0)
-;    (intersect vector   :inline :offset-assert 48)
-;    (color     vector4w         :offset-assert 64)
-;    )
-;   :method-count-assert 9
-;   :size-assert         #x44
-;   :flag-assert         #x900000044
-;   )
+(deftype cam-debug-tri (structure)
+  ((vertex    vector  3      :inline :offset-assert 0)
+   (intersect vector   :inline :offset-assert 48)
+   (color     vector4w         :offset-assert 64)
+   )
+  :method-count-assert 9
+  :size-assert         #x44
+  :flag-assert         #x900000044
+  )
 
 (deftype cam-collision-record (structure)
   ((pos            vector :inline :offset-assert 0)
@@ -18763,57 +18763,55 @@
    (view-off-param float          :offset-assert 152)
    (frame          int32          :offset-assert 156)
    (iteration      int32          :offset-assert 160)
-   (move-type      basic          :offset-assert 164)
+   (move-type      symbol          :offset-assert 164)
    )
   :method-count-assert 9
   :size-assert         #xa8
   :flag-assert         #x9000000a8
   )
 
-; (deftype cam-collision-record-array (inline-array-class)
-;   ((length           int32            :offset-assert 4)
-;    (allocated-length int32            :offset-assert 8)
-;    (data             UNKNOWN :dynamic :offset-assert 16)
-;    )
-;   :method-count-assert 9
-;   :size-assert         #x10
-;   :flag-assert         #x900000010
-;   )
+(deftype cam-collision-record-array (inline-array-class)
+  ((data             cam-collision-record :dynamic :offset-assert 16)
+   )
+  :method-count-assert 9
+  :size-assert         #x10
+  :flag-assert         #x900000010
+  )
 
 ;; - Functions
 
-(define-extern cam-collision-record-draw function)
-(define-extern master-draw-coordinates function)
-(define-extern cam-debug-draw-tris function)
-(define-extern cam-collision-record-step function)
-(define-extern camera-sphere function)
-(define-extern camera-line-rel function)
-(define-extern camera-fov-draw function)
-(define-extern cam-line-dma function)
-(define-extern camera-line2d function)
+(define-extern cam-collision-record-draw (function none))
+(define-extern master-draw-coordinates (function vector none))
+(define-extern cam-debug-draw-tris (function basic basic rgba symbol))
+(define-extern cam-collision-record-step (function int none))
+(define-extern camera-sphere (function vector float rgba none))
+(define-extern camera-line-rel (function vector vector rgba none))
+(define-extern camera-fov-draw (function int int vector float float vector none)) ;; probably last vector is rgba
+(define-extern cam-line-dma (function pointer))
+(define-extern camera-line2d (function (pointer control-info) (pointer control-info) none))
 (define-extern camera-plot-float-func (function float float float float (function float float) vector4w none))
-(define-extern cam-debug-add-coll-tri function)
-(define-extern debug-euler function)
-(define-extern bike-cam-limit function)
+(define-extern cam-debug-add-coll-tri (function cam-debug-tri vector cam-debug-tri none))
+(define-extern debug-euler (function cam-dbg-scratch object))
+(define-extern bike-cam-limit (function float float))
 (define-extern external-cam-reset! (function none)) ;; TODO - unconfirmed
 
 ;; - Unknowns
 
-;;(define-extern *camera-old-level* object) ;; unknown type
-;;(define-extern *camera-old-cpu* object) ;; unknown type
-;;(define-extern *camera-old-vu* object) ;; unknown type
-;;(define-extern *camera-old-tfrag-bytes* object) ;; unknown type
-;;(define-extern *camera-old-stat-string-tfrag-near* object) ;; unknown type
-;;(define-extern *camera-old-stat-string-tfrag* object) ;; unknown type
-;;(define-extern *camera-old-stat-string-total* object) ;; unknown type
-;;(define-extern *cam-collision-record-show* object) ;; unknown type
-;;(define-extern *cam-collision-record* object) ;; unknown type
-;;(define-extern *cam-collision-record-last* object) ;; unknown type
-;;(define-extern *cam-collision-record-first* object) ;; unknown type
-;;(define-extern *cam-debug-los-tri* object) ;; unknown type
-;;(define-extern *cam-debug-los-tri-current* object) ;; unknown type
-;;(define-extern *cam-debug-coll-tri* object) ;; unknown type
-;;(define-extern *cam-debug-coll-tri-current* object) ;; unknown type
+(define-extern *camera-old-level* string) ;; unknown type
+(define-extern *camera-old-cpu* int) ;; unknown type
+(define-extern *camera-old-vu* int) ;; unknown type
+(define-extern *camera-old-tfrag-bytes* int) ;; unknown type
+(define-extern *camera-old-stat-string-tfrag-near* string) ;; unknown type
+(define-extern *camera-old-stat-string-tfrag* string) ;; unknown type
+(define-extern *camera-old-stat-string-total* string) ;; unknown type
+(define-extern *cam-collision-record-show* int) ;; unknown type
+(define-extern *cam-collision-record* cam-collision-record-array) ;; unknown type
+(define-extern *cam-collision-record-last* int) ;; unknown type
+(define-extern *cam-collision-record-first* int) ;; unknown type
+(define-extern *cam-debug-los-tri* (pointer cam-debug-tri)) ;; unknown type
+(define-extern *cam-debug-los-tri-current* int) ;; unknown type
+(define-extern *cam-debug-coll-tri* (pointer cam-debug-tri)) ;; unknown type
+(define-extern *cam-debug-coll-tri-current* int) ;; unknown type
 
 
 ;; ----------------------
