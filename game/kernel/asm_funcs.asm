@@ -137,10 +137,11 @@ _mips2c_call_linux:
   mov [rsp + 144], r9 ;; arg5
   mov [rsp + 160], r10 ;; arg6
   mov [rsp + 176], r11 ;; arg7
-  mov [rsp + 368], r14 ;; s7
+  mov [rsp + 352], r13 ;; s6 (pp)
+  mov [rsp + 368], r14 ;; s7 (st)
 
   mov rdi, rsp
-  add rdi, r15
+  sub rdi, r15
   mov [rsp + 464], rdi ;; mip2c code's MIPS stack
 
   mov rdi, rsp
@@ -209,9 +210,11 @@ _mips2c_call_windows:
   mov [rsp + 144], r9 ;; arg5
   mov [rsp + 160], r10 ;; arg6
   mov [rsp + 176], r11 ;; arg7
-  mov [rsp + 368], r14 ;; s7
+  mov [rsp + 352], r13 ;; s6 (pp)
+  mov [rsp + 368], r14 ;; s7 (st)
+
   mov rdi, rsp
-  add rdi, r15
+  sub rdi, r15
   mov [rsp + 464], rdi ;; mip2c code's MIPS stack
 
   mov rcx, rsp
@@ -343,6 +346,47 @@ _call_goal_asm_linux:
   mov r15, r9
   ;; call GOAL by function pointer
   call r13
+
+  ;; retore x86 registers.
+  pop r15
+  pop r14
+  pop r13
+  ret
+
+global _call_goal8_asm_linux
+
+_call_goal8_asm_linux:
+  ;; x86 saved registers we need to modify for GOAL should be saved
+  push r13
+  push r14
+  push r15
+
+  ;; RDI - first arg (func)
+  ;; RSI - second arg (arg array)
+  ;; RDX - third arg  (0)
+  ;; RCX - pp (goes in r13)
+  ;; R8  - st (goes in r14)
+  ;; R9  - off (goes in r15)
+
+  ;; set GOAL function pointer
+  mov r13, rcx
+  ;; offset
+  mov r14, r8
+  ;; symbol table
+  mov r15, r9
+  ;; move function to temp
+  mov rax, rdi
+  ;; extract arguments
+  mov rdi, [rsi + 0]  ;; 0
+  mov rdx, [rsi + 16] ;; 2
+  mov rcx, [rsi + 24] ;; 3
+  mov r8, [rsi + 32]  ;; 4
+  mov r9, [rsi + 40]  ;; 5
+  mov r10, [rsi + 48] ;; 6
+  mov r11, [rsi + 56]  ;; 7
+  mov rsi, [rsi + 8] ;; 1 (do this last)
+  ;; call GOAL by function pointer
+  call rax
 
   ;; retore x86 registers.
   pop r15

@@ -3,6 +3,7 @@
 
 #include "mips2c.h"
 
+#include "common/util/print_float.h"
 #include "decompiler/Disasm/InstructionMatching.h"
 #include "decompiler/Function/Function.h"
 #include "decompiler/ObjectFile/LinkedObjectFile.h"
@@ -115,6 +116,9 @@ struct Mips2C_Output {
     result += "  auto* c = (ExecutionContext*)ctxt;\n";
     result += "  bool bc = false;\n";
     result += "  u32 call_addr = 0;\n";
+    if (needs_cop1_bc) {
+      result += "  bool cop1_bc = false;\n";
+    }
     for (auto& line : lines) {
       result += "  ";
       result += line.code;
@@ -157,6 +161,7 @@ struct Mips2C_Output {
 
   std::vector<Mips2C_Line> lines;
   std::set<std::string> symbol_cache;
+  bool needs_cop1_bc = false;
 };
 
 struct M2C_Block {
@@ -419,6 +424,22 @@ Mips2C_Line handle_generic_load(const Instruction& i0, const std::string& instr_
           instr_str};
 }
 
+Mips2C_Line handle_lwc1(const Instruction& i0,
+                        const std::string& instr_str,
+                        const LinkedObjectFile* file) {
+  if (i0.get_src(0).is_label() && i0.get_src(1).is_reg(Register(Reg::GPR, Reg::FP))) {
+    auto& label = file->labels.at(i0.get_src(0).get_label());
+    auto& word = file->words_by_seg.at(label.target_segment).at(label.offset / 4);
+    assert(word.kind == LinkedWord::PLAIN_DATA);
+    float f;
+    memcpy(&f, &word.data, 4);
+    return {fmt::format("c->fprs[{}] = {};", reg_to_name(i0.get_dst(0)), float_to_string(f)),
+            instr_str};
+  } else {
+    return handle_generic_load(i0, instr_str);
+  }
+}
+
 Mips2C_Line handle_lw(Mips2C_Output& out, const Instruction& i0, const std::string& instr_str) {
   if (i0.get_src(1).is_reg(rs7()) && i0.get_src(0).is_sym()) {
     // symbol load.
@@ -597,6 +618,10 @@ Mips2C_Line handle_non_likely_branch_bc(const Instruction& i0, const std::string
       return {fmt::format("bc = ((s64){}) > 0;", reg64_or_zero(i0.get_src(0))), instr_str};
     case InstructionKind::BGEZ:
       return {fmt::format("bc = ((s64){}) >= 0;", reg64_or_zero(i0.get_src(0))), instr_str};
+    case InstructionKind::BLEZ:
+      return {fmt::format("bc = ((s64){}) <= 0;", reg64_or_zero(i0.get_src(0))), instr_str};
+    case InstructionKind::BC1F:
+      return {fmt::format("bc = !cop1_bc;"), instr_str};
     default:
       return handle_unknown(instr_str);
   }
@@ -660,10 +685,17 @@ Mips2C_Line handle_lui(const Instruction& i0, const std::string& instr_string) {
           instr_string};
 }
 
+Mips2C_Line handle_clts(const Instruction& i0, const std::string& instr_string) {
+  return {fmt::format("cop1_bc = c->fprs[{}] < c->fprs[{}];", reg_to_name(i0.get_src(0)),
+                      reg_to_name(i0.get_src(1))),
+          instr_string};
+}
+
 Mips2C_Line handle_normal_instr(Mips2C_Output& output,
                                 const Instruction& i0,
                                 const std::string& instr_str,
-                                int& unknown_count) {
+                                int& unknown_count,
+                                const LinkedObjectFile* file) {
   switch (i0.kind) {
     case InstructionKind::LW:
       return handle_lw(output, i0, instr_str);
@@ -673,8 +705,10 @@ Mips2C_Line handle_normal_instr(Mips2C_Output& output,
     case InstructionKind::LQC2:
     case InstructionKind::LH:
     case InstructionKind::LHU:
-    case InstructionKind::LWC1:
+    case InstructionKind::LD:
       return handle_generic_load(i0, instr_str);
+    case InstructionKind::LWC1:
+      return handle_lwc1(i0, instr_str, file);
     case InstructionKind::SQ:
     case InstructionKind::SQC2:
     case InstructionKind::SH:
@@ -685,6 +719,8 @@ Mips2C_Line handle_normal_instr(Mips2C_Output& output,
       return handle_generic_op3_bc_mask(i0, instr_str, "vadd_bc");
     case InstructionKind::VMINI_BC:
       return handle_generic_op3_bc_mask(i0, instr_str, "vmini_bc");
+    case InstructionKind::VMAX_BC:
+      return handle_generic_op3_bc_mask(i0, instr_str, "vmax_bc");
     case InstructionKind::VSUB_BC:
       return handle_generic_op3_bc_mask(i0, instr_str, "vsub_bc");
     case InstructionKind::VMUL_BC:
@@ -725,6 +761,8 @@ Mips2C_Line handle_normal_instr(Mips2C_Output& output,
     case InstructionKind::PEXTLH:
     case InstructionKind::PEXTLB:
     case InstructionKind::MOVN:
+    case InstructionKind::PEXTUW:
+    case InstructionKind::PCPYUD:
     case InstructionKind::MOVZ:
     case InstructionKind::MULT3:
     case InstructionKind::PMINW:
@@ -777,8 +815,15 @@ Mips2C_Line handle_normal_instr(Mips2C_Output& output,
       return handle_generic_op2(i0, instr_str, "cvtws");
     case InstructionKind::CVTSW:
       return handle_generic_op2(i0, instr_str, "cvtsw");
+    case InstructionKind::PEXEW:
+      return handle_generic_op2(i0, instr_str, "pexew");
+    case InstructionKind::SQRTS:
+      return handle_generic_op2(i0, instr_str, "sqrts");
     case InstructionKind::LUI:
       return handle_lui(i0, instr_str);
+    case InstructionKind::CLTS:
+      output.needs_cop1_bc = true;
+      return handle_clts(i0, instr_str);
     default:
       unknown_count++;
       return handle_unknown(instr_str);
@@ -826,7 +871,7 @@ void run_mips2c(Function* f) {
           auto& delay_instr = f->instructions.at(delay_block.start_instr);
           auto delay_instr_str = delay_instr.to_string(file->labels);
           auto delay_instr_line =
-              handle_normal_instr(output, delay_instr, delay_instr_str, unknown_count);
+              handle_normal_instr(output, delay_instr, delay_instr_str, unknown_count, file);
           output.lines.emplace_back(fmt::format("  {}", delay_instr_line.code),
                                     delay_instr_line.comment);
           assert(delay_block.succ_ft == -1);
@@ -842,7 +887,7 @@ void run_mips2c(Function* f) {
             auto& delay_i = f->instructions.at(i);
             auto delay_i_str = delay_i.to_string(file->labels);
             output.lines.push_back(
-                handle_normal_instr(output, delay_i, delay_i_str, unknown_count));
+                handle_normal_instr(output, delay_i, delay_i_str, unknown_count, file));
             assert(i + 1 == block.end_instr);
             // then the goto
             output.lines.emplace_back(fmt::format("goto block_{};", block.succ_branch),
@@ -856,7 +901,7 @@ void run_mips2c(Function* f) {
             auto& delay_i = f->instructions.at(i);
             auto delay_i_str = delay_i.to_string(file->labels);
             output.lines.push_back(
-                handle_normal_instr(output, delay_i, delay_i_str, unknown_count));
+                handle_normal_instr(output, delay_i, delay_i_str, unknown_count, file));
             assert(i + 1 == block.end_instr);
             // then the goto
             output.lines.emplace_back(fmt::format("if (bc) {{goto block_{};}}", block.succ_branch),
@@ -871,7 +916,8 @@ void run_mips2c(Function* f) {
         i++;
         auto& delay_i = f->instructions.at(i);
         auto delay_i_str = delay_i.to_string(file->labels);
-        output.lines.push_back(handle_normal_instr(output, delay_i, delay_i_str, unknown_count));
+        output.lines.push_back(
+            handle_normal_instr(output, delay_i, delay_i_str, unknown_count, file));
         // assert(i + 1 == block.end_instr);
         // then the goto
         output.lines.emplace_back(fmt::format("goto end_of_function;", block.succ_branch),
@@ -885,10 +931,11 @@ void run_mips2c(Function* f) {
         i++;
         auto& delay_i = f->instructions.at(i);
         auto delay_i_str = delay_i.to_string(file->labels);
-        output.lines.push_back(handle_normal_instr(output, delay_i, delay_i_str, unknown_count));
+        output.lines.push_back(
+            handle_normal_instr(output, delay_i, delay_i_str, unknown_count, file));
         output.lines.emplace_back("c->jalr(call_addr);", instr_str);
       } else {
-        output.lines.push_back(handle_normal_instr(output, instr, instr_str, unknown_count));
+        output.lines.push_back(handle_normal_instr(output, instr, instr_str, unknown_count, file));
       }
       // fmt::print("I: {}\n", instr_str);
 

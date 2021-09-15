@@ -310,7 +310,8 @@
 (defun sp-kill-particle ((arg0 sparticle-system) (arg1 sparticle-cpuinfo))
   "kill the given particle"
   (cond
-    ((>= (the-as int arg1) #x70000000) ;; TODO PC port
+    ;; modified to check the end of the spad too.
+    ((in-scratchpad? arg1) ;;(>= (the-as int arg1) #x70000000) ;; TODO PC port
      ;; if in the sratchpad, just set the timer to 0.
      (set! (-> arg1 timer) 0)
      0
@@ -387,30 +388,28 @@
 ;; TODO sp-process-block-2d
 ;; TODO sp-process-block-3d
 (define-extern sp-process-block-3d (function sparticle-system int int int int symbol none))
+(set! sp-process-block-3d (the (function sparticle-system int int int int symbol none)
+                               (__pc-get-mips2c "sp-process-block-3d")))
 (define-extern sp-process-block-2d (function sparticle-system int int int int symbol none))
+(set! sp-process-block-2d (the (function sparticle-system int int int int symbol none)
+                               (__pc-get-mips2c "sp-process-block-2d")))
 
 
 (defun sp-copy-to-spr ((arg0 int) (arg1 pointer) (arg2 int))
+  ;; modified to use fake spad
   (let ((a2-1 (/ (+ arg2 15) 16)))
-    (dma-send-to-spr-no-flush
-      (the-as uint arg0)
-      (the-as uint arg1)
-      (the-as uint a2-1)
-      #t
-      )
+    (__mem-move (&+ (scratchpad-start) arg0) arg1 (the uint (* a2-1 16)))
+    ;; (dma-send-to-spr-no-flush (the-as uint arg0) (the-as uint arg1) (the-as uint a2-1) #t)
     )
   0
   (none)
   )
 
 (defun sp-copy-from-spr ((arg0 int) (arg1 pointer) (arg2 int))
+  ;; modified to use fake spad.
   (let ((a2-1 (/ (+ arg2 15) 16)))
-    (dma-send-from-spr-no-flush
-      (the-as uint arg1)
-      (the-as uint arg0)
-      (the-as uint a2-1)
-      #t
-      )
+    (__mem-move arg1 (&+ (scratchpad-start) arg0) (the uint (* a2-1 16)))
+    ;;(dma-send-from-spr-no-flush (the-as uint arg1) (the-as uint arg0) (the-as uint a2-1) #t)
     )
   0
   (none)
@@ -440,8 +439,8 @@
             )
         (t9-2 sv-16 (the-as pointer a1-7) sv-32)
         )
-      (set! sv-80 (+ #x70000000 s3-0))
-      (set! sv-96 (+ #x70000000 s1-0))
+      (set! sv-80 (+ (the int (scratchpad-start)) s3-0)) ;; spad
+      (set! sv-96 (+ (the int (scratchpad-start)) s1-0)) ;; spad
       (cond
         ((-> arg0 is-3d)
          (sp-process-block-3d arg0 sv-80 sv-96 arg1 arg3 (paused?))
@@ -773,7 +772,7 @@
      (format
       *stdcon*
       "Particle time = ~D cycles for ~D 2D [~D warp] and ~D HUD and ~D 3D~%"
-      a2-5
+      1234 ;;a2-5
       (-> *sp-particle-system-2d* num-alloc 0)
       (-> *sprite-aux-list* entry)
       (-> *sp-particle-system-2d* num-alloc 1)
