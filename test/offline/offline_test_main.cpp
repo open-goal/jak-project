@@ -168,8 +168,7 @@ const std::unordered_set<std::string> g_functions_to_skip_compiling = {
     "debug-menu-item-var-make-float",
 
     // decompiler BUG
-    "level-hint-task-process"
-};
+    "level-hint-task-process"};
 
 // default location for the data. It can be changed with a command line argument.
 std::string g_iso_data_path = "";
