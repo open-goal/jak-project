@@ -379,7 +379,8 @@
   (none)
   )
 
-;;(define sprite-vu1-block (the-as vu-function L58))
+;; we need to at least put something here so dma-buffer-add-vu-function doesn't crash.
+(define sprite-vu1-block (new 'static 'vu-function))
 
 ;;;;;;;;;;;;;;;;;;
 ;; sprite-arrays
@@ -576,6 +577,7 @@
   (none)
   )
 
+#|
 (defun sprite-add-frame-data ((dma-buff dma-buffer) (tbp-offset uint))
   "Upload the frame data."
   (let ((s5-0 41)) ;; qwc of frame data.
@@ -592,6 +594,29 @@
      )
     (&+! (-> dma-buff base) (* s5-0 16))
     )
+  (none)
+  )
+|#
+
+(defun sprite-add-frame-data ((dma-buff dma-buffer) (tbp-offset uint))
+  (let ((s5-0 41))
+   (let* ((v1-0 dma-buff)
+          (pkt (the-as dma-packet (-> v1-0 base)))
+          )
+    (set! (-> pkt dma) (new 'static 'dma-tag :id (dma-tag-id cnt) :qwc s5-0))
+    (set! (-> pkt vif0) (new 'static 'vif-tag :imm #x404 :cmd (vif-cmd stcycl)))
+    (set!
+     (-> pkt vif1)
+     (new 'static 'vif-tag :imm #x3d4 :cmd (vif-cmd unpack-v4-32) :num s5-0)
+     )
+    (set! (-> v1-0 base) (&+ (the-as pointer pkt) 16))
+    )
+   (sprite-setup-frame-data
+    (the-as sprite-frame-data (-> dma-buff base))
+    (the-as int tbp-offset)
+    )
+   (&+! (-> dma-buff base) (* s5-0 16))
+   )
   (none)
   )
 
@@ -650,6 +675,8 @@
         ;; and use the other mpg.
         (set! mscal-addr 109)
         )
+      
+      ;;(format #t "group ~d 2D ~d~%" group-idx (-> sprites num-valid group-idx))
 
       ;; loop over chunks
       (let ((remaining-sprites (-> sprites num-valid group-idx)))
@@ -822,6 +849,7 @@
   (none)
   )
 
+
 (defun sprite-draw ((disp display))
   "Main sprite draw function."
   ;; start of our DMA for all the sprite data
@@ -902,6 +930,8 @@
   0
   (none)
   )
+
+
 
 (defun sprite-allocate-user-hvdf ()
   "Allocate an HVDF entry. Returns the index. Or 0 if it fails"

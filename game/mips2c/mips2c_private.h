@@ -254,7 +254,7 @@ struct ExecutionContext {
     gprs[v0].du64[0] = _call_goal8_asm_linux(g_ee_main_mem + addr, args, 0, gprs[s6].du64[0],
                                              gprs[s7].du64[0], g_ee_main_mem);
 #elif _WIN32
-    assert(false); // todo, implement 
+    assert(false); // todo, implement
 #endif
   }
 

@@ -1,3 +1,5 @@
+#include <regex>
+
 #include "TexturePool.h"
 
 #include "third-party/fmt/core.h"
@@ -210,14 +212,22 @@ void TexturePool::draw_debug_window() {
   int id = 0;
   int total_vram_bytes = 0;
   int total_textures = 0;
+  int total_displayed_textures = 0;
   int total_uploaded_textures = 0;
+  ImGui::InputText("texture search", m_regex_input, sizeof(m_regex_input));
+  std::regex regex(m_regex_input[0] ? m_regex_input : ".*");
+
   for (auto& record : m_textures) {
     if (record.normal_texture) {
-      ImGui::PushID(id++);
-      auto& tex = *record.normal_texture;
-      draw_debug_for_tex(tex.name, tex);
-      ImGui::PopID();
       total_textures++;
+      auto& tex = *record.normal_texture;
+      if (std::regex_search(tex.name, regex)) {
+        ImGui::PushID(id++);
+        draw_debug_for_tex(tex.name, tex);
+        ImGui::PopID();
+        total_displayed_textures++;
+      }
+
       if (tex.on_gpu) {
         total_vram_bytes += tex.w * tex.h * 4;  // todo, if we support other formats
         total_uploaded_textures++;
@@ -225,23 +235,28 @@ void TexturePool::draw_debug_window() {
     }
 
     if (record.mt4hh_texture) {
-      ImGui::PushID(id++);
-      auto& tex = *record.mt4hh_texture;
-      draw_debug_for_tex(tex.name, tex);
-      ImGui::PopID();
       total_textures++;
+      auto& tex = *record.mt4hh_texture;
+      if (std::regex_search(tex.name, regex)) {
+        ImGui::PushID(id++);
+        draw_debug_for_tex(tex.name, tex);
+        ImGui::PopID();
+        total_displayed_textures++;
+      }
+
       if (tex.on_gpu) {
         total_vram_bytes += tex.w * tex.h * 4;  // todo, if we support other formats
         total_uploaded_textures++;
       }
     }
   }
-  ImGui::Text("Total Textures: %d Uploaded: %d VRAM: %.3f MB", total_textures,
-              total_uploaded_textures, (float)total_vram_bytes / (1024 * 1024));
+  ImGui::Text("Total Textures: %d Uploaded: %d Shown: %d VRAM: %.3f MB", total_textures,
+              total_uploaded_textures, total_displayed_textures,
+              (float)total_vram_bytes / (1024 * 1024));
 }
 
 void TexturePool::draw_debug_for_tex(const std::string& name, TextureRecord& tex) {
-  if (ImGui::CollapsingHeader(name.c_str())) {
+  if (ImGui::TreeNode(name.c_str())) {
     ImGui::Text("Page: %s Size: %d x %d mip %d On GPU? %d", tex.page_name.c_str(), tex.w, tex.h,
                 tex.mip_level, tex.on_gpu);
     if (tex.on_gpu) {
@@ -251,6 +266,8 @@ void TexturePool::draw_debug_for_tex(const std::string& name, TextureRecord& tex
         upload_to_gpu(&tex);
       }
     }
+    ImGui::TreePop();
+    ImGui::Separator();
   }
 }
 

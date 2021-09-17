@@ -35,6 +35,8 @@ FixedChunkDmaCopier::FixedChunkDmaCopier(u32 main_memory_size)
 }
 
 const DmaData& FixedChunkDmaCopier::run(const void* memory, u32 offset, bool verify) {
+  m_input_offset = offset;
+  m_input_data = memory;
   std::fill(m_chunk_mask.begin(), m_chunk_mask.end(), false);
   m_fixups.clear();
   m_result.data.clear();

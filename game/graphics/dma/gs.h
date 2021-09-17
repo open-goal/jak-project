@@ -54,6 +54,7 @@ struct GifTag {
   std::string print() const;
 
   GifTag(const u8* ptr) { memcpy(data, ptr, 16); }
+  GifTag() = default;
 
   u64 data[2];
 };

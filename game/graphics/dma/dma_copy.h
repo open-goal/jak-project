@@ -23,6 +23,9 @@ class FixedChunkDmaCopier {
   const DmaData& run(const void* memory, u32 offset, bool verify = false);
   const DmaData& get_last_result() const { return m_result; }
 
+  const void* get_last_input_data() const { return m_input_data; }
+  u32 get_last_input_offset() const { return m_input_offset; }
+
  private:
   struct Fixup {
     u32 source_chunk;
@@ -36,6 +39,9 @@ class FixedChunkDmaCopier {
   u32 m_chunk_count = 0;
   std::vector<u32> m_chunk_mask;
   DmaData m_result;
+
+  u32 m_input_offset = 0;
+  const void* m_input_data = nullptr;
 };
 
 /*!

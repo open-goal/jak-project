@@ -25,6 +25,8 @@
 
 namespace {
 
+constexpr bool disable_dma_copy = false;
+
 struct GraphicsData {
   // vsync
   std::mutex sync_mutex;
@@ -199,9 +201,14 @@ static void gl_render_display(GfxDisplay* display) {
 
   // render that chain.
   if (got_chain) {
-    auto& chain = g_gfx_data->dma_copier.get_last_result();
     int width, height;
     glfwGetFramebufferSize(window, &width, &height);
+
+    //      g_gfx_data->ogl_renderer.render(DmaFollower(g_gfx_data->dma_copier.get_last_input_data(),
+    //                                                  g_gfx_data->dma_copier.get_last_input_offset()),
+    //                                      width, height);
+
+    auto& chain = g_gfx_data->dma_copier.get_last_result();
     g_gfx_data->ogl_renderer.render(DmaFollower(chain.data.data(), chain.start_offset), width,
                                     height);
   }

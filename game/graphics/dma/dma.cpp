@@ -21,9 +21,11 @@ std::string VifCode::print() {
     case Kind::NOP:
       result = "NOP";
       break;
-    case Kind::STCYCL:
+    case Kind::STCYCL: {
       result = "STCYCL";
-      break;
+      VifCodeStcycl stcycl(immediate);
+      result = fmt::format("STCYCL cl: {} wl: {}", stcycl.cl, stcycl.wl);
+    } break;
     case Kind::OFFSET:
       result = "OFFSET";
       break;
@@ -81,7 +83,7 @@ std::string VifCode::print() {
       break;
     default:
       fmt::print("Unhandled vif code {}", (int)kind);
-      assert(false);
+      // assert(false);
       break;
   }
   // TODO: the rest of the VIF code.

@@ -150,6 +150,23 @@ class Vector {
   T m_data[Size];
 };
 
+// column major
+template <typename T, int Rows, int Cols>
+struct Matrix {
+  Matrix() = default;
+
+  static Matrix zero() {
+    Matrix result;
+    for (auto& x : result.m_data) {
+      x = 0;
+    }
+    return result;
+  }
+
+ private:
+  T m_data[Rows * Cols];
+};
+
 template <typename T>
 using Vector2 = Vector<T, 2>;
 
@@ -165,4 +182,6 @@ using Vector4f = Vector4<float>;
 using Vector2d = Vector2<double>;
 using Vector3d = Vector3<double>;
 using Vector4d = Vector4<double>;
+
+using Matrix4f = Matrix<float, 4, 4>;
 }  // namespace math

@@ -49,10 +49,114 @@
       )
     )
   "Function to be executed to set up for engine dma"
+  (set! *vu1-enable-user* *vu1-enable-user-menu*)
+  (set! *texture-enable-user* *texture-enable-user-menu*)
+  ;; todo debug memory
+  ;; todo shrub matrix
+  ;; todo generic init
+  
+  ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+  ;; texture uploads
+  ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+  
+  ;; tfrag
+  (format 0 "tfrag~%")
+  (when (logtest? *texture-enable-user* 1)
+   (dotimes (gp-1 (-> *level* length))
+    (let ((a1-2 (-> *level* level gp-1)))
+     (if (= (-> a1-2 status) 'active)
+      (add-tex-to-dma! *texture-pool* a1-2 0)
+      )
+     )
+    )
+   )
+  
+  ;; pris
+  (format 0 "pris~%")
+  (when (logtest? *texture-enable-user* 2)
+   (dotimes (gp-2 (-> *level* length))
+    (let ((a1-3 (-> *level* level gp-2)))
+     (if (= (-> a1-3 status) 'active)
+      (add-tex-to-dma! *texture-pool* a1-3 1)
+      )
+     )
+    )
+   )
+  
+  ;; shrub
+  (format 0 "shrub~%")
+  (when (logtest? *texture-enable-user* 4)
+   (dotimes (gp-3 (-> *level* length))
+    (let ((a1-4 (-> *level* level gp-3)))
+     (if (= (-> a1-4 status) 'active)
+      (add-tex-to-dma! *texture-pool* a1-4 2)
+      )
+     )
+    )
+   )
+  
+  ;; alpha and common.
+  (when (logtest? *texture-enable-user* 8)
+   (let ((uploaded-common #f))
+    (dotimes (gp-4 (-> *level* length))
+     (let ((a1-5 (-> *level* level gp-4)))
+      (when (= (-> a1-5 status) 'active)
+        (format 0 "alpha~%")
+       (add-tex-to-dma! *texture-pool* a1-5 3)
+       (when (not uploaded-common)
+         (format 0 "common~%")
+        (upload-one-common! *texture-pool* (-> *level* level0))
+        (set! uploaded-common #t)
+        )
+       )
+      )
+     )
+    (when (not uploaded-common)
+     (upload-one-common! *texture-pool* (-> *level* level0))
+     #t
+     )
+    )
+   )
+  
+  ;; water.
+  (format 0 "water~%")
+  (when (logtest? *texture-enable-user* 16)
+   (dotimes (gp-5 (-> *level* length))
+    (let ((a1-8 (-> *level* level gp-5)))
+     (if (= (-> a1-8 status) 'active)
+      (add-tex-to-dma! *texture-pool* a1-8 4)
+      )
+     )
+    )
+   )
+  
+  ;; texture common
+  ;; sky
+  ;; tod update
+  ;; closest
+  ;; ocean
+  ;; merc
+  ;; init bg
+  ;; exec bg
+  ;; finish bg
+  ;; stats
+  ;; fg engine
+  ;; bones
+  ;; gmerc
+  ;; shadow
+  ;; eyes
+  (when (logtest? #x10000 *vu1-enable-user*)
+    (swap-fake-shadow-buffers)
+    (sprite-draw *display*)
+    )
   ;; lots more in this function.
   (when *debug-segment*
     (debug-draw-actors *level* *display-actor-marks*)
+    ;; collide-shape-debug
     )
+  ;; boundaries
+  ;; method15 level
+  ;; collide stats
   )
 
 (defun main-draw-hook ()

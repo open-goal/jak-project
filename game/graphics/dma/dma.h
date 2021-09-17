@@ -59,7 +59,8 @@ struct VifCode {
     MPG = 0b1001010,
     DIRECT = 0b1010000,
     DIRECTHL = 0b1010001,
-    UNPACK_MASK = 0b1100000  // unpack is a bunch of commands.
+    UNPACK_MASK = 0b1100000,  // unpack is a bunch of commands.
+    UNPACK_V4_32 = 0b1101100,
   };
 
   VifCode(u32 value) {
@@ -75,4 +76,26 @@ struct VifCode {
   u16 immediate;
 
   std::string print();
+};
+
+struct VifCodeStcycl {
+  explicit VifCodeStcycl(const VifCode& code) {
+    cl = code.immediate & 0xff;
+    wl = (code.immediate >> 8);
+  }
+
+  u16 cl;
+  u16 wl;
+};
+
+struct VifCodeUnpack {
+  explicit VifCodeUnpack(const VifCode& code) {
+    addr_qw = code.immediate & 0b1111111111;
+    is_unsigned = (code.immediate & (1 << 14));
+    use_tops_flag = (code.immediate & (1 << 15));
+  }
+
+  u16 addr_qw;
+  bool is_unsigned;  // only care for 8/16 bit data.
+  bool use_tops_flag;
 };

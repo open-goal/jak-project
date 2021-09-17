@@ -58,4 +58,6 @@ class TexturePool {
   // textures that the game overwrote, but may be still allocated on the GPU.
   // TODO: free these periodically.
   std::vector<std::unique_ptr<TextureRecord>> m_garbage_textures;
+
+  char m_regex_input[256] = "";
 };
