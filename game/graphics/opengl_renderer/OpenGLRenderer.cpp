@@ -4,6 +4,7 @@
 #include "game/graphics/pipelines/opengl.h"
 #include "game/graphics/opengl_renderer/DirectRenderer.h"
 #include "game/graphics/opengl_renderer/SpriteRenderer.h"
+#include "game/graphics/opengl_renderer/TextureUploadHandler.h"
 #include "third-party/imgui/imgui.h"
 
 // for the vif callback
@@ -54,7 +55,12 @@ OpenGLRenderer::OpenGLRenderer(std::shared_ptr<TexturePool> texture_pool)
 void OpenGLRenderer::init_bucket_renderers() {
   // For example, set up bucket 0:
   init_bucket_renderer<EmptyBucketRenderer>("bucket0", BucketId::BUCKET0);
-
+  init_bucket_renderer<TextureUploadHandler>("tfrag-tex-0", BucketId::TFRAG_TEX_LEVEL0);
+  init_bucket_renderer<TextureUploadHandler>("shrub-tex-0", BucketId::SHRUB_TEX_LEVEL0);
+  init_bucket_renderer<TextureUploadHandler>("alpha-tex-0", BucketId::ALPHA_TEX_LEVEL0);
+  init_bucket_renderer<TextureUploadHandler>("pris-tex-0", BucketId::PRIS_TEX_LEVEL0);
+  init_bucket_renderer<TextureUploadHandler>("water-tex-0", BucketId::WATER_TEX_LEVEL0);
+  init_bucket_renderer<TextureUploadHandler>("pre-sprite-tex", BucketId::PRE_SPRITE_TEX);
   init_bucket_renderer<SpriteRenderer>("sprite", BucketId::SPRITE);
   init_bucket_renderer<DirectRenderer>("debug-draw-0", BucketId::DEBUG_DRAW_0, 102);
   init_bucket_renderer<DirectRenderer>("debug-draw-1", BucketId::DEBUG_DRAW_1, 102);
@@ -71,7 +77,10 @@ void OpenGLRenderer::init_bucket_renderers() {
  * Main render function. This is called from the gfx loop with the chain passed from the game.
  */
 void OpenGLRenderer::render(DmaFollower dma, int window_width_px, int window_height_px) {
+  m_render_state.ee_main_memory = g_ee_main_mem;
+  m_render_state.offset_of_s7 = offset_of_s7();
   setup_frame(window_width_px, window_height_px);
+  m_render_state.texture_pool->remove_garbage_textures();
   // draw_test_triangle();
   // render the buckets!
   dispatch_buckets(dma);

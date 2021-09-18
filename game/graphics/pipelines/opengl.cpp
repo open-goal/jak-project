@@ -36,6 +36,7 @@ struct GraphicsData {
   std::mutex dma_mutex;
   std::condition_variable dma_cv;
   u64 frame_idx = 0;
+  u64 frame_idx_of_input_data = 0;
   bool has_data_to_render = false;
   FixedChunkDmaCopier dma_copier;
 
@@ -209,6 +210,7 @@ static void gl_render_display(GfxDisplay* display) {
     //                                      width, height);
 
     auto& chain = g_gfx_data->dma_copier.get_last_result();
+    g_gfx_data->frame_idx_of_input_data = g_gfx_data->frame_idx;
     g_gfx_data->ogl_renderer.render(DmaFollower(chain.data.data(), chain.start_offset), width,
                                     height);
   }
@@ -254,7 +256,7 @@ u32 gl_vsync() {
   }
 
   std::unique_lock<std::mutex> lock(g_gfx_data->sync_mutex);
-  auto init_frame = g_gfx_data->frame_idx;
+  auto init_frame = g_gfx_data->frame_idx_of_input_data;
   g_gfx_data->sync_cv.wait(lock, [=] { return g_gfx_data->frame_idx > init_frame; });
 
   return g_gfx_data->frame_idx & 1;

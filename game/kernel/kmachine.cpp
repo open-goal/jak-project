@@ -749,6 +749,13 @@ void vif_interrupt_callback() {
 }
 
 /*!
+ * Added in PC port.
+ */
+u32 offset_of_s7() {
+  return s7.offset;
+}
+
+/*!
  * Final initialization of the system after the kernel is loaded.
  * This is called from InitHeapAndSymbol at the very end.
  * Exports the last of the functions written in C to the GOAL symbol table

@@ -45,6 +45,7 @@ struct VifCode {
     BASE = 0b11,
     ITOP = 0b100,
     STMOD = 0b101,
+    PC_PORT = 0b1000,
     MSK3PATH = 0b110,
     MARK = 0b111,
     FLUSHE = 0b10000,

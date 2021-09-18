@@ -293,15 +293,15 @@ void SpriteRenderer::render(DmaFollower& dma, SharedRenderState* render_state) {
   // 2d draw (HUD)
   render_2d_group1(dma);
 
-  fmt::print("next bucket is 0x{}\n", render_state->next_bucket);
+  // fmt::print("next bucket is 0x{}\n", render_state->next_bucket);
   while (dma.current_tag_offset() != render_state->next_bucket) {
     auto tag = dma.current_tag();
-    fmt::print("@ 0x{:x} tag: {}", dma.current_tag_offset(), tag.print());
+    // fmt::print("@ 0x{:x} tag: {}", dma.current_tag_offset(), tag.print());
     auto data = dma.read_and_advance();
     VifCode code(data.vif0());
-    fmt::print(" vif: {}\n", code.print());
+    // fmt::print(" vif: {}\n", code.print());
     if (code.kind == VifCode::Kind::NOP) {
-      fmt::print(" vif: {}\n", VifCode(data.vif1()).print());
+      // fmt::print(" vif: {}\n", VifCode(data.vif1()).print());
     }
   }
 }
