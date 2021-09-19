@@ -21,7 +21,14 @@ class Shader {
 };
 
 // note: update the constructor in Shader.cpp
-enum class ShaderId { TEST_SHADER = 0, DIRECT_BASIC = 1, DIRECT_BASIC_TEXTURED = 2, MAX_SHADERS };
+enum class ShaderId {
+  TEST_SHADER = 0,
+  DIRECT_BASIC = 1,
+  DIRECT_BASIC_TEXTURED = 2,
+  DIRECT_BASIC_TEXTURED_TCC0 = 3,
+  DEBUG_RED = 4,
+  MAX_SHADERS
+};
 
 class ShaderLibrary {
  public:

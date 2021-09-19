@@ -117,7 +117,9 @@ void OpenGLRenderer::draw_renderer_selection_window() {
 void OpenGLRenderer::setup_frame(int window_width_px, int window_height_px) {
   glViewport(0, 0, window_width_px, window_height_px);
   glClearColor(0.5, 0.5, 0.5, 0.0);
-  glClear(GL_COLOR_BUFFER_BIT);
+  glClearDepth(0.0);
+  glDepthMask(GL_TRUE);
+  glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
   glDisable(GL_BLEND);
 }
 
@@ -155,7 +157,6 @@ void OpenGLRenderer::dispatch_buckets(DmaFollower dma) {
   // loop over the buckets!
   for (int bucket_id = 0; bucket_id < (int)BucketId::MAX_BUCKETS; bucket_id++) {
     auto& renderer = m_bucket_renderers[bucket_id];
-    //    fmt::print("render bucket {} with {}\n", bucket_id, renderer->name_and_id());
     renderer->render(dma, &m_render_state);
     // should have ended at the start of the next chain
     assert(dma.current_tag_offset() == m_render_state.next_bucket);

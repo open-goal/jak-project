@@ -119,7 +119,7 @@ u32 process_header(DmaFollower& dma) {
 }
 
 SpriteRenderer::SpriteRenderer(const std::string& name, BucketId my_id)
-    : BucketRenderer(name, my_id) {}
+    : BucketRenderer(name, my_id), m_direct_renderer(fmt::format("{}.direct", name), my_id, 100) {}
 
 /*!
  * Run the sprite distorter.  Currently nothing uses sprite-distorter so this just skips through
@@ -217,7 +217,7 @@ void SpriteRenderer::render_fake_shadow(DmaFollower& dma) {
   assert(nop_flushe.vifcode1().kind == VifCode::Kind::FLUSHE);
 }
 
-void SpriteRenderer::render_2d_group1(DmaFollower& dma) {
+void SpriteRenderer::render_2d_group1(DmaFollower& dma, SharedRenderState* render_state) {
   // one time matrix data upload
   auto mat_upload = dma.read_and_advance();
   bool mat_ok = verify_unpack_with_stcycl(mat_upload, VifCode::Kind::UNPACK_V4_32, 4, 4, 80,
@@ -254,7 +254,7 @@ void SpriteRenderer::render_2d_group1(DmaFollower& dma) {
     assert(run.vifcode0().kind == VifCode::Kind::NOP);
     assert(run.vifcode1().kind == VifCode::Kind::MSCAL);
     assert(run.vifcode1().immediate == SpriteProgMem::Sprites2dHud);
-    do_2d_group1_block(sprite_count);
+    do_2d_group1_block(sprite_count, render_state);
   }
 }
 
@@ -291,7 +291,9 @@ void SpriteRenderer::render(DmaFollower& dma, SharedRenderState* render_state) {
   render_fake_shadow(dma);
 
   // 2d draw (HUD)
-  render_2d_group1(dma);
+  m_direct_renderer.reset_state();
+  render_2d_group1(dma, render_state);
+  m_direct_renderer.flush_pending(render_state);
 
   // fmt::print("next bucket is 0x{}\n", render_state->next_bucket);
   while (dma.current_tag_offset() != render_state->next_bucket) {
@@ -310,120 +312,426 @@ void SpriteRenderer::draw_debug_window() {
   ImGui::Separator();
   ImGui::Text("2D Group 1 (HUD) blocks: %d sprites: %d", m_debug_stats.blocks_2d_grp1,
               m_debug_stats.count_2d_grp1);
+  ImGui::Checkbox("Extra Debug", &m_extra_debug);
+  if (ImGui::TreeNode("direct")) {
+    m_direct_renderer.draw_debug_window();
+    ImGui::TreePop();
+  }
 }
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 // Render (for real)
 
-void SpriteRenderer::do_2d_group1_block(u32 count) {
-  fmt::print("sprites: {}\n", count);
+namespace {
+Vector4f matrix_transform(const Matrix4f& mat, const Vector4f& pt) {
+  // mulaw.xyzw ACC, vf28, vf00
+  // maddax.xyzw ACC, vf25, vf01
+  // madday.xyzw ACC, vf26, vf01
+  // maddz.xyzw vf02, vf27, vf01
+  return mat.col(3) + (mat.col(0) * pt[0]) + (mat.col(1) * pt[1]) + (mat.col(2) * pt[2]);
+}
 
-  // currently,
+bool clip_xyz_plus_minus(const Vector4f& pt) {
+  float pw = std::abs(pt.w());
+  float mw = -pw;
+  for (int i = 0; i < 3; i++) {
+    if (pt[i] > pw) {
+      return true;
+    }
+    if (pt[i] < mw) {
+      return true;
+    }
+  }
+  return false;
+}
 
-//  xtop vi02                  |  nop
-//  nop                        |  nop
-//  ilwr.x vi04, vi02          |  nop
-//  iaddi vi02, vi02, 0x1      |  nop
-//  iaddiu vi03, vi02, 0x90    |  nop
-//  L7:
-//  ilw.y vi08, 1(vi02)        |  nop
-//  lq.xyzw vf25, 900(vi00)    |  nop
-//  lq.xyzw vf26, 901(vi00)    |  nop
-//  lq.xyzw vf27, 902(vi00)    |  nop
-//  lq.xyzw vf28, 903(vi00)    |  nop
-//  lq.xyzw vf30, 904(vi08)    |  nop
-//  lqi.xyzw vf01, vi02        |  nop
-//  lqi.xyzw vf05, vi02        |  nop
-//  lqi.xyzw vf11, vi02        |  nop
-//  lq.xyzw vf12, 1020(vi00)   |  mulaw.xyzw ACC, vf28, vf00
-//  ilw.y vi08, 1(vi02)        |  maddax.xyzw ACC, vf25, vf01
-//  nop                        |  madday.xyzw ACC, vf26, vf01
-//  nop                        |  maddz.xyzw vf02, vf27, vf01
-//  move.w vf05, vf00          |  addw.z vf01, vf00, vf05
-//  nop                        |  nop
-//  div Q, vf31.x, vf02.w      |  muly.z vf05, vf05, vf31
-//  nop                        |  mul.xyzw vf03, vf02, vf29
-//  nop                        |  nop
-//  nop                        |  nop
-//  nop                        |  mulz.z vf04, vf05, vf05
-//  lq.xyzw vf14, 1001(vi00)   |  clipw.xyz vf03, vf03
-//  iaddi vi06, vi00, 0x1      |  adda.xyzw ACC, vf11, vf11
-//  L8:
-//  ior vi05, vi15, vi00       |  mul.zw vf01, vf01, Q
-//  lq.xyzw vf06, 998(vi00)    |  mulz.xyzw vf15, vf05, vf04
-//  lq.xyzw vf14, 1002(vi00)   |  mula.xyzw ACC, vf05, vf14
-//  fmand vi01, vi06           |  mul.xyz vf02, vf02, Q
-//  ibne vi00, vi01, L10       |  addz.x vf01, vf00, vf01
-//  lqi.xyzw vf07, vi03        |  mulz.xyzw vf16, vf15, vf04
-//  lq.xyzw vf14, 1003(vi00)   |  madda.xyzw ACC, vf15, vf14
-//  lqi.xyzw vf08, vi03        |  add.xyzw vf10, vf02, vf30
-//  lqi.xyzw vf09, vi03        |  mulw.x vf01, vf01, vf01
-//  sqi.xyzw vf06, vi05        |  mulz.xyzw vf15, vf16, vf04
-//  lq.xyzw vf14, 1004(vi00)   |  madda.xyzw ACC, vf16, vf14
-//  sqi.xyzw vf07, vi05        |  maxx.w vf10, vf10, vf12
-//  sqi.xyzw vf08, vi05        |  maxz.zw vf01, vf01, vf31
-//  sqi.xyzw vf09, vi05        |  mulz.xyzw vf16, vf15, vf04
-//  lq.xyzw vf14, 1005(vi00)   |  madda.xyzw ACC, vf15, vf14
-//  lqi.xyzw vf06, vi03        |  mulw.x vf01, vf01, vf31
-//  lqi.xyzw vf07, vi03        |  miniy.w vf10, vf10, vf12
-//  lq.xyzw vf08, 1000(vi00)   |  nop
-//  ilw.x vi07, -2(vi02)       |  madd.xyzw vf05, vf16, vf14
-//  lq.xyzw vf30, 904(vi08)    |  nop
-//  lqi.xyzw vf23, vi02        |  miniw.x vf01, vf01, vf00
-//  lqi.xyzw vf24, vi02        |  mulx.w vf11, vf11, vf01
-//  fcand vi01, 0x3f           |  mulaw.xyzw ACC, vf28, vf00
-//  lq.xyzw vf17, 1006(vi00)   |  maddax.xyzw ACC, vf25, vf23
-//  lq.xyzw vf18, 1007(vi00)   |  madday.xyzw ACC, vf26, vf23
-//  lq.xyzw vf19, 980(vi07)    |  ftoi0.xyzw vf11, vf11
-//  lq.xyzw vf20, 981(vi07)    |  maddz.xyzw vf02, vf27, vf23
-//  lq.xyzw vf21, 982(vi07)    |  mulaw.xyzw ACC, vf17, vf05
-//  lq.xyzw vf22, 983(vi07)    |  msub.xyzw vf12, vf18, vf05
-//  sq.xyzw vf11, 3(vi05)      |  mulaz.xyzw ACC, vf17, vf05
-//  lqi.xyzw vf11, vi02        |  maddw.xyzw vf13, vf18, vf05
-//  move.w vf24, vf00          |  addw.z vf23, vf00, vf24
-//  div Q, vf31.x, vf02.w      |  mulw.xyzw vf12, vf12, vf01
-//  ibne vi00, vi01, L9        |  muly.z vf24, vf24, vf31
-//  ilw.y vi08, 1(vi02)        |  mulz.xyzw vf13, vf13, vf01
-//  sqi.xyzw vf06, vi05        |  mul.xyzw vf03, vf02, vf29
-//  sqi.xyzw vf07, vi05        |  mulaw.xyzw ACC, vf10, vf00
-//  sqi.xyzw vf08, vi05        |  maddax.xyzw ACC, vf12, vf19
-//  lq.xyzw vf06, 988(vi00)    |  maddy.xyzw vf19, vf13, vf19
-//  lq.xyzw vf07, 989(vi00)    |  mulaw.xyzw ACC, vf10, vf00
-//  lq.xyzw vf08, 990(vi00)    |  maddax.xyzw ACC, vf12, vf20
-//  lq.xyzw vf09, 991(vi00)    |  maddy.xyzw vf20, vf13, vf20
-//  sq.xyzw vf06, 1(vi05)      |  mulaw.xyzw ACC, vf10, vf00
-//  sq.xyzw vf07, 3(vi05)      |  maddax.xyzw ACC, vf12, vf21
-//  sq.xyzw vf08, 5(vi05)      |  maddy.xyzw vf21, vf13, vf21
-//  sq.xyzw vf09, 7(vi05)      |  mulaw.xyzw ACC, vf10, vf00
-//  nop                        |  maddax.xyzw ACC, vf12, vf22
-//  nop                        |  maddy.xyzw vf22, vf13, vf22
-//  lq.xyzw vf12, 1020(vi00)   |  ftoi4.xyzw vf19, vf19
-//  lq.xyzw vf14, 1001(vi00)   |  ftoi4.xyzw vf20, vf20
-//  move.xyzw vf05, vf24       |  ftoi4.xyzw vf21, vf21
-//  move.xyzw vf01, vf23       |  ftoi4.xyzw vf22, vf22
-//  sq.xyzw vf19, 2(vi05)      |  mulz.z vf04, vf24, vf24
-//  sq.xyzw vf20, 4(vi05)      |  clipw.xyz vf03, vf03
-//  sq.xyzw vf21, 6(vi05)      |  nop
-//  sq.xyzw vf22, 8(vi05)      |  nop
-//  xgkick vi15                |  nop
-//  iaddi vi04, vi04, -0x1     |  nop
-//  iaddiu vi01, vi00, 0x672   |  nop
-//  ibne vi00, vi04, L8        |  nop
-//  isub vi15, vi01, vi15      |  adda.xyzw ACC, vf11, vf11
-//  nop                        |  nop :e
-//  nop                        |  nop
-//  L9:
-//  iaddi vi04, vi04, -0x1     |  nop
-//  iaddi vi02, vi02, -0x3     |  nop
-//  ibne vi00, vi04, L7        |  nop
-//  nop                        |  nop
-//  nop                        |  nop :e
-//  nop                        |  nop
-//  L10:
-//  iaddi vi04, vi04, -0x1     |  nop
-//  iaddi vi03, vi03, 0x4      |  nop
-//  ibne vi00, vi04, L7        |  nop
-//  nop                        |  nop
-//  nop                        |  nop :e
-//  nop                        |  nop
+void imgui_vec(const Vector4f& vec, const char* name = nullptr, int indent = 0) {
+  std::string spacing(indent, ' ');
+  if (name) {
+    ImGui::Text("%s%s: %f, %f, %f, %f", spacing.c_str(), name, vec.x(), vec.y(), vec.z(), vec.w());
+  } else {
+    ImGui::Text("%s%f, %f, %f, %f", spacing.c_str(), vec.x(), vec.y(), vec.z(), vec.w());
+  }
+}
+}  // namespace
+
+void SpriteRenderer::do_2d_group1_block(u32 count, SharedRenderState* render_state) {
+  if (m_extra_debug) {
+    ImGui::Begin("Sprite Extra Debug");
+  }
+
+  // set up double buffering
+  //  xtop vi02                  |  nop
+  //  nop                        |  nop
+  // load sprite count from header
+  // vi04 = count
+  //  ilwr.x vi04, vi02          |  nop
+  // vi02 = m_vec_data_2d
+  //  iaddi vi02, vi02, 0x1      |  nop
+  // vi03 = m_adgif
+  //  iaddiu vi03, vi02, 0x90    |  nop
+
+  // this VU program uses "software pipelining"
+  // it's a little bit tricky to use software pipelining in a case like
+  // this where sometimes you want to reject a sprite entirely and jump ahead
+  // so sometimes they reset back to L7 on rejection.
+
+  // The approach in this translation is to assume we loop back to L7 every time
+  // and not worry about the pipeline stuff that shows up in L8 and on.
+  // you can enter from L7 at anytime, they are not assumed to only run on the first go.
+  // (though if their implementation has bugs we will not replicate them correctly...)
+
+  Matrix4f camera_matrix = m_hud_matrix_data.matrix;  // vf25, vf26, vf27, vf28
+
+  for (u32 sprite_idx = 0; sprite_idx < count; sprite_idx++) {
+    if (m_extra_debug) {
+      ImGui::Text("Sprite: %d", sprite_idx);
+    }
+    SpriteHud2DPacket packet;
+    memset(&packet, 0, sizeof(packet));
+    //  L7 (prologue, and early abort)
+    //  ilw.y vi08, 1(vi02)        |  nop                          vi08 = matrix
+    u32 offset_selector = m_vec_data_2d[sprite_idx].matrix();
+
+    // moved this out of the loop.
+    //  lq.xyzw vf25, 900(vi00)    |  nop                          vf25 = cam_mat
+    //  lq.xyzw vf26, 901(vi00)    |  nop
+    //  lq.xyzw vf27, 902(vi00)    |  nop
+    //  lq.xyzw vf28, 903(vi00)    |  nop
+    //  lq.xyzw vf30, 904(vi08)    |  nop                          vf30 = hvdf_offset
+    // vf30
+    Vector4f hvdf_offset = offset_selector == 0 ? m_hud_matrix_data.hvdf_offset
+                                                : m_hud_matrix_data.user_hvdf[offset_selector - 1];
+
+    //  lqi.xyzw vf01, vi02        |  nop
+    Vector4f pos_vf01 = m_vec_data_2d[sprite_idx].xyz_sx;
+    //  lqi.xyzw vf05, vi02        |  nop
+    Vector4f flags_vf05 = m_vec_data_2d[sprite_idx].flag_rot_sy;
+    //  lqi.xyzw vf11, vi02        |  nop
+    Vector4f color_vf11 = m_vec_data_2d[sprite_idx].rgba;
+
+    // multiplications from the right column
+    Vector4f transformed_pos_vf02 = matrix_transform(camera_matrix, pos_vf01);
+    if (m_extra_debug) {
+      for (int i = 0; i < 4; i++) {
+        imgui_vec(camera_matrix.col(i), fmt::format("cam col {}", i).c_str(), 2);
+      }
+      imgui_vec(pos_vf01, "inpos");
+      imgui_vec(transformed_pos_vf02, "xf");
+      imgui_vec(color_vf11, "rgba");
+    }
+
+    Vector4f scales_vf01 = pos_vf01;  // now used for something else.
+    //  lq.xyzw vf12, 1020(vi00)   |  mulaw.xyzw ACC, vf28, vf00
+    // vf12 is fog consts
+    Vector4f fog_consts_vf12(m_frame_data.fog_min, m_frame_data.fog_max, m_frame_data.max_scale,
+                             m_frame_data.bonus);
+    //  ilw.y vi08, 1(vi02)        |  maddax.xyzw ACC, vf25, vf01
+    // load offset selector for the next round.
+    //  nop                        |  madday.xyzw ACC, vf26, vf01
+    //  nop                        |  maddz.xyzw vf02, vf27, vf01
+
+    //  move.w vf05, vf00          |  addw.z vf01, vf00, vf05
+    // scales_vf01.z = sy
+    scales_vf01.z() = flags_vf05.w();  // start building the scale vector
+    flags_vf05.w() = 1.f;              // what are we building in flags right now??
+
+    //  nop                        |  nop
+    //  div Q, vf31.x, vf02.w      |  muly.z vf05, vf05, vf31
+    float Q = m_frame_data.pfog0 / transformed_pos_vf02.w();
+    //    if (m_extra_debug) {
+    //      ImGui::Text("Q fog is %f from %f", Q, transformed_pos_vf02.w());
+    //    }
+    flags_vf05.z() *= m_frame_data.deg_to_rad;
+    //  nop                        |  mul.xyzw vf03, vf02, vf29
+    Vector4f scaled_pos_vf03 = transformed_pos_vf02.elementwise_multiply(m_frame_data.hmge_scale);
+    //  nop                        |  nop
+    //  nop                        |  nop
+    //  nop                        |  mulz.z vf04, vf05, vf05 (ts)
+    // fmt::print("rot is {} degrees\n", flags_vf05.z() * 360.0 / (2.0 * M_PI));
+
+    //  the load is for rotation stuff,
+    //  lq.xyzw vf14, 1001(vi00)   |  clipw.xyz vf03, vf03      (used for fcand)
+    //  iaddi vi06, vi00, 0x1      |  adda.xyzw ACC, vf11, vf11 (used for fmand)
+
+    // upcoming fcand with 0x3f, that checks all of them.
+    bool fcand_result = clip_xyz_plus_minus(scaled_pos_vf03);
+    bool fmand_result = color_vf11.w() == 0;  // (really w+w, but I don't think it matters?)
+
+    //  L8:
+    //  xgkick double buffer setup
+    //  ior vi05, vi15, vi00       |  mul.zw vf01, vf01, Q
+    scales_vf01.z() *= Q;  // sy
+    scales_vf01.w() *= Q;  // sx
+
+    //  lq.xyzw vf06, 998(vi00)    |  mulz.xyzw vf15, vf05, vf04 (ts)
+    auto adgif_vf06 = m_frame_data.adgif_giftag;
+
+    //  lq.xyzw vf14, 1002(vi00) ts|  mula.xyzw ACC, vf05, vf14 (ts)
+
+    //  fmand vi01, vi06           |  mul.xyz vf02, vf02, Q
+    transformed_pos_vf02.x() *= Q;
+    transformed_pos_vf02.y() *= Q;
+    transformed_pos_vf02.z() *= Q;
+
+    if (m_extra_debug) {
+      imgui_vec(transformed_pos_vf02, "scaled xf");
+    }
+
+    //  ibne vi00, vi01, L10       |  addz.x vf01, vf00, vf01
+    scales_vf01.x() = scales_vf01.z();  // = sy
+    if (fmand_result) {
+      if (m_extra_debug) {
+        ImGui::Text("rejected due to fmand, sprite idx %d\n", sprite_idx);
+      }
+      //      color_vf11.w() = 127;
+      continue;  // reject!
+    }
+
+    //  lqi.xyzw vf07, vi03        |  mulz.xyzw vf16, vf15, vf04 (ts)
+    // vf07 is first use adgif
+
+    //  lq.xyzw vf14, 1003(vi00)   |  madda.xyzw ACC, vf15, vf14 (ts both)
+
+    //  lqi.xyzw vf08, vi03        |  add.xyzw vf10, vf02, vf30
+    // vf08 is second user adgif
+    Vector4f offset_pos_vf10 = transformed_pos_vf02 + hvdf_offset;
+
+    //  lqi.xyzw vf09, vi03        |  mulw.x vf01, vf01, vf01
+    // vf09 is third user adgif
+    scales_vf01.x() *= scales_vf01.w();  // x = sx * sy
+
+    //  sqi.xyzw vf06, vi05        |  mulz.xyzw vf15, vf16, vf04 (ts)
+    // FIRST ADGIF IS adgif_vf06
+    packet.adgif_giftag = adgif_vf06;
+
+    //  lq.xyzw vf14, 1004(vi00)   |  madda.xyzw ACC, vf16, vf14 (ts both)
+
+    //  sqi.xyzw vf07, vi05        |  maxx.w vf10, vf10, vf12
+    // SECOND ADGIF is first user
+    // just do all 5 now.
+    packet.user_adgif = m_adgif[sprite_idx];
+
+    offset_pos_vf10.w() = std::max(offset_pos_vf10.w(), m_frame_data.fog_max);
+
+    //  sqi.xyzw vf08, vi05        |  maxz.zw vf01, vf01, vf31
+    // THIRD ADGIF is second user
+    scales_vf01.z() = std::max(scales_vf01.z(), m_frame_data.min_scale);
+    scales_vf01.w() = std::max(scales_vf01.w(), m_frame_data.min_scale);
+
+    //  sqi.xyzw vf09, vi05        |  mulz.xyzw vf16, vf15, vf04 (ts)
+    // FOURTH ADGIF is third user
+
+    //  lq.xyzw vf14, 1005(vi00)   |  madda.xyzw ACC, vf15, vf14 (ts both)
+
+    //  lqi.xyzw vf06, vi03        |  mulw.x vf01, vf01, vf31
+    // vf06 is fourth user adgif
+    scales_vf01.x() *= m_frame_data.inv_area;  // x = sx * sy * inv_area (area ratio)
+
+    //  lqi.xyzw vf07, vi03        |  miniy.w vf10, vf10, vf12
+    // vf07 is fifth user adgif
+    offset_pos_vf10.w() = std::min(offset_pos_vf10.w(), m_frame_data.fog_min);
+
+    //  lq.xyzw vf08, 1000(vi00)   |  nop
+    // vf08 is 2d giftag 2
+
+    //  ilw.x vi07, -2(vi02)       |  madd.xyzw vf05, vf16, vf14
+    auto flag_vi07 = m_vec_data_2d[sprite_idx].flag();
+    Vector4f vf05_sincos(0, 0, std::sin(m_vec_data_2d[sprite_idx].rot()),
+                         std::cos(m_vec_data_2d[sprite_idx].rot()));
+    //    if (m_extra_debug) {
+    //      imgui_vec(vf05_sincos, "vf05", 2); // ok
+    //    }
+
+    //  lq.xyzw vf30, 904(vi08)    |  nop
+    // pipline
+
+    //  lqi.xyzw vf23, vi02        |  miniw.x vf01, vf01, vf00
+    // pipeline
+    scales_vf01.x() = std::min(scales_vf01.x(), 1.f);
+
+    //  lqi.xyzw vf24, vi02        |  mulx.w vf11, vf11, vf01
+    // pipeline
+    color_vf11.w() *= scales_vf01.x();  // is this right? doesn't this stall??
+
+    //  fcand vi01, 0x3f           |  mulaw.xyzw ACC, vf28, vf00
+    // already computed                 pipeline
+
+    //  lq.xyzw vf17, 1006(vi00)   |  maddax.xyzw ACC, vf25, vf23 (pipeline)
+    Vector4f basis_x_vf17 = m_frame_data.basis_x;
+
+    //  lq.xyzw vf18, 1007(vi00)   |  madday.xyzw ACC, vf26, vf23 (pipeline)
+    Vector4f basis_y_vf18 = m_frame_data.basis_y;
+
+    assert(flag_vi07 == 0);
+    Vector4f* xy_array = m_frame_data.xy_array + flag_vi07;
+    //  lq.xyzw vf19, 980(vi07)    |  ftoi0.xyzw vf11, vf11
+    Vector4f xy0_vf19 = xy_array[0];
+    math::Vector<s32, 4> color_integer_vf11 = color_vf11.cast<s32>();
+
+    //  lq.xyzw vf20, 981(vi07)    |  maddz.xyzw vf02, vf27, vf23 (pipeline)
+    Vector4f xy1_vf20 = xy_array[1];
+
+    //  lq.xyzw vf21, 982(vi07)    |  mulaw.xyzw ACC, vf17, vf05
+    Vector4f xy2_vf21 = xy_array[2];
+    Vector4f acc = basis_x_vf17 * vf05_sincos.w();
+
+    //  lq.xyzw vf22, 983(vi07)    |  msubz.xyzw vf12, vf18, vf05
+    Vector4f xy3_vf22 = xy_array[3];
+    Vector4f vf12_rotated = acc - (basis_y_vf18 * vf05_sincos.z());
+    //    if (m_extra_debug) {
+    //      imgui_vec(vf12_rotated, "vf12 before scale", 2);
+    //    }
+
+    //  sq.xyzw vf11, 3(vi05)      |  mulaz.xyzw ACC, vf17, vf05
+    // EIGHTH is color integer
+    packet.color = color_integer_vf11;
+
+    acc = basis_x_vf17 * vf05_sincos.z();
+
+    //  lqi.xyzw vf11, vi02        |  maddw.xyzw vf13, vf18, vf05
+    //  (pipeline)
+    Vector4f vf13_rotated_trans = acc + basis_y_vf18 * vf05_sincos.w();
+
+    //  move.w vf24, vf00          |  addw.z vf23, vf00, vf24 (pipeline both)
+
+    //  div Q, vf31.x, vf02.w      |  mulw.xyzw vf12, vf12, vf01
+    //  (pipeline)
+    vf12_rotated *= scales_vf01.w();
+
+    //  ibne vi00, vi01, L9        |  muly.z vf24, vf24, vf31 (pipeline)
+    if (fcand_result) {
+      continue;  // reject (could move earlier)
+    }
+
+    //  ilw.y vi08, 1(vi02)        |  mulz.xyzw vf13, vf13, vf01
+    //  (pipeline)
+    vf13_rotated_trans *= scales_vf01.z();
+
+    // LEFT OFF HERE!
+
+    //  sqi.xyzw vf06, vi05        |  mul.xyzw vf03, vf02, vf29
+    // FIFTH is fourth user
+
+    //  sqi.xyzw vf07, vi05        |  mulaw.xyzw ACC, vf10, vf00
+    // SIXTH is fifth user
+    acc = offset_pos_vf10;
+
+    //  sqi.xyzw vf08, vi05        |  maddax.xyzw ACC, vf12, vf19
+    // SEVENTH is giftag2
+    packet.sprite_giftag = m_frame_data.sprite_2d_giftag2;
+    acc += vf12_rotated * xy0_vf19.x();
+
+    //  lq.xyzw vf06, 988(vi00)    |  maddy.xyzw vf19, vf13, vf19
+    Vector4f st0_vf06 = m_frame_data.st_array[0];
+    xy0_vf19 = acc + vf13_rotated_trans * xy0_vf19.y();
+
+    //  lq.xyzw vf07, 989(vi00)    |  mulaw.xyzw ACC, vf10, vf00
+    Vector4f st1_vf07 = m_frame_data.st_array[1];
+    acc = offset_pos_vf10;
+
+    //  lq.xyzw vf08, 990(vi00)    |  maddax.xyzw ACC, vf12, vf20
+    Vector4f st2_vf08 = m_frame_data.st_array[2];
+    acc += vf12_rotated * xy1_vf20.x();
+
+    //  lq.xyzw vf09, 991(vi00)    |  maddy.xyzw vf20, vf13, vf20
+    Vector4f st3_vf09 = m_frame_data.st_array[3];
+    xy1_vf20 = acc + vf13_rotated_trans * xy1_vf20.y();
+
+    //  sq.xyzw vf06, 1(vi05)      |  mulaw.xyzw ACC, vf10, vf00
+    // NINTH is st0
+    packet.st0 = st0_vf06;
+    acc = offset_pos_vf10;
+
+    //  sq.xyzw vf07, 3(vi05)      |  maddax.xyzw ACC, vf12, vf21
+    // ELEVEN is st1
+    packet.st1 = st1_vf07;
+    acc += vf12_rotated * xy2_vf21.x();
+
+    //  sq.xyzw vf08, 5(vi05)      |  maddy.xyzw vf21, vf13, vf21
+    // THIRTEEN is st2
+    packet.st2 = st2_vf08;
+    xy2_vf21 = acc + vf13_rotated_trans * xy2_vf21.y();
+
+    //  sq.xyzw vf09, 7(vi05)      |  mulaw.xyzw ACC, vf10, vf00
+    // FIFTEEN is st3
+    packet.st3 = st3_vf09;
+    acc = offset_pos_vf10;
+
+    //  nop                        |  maddax.xyzw ACC, vf12, vf22
+    acc += vf12_rotated * xy3_vf22.x();
+
+    //  nop                        |  maddy.xyzw vf22, vf13, vf22
+    xy3_vf22 = acc + vf13_rotated_trans * xy3_vf22.y();
+
+    //  lq.xyzw vf12, 1020(vi00)   |  ftoi4.xyzw vf19, vf19
+    //  (pipeline)
+    auto xy0_vf19_int = (xy0_vf19 * 16.f).cast<s32>();
+
+    //  lq.xyzw vf14, 1001(vi00)   |  ftoi4.xyzw vf20, vf20
+    //  (pipeline)
+    auto xy1_vf20_int = (xy1_vf20 * 16.f).cast<s32>();
+
+    //  move.xyzw vf05, vf24       |  ftoi4.xyzw vf21, vf21
+    // (pipeline)
+    auto xy2_vf21_int = (xy2_vf21 * 16.f).cast<s32>();
+
+    //  move.xyzw vf01, vf23       |  ftoi4.xyzw vf22, vf22
+    //  (pipeline)
+    auto xy3_vf22_int = (xy3_vf22 * 16.f).cast<s32>();
+
+    //  sq.xyzw vf19, 2(vi05)      |  mulz.z vf04, vf24, vf24 (pipeline)
+    // TENTH is xy0int
+    packet.xy0 = xy0_vf19_int;
+    //  sq.xyzw vf20, 4(vi05)      |  clipw.xyz vf03, vf03    (pipeline)
+    // TWELVE is xy1int
+    packet.xy1 = xy1_vf20_int;
+    //  sq.xyzw vf21, 6(vi05)      |  nop
+    // FOURTEEN is xy2int
+    packet.xy2 = xy2_vf21_int;
+    //  sq.xyzw vf22, 8(vi05)      |  nop
+    // SIXTEEN is xy3int
+    packet.xy3 = xy3_vf22_int;
+
+    m_direct_renderer.render_gif((const u8*)&packet, sizeof(packet), render_state);
+    if (m_extra_debug) {
+      imgui_vec(xy_array[0], "xy_array", 2);
+      imgui_vec(vf12_rotated, "vf12", 2);
+      imgui_vec(vf13_rotated_trans, "vf13", 2);
+
+      //      for (auto xy : {xy0_vf19, xy1_vf20, xy2_vf21, xy3_vf22}) {
+      //        ImGui::Text("  %f %f %f %f", xy.x(), xy.y(), xy.z(), xy.w());
+      //      }
+      for (auto xy : {packet.xy0, packet.xy1, packet.xy2, packet.xy3}) {
+        ImGui::Text("  %8d %8d %8d %8d", xy.x(), xy.y(), xy.z(), xy.w());
+      }
+      ImGui::Separator();
+    }
+
+    //  xgkick vi15                |  nop
+    //  iaddi vi04, vi04, -0x1     |  nop
+    //  iaddiu vi01, vi00, 0x672   |  nop
+    //  ibne vi00, vi04, L8        |  nop
+    //  isub vi15, vi01, vi15      |  adda.xyzw ACC, vf11, vf11
+    //  nop                        |  nop :e
+    //  nop                        |  nop
+    //  L9:
+    //  iaddi vi04, vi04, -0x1     |  nop
+    //  iaddi vi02, vi02, -0x3     |  nop
+    //  ibne vi00, vi04, L7        |  nop
+    //  nop                        |  nop
+    //  nop                        |  nop :e
+    //  nop                        |  nop
+    //  L10:
+    //  iaddi vi04, vi04, -0x1     |  nop
+    //  iaddi vi03, vi03, 0x4      |  nop
+    //  ibne vi00, vi04, L7        |  nop
+    //  nop                        |  nop
+    //  nop                        |  nop :e
+    //  nop                        |  nop
+  }
+
+  if (m_extra_debug) {
+    ImGui::End();
+  }
 }

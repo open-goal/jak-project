@@ -46,19 +46,23 @@ class DirectRenderer : public BucketRenderer {
    */
   void flush_pending(SharedRenderState* render_state);
 
+  void draw_debug_window() override;
+
  private:
   void handle_ad(const u8* data, SharedRenderState* render_state);
-  void handle_zbuf1(u64 val);
+  void handle_zbuf1(u64 val, SharedRenderState* render_state);
   void handle_test1(u64 val, SharedRenderState* render_state);
   void handle_alpha1(u64 val, SharedRenderState* render_state);
   void handle_pabe(u64 val);
   void handle_clamp1(u64 val);
   void handle_prim(u64 val, SharedRenderState* render_state);
+  void handle_prim_packed(const u8* data, SharedRenderState* render_state);
   void handle_rgbaq(u64 val);
   void handle_xyzf2(u64 val, SharedRenderState* render_state);
   void handle_st_packed(const u8* data);
   void handle_rgbaq_packed(const u8* data);
   void handle_xyzf2_packed(const u8* data, SharedRenderState* render_state);
+  void handle_tex0_1_packed(const u8* data, SharedRenderState* render_state);
   void handle_tex0_1(u64 val, SharedRenderState* render_state);
   void handle_tex1_1(u64 val);
   void handle_texa(u64 val);
@@ -69,8 +73,6 @@ class DirectRenderer : public BucketRenderer {
   void update_gl_blend();
   void update_gl_test();
   void update_gl_texture(SharedRenderState* render_state);
-
-  void draw_debug_window() override;
 
   struct TestState {
     void from_register(GsTest reg);
@@ -85,6 +87,8 @@ class DirectRenderer : public BucketRenderer {
     bool datm = false;
     bool zte = true;
     GsTest::ZTest ztst = GsTest::ZTest::GEQUAL;
+
+    bool depth_writes = true;
 
   } m_test_state;
 
@@ -120,6 +124,8 @@ class DirectRenderer : public BucketRenderer {
     GsTex0 current_register;
     u32 texture_base_ptr = 0;
     bool using_mt4hh = false;
+    bool tcc = false;
+    bool needs_gl_update = true;
   } m_texture_state;
 
   // state set through the prim/rgbaq register that doesn't require changing GL stuff
@@ -163,6 +169,8 @@ class DirectRenderer : public BucketRenderer {
   struct {
     bool disable_texture = false;
     bool wireframe = false;
+    bool red = false;
+    bool always_draw = false;
   } m_debug_state;
 
   int m_triangles = 0;

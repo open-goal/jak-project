@@ -248,6 +248,8 @@ struct GsPrim {
 
   bool operator==(const GsPrim& other) const { return data == other.data; }
   bool operator!=(const GsPrim& other) const { return data != other.data; }
+
+  std::string print() const;
 };
 
 struct GsTex0 {

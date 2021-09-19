@@ -1,6 +1,7 @@
 #pragma once
 
 #include "game/graphics/opengl_renderer/BucketRenderer.h"
+#include "game/graphics/opengl_renderer/DirectRenderer.h"
 #include "game/graphics/dma/gs.h"
 #include "common/math/Vector.h"
 
@@ -8,7 +9,7 @@ using math::Matrix4f;
 using math::Vector4f;
 
 struct AdGif {
-  u64 data[10];
+  GifTag giftag[5];
 };
 
 struct SpriteFrameData {
@@ -94,6 +95,21 @@ enum SpriteDataMem {
   FrameData = 980
 };
 
+struct SpriteHud2DPacket {
+  GifTag adgif_giftag;   // starts the adgif shader. 0
+  AdGif user_adgif;  // the adgif shader 16
+  GifTag sprite_giftag; // 96
+  math::Vector<s32, 4> color;
+  Vector4f st0;
+  math::Vector<s32, 4> xy0;
+  Vector4f st1;
+  math::Vector<s32, 4> xy1;
+  Vector4f st2;
+  math::Vector<s32, 4> xy2;
+  Vector4f st3;
+  math::Vector<s32, 4> xy3;
+};
+
 enum SpriteProgMem { Init = 0, Sprites2dGrp0 = 3, Sprites2dHud = 109, Sprites3d = 211 };
 
 static_assert(offsetof(SpriteFrameData, hmge_scale) == 256);
@@ -112,8 +128,8 @@ class SpriteRenderer : public BucketRenderer {
   void render_3d(DmaFollower& dma);
   void render_2d_group0(DmaFollower& dma);
   void render_fake_shadow(DmaFollower& dma);
-  void render_2d_group1(DmaFollower& dma);
-  void do_2d_group1_block(u32 count);
+  void render_2d_group1(DmaFollower& dma, SharedRenderState* render_state);
+  void do_2d_group1_block(u32 count, SharedRenderState* render_state);
 
   u8 m_sprite_distorter_setup[7 * 16];  // direct data
   u8 m_sprite_direct_setup[3 * 16];
@@ -128,4 +144,8 @@ class SpriteRenderer : public BucketRenderer {
     int blocks_2d_grp1 = 0;
     int count_2d_grp1 = 0;
   } m_debug_stats;
+
+  bool m_extra_debug = false;
+
+  DirectRenderer m_direct_renderer;
 };
