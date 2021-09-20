@@ -295,9 +295,10 @@ void SpriteRenderer::render(DmaFollower& dma, SharedRenderState* render_state) {
   render_2d_group1(dma, render_state);
   m_direct_renderer.flush_pending(render_state);
 
+  // TODO finish this up.
   // fmt::print("next bucket is 0x{}\n", render_state->next_bucket);
   while (dma.current_tag_offset() != render_state->next_bucket) {
-    auto tag = dma.current_tag();
+    //    auto tag = dma.current_tag();
     // fmt::print("@ 0x{:x} tag: {}", dma.current_tag_offset(), tag.print());
     auto data = dma.read_and_advance();
     VifCode code(data.vif0());
@@ -537,8 +538,7 @@ void SpriteRenderer::do_2d_group1_block(u32 count, SharedRenderState* render_sta
 
     //  ilw.x vi07, -2(vi02)       |  madd.xyzw vf05, vf16, vf14
     auto flag_vi07 = m_vec_data_2d[sprite_idx].flag();
-    Vector4f vf05_sincos(0, 0, std::sin(m_vec_data_2d[sprite_idx].rot()),
-                         std::cos(m_vec_data_2d[sprite_idx].rot()));
+    Vector4f vf05_sincos(0, 0, std::sin(flags_vf05.z()), std::cos(flags_vf05.z()));
     //    if (m_extra_debug) {
     //      imgui_vec(vf05_sincos, "vf05", 2); // ok
     //    }

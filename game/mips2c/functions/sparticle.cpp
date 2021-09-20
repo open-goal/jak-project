@@ -292,7 +292,7 @@ u64 execute(void* ctxt) {
   if (bc) {goto block_30;}                          // branch non-likely
 
   c->pcpyud(v1, v1, r0);                            // pcpyud v1, v1, r0
-  c->pexew(v1, v1);                                 // pexew v1, r0, v1
+  c->pexew(v1, v1);                                 // pexew v1, v1
   bc = ((s64)c->sgpr64(v1)) <= 0;                   // blez v1, L82
   // nop                                            // sll r0, r0, 0
   if (bc) {goto block_33;}                          // branch non-likely
@@ -305,13 +305,13 @@ u64 execute(void* ctxt) {
 
   c->mov128_gpr_vf(v1, vf8);                        // qmfc2.i v1, vf8
   c->pcpyud(v1, v1, r0);                            // pcpyud v1, v1, r0
-  c->pexew(v1, v1);                                 // pexew v1, r0, v1
+  c->pexew(v1, v1);                                 // pexew v1, v1
   bc = ((s64)c->sgpr64(v1)) < 0;                    // bltz v1, L82
   c->mov128_gpr_vf(v1, vf9);                        // qmfc2.i v1, vf9
   if (bc) {goto block_33;}                          // branch non-likely
 
   c->pcpyud(v1, v1, r0);                            // pcpyud v1, v1, r0
-  c->pexew(v1, v1);                                 // pexew v1, r0, v1
+  c->pexew(v1, v1);                                 // pexew v1, v1
   bc = ((s64)c->sgpr64(v1)) >= 0;                   // bgez v1, L83
   // nop                                            // sll r0, r0, 0
   if (bc) {goto block_34;}                          // branch non-likely
@@ -403,12 +403,7 @@ u64 execute(void* ctxt) {
   c->mov128_gpr_vf(v1, vf9);                        // qmfc2.i v1, vf9
   c->andi(s0, v1, 255);                             // andi s0, v1, 255
 
-//  fmt::print("execute 2d\n");
   block_1:
-//  fmt::print("doing 0x{:x} 0x{:x}\n", c->gpr_addr(s4), c->gpr_addr(s5));
-//  if (c->gprs[s4].du32[0] == 0x75f7b0) {
-//    fmt::print("beans\n");
-//  }
   c->lw(v1, 128, s5);                               // lw v1, 128(s5)
   bc = c->sgpr64(v1) == c->sgpr64(s7);              // beq v1, s7, L97
   // nop                                            // sll r0, r0, 0
@@ -444,7 +439,6 @@ u64 execute(void* ctxt) {
 
   c->lw(v1, 124, s5);                               // lw v1, 124(s5)
   //beq r0, r0, L97                                 // beq r0, r0, L97
-  fmt::print("v1 1: {}\n", c->gprs[v1].f[0]);
   c->sw(v1, 44, s4);                                // sw v1, 44(s4)
   goto block_31;                                    // branch always
 
@@ -471,7 +465,6 @@ u64 execute(void* ctxt) {
   if (bc) {goto block_13;}                          // branch non-likely
 
   c->lw(v1, 124, s5);                               // lw v1, 124(s5)
-  fmt::print("v1 1: {}\n", c->gprs[v1].f[0]);
   c->sw(v1, 44, s4);                                // sw v1, 44(s4)
 
   block_13:
@@ -613,9 +606,6 @@ u64 execute(void* ctxt) {
 
   bc = c->sgpr64(t4) == 0;                          // beq t4, r0, L96
   // nop                                            // sll r0, r0, 0
-  if (bc) {
-fmt::print("kill1\n");
-}
   if (bc) {goto block_30;}                          // branch non-likely
 
 
@@ -628,9 +618,6 @@ fmt::print("kill1\n");
   c->pexew(t4, t4);                                 // pexew t4, r0, t4
   bc = ((s64)c->sgpr64(t4)) <= 0;                   // blez t4, L96
   // nop                                            // sll r0, r0, 0
-  if (bc) {
-    fmt::print("kill2\n");
-  }
   if (bc) {goto block_30;}                          // branch non-likely
 
 
@@ -644,9 +631,6 @@ fmt::print("kill1\n");
   c->pexew(v1, v1);                                 // pexew v1, r0, v1
   bc = ((s64)c->sgpr64(v1)) < 0;                    // bltz v1, L96
   c->mov128_gpr_vf(v1, vf2);                        // qmfc2.i v1, vf2
-  if (bc) {
-    fmt::print("kill3\n");
-  }
   if (bc) {goto block_30;}                          // branch non-likely
 
   c->pcpyud(v1, v1, r0);                            // pcpyud v1, v1, r0
@@ -654,9 +638,6 @@ fmt::print("kill1\n");
   bc = ((s64)c->sgpr64(v1)) >= 0;                   // bgez v1, L97
   // nop                                            // sll r0, r0, 0
   if (bc) {goto block_31;}                          // branch non-likely
-  if (bc) {
-    fmt::print("kill4\n");
-  }
 
   block_30:
   c->load_symbol(t9, cache.sp_free_particle);       // lw t9, sp-free-particle(s7)

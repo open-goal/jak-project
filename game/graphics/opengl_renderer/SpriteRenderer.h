@@ -97,8 +97,8 @@ enum SpriteDataMem {
 
 struct SpriteHud2DPacket {
   GifTag adgif_giftag;   // starts the adgif shader. 0
-  AdGif user_adgif;  // the adgif shader 16
-  GifTag sprite_giftag; // 96
+  AdGif user_adgif;      // the adgif shader 16
+  GifTag sprite_giftag;  // 96
   math::Vector<s32, 4> color;
   Vector4f st0;
   math::Vector<s32, 4> xy0;

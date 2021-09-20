@@ -5,6 +5,7 @@
 #include <string>
 #include "common/common_types.h"
 #include "game/graphics/texture/TextureConverter.h"
+#include "common/util/Serializer.h"
 
 struct TextureRecord {
   std::string page_name;
@@ -18,11 +19,17 @@ struct TextureRecord {
   std::vector<u8> data;
   u64 gpu_texture = 0;
   u32 dest = -1;
+
+  void unload_from_gpu();
+
+  void serialize(Serializer& ser);
 };
 
 struct TextureData {
   std::shared_ptr<TextureRecord> normal_texture;
   std::shared_ptr<TextureRecord> mt4hh_texture;
+
+  void serialize(Serializer& ser);
 };
 
 struct GoalTexture {
@@ -121,7 +128,10 @@ class TexturePool {
   void remove_garbage_textures();
   void discard(std::shared_ptr<TextureRecord> tex);
 
+  void serialize(Serializer& ser);
+
  private:
+  void unload_all_textures();
   void draw_debug_for_tex(const std::string& name, TextureRecord& tex);
   TextureConverter m_tex_converter;
 

@@ -35,6 +35,94 @@ std::string GoalTexturePage::print() const {
                      segment[2].size, segment[2].dest);
 }
 
+void TextureRecord::serialize(Serializer& ser) {
+  ser.from_str(&page_name);
+  ser.from_str(&name);
+  ser.from_ptr(&mip_level);
+  ser.from_ptr(&psm);
+  ser.from_ptr(&w);
+  ser.from_ptr(&h);
+  ser.from_ptr(&data_segment);
+  ser.from_ptr(&on_gpu);
+  ser.from_ptr(&do_gc);
+  ser.from_ptr(&gpu_texture);
+  ser.from_ptr(&dest);
+  ser.from_pod_vector(&data);
+}
+
+void TextureData::serialize(Serializer& ser) {
+  if (ser.is_saving()) {
+    if (normal_texture) {
+      ser.save<u8>(1);  // has it.
+      normal_texture->serialize(ser);
+    } else {
+      ser.save<u8>(0);
+    }
+
+    if (mt4hh_texture) {
+      ser.save<u8>(1);  // has it.
+      mt4hh_texture->serialize(ser);
+    } else {
+      ser.save<u8>(0);
+    }
+  } else {
+    u8 has_normal = ser.load<u8>();
+    if (has_normal) {
+      normal_texture = std::make_shared<TextureRecord>();
+      normal_texture->serialize(ser);
+      // after deserializing, nothing is on the GPU
+      normal_texture->on_gpu = false;
+      // there will be a duplicate copy of this texture in the bucket, we want this one to be gc'd
+      normal_texture->do_gc = true;
+    } else {
+      normal_texture.reset();
+    }
+
+    u8 has_mt4 = ser.load<u8>();
+    if (has_mt4) {
+      mt4hh_texture = std::make_shared<TextureRecord>();
+      mt4hh_texture->serialize(ser);
+      mt4hh_texture->on_gpu = false;
+      mt4hh_texture->do_gc = true;
+    } else {
+      mt4hh_texture.reset();
+    }
+  }
+}
+
+void TexturePool::serialize(Serializer& ser) {
+  m_tex_converter.serialize(ser);
+
+  if (ser.is_loading()) {
+    remove_garbage_textures();
+    unload_all_textures();
+  }
+  for (auto& tex : m_textures) {
+    tex.serialize(ser);
+  }
+}
+
+void TexturePool::unload_all_textures() {
+  for (auto& tex : m_textures) {
+    if (tex.normal_texture && tex.normal_texture->on_gpu) {
+      tex.normal_texture->unload_from_gpu();
+    }
+
+    if (tex.mt4hh_texture && tex.mt4hh_texture->on_gpu) {
+      tex.mt4hh_texture->unload_from_gpu();
+    }
+  }
+}
+
+void TextureRecord::unload_from_gpu() {
+  assert(on_gpu);
+  GLuint tex_id = gpu_texture;
+  glBindTexture(GL_TEXTURE_2D, tex_id);
+  glDeleteTextures(1, &tex_id);
+  on_gpu = false;
+  gpu_texture = 9988776655443322;
+}
+
 std::vector<std::shared_ptr<TextureRecord>> TexturePool::convert_textures(const u8* tpage,
                                                                           int mode,
                                                                           const u8* memory_base,
@@ -284,9 +372,7 @@ void TexturePool::remove_garbage_textures() {
   for (auto& t : m_garbage_textures) {
     if (t->on_gpu) {
       m_most_recent_gc_count_gpu++;
-      GLuint tex_id = t->gpu_texture;
-      glBindTexture(GL_TEXTURE_2D, tex_id);
-      glDeleteTextures(1, &tex_id);
+      t->unload_from_gpu();
     }
   }
   m_garbage_textures.clear();

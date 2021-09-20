@@ -54,6 +54,7 @@ class BucketRenderer {
   bool& enabled() { return m_enabled; }
   virtual bool empty() const { return false; }
   virtual void draw_debug_window() = 0;
+  virtual void serialize(Serializer&) {}
 
  protected:
   std::string m_name;

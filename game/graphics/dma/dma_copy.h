@@ -4,6 +4,7 @@
 
 #include "common/common_types.h"
 #include "game/graphics/dma/dma_chain_read.h"
+#include "common/util/Serializer.h"
 
 struct DmaData {
   u32 start_offset = 0;
@@ -21,6 +22,9 @@ class FixedChunkDmaCopier {
   FixedChunkDmaCopier(u32 main_memory_size);
 
   const DmaData& run(const void* memory, u32 offset, bool verify = false);
+
+  void serialize_last_result(Serializer& serializer);
+
   const DmaData& get_last_result() const { return m_result; }
 
   const void* get_last_input_data() const { return m_input_data; }

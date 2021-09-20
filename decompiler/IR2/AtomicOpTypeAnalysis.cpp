@@ -320,7 +320,6 @@ TP_Type get_stack_type_at_constant_offset(int offset,
       fmt::format("Failed to find a stack variable or structure at offset {}", offset));
 }
 
-
 uint32_t align16(uint32_t in) {
   return (in + 15) & (~15);
 }

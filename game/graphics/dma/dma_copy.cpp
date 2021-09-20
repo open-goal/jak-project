@@ -27,6 +27,11 @@ std::vector<u8> flatten_dma(const DmaFollower& in) {
   return result;
 }
 
+void FixedChunkDmaCopier::serialize_last_result(Serializer& serializer) {
+  serializer.from_ptr(&m_result.start_offset);
+  serializer.from_pod_vector(&m_result.data);
+}
+
 FixedChunkDmaCopier::FixedChunkDmaCopier(u32 main_memory_size)
     : m_main_memory_size(main_memory_size), m_chunk_count(main_memory_size / chunk_size) {
   assert(chunk_size * m_chunk_count == m_main_memory_size);  // make sure the memory size is valid.

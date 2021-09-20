@@ -2,6 +2,7 @@
 #include "third-party/imgui/imgui.h"
 
 #include "TextureUploadHandler.h"
+#include "game/graphics/pipelines/opengl.h"
 
 TextureUploadHandler::TextureUploadHandler(const std::string& name, BucketId my_id)
     : BucketRenderer(name, my_id) {}
@@ -159,6 +160,61 @@ void TextureUploadHandler::populate_cache(
       std::vector<std::shared_ptr<TextureRecord>> recs(7);  // max mip
       recs.at(tex->mip_level) = tex;
       m_tex_cache.insert({tex->name, std::move(recs)});
+    }
+  }
+}
+
+/*!
+ * Unload any cached textures from GPU.
+ * Remove all textures from this cache.
+ * Set do_gc on all textures, as they may be in use in the pool.
+ *
+ * Effectively, this will require all textures to re-converted and re-uploaded next time they are
+ * uploaded from the game.
+ */
+void TextureUploadHandler::evict_all() {
+  for (auto& e : m_tex_cache) {
+    for (auto& x : e.second) {
+      if (x) {
+        if (x->on_gpu) {
+          x->unload_from_gpu();
+        }
+        x->do_gc = true;
+      }
+    }
+  }
+  m_tex_cache = {};
+}
+
+void TextureUploadHandler::serialize(Serializer& ser) {
+  if (ser.is_saving()) {
+    ser.save<size_t>(m_tex_cache.size());
+    for (auto& entry : m_tex_cache) {
+      ser.save_str(&entry.first);
+      ser.save<size_t>(entry.second.size());
+      for (auto& x : entry.second) {
+        if (x) {
+          ser.save<u8>(1);
+          x->serialize(ser);
+        } else {
+          ser.save<u8>(0);
+        }
+      }
+    }
+  } else {
+    evict_all();
+    auto size = ser.load<size_t>();
+    for (size_t i = 0; i < size; i++) {
+      auto str = ser.load_string();
+      std::vector<std::shared_ptr<TextureRecord>> recs(ser.load<size_t>());
+      for (auto& x : recs) {
+        if (ser.load<u8>()) {
+          x = std::make_shared<TextureRecord>();
+          x->serialize(ser);
+          x->on_gpu = false;
+        }
+      }
+      m_tex_cache.insert({str, std::move(recs)});
     }
   }
 }

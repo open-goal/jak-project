@@ -1081,7 +1081,6 @@ u64 execute(void* ctxt) {
   c->sw(s5, 104, s2);                               // sw s5, 104(s2)
   // nop                                            // sll r0, r0, 0
   c->sw(a0, 124, s2);                               // sw a0, 124(s2)
-fmt::print("a0: {}\n", c->gprs[a0].f[0]);
   // nop                                            // sll r0, r0, 0
   bc = c->sgpr64(s0) == c->sgpr64(s7);              // beq s0, s7, L131
   c->lui(v1, 16256);                                // lui v1, 16256

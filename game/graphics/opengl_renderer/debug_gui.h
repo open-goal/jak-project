@@ -1,0 +1,38 @@
+#pragma once
+
+#include "common/util/Timer.h"
+
+class FrameTimeRecorder {
+ public:
+  static constexpr int SIZE = 60 * 5;
+
+  void finish_frame();
+  void start_frame();
+  void draw_window();
+
+ private:
+  float m_frame_times[SIZE];
+  int m_idx = 0;
+  Timer m_timer;
+  bool m_open = true;
+};
+
+class OpenGlDebugGui {
+ public:
+  void start_frame();
+  void finish_frame();
+  void draw();
+  bool should_draw_render_debug() const { return m_draw_debug; }
+  bool& want_save() { return m_want_save; }
+  bool& want_dump_replay() { return m_want_replay; }
+  bool& want_dump_load() { return m_want_dump_load; }
+
+ private:
+  FrameTimeRecorder m_frame_timer;
+  bool m_draw_frame_time = false;
+  bool m_draw_debug = false;
+  bool m_want_save = false;
+  bool m_want_replay = false;
+  bool m_want_dump_load = false;
+  char m_dump_save_name[256] = "dump.bin";
+};

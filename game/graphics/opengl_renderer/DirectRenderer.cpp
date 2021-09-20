@@ -266,7 +266,7 @@ void DirectRenderer::update_gl_blend() {
   } else {
     lg::error("unsupported blend: a {} b {} c {} d {}\n", (int)state.a, (int)state.b, (int)state.c,
               (int)state.d);
-    // assert(false);
+    assert(false);
   }
 }
 
@@ -529,7 +529,7 @@ void DirectRenderer::handle_ad(const u8* data, SharedRenderState* render_state) 
 void DirectRenderer::handle_tex1_1(u64 val) {
   GsTex1 reg(val);
   // for now, we aren't going to handle mipmapping. I don't think it's used with direct.
-  assert(reg.mxl() == 0);
+  //   assert(reg.mxl() == 0);
   // if that's true, we can ignore LCM, MTBA, L, K
 
   // MMAG/MMIN specify texture filtering. For now, assume always linear

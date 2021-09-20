@@ -495,9 +495,9 @@ bool ControlFlowGraph::is_while_loop(CfgVtx* b0, CfgVtx* b1, CfgVtx* b2) {
     fmt::print("try while: {} | {} | {}\n", b0->to_string(), b1->to_string(), b2->to_string());
   }
 
-
   if (b0->end_branch.asm_branch || b1->end_branch.asm_branch) {
-    if (debug) fmt::print("reject 1 {} {}\n", b0->end_branch.asm_branch , b1->end_branch.asm_branch);
+    if (debug)
+      fmt::print("reject 1 {} {}\n", b0->end_branch.asm_branch, b1->end_branch.asm_branch);
     return false;
   }
 
@@ -511,7 +511,8 @@ bool ControlFlowGraph::is_while_loop(CfgVtx* b0, CfgVtx* b1, CfgVtx* b2) {
   if (b1->prev != b0)
     return false;
 
-  if (debug) fmt::print("made it here\n");
+  if (debug)
+    fmt::print("made it here\n");
 
   //  // check branch to condition at the beginning
   if (b0->succ_ft)

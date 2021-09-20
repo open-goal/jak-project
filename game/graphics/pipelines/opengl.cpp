@@ -22,10 +22,11 @@
 #include "common/log/log.h"
 #include "common/goal_constants.h"
 #include "game/runtime.h"
+#include "common/util/Timer.h"
+#include "game/graphics/opengl_renderer/debug_gui.h"
+#include "common/util/FileUtil.h"
 
 namespace {
-
-constexpr bool disable_dma_copy = false;
 
 struct GraphicsData {
   // vsync
@@ -45,6 +46,15 @@ struct GraphicsData {
 
   // temporary opengl renderer
   OpenGLRenderer ogl_renderer;
+
+  OpenGlDebugGui debug_gui;
+
+  Serializer loaded_dump;
+
+  void serialize(Serializer& ser) {
+    dma_copier.serialize_last_result(ser);
+    ogl_renderer.serialize(ser);
+  }
 
   GraphicsData()
       : dma_copier(EE_MAIN_MEM_SIZE),
@@ -178,18 +188,22 @@ static void gl_kill_display(GfxDisplay* display) {
   glfwDestroyWindow(display->window_glfw);
 }
 
-static void gl_render_display(GfxDisplay* display) {
-  GLFWwindow* window = display->window_glfw;
+void make_gfx_dump() {
+  Timer ser_timer;
+  Serializer ser;
 
-  // poll events
-  glfwPollEvents();
-  glfwMakeContextCurrent(window);
+  // save the dma chain and renderer state
+  g_gfx_data->serialize(ser);
+  auto result = ser.get_save_result();
+  lg::info("Serialized graphics state in {:.1f} ms, {:.3f} MB", ser_timer.getMs(),
+           ((double)result.second) / (1 << 20));
 
-  // imgui start of frame
-  ImGui_ImplOpenGL3_NewFrame();
-  ImGui_ImplGlfw_NewFrame();
-  ImGui::NewFrame();
+  file_util::create_dir_if_needed(file_util::get_file_path({"gfx_dumps"}));
+  file_util::write_binary_file(file_util::get_file_path({"gfx_dumps/dump.bin"}), result.first,
+                               result.second);
+}
 
+void render_game_frame(int width, int height) {
   // wait for a copied chain.
   bool got_chain = false;
   {
@@ -202,17 +216,20 @@ static void gl_render_display(GfxDisplay* display) {
 
   // render that chain.
   if (got_chain) {
-    int width, height;
-    glfwGetFramebufferSize(window, &width, &height);
-
     //      g_gfx_data->ogl_renderer.render(DmaFollower(g_gfx_data->dma_copier.get_last_input_data(),
     //                                                  g_gfx_data->dma_copier.get_last_input_offset()),
     //                                      width, height);
 
+    // we want to serialize before rendering
+    if (g_gfx_data->debug_gui.want_save()) {
+      make_gfx_dump();
+      g_gfx_data->debug_gui.want_save() = false;
+    }
+
     auto& chain = g_gfx_data->dma_copier.get_last_result();
     g_gfx_data->frame_idx_of_input_data = g_gfx_data->frame_idx;
     g_gfx_data->ogl_renderer.render(DmaFollower(chain.data.data(), chain.start_offset), width,
-                                    height);
+                                    height, g_gfx_data->debug_gui.should_draw_render_debug());
   }
 
   // before vsync, mark the chain as rendered.
@@ -223,13 +240,64 @@ static void gl_render_display(GfxDisplay* display) {
     g_gfx_data->has_data_to_render = false;
     g_gfx_data->sync_cv.notify_all();
   }
+}
+
+void render_dump_frame(int width, int height) {
+  Timer deser_timer;
+  if (g_gfx_data->debug_gui.want_dump_load()) {
+    auto data = file_util::read_binary_file(file_util::get_file_path({"gfx_dumps/dump.bin"}));
+    g_gfx_data->loaded_dump = Serializer(data.data(), data.size());
+  }
+
+  g_gfx_data->loaded_dump.reset_load();
+  g_gfx_data->serialize(g_gfx_data->loaded_dump);
+
+  if (g_gfx_data->debug_gui.want_dump_load()) {
+    lg::info("Loaded and deserialized graphics state in {:.1f} ms, {:.3f} MB", deser_timer.getMs(),
+             ((double)g_gfx_data->loaded_dump.data_size()) / (1 << 20));
+  }
+  g_gfx_data->debug_gui.want_dump_load() = false;
+
+  auto& chain = g_gfx_data->dma_copier.get_last_result();
+  g_gfx_data->frame_idx_of_input_data = g_gfx_data->frame_idx;
+  g_gfx_data->ogl_renderer.render(DmaFollower(chain.data.data(), chain.start_offset), width, height,
+                                  g_gfx_data->debug_gui.should_draw_render_debug());
+}
+
+static void gl_render_display(GfxDisplay* display) {
+  GLFWwindow* window = display->window_glfw;
+
+  // poll events
+  glfwPollEvents();
+  glfwMakeContextCurrent(window);
+
+  // imgui start of frame
+  ImGui_ImplOpenGL3_NewFrame();
+  ImGui_ImplGlfw_NewFrame();
+  ImGui::NewFrame();
+
+  // clear
+  glClearColor(0.0, 0.0, 0.0, 0.0);
+  glClear(GL_COLOR_BUFFER_BIT);
+
+  int width, height;
+  glfwGetFramebufferSize(window, &width, &height);
+
+  if (g_gfx_data->debug_gui.want_dump_replay()) {
+    render_dump_frame(width, height);
+  } else {
+    render_game_frame(width, height);
+  }
 
   // render imgui
+  g_gfx_data->debug_gui.draw();
   ImGui::Render();
   ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
 
   // actual vsync
+  g_gfx_data->debug_gui.finish_frame();
   glfwSwapBuffers(window);
+  g_gfx_data->debug_gui.start_frame();
 
   // toggle even odd and wake up engine waiting on vsync.
   {

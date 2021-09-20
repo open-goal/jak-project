@@ -8,8 +8,10 @@ class TextureUploadHandler : public BucketRenderer {
   TextureUploadHandler(const std::string& name, BucketId my_id);
   void render(DmaFollower& dma, SharedRenderState* render_state) override;
   void draw_debug_window() override;
+  void serialize(Serializer& ser) override;
 
  private:
+  void evict_all();
   bool try_to_populate_from_cache(u64 page,
                                   const bool with_seg[3],
                                   SharedRenderState* render_state);

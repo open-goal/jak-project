@@ -318,7 +318,7 @@ u32 exec_runtime(int argc, char** argv) {
   // TODO also sync this up with how the game actually renders things (this is just a placeholder)
   if (enable_display) {
     Gfx::Init();
-    Gfx::Loop([&tm]() { return !tm.all_threads_exiting(); });
+    Gfx::Loop([]() { return !MasterExit; });
     Gfx::Exit();
   }
 

@@ -83,9 +83,6 @@ enum class FieldId {
 // 2: number is an integer
 // 4: launcher index
 
-
-
-
 enum class FieldKind { FLOAT, TEXTURE_ID, INVALID };
 
 struct SparticleFieldDecomp {
