@@ -19,7 +19,7 @@ tasks:
       - rm ./decompiler_out/**/*disasm.gc
   decomp-file:
     cmds:
-      - python ./scripts/next-decomp-file.py --file "{{.FILE}}"
+      - python ./scripts/next-decomp-file.py --files "{{.FILES}}"
       - task: decomp
   decomp-list:
     cmds:
@@ -29,7 +29,7 @@ tasks:
   # python -m pip install -U watchdog[watchmedo]
   decomp-watch:
     cmds:
-      - watchmedo shell-command --drop --patterns="*.gc;*.jsonc" --recursive --command='task decomp-file FILE="{{.FILE}}"' ./decompiler/config/
+      - watchmedo shell-command --drop --patterns="*.gc;*.jsonc" --recursive --command='task decomp-file FILES="{{.FILES}}"' ./decompiler/config/
   clean-all-types:
     cmds:
       - python ./scripts/cleanup-all-types.py
@@ -47,11 +47,11 @@ tasks:
   add-reference-test:
     cmds:
       - task: decomp-file
-      - python ./scripts/add-reference-test.py --file "{{.FILE}}"
+      - python ./scripts/add-reference-test.py --file "{{.FILES}}"
       - task: offline-tests
   add-reference-test-no-decomp:
     cmds:
-      - python ./scripts/add-reference-test.py --file "{{.FILE}}"
+      - python ./scripts/add-reference-test.py --file "{{.FILES}}"
       - task: offline-tests
   update-reference-tests:
     cmds:
@@ -62,17 +62,21 @@ tasks:
       - task: offline-tests
   find-label-types:
     cmds:
-      - python ./scripts/next-decomp-file.py --file "{{.FILE}}"
+      - python ./scripts/next-decomp-file.py --files "{{.FILES}}"
       - task: decomp
-      - python ./scripts/find-label-types.py --file "{{.FILE}}"
+      - python ./scripts/find-label-types.py --file "{{.FILES}}"
   type-test:
     cmds:
       - ./out/build/Release/bin/goalc-test.exe --gtest_brief=0 --gtest_filter="*TypeConsistency*"
+  update-gsrc:
+    cmds:
+      - python ./scripts/next-decomp-file.py --files "{{.FILES}}"
+      - task: decomp
+      - python ./scripts/update-goal-src.py --files "{{.FILES}}"
+      - task: type-test
   # TODO - make a script that checks for function/method splits
-  # TODO - make a script to cleanup common cruft from finished file
   file-good?:
     cmds:
       - task: type-test
       - task: offline-tests
       - task: find-label-types
-

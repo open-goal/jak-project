@@ -657,7 +657,8 @@ void SimpleExpressionElement::update_from_stack_div_s(const Env& env,
         GenericOperator::make_fixed(FixedOperatorKind::DIVISION), args.at(0), args.at(1));
     result->push_back(new_form);
   } else {
-    throw std::runtime_error(fmt::format("Floating point division attempted on invalid types."));
+    throw std::runtime_error(
+        fmt::format("Floating point division attempted on invalid types at OP: [{}].", m_my_idx));
   }
 }
 
@@ -789,7 +790,8 @@ void SimpleExpressionElement::update_from_stack_float_1(const Env& env,
         pool.alloc_element<GenericElement>(GenericOperator::make_fixed(kind), args.at(0));
     result->push_back(new_form);
   } else {
-    throw std::runtime_error(fmt::format("Floating point division attempted on invalid types."));
+    throw std::runtime_error(
+        fmt::format("Floating point division attempted on invalid types at OP: [{}].", m_my_idx));
   }
 }
 
