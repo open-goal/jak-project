@@ -1,4 +1,3 @@
-
 #include <set>
 
 #include "mips2c.h"
@@ -7,6 +6,25 @@
 #include "decompiler/Disasm/InstructionMatching.h"
 #include "decompiler/Function/Function.h"
 #include "decompiler/ObjectFile/LinkedObjectFile.h"
+
+/*!
+ * Mips2C:
+ * The mips2c analysis pass converts mips assembly into C code.  It is a very literal translation.
+ * This relies on the helper functions in mips2c_private.h header.
+ *
+ * We generate a "link" function and an "execute" function. The "link" function performs symbol
+ * table lookups and saves the address of the slots in a cache structure used during runtime. It
+ * also allocates a stub function on the GOAL heap that jumps to the C++ function in the proper way.
+ *
+ * The "link" function should be called by the linker when the appropriate object file is linked.
+ * It should happen after GOAL linking, but before executing the top-level segment.
+ * This _only_ allocates a function, but doesn't set the symbol.
+ * You have to do that yourself, in the top level.
+ * This order seems weird and annoying, but it makes sure that we get the order of allocations
+ * right. It's likely that nothing depends on this, but better to be safe.
+ *
+ * The "execute" function is the function that should be called from GOAL.
+ */
 
 namespace decompiler {
 
@@ -46,6 +64,10 @@ Register make_vf(int idx) {
   return Register(Reg::VF, idx);
 }
 
+/*!
+ * Convert a GOAL symbol name to a valid C++ variable name.
+ * dashes become underscores, and !/?/ * are dropped.
+ */
 std::string goal_to_c_name(const std::string& name) {
   std::string result;
   for (auto c : name) {
@@ -62,6 +84,9 @@ std::string goal_to_c_name(const std::string& name) {
   return result;
 }
 
+/*!
+ * Convert a decompiler function name to a valid C++ variable name.
+ */
 std::string goal_to_c_function_name(const FunctionName& name) {
   switch (name.kind) {
     case FunctionName::FunctionKind::GLOBAL:
@@ -71,11 +96,17 @@ std::string goal_to_c_function_name(const FunctionName& name) {
   }
 }
 
+/*!
+ * Convert a decompiler register into the name of the register constant in mips2c_private.h
+ */
 const char* reg_to_name(const InstructionAtom& atom) {
   assert(atom.is_reg());
   return atom.get_reg().to_charp();
 }
 
+/*!
+ * A line of code in the mips2c function output. Just code + end of line comment.
+ */
 struct Mips2C_Line {
   std::string code;
   std::string comment;
@@ -86,14 +117,32 @@ struct Mips2C_Line {
       : code(_code), comment(_comment) {}
 };
 
+/*!
+ * Mips2C output. Contains the execute and link function.
+ * This is built up in the order of MIPS instructions/labels/comments using the output_* functions.
+ * The output is built by write_to_string.
+ */
 struct Mips2C_Output {
+  /*!
+   * Add a label at the current line.
+   */
   void output_label(int block_idx) { lines.push_back(fmt::format("\nblock_{}:", block_idx)); }
+
+  /*!
+   * Add a full line comment at the current line. Includes "//" automatically
+   */
   void output_line_comment(const std::string& text) { lines.emplace_back("// " + text); }
 
+  /*!
+   * Output code and comment for an instruction.
+   */
   void output_instr(const std::string& instr, const std::string& comment) {
     lines.emplace_back(instr, comment);
   }
 
+  /*!
+   * Convert the output to a string.
+   */
   std::string write_to_string(const FunctionName& goal_func_name) const {
     std::string name = goal_to_c_function_name(goal_func_name);
     std::string result = "//--------------------------MIPS2C---------------------\n";
@@ -104,6 +153,7 @@ struct Mips2C_Output {
     result += "namespace Mips2C {\n";
     result += fmt::format("namespace {} {{\n", name);
 
+    // definition of the symbol cache.
     if (!symbol_cache.empty()) {
       result += "struct Cache {\n";
       for (auto& sym : symbol_cache) {
@@ -112,13 +162,23 @@ struct Mips2C_Output {
       result += "} cache;\n\n";
     }
 
+    // definition of the function
+    // the mips2c_call function will build and pass an ExecutionContext
     result += "u64 execute(void* ctxt) {\n";
     result += "  auto* c = (ExecutionContext*)ctxt;\n";
+
+    // the branch condition (for delay slots)
     result += "  bool bc = false;\n";
+
+    // the function call address (for jalr delay slots)
     result += "  u32 call_addr = 0;\n";
+
     if (needs_cop1_bc) {
+      // the cop1 branch flag (separate from delay slot bc).
       result += "  bool cop1_bc = false;\n";
     }
+
+    // add all lines
     for (auto& line : lines) {
       result += "  ";
       result += line.code;
@@ -135,14 +195,17 @@ struct Mips2C_Output {
       result += '\n';
     }
 
+    // return!
     result += "end_of_function:\n  return c->gprs[v0].du64[0];\n";
     result += "}\n\n";
 
     // link function:
     result += "void link() {\n";
+    // lookup all symbols
     for (auto& sym : symbol_cache) {
       result += fmt::format("  cache.{} = intern_from_c(\"{}\").c();\n", goal_to_c_name(sym), sym);
     }
+    // this adds us to a table for lookup later, and also allocates our trampoline.
     result +=
         fmt::format("  gLinkedFunctionTable.reg(\"{}\", execute);\n", goal_func_name.to_string());
     result += "}\n\n";
@@ -150,6 +213,7 @@ struct Mips2C_Output {
     result += fmt::format("}} // namespace {}\n", name);
     result += "} // namespace Mips2C\n";
 
+    // reminder to the user to add a callback to the link function in the linker.
     result +=
         fmt::format("// add {}::link to the link callback table for the object file.\n", name);
     result += "// FWD DEC:\n";
@@ -157,6 +221,9 @@ struct Mips2C_Output {
     return result;
   }
 
+  /*!
+   * Adds name to the symbol cache, if it's not there already.
+   */
   void require_symbol(const std::string& name) { symbol_cache.insert(name); }
 
   std::vector<Mips2C_Line> lines;
@@ -164,18 +231,21 @@ struct Mips2C_Output {
   bool needs_cop1_bc = false;
 };
 
+/*!
+ * Basic block used for mips2c.
+ */
 struct M2C_Block {
-  int idx = -1;
-  int succ_branch = -1;
-  int succ_ft = -1;
-  std::vector<int> pred;
+  int idx = -1;           // block idx
+  int succ_branch = -1;   // block idx if we take the branch
+  int succ_ft = -1;       // block idx if we don't take the branch (or there is none)
+  std::vector<int> pred;  // block idx of predecessors
 
-  int start_instr = -1;
-  int end_instr = -1;
+  int start_instr = -1;  // first instruction idx
+  int end_instr = -1;    // last instruction idx (not inclusive)
 
-  bool has_branch = false;
-  bool branch_likely = false;
-  bool branch_always = false;
+  bool has_branch = false;     // ends in a branch instruction?
+  bool branch_likely = false;  // that branch is likely branch?
+  bool branch_always = false;  // that branch is always taken?
 
   bool has_pred(int pidx) const {
     for (auto p : pred) {
@@ -187,6 +257,9 @@ struct M2C_Block {
   }
 };
 
+/*!
+ * Make second_idx be a fallthrough of first_idx.
+ */
 void link_fall_through(int first_idx, int second_idx, std::vector<M2C_Block>& blocks) {
   auto& first = blocks.at(first_idx);
   auto& second = blocks.at(second_idx);
@@ -204,6 +277,9 @@ void link_fall_through(int first_idx, int second_idx, std::vector<M2C_Block>& bl
   }
 }
 
+/*!
+ * Make second_idx be the branch destination of first_idx.
+ */
 void link_branch(int first_idx, int second_idx, std::vector<M2C_Block>& blocks) {
   auto& first = blocks.at(first_idx);
   auto& second = blocks.at(second_idx);
@@ -216,6 +292,9 @@ void link_branch(int first_idx, int second_idx, std::vector<M2C_Block>& blocks) 
   }
 }
 
+/*!
+ * Make second_idx be the fall through of a likely branch (after the delay slot)
+ */
 void link_fall_through_likely(int first_idx, int second_idx, std::vector<M2C_Block>& blocks) {
   auto& first = blocks.at(first_idx);
   auto& second = blocks.at(second_idx);
@@ -322,7 +401,6 @@ std::vector<M2C_Block> setup_preds_and_succs(const Function& func,
         delay_block.has_branch = true;
         auto inserted = likely_delay_slot_blocks.insert(i + 1).second;
         assert(inserted);
-        // delay_block.kind = CfgVtx::DelaySlotKind::NO_DELAY;
         link_branch(i + 1, block_target, blocks);
 
       } else {
@@ -336,11 +414,9 @@ std::vector<M2C_Block> setup_preds_and_succs(const Function& func,
           int idx = b.end_word - 2;
           assert(idx >= b.start_word);
           auto& branch_candidate = func.instructions.at(idx);
-          // auto& delay_slot_candidate = func.instructions.at(idx + 1);
           if (is_branch(branch_candidate, false)) {
             blocks.at(i).has_branch = true;
             blocks.at(i).branch_likely = false;
-            // blocks.at(i).kind = get_delay_slot(delay_slot_candidate);
             bool branch_always = is_always_branch(branch_candidate);
 
             // need to find block target
@@ -353,10 +429,6 @@ std::vector<M2C_Block> setup_preds_and_succs(const Function& func,
             int offset = label.offset / 4 - func.start_word;
             assert(offset >= 0);
 
-            // the order here matters when there are zero size blocks. Unclear what the best answer
-            // is.
-            //  i think in end it doesn't actually matter??
-            //        for (int j = 0; j < int(func.basic_blocks.size()); j++) {
             for (int j = int(func.basic_blocks.size()); j-- > 0;) {
               if (func.basic_blocks[j].start_word == offset) {
                 block_target = j;
@@ -389,6 +461,9 @@ std::vector<M2C_Block> setup_preds_and_succs(const Function& func,
   return blocks;
 }
 
+/*!
+ * Does the given block require a label in front of it?
+ */
 bool block_requires_label(const Function* f,
                           const std::vector<M2C_Block>& blocks,
                           size_t block_idx) {
@@ -404,14 +479,21 @@ bool block_requires_label(const Function* f,
 
   if (block.pred.size() == 1 && block_idx > 0 && block.pred.front() == (int)block_idx - 1 &&
       blocks.at(block_idx - 1).succ_ft == (int)block_idx) {
-    // the only way to get to this block is to fall through.
+    // the only way to get to this block is to fall through, no need for a label.
     return false;
   }
 
   return true;
 }
 
+namespace {
+// hack counter for total number of unknown instruction. TODO remove
 int g_unknown = 0;
+}  // namespace
+
+/*!
+ * Complain about an unknown instruction.
+ */
 Mips2C_Line handle_unknown(const std::string& instr_str) {
   g_unknown++;
   lg::warn("mips2c unknown: {}", instr_str);
@@ -842,7 +924,6 @@ void run_mips2c(Function* f) {
 
   for (size_t block_idx = 0; block_idx < blocks.size(); block_idx++) {
     const auto& block = blocks[block_idx];
-    // fmt::print("block {}: {} to {}\n", block_idx, block.start_instr, block.end_instr);
 
     if (likely_delay_blocks.count(block_idx)) {
       continue;
@@ -850,8 +931,6 @@ void run_mips2c(Function* f) {
 
     if (block_requires_label(f, blocks, block_idx)) {
       output.output_label(block_idx);
-    } else {
-      // output.comment_line("block {}",)
     }
 
     for (int i = block.start_instr; i < block.end_instr; i++) {
@@ -918,7 +997,7 @@ void run_mips2c(Function* f) {
         auto delay_i_str = delay_i.to_string(file->labels);
         output.lines.push_back(
             handle_normal_instr(output, delay_i, delay_i_str, unknown_count, file));
-        // assert(i + 1 == block.end_instr);
+
         // then the goto
         output.lines.emplace_back(fmt::format("goto end_of_function;", block.succ_branch),
                                   "return\n");
@@ -937,7 +1016,6 @@ void run_mips2c(Function* f) {
       } else {
         output.lines.push_back(handle_normal_instr(output, instr, instr_str, unknown_count, file));
       }
-      // fmt::print("I: {}\n", instr_str);
 
       assert(output.lines.size() > old_line_count);
     }
