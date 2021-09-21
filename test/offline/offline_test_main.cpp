@@ -67,16 +67,6 @@ const std::unordered_set<std::string> g_functions_expected_to_reject = {
     // ripple - asm
     "ripple-execute-init", "ripple-create-wave-table", "ripple-apply-wave-table",
     "ripple-matrix-scale",
-    // ripple - calls an asm function
-    "ripple-execute",
-
-    // sync-info
-    "(method 15 sync-info)",         // needs *res-static-buf*
-    "(method 15 sync-info-eased)",   // needs *res-static-buf*
-    "(method 15 sync-info-paused)",  // needs *res-static-buf*
-
-    // camera
-    "slave-set-rotation!", "v-slrp2!", "v-slrp3!",  // vector-dot involving the stack
 
     // collide-mesh-h
     "(method 11 collide-mesh-cache)",  // asm
@@ -85,7 +75,8 @@ const std::unordered_set<std::string> g_functions_expected_to_reject = {
     "update-mood-lava",       // asm
     "update-mood-lightning",  // asm
 
-    "debug-menu-item-var-render"  // asm
+    // ambient
+    "ambient-inspect"  // asm, weird
 };
 
 const std::unordered_set<std::string> g_functions_to_skip_compiling = {
@@ -172,7 +163,10 @@ const std::unordered_set<std::string> g_functions_to_skip_compiling = {
     "slave-set-rotation!", "v-slrp2!", "v-slrp3!",  // vector-dot involving the stack
 
     // function returning float with a weird cast.
-    "debug-menu-item-var-make-float"};
+    "debug-menu-item-var-make-float",
+
+    // decompiler BUG
+    "level-hint-task-process"};
 
 // default location for the data. It can be changed with a command line argument.
 std::string g_iso_data_path = "";
@@ -187,10 +181,10 @@ struct decomp_meta {
 
 std::vector<decomp_meta> g_object_files_to_decompile_or_ref_check;
 
-std::vector<std::string> dgos = {"CGO/KERNEL.CGO", "CGO/ENGINE.CGO", "CGO/GAME.CGO", "DGO/BEA.DGO",
-                                 "DGO/INT.DGO",    "DGO/VI1.DGO",    "DGO/VI2.DGO",  "DGO/VI3.DGO",
-                                 "DGO/CIT.DGO",    "DGO/MIS.DGO",    "DGO/JUB.DGO",  "DGO/SUN.DGO",
-                                 "DGO/DEM.DGO",    "DGO/FIN.DGO",    "DGO/JUN.DGO",  "DGO/FIC.DGO"};
+std::vector<std::string> dgos = {
+    "CGO/KERNEL.CGO", "CGO/ENGINE.CGO", "CGO/GAME.CGO", "DGO/BEA.DGO", "DGO/INT.DGO", "DGO/VI1.DGO",
+    "DGO/VI2.DGO",    "DGO/VI3.DGO",    "DGO/CIT.DGO",  "DGO/MIS.DGO", "DGO/JUB.DGO", "DGO/SUN.DGO",
+    "DGO/DEM.DGO",    "DGO/FIN.DGO",    "DGO/JUN.DGO",  "DGO/FIC.DGO", "DGO/OGR.DGO"};
 
 }  // namespace
 

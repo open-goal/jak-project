@@ -1020,6 +1020,10 @@
   (ogre-buzzer #x601)
   (ogre-boss #x603)
 
+  (assistant-voicebox-intro-ogre-race #x605)
+
+  (sidekick-speech-hint-ogre-race #x61c)
+
   (lavatube-end #x700)
   (lavatube-buzzer #x701)
 
@@ -1694,7 +1698,7 @@
   )
 
 (deftype vector2h (structure)
-  ((data int16 2 :score -9999 :offset-assert 0)
+  ((data int16 2 :score -9999 :offset-assert 0 :do-not-decompile)
    (x    int16     :offset 0)
    (y    int16     :offset 2)
    )
@@ -6249,7 +6253,7 @@
   :size-assert         #x20
   :flag-assert         #x1300000020
   (:methods
-    (dummy-18 () none 18)
+    (dummy-18 (_type_ vector) none 18)
     )
   )
 
@@ -6260,20 +6264,20 @@
 
 (deftype drawable-inline-array-ambient (drawable-inline-array)
   ((data drawable-ambient 1 :inline)
-   (pad uint8 4))
+   (pad uint32))
   :flag-assert #x1200000044
   )
 
 (deftype level-hint (process)
-  ((text-id-to-display uint32    :offset-assert 112)
-   (sound-to-play      basic     :offset-assert 116)
+  ((text-id-to-display game-text-id    :offset-assert 112)
+   (sound-to-play      string    :offset-assert 116)
    (trans              vector    :offset-assert 120)
    (sound-id           sound-id  :offset-assert 124)
-   (mode               basic     :offset-assert 128)
-   (total-time         uint64    :offset-assert 136)
-   (total-off-time     uint64    :offset-assert 144)
-   (last-time          uint64    :offset-assert 152)
-   (voicebox           uint64    :offset-assert 160)
+   (mode               symbol    :offset-assert 128)
+   (total-time         int64     :offset-assert 136)
+   (total-off-time     int64     :offset-assert 144)
+   (last-time          int64     :offset-assert 152)
+   (voicebox           handle    :offset-assert 160)
    )
   :heap-base #x40
   :method-count-assert 16
@@ -6281,7 +6285,7 @@
   :flag-assert         #x10004000a8
   ;; inherited inspect of process
   (:methods
-    (dummy-14 () none 14)
+    (print-text (_type_) none 14)
     (dummy-15 (_type_) symbol 15)
     )
   )
@@ -6328,8 +6332,8 @@
   )
 
 (deftype task-hint-control (structure)
-  ((task  uint8   :offset-assert 0)
-   (delay uint64  :offset-assert 8)
+  ((task  game-task   :offset-assert 0)
+   (delay int64  :offset-assert 8)
    )
   :method-count-assert 9
   :size-assert         #x10
@@ -9111,19 +9115,19 @@
    (total-deaths          int32     :offset-assert 156)
    (continue-deaths       int32     :offset-assert 160)
    (fuel-cell-deaths      int32     :offset-assert 164)
-   (game-start-time       uint64    :offset-assert 168)
-   (continue-time         uint64    :offset-assert 176)
-   (death-time            uint64    :offset-assert 184)
-   (hit-time              uint64    :offset-assert 192)
-   (fuel-cell-pickup-time uint64    :offset-assert 200)
-   (fuel-cell-time        (array uint64)     :offset-assert 208)
-   (enter-level-time      (array uint64)     :offset-assert 212)
-   (in-level-time         (array uint64)     :offset-assert 216)
-   (blackout-time         uint64    :offset-assert 224)
-   (letterbox-time        uint64    :offset-assert 232)
-   (hint-play-time        uint64    :offset-assert 240)
-   (display-text-time     uint64    :offset-assert 248)
-   (display-text-handle   uint64    :offset-assert 256)
+   (game-start-time       int64    :offset-assert 168)
+   (continue-time         int64    :offset-assert 176)
+   (death-time            int64    :offset-assert 184)
+   (hit-time              int64    :offset-assert 192)
+   (fuel-cell-pickup-time int64    :offset-assert 200)
+   (fuel-cell-time        (array int64)     :offset-assert 208)
+   (enter-level-time      (array int64)     :offset-assert 212)
+   (in-level-time         (array int64)     :offset-assert 216)
+   (blackout-time         int64     :offset-assert 224)
+   (letterbox-time        int64     :offset-assert 232)
+   (hint-play-time        int64     :offset-assert 240)
+   (display-text-time     int64     :offset-assert 248)
+   (display-text-handle   handle    :offset-assert 256)
    (death-movie-tick      int32     :offset-assert 264)
    (want-auto-save        symbol     :offset-assert 268)
    (auto-save-proc        handle    :offset-assert 272)
@@ -10102,7 +10106,6 @@
   :method-count-assert 10
   :size-assert         #x68
   :flag-assert         #xa00000068
-  ;; field handle is likely a value type
   (:methods
     (dummy-9 (_type_ attack-info) none 9)
     )
@@ -10943,9 +10946,9 @@
     (dummy-9 () none 9)
     (dummy-10 (_type_ uint) collide-shape-prim 10)
     (dummy-11 () none 11)
-    (dummy-12 () none 12)
-    (dummy-13 () none 13)
-    (dummy-14 () none 14)
+    (add-fg-prim-using-box (_type_) none 12)
+    (add-fg-prim-using-line-sphere (_type_) none 13)
+    (add-fg-prim-using-y-probe (_type_) none 14)
     (dummy-15 () none 15)
     (dummy-16 () none 16)
     (dummy-17 () none 17)
@@ -12037,8 +12040,8 @@
 (deftype collide-cache-prim (structure)
   ((prim-core    collide-prim-core :inline :offset-assert 0)
    ;;(extra-quad   UNKNOWN           16      :offset-assert 32)
-   (ccache       basic                     :offset-assert 32)
-   (prim         basic                     :offset-assert 36)
+   (ccache       collide-cache             :offset-assert 32)
+   (prim         collide-shape-prim        :offset-assert 36)
    (first-tri    uint16                    :offset-assert 40)
    (num-tris     uint16                    :offset-assert 42)
    (unused       uint8           4       :offset-assert 44)
@@ -12052,8 +12055,8 @@
   :size-assert         #x30
   :flag-assert         #xb00000030
   (:methods
-    (dummy-9 () none 9)
-    (dummy-10 () none 10)
+    (dummy-9 (_type_ float pointer (pointer collide-cache) float int) float 9)
+    (dummy-10 (_type_ float pointer (pointer collide-cache) float int) float 10)
     )
   )
 
@@ -12072,30 +12075,30 @@
   :size-assert         #x8670
   :flag-assert         #x2100008670
   (:methods
-    (dummy-9 () none 9)
-    (dummy-10 () none 10)
+    (dummy-9 (_type_) none 9)
+    (dummy-10 (_type_ vector vector float int process collide-mesh-cache-tri int) float 10)
     (dummy-11 (_type_ collide-using-spheres-params) none 11)
-    (dummy-12 (_type_ vector float uint process bone uint) float 12) ;; TODO - bone not confirmed
+    (fill-and-probe-using-y-probe (_type_ vector float uint process collide-tri-result uint) float 12)
     (dummy-13 (_type_ int uint process-drawable uint) none 13)
-    (dummy-14 () none 14)
+    (dummy-14 (_type_ vector vector float int process int) none 14)
     (dummy-15 (_type_ int) none 15)
     (dummy-16 (_type_ vector float uint process uint) none 16)
-    (dummy-17 () none 17)
-    (dummy-18 () none 18)
-    (dummy-19 () none 19)
-    (dummy-20 (_type_ vector float uint bone uint) none 20) ;; TODO - bone not confirmed
-    (dummy-21 () none 21)
-    (dummy-22 () none 22)
-    (dummy-23 () none 23)
-    (dummy-24 () none 24)
-    (dummy-25 () none 25)
-    (dummy-26 () none 26)
-    (dummy-27 () none 27)
-    (dummy-28 () none 28)
-    (dummy-29 () none 29)
-    (dummy-30 () none 30)
-    (dummy-31 () none 31)
-    (dummy-32 () none 32)
+    (initialize (_type_) none 17)
+    (dummy-18 (_type_ vector vector float int collide-mesh-cache-tri int) float 18)
+    (probe-using-spheres (_type_) none 19)
+    (dummy-20 (_type_ vector float uint collide-tri-result uint) float 20)
+    (dummy-21 (_type_) none 21)
+    (dummy-22 (_type_) none 22)
+    (dummy-23 (_type_) none 23)
+    (dummy-24 (_type_) none 24)
+    (dummy-25 (_type_) none 25)
+    (dummy-26 (_type_) none 26)
+    (dummy-27 (_type_) none 27)
+    (dummy-28 (_type_) none 28)
+    (dummy-29 (_type_) none 29)
+    (dummy-30 (_type_) none 30)
+    (dummy-31 (_type_) none 31)
+    (dummy-32 (_type_) none 32)
     )
   )
 
@@ -13149,8 +13152,8 @@
   )
 
 (deftype entity-ambient-data (structure)
-  ((user-object object 3  :offset-assert 0)
-   (function    basic      :offset-assert 12)
+  ((user-object object 3  :score -100 :offset-assert 0)
+   (function    (function drawable-ambient vector none)      :offset-assert 12)
    (quad        uint128    :offset 0)
    (user-uint64 uint64 1  :offset 0)
    (user-float  float 3  :offset 0)
@@ -13174,12 +13177,13 @@
   )
 
 (deftype entity-ambient (entity)
-  ()
+  ((ambient-data  entity-ambient-data  :score 50 :offset 24) ;; added!
+   )
   :method-count-assert 29
   :size-assert #x34
   :flag-assert #x1d00000034
   (:methods
-    (dummy-27 () none 27)
+    (draw-debug (_type_) none 27)
     (birth-ambient! (_type_) none 28)
     )
   )
@@ -16429,7 +16433,7 @@
 
 ;; - Functions
 
-(define-extern sphere-in-view-frustum? function)
+(define-extern sphere-in-view-frustum? (function vector symbol))
 (define-extern kill-all-particles-with-key (function sparticle-launch-control none))
 (define-extern sp-relaunch-setup-fields function)
 (define-extern sp-init-fields! function)
@@ -16586,8 +16590,8 @@
   :size-assert         #x18
   :flag-assert         #x1000000018
   (:methods
-    (get-game-task (_type_) game-task 9)
-    (get-task-status (_type_) task-status 10)
+    (get-task (_type_) game-task 9)
+    (get-status (_type_) task-status 10)
     (task-available? (_type_ task-control) symbol 11)
     (closed? (_type_) symbol 12)
     (closed-by-default? (_type_) symbol 13)
@@ -16710,7 +16714,7 @@
 ;; - Functions
 
 (define-extern get-task-control (function game-task task-control))
-(define-extern level-hint-spawn (function game-text-id string symbol process-tree int none))
+(define-extern level-hint-spawn (function game-text-id string entity process-tree game-task none))
 (define-extern get-game-count (function int count-info))
 (define-extern activate-orb-all (function int int))
 (define-extern close-specific-task! (function game-task task-status int))
@@ -17550,7 +17554,7 @@
 (define-extern command-list-get-process (function object process))
 (define-extern command-get-quoted-param (function object symbol symbol))
 (define-extern command-get-int (function object int int))
-(define-extern ambient-hint-spawn (function symbol symbol process-tree none))
+(define-extern ambient-hint-spawn (function string vector process-tree symbol object))
 (define-extern command-get-float (function object float float))
 (define-extern process-by-ename (function string process))
 (define-extern point-in-polygon function)
@@ -18843,12 +18847,12 @@
 (define-extern find-hint-control-index (function level-hint-control int))
 (define-extern start-hint-timer (function level-hint-control none))
 (define-extern increment-success-for-hint (function level-hint-control none))
-(define-extern can-hint-be-played? (function int symbol))
+(define-extern can-hint-be-played? (function int entity string symbol))
 (define-extern update-task-hints (function none))
 
 ;; - Symbols
 
-(define-extern *hint-semaphore* (pointer process-tree)) ;; likely a level-hint process
+(define-extern *hint-semaphore* (pointer level-hint))
 
 
 ;; ----------------------
@@ -18857,39 +18861,58 @@
 ;; Containing DGOs - ['GAME', 'ENGINE']
 ;; Version - 3
 
+(defenum hint-command
+  (if-unknown 0)
+  (if-known 1)
+  (if-resolved 2)
+  (if-need-introduction 3)
+  (if-need-reminder 4)
+  (if-need-reminder-a 5)
+  (if-need-reward-speech 6)
+  (close-need-hint 7)
+  (close-need-introduction 8)
+  (close-need-reminder 9)
+  (close-need-reminder-a 10)
+  (close-need-reward-speech 11)
+  (close-need-resolution 12)
+  (if-at-most-need-reminder-a 13)
+  )
+
+(declare-type voicebox process-drawable)
+
 ;; - Functions
 
-(define-extern ambient-type-error function)
-(define-extern ambient-type-sound function)
-(define-extern ambient-type-sound-loop function)
-(define-extern ambient-type-poi function)
-(define-extern ambient-type-hint function)
-(define-extern ambient-type-light function)
-(define-extern ambient-type-dark function)
-(define-extern ambient-type-weather-off function)
-(define-extern ambient-type-ocean-off function)
-(define-extern ambient-type-ocean-near-off function)
-(define-extern ambient-type-music function)
-(define-extern level-hint-task-process function)
-(define-extern bottom-hud-hidden? function)
-(define-extern level-hint-init-by-other function)
-(define-extern voicebox-spawn function)
-(define-extern hide-bottom-hud function)
-(define-extern ambient-hint-init-by-other (function none))
-(define-extern level-hint-process-cmd function)
+(define-extern ambient-type-error (function drawable-ambient vector none))
+(define-extern ambient-type-sound (function drawable-ambient vector none))
+(define-extern ambient-type-sound-loop (function drawable-ambient vector none))
+(define-extern ambient-type-poi (function drawable-ambient vector none))
+(define-extern ambient-type-hint (function drawable-ambient vector none))
+(define-extern ambient-type-light (function drawable-ambient vector none))
+(define-extern ambient-type-dark (function drawable-ambient vector none))
+(define-extern ambient-type-weather-off (function drawable-ambient vector none))
+(define-extern ambient-type-ocean-off (function drawable-ambient vector none))
+(define-extern ambient-type-ocean-near-off (function drawable-ambient vector none))
+(define-extern ambient-type-music (function drawable-ambient vector none))
+(define-extern level-hint-task-process (function entity uint128 string int))
+(define-extern bottom-hud-hidden? (function symbol))
+(define-extern level-hint-init-by-other (function game-text-id string entity none :behavior level-hint))
+(define-extern voicebox-spawn (function process vector (pointer process)))
+(define-extern hide-bottom-hud (function none))
+(define-extern ambient-hint-init-by-other (function string vector symbol none :behavior level-hint))
+(define-extern level-hint-process-cmd (function (pointer int32) int int int))
 (define-extern task-known? (function game-task symbol))
 (define-extern can-grab-display? (function process-taskable symbol)) ;; unconfirmed, see assistant-firecanyon
-(define-extern level-hint-displayed? (function symbol)) ;; unconfirmed, see assistant-firecanyon
+(define-extern level-hint-displayed? (function symbol symbol))
 (define-extern ambient-inspect function)
 
 ;; - Unknowns
 
-;;(define-extern level-hint-exit object) ;; unknown type
-;;(define-extern level-hint-error object) ;; unknown type
-;;(define-extern level-hint-ambient-sound object) ;; unknown type
-;;(define-extern level-hint-sidekick object) ;; unknown type
-;;(define-extern level-hint-normal object) ;; unknown type
-(define-extern *execute-ambients* symbol) ;; unknown type
+(define-extern level-hint-exit (state level-hint))
+(define-extern level-hint-error (state string string level-hint))
+(define-extern level-hint-ambient-sound (state string level-hint))
+(define-extern level-hint-sidekick (state string level-hint))
+(define-extern level-hint-normal (state level-hint))
+(define-extern *execute-ambients* symbol)
 
 
 ;; ----------------------
@@ -18971,10 +18994,10 @@
 (define-extern command-get-trans function)
 (define-extern manipy-init (function vector entity skeleton-group vector none :behavior manipy))
 (define-extern part-tracker-notify function)
-(define-extern clone-anim-once function)
+(define-extern clone-anim-once (function handle int symbol string none :behavior process-drawable))
 (define-extern convert-to-hud-object function)
-(define-extern merc-eye-anim function)
-(define-extern clone-anim function)
+(define-extern merc-eye-anim (function process-drawable none))
+(define-extern clone-anim (function handle int symbol string none :behavior process-drawable))
 (define-extern command-get-camera function)
 (define-extern ja-anim-done? function)
 (define-extern camera-anim function)
@@ -18988,22 +19011,22 @@
 
 ;; - Unknowns
 
-(define-extern *particle-quat* quaternion) ;; unknown type
-(define-extern touch-tracker-idle (state touch-tracker)) ;; unknown type
-(define-extern cam-launcher-longfall (state camera-tracker)) ;; unknown type
-(define-extern cam-launcher-shortfall (state camera-tracker)) ;; unknown type
-(define-extern launcher-idle (state launcher)) ;; unknown type
-(define-extern launcher-deactivated (state launcher)) ;; unknown type
-(define-extern launcher-active (state launcher)) ;; unknown type
+(define-extern *particle-quat* quaternion)
+(define-extern touch-tracker-idle (state touch-tracker))
+(define-extern cam-launcher-longfall (state camera-tracker))
+(define-extern cam-launcher-shortfall (state camera-tracker))
+(define-extern launcher-idle (state launcher))
+(define-extern launcher-deactivated (state launcher))
+(define-extern launcher-active (state launcher))
 ;;(define-extern beach-part-grotto-1 object) ;; unknown type
-(define-extern part-spawner-active (state part-spawner)) ;; unknown type
-(define-extern *lev-string* string) ;; unknown type
-(define-extern med-res-level-idle (state med-res-level)) ;; unknown type
-(define-extern camera-tracker-process camera-tracker) ;; unknown type
-(define-extern part-tracker-process part-tracker) ;; unknown type
+(define-extern part-spawner-active (state part-spawner))
+(define-extern *lev-string* string)
+(define-extern med-res-level-idle (state med-res-level))
+(define-extern camera-tracker-process camera-tracker)
+(define-extern part-tracker-process part-tracker)
 (define-extern manipy-idle (state manipy))
-(define-extern swingpole-stance (state swingpole)) ;; unknown type
-(define-extern swingpole-active (state swingpole)) ;; unknown type
+(define-extern swingpole-stance (state swingpole))
+(define-extern swingpole-active (state swingpole))
 
 
 ;; ----------------------
@@ -22303,7 +22326,7 @@
     (nav-enemy-jump-to-point () _type_ :state 36)
     (TODO-RENAME-37 (_type_) none 37)
     (TODO-RENAME-38 (_type_) none 38)
-    (TODO-RENAME-39 (_type_) none 39)
+    (common-post (_type_) none 39)
     (dummy-40 (_type_) none 40)
     (dummy-41 (_type_) none 41)
     (TODO-RENAME-42 (_type_) int 42)
@@ -22311,7 +22334,7 @@
     (dummy-44 (_type_ process event-message-block) object 44)
     (TODO-RENAME-45 (_type_ nav-enemy-info) none 45)
     (TODO-RENAME-46 (_type_ float) basic 46)
-    (TODO-RENAME-47 (_type_) none 47) ;; - Stubbed
+    (initialize-collision (_type_) none 47)
     (TODO-RENAME-48 (_type_) none 48) ;; - Stubbed
     (TODO-RENAME-49 (_type_ nav-enemy-info) float 49)
     (TODO-RENAME-50 (_type_ vector) symbol 50)
@@ -39057,99 +39080,73 @@
 
 ;; - Types
 
-; (deftype plunger-lurker (process-drawable)
-;   ((alt-actor basic  :offset-assert 176)
-;    (got-hit   basic  :offset-assert 180)
-;    )
-;   :method-count-assert 20
-;   :size-assert         #xb8
-;   :heap-base           #x50
-;   :flag-assert         #x14005000b8
-;   ;; inherited inspect of process-drawable
-;   (:methods
-;     (dummy-9 () none 9)
-;     (dummy-10 () none 10)
-;     (dummy-11 () none 11)
-;     (dummy-12 () none 12)
-;     (dummy-13 () none 13)
-;     (dummy-14 () none 14)
-;     (dummy-15 () none 15)
-;     (dummy-16 () none 16)
-;     (dummy-17 () none 17)
-;     (dummy-18 () none 18)
-;     (dummy-19 () none 19)
-;     )
-;   )
+(deftype plunger-lurker (process-drawable)
+  ((alt-actor entity-actor  :offset-assert 176)
+   (got-hit   symbol  :offset-assert 180)
+   )
+  :method-count-assert 20
+  :size-assert         #xb8
+  :heap-base           #x50
+  :flag-assert         #x14005000b8
+  )
 
-; (deftype flying-lurker (process-drawable)
-;   ((curve-position    float          :offset-assert 176)
-;    (speed             float          :offset-assert 180)
-;    (tangent           vector :inline :offset-assert 192)
-;    (anim-blend        float          :offset-assert 208)
-;    (y-offset          float          :offset-assert 212)
-;    (y-offset-desired  float          :offset-assert 216)
-;    (y-vel             float          :offset-assert 220)
-;    (last-look-time    uint64         :offset-assert 224)
-;    (time-to-next-look uint64         :offset-assert 232)
-;    (take-off          basic          :offset-assert 240)
-;    (race-seconds      float          :offset-assert 244)
-;    (race-start-time   uint64         :offset-assert 248)
-;    (rank              int32          :offset-assert 256)
-;    (alt-actor         basic          :offset-assert 260)
-;    (alt-trans         vector         :offset-assert 264)
-;    (shadow-backup     basic          :offset-assert 268)
-;    (try-count         uint8          :offset-assert 272)
-;    (try-counted       basic          :offset-assert 276)
-;    (default-bounds    vector :inline :offset-assert 288)
-;    )
-;   :method-count-assert 21
-;   :size-assert         #x130
-;   :heap-base           #xc0
-;   :flag-assert         #x1500c00130
-;   ;; inherited inspect of process-drawable
-;   (:methods
-;     (dummy-9 () none 9)
-;     (dummy-10 () none 10)
-;     (dummy-11 () none 11)
-;     (dummy-12 () none 12)
-;     (dummy-13 () none 13)
-;     (dummy-14 () none 14)
-;     (dummy-15 () none 15)
-;     (dummy-16 () none 16)
-;     (dummy-17 () none 17)
-;     (dummy-18 () none 18)
-;     (dummy-19 () none 19)
-;     (dummy-20 () none 20)
-;     )
-;   )
+(deftype flying-lurker (process-drawable)
+  ((curve-position    float          :offset-assert 176)
+   (speed             float          :offset-assert 180)
+   (tangent           vector :inline :offset-assert 192)
+   (anim-blend        float          :offset-assert 208)
+   (y-offset          float          :offset-assert 212)
+   (y-offset-desired  float          :offset-assert 216)
+   (y-vel             float          :offset-assert 220)
+   (last-look-time    int64          :offset-assert 224)
+   (time-to-next-look int64          :offset-assert 232)
+   (take-off          symbol         :offset-assert 240)
+   (race-seconds      float          :offset-assert 244)
+   (race-start-time   int64          :offset-assert 248)
+   (rank              int32          :offset-assert 256)
+   (alt-actor         entity-actor   :offset-assert 260)
+   (alt-trans         vector         :offset-assert 264)
+   (shadow-backup     shadow-geo     :offset-assert 268)
+   (try-count         uint8          :offset-assert 272)
+   (try-counted       symbol         :offset-assert 276)
+   (default-bounds    vector :inline :offset-assert 288)
+   )
+  :method-count-assert 21
+  :size-assert         #x130
+  :heap-base           #xc0
+  :flag-assert         #x1500c00130
+  (:methods
+    (dummy-20 (_type_) none 20)
+    )
+  )
 
 ;; - Functions
 
-(define-extern play-movie? function)
-(define-extern flying-lurker-move function)
-(define-extern flying-lurker-rotate function)
-(define-extern first? function)
-(define-extern flying-lurker-handler function)
-(define-extern flying-lurker-play-intro function)
-(define-extern flying-lurker-inc-try-count function)
-(define-extern flying-lurker-calc-anim-speed function)
-(define-extern flying-lurker-calc-speed function)
+(define-extern play-movie? (function symbol))
+(define-extern flying-lurker-move (function none :behavior flying-lurker))
+(define-extern flying-lurker-rotate (function quaternion :behavior flying-lurker))
+(define-extern first? (function symbol :behavior flying-lurker))
+(define-extern flying-lurker-handler (function process int symbol event-message-block object :behavior flying-lurker))
+(define-extern flying-lurker-play-intro (function none :behavior flying-lurker))
+(define-extern flying-lurker-inc-try-count (function none :behavior flying-lurker))
+(define-extern flying-lurker-calc-anim-speed (function float :behavior flying-lurker))
+(define-extern flying-lurker-calc-speed (function meters meters meters meters none :behavior flying-lurker))
 
 ;; - Unknowns
 
 (define-extern *flying-lurker-sg* skeleton-group)
-;;(define-extern flying-lurker-die object) ;; unknown type
-;;(define-extern flying-lurker-idle object) ;; unknown type
-;;(define-extern flying-lurker-start object) ;; unknown type
-;;(define-extern flying-lurker-clone object) ;; unknown type
-;;(define-extern flying-lurker-sleep object) ;; unknown type
+(define-extern flying-lurker-die (state flying-lurker))
+(define-extern flying-lurker-idle (state flying-lurker))
+(define-extern flying-lurker-start (state flying-lurker))
+(define-extern flying-lurker-clone (state handle string flying-lurker))
+(define-extern flying-lurker-sleep (state flying-lurker))
 (define-extern *ogrecam-sg* skeleton-group)
-;;(define-extern flying-lurker-fly object) ;; unknown type
+(define-extern flying-lurker-fly (state flying-lurker))
 (define-extern *plunger-lurker-sg* skeleton-group)
-;;(define-extern plunger-lurker-die object) ;; unknown type
-;;(define-extern plunger-lurker-idle object) ;; unknown type
-;;(define-extern plunger-lurker-flee object) ;; unknown type
-;;(define-extern plunger-lurker-plunge object) ;; unknown type
+(define-extern plunger-lurker-die (state plunger-lurker))
+(define-extern plunger-lurker-idle (state plunger-lurker))
+(define-extern plunger-lurker-flee (state plunger-lurker))
+(define-extern plunger-lurker-plunge (state plunger-lurker))
 
 
 ;; ----------------------

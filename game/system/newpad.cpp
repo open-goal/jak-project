@@ -90,14 +90,18 @@ void OnKeyRelease(int key) {
 
 static int CheckPadIdx(int pad) {
   if (pad < 0 || pad > CONTROLLER_COUNT) {
-    lg::error("Invalid pad {}, returning pad 0", pad);
+    lg::error("Invalid pad {}", pad);
+    return -1;
   }
-  return 0;
+  return pad;
 }
 
 // returns 1 if button is pressed. returns 0 if invalid or not pressed.
 int IsPressed(MappingInfo& mapping, Button button, int pad = 0) {
-  auto key = mapping.pad_mapping[CheckPadIdx(pad)][(int)button];
+  if (CheckPadIdx(pad) == -1) {
+    return 0;
+  }
+  auto key = mapping.pad_mapping[pad][(int)button];
   if (key == -1)
     return 0;
   auto& keymap = mapping.buffer_mode ? g_buffered_key_status : g_key_status;
@@ -109,8 +113,9 @@ int IsPressed(MappingInfo& mapping, Button button, int pad = 0) {
 // map a button on a pad to a key
 void MapButton(MappingInfo& mapping, Button button, int pad, int key) {
   // check if pad is valid. dont map buttons with invalid pads.
-  if (CheckPadIdx(pad) != pad)
+  if (CheckPadIdx(pad) == -1) {
     return;
+  }
 
   mapping.pad_mapping[pad][(int)button] = key;
 }

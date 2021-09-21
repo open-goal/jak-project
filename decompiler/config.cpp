@@ -59,6 +59,10 @@ Config read_config_file(const std::string& path_to_config_file) {
   for (const auto& x : allowed) {
     config.allowed_objects.insert(x);
   }
+  auto banned = cfg.at("banned_objects").get<std::vector<std::string>>();
+  for (const auto& x : banned) {
+    config.banned_objects.insert(x);
+  }
 
   auto type_casts_json = read_json_file_from_config(cfg, "type_casts_file");
   for (auto& kv : type_casts_json.items()) {
