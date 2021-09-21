@@ -12,7 +12,7 @@
       )
   )
 
-(defmacro suspend()
+(defmacro suspend ()
   '(none)
   )
 
@@ -159,12 +159,15 @@
   )
 
 
+;; meters are stored as (usually) a float, scaled by 4096.
+;; this gives you reasonable accuracy as an integer.
 (defglobalconstant METER_LENGTH 4096.0)
 
 (defmacro meters (x)
   "Convert number to meters.
    If the input is a constant float or integer, the result will be a
-   compile time constant float. Otherwise, it will not be constant."
+   compile time constant float. Otherwise, it will not be constant.
+   Returns float."
 
   ;; we don't have enough constant propagation for the compiler to figure this out.
   (cond
@@ -180,8 +183,13 @@
     )
   )
 
+;; rotations are stored in 65,536ths of a full rotation.
+;; like with meters, you get a reasonable accuracy as an integer.
+;; additionally, it is a power-of-two, so wrapping rotations can be done
+;; quickly by converting to an int, masking, and back to float
 (defglobalconstant DEGREES_PER_ROT 65536.0)
 
+;; this was deg in GOAL
 (defmacro degrees (x)
   "Convert number to degrees unit.
    Will keep a constant float/int constant."
@@ -197,16 +205,35 @@
     )
   )
 
+;; times are stored in 300ths of a second.
+;; this divides evenly into frames at both 50 and 60 fps.
+;; typically these are stored as integers as more precision is not useful.
+;; an unsigned 32-bit integer can store about 150 days
 (defglobalconstant TICKS_PER_SECOND 300) ;; 5 t/frame @ 60fps, 6 t/frame @ 50fps
 
+;; this was usec in GOAL
 (defmacro seconds (x)
-  "Convert number to seconds unit."
+  "Convert number to seconds unit.
+   Returns uint."
   (cond
-    ((float? x)
-     (* 1.0 TICKS_PER_SECOND x)
-     )
     ((integer? x)
      (* TICKS_PER_SECOND x)
+     )
+    ((float? x)
+     (* 1 (* 1.0 x TICKS_PER_SECOND))
+     )
+    (#t
+     `(the uint (* TICKS_PER_SECOND ,x))
+     )
+    )
+  )
+
+(defmacro fsec (x)
+  "Convert number to seconds unit.
+   Returns float."
+  (cond
+    ((or (integer? x) (float? x))
+     (* 1.0 TICKS_PER_SECOND x)
      )
     (#t
      `(* 1.0 TICKS_PER_SECOND ,x)
@@ -375,6 +402,10 @@
     (push! *defstate-type-stack* beh-type)
     )
   )
+(defmacro clear-def-state-stack ()
+  (set! *defstate-type-stack* '())
+  `(none)
+  )
 (defmacro defstate (state-name parents
                                &key (virtual #f)
                                &key (event #f)
@@ -389,9 +420,34 @@
   (with-gensyms (new-state)
     (let ((defstate-type (first parents)))
       (when (not (null? *defstate-type-stack*))
-        (ferror "*defstate-type-stack* leaked! An error probably happened in a previous defstate. stack is: {}" *defstate-type-stack*)
+        (fmt #t "*defstate-type-stack* leaked! An error probably happened in a previous defstate. stack is: {}"
+                 *defstate-type-stack*)
         )
       (set! *defstate-type-stack* '())
+      ;; check for default handlers
+      (let ((default-handlers (assoc defstate-type *default-state-handlers*)))
+          (when (not (null? default-handlers))
+              (set! default-handlers (cdr default-handlers))
+              (when (and (not event) (car default-handlers))
+                  (set! event (car default-handlers)))
+              (set! default-handlers (cdr default-handlers))
+              (when (and (not enter) (car default-handlers))
+                  (set! enter (car default-handlers)))
+              (set! default-handlers (cdr default-handlers))
+              (when (and (not trans) (car default-handlers))
+                  (set! trans (car default-handlers)))
+              (set! default-handlers (cdr default-handlers))
+              (when (and (not exit) (car default-handlers))
+                  (set! exit (car default-handlers)))
+              (set! default-handlers (cdr default-handlers))
+              (when (and (not code) (car default-handlers))
+                  (set! code (car default-handlers)))
+              (set! default-handlers (cdr default-handlers))
+              (when (and (not post) (car default-handlers))
+                  (set! post (car default-handlers)))
+              (set! default-handlers (cdr default-handlers))
+              )
+          )
       (def-state-check-behavior event defstate-type)
       (def-state-check-behavior enter defstate-type)
       (def-state-check-behavior trans defstate-type)
@@ -422,14 +478,29 @@
     )
   )
 
-
 (defmacro behavior (bindings &rest body)
   "Define an anonymous behavior for a process state. This may only be used inside a defstate!"
-
+  
   (let ((behavior-type (first *defstate-type-stack*)))
-      (pop! *defstate-type-stack*)
-      `(lambda :behavior ,behavior-type ,bindings ,@body)
+    (pop! *defstate-type-stack*)
+    `(lambda :behavior ,behavior-type ,bindings ,@body)
+    )
+  )
+
+;; set the default handler functions for a process's state handlers
+(seval (define *default-state-handlers* '()))
+(defmacro defstatehandler (proc
+                           &key (event #f)
+                           &key (enter #f)
+                           &key (trans #f)
+                           &key (exit #f)
+                           &key (code #f)
+                           &key (post #f))
+  (if (null? (assoc proc *default-state-handlers*))
+      (push! *default-state-handlers* (cons proc (list event enter trans exit code post)))
+      (fmt #t "default state handlers for {} already defined, ignoring duplicate.\n" proc (cadr (assoc proc *default-state-handlers*)))
       )
+  `(none)
   )
 
 (defmacro sext32 (in)
@@ -438,19 +509,6 @@
 
 (defmacro .sra (result in sa)
   `(set! ,result (sext32 (sar (logand #xffffffff (the-as int ,in)) ,sa)))
-  )
-
-(defmacro res-lump-float (lump name &key (tag-ptr (the-as (pointer res-tag) #f)) &key (default 0.0))
-  "Helper macro to get a float from a res-lump with no interpolation."
-  `((method-of-type res-lump get-property-value-float)
-                  ,lump
-                  ,name
-                  'interp
-                  -1000000000.0
-                  ,default
-                  ,tag-ptr
-                  *res-static-buf*
-                  )
   )
 
 (defmacro res-lump-data (lump name type &key (tag-ptr (the-as (pointer res-tag) #f)) &key (time -1000000000.0))
@@ -467,13 +525,26 @@
            )
   )
 
+(defmacro res-lump-data-exact (lump name type &key (tag-ptr (the-as (pointer res-tag) #f)) &key (time 0.0))
+  "Helper macro to get start of data from a res-lump."
+  `(the-as ,type ((method-of-type res-lump get-property-data)
+                  ,lump
+                  ,name
+                  'exact
+                  ,time
+                  (the-as pointer #f)
+                  ,tag-ptr
+                  *res-static-buf*
+                  )
+           )
+  )
 
-(defmacro res-lump-struct (lump name type &key (tag-ptr (the-as (pointer res-tag) #f)))
+(defmacro res-lump-struct (lump name type &key (tag-ptr (the-as (pointer res-tag) #f)) &key (time -1000000000.0))
   `(the-as ,type ((method-of-type res-lump get-property-struct)
                   ,lump
                   ,name
                   'interp
-                  -1000000000.0
+                  ,time
                   (the-as structure #f)
                   ,tag-ptr
                   *res-static-buf*
@@ -481,18 +552,44 @@
            )
   )
 
-(defmacro res-lump-value (lump name type &key (tag-ptr (the-as (pointer res-tag) #f)) &key (default (the-as uint128 0)))
+(defmacro res-lump-struct-exact (lump name type &key (tag-ptr (the-as (pointer res-tag) #f)) &key (time 0.0))
+  `(the-as ,type ((method-of-type res-lump get-property-struct)
+                  ,lump
+                  ,name
+                  'exact
+                  ,time
+                  (the-as structure #f)
+                  ,tag-ptr
+                  *res-static-buf*
+                  )
+           )
+  )
+
+(defmacro res-lump-value (lump name type &key (tag-ptr (the-as (pointer res-tag) #f)) &key (default (the-as uint128 0)) &key (time -1000000000.0))
   "Helper macro to get a value from a res-lump with no interpolation."
   `(the-as ,type ((method-of-type res-lump get-property-value)
                   ,lump
                   ,name
                   'interp
-                  -1000000000.0
+                  ,time
                   ,default
                   ,tag-ptr
                   *res-static-buf*
                   )
            )
+  )
+
+(defmacro res-lump-float (lump name &key (tag-ptr (the-as (pointer res-tag) #f)) &key (default 0.0) &key (time -1000000000.0))
+  "Helper macro to get a float from a res-lump with no interpolation."
+  `((method-of-type res-lump get-property-value-float)
+                  ,lump
+                  ,name
+                  'interp
+                  ,time
+                  ,default
+                  ,tag-ptr
+                  *res-static-buf*
+                  )
   )
 
 ;; run the given function in a process right now.

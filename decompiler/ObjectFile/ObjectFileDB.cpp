@@ -244,6 +244,9 @@ void ObjectFileDB::add_obj_from_dgo(const std::string& obj_name,
                                     uint32_t obj_size,
                                     const std::string& dgo_name,
                                     const Config& config) {
+  if (config.banned_objects.find(obj_name) != config.banned_objects.end()) {
+    return;
+  }
   if (!config.allowed_objects.empty()) {
     if (config.allowed_objects.find(obj_name) == config.allowed_objects.end()) {
       return;

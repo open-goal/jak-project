@@ -652,7 +652,7 @@ void ObjectFileDB::ir2_insert_lets(int seg) {
         combined_stats += insert_lets(func, func.ir2.env, *func.ir2.form_pool, func.ir2.top_form);
       } catch (const std::exception& e) {
         func.warnings.general_warning(
-            fmt::format("Error while inserting lets: {}\n Make sure that the return type is not "
+            fmt::format("Error while inserting lets: {}. Make sure that the return type is not "
                         "none if something is actually returned.",
                         e.what()));
       }

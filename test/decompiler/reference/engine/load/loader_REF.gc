@@ -397,7 +397,6 @@
 ;; definition for method 10 of type external-art-buffer
 ;; WARN: Found some very strange gotos. Check result carefully, this is not well tested.
 (defmethod update external-art-buffer ((obj external-art-buffer))
-  (local-vars (v1-54 handle))
   (when
    (or
     (not (name= (-> obj pending-load-file) (-> obj load-file)))
@@ -552,16 +551,8 @@
        )
       )
      (('locked)
-      (when (and (not (-> obj locked?)) (begin
-                                         (set! v1-54 (-> obj load-file-owner))
-                                         (nonzero? (l32-false-check v1-54))
-                                         )
-             (let ((a0-46 (-> v1-54 process 0)))
-              (if (= (-> v1-54 pid) (-> a0-46 pid))
-               a0-46
-               )
-              )
-             )
+      (when
+       (and (not (-> obj locked?)) (handle->process (-> obj load-file-owner)))
        (link-file obj (-> obj art-group))
        (set! (-> obj other locked?) #t)
        (set! (-> obj status) 'active)

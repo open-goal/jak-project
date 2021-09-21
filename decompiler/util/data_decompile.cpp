@@ -932,6 +932,15 @@ goos::Object decompile_value(const TypeSpec& type,
     u64 value;
     memcpy(&value, bytes.data(), 8);
     return pretty_print::to_symbol(fmt::format("#x{:x}", value));
+  } else if (ts.tc(TypeSpec("int64"), type)) {
+    assert(bytes.size() == 8);
+    s64 value;
+    memcpy(&value, bytes.data(), 8);
+    if (value > 100) {
+      return pretty_print::to_symbol(fmt::format("#x{:x}", value));
+    } else {
+      return pretty_print::to_symbol(fmt::format("{}", value));
+    }
   } else if (type == TypeSpec("meters")) {
     assert(bytes.size() == 4);
     float value;
