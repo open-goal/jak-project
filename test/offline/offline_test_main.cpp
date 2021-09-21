@@ -81,6 +81,9 @@ const std::unordered_set<std::string> g_functions_expected_to_reject = {
     // cam-master
     "(event cam-master-active)",  // skipping for now
 
+    // cam-states
+    "cam-los-collide", // vector-dot involving the stack
+
     // collide-mesh-h
     "(method 11 collide-mesh-cache)",  // asm
 
@@ -176,6 +179,9 @@ const std::unordered_set<std::string> g_functions_to_skip_compiling = {
 
     // cam-master
     "(event cam-master-active)", // skipping for now
+
+    // cam-states
+    "cam-los-collide",  // vector-dot involving the stack
 
     // loader - decompiler bug with detecting handle macros
     "(method 10 external-art-buffer)",
