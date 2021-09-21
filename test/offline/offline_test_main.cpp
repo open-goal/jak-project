@@ -171,8 +171,6 @@ const std::unordered_set<std::string> g_functions_to_skip_compiling = {
     // camera
     "slave-set-rotation!", "v-slrp2!", "v-slrp3!",  // vector-dot involving the stack
 
-    // loader - decompiler bug with detecting handle macros
-    "(method 10 external-art-buffer)",
     // function returning float with a weird cast.
     "debug-menu-item-var-make-float"};
 

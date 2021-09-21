@@ -742,6 +742,10 @@ Val* Compiler::compile_deref(const goos::Object& form, const goos::Object& _rest
     }
 
     if (result->type().base_type() == "inline-array") {
+      if (!result->type().has_single_arg()) {
+        throw_compiler_error(form, "Cannot dereference an inline-array with type {}",
+                             result->type().print());
+      }
       auto di = m_ts.get_deref_info(result->type());
       auto base_type = di.result_type;
       assert(di.can_deref);
@@ -755,6 +759,10 @@ Val* Compiler::compile_deref(const goos::Object& form, const goos::Object& _rest
         result = fe->alloc_val<MemoryOffsetVal>(di.result_type, result, offset);
       }
     } else if (result->type().base_type() == "pointer") {
+      if (!result->type().has_single_arg()) {
+        throw_compiler_error(form, "Cannot dereference a pointer with type {}",
+                             result->type().print());
+      }
       auto di = m_ts.get_deref_info(result->type());
       auto base_type = di.result_type;
       assert(di.mem_deref);
