@@ -1,13 +1,12 @@
 #include "inline_asm_rewrite.h"
-
+#include "common/goos/PrettyPrinter.h"
 #include "decompiler/Function/Function.h"
 #include "decompiler/IR2/Form.h"
 #include "decompiler/IR2/FormStack.h"
-#include "decompiler/util/DecompilerTypeSystem.h"
-#include "common/goos/PrettyPrinter.h"
 #include "decompiler/IR2/OpenGoalMapping.h"
-#include "decompiler/analysis/reg_usage.h"
 #include "decompiler/ObjectFile/LinkedObjectFile.h"
+#include "decompiler/analysis/reg_usage.h"
+#include "decompiler/util/DecompilerTypeSystem.h"
 
 namespace decompiler {
 
@@ -89,8 +88,8 @@ bool rewrite_inline_asm_instructions(Form* top_level_form,
       top_level_form->push_back(rlet);
     }
   } catch (std::exception& e) {
-    std::string warning = fmt::format("ASM instruction re-writing failed in {}: {}",
-                                      f.guessed_name.to_string(), e.what());
+    std::string warning =
+        fmt::format("ASM instruction re-writing failed in {}: {}", f.name(), e.what());
     lg::warn(warning);
     f.warnings.general_warning(";; {}", warning);
     return false;

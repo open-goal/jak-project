@@ -1,11 +1,12 @@
 #include <memory>
+
+#include "atomic_op_builder.h"
 #include "common/log/log.h"
 #include "common/symbols.h"
-#include "atomic_op_builder.h"
-#include "decompiler/Function/Function.h"
 #include "decompiler/Disasm/InstructionMatching.h"
-#include "decompiler/util/TP_Type.h"
+#include "decompiler/Function/Function.h"
 #include "decompiler/Function/Warnings.h"
+#include "decompiler/util/TP_Type.h"
 
 namespace decompiler {
 

@@ -102,6 +102,147 @@ _stack_call_linux:
   ; return!
   ret
 
+;; Call c++ code through mips2c.
+;; GOAL will call a dynamically generated trampoline.
+;; The trampoline will have pushed the exec function and stack offset onto the stack
+global _mips2c_call_linux
+_mips2c_call_linux:
+  ;; grab the address to call and put it in xmm0
+  sub rsp, 8
+  movaps xmm0, [rsp + 16]
+  ;; grab the stack offset
+  mov rax, [rsp + 8]
+
+  ;; first, save xmms
+  sub rsp, 128
+  movaps [rsp], xmm8
+  movaps [rsp + 16], xmm9
+  movaps [rsp + 32], xmm10
+  movaps [rsp + 48], xmm11
+  movaps [rsp + 64], xmm12
+  movaps [rsp + 80], xmm13
+  movaps [rsp + 96], xmm14
+  movaps [rsp + 112], xmm15
+
+  push r10
+  push r11
+
+  ;; oof
+  sub rsp, 1280
+  mov [rsp + 64], rdi ;; arg0
+  mov [rsp + 80], rsi ;; arg1
+  mov [rsp + 96], rdx ;; arg2
+  mov [rsp + 112], rcx ;; arg3
+  mov [rsp + 128], r8 ;; arg4
+  mov [rsp + 144], r9 ;; arg5
+  mov [rsp + 160], r10 ;; arg6
+  mov [rsp + 176], r11 ;; arg7
+  mov [rsp + 464], rsp ;; mip2c code's MIPS stack
+
+  mov rdi, rsp
+
+
+  sub rsp, rax ;; allocate space on the stack for GOAL fake stack
+  push rax     ;; and remember this so we can find our way back
+  push rax
+
+  movq rax, xmm0
+
+  call rax ;; call!
+
+  ;; unallocate
+  pop rax
+  pop rax
+  add rsp, rax
+
+  mov rax, [rsp + 32]
+
+  add rsp, 1280
+  pop r11
+  pop r10
+
+  movaps xmm8, [rsp]
+  movaps xmm9, [rsp + 16]
+  movaps xmm10, [rsp + 32]
+  movaps xmm11, [rsp + 48]
+  movaps xmm12, [rsp + 64]
+  movaps xmm13, [rsp + 80]
+  movaps xmm14, [rsp + 96]
+  movaps xmm15, [rsp + 112]
+  add rsp, 152 ;; 128 for xmm's + 16 for the stuff pushed by trampoline + 8 for stack alignment undo
+
+  ret
+
+global _mips2c_call_windows
+_mips2c_call_windows:
+  ;; grab the address to call and put it in xmm0
+  sub rsp, 8
+  movaps xmm0, [rsp + 16]
+  ;; grab the stack offset
+  mov rax, [rsp + 8]
+
+  ;; first, save xmms
+  sub rsp, 128
+  movaps [rsp], xmm8
+  movaps [rsp + 16], xmm9
+  movaps [rsp + 32], xmm10
+  movaps [rsp + 48], xmm11
+  movaps [rsp + 64], xmm12
+  movaps [rsp + 80], xmm13
+  movaps [rsp + 96], xmm14
+  movaps [rsp + 112], xmm15
+
+  push r10
+  push r11
+
+  ;; oof
+  sub rsp, 1280
+  mov [rsp + 64], rdi ;; arg0
+  mov [rsp + 80], rsi ;; arg1
+  mov [rsp + 96], rdx ;; arg2
+  mov [rsp + 112], rcx ;; arg3
+  mov [rsp + 128], r8 ;; arg4
+  mov [rsp + 144], r9 ;; arg5
+  mov [rsp + 160], r10 ;; arg6
+  mov [rsp + 176], r11 ;; arg7
+  mov [rsp + 464], rsp ;; mip2c code's MIPS stack
+
+  mov rcx, rsp
+
+  sub rsp, rax ;; allocate space on the stack for GOAL fake stack
+  push rax     ;; and remember this so we can find our way back
+  push rax
+
+  movq rax, xmm0
+
+  sub rsp, 32
+  call rax ;; call!
+  add rsp, 32
+
+  ;; unallocate
+  pop rax
+  pop rax
+  add rsp, rax
+
+  mov rax, [rsp + 32]
+
+  add rsp, 1280
+  pop r11
+  pop r10
+
+  movaps xmm8, [rsp]
+  movaps xmm9, [rsp + 16]
+  movaps xmm10, [rsp + 32]
+  movaps xmm11, [rsp + 48]
+  movaps xmm12, [rsp + 64]
+  movaps xmm13, [rsp + 80]
+  movaps xmm14, [rsp + 96]
+  movaps xmm15, [rsp + 112]
+  add rsp, 152 ;; 128 for xmm's + 16 for the stuff pushed by trampoline + 8 for stack alignment undo
+
+  ret
+
+
 ;; Call C++ code on windows, from GOAL. Pug arguments on the stack and put a pointer to this array in the first arg.
 global _stack_call_win32
 _stack_call_win32:

@@ -56,7 +56,7 @@ void find_functions(LabelDB* db, LinkedObjectFile* file) {
         auto idx_of_label = db->try_get_index_by_offset(seg, offset_of_function);
         if (!idx_of_label) {
           func.warnings.general_warning("Could not find any references to this function: {}",
-                                        func.guessed_name.to_string());
+                                        func.name());
         } else {
           auto old = db->set_and_get_previous(*idx_of_label, func.type, false, {});
           if (old.known) {

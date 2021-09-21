@@ -657,7 +657,8 @@ void SimpleExpressionElement::update_from_stack_div_s(const Env& env,
         GenericOperator::make_fixed(FixedOperatorKind::DIVISION), args.at(0), args.at(1));
     result->push_back(new_form);
   } else {
-    throw std::runtime_error(fmt::format("Floating point division attempted on invalid types."));
+    throw std::runtime_error(
+        fmt::format("Floating point division attempted on invalid types at OP: [{}].", m_my_idx));
   }
 }
 
@@ -789,7 +790,8 @@ void SimpleExpressionElement::update_from_stack_float_1(const Env& env,
         pool.alloc_element<GenericElement>(GenericOperator::make_fixed(kind), args.at(0));
     result->push_back(new_form);
   } else {
-    throw std::runtime_error(fmt::format("Floating point division attempted on invalid types."));
+    throw std::runtime_error(
+        fmt::format("Floating point division attempted on invalid types at OP: [{}].", m_my_idx));
   }
 }
 
@@ -3522,96 +3524,26 @@ FormElement* sc_to_handle_get_proc(ShortCircuitElement* elt,
     return nullptr;
   }
 
-  if (elt->entries.size() != 2) {
+  if (elt->entries.size() < 2) {
     return nullptr;
   }
 
-  // fmt::print("candidate: {}\n", elt->to_string(env));
+  Form* last = elt->entries[elt->entries.size() - 1].condition;
+  Form* second_to_last = elt->entries[elt->entries.size() - 2].condition;
 
-  constexpr int reg_input_1 = 0;
-  constexpr int reg_input_2 = 1;
-  constexpr int reg_input_3 = 2;
-  constexpr int reg_temp_1 = 10;
-  constexpr int reg_temp_2 = 11;
-  constexpr int reg_temp_3 = 12;
-
-  // check first.
-  auto first_matcher =
-      Matcher::op(GenericOpMatcher::condition(IR2_Condition::Kind::NONZERO),
-                  {Matcher::op(GenericOpMatcher::fixed(FixedOperatorKind::L32_NOT_FALSE_CBOOL),
-                               {Matcher::any_reg(reg_input_1)})});
-
-  auto first_result = match(first_matcher, elt->entries.at(0).condition);
-  if (!first_result.matched) {
+  auto result = last_two_in_and_to_handle_get_proc(second_to_last, last, env, pool, stack,
+                                                   elt->entries.size() > 2);
+  if (!result) {
     return nullptr;
   }
 
-  // auto first_use_of_in = *first_result.maps.regs.at(reg_input_1);
-  // fmt::print("reg1: {}\n", first_use_of_in.to_string(env));
-
-  auto setup_matcher = Matcher::set_var(
-      Matcher::deref(Matcher::any_reg(reg_input_2), false,
-                     {DerefTokenMatcher::string("process"), DerefTokenMatcher::integer(0)}),
-      reg_temp_1);
-
-  auto if_matcher = Matcher::if_no_else(
-      Matcher::op(
-          GenericOpMatcher::fixed(FixedOperatorKind::EQ),
-          {Matcher::deref(Matcher::any_reg(reg_input_3), false, {DerefTokenMatcher::string("pid")}),
-           Matcher::deref(Matcher::any_reg(reg_temp_2), false,
-                          {DerefTokenMatcher::string("pid")})}),
-      Matcher::any_reg(reg_temp_3));
-
-  auto second_matcher = Matcher::begin({setup_matcher, if_matcher});
-
-  auto second_result = match(second_matcher, elt->entries.at(1).condition);
-  if (!second_result.matched) {
-    return nullptr;
+  if (elt->entries.size() == 2) {
+    // just replace the whole thing
+    return result;
+  } else {
+    elt->entries.pop_back();
+    elt->entries.back().condition = pool.alloc_single_form(elt, result);
   }
-
-  auto in1 = *first_result.maps.regs.at(reg_input_1);
-  auto in2 = *second_result.maps.regs.at(reg_input_2);
-  auto in3 = *second_result.maps.regs.at(reg_input_3);
-
-  auto in_name = in1.to_string(env);
-  if (in_name != in2.to_string(env)) {
-    return nullptr;
-  }
-
-  if (in_name != in3.to_string(env)) {
-    return nullptr;
-  }
-
-  auto temp_name = second_result.maps.regs.at(reg_temp_1)->to_string(env);
-  if (temp_name != second_result.maps.regs.at(reg_temp_2)->to_string(env)) {
-    return nullptr;
-  }
-
-  if (temp_name != second_result.maps.regs.at(reg_temp_3)->to_string(env)) {
-    return nullptr;
-  }
-
-  const auto& temp_use_def = env.get_use_def_info(*second_result.maps.regs.at(reg_temp_1));
-  if (temp_use_def.use_count() != 2 || temp_use_def.def_count() != 1) {
-    return nullptr;
-  }
-
-  // modify use def:
-  auto* menv = const_cast<Env*>(&env);
-  menv->disable_use(in2);
-  menv->disable_use(in3);
-
-  auto repopped = stack.pop_reg(in1, {}, env, true);
-  // fmt::print("repopped: {}\n", repopped->to_string(env));
-
-  if (!repopped) {
-    repopped = var_to_form(in1, pool);
-  }
-
-  return pool.alloc_element<GenericElement>(
-      GenericOperator::make_function(
-          pool.alloc_single_element_form<ConstantTokenElement>(nullptr, "handle->process")),
-      repopped);
 
   return nullptr;
 }
@@ -4990,8 +4922,7 @@ void ConditionalMoveFalseElement::push_to_stack(const Env& env, FormPool& pool, 
   // pop the value and the original
   auto popped = pop_to_forms({old_value, source}, env, pool, stack, true);
   if (!is_symbol_true(popped.at(0))) {
-    lg::warn("{}: Failed to ConditionalMoveFalseElement::push_to_stack",
-             env.func->guessed_name.to_string());
+    lg::warn("{}: Failed to ConditionalMoveFalseElement::push_to_stack", env.func->name());
     stack.push_value_to_reg(source, popped.at(1), true, TypeSpec("symbol"));
     stack.push_form_element(this, true);
     return;
@@ -5173,7 +5104,7 @@ void VectorFloatLoadStoreElement::push_to_stack(const Env& env, FormPool& pool, 
     }
   }
 
-  auto name = env.func->guessed_name.to_string();
+  auto name = env.func->name();
   // don't find vector-! inside of vector-!.
   if (!m_is_load && name != "vector-!" && name != "vector+!" && name != "vector-reset!") {
     if (try_vector_reset_inline(env, pool, stack, this)) {

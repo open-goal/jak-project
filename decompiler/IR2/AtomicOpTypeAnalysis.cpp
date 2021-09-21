@@ -86,7 +86,7 @@ TP_Type SimpleAtom::get_type(const TypeState& input,
         return TP_Type::make_enter_state();
       } else if (m_string == "run-function-in-process") {
         return TP_Type::make_run_function_in_process_function();
-      } else if (m_string == "set-to-run" && env.func->guessed_name.to_string() != "enter-state") {
+      } else if (m_string == "set-to-run" && env.func->name() != "enter-state") {
         return TP_Type::make_set_to_run_function();
       }
 
@@ -1253,7 +1253,7 @@ TypeState CallOp::propagate_types_internal(const TypeState& input,
       int arg_count = -1;
 
       if (dynamic_string) {
-        arg_count = dts.get_dynamic_format_arg_count(env.func->guessed_name.to_string(), m_my_idx);
+        arg_count = dts.get_dynamic_format_arg_count(env.func->name(), m_my_idx);
       } else if (arg_type.is_constant_string()) {
         auto& str = arg_type.get_string();
         arg_count = dts.get_format_arg_count(str);

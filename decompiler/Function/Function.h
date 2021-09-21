@@ -113,6 +113,7 @@ class Function {
   int get_basic_op_count();
   int get_failed_basic_op_count();
   BlockTopologicalSort bb_topo_sort();
+  std::string name() const;
 
   TypeSpec type;
 
@@ -187,6 +188,8 @@ class Function {
     bool print_debug_forms = false;
     bool expressions_succeeded = false;
   } ir2;
+
+  std::optional<std::string> mips2c_output;
 
   std::vector<std::string> types_defined;
 
