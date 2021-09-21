@@ -78,6 +78,9 @@ const std::unordered_set<std::string> g_functions_expected_to_reject = {
     // camera
     "slave-set-rotation!", "v-slrp2!", "v-slrp3!",  // vector-dot involving the stack
 
+    // cam-master
+    "(event cam-master-active)",  // skipping for now
+
     // collide-mesh-h
     "(method 11 collide-mesh-cache)",  // asm
 
@@ -170,6 +173,9 @@ const std::unordered_set<std::string> g_functions_to_skip_compiling = {
 
     // camera
     "slave-set-rotation!", "v-slrp2!", "v-slrp3!",  // vector-dot involving the stack
+
+    // cam-master
+    "(event cam-master-active)", // skipping for now
 
     // loader - decompiler bug with detecting handle macros
     "(method 10 external-art-buffer)",
