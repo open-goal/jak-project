@@ -1062,7 +1062,7 @@
 ;; INFO: Return type mismatch int vs none.
 ;; Used lq/sq
 (defun ambient-type-sound ((arg0 drawable-ambient) (arg1 vector))
-  (local-vars (r0-0 uint128) (v1-24 uint128) (sv-16 uint) (sv-112 int))
+  (local-vars (sv-16 string) (sv-112 res-tag))
   (let* ((s5-0 (-> arg0 ambient))
          (s4-0 (-> s5-0 ambient-data user-uint64 0))
          )
@@ -1097,15 +1097,10 @@
        )
       (set!
        sv-16
-       (->
-        (the-as
-         (pointer uint32)
-         (+ #xff38 (res-lump-struct s5-0 'effect-name int :time f30-0))
-         )
-        )
+       (symbol->string (res-lump-struct s5-0 'effect-name symbol :time f30-0))
        )
       (let ((s4-2 (new 'stack 'sound-spec)))
-       (set! (-> s4-2 sound-name) (string->sound-name (the-as string sv-16)))
+       (set! (-> s4-2 sound-name) (string->sound-name sv-16))
        (logior! (-> s4-2 mask) 1)
        (set! (-> s4-2 volume) 1024)
        (logior! (-> s4-2 mask) 4)
@@ -1113,7 +1108,7 @@
         (-> s4-2 bend)
         (the int (* 327.66998 (rand-vu-float-range -100.0 100.0)))
         )
-       (set! sv-112 0)
+       (set! sv-112 (new 'static 'res-tag))
        (let
         ((a1-7
           ((method-of-type res-lump get-property-data)
@@ -1122,23 +1117,16 @@
            'exact
            f30-0
            (the-as pointer #f)
-           (the-as (pointer res-tag) (& sv-112))
+           (& sv-112)
            *res-static-buf*
            )
           )
          )
-        (when a1-7
-         (let ((t9-8 effect-param->sound-spec)
-               (a0-12 s4-2)
-               )
-          (let ((v1-23 (the-as uint128 sv-112)))
-           (.pcpyud v1-24 v1-23 r0-0)
-           )
-          (t9-8
-           a0-12
-           (the-as sound-play-parms a1-7)
-           (shr (* (the-as int v1-24) 2) 49)
-           )
+        (if a1-7
+         (effect-param->sound-spec
+          s4-2
+          (the-as sound-play-parms a1-7)
+          (the-as int (-> sv-112 elt-count))
           )
          )
         )
