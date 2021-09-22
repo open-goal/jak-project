@@ -171,7 +171,7 @@ const std::unordered_set<std::string> g_functions_to_skip_compiling = {
     "(event cam-master-active)",  // skipping for now
 
     // cam-layout
-    "cam-layout-save-cam-trans", // temporary, im sure this can be fixed
+    "cam-layout-save-cam-trans",  // temporary, im sure this can be fixed
 
     // cam-states
     "cam-los-collide",  // vector-dot involving the stack
@@ -183,8 +183,7 @@ const std::unordered_set<std::string> g_functions_to_skip_compiling = {
     "level-hint-task-process"};
 
 const std::unordered_map<std::string, std::unordered_set<std::string>>& g_states_to_skip = {
-    {"cam-master-active", {"event"}}
-};
+    {"cam-master-active", {"event"}}};
 
 // default location for the data. It can be changed with a command line argument.
 std::string g_iso_data_path = "";
