@@ -5,6 +5,7 @@
 
 #include <memory>
 #include <mutex>
+#include <sys/mman.h>
 #include <condition_variable>
 
 #include "third-party/imgui/imgui.h"
@@ -229,7 +230,8 @@ void render_game_frame(int width, int height) {
     auto& chain = g_gfx_data->dma_copier.get_last_result();
     g_gfx_data->frame_idx_of_input_data = g_gfx_data->frame_idx;
     g_gfx_data->ogl_renderer.render(DmaFollower(chain.data.data(), chain.start_offset), width,
-                                    height, g_gfx_data->debug_gui.should_draw_render_debug());
+                                    height, g_gfx_data->debug_gui.should_draw_render_debug(),
+                                    false);
   }
 
   // before vsync, mark the chain as rendered.
@@ -259,9 +261,8 @@ void render_dump_frame(int width, int height) {
   g_gfx_data->debug_gui.want_dump_load() = false;
 
   auto& chain = g_gfx_data->dma_copier.get_last_result();
-  g_gfx_data->frame_idx_of_input_data = g_gfx_data->frame_idx;
   g_gfx_data->ogl_renderer.render(DmaFollower(chain.data.data(), chain.start_offset), width, height,
-                                  g_gfx_data->debug_gui.should_draw_render_debug());
+                                  g_gfx_data->debug_gui.should_draw_render_debug(), true);
 }
 
 static void gl_render_display(GfxDisplay* display) {
@@ -290,7 +291,7 @@ static void gl_render_display(GfxDisplay* display) {
   }
 
   // render imgui
-  g_gfx_data->debug_gui.draw();
+  g_gfx_data->debug_gui.draw(g_gfx_data->dma_copier.get_last_result().stats);
   ImGui::Render();
   ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
 
@@ -300,7 +301,7 @@ static void gl_render_display(GfxDisplay* display) {
   g_gfx_data->debug_gui.start_frame();
 
   // toggle even odd and wake up engine waiting on vsync.
-  {
+  if (!g_gfx_data->debug_gui.want_dump_replay()) {
     std::unique_lock<std::mutex> lock(g_gfx_data->sync_mutex);
     g_gfx_data->frame_idx++;
 
@@ -367,9 +368,7 @@ void gl_send_chain(const void* data, u32 offset) {
     // The renderers should just operate on DMA chains, so eliminating this step in the future may
     // be easy.
 
-    // Timer copy_timer;
     g_gfx_data->dma_copier.run(data, offset);
-    // fmt::print("copy took {:.3f}ms\n", copy_timer.getMs());
 
     g_gfx_data->has_data_to_render = true;
     g_gfx_data->dma_cv.notify_all();
@@ -377,7 +376,8 @@ void gl_send_chain(const void* data, u32 offset) {
 }
 
 void gl_texture_upload_now(const u8* tpage, int mode, u32 s7_ptr) {
-  if (g_gfx_data) {
+  // block
+  if (g_gfx_data && !g_gfx_data->debug_gui.want_dump_replay()) {
     // just pass it to the texture pool.
     // the texture pool will take care of locking.
     // we don't want to lock here for the entire duration of the conversion.
@@ -386,7 +386,7 @@ void gl_texture_upload_now(const u8* tpage, int mode, u32 s7_ptr) {
 }
 
 void gl_texture_relocate(u32 destination, u32 source, u32 format) {
-  if (g_gfx_data) {
+  if (g_gfx_data && !g_gfx_data->debug_gui.want_dump_replay()) {
     g_gfx_data->texture_pool->relocate(destination, source, format);
   }
 }

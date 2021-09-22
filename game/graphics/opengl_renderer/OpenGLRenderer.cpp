@@ -78,8 +78,10 @@ void OpenGLRenderer::init_bucket_renderers() {
 void OpenGLRenderer::render(DmaFollower dma,
                             int window_width_px,
                             int window_height_px,
-                            bool draw_debug_window) {
-  m_render_state.ee_main_memory = g_ee_main_mem;
+                            bool draw_debug_window,
+                            bool dump_playback) {
+  m_render_state.dump_playback = dump_playback;
+  m_render_state.ee_main_memory = dump_playback ? nullptr : g_ee_main_mem;
   m_render_state.offset_of_s7 = offset_of_s7();
   setup_frame(window_width_px, window_height_px);
   m_render_state.texture_pool->remove_garbage_textures();
@@ -90,7 +92,9 @@ void OpenGLRenderer::render(DmaFollower dma,
   if (draw_debug_window) {
     draw_renderer_selection_window();
     // add a profile bar for the imgui stuff
-    vif_interrupt_callback();
+    if (!m_render_state.dump_playback) {
+      vif_interrupt_callback();
+    }
   }
 }
 
@@ -172,7 +176,10 @@ void OpenGLRenderer::dispatch_buckets(DmaFollower dma) {
     // should have ended at the start of the next chain
     assert(dma.current_tag_offset() == m_render_state.next_bucket);
     m_render_state.next_bucket += 16;
-    vif_interrupt_callback();
+
+    if (!m_render_state.dump_playback) {
+      vif_interrupt_callback();
+    }
   }
 
   // TODO ending data.

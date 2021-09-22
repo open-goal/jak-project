@@ -9,6 +9,7 @@
 struct DmaData {
   u32 start_offset = 0;
   std::vector<u8> data;
+  DmaStats stats;
 };
 
 /*!

@@ -10,6 +10,15 @@
 #include "common/util/assert.h"
 #include "common/common_types.h"
 
+struct DmaStats {
+  double sync_time_ms = 0;
+  int num_tags = 0;
+  int num_data_bytes = 0;
+  int num_chunks = 0;
+  int num_copied_bytes = 0;
+  int num_fixups = 0;
+};
+
 struct DmaTag {
   enum class Kind : u8 {
     REFE = 0,

@@ -1,6 +1,7 @@
 #pragma once
 
 #include "common/util/Timer.h"
+#include "game/graphics/dma/dma.h"
 
 class FrameTimeRecorder {
  public:
@@ -8,7 +9,7 @@ class FrameTimeRecorder {
 
   void finish_frame();
   void start_frame();
-  void draw_window();
+  void draw_window(const DmaStats& dma_stats);
 
  private:
   float m_frame_times[SIZE];
@@ -21,7 +22,7 @@ class OpenGlDebugGui {
  public:
   void start_frame();
   void finish_frame();
-  void draw();
+  void draw(const DmaStats& dma_stats);
   bool should_draw_render_debug() const { return m_draw_debug; }
   bool& want_save() { return m_want_save; }
   bool& want_dump_replay() { return m_want_replay; }

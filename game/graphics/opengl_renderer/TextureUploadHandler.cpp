@@ -41,13 +41,9 @@ void TextureUploadHandler::render(DmaFollower& dma, SharedRenderState* render_st
     }
   }
 
-  /*
-   *
-
-      render_state->texture_pool->handle_upload_now(ee_mem + upload_data.page, upload_data.mode,
-                                                    ee_mem, render_state->offset_of_s7);
-
-   */
+  if (render_state->dump_playback) {
+    return;
+  }
 
   const u8* ee_mem = (const u8*)render_state->ee_main_memory;
 

@@ -10,7 +10,11 @@
 class OpenGLRenderer {
  public:
   OpenGLRenderer(std::shared_ptr<TexturePool> texture_pool);
-  void render(DmaFollower dma, int window_width_px, int window_height_px, bool draw_debug_window);
+  void render(DmaFollower dma,
+              int window_width_px,
+              int window_height_px,
+              bool draw_debug_window,
+              bool dump_playback);
   void serialize(Serializer& ser);
 
  private:

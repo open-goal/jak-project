@@ -40,6 +40,7 @@ struct SharedRenderState {
 
   void* ee_main_memory = nullptr;
   u32 offset_of_s7;
+  bool dump_playback = false;
 };
 
 /*!

@@ -14,7 +14,7 @@ void FrameTimeRecorder::start_frame() {
   m_timer.start();
 }
 
-void FrameTimeRecorder::draw_window() {
+void FrameTimeRecorder::draw_window(const DmaStats& dma_stats) {
   auto* p_open = &m_open;
   ImGuiWindowFlags window_flags = ImGuiWindowFlags_NoDecoration |
                                   ImGuiWindowFlags_AlwaysAutoResize |
@@ -34,6 +34,8 @@ void FrameTimeRecorder::draw_window() {
 
   ImGui::SetNextWindowBgAlpha(0.35f);  // Transparent background
   if (ImGui::Begin("Frame Timing", p_open, window_flags)) {
+    ImGui::Text("DMA: sync ms %.1f, tc %4d, sz %3d KB, ch %d", dma_stats.sync_time_ms,
+                dma_stats.num_tags, (dma_stats.num_data_bytes) / (1 << 10), dma_stats.num_chunks);
     float worst = 0, total = 0;
     for (auto x : m_frame_times) {
       worst = std::max(x, worst);
@@ -71,7 +73,7 @@ void OpenGlDebugGui::finish_frame() {
   m_frame_timer.finish_frame();
 }
 
-void OpenGlDebugGui::draw() {
+void OpenGlDebugGui::draw(const DmaStats& dma_stats) {
   if (ImGui::BeginMainMenuBar()) {
     if (ImGui::BeginMenu("Windows")) {
       ImGui::MenuItem("Frame Time Plot", nullptr, &m_draw_frame_time);
@@ -95,6 +97,6 @@ void OpenGlDebugGui::draw() {
   ImGui::EndMainMenuBar();
 
   if (m_draw_frame_time) {
-    m_frame_timer.draw_window();
+    m_frame_timer.draw_window(dma_stats);
   }
 }
