@@ -179,6 +179,9 @@ const std::unordered_set<std::string> g_functions_to_skip_compiling = {
     // cam-master
     "(event cam-master-active)",  // skipping for now
 
+    // cam-layout
+    "cam-layout-save-cam-trans", // temporary, im sure this can be fixed
+
     // cam-states
     "cam-los-collide",  // vector-dot involving the stack
 

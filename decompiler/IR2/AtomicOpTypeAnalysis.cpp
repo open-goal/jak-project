@@ -663,6 +663,11 @@ TP_Type SimpleExpression::get_type_int2(const TypeState& input,
     }
   }
 
+  // allow shifting non-integers for setting bitfields
+  if (m_kind == Kind::LEFT_SHIFT) {
+    return TP_Type::make_from_ts("int");
+  }
+
   throw std::runtime_error(fmt::format("Cannot get_type_int2: {}, args {} and {}",
                                        to_form(env.file->labels, env).print(), arg0_type.print(),
                                        arg1_type.print()));
