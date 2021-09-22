@@ -66,16 +66,6 @@ const std::unordered_set<std::string> g_functions_to_skip_decompiling = {
     // ripple - asm
     "ripple-execute-init", "ripple-create-wave-table", "ripple-apply-wave-table",
     "ripple-matrix-scale",
-    // ripple - calls an asm function
-    "ripple-execute",
-
-    // sync-info
-    "(method 15 sync-info)",         // needs *res-static-buf*
-    "(method 15 sync-info-eased)",   // needs *res-static-buf*
-    "(method 15 sync-info-paused)",  // needs *res-static-buf*
-
-    // camera
-    "slave-set-rotation!", "v-slrp2!", "v-slrp3!",  // vector-dot involving the stack
 
     // cam-master
     "(event cam-master-active)",  // skipping for now
@@ -90,7 +80,8 @@ const std::unordered_set<std::string> g_functions_to_skip_decompiling = {
     "update-mood-lava",       // asm
     "update-mood-lightning",  // asm
 
-    "debug-menu-item-var-render"  // asm
+    // ambient
+    "ambient-inspect"  // asm, weird
 };
 
 const std::unordered_set<std::string> g_functions_to_skip_compiling = {
@@ -186,7 +177,10 @@ const std::unordered_set<std::string> g_functions_to_skip_compiling = {
     "cam-los-collide",  // vector-dot involving the stack
 
     // function returning float with a weird cast.
-    "debug-menu-item-var-make-float"};
+    "debug-menu-item-var-make-float",
+
+    // decompiler BUG
+    "level-hint-task-process"};
 
 const std::unordered_map<std::string, std::unordered_set<std::string>>& g_states_to_skip = {
     {"cam-master-active", {"event"}}
@@ -205,10 +199,10 @@ struct decomp_meta {
 
 std::vector<decomp_meta> g_object_files_to_decompile_or_ref_check;
 
-std::vector<std::string> dgos = {"CGO/KERNEL.CGO", "CGO/ENGINE.CGO", "CGO/GAME.CGO", "DGO/BEA.DGO",
-                                 "DGO/INT.DGO",    "DGO/VI1.DGO",    "DGO/VI2.DGO",  "DGO/VI3.DGO",
-                                 "DGO/CIT.DGO",    "DGO/MIS.DGO",    "DGO/JUB.DGO",  "DGO/SUN.DGO",
-                                 "DGO/DEM.DGO",    "DGO/FIN.DGO",    "DGO/JUN.DGO",  "DGO/FIC.DGO"};
+std::vector<std::string> dgos = {
+    "CGO/KERNEL.CGO", "CGO/ENGINE.CGO", "CGO/GAME.CGO", "DGO/BEA.DGO", "DGO/INT.DGO", "DGO/VI1.DGO",
+    "DGO/VI2.DGO",    "DGO/VI3.DGO",    "DGO/CIT.DGO",  "DGO/MIS.DGO", "DGO/JUB.DGO", "DGO/SUN.DGO",
+    "DGO/DEM.DGO",    "DGO/FIN.DGO",    "DGO/JUN.DGO",  "DGO/FIC.DGO", "DGO/OGR.DGO"};
 
 }  // namespace
 

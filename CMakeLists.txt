@@ -92,6 +92,8 @@ add_subdirectory(decompiler)
 # build glfw library
 add_subdirectory(third-party/glfw)
 
+add_subdirectory(third-party/zstd)
+
 # build libzip
 add_subdirectory(third-party/11zip EXCLUDE_FROM_ALL)
 

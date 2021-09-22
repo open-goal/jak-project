@@ -392,8 +392,12 @@ Type* TypeSystem::lookup_type(const std::string& name) const {
     return kv->second.get();
   }
 
-  if (m_forward_declared_types.find(name) != m_forward_declared_types.end()) {
+  auto fd = m_forward_declared_types.find(name);
+  if (fd != m_forward_declared_types.end()) {
     throw_typesystem_error("Type {} is not fully defined.\n", name);
+    // kind of a hack... if the type is forward-declared, look for the parent type and hope for the
+    // best.
+    // return lookup_type(fd->second);
   } else {
     throw_typesystem_error("Type {} is not defined.\n", name);
   }
@@ -756,7 +760,7 @@ MethodInfo TypeSystem::lookup_method(const std::string& type_name, int method_id
     }
   }
 
-  throw_typesystem_error("The method with id {} of type {} could not be found.\n", method_id,
+  throw_typesystem_error("The method with id {} of type {} could not be found.", method_id,
                          type_name);
 }
 
