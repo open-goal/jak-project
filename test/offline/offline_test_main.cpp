@@ -19,8 +19,7 @@ const std::unordered_set<std::string> g_files_to_skip_compiling = {
     "display",  // interrupt handlers
 };
 
-// the functions we expect the decompiler to skip
-const std::unordered_set<std::string> g_functions_expected_to_reject = {
+const std::unordered_set<std::string> g_functions_to_skip_decompiling = {
     // gcommon
     "quad-copy!",  // asm mempcy
     // gkernel
@@ -82,7 +81,7 @@ const std::unordered_set<std::string> g_functions_expected_to_reject = {
     "(event cam-master-active)",  // skipping for now
 
     // cam-states
-    "cam-los-collide", // vector-dot involving the stack
+    "cam-los-collide",  // vector-dot involving the stack
 
     // collide-mesh-h
     "(method 11 collide-mesh-cache)",  // asm
@@ -178,13 +177,17 @@ const std::unordered_set<std::string> g_functions_to_skip_compiling = {
     "slave-set-rotation!", "v-slrp2!", "v-slrp3!",  // vector-dot involving the stack
 
     // cam-master
-    "(event cam-master-active)", // skipping for now
+    "(event cam-master-active)",  // skipping for now
 
     // cam-states
     "cam-los-collide",  // vector-dot involving the stack
 
     // function returning float with a weird cast.
     "debug-menu-item-var-make-float"};
+
+const std::unordered_map<std::string, std::unordered_set<std::string>>& g_states_to_skip = {
+    {"cam-master-active", {"event"}}
+};
 
 // default location for the data. It can be changed with a command line argument.
 std::string g_iso_data_path = "";
@@ -355,7 +358,7 @@ class OfflineDecompilation : public ::testing::Test {
     db->process_labels();
 
     // fancy decompilation.
-    db->analyze_functions_ir2({}, *config, true);
+    db->analyze_functions_ir2({}, *config, true, g_states_to_skip);
 
     final_output_cache = std::make_unique<std::unordered_map<std::string, std::string>>();
   }
@@ -393,8 +396,8 @@ TEST_F(OfflineDecompilation, AsmFunction) {
   int failed_count = 0;
   db->for_each_function([&](decompiler::Function& func, int, decompiler::ObjectFileData&) {
     if (func.suspected_asm) {
-      if (g_functions_expected_to_reject.find(func.name()) ==
-          g_functions_expected_to_reject.end()) {
+      if (g_functions_to_skip_decompiling.find(func.name()) ==
+          g_functions_to_skip_decompiling.end()) {
         lg::error("Function {} was marked as asm, but wasn't expected.", func.name());
         failed_count++;
       }
