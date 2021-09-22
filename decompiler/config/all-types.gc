@@ -794,6 +794,7 @@
   :type uint32
   :bitfield #f
   (zero 0)
+  (press-to-use #x105)
   (pause #x109)
   (sfx-volume #x10a)
   (music-volume #x10b)
@@ -811,6 +812,8 @@
   (spanish #x117)
   (italian #x118)
   (japanese #x119)
+  (press-to-warp #x11c)
+  (press-to-exit #x11d)
   (aspect-ratio #x125)
   (video-mode #x126)
   (game-options #x127)
@@ -936,6 +939,8 @@
 
   (daxter-blue-eco-plat-tutorial #x2a7)
 
+  (firecanyon-collect-cells-collected #x2b1)
+  (firecanyon-collect-cells-collected-reminder #x2b2)
   (firecanyon-collect-cells-text #x2b3)
 
   (village2-gambler-money #x300)
@@ -978,6 +983,10 @@
   (rolling-ring-chase-1 #x324)
   (rolling-ring-chase-2 #x325)
 
+  (village2-warp-gate-reminder #x36f)
+  (village2-warp-gate-reminder-annoyed #x370)
+  (village2-warp-gate-reminder-very-annoyed #x371)
+
   (village3-miner-money #x400)
   (village3-oracle-money #x401)
   (snow-ram-3-left #x402)
@@ -1013,6 +1022,10 @@
   (snow-frozen-crate #x42b) ;; task name?
   (snow-bumpers #x42c)
 
+  (village3-warp-gate-reminder #x452)
+  (village3-warp-gate-reminder=annoyed #x453)
+  (village3-warp-gate-reminder-very-annoyed #x454)
+
   (fire-canyon-end #x500)
   (fire-canyon-buzzer #x501)
 
@@ -1036,6 +1049,8 @@
   (citadel-sage-yellow #x804)
   (citadel-sage-green #x805)
 
+  (training-warp-gate-blocked #x919)
+  (training-warp-gate-reminder #x91a)
   (training-gimmie-task-name #x91b)
   (training-buzzer-task-name #x91c)
   (training-door-task-name #x91d)
@@ -19466,13 +19481,13 @@
 (define-extern target-hit-ground-anim function)
 (define-extern mod-var-jump function)
 (define-extern init-var-jump function)
-(define-extern target-falling-anim function)
+(define-extern target-falling-anim (function int int none)) ;; TODO - unconfirmed
 (define-extern target-falling-trans function)
 (define-extern target-falling-anim-trans function)
 
 ;; - Unknowns
 
-;;(define-extern target-hit-ground object) ;; unknown type
+(define-extern target-hit-ground (state target)) ;; unknown type
 (define-extern target-stance (state target)) ;; unknown type
 ;;(define-extern target-high-jump object) ;; unknown type
 ;;(define-extern target-attack-air object) ;; unknown type
@@ -19583,7 +19598,7 @@
 ;;(define-extern *smack-up-mods* object) ;; unknown type
 ;;(define-extern target-title object) ;; unknown type
 (define-extern target-demo (state target)) ;; unknown type
-;;(define-extern target-warp-in object) ;; unknown type
+(define-extern target-warp-in (state target)) ;; unknown type
 ;;(define-extern *auto-continue* object) ;; unknown type
 
 
@@ -22646,10 +22661,10 @@
   :flag-assert         #x18005000c0
   ;; inherited inspect of process-drawable
   (:methods
-    (unknown-state00 () _type_ :state 20)
-    (dummy-21 () none 21)
+    (idle () _type_ :state 20)
+    (active () _type_ :state 21)
     (use (int level) _type_ :state 22)
-    (dummy-23 () none 23)
+    (hidden () _type_ :state 23)
     )
   )
 
@@ -24550,86 +24565,46 @@
 
 ;; - Types
 
-; (deftype warpgate (process-hidden)
-;   ((name             basic                 :offset-assert 4)
-;    (mask             uint32                :offset-assert 8)
-;    (parent           uint32                :offset-assert 12)
-;    (brother          uint32                :offset-assert 16)
-;    (child            uint32                :offset-assert 20)
-;    (ppointer         uint32                :offset-assert 24)
-;    (self             basic                 :offset-assert 28)
-;    (pool             basic                 :offset-assert 32)
-;    (status           basic                 :offset-assert 36)
-;    (pid              int32                 :offset-assert 40)
-;    (main-thread      basic                 :offset-assert 44)
-;    (top-thread       basic                 :offset-assert 48)
-;    (entity           basic                 :offset-assert 52)
-;    (state            basic                 :offset-assert 56)
-;    (trans-hook       basic                 :offset-assert 60)
-;    (post-hook        basic                 :offset-assert 64)
-;    (event-hook       basic                 :offset-assert 68)
-;    (allocated-length int32                 :offset-assert 72)
-;    (next-state       basic                 :offset-assert 76)
-;    (heap-base        uint32                :offset-assert 80)
-;    (heap-top         uint32                :offset-assert 84)
-;    (heap-cur         uint32                :offset-assert 88)
-;    (stack-frame-top  basic                 :offset-assert 92)
-;    (heap             kheap        :inline  :offset-assert 80)
-;    (connection-list  'connectable :inline  :offset-assert 96)
-;    (stack            UNKNOWN      :dynamic :offset-assert 112)
-;    )
-;   :method-count-assert 15
-;   :size-assert         #x70
-;   :flag-assert         #xf00000070
-;   (:methods
-;     (dummy-9 () none 9)
-;     (dummy-10 () none 10)
-;     (dummy-11 () none 11)
-;     (dummy-12 () none 12)
-;     (dummy-13 () none 13)
-;     (dummy-14 () none 14)
-;     )
-;   )
+(deftype warpgate (process-hidden)
+  ()
+  :method-count-assert 15
+  :size-assert         #x70
+  :flag-assert         #xf00000070
+  )
 
 (deftype warp-gate-switch (basebutton)
-  ((warp uint64  :offset-assert 256)
+  ((warp handle  :offset-assert 256)
    )
   :method-count-assert 33
   :size-assert         #x108
   :heap-base           #xa0
   :flag-assert         #x2100a00108
   (:methods
-    (dummy-32 () none 32)
+    (pressable? (_type_) symbol 32)
     )
   )
 
-; (deftype village-cam (process)
-;   ((root       basic   :offset-assert 112)
-;    (range      meters  :offset-assert 116)
-;    (index      int32   :offset-assert 120)
-;    (state-time uint64  :offset-assert 128)
-;    )
-;   :method-count-assert 15
-;   :size-assert         #x88
-;   :heap-base           #x20
-;   :flag-assert         #xf00200088
-;   ;; inherited inspect of process
-;   (:methods
-;     (dummy-9 () none 9)
-;     (dummy-10 () none 10)
-;     (dummy-11 () none 11)
-;     (dummy-12 () none 12)
-;     (dummy-13 () none 13)
-;     (dummy-14 () none 14)
-;     )
-;   )
+(deftype village-cam (process)
+  ((root-override       trsq   :score 100 :offset-assert 112)
+   (range      meters  :offset-assert 116)
+   (index      int32   :offset-assert 120)
+   (state-time uint64  :offset-assert 128)
+   )
+  :method-count-assert 15
+  :size-assert         #x88
+  :heap-base           #x20
+  :flag-assert         #xf00200088
+  (:methods
+    (idle () _type_ :state 14)
+    )
+  )
 
 ;; - Functions
 
-(define-extern warp-gate-init-by-other function)
-(define-extern get-next-slot-up function)
-(define-extern get-next-slot-down function)
-(define-extern print-level-name function)
+(define-extern warp-gate-init-by-other (function vector none :behavior warp-gate))
+(define-extern get-next-slot-up (function warp-gate int int))
+(define-extern get-next-slot-down (function warp-gate int int))
+(define-extern print-level-name (function int font-context int int font-context))
 
 ;; - Unknowns
 
