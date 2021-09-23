@@ -27,6 +27,7 @@ class OpenGlDebugGui {
   bool& want_save() { return m_want_save; }
   bool& want_dump_replay() { return m_want_replay; }
   bool& want_dump_load() { return m_want_dump_load; }
+  const char* dump_name() const { return m_dump_save_name; }
 
  private:
   FrameTimeRecorder m_frame_timer;

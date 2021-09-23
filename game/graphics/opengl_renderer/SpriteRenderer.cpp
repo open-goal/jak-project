@@ -254,7 +254,9 @@ void SpriteRenderer::render_2d_group1(DmaFollower& dma, SharedRenderState* rende
     assert(run.vifcode0().kind == VifCode::Kind::NOP);
     assert(run.vifcode1().kind == VifCode::Kind::MSCAL);
     assert(run.vifcode1().immediate == SpriteProgMem::Sprites2dHud);
-    do_2d_group1_block(sprite_count, render_state);
+    if (m_enabled) {
+      do_2d_group1_block(sprite_count, render_state);
+    }
   }
 }
 

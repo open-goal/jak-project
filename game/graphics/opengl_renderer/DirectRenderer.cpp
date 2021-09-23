@@ -121,7 +121,7 @@ void DirectRenderer::flush_pending(SharedRenderState* render_state) {
   }
 
   if (m_debug_state.red) {
-    // render_state->shaders[ShaderId::DEBUG_RED].activate();
+    render_state->shaders[ShaderId::DEBUG_RED].activate();
     glDisable(GL_BLEND);
   }
 
@@ -240,8 +240,8 @@ void DirectRenderer::update_gl_texture(SharedRenderState* render_state) {
   // TODO these wrappings are probably wrong.
   glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP);
   glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP);
-  glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-  glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+  glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST); // TODO linear again.
+  glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
   glUniform1i(
       glGetUniformLocation(render_state->shaders[ShaderId::DIRECT_BASIC_TEXTURED].id(), "T0"), 0);
 }
@@ -584,7 +584,7 @@ void DirectRenderer::handle_texa(u64 val) {
   // rgba16 isn't used so this doesn't matter?
   // but they use sane defaults anyway
   assert(reg.ta0() == 0);
-  assert(reg.ta1() == 0x80);
+  assert(reg.ta1() == 0x80);  // note: check rgba16_to_rgba32 if this changes.
 
   assert(reg.aem() == false);
 }

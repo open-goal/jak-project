@@ -40,6 +40,7 @@ void TextureRecord::serialize(Serializer& ser) {
   ser.from_str(&name);
   ser.from_ptr(&mip_level);
   ser.from_ptr(&psm);
+  ser.from_ptr(&cpsm);
   ser.from_ptr(&w);
   ser.from_ptr(&h);
   ser.from_ptr(&data_segment);
@@ -191,6 +192,7 @@ std::vector<std::shared_ptr<TextureRecord>> TexturePool::convert_textures(const 
           texture_record->data_segment = tex.segment_of_mip(mip_idx);
           texture_record->data.resize(size_bytes);
           texture_record->psm = tex.psm;
+          texture_record->cpsm = tex.clutpsm;
           texture_record->dest = tex.dest[mip_idx];
 
           m_tex_converter.download_rgba8888(texture_record->data.data(), tex.dest[mip_idx],
@@ -329,9 +331,12 @@ void TexturePool::draw_debug_window() {
 }
 
 void TexturePool::draw_debug_for_tex(const std::string& name, TextureRecord& tex) {
+  if (tex.on_gpu) {
+    ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(0.3, 0.8, 0.3, 1.0));
+  }
   if (ImGui::TreeNode(name.c_str())) {
-    ImGui::Text("Page: %s Size: %d x %d mip %d On GPU? %d psm %d", tex.page_name.c_str(), tex.w,
-                tex.h, tex.mip_level, tex.on_gpu, tex.psm);
+    ImGui::Text("P: %s sz: %d x %d mip %d GPU? %d psm %d cpsm %d", tex.page_name.c_str(), tex.w,
+                tex.h, tex.mip_level, tex.on_gpu, tex.psm, tex.cpsm);
     if (tex.on_gpu) {
       ImGui::Image((void*)tex.gpu_texture, ImVec2(tex.w, tex.h));
     } else {
@@ -341,6 +346,9 @@ void TexturePool::draw_debug_for_tex(const std::string& name, TextureRecord& tex
     }
     ImGui::TreePop();
     ImGui::Separator();
+  }
+  if (tex.on_gpu) {
+    ImGui::PopStyleColor();
   }
 }
 
@@ -357,8 +365,8 @@ void TexturePool::upload_to_gpu(TextureRecord* tex) {
   // we have to set these, imgui won't do it automatically
   glActiveTexture(GL_TEXTURE0);
   glBindTexture(GL_TEXTURE_2D, tex->gpu_texture);
-  glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
-  glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
+  glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP);
+  glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP);
   glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
   glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
 

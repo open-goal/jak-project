@@ -11,7 +11,7 @@ std::vector<u8> compress_zstd(const void* data, size_t size) {
   std::vector<u8> result(sizeof(size_t) + max_compressed);
   memcpy(result.data(), &size, sizeof(size_t));
   auto compressed_size = ZSTD_compress(result.data() + sizeof(size_t), max_compressed, data, size,
-                                       ZSTD_CLEVEL_DEFAULT);
+                                       1);
   if (ZSTD_isError(compressed_size)) {
     printf("ZSTD error: %s\n", ZSTD_getErrorName(compressed_size));
     assert(false);

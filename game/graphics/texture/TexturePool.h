@@ -12,6 +12,7 @@ struct TextureRecord {
   std::string name;
   u8 mip_level;
   u8 psm = -1;
+  u8 cpsm = -1;
   u16 w, h;
   u8 data_segment;
   bool on_gpu = false;

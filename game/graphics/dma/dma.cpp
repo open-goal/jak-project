@@ -22,7 +22,6 @@ std::string VifCode::print() {
       result = "NOP";
       break;
     case Kind::STCYCL: {
-      result = "STCYCL";
       VifCodeStcycl stcycl(immediate);
       result = fmt::format("STCYCL cl: {} wl: {}", stcycl.cl, stcycl.wl);
     } break;
@@ -50,7 +49,6 @@ std::string VifCode::print() {
     case Kind::FLUSH:
       result = "FLUSH";
       break;
-
     case Kind::FLUSHA:
       result = "FLUSHA";
       break;
@@ -83,6 +81,7 @@ std::string VifCode::print() {
       break;
     default:
       fmt::print("Unhandled vif code {}", (int)kind);
+      result = "???";
       // assert(false);
       break;
   }

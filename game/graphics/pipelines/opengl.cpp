@@ -26,6 +26,7 @@
 #include "common/util/Timer.h"
 #include "game/graphics/opengl_renderer/debug_gui.h"
 #include "common/util/FileUtil.h"
+#include "common/util/compress.h"
 
 namespace {
 
@@ -196,12 +197,22 @@ void make_gfx_dump() {
   // save the dma chain and renderer state
   g_gfx_data->serialize(ser);
   auto result = ser.get_save_result();
-  lg::info("Serialized graphics state in {:.1f} ms, {:.3f} MB", ser_timer.getMs(),
-           ((double)result.second) / (1 << 20));
+  Timer compression_timer;
+  auto compressed = compression::compress_zstd(result.first, result.second);
+  lg::info("Serialized graphics state in {:.1f} ms, {:.3f} MB, compressed {:.3f} MB {:.1f} ms",
+           ser_timer.getMs(), ((double)result.second) / (1 << 20),
+           ((double)compressed.size() / (1 << 20)), compression_timer.getMs());
 
   file_util::create_dir_if_needed(file_util::get_file_path({"gfx_dumps"}));
-  file_util::write_binary_file(file_util::get_file_path({"gfx_dumps/dump.bin"}), result.first,
-                               result.second);
+  file_util::write_binary_file(
+      file_util::get_file_path({"gfx_dumps", g_gfx_data->debug_gui.dump_name()}), compressed.data(),
+      compressed.size());
+
+  Timer tim2;
+  auto compressed2 = compression::compress_zstd(g_ee_main_mem + EE_MAIN_MEM_LOW_PROTECT,
+                                                EE_MAIN_MEM_SIZE - EE_MAIN_MEM_LOW_PROTECT);
+  lg::info("Compressed2: {:.1f} ms, {:.3f} MB base \n", tim2.getMs(),
+           (double)compressed2.size() / (1 << 20));
 }
 
 void render_game_frame(int width, int height) {
@@ -247,8 +258,10 @@ void render_game_frame(int width, int height) {
 void render_dump_frame(int width, int height) {
   Timer deser_timer;
   if (g_gfx_data->debug_gui.want_dump_load()) {
-    auto data = file_util::read_binary_file(file_util::get_file_path({"gfx_dumps/dump.bin"}));
-    g_gfx_data->loaded_dump = Serializer(data.data(), data.size());
+    auto data = file_util::read_binary_file(
+        file_util::get_file_path({"gfx_dumps", g_gfx_data->debug_gui.dump_name()}));
+    auto decompressed = compression::decompress_zstd(data.data(), data.size());
+    g_gfx_data->loaded_dump = Serializer(decompressed.data(), decompressed.size());
   }
 
   g_gfx_data->loaded_dump.reset_load();
