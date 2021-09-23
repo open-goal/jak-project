@@ -5,3 +5,72 @@
 ;; name in dgo: battlecontroller
 ;; dgos: CIT, L1, MIS, SWA
 
+;; TODO - for citadel-obs
+(deftype battlecontroller-spawner (structure)
+  ((path          basic   :offset-assert 0)
+   (creature      uint64  :offset-assert 8)
+   (trigger-actor basic   :offset-assert 16)
+   (blocker-actor basic   :offset-assert 20)
+   (state         int8    :offset-assert 24)
+   (enabled       basic   :offset-assert 28)
+   )
+  :method-count-assert 9
+  :size-assert         #x20
+  :flag-assert         #x900000020
+  )
+
+(deftype battlecontroller-creature-type (structure)
+  ((type2            basic  :offset-assert 0)
+   (percent          float  :offset-assert 4)
+   (pickup-percent   float  :offset-assert 8)
+   (pickup-type      int32  :offset-assert 12)
+   (max-pickup-count int8   :offset-assert 16)
+   (pickup-count     int8   :offset-assert 17)
+   )
+  :allow-misaligned
+  :method-count-assert 9
+  :size-assert         #x12
+  :flag-assert         #x900000012
+  )
+
+(deftype battlecontroller (process-drawable)
+  ((final-pickup-spawn-point    vector  :inline :offset-assert 176)
+   (activate-distance           float           :offset-assert 192)
+   (max-spawn-count             int16           :offset-assert 196)
+   (spawn-count                 int16           :offset-assert 198)
+   (die-count                   int16           :offset-assert 200)
+   (target-count                int8            :offset-assert 202)
+   (spawner-count               int8            :offset-assert 203)
+   (creature-type-count         int8            :offset-assert 204)
+   (spawner-array               battlecontroller-spawner 8 :inline :offset-assert 208)
+   (spawn-period                uint64          :offset-assert 464)
+   (path-spawn                  basic           :offset-assert 472)
+   (creature-type-array         battlecontroller-creature-type 4 :inline :offset-assert 476)
+   (final-pickup-type           int32           :offset-assert 604)
+   (prespawn                    basic           :offset-assert 608)
+   (noticed-player              basic           :offset-assert 612)
+   (camera-on                   basic           :offset-assert 616)
+   (misty-ambush-collision-hack basic           :offset-assert 620)
+   (disable-ocean               basic           :offset-assert 624)
+   (disable-near-ocean          basic           :offset-assert 628)
+   (disable-mid-ocean           basic           :offset-assert 632)
+   )
+  :method-count-assert 29
+  :size-assert         #x27c
+  :heap-base           #x210
+  :flag-assert         #x1d0210027c
+  ;; inherited inspect of process-drawable
+  (:methods
+    (dummy-20 () none 20)
+    (dummy-21 () none 21)
+    (battlecontroller-play-intro-camera () _type_ :state 22) ;; state
+    (dummy-23 () none 23)
+    (dummy-24 () _type_ :state 24)
+    (dummy-25 () none 25)
+    (battlecontroller-die () _type_ :state 26) ;; state
+    (set-aggro-dist! (_type_) none 27)
+    (dummy-28 () none 28)
+    )
+  )
+
+;; decomp begins
