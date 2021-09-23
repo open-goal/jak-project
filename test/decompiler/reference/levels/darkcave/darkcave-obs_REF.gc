@@ -1,56 +1,7 @@
 ;;-*-Lisp-*-
 (in-package goal)
 
-;; name: darkcave-obs.gc
-;; name in dgo: darkcave-obs
-;; dgos: DAR, L1
-
-(define-extern *cavecrystal-sg* skeleton-group)
-
-(declare-type cavecrystal process-drawable)
-
-(define-extern cavecrystal-idle (state cavecrystal))
-(define-extern cavecrystal-active (state cavecrystal))
-
-;; have to fully forward declare this, 
-;; > Type Error: Type cavecrystal-light-control is not fully defined.
-;; > (execute-connections *cavecrystal-light-control*)
-(deftype cavecrystal-light (structure)
-  ((next           cavecrystal-light         :offset-assert 0)
-   (crystal-id     int32                     :offset-assert 4)
-   (intensity      float                     :offset-assert 8)
-   (fade-start     float                     :offset-assert 12)
-   (fade-end       float                     :offset-assert 16)
-   (crystal-handle handle                    :offset-assert 24)
-   (trans          vector            :inline :offset-assert 32)
-   )
-  :method-count-assert 9
-  :size-assert         #x30
-  :flag-assert         #x900000030
-  )
-
-(deftype cavecrystal-light-control (basic)
-  ((active-count          int32               :offset-assert 4)
-   (head                  cavecrystal-light   :offset-assert 8)
-   (last-known-valid-time uint64              :offset-assert 16)
-   (crystal               cavecrystal-light           7 :inline :offset-assert 32)
-   )
-  :method-count-assert 15
-  :size-assert         #x170
-  :flag-assert         #xf00000170
-  (:methods
-    (TODO-RENAME-9 (_type_ int float cavecrystal) object 9)
-    (TODO-RENAME-10 (_type_ vector) float 10)
-    (inc-intensites! (_type_) int 11)
-    (TODO-RENAME-12 (_type_) symbol 12)
-    (create-connection! (_type_ cavecrystal res-lump (function object object object object object) object object) connection 13)
-    (execute-connections (_type_) int 14)
-    )
-  )
-(define-extern *cavecrystal-light-control* cavecrystal-light-control)
-
-;; DECOMP BEGINS
-
+;; definition of type cavecrystal
 (deftype cavecrystal (process-drawable)
   ((root-override              collide-shape         :offset        112)
    (is-master?                 symbol                :offset-assert 176)
@@ -79,7 +30,42 @@
     )
   )
 
+;; definition for method 3 of type cavecrystal
+(defmethod inspect cavecrystal ((obj cavecrystal))
+  (let ((t9-0 (method-of-type process-drawable inspect)))
+   (t9-0 obj)
+   )
+  (format #t "~T~Tis-master?: ~A~%" (-> obj is-master?))
+  (format #t "~T~Tcrystal-id: ~D~%" (-> obj crystal-id))
+  (format #t "~T~Tglow-u: ~f~%" (-> obj glow-u))
+  (format #t "~T~Tglow-wf-period: ~D~%" (-> obj glow-wf-period))
+  (format #t "~T~Tglow-wf-offset: ~D~%" (-> obj glow-wf-offset))
+  (format #t "~T~Tprev-compute-glow-time: ~D~%" (-> obj prev-compute-glow-time))
+  (format #t "~T~Tstart-fade-time: ~D~%" (-> obj start-fade-time))
+  (format #t "~T~Tend-fade-time: ~D~%" (-> obj end-fade-time))
+  (format #t "~T~Tactivated-time: ~D~%" (-> obj activated-time))
+  (format
+   #t
+   "~T~Tlast-updated-user-lighting: ~D~%"
+   (-> obj last-updated-user-lighting)
+   )
+  (format #t "~T~Tplayer-attack-id: ~D~%" (-> obj player-attack-id))
+  (format #t "~T~Ton-color-mult: #<vector @ #x~X>~%" (-> obj on-color-mult))
+  (format
+   #t
+   "~T~Ton-color-emissive: #<vector @ #x~X>~%"
+   (-> obj on-color-emissive)
+   )
+  (format #t "~T~Toff-color-mult: #<vector @ #x~X>~%" (-> obj off-color-mult))
+  (format
+   #t
+   "~T~Toff-color-emissive: #<vector @ #x~X>~%"
+   (-> obj off-color-emissive)
+   )
+  obj
+  )
 
+;; failed to figure out what this is:
 (let
   ((v1-1
     (new 'static 'skeleton-group
@@ -100,6 +86,8 @@
   (set! *cavecrystal-sg* v1-1)
   )
 
+;; definition for method 20 of type cavecrystal
+;; INFO: Return type mismatch int vs none.
 (defmethod update-connected-crystals! cavecrystal ((obj cavecrystal))
   (when (-> obj is-master?)
    (let ((v1-2 (-> *display* base-frame-counter)))
@@ -112,6 +100,7 @@
   (none)
   )
 
+;; definition for method 21 of type cavecrystal
 (defmethod dummy-21 cavecrystal ((obj cavecrystal))
   (set!
    (-> obj prev-compute-glow-time)
@@ -171,6 +160,7 @@
    )
   )
 
+;; failed to figure out what this is:
 (defstate cavecrystal-idle (cavecrystal)
   :event
   (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
@@ -214,6 +204,7 @@
    )
   )
 
+;; failed to figure out what this is:
 (defstate cavecrystal-active (cavecrystal)
   :event
   (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
@@ -313,6 +304,7 @@
    )
   )
 
+;; definition for method 10 of type cavecrystal
 (defmethod deactivate cavecrystal ((obj cavecrystal))
   (if (nonzero? (-> obj sound))
    (stop! (-> obj sound))
@@ -321,6 +313,8 @@
   (none)
   )
 
+;; definition for method 11 of type cavecrystal
+;; Used lq/sq
 (defmethod copy-defaults! cavecrystal ((obj cavecrystal) (arg0 res-lump))
   (set! (-> obj glow-u) 0.0)
   (set! (-> obj player-attack-id) (the-as uint 0))
