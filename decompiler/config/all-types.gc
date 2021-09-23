@@ -19129,7 +19129,7 @@
 (define-extern touch-tracker-init (function object object object none))
 (define-extern process-drawable-pair-random-point! function)
 (define-extern birth-func-set-quat function)
-(define-extern draw-eco-beam function)
+(define-extern draw-eco-beam (function vector vector none)) ;; TODO - not confirmed
 
 ;; - Unknowns
 
@@ -30293,464 +30293,195 @@
 
 ;; - Types
 
-; (deftype windmill-sail (process-drawable)
-;   ((sync         sync-info  :inline :offset-assert 176)
-;    (blade-normal vector     :inline :offset-assert 192)
-;    (orig-quat    quaternion :inline :offset-assert 208)
-;    (alt-actor    basic              :offset-assert 224)
-;    (part2        basic              :offset-assert 228)
-;    )
-;   :method-count-assert 20
-;   :size-assert         #xe8
-;   :heap-base           #x80
-;   :flag-assert         #x14008000e8
-;   ;; inherited inspect of process-drawable
-;   (:methods
-;     (dummy-9 () none 9)
-;     (dummy-10 () none 10)
-;     (dummy-11 () none 11)
-;     (dummy-12 () none 12)
-;     (dummy-13 () none 13)
-;     (dummy-14 () none 14)
-;     (dummy-15 () none 15)
-;     (dummy-16 () none 16)
-;     (dummy-17 () none 17)
-;     (dummy-18 () none 18)
-;     (dummy-19 () none 19)
-;     )
-;   )
+(deftype windmill-sail (process-drawable)
+  ((root-override trsq :score 100 :offset 112)
+   (sync         sync-info  :inline :offset-assert 176)
+   (blade-normal vector     :inline :offset-assert 192)
+   (orig-quat    quaternion :inline :offset-assert 208)
+   (alt-actor    entity-actor              :offset-assert 224)
+   (part2        sparticle-launch-control              :offset-assert 228)
+   )
+  :method-count-assert 20
+  :size-assert         #xe8
+  :heap-base           #x80
+  :flag-assert         #x14008000e8
+  )
 
-; (deftype sagesail (process-drawable)
-;   ((sync         sync-info  :inline :offset-assert 176)
-;    (blade-normal vector     :inline :offset-assert 192)
-;    (orig-quat    quaternion :inline :offset-assert 208)
-;    )
-;   :method-count-assert 20
-;   :size-assert         #xe0
-;   :heap-base           #x70
-;   :flag-assert         #x14007000e0
-;   ;; inherited inspect of process-drawable
-;   (:methods
-;     (dummy-9 () none 9)
-;     (dummy-10 () none 10)
-;     (dummy-11 () none 11)
-;     (dummy-12 () none 12)
-;     (dummy-13 () none 13)
-;     (dummy-14 () none 14)
-;     (dummy-15 () none 15)
-;     (dummy-16 () none 16)
-;     (dummy-17 () none 17)
-;     (dummy-18 () none 18)
-;     (dummy-19 () none 19)
-;     )
-;   )
+(deftype sagesail (process-drawable)
+  ((root-override trsq :score 100 :offset 112)
+   (sync         sync-info  :inline :offset-assert 176)
+   (blade-normal vector     :inline :offset-assert 192)
+   (orig-quat    quaternion :inline :offset-assert 208)
+   )
+  :method-count-assert 20
+  :size-assert         #xe0
+  :heap-base           #x70
+  :flag-assert         #x14007000e0
+  )
 
-; (deftype windspinner (process-drawable)
-;   ((blade-normal vector     :inline :offset-assert 176)
-;    (orig-quat    quaternion :inline :offset-assert 192)
-;    (angle        float              :offset-assert 208)
-;    (angle-vel    float              :offset-assert 212)
-;    )
-;   :method-count-assert 20
-;   :size-assert         #xd8
-;   :heap-base           #x70
-;   :flag-assert         #x14007000d8
-;   ;; inherited inspect of process-drawable
-;   (:methods
-;     (dummy-9 () none 9)
-;     (dummy-10 () none 10)
-;     (dummy-11 () none 11)
-;     (dummy-12 () none 12)
-;     (dummy-13 () none 13)
-;     (dummy-14 () none 14)
-;     (dummy-15 () none 15)
-;     (dummy-16 () none 16)
-;     (dummy-17 () none 17)
-;     (dummy-18 () none 18)
-;     (dummy-19 () none 19)
-;     )
-;   )
+(deftype windspinner (process-drawable)
+  ((blade-normal vector     :inline :offset-assert 176)
+   (orig-quat    quaternion :inline :offset-assert 192)
+   (angle        float              :offset-assert 208)
+   (angle-vel    float              :offset-assert 212)
+   )
+  :method-count-assert 20
+  :size-assert         #xd8
+  :heap-base           #x70
+  :flag-assert         #x14007000d8
+  )
 
-; (deftype mayorgears (process-drawable)
-;   ((alt-actor basic  :offset-assert 176)
-;    )
-;   :method-count-assert 20
-;   :size-assert         #xb4
-;   :heap-base           #x50
-;   :flag-assert         #x14005000b4
-;   ;; inherited inspect of process-drawable
-;   (:methods
-;     (dummy-9 () none 9)
-;     (dummy-10 () none 10)
-;     (dummy-11 () none 11)
-;     (dummy-12 () none 12)
-;     (dummy-13 () none 13)
-;     (dummy-14 () none 14)
-;     (dummy-15 () none 15)
-;     (dummy-16 () none 16)
-;     (dummy-17 () none 17)
-;     (dummy-18 () none 18)
-;     (dummy-19 () none 19)
-;     )
-;   )
+(deftype mayorgears (process-drawable)
+  ((alt-actor entity-actor  :offset-assert 176)
+   )
+  :method-count-assert 20
+  :size-assert         #xb4
+  :heap-base           #x50
+  :flag-assert         #x14005000b4
+  )
 
-; (deftype reflector-middle (process-drawable)
-;   ((reflector-trans      vector :inline :offset-assert 176)
-;    (next-reflector-trans vector :inline :offset-assert 192)
-;    )
-;   :method-count-assert 20
-;   :size-assert         #xd0
-;   :heap-base           #x60
-;   :flag-assert         #x14006000d0
-;   ;; inherited inspect of process-drawable
-;   (:methods
-;     (dummy-9 () none 9)
-;     (dummy-10 () none 10)
-;     (dummy-11 () none 11)
-;     (dummy-12 () none 12)
-;     (dummy-13 () none 13)
-;     (dummy-14 () none 14)
-;     (dummy-15 () none 15)
-;     (dummy-16 () none 16)
-;     (dummy-17 () none 17)
-;     (dummy-18 () none 18)
-;     (dummy-19 () none 19)
-;     )
-;   )
+(deftype reflector-middle (process-drawable)
+  ((reflector-trans      vector :inline :offset-assert 176)
+   (next-reflector-trans vector :inline :offset-assert 192)
+   )
+  :method-count-assert 20
+  :size-assert         #xd0
+  :heap-base           #x60
+  :flag-assert         #x14006000d0
+  )
 
-; (deftype reflector-end (process-drawable)
-;   ()
-;   :method-count-assert 20
-;   :size-assert         #xb0
-;   :heap-base           #x40
-;   :flag-assert         #x14004000b0
-;   ;;  not enough basic ops
-;   (:methods
-;     (dummy-9 () none 9)
-;     (dummy-10 () none 10)
-;     (dummy-11 () none 11)
-;     (dummy-12 () none 12)
-;     (dummy-13 () none 13)
-;     (dummy-14 () none 14)
-;     (dummy-15 () none 15)
-;     (dummy-16 () none 16)
-;     (dummy-17 () none 17)
-;     (dummy-18 () none 18)
-;     (dummy-19 () none 19)
-;     )
-;   )
+(deftype reflector-end (process-drawable)
+  ()
+  :method-count-assert 20
+  :size-assert         #xb0
+  :heap-base           #x40
+  :flag-assert         #x14004000b0
+  )
 
-; (deftype villa-starfish (process-drawable)
-;   ((child-count int8  :offset-assert 176)
-;    )
-;   :method-count-assert 20
-;   :size-assert         #xb1
-;   :heap-base           #x50
-;   :flag-assert         #x14005000b1
-;   ;; inherited inspect of process-drawable
-;   (:methods
-;     (dummy-9 () none 9)
-;     (dummy-10 () none 10)
-;     (dummy-11 () none 11)
-;     (dummy-12 () none 12)
-;     (dummy-13 () none 13)
-;     (dummy-14 () none 14)
-;     (dummy-15 () none 15)
-;     (dummy-16 () none 16)
-;     (dummy-17 () none 17)
-;     (dummy-18 () none 18)
-;     (dummy-19 () none 19)
-;     )
-;   )
+(deftype villa-starfish (process-drawable)
+  ((child-count int8  :offset-assert 176)
+   )
+  :method-count-assert 20
+  :size-assert         #xb1
+  :heap-base           #x50
+  :flag-assert         #x14005000b1
+  )
 
-; (deftype starfish (nav-enemy)
-;   ()
-;   :method-count-assert 76
-;   :size-assert         #x190
-;   :heap-base           #x120
-;   :flag-assert         #x4c01200190
-;   ;;  not enough basic ops
-;   (:methods
-;     (dummy-9 () none 9)
-;     (dummy-10 () none 10)
-;     (dummy-11 () none 11)
-;     (dummy-12 () none 12)
-;     (dummy-13 () none 13)
-;     (dummy-14 () none 14)
-;     (dummy-15 () none 15)
-;     (dummy-16 () none 16)
-;     (dummy-17 () none 17)
-;     (dummy-18 () none 18)
-;     (dummy-19 () none 19)
-;     (dummy-20 () none 20)
-;     (dummy-21 () none 21)
-;     (dummy-22 () none 22)
-;     (dummy-23 () none 23)
-;     (dummy-24 () none 24)
-;     (dummy-25 () none 25)
-;     (dummy-26 () none 26)
-;     (dummy-27 () none 27)
-;     (dummy-28 () none 28)
-;     (dummy-29 () none 29)
-;     (dummy-30 () none 30)
-;     (dummy-31 () none 31)
-;     (dummy-32 () none 32)
-;     (dummy-33 () none 33)
-;     (dummy-34 () none 34)
-;     (dummy-35 () none 35)
-;     (dummy-36 () none 36)
-;     (dummy-37 () none 37)
-;     (dummy-38 () none 38)
-;     (dummy-39 () none 39)
-;     (dummy-40 () none 40)
-;     (dummy-41 () none 41)
-;     (dummy-42 () none 42)
-;     (dummy-43 () none 43)
-;     (dummy-44 () none 44)
-;     (dummy-45 () none 45)
-;     (dummy-46 () none 46)
-;     (dummy-47 () none 47)
-;     (dummy-48 () none 48)
-;     (dummy-49 () none 49)
-;     (dummy-50 () none 50)
-;     (dummy-51 () none 51)
-;     (dummy-52 () none 52)
-;     (dummy-53 () none 53)
-;     (dummy-54 () none 54)
-;     (dummy-55 () none 55)
-;     (dummy-56 () none 56)
-;     (dummy-57 () none 57)
-;     (dummy-58 () none 58)
-;     (dummy-59 () none 59)
-;     (dummy-60 () none 60)
-;     (dummy-61 () none 61)
-;     (dummy-62 () none 62)
-;     (dummy-63 () none 63)
-;     (dummy-64 () none 64)
-;     (dummy-65 () none 65)
-;     (dummy-66 () none 66)
-;     (dummy-67 () none 67)
-;     (dummy-68 () none 68)
-;     (dummy-69 () none 69)
-;     (dummy-70 () none 70)
-;     (dummy-71 () none 71)
-;     (dummy-72 () none 72)
-;     (dummy-73 () none 73)
-;     (dummy-74 () none 74)
-;     (dummy-75 () none 75)
-;     )
-;   )
+(deftype starfish (nav-enemy)
+  ()
+  :method-count-assert 76
+  :size-assert         #x190
+  :heap-base           #x120
+  :flag-assert         #x4c01200190
+  )
 
-; (deftype village-fish (process-drawable)
-;   ((child-count int8  :offset-assert 176)
-;    )
-;   :method-count-assert 20
-;   :size-assert         #xb1
-;   :heap-base           #x50
-;   :flag-assert         #x14005000b1
-;   ;; inherited inspect of process-drawable
-;   (:methods
-;     (dummy-9 () none 9)
-;     (dummy-10 () none 10)
-;     (dummy-11 () none 11)
-;     (dummy-12 () none 12)
-;     (dummy-13 () none 13)
-;     (dummy-14 () none 14)
-;     (dummy-15 () none 15)
-;     (dummy-16 () none 16)
-;     (dummy-17 () none 17)
-;     (dummy-18 () none 18)
-;     (dummy-19 () none 19)
-;     )
-;   )
+(deftype village-fish (process-drawable)
+  ((child-count int8  :offset-assert 176)
+   )
+  :method-count-assert 20
+  :size-assert         #xb1
+  :heap-base           #x50
+  :flag-assert         #x14005000b1
+  )
 
-; (deftype villa-fisha (village-fish)
-;   ()
-;   :method-count-assert 20
-;   :size-assert         #xb1
-;   :heap-base           #x50
-;   :flag-assert         #x14005000b1
-;   ;;  not enough basic ops
-;   (:methods
-;     (dummy-9 () none 9)
-;     (dummy-10 () none 10)
-;     (dummy-11 () none 11)
-;     (dummy-12 () none 12)
-;     (dummy-13 () none 13)
-;     (dummy-14 () none 14)
-;     (dummy-15 () none 15)
-;     (dummy-16 () none 16)
-;     (dummy-17 () none 17)
-;     (dummy-18 () none 18)
-;     (dummy-19 () none 19)
-;     )
-;   )
+(deftype villa-fisha (village-fish)
+  ()
+  :method-count-assert 20
+  :size-assert         #xb1
+  :heap-base           #x50
+  :flag-assert         #x14005000b1
+  )
 
-; (deftype villa-fishb (village-fish)
-;   ()
-;   :method-count-assert 20
-;   :size-assert         #xb1
-;   :heap-base           #x50
-;   :flag-assert         #x14005000b1
-;   ;;  not enough basic ops
-;   (:methods
-;     (dummy-9 () none 9)
-;     (dummy-10 () none 10)
-;     (dummy-11 () none 11)
-;     (dummy-12 () none 12)
-;     (dummy-13 () none 13)
-;     (dummy-14 () none 14)
-;     (dummy-15 () none 15)
-;     (dummy-16 () none 16)
-;     (dummy-17 () none 17)
-;     (dummy-18 () none 18)
-;     (dummy-19 () none 19)
-;     )
-;   )
+(deftype villa-fishb (village-fish)
+  ()
+  :method-count-assert 20
+  :size-assert         #xb1
+  :heap-base           #x50
+  :flag-assert         #x14005000b1
+  )
 
-; (deftype cyclegen (structure)
-;   ((output float  :offset-assert 0)
-;    (inc    float  :offset-assert 4)
-;    )
-;   :method-count-assert 9
-;   :size-assert         #x8
-;   :flag-assert         #x900000008
-;   )
+(deftype cyclegen (structure)
+  ((output float  :offset-assert 0)
+   (inc    float  :offset-assert 4)
+   )
+  :pack-me
+  :method-count-assert 9
+  :size-assert         #x8
+  :flag-assert         #x900000008
+  )
 
-; (deftype hutlamp (process-drawable)
-;   ((pivot basic            :offset-assert 176)
-;    (clock cyclegen :inline :offset-assert 180)
-;    )
-;   :method-count-assert 20
-;   :size-assert         #xbc
-;   :heap-base           #x50
-;   :flag-assert         #x14005000bc
-;   ;; inherited inspect of process-drawable
-;   (:methods
-;     (dummy-9 () none 9)
-;     (dummy-10 () none 10)
-;     (dummy-11 () none 11)
-;     (dummy-12 () none 12)
-;     (dummy-13 () none 13)
-;     (dummy-14 () none 14)
-;     (dummy-15 () none 15)
-;     (dummy-16 () none 16)
-;     (dummy-17 () none 17)
-;     (dummy-18 () none 18)
-;     (dummy-19 () none 19)
-;     )
-;   )
+(deftype hutlamp (process-drawable)
+  ((pivot joint-mod-set-local   :offset-assert 176)
+   (clock cyclegen :inline :offset-assert 180)
+   )
+  :method-count-assert 20
+  :size-assert         #xbc
+  :heap-base           #x50
+  :flag-assert         #x14005000bc
+  )
 
-; (deftype revcycleprop (process-drawable)
-;   ()
-;   :method-count-assert 21
-;   :size-assert         #xb0
-;   :heap-base           #x40
-;   :flag-assert         #x15004000b0
-;   ;;  not enough basic ops
-;   (:methods
-;     (dummy-9 () none 9)
-;     (dummy-10 () none 10)
-;     (dummy-11 () none 11)
-;     (dummy-12 () none 12)
-;     (dummy-13 () none 13)
-;     (dummy-14 () none 14)
-;     (dummy-15 () none 15)
-;     (dummy-16 () none 16)
-;     (dummy-17 () none 17)
-;     (dummy-18 () none 18)
-;     (dummy-19 () none 19)
-;     (dummy-20 () none 20)
-;     )
-;   )
+(deftype revcycleprop (process-drawable)
+  ()
+  :method-count-assert 21
+  :size-assert         #xb0
+  :heap-base           #x40
+  :flag-assert         #x15004000b0
+  (:methods
+    (idle () _type_ :state 20)
+    )
+  )
 
-; (deftype revcycle (process-drawable)
-;   ()
-;   :method-count-assert 21
-;   :size-assert         #xb0
-;   :heap-base           #x40
-;   :flag-assert         #x15004000b0
-;   ;;  not enough basic ops
-;   (:methods
-;     (dummy-9 () none 9)
-;     (dummy-10 () none 10)
-;     (dummy-11 () none 11)
-;     (dummy-12 () none 12)
-;     (dummy-13 () none 13)
-;     (dummy-14 () none 14)
-;     (dummy-15 () none 15)
-;     (dummy-16 () none 16)
-;     (dummy-17 () none 17)
-;     (dummy-18 () none 18)
-;     (dummy-19 () none 19)
-;     (dummy-20 () none 20)
-;     )
-;   )
+(deftype revcycle (process-drawable)
+  ()
+  :method-count-assert 21
+  :size-assert         #xb0
+  :heap-base           #x40
+  :flag-assert         #x15004000b0
+  (:methods
+    (idle () _type_ :state 20)
+    )
+  )
 
-; (deftype villagea-water (water-anim)
-;   ()
-;   :method-count-assert 30
-;   :size-assert         #xdc
-;   :heap-base           #x70
-;   :flag-assert         #x1e007000dc
-;   ;;  not enough basic ops
-;   (:methods
-;     (dummy-9 () none 9)
-;     (dummy-10 () none 10)
-;     (dummy-11 () none 11)
-;     (dummy-12 () none 12)
-;     (dummy-13 () none 13)
-;     (dummy-14 () none 14)
-;     (dummy-15 () none 15)
-;     (dummy-16 () none 16)
-;     (dummy-17 () none 17)
-;     (dummy-18 () none 18)
-;     (dummy-19 () none 19)
-;     (dummy-20 () none 20)
-;     (dummy-21 () none 21)
-;     (dummy-22 () none 22)
-;     (dummy-23 () none 23)
-;     (dummy-24 () none 24)
-;     (dummy-25 () none 25)
-;     (dummy-26 () none 26)
-;     (dummy-27 () none 27)
-;     (dummy-28 () none 28)
-;     (dummy-29 () none 29)
-;     )
-;   )
+(deftype villagea-water (water-anim)
+  ()
+  :method-count-assert 30
+  :size-assert         #xdc
+  :heap-base           #x70
+  :flag-assert         #x1e007000dc
+  )
 
 ;; - Functions
 
-(define-extern set-period function)
-(define-extern update-clock function)
-(define-extern process-drawable-child-count function)
-(define-extern starfish-spawn-child function)
-(define-extern starfish-init-by-other function)
+(define-extern set-period (function cyclegen int float))
+(define-extern update-clock (function cyclegen float))
+(define-extern process-drawable-child-count (function int :behavior process-drawable))
+(define-extern starfish-spawn-child (function (pointer starfish) :behavior starfish))
+(define-extern starfish-init-by-other (function starfish vector none :behavior starfish))
 
 ;; - Unknowns
 
-;;(define-extern ripple-for-villagea-water object) ;; unknown type
+(define-extern ripple-for-villagea-water ripple-wave-set) ;; unknown type
 (define-extern *revcycle-sg* skeleton-group)
 (define-extern *revcycleprop-sg* skeleton-group)
 (define-extern *hutlamp-sg* skeleton-group)
-;;(define-extern hutlamp-idle object) ;; unknown type
-;;(define-extern village-fish-idle object) ;; unknown type
-;;(define-extern villa-starfish-idle object) ;; unknown type
-;;(define-extern starfish-idle object) ;; unknown type
+(define-extern hutlamp-idle (state hutlamp)) ;; unknown type
+(define-extern village-fish-idle (state village-fish)) ;; unknown type
+(define-extern villa-starfish-idle (state villa-starfish)) ;; unknown type
+(define-extern starfish-idle (state starfish)) ;; unknown type
 (define-extern *starfish-sg* skeleton-group)
 (define-extern *starfish-nav-enemy-info* nav-enemy-info)
-;;(define-extern starfish-patrol object) ;; unknown type
-;;(define-extern reflector-end-idle object) ;; unknown type
+(define-extern starfish-patrol (state starfish)) ;; unknown type
+(define-extern reflector-end-idle (state reflector-end)) ;; unknown type
 (define-extern *reflector-middle-sg* skeleton-group)
-;;(define-extern reflector-middle-idle object) ;; unknown type
+(define-extern reflector-middle-idle (state reflector-middle)) ;; unknown type
 (define-extern *mayorgears-sg* skeleton-group)
-;;(define-extern mayorgears-idle object) ;; unknown type
+(define-extern mayorgears-idle (state mayorgears)) ;; unknown type
 (define-extern *windspinner-sg* skeleton-group)
-;;(define-extern windspinner-idle object) ;; unknown type
+(define-extern windspinner-idle (state windspinner)) ;; unknown type
 (define-extern *sagesail-sg* skeleton-group)
-;;(define-extern sagesail-idle object) ;; unknown type
+(define-extern sagesail-idle (state sagesail)) ;; unknown type
 (define-extern *windmill-sail-sg* skeleton-group)
-;;(define-extern windmill-sail-idle object) ;; unknown type
+(define-extern windmill-sail-idle (state windmill-sail)) ;; unknown type
 (define-extern *med-res-jungle-sg* skeleton-group)
 (define-extern *med-res-jungle1-sg* skeleton-group)
 (define-extern *med-res-jungle2-sg* skeleton-group)
