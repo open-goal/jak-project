@@ -10523,6 +10523,7 @@
    (damp-period float   :offset-assert 24)
    (ticks       float   :offset-assert 28)
    )
+  :pack-me
   :method-count-assert 15
   :size-assert         #x20
   :flag-assert         #xf00000020
@@ -17888,7 +17889,7 @@
 
 ;; - Functions
 
-(define-extern target-attack-up function)
+(define-extern target-attack-up (function target symbol symbol object)) ;; TODO - ret not confirmed
 (define-extern find-ground-point function)
 (define-extern default-collision-reaction (function collide-shape-moving collide-shape-intersect vector vector none)) ;; TODO - not completely confirmed
 (define-extern simple-collision-reaction function)
@@ -18051,7 +18052,7 @@
   (:methods
     (water-vol-idle () _type_ :state 20)
     (water-vol-startup () _type_ :state 21)
-    (TODO-RENAME-22 (_type_) ripple-wave-set 22)
+    (get-water-color (_type_) rgbaf 22)
     (dummy-23 () none 23)
     (dummy-24 () none 24)
     (TODO-RENAME-25 (_type_) object 25)
@@ -33369,249 +33370,126 @@
 
 ;; - Types
 
-; (deftype maincavecam (pov-camera)
-;   ((seq uint64  :offset-assert 224)
-;    )
-;   :method-count-assert 30
-;   :size-assert         #xe8
-;   :heap-base           #x80
-;   :flag-assert         #x1e008000e8
-;   ;; inherited inspect of pov-camera
-;   (:methods
-;     (dummy-9 () none 9)
-;     (dummy-10 () none 10)
-;     (dummy-11 () none 11)
-;     (dummy-12 () none 12)
-;     (dummy-13 () none 13)
-;     (dummy-14 () none 14)
-;     (dummy-15 () none 15)
-;     (dummy-16 () none 16)
-;     (dummy-17 () none 17)
-;     (dummy-18 () none 18)
-;     (dummy-19 () none 19)
-;     (dummy-20 () none 20)
-;     (dummy-21 () none 21)
-;     (dummy-22 () none 22)
-;     (dummy-23 () none 23)
-;     (dummy-24 () none 24)
-;     (dummy-25 () none 25)
-;     (dummy-26 () none 26)
-;     (dummy-27 () none 27)
-;     (dummy-28 () none 28)
-;     (dummy-29 () none 29)
-;     )
-;   )
+(deftype maincavecam (pov-camera)
+  ((seq uint64  :offset-assert 224)
+   )
+  :method-count-assert 30
+  :size-assert         #xe8
+  :heap-base           #x80
+  :flag-assert         #x1e008000e8
+  )
 
-; (deftype cave-water (water-anim)
-;   ()
-;   :method-count-assert 30
-;   :size-assert         #xdc
-;   :heap-base           #x70
-;   :flag-assert         #x1e007000dc
-;   ;;  not enough basic ops
-;   (:methods
-;     (dummy-9 () none 9)
-;     (dummy-10 () none 10)
-;     (dummy-11 () none 11)
-;     (dummy-12 () none 12)
-;     (dummy-13 () none 13)
-;     (dummy-14 () none 14)
-;     (dummy-15 () none 15)
-;     (dummy-16 () none 16)
-;     (dummy-17 () none 17)
-;     (dummy-18 () none 18)
-;     (dummy-19 () none 19)
-;     (dummy-20 () none 20)
-;     (dummy-21 () none 21)
-;     (dummy-22 () none 22)
-;     (dummy-23 () none 23)
-;     (dummy-24 () none 24)
-;     (dummy-25 () none 25)
-;     (dummy-26 () none 26)
-;     (dummy-27 () none 27)
-;     (dummy-28 () none 28)
-;     (dummy-29 () none 29)
-;     )
-;   )
+(deftype cave-water (water-anim)
+  ()
+  :method-count-assert 30
+  :size-assert         #xdc
+  :heap-base           #x70
+  :flag-assert         #x1e007000dc
+  )
 
-; (deftype cavecrusher (process-drawable)
-;   ()
-;   :method-count-assert 20
-;   :size-assert         #xb0
-;   :heap-base           #x40
-;   :flag-assert         #x14004000b0
-;   ;;  not enough basic ops
-;   (:methods
-;     (dummy-9 () none 9)
-;     (dummy-10 () none 10)
-;     (dummy-11 () none 11)
-;     (dummy-12 () none 12)
-;     (dummy-13 () none 13)
-;     (dummy-14 () none 14)
-;     (dummy-15 () none 15)
-;     (dummy-16 () none 16)
-;     (dummy-17 () none 17)
-;     (dummy-18 () none 18)
-;     (dummy-19 () none 19)
-;     )
-;   )
+(deftype cavecrusher (process-drawable)
+  ((root-override collide-shape :score 100 :offset 112))
+  :method-count-assert 20
+  :size-assert         #xb0
+  :heap-base           #x40
+  :flag-assert         #x14004000b0
+  )
 
-; (deftype cavetrapdoor (process-drawable)
-;   ((delay-before-wiggle int32  :offset-assert 176)
-;    )
-;   :method-count-assert 22
-;   :size-assert         #xb4
-;   :heap-base           #x50
-;   :flag-assert         #x16005000b4
-;   ;; inherited inspect of process-drawable
-;   (:methods
-;     (dummy-9 () none 9)
-;     (dummy-10 () none 10)
-;     (dummy-11 () none 11)
-;     (dummy-12 () none 12)
-;     (dummy-13 () none 13)
-;     (dummy-14 () none 14)
-;     (dummy-15 () none 15)
-;     (dummy-16 () none 16)
-;     (dummy-17 () none 17)
-;     (dummy-18 () none 18)
-;     (dummy-19 () none 19)
-;     (dummy-20 () none 20)
-;     (dummy-21 () none 21)
-;     )
-;   )
+(deftype cavetrapdoor (process-drawable)
+  ((root-override collide-shape-moving :score 100 :offset 112)
+   (delay-before-wiggle int32  :offset-assert 176)
+   )
+  :method-count-assert 22
+  :size-assert         #xb4
+  :heap-base           #x50
+  :flag-assert         #x16005000b4
+  (:methods
+    (idle () _type_ :state 20)
+    (trigger () _type_ :state 21)
+    )
+  )
 
-; (deftype caveflamepots (process-drawable)
-;   ((shove-up           float     :offset-assert 176)
-;    (cycle-speed        int32     :offset-assert 180)
-;    (cycle-pause        int32     :offset-assert 184)
-;    (cycle-offset       uint32    :offset-assert 188)
-;    (was-deadly?        basic     :offset-assert 192)
-;    (should-play-sound? basic     :offset-assert 196)
-;    (launch-pos         UNKNOWN 2 :offset-assert 208)
-;    )
-;   :method-count-assert 20
-;   :size-assert         #xf0
-;   :heap-base           #x80
-;   :flag-assert         #x14008000f0
-;   ;; inherited inspect of process-drawable
-;   (:methods
-;     (dummy-9 () none 9)
-;     (dummy-10 () none 10)
-;     (dummy-11 () none 11)
-;     (dummy-12 () none 12)
-;     (dummy-13 () none 13)
-;     (dummy-14 () none 14)
-;     (dummy-15 () none 15)
-;     (dummy-16 () none 16)
-;     (dummy-17 () none 17)
-;     (dummy-18 () none 18)
-;     (dummy-19 () none 19)
-;     )
-;   )
+(deftype caveflamepots (process-drawable)
+  ((root-override collide-shape :score 100 :offset 112)
+   (shove-up           float     :offset-assert 176)
+   (cycle-speed        int32     :offset-assert 180)
+   (cycle-pause        int32     :offset-assert 184)
+   (cycle-offset       uint32    :offset-assert 188)
+   (was-deadly?        symbol     :offset-assert 192)
+   (should-play-sound? symbol     :offset-assert 196)
+   (launch-pos         vector 2 :inline :offset-assert 208)
+   )
+  :method-count-assert 20
+  :size-assert         #xf0
+  :heap-base           #x80
+  :flag-assert         #x14008000f0
+  )
 
-; (deftype cavespatula (process-drawable)
-;   ((sync sync-info :inline :offset-assert 176)
-;    )
-;   :method-count-assert 20
-;   :size-assert         #xb8
-;   :heap-base           #x50
-;   :flag-assert         #x14005000b8
-;   ;; inherited inspect of process-drawable
-;   (:methods
-;     (dummy-9 () none 9)
-;     (dummy-10 () none 10)
-;     (dummy-11 () none 11)
-;     (dummy-12 () none 12)
-;     (dummy-13 () none 13)
-;     (dummy-14 () none 14)
-;     (dummy-15 () none 15)
-;     (dummy-16 () none 16)
-;     (dummy-17 () none 17)
-;     (dummy-18 () none 18)
-;     (dummy-19 () none 19)
-;     )
-;   )
+(deftype cavespatula (process-drawable)
+  ((root-override collide-shape-moving :score 100 :offset 112)
+   (sync sync-info :inline :offset-assert 176)
+   )
+  :method-count-assert 20
+  :size-assert         #xb8
+  :heap-base           #x50
+  :flag-assert         #x14005000b8
+  )
 
-; (deftype cavespatulatwo (process-drawable)
-;   ((sync sync-info :inline :offset-assert 176)
-;    )
-;   :method-count-assert 20
-;   :size-assert         #xb8
-;   :heap-base           #x50
-;   :flag-assert         #x14005000b8
-;   ;; inherited inspect of process-drawable
-;   (:methods
-;     (dummy-9 () none 9)
-;     (dummy-10 () none 10)
-;     (dummy-11 () none 11)
-;     (dummy-12 () none 12)
-;     (dummy-13 () none 13)
-;     (dummy-14 () none 14)
-;     (dummy-15 () none 15)
-;     (dummy-16 () none 16)
-;     (dummy-17 () none 17)
-;     (dummy-18 () none 18)
-;     (dummy-19 () none 19)
-;     )
-;   )
+(deftype cavespatulatwo (process-drawable)
+  ((root-override collide-shape-moving :score 100 :offset 112)
+   (sync sync-info :inline :offset-assert 176)
+   )
+  :method-count-assert 20
+  :size-assert         #xb8
+  :heap-base           #x50
+  :flag-assert         #x14005000b8
+  )
 
-; (deftype caveelevator (process-drawable)
-;   ((elev-mode               uint64                :offset-assert 176)
-;    (elev-type               int32                 :offset-assert 184)
-;    (prev-frame-num          float                 :offset-assert 188)
-;    (last-update-bounce-time uint64                :offset-assert 192)
-;    (orig-trans              vector        :inline :offset-assert 208)
-;    (sync                    sync-info     :inline :offset-assert 224)
-;    (smush                   smush-control :inline :offset-assert 232)
-;    (anim                    UNKNOWN       2       :offset-assert 264)
-;    (wheel-ry-mat            matrix        :inline :offset-assert 272)
-;    )
-;   :method-count-assert 22
-;   :size-assert         #x150
-;   :heap-base           #xe0
-;   :flag-assert         #x1600e00150
-;   ;; inherited inspect of process-drawable
-;   (:methods
-;     (dummy-9 () none 9)
-;     (dummy-10 () none 10)
-;     (dummy-11 () none 11)
-;     (dummy-12 () none 12)
-;     (dummy-13 () none 13)
-;     (dummy-14 () none 14)
-;     (dummy-15 () none 15)
-;     (dummy-16 () none 16)
-;     (dummy-17 () none 17)
-;     (dummy-18 () none 18)
-;     (dummy-19 () none 19)
-;     (dummy-20 () none 20)
-;     (dummy-21 () none 21)
-;     )
-;   )
+(deftype caveelevator (process-drawable)
+  ((root-override collide-shape-moving :score 100 :offset 112)
+   (elev-mode               uint64                :offset-assert 176)
+   (elev-type               int32                 :offset-assert 184)
+   (prev-frame-num          float                 :offset-assert 188)
+   (last-update-bounce-time uint64                :offset-assert 192)
+   (orig-trans              vector        :inline :offset-assert 208)
+   (sync                    sync-info     :inline :offset-assert 224)
+   (smush                   smush-control :inline :offset-assert 232)
+   (anim                    spool-anim       2    :offset-assert 264)
+   (wheel-ry-mat            matrix        :inline :offset-assert 272)
+   )
+  :method-count-assert 22
+  :size-assert         #x150
+  :heap-base           #xe0
+  :flag-assert         #x1600e00150
+  (:methods
+    (TODO-RENAME-20 (_type_) none 20)
+    (TODO-RENAME-21 (_type_) float 21)
+    )
+  )
 
 ;; - Functions
 
-(define-extern caveelevator-joint-callback function)
-(define-extern cavecrystal-light-control-caveelevator-callback function)
+(define-extern caveelevator-joint-callback (function caveelevator none))
+(define-extern cavecrystal-light-control-caveelevator-callback (function (pointer cavecrystal) int float vector))
 
 ;; - Unknowns
 
 (define-extern *caveelevator-sg* skeleton-group)
-;;(define-extern caveelevator-cycle-active object) ;; unknown type
-;;(define-extern caveelevator-one-way-idle-start object) ;; unknown type
-;;(define-extern caveelevator-one-way-travel-to-start object) ;; unknown type
-;;(define-extern caveelevator-one-way-idle-end object) ;; unknown type
-;;(define-extern caveelevator-one-way-travel-to-end object) ;; unknown type
+(define-extern caveelevator-cycle-active (state caveelevator)) ;; unknown type
+(define-extern caveelevator-one-way-idle-start (state caveelevator)) ;; unknown type
+(define-extern caveelevator-one-way-travel-to-start (state caveelevator)) ;; unknown type
+(define-extern caveelevator-one-way-idle-end (state caveelevator)) ;; unknown type
+(define-extern caveelevator-one-way-travel-to-end (state caveelevator)) ;; unknown type
 (define-extern *cavespatulatwo-sg* skeleton-group)
-;;(define-extern cavespatulatwo-idle object) ;; unknown type
+(define-extern cavespatulatwo-idle (state cavespatulatwo)) ;; unknown type
 (define-extern *cavespatula-darkcave-sg* skeleton-group)
 (define-extern *cavespatula-sg* skeleton-group)
-;;(define-extern cavespatula-idle object) ;; unknown type
-;;(define-extern caveflamepots-active object) ;; unknown type
+(define-extern cavespatula-idle (state cavespatula)) ;; unknown type
+(define-extern caveflamepots-active (state caveflamepots)) ;; unknown type
 (define-extern *cavetrapdoor-sg* skeleton-group)
 (define-extern *cavecrusher-sg* skeleton-group)
-;;(define-extern cavecrusher-idle object) ;; unknown type
-;;(define-extern ripple-for-cave-water object) ;; unknown type
+(define-extern cavecrusher-idle (state cavecrusher)) ;; unknown type
+(define-extern ripple-for-cave-water ripple-wave-set) ;; unknown type
 (define-extern *maincavecam-sg* skeleton-group)
 
 
