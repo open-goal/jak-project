@@ -949,7 +949,7 @@ void Compiler::fill_static_inline_array_inline(const goos::Object& form,
   for (size_t i = 4; i < args.size(); i++) {
     auto arg_idx = i - 4;
     int elt_offset = arg_idx * deref_info.stride;
-    auto& elt_def = args.at(i);
+    auto elt_def = expand_macro_completely(args.at(i), env);
     if (!elt_def.is_list()) {
       throw_compiler_error(form, "Element in static inline-array must be a {}. Got {}",
                            content_type.print(), elt_def.print());

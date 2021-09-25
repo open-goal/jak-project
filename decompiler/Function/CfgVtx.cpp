@@ -1121,7 +1121,7 @@ bool ControlFlowGraph::clean_up_asm_branches() {
       return true;
     }
 
-    if (!b0->end_branch.asm_branch) {
+    if (!b0->end_branch.asm_branch || !b0->end_branch.has_branch) {
       return true;
     }
 

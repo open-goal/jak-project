@@ -156,6 +156,101 @@
   :flag-assert         #x900000010
   )
 
+;; sparticle field macros
+
+(defmacro sp-tex (field-name tex-id)
+  `(new 'static 'sp-field-init-spec :field (sp-field-id ,field-name) :tex ,tex-id)
+  )
+
+(defmacro sp-rnd-flt (field-name val range mult)
+  `(new 'static 'sp-field-init-spec 
+        :field (sp-field-id ,field-name) 
+        :initial-valuef ,val
+        :random-rangef ,range
+        :random-multf ,mult
+        :flags (sp-flag float-with-rand)
+        )
+  )
+
+(defmacro sp-flt (field-name val)
+  `(new 'static 'sp-field-init-spec 
+        :field (sp-field-id ,field-name) 
+        :initial-valuef ,val
+        :random-rangef 0.0
+        :random-multf 1.0
+        :flags (sp-flag float-with-rand)
+        )
+  )
+
+(defmacro sp-int (field-name val)
+  `(new 'static 'sp-field-init-spec
+        :field (sp-field-id ,field-name)
+        :initial-value ,val
+        :random-range 0
+        :random-mult 1
+        )
+  )
+
+(defmacro sp-int-plain-rnd (field-name val range mult)
+  "For when we use plain integer, but set the randoms."
+  `(new 'static 'sp-field-init-spec
+        :field (sp-field-id ,field-name)
+        :initial-value ,val
+        :random-range ,range
+        :random-mult ,mult
+        )
+  )
+
+(defmacro sp-rnd-int (field-name val range mult)
+  `(new 'static 'sp-field-init-spec
+        :field (sp-field-id ,field-name)
+        :initial-value ,val
+        :random-range ,range
+        :random-multf ,mult
+        :flags (sp-flag int-with-rand)
+        )
+  )
+
+(defmacro sp-cpuinfo-flags (&rest flags)
+  `(new 'static 'sp-field-init-spec
+        :field (sp-field-id spt-flags)
+        :initial-value (sp-cpuinfo-flag ,@flags)
+        :random-mult 1
+        )
+  )
+
+(defmacro sp-launcher-by-id (field-name val)
+  `(new 'static 'sp-field-init-spec
+        :field (sp-field-id ,field-name)
+        :initial-value ,val
+        :flags (sp-flag part-by-id)
+        )
+  )
+
+(defmacro sp-func (field-name val)
+  `(new 'static 'sp-field-init-spec
+        :field (sp-field-id ,field-name)
+        :sym ,val
+        :flags (sp-flag from-pointer)
+        )
+  )
+
+(defmacro sp-end ()
+  `(new 'static 'sp-field-init-spec
+        :field (sp-field-id spt-end)
+        )
+  )
+
+(defmacro sp-copy-from-other (field-name offset)
+  `(new 'static 'sp-field-init-spec
+        :field (sp-field-id ,field-name)
+        :initial-value ,offset
+        :random-mult 1
+        :flags (sp-flag copy-from-other-field)
+        )
+  )
+
+
 (deftype sparticle-launcher (basic)
   ((birthaccum float   :offset-assert 4)
    (soundaccum float   :offset-assert 8)
@@ -171,8 +266,8 @@
   :type uint16
   (is-3d 0)
   (bit1 1)
-  (activate-immediately 2)
-  (use-simple-timing 3)
+  (start-dead 2)
+  (launch-asap 3)
   )
 
 (deftype sparticle-group-item (structure)
@@ -226,8 +321,8 @@
   :bitfield #t
   :type uint16
   (use-local-clock 0)
-  (bit1 1) ;; hide
-  (bit2 2) ;; also hide
+  (always-draw 1)
+  (screen-space 2)
   )
 
 (deftype sparticle-launch-group (basic)
@@ -270,3 +365,4 @@
     )
   )
 (set! (-> sparticle-launch-control heap-base) (the-as uint 32))
+
