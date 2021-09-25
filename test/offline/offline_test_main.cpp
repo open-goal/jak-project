@@ -198,11 +198,11 @@ struct decomp_meta {
 
 std::vector<decomp_meta> g_object_files_to_decompile_or_ref_check;
 
-std::vector<std::string> dgos = {"CGO/KERNEL.CGO", "CGO/ENGINE.CGO", "CGO/GAME.CGO", "DGO/BEA.DGO",
-                                 "DGO/INT.DGO",    "DGO/VI1.DGO",    "DGO/VI2.DGO",  "DGO/VI3.DGO",
-                                 "DGO/CIT.DGO",    "DGO/MIS.DGO",    "DGO/JUB.DGO",  "DGO/SUN.DGO",
-                                 "DGO/DEM.DGO",    "DGO/FIN.DGO",    "DGO/JUN.DGO",  "DGO/FIC.DGO",
-                                 "DGO/OGR.DGO",    "DGO/DAR.DGO",    "DGO/SWA.DGO",  "DGO/MAI.DGO"};
+std::vector<std::string> dgos = {
+    "CGO/KERNEL.CGO", "CGO/ENGINE.CGO", "CGO/GAME.CGO", "DGO/BEA.DGO", "DGO/INT.DGO", "DGO/VI1.DGO",
+    "DGO/VI2.DGO",    "DGO/VI3.DGO",    "DGO/CIT.DGO",  "DGO/MIS.DGO", "DGO/JUB.DGO", "DGO/SUN.DGO",
+    "DGO/DEM.DGO",    "DGO/FIN.DGO",    "DGO/JUN.DGO",  "DGO/FIC.DGO", "DGO/OGR.DGO", "DGO/DAR.DGO",
+    "DGO/SWA.DGO",    "DGO/MAI.DGO",    "DGO/SNO.DGO"};
 
 }  // namespace
 
