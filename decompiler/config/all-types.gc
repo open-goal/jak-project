@@ -19629,7 +19629,7 @@
 (define-extern *deathcam-sg* skeleton-group)
 ;;(define-extern *smack-mods* object) ;; unknown type
 ;;(define-extern *smack-up-mods* object) ;; unknown type
-;;(define-extern target-title object) ;; unknown type
+(define-extern target-title (state target)) ;; unknown type
 (define-extern target-demo (state target)) ;; unknown type
 (define-extern target-warp-in (state target)) ;; unknown type
 ;;(define-extern *auto-continue* object) ;; unknown type
@@ -40779,52 +40779,51 @@
 ;; - Types
 
 (deftype logo (process-drawable)
-  ((camera      uint64  :offset-assert 176)
-   (camera-anim uint64  :offset-assert 184)
-   (volumes     uint64  :offset-assert 192)
-   (black       uint64  :offset-assert 200)
-   (target      uint64  :offset-assert 208)
-   (sidekick    uint64  :offset-assert 216)
-   (main-joint  basic   :offset-assert 224)
-   (anim        basic   :offset-assert 228)
-   (next-anim   basic   :offset-assert 232)
-   (done?       basic   :offset-assert 236)
+  ((camera      handle  :offset-assert 176)
+   (camera-anim handle  :offset-assert 184)
+   (volumes     handle  :offset-assert 192)
+   (black       handle  :offset-assert 200)
+   (target      handle  :offset-assert 208)
+   (sidekick    handle  :offset-assert 216)
+   (main-joint  joint-mod   :offset-assert 224)
+   (anim        spool-anim   :offset-assert 228)
+   (next-anim   spool-anim   :offset-assert 232)
+   (done?       symbol   :offset-assert 236)
    )
   :heap-base #x80
   :method-count-assert 24
   :size-assert         #xf0
   :flag-assert         #x18008000f0
-  ;; inherited inspect of process-drawable
   (:methods
-    (dummy-20 () none 20)
-    (dummy-21 () none 21)
-    (dummy-22 () none 22)
-    (dummy-23 () none 23)
+    (idle () _type_ :state 20)
+    (startup () _type_ :state 21)
+    (hidden () _type_ :state 22)
+    (ndi () _type_ :state 23)
     )
   )
 
 (deftype logo-slave (process-drawable)
-  ((main-joint basic  :offset-assert 176)
+  ((parent-process (pointer logo) :score 100 :offset 12)
+   (main-joint joint-mod  :offset-assert 176)
    )
   :heap-base #x50
   :method-count-assert 21
   :size-assert         #xb4
   :flag-assert         #x15005000b4
-  ;; inherited inspect of process-drawable
   (:methods
-    (dummy-20 () none 20)
+    (idle () _type_ :state 20)
     )
   )
 
 ;; - Functions
 
-(define-extern logo-slave-init-by-other function)
-(define-extern logo-init-by-other function)
+(define-extern logo-slave-init-by-other (function entity skeleton-group none :behavior logo-slave))
+(define-extern logo-init-by-other (function entity vector symbol none :behavior logo))
 
 ;; - Unknowns
 
-;;(define-extern target-title-play object) ;; unknown type
-;;(define-extern target-title-wait object) ;; unknown type
+(define-extern target-title-play (state target)) ;; unknown type
+(define-extern target-title-wait (state target)) ;; unknown type
 (define-extern *logo-japan-sg* skeleton-group)
 (define-extern *logo-sg* skeleton-group)
 (define-extern *ndi-sg* skeleton-group)
