@@ -125,7 +125,7 @@ void TextureRecord::unload_from_gpu() {
   glBindTexture(GL_TEXTURE_2D, tex_id);
   glDeleteTextures(1, &tex_id);
   on_gpu = false;
-  gpu_texture = 9988776655443322;
+  gpu_texture = -1;
 }
 
 std::vector<std::shared_ptr<TextureRecord>> TexturePool::convert_textures(const u8* tpage,
@@ -396,8 +396,8 @@ void TexturePool::upload_to_gpu(TextureRecord* tex) {
   // we have to set these, imgui won't do it automatically
   glActiveTexture(GL_TEXTURE0);
   glBindTexture(GL_TEXTURE_2D, tex->gpu_texture);
-  glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP);
-  glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP);
+  glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+  glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
   glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
   glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
 

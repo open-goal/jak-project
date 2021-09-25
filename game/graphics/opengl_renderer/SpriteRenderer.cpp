@@ -2,6 +2,11 @@
 #include "third-party/imgui/imgui.h"
 #include "SpriteRenderer.h"
 
+namespace {
+/*!
+ * Make sure that the DMA Transfer is a VIF unpack (copy data to VIF memory) with the given
+ * setup. This is for a transfer with STCYCL followed by UNPACK.
+ */
 bool verify_unpack_with_stcycl(const DmaTransfer& transfer,
                                VifCode::Kind unpack_kind,
                                u16 cl,
@@ -47,6 +52,10 @@ bool verify_unpack_with_stcycl(const DmaTransfer& transfer,
   return true;
 }
 
+/*!
+ * Make sure that the DMA transfer is a VIF unpack with the given setup.
+ * This is for when there's just an UNPACK.
+ */
 bool verify_unpack_no_stcycl(const DmaTransfer& transfer,
                              VifCode::Kind unpack_kind,
                              u32 qwc,
@@ -84,6 +93,10 @@ bool verify_unpack_no_stcycl(const DmaTransfer& transfer,
   return true;
 }
 
+/*!
+ * Verify the DMA transfer is a VIF unpack (with no STCYCL tag).
+ * Then, unpack the data to dst.
+ */
 void unpack_to_no_stcycl(void* dst,
                          const DmaTransfer& transfer,
                          VifCode::Kind unpack_kind,
@@ -97,6 +110,9 @@ void unpack_to_no_stcycl(void* dst,
   memcpy(dst, transfer.data, size_bytes);
 }
 
+/*!
+ * Does the next DMA transfer look like it could be the start of a 2D group?
+ */
 bool looks_like_2d_chunk_start(const DmaFollower& dma) {
   return dma.current_tag().qwc == 1 && dma.current_tag().kind == DmaTag::Kind::CNT;
 }
@@ -106,7 +122,7 @@ bool looks_like_2d_chunk_start(const DmaFollower& dma) {
  * Returns the number of sprites.
  * Advances 1 dma transfer
  */
-u32 process_header(DmaFollower& dma) {
+u32 process_sprite_chunk_header(DmaFollower& dma) {
   auto transfer = dma.read_and_advance();
   // note that flg = true, this should use double buffering
   bool ok = verify_unpack_with_stcycl(transfer, VifCode::Kind::UNPACK_V4_32, 4, 4, 1,
@@ -117,6 +133,7 @@ u32 process_header(DmaFollower& dma) {
   assert(header[0] <= SpriteRenderer::SPRITES_PER_CHUNK);
   return header[0];
 }
+}  // namespace
 
 SpriteRenderer::SpriteRenderer(const std::string& name, BucketId my_id)
     : BucketRenderer(name, my_id),
@@ -229,6 +246,9 @@ void SpriteRenderer::render_fake_shadow(DmaFollower& dma) {
   assert(nop_flushe.vifcode1().kind == VifCode::Kind::FLUSHE);
 }
 
+/*!
+ * Handle DMA data for group1 2d's (HUD)
+ */
 void SpriteRenderer::render_2d_group1(DmaFollower& dma, SharedRenderState* render_state) {
   // one time matrix data upload
   auto mat_upload = dma.read_and_advance();
@@ -238,13 +258,13 @@ void SpriteRenderer::render_2d_group1(DmaFollower& dma, SharedRenderState* rende
   assert(mat_upload.size_bytes == sizeof(m_hud_matrix_data));
   memcpy(&m_hud_matrix_data, mat_upload.data, sizeof(m_hud_matrix_data));
 
-  // might need something smarter here...
+  // loop through chunks.
   while (looks_like_2d_chunk_start(dma)) {
     m_debug_stats.blocks_2d_grp1++;
     // 4 packets per chunk
 
     // first is the header
-    u32 sprite_count = process_header(dma);
+    u32 sprite_count = process_sprite_chunk_header(dma);
     m_debug_stats.count_2d_grp1 += sprite_count;
 
     // second is the vector data
@@ -267,7 +287,7 @@ void SpriteRenderer::render_2d_group1(DmaFollower& dma, SharedRenderState* rende
     assert(run.vifcode1().kind == VifCode::Kind::MSCAL);
     assert(run.vifcode1().immediate == SpriteProgMem::Sprites2dHud);
     if (m_enabled) {
-      do_2d_group1_block(sprite_count, render_state);
+      do_2d_group1_block_cpu(sprite_count, render_state);
     }
   }
 }
@@ -370,7 +390,15 @@ void imgui_vec(const Vector4f& vec, const char* name = nullptr, int indent = 0) 
 }
 }  // namespace
 
-void SpriteRenderer::do_2d_group1_block(u32 count, SharedRenderState* render_state) {
+/*!
+ * Render the sprites!
+ * This is a somewhat inefficient way to do it:
+ * The VU program is (poorly) translated to C, then the gs packet is sent to a DirectRenderer.
+ * In the future we should make a sprite-specific renderer which would have some benefits:
+ *  - do this math on the GPU
+ *  - special case the primitive buffer stuff
+ */
+void SpriteRenderer::do_2d_group1_block_cpu(u32 count, SharedRenderState* render_state) {
   if (m_extra_debug) {
     ImGui::Begin("Sprite Extra Debug");
   }
@@ -427,13 +455,6 @@ void SpriteRenderer::do_2d_group1_block(u32 count, SharedRenderState* render_sta
 
     // multiplications from the right column
     Vector4f transformed_pos_vf02 = matrix_transform(camera_matrix, pos_vf01);
-    if (m_extra_debug) {
-      //      for (int i = 0; i < 4; i++) {
-      //        imgui_vec(camera_matrix.col(i), fmt::format("cam col {}", i).c_str(), 2);
-      //      }
-      //      imgui_vec(pos_vf01, "inpos");
-      //      imgui_vec(hvdf_offset, "offset");
-    }
 
     Vector4f scales_vf01 = pos_vf01;  // now used for something else.
     //  lq.xyzw vf12, 1020(vi00)   |  mulaw.xyzw ACC, vf28, vf00
@@ -453,9 +474,6 @@ void SpriteRenderer::do_2d_group1_block(u32 count, SharedRenderState* render_sta
     //  nop                        |  nop
     //  div Q, vf31.x, vf02.w      |  muly.z vf05, vf05, vf31
     float Q = m_frame_data.pfog0 / transformed_pos_vf02.w();
-    //    if (m_extra_debug) {
-    //      ImGui::Text("Q fog is %f from %f", Q, transformed_pos_vf02.w());
-    //    }
     flags_vf05.z() *= m_frame_data.deg_to_rad;
     //  nop                        |  mul.xyzw vf03, vf02, vf29
     Vector4f scaled_pos_vf03 = transformed_pos_vf02.elementwise_multiply(m_frame_data.hmge_scale);
@@ -495,10 +513,10 @@ void SpriteRenderer::do_2d_group1_block(u32 count, SharedRenderState* render_sta
     //  ibne vi00, vi01, L10       |  addz.x vf01, vf00, vf01
     scales_vf01.x() = scales_vf01.z();  // = sy
     if (fmand_result) {
-      //      if (m_extra_debug) {
-      //        ImGui::Text("rejected due to fmand, sprite idx %d\n", sprite_idx);
-      //      }
-      //      color_vf11.w() = 127;
+      if (m_extra_debug) {
+        ImGui::TextColored(ImVec4(0.8, 0.2, 0.2, 1.0), "fmand reject");
+        ImGui::Separator();
+      }
       continue;  // reject!
     }
 
@@ -558,9 +576,6 @@ void SpriteRenderer::do_2d_group1_block(u32 count, SharedRenderState* render_sta
     //  ilw.x vi07, -2(vi02)       |  madd.xyzw vf05, vf16, vf14
     auto flag_vi07 = m_vec_data_2d[sprite_idx].flag();
     Vector4f vf05_sincos(0, 0, std::sin(flags_vf05.z()), std::cos(flags_vf05.z()));
-    //    if (m_extra_debug) {
-    //      imgui_vec(vf05_sincos, "vf05", 2); // ok
-    //    }
 
     //  lq.xyzw vf30, 904(vi08)    |  nop
     // pipline
@@ -598,10 +613,6 @@ void SpriteRenderer::do_2d_group1_block(u32 count, SharedRenderState* render_sta
     //  lq.xyzw vf22, 983(vi07)    |  msubz.xyzw vf12, vf18, vf05
     Vector4f xy3_vf22 = xy_array[3];
     Vector4f vf12_rotated = acc - (basis_y_vf18 * vf05_sincos.z());
-    //    if (m_extra_debug) {
-    //      imgui_vec(vf12_rotated, "vf12 before scale", 2);
-    //    }
-
     //  sq.xyzw vf11, 3(vi05)      |  mulaz.xyzw ACC, vf17, vf05
     // EIGHTH is color integer
     packet.color = color_integer_vf11;
@@ -620,6 +631,10 @@ void SpriteRenderer::do_2d_group1_block(u32 count, SharedRenderState* render_sta
 
     //  ibne vi00, vi01, L9        |  muly.z vf24, vf24, vf31 (pipeline)
     if (fcand_result) {
+      if (m_extra_debug) {
+        ImGui::TextColored(ImVec4(0.8, 0.2, 0.2, 1.0), "fcand reject");
+        ImGui::Separator();
+      }
       continue;  // reject (could move earlier)
     }
 
@@ -640,10 +655,6 @@ void SpriteRenderer::do_2d_group1_block(u32 count, SharedRenderState* render_sta
     // SEVENTH is giftag2
     packet.sprite_giftag = m_frame_data.sprite_2d_giftag2;
     acc += vf12_rotated * xy0_vf19.x();
-
-    //    if (m_extra_debug) {
-    //      ImGui::Text("vf10 z: %f", offset_pos_vf10.z());
-    //    }
 
     //  lq.xyzw vf06, 988(vi00)    |  maddy.xyzw vf19, vf13, vf19
     Vector4f st0_vf06 = m_frame_data.st_array[0];
@@ -724,16 +735,8 @@ void SpriteRenderer::do_2d_group1_block(u32 count, SharedRenderState* render_sta
 
     m_sprite_renderer.render_gif((const u8*)&packet, sizeof(packet), render_state);
     if (m_extra_debug) {
-      //      imgui_vec(xy_array[0], "xy_array", 2);
-      //      imgui_vec(vf12_rotated, "vf12", 2);
-      //      imgui_vec(vf13_rotated_trans, "vf13", 2);
-
-      //      for (auto xy : {xy0_vf19, xy1_vf20, xy2_vf21, xy3_vf22}) {
-      //        ImGui::Text("  %f %f %f %f", xy.x(), xy.y(), xy.z(), xy.w());
-      //      }
-      //      for (auto xy : {packet.xy0, packet.xy1, packet.xy2, packet.xy3}) {
-      //        ImGui::Text("  %8d %8d %8d %8d", xy.x(), xy.y(), xy.z(), xy.w());
-      //      }
+      imgui_vec(vf12_rotated, "vf12", 2);
+      imgui_vec(vf13_rotated_trans, "vf13", 2);
       ImGui::Separator();
     }
 

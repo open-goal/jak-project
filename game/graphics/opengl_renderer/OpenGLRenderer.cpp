@@ -7,7 +7,6 @@
 #include "game/graphics/opengl_renderer/TextureUploadHandler.h"
 #include "third-party/imgui/imgui.h"
 
-
 // for the vif callback
 #include "game/kernel/kmachine.h"
 

@@ -18,11 +18,10 @@
  */
 class DirectRenderer : public BucketRenderer {
  public:
-
   // specializations of direct renderer to handle certain outputs.
   enum class Mode {
-    NORMAL, // use for general debug drawing, font.
-    SPRITE_CPU // use for sprites (does the appropriate alpha test)
+    NORMAL,     // use for general debug drawing, font.
+    SPRITE_CPU  // use for sprites (does the appropriate alpha test)
   };
   DirectRenderer(const std::string& name, BucketId my_id, int batch_size, Mode mode);
   ~DirectRenderer();

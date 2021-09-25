@@ -302,7 +302,7 @@ void DirectRenderer::update_gl_blend() {
 
 void DirectRenderer::update_gl_test() {
   const auto& state = m_test_state;
-  glEnable(GL_DEPTH_TEST);  // TODO HACK
+  glEnable(GL_DEPTH_TEST);
   if (state.zte) {
     switch (state.ztst) {
       case GsTest::ZTest::NEVER:
@@ -598,9 +598,6 @@ void DirectRenderer::handle_tex0_1(u64 val, SharedRenderState* render_state) {
   // tw: assume they got it right
   // th: assume they got it right
 
-  // these mean that the texture is multiplied, and uses the alpha from the clut.
-  // assert(reg.tcc() == 1);
-
   assert(reg.tfx() == GsTex0::TextureFunction::MODULATE);
 
   // cbp: assume they got it right
@@ -642,11 +639,6 @@ void DirectRenderer::handle_xyzf2_packed(const u8* data, SharedRenderState* rend
   memcpy(&upper, data + 8, 8);
   u32 z = (upper >> 4) & 0xffffff;
 
-  if (m_my_id != BucketId::SPRITE) {
-    if (z == 0) {
-      fmt::print("z is zero 0x{:8x}\n", upper);
-    }
-  }
   u8 f = (upper >> 36);
   bool adc = upper & (1ull << 47);
   assert(!adc);
@@ -856,16 +848,10 @@ void DirectRenderer::handle_xyzf2_common(u32 x,
 }
 
 void DirectRenderer::handle_xyzf2(u64 val, SharedRenderState* render_state) {
-  // m_prim_buffer.rgba_u8[m_prim_buffer.vert_count] = m_prim_building.rgba;
-
   u32 x = val & 0xffff;
   u32 y = (val >> 16) & 0xffff;
   u32 z = (val >> 32) & 0xffffff;
   u32 f = (val >> 56) & 0xff;
-
-  if (f) {
-    fmt::print("fz: {} {}\n", f, z);
-  }
 
   handle_xyzf2_common(x, y, z, f, render_state);
 }

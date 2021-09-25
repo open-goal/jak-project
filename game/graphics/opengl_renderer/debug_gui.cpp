@@ -61,6 +61,12 @@ void FrameTimeRecorder::draw_window(const DmaStats& dma_stats) {
           return me->m_frame_times[(me->m_idx + idx) % SIZE];
         },
         (void*)this, SIZE, 0, nullptr, 0, 20., ImVec2(300, 40));
+
+    ImGui::Checkbox("Run", &m_play);
+    ImGui::SameLine();
+    if (ImGui::Button("Single Frame Advance")) {
+      m_single_frame = true;
+    }
   }
   ImGui::End();
 }

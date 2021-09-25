@@ -370,9 +370,9 @@ _call_goal8_asm_linux:
 
   ;; set GOAL function pointer
   mov r13, rcx
-  ;; offset
+  ;; st
   mov r14, r8
-  ;; symbol table
+  ;; offset
   mov r15, r9
   ;; move function to temp
   mov rax, rdi
@@ -497,6 +497,74 @@ _call_goal_asm_win32:
   pop rbx
   pop rdx
   
+  ret
+
+global _call_goal8_asm_win32
+
+_call_goal8_asm_win32:
+  push rdx    ; 8
+  push rbx    ; 16
+  push rbp    ; 24
+  push rsi    ; 32
+  push rdi    ; 40
+  push r8     ; 48
+  push r9     ; 56
+  push r10    ; 64
+  push r11    ; 72
+  push r12    ; 80
+  push r13    ; 88
+  push r14    ; 96
+  push r15    ; 104
+
+  sub rsp, 16
+  movups [rsp], xmm6
+  sub rsp, 16
+  movups [rsp], xmm7
+
+ ;; mov rdi, rcx ;; rdi is GOAL first argument, rcx is windows first argument
+ ;; mov rsi, rdx ;; rsi is GOAL second argument, rdx is windows second argument
+ ;; mov rdx, r8  ;; rdx is GOAL third argument, r8 is windows third argument
+ ;; mov r13, r9  ;; r13 is GOAL fp, r9 is windows fourth argument
+ ;; mov r15, [rsp + 184] ;; symbol table
+ ;; mov r14, [rsp + 176] ;; offset
+
+ ;; call r13
+
+  mov r13, r9 ;; pp
+  mov r15, [rsp + 184] ;; symbol table
+  mov r14, [rsp + 176] ;; offset
+  mov rax, rcx ;; func temp
+  mov rsi, rdx ;; arg table
+  mov rdi, [rsi + 0]  ;; 0
+  mov rdx, [rsi + 16] ;; 2
+  mov rcx, [rsi + 24] ;; 3
+  mov r8, [rsi + 32]  ;; 4
+  mov r9, [rsi + 40]  ;; 5
+  mov r10, [rsi + 48] ;; 6
+  mov r11, [rsi + 56]  ;; 7
+  mov rsi, [rsi + 8] ;; 1 (do this last)
+  ;; call GOAL by function pointer
+  call rax
+
+  movups xmm7, [rsp]
+  add rsp, 16
+  movups xmm6, [rsp]
+  add rsp, 16
+
+  pop r15
+  pop r14
+  pop r13
+  pop r12
+  pop r11
+  pop r10
+  pop r9
+  pop r8
+  pop rdi
+  pop rsi
+  pop rbp
+  pop rbx
+  pop rdx
+
   ret
 
 global _call_goal_on_stack_asm_win32

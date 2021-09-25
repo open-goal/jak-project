@@ -59,6 +59,10 @@ struct GifTag {
   u64 data[2];
 };
 
+struct AdGif {
+  GifTag giftag[5];
+};
+
 std::string reg_descriptor_name(GifTag::RegisterDescriptor reg);
 
 enum class GsRegisterAddress : u8 {

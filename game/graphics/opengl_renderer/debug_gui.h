@@ -1,5 +1,10 @@
 #pragma once
 
+/*!
+ * @file debug_gui.h
+ * The debug menu-bar and frame timing window
+ */
+
 #include "common/util/Timer.h"
 #include "game/graphics/dma/dma.h"
 
@@ -10,12 +15,22 @@ class FrameTimeRecorder {
   void finish_frame();
   void start_frame();
   void draw_window(const DmaStats& dma_stats);
+  bool should_advance_frame() {
+    if (m_single_frame) {
+      m_single_frame = false;
+      return true;
+    }
+    return m_play;
+  }
 
  private:
-  float m_frame_times[SIZE];
+  float m_frame_times[SIZE] = {0};
   int m_idx = 0;
   Timer m_timer;
   bool m_open = true;
+
+  bool m_play = true;
+  bool m_single_frame = false;
 };
 
 class OpenGlDebugGui {
@@ -28,6 +43,8 @@ class OpenGlDebugGui {
   bool& want_dump_replay() { return m_want_replay; }
   bool& want_dump_load() { return m_want_dump_load; }
   const char* dump_name() const { return m_dump_save_name; }
+
+  bool should_advance_frame() { return m_frame_timer.should_advance_frame(); }
 
  private:
   FrameTimeRecorder m_frame_timer;

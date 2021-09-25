@@ -15,6 +15,7 @@ extern u8* g_ee_main_mem;
 
 extern "C" {
 u64 _call_goal8_asm_linux(void* func, u64* arg_array, u64 zero, u64 pp, u64 st, void* off);
+u64 _call_goal8_asm_win32(void* func, u64* arg_array, u64 zero, u64 pp, u64 st, void* off);
 }
 
 namespace Mips2C {
@@ -254,7 +255,8 @@ struct ExecutionContext {
     gprs[v0].du64[0] = _call_goal8_asm_linux(g_ee_main_mem + addr, args, 0, gprs[s6].du64[0],
                                              gprs[s7].du64[0], g_ee_main_mem);
 #elif _WIN32
-    assert(false);  // todo, implement
+    gprs[v0].du64[0] = _call_goal8_asm_win32(g_ee_main_mem + addr, args, 0, gprs[s6].du64[0],
+                                             gprs[s7].du64[0], g_ee_main_mem);
 #endif
   }
 

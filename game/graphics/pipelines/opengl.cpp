@@ -208,12 +208,6 @@ void make_gfx_dump() {
   file_util::write_binary_file(
       file_util::get_file_path({"gfx_dumps", g_gfx_data->debug_gui.dump_name()}), compressed.data(),
       compressed.size());
-
-  Timer tim2;
-  auto compressed2 = compression::compress_zstd(g_ee_main_mem + EE_MAIN_MEM_LOW_PROTECT,
-                                                EE_MAIN_MEM_SIZE - EE_MAIN_MEM_LOW_PROTECT);
-  lg::info("Compressed2: {:.1f} ms, {:.3f} MB base \n", tim2.getMs(),
-           (double)compressed2.size() / (1 << 20));
 }
 
 void render_game_frame(int width, int height) {
@@ -292,16 +286,12 @@ static void gl_render_display(GfxDisplay* display) {
   ImGui_ImplGlfw_NewFrame();
   ImGui::NewFrame();
 
-  // clear
-  glClearColor(0.0, 0.0, 0.0, 0.0);
-  glClear(GL_COLOR_BUFFER_BIT);
-
   int width, height;
   glfwGetFramebufferSize(window, &width, &height);
 
   if (g_gfx_data->debug_gui.want_dump_replay()) {
     render_dump_frame(width, height);
-  } else {
+  } else if (g_gfx_data->debug_gui.should_advance_frame()) {
     render_game_frame(width, height);
   }
 

@@ -208,9 +208,8 @@ inline u32 rgba16_to_rgba32(u32 in) {
   u32 g = ((in >> 5) & 0b11111) * ratio;
   u32 b = ((in >> 10) & 0b11111) * ratio;
 
-  // this value depends on ta1.
+  // rgba has only 1 bit for a and how it gets converted depends on the value of ta1.
   // for now, it looks like they always use 0x80, so this is fine.
-  // if we find a counter example, we may want to premultiply the alphas.
   u32 a = (in & 0x8000) ? 0x80 : 0;
 
   return (a << 24) | (b << 16) | (g << 8) | r;

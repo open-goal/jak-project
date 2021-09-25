@@ -511,9 +511,6 @@ bool ControlFlowGraph::is_while_loop(CfgVtx* b0, CfgVtx* b1, CfgVtx* b2) {
   if (b1->prev != b0)
     return false;
 
-  if (debug)
-    fmt::print("made it here\n");
-
   //  // check branch to condition at the beginning
   if (b0->succ_ft)
     return false;
@@ -1139,14 +1136,9 @@ bool ControlFlowGraph::clean_up_asm_branches() {
 
     // don't want to combine two with an incoming edge in between.
     if (b1->pred.size() > 1) {
-      fmt::print("reject {} {} case 1. Preds are:\n", b0->to_string(), b1->to_string());
-      for (auto& p : b1->pred) {
-        fmt::print("  {}\n", p->to_string());
-      }
       return true;
     } else {
       if (b1->pred.size() == 1 && !b1->has_pred(b1->prev)) {
-        fmt::print("reject {} {} case 2\n", b0->to_string(), b1->to_string());
         return true;
       }
     }

@@ -54,7 +54,7 @@ struct VifCode {
     BASE = 0b11,
     ITOP = 0b100,
     STMOD = 0b101,
-    PC_PORT = 0b1000,
+    PC_PORT = 0b1000,  // not a valid PS2 VIF code, but we use this to signal PC-PORT specific stuff
     MSK3PATH = 0b110,
     MARK = 0b111,
     FLUSHE = 0b10000,
@@ -106,6 +106,6 @@ struct VifCodeUnpack {
   }
 
   u16 addr_qw;
-  bool is_unsigned;  // only care for 8/16 bit data.
-  bool use_tops_flag;
+  bool is_unsigned;    // only care for 8/16 bit data.
+  bool use_tops_flag;  // uses double buffering
 };
