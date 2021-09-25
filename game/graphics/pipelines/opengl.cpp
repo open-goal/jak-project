@@ -5,7 +5,6 @@
 
 #include <memory>
 #include <mutex>
-#include <sys/mman.h>
 #include <condition_variable>
 
 #include "third-party/imgui/imgui.h"
