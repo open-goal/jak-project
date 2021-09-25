@@ -49,6 +49,10 @@ void TextureRecord::serialize(Serializer& ser) {
   ser.from_ptr(&gpu_texture);
   ser.from_ptr(&dest);
   ser.from_pod_vector(&data);
+  ser.from_ptr(&min_a_zero);
+  ser.from_ptr(&max_a_zero);
+  ser.from_ptr(&min_a_nonzero);
+  ser.from_ptr(&max_a_nonzero);
 }
 
 void TextureData::serialize(Serializer& ser) {
@@ -198,11 +202,38 @@ std::vector<std::shared_ptr<TextureRecord>> TexturePool::convert_textures(const 
           m_tex_converter.download_rgba8888(texture_record->data.data(), tex.dest[mip_idx],
                                             tex.width[mip_idx], ww, hh, tex.psm, tex.clutpsm,
                                             tex.clut_dest, size_bytes);
+
+          u8 max_a_zero = 0;
+          u8 min_a_zero = 255;
+          u8 max_a_nonzero = 0;
+          u8 min_a_nonzero = 255;
+          for (u32 i = 0; i < ww * hh; i++) {
+            u8 r = texture_record->data[i * 4 + 0];
+            u8 g = texture_record->data[i * 4 + 1];
+            u8 b = texture_record->data[i * 4 + 2];
+            u8 a = texture_record->data[i * 4 + 3];
+            if (r || g || b) {
+              max_a_nonzero = std::max(max_a_nonzero, a);
+              min_a_nonzero = std::min(min_a_nonzero, a);
+            } else {
+              max_a_zero = std::max(max_a_zero, a);
+              min_a_zero = std::min(min_a_zero, a);
+            }
+          }
+          texture_record->max_a_zero = max_a_zero;
+          texture_record->min_a_zero = min_a_zero;
+          texture_record->max_a_nonzero = max_a_nonzero;
+          texture_record->min_a_nonzero = min_a_nonzero;
+
           if (texture_record->name == "selector" || texture_record->name == "next") {
             fmt::print("{}: {} {} {} {}\n", texture_record->name, tex.psm, tex.clutpsm,
                        tex.clut_dest * 256 / 4,
                        texture_page.segment[0].dest + ((sizes[0] + sizes[1] + 255) / 256) * 256);
           }
+
+          fmt::print("TEX: {} nz ({}, {}) z ({}, {}0\n", texture_record->name,
+                     texture_record->min_a_nonzero, texture_record->max_a_nonzero,
+                     texture_record->min_a_zero, texture_record->max_a_zero);
 
           // Debug output.
           if (dump_textures_to_file) {

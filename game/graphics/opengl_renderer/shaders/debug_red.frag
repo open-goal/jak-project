@@ -1,5 +1,9 @@
 #version 330 core
 
-void main() {
+out vec4 color;
 
+in vec4 fragment_color;
+
+void main() {
+  color = fragment_color;
 }

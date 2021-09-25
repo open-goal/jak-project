@@ -18,7 +18,13 @@
  */
 class DirectRenderer : public BucketRenderer {
  public:
-  DirectRenderer(const std::string& name, BucketId my_id, int batch_size);
+
+  // specializations of direct renderer to handle certain outputs.
+  enum class Mode {
+    NORMAL, // use for general debug drawing, font.
+    SPRITE_CPU // use for sprites (does the appropriate alpha test)
+  };
+  DirectRenderer(const std::string& name, BucketId my_id, int batch_size, Mode mode);
   ~DirectRenderer();
   void render(DmaFollower& dma, SharedRenderState* render_state) override;
 
@@ -179,4 +185,11 @@ class DirectRenderer : public BucketRenderer {
   bool m_prim_gl_state_needs_gl_update = true;
   bool m_test_state_needs_gl_update = true;
   bool m_blend_state_needs_gl_update = true;
+
+  struct SpriteMode {
+    bool do_first_draw = true;
+    bool do_second_draw = true;
+  } m_sprite_mode;
+
+  Mode m_mode;
 };

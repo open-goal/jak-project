@@ -5,8 +5,8 @@
 #include "game/graphics/pipelines/opengl.h"
 #include "third-party/imgui/imgui.h"
 
-DirectRenderer::DirectRenderer(const std::string& name, BucketId my_id, int batch_size)
-    : BucketRenderer(name, my_id), m_prim_buffer(batch_size) {
+DirectRenderer::DirectRenderer(const std::string& name, BucketId my_id, int batch_size, Mode mode)
+    : BucketRenderer(name, my_id), m_prim_buffer(batch_size), m_mode(mode) {
   glGenBuffers(1, &m_ogl.vertex_buffer);
   glGenBuffers(1, &m_ogl.color_buffer);
   glGenBuffers(1, &m_ogl.st_buffer);
@@ -68,6 +68,12 @@ void DirectRenderer::draw_debug_window() {
   ImGui::SameLine();
   ImGui::Checkbox("always", &m_debug_state.always_draw);
 
+  if (m_mode == Mode::SPRITE_CPU) {
+    ImGui::Checkbox("draw1", &m_sprite_mode.do_first_draw);
+    ImGui::SameLine();
+    ImGui::Checkbox("draw2", &m_sprite_mode.do_second_draw);
+  }
+
   ImGui::Text("Triangles: %d", m_triangles);
   ImGui::SameLine();
   ImGui::Text("Draws: %d", m_draw_calls);
@@ -75,7 +81,7 @@ void DirectRenderer::draw_debug_window() {
 
 float u32_to_float(u32 in) {
   double x = (double)in / UINT32_MAX;
-  return x * 2 - 1;
+  return x;
 }
 
 float u32_to_sc(u32 in) {
@@ -181,10 +187,30 @@ void DirectRenderer::flush_pending(SharedRenderState* render_state) {
     glActiveTexture(GL_TEXTURE0);
   }
   // assert(false);
-  glDrawArrays(GL_TRIANGLES, 0, m_prim_buffer.vert_count);
+
+  int draw_count = 0;
+  if (m_mode == Mode::SPRITE_CPU) {
+    assert(m_texture_state.tcc);
+    assert(m_prim_gl_state.texture_enable);
+    if (m_sprite_mode.do_first_draw) {
+      glDrawArrays(GL_TRIANGLES, 0, m_prim_buffer.vert_count);
+      draw_count++;
+    }
+    if (m_sprite_mode.do_second_draw) {
+      render_state->shaders[ShaderId::SPRITE_CPU_AFAIL].activate();
+      glDepthMask(GL_FALSE);
+      glDrawArrays(GL_TRIANGLES, 0, m_prim_buffer.vert_count);
+      glDepthMask(GL_TRUE);
+      draw_count++;
+    }
+  } else {
+    glDrawArrays(GL_TRIANGLES, 0, m_prim_buffer.vert_count);
+    draw_count++;
+  }
+
   glBindVertexArray(0);
-  m_triangles += m_prim_buffer.vert_count / 3;
-  m_draw_calls++;
+  m_triangles += draw_count * (m_prim_buffer.vert_count / 3);
+  m_draw_calls += draw_count;
   m_prim_buffer.vert_count = 0;
 
   glDeleteVertexArrays(1, &vao);
@@ -195,7 +221,11 @@ void DirectRenderer::update_gl_prim(SharedRenderState* render_state) {
   const auto& state = m_prim_gl_state;
   if (state.texture_enable) {
     if (m_texture_state.tcc) {
-      render_state->shaders[ShaderId::DIRECT_BASIC_TEXTURED].activate();
+      if (m_mode == Mode::SPRITE_CPU) {
+        render_state->shaders[ShaderId::SPRITE_CPU].activate();
+      } else {
+        render_state->shaders[ShaderId::DIRECT_BASIC_TEXTURED].activate();
+      }
     } else {
       render_state->shaders[ShaderId::DIRECT_BASIC_TEXTURED_TCC0].activate();
     }
@@ -237,11 +267,11 @@ void DirectRenderer::update_gl_texture(SharedRenderState* render_state) {
 
   glActiveTexture(GL_TEXTURE0);
   glBindTexture(GL_TEXTURE_2D, tex->gpu_texture);
-  // TODO these wrappings are probably wrong.
-  glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP);
-  glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP);
-  glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST); // TODO linear again.
-  glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+  // Note: CLAMP and CLAMP_TO_EDGE are different...
+  glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+  glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+  glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+  glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
   glUniform1i(
       glGetUniformLocation(render_state->shaders[ShaderId::DIRECT_BASIC_TEXTURED].id(), "T0"), 0);
 }
@@ -272,7 +302,7 @@ void DirectRenderer::update_gl_blend() {
 
 void DirectRenderer::update_gl_test() {
   const auto& state = m_test_state;
-  glDisable(GL_DEPTH_TEST);  // TODO HACK
+  glEnable(GL_DEPTH_TEST);  // TODO HACK
   if (state.zte) {
     switch (state.ztst) {
       case GsTest::ZTest::NEVER:
@@ -611,15 +641,17 @@ void DirectRenderer::handle_xyzf2_packed(const u8* data, SharedRenderState* rend
   u64 upper;
   memcpy(&upper, data + 8, 8);
   u32 z = (upper >> 4) & 0xffffff;
+
+  if (m_my_id != BucketId::SPRITE) {
+    if (z == 0) {
+      fmt::print("z is zero 0x{:8x}\n", upper);
+    }
+  }
   u8 f = (upper >> 36);
   bool adc = upper & (1ull << 47);
   assert(!adc);
   //  assert(!f);
   handle_xyzf2_common(x, y, z, f, render_state);
-}
-
-void debug_print_vtx(const math::Vector<u32, 3>& vtx) {
-  fmt::print("{} {}\n", u32_to_float(vtx.x()), u32_to_float(vtx.y()));
 }
 
 void DirectRenderer::handle_zbuf1(u64 val, SharedRenderState* render_state) {
@@ -630,16 +662,20 @@ void DirectRenderer::handle_zbuf1(u64 val, SharedRenderState* render_state) {
   assert(x.zbp() == 448);
 
   bool write = !x.zmsk();
+  //  assert(write);
 
   if (write != m_test_state.depth_writes) {
     flush_pending(render_state);
     m_test_state_needs_gl_update = true;
-    m_test_state.depth_writes = write;
+    m_test_state.depth_writes = !write;
   }
 }
 
 void DirectRenderer::handle_test1(u64 val, SharedRenderState* render_state) {
   GsTest reg(val);
+  assert(!reg.alpha_test_enable());
+  assert(!reg.date());
+  assert(!(val & 1));
   if (m_test_state.current_register != reg) {
     flush_pending(render_state);
     m_test_state.from_register(reg);
@@ -703,16 +739,16 @@ void DirectRenderer::handle_xyzf2_common(u32 x,
                                          u32 z,
                                          u8 f,
                                          SharedRenderState* render_state) {
+  assert(z < (1 << 24));
   (void)f;  // TODO: do something with this.
   if (m_prim_buffer.is_full()) {
     flush_pending(render_state);
   }
 
   //  assert(f == 0);
-
   m_prim_building.building_st.at(m_prim_building.building_idx) = m_prim_building.st_reg;
   m_prim_building.building_rgba.at(m_prim_building.building_idx) = m_prim_building.rgba_reg;
-  m_prim_building.building_vert.at(m_prim_building.building_idx) = {x << 16, y << 16, z};
+  m_prim_building.building_vert.at(m_prim_building.building_idx) = {x << 16, y << 16, z << 8};
   m_prim_building.building_idx++;
 
   switch (m_prim_building.kind) {
@@ -826,6 +862,10 @@ void DirectRenderer::handle_xyzf2(u64 val, SharedRenderState* render_state) {
   u32 y = (val >> 16) & 0xffff;
   u32 z = (val >> 32) & 0xffffff;
   u32 f = (val >> 56) & 0xff;
+
+  if (f) {
+    fmt::print("fz: {} {}\n", f, z);
+  }
 
   handle_xyzf2_common(x, y, z, f, render_state);
 }

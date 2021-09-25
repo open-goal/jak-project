@@ -123,7 +123,7 @@ class SpriteRenderer : public BucketRenderer {
   static constexpr int SPRITES_PER_CHUNK = 48;
 
  private:
-  void render_distorter(DmaFollower& dma);
+  void render_distorter(DmaFollower& dma, SharedRenderState* render_state);
   void handle_sprite_frame_setup(DmaFollower& dma);
   void render_3d(DmaFollower& dma);
   void render_2d_group0(DmaFollower& dma);
@@ -147,5 +147,6 @@ class SpriteRenderer : public BucketRenderer {
 
   bool m_extra_debug = false;
 
+  DirectRenderer m_sprite_renderer;
   DirectRenderer m_direct_renderer;
 };

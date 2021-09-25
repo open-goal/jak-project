@@ -21,6 +21,8 @@ struct TextureRecord {
   u64 gpu_texture = 0;
   u32 dest = -1;
 
+  u8 min_a_zero, max_a_zero, min_a_nonzero, max_a_nonzero;
+
   void unload_from_gpu();
 
   void serialize(Serializer& ser);

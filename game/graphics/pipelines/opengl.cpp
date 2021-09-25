@@ -152,6 +152,7 @@ static std::shared_ptr<GfxDisplay> gl_make_main_display(int width,
   glfwSwapInterval(settings.vsync);
 
   SetDisplayCallbacks(window);
+  Pad::initialize();
 
   if (HasError()) {
     lg::error("gl_make_main_display error");
@@ -284,6 +285,7 @@ static void gl_render_display(GfxDisplay* display) {
   // poll events
   glfwPollEvents();
   glfwMakeContextCurrent(window);
+  Pad::update_gamepads();
 
   // imgui start of frame
   ImGui_ImplOpenGL3_NewFrame();

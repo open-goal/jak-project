@@ -119,14 +119,26 @@ u32 process_header(DmaFollower& dma) {
 }
 
 SpriteRenderer::SpriteRenderer(const std::string& name, BucketId my_id)
-    : BucketRenderer(name, my_id), m_direct_renderer(fmt::format("{}.direct", name), my_id, 100) {}
+    : BucketRenderer(name, my_id),
+      m_sprite_renderer(fmt::format("{}.sprites", name),
+                        my_id,
+                        100,
+                        DirectRenderer::Mode::SPRITE_CPU),
+      m_direct_renderer(fmt::format("{}.direct", name), my_id, 100, DirectRenderer::Mode::NORMAL) {}
 
 /*!
  * Run the sprite distorter.  Currently nothing uses sprite-distorter so this just skips through
  * the table upload stuff that runs every frame, even if there are no sprites.
  */
-void SpriteRenderer::render_distorter(DmaFollower& dma) {
+void SpriteRenderer::render_distorter(DmaFollower& dma, SharedRenderState* render_state) {
   // Next thing should be the sprite-distorter setup
+  m_direct_renderer.reset_state();
+  while (dma.current_tag().qwc != 7) {
+    auto direct_data = dma.read_and_advance();
+    m_direct_renderer.render_vif(direct_data.vif0(), direct_data.vif1(), direct_data.data,
+                                 direct_data.size_bytes, render_state);
+  }
+  m_direct_renderer.flush_pending(render_state);
   auto sprite_distorter_direct_setup = dma.read_and_advance();
   assert(sprite_distorter_direct_setup.vifcode0().kind == VifCode::Kind::NOP);
   assert(sprite_distorter_direct_setup.vifcode1().kind == VifCode::Kind::DIRECT);
@@ -278,7 +290,7 @@ void SpriteRenderer::render(DmaFollower& dma, SharedRenderState* render_state) {
   }
 
   // First is the distorter
-  render_distorter(dma);
+  render_distorter(dma, render_state);
 
   // next, sprite frame setup.
   handle_sprite_frame_setup(dma);
@@ -293,9 +305,9 @@ void SpriteRenderer::render(DmaFollower& dma, SharedRenderState* render_state) {
   render_fake_shadow(dma);
 
   // 2d draw (HUD)
-  m_direct_renderer.reset_state();
+  m_sprite_renderer.reset_state();
   render_2d_group1(dma, render_state);
-  m_direct_renderer.flush_pending(render_state);
+  m_sprite_renderer.flush_pending(render_state);
 
   // TODO finish this up.
   // fmt::print("next bucket is 0x{}\n", render_state->next_bucket);
@@ -317,7 +329,7 @@ void SpriteRenderer::draw_debug_window() {
               m_debug_stats.count_2d_grp1);
   ImGui::Checkbox("Extra Debug", &m_extra_debug);
   if (ImGui::TreeNode("direct")) {
-    m_direct_renderer.draw_debug_window();
+    m_sprite_renderer.draw_debug_window();
     ImGui::TreePop();
   }
 }
@@ -416,12 +428,11 @@ void SpriteRenderer::do_2d_group1_block(u32 count, SharedRenderState* render_sta
     // multiplications from the right column
     Vector4f transformed_pos_vf02 = matrix_transform(camera_matrix, pos_vf01);
     if (m_extra_debug) {
-      for (int i = 0; i < 4; i++) {
-        imgui_vec(camera_matrix.col(i), fmt::format("cam col {}", i).c_str(), 2);
-      }
-      imgui_vec(pos_vf01, "inpos");
-      imgui_vec(transformed_pos_vf02, "xf");
-      imgui_vec(color_vf11, "rgba");
+      //      for (int i = 0; i < 4; i++) {
+      //        imgui_vec(camera_matrix.col(i), fmt::format("cam col {}", i).c_str(), 2);
+      //      }
+      //      imgui_vec(pos_vf01, "inpos");
+      //      imgui_vec(hvdf_offset, "offset");
     }
 
     Vector4f scales_vf01 = pos_vf01;  // now used for something else.
@@ -477,16 +488,16 @@ void SpriteRenderer::do_2d_group1_block(u32 count, SharedRenderState* render_sta
     transformed_pos_vf02.y() *= Q;
     transformed_pos_vf02.z() *= Q;
 
-    if (m_extra_debug) {
-      imgui_vec(transformed_pos_vf02, "scaled xf");
-    }
+    //    if (m_extra_debug) {
+    //      imgui_vec(transformed_pos_vf02, "scaled xf");
+    //    }
 
     //  ibne vi00, vi01, L10       |  addz.x vf01, vf00, vf01
     scales_vf01.x() = scales_vf01.z();  // = sy
     if (fmand_result) {
-      if (m_extra_debug) {
-        ImGui::Text("rejected due to fmand, sprite idx %d\n", sprite_idx);
-      }
+      //      if (m_extra_debug) {
+      //        ImGui::Text("rejected due to fmand, sprite idx %d\n", sprite_idx);
+      //      }
       //      color_vf11.w() = 127;
       continue;  // reject!
     }
@@ -499,6 +510,12 @@ void SpriteRenderer::do_2d_group1_block(u32 count, SharedRenderState* render_sta
     //  lqi.xyzw vf08, vi03        |  add.xyzw vf10, vf02, vf30
     // vf08 is second user adgif
     Vector4f offset_pos_vf10 = transformed_pos_vf02 + hvdf_offset;
+    //    if (m_extra_debug) {
+    //      ImGui::Text("sel %d", offset_selector);
+    //      //ImGui::Text("hvdf off z: %f tf/w z: %f", hvdf_offset.z(), transformed_pos_vf02.z());
+    //      imgui_vec(hvdf_offset, "hvdf");
+    //      imgui_vec(transformed_pos_vf02, "tf'd");
+    //    }
 
     //  lqi.xyzw vf09, vi03        |  mulw.x vf01, vf01, vf01
     // vf09 is third user adgif
@@ -624,6 +641,10 @@ void SpriteRenderer::do_2d_group1_block(u32 count, SharedRenderState* render_sta
     packet.sprite_giftag = m_frame_data.sprite_2d_giftag2;
     acc += vf12_rotated * xy0_vf19.x();
 
+    //    if (m_extra_debug) {
+    //      ImGui::Text("vf10 z: %f", offset_pos_vf10.z());
+    //    }
+
     //  lq.xyzw vf06, 988(vi00)    |  maddy.xyzw vf19, vf13, vf19
     Vector4f st0_vf06 = m_frame_data.st_array[0];
     xy0_vf19 = acc + vf13_rotated_trans * xy0_vf19.y();
@@ -682,6 +703,12 @@ void SpriteRenderer::do_2d_group1_block(u32 count, SharedRenderState* render_sta
     //  (pipeline)
     auto xy3_vf22_int = (xy3_vf22 * 16.f).cast<s32>();
 
+    if (m_extra_debug) {
+      u32 zi = xy3_vf22_int.z() >> 4;
+      ImGui::Text("z (int): 0x%08x %s", zi, zi >= (1 << 24) ? "bad" : "");
+      ImGui::Text("z (flt): %f", (double)(((u32)zi) << 8) / UINT32_MAX);
+    }
+
     //  sq.xyzw vf19, 2(vi05)      |  mulz.z vf04, vf24, vf24 (pipeline)
     // TENTH is xy0int
     packet.xy0 = xy0_vf19_int;
@@ -695,18 +722,18 @@ void SpriteRenderer::do_2d_group1_block(u32 count, SharedRenderState* render_sta
     // SIXTEEN is xy3int
     packet.xy3 = xy3_vf22_int;
 
-    m_direct_renderer.render_gif((const u8*)&packet, sizeof(packet), render_state);
+    m_sprite_renderer.render_gif((const u8*)&packet, sizeof(packet), render_state);
     if (m_extra_debug) {
-      imgui_vec(xy_array[0], "xy_array", 2);
-      imgui_vec(vf12_rotated, "vf12", 2);
-      imgui_vec(vf13_rotated_trans, "vf13", 2);
+      //      imgui_vec(xy_array[0], "xy_array", 2);
+      //      imgui_vec(vf12_rotated, "vf12", 2);
+      //      imgui_vec(vf13_rotated_trans, "vf13", 2);
 
       //      for (auto xy : {xy0_vf19, xy1_vf20, xy2_vf21, xy3_vf22}) {
       //        ImGui::Text("  %f %f %f %f", xy.x(), xy.y(), xy.z(), xy.w());
       //      }
-      for (auto xy : {packet.xy0, packet.xy1, packet.xy2, packet.xy3}) {
-        ImGui::Text("  %8d %8d %8d %8d", xy.x(), xy.y(), xy.z(), xy.w());
-      }
+      //      for (auto xy : {packet.xy0, packet.xy1, packet.xy2, packet.xy3}) {
+      //        ImGui::Text("  %8d %8d %8d %8d", xy.x(), xy.y(), xy.z(), xy.w());
+      //      }
       ImGui::Separator();
     }
 
