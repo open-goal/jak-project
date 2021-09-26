@@ -6,12 +6,16 @@
 #include "common/util/assert.h"
 
 namespace compression {
+
+/*!
+ * Compress data with zstd.  There is an 8-byte header containing the decompressed data's size.
+ */
 std::vector<u8> compress_zstd(const void* data, size_t size) {
   auto max_compressed = ZSTD_compressBound(size);
   std::vector<u8> result(sizeof(size_t) + max_compressed);
   memcpy(result.data(), &size, sizeof(size_t));
-  auto compressed_size = ZSTD_compress(result.data() + sizeof(size_t), max_compressed, data, size,
-                                       ZSTD_CLEVEL_DEFAULT);
+  auto compressed_size =
+      ZSTD_compress(result.data() + sizeof(size_t), max_compressed, data, size, 1);
   if (ZSTD_isError(compressed_size)) {
     printf("ZSTD error: %s\n", ZSTD_getErrorName(compressed_size));
     assert(false);
@@ -20,6 +24,10 @@ std::vector<u8> compress_zstd(const void* data, size_t size) {
   return result;
 }
 
+/*!
+ * Decompress data with zstd.  The first 8-bytes of the data should be a header containing the
+ * decompressed data's size.
+ */
 std::vector<u8> decompress_zstd(const void* data, size_t size) {
   assert(size >= sizeof(size_t));
   size_t decompressed_size;

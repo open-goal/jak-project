@@ -461,7 +461,9 @@ Val* Compiler::compile_bitfield_definition(const goos::Object& form,
       auto xmm_temp = fe->make_ireg(TypeSpec("object"), RegClass::INT_128);
 
       for (auto& def : dynamic_defs) {
-        auto field_val = compile_error_guard(def.definition, env)->to_gpr(def.definition, env);
+        auto field_val_in = compile_error_guard(def.definition, env)->to_gpr(def.definition, env);
+        auto field_val = env->make_gpr(field_val_in->type());
+        env->emit_ir<IR_RegSet>(form, field_val, field_val_in);
         if (!m_ts.tc(def.expected_type, field_val->type())) {
           throw_compiler_error(form, "Typecheck failed for bitfield {}! Got a {} but expected a {}",
                                def.field_name, field_val->type().print(),
@@ -501,7 +503,9 @@ Val* Compiler::compile_bitfield_definition(const goos::Object& form,
     } else {
       RegVal* integer_reg = integer->to_gpr(form, env);
       for (auto& def : dynamic_defs) {
-        auto field_val = compile_error_guard(def.definition, env)->to_gpr(def.definition, env);
+        auto field_val_in = compile_error_guard(def.definition, env)->to_gpr(def.definition, env);
+        auto field_val = env->make_gpr(field_val_in->type());
+        env->emit_ir<IR_RegSet>(form, field_val, field_val_in);
         if (!m_ts.tc(def.expected_type, field_val->type())) {
           throw_compiler_error(form, "Typecheck failed for bitfield {}! Got a {} but expected a {}",
                                def.field_name, field_val->type().print(),
@@ -945,7 +949,7 @@ void Compiler::fill_static_inline_array_inline(const goos::Object& form,
   for (size_t i = 4; i < args.size(); i++) {
     auto arg_idx = i - 4;
     int elt_offset = arg_idx * deref_info.stride;
-    auto& elt_def = args.at(i);
+    auto elt_def = expand_macro_completely(args.at(i), env);
     if (!elt_def.is_list()) {
       throw_compiler_error(form, "Element in static inline-array must be a {}. Got {}",
                            content_type.print(), elt_def.print());

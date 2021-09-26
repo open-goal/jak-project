@@ -5,6 +5,38 @@
 ;; name in dgo: drawable
 ;; dgos: GAME, ENGINE
 
+(defun sphere-in-view-frustum? ((arg0 sphere))
+  (local-vars (r0-0 uint128) (v1-1 uint128) (v1-2 uint128) (v1-3 uint128))
+  (rlet ((acc :class vf)
+         (vf0 :class vf)
+         (vf1 :class vf)
+         (vf2 :class vf)
+         (vf3 :class vf)
+         (vf4 :class vf)
+         (vf5 :class vf)
+         (vf6 :class vf)
+         )
+   (init-vf0-vector)
+   (set! r0-0 (the uint128 0))
+   (let ((v1-0 *math-camera*))
+    (.lvf vf6 (&-> arg0 quad))
+    (.lvf vf1 (&-> v1-0 plane 0 quad))
+    (.lvf vf2 (&-> v1-0 plane 1 quad))
+    (.lvf vf3 (&-> v1-0 plane 2 quad))
+    (.lvf vf4 (&-> v1-0 plane 3 quad))
+    )
+   (.mul.x.vf acc vf1 vf6)
+   (.add.mul.y.vf acc vf2 vf6 acc)
+   (.add.mul.z.vf acc vf3 vf6 acc)
+   (.sub.mul.w.vf vf5 vf4 vf0 acc)
+   (.add.w.vf vf5 vf5 vf6)
+   (.mov v1-1 vf5)
+   (.pcgtw v1-2 r0-0 v1-1)
+   (.ppach v1-3 r0-0 v1-2)
+   (zero? (the-as int v1-3))
+   )
+  )
+
 (defun real-main-draw-hook ()
   (when *slow-frame-rate*
     (dotimes (v1-2 #xc3500)
@@ -17,10 +49,111 @@
       )
     )
   "Function to be executed to set up for engine dma"
+  (set! *vu1-enable-user* *vu1-enable-user-menu*)
+  (set! *texture-enable-user* *texture-enable-user-menu*)
+  ;; todo debug memory
+  ;; todo shrub matrix
+  ;; todo generic init
+  
+  ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+  ;; texture uploads
+  ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+  
+  ;; tfrag
+
+  (when (logtest? *texture-enable-user* 1)
+   (dotimes (gp-1 (-> *level* length))
+    (let ((a1-2 (-> *level* level gp-1)))
+     (if (= (-> a1-2 status) 'active)
+      (add-tex-to-dma! *texture-pool* a1-2 0)
+      )
+     )
+    )
+   )
+  
+  ;; pris
+
+  (when (logtest? *texture-enable-user* 2)
+   (dotimes (gp-2 (-> *level* length))
+    (let ((a1-3 (-> *level* level gp-2)))
+     (if (= (-> a1-3 status) 'active)
+      (add-tex-to-dma! *texture-pool* a1-3 1)
+      )
+     )
+    )
+   )
+  
+  ;; shrub
+
+  (when (logtest? *texture-enable-user* 4)
+   (dotimes (gp-3 (-> *level* length))
+    (let ((a1-4 (-> *level* level gp-3)))
+     (if (= (-> a1-4 status) 'active)
+      (add-tex-to-dma! *texture-pool* a1-4 2)
+      )
+     )
+    )
+   )
+  
+  ;; alpha and common.
+  (when (logtest? *texture-enable-user* 8)
+   (let ((uploaded-common #f))
+    (dotimes (gp-4 (-> *level* length))
+     (let ((a1-5 (-> *level* level gp-4)))
+      (when (= (-> a1-5 status) 'active)
+       (add-tex-to-dma! *texture-pool* a1-5 3)
+       (when (not uploaded-common)
+        (upload-one-common! *texture-pool* (-> *level* level0))
+        (set! uploaded-common #t)
+        )
+       )
+      )
+     )
+    (when (not uploaded-common)
+     (upload-one-common! *texture-pool* (-> *level* level0))
+     #t
+     )
+    )
+   )
+  
+  ;; water.
+  (when (logtest? *texture-enable-user* 16)
+   (dotimes (gp-5 (-> *level* length))
+    (let ((a1-8 (-> *level* level gp-5)))
+     (if (= (-> a1-8 status) 'active)
+      (add-tex-to-dma! *texture-pool* a1-8 4)
+      )
+     )
+    )
+   )
+  
+  ;; texture common
+  ;; sky
+  ;; tod update
+  ;; closest
+  ;; ocean
+  ;; merc
+  ;; init bg
+  ;; exec bg
+  ;; finish bg
+  ;; stats
+  ;; fg engine
+  ;; bones
+  ;; gmerc
+  ;; shadow
+  ;; eyes
+  (when (logtest? #x10000 *vu1-enable-user*)
+    (swap-fake-shadow-buffers)
+    (sprite-draw *display*)
+    )
   ;; lots more in this function.
   (when *debug-segment*
     (debug-draw-actors *level* *display-actor-marks*)
+    ;; collide-shape-debug
     )
+  ;; boundaries
+  ;; method15 level
+  ;; collide stats
   )
 
 (defun main-draw-hook ()
@@ -542,5 +675,4 @@
   (none)
   )
 
-(define-extern sphere-in-view-frustum? (function vector symbol))
 

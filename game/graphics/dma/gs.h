@@ -54,8 +54,13 @@ struct GifTag {
   std::string print() const;
 
   GifTag(const u8* ptr) { memcpy(data, ptr, 16); }
+  GifTag() = default;
 
   u64 data[2];
+};
+
+struct AdGif {
+  GifTag giftag[5];
 };
 
 std::string reg_descriptor_name(GifTag::RegisterDescriptor reg);
@@ -247,6 +252,8 @@ struct GsPrim {
 
   bool operator==(const GsPrim& other) const { return data == other.data; }
   bool operator!=(const GsPrim& other) const { return data != other.data; }
+
+  std::string print() const;
 };
 
 struct GsTex0 {

@@ -5,9 +5,139 @@
 ;; name in dgo: sparticle-launcher-h
 ;; dgos: GAME, ENGINE
 
+
+;; The "sparticle" system is the particle system.
+;; Features
+;; - Support for 2D particles (autosave icon, progress menu graphics)
+;; - Support for 3D particles (many of the effects)
+;; - Uses the "sprite" renderer to draw particles
+
+;; The "sparticle-launcher" code is the framework for describing particle effects
+;; The "sparticle" code is the system that runs particles
+;; Note that neither of these link particles to the process system. See part-tracker for that.
+
+;; The higheset level class here is sparticle-launch-control.
+;; Each instance of a particle effect must have one of these.
+;; For example, there would be one of these per eco-vent.
+;; These store some state (a sparticle-launch-state) and a reference to a sparticle-launch-group
+;; Multiple launch-controls can refer to the same launch-group.
+
+
+;; A sparticle-launch-group is a description of a particle effect.
+;; It can contain multiple types of particles.
+;; The `*part-group-id-table*` array stores a reference to every launch-group, indexed by group id.
+;; Each launch-group is just a list of sparticle-launchers, stored as an index
+
+;; A launcher is a single particle effect. 
+;; The `*part-id-table*` has references to all particle effects.
+;; It contains a list of "field-init-specs".  When the particle effect starts, the system
+;; iterates through this list and sets parameters about particles.
+
+;; There are five types of fields:
+;; misc fields
+;; sprite fields
+;; cpu fields
+;; launch fields
+;; weird fields
+
+;; The built-in parameters can be used for many simple effects, but sometimes it is not enough.
+;; You can provide a callback function to update the particle's state if needed.
+
+;; These are the user-settable state variables for each particle effect
+(defenum sp-field-id
+  :type uint16
+  
+  (misc-fields-start 0)
+  (spt-texture 1)
+  (spt-anim 2)
+  (spt-anim-speed 3)
+  (spt-birth-func 4)
+  (spt-joint/refpoint 5)
+  (spt-num 6)
+  (spt-sound 7)
+  (misc-fields-end 8)
+  
+  (sprite-fields-start 9)
+  (spt-x 10)
+  (spt-y 11)
+  (spt-z 12)
+  (spt-scale-x 13)
+  (spt-rot-x 14)
+  (spt-rot-y 15)
+  (spt-rot-z 16)
+  (spt-scale-y 17)
+  (spt-r 18)
+  (spt-g 19)
+  (spt-b 20)
+  (spt-a 21)
+  (sprite-fields-end 22)
+  
+  (cpu-fields-start 23)
+  (spt-omega 24)
+  (spt-vel-x 25)
+  (spt-vel-y 26)
+  (spt-vel-z 27)
+  (spt-scalevel-x 28)
+  (spt-rotvel-x 29)
+  (spt-rotvel-y 30)
+  (spt-rotvel-z 31)
+  (spt-scalevel-y 32)
+  (spt-fade-r 33)
+  (spt-fade-g 34)
+  (spt-fade-b 35)
+  (spt-fade-a 36)
+  (spt-accel-x 37)
+  (spt-accel-y 38)
+  (spt-accel-z 39)
+  (spt-dummy 40)
+  (spt-quat-x 41)
+  (spt-quat-y 42)
+  (spt-quat-z 43)
+  (spt-quad-w 44)
+  (spt-friction 45)
+  (spt-timer 46)
+  (spt-flags 47)
+  (spt-userdata 48)
+  (spt-func 49)
+  (spt-next-time 50)
+  (spt-next-launcher 51)
+  (cpu-fields-end 52)
+  
+  (launch-fields-start 53)
+  (spt-launchrot-x 54)
+  (spt-launchrot-y 55)
+  (spt-launchrot-z 56)
+  (spt-launchrot-w 57)
+  (spt-conerot-x 58)
+  (spt-conerot-y 59)
+  (spt-conerot-z 60)
+  (spt-conerot-w 61)
+  (spt-conerot-radius 62)
+  (spt-rotate-y 63)
+  (launch-fields-end 64)
+  
+  (spt-scale 65)
+  (spt-scalevel 66)
+  (spt-end 67)
+  )
+
+(defenum sp-flag
+  :type uint16
+  (plain-v1 0) ;; just a plain signed integer. No random crap.
+  (float-with-rand 1)
+  (int-with-rand 2)
+  (copy-from-other-field 3)
+  (plain-v2 4)
+  (from-pointer 5)
+  (part-by-id 6)
+  )
+
+;; This describes the initial value and some more info for a single field
+;; Note that there are overlays here and some values only make sense in some
+;; cases.
 (deftype sp-field-init-spec (structure)
-  ((field          uint16  :offset-assert 0)
-   (flags          uint16  :offset-assert 2)
+  ((field          sp-field-id  :offset-assert 0)
+   (flags          sp-flag  :offset-assert 2)
    (initial-valuef float   :offset-assert 4)
    (random-rangef  float   :offset-assert 8)
    (random-multf   float   :offset-assert 12)
@@ -26,6 +156,112 @@
   :flag-assert         #x900000010
   )
 
+;; sparticle field macros
+
+(defmacro sp-tex (field-name tex-id)
+  `(new 'static 'sp-field-init-spec :field (sp-field-id ,field-name) :tex ,tex-id)
+  )
+
+(defmacro sp-rnd-flt (field-name val range mult)
+  `(new 'static 'sp-field-init-spec 
+        :field (sp-field-id ,field-name) 
+        :initial-valuef ,val
+        :random-rangef ,range
+        :random-multf ,mult
+        :flags (sp-flag float-with-rand)
+        )
+  )
+
+(defmacro sp-flt (field-name val)
+  `(new 'static 'sp-field-init-spec 
+        :field (sp-field-id ,field-name) 
+        :initial-valuef ,val
+        :random-rangef 0.0
+        :random-multf 1.0
+        :flags (sp-flag float-with-rand)
+        )
+  )
+
+(defmacro sp-int (field-name val)
+  `(new 'static 'sp-field-init-spec
+        :field (sp-field-id ,field-name)
+        :initial-value ,val
+        :random-range 0
+        :random-mult 1
+        )
+  )
+
+(defmacro sp-int-plain-rnd (field-name val range mult)
+  "For when we use plain integer, but set the randoms."
+  `(new 'static 'sp-field-init-spec
+        :field (sp-field-id ,field-name)
+        :initial-value ,val
+        :random-range ,range
+        :random-mult ,mult
+        )
+  )
+
+(defmacro sp-rnd-int (field-name val range mult)
+  `(new 'static 'sp-field-init-spec
+        :field (sp-field-id ,field-name)
+        :initial-value ,val
+        :random-range ,range
+        :random-multf ,mult
+        :flags (sp-flag int-with-rand)
+        )
+  )
+
+
+(defmacro sp-rnd-int-flt (field-name val range mult)
+  `(new 'static 'sp-field-init-spec
+        :field (sp-field-id ,field-name)
+        :initial-valuef ,val
+        :random-range ,range
+        :random-multf ,mult
+        :flags (sp-flag int-with-rand)
+        )
+  )
+
+(defmacro sp-cpuinfo-flags (&rest flags)
+  `(new 'static 'sp-field-init-spec
+        :field (sp-field-id spt-flags)
+        :initial-value (sp-cpuinfo-flag ,@flags)
+        :random-mult 1
+        )
+  )
+
+(defmacro sp-launcher-by-id (field-name val)
+  `(new 'static 'sp-field-init-spec
+        :field (sp-field-id ,field-name)
+        :initial-value ,val
+        :flags (sp-flag part-by-id)
+        )
+  )
+
+(defmacro sp-func (field-name val)
+  `(new 'static 'sp-field-init-spec
+        :field (sp-field-id ,field-name)
+        :sym ,val
+        :flags (sp-flag from-pointer)
+        )
+  )
+
+(defmacro sp-end ()
+  `(new 'static 'sp-field-init-spec
+        :field (sp-field-id spt-end)
+        )
+  )
+
+(defmacro sp-copy-from-other (field-name offset)
+  `(new 'static 'sp-field-init-spec
+        :field (sp-field-id ,field-name)
+        :initial-value ,offset
+        :random-mult 1
+        :flags (sp-flag copy-from-other-field)
+        )
+  )
+
+
 (deftype sparticle-launcher (basic)
   ((birthaccum float   :offset-assert 4)
    (soundaccum float   :offset-assert 8)
@@ -36,11 +272,20 @@
   :flag-assert         #x900000010
   )
 
+(defenum sp-group-item-flag
+  :bitfield #t
+  :type uint16
+  (is-3d 0)
+  (bit1 1)
+  (start-dead 2)
+  (launch-asap 3)
+  )
+
 (deftype sparticle-group-item (structure)
   ((launcher   uint32  :offset-assert 0)
    (fade-after meters  :offset-assert 4)
    (falloff-to meters  :offset-assert 8)
-   (flags      uint16  :offset-assert 12)
+   (flags      sp-group-item-flag  :offset-assert 12)
    (period     uint16  :offset-assert 14)
    (length     uint16  :offset-assert 16)
    (offset     uint16  :offset-assert 18)
@@ -52,13 +297,46 @@
   :flag-assert         #x90000001c
   )
 
+(defmacro sp-item (launcher
+                    &key (fade-after 0.0)
+                    &key (falloff-to 0.0)
+                    &key (flags ())
+                    &key (period 0)
+                    &key (length 0)
+                    &key (offset 0)
+                    &key (hour-mask 0)
+                    &key (binding 0)
+                    )
+  `(new 'static 'sparticle-group-item
+        :launcher ,launcher
+        :fade-after ,fade-after
+        :falloff-to ,falloff-to
+        :flags (sp-group-item-flag ,@flags)
+        :period ,period
+        :length ,length
+        :offset ,offset
+        :hour-mask ,hour-mask
+        :binding ,binding
+        )
+  )
+
+(defenum sp-launch-state-flags
+  :bitfield #t
+  :type uint16
+  (launcher-active 0)        ;; active
+  (particles-active 1) ;; wants to launch
+  (bit2 2)
+  )
+
+(declare-type sparticle-cpuinfo structure)
+
 (deftype sparticle-launch-state (structure)
   ((group-item sparticle-group-item  :offset-assert 0)
-   (flags      uint16                :offset-assert 4)
+   (flags      sp-launch-state-flags :offset-assert 4)
    (randomize  uint16                :offset-assert 6)
    (origin     vector                :offset-assert 8)
    (sprite3d   sprite-vec-data-3d    :offset-assert 12)
-   (sprite     basic                 :offset-assert 16)
+   (sprite     sparticle-cpuinfo     :offset-assert 16)
    (offset     uint32                :offset-assert 20)
    (accum      float                 :offset-assert 24)
    (spawn-time uint32                :offset-assert 28)
@@ -73,12 +351,20 @@
   :flag-assert         #x900000020
   )
 
+(defenum sp-group-flag
+  :bitfield #t
+  :type uint16
+  (use-local-clock 0)
+  (always-draw 1)
+  (screen-space 2)
+  )
+
 (deftype sparticle-launch-group (basic)
   ((length          int16          :offset-assert 4)
    (duration        uint16         :offset-assert 6)
    (linger-duration uint16         :offset-assert 8)
-   (flags           uint16         :offset-assert 10)
-   (name            basic          :offset-assert 12)
+   (flags           sp-group-flag  :offset-assert 10)
+   (name            string         :offset-assert 12)
    (launcher        (inline-array sparticle-group-item)         :offset-assert 16)
    (bounds          sphere :inline :offset-assert 32)
    )
@@ -106,10 +392,11 @@
   :flag-assert         #xe00000040
   (:methods
     (initialize (_type_ sparticle-launch-group process) none 9)
-    (dummy-10 () none 10)
-    (dummy-11 (_type_ vector) none 11)
-    (deactivate (_type_) none 12)
-    (dummy-13 () none 13)
+    (is-visible? (_type_ vector) symbol 10)
+    (spawn (_type_ vector) object 11)
+    (kill-and-free-particles (_type_) none 12)
+    (kill-particles (_type_) none 13)
     )
   )
 (set! (-> sparticle-launch-control heap-base) (the-as uint 32))
+

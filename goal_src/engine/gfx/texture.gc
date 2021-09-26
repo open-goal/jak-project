@@ -627,6 +627,7 @@
   ;; allocate the common and near segments
   (allocate-segment! obj (-> obj segment-common) COMMON_SEGMENT_WORDS) ;; ~0.5 MB
   (allocate-segment! obj (-> obj segment-near) NEAR_SEGMENT_WORDS) ;; ~1.6 MB.
+  (format #t "near segment is at ~D to ~d~%" (-> obj segment-near dest) (+ (-> obj segment-near dest) (-> obj segment-near size)))
 
   ;; Allocate the random crap
   (set! *sky-base-vram-word* (allocate-vram-words! obj SPECIAL_VRAM_WORDS))
@@ -799,6 +800,8 @@
    (first-chunk-idx-to-upload int)
    (tex-id uint)
    )
+  
+  
   (let ((total-upload-size 0))
     (with-dma-buffer-add-bucket ((dma-buf (-> (current-frame) global-buf)) ;; the global DMA buffer
                                  bucket-idx)
@@ -843,7 +846,7 @@
       (dotimes (upload-chunk-idx (the-as int chunk-count))
         ;; the destination of the chunk.
         (let ((current-dest-chunk
-               (+ tex-dest-base-chunk (the-as uint upload-chunk-idx))
+                (+ tex-dest-base-chunk (the-as uint upload-chunk-idx))
                 )
               )
           ;; now we see if we can get away with not uploading the chunk.
@@ -860,42 +863,57 @@
                 ((= (-> pool ids current-dest-chunk) tex-id)
                  ;; and the run ends, we found a chunk that's already loaded.
                  ;; so we upload the run:
-                 (upload-vram-data dma-buf
-                                   (the int (shl (+ tex-dest-base-chunk (the-as uint first-chunk-idx-to-upload)) 6))
-                                   (&+ tex-data (shl first-chunk-idx-to-upload 14))
-                                   (shl chunks-to-upload-count 5)
-                                   )
+                 (#when (not PC_PORT)
+                        (upload-vram-data dma-buf
+                                          (the int (shl (+ tex-dest-base-chunk (the-as uint first-chunk-idx-to-upload)) 6))
+                                          (&+ tex-data (shl first-chunk-idx-to-upload 14))
+                                          (shl chunks-to-upload-count 5)
+                                          )
+                        )
+                 
                  (+! total-upload-size chunks-to-upload-count)
                  ;; reset
                  (set! chunks-to-upload-count 0)
                  )
                 (else
-                 ;; the run continues!
-                 (set! (-> pool ids current-dest-chunk) tex-id)
-                 (set! chunks-to-upload-count (+ chunks-to-upload-count 1))
-                 )
+                  ;; the run continues!
+                  (set! (-> pool ids current-dest-chunk) tex-id)
+                  (set! chunks-to-upload-count (+ chunks-to-upload-count 1))
+                  )
                 )
               )
           )
         )
-
+      
       ;; if we finished with a run of "needs upload", set up the upload.
       (when (nonzero? chunks-to-upload-count)
-        (upload-vram-data
-         dma-buf
-         (the int (shl (+ tex-dest-base-chunk (the-as uint first-chunk-idx-to-upload)) 6))
-         (&+ tex-data (shl first-chunk-idx-to-upload 14))
-         (shl chunks-to-upload-count 5)
-         )
+        (#when (not PC_PORT)
+               (upload-vram-data
+                 dma-buf
+                 (the int (shl (+ tex-dest-base-chunk (the-as uint first-chunk-idx-to-upload)) 6))
+                 (&+ tex-data (shl first-chunk-idx-to-upload 14))
+                 (shl chunks-to-upload-count 5)
+                 )
+               )
         (+! total-upload-size chunks-to-upload-count)
         )
 
       ;; do a texflush
 
       ;; send gif (a+d)
-      (dma-buffer-add-gs-set dma-buf
-                          (texflush 1) ;; texflush
-                          )
+      (#when (not PC_PORT)
+             (dma-buffer-add-gs-set dma-buf
+                                    (texflush 1) ;; texflush
+                                    )
+             )
+      
+      ;; in PC PORT we just skip all that stuff and just send a pointer to the texture page and the mode.
+      (#when PC_PORT
+             (dma-buffer-add-cnt-vif2 dma-buf 1 (new 'static 'vif-tag :cmd (vif-cmd pc-port)) (the-as vif-tag 3))
+             (dma-buffer-add-uint64 dma-buf page)
+             (dma-buffer-add-uint64 dma-buf mode)
+             )
+
       )
     (shl total-upload-size 14)
     )
@@ -1580,7 +1598,7 @@
                  (and (nonzero? a2-0) (logtest? (-> obj common-page-mask) (ash 1 v1-0))) ;; in the mask.
                  )
         ;; upload it!
-        (upload-vram-pages obj (-> obj segment-common) a2-0 -2 (bucket-id bucket-65))
+        (upload-vram-pages obj (-> obj segment-common) a2-0 -2 (bucket-id pre-sprite-textures))
         (return #f)
         )
       )
@@ -2080,6 +2098,7 @@
             )
           )
         )
+      ;; (format #t "relocate dests: ~A seg ~D from ~D to ~D~%" obj seg-id (-> obj segment seg-id dest) new-dest)
       (set! (-> obj segment seg-id dest) (the-as uint new-dest))
       )
     )
@@ -2227,7 +2246,9 @@
   "Look up a texture by ID, loading it from debug network if its not loaded.
    Default allocates if it has to load, so it will permanently use VRAM"
   (let ((v1-0 (texture-page-login arg0 texture-page-default-allocate loading-level)))
-   (if (and v1-0 (< (-> arg0 index) (the-as uint (-> v1-0 page length))))
+   (when (and v1-0 (< (-> arg0 index) (the-as uint (-> v1-0 page length))))
+    ;;(format #t "texture:~%")
+    ;;(inspect (-> v1-0 page data (-> arg0 index)))
     (-> v1-0 page data (-> arg0 index))
     )
    )

@@ -22,6 +22,10 @@
 #include "common/log/log.h"
 #include "common/goal_constants.h"
 #include "game/runtime.h"
+#include "common/util/Timer.h"
+#include "game/graphics/opengl_renderer/debug_gui.h"
+#include "common/util/FileUtil.h"
+#include "common/util/compress.h"
 
 namespace {
 
@@ -34,6 +38,7 @@ struct GraphicsData {
   std::mutex dma_mutex;
   std::condition_variable dma_cv;
   u64 frame_idx = 0;
+  u64 frame_idx_of_input_data = 0;
   bool has_data_to_render = false;
   FixedChunkDmaCopier dma_copier;
 
@@ -42,6 +47,15 @@ struct GraphicsData {
 
   // temporary opengl renderer
   OpenGLRenderer ogl_renderer;
+
+  OpenGlDebugGui debug_gui;
+
+  Serializer loaded_dump;
+
+  void serialize(Serializer& ser) {
+    dma_copier.serialize_last_result(ser);
+    ogl_renderer.serialize(ser);
+  }
 
   GraphicsData()
       : dma_copier(EE_MAIN_MEM_SIZE),
@@ -137,6 +151,7 @@ static std::shared_ptr<GfxDisplay> gl_make_main_display(int width,
   glfwSwapInterval(settings.vsync);
 
   SetDisplayCallbacks(window);
+  Pad::initialize();
 
   if (HasError()) {
     lg::error("gl_make_main_display error");
@@ -175,18 +190,26 @@ static void gl_kill_display(GfxDisplay* display) {
   glfwDestroyWindow(display->window_glfw);
 }
 
-static void gl_render_display(GfxDisplay* display) {
-  GLFWwindow* window = display->window_glfw;
+void make_gfx_dump() {
+  Timer ser_timer;
+  Serializer ser;
 
-  // poll events
-  glfwPollEvents();
-  glfwMakeContextCurrent(window);
+  // save the dma chain and renderer state
+  g_gfx_data->serialize(ser);
+  auto result = ser.get_save_result();
+  Timer compression_timer;
+  auto compressed = compression::compress_zstd(result.first, result.second);
+  lg::info("Serialized graphics state in {:.1f} ms, {:.3f} MB, compressed {:.3f} MB {:.1f} ms",
+           ser_timer.getMs(), ((double)result.second) / (1 << 20),
+           ((double)compressed.size() / (1 << 20)), compression_timer.getMs());
 
-  // imgui start of frame
-  ImGui_ImplOpenGL3_NewFrame();
-  ImGui_ImplGlfw_NewFrame();
-  ImGui::NewFrame();
+  file_util::create_dir_if_needed(file_util::get_file_path({"gfx_dumps"}));
+  file_util::write_binary_file(
+      file_util::get_file_path({"gfx_dumps", g_gfx_data->debug_gui.dump_name()}), compressed.data(),
+      compressed.size());
+}
 
+void render_game_frame(int width, int height) {
   // wait for a copied chain.
   bool got_chain = false;
   {
@@ -199,11 +222,21 @@ static void gl_render_display(GfxDisplay* display) {
 
   // render that chain.
   if (got_chain) {
+    //      g_gfx_data->ogl_renderer.render(DmaFollower(g_gfx_data->dma_copier.get_last_input_data(),
+    //                                                  g_gfx_data->dma_copier.get_last_input_offset()),
+    //                                      width, height);
+
+    // we want to serialize before rendering
+    if (g_gfx_data->debug_gui.want_save()) {
+      make_gfx_dump();
+      g_gfx_data->debug_gui.want_save() = false;
+    }
+
     auto& chain = g_gfx_data->dma_copier.get_last_result();
-    int width, height;
-    glfwGetFramebufferSize(window, &width, &height);
+    g_gfx_data->frame_idx_of_input_data = g_gfx_data->frame_idx;
     g_gfx_data->ogl_renderer.render(DmaFollower(chain.data.data(), chain.start_offset), width,
-                                    height);
+                                    height, g_gfx_data->debug_gui.should_draw_render_debug(),
+                                    false);
   }
 
   // before vsync, mark the chain as rendered.
@@ -214,16 +247,65 @@ static void gl_render_display(GfxDisplay* display) {
     g_gfx_data->has_data_to_render = false;
     g_gfx_data->sync_cv.notify_all();
   }
+}
+
+void render_dump_frame(int width, int height) {
+  Timer deser_timer;
+  if (g_gfx_data->debug_gui.want_dump_load()) {
+    auto data = file_util::read_binary_file(
+        file_util::get_file_path({"gfx_dumps", g_gfx_data->debug_gui.dump_name()}));
+    auto decompressed = compression::decompress_zstd(data.data(), data.size());
+    g_gfx_data->loaded_dump = Serializer(decompressed.data(), decompressed.size());
+  }
+
+  g_gfx_data->loaded_dump.reset_load();
+  g_gfx_data->serialize(g_gfx_data->loaded_dump);
+
+  if (g_gfx_data->debug_gui.want_dump_load()) {
+    lg::info("Loaded and deserialized graphics state in {:.1f} ms, {:.3f} MB", deser_timer.getMs(),
+             ((double)g_gfx_data->loaded_dump.data_size()) / (1 << 20));
+  }
+  g_gfx_data->debug_gui.want_dump_load() = false;
+
+  auto& chain = g_gfx_data->dma_copier.get_last_result();
+  g_gfx_data->ogl_renderer.render(DmaFollower(chain.data.data(), chain.start_offset), width, height,
+                                  g_gfx_data->debug_gui.should_draw_render_debug(), true);
+}
+
+static void gl_render_display(GfxDisplay* display) {
+  GLFWwindow* window = display->window_glfw;
+
+  // poll events
+  glfwPollEvents();
+  glfwMakeContextCurrent(window);
+  Pad::update_gamepads();
+
+  // imgui start of frame
+  ImGui_ImplOpenGL3_NewFrame();
+  ImGui_ImplGlfw_NewFrame();
+  ImGui::NewFrame();
+
+  int width, height;
+  glfwGetFramebufferSize(window, &width, &height);
+
+  if (g_gfx_data->debug_gui.want_dump_replay()) {
+    render_dump_frame(width, height);
+  } else if (g_gfx_data->debug_gui.should_advance_frame()) {
+    render_game_frame(width, height);
+  }
 
   // render imgui
+  g_gfx_data->debug_gui.draw(g_gfx_data->dma_copier.get_last_result().stats);
   ImGui::Render();
   ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
 
   // actual vsync
+  g_gfx_data->debug_gui.finish_frame();
   glfwSwapBuffers(window);
+  g_gfx_data->debug_gui.start_frame();
 
   // toggle even odd and wake up engine waiting on vsync.
-  {
+  if (!g_gfx_data->debug_gui.want_dump_replay()) {
     std::unique_lock<std::mutex> lock(g_gfx_data->sync_mutex);
     g_gfx_data->frame_idx++;
 
@@ -247,7 +329,7 @@ u32 gl_vsync() {
   }
 
   std::unique_lock<std::mutex> lock(g_gfx_data->sync_mutex);
-  auto init_frame = g_gfx_data->frame_idx;
+  auto init_frame = g_gfx_data->frame_idx_of_input_data;
   g_gfx_data->sync_cv.wait(lock, [=] { return g_gfx_data->frame_idx > init_frame; });
 
   return g_gfx_data->frame_idx & 1;
@@ -290,9 +372,7 @@ void gl_send_chain(const void* data, u32 offset) {
     // The renderers should just operate on DMA chains, so eliminating this step in the future may
     // be easy.
 
-    // Timer copy_timer;
     g_gfx_data->dma_copier.run(data, offset);
-    // fmt::print("copy took {:.3f}ms\n", copy_timer.getMs());
 
     g_gfx_data->has_data_to_render = true;
     g_gfx_data->dma_cv.notify_all();
@@ -300,7 +380,8 @@ void gl_send_chain(const void* data, u32 offset) {
 }
 
 void gl_texture_upload_now(const u8* tpage, int mode, u32 s7_ptr) {
-  if (g_gfx_data) {
+  // block
+  if (g_gfx_data && !g_gfx_data->debug_gui.want_dump_replay()) {
     // just pass it to the texture pool.
     // the texture pool will take care of locking.
     // we don't want to lock here for the entire duration of the conversion.
@@ -309,7 +390,7 @@ void gl_texture_upload_now(const u8* tpage, int mode, u32 s7_ptr) {
 }
 
 void gl_texture_relocate(u32 destination, u32 source, u32 format) {
-  if (g_gfx_data) {
+  if (g_gfx_data && !g_gfx_data->debug_gui.want_dump_replay()) {
     g_gfx_data->texture_pool->relocate(destination, source, format);
   }
 }

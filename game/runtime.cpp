@@ -253,12 +253,12 @@ void dmac_runner(SystemThreadInterface& iface) {
   iface.initialization_complete();
 
   while (!iface.get_want_exit() && !VM::vm_want_exit()) {
-    for (int i = 0; i < 10; ++i) {
-      if (VM::dmac_ch[i]->chcr.str) {
-        // lg::info("DMA detected on channel {}, clearing", i);
-        VM::dmac_ch[i]->chcr.str = 0;
-      }
-    }
+    //    for (int i = 0; i < 10; ++i) {
+    //      if (VM::dmac_ch[i]->chcr.str) {
+    //        // lg::info("DMA detected on channel {}, clearing", i);
+    //        VM::dmac_ch[i]->chcr.str = 0;
+    //      }
+    //    }
     // avoid running the DMAC on full blast (this does not sync to its clockrate)
     std::this_thread::sleep_for(std::chrono::microseconds(50));
   }
@@ -318,7 +318,7 @@ u32 exec_runtime(int argc, char** argv) {
   // TODO also sync this up with how the game actually renders things (this is just a placeholder)
   if (enable_display) {
     Gfx::Init();
-    Gfx::Loop([&tm]() { return !tm.all_threads_exiting(); });
+    Gfx::Loop([]() { return !MasterExit; });
     Gfx::Exit();
   }
 

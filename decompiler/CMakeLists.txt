@@ -62,6 +62,7 @@ add_library(
         util/data_decompile.cpp
         util/DataParser.cpp
         util/DecompilerTypeSystem.cpp
+        util/sparticle_decompile.cpp
         util/TP_Type.cpp
 
         VuDisasm/VuDisassembler.cpp

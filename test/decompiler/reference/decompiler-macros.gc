@@ -611,3 +611,129 @@
     (-> ,proc main-thread) ,func ,@args
     )
   )
+
+(defmacro sp-item (launcher
+                    &key (fade-after 0.0)
+                    &key (falloff-to 0.0)
+                    &key (flags ())
+                    &key (period 0)
+                    &key (length 0)
+                    &key (offset 0)
+                    &key (hour-mask 0)
+                    &key (binding 0)
+                    )
+  `(new 'static 'sparticle-group-item
+        :launcher ,launcher
+        :fade-after ,fade-after
+        :falloff-to ,falloff-to
+        :flags (sp-group-item-flag ,@flags)
+        :period ,period
+        :length ,length
+        :offset ,offset
+        :hour-mask ,hour-mask
+        :binding ,binding
+        )
+  )
+
+(defmacro sp-tex (field-name tex-id)
+  `(new 'static 'sp-field-init-spec :field (sp-field-id ,field-name) :tex ,tex-id)
+  )
+
+(defmacro sp-rnd-flt (field-name val range mult)
+  `(new 'static 'sp-field-init-spec 
+        :field (sp-field-id ,field-name) 
+        :initial-valuef ,val
+        :random-rangef ,range
+        :random-multf ,mult
+        :flags (sp-flag float-with-rand)
+        )
+  )
+
+(defmacro sp-flt (field-name val)
+  `(new 'static 'sp-field-init-spec 
+        :field (sp-field-id ,field-name) 
+        :initial-valuef ,val
+        :random-rangef 0.0
+        :random-multf 1.0
+        :flags (sp-flag float-with-rand)
+        )
+  )
+
+(defmacro sp-int (field-name val)
+  `(new 'static 'sp-field-init-spec
+        :field (sp-field-id ,field-name)
+        :initial-value ,val
+        :random-range 0
+        :random-mult 1
+        )
+  )
+
+(defmacro sp-int-plain-rnd (field-name val range mult)
+  "For when we use plain integer, but set the randoms."
+  `(new 'static 'sp-field-init-spec
+        :field (sp-field-id ,field-name)
+        :initial-value ,val
+        :random-range ,range
+        :random-mult ,mult
+        )
+  )
+
+(defmacro sp-rnd-int (field-name val range mult)
+  `(new 'static 'sp-field-init-spec
+        :field (sp-field-id ,field-name)
+        :initial-value ,val
+        :random-range ,range
+        :random-multf ,mult
+        :flags (sp-flag int-with-rand)
+        )
+  )
+
+
+(defmacro sp-rnd-int-flt (field-name val range mult)
+  `(new 'static 'sp-field-init-spec
+        :field (sp-field-id ,field-name)
+        :initial-valuef ,val
+        :random-range ,range
+        :random-multf ,mult
+        :flags (sp-flag int-with-rand)
+        )
+  )
+
+(defmacro sp-cpuinfo-flags (&rest flags)
+  `(new 'static 'sp-field-init-spec
+        :field (sp-field-id spt-flags)
+        :initial-value (sp-cpuinfo-flag ,@flags)
+        :random-mult 1
+        )
+  )
+
+(defmacro sp-launcher-by-id (field-name val)
+  `(new 'static 'sp-field-init-spec
+        :field (sp-field-id ,field-name)
+        :initial-value ,val
+        :flags (sp-flag part-by-id)
+        )
+  )
+
+(defmacro sp-func (field-name val)
+  `(new 'static 'sp-field-init-spec
+        :field (sp-field-id ,field-name)
+        :sym ,val
+        :flags (sp-flag from-pointer)
+        )
+  )
+
+(defmacro sp-end ()
+  `(new 'static 'sp-field-init-spec
+        :field (sp-field-id spt-end)
+        )
+  )
+
+(defmacro sp-copy-from-other (field-name offset)
+  `(new 'static 'sp-field-init-spec
+        :field (sp-field-id ,field-name)
+        :initial-value ,offset
+        :random-mult 1
+        :flags (sp-flag copy-from-other-field)
+        )
+  )

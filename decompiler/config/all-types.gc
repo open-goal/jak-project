@@ -213,6 +213,7 @@
     (stmod        5)  ;; set mode register
     (mskpath3     6)  ;; set path 3 mask
     (mark         7)  ;; set mark register
+    (pc-port      8)  ;; special tag for PC Port data.
     (flushe       16) ;; wait for end of microprogram
     (flush        17) ;; wait for end of microprogram and transfer (path1/path2)
     (flusha       19) ;; wait for end of microprogram and transfer (path1/path2/path3)
@@ -547,7 +548,7 @@
     ;; merc1 61
     ;; generic1 62
     (depth-cue 64)
-    (bucket-65 65)
+    (pre-sprite-textures 65) ;; common
     (sprite 66)
     ;; debug spheres? 67
     (debug-draw0 67)
@@ -1019,7 +1020,7 @@
   (ogre-end #x600)
   (ogre-buzzer #x601)
   (ogre-boss #x603)
-
+  
   (assistant-voicebox-intro-ogre-race #x605)
 
   (sidekick-speech-hint-ogre-race #x61c)
@@ -5091,7 +5092,7 @@
     (debug-print-entities (_type_ symbol type) none 13)
     (debug-draw-actors (_type_ symbol) none 14)
     (dummy-15 (_type_) object 15)
-    (dummy-16 (_type_) int 16)
+    (level-update (_type_) int 16)
     (level-get-target-inside (_type_) level 17)
     (alloc-levels! (_type_ symbol) int 18)
     (load-commands-set! (_type_ pair) pair 19)
@@ -10106,6 +10107,7 @@
   :method-count-assert 10
   :size-assert         #x68
   :flag-assert         #xa00000068
+  ;; field handle is likely a value type
   (:methods
     (dummy-9 (_type_ attack-info) none 9)
     )
@@ -11874,8 +11876,8 @@
    (texture-remap-table (pointer uint64) :offset-assert 52)
    (texture-remap-table-len int32 :offset-assert 56)
 
-   (unk-data-1 pointer :offset-assert 60)
-   (unk-data-1-len int32 :offset-assert 64)
+   (texture-ids (pointer texture-id) :offset-assert 60)
+   (texture-page-count int32 :offset-assert 64)
 
    (unk-zero-0 basic :offset-assert 68)
 
@@ -13443,11 +13445,99 @@
 ;; Containing DGOs - ['GAME', 'ENGINE']
 ;; Version - 3
 
+(defenum sp-field-id
+  :type uint16
+  
+  (misc-fields-start 0)
+  (spt-texture 1)
+  (spt-anim 2)
+  (spt-anim-speed 3)
+  (spt-birth-func 4)
+  (spt-joint/refpoint 5)
+  (spt-num 6)
+  (spt-sound 7)
+  (misc-fields-end 8)
+  
+  (sprite-fields-start 9)
+  (spt-x 10)
+  (spt-y 11)
+  (spt-z 12)
+  (spt-scale-x 13)
+  (spt-rot-x 14)
+  (spt-rot-y 15)
+  (spt-rot-z 16)
+  (spt-scale-y 17)
+  (spt-r 18)
+  (spt-g 19)
+  (spt-b 20)
+  (spt-a 21)
+  (sprite-fields-end 22)
+  
+  (cpu-fields-start 23)
+  (spt-omega 24)
+  (spt-vel-x 25)
+  (spt-vel-y 26)
+  (spt-vel-z 27)
+  (spt-scalevel-x 28)
+  (spt-rotvel-x 29)
+  (spt-rotvel-y 30)
+  (spt-rotvel-z 31)
+  (spt-scalevel-y 32)
+  (spt-fade-r 33)
+  (spt-fade-g 34)
+  (spt-fade-b 35)
+  (spt-fade-a 36)
+  (spt-accel-x 37)
+  (spt-accel-y 38)
+  (spt-accel-z 39)
+  (spt-dummy 40)
+  (spt-quat-x 41)
+  (spt-quat-y 42)
+  (spt-quat-z 43)
+  (spt-quad-w 44)
+  (spt-friction 45)
+  (spt-timer 46)
+  (spt-flags 47)
+  (spt-userdata 48)
+  (spt-func 49)
+  (spt-next-time 50)
+  (spt-next-launcher 51)
+  (cpu-fields-end 52)
+  
+  (launch-fields-start 53)
+  (spt-launchrot-x 54)
+  (spt-launchrot-y 55)
+  (spt-launchrot-z 56)
+  (spt-launchrot-w 57)
+  (spt-conerot-x 58)
+  (spt-conerot-y 59)
+  (spt-conerot-z 60)
+  (spt-conerot-w 61)
+  (spt-conerot-radius 62)
+  (spt-rotate-y 63)
+  (launch-fields-end 64)
+  
+  (spt-scale 65)
+  (spt-scalevel 66)
+  (spt-end 67)
+  )
+
+(defenum sp-flag
+  :type uint16
+  (plain-v1 0) ;; just a plain signed integer. No random crap.
+  (float-with-rand 1)
+  (int-with-rand 2)
+  (copy-from-other-field 3)
+  (plain-v2 4)
+  (from-pointer 5)
+  (part-by-id 6)
+  )
+
 ;; - Types
 
 (deftype sp-field-init-spec (structure)
-  ((field          uint16  :offset-assert 0)
-   (flags          uint16  :offset-assert 2)
+  ((field          sp-field-id  :offset-assert 0)
+   (flags          sp-flag  :offset-assert 2)
    (initial-valuef float   :offset-assert 4)
    (random-rangef  float   :offset-assert 8)
    (random-multf   float   :offset-assert 12)
@@ -13476,11 +13566,20 @@
   :flag-assert         #x900000010
   )
 
+(defenum sp-group-item-flag
+  :bitfield #t
+  :type uint16
+  (is-3d 0)
+  (bit1 1)
+  (start-dead 2)
+  (launch-asap 3)
+  )
+
 (deftype sparticle-group-item (structure)
   ((launcher   uint32  :offset-assert 0)
    (fade-after meters  :offset-assert 4)
    (falloff-to meters  :offset-assert 8)
-   (flags      uint16  :offset-assert 12)
+   (flags      sp-group-item-flag  :offset-assert 12)
    (period     uint16  :offset-assert 14)
    (length     uint16  :offset-assert 16)
    (offset     uint16  :offset-assert 18)
@@ -13492,13 +13591,23 @@
   :flag-assert         #x90000001c
   )
 
+(defenum sp-launch-state-flags
+  :bitfield #t
+  :type uint16
+  (launcher-active 0)        ;; active
+  (particles-active 1) ;; wants to launch
+  (bit2 2)
+  )
+
+(declare-type sparticle-cpuinfo structure)
+
 (deftype sparticle-launch-state (structure)
   ((group-item sparticle-group-item  :offset-assert 0)
-   (flags      uint16                :offset-assert 4)
+   (flags      sp-launch-state-flags :offset-assert 4)
    (randomize  uint16                :offset-assert 6)
    (origin     vector                :offset-assert 8)
    (sprite3d   sprite-vec-data-3d    :offset-assert 12)
-   (sprite     basic                 :offset-assert 16)
+   (sprite     sparticle-cpuinfo     :offset-assert 16)
    (offset     uint32                :offset-assert 20)
    (accum      float                 :offset-assert 24)
    (spawn-time uint32                :offset-assert 28)
@@ -13513,12 +13622,20 @@
   :flag-assert         #x900000020
   )
 
+(defenum sp-group-flag
+  :bitfield #t
+  :type uint16
+  (use-local-clock 0)
+  (always-draw 1)
+  (screen-space 2)
+  )
+
 (deftype sparticle-launch-group (basic)
   ((length          int16          :offset-assert 4)
    (duration        uint16         :offset-assert 6)
    (linger-duration uint16         :offset-assert 8)
-   (flags           uint16         :offset-assert 10)
-   (name            basic          :offset-assert 12)
+   (flags           sp-group-flag  :offset-assert 10)
+   (name            string         :offset-assert 12)
    (launcher        (inline-array sparticle-group-item)         :offset-assert 16)
    (bounds          sphere :inline :offset-assert 32)
    )
@@ -13546,10 +13663,10 @@
   :flag-assert         #xe00000040
   (:methods
     (initialize (_type_ sparticle-launch-group process) none 9)
-    (dummy-10 () none 10)
-    (dummy-11 (_type_ vector) none 11)
-    (deactivate (_type_) none 12)
-    (dummy-13 () none 13)
+    (is-visible? (_type_ vector) symbol 10)
+    (spawn (_type_ vector) object 11)
+    (kill-and-free-particles (_type_) none 12)
+    (kill-particles (_type_) none 13)
     )
   )
 
@@ -13563,6 +13680,28 @@
 ;; Version - 3
 
 ;; - Types
+
+(defenum sp-cpuinfo-flag
+  :bitfield #t
+  :type uint32
+  (bit0 0)
+  (bit2 2)     ;; cleared after an aux has its func set to add-to-sprite-aux-lst
+  (bit3 3)
+  (ready-to-launch 6) ;; maybe just just death?
+  (bit7 7)
+  (aux-list 8)     ;; prevents relaunch, adds to aux
+  (bit9 9)
+  (level0 10)
+  (level1 11)
+  (bit12 12)   ;; required to relaunch
+  (bit13 13)
+  (bit14 14)
+  (use-global-acc 16)
+  (launch-along-z 17)
+  (left-multiply-quat 18)
+  (right-multiply-quat 19)
+  (set-conerot 20)
+  )
 
 (deftype sparticle-cpuinfo (structure)
   ((sprite        sprite-vec-data-2d             :offset-assert 0)
@@ -13580,7 +13719,7 @@
    (scalevely     float                          :offset 44)
    (friction      float                          :offset-assert 96)
    (timer         int32                          :offset-assert 100)
-   (flags         uint32                         :offset-assert 104)
+   (flags         sp-cpuinfo-flag                :offset-assert 104)
    (user-int32    int32                          :offset-assert 108)
    (user-uint32   uint32                         :offset 108)
    (user-float    float                          :score 100 :offset 108)
@@ -13617,8 +13756,8 @@
 
 (deftype sparticle-system (basic)
   ((blocks          int32 2 :offset-assert 4)
-   (length          uint32 2 :offset-assert 12)
-   (num-alloc       uint32 2 :offset-assert 20)
+   (length          int32 2 :offset-assert 12)
+   (num-alloc       int32 2 :offset-assert 20)
    (is-3d           basic     :offset-assert 28)
    (flags           uint32    :offset-assert 32)
    (alloc-table     (pointer uint64)    :offset-assert 36)
@@ -15312,7 +15451,7 @@
 (define-extern sprite-add-2d-chunk (function sprite-array-2d int int dma-buffer int none))
 (define-extern sprite-setup-frame-data (function sprite-frame-data int none))
 (define-extern clear-sprite-aux-list (function none))
-(define-extern add-to-sprite-aux-list function) ;; it's a callback.
+(define-extern add-to-sprite-aux-list (function sparticle-system sparticle-cpuinfo sprite-vec-data-3d none)) ;; it's a callback.
 (define-extern sprite-set-3d-quaternion! (function sprite-vec-data-3d quaternion quaternion))
 (define-extern sprite-get-3d-quaternion! (function quaternion sprite-vec-data-3d quaternion))
 (define-extern sprite-draw (function display none))
@@ -16384,25 +16523,25 @@
 
 ;; - Types
 
-; (deftype sparticle-birthinfo (structure)
-;   ((sprite       uint32    :offset-assert 0)
-;    (anim         int32     :offset-assert 4)
-;    (anim-speed   float     :offset-assert 8)
-;    (birth-func   basic     :offset-assert 12)
-;    (joint-ppoint int32     :offset-assert 16)
-;    (num-to-birth float     :offset-assert 20)
-;    (sound        basic     :offset-assert 24)
-;    (dataf        UNKNOWN 1 :offset-assert 0)
-;    (data         UNKNOWN 1 :offset-assert 0)
-;    )
-;   :method-count-assert 9
-;   :size-assert         #x1c
-;   :flag-assert         #x90000001c
-;   )
+(deftype sparticle-birthinfo (structure)
+  ((sprite       uint32    :offset-assert 0)
+   (anim         int32     :offset-assert 4)
+   (anim-speed   float     :offset-assert 8)
+   (birth-func   basic     :offset-assert 12)
+   (joint-ppoint int32     :offset-assert 16)
+   (num-to-birth float     :offset-assert 20)
+   (sound        basic     :offset-assert 24)
+   (dataf        float 1 :offset 0)
+   (data         uint32 1 :offset 0)
+   )
+  :method-count-assert 9
+  :size-assert         #x1c
+  :flag-assert         #x90000001c
+  )
 
 (deftype sp-queued-launch-particles (structure)
-  ((sp-system   basic          :offset-assert 0)
-   (sp-launcher basic          :offset-assert 4)
+  ((sp-system   sparticle-system          :offset-assert 0)
+   (sp-launcher sparticle-launcher          :offset-assert 4)
    (pos         vector :inline :offset-assert 16)
    )
   :method-count-assert 9
@@ -16410,66 +16549,70 @@
   :flag-assert         #x900000020
   )
 
-; (deftype sp-launch-queue (basic)
-;   ((in-use int32      :offset-assert 4)
-;    (queue  UNKNOWN 32 :offset-assert 16)
-;    )
-;   :method-count-assert 9
-;   :size-assert         #x410
-;   :flag-assert         #x900000410
-;   )
+(deftype sp-launch-queue (basic)
+  ((in-use int32      :offset-assert 4)
+   (queue  sp-queued-launch-particles 32 :inline :offset-assert 16)
+   )
+  :method-count-assert 9
+  :size-assert         #x410
+  :flag-assert         #x900000410
+  )
 
-; (deftype particle-adgif-cache (basic)
-;   ((used    int32           :offset-assert 4)
-;    (last    uint16          :offset-assert 8)
-;    (lastgif adgif-shader    :offset-assert 12)
-;    (tidhash UNKNOWN      80 :offset-assert 16)
-;    (spadgif UNKNOWN      80 :offset-assert 176)
-;    )
-;   :method-count-assert 9
-;   :size-assert         #x19b0
-;   :flag-assert         #x9000019b0
-;   )
+(deftype particle-adgif-cache (basic)
+  ((used    int32           :offset-assert 4)
+   (last    uint16          :offset-assert 8)
+   (lastgif adgif-shader    :offset-assert 12)
+   (tidhash uint16      80 :offset-assert 16)
+   (spadgif adgif-shader 80 :inline :offset-assert 176)
+   )
+  :method-count-assert 9
+  :size-assert         #x19b0
+  :flag-assert         #x9000019b0
+  )
 
 ;; - Functions
 
-(define-extern sphere-in-view-frustum? (function vector symbol))
+(define-extern sphere-in-view-frustum? (function sphere symbol))
 (define-extern kill-all-particles-with-key (function sparticle-launch-control none))
-(define-extern sp-relaunch-setup-fields function)
-(define-extern sp-init-fields! function)
-(define-extern sp-launch-particles-var (function sparticle-system sparticle-launcher vector symbol symbol float none)) ;; asm - ret not confirmed
-(define-extern sp-get-particle function)
-(define-extern particle-adgif function)
+
+(define-extern sp-relaunch-setup-fields (function object sparticle-launcher sparticle-cpuinfo sprite-vec-data-3d none))
+
+;; data, field-inits, start field idx, end field idx, bool?
+(define-extern sp-init-fields! (function object (inline-array sp-field-init-spec) sp-field-id sp-field-id  symbol object))
+
+(define-extern sp-launch-particles-var (function sparticle-system sparticle-launcher vector sparticle-launch-state sparticle-launch-control float none)) ;; asm - ret not confirmed
+(define-extern sp-get-particle (function sparticle-system int sparticle-launch-state sparticle-cpuinfo))
+(define-extern particle-adgif (function adgif-shader texture-id none))
 (define-extern lookup-part-group-by-name (function string basic))
-(define-extern lookup-part-group-pointer-by-name function)
+(define-extern lookup-part-group-pointer-by-name (function string (pointer sparticle-launch-group)))
 (define-extern unlink-part-group-by-heap (function kheap int))
-(define-extern particle-setup-adgif function)
-(define-extern sp-queue-launch function)
-(define-extern sp-adjust-launch function)
-(define-extern sp-euler-convert function)
-(define-extern sp-rotate-system function)
-(define-extern sp-launch-particles-death function)
-(define-extern sp-clear-queue function)
-(define-extern sp-relaunch-particle-2d function)
-(define-extern sp-relaunch-particle-3d function)
-(define-extern sparticle-track-root function)
-(define-extern sparticle-track-root-prim function)
-(define-extern birth-func-copy-rot-color function)
-(define-extern birth-func-copy2-rot-color function)
-(define-extern birth-func-copy-omega-to-z function)
-(define-extern birth-func-random-next-time function)
+(define-extern particle-setup-adgif (function adgif-shader texture-id none))
+(define-extern sp-queue-launch (function sparticle-system sparticle-launcher vector int))
+(define-extern sp-adjust-launch (function sparticle-launchinfo sparticle-cpuinfo (inline-array sp-field-init-spec) none))
+(define-extern sp-euler-convert (function sparticle-launchinfo sparticle-cpuinfo none))
+(define-extern sp-rotate-system (function sparticle-launchinfo sparticle-cpuinfo transformq none))
+(define-extern sp-launch-particles-death (function sparticle-system sparticle-launcher sparticle-launchinfo none))
+(define-extern sp-clear-queue (function none))
+(define-extern sp-relaunch-particle-2d (function object sparticle-launcher sparticle-cpuinfo sprite-vec-data-3d none))
+(define-extern sp-relaunch-particle-3d (function object sparticle-launcher sparticle-cpuinfo sprite-vec-data-3d none))
+(define-extern sparticle-track-root (function object sparticle-cpuinfo vector none))
+(define-extern sparticle-track-root-prim (function object sparticle-cpuinfo vector none))
+(define-extern birth-func-copy-rot-color (function sparticle-system sparticle-cpuinfo sprite-vec-data-3d sparticle-launcher sparticle-launch-state none))
+(define-extern birth-func-copy2-rot-color (function sparticle-system sparticle-cpuinfo sprite-vec-data-3d sparticle-launcher sparticle-launch-state none))
+(define-extern birth-func-copy-omega-to-z (function sparticle-system sparticle-cpuinfo sprite-vec-data-3d sparticle-launcher sparticle-launch-state none))
+(define-extern birth-func-random-next-time (function sparticle-system sparticle-cpuinfo sprite-vec-data-3d sparticle-launcher sparticle-launch-state none))
 
 ;; - Unknowns
 
-;;(define-extern *global-toggle* object) ;; unknown type
+(define-extern *global-toggle* int) ;; unknown type
 (define-extern *part-id-table* (array sparticle-launcher))
 (define-extern *particle-300hz-timer* int)
-;;(define-extern *sp-launch-queue* object) ;; unknown type
-;;(define-extern *death-adgif* object) ;; unknown type
+(define-extern *sp-launch-queue* sp-launch-queue)
+(define-extern *death-adgif* adgif-shader) ;; guess
 (define-extern *part-group-id-table* (array sparticle-launch-group))
-;;(define-extern *sp-launcher-lock* object) ;; unknown type
+(define-extern *sp-launcher-lock* symbol)
 (define-extern *sp-launcher-enable* symbol)
-;;(define-extern *particle-adgif-cache* object) ;; unknown type
+(define-extern *particle-adgif-cache* particle-adgif-cache)
 
 
 ;; ----------------------
@@ -16480,31 +16623,31 @@
 
 ;; - Functions
 
-(define-extern all-particles-60-to-50 function)
-(define-extern all-particles-50-to-60 function)
-(define-extern sp-process-particle-system function)
-(define-extern forall-particles-runner function)
-(define-extern sparticle-60-to-50 function)
-(define-extern sparticle-50-to-60 function)
-(define-extern forall-particles function)
+(define-extern all-particles-60-to-50 (function none))
+(define-extern all-particles-50-to-60 (function none))
+(define-extern sp-process-particle-system (function sparticle-system int sprite-array-2d none))
+(define-extern forall-particles-runner (function (function sparticle-system sparticle-cpuinfo pointer none) sparticle-system none))
+(define-extern sparticle-60-to-50 (function sparticle-system sparticle-cpuinfo pointer none))
+(define-extern sparticle-50-to-60 (function sparticle-system sparticle-cpuinfo pointer none))
+(define-extern forall-particles (function function symbol symbol none))
 (define-extern sparticle-kill-it-level0 (function sparticle-system sparticle-cpuinfo none))
 (define-extern sparticle-kill-it-level1 (function sparticle-system sparticle-cpuinfo none))
 (define-extern forall-particles-with-key (function sparticle-launch-control (function sparticle-system sparticle-cpuinfo none) symbol symbol none))
 (define-extern sparticle-kill-it (function sparticle-system sparticle-cpuinfo none))
 (define-extern forall-particles-with-key-runner (function sparticle-launch-control (function sparticle-system sparticle-cpuinfo none) sparticle-system none))
-(define-extern sp-get-approx-alloc-size function)
-(define-extern sp-process-block function)
-(define-extern sp-copy-to-spr function)
-(define-extern sp-process-block-3d function)
-(define-extern sp-process-block-2d function)
-(define-extern sp-copy-from-spr function)
-(define-extern sp-free-particle function)
-(define-extern sp-particle-copy! function)
-(define-extern sp-get-block-size function)
+(define-extern sp-get-approx-alloc-size (function sparticle-system int int))
+(define-extern sp-process-block (function sparticle-system int sprite-array-2d int none))
+(define-extern sp-copy-to-spr (function int pointer int none))
+(define-extern sp-process-block-3d (function sparticle-system int int int int symbol none))
+(define-extern sp-process-block-2d (function sparticle-system int int int int symbol none))
+(define-extern sp-copy-from-spr (function int pointer int none))
+(define-extern sp-free-particle (function sparticle-system int sparticle-cpuinfo sprite-vec-data-2d none))
+(define-extern sp-particle-copy! (function sparticle-cpuinfo sparticle-cpuinfo none))
+(define-extern sp-get-block-size (function sparticle-system int int))
 (define-extern sp-kill-particle (function sparticle-system sparticle-cpuinfo none))
-(define-extern sp-orbiter function)
+(define-extern sp-orbiter (function sparticle-system sparticle-cpuinfo vector none))
 (define-extern memcpy function)
-(define-extern kill-all-particles-in-level (function int))
+(define-extern kill-all-particles-in-level (function level int))
 (define-extern set-particle-frame-time (function int none))
 (define-extern process-particles (function none))
 

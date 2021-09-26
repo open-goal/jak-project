@@ -9,6 +9,7 @@
 #include "decompiler/ObjectFile/LinkedObjectFile.h"
 #include "decompiler/IR2/Form.h"
 #include "decompiler/analysis/final_output.h"
+#include "decompiler/util/sparticle_decompile.h"
 
 namespace decompiler {
 
@@ -186,7 +187,7 @@ goos::Object decompile_at_label(const TypeSpec& type,
   }
 
   if (ts.tc(TypeSpec("structure"), type)) {
-    return decompile_structure(type, label, labels, words, ts, file);
+    return decompile_structure(type, label, labels, words, ts, file, true);
   }
 
   if (type == TypeSpec("pair")) {
@@ -473,7 +474,15 @@ goos::Object decompile_structure(const TypeSpec& type,
                                  const std::vector<DecompilerLabel>& labels,
                                  const std::vector<std::vector<LinkedWord>>& words,
                                  const TypeSystem& ts,
-                                 const LinkedObjectFile* file) {
+                                 const LinkedObjectFile* file,
+                                 bool use_fancy_macros) {
+  if (use_fancy_macros && type == TypeSpec("sp-field-init-spec")) {
+    return decompile_sparticle_field_init(type, label, labels, words, ts, file);
+  }
+
+  if (use_fancy_macros && type == TypeSpec("sparticle-group-item")) {
+    return decompile_sparticle_group_item(type, label, labels, words, ts, file);
+  }
   // first step, get type info and words
   TypeSpec actual_type = type;
   auto uncast_type_info = ts.lookup_type(actual_type);
@@ -823,7 +832,6 @@ goos::Object decompile_structure(const TypeSpec& type,
   return pretty_print::build_list(result_def);
 }
 
-namespace {
 goos::Object bitfield_defs_print(const TypeSpec& type,
                                  const std::vector<BitFieldConstantDef>& defs) {
   std::vector<goos::Object> result;
@@ -842,8 +850,6 @@ goos::Object bitfield_defs_print(const TypeSpec& type,
   }
   return pretty_print::build_list(result);
 }
-
-}  // namespace
 
 goos::Object decompile_value(const TypeSpec& type,
                              const std::vector<u8>& bytes,
