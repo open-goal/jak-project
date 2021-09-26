@@ -115,7 +115,7 @@ const SparticleFieldDecomp field_kinds[68] = {
     {true, FieldKind::TEXTURE_ID},            // SPT_TEXTURE = 1
     {false},                                  // SPT_ANIM = 2
     {false},                                  // SPT_ANIM_SPEED = 3
-    {false},                                  // SPT_BIRTH_FUNC = 4
+    {true, FieldKind::FUNCTION},              // SPT_BIRTH_FUNC = 4
     {false},                                  // SPT_JOINT/REFPOINT = 5
     {true, FieldKind::FLOAT_WITH_RAND},       // SPT_NUM = 6
     {false},                                  // SPT_SOUND = 7
@@ -156,8 +156,8 @@ const SparticleFieldDecomp field_kinds[68] = {
     {false},                                  // SPT_QUAT_Y = 42
     {false},                                  // SPT_QUAT_Z = 43
     {false},                                  // SPT_QUAD_W = 44
-    {false},                                  // SPT_FRICTION = 45
-    {true, FieldKind::PLAIN_INT},             // SPT_TIMER = 46
+    {true, FieldKind::FLOAT_WITH_RAND},       // SPT_FRICTION = 45
+    {true, FieldKind::PLAIN_INT_WITH_RANDS},  // SPT_TIMER = 46
     {true, FieldKind::CPUINFO_FLAGS},         // SPT_FLAGS = 47
     {true, FieldKind::USERDATA},              // SPT_USERDATA = 48
     {true, FieldKind::FUNCTION},              // SPT_FUNC = 49
@@ -165,13 +165,13 @@ const SparticleFieldDecomp field_kinds[68] = {
     {true, FieldKind::LAUNCHER_BY_ID},        // SPT_NEXT_LAUNCHER = 51
     {false},                                  // CPU_FIELDS_END = 52
     {false},                                  // LAUNCH_FIELDS_START = 53
-    {false},                                  // SPT_LAUNCHROT_X = 54
-    {false},                                  // SPT_LAUNCHROT_Y = 55
-    {false},                                  // SPT_LAUNCHROT_Z = 56
-    {false},                                  // SPT_LAUNCHROT_W = 57
+    {true, FieldKind::DEGREES_WITH_RAND},     // SPT_LAUNCHROT_X = 54
+    {true, FieldKind::DEGREES_WITH_RAND},     // SPT_LAUNCHROT_Y = 55
+    {true, FieldKind::DEGREES_WITH_RAND},     // SPT_LAUNCHROT_Z = 56
+    {true, FieldKind::DEGREES_WITH_RAND},     // SPT_LAUNCHROT_W = 57
     {true, FieldKind::DEGREES_WITH_RAND},     // SPT_CONEROT_X = 58
     {true, FieldKind::DEGREES_WITH_RAND},     // SPT_CONEROT_Y = 59
-    {false},                                  // SPT_CONEROT_Z = 60
+    {true, FieldKind::DEGREES_WITH_RAND},     // SPT_CONEROT_Z = 60
     {false},                                  // SPT_CONEROT_W = 61
     {true, FieldKind::METER_WITH_RAND},       // SPT_CONEROT_RADIUS = 62
     {true, FieldKind::DEGREES_WITH_RAND},     // SPT_ROTATE_Y = 63
@@ -369,6 +369,12 @@ goos::Object decompile_sparticle_from_other(const std::vector<LinkedWord>& words
 goos::Object decompile_sparticle_float_meters_with_rand_init(const std::vector<LinkedWord>& words,
                                                              const std::string& field_name,
                                                              const std::string& flag_name) {
+  if (flag_name == "int-with-rand") {
+    return pretty_print::to_symbol(
+        fmt::format("(sp-rnd-int-flt {} (meters {}) {} {})", field_name,
+                    float_to_string(word_as_float(words.at(1)) / METER_LENGTH),
+                    word_as_s32(words.at(2)), float_to_string(word_as_float(words.at(3)))));
+  }
   assert(flag_name == "float-with-rand");
 
   float range = word_as_float(words.at(2));
@@ -390,6 +396,12 @@ goos::Object decompile_sparticle_float_meters_with_rand_init(const std::vector<L
 goos::Object decompile_sparticle_float_degrees_with_rand_init(const std::vector<LinkedWord>& words,
                                                               const std::string& field_name,
                                                               const std::string& flag_name) {
+  if (flag_name == "int-with-rand") {
+    return pretty_print::to_symbol(
+        fmt::format("(sp-rnd-int-flt {} (degrees {}) {} {})", field_name,
+                    float_to_string(word_as_float(words.at(1)) / DEGREES_LENGTH),
+                    word_as_s32(words.at(2)), float_to_string(word_as_float(words.at(3)))));
+  }
   assert(flag_name == "float-with-rand");
   float range = word_as_float(words.at(2));
   float mult = word_as_float(words.at(3));
@@ -404,6 +416,96 @@ goos::Object decompile_sparticle_float_degrees_with_rand_init(const std::vector<
                     float_to_string(word_as_float(words.at(2)) / DEGREES_LENGTH),
                     float_to_string(word_as_float(words.at(3)))));
   }
+}
+
+goos::Object decompile_sparticle_group_item(const TypeSpec& type,
+                                            const DecompilerLabel& label,
+                                            const std::vector<DecompilerLabel>& labels,
+                                            const std::vector<std::vector<LinkedWord>>& words,
+                                            const TypeSystem& ts,
+                                            const LinkedObjectFile* file) {
+  auto normal = decompile_structure(type, label, labels, words, ts, file, false);
+  fmt::print("Doing: {}\n", normal.print());
+  auto uncast_type_info = ts.lookup_type(type);
+  auto type_info = dynamic_cast<StructureType*>(uncast_type_info);
+  if (!type_info) {
+    throw std::runtime_error(fmt::format("Type {} wasn't a structure type.", type.print()));
+  }
+  assert(type_info->get_size_in_memory() == 0x1c);
+
+  // get words for real
+  auto offset_location = label.offset - type_info->get_offset();
+  int word_count = (type_info->get_size_in_memory() + 3) / 4;
+  std::vector<LinkedWord> obj_words;
+  obj_words.insert(obj_words.begin(),
+                   words.at(label.target_segment).begin() + (offset_location / 4),
+                   words.at(label.target_segment).begin() + (offset_location / 4) + word_count);
+
+  // 0 launcher
+  // 4 fade-after (meters)
+  // 8 falloff-to (meters)
+  // flags, period
+  // length, offset
+  // hour-mask
+  // binding
+
+  s32 launcher = word_as_s32(obj_words.at(0));
+  float fade_after_meters = word_as_float(obj_words.at(1)) / METER_LENGTH;
+  float falloff_to_meters = word_as_float(obj_words.at(2)) / METER_LENGTH;
+  u32 fp = word_as_s32(obj_words.at(3));
+  u16 flags = fp & 0xffff;
+  u16 period = fp >> 16;
+  u32 lo = word_as_s32(obj_words.at(4));
+  u16 length = lo & 0xffff;
+  u16 offset = lo >> 16;
+  u32 hour_mask = word_as_s32(obj_words.at(5));
+  u32 binding = word_as_s32(obj_words.at(6));
+
+  std::string result =
+      fmt::format("(sp-item {}", launcher);  // use decimal, so it matches array idx
+
+  if (fade_after_meters != 0.0) {
+    result += fmt::format(" :fade-after (meters {})", float_to_string(fade_after_meters));
+  }
+
+  if (falloff_to_meters != 0.0) {
+    result += fmt::format(" :falloff-to (meters {})", float_to_string(falloff_to_meters));
+  }
+
+  if (flags) {
+    auto things = decompile_bitfield_enum_from_int(TypeSpec("sp-group-item-flag"), ts, flags);
+    result += " :flags (";
+    for (auto& thing : things) {
+      result += thing;
+      result += ' ';
+    }
+    result.pop_back();
+    result += ')';
+  }
+
+  if (period) {
+    result += fmt::format(" :period {}", period);
+  }
+
+  if (length) {
+    result += fmt::format(" :length {}", length);
+  }
+
+  if (offset) {
+    result += fmt::format(" :offset {}", offset);
+  }
+
+  if (hour_mask) {
+    result += fmt::format(" :hour-mask #b{:b}", hour_mask);
+  }
+
+  if (binding) {
+    result += fmt::format(" :binding {}", binding);
+  }
+
+  result += ')';
+  fmt::print("Result: {}\n", result);
+  return pretty_print::to_symbol(result);
 }
 
 goos::Object decompile_sparticle_field_init(const TypeSpec& type,

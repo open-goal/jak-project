@@ -479,6 +479,10 @@ goos::Object decompile_structure(const TypeSpec& type,
   if (use_fancy_macros && type == TypeSpec("sp-field-init-spec")) {
     return decompile_sparticle_field_init(type, label, labels, words, ts, file);
   }
+
+  if (use_fancy_macros && type == TypeSpec("sparticle-group-item")) {
+    return decompile_sparticle_group_item(type, label, labels, words, ts, file);
+  }
   // first step, get type info and words
   TypeSpec actual_type = type;
   auto uncast_type_info = ts.lookup_type(actual_type);
