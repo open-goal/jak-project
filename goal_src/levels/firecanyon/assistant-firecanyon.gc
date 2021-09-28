@@ -7,7 +7,8 @@
 
 (define-extern *assistant-firecanyon-sg* skeleton-group)
 
-;; definition of type assistant-firecanyon
+;; DECOMP BEGINS
+
 (deftype assistant-firecanyon (process-taskable)
   ()
   :heap-base #x110
@@ -16,15 +17,7 @@
   :flag-assert         #x350110017c
   )
 
-;; definition for method 3 of type assistant-firecanyon
-(defmethod inspect assistant-firecanyon ((obj assistant-firecanyon))
-  (let ((t9-0 (method-of-type process-taskable inspect)))
-   (t9-0 obj)
-   )
-  obj
-  )
 
-;; failed to figure out what this is:
 (let
   ((v1-1
     (new 'static 'skeleton-group
@@ -42,7 +35,6 @@
   (set! *assistant-firecanyon-sg* v1-1)
   )
 
-;; definition for method 32 of type assistant-firecanyon
 (defmethod
   play-anim!
   assistant-firecanyon
@@ -122,7 +114,6 @@
    )
   )
 
-;; definition for method 31 of type assistant-firecanyon
 (defmethod get-art-elem assistant-firecanyon ((obj assistant-firecanyon))
   (if (zero? (current-status (-> obj tasks)))
    (-> obj draw art-group data 8)
@@ -130,7 +121,6 @@
    )
   )
 
-;; failed to figure out what this is:
 (defstate hidden (assistant-firecanyon)
   :virtual #t
   :trans
@@ -142,7 +132,7 @@
                  (>=
                   61440.0
                   (vector-vector-distance
-                   (-> self root trans)
+                   (-> self root-override trans)
                    (-> *target* control trans)
                    )
                   )
@@ -157,30 +147,28 @@
                 #f
                 )
                )
-          (let ((a0-1 (-> self tasks)))
-           (and
-            (not
-             (closed?
-              a0-1
-              (game-task firecanyon-assistant)
-              (task-status need-reward-speech)
-              )
+          (and
+           (not
+            (closed?
+             (-> self tasks)
+             (game-task firecanyon-assistant)
+             (task-status need-reward-speech)
              )
-            (not (movie?))
-            (not (level-hint-displayed? (the-as symbol a0-1)))
-            (not
-             (and
-              *cheat-mode*
-              (logtest? (-> *cpad-list* cpads 0 button0-abs 0) (pad-buttons l3))
-              )
+            )
+           (not (movie?))
+           (not (level-hint-displayed?))
+           (not
+            (and
+             *cheat-mode*
+             (logtest? (-> *cpad-list* cpads 0 button0-abs 0) (pad-buttons l3))
              )
-            (<
-             (-
-              (-> *display* base-frame-counter)
-              (the-as int (-> self state-time))
-              )
-             3000
+            )
+           (<
+            (-
+             (-> *display* base-frame-counter)
+             (the-as int (-> self state-time))
              )
+            3000
             )
            )
           )
@@ -242,7 +230,6 @@
    )
   )
 
-;; failed to figure out what this is:
 (defstate idle (assistant-firecanyon)
   :virtual #t
   :code
@@ -854,13 +841,11 @@
    )
   )
 
-;; definition for method 39 of type assistant-firecanyon
 (defmethod should-display? assistant-firecanyon ((obj assistant-firecanyon))
   (first-any (-> obj tasks) #t)
   (= (current-status (-> obj tasks)) 6)
   )
 
-;; definition for method 11 of type assistant-firecanyon
 (defmethod
   copy-defaults!
   assistant-firecanyon
