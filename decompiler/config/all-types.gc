@@ -6080,6 +6080,7 @@
 ;; - Types
 
 (declare-type ambient-list structure)
+(declare-type collide-list structure)
 (deftype drawable (basic)
   ((id      int16          :offset-assert 4)
   ;  (unknown basic         :offset-assert 8) ;; - from default-menu::build-instance-list
@@ -6091,13 +6092,13 @@
   (:methods
     (login (_type_) _type_ 9) ;; probably login or init.
     (draw (_type_ drawable display-frame) none 10) ;; display-frame is from the method inspect tool
-    (dummy-11 (_type_ int object) none 11) ; int - length, collision related
-    (dummy-12 (_type_ int object) none 12) ; int - length, collision related
-    (dummy-13 (_type_ int object) none 13) ; int - length, collision related
+    (collide-with-box (_type_ int collide-list) none 11)
+    (collide-y-probe (_type_ int collide-list) none 12)
+    (collide-ray (_type_ int collide-list) none 13)
     (dummy-14 (_type_) none 14)
     (dummy-15 (_type_ object object) none 15) ;; something debugging
     (dummy-16 (_type_ object object) object 16)
-    (dummy-17 (_type_ sphere int ambient-list) none 17)
+    (collect-ambients (_type_ sphere int ambient-list) none 17)
     )
   )
 
@@ -6158,7 +6159,7 @@
 (deftype draw-node (drawable)
   ((child-count uint8          :offset 6)
    (flags       uint8          :offset 7)
-   (child       uint32         :offset 8)
+   (child       drawable        :offset 8)
    (distance    float          :offset 12)
    )
   :method-count-assert 18
@@ -12222,7 +12223,9 @@
   )
 
 (deftype drawable-tree-instance-shrub (drawable-tree)
-  ((info prototype-array-shrub-info :offset 8))
+  ((info prototype-array-shrub-info :offset 8)
+   (colors-added uint32 :offset 12) ;; added
+   )
   :method-count-assert #x12
   :size-assert #x24
   :flag-assert #x1200000024
@@ -16025,7 +16028,7 @@
 (define-extern generic-tie-convert function)
 (define-extern generic-tie-display-stats function)
 (define-extern generic-tie-debug function)
-(define-extern generic-tie-execute function)
+(define-extern generic-tie-execute (function generic-dma-foreground-sink dma-buffer basic none))
 
 ;; - Unknowns
 
@@ -16227,17 +16230,17 @@
 
 ;; - Functions
 
-(define-extern background-upload-vu0 function)
-(define-extern time-of-day-interp-colors function)
-(define-extern draw-drawable-tree-instance-shrub function)
-(define-extern upload-vis-bits function)
-(define-extern time-of-day-interp-colors-scratch function)
-(define-extern draw-drawable-tree-tfrag function)
-(define-extern draw-drawable-tree-trans-tfrag function)
-(define-extern draw-drawable-tree-dirt-tfrag function)
-(define-extern draw-drawable-tree-ice-tfrag function)
-(define-extern tie-near-make-perspective-matrix function)
-(define-extern draw-drawable-tree-instance-tie function)
+(define-extern background-upload-vu0 (function none))
+(define-extern time-of-day-interp-colors (function (pointer rgba) uint mood-context none))
+(define-extern draw-drawable-tree-instance-shrub (function drawable-tree-instance-shrub level none))
+(define-extern upload-vis-bits (function level level bsp-header none))
+(define-extern time-of-day-interp-colors-scratch (function (pointer rgba) time-of-day-palette mood-context none))
+(define-extern draw-drawable-tree-tfrag (function drawable-tree-tfrag none))
+(define-extern draw-drawable-tree-trans-tfrag (function drawable-tree-trans-tfrag none))
+(define-extern draw-drawable-tree-dirt-tfrag (function drawable-tree-dirt-tfrag none))
+(define-extern draw-drawable-tree-ice-tfrag (function drawable-tree-ice-tfrag none))
+(define-extern tie-near-make-perspective-matrix (function matrix none))
+(define-extern draw-drawable-tree-instance-tie (function drawable-tree-instance-tie level none))
 (define-extern init-background (function none))
 (define-extern finish-background (function none))
 
@@ -16260,8 +16263,8 @@
 
 ;; - Functions
 
-(define-extern collide-cache-using-line-sphere-test function)
-(define-extern collide-cache-using-y-probe-test function)
+(define-extern collide-cache-using-line-sphere-test (function vector symbol))
+(define-extern collide-cache-using-y-probe-test (function vector symbol))
 (define-extern collide-cache-using-box-test (function vector symbol))
 (define-extern draw-node-cull function)
 

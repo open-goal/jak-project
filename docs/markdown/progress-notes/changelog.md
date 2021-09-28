@@ -205,3 +205,4 @@
 - It is now possible to call a method on a forward declared type. The forward declared type must be a basic.
 - Using `->` on a plain `pointer` or `inline-array` now generates an error instead of crashing the compiler
 - It is now possible to use a macro to provide a static inline array element definition
+- It is now possible to have symbol names that have a `#` in the middle of them
