@@ -6,29 +6,38 @@
 ;; dgos: GAME, ENGINE
 
 (declare-type ambient-list structure)
+(declare-type collide-list structure)
 
-;; These are the base classes for the draw nodes in the engine.
+;; These is the base class for the scene graph node.
+;; Note that it doesn't always make sense to call all of these methods on all types,
+;; and that certain methods should only be called at certain times, and may require coordination
+;; with having certain VU0 or scratchpad data present.
+;; In many cases, "draw" simply adds data to a buffer that must later be converted to dma in finish-background
+;; or similar.
 
 (deftype drawable (basic)
-  ((id      int16          :offset-assert 4)
-   (bsphere vector :inline :offset-assert 16)
+  ((id      int16          :offset-assert 4)  ;; ID number (not always used)
+   (bsphere vector :inline :offset-assert 16) ;; bounding sphere
    )
   :method-count-assert 18
   :size-assert         #x20
   :flag-assert         #x1200000020
   (:methods
-    (login (_type_) _type_ 9) ;; probably login or init.
-    (draw (_type_ drawable display-frame) none 10) ;; display-frame is from the method inspect tool
-    (dummy-11 (_type_ int object) none 11) ; int - length
-    (dummy-12 (_type_ int object) none 12) ; int - length
-    (dummy-13 (_type_ int object) none 13) ; int - length
-    (dummy-14 (_type_) none 14) ;; related to culling?
+    (login (_type_) _type_ 9)
+    (draw (_type_ drawable display-frame) none 10)
+    (collide-with-box (_type_ int collide-list) none 11)
+    (collide-y-probe (_type_ int collide-list) none 12)
+    (collide-ray (_type_ int collide-list) none 13)
+    (dummy-14 (_type_) none 14)
     (dummy-15 (_type_ object object) none 15)
     (dummy-16 (_type_ object object) object 16)
-    (dummy-17 (_type_ sphere int ambient-list) none 17)
+    (collect-ambients (_type_ sphere int ambient-list) none 17)
     )
   )
 
+
+
+;; A drawable that simply draws a sphere and an error message at the origin of the bounding sphere.
 (deftype drawable-error (drawable)
   ((name    basic          :offset-assert 32)
    )

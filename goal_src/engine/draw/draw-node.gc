@@ -5,3 +5,128 @@
 ;; name in dgo: draw-node
 ;; dgos: GAME, ENGINE
 
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;; Draw Node Collisions
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+;; The collision stuff is a bit weird.
+;; The method takes an integer argument. For some types, you must provide a length and calling the method
+;; will automatically run on all the brothers of the node.  For other types, you don't have to provide a length.
+
+;; The output of the collision are stored in the collide-list that's passed through all the methods.
+;; For an unknown reason, the input to the collision query (the box we're colliding with) is not.
+;; It's stored in *collide-work*
+
+(defmethod collide-with-box draw-node ((obj draw-node) (arg0 int) (arg1 collide-list))
+  "Find collisions with the box in the current collision query, add results to collide-list."
+  
+  ;; loop over ourself and our brothers
+  (dotimes (s3-0 arg0)
+    (if (collide-cache-using-box-test (-> obj bsphere)) ;; do we collide with the bounding sphere?
+        ;; if so, do the collision check with the geometry.
+        (collide-with-box (-> obj child) (the-as int (-> obj child-count)) arg1)
+        )
+    (&+! obj 32)
+    )
+  0
+  (none)
+  )
+
+(defmethod collide-y-probe draw-node ((obj draw-node) (arg0 int) (arg1 collide-list))
+  (dotimes (s3-0 arg0)
+    (if (collide-cache-using-y-probe-test (-> obj bsphere))
+        (collide-y-probe (-> obj child) (the-as int (-> obj child-count)) arg1)
+        )
+    (&+! obj 32)
+    )
+  0
+  (none)
+  )
+
+(defmethod collide-ray draw-node ((obj draw-node) (arg0 int) (arg1 collide-list))
+  (dotimes (s3-0 arg0)
+    (if (collide-cache-using-line-sphere-test (-> obj bsphere))
+        (collide-ray (-> obj child) (the-as int (-> obj child-count)) arg1)
+        )
+    (&+! obj 32)
+    )
+  (none)
+  )
+
+(defmethod collect-ambients draw-node ((obj draw-node) (arg0 sphere) (arg1 int) (arg2 ambient-list))
+  (dotimes (s2-0 arg1)
+    (if (spheres-overlap? arg0 (the-as sphere (-> obj bsphere)))
+        (collect-ambients (-> obj child) arg0 (the-as int (-> obj child-count)) arg2)
+        )
+    (&+! obj 32)
+    )
+  0
+  (none)
+  )
+
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;; Drawable Inline Array Node
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+;; This class is a convenient wrapper around an inline-array of draw-nodes.
+;; It lets you treat this array like a normal drawable (at least for collisions).
+
+(defmethod inspect drawable-inline-array-node ((obj drawable-inline-array-node))
+  "Custom inspect for drawable-inline-array-node to print our nodes."
+  (format #t "[~8x] ~A~%" obj (-> obj type))
+  (format #t "~Tlength: ~D~%" (-> obj length))
+  (format #t "~Tdata[~D]: @ #x~X~%" (-> obj length) (-> obj data))
+  (dotimes (s5-0 (-> obj length))
+   (format #t "~T  [~D] ~A~%" s5-0 (-> obj data s5-0))
+   )
+  obj
+  )
+
+(defmethod mem-usage drawable-inline-array-node ((obj drawable-inline-array-node) (arg0 memory-usage-block) (arg1 int))
+  "Compute the memory usage of a drawable-inline-array-node. Only counts the nodes, doesn't count the node children."
+  (set! (-> arg0 length) (max 62 (-> arg0 length)))
+  (set! (-> arg0 data 61 name) "draw-node")
+  (+! (-> arg0 data 61 count) (-> obj length))
+  (let ((v1-6 (asize-of obj)))
+    (+! (-> arg0 data 61 used) v1-6)
+    (+! (-> arg0 data 61 total) (logand -16 (+ v1-6 15)))
+    )
+  obj
+  )
+
+(defmethod asize-of drawable-inline-array-node ((obj drawable-inline-array-node))
+  (the-as int (+ (-> drawable-inline-array-node size) (* (+ (-> obj length) -1) 32)))
+  )
+
+(defmethod collide-with-box drawable-inline-array-node ((obj drawable-inline-array-node) (arg0 int) (arg1 collide-list))
+  ;; call on the first in the array, then it will loop through all the brothers.
+  (collide-with-box (-> obj data 0) (-> obj length) arg1)
+  0
+  (none)
+  )
+
+(defmethod collide-y-probe drawable-inline-array-node ((obj drawable-inline-array-node) (arg0 int) (arg1 collide-list))
+  (collide-y-probe (-> obj data 0) (-> obj length) arg1)
+  0
+  (none)
+  )
+
+(defmethod collide-ray drawable-inline-array-node ((obj drawable-inline-array-node) (arg0 int) (arg1 collide-list))
+  (collide-ray (-> obj data 0) (-> obj length) arg1)
+  (none)
+  )
+
+(defmethod collect-ambients drawable-inline-array-node ((obj drawable-inline-array-node) (arg0 sphere) (arg1 int) (arg2 ambient-list))
+  (collect-ambients (-> obj data 0) arg0 (-> obj length) arg2)
+  0
+  (none)
+  )
+
+
+;;;;;;;;;;;;;;;;;;;;;;;;
+;; DRAW NODE CULL
+;;;;;;;;;;;;;;;;;;;;;;;;
+
+;; TODO: waiting on tfrag/tie stuff to worry about this.

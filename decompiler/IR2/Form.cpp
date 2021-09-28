@@ -266,9 +266,17 @@ void LoadSourceElement::get_modified_regs(RegSet& regs) const {
 // SimpleAtomElement
 /////////////////////////////
 
-SimpleAtomElement::SimpleAtomElement(const SimpleAtom& atom) : m_atom(atom) {}
+SimpleAtomElement::SimpleAtomElement(const SimpleAtom& atom, bool omit_var_cast)
+    : m_atom(atom), m_omit_var_cast(omit_var_cast) {
+  if (m_omit_var_cast) {
+    assert(atom.is_var());
+  }
+}
 
 goos::Object SimpleAtomElement::to_form_internal(const Env& env) const {
+  if (m_omit_var_cast) {
+    return m_atom.var().to_form(env, RegisterAccess::Print::AS_VARIABLE_NO_CAST);
+  }
   return m_atom.to_form(env.file->labels, env);
 }
 

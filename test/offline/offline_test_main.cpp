@@ -76,8 +76,10 @@ const std::unordered_set<std::string> g_functions_expected_to_reject = {
     "update-mood-lightning",  // asm
 
     // ambient
-    "ambient-inspect"  // asm, weird
-};
+    "ambient-inspect",  // asm, weird
+
+    // background
+    "background-upload-vu0", "draw-node-cull"};
 
 const std::unordered_set<std::string> g_functions_to_skip_compiling = {
     /// GCOMMON

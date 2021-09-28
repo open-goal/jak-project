@@ -159,6 +159,14 @@ Form* try_cast_simplify(Form* in,
     }
   }
 
+  auto as_atom = form_as_atom(in);
+  if (as_atom && as_atom->is_var()) {
+    if (env.get_variable_type(as_atom->var(), true) == new_type) {
+      // we are a variable with the right type.
+      return pool.alloc_single_element_form<SimpleAtomElement>(nullptr, *as_atom, true);
+    }
+  }
+
   if (tc_pass) {
     return in;
   } else {
@@ -2717,10 +2725,6 @@ void FunctionCallElement::update_from_stack(const Env& env,
     auto& var = all_pop_vars.at(arg_id + 1);
     if (has_good_types) {
       auto actual_arg_type = env.get_types_before_op(var.idx()).get(var.reg()).typespec();
-      auto val_atom = form_as_atom(val);
-      if (val_atom && val_atom->is_var()) {
-        actual_arg_type = env.get_variable_type(val_atom->var(), true);
-      }
 
       if (arg_id == 0) {
         first_arg_type = actual_arg_type;
