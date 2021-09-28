@@ -283,19 +283,15 @@ nav-enemy-default-event-handler
 
 ;; definition for function babak-with-cannon-compute-cannon-dir
 ;; Used lq/sq
-(defun
-  babak-with-cannon-compute-cannon-dir
-  ((arg0 babak-with-cannon) (arg1 vector))
+(defun babak-with-cannon-compute-cannon-dir ((arg0 mistycannon) (arg1 vector))
   (set! (-> arg1 quad) (-> arg0 node-list data 3 bone transform vector 2 quad))
   arg1
   )
 
 ;; definition for function babak-with-cannon-compute-ride-point
 ;; Used lq/sq
-(defun
-  babak-with-cannon-compute-ride-point
-  ((arg0 babak-with-cannon) (arg1 vector))
-  (set! (-> arg1 quad) (-> arg0 collide-info trans quad))
+(defun babak-with-cannon-compute-ride-point ((arg0 mistycannon) (arg1 vector))
+  (set! (-> arg1 quad) (-> arg0 root trans quad))
   (let ((a1-4 (new 'static 'vector :y 18149.377 :z -17289.217 :w 1.0))
         (a2-0 (-> arg0 node-list data 3 bone transform))
         )
@@ -319,11 +315,11 @@ nav-enemy-default-event-handler
          )
    (when gp-0
     (let ((s5-1 (new 'stack-no-clear 'vector)))
-     (babak-with-cannon-compute-cannon-dir (the-as babak-with-cannon gp-0) s5-1)
+     (babak-with-cannon-compute-cannon-dir (the-as mistycannon gp-0) s5-1)
      (forward-up->quaternion (-> self collide-info quat) s5-1 *y-vector*)
      )
     (babak-with-cannon-compute-ride-point
-     (the-as babak-with-cannon gp-0)
+     (the-as mistycannon gp-0)
      (-> self collide-info trans)
      )
     )
@@ -369,7 +365,7 @@ nav-enemy-default-event-handler
     (cond
      (a0-2
       (babak-with-cannon-compute-ride-point
-       (the-as babak-with-cannon a0-2)
+       (the-as mistycannon a0-2)
        (-> self event-param-point)
        )
       (nav-enemy-initialize-jump (-> self event-param-point))
@@ -402,7 +398,7 @@ nav-enemy-default-event-handler
      (let
       ((gp-2
         (babak-with-cannon-compute-cannon-dir
-         (the-as babak-with-cannon a0-9)
+         (the-as mistycannon a0-9)
          (new 'stack-no-clear 'vector)
          )
         )
@@ -533,8 +529,9 @@ nav-enemy-default-event-handler
     )
    (logior! (-> self nav-enemy-flags) 16)
    (nav-enemy-execute-jump)
-   (dummy-16 (-> self nav) (-> self jump-dest))
-   (dummy-14 (-> self nav))
+   (let ((a1-6 (dummy-16 (-> self nav) (-> self jump-dest))))
+    (set-current-poly! (-> self nav) a1-6)
+    )
    (go-virtual nav-enemy-jump-land)
    (none)
    )
