@@ -66,5 +66,9 @@ void Shader::activate() {
 ShaderLibrary::ShaderLibrary() {
   at(ShaderId::TEST_SHADER) = {"test_shader"};
   at(ShaderId::DIRECT_BASIC) = {"direct_basic"};
+  at(ShaderId::DIRECT_BASIC_TEXTURED_TCC0) = {"direct_basic_textured_tcc0"};
   at(ShaderId::DIRECT_BASIC_TEXTURED) = {"direct_basic_textured"};
+  at(ShaderId::DEBUG_RED) = {"debug_red"};
+  at(ShaderId::SPRITE_CPU) = {"sprite_cpu"};
+  at(ShaderId::SPRITE_CPU_AFAIL) = {"sprite_cpu_afail"};
 }

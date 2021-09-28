@@ -4,21 +4,14 @@
 #include "MemoryMap.h"
 #include "third-party/fmt/core.h"
 #include "common/link_types.h"
-
-namespace {
-uint32_t align16(uint32_t in) {
-  return (in + 15) & (~15);
-}
-
-const char* segment_names[3] = {"main", "debug", "top-level"};
-}  // namespace
+#include "common/util/BitUtils.h"
 
 namespace listener {
 std::string LoadEntry::print() const {
   std::string result;
   const SegmentTypes types[3] = {MAIN_SEGMENT, DEBUG_SEGMENT, TOP_LEVEL_SEGMENT};
   for (int i = 0; i < 3; i++) {
-    result += fmt::format("{} : 0x{:x} size 0x{:x}\n", segment_names[i], segments[int(types[i])],
+    result += fmt::format("{} : 0x{:x} size 0x{:x}\n", SEGMENT_NAMES[i], segments[int(types[i])],
                           segment_sizes[int(types[i])]);
   }
   return result;
@@ -100,7 +93,7 @@ std::string MemoryMap::print() const {
       result += fmt::format(
           " [0x{:08x}] SEGMENT of 0x{:x} bytes, until 0x{:x}\n    name: {}\n    kind: {}\n",
           entry.start_addr, entry.end_addr - entry.start_addr, entry.end_addr, entry.obj_name,
-          segment_names[entry.seg_id]);
+          SEGMENT_NAMES[entry.seg_id]);
     }
     result += std::string(40, '-');
     result += '\n';

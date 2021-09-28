@@ -8,6 +8,7 @@
 #include "TypeInspector.h"
 #include "decompiler/IR/IR.h"
 #include "decompiler/IR2/Form.h"
+#include "common/util/BitUtils.h"
 
 namespace decompiler {
 namespace {
@@ -28,18 +29,6 @@ Register get_expected_fpr_backup(int n, int total) {
   assert(total <= int(fpr_backups.size()));
   assert(n < total);
   return fpr_backups.at((total - 1) - n);
-}
-
-uint32_t align16(uint32_t in) {
-  return (in + 15) & (~15);
-}
-
-uint32_t align8(uint32_t in) {
-  return (in + 7) & (~7);
-}
-
-uint32_t align4(uint32_t in) {
-  return (in + 3) & (~3);
 }
 
 }  // namespace
@@ -78,7 +67,7 @@ void Function::analyze_prologue(const LinkedObjectFile& file) {
         lg::warn(
             "Function {} was flagged as asm due to this instruction: {}. Consider flagging as asm "
             "in config!",
-            guessed_name.to_string(), instr.to_string(file.labels));
+            name(), instr.to_string(file.labels));
         warnings.general_warning("Flagged as asm because of {}", instr.to_string(file.labels));
         suspected_asm = true;
         return;
@@ -103,7 +92,7 @@ void Function::analyze_prologue(const LinkedObjectFile& file) {
         lg::warn(
             "Function {} was flagged as asm due to this instruction: {}. Consider flagging as asm "
             "in config!",
-            guessed_name.to_string(), instr.to_string(file.labels));
+            name(), instr.to_string(file.labels));
         warnings.general_warning("Flagged as asm because of {}", instr.to_string(file.labels));
         suspected_asm = true;
         return;
@@ -158,7 +147,7 @@ void Function::analyze_prologue(const LinkedObjectFile& file) {
         if (this_reg != get_expected_gpr_backup(i, n_gpr_backups)) {
           suspected_asm = true;
           lg::warn("Function {} stores on the stack in a strange way ({}), flagging as asm!",
-                   instructions.at(idx + i).to_string(file.labels), guessed_name.to_string());
+                   instructions.at(idx + i).to_string(file.labels), name());
           warnings.general_warning("Flagged as asm due to strange stack store: {}",
                                    instructions.at(idx + i).to_string(file.labels));
           return;
@@ -187,7 +176,7 @@ void Function::analyze_prologue(const LinkedObjectFile& file) {
           if (this_reg != get_expected_fpr_backup(i, n_fpr_backups)) {
             suspected_asm = true;
             lg::warn("Function {} stores on the stack in a strange way ({}), flagging as asm!",
-                     instructions.at(idx + i).to_string(file.labels), guessed_name.to_string());
+                     instructions.at(idx + i).to_string(file.labels), name());
             warnings.general_warning("Flagged as asm due to strange stack store: {}",
                                      instructions.at(idx + i).to_string(file.labels));
             return;
@@ -378,8 +367,7 @@ void Function::check_epilogue(const LinkedObjectFile& file) {
       idx--;
       assert(is_jr_ra(instructions.at(idx)));
       idx--;
-      lg::warn("Function {} has a double return and is being flagged as asm.",
-               guessed_name.to_string());
+      lg::warn("Function {} has a double return and is being flagged as asm.", name());
       warnings.general_warning("Flagged as asm due to double return");
     }
     // delay slot should be daddiu sp, sp, offset
@@ -772,5 +760,9 @@ BlockTopologicalSort Function::bb_topo_sort() {
   }
 
   return result;
+}
+
+std::string Function::name() const {
+  return guessed_name.to_string();
 }
 }  // namespace decompiler

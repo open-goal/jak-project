@@ -302,11 +302,12 @@ void init_opcode_info() {
   drd_srs_srt(def(IK::PCPYLD, "pcpyld").gpr128());  // Parallel Copy Lower Doubleword
   drd_srs_srt(def(IK::PMADDH, "pmaddh").gpr128());  // Parallel Multiply-Add Halfword
   drd_srs_srt(def(IK::PMULTH, "pmulth").gpr128());  // Parallel Multiply Halfword
-  drd_srs_srt(def(IK::PEXEW, "pexew").gpr128());    // Parallel Exchange Even Word
   drd_srs_srt(def(IK::PINTEH, "pinteh").gpr128());  // Parallel Interleave Even Halfword
   drd_srs_srt(def(IK::PAND, "pand").gpr128());      // Parallel And
   drd_srs_srt(def(IK::POR, "por").gpr128());        // Parallel Or
   drd_srs_srt(def(IK::PNOR, "pnor").gpr128());      // Parallel Not Or
+
+  def(IK::PEXEW, "pexew").gpr128().dst_gpr(FT::RD).src_gpr(FT::RT);  // Parallel Exchange Even Word
 
   drd_srt_ssa(def(IK::PSLLW, "psllw").gpr128());  // Parallel Shift Left Logical Word
   drd_srt_ssa(def(IK::PSLLH, "psllh").gpr128());  // Parallel Shift Left Logical Halfword

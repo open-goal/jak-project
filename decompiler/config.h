@@ -75,6 +75,7 @@ struct DecompileHacks {
   std::unordered_map<std::string, std::unordered_set<int>> blocks_ending_in_asm_branch_by_func_name;
   std::unordered_map<std::string, std::vector<std::vector<int>>>
       format_ops_with_dynamic_string_by_func_name;
+  std::unordered_set<std::string> mips2c_functions_by_name;
 };
 
 struct Config {
@@ -106,6 +107,7 @@ struct Config {
   bool generate_symbol_definition_map = false;
 
   std::unordered_set<std::string> allowed_objects;
+  std::unordered_set<std::string> banned_objects;
   std::unordered_map<std::string, std::unordered_map<int, std::vector<RegisterTypeCast>>>
       register_type_casts_by_function_by_atomic_op_idx;
   std::unordered_map<std::string, std::unordered_map<int, StackTypeCast>>

@@ -1,5 +1,6 @@
 #pragma once
 #include <vector>
+
 #include "decompiler/IR2/AtomicOp.h"
 
 namespace decompiler {

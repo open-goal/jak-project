@@ -6,6 +6,7 @@
 #include "game_text.h"
 #include "decompiler/ObjectFile/ObjectFileDB.h"
 #include "common/goos/Reader.h"
+#include "common/util/BitUtils.h"
 
 namespace decompiler {
 namespace {
@@ -21,10 +22,6 @@ T get_word(const LinkedWord& word) {
 DecompilerLabel get_label(ObjectFileData& data, const LinkedWord& word) {
   assert(word.kind == LinkedWord::PTR);
   return data.linked_data.labels.at(word.label_id);
-}
-
-int align16(int in) {
-  return (in + 15) & ~15;
 }
 
 }  // namespace
@@ -76,7 +73,7 @@ GameTextResult process_game_text(ObjectFileData& data) {
   assert(group_name == "common");
   // remember that we read these bytes
   auto group_start = (group_label.offset / 4) - 1;
-  for (int j = 0; j < align16(8 + 1 + group_name.length()) / 4; j++) {
+  for (int j = 0; j < align16(8 + 1 + (int)group_name.length()) / 4; j++) {
     read_words.at(group_start + j)++;
   }
 
@@ -106,7 +103,7 @@ GameTextResult process_game_text(ObjectFileData& data) {
     // remember what we read (-1 for the type tag)
     auto string_start = (text_label.offset / 4) - 1;
     // 8 for type tag and length fields, 1 for null char.
-    for (int j = 0; j < align16(8 + 1 + text.length()) / 4; j++) {
+    for (int j = 0; j < align16(8 + 1 + (int)text.length()) / 4; j++) {
       read_words.at(string_start + j)++;
     }
   }

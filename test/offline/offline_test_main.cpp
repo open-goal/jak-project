@@ -68,16 +68,6 @@ const std::unordered_set<std::string> g_functions_expected_to_reject = {
     // ripple - asm
     "ripple-execute-init", "ripple-create-wave-table", "ripple-apply-wave-table",
     "ripple-matrix-scale",
-    // ripple - calls an asm function
-    "ripple-execute",
-
-    // sync-info
-    "(method 15 sync-info)",         // needs *res-static-buf*
-    "(method 15 sync-info-eased)",   // needs *res-static-buf*
-    "(method 15 sync-info-paused)",  // needs *res-static-buf*
-
-    // camera
-    "slave-set-rotation!", "v-slrp2!", "v-slrp3!",  // vector-dot involving the stack
 
     // collide-mesh-h
     "(method 11 collide-mesh-cache)",  // asm
@@ -86,7 +76,8 @@ const std::unordered_set<std::string> g_functions_expected_to_reject = {
     "update-mood-lava",       // asm
     "update-mood-lightning",  // asm
 
-    "debug-menu-item-var-render"  // asm
+    // ambient
+    "ambient-inspect"  // asm, weird
 };
 
 const std::unordered_set<std::string> g_functions_to_skip_compiling = {
@@ -172,10 +163,11 @@ const std::unordered_set<std::string> g_functions_to_skip_compiling = {
     // camera
     "slave-set-rotation!", "v-slrp2!", "v-slrp3!",  // vector-dot involving the stack
 
-    // loader - decompiler bug with detecting handle macros
-    "(method 10 external-art-buffer)",
     // function returning float with a weird cast.
-    "debug-menu-item-var-make-float"};
+    "debug-menu-item-var-make-float",
+
+    // decompiler BUG
+    "level-hint-task-process"};
 
 // default location for the data. It can be changed with a command line argument.
 std::string g_iso_data_path = "";
@@ -237,7 +229,7 @@ int main(int argc, char** argv) {
         // Check to see if we've included atleast one of the DGO/CGOs in our hardcoded list
         // If not BLOW UP
         bool dgoValidated = false;
-        for (int i = 0; i < dgoList.size(); i++) {
+        for (int i = 0; i < (int)dgoList.size(); i++) {
           std::string& dgo = dgoList.at(i);
           // can either be in the DGO or CGO folder, and can either end with .CGO or .DGO
           if (std::find(dgos.begin(), dgos.end(), fmt::format("DGO/{}.DGO", dgo)) != dgos.end() ||
@@ -385,10 +377,9 @@ TEST_F(OfflineDecompilation, AsmFunction) {
   int failed_count = 0;
   db->for_each_function([&](decompiler::Function& func, int, decompiler::ObjectFileData&) {
     if (func.suspected_asm) {
-      if (g_functions_expected_to_reject.find(func.guessed_name.to_string()) ==
+      if (g_functions_expected_to_reject.find(func.name()) ==
           g_functions_expected_to_reject.end()) {
-        lg::error("Function {} was marked as asm, but wasn't expected.",
-                  func.guessed_name.to_string());
+        lg::error("Function {} was marked as asm, but wasn't expected.", func.name());
         failed_count++;
       }
     }
@@ -404,7 +395,7 @@ TEST_F(OfflineDecompilation, CfgBuild) {
   db->for_each_function([&](decompiler::Function& func, int, decompiler::ObjectFileData&) {
     if (!func.suspected_asm) {
       if (!func.cfg || !func.cfg->is_fully_resolved()) {
-        lg::error("Function {} failed cfg", func.guessed_name.to_string());
+        lg::error("Function {} failed cfg", func.name());
         failed_count++;
       }
     }
@@ -421,7 +412,7 @@ TEST_F(OfflineDecompilation, AtomicOp) {
   db->for_each_function([&](decompiler::Function& func, int, decompiler::ObjectFileData&) {
     if (!func.suspected_asm) {
       if (!func.ir2.atomic_ops || !func.ir2.atomic_ops_succeeded) {
-        lg::error("Function {} failed atomic ops", func.guessed_name.to_string());
+        lg::error("Function {} failed atomic ops", func.name());
         failed_count++;
       }
     }
@@ -438,7 +429,7 @@ TEST_F(OfflineDecompilation, TypeAnalysis) {
   db->for_each_function([&](decompiler::Function& func, int, decompiler::ObjectFileData&) {
     if (!func.suspected_asm) {
       if (!func.ir2.env.has_type_analysis() || !func.ir2.env.types_succeeded) {
-        lg::error("Function {} failed types", func.guessed_name.to_string());
+        lg::error("Function {} failed types", func.name());
         failed_count++;
       }
     }
@@ -452,7 +443,7 @@ TEST_F(OfflineDecompilation, RegisterUse) {
   db->for_each_function([&](decompiler::Function& func, int, decompiler::ObjectFileData&) {
     if (!func.suspected_asm) {
       if (!func.ir2.env.has_reg_use()) {
-        lg::error("Function {} failed reg use", func.guessed_name.to_string());
+        lg::error("Function {} failed reg use", func.name());
         failed_count++;
       }
     }
@@ -466,7 +457,7 @@ TEST_F(OfflineDecompilation, VariableSSA) {
   db->for_each_function([&](decompiler::Function& func, int, decompiler::ObjectFileData&) {
     if (!func.suspected_asm) {
       if (!func.ir2.env.has_local_vars()) {
-        lg::error("Function {} failed ssa", func.guessed_name.to_string());
+        lg::error("Function {} failed ssa", func.name());
         failed_count++;
       }
     }
@@ -480,7 +471,7 @@ TEST_F(OfflineDecompilation, Structuring) {
   db->for_each_function([&](decompiler::Function& func, int, decompiler::ObjectFileData&) {
     if (!func.suspected_asm) {
       if (!func.ir2.top_form) {
-        lg::error("Function {} failed structuring", func.guessed_name.to_string());
+        lg::error("Function {} failed structuring", func.name());
         failed_count++;
       }
     }
@@ -494,7 +485,7 @@ TEST_F(OfflineDecompilation, Expressions) {
   db->for_each_function([&](decompiler::Function& func, int, decompiler::ObjectFileData&) {
     if (!func.suspected_asm) {
       if (!func.ir2.expressions_succeeded) {
-        lg::error("Function {} failed expressions", func.guessed_name.to_string());
+        lg::error("Function {} failed expressions", func.name());
         failed_count++;
       }
     }
@@ -527,7 +518,7 @@ TEST_F(OfflineDecompilation, Reference) {
     bool can_cache = true;
     for (auto& func_list : obj_l.at(0).linked_data.functions_by_seg) {
       for (auto& func : func_list) {
-        if (g_functions_to_skip_compiling.find(func.guessed_name.to_string()) !=
+        if (g_functions_to_skip_compiling.find(func.name()) !=
             g_functions_to_skip_compiling.end()) {
           can_cache = false;
           break;

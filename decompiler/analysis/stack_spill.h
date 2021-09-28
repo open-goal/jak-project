@@ -1,10 +1,11 @@
 #pragma once
 
+#include <string>
 #include <unordered_map>
 #include <vector>
-#include <string>
-#include "decompiler/Disasm/Instruction.h"
+
 #include "common/util/Range.h"
+#include "decompiler/Disasm/Instruction.h"
 #include "decompiler/util/StackSpillMap.h"
 
 namespace decompiler {

@@ -117,7 +117,8 @@
 ;; without executing anything, to find a process for instance.
 (define *null-kernel-context* (new 'static 'kernel-context))
 
-(#when PC_PORT
+(#cond 
+  (PC_PORT
   ;; We will move stacks on the scratchpad to here.
   ;; it might be possible to also throw them on the *dram-stack*, but they might depend on these
   ;; not overlapping. We can spare the 16k of memory.
@@ -126,7 +127,30 @@
   ;; similar thing for the scratchpad data.
   ;; in 
   (define *fake-scratchpad-data*  (new 'global 'array 'uint8 (* 16 1024)))
+  
+
+  (defmacro scratchpad-start()
+    '*fake-scratchpad-data*
+    )
   )
+  (else
+    (defmacro scratchpad-start ()
+      #x70000000
+      )
+    )
+  )
+
+(defmacro scratchpad-end ()
+  `(&+ (scratchpad-start) (* 16 1024))
+  )
+
+(defmacro in-scratchpad? (x)
+  `(and 
+     (>= (the-as int ,x) (scratchpad-start))
+     (< (the-as int ,x) (scratchpad-end))
+     )
+  )
+  
 
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;

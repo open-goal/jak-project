@@ -985,7 +985,9 @@ void IR_StoreConstOffset::do_codegen(emitter::ObjectGenerator* gen,
         IGen::store_goal_vf(base_reg, value_reg, emitter::gRegInfo.get_offset_reg(), m_offset),
         irec);
   } else {
-    throw std::runtime_error("IR_StoreConstOffset::do_codegen can't handle this");
+    throw std::runtime_error(
+        fmt::format("IR_StoreConstOffset::do_codegen can't handle this (c {} sz {})",
+                    m_value->ireg().reg_class, m_size));
   }
 }
 

@@ -5,9 +5,6 @@
  * Representation of a GOAL pointer which can be converted to/from a C pointer.
  */
 
-#ifndef JAK_PTR_H
-#define JAK_PTR_H
-
 #include "common/util/assert.h"
 #include "game/runtime.h"
 #include "common/common_types.h"
@@ -88,5 +85,3 @@ Ptr<u8> make_u8_ptr(T* x) {
   }
   return Ptr<u8>((u8*)x - g_ee_main_mem);
 }
-
-#endif  // JAK_PTR_H

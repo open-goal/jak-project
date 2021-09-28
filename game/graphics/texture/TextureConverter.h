@@ -3,6 +3,7 @@
 #include <vector>
 
 #include "common/common_types.h"
+#include "common/util/Serializer.h"
 
 class TextureConverter {
  public:
@@ -17,6 +18,7 @@ class TextureConverter {
                          u32 clut_psm,
                          u32 clut_vram_addr,
                          u32 expected_size_bytes);
+  void serialize(Serializer& ser);
 
  private:
   std::vector<u8> m_vram;
