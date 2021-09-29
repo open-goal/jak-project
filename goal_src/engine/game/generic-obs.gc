@@ -6,6 +6,113 @@
 ;; dgos: GAME, ENGINE
 
 
+;; definition for function clone-anim-once
+;; INFO: Return type mismatch int vs none.
+;; Used lq/sq
+(defbehavior
+  clone-anim-once process-drawable
+  ((arg0 handle) (arg1 int) (arg2 symbol) (arg3 string))
+  (set! (-> self skel status) (logand -33 (-> self skel status)))
+  (let ((s5-0 (handle->process arg0)))
+   (if (the-as process-drawable s5-0)
+    (joint-control-copy!
+     (-> self skel)
+     (-> (the-as process-drawable s5-0) skel)
+     )
+    )
+   (cond
+    ((and
+      (the-as process-drawable s5-0)
+      (joint-control-remap!
+       (-> self skel)
+       (-> self draw art-group)
+       (-> (the-as process-drawable s5-0) draw art-group)
+       '()
+       0
+       arg3
+       )
+      )
+     (when arg2
+      (let* ((s4-1 (-> self root))
+             (a0-7
+              (if
+               (and (nonzero? s4-1) (type-type? (-> s4-1 type) collide-shape))
+               (the-as collide-shape s4-1)
+               )
+              )
+             )
+       (if a0-7
+        (TODO-RENAME-30 a0-7 (-> (the-as process-drawable s5-0) root trans))
+        (set!
+         (-> self root trans quad)
+         (-> (the-as process-drawable s5-0) root trans quad)
+         )
+        )
+       )
+      (quaternion-copy!
+       (-> self root quat)
+       (-> (the-as process-drawable s5-0) root quat)
+       )
+      )
+     (if (logtest? (-> (the-as process-drawable s5-0) skel status) 32)
+      (logior! (-> self skel status) 32)
+      )
+     (set! (-> self draw status) (logand -7 (-> self draw status)))
+     (if (not (-> self skel root-channel 0 frame-group))
+      (logior! (-> self draw status) 4)
+      )
+     (let* ((s5-1 self)
+            (v1-37 (if (and (nonzero? s5-1) (type-type? (-> s5-1 type) manipy))
+                    s5-1
+                    )
+             )
+            )
+      (if (and manipy (not (-> (the-as manipy v1-37) draw?)))
+       (logior! (-> self draw status) 4)
+       )
+      )
+     (dummy-17 self)
+     (let ((a0-22 (-> self skel effect)))
+      (if a0-22
+       ((method-of-object a0-22 dummy-9))
+       )
+      )
+     (if (logtest? (-> self skel status) 72)
+      (merc-blend-shape self)
+      )
+     (if (logtest? (-> self skel status) 384)
+      (merc-eye-anim self)
+      )
+     )
+    (else
+     (logior! (-> self draw status) 2)
+     (ja-post)
+     )
+    )
+   )
+  (if (>= arg1 0)
+   (vector<-cspace! (-> self draw origin) (-> self node-list data arg1))
+   )
+  0
+  (none)
+  )
+
+;; definition for function clone-anim
+;; INFO: Return type mismatch int vs none.
+(defbehavior
+  clone-anim process-drawable
+  ((arg0 handle) (arg1 int) (arg2 symbol) (arg3 string))
+  (ja-post)
+  (while (handle->process arg0)
+   (clone-anim-once arg0 arg1 #t arg3)
+   (suspend)
+   )
+  (set! (-> self skel status) (logand -33 (-> self skel status)))
+  0
+  (none)
+  )
+
+
 (deftype camera-start (process-hidden)
   ()
   :method-count-assert 15
@@ -18,5 +125,114 @@
 (define-extern process-grab? (function process symbol))
 (define-extern camera-change-to (function string int symbol none)) ;; TODO - not confirmed yet
 (define-extern process-release? (function process symbol))
-;; TODO - for bird-lady-beach
-(define-extern manipy-init (function trsqv vector entity skeleton-group symbol none)) ;; TODO - not confirmed yet
+;; TODO - for projectiles | dark-eco-pool
+(define-extern part-tracker-init (function sparticle-launch-group int basic basic basic vector none)) ;; TODO - not confirmed
+;; TODO - for target-part
+(define-extern process-drawable-random-point! (function process-drawable vector vector))
+
+
+;; TODO PLACEHOLDER STATE
+(defstate manipy-idle (manipy)
+  :code (behavior ()
+    (loop
+      (suspend)
+      )
+    )
+  )
+(defbehavior manipy-init manipy ((arg0 vector) (arg1 entity) (arg2 skeleton-group) (arg3 vector))
+
+  (stack-size-set! (-> self main-thread) 128)
+  (logior! (-> self mask) (process-mask heap-shrunk))
+  (set! (-> self entity) arg1)
+  (cond
+   ((= arg3 'collide-shape-moving)
+    (let
+     ((s4-1
+       (new
+        'process
+        'collide-shape-moving
+        self
+        (collide-list-enum hit-by-player)
+        )
+       )
+      )
+     (set! (-> s4-1 dynam) (copy *standard-dynamics* 'process))
+     (set! (-> s4-1 reaction) default-collision-reaction)
+     (set! (-> s4-1 no-reaction) nothing)
+     (set-vector!
+      (->
+       (new 'process 'collide-shape-prim-sphere s4-1 (the-as uint 0))
+       local-sphere
+       )
+      0.0
+      0.0
+      0.0
+      4096.0
+      )
+     (dummy-46 s4-1)
+     (set! (-> s4-1 nav-radius) (* 0.75 (-> s4-1 root-prim local-sphere w)))
+     (dummy-50 s4-1)
+     (set! (-> self root) s4-1)
+     )
+    )
+   (arg3
+    (let
+     ((s4-2
+       (new 'process 'collide-shape self (collide-list-enum hit-by-player))
+       )
+      )
+     (let
+      ((s2-0 (new 'process 'collide-shape-prim-sphere s4-2 (the-as uint 0))))
+      (set! (-> s2-0 prim-core collide-as) (the-as uint #x8040))
+      (set! (-> s2-0 collide-with) (the-as uint 16))
+      (set-vector!
+       (-> s2-0 local-sphere)
+       (-> arg3 x)
+       (-> arg3 y)
+       (-> arg3 z)
+       (-> arg3 w)
+       )
+      )
+     (dummy-46 s4-2)
+     (set! (-> s4-2 nav-radius) (* 0.75 (-> s4-2 root-prim local-sphere w)))
+     (dummy-50 s4-2)
+     (set! (-> self root) s4-2)
+     )
+    )
+   (else
+    (set! (-> self root) (new 'process 'trsqv))
+    )
+   )
+  ;;(set! (-> self root trans quad) (-> arg0 quad))
+  ;;(dummy-14 self arg2 '())
+  ;;(if (type-type? (-> self root type) collide-shape)
+   ;;(dummy-47 (-> self root))
+   ;;)
+  ;;(set! (-> self shadow-backup) (-> self draw shadow))
+  (set! (-> self new-trans-hook) nothing)
+  (set! (-> self cur-trans-hook) nothing)
+  (set! (-> self new-post-hook) nothing)
+  (set! (-> self cur-post-hook) nothing)
+  (set! (-> self cur-event-hook) #f)
+  (set! (-> self cur-grab-handle) (the-as handle #f))
+  (set! (-> self cur-target-handle) (the-as handle #f))
+  (set! (-> self clone-copy-trans) #t)
+  (set! (-> self draw?) #t)
+  (cond
+   ((nonzero? (-> self skel))
+    (set! (-> self new-joint-anim) (if (> (-> self skel active-channels) 0)
+                                    (-> self skel root-channel 0 frame-group)
+                                    )
+     )
+    (set! (-> self anim-mode) 'loop)
+    )
+   (else
+    (set! (-> self anim-mode) 'still)
+    )
+   )
+  (set! (-> self event-hook) (-> manipy-idle event))
+  (go manipy-idle)
+  (none)
+  )
+
+

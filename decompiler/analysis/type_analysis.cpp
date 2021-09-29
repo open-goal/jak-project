@@ -129,8 +129,7 @@ bool run_type_analysis_ir2(const TypeSpec& my_type, DecompilerTypeSystem& dts, F
         try {
           op_types.at(op_id) = op->propagate_types(*init_types, func.ir2.env, dts);
         } catch (std::runtime_error& e) {
-          lg::warn("Function {} failed type prop at op {}: {}", func.guessed_name.to_string(),
-                   op_id, e.what());
+          lg::warn("Function {} failed type prop at op {}: {}", func.name(), op_id, e.what());
           func.warnings.type_prop_warning("Failed type prop at op {} ({}): {}", op_id,
                                           op->to_string(func.ir2.env), e.what());
           func.ir2.env.set_types(block_init_types, op_types, *func.ir2.atomic_ops, my_type);

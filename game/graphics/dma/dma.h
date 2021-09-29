@@ -10,6 +10,15 @@
 #include "common/util/assert.h"
 #include "common/common_types.h"
 
+struct DmaStats {
+  double sync_time_ms = 0;
+  int num_tags = 0;
+  int num_data_bytes = 0;
+  int num_chunks = 0;
+  int num_copied_bytes = 0;
+  int num_fixups = 0;
+};
+
 struct DmaTag {
   enum class Kind : u8 {
     REFE = 0,
@@ -45,6 +54,7 @@ struct VifCode {
     BASE = 0b11,
     ITOP = 0b100,
     STMOD = 0b101,
+    PC_PORT = 0b1000,  // not a valid PS2 VIF code, but we use this to signal PC-PORT specific stuff
     MSK3PATH = 0b110,
     MARK = 0b111,
     FLUSHE = 0b10000,
@@ -59,7 +69,8 @@ struct VifCode {
     MPG = 0b1001010,
     DIRECT = 0b1010000,
     DIRECTHL = 0b1010001,
-    UNPACK_MASK = 0b1100000  // unpack is a bunch of commands.
+    UNPACK_MASK = 0b1100000,  // unpack is a bunch of commands.
+    UNPACK_V4_32 = 0b1101100,
   };
 
   VifCode(u32 value) {
@@ -75,4 +86,26 @@ struct VifCode {
   u16 immediate;
 
   std::string print();
+};
+
+struct VifCodeStcycl {
+  explicit VifCodeStcycl(const VifCode& code) {
+    cl = code.immediate & 0xff;
+    wl = (code.immediate >> 8);
+  }
+
+  u16 cl;
+  u16 wl;
+};
+
+struct VifCodeUnpack {
+  explicit VifCodeUnpack(const VifCode& code) {
+    addr_qw = code.immediate & 0b1111111111;
+    is_unsigned = (code.immediate & (1 << 14));
+    use_tops_flag = (code.immediate & (1 << 15));
+  }
+
+  u16 addr_qw;
+  bool is_unsigned;    // only care for 8/16 bit data.
+  bool use_tops_flag;  // uses double buffering
 };

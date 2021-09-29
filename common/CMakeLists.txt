@@ -20,6 +20,7 @@ add_library(common
         type_system/TypeSpec.cpp
         type_system/TypeSystem.cpp
         util/BitUtils.cpp
+        util/compress.cpp
         util/dgo_util.cpp
         util/DgoReader.cpp
         util/DgoWriter.cpp
@@ -29,7 +30,7 @@ add_library(common
         util/print_float.cpp
         )
 
-target_link_libraries(common fmt lzokay replxx)
+target_link_libraries(common fmt lzokay replxx libzstd_static)
 
 if(WIN32)
     target_link_libraries(common wsock32 ws2_32)

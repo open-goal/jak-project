@@ -34,7 +34,7 @@
 #include "game/graphics/gfx.h"
 #include "game/graphics/dma/dma_chain_read.h"
 #include "game/graphics/dma/dma_copy.h"
-
+#include "game/mips2c/mips2c_table.h"
 #include "game/system/vm/vm.h"
 #include "game/system/newpad.h"
 using namespace ee;
@@ -499,7 +499,7 @@ u64 CPadGetData(u64 cpad_info) {
         cpad->state = 99;
       } else {
         // we have actuators to use.
-        cpad->change_time = 1;  // remember to update vibration.
+        cpad->change_time = 1;  // remember to update pad times.
         cpad->state = 75;
       }
       break;
@@ -553,6 +553,12 @@ void pc_texture_upload_now(u32 page, u32 mode) {
 
 void pc_texture_relocate(u32 dst, u32 src, u32 format) {
   Gfx::texture_relocate(dst, src, format);
+}
+
+u64 pc_get_mips2c(u32 name) {
+  const char* n = Ptr<String>(name).c()->data();
+  fmt::print("Getting mips: {}\n", n);
+  return Mips2C::gLinkedFunctionTable.get(n);
 }
 
 /*!
@@ -672,8 +678,10 @@ u64 DecodeVolume() {
   return masterConfig.volume;
 }
 
+// NOTE: this is originally hardcoded, and returns different values depending on the disc region.
+// it returns 0 for NTSC-U, 1 for PAL and 2 for NTSC-J
 u64 DecodeTerritory() {
-  return 0;
+  return masterConfig.territory;
 }
 
 u64 DecodeTimeout() {
@@ -716,6 +724,7 @@ void InitMachine_PCPort() {
   make_function_symbol_from_c("__send-gfx-dma-chain", (void*)send_gfx_dma_chain);
   make_function_symbol_from_c("__pc-texture-upload-now", (void*)pc_texture_upload_now);
   make_function_symbol_from_c("__pc-texture-relocate", (void*)pc_texture_relocate);
+  make_function_symbol_from_c("__pc-get-mips2c", (void*)pc_get_mips2c);
 
   // pad stuff
   make_function_symbol_from_c("pc-pad-get-mapped-button", (void*)Gfx::get_mapped_button);
@@ -737,6 +746,13 @@ void vif_interrupt_callback() {
   if (vif1_interrupt_handler && MasterExit == 0) {
     call_goal(Ptr<Function>(vif1_interrupt_handler), 0, 0, 0, s7.offset, g_ee_main_mem);
   }
+}
+
+/*!
+ * Added in PC port.
+ */
+u32 offset_of_s7() {
+  return s7.offset;
 }
 
 /*!

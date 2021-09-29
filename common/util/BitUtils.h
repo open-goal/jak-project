@@ -64,3 +64,23 @@ std::optional<int> get_power_of_two(T in) {
 
 bool integer_fits(s64 in, int size, bool is_signed);
 u32 float_as_u32(float x);
+
+template <typename T>
+T align16(T in) {
+  return (in + 15) & (~T(15));
+}
+
+template <typename T>
+T align8(T in) {
+  return (in + 7) & (~T(7));
+}
+
+template <typename T>
+T align4(T in) {
+  return (in + 3) & (~T(3));
+}
+
+template <typename T>
+T align64(T in) {
+  return (in + 63) & (~T(63));
+}

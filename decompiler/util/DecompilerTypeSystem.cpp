@@ -395,8 +395,9 @@ int DecompilerTypeSystem::get_format_arg_count(const std::string& str) const {
     return bad_it->second;
   }
 
-  std::vector<char> single_char_ignore_list = {'%', 'T'};
-  std::vector<std::string> double_two_char_ignore_list = {"0L", "3L", "1K", "2j", "0k"};
+  static const std::vector<char> single_char_ignore_list = {'%', 'T'};
+  static const std::vector<std::string> multi_char_ignore_list = {"0L", "1L", "3L", "1K",
+                                                                  "2j", "0k", "30L"};
 
   int arg_count = 0;
   for (size_t i = 0; i < str.length(); i++) {
@@ -412,9 +413,14 @@ int DecompilerTypeSystem::get_format_arg_count(const std::string& str) const {
         }
       }
 
-      for (std::string code : double_two_char_ignore_list) {
+      for (auto& code : multi_char_ignore_list) {
         if (i + 1 < str.length() && code.length() == 2 && (str.at(i) == code.at(0)) &&
             str.at(i + 1) == code.at(1)) {
+          code_takes_no_arg = true;
+          break;
+        }
+        if (i + 2 < str.length() && code.length() == 3 && (str.at(i) == code.at(0)) &&
+            str.at(i + 1) == code.at(1) && str.at(i + 2) == code.at(2)) {
           code_takes_no_arg = true;
           break;
         }
@@ -433,6 +439,23 @@ int DecompilerTypeSystem::get_format_arg_count(const TP_Type& type) const {
     return get_format_arg_count(type.get_string());
   } else {
     return type.get_format_string_arg_count();
+  }
+}
+
+int DecompilerTypeSystem::get_dynamic_format_arg_count(const std::string& func_name,
+                                                       int op_idx) const {
+  auto kv = format_ops_with_dynamic_string_by_func_name.find(func_name);
+  if (kv == format_ops_with_dynamic_string_by_func_name.end()) {
+    throw std::runtime_error(fmt::format("Unknown dynamic format string."));
+  } else {
+    auto& formats = kv->second;
+    auto the_format =
+        std::find_if(formats.begin(), formats.end(),
+                     [op_idx](const std::vector<int> vec) { return vec.at(0) == op_idx; });
+    if (the_format == formats.end()) {
+      throw std::runtime_error(fmt::format("Unknown dynamic format string."));
+    }
+    return the_format->at(1);
   }
 }
 

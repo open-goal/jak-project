@@ -5,9 +5,6 @@
  * Utilities for checking if an instruction matches some criteria.
  */
 
-#ifndef JAK_DISASSEMBLER_INSTRUCTIONMATCHING_H
-#define JAK_DISASSEMBLER_INSTRUCTIONMATCHING_H
-
 #include "Instruction.h"
 #include "decompiler/util/MatchParam.h"
 
@@ -58,4 +55,3 @@ Register make_fpr(int fpr);
 bool is_branch(const Instruction& instr, MatchParam<bool> likely);
 bool is_always_branch(const Instruction& instr);
 }  // namespace decompiler
-#endif  // JAK_DISASSEMBLER_INSTRUCTIONMATCHING_H

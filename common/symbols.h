@@ -5,9 +5,6 @@
  * The location of fixed symbols in the GOAL symbol table.
  */
 
-#ifndef JAK1_SYMBOLS_H
-#define JAK1_SYMBOLS_H
-
 constexpr int FIX_SYM_EMPTY_CAR = -0xc;
 constexpr int FIX_SYM_EMPTY_PAIR = -0xa;
 constexpr int FIX_SYM_EMPTY_CDR = -0x8;
@@ -79,5 +76,3 @@ constexpr int FIX_SYM_SOUND = 0x1b8;                // ??
 constexpr int FIX_SYM_DGO = 0x1c0;                  // ??
 constexpr int FIX_SYM_TOP_LEVEL = 0x1c8;            // ??
 constexpr int FIX_FIXED_SYM_END_OFFSET = 0x1d0;
-
-#endif  // JAK1_SYMBOLS_H

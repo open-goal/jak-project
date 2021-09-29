@@ -122,9 +122,6 @@ u32 Init() {
 void Loop(std::function<bool()> f) {
   lg::info("GFX Loop");
   while (f()) {
-    // clean the inputs
-    Pad::ClearKeys();
-
     // check if we have a display
     if (Display::GetMainDisplay()) {
       // lg::debug("run display");

@@ -57,36 +57,42 @@
   (the-as load-dir #f)
   )
 
-(defmethod dummy-9 load-dir-art-group ((obj load-dir-art-group) (arg0 string) (arg1 symbol) (arg2 kheap) (arg3 int))
-  "This is not understood."
-
+(defmethod load-to-heap-by-name load-dir-art-group ((obj load-dir-art-group) (art-name string) (do-reload symbol) (heap kheap) (version int))
+  "Load the art with the given name to the heap and return the art.
+  Won't load a thing if it's already loaded, unless you set do-reload.
+  This is intended for debug only."
+  
+  ;; see if we already have it.
   (let ((s5-0 (-> obj string-array)))
-   (dotimes (s3-0 (-> s5-0 length))
-    (when (string= arg0 (-> s5-0 s3-0))
-     (when arg1
-      (let ((v1-4 (art-group-load-check arg0 arg2 arg3)))
-       (if v1-4
-        (set! (-> obj art-group-array s3-0) v1-4)
+    (dotimes (s3-0 (-> s5-0 length))
+      (when (string= art-name (-> s5-0 s3-0))
+        (when do-reload
+          ;; we have it, reload it if requested
+          (let ((v1-4 (art-group-load-check art-name heap version)))
+            (if v1-4
+                (set! (-> obj art-group-array s3-0) v1-4)
+                )
+            )
+          )
+        (return (-> obj art-group-array s3-0))
         )
-       )
       )
-     (return (-> obj art-group-array s3-0))
-     )
+    
+    ;; nope, we don't have it,add it to the list.
+    (let ((v0-2 (art-group-load-check art-name heap version)))
+      (when v0-2
+        (set! (-> s5-0 (-> s5-0 length)) art-name)
+        (set! (-> obj art-group-array (-> s5-0 length)) v0-2)
+        (+! (-> s5-0 length) 1)
+        (+! (-> obj art-group-array length) 1)
+        )
+      v0-2
+      )
     )
-   (let ((v0-2 (art-group-load-check arg0 arg2 arg3)))
-    (when v0-2
-     (set! (-> s5-0 (-> s5-0 length)) arg0)
-     (set! (-> obj art-group-array (-> s5-0 length)) v0-2)
-     (1+! (-> s5-0 length))
-     (1+! (-> obj art-group-array length))
-     )
-    v0-2
-    )
-   )
   )
 
-(defmethod dummy-10 load-dir-art-group ((obj load-dir-art-group) (arg0 art-group))
-  "This is not understood."
+(defmethod set-loaded-art load-dir-art-group ((obj load-dir-art-group) (arg0 art-group))
+  "Add some already loaded art to the load-dir."
 
   (let ((s4-0 (-> obj string-array)))
    (dotimes (s3-0 (-> s4-0 length))
@@ -160,6 +166,7 @@
            (the-as art-group #f)
            )
           ((not (file-info-correct-version? (-> s3-1 info) (file-kind art-group) arg2))
+           ;;     ^ prints a detailed error if it fails.
            ;;(format 0 "ERROR: art-group ~A is not the correct version.~%" arg0)
            (the-as art-group #f)
            )
@@ -541,7 +548,7 @@
   )
 
 (defmethod update external-art-control ((obj external-art-control) (debug-print symbol))
-  "Update this external-art-control. This validates the spool buffers, sorts the spools, and does some other things.
+  "Update this external-art-control. This validates the spool buffers, sorts the spools, advances str-play-queue, and does some other things.
    If debug-print, also prints some text to the display console"
 
   (if (nonzero? (-> obj reserve-buffer-count))
@@ -842,13 +849,15 @@
         (sv-56 0)
         (spool-sound (new-sound-id))
         )
-    (dummy-17 *load-state* (-> arg0 command-list))
+    (backup-load-state-and-set-cmds *load-state* (-> arg0 command-list))
     (set-setting! *setting-control* self 'spooling (the-as symbol (process->ppointer self)) 0.0 0)
     (logior! (-> self skel status) #x7)
     (kill-current-level-hint '() '() 'die)
     (level-hint-surpress!)
     (copy-settings-from-target! *setting-control*)
+    
     ;; the spool lock is active (or we're not in game mode for some reason?)
+    ;; we can't nest or do multiple spooled joint animations.
     (when (or (handle->process (-> *art-control* spool-lock))
               (!= *master-mode* 'game)
               )
@@ -889,9 +898,14 @@
        )
       )
      )
+    
+    ;; grab the lock
     (set! (-> *art-control* spool-lock) (process->handle self))
     (set! sv-48 (the-as int (-> *display* base-frame-counter)))
+    
+    ;; iterate through parts (this loop suspends, so it lasts the whole animation)
     (while (< spool-part (-> arg0 parts))
+      ;; run the loader
      (spool-push *art-control* (-> arg0 name) spool-part self -20.0)
      (update *art-control* #f)
      (spool-push *art-control* (-> arg0 name) spool-part self -20.0)
@@ -961,7 +975,10 @@
                    (logclear! (-> self skel status) #x4)
                    )
                   )
-                 (dummy-16 *load-state* (ja-aframe-num 0))
+                 
+                 ;; execute sequence commands for loading/spawning/etc.
+                 (execute-commands-up-to *load-state* (ja-aframe-num 0))
+                 
                  (cond
                   ((and (< sv-32 sv-72) (= (current-str-id) spool-sound))
                    (+! sv-56 (the-as int (- (-> *display* base-frame-counter) (-> *display* old-base-frame-counter))))
@@ -1021,7 +1038,7 @@
 (defbehavior ja-abort-spooled-anim process-drawable ((arg0 spool-anim) (arg1 art-joint-anim) (arg2 int))
   "Abort a spooled animation."
 
-  (dummy-18 *load-state*)
+  (restore-load-state-and-cleanup *load-state*)
   (str-play-stop (-> arg0 name))
   (set! (-> *art-control* active-stream) #f)
   (logclear! (-> self skel status) #x6) ;; #x4 and #x2

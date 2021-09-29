@@ -224,11 +224,12 @@ class SimpleExpressionElement : public FormElement {
                                               FormStack& stack,
                                               std::vector<FormElement*>* result,
                                               bool allow_side_effects);
-  void update_from_stack_vector_3_dot(const Env& env,
-                                      FormPool& pool,
-                                      FormStack& stack,
-                                      std::vector<FormElement*>* result,
-                                      bool allow_side_effects);
+  void update_from_stack_vector_dot(FixedOperatorKind kind,
+                                    const Env& env,
+                                    FormPool& pool,
+                                    FormStack& stack,
+                                    std::vector<FormElement*>* result,
+                                    bool allow_side_effects);
 
   const SimpleExpression& expr() const { return m_expr; }
 
@@ -292,7 +293,7 @@ class LoadSourceElement : public FormElement {
  */
 class SimpleAtomElement : public FormElement {
  public:
-  explicit SimpleAtomElement(const SimpleAtom& var);
+  explicit SimpleAtomElement(const SimpleAtom& var, bool omit_var_cast = false);
   goos::Object to_form_internal(const Env& env) const override;
   void apply(const std::function<void(FormElement*)>& f) override;
   void apply_form(const std::function<void(Form*)>& f) override;
@@ -307,6 +308,7 @@ class SimpleAtomElement : public FormElement {
 
  private:
   SimpleAtom m_atom;
+  bool m_omit_var_cast;
 };
 
 /*!

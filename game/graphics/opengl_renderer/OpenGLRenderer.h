@@ -10,7 +10,12 @@
 class OpenGLRenderer {
  public:
   OpenGLRenderer(std::shared_ptr<TexturePool> texture_pool);
-  void render(DmaFollower dma, int window_width_px, int window_height_px);
+  void render(DmaFollower dma,
+              int window_width_px,
+              int window_height_px,
+              bool draw_debug_window,
+              bool dump_playback);
+  void serialize(Serializer& ser);
 
  private:
   void setup_frame(int window_width_px, int window_height_px);
@@ -18,7 +23,6 @@ class OpenGLRenderer {
   void dispatch_buckets(DmaFollower dma);
   void init_bucket_renderers();
   void draw_renderer_selection_window();
-  void draw_texture_window();
 
   template <typename T, class... Args>
   void init_bucket_renderer(const std::string& name, BucketId id, Args&&... args) {
