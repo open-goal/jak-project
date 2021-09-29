@@ -5,3 +5,3136 @@
 ;; name in dgo: assistant-village2
 ;; dgos: L1, VI2
 
+(define-extern *assistant-village2-sg* skeleton-group)
+(define-extern *jaws-sg* skeleton-group)
+
+;; DECOMP BEGINS
+
+(deftype assistant-levitator (process-taskable)
+  ((boulder  entity-actor               :offset-assert 380)
+   (particle sparticle-launch-control 4 :offset-assert 384)
+   )
+  :heap-base #x120
+  :method-count-assert 53
+  :size-assert         #x190
+  :flag-assert         #x3501200190
+  )
+
+
+(defmethod relocate assistant-levitator ((obj assistant-levitator) (arg0 int))
+  (dotimes (v1-0 4)
+   (if (nonzero? (-> obj particle v1-0))
+    (&+! (-> obj particle v1-0) arg0)
+    )
+   )
+  (the-as
+   assistant-levitator
+   ((method-of-type process-taskable relocate) obj arg0)
+   )
+  )
+
+(defmethod deactivate assistant-levitator ((obj assistant-levitator))
+  (dotimes (s5-0 4)
+   (let ((a0-1 (-> obj particle s5-0)))
+    (if (nonzero? a0-1)
+     (kill-and-free-particles a0-1)
+     )
+    )
+   )
+  ((method-of-type process-taskable deactivate) obj)
+  (none)
+  )
+
+(let
+  ((v1-1
+    (new 'static 'skeleton-group
+     :art-group-name "assistant-village2"
+     :bounds (new 'static 'vector :w 8192.0)
+     :max-lod 2
+     :version #x6
+     :shadow 4
+     )
+    )
+   )
+  (set! (-> v1-1 jgeo) 0)
+  (set! (-> v1-1 janim) 5)
+  (set! (-> v1-1 mgeo 0) (the-as uint 1))
+  (set! (-> v1-1 lod-dist 0) 81920.0)
+  (set! (-> v1-1 mgeo 1) (the-as uint 2))
+  (set! (-> v1-1 lod-dist 1) 163840.0)
+  (set! (-> v1-1 mgeo 2) (the-as uint 3))
+  (set! (-> v1-1 lod-dist 2) 4095996000.0)
+  (set! *assistant-village2-sg* v1-1)
+  )
+
+(let
+  ((v1-2
+    (new 'static 'skeleton-group
+     :art-group-name "jaws"
+     :bounds (new 'static 'vector :w 1024.0)
+     :version #x6
+     )
+    )
+   )
+  (set! (-> v1-2 jgeo) 0)
+  (set! (-> v1-2 janim) 2)
+  (set! (-> v1-2 mgeo 0) (the-as uint 1))
+  (set! (-> v1-2 lod-dist 0) 4095996000.0)
+  (set! *jaws-sg* v1-2)
+  )
+
+(defmethod dummy-52 assistant-levitator ((obj assistant-levitator))
+  (let ((v1-1 (-> obj draw shadow-ctrl)))
+   (when v1-1
+    (let ((f0-0 (-> obj root-override trans y)))
+     (let ((a0-2 v1-1))
+      (set! (-> a0-2 settings bot-plane w) (- (+ -409.6 f0-0)))
+      )
+     0
+     (let ((a0-4 v1-1))
+      (set! (-> a0-4 settings top-plane w) (- (+ 4096.0 f0-0)))
+      )
+     )
+    0
+    (set! (-> v1-1 settings flags) (logand -9 (-> v1-1 settings flags)))
+    )
+   )
+  (none)
+  )
+
+(defmethod draw-npc-shadow assistant-levitator ((obj assistant-levitator))
+  (-> obj draw shadow-ctrl)
+  (cond
+   ((and
+     (-> obj draw shadow)
+     (zero? (-> obj draw cur-lod))
+     (logtest? (-> obj draw status) 8)
+     )
+    (let ((v1-9 (-> obj draw shadow-ctrl)))
+     (set! (-> v1-9 settings flags) (logand -33 (-> v1-9 settings flags)))
+     )
+    0
+    (dummy-14 (-> obj draw shadow-ctrl))
+    )
+   (else
+    (let ((v1-14 (-> obj draw shadow-ctrl)))
+     (logior! (-> v1-14 settings flags) 32)
+     )
+    0
+    )
+   )
+  (none)
+  )
+
+(defmethod play-anim! assistant-bluehut ((obj assistant-bluehut) (arg0 symbol))
+  (with-pp
+   (set! (-> obj talk-message) (the-as uint 292))
+   (case (current-status (-> obj tasks)) 
+    ((1 2 3)
+      (if (not arg0)
+       (set! (-> obj will-talk) #t)
+       )
+      (case (current-task (-> obj tasks)) 
+       ((103)
+         (when arg0
+          (close-status! (-> obj tasks) (task-status need-introduction))
+          (let ((a1-5 (new 'stack-no-clear 'event-message-block)))
+           (set! (-> a1-5 from) pp)
+           (set! (-> a1-5 num-params) 1)
+           (set! (-> a1-5 message) 'clone)
+           (set! (-> a1-5 param 0) (the-as uint (process->handle obj)))
+           (send-event-function (-> obj sage extra process) a1-5)
+           )
+          (let ((s5-1 (new 'stack-no-clear 'event-message-block)))
+           (set! (-> s5-1 from) pp)
+           (set! (-> s5-1 num-params) 1)
+           (set! (-> s5-1 message) 'clone)
+           (set! (-> s5-1 param 0) (the-as uint (process->handle obj)))
+           (send-event-function
+            (-> (entity-by-type flutflut-bluehut) extra process)
+            s5-1
+            )
+           )
+          )
+         (new 'static 'spool-anim
+          :name "assistant-village2-introduction"
+          :index 15
+          :parts 16
+          :command-list
+          '(
+            (0
+              send-event
+              target
+              draw
+              #f
+              )
+            (0
+             kill
+             "villageb-part-33"
+             )
+            ((the binteger 95)
+             send-event
+             target
+             draw
+             #t
+             )
+            ((the binteger 95)
+             joint
+             "cameraB"
+             )
+            ((the binteger 131)
+             send-event
+             target
+             draw
+             #f
+             )
+            ((the binteger 131)
+             joint
+             "camera"
+             )
+            ((the binteger 190)
+             setting-reset
+             ocean-off
+             #t
+             )
+            ((the binteger 190)
+             kill
+             "pontoonten-20"
+             )
+            ((the binteger 190)
+             kill
+             "pontoonten-19"
+             )
+            ((the binteger 190)
+             kill
+             "pontoonten-18"
+             )
+            ((the binteger 190)
+             kill
+             "pontoonten-17"
+             )
+            ((the binteger 190)
+             kill
+             "pontoonten-16"
+             )
+            ((the binteger 190)
+             kill
+             "pontoonten-15"
+             )
+            ((the binteger 190)
+             kill
+             "pontoonten-14"
+             )
+            ((the binteger 190)
+             kill
+             "pontoonten-13"
+             )
+            ((the binteger 190)
+             kill
+             "pontoonten-12"
+             )
+            ((the binteger 190)
+             kill
+             "pontoonten-11"
+             )
+            ((the binteger 190)
+             kill
+             "pontoonten-10"
+             )
+            ((the binteger 190)
+             kill
+             "pontoonten-9"
+             )
+            ((the binteger 190)
+             kill
+             "pontoonten-8"
+             )
+            ((the binteger 190)
+             kill
+             "pontoonten-7"
+             )
+            ((the binteger 190)
+             kill
+             "pontoonten-6"
+             )
+            ((the binteger 190)
+             kill
+             "pontoonfive-3"
+             )
+            ((the binteger 190)
+             kill
+             "pontoonfive-4"
+             )
+            ((the binteger 190)
+             kill
+             "pontoonfive-5"
+             )
+            ((the binteger 190)
+             kill
+             "pontoonfive-6"
+             )
+            ((the binteger 190)
+             kill
+             "pontoonfive-7"
+             )
+            ((the binteger 190)
+             kill
+             "pontoonfive-8"
+             )
+            ((the binteger 190)
+             kill
+             "pontoonfive-12"
+             )
+            ((the binteger 190)
+             kill
+             "pontoonfive-13"
+             )
+            ((the binteger 190)
+             kill
+             "pontoonfive-14"
+             )
+            ((the binteger 190)
+             kill
+             "pontoonfive-15"
+             )
+            ((the binteger 190)
+             kill
+             "pontoonfive-16"
+             )
+            ((the binteger 190)
+             kill
+             "pontoonfive-17"
+             )
+            ((the binteger 190)
+             kill
+             "pontoonfive-18"
+             )
+            ((the binteger 190)
+             kill
+             "pontoonfive-19"
+             )
+            ((the binteger 190)
+             kill
+             "pontoonfive-20"
+             )
+            ((the binteger 190)
+             kill
+             "allpontoons-1"
+             )
+            ((the binteger 190)
+             kill
+             "med-res-level-12"
+             )
+            ((the binteger 190)
+             kill
+             "med-res-level-13"
+             )
+            ((the binteger 190)
+             kill
+             "med-res-level-15"
+             )
+            ((the binteger 190)
+             kill
+             "swamp-blimp-3"
+             )
+            ((the binteger 190)
+             kill
+             "barrel-85"
+             )
+            ((the binteger 190)
+             kill
+             "barrel-86"
+             )
+            ((the binteger 190)
+             kill
+             "money-2844"
+             )
+            ((the binteger 190)
+             kill
+             "money-2845"
+             )
+            ((the binteger 190)
+             kill
+             "money-2846"
+             )
+            ((the binteger 190)
+             kill
+             "money-2847"
+             )
+            ((the binteger 190)
+             kill
+             "money-2848"
+             )
+            ((the binteger 190)
+             kill
+             "money-2849"
+             )
+            ((the binteger 190)
+             kill
+             "money-4923"
+             )
+            ((the binteger 190)
+             kill
+             "money-4924"
+             )
+            ((the binteger 190)
+             kill
+             "money-4925"
+             )
+            ((the binteger 190)
+             kill
+             "money-4926"
+             )
+            ((the binteger 190)
+             kill
+             "money-4927"
+             )
+            ((the binteger 190)
+             kill
+             "eco-27"
+             )
+            ((the binteger 190)
+             kill
+             "sharkey-25"
+             )
+            ((the binteger 190)
+             kill
+             "barrel-117"
+             )
+            ((the binteger 190)
+             kill
+             "barrel-118"
+             )
+            ((the binteger 190)
+             kill
+             "barrel-119"
+             )
+            ((the binteger 190)
+             kill
+             "barrel-120"
+             )
+            ((the binteger 190)
+             kill
+             "barrel-121"
+             )
+            ((the binteger 190)
+             kill
+             "barrel-122"
+             )
+            ((the binteger 190)
+             kill
+             "crate-3129"
+             )
+            ((the binteger 190)
+             kill
+             "crate-3132"
+             )
+            ((the binteger 190)
+             kill
+             "crate-3133"
+             )
+            ((the binteger 190)
+             kill
+             "villageb-part-32"
+             )
+            ((the binteger 190)
+             kill
+             "villageb-part-30"
+             )
+            ((the binteger 190)
+             kill
+             "exit-chamber-dummy-1"
+             )
+            ((the binteger 190)
+             kill
+             "villageb-part-34"
+             )
+            ((the binteger 191)
+             send-event
+             target
+             draw
+             #t
+             )
+            ((the binteger 191)
+             joint
+             "cameraB"
+             )
+            ((the binteger 241)
+             joint
+             "camera"
+             )
+            ((the binteger 241)
+             send-event
+             target
+             draw
+             #f
+             )
+            ((the binteger 241)
+             setting-unset
+             ocean-off
+             )
+            ((the binteger 241)
+             dead
+             "pontoonten-20"
+             )
+            ((the binteger 241)
+             dead
+             "pontoonten-19"
+             )
+            ((the binteger 241)
+             dead
+             "pontoonten-18"
+             )
+            ((the binteger 241)
+             dead
+             "pontoonten-17"
+             )
+            ((the binteger 241)
+             dead
+             "pontoonten-16"
+             )
+            ((the binteger 241)
+             dead
+             "pontoonten-15"
+             )
+            ((the binteger 241)
+             dead
+             "pontoonten-14"
+             )
+            ((the binteger 241)
+             dead
+             "pontoonten-13"
+             )
+            ((the binteger 241)
+             dead
+             "pontoonten-12"
+             )
+            ((the binteger 241)
+             dead
+             "pontoonten-11"
+             )
+            ((the binteger 241)
+             dead
+             "pontoonten-10"
+             )
+            ((the binteger 241)
+             dead
+             "pontoonten-9"
+             )
+            ((the binteger 241)
+             dead
+             "pontoonten-8"
+             )
+            ((the binteger 241)
+             dead
+             "pontoonten-7"
+             )
+            ((the binteger 241)
+             dead
+             "pontoonten-6"
+             )
+            ((the binteger 241)
+             dead
+             "pontoonfive-3"
+             )
+            ((the binteger 241)
+             dead
+             "pontoonfive-4"
+             )
+            ((the binteger 241)
+             dead
+             "pontoonfive-5"
+             )
+            ((the binteger 241)
+             dead
+             "pontoonfive-6"
+             )
+            ((the binteger 241)
+             dead
+             "pontoonfive-7"
+             )
+            ((the binteger 241)
+             dead
+             "pontoonfive-8"
+             )
+            ((the binteger 241)
+             dead
+             "pontoonfive-12"
+             )
+            ((the binteger 241)
+             dead
+             "pontoonfive-13"
+             )
+            ((the binteger 241)
+             dead
+             "pontoonfive-14"
+             )
+            ((the binteger 241)
+             dead
+             "pontoonfive-15"
+             )
+            ((the binteger 241)
+             dead
+             "pontoonfive-16"
+             )
+            ((the binteger 241)
+             dead
+             "pontoonfive-17"
+             )
+            ((the binteger 241)
+             dead
+             "pontoonfive-18"
+             )
+            ((the binteger 241)
+             dead
+             "pontoonfive-19"
+             )
+            ((the binteger 241)
+             dead
+             "pontoonfive-20"
+             )
+            ((the binteger 241)
+             dead
+             "allpontoons-1"
+             )
+            ((the binteger 241)
+             dead
+             "med-res-level-12"
+             )
+            ((the binteger 241)
+             dead
+             "med-res-level-13"
+             )
+            ((the binteger 241)
+             dead
+             "med-res-level-15"
+             )
+            ((the binteger 241)
+             dead
+             "swamp-blimp-3"
+             )
+            ((the binteger 241)
+             dead
+             "barrel-85"
+             )
+            ((the binteger 241)
+             dead
+             "barrel-86"
+             )
+            ((the binteger 241)
+             dead
+             "money-2844"
+             )
+            ((the binteger 241)
+             dead
+             "money-2845"
+             )
+            ((the binteger 241)
+             dead
+             "money-2846"
+             )
+            ((the binteger 241)
+             dead
+             "money-2847"
+             )
+            ((the binteger 241)
+             dead
+             "money-2848"
+             )
+            ((the binteger 241)
+             dead
+             "money-2849"
+             )
+            ((the binteger 241)
+             dead
+             "money-4923"
+             )
+            ((the binteger 241)
+             dead
+             "money-4924"
+             )
+            ((the binteger 241)
+             dead
+             "money-4925"
+             )
+            ((the binteger 241)
+             dead
+             "money-4926"
+             )
+            ((the binteger 241)
+             dead
+             "money-4927"
+             )
+            ((the binteger 241)
+             dead
+             "eco-27"
+             )
+            ((the binteger 241)
+             dead
+             "sharkey-25"
+             )
+            ((the binteger 241)
+             dead
+             "barrel-117"
+             )
+            ((the binteger 241)
+             dead
+             "barrel-118"
+             )
+            ((the binteger 241)
+             dead
+             "barrel-119"
+             )
+            ((the binteger 241)
+             dead
+             "barrel-120"
+             )
+            ((the binteger 241)
+             dead
+             "barrel-121"
+             )
+            ((the binteger 241)
+             dead
+             "barrel-122"
+             )
+            ((the binteger 241)
+             dead
+             "crate-3129"
+             )
+            ((the binteger 241)
+             dead
+             "crate-3132"
+             )
+            ((the binteger 241)
+             dead
+             "crate-3133"
+             )
+            ((the binteger 241)
+             dead
+             "villageb-part-32"
+             )
+            ((the binteger 241)
+             dead
+             "villageb-part-30"
+             )
+            ((the binteger 321)
+             joint
+             "cameraB"
+             )
+            ((the binteger 352)
+             joint
+             "camera"
+             )
+            ((the binteger 383)
+             joint
+             "cameraB"
+             )
+            ((the binteger 411)
+             joint
+             "camera"
+             )
+            ((the binteger 501)
+             joint
+             "cameraB"
+             )
+            ((the binteger 501)
+             send-event
+             target
+             draw
+             #t
+             )
+            ((the binteger 567)
+             joint
+             "camera"
+             )
+            ((the binteger 634)
+             alive
+             "fireboulder-6"
+             )
+            ((the binteger 635)
+             joint
+             "cameraB"
+             )
+            ((the binteger 701)
+             joint
+             "camera"
+             )
+            ((the binteger 741)
+             joint
+             "cameraB"
+             )
+            ((the binteger 784)
+             joint
+             "camera"
+             )
+            ((the binteger 936)
+             joint
+             "cameraB"
+             )
+            ((the binteger 1065)
+             joint
+             "camera"
+             )
+            ((the binteger 1145)
+             joint
+             "cameraB"
+             )
+            ((the binteger 1241) joint "camera")
+            )
+          )
+         )
+       ((47)
+        (when arg0
+         (let* ((s5-2 (-> obj tasks))
+                (s4-0 (method-of-object s5-2 save-reminder))
+                (a1-7 (new 'stack-no-clear 'event-message-block))
+                )
+          (set! (-> a1-7 from) pp)
+          (set! (-> a1-7 num-params) 2)
+          (set! (-> a1-7 message) 'query)
+          (set! (-> a1-7 param 0) (the-as uint 'pickup))
+          (set! (-> a1-7 param 1) (the-as uint 6))
+          (s4-0
+           s5-2
+           (the int (the-as float (send-event-function *target* a1-7)))
+           1
+           )
+          )
+         (close-status! (-> obj tasks) (task-status need-introduction))
+         (let ((s5-3 (get-process *default-dead-pool* manipy #x4000)))
+          (set! (-> obj jaws) (ppointer->handle (when s5-3
+                                                 (let
+                                                  ((t9-10
+                                                    (method-of-type
+                                                     manipy
+                                                     activate
+                                                     )
+                                                    )
+                                                   )
+                                                  (t9-10
+                                                   (the-as manipy s5-3)
+                                                   obj
+                                                   'manipy
+                                                   (the-as pointer #x70004000)
+                                                   )
+                                                  )
+                                                 (run-now-in-process
+                                                  s5-3
+                                                  manipy-init
+                                                  (-> obj root-override trans)
+                                                  (-> obj entity)
+                                                  *jaws-sg*
+                                                  #f
+                                                  )
+                                                 (-> s5-3 ppointer)
+                                                 )
+                               )
+           )
+          )
+         (let ((v1-42 (handle->process (-> obj jaws))))
+          (if v1-42
+           (set! (-> (the-as manipy v1-42) draw light-index) (the-as uint 1))
+           )
+          )
+         (let ((a1-14 (new 'stack-no-clear 'event-message-block)))
+          (set! (-> a1-14 from) pp)
+          (set! (-> a1-14 num-params) 1)
+          (set! (-> a1-14 message) 'anim-mode)
+          (set! (-> a1-14 param 0) (the-as uint 'clone-anim))
+          (send-event-function (handle->process (-> obj jaws)) a1-14)
+          )
+         (let ((a1-15 (new 'stack-no-clear 'event-message-block)))
+          (set! (-> a1-15 from) pp)
+          (set! (-> a1-15 num-params) 1)
+          (set! (-> a1-15 message) 'center-joint)
+          (set! (-> a1-15 param 0) (the-as uint 3))
+          (send-event-function (handle->process (-> obj jaws)) a1-15)
+          )
+         (let ((s5-4 (new 'stack-no-clear 'event-message-block)))
+          (set! (-> s5-4 from) pp)
+          (set! (-> s5-4 num-params) 1)
+          (set! (-> s5-4 message) 'clone)
+          (set! (-> s5-4 param 0) (the-as uint (process->handle obj)))
+          (send-event-function
+           (-> (entity-by-type flutflut-bluehut) extra process)
+           s5-4
+           )
+          )
+         )
+        (new 'static 'spool-anim
+         :name "assistant-village2-introduction-room"
+         :index 21
+         :parts 10
+         :command-list
+         '(
+           ((the binteger 197)
+             joint
+             "cameraB"
+             )
+           ((the binteger 351)
+            joint
+            "camera"
+            )
+           ((the binteger 431)
+            joint
+            "cameraB"
+            )
+           ((the binteger 553)
+            joint
+            "camera"
+            )
+           ((the binteger 631)
+            joint
+            "cameraB"
+            )
+           ((the binteger 842)
+            joint
+            "camera"
+            )
+           ((the binteger 900)
+            joint
+            "cameraB"
+            )
+           ((the binteger 1069) joint "camera")
+           )
+         )
+        )
+       ((53)
+        (when arg0
+         (let* ((s5-5 (-> obj tasks))
+                (s4-1 (method-of-object s5-5 save-reminder))
+                (a1-17 (new 'stack-no-clear 'event-message-block))
+                )
+          (set! (-> a1-17 from) pp)
+          (set! (-> a1-17 num-params) 2)
+          (set! (-> a1-17 message) 'query)
+          (set! (-> a1-17 param 0) (the-as uint 'pickup))
+          (set! (-> a1-17 param 1) (the-as uint 6))
+          (s4-1
+           s5-5
+           (the int (the-as float (send-event-function *target* a1-17)))
+           1
+           )
+          )
+         (close-status! (-> obj tasks) (task-status need-introduction))
+         )
+        (new 'static 'spool-anim
+         :name
+         "assistant-village2-introduction-robbers"
+         :index 17
+         :parts 6
+         :command-list
+         '(
+           ((the binteger 55)
+             joint
+             "cameraB"
+             )
+           ((the binteger 145)
+            joint
+            "camera"
+            )
+           ((the binteger 207)
+            joint
+            "cameraB"
+            )
+           ((the binteger 363) joint "camera")
+           )
+         )
+        )
+       (else
+        (when arg0
+         (close-status! (-> obj tasks) (task-status need-introduction))
+         (let ((s5-6 (new 'stack-no-clear 'event-message-block)))
+          (set! (-> s5-6 from) pp)
+          (set! (-> s5-6 num-params) 1)
+          (set! (-> s5-6 message) 'clone)
+          (set! (-> s5-6 param 0) (the-as uint (process->handle obj)))
+          (send-event-function
+           (-> (entity-by-type flutflut-bluehut) extra process)
+           s5-6
+           )
+          )
+         )
+        (new 'static 'spool-anim
+         :name
+         "assistant-village2-introduction-flutflut"
+         :index 19
+         :parts 8
+         :command-list
+         '(
+           ((the binteger 71)
+             joint
+             "cameraB"
+             )
+           ((the binteger 308)
+            joint
+            "camera"
+            )
+           ((the binteger 426)
+            joint
+            "cameraB"
+            )
+           ((the binteger 550)
+            joint
+            "camera"
+            )
+           ((the binteger 644) joint "cameraB")
+           )
+         )
+        )
+       )
+      )
+    ((5)
+     (set! (-> obj skippable) #t)
+     (let ((s4-2 (+ (get-reminder (-> obj tasks) 0) 1)))
+      (if (< (the-as uint 2) (the-as uint s4-2))
+       (set! s4-2 0)
+       )
+      (countdown (s3-0 3)
+       (let ((v1-92 s4-2))
+        (cond
+         ((zero? v1-92)
+          (if
+           (!=
+            (get-task-status (game-task sunken-room))
+            (task-status need-reminder)
+            )
+           (set! s4-2 1)
+           )
+          )
+         ((= v1-92 1)
+          (if
+           (!=
+            (get-task-status (game-task rolling-robbers))
+            (task-status need-reminder)
+            )
+           (set! s4-2 2)
+           )
+          )
+         (else
+          (if
+           (!=
+            (get-task-status (game-task swamp-flutflut))
+            (task-status need-reminder)
+            )
+           (set! s4-2 0)
+           )
+          )
+         )
+        )
+       )
+      (if arg0
+       (save-reminder (-> obj tasks) s4-2 2)
+       )
+      (cond
+       ((zero? s4-2)
+        (new 'static 'spool-anim
+         :name "assistant-village2-reminder-1-room"
+         :index 22
+         :parts 3
+         :command-list '()
+         )
+        )
+       ((= s4-2 1)
+        (new 'static 'spool-anim
+         :name "assistant-village2-reminder-1-robbers"
+         :index 18
+         :parts 3
+         :command-list '()
+         )
+        )
+       (else
+        (new 'static 'spool-anim
+         :name
+         "assistant-village2-reminder-1-flutflut"
+         :index 20
+         :parts 3
+         :command-list '()
+         )
+        )
+       )
+      )
+     )
+    (else
+     (if arg0
+      (format
+       0
+       "ERROR: <GMJ>: ~S playing anim for task status ~S~%"
+       (-> obj name)
+       (task-status->string
+        (the-as task-status (current-status (-> obj tasks)))
+        )
+       )
+      )
+     (-> obj draw art-group data 5)
+     )
+    )
+   )
+  )
+
+(defmethod get-art-elem assistant-bluehut ((obj assistant-bluehut))
+  (-> obj draw art-group data 10)
+  )
+
+(defmethod play-reminder assistant-bluehut ((obj assistant-bluehut))
+  (cond
+   ((and (-> obj will-talk) *target*)
+    (let* ((f30-1 (+ -1552384.0 (-> (target-pos 0) x)))
+           (f0-3 (+ 6352896.0 (-> (target-pos 0) z) f30-1))
+           )
+     (< 0.0 f0-3)
+     )
+    )
+   (else
+    #f
+    )
+   )
+  )
+
+(defmethod target-above-threshold? assistant-bluehut ((obj assistant-bluehut))
+  (when (not (play-reminder obj))
+   (set! (-> obj im-talking) #f)
+   (return #f)
+   )
+  (let ((s5-0 (-> obj sage extra process)))
+   (when (not s5-0)
+    (let ((v1-7 #t))
+     (set! (-> obj im-talking) v1-7)
+     (return v1-7)
+     )
+    )
+   (when (!= (-> (the-as sage-bluehut s5-0) next-state name) 'idle)
+    (set! (-> obj im-talking) #f)
+    (return #f)
+    )
+   (when (not (play-reminder (the-as sage-bluehut s5-0)))
+    (let ((v1-15 #t))
+     (set! (-> obj im-talking) v1-15)
+     (return v1-15)
+     )
+    )
+   (let*
+    ((s4-0
+      (vector<-cspace!
+       (new 'stack-no-clear 'vector)
+       (-> obj node-list data (-> obj center-joint-index))
+       )
+      )
+     (s3-0
+      (vector<-cspace!
+       (new 'stack-no-clear 'vector)
+       (->
+        (the-as sage-bluehut s5-0)
+        node-list
+        data
+        (-> (the-as sage-bluehut s5-0) center-joint-index)
+        )
+       )
+      )
+     (f0-1
+      (-
+       (vector-vector-distance (target-pos 0) s3-0)
+       (vector-vector-distance (target-pos 0) s4-0)
+       )
+      )
+     )
+    (cond
+     ((< f0-1 -4096.0)
+      (set! (-> obj im-talking) #f)
+      (return #f)
+      )
+     ((< 4096.0 f0-1)
+      (let ((v1-24 #t))
+       (set! (-> obj im-talking) v1-24)
+       (return v1-24)
+       )
+      )
+     (else
+      (return (-> obj im-talking))
+      )
+     )
+    )
+   )
+  (the-as symbol 0)
+  )
+
+(defmethod TODO-RENAME-43 assistant-bluehut ((obj assistant-bluehut))
+  (when
+   (TODO-RENAME-10
+    (-> obj ambient)
+    (new 'stack-no-clear 'vector)
+    9000
+    122880.0
+    obj
+    )
+   (let* ((v1-3 (/ (the-as int (rand-uint31-gen *random-generator*)) 256))
+          (v1-4 (the-as number (logior #x3f800000 v1-3)))
+          (f30-0 (+ -1.0 (the-as float v1-4)))
+          )
+    (cond
+     ((= (get-task-status (game-task village2-levitator)) (task-status invalid))
+      #f
+      )
+     ((< 0.5 f30-0)
+      (dummy-11 (-> obj ambient) "ASSTLP23" #f (-> obj root-override trans))
+      )
+     (else
+      (dummy-11 (-> obj ambient) "ASSTLP24" #f (-> obj root-override trans))
+      )
+     )
+    )
+   )
+  )
+
+(defstate idle (assistant-bluehut)
+  :virtual #t
+  :trans
+  (behavior ()
+   (case (get-task-status (game-task village2-levitator)) 
+    (((task-status need-hint) (task-status need-introduction))
+      (let ((a1-1 (new 'stack-no-clear 'event-message-block)))
+       (set! (-> a1-1 from) self)
+       (set! (-> a1-1 num-params) 0)
+       (set! (-> a1-1 message) 'play-anim)
+       (send-event-function self a1-1)
+       )
+      )
+    )
+   ((-> (method-of-type process-taskable idle) trans))
+   (none)
+   )
+  :code
+  (behavior ()
+   (if (!= (if (> (-> self skel active-channels) 0)
+            (-> self skel root-channel 0 frame-group)
+            )
+        (get-art-elem self)
+        )
+    (ja-channel-push! 1 15)
+    )
+   (while #t
+    (let ((gp-0 (-> self skel root-channel 0)))
+     (set! (-> gp-0 frame-group) (the-as art-joint-anim (get-art-elem self)))
+     (set!
+      (-> gp-0 param 0)
+      (the
+       float
+       (+ (-> (the-as art-joint-anim (get-art-elem self)) data 0 length) -1)
+       )
+      )
+     (set! (-> gp-0 param 1) 1.0)
+     (set! (-> gp-0 frame-num) 0.0)
+     (joint-control-channel-group!
+      gp-0
+      (the-as art-joint-anim (get-art-elem self))
+      num-func-seek!
+      )
+     )
+    (until (ja-done? 0)
+     (suspend)
+     (let ((a0-11 (-> self skel root-channel 0)))
+      (set!
+       (-> a0-11 param 0)
+       (the float (+ (-> a0-11 frame-group data 0 length) -1))
+       )
+      (set! (-> a0-11 param 1) 1.0)
+      (joint-control-channel-group-eval!
+       a0-11
+       (the-as art-joint-anim #f)
+       num-func-seek!
+       )
+      )
+     )
+    (let* ((v1-24 (/ (the-as int (rand-uint31-gen *random-generator*)) 256))
+           (v1-25 (the-as number (logior #x3f800000 v1-24)))
+           (f0-9 (+ -1.0 (the-as float v1-25)))
+           )
+     (cond
+      ((< f0-9 0.33333334)
+       (TODO-RENAME-43 self)
+       (let ((a0-16 (-> self skel root-channel 0)))
+        (set!
+         (-> a0-16 frame-group)
+         (the-as art-joint-anim (-> self draw art-group data 11))
+         )
+        (set!
+         (-> a0-16 param 0)
+         (the
+          float
+          (+
+           (->
+            (the-as art-joint-anim (-> self draw art-group data 11))
+            data
+            0
+            length
+            )
+           -1
+           )
+          )
+         )
+        (set! (-> a0-16 param 1) 1.0)
+        (set! (-> a0-16 frame-num) 0.0)
+        (joint-control-channel-group!
+         a0-16
+         (the-as art-joint-anim (-> self draw art-group data 11))
+         num-func-seek!
+         )
+        )
+       (until (ja-done? 0)
+        (suspend)
+        (let ((a0-17 (-> self skel root-channel 0)))
+         (set!
+          (-> a0-17 param 0)
+          (the float (+ (-> a0-17 frame-group data 0 length) -1))
+          )
+         (set! (-> a0-17 param 1) 1.0)
+         (joint-control-channel-group-eval!
+          a0-17
+          (the-as art-joint-anim #f)
+          num-func-seek!
+          )
+         )
+        )
+       (let ((gp-1 (-> *display* base-frame-counter)))
+        (while (let* ((s5-1 (-> *display* base-frame-counter))
+                      (f30-0 300.0)
+                      (f28-0 0.16)
+                      (f26-0 0.17000002)
+                      (v1-55
+                       (/ (the-as int (rand-uint31-gen *random-generator*)) 256)
+                       )
+                      (v1-56 (the-as number (logior #x3f800000 v1-55)))
+                      )
+                (<
+                 (-
+                  s5-1
+                  (the
+                   int
+                   (* f30-0 (+ f28-0 (* f26-0 (+ -1.0 (the-as float v1-56)))))
+                   )
+                  )
+                 gp-1
+                 )
+                )
+         (suspend)
+         )
+        )
+       (let ((a0-21 (-> self skel root-channel 0)))
+        (set! (-> a0-21 frame-group) (if (> (-> self skel active-channels) 0)
+                                      (-> self skel root-channel 0 frame-group)
+                                      )
+         )
+        (set! (-> a0-21 param 0) 0.0)
+        (set! (-> a0-21 param 1) 1.0)
+        (set!
+         (-> a0-21 frame-num)
+         (the float (+ (-> (if (> (-> self skel active-channels) 0)
+                            (-> self skel root-channel 0 frame-group)
+                            )
+                        data
+                        0
+                        length
+                        )
+                     -1
+                     )
+          )
+         )
+        (joint-control-channel-group!
+         a0-21
+         (if (> (-> self skel active-channels) 0)
+          (-> self skel root-channel 0 frame-group)
+          )
+         num-func-seek!
+         )
+        )
+       (until (ja-done? 0)
+        (suspend)
+        (let ((a0-22 (-> self skel root-channel 0)))
+         (set! (-> a0-22 param 0) 0.0)
+         (set! (-> a0-22 param 1) 1.0)
+         (joint-control-channel-group-eval!
+          a0-22
+          (the-as art-joint-anim #f)
+          num-func-seek!
+          )
+         )
+        )
+       )
+      ((< f0-9 0.6666667)
+       (sound-play-by-name
+        (static-sound-name "welding-loop")
+        (-> self sound-id)
+        1024
+        0
+        0
+        (the-as uint 1)
+        (target-pos 0)
+        )
+       (let ((a0-27 (-> self skel root-channel 0)))
+        (set!
+         (-> a0-27 frame-group)
+         (the-as art-joint-anim (-> self draw art-group data 12))
+         )
+        (set!
+         (-> a0-27 param 0)
+         (the
+          float
+          (+
+           (->
+            (the-as art-joint-anim (-> self draw art-group data 12))
+            data
+            0
+            length
+            )
+           -1
+           )
+          )
+         )
+        (set! (-> a0-27 param 1) 1.0)
+        (set! (-> a0-27 frame-num) 0.0)
+        (joint-control-channel-group!
+         a0-27
+         (the-as art-joint-anim (-> self draw art-group data 12))
+         num-func-seek!
+         )
+        )
+       (until (ja-done? 0)
+        (suspend)
+        (let ((a0-28 (-> self skel root-channel 0)))
+         (set!
+          (-> a0-28 param 0)
+          (the float (+ (-> a0-28 frame-group data 0 length) -1))
+          )
+         (set! (-> a0-28 param 1) 1.0)
+         (joint-control-channel-group-eval!
+          a0-28
+          (the-as art-joint-anim #f)
+          num-func-seek!
+          )
+         )
+        )
+       (let ((v1-111 (-> self skel root-channel 0)))
+        (set!
+         (-> v1-111 frame-group)
+         (the-as art-joint-anim (-> self draw art-group data 13))
+         )
+        )
+       (let* ((f30-1 2.0)
+              (v1-113 (/ (the-as int (rand-uint31-gen *random-generator*)) 256))
+              (v1-114 (the-as number (logior #x3f800000 v1-113)))
+              )
+        (countdown
+         (gp-3 (+ (the int (* f30-1 (+ -1.0 (the-as float v1-114)))) 4))
+         (let ((a0-35 (-> self skel root-channel 0)))
+          (set! (-> a0-35 frame-group) (if (> (-> self skel active-channels) 0)
+                                        (->
+                                         self
+                                         skel
+                                         root-channel
+                                         0
+                                         frame-group
+                                         )
+                                        )
+           )
+          (set!
+           (-> a0-35 param 0)
+           (the float (+ (-> (if (> (-> self skel active-channels) 0)
+                              (-> self skel root-channel 0 frame-group)
+                              )
+                          data
+                          0
+                          length
+                          )
+                       -1
+                       )
+            )
+           )
+          (set! (-> a0-35 param 1) 1.0)
+          (set! (-> a0-35 frame-num) 0.0)
+          (joint-control-channel-group!
+           a0-35
+           (if (> (-> self skel active-channels) 0)
+            (-> self skel root-channel 0 frame-group)
+            )
+           num-func-seek!
+           )
+          )
+         (until (ja-done? 0)
+          (spawn
+           (-> self part)
+           (vector<-cspace!
+            (new 'stack-no-clear 'vector)
+            (-> self node-list data 30)
+            )
+           )
+          (suspend)
+          (let ((a0-38 (-> self skel root-channel 0)))
+           (set!
+            (-> a0-38 param 0)
+            (the float (+ (-> a0-38 frame-group data 0 length) -1))
+            )
+           (set! (-> a0-38 param 1) 1.0)
+           (joint-control-channel-group-eval!
+            a0-38
+            (the-as art-joint-anim #f)
+            num-func-seek!
+            )
+           )
+          )
+         (let ((a0-40 (-> self skel root-channel 0)))
+          (set! (-> a0-40 frame-group) (if (> (-> self skel active-channels) 0)
+                                        (->
+                                         self
+                                         skel
+                                         root-channel
+                                         0
+                                         frame-group
+                                         )
+                                        )
+           )
+          (set! (-> a0-40 param 0) 0.0)
+          (set! (-> a0-40 param 1) 1.0)
+          (set!
+           (-> a0-40 frame-num)
+           (the float (+ (-> (if (> (-> self skel active-channels) 0)
+                              (-> self skel root-channel 0 frame-group)
+                              )
+                          data
+                          0
+                          length
+                          )
+                       -1
+                       )
+            )
+           )
+          (joint-control-channel-group!
+           a0-40
+           (if (> (-> self skel active-channels) 0)
+            (-> self skel root-channel 0 frame-group)
+            )
+           num-func-seek!
+           )
+          )
+         (until (ja-done? 0)
+          (spawn
+           (-> self part)
+           (vector<-cspace!
+            (new 'stack-no-clear 'vector)
+            (-> self node-list data 30)
+            )
+           )
+          (suspend)
+          (let ((a0-43 (-> self skel root-channel 0)))
+           (set! (-> a0-43 param 0) 0.0)
+           (set! (-> a0-43 param 1) 1.0)
+           (joint-control-channel-group-eval!
+            a0-43
+            (the-as art-joint-anim #f)
+            num-func-seek!
+            )
+           )
+          )
+         )
+        )
+       (let ((a0-45 (-> self skel root-channel 0)))
+        (set! (-> a0-45 frame-group) (if (> (-> self skel active-channels) 0)
+                                      (-> self skel root-channel 0 frame-group)
+                                      )
+         )
+        (set!
+         (-> a0-45 param 0)
+         (the float (+ (-> (if (> (-> self skel active-channels) 0)
+                            (-> self skel root-channel 0 frame-group)
+                            )
+                        data
+                        0
+                        length
+                        )
+                     -1
+                     )
+          )
+         )
+        (set! (-> a0-45 param 1) 1.0)
+        (set! (-> a0-45 frame-num) 0.0)
+        (joint-control-channel-group!
+         a0-45
+         (if (> (-> self skel active-channels) 0)
+          (-> self skel root-channel 0 frame-group)
+          )
+         num-func-seek!
+         )
+        )
+       (until (ja-done? 0)
+        (spawn
+         (-> self part)
+         (vector<-cspace!
+          (new 'stack-no-clear 'vector)
+          (-> self node-list data 30)
+          )
+         )
+        (suspend)
+        (let ((a0-48 (-> self skel root-channel 0)))
+         (set!
+          (-> a0-48 param 0)
+          (the float (+ (-> a0-48 frame-group data 0 length) -1))
+          )
+         (set! (-> a0-48 param 1) 1.0)
+         (joint-control-channel-group-eval!
+          a0-48
+          (the-as art-joint-anim #f)
+          num-func-seek!
+          )
+         )
+        )
+       (sound-stop (-> self sound-id))
+       (let ((a0-51 (-> self skel root-channel 0)))
+        (set!
+         (-> a0-51 frame-group)
+         (the-as art-joint-anim (-> self draw art-group data 14))
+         )
+        (set!
+         (-> a0-51 param 0)
+         (the
+          float
+          (+
+           (->
+            (the-as art-joint-anim (-> self draw art-group data 14))
+            data
+            0
+            length
+            )
+           -1
+           )
+          )
+         )
+        (set! (-> a0-51 param 1) 1.0)
+        (set! (-> a0-51 frame-num) 0.0)
+        (joint-control-channel-group!
+         a0-51
+         (the-as art-joint-anim (-> self draw art-group data 14))
+         num-func-seek!
+         )
+        )
+       (until (ja-done? 0)
+        (suspend)
+        (let ((a0-52 (-> self skel root-channel 0)))
+         (set!
+          (-> a0-52 param 0)
+          (the float (+ (-> a0-52 frame-group data 0 length) -1))
+          )
+         (set! (-> a0-52 param 1) 1.0)
+         (joint-control-channel-group-eval!
+          a0-52
+          (the-as art-joint-anim #f)
+          num-func-seek!
+          )
+         )
+        )
+       )
+      )
+     )
+    )
+   (none)
+   )
+  )
+
+(defstate play-anim (assistant-bluehut)
+  :virtual #t
+  :exit
+  (behavior ()
+   (let ((a0-1 (handle->process (-> self jaws))))
+    (if a0-1
+     (deactivate a0-1)
+     )
+    )
+   (let ((a1-1 (new 'stack-no-clear 'event-message-block)))
+    (set! (-> a1-1 from) self)
+    (set! (-> a1-1 num-params) 0)
+    (set! (-> a1-1 message) 'end-mode)
+    (send-event-function (-> self sage extra process) a1-1)
+    )
+   (let ((gp-0 (new 'stack-no-clear 'event-message-block)))
+    (set! (-> gp-0 from) self)
+    (set! (-> gp-0 num-params) 0)
+    (set! (-> gp-0 message) 'end-mode)
+    (send-event-function
+     (-> (entity-by-type flutflut-bluehut) extra process)
+     gp-0
+     )
+    )
+   ((-> (method-of-type process-taskable play-anim) exit))
+   (close-specific-task!
+    (game-task village2-levitator)
+    (task-status need-reminder-a)
+    )
+   (none)
+   )
+  :trans
+  (behavior ()
+   '()
+   (none)
+   )
+  )
+
+(defmethod should-display? assistant-bluehut ((obj assistant-bluehut))
+  (cond
+   ((not
+     (closed?
+      (-> obj tasks)
+      (game-task village2-levitator)
+      (task-status unknown)
+      )
+     )
+    (dummy-33 obj)
+    #f
+    )
+   ((or
+     (=
+      (get-task-status (game-task village2-levitator))
+      (task-status need-reward-speech)
+      )
+     (sages-kidnapped?)
+     )
+    #f
+    )
+   (else
+    #t
+    )
+   )
+  )
+
+(set!
+  (-> *part-group-id-table* 288)
+  (new 'static 'sparticle-launch-group
+   :length 2
+   :duration #xbb8
+   :linger-duration #x5dc
+   :name "group-assistant-bluehut-torch"
+   :launcher
+   (new 'static 'inline-array sparticle-group-item 2
+    (sp-item 1322 :fade-after (meters 30.0) :falloff-to (meters 30.0))
+    (sp-item 1323 :fade-after (meters 60.0) :falloff-to (meters 80.0))
+    )
+   :bounds (new 'static 'sphere :w 61440.0)
+   )
+  )
+
+(set!
+  (-> *part-id-table* 1322)
+  (new 'static 'sparticle-launcher
+   :init-specs
+   (new 'static 'inline-array sp-field-init-spec 13
+    (sp-tex spt-texture (new 'static 'texture-id :index #x12 :page #x2))
+    (sp-rnd-flt spt-num 0.1 1.0 1.0)
+    (sp-rnd-flt spt-scale-x (meters 1.0) (meters 3.0) 1.0)
+    (sp-rnd-flt spt-rot-z (degrees 0.0) (degrees 360.0) 1.0)
+    (sp-copy-from-other spt-scale-y -4)
+    (sp-rnd-flt spt-r 100.0 28.0 1.0)
+    (sp-flt spt-g 100.0)
+    (sp-flt spt-b 80.0)
+    (sp-rnd-flt spt-a 32.0 64.0 1.0)
+    (sp-flt spt-fade-a -6.4)
+    (sp-int spt-timer 10)
+    (sp-cpuinfo-flags bit2 bit3)
+    (sp-end)
+    )
+   )
+  )
+
+(set!
+  (-> *part-id-table* 1323)
+  (new 'static 'sparticle-launcher
+   :init-specs
+   (new 'static 'inline-array sp-field-init-spec 22
+    (sp-tex spt-texture (new 'static 'texture-id :index #xf :page #x2))
+    (sp-rnd-flt spt-num 0.1 1.0 1.0)
+    (sp-rnd-flt spt-scale-x (meters 0.1) (meters 0.1) 1.0)
+    (sp-copy-from-other spt-scale-y -4)
+    (sp-rnd-flt spt-r 128.0 128.0 1.0)
+    (sp-flt spt-g 128.0)
+    (sp-flt spt-b 64.0)
+    (sp-rnd-flt spt-a 32.0 96.0 1.0)
+    (sp-rnd-flt spt-vel-y (meters 0.013333334) (meters 0.08) 1.0)
+    (sp-flt spt-scalevel-x (meters -0.00016666666))
+    (sp-copy-from-other spt-scalevel-y -4)
+    (sp-flt spt-fade-g -0.2)
+    (sp-flt spt-fade-b -0.2)
+    (sp-flt spt-accel-y -8.192)
+    (sp-flt spt-friction 0.93)
+    (sp-int spt-timer 1200)
+    (sp-cpuinfo-flags bit2)
+    (sp-flt spt-userdata 140288.0)
+    (sp-func spt-func 'check-drop-level-assistant-bluehut)
+    (sp-rnd-flt spt-conerot-x (degrees 0.0) (degrees 180.0) 1.0)
+    (sp-rnd-flt spt-conerot-y (degrees 45.0) (degrees 180.0) 1.0)
+    (sp-end)
+    )
+   )
+  )
+
+(set!
+  (-> *part-id-table* 1324)
+  (new 'static 'sparticle-launcher
+   :init-specs
+   (new 'static 'inline-array sp-field-init-spec 15
+    (sp-tex spt-texture (new 'static 'texture-id :index #xf :page #x2))
+    (sp-rnd-flt spt-num 3.0 1.0 1.0)
+    (sp-rnd-flt spt-scale-x (meters 0.075) (meters 0.075) 1.0)
+    (sp-copy-from-other spt-scale-y -4)
+    (sp-rnd-flt spt-r 128.0 64.0 1.0)
+    (sp-flt spt-g 96.0)
+    (sp-rnd-flt spt-a 32.0 96.0 1.0)
+    (sp-rnd-flt spt-vel-y (meters 0.011666667) (meters 0.0033333334) 1.0)
+    (sp-flt spt-fade-a -0.85333335)
+    (sp-flt spt-accel-y -0.68266666)
+    (sp-int spt-timer 300)
+    (sp-cpuinfo-flags bit2)
+    (sp-rnd-flt spt-conerot-x (degrees 50.000004) (degrees 30.0) 1.0)
+    (sp-rnd-flt spt-conerot-y (degrees 0.0) (degrees 360.0) 1.0)
+    (sp-end)
+    )
+   )
+  )
+
+(defun
+  check-drop-level-assistant-bluehut
+  ((arg0 sparticle-system) (arg1 sparticle-cpuinfo) (arg2 vector))
+  (when (< (-> arg2 y) (-> arg1 user-float))
+   (let ((gp-0 (new 'stack-no-clear 'vector)))
+    (sp-kill-particle arg0 arg1)
+    (let* ((v1-1 (/ (the-as int (rand-uint31-gen *random-generator*)) 256))
+           (v1-2 (the-as number (logior #x3f800000 v1-1)))
+           )
+     (if (< (+ -1.0 (the-as float v1-2)) 0.25)
+      (sound-play-by-name
+       (static-sound-name "water-drop")
+       (new-sound-id)
+       1024
+       0
+       0
+       (the-as uint 1)
+       (the-as vector #t)
+       )
+      )
+     )
+    (set-vector! gp-0 (-> arg2 x) (-> arg1 user-float) (-> arg2 z) 1.0)
+    (sp-launch-particles-var
+     *sp-particle-system-2d*
+     (-> *part-id-table* 1324)
+     gp-0
+     (the-as sparticle-launch-state #f)
+     (the-as sparticle-launch-control #f)
+     1.0
+     )
+    )
+   )
+  (none)
+  )
+
+(defmethod
+  copy-defaults!
+  assistant-bluehut
+  ((obj assistant-bluehut) (arg0 res-lump))
+  (dummy-40
+   obj
+   arg0
+   *assistant-village2-sg*
+   3
+   31
+   (new 'static 'vector :w 4096.0)
+   5
+   )
+  (set!
+   (-> obj part)
+   (create-launch-control (-> *part-group-id-table* 288) obj)
+   )
+  (set! (-> obj tasks) (get-task-control (game-task village2-levitator)))
+  (set! (-> obj jaws) (the-as handle #f))
+  (set! (-> obj sage) (entity-actor-lookup arg0 'alt-actor 0))
+  (set! (-> obj im-talking) #t)
+  (set! (-> obj draw light-index) (the-as uint 1))
+  (set! (-> obj sound-id) (new-sound-id))
+  (dummy-42 obj)
+  (none)
+  )
+
+(set!
+  (-> *part-group-id-table* 658)
+  (new 'static 'sparticle-launch-group
+   :length 27
+   :duration #xbb8
+   :linger-duration #x5dc
+   :flags (sp-group-flag use-local-clock)
+   :name "group-levitator-blue-beam"
+   :launcher
+   (new 'static 'inline-array sparticle-group-item 27
+    (sp-item 2673 :fade-after (meters 120.0) :falloff-to (meters 140.0) :binding 2670)
+    (sp-item 2670 :flags (bit1 start-dead launch-asap) :binding 2671)
+    (sp-item 2670 :flags (bit1 start-dead launch-asap) :binding 2672)
+    (sp-item 2670 :flags (bit1 start-dead launch-asap) :binding 2671)
+    (sp-item 2670 :flags (bit1 start-dead launch-asap) :binding 2672)
+    (sp-item 2670 :flags (bit1 start-dead launch-asap) :binding 2671)
+    (sp-item 2670 :flags (bit1 start-dead launch-asap) :binding 2672)
+    (sp-item 2670 :flags (bit1 start-dead launch-asap) :binding 2671)
+    (sp-item 2670 :flags (bit1 start-dead launch-asap) :binding 2672)
+    (sp-item 2670 :flags (bit1 start-dead launch-asap) :binding 2671)
+    (sp-item 2670 :flags (bit1 start-dead launch-asap) :binding 2672)
+    (sp-item 2671 :flags (bit1 start-dead))
+    (sp-item 2672 :flags (bit1 start-dead))
+    (sp-item 2671 :flags (bit1 start-dead))
+    (sp-item 2672 :flags (bit1 start-dead))
+    (sp-item 2671 :flags (bit1 start-dead))
+    (sp-item 2672 :flags (bit1 start-dead))
+    (sp-item 2671 :flags (bit1 start-dead))
+    (sp-item 2672 :flags (bit1 start-dead))
+    (sp-item 2671 :flags (bit1 start-dead))
+    (sp-item 2672 :flags (bit1 start-dead))
+    (sp-item 2671 :flags (bit1 start-dead))
+    (sp-item 2674 :falloff-to (meters 400.0))
+    (sp-item 2675)
+    (sp-item 2676 :falloff-to (meters 300.0))
+    (sp-item 2693 :falloff-to (meters 400.0))
+    (sp-item 2694 :falloff-to (meters 400.0))
+    )
+   :bounds
+   (new 'static 'sphere :x -81920.0 :y 32768.0 :w 327680.0)
+   )
+  )
+
+(set!
+  (-> *part-id-table* 2694)
+  (new 'static 'sparticle-launcher
+   :init-specs
+   (new 'static 'inline-array sp-field-init-spec 16
+    (sp-tex spt-texture (new 'static 'texture-id :index #x23 :page #x2))
+    (sp-rnd-flt spt-num 0.2 2.0 1.0)
+    (sp-rnd-flt spt-scale-x (meters 0.5) (meters 3.5) 1.0)
+    (sp-int spt-rot-x 4)
+    (sp-rnd-flt spt-rot-z (degrees -1440.0) (degrees 2880.0) 1.0)
+    (sp-rnd-flt spt-scale-y (meters 0.3) (meters 0.1) 1.0)
+    (sp-flt spt-r 64.0)
+    (sp-flt spt-g 64.0)
+    (sp-flt spt-b 128.0)
+    (sp-flt spt-a 128.0)
+    (sp-flt spt-fade-a -1.4)
+    (sp-int spt-timer 90)
+    (sp-cpuinfo-flags bit2 bit3 bit14)
+    (sp-int spt-next-time 10)
+    (sp-launcher-by-id spt-next-launcher 146)
+    (sp-end)
+    )
+   )
+  )
+
+(set!
+  (-> *part-id-table* 2693)
+  (new 'static 'sparticle-launcher
+   :init-specs
+   (new 'static 'inline-array sp-field-init-spec 16
+    (sp-tex spt-texture (new 'static 'texture-id :index #x1f :page #x2))
+    (sp-rnd-flt spt-num 0.2 2.0 1.0)
+    (sp-rnd-flt spt-scale-x (meters 0.5) (meters 3.5) 1.0)
+    (sp-int spt-rot-x 4)
+    (sp-rnd-flt spt-rot-z (degrees -1440.0) (degrees 2880.0) 1.0)
+    (sp-rnd-flt spt-scale-y (meters 0.3) (meters 0.1) 1.0)
+    (sp-flt spt-r 64.0)
+    (sp-flt spt-g 64.0)
+    (sp-flt spt-b 128.0)
+    (sp-flt spt-a 128.0)
+    (sp-flt spt-fade-a -1.4)
+    (sp-int spt-timer 90)
+    (sp-cpuinfo-flags bit2 bit3 bit14)
+    (sp-int spt-next-time 10)
+    (sp-launcher-by-id spt-next-launcher 146)
+    (sp-end)
+    )
+   )
+  )
+
+(set!
+  (-> *part-id-table* 2673)
+  (new 'static 'sparticle-launcher
+   :init-specs
+   (new 'static 'inline-array sp-field-init-spec 17
+    (sp-tex spt-texture (new 'static 'texture-id :index #xf :page #x2))
+    (sp-rnd-flt spt-num 0.025 0.025 1.0)
+    (sp-rnd-flt spt-scale-x (meters 3.0) (meters 1.5) 1.0)
+    (sp-copy-from-other spt-scale-y -4)
+    (sp-flt spt-r 0.0)
+    (sp-flt spt-g 0.0)
+    (sp-rnd-flt spt-b 128.0 128.0 1.0)
+    (sp-rnd-flt spt-a 32.0 32.0 1.0)
+    (sp-flt spt-vel-y (meters 0.053333335))
+    (sp-flt spt-scalevel-x (meters -0.0033333334))
+    (sp-copy-from-other spt-scalevel-y -4)
+    (sp-int spt-timer 900)
+    (sp-cpuinfo-flags bit2 bit3 bit14)
+    (sp-flt spt-conerot-x (degrees 102.0))
+    (sp-flt spt-conerot-y (degrees -90.0))
+    (sp-rnd-flt spt-conerot-radius (meters 0.0) (meters 0.5) 1.0)
+    (sp-end)
+    )
+   )
+  )
+
+(set!
+  (-> *part-id-table* 2670)
+  (new 'static 'sparticle-launcher
+   :init-specs
+   (new 'static 'inline-array sp-field-init-spec 19
+    (sp-tex spt-texture (new 'static 'texture-id :index #xf :page #x2))
+    (sp-flt spt-num 1.0)
+    (sp-rnd-flt spt-x (meters 0.0) (meters 16.0) 1.0)
+    (sp-rnd-flt spt-y (meters 0.0) (meters 16.0) 1.0)
+    (sp-rnd-flt spt-z 4096.0 2048.0 1.0)
+    (sp-rnd-flt spt-scale-x (meters 2.2) (meters 0.4) 1.0)
+    (sp-copy-from-other spt-scale-y -4)
+    (sp-flt spt-r 0.0)
+    (sp-flt spt-g 0.0)
+    (sp-rnd-flt spt-b 128.0 128.0 1.0)
+    (sp-flt spt-a 128.0)
+    (sp-rnd-flt spt-omega 0.0 65536.0 1.0)
+    (sp-rnd-int-flt spt-vel-x (meters -0.026666667) 1 218.45334)
+    (sp-rnd-flt spt-vel-y (meters 0.0) (meters 0.053333335) 1.0)
+    (sp-flt spt-vel-z (meters 0.0))
+    (sp-flt spt-accel-z 0.0)
+    (sp-int spt-timer 900)
+    (sp-cpuinfo-flags bit2 bit3 bit7 bit14)
+    (sp-end)
+    )
+   )
+  )
+
+(set!
+  (-> *part-id-table* 2671)
+  (new 'static 'sparticle-launcher
+   :init-specs
+   (new 'static 'inline-array sp-field-init-spec 16
+    (sp-tex spt-texture (new 'static 'texture-id :index #x1f :page #x2))
+    (sp-rnd-flt spt-num 0.2 1.0 1.0)
+    (sp-rnd-flt spt-scale-x (meters 0.5) (meters 3.5) 1.0)
+    (sp-int spt-rot-x 4)
+    (sp-rnd-flt spt-rot-z (degrees 0.0) (degrees 360.0) 1.0)
+    (sp-rnd-flt spt-scale-y (meters 0.4) (meters 0.2) 1.0)
+    (sp-flt spt-r 64.0)
+    (sp-flt spt-g 64.0)
+    (sp-flt spt-b 128.0)
+    (sp-flt spt-a 128.0)
+    (sp-flt spt-fade-a -1.4)
+    (sp-int spt-timer 90)
+    (sp-cpuinfo-flags bit2 bit3 bit14)
+    (sp-int spt-next-time 10)
+    (sp-launcher-by-id spt-next-launcher 146)
+    (sp-end)
+    )
+   )
+  )
+
+(set!
+  (-> *part-id-table* 2672)
+  (new 'static 'sparticle-launcher
+   :init-specs
+   (new 'static 'inline-array sp-field-init-spec 16
+    (sp-tex spt-texture (new 'static 'texture-id :index #x23 :page #x2))
+    (sp-rnd-flt spt-num 0.2 1.0 1.0)
+    (sp-rnd-flt spt-scale-x (meters 0.5) (meters 3.5) 1.0)
+    (sp-int spt-rot-x 4)
+    (sp-rnd-flt spt-rot-z (degrees 0.0) (degrees 360.0) 1.0)
+    (sp-rnd-flt spt-scale-y (meters 0.4) (meters 0.2) 1.0)
+    (sp-flt spt-r 64.0)
+    (sp-flt spt-g 64.0)
+    (sp-flt spt-b 128.0)
+    (sp-flt spt-a 128.0)
+    (sp-flt spt-fade-a -1.4)
+    (sp-int spt-timer 90)
+    (sp-cpuinfo-flags bit2 bit3 bit14)
+    (sp-int spt-next-time 10)
+    (sp-launcher-by-id spt-next-launcher 146)
+    (sp-end)
+    )
+   )
+  )
+
+(set!
+  (-> *part-id-table* 2674)
+  (new 'static 'sparticle-launcher
+   :init-specs
+   (new 'static 'inline-array sp-field-init-spec 17
+    (sp-tex spt-texture (new 'static 'texture-id :index #xf :page #x2))
+    (sp-flt spt-num 2.0)
+    (sp-rnd-flt spt-scale-x (meters 2.0) (meters 0.5) 1.0)
+    (sp-rnd-flt spt-scale-y (meters 0.6) (meters 0.8) 1.0)
+    (sp-rnd-flt spt-r 16.0 48.0 1.0)
+    (sp-rnd-flt spt-g 16.0 48.0 1.0)
+    (sp-flt spt-b 128.0)
+    (sp-flt spt-a 128.0)
+    (sp-flt spt-vel-y (meters 0.32))
+    (sp-flt spt-scalevel-x (meters 0.005))
+    (sp-copy-from-other spt-scalevel-y -4)
+    (sp-int spt-timer 150)
+    (sp-cpuinfo-flags bit2 bit3 bit14)
+    (sp-flt spt-conerot-x (degrees 102.0))
+    (sp-flt spt-conerot-y (degrees -90.0))
+    (sp-rnd-flt spt-conerot-radius (meters -1.5) (meters 1.5) 1.0)
+    (sp-end)
+    )
+   )
+  )
+
+(set!
+  (-> *part-id-table* 2676)
+  (new 'static 'sparticle-launcher
+   :init-specs
+   (new 'static 'inline-array sp-field-init-spec 17
+    (sp-tex spt-texture (new 'static 'texture-id :index #xf :page #x2))
+    (sp-flt spt-num 1.0)
+    (sp-rnd-flt spt-scale-x (meters 3.0) (meters 1.5) 1.0)
+    (sp-copy-from-other spt-scale-y -4)
+    (sp-flt spt-r 0.0)
+    (sp-flt spt-g 0.0)
+    (sp-rnd-flt spt-b 128.0 128.0 1.0)
+    (sp-rnd-flt spt-a 32.0 32.0 1.0)
+    (sp-flt spt-vel-y (meters 0.10666667))
+    (sp-flt spt-scalevel-x (meters 0.0016666667))
+    (sp-copy-from-other spt-scalevel-y -4)
+    (sp-int spt-timer 450)
+    (sp-cpuinfo-flags bit2 bit3 bit14)
+    (sp-flt spt-conerot-x (degrees 102.0))
+    (sp-flt spt-conerot-y (degrees -90.0))
+    (sp-rnd-flt spt-conerot-radius (meters 0.0) (meters 0.5) 1.0)
+    (sp-end)
+    )
+   )
+  )
+
+(set!
+  (-> *part-id-table* 2675)
+  (new 'static 'sparticle-launcher
+   :init-specs
+   (new 'static 'inline-array sp-field-init-spec 13
+    (sp-tex spt-texture (new 'static 'texture-id :index #x12 :page #x2))
+    (sp-flt spt-num 1.0)
+    (sp-rnd-flt spt-scale-x (meters 2.0) (meters 4.0) 1.0)
+    (sp-rnd-flt spt-rot-z (degrees 0.0) (degrees 360.0) 1.0)
+    (sp-copy-from-other spt-scale-y -4)
+    (sp-rnd-flt spt-r 64.0 64.0 1.0)
+    (sp-rnd-flt spt-g 64.0 64.0 1.0)
+    (sp-rnd-flt spt-b 128.0 128.0 1.0)
+    (sp-flt spt-a 128.0)
+    (sp-flt spt-fade-a -5.12)
+    (sp-int spt-timer 20)
+    (sp-cpuinfo-flags bit2 bit3 bit14)
+    (sp-end)
+    )
+   )
+  )
+
+(set!
+  (-> *part-group-id-table* 659)
+  (new 'static 'sparticle-launch-group
+   :length 3
+   :duration #xbb8
+   :linger-duration #x5dc
+   :flags (sp-group-flag use-local-clock)
+   :name "group-levitator-blue-beam-impact"
+   :launcher
+   (new 'static 'inline-array sparticle-group-item 3
+    (sp-item 2695)
+    (sp-item 2696 :fade-after (meters 200.0) :falloff-to (meters 200.0))
+    (sp-item 2677)
+    )
+   :bounds (new 'static 'sphere :w 139264.0)
+   )
+  )
+
+(set!
+  (-> *part-id-table* 2696)
+  (new 'static 'sparticle-launcher
+   :init-specs
+   (new 'static 'inline-array sp-field-init-spec 23
+    (sp-tex spt-texture (new 'static 'texture-id :index #xf :page #x2))
+    (sp-rnd-flt spt-num 2.0 6.0 1.0)
+    (sp-rnd-flt spt-y (meters -0.5) (meters 1.0) 1.0)
+    (sp-rnd-flt spt-scale-x (meters 0.6) (meters 1.0) 1.0)
+    (sp-copy-from-other spt-scale-y -4)
+    (sp-rnd-flt spt-r 0.0 32.0 1.0)
+    (sp-rnd-flt spt-g 64.0 64.0 1.0)
+    (sp-flt spt-b 255.0)
+    (sp-rnd-flt spt-a 32.0 96.0 1.0)
+    (sp-rnd-flt spt-vel-y (meters 0.053333335) (meters 0.10666667) 1.0)
+    (sp-flt spt-scalevel-x (meters -0.005))
+    (sp-copy-from-other spt-scalevel-y -4)
+    (sp-flt spt-fade-r -0.26666668)
+    (sp-flt spt-fade-g -1.0666667)
+    (sp-flt spt-fade-b 0.0)
+    (sp-rnd-flt spt-accel-y -1.3653333 -1.3653333 1.0)
+    (sp-flt spt-friction 0.95)
+    (sp-int-plain-rnd spt-timer 60 59 1)
+    (sp-cpuinfo-flags bit0 bit2 bit3 bit14)
+    (sp-rnd-flt spt-conerot-x (degrees 50.000004) (degrees 120.0) 1.0)
+    (sp-rnd-flt spt-conerot-y (degrees 30.0) (degrees 120.0) 1.0)
+    (sp-rnd-flt spt-conerot-radius (meters -0.5) (meters 0.5) 1.0)
+    (sp-end)
+    )
+   )
+  )
+
+(set!
+  (-> *part-id-table* 2695)
+  (new 'static 'sparticle-launcher
+   :init-specs
+   (new 'static 'inline-array sp-field-init-spec 16
+    (sp-tex spt-texture (new 'static 'texture-id :index #x12 :page #x2))
+    (sp-flt spt-num 1.0)
+    (sp-rnd-flt spt-scale-x (meters 1.0) (meters 4.0) 1.0)
+    (sp-rnd-flt spt-rot-z (degrees 180.0) (degrees 360.0) 1.0)
+    (sp-copy-from-other spt-scale-y -4)
+    (sp-flt spt-r 255.0)
+    (sp-flt spt-g 255.0)
+    (sp-flt spt-b 255.0)
+    (sp-flt spt-a 128.0)
+    (sp-flt spt-fade-a -5.12)
+    (sp-int spt-timer 10)
+    (sp-cpuinfo-flags bit2 bit3 bit14)
+    (sp-rnd-flt spt-conerot-x (degrees 0.0) (degrees 1440.0) 1.0)
+    (sp-rnd-flt spt-conerot-y (degrees 0.0) (degrees 1440.0) 1.0)
+    (sp-rnd-flt spt-conerot-radius (meters 0.0) (meters 0.5) 1.0)
+    (sp-end)
+    )
+   )
+  )
+
+(set!
+  (-> *part-id-table* 2677)
+  (new 'static 'sparticle-launcher
+   :init-specs
+   (new 'static 'inline-array sp-field-init-spec 16
+    (sp-tex spt-texture (new 'static 'texture-id :index #x12 :page #x2))
+    (sp-flt spt-num 1.0)
+    (sp-rnd-flt spt-scale-x (meters 6.0) (meters 6.0) 1.0)
+    (sp-rnd-flt spt-rot-z (degrees 180.0) (degrees 360.0) 1.0)
+    (sp-copy-from-other spt-scale-y -4)
+    (sp-flt spt-r 0.0)
+    (sp-rnd-flt spt-g 16.0 64.0 1.0)
+    (sp-rnd-flt spt-b 128.0 128.0 1.0)
+    (sp-flt spt-a 128.0)
+    (sp-flt spt-fade-a -5.12)
+    (sp-int spt-timer 10)
+    (sp-cpuinfo-flags bit2 bit3 bit14)
+    (sp-rnd-flt spt-conerot-x (degrees 0.0) (degrees 1440.0) 1.0)
+    (sp-rnd-flt spt-conerot-y (degrees 0.0) (degrees 1440.0) 1.0)
+    (sp-rnd-flt spt-conerot-radius (meters 0.0) (meters 0.5) 1.0)
+    (sp-end)
+    )
+   )
+  )
+
+(set!
+  (-> *part-group-id-table* 660)
+  (new 'static 'sparticle-launch-group
+   :length 38
+   :duration #x384
+   :linger-duration #x5dc
+   :flags (sp-group-flag use-local-clock)
+   :name "group-levitator-on-big"
+   :launcher
+   (new 'static 'inline-array sparticle-group-item 38
+    (sp-item 2751 :fade-after (meters 100.0) :falloff-to (meters 100.0) :binding 2750)
+    (sp-item 2750 :flags (bit1 start-dead launch-asap) :binding 2797)
+    (sp-item 2750 :flags (bit1 start-dead launch-asap) :binding 2798)
+    (sp-item 2750 :flags (bit1 start-dead launch-asap) :binding 2797)
+    (sp-item 2750 :flags (bit1 start-dead launch-asap) :binding 2798)
+    (sp-item 2750 :flags (bit1 start-dead launch-asap) :binding 2797)
+    (sp-item 2750 :flags (bit1 start-dead launch-asap) :binding 2798)
+    (sp-item 2750 :flags (bit1 start-dead launch-asap) :binding 2797)
+    (sp-item 2750 :flags (bit1 start-dead launch-asap) :binding 2798)
+    (sp-item 2750 :flags (bit1 start-dead launch-asap) :binding 2797)
+    (sp-item 2750 :flags (bit1 start-dead launch-asap) :binding 2798)
+    (sp-item 2750 :flags (bit1 start-dead launch-asap) :binding 2797)
+    (sp-item 2750 :flags (bit1 start-dead launch-asap) :binding 2798)
+    (sp-item 2750 :flags (bit1 start-dead launch-asap) :binding 2797)
+    (sp-item 2750 :flags (bit1 start-dead launch-asap) :binding 2798)
+    (sp-item 2797 :flags (bit1 start-dead))
+    (sp-item 2798 :flags (bit1 start-dead))
+    (sp-item 2797 :flags (bit1 start-dead))
+    (sp-item 2798 :flags (bit1 start-dead))
+    (sp-item 2797 :flags (bit1 start-dead))
+    (sp-item 2798 :flags (bit1 start-dead))
+    (sp-item 2797 :flags (bit1 start-dead))
+    (sp-item 2798 :flags (bit1 start-dead))
+    (sp-item 2797 :flags (bit1 start-dead))
+    (sp-item 2798 :flags (bit1 start-dead))
+    (sp-item 2797 :flags (bit1 start-dead))
+    (sp-item 2798 :flags (bit1 start-dead))
+    (sp-item 2797 :flags (bit1 start-dead))
+    (sp-item 2798 :flags (bit1 start-dead))
+    (sp-item 2797 :flags (bit1 start-dead))
+    (sp-item 2798 :flags (bit1 start-dead))
+    (sp-item 2797 :flags (bit1 start-dead))
+    (sp-item 2798 :flags (bit1 start-dead))
+    (sp-item 2797 :flags (bit1 start-dead))
+    (sp-item 2798 :flags (bit1 start-dead))
+    (sp-item 2797 :flags (bit1 start-dead))
+    (sp-item 2798 :flags (bit1 start-dead))
+    (sp-item 2678)
+    )
+   :bounds (new 'static 'sphere :w 262144.0)
+   )
+  )
+
+(set!
+  (-> *part-id-table* 2678)
+  (new 'static 'sparticle-launcher
+   :init-specs
+   (new 'static 'inline-array sp-field-init-spec 18
+    (sp-tex spt-texture (new 'static 'texture-id :page #x2))
+    (sp-flt spt-num 1.0)
+    (sp-rnd-flt spt-x (meters -0.001) (meters 0.002) 1.0)
+    (sp-rnd-flt spt-y (meters -0.001) (meters 0.002) 1.0)
+    (sp-rnd-flt spt-z -4.096 8.192 1.0)
+    (sp-flt spt-scale-x (meters 9.0))
+    (sp-rnd-flt spt-rot-z (degrees 0.0) (degrees 360.0) 1.0)
+    (sp-copy-from-other spt-scale-y -4)
+    (sp-flt spt-r 0.0)
+    (sp-rnd-flt spt-g 0.0 128.0 1.0)
+    (sp-flt spt-b 255.0)
+    (sp-rnd-flt spt-a 64.0 64.0 1.0)
+    (sp-flt spt-vel-y (meters 0.0))
+    (sp-rnd-flt spt-rotvel-z (degrees -1.2) (degrees 2.4) 1.0)
+    (sp-flt spt-fade-a -3.2)
+    (sp-int spt-timer 40)
+    (sp-cpuinfo-flags bit2 bit3)
+    (sp-end)
+    )
+   )
+  )
+
+(set!
+  (-> *part-id-table* 2751)
+  (new 'static 'sparticle-launcher
+   :init-specs
+   (new 'static 'inline-array sp-field-init-spec 12
+    (sp-tex spt-texture (new 'static 'texture-id :index #xf :page #x2))
+    (sp-flt spt-num 1.0)
+    (sp-rnd-flt spt-scale-x (meters 1.0) (meters 0.5) 1.0)
+    (sp-copy-from-other spt-scale-y -4)
+    (sp-flt spt-r 255.0)
+    (sp-rnd-flt spt-b 128.0 128.0 1.0)
+    (sp-rnd-flt spt-a 32.0 32.0 1.0)
+    (sp-flt spt-scalevel-x (meters -0.0033333334))
+    (sp-copy-from-other spt-scalevel-y -4)
+    (sp-int spt-timer 900)
+    (sp-cpuinfo-flags bit2 bit3 bit14)
+    (sp-end)
+    )
+   )
+  )
+
+(set!
+  (-> *part-id-table* 2750)
+  (new 'static 'sparticle-launcher
+   :init-specs
+   (new 'static 'inline-array sp-field-init-spec 19
+    (sp-tex spt-texture (new 'static 'texture-id :index #xf :page #x2))
+    (sp-flt spt-num 1.0)
+    (sp-rnd-flt spt-x (meters 0.0) (meters 16.0) 1.0)
+    (sp-rnd-flt spt-y (meters 0.0) (meters 16.0) 1.0)
+    (sp-flt spt-z 12288.0)
+    (sp-rnd-flt spt-scale-x (meters 0.5) (meters 0.2) 1.0)
+    (sp-copy-from-other spt-scale-y -4)
+    (sp-flt spt-r 0.0)
+    (sp-rnd-flt spt-g 0.0 128.0 1.0)
+    (sp-rnd-flt spt-b 128.0 128.0 1.0)
+    (sp-flt spt-a 128.0)
+    (sp-rnd-flt spt-omega 0.0 65536.0 1.0)
+    (sp-rnd-int-flt spt-vel-x (meters -0.026666667) 1 218.45334)
+    (sp-rnd-flt spt-vel-y (meters 0.0) (meters 0.053333335) 1.0)
+    (sp-flt spt-vel-z (meters 0.0))
+    (sp-flt spt-accel-z 0.0)
+    (sp-int spt-timer 900)
+    (sp-cpuinfo-flags bit2 bit3 bit7 bit14)
+    (sp-end)
+    )
+   )
+  )
+
+(set!
+  (-> *part-id-table* 2797)
+  (new 'static 'sparticle-launcher
+   :init-specs
+   (new 'static 'inline-array sp-field-init-spec 16
+    (sp-tex spt-texture (new 'static 'texture-id :index #x1f :page #x2))
+    (sp-rnd-flt spt-num 0.2 0.4 1.0)
+    (sp-rnd-flt spt-scale-x (meters 0.5) (meters 3.5) 1.0)
+    (sp-int spt-rot-x 4)
+    (sp-rnd-flt spt-rot-z (degrees 0.0) (degrees 360.0) 1.0)
+    (sp-rnd-flt spt-scale-y (meters 0.2) (meters 0.1) 1.0)
+    (sp-flt spt-r 64.0)
+    (sp-flt spt-g 64.0)
+    (sp-flt spt-b 128.0)
+    (sp-flt spt-a 128.0)
+    (sp-flt spt-fade-a -1.4)
+    (sp-int spt-timer 90)
+    (sp-cpuinfo-flags bit2 bit3 bit14)
+    (sp-int spt-next-time 10)
+    (sp-launcher-by-id spt-next-launcher 146)
+    (sp-end)
+    )
+   )
+  )
+
+(set!
+  (-> *part-id-table* 2798)
+  (new 'static 'sparticle-launcher
+   :init-specs
+   (new 'static 'inline-array sp-field-init-spec 16
+    (sp-tex spt-texture (new 'static 'texture-id :index #x24 :page #x2))
+    (sp-rnd-flt spt-num 0.2 0.4 1.0)
+    (sp-rnd-flt spt-scale-x (meters 0.5) (meters 3.5) 1.0)
+    (sp-int spt-rot-x 4)
+    (sp-rnd-flt spt-rot-z (degrees 0.0) (degrees 360.0) 1.0)
+    (sp-rnd-flt spt-scale-y (meters 0.2) (meters 0.1) 1.0)
+    (sp-flt spt-r 64.0)
+    (sp-flt spt-g 64.0)
+    (sp-flt spt-b 128.0)
+    (sp-flt spt-a 128.0)
+    (sp-flt spt-fade-a -1.4)
+    (sp-int spt-timer 90)
+    (sp-cpuinfo-flags bit2 bit3 bit14)
+    (sp-int spt-next-time 10)
+    (sp-launcher-by-id spt-next-launcher 146)
+    (sp-end)
+    )
+   )
+  )
+
+(set!
+  (-> *part-group-id-table* 661)
+  (new 'static 'sparticle-launch-group
+   :length 1
+   :duration #x384
+   :linger-duration #x5dc
+   :flags (sp-group-flag use-local-clock)
+   :name "group-levitator-on-small"
+   :launcher
+   (new 'static 'inline-array sparticle-group-item 1 (sp-item 2679))
+   :bounds (new 'static 'sphere :w 262144.0)
+   )
+  )
+
+(set!
+  (-> *part-id-table* 2679)
+  (new 'static 'sparticle-launcher
+   :init-specs
+   (new 'static 'inline-array sp-field-init-spec 18
+    (sp-tex spt-texture (new 'static 'texture-id :page #x2))
+    (sp-flt spt-num 1.0)
+    (sp-rnd-flt spt-x (meters -0.001) (meters 0.002) 1.0)
+    (sp-rnd-flt spt-y (meters -0.001) (meters 0.002) 1.0)
+    (sp-rnd-flt spt-z -4.096 8.192 1.0)
+    (sp-flt spt-scale-x (meters 6.0))
+    (sp-rnd-flt spt-rot-z (degrees 0.0) (degrees 360.0) 1.0)
+    (sp-copy-from-other spt-scale-y -4)
+    (sp-flt spt-r 0.0)
+    (sp-rnd-flt spt-g 0.0 128.0 1.0)
+    (sp-flt spt-b 255.0)
+    (sp-rnd-flt spt-a 64.0 64.0 1.0)
+    (sp-flt spt-vel-y (meters 0.0))
+    (sp-rnd-flt spt-rotvel-z (degrees -1.2) (degrees 2.4) 1.0)
+    (sp-flt spt-fade-a -3.2)
+    (sp-int spt-timer 40)
+    (sp-cpuinfo-flags bit2 bit3)
+    (sp-end)
+    )
+   )
+  )
+
+(defbehavior assistant-levitator-blue-glow assistant-levitator ()
+  (let ((gp-0 (new 'stack-no-clear 'vector)))
+   (set-vector! gp-0 -17408.0 -2048.0 2048.0 1.0)
+   (vector+! gp-0 gp-0 (-> self entity extra trans))
+   (spawn (-> self particle 2) gp-0)
+   (set-vector! gp-0 -38912.0 6144.0 4096.0 1.0)
+   (vector+! gp-0 gp-0 (-> self entity extra trans))
+   (spawn (-> self particle 3) gp-0)
+   )
+  (none)
+  )
+
+(defbehavior assistant-levitator-blue-beam assistant-levitator ()
+  (let ((s5-0 (new 'stack-no-clear 'vector))
+        (gp-0 (new 'stack-no-clear 'vector))
+        )
+   (let ((s4-0 (new 'stack-no-clear 'vector)))
+    (set! (-> gp-0 quad) (-> self boulder extra trans quad))
+    (let ((v1-3 (-> self boulder extra process)))
+     (if v1-3
+      (vector<-cspace! gp-0 (-> (the-as fireboulder v1-3) node-list data 4))
+      )
+     )
+    (set-vector! s5-0 -49152.0 10240.0 5529.6 1.0)
+    (vector+! s5-0 s5-0 (-> self entity extra trans))
+    (vector-! s4-0 gp-0 s5-0)
+    (let ((t2-0 (new 'stack-no-clear 'collide-mesh-cache-tri)))
+     0.0
+     (when
+      (>=
+       (dummy-10 *collide-cache* s5-0 s4-0 6144.0 16 (the-as process #f) t2-0 1)
+       0.0
+       )
+      (let ((a1-7 (new 'stack-no-clear 'event-message-block)))
+       (set! (-> a1-7 from) self)
+       (set! (-> a1-7 num-params) 2)
+       (set! (-> a1-7 message) 'shove)
+       (set! (-> a1-7 param 0) (the-as uint #f))
+       (let ((v1-13 (new 'static 'attack-info :mask #xc0)))
+        (set! (-> v1-13 shove-up) 8192.0)
+        (set! (-> v1-13 shove-back) 12288.0)
+        (set! (-> a1-7 param 1) (the-as uint v1-13))
+        )
+       (send-event-function *target* a1-7)
+       )
+      )
+     )
+    (vector-normalize! s4-0 (+ -20480.0 (vector-length s4-0)))
+    (vector+! gp-0 s5-0 s4-0)
+    (let ((f30-1 (vector-y-angle s4-0))
+          (f0-11 (- 16384.0 (vector-x-angle s4-0)))
+          )
+     (set! (-> *part-id-table* 2674 init-specs 14 initial-valuef) f30-1)
+     (set! (-> *part-id-table* 2674 init-specs 13 initial-valuef) f0-11)
+     (set! (-> *part-id-table* 2676 init-specs 14 initial-valuef) f30-1)
+     (set! (-> *part-id-table* 2676 init-specs 13 initial-valuef) f0-11)
+     (set! (-> *part-id-table* 2673 init-specs 14 initial-valuef) f30-1)
+     (set! (-> *part-id-table* 2673 init-specs 13 initial-valuef) f0-11)
+     )
+    )
+   (spawn (-> self particle 0) s5-0)
+   (spawn (-> self particle 1) gp-0)
+   )
+  (none)
+  )
+
+(defmethod
+  play-anim!
+  assistant-levitator
+  ((obj assistant-levitator) (arg0 symbol))
+  (with-pp
+   (case (current-status (-> obj tasks)) 
+    ((6)
+      (when arg0
+       (close-current! (-> obj tasks))
+       (let ((a1-1 (new 'stack-no-clear 'event-message-block)))
+        (set! (-> a1-1 from) pp)
+        (set! (-> a1-1 num-params) 1)
+        (set! (-> a1-1 message) 'clone)
+        (set! (-> a1-1 param 0) (the-as uint (process->handle obj)))
+        (let ((t9-2 send-event-function)
+              (v1-10 (-> obj boulder))
+              )
+         (t9-2 (if v1-10
+                (-> v1-10 extra process)
+                )
+          a1-1
+          )
+         )
+        )
+       )
+      (new 'static 'spool-anim
+       :name "assistant-village2-resolution"
+       :index 16
+       :parts 7
+       :command-list
+       '(
+         ((the binteger 196)
+           joint
+           "cameraB"
+           )
+         ((the binteger 241)
+          joint
+          "camera"
+          )
+         ((the binteger 286)
+          joint
+          "cameraB"
+          )
+         ((the binteger 436)
+          joint
+          "camera"
+          )
+         ((the binteger 526)
+          joint
+          "cameraB"
+          )
+         ((the binteger 581)
+          joint
+          "camera"
+          )
+         ((the binteger 639)
+          joint
+          "cameraB"
+          )
+         ((the binteger 715) joint "camera")
+         )
+       )
+      )
+    (else
+     (if arg0
+      (format
+       0
+       "ERROR: <GMJ>: ~S playing anim for task status ~S~%"
+       (-> obj name)
+       (task-status->string
+        (the-as task-status (current-status (-> obj tasks)))
+        )
+       )
+      )
+     (-> obj draw art-group data 5)
+     )
+    )
+   )
+  )
+
+(defmethod get-art-elem assistant-levitator ((obj assistant-levitator))
+  (if (= (get-task-status (game-task village2-levitator)) (task-status invalid))
+   (-> obj draw art-group data 9)
+   (-> obj draw art-group data 5)
+   )
+  )
+
+(defstate play-anim (assistant-levitator)
+  :virtual #t
+  :exit
+  (behavior ()
+   (let ((a1-0 (new 'stack-no-clear 'event-message-block)))
+    (set! (-> a1-0 from) self)
+    (set! (-> a1-0 num-params) 0)
+    (set! (-> a1-0 message) 'stop-cloning)
+    (let ((t9-0 send-event-function)
+          (v1-1 (-> self boulder))
+          )
+     (t9-0 (if v1-1
+            (-> v1-1 extra process)
+            )
+      a1-0
+      )
+     )
+    )
+   ((-> (method-of-type process-taskable play-anim) exit))
+   (none)
+   )
+  :trans
+  (behavior ()
+   (assistant-levitator-blue-glow)
+   (if (< 200.0 (ja-aframe-num 0))
+    (assistant-levitator-blue-beam)
+    )
+   ((-> (method-of-type process-taskable play-anim) trans))
+   (none)
+   )
+  )
+
+(defstate hidden (assistant-levitator)
+  :virtual #t
+  :trans
+  (behavior ()
+   ((-> (method-of-type process-taskable hidden) trans))
+   (when (and (cond
+               ((and
+                 *target*
+                 (>=
+                  61440.0
+                  (vector-vector-distance
+                   (-> self root-override trans)
+                   (-> *target* control trans)
+                   )
+                  )
+                 )
+                #t
+                )
+               (else
+                (set!
+                 (-> self state-time)
+                 (the-as seconds (-> *display* base-frame-counter))
+                 )
+                #f
+                )
+               )
+          (and
+           (closed?
+            (-> self tasks)
+            (game-task village2-levitator)
+            (task-status need-introduction)
+            )
+           (not
+            (closed?
+             (-> self tasks)
+             (game-task village2-levitator)
+             (task-status need-reward-speech)
+             )
+            )
+           (not (movie?))
+           (not (level-hint-displayed?))
+           (not
+            (and
+             *cheat-mode*
+             (logtest? (-> *cpad-list* cpads 0 button0-abs 0) (pad-buttons l3))
+             )
+            )
+           (<
+            (-
+             (-> *display* base-frame-counter)
+             (the-as int (-> self state-time))
+             )
+            3000
+            )
+           )
+          )
+    (hide-hud)
+    (kill-current-level-hint '() '(sidekick voicebox) 'exit)
+    (when
+     (and
+      (seen-text?
+       *game-info*
+       (game-text-id village2-not-enough-cells-levitator)
+       )
+      (hud-hidden?)
+      (can-grab-display? self)
+      (not (-> *setting-control* current hint))
+      )
+     (let
+      ((gp-0
+        (new
+         'stack
+         'font-context
+         *font-default-matrix*
+         32
+         160
+         0.0
+         (font-color default)
+         (font-flags shadow kerning)
+         )
+        )
+       )
+      (let ((v1-28 gp-0))
+       (set! (-> v1-28 width) (the float 448))
+       )
+      (let ((v1-29 gp-0))
+       (set! (-> v1-29 height) (the float 80))
+       )
+      (let ((v1-30 gp-0))
+       (set! (-> v1-30 scale) 0.8)
+       )
+      (set! (-> gp-0 flags) (font-flags shadow kerning middle large))
+      (print-game-text
+       (lookup-text!
+        *common-text*
+        (game-text-id villlage2-levitator-cell-req-text)
+        #f
+        )
+       gp-0
+       #f
+       128
+       22
+       )
+      )
+     )
+    (level-hint-spawn
+     (game-text-id village2-not-enough-cells-levitator)
+     "asstvb71"
+     (the-as entity #f)
+     *entity-pool*
+     (game-task none)
+     )
+    )
+   (none)
+   )
+  )
+
+(defmethod
+  target-above-threshold?
+  assistant-levitator
+  ((obj assistant-levitator))
+  (=
+   (get-task-status (game-task village2-levitator))
+   (task-status need-reward-speech)
+   )
+  )
+
+(defstate idle (assistant-levitator)
+  :virtual #t
+  :exit
+  (behavior ()
+   (stop! (-> self sound))
+   ((-> (method-of-type process-taskable idle) exit))
+   (none)
+   )
+  :trans
+  (behavior ()
+   (assistant-levitator-blue-glow)
+   (update! (-> self sound))
+   ((-> (method-of-type process-taskable idle) trans))
+   (none)
+   )
+  :code
+  (behavior ()
+   (if (!= (if (> (-> self skel active-channels) 0)
+            (-> self skel root-channel 0 frame-group)
+            )
+        (get-art-elem self)
+        )
+    (ja-channel-push! 1 15)
+    )
+   (while #t
+    (cond
+     ((= (get-task-status (game-task village2-levitator)) (task-status invalid))
+      (let ((a0-8 (-> self skel root-channel 0)))
+       (set!
+        (-> a0-8 frame-group)
+        (the-as art-joint-anim (-> self draw art-group data 9))
+        )
+       (set!
+        (-> a0-8 param 0)
+        (the
+         float
+         (+
+          (->
+           (the-as art-joint-anim (-> self draw art-group data 9))
+           data
+           0
+           length
+           )
+          -1
+          )
+         )
+        )
+       (set! (-> a0-8 param 1) 1.0)
+       (set! (-> a0-8 frame-num) 0.0)
+       (joint-control-channel-group!
+        a0-8
+        (the-as art-joint-anim (-> self draw art-group data 9))
+        num-func-seek!
+        )
+       )
+      (until (ja-done? 0)
+       (assistant-levitator-blue-beam)
+       (suspend)
+       (let ((a0-9 (-> self skel root-channel 0)))
+        (set!
+         (-> a0-9 param 0)
+         (the float (+ (-> a0-9 frame-group data 0 length) -1))
+         )
+        (set! (-> a0-9 param 1) 1.0)
+        (joint-control-channel-group-eval!
+         a0-9
+         (the-as art-joint-anim #f)
+         num-func-seek!
+         )
+        )
+       )
+      )
+     (else
+      (let ((v1-29 (-> self skel root-channel 0)))
+       (set!
+        (-> v1-29 frame-group)
+        (the-as art-joint-anim (-> self draw art-group data 5))
+        )
+       )
+      (let* ((f30-0 2.0)
+             (v1-31 (/ (the-as int (rand-uint31-gen *random-generator*)) 256))
+             (v1-32 (the-as number (logior #x3f800000 v1-31)))
+             )
+       (countdown (gp-0 (+ (the int (* f30-0 (+ -1.0 (the-as float v1-32)))) 3))
+        (let ((a0-16 (-> self skel root-channel 0)))
+         (set! (-> a0-16 frame-group) (if (> (-> self skel active-channels) 0)
+                                       (-> self skel root-channel 0 frame-group)
+                                       )
+          )
+         (set!
+          (-> a0-16 param 0)
+          (the float (+ (-> (if (> (-> self skel active-channels) 0)
+                             (-> self skel root-channel 0 frame-group)
+                             )
+                         data
+                         0
+                         length
+                         )
+                      -1
+                      )
+           )
+          )
+         (set! (-> a0-16 param 1) 1.0)
+         (set! (-> a0-16 frame-num) 0.0)
+         (joint-control-channel-group!
+          a0-16
+          (if (> (-> self skel active-channels) 0)
+           (-> self skel root-channel 0 frame-group)
+           )
+          num-func-seek!
+          )
+         )
+        (until (ja-done? 0)
+         (suspend)
+         (let ((a0-17 (-> self skel root-channel 0)))
+          (set!
+           (-> a0-17 param 0)
+           (the float (+ (-> a0-17 frame-group data 0 length) -1))
+           )
+          (set! (-> a0-17 param 1) 1.0)
+          (joint-control-channel-group-eval!
+           a0-17
+           (the-as art-joint-anim #f)
+           num-func-seek!
+           )
+          )
+         )
+        )
+       )
+      (let ((a0-19 (-> self skel root-channel 0)))
+       (set!
+        (-> a0-19 frame-group)
+        (the-as art-joint-anim (-> self draw art-group data 6))
+        )
+       (set!
+        (-> a0-19 param 0)
+        (the
+         float
+         (+
+          (->
+           (the-as art-joint-anim (-> self draw art-group data 6))
+           data
+           0
+           length
+           )
+          -1
+          )
+         )
+        )
+       (set! (-> a0-19 param 1) 1.0)
+       (set! (-> a0-19 frame-num) 0.0)
+       (joint-control-channel-group!
+        a0-19
+        (the-as art-joint-anim (-> self draw art-group data 6))
+        num-func-seek!
+        )
+       )
+      (until (ja-done? 0)
+       (suspend)
+       (let ((a0-20 (-> self skel root-channel 0)))
+        (set!
+         (-> a0-20 param 0)
+         (the float (+ (-> a0-20 frame-group data 0 length) -1))
+         )
+        (set! (-> a0-20 param 1) 1.0)
+        (joint-control-channel-group-eval!
+         a0-20
+         (the-as art-joint-anim #f)
+         num-func-seek!
+         )
+        )
+       )
+      (let ((v1-89 (-> self skel root-channel 0)))
+       (set!
+        (-> v1-89 frame-group)
+        (the-as art-joint-anim (-> self draw art-group data 7))
+        )
+       )
+      (let* ((f30-1 2.0)
+             (v1-91 (/ (the-as int (rand-uint31-gen *random-generator*)) 256))
+             (v1-92 (the-as number (logior #x3f800000 v1-91)))
+             )
+       (countdown (gp-1 (+ (the int (* f30-1 (+ -1.0 (the-as float v1-92)))) 3))
+        (let ((a0-27 (-> self skel root-channel 0)))
+         (set! (-> a0-27 frame-group) (if (> (-> self skel active-channels) 0)
+                                       (-> self skel root-channel 0 frame-group)
+                                       )
+          )
+         (set!
+          (-> a0-27 param 0)
+          (the float (+ (-> (if (> (-> self skel active-channels) 0)
+                             (-> self skel root-channel 0 frame-group)
+                             )
+                         data
+                         0
+                         length
+                         )
+                      -1
+                      )
+           )
+          )
+         (set! (-> a0-27 param 1) 1.0)
+         (set! (-> a0-27 frame-num) 0.0)
+         (joint-control-channel-group!
+          a0-27
+          (if (> (-> self skel active-channels) 0)
+           (-> self skel root-channel 0 frame-group)
+           )
+          num-func-seek!
+          )
+         )
+        (until (ja-done? 0)
+         (suspend)
+         (let ((a0-28 (-> self skel root-channel 0)))
+          (set!
+           (-> a0-28 param 0)
+           (the float (+ (-> a0-28 frame-group data 0 length) -1))
+           )
+          (set! (-> a0-28 param 1) 1.0)
+          (joint-control-channel-group-eval!
+           a0-28
+           (the-as art-joint-anim #f)
+           num-func-seek!
+           )
+          )
+         )
+        )
+       )
+      (let ((a0-30 (-> self skel root-channel 0)))
+       (set!
+        (-> a0-30 frame-group)
+        (the-as art-joint-anim (-> self draw art-group data 8))
+        )
+       (set!
+        (-> a0-30 param 0)
+        (the
+         float
+         (+
+          (->
+           (the-as art-joint-anim (-> self draw art-group data 8))
+           data
+           0
+           length
+           )
+          -1
+          )
+         )
+        )
+       (set! (-> a0-30 param 1) 1.0)
+       (set! (-> a0-30 frame-num) 0.0)
+       (joint-control-channel-group!
+        a0-30
+        (the-as art-joint-anim (-> self draw art-group data 8))
+        num-func-seek!
+        )
+       )
+      (until (ja-done? 0)
+       (suspend)
+       (let ((a0-31 (-> self skel root-channel 0)))
+        (set!
+         (-> a0-31 param 0)
+         (the float (+ (-> a0-31 frame-group data 0 length) -1))
+         )
+        (set! (-> a0-31 param 1) 1.0)
+        (joint-control-channel-group-eval!
+         a0-31
+         (the-as art-joint-anim #f)
+         num-func-seek!
+         )
+        )
+       )
+      )
+     )
+    )
+   (none)
+   )
+  )
+
+(defmethod should-display? assistant-levitator ((obj assistant-levitator))
+  (or
+   (=
+    (get-task-status (game-task village2-levitator))
+    (task-status need-reward-speech)
+    )
+   (zero? (get-task-status (game-task village2-levitator)))
+   )
+  )
+
+(defstate just-particles (assistant-levitator)
+  :code
+  (behavior ()
+   (ja-channel-set! 0)
+   (while #t
+    (assistant-levitator-blue-glow)
+    (assistant-levitator-blue-beam)
+    (update! (-> self sound))
+    (suspend)
+    )
+   (none)
+   )
+  )
+
+(defmethod
+  copy-defaults!
+  assistant-levitator
+  ((obj assistant-levitator) (arg0 res-lump))
+  (dummy-40
+   obj
+   arg0
+   *assistant-village2-sg*
+   3
+   31
+   (new 'static 'vector :w 4096.0)
+   5
+   )
+  (set! (-> obj tasks) (get-task-control (game-task village2-levitator)))
+  (set! (-> obj boulder) (entity-actor-lookup arg0 'alt-actor 0))
+  (set!
+   (-> obj particle 0)
+   (create-launch-control (-> *part-group-id-table* 658) obj)
+   )
+  (set!
+   (-> obj particle 1)
+   (create-launch-control (-> *part-group-id-table* 659) obj)
+   )
+  (set!
+   (-> obj particle 2)
+   (create-launch-control (-> *part-group-id-table* 660) obj)
+   )
+  (set!
+   (-> obj particle 3)
+   (create-launch-control (-> *part-group-id-table* 661) obj)
+   )
+  (set!
+   (-> obj sound)
+   (new
+    'process
+    'ambient-sound
+    (new 'static 'sound-spec
+     :mask #x80
+     :num 1.0
+     :group #x1
+     :sound-name-char
+     (new 'static 'array uint8 16
+      #x6c
+      #x65
+      #x76
+      #x2d
+      #x6d
+      #x61
+      #x63
+      #x68
+      #x2d
+      #x69
+      #x64
+      #x6c
+      #x65
+      #x0
+      #x0
+      #x0
+      )
+     :volume #x400
+     :fo-max 30
+     )
+    (-> obj root-override trans)
+    )
+   )
+  (if (= (get-task-status (game-task village2-levitator)) (task-status invalid))
+   (go just-particles)
+   (dummy-42 obj)
+   )
+  (none)
+  )
+
+
+
+

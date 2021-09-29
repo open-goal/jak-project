@@ -5,6 +5,12 @@
 ;; name in dgo: generic-obs-h
 ;; dgos: GAME, ENGINE
 
+;; TODO - for babak-with-cannon
+(define-extern mistycam-spawn (function none))
+;; TODO - for babak-with-cannon
+(define-extern beachcam-spawn (function none))
+
+;; decomp begins
 
 (deftype manipy (process-drawable)
   ((new-trans-hook       function        :offset-assert 176)
@@ -125,10 +131,10 @@
 (deftype gui-query (structure)
   ((x-position        int32  :offset-assert 0)
    (y-position        int32  :offset-assert 4)
-   (message           basic  :offset-assert 8)
-   (decision          basic  :offset-assert 12)
-   (only-allow-cancel basic  :offset-assert 16)
-   (no-msg            basic  :offset-assert 20)
+   (message           symbol  :offset-assert 8) ;; a guess, i suspect its an `event-message-block`
+   (decision          symbol  :offset-assert 12)
+   (only-allow-cancel symbol  :offset-assert 16)
+   (no-msg            symbol  :offset-assert 20)
    (message-space     int32  :offset-assert 24)
    )
   :pack-me
@@ -136,13 +142,13 @@
   :size-assert         #x1c
   :flag-assert         #xb0000001c
   (:methods
-    (dummy-9 () none 9)
-    (dummy-10 () none 10)
+    (init! (_type_ symbol int int int symbol symbol) none 9)
+    (dummy-10 (_type_) symbol 10)
     )
   )
 
 (deftype othercam (process)
-  ((hand              uint64         :offset-assert 112)
+  ((hand              handle         :offset-assert 112)
    (old-global-mask   uint32         :offset-assert 120)
    (mask-to-clear     uint32         :offset-assert 124)
    (cam-joint-index   int32          :offset-assert 128)
@@ -150,15 +156,14 @@
    (old-mat-z         vector :inline :offset-assert 160)
    (had-valid-frame   basic          :offset-assert 176)
    (border-value      basic          :offset-assert 180)
-   (die?              basic          :offset-assert 184)
-   (survive-anim-end? basic          :offset-assert 188)
-   (spooling?         basic          :offset-assert 192)
+   (die?              symbol          :offset-assert 184)
+   (survive-anim-end? symbol         :offset-assert 188)
+   (spooling?         symbol          :offset-assert 192)
    )
   :heap-base #x60
   :method-count-assert 14
   :size-assert         #xc4
   :flag-assert         #xe006000c4
-  ;; inherited inspect of process
   )
 
 (deftype process-hidden (process)
