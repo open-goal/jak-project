@@ -17,6 +17,28 @@
 
 (define *sp-60-hz* #t)
 
+(defenum sp-cpuinfo-flag
+  :bitfield #t
+  :type uint32
+  (bit0 0)
+  (bit2 2)     ;; cleared after an aux has its func set to add-to-sprite-aux-lst
+  (bit3 3)
+  (ready-to-launch 6) ;; maybe just just death?
+  (bit7 7)
+  (aux-list 8)     ;; prevents relaunch, adds to aux
+  (bit9 9)
+  (level0 10)
+  (level1 11)
+  (bit12 12)   ;; required to relaunch
+  (bit13 13)
+  (bit14 14)
+  (use-global-acc 16)
+  (launch-along-z 17)
+  (left-multiply-quat 18)
+  (right-multiply-quat 19)
+  (set-conerot 20)
+  )
+
 (deftype sparticle-cpuinfo (structure)
   ((sprite        sprite-vec-data-2d             :offset-assert 0)
    (adgif         adgif-shader                   :offset-assert 4)
@@ -33,7 +55,7 @@
    (scalevely     float                          :offset 44)
    (friction      float                          :offset-assert 96)
    (timer         int32                          :offset-assert 100)
-   (flags         uint32                         :offset-assert 104)
+   (flags         sp-cpuinfo-flag                :offset-assert 104)
    (user-int32    int32                          :offset-assert 108)
    (user-uint32   uint32                         :offset 108)
    (user-float    float                          :score 100 :offset 108)
@@ -53,7 +75,9 @@
   :method-count-assert 9
   :size-assert         #x8c
   :flag-assert         #x90000008c
+  ;; field key is a basic loaded with a signed load
   )
+
 
 (deftype sparticle-launchinfo (structure)
   ((launchrot  vector :inline       :offset-assert 0)
@@ -69,8 +93,8 @@
 
 (deftype sparticle-system (basic)
   ((blocks          int32 2 :offset-assert 4)
-   (length          uint32 2 :offset-assert 12)
-   (num-alloc       uint32 2 :offset-assert 20)
+   (length          int32 2 :offset-assert 12)
+   (num-alloc       int32 2 :offset-assert 20)
    (is-3d           basic     :offset-assert 28)
    (flags           uint32    :offset-assert 32)
    (alloc-table     (pointer uint64)    :offset-assert 36)
@@ -98,3 +122,4 @@
 
 (defun-extern kill-all-particles-with-key sparticle-launch-control none)
 
+(define-extern sp-get-particle (function sparticle-system int sparticle-launch-state sparticle-cpuinfo))

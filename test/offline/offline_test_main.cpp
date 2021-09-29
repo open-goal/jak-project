@@ -15,8 +15,9 @@ namespace {
 
 // list of object files to ignore during reference checks
 const std::unordered_set<std::string> g_files_to_skip_compiling = {
-    "timer",    // accessing timer regs
-    "display",  // interrupt handlers
+    "timer",            // accessing timer regs
+    "display",          // interrupt handlers
+    "target-snowball",  // screwed up labels, likely cut content
 };
 
 const std::unordered_set<std::string> g_functions_to_skip_decompiling = {
@@ -81,8 +82,10 @@ const std::unordered_set<std::string> g_functions_to_skip_decompiling = {
     "update-mood-lightning",  // asm
 
     // ambient
-    "ambient-inspect"  // asm, weird
-};
+    "ambient-inspect",  // asm, weird
+
+    // background
+    "background-upload-vu0", "draw-node-cull"};
 
 const std::unordered_set<std::string> g_functions_to_skip_compiling = {
     /// GCOMMON
@@ -201,7 +204,8 @@ std::vector<decomp_meta> g_object_files_to_decompile_or_ref_check;
 std::vector<std::string> dgos = {
     "CGO/KERNEL.CGO", "CGO/ENGINE.CGO", "CGO/GAME.CGO", "DGO/BEA.DGO", "DGO/INT.DGO", "DGO/VI1.DGO",
     "DGO/VI2.DGO",    "DGO/VI3.DGO",    "DGO/CIT.DGO",  "DGO/MIS.DGO", "DGO/JUB.DGO", "DGO/SUN.DGO",
-    "DGO/DEM.DGO",    "DGO/FIN.DGO",    "DGO/JUN.DGO",  "DGO/FIC.DGO", "DGO/OGR.DGO"};
+    "DGO/DEM.DGO",    "DGO/FIN.DGO",    "DGO/JUN.DGO",  "DGO/FIC.DGO", "DGO/SNO.DGO", "DGO/SWA.DGO",
+    "DGO/MAI.DGO",    "DGO/ROB.DGO",    "DGO/LAV.DGO",  "DGO/OGR.DGO"};
 
 }  // namespace
 

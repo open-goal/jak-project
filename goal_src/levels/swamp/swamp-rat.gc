@@ -5,3 +5,921 @@
 ;; name in dgo: swamp-rat
 ;; dgos: L1, SWA
 
+(define-extern *swamp-rat-sg* skeleton-group)
+(declare-type swamp-rat-nest process-drawable)
+
+;; DECOMP BEGINS
+
+(deftype swamp-rat (nav-enemy)
+  ((up-vector          vector :inline :offset-assert 400)
+   (state-float        float          :offset-assert 416)
+   (state-vector       vector :inline :offset-assert 432)
+   (_hack              uint64         :offset-assert 448)
+   (wiggle-time        uint64         :offset-assert 456)
+   (wiggle-angle       float          :offset-assert 464)
+   (delta-wiggle-angle float          :offset-assert 468)
+   (wiggle-factor      float          :offset-assert 472)
+   (min-height         float          :offset-assert 476)
+   (chase-rest-time    uint64         :offset-assert 480)
+   (target-nav-time    uint64         :offset-assert 488)
+   )
+  :heap-base #x180
+  :method-count-assert 76
+  :size-assert         #x1f0
+  :flag-assert         #x4c018001f0
+  )
+
+
+(let
+  ((v1-1
+    (new 'static 'skeleton-group
+     :art-group-name "swamp-rat"
+     :bounds
+     (new 'static 'vector :y 4096.0 :w 16384.0)
+     :max-lod 2
+     :longest-edge (meters 1.0)
+     :version #x6
+     )
+    )
+   )
+  (set! (-> v1-1 jgeo) 0)
+  (set! (-> v1-1 janim) 4)
+  (set! (-> v1-1 mgeo 0) (the-as uint 1))
+  (set! (-> v1-1 lod-dist 0) 81920.0)
+  (set! (-> v1-1 mgeo 1) (the-as uint 2))
+  (set! (-> v1-1 lod-dist 1) 163840.0)
+  (set! (-> v1-1 mgeo 2) (the-as uint 3))
+  (set! (-> v1-1 lod-dist 2) 4095996000.0)
+  (set! *swamp-rat-sg* v1-1)
+  )
+
+;; WARN: rewrite_to_get_var got a none typed variable. Is there unreachable code?
+(defmethod
+  dummy-44
+  swamp-rat
+  ((obj swamp-rat) (arg0 process) (arg1 event-message-block))
+  (with-pp
+   (the-as
+    object
+    (when
+     ((method-of-type touching-shapes-entry prims-touching?)
+      (the-as touching-shapes-entry (-> arg1 param 0))
+      (-> obj collide-info)
+      (the-as uint 1)
+      )
+     (when
+      (nav-enemy-send-attack
+       arg0
+       (the-as touching-shapes-entry (-> arg1 param 0))
+       'generic
+       )
+      (let* ((s5-1 (-> obj parent))
+             (a0-4
+              (if (and (nonzero? s5-1) (type-type? pointer process-drawable))
+               s5-1
+               )
+              )
+             )
+       (cond
+        (a0-4
+         (let ((a1-4 (new 'stack-no-clear 'event-message-block)))
+          (set! (-> a1-4 from) pp)
+          (set! (-> a1-4 num-params) 0)
+          (set! (-> a1-4 message) 'victory)
+          (send-event-function (the-as process a0-4) a1-4)
+          )
+         )
+        (else
+         (go (method-of-object obj nav-enemy-victory))
+         )
+        )
+       )
+      )
+     )
+    )
+   )
+  )
+
+(defbehavior
+  swamp-rat-default-event-handler swamp-rat
+  ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
+  (let ((v1-0 arg2))
+   (the-as object (if (= v1-0 'victory)
+                   (go-virtual nav-enemy-victory)
+                   (nav-enemy-default-event-handler arg0 arg1 arg2 arg3)
+                   )
+    )
+   )
+  )
+
+swamp-rat-default-event-handler
+
+(defmethod common-post swamp-rat ((obj swamp-rat))
+  (when (logtest? (-> obj collide-info status) 1)
+   (vector-deg-seek
+    (-> obj up-vector)
+    (-> obj up-vector)
+    (-> obj collide-info surface-normal)
+    910.2222
+    )
+   (vector-normalize! (-> obj up-vector) 1.0)
+   )
+  (forward-up-nopitch->quaternion
+   (-> obj collide-info quat)
+   (vector-z-quaternion! (new-stack-vector0) (-> obj collide-info quat))
+   (-> obj up-vector)
+   )
+  ((the-as (function nav-enemy none) (find-parent-method swamp-rat 39)) obj)
+  (none)
+  )
+
+(defmethod TODO-RENAME-38 swamp-rat ((obj swamp-rat))
+  (dummy-59
+   (-> obj collide-info)
+   (-> obj collide-info transv)
+   (the-as uint 1)
+   8192.0
+   #t
+   #f
+   #f
+   )
+  (when (< (-> obj collide-info trans y) (-> obj min-height))
+   (let ((a1-1 (new 'stack-no-clear 'vector)))
+    (set! (-> a1-1 quad) (-> obj collide-info trans quad))
+    (set! (-> a1-1 y) (-> obj min-height))
+    (TODO-RENAME-61
+     (-> obj collide-info)
+     a1-1
+     (-> obj collide-info transv)
+     *y-vector*
+     )
+    )
+   )
+  0
+  (none)
+  )
+
+(defstate nav-enemy-idle (swamp-rat)
+  :virtual #t
+  :event
+  swamp-rat-default-event-handler
+  :post
+  (behavior ()
+   (ja-post)
+   (none)
+   )
+  )
+
+(defstate nav-enemy-patrol (swamp-rat)
+  :virtual #t
+  :event
+  swamp-rat-default-event-handler
+  :code
+  (behavior ()
+   (let ((f30-0 (nav-enemy-rnd-float-range 0.9 1.1)))
+    (while #t
+     (let ((a0-1 (-> self skel root-channel 0)))
+      (set!
+       (-> a0-1 frame-group)
+       (the-as
+        art-joint-anim
+        (-> self draw art-group data (-> self nav-info walk-anim))
+        )
+       )
+      (set!
+       (-> a0-1 param 0)
+       (the
+        float
+        (+
+         (->
+          (the-as
+           art-joint-anim
+           (-> self draw art-group data (-> self nav-info walk-anim))
+           )
+          data
+          0
+          length
+          )
+         -1
+         )
+        )
+       )
+      (set! (-> a0-1 param 1) f30-0)
+      (set! (-> a0-1 frame-num) 0.0)
+      (joint-control-channel-group!
+       a0-1
+       (the-as
+        art-joint-anim
+        (-> self draw art-group data (-> self nav-info walk-anim))
+        )
+       num-func-seek!
+       )
+      )
+     (until (ja-done? 0)
+      (suspend)
+      (let ((a0-2 (-> self skel root-channel 0)))
+       (set!
+        (-> a0-2 param 0)
+        (the float (+ (-> a0-2 frame-group data 0 length) -1))
+        )
+       (set! (-> a0-2 param 1) f30-0)
+       (joint-control-channel-group-eval!
+        a0-2
+        (the-as art-joint-anim #f)
+        num-func-seek!
+        )
+       )
+      )
+     )
+    )
+   (none)
+   )
+  )
+
+(defstate nav-enemy-notice (swamp-rat)
+  :virtual #t
+  :event
+  swamp-rat-default-event-handler
+  :code
+  (behavior ()
+   (let ((a0-0 (-> self skel root-channel 0)))
+    (set! (-> a0-0 param 0) 1.0)
+    (joint-control-channel-group!
+     a0-0
+     (the-as art-joint-anim #f)
+     num-func-loop!
+     )
+    )
+   (ja-channel-push! 1 51)
+   (let ((gp-0 (-> self skel root-channel 0)))
+    (set!
+     (-> gp-0 frame-group)
+     (the-as art-joint-anim (-> self draw art-group data 8))
+     )
+    (set! (-> gp-0 param 0) (ja-aframe 30.0 0))
+    (set! (-> gp-0 param 1) 1.0)
+    (set! (-> gp-0 frame-num) 0.0)
+    (joint-control-channel-group!
+     gp-0
+     (the-as art-joint-anim (-> self draw art-group data 8))
+     num-func-seek!
+     )
+    )
+   (until (ja-done? 0)
+    (ja-blend-eval)
+    (suspend)
+    (let ((gp-1 (-> self skel root-channel 0)))
+     (set! (-> gp-1 param 0) (ja-aframe 30.0 0))
+     (set! (-> gp-1 param 1) 1.0)
+     (joint-control-channel-group-eval!
+      gp-1
+      (the-as art-joint-anim #f)
+      num-func-seek!
+      )
+     )
+    )
+   (let ((a0-7 (-> self skel root-channel 0)))
+    (set!
+     (-> a0-7 param 0)
+     (the float (+ (-> a0-7 frame-group data 0 length) -1))
+     )
+    (set! (-> a0-7 param 1) 1.0)
+    (joint-control-channel-group!
+     a0-7
+     (the-as art-joint-anim #f)
+     num-func-seek!
+     )
+    )
+   (go-virtual nav-enemy-chase)
+   (none)
+   )
+  )
+
+(defbehavior swamp-rat-update-wiggle-params swamp-rat ()
+  (let* ((f0-0 (rand-vu-float-range 0.0 1.0))
+         (f1-1 (+ 1.0 (* 2.0 f0-0)))
+         (f2-2 f1-1)
+         (f2-4 (/ 1.0 f2-2))
+         (f0-2 (+ 1.0 (* 0.2 f0-0)))
+         )
+   (set! (-> self delta-wiggle-angle) (* 910.2222 f1-1))
+   (set! (-> self wiggle-factor) (* 1.5 f2-4))
+   (let ((f0-3 (* 28672.0 f0-2)))
+    (set! (-> self target-speed) f0-3)
+    f0-3
+    )
+   )
+  )
+
+(defbehavior swamp-rat-update-wiggle-target swamp-rat ((arg0 vector))
+  (+! (-> self wiggle-angle) (-> self delta-wiggle-angle))
+  (if (< 65536.0 (-> self wiggle-angle))
+   (set! (-> self wiggle-angle) (+ -65536.0 (-> self wiggle-angle)))
+   )
+  (let* ((v1-3 (-> self collide-info trans))
+         (a1-1 (vector-! (new 'stack-no-clear 'vector) v1-3 arg0))
+         (s3-0
+          (vector-rotate-around-y! (new 'stack-no-clear 'vector) a1-1 16384.0)
+          )
+         (v1-4
+          (vector+*!
+           (new 'stack-no-clear 'vector)
+           arg0
+           s3-0
+           (* (-> self wiggle-factor) (sin (-> self wiggle-angle)))
+           )
+          )
+         (v0-3 (-> self nav target-pos))
+         )
+   (set! (-> v0-3 quad) (-> v1-4 quad))
+   v0-3
+   )
+  )
+
+(defstate nav-enemy-chase (swamp-rat)
+  :virtual #t
+  :event
+  swamp-rat-default-event-handler
+  :trans
+  (behavior ()
+   (if
+    (>=
+     (- (-> *display* base-frame-counter) (the-as int (-> self state-time)))
+     (the-as int (-> self chase-rest-time))
+     )
+    (go-virtual nav-enemy-victory)
+    )
+   ((-> (method-of-type nav-enemy nav-enemy-chase) trans))
+   (none)
+   )
+  :code
+  (behavior ()
+   (set!
+    (-> self target-nav-time)
+    (the-as uint (-> *display* base-frame-counter))
+    )
+   (set!
+    (-> self wiggle-time)
+    (the-as uint (+ (-> *display* base-frame-counter) -3000))
+    )
+   (set! (-> self wiggle-angle) 0.0)
+   (set! (-> self chase-rest-time) (the-as uint (rand-vu-int-range 300 1200)))
+   (ja-channel-push! 1 51)
+   (let ((gp-0 (-> self skel root-channel 0)))
+    (joint-control-channel-group-eval!
+     gp-0
+     (the-as art-joint-anim (-> self draw art-group data 9))
+     num-func-identity
+     )
+    (set! (-> gp-0 frame-num) 0.0)
+    )
+   (while #t
+    (when
+     (>=
+      (- (-> *display* base-frame-counter) (the-as int (-> self wiggle-time)))
+      300
+      )
+     (set!
+      (-> self wiggle-time)
+      (the-as uint (-> *display* base-frame-counter))
+      )
+     (swamp-rat-update-wiggle-params)
+     )
+    (suspend)
+    (let ((a0-4 (-> self skel root-channel 0)))
+     (set! (-> a0-4 param 0) 1.0)
+     (joint-control-channel-group-eval!
+      a0-4
+      (the-as art-joint-anim #f)
+      num-func-loop!
+      )
+     )
+    )
+   (none)
+   )
+  :post
+  (behavior ()
+   (swamp-rat-update-wiggle-target (target-pos 0))
+   (nav-enemy-travel-post)
+   (none)
+   )
+  )
+
+(defstate nav-enemy-stop-chase (swamp-rat)
+  :virtual #t
+  :event
+  swamp-rat-default-event-handler
+  :code
+  (-> (method-of-type nav-enemy nav-enemy-stop-chase) code)
+  )
+
+(defstate nav-enemy-stare (swamp-rat)
+  :virtual #t
+  :event
+  swamp-rat-default-event-handler
+  :code
+  (behavior ()
+   (set! (-> self rotate-speed) 1456355.5)
+   (set! (-> self turn-time) 22)
+   (let ((f30-0 (rand-vu-float-range 0.8 1.2)))
+    (while #t
+     (logior! (-> self nav-enemy-flags) 16)
+     (ja-channel-push! 1 30)
+     (let ((a0-2 (-> self skel root-channel 0)))
+      (set!
+       (-> a0-2 frame-group)
+       (the-as art-joint-anim (-> self draw art-group data 10))
+       )
+      (set!
+       (-> a0-2 param 0)
+       (the
+        float
+        (+
+         (->
+          (the-as art-joint-anim (-> self draw art-group data 10))
+          data
+          0
+          length
+          )
+         -1
+         )
+        )
+       )
+      (set! (-> a0-2 param 1) f30-0)
+      (set! (-> a0-2 frame-num) 0.0)
+      (joint-control-channel-group!
+       a0-2
+       (the-as art-joint-anim (-> self draw art-group data 10))
+       num-func-seek!
+       )
+      )
+     (until (ja-done? 0)
+      (suspend)
+      (let ((a0-3 (-> self skel root-channel 0)))
+       (set!
+        (-> a0-3 param 0)
+        (the float (+ (-> a0-3 frame-group data 0 length) -1))
+        )
+       (set! (-> a0-3 param 1) f30-0)
+       (joint-control-channel-group-eval!
+        a0-3
+        (the-as art-joint-anim #f)
+        num-func-seek!
+        )
+       )
+      )
+     (let ((a0-5 (-> self skel root-channel 0)))
+      (set! (-> a0-5 param 0) 1.0)
+      (joint-control-channel-group!
+       a0-5
+       (the-as art-joint-anim #f)
+       num-func-loop!
+       )
+      )
+     (set! (-> self nav-enemy-flags) (logand -17 (-> self nav-enemy-flags)))
+     (let ((gp-0 (rand-vu-int-range 300 600))
+           (s5-0 (-> *display* base-frame-counter))
+           )
+      (until (>= (- (-> *display* base-frame-counter) s5-0) gp-0)
+       (let ((v1-33 (-> self skel root-channel 0)))
+        (set! (-> v1-33 num-func) num-func-identity)
+        (set! (-> v1-33 frame-num) 0.0)
+        )
+       (ja-blend-eval)
+       (suspend)
+       (suspend)
+       )
+      )
+     )
+    )
+   (none)
+   )
+  )
+
+(defstate nav-enemy-give-up (swamp-rat)
+  :virtual #t
+  :event
+  swamp-rat-default-event-handler
+  :code
+  (behavior ()
+   (ja-channel-push! 1 22)
+   (let ((a0-1 (-> self skel root-channel 0)))
+    (set!
+     (-> a0-1 frame-group)
+     (the-as art-joint-anim (-> self draw art-group data 4))
+     )
+    (set!
+     (-> a0-1 param 0)
+     (the
+      float
+      (+
+       (->
+        (the-as art-joint-anim (-> self draw art-group data 4))
+        data
+        0
+        length
+        )
+       -1
+       )
+      )
+     )
+    (set! (-> a0-1 param 1) 1.0)
+    (set! (-> a0-1 frame-num) 0.0)
+    (joint-control-channel-group!
+     a0-1
+     (the-as art-joint-anim (-> self draw art-group data 4))
+     num-func-seek!
+     )
+    )
+   (until (ja-done? 0)
+    (suspend)
+    (let ((a0-2 (-> self skel root-channel 0)))
+     (set!
+      (-> a0-2 param 0)
+      (the float (+ (-> a0-2 frame-group data 0 length) -1))
+      )
+     (set! (-> a0-2 param 1) 1.0)
+     (joint-control-channel-group-eval!
+      a0-2
+      (the-as art-joint-anim #f)
+      num-func-seek!
+      )
+     )
+    )
+   (logclear! (-> self nav flags) (nav-control-flags bit17 bit19))
+   (nav-enemy-get-new-patrol-point)
+   (let ((a0-7 (-> self skel root-channel 0)))
+    (set!
+     (-> a0-7 frame-group)
+     (the-as art-joint-anim (-> self draw art-group data 4))
+     )
+    (set!
+     (-> a0-7 param 0)
+     (the
+      float
+      (+
+       (->
+        (the-as art-joint-anim (-> self draw art-group data 4))
+        data
+        0
+        length
+        )
+       -1
+       )
+      )
+     )
+    (set! (-> a0-7 param 1) 1.0)
+    (set! (-> a0-7 frame-num) 0.0)
+    (joint-control-channel-group!
+     a0-7
+     (the-as art-joint-anim (-> self draw art-group data 4))
+     num-func-seek!
+     )
+    )
+   (until (ja-done? 0)
+    (seek-to-point-toward-point!
+     (-> self collide-info)
+     (-> self nav destination-pos)
+     (-> self rotate-speed)
+     (-> self turn-time)
+     )
+    (suspend)
+    (let ((a0-9 (-> self skel root-channel 0)))
+     (set!
+      (-> a0-9 param 0)
+      (the float (+ (-> a0-9 frame-group data 0 length) -1))
+      )
+     (set! (-> a0-9 param 1) 1.0)
+     (joint-control-channel-group-eval!
+      a0-9
+      (the-as art-joint-anim #f)
+      num-func-seek!
+      )
+     )
+    )
+   (go-virtual nav-enemy-patrol)
+   (none)
+   )
+  )
+
+(defstate nav-enemy-attack (swamp-rat)
+  :virtual #t
+  :event
+  swamp-rat-default-event-handler
+  :code
+  (behavior ()
+   (ja-channel-push! 1 22)
+   (let ((a0-1 (-> self skel root-channel 0)))
+    (set!
+     (-> a0-1 frame-group)
+     (the-as art-joint-anim (-> self draw art-group data 4))
+     )
+    (set!
+     (-> a0-1 param 0)
+     (the
+      float
+      (+
+       (->
+        (the-as art-joint-anim (-> self draw art-group data 4))
+        data
+        0
+        length
+        )
+       -1
+       )
+      )
+     )
+    (set! (-> a0-1 param 1) 1.0)
+    (set! (-> a0-1 frame-num) 0.0)
+    (joint-control-channel-group!
+     a0-1
+     (the-as art-joint-anim (-> self draw art-group data 4))
+     num-func-seek!
+     )
+    )
+   (until (ja-done? 0)
+    (suspend)
+    (let ((a0-2 (-> self skel root-channel 0)))
+     (set!
+      (-> a0-2 param 0)
+      (the float (+ (-> a0-2 frame-group data 0 length) -1))
+      )
+     (set! (-> a0-2 param 1) 1.0)
+     (joint-control-channel-group-eval!
+      a0-2
+      (the-as art-joint-anim #f)
+      num-func-seek!
+      )
+     )
+    )
+   (go-virtual nav-enemy-victory)
+   (none)
+   )
+  )
+
+(defstate nav-enemy-victory (swamp-rat)
+  :virtual #t
+  :event
+  swamp-rat-default-event-handler
+  :code
+  (-> (method-of-type nav-enemy nav-enemy-victory) code)
+  )
+
+(defstate swamp-rat-spawn (swamp-rat)
+  :event
+  swamp-rat-default-event-handler
+  :code
+  (behavior ()
+   (let ((gp-0 (new-stack-vector0)))
+    (set! (-> gp-0 x) 0.0)
+    (set! (-> gp-0 y) (- (-> *standard-dynamics* gravity-length)))
+    (set! (-> gp-0 z) 0.0)
+    (set! (-> gp-0 w) 1.0)
+    (let ((f30-0 0.125))
+     (set!
+      (-> self state-time)
+      (the-as seconds (-> *display* base-frame-counter))
+      )
+     (let ((s5-0 (-> self skel root-channel 0)))
+      (joint-control-channel-group-eval!
+       s5-0
+       (the-as art-joint-anim (-> self draw art-group data 5))
+       num-func-identity
+       )
+      (set! (-> s5-0 frame-num) 0.0)
+      )
+     (while #t
+      (set! f30-0 (seek f30-0 1.5 0.1))
+      (vector-v++! (-> self collide-info transv) gp-0)
+      (dummy-59
+       (-> self collide-info)
+       (-> self collide-info transv)
+       (the-as uint 1)
+       8192.0
+       #t
+       #f
+       #f
+       )
+      (when
+       (or
+        (logtest? (-> self collide-info status) 4)
+        (or
+         (< (-> self collide-info trans y) (-> self min-height))
+         (>=
+          (-
+           (-> *display* base-frame-counter)
+           (the-as int (-> self state-time))
+           )
+          300
+          )
+         )
+        )
+       0
+       (goto cfg-13)
+       )
+      (vector-float*! (-> self collide-info scale) *identity-vector* f30-0)
+      (let ((a0-6 (-> self skel root-channel 0)))
+       (set! (-> a0-6 param 0) 1.0)
+       (joint-control-channel-group-eval!
+        a0-6
+        (the-as art-joint-anim #f)
+        num-func-loop!
+        )
+       )
+      (suspend)
+      )
+     )
+    )
+   (label cfg-13)
+   (if (< (-> self collide-info trans y) (-> self min-height))
+    (set! (-> self collide-info trans y) (-> self min-height))
+    )
+   (set! (-> self collide-info transv quad) (-> *null-vector* quad))
+   (vector-float*! (-> self collide-info scale) *identity-vector* 1.5)
+   (let ((a0-10 (-> self skel root-channel 0)))
+    (set!
+     (-> a0-10 frame-group)
+     (the-as art-joint-anim (-> self draw art-group data 6))
+     )
+    (set!
+     (-> a0-10 param 0)
+     (the
+      float
+      (+
+       (->
+        (the-as art-joint-anim (-> self draw art-group data 6))
+        data
+        0
+        length
+        )
+       -1
+       )
+      )
+     )
+    (set! (-> a0-10 param 1) 1.0)
+    (set! (-> a0-10 frame-num) 0.0)
+    (joint-control-channel-group!
+     a0-10
+     (the-as art-joint-anim (-> self draw art-group data 6))
+     num-func-seek!
+     )
+    )
+   (until (ja-done? 0)
+    (suspend)
+    (let ((a0-11 (-> self skel root-channel 0)))
+     (set!
+      (-> a0-11 param 0)
+      (the float (+ (-> a0-11 frame-group data 0 length) -1))
+      )
+     (set! (-> a0-11 param 1) 1.0)
+     (joint-control-channel-group-eval!
+      a0-11
+      (the-as art-joint-anim #f)
+      num-func-seek!
+      )
+     )
+    )
+   (if (TODO-RENAME-46 self (-> self nav-info stop-chase-distance))
+    (go-virtual nav-enemy-chase)
+    (go-virtual nav-enemy-idle)
+    )
+   (none)
+   )
+  :post
+  (the-as (function none :behavior swamp-rat) nav-enemy-simple-post)
+  )
+
+(define
+  *swamp-rat-nav-enemy-info*
+  (new 'static 'nav-enemy-info
+   :idle-anim 4
+   :walk-anim 7
+   :turn-anim 7
+   :notice-anim 8
+   :run-anim 9
+   :jump-anim 9
+   :jump-land-anim 6
+   :victory-anim 10
+   :taunt-anim 10
+   :die-anim 11
+   :neck-joint 7
+   :run-travel-speed (meters 7.0)
+   :run-rotate-speed (degrees 7999.9995)
+   :run-acceleration (meters 1.0)
+   :run-turn-time #x16
+   :walk-travel-speed (meters 2.0)
+   :walk-rotate-speed (degrees 7999.9995)
+   :walk-acceleration (meters 1.0)
+   :walk-turn-time #x16
+   :attack-shove-back (meters 3.0)
+   :attack-shove-up (meters 2.0)
+   :shadow-size (meters 1.0)
+   :notice-nav-radius (meters 1.0)
+   :nav-nearest-y-threshold (meters 10.0)
+   :notice-distance (meters 30.0)
+   :stop-chase-distance (meters 40.0)
+   :frustration-distance (meters 3.0)
+   :frustration-time #x1c2
+   :die-anim-hold-frame 20.0
+   :jump-anim-start-frame 19.0
+   :jump-land-anim-end-frame 10000000000.0
+   :jump-height-min (meters 1.0)
+   :jump-height-factor 0.5
+   :jump-start-anim-speed 1.0
+   :shadow-max-y (meters 1.0)
+   :shadow-min-y (meters -1.0)
+   :shadow-locus-dist (meters 150.0)
+   :use-align #f
+   :draw-shadow #f
+   :move-to-ground #t
+   :hover-if-no-ground #f
+   :use-momentum #f
+   :use-flee #f
+   :use-proximity-notice #f
+   :use-jump-blocked #f
+   :use-jump-patrol #f
+   :gnd-collide-with #x1
+   :debug-draw-neck #f
+   :debug-draw-jump #f
+   )
+  )
+
+(defmethod initialize-collision swamp-rat ((obj swamp-rat))
+  (let
+   ((s5-0
+     (new
+      'process
+      'collide-shape-moving
+      obj
+      (collide-list-enum usually-hit-by-player)
+      )
+     )
+    )
+   (set! (-> s5-0 dynam) (copy *standard-dynamics* 'process))
+   (set! (-> s5-0 reaction) default-collision-reaction)
+   (set! (-> s5-0 no-reaction) nothing)
+   (let ((s4-0 (new 'process 'collide-shape-prim-sphere s5-0 (the-as uint 3))))
+    (set! (-> s4-0 prim-core collide-as) (the-as uint 256))
+    (set! (-> s4-0 collide-with) (the-as uint 16))
+    (set! (-> s4-0 prim-core action) (the-as uint 1))
+    (set! (-> s4-0 prim-core offense) 2)
+    (set-vector! (-> s4-0 local-sphere) 0.0 3686.4001 0.0 3686.4001)
+    )
+   (dummy-46 s5-0)
+   (set! (-> s5-0 nav-radius) (* 0.75 (-> s5-0 root-prim local-sphere w)))
+   (dummy-50 s5-0)
+   (set! (-> obj collide-info) s5-0)
+   )
+  0
+  (none)
+  )
+
+(defmethod TODO-RENAME-48 swamp-rat ((obj swamp-rat))
+  (dummy-14 obj *swamp-rat-sg* '())
+  (TODO-RENAME-45 obj *swamp-rat-nav-enemy-info*)
+  (vector-float*! (-> obj collide-info scale) *identity-vector* 1.5)
+  (set! (-> obj neck up) (the-as uint 1))
+  (set! (-> obj neck nose) (the-as uint 2))
+  (set! (-> obj neck ear) (the-as uint 0))
+  (set! (-> obj wiggle-angle) 0.0)
+  (set! (-> obj delta-wiggle-angle) 910.2222)
+  (set! (-> obj wiggle-factor) 1.5)
+  (set! (-> obj reaction-time) (rand-vu-int-range 30 240))
+  (set! (-> obj chase-rest-time) (the-as uint 300))
+  (set! (-> obj water) (new 'process 'water-control obj 7 0.0 8192.0 2048.0))
+  (set! (-> obj water flags) (the-as uint 2))
+  (set! (-> obj water height) (res-lump-float (-> obj entity) 'water-height))
+  (set! (-> obj water ripple-size) 12288.0)
+  (set! (-> obj min-height) (+ -2048.0 (-> obj water height)))
+  (set! (-> obj up-vector quad) (-> *y-vector* quad))
+  0
+  (none)
+  )
+
+(defbehavior
+  swamp-rat-init-by-other swamp-rat
+  ((arg0 swamp-rat-nest)
+   (arg1 vector)
+   (arg2 vector)
+   (arg3 pickup-type)
+   (arg4 symbol)
+   )
+  (initialize-collision self)
+  (if arg4
+   (logclear! (-> self mask) (process-mask actor-pause))
+   (logior! (-> self mask) (process-mask actor-pause))
+   )
+  (set! (-> self collide-info trans quad) (-> arg1 quad))
+  (forward-up->quaternion (-> self collide-info quat) arg2 *up-vector*)
+  (vector-float*! (-> self collide-info scale) *identity-vector* 1.5)
+  (vector-float*! (-> self collide-info transv) arg2 49152.0)
+  (set! (-> self entity) (-> arg0 entity))
+  (TODO-RENAME-48 self)
+  (set! (-> self enemy-info pickup-type) arg3)
+  (go swamp-rat-spawn)
+  (none)
+  )
+
+
+
+

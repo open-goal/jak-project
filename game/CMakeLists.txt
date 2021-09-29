@@ -60,6 +60,8 @@ set(RUNTIME_SOURCE
         kernel/ksound.cpp
         mips2c/mips2c_table.cpp
         mips2c/functions/draw_string.cpp
+        mips2c/functions/sparticle.cpp
+        mips2c/functions/sparticle_launcher.cpp
         mips2c/functions/test_func.cpp
         overlord/dma.cpp
         overlord/fake_iso.cpp
@@ -82,9 +84,12 @@ set(RUNTIME_SOURCE
         graphics/dma/dma_copy.cpp
         graphics/dma/gs.cpp
         graphics/opengl_renderer/BucketRenderer.cpp
+        graphics/opengl_renderer/debug_gui.cpp
         graphics/opengl_renderer/DirectRenderer.cpp
         graphics/opengl_renderer/OpenGLRenderer.cpp
         graphics/opengl_renderer/Shader.cpp
+        graphics/opengl_renderer/SpriteRenderer.cpp
+        graphics/opengl_renderer/TextureUploadHandler.cpp
         graphics/texture/TextureConverter.cpp
         graphics/texture/TexturePool.cpp
         graphics/pipelines/opengl.cpp

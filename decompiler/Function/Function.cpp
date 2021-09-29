@@ -8,6 +8,7 @@
 #include "TypeInspector.h"
 #include "decompiler/IR/IR.h"
 #include "decompiler/IR2/Form.h"
+#include "common/util/BitUtils.h"
 
 namespace decompiler {
 namespace {
@@ -28,18 +29,6 @@ Register get_expected_fpr_backup(int n, int total) {
   assert(total <= int(fpr_backups.size()));
   assert(n < total);
   return fpr_backups.at((total - 1) - n);
-}
-
-uint32_t align16(uint32_t in) {
-  return (in + 15) & (~15);
-}
-
-uint32_t align8(uint32_t in) {
-  return (in + 7) & (~7);
-}
-
-uint32_t align4(uint32_t in) {
-  return (in + 3) & (~3);
 }
 
 }  // namespace

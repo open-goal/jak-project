@@ -21,6 +21,8 @@ namespace Pad {
 std::unordered_map<int, int> g_key_status;
 std::unordered_map<int, int> g_buffered_key_status;
 
+bool g_gamepad_buttons[(int)Button::Max] = {0};
+
 // input mode for controller mapping
 InputModeStatus input_mode = InputModeStatus::Disabled;
 u64 input_mode_pad = 0;
@@ -101,6 +103,10 @@ int IsPressed(MappingInfo& mapping, Button button, int pad = 0) {
   if (CheckPadIdx(pad) == -1) {
     return 0;
   }
+
+  if (g_gamepad_buttons[(int)button]) {
+    return 1;
+  }
   auto key = mapping.pad_mapping[pad][(int)button];
   if (key == -1)
     return 0;
@@ -173,6 +179,64 @@ u64 input_mode_get_key() {
 
 u64 input_mode_get_index() {
   return input_mode_index;
+}
+
+/*
+********************************
+* Gamepad Support
+********************************
+*/
+
+struct GamepadState {
+  int gamepad_idx = -1;
+} g_gamepads;
+
+void initialize() {
+  for (int i = GLFW_JOYSTICK_1; i <= GLFW_JOYSTICK_LAST; i++) {
+    if (glfwJoystickPresent(i) && glfwJoystickIsGamepad(i)) {
+      g_gamepads.gamepad_idx = i;
+      lg::info("Using joystick {}: {}, {}", i, glfwGetJoystickName(i), glfwGetGamepadName(i));
+      break;
+    }
+  }
+  if (g_gamepads.gamepad_idx == -1) {
+    lg::info("No joysticks found.");
+  }
+}
+
+void update_gamepads() {
+  if (g_gamepads.gamepad_idx == -1) {
+    return;
+  }
+
+  if (!glfwJoystickPresent(g_gamepads.gamepad_idx)) {
+    g_gamepads.gamepad_idx = -1;
+    lg::info("Gamepad has been disconnected");
+    return;
+  }
+
+  GLFWgamepadstate state;
+  glfwGetGamepadState(g_gamepads.gamepad_idx, &state);
+
+  constexpr std::pair<Button, int> gamepad_map[] = {
+      {Button::Select, GLFW_GAMEPAD_BUTTON_BACK},
+      {Button::L3, GLFW_GAMEPAD_BUTTON_LEFT_THUMB},
+      {Button::R3, GLFW_GAMEPAD_BUTTON_RIGHT_THUMB},
+      {Button::Start, GLFW_GAMEPAD_BUTTON_START},
+      {Button::Up, GLFW_GAMEPAD_BUTTON_DPAD_UP},
+      {Button::Right, GLFW_GAMEPAD_BUTTON_DPAD_RIGHT},
+      {Button::Down, GLFW_GAMEPAD_BUTTON_DPAD_DOWN},
+      {Button::Left, GLFW_GAMEPAD_BUTTON_DPAD_LEFT},
+      {Button::L1, GLFW_GAMEPAD_BUTTON_LEFT_BUMPER},
+      {Button::R1, GLFW_GAMEPAD_BUTTON_RIGHT_BUMPER},
+      {Button::Triangle, GLFW_GAMEPAD_BUTTON_TRIANGLE},
+      {Button::Circle, GLFW_GAMEPAD_BUTTON_CIRCLE},
+      {Button::X, GLFW_GAMEPAD_BUTTON_CROSS},
+      {Button::Square, GLFW_GAMEPAD_BUTTON_SQUARE}};
+
+  for (const auto& [button, idx] : gamepad_map) {
+    g_gamepad_buttons[(int)button] = state.buttons[idx];
+  }
 }
 
 };  // namespace Pad

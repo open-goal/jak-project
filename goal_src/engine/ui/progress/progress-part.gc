@@ -174,62 +174,74 @@
          (v1-0 (the int (the-as float (-> arg1 user-float))))
          (s4-0 -1)
          )
-   (let ((a1-1 0))
-    (dotimes (a2-1 (-> *progress-process* 0 nb-of-particles))
-     (if (= (-> a0-1 matrix) (-> s5-0 particles a1-1 part matrix))
-      (set! s4-0 a1-1)
+    (let ((a1-1 0))
+      (dotimes (a2-1 (-> *progress-process* 0 nb-of-particles))
+        (if (= (-> a0-1 matrix) (-> s5-0 particles a1-1 part matrix))
+            (set! s4-0 a1-1)
+            )
+        (+! a1-1 1)
+        )
       )
-     (+! a1-1 1)
-     )
-    )
-   (cond
-    ((= v1-0 3)
-     (if (= (-> s5-0 particle-state s4-0) 1)
-      (set! (-> arg2 vector 2 w) 42.0)
-      (set! (-> arg2 vector 2 w) 128.0)
-      )
-     0
-     )
-    (else
-     (let ((s3-0 (new 'stack-no-clear 'vector))
-           (s2-0 (new 'stack-no-clear 'vector))
+    (cond
+      ((= v1-0 3)
+       (if (= (-> s5-0 particle-state s4-0) 1)
+           (set! (-> arg2 vector 2 w) 42.0)
+           (set! (-> arg2 vector 2 w) 128.0)
            )
-      (cond
-       ((or
-         (= s4-0 -1)
-         (= (-> s5-0 particle-state s4-0) 2)
-         (= (-> s5-0 particle-state s4-0) 1)
-         )
-        (set! (-> arg2 vector 0 x) 245760.0)
-        )
-       ((= v1-0 -1)
-        (set! (-> arg2 vector 0 x) 0.0)
-        (set! (-> arg2 vector 0 y) 0.0)
-        )
-       (else
-        (vector<-cspace!
-         s3-0
-         (-> s5-0 icons (logand s4-0 3) icon 0 node-list data v1-0)
-         )
-        (vector<-cspace!
-         s2-0
-         (-> s5-0 icons (logand s4-0 3) icon 0 node-list data 3)
-         )
-        (vector-! s3-0 s3-0 s2-0)
-        (set! (-> arg2 vector 0 x) (* 48.0 (-> s3-0 x)))
-        (set! (-> arg2 vector 0 y) (* 60.0 (-> s3-0 y)))
-        (set! (-> arg2 vector 0 z) (* 32.0 (-> s3-0 z)))
-        )
+       0
        )
+      (else
+        (let ((s3-0 (new 'stack-no-clear 'vector))
+              (s2-0 (new 'stack-no-clear 'vector))
+              )
+          (cond
+            ((or
+               (= s4-0 -1)
+               (= (-> s5-0 particle-state s4-0) 2)
+               (= (-> s5-0 particle-state s4-0) 1)
+               )
+             (set! (-> arg2 vector 0 x) 245760.0)
+             )
+            ((= v1-0 -1)
+             (set! (-> arg2 vector 0 x) 0.0)
+             (set! (-> arg2 vector 0 y) 0.0)
+             )
+            (else
+              ;; NOTE: this check has been added so we can run progress even when manipy isn't working yet.
+              (cond
+                ((nonzero? (-> s5-0 icons (logand s4-0 3) icon 0 node-list))
+                 (vector<-cspace!
+                   s3-0
+                   (-> s5-0 icons (logand s4-0 3) icon 0 node-list data v1-0)
+                   )
+                 (vector<-cspace!
+                   s2-0
+                   (-> s5-0 icons (logand s4-0 3) icon 0 node-list data 3)
+                   )
+                 (vector-! s3-0 s3-0 s2-0)
+                 (set! (-> arg2 vector 0 x) (* 48.0 (-> s3-0 x)))
+                 (set! (-> arg2 vector 0 y) (* 60.0 (-> s3-0 y)))
+                 (set! (-> arg2 vector 0 z) (* 32.0 (-> s3-0 z)))
+                 )
+                (else
+                  ;; NOTE: this is added as a temporary workaround.
+                  ;; if we don't have this stuff loaded right, just set the offset to 0.
+                  ;; this ends up being the right offset in all the cases except for things that
+                  ;; orbit the powercell. Those are just draw underneath the powercell 
+                  (set! (-> arg2 vector 0 x) 0.0)
+                  (set! (-> arg2 vector 0 y) 0.0)
+                  )
+                )
+              )
+            )
+          )
+        0
+        )
       )
-     0
-     )
     )
-   )
   0
   (none)
   )
-
 ;; failed to figure out what this is:
 (set!
   (-> *part-group-id-table* 85)
@@ -237,11 +249,12 @@
    :length 1
    :duration #xbb8
    :linger-duration #x5dc
-   :flags #x5
+   :flags
+   (sp-group-flag use-local-clock screen-space)
    :name "group-part-progress-hud-previous"
    :launcher
    (new 'static 'inline-array sparticle-group-item 1
-    (new 'static 'sparticle-group-item :launcher #x14c :flags #x8)
+    (sp-item 332 :flags (launch-asap))
     )
    :bounds (new 'static 'sphere :w 4096.0)
    )
@@ -254,11 +267,12 @@
    :length 1
    :duration #xbb8
    :linger-duration #x5dc
-   :flags #x5
+   :flags
+   (sp-group-flag use-local-clock screen-space)
    :name "group-part-progress-hud-next"
    :launcher
    (new 'static 'inline-array sparticle-group-item 1
-    (new 'static 'sparticle-group-item :launcher #x14d :flags #x8)
+    (sp-item 333 :flags (launch-asap))
     )
    :bounds (new 'static 'sphere :w 4096.0)
    )
@@ -271,11 +285,11 @@
    :length 1
    :duration #xbb8
    :linger-duration #x5dc
-   :flags #x4
+   :flags (sp-group-flag screen-space)
    :name "group-part-progress-hud-selector"
    :launcher
    (new 'static 'inline-array sparticle-group-item 1
-    (new 'static 'sparticle-group-item :launcher #x14e :flags #x8)
+    (sp-item 334 :flags (launch-asap))
     )
    :bounds (new 'static 'sphere :w 4096.0)
    )
@@ -288,11 +302,11 @@
    :length 1
    :duration #xbb8
    :linger-duration #x5dc
-   :flags #x4
+   :flags (sp-group-flag screen-space)
    :name "group-part-progress-hud-left"
    :launcher
    (new 'static 'inline-array sparticle-group-item 1
-    (new 'static 'sparticle-group-item :launcher #x14f :flags #x8)
+    (sp-item 335 :flags (launch-asap))
     )
    :bounds (new 'static 'sphere :w 4096.0)
    )
@@ -305,11 +319,11 @@
    :length 1
    :duration #xbb8
    :linger-duration #x5dc
-   :flags #x4
+   :flags (sp-group-flag screen-space)
    :name "group-part-progress-hud-right"
    :launcher
    (new 'static 'inline-array sparticle-group-item 1
-    (new 'static 'sparticle-group-item :launcher #x150 :flags #x8)
+    (sp-item 336 :flags (launch-asap))
     )
    :bounds (new 'static 'sphere :w 4096.0)
    )
@@ -322,11 +336,11 @@
    :length 1
    :duration #xbb8
    :linger-duration #x5dc
-   :flags #x4
+   :flags (sp-group-flag screen-space)
    :name "group-part-progress-hud-tint"
    :launcher
    (new 'static 'inline-array sparticle-group-item 1
-    (new 'static 'sparticle-group-item :launcher #x151 :flags #x8)
+    (sp-item 337 :flags (launch-asap))
     )
    :bounds (new 'static 'sphere :w 4096.0)
    )
@@ -339,13 +353,13 @@
    :length 3
    :duration #xbb8
    :linger-duration #x5dc
-   :flags #x4
+   :flags (sp-group-flag screen-space)
    :name "group-part-progress-card-cell"
    :launcher
    (new 'static 'inline-array sparticle-group-item 3
-    (new 'static 'sparticle-group-item :launcher #x88e :flags #x8)
-    (new 'static 'sparticle-group-item :launcher #x88f :flags #x8)
-    (new 'static 'sparticle-group-item :launcher #x890 :flags #x8)
+    (sp-item 2190 :flags (launch-asap))
+    (sp-item 2191 :flags (launch-asap))
+    (sp-item 2192 :flags (launch-asap))
     )
    :bounds (new 'static 'sphere :w 4096.0)
    )
@@ -358,11 +372,11 @@
    :length 1
    :duration #xbb8
    :linger-duration #x5dc
-   :flags #x4
+   :flags (sp-group-flag screen-space)
    :name "group-part-progress-button-x"
    :launcher
    (new 'static 'inline-array sparticle-group-item 1
-    (new 'static 'sparticle-group-item :launcher #x920 :flags #x8)
+    (sp-item 2336 :flags (launch-asap))
     )
    :bounds (new 'static 'sphere :w 4096.0)
    )
@@ -375,11 +389,11 @@
    :length 1
    :duration #xbb8
    :linger-duration #x5dc
-   :flags #x4
+   :flags (sp-group-flag screen-space)
    :name "group-part-progress-button-square"
    :launcher
    (new 'static 'inline-array sparticle-group-item 1
-    (new 'static 'sparticle-group-item :launcher #x921 :flags #x8)
+    (sp-item 2337 :flags (launch-asap))
     )
    :bounds (new 'static 'sphere :w 4096.0)
    )
@@ -392,11 +406,11 @@
    :length 1
    :duration #xbb8
    :linger-duration #x5dc
-   :flags #x4
+   :flags (sp-group-flag screen-space)
    :name "group-part-progress-button-triangle"
    :launcher
    (new 'static 'inline-array sparticle-group-item 1
-    (new 'static 'sparticle-group-item :launcher #x922 :flags #x8)
+    (sp-item 2338 :flags (launch-asap))
     )
    :bounds (new 'static 'sphere :w 4096.0)
    )
@@ -409,11 +423,11 @@
    :length 1
    :duration #xbb8
    :linger-duration #x5dc
-   :flags #x4
+   :flags (sp-group-flag screen-space)
    :name "group-part-progress-button-circle"
    :launcher
    (new 'static 'inline-array sparticle-group-item 1
-    (new 'static 'sparticle-group-item :launcher #x923 :flags #x8)
+    (sp-item 2339 :flags (launch-asap))
     )
    :bounds (new 'static 'sphere :w 4096.0)
    )
@@ -426,11 +440,11 @@
    :length 1
    :duration #xbb8
    :linger-duration #x5dc
-   :flags #x4
+   :flags (sp-group-flag screen-space)
    :name "group-part-progress-card-slot-01"
    :launcher
    (new 'static 'inline-array sparticle-group-item 1
-    (new 'static 'sparticle-group-item :launcher #x85e :flags #x8)
+    (sp-item 2142 :flags (launch-asap))
     )
    :bounds (new 'static 'sphere :w 4096.0)
    )
@@ -443,11 +457,11 @@
    :length 1
    :duration #xbb8
    :linger-duration #x5dc
-   :flags #x4
+   :flags (sp-group-flag screen-space)
    :name "group-part-progress-card-slot-02"
    :launcher
    (new 'static 'inline-array sparticle-group-item 1
-    (new 'static 'sparticle-group-item :launcher #x85f :flags #x8)
+    (sp-item 2143 :flags (launch-asap))
     )
    :bounds (new 'static 'sphere :w 4096.0)
    )
@@ -460,11 +474,11 @@
    :length 1
    :duration #xbb8
    :linger-duration #x5dc
-   :flags #x4
+   :flags (sp-group-flag screen-space)
    :name "group-part-progress-card-slot-03"
    :launcher
    (new 'static 'inline-array sparticle-group-item 1
-    (new 'static 'sparticle-group-item :launcher #x860 :flags #x8)
+    (sp-item 2144 :flags (launch-asap))
     )
    :bounds (new 'static 'sphere :w 4096.0)
    )
@@ -477,11 +491,11 @@
    :length 1
    :duration #xbb8
    :linger-duration #x5dc
-   :flags #x4
+   :flags (sp-group-flag screen-space)
    :name "group-part-progress-card-slot-04"
    :launcher
    (new 'static 'inline-array sparticle-group-item 1
-    (new 'static 'sparticle-group-item :launcher #x861 :flags #x8)
+    (sp-item 2145 :flags (launch-asap))
     )
    :bounds (new 'static 'sphere :w 4096.0)
    )
@@ -494,12 +508,12 @@
    :length 1
    :duration #xbb8
    :linger-duration #x5dc
-   :flags #x4
+   :flags (sp-group-flag screen-space)
    :name
    "group-part-progress-hud-power-cell-center"
    :launcher
    (new 'static 'inline-array sparticle-group-item 1
-    (new 'static 'sparticle-group-item :launcher #x152 :flags #x8)
+    (sp-item 338 :flags (launch-asap))
     )
    :bounds (new 'static 'sphere :w 409600.0)
    )
@@ -511,63 +525,18 @@
   (new 'static 'sparticle-launcher
    :init-specs
    (new 'static 'inline-array sp-field-init-spec 12
-    (new 'static 'sp-field-init-spec
-     :field #x1
-     :initial-valuef (the-as float #x203600)
-     )
-    (new 'static 'sp-field-init-spec
-     :field #x6
-     :flags #x1
-     :initial-valuef 1.0
-     :random-multf 1.0
-     )
-    (new 'static 'sp-field-init-spec
-     :field #xd
-     :flags #x1
-     :initial-valuef 61440.0
-     :random-multf 1.0
-     )
-    (new 'static 'sp-field-init-spec
-     :field #x11
-     :flags #x1
-     :initial-valuef 47104.0
-     :random-multf 1.0
-     )
-    (new 'static 'sp-field-init-spec
-     :field #x12
-     :flags #x1
-     :initial-valuef 128.0
-     :random-multf 1.0
-     )
-    (new 'static 'sp-field-init-spec
-     :field #x13
-     :flags #x1
-     :initial-valuef 32.0
-     :random-multf 1.0
-     )
-    (new 'static 'sp-field-init-spec :field #x14 :flags #x1 :random-multf 1.0)
-    (new 'static 'sp-field-init-spec
-     :field #x15
-     :flags #x1
-     :initial-valuef 64.0
-     :random-multf 1.0
-     )
-    (new 'static 'sp-field-init-spec
-     :field #x2e
-     :initial-valuef (the-as float #xffffffff)
-     :random-multf (the-as float #x1)
-     )
-    (new 'static 'sp-field-init-spec
-     :field #x2f
-     :initial-valuef (the-as float #x2204)
-     :random-multf (the-as float #x1)
-     )
-    (new 'static 'sp-field-init-spec
-     :field #x31
-     :flags #x5
-     :sym 'part-progress-hud-tint-func
-     )
-    (new 'static 'sp-field-init-spec :field #x43)
+    (sp-tex spt-texture (new 'static 'texture-id :index #x36 :page #x2))
+    (sp-flt spt-num 1.0)
+    (sp-flt spt-scale-x (meters 15.0))
+    (sp-flt spt-scale-y (meters 11.5))
+    (sp-flt spt-r 128.0)
+    (sp-flt spt-g 32.0)
+    (sp-flt spt-b 0.0)
+    (sp-flt spt-a 64.0)
+    (sp-int spt-timer -1)
+    (sp-cpuinfo-flags bit2 bit9 bit13)
+    (sp-func spt-func 'part-progress-hud-tint-func)
+    (sp-end)
     )
    )
   )
@@ -578,68 +547,18 @@
   (new 'static 'sparticle-launcher
    :init-specs
    (new 'static 'inline-array sp-field-init-spec 12
-    (new 'static 'sp-field-init-spec
-     :field #x1
-     :initial-valuef 0.0000000000000000000015910302
-     )
-    (new 'static 'sp-field-init-spec
-     :field #x6
-     :flags #x1
-     :initial-valuef 1.0
-     :random-multf 1.0
-     )
-    (new 'static 'sp-field-init-spec
-     :field #xd
-     :flags #x1
-     :initial-valuef 3276.8
-     :random-multf 1.0
-     )
-    (new 'static 'sp-field-init-spec
-     :field #x11
-     :flags #x3
-     :initial-valuef (the-as float #xfffffffc)
-     :random-multf (the-as float #x1)
-     )
-    (new 'static 'sp-field-init-spec
-     :field #x12
-     :flags #x1
-     :initial-valuef 128.0
-     :random-multf 1.0
-     )
-    (new 'static 'sp-field-init-spec
-     :field #x13
-     :flags #x1
-     :initial-valuef 128.0
-     :random-multf 1.0
-     )
-    (new 'static 'sp-field-init-spec
-     :field #x14
-     :flags #x1
-     :initial-valuef 128.0
-     :random-multf 1.0
-     )
-    (new 'static 'sp-field-init-spec
-     :field #x15
-     :flags #x1
-     :initial-valuef 128.0
-     :random-multf 1.0
-     )
-    (new 'static 'sp-field-init-spec
-     :field #x2e
-     :initial-valuef (the-as float #xffffffff)
-     :random-multf (the-as float #x1)
-     )
-    (new 'static 'sp-field-init-spec
-     :field #x2f
-     :initial-valuef (the-as float #x2200)
-     :random-multf (the-as float #x1)
-     )
-    (new 'static 'sp-field-init-spec
-     :field #x31
-     :flags #x5
-     :sym 'part-progress-card-cell-func
-     )
-    (new 'static 'sp-field-init-spec :field #x43)
+    (sp-tex spt-texture (new 'static 'texture-id :index #x6e :page #x1cf))
+    (sp-flt spt-num 1.0)
+    (sp-flt spt-scale-x (meters 0.8))
+    (sp-copy-from-other spt-scale-y -4)
+    (sp-flt spt-r 128.0)
+    (sp-flt spt-g 128.0)
+    (sp-flt spt-b 128.0)
+    (sp-flt spt-a 128.0)
+    (sp-int spt-timer -1)
+    (sp-cpuinfo-flags bit9 bit13)
+    (sp-func spt-func 'part-progress-card-cell-func)
+    (sp-end)
     )
    )
   )
@@ -650,74 +569,19 @@
   (new 'static 'sparticle-launcher
    :init-specs
    (new 'static 'inline-array sp-field-init-spec 13
-    (new 'static 'sp-field-init-spec
-     :field #x1
-     :initial-valuef 0.0000000000000000000015910044
-     )
-    (new 'static 'sp-field-init-spec
-     :field #x6
-     :flags #x1
-     :initial-valuef 1.0
-     :random-multf 1.0
-     )
-    (new 'static 'sp-field-init-spec
-     :field #xa
-     :flags #x1
-     :initial-valuef 4300.8
-     :random-multf 1.0
-     )
-    (new 'static 'sp-field-init-spec
-     :field #xd
-     :flags #x1
-     :initial-valuef 3276.8
-     :random-multf 1.0
-     )
-    (new 'static 'sp-field-init-spec
-     :field #x11
-     :flags #x3
-     :initial-valuef (the-as float #xfffffffc)
-     :random-multf (the-as float #x1)
-     )
-    (new 'static 'sp-field-init-spec
-     :field #x12
-     :flags #x1
-     :initial-valuef 128.0
-     :random-multf 1.0
-     )
-    (new 'static 'sp-field-init-spec
-     :field #x13
-     :flags #x1
-     :initial-valuef 128.0
-     :random-multf 1.0
-     )
-    (new 'static 'sp-field-init-spec
-     :field #x14
-     :flags #x1
-     :initial-valuef 128.0
-     :random-multf 1.0
-     )
-    (new 'static 'sp-field-init-spec
-     :field #x15
-     :flags #x1
-     :initial-valuef 128.0
-     :random-multf 1.0
-     )
-    (new 'static 'sp-field-init-spec
-     :field #x2e
-     :initial-valuef (the-as float #xffffffff)
-     :random-multf (the-as float #x1)
-     )
-    (new 'static 'sp-field-init-spec
-     :field #x2f
-     :initial-valuef (the-as float #x2200)
-     :random-multf (the-as float #x1)
-     )
-    (new 'static 'sp-field-init-spec
-     :field #x31
-     :flags #x5
-     :sym 'part-progress-card-cell-func
-     )
-    (new 'static 'sp-field-init-spec :field #x43)
+    (sp-tex spt-texture (new 'static 'texture-id :index #x6d :page #x1cf))
+    (sp-flt spt-num 1.0)
+    (sp-flt spt-x (meters 1.05))
+    (sp-flt spt-scale-x (meters 0.8))
+    (sp-copy-from-other spt-scale-y -4)
+    (sp-flt spt-r 128.0)
+    (sp-flt spt-g 128.0)
+    (sp-flt spt-b 128.0)
+    (sp-flt spt-a 128.0)
+    (sp-int spt-timer -1)
+    (sp-cpuinfo-flags bit9 bit13)
+    (sp-func spt-func 'part-progress-card-cell-func)
+    (sp-end)
     )
    )
   )
@@ -728,74 +592,19 @@
   (new 'static 'sparticle-launcher
    :init-specs
    (new 'static 'inline-array sp-field-init-spec 13
-    (new 'static 'sp-field-init-spec
-     :field #x1
-     :initial-valuef 0.0000000000000000000015909785
-     )
-    (new 'static 'sp-field-init-spec
-     :field #x6
-     :flags #x1
-     :initial-valuef 1.0
-     :random-multf 1.0
-     )
-    (new 'static 'sp-field-init-spec
-     :field #xa
-     :flags #x1
-     :initial-valuef 9420.8
-     :random-multf 1.0
-     )
-    (new 'static 'sp-field-init-spec
-     :field #xd
-     :flags #x1
-     :initial-valuef 3276.8
-     :random-multf 1.0
-     )
-    (new 'static 'sp-field-init-spec
-     :field #x11
-     :flags #x3
-     :initial-valuef (the-as float #xfffffffc)
-     :random-multf (the-as float #x1)
-     )
-    (new 'static 'sp-field-init-spec
-     :field #x12
-     :flags #x1
-     :initial-valuef 128.0
-     :random-multf 1.0
-     )
-    (new 'static 'sp-field-init-spec
-     :field #x13
-     :flags #x1
-     :initial-valuef 128.0
-     :random-multf 1.0
-     )
-    (new 'static 'sp-field-init-spec
-     :field #x14
-     :flags #x1
-     :initial-valuef 128.0
-     :random-multf 1.0
-     )
-    (new 'static 'sp-field-init-spec
-     :field #x15
-     :flags #x1
-     :initial-valuef 128.0
-     :random-multf 1.0
-     )
-    (new 'static 'sp-field-init-spec
-     :field #x2e
-     :initial-valuef (the-as float #xffffffff)
-     :random-multf (the-as float #x1)
-     )
-    (new 'static 'sp-field-init-spec
-     :field #x2f
-     :initial-valuef (the-as float #x2200)
-     :random-multf (the-as float #x1)
-     )
-    (new 'static 'sp-field-init-spec
-     :field #x31
-     :flags #x5
-     :sym 'part-progress-card-cell-func
-     )
-    (new 'static 'sp-field-init-spec :field #x43)
+    (sp-tex spt-texture (new 'static 'texture-id :index #x6c :page #x1cf))
+    (sp-flt spt-num 1.0)
+    (sp-flt spt-x (meters 2.3))
+    (sp-flt spt-scale-x (meters 0.8))
+    (sp-copy-from-other spt-scale-y -4)
+    (sp-flt spt-r 128.0)
+    (sp-flt spt-g 128.0)
+    (sp-flt spt-b 128.0)
+    (sp-flt spt-a 128.0)
+    (sp-int spt-timer -1)
+    (sp-cpuinfo-flags bit9 bit13)
+    (sp-func spt-func 'part-progress-card-cell-func)
+    (sp-end)
     )
    )
   )
@@ -806,65 +615,18 @@
   (new 'static 'sparticle-launcher
    :init-specs
    (new 'static 'inline-array sp-field-init-spec 12
-    (new 'static 'sp-field-init-spec :field #x1 :initial-valuef 4.0006104)
-    (new 'static 'sp-field-init-spec
-     :field #x6
-     :flags #x1
-     :initial-valuef 1.0
-     :random-multf 1.0
-     )
-    (new 'static 'sp-field-init-spec
-     :field #xd
-     :flags #x1
-     :initial-valuef 6553.6
-     :random-multf 1.0
-     )
-    (new 'static 'sp-field-init-spec
-     :field #x11
-     :flags #x3
-     :initial-valuef (the-as float #xfffffffc)
-     :random-multf (the-as float #x1)
-     )
-    (new 'static 'sp-field-init-spec
-     :field #x12
-     :flags #x1
-     :initial-valuef 128.0
-     :random-multf 1.0
-     )
-    (new 'static 'sp-field-init-spec
-     :field #x13
-     :flags #x1
-     :initial-valuef 128.0
-     :random-multf 1.0
-     )
-    (new 'static 'sp-field-init-spec
-     :field #x14
-     :flags #x1
-     :initial-valuef 128.0
-     :random-multf 1.0
-     )
-    (new 'static 'sp-field-init-spec
-     :field #x15
-     :flags #x1
-     :initial-valuef 128.0
-     :random-multf 1.0
-     )
-    (new 'static 'sp-field-init-spec
-     :field #x2e
-     :initial-valuef (the-as float #xffffffff)
-     :random-multf (the-as float #x1)
-     )
-    (new 'static 'sp-field-init-spec
-     :field #x2f
-     :initial-valuef (the-as float #x2204)
-     :random-multf (the-as float #x1)
-     )
-    (new 'static 'sp-field-init-spec
-     :field #x31
-     :flags #x5
-     :sym 'part-progress-hud-button-func
-     )
-    (new 'static 'sp-field-init-spec :field #x43)
+    (sp-tex spt-texture (new 'static 'texture-id :index #x5 :page #x408))
+    (sp-flt spt-num 1.0)
+    (sp-flt spt-scale-x (meters 1.6))
+    (sp-copy-from-other spt-scale-y -4)
+    (sp-flt spt-r 128.0)
+    (sp-flt spt-g 128.0)
+    (sp-flt spt-b 128.0)
+    (sp-flt spt-a 128.0)
+    (sp-int spt-timer -1)
+    (sp-cpuinfo-flags bit2 bit9 bit13)
+    (sp-func spt-func 'part-progress-hud-button-func)
+    (sp-end)
     )
    )
   )
@@ -875,65 +637,18 @@
   (new 'static 'sparticle-launcher
    :init-specs
    (new 'static 'inline-array sp-field-init-spec 12
-    (new 'static 'sp-field-init-spec :field #x1 :initial-valuef 4.0007324)
-    (new 'static 'sp-field-init-spec
-     :field #x6
-     :flags #x1
-     :initial-valuef 1.0
-     :random-multf 1.0
-     )
-    (new 'static 'sp-field-init-spec
-     :field #xd
-     :flags #x1
-     :initial-valuef 6553.6
-     :random-multf 1.0
-     )
-    (new 'static 'sp-field-init-spec
-     :field #x11
-     :flags #x3
-     :initial-valuef (the-as float #xfffffffc)
-     :random-multf (the-as float #x1)
-     )
-    (new 'static 'sp-field-init-spec
-     :field #x12
-     :flags #x1
-     :initial-valuef 128.0
-     :random-multf 1.0
-     )
-    (new 'static 'sp-field-init-spec
-     :field #x13
-     :flags #x1
-     :initial-valuef 128.0
-     :random-multf 1.0
-     )
-    (new 'static 'sp-field-init-spec
-     :field #x14
-     :flags #x1
-     :initial-valuef 128.0
-     :random-multf 1.0
-     )
-    (new 'static 'sp-field-init-spec
-     :field #x15
-     :flags #x1
-     :initial-valuef 128.0
-     :random-multf 1.0
-     )
-    (new 'static 'sp-field-init-spec
-     :field #x2e
-     :initial-valuef (the-as float #xffffffff)
-     :random-multf (the-as float #x1)
-     )
-    (new 'static 'sp-field-init-spec
-     :field #x2f
-     :initial-valuef (the-as float #x2204)
-     :random-multf (the-as float #x1)
-     )
-    (new 'static 'sp-field-init-spec
-     :field #x31
-     :flags #x5
-     :sym 'part-progress-hud-button-func
-     )
-    (new 'static 'sp-field-init-spec :field #x43)
+    (sp-tex spt-texture (new 'static 'texture-id :index #x6 :page #x408))
+    (sp-flt spt-num 1.0)
+    (sp-flt spt-scale-x (meters 1.6))
+    (sp-copy-from-other spt-scale-y -4)
+    (sp-flt spt-r 128.0)
+    (sp-flt spt-g 128.0)
+    (sp-flt spt-b 128.0)
+    (sp-flt spt-a 128.0)
+    (sp-int spt-timer -1)
+    (sp-cpuinfo-flags bit2 bit9 bit13)
+    (sp-func spt-func 'part-progress-hud-button-func)
+    (sp-end)
     )
    )
   )
@@ -944,65 +659,18 @@
   (new 'static 'sparticle-launcher
    :init-specs
    (new 'static 'inline-array sp-field-init-spec 12
-    (new 'static 'sp-field-init-spec :field #x1 :initial-valuef 4.0008545)
-    (new 'static 'sp-field-init-spec
-     :field #x6
-     :flags #x1
-     :initial-valuef 1.0
-     :random-multf 1.0
-     )
-    (new 'static 'sp-field-init-spec
-     :field #xd
-     :flags #x1
-     :initial-valuef 6553.6
-     :random-multf 1.0
-     )
-    (new 'static 'sp-field-init-spec
-     :field #x11
-     :flags #x3
-     :initial-valuef (the-as float #xfffffffc)
-     :random-multf (the-as float #x1)
-     )
-    (new 'static 'sp-field-init-spec
-     :field #x12
-     :flags #x1
-     :initial-valuef 128.0
-     :random-multf 1.0
-     )
-    (new 'static 'sp-field-init-spec
-     :field #x13
-     :flags #x1
-     :initial-valuef 128.0
-     :random-multf 1.0
-     )
-    (new 'static 'sp-field-init-spec
-     :field #x14
-     :flags #x1
-     :initial-valuef 128.0
-     :random-multf 1.0
-     )
-    (new 'static 'sp-field-init-spec
-     :field #x15
-     :flags #x1
-     :initial-valuef 128.0
-     :random-multf 1.0
-     )
-    (new 'static 'sp-field-init-spec
-     :field #x2e
-     :initial-valuef (the-as float #xffffffff)
-     :random-multf (the-as float #x1)
-     )
-    (new 'static 'sp-field-init-spec
-     :field #x2f
-     :initial-valuef (the-as float #x2204)
-     :random-multf (the-as float #x1)
-     )
-    (new 'static 'sp-field-init-spec
-     :field #x31
-     :flags #x5
-     :sym 'part-progress-hud-button-func
-     )
-    (new 'static 'sp-field-init-spec :field #x43)
+    (sp-tex spt-texture (new 'static 'texture-id :index #x7 :page #x408))
+    (sp-flt spt-num 1.0)
+    (sp-flt spt-scale-x (meters 1.6))
+    (sp-copy-from-other spt-scale-y -4)
+    (sp-flt spt-r 128.0)
+    (sp-flt spt-g 128.0)
+    (sp-flt spt-b 128.0)
+    (sp-flt spt-a 128.0)
+    (sp-int spt-timer -1)
+    (sp-cpuinfo-flags bit2 bit9 bit13)
+    (sp-func spt-func 'part-progress-hud-button-func)
+    (sp-end)
     )
    )
   )
@@ -1013,65 +681,18 @@
   (new 'static 'sparticle-launcher
    :init-specs
    (new 'static 'inline-array sp-field-init-spec 12
-    (new 'static 'sp-field-init-spec :field #x1 :initial-valuef 4.0009766)
-    (new 'static 'sp-field-init-spec
-     :field #x6
-     :flags #x1
-     :initial-valuef 1.0
-     :random-multf 1.0
-     )
-    (new 'static 'sp-field-init-spec
-     :field #xd
-     :flags #x1
-     :initial-valuef 6553.6
-     :random-multf 1.0
-     )
-    (new 'static 'sp-field-init-spec
-     :field #x11
-     :flags #x3
-     :initial-valuef (the-as float #xfffffffc)
-     :random-multf (the-as float #x1)
-     )
-    (new 'static 'sp-field-init-spec
-     :field #x12
-     :flags #x1
-     :initial-valuef 128.0
-     :random-multf 1.0
-     )
-    (new 'static 'sp-field-init-spec
-     :field #x13
-     :flags #x1
-     :initial-valuef 128.0
-     :random-multf 1.0
-     )
-    (new 'static 'sp-field-init-spec
-     :field #x14
-     :flags #x1
-     :initial-valuef 128.0
-     :random-multf 1.0
-     )
-    (new 'static 'sp-field-init-spec
-     :field #x15
-     :flags #x1
-     :initial-valuef 128.0
-     :random-multf 1.0
-     )
-    (new 'static 'sp-field-init-spec
-     :field #x2e
-     :initial-valuef (the-as float #xffffffff)
-     :random-multf (the-as float #x1)
-     )
-    (new 'static 'sp-field-init-spec
-     :field #x2f
-     :initial-valuef (the-as float #x2204)
-     :random-multf (the-as float #x1)
-     )
-    (new 'static 'sp-field-init-spec
-     :field #x31
-     :flags #x5
-     :sym 'part-progress-hud-button-func
-     )
-    (new 'static 'sp-field-init-spec :field #x43)
+    (sp-tex spt-texture (new 'static 'texture-id :index #x8 :page #x408))
+    (sp-flt spt-num 1.0)
+    (sp-flt spt-scale-x (meters 1.6))
+    (sp-copy-from-other spt-scale-y -4)
+    (sp-flt spt-r 128.0)
+    (sp-flt spt-g 128.0)
+    (sp-flt spt-b 128.0)
+    (sp-flt spt-a 128.0)
+    (sp-int spt-timer -1)
+    (sp-cpuinfo-flags bit2 bit9 bit13)
+    (sp-func spt-func 'part-progress-hud-button-func)
+    (sp-end)
     )
    )
   )
@@ -1082,53 +703,18 @@
   (new 'static 'sparticle-launcher
    :init-specs
    (new 'static 'inline-array sp-field-init-spec 12
-    (new 'static 'sp-field-init-spec
-     :field #x1
-     :initial-valuef (the-as float #x203600)
-     )
-    (new 'static 'sp-field-init-spec
-     :field #x6
-     :flags #x1
-     :initial-valuef 1.0
-     :random-multf 1.0
-     )
-    (new 'static 'sp-field-init-spec
-     :field #xd
-     :flags #x1
-     :initial-valuef 37683.2
-     :random-multf 1.0
-     )
-    (new 'static 'sp-field-init-spec
-     :field #x11
-     :flags #x1
-     :initial-valuef 8192.0
-     :random-multf 1.0
-     )
-    (new 'static 'sp-field-init-spec :field #x12 :flags #x1 :random-multf 1.0)
-    (new 'static 'sp-field-init-spec :field #x13 :flags #x1 :random-multf 1.0)
-    (new 'static 'sp-field-init-spec :field #x14 :flags #x1 :random-multf 1.0)
-    (new 'static 'sp-field-init-spec
-     :field #x15
-     :flags #x1
-     :initial-valuef 64.0
-     :random-multf 1.0
-     )
-    (new 'static 'sp-field-init-spec
-     :field #x2e
-     :initial-valuef (the-as float #xffffffff)
-     :random-multf (the-as float #x1)
-     )
-    (new 'static 'sp-field-init-spec
-     :field #x2f
-     :initial-valuef (the-as float #x2200)
-     :random-multf (the-as float #x1)
-     )
-    (new 'static 'sp-field-init-spec
-     :field #x31
-     :flags #x5
-     :sym 'part-progress-card-slot-01-func
-     )
-    (new 'static 'sp-field-init-spec :field #x43)
+    (sp-tex spt-texture (new 'static 'texture-id :index #x36 :page #x2))
+    (sp-flt spt-num 1.0)
+    (sp-flt spt-scale-x (meters 9.2))
+    (sp-flt spt-scale-y (meters 2.0))
+    (sp-flt spt-r 0.0)
+    (sp-flt spt-g 0.0)
+    (sp-flt spt-b 0.0)
+    (sp-flt spt-a 64.0)
+    (sp-int spt-timer -1)
+    (sp-cpuinfo-flags bit9 bit13)
+    (sp-func spt-func 'part-progress-card-slot-01-func)
+    (sp-end)
     )
    )
   )
@@ -1139,53 +725,18 @@
   (new 'static 'sparticle-launcher
    :init-specs
    (new 'static 'inline-array sp-field-init-spec 12
-    (new 'static 'sp-field-init-spec
-     :field #x1
-     :initial-valuef (the-as float #x203600)
-     )
-    (new 'static 'sp-field-init-spec
-     :field #x6
-     :flags #x1
-     :initial-valuef 1.0
-     :random-multf 1.0
-     )
-    (new 'static 'sp-field-init-spec
-     :field #xd
-     :flags #x1
-     :initial-valuef 37683.2
-     :random-multf 1.0
-     )
-    (new 'static 'sp-field-init-spec
-     :field #x11
-     :flags #x1
-     :initial-valuef 8192.0
-     :random-multf 1.0
-     )
-    (new 'static 'sp-field-init-spec :field #x12 :flags #x1 :random-multf 1.0)
-    (new 'static 'sp-field-init-spec :field #x13 :flags #x1 :random-multf 1.0)
-    (new 'static 'sp-field-init-spec :field #x14 :flags #x1 :random-multf 1.0)
-    (new 'static 'sp-field-init-spec
-     :field #x15
-     :flags #x1
-     :initial-valuef 64.0
-     :random-multf 1.0
-     )
-    (new 'static 'sp-field-init-spec
-     :field #x2e
-     :initial-valuef (the-as float #xffffffff)
-     :random-multf (the-as float #x1)
-     )
-    (new 'static 'sp-field-init-spec
-     :field #x2f
-     :initial-valuef (the-as float #x2200)
-     :random-multf (the-as float #x1)
-     )
-    (new 'static 'sp-field-init-spec
-     :field #x31
-     :flags #x5
-     :sym 'part-progress-card-slot-02-func
-     )
-    (new 'static 'sp-field-init-spec :field #x43)
+    (sp-tex spt-texture (new 'static 'texture-id :index #x36 :page #x2))
+    (sp-flt spt-num 1.0)
+    (sp-flt spt-scale-x (meters 9.2))
+    (sp-flt spt-scale-y (meters 2.0))
+    (sp-flt spt-r 0.0)
+    (sp-flt spt-g 0.0)
+    (sp-flt spt-b 0.0)
+    (sp-flt spt-a 64.0)
+    (sp-int spt-timer -1)
+    (sp-cpuinfo-flags bit9 bit13)
+    (sp-func spt-func 'part-progress-card-slot-02-func)
+    (sp-end)
     )
    )
   )
@@ -1196,53 +747,18 @@
   (new 'static 'sparticle-launcher
    :init-specs
    (new 'static 'inline-array sp-field-init-spec 12
-    (new 'static 'sp-field-init-spec
-     :field #x1
-     :initial-valuef (the-as float #x203600)
-     )
-    (new 'static 'sp-field-init-spec
-     :field #x6
-     :flags #x1
-     :initial-valuef 1.0
-     :random-multf 1.0
-     )
-    (new 'static 'sp-field-init-spec
-     :field #xd
-     :flags #x1
-     :initial-valuef 37683.2
-     :random-multf 1.0
-     )
-    (new 'static 'sp-field-init-spec
-     :field #x11
-     :flags #x1
-     :initial-valuef 8192.0
-     :random-multf 1.0
-     )
-    (new 'static 'sp-field-init-spec :field #x12 :flags #x1 :random-multf 1.0)
-    (new 'static 'sp-field-init-spec :field #x13 :flags #x1 :random-multf 1.0)
-    (new 'static 'sp-field-init-spec :field #x14 :flags #x1 :random-multf 1.0)
-    (new 'static 'sp-field-init-spec
-     :field #x15
-     :flags #x1
-     :initial-valuef 64.0
-     :random-multf 1.0
-     )
-    (new 'static 'sp-field-init-spec
-     :field #x2e
-     :initial-valuef (the-as float #xffffffff)
-     :random-multf (the-as float #x1)
-     )
-    (new 'static 'sp-field-init-spec
-     :field #x2f
-     :initial-valuef (the-as float #x2200)
-     :random-multf (the-as float #x1)
-     )
-    (new 'static 'sp-field-init-spec
-     :field #x31
-     :flags #x5
-     :sym 'part-progress-card-slot-03-func
-     )
-    (new 'static 'sp-field-init-spec :field #x43)
+    (sp-tex spt-texture (new 'static 'texture-id :index #x36 :page #x2))
+    (sp-flt spt-num 1.0)
+    (sp-flt spt-scale-x (meters 9.2))
+    (sp-flt spt-scale-y (meters 2.0))
+    (sp-flt spt-r 0.0)
+    (sp-flt spt-g 0.0)
+    (sp-flt spt-b 0.0)
+    (sp-flt spt-a 64.0)
+    (sp-int spt-timer -1)
+    (sp-cpuinfo-flags bit9 bit13)
+    (sp-func spt-func 'part-progress-card-slot-03-func)
+    (sp-end)
     )
    )
   )
@@ -1253,53 +769,18 @@
   (new 'static 'sparticle-launcher
    :init-specs
    (new 'static 'inline-array sp-field-init-spec 12
-    (new 'static 'sp-field-init-spec
-     :field #x1
-     :initial-valuef (the-as float #x203600)
-     )
-    (new 'static 'sp-field-init-spec
-     :field #x6
-     :flags #x1
-     :initial-valuef 1.0
-     :random-multf 1.0
-     )
-    (new 'static 'sp-field-init-spec
-     :field #xd
-     :flags #x1
-     :initial-valuef 37683.2
-     :random-multf 1.0
-     )
-    (new 'static 'sp-field-init-spec
-     :field #x11
-     :flags #x1
-     :initial-valuef 8192.0
-     :random-multf 1.0
-     )
-    (new 'static 'sp-field-init-spec :field #x12 :flags #x1 :random-multf 1.0)
-    (new 'static 'sp-field-init-spec :field #x13 :flags #x1 :random-multf 1.0)
-    (new 'static 'sp-field-init-spec :field #x14 :flags #x1 :random-multf 1.0)
-    (new 'static 'sp-field-init-spec
-     :field #x15
-     :flags #x1
-     :initial-valuef 64.0
-     :random-multf 1.0
-     )
-    (new 'static 'sp-field-init-spec
-     :field #x2e
-     :initial-valuef (the-as float #xffffffff)
-     :random-multf (the-as float #x1)
-     )
-    (new 'static 'sp-field-init-spec
-     :field #x2f
-     :initial-valuef (the-as float #x2200)
-     :random-multf (the-as float #x1)
-     )
-    (new 'static 'sp-field-init-spec
-     :field #x31
-     :flags #x5
-     :sym 'part-progress-card-slot-04-func
-     )
-    (new 'static 'sp-field-init-spec :field #x43)
+    (sp-tex spt-texture (new 'static 'texture-id :index #x36 :page #x2))
+    (sp-flt spt-num 1.0)
+    (sp-flt spt-scale-x (meters 9.2))
+    (sp-flt spt-scale-y (meters 2.0))
+    (sp-flt spt-r 0.0)
+    (sp-flt spt-g 0.0)
+    (sp-flt spt-b 0.0)
+    (sp-flt spt-a 64.0)
+    (sp-int spt-timer -1)
+    (sp-cpuinfo-flags bit9 bit13)
+    (sp-func spt-func 'part-progress-card-slot-04-func)
+    (sp-end)
     )
    )
   )
@@ -1310,60 +791,17 @@
   (new 'static 'sparticle-launcher
    :init-specs
    (new 'static 'inline-array sp-field-init-spec 11
-    (new 'static 'sp-field-init-spec :field #x1 :initial-valuef 4.000244)
-    (new 'static 'sp-field-init-spec
-     :field #x6
-     :flags #x1
-     :initial-valuef 1.0
-     :random-multf 1.0
-     )
-    (new 'static 'sp-field-init-spec
-     :field #xd
-     :flags #x1
-     :initial-valuef 4915.2
-     :random-multf 1.0
-     )
-    (new 'static 'sp-field-init-spec
-     :field #x11
-     :flags #x3
-     :initial-valuef (the-as float #xfffffffc)
-     :random-multf (the-as float #x1)
-     )
-    (new 'static 'sp-field-init-spec
-     :field #x12
-     :flags #x1
-     :initial-valuef 128.0
-     :random-multf 1.0
-     )
-    (new 'static 'sp-field-init-spec
-     :field #x13
-     :flags #x1
-     :initial-valuef 128.0
-     :random-multf 1.0
-     )
-    (new 'static 'sp-field-init-spec
-     :field #x14
-     :flags #x1
-     :initial-valuef 128.0
-     :random-multf 1.0
-     )
-    (new 'static 'sp-field-init-spec
-     :field #x15
-     :flags #x1
-     :initial-valuef 128.0
-     :random-multf 1.0
-     )
-    (new 'static 'sp-field-init-spec
-     :field #x2e
-     :initial-valuef (the-as float #xffffffff)
-     :random-multf (the-as float #x1)
-     )
-    (new 'static 'sp-field-init-spec
-     :field #x2f
-     :initial-valuef (the-as float #x2204)
-     :random-multf (the-as float #x1)
-     )
-    (new 'static 'sp-field-init-spec :field #x43)
+    (sp-tex spt-texture (new 'static 'texture-id :index #x2 :page #x408))
+    (sp-flt spt-num 1.0)
+    (sp-flt spt-scale-x (meters 1.2))
+    (sp-copy-from-other spt-scale-y -4)
+    (sp-flt spt-r 128.0)
+    (sp-flt spt-g 128.0)
+    (sp-flt spt-b 128.0)
+    (sp-flt spt-a 128.0)
+    (sp-int spt-timer -1)
+    (sp-cpuinfo-flags bit2 bit9 bit13)
+    (sp-end)
     )
    )
   )
@@ -1374,60 +812,17 @@
   (new 'static 'sparticle-launcher
    :init-specs
    (new 'static 'inline-array sp-field-init-spec 11
-    (new 'static 'sp-field-init-spec :field #x1 :initial-valuef 4.000122)
-    (new 'static 'sp-field-init-spec
-     :field #x6
-     :flags #x1
-     :initial-valuef 1.0
-     :random-multf 1.0
-     )
-    (new 'static 'sp-field-init-spec
-     :field #xd
-     :flags #x1
-     :initial-valuef 4915.2
-     :random-multf 1.0
-     )
-    (new 'static 'sp-field-init-spec
-     :field #x11
-     :flags #x3
-     :initial-valuef (the-as float #xfffffffc)
-     :random-multf (the-as float #x1)
-     )
-    (new 'static 'sp-field-init-spec
-     :field #x12
-     :flags #x1
-     :initial-valuef 128.0
-     :random-multf 1.0
-     )
-    (new 'static 'sp-field-init-spec
-     :field #x13
-     :flags #x1
-     :initial-valuef 128.0
-     :random-multf 1.0
-     )
-    (new 'static 'sp-field-init-spec
-     :field #x14
-     :flags #x1
-     :initial-valuef 128.0
-     :random-multf 1.0
-     )
-    (new 'static 'sp-field-init-spec
-     :field #x15
-     :flags #x1
-     :initial-valuef 128.0
-     :random-multf 1.0
-     )
-    (new 'static 'sp-field-init-spec
-     :field #x2e
-     :initial-valuef (the-as float #xffffffff)
-     :random-multf (the-as float #x1)
-     )
-    (new 'static 'sp-field-init-spec
-     :field #x2f
-     :initial-valuef (the-as float #x2204)
-     :random-multf (the-as float #x1)
-     )
-    (new 'static 'sp-field-init-spec :field #x43)
+    (sp-tex spt-texture (new 'static 'texture-id :index #x1 :page #x408))
+    (sp-flt spt-num 1.0)
+    (sp-flt spt-scale-x (meters 1.2))
+    (sp-copy-from-other spt-scale-y -4)
+    (sp-flt spt-r 128.0)
+    (sp-flt spt-g 128.0)
+    (sp-flt spt-b 128.0)
+    (sp-flt spt-a 128.0)
+    (sp-int spt-timer -1)
+    (sp-cpuinfo-flags bit2 bit9 bit13)
+    (sp-end)
     )
    )
   )
@@ -1438,60 +833,17 @@
   (new 'static 'sparticle-launcher
    :init-specs
    (new 'static 'inline-array sp-field-init-spec 11
-    (new 'static 'sp-field-init-spec :field #x1 :initial-valuef 4.0004883)
-    (new 'static 'sp-field-init-spec
-     :field #x6
-     :flags #x1
-     :initial-valuef 1.0
-     :random-multf 1.0
-     )
-    (new 'static 'sp-field-init-spec
-     :field #xd
-     :flags #x1
-     :initial-valuef 7372.8
-     :random-multf 1.0
-     )
-    (new 'static 'sp-field-init-spec
-     :field #x11
-     :flags #x3
-     :initial-valuef (the-as float #xfffffffc)
-     :random-multf (the-as float #x1)
-     )
-    (new 'static 'sp-field-init-spec
-     :field #x12
-     :flags #x1
-     :initial-valuef 128.0
-     :random-multf 1.0
-     )
-    (new 'static 'sp-field-init-spec
-     :field #x13
-     :flags #x1
-     :initial-valuef 128.0
-     :random-multf 1.0
-     )
-    (new 'static 'sp-field-init-spec
-     :field #x14
-     :flags #x1
-     :initial-valuef 128.0
-     :random-multf 1.0
-     )
-    (new 'static 'sp-field-init-spec
-     :field #x15
-     :flags #x1
-     :initial-valuef 128.0
-     :random-multf 1.0
-     )
-    (new 'static 'sp-field-init-spec
-     :field #x2e
-     :initial-valuef (the-as float #xffffffff)
-     :random-multf (the-as float #x1)
-     )
-    (new 'static 'sp-field-init-spec
-     :field #x2f
-     :initial-valuef (the-as float #x2204)
-     :random-multf (the-as float #x1)
-     )
-    (new 'static 'sp-field-init-spec :field #x43)
+    (sp-tex spt-texture (new 'static 'texture-id :index #x4 :page #x408))
+    (sp-flt spt-num 1.0)
+    (sp-flt spt-scale-x (meters 1.8))
+    (sp-copy-from-other spt-scale-y -4)
+    (sp-flt spt-r 128.0)
+    (sp-flt spt-g 128.0)
+    (sp-flt spt-b 128.0)
+    (sp-flt spt-a 128.0)
+    (sp-int spt-timer -1)
+    (sp-cpuinfo-flags bit2 bit9 bit13)
+    (sp-end)
     )
    )
   )
@@ -1502,65 +854,18 @@
   (new 'static 'sparticle-launcher
    :init-specs
    (new 'static 'inline-array sp-field-init-spec 12
-    (new 'static 'sp-field-init-spec :field #x1 :initial-valuef 4.0)
-    (new 'static 'sp-field-init-spec
-     :field #x6
-     :flags #x1
-     :initial-valuef 1.0
-     :random-multf 1.0
-     )
-    (new 'static 'sp-field-init-spec
-     :field #xd
-     :flags #x1
-     :initial-valuef 14336.0
-     :random-multf 1.0
-     )
-    (new 'static 'sp-field-init-spec
-     :field #x11
-     :flags #x1
-     :initial-valuef 53248.0
-     :random-multf 1.0
-     )
-    (new 'static 'sp-field-init-spec
-     :field #x12
-     :flags #x1
-     :initial-valuef 128.0
-     :random-multf 1.0
-     )
-    (new 'static 'sp-field-init-spec
-     :field #x13
-     :flags #x1
-     :initial-valuef 128.0
-     :random-multf 1.0
-     )
-    (new 'static 'sp-field-init-spec
-     :field #x14
-     :flags #x1
-     :initial-valuef 128.0
-     :random-multf 1.0
-     )
-    (new 'static 'sp-field-init-spec
-     :field #x15
-     :flags #x1
-     :initial-valuef 128.0
-     :random-multf 1.0
-     )
-    (new 'static 'sp-field-init-spec
-     :field #x2e
-     :initial-valuef (the-as float #xffffffff)
-     :random-multf (the-as float #x1)
-     )
-    (new 'static 'sp-field-init-spec
-     :field #x2f
-     :initial-valuef (the-as float #x2204)
-     :random-multf (the-as float #x1)
-     )
-    (new 'static 'sp-field-init-spec
-     :field #x31
-     :flags #x5
-     :sym 'part-progress-hud-left-func
-     )
-    (new 'static 'sp-field-init-spec :field #x43)
+    (sp-tex spt-texture (new 'static 'texture-id :page #x408))
+    (sp-flt spt-num 1.0)
+    (sp-flt spt-scale-x (meters 3.5))
+    (sp-flt spt-scale-y (meters 13.0))
+    (sp-flt spt-r 128.0)
+    (sp-flt spt-g 128.0)
+    (sp-flt spt-b 128.0)
+    (sp-flt spt-a 128.0)
+    (sp-int spt-timer -1)
+    (sp-cpuinfo-flags bit2 bit9 bit13)
+    (sp-func spt-func 'part-progress-hud-left-func)
+    (sp-end)
     )
    )
   )
@@ -1571,65 +876,18 @@
   (new 'static 'sparticle-launcher
    :init-specs
    (new 'static 'inline-array sp-field-init-spec 12
-    (new 'static 'sp-field-init-spec :field #x1 :initial-valuef 4.000366)
-    (new 'static 'sp-field-init-spec
-     :field #x6
-     :flags #x1
-     :initial-valuef 1.0
-     :random-multf 1.0
-     )
-    (new 'static 'sp-field-init-spec
-     :field #xd
-     :flags #x1
-     :initial-valuef 24576.0
-     :random-multf 1.0
-     )
-    (new 'static 'sp-field-init-spec
-     :field #x11
-     :flags #x1
-     :initial-valuef 53248.0
-     :random-multf 1.0
-     )
-    (new 'static 'sp-field-init-spec
-     :field #x12
-     :flags #x1
-     :initial-valuef 128.0
-     :random-multf 1.0
-     )
-    (new 'static 'sp-field-init-spec
-     :field #x13
-     :flags #x1
-     :initial-valuef 128.0
-     :random-multf 1.0
-     )
-    (new 'static 'sp-field-init-spec
-     :field #x14
-     :flags #x1
-     :initial-valuef 128.0
-     :random-multf 1.0
-     )
-    (new 'static 'sp-field-init-spec
-     :field #x15
-     :flags #x1
-     :initial-valuef 128.0
-     :random-multf 1.0
-     )
-    (new 'static 'sp-field-init-spec
-     :field #x2e
-     :initial-valuef (the-as float #xffffffff)
-     :random-multf (the-as float #x1)
-     )
-    (new 'static 'sp-field-init-spec
-     :field #x2f
-     :initial-valuef (the-as float #x2204)
-     :random-multf (the-as float #x1)
-     )
-    (new 'static 'sp-field-init-spec
-     :field #x31
-     :flags #x5
-     :sym 'part-progress-hud-right-func
-     )
-    (new 'static 'sp-field-init-spec :field #x43)
+    (sp-tex spt-texture (new 'static 'texture-id :index #x3 :page #x408))
+    (sp-flt spt-num 1.0)
+    (sp-flt spt-scale-x (meters 6.0))
+    (sp-flt spt-scale-y (meters 13.0))
+    (sp-flt spt-r 128.0)
+    (sp-flt spt-g 128.0)
+    (sp-flt spt-b 128.0)
+    (sp-flt spt-a 128.0)
+    (sp-int spt-timer -1)
+    (sp-cpuinfo-flags bit2 bit9 bit13)
+    (sp-func spt-func 'part-progress-hud-right-func)
+    (sp-end)
     )
    )
   )
@@ -1640,74 +898,19 @@
   (new 'static 'sparticle-launcher
    :init-specs
    (new 'static 'inline-array sp-field-init-spec 13
-    (new 'static 'sp-field-init-spec
-     :field #x1
-     :initial-valuef (the-as float #x203100)
-     )
-    (new 'static 'sp-field-init-spec
-     :field #x6
-     :flags #x1
-     :initial-valuef 1.0
-     :random-multf 1.0
-     )
-    (new 'static 'sp-field-init-spec
-     :field #xd
-     :flags #x1
-     :initial-valuef 1228.8
-     :random-multf 1.0
-     )
-    (new 'static 'sp-field-init-spec
-     :field #x11
-     :flags #x3
-     :initial-valuef (the-as float #xfffffffc)
-     :random-multf (the-as float #x1)
-     )
-    (new 'static 'sp-field-init-spec
-     :field #x12
-     :flags #x1
-     :initial-valuef 128.0
-     :random-multf 1.0
-     )
-    (new 'static 'sp-field-init-spec
-     :field #x13
-     :flags #x1
-     :initial-valuef 128.0
-     :random-multf 1.0
-     )
-    (new 'static 'sp-field-init-spec
-     :field #x14
-     :flags #x1
-     :initial-valuef 128.0
-     :random-multf 1.0
-     )
-    (new 'static 'sp-field-init-spec
-     :field #x15
-     :flags #x1
-     :initial-valuef 128.0
-     :random-multf 1.0
-     )
-    (new 'static 'sp-field-init-spec
-     :field #x2e
-     :initial-valuef (the-as float #xffffffff)
-     :random-multf (the-as float #x1)
-     )
-    (new 'static 'sp-field-init-spec
-     :field #x2f
-     :initial-valuef (the-as float #x2200)
-     :random-multf (the-as float #x1)
-     )
-    (new 'static 'sp-field-init-spec
-     :field #x30
-     :flags #x1
-     :initial-valuef 4.0
-     :random-multf 1.0
-     )
-    (new 'static 'sp-field-init-spec
-     :field #x31
-     :flags #x5
-     :sym 'fuel-cell-progress-hud-orbit-callback
-     )
-    (new 'static 'sp-field-init-spec :field #x43)
+    (sp-tex spt-texture (new 'static 'texture-id :index #x31 :page #x2))
+    (sp-flt spt-num 1.0)
+    (sp-flt spt-scale-x (meters 0.3))
+    (sp-copy-from-other spt-scale-y -4)
+    (sp-flt spt-r 128.0)
+    (sp-flt spt-g 128.0)
+    (sp-flt spt-b 128.0)
+    (sp-flt spt-a 128.0)
+    (sp-int spt-timer -1)
+    (sp-cpuinfo-flags bit9 bit13)
+    (sp-flt spt-userdata 4.0)
+    (sp-func spt-func 'fuel-cell-progress-hud-orbit-callback)
+    (sp-end)
     )
    )
   )
@@ -1718,74 +921,19 @@
   (new 'static 'sparticle-launcher
    :init-specs
    (new 'static 'inline-array sp-field-init-spec 13
-    (new 'static 'sp-field-init-spec
-     :field #x1
-     :initial-valuef (the-as float #x203100)
-     )
-    (new 'static 'sp-field-init-spec
-     :field #x6
-     :flags #x1
-     :initial-valuef 1.0
-     :random-multf 1.0
-     )
-    (new 'static 'sp-field-init-spec
-     :field #xd
-     :flags #x1
-     :initial-valuef 1228.8
-     :random-multf 1.0
-     )
-    (new 'static 'sp-field-init-spec
-     :field #x11
-     :flags #x3
-     :initial-valuef (the-as float #xfffffffc)
-     :random-multf (the-as float #x1)
-     )
-    (new 'static 'sp-field-init-spec
-     :field #x12
-     :flags #x1
-     :initial-valuef 128.0
-     :random-multf 1.0
-     )
-    (new 'static 'sp-field-init-spec
-     :field #x13
-     :flags #x1
-     :initial-valuef 128.0
-     :random-multf 1.0
-     )
-    (new 'static 'sp-field-init-spec
-     :field #x14
-     :flags #x1
-     :initial-valuef 128.0
-     :random-multf 1.0
-     )
-    (new 'static 'sp-field-init-spec
-     :field #x15
-     :flags #x1
-     :initial-valuef 128.0
-     :random-multf 1.0
-     )
-    (new 'static 'sp-field-init-spec
-     :field #x2e
-     :initial-valuef (the-as float #xffffffff)
-     :random-multf (the-as float #x1)
-     )
-    (new 'static 'sp-field-init-spec
-     :field #x2f
-     :initial-valuef (the-as float #x2200)
-     :random-multf (the-as float #x1)
-     )
-    (new 'static 'sp-field-init-spec
-     :field #x30
-     :flags #x1
-     :initial-valuef 5.0
-     :random-multf 1.0
-     )
-    (new 'static 'sp-field-init-spec
-     :field #x31
-     :flags #x5
-     :sym 'fuel-cell-progress-hud-orbit-callback
-     )
-    (new 'static 'sp-field-init-spec :field #x43)
+    (sp-tex spt-texture (new 'static 'texture-id :index #x31 :page #x2))
+    (sp-flt spt-num 1.0)
+    (sp-flt spt-scale-x (meters 0.3))
+    (sp-copy-from-other spt-scale-y -4)
+    (sp-flt spt-r 128.0)
+    (sp-flt spt-g 128.0)
+    (sp-flt spt-b 128.0)
+    (sp-flt spt-a 128.0)
+    (sp-int spt-timer -1)
+    (sp-cpuinfo-flags bit9 bit13)
+    (sp-flt spt-userdata 5.0)
+    (sp-func spt-func 'fuel-cell-progress-hud-orbit-callback)
+    (sp-end)
     )
    )
   )
@@ -1796,74 +944,19 @@
   (new 'static 'sparticle-launcher
    :init-specs
    (new 'static 'inline-array sp-field-init-spec 13
-    (new 'static 'sp-field-init-spec
-     :field #x1
-     :initial-valuef (the-as float #x203100)
-     )
-    (new 'static 'sp-field-init-spec
-     :field #x6
-     :flags #x1
-     :initial-valuef 1.0
-     :random-multf 1.0
-     )
-    (new 'static 'sp-field-init-spec
-     :field #xd
-     :flags #x1
-     :initial-valuef 1228.8
-     :random-multf 1.0
-     )
-    (new 'static 'sp-field-init-spec
-     :field #x11
-     :flags #x3
-     :initial-valuef (the-as float #xfffffffc)
-     :random-multf (the-as float #x1)
-     )
-    (new 'static 'sp-field-init-spec
-     :field #x12
-     :flags #x1
-     :initial-valuef 128.0
-     :random-multf 1.0
-     )
-    (new 'static 'sp-field-init-spec
-     :field #x13
-     :flags #x1
-     :initial-valuef 128.0
-     :random-multf 1.0
-     )
-    (new 'static 'sp-field-init-spec
-     :field #x14
-     :flags #x1
-     :initial-valuef 128.0
-     :random-multf 1.0
-     )
-    (new 'static 'sp-field-init-spec
-     :field #x15
-     :flags #x1
-     :initial-valuef 128.0
-     :random-multf 1.0
-     )
-    (new 'static 'sp-field-init-spec
-     :field #x2e
-     :initial-valuef (the-as float #xffffffff)
-     :random-multf (the-as float #x1)
-     )
-    (new 'static 'sp-field-init-spec
-     :field #x2f
-     :initial-valuef (the-as float #x2200)
-     :random-multf (the-as float #x1)
-     )
-    (new 'static 'sp-field-init-spec
-     :field #x30
-     :flags #x1
-     :initial-valuef 6.0
-     :random-multf 1.0
-     )
-    (new 'static 'sp-field-init-spec
-     :field #x31
-     :flags #x5
-     :sym 'fuel-cell-progress-hud-orbit-callback
-     )
-    (new 'static 'sp-field-init-spec :field #x43)
+    (sp-tex spt-texture (new 'static 'texture-id :index #x31 :page #x2))
+    (sp-flt spt-num 1.0)
+    (sp-flt spt-scale-x (meters 0.3))
+    (sp-copy-from-other spt-scale-y -4)
+    (sp-flt spt-r 128.0)
+    (sp-flt spt-g 128.0)
+    (sp-flt spt-b 128.0)
+    (sp-flt spt-a 128.0)
+    (sp-int spt-timer -1)
+    (sp-cpuinfo-flags bit9 bit13)
+    (sp-flt spt-userdata 6.0)
+    (sp-func spt-func 'fuel-cell-progress-hud-orbit-callback)
+    (sp-end)
     )
    )
   )
@@ -1874,74 +967,19 @@
   (new 'static 'sparticle-launcher
    :init-specs
    (new 'static 'inline-array sp-field-init-spec 13
-    (new 'static 'sp-field-init-spec
-     :field #x1
-     :initial-valuef (the-as float #x203100)
-     )
-    (new 'static 'sp-field-init-spec
-     :field #x6
-     :flags #x1
-     :initial-valuef 1.0
-     :random-multf 1.0
-     )
-    (new 'static 'sp-field-init-spec
-     :field #xd
-     :flags #x1
-     :initial-valuef 1228.8
-     :random-multf 1.0
-     )
-    (new 'static 'sp-field-init-spec
-     :field #x11
-     :flags #x3
-     :initial-valuef (the-as float #xfffffffc)
-     :random-multf (the-as float #x1)
-     )
-    (new 'static 'sp-field-init-spec
-     :field #x12
-     :flags #x1
-     :initial-valuef 128.0
-     :random-multf 1.0
-     )
-    (new 'static 'sp-field-init-spec
-     :field #x13
-     :flags #x1
-     :initial-valuef 128.0
-     :random-multf 1.0
-     )
-    (new 'static 'sp-field-init-spec
-     :field #x14
-     :flags #x1
-     :initial-valuef 128.0
-     :random-multf 1.0
-     )
-    (new 'static 'sp-field-init-spec
-     :field #x15
-     :flags #x1
-     :initial-valuef 128.0
-     :random-multf 1.0
-     )
-    (new 'static 'sp-field-init-spec
-     :field #x2e
-     :initial-valuef (the-as float #xffffffff)
-     :random-multf (the-as float #x1)
-     )
-    (new 'static 'sp-field-init-spec
-     :field #x2f
-     :initial-valuef (the-as float #x2200)
-     :random-multf (the-as float #x1)
-     )
-    (new 'static 'sp-field-init-spec
-     :field #x30
-     :flags #x1
-     :initial-valuef 7.0
-     :random-multf 1.0
-     )
-    (new 'static 'sp-field-init-spec
-     :field #x31
-     :flags #x5
-     :sym 'fuel-cell-progress-hud-orbit-callback
-     )
-    (new 'static 'sp-field-init-spec :field #x43)
+    (sp-tex spt-texture (new 'static 'texture-id :index #x31 :page #x2))
+    (sp-flt spt-num 1.0)
+    (sp-flt spt-scale-x (meters 0.3))
+    (sp-copy-from-other spt-scale-y -4)
+    (sp-flt spt-r 128.0)
+    (sp-flt spt-g 128.0)
+    (sp-flt spt-b 128.0)
+    (sp-flt spt-a 128.0)
+    (sp-int spt-timer -1)
+    (sp-cpuinfo-flags bit9 bit13)
+    (sp-flt spt-userdata 7.0)
+    (sp-func spt-func 'fuel-cell-progress-hud-orbit-callback)
+    (sp-end)
     )
    )
   )
@@ -1952,74 +990,19 @@
   (new 'static 'sparticle-launcher
    :init-specs
    (new 'static 'inline-array sp-field-init-spec 13
-    (new 'static 'sp-field-init-spec
-     :field #x1
-     :initial-valuef (the-as float #x203100)
-     )
-    (new 'static 'sp-field-init-spec
-     :field #x6
-     :flags #x1
-     :initial-valuef 1.0
-     :random-multf 1.0
-     )
-    (new 'static 'sp-field-init-spec
-     :field #xd
-     :flags #x1
-     :initial-valuef 819.2
-     :random-multf 1.0
-     )
-    (new 'static 'sp-field-init-spec
-     :field #x11
-     :flags #x3
-     :initial-valuef (the-as float #xfffffffc)
-     :random-multf (the-as float #x1)
-     )
-    (new 'static 'sp-field-init-spec
-     :field #x12
-     :flags #x1
-     :initial-valuef 128.0
-     :random-multf 1.0
-     )
-    (new 'static 'sp-field-init-spec
-     :field #x13
-     :flags #x1
-     :initial-valuef 128.0
-     :random-multf 1.0
-     )
-    (new 'static 'sp-field-init-spec
-     :field #x14
-     :flags #x1
-     :initial-valuef 128.0
-     :random-multf 1.0
-     )
-    (new 'static 'sp-field-init-spec
-     :field #x15
-     :flags #x1
-     :initial-valuef 128.0
-     :random-multf 1.0
-     )
-    (new 'static 'sp-field-init-spec
-     :field #x2e
-     :initial-valuef (the-as float #xffffffff)
-     :random-multf (the-as float #x1)
-     )
-    (new 'static 'sp-field-init-spec
-     :field #x2f
-     :initial-valuef (the-as float #x2200)
-     :random-multf (the-as float #x1)
-     )
-    (new 'static 'sp-field-init-spec
-     :field #x30
-     :flags #x1
-     :initial-valuef 9.0
-     :random-multf 1.0
-     )
-    (new 'static 'sp-field-init-spec
-     :field #x31
-     :flags #x5
-     :sym 'fuel-cell-progress-hud-orbit-callback
-     )
-    (new 'static 'sp-field-init-spec :field #x43)
+    (sp-tex spt-texture (new 'static 'texture-id :index #x31 :page #x2))
+    (sp-flt spt-num 1.0)
+    (sp-flt spt-scale-x (meters 0.2))
+    (sp-copy-from-other spt-scale-y -4)
+    (sp-flt spt-r 128.0)
+    (sp-flt spt-g 128.0)
+    (sp-flt spt-b 128.0)
+    (sp-flt spt-a 128.0)
+    (sp-int spt-timer -1)
+    (sp-cpuinfo-flags bit9 bit13)
+    (sp-flt spt-userdata 9.0)
+    (sp-func spt-func 'fuel-cell-progress-hud-orbit-callback)
+    (sp-end)
     )
    )
   )
@@ -2030,74 +1013,19 @@
   (new 'static 'sparticle-launcher
    :init-specs
    (new 'static 'inline-array sp-field-init-spec 13
-    (new 'static 'sp-field-init-spec
-     :field #x1
-     :initial-valuef (the-as float #x203000)
-     )
-    (new 'static 'sp-field-init-spec
-     :field #x6
-     :flags #x1
-     :initial-valuef 1.0
-     :random-multf 1.0
-     )
-    (new 'static 'sp-field-init-spec
-     :field #xd
-     :flags #x1
-     :initial-valuef 4915.2
-     :random-multf 1.0
-     )
-    (new 'static 'sp-field-init-spec
-     :field #x11
-     :flags #x3
-     :initial-valuef (the-as float #xfffffffc)
-     :random-multf (the-as float #x1)
-     )
-    (new 'static 'sp-field-init-spec
-     :field #x12
-     :flags #x1
-     :initial-valuef 128.0
-     :random-multf 1.0
-     )
-    (new 'static 'sp-field-init-spec
-     :field #x13
-     :flags #x1
-     :initial-valuef 128.0
-     :random-multf 1.0
-     )
-    (new 'static 'sp-field-init-spec
-     :field #x14
-     :flags #x1
-     :initial-valuef 128.0
-     :random-multf 1.0
-     )
-    (new 'static 'sp-field-init-spec
-     :field #x15
-     :flags #x1
-     :initial-valuef 128.0
-     :random-multf 1.0
-     )
-    (new 'static 'sp-field-init-spec
-     :field #x2e
-     :initial-valuef (the-as float #xffffffff)
-     :random-multf (the-as float #x1)
-     )
-    (new 'static 'sp-field-init-spec
-     :field #x2f
-     :initial-valuef (the-as float #x2204)
-     :random-multf (the-as float #x1)
-     )
-    (new 'static 'sp-field-init-spec
-     :field #x30
-     :flags #x1
-     :initial-valuef 3.0
-     :random-multf 1.0
-     )
-    (new 'static 'sp-field-init-spec
-     :field #x31
-     :flags #x5
-     :sym 'fuel-cell-progress-hud-orbit-callback
-     )
-    (new 'static 'sp-field-init-spec :field #x43)
+    (sp-tex spt-texture (new 'static 'texture-id :index #x30 :page #x2))
+    (sp-flt spt-num 1.0)
+    (sp-flt spt-scale-x (meters 1.2))
+    (sp-copy-from-other spt-scale-y -4)
+    (sp-flt spt-r 128.0)
+    (sp-flt spt-g 128.0)
+    (sp-flt spt-b 128.0)
+    (sp-flt spt-a 128.0)
+    (sp-int spt-timer -1)
+    (sp-cpuinfo-flags bit2 bit9 bit13)
+    (sp-flt spt-userdata 3.0)
+    (sp-func spt-func 'fuel-cell-progress-hud-orbit-callback)
+    (sp-end)
     )
    )
   )
@@ -2108,13 +1036,8 @@
   (new 'static 'sparticle-launcher
    :init-specs
    (new 'static 'inline-array sp-field-init-spec 2
-    (new 'static 'sp-field-init-spec
-     :field #x24
-     :flags #x1
-     :initial-valuef -0.53333336
-     :random-multf 1.0
-     )
-    (new 'static 'sp-field-init-spec :field #x43)
+    (sp-flt spt-fade-a -0.53333336)
+    (sp-end)
     )
    )
   )
@@ -2125,122 +1048,28 @@
   (new 'static 'sparticle-launcher
    :init-specs
    (new 'static 'inline-array sp-field-init-spec 22
-    (new 'static 'sp-field-init-spec
-     :field #x1
-     :initial-valuef (the-as float #x200200)
-     )
-    (new 'static 'sp-field-init-spec
-     :field #x6
-     :flags #x1
-     :initial-valuef 0.5
-     :random-multf 1.0
-     )
-    (new 'static 'sp-field-init-spec
-     :field #xc
-     :flags #x1
-     :initial-valuef 2160.0
-     :random-multf 1.0
-     )
-    (new 'static 'sp-field-init-spec
-     :field #xd
-     :flags #x1
-     :initial-valuef 1024.0
-     :random-multf 1.0
-     )
-    (new 'static 'sp-field-init-spec
-     :field #xe
-     :initial-valuef (the-as float #x4)
-     :random-multf (the-as float #x1)
-     )
-    (new 'static 'sp-field-init-spec
-     :field #x10
-     :flags #x1
-     :random-rangef 65536.0
-     :random-multf 1.0
-     )
-    (new 'static 'sp-field-init-spec
-     :field #x11
-     :flags #x1
-     :initial-valuef 286.72
-     :random-rangef 1884.16
-     :random-multf 1.0
-     )
-    (new 'static 'sp-field-init-spec
-     :field #x12
-     :flags #x2
-     :random-rangef (the-as float #x1)
-     :random-multf 255.0
-     )
-    (new 'static 'sp-field-init-spec
-     :field #x13
-     :flags #x2
-     :random-rangef (the-as float #x1)
-     :random-multf 255.0
-     )
-    (new 'static 'sp-field-init-spec
-     :field #x14
-     :flags #x2
-     :random-rangef (the-as float #x1)
-     :random-multf 255.0
-     )
-    (new 'static 'sp-field-init-spec :field #x15 :flags #x1 :random-multf 1.0)
-    (new 'static 'sp-field-init-spec
-     :field #x1c
-     :flags #x1
-     :initial-valuef 40.0
-     :random-multf 1.0
-     )
-    (new 'static 'sp-field-init-spec
-     :field #x1f
-     :flags #x1
-     :initial-valuef -27.306667
-     :random-rangef 54.613335
-     :random-multf 1.0
-     )
-    (new 'static 'sp-field-init-spec
-     :field #x20
-     :flags #x1
-     :initial-valuef 40.0
-     :random-multf 1.0
-     )
-    (new 'static 'sp-field-init-spec
-     :field #x24
-     :flags #x1
-     :initial-valuef 0.35555556
-     :random-multf 1.0
-     )
-    (new 'static 'sp-field-init-spec
-     :field #x2e
-     :initial-valuef (the-as float #xffffffff)
-     :random-multf (the-as float #x1)
-     )
-    (new 'static 'sp-field-init-spec
-     :field #x2f
-     :initial-valuef (the-as float #x220c)
-     :random-multf (the-as float #x1)
-     )
-    (new 'static 'sp-field-init-spec
-     :field #x30
-     :flags #x1
-     :initial-valuef -1.0
-     :random-multf 1.0
-     )
-    (new 'static 'sp-field-init-spec
-     :field #x31
-     :flags #x5
-     :sym 'fuel-cell-progress-hud-orbit-callback
-     )
-    (new 'static 'sp-field-init-spec
-     :field #x32
-     :initial-valuef (the-as float #x5a)
-     :random-multf (the-as float #x1)
-     )
-    (new 'static 'sp-field-init-spec
-     :field #x33
-     :flags #x6
-     :initial-valuef (the-as float #xe8)
-     )
-    (new 'static 'sp-field-init-spec :field #x43)
+    (sp-tex spt-texture (new 'static 'texture-id :index #x2 :page #x2))
+    (sp-flt spt-num 0.5)
+    (sp-flt spt-z 2160.0)
+    (sp-flt spt-scale-x (meters 0.25))
+    (sp-int spt-rot-x 4)
+    (sp-rnd-flt spt-rot-z (degrees 0.0) (degrees 360.0) 1.0)
+    (sp-rnd-flt spt-scale-y (meters 0.07) (meters 0.46) 1.0)
+    (sp-rnd-int spt-r 0 1 255.0)
+    (sp-rnd-int spt-g 0 1 255.0)
+    (sp-rnd-int spt-b 0 1 255.0)
+    (sp-flt spt-a 0.0)
+    (sp-flt spt-scalevel-x (meters 0.009765625))
+    (sp-rnd-flt spt-rotvel-z (degrees -0.15) (degrees 0.3) 1.0)
+    (sp-flt spt-scalevel-y (meters 0.009765625))
+    (sp-flt spt-fade-a 0.35555556)
+    (sp-int spt-timer -1)
+    (sp-cpuinfo-flags bit2 bit3 bit9 bit13)
+    (sp-flt spt-userdata -1.0)
+    (sp-func spt-func 'fuel-cell-progress-hud-orbit-callback)
+    (sp-int spt-next-time 90)
+    (sp-launcher-by-id spt-next-launcher 232)
+    (sp-end)
     )
    )
   )
@@ -2251,116 +1080,27 @@
   (new 'static 'sparticle-launcher
    :init-specs
    (new 'static 'inline-array sp-field-init-spec 21
-    (new 'static 'sp-field-init-spec
-     :field #x1
-     :initial-valuef (the-as float #x200200)
-     )
-    (new 'static 'sp-field-init-spec
-     :field #x6
-     :flags #x1
-     :initial-valuef 0.06
-     :random-multf 1.0
-     )
-    (new 'static 'sp-field-init-spec
-     :field #xc
-     :flags #x1
-     :initial-valuef 2160.0
-     :random-multf 1.0
-     )
-    (new 'static 'sp-field-init-spec
-     :field #xd
-     :flags #x1
-     :initial-valuef 4096.0
-     :random-rangef 1024.0
-     :random-multf 1.0
-     )
-    (new 'static 'sp-field-init-spec
-     :field #xe
-     :initial-valuef (the-as float #x4)
-     :random-multf (the-as float #x1)
-     )
-    (new 'static 'sp-field-init-spec
-     :field #x10
-     :flags #x1
-     :random-rangef 65536.0
-     :random-multf 1.0
-     )
-    (new 'static 'sp-field-init-spec
-     :field #x11
-     :flags #x1
-     :initial-valuef 409.6
-     :random-multf 1.0
-     )
-    (new 'static 'sp-field-init-spec
-     :field #x12
-     :flags #x2
-     :random-rangef (the-as float #x1)
-     :random-multf 255.0
-     )
-    (new 'static 'sp-field-init-spec
-     :field #x13
-     :flags #x2
-     :random-rangef (the-as float #x1)
-     :random-multf 255.0
-     )
-    (new 'static 'sp-field-init-spec
-     :field #x14
-     :flags #x2
-     :random-rangef (the-as float #x1)
-     :random-multf 255.0
-     )
-    (new 'static 'sp-field-init-spec :field #x15 :flags #x1 :random-multf 1.0)
-    (new 'static 'sp-field-init-spec
-     :field #x1c
-     :flags #x1
-     :initial-valuef 40.0
-     :random-multf 1.0
-     )
-    (new 'static 'sp-field-init-spec
-     :field #x1f
-     :flags #x1
-     :initial-valuef -27.306667
-     :random-rangef 54.613335
-     :random-multf 1.0
-     )
-    (new 'static 'sp-field-init-spec
-     :field #x24
-     :flags #x1
-     :initial-valuef 0.32
-     :random-multf 1.0
-     )
-    (new 'static 'sp-field-init-spec
-     :field #x2e
-     :initial-valuef (the-as float #xffffffff)
-     :random-multf (the-as float #x1)
-     )
-    (new 'static 'sp-field-init-spec
-     :field #x2f
-     :initial-valuef (the-as float #x220c)
-     :random-multf (the-as float #x1)
-     )
-    (new 'static 'sp-field-init-spec
-     :field #x30
-     :flags #x1
-     :initial-valuef -1.0
-     :random-multf 1.0
-     )
-    (new 'static 'sp-field-init-spec
-     :field #x31
-     :flags #x5
-     :sym 'fuel-cell-progress-hud-orbit-callback
-     )
-    (new 'static 'sp-field-init-spec
-     :field #x32
-     :initial-valuef (the-as float #x4b)
-     :random-multf (the-as float #x1)
-     )
-    (new 'static 'sp-field-init-spec
-     :field #x33
-     :flags #x6
-     :initial-valuef (the-as float #xe8)
-     )
-    (new 'static 'sp-field-init-spec :field #x43)
+    (sp-tex spt-texture (new 'static 'texture-id :index #x2 :page #x2))
+    (sp-flt spt-num 0.06)
+    (sp-flt spt-z 2160.0)
+    (sp-rnd-flt spt-scale-x (meters 1.0) (meters 0.25) 1.0)
+    (sp-int spt-rot-x 4)
+    (sp-rnd-flt spt-rot-z (degrees 0.0) (degrees 360.0) 1.0)
+    (sp-flt spt-scale-y (meters 0.1))
+    (sp-rnd-int spt-r 0 1 255.0)
+    (sp-rnd-int spt-g 0 1 255.0)
+    (sp-rnd-int spt-b 0 1 255.0)
+    (sp-flt spt-a 0.0)
+    (sp-flt spt-scalevel-x (meters 0.009765625))
+    (sp-rnd-flt spt-rotvel-z (degrees -0.15) (degrees 0.3) 1.0)
+    (sp-flt spt-fade-a 0.32)
+    (sp-int spt-timer -1)
+    (sp-cpuinfo-flags bit2 bit3 bit9 bit13)
+    (sp-flt spt-userdata -1.0)
+    (sp-func spt-func 'fuel-cell-progress-hud-orbit-callback)
+    (sp-int spt-next-time 75)
+    (sp-launcher-by-id spt-next-launcher 232)
+    (sp-end)
     )
    )
   )
@@ -2371,92 +1111,22 @@
   (new 'static 'sparticle-launcher
    :init-specs
    (new 'static 'inline-array sp-field-init-spec 16
-    (new 'static 'sp-field-init-spec
-     :field #x1
-     :initial-valuef (the-as float #x201200)
-     )
-    (new 'static 'sp-field-init-spec
-     :field #x6
-     :flags #x1
-     :initial-valuef 1.0
-     :random-multf 1.0
-     )
-    (new 'static 'sp-field-init-spec
-     :field #xc
-     :flags #x1
-     :initial-valuef 2160.0
-     :random-multf 1.0
-     )
-    (new 'static 'sp-field-init-spec
-     :field #xd
-     :flags #x1
-     :initial-valuef 8192.0
-     :random-multf 1.0
-     )
-    (new 'static 'sp-field-init-spec
-     :field #x10
-     :flags #x1
-     :random-rangef 65536.0
-     :random-multf 1.0
-     )
-    (new 'static 'sp-field-init-spec
-     :field #x11
-     :flags #x1
-     :initial-valuef 7372.8
-     :random-multf 1.0
-     )
-    (new 'static 'sp-field-init-spec
-     :field #x12
-     :flags #x1
-     :initial-valuef 192.0
-     :random-multf 1.0
-     )
-    (new 'static 'sp-field-init-spec
-     :field #x13
-     :flags #x1
-     :initial-valuef 192.0
-     :random-multf 1.0
-     )
-    (new 'static 'sp-field-init-spec
-     :field #x14
-     :flags #x1
-     :random-rangef 128.0
-     :random-multf 1.0
-     )
-    (new 'static 'sp-field-init-spec
-     :field #x15
-     :flags #x1
-     :initial-valuef 64.0
-     :random-multf 1.0
-     )
-    (new 'static 'sp-field-init-spec
-     :field #x1f
-     :flags #x1
-     :initial-valuef -72.81778
-     :random-multf 1.0
-     )
-    (new 'static 'sp-field-init-spec
-     :field #x2e
-     :initial-valuef (the-as float #xffffffff)
-     :random-multf (the-as float #x1)
-     )
-    (new 'static 'sp-field-init-spec
-     :field #x2f
-     :initial-valuef (the-as float #x220c)
-     :random-multf (the-as float #x1)
-     )
-    (new 'static 'sp-field-init-spec
-     :field #x30
-     :flags #x1
-     :initial-valuef -1.0
-     :random-multf 1.0
-     )
-    (new 'static 'sp-field-init-spec
-     :field #x31
-     :flags #x5
-     :sym 'fuel-cell-progress-hud-orbit-callback
-     )
-    (new 'static 'sp-field-init-spec :field #x43)
+    (sp-tex spt-texture (new 'static 'texture-id :index #x12 :page #x2))
+    (sp-flt spt-num 1.0)
+    (sp-flt spt-z 2160.0)
+    (sp-flt spt-scale-x (meters 2.0))
+    (sp-rnd-flt spt-rot-z (degrees 0.0) (degrees 360.0) 1.0)
+    (sp-flt spt-scale-y (meters 1.8))
+    (sp-flt spt-r 192.0)
+    (sp-flt spt-g 192.0)
+    (sp-rnd-flt spt-b 0.0 128.0 1.0)
+    (sp-flt spt-a 64.0)
+    (sp-flt spt-rotvel-z (degrees -0.4))
+    (sp-int spt-timer -1)
+    (sp-cpuinfo-flags bit2 bit3 bit9 bit13)
+    (sp-flt spt-userdata -1.0)
+    (sp-func spt-func 'fuel-cell-progress-hud-orbit-callback)
+    (sp-end)
     )
    )
   )
@@ -2467,92 +1137,22 @@
   (new 'static 'sparticle-launcher
    :init-specs
    (new 'static 'inline-array sp-field-init-spec 16
-    (new 'static 'sp-field-init-spec
-     :field #x1
-     :initial-valuef (the-as float #x201200)
-     )
-    (new 'static 'sp-field-init-spec
-     :field #x6
-     :flags #x1
-     :initial-valuef 1.0
-     :random-multf 1.0
-     )
-    (new 'static 'sp-field-init-spec
-     :field #xc
-     :flags #x1
-     :initial-valuef 2160.0
-     :random-multf 1.0
-     )
-    (new 'static 'sp-field-init-spec
-     :field #xd
-     :flags #x1
-     :initial-valuef 9830.4
-     :random-multf 1.0
-     )
-    (new 'static 'sp-field-init-spec
-     :field #x10
-     :flags #x1
-     :random-rangef 65536.0
-     :random-multf 1.0
-     )
-    (new 'static 'sp-field-init-spec
-     :field #x11
-     :flags #x1
-     :initial-valuef 8192.0
-     :random-multf 1.0
-     )
-    (new 'static 'sp-field-init-spec
-     :field #x12
-     :flags #x1
-     :initial-valuef 128.0
-     :random-multf 1.0
-     )
-    (new 'static 'sp-field-init-spec
-     :field #x13
-     :flags #x1
-     :initial-valuef 128.0
-     :random-multf 1.0
-     )
-    (new 'static 'sp-field-init-spec
-     :field #x14
-     :flags #x1
-     :initial-valuef 128.0
-     :random-multf 1.0
-     )
-    (new 'static 'sp-field-init-spec
-     :field #x15
-     :flags #x1
-     :initial-valuef 64.0
-     :random-multf 1.0
-     )
-    (new 'static 'sp-field-init-spec
-     :field #x1f
-     :flags #x1
-     :initial-valuef 54.613335
-     :random-multf 1.0
-     )
-    (new 'static 'sp-field-init-spec
-     :field #x2e
-     :initial-valuef (the-as float #xffffffff)
-     :random-multf (the-as float #x1)
-     )
-    (new 'static 'sp-field-init-spec
-     :field #x2f
-     :initial-valuef (the-as float #x220c)
-     :random-multf (the-as float #x1)
-     )
-    (new 'static 'sp-field-init-spec
-     :field #x30
-     :flags #x1
-     :initial-valuef -1.0
-     :random-multf 1.0
-     )
-    (new 'static 'sp-field-init-spec
-     :field #x31
-     :flags #x5
-     :sym 'fuel-cell-progress-hud-orbit-callback
-     )
-    (new 'static 'sp-field-init-spec :field #x43)
+    (sp-tex spt-texture (new 'static 'texture-id :index #x12 :page #x2))
+    (sp-flt spt-num 1.0)
+    (sp-flt spt-z 2160.0)
+    (sp-flt spt-scale-x (meters 2.4))
+    (sp-rnd-flt spt-rot-z (degrees 0.0) (degrees 360.0) 1.0)
+    (sp-flt spt-scale-y (meters 2.0))
+    (sp-flt spt-r 128.0)
+    (sp-flt spt-g 128.0)
+    (sp-flt spt-b 128.0)
+    (sp-flt spt-a 64.0)
+    (sp-flt spt-rotvel-z (degrees 0.3))
+    (sp-int spt-timer -1)
+    (sp-cpuinfo-flags bit2 bit3 bit9 bit13)
+    (sp-flt spt-userdata -1.0)
+    (sp-func spt-func 'fuel-cell-progress-hud-orbit-callback)
+    (sp-end)
     )
    )
   )
@@ -2564,29 +1164,20 @@
    :length 8
    :duration #xbb8
    :linger-duration #x5dc
-   :flags #x5
+   :flags
+   (sp-group-flag use-local-clock screen-space)
    :name
    "group-part-progress-hud-power-cell-whole"
    :launcher
    (new 'static 'inline-array sparticle-group-item 8
-    (new 'static 'sparticle-group-item :launcher #x152 :flags #x8)
-    (new 'static 'sparticle-group-item
-     :launcher #x15b
-     :flags #x8
-     :period #xe10
-     :length #x5
-     )
-    (new 'static 'sparticle-group-item
-     :launcher #x15c
-     :flags #x8
-     :period #xe10
-     :length #x5
-     )
-    (new 'static 'sparticle-group-item :launcher #x157 :flags #x8)
-    (new 'static 'sparticle-group-item :launcher #x153 :flags #x8)
-    (new 'static 'sparticle-group-item :launcher #x154 :flags #x8)
-    (new 'static 'sparticle-group-item :launcher #x155 :flags #x8)
-    (new 'static 'sparticle-group-item :launcher #x156 :flags #x8)
+    (sp-item 338 :flags (launch-asap))
+    (sp-item 347 :flags (launch-asap) :period 3600 :length 5)
+    (sp-item 348 :flags (launch-asap) :period 3600 :length 5)
+    (sp-item 343 :flags (launch-asap))
+    (sp-item 339 :flags (launch-asap))
+    (sp-item 340 :flags (launch-asap))
+    (sp-item 341 :flags (launch-asap))
+    (sp-item 342 :flags (launch-asap))
     )
    :bounds (new 'static 'sphere :w 409600.0)
    )
@@ -2599,16 +1190,12 @@
    :length 2
    :duration #xbb8
    :linger-duration #x5dc
-   :flags #x4
+   :flags (sp-group-flag screen-space)
    :name "group-part-progress-buzzer"
    :launcher
    (new 'static 'inline-array sparticle-group-item 2
-    (new 'static 'sparticle-group-item
-     :launcher #x7be
-     :flags #x8
-     :binding #x7bd
-     )
-    (new 'static 'sparticle-group-item :launcher #x7bd :flags #xc)
+    (sp-item 1982 :flags (launch-asap) :binding 1981)
+    (sp-item 1981 :flags (start-dead launch-asap))
     )
    :bounds (new 'static 'sphere :w 409600.0)
    )
@@ -2620,58 +1207,17 @@
   (new 'static 'sparticle-launcher
    :init-specs
    (new 'static 'inline-array sp-field-init-spec 11
-    (new 'static 'sp-field-init-spec
-     :field #x1
-     :initial-valuef (the-as float #x202a00)
-     )
-    (new 'static 'sp-field-init-spec
-     :field #x6
-     :flags #x1
-     :initial-valuef 1.0
-     :random-multf 1.0
-     )
-    (new 'static 'sp-field-init-spec
-     :field #xd
-     :flags #x1
-     :initial-valuef 9011.2
-     :random-multf 1.0
-     )
-    (new 'static 'sp-field-init-spec
-     :field #x11
-     :flags #x3
-     :initial-valuef (the-as float #xfffffffc)
-     :random-multf (the-as float #x1)
-     )
-    (new 'static 'sp-field-init-spec
-     :field #x12
-     :flags #x1
-     :initial-valuef 128.0
-     :random-multf 1.0
-     )
-    (new 'static 'sp-field-init-spec
-     :field #x13
-     :flags #x1
-     :initial-valuef 128.0
-     :random-multf 1.0
-     )
-    (new 'static 'sp-field-init-spec
-     :field #x14
-     :flags #x1
-     :initial-valuef 128.0
-     :random-multf 1.0
-     )
-    (new 'static 'sp-field-init-spec :field #x15 :flags #x1 :random-multf 1.0)
-    (new 'static 'sp-field-init-spec
-     :field #x2e
-     :initial-valuef (the-as float #xffffffff)
-     :random-multf (the-as float #x1)
-     )
-    (new 'static 'sp-field-init-spec
-     :field #x2f
-     :initial-valuef (the-as float #x2200)
-     :random-multf (the-as float #x1)
-     )
-    (new 'static 'sp-field-init-spec :field #x43)
+    (sp-tex spt-texture (new 'static 'texture-id :index #x2a :page #x2))
+    (sp-flt spt-num 1.0)
+    (sp-flt spt-scale-x (meters 2.2))
+    (sp-copy-from-other spt-scale-y -4)
+    (sp-flt spt-r 128.0)
+    (sp-flt spt-g 128.0)
+    (sp-flt spt-b 128.0)
+    (sp-flt spt-a 0.0)
+    (sp-int spt-timer -1)
+    (sp-cpuinfo-flags bit9 bit13)
+    (sp-end)
     )
    )
   )
@@ -2682,84 +1228,23 @@
   (new 'static 'sparticle-launcher
    :init-specs
    (new 'static 'inline-array sp-field-init-spec 17
-    (new 'static 'sp-field-init-spec
-     :field #x1
-     :initial-valuef (the-as float #x202a00)
-     )
-    (new 'static 'sp-field-init-spec
-     :field #x6
-     :flags #x1
-     :initial-valuef 1.0
-     :random-multf 1.0
-     )
-    (new 'static 'sp-field-init-spec :field #xa :flags #x1 :random-multf 1.0)
-    (new 'static 'sp-field-init-spec
-     :field #xb
-     :flags #x1
-     :initial-valuef 5461.3335
-     :random-multf 1.0
-     )
-    (new 'static 'sp-field-init-spec
-     :field #xc
-     :flags #x1
-     :initial-valuef 409.6
-     :random-multf 1.0
-     )
-    (new 'static 'sp-field-init-spec
-     :field #xd
-     :flags #x1
-     :initial-valuef 8192.0
-     :random-multf 1.0
-     )
-    (new 'static 'sp-field-init-spec
-     :field #x11
-     :flags #x3
-     :initial-valuef (the-as float #xfffffffc)
-     :random-multf (the-as float #x1)
-     )
-    (new 'static 'sp-field-init-spec
-     :field #x12
-     :flags #x1
-     :initial-valuef 128.0
-     :random-multf 1.0
-     )
-    (new 'static 'sp-field-init-spec
-     :field #x13
-     :flags #x1
-     :initial-valuef 128.0
-     :random-multf 1.0
-     )
-    (new 'static 'sp-field-init-spec
-     :field #x14
-     :flags #x1
-     :initial-valuef 128.0
-     :random-multf 1.0
-     )
-    (new 'static 'sp-field-init-spec
-     :field #x15
-     :flags #x1
-     :initial-valuef 128.0
-     :random-multf 1.0
-     )
-    (new 'static 'sp-field-init-spec :field #x18 :flags #x1 :random-multf 1.0)
-    (new 'static 'sp-field-init-spec
-     :field #x19
-     :flags #x1
-     :initial-valuef 218.45334
-     :random-multf 1.0
-     )
-    (new 'static 'sp-field-init-spec :field #x1b :flags #x1 :random-multf 1.0)
-    (new 'static 'sp-field-init-spec
-     :field #x2e
-     :initial-valuef (the-as float #xffffffff)
-     :random-multf (the-as float #x1)
-     )
-    (new 'static 'sp-field-init-spec
-     :field #x2f
-     :initial-valuef (the-as float #x2284)
-     :random-multf (the-as float #x1)
-     )
-    (new 'static 'sp-field-init-spec :field #x43)
+    (sp-tex spt-texture (new 'static 'texture-id :index #x2a :page #x2))
+    (sp-flt spt-num 1.0)
+    (sp-flt spt-x (meters 0.0))
+    (sp-flt spt-y (meters 1.3333334))
+    (sp-flt spt-z 409.6)
+    (sp-flt spt-scale-x (meters 2.0))
+    (sp-copy-from-other spt-scale-y -4)
+    (sp-flt spt-r 128.0)
+    (sp-flt spt-g 128.0)
+    (sp-flt spt-b 128.0)
+    (sp-flt spt-a 128.0)
+    (sp-flt spt-omega 0.0)
+    (sp-flt spt-vel-x (meters 0.053333335))
+    (sp-flt spt-vel-z (meters 0.0))
+    (sp-int spt-timer -1)
+    (sp-cpuinfo-flags bit2 bit7 bit9 bit13)
+    (sp-end)
     )
    )
   )
@@ -2771,11 +1256,11 @@
    :length 1
    :duration #xbb8
    :linger-duration #x5dc
-   :flags #x4
+   :flags (sp-group-flag screen-space)
    :name "group-part-progress-orb"
    :launcher
    (new 'static 'inline-array sparticle-group-item 1
-    (new 'static 'sparticle-group-item :launcher #x7bf :flags #x8)
+    (sp-item 1983 :flags (launch-asap))
     )
    :bounds (new 'static 'sphere :w 409600.0)
    )
@@ -2787,63 +1272,17 @@
   (new 'static 'sparticle-launcher
    :init-specs
    (new 'static 'inline-array sp-field-init-spec 11
-    (new 'static 'sp-field-init-spec
-     :field #x1
-     :initial-valuef (the-as float #x202c00)
-     )
-    (new 'static 'sp-field-init-spec
-     :field #x6
-     :flags #x1
-     :initial-valuef 1.0
-     :random-multf 1.0
-     )
-    (new 'static 'sp-field-init-spec
-     :field #xd
-     :flags #x1
-     :initial-valuef 9011.2
-     :random-multf 1.0
-     )
-    (new 'static 'sp-field-init-spec
-     :field #x11
-     :flags #x3
-     :initial-valuef (the-as float #xfffffffc)
-     :random-multf (the-as float #x1)
-     )
-    (new 'static 'sp-field-init-spec
-     :field #x12
-     :flags #x1
-     :initial-valuef 128.0
-     :random-multf 1.0
-     )
-    (new 'static 'sp-field-init-spec
-     :field #x13
-     :flags #x1
-     :initial-valuef 128.0
-     :random-multf 1.0
-     )
-    (new 'static 'sp-field-init-spec
-     :field #x14
-     :flags #x1
-     :initial-valuef 128.0
-     :random-multf 1.0
-     )
-    (new 'static 'sp-field-init-spec
-     :field #x15
-     :flags #x1
-     :initial-valuef 128.0
-     :random-multf 1.0
-     )
-    (new 'static 'sp-field-init-spec
-     :field #x2e
-     :initial-valuef (the-as float #xffffffff)
-     :random-multf (the-as float #x1)
-     )
-    (new 'static 'sp-field-init-spec
-     :field #x2f
-     :initial-valuef (the-as float #x2204)
-     :random-multf (the-as float #x1)
-     )
-    (new 'static 'sp-field-init-spec :field #x43)
+    (sp-tex spt-texture (new 'static 'texture-id :index #x2c :page #x2))
+    (sp-flt spt-num 1.0)
+    (sp-flt spt-scale-x (meters 2.2))
+    (sp-copy-from-other spt-scale-y -4)
+    (sp-flt spt-r 128.0)
+    (sp-flt spt-g 128.0)
+    (sp-flt spt-b 128.0)
+    (sp-flt spt-a 128.0)
+    (sp-int spt-timer -1)
+    (sp-cpuinfo-flags bit2 bit9 bit13)
+    (sp-end)
     )
    )
   )
@@ -2855,16 +1294,12 @@
    :length 2
    :duration #xbb8
    :linger-duration #x5dc
-   :flags #x4
+   :flags (sp-group-flag screen-space)
    :name "group-part-progress-buzzer-small"
    :launcher
    (new 'static 'inline-array sparticle-group-item 2
-    (new 'static 'sparticle-group-item
-     :launcher #x7c1
-     :flags #x8
-     :binding #x7c0
-     )
-    (new 'static 'sparticle-group-item :launcher #x7c0 :flags #xc)
+    (sp-item 1985 :flags (launch-asap) :binding 1984)
+    (sp-item 1984 :flags (start-dead launch-asap))
     )
    :bounds (new 'static 'sphere :w 409600.0)
    )
@@ -2876,58 +1311,17 @@
   (new 'static 'sparticle-launcher
    :init-specs
    (new 'static 'inline-array sp-field-init-spec 11
-    (new 'static 'sp-field-init-spec
-     :field #x1
-     :initial-valuef (the-as float #x202a00)
-     )
-    (new 'static 'sp-field-init-spec
-     :field #x6
-     :flags #x1
-     :initial-valuef 1.0
-     :random-multf 1.0
-     )
-    (new 'static 'sp-field-init-spec
-     :field #xd
-     :flags #x1
-     :initial-valuef 4096.0
-     :random-multf 1.0
-     )
-    (new 'static 'sp-field-init-spec
-     :field #x11
-     :flags #x3
-     :initial-valuef (the-as float #xfffffffc)
-     :random-multf (the-as float #x1)
-     )
-    (new 'static 'sp-field-init-spec
-     :field #x12
-     :flags #x1
-     :initial-valuef 128.0
-     :random-multf 1.0
-     )
-    (new 'static 'sp-field-init-spec
-     :field #x13
-     :flags #x1
-     :initial-valuef 128.0
-     :random-multf 1.0
-     )
-    (new 'static 'sp-field-init-spec
-     :field #x14
-     :flags #x1
-     :initial-valuef 128.0
-     :random-multf 1.0
-     )
-    (new 'static 'sp-field-init-spec :field #x15 :flags #x1 :random-multf 1.0)
-    (new 'static 'sp-field-init-spec
-     :field #x2e
-     :initial-valuef (the-as float #xffffffff)
-     :random-multf (the-as float #x1)
-     )
-    (new 'static 'sp-field-init-spec
-     :field #x2f
-     :initial-valuef (the-as float #x2200)
-     :random-multf (the-as float #x1)
-     )
-    (new 'static 'sp-field-init-spec :field #x43)
+    (sp-tex spt-texture (new 'static 'texture-id :index #x2a :page #x2))
+    (sp-flt spt-num 1.0)
+    (sp-flt spt-scale-x (meters 1.0))
+    (sp-copy-from-other spt-scale-y -4)
+    (sp-flt spt-r 128.0)
+    (sp-flt spt-g 128.0)
+    (sp-flt spt-b 128.0)
+    (sp-flt spt-a 0.0)
+    (sp-int spt-timer -1)
+    (sp-cpuinfo-flags bit9 bit13)
+    (sp-end)
     )
    )
   )
@@ -2938,89 +1332,24 @@
   (new 'static 'sparticle-launcher
    :init-specs
    (new 'static 'inline-array sp-field-init-spec 18
-    (new 'static 'sp-field-init-spec
-     :field #x1
-     :initial-valuef (the-as float #x202a00)
-     )
-    (new 'static 'sp-field-init-spec
-     :field #x6
-     :flags #x1
-     :initial-valuef 1.0
-     :random-multf 1.0
-     )
-    (new 'static 'sp-field-init-spec :field #xa :flags #x1 :random-multf 1.0)
-    (new 'static 'sp-field-init-spec
-     :field #xb
-     :flags #x1
-     :initial-valuef 5461.3335
-     :random-multf 1.0
-     )
-    (new 'static 'sp-field-init-spec
-     :field #xc
-     :flags #x1
-     :initial-valuef 204.8
-     :random-multf 1.0
-     )
-    (new 'static 'sp-field-init-spec
-     :field #xd
-     :flags #x1
-     :initial-valuef 6144.0
-     :random-multf 1.0
-     )
-    (new 'static 'sp-field-init-spec
-     :field #x11
-     :flags #x3
-     :initial-valuef (the-as float #xfffffffc)
-     :random-multf (the-as float #x1)
-     )
-    (new 'static 'sp-field-init-spec
-     :field #x12
-     :flags #x1
-     :initial-valuef 128.0
-     :random-multf 1.0
-     )
-    (new 'static 'sp-field-init-spec
-     :field #x13
-     :flags #x1
-     :initial-valuef 128.0
-     :random-multf 1.0
-     )
-    (new 'static 'sp-field-init-spec
-     :field #x14
-     :flags #x1
-     :initial-valuef 128.0
-     :random-multf 1.0
-     )
-    (new 'static 'sp-field-init-spec
-     :field #x15
-     :flags #x1
-     :initial-valuef 128.0
-     :random-multf 1.0
-     )
-    (new 'static 'sp-field-init-spec :field #x18 :flags #x1 :random-multf 1.0)
-    (new 'static 'sp-field-init-spec
-     :field #x19
-     :flags #x1
-     :initial-valuef 206.31703
-     :random-multf 1.0
-     )
-    (new 'static 'sp-field-init-spec :field #x1b :flags #x1 :random-multf 1.0)
-    (new 'static 'sp-field-init-spec
-     :field #x2e
-     :initial-valuef (the-as float #xffffffff)
-     :random-multf (the-as float #x1)
-     )
-    (new 'static 'sp-field-init-spec
-     :field #x2f
-     :initial-valuef (the-as float #x2284)
-     :random-multf (the-as float #x1)
-     )
-    (new 'static 'sp-field-init-spec
-     :field #x31
-     :flags #x5
-     :sym 'part-progress-hud-buzzer-func
-     )
-    (new 'static 'sp-field-init-spec :field #x43)
+    (sp-tex spt-texture (new 'static 'texture-id :index #x2a :page #x2))
+    (sp-flt spt-num 1.0)
+    (sp-flt spt-x (meters 0.0))
+    (sp-flt spt-y (meters 1.3333334))
+    (sp-flt spt-z 204.8)
+    (sp-flt spt-scale-x (meters 1.5))
+    (sp-copy-from-other spt-scale-y -4)
+    (sp-flt spt-r 128.0)
+    (sp-flt spt-g 128.0)
+    (sp-flt spt-b 128.0)
+    (sp-flt spt-a 128.0)
+    (sp-flt spt-omega 0.0)
+    (sp-flt spt-vel-x (meters 0.05037037))
+    (sp-flt spt-vel-z (meters 0.0))
+    (sp-int spt-timer -1)
+    (sp-cpuinfo-flags bit2 bit7 bit9 bit13)
+    (sp-func spt-func 'part-progress-hud-buzzer-func)
+    (sp-end)
     )
    )
   )
@@ -3032,11 +1361,11 @@
    :length 1
    :duration #xbb8
    :linger-duration #x5dc
-   :flags #x4
+   :flags (sp-group-flag screen-space)
    :name "group-part-progress-orb-small"
    :launcher
    (new 'static 'inline-array sparticle-group-item 1
-    (new 'static 'sparticle-group-item :launcher #x7c2 :flags #x8)
+    (sp-item 1986 :flags (launch-asap))
     )
    :bounds (new 'static 'sphere :w 409600.0)
    )
@@ -3048,68 +1377,18 @@
   (new 'static 'sparticle-launcher
    :init-specs
    (new 'static 'inline-array sp-field-init-spec 12
-    (new 'static 'sp-field-init-spec
-     :field #x1
-     :initial-valuef (the-as float #x202c00)
-     )
-    (new 'static 'sp-field-init-spec
-     :field #x6
-     :flags #x1
-     :initial-valuef 1.0
-     :random-multf 1.0
-     )
-    (new 'static 'sp-field-init-spec
-     :field #xd
-     :flags #x1
-     :initial-valuef 5324.8
-     :random-multf 1.0
-     )
-    (new 'static 'sp-field-init-spec
-     :field #x11
-     :flags #x3
-     :initial-valuef (the-as float #xfffffffc)
-     :random-multf (the-as float #x1)
-     )
-    (new 'static 'sp-field-init-spec
-     :field #x12
-     :flags #x1
-     :initial-valuef 128.0
-     :random-multf 1.0
-     )
-    (new 'static 'sp-field-init-spec
-     :field #x13
-     :flags #x1
-     :initial-valuef 128.0
-     :random-multf 1.0
-     )
-    (new 'static 'sp-field-init-spec
-     :field #x14
-     :flags #x1
-     :initial-valuef 128.0
-     :random-multf 1.0
-     )
-    (new 'static 'sp-field-init-spec
-     :field #x15
-     :flags #x1
-     :initial-valuef 128.0
-     :random-multf 1.0
-     )
-    (new 'static 'sp-field-init-spec
-     :field #x2e
-     :initial-valuef (the-as float #xffffffff)
-     :random-multf (the-as float #x1)
-     )
-    (new 'static 'sp-field-init-spec
-     :field #x2f
-     :initial-valuef (the-as float #x2204)
-     :random-multf (the-as float #x1)
-     )
-    (new 'static 'sp-field-init-spec
-     :field #x31
-     :flags #x5
-     :sym 'part-progress-hud-orb-func
-     )
-    (new 'static 'sp-field-init-spec :field #x43)
+    (sp-tex spt-texture (new 'static 'texture-id :index #x2c :page #x2))
+    (sp-flt spt-num 1.0)
+    (sp-flt spt-scale-x (meters 1.3))
+    (sp-copy-from-other spt-scale-y -4)
+    (sp-flt spt-r 128.0)
+    (sp-flt spt-g 128.0)
+    (sp-flt spt-b 128.0)
+    (sp-flt spt-a 128.0)
+    (sp-int spt-timer -1)
+    (sp-cpuinfo-flags bit2 bit9 bit13)
+    (sp-func spt-func 'part-progress-hud-orb-func)
+    (sp-end)
     )
    )
   )
@@ -3121,11 +1400,11 @@
    :length 1
    :duration #xbb8
    :linger-duration #x5dc
-   :flags #x4
+   :flags (sp-group-flag screen-space)
    :name "group-part-progress-save-icon"
    :launcher
    (new 'static 'inline-array sparticle-group-item 1
-    (new 'static 'sparticle-group-item :launcher #x9ae :flags #x8)
+    (sp-item 2478 :flags (launch-asap))
     )
    :bounds (new 'static 'sphere :w 409600.0)
    )
@@ -3137,68 +1416,18 @@
   (new 'static 'sparticle-launcher
    :init-specs
    (new 'static 'inline-array sp-field-init-spec 12
-    (new 'static 'sp-field-init-spec
-     :field #x1
-     :initial-valuef 0.0000000000000000000015909527
-     )
-    (new 'static 'sp-field-init-spec
-     :field #x6
-     :flags #x1
-     :initial-valuef 1.0
-     :random-multf 1.0
-     )
-    (new 'static 'sp-field-init-spec
-     :field #xd
-     :flags #x1
-     :initial-valuef 7372.8
-     :random-multf 1.0
-     )
-    (new 'static 'sp-field-init-spec
-     :field #x11
-     :flags #x3
-     :initial-valuef (the-as float #xfffffffc)
-     :random-multf (the-as float #x1)
-     )
-    (new 'static 'sp-field-init-spec
-     :field #x12
-     :flags #x1
-     :initial-valuef 128.0
-     :random-multf 1.0
-     )
-    (new 'static 'sp-field-init-spec
-     :field #x13
-     :flags #x1
-     :initial-valuef 128.0
-     :random-multf 1.0
-     )
-    (new 'static 'sp-field-init-spec
-     :field #x14
-     :flags #x1
-     :initial-valuef 128.0
-     :random-multf 1.0
-     )
-    (new 'static 'sp-field-init-spec
-     :field #x15
-     :flags #x1
-     :initial-valuef 128.0
-     :random-multf 1.0
-     )
-    (new 'static 'sp-field-init-spec
-     :field #x2e
-     :initial-valuef (the-as float #xffffffff)
-     :random-multf (the-as float #x1)
-     )
-    (new 'static 'sp-field-init-spec
-     :field #x2f
-     :initial-valuef (the-as float #x2204)
-     :random-multf (the-as float #x1)
-     )
-    (new 'static 'sp-field-init-spec
-     :field #x31
-     :flags #x5
-     :sym 'part-progress-save-icon-func
-     )
-    (new 'static 'sp-field-init-spec :field #x43)
+    (sp-tex spt-texture (new 'static 'texture-id :index #x6b :page #x1cf))
+    (sp-flt spt-num 1.0)
+    (sp-flt spt-scale-x (meters 1.8))
+    (sp-copy-from-other spt-scale-y -4)
+    (sp-flt spt-r 128.0)
+    (sp-flt spt-g 128.0)
+    (sp-flt spt-b 128.0)
+    (sp-flt spt-a 128.0)
+    (sp-int spt-timer -1)
+    (sp-cpuinfo-flags bit2 bit9 bit13)
+    (sp-func spt-func 'part-progress-save-icon-func)
+    (sp-end)
     )
    )
   )

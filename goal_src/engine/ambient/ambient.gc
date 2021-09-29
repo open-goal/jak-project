@@ -5,6 +5,8 @@
 ;; name in dgo: ambient
 ;; dgos: GAME, ENGINE
 
+;; decomp begins
+
 
 ;; definition for method 8 of type drawable-ambient
 ;; INFO: Return type mismatch int vs drawable-ambient.
@@ -300,23 +302,15 @@
    )
   )
 
-;; definition for function level-hint-displayed?
-;; INFO: Return type mismatch basic vs symbol.
-(defun level-hint-displayed? ((arg0 symbol))
-  (let* ((v1-0 *hint-semaphore*)
-         (a0-1 (the-as level-hint (if v1-0
-                                   (the-as level-hint (-> v1-0 0 self))
-                                   )
-                )
-          )
-         )
+(defun level-hint-displayed? ()
+  (let ((a0-0 (ppointer->process *hint-semaphore*)))
    (the-as
     symbol
     (and
-     a0-1
+     (the-as level-hint a0-0)
      (and
-      (= (-> a0-1 next-state name) 'level-hint-normal)
-      (not (dummy-15 a0-1))
+      (= (-> (the-as level-hint a0-0) next-state name) 'level-hint-normal)
+      (not (dummy-15 (the-as level-hint a0-0)))
       )
      )
     )
@@ -1437,7 +1431,7 @@
 ;; definition for method 17 of type drawable-ambient
 ;; INFO: Return type mismatch int vs none.
 (defmethod
-  dummy-17
+  collect-ambients
   drawable-ambient
   ((obj drawable-ambient) (arg0 sphere) (arg1 int) (arg2 ambient-list))
   (dotimes (s2-0 arg1)
@@ -1454,14 +1448,19 @@
 ;; definition for method 17 of type drawable-inline-array-ambient
 ;; INFO: Return type mismatch int vs none.
 (defmethod
-  dummy-17
+  collect-ambients
   drawable-inline-array-ambient
   ((obj drawable-inline-array-ambient)
    (arg0 sphere)
    (arg1 int)
    (arg2 ambient-list)
    )
-  (dummy-17 (the-as drawable-ambient (-> obj data)) arg0 (-> obj length) arg2)
+  (collect-ambients
+   (the-as drawable-ambient (-> obj data))
+   arg0
+   (-> obj length)
+   arg2
+   )
   0
   (none)
   )
@@ -1469,10 +1468,10 @@
 ;; definition for method 17 of type drawable-tree-ambient
 ;; INFO: Return type mismatch int vs none.
 (defmethod
-  dummy-17
+  collect-ambients
   drawable-tree-ambient
   ((obj drawable-tree-ambient) (arg0 sphere) (arg1 int) (arg2 ambient-list))
-  (dummy-17 (-> obj data 0) arg0 (-> obj length) arg2)
+  (collect-ambients (-> obj data 0) arg0 (-> obj length) arg2)
   0
   (none)
   )

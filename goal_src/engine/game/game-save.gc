@@ -1613,82 +1613,36 @@
 ;; used for the flashing auto-save icon, I think.
 
 (set! (-> *part-group-id-table* 656)
-  (new 'static 'sparticle-launch-group
-   :length 1
-   :duration #xbb8
-   :linger-duration #x5dc
-   :flags #x4
-   :name "group-part-save-icon"
-   :launcher
-   (new 'static 'inline-array sparticle-group-item 1
-    (new 'static 'sparticle-group-item :launcher #xa66)
-    )
-   :bounds (new 'static 'sphere :w 409600.0)
-   )
-  )
+      (new 'static 'sparticle-launch-group
+           :length 1
+           :duration #xbb8
+           :linger-duration #x5dc
+           :flags (sp-group-flag screen-space)
+           :name "group-part-save-icon"
+           :launcher
+           (new 'static 'inline-array sparticle-group-item 1 (sp-item 2662))
+           :bounds (new 'static 'sphere :w 409600.0)
+           )
+      )
 
-;; todo floats/ints for these values.
 (set! (-> *part-id-table* 2662)
-  (new 'static 'sparticle-launcher
-   :init-specs
-   (new 'static 'inline-array sp-field-init-spec 11
-    (new 'static 'sp-field-init-spec :field #x1 :initial-value #x1cf06b00)
-    (new 'static 'sp-field-init-spec
-     :field #x6
-     :flags #x1
-     :initial-value #x3f800000
-     :random-mult #x3f800000
-     )
-    (new 'static 'sp-field-init-spec
-     :field #xd
-     :flags #x1
-     :initial-value #x45c00000
-     :random-mult #x3f800000
-     )
-    (new 'static 'sp-field-init-spec
-     :field #x11
-     :flags #x3
-     :initial-value -4
-     :random-mult 1
-     )
-    (new 'static 'sp-field-init-spec
-     :field #x12
-     :flags #x1
-     :initial-value #x43000000
-     :random-mult #x3f800000
-     )
-    (new 'static 'sp-field-init-spec
-     :field #x13
-     :flags #x1
-     :initial-value #x43000000
-     :random-mult #x3f800000
-     )
-    (new 'static 'sp-field-init-spec
-     :field #x14
-     :flags #x1
-     :initial-value #x43000000
-     :random-mult #x3f800000
-     )
-    (new 'static 'sp-field-init-spec
-     :field #x15
-     :flags #x1
-     :initial-value #x43000000
-     :random-mult #x3f800000
-     )
-    (new 'static 'sp-field-init-spec
-     :field #x2e
-     :initial-value 5
-     :random-mult 1
-     )
-    (new 'static 'sp-field-init-spec
-     :field #x2f
-     :initial-value #x2204
-     :random-mult 1
-     )
-    (new 'static 'sp-field-init-spec :field #x43)
-    )
-   )
-  )
+      (new 'static 'sparticle-launcher
+           :init-specs
+           (new 'static 'inline-array sp-field-init-spec 11
+                (sp-tex spt-texture (new 'static 'texture-id :index #x6b :page #x1cf))
+                (sp-flt spt-num 1.0)
+                (sp-flt spt-scale-x (meters 1.5))
+                (sp-copy-from-other spt-scale-y -4)
+                (sp-flt spt-r 128.0)
+                (sp-flt spt-g 128.0)
+                (sp-flt spt-b 128.0)
+                (sp-flt spt-a 128.0)
+                (sp-int spt-timer 5)
+                (sp-cpuinfo-flags bit2 bit9 bit13)
+                (sp-end)
+                )
+           )
+      )
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; auto-save process
@@ -1731,7 +1685,7 @@
   "Deactivate the auto-save process."
   ;; kill the particles
   (if (nonzero? (-> obj part))
-      (deactivate (-> obj part))
+      (kill-and-free-particles (-> obj part))
       )
   ;; and do a normal deactivate.
   ((method-of-type process deactivate) obj)
@@ -1870,7 +1824,7 @@
       (set! (-> gp-2 vector4w w) (the-as int (-> *math-camera* hvdf-off w)))
       )
      )
-    (dummy-11 (-> self part) *zero-vector*)
+    (spawn (-> self part) *zero-vector*)
     )
    )
   (none)
