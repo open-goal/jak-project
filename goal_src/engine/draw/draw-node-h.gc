@@ -5,10 +5,16 @@
 ;; name in dgo: draw-node-h
 ;; dgos: GAME, ENGINE
 
+;; A "draw-node" is a way to group together a bunch of drawables (possibly other draw-nodes)
+;; they do not support calling draw, but do support collision.
+;; The typical use is to put a bunch of these in an inline array, then call collide on the first,
+;; and pass in the length of the inline array.  This will collide with all nodes in the list.
+;; They are also used as groups for the culling system.
+
 (deftype draw-node (drawable)
-  ((child-count uint8          :offset 6)
+  ((child-count uint8          :offset 6) ;; if our child requires a count
    (flags       uint8          :offset 7)
-   (child       uint32         :offset 8)
+   (child       drawable       :offset 8) ;; can be draw-node or any other drawable
    (distance    float          :offset 12)
    )
   :method-count-assert 18
@@ -16,6 +22,10 @@
   :flag-assert         #x1200000020
   ;; field distance is a float printed as hex? 
   )
+
+
+;; It's annoying to work with draw-node's directly, so drawable-inline-array-node is a nice wrapper
+;; that knows the array's length.
 
 (deftype drawable-inline-array-node (drawable-inline-array)
   ((data draw-node 1 :inline)

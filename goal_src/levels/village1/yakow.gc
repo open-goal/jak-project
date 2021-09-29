@@ -5,3 +5,1525 @@
 ;; name in dgo: yakow
 ;; dgos: L1, VI1
 
+(define-extern *yakow-sg* skeleton-group)
+(define-extern *village1cam-sg* skeleton-group)
+
+(declare-type yakow process-drawable)
+(define-extern yakow-graze (state yakow))
+(define-extern yakow-idle (state yakow))
+(define-extern yakow-run-away (state yakow))
+(define-extern yakow-graze-kicked (state yakow))
+(define-extern yakow-walk-to (state vector yakow))
+(define-extern yakow-notice (state yakow))
+(define-extern yakow-kicked (state yakow))
+(define-extern yakow-die (state yakow))
+
+;; DECOMP BEGINS
+
+(let
+  ((v1-0
+    (new 'static 'skeleton-group
+     :art-group-name "village1cam"
+     :bounds (new 'static 'vector :w 16384.0)
+     :version #x6
+     )
+    )
+   )
+  (set! (-> v1-0 jgeo) 0)
+  (set! (-> v1-0 janim) 2)
+  (set! (-> v1-0 mgeo 0) (the-as uint 1))
+  (set! (-> v1-0 lod-dist 0) 4095996000.0)
+  (set! *village1cam-sg* v1-0)
+  )
+
+(defun yakow-cam ()
+  (with-pp
+   (let ((gp-0 (entity-actor-lookup (-> pp entity) 'alt-actor 0)))
+    (when gp-0
+     (let ((s5-0 (get-process *default-dead-pool* pov-camera #x4000)))
+      (when s5-0
+       (let ((t9-2 (method-of-type pov-camera activate)))
+        (t9-2
+         (the-as pov-camera s5-0)
+         pp
+         'pov-camera
+         (the-as pointer #x70004000)
+         )
+        )
+       (run-now-in-process
+        s5-0
+        pov-camera-init-by-other
+        (-> gp-0 extra trans)
+        *village1cam-sg*
+        "anim"
+        0
+        #f
+        '()
+        )
+       (-> s5-0 ppointer)
+       )
+      )
+     )
+    )
+   (none)
+   )
+  )
+
+(deftype yakow-bank (basic)
+  ((walk-cycle-frame-count float   :offset-assert   4)
+   (run-cycle-frame-count  float   :offset-assert   8)
+   (walk-speed             meters  :offset-assert  12)
+   (run-speed              meters  :offset-assert  16)
+   (walk-anim-speed        float   :offset-assert  20)
+   (run-anim-speed         float   :offset-assert  24)
+   (walk-away-dist         meters  :offset-assert  28)
+   (run-away-dist          meters  :offset-assert  32)
+   (walk-rotate-speed      float   :offset-assert  36)
+   (run-rotate-speed       float   :offset-assert  40)
+   (walk-turn-time         uint64  :offset-assert  48)
+   (run-turn-time          uint64  :offset-assert  56)
+   (max-walk-speed         float   :offset-assert  64)
+   (min-run-speed          float   :offset-assert  68)
+   (walk-run-blend-rate    float   :offset-assert  72)
+   (walk-turn-blend-rate   float   :offset-assert  76)
+   (max-run-speed          float   :offset-assert  80)
+   (acceleration           meters  :offset-assert  84)
+   (default-patrol-time    uint64  :offset-assert  88)
+   (default-idle-distance  meters  :offset-assert  96)
+   (safe-distance          meters  :offset-assert 100)
+   (min-run-anim-speed     float   :offset-assert 104)
+   (max-run-anim-speed     float   :offset-assert 108)
+   (min-walk-anim-speed    float   :offset-assert 112)
+   (speed-boost-impulse    meters  :offset-assert 116)
+   )
+  :method-count-assert 9
+  :size-assert         #x78
+  :flag-assert         #x900000078
+  )
+
+
+(define
+  *YAKOW-bank*
+  (new 'static 'yakow-bank
+   :walk-cycle-frame-count 16.0
+   :run-cycle-frame-count 16.0
+   :walk-speed (meters 2.13)
+   :run-speed (meters 6.0)
+   :walk-anim-speed 1.0
+   :run-anim-speed 2.0
+   :walk-away-dist (meters 10.0)
+   :run-away-dist (meters 6.0)
+   :walk-rotate-speed 131072.0
+   :run-rotate-speed 131072.0
+   :walk-turn-time #x96
+   :run-turn-time #x3c
+   :max-walk-speed 16384.0
+   :min-run-speed 15155.2
+   :walk-run-blend-rate 6.0
+   :walk-turn-blend-rate 4.0
+   :max-run-speed 61440.0
+   :acceleration (meters 3.0)
+   :default-patrol-time #x12c
+   :default-idle-distance (meters 10.0)
+   :safe-distance (meters 20.0)
+   :min-run-anim-speed 0.5
+   :max-run-anim-speed 1.5
+   :min-walk-anim-speed 0.5
+   :speed-boost-impulse (meters 4.0)
+   )
+  )
+
+(deftype yakow (process-drawable)
+  ((root-override      collide-shape-moving         :offset        112)
+   (fact-override      fact-info-enemy              :offset        144)
+   (player-attack-id   int32                        :offset-assert 176)
+   (walk-run-blend     float                        :offset-assert 180)
+   (walk-turn-blend    float                        :offset-assert 184)
+   (run-mode           basic                        :offset-assert 188)
+   (travel-speed       meters                       :offset-assert 192)
+   (final-speed        meters                       :offset-assert 196)
+   (rotate-speed       float                        :offset-assert 200)
+   (turn-time          uint64                       :offset-assert 208)
+   (vulnerable         basic                        :offset-assert 216)
+   (grazing            basic                        :offset-assert 220)
+   (push-velocity      vector               :inline :offset-assert 224)
+   (home-base          vector               :inline :offset-assert 240)
+   (dest-base          vector               :inline :offset-assert 256)
+   (dest-rot           degrees                      :offset-assert 272)
+   (enable-turn-around basic                        :offset-assert 276)
+   (rotating           basic                        :offset-assert 280)
+   (in-pen             basic                        :offset-assert 284)
+   )
+  :heap-base #xb0
+  :method-count-assert 20
+  :size-assert         #x120
+  :flag-assert         #x1400b00120
+  )
+
+
+(let
+  ((v1-5
+    (new 'static 'skeleton-group
+     :art-group-name "yakow"
+     :bounds
+     (new 'static 'vector :y 10240.0 :w 18022.4)
+     :max-lod 1
+     :longest-edge (meters 1.3)
+     :version #x6
+     :shadow 3
+     )
+    )
+   )
+  (set! (-> v1-5 jgeo) 0)
+  (set! (-> v1-5 janim) 4)
+  (set! (-> v1-5 mgeo 0) (the-as uint 1))
+  (set! (-> v1-5 lod-dist 0) 81920.0)
+  (set! (-> v1-5 mgeo 1) (the-as uint 2))
+  (set! (-> v1-5 lod-dist 1) 4095996000.0)
+  (set! *yakow-sg* v1-5)
+  )
+
+;; WARN: rewrite_to_get_var got a none typed variable. Is there unreachable code?
+(defbehavior
+  yakow-default-event-handler yakow
+  ((arg0 process-drawable) (arg1 int) (arg2 symbol) (arg3 event-message-block))
+  (let ((v1-0 arg2))
+   (the-as object (cond
+                   ((= v1-0 'touch)
+                    (let* ((s4-0 arg0)
+                           (v1-2
+                            (if
+                             (and
+                              (nonzero? s4-0)
+                              (type-type? (-> s4-0 type) process-drawable)
+                              )
+                             s4-0
+                             )
+                            )
+                           )
+                     (when
+                      (and
+                       v1-2
+                       (<
+                        8192.0
+                        (-
+                         (-> v1-2 root trans y)
+                         (-> self root-override trans y)
+                         )
+                        )
+                       )
+                      (dummy-45 (-> self root-override))
+                      (dummy-55
+                       (-> self root-override)
+                       arg0
+                       (-> arg3 param 0)
+                       0.7
+                       6144.0
+                       16384.0
+                       )
+                      )
+                     )
+                    )
+                   ((= v1-0 'attack)
+                    (let ((v1-9 (-> arg3 param 2)))
+                     (the-as none (cond
+                                   ((!= v1-9 (-> self player-attack-id))
+                                    (set!
+                                     (-> self player-attack-id)
+                                     (the-as int v1-9)
+                                     )
+                                    (if (-> self vulnerable)
+                                     (go yakow-kicked)
+                                     )
+                                    )
+                                   (else
+                                    'push
+                                    )
+                                   )
+                      )
+                     )
+                    )
+                   )
+    )
+   )
+  )
+
+yakow-default-event-handler
+
+(defbehavior yakow-task-complete? yakow ((arg0 symbol))
+  (local-vars (sv-16 symbol) (sv-20 (pointer process-tree)))
+  (let
+   ((gp-0
+     (not
+      (and
+       (-> self entity)
+       (logtest?
+        (-> self entity extra perm status)
+        (entity-perm-status complete)
+        )
+       )
+      )
+     )
+    )
+   (if arg0
+    (process-entity-status! self (entity-perm-status complete) #t)
+    (process-entity-status! self (entity-perm-status complete) #f)
+    )
+   (when (or (-> self link prev) (-> self link next))
+    (set! sv-16 (the-as symbol #f))
+    (set! sv-20 (-> self child))
+    (apply-all (-> self link) actor-link-subtask-complete-hook (& sv-16))
+    (cond
+     (sv-16
+      (close-specific-task!
+       (-> self entity extra perm task)
+       (task-status need-hint)
+       )
+      (close-specific-task!
+       (-> self entity extra perm task)
+       (task-status need-introduction)
+       )
+      (close-specific-task!
+       (-> self entity extra perm task)
+       (task-status need-reminder)
+       )
+      (if gp-0
+       (yakow-cam)
+       )
+      (level-hint-spawn
+       (game-text-id yakow-owed-powercell)
+       "sksp018a"
+       (the-as entity #f)
+       *entity-pool*
+       (game-task none)
+       )
+      )
+     (else
+      (open-specific-task!
+       (-> self entity extra perm task)
+       (task-status need-reminder)
+       )
+      )
+     )
+    sv-16
+    )
+   )
+  )
+
+(defbehavior yakow-common-post yakow ()
+  (dummy-14 (-> self draw shadow-ctrl))
+  (if *target*
+   (look-at-enemy!
+    (-> *target* neck)
+    (the-as vector (-> self root-override root-prim prim-core))
+    #f
+    self
+    )
+   )
+  (ja-post)
+  (none)
+  )
+
+(defbehavior yakow-simple-post yakow ()
+  (yakow-common-post)
+  (dummy-47 (-> self root-override))
+  (none)
+  )
+
+(defbehavior yakow-post yakow ()
+  (dummy-11 (-> self nav) (-> self nav target-pos))
+  (set! (-> self rotating) #f)
+  (let ((f30-0 0.0))
+   (when (< 40.96 (vector-length (-> self nav travel)))
+    (let ((s5-0 (new 'stack-no-clear 'vector))
+          (gp-0 (new 'stack-no-clear 'vector))
+          )
+     (vector-z-quaternion! s5-0 (-> self root-override quat))
+     (seek-toward-heading-vec!
+      (-> self root-override)
+      (-> self nav travel)
+      (-> self rotate-speed)
+      (the-as int (-> self turn-time))
+      )
+     (vector-z-quaternion! gp-0 (-> self root-override quat))
+     (set!
+      (-> self rotating)
+      (<
+       (vector-dot gp-0 s5-0)
+       (cos (* 8192.0 (-> *display* seconds-per-frame)))
+       )
+      )
+     (when (-> self rotating)
+      (let ((v1-16 (new 'stack-no-clear 'vector)))
+       (vector-cross! v1-16 gp-0 s5-0)
+       (set! f30-0 (sign (-> v1-16 y)))
+       )
+      )
+     )
+    )
+   (set!
+    (-> self walk-turn-blend)
+    (seek
+     (-> self walk-turn-blend)
+     f30-0
+     (* (-> *YAKOW-bank* walk-turn-blend-rate) (-> *display* seconds-per-frame))
+     )
+    )
+   )
+  (set!
+   (-> self final-speed)
+   (fmin
+    (-> self travel-speed)
+    (* (vector-length (-> self nav travel)) (-> *display* frames-per-second))
+    )
+   )
+  (let
+   ((v1-24
+     (vector-normalize-copy!
+      (new-stack-vector0)
+      (-> self nav travel)
+      (-> self final-speed)
+      )
+     )
+    )
+   (set! (-> self root-override transv x) (-> v1-24 x))
+   (set! (-> self root-override transv z) (-> v1-24 z))
+   )
+  (vector-v++!
+   (-> self root-override transv)
+   (dummy-62 (-> self root-override) (new-stack-vector0) 0.0)
+   )
+  (let ((gp-2 (new 'stack-no-clear 'vector)))
+   (set! (-> gp-2 quad) (-> self root-override trans quad))
+   (dummy-59
+    (-> self root-override)
+    (-> self root-override transv)
+    (the-as uint 1)
+    8192.0
+    #t
+    #f
+    #f
+    )
+   (set!
+    (-> self final-speed)
+    (*
+     (vector-vector-xz-distance gp-2 (-> self root-override trans))
+     (-> *display* frames-per-second)
+     )
+    )
+   )
+  (set!
+   (-> self travel-speed)
+   (fmin (-> self travel-speed) (-> self final-speed))
+   )
+  (dummy-10 (-> self water))
+  (when
+   (and
+    (logtest? (-> self nav current-poly pat) 2)
+    (not
+     (and
+      (-> self entity)
+      (logtest?
+       (-> self entity extra perm status)
+       (entity-perm-status complete)
+       )
+      )
+     )
+    )
+   (set! (-> self in-pen) #t)
+   (set! (-> self nav destination-pos quad) (-> self dest-base quad))
+   (yakow-task-complete? #t)
+   )
+  (yakow-common-post)
+  (none)
+  )
+
+(defbehavior yakow-generate-travel-vector yakow ()
+  (let
+   ((gp-1
+     (vector-!
+      (new 'stack-no-clear 'vector)
+      (-> self root-override trans)
+      (target-pos 0)
+      )
+     )
+    (s5-1
+     (vector-z-quaternion!
+      (new 'stack-no-clear 'vector)
+      (-> self root-override quat)
+      )
+     )
+    )
+   0.0
+   0.0
+   (set! (-> gp-1 y) 0.0)
+   (set! (-> self nav travel quad) (-> gp-1 quad))
+   (vector-normalize! (-> self nav travel) 409600.0)
+   (dummy-24 (-> self nav) 204.8 #f)
+   (when (not (-> self enable-turn-around))
+    (set! (-> gp-1 quad) (-> self nav travel quad))
+    (let ((f30-0 (vector-length gp-1)))
+     (vector-normalize! gp-1 1.0)
+     (if (and (< 409.6 f30-0) (>= (vector-dot s5-1 gp-1) (cos 10922.667)))
+      (set! (-> s5-1 quad) (-> gp-1 quad))
+      )
+     )
+    (set! (-> self nav travel quad) (-> s5-1 quad))
+    (vector-normalize! (-> self nav travel) 409600.0)
+    (dummy-24 (-> self nav) 204.8 #f)
+    (vector-length (-> self nav travel))
+    )
+   )
+  (vector+!
+   (-> self nav target-pos)
+   (-> self root-override trans)
+   (-> self nav travel)
+   )
+  )
+
+(defbehavior yakow-run-post yakow ()
+  (yakow-generate-travel-vector)
+  (yakow-post)
+  (none)
+  )
+
+(defbehavior yakow-blend-walk-run yakow ()
+  (let ((gp-0 (-> *display* base-frame-counter)))
+   (while #t
+    (let ((f30-0 (-> self final-speed)))
+     (cond
+      ((and (>= 409.6 (-> self final-speed)) (not (-> self rotating)))
+       (if (not (= (if (> (-> self skel active-channels) 0)
+                    (-> self skel root-channel 0 frame-group)
+                    )
+                 (-> self draw art-group data 4)
+                 )
+            )
+        (ja-channel-push! 1 45)
+        )
+       (let ((s5-0 (-> self skel root-channel 0)))
+        (joint-control-channel-group-eval!
+         s5-0
+         (the-as art-joint-anim (-> self draw art-group data 4))
+         num-func-identity
+         )
+        (set! (-> s5-0 frame-num) 0.0)
+        )
+       (while
+        (or
+         (< (- (-> *display* base-frame-counter) gp-0) 60)
+         (< (-> self final-speed) 409.6)
+         )
+        (suspend)
+        (let ((a0-6 (-> self skel root-channel 0)))
+         (set! (-> a0-6 param 0) 1.0)
+         (joint-control-channel-group-eval!
+          a0-6
+          (the-as art-joint-anim #f)
+          num-func-loop!
+          )
+         )
+        )
+       )
+      (else
+       (set! gp-0 (-> *display* base-frame-counter))
+       )
+      )
+     (when (not (= (if (> (-> self skel active-channels) 0)
+                    (-> self skel root-channel 0 frame-group)
+                    )
+                 (-> self draw art-group data 6)
+                 )
+            )
+      (ja-channel-push! 3 22)
+      (let ((s5-1 (-> self skel root-channel 0)))
+       (set! (-> s5-1 frame-interp) 0.0)
+       (joint-control-channel-group-eval!
+        s5-1
+        (the-as art-joint-anim (-> self draw art-group data 6))
+        num-func-identity
+        )
+       (set! (-> s5-1 frame-num) 0.0)
+       )
+      (let ((s5-2 (-> self skel root-channel 1)))
+       (set! (-> s5-2 frame-interp) 0.0)
+       (joint-control-channel-group-eval!
+        s5-2
+        (the-as art-joint-anim (-> self draw art-group data 10))
+        num-func-identity
+        )
+       (set! (-> s5-2 frame-num) 0.0)
+       )
+      (let ((s5-3 (-> self skel root-channel 2)))
+       (set! (-> s5-3 frame-interp) 0.0)
+       (joint-control-channel-group-eval!
+        s5-3
+        (the-as art-joint-anim (-> self draw art-group data 7))
+        num-func-identity
+        )
+       (set! (-> s5-3 frame-num) 0.0)
+       )
+      )
+     (cond
+      ((< (-> self walk-turn-blend) 0.0)
+       (let ((v1-49 (-> self skel root-channel 1)))
+        (set!
+         (-> v1-49 frame-group)
+         (the-as art-joint-anim (-> self draw art-group data 10))
+         )
+        )
+       )
+      (else
+       (let ((v1-52 (-> self skel root-channel 1)))
+        (set!
+         (-> v1-52 frame-group)
+         (the-as art-joint-anim (-> self draw art-group data 9))
+         )
+        )
+       )
+      )
+     (cond
+      ((< f30-0 (-> *YAKOW-bank* min-run-speed))
+       (set! (-> self run-mode) #f)
+       )
+      ((< (-> *YAKOW-bank* max-walk-speed) f30-0)
+       (set! (-> self run-mode) #t)
+       )
+      )
+     (if (-> self run-mode)
+      (set!
+       (-> self walk-run-blend)
+       (seek
+        (-> self walk-run-blend)
+        1.0
+        (*
+         (-> *YAKOW-bank* walk-run-blend-rate)
+         (-> *display* seconds-per-frame)
+         )
+        )
+       )
+      (set!
+       (-> self walk-run-blend)
+       (seek
+        (-> self walk-run-blend)
+        0.0
+        (*
+         (-> *YAKOW-bank* walk-run-blend-rate)
+         (-> *display* seconds-per-frame)
+         )
+        )
+       )
+      )
+     (let ((v1-68 (-> self skel root-channel 1)))
+      (set! (-> v1-68 frame-interp) (fabs (-> self walk-turn-blend)))
+      )
+     (let ((v1-72 (-> self skel root-channel 2)))
+      (set! (-> v1-72 frame-interp) (-> self walk-run-blend))
+      )
+     (let* ((f0-25 (* (-> *YAKOW-bank* walk-anim-speed) f30-0))
+            (f1-5 (-> *YAKOW-bank* walk-speed))
+            (f0-26 (* f0-25 (/ 1.0 f1-5)))
+            )
+      (let* ((f1-9 (* (-> *YAKOW-bank* run-anim-speed) f30-0))
+             (f2-1 (-> *YAKOW-bank* run-speed))
+             (f1-12
+              (fmax
+               (fmin (* f1-9 (/ 1.0 f2-1)) (-> *YAKOW-bank* max-run-anim-speed))
+               (-> *YAKOW-bank* min-run-anim-speed)
+               )
+              )
+             )
+       (if (-> self run-mode)
+        (set! f0-26 f1-12)
+        )
+       )
+      (if (-> self rotating)
+       (set! f0-26 (fmax (-> *YAKOW-bank* min-walk-anim-speed) f0-26))
+       )
+      (let ((a0-24 (-> self skel root-channel 0)))
+       (set! (-> a0-24 param 0) f0-26)
+       (joint-control-channel-group-eval!
+        a0-24
+        (the-as art-joint-anim #f)
+        num-func-loop!
+        )
+       )
+      )
+     )
+    (let ((s5-4 (-> self skel root-channel 1)))
+     (set! (-> s5-4 num-func) num-func-identity)
+     (set! (-> s5-4 frame-num) (ja-frame-num 0))
+     )
+    (let ((s5-5 (-> self skel root-channel 2)))
+     (set! (-> s5-5 num-func) num-func-identity)
+     (set! (-> s5-5 frame-num) (ja-frame-num 0))
+     )
+    (suspend)
+    0
+    )
+   )
+  (none)
+  )
+
+(defbehavior yakow-facing-direction? yakow ((arg0 vector) (arg1 float))
+  (let
+   ((s4-0
+     (vector-z-quaternion!
+      (new 'stack-no-clear 'vector)
+      (-> self root-override quat)
+      )
+     )
+    (s5-0 (new 'stack-no-clear 'vector))
+    )
+   (set! (-> s5-0 quad) (-> arg0 quad))
+   (set! (-> s5-0 y) 0.0)
+   (vector-normalize! s5-0 1.0)
+   (>= (vector-dot s4-0 s5-0) (cos arg1))
+   )
+  )
+
+(defbehavior yakow-facing-point? yakow ((arg0 vector) (arg1 float))
+  (let
+   ((v1-1
+     (vector-! (new 'stack-no-clear 'vector) arg0 (-> self root-override trans))
+     )
+    )
+   (yakow-facing-direction? v1-1 arg1)
+   )
+  )
+
+(defbehavior yakow-facing-player? yakow ((arg0 float))
+  (yakow-facing-point? (target-pos 0) arg0)
+  )
+
+(defstate yakow-idle (yakow)
+  :event
+  yakow-default-event-handler
+  :enter
+  (behavior ()
+   (set!
+    (-> self state-time)
+    (the-as seconds (-> *display* base-frame-counter))
+    )
+   (set! (-> self travel-speed) 0.0)
+   (none)
+   )
+  :trans
+  (behavior ()
+   (if
+    (and
+     (>=
+      (- (-> *display* base-frame-counter) (the-as int (-> self state-time)))
+      (the-as int (-> *YAKOW-bank* default-patrol-time))
+      )
+     (and
+      *target*
+      (>=
+       (-> self fact-override idle-distance)
+       (vector-vector-distance
+        (-> self root-override trans)
+        (-> *target* control trans)
+        )
+       )
+      )
+     (not (yakow-facing-player? 21845.334))
+     )
+    (go yakow-notice)
+    )
+   (none)
+   )
+  :code
+  (behavior ()
+   (ja-channel-push! 1 45)
+   (while #t
+    (cond
+     ((rand-vu-percent? 0.2)
+      (dummy-10 (-> self skel effect) 'yakow-1 0.0 -1)
+      )
+     ((rand-vu-percent? 0.2)
+      (dummy-10 (-> self skel effect) 'yakow-2 0.0 -1)
+      )
+     )
+    (let ((f30-0 (rand-vu-float-range 0.9 1.1)))
+     (let ((a0-6 (-> self skel root-channel 0)))
+      (set!
+       (-> a0-6 frame-group)
+       (the-as art-joint-anim (-> self draw art-group data 4))
+       )
+      (set!
+       (-> a0-6 param 0)
+       (the
+        float
+        (+
+         (->
+          (the-as art-joint-anim (-> self draw art-group data 4))
+          data
+          0
+          length
+          )
+         -1
+         )
+        )
+       )
+      (set! (-> a0-6 param 1) f30-0)
+      (set! (-> a0-6 frame-num) 0.0)
+      (joint-control-channel-group!
+       a0-6
+       (the-as art-joint-anim (-> self draw art-group data 4))
+       num-func-seek!
+       )
+      )
+     (until (ja-done? 0)
+      (suspend)
+      (let ((a0-7 (-> self skel root-channel 0)))
+       (set!
+        (-> a0-7 param 0)
+        (the float (+ (-> a0-7 frame-group data 0 length) -1))
+        )
+       (set! (-> a0-7 param 1) f30-0)
+       (joint-control-channel-group-eval!
+        a0-7
+        (the-as art-joint-anim #f)
+        num-func-seek!
+        )
+       )
+      )
+     )
+    (when (rand-vu-percent? 0.25)
+     (ja-channel-push! 1 30)
+     (let ((a0-11 (-> self skel root-channel 0)))
+      (set!
+       (-> a0-11 frame-group)
+       (the-as art-joint-anim (-> self draw art-group data 5))
+       )
+      (set!
+       (-> a0-11 param 0)
+       (the
+        float
+        (+
+         (->
+          (the-as art-joint-anim (-> self draw art-group data 5))
+          data
+          0
+          length
+          )
+         -1
+         )
+        )
+       )
+      (set! (-> a0-11 param 1) 1.0)
+      (set! (-> a0-11 frame-num) 0.0)
+      (joint-control-channel-group!
+       a0-11
+       (the-as art-joint-anim (-> self draw art-group data 5))
+       num-func-seek!
+       )
+      )
+     (until (ja-done? 0)
+      (suspend)
+      (let ((a0-12 (-> self skel root-channel 0)))
+       (set!
+        (-> a0-12 param 0)
+        (the float (+ (-> a0-12 frame-group data 0 length) -1))
+        )
+       (set! (-> a0-12 param 1) 1.0)
+       (joint-control-channel-group-eval!
+        a0-12
+        (the-as art-joint-anim #f)
+        num-func-seek!
+        )
+       )
+      )
+     (ja-channel-push! 1 30)
+     )
+    )
+   (none)
+   )
+  :post
+  (the-as (function none :behavior yakow) ja-post)
+  )
+
+(defstate yakow-notice (yakow)
+  :event
+  yakow-default-event-handler
+  :enter
+  (behavior ()
+   (set!
+    (-> self state-time)
+    (the-as seconds (-> *display* base-frame-counter))
+    )
+   (set! (-> self travel-speed) 0.0)
+   (none)
+   )
+  :code
+  (behavior ()
+   (go yakow-run-away)
+   (none)
+   )
+  :post
+  yakow-simple-post
+  )
+
+(defstate yakow-walk-to (yakow)
+  :event
+  yakow-default-event-handler
+  :enter
+  (behavior ((arg0 vector))
+   (set!
+    (-> self state-time)
+    (the-as seconds (-> *display* base-frame-counter))
+    )
+   (logior! (-> self nav flags) (nav-control-flags bit10))
+   (set! (-> self nav destination-pos quad) (-> arg0 quad))
+   (set! (-> self rotate-speed) (-> *YAKOW-bank* walk-rotate-speed))
+   (set! (-> self turn-time) (-> *YAKOW-bank* walk-turn-time))
+   (none)
+   )
+  :trans
+  (behavior ()
+   (if
+    (and
+     (>=
+      (- (-> *display* base-frame-counter) (the-as int (-> self state-time)))
+      (the-as int (-> *YAKOW-bank* default-patrol-time))
+      )
+     (not (-> self in-pen))
+     (and
+      *target*
+      (>=
+       (-> self fact-override idle-distance)
+       (vector-vector-distance
+        (-> self root-override trans)
+        (-> *target* control trans)
+        )
+       )
+      )
+     (not (yakow-facing-player? 21845.334))
+     )
+    (go yakow-notice)
+    )
+   (when
+    (>=
+     (- (-> *display* base-frame-counter) (the-as int (-> self state-time)))
+     15
+     )
+    (when
+     (or
+      (logtest? (nav-control-flags bit19) (-> self nav flags))
+      (<
+       (vector-vector-xz-distance
+        (-> self root-override trans)
+        (-> self nav destination-pos)
+        )
+       4096.0
+       )
+      )
+     (if (-> self in-pen)
+      (go yakow-graze)
+      (go yakow-idle)
+      )
+     )
+    )
+   (set!
+    (-> self travel-speed)
+    (seek
+     (-> self travel-speed)
+     (-> *YAKOW-bank* walk-speed)
+     (* (-> *YAKOW-bank* acceleration) (-> *display* seconds-per-frame))
+     )
+    )
+   (none)
+   )
+  :code
+  (the-as (function vector none :behavior yakow) yakow-blend-walk-run)
+  :post
+  (behavior ()
+   (dummy-19
+    (-> self nav)
+    (-> self nav target-pos)
+    (-> self root-override)
+    (-> self nav destination-pos)
+    131072.0
+    )
+   (if (logtest? (nav-control-flags bit21) (-> self nav flags))
+    (logclear! (-> self nav flags) (nav-control-flags bit10))
+    )
+   (yakow-post)
+   (none)
+   )
+  )
+
+(defstate yakow-graze (yakow)
+  :event
+  yakow-default-event-handler
+  :enter
+  (behavior ()
+   (set!
+    (-> self state-time)
+    (the-as seconds (-> *display* base-frame-counter))
+    )
+   (set! (-> self travel-speed) 0.0)
+   (set! (-> self grazing) #t)
+   (let ((v1-3 (entity-actor-lookup (-> self entity) 'alt-actor 0))
+         (a1-1 (new 'stack-no-clear 'event-message-block))
+         )
+    (set! (-> a1-1 from) self)
+    (set! (-> a1-1 num-params) 0)
+    (set! (-> a1-1 message) 'update)
+    (send-event-function (if v1-3
+                          (-> v1-3 extra process)
+                          )
+     a1-1
+     )
+    )
+   (none)
+   )
+  :code
+  (behavior ()
+   (while
+    (<
+     546.13336
+     (fabs (deg-diff (-> self dest-rot) (y-angle (-> self root-override))))
+     )
+    (if (not (= (if (> (-> self skel active-channels) 0)
+                 (-> self skel root-channel 0 frame-group)
+                 )
+              (-> self draw art-group data 6)
+              )
+         )
+     (ja-channel-push! 1 22)
+     )
+    (seek-toward-yaw-angle!
+     (-> self root-override)
+     (-> self dest-rot)
+     16384.0
+     150
+     )
+    (let ((a0-6 (-> self skel root-channel 0)))
+     (set!
+      (-> a0-6 frame-group)
+      (the-as art-joint-anim (-> self draw art-group data 6))
+      )
+     (set! (-> a0-6 param 0) 1.0)
+     (joint-control-channel-group-eval!
+      a0-6
+      (the-as art-joint-anim (-> self draw art-group data 6))
+      num-func-loop!
+      )
+     )
+    (suspend)
+    )
+   (ja-channel-push! 1 45)
+   (while #t
+    (let ((a0-10 (-> self skel root-channel 0)))
+     (set!
+      (-> a0-10 frame-group)
+      (the-as art-joint-anim (-> self draw art-group data 4))
+      )
+     (set!
+      (-> a0-10 param 0)
+      (the
+       float
+       (+
+        (->
+         (the-as art-joint-anim (-> self draw art-group data 4))
+         data
+         0
+         length
+         )
+        -1
+        )
+       )
+      )
+     (set! (-> a0-10 param 1) 1.0)
+     (set! (-> a0-10 frame-num) 0.0)
+     (joint-control-channel-group!
+      a0-10
+      (the-as art-joint-anim (-> self draw art-group data 4))
+      num-func-seek!
+      )
+     )
+    (until (ja-done? 0)
+     (suspend)
+     (let ((a0-11 (-> self skel root-channel 0)))
+      (set!
+       (-> a0-11 param 0)
+       (the float (+ (-> a0-11 frame-group data 0 length) -1))
+       )
+      (set! (-> a0-11 param 1) 1.0)
+      (joint-control-channel-group-eval!
+       a0-11
+       (the-as art-joint-anim #f)
+       num-func-seek!
+       )
+      )
+     )
+    (when (rand-vu-percent? 0.5)
+     (ja-channel-push! 1 30)
+     (let ((a0-15 (-> self skel root-channel 0)))
+      (set!
+       (-> a0-15 frame-group)
+       (the-as art-joint-anim (-> self draw art-group data 5))
+       )
+      (set!
+       (-> a0-15 param 0)
+       (the
+        float
+        (+
+         (->
+          (the-as art-joint-anim (-> self draw art-group data 5))
+          data
+          0
+          length
+          )
+         -1
+         )
+        )
+       )
+      (set! (-> a0-15 param 1) 1.0)
+      (set! (-> a0-15 frame-num) 0.0)
+      (joint-control-channel-group!
+       a0-15
+       (the-as art-joint-anim (-> self draw art-group data 5))
+       num-func-seek!
+       )
+      )
+     (until (ja-done? 0)
+      (suspend)
+      (let ((a0-16 (-> self skel root-channel 0)))
+       (set!
+        (-> a0-16 param 0)
+        (the float (+ (-> a0-16 frame-group data 0 length) -1))
+        )
+       (set! (-> a0-16 param 1) 1.0)
+       (joint-control-channel-group-eval!
+        a0-16
+        (the-as art-joint-anim #f)
+        num-func-seek!
+        )
+       )
+      )
+     (ja-channel-push! 1 30)
+     )
+    )
+   (none)
+   )
+  :post
+  yakow-simple-post
+  )
+
+(defstate yakow-graze-kicked (yakow)
+  :event
+  (the-as
+   (function process int symbol event-message-block object :behavior yakow)
+   #f
+   )
+  :code
+  (behavior ()
+   (let ((a0-0 (-> self skel root-channel 0)))
+    (set!
+     (-> a0-0 frame-group)
+     (the-as art-joint-anim (-> self draw art-group data 11))
+     )
+    (set!
+     (-> a0-0 param 0)
+     (the
+      float
+      (+
+       (->
+        (the-as art-joint-anim (-> self draw art-group data 11))
+        data
+        0
+        length
+        )
+       -1
+       )
+      )
+     )
+    (set! (-> a0-0 param 1) 1.0)
+    (set! (-> a0-0 frame-num) 0.0)
+    (joint-control-channel-group!
+     a0-0
+     (the-as art-joint-anim (-> self draw art-group data 11))
+     num-func-seek!
+     )
+    )
+   (until (ja-done? 0)
+    (suspend)
+    (let ((a0-1 (-> self skel root-channel 0)))
+     (set!
+      (-> a0-1 param 0)
+      (the float (+ (-> a0-1 frame-group data 0 length) -1))
+      )
+     (set! (-> a0-1 param 1) 1.0)
+     (joint-control-channel-group-eval!
+      a0-1
+      (the-as art-joint-anim #f)
+      num-func-seek!
+      )
+     )
+    )
+   (go yakow-graze)
+   (none)
+   )
+  :post
+  yakow-simple-post
+  )
+
+(defstate yakow-run-away (yakow)
+  :event
+  yakow-default-event-handler
+  :enter
+  (behavior ()
+   (set!
+    (-> self state-time)
+    (the-as seconds (-> *display* base-frame-counter))
+    )
+   (logior! (-> self nav flags) (nav-control-flags bit10))
+   (set! (-> self rotate-speed) (-> *YAKOW-bank* run-rotate-speed))
+   (set! (-> self turn-time) (-> *YAKOW-bank* run-turn-time))
+   (none)
+   )
+  :trans
+  (behavior ()
+   (when
+    (or
+     (not *target*)
+     (<
+      (-> *YAKOW-bank* safe-distance)
+      (vector-vector-distance
+       (-> self root-override trans)
+       (-> *target* control trans)
+       )
+      )
+     )
+    (if (-> self in-pen)
+     (go yakow-walk-to (-> self dest-base))
+     (go yakow-walk-to (-> self home-base))
+     )
+    )
+   (let* ((f0-2 (* (if (-> self run-mode)
+                    0.5
+                    1.0
+                    )
+                 (vector-vector-distance
+                  (-> self root-override trans)
+                  (target-pos 0)
+                  )
+                 )
+           )
+          (f30-2
+           (lerp-scale
+            (-> *YAKOW-bank* run-speed)
+            (-> *YAKOW-bank* walk-speed)
+            f0-2
+            (-> *YAKOW-bank* run-away-dist)
+            (-> *YAKOW-bank* walk-away-dist)
+            )
+           )
+          )
+    (if (yakow-facing-player? 21845.334)
+     (set! f30-2 0.0)
+     )
+    (set! (-> self enable-turn-around) (< (-> *YAKOW-bank* run-speed) f30-2))
+    (set!
+     (-> self travel-speed)
+     (seek
+      (-> self travel-speed)
+      f30-2
+      (* (-> *YAKOW-bank* acceleration) (-> *display* seconds-per-frame))
+      )
+     )
+    )
+   (none)
+   )
+  :code
+  yakow-blend-walk-run
+  :post
+  yakow-run-post
+  )
+
+(defstate yakow-kicked (yakow)
+  :event
+  (the-as
+   (function process int symbol event-message-block object :behavior yakow)
+   #f
+   )
+  :enter
+  (behavior ()
+   (set!
+    (-> self state-time)
+    (the-as seconds (-> *display* base-frame-counter))
+    )
+   (if (-> self grazing)
+    (go yakow-graze-kicked)
+    )
+   (set!
+    (-> self travel-speed)
+    (fmax
+     (fmin
+      (+ (-> self travel-speed) (-> *YAKOW-bank* speed-boost-impulse))
+      (-> *YAKOW-bank* max-run-speed)
+      )
+     (-> *YAKOW-bank* run-speed)
+     )
+    )
+   (none)
+   )
+  :exit
+  (behavior ()
+   '()
+   (none)
+   )
+  :trans
+  (behavior ()
+   (if
+    (>=
+     (- (-> *display* base-frame-counter) (the-as int (-> self state-time)))
+     60
+     )
+    (set!
+     (-> self travel-speed)
+     (seek
+      (-> self travel-speed)
+      (-> *YAKOW-bank* run-speed)
+      (* (-> *YAKOW-bank* acceleration) (-> *display* seconds-per-frame))
+      )
+     )
+    )
+   0
+   (none)
+   )
+  :code
+  (behavior ()
+   (set! (-> self enable-turn-around) #t)
+   1.0
+   (suspend)
+   (ja-channel-push! 1 15)
+   (cond
+    ((< 40.96 (vector-length (-> self nav travel)))
+     (let ((v1-4 (-> self skel root-channel 0)))
+      (set!
+       (-> v1-4 frame-group)
+       (the-as art-joint-anim (-> self draw art-group data 8))
+       )
+      )
+     (let ((v1-7 (-> self skel root-channel 0)))
+      (set! (-> v1-7 num-func) num-func-identity)
+      (set! (-> v1-7 frame-num) 0.0)
+      )
+     (until (ja-done? 0)
+      (suspend)
+      (let* ((f0-3 0.75)
+             (f1-0 0.25)
+             (f2-0 (-> *YAKOW-bank* run-speed))
+             (f0-4
+              (fmax
+               f0-3
+               (fmin
+                (*
+                 f1-0
+                 (/ 1.0 f2-0)
+                 (-> self final-speed)
+                 (-> *YAKOW-bank* run-anim-speed)
+                 )
+                (-> *YAKOW-bank* max-run-anim-speed)
+                )
+               )
+              )
+             (a0-6 (-> self skel root-channel 0))
+             )
+       (set!
+        (-> a0-6 param 0)
+        (the float (+ (-> a0-6 frame-group data 0 length) -1))
+        )
+       (set! (-> a0-6 param 1) f0-4)
+       (joint-control-channel-group-eval!
+        a0-6
+        (the-as art-joint-anim #f)
+        num-func-seek!
+        )
+       )
+      )
+     )
+    (else
+     (let ((a0-8 (-> self skel root-channel 0)))
+      (set!
+       (-> a0-8 frame-group)
+       (the-as art-joint-anim (-> self draw art-group data 11))
+       )
+      (set!
+       (-> a0-8 param 0)
+       (the
+        float
+        (+
+         (->
+          (the-as art-joint-anim (-> self draw art-group data 11))
+          data
+          0
+          length
+          )
+         -1
+         )
+        )
+       )
+      (set! (-> a0-8 param 1) 1.0)
+      (set! (-> a0-8 frame-num) 0.0)
+      (joint-control-channel-group!
+       a0-8
+       (the-as art-joint-anim (-> self draw art-group data 11))
+       num-func-seek!
+       )
+      )
+     (until (ja-done? 0)
+      (if (< 40.96 (-> self final-speed))
+       (go yakow-run-away)
+       )
+      (suspend)
+      (let ((a0-9 (-> self skel root-channel 0)))
+       (set!
+        (-> a0-9 param 0)
+        (the float (+ (-> a0-9 frame-group data 0 length) -1))
+        )
+       (set! (-> a0-9 param 1) 1.0)
+       (joint-control-channel-group-eval!
+        a0-9
+        (the-as art-joint-anim #f)
+        num-func-seek!
+        )
+       )
+      )
+     )
+    )
+   (go yakow-run-away)
+   (none)
+   )
+  :post
+  yakow-run-post
+  )
+
+(defstate yakow-die (yakow)
+  :event
+  (the-as
+   (function process int symbol event-message-block object :behavior yakow)
+   #f
+   )
+  :code
+  (behavior ()
+   (let ((v1-1 (-> self root-override root-prim)))
+    (set! (-> v1-1 collide-with) (the-as uint 0))
+    (set! (-> v1-1 prim-core collide-as) (the-as uint 0))
+    )
+   0
+   (TODO-RENAME-9
+    (-> self fact-override)
+    #t
+    *entity-pool*
+    (-> self fact-override)
+    0
+    )
+   (process-entity-status! self (entity-perm-status dead) #t)
+   (none)
+   )
+  )
+
+(defmethod copy-defaults! yakow ((obj yakow) (arg0 res-lump))
+  (stack-size-set! (-> obj main-thread) 512)
+  (let
+   ((s4-0
+     (new 'process 'collide-shape-moving obj (collide-list-enum hit-by-player))
+     )
+    )
+   (set! (-> s4-0 dynam) (copy *standard-dynamics* 'process))
+   (set! (-> s4-0 reaction) default-collision-reaction)
+   (set! (-> s4-0 no-reaction) nothing)
+   (let ((s3-0 (new 'process 'collide-shape-prim-sphere s4-0 (the-as uint 0))))
+    (set! (-> s3-0 prim-core collide-as) (the-as uint 256))
+    (set! (-> s3-0 collide-with) (the-as uint 16))
+    (set! (-> s3-0 prim-core action) (the-as uint 3073))
+    (set! (-> s3-0 prim-core offense) 4)
+    (set-vector! (-> s3-0 local-sphere) 0.0 4096.0 0.0 10240.0)
+    )
+   (dummy-46 s4-0)
+   (set! (-> s4-0 nav-radius) (* 0.75 (-> s4-0 root-prim local-sphere w)))
+   (dummy-50 s4-0)
+   (set! (-> obj root-override) s4-0)
+   )
+  (process-drawable-from-entity! obj arg0)
+  (set! (-> obj align) (new 'process 'align-control obj))
+  (set!
+   (-> obj nav)
+   (new 'process 'nav-control (-> obj root-override) 16 40960.0)
+   )
+  (logior!
+   (-> obj nav flags)
+   (nav-control-flags display-marks bit3 bit5 bit6 bit7)
+   )
+  (set! (-> obj nav nearest-y-threshold) 409600.0)
+  (set!
+   (-> obj fact-override)
+   (new
+    'process
+    'fact-info-enemy
+    obj
+    (pickup-type eco-pill-random)
+    (-> *FACT-bank* default-pill-inc)
+    )
+   )
+  (set!
+   (-> obj fact-override idle-distance)
+   (-> *YAKOW-bank* default-idle-distance)
+   )
+  (dummy-14 obj *yakow-sg* '())
+  (set!
+   (-> obj draw shadow-ctrl)
+   (new
+    'process
+    'shadow-control
+    -4096.0
+    4096.0
+    614400.0
+    (the-as float 24)
+    245760.0
+    )
+   )
+  (set! (-> obj link) (new 'process 'actor-link-info obj))
+  (set! (-> obj water) (new 'process 'water-control obj 6 0.0 8192.0 2048.0))
+  (set! (-> obj water flags) (the-as uint 2))
+  (set! (-> obj water height) (res-lump-float (-> obj entity) 'water-height))
+  (set! (-> obj water ripple-size) 12288.0)
+  (set! (-> obj home-base quad) (-> obj root-override trans quad))
+  (let ((v1-40 (res-lump-struct (-> obj entity) 'alt-vector vector)))
+   (when v1-40
+    (set! (-> obj dest-base quad) (-> v1-40 quad))
+    (set! (-> obj dest-rot) (-> v1-40 w))
+    (set! (-> obj dest-base w) 1.0)
+    )
+   )
+  (set! (-> obj vulnerable) #t)
+  (set! (-> obj grazing) #f)
+  (set! (-> obj enable-turn-around) #f)
+  (set!
+   (-> obj in-pen)
+   (and
+    (-> obj entity)
+    (logtest? (-> obj entity extra perm status) (entity-perm-status complete))
+    )
+   )
+  (cond
+   ((-> obj in-pen)
+    (set! (-> obj root-override trans quad) (-> obj dest-base quad))
+    (set-yaw-angle-clear-roll-pitch! (-> obj root-override) (-> obj dest-rot))
+    (go yakow-graze)
+    )
+   (else
+    (yakow-task-complete? #f)
+    (go yakow-idle)
+    )
+   )
+  (none)
+  )
+
+
+
+

@@ -5,6 +5,14 @@
 ;; name in dgo: nav-enemy-h
 ;; dgos: GAME, COMMON, L1
 
+(declare-type nav-enemy process-drawable)
+(define-extern nav-enemy-send-attack (function process touching-shapes-entry symbol object :behavior nav-enemy))
+(define-extern nav-enemy-set-hit-from-direction (function process none :behavior nav-enemy))
+(define-extern nav-enemy-get-new-patrol-point (function int :behavior nav-enemy))
+(define-extern nav-enemy-test-point-near-nav-mesh? (function vector symbol :behavior nav-enemy))
+
+;; DECOMP BEGINS
+
 (deftype nav-enemy-info (basic)
   ((idle-anim                 int32    :offset-assert   4)
    (walk-anim                 int32    :offset-assert   8)
@@ -45,57 +53,57 @@
    (shadow-max-y              meters   :offset-assert 168)
    (shadow-min-y              meters   :offset-assert 172)
    (shadow-locus-dist         meters   :offset-assert 176)
-   (use-align                 symbol    :offset-assert 180)
-   (draw-shadow               symbol    :offset-assert 184)
-   (move-to-ground            symbol    :offset-assert 188)
-   (hover-if-no-ground        symbol    :offset-assert 192)
-   (use-momentum              symbol    :offset-assert 196)
-   (use-flee                  symbol    :offset-assert 200)
-   (use-proximity-notice      symbol    :offset-assert 204)
-   (use-jump-blocked          symbol    :offset-assert 208)
-   (use-jump-patrol           symbol    :offset-assert 212)
+   (use-align                 symbol   :offset-assert 180)
+   (draw-shadow               symbol   :offset-assert 184)
+   (move-to-ground            symbol   :offset-assert 188)
+   (hover-if-no-ground        symbol   :offset-assert 192)
+   (use-momentum              symbol   :offset-assert 196)
+   (use-flee                  symbol   :offset-assert 200)
+   (use-proximity-notice      symbol   :offset-assert 204)
+   (use-jump-blocked          symbol   :offset-assert 208)
+   (use-jump-patrol           symbol   :offset-assert 212)
    (gnd-collide-with          uint64   :offset-assert 216)
-   (debug-draw-neck           symbol    :offset-assert 224)
-   (debug-draw-jump           symbol    :offset-assert 228)
+   (debug-draw-neck           symbol   :offset-assert 224)
+   (debug-draw-jump           symbol   :offset-assert 228)
    )
   :method-count-assert 9
   :size-assert         #xe8
   :flag-assert         #x9000000e8
   )
 
+
 (deftype nav-enemy (process-drawable)
-  ((collide-info        collide-shape-moving  :score 100 :offset 112)
-   (enemy-info          fact-info-enemy       :score 100 :offset 144)
-   (hit-from-dir        vector     :inline :offset-assert 176)
-   (event-param-point   vector     :inline :offset-assert 192)
-   (frustration-point   vector     :inline :offset-assert 208)
-   (jump-dest           vector     :inline :offset-assert 224)
-   (jump-trajectory     trajectory :inline :offset-assert 240)
-   (jump-time           uint64             :offset-assert 280)
-   (nav-info            nav-enemy-info     :offset-assert 288)
-   (target-speed        float              :offset-assert 292)
-   (momentum-speed      float              :offset-assert 296)
-   (acceleration        float              :offset-assert 300)
-   (rotate-speed        float              :offset-assert 304)
-   (turn-time           int64              :offset-assert 312)
-   (frustration-time    int64              :offset-assert 320)
-   (speed-scale         float              :offset-assert 328)
-   (neck                joint-mod          :offset-assert 332) ; this is what `neck` is on the pelican
-   (reaction-time       int64              :offset-assert 336)
-   (notice-time         int64              :offset-assert 344)
-   (state-timeout       int64              :offset-assert 352)
-   (free-time           int64              :offset-assert 360)
-   (touch-time          int64              :offset-assert 368)
-   (nav-enemy-flags     uint32             :offset-assert 376)
-   (incomming-attack-id handle             :offset-assert 384)
-   (jump-return-state   (state process)    :offset-assert 392)
-   (rand-gen            random-generator              :offset-assert 396)
+  ((collide-info        collide-shape-moving         :offset        112)
+   (enemy-info          fact-info-enemy              :offset        144)
+   (hit-from-dir        vector               :inline :offset-assert 176)
+   (event-param-point   vector               :inline :offset-assert 192)
+   (frustration-point   vector               :inline :offset-assert 208)
+   (jump-dest           vector               :inline :offset-assert 224)
+   (jump-trajectory     trajectory           :inline :offset-assert 240)
+   (jump-time           uint64                       :offset-assert 280)
+   (nav-info            nav-enemy-info               :offset-assert 288)
+   (target-speed        float                        :offset-assert 292)
+   (momentum-speed      float                        :offset-assert 296)
+   (acceleration        float                        :offset-assert 300)
+   (rotate-speed        float                        :offset-assert 304)
+   (turn-time           int64                        :offset-assert 312)
+   (frustration-time    int64                        :offset-assert 320)
+   (speed-scale         float                        :offset-assert 328)
+   (neck                joint-mod                    :offset-assert 332)
+   (reaction-time       int64                        :offset-assert 336)
+   (notice-time         int64                        :offset-assert 344)
+   (state-timeout       int64                        :offset-assert 352)
+   (free-time           int64                        :offset-assert 360)
+   (touch-time          int64                        :offset-assert 368)
+   (nav-enemy-flags     uint32                       :offset-assert 376)
+   (incomming-attack-id handle                       :offset-assert 384)
+   (jump-return-state   (state process)              :offset-assert 392)
+   (rand-gen            random-generator             :offset-assert 396)
    )
   :heap-base #x120
   :method-count-assert 76
   :size-assert         #x190
   :flag-assert         #x4c01200190
-  ;; inherited inspect of process-drawable
   (:methods
     (nav-enemy-attack () _type_ :state 20)
     (nav-enemy-chase () _type_ :state 21)
@@ -128,9 +136,9 @@
     (TODO-RENAME-48 (_type_) none 48) ;; - Stubbed
     (TODO-RENAME-49 (_type_ nav-enemy-info) float 49)
     (TODO-RENAME-50 (_type_ vector) symbol 50)
-    (dummy-51 (_type_) none 51)
-    (dummy-52 (_type_) none 52)
-    (dummy-53 (_type_) none 53)
+    (dummy-51 (_type_) float 51)
+    (dummy-52 (_type_ vector) vector 52)
+    (dummy-53 (_type_) symbol 53)
     (dummy-54 (_type_) none 54)
     (dummy-55 (_type_) none 55)
     (dummy-56 (_type_) none 56)
@@ -149,15 +157,16 @@
     (dummy-69 (_type_) none 69)
     (dummy-70 (_type_) none 70)
     (dummy-71 (_type_) none 71)
-    (dummy-72 (_type_ process event-message-block) object 72) ;; TODO - args unknown, 3rd arg contains a touching-shapes-entry offset 16/20
+    (dummy-72 (_type_ process event-message-block) object 72)
     (TODO-RENAME-73 (_type_ process) symbol 73)
     (nav-enemy-jump-blocked () _type_ :state 74)
     (dummy-75 (_type_) none 75)
     )
   )
 
-;; NOTE - some forward declarations
-(define-extern nav-enemy-send-attack (function process touching-shapes-entry symbol object :behavior nav-enemy))
-(define-extern nav-enemy-set-hit-from-direction (function process none :behavior nav-enemy))
-(define-extern nav-enemy-get-new-patrol-point (function int :behavior nav-enemy))
-(define-extern nav-enemy-test-point-near-nav-mesh? (function vector symbol :behavior nav-enemy))
+
+0
+
+
+
+
