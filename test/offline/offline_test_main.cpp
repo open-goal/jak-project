@@ -64,7 +64,8 @@ const std::unordered_set<std::string> g_functions_expected_to_reject = {
     "vblank-handler",  // asm
     "vif1-handler", "vif1-handler-debug",
     // sparticle
-    "sp-launch-particles-var", "particle-adgif", "sp-init-fields!",
+    "sp-launch-particles-var", "particle-adgif", "sp-init-fields!", "memcpy", "sp-process-block-2d",
+    "sp-process-block-3d",
     // ripple - asm
     "ripple-execute-init", "ripple-create-wave-table", "ripple-apply-wave-table",
     "ripple-matrix-scale",
