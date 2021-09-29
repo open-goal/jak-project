@@ -7,12 +7,702 @@
 
 (define-extern *babak-sg* skeleton-group)
 
-;; TODO - for sidekick-human
+;; DECOMP BEGINS
+
 (deftype babak (nav-enemy)
   ()
+  :heap-base #x120
   :method-count-assert 76
   :size-assert         #x190
-  :heap-base           #x120
   :flag-assert         #x4c01200190
-  ;;  not enough basic ops
   )
+
+
+(let
+  ((v1-1
+    (new 'static 'skeleton-group
+     :art-group-name "babak"
+     :bounds
+     (new 'static 'vector :y 8192.0 :w 12288.0)
+     :max-lod 2
+     :longest-edge (meters 1.0)
+     :version #x6
+     :shadow 4
+     )
+    )
+   )
+  (set! (-> v1-1 jgeo) 0)
+  (set! (-> v1-1 janim) -1)
+  (set! (-> v1-1 mgeo 0) (the-as uint 1))
+  (set! (-> v1-1 lod-dist 0) 81920.0)
+  (set! (-> v1-1 mgeo 1) (the-as uint 2))
+  (set! (-> v1-1 lod-dist 1) 163840.0)
+  (set! (-> v1-1 mgeo 2) (the-as uint 3))
+  (set! (-> v1-1 lod-dist 2) 4095996000.0)
+  (set! *babak-sg* v1-1)
+  )
+
+(defstate nav-enemy-patrol (babak)
+  :virtual #t
+  :code
+  (behavior ()
+   (cond
+    ((= (if (> (-> self skel active-channels) 0)
+         (-> self skel root-channel 0 frame-group)
+         )
+      (-> self draw art-group data 10)
+      )
+     (ja-channel-push! 1 45)
+     (let ((gp-0 (-> self skel root-channel 0)))
+      (set!
+       (-> gp-0 frame-group)
+       (the-as art-joint-anim (-> self draw art-group data 6))
+       )
+      (set!
+       (-> gp-0 param 0)
+       (the
+        float
+        (+
+         (->
+          (the-as art-joint-anim (-> self draw art-group data 6))
+          data
+          0
+          length
+          )
+         -1
+         )
+        )
+       )
+      (set! (-> gp-0 param 1) 1.0)
+      (set! (-> gp-0 frame-num) (ja-aframe 12.0 0))
+      (joint-control-channel-group!
+       gp-0
+       (the-as art-joint-anim (-> self draw art-group data 6))
+       num-func-seek!
+       )
+      )
+     (until (ja-done? 0)
+      (suspend)
+      (let ((a0-7 (-> self skel root-channel 0)))
+       (set!
+        (-> a0-7 param 0)
+        (the float (+ (-> a0-7 frame-group data 0 length) -1))
+        )
+       (set! (-> a0-7 param 1) 1.0)
+       (joint-control-channel-group-eval!
+        a0-7
+        (the-as art-joint-anim #f)
+        num-func-seek!
+        )
+       )
+      )
+     )
+    (else
+     (ja-channel-push! 1 60)
+     )
+    )
+   ((the-as
+     (function none)
+     (-> (method-of-type nav-enemy nav-enemy-patrol) code)
+     )
+    )
+   (none)
+   )
+  )
+
+(defstate nav-enemy-chase (babak)
+  :virtual #t
+  :code
+  (behavior ()
+   (let ((f30-0 (nav-enemy-rnd-float-range 0.9 1.1)))
+    (cond
+     ((= (if (> (-> self skel active-channels) 0)
+          (-> self skel root-channel 0 frame-group)
+          )
+       (-> self draw art-group data 14)
+       )
+      (let ((a0-5 (-> self skel root-channel 0)))
+       (set!
+        (-> a0-5 param 0)
+        (the float (+ (-> a0-5 frame-group data 0 length) -1))
+        )
+       (set! (-> a0-5 param 1) 1.0)
+       (joint-control-channel-group!
+        a0-5
+        (the-as art-joint-anim #f)
+        num-func-seek!
+        )
+       )
+      (ja-channel-push! 1 51)
+      (let ((a0-7 (-> self skel root-channel 0)))
+       (set!
+        (-> a0-7 frame-group)
+        (the-as
+         art-joint-anim
+         (-> self draw art-group data (-> self nav-info run-anim))
+         )
+        )
+       (set!
+        (-> a0-7 param 0)
+        (the
+         float
+         (+
+          (->
+           (the-as
+            art-joint-anim
+            (-> self draw art-group data (-> self nav-info run-anim))
+            )
+           data
+           0
+           length
+           )
+          -1
+          )
+         )
+        )
+       (set! (-> a0-7 param 1) f30-0)
+       (set! (-> a0-7 frame-num) 0.0)
+       (joint-control-channel-group!
+        a0-7
+        (the-as
+         art-joint-anim
+         (-> self draw art-group data (-> self nav-info run-anim))
+         )
+        num-func-seek!
+        )
+       )
+      (until (ja-done? 0)
+       (ja-blend-eval)
+       (suspend)
+       (let ((a0-8 (-> self skel root-channel 0)))
+        (set!
+         (-> a0-8 param 0)
+         (the float (+ (-> a0-8 frame-group data 0 length) -1))
+         )
+        (set! (-> a0-8 param 1) f30-0)
+        (joint-control-channel-group-eval!
+         a0-8
+         (the-as art-joint-anim #f)
+         num-func-seek!
+         )
+        )
+       )
+      )
+     (else
+      (ja-channel-push! 1 60)
+      (let ((v1-42 (-> self skel root-channel 0)))
+       (set!
+        (-> v1-42 frame-group)
+        (the-as
+         art-joint-anim
+         (-> self draw art-group data (-> self nav-info run-anim))
+         )
+        )
+       )
+      (let ((v1-45 (-> self skel root-channel 0)))
+       (set! (-> v1-45 num-func) num-func-identity)
+       (set! (-> v1-45 frame-num) 0.0)
+       )
+      )
+     )
+    (while #t
+     (suspend)
+     (let ((a0-17 (-> self skel root-channel 0)))
+      (set! (-> a0-17 param 0) f30-0)
+      (joint-control-channel-group-eval!
+       a0-17
+       (the-as art-joint-anim #f)
+       num-func-loop!
+       )
+      )
+     )
+    )
+   (none)
+   )
+  )
+
+(defstate nav-enemy-stare (babak)
+  :virtual #t
+  :code
+  (behavior ()
+   (set! (-> self turn-time) 60)
+   (let ((f30-0 (nav-enemy-rnd-float-range 0.8 1.2)))
+    (when
+     (or
+      (logtest? (-> self nav-enemy-flags) 256)
+      (and (nav-enemy-player-vulnerable?) (nav-enemy-rnd-percent? 0.5))
+      )
+     (ja-channel-push! 1 30)
+     (let ((gp-0 (-> self skel root-channel 0)))
+      (set!
+       (-> gp-0 frame-group)
+       (the-as art-joint-anim (-> self draw art-group data 11))
+       )
+      (set! (-> gp-0 param 0) (ja-aframe 68.0 0))
+      (set! (-> gp-0 param 1) f30-0)
+      (set! (-> gp-0 frame-num) 0.0)
+      (joint-control-channel-group!
+       gp-0
+       (the-as art-joint-anim (-> self draw art-group data 11))
+       num-func-seek!
+       )
+      )
+     (until (ja-done? 0)
+      (suspend)
+      (let ((gp-1 (-> self skel root-channel 0)))
+       (set! (-> gp-1 param 0) (ja-aframe 68.0 0))
+       (set! (-> gp-1 param 1) f30-0)
+       (joint-control-channel-group-eval!
+        gp-1
+        (the-as art-joint-anim #f)
+        num-func-seek!
+        )
+       )
+      )
+     )
+    (while #t
+     (when (not (nav-enemy-facing-player? 2730.6667))
+      (logior! (-> self nav-enemy-flags) 16)
+      (let ((a0-9 (-> self skel root-channel 0)))
+       (set! (-> a0-9 param 0) 1.0)
+       (joint-control-channel-group!
+        a0-9
+        (the-as art-joint-anim #f)
+        num-func-loop!
+        )
+       )
+      (ja-channel-push! 1 60)
+      (let ((v1-25 (-> self skel root-channel 0)))
+       (set!
+        (-> v1-25 frame-group)
+        (the-as art-joint-anim (-> self draw art-group data 16))
+        )
+       )
+      (let ((v1-28 (-> self skel root-channel 0)))
+       (set! (-> v1-28 num-func) num-func-identity)
+       (set! (-> v1-28 frame-num) 0.0)
+       )
+      (until (nav-enemy-facing-player? 1820.4445)
+       (ja-blend-eval)
+       (suspend)
+       (let ((a0-15 (-> self skel root-channel 0)))
+        (set! (-> a0-15 param 0) 0.75)
+        (joint-control-channel-group-eval!
+         a0-15
+         (the-as art-joint-anim #f)
+         num-func-loop!
+         )
+        )
+       )
+      (set! (-> self nav-enemy-flags) (logand -17 (-> self nav-enemy-flags)))
+      )
+     (if (not (= (if (> (-> self skel active-channels) 0)
+                  (-> self skel root-channel 0 frame-group)
+                  )
+               (-> self draw art-group data 5)
+               )
+          )
+      (ja-channel-push! 1 60)
+      )
+     (let ((a0-23 (-> self skel root-channel 0)))
+      (set!
+       (-> a0-23 frame-group)
+       (the-as art-joint-anim (-> self draw art-group data 5))
+       )
+      (set!
+       (-> a0-23 param 0)
+       (the
+        float
+        (+
+         (->
+          (the-as art-joint-anim (-> self draw art-group data 5))
+          data
+          0
+          length
+          )
+         -1
+         )
+        )
+       )
+      (set! (-> a0-23 param 1) f30-0)
+      (set! (-> a0-23 frame-num) 0.0)
+      (joint-control-channel-group!
+       a0-23
+       (the-as art-joint-anim (-> self draw art-group data 5))
+       num-func-seek!
+       )
+      )
+     (until (ja-done? 0)
+      (suspend)
+      (let ((a0-24 (-> self skel root-channel 0)))
+       (set!
+        (-> a0-24 param 0)
+        (the float (+ (-> a0-24 frame-group data 0 length) -1))
+        )
+       (set! (-> a0-24 param 1) f30-0)
+       (joint-control-channel-group-eval!
+        a0-24
+        (the-as art-joint-anim #f)
+        num-func-seek!
+        )
+       )
+      )
+     (when (nav-enemy-rnd-percent? 0.3)
+      (ja-channel-push! 1 30)
+      (let ((gp-2 (-> self skel root-channel 0)))
+       (set!
+        (-> gp-2 frame-group)
+        (the-as art-joint-anim (-> self draw art-group data 11))
+        )
+       (set! (-> gp-2 param 0) (ja-aframe 68.0 0))
+       (set! (-> gp-2 param 1) f30-0)
+       (set! (-> gp-2 frame-num) 0.0)
+       (joint-control-channel-group!
+        gp-2
+        (the-as art-joint-anim (-> self draw art-group data 11))
+        num-func-seek!
+        )
+       )
+      (until (ja-done? 0)
+       (suspend)
+       (let ((gp-3 (-> self skel root-channel 0)))
+        (set! (-> gp-3 param 0) (ja-aframe 68.0 0))
+        (set! (-> gp-3 param 1) f30-0)
+        (joint-control-channel-group-eval!
+         gp-3
+         (the-as art-joint-anim #f)
+         num-func-seek!
+         )
+        )
+       )
+      )
+     )
+    )
+   (none)
+   )
+  )
+
+(defstate nav-enemy-give-up (babak)
+  :virtual #t
+  :code
+  (behavior ()
+   (set! (-> self rotate-speed) 218453.33)
+   (set! (-> self turn-time) 150)
+   (ja-channel-push! 1 45)
+   (let ((s4-0 (-> self collide-info))
+         (s5-0 (target-pos 0))
+         )
+    (when
+     (<
+      (fabs
+       (deg-diff
+        (y-angle s4-0)
+        (vector-y-angle
+         (vector-! (new 'stack-no-clear 'vector) s5-0 (-> s4-0 trans))
+         )
+        )
+       )
+      12743.111
+      )
+     (let ((a0-6 (-> self skel root-channel 0)))
+      (set!
+       (-> a0-6 frame-group)
+       (the-as art-joint-anim (-> self draw art-group data 9))
+       )
+      (set!
+       (-> a0-6 param 0)
+       (the
+        float
+        (+
+         (->
+          (the-as art-joint-anim (-> self draw art-group data 9))
+          data
+          0
+          length
+          )
+         -1
+         )
+        )
+       )
+      (set! (-> a0-6 param 1) 1.0)
+      (set! (-> a0-6 frame-num) 0.0)
+      (joint-control-channel-group!
+       a0-6
+       (the-as art-joint-anim (-> self draw art-group data 9))
+       num-func-seek!
+       )
+      )
+     (until (ja-done? 0)
+      (suspend)
+      (let ((a0-7 (-> self skel root-channel 0)))
+       (set!
+        (-> a0-7 param 0)
+        (the float (+ (-> a0-7 frame-group data 0 length) -1))
+        )
+       (set! (-> a0-7 param 1) 1.0)
+       (joint-control-channel-group-eval!
+        a0-7
+        (the-as art-joint-anim #f)
+        num-func-seek!
+        )
+       )
+      )
+     )
+    )
+   (logclear! (-> self nav flags) (nav-control-flags bit17 bit19))
+   (nav-enemy-get-new-patrol-point)
+   (let ((a0-12 (-> self skel root-channel 0)))
+    (set!
+     (-> a0-12 frame-group)
+     (the-as art-joint-anim (-> self draw art-group data 10))
+     )
+    (set!
+     (-> a0-12 param 0)
+     (the
+      float
+      (+
+       (->
+        (the-as art-joint-anim (-> self draw art-group data 10))
+        data
+        0
+        length
+        )
+       -1
+       )
+      )
+     )
+    (set! (-> a0-12 param 1) 1.0)
+    (set! (-> a0-12 frame-num) 0.0)
+    (joint-control-channel-group!
+     a0-12
+     (the-as art-joint-anim (-> self draw art-group data 10))
+     num-func-seek!
+     )
+    )
+   (until (ja-done? 0)
+    (seek-to-point-toward-point!
+     (-> self collide-info)
+     (-> self nav destination-pos)
+     (-> self rotate-speed)
+     (-> self turn-time)
+     )
+    (suspend)
+    (let ((a0-14 (-> self skel root-channel 0)))
+     (set!
+      (-> a0-14 param 0)
+      (the float (+ (-> a0-14 frame-group data 0 length) -1))
+      )
+     (set! (-> a0-14 param 1) 1.0)
+     (joint-control-channel-group-eval!
+      a0-14
+      (the-as art-joint-anim #f)
+      num-func-seek!
+      )
+     )
+    )
+   (go-virtual nav-enemy-patrol)
+   (none)
+   )
+  )
+
+(defstate nav-enemy-jump-land (babak)
+  :virtual #t
+  :code
+  (behavior ()
+   (let ((a0-0 (-> self skel root-channel 0)))
+    (set!
+     (-> a0-0 param 0)
+     (the float (+ (-> a0-0 frame-group data 0 length) -1))
+     )
+    (set! (-> a0-0 param 1) 1.0)
+    (joint-control-channel-group!
+     a0-0
+     (the-as art-joint-anim #f)
+     num-func-seek!
+     )
+    )
+   (ja-channel-push! 1 22)
+   (let ((gp-0 (-> self skel root-channel 0)))
+    (set!
+     (-> gp-0 frame-group)
+     (the-as
+      art-joint-anim
+      (-> self draw art-group data (-> self nav-info jump-land-anim))
+      )
+     )
+    (set! (-> gp-0 param 0) (ja-aframe 32.0 0))
+    (set! (-> gp-0 param 1) 0.5)
+    (set! (-> gp-0 frame-num) 0.0)
+    (joint-control-channel-group!
+     gp-0
+     (the-as
+      art-joint-anim
+      (-> self draw art-group data (-> self nav-info jump-land-anim))
+      )
+     num-func-seek!
+     )
+    )
+   (until (ja-done? 0)
+    (ja-blend-eval)
+    (suspend)
+    (let ((gp-1 (-> self skel root-channel 0)))
+     (set! (-> gp-1 param 0) (ja-aframe 32.0 0))
+     (set! (-> gp-1 param 1) 0.5)
+     (joint-control-channel-group-eval!
+      gp-1
+      (the-as art-joint-anim #f)
+      num-func-seek!
+      )
+     )
+    )
+   (go-virtual nav-enemy-chase)
+   (none)
+   )
+  )
+
+(define
+  *babak-nav-enemy-info*
+  (new 'static 'nav-enemy-info
+   :idle-anim 5
+   :walk-anim 6
+   :turn-anim 16
+   :notice-anim 7
+   :run-anim 8
+   :jump-anim 13
+   :jump-land-anim 14
+   :victory-anim 11
+   :taunt-anim 11
+   :die-anim 12
+   :neck-joint 5
+   :player-look-at-joint 5
+   :run-travel-speed (meters 6.0)
+   :run-rotate-speed (degrees 2880.0)
+   :run-acceleration (meters 1.0)
+   :run-turn-time #x1e
+   :walk-travel-speed (meters 3.0)
+   :walk-rotate-speed (degrees 720.0)
+   :walk-acceleration (meters 1.0)
+   :walk-turn-time #x96
+   :attack-shove-back (meters 3.0)
+   :attack-shove-up (meters 2.0)
+   :shadow-size (meters 2.0)
+   :notice-nav-radius (meters 2.0)
+   :nav-nearest-y-threshold (meters 10.0)
+   :notice-distance (meters 30.0)
+   :proximity-notice-distance (meters 20.0)
+   :stop-chase-distance (meters 40.0)
+   :frustration-distance (meters 8.0)
+   :frustration-time #x4b0
+   :die-anim-hold-frame 24.0
+   :jump-anim-start-frame 10.0
+   :jump-land-anim-end-frame 10000000000.0
+   :jump-height-min (meters 3.0)
+   :jump-height-factor 0.5
+   :jump-start-anim-speed 1.0
+   :shadow-max-y (meters 1.0)
+   :shadow-min-y (meters -1.0)
+   :shadow-locus-dist (meters 150.0)
+   :use-align #t
+   :draw-shadow #t
+   :move-to-ground #t
+   :hover-if-no-ground #f
+   :use-momentum #f
+   :use-flee #t
+   :use-proximity-notice #t
+   :use-jump-blocked #t
+   :use-jump-patrol #f
+   :gnd-collide-with #x1
+   :debug-draw-neck #f
+   :debug-draw-jump #f
+   )
+  )
+
+(defmethod initialize-collision babak ((obj babak))
+  (let
+   ((s5-0
+     (new
+      'process
+      'collide-shape-moving
+      obj
+      (collide-list-enum usually-hit-by-player)
+      )
+     )
+    )
+   (set! (-> s5-0 dynam) (copy *standard-dynamics* 'process))
+   (set! (-> s5-0 reaction) default-collision-reaction)
+   (set! (-> s5-0 no-reaction) nothing)
+   (let ((s4-0 (new 'process 'collide-shape-prim-group s5-0 (the-as uint 3) 0)))
+    (set! (-> s4-0 prim-core collide-as) (the-as uint 256))
+    (set! (-> s4-0 collide-with) (the-as uint 16))
+    (set! (-> s4-0 prim-core action) (the-as uint 1))
+    (set-vector! (-> s4-0 local-sphere) 0.0 8192.0 0.0 12288.0)
+    (dummy-46 s5-0)
+    (let ((s3-0 (new 'process 'collide-shape-prim-sphere s5-0 (the-as uint 3))))
+     (set! (-> s3-0 prim-core collide-as) (the-as uint 256))
+     (set! (-> s3-0 collide-with) (the-as uint 16))
+     (set! (-> s3-0 prim-core action) (the-as uint 1))
+     (set! (-> s3-0 prim-core offense) 1)
+     (set-vector! (-> s3-0 local-sphere) 0.0 4096.0 0.0 3072.0)
+     )
+    (dummy-28 s4-0)
+    (let ((s3-1 (new 'process 'collide-shape-prim-sphere s5-0 (the-as uint 3))))
+     (set! (-> s3-1 prim-core collide-as) (the-as uint 256))
+     (set! (-> s3-1 collide-with) (the-as uint 16))
+     (set! (-> s3-1 prim-core action) (the-as uint 1))
+     (set! (-> s3-1 prim-core offense) 1)
+     (set-vector! (-> s3-1 local-sphere) 0.0 9830.4 0.0 3072.0)
+     )
+    (dummy-28 s4-0)
+    (let ((s3-2 (new 'process 'collide-shape-prim-sphere s5-0 (the-as uint 1))))
+     (set! (-> s3-2 prim-core collide-as) (the-as uint 256))
+     (set! (-> s3-2 collide-with) (the-as uint 16))
+     (set! (-> s3-2 prim-core offense) 2)
+     (set! (-> s3-2 transform-index) 6)
+     (set-vector! (-> s3-2 local-sphere) 0.0 0.0 0.0 2048.0)
+     )
+    (dummy-28 s4-0)
+    )
+   (set! (-> s5-0 nav-radius) 6144.0)
+   (dummy-50 s5-0)
+   (set! (-> s5-0 max-iteration-count) (the-as uint 2))
+   (set! (-> obj collide-info) s5-0)
+   )
+  0
+  (none)
+  )
+
+(defmethod TODO-RENAME-48 babak ((obj babak))
+  (dummy-14 obj *babak-sg* '())
+  (TODO-RENAME-45 obj *babak-nav-enemy-info*)
+  (set! (-> obj neck up) (the-as uint 0))
+  (set! (-> obj neck nose) (the-as uint 1))
+  (set! (-> obj neck ear) (the-as uint 2))
+  0
+  (none)
+  )
+
+(defmethod TODO-RENAME-59 babak ((obj babak))
+  (cond
+   ((and
+     (and
+      (-> obj entity)
+      (logtest? (-> obj entity extra perm status) (entity-perm-status complete))
+      )
+     (logtest? (-> obj enemy-info options) 2)
+     )
+    (go (method-of-object obj nav-enemy-fuel-cell))
+    )
+   ((logtest? (-> obj enemy-info options) 32)
+    (go (method-of-object obj nav-enemy-wait-for-cue))
+    )
+   (else
+    (go (method-of-object obj nav-enemy-idle))
+    )
+   )
+  0
+  (none)
+  )
+
+
+
+

@@ -5,6 +5,10 @@
 ;; name in dgo: task-control-h
 ;; dgos: GAME, ENGINE
 
+;; for process-taskable
+(declare-type process-taskable process-drawable)
+(define-extern othercam-init-by-other (function process-taskable symbol symbol symbol none :behavior othercam))
+
 ;; There are a fixed number of game tasks. Most are just getting a power cell,
 ;; but there are also ones for using the levitator etc.
 
@@ -42,6 +46,8 @@
   )
 
 (declare-type task-control basic)
+
+;; decomp begins
 
 ;; A task-cstage describes 
 (deftype task-cstage (structure)
@@ -96,20 +102,21 @@
   (:methods
     (dummy-9 (_type_ vector int float process-drawable) none 9)
     (TODO-RENAME-10 (_type_ vector int float process-drawable) vector 10)
-    (dummy-11 (_type_ string symbol vector) none 11)
+    (dummy-11 (_type_ string symbol vector) symbol 11)
     )
   )
 
 (deftype process-taskable (process-drawable)
-  ((tasks                task-control            :offset-assert 176)
+  ((root-override        collide-shape           :score 100 :offset 112)
+   (tasks                task-control            :offset-assert 176)
    (query                gui-query       :inline :offset-assert 180)
    (old-target-pos       transformq      :inline :offset-assert 208)
    (cell-for-task        game-task               :offset-assert 256)
-   (cell-x               uint64                  :offset-assert 264)
+   (cell-x               handle                  :offset-assert 264)
    (cam-joint-index      int32                   :offset-assert 272)
    (skippable            basic                   :offset-assert 276) ;; probably a symbol
    (blend-on-exit        basic                   :offset-assert 280) ;; probably a symbol?
-   (camera               uint64                  :offset-assert 288)
+   (camera               handle                  :offset-assert 288)
    (will-talk            symbol                   :offset-assert 296)
    (talk-message         uint32                  :offset-assert 300)
    (last-talk            uint64                  :offset-assert 304)
@@ -124,7 +131,7 @@
    (music                basic                   :offset-assert 360)
    (have-music           symbol                   :offset-assert 364) ;; probably
    (been-kicked          symbol                   :offset-assert 368) ;; probably
-   (cur-trans-hook       function                   :offset-assert 372)
+   (cur-trans-hook       (function none)                   :offset-assert 372)
    (shadow-backup        shadow-geo                   :offset-assert 376)
    )
   :heap-base #x110
@@ -132,38 +139,38 @@
   :size-assert         #x17c
   :flag-assert         #x350110017c
   (:methods
-    (dummy-20 () none 20)
+    (release () _type_ :state 20)
     (give-cell () _type_ :state 21) ;; state
-    (dummy-22 () none 22)
-    (enter-playing () none 23) ;; state
-    (play-accept () none 24) ;; state
-    (dummy-25 () none 25)
-    (query () none 26) ;; state
+    (lose () _type_ :state 22)
+    (enter-playing () _type_ :state 23) ;; state
+    (play-accept () _type_ :state 24) ;; state
+    (play-reject () _type_ :state 25)
+    (query () _type_ :state 26) ;; state
     (play-anim () _type_ :state 27) ;; state
     (hidden () _type_ :state 28) ;; state
-    (dummy-29 () none 29)
+    (be-clone (handle) _type_ :state 29)
     (idle () _type_ :state 30) ;; state
     (get-art-elem (_type_) art-element 31)
-    (play-anim! (_type_ symbol) basic 32)
+    (play-anim! (_type_ symbol) basic 32) ;; ret - spool-anim | ..
     (dummy-33 (_type_) none 33)
-    (dummy-34 (_type_) none 34)
+    (TODO-RENAME-34 (_type_ symbol) symbol 34)
     (dummy-35 (_type_) none 35)
-    (dummy-36 (_type_) none 36)
-    (dummy-37 (_type_) none 37)
+    (get-spool-anim-or-?? (_type_ symbol) basic 36) ;; ret - spool-anim | ..
+    (spool-push-anim (_type_) none 37)
     (dummy-38 (_type_) none 38)
     (should-display? (_type_) symbol 39)
     (dummy-40 (_type_ object skeleton-group int int vector int) none 40)
-    (initialize-collision (_type_ int) none 41)
+    (initialize-collision (_type_ int vector) none 41)
     (dummy-42 (_type_) none 42)
-    (TODO-RENAME-43 (_type_) none 43)
+    (TODO-RENAME-43 (_type_) symbol 43)
     (play-reminder (_type_) symbol 44)
     (dummy-45 (_type_) none 45)
     (dummy-46 (_type_) none 46)
     (target-above-threshold? (_type_) symbol 47)
-    (draw-shadow (_type_) none 48)
-    (dummy-49 (_type_) none 49)
-    (dummy-50 (_type_) none 50)
-    (dummy-51 (_type_) none 51)
+    (draw-npc-shadow (_type_) none 48)
+    (hidden-other () _type_ :state 49)
+    (TODO-RENAME-50 (_type_) symbol 50)
+    (close-anim-file! (_type_) symbol 51)
     (dummy-52 (_type_) none 52)
     )
   )
