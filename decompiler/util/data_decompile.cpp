@@ -667,14 +667,29 @@ goos::Object decompile_structure(const TypeSpec& type,
                                                         obj_words, labels, label.target_segment,
                                                         field_start, ts, field, words, file));
         } else {
-          if (obj_words.at(field_start / 4).kind != LinkedWord::PLAIN_DATA) {
-            continue;
+          if (field.type().base_type() == "pointer") {
+            if (obj_words.at(field_start / 4).kind != LinkedWord::SYM_PTR) {
+              continue;
+            }
+
+            if (obj_words.at(field_start / 4).symbol_name != "#f") {
+              lg::warn("Got a weird symbol in a pointer field: {}",
+                       obj_words.at(field_start / 4).symbol_name);
+              continue;
+            }
+
+            field_defs_out.emplace_back(field.name(), pretty_print::to_symbol("#f"));
+
+          } else {
+            if (obj_words.at(field_start / 4).kind != LinkedWord::PLAIN_DATA) {
+              continue;
+            }
+            std::vector<u8> bytes_out;
+            for (int byte_idx = field_start; byte_idx < field_end; byte_idx++) {
+              bytes_out.push_back(obj_words.at(byte_idx / 4).get_byte(byte_idx % 4));
+            }
+            field_defs_out.emplace_back(field.name(), decompile_value(field.type(), bytes_out, ts));
           }
-          std::vector<u8> bytes_out;
-          for (int byte_idx = field_start; byte_idx < field_end; byte_idx++) {
-            bytes_out.push_back(obj_words.at(byte_idx / 4).get_byte(byte_idx % 4));
-          }
-          field_defs_out.emplace_back(field.name(), decompile_value(field.type(), bytes_out, ts));
         }
       }
 

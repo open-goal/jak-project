@@ -896,6 +896,11 @@ TEST_F(WithGameTests, MethodCallForwardDeclared) {
                                           {"4 12\n0\n"});
 }
 
+TEST_F(WithGameTests, PointerInStatic) {
+  shared_compiler->runner.run_static_test(env, testCategory, "test-false-in-static-pointer.gc",
+                                          {"#f\n0\n"});
+}
+
 namespace Mips2C {
 namespace test_func {
 extern u64 execute(void*);
