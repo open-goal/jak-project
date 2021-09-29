@@ -192,7 +192,7 @@ std::vector<std::string> dgos = {
     "CGO/KERNEL.CGO", "CGO/ENGINE.CGO", "CGO/GAME.CGO", "DGO/BEA.DGO", "DGO/INT.DGO", "DGO/VI1.DGO",
     "DGO/VI2.DGO",    "DGO/VI3.DGO",    "DGO/CIT.DGO",  "DGO/MIS.DGO", "DGO/JUB.DGO", "DGO/SUN.DGO",
     "DGO/DEM.DGO",    "DGO/FIN.DGO",    "DGO/JUN.DGO",  "DGO/FIC.DGO", "DGO/SNO.DGO", "DGO/SWA.DGO",
-    "DGO/MAI.DGO",    "DGO/ROB.DGO",    "DGO/LAV.DGO",  "DGO/OGR.DGO"};
+    "DGO/MAI.DGO",    "DGO/ROB.DGO",    "DGO/LAV.DGO",  "DGO/OGR.DGO", "DGO/TRA.DGO"};
 
 }  // namespace
 
