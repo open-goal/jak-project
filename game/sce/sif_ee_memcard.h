@@ -60,4 +60,7 @@ s32 sceMcDelete(s32 port, s32 slot, const char* name);
 
 s32 sceMcGetDir(s32 port, int slot, const char* name, u32 mode, s32 maxent, sceMcTblGetDir* table);
 s32 sceMcRead(s32 fd, void* buff, s32 size);
+
+void flush_memory_card_to_file();
+void read_memory_card_from_file();
 }  // namespace ee

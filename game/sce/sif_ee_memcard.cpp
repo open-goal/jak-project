@@ -6,6 +6,8 @@
 
 #include "sif_ee_memcard.h"
 #include "game/sce/sif_ee.h"
+#include "common/util/Serializer.h"
+#include "common/util/FileUtil.h"
 #include "common/util/assert.h"
 
 namespace ee {
@@ -15,14 +17,49 @@ namespace ee {
 struct CardData {
   // each file has a name and data.
   struct File {
-    std::string name;
     std::vector<u8> data;
     bool is_directory = false;
   };
   // can be formatted or unformatted card.
   u32 is_formatted = 0;
   std::unordered_map<std::string, File> files;
+
+  void save_to_file(const std::string& name);
+  void load_from_file(const std::string& name);
 };
+
+void CardData::save_to_file(const std::string& name) {
+  Serializer ser;
+  ser.from_ptr(&is_formatted);
+  ser.save<size_t>(files.size());
+  for (auto& f : files) {
+    ser.save_str(&f.first);
+    ser.from_pod_vector(&f.second.data);
+    ser.from_ptr(&f.second.is_directory);
+  }
+  auto result = ser.get_save_result();
+  file_util::write_binary_file(name, result.first, result.second);
+}
+
+void CardData::load_from_file(const std::string& name) {
+  auto raw_data = file_util::read_binary_file(name);
+  Serializer ser(raw_data.data(), raw_data.size());
+
+  ser.from_ptr(&is_formatted);
+  files.clear();
+  size_t file_count = ser.load<size_t>();
+  for (size_t i = 0; i < file_count; i++) {
+    auto file_name = ser.load_string();
+    auto& file_entry = files[file_name];
+    ser.from_pod_vector(&file_entry.data);
+    ser.from_ptr(&file_entry.is_directory);
+  }
+  assert(ser.get_load_finished());
+}
+
+std::string get_memory_card_path() {
+  return file_util::get_file_path({"user", "memcard.bin"});
+}
 
 /*!
  * The actual memory card library state + current data.
@@ -47,6 +84,7 @@ struct McState {
 
 int sceMcInit() {
   g_mc_state = McState();
+  read_memory_card_from_file();
   return 1;
 }
 
@@ -55,7 +93,6 @@ s32 sceMcMkdir(s32 port, s32 slot, const char* name) {
   assert(slot == 0);
   auto& file = g_mc_state.data.files[name];
   file.data.clear();
-  file.name = name;
   file.is_directory = true;
   return sceMcResSucceed;
 }
@@ -218,7 +255,7 @@ s32 sceMcGetDir(s32 port, int slot, const char* name, u32 mode, s32 maxent, sceM
   assert(g_mc_state.current_function == -1);
   assert(port == 0);
   assert(slot == 0);
-  assert(maxent == 0);
+  assert(maxent == 1);
   assert(mode == 0);
   assert(g_mc_state.data.is_formatted);
   g_mc_state.current_function = sceMcFuncNoGetDir;
@@ -229,8 +266,8 @@ s32 sceMcGetDir(s32 port, int slot, const char* name, u32 mode, s32 maxent, sceM
     return 0;
   } else {
     g_mc_state.current_function_result = 1;
-    assert(strlen(name) < 32);
-    strcpy(table[0].name, name);
+    // assert(strlen(name) < 32);
+    strcpy(table[0].name, "blah");
     table[0].file_size = file_it->second.data.size();
     table[0].created = make_fake_date_time();
     table[0].modified = make_fake_date_time();
@@ -254,4 +291,16 @@ s32 sceMcRead(s32 fd, void* buff, s32 size) {
   g_mc_state.current_function = sceMcFuncNoRead;
   return 0;
 }
+
+void flush_memory_card_to_file() {
+  file_util::create_dir_if_needed(file_util::get_file_path({"user"}));
+  g_mc_state.data.save_to_file(get_memory_card_path());
+}
+
+void read_memory_card_from_file() {
+  if (std::filesystem::exists(get_memory_card_path())) {
+    g_mc_state.data.load_from_file(get_memory_card_path());
+  }
+}
+
 }  // namespace ee
