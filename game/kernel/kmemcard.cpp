@@ -181,7 +181,6 @@ void MC_run() {
       (*callback_for_sync)(sony_status);
     } else {
       // sony function is done, but failed.
-      assert(false);
       callback = nullptr;
       (*callback_for_sync)(0);
     }
@@ -821,13 +820,14 @@ void cb_reprobe_createfile(s32 sync_result) {
  * Actually start the ramdisk load of the icon file to temp buffer
  */
 void cb_wait_for_ramdisk(s32) {
-  RPC_Ramdisk_LoadCmd cmd;
-  cmd.pad = 0;
+
+  ramdisk_cmd.pad = 0;
   // caller should have given us a temporary buffer.
-  cmd.file_id_or_ee_addr = op.data_ptr.offset;
-  cmd.offset_into_file = 0;
-  cmd.size = 0x1e800;
-  memcpy(cmd.name, "SAVEGAME.ICO", 13);  // was 16.
+  ramdisk_cmd.file_id_or_ee_addr = op.data_ptr.offset;
+  printf("RAMDISK 0x%X\n", op.data_ptr.offset);
+  ramdisk_cmd.offset_into_file = 0;
+  ramdisk_cmd.size = 0x1e800;
+  memcpy(ramdisk_cmd.name, "SAVEGAME.ICO", 13);  // was 16.
   RpcCall(RAMDISK_RPC_CHANNEL, RAMDISK_BYPASS_LOAD_FILE, 1, &ramdisk_cmd, 0x20, nullptr, 0);
   callback = cb_wait_for_ramdisk_load;
 }
@@ -839,6 +839,7 @@ void cb_wait_for_ramdisk_load(s32) {
   if (RpcBusy(RAMDISK_RPC_CHANNEL) == 0) {
     // ramdisk is done. start deleting 12 files
     p2 = 11;  // filenames left to delete
+    mc_print("start delete {}", filename[11]);
     if (sceMcDelete(p1, 0, filename[11]) == sceMcResSucceed) {
       callback = cb_createfile_erasing;
     } else {
@@ -861,6 +862,7 @@ void cb_createfile_erasing(s32 sync_result) {
     // delete didn't fail.
     if (p2 < 1) {
       // on the last one. move on on to creating the directory again.
+      mc_print("create dir {}", filename[0]);
       if (sceMcMkdir(p1, 0, filename[0]) == sceMcResSucceed) {
         callback = cb_createdir;
       } else {
@@ -869,6 +871,7 @@ void cb_createfile_erasing(s32 sync_result) {
       }
     } else {
       p2--;
+      mc_print("delete next {}", filename[p2]);
       if (sceMcDelete(p1, 0, filename[p2]) == sceMcResSucceed) {
         callback = cb_createfile_erasing;
       } else {
@@ -878,9 +881,11 @@ void cb_createfile_erasing(s32 sync_result) {
     }
   } else {
     if (sync_result == sceMcResDeniedPermit) {
+      mc_print("erasing: denied");
       op.operation = MemoryCardOperationKind::NO_OP;
       op.result = McStatusCode::INTERNAL_ERROR;
     } else {
+      mc_print("erasing: other bad");
       mc[p1].state = MemoryCardState::UNKNOWN;
       op.operation = MemoryCardOperationKind::NO_OP;
       op.result = McStatusCode::BAD_HANDLE;
@@ -914,6 +919,7 @@ void cb_createdir(s32 sync_result) {
 
     p2 = 1;
     // move on to creating files
+    mc_print("starting create file at {}", filename[p2]);
     if (sceMcOpen(p1, 0, filename[1], 0x203) == 0) {
       callback = cb_createdfile;
     } else {
@@ -928,6 +934,7 @@ void cb_createdir(s32 sync_result) {
  */
 void cb_createdfile(s32 sync_result) {
   if (!cb_check(sync_result, McStatusCode::WRITE_ERROR)) {
+    mc_print("create file cb {}", filename[p2]);
     if (p2 == 1) {
       p3 = sync_result;  // the fd of the icon file.
       // actually would write the icon sys file.
@@ -961,7 +968,7 @@ void cb_createdfile(s32 sync_result) {
       // writes the actual bank files.
       p3 = sync_result;
       memset(op.data_ptr.c(), 0, 0x11800);
-      if (sceMcWrite(p3, op.data_ptr.c(), 0x11800)) {
+      if (sceMcWrite(p3, op.data_ptr.c(), 0x11800) == sceMcResSucceed) {
         callback = cb_writtenfile;
       } else {
         op.operation = MemoryCardOperationKind::NO_OP;
@@ -1021,6 +1028,7 @@ void cb_closedfile(s32 sync_result) {
 void cb_reprobe_save(s32 sync_result) {
   if (sync_result == sceMcResSucceed) {
     if (!mc[p1].files[op.param2].present) {
+      mc_print("reprobe save: first time!");
       // first time saving!
       p2 = 0;  // save count 0
       p4 = 0;  // first bank for file
@@ -1036,6 +1044,7 @@ void cb_reprobe_save(s32 sync_result) {
 
     // file*2 + p4 is the bank (2 banks per file, p4 is 0 or 1 to select the bank)
     // 4 is the first bank file
+    mc_print("open {} for saving", filename[op.param2 * 2 + 4 + p4]);
     if (sceMcOpen(p1, 0, filename[op.param2 * 2 + 4 + p4], 2) == sceMcResSucceed) {
       callback = cb_openedsave;
     } else {
@@ -1051,7 +1060,8 @@ void cb_reprobe_save(s32 sync_result) {
 
 void cb_openedsave(s32 sync_result) {
   if (!cb_check(sync_result, McStatusCode::WRITE_ERROR)) {
-    p4 = sync_result;
+    mc_print("save file opened, writing header...");
+    p3 = sync_result;
     memset(&header, 0, sizeof(McHeader));
     header.save_count = p2;
     header.checksum = mc_checksum(op.data_ptr, BANK_SIZE);
@@ -1071,6 +1081,7 @@ void cb_openedsave(s32 sync_result) {
 
 void cb_savedheader(s32 sync_result) {
   if (!cb_check(sync_result, McStatusCode::WRITE_ERROR)) {
+    mc_print("save file writing main data");
     if (sceMcWrite(p3, op.data_ptr.c(), BANK_SIZE) == sceMcResSucceed) {
       callback = cb_saveddata;
     } else {
@@ -1081,6 +1092,7 @@ void cb_savedheader(s32 sync_result) {
 }
 
 void cb_saveddata(s32 sync_result) {
+  mc_print("save file writing footer");
   if (!cb_check(sync_result, McStatusCode::WRITE_ERROR)) {
     if (sceMcWrite(p3, &header, sizeof(McHeader)) == sceMcResSucceed) {
       callback = cb_savedfooter;
@@ -1092,6 +1104,7 @@ void cb_saveddata(s32 sync_result) {
 }
 
 void cb_savedfooter(s32 sync_result) {
+  mc_print("closing after save");
   if (!cb_check(sync_result, McStatusCode::WRITE_ERROR)) {
     if (sceMcClose(p3) == sceMcResSucceed) {
       callback = cb_closedsave;
@@ -1104,6 +1117,7 @@ void cb_savedfooter(s32 sync_result) {
 
 void cb_closedsave(s32 sync_result) {
   if (!cb_check(sync_result, McStatusCode::WRITE_ERROR)) {
+    mc_print("All done with saving!!");
     op.operation = MemoryCardOperationKind::NO_OP;
     op.result = McStatusCode::OK;
     mc[p1].files[op.param2].present = 1;
