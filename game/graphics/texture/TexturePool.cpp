@@ -225,16 +225,6 @@ std::vector<std::shared_ptr<TextureRecord>> TexturePool::convert_textures(const 
           texture_record->max_a_nonzero = max_a_nonzero;
           texture_record->min_a_nonzero = min_a_nonzero;
 
-          if (texture_record->name == "selector" || texture_record->name == "next") {
-            fmt::print("{}: {} {} {} {}\n", texture_record->name, tex.psm, tex.clutpsm,
-                       tex.clut_dest * 256 / 4,
-                       texture_page.segment[0].dest + ((sizes[0] + sizes[1] + 255) / 256) * 256);
-          }
-
-          fmt::print("TEX: {} nz ({}, {}) z ({}, {}0\n", texture_record->name,
-                     texture_record->min_a_nonzero, texture_record->max_a_nonzero,
-                     texture_record->min_a_zero, texture_record->max_a_zero);
-
           // Debug output.
           if (dump_textures_to_file) {
             const char* tpage_name = goal_string(texture_page.name_ptr, memory_base);
