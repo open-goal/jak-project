@@ -2687,13 +2687,8 @@ void FunctionCallElement::update_from_stack(const Env& env,
     std::swap(all_pop_vars.at(0), all_pop_vars.at(1));
   }
 
-  if (tp_type.kind == TP_Type::Kind::RUN_FUNCTION_IN_PROCESS_FUNCTION) {
-    if (unstacked.at(0)->to_string(env) != "run-function-in-process") {
-      throw std::runtime_error(
-          fmt::format("Expression pass could not find the run-function-in-process function. Found "
-                      "{} instead. Make sure there are no casts on this function.",
-                      all_pop_vars.at(0).to_string(env)));
-    }
+  if (tp_type.kind == TP_Type::Kind::RUN_FUNCTION_IN_PROCESS_FUNCTION &&
+      unstacked.at(0)->to_string(env) == "run-function-in-process") {
     unstacked.at(0) = pool.form<ConstantTokenElement>("run-now-in-process");
   }
 
