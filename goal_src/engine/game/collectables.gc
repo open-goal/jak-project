@@ -12,8 +12,8 @@
 (define-extern *money-sg* skeleton-group) ;; unknown type
 ;; TODO - for entity and beach-rocks
 (deftype collectable (process-drawable)
-  ((root-override   collide-shape-moving  :score 100 :offset 112)
-   (pickup-type     int32          :offset-assert 176)
+  ((root-override   collide-shape-moving :score 100 :offset 112)
+   (pickup-type     pickup-type          :offset-assert 176)
    (pickup-amount   float          :offset-assert 180)
    (notify-parent   basic          :offset-assert 184)
    (old-base        vector :inline :offset-assert 192)
@@ -27,11 +27,11 @@
    (bob-offset      uint64         :offset-assert 288)
    (bob-amount      float          :offset-assert 296)
    (pickup-handle   handle         :offset-assert 304) ;; not sure it's a handle
-   (actor-pause     basic          :offset-assert 312)
+   (actor-pause     symbol          :offset-assert 312)
    )
   (:methods
-    (dummy-20 () none 20)
-    (dummy-21 () none 21)
+    (TODO-RENAME-20 (_type_) _type_ 20)
+    (dummy-21 (_type_ uint float) none 21) ;; TODO - weird math issue
     )
   :heap-base #xd0
 
@@ -40,12 +40,12 @@
   :flag-assert         #x1600d0013c
   )
 (deftype eco-collectable (collectable)
-  ((eco-effect          basic          :offset-assert 316)
-   (collect-effect      basic          :offset-assert 320)
-   (collect-effect2     basic          :offset-assert 324)
+  ((eco-effect          sparticle-launch-group          :offset-assert 316)
+   (collect-effect      sparticle-launch-group          :offset-assert 320)
+   (collect-effect2     sparticle-launch-group          :offset-assert 324)
    (collect-effect-time uint64         :offset-assert 328)
    (respawn-delay       uint64         :offset-assert 336)
-   (sound-name          basic          :offset-assert 344)
+   (sound-name          sound-spec          :offset-assert 344)
    (target              uint64         :offset-assert 352)
    (suck-time           uint64         :offset-assert 360)
    (suck-y-offset       float          :offset-assert 368)
@@ -53,15 +53,15 @@
    (movie-pos-index     int32          :offset-assert 400)
    )
   (:methods
-    (wait () none 22) ;; state
-    (pickup () none 23) ;; state
-    (die () none 24) ;; state
-    (dummy-25 () none 25)
-    (notice-blue () none 26) ;; state
-    (dummy-27 () none 27)
-    (dummy-28 () none 28)
-    (dummy-29 () none 29)
-    (dummy-30 () none 30)
+    (wait () _type_ :state 22) ;; state
+    (pickup () _type_ :state 23) ;; state
+    (die () _type_ :state 24) ;; state
+    (jump () _type_ :state 25)
+    (notice-blue () _type_ :state 26) ;; state
+    (get-pickup-sound (_type_ pickup-type) ambient-sound 27)
+    (dummy-28 (_type_ basic pickup-type float) none 28)
+    (update-sound! (_type_) none 29) ;; something to do with particles too
+    (blocked () _type_ :state 30)
     )
   :heap-base #x130
   :method-count-assert 31
@@ -69,8 +69,8 @@
   :flag-assert         #x1f01300194
   )
 (deftype fuel-cell (eco-collectable)
-  ((victory-anim basic :offset-assert 404)
-   (state-object basic :offset-assert 408))
+  ((victory-anim spool-anim :offset-assert 404)
+   (state-object symbol :offset-assert 408))
   :heap-base #x130
   :method-count-assert 31
   :size-assert         #x19c

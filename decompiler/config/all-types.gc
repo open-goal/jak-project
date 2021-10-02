@@ -13566,6 +13566,8 @@
 
 ;; - Types
 
+(declare-type sparticle-system basic)
+(declare-type sparticle-cpuinfo structure)
 (deftype sp-field-init-spec (structure)
   ((field          sp-field-id  :offset-assert 0)
    (flags          sp-flag  :offset-assert 2)
@@ -13762,7 +13764,7 @@
    (next-time     uint32                         :offset-assert 116)
    (next-launcher basic                          :offset-assert 120)
    (cache-alpha   float                          :offset-assert 124)
-   (valid         basic                          :offset-assert 128)
+   (valid         symbol                          :offset-assert 128)
    (key           sparticle-launch-control       :offset-assert 132)
    (binding       sparticle-launch-state         :offset-assert 136)
    (data          uint32                 1       :offset 12)
@@ -14302,12 +14304,12 @@
    (text-x                 int32     :offset-assert 164)
    (text-y                 int32     :offset-assert 168)
    (friend                 int32     :offset-assert 172)
-   (first-init             basic     :offset-assert 176)
-   (increment-on-event     basic     :offset-assert 180)
+   (first-init             symbol     :offset-assert 176)
+   (increment-on-event     symbol     :offset-assert 180)
    (skip-particle          int32     :offset-assert 184)
-   (disable                basic     :offset-assert 188)
-   (force-on-screen        basic     :offset-assert 192)
-   (deactivate-when-hidden basic     :offset-assert 196)
+   (disable                symbol     :offset-assert 188)
+   (force-on-screen        symbol     :offset-assert 192)
+   (deactivate-when-hidden symbol     :offset-assert 196)
    (trigger-time           uint64    :offset-assert 200)
    (last-hide-time         uint64    :offset-assert 208)
    (nb-of-icons            int32     :offset-assert 216)
@@ -14322,19 +14324,19 @@
   :flag-assert         #x1b00b00118
   ;; inherited inspect of process
   (:methods
-    (dummy-14 () none 14)
-    (dummy-15 () none 15)
-    (dummy-16 (_type_ int int) none 16) ;; first int seen as a fixed point from racer-info 'heat'
-    (dummy-17 () none 17)
-    (dummy-18 () none 18)
+    (dummy-14 (_type_) none 14)
+    (dummy-15 (_type_) none 15)
+    (TODO-RENAME-16 (_type_ int int) none 16) ;; first int seen as a fixed point from racer-info 'heat'
+    (dummy-17 (_type_) none 17)
+    (dummy-18 (_type_) none 18)
     (TODO-RENAME-19 (_type_) none 19)
-    (init-particles! (_type_) none 20)
-    (dummy-21 () none 21)
-    (dummy-22 () none 22)
-    (dummy-23 () none 23)
-    (dummy-24 () none 24)
-    (dummy-25 () none 25)
-    (dummy-26 () none 26)
+    (init-particles! (_type_ int) none 20)
+    (first-icon-x (_type_) int 21)
+    (first-icon-y (_type_) int 22)
+    (dummy-23 (_type_) none 23)
+    (animate! (_type_ symbol symbol) none 24) ;; not sure what the flags are / what the purpose is yet
+    (inc-value (_type_) float 25)
+    (dec-value (_type_) float 26)
     )
   )
 
@@ -14358,6 +14360,7 @@
    (bike-speed (pointer hud-bike-speed)    :offset-assert 24)
    (bike-heat  (pointer hud-bike-heat)    :offset-assert 28)
    (money-all  (pointer hud-money-all)    :offset-assert 32)
+   (parts (pointer process) 9 :offset 0)
    )
   :method-count-assert 9
   :size-assert         #x24
@@ -19181,9 +19184,9 @@
 (define-extern manipy-init (function vector entity skeleton-group vector none :behavior manipy))
 (define-extern part-tracker-notify function)
 (define-extern clone-anim-once (function handle int symbol string none :behavior process-drawable))
-(define-extern convert-to-hud-object function)
 (define-extern merc-eye-anim (function process-drawable none))
 (define-extern clone-anim (function handle int symbol string none :behavior process-drawable))
+(define-extern convert-to-hud-object (function process-drawable hud none :behavior hud))
 (define-extern command-get-camera function)
 (define-extern ja-anim-done? (function symbol)) ;; TODO - not confirmed
 (define-extern camera-anim function)
@@ -19618,8 +19621,8 @@
 (define-extern target-swim-tilt function)
 (define-extern projectile-init-by-other (function entity vector vector uint handle none :behavior projectile)) ;; 4th arg is `options`, 5th is `last-target`
 (define-extern first-person-hud-init-by-other function)
-(define-extern disable-hud function)
-(define-extern enable-hud function)
+(define-extern disable-hud (function int none))
+(define-extern enable-hud (function none))
 (define-extern part-first-person-hud-left-func function)
 (define-extern part-first-person-hud-right-func function)
 (define-extern part-first-person-hud-selector-func function)
@@ -20344,8 +20347,8 @@
 ;; - Types
 
 (deftype collectable (process-drawable)
-  ((root-override   collide-shape-moving  :score 100 :offset 112)
-   (pickup-type     int32          :offset-assert 176)
+  ((root-override   collide-shape-moving :score 100 :offset 112)
+   (pickup-type     pickup-type          :offset-assert 176)
    (pickup-amount   float          :offset-assert 180)
    (notify-parent   basic          :offset-assert 184)
    (old-base        vector :inline :offset-assert 192)
@@ -20359,12 +20362,11 @@
    (bob-offset      uint64         :offset-assert 288)
    (bob-amount      float          :offset-assert 296)
    (pickup-handle   handle         :offset-assert 304) ;; not sure it's a handle
-   (actor-pause     basic          :offset-assert 312)
+   (actor-pause     symbol          :offset-assert 312)
    )
-
   (:methods
-    (dummy-20 () none 20)
-    (dummy-21 () none 21)
+    (TODO-RENAME-20 (_type_) _type_ 20)
+    (dummy-21 (_type_ uint float) none 21) ;; TODO - weird math issue
     )
   :heap-base #xd0
 
@@ -20374,12 +20376,12 @@
   )
 
 (deftype eco-collectable (collectable)
-  ((eco-effect          basic          :offset-assert 316)
-   (collect-effect      basic          :offset-assert 320)
-   (collect-effect2     basic          :offset-assert 324)
+  ((eco-effect          sparticle-launch-group          :offset-assert 316)
+   (collect-effect      sparticle-launch-group          :offset-assert 320)
+   (collect-effect2     sparticle-launch-group          :offset-assert 324)
    (collect-effect-time uint64         :offset-assert 328)
    (respawn-delay       uint64         :offset-assert 336)
-   (sound-name          basic          :offset-assert 344)
+   (sound-name          sound-spec          :offset-assert 344)
    (target              uint64         :offset-assert 352)
    (suck-time           uint64         :offset-assert 360)
    (suck-y-offset       float          :offset-assert 368)
@@ -20387,15 +20389,15 @@
    (movie-pos-index     int32          :offset-assert 400)
    )
   (:methods
-    (wait () none 22) ;; state
-    (pickup () none 23) ;; state
-    (die () none 24) ;; state
-    (dummy-25 () none 25)
-    (notice-blue () none 26) ;; state
-    (dummy-27 () none 27)
-    (dummy-28 () none 28)
-    (dummy-29 () none 29)
-    (dummy-30 () none 30)
+    (wait () _type_ :state 22) ;; state
+    (pickup () _type_ :state 23) ;; state
+    (die () _type_ :state 24) ;; state
+    (jump () _type_ :state 25)
+    (notice-blue () _type_ :state 26) ;; state
+    (get-pickup-sound (_type_ pickup-type) ambient-sound 27)
+    (dummy-28 (_type_ basic pickup-type float) none 28)
+    (update-sound! (_type_) none 29) ;; something to do with particles too
+    (blocked () _type_ :state 30)
     )
 
   :heap-base #x130
@@ -20461,8 +20463,8 @@
   )
 
 (deftype fuel-cell (eco-collectable)
-  ((victory-anim basic :offset-assert 404)
-   (state-object basic :offset-assert 408))
+  ((victory-anim spool-anim :offset-assert 404)
+   (state-object symbol :offset-assert 408))
   :heap-base #x130
   :method-count-assert 31
   :size-assert         #x19c
@@ -20470,7 +20472,7 @@
   )
 
 (deftype buzzer (eco-collectable)
-  ((victory-anim basic :offset-assert 404))
+  ((victory-anim spool-anim :offset-assert 404))
 
   :heap-base #x130
   :method-count-assert 31
@@ -20481,7 +20483,7 @@
 (deftype ecovalve (process-drawable)
   ((offset        vector :inline :offset-assert 176)
    (offset-target vector :inline :offset-assert 192)
-   (block-func basic :offset-assert 208))
+   (block-func function :offset-assert 208))
   :heap-base #x70
   :method-count-assert 20
   :size-assert         #xd4
@@ -20489,12 +20491,12 @@
   )
 
 (deftype vent (process-drawable)
-  ((show-particles      basic  :offset-assert 176)
-   (collect-effect      basic  :offset-assert 180)
-   (collect-effect2     basic  :offset-assert 184)
+  ((show-particles      symbol  :offset-assert 176)
+   (collect-effect      sparticle-launch-group  :offset-assert 180)
+   (collect-effect2     sparticle-launch-group  :offset-assert 184)
    (collect-effect-time uint64 :offset-assert 192)
-   (blocker             basic  :offset-assert 200)
-   (block-func          basic  :offset-assert 204)
+   (blocker             entity-actor  :offset-assert 200)
+   (block-func          function  :offset-assert 204)
    (pickup-handle       handle :offset-assert 208)) ;; not sure handle
 
   (:methods
@@ -20546,11 +20548,11 @@
 (define-extern birth-pickup-at-point (function vector int float symbol process-drawable symbol (pointer process))) ;; TODO - unconfirmed - see beach-rocks
 (define-extern fuel-cell-pick-anim (function process-taskable none)) ;; TODO - unconfirmed - see process-taskable
 (define-extern othercam-init-by-other (function process-taskable symbol symbol symbol none :behavior othercam))
-(define-extern fuel-cell-animate function)
-(define-extern add-blue-motion function)
-(define-extern check-blue-suck function)
-(define-extern initialize-eco-by-other function)
-(define-extern add-blue-shake function)
+(define-extern fuel-cell-animate (function none))
+(define-extern add-blue-motion (function symbol symbol symbol symbol none :behavior eco-blue))
+(define-extern check-blue-suck (function eco-blue uint :behavior eco-blue))
+(define-extern initialize-eco-by-other (function eco vector none :behavior eco))
+(define-extern add-blue-shake (function vector vector vector vector))
 (define-extern money-init-by-other function)
 (define-extern money-init-by-other-no-bob function)
 (define-extern fuel-cell-init-by-other function)
@@ -20762,8 +20764,8 @@
 
 ;; - Functions
 
-(define-extern send-hud-increment-event function)
-(define-extern hud-init-by-other function)
+(define-extern send-hud-increment-event (function hud object))
+(define-extern hud-init-by-other (function int none :behavior hud))
 
 ;; - Symbols
 
@@ -20772,9 +20774,9 @@
 ;; - Unknowns
 
 (define-extern hud-hidden (state hud))
-(define-extern hud-leaving (state hud))
+(define-extern hud-leaving (state int hud))
 (define-extern hud-in (state hud))
-(define-extern hud-collecting (state hud))
+(define-extern hud-collecting (state handle hud)) ;; TODO accepts a handle - CRASH in `hud`
 
 
 ;; ----------------------
@@ -20865,21 +20867,21 @@
 
 ;; - Functions
 
-(define-extern calculate-rotation-and-color-for-slice function)
-(define-extern part-hud-health-01-func function)
-(define-extern part-hud-health-02-func function)
-(define-extern part-hud-health-03-func function)
-(define-extern fuel-cell-hud-orbit-callback function)
-(define-extern fuel-cell-hud-starburst-3-callback function)
-(define-extern fuel-cell-hud-starburst-4-callback function)
-(define-extern fuel-cell-hud-center-callback function)
-(define-extern part-hud-buzzer-func function)
-(define-extern part-hud-eco-timer-01-func function)
-(define-extern part-hud-eco-timer-02-func function)
-(define-extern part-hud-eco-timer-03-func function)
-(define-extern part-hud-eco-timer-backing-func function)
-(define-extern part-hud-eco-timer-func function)
-(define-extern show-hud function)
+(define-extern calculate-rotation-and-color-for-slice (function int float int int int hud-particle none))
+(define-extern part-hud-health-01-func (function basic basic hud-particle none)) ;; TODO - i figured this out on another branch...all these particle functions get called by the particle system with the same beginning types iirc
+(define-extern part-hud-health-02-func (function basic basic hud-particle none))
+(define-extern part-hud-health-03-func (function basic basic hud-particle none))
+(define-extern fuel-cell-hud-orbit-callback (function sparticle-system sparticle-cpuinfo matrix none))
+(define-extern fuel-cell-hud-starburst-3-callback (function sparticle-system sparticle-cpuinfo matrix none))
+(define-extern fuel-cell-hud-starburst-4-callback (function sparticle-system sparticle-cpuinfo matrix none))
+(define-extern fuel-cell-hud-center-callback (function sparticle-system sparticle-cpuinfo matrix none))
+(define-extern part-hud-buzzer-func (function basic basic hud-particle none))
+(define-extern part-hud-eco-timer-01-func (function basic basic hud-particle none))
+(define-extern part-hud-eco-timer-02-func (function basic basic hud-particle none))
+(define-extern part-hud-eco-timer-03-func (function basic basic hud-particle none))
+(define-extern part-hud-eco-timer-backing-func (function basic basic hud-particle none))
+(define-extern part-hud-eco-timer-func (function basic basic hud-particle none))
+(define-extern show-hud (function none))
 
 ;; - Unknowns
 
