@@ -2,6 +2,7 @@
 #include "decompiler/util/data_decompile.h"
 #include "common/goos/PrettyPrinter.h"
 #include "common/util/print_float.h"
+#include "common/util/assert.h"
 
 namespace decompiler {
 // sparticle fields.
@@ -102,6 +103,7 @@ enum class FieldKind {
   NO_FANCY_DECOMP,
   FUNCTION,
   USERDATA,
+  ROT_X,
   INVALID
 };
 
@@ -125,7 +127,7 @@ const SparticleFieldDecomp field_kinds[68] = {
     {true, FieldKind::METER_WITH_RAND},       // SPT_Y = 11
     {true, FieldKind::FLOAT_WITH_RAND},       // SPT_Z = 12
     {true, FieldKind::METER_WITH_RAND},       // SPT_SCALE_X = 13
-    {true, FieldKind::PLAIN_INT},             // SPT_ROT_X = 14
+    {true, FieldKind::ROT_X},                 // SPT_ROT_X = 14
     {true, FieldKind::DEGREES_WITH_RAND},     // SPT_ROT_Y = 15
     {true, FieldKind::DEGREES_WITH_RAND},     // SPT_ROT_Z = 16
     {true, FieldKind::METER_WITH_RAND},       // SPT_SCALE_Y = 17
@@ -294,6 +296,7 @@ goos::Object decompile_sparticle_userdata(const std::vector<LinkedWord>& words,
     return original;
   }
 }
+
 goos::Object decompile_sparticle_int_init(const std::vector<LinkedWord>& words,
                                           const std::string& field_name,
                                           const std::string& flag_name) {
@@ -307,9 +310,22 @@ goos::Object decompile_sparticle_int_init(const std::vector<LinkedWord>& words,
       fmt::format("(sp-int {} {})", field_name, word_as_s32(words.at(1))));
 }
 
+goos::Object decompile_sparticle_rot_x(const std::vector<LinkedWord>& words,
+                                       const std::string& field_name,
+                                       const std::string& flag_name) {
+  if (flag_name == "int-with-rand" || flag_name == "float-with-rand") {
+    return decompile_sparticle_float_with_rand_init(words, field_name, flag_name);
+  } else {
+    return decompile_sparticle_int_init(words, field_name, flag_name);
+  }
+}
+
 goos::Object decompile_sparticle_int_with_rand_init(const std::vector<LinkedWord>& words,
                                                     const std::string& field_name,
                                                     const std::string& flag_name) {
+  if (flag_name != "plain-v1") {
+    fmt::print("Bad {} {}\n", field_name, flag_name);
+  }
   assert(flag_name == "plain-v1");
   if (word_as_s32(words.at(2)) == 0 && word_as_s32(words.at(3)) == 1) {
     return decompile_sparticle_int_init(words, field_name, flag_name);
@@ -587,6 +603,9 @@ goos::Object decompile_sparticle_field_init(const TypeSpec& type,
         break;
       case FieldKind::USERDATA:
         result = decompile_sparticle_userdata(obj_words, field_name, flag_name, normal);
+        break;
+      case FieldKind::ROT_X:
+        result = decompile_sparticle_rot_x(obj_words, field_name, flag_name);
         break;
       default:
         assert(false);

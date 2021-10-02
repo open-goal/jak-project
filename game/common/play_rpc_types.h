@@ -6,10 +6,5 @@
  * Note that PLAY and PLAYER are different.
  */
 
-#ifndef JAK1_PLAY_RPC_TYPES_H
-#define JAK1_PLAY_RPC_TYPES_H
-
 constexpr int PLAY_RPC_ID = 0xdeb6;
 constexpr int PLAY_RPC_CHANNEL = 5;
-
-#endif  // JAK1_PLAY_RPC_TYPES_H

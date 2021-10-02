@@ -9,13 +9,16 @@
 #include "stream.h"
 #include "game/sce/iop.h"
 #include "game/common/str_rpc_types.h"
+#include "game/common/play_rpc_types.h"
 #include "game/overlord/isocommon.h"
 #include "game/overlord/iso_api.h"
 
 using namespace iop;
 
 static RPC_Str_Cmd sRPCBuf;
+static RPC_Str_Cmd sRPCBuf2;  // todo type
 void* RPC_STR(unsigned int fno, void* _cmd, int y);
+void* RPC_PLAY(unsigned int fno, void* _cmd, int y);
 
 /*!
  * We cache the chunk file headers so we can avoid seeking to the chunk header each time we
@@ -36,6 +39,7 @@ CacheEntry sCache[STR_INDEX_CACHE_SIZE];
 
 void stream_init_globals() {
   memset(&sRPCBuf, 0, sizeof(RPC_Str_Cmd));
+  memset(&sRPCBuf2, 0, sizeof(RPC_Str_Cmd));
 }
 
 /*!
@@ -55,7 +59,15 @@ u32 STRThread() {
 }
 
 u32 PLAYThread() {
-  assert(false);
+  sceSifQueueData dq;
+  sceSifServeData serve;
+
+  CpuDisableIntr();
+  sceSifInitRpc(0);
+  sceSifSetRpcQueue(&dq, GetThreadId());
+  sceSifRegisterRpc(&serve, PLAY_RPC_ID, RPC_PLAY, &sRPCBuf2, nullptr, nullptr, &dq);
+  CpuEnableIntr();
+  sceSifRpcLoop(&dq);
   return 0;
 }
 
@@ -139,4 +151,11 @@ void* RPC_STR(unsigned int fno, void* _cmd, int y) {
   }
   printf("Command result %d\n", cmd->result);
   return cmd;
+}
+
+void* RPC_PLAY(unsigned int fno, void* _cmd, int y) {
+  (void)fno;
+  (void)y;
+  printf("[RPC_PLAY] ignoring...\n");
+  return _cmd;
 }
