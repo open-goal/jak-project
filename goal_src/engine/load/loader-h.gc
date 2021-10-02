@@ -8,7 +8,8 @@
 ;; This is not well-understood yet, but it is definitely related to streaming animation loading,
 ;; and possibly art-group stuff.
 
-
+;; note: lower values are more important.
+;; negative values will preload.
 (defconstant SPOOL_PRIORITY_LOWEST 100000000.0)
 (defconstant SPOOL_PRIORITY_RECALC -99.0)
 (defconstant SPOOL_PRIORITY_HIGHEST -20.0)
@@ -23,7 +24,9 @@
    (string-array (array string) :offset-assert  8) ;; these are the names
    (data-array (array basic)    :offset-assert 12) ;; this is the file data.
    )
-  :flag-assert #xb00000010
+  :method-count-assert 11
+  :size-assert         #x10
+  :flag-assert         #xb00000010
   (:methods
     (new (symbol type int basic) _type_ 0)
     (load-to-heap-by-name (_type_ string symbol kheap int) art-group 9)
@@ -35,7 +38,9 @@
 (deftype load-dir-art-group (load-dir)
   ((art-group-array (array art-group) :offset 12)
    )
-  :flag-assert #xb00000010
+  :method-count-assert 11
+  :size-assert         #x10
+  :flag-assert         #xb00000010
   (:methods
     (new (symbol type int basic) _type_ 0)
     )
@@ -74,31 +79,42 @@
     )
   )
 
+;; An external-art-buffer owns some memory for loading files.
+;; status:
+;;  - 'active: file is loaded and art group is linked to level's art group.
+;;  - 'reserved: buffer is reserved for other purpose
+;;  - 'error: load has encountered an error, goes to 'inactive
+;;  - 'inactive: not in use
+;;  - 'loading: loading is in progress
+;;  - 'loaded: loading has finished, goes to 'locked or 'active
+;;  - 'locked: loaded, but another buffer is active and blocks this one.
+;; Note: a locked buffer has loaded/linked the file, but hasn't linked the file
+;;  to the "master" art group, located in the level.
 (deftype external-art-buffer (basic)
-  ((index                      int32          :offset-assert 4)
-   (other                      external-art-buffer          :offset-assert 8)
-   (status                     symbol         :offset-assert 12)
-   (locked?                    symbol         :offset-assert 16)
-   (frame-lock                 symbol         :offset-assert 20)
-   (heap                       kheap  :inline :offset-assert 32)
-   (pending-load-file          string         :offset-assert 48)
-   (pending-load-file-part     int32          :offset-assert 52)
-   (pending-load-file-owner    handle         :offset-assert 56)
-   (pending-load-file-priority float          :offset-assert 64)
-   (load-file                  string         :offset-assert 68)
-   (load-file-part             int32          :offset-assert 72)
-   (load-file-owner            handle         :offset-assert 80)
-   (load-file-priority         float          :offset-assert 88)
-   (buf                        pointer        :offset-assert 92)
-   (len                        int32          :offset-assert 96)
-   (art-group                  art-group      :offset-assert 100)
+  ((index                      int32                 :offset-assert 4)
+   (other                      external-art-buffer   :offset-assert 8)
+   (status                     symbol                :offset-assert 12)
+   (locked?                    symbol                :offset-assert 16)
+   (frame-lock                 symbol                :offset-assert 20)
+   (heap                       kheap  :inline        :offset-assert 32)
+   (pending-load-file          string                :offset-assert 48)
+   (pending-load-file-part     int32                 :offset-assert 52)
+   (pending-load-file-owner    handle                :offset-assert 56)
+   (pending-load-file-priority float                 :offset-assert 64)
+   (load-file                  string                :offset-assert 68)
+   (load-file-part             int32                 :offset-assert 72)
+   (load-file-owner            handle                :offset-assert 80)
+   (load-file-priority         float                 :offset-assert 88)
+   (buf                        pointer               :offset-assert 92)
+   (len                        int32                 :offset-assert 96)
+   (art-group                  art-group             :offset-assert 100)
    )
   :method-count-assert 16
   :size-assert         #x68
   :flag-assert         #x1000000068
   (:methods
     (new (symbol type int) _type_ 0)
-    (want-file (_type_ string int handle float) int 9)
+    (set-pending-file (_type_ string int handle float) int 9)
     (update (_type_) int 10)
     (inactive? (_type_) symbol 11)
     (file-status (_type_ string int) symbol 12)
@@ -128,11 +144,14 @@
    )
   )
 
+
+;; A spool-anim tracks the buffers for spooled animations.
+;; ?? what are the bufs here.
 (deftype spool-anim (basic)
   ((name         string  :offset 16) ;; why?
    (buf1         external-art-buffer  :offset 16) ;; custom
    (index        int32   :score 100   :offset 20)
-   (buf2         external-art-buffer  :offset 20) ;; custom (also what?)
+   (buf2         external-art-buffer  :offset 20) ;; custom the old buffer
    (parts        int32   :offset-assert 24)
    (priority     float   :offset-assert 28)
    (owner        handle  :offset-assert 32)
@@ -144,12 +163,13 @@
   :flag-assert         #x90000002c
   )
 
+;; This is the main controller for the loader.
 (deftype external-art-control (basic)
-  ((buffer               external-art-buffer    2       :offset-assert 4)
-   (rec                  spool-anim 3 :inline :offset-assert 16)
+  ((buffer               external-art-buffer    2       :offset-assert 4) ;; actual data buffers
+   (rec                  spool-anim 3 :inline :offset-assert 16) ;; things we would consider loading
    (spool-lock           handle             :offset-assert 160)
-   (reserve-buffer       external-art-buffer  :offset-assert 168)
-   (reserve-buffer-count int32              :offset-assert 172)
+   (reserve-buffer       external-art-buffer  :offset-assert 168) ;; ??
+   (reserve-buffer-count int32              :offset-assert 172)   ;; ??
    (active-stream        string             :offset-assert 176)
    (preload-stream       spool-anim :inline :offset-assert 184)
    (last-preload-stream  spool-anim :inline :offset-assert 232)

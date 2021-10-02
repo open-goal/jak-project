@@ -188,7 +188,6 @@ struct DgoHeader {
 (defun str-play-async ((name string) (id sound-id))
   "Queue a play cmd to do... something?
    Locks the queue, doesn't check other locks"
-  (format 0 "str-play-async: ~A~%" name)
   (set! *que-str-lock* #t)
   (let ((cmd (the-as load-chunk-msg (add-element *play-str-rpc*))))
     (charp<-string (-> cmd basename) name)
@@ -201,7 +200,6 @@ struct DgoHeader {
 
 (defun str-play-stop ((name string))
   "Queue command to stop playing."
-  (format 0 "str-play-stop: ~A~%" name)
   (set! *que-str-lock* #t)
   (let ((cmd (the-as load-chunk-msg (add-element *play-str-rpc*))))
     ;; not sure why we need a name to stop?
@@ -214,24 +212,21 @@ struct DgoHeader {
 
 (defun str-play-queue ((name string))
   "Queue a command to do something"
-  (format 0 "str-play-queue: ~A~%" name)
-  ;; TODO: put this back!
-  ; (when (and (not (check-busy *play-str-rpc*))
-  ;            (not *load-str-lock*)
-  ;            (not *que-str-lock*)
-  ;            )
-  ;   (let ((cmd (the-as load-chunk-msg (add-element *play-str-rpc*))))
-  ;     (charp<-string (-> cmd basename) name)
-  ;     (set! (-> cmd result) (load-msg-result more))
-  ;     )
-  ;   )
-  ; (set! *que-str-lock* #f)
+  (when (and (not (check-busy *play-str-rpc*))
+             (not *load-str-lock*)
+             (not *que-str-lock*)
+             )
+    (let ((cmd (the-as load-chunk-msg (add-element *play-str-rpc*))))
+      (charp<-string (-> cmd basename) name)
+      (set! (-> cmd result) (load-msg-result more))
+      )
+    )
+  (set! *que-str-lock* #f)
   (none)
   )
 
 (defun str-ambient-play ((name string))
   "Queue a command to do something"
-  (format 0 "str-ambient-play: ~A~%" name)
   (set! *que-str-lock* #t)
   (let ((cmd (the-as load-chunk-msg (add-element *play-str-rpc*))))
     (set! (-> cmd basename 0) (the-as uint 36)) ;; a '$' char
@@ -242,7 +237,6 @@ struct DgoHeader {
   )
 
 (defun str-ambient-stop ((name string))
-  (format 0 "str-ambient-stop: ~A~%" name)
   (set! *que-str-lock* #t)
   (let ((cmd (the-as load-chunk-msg (add-element *play-str-rpc*))))
     (set! (-> cmd basename 0) (the-as uint 36)) ;; a '$' char

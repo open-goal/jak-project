@@ -1242,7 +1242,6 @@
     (-> arg0 allocated-length)
     )
    )
-  (inspect arg0)
   (none)
   )
 
@@ -1854,35 +1853,22 @@
   (none)
   )
 
-;;;;
-;; HACK
-;;;;;
-
-(define *hack-game-save-buffer* (new 'debug 'array 'uint8 (* 1024 1024)))
-(define *hack-game-save-heap* (new 'global 'kheap))
-(set! (-> *hack-game-save-heap* current) *hack-game-save-buffer*)
-(set! (-> *hack-game-save-heap* base) *hack-game-save-buffer*)
-(set! (-> *hack-game-save-heap* top) (&+ *hack-game-save-buffer* (* 1024 1024)))
-(set! (-> *hack-game-save-heap* top-base) (&+ *hack-game-save-buffer* (* 1024 1024)))
-
 ;; Get heap memory.
 (defstate get-heap (auto-save)
   :virtual #t
   :code
   (behavior ()
-    (format 0 "run get-heap")
    (set! (-> self state-time) (-> *display* real-frame-counter))
-   (set! (-> self buffer) *hack-game-save-heap*)
-   ; (let ((a0-1 (reserve-alloc *art-control*)))
-   ;  (while (not a0-1)
-   ;   (if (>= (- (-> *display* real-frame-counter) (-> self state-time)) #x4650)
-   ;    (go-virtual error (mc-status-code no-memory))
-   ;    )
-   ;   (suspend)
-   ;   (set! a0-1 (reserve-alloc *art-control*))
-   ;   )
-   ;  (set! (-> self buffer) a0-1)
-   ;  )
+   (let ((a0-1 (reserve-alloc *art-control*)))
+    (while (not a0-1)
+     (if (>= (- (-> *display* real-frame-counter) (-> self state-time)) #x4650)
+      (go-virtual error (mc-status-code no-memory))
+      )
+     (suspend)
+     (set! a0-1 (reserve-alloc *art-control*))
+     )
+    (set! (-> self buffer) a0-1)
+    )
    (go-virtual get-card)
    (none)
    )
