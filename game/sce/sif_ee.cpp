@@ -174,5 +174,4 @@ s32 sceLseek(s32 fd, s32 offset, s32 where) {
   }
 }
 
-
 }  // namespace ee

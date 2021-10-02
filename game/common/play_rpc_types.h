@@ -6,7 +6,5 @@
  * Note that PLAY and PLAYER are different.
  */
 
-
-
 constexpr int PLAY_RPC_ID = 0xdeb6;
 constexpr int PLAY_RPC_CHANNEL = 5;

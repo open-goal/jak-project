@@ -4,7 +4,6 @@
 
 namespace ee {
 
-
 #define sceMcExecIdle (-1)
 #define sceMcExecRun 0
 #define sceMcExecFinish 1

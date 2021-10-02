@@ -23,7 +23,7 @@ enum class MemoryCardState : u32 {
 
 // cached in ee memory so we can preview.
 struct MemoryCardFile {
-  u32 present; // todo: enough memory?
+  u32 present;  // todo: enough memory?
   u32 most_recent_save_count;
   u32 last_saved_bank;
   u8 data[64];
