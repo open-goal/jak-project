@@ -2307,6 +2307,19 @@ void StoreInSymbolElement::push_to_stack(const Env& env, FormPool& pool, FormSta
   auto val = pool.alloc_single_element_form<SimpleExpressionElement>(nullptr, m_value, m_my_idx);
   val->update_children_from_stack(env, pool, stack, true);
 
+  if (m_cast_for_set) {
+    // we'd need to cast for set. Let's see if we can simplify it instead:
+    auto simplified = try_cast_simplify(val, *m_cast_for_set, pool, env, false);
+    if (simplified) {
+      if (m_cast_for_define && *m_cast_for_define == *m_cast_for_set) {
+        // if we'd need exactly the same cast for a define, we can drop it too
+        m_cast_for_define = {};
+      }
+      m_cast_for_set = {};
+      val = simplified;
+    }
+  }
+
   auto elt = pool.alloc_element<SetFormFormElement>(sym, val, m_cast_for_set, m_cast_for_define);
   elt->mark_popped();
   stack.push_form_element(elt, true);
