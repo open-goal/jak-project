@@ -240,7 +240,6 @@ Val* Compiler::compile_go_hook(const goos::Object& form, const goos::Object& res
   }
 
   // typechecking here will make sure the go is possible.
-  compile_real_function_call(form, enter_state_func->to_gpr(form, env), function_arguments, env);
-
-  return get_none();
+  return compile_real_function_call(form, enter_state_func->to_gpr(form, env), function_arguments,
+                                    env);
 }
