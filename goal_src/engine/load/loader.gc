@@ -7,6 +7,7 @@
 
 
 (defmethod inspect load-dir ((obj load-dir))
+  "Print all the stuff in a load-dir"
   (format #t "[~8x] ~A~%" obj (-> obj type))
   (format #t "~Tlevel: ~A~%" (-> obj unknown))
   (format #t "~Tallocated-length: ~D~%" (-> obj string-array allocated-length))
@@ -179,7 +180,7 @@
     )
   )
 
-(defmethod want-file external-art-buffer ((obj external-art-buffer) (arg0 string) (arg1 int) (arg2 handle) (arg3 float))
+(defmethod set-pending-file external-art-buffer ((obj external-art-buffer) (arg0 string) (arg1 int) (arg2 handle) (arg3 float))
   "Request a new file to be loaded into this buffer."
 
   (set! (-> obj pending-load-file) arg0)
@@ -212,14 +213,16 @@
              )
     ;; the file is at least wanting to load
     (if (and (name= (-> obj load-file) name) (= (-> obj load-file-part) part))
-      (-> obj status) ;; file is loaded
-      'pending        ;; file is not loaded yet?
+      (-> obj status) ;; file is loaded or loading
+      'pending        ;; file has not started loading yet.
       )
     )
   )
 
 (defmethod link-art! art-group ((obj art-group))
-  "Links the elements of this art-group."
+  "Links the elements of this art-group.
+   This will put a reference to this joint animation in the level art group.
+   Level art groups have slots for temporarily loaded joint animations."
 
   (when obj
    (countdown (s5-0 (-> obj length))
@@ -236,19 +239,23 @@
                    (label cfg-22)
                    (nonzero? s3-1)
                    )
+             ;; loop over levels, looking for the master art group for this joint animation.
             (+! s3-1 -1)
             (let ((janim-group (art-group-get-by-name (-> *level* level s3-1) (-> janim master-art-group-name))))
                 (when janim-group
                   (cond
-                    ((and (< (-> janim master-art-group-index) (-> janim-group length))
-                          (not (-> janim-group data (-> janim master-art-group-index)))
+                    ((and (< (-> janim master-art-group-index) (-> janim-group length)) ;; index is valid
+                          (not (-> janim-group data (-> janim master-art-group-index))) ;; doesn't already have it loaded
                           )
+                     ;; link!
                      (set! (-> janim-group data (-> janim master-art-group-index)) janim)
                      (set! success #t)
                      )
                     (else
+                      ;; if the specified index is no good, just try looking for somewhere else.
                      (countdown (a0-14 (-> janim-group length))
                        (when (not (-> janim-group data a0-14))
+                         ;; found an empty one!
                          (set! (-> janim-group data a0-14) janim)
                          (set! success #t)
                          (goto cfg-22)
@@ -271,7 +278,7 @@
   )
 
 (defmethod unlink-art! art-group ((obj art-group))
-  "Unlinks the elements of this art-group."
+  "Unlinks the elements of this art-group.  This will undo the link-art! function."
 
   (when obj
     (countdown (s5-0 (-> obj length))
@@ -348,6 +355,8 @@
    (when (= (-> obj status) 'initialize)
     ;; we need to initialize the heap
     (let ((v1-11 (-> obj heap)))
+      ;; Scary: this is a hard coded address that points to the kernel memory.
+      ;; it turns out the kernel doesn't need this. So we can use it!
      (set! (-> v1-11 base) (the-as pointer (+ #x84000 (* #x3dc00 (-> obj index)))))
      (set! (-> v1-11 current) (-> v1-11 base))
      (set! (-> v1-11 top-base) (&+ (-> v1-11 base) #x3dc00))
@@ -368,9 +377,11 @@
      (set! (-> obj load-file-part) -1)
      (set! (-> obj load-file-owner) (the-as handle #f))
      (set! (-> obj load-file-priority) SPOOL_PRIORITY_LOWEST)
+     ;; on the next time through, we will set the actual load file.
      )
     (else
      ;; we have officially chosen to load this file
+     
      (set! (-> obj load-file) (-> obj pending-load-file))
      (set! (-> obj load-file-part) (-> obj pending-load-file-part))
      (set! (-> obj load-file-owner) (-> obj pending-load-file-owner))
@@ -378,6 +389,8 @@
      )
     )
    )
+  
+  
   (label cfg-18)
   (cond
    ((-> obj load-file)
@@ -406,7 +419,7 @@
        (set! (-> v1-28 current) (-> v1-28 base))
        )
       (cond
-       ((string= (-> obj load-file) "reserved") ;; we want to reserve something
+       ((string= (-> obj load-file) "reserved") ;; we want to reserve this buffer for something (not loading an str file)
         (cond
          ((-> *art-control* reserve-buffer)
           (format 0 "ERROR: trying double reserve ~A when ~A is reserved~%" obj (-> *art-control* reserve-buffer))
@@ -422,7 +435,8 @@
                  )
         ;; unused cond
         )
-       ((str-load (-> obj load-file) (-> obj load-file-part) (the pointer (align64 (-> obj heap current))) #x3fc00)
+       ((str-load (-> obj load-file) (-> obj load-file-part) (the pointer (align64 (-> obj heap current))) #x3fc00) ;; try to start load
+        ;; load has started!!
         (set! (-> obj status) 'loading)
         )
        )
@@ -476,10 +490,11 @@
       )
      (('locked)
       ;; this buffer is locked and needs to be unlocked before it can be used.
+      ;; only one buffer can be active at a time. The other buffer is locked to prevent it from activating.
       (when (and (not (-> obj locked?)) (handle->process (-> obj load-file-owner)))
        ;; we want to be used, unlock this buffer and lock the other just in case.
        (link-file obj (-> obj art-group))
-       (set! (-> obj other locked?) #t)
+       (set! (-> obj other locked?) #t) ;; prevent it from becoming active
        (set! (-> obj status) 'active)
        (goto cfg-18)
        )
@@ -512,6 +527,7 @@
        )
       (set! (-> obj art-group) #f)
       (set! (-> obj status) 'inactive)
+      ;; if the other is locked due to us, unlock it, then update it so it activates.
       (when (-> obj other locked?)
        (unlock! (-> obj other))
        (update (-> obj other))
@@ -551,27 +567,38 @@
   "Update this external-art-control. This validates the spool buffers, sorts the spools, advances str-play-queue, and does some other things.
    If debug-print, also prints some text to the display console"
 
+  ;; if somebody wants a reserve buffer, they will set this to 1.
   (if (nonzero? (-> obj reserve-buffer-count))
     (spool-push obj "reserved" 0 *dproc* (if (-> obj reserve-buffer)
                                           -110.0
                                           -0.5)
                                         )
    )
+  
+  ;; frame-lock will get set to #t if something is assigned to this buffer in this update.
   (dotimes (v1-5 2)
-    (set! (-> obj buffer v1-5 frame-lock) #f) ;; I don't know what this is
+    (set! (-> obj buffer v1-5 frame-lock) #f) 
     )
+  
+  ;; buffers assigned from this call to update
   (dotimes (v1-8 3)
     (set! (-> obj rec v1-8 buf2) #f)
     )
+  
+  ;; update existing buffers from their recs
   (dotimes (s4-0 2)
    (let ((s3-0 (-> obj rec s4-0)))
     (when (-> s3-0 name)
+      ;; iterate over the two buffers
      (dotimes (s2-0 2)
-      (when (and (file-status (-> obj buffer s2-0) (-> s3-0 name) (-> s3-0 parts))
-                 (not (-> obj buffer s2-0 frame-lock))
+      (when (and (file-status (-> obj buffer s2-0) (-> s3-0 name) (-> s3-0 parts)) ;; this buffer holds the file for the rec
+                 (not (-> obj buffer s2-0 frame-lock)) ;; and nothing has frame-locked this buffer
                  )
+        ;; so we frame lock it to prevent it from being kicked out
         (set! (-> obj buffer s2-0 frame-lock) #t)
+        ;; remember what buffer
         (set! (-> s3-0 buf2) (-> obj buffer s2-0))
+        ;; update owner and priority.
         (set! (-> obj buffer s2-0 pending-load-file-owner) (-> s3-0 owner))
         (set! (-> obj buffer s2-0 load-file-owner) (-> s3-0 owner))
         (set! (-> obj buffer s2-0 pending-load-file-priority) (-> s3-0 priority))
@@ -584,18 +611,25 @@
    (label cfg-24)
    )
 
+  ;; preload recs
+  ;; iterate over recs
   (dotimes (s4-1 2)
    (let ((s3-1 (-> obj rec s4-1)))
+     ;; rec wants to load something, but doesn't have a buffer already
     (when (and (-> s3-1 name) (not (-> s3-1 buf2)))
+      ;; skip if we aren't preloading, or have a positive priority.
      (if (and (not *preload-spool-anims*) (>= (-> s3-1 priority) 0.0))
        ;; not in use, move on
        (goto cfg-46)
        )
+     ;; search for a buffer for preloading
      (dotimes (s2-1 2)
+       ;; can't steal one that's already assigned
        (when (not (-> obj buffer s2-1 frame-lock))
+         ;; do the assignment!
          (set! (-> obj buffer s2-1 frame-lock) #t)
-         (want-file (-> obj buffer s2-1) (-> s3-1 name) (-> s3-1 parts) (-> s3-1 owner) (-> s3-1 priority))
-         (set! (-> s3-1 index) (the-as int (-> obj buffer s2-1)))
+         (set-pending-file (-> obj buffer s2-1) (-> s3-1 name) (-> s3-1 parts) (-> s3-1 owner) (-> s3-1 priority))
+         (set! (-> s3-1 buf2) (-> obj buffer s2-1))
          (goto cfg-46)
          )
        )
@@ -604,18 +638,20 @@
    (label cfg-46)
    )
 
+  ;; this part is a bit confusing, but I think it basically kicks out the lowest priority thing.
   (when (not (-> obj reserve-buffer))
-   (let ((s4-2 (-> obj rec 0 buf1)))
+   (let ((s4-2 (-> obj rec 0 buf2))) ;; top priority buffer
     (if (and s4-2
              (-> s4-2 locked?)
              (not (string= (-> s4-2 pending-load-file) "reserved"))
              (not (string= (-> s4-2 other pending-load-file) "reserved"))
              )
-     (want-file (-> s4-2 other) (the-as string #f) -1 (the-as handle #f) SPOOL_PRIORITY_LOWEST)
+     (set-pending-file (-> s4-2 other) (the-as string #f) -1 (the-as handle #f) SPOOL_PRIORITY_LOWEST)
      )
     )
    )
 
+  ;; update the buffers
   (dotimes (s4-3 2)
    (update (-> obj buffer s4-3))
    )
@@ -686,7 +722,7 @@
     (set! (-> obj reserve-buffer-count) 0)
     )
    ((= (-> obj reserve-buffer heap) arg0)
-    (want-file (-> obj reserve-buffer) (the-as string #f) -1 (the-as handle #f) SPOOL_PRIORITY_LOWEST)
+    (set-pending-file (-> obj reserve-buffer) (the-as string #f) -1 (the-as handle #f) SPOOL_PRIORITY_LOWEST)
     (update (-> obj reserve-buffer))
     (set! (-> obj reserve-buffer-count) 0)
     )

@@ -42,6 +42,7 @@ set(RUNTIME_SOURCE
         sce/libgraph.cpp
         sce/deci2.cpp
         sce/sif_ee.cpp
+        sce/sif_ee_memcard.cpp
         sce/iop.cpp
         sce/stubs.cpp
         kernel/asm_funcs.asm

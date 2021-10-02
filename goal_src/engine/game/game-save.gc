@@ -207,7 +207,7 @@
   (let ((tag (the-as game-save-tag (-> obj tag)))
         (tag-idx 0)
         )
-    (while (< (the-as int tag) (the-as int (-> obj tag)))
+    (while (< (the-as int tag) (the-as int (-> obj tag (-> obj length))))
       (format #t "~T  [~3D] ~-32S [~3D/~3D]  ~12D ~8f    "
               tag-idx
               (game-save-elt->string (-> tag elt-type))
@@ -1705,57 +1705,30 @@
   )
 
 (defbehavior auto-save-post auto-save ()
-  (when
-   (and
-    (= *cheat-mode* 'debug)
-    (logtest? (-> *cpad-list* cpads 0 button0-abs 0) (pad-buttons l3))
-    )
-   (let
-    ((gp-0
-      (new
-       'stack
-       'font-context
-       *font-default-matrix*
-       32
-       160
-       0.0
-       (font-color default)
-       (font-flags shadow kerning)
-       )
+  ;; debug text
+  (when (and (= *cheat-mode* 'debug)
+             (logtest? (-> *cpad-list* cpads 0 button0-abs 0) (pad-buttons l3))
+             )
+    (let ((gp-0 (new 'stack 'font-context *font-default-matrix* 32 160 0.0 (font-color default) (font-flags shadow kerning))))
+      (let ((v1-5 gp-0))
+        (set! (-> v1-5 width) (the float 440))
+        )
+      (let ((v1-6 gp-0))
+        (set! (-> v1-6 height) (the float 80))
+        )
+      (set! (-> gp-0 flags) (font-flags shadow kerning))
+      (format (clear *temp-string*) "~S / ~S ~D~%"
+              (-> self mode)
+              (-> self state name)
+              (-> self which)
+              )
+      (print-game-text *temp-string* gp-0 #f 128 22)
       )
-     )
-    (let ((v1-5 gp-0))
-     (set! (-> v1-5 width) (the float 440))
-     )
-    (let ((v1-6 gp-0))
-     (set! (-> v1-6 height) (the float 80))
-     )
-    (set! (-> gp-0 flags) (font-flags shadow kerning))
-    (format
-     (clear *temp-string*)
-     "~S / ~S ~D~%"
-     (-> self mode)
-     (-> self state name)
-     (-> self which)
-     )
-    (print-game-text *temp-string* gp-0 #f 128 22)
     )
-   )
+  
+  ;; auto-save drawing
   (when (and (= (-> self mode) 'auto-save) (!= (-> self next-state name) 'done))
-   (let
-    ((gp-1
-      (new
-       'stack
-       'font-context
-       *font-default-matrix*
-       20
-       40
-       0.0
-       (font-color default)
-       (font-flags shadow kerning)
-       )
-      )
-     )
+   (let ((gp-1 (new 'stack 'font-context *font-default-matrix* 20 40 0.0 (font-color default) (font-flags shadow kerning))))
     (let ((v1-15 gp-1))
      (set! (-> v1-15 scale) 0.8)
      )
@@ -1766,14 +1739,10 @@
      (set! (-> v1-17 height) (the float 20))
      )
     (set! (-> gp-1 flags) (font-flags shadow kerning middle left large))
+    
+    ;; if this is the first time saving, display a warning.
     (when (zero? (-> *game-info* auto-save-count))
-     (print-game-text
-      (lookup-text! *common-text* (game-text-id saving-data) #f)
-      gp-1
-      #f
-      128
-      22
-      )
+     (print-game-text (lookup-text! *common-text* (game-text-id saving-data) #f) gp-1 #f 128 22)
      (set! (-> gp-1 origin x) 20.0)
      (set! (-> gp-1 origin y) 130.0)
      (let ((v1-23 gp-1))
@@ -1792,51 +1761,48 @@
       )
      )
     )
+   
+   ;; flash the icon.
    (when (< (mod (-> *display* real-frame-counter) 300) 270)
-    (when (> (-> self part matrix) 0)
-     (let ((gp-2 (sprite-get-user-hvdf (-> self part matrix))))
-      (set! (-> gp-2 vector4w x) (the-as int 1842.0))
-      (set!
-       (-> gp-2 vector4w y)
-       (the-as
-        int
-        (the
-         float
-         (+ (the int (* 0.5 (- (* (if (= (get-aspect-ratio) 'aspect16x9)
-                                   370.0
-                                   360.0
-                                   )
-                                (-> *video-parms* relative-y-scale)
-                                )
-                             (the float (-> *video-parms* screen-sy))
-                             )
-                      )
-             )
-          2048
-          )
+     (when (> (-> self part matrix) 0)
+       (let ((gp-2 (sprite-get-user-hvdf (-> self part matrix))))
+         (set! (-> gp-2 vector4w x) (the-as int 1842.0))
+         (set! (-> gp-2 vector4w y) (the-as int
+                                            (the float (+ (the int (* 0.5 (- (* (if (= (get-aspect-ratio) 'aspect16x9)
+                                                                                    370.0
+                                                                                    360.0
+                                                                                    )
+                                                                                (-> *video-parms* relative-y-scale)
+                                                                                )
+                                                                             (the float (-> *video-parms* screen-sy))
+                                                                             )
+                                                                      )
+                                                               )
+                                                          2048
+                                                          )
+                                                 )
+                                            )
+               )
+         (set!
+           (-> gp-2 vector4w z)
+           (the-as int (+ -1024.0 (-> *math-camera* hvdf-off z)))
+           )
+         (set! (-> gp-2 vector4w w) (the-as int (-> *math-camera* hvdf-off w)))
          )
-        )
        )
-      (set!
-       (-> gp-2 vector4w z)
-       (the-as int (+ -1024.0 (-> *math-camera* hvdf-off z)))
-       )
-      (set! (-> gp-2 vector4w w) (the-as int (-> *math-camera* hvdf-off w)))
-      )
+     (spawn (-> self part) *zero-vector*)
      )
-    (spawn (-> self part) *zero-vector*)
-    )
    )
   (none)
   )
 
 (defstatehandler auto-save :post auto-save-post)
 
-(defbehavior auto-save-init-by-other auto-save ((desired-mode symbol) (notify-proc process-tree) (card-idx int) (file-idx int))
-  
-  ;; stubbing for now.
-  (return #f)
 
+
+(defbehavior auto-save-init-by-other auto-save ((desired-mode symbol) (notify-proc process-tree) (card-idx int) (file-idx int))
+  (format 0 "auto-save-init!~%")
+  ;; trying to create multiple auto save procs, bad idea.
   (when (handle->process (-> *game-info* auto-save-proc))
    (let ((a1-2 (new 'stack-no-clear 'event-message-block)))
     (set! (-> a1-2 from) self)
@@ -1844,14 +1810,19 @@
     (set! (-> a1-2 message) 'notify)
     (set! (-> a1-2 param 0) (the-as uint 'error))
     (set! (-> a1-2 param 1) (the-as uint 16))
+    (format 0 "auto save proc error~%")
     (send-event-function (the-as process notify-proc) a1-2)
     )
    (return #f)
    )
+  
+  ;; set us as the auto save proc
   (set! (-> *game-info* auto-save-proc) (process->handle self))
   (set! (-> *game-info* auto-save-status) (mc-status-code ok))
   (stack-size-set! (-> self main-thread) 512)
   (logclear! (-> self mask) (process-mask pause menu progress))
+  
+  ;; setup ourself
   (set! (-> self card) card-idx)
   (set! (-> self which) file-idx)
   (set! (-> self buffer) #f)
@@ -1877,11 +1848,565 @@
     )
    )
   (set! (-> *setting-control* default auto-save) #f)
+  (format 0 "going to get-heap!~%")
   (go-virtual get-heap)
   (none)
   )
 
+;; Get heap memory.
+(defstate get-heap (auto-save)
+  :virtual #t
+  :code
+  (behavior ()
+   (set! (-> self state-time) (-> *display* real-frame-counter))
+   (let ((a0-1 (reserve-alloc *art-control*)))
+    (while (not a0-1)
+     (if (>= (- (-> *display* real-frame-counter) (-> self state-time)) #x4650)
+      (go-virtual error (mc-status-code no-memory))
+      )
+     (suspend)
+     (set! a0-1 (reserve-alloc *art-control*))
+     )
+    (set! (-> self buffer) a0-1)
+    )
+   (go-virtual get-card)
+   (none)
+   )
+  :post
+  auto-save-post
+  )
+
+(defstate get-card (auto-save)
+  :virtual #t
+  :code
+  (behavior ()
+   (label cfg-0)
+   (mc-get-slot-info (-> self slot) (-> self info))
+   (when (zero? (-> self info known))
+    (suspend)
+    (goto cfg-0)
+    )
+   (cond
+    ((zero? (-> self info handle))
+     (go-virtual error (mc-status-code no-card))
+     )
+    ((zero? (-> self card))
+     (set! (-> self card) (-> self info handle))
+     )
+    ((!= (-> self info handle) (-> self card))
+     (go-virtual error (mc-status-code bad-handle))
+     )
+    )
+   (case (-> self mode) 
+    (('save 'auto-save)
+      (go-virtual save)
+      )
+    (('save-last)
+     (set! (-> self which) (-> self info last-file))
+     (if (= (-> self which) -1)
+      (go-virtual error (mc-status-code no-last))
+      (go-virtual save)
+      )
+     )
+    (('restore)
+     (go-virtual restore)
+     )
+    (('format-card)
+     (go-virtual format-card)
+     )
+    (('unformat-card)
+     (go-virtual unformat-card)
+     )
+    (('create-file)
+     (go-virtual create-file)
+     )
+    (else
+     (go-virtual done)
+     )
+    )
+   (none)
+   )
+  :post
+  auto-save-post
+  )
+
+(defstate format-card (auto-save)
+  :virtual #t
+  :code
+  (behavior ()
+   (when (zero? (-> self info formatted))
+    (label cfg-1)
+    (set! (-> self result) (mc-format (-> self card)))
+    (when (!= (-> self result) (mc-status-code ok))
+     (suspend)
+     (goto cfg-1)
+     )
+    (label cfg-3)
+    (set! (-> self result) (the-as mc-status-code (mc-check-result)))
+    (let ((v1-4 (-> self result)))
+     (b! (nonzero? v1-4) cfg-5 :delay (nop!))
+     (b! #t cfg-10 :delay (nop!))
+     (label cfg-5)
+     (b! (= v1-4 (mc-status-code format-failed)) cfg-1 :delay (nop!))
+     (nop!)
+     (b! (!= v1-4 (mc-status-code ok)) cfg-9 :delay (nop!))
+     )
+    (b! #t cfg-12 :delay (nop!))
+    (the-as none 0)
+    (b! #t cfg-10 :delay (nop!))
+    (label cfg-9)
+    (go-virtual error (-> self result))
+    (label cfg-10)
+    (suspend)
+    (goto cfg-3)
+    ;;(break ((empty)) ((empty-form)))
+    
+    )
+   (label cfg-12)
+   (case (-> self mode) 
+    (('create-file 'save 'save-last 'auto-save 'restore)
+      (go-virtual create-file)
+      )
+    )
+   (go-virtual done)
+   (none)
+   )
+  :post
+  auto-save-post
+  )
+
+(defstate unformat-card (auto-save)
+  :virtual #t
+  :code
+  (behavior ()
+   (when (nonzero? (-> self info formatted))
+    (label cfg-1)
+    (set! (-> self result) (mc-unformat (-> self card)))
+    (when (!= (-> self result) (mc-status-code ok))
+     (suspend)
+     (goto cfg-1)
+     )
+    (while #t
+     (set! (-> self result) (the-as mc-status-code (mc-check-result)))
+     (case (-> self result) 
+      (((mc-status-code busy))
+        )
+      (((mc-status-code ok))
+       (goto cfg-11)
+       )
+      (else
+       (go-virtual error (-> self result))
+       )
+      )
+     (suspend)
+     )
+    )
+   (label cfg-11)
+   (go-virtual done)
+   (none)
+   )
+  :post
+  auto-save-post
+  )
+
+(defstate create-file (auto-save)
+  :virtual #t
+  :code
+  (behavior ()
+   (cond
+    ((zero? (-> self info formatted))
+     (go-virtual error (mc-status-code no-format))
+     )
+    ((zero? (-> self info inited))
+     (if (< (-> self info mem-actual) (-> self info mem-required))
+      (go-virtual error (mc-status-code no-space))
+      )
+     (let ((v1-12 (-> self buffer)))
+      (set! (-> v1-12 current) (-> v1-12 base))
+      )
+     (label cfg-6)
+     (set!
+      (-> self result)
+      (mc-create-file (-> self card) (the-as uint (-> self buffer base)))
+      )
+     (when (!= (-> self result) (mc-status-code ok))
+      (suspend)
+      (goto cfg-6)
+      )
+     (while #t
+      (set! (-> self result) (the-as mc-status-code (mc-check-result)))
+      (case (-> self result) 
+       (((mc-status-code busy))
+         )
+       (((mc-status-code ok))
+        (goto cfg-16)
+        )
+       (else
+        (go-virtual error (-> self result))
+        )
+       )
+      (suspend)
+      )
+     )
+    )
+   (label cfg-16)
+   (case (-> self mode) 
+    (('restore)
+      (go-virtual restore)
+      )
+    (('save 'save-last 'auto-save)
+     (go-virtual save)
+     )
+    )
+   (go-virtual done)
+   (none)
+   )
+  :post
+  auto-save-post
+  )
+
+(defstate save (auto-save)
+  :virtual #t
+  :code
+  (behavior ()
+   (cond
+    ((zero? (-> self info formatted))
+     (go-virtual error (mc-status-code no-format))
+     )
+    ((zero? (-> self info inited))
+     (go-virtual error (mc-status-code no-file))
+     )
+    )
+   (case (-> self mode) 
+    (('auto-save)
+      (+! (-> *game-info* auto-save-count) 1)
+      )
+    )
+   (let ((v1-14 (-> self buffer)))
+    (set! (-> v1-14 current) (-> v1-14 base))
+    )
+   (let ((gp-0 loading-level))
+    (set! loading-level (-> self buffer))
+    (set! (-> self save) (new 'loading-level 'game-save #x10000))
+    (save-game! *game-info* (-> self save) "save")
+    (set! loading-level (the-as kheap gp-0))
+    0
+    (label cfg-7)
+    (set!
+     (-> self result)
+     (mc-save
+      (-> self card)
+      (-> self which)
+      (&-> (-> self save) type)
+      (the-as int (-> self save info-int32))
+      )
+     )
+    (when (!= (-> self result) (mc-status-code ok))
+     (suspend)
+     (goto cfg-7)
+     )
+    (while #t
+     (set! (-> self result) (the-as mc-status-code (mc-check-result)))
+     (let ((v1-24 (-> self result)))
+       (cond
+         ((= v1-24 (mc-status-code busy))
+          #f
+          )
+         ((= v1-24 (mc-status-code ok))
+          (goto cfg-21)
+          gp-0
+          )
+         ((= v1-24 (mc-status-code write-error))
+          (suspend)
+          gp-0
+          )
+         (else
+           (case (-> self mode) 
+                 (('auto-save)
+                  (set!
+                    (-> *game-info* auto-save-count)
+                    (seekl (-> *game-info* auto-save-count) 0 1)
+                    )
+                  )
+                 )
+           (go-virtual error (-> self result))
+           )
+         
+         )
+      )
+     (suspend)
+     )
+    )
+   (label cfg-21)
+   (go-virtual done)
+   (none)
+   )
+  :post
+  auto-save-post
+  )
+
+(defstate restore (auto-save)
+  :virtual #t
+  :code
+  (behavior ()
+   (local-vars (gp-0 none))
+   (cond
+    ((zero? (-> self info formatted))
+     (go-virtual error (mc-status-code no-format))
+     )
+    ((zero? (-> self info inited))
+     (go-virtual error (mc-status-code no-file))
+     )
+    )
+   (let ((v1-10 (-> self buffer)))
+    (set! (-> v1-10 current) (-> v1-10 base))
+    )
+   (if (zero? (-> self info file (-> self which) present))
+    (go-virtual error (mc-status-code no-save))
+    )
+   (label cfg-6)
+   (set!
+    (-> self result)
+    (mc-load (-> self card) (-> self which) (-> self buffer base))
+    )
+   (when (!= (-> self result) (mc-status-code ok))
+    (suspend)
+    (goto cfg-6)
+    )
+   (while #t
+    (set! (-> self result) (the-as mc-status-code (mc-check-result)))
+    (let ((v1-22 (-> self result)))
+      (cond
+        ((= v1-22 (mc-status-code busy))
+         #f
+         )
+        ((= v1-22 (mc-status-code ok))
+         (goto cfg-20)
+         gp-0
+         )
+        ((= v1-22 (mc-status-code read-error))
+         (suspend)
+         gp-0
+         )
+        ((= v1-22 (mc-status-code new-game))
+         (go-virtual error (mc-status-code no-save))
+         )
+        (else
+          (go-virtual error (-> self result))
+          )
+        )
+      
+     )
+    (suspend)
+    )
+   (label cfg-20)
+   (set! (-> self save) (the-as game-save (&+ (-> self buffer base) 4)))
+   (let ((v1-34 (-> self save)))
+    (set! (-> v1-34 type) game-save)
+    (if (!= (-> v1-34 version) 1)
+     (go-virtual error (mc-status-code bad-version))
+     )
+    )
+   (set-setting! *setting-control* self 'music-volume 'abs 0.0 0)
+   (set-setting! *setting-control* self 'sfx-volume 'abs 0.0 0)
+   (set! (-> *game-info* mode) 'play)
+   (initialize! *game-info* 'game (-> self save) (the-as string #f))
+   (set-master-mode 'game)
+   (push-setting!
+    *setting-control*
+    self
+    (the-as (function object object object object object) 'process-mask)
+    'set
+    0.0
+    16
+    )
+   (copy-settings-from-target! *setting-control*)
+   (dotimes (gp-1 15)
+    (suspend)
+    )
+   (go-virtual done)
+   (none)
+   )
+  :post
+  auto-save-post
+  )
+
+(defstate error (auto-save)
+  :virtual #t
+  :event
+  (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
+   (let ((v1-0 arg2))
+    (the-as object (cond
+                    ((= v1-0 'progress-allowed?)
+                     #t
+                     )
+                    ((= v1-0 'die)
+                     (deactivate self)
+                     )
+                    )
+     )
+    )
+   )
+  :code
+  (behavior ((arg0 mc-status-code))
+   (if (-> self buffer)
+    (reserve-free *art-control* (-> self buffer))
+    )
+   (set! (-> self result) arg0)
+   (let ((s5-0 *auto-save-info*))
+    (mem-copy! (the-as pointer s5-0) (the-as pointer (-> self info)) 300)
+    (let ((a1-2 (new 'stack-no-clear 'event-message-block)))
+     (set! (-> a1-2 from) self)
+     (set! (-> a1-2 num-params) 3)
+     (set! (-> a1-2 message) 'notify)
+     (set! (-> a1-2 param 0) (the-as uint 'error))
+     (set! (-> a1-2 param 1) (the-as uint (-> self result)))
+     (set! (-> a1-2 param 2) (the-as uint s5-0))
+     (send-event-function (handle->process (-> self notify)) a1-2)
+     )
+    )
+   (let ((t9-3 format)
+         (a0-7 #t)
+         (a1-3 "SAVE ERROR: ~A~%")
+         (v1-12 (-> self result))
+         )
+    (t9-3 a0-7 a1-3 (cond
+                     ((= v1-12 (mc-status-code no-auto-save))
+                      "no-auto-save"
+                      )
+                     ((= v1-12 (mc-status-code no-process))
+                      "no-process"
+                      )
+                     ((= v1-12 (mc-status-code bad-version))
+                      "bad-version"
+                      )
+                     ((= v1-12 (mc-status-code no-space))
+                      "no-space"
+                      )
+                     ((= v1-12 (mc-status-code no-save))
+                      "no-save"
+                      )
+                     ((= v1-12 (mc-status-code no-file))
+                      "no-file"
+                      )
+                     ((= v1-12 (mc-status-code no-format))
+                      "no-format"
+                      )
+                     ((= v1-12 (mc-status-code no-last))
+                      "no-last"
+                      )
+                     ((= v1-12 (mc-status-code no-card))
+                      "no-card"
+                      )
+                     ((= v1-12 (mc-status-code no-memory))
+                      "no-memory"
+                      )
+                     ((= v1-12 (mc-status-code new-game))
+                      "new-game"
+                      )
+                     ((= v1-12 (mc-status-code read-error))
+                      "read-error"
+                      )
+                     ((= v1-12 (mc-status-code write-error))
+                      "write-error"
+                      )
+                     ((= v1-12 (mc-status-code internal-error))
+                      "internal-error"
+                      )
+                     ((= v1-12 (mc-status-code format-failed))
+                      "format-failed"
+                      )
+                     ((= v1-12 (mc-status-code bad-handle))
+                      "bad-handle"
+                      )
+                     ((= v1-12 (mc-status-code ok))
+                      "ok"
+                      )
+                     ((= v1-12 (mc-status-code busy))
+                      "busy"
+                      )
+                     (else
+                      "*unknown*"
+                      )
+                     )
+     )
+    )
+   (if (= (-> self result) (mc-status-code no-auto-save))
+    (return #f)
+    )
+   (case (-> self mode) 
+    (('auto-save 'error)
+      (set! (-> self state-time) (-> *display* real-frame-counter))
+      (set! (-> *game-info* auto-save-status) arg0)
+      (while (< (- (-> *display* real-frame-counter) (-> self state-time)) 60)
+       (if (not (progress-allowed?))
+        (set! (-> self state-time) (-> *display* real-frame-counter))
+        )
+       (suspend)
+       )
+      (if (= arg0 (mc-status-code no-card))
+       (activate-progress *dproc* (progress-screen memcard-removed))
+       (activate-progress *dproc* (progress-screen memcard-auto-save-error))
+       )
+      )
+    )
+   (none)
+   )
+  :post
+  auto-save-post
+  )
+
+;; failed to figure out what this is:
+(defstate done (auto-save)
+  :virtual #t
+  :code
+  (behavior ()
+   (if (and (-> self buffer) (-> *art-control* reserve-buffer))
+    (reserve-free *art-control* (-> self buffer))
+    )
+   (set! (-> *game-info* auto-save-status) (mc-status-code ok))
+   (case (-> self mode) 
+    (('save 'save-last 'auto-save 'restore)
+      (set! (-> *setting-control* default auto-save) #t)
+      (set! (-> *game-info* auto-save-card) (-> self card))
+      (set! (-> *game-info* auto-save-which) (-> self which))
+      )
+    )
+   (let ((gp-0 *auto-save-info*))
+    (mem-copy! (the-as pointer gp-0) (the-as pointer (-> self info)) 300)
+    (let ((a1-5 (new 'stack-no-clear 'event-message-block)))
+     (set! (-> a1-5 from) self)
+     (set! (-> a1-5 num-params) 3)
+     (set! (-> a1-5 message) 'notify)
+     (set! (-> a1-5 param 0) (the-as uint 'done))
+     (set! (-> a1-5 param 1) (the-as uint 1))
+     (set! (-> a1-5 param 2) (the-as uint gp-0))
+     (send-event-function (handle->process (-> self notify)) a1-5)
+     )
+    )
+   (case (-> self mode) 
+    (('auto-save)
+      (when (= (-> *game-info* auto-save-count) 1)
+       (set! (-> self event-hook) (-> (method-of-object self error) event))
+       (set! (-> self state-time) (-> *display* real-frame-counter))
+       (while (< (- (-> *display* real-frame-counter) (-> self state-time)) 60)
+        (if (not (progress-allowed?))
+         (set! (-> self state-time) (-> *display* real-frame-counter))
+         )
+        (suspend)
+        )
+       (activate-progress *dproc* (progress-screen auto-save))
+       )
+      )
+    )
+   (none)
+   )
+  :post
+  auto-save-post
+  )
+
 (defun auto-save-command ((arg0 symbol) (arg1 int) (arg2 int) (arg3 process-tree))
+  (format #t "auto-save cmd: ~A from ~A~%" arg0 arg3)
   (make-init-process auto-save auto-save-init-by-other arg0 arg3 arg1 arg2)
   (none)
   )

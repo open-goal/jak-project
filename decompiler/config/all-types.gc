@@ -4643,7 +4643,7 @@
   :flag-assert         #x1000000068
   (:methods
     (new (symbol type int) _type_ 0)
-    (want-file (_type_ string int handle float) int 9)
+    (set-pending-file (_type_ string int handle float) int 9)
     (update (_type_) int 10)
     (inactive? (_type_) symbol 11)
     (file-status (_type_ string int) symbol 12)
@@ -11713,11 +11713,12 @@
 (declare-type collide-cache basic)
 (declare-type snowball-info basic)
 (declare-type tube-info basic)
+(declare-type racer-info basic)
 (deftype target (process-drawable)
   ((control             control-info        :score 100 :offset 112)
    (fact-info-target    fact-info-target    :score 100 :offset 144)
    (skel2               basic               :offset-assert 176)
-   (racer               basic               :offset-assert 180)
+   (racer               racer-info          :offset-assert 180)
    (game                game-info           :offset-assert 184)
    (neck                joint-mod           :offset-assert 188)
    (state-hook-time     uint64              :offset-assert 192)
@@ -13577,10 +13578,10 @@
    (random-range   int32   :offset 8)
    (random-mult    int32   :offset 12)
    (sym            symbol  :offset 4) ;; moved
-   (func           function  :offset 4)
+   (func           symbol  :offset 4)
    (tex            uint32  :offset 4)
    (pntr           pointer :offset 4)
-   ;; gap
+   ;; sym used to be here
    (sound          sound-spec   :offset 4)
    )
   :method-count-assert 9
@@ -13660,6 +13661,7 @@
   (use-local-clock 0)
   (always-draw 1)
   (screen-space 2)
+  (unknown-bit-01 3) ;; beach-part
   )
 
 (deftype sparticle-launch-group (basic)
@@ -13717,6 +13719,7 @@
   :bitfield #t
   :type uint32
   (bit0 0)
+  (bit1 1) ;; village1-part
   (bit2 2)     ;; cleared after an aux has its func set to add-to-sprite-aux-lst
   (bit3 3)
   (ready-to-launch 6) ;; maybe just just death?
@@ -14323,11 +14326,11 @@
   (:methods
     (dummy-14 (_type_) none 14)
     (dummy-15 (_type_) none 15)
-    (TODO-RENAME-16 (_type_ int int) none 16)
+    (TODO-RENAME-16 (_type_ int int) none 16) ;; first int seen as a fixed point from racer-info 'heat'
     (dummy-17 (_type_) none 17)
     (dummy-18 (_type_) none 18)
-    (dummy-19 (_type_) none 19)
-    (TOOD-RENAME-20 (_type_ int) none 20)
+    (TODO-RENAME-19 (_type_) none 19)
+    (init-particles! (_type_) none 20)
     (first-icon-x (_type_) int 21)
     (first-icon-y (_type_) int 22)
     (dummy-23 (_type_) none 23)
@@ -17509,7 +17512,7 @@
 
 (define-extern matrix-local->world (function symbol symbol matrix))
 (define-extern update-snow (function target none))
-(define-extern check-drop-level-rain (function int sparticle-cpuinfo vector none)) ;; second arg is a guess, it's passed as `a1` to `sp-kill-particle`
+(define-extern check-drop-level-rain (function sparticle-system sparticle-cpuinfo vector none)) ;; second arg is a guess, it's passed as `a1` to `sp-kill-particle`
 (define-extern update-rain (function target none))
 (define-extern cam-master-effect (function none :behavior camera-master))
 (define-extern sparticle-track-sun (function int sparticle-cpuinfo matrix none)) ;; TODO - unused / first arg is unknown / matrix is probably wrong
@@ -19204,7 +19207,6 @@
 (define-extern launcher-idle (state launcher))
 (define-extern launcher-deactivated (state launcher))
 (define-extern launcher-active (state launcher))
-;;(define-extern beach-part-grotto-1 object) ;; unknown type
 (define-extern part-spawner-active (state part-spawner))
 (define-extern *lev-string* string)
 (define-extern med-res-level-idle (state med-res-level))
@@ -20328,12 +20330,12 @@
 
 ;; - Functions
 
-(define-extern eco-fadeout function)
-(define-extern eco-track-root-prim-fadeout function)
-(define-extern part-tracker-track-root function)
-(define-extern part-tracker-move-to-target function)
-(define-extern part-tracker-track-target function)
-(define-extern sparticle-track-root-money function)
+(define-extern eco-fadeout (function sparticle-system sparticle-cpuinfo none))
+(define-extern eco-track-root-prim-fadeout (function sparticle-system sparticle-cpuinfo vector none))
+(define-extern part-tracker-track-root (function sparticle-system sparticle-cpuinfo vector none))
+(define-extern part-tracker-move-to-target (function part-tracker vector))
+(define-extern part-tracker-track-target (function part-tracker vector))
+(define-extern sparticle-track-root-money (function sparticle-system sparticle-cpuinfo vector none))
 
 
 ;; ----------------------
@@ -24104,32 +24106,18 @@
 
 ;; - Types
 
-; (deftype beach-part (part-spawner)
-;   ()
-;   :method-count-assert 21
-;   :size-assert         #xd0
-;   :heap-base           #x60
-;   :flag-assert         #x15006000d0
-;   ;;  not enough basic ops
-;   (:methods
-;     (dummy-9 () none 9)
-;     (dummy-10 () none 10)
-;     (dummy-11 () none 11)
-;     (dummy-12 () none 12)
-;     (dummy-13 () none 13)
-;     (dummy-14 () none 14)
-;     (dummy-15 () none 15)
-;     (dummy-16 () none 16)
-;     (dummy-17 () none 17)
-;     (dummy-18 () none 18)
-;     (dummy-19 () none 19)
-;     (dummy-20 () none 20)
-;     )
-;   )
+(deftype beach-part (part-spawner)
+  ()
+  :method-count-assert 21
+  :size-assert         #xd0
+  :heap-base           #x60
+  :flag-assert         #x15006000d0
+  )
 
 ;; - Unknowns
 
-;;(define-extern sound-beach-waterfall object) ;; unknown type
+(define-extern sound-beach-waterfall sound-spec) ;; unknown type
+(define-extern beach-part-grotto-1 (state beach-part))
 
 
 ;; ----------------------
@@ -24745,18 +24733,18 @@
 
 ;; - Types
 
-; (deftype citb-part (UNKNOWN)
-;   ()
-;   :method-count-assert 0
-;   :size-assert         #x0
-;   :flag-assert         #x0
-;   ;;  not enough basic ops
-;   )
+(deftype citb-part (part-spawner)
+  ()
+  :method-count-assert 21
+  :size-assert         #xd0
+  :heap-base           #x60
+  :flag-assert         #x15006000d0
+  )
 
 ;; - Functions
 
-(define-extern check-drop-level-firehose-pops function)
-(define-extern birth-func-random-rot function)
+(define-extern check-drop-level-firehose-pops (function sparticle-system sparticle-cpuinfo vector none))
+(define-extern birth-func-random-rot (function sparticle-system sparticle-cpuinfo matrix none))
 
 
 ;; ----------------------
@@ -27105,8 +27093,8 @@
 
 ;; - Functions
 
-(define-extern check-drop-level-eichar-lighteco-pops function)
-(define-extern check-drop-level-bigdoor-open-pops function)
+(define-extern check-drop-level-eichar-lighteco-pops (function sparticle-system sparticle-cpuinfo vector none))
+(define-extern check-drop-level-bigdoor-open-pops (function sparticle-system sparticle-cpuinfo vector none))
 
 
 ;; ----------------------
@@ -29533,28 +29521,13 @@
 
 ;; - Types
 
-; (deftype jungle-part (part-spawner)
-;   ()
-;   :method-count-assert 21
-;   :size-assert         #xd0
-;   :heap-base           #x60
-;   :flag-assert         #x15006000d0
-;   ;;  not enough basic ops
-;   (:methods
-;     (dummy-9 () none 9)
-;     (dummy-10 () none 10)
-;     (dummy-11 () none 11)
-;     (dummy-12 () none 12)
-;     (dummy-13 () none 13)
-;     (dummy-14 () none 14)
-;     (dummy-15 () none 15)
-;     (dummy-16 () none 16)
-;     (dummy-17 () none 17)
-;     (dummy-18 () none 18)
-;     (dummy-19 () none 19)
-;     (dummy-20 () none 20)
-;     )
-;   )
+(deftype jungle-part (part-spawner)
+  ()
+  :method-count-assert 21
+  :size-assert         #xd0
+  :heap-base           #x60
+  :flag-assert         #x15006000d0
+  )
 
 
 ;; ----------------------
@@ -29941,128 +29914,128 @@
 
 ;; - Types
 
-; (deftype racer-info (basic)
-;   ((entity              basic                 :offset-assert 4)
-;    (bike-trans          vector        :inline :offset-assert 16)
-;    (bike-quat           vector        :inline :offset-assert 32)
-;    (bike-scale          vector        :inline :offset-assert 48)
-;    (mod-x               float                 :offset-assert 64)
-;    (rot                 vector        :inline :offset-assert 80)
-;    (rot-old             vector        :inline :offset-assert 96)
-;    (rotv                vector        :inline :offset-assert 112)
-;    (lean-rotx           degrees                   :offset-assert 128)
-;    (change-roty         degrees                   :offset-assert 132)
-;    (change-roty-old     degrees                   :offset-assert 136)
-;    (quat                vector        :inline :offset-assert 144)
-;    (surface-y           meters                :offset-assert 160)
-;    (surface-vy          meters                :offset-assert 164)
-;    (surface-quat        vector        :inline :offset-assert 176)
-;    (surface-quat-smooth vector        :inline :offset-assert 192)
-;    (cushion-base        meters                :offset-assert 208)
-;    (cushion-offset      meters                :offset-assert 212)
-;    (cushion-bob         meters                :offset-assert 216)
-;    (cushion-bob-old     meters                :offset-assert 220)
-;    (cushion-smush       smush-control :inline :offset-assert 224)
-;    (shock-offset        meters                :offset-assert 256)
-;    (shock-offsetv       meters                :offset-assert 260)
-;    (shock-rotx          meters                :offset-assert 264)
-;    (hill-value          float                 :offset-assert 268)
-;    (hill-ground-value   float                 :offset-assert 272)
-;    (hill-offset         meters                :offset-assert 276)
-;    (hill-rotx           degrees                   :offset-assert 280)
-;    (hill-boost          meters                :offset-assert 284)
-;    (bob-timer           float                 :offset-assert 288)
-;    (bob-meta-timer      float                 :offset-assert 292)
-;    (bob-meta-meta-timer float                 :offset-assert 296)
-;    (bob-mult-rot        float                 :offset-assert 300)
-;    (bob-mult-trans      float                 :offset-assert 304)
-;    (bob-period          float                 :offset-assert 308)
-;    (bob-meta-time       uint64                :offset-assert 312)
-;    (bob-hit-ground-time uint64                :offset-assert 320)
-;    (cur-rotx            degrees                   :offset-assert 328)
-;    (targ-rotx           degrees                   :offset-assert 332)
-;    (speed-rotx          float                 :offset-assert 336)
-;    (mult-rotx           degrees                   :offset-assert 340)
-;    (front-blade         basic                 :offset-assert 344)
-;    (front-rot           degrees                   :offset-assert 348)
-;    (front-rotv          degrees                   :offset-assert 352)
-;    (bottom-blade        basic                 :offset-assert 356)
-;    (bottom-rot          degrees                   :offset-assert 360)
-;    (front               basic                 :offset-assert 364)
-;    (front-turn          degrees                   :offset-assert 368)
-;    (tail                basic                 :offset-assert 372)
-;    (tail-tilt           degrees                   :offset-assert 376)
-;    (transv-max          meters                :offset-assert 380)
-;    (slide-down-time     UNKNOWN       2       :offset-assert 384)
-;    (slide-enter-time    uint64                :offset-assert 400)
-;    (slide-mode          int32                 :offset-assert 408)
-;    (slide-amp           float                 :offset-assert 412)
-;    (slide-grip-mult     float                 :offset-assert 416)
-;    (slide-shift-x       float                 :offset-assert 420)
-;    (slide-interp        float                 :offset-assert 424)
-;    (heat                float                 :offset-assert 428)
-;    (boost-time          uint64                :offset-assert 432)
-;    (boost-duration      uint64                :offset-assert 440)
-;    (boost-curve         float                 :offset-assert 448)
-;    (boost-level         float                 :offset-assert 452)
-;    (boost-target        float                 :offset-assert 456)
-;    (boost-output        float                 :offset-assert 460)
-;    (hop?                basic                 :offset-assert 464)
-;    (hop-start-y         float                 :offset-assert 468)
-;    (bounce              int32                 :offset-assert 472)
-;    (bounce-hit          float                 :offset-assert 476)
-;    (engine-sound-id     sound-id              :offset-assert 480)
-;    (boost-sound-id      sound-id              :offset-assert 484)
-;    (engine-sound-pitch  float                 :offset-assert 488)
-;    (turn-anim-targ      float                 :offset-assert 492)
-;    (turn-anim-frame     float                 :offset-assert 496)
-;    (turn-anim-vel       float                 :offset-assert 500)
-;    (tail-anim-vel       float                 :offset-assert 504)
-;    (tail-anim-frame     float                 :offset-assert 508)
-;    (rudd-anim-vel       float                 :offset-assert 512)
-;    (rudd-anim-frame     float                 :offset-assert 516)
-;    (racing-time         uint64                :offset-assert 520)
-;    (stick-lock          basic                 :offset-assert 528)
-;    (stick-off           basic                 :offset-assert 532)
-;    (heavy               basic                 :offset-assert 536)
-;    (unstuck-time        uint64                :offset-assert 544)
-;    (stuck-count         int32                 :offset-assert 552)
-;    (scrape-sound-id     sound-id              :offset-assert 556)
-;    (heat-sound-time     uint64                :offset-assert 560)
-;    )
-;   :method-count-assert 9
-;   :size-assert         #x238
-;   :flag-assert         #x900000238
-;   )
+(deftype racer-info (basic)
+  ((entity              basic                 :offset-assert 4)
+   (bike-trans          vector        :inline :offset-assert 16)
+   (bike-quat           vector        :inline :offset-assert 32)
+   (bike-scale          vector        :inline :offset-assert 48)
+   (mod-x               float                 :offset-assert 64)
+   (rot                 vector        :inline :offset-assert 80)
+   (rot-old             vector        :inline :offset-assert 96)
+   (rotv                vector        :inline :offset-assert 112)
+   (lean-rotx           degrees                   :offset-assert 128)
+   (change-roty         degrees                   :offset-assert 132)
+   (change-roty-old     degrees                   :offset-assert 136)
+   (quat                vector        :inline :offset-assert 144)
+   (surface-y           meters                :offset-assert 160)
+   (surface-vy          meters                :offset-assert 164)
+   (surface-quat        vector        :inline :offset-assert 176)
+   (surface-quat-smooth vector        :inline :offset-assert 192)
+   (cushion-base        meters                :offset-assert 208)
+   (cushion-offset      meters                :offset-assert 212)
+   (cushion-bob         meters                :offset-assert 216)
+   (cushion-bob-old     meters                :offset-assert 220)
+   (cushion-smush       smush-control :inline :offset-assert 224)
+   (shock-offset        meters                :offset-assert 256)
+   (shock-offsetv       meters                :offset-assert 260)
+   (shock-rotx          meters                :offset-assert 264)
+   (hill-value          float                 :offset-assert 268)
+   (hill-ground-value   float                 :offset-assert 272)
+   (hill-offset         meters                :offset-assert 276)
+   (hill-rotx           degrees                   :offset-assert 280)
+   (hill-boost          meters                :offset-assert 284)
+   (bob-timer           float                 :offset-assert 288)
+   (bob-meta-timer      float                 :offset-assert 292)
+   (bob-meta-meta-timer float                 :offset-assert 296)
+   (bob-mult-rot        float                 :offset-assert 300)
+   (bob-mult-trans      float                 :offset-assert 304)
+   (bob-period          float                 :offset-assert 308)
+   (bob-meta-time       uint64                :offset-assert 312)
+   (bob-hit-ground-time uint64                :offset-assert 320)
+   (cur-rotx            degrees                   :offset-assert 328)
+   (targ-rotx           degrees                   :offset-assert 332)
+   (speed-rotx          float                 :offset-assert 336)
+   (mult-rotx           degrees                   :offset-assert 340)
+   (front-blade         basic                 :offset-assert 344)
+   (front-rot           degrees                   :offset-assert 348)
+   (front-rotv          degrees                   :offset-assert 352)
+   (bottom-blade        basic                 :offset-assert 356)
+   (bottom-rot          degrees                   :offset-assert 360)
+   (front               basic                 :offset-assert 364)
+   (front-turn          degrees                   :offset-assert 368)
+   (tail                basic                 :offset-assert 372)
+   (tail-tilt           degrees                   :offset-assert 376)
+   (transv-max          meters                :offset-assert 380)
+   (slide-down-time     uint64       2       :offset-assert 384)
+   (slide-enter-time    uint64                :offset-assert 400)
+   (slide-mode          int32                 :offset-assert 408)
+   (slide-amp           float                 :offset-assert 412)
+   (slide-grip-mult     float                 :offset-assert 416)
+   (slide-shift-x       float                 :offset-assert 420)
+   (slide-interp        float                 :offset-assert 424)
+   (heat                float                 :offset-assert 428)
+   (boost-time          uint64                :offset-assert 432)
+   (boost-duration      uint64                :offset-assert 440)
+   (boost-curve         float                 :offset-assert 448)
+   (boost-level         float                 :offset-assert 452)
+   (boost-target        float                 :offset-assert 456)
+   (boost-output        float                 :offset-assert 460)
+   (hop?                basic                 :offset-assert 464)
+   (hop-start-y         float                 :offset-assert 468)
+   (bounce              int32                 :offset-assert 472)
+   (bounce-hit          float                 :offset-assert 476)
+   (engine-sound-id     sound-id              :offset-assert 480)
+   (boost-sound-id      sound-id              :offset-assert 484)
+   (engine-sound-pitch  float                 :offset-assert 488)
+   (turn-anim-targ      float                 :offset-assert 492)
+   (turn-anim-frame     float                 :offset-assert 496)
+   (turn-anim-vel       float                 :offset-assert 500)
+   (tail-anim-vel       float                 :offset-assert 504)
+   (tail-anim-frame     float                 :offset-assert 508)
+   (rudd-anim-vel       float                 :offset-assert 512)
+   (rudd-anim-frame     float                 :offset-assert 516)
+   (racing-time         uint64                :offset-assert 520)
+   (stick-lock          basic                 :offset-assert 528)
+   (stick-off           basic                 :offset-assert 532)
+   (heavy               basic                 :offset-assert 536)
+   (unstuck-time        uint64                :offset-assert 544)
+   (stuck-count         int32                 :offset-assert 552)
+   (scrape-sound-id     sound-id              :offset-assert 556)
+   (heat-sound-time     uint64                :offset-assert 560)
+   )
+  :method-count-assert 9
+  :size-assert         #x238
+  :flag-assert         #x900000238
+  )
 
-; (deftype racer-bank (basic)
-;   ((slide-hold-time            seconds  :offset-assert 8)
-;    (heat-max                   float     :offset-assert 16)
-;    (hotcoals-heat-inc          float     :offset-assert 20)
-;    (lava-heat-inc              float     :offset-assert 24)
-;    (lava-air-heat-inc          float     :offset-assert 28)
-;    (surface-heat-inc           float     :offset-assert 32)
-;    (jump-heat-inc              float     :offset-assert 36)
-;    (lavatube-hotcoals-heat-inc float     :offset-assert 40)
-;    (lavatube-lava-heat-inc     float     :offset-assert 44)
-;    (lavatube-lava-air-heat-inc float     :offset-assert 48)
-;    (lavatube-surface-heat-inc  float     :offset-assert 52)
-;    (lavatube-jump-heat-inc     float     :offset-assert 56)
-;    (boost-curve-max            meters    :offset-assert 60)
-;    (boost-level-max            meters    :offset-assert 64)
-;    (boost-level-inc            meters    :offset-assert 68)
-;    (boost-duration             seconds  :offset-assert 72)
-;    (default-front-blade        degrees       :offset-assert 80)
-;    (yellow-projectile-speed    meters    :offset-assert 84)
-;    )
-;   :method-count-assert 9
-;   :size-assert         #x58
-;   :flag-assert         #x900000058
-;   )
+(deftype racer-bank (basic)
+  ((slide-hold-time            seconds  :offset-assert 8)
+   (heat-max                   float     :offset-assert 16)
+   (hotcoals-heat-inc          float     :offset-assert 20)
+   (lava-heat-inc              float     :offset-assert 24)
+   (lava-air-heat-inc          float     :offset-assert 28)
+   (surface-heat-inc           float     :offset-assert 32)
+   (jump-heat-inc              float     :offset-assert 36)
+   (lavatube-hotcoals-heat-inc float     :offset-assert 40)
+   (lavatube-lava-heat-inc     float     :offset-assert 44)
+   (lavatube-lava-air-heat-inc float     :offset-assert 48)
+   (lavatube-surface-heat-inc  float     :offset-assert 52)
+   (lavatube-jump-heat-inc     float     :offset-assert 56)
+   (boost-curve-max            meters    :offset-assert 60)
+   (boost-level-max            meters    :offset-assert 64)
+   (boost-level-inc            meters    :offset-assert 68)
+   (boost-duration             seconds  :offset-assert 72)
+   (default-front-blade        degrees       :offset-assert 80)
+   (yellow-projectile-speed    meters    :offset-assert 84)
+   )
+  :method-count-assert 9
+  :size-assert         #x58
+  :flag-assert         #x900000058
+  )
 
 ;; - Unknowns
 
-;;(define-extern *RACER-bank* object) ;; unknown type
+(define-extern *RACER-bank* racer-bank) ;; unknown type
 (define-extern *balloon-sg* skeleton-group)
 
 
@@ -30101,12 +30074,12 @@
 
 ;; - Functions
 
-(define-extern zoomer-heat-slice-color function)
-(define-extern part-hud-racer-speed-func function)
-(define-extern part-hud-racer-heat-func function)
-(define-extern part-hud-zoomer-heat-slice-01-func function)
-(define-extern part-hud-zoomer-heat-slice-02-func function)
-(define-extern part-hud-zoomer-heat-slice-03-func function)
+(define-extern zoomer-heat-slice-color (function matrix float float))
+(define-extern part-hud-racer-speed-func (function sparticle-system sparticle-cpuinfo matrix float))
+(define-extern part-hud-racer-heat-func (function sparticle-system sparticle-cpuinfo matrix float))
+(define-extern part-hud-zoomer-heat-slice-01-func (function sparticle-system sparticle-cpuinfo matrix float))
+(define-extern part-hud-zoomer-heat-slice-02-func (function sparticle-system sparticle-cpuinfo matrix float))
+(define-extern part-hud-zoomer-heat-slice-03-func (function sparticle-system sparticle-cpuinfo matrix float))
 
 
 ;; ----------------------
@@ -30478,7 +30451,7 @@
 
 ;; - Functions
 
-(define-extern check-drop-level-assistant (function assistant sparticle-cpuinfo vector none))
+(define-extern check-drop-level-assistant (function sparticle-system sparticle-cpuinfo vector none))
 
 ;; - Unknowns
 
@@ -31238,20 +31211,20 @@
 
 ;; - Types
 
-; (deftype villagea-part (UNKNOWN)
-;   ()
-;   :method-count-assert 0
-;   :size-assert         #x0
-;   :flag-assert         #x0
-;   ;;  not enough basic ops
-;   )
+(deftype villagea-part (part-spawner)
+  ()
+  :method-count-assert 21
+  :size-assert         #xd0
+  :heap-base           #x60
+  :flag-assert         #x15006000d0
+  )
 
 ;; - Functions
 
-(define-extern bird-bob-func function)
-(define-extern sparticle-seagull-moon function)
-(define-extern check-drop-level-village1-fountain-nosplash function)
-(define-extern check-drop-level-village1-fountain function)
+(define-extern bird-bob-func (function sparticle-system sparticle-cpuinfo vector none))
+(define-extern sparticle-seagull-moon (function sparticle-system sparticle-cpuinfo matrix none))
+(define-extern check-drop-level-village1-fountain-nosplash (function sparticle-system sparticle-cpuinfo vector vector))
+(define-extern check-drop-level-village1-fountain (function sparticle-system sparticle-cpuinfo vector none))
 
 
 ;; ----------------------
@@ -31262,7 +31235,7 @@
 
 ;; - Functions
 
-(define-extern check-drop-level-sagehut function)
+(define-extern check-drop-level-sagehut (function sparticle-system sparticle-cpuinfo vector none))
 
 
 ;; ----------------------
@@ -31437,35 +31410,20 @@
 
 ;; - Types
 
-; (deftype training-part (part-spawner)
-;   ()
-;   :method-count-assert 21
-;   :size-assert         #xd0
-;   :heap-base           #x60
-;   :flag-assert         #x15006000d0
-;   ;;  not enough basic ops
-;   (:methods
-;     (dummy-9 () none 9)
-;     (dummy-10 () none 10)
-;     (dummy-11 () none 11)
-;     (dummy-12 () none 12)
-;     (dummy-13 () none 13)
-;     (dummy-14 () none 14)
-;     (dummy-15 () none 15)
-;     (dummy-16 () none 16)
-;     (dummy-17 () none 17)
-;     (dummy-18 () none 18)
-;     (dummy-19 () none 19)
-;     (dummy-20 () none 20)
-;     )
-;   )
+(deftype training-part (part-spawner)
+  ()
+  :method-count-assert 21
+  :size-assert         #xd0
+  :heap-base           #x60
+  :flag-assert         #x15006000d0
+  )
 
 ;; - Functions
 
-(define-extern check-drop-level-training-mist function)
-(define-extern check-drop-level-training-spout-rain function)
-(define-extern tra-bird-bob-func function)
-(define-extern tra-sparticle-seagull-moon function)
+(define-extern check-drop-level-training-mist (function sparticle-system sparticle-cpuinfo vector none))
+(define-extern check-drop-level-training-spout-rain (function sparticle-system sparticle-cpuinfo vector none))
+(define-extern tra-bird-bob-func (function sparticle-system sparticle-cpuinfo vector none))
+(define-extern tra-sparticle-seagull-moon (function sparticle-system sparticle-cpuinfo matrix none))
 
 
 ;; ----------------------
@@ -31836,8 +31794,8 @@
 
 ;; - Functions
 
-(define-extern misty-camera-view (function handle :behavior silostep))
 
+(define-extern misty-camera-view (function handle :behavior silostep))
 ;; - Unknowns
 
 (define-extern *rounddoor-sg* skeleton-group)
@@ -32225,28 +32183,13 @@
 
 ;; - Types
 
-; (deftype misty-part (part-spawner)
-;   ()
-;   :method-count-assert 21
-;   :size-assert         #xd0
-;   :heap-base           #x60
-;   :flag-assert         #x15006000d0
-;   ;;  not enough basic ops
-;   (:methods
-;     (dummy-9 () none 9)
-;     (dummy-10 () none 10)
-;     (dummy-11 () none 11)
-;     (dummy-12 () none 12)
-;     (dummy-13 () none 13)
-;     (dummy-14 () none 14)
-;     (dummy-15 () none 15)
-;     (dummy-16 () none 16)
-;     (dummy-17 () none 17)
-;     (dummy-18 () none 18)
-;     (dummy-19 () none 19)
-;     (dummy-20 () none 20)
-;     )
-;   )
+(deftype misty-part (part-spawner)
+  ()
+  :method-count-assert 21
+  :size-assert         #xd0
+  :heap-base           #x60
+  :flag-assert         #x15006000d0
+  )
 
 
 ;; ----------------------
@@ -32323,28 +32266,13 @@
 
 ;; - Types
 
-; (deftype firecanyon-part (part-spawner)
-;   ()
-;   :method-count-assert 21
-;   :size-assert         #xd0
-;   :heap-base           #x60
-;   :flag-assert         #x15006000d0
-;   ;;  not enough basic ops
-;   (:methods
-;     (dummy-9 () none 9)
-;     (dummy-10 () none 10)
-;     (dummy-11 () none 11)
-;     (dummy-12 () none 12)
-;     (dummy-13 () none 13)
-;     (dummy-14 () none 14)
-;     (dummy-15 () none 15)
-;     (dummy-16 () none 16)
-;     (dummy-17 () none 17)
-;     (dummy-18 () none 18)
-;     (dummy-19 () none 19)
-;     (dummy-20 () none 20)
-;     )
-;   )
+(deftype firecanyon-part (part-spawner)
+  ()
+  :method-count-assert 21
+  :size-assert         #xd0
+  :heap-base           #x60
+  :flag-assert         #x15006000d0
+  )
 
 
 ;; ----------------------
@@ -32376,17 +32304,17 @@
 
 ;; - Types
 
-; (deftype villageb-part (UNKNOWN)
-;   ()
-;   :method-count-assert 0
-;   :size-assert         #x0
-;   :flag-assert         #x0
-;   ;;  not enough basic ops
-;   )
+(deftype villageb-part (part-spawner)
+  ()
+  :method-count-assert 21
+  :size-assert         #xd0
+  :heap-base           #x60
+  :flag-assert         #x15006000d0
+  )
 
 ;; - Functions
 
-(define-extern check-drop-level-sagehut2 function)
+(define-extern check-drop-level-sagehut2 (function sparticle-system sparticle-cpuinfo vector none))
 
 
 ;; ----------------------
@@ -33626,28 +33554,13 @@
 
 ;; - Types
 
-; (deftype swamp-part (part-spawner)
-;   ()
-;   :method-count-assert 21
-;   :size-assert         #xd0
-;   :heap-base           #x60
-;   :flag-assert         #x15006000d0
-;   ;;  not enough basic ops
-;   (:methods
-;     (dummy-9 () none 9)
-;     (dummy-10 () none 10)
-;     (dummy-11 () none 11)
-;     (dummy-12 () none 12)
-;     (dummy-13 () none 13)
-;     (dummy-14 () none 14)
-;     (dummy-15 () none 15)
-;     (dummy-16 () none 16)
-;     (dummy-17 () none 17)
-;     (dummy-18 () none 18)
-;     (dummy-19 () none 19)
-;     (dummy-20 () none 20)
-;     )
-;   )
+(deftype swamp-part (part-spawner)
+  ()
+  :method-count-assert 21
+  :size-assert         #xd0
+  :heap-base           #x60
+  :flag-assert         #x15006000d0
+  )
 
 
 ;; ----------------------
@@ -34166,55 +34079,25 @@
 
 ;; - Types
 
-; (deftype maincave-part (part-spawner)
-;   ()
-;   :method-count-assert 21
-;   :size-assert         #xd0
-;   :heap-base           #x60
-;   :flag-assert         #x15006000d0
-;   ;;  not enough basic ops
-;   (:methods
-;     (dummy-9 () none 9)
-;     (dummy-10 () none 10)
-;     (dummy-11 () none 11)
-;     (dummy-12 () none 12)
-;     (dummy-13 () none 13)
-;     (dummy-14 () none 14)
-;     (dummy-15 () none 15)
-;     (dummy-16 () none 16)
-;     (dummy-17 () none 17)
-;     (dummy-18 () none 18)
-;     (dummy-19 () none 19)
-;     (dummy-20 () none 20)
-;     )
-;   )
+(deftype maincave-part (part-spawner)
+  ()
+  :method-count-assert 21
+  :size-assert         #xd0
+  :heap-base           #x60
+  :flag-assert         #x15006000d0
+  )
 
-; (deftype darkcave-part (part-spawner)
-;   ()
-;   :method-count-assert 21
-;   :size-assert         #xd0
-;   :heap-base           #x60
-;   :flag-assert         #x15006000d0
-;   ;;  not enough basic ops
-;   (:methods
-;     (dummy-9 () none 9)
-;     (dummy-10 () none 10)
-;     (dummy-11 () none 11)
-;     (dummy-12 () none 12)
-;     (dummy-13 () none 13)
-;     (dummy-14 () none 14)
-;     (dummy-15 () none 15)
-;     (dummy-16 () none 16)
-;     (dummy-17 () none 17)
-;     (dummy-18 () none 18)
-;     (dummy-19 () none 19)
-;     (dummy-20 () none 20)
-;     )
-;   )
+(deftype darkcave-part (part-spawner)
+  ()
+  :method-count-assert 21
+  :size-assert         #xd0
+  :heap-base           #x60
+  :flag-assert         #x15006000d0
+  )
 
 ;; - Functions
 
-(define-extern check-drop-level-maincave-drip function)
+(define-extern check-drop-level-maincave-drip (function sparticle-system sparticle-cpuinfo vector none))
 
 
 ;; ----------------------
@@ -34769,13 +34652,13 @@
 
 ;; - Types
 
-; (deftype sunken-part (UNKNOWN)
-;   ()
-;   :method-count-assert 0
-;   :size-assert         #x0
-;   :flag-assert         #x0
-;   ;;  not enough basic ops
-;   )
+(deftype sunken-part (part-spawner)
+  ()
+  :method-count-assert 21
+  :size-assert         #xd0
+  :heap-base           #x60
+  :flag-assert         #x15006000d0
+  )
 
 
 ;; ----------------------
@@ -37169,13 +37052,13 @@
 
 ;; - Types
 
-; (deftype ogre-part (UNKNOWN)
-;   ()
-;   :method-count-assert 0
-;   :size-assert         #x0
-;   :flag-assert         #x0
-;   ;;  not enough basic ops
-;   )
+(deftype ogre-part (part-spawner)
+  ()
+  :method-count-assert 21
+  :size-assert         #xd0
+  :heap-base           #x60
+  :flag-assert         #x15006000d0
+  )
 
 
 ;; ----------------------
@@ -37923,13 +37806,13 @@
 
 ;; - Types
 
-; (deftype villagec-part (UNKNOWN)
-;   ()
-;   :method-count-assert 0
-;   :size-assert         #x0
-;   :flag-assert         #x0
-;   ;;  not enough basic ops
-;   )
+(deftype villagec-part (part-spawner)
+  ()
+  :method-count-assert 21
+  :size-assert         #xd0
+  :heap-base           #x60
+  :flag-assert         #x15006000d0
+  )
 
 
 ;; ----------------------
@@ -38281,28 +38164,13 @@
 
 ;; - Types
 
-; (deftype robocave-part (part-spawner)
-;   ()
-;   :method-count-assert 21
-;   :size-assert         #xd0
-;   :heap-base           #x60
-;   :flag-assert         #x15006000d0
-;   ;;  not enough basic ops
-;   (:methods
-;     (dummy-9 () none 9)
-;     (dummy-10 () none 10)
-;     (dummy-11 () none 11)
-;     (dummy-12 () none 12)
-;     (dummy-13 () none 13)
-;     (dummy-14 () none 14)
-;     (dummy-15 () none 15)
-;     (dummy-16 () none 16)
-;     (dummy-17 () none 17)
-;     (dummy-18 () none 18)
-;     (dummy-19 () none 19)
-;     (dummy-20 () none 20)
-;     )
-;   )
+(deftype robocave-part (part-spawner)
+  ()
+  :method-count-assert 21
+  :size-assert         #xd0
+  :heap-base           #x60
+  :flag-assert         #x15006000d0
+  )
 
 
 ;; ----------------------
@@ -39232,33 +39100,18 @@
 
 ;; - Types
 
-; (deftype snow-part (part-spawner)
-;   ()
-;   :method-count-assert 21
-;   :size-assert         #xd0
-;   :heap-base           #x60
-;   :flag-assert         #x15006000d0
-;   ;;  not enough basic ops
-;   (:methods
-;     (dummy-9 () none 9)
-;     (dummy-10 () none 10)
-;     (dummy-11 () none 11)
-;     (dummy-12 () none 12)
-;     (dummy-13 () none 13)
-;     (dummy-14 () none 14)
-;     (dummy-15 () none 15)
-;     (dummy-16 () none 16)
-;     (dummy-17 () none 17)
-;     (dummy-18 () none 18)
-;     (dummy-19 () none 19)
-;     (dummy-20 () none 20)
-;     )
-;   )
+(deftype snow-part (part-spawner)
+  ()
+  :method-count-assert 21
+  :size-assert         #xd0
+  :heap-base           #x60
+  :flag-assert         #x15006000d0
+  )
 
 ;; - Functions
 
-(define-extern snow-bird-bob-func function)
-(define-extern sparticle-snow-birds-moon function)
+(define-extern snow-bird-bob-func (function sparticle-system sparticle-cpuinfo vector none))
+(define-extern sparticle-snow-birds-moon (function sparticle-system sparticle-cpuinfo matrix none))
 
 
 ;; ----------------------
@@ -39880,13 +39733,13 @@
 
 ;; - Types
 
-; (deftype lavatube-part (UNKNOWN)
-;   ()
-;   :method-count-assert 0
-;   :size-assert         #x0
-;   :flag-assert         #x0
-;   ;;  not enough basic ops
-;   )
+(deftype lavatube-part (part-spawner)
+  ()
+  :method-count-assert 21
+  :size-assert         #xd0
+  :heap-base           #x60
+  :flag-assert         #x15006000d0
+  )
 
 
 ;; ----------------------
