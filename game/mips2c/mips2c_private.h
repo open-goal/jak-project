@@ -162,6 +162,12 @@ struct ExecutionContext {
 
   float Q;
 
+  void copy_vfs_from_other(const ExecutionContext* other) {
+    for (int i = 0; i < 32; i++) {
+      vfs[i] = other->vfs[i];
+    }
+  }
+
   u128 vf_src(int idx) {
     if (idx == 0) {
       u128 result;
@@ -519,6 +525,7 @@ struct ExecutionContext {
 
   void dsubu(int dst, int src0, int src1) { gprs[dst].du64[0] = sgpr64(src0) - sgpr64(src1); }
   void xor_(int dst, int src0, int src1) { gprs[dst].du64[0] = sgpr64(src0) ^ sgpr64(src1); }
+  void or_(int dst, int src0, int src1) { gprs[dst].du64[0] = sgpr64(src0) | sgpr64(src1); }
 
   void movz(int dst, int src0, int src1) {
     if (sgpr64(src1) == 0) {
@@ -646,6 +653,8 @@ struct ExecutionContext {
   void muls(int dst, int src0, int src1) { fprs[dst] = fprs[src0] * fprs[src1]; }
   void adds(int dst, int src0, int src1) { fprs[dst] = fprs[src0] + fprs[src1]; }
   void subs(int dst, int src0, int src1) { fprs[dst] = fprs[src0] - fprs[src1]; }
+  void divs(int dst, int src0, int src1) { fprs[dst] = fprs[src0] / fprs[src1]; }
+  void negs(int dst, int src) { fprs[dst] = -fprs[src]; }
 
   void cvtws(int dst, int src) {
     // float to int
@@ -659,6 +668,8 @@ struct ExecutionContext {
     memcpy(&value, &fprs[src], 4);
     fprs[dst] = value;
   }
+
+  void vwaitq() {}
 };
 
 }  // namespace Mips2C
