@@ -264,7 +264,6 @@ void SpriteRenderer::render_2d_group0(DmaFollower& dma, SharedRenderState* rende
     assert(run.vifcode1().immediate == SpriteProgMem::Sprites2dGrp0);
     if (m_enabled) {
       do_2d_group0_block_cpu(sprite_count, render_state);
-      m_sprite_renderer.flush_pending(render_state);
     }
   }
 }
@@ -350,13 +349,13 @@ void SpriteRenderer::render(DmaFollower& dma, SharedRenderState* render_state) {
   render_3d(dma);
 
   // 2d draw
+  m_sprite_renderer.reset_state();
   render_2d_group0(dma, render_state);
 
   // shadow draw
   render_fake_shadow(dma);
 
   // 2d draw (HUD)
-  m_sprite_renderer.reset_state();
   render_2d_group1(dma, render_state);
   m_sprite_renderer.flush_pending(render_state);
 
@@ -481,6 +480,9 @@ void SpriteRenderer::do_2d_group1_block_cpu(u32 count, SharedRenderState* render
 
     //  lqi.xyzw vf01, vi02        |  nop
     Vector4f pos_vf01 = m_vec_data_2d[sprite_idx].xyz_sx;
+    if (m_extra_debug) {
+      imgui_vec(pos_vf01, "POS", 2);
+    }
     //  lqi.xyzw vf05, vi02        |  nop
     Vector4f flags_vf05 = m_vec_data_2d[sprite_idx].flag_rot_sy;
     //  lqi.xyzw vf11, vi02        |  nop
@@ -827,6 +829,9 @@ void SpriteRenderer::do_2d_group0_block_cpu(u32 count, SharedRenderState* render
 
     //  lqi.xyzw vf01, vi02        |  nop
     Vector4f pos_vf01 = m_vec_data_2d[sprite_idx].xyz_sx;
+    if (m_extra_debug) {
+      imgui_vec(pos_vf01, "POS", 2);
+    }
     //  lqi.xyzw vf05, vi02        |  nop
     Vector4f flags_vf05 = m_vec_data_2d[sprite_idx].flag_rot_sy;
     //  lqi.xyzw vf11, vi02        |  nop

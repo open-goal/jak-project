@@ -588,6 +588,7 @@ void DirectRenderer::handle_tex0_1(u64 val, SharedRenderState* render_state) {
 
   // update tbp
   if (m_texture_state.current_register != reg) {
+    // fmt::print("flush due to tex0\n");
     flush_pending(render_state);
     m_texture_state.texture_base_ptr = reg.tbp0();
     m_texture_state.using_mt4hh = reg.psm() == GsTex0::PSM::PSMT4HH;
@@ -659,13 +660,14 @@ void DirectRenderer::handle_zbuf1(u64 val, SharedRenderState* render_state) {
   assert(x.psm() == TextureFormat::PSMZ24);
   assert(x.zbp() == 448);
 
-  bool write = !x.zmsk();
+  bool write = x.zmsk();
   //  assert(write);
 
   if (write != m_test_state.depth_writes) {
+    // fmt::print("flush due to depth write\n");
     flush_pending(render_state);
     m_test_state_needs_gl_update = true;
-    m_test_state.depth_writes = !write;
+    m_test_state.depth_writes = write;
   }
 }
 
@@ -675,6 +677,7 @@ void DirectRenderer::handle_test1(u64 val, SharedRenderState* render_state) {
   assert(!reg.date());
   assert(!(val & 1));
   if (m_test_state.current_register != reg) {
+    // fmt::print("flush due to test\n");
     flush_pending(render_state);
     m_test_state.from_register(reg);
     m_test_state_needs_gl_update = true;
@@ -684,6 +687,7 @@ void DirectRenderer::handle_test1(u64 val, SharedRenderState* render_state) {
 void DirectRenderer::handle_alpha1(u64 val, SharedRenderState* render_state) {
   GsAlpha reg(val);
   if (m_blend_state.current_register != reg) {
+    // fmt::print("flush due to alpha1\n");
     flush_pending(render_state);
     m_blend_state.from_register(reg);
     m_blend_state_needs_gl_update = true;
@@ -717,6 +721,7 @@ void DirectRenderer::handle_prim(u64 val, SharedRenderState* render_state) {
 
   GsPrim prim(val);
   if (m_prim_gl_state.current_register != prim || m_blend_state.alpha_blend_enable != prim.abe()) {
+    // fmt::print("flush due to prim\n");
     flush_pending(render_state);
     m_prim_gl_state.from_register(prim);
     m_blend_state.alpha_blend_enable = prim.abe();
@@ -740,6 +745,7 @@ void DirectRenderer::handle_xyzf2_common(u32 x,
   assert(z < (1 << 24));
   (void)f;  // TODO: do something with this.
   if (m_prim_buffer.is_full()) {
+    // fmt::print("flush due to fill {} {}\n", m_prim_buffer.vert_count, m_prim_buffer.max_verts);
     flush_pending(render_state);
   }
 
