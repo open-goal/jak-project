@@ -958,11 +958,11 @@
 ;; definition for symbol *lightning-index*, type int
 (define *lightning-index* 0)
 
-;; definition for symbol *lightning-time*, type float
-(define *lightning-time* (the-as float 0))
+;; definition for symbol *lightning-time*, type int
+(define *lightning-time* 0)
 
-;; definition for symbol *lightning-time2*, type float
-(define *lightning-time2* (the-as float 0))
+;; definition for symbol *lightning-time2*, type int
+(define *lightning-time2* 0)
 
 ;; definition for symbol *lightning-frame-done*, type symbol
 (define *lightning-frame-done* #f)
@@ -1003,7 +1003,219 @@
   )
 
 ;; definition for function update-mood-lightning
-;; ERROR: function was not converted to expressions. Cannot decompile.
+;; INFO: Return type mismatch symbol vs none.
+;; Used lq/sq
+(defun
+  update-mood-lightning
+  ((arg0 mood-context)
+   (arg1 int)
+   (arg2 int)
+   (arg3 int)
+   (arg4 int)
+   (arg5 float)
+   (arg6 symbol)
+   )
+  (local-vars (a3-2 (array float)))
+  (with-pp
+   (set! (-> arg0 light-group 0 dir2 levels x) 0.0)
+   (let* ((s4-0 (&-> arg0 state arg3))
+          (a1-1 (+ *lightning-index* arg1))
+          (v1-3 (+ *lightning-index* arg4))
+          (a3-1 (-> s4-0 0))
+          (a2-2 (/ *lightning-time* 2))
+          )
+    (cond
+     ((zero? *lightning-time2*)
+      (cond
+       ((zero? a3-1)
+        (set! a3-2 *flash0*)
+        )
+       ((= a3-1 1)
+        (set! a3-2 *flash1*)
+        )
+       ((= a3-1 2)
+        (set! a3-2 *flash2*)
+        )
+       ((= a3-1 3)
+        (set! a3-2 *flash3*)
+        )
+       ((= a3-1 4)
+        (set! a3-2 *flash4*)
+        )
+       ((= a3-1 5)
+        (set! a3-2 *flash5*)
+        )
+       ((= a3-1 6)
+        (set! a3-2 *flash6*)
+        )
+       (else
+        (set! a3-2 *flash7*)
+        )
+       )
+      (cond
+       ((< a2-2 (-> a3-2 length))
+        (let ((f0-1 (-> a3-2 a2-2)))
+         (set! (-> arg0 sky-times a1-1) f0-1)
+         (when (not arg6)
+          (set! (-> arg0 times v1-3 w) f0-1)
+          (when (not *lightning-realtime-done*)
+           (let* ((a1-11 (-> arg0 mood-lights-table data v1-3))
+                  (v1-6 (-> arg0 light-group 0 dir2))
+                  (f1-4
+                   (*
+                    (+
+                     (* 2.0 (-> a1-11 lgt-color x))
+                     (* 4.0 (-> a1-11 lgt-color y))
+                     (-> a1-11 lgt-color z)
+                     )
+                    f0-1
+                    )
+                   )
+                  )
+            (set! (-> v1-6 direction quad) (-> a1-11 direction quad))
+            (set! (-> v1-6 color quad) (-> a1-11 lgt-color quad))
+            (set! (-> v1-6 levels x) f0-1)
+            (set! (-> v1-6 levels y) f1-4)
+            )
+           (set! *lightning-realtime-done* #t)
+           )
+          )
+         )
+        (if (not (or (paused?) *lightning-frame-done*))
+         (set! *lightning-time* (+ *lightning-time* 1))
+         )
+        )
+       (arg6
+        (set! *lightning-time2* (the int (rand-vu-float-range 360.0 960.0)))
+        )
+       (else
+        (set! *lightning-time2* (the int (rand-vu-float-range 180.0 480.0)))
+        )
+       )
+      )
+     (else
+      (when (not (or (paused?) *lightning-frame-done*))
+       (set! *lightning-time2* (+ *lightning-time2* -1))
+       (when (zero? *lightning-time2*)
+        (set! *lightning-index* (mod (+ *lightning-index* 1) arg2))
+        (set! (-> s4-0 0) (logand (rand-uint31-gen *random-generator*) 7))
+        (set! *lightning-time* 0)
+        (let ((v1-24 *thunder-count*))
+         (cond
+          ((zero? v1-24)
+           (set! *thunder-id* *thunder-id0*)
+           (set! *thunder-count* 1)
+           )
+          ((= v1-24 1)
+           (set! *thunder-id* *thunder-id1*)
+           (set! *thunder-count* 2)
+           )
+          (else
+           (set! *thunder-id* *thunder-id2*)
+           (set! *thunder-count* 0)
+           0
+           )
+          )
+         )
+        (when (>= (-> *math-camera* trans y) -81920.0)
+         (if arg6
+          (sound-play-by-name
+           (static-sound-name "thunder")
+           *thunder-id*
+           (the int (* 10.24 (rand-vu-float-range 25.0 75.0)))
+           (the int (* 1524.0 (rand-vu-float-range -1.0 1.0)))
+           0
+           (the-as uint 1)
+           (the-as vector #t)
+           )
+          (sound-play-by-name
+           (static-sound-name "thunder")
+           *thunder-id*
+           (the int (* 10.24 (rand-vu-float-range 200.0 400.0)))
+           (the int (* 1524.0 (rand-vu-float-range -1.0 1.0)))
+           0
+           (the-as uint 1)
+           (the-as vector #t)
+           )
+          )
+         )
+        )
+       )
+      )
+     )
+    )
+   (when (not *lightning-frame-done*)
+    (let ((gp-3 (the-as sound-rpc-set-param (get-sound-buffer-entry))))
+     (set! (-> gp-3 command) (sound-command set-param))
+     (set! (-> gp-3 id) *thunder-id0*)
+     (let ((a1-23 (camera-pos)))
+      (let ((s5-3 pp))
+       (when (= a1-23 #t)
+        (if
+         (and
+          s5-3
+          (type-type? (-> s5-3 type) process-drawable)
+          (nonzero? (-> (the-as process-drawable s5-3) root))
+          )
+         (set! a1-23 (-> (the-as process-drawable s5-3) root trans))
+         (set! a1-23 (the-as vector #f))
+         )
+        )
+       )
+      (sound-trans-convert (-> gp-3 parms trans) a1-23)
+      )
+     (set! (-> gp-3 parms mask) (the-as uint 32))
+     (-> gp-3 id)
+     )
+    (let ((gp-4 (the-as sound-rpc-set-param (get-sound-buffer-entry))))
+     (set! (-> gp-4 command) (sound-command set-param))
+     (set! (-> gp-4 id) *thunder-id1*)
+     (let ((a1-25 (camera-pos)))
+      (let ((s5-4 pp))
+       (when (= a1-25 #t)
+        (if
+         (and
+          s5-4
+          (type-type? (-> s5-4 type) process-drawable)
+          (nonzero? (-> (the-as process-drawable s5-4) root))
+          )
+         (set! a1-25 (-> (the-as process-drawable s5-4) root trans))
+         (set! a1-25 (the-as vector #f))
+         )
+        )
+       )
+      (sound-trans-convert (-> gp-4 parms trans) a1-25)
+      )
+     (set! (-> gp-4 parms mask) (the-as uint 32))
+     (-> gp-4 id)
+     )
+    (let ((gp-5 (the-as sound-rpc-set-param (get-sound-buffer-entry))))
+     (set! (-> gp-5 command) (sound-command set-param))
+     (set! (-> gp-5 id) *thunder-id2*)
+     (let ((a1-27 (camera-pos)))
+      (let ((s5-5 pp))
+       (when (= a1-27 #t)
+        (if
+         (and
+          s5-5
+          (type-type? (-> s5-5 type) process-drawable)
+          (nonzero? (-> (the-as process-drawable s5-5) root))
+          )
+         (set! a1-27 (-> (the-as process-drawable s5-5) root trans))
+         (set! a1-27 (the-as vector #f))
+         )
+        )
+       )
+      (sound-trans-convert (-> gp-5 parms trans) a1-27)
+      )
+     (set! (-> gp-5 parms mask) (the-as uint 32))
+     (-> gp-5 id)
+     )
+    )
+   (set! *lightning-frame-done* #t)
+   (none)
+   )
+  )
 
 ;; definition of type light-time-state
 (deftype light-time-state (structure)
@@ -1119,11 +1331,60 @@
   obj
   )
 
-;; definition for symbol *lava-time*, type int
-(define *lava-time* 0)
+;; definition for symbol *lava-time*, type float
+(define *lava-time* (the-as float 0))
 
 ;; definition for function update-mood-lava
-;; ERROR: function was not converted to expressions. Cannot decompile.
+;; INFO: Return type mismatch float vs none.
+(defun update-mood-lava ((arg0 mood-context) (arg1 int) (arg2 int) (arg3 symbol))
+  (let* ((s4-0 (&-> arg0 state arg2))
+         (s1-0 (-> s4-0 16))
+         (s2-0 (-> s4-0 17))
+         )
+   (when (not (paused?))
+    (set! (-> s4-0 16) (+ s1-0 4))
+    (set! *lava-time* (+ *lava-time* (rand-vu-float-range 64.0 2048.0)))
+    )
+   (let ((s0-0 (-> arg0 light-group 0 dir2))
+         (f0-4 (+ 0.875 (* 0.125 (sin *lava-time*))))
+         )
+    (set-vector! (-> s0-0 direction) 0.0 -1.0 0.0 0.0)
+    (set-vector! (-> s0-0 color) 1.0 0.364 0.0 1.0)
+    (set! (-> s0-0 levels x) f0-4)
+    )
+   (let ((s0-1 (shr s1-0 6))
+         (f30-2 (* 0.015625 (the float (logand s1-0 63))))
+         )
+    (when (!= s0-1 s2-0)
+     (set!
+      (-> (the-as (pointer float) (+ (* s0-1 4) (the-as uint s4-0))))
+      (the float (the int (rand-vu-float-range 128.0 255.0)))
+      )
+     (set! (-> s4-0 17) s0-1)
+     )
+    (when arg3
+     (let* ((v1-14 (logand (+ s0-1 -1) 3))
+            (f1-11
+             (*
+              0.0078125
+              (-> (the-as (pointer float) (+ (* s0-1 4) (the-as uint s4-0))))
+              )
+             )
+            (f0-11
+             (*
+              0.0078125
+              (-> (the-as (pointer float) (+ (* v1-14 4) (the-as uint s4-0))))
+              )
+             )
+            )
+      (set! (-> arg0 times (+ arg1 s0-1) w) (* f30-2 f1-11))
+      (set! (-> arg0 times (+ arg1 v1-14) w) (* (- 1.0 f30-2) f0-11))
+      )
+     )
+    )
+   )
+  (none)
+  )
 
 ;; definition for function update-mood-caustics
 (defun update-mood-caustics ((arg0 mood-context) (arg1 int) (arg2 int))
@@ -2297,7 +2558,7 @@
   (clear-mood-times arg0)
   (update-mood-palette arg0 arg1 arg2)
   (if *time-of-day-effects*
-   (update-mood-lava arg0 (the-as float 4) 0 #t)
+   (update-mood-lava arg0 4 0 #t)
    )
   (update-mood-itimes arg0)
   0
@@ -2901,7 +3162,7 @@
    (if (not (paused?))
     (+! (-> arg0 some-byte) 1)
     )
-   (update-mood-lava arg0 (the-as float 4) 0 #t)
+   (update-mood-lava arg0 4 0 #t)
    )
   (update-mood-quick arg0 0 0 0 arg2)
   (update-mood-itimes arg0)
@@ -3753,3 +4014,7 @@
   (update-mood-itimes arg0)
   (none)
   )
+
+
+
+
