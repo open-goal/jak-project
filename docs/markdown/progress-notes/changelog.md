@@ -206,3 +206,4 @@
 - Using `->` on a plain `pointer` or `inline-array` now generates an error instead of crashing the compiler
 - It is now possible to use a macro to provide a static inline array element definition
 - It is now possible to have symbol names that have a `#` in the middle of them
+- `go-hook` now returns the return value of the `enter-state` function it calls
