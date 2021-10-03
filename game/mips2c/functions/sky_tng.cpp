@@ -5,6 +5,11 @@
 namespace Mips2C {
 
 ExecutionContext sky_regs_vfs;
+void get_fake_spad_addr(int dst, void* sym_addr, u32 offset, ExecutionContext* c) {
+  u32 val;
+  memcpy(&val, sym_addr, 4);
+  c->gprs[dst].du64[0] = val + offset;
+}
 
 namespace init_sky_regs {
 struct Cache {
@@ -727,9 +732,6 @@ u64 execute(void* ctxt) {
   bool bc = false;
   u32 call_addr = 0;
 
-  c->mov64(t4, a2);
-  c->mov64(t5, a3);
-
   // nop                                            // sll r0, r0, 0
   c->daddiu(sp, sp, -8);  // daddiu sp, sp, -8
   // nop                                            // sll r0, r0, 0
@@ -786,7 +788,7 @@ u64 execute(void* ctxt) {
   // c->jalr(call_addr);               // jalr ra, t9
   clip_polygon_against_negative_hyperplane::execute(ctxt);
   bc = c->sgpr64(t0) == 0;  // beq t0, r0, L67
-  c->lw(a3, 4, a1);         // lw a3, 4(a1)
+  c->lw(a3, 4, a1);         // lw a3, 4(a1) - what the heck is this?
   if (bc) {
     goto block_7;
   }  // branch non-likely
@@ -878,6 +880,7 @@ namespace render_sky_quad {
 struct Cache {
   void* math_camera;         // *math-camera*
   void* draw_large_polygon;  // draw-large-polygon
+  void* fake_scratchpad_data;  // *fake-scratchpad-data*
 } cache;
 
 u64 execute(void* ctxt) {
@@ -888,14 +891,16 @@ u64 execute(void* ctxt) {
   c->mov64(v1, a0);                       // or v1, a0, r0
   c->load_symbol(v1, cache.math_camera);  // lw v1, *math-camera*(s7)
   c->lqc2(vf14, 700, v1);                 // lqc2 vf14, 700(v1)
-  c->lui(t4, 28672);                      // lui t4, 28672
-  c->ori(t4, t4, 12288);                  // ori t4, t4, 12288
-  c->lui(t5, 28672);                      // lui t5, 28672
-  c->ori(t5, t5, 14336);                  // ori t5, t5, 14336
+  //c->lui(t4, 28672);                      // lui t4, 28672
+  //c->ori(t4, t4, 12288);                  // ori t4, t4, 12288
+  get_fake_spad_addr(t4, cache.fake_scratchpad_data, 12288, c);
+  //c->lui(t5, 28672);                      // lui t5, 28672
+  //c->ori(t5, t5, 14336);                  // ori t5, t5, 14336
+  get_fake_spad_addr(t5, cache.fake_scratchpad_data, 14336, c);
   c->lui(v1, 12288);                      // lui v1, 12288
   c->mov64(a3, t4);                       // or a3, t4, r0
-  c->or_(a0, a0, v1);                     // or a0, a0, v1
-  // nop                                            // sll r0, r0, 0
+  // c->or_(a0, a0, v1);                     // or a0, a0, v1 (removed uncache/unacc)
+  //  nop                                            // sll r0, r0, 0
   c->lqc2(vf1, 0, a0);   // lqc2 vf1, 0(a0)
   c->addiu(t0, r0, 4);   // addiu t0, r0, 4
   c->lqc2(vf2, 16, a0);  // lqc2 vf2, 16(a0)
@@ -967,6 +972,7 @@ end_of_function:
 void link() {
   cache.math_camera = intern_from_c("*math-camera*").c();
   cache.draw_large_polygon = intern_from_c("draw-large-polygon").c();
+  cache.fake_scratchpad_data = intern_from_c("*fake-scratchpad-data*").c();
   gLinkedFunctionTable.reg("render-sky-quad", execute, 512);
 }
 
@@ -976,7 +982,8 @@ void link() {
 namespace Mips2C {
 namespace render_sky_tri {
 struct Cache {
-  void* draw_large_polygon;  // draw-large-polygon
+  void* draw_large_polygon;    // draw-large-polygon
+  void* fake_scratchpad_data;  // *fake-scratchpad-data*
 } cache;
 
 u64 execute(void* ctxt) {
@@ -984,14 +991,18 @@ u64 execute(void* ctxt) {
   c->copy_vfs_from_other(&sky_regs_vfs);
   bool bc = false;
   u32 call_addr = 0;
-  c->mov64(v1, a0);       // or v1, a0, r0
-  c->lui(t4, 28672);      // lui t4, 28672
-  c->ori(t4, t4, 12288);  // ori t4, t4, 12288
-  c->lui(t5, 28672);      // lui t5, 28672
-  c->ori(t5, t5, 14336);  // ori t5, t5, 14336
-  c->lui(v1, 12288);      // lui v1, 12288
-  c->mov64(a3, t4);       // or a3, t4, r0
-  c->or_(a0, a0, v1);     // or a0, a0, v1
+  c->mov64(v1, a0);  // or v1, a0, r0
+  // c->lui(t4, 28672);      // lui t4, 28672
+  // c->ori(t4, t4, 12288);  // ori t4, t4, 12288
+  get_fake_spad_addr(t4, cache.fake_scratchpad_data, 12288, c);
+
+  // c->lui(t5, 28672);      // lui t5, 28672
+  // c->ori(t5, t5, 14336);  // ori t5, t5, 14336
+  get_fake_spad_addr(t5, cache.fake_scratchpad_data, 14336, c);
+
+  c->lui(v1, 12288);  // lui v1, 12288
+  c->mov64(a3, t4);   // or a3, t4, r0
+  // c->or_(a0, a0, v1);     // or a0, a0, v1 (note removed, uncached/unacc)
   // nop                                            // sll r0, r0, 0
   c->lqc2(vf1, 0, a0);   // lqc2 vf1, 0(a0)
   c->addiu(t0, r0, 3);   // addiu t0, r0, 3
@@ -1051,6 +1062,7 @@ end_of_function:
 
 void link() {
   cache.draw_large_polygon = intern_from_c("draw-large-polygon").c();
+  cache.fake_scratchpad_data = intern_from_c("*fake-scratchpad-data*").c();
   gLinkedFunctionTable.reg("render-sky-tri", execute, 512);
 }
 

@@ -6,6 +6,7 @@
 #include "game/graphics/opengl_renderer/SpriteRenderer.h"
 #include "game/graphics/opengl_renderer/TextureUploadHandler.h"
 #include "third-party/imgui/imgui.h"
+#include "game/graphics/opengl_renderer/SkyRenderer.h"
 
 // for the vif callback
 #include "game/kernel/kmachine.h"
@@ -54,7 +55,9 @@ OpenGLRenderer::OpenGLRenderer(std::shared_ptr<TexturePool> texture_pool)
  */
 void OpenGLRenderer::init_bucket_renderers() {
   init_bucket_renderer<EmptyBucketRenderer>("bucket0", BucketId::BUCKET0);
+  init_bucket_renderer<SkyRenderer>("sky", BucketId::SKY_DRAW);
   init_bucket_renderer<TextureUploadHandler>("tfrag-tex-0", BucketId::TFRAG_TEX_LEVEL0);
+  init_bucket_renderer<SkyTextureHandler>("sky-tex-0", BucketId::SKY_LEVEL0);
   init_bucket_renderer<TextureUploadHandler>("shrub-tex-0", BucketId::SHRUB_TEX_LEVEL0);
   init_bucket_renderer<TextureUploadHandler>("alpha-tex-0", BucketId::ALPHA_TEX_LEVEL0);
   init_bucket_renderer<TextureUploadHandler>("pris-tex-0", BucketId::PRIS_TEX_LEVEL0);

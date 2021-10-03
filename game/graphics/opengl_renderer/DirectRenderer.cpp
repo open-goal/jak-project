@@ -190,8 +190,14 @@ void DirectRenderer::flush_pending(SharedRenderState* render_state) {
 
   int draw_count = 0;
   if (m_mode == Mode::SPRITE_CPU) {
-    assert(m_texture_state.tcc);
-    assert(m_prim_gl_state.texture_enable);
+    if (!m_prim_gl_state.texture_enable) {
+      render_state->shaders[ShaderId::DIRECT_BASIC].activate();
+    } else {
+      assert(m_texture_state.tcc);
+       assert(m_prim_gl_state.texture_enable);
+      render_state->shaders[ShaderId::SPRITE_CPU].activate();
+    }
+
     if (m_sprite_mode.do_first_draw) {
       glDrawArrays(GL_TRIANGLES, 0, m_prim_buffer.vert_count);
       draw_count++;

@@ -154,10 +154,11 @@ class SpriteRenderer : public BucketRenderer {
   void render_distorter(DmaFollower& dma, SharedRenderState* render_state);
   void handle_sprite_frame_setup(DmaFollower& dma);
   void render_3d(DmaFollower& dma);
-  void render_2d_group0(DmaFollower& dma);
+  void render_2d_group0(DmaFollower& dma, SharedRenderState* render_state);
   void render_fake_shadow(DmaFollower& dma);
   void render_2d_group1(DmaFollower& dma, SharedRenderState* render_state);
   void do_2d_group1_block_cpu(u32 count, SharedRenderState* render_state);
+  void do_2d_group0_block_cpu(u32 count, SharedRenderState* render_state);
 
   u8 m_sprite_distorter_setup[7 * 16];  // direct data
   u8 m_sprite_direct_setup[3 * 16];
@@ -169,6 +170,8 @@ class SpriteRenderer : public BucketRenderer {
   AdGif m_adgif[SPRITES_PER_CHUNK];
 
   struct DebugStats {
+    int blocks_2d_grp0 = 0;
+    int count_2d_grp0 = 0;
     int blocks_2d_grp1 = 0;
     int count_2d_grp1 = 0;
   } m_debug_stats;

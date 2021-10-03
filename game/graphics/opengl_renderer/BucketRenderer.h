@@ -12,9 +12,11 @@
 enum class BucketId {
   BUCKET0 = 0,
   BUCKET1 = 1,
+  SKY_DRAW = 3,
   TFRAG_TEX_LEVEL0 = 5,
   SHRUB_TEX_LEVEL0 = 19,
   ALPHA_TEX_LEVEL0 = 31,
+  SKY_LEVEL0 = 32,
   PRIS_TEX_LEVEL0 = 48,
   WATER_TEX_LEVEL0 = 57,
   // ...
