@@ -124,6 +124,8 @@ class TexturePool {
     }
   }
 
+  TextureRecord* get_random_texture();
+
   void upload_to_gpu(TextureRecord* rec);
 
   void relocate(u32 destination, u32 source, u32 format);

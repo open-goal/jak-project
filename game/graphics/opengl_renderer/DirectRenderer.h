@@ -59,7 +59,7 @@ class DirectRenderer : public BucketRenderer {
   void handle_test1(u64 val, SharedRenderState* render_state);
   void handle_alpha1(u64 val, SharedRenderState* render_state);
   void handle_pabe(u64 val);
-  void handle_clamp1(u64 val);
+  void handle_clamp1(u64 val, SharedRenderState* render_state);
   void handle_prim(u64 val, SharedRenderState* render_state);
   void handle_prim_packed(const u8* data, SharedRenderState* render_state);
   void handle_rgbaq(u64 val);
@@ -109,6 +109,12 @@ class DirectRenderer : public BucketRenderer {
     u8 fix = 0;
 
   } m_blend_state;
+
+  struct ClampState {
+    void from_register(u64 value);
+    u64 current_register = 0b101;
+    bool clamp = true;
+  } m_clamp_state;
 
   // state set through the prim register that requires changing GL stuff.
   struct PrimGlState {

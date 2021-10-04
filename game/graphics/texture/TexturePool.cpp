@@ -356,8 +356,8 @@ void TexturePool::draw_debug_for_tex(const std::string& name, TextureRecord& tex
     ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(0.3, 0.8, 0.3, 1.0));
   }
   if (ImGui::TreeNode(name.c_str())) {
-    ImGui::Text("P: %s sz: %d x %d mip %d GPU? %d psm %d cpsm %d", tex.page_name.c_str(), tex.w,
-                tex.h, tex.mip_level, tex.on_gpu, tex.psm, tex.cpsm);
+    ImGui::Text("P: %s sz: %d x %d mip %d GPU? %d psm %d cpsm %d dest %d", tex.page_name.c_str(), tex.w,
+                tex.h, tex.mip_level, tex.on_gpu, tex.psm, tex.cpsm, tex.dest);
     if (tex.on_gpu) {
       ImGui::Image((void*)tex.gpu_texture, ImVec2(tex.w, tex.h));
     } else {
@@ -410,4 +410,15 @@ void TexturePool::remove_garbage_textures() {
 void TexturePool::discard(std::shared_ptr<TextureRecord> tex) {
   assert(!tex->do_gc);
   m_garbage_textures.push_back(tex);
+}
+
+TextureRecord* TexturePool::get_random_texture() {
+  u32 idx = 32;
+  TextureRecord* result = nullptr;
+  for (u32 i = 0; i < m_textures.size(); i++) {
+    if (m_textures.at((i + idx) % m_textures.size()).normal_texture) {
+      return m_textures.at((i + idx) % m_textures.size()).normal_texture.get();
+    }
+  }
+  return nullptr;
 }

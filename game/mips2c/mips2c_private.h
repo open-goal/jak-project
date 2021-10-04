@@ -501,6 +501,9 @@ struct ExecutionContext {
   }
 
   void dsra(int dst, int src, int sa) { gprs[dst].ds64[0] = gpr_src(src).ds64[0] >> sa; }
+  void dsrav(int dst, int src, int sa) {
+    gprs[dst].ds64[0] = gpr_src(src).ds64[0] >> gpr_src(sa).du32[0];
+  }
   void dsra32(int dst, int src, int sa) { gprs[dst].ds64[0] = gpr_src(src).ds64[0] >> (32 + sa); }
   void sra(int dst, int src, int sa) { gprs[dst].ds64[0] = gpr_src(src).ds32[0] >> sa; }
   void dsll(int dst, int src0, int sa) { gprs[dst].du64[0] = gpr_src(src0).du64[0] << sa; }
@@ -524,6 +527,9 @@ struct ExecutionContext {
   }
 
   void dsubu(int dst, int src0, int src1) { gprs[dst].du64[0] = sgpr64(src0) - sgpr64(src1); }
+  void subu(int dst, int src0, int src1) {
+    gprs[dst].ds64[0] = gpr_src(src0).ds32[0] - gpr_src(src1).ds32[0];
+  }
   void xor_(int dst, int src0, int src1) { gprs[dst].du64[0] = sgpr64(src0) ^ sgpr64(src1); }
   void or_(int dst, int src0, int src1) { gprs[dst].du64[0] = sgpr64(src0) | sgpr64(src1); }
 
@@ -583,6 +589,21 @@ struct ExecutionContext {
     gprs[dst].du16[5] = s0.du16[2];
     gprs[dst].du16[6] = s1.du16[3];
     gprs[dst].du16[7] = s0.du16[3];
+  }
+
+  u32 lzocw(s32 in) {
+    if (in < 0) {
+      in = ~in;
+    }
+    if (in == 0) {
+      return 32;
+    }
+    return __builtin_clz(in);
+  }
+
+  void plzcw(int dst, int src) {
+    gprs[dst].du32[0] = lzocw(gpr_src(src).ds32[0]) - 1;
+    gprs[dst].du32[1] = lzocw(gpr_src(src).ds32[1]) - 1;
   }
 
   void por(int dst, int src0, int src1) {

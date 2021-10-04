@@ -194,7 +194,7 @@ void DirectRenderer::flush_pending(SharedRenderState* render_state) {
       render_state->shaders[ShaderId::DIRECT_BASIC].activate();
     } else {
       assert(m_texture_state.tcc);
-       assert(m_prim_gl_state.texture_enable);
+      assert(m_prim_gl_state.texture_enable);
       render_state->shaders[ShaderId::SPRITE_CPU].activate();
     }
 
@@ -263,8 +263,16 @@ void DirectRenderer::update_gl_texture(SharedRenderState* render_state) {
   } else {
     tex = render_state->texture_pool->lookup(m_texture_state.texture_base_ptr);
   }
+
+  if (!tex) {
+    fmt::print("Failed to find texture at {}, using random\n", m_texture_state.texture_base_ptr);
+    tex = render_state->texture_pool->get_random_texture();
+    if (tex) {
+      //fmt::print("Successful texture lookup! {} {}\n", tex->page_name, tex->name);
+    }
+  }
   assert(tex);
-  // fmt::print("Successful texture lookup! {} {}\n", tex->page_name, tex->name);
+
 
   // first: do we need to load the texture?
   if (!tex->on_gpu) {
@@ -274,8 +282,14 @@ void DirectRenderer::update_gl_texture(SharedRenderState* render_state) {
   glActiveTexture(GL_TEXTURE0);
   glBindTexture(GL_TEXTURE_2D, tex->gpu_texture);
   // Note: CLAMP and CLAMP_TO_EDGE are different...
-  glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
-  glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+  if (m_clamp_state.clamp) {
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+  } else {
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
+  }
+
   glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
   glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
   glUniform1i(
@@ -335,7 +349,7 @@ void DirectRenderer::update_gl_test() {
   }
 
   if (state.alpha_test_enable) {
-    assert(false);
+    assert(state.alpha_test == GsTest::AlphaTest::ALWAYS);
   }
 
   if (state.depth_writes) {
@@ -529,7 +543,7 @@ void DirectRenderer::handle_ad(const u8* data, SharedRenderState* render_state) 
       handle_pabe(value);
       break;
     case GsRegisterAddress::CLAMP_1:
-      handle_clamp1(value);
+      handle_clamp1(value, render_state);
       break;
     case GsRegisterAddress::PRIM:
       handle_prim(value, render_state);
@@ -555,6 +569,8 @@ void DirectRenderer::handle_ad(const u8* data, SharedRenderState* render_state) 
       break;
     case GsRegisterAddress::MIPTBP1_1:
       // TODO this has the address of different mip levels.
+      break;
+    case GsRegisterAddress::TEXFLUSH:
       break;
     default:
       fmt::print("Address {} is not supported\n", register_address_name(addr));
@@ -627,6 +643,13 @@ void DirectRenderer::handle_st_packed(const u8* data) {
   memcpy(&m_prim_building.st_reg.x(), data + 0, 4);
   memcpy(&m_prim_building.st_reg.y(), data + 4, 4);
   memcpy(&m_prim_building.Q, data + 8, 4);
+  //  if (m_my_id == BucketId::SKY_DRAW) {
+  //    fmt::print("st: {} {} {}\n", m_prim_building.st_reg.x(), m_prim_building.st_reg.y(),
+  //    m_prim_building.Q);
+  //  }
+
+  m_prim_building.st_reg /= m_prim_building.Q;
+
 }
 
 void DirectRenderer::handle_rgbaq_packed(const u8* data) {
@@ -673,9 +696,10 @@ void DirectRenderer::handle_zbuf1(u64 val, SharedRenderState* render_state) {
 
 void DirectRenderer::handle_test1(u64 val, SharedRenderState* render_state) {
   GsTest reg(val);
-  assert(!reg.alpha_test_enable());
+  if (reg.alpha_test_enable()) {
+    assert(reg.alpha_test() == GsTest::AlphaTest::ALWAYS);
+  }
   assert(!reg.date());
-  assert(!(val & 1));
   if (m_test_state.current_register != reg) {
     // fmt::print("flush due to test\n");
     flush_pending(render_state);
@@ -698,8 +722,18 @@ void DirectRenderer::handle_pabe(u64 val) {
   assert(val == 0);  // not really sure how to handle this yet.
 }
 
-void DirectRenderer::handle_clamp1(u64 val) {
-  assert(val == 0b101);  // clamp s and t.
+void DirectRenderer::handle_clamp1(u64 val, SharedRenderState* render_state) {
+  assert(val == 0b101 || val == 0);
+  if (m_clamp_state.current_register != val) {
+    flush_pending(render_state);
+    m_clamp_state.current_register = val;
+    if (val == 0b101) {
+      m_clamp_state.clamp = true;
+    } else {
+      m_clamp_state.clamp = false;
+    }
+    m_texture_state.needs_gl_update = true;
+  }
 }
 
 void DirectRenderer::handle_prim_packed(const u8* data, SharedRenderState* render_state) {

@@ -857,6 +857,8 @@ Mips2C_Line handle_normal_instr(Mips2C_Output& output,
     case InstructionKind::MULT3:
     case InstructionKind::PMINW:
     case InstructionKind::PMAXW:
+    case InstructionKind::SUBU:
+    case InstructionKind::DSRAV:
       return handle_generic_op3(i0, instr_str, {});
     case InstructionKind::MULS:
       return handle_generic_op3(i0, instr_str, "muls");
@@ -913,6 +915,8 @@ Mips2C_Line handle_normal_instr(Mips2C_Output& output,
       return handle_generic_op2(i0, instr_str, "pexew");
     case InstructionKind::SQRTS:
       return handle_generic_op2(i0, instr_str, "sqrts");
+    case InstructionKind::PLZCW:
+      return handle_generic_op2(i0, instr_str, "plzcw");
     case InstructionKind::LUI:
       return handle_lui(i0, instr_str);
     case InstructionKind::CLTS:

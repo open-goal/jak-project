@@ -878,8 +878,8 @@ void link() {
 namespace Mips2C {
 namespace render_sky_quad {
 struct Cache {
-  void* math_camera;         // *math-camera*
-  void* draw_large_polygon;  // draw-large-polygon
+  void* math_camera;           // *math-camera*
+  void* draw_large_polygon;    // draw-large-polygon
   void* fake_scratchpad_data;  // *fake-scratchpad-data*
 } cache;
 
@@ -891,14 +891,14 @@ u64 execute(void* ctxt) {
   c->mov64(v1, a0);                       // or v1, a0, r0
   c->load_symbol(v1, cache.math_camera);  // lw v1, *math-camera*(s7)
   c->lqc2(vf14, 700, v1);                 // lqc2 vf14, 700(v1)
-  //c->lui(t4, 28672);                      // lui t4, 28672
-  //c->ori(t4, t4, 12288);                  // ori t4, t4, 12288
+  // c->lui(t4, 28672);                      // lui t4, 28672
+  // c->ori(t4, t4, 12288);                  // ori t4, t4, 12288
   get_fake_spad_addr(t4, cache.fake_scratchpad_data, 12288, c);
-  //c->lui(t5, 28672);                      // lui t5, 28672
-  //c->ori(t5, t5, 14336);                  // ori t5, t5, 14336
+  // c->lui(t5, 28672);                      // lui t5, 28672
+  // c->ori(t5, t5, 14336);                  // ori t5, t5, 14336
   get_fake_spad_addr(t5, cache.fake_scratchpad_data, 14336, c);
-  c->lui(v1, 12288);                      // lui v1, 12288
-  c->mov64(a3, t4);                       // or a3, t4, r0
+  c->lui(v1, 12288);  // lui v1, 12288
+  c->mov64(a3, t4);   // or a3, t4, r0
   // c->or_(a0, a0, v1);                     // or a0, a0, v1 (removed uncache/unacc)
   //  nop                                            // sll r0, r0, 0
   c->lqc2(vf1, 0, a0);   // lqc2 vf1, 0(a0)
@@ -1073,6 +1073,7 @@ namespace Mips2C {
 namespace set_tex_offset {
 u64 execute(void* ctxt) {
   auto* c = (ExecutionContext*)ctxt;
+  c->copy_vfs_from_other(&sky_regs_vfs);
   bool bc = false;
   u32 call_addr = 0;
   c->daddiu(sp, sp, -32);        // daddiu sp, sp, -32
@@ -1100,6 +1101,7 @@ u64 execute(void* ctxt) {
   c->ld(fp, 8, sp);              // ld fp, 8(sp)
   // jr ra                                           // jr ra
   c->daddiu(sp, sp, 32);  // daddiu sp, sp, 32
+  sky_regs_vfs.copy_vfs_from_other(c);
   goto end_of_function;   // return
 
 // nop                                            // sll r0, r0, 0
@@ -1113,4 +1115,37 @@ void link() {
 }
 
 }  // namespace set_tex_offset
+}  // namespace Mips2C
+
+namespace Mips2C {
+namespace set_sky_vf27 {
+u64 execute(void* ctxt) {
+  auto* c = (ExecutionContext*)ctxt;
+  // sky_regs_vfs.vfs[27]
+  memcpy(&sky_regs_vfs.vfs[27].f[0], g_ee_main_mem + c->gpr_addr(a0), 16);
+  return 0;
+}
+
+void link() {
+  gLinkedFunctionTable.reg("set-sky-vf27", execute, 64);
+}
+
+}  // namespace set_sky_vf27
+}  // namespace Mips2C
+
+namespace Mips2C {
+namespace set_sky_vf23_value {
+u64 execute(void* ctxt) {
+  auto* c = (ExecutionContext*)ctxt;
+  // sky_regs_vfs.vfs[27]
+  u64 value = c->sgpr64(a0);
+  memcpy(&sky_regs_vfs.vfs[23].f[0], &value, 8);
+  return 0;
+}
+
+void link() {
+  gLinkedFunctionTable.reg("set-sky-vf23-value", execute, 64);
+}
+
+}  // namespace set_sky_vf23_value
 }  // namespace Mips2C

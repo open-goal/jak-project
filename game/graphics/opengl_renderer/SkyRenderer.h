@@ -19,7 +19,9 @@ class SkyRenderer : public BucketRenderer {
   SkyRenderer(const std::string& name, BucketId my_id);
   void render(DmaFollower& dma, SharedRenderState* render_state) override;
   void draw_debug_window() override;
+  void render_gif(const u8* data, u32 size, SharedRenderState* render_state);
  private:
   bool m_print_debug_dma = true;
+  DirectRenderer m_direct_renderer;
   std::string m_debug_dma_str;
 };

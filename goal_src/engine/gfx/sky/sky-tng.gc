@@ -248,6 +248,8 @@
 ;; The init-sky-regs stashes some stuff in vf regs. We are going to stash that stuff in C++, not the usual registers
 ;; because everything that uses this is in MIPS2C anyway.
 (def-mips2c init-sky-regs (function none))
+(def-mips2c set-sky-vf27 (function object none))
+(def-mips2c set-sky-vf23-value (function int none))
 
 
 #|
@@ -793,7 +795,8 @@
       (set! (-> v1-16 base) (&+ a0-15 48))
       )
      (init-sky-regs)
-     (.lvf vf27 (&-> *sky-tng-data* giftag-roof qword))
+     ;;(.lvf vf27 (&-> *sky-tng-data* giftag-roof qword))
+     (set-sky-vf27 (&-> *sky-tng-data* giftag-roof qword))
      (when *sky-drawn*
       (let* ((v1-20 s4-0)
              (a0-17 (the-as object (-> v1-20 base)))
@@ -983,6 +986,7 @@
          (the-as int (-> *sky-tng-data* off-s-0))
          (the-as int (-> *sky-tng-data* off-t-0))
          )
+        ;; first cloud layer
         (dotimes (s1-4 9)
          (render-sky-quad (the-as int s2-2) s4-0)
          (set! s2-2 (-> (the-as (inline-array sky-vertex) s2-2) 4))
@@ -991,16 +995,21 @@
          (the-as int (-> *sky-tng-data* off-s-1))
          (the-as int (-> *sky-tng-data* off-t-1))
          )
+        ;; second cloud layer
         (dotimes (s1-5 9)
          (render-sky-quad (the-as int s2-2) s4-0)
          (set! s2-2 (-> (the-as (inline-array sky-vertex) s2-2) 4))
          )
         )
-       (.lvf vf27 (&-> *sky-tng-data* giftag-base qword))
-       (let ((v1-83 #x43800000))
-        (.mov vf23 v1-83)
-        )
-       (.mov v1-84 vf23)
+       ;;(.lvf vf27 (&-> *sky-tng-data* giftag-base qword))
+       ;; these draw stuff below the horizon
+       (set-sky-vf27 (&-> *sky-tng-data* giftag-base qword))
+       (set-sky-vf23-value #x43800000)
+       ; (let ((v1-83 #x43800000))
+       ;  (.mov vf23 v1-83)
+       ;  )
+       ; (.mov v1-84 vf23)
+       ;; not sure what this is, but it draws on the bottom
        (render-sky-tri
         (the-as (inline-array sky-vertex) (-> sky-base-polygons 0))
         s4-0
