@@ -20,7 +20,7 @@ DirectRenderer::DirectRenderer(const std::string& name, BucketId my_id, int batc
   glBufferData(GL_ARRAY_BUFFER, m_ogl.color_buffer_bytes, nullptr, GL_DYNAMIC_DRAW);
 
   glBindBuffer(GL_ARRAY_BUFFER, m_ogl.st_buffer);
-  m_ogl.st_buffer_bytes = batch_size * 3 * 2 * sizeof(float);
+  m_ogl.st_buffer_bytes = batch_size * 3 * 3 * sizeof(float);
   glBufferData(GL_ARRAY_BUFFER, m_ogl.st_buffer_bytes, nullptr, GL_DYNAMIC_DRAW);
   glBindBuffer(GL_ARRAY_BUFFER, 0);
 }
@@ -115,12 +115,6 @@ void DirectRenderer::flush_pending(SharedRenderState* render_state) {
     m_texture_state.needs_gl_update = false;
   }
 
-  if (m_debug_state.wireframe) {
-    glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
-  } else {
-    glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
-  }
-
   if (m_debug_state.disable_texture) {
     // a bit of a hack, this forces the non-textured shader always.
     render_state->shaders[ShaderId::DIRECT_BASIC].activate();
@@ -129,6 +123,8 @@ void DirectRenderer::flush_pending(SharedRenderState* render_state) {
   if (m_debug_state.red) {
     render_state->shaders[ShaderId::DEBUG_RED].activate();
     glDisable(GL_BLEND);
+    m_prim_gl_state_needs_gl_update = true;
+    m_blend_state_needs_gl_update = true;
   }
 
   // hacks
@@ -151,8 +147,8 @@ void DirectRenderer::flush_pending(SharedRenderState* render_state) {
                   m_prim_buffer.rgba_u8.data());
   if (m_prim_gl_state.texture_enable) {
     glBindBuffer(GL_ARRAY_BUFFER, m_ogl.st_buffer);
-    glBufferSubData(GL_ARRAY_BUFFER, 0, m_prim_buffer.sts.size() * sizeof(math::Vector<float, 2>),
-                    m_prim_buffer.sts.data());
+    glBufferSubData(GL_ARRAY_BUFFER, 0, m_prim_buffer.stqs.size() * sizeof(math::Vector<float, 3>),
+                    m_prim_buffer.stqs.data());
   }
 
   // setup attributes:
@@ -179,7 +175,7 @@ void DirectRenderer::flush_pending(SharedRenderState* render_state) {
     glBindBuffer(GL_ARRAY_BUFFER, m_ogl.st_buffer);
     glEnableVertexAttribArray(2);
     glVertexAttribPointer(2,         // location 0 in the shader
-                          2,         // 3 floats per vert
+                          3,         // 3 floats per vert
                           GL_FLOAT,  // floats
                           GL_FALSE,  // normalized, ignored,
                           0,         // tightly packed
@@ -207,10 +203,21 @@ void DirectRenderer::flush_pending(SharedRenderState* render_state) {
       glDepthMask(GL_FALSE);
       glDrawArrays(GL_TRIANGLES, 0, m_prim_buffer.vert_count);
       glDepthMask(GL_TRUE);
+      m_prim_gl_state_needs_gl_update = true;
+      m_blend_state_needs_gl_update = true;
       draw_count++;
     }
   } else {
     glDrawArrays(GL_TRIANGLES, 0, m_prim_buffer.vert_count);
+    draw_count++;
+  }
+
+  if (m_debug_state.wireframe) {
+    render_state->shaders[ShaderId::DEBUG_RED].activate();
+    glDisable(GL_BLEND);
+    glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
+    glDrawArrays(GL_TRIANGLES, 0, m_prim_buffer.vert_count);
+    glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
     draw_count++;
   }
 
@@ -229,6 +236,8 @@ void DirectRenderer::update_gl_prim(SharedRenderState* render_state) {
     if (m_texture_state.tcc) {
       if (m_mode == Mode::SPRITE_CPU) {
         render_state->shaders[ShaderId::SPRITE_CPU].activate();
+      } else if (m_mode == Mode::SKY) {
+        assert(false);
       } else {
         render_state->shaders[ShaderId::DIRECT_BASIC_TEXTURED].activate();
       }
@@ -237,7 +246,11 @@ void DirectRenderer::update_gl_prim(SharedRenderState* render_state) {
     }
     update_gl_texture(render_state);
   } else {
-    render_state->shaders[ShaderId::DIRECT_BASIC].activate();
+    if (m_mode == Mode::SKY) {
+      render_state->shaders[ShaderId::SKY].activate();
+    } else {
+      render_state->shaders[ShaderId::DIRECT_BASIC].activate();
+    }
   }
   if (state.fogging_enable) {
     assert(false);
@@ -265,14 +278,14 @@ void DirectRenderer::update_gl_texture(SharedRenderState* render_state) {
   }
 
   if (!tex) {
+    // TODO Add back
     fmt::print("Failed to find texture at {}, using random\n", m_texture_state.texture_base_ptr);
     tex = render_state->texture_pool->get_random_texture();
     if (tex) {
-      //fmt::print("Successful texture lookup! {} {}\n", tex->page_name, tex->name);
+      // fmt::print("Successful texture lookup! {} {}\n", tex->page_name, tex->name);
     }
   }
   assert(tex);
-
 
   // first: do we need to load the texture?
   if (!tex->on_gpu) {
@@ -648,8 +661,7 @@ void DirectRenderer::handle_st_packed(const u8* data) {
   //    m_prim_building.Q);
   //  }
 
-  m_prim_building.st_reg /= m_prim_building.Q;
-
+  // m_prim_building.st_reg /= m_prim_building.Q;
 }
 
 void DirectRenderer::handle_rgbaq_packed(const u8* data) {
@@ -784,7 +796,11 @@ void DirectRenderer::handle_xyzf2_common(u32 x,
   }
 
   //  assert(f == 0);
-  m_prim_building.building_st.at(m_prim_building.building_idx) = m_prim_building.st_reg;
+  //  if (m_my_id == BucketId::SKY_DRAW) {
+  //    fmt::print("writing {}\n", m_prim_building.building_idx);
+  //  }
+  m_prim_building.building_stq.at(m_prim_building.building_idx) = math::Vector<float, 3>(
+      m_prim_building.st_reg.x(), m_prim_building.st_reg.y(), m_prim_building.Q);
   m_prim_building.building_rgba.at(m_prim_building.building_idx) = m_prim_building.rgba_reg;
   m_prim_building.building_vert.at(m_prim_building.building_idx) = {x << 16, y << 16, z << 8};
   m_prim_building.building_idx++;
@@ -828,7 +844,7 @@ void DirectRenderer::handle_xyzf2_common(u32 x,
       if (m_prim_building.tri_strip_startup >= 3) {
         for (int i = 0; i < 3; i++) {
           m_prim_buffer.push(m_prim_building.building_rgba[i], m_prim_building.building_vert[i],
-                             m_prim_building.building_st[i]);
+                             m_prim_building.building_stq[i]);
         }
       }
 
@@ -839,7 +855,7 @@ void DirectRenderer::handle_xyzf2_common(u32 x,
         m_prim_building.building_idx = 0;
         for (int i = 0; i < 3; i++) {
           m_prim_buffer.push(m_prim_building.building_rgba[i], m_prim_building.building_vert[i],
-                             m_prim_building.building_st[i]);
+                             m_prim_building.building_stq[i]);
         }
       }
       break;
@@ -855,10 +871,11 @@ void DirectRenderer::handle_xyzf2_common(u32 x,
         }
         for (int i = 0; i < 3; i++) {
           m_prim_buffer.push(m_prim_building.building_rgba[i], m_prim_building.building_vert[i],
-                             m_prim_building.building_st[i]);
+                             m_prim_building.building_stq[i]);
         }
       }
     } break;
+
     case GsPrim::Kind::LINE: {
       if (m_prim_building.building_idx == 2) {
         math::Vector<double, 3> pt0 = m_prim_building.building_vert[0].cast<double>();
@@ -963,15 +980,15 @@ void DirectRenderer::PrimGlState::from_register(GsPrim reg) {
 DirectRenderer::PrimitiveBuffer::PrimitiveBuffer(int max_triangles) {
   rgba_u8.resize(max_triangles * 3);
   verts.resize(max_triangles * 3);
-  sts.resize(max_triangles * 3);
+  stqs.resize(max_triangles * 3);
   max_verts = max_triangles * 3;
 }
 
 void DirectRenderer::PrimitiveBuffer::push(const math::Vector<u8, 4>& rgba,
                                            const math::Vector<u32, 3>& vert,
-                                           const math::Vector<float, 2>& st) {
+                                           const math::Vector<float, 3>& st) {
   rgba_u8[vert_count] = rgba;
   verts[vert_count] = vert;
-  sts[vert_count] = st;
+  stqs[vert_count] = st;
   vert_count++;
 }

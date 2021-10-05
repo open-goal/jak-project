@@ -674,8 +674,16 @@ struct ExecutionContext {
   void muls(int dst, int src0, int src1) { fprs[dst] = fprs[src0] * fprs[src1]; }
   void adds(int dst, int src0, int src1) { fprs[dst] = fprs[src0] + fprs[src1]; }
   void subs(int dst, int src0, int src1) { fprs[dst] = fprs[src0] - fprs[src1]; }
-  void divs(int dst, int src0, int src1) { fprs[dst] = fprs[src0] / fprs[src1]; }
-  void negs(int dst, int src) { fprs[dst] = -fprs[src]; }
+  void divs(int dst, int src0, int src1) {
+    assert(fprs[src1] != 0);
+    fprs[dst] = fprs[src0] / fprs[src1];
+  }
+  void negs(int dst, int src) {
+    u32 v;
+    memcpy(&v, &fprs[src], 4);
+    v ^= 0x80000000;
+    memcpy(&fprs[dst], &v, 4);
+  }
 
   void cvtws(int dst, int src) {
     // float to int
@@ -691,6 +699,11 @@ struct ExecutionContext {
   }
 
   void vwaitq() {}
+
+  std::string print_vf_float(int vf) {
+    auto src = vf_src(vf);
+    return fmt::format("{} {} {} {}", src.f[0], src.f[1], src.f[2], src.f[3]);
+  }
 };
 
 }  // namespace Mips2C

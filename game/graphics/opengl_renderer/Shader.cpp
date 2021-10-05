@@ -71,4 +71,5 @@ ShaderLibrary::ShaderLibrary() {
   at(ShaderId::DEBUG_RED) = {"debug_red"};
   at(ShaderId::SPRITE_CPU) = {"sprite_cpu"};
   at(ShaderId::SPRITE_CPU_AFAIL) = {"sprite_cpu_afail"};
+  at(ShaderId::SKY) = {"sky"};
 }

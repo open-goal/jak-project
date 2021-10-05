@@ -20,8 +20,9 @@ class DirectRenderer : public BucketRenderer {
  public:
   // specializations of direct renderer to handle certain outputs.
   enum class Mode {
-    NORMAL,     // use for general debug drawing, font.
-    SPRITE_CPU  // use for sprites (does the appropriate alpha test)
+    NORMAL,      // use for general debug drawing, font.
+    SPRITE_CPU,  // use for sprites (does the appropriate alpha test tricks)
+    SKY // disables texture perspective correction
   };
   DirectRenderer(const std::string& name, BucketId my_id, int batch_size, Mode mode);
   ~DirectRenderer();
@@ -147,11 +148,11 @@ class DirectRenderer : public BucketRenderer {
 
     std::array<math::Vector<u8, 4>, 3> building_rgba;
     std::array<math::Vector<u32, 3>, 3> building_vert;
-    std::array<math::Vector<float, 2>, 3> building_st;
+    std::array<math::Vector<float, 3>, 3> building_stq;
     int building_idx = 0;
     int tri_strip_startup = 0;
 
-    float Q = 0;
+    float Q = 1.0;
 
   } m_prim_building;
 
@@ -159,7 +160,7 @@ class DirectRenderer : public BucketRenderer {
     PrimitiveBuffer(int max_triangles);
     std::vector<math::Vector<u8, 4>> rgba_u8;
     std::vector<math::Vector<u32, 3>> verts;
-    std::vector<math::Vector<float, 2>> sts;
+    std::vector<math::Vector<float, 3>> stqs;
     int vert_count = 0;
     int max_verts = 0;
 
@@ -167,7 +168,7 @@ class DirectRenderer : public BucketRenderer {
     bool is_full() { return max_verts < (vert_count + 18); }
     void push(const math::Vector<u8, 4>& rgba,
               const math::Vector<u32, 3>& vert,
-              const math::Vector<float, 2>& st);
+              const math::Vector<float, 3>& stq);
   } m_prim_buffer;
 
   struct {
