@@ -81,7 +81,12 @@ const std::unordered_set<std::string> g_functions_expected_to_reject = {
     "ambient-inspect",  // asm, weird
 
     // background
-    "background-upload-vu0", "draw-node-cull"};
+    "background-upload-vu0", "draw-node-cull",
+
+    // anim-tester
+    "(method 3 anim-tester)",
+    "anim-tester-save-object-seqs"  // anim-tester -- new basic on the stack
+};
 
 const std::unordered_set<std::string> g_functions_to_skip_compiling = {
     /// GCOMMON
@@ -173,7 +178,12 @@ const std::unordered_set<std::string> g_functions_to_skip_compiling = {
     "debug-menu-item-var-make-float",
 
     // decompiler BUG
-    "level-hint-task-process"};
+    "level-hint-task-process",
+
+    // anim-tester
+    "(method 3 anim-tester)",
+    "anim-tester-save-object-seqs"  // anim-tester -- new basic on the stack
+};
 
 // default location for the data. It can be changed with a command line argument.
 std::string g_iso_data_path = "";

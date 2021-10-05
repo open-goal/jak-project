@@ -1,26 +1,9 @@
 ;;-*-Lisp-*-
 (in-package goal)
 
-;; name: anim-tester.gc
-;; name in dgo: anim-tester
-;; dgos: GAME, ENGINE
-
-;; NOTES - removed one of the 2 inspects
-;; - also fixed up a basic file-stream constructor on the stack
-
-(declare-type list-control structure)
-(define-extern anim-test-anim-list-handler (function int list-control symbol))
-(define-extern anim-test-edit-sequence-list-handler (function int list-control symbol))
-
-(declare-type anim-tester process-drawable)
-(define-extern anim-tester-process (state anim-tester)) ;; unknown type
-
-(define-extern anim-tester-save-all-objects (function anim-tester symbol))
-
-;; DECOMP BEGINS
-
 ;; this file is debug only
 (when *debug-segment*
+;; definition of type list-control
 (deftype list-control (structure)
   ((listfunc            (function int list-control symbol)  :offset-assert   0)
    (list-owner          uint32                              :offset-assert   4)
@@ -49,7 +32,33 @@
   :flag-assert         #x900000050
   )
 
+;; definition for method 3 of type list-control
+(defmethod inspect list-control ((obj list-control))
+  (format #t "[~8x] ~A~%" obj 'list-control)
+  (format #t "~Tlistfunc: ~A~%" (-> obj listfunc))
+  (format #t "~Tlist-owner: #x~X~%" (-> obj list-owner))
+  (format #t "~Ttop: ~D~%" (-> obj top))
+  (format #t "~Tleft: ~D~%" (-> obj left))
+  (format #t "~Tlist: #<glst-list @ #x~X>~%" (-> obj list))
+  (format #t "~Tthe-node: #<glst-node @ #x~X>~%" (-> obj the-node))
+  (format #t "~Ttop-index: ~D~%" (-> obj top-index))
+  (format #t "~Tthe-index: ~D~%" (-> obj the-index))
+  (format #t "~Tthe-disp-line: ~D~%" (-> obj the-disp-line))
+  (format #t "~Thighlight-index: ~D~%" (-> obj highlight-index))
+  (format #t "~Tcurrent-index: ~D~%" (-> obj current-index))
+  (format #t "~Tnumlines: ~D~%" (-> obj numlines))
+  (format #t "~Tlines-to-disp: ~D~%" (-> obj lines-to-disp))
+  (format #t "~Tcharswide: ~D~%" (-> obj charswide))
+  (format #t "~Thighlight-disp-line: ~D~%" (-> obj highlight-disp-line))
+  (format #t "~Tfield-id: ~D~%" (-> obj field-id))
+  (format #t "~Txpos: ~D~%" (-> obj xpos))
+  (format #t "~Typos: ~D~%" (-> obj ypos))
+  (format #t "~Tuser-info: ~D~%" (-> obj user-info))
+  (format #t "~Treturn-int: ~D~%" (-> obj return-int))
+  obj
+  )
 
+;; definition of type list-field
 (deftype list-field (structure)
   ((left  int32  :offset-assert   0)
    (width int32  :offset-assert   4)
@@ -59,7 +68,15 @@
   :flag-assert         #x900000008
   )
 
+;; definition for method 3 of type list-field
+(defmethod inspect list-field ((obj list-field))
+  (format #t "[~8x] ~A~%" obj 'list-field)
+  (format #t "~Tleft: ~D~%" (-> obj left))
+  (format #t "~Twidth: ~D~%" (-> obj width))
+  obj
+  )
 
+;; definition of type DISP_LIST-bank
 (deftype DISP_LIST-bank (basic)
   ((TV_SPACING    int32  :offset-assert   4)
    (BORDER_WIDTH  int32  :offset-assert   8)
@@ -78,7 +95,24 @@
   :flag-assert         #x900000030
   )
 
+;; definition for method 3 of type DISP_LIST-bank
+(defmethod inspect DISP_LIST-bank ((obj DISP_LIST-bank))
+  (format #t "[~8x] ~A~%" obj (-> obj type))
+  (format #t "~TV_SPACING: ~D~%" (-> obj TV_SPACING))
+  (format #t "~TBORDER_WIDTH: ~D~%" (-> obj BORDER_WIDTH))
+  (format #t "~TBORDER_HEIGHT: ~D~%" (-> obj BORDER_HEIGHT))
+  (format #t "~TMAX_LINES: ~D~%" (-> obj MAX_LINES))
+  (format #t "~TCHAR_WIDTH: ~D~%" (-> obj CHAR_WIDTH))
+  (format #t "~TINC_DELAY: ~D~%" (-> obj INC_DELAY))
+  (format #t "~TBORDER_LINES: ~D~%" (-> obj BORDER_LINES))
+  (format #t "~TCXOFF: ~D~%" (-> obj CXOFF))
+  (format #t "~TCYOFF: ~D~%" (-> obj CYOFF))
+  (format #t "~TBXOFF: ~D~%" (-> obj BXOFF))
+  (format #t "~TBYOFF: ~D~%" (-> obj BYOFF))
+  obj
+  )
 
+;; definition for symbol *DISP_LIST-bank*, type DISP_LIST-bank
 (define
   *DISP_LIST-bank*
   (new 'static 'DISP_LIST-bank
@@ -92,6 +126,8 @@
    )
   )
 
+;; definition for function display-list-control
+;; INFO: Return type mismatch pointer vs none.
 (defun display-list-control ((arg0 list-control))
   (when (< (-> arg0 current-index) 0)
    (set! (-> arg0 current-index) 0)
@@ -399,6 +435,7 @@
   (none)
   )
 
+;; definition of type anim-tester-bank
 (deftype anim-tester-bank (basic)
   ((ANIM_SPEED            float  :offset-assert   4)
    (BLEND                 float  :offset-assert   8)
@@ -422,7 +459,29 @@
   :flag-assert         #x900000044
   )
 
+;; definition for method 3 of type anim-tester-bank
+(defmethod inspect anim-tester-bank ((obj anim-tester-bank))
+  (format #t "[~8x] ~A~%" obj (-> obj type))
+  (format #t "~TANIM_SPEED: ~f~%" (-> obj ANIM_SPEED))
+  (format #t "~TBLEND: ~f~%" (-> obj BLEND))
+  (format #t "~TOBJECT_LIST_X: ~D~%" (-> obj OBJECT_LIST_X))
+  (format #t "~TOBJECT_LIST_Y: ~D~%" (-> obj OBJECT_LIST_Y))
+  (format #t "~TOBJECT_LIST_MIN_WIDTH: ~D~%" (-> obj OBJECT_LIST_MIN_WIDTH))
+  (format #t "~TANIM_LIST_X: ~D~%" (-> obj ANIM_LIST_X))
+  (format #t "~TANIM_LIST_Y: ~D~%" (-> obj ANIM_LIST_Y))
+  (format #t "~TANIM_LIST_MIN_WIDTH: ~D~%" (-> obj ANIM_LIST_MIN_WIDTH))
+  (format #t "~TPICK_LIST_X: ~D~%" (-> obj PICK_LIST_X))
+  (format #t "~TPICK_LIST_Y: ~D~%" (-> obj PICK_LIST_Y))
+  (format #t "~TPICK_LIST_MIN_WIDTH: ~D~%" (-> obj PICK_LIST_MIN_WIDTH))
+  (format #t "~TEDIT_LIST_X: ~D~%" (-> obj EDIT_LIST_X))
+  (format #t "~TEDIT_LIST_Y: ~D~%" (-> obj EDIT_LIST_Y))
+  (format #t "~TEDIT_STATS_X: ~D~%" (-> obj EDIT_STATS_X))
+  (format #t "~TEDIT_LIST_MIN_WIDTH: ~D~%" (-> obj EDIT_LIST_MIN_WIDTH))
+  (format #t "~TEDIT_PICK_X: ~D~%" (-> obj EDIT_PICK_X))
+  obj
+  )
 
+;; definition for symbol *ANIM_TESTER-bank*, type anim-tester-bank
 (define
   *ANIM_TESTER-bank*
   (new 'static 'anim-tester-bank
@@ -445,6 +504,7 @@
    )
   )
 
+;; definition of type anim-tester
 (deftype anim-tester (process-drawable)
   ((flags       int32                :offset-assert 176)
    (obj-list    glst-list    :inline :offset-assert 180)
@@ -468,6 +528,32 @@
   :flag-assert         #x1401300198
   )
 
+;; definition for method 3 of type anim-tester
+;; INFO: this function exists in multiple non-identical object files
+(defmethod inspect anim-tester ((obj anim-tester))
+  (let ((t9-0 (method-of-type process-drawable inspect)))
+   (t9-0 obj)
+   )
+  (format #t "~T~Tflags: ~D~%" (-> obj flags))
+  (format #t "~T~Tobj-list: #<glst-list @ #x~X>~%" (-> obj obj-list))
+  (format #t "~T~Tcurrent-obj: ~A~%" (-> obj current-obj))
+  (format #t "~T~Tspeed: ~D~%" (-> obj speed))
+  (format #t "~T~Tlist-con: #<list-control @ #x~X>~%" (-> obj list-con))
+  (format #t "~T~Tpick-con: #<list-control @ #x~X>~%" (-> obj pick-con))
+  (format #t "~T~Titem-field: ~D~%" (-> obj item-field))
+  (format #t "~T~Tinc-delay: ~D~%" (-> obj inc-delay))
+  (format #t "~T~Tinc-timer: ~D~%" (-> obj inc-timer))
+  (format #t "~T~Tedit-mode: ~D~%" (-> obj edit-mode))
+  (format #t "~T~Told-mode: ~D~%" (-> obj old-mode))
+  (format #t "~T~Tanim-speed: ~f~%" (-> obj anim-speed))
+  (format #t "~T~Tanim-gspeed: ~f~%" (-> obj anim-gspeed))
+  (format #t "~T~Tanim-first: ~f~%" (-> obj anim-first))
+  (format #t "~T~Tanim-last: ~f~%" (-> obj anim-last))
+  obj
+  )
+
+;; definition for function anim-tester-num-print
+;; INFO: Return type mismatch object vs none.
 (defun anim-tester-num-print ((arg0 basic) (arg1 float))
   (cond
    ((= arg1 (-> (new 'static 'array float 1 -2.0) 0))
@@ -483,8 +569,10 @@
   (none)
   )
 
+;; definition (perm) for symbol *anim-tester*, type (pointer anim-tester)
 (define-perm *anim-tester* (pointer anim-tester) #f)
 
+;; definition of type anim-test-obj
 (deftype anim-test-obj (glst-named-node)
   ((obj-art-group art-group             :offset-assert  12)
    (seq-list      glst-list     :inline :offset-assert  16)
@@ -506,7 +594,28 @@
     )
   )
 
+;; definition for method 3 of type anim-test-obj
+(defmethod inspect anim-test-obj ((obj anim-test-obj))
+  (format #t "[~8x] ~A~%" obj 'anim-test-obj)
+  (format #t "~Tnext: #<glst-node @ #x~X>~%" (-> obj next))
+  (format #t "~Tprev: #<glst-node @ #x~X>~%" (-> obj prev))
+  (format #t "~Tprivname: ~A~%" (-> obj privname))
+  (format #t "~Tobj-art-group: ~A~%" (-> obj obj-art-group))
+  (format #t "~Tseq-list: #<glst-list @ #x~X>~%" (-> obj seq-list))
+  (format #t "~Tflags: ~D~%" (-> obj flags))
+  (format #t "~Tmesh-geo: ~A~%" (-> obj mesh-geo))
+  (format #t "~Tjoint-geo: ~A~%" (-> obj joint-geo))
+  (format #t "~Tlist-con: #<list-control @ #x~X>~%" (-> obj list-con))
+  (format #t "~Tparent: #x~X~%" (-> obj parent))
+  (format #t "~Tanim-index: ~D~%" (-> obj anim-index))
+  (format #t "~Tanim-hindex: ~D~%" (-> obj anim-hindex))
+  (format #t "~Tseq-index: ~D~%" (-> obj seq-index))
+  (format #t "~Tseq-hindex: ~D~%" (-> obj seq-hindex))
+  obj
+  )
 
+;; definition for function anim-test-obj-init
+;; INFO: Return type mismatch glst-node vs none.
 (defun anim-test-obj-init ((arg0 anim-test-obj) (arg1 list-control))
   (set! (-> arg0 mesh-geo) #f)
   (set! (-> arg0 joint-geo) #f)
@@ -525,6 +634,7 @@
   (none)
   )
 
+;; definition for method 0 of type anim-test-obj
 (defmethod
   new
   anim-test-obj
@@ -547,6 +657,7 @@
    )
   )
 
+;; definition of type anim-test-sequence
 (deftype anim-test-sequence (glst-named-node)
   ((item-list    glst-list     :inline :offset-assert  12)
    (playing-item int32                 :offset-assert  28)
@@ -562,7 +673,22 @@
     )
   )
 
+;; definition for method 3 of type anim-test-sequence
+(defmethod inspect anim-test-sequence ((obj anim-test-sequence))
+  (format #t "[~8x] ~A~%" obj 'anim-test-sequence)
+  (format #t "~Tnext: #<glst-node @ #x~X>~%" (-> obj next))
+  (format #t "~Tprev: #<glst-node @ #x~X>~%" (-> obj prev))
+  (format #t "~Tprivname: ~A~%" (-> obj privname))
+  (format #t "~Titem-list: #<glst-list @ #x~X>~%" (-> obj item-list))
+  (format #t "~Tplaying-item: ~D~%" (-> obj playing-item))
+  (format #t "~Tflags: ~D~%" (-> obj flags))
+  (format #t "~Tlist-con: #<list-control @ #x~X>~%" (-> obj list-con))
+  (format #t "~Tparent: #<anim-test-obj @ #x~X>~%" (-> obj parent))
+  obj
+  )
 
+;; definition for function anim-test-sequence-init
+;; INFO: Return type mismatch anim-test-obj vs none.
 (defun anim-test-sequence-init ((arg0 anim-test-sequence) (arg1 anim-test-obj))
   (set! (-> arg0 list-con listfunc) anim-test-edit-sequence-list-handler)
   (set! (-> arg0 list-con left) (-> *ANIM_TESTER-bank* EDIT_LIST_X))
@@ -573,6 +699,7 @@
   (none)
   )
 
+;; definition for method 0 of type anim-test-sequence
 (defmethod
   new
   anim-test-sequence
@@ -589,6 +716,7 @@
    )
   )
 
+;; definition of type anim-test-seq-item
 (deftype anim-test-seq-item (glst-named-node)
   ((speed       int32               :offset-assert  12)
    (blend       int32               :offset-assert  16)
@@ -607,7 +735,25 @@
     )
   )
 
+;; definition for method 3 of type anim-test-seq-item
+(defmethod inspect anim-test-seq-item ((obj anim-test-seq-item))
+  (format #t "[~8x] ~A~%" obj 'anim-test-seq-item)
+  (format #t "~Tnext: #<glst-node @ #x~X>~%" (-> obj next))
+  (format #t "~Tprev: #<glst-node @ #x~X>~%" (-> obj prev))
+  (format #t "~Tprivname: ~A~%" (-> obj privname))
+  (format #t "~Tspeed: ~D~%" (-> obj speed))
+  (format #t "~Tblend: ~D~%" (-> obj blend))
+  (format #t "~Tfirst-frame: ~f~%" (-> obj first-frame))
+  (format #t "~Tlast-frame: ~f~%" (-> obj last-frame))
+  (format #t "~Tnum-frames: ~f~%" (-> obj num-frames))
+  (format #t "~Tartist-base: ~f~%" (-> obj artist-base))
+  (format #t "~Tflags: ~D~%" (-> obj flags))
+  (format #t "~Tparent: #<anim-test-sequence @ #x~X>~%" (-> obj parent))
+  obj
+  )
 
+;; definition for method 0 of type anim-test-seq-item
+;; INFO: Return type mismatch structure vs anim-test-seq-item.
 (defmethod
   new
   anim-test-seq-item
@@ -633,6 +779,7 @@
    )
   )
 
+;; definition for function anim-test-seq-item-copy!
 (defun
   anim-test-seq-item-copy!
   ((arg0 anim-test-seq-item) (arg1 anim-test-seq-item))
@@ -652,7 +799,113 @@
    )
   )
 
+;; definition for method 3 of type anim-tester
+;; INFO: this function exists in multiple non-identical object files
+;; INFO: Return type mismatch object vs anim-tester.
+(defmethod inspect anim-tester ((obj anim-tester))
+  (format #t "--anim-tester--~%")
+  (let ((v1-0 (-> obj obj-list)))
+   "return the start of the list"
+   (let ((s5-0 (the-as anim-test-obj (-> v1-0 head))))
+    (while (let ((v1-36 s5-0))
+            "is this node the end of the list. #t = end"
+            (not (not (-> v1-36 next)))
+            )
+     (format #t "object ~A~%" (-> s5-0 privname))
+     (let ((v1-2 (-> s5-0 seq-list)))
+      "return the start of the list"
+      (let ((s4-0 (the-as anim-test-sequence (-> v1-2 head))))
+       (while (let ((v1-29 s4-0))
+               "is this node the end of the list. #t = end"
+               (not (not (-> v1-29 next)))
+               )
+        (format #t "  seq ~A" (-> s4-0 privname))
+        (format #t " ~S" (if (logtest? (-> s4-0 flags) 2)
+                          "VALID"
+                          "-"
+                          )
+         )
+        (format #t " ~S" (if (logtest? (-> s4-0 flags) 4)
+                          "EDITED"
+                          "-"
+                          )
+         )
+        (format #t " ~S" (if (logtest? (-> s4-0 flags) 1)
+                          "USER_GENERATED"
+                          "-"
+                          )
+         )
+        (format #t "~%")
+        (let ((v1-10 (-> s4-0 item-list)))
+         "return the start of the list"
+         (let ((s3-0 (the-as anim-test-seq-item (-> v1-10 head))))
+          (while (let ((v1-22 s3-0))
+                  "is this node the end of the list. #t = end"
+                  (not (not (-> v1-22 next)))
+                  )
+           (format
+            #t
+            "    item ~A SP=~f BL=~d FIRST="
+            (-> s3-0 privname)
+            (*
+             (-> (new 'static 'array float 1 0.01) 0)
+             (the float (-> s3-0 speed))
+             )
+            (-> s3-0 blend)
+            )
+           (anim-tester-num-print #t (-> s3-0 first-frame))
+           (format #t " LAST=")
+           (anim-tester-num-print #t (-> s3-0 last-frame))
+           (format #t " ~S" (if (logtest? (-> s3-0 flags) 1)
+                             "END_MARKER"
+                             "-"
+                             )
+            )
+           (format #t " ~S" (if (logtest? (-> s3-0 flags) 2)
+                             "WAIT_FOR_BLEND"
+                             "-"
+                             )
+            )
+           (format #t " ~S" (if (logtest? (-> s3-0 flags) 4)
+                             "BLANK"
+                             "-"
+                             )
+            )
+           (format #t "~%")
+           "return the next node in the list"
+           (set! s3-0 (the-as anim-test-seq-item (-> s3-0 next)))
+           )
+          )
+         )
+        "return the next node in the list"
+        (set! s4-0 (the-as anim-test-sequence (-> s4-0 next)))
+        )
+       )
+      )
+     "return the next node in the list"
+     (set! s5-0 (the-as anim-test-obj (-> s5-0 next)))
+     )
+    )
+   )
+  (format #t "-------------~%")
+  (format #t "current-obj=~A~%" (-> obj current-obj))
+  (format
+   #t
+   "speed=~f~%"
+   (* (-> (new 'static 'array float 1 0.01) 0) (the float (-> obj speed)))
+   )
+  (format #t "--flags:--~%")
+  (the-as
+   anim-tester
+   (format #t "  CONNECTED: ~A~%" (if (logtest? (-> obj flags) 1)
+                                   "TRUE"
+                                   "f"
+                                   )
+    )
+   )
+  )
 
+;; definition for function anim-test-obj-item-valid?
 (defun anim-test-obj-item-valid? ((arg0 anim-test-obj) (arg1 anim-test-seq-item))
   (let ((v1-0 (-> arg0 seq-list)))
    "return the start of the list"
@@ -688,6 +941,7 @@
   #f
   )
 
+;; definition for function anim-test-obj-remove-invalid
 (defun anim-test-obj-remove-invalid ((arg0 anim-test-obj))
   (local-vars (v1-19 symbol))
   (let ((v1-0 (-> arg0 seq-list)))
@@ -787,6 +1041,8 @@
   #f
   )
 
+;; definition for function anim-tester-real-post
+;; INFO: Return type mismatch int vs none.
 (defbehavior anim-tester-real-post anim-tester ()
   (when (logtest? (-> self flags) 1)
    (if (logtest? (-> self flags) 32)
@@ -801,11 +1057,13 @@
   (none)
   )
 
+;; definition for function anim-tester-post
 (defbehavior anim-tester-post anim-tester ()
   (anim-tester-real-post)
   (none)
   )
 
+;; definition for function anim-tester-update-anim-info
 (defbehavior anim-tester-update-anim-info anim-tester ((arg0 anim-test-seq-item))
   (set! (-> self anim-first) (-> arg0 first-frame))
   (set! (-> self anim-last) (-> arg0 last-frame))
@@ -832,6 +1090,8 @@
    )
   )
 
+;; definition for function anim-tester-reset
+;; Used lq/sq
 (defbehavior anim-tester-reset anim-tester ()
   (let ((v1-0 (-> self obj-list)))
    "is the list empty, #t = empty"
@@ -932,6 +1192,8 @@
   (none)
   )
 
+;; definition for function anim-tester-disp-frame-num
+;; Used lq/sq
 (defun
   anim-tester-disp-frame-num
   ((arg0 string) (arg1 float) (arg2 float) (arg3 font-context))
@@ -986,6 +1248,8 @@
    )
   )
 
+;; definition for function anim-tester-standard-event-handler
+;; INFO: Return type mismatch none vs object.
 ;; WARN: rewrite_to_get_var got a none typed variable. Is there unreachable code?
 ;; WARN: rewrite_to_get_var got a none typed variable. Is there unreachable code?
 ;; WARN: rewrite_to_get_var got a none typed variable. Is there unreachable code?
@@ -1038,6 +1302,7 @@
    )
   )
 
+;; definition for function anim-test-obj-list-handler
 (defun anim-test-obj-list-handler ((arg0 int) (arg1 list-control))
   (with-pp
    (let ((s5-0 (-> arg1 the-node))
@@ -1189,6 +1454,7 @@
    )
   )
 
+;; definition for function anim-test-anim-list-handler
 (defun anim-test-anim-list-handler ((arg0 int) (arg1 list-control))
   (with-pp
    (let* ((s5-0 (the-as anim-test-obj (-> arg1 the-node)))
@@ -1406,6 +1672,7 @@
    )
   )
 
+;; definition for function anim-test-sequence-list-handler
 (defun anim-test-sequence-list-handler ((arg0 int) (arg1 list-control))
   (with-pp
    (let* ((s5-0 (the-as anim-test-sequence (-> arg1 the-node)))
@@ -1613,6 +1880,7 @@
    )
   )
 
+;; definition for symbol anim-test-field-highlight-lw, type (inline-array list-field)
 (define
   anim-test-field-highlight-lw
   (new 'static 'inline-array list-field 12
@@ -1631,6 +1899,7 @@
    )
   )
 
+;; definition for function anim-tester-adjust-frame
 (defun anim-tester-adjust-frame ((arg0 float) (arg1 float))
   (cond
    ((logtest? (-> *cpad-list* cpads 0 button0-abs 0) (pad-buttons down))
@@ -1663,6 +1932,8 @@
   arg0
   )
 
+;; definition for function anim-tester-pick-item-setup
+;; INFO: Return type mismatch int vs none.
 (defun
   anim-tester-pick-item-setup
   ((arg0 anim-test-seq-item) (arg1 anim-test-sequence))
@@ -1708,12 +1979,16 @@
   (none)
   )
 
+;; definition for function anim-test-seq-mark-as-edited
+;; INFO: Return type mismatch int vs none.
 (defun anim-test-seq-mark-as-edited ((arg0 anim-test-sequence))
   (logior! (-> arg0 parent flags) 1)
   (logior! (-> arg0 flags) 1)
   (none)
   )
 
+;; definition for function anim-test-edit-seq-insert-item
+;; INFO: Return type mismatch object vs none.
 (defun
   anim-test-edit-seq-insert-item
   ((arg0 anim-test-seq-item) (arg1 anim-test-sequence))
@@ -1740,9 +2015,11 @@
    )
   )
 
+;; definition for function anim-test-edit-sequence-list-handler
 ;; WARN: rewrite_to_get_var got a none typed variable. Is there unreachable code?
 ;; WARN: rewrite_to_get_var got a none typed variable. Is there unreachable code?
 ;; WARN: rewrite_to_get_var got a none typed variable. Is there unreachable code?
+;; Used lq/sq
 (defun anim-test-edit-sequence-list-handler ((arg0 int) (arg1 list-control))
   (local-vars
    (sv-192 (function string dma-buffer int int font-color font-flags none))
@@ -2529,6 +2806,8 @@
    )
   )
 
+;; definition for function anim-tester-interface
+;; INFO: Return type mismatch int vs none.
 (defbehavior anim-tester-interface anim-tester ()
   (let ((v1-0 (-> self edit-mode)))
    (cond
@@ -2751,6 +3030,7 @@
   (none)
   )
 
+;; definition for function anim-tester-get-playing-item
 (defun anim-tester-get-playing-item ((arg0 anim-test-sequence))
   (let
    ((v0-0
@@ -2793,6 +3073,7 @@
    )
   )
 
+;; failed to figure out what this is:
 (defstate anim-tester-process (anim-tester)
   :event
   anim-tester-standard-event-handler
@@ -3083,6 +3364,7 @@
   anim-tester-post
   )
 
+;; definition for function initialize-anim-tester
 (defbehavior initialize-anim-tester anim-tester ()
   (glst-init-list! (-> self obj-list))
   (logclear! (-> self mask) (process-mask menu))
@@ -3114,6 +3396,7 @@
   (none)
   )
 
+;; definition for function anim-tester-string-get-frame!!
 (defun anim-tester-string-get-frame!! ((arg0 list-field) (arg1 string))
   (cond
    ((string-get-arg!! *temp-string* arg1)
@@ -3136,10 +3419,12 @@
    )
   )
 
+;; definition for function anim-tester-load-object-seqs
 (defun anim-tester-load-object-seqs ()
   #f
   )
 
+;; definition for function anim-tester-save-object-seqs
 (defun anim-tester-save-object-seqs ((arg0 anim-test-obj))
   (let ((gp-0 format)
         (s4-0 0)
@@ -3149,9 +3434,12 @@
    (format (clear *temp-string*) "data/~s.obinf" (-> arg0 privname))
    (gp-0 s4-0 s3-0 s2-0 *temp-string*)
    )
-  ;; TODO - manually fixed
-  (format (clear *temp-string*) "data/~s.obinf" (-> arg0 privname))
-   (let ((gp-2 (new 'stack 'file-stream *temp-string* 'write)))
+  (let ((gp-1 (method-of-type file-stream new))
+        (s4-1 (new 'stack-no-clear 'file-stream))
+        (s3-1 file-stream)
+        )
+   (format (clear *temp-string*) "data/~s.obinf" (-> arg0 privname))
+   (let ((gp-2 (gp-1 (the-as symbol s4-1) s3-1 *temp-string* 'write)))
     (format gp-2 "major-version 0~%")
     (format gp-2 "minor-version 0~%")
     (format gp-2 "Object \"~S\" ~d~%" (-> arg0 privname) 0)
@@ -3221,8 +3509,10 @@
     (format gp-2 "EndObject~%")
     (file-stream-close gp-2)
     )
+   )
   )
 
+;; definition for function anim-tester-save-all-objects
 (defun anim-tester-save-all-objects ((arg0 anim-tester))
   (let ((v1-0 (-> arg0 obj-list)))
    "return the start of the list"
@@ -3246,6 +3536,8 @@
   #f
   )
 
+;; definition for function anim-tester-add-newobj
+;; Used lq/sq
 (defun anim-tester-add-newobj ((arg0 anim-tester) (arg1 string) (arg2 art-group))
   (local-vars (sv-96 art-element) (sv-112 art-element) (sv-128 anim-test-obj))
   (with-pp
@@ -3383,6 +3675,7 @@
    )
   )
 
+;; definition for function anim-tester-stop
 (defun anim-tester-stop ()
   (when *anim-tester*
    (kill-by-name 'anim-tester *active-pool*)
@@ -3391,6 +3684,7 @@
    )
   )
 
+;; definition for function anim-tester-start
 (defun anim-tester-start ()
   (with-pp
    (anim-tester-stop)
@@ -3442,6 +3736,8 @@
    )
   )
 
+;; definition for function anim-tester-add-object
+;; INFO: Return type mismatch object vs none.
 (defun anim-tester-add-object ((arg0 string))
   (let
    ((s5-0
@@ -3475,6 +3771,7 @@
   (none)
   )
 
+;; definition for function anim-tester-set-name
 (defun anim-tester-set-name ((arg0 string))
   (cond
    ((zero? (length arg0))
@@ -3557,6 +3854,8 @@
    )
   )
 
+;; definition for function anim-tester-add-sequence
+;; INFO: Return type mismatch object vs none.
 (defun anim-tester-add-sequence ((arg0 string))
   (with-pp
    (cond
@@ -3652,108 +3951,5 @@
 
 )
 
-(defmethod inspect anim-tester ((obj anim-tester))
-  (format #t "--anim-tester--~%")
-  (let ((v1-0 (-> obj obj-list)))
-   "return the start of the list"
-   (let ((s5-0 (the-as anim-test-obj (-> v1-0 head))))
-    (while (let ((v1-36 s5-0))
-            "is this node the end of the list. #t = end"
-            (not (not (-> v1-36 next)))
-            )
-     (format #t "object ~A~%" (-> s5-0 privname))
-     (let ((v1-2 (-> s5-0 seq-list)))
-      "return the start of the list"
-      (let ((s4-0 (the-as anim-test-sequence (-> v1-2 head))))
-       (while (let ((v1-29 s4-0))
-               "is this node the end of the list. #t = end"
-               (not (not (-> v1-29 next)))
-               )
-        (format #t "  seq ~A" (-> s4-0 privname))
-        (format #t " ~S" (if (logtest? (-> s4-0 flags) 2)
-                          "VALID"
-                          "-"
-                          )
-         )
-        (format #t " ~S" (if (logtest? (-> s4-0 flags) 4)
-                          "EDITED"
-                          "-"
-                          )
-         )
-        (format #t " ~S" (if (logtest? (-> s4-0 flags) 1)
-                          "USER_GENERATED"
-                          "-"
-                          )
-         )
-        (format #t "~%")
-        (let ((v1-10 (-> s4-0 item-list)))
-         "return the start of the list"
-         (let ((s3-0 (the-as anim-test-seq-item (-> v1-10 head))))
-          (while (let ((v1-22 s3-0))
-                  "is this node the end of the list. #t = end"
-                  (not (not (-> v1-22 next)))
-                  )
-           (format
-            #t
-            "    item ~A SP=~f BL=~d FIRST="
-            (-> s3-0 privname)
-            (*
-             (-> (new 'static 'array float 1 0.01) 0)
-             (the float (-> s3-0 speed))
-             )
-            (-> s3-0 blend)
-            )
-           (anim-tester-num-print #t (-> s3-0 first-frame))
-           (format #t " LAST=")
-           (anim-tester-num-print #t (-> s3-0 last-frame))
-           (format #t " ~S" (if (logtest? (-> s3-0 flags) 1)
-                             "END_MARKER"
-                             "-"
-                             )
-            )
-           (format #t " ~S" (if (logtest? (-> s3-0 flags) 2)
-                             "WAIT_FOR_BLEND"
-                             "-"
-                             )
-            )
-           (format #t " ~S" (if (logtest? (-> s3-0 flags) 4)
-                             "BLANK"
-                             "-"
-                             )
-            )
-           (format #t "~%")
-           "return the next node in the list"
-           (set! s3-0 (the-as anim-test-seq-item (-> s3-0 next)))
-           )
-          )
-         )
-        "return the next node in the list"
-        (set! s4-0 (the-as anim-test-sequence (-> s4-0 next)))
-        )
-       )
-      )
-     "return the next node in the list"
-     (set! s5-0 (the-as anim-test-obj (-> s5-0 next)))
-     )
-    )
-   )
-  (format #t "-------------~%")
-  (format #t "current-obj=~A~%" (-> obj current-obj))
-  (format
-   #t
-   "speed=~f~%"
-   (* (-> (new 'static 'array float 1 0.01) 0) (the float (-> obj speed)))
-   )
-  (format #t "--flags:--~%")
-  (the-as
-   anim-tester
-   (format #t "  CONNECTED: ~A~%" (if (logtest? (-> obj flags) 1)
-                                   "TRUE"
-                                   "f"
-                                   )
-    )
-   )
-  )
 
-;; TODO - manually added 
-(set! *anim-tester* #f)
+
