@@ -475,7 +475,7 @@ bool DecompilerTypeSystem::should_attempt_cast_simplify(const TypeSpec& expected
     return true;
   }
 
-  if (expected == TypeSpec("seconds") && actual == TypeSpec("uint64")) {
+  if (expected == TypeSpec("seconds") && actual == TypeSpec("int64")) {
     return true;
   }
 
