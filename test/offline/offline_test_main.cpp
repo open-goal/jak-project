@@ -62,8 +62,9 @@ const std::unordered_set<std::string> g_functions_to_skip_decompiling = {
     // display
     "vblank-handler",  // asm
     "vif1-handler", "vif1-handler-debug",
-    // sprite. Don't know types yet.
-    "add-to-sprite-aux-list",
+    // sparticle
+    "sp-launch-particles-var", "particle-adgif", "sp-init-fields!", "memcpy", "sp-process-block-2d",
+    "sp-process-block-3d",
     // ripple - asm
     "ripple-execute-init", "ripple-create-wave-table", "ripple-apply-wave-table",
     "ripple-matrix-scale",
@@ -150,6 +151,9 @@ const std::unordered_set<std::string> g_functions_to_skip_compiling = {
     "(method 15 sync-info-eased)",   // needs display stuff first
     "(method 15 sync-info-paused)",  // needs display stuff first
 
+    // sparticle
+    "lookup-part-group-pointer-by-name",  // address of element in array issue
+
     // ripple - calls an asm function
     "ripple-execute",
 
@@ -205,7 +209,7 @@ std::vector<std::string> dgos = {
     "CGO/KERNEL.CGO", "CGO/ENGINE.CGO", "CGO/GAME.CGO", "DGO/BEA.DGO", "DGO/INT.DGO", "DGO/VI1.DGO",
     "DGO/VI2.DGO",    "DGO/VI3.DGO",    "DGO/CIT.DGO",  "DGO/MIS.DGO", "DGO/JUB.DGO", "DGO/SUN.DGO",
     "DGO/DEM.DGO",    "DGO/FIN.DGO",    "DGO/JUN.DGO",  "DGO/FIC.DGO", "DGO/SNO.DGO", "DGO/SWA.DGO",
-    "DGO/MAI.DGO",    "DGO/ROB.DGO",    "DGO/LAV.DGO",  "DGO/OGR.DGO"};
+    "DGO/MAI.DGO",    "DGO/ROB.DGO",    "DGO/LAV.DGO",  "DGO/OGR.DGO", "DGO/TRA.DGO"};
 
 }  // namespace
 

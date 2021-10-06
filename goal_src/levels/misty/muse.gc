@@ -46,938 +46,934 @@
   )
 
 
-; (defun analyze-point-on-path-segment ((arg0 point-on-path-segment-info))
-;   (vector-! (-> arg0 dir) (-> arg0 segment 1) (the-as vector (-> arg0 segment)))
-;   (vector-normalize! (-> arg0 dir) 1.0)
-;   (set!
-;    (-> arg0 segment-length)
-;    (vector-vector-distance
-;     (the-as vector (-> arg0 segment))
-;     (-> arg0 segment 1)
-;     )
-;    )
-;   (let ((s5-0 (new 'stack-no-clear 'vector)))
-;    (vector-! s5-0 (the-as vector (-> arg0 segment)) (-> arg0 point))
-;    (vector+*! s5-0 s5-0 (-> arg0 dir) (- (vector-dot s5-0 (-> arg0 dir))))
-;    (vector+! (-> arg0 nearest-point) (-> arg0 point) s5-0)
-;    (set! (-> arg0 distance-to-segment) (vector-length s5-0))
-;    (vector-! s5-0 (-> arg0 point) (the-as vector (-> arg0 segment)))
-;    (set!
-;     (-> arg0 parametric-index)
-;     (/ (vector-dot (-> arg0 dir) s5-0) (-> arg0 segment-length))
-;     )
-;    )
-;   (cond
-;    ((< (-> arg0 parametric-index) 0.0)
-;     (set! (-> arg0 parametric-index) 0.0)
-;     (set! (-> arg0 nearest-point quad) (-> arg0 segment 0 quad))
-;     (let
-;      ((f0-10 (vector-vector-distance (-> arg0 nearest-point) (-> arg0 point))))
-;      (set! (-> arg0 distance-to-segment) f0-10)
-;      f0-10
-;      )
-;     )
-;    ((< 1.0 (-> arg0 parametric-index))
-;     (set! (-> arg0 parametric-index) 1.0)
-;     (set! (-> arg0 nearest-point quad) (-> arg0 segment 1 quad))
-;     (let
-;      ((f0-13 (vector-vector-distance (-> arg0 nearest-point) (-> arg0 point))))
-;      (set! (-> arg0 distance-to-segment) f0-13)
-;      f0-13
-;      )
-;     )
-;    )
-;   )
+(defun analyze-point-on-path-segment ((arg0 point-on-path-segment-info))
+  (vector-! (-> arg0 dir) (-> arg0 segment 1) (the-as vector (-> arg0 segment)))
+  (vector-normalize! (-> arg0 dir) 1.0)
+  (set!
+   (-> arg0 segment-length)
+   (vector-vector-distance
+    (the-as vector (-> arg0 segment))
+    (-> arg0 segment 1)
+    )
+   )
+  (let ((s5-0 (new 'stack-no-clear 'vector)))
+   (vector-! s5-0 (the-as vector (-> arg0 segment)) (-> arg0 point))
+   (vector+*! s5-0 s5-0 (-> arg0 dir) (- (vector-dot s5-0 (-> arg0 dir))))
+   (vector+! (-> arg0 nearest-point) (-> arg0 point) s5-0)
+   (set! (-> arg0 distance-to-segment) (vector-length s5-0))
+   (vector-! s5-0 (-> arg0 point) (the-as vector (-> arg0 segment)))
+   (set!
+    (-> arg0 parametric-index)
+    (/ (vector-dot (-> arg0 dir) s5-0) (-> arg0 segment-length))
+    )
+   )
+  (cond
+   ((< (-> arg0 parametric-index) 0.0)
+    (set! (-> arg0 parametric-index) 0.0)
+    (set! (-> arg0 nearest-point quad) (-> arg0 segment 0 quad))
+    (let
+     ((f0-10 (vector-vector-distance (-> arg0 nearest-point) (-> arg0 point))))
+     (set! (-> arg0 distance-to-segment) f0-10)
+     f0-10
+     )
+    )
+   ((< 1.0 (-> arg0 parametric-index))
+    (set! (-> arg0 parametric-index) 1.0)
+    (set! (-> arg0 nearest-point quad) (-> arg0 segment 1 quad))
+    (let
+     ((f0-13 (vector-vector-distance (-> arg0 nearest-point) (-> arg0 point))))
+     (set! (-> arg0 distance-to-segment) f0-13)
+     f0-13
+     )
+    )
+   )
+  )
 
-; (defbehavior muse-get-path-point muse ((arg0 vector) (arg1 int))
-;   (eval-path-curve-div! (-> self path) arg0 (the float arg1) 'interp)
-;   0
-;   (none)
-;   )
+;; definition for function muse-get-path-point
+;; INFO: Return type mismatch int vs none.
+(defbehavior muse-get-path-point muse ((arg0 vector) (arg1 int))
+  (eval-path-curve-div! (-> self path) arg0 (the float arg1) 'interp)
+  0
+  (none)
+  )
 
-; (defbehavior muse-check-dest-point muse ()
-;   (let ((gp-0 (new 'stack-no-clear 'point-on-path-segment-info))
-;         (f26-0 4096000.0)
-;         (f30-0 0.0)
-;         (f24-0 4096000.0)
-;         (f28-0 0.0)
-;         )
-;    (let ((s5-0 (+ (-> self path curve num-cverts) -1))
-;          (s4-0 (target-pos 0))
-;          )
-;     (dotimes (s3-0 s5-0)
-;      (let ((f22-0 (the float s3-0)))
-;       (let ((f20-0 (the float (+ s3-0 1))))
-;        (eval-path-curve-div!
-;         (-> self path)
-;         (the-as vector (-> gp-0 segment))
-;         f22-0
-;         'interp
-;         )
-;        (eval-path-curve-div! (-> self path) (-> gp-0 segment 1) f20-0 'interp)
-;        )
-;       (set! (-> gp-0 point quad) (-> s4-0 quad))
-;       (analyze-point-on-path-segment gp-0)
-;       (when (< (-> gp-0 distance-to-segment) f24-0)
-;        (set! f24-0 (-> gp-0 distance-to-segment))
-;        (set! f28-0 (+ f22-0 (-> gp-0 parametric-index)))
-;        )
-;       (set! (-> gp-0 point quad) (-> self collide-info trans quad))
-;       (analyze-point-on-path-segment gp-0)
-;       (when (< (-> gp-0 distance-to-segment) f26-0)
-;        (set! f26-0 (-> gp-0 distance-to-segment))
-;        (set! f30-0 (+ f22-0 (-> gp-0 parametric-index)))
-;        )
-;       )
-;      0
-;      )
-;     )
-;    (let ((f0-6 (- f30-0 f28-0)))
-;     (if (< f0-6 (* -0.5 (-> self max-path-index)))
-;      (+! f0-6 (-> self max-path-index))
-;      )
-;     (if (< (* 0.5 (-> self max-path-index)) f0-6)
-;      (set! f0-6 (- f0-6 (-> self max-path-index)))
-;      )
-;     (cond
-;      ((>= f0-6 0.0)
-;       (set! (-> self dest-path-index) (the float (the int (+ 2.5 f30-0))))
-;       (if (>= (-> self dest-path-index) (-> self max-path-index))
-;        (set!
-;         (-> self dest-path-index)
-;         (- (-> self dest-path-index) (-> self max-path-index))
-;         )
-;        )
-;       )
-;      (else
-;       (set! (-> self dest-path-index) (+ -1.5 f30-0))
-;       (if (< (-> self dest-path-index) 0.0)
-;        (+! (-> self dest-path-index) (-> self max-path-index))
-;        )
-;       (set!
-;        (-> self dest-path-index)
-;        (the float (the int (-> self dest-path-index)))
-;        )
-;       )
-;      )
-;     )
-;    )
-;   (eval-path-curve-div!
-;    (-> self path)
-;    (-> self dest-point)
-;    (-> self dest-path-index)
-;    'interp
-;    )
-;   0
-;   (none)
-;   )
+;; definition for function muse-check-dest-point
+;; INFO: Return type mismatch int vs none.
+;; Used lq/sq
+(defbehavior muse-check-dest-point muse ()
+  (let ((gp-0 (new 'stack-no-clear 'point-on-path-segment-info))
+        (f26-0 4096000.0)
+        (f30-0 0.0)
+        (f24-0 4096000.0)
+        (f28-0 0.0)
+        )
+   (let ((s5-0 (+ (-> self path curve num-cverts) -1))
+         (s4-0 (target-pos 0))
+         )
+    (dotimes (s3-0 s5-0)
+     (let ((f22-0 (the float s3-0)))
+      (let ((f20-0 (the float (+ s3-0 1))))
+       (eval-path-curve-div!
+        (-> self path)
+        (the-as vector (-> gp-0 segment))
+        f22-0
+        'interp
+        )
+       (eval-path-curve-div! (-> self path) (-> gp-0 segment 1) f20-0 'interp)
+       )
+      (set! (-> gp-0 point quad) (-> s4-0 quad))
+      (analyze-point-on-path-segment gp-0)
+      (when (< (-> gp-0 distance-to-segment) f24-0)
+       (set! f24-0 (-> gp-0 distance-to-segment))
+       (set! f28-0 (+ f22-0 (-> gp-0 parametric-index)))
+       )
+      (set! (-> gp-0 point quad) (-> self collide-info trans quad))
+      (analyze-point-on-path-segment gp-0)
+      (when (< (-> gp-0 distance-to-segment) f26-0)
+       (set! f26-0 (-> gp-0 distance-to-segment))
+       (set! f30-0 (+ f22-0 (-> gp-0 parametric-index)))
+       )
+      )
+     0
+     )
+    )
+   (let ((f0-6 (- f30-0 f28-0)))
+    (if (< f0-6 (* -0.5 (-> self max-path-index)))
+     (+! f0-6 (-> self max-path-index))
+     )
+    (if (< (* 0.5 (-> self max-path-index)) f0-6)
+     (set! f0-6 (- f0-6 (-> self max-path-index)))
+     )
+    (cond
+     ((>= f0-6 0.0)
+      (set! (-> self dest-path-index) (the float (the int (+ 2.5 f30-0))))
+      (if (>= (-> self dest-path-index) (-> self max-path-index))
+       (set!
+        (-> self dest-path-index)
+        (- (-> self dest-path-index) (-> self max-path-index))
+        )
+       )
+      )
+     (else
+      (set! (-> self dest-path-index) (+ -1.5 f30-0))
+      (if (< (-> self dest-path-index) 0.0)
+       (+! (-> self dest-path-index) (-> self max-path-index))
+       )
+      (set!
+       (-> self dest-path-index)
+       (the float (the int (-> self dest-path-index)))
+       )
+      )
+     )
+    )
+   )
+  (eval-path-curve-div!
+   (-> self path)
+   (-> self dest-point)
+   (-> self dest-path-index)
+   'interp
+   )
+  0
+  (none)
+  )
 
-; (defmethod dummy-51 muse ((obj muse))
-;   (dotimes (s5-0 2)
-;    (let ((v1-2 (rand-vu-int-range 3 (+ (-> obj node-list length) -1))))
-;     (sp-launch-particles-var
-;      *sp-particle-system-2d*
-;      (-> *part-id-table* 271)
-;      (vector<-cspace!
-;       (new 'stack-no-clear 'vector)
-;       (-> obj node-list data v1-2)
-;       )
-;      #f
-;      #f
-;      1.0
-;      )
-;     )
-;    )
-;   0
-;   (none)
-;   )
+;; definition for method 51 of type muse
+;; INFO: Return type mismatch int vs float.
+(defmethod dummy-51 muse ((obj muse))
+  (dotimes (s5-0 2)
+   (let ((v1-2 (rand-vu-int-range 3 (+ (-> obj node-list length) -1))))
+    (sp-launch-particles-var
+     *sp-particle-system-2d*
+     (-> *part-id-table* 271)
+     (vector<-cspace!
+      (new 'stack-no-clear 'vector)
+      (-> obj node-list data v1-2)
+      )
+     (the-as sparticle-launch-state #f)
+     (the-as sparticle-launch-control #f)
+     1.0
+     )
+    )
+   )
+  (the-as float 0)
+  )
 
-; (defmethod TODO-RENAME-39 muse ((obj muse))
-;   (spool-push *art-control* (-> obj anim name) 0 obj -99.0)
-;   (dummy-51 obj)
-;   ((method-of-type nav-enemy TODO-RENAME-39) obj)
-;   (none)
-;   )
+;; definition for method 39 of type muse
+(defmethod common-post muse ((obj muse))
+  (spool-push *art-control* (-> obj anim name) 0 obj -99.0)
+  (dummy-51 obj)
+  ((method-of-type nav-enemy common-post) obj)
+  (none)
+  )
 
-; (let
-;   ((v1-5
-;     (new 'static 'skeleton-group
-;      :art-group-name "muse"
-;      :bounds
-;      (new 'static 'vector :y 8192.0 :w 12288.0)
-;      :version #x6
-;      :shadow 2
-;      )
-;     )
-;    )
-;   (set! (-> v1-5 jgeo) 0)
-;   (set! (-> v1-5 janim) 3)
-;   (set! (-> v1-5 mgeo 0) (the-as uint 1))
-;   (set! (-> v1-5 lod-dist 0) 4095996000.0)
-;   (set! *muse-sg* v1-5)
-;   )
+;; failed to figure out what this is:
+(let
+  ((v1-5
+    (new 'static 'skeleton-group
+     :art-group-name "muse"
+     :bounds
+     (new 'static 'vector :y 8192.0 :w 12288.0)
+     :version #x6
+     :shadow 2
+     )
+    )
+   )
+  (set! (-> v1-5 jgeo) 0)
+  (set! (-> v1-5 janim) 3)
+  (set! (-> v1-5 mgeo 0) (the-as uint 1))
+  (set! (-> v1-5 lod-dist 0) 4095996000.0)
+  (set! *muse-sg* v1-5)
+  )
 
-; (defmethod dummy-44 muse ((obj muse) (arg0 process) (arg1 event-message-block))
-;   (the-as object (go muse-caught))
-;   )
+;; definition for method 44 of type muse
+;; INFO: Return type mismatch none vs object.
+(defmethod dummy-44 muse ((obj muse) (arg0 process) (arg1 event-message-block))
+  (the-as object (go muse-caught))
+  )
 
-; (defmethod dummy-43 muse ((obj muse) (arg0 process) (arg1 event-message-block))
-;   (the-as object (go muse-caught))
-;   )
+;; definition for method 43 of type muse
+;; INFO: Return type mismatch none vs object.
+(defmethod dummy-43 muse ((obj muse) (arg0 process) (arg1 event-message-block))
+  (the-as object (go muse-caught))
+  )
 
-; nav-enemy-default-event-handler
+;; failed to figure out what this is:
+nav-enemy-default-event-handler
 
-; (defstate muse-idle (muse)
-;   :event
-;   (the-as
-;    (function process int symbol event-message-block object :behavior muse)
-;    nav-enemy-default-event-handler
-;    )
-;   :trans
-;   (behavior ()
-;    (set!
-;     (-> self sprint-distance)
-;     (seek
-;      (-> self sprint-distance)
-;      61440.0
-;      (* 8192.0 (-> *display* seconds-per-frame))
-;      )
-;     )
-;    (if
-;     (and
-;      *target*
-;      (>=
-;       102400.0
-;       (vector-vector-distance
-;        (-> self collide-info trans)
-;        (-> *target* control trans)
-;        )
-;       )
-;      )
-;     (level-hint-spawn
-;      (game-text-id zero)
-;      (the-as string #f)
-;      (the-as symbol (-> self entity))
-;      *entity-pool*
-;      0
-;      )
-;     )
-;    (if
-;     (and
-;      *target*
-;      (>=
-;       81920.0
-;       (vector-vector-distance
-;        (-> self collide-info trans)
-;        (-> *target* control trans)
-;        )
-;       )
-;      )
-;     (go-virtual nav-enemy-chase)
-;     )
-;    (none)
-;    )
-;   :code
-;   (behavior ()
-;    (when (= (if (> (-> self skel active-channels) 0)
-;              (-> self skel root-channel 0 frame-group)
-;              )
-;           (-> self draw art-group data 4)
-;           )
-;     (ja-channel-push! 1 30)
-;     (let ((a0-5 (-> self skel root-channel 0)))
-;      (set! (-> a0-5 param 0) 1.0)
-;      (joint-control-channel-group!
-;       a0-5
-;       (the-as art-joint-anim #f)
-;       num-func-loop!
-;       )
-;      )
-;     (let ((a0-6 (-> self skel root-channel 0)))
-;      (set!
-;       (-> a0-6 frame-group)
-;       (the-as art-joint-anim (-> self draw art-group data 6))
-;       )
-;      (set!
-;       (-> a0-6 param 0)
-;       (the
-;        float
-;        (+
-;         (->
-;          (the-as art-joint-anim (-> self draw art-group data 6))
-;          data
-;          0
-;          length
-;          )
-;         -1
-;         )
-;        )
-;       )
-;      (set! (-> a0-6 param 1) 1.0)
-;      (set! (-> a0-6 frame-num) 0.0)
-;      (joint-control-channel-group!
-;       a0-6
-;       (the-as art-joint-anim (-> self draw art-group data 6))
-;       num-func-seek!
-;       )
-;      )
-;     (until (ja-done? 0)
-;      (ja-blend-eval)
-;      (suspend)
-;      (let ((a0-7 (-> self skel root-channel 0)))
-;       (set!
-;        (-> a0-7 param 0)
-;        (the float (+ (-> a0-7 frame-group data 0 length) -1))
-;        )
-;       (set! (-> a0-7 param 1) 1.0)
-;       (joint-control-channel-group-eval!
-;        a0-7
-;        (the-as art-joint-anim #f)
-;        num-func-seek!
-;        )
-;       )
-;      )
-;     )
-;    (while #t
-;     (let ((a0-9 (-> self skel root-channel 0)))
-;      (set!
-;       (-> a0-9 frame-group)
-;       (the-as art-joint-anim (-> self draw art-group data 3))
-;       )
-;      (set!
-;       (-> a0-9 param 0)
-;       (the
-;        float
-;        (+
-;         (->
-;          (the-as art-joint-anim (-> self draw art-group data 3))
-;          data
-;          0
-;          length
-;          )
-;         -1
-;         )
-;        )
-;       )
-;      (set! (-> a0-9 param 1) 1.0)
-;      (set! (-> a0-9 frame-num) 0.0)
-;      (joint-control-channel-group!
-;       a0-9
-;       (the-as art-joint-anim (-> self draw art-group data 3))
-;       num-func-seek!
-;       )
-;      )
-;     (until (ja-done? 0)
-;      (spool-push *art-control* (-> self anim name) 0 self -99.0)
-;      (dummy-51 self)
-;      (suspend)
-;      (let ((a0-12 (-> self skel root-channel 0)))
-;       (set!
-;        (-> a0-12 param 0)
-;        (the float (+ (-> a0-12 frame-group data 0 length) -1))
-;        )
-;       (set! (-> a0-12 param 1) 1.0)
-;       (joint-control-channel-group-eval!
-;        a0-12
-;        (the-as art-joint-anim #f)
-;        num-func-seek!
-;        )
-;       )
-;      )
-;     )
-;    (none)
-;    )
-;   :post
-;   (the-as (function none :behavior muse) ja-post)
-;   )
+;; failed to figure out what this is:
+(defstate muse-idle (muse)
+  :event
+  (the-as
+   (function process int symbol event-message-block object :behavior muse)
+   nav-enemy-default-event-handler
+   )
+  :trans
+  (behavior ()
+   (set!
+    (-> self sprint-distance)
+    (seek
+     (-> self sprint-distance)
+     61440.0
+     (* 8192.0 (-> *display* seconds-per-frame))
+     )
+    )
+   (if
+    (and
+     *target*
+     (>=
+      102400.0
+      (vector-vector-distance
+       (-> self collide-info trans)
+       (-> *target* control trans)
+       )
+      )
+     )
+    (level-hint-spawn
+     (game-text-id zero)
+     (the-as string #f)
+     (-> self entity)
+     *entity-pool*
+     (game-task none)
+     )
+    )
+   (if
+    (and
+     *target*
+     (>=
+      81920.0
+      (vector-vector-distance
+       (-> self collide-info trans)
+       (-> *target* control trans)
+       )
+      )
+     )
+    (go-virtual nav-enemy-chase)
+    )
+   (none)
+   )
+  :code
+  (behavior ()
+   (when (= (if (> (-> self skel active-channels) 0)
+             (-> self skel root-channel 0 frame-group)
+             )
+          (-> self draw art-group data 4)
+          )
+    (ja-channel-push! 1 30)
+    (let ((a0-5 (-> self skel root-channel 0)))
+     (set! (-> a0-5 param 0) 1.0)
+     (joint-control-channel-group!
+      a0-5
+      (the-as art-joint-anim #f)
+      num-func-loop!
+      )
+     )
+    (let ((a0-6 (-> self skel root-channel 0)))
+     (set!
+      (-> a0-6 frame-group)
+      (the-as art-joint-anim (-> self draw art-group data 6))
+      )
+     (set!
+      (-> a0-6 param 0)
+      (the
+       float
+       (+
+        (->
+         (the-as art-joint-anim (-> self draw art-group data 6))
+         data
+         0
+         length
+         )
+        -1
+        )
+       )
+      )
+     (set! (-> a0-6 param 1) 1.0)
+     (set! (-> a0-6 frame-num) 0.0)
+     (joint-control-channel-group!
+      a0-6
+      (the-as art-joint-anim (-> self draw art-group data 6))
+      num-func-seek!
+      )
+     )
+    (until (ja-done? 0)
+     (ja-blend-eval)
+     (suspend)
+     (let ((a0-7 (-> self skel root-channel 0)))
+      (set!
+       (-> a0-7 param 0)
+       (the float (+ (-> a0-7 frame-group data 0 length) -1))
+       )
+      (set! (-> a0-7 param 1) 1.0)
+      (joint-control-channel-group-eval!
+       a0-7
+       (the-as art-joint-anim #f)
+       num-func-seek!
+       )
+      )
+     )
+    )
+   (while #t
+    (let ((a0-9 (-> self skel root-channel 0)))
+     (set!
+      (-> a0-9 frame-group)
+      (the-as art-joint-anim (-> self draw art-group data 3))
+      )
+     (set!
+      (-> a0-9 param 0)
+      (the
+       float
+       (+
+        (->
+         (the-as art-joint-anim (-> self draw art-group data 3))
+         data
+         0
+         length
+         )
+        -1
+        )
+       )
+      )
+     (set! (-> a0-9 param 1) 1.0)
+     (set! (-> a0-9 frame-num) 0.0)
+     (joint-control-channel-group!
+      a0-9
+      (the-as art-joint-anim (-> self draw art-group data 3))
+      num-func-seek!
+      )
+     )
+    (until (ja-done? 0)
+     (spool-push *art-control* (-> self anim name) 0 self -99.0)
+     (dummy-51 self)
+     (suspend)
+     (let ((a0-12 (-> self skel root-channel 0)))
+      (set!
+       (-> a0-12 param 0)
+       (the float (+ (-> a0-12 frame-group data 0 length) -1))
+       )
+      (set! (-> a0-12 param 1) 1.0)
+      (joint-control-channel-group-eval!
+       a0-12
+       (the-as art-joint-anim #f)
+       num-func-seek!
+       )
+      )
+     )
+    )
+   (none)
+   )
+  :post
+  (the-as (function none :behavior muse) ja-post)
+  )
 
-; (defstate nav-enemy-chase (muse)
-;   :virtual #t
-;   :event
-;   (the-as
-;    (function process int symbol event-message-block object :behavior muse)
-;    nav-enemy-default-event-handler
-;    )
-;   :enter
-;   (behavior ()
-;    (set!
-;     (-> self state-time)
-;     (the-as seconds (-> *display* base-frame-counter))
-;     )
-;    (none)
-;    )
-;   :trans
-;   (behavior ()
-;    (cond
-;     ((or
-;       (not *target*)
-;       (<
-;        102400.0
-;        (vector-vector-distance
-;         (-> self collide-info trans)
-;         (-> *target* control trans)
-;         )
-;        )
-;       )
-;      (set! (-> self target-speed) 0.0)
-;      (if (= (-> self momentum-speed) 0.0)
-;       (go muse-idle)
-;       )
-;      )
-;     ((or
-;       (not *target*)
-;       (<
-;        (-> self sprint-distance)
-;        (vector-vector-distance
-;         (-> self collide-info trans)
-;         (-> *target* control trans)
-;         )
-;        )
-;       )
-;      (set! (-> self target-speed) 40960.0)
-;      )
-;     (else
-;      (set! (-> self target-speed) 61440.0)
-;      )
-;     )
-;    (set!
-;     (-> self sprint-distance)
-;     (seek
-;      (-> self sprint-distance)
-;      0.0
-;      (* 4096.0 (-> *display* seconds-per-frame))
-;      )
-;     )
-;    (muse-check-dest-point)
-;    (none)
-;    )
-;   :code
-;   (behavior ()
-;    (cond
-;     ((= (if (> (-> self skel active-channels) 0)
-;          (-> self skel root-channel 0 frame-group)
-;          )
-;       (-> self draw art-group data 3)
-;       )
-;      (ja-channel-push! 1 30)
-;      (let ((a0-5 (-> self skel root-channel 0)))
-;       (set! (-> a0-5 param 0) 1.0)
-;       (joint-control-channel-group!
-;        a0-5
-;        (the-as art-joint-anim #f)
-;        num-func-loop!
-;        )
-;       )
-;      (let ((a0-6 (-> self skel root-channel 0)))
-;       (set!
-;        (-> a0-6 frame-group)
-;        (the-as art-joint-anim (-> self draw art-group data 5))
-;        )
-;       (set!
-;        (-> a0-6 param 0)
-;        (the
-;         float
-;         (+
-;          (->
-;           (the-as art-joint-anim (-> self draw art-group data 5))
-;           data
-;           0
-;           length
-;           )
-;          -1
-;          )
-;         )
-;        )
-;       (set! (-> a0-6 param 1) 1.0)
-;       (set! (-> a0-6 frame-num) 0.0)
-;       (joint-control-channel-group!
-;        a0-6
-;        (the-as art-joint-anim (-> self draw art-group data 5))
-;        num-func-seek!
-;        )
-;       )
-;      (until (ja-done? 0)
-;       (ja-blend-eval)
-;       (suspend)
-;       (let ((a0-7 (-> self skel root-channel 0)))
-;        (set!
-;         (-> a0-7 param 0)
-;         (the float (+ (-> a0-7 frame-group data 0 length) -1))
-;         )
-;        (set! (-> a0-7 param 1) 1.0)
-;        (joint-control-channel-group-eval!
-;         a0-7
-;         (the-as art-joint-anim #f)
-;         num-func-seek!
-;         )
-;        )
-;       )
-;      )
-;     (else
-;      (ja-channel-push! 1 30)
-;      )
-;     )
-;    (let ((gp-0 (-> self skel root-channel 0)))
-;     (joint-control-channel-group-eval!
-;      gp-0
-;      (the-as art-joint-anim (-> self draw art-group data 4))
-;      num-func-identity
-;      )
-;     (set! (-> gp-0 frame-num) 0.0)
-;     )
-;    (while #t
-;     (suspend)
-;     (let ((a0-11 (-> self skel root-channel 0)))
-;      (set! (-> a0-11 param 0) (* 0.000016276043 (-> self momentum-speed)))
-;      (joint-control-channel-group-eval!
-;       a0-11
-;       (the-as art-joint-anim #f)
-;       num-func-loop!
-;       )
-;      )
-;     )
-;    (none)
-;    )
-;   :post
-;   (behavior ()
-;    (set! (-> self nav destination-pos quad) (-> self dest-point quad))
-;    (dummy-19
-;     (-> self nav)
-;     (-> self nav target-pos)
-;     (-> self collide-info)
-;     (-> self nav destination-pos)
-;     546133.3
-;     )
-;    (if (logtest? (nav-control-flags bit21) (-> self nav flags))
-;     (logclear! (-> self nav flags) (nav-control-flags bit10))
-;     )
-;    (nav-enemy-travel-post)
-;    (none)
-;    )
-;   )
+;; failed to figure out what this is:
+(defstate nav-enemy-chase (muse)
+  :virtual #t
+  :event
+  (the-as
+   (function process int symbol event-message-block object :behavior muse)
+   nav-enemy-default-event-handler
+   )
+  :enter
+  (behavior ()
+   (set!
+    (-> self state-time)
+    (the-as seconds (-> *display* base-frame-counter))
+    )
+   (none)
+   )
+  :trans
+  (behavior ()
+   (cond
+    ((or
+      (not *target*)
+      (<
+       102400.0
+       (vector-vector-distance
+        (-> self collide-info trans)
+        (-> *target* control trans)
+        )
+       )
+      )
+     (set! (-> self target-speed) 0.0)
+     (if (= (-> self momentum-speed) 0.0)
+      (go muse-idle)
+      )
+     )
+    ((or
+      (not *target*)
+      (<
+       (-> self sprint-distance)
+       (vector-vector-distance
+        (-> self collide-info trans)
+        (-> *target* control trans)
+        )
+       )
+      )
+     (set! (-> self target-speed) 40960.0)
+     )
+    (else
+     (set! (-> self target-speed) 61440.0)
+     )
+    )
+   (set!
+    (-> self sprint-distance)
+    (seek
+     (-> self sprint-distance)
+     0.0
+     (* 4096.0 (-> *display* seconds-per-frame))
+     )
+    )
+   (muse-check-dest-point)
+   (none)
+   )
+  :code
+  (behavior ()
+   (cond
+    ((= (if (> (-> self skel active-channels) 0)
+         (-> self skel root-channel 0 frame-group)
+         )
+      (-> self draw art-group data 3)
+      )
+     (ja-channel-push! 1 30)
+     (let ((a0-5 (-> self skel root-channel 0)))
+      (set! (-> a0-5 param 0) 1.0)
+      (joint-control-channel-group!
+       a0-5
+       (the-as art-joint-anim #f)
+       num-func-loop!
+       )
+      )
+     (let ((a0-6 (-> self skel root-channel 0)))
+      (set!
+       (-> a0-6 frame-group)
+       (the-as art-joint-anim (-> self draw art-group data 5))
+       )
+      (set!
+       (-> a0-6 param 0)
+       (the
+        float
+        (+
+         (->
+          (the-as art-joint-anim (-> self draw art-group data 5))
+          data
+          0
+          length
+          )
+         -1
+         )
+        )
+       )
+      (set! (-> a0-6 param 1) 1.0)
+      (set! (-> a0-6 frame-num) 0.0)
+      (joint-control-channel-group!
+       a0-6
+       (the-as art-joint-anim (-> self draw art-group data 5))
+       num-func-seek!
+       )
+      )
+     (until (ja-done? 0)
+      (ja-blend-eval)
+      (suspend)
+      (let ((a0-7 (-> self skel root-channel 0)))
+       (set!
+        (-> a0-7 param 0)
+        (the float (+ (-> a0-7 frame-group data 0 length) -1))
+        )
+       (set! (-> a0-7 param 1) 1.0)
+       (joint-control-channel-group-eval!
+        a0-7
+        (the-as art-joint-anim #f)
+        num-func-seek!
+        )
+       )
+      )
+     )
+    (else
+     (ja-channel-push! 1 30)
+     )
+    )
+   (let ((gp-0 (-> self skel root-channel 0)))
+    (joint-control-channel-group-eval!
+     gp-0
+     (the-as art-joint-anim (-> self draw art-group data 4))
+     num-func-identity
+     )
+    (set! (-> gp-0 frame-num) 0.0)
+    )
+   (while #t
+    (suspend)
+    (let ((a0-11 (-> self skel root-channel 0)))
+     (set! (-> a0-11 param 0) (* 0.000016276043 (-> self momentum-speed)))
+     (joint-control-channel-group-eval!
+      a0-11
+      (the-as art-joint-anim #f)
+      num-func-loop!
+      )
+     )
+    )
+   (none)
+   )
+  :post
+  (behavior ()
+   (set! (-> self nav destination-pos quad) (-> self dest-point quad))
+   (dummy-19
+    (-> self nav)
+    (-> self nav target-pos)
+    (-> self collide-info)
+    (-> self nav destination-pos)
+    546133.3
+    )
+   (if (logtest? (nav-control-flags bit21) (-> self nav flags))
+    (logclear! (-> self nav flags) (nav-control-flags bit10))
+    )
+   (nav-enemy-travel-post)
+   (none)
+   )
+  )
 
-; (defstate nav-enemy-jump (muse)
-;   :virtual #t
-;   :event
-;   (the-as
-;    (function process int symbol event-message-block object :behavior muse)
-;    nav-enemy-default-event-handler
-;    )
-;   :enter
-;   (behavior ()
-;    ((-> (method-of-type nav-enemy nav-enemy-jump) enter))
-;    (set! (-> self nav-enemy-flags) (logand -513 (-> self nav-enemy-flags)))
-;    (none)
-;    )
-;   :code
-;   (-> (method-of-type nav-enemy nav-enemy-jump) code)
-;   )
+;; failed to figure out what this is:
+(defstate nav-enemy-jump (muse)
+  :virtual #t
+  :event
+  (the-as
+   (function process int symbol event-message-block object :behavior muse)
+   nav-enemy-default-event-handler
+   )
+  :enter
+  (behavior ()
+   ((-> (method-of-type nav-enemy nav-enemy-jump) enter))
+   (set! (-> self nav-enemy-flags) (logand -513 (-> self nav-enemy-flags)))
+   (none)
+   )
+  :code
+  (-> (method-of-type nav-enemy nav-enemy-jump) code)
+  )
 
-; (defstate nav-enemy-jump-land (muse)
-;   :virtual #t
-;   :event
-;   (the-as
-;    (function process int symbol event-message-block object :behavior muse)
-;    nav-enemy-default-event-handler
-;    )
-;   :code
-;   (behavior ()
-;    (let ((a0-0 (-> self skel root-channel 0)))
-;     (set!
-;      (-> a0-0 param 0)
-;      (the float (+ (-> a0-0 frame-group data 0 length) -1))
-;      )
-;     (set! (-> a0-0 param 1) 1.0)
-;     (joint-control-channel-group!
-;      a0-0
-;      (the-as art-joint-anim #f)
-;      num-func-seek!
-;      )
-;     )
-;    (ja-channel-push! 1 22)
-;    (let ((gp-0 (-> self skel root-channel 0)))
-;     (set!
-;      (-> gp-0 frame-group)
-;      (the-as art-joint-anim (-> self draw art-group data 4))
-;      )
-;     (set!
-;      (-> gp-0 param 0)
-;      (the
-;       float
-;       (+
-;        (->
-;         (the-as art-joint-anim (-> self draw art-group data 4))
-;         data
-;         0
-;         length
-;         )
-;        -1
-;        )
-;       )
-;      )
-;     (set! (-> gp-0 param 1) 0.8)
-;     (set! (-> gp-0 frame-num) (ja-aframe 6.0 0))
-;     (joint-control-channel-group!
-;      gp-0
-;      (the-as art-joint-anim (-> self draw art-group data 4))
-;      num-func-seek!
-;      )
-;     )
-;    (until (ja-done? 0)
-;     (ja-blend-eval)
-;     (suspend)
-;     (let ((a0-4 (-> self skel root-channel 0)))
-;      (set!
-;       (-> a0-4 param 0)
-;       (the float (+ (-> a0-4 frame-group data 0 length) -1))
-;       )
-;      (set! (-> a0-4 param 1) 0.8)
-;      (joint-control-channel-group-eval!
-;       a0-4
-;       (the-as art-joint-anim #f)
-;       num-func-seek!
-;       )
-;      )
-;     )
-;    (go-virtual nav-enemy-chase)
-;    (none)
-;    )
-;   )
+;; failed to figure out what this is:
+(defstate nav-enemy-jump-land (muse)
+  :virtual #t
+  :event
+  (the-as
+   (function process int symbol event-message-block object :behavior muse)
+   nav-enemy-default-event-handler
+   )
+  :code
+  (behavior ()
+   (let ((a0-0 (-> self skel root-channel 0)))
+    (set!
+     (-> a0-0 param 0)
+     (the float (+ (-> a0-0 frame-group data 0 length) -1))
+     )
+    (set! (-> a0-0 param 1) 1.0)
+    (joint-control-channel-group!
+     a0-0
+     (the-as art-joint-anim #f)
+     num-func-seek!
+     )
+    )
+   (ja-channel-push! 1 22)
+   (let ((gp-0 (-> self skel root-channel 0)))
+    (set!
+     (-> gp-0 frame-group)
+     (the-as art-joint-anim (-> self draw art-group data 4))
+     )
+    (set!
+     (-> gp-0 param 0)
+     (the
+      float
+      (+
+       (->
+        (the-as art-joint-anim (-> self draw art-group data 4))
+        data
+        0
+        length
+        )
+       -1
+       )
+      )
+     )
+    (set! (-> gp-0 param 1) 0.8)
+    (set! (-> gp-0 frame-num) (ja-aframe 6.0 0))
+    (joint-control-channel-group!
+     gp-0
+     (the-as art-joint-anim (-> self draw art-group data 4))
+     num-func-seek!
+     )
+    )
+   (until (ja-done? 0)
+    (ja-blend-eval)
+    (suspend)
+    (let ((a0-4 (-> self skel root-channel 0)))
+     (set!
+      (-> a0-4 param 0)
+      (the float (+ (-> a0-4 frame-group data 0 length) -1))
+      )
+     (set! (-> a0-4 param 1) 0.8)
+     (joint-control-channel-group-eval!
+      a0-4
+      (the-as art-joint-anim #f)
+      num-func-seek!
+      )
+     )
+    )
+   (go-virtual nav-enemy-chase)
+   (none)
+   )
+  )
 
-; (defstate muse-caught (muse)
-;   :event
-;   (the-as
-;    (function process int symbol event-message-block object :behavior muse)
-;    #f
-;    )
-;   :trans
-;   (behavior ()
-;    (spool-push *art-control* (-> self anim name) 0 self -1.0)
-;    (none)
-;    )
-;   :code
-;   (behavior ()
-;    (sound-play-by-name
-;     (static-sound-name "money-pickup")
-;     (new-sound-id)
-;     1024
-;     0
-;     0
-;     (the-as uint 1)
-;     (the-as vector #t)
-;     )
-;    (close-specific-task! (game-task misty-muse) (task-status need-reminder))
-;    (process-entity-status! self (entity-perm-status dead) #t)
-;    (suspend)
-;    (let ((a1-3 (new 'stack-no-clear 'event-message-block)))
-;     (set! (-> a1-3 from) self)
-;     (set! (-> a1-3 num-params) 1)
-;     (set! (-> a1-3 message) 'clone-anim)
-;     (set! (-> a1-3 param 0) (the-as uint self))
-;     (when (send-event-function *target* a1-3)
-;      (set-blackout-frames 3000)
-;      (let ((gp-1 (res-lump-struct (-> self entity) 'movie-pos vector)))
-;       (cond
-;        (gp-1
-;         (TODO-RENAME-30 (-> self collide-info) gp-1)
-;         (set-yaw-angle-clear-roll-pitch! (-> self collide-info) (-> gp-1 w))
-;         )
-;        (else
-;         (TODO-RENAME-30 (-> self collide-info) (-> *target* control trans))
-;         (quaternion-copy!
-;          (-> self collide-info quat)
-;          (-> *target* control quat)
-;          )
-;         (dummy-60 (-> self collide-info) 40960.0 40960.0 #f (the-as uint 1))
-;         )
-;        )
-;       )
-;      (let ((a1-10 (new 'stack-no-clear 'event-message-block)))
-;       (set! (-> a1-10 from) self)
-;       (set! (-> a1-10 num-params) 2)
-;       (set! (-> a1-10 message) 'trans)
-;       (set! (-> a1-10 param 0) (the-as uint 'save))
-;       (set! (-> a1-10 param 1) (the-as uint (-> self old-target-pos)))
-;       (send-event-function *target* a1-10)
-;       )
-;      (let ((a1-11 (new 'stack-no-clear 'event-message-block)))
-;       (set! (-> a1-11 from) self)
-;       (set! (-> a1-11 num-params) 1)
-;       (set! (-> a1-11 message) 'matrix)
-;       (set! (-> a1-11 param 0) (the-as uint 'play-anim))
-;       (send-event-function (ppointer->process (-> *target* sidekick)) a1-11)
-;       )
-;      (let ((a1-12 (new 'stack-no-clear 'event-message-block)))
-;       (set! (-> a1-12 from) self)
-;       (set! (-> a1-12 num-params) 1)
-;       (set! (-> a1-12 message) 'blend-shape)
-;       (set! (-> a1-12 param 0) (the-as uint #t))
-;       (send-event-function *target* a1-12)
-;       )
-;      (if (!= *kernel-boot-message* 'play)
-;       (set!
-;        (-> self trans-hook)
-;        (lambda :behavior muse
-;         ()
-;         (spool-push *art-control* (-> self victory-anim name) 0 self -1.0)
-;         (none)
-;         )
-;        )
-;       )
-;      (push-setting!
-;       *setting-control*
-;       self
-;       (the-as (function object object object object object) 'music-volume)
-;       'rel
-;       (-> *setting-control* current music-volume-movie)
-;       0
-;       )
-;      (push-setting!
-;       *setting-control*
-;       self
-;       (the-as (function object object object object object) 'sfx-volume)
-;       'rel
-;       (-> *setting-control* current sfx-volume-movie)
-;       0
-;       )
-;      (push-setting!
-;       *setting-control*
-;       self
-;       (the-as (function object object object object object) 'ambient-volume)
-;       'rel
-;       (-> *setting-control* current ambient-volume-movie)
-;       0
-;       )
-;      (logclear! (-> self mask) (process-mask enemy))
-;      (let ((gp-2 (get-process *default-dead-pool* othercam #x4000)))
-;       (when gp-2
-;        (let ((t9-19 (method-of-type othercam activate)))
-;         (t9-19
-;          (the-as othercam gp-2)
-;          self
-;          'othercam
-;          (the-as pointer #x70004000)
-;          )
-;         )
-;        (run-now-in-process gp-2 othercam-init-by-other self 3 #f #t)
-;        (-> gp-2 ppointer)
-;        )
-;       )
-;      (auto-save-command 'auto-save 0 0 *default-pool*)
-;      (ja-play-spooled-anim
-;       (-> self anim)
-;       (the-as art-joint-anim (-> self draw art-group data 3))
-;       (the-as art-joint-anim (-> self draw art-group data 3))
-;       (the-as (function process-drawable symbol) false-func)
-;       )
-;      (clear-pending-settings-from-process *setting-control* self 'music-volume)
-;      (clear-pending-settings-from-process *setting-control* self 'sfx-volume)
-;      (clear-pending-settings-from-process
-;       *setting-control*
-;       self
-;       'ambient-volume
-;       )
-;      (let ((a1-24 (new 'stack-no-clear 'event-message-block)))
-;       (set! (-> a1-24 from) self)
-;       (set! (-> a1-24 num-params) 1)
-;       (set! (-> a1-24 message) 'blend-shape)
-;       (set! (-> a1-24 param 0) (the-as uint #f))
-;       (send-event-function *target* a1-24)
-;       )
-;      (cond
-;       ((!= *kernel-boot-message* 'play)
-;        (set-blackout-frames 0)
-;        (ja-channel-set! 0)
-;        (ja-post)
-;        (dummy-48 (-> self collide-info))
-;        (let ((a1-25 (new 'stack-no-clear 'event-message-block)))
-;         (set! (-> a1-25 from) self)
-;         (set! (-> a1-25 num-params) 1)
-;         (set! (-> a1-25 message) 'trans)
-;         (set! (-> a1-25 param 0) (the-as uint 'reset))
-;         (send-event-function *target* a1-25)
-;         )
-;        (let
-;         ((gp-4
-;           (ppointer->handle
-;            (birth-pickup-at-point
-;             (target-pos 0)
-;             6
-;             (the float (-> self entity extra perm task))
-;             #f
-;             self
-;             #f
-;             )
-;            )
-;           )
-;          )
-;         (let ((a1-27 (new 'stack-no-clear 'event-message-block)))
-;          (set! (-> a1-27 from) self)
-;          (set! (-> a1-27 num-params) 0)
-;          (set! (-> a1-27 message) 'pickup)
-;          (send-event-function (handle->process (the-as handle gp-4)) a1-27)
-;          )
-;         (while (handle->process (the-as handle gp-4))
-;          (suspend)
-;          )
-;         )
-;        )
-;       (else
-;        (let ((a1-29 (new 'stack-no-clear 'event-message-block)))
-;         (set! (-> a1-29 from) self)
-;         (set! (-> a1-29 num-params) 2)
-;         (set! (-> a1-29 message) 'trans)
-;         (set! (-> a1-29 param 0) (the-as uint 'restore))
-;         (set! (-> a1-29 param 1) (the-as uint (-> self old-target-pos)))
-;         (send-event-function *target* a1-29)
-;         )
-;        (set-blackout-frames 0)
-;        (set-blackout-frames 30)
-;        )
-;       )
-;      )
-;     )
-;    (none)
-;    )
-;   :post
-;   (behavior ()
-;    (dummy-51 self)
-;    (level-hint-surpress!)
-;    (kill-current-level-hint '() '() 'exit)
-;    (ja-post)
-;    (none)
-;    )
-;   )
+;; failed to figure out what this is:
+(defstate muse-caught (muse)
+  :event
+  (the-as
+   (function process int symbol event-message-block object :behavior muse)
+   #f
+   )
+  :trans
+  (behavior ()
+   (spool-push *art-control* (-> self anim name) 0 self -1.0)
+   (none)
+   )
+  :code
+  (behavior ()
+   (sound-play-by-name
+    (static-sound-name "money-pickup")
+    (new-sound-id)
+    1024
+    0
+    0
+    (the-as uint 1)
+    (the-as vector #t)
+    )
+   (close-specific-task! (game-task misty-muse) (task-status need-reminder))
+   (process-entity-status! self (entity-perm-status dead) #t)
+   (suspend)
+   (let ((a1-3 (new 'stack-no-clear 'event-message-block)))
+    (set! (-> a1-3 from) self)
+    (set! (-> a1-3 num-params) 1)
+    (set! (-> a1-3 message) 'clone-anim)
+    (set! (-> a1-3 param 0) (the-as uint self))
+    (when (send-event-function *target* a1-3)
+     (set-blackout-frames 3000)
+     (let ((gp-1 (res-lump-struct (-> self entity) 'movie-pos vector)))
+      (cond
+       (gp-1
+        (TODO-RENAME-30 (-> self collide-info) gp-1)
+        (set-yaw-angle-clear-roll-pitch! (-> self collide-info) (-> gp-1 w))
+        )
+       (else
+        (TODO-RENAME-30 (-> self collide-info) (-> *target* control trans))
+        (quaternion-copy!
+         (-> self collide-info quat)
+         (-> *target* control quat)
+         )
+        (dummy-60 (-> self collide-info) 40960.0 40960.0 #f (the-as uint 1))
+        )
+       )
+      )
+     (let ((a1-10 (new 'stack-no-clear 'event-message-block)))
+      (set! (-> a1-10 from) self)
+      (set! (-> a1-10 num-params) 2)
+      (set! (-> a1-10 message) 'trans)
+      (set! (-> a1-10 param 0) (the-as uint 'save))
+      (set! (-> a1-10 param 1) (the-as uint (-> self old-target-pos)))
+      (send-event-function *target* a1-10)
+      )
+     (let ((a1-11 (new 'stack-no-clear 'event-message-block)))
+      (set! (-> a1-11 from) self)
+      (set! (-> a1-11 num-params) 1)
+      (set! (-> a1-11 message) 'matrix)
+      (set! (-> a1-11 param 0) (the-as uint 'play-anim))
+      (send-event-function (ppointer->process (-> *target* sidekick)) a1-11)
+      )
+     (let ((a1-12 (new 'stack-no-clear 'event-message-block)))
+      (set! (-> a1-12 from) self)
+      (set! (-> a1-12 num-params) 1)
+      (set! (-> a1-12 message) 'blend-shape)
+      (set! (-> a1-12 param 0) (the-as uint #t))
+      (send-event-function *target* a1-12)
+      )
+     (if (!= *kernel-boot-message* 'play)
+      (set!
+       (-> self trans-hook)
+       (lambda :behavior muse
+        ()
+        (spool-push *art-control* (-> self victory-anim name) 0 self -1.0)
+        (none)
+        )
+       )
+      )
+     (push-setting! *setting-control* self 'music-volume 'rel (-> *setting-control* current music-volume-movie) 0)
+     (push-setting! *setting-control* self 'sfx-volume 'rel (-> *setting-control* current sfx-volume-movie) 0)
+     (push-setting! *setting-control* self 'ambient-volume 'rel (-> *setting-control* current ambient-volume-movie) 0)
+     (logclear! (-> self mask) (process-mask enemy))
+     (let ((gp-2 (get-process *default-dead-pool* othercam #x4000)))
+      (when gp-2
+       (let ((t9-19 (method-of-type othercam activate)))
+        (t9-19
+         (the-as othercam gp-2)
+         self
+         'othercam
+         (the-as pointer #x70004000)
+         )
+        )
+       (run-now-in-process gp-2 othercam-init-by-other self 3 #f #t)
+       (-> gp-2 ppointer)
+       )
+      )
+     (auto-save-command 'auto-save 0 0 *default-pool*)
+     (ja-play-spooled-anim
+      (-> self anim)
+      (the-as art-joint-anim (-> self draw art-group data 3))
+      (the-as art-joint-anim (-> self draw art-group data 3))
+      (the-as (function process-drawable symbol) false-func)
+      )
+     (clear-pending-settings-from-process *setting-control* self 'music-volume)
+     (clear-pending-settings-from-process *setting-control* self 'sfx-volume)
+     (clear-pending-settings-from-process
+      *setting-control*
+      self
+      'ambient-volume
+      )
+     (let ((a1-24 (new 'stack-no-clear 'event-message-block)))
+      (set! (-> a1-24 from) self)
+      (set! (-> a1-24 num-params) 1)
+      (set! (-> a1-24 message) 'blend-shape)
+      (set! (-> a1-24 param 0) (the-as uint #f))
+      (send-event-function *target* a1-24)
+      )
+     (cond
+      ((!= *kernel-boot-message* 'play)
+       (set-blackout-frames 0)
+       (ja-channel-set! 0)
+       (ja-post)
+       (dummy-48 (-> self collide-info))
+       (let ((a1-25 (new 'stack-no-clear 'event-message-block)))
+        (set! (-> a1-25 from) self)
+        (set! (-> a1-25 num-params) 1)
+        (set! (-> a1-25 message) 'trans)
+        (set! (-> a1-25 param 0) (the-as uint 'reset))
+        (send-event-function *target* a1-25)
+        )
+       (let
+        ((gp-4
+          (ppointer->handle
+           (birth-pickup-at-point
+            (target-pos 0)
+            6
+            (the float (-> self entity extra perm task))
+            #f
+            self
+            #f
+            )
+           )
+          )
+         )
+        (let ((a1-27 (new 'stack-no-clear 'event-message-block)))
+         (set! (-> a1-27 from) self)
+         (set! (-> a1-27 num-params) 0)
+         (set! (-> a1-27 message) 'pickup)
+         (send-event-function (handle->process (the-as handle gp-4)) a1-27)
+         )
+        (while (handle->process (the-as handle gp-4))
+         (suspend)
+         )
+        )
+       )
+      (else
+       (let ((a1-29 (new 'stack-no-clear 'event-message-block)))
+        (set! (-> a1-29 from) self)
+        (set! (-> a1-29 num-params) 2)
+        (set! (-> a1-29 message) 'trans)
+        (set! (-> a1-29 param 0) (the-as uint 'restore))
+        (set! (-> a1-29 param 1) (the-as uint (-> self old-target-pos)))
+        (send-event-function *target* a1-29)
+        )
+       (set-blackout-frames 0)
+       (set-blackout-frames 30)
+       )
+      )
+     )
+    )
+   (none)
+   )
+  :post
+  (behavior ()
+   (dummy-51 self)
+   (level-hint-surpress!)
+   (kill-current-level-hint '() '() 'exit)
+   (ja-post)
+   (none)
+   )
+  )
 
-; (define
-;   *muse-nav-enemy-info*
-;   (new 'static 'nav-enemy-info
-;    :idle-anim 3
-;    :walk-anim 4
-;    :turn-anim -1
-;    :notice-anim 3
-;    :run-anim 4
-;    :jump-anim 7
-;    :jump-land-anim 8
-;    :victory-anim 3
-;    :taunt-anim 3
-;    :die-anim 3
-;    :neck-joint 6
-;    :player-look-at-joint 5
-;    :run-travel-speed (meters 10.0)
-;    :run-rotate-speed (degrees 999.99994)
-;    :run-acceleration (meters 5.0)
-;    :run-turn-time #x2d
-;    :walk-travel-speed (meters 10.0)
-;    :walk-rotate-speed (degrees 999.99994)
-;    :walk-acceleration (meters 1.0)
-;    :walk-turn-time #x2d
-;    :attack-shove-back (meters 3.0)
-;    :attack-shove-up (meters 2.0)
-;    :shadow-size (meters 2.0)
-;    :notice-nav-radius (meters 1.0)
-;    :nav-nearest-y-threshold (meters 10.0)
-;    :notice-distance (meters 30.0)
-;    :stop-chase-distance (meters 40.0)
-;    :frustration-distance (meters 8.0)
-;    :frustration-time #x4b0
-;    :die-anim-hold-frame 10000000000.0
-;    :jump-anim-start-frame 6.5
-;    :jump-land-anim-end-frame 10000000000.0
-;    :jump-height-min (meters 1.0)
-;    :jump-height-factor 0.5
-;    :jump-start-anim-speed 1.0
-;    :shadow-max-y (meters 1.0)
-;    :shadow-min-y (meters -1.0)
-;    :shadow-locus-dist (meters 150.0)
-;    :use-align #f
-;    :draw-shadow #t
-;    :move-to-ground #t
-;    :hover-if-no-ground #f
-;    :use-momentum #f
-;    :use-flee #f
-;    :use-proximity-notice #f
-;    :use-jump-blocked #f
-;    :use-jump-patrol #f
-;    :gnd-collide-with #x1
-;    :debug-draw-neck #f
-;    :debug-draw-jump #f
-;    )
-;   )
+;; definition for symbol *muse-nav-enemy-info*, type nav-enemy-info
+(define
+  *muse-nav-enemy-info*
+  (new 'static 'nav-enemy-info
+   :idle-anim 3
+   :walk-anim 4
+   :turn-anim -1
+   :notice-anim 3
+   :run-anim 4
+   :jump-anim 7
+   :jump-land-anim 8
+   :victory-anim 3
+   :taunt-anim 3
+   :die-anim 3
+   :neck-joint 6
+   :player-look-at-joint 5
+   :run-travel-speed (meters 10.0)
+   :run-rotate-speed (degrees 999.99994)
+   :run-acceleration (meters 5.0)
+   :run-turn-time #x2d
+   :walk-travel-speed (meters 10.0)
+   :walk-rotate-speed (degrees 999.99994)
+   :walk-acceleration (meters 1.0)
+   :walk-turn-time #x2d
+   :attack-shove-back (meters 3.0)
+   :attack-shove-up (meters 2.0)
+   :shadow-size (meters 2.0)
+   :notice-nav-radius (meters 1.0)
+   :nav-nearest-y-threshold (meters 10.0)
+   :notice-distance (meters 30.0)
+   :stop-chase-distance (meters 40.0)
+   :frustration-distance (meters 8.0)
+   :frustration-time #x4b0
+   :die-anim-hold-frame 10000000000.0
+   :jump-anim-start-frame 6.5
+   :jump-land-anim-end-frame 10000000000.0
+   :jump-height-min (meters 1.0)
+   :jump-height-factor 0.5
+   :jump-start-anim-speed 1.0
+   :shadow-max-y (meters 1.0)
+   :shadow-min-y (meters -1.0)
+   :shadow-locus-dist (meters 150.0)
+   :use-align #f
+   :draw-shadow #t
+   :move-to-ground #t
+   :hover-if-no-ground #f
+   :use-momentum #f
+   :use-flee #f
+   :use-proximity-notice #f
+   :use-jump-blocked #f
+   :use-jump-patrol #f
+   :gnd-collide-with #x1
+   :debug-draw-neck #f
+   :debug-draw-jump #f
+   )
+  )
 
-; (defmethod copy-defaults! muse ((obj muse) (arg0 res-lump))
-;   (stack-size-set! (-> obj main-thread) 512)
-;   (set! (-> obj mask) (logior (process-mask enemy) (-> obj mask)))
-;   (let
-;    ((s4-0
-;      (new 'process 'collide-shape-moving obj (collide-list-enum hit-by-player))
-;      )
-;     )
-;    (set! (-> s4-0 dynam) (copy *standard-dynamics* 'process))
-;    (set! (-> s4-0 reaction) default-collision-reaction)
-;    (set! (-> s4-0 no-reaction) nothing)
-;    (let ((s3-0 (new 'process 'collide-shape-prim-sphere s4-0 (the-as uint 0))))
-;     (set! (-> s3-0 prim-core collide-as) (the-as uint 256))
-;     (set! (-> s3-0 collide-with) (the-as uint 16))
-;     (set! (-> s3-0 prim-core action) (the-as uint 1))
-;     (set! (-> s3-0 prim-core offense) 4)
-;     (set-vector! (-> s3-0 local-sphere) 0.0 2457.6 0.0 2457.6)
-;     )
-;    (dummy-46 s4-0)
-;    (set! (-> s4-0 nav-radius) (* 0.75 (-> s4-0 root-prim local-sphere w)))
-;    (dummy-50 s4-0)
-;    (set! (-> obj collide-info) s4-0)
-;    )
-;   (process-drawable-from-entity! obj arg0)
-;   (dummy-14 obj *muse-sg* '())
-;   (logclear! (-> obj mask) (process-mask actor-pause))
-;   (TODO-RENAME-45 obj *muse-nav-enemy-info*)
-;   (set!
-;    (-> obj max-path-index)
-;    (the float (+ (-> obj path curve num-cverts) -1))
-;    )
-;   (set! (-> obj current-path-index) 7.0)
-;   (set! (-> obj prev-path-index) 7.0)
-;   (set! (-> obj dest-path-index) 7.0)
-;   (set! (-> obj player-path-index) 0.0)
-;   (eval-path-curve-div!
-;    (-> obj path)
-;    (-> obj dest-point)
-;    (-> obj current-path-index)
-;    'interp
-;    )
-;   (set! (-> obj collide-info trans quad) (-> obj dest-point quad))
-;   (set! (-> obj nav nearest-y-threshold) 20480.0)
-;   (set-vector! (-> obj neck twist-max) 8192.0 8192.0 0.0 1.0)
-;   (set! (-> obj neck up) (the-as uint 0))
-;   (set! (-> obj neck nose) (the-as uint 1))
-;   (set! (-> obj neck ear) (the-as uint 2))
-;   (set! (-> obj neck max-dist) 102400.0)
-;   (set! (-> obj neck ignore-angle) 16384.0)
-;   (set!
-;    (-> obj anim)
-;    (new 'static 'spool-anim
-;     :name "muse-victory"
-;     :index 9
-;     :parts 2
-;     :command-list
-;     '(
-;       ((the binteger 1)
-;         blackout
-;         0
-;         )
-;       ((the binteger 219) blackout (the binteger 60))
-;       )
-;     )
-;    )
-;   (set!
-;    (-> obj victory-anim)
-;    (the-as spool-anim (fuel-cell-pick-anim (the-as process-taskable obj)))
-;    )
-;   (go muse-idle)
-;   (none)
-;   )
-
-
-
-
+;; definition for method 11 of type muse
+;; Used lq/sq
+(defmethod copy-defaults! muse ((obj muse) (arg0 res-lump))
+  (stack-size-set! (-> obj main-thread) 512)
+  (set! (-> obj mask) (logior (process-mask enemy) (-> obj mask)))
+  (let
+   ((s4-0
+     (new 'process 'collide-shape-moving obj (collide-list-enum hit-by-player))
+     )
+    )
+   (set! (-> s4-0 dynam) (copy *standard-dynamics* 'process))
+   (set! (-> s4-0 reaction) default-collision-reaction)
+   (set! (-> s4-0 no-reaction) nothing)
+   (let ((s3-0 (new 'process 'collide-shape-prim-sphere s4-0 (the-as uint 0))))
+    (set! (-> s3-0 prim-core collide-as) (the-as uint 256))
+    (set! (-> s3-0 collide-with) (the-as uint 16))
+    (set! (-> s3-0 prim-core action) (the-as uint 1))
+    (set! (-> s3-0 prim-core offense) 4)
+    (set-vector! (-> s3-0 local-sphere) 0.0 2457.6 0.0 2457.6)
+    )
+   (dummy-46 s4-0)
+   (set! (-> s4-0 nav-radius) (* 0.75 (-> s4-0 root-prim local-sphere w)))
+   (dummy-50 s4-0)
+   (set! (-> obj collide-info) s4-0)
+   )
+  (process-drawable-from-entity! obj arg0)
+  (dummy-14 obj *muse-sg* '())
+  (logclear! (-> obj mask) (process-mask actor-pause))
+  (TODO-RENAME-45 obj *muse-nav-enemy-info*)
+  (set!
+   (-> obj max-path-index)
+   (the float (+ (-> obj path curve num-cverts) -1))
+   )
+  (set! (-> obj current-path-index) 7.0)
+  (set! (-> obj prev-path-index) 7.0)
+  (set! (-> obj dest-path-index) 7.0)
+  (set! (-> obj player-path-index) 0.0)
+  (eval-path-curve-div!
+   (-> obj path)
+   (-> obj dest-point)
+   (-> obj current-path-index)
+   'interp
+   )
+  (set! (-> obj collide-info trans quad) (-> obj dest-point quad))
+  (set! (-> obj nav nearest-y-threshold) 20480.0)
+  (set-vector! (-> obj neck twist-max) 8192.0 8192.0 0.0 1.0)
+  (set! (-> obj neck up) (the-as uint 0))
+  (set! (-> obj neck nose) (the-as uint 1))
+  (set! (-> obj neck ear) (the-as uint 2))
+  (set! (-> obj neck max-dist) 102400.0)
+  (set! (-> obj neck ignore-angle) 16384.0)
+  (set!
+   (-> obj anim)
+   (new 'static 'spool-anim
+    :name "muse-victory"
+    :index 9
+    :parts 2
+    :command-list
+    '(
+      ((the binteger 1)
+        blackout
+        0
+        )
+      ((the binteger 219) blackout (the binteger 60))
+      )
+    )
+   )
+  (set!
+   (-> obj victory-anim)
+   (the-as spool-anim (fuel-cell-pick-anim (the-as process-taskable obj)))
+   )
+  (go muse-idle)
+  (none)
+  )

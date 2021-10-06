@@ -419,55 +419,6 @@
 
 ;; TODO memcpy (unused)
 
-; (defun sp-process-block ((arg0 sparticle-system) (arg1 int) (arg2 sprite-array-2d) (arg3 int))
-;   "update the given block of particles"
-;   (local-vars
-;     (sv-16 int)
-;     (sv-32 int)
-;     (sv-80 int)
-;     (sv-96 int)
-;     )
-;   (let ((s3-0 16)
-;         (s2-0 (* 144 arg3))
-;         (s5-0 (* 48 arg3))
-;         )
-;     (set! sv-32 (* 80 arg3))
-;     (let ((s1-0 (+ s3-0 s2-0)))
-;       (set! sv-16 (+ s1-0 s5-0))
-;       (sp-copy-to-spr s3-0 (the-as pointer (-> arg0 cpuinfo-table arg1)) s2-0)
-;       (sp-copy-to-spr s1-0 (&+ (-> arg0 vecdata-table) (* 48 arg1)) s5-0)
-;       (let ((t9-2 sp-copy-to-spr)
-;             (a1-7 (-> arg0 adgifdata-table arg1))
-;             )
-;         (t9-2 sv-16 (the-as pointer a1-7) sv-32)
-;         )
-;       (set! sv-80 (+ (the int (scratchpad-start)) s3-0)) ;; spad
-;       (set! sv-96 (+ (the int (scratchpad-start)) s1-0)) ;; spad
-;       (cond
-;         ((-> arg0 is-3d)
-;          (sp-process-block-3d arg0 sv-80 sv-96 arg1 arg3 (paused?))
-;          )
-;         (else
-;           (sp-process-block-2d arg0 sv-80 sv-96 arg1 arg3 (paused?))
-;           )
-;         )
-;       (sp-copy-from-spr s3-0 (the-as pointer (-> arg0 cpuinfo-table arg1)) s2-0)
-;       (sp-copy-from-spr s1-0 (&+ (-> arg0 vecdata-table) (* 48 arg1)) s5-0)
-;       )
-;     )
-  
-;   ; (dotimes (i arg3)
-;   ;   (let ((cpuinfo (-> arg0 cpuinfo-table (+ i arg1))))
-;   ;     (when (and cpuinfo (-> cpuinfo valid))
-;   ;       (inspect cpuinfo)
-;   ;       (inspect (-> cpuinfo sprite r-g-b-a))
-;   ;       )
-;   ;     )
-;   ;   )
-;   0
-;   (none)
-;   )
-
 (defun sp-process-block ((arg0 sparticle-system) (arg1 int) (arg2 sprite-array-2d) (arg3 int))
   "update the given block of particles"
   (local-vars
@@ -483,17 +434,19 @@
     (set! sv-32 (* 80 arg3))
     (let ((s1-0 (+ s3-0 s2-0)))
       (set! sv-16 (+ s1-0 s5-0))
-      ; (sp-copy-to-spr s3-0 (the-as pointer (-> arg0 cpuinfo-table arg1)) s2-0)
-      ; (sp-copy-to-spr s1-0 (&+ (-> arg0 vecdata-table) (* 48 arg1)) s5-0)
-      ; (let ((t9-2 sp-copy-to-spr)
-      ;       (a1-7 (-> arg0 adgifdata-table arg1))
-      ;       )
-      ;   (t9-2 sv-16 (the-as pointer a1-7) sv-32)
-      ;   )
-      (set! sv-80 (the-as int (-> arg0 cpuinfo-table arg1)))
-      (set! sv-96 (the-as int (&+ (-> arg0 vecdata-table) (* 48 arg1))))
-      ; (set! sv-80 (+ (the int (scratchpad-start)) s3-0)) ;; spad
-      ; (set! sv-96 (+ (the int (scratchpad-start)) s1-0)) ;; spad
+      (sp-copy-to-spr s3-0 (the-as pointer (-> arg0 cpuinfo-table arg1)) s2-0)
+      (sp-copy-to-spr s1-0 (&+ (-> arg0 vecdata-table) (* 48 arg1)) s5-0)
+      (let ((t9-2 sp-copy-to-spr)
+            (a1-7 (-> arg0 adgifdata-table arg1))
+            )
+        (t9-2 sv-16 (the-as pointer a1-7) sv-32)
+        )
+      
+      ;; alternate to run without doing scratchpad (will change behavior of kill, but at least works for hud)
+      ; (set! sv-80 (the-as int (-> arg0 cpuinfo-table arg1)))
+      ; (set! sv-96 (the-as int (&+ (-> arg0 vecdata-table) (* 48 arg1))))
+      (set! sv-80 (+ (the int (scratchpad-start)) s3-0)) ;; spad
+      (set! sv-96 (+ (the int (scratchpad-start)) s1-0)) ;; spad
       (cond
         ((-> arg0 is-3d)
          (sp-process-block-3d arg0 sv-80 sv-96 arg1 arg3 (paused?))
@@ -502,19 +455,10 @@
           (sp-process-block-2d arg0 sv-80 sv-96 arg1 arg3 (paused?))
           )
         )
-      ; (sp-copy-from-spr s3-0 (the-as pointer (-> arg0 cpuinfo-table arg1)) s2-0)
-      ; (sp-copy-from-spr s1-0 (&+ (-> arg0 vecdata-table) (* 48 arg1)) s5-0)
+      (sp-copy-from-spr s3-0 (the-as pointer (-> arg0 cpuinfo-table arg1)) s2-0)
+      (sp-copy-from-spr s1-0 (&+ (-> arg0 vecdata-table) (* 48 arg1)) s5-0)
       )
     )
-  
-  ; (dotimes (i arg3)
-  ;   (let ((cpuinfo (-> arg0 cpuinfo-table (+ i arg1))))
-  ;     (when (and cpuinfo (-> cpuinfo valid))
-  ;       (inspect cpuinfo)
-  ;       (inspect (-> cpuinfo sprite r-g-b-a))
-  ;       )
-  ;     )
-  ;   )
   0
   (none)
   )

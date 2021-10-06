@@ -37,6 +37,7 @@
 #include "game/mips2c/mips2c_table.h"
 #include "game/system/vm/vm.h"
 #include "game/system/newpad.h"
+#include "game/sce/libscf.h"
 using namespace ee;
 
 /*!
@@ -692,9 +693,9 @@ u64 DecodeInactiveTimeout() {
   return masterConfig.inactive_timeout;
 }
 
-// TODO DecodeTime
-void DecodeTime() {
-  assert(false);
+void DecodeTime(u32 ptr) {
+  Ptr<sceCdCLOCK> clock(ptr);
+  sceCdReadClock(clock.c());
 }
 
 // TODO PutDisplayEnv

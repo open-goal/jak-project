@@ -181,23 +181,23 @@ u32 InitISOFS(const char* fs_mode, const char* loading_screen) {
   if (str_thread <= 0) {
     return 1;
   }
-  //
-  //  thread_param.attr = TH_C;
-  //  thread_param.initPriority = 97;
-  //  thread_param.stackSize = 0x800;
-  //  thread_param.option = 0;
-  //  thread_param.entry = (void*)PLAYThread;
-  //  strcpy(thread_param.name, "PLAYThread");
-  //  play_thread = CreateThread(&thread_param);
-  //  if(play_thread <= 0) {
-  //    return 1;
-  //  }
+
+  thread_param.attr = TH_C;
+  thread_param.initPriority = 97;
+  thread_param.stackSize = 0x800;
+  thread_param.option = 0;
+  thread_param.entry = (void*)PLAYThread;
+  strcpy(thread_param.name, "PLAYThread");
+  play_thread = CreateThread(&thread_param);
+  if (play_thread <= 0) {
+    return 1;
+  }
 
   // Start the threads!
   StartThread(iso_thread, 0);
   StartThread(dgo_thread, 0);
   StartThread(str_thread, 0);
-  //  StartThread(play_thread, 0);
+  StartThread(play_thread, 0);
 
   // wait for ISO Thread to initialize
   WaitMbx(sync_mbx);

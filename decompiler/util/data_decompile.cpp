@@ -353,16 +353,20 @@ goos::Object decomp_ref_to_inline_array_guess_size(
   int end_label_idx =
       index_of_closest_following_label_in_segment(start_label.offset, my_seg, labels);
 
+  int end_offset = all_words.at(my_seg).size() * 4;
   if (end_label_idx < 0) {
-    throw std::runtime_error(
+    lg::warn(
         "Failed to find label: likely just an unimplemented case for when the data is the last "
         "thing in the file.");
+  } else {
+    const auto& end_label = labels.at(end_label_idx);
+    end_offset = end_label.offset;
   }
-  const auto& end_label = labels.at(end_label_idx);
+
   // fmt::print("Data is from {} to {}\n", start_label.name, end_label.name);
 
   // now we can figure out the size
-  int size_bytes = end_label.offset - start_label.offset;
+  int size_bytes = end_offset - start_label.offset;
   int size_elts = size_bytes / stride;  // 32 bytes per ocean-near-index
   int leftover_bytes = size_bytes % stride;
   // fmt::print("Size is {} bytes ({} elts), with {} bytes left over\n", size_bytes,
@@ -375,8 +379,8 @@ goos::Object decomp_ref_to_inline_array_guess_size(
   // .type <some-other-basic's type tag>
   // L21: ; label some other basic
   // <other basic's data>
-  int padding_start = end_label.offset - leftover_bytes;
-  int padding_end = end_label.offset;
+  int padding_start = end_offset - leftover_bytes;
+  int padding_end = end_offset;
   for (int pad_byte_idx = padding_start; pad_byte_idx < padding_end; pad_byte_idx++) {
     auto& word = all_words.at(my_seg).at(pad_byte_idx / 4);
     switch (word.kind) {
@@ -668,14 +672,29 @@ goos::Object decompile_structure(const TypeSpec& type,
                                                         obj_words, labels, label.target_segment,
                                                         field_start, ts, field, words, file));
         } else {
-          if (obj_words.at(field_start / 4).kind != LinkedWord::PLAIN_DATA) {
-            continue;
+          if (field.type().base_type() == "pointer") {
+            if (obj_words.at(field_start / 4).kind != LinkedWord::SYM_PTR) {
+              continue;
+            }
+
+            if (obj_words.at(field_start / 4).symbol_name != "#f") {
+              lg::warn("Got a weird symbol in a pointer field: {}",
+                       obj_words.at(field_start / 4).symbol_name);
+              continue;
+            }
+
+            field_defs_out.emplace_back(field.name(), pretty_print::to_symbol("#f"));
+
+          } else {
+            if (obj_words.at(field_start / 4).kind != LinkedWord::PLAIN_DATA) {
+              continue;
+            }
+            std::vector<u8> bytes_out;
+            for (int byte_idx = field_start; byte_idx < field_end; byte_idx++) {
+              bytes_out.push_back(obj_words.at(byte_idx / 4).get_byte(byte_idx % 4));
+            }
+            field_defs_out.emplace_back(field.name(), decompile_value(field.type(), bytes_out, ts));
           }
-          std::vector<u8> bytes_out;
-          for (int byte_idx = field_start; byte_idx < field_end; byte_idx++) {
-            bytes_out.push_back(obj_words.at(byte_idx / 4).get_byte(byte_idx % 4));
-          }
-          field_defs_out.emplace_back(field.name(), decompile_value(field.type(), bytes_out, ts));
         }
       }
 
@@ -768,6 +787,9 @@ goos::Object decompile_structure(const TypeSpec& type,
         auto& word = obj_words.at(field_start / 4);
 
         if (word.kind == LinkedWord::PTR) {
+          if (field.type() == TypeSpec("symbol")) {
+            continue;
+          }
           field_defs_out.emplace_back(
               field.name(),
               decompile_at_label(field.type(), labels.at(word.label_id), labels, words, ts, file));
