@@ -17,6 +17,7 @@ add_executable(goalc-test
         ${CMAKE_CURRENT_LIST_DIR}/test_common_util.cpp
         ${CMAKE_CURRENT_LIST_DIR}/test_pretty_print.cpp
         ${CMAKE_CURRENT_LIST_DIR}/test_math.cpp
+        ${CMAKE_CURRENT_LIST_DIR}/test_zstd.cpp
         ${CMAKE_CURRENT_LIST_DIR}/test_zydis.cpp
         ${CMAKE_CURRENT_LIST_DIR}/goalc/test_goal_kernel.cpp
         ${CMAKE_CURRENT_LIST_DIR}/decompiler/FormRegressionTest.cpp
@@ -36,7 +37,7 @@ add_executable(goalc-test
         ${GOALC_TEST_FRAMEWORK_SOURCES}
         ${GOALC_TEST_CASES})
 
-target_link_libraries(goalc-test common runtime compiler gtest decomp Zydis)
+target_link_libraries(goalc-test common runtime compiler gtest decomp Zydis libzstd_static)
 
 if(WIN32)
   target_link_libraries(goalc-test mman)

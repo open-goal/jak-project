@@ -128,3 +128,4 @@ struct FileStream {
 // static_assert(offsetof(CpadInfo, new_pad) == 76, "cpad type offset");
 
 void vif_interrupt_callback();
+u32 offset_of_s7();

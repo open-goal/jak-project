@@ -239,6 +239,20 @@ void Compiler::compile_static_structure_inline(const goos::Object& form,
       assert(sr.reference()->get_addr_offset() == 0);
       structure->add_pointer_record(field_offset, sr.reference(),
                                     sr.reference()->get_addr_offset());
+    } else if (field_info.type.base_type() == "pointer") {
+      auto sr = compile_static(field_value, env);
+      if (!sr.is_symbol() || sr.symbol_name() != "#f") {
+        throw_compiler_error(form, "Invalid definition of field {}", field_info.field.name());
+      }
+      structure->add_symbol_record(sr.symbol_name(), field_offset);
+      auto deref_info = m_ts.get_deref_info(m_ts.make_pointer_typespec(field_info.type));
+      assert(deref_info.mem_deref);
+      assert(deref_info.can_deref);
+      assert(deref_info.load_size == 4);
+      // the linker needs to see a -1 in order to know to insert a symbol pointer
+      // instead of just the symbol table offset.
+      u32 linker_val = 0xffffffff;
+      memcpy(structure->data.data() + field_offset, &linker_val, 4);
     }
 
     else {
@@ -418,9 +432,21 @@ Val* Compiler::compile_bitfield_definition(const goos::Object& form,
             form, "Field {} is a symbol, which cannot be constructed at compile time yet.",
             field_name_def);
       }
-    }
-
-    else {
+    } else if (m_ts.tc(TypeSpec("structure"), field_info.result_type)) {
+      if (allow_dynamic_construction) {
+        DynamicDef dyn;
+        dyn.definition = field_value;
+        dyn.field_offset = field_offset;
+        dyn.field_size = field_size;
+        dyn.field_name = field_name_def;
+        dyn.expected_type = coerce_to_reg_type(field_info.result_type);
+        dynamic_defs.push_back(dyn);
+      } else {
+        throw_compiler_error(
+            form, "Field {} is a structure, which cannot be constructed at compile time yet.",
+            field_name_def);
+      }
+    } else {
       throw_compiler_error(form, "Bitfield field {} with type {} cannot be set statically.",
                            field_name_def, field_info.result_type.print());
     }
@@ -449,7 +475,9 @@ Val* Compiler::compile_bitfield_definition(const goos::Object& form,
       auto xmm_temp = fe->make_ireg(TypeSpec("object"), RegClass::INT_128);
 
       for (auto& def : dynamic_defs) {
-        auto field_val = compile_error_guard(def.definition, env)->to_gpr(def.definition, env);
+        auto field_val_in = compile_error_guard(def.definition, env)->to_gpr(def.definition, env);
+        auto field_val = env->make_gpr(field_val_in->type());
+        env->emit_ir<IR_RegSet>(form, field_val, field_val_in);
         if (!m_ts.tc(def.expected_type, field_val->type())) {
           throw_compiler_error(form, "Typecheck failed for bitfield {}! Got a {} but expected a {}",
                                def.field_name, field_val->type().print(),
@@ -489,7 +517,9 @@ Val* Compiler::compile_bitfield_definition(const goos::Object& form,
     } else {
       RegVal* integer_reg = integer->to_gpr(form, env);
       for (auto& def : dynamic_defs) {
-        auto field_val = compile_error_guard(def.definition, env)->to_gpr(def.definition, env);
+        auto field_val_in = compile_error_guard(def.definition, env)->to_gpr(def.definition, env);
+        auto field_val = env->make_gpr(field_val_in->type());
+        env->emit_ir<IR_RegSet>(form, field_val, field_val_in);
         if (!m_ts.tc(def.expected_type, field_val->type())) {
           throw_compiler_error(form, "Typecheck failed for bitfield {}! Got a {} but expected a {}",
                                def.field_name, field_val->type().print(),
@@ -889,7 +919,7 @@ StaticResult Compiler::fill_static_boxed_array(const goos::Object& form,
   auto deref_info = m_ts.get_deref_info(pointer_type);
   assert(deref_info.can_deref);
   assert(deref_info.mem_deref);
-  auto array_data_size_bytes = length * deref_info.stride;
+  auto array_data_size_bytes = allocated_length * deref_info.stride;
   // todo, segments
   std::unique_ptr<StaticStructure> obj;
   obj = std::make_unique<StaticBasic>(MAIN_SEGMENT, "array");
@@ -933,7 +963,7 @@ void Compiler::fill_static_inline_array_inline(const goos::Object& form,
   for (size_t i = 4; i < args.size(); i++) {
     auto arg_idx = i - 4;
     int elt_offset = arg_idx * deref_info.stride;
-    auto& elt_def = args.at(i);
+    auto elt_def = expand_macro_completely(args.at(i), env);
     if (!elt_def.is_list()) {
       throw_compiler_error(form, "Element in static inline-array must be a {}. Got {}",
                            content_type.print(), elt_def.print());

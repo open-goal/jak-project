@@ -1,0 +1,646 @@
+;;-*-Lisp-*-
+(in-package goal)
+
+;; failed to figure out what this is:
+(if (not (nmember "flutp" *kernel-packages*))
+  (set! *kernel-packages* (cons "flutp" *kernel-packages*))
+  )
+
+;; definition of type flutflut
+(deftype flutflut (process-drawable)
+  ((root-override collide-shape-moving         :offset        112)
+   (extra-trans   vector               :inline :offset-assert 176)
+   (condition     int32                        :offset-assert 192)
+   (auto-get-off  symbol                       :offset-assert 196)
+   (cell          handle                       :offset-assert 200)
+   (path-data     path-control         2       :offset-assert 208)
+   (path-target   path-control                 :offset        208)
+   (path-flut     path-control                 :offset        212)
+   (touch-time    uint64                       :offset-assert 216)
+   )
+  :pack-me
+  :heap-base #x70
+  :method-count-assert 24
+  :size-assert         #xe0
+  :flag-assert         #x18007000e0
+  (:methods
+    (wait-for-start () _type_ :state 20)
+    (idle () _type_ :state 21)
+    (pickup ((state flutflut)) _type_ :state 22)
+    (wait-for-return () _type_ :state 23)
+    )
+  )
+
+;; definition for method 3 of type flutflut
+(defmethod inspect flutflut ((obj flutflut))
+  (let ((t9-0 (method-of-type process-drawable inspect)))
+   (t9-0 obj)
+   )
+  (format #t "~T~Textra-trans: ~`vector`P~%" (-> obj extra-trans))
+  (format #t "~T~Tcondition: ~D~%" (-> obj condition))
+  (format #t "~T~Tauto-get-off: ~A~%" (-> obj auto-get-off))
+  (format #t "~T~Tcell: ~D~%" (-> obj cell))
+  (format #t "~T~Tpath-data[2] @ #x~X~%" (-> obj path-data))
+  (format #t "~T~Tpath-target: ~A~%" (-> obj path-target))
+  (format #t "~T~Tpath-flut: ~A~%" (-> obj path-flut))
+  (format #t "~T~Ttouch-time: ~D~%" (-> obj touch-time))
+  obj
+  )
+
+;; definition for method 7 of type flutflut
+;; INFO: Return type mismatch process-drawable vs flutflut.
+(defmethod relocate flutflut ((obj flutflut) (arg0 int))
+  (countdown (v1-0 2)
+   (if (-> obj path-data v1-0)
+    (&+! (-> obj path-data v1-0) arg0)
+    )
+   )
+  (the-as flutflut ((method-of-type process-drawable relocate) obj arg0))
+  )
+
+;; definition for symbol *flutflut-shadow-control*, type shadow-control
+(define
+  *flutflut-shadow-control*
+  (new 'static 'shadow-control
+   :settings
+   (new 'static 'shadow-settings
+    :center
+    (new 'static 'vector :w (the-as float #xa))
+    :shadow-dir
+    (new 'static 'vector :y -1.0 :w 614400.0)
+    :bot-plane (new 'static 'plane :y 1.0 :w 81920.0)
+    :top-plane (new 'static 'plane :y 1.0 :w -2867.2)
+    )
+   )
+  )
+
+;; failed to figure out what this is:
+(let
+  ((v1-5
+    (new 'static 'skeleton-group
+     :art-group-name "flut-saddle"
+     :bounds (new 'static 'vector :w 14336.0)
+     :version #x6
+     :shadow 2
+     :sort 1
+     )
+    )
+   )
+  (set! (-> v1-5 jgeo) 0)
+  (set! (-> v1-5 janim) -1)
+  (set! (-> v1-5 mgeo 0) (the-as uint 1))
+  (set! (-> v1-5 lod-dist 0) 4095996000.0)
+  (set! *flutflut-sg* v1-5)
+  )
+
+;; definition for function flutflut-effect
+;; INFO: Return type mismatch int vs none.
+(defbehavior flutflut-effect flutflut ()
+  (spawn (-> self part) (-> self root-override trans))
+  (update! (-> self sound))
+  0
+  (none)
+  )
+
+;; failed to figure out what this is:
+(defstate wait-for-start (flutflut)
+  :virtual #t
+  :event
+  (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
+   (let ((v1-0 arg2))
+    (the-as object (cond
+                    ((= v1-0 'trans)
+                     (vector+!
+                      (the-as vector (-> arg3 param 0))
+                      (-> self root-override trans)
+                      (-> self extra-trans)
+                      )
+                     )
+                    ((= v1-0 'notify)
+                     (let ((v0-1 (the-as structure #t)))
+                      (set! (-> self auto-get-off) (the-as symbol v0-1))
+                      v0-1
+                      )
+                     )
+                    ((or (= v1-0 'touch) (= v1-0 'attack))
+                     (set!
+                      (-> self touch-time)
+                      (the-as uint (-> *display* base-frame-counter))
+                      )
+                     #f
+                     )
+                    )
+     )
+    )
+   )
+  :exit
+  (behavior ()
+   (set! (-> self root-override root-prim prim-core action) (the-as uint 0))
+   (set! (-> self root-override root-prim prim-core offense) 0)
+   0
+   (none)
+   )
+  :code
+  (behavior ()
+   (while #t
+    (let ((v1-0 (-> self condition)))
+     (cond
+      ((or (zero? v1-0) (= v1-0 1))
+       (if
+        (or
+         (and
+          (task-complete? *game-info* (game-task beach-flutflut))
+          (or
+           (and
+            (zero? (-> self condition))
+            (task-closed?
+             (game-task village2-levitator)
+             (task-status need-hint)
+             )
+            )
+           (and
+            (= (-> self condition) 1)
+            (task-closed? (game-task village3-button) (task-status need-hint))
+            )
+           )
+          )
+         (and
+          *cheat-mode*
+          (logtest? (-> *cpad-list* cpads 0 button0-abs 0) (pad-buttons l3))
+          )
+         (and
+          *target*
+          (logtest? (-> *target* control root-prim prim-core action) #x4000)
+          )
+         )
+        (goto cfg-75)
+        )
+       )
+      ((= v1-0 4)
+       (if
+        (and
+         *target*
+         (logtest? (-> *target* control root-prim prim-core action) #x4000)
+         )
+        (goto cfg-75)
+        )
+       )
+      ((= v1-0 3)
+       (cond
+        ((and
+          (task-complete? *game-info* (-> self entity extra perm task))
+          (not (handle->process (-> self cell)))
+          )
+         (when
+          (and
+           (-> self auto-get-off)
+           (let ((a1-6 (new 'stack-no-clear 'event-message-block)))
+            (set! (-> a1-6 from) self)
+            (set! (-> a1-6 num-params) 0)
+            (set! (-> a1-6 message) 'end-mode)
+            (send-event-function *target* a1-6)
+            )
+           )
+          (set! (-> self auto-get-off) #f)
+          (go-virtual pickup (method-of-object self idle))
+          )
+         (set! (-> self auto-get-off) #f)
+         (if (= (-> self condition) 3)
+          (goto cfg-75)
+          )
+         (if
+          (and
+           *target*
+           (logtest? (-> *target* control root-prim prim-core action) #x4000)
+           (<
+            (-
+             (-> *display* base-frame-counter)
+             (the-as int (-> self touch-time))
+             )
+            15
+            )
+           )
+          (go-virtual pickup (method-of-object self idle))
+          )
+         )
+        ((not (handle->process (-> self cell)))
+         (set!
+          (-> self cell)
+          (ppointer->handle
+           (birth-pickup-at-point
+            (vector+!
+             (new 'stack-no-clear 'vector)
+             (-> self root-override trans)
+             (new 'static 'vector :y 8192.0 :w 1.0)
+             )
+            6
+            (the float (-> self entity extra perm task))
+            #f
+            self
+            (the-as symbol (-> self fact))
+            )
+           )
+          )
+         )
+        )
+       )
+      (else
+       (goto cfg-75)
+       )
+      )
+     )
+    (flutflut-effect)
+    (suspend)
+    )
+   (label cfg-75)
+   (if
+    (and
+     *target*
+     (logtest? (-> *target* control root-prim prim-core action) #x4000)
+     )
+    (go-virtual wait-for-return)
+    (go-virtual idle)
+    )
+   (none)
+   )
+  )
+
+;; failed to figure out what this is:
+(defstate idle (flutflut)
+  :virtual #t
+  :event
+  (-> (method-of-type flutflut wait-for-start) event)
+  :enter
+  (behavior ()
+   (blocking-plane-destroy)
+   (blocking-plane-spawn (the-as curve-control (-> self path-target)))
+   (none)
+   )
+  :exit
+  (-> (method-of-type flutflut wait-for-start) exit)
+  :code
+  (behavior ()
+   (ja-channel-set! 1)
+   (let ((v1-2 (-> self skel root-channel 0)))
+    (set!
+     (-> v1-2 frame-group)
+     (the-as art-joint-anim (-> self draw art-group data 3))
+     )
+    )
+   (set! (-> self root-override root-prim prim-core action) (the-as uint 2049))
+   (set! (-> self root-override root-prim prim-core offense) 4)
+   (while #t
+    (if
+     (and
+      *target*
+      (logtest? (-> *target* control root-prim prim-core action) #x4000)
+      )
+     (go-virtual wait-for-return)
+     )
+    (when (logtest? (-> self draw status) 8)
+     (if
+      (and
+       *target*
+       (>=
+        40960.0
+        (vector-vector-distance
+         (-> self root-override trans)
+         (-> *target* control trans)
+         )
+        )
+       )
+      (level-hint-spawn
+       (game-text-id flutflut-reminder)
+       "sksp0160"
+       (the-as entity #f)
+       *entity-pool*
+       (game-task none)
+       )
+      )
+     )
+    (when
+     (and
+      (and
+       *target*
+       (>=
+        20480.0
+        (vector-vector-distance
+         (-> self root-override trans)
+         (-> *target* control trans)
+         )
+        )
+       )
+      (not (movie?))
+      (not (level-hint-displayed?))
+      (!= (-> self condition) 4)
+      )
+     (hide-hud)
+     (level-hint-surpress!)
+     (kill-current-level-hint '() '(sidekick voicebox) 'exit)
+     (when
+      (and (hud-hidden?) (can-grab-display? (the-as process-taskable self)))
+      (let
+       ((gp-0
+         (new
+          'stack
+          'font-context
+          *font-default-matrix*
+          32
+          160
+          0.0
+          (font-color default)
+          (font-flags shadow kerning)
+          )
+         )
+        )
+       (let ((v1-34 gp-0))
+        (set! (-> v1-34 width) (the float 440))
+        )
+       (let ((v1-35 gp-0))
+        (set! (-> v1-35 height) (the float 80))
+        )
+       (set! (-> gp-0 flags) (font-flags shadow kerning large))
+       (print-game-text
+        (lookup-text! *common-text* (game-text-id press-to-use) #f)
+        gp-0
+        #f
+        128
+        22
+        )
+       )
+      (if
+       (and
+        (logtest? (-> *cpad-list* cpads 0 button0-rel 0) (pad-buttons circle))
+        (let ((a1-7 (new 'stack-no-clear 'event-message-block)))
+         (set! (-> a1-7 from) self)
+         (set! (-> a1-7 num-params) 2)
+         (set! (-> a1-7 message) 'change-mode)
+         (set! (-> a1-7 param 0) (the-as uint 'flut))
+         (set! (-> a1-7 param 1) (the-as uint self))
+         (send-event-function *target* a1-7)
+         )
+        )
+       (go-virtual pickup (method-of-object self wait-for-return))
+       )
+      )
+     )
+    (flutflut-effect)
+    (suspend)
+    (let ((a0-26 (-> self skel root-channel 0)))
+     (set! (-> a0-26 param 0) 1.0)
+     (joint-control-channel-group-eval!
+      a0-26
+      (the-as art-joint-anim #f)
+      num-func-loop!
+      )
+     )
+    )
+   (none)
+   )
+  :post
+  (the-as (function none :behavior flutflut) ja-post)
+  )
+
+;; failed to figure out what this is:
+(defstate pickup (flutflut)
+  :virtual #t
+  :event
+  (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
+   (case arg2 
+    (('draw)
+      (ja-channel-set! 1)
+      (let ((v1-3 (-> self skel root-channel 0)))
+       (set!
+        (-> v1-3 frame-group)
+        (the-as art-joint-anim (-> self draw art-group data 3))
+        )
+       )
+      (set!
+       (-> self root-override root-prim prim-core action)
+       (the-as uint 2049)
+       )
+      (set! (-> self root-override root-prim prim-core offense) 4)
+      (transform-post)
+      )
+    (('trans)
+     (vector+!
+      (the-as vector (-> arg3 param 0))
+      (-> self root-override trans)
+      (-> self extra-trans)
+      )
+     )
+    (('touch 'attack)
+     #f
+     )
+    )
+   )
+  :enter
+  (behavior ((arg0 (state flutflut)))
+   ((-> arg0 enter))
+   (none)
+   )
+  :code
+  (behavior ((arg0 (state flutflut)))
+   (ja-channel-set! 0)
+   (ja-post)
+   (while (zero? (ja-group-size))
+    (if
+     (or
+      (not *target*)
+      (<
+       24576.0
+       (vector-vector-distance
+        (-> self root-override trans)
+        (-> *target* control trans)
+        )
+       )
+      )
+     (go arg0)
+     )
+    (flutflut-effect)
+    (suspend)
+    )
+   (while
+    (and
+     *target*
+     (logtest? (-> *target* control root-prim prim-core action) #x4000)
+     )
+    (flutflut-effect)
+    (suspend)
+    )
+   (let ((s5-0 (-> *display* base-frame-counter)))
+    (until (>= (- (-> *display* base-frame-counter) s5-0) 300)
+     (flutflut-effect)
+     (suspend)
+     )
+    )
+   (go arg0)
+   (none)
+   )
+  )
+
+;; failed to figure out what this is:
+(defstate wait-for-return (flutflut)
+  :virtual #t
+  :event
+  (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
+   (if
+    (and
+     (or (= arg2 'touch) (= arg2 'attack))
+     (let ((a1-1 (new 'stack-no-clear 'event-message-block)))
+      (set! (-> a1-1 from) self)
+      (set! (-> a1-1 num-params) 0)
+      (set! (-> a1-1 message) 'end-mode)
+      (send-event-function *target* a1-1)
+      )
+     )
+    (go-virtual pickup (method-of-object self idle))
+    )
+   (the-as object (if (= arg2 'trans)
+                   (vector+!
+                    (the-as vector (-> arg3 param 0))
+                    (-> self root-override trans)
+                    (-> self extra-trans)
+                    )
+                   )
+    )
+   )
+  :enter
+  (behavior ()
+   (blocking-plane-destroy)
+   (blocking-plane-spawn (the-as curve-control (-> self path-flut)))
+   (none)
+   )
+  :code
+  (behavior ()
+   (ja-channel-set! 0)
+   (ja-post)
+   (while #t
+    (if
+     (not
+      (and
+       *target*
+       (logtest? (-> *target* control root-prim prim-core action) #x4000)
+       )
+      )
+     (go-virtual idle)
+     )
+    (flutflut-effect)
+    (suspend)
+    )
+   (none)
+   )
+  )
+
+;; definition for method 11 of type flutflut
+(defmethod copy-defaults! flutflut ((obj flutflut) (arg0 res-lump))
+  (let
+   ((s4-0
+     (new 'process 'collide-shape-moving obj (collide-list-enum hit-by-player))
+     )
+    )
+   (set! (-> s4-0 dynam) (copy *standard-dynamics* 'process))
+   (set! (-> s4-0 reaction) default-collision-reaction)
+   (set! (-> s4-0 no-reaction) nothing)
+   (let ((s3-0 (new 'process 'collide-shape-prim-sphere s4-0 (the-as uint 0))))
+    (set! (-> s3-0 prim-core collide-as) (the-as uint 512))
+    (set! (-> s3-0 collide-with) (the-as uint 16))
+    (set-vector! (-> s3-0 local-sphere) 0.0 6144.0 0.0 6144.0)
+    )
+   (dummy-46 s4-0)
+   (set! (-> s4-0 nav-radius) (* 0.75 (-> s4-0 root-prim local-sphere w)))
+   (dummy-50 s4-0)
+   (set! (-> obj root-override) s4-0)
+   )
+  (process-drawable-from-entity! obj arg0)
+  (set-yaw-angle-clear-roll-pitch!
+   (-> obj root-override)
+   (res-lump-float arg0 'rotoffset)
+   )
+  (dummy-14 obj *flutflut-sg* '())
+  (logior! (-> obj skel status) 256)
+  (set! (-> obj draw shadow-ctrl) *flutflut-shadow-control*)
+  (let ((v1-24 (-> obj node-list data)))
+   (set! (-> v1-24 0 param0) cspace<-transformq+trans!)
+   (set! (-> v1-24 0 param1) (the-as basic (-> obj root-override trans)))
+   (set! (-> v1-24 0 param2) (the-as basic (-> obj extra-trans)))
+   )
+  (dotimes (s4-2 2)
+   (let ((v1-27 (new 'process 'curve-control obj 'path (the float (+ s4-2 1)))))
+    (set! (-> obj path-data s4-2) v1-27)
+    (if v1-27
+     (logior!
+      (-> v1-27 flags)
+      (path-control-flag display draw-line draw-point draw-text)
+      )
+     )
+    )
+   )
+  (set! (-> obj condition) (res-lump-value arg0 'index int))
+  (set!
+   (-> obj fact)
+   (new
+    'process
+    'fact-info
+    obj
+    (pickup-type eco-pill-random)
+    (-> *FACT-bank* default-pill-inc)
+    )
+   )
+  (set!
+   (-> obj part)
+   (create-launch-control (-> *part-group-id-table* 120) obj)
+   )
+  (set! (-> obj auto-get-off) #f)
+  (dummy-60 (-> obj root-override) 40960.0 40960.0 #t (the-as uint 1))
+  (set! (-> obj cell) (the-as handle #f))
+  (blocking-plane-spawn
+   (the-as
+    curve-control
+    (if
+     (and
+      *target*
+      (logtest? (-> *target* control root-prim prim-core action) #x4000)
+      )
+     (-> obj path-flut)
+     (-> obj path-target)
+     )
+    )
+   )
+  (set!
+   (-> obj sound)
+   (new
+    'process
+    'ambient-sound
+    (new 'static 'sound-spec
+     :mask #x80
+     :num 1.0
+     :group #x1
+     :sound-name-char
+     (new 'static 'array uint8 16
+      #x7a
+      #x6f
+      #x6f
+      #x6d
+      #x2d
+      #x74
+      #x65
+      #x6c
+      #x65
+      #x70
+      #x6f
+      #x72
+      #x74
+      #x0
+      #x0
+      #x0
+      )
+     :volume #x400
+     :fo-max 30
+     )
+    (-> obj root-override trans)
+    )
+   )
+  (go (method-of-object obj wait-for-start))
+  (none)
+  )

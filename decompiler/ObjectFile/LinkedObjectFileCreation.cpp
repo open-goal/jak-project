@@ -10,6 +10,7 @@
 #include "decompiler/config.h"
 #include "decompiler/util/DecompilerTypeSystem.h"
 #include "common/link_types.h"
+#include "common/util/BitUtils.h"
 
 namespace decompiler {
 // There are three link versions:
@@ -195,14 +196,6 @@ static uint32_t c_symlink3(LinkedObjectFile& f,
 
   } while (data.at(link_ptr));
   return link_ptr + 1;
-}
-
-static uint32_t align64(uint32_t in) {
-  return (in + 63) & (~63);
-}
-
-static uint32_t align16(uint32_t in) {
-  return (in + 15) & (~15);
 }
 
 /*!

@@ -5,3 +5,338 @@
 ;; name in dgo: assistant-lavatube
 ;; dgos: L1, LAV
 
+(define-extern *assistant-lavatube-start-sg* skeleton-group)
+
+;; DECOMP BEGINS
+
+(deftype assistant-lavatube-start (process-taskable)
+  ()
+  :heap-base #x110
+  :method-count-assert 53
+  :size-assert         #x17c
+  :flag-assert         #x350110017c
+  )
+
+
+(let
+  ((v1-1
+    (new 'static 'skeleton-group
+     :art-group-name "assistant-lavatube-start"
+     :bounds (new 'static 'vector :w 16384.0)
+     :version #x6
+     :shadow 2
+     )
+    )
+   )
+  (set! (-> v1-1 jgeo) 0)
+  (set! (-> v1-1 janim) 3)
+  (set! (-> v1-1 mgeo 0) (the-as uint 1))
+  (set! (-> v1-1 lod-dist 0) 4095996000.0)
+  (set! *assistant-lavatube-start-sg* v1-1)
+  )
+
+(defmethod
+  play-anim!
+  assistant-lavatube-start
+  ((obj assistant-lavatube-start) (arg0 symbol))
+  (case (current-status (-> obj tasks)) 
+   ((6)
+     (if arg0
+      (close-current! (-> obj tasks))
+      )
+     (new 'static 'spool-anim
+      :name "assistant-lavatube-start-resolution"
+      :index 5
+      :parts 11
+      :command-list
+      '(
+        ((the binteger 232)
+          joint
+          "cameraB"
+          )
+        ((the binteger 491)
+         joint
+         "camera"
+         )
+        ((the binteger 866)
+         joint
+         "cameraB"
+         )
+        ((the binteger 1061) joint "camera")
+        )
+      )
+     )
+   (else
+    (if arg0
+     (format
+      0
+      "ERROR: <GMJ>: ~S playing anim for task status ~S~%"
+      (-> obj name)
+      (task-status->string (the-as task-status (current-status (-> obj tasks))))
+      )
+     )
+    (get-art-elem obj)
+    )
+   )
+  )
+
+(defmethod get-art-elem assistant-lavatube-start ((obj assistant-lavatube-start))
+  (-> obj draw art-group data 3)
+  )
+
+(defstate hidden (assistant-lavatube-start)
+  :virtual #t
+  :trans
+  (behavior ()
+   ((-> (method-of-type process-taskable hidden) trans))
+   (when (and (cond
+               ((and
+                 *target*
+                 (>=
+                  61440.0
+                  (vector-vector-distance
+                   (-> self root-override trans)
+                   (-> *target* control trans)
+                   )
+                  )
+                 )
+                #t
+                )
+               (else
+                (set!
+                 (-> self state-time)
+                 (the-as seconds (-> *display* base-frame-counter))
+                 )
+                #f
+                )
+               )
+          (and
+           (not
+            (closed?
+             (-> self tasks)
+             (game-task lavatube-start)
+             (task-status need-reward-speech)
+             )
+            )
+           (not (movie?))
+           (not (level-hint-displayed?))
+           (not
+            (and
+             *cheat-mode*
+             (logtest? (-> *cpad-list* cpads 0 button0-abs 0) (pad-buttons l3))
+             )
+            )
+           (<
+            (-
+             (-> *display* base-frame-counter)
+             (the-as int (-> self state-time))
+             )
+            3000
+            )
+           )
+          )
+    (hide-hud)
+    (kill-current-level-hint '() '(sidekick voicebox) 'exit)
+    (when
+     (and
+      (seen-text? *game-info* (game-text-id assistant-lavatube-powercell-hint))
+      (hud-hidden?)
+      (can-grab-display? self)
+      (not (-> *setting-control* current hint))
+      )
+     (let
+      ((gp-0
+        (new
+         'stack
+         'font-context
+         *font-default-matrix*
+         32
+         160
+         0.0
+         (font-color default)
+         (font-flags shadow kerning)
+         )
+        )
+       )
+      (let ((v1-26 gp-0))
+       (set! (-> v1-26 width) (the float 448))
+       )
+      (let ((v1-27 gp-0))
+       (set! (-> v1-27 height) (the float 80))
+       )
+      (let ((v1-28 gp-0))
+       (set! (-> v1-28 scale) 0.8)
+       )
+      (set! (-> gp-0 flags) (font-flags shadow kerning middle large))
+      (print-game-text
+       (lookup-text!
+        *common-text*
+        (game-text-id lavatube-powercell-req-text)
+        #f
+        )
+       gp-0
+       #f
+       128
+       22
+       )
+      )
+     )
+    (level-hint-spawn
+     (game-text-id assistant-lavatube-powercell-hint)
+     "asstva74"
+     (the-as entity #f)
+     *entity-pool*
+     (game-task none)
+     )
+    )
+   (none)
+   )
+  )
+
+(defstate idle (assistant-lavatube-start)
+  :virtual #t
+  :code
+  (behavior ()
+   (while #t
+    (when (!= (if (> (-> self skel active-channels) 0)
+               (-> self skel root-channel 0 frame-group)
+               )
+           (get-art-elem self)
+           )
+     (ja-channel-push! 1 15)
+     (let ((v1-5 (-> self skel root-channel 0)))
+      (set!
+       (-> v1-5 frame-group)
+       (the-as art-joint-anim (-> self draw art-group data 3))
+       )
+      )
+     )
+    (let* ((f30-0 2.0)
+           (v1-7 (/ (the-as int (rand-uint31-gen *random-generator*)) 256))
+           (v1-8 (the-as number (logior #x3f800000 v1-7)))
+           )
+     (countdown (gp-0 (+ (the int (* f30-0 (+ -1.0 (the-as float v1-8)))) 2))
+      (let ((a0-12 (-> self skel root-channel 0)))
+       (set! (-> a0-12 frame-group) (if (> (-> self skel active-channels) 0)
+                                     (-> self skel root-channel 0 frame-group)
+                                     )
+        )
+       (set!
+        (-> a0-12 param 0)
+        (the float (+ (-> (if (> (-> self skel active-channels) 0)
+                           (-> self skel root-channel 0 frame-group)
+                           )
+                       data
+                       0
+                       length
+                       )
+                    -1
+                    )
+         )
+        )
+       (set! (-> a0-12 param 1) 1.0)
+       (set! (-> a0-12 frame-num) 0.0)
+       (joint-control-channel-group!
+        a0-12
+        (if (> (-> self skel active-channels) 0)
+         (-> self skel root-channel 0 frame-group)
+         )
+        num-func-seek!
+        )
+       )
+      (until (ja-done? 0)
+       (suspend)
+       (let ((a0-13 (-> self skel root-channel 0)))
+        (set!
+         (-> a0-13 param 0)
+         (the float (+ (-> a0-13 frame-group data 0 length) -1))
+         )
+        (set! (-> a0-13 param 1) 1.0)
+        (joint-control-channel-group-eval!
+         a0-13
+         (the-as art-joint-anim #f)
+         num-func-seek!
+         )
+        )
+       )
+      )
+     )
+    (ja-channel-push! 1 15)
+    (let ((a0-16 (-> self skel root-channel 0)))
+     (set!
+      (-> a0-16 frame-group)
+      (the-as art-joint-anim (-> self draw art-group data 4))
+      )
+     (set!
+      (-> a0-16 param 0)
+      (the
+       float
+       (+
+        (->
+         (the-as art-joint-anim (-> self draw art-group data 4))
+         data
+         0
+         length
+         )
+        -1
+        )
+       )
+      )
+     (set! (-> a0-16 param 1) 1.0)
+     (set! (-> a0-16 frame-num) 0.0)
+     (joint-control-channel-group!
+      a0-16
+      (the-as art-joint-anim (-> self draw art-group data 4))
+      num-func-seek!
+      )
+     )
+    (until (ja-done? 0)
+     (suspend)
+     (let ((a0-17 (-> self skel root-channel 0)))
+      (set!
+       (-> a0-17 param 0)
+       (the float (+ (-> a0-17 frame-group data 0 length) -1))
+       )
+      (set! (-> a0-17 param 1) 1.0)
+      (joint-control-channel-group-eval!
+       a0-17
+       (the-as art-joint-anim #f)
+       num-func-seek!
+       )
+      )
+     )
+    )
+   (none)
+   )
+  )
+
+(defmethod
+  should-display?
+  assistant-lavatube-start
+  ((obj assistant-lavatube-start))
+  (first-any (-> obj tasks) #t)
+  (= (current-status (-> obj tasks)) 6)
+  )
+
+(defmethod
+  copy-defaults!
+  assistant-lavatube-start
+  ((obj assistant-lavatube-start) (arg0 res-lump))
+  (dummy-40
+   obj
+   arg0
+   *assistant-lavatube-start-sg*
+   3
+   29
+   (new 'static 'vector :w 4096.0)
+   5
+   )
+  (set! (-> obj tasks) (get-task-control (game-task lavatube-start)))
+  (first-any (-> obj tasks) #t)
+  (dummy-42 obj)
+  (none)
+  )
+
+
+
+

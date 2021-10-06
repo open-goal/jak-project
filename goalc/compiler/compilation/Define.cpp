@@ -4,6 +4,7 @@
  */
 
 #include "goalc/compiler/Compiler.h"
+#include "common/log/log.h"
 
 /*!
  * Define or set a global value. Has some special magic to store data for functions which may be
@@ -54,7 +55,8 @@ Val* Compiler::compile_define(const goos::Object& form, const goos::Object& rest
       do_typecheck = !get_true_or_false(form, args.named.at("no-typecheck"));
     }
     if (do_typecheck) {
-      typecheck(form, existing_type->second, in_gpr->type(), "define on existing symbol");
+      typecheck(form, existing_type->second, in_gpr->type(),
+                fmt::format("define on existing symbol {}", sym.as_symbol()->name));
     }
   }
 

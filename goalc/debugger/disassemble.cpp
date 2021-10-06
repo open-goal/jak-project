@@ -151,7 +151,13 @@ std::string disassemble_x86_function(u8* data,
 
       std::string line;
 
-      line += fmt::format("{:c} [0x{:X}] ", prefix, base_addr);
+      if (prefix != ' ') {
+        line += fmt::format(fmt::emphasis::bold | fg(fmt::color::red), "{:c} [0x{:X}] ", prefix,
+                            base_addr);
+      } else {
+        line += fmt::format("{:c} [0x{:X}] ", prefix, base_addr);
+      }
+
       ZydisFormatterFormatInstruction(&formatter, &instr, print_buff, print_buff_size, base_addr);
       line += print_buff;
 

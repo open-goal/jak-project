@@ -31,6 +31,7 @@ class LabelDB {
   const LabelInfo& lookup(int idx) const;
   const LabelInfo& lookup(const std::string& name) const;
   int get_index_by_offset(int seg, int offset) const;
+  std::optional<int> try_get_index_by_offset(int seg, int offset) const;
   int get_index_by_name(const std::string& name) const;
 
   LabelInfo set_and_get_previous(int idx,

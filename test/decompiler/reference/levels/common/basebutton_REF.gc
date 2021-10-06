@@ -504,7 +504,6 @@
   )
 
 ;; definition for method 26 of type basebutton
-;; INFO: Return type mismatch int vs none.
 (defmethod TODO-RENAME-26 basebutton ((obj basebutton))
   (dummy-14 obj *generic-button-sg* '())
   (logior! (-> obj skel status) 1)
@@ -621,14 +620,12 @@
   (set! (-> obj button-id) -1)
   (let
    ((v1-4
-     ((method-of-type res-lump get-property-value)
+     (res-lump-value
       (-> obj entity)
       'extra-id
-      'interp
-      -1000000000.0
+      uint128
+      :default
       (the-as uint128 -1)
-      (the-as (pointer res-tag) #f)
-      *res-static-buf*
       )
      )
     )
@@ -638,24 +635,8 @@
    )
   (when
    (or
-    (get-property-struct
-     arg0
-     'next-actor
-     'interp
-     -1000000000.0
-     #f
-     (the-as (pointer res-tag) #f)
-     *res-static-buf*
-     )
-    (get-property-struct
-     arg0
-     'prev-actor
-     'interp
-     -1000000000.0
-     #f
-     (the-as (pointer res-tag) #f)
-     *res-static-buf*
-     )
+    (res-lump-struct arg0 'next-actor structure)
+    (res-lump-struct arg0 'prev-actor structure)
     )
    (set! (-> obj link) (new 'process 'actor-link-info obj))
    (if (< (-> obj button-id) 0)
@@ -675,18 +656,7 @@
    (set! (-> obj down?) v1-16)
    )
   (set! (-> obj notify-actor) (entity-actor-lookup arg0 'alt-actor 0))
-  (set!
-   (-> obj timeout)
-   (get-property-value-float
-    arg0
-    'timeout
-    'interp
-    -1000000000.0
-    0.0
-    (the-as (pointer res-tag) #f)
-    *res-static-buf*
-    )
-   )
+  (set! (-> obj timeout) (res-lump-float arg0 'timeout))
   (if (not (-> obj spawned-by-other?))
    (nav-mesh-connect obj (-> obj root-override) (the-as nav-control #f))
    )
@@ -975,7 +945,8 @@
             (-
              (sqrtf
               (*
-               (* 2.0 (-> self control dynam gravity-length))
+               2.0
+               (-> self control dynam gravity-length)
                (vector-dot
                 (-> self control dynam gravity-normal)
                 (vector-!
@@ -1128,7 +1099,3 @@
   :post
   target-no-stick-post
   )
-
-
-
-

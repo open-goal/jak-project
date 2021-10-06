@@ -522,7 +522,10 @@ Val* Compiler::compile_defmethod(const goos::Object& form, const goos::Object& _
     auto ireg = new_func_env->make_ireg(
         lambda.params.at(i).type, arg_regs.at(i).is_gpr() ? RegClass::GPR_64 : RegClass::INT_128);
     ireg->mark_as_settable();
-    new_func_env->params[lambda.params.at(i).name] = ireg;
+    if (!new_func_env->params.insert({lambda.params.at(i).name, ireg}).second) {
+      throw_compiler_error(form, "defmethod has multiple arguments named {}",
+                           lambda.params.at(i).name);
+    }
     new_func_env->emit_ir<IR_RegSet>(form, ireg, reset_args_for_coloring.at(i));
   }
 
@@ -739,6 +742,10 @@ Val* Compiler::compile_deref(const goos::Object& form, const goos::Object& _rest
     }
 
     if (result->type().base_type() == "inline-array") {
+      if (!result->type().has_single_arg()) {
+        throw_compiler_error(form, "Cannot dereference an inline-array with type {}",
+                             result->type().print());
+      }
       auto di = m_ts.get_deref_info(result->type());
       auto base_type = di.result_type;
       assert(di.can_deref);
@@ -752,6 +759,10 @@ Val* Compiler::compile_deref(const goos::Object& form, const goos::Object& _rest
         result = fe->alloc_val<MemoryOffsetVal>(di.result_type, result, offset);
       }
     } else if (result->type().base_type() == "pointer") {
+      if (!result->type().has_single_arg()) {
+        throw_compiler_error(form, "Cannot dereference a pointer with type {}",
+                             result->type().print());
+      }
       auto di = m_ts.get_deref_info(result->type());
       auto base_type = di.result_type;
       assert(di.mem_deref);
@@ -1148,7 +1159,7 @@ Val* Compiler::compile_new(const goos::Object& form, const goos::Object& _rest, 
   rest = &pair_cdr(*rest);
 
   if (allocation == "global" || allocation == "debug" || allocation == "process" ||
-      allocation == "process-level-heap") {
+      allocation == "process-level-heap" || allocation == "loading-level") {
     // allocate on a named heap
     return compile_heap_new(form, allocation, type, rest, env);
   } else if (allocation == "static") {

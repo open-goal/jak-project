@@ -1,5 +1,6 @@
 #pragma once
 #include <string>
+
 #include "decompiler/Function/Function.h"
 
 namespace decompiler {

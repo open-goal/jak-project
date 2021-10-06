@@ -53,11 +53,11 @@
 
 (declare-type engine basic)
 (deftype connection (connectable)
-  ((param0 (function object object object object object) :offset-assert 16)
-   (param1 basic         :offset-assert 20)
-   (param2 basic         :offset-assert 24)
-   (param3 basic         :offset-assert 28)
-   (quad   uint128     2 :offset 0)
+  ((param0 basic      :offset-assert 16) ;; often (function object object object object object)
+   (param1 basic      :offset-assert 20)
+   (param2 basic      :offset-assert 24)
+   (param3 basic      :offset-assert 28)
+   (quad   uint128  2 :offset 0)
    )
   :method-count-assert 14
   :size-assert         #x20
@@ -108,7 +108,7 @@
     (execute-connections (engine object) int 12)
     (execute-connections-and-move-to-dead (engine object) int 13)
     (execute-connections-if-needed (engine object) int 14)
-    (add-connection (engine process (function object object object object object) object object object) connection 15)
+    (add-connection (engine process object object object object) connection 15)
     (remove-from-process (engine process) int 16)
     (remove-matching (engine (function connection engine symbol)) int 17)
     (remove-all (engine) int 18)
@@ -336,7 +336,7 @@
   (let ((ct (the-as connection (-> obj alive-list-end prev0))))
     (while (!= ct (-> obj alive-list))
       ;; execute!
-      ((-> ct param0) (-> ct param1) (-> ct param2) (-> ct param3) arg0)
+      ((the-as (function basic basic basic object object) (-> ct param0)) (-> ct param1) (-> ct param2) (-> ct param3) arg0)
       ;; advance to previous.
       (set! ct (the-as connection (-> ct prev0)))
       )
@@ -350,7 +350,7 @@
   (let ((ct (the-as connection (-> obj alive-list-end prev0))))
     (while (!= ct (-> obj alive-list))
       ;; execute function
-      (let ((result ((-> ct param0) (-> ct param1) (-> ct param2) (-> ct param3) arg0)))
+      (let ((result ((the-as (function basic basic basic object object) (-> ct param0)) (-> ct param1) (-> ct param2) (-> ct param3) arg0)))
         ;; set the next one, _before_ removing
         (set! ct (the-as connection (-> ct prev0)))
         ;; remove if desired.
@@ -397,7 +397,7 @@
 (defmethod add-connection engine
     ((obj engine)
      (proc process)
-     (func (function object object object object object))
+     (func object) ;; not always a function, you can technically put whatever
      (p1 object)
      (p2 object)
      (p3 object)
@@ -412,7 +412,7 @@
                  (= con (-> obj dead-list-end))))
     (let ((con (the connection con)))
       ;; set the params of the connection
-      (set! (-> con param0) func)
+      (set! (-> con param0) (the basic func))
       (set! (-> con param1) (the basic p1))
       (set! (-> con param2) (the basic p2))
       (set! (-> con param3) (the basic p3))

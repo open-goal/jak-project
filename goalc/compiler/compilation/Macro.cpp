@@ -181,6 +181,12 @@ Val* Compiler::compile_define_constant(const goos::Object& form,
                            "it is already the name of a symbol of type {}",
                            sym->name, m_symbol_types.at(sym->name).print());
     }
+
+    auto existing = m_global_constants.find(sym);
+    if (existing != m_global_constants.end() && existing->second != value) {
+      print_compiler_warning("Constant {} has been redefined {} -> {}", sym->print(),
+                             existing->second.print(), value.print());
+    }
     m_global_constants[sym] = value;
   }
 

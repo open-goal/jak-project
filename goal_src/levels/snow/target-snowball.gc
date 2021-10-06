@@ -5,3 +5,158 @@
 ;; name in dgo: target-snowball
 ;; dgos: L1, SNO
 
+(define-extern target-snowball (state target)) ;; unknown type
+
+;; DECOMP BEGINS
+
+(deftype snowball-info (basic)
+  ((entity basic  :offset-assert   4)
+   )
+  :method-count-assert 9
+  :size-assert         #x8
+  :flag-assert         #x900000008
+  )
+
+
+(deftype snowball-bank (basic)
+  ()
+  :method-count-assert 9
+  :size-assert         #x4
+  :flag-assert         #x900000004
+  )
+
+(define *SNOWBALL-bank* (new 'static 'snowball-bank))
+
+(defbehavior target-snowball-post target ()
+  (let ((gp-0 (the int (-> *display* time-ratio))))
+   (set-time-ratios *display* 1.0)
+   (countdown (s5-0 gp-0)
+    (set! (-> self control unknown-int40) s5-0)
+    (flag-setup)
+    (build-conversions (-> self control transv))
+    (reverse-conversions (-> self control transv))
+    (post-flag-setup)
+    )
+   (set-time-ratios *display* (the float gp-0))
+   )
+  (rot->dir-targ! (-> self control))
+  (ja-post)
+  (joint-points)
+  (do-target-shadow)
+  (target-powerup-process)
+  0
+  (none)
+  )
+
+(defstate target-snowball-start (target)
+  :event
+  (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
+   (the-as object (cond
+                   ((and (= arg2 'query) (= (-> arg3 param 0) 'mode))
+                    'snowball
+                    )
+                   ((let ((v1-3 arg2))
+                     (= v1-3 'end-mode)
+                     )
+                    enter-state
+                    (-> *TARGET-bank* duck-jump-height-min)
+                    (-> *TARGET-bank* duck-jump-height-max)
+                    (go target-jump)
+                    )
+                   (else
+                    (target-generic-event-handler arg0 arg1 arg2 arg3)
+                    )
+                   )
+    )
+   )
+  :exit
+  (behavior ()
+   (when (!= (-> self next-state name) 'target-snowball)
+    (let ((v1-1 (-> self manipy)))
+     (when v1-1
+      (deactivate (-> v1-1 0))
+      (set! (-> self manipy) (the-as (pointer manipy) #f))
+      )
+     )
+    (set!
+     (-> self control root-prim prim-core action)
+     (logand -4097 (-> self control root-prim prim-core action))
+     )
+    (set! (-> self control unknown-surface00) *walk-mods*)
+    (set!
+     (-> self control dynam gravity-max)
+     (-> self control unknown-dynamics00 gravity-max)
+     )
+    (set!
+     (-> self control dynam gravity-length)
+     (-> self control unknown-dynamics00 gravity-length)
+     )
+    (target-collide-set! 'normal 0.0)
+    (set! (-> self control reaction) target-collision-reaction)
+    (target-exit)
+    )
+   (none)
+   )
+  :code
+  (behavior ((arg0 handle))
+   (target-exit)
+   (set! *display-profile* #f)
+   (set! *display-entity-errors* #f)
+   (if (zero? (-> self snowball))
+    (set! (-> self snowball) (new 'process 'snowball-info))
+    )
+   (set! (-> self snowball entity) #f)
+   (let ((a0-2 (handle->process arg0)))
+    (if a0-2
+     (set! (-> self snowball entity) (-> a0-2 entity))
+     )
+    )
+   (reset-target-state #t)
+   (set! (-> self control transv quad) (the-as uint128 0))
+   (set! (-> self control unknown-float01) 0.0)
+   (let* ((a0-6 (-> self control))
+          (t9-3 (method-of-object a0-6 TODO-RENAME-28))
+          )
+    (new 'static 'vector :y 4096.0 :w 1.0)
+    (t9-3 a0-6)
+    )
+   (logior! (-> self control root-prim prim-core action) 4096)
+   (ja-channel-set! 1)
+   (let ((gp-1 (-> self skel root-channel 0)))
+    (joint-control-channel-group-eval!
+     gp-1
+     (the-as art-joint-anim (-> self draw art-group data 5))
+     num-func-identity
+     )
+    (set! (-> gp-1 frame-num) 0.0)
+    )
+   (remove-exit)
+   (go target-snowball)
+   (none)
+   )
+  :post
+  (the-as (function none :behavior target) target-post)
+  )
+
+(defstate target-snowball (target)
+  :event
+  (-> target-snowball-start event)
+  :exit
+  (-> target-snowball-start exit)
+  :code
+  (behavior ()
+   (while #t
+    (suspend)
+    )
+   (none)
+   )
+  :post
+  (behavior ()
+   (target-snowball-post)
+   (none)
+   )
+  )
+
+
+
+

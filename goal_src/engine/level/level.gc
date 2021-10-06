@@ -488,12 +488,12 @@
   (cond
     ((-> obj bsp)
      (set! (-> *level* log-in-level-bsp) (-> obj bsp))
-     ;; TODO
-     ;;(login-level-textures *texture-pool* obj (-> obj bsp unk-data-1-len) (the-as (pointer texture-id) (-> obj bsp unk-data-1)))
+     (login-level-textures *texture-pool* obj (-> obj bsp texture-page-count) (-> obj bsp texture-ids))
      (let ((bsp (-> obj bsp)))
        (when (nonzero? (-> bsp adgifs))
          (let ((adgifs (-> bsp adgifs)))
            (dotimes (i (-> adgifs length))
+             ;; TODO
              ;;(adgif-shader-login-no-remap (-> adgifs data i)) TODO texture.gc
              )
            )
@@ -722,7 +722,7 @@
          (set! loading-level (-> obj heap))
          (set! (-> *level* log-in-level-bsp) (-> obj bsp))
          (set! (-> *level* loading-level) obj)
-         ;; (dummy-18 (-> obj bsp)) TODO
+         (birth (-> obj bsp))
          (set! (-> obj status) 'alive)
          ;; (dummy-15 *game-info*) TODO
          ;; (send-event *camera* 'level-activate (-> obj name))
@@ -859,6 +859,9 @@
   )
 
 ;; method 10 level
+(defmethod is-object-visible? level ((obj level) (arg0 int))
+  ;; hack! TODO
+  #t)
 ;; method 15 level
 ;; method 27 level
 
@@ -1545,6 +1548,14 @@
   )
 
 ;; method 16 level-group (debug text stuff)
+
+(defmethod level-update level-group ((obj level-group))
+  ;; todo lots of stuff
+  (update-per-frame-settings! *setting-control*)
+  (update *art-control* #t)
+  (clear-rec *art-control*)
+  0
+  )
 
 (defun-debug show-level ((level-name symbol))
   (set! (-> *setting-control* default border-mode) #t)

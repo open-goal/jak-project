@@ -553,7 +553,7 @@ std::string LinkedObjectFile::print_function_disassembly(Function& func,
                                                          const std::string& extra_name) {
   std::string result;
   result += ";;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;\n";
-  result += "; .function " + func.guessed_name.to_string() + " " + extra_name + "\n";
+  result += "; .function " + func.name() + " " + extra_name + "\n";
   result += ";;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;\n";
   result += func.prologue.to_string(2) + "\n";
   if (func.warnings.has_warnings()) {

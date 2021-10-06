@@ -4,9 +4,9 @@
  */
 
 #include "cfg_builder.h"
-#include "decompiler/util/MatchParam.h"
 #include "decompiler/Function/Function.h"
 #include "decompiler/IR2/Form.h"
+#include "decompiler/util/MatchParam.h"
 
 namespace decompiler {
 namespace {
@@ -395,8 +395,8 @@ bool try_clean_up_sc_as_and(FormPool& pool, Function& func, ShortCircuitElement*
         bool this_live_out = (branch_info.written_and_unused.find(ir_dest.reg()) ==
                               branch_info.written_and_unused.end());
         if (live_out_result != this_live_out) {
-          lg::error("Bad live out result on {}. At 0 was {} now at {} is {}",
-                    func.guessed_name.to_string(), live_out_result, i, this_live_out);
+          lg::error("Bad live out result on {}. At 0 was {} now at {} is {}", func.name(),
+                    live_out_result, i, this_live_out);
         }
         assert(live_out_result == this_live_out);
       }
@@ -677,7 +677,7 @@ void convert_cond_no_else_to_compare(FormPool& pool,
   if (condition_as_single) {
     *ir_loc = replacement;
   } else {
-    //    lg::error("Weird case in {}", f.guessed_name.to_string());
+    //    lg::error("Weird case in {}", f.name());
     (void)f;
     auto seq = cne->entries.front().condition;
     seq->pop_back();
@@ -1785,8 +1785,7 @@ void build_initial_forms(Function& function) {
     function.ir2.top_form = result;
   } catch (std::runtime_error& e) {
     function.warnings.general_warning(e.what());
-    lg::warn("Failed to build initial forms in {}: {}", function.guessed_name.to_string(),
-             e.what());
+    lg::warn("Failed to build initial forms in {}: {}", function.name(), e.what());
   }
 }
 }  // namespace decompiler

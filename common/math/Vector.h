@@ -78,6 +78,21 @@ class Vector {
     return result;
   }
 
+  Vector<T, Size>& operator+=(const Vector<T, Size>& other) {
+    for (int i = 0; i < Size; i++) {
+      m_data[i] += other[i];
+    }
+    return *this;
+  }
+
+  Vector<T, Size> elementwise_multiply(const Vector<T, Size>& other) const {
+    Vector<T, Size> result;
+    for (int i = 0; i < Size; i++) {
+      result[i] = m_data[i] * other[i];
+    }
+    return result;
+  }
+
   Vector<T, Size> operator-(const Vector<T, Size>& other) const {
     Vector<T, Size> result;
     for (int i = 0; i < Size; i++) {
@@ -112,6 +127,13 @@ class Vector {
       result[i] = m_data[i] * val;
     }
     return result;
+  }
+
+  Vector<T, Size>& operator*=(const T& val) {
+    for (int i = 0; i < Size; i++) {
+      m_data[i] *= val;
+    }
+    return *this;
   }
 
   Vector<T, Size> cross(const Vector<T, Size>& other) const {
@@ -150,6 +172,34 @@ class Vector {
   T m_data[Size];
 };
 
+// column major
+template <typename T, int Rows, int Cols>
+struct Matrix {
+  Matrix() = default;
+
+  static Matrix zero() {
+    Matrix result;
+    for (auto& x : result.m_data) {
+      x = 0;
+    }
+    return result;
+  }
+
+  const T& operator()(int r, int c) const { return m_data[c + r * Cols]; }
+  T& operator()(int r, int c) { return m_data[r + c * Rows]; }
+
+  Vector<T, Rows> col(int c) const {
+    Vector<T, Rows> result;
+    for (int i = 0; i < Rows; i++) {
+      result[i] = m_data[c * Rows + i];
+    }
+    return result;
+  }
+
+ private:
+  T m_data[Rows * Cols];
+};
+
 template <typename T>
 using Vector2 = Vector<T, 2>;
 
@@ -165,4 +215,6 @@ using Vector4f = Vector4<float>;
 using Vector2d = Vector2<double>;
 using Vector3d = Vector3<double>;
 using Vector4d = Vector4<double>;
+
+using Matrix4f = Matrix<float, 4, 4>;
 }  // namespace math

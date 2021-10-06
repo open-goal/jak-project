@@ -281,8 +281,7 @@ Token Reader::get_next_token(TextStream& stream) {
   // Second - not a special token, so we read until we get a character that ends the token.
   while (stream.text_remains()) {
     char next = stream.peek();
-    if (next == ' ' || next == '\n' || next == '\t' || next == ')' || next == ';' || next == '#' ||
-        next == '(') {
+    if (next == ' ' || next == '\n' || next == '\t' || next == ')' || next == ';' || next == '(') {
       return t;
     } else {
       // not the end, so add to token.

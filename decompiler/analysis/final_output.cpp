@@ -1,17 +1,16 @@
-#include "decompiler/IR2/GenericElementMatcher.h"
 #include "final_output.h"
-#include "decompiler/IR2/Form.h"
 #include "common/goos/PrettyPrinter.h"
-#include "decompiler/util/DecompilerTypeSystem.h"
+#include "decompiler/IR2/Form.h"
+#include "decompiler/IR2/GenericElementMatcher.h"
 #include "decompiler/ObjectFile/LinkedObjectFile.h"
+#include "decompiler/util/DecompilerTypeSystem.h"
 
 namespace decompiler {
 
 goos::Object get_arg_list_for_function(const Function& func, const Env& env) {
   std::vector<goos::Object> argument_elts;
   if (func.type.arg_count() < 1) {
-    throw std::runtime_error(
-        fmt::format("Function {} has unknown type.\n", func.guessed_name.to_string()));
+    throw std::runtime_error(fmt::format("Function {} has unknown type.\n", func.name()));
   }
   assert(func.type.arg_count() >= 1);
   for (size_t i = 0; i < func.type.arg_count() - 1; i++) {
@@ -105,9 +104,9 @@ std::string final_defun_out(const Function& func,
     top.push_back(pretty_print::to_symbol(def_name));
 
     if (behavior) {
-      top.push_back(pretty_print::to_symbol(func.guessed_name.to_string() + " " + *behavior));
+      top.push_back(pretty_print::to_symbol(func.name() + " " + *behavior));
     } else {
-      top.push_back(pretty_print::to_symbol(func.guessed_name.to_string()));
+      top.push_back(pretty_print::to_symbol(func.name()));
     }
     top.push_back(arguments);
     auto top_form = pretty_print::build_list(top);
@@ -147,7 +146,7 @@ std::string final_defun_out(const Function& func,
     assert(special_mode == FunctionDefSpecials::NONE);
     std::vector<goos::Object> top;
     top.push_back(pretty_print::to_symbol(def_name));
-    top.push_back(pretty_print::to_symbol(func.guessed_name.to_string()));
+    top.push_back(pretty_print::to_symbol(func.name()));
     top.push_back(arguments);
     auto top_form = pretty_print::build_list(top);
 
@@ -160,7 +159,7 @@ std::string final_defun_out(const Function& func,
     std::vector<goos::Object> top;
     top.push_back(pretty_print::to_symbol("state-handler"));
 
-    top.push_back(pretty_print::to_symbol(func.guessed_name.to_string()));
+    top.push_back(pretty_print::to_symbol(func.name()));
 
     top.push_back(arguments);
     auto top_form = pretty_print::build_list(top);
@@ -334,7 +333,7 @@ std::string write_from_top_level_form(Form* top_form,
         something_matched = true;
         result += fmt::format(";; definition for function {}\n",
                               global_match_result.maps.strings.at(func_name));
-        if (skip_functions.find(func->guessed_name.to_string()) == skip_functions.end()) {
+        if (skip_functions.find(func->name()) == skip_functions.end()) {
           result += careful_function_to_string(func, dts);
         } else {
           result += ";; skipped.\n\n";
@@ -351,7 +350,7 @@ std::string write_from_top_level_form(Form* top_form,
           result +=
               fmt::format(";; definition for method {} of type {}\n", func->guessed_name.method_id,
                           method_match_result.maps.strings.at(type_name));
-          if (skip_functions.find(func->guessed_name.to_string()) == skip_functions.end()) {
+          if (skip_functions.find(func->name()) == skip_functions.end()) {
             result += careful_function_to_string(func, dts);
           } else {
             result += ";; skipped.\n\n";
@@ -387,7 +386,7 @@ std::string write_from_top_level_form(Form* top_form,
             something_matched = true;
             result += fmt::format(";; definition (debug) for function {}\n",
                                   debug_match_result.maps.strings.at(0));
-            if (skip_functions.find(func->guessed_name.to_string()) == skip_functions.end()) {
+            if (skip_functions.find(func->name()) == skip_functions.end()) {
               result += careful_function_to_string(func, dts, FunctionDefSpecials::DEFUN_DEBUG);
             } else {
               result += ";; skipped.\n\n";
