@@ -1,12 +1,7 @@
 ;;-*-Lisp-*-
 (in-package goal)
 
-;; name: battlecontroller.gc
-;; name in dgo: battlecontroller
-;; dgos: CIT, L1, MIS, SWA
-
-;; DECOMP BEGINS
-
+;; definition of type battlecontroller-spawner
 (deftype battlecontroller-spawner (structure)
   ((path          path-control  :offset-assert   0)
    (creature      handle        :offset-assert   8)
@@ -20,7 +15,19 @@
   :flag-assert         #x900000020
   )
 
+;; definition for method 3 of type battlecontroller-spawner
+(defmethod inspect battlecontroller-spawner ((obj battlecontroller-spawner))
+  (format #t "[~8x] ~A~%" obj 'battlecontroller-spawner)
+  (format #t "~Tpath: ~A~%" (-> obj path))
+  (format #t "~Tcreature: ~D~%" (-> obj creature))
+  (format #t "~Ttrigger-actor: ~A~%" (-> obj trigger-actor))
+  (format #t "~Tblocker-actor: ~A~%" (-> obj blocker-actor))
+  (format #t "~Tstate: ~D~%" (-> obj state))
+  (format #t "~Tenabled: ~A~%" (-> obj enabled))
+  obj
+  )
 
+;; definition of type battlecontroller-creature-type
 (deftype battlecontroller-creature-type (structure)
   ((type2            type   :offset-assert   0)
    (percent          float  :offset-assert   4)
@@ -34,7 +41,22 @@
   :flag-assert         #x900000012
   )
 
+;; definition for method 3 of type battlecontroller-creature-type
+(defmethod
+  inspect
+  battlecontroller-creature-type
+  ((obj battlecontroller-creature-type))
+  (format #t "[~8x] ~A~%" obj 'battlecontroller-creature-type)
+  (format #t "~Ttype2: ~A~%" (-> obj type2))
+  (format #t "~Tpercent: ~f~%" (-> obj percent))
+  (format #t "~Tpickup-percent: ~f~%" (-> obj pickup-percent))
+  (format #t "~Tpickup-type: ~D~%" (-> obj pickup-type))
+  (format #t "~Tmax-pickup-count: ~D~%" (-> obj max-pickup-count))
+  (format #t "~Tpickup-count: ~D~%" (-> obj pickup-count))
+  obj
+  )
 
+;; definition of type battlecontroller
 (deftype battlecontroller (process-drawable)
   ((final-pickup-spawn-point    vector                         :inline   :offset-assert 176)
    (activate-distance           float                                    :offset-assert 192)
@@ -74,7 +96,43 @@
     )
   )
 
+;; definition for method 3 of type battlecontroller
+(defmethod inspect battlecontroller ((obj battlecontroller))
+  (let ((t9-0 (method-of-type process-drawable inspect)))
+   (t9-0 obj)
+   )
+  (format
+   #t
+   "~T~Tfinal-pickup-spawn-point: #<vector @ #x~X>~%"
+   (-> obj final-pickup-spawn-point)
+   )
+  (format #t "~T~Tactivate-distance: ~f~%" (-> obj activate-distance))
+  (format #t "~T~Tmax-spawn-count: ~D~%" (-> obj max-spawn-count))
+  (format #t "~T~Tspawn-count: ~D~%" (-> obj spawn-count))
+  (format #t "~T~Tdie-count: ~D~%" (-> obj die-count))
+  (format #t "~T~Ttarget-count: ~D~%" (-> obj target-count))
+  (format #t "~T~Tspawner-count: ~D~%" (-> obj spawner-count))
+  (format #t "~T~Tcreature-type-count: ~D~%" (-> obj creature-type-count))
+  (format #t "~T~Tspawner-array[8] @ #x~X~%" (-> obj spawner-array))
+  (format #t "~T~Tspawn-period: ~D~%" (-> obj spawn-period))
+  (format #t "~T~Tpath-spawn: ~A~%" (-> obj path-spawn))
+  (format #t "~T~Tcreature-type-array[4] @ #x~X~%" (-> obj creature-type-array))
+  (format #t "~T~Tfinal-pickup-type: ~D~%" (-> obj final-pickup-type))
+  (format #t "~T~Tprespawn: ~A~%" (-> obj prespawn))
+  (format #t "~T~Tnoticed-player: ~A~%" (-> obj noticed-player))
+  (format #t "~T~Tcamera-on: ~A~%" (-> obj camera-on))
+  (format
+   #t
+   "~T~Tmisty-ambush-collision-hack: ~A~%"
+   (-> obj misty-ambush-collision-hack)
+   )
+  (format #t "~T~Tdisable-ocean: ~A~%" (-> obj disable-ocean))
+  (format #t "~T~Tdisable-near-ocean: ~A~%" (-> obj disable-near-ocean))
+  (format #t "~T~Tdisable-mid-ocean: ~A~%" (-> obj disable-mid-ocean))
+  obj
+  )
 
+;; definition for function battlecontroller-spawners-full?
 (defbehavior battlecontroller-spawners-full? battlecontroller ()
   (dotimes (v1-0 (-> self spawner-count))
    (if (= (-> self spawner-array v1-0 creature) #f)
@@ -84,8 +142,11 @@
   #t
   )
 
+;; definition for function battlecontroller-default-event-handler
+;; INFO: Return type mismatch none vs object.
 ;; WARN: rewrite_to_get_var got a none typed variable. Is there unreachable code?
 ;; WARN: rewrite_to_get_var got a none typed variable. Is there unreachable code?
+;; Used lq/sq
 (defbehavior
   battlecontroller-default-event-handler battlecontroller
   ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
@@ -134,8 +195,11 @@
    )
   )
 
+;; failed to figure out what this is:
 battlecontroller-default-event-handler
 
+;; definition for function battlecontroller-draw-debug
+;; INFO: Return type mismatch int vs none.
 (defbehavior battlecontroller-draw-debug battlecontroller ()
   (dotimes (gp-0 (-> self spawner-count))
    (dummy-9 (-> self spawner-array gp-0 path))
@@ -144,6 +208,8 @@ battlecontroller-default-event-handler
   (none)
   )
 
+;; definition for function battlecontroller-camera-on
+;; INFO: Return type mismatch int vs object.
 (defbehavior battlecontroller-camera-on battlecontroller ()
   (when (not (-> self camera-on))
    (set! (-> self camera-on) #t)
@@ -162,6 +228,8 @@ battlecontroller-default-event-handler
   (the-as object 0)
   )
 
+;; definition for function battlecontroller-camera-off
+;; INFO: Return type mismatch int vs none.
 (defbehavior battlecontroller-camera-off battlecontroller ()
   (set! (-> self camera-on) #f)
   (let ((a1-0 (new 'stack-no-clear 'event-message-block)))
@@ -174,6 +242,8 @@ battlecontroller-default-event-handler
   (none)
   )
 
+;; definition for function battlecontroller-update-spawners
+;; INFO: Return type mismatch int vs none.
 (defbehavior battlecontroller-update-spawners battlecontroller ()
   (dotimes (gp-0 (-> self spawner-count))
    (let* ((s5-0 (-> self spawner-array gp-0))
@@ -221,6 +291,8 @@ battlecontroller-default-event-handler
   (none)
   )
 
+;; definition for function battlecontroller-spawn-creature
+;; INFO: Return type mismatch int vs handle.
 (defbehavior
   battlecontroller-spawn-creature battlecontroller
   ((arg0 vector) (arg1 vector))
@@ -320,6 +392,8 @@ battlecontroller-default-event-handler
    )
   )
 
+;; definition for function battlecontroller-spawn-creature-at-spawner
+;; INFO: Return type mismatch int vs none.
 (defbehavior
   battlecontroller-spawn-creature-at-spawner battlecontroller
   ((arg0 int) (arg1 int))
@@ -359,6 +433,8 @@ battlecontroller-default-event-handler
   (none)
   )
 
+;; definition for function battlecontroller-spawn-creature-random-spawner
+;; INFO: Return type mismatch int vs none.
 (defbehavior battlecontroller-spawn-creature-random-spawner battlecontroller ()
   (let* ((gp-0 (rand-vu-int-count (-> self spawner-count)))
          (v1-2 (-> self spawner-array gp-0))
@@ -404,6 +480,8 @@ battlecontroller-default-event-handler
   (none)
   )
 
+;; definition for function battlecontroller-fill-all-spawners
+;; INFO: Return type mismatch int vs none.
 (defbehavior battlecontroller-fill-all-spawners battlecontroller ()
   (dotimes (gp-0 (-> self spawner-count))
    (battlecontroller-spawn-creature-at-spawner gp-0 1)
@@ -430,6 +508,8 @@ battlecontroller-default-event-handler
   (none)
   )
 
+;; definition for function battlecontroller-battle-begin
+;; INFO: Return type mismatch int vs none.
 (defbehavior battlecontroller-battle-begin battlecontroller ()
   (set-setting! *setting-control* self 'music 'danger 0.0 0)
   (let ((gp-0 (entity-actor-count (-> self entity) 'kill-actor)))
@@ -470,6 +550,8 @@ battlecontroller-default-event-handler
   (none)
   )
 
+;; definition for function battlecontroller-off
+;; INFO: Return type mismatch int vs none.
 (defbehavior battlecontroller-off battlecontroller ()
   (clear-pending-settings-from-process *setting-control* self 'music)
   (let ((gp-0 (entity-actor-count (-> self entity) 'kill-actor)))
@@ -485,6 +567,7 @@ battlecontroller-default-event-handler
   (none)
   )
 
+;; definition for function battlecontroller-battle-end
 (defbehavior battlecontroller-battle-end battlecontroller ()
   (case (-> (level-get-target-inside *level*) name) 
    (('citadel)
@@ -501,6 +584,7 @@ battlecontroller-default-event-handler
   (none)
   )
 
+;; failed to figure out what this is:
 (defstate battlecontroller-idle (battlecontroller)
   :virtual #t
   :event
@@ -558,6 +642,7 @@ battlecontroller-default-event-handler
   (the-as (function none :behavior battlecontroller) #f)
   )
 
+;; failed to figure out what this is:
 (defstate battlecontroller-play-intro-camera (battlecontroller)
   :virtual #t
   :event
@@ -579,6 +664,8 @@ battlecontroller-default-event-handler
    )
   )
 
+;; definition for function battlecontroller-disable-ocean
+;; INFO: Return type mismatch int vs none.
 (defbehavior battlecontroller-disable-ocean battlecontroller ()
   (set! *ocean-off* (-> self disable-ocean))
   (set! *ocean-mid-off* (-> self disable-mid-ocean))
@@ -587,6 +674,7 @@ battlecontroller-default-event-handler
   (none)
   )
 
+;; failed to figure out what this is:
 (defstate battlecontroller-active (battlecontroller)
   :virtual #t
   :event
@@ -664,14 +752,18 @@ battlecontroller-default-event-handler
   (the-as (function none :behavior battlecontroller) #f)
   )
 
+;; definition for function battlecontroller-special-contents?
 (defbehavior battlecontroller-special-contents? battlecontroller ()
   (= (-> self final-pickup-type) (pickup-type fuel-cell))
   )
 
+;; definition for function battlecontroller-special-contents-collected?
 (defbehavior battlecontroller-special-contents-collected? battlecontroller ()
   (= (-> self entity extra perm user-int8 0) 2)
   )
 
+;; definition for function battlecontroller-set-special-contents-collected
+;; INFO: Return type mismatch int vs none.
 (defbehavior battlecontroller-set-special-contents-collected battlecontroller ()
   (let ((v1-2 (-> self entity extra perm)))
    (logior! (-> v1-2 status) (entity-perm-status user-set-from-cstage))
@@ -681,10 +773,13 @@ battlecontroller-default-event-handler
   (none)
   )
 
+;; definition for function battlecontroller-task-completed?
 (defbehavior battlecontroller-task-completed? battlecontroller ()
   (>= (-> self entity extra perm user-int8 0) 1)
   )
 
+;; definition for function battlecontroller-set-task-completed
+;; INFO: Return type mismatch int vs none.
 (defbehavior battlecontroller-set-task-completed battlecontroller ()
   (let ((v1-2 (-> self entity extra perm)))
    (logior! (-> v1-2 status) (entity-perm-status user-set-from-cstage))
@@ -694,6 +789,7 @@ battlecontroller-default-event-handler
   (none)
   )
 
+;; failed to figure out what this is:
 (defstate battlecontroller-die (battlecontroller)
   :virtual #t
   :event
@@ -780,6 +876,8 @@ battlecontroller-default-event-handler
   (the-as (function none :behavior battlecontroller) #f)
   )
 
+;; definition for method 7 of type battlecontroller
+;; INFO: Return type mismatch process-drawable vs battlecontroller.
 (defmethod relocate battlecontroller ((obj battlecontroller) (arg0 int))
   (dotimes (v1-0 (-> obj spawner-count))
    (let ((a0-3 (-> obj spawner-array v1-0)))
@@ -803,6 +901,8 @@ battlecontroller-default-event-handler
    )
   )
 
+;; definition for method 10 of type battlecontroller
+;; INFO: Return type mismatch int vs none.
 (defmethod deactivate battlecontroller ((obj battlecontroller))
   (with-pp
    (let ((gp-0 pp))
@@ -823,6 +923,9 @@ battlecontroller-default-event-handler
    )
   )
 
+;; definition for method 27 of type battlecontroller
+;; INFO: Return type mismatch int vs none.
+;; Used lq/sq
 (defmethod TODO-RENAME-27 battlecontroller ((obj battlecontroller))
   (local-vars (sv-16 res-tag))
   (set!
@@ -1015,6 +1118,8 @@ battlecontroller-default-event-handler
   (none)
   )
 
+;; definition for method 28 of type battlecontroller
+;; INFO: Return type mismatch int vs none.
 (defmethod cleanup-if-finished! battlecontroller ((obj battlecontroller))
   (if (battlecontroller-task-completed?)
    (go (method-of-object obj battlecontroller-die))
@@ -1024,6 +1129,7 @@ battlecontroller-default-event-handler
   (none)
   )
 
+;; definition for method 11 of type battlecontroller
 (defmethod
   copy-defaults!
   battlecontroller
@@ -1035,7 +1141,3 @@ battlecontroller-default-event-handler
   (cleanup-if-finished! obj)
   (none)
   )
-
-
-
-
