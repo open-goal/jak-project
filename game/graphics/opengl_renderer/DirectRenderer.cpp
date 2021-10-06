@@ -10,6 +10,7 @@ DirectRenderer::DirectRenderer(const std::string& name, BucketId my_id, int batc
   glGenBuffers(1, &m_ogl.vertex_buffer);
   glGenBuffers(1, &m_ogl.color_buffer);
   glGenBuffers(1, &m_ogl.st_buffer);
+  glGenVertexArrays(1, &m_ogl.vao);
 
   glBindBuffer(GL_ARRAY_BUFFER, m_ogl.vertex_buffer);
   m_ogl.vertex_buffer_bytes = batch_size * 3 * 3 * sizeof(u32);
@@ -29,6 +30,7 @@ DirectRenderer::~DirectRenderer() {
   glDeleteBuffers(1, &m_ogl.color_buffer);
   glDeleteBuffers(1, &m_ogl.vertex_buffer);
   glDeleteBuffers(1, &m_ogl.st_buffer);
+  glDeleteVertexArrays(1, &m_ogl.vao);
 }
 
 /*!
@@ -133,9 +135,7 @@ void DirectRenderer::flush_pending(SharedRenderState* render_state) {
     glDepthFunc(GL_ALWAYS);
   }
 
-  GLuint vao;
-  glGenVertexArrays(1, &vao);
-  glBindVertexArray(vao);
+  glBindVertexArray(m_ogl.vao);
 
   // render!
   // update buffers:
@@ -225,8 +225,6 @@ void DirectRenderer::flush_pending(SharedRenderState* render_state) {
   m_triangles += draw_count * (m_prim_buffer.vert_count / 3);
   m_draw_calls += draw_count;
   m_prim_buffer.vert_count = 0;
-
-  glDeleteVertexArrays(1, &vao);
 }
 
 void DirectRenderer::update_gl_prim(SharedRenderState* render_state) {

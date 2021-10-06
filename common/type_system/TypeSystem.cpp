@@ -981,7 +981,7 @@ void TypeSystem::add_builtin_types() {
       ->set_runtime_type("float");
   add_builtin_value_type("float", "degrees", 4, false, false, RegClass::FLOAT)
       ->set_runtime_type("float");
-  add_builtin_value_type("uint64", "seconds", 8, false, false)->set_runtime_type("uint64");
+  add_builtin_value_type("int64", "seconds", 8, false, true)->set_runtime_type("int64");
 
   auto int_type = add_builtin_value_type("integer", "int", 8, false, true);
   int_type->disallow_in_runtime();
@@ -1383,7 +1383,7 @@ bool TypeSystem::typecheck_base_types(const std::string& input_expected,
     if (actual == "seconds") {
       return true;
     }
-    expected = "uint";
+    expected = "int";
   }
 
   if (expected == "degrees") {
