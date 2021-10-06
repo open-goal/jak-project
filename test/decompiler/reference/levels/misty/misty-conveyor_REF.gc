@@ -1,28 +1,7 @@
 ;;-*-Lisp-*-
 (in-package goal)
 
-;; name: misty-conveyor.gc
-;; name in dgo: misty-conveyor
-;; dgos: L1, MIS
-
-(define-extern *keg-conveyor-sg* skeleton-group)
-(define-extern *keg-conveyor-paddle-sg* skeleton-group)
-(define-extern *keg-sg* skeleton-group)
-
-(declare-type keg-conveyor process-drawable)
-(declare-type keg-conveyor-paddle process-drawable)
-(declare-type keg process-drawable)
-
-(define-extern keg-conveyor-idle (state keg-conveyor)) ;; unknown type
-(define-extern keg-conveyor-paddle-idle (state keg-conveyor-paddle)) ;; unknown type
-(define-extern keg-on-paddle (state keg)) ;; unknown type
-(define-extern keg-die (state keg)) ;; unknown type
-(define-extern keg-in-chute (state keg)) ;; unknown type
-(define-extern keg-on-path (state keg)) ;; unknown type
-(define-extern keg-paddle-to-path (state keg)) ;; unknown type
-
-;; DECOMP BEGINS
-
+;; failed to figure out what this is:
 (set!
   (-> *part-group-id-table* 197)
   (new 'static 'sparticle-launch-group
@@ -39,6 +18,7 @@
    )
   )
 
+;; failed to figure out what this is:
 (set!
   (-> *part-id-table* 2014)
   (new 'static 'sparticle-launcher
@@ -68,6 +48,8 @@
    )
   )
 
+;; definition for function keg-bounce-set-particle-rotation-callback
+;; INFO: Return type mismatch int vs none.
 (defun keg-bounce-set-particle-rotation-callback ((arg0 part-tracker))
   (let ((v1-0 (the-as object (-> arg0 userdata))))
    (set!
@@ -81,6 +63,7 @@
   (none)
   )
 
+;; definition of type keg-conveyor
 (deftype keg-conveyor (process-drawable)
   ((pivot joint-mod-spinner         :offset-assert 176)
    (quat  quaternion        :inline :offset-assert 192)
@@ -91,7 +74,17 @@
   :flag-assert         #x14006000d0
   )
 
+;; definition for method 3 of type keg-conveyor
+(defmethod inspect keg-conveyor ((obj keg-conveyor))
+  (let ((t9-0 (method-of-type process-drawable inspect)))
+   (t9-0 obj)
+   )
+  (format #t "~T~Tpivot: ~A~%" (-> obj pivot))
+  (format #t "~T~Tquat: #<quaternion @ #x~X>~%" (-> obj quat))
+  obj
+  )
 
+;; definition of type keg-conveyor-paddle
 (deftype keg-conveyor-paddle (process-drawable)
   ((root-override    collide-shape-moving             :offset        112)
    (object-on-paddle (pointer bouncing-float)         :offset-assert 176)
@@ -103,7 +96,17 @@
   :flag-assert         #x14005000bc
   )
 
+;; definition for method 3 of type keg-conveyor-paddle
+(defmethod inspect keg-conveyor-paddle ((obj keg-conveyor-paddle))
+  (let ((t9-0 (method-of-type process-drawable inspect)))
+   (t9-0 obj)
+   )
+  (format #t "~T~Tobject-on-paddle: #x~X~%" (-> obj object-on-paddle))
+  (format #t "~T~Tsync: #<sync-info @ #x~X>~%" (-> obj sync))
+  obj
+  )
 
+;; definition of type keg
 (deftype keg (process-drawable)
   ((root-override       collide-shape-moving         :offset        112)
    (sync-offset         float                        :offset-assert 176)
@@ -119,7 +122,25 @@
   :flag-assert         #x1400a00104
   )
 
+;; definition for method 3 of type keg
+(defmethod inspect keg ((obj keg))
+  (let ((t9-0 (method-of-type process-drawable inspect)))
+   (t9-0 obj)
+   )
+  (format #t "~T~Tsync-offset: ~f~%" (-> obj sync-offset))
+  (format #t "~T~Tkeg-behavior: ~D~%" (-> obj keg-behavior))
+  (format #t "~T~Tpath-position: #<vector @ #x~X>~%" (-> obj path-position))
+  (format
+   #t
+   "~T~Tshadow-enable-plane: #<vector @ #x~X>~%"
+   (-> obj shadow-enable-plane)
+   )
+  (format #t "~T~Tsmush: #<smush-control @ #x~X>~%" (-> obj smush))
+  (format #t "~T~Tsound-id: ~D~%" (-> obj sound-id))
+  obj
+  )
 
+;; failed to figure out what this is:
 (let
   ((v1-6
     (new 'static 'skeleton-group
@@ -137,6 +158,7 @@
   (set! *keg-conveyor-sg* v1-6)
   )
 
+;; failed to figure out what this is:
 (let
   ((v1-7
     (new 'static 'skeleton-group
@@ -154,6 +176,7 @@
   (set! *keg-conveyor-paddle-sg* v1-7)
   )
 
+;; failed to figure out what this is:
 (let
   ((v1-8
     (new 'static 'skeleton-group
@@ -176,6 +199,8 @@
   (set! *keg-sg* v1-8)
   )
 
+;; definition for function keg-update-smush
+;; INFO: Return type mismatch int vs none.
 (defun keg-update-smush ((arg0 keg) (arg1 float))
   (set! (-> arg0 root-override scale x) (+ 1.0 (* -1.0 arg1)))
   (set! (-> arg0 root-override scale y) (+ 1.0 (* 2.0 arg1)))
@@ -184,6 +209,8 @@
   (none)
   )
 
+;; definition for function keg-event-handler
+;; INFO: Return type mismatch none vs object.
 (defbehavior
   keg-event-handler keg
   ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
@@ -244,6 +271,7 @@
    )
   )
 
+;; definition for function keg-post
 (defbehavior keg-post keg ()
   (cond
    ((= (-> self keg-behavior) 1)
@@ -269,6 +297,7 @@
   (transform-post)
   )
 
+;; failed to figure out what this is:
 (defstate keg-on-paddle (keg)
   :event
   (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
@@ -308,6 +337,7 @@
   (the-as (function none :behavior keg) keg-post)
   )
 
+;; failed to figure out what this is:
 (defstate keg-paddle-to-path (keg)
   :event
   keg-event-handler
@@ -391,6 +421,7 @@
   (the-as (function none :behavior keg) keg-post)
   )
 
+;; failed to figure out what this is:
 (defstate keg-on-path (keg)
   :event
   keg-event-handler
@@ -594,6 +625,7 @@
   (the-as (function none :behavior keg) keg-post)
   )
 
+;; failed to figure out what this is:
 (defstate keg-in-chute (keg)
   :event
   keg-event-handler
@@ -659,6 +691,7 @@
   (the-as (function none :behavior keg) keg-post)
   )
 
+;; failed to figure out what this is:
 (defstate keg-die (keg)
   :event
   (the-as
@@ -675,6 +708,8 @@
   (the-as (function none :behavior keg) transform-post)
   )
 
+;; definition for function keg-init-by-other
+;; Used lq/sq
 (defbehavior keg-init-by-other keg ((arg0 keg) (arg1 int))
   (stack-size-set! (-> self main-thread) 512)
   (let
@@ -751,6 +786,7 @@
   (none)
   )
 
+;; definition for function keg-conveyor-spawn-keg
 (defun keg-conveyor-spawn-keg ((arg0 keg-conveyor))
   (let ((s5-0 (get-process *default-dead-pool* keg #x4000)))
    (when s5-0
@@ -763,6 +799,7 @@
    )
   )
 
+;; definition for function keg-conveyor-spawn-bouncing-keg
 (defun keg-conveyor-spawn-bouncing-keg ((arg0 keg-conveyor))
   (let ((s5-0 (get-process *default-dead-pool* keg #x4000)))
    (when s5-0
@@ -775,6 +812,7 @@
    )
   )
 
+;; definition for symbol *keg-conveyor-keg-spawn-table*, type (array int8)
 (define
   *keg-conveyor-keg-spawn-table*
   (the-as (array int8)
@@ -792,6 +830,7 @@
    )
   )
 
+;; failed to figure out what this is:
 (defstate keg-conveyor-idle (keg-conveyor)
   :code
   (behavior ()
@@ -809,6 +848,7 @@
   (the-as (function none :behavior keg-conveyor) ja-post)
   )
 
+;; failed to figure out what this is:
 (defstate keg-conveyor-paddle-idle (keg-conveyor-paddle)
   :code
   (behavior ()
@@ -922,6 +962,8 @@
   (the-as (function none :behavior keg-conveyor-paddle) transform-post)
   )
 
+;; definition for function keg-conveyor-paddle-init-by-other
+;; Used lq/sq
 (defbehavior
   keg-conveyor-paddle-init-by-other keg-conveyor-paddle
   ((arg0 keg-conveyor-paddle))
@@ -975,6 +1017,8 @@
   (none)
   )
 
+;; definition for method 7 of type keg-conveyor
+;; INFO: Return type mismatch process-drawable vs keg-conveyor.
 (defmethod relocate keg-conveyor ((obj keg-conveyor) (arg0 int))
   (if (nonzero? (-> obj pivot))
    (&+! (-> obj pivot) arg0)
@@ -991,7 +1035,9 @@
    )
   )
 
+;; definition for method 11 of type keg-conveyor
 ;; WARN: Expression building failed: Function (method 11 keg-conveyor) has a return type of none, but the expression builder found a return statement.
+;; Used lq/sq
 (defmethod copy-defaults! keg-conveyor ((obj keg-conveyor) (arg0 res-lump))
   (set! (-> obj mask) (logior (process-mask enemy death) (-> obj mask)))
   (set! (-> obj root) (new 'process 'trsqv))
@@ -1045,7 +1091,3 @@
   (go keg-conveyor-idle)
   (none)
   )
-
-
-
-
