@@ -534,7 +534,7 @@
                     (if *display-cam-los-debug*
                      (format *stdcon* "ride edge~%")
                      )
-                    (let ((s4-2 (new 'stack-no-clear 'bone))
+                    (let ((s4-2 (new 'stack-no-clear 'collide-cache-tri))
                           (gp-5 (new 'stack-no-clear 'vector))
                           (s5-2 (new 'stack-no-clear 'vector))
                           )
@@ -1014,16 +1014,16 @@
 ;; definition for function master-is-hopeful-better?
 (defbehavior
   master-is-hopeful-better? camera-master
-  ((arg0 camera-master) (arg1 camera-master))
+  ((arg0 camera-slave) (arg1 camera-slave))
   (if (not *camera-combiner*)
    #f
    (<
     (vector-dot
-     (the-as vector (-> arg0 string-max))
+     (-> arg0 tracking inv-mat vector 2)
      (-> *camera-combiner* inv-camera-rot vector 2)
      )
     (vector-dot
-     (the-as vector (-> arg1 string-max))
+     (-> arg1 tracking inv-mat vector 2)
      (-> *camera-combiner* inv-camera-rot vector 2)
      )
     )
@@ -1043,7 +1043,7 @@
    (sv-16 res-tag)
    (sv-112 process)
    (sv-128 string)
-   (sv-144 uint)
+   (sv-144 string)
    )
   (set! (-> self cam-entity) arg0)
   10
@@ -1086,16 +1086,11 @@
     )
    )
   (set! sv-16 (new 'static 'res-tag))
-  (let ((s4-2 (res-lump-data arg0 'alternates pointer :tag-ptr (& sv-16))))
+  (let
+   ((s4-2 (res-lump-data arg0 'alternates (pointer string) :tag-ptr (& sv-16))))
    (when s4-2
     (dotimes (s3-2 (the-as int (-> sv-16 elt-count)))
-     (let
-      ((s2-0
-        (entity-by-name
-         (the-as string (-> (the-as (pointer uint32) (&+ s4-2 (* s3-2 4)))))
-         )
-        )
-       )
+     (let ((s2-0 (entity-by-name (-> s4-2 s3-2))))
       (set! v0-21 (the-as none (cond
                                 (s2-0
                                  (let ((s0-0 (cam-state-from-entity s2-0)))
@@ -1165,13 +1160,13 @@
                                                                    (cond
                                                                     ((master-is-hopeful-better?
                                                                       (the-as
-                                                                       camera-master
+                                                                       camera-slave
                                                                        (ppointer->process
                                                                         gp-0
                                                                         )
                                                                        )
                                                                       (the-as
-                                                                       camera-master
+                                                                       camera-slave
                                                                        (ppointer->process
                                                                         s1-0
                                                                         )
@@ -1243,15 +1238,7 @@
                                         "ERROR <GMJ>: alternate '~S' not found for '~S'~%"
                                         )
                                        )
-                                  (set!
-                                   sv-144
-                                   (->
-                                    (the-as
-                                     (pointer uint32)
-                                     (&+ s4-2 (* s3-2 4))
-                                     )
-                                    )
-                                   )
+                                  (set! sv-144 (-> s4-2 s3-2))
                                   (let
                                    ((a3-8
                                      (res-lump-struct arg0 'name structure)
@@ -1403,14 +1390,7 @@
   :enter
   (behavior ()
    (if (and (nonzero? camera-master-debug) *debug-segment*)
-    (add-connection
-     *debug-engine*
-     self
-     (the-as (function object object object object object) camera-master-debug)
-     self
-     #f
-     #f
-     )
+    (add-connection *debug-engine* self camera-master-debug self #f #f)
     )
    (none)
    )
@@ -1582,12 +1562,7 @@
         (the-as pointer #x70004000)
         )
        )
-      (let ((t9-6 (the-as (function cpu-thread function) set-to-run))
-            (a0-10 (-> gp-1 main-thread))
-            )
-       list-keeper-init
-       (t9-6 a0-10)
-       )
+      (run-next-time-in-process gp-1 list-keeper-init)
       (-> gp-1 ppointer)
       )
      )
@@ -1607,14 +1582,7 @@
         (the-as pointer #x70004000)
         )
        )
-      (let
-       ((t9-10 (the-as (function cpu-thread function object object) set-to-run))
-        (a0-14 (-> gp-2 main-thread))
-        (a1-10 cam-slave-init)
-        (a2-6 cam-free-floating)
-        )
-       (t9-10 a0-14 a1-10 a2-6)
-       )
+      (run-next-time-in-process gp-2 cam-slave-init cam-free-floating #f)
       (-> gp-2 ppointer)
       )
      )
@@ -1628,10 +1596,7 @@
    (create-launch-control group-rain-screend-drop self)
    )
   (set! (-> self water-drip-time) (the-as uint -18000))
-  (let ((t9-13 (the-as (function object) enter-state)))
-   (set! (-> self next-state) cam-master-active)
-   (t9-13)
-   )
+  (go cam-master-active)
   0
   (none)
   )

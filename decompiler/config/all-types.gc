@@ -1887,7 +1887,7 @@
   )
 
 (deftype vector-array (inline-array-class)
-  (
+  ((data  vector  :inline :dynamic :offset 16)
    )
   :method-count-assert 9
   :size-assert         #x10
@@ -18338,7 +18338,7 @@
 (define-extern in-cam-entity-volume? (function vector entity float symbol symbol))
 (define-extern master-base-region (function entity float :behavior camera-master))
 (define-extern setup-slave-for-hopefull (function camera-slave none))
-(define-extern master-is-hopeful-better? (function camera-master camera-master symbol :behavior camera-master)) ;; TODO - ASM
+(define-extern master-is-hopeful-better? (function camera-slave camera-slave symbol :behavior camera-master)) ;; TODO - ASM
 (define-extern target-cam-pos (function vector))
 (define-extern cam-master-init (function none :behavior camera-master))
 
@@ -18366,10 +18366,10 @@
 ;; - Types
 
 (deftype cam-eye-bank (basic)
-  ((unknown-1 float :offset-assert 4)
-   (unknown-2 float :offset-assert 8)
-   (unknown-3 float :offset-assert 12)
-   (unknown-4 float :offset-assert 16)
+  ((rot-speed float :offset-assert 4)
+   (max-degrees float :offset-assert 8)
+   (max-fov float :offset-assert 12)
+   (min-fov float :offset-assert 16)
    )
   :method-count-assert 9
   :size-assert         #x14
@@ -18377,16 +18377,16 @@
   )
 
 (deftype cam-billy-bank (basic)
-  ((unknown-1 float :offset-assert 4)
-   (unknown-2 float :offset-assert 8))
+  ((rot-speed float :offset-assert 4)
+   (tilt-degrees float :offset-assert 8))
   :method-count-assert 9
   :size-assert         #xc
   :flag-assert         #x90000000c
   )
 
 (deftype cam-string-bank (basic)
-  ((unknown-1 float :offset-assert 4)
-   (unknown-2 float :offset-assert 8))
+  ((los-coll-rad meters :offset-assert 4)
+   (los-coll-rad2 meters :offset-assert 8))
   :method-count-assert 9
   :size-assert         #xc
   :flag-assert         #x90000000c
@@ -18404,78 +18404,49 @@
   )
 
 (deftype collide-los-dist-info (structure)
-  ((unknown-1 vector :inline :offset-assert 0) ;; dist-info-init
-   (unknown-2 vector :inline :offset-assert 16) ;; dist-info-init
-   (unknown-9 int32 :offset-assert 32)) ;; dist-info-init
+  ((min-par float  :offset-assert 0)
+   (max-par float  :offset-assert 4)
+   (min-lat float  :offset-assert 8)
+   (max-lat float  :offset-assert 12)
+   (min-vp float  :offset-assert 16)
+   (max-vp float  :offset-assert 20)
+   (min-vn float  :offset-assert 24)
+   (max-vn float  :offset-assert 28)
+   (count int32 :offset-assert 32))
   :method-count-assert 9
   :size-assert         #x24
   :flag-assert         #x900000024
   )
 
 (deftype collide-los-result (structure)
-  ((unknown-1 basic :offset-assert 0)
-   (unknown-2 basic :offset-assert 4)
-   (unknown-3 basic :offset-assert 8)
-   (unknown-4 basic :offset-assert 12)
-   (unknown-5 basic :offset-assert 16)
-   (unknown-6 basic :offset-assert 20)
-   (unknown-7 basic :offset-assert 24)
-   (unknown-8 basic :offset-assert 28)
-   (unknown-9 basic :offset-assert 32)
-   (unknown-10 basic :offset-assert 36)
-   (unknown-15 basic :offset-assert 40)
-   (unknown-25 basic :offset-assert 44)
-   (unknown-35 basic :offset-assert 48)
-   (unknown-45 basic :offset-assert 52)
-   (unknown-55 basic :offset-assert 56)
-   (unknown-65 basic :offset-assert 60)
-   (unknown-75 basic :offset-assert 64)
-   (unknown-85 basic :offset-assert 68)
-   (unknown-95 basic :offset-assert 72)
-   (unknown-51 basic :offset-assert 76)
-   (unknown-52 basic :offset-assert 80)
-   (unknown-53 basic :offset-assert 84)
-   (unknown-54 basic :offset-assert 88)
-   (unknown-552 basic :offset-assert 92)
-   (unknown-56 basic :offset-assert 96)
-   (unknown-57 basic :offset-assert 100)
-   (unknown-58 basic :offset-assert 104)
-   (unknown-59 basic :offset-assert 108)
-   (unknown-511 basic :offset-assert 112)
-   (unknown-522 basic :offset-assert 116)
-   (unknown-533 basic :offset-assert 120)
-   (unknown-544 basic :offset-assert 124)
-   (unknown-555 basic :offset-assert 128)
-   (unknown-566 basic :offset-assert 132)
-   (unknown-577 basic :offset-assert 136)
-   (unknown-588 basic :offset-assert 140)
-   (unknown-599 basic :offset-assert 144)
-   (unknown-50 basic :offset-assert 148))
+  ((lateral vector :inline :offset-assert 0)
+   (cw collide-los-dist-info :inline :offset-assert 16)
+   (ccw collide-los-dist-info :inline :offset-assert 64)
+   (straddle collide-los-dist-info :inline :offset-assert 112)
+   (lateral-valid symbol :offset-assert 148))
   :method-count-assert 9
   :size-assert         #x98
   :flag-assert         #x900000098
   )
 
 (deftype cam-stick-bank (basic)
-  ((unknown-1 float :offset-assert 4)
-   (unknown-2 float :offset-assert 8)
-   (unknown-3 float :offset-assert 12)
-   (unknown-4 float :offset-assert 16))
+  ((max-z meters :offset-assert 4)
+   (min-z meters :offset-assert 8)
+   (max-y meters :offset-assert 12)
+   (min-y meters :offset-assert 16))
   :method-count-assert 9
   :size-assert         #x14
   :flag-assert         #x900000014
-  ;; bad get label
   )
 
 (deftype cam-bike-bank (basic)
-  ((unknown-2 float :offset-assert 4)
-   (unknown-3 float :offset-assert 8)
-   (unknown-4 float :offset-assert 12)
-   (unknown-5 float :offset-assert 16))
+  ((max-z meters :offset-assert 4)
+   (min-z meters :offset-assert 8)
+   (max-y meters :offset-assert 12)
+   (min-y meters :offset-assert 16))
   :method-count-assert 9
   :size-assert         #x14
   :flag-assert         #x900000014
-  ;; bad get label
   )
 
 ;; - Functions
@@ -18886,9 +18857,9 @@
 (define-extern clmf-next-volume (function int symbol :behavior cam-layout))
 (define-extern clmf-input (function vector vector int vector))
 (define-extern camera-fov-frame (function matrix vector float float float vector none))
-(define-extern interp-test (function (function vector vector vector int vector none) interp-test-info basic))
+(define-extern interp-test (function (function vector vector vector float vector none) interp-test-info basic))
 (define-extern v-slrp! (function vector vector vector float vector))
-(define-extern interp-test-deg (function (function vector vector vector int vector none) interp-test-info basic))
+(define-extern interp-test-deg (function (function vector vector vector vector float none) interp-test-info basic))
 (define-extern camera-line-setup (function vector none))
 (define-extern camera-line-draw (function vector vector symbol))
 (define-extern cam-layout-intersect-dist (function vector vector vector float))

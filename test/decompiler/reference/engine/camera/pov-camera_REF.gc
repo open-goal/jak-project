@@ -195,14 +195,14 @@
     (the-as uint (-> *display* base-frame-counter))
     )
    (if (= (-> self anim-name type) string)
-    (dummy-17 *load-state* (-> self command-list))
+    (backup-load-state-and-set-cmds *load-state* (-> self command-list))
     )
    (none)
    )
   :exit
   (behavior ()
    (if (= (-> self anim-name type) string)
-    (dummy-18 *load-state*)
+    (restore-load-state-and-cleanup *load-state*)
     )
    (clear-pending-settings-from-process *setting-control* self 'music-volume)
    (clear-pending-settings-from-process *setting-control* self 'sfx-volume)
@@ -213,7 +213,7 @@
    (push-setting!
     *setting-control*
     self
-    (the-as (function object object object object object) 'music-volume)
+    'music-volume
     'rel
     (-> self music-volume-movie)
     0
@@ -221,7 +221,7 @@
    (push-setting!
     *setting-control*
     self
-    (the-as (function object object object object object) 'sfx-volume)
+    'sfx-volume
     'rel
     (-> self sfx-volume-movie)
     0
@@ -288,7 +288,7 @@
   :post
   (behavior ()
    (if (= (-> self anim-name type) string)
-    (dummy-16 *load-state* (ja-aframe-num 0))
+    (execute-commands-up-to *load-state* (ja-aframe-num 0))
     )
    (ja-post)
    (none)
@@ -449,7 +449,3 @@
   (go-virtual pov-camera-startup)
   (none)
   )
-
-
-
-
