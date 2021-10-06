@@ -22,12 +22,12 @@
 
 
 (deftype battlecontroller-creature-type (structure)
-  ((type2            nav-enemy  :offset-assert   0)
-   (percent          float      :offset-assert   4)
-   (pickup-percent   float      :offset-assert   8)
-   (pickup-type      int32      :offset-assert  12)
-   (max-pickup-count int8       :offset-assert  16)
-   (pickup-count     int8       :offset-assert  17)
+  ((type2            type   :offset-assert   0)
+   (percent          float  :offset-assert   4)
+   (pickup-percent   float  :offset-assert   8)
+   (pickup-type      int32  :offset-assert  12)
+   (max-pickup-count int8   :offset-assert  16)
+   (pickup-count     int8   :offset-assert  17)
    )
   :allow-misaligned  :method-count-assert 9
   :size-assert         #x12
@@ -48,7 +48,7 @@
    (spawn-period                uint64                                   :offset-assert 464)
    (path-spawn                  path-control                             :offset-assert 472)
    (creature-type-array         battlecontroller-creature-type 4 :inline :offset-assert 476)
-   (final-pickup-type           int32                                    :offset-assert 604)
+   (final-pickup-type           pickup-type                              :offset-assert 604)
    (prespawn                    symbol                                   :offset-assert 608)
    (noticed-player              symbol                                   :offset-assert 612)
    (camera-on                   symbol                                   :offset-assert 616)
@@ -102,16 +102,13 @@
                         )
                        (let ((a0-2 (-> self final-pickup-type)))
                         (the-as none (cond
-                                      ((= a0-2 6)
+                                      ((= a0-2 (pickup-type fuel-cell))
                                        #f
                                        )
                                       (else
                                        (set!
                                         (-> v1-4 fact pickup-type)
-                                        (the-as
-                                         pickup-type
-                                         (-> self final-pickup-type)
-                                         )
+                                        (-> self final-pickup-type)
                                         )
                                        (set! (-> v1-4 fact pickup-amount) 1.0)
                                        (let ((f0-1 0.0))
@@ -242,10 +239,7 @@ battlecontroller-default-event-handler
    (let* ((s5-0 (-> self creature-type-array v1-0))
           (s2-0 (-> s5-0 type2))
           (s1-0
-           (the-as
-            nav-enemy
-            (get-process *default-dead-pool* (the-as type s2-0) #x4000)
-            )
+           (the-as nav-enemy (get-process *default-dead-pool* s2-0 #x4000))
            )
           (gp-0 (when s1-0
                  (let ((t9-2 (method-of-type process activate)))
@@ -671,7 +665,7 @@ battlecontroller-default-event-handler
   )
 
 (defbehavior battlecontroller-special-contents? battlecontroller ()
-  (= (-> self final-pickup-type) 6)
+  (= (-> self final-pickup-type) (pickup-type fuel-cell))
   )
 
 (defbehavior battlecontroller-special-contents-collected? battlecontroller ()
@@ -761,7 +755,7 @@ battlecontroller-default-event-handler
     (label cfg-15)
     (birth-pickup-at-point
      (-> self final-pickup-spawn-point)
-     (-> self final-pickup-type)
+     (the-as int (-> self final-pickup-type))
      (the float (-> self entity extra perm task))
      #f
      self
@@ -922,7 +916,7 @@ battlecontroller-default-event-handler
     (set! (-> obj max-spawn-count) (-> v1-46 1))
     )
    )
-  (set! (-> obj creature-type-array 0 type2) (the-as nav-enemy babak))
+  (set! (-> obj creature-type-array 0 type2) babak)
   (set! (-> obj creature-type-array 0 percent) 1.0)
   (let ((s5-3 0))
    (set! sv-16 (new 'static 'res-tag))
@@ -935,7 +929,7 @@ battlecontroller-default-event-handler
      (dotimes (a0-22 (the-as int (-> sv-16 elt-count)))
       (let ((a1-15 (-> (the-as (pointer uint32) (&+ v1-49 (* a0-22 4))))))
        (when (nonzero? a1-15)
-        (set! (-> obj creature-type-array s5-3 type2) (the-as nav-enemy a1-15))
+        (set! (-> obj creature-type-array s5-3 type2) (the-as type a1-15))
         (+! s5-3 1)
         )
        )
@@ -978,7 +972,7 @@ battlecontroller-default-event-handler
    (res-lump-value
     (-> obj entity)
     'final-pickup
-    int
+    pickup-type
     :default
     (the-as uint128 7)
     )
