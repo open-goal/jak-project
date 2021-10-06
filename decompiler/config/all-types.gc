@@ -1067,6 +1067,8 @@
   (citadel-sage-yellow #x804)
   (citadel-sage-green #x805)
 
+  (misty-battle-finished #x813)
+
   (training-gimmie-task-name #x91b)
   (training-buzzer-task-name #x91c)
   (training-door-task-name #x91d)
@@ -22462,7 +22464,8 @@
 (define-extern ja-group-index? (function int symbol :behavior nav-enemy))
 (define-extern nav-enemy-jump-post (function none :behavior nav-enemy))
 (define-extern nav-enemy-jump-land-post (function none :behavior nav-enemy))
-(define-extern nav-enemy-init-by-other (function nav-enemy vector vector none :behavior nav-enemy))
+(declare-type battlecontroller process-drawable)
+(define-extern nav-enemy-init-by-other (function battlecontroller vector vector none :behavior nav-enemy))
 
 ;; - Unknowns
 
@@ -24636,12 +24639,12 @@
 ;; - Types
 
 (deftype battlecontroller-spawner (structure)
-  ((path          basic   :offset-assert 0)
-   (creature      uint64  :offset-assert 8)
-   (trigger-actor basic   :offset-assert 16)
-   (blocker-actor basic   :offset-assert 20)
+  ((path          path-control   :offset-assert 0)
+   (creature      handle  :offset-assert 8)
+   (trigger-actor entity-actor   :offset-assert 16)
+   (blocker-actor entity-actor   :offset-assert 20)
    (state         int8    :offset-assert 24)
-   (enabled       basic   :offset-assert 28)
+   (enabled       symbol   :offset-assert 28)
    )
   :method-count-assert 9
   :size-assert         #x20
@@ -24649,7 +24652,7 @@
   )
 
 (deftype battlecontroller-creature-type (structure)
-  ((type2            basic  :offset-assert 0)
+  ((type2            type  :offset-assert 0) ; a guess
    (percent          float  :offset-assert 4)
    (pickup-percent   float  :offset-assert 8)
    (pickup-type      int32  :offset-assert 12)
@@ -24673,16 +24676,16 @@
    (creature-type-count         int8            :offset-assert 204)
    (spawner-array               battlecontroller-spawner 8 :inline :offset-assert 208)
    (spawn-period                uint64          :offset-assert 464)
-   (path-spawn                  basic           :offset-assert 472)
+   (path-spawn                  path-control           :offset-assert 472)
    (creature-type-array         battlecontroller-creature-type 4 :inline :offset-assert 476)
-   (final-pickup-type           int32           :offset-assert 604)
-   (prespawn                    basic           :offset-assert 608)
-   (noticed-player              basic           :offset-assert 612)
-   (camera-on                   basic           :offset-assert 616)
-   (misty-ambush-collision-hack basic           :offset-assert 620)
-   (disable-ocean               basic           :offset-assert 624)
-   (disable-near-ocean          basic           :offset-assert 628)
-   (disable-mid-ocean           basic           :offset-assert 632)
+   (final-pickup-type           pickup-type      :offset-assert 604)
+   (prespawn                    symbol           :offset-assert 608)
+   (noticed-player              symbol           :offset-assert 612)
+   (camera-on                   symbol           :offset-assert 616)
+   (misty-ambush-collision-hack symbol           :offset-assert 620)
+   (disable-ocean               symbol           :offset-assert 624)
+   (disable-near-ocean          symbol           :offset-assert 628)
+   (disable-mid-ocean           symbol           :offset-assert 632)
    )
   :method-count-assert 29
   :size-assert         #x27c
@@ -24691,38 +24694,38 @@
   ;; inherited inspect of process-drawable
   (:methods
     (dummy-20 () none 20)
-    (dummy-21 () none 21)
-    (battlecontroller-play-intro-camera () none 22) ;; state
+    (battlecontroller-idle () _type_ :state 21)
+    (battlecontroller-play-intro-camera ()  _type_ :state 22)
     (dummy-23 () none 23)
-    (dummy-24 () none 24)
+    (battlecontroller-active ()  _type_ :state 24)
     (dummy-25 () none 25)
-    (battlecontroller-die () none 26) ;; state
-    (dummy-27 () none 27)
-    (dummy-28 () none 28)
+    (battlecontroller-die () _type_ :state 26)
+    (TODO-RENAME-27 (_type_) none 27) ;; has pairs
+    (cleanup-if-finished! (_type_) none 28)
     )
   )
 
 ;; - Functions
 
-(define-extern battlecontroller-task-completed? function)
-(define-extern battlecontroller-off function)
-(define-extern battlecontroller-camera-on function)
-(define-extern battlecontroller-spawn-creature-random-spawner function)
-(define-extern battlecontroller-disable-ocean function)
-(define-extern battlecontroller-update-spawners function)
-(define-extern battlecontroller-fill-all-spawners function)
-(define-extern battlecontroller-battle-begin function)
-(define-extern battlecontroller-spawn-creature-at-spawner function)
-(define-extern battlecontroller-spawn-creature function)
-(define-extern battlecontroller-spawners-full? function)
-(define-extern battlecontroller-default-event-handler function)
-(define-extern battlecontroller-draw-debug function)
-(define-extern battlecontroller-camera-off function)
-(define-extern battlecontroller-battle-end function)
-(define-extern battlecontroller-special-contents? function)
-(define-extern battlecontroller-special-contents-collected? function)
-(define-extern battlecontroller-set-special-contents-collected function)
-(define-extern battlecontroller-set-task-completed function)
+(define-extern battlecontroller-task-completed? (function symbol :behavior battlecontroller))
+(define-extern battlecontroller-off (function none :behavior battlecontroller))
+(define-extern battlecontroller-camera-on (function object :behavior battlecontroller))
+(define-extern battlecontroller-spawn-creature-random-spawner (function none :behavior battlecontroller))
+(define-extern battlecontroller-disable-ocean (function none :behavior battlecontroller))
+(define-extern battlecontroller-update-spawners (function none :behavior battlecontroller))
+(define-extern battlecontroller-fill-all-spawners (function none :behavior battlecontroller))
+(define-extern battlecontroller-battle-begin (function none :behavior battlecontroller))
+(define-extern battlecontroller-spawn-creature-at-spawner (function int int none :behavior battlecontroller))
+(define-extern battlecontroller-spawn-creature (function vector vector handle :behavior battlecontroller))
+(define-extern battlecontroller-spawners-full? (function symbol :behavior battlecontroller))
+(define-extern battlecontroller-default-event-handler (function process int symbol event-message-block object :behavior battlecontroller))
+(define-extern battlecontroller-draw-debug (function none :behavior battlecontroller))
+(define-extern battlecontroller-camera-off (function none :behavior battlecontroller))
+(define-extern battlecontroller-battle-end (function none :behavior battlecontroller))
+(define-extern battlecontroller-special-contents? (function symbol :behavior battlecontroller))
+(define-extern battlecontroller-special-contents-collected? (function symbol :behavior battlecontroller))
+(define-extern battlecontroller-set-special-contents-collected (function none :behavior battlecontroller))
+(define-extern battlecontroller-set-task-completed  (function none :behavior battlecontroller))
 
 
 ;; ----------------------
