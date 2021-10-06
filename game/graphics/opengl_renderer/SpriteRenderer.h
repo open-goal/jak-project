@@ -27,7 +27,7 @@ struct SpriteFrameData {
   Vector4f basis_x;
   Vector4f basis_y;
   GifTag sprite_3d_giftag;
-  AdGif screen_shader;
+  AdGifData screen_shader;
   GifTag clipped_giftag;
   Vector4f inv_hmge_scale;
   Vector4f stq_offset;
@@ -117,7 +117,7 @@ enum SpriteDataMem {
  */
 struct SpriteHud2DPacket {
   GifTag adgif_giftag;   // starts the adgif shader. 0
-  AdGif user_adgif;      // the adgif shader 16
+  AdGifData user_adgif;      // the adgif shader 16
   GifTag sprite_giftag;  // 96
   math::Vector<s32, 4> color;
   Vector4f st0;
@@ -167,7 +167,7 @@ class SpriteRenderer : public BucketRenderer {
   SpriteHudMatrixData m_hud_matrix_data;
 
   SpriteVecData2d m_vec_data_2d[SPRITES_PER_CHUNK];
-  AdGif m_adgif[SPRITES_PER_CHUNK];
+  AdGifData m_adgif[SPRITES_PER_CHUNK];
 
   struct DebugStats {
     int blocks_2d_grp0 = 0;

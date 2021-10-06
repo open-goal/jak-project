@@ -72,4 +72,5 @@ ShaderLibrary::ShaderLibrary() {
   at(ShaderId::SPRITE_CPU) = {"sprite_cpu"};
   at(ShaderId::SPRITE_CPU_AFAIL) = {"sprite_cpu_afail"};
   at(ShaderId::SKY) = {"sky"};
+  at(ShaderId::SKY_BLEND) = {"sky_blend"};
 }

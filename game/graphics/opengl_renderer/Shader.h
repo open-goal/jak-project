@@ -30,6 +30,7 @@ enum class ShaderId {
   SPRITE_CPU = 5,
   SPRITE_CPU_AFAIL = 6,
   SKY,
+  SKY_BLEND,
   MAX_SHADERS
 };
 

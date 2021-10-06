@@ -251,7 +251,7 @@ void SpriteRenderer::render_2d_group0(DmaFollower& dma, SharedRenderState* rende
                         SpriteDataMem::Vector, false, true);
 
     // third is the adgif data
-    u32 expected_adgif_size = sizeof(AdGif) * sprite_count;
+    u32 expected_adgif_size = sizeof(AdGifData) * sprite_count;
     auto adgif_data = dma.read_and_advance();
     assert(expected_adgif_size <= sizeof(m_adgif));
     unpack_to_no_stcycl(&m_adgif, adgif_data, VifCode::Kind::UNPACK_V4_32, expected_adgif_size,
@@ -305,7 +305,7 @@ void SpriteRenderer::render_2d_group1(DmaFollower& dma, SharedRenderState* rende
                         SpriteDataMem::Vector, false, true);
 
     // third is the adgif data
-    u32 expected_adgif_size = sizeof(AdGif) * sprite_count;
+    u32 expected_adgif_size = sizeof(AdGifData) * sprite_count;
     auto adgif_data = dma.read_and_advance();
     assert(expected_adgif_size <= sizeof(m_adgif));
     unpack_to_no_stcycl(&m_adgif, adgif_data, VifCode::Kind::UNPACK_V4_32, expected_adgif_size,
