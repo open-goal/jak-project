@@ -45,6 +45,8 @@ OpenGLRenderer::OpenGLRenderer(std::shared_ptr<TexturePool> texture_pool)
   glDebugMessageControl(GL_DEBUG_SOURCE_API, GL_DEBUG_TYPE_PERFORMANCE, GL_DONT_CARE, 1,
                         &l_gl_error_ignores[0], GL_FALSE);
 
+  lg::debug("OpenGL context information: {}", (const char*)glGetString(GL_VERSION));
+
   // initialize all renderers
   init_bucket_renderers();
 }
