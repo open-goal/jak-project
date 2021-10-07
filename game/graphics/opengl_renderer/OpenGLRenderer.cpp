@@ -22,7 +22,7 @@ void GLAPIENTRY opengl_error_callback(GLenum source,
                                       const GLchar* message,
                                       const void* /*userParam*/) {
   if (severity == GL_DEBUG_SEVERITY_NOTIFICATION) {
-    lg::debug("OpenGL notification 0x{:X} S{:X} T{:X}: {}", id, source, type, message);
+    // lg::debug("OpenGL notification 0x{:X} S{:X} T{:X}: {}", id, source, type, message);
   } else if (severity == GL_DEBUG_SEVERITY_LOW) {
     lg::info("OpenGL message 0x{:X} S{:X} T{:X}: {}", id, source, type, message);
   } else if (severity == GL_DEBUG_SEVERITY_MEDIUM) {
@@ -86,22 +86,43 @@ void OpenGLRenderer::render(DmaFollower dma,
                             int window_width_px,
                             int window_height_px,
                             bool draw_debug_window,
+                            bool draw_profiler_window,
                             bool dump_playback) {
+  m_profiler.clear();
   m_render_state.dump_playback = dump_playback;
   m_render_state.ee_main_memory = dump_playback ? nullptr : g_ee_main_mem;
   m_render_state.offset_of_s7 = offset_of_s7();
-  setup_frame(window_width_px, window_height_px);
-  m_render_state.texture_pool->remove_garbage_textures();
+
+  {
+    auto prof = m_profiler.root()->make_scoped_child("frame-setup");
+    setup_frame(window_width_px, window_height_px);
+  }
+
+  {
+    auto prof = m_profiler.root()->make_scoped_child("texture-gc");
+    m_render_state.texture_pool->remove_garbage_textures();
+  }
+
   // draw_test_triangle();
   // render the buckets!
-  dispatch_buckets(dma);
+  {
+    auto prof = m_profiler.root()->make_scoped_child("buckets");
+    dispatch_buckets(dma, prof);
+  }
+
 
   if (draw_debug_window) {
+    auto prof = m_profiler.root()->make_scoped_child("render-window");
     draw_renderer_selection_window();
     // add a profile bar for the imgui stuff
     if (!m_render_state.dump_playback) {
       vif_interrupt_callback();
     }
+  }
+
+  m_profiler.finish();
+  if (draw_profiler_window) {
+    m_profiler.draw();
   }
 }
 
@@ -148,7 +169,7 @@ void OpenGLRenderer::setup_frame(int window_width_px, int window_height_px) {
 /*!
  * This function finds buckets and dispatches them to the appropriate part.
  */
-void OpenGLRenderer::dispatch_buckets(DmaFollower dma) {
+void OpenGLRenderer::dispatch_buckets(DmaFollower dma, ScopedProfilerNode& prof) {
   // The first thing the DMA chain should be a call to a common default-registers chain.
   // this chain resets the state of the GS. After this is buckets
 
@@ -179,7 +200,8 @@ void OpenGLRenderer::dispatch_buckets(DmaFollower dma) {
   // loop over the buckets!
   for (int bucket_id = 0; bucket_id < (int)BucketId::MAX_BUCKETS; bucket_id++) {
     auto& renderer = m_bucket_renderers[bucket_id];
-    renderer->render(dma, &m_render_state);
+    auto bucket_prof = prof.make_scoped_child(renderer->name_and_id());
+    renderer->render(dma, &m_render_state, bucket_prof);
     // should have ended at the start of the next chain
     assert(dma.current_tag_offset() == m_render_state.next_bucket);
     m_render_state.next_bucket += 16;

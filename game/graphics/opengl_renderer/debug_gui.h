@@ -39,6 +39,7 @@ class OpenGlDebugGui {
   void finish_frame();
   void draw(const DmaStats& dma_stats);
   bool should_draw_render_debug() const { return m_draw_debug; }
+  bool should_draw_profiler() const { return m_draw_profiler; }
   bool& want_save() { return m_want_save; }
   bool& want_dump_replay() { return m_want_replay; }
   bool& want_dump_load() { return m_want_dump_load; }
@@ -49,6 +50,7 @@ class OpenGlDebugGui {
  private:
   FrameTimeRecorder m_frame_timer;
   bool m_draw_frame_time = false;
+  bool m_draw_profiler = false;
   bool m_draw_debug = false;
   bool m_want_save = false;
   bool m_want_replay = false;

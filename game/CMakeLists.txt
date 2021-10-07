@@ -90,6 +90,7 @@ set(RUNTIME_SOURCE
         graphics/opengl_renderer/debug_gui.cpp
         graphics/opengl_renderer/DirectRenderer.cpp
         graphics/opengl_renderer/OpenGLRenderer.cpp
+        graphics/opengl_renderer/Profiler.cpp
         graphics/opengl_renderer/Shader.cpp
         graphics/opengl_renderer/SkyRenderer.cpp
         graphics/opengl_renderer/SpriteRenderer.cpp

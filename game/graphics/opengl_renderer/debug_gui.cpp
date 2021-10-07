@@ -84,6 +84,7 @@ void OpenGlDebugGui::draw(const DmaStats& dma_stats) {
     if (ImGui::BeginMenu("Windows")) {
       ImGui::MenuItem("Frame Time Plot", nullptr, &m_draw_frame_time);
       ImGui::MenuItem("Render Debug", nullptr, &m_draw_debug);
+      ImGui::MenuItem("Profiler", nullptr, &m_draw_profiler);
       ImGui::EndMenu();
     }
 

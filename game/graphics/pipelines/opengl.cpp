@@ -236,7 +236,7 @@ void render_game_frame(int width, int height) {
     g_gfx_data->frame_idx_of_input_data = g_gfx_data->frame_idx;
     g_gfx_data->ogl_renderer.render(DmaFollower(chain.data.data(), chain.start_offset), width,
                                     height, g_gfx_data->debug_gui.should_draw_render_debug(),
-                                    false);
+                                    g_gfx_data->debug_gui.should_draw_profiler(), false);
   }
 
   // before vsync, mark the chain as rendered.
@@ -269,7 +269,8 @@ void render_dump_frame(int width, int height) {
 
   auto& chain = g_gfx_data->dma_copier.get_last_result();
   g_gfx_data->ogl_renderer.render(DmaFollower(chain.data.data(), chain.start_offset), width, height,
-                                  g_gfx_data->debug_gui.should_draw_render_debug(), true);
+                                  g_gfx_data->debug_gui.should_draw_render_debug(),
+                                  g_gfx_data->debug_gui.should_draw_profiler(), true);
 }
 
 static void gl_render_display(GfxDisplay* display) {

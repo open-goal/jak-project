@@ -147,15 +147,17 @@ SpriteRenderer::SpriteRenderer(const std::string& name, BucketId my_id)
  * Run the sprite distorter.  Currently nothing uses sprite-distorter so this just skips through
  * the table upload stuff that runs every frame, even if there are no sprites.
  */
-void SpriteRenderer::render_distorter(DmaFollower& dma, SharedRenderState* render_state) {
+void SpriteRenderer::render_distorter(DmaFollower& dma,
+                                      SharedRenderState* render_state,
+                                      ScopedProfilerNode& prof) {
   // Next thing should be the sprite-distorter setup
   m_direct_renderer.reset_state();
   while (dma.current_tag().qwc != 7) {
     auto direct_data = dma.read_and_advance();
     m_direct_renderer.render_vif(direct_data.vif0(), direct_data.vif1(), direct_data.data,
-                                 direct_data.size_bytes, render_state);
+                                 direct_data.size_bytes, render_state, prof);
   }
-  m_direct_renderer.flush_pending(render_state);
+  m_direct_renderer.flush_pending(render_state, prof);
   auto sprite_distorter_direct_setup = dma.read_and_advance();
   assert(sprite_distorter_direct_setup.vifcode0().kind == VifCode::Kind::NOP);
   assert(sprite_distorter_direct_setup.vifcode1().kind == VifCode::Kind::DIRECT);
@@ -233,7 +235,9 @@ void SpriteRenderer::render_3d(DmaFollower& dma) {
   // TODO
 }
 
-void SpriteRenderer::render_2d_group0(DmaFollower& dma, SharedRenderState* render_state) {
+void SpriteRenderer::render_2d_group0(DmaFollower& dma,
+                                      SharedRenderState* render_state,
+                                      ScopedProfilerNode& prof) {
   (void)dma;
   while (looks_like_2d_chunk_start(dma)) {
     m_debug_stats.blocks_2d_grp0++;
@@ -263,7 +267,7 @@ void SpriteRenderer::render_2d_group0(DmaFollower& dma, SharedRenderState* rende
     assert(run.vifcode1().kind == VifCode::Kind::MSCAL);
     assert(run.vifcode1().immediate == SpriteProgMem::Sprites2dGrp0);
     if (m_enabled) {
-      do_2d_group0_block_cpu(sprite_count, render_state);
+      do_2d_group0_block_cpu(sprite_count, render_state, prof);
     }
   }
 }
@@ -279,7 +283,8 @@ void SpriteRenderer::render_fake_shadow(DmaFollower& dma) {
 /*!
  * Handle DMA data for group1 2d's (HUD)
  */
-void SpriteRenderer::render_2d_group1(DmaFollower& dma, SharedRenderState* render_state) {
+void SpriteRenderer::render_2d_group1(DmaFollower& dma, SharedRenderState* render_state,
+                                      ScopedProfilerNode& prof) {
   // one time matrix data upload
   auto mat_upload = dma.read_and_advance();
   bool mat_ok = verify_unpack_with_stcycl(mat_upload, VifCode::Kind::UNPACK_V4_32, 4, 4, 80,
@@ -317,12 +322,13 @@ void SpriteRenderer::render_2d_group1(DmaFollower& dma, SharedRenderState* rende
     assert(run.vifcode1().kind == VifCode::Kind::MSCAL);
     assert(run.vifcode1().immediate == SpriteProgMem::Sprites2dHud);
     if (m_enabled) {
-      do_2d_group1_block_cpu(sprite_count, render_state);
+      do_2d_group1_block_cpu(sprite_count, render_state, prof);
     }
   }
 }
 
-void SpriteRenderer::render(DmaFollower& dma, SharedRenderState* render_state) {
+void SpriteRenderer::render(DmaFollower& dma, SharedRenderState* render_state,
+                            ScopedProfilerNode& prof) {
   m_debug_stats = {};
   // First thing should be a NEXT with two nops. this is a jump from buckets to sprite data
   auto data0 = dma.read_and_advance();
@@ -340,7 +346,11 @@ void SpriteRenderer::render(DmaFollower& dma, SharedRenderState* render_state) {
   }
 
   // First is the distorter
-  render_distorter(dma, render_state);
+  {
+    auto child = prof.make_scoped_child("distorter");
+    render_distorter(dma, render_state, child);
+  }
+
 
   // next, sprite frame setup.
   handle_sprite_frame_setup(dma);
@@ -350,14 +360,22 @@ void SpriteRenderer::render(DmaFollower& dma, SharedRenderState* render_state) {
 
   // 2d draw
   m_sprite_renderer.reset_state();
-  render_2d_group0(dma, render_state);
+  {
+    auto child = prof.make_scoped_child("2d-group0");
+    render_2d_group0(dma, render_state, child);
+  }
+
 
   // shadow draw
   render_fake_shadow(dma);
 
   // 2d draw (HUD)
-  render_2d_group1(dma, render_state);
-  m_sprite_renderer.flush_pending(render_state);
+  {
+    auto child = prof.make_scoped_child("2d-group1");
+    render_2d_group1(dma, render_state, child);
+    m_sprite_renderer.flush_pending(render_state, child);
+  }
+
 
   // TODO finish this up.
   // fmt::print("next bucket is 0x{}\n", render_state->next_bucket);
@@ -430,7 +448,8 @@ void imgui_vec(const Vector4f& vec, const char* name = nullptr, int indent = 0) 
  *  - do this math on the GPU
  *  - special case the primitive buffer stuff
  */
-void SpriteRenderer::do_2d_group1_block_cpu(u32 count, SharedRenderState* render_state) {
+void SpriteRenderer::do_2d_group1_block_cpu(u32 count, SharedRenderState* render_state,
+                                            ScopedProfilerNode& prof) {
   if (m_extra_debug) {
     ImGui::Begin("Sprite Extra Debug 2d_1");
   }
@@ -768,7 +787,7 @@ void SpriteRenderer::do_2d_group1_block_cpu(u32 count, SharedRenderState* render
     // SIXTEEN is xy3int
     packet.xy3 = xy3_vf22_int;
 
-    m_sprite_renderer.render_gif((const u8*)&packet, sizeof(packet), render_state);
+    m_sprite_renderer.render_gif((const u8*)&packet, sizeof(packet), render_state, prof);
     if (m_extra_debug) {
       imgui_vec(vf12_rotated, "vf12", 2);
       imgui_vec(vf13_rotated_trans, "vf13", 2);
@@ -803,7 +822,8 @@ void SpriteRenderer::do_2d_group1_block_cpu(u32 count, SharedRenderState* render
   }
 }
 
-void SpriteRenderer::do_2d_group0_block_cpu(u32 count, SharedRenderState* render_state) {
+void SpriteRenderer::do_2d_group0_block_cpu(u32 count, SharedRenderState* render_state,
+                                            ScopedProfilerNode& prof) {
   if (m_extra_debug) {
     ImGui::Begin("Sprite Extra Debug 2d_0");
   }
@@ -1130,7 +1150,7 @@ void SpriteRenderer::do_2d_group0_block_cpu(u32 count, SharedRenderState* render
     // SIXTEEN is xy3int
     packet.xy3 = xy3_vf22_int;
 
-    m_sprite_renderer.render_gif((const u8*)&packet, sizeof(packet), render_state);
+    m_sprite_renderer.render_gif((const u8*)&packet, sizeof(packet), render_state, prof);
     if (m_extra_debug) {
       imgui_vec(vf12_rotated, "vf12", 2);
       imgui_vec(vf13_rotated_trans, "vf13", 2);

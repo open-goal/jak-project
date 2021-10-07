@@ -414,7 +414,6 @@ void TexturePool::discard(std::shared_ptr<TextureRecord> tex) {
 
 TextureRecord* TexturePool::get_random_texture() {
   u32 idx = 8;
-  TextureRecord* result = nullptr;
   for (u32 i = 0; i < m_textures.size(); i++) {
     if (m_textures.at((i + idx) % m_textures.size()).normal_texture) {
       return m_textures.at((i + idx) % m_textures.size()).normal_texture.get();

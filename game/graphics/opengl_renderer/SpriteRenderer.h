@@ -146,19 +146,25 @@ static_assert(sizeof(SpriteFrameData) == 0x290, "SpriteFrameData size");
 class SpriteRenderer : public BucketRenderer {
  public:
   SpriteRenderer(const std::string& name, BucketId my_id);
-  void render(DmaFollower& dma, SharedRenderState* render_state) override;
+  void render(DmaFollower& dma, SharedRenderState* render_state,
+              ScopedProfilerNode& prof) override;
   void draw_debug_window() override;
   static constexpr int SPRITES_PER_CHUNK = 48;
 
  private:
-  void render_distorter(DmaFollower& dma, SharedRenderState* render_state);
+  void render_distorter(DmaFollower& dma, SharedRenderState* render_state,
+                        ScopedProfilerNode& prof);
   void handle_sprite_frame_setup(DmaFollower& dma);
   void render_3d(DmaFollower& dma);
-  void render_2d_group0(DmaFollower& dma, SharedRenderState* render_state);
+  void render_2d_group0(DmaFollower& dma, SharedRenderState* render_state,
+                        ScopedProfilerNode& prof);
   void render_fake_shadow(DmaFollower& dma);
-  void render_2d_group1(DmaFollower& dma, SharedRenderState* render_state);
-  void do_2d_group1_block_cpu(u32 count, SharedRenderState* render_state);
-  void do_2d_group0_block_cpu(u32 count, SharedRenderState* render_state);
+  void render_2d_group1(DmaFollower& dma, SharedRenderState* render_state,
+                        ScopedProfilerNode& prof);
+  void do_2d_group1_block_cpu(u32 count, SharedRenderState* render_state,
+                              ScopedProfilerNode& prof);
+  void do_2d_group0_block_cpu(u32 count, SharedRenderState* render_state,
+                              ScopedProfilerNode& prof);
 
   u8 m_sprite_distorter_setup[7 * 16];  // direct data
   u8 m_sprite_direct_setup[3 * 16];

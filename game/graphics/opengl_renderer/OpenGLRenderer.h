@@ -6,6 +6,7 @@
 #include "game/graphics/dma/dma_chain_read.h"
 #include "game/graphics/opengl_renderer/Shader.h"
 #include "game/graphics/opengl_renderer/BucketRenderer.h"
+#include "game/graphics/opengl_renderer/Profiler.h"
 
 class OpenGLRenderer {
  public:
@@ -14,13 +15,14 @@ class OpenGLRenderer {
               int window_width_px,
               int window_height_px,
               bool draw_debug_window,
+              bool draw_profiler_window,
               bool dump_playback);
   void serialize(Serializer& ser);
 
  private:
   void setup_frame(int window_width_px, int window_height_px);
   void draw_test_triangle();
-  void dispatch_buckets(DmaFollower dma);
+  void dispatch_buckets(DmaFollower dma, ScopedProfilerNode& prof);
   void init_bucket_renderers();
   void draw_renderer_selection_window();
 
@@ -30,6 +32,7 @@ class OpenGLRenderer {
   }
 
   SharedRenderState m_render_state;
+  Profiler m_profiler;
 
   std::array<std::unique_ptr<BucketRenderer>, (int)BucketId::MAX_BUCKETS> m_bucket_renderers;
 };
