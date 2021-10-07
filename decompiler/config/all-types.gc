@@ -11717,7 +11717,8 @@
 (declare-type tube-info basic)
 (declare-type racer-info basic)
 (deftype target (process-drawable)
-  ((control             control-info        :score 100 :offset 112)
+  ((self-override       target  :score 100 :offset 28)
+   (control             control-info        :score 100 :offset 112)
    (fact-info-target    fact-info-target    :score 100 :offset 144)
    (skel2               basic               :offset-assert 176)
    (racer               racer-info          :offset-assert 180)
@@ -11754,7 +11755,8 @@
   )
 
 (deftype sidekick (process-drawable)
-  ((control          control-info   :offset 112)
+  ((parent-override  (pointer target) :score 100 :offset 12)
+   (control          control-info   :offset 112)
    (anim-seed        uint64  :offset 192)
    (shadow-in-movie? symbol  :offset-assert 200)
    )
@@ -19398,7 +19400,7 @@
 (define-extern target-print-stats (function target symbol symbol ))
 (define-extern activate-hud (function process none))
 (define-extern reset-target-state (function symbol target :behavior target))
-(define-extern init-sidekick (function none))
+(define-extern init-sidekick (function none :behavior sidekick))
 (define-extern target-generic-event-handler (function process int symbol event-message-block object))
 (define-extern level-setup (function none :behavior target))
 (define-extern target-exit (function none))
@@ -19450,14 +19452,14 @@
 
 ;; - Functions
 
-(define-extern cspace<-cspace+quaternion! function)
-(define-extern starts function)
+(define-extern cspace<-cspace+quaternion! (function cspace cspace quaternion matrix))
+(define-extern starts (function object))
 
 ;; - Unknowns
 
 (define-extern *sidekick-sg* skeleton-group)
-;;(define-extern sidekick-clone object) ;; unknown type
-;;(define-extern *sidekick-remap* object) ;; unknown type
+(define-extern sidekick-clone (state sidekick)) ;; unknown type
+(define-extern *sidekick-remap* pair) ;; unknown type
 
 
 ;; ----------------------
