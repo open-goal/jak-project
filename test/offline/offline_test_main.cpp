@@ -80,6 +80,9 @@ const std::unordered_set<std::string> g_functions_expected_to_reject = {
     // ambient
     "ambient-inspect",  // asm, weird
 
+    // target - asm / cfg
+    "target-falling-anim-trans",
+
     // background
     "background-upload-vu0", "draw-node-cull"};
 
@@ -171,6 +174,9 @@ const std::unordered_set<std::string> g_functions_to_skip_compiling = {
 
     // function returning float with a weird cast.
     "debug-menu-item-var-make-float",
+
+    // target - asm / cfg
+    "target-falling-anim-trans",
 
     // decompiler BUG
     "level-hint-task-process"};

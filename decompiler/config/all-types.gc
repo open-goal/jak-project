@@ -945,6 +945,9 @@
 
   (firecanyon-collect-cells-text #x2b3)
 
+  (daxter-screaming-jump #x290)
+  (daxter-wahoo-jump #x291)
+
   (yakow-owed-powercell #x297)
 
   (red-eco-tutorial #x2a6)
@@ -1069,6 +1072,9 @@
   (citadel-sage-yellow #x804)
   (citadel-sage-green #x805)
 
+  (daxter-dont-miss-the-next-launcher #x80d)
+
+  (daxter-land-on-the-next-launcher #x812)
   (misty-battle-finished #x813)
 
   (training-gimmie-task-name #x91b)
@@ -11241,7 +11247,8 @@
    (unknown-dword32 int64 :offset 1680) ;; from target-util::can-hands?
    (unknown-dword33 int64 :offset 1688) ;; from target-util::can-feet?
    (unknown-dword34 int64 :offset 1696) ;; from target-util::can-feet?
-   (unknown-dword35 int64 :offset 1712) ;; from target::(trans target-jump)
+   (unknown-dword35 int64 :offset 1704) ;; from target::(exit target-slide-down)
+   (unknown-dword36 int64 :offset 1712) ;; from target::(trans target-jump)
    (unknown-float80 float :offset 1724) ;; from logic-target::bend-gravity
    (unknown-float81 float :offset 1728) ;; from logic-target::bend-gravity
    (unknown-float82 float :offset 1732) ;; from logic-target::bend-gravity
@@ -11272,6 +11279,7 @@
    (unknown-uint31 uint32 :offset 2192) ;; from target::(trans target-running-attack)
    (unknown-float122 float :offset 2196) ;; from target::(trans target-jump)
    (unknown-float123 float :offset 2200) ;; from target::mod-var-jump
+   (unknown-float124 float :offset 2204) ;; from target::init-var-jump
    (unknown-vector102  vector :inline :offset 2224) ;; from (anon-function 3 basebutton)
    (unknown-vector103  vector :inline :offset 2240) ;; from (anon-function 3 basebutton)
    (unknown-vector110  vector :inline :offset 2320) ;; from logic-target::flag-setup
@@ -11283,7 +11291,8 @@
    (unknown-symbol10 symbol :offset 2428) ;; from logic-target::post-flag-setup
    (unknown-dword60 int64 :offset 2432) ;; from target::(enter target-jump)
    (unknown-dword61 int64 :offset 2440) ;; from target::(enter target-jump)
-   (unknown-vector120 vector :offset 2448) ;; from target::(enter target-jump)
+   (unknown-dword62 int64 :offset 2448) ;; from target::(enter target-jump) - probably some sort of object64 that's used as a vector?
+   (unknown-dword63 int64 :offset 2456) ;; from target::(enter target-jump)
    (unknown-halfword00 int16 :offset 2488) ;; from logic-target::target-move-dist
    ;; these were determined from racer-collision-reaction.
    (history-length int16 :offset 2490)
@@ -19348,8 +19357,8 @@
 (define-extern can-play-stance-amibent? (function symbol :behavior target))
 (define-extern can-jump? (function symbol symbol :behavior target))
 (define-extern move-legs? (function symbol :behavior target))
-(define-extern fall-test (function symbol symbol object :behavior target)) ;; NOTE - first arg unused
-(define-extern slide-down-test (function symbol symbol object :behavior target))
+(define-extern fall-test (function none :behavior target)) ;; NOTE - first arg unused
+(define-extern slide-down-test (function none :behavior target))
 (define-extern smack-surface? (function symbol symbol :behavior target))
 (define-extern can-wheel? (function symbol :behavior target))
 (define-extern can-duck? (function symbol :behavior target))
@@ -19537,21 +19546,21 @@
 
 (define-extern target-bonk-event-handler (function process int symbol event-message-block object :behavior target))
 (define-extern target-standard-event-handler (function process int symbol event-message-block object :behavior target))
-(define-extern target-send-attack (function process uint uint int int none :behavior target)) ;; i suspect the uints are actually structures/basics
+(define-extern target-send-attack (function process uint uint int int symbol :behavior target)) ;; i suspect the uints are actually structures/basics
 (define-extern target-attacked (function symbol uint uint process (state target) none :behavior target)) ;; unconfirmed, target-tube::(event target-tube-start)
 (define-extern target-apply-tongue function)
 (define-extern get-intersect-point function)
 (define-extern target-powerup-effect function)
 (define-extern target-shoved (function meters meters symbol (state target) none :behavior target))
 (define-extern target-dangerous-event-handler (function process int symbol event-message-block object :behavior target))
-(define-extern target-jump-event-handler function)
-(define-extern target-walk-event-handler function)
+(define-extern target-jump-event-handler (function process int symbol event-message-block object :behavior target))
+(define-extern target-walk-event-handler (function process int symbol event-message-block object :behavior target))
 (define-extern target-state-hook-exit (function none :behavior target))
 (define-extern target-effect-exit (function none :behavior target))
 
 ;; - Unknowns
 
-(define-extern target-jump (state target)) ;; unknown type
+(define-extern target-jump (state float float symbol target)) ;; unknown type
 (define-extern target-hit (state target)) ;; unknown type
 (define-extern target-eco-powerup (state target)) ;; unknown type
 (define-extern target-load-wait (state target)) ;; unknown type
@@ -19593,15 +19602,15 @@
 
 (define-extern target-hit-ground (state symbol target)) ;; unknown type
 (define-extern target-stance (state target)) ;; unknown type
-(define-extern target-high-jump (state target)) ;; unknown type
+(define-extern target-high-jump (state float float symbol target)) ;; unknown type
 (define-extern target-attack-air (state symbol target)) ;; unknown type
 (define-extern target-wheel-flip (state float float target)) ;; unknown type
 (define-extern target-duck-stance (state target)) ;; unknown type
 (define-extern target-hit-ground-hard (state target)) ;; unknown type
-(define-extern target-flop-hit-ground (state int target)) ;; unknown type
+(define-extern target-flop-hit-ground (state symbol target)) ;; unknown type
 (define-extern target-yellow-jump-blast (state target)) ;; unknown type
 (define-extern target-swim-down (state target)) ;; unknown type
-(define-extern target-flop (state basic basic float target)) ;; unknown type
+(define-extern target-flop (state float float float target)) ;; unknown type
 (define-extern target-attack-uppercut-jump (state float float target)) ;; unknown type
 (define-extern target-attack (state target)) ;; unknown type
 (define-extern target-attack-uppercut (state float float target)) ;; unknown type
@@ -19612,7 +19621,7 @@
 (define-extern target-duck-high-jump-jump (state float float symbol target)) ;; unknown type
 (define-extern target-launch (state target)) ;; unknown type
 (define-extern target-duck-high-jump (state float float symbol target)) ;; unknown type
-(define-extern target-double-jump (state target)) ;; unknown type
+(define-extern target-double-jump (state float float target)) ;; unknown type
 (define-extern target-duck-walk (state target)) ;; unknown type
 (define-extern target-ice-walk  (state target)) ;; unknown type
 (define-extern target-wheel (state target)) ;; unknown type
@@ -19620,7 +19629,7 @@
 (define-extern target-stance-ambient (state target)) ;; unknown type
 (define-extern target-ice-stance (state target)) ;; unknown type
 (define-extern target-startup (state target)) ;; unknown type
-(define-extern target-jump-forward (state target)) ;; unknown type
+(define-extern target-jump-forward (state float float target)) ;; unknown type
 
 
 ;; ----------------------
