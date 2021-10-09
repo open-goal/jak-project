@@ -74,8 +74,7 @@ class BucketRenderer {
 class EmptyBucketRenderer : public BucketRenderer {
  public:
   EmptyBucketRenderer(const std::string& name, BucketId my_id);
-  void render(DmaFollower& dma, SharedRenderState* render_state,
-              ScopedProfilerNode& prof) override;
+  void render(DmaFollower& dma, SharedRenderState* render_state, ScopedProfilerNode& prof) override;
   bool empty() const override { return true; }
   void draw_debug_window() override {}
 };

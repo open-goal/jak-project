@@ -74,11 +74,9 @@ class Profiler {
   void draw_node(ProfilerNode& node, bool expand, int depth, float start_time);
 
   struct BarEntry {
-    // std::string name;
     float duration;
     float rgba[4];
   };
-
 
   int m_mode_selector = 0;
   ProfilerNode m_root;

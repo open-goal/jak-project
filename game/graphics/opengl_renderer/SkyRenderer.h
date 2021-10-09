@@ -6,18 +6,18 @@
 class SkyTextureHandler : public BucketRenderer {
  public:
   SkyTextureHandler(const std::string& name, BucketId my_id);
-  void render(DmaFollower& dma, SharedRenderState* render_state,
-              ScopedProfilerNode& prof) override;
+  void render(DmaFollower& dma, SharedRenderState* render_state, ScopedProfilerNode& prof) override;
   void draw_debug_window() override;
-  void serialize(Serializer& ser) override;
   ~SkyTextureHandler();
+
  private:
-  void handle_sky_copies(DmaFollower& dma, SharedRenderState* render_state,
+  void handle_sky_copies(DmaFollower& dma,
+                         SharedRenderState* render_state,
                          ScopedProfilerNode& prof);
   bool m_print_debug_dma = true;
   std::string m_debug_dma_str;
-  GLuint m_framebuffers[2]; // sky, clouds
-  GLuint m_textures[2]; // sky, clouds
+  GLuint m_framebuffers[2];  // sky, clouds
+  GLuint m_textures[2];      // sky, clouds
   int m_sizes[2] = {32, 64};
   GLuint m_gl_vertex_buffer;
 
@@ -30,13 +30,12 @@ class SkyTextureHandler : public BucketRenderer {
   Vertex m_vertex_data[6];
 };
 
-
 class SkyRenderer : public BucketRenderer {
  public:
   SkyRenderer(const std::string& name, BucketId my_id);
-  void render(DmaFollower& dma, SharedRenderState* render_state,
-              ScopedProfilerNode& prof) override;
+  void render(DmaFollower& dma, SharedRenderState* render_state, ScopedProfilerNode& prof) override;
   void draw_debug_window() override;
+
  private:
   bool m_print_debug_dma = true;
   DirectRenderer m_direct_renderer;

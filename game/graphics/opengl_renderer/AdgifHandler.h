@@ -28,17 +28,14 @@ class AdgifHelper {
         fmt::format("[1] {}\n  {}\n", register_address_name(m_data.tex1_addr), m_tex1.print());
     result += fmt::format("[2] {}\n", register_address_name(m_data.mip_addr));
     result += fmt::format("[3] {}\n", register_address_name(m_data.clamp_addr));
-    result += fmt::format("[4] {}\n  {}\n", register_address_name(m_data.alpha_addr), m_alpha.print());
+    result +=
+        fmt::format("[4] {}\n  {}\n", register_address_name(m_data.alpha_addr), m_alpha.print());
     return result;
   }
 
-  const GsAlpha& alpha() const {
-    return m_alpha;
-  }
+  const GsAlpha& alpha() const { return m_alpha; }
 
-  const GsTex0& tex0() const {
-    return m_tex0;
-  }
+  const GsTex0& tex0() const { return m_tex0; }
 
  private:
   AdGifData m_data;

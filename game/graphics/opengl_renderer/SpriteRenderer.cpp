@@ -283,7 +283,8 @@ void SpriteRenderer::render_fake_shadow(DmaFollower& dma) {
 /*!
  * Handle DMA data for group1 2d's (HUD)
  */
-void SpriteRenderer::render_2d_group1(DmaFollower& dma, SharedRenderState* render_state,
+void SpriteRenderer::render_2d_group1(DmaFollower& dma,
+                                      SharedRenderState* render_state,
                                       ScopedProfilerNode& prof) {
   // one time matrix data upload
   auto mat_upload = dma.read_and_advance();
@@ -327,7 +328,8 @@ void SpriteRenderer::render_2d_group1(DmaFollower& dma, SharedRenderState* rende
   }
 }
 
-void SpriteRenderer::render(DmaFollower& dma, SharedRenderState* render_state,
+void SpriteRenderer::render(DmaFollower& dma,
+                            SharedRenderState* render_state,
                             ScopedProfilerNode& prof) {
   m_debug_stats = {};
   // First thing should be a NEXT with two nops. this is a jump from buckets to sprite data
@@ -351,7 +353,6 @@ void SpriteRenderer::render(DmaFollower& dma, SharedRenderState* render_state,
     render_distorter(dma, render_state, child);
   }
 
-
   // next, sprite frame setup.
   handle_sprite_frame_setup(dma);
 
@@ -365,7 +366,6 @@ void SpriteRenderer::render(DmaFollower& dma, SharedRenderState* render_state,
     render_2d_group0(dma, render_state, child);
   }
 
-
   // shadow draw
   render_fake_shadow(dma);
 
@@ -375,7 +375,6 @@ void SpriteRenderer::render(DmaFollower& dma, SharedRenderState* render_state,
     render_2d_group1(dma, render_state, child);
     m_sprite_renderer.flush_pending(render_state, child);
   }
-
 
   // TODO finish this up.
   // fmt::print("next bucket is 0x{}\n", render_state->next_bucket);
@@ -448,7 +447,8 @@ void imgui_vec(const Vector4f& vec, const char* name = nullptr, int indent = 0) 
  *  - do this math on the GPU
  *  - special case the primitive buffer stuff
  */
-void SpriteRenderer::do_2d_group1_block_cpu(u32 count, SharedRenderState* render_state,
+void SpriteRenderer::do_2d_group1_block_cpu(u32 count,
+                                            SharedRenderState* render_state,
                                             ScopedProfilerNode& prof) {
   if (m_extra_debug) {
     ImGui::Begin("Sprite Extra Debug 2d_1");
@@ -822,7 +822,8 @@ void SpriteRenderer::do_2d_group1_block_cpu(u32 count, SharedRenderState* render
   }
 }
 
-void SpriteRenderer::do_2d_group0_block_cpu(u32 count, SharedRenderState* render_state,
+void SpriteRenderer::do_2d_group0_block_cpu(u32 count,
+                                            SharedRenderState* render_state,
                                             ScopedProfilerNode& prof) {
   if (m_extra_debug) {
     ImGui::Begin("Sprite Extra Debug 2d_0");

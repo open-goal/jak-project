@@ -8,15 +8,21 @@
 #include "game/graphics/opengl_renderer/BucketRenderer.h"
 #include "game/graphics/opengl_renderer/Profiler.h"
 
+struct RenderOptions {
+  int window_height_px = 0;
+  int window_width_px = 0;
+  bool draw_render_debug_window = false;
+  bool draw_profiler_window = false;
+  bool playing_from_dump = false;
+
+  bool save_screenshot = false;
+  std::string screenshot_path;
+};
+
 class OpenGLRenderer {
  public:
   OpenGLRenderer(std::shared_ptr<TexturePool> texture_pool);
-  void render(DmaFollower dma,
-              int window_width_px,
-              int window_height_px,
-              bool draw_debug_window,
-              bool draw_profiler_window,
-              bool dump_playback);
+  void render(DmaFollower dma, const RenderOptions& settings);
   void serialize(Serializer& ser);
 
  private:
@@ -25,6 +31,8 @@ class OpenGLRenderer {
   void dispatch_buckets(DmaFollower dma, ScopedProfilerNode& prof);
   void init_bucket_renderers();
   void draw_renderer_selection_window();
+
+  void finish_screenshot(const std::string& output_name, int px, int py);
 
   template <typename T, class... Args>
   void init_bucket_renderer(const std::string& name, BucketId id, Args&&... args) {

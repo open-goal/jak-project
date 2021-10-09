@@ -6,6 +6,7 @@
 #include "game/graphics/opengl_renderer/SpriteRenderer.h"
 #include "game/graphics/opengl_renderer/TextureUploadHandler.h"
 #include "third-party/imgui/imgui.h"
+#include "common/util/FileUtil.h"
 #include "game/graphics/opengl_renderer/SkyRenderer.h"
 
 // for the vif callback
@@ -82,22 +83,16 @@ void OpenGLRenderer::init_bucket_renderers() {
 /*!
  * Main render function. This is called from the gfx loop with the chain passed from the game.
  */
-void OpenGLRenderer::render(DmaFollower dma,
-                            int window_width_px,
-                            int window_height_px,
-                            bool draw_debug_window,
-                            bool draw_profiler_window,
-                            bool dump_playback) {
+void OpenGLRenderer::render(DmaFollower dma, const RenderOptions& settings) {
   m_profiler.clear();
-  m_render_state.dump_playback = dump_playback;
-  m_render_state.ee_main_memory = dump_playback ? nullptr : g_ee_main_mem;
+  m_render_state.dump_playback = settings.playing_from_dump;
+  m_render_state.ee_main_memory = settings.playing_from_dump ? nullptr : g_ee_main_mem;
   m_render_state.offset_of_s7 = offset_of_s7();
 
   {
     auto prof = m_profiler.root()->make_scoped_child("frame-setup");
-    setup_frame(window_width_px, window_height_px);
+    setup_frame(settings.window_width_px, settings.window_height_px);
   }
-
   {
     auto prof = m_profiler.root()->make_scoped_child("texture-gc");
     m_render_state.texture_pool->remove_garbage_textures();
@@ -110,8 +105,7 @@ void OpenGLRenderer::render(DmaFollower dma,
     dispatch_buckets(dma, prof);
   }
 
-
-  if (draw_debug_window) {
+  if (settings.draw_render_debug_window) {
     auto prof = m_profiler.root()->make_scoped_child("render-window");
     draw_renderer_selection_window();
     // add a profile bar for the imgui stuff
@@ -121,8 +115,13 @@ void OpenGLRenderer::render(DmaFollower dma,
   }
 
   m_profiler.finish();
-  if (draw_profiler_window) {
+  if (settings.draw_profiler_window) {
     m_profiler.draw();
+  }
+
+  if (settings.save_screenshot) {
+    finish_screenshot(settings.screenshot_path, settings.window_width_px,
+                      settings.window_height_px);
   }
 }
 
@@ -270,4 +269,22 @@ void OpenGLRenderer::draw_test_triangle() {
   glDeleteBuffers(1, &color_buffer);
   glDeleteBuffers(1, &vertex_buffer);
   glDeleteVertexArrays(1, &vao);
+}
+
+void OpenGLRenderer::finish_screenshot(const std::string& output_name, int width, int height) {
+  std::vector<u32> buffer(width * height);
+  glPixelStorei(GL_PACK_ALIGNMENT, 1);
+  glReadBuffer(GL_BACK);
+  glReadPixels(0, 0, width, height, GL_RGBA, GL_UNSIGNED_BYTE, buffer.data());
+  // flip upside down in place
+  for (int h = 0; h < height / 2; h++) {
+    for (int w = 0; w < width; w++) {
+      std::swap(buffer[h * width + w], buffer[(height - h) * width + w]);
+    }
+  }
+
+  for (auto& x : buffer) {
+    x |= 0xff000000;
+  }
+  file_util::write_rgba_png(output_name, buffer.data(), width, height);
 }

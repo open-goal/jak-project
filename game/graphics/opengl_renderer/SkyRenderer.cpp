@@ -24,10 +24,16 @@ SkyTextureHandler::SkyTextureHandler(const std::string& name, BucketId my_id)
   // generate textures for sky blending
   glGenFramebuffers(2, m_framebuffers);
   glGenTextures(2, m_textures);
+
+  GLint old_framebuffer;
+  glGetIntegerv(GL_FRAMEBUFFER_BINDING, &old_framebuffer);
+
   for (int i = 0; i < 2; i++) {
     glBindFramebuffer(GL_FRAMEBUFFER, m_framebuffers[i]);
     glBindTexture(GL_TEXTURE_2D, m_textures[i]);
-    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA32F, m_sizes[i], m_sizes[i], 0, GL_RGBA, GL_FLOAT, 0);
+    // glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA32F, m_sizes[i], m_sizes[i], 0, GL_RGBA, GL_FLOAT, 0);
+    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, m_sizes[i], m_sizes[i], 0, GL_RGBA,
+                 GL_UNSIGNED_INT_8_8_8_8_REV, 0);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
     glFramebufferTexture(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, m_textures[i], 0);
@@ -42,7 +48,7 @@ SkyTextureHandler::SkyTextureHandler(const std::string& name, BucketId my_id)
   glGenBuffers(1, &m_gl_vertex_buffer);
   glBindBuffer(GL_ARRAY_BUFFER, m_gl_vertex_buffer);
   glBufferData(GL_ARRAY_BUFFER, sizeof(Vertex) * 6, nullptr, GL_DYNAMIC_DRAW);
-  glBindBuffer(GL_ARRAY_BUFFER, 0);
+  glBindBuffer(GL_ARRAY_BUFFER, old_framebuffer);
 
   m_vertex_data[0].x = 0;
   m_vertex_data[0].y = 0;
@@ -69,11 +75,6 @@ SkyTextureHandler::~SkyTextureHandler() {
   glDeleteTextures(2, m_textures);
 }
 
-void SkyTextureHandler::serialize(Serializer& ser) {
-  if (ser.is_saving()) {
-  }
-}
-
 void SkyTextureHandler::handle_sky_copies(DmaFollower& dma,
                                           SharedRenderState* render_state,
                                           ScopedProfilerNode& prof) {
@@ -84,9 +85,15 @@ void SkyTextureHandler::handle_sky_copies(DmaFollower& dma,
   GLint old_viewport[4];
   glGetIntegerv(GL_VIEWPORT, old_viewport);
 
+  GLint old_framebuffer;
+  glGetIntegerv(GL_FRAMEBUFFER_BINDING, &old_framebuffer);
+
   while (dma.current_tag().qwc == 6) {
     // assuming that the vif and gif-tag is correct
     auto setup_data = dma.read_and_advance();
+    if (render_state->dump_playback) {
+      // continue;
+    }
     AdgifHelper adgif(setup_data.data + 16);
     assert(adgif.is_normal_adgif());
     assert(adgif.alpha().data == 0x8000000068);  // Cs + Cd
@@ -124,6 +131,7 @@ void SkyTextureHandler::handle_sky_copies(DmaFollower& dma,
 
     glBindFramebuffer(GL_FRAMEBUFFER, m_framebuffers[buffer_idx]);
     glViewport(0, 0, m_sizes[buffer_idx], m_sizes[buffer_idx]);
+    glFramebufferTexture(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, m_textures[buffer_idx], 0);
     render_state->shaders[ShaderId::SKY_BLEND].activate();
     if (is_first_draw) {
       float clear[4] = {0, 0, 0, 0};
@@ -148,7 +156,7 @@ void SkyTextureHandler::handle_sky_copies(DmaFollower& dma,
                           GL_FLOAT,  // floats
                           GL_TRUE,   // normalized, ignored,
                           0,         // tightly packed
-                          0          // offset in array (why is is this a pointer...)
+                          0
 
     );
     glActiveTexture(GL_TEXTURE0);
@@ -160,6 +168,7 @@ void SkyTextureHandler::handle_sky_copies(DmaFollower& dma,
     glUniform1i(glGetUniformLocation(render_state->shaders[ShaderId::SKY_BLEND].id(), "T0"), 0);
 
     glDrawArrays(GL_TRIANGLES, 0, 6);
+
     prof.add_draw_call(1);
     prof.add_tri(2);
   }
@@ -169,13 +178,16 @@ void SkyTextureHandler::handle_sky_copies(DmaFollower& dma,
     auto tex = std::make_shared<TextureRecord>();
     tex->gpu_texture = m_textures[i];
     tex->on_gpu = true;
+    tex->only_on_gpu = true;
     tex->do_gc = false;
+    tex->w = m_sizes[i];
+    tex->h = m_sizes[i];
     tex->name = fmt::format("PC-SKY-{}", i);
     render_state->texture_pool->set_texture(i == 0 ? 8064 : 8096, tex);
   }
 
   glViewport(old_viewport[0], old_viewport[1], old_viewport[2], old_viewport[3]);
-  glBindFramebuffer(GL_FRAMEBUFFER, 0);
+  glBindFramebuffer(GL_FRAMEBUFFER, old_framebuffer);
   glBindVertexArray(0);
   glDeleteVertexArrays(1, &vao);
 }
