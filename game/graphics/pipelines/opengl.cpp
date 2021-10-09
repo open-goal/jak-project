@@ -105,8 +105,8 @@ static int gl_init(GfxSettings& settings) {
     return 1;
   }
 
-  // request an OpenGL 3.3 Core context
-  glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 3);  // 3.3
+  // request an OpenGL 4.3 Core context
+  glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 4);  // 4.3
   glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 3);
   glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);  // core profile, not compat
   // debug check
@@ -175,7 +175,7 @@ static std::shared_ptr<GfxDisplay> gl_make_main_display(int width,
   // NOTE: imgui's setup calls functions that may fail intentionally, and attempts to disable error
   // reporting so these errors are invisible. But it does not work, and some weird X11 default
   // cursor error is set here that we clear.
-  glfwGetError(nullptr);
+  glfwGetError(NULL);
 
   // set up the renderer
   ImGui_ImplOpenGL3_Init("#version 130");

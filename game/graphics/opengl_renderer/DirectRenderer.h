@@ -166,6 +166,7 @@ class DirectRenderer : public BucketRenderer {
 
   struct {
     GLuint vertex_buffer, color_buffer, st_buffer;
+    GLuint vao;
     u32 vertex_buffer_bytes = 0;
     u32 color_buffer_bytes = 0;
     u32 st_buffer_bytes = 0;
