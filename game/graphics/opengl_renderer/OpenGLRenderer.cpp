@@ -21,7 +21,7 @@ void GLAPIENTRY opengl_error_callback(GLenum source,
                                       const GLchar* message,
                                       const void* /*userParam*/) {
   if (severity == GL_DEBUG_SEVERITY_NOTIFICATION) {
-    return;
+    lg::debug("OpenGL notification 0x{:X} S{:X} T{:X}: {}", id, source, type, message);
   } else if (severity == GL_DEBUG_SEVERITY_LOW) {
     lg::info("OpenGL message 0x{:X} S{:X} T{:X}: {}", id, source, type, message);
   } else if (severity == GL_DEBUG_SEVERITY_MEDIUM) {
@@ -44,6 +44,8 @@ OpenGLRenderer::OpenGLRenderer(std::shared_ptr<TexturePool> texture_pool)
   // filter
   glDebugMessageControl(GL_DEBUG_SOURCE_API, GL_DEBUG_TYPE_PERFORMANCE, GL_DONT_CARE, 1,
                         &l_gl_error_ignores[0], GL_FALSE);
+
+  lg::debug("OpenGL context information: {}", (const char*)glGetString(GL_VERSION));
 
   // initialize all renderers
   init_bucket_renderers();
