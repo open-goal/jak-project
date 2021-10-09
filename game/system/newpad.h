@@ -82,4 +82,7 @@ u64 input_mode_get();
 u64 input_mode_get_key();
 u64 input_mode_get_index();
 
+void initialize();
+void update_gamepads();
+
 }  // namespace Pad

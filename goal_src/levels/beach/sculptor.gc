@@ -7,41 +7,10 @@
 
 (define-extern *sculptor-sg* skeleton-group)
 (define-extern *sculptor-muse-sg* skeleton-group)
+(declare-type muse nav-enemy)
 
-;; TODO - for sculptor
-(deftype muse (nav-enemy)
-  ((current-path-index float              :offset-assert 400)
-   (prev-path-index    float              :offset-assert 404)
-   (dest-path-index    float              :offset-assert 408)
-   (player-path-index  float              :offset-assert 412)
-   (max-path-index     float              :offset-assert 416)
-   (sprint-distance    float              :offset-assert 420)
-   (dest-point         vector     :inline :offset-assert 432)
-   (anim               spool-anim              :offset-assert 448) ; TODO - guess
-   (victory-anim       spool-anim              :offset-assert 452) ; TODO - guess
-   (old-target-pos     transformq :inline :offset-assert 464)
-   )
-  :method-count-assert 76
-  :size-assert         #x200
-  :heap-base           #x190
-  :flag-assert         #x4c01900200
-  )
+;; DECOMP BEGINS
 
-(deftype point-on-path-segment-info (structure)
-  ((point               vector  :inline :offset-assert 0)
-   (segment             vector 2  :inline     :offset-assert 16) ;; TODO - guess
-   (dir                 vector  :inline :offset-assert 48)
-   (nearest-point       vector  :inline :offset-assert 64)
-   (segment-length      float           :offset-assert 80)
-   (distance-to-segment float           :offset-assert 84)
-   (parametric-index    float           :offset-assert 88)
-   )
-  :method-count-assert 9
-  :size-assert         #x5c
-  :flag-assert         #x90000005c
-  )
-
-;; definition of type sculptor
 (deftype sculptor (process-taskable)
   ((muse handle  :offset-assert 384)
    )
@@ -51,7 +20,7 @@
   :flag-assert         #x3501200188
   )
 
-;; failed to figure out what this is:
+
 (let
   ((v1-1
     (new 'static 'skeleton-group
@@ -68,7 +37,6 @@
   (set! *sculptor-muse-sg* v1-1)
   )
 
-;; failed to figure out what this is:
 (let
   ((v1-2
     (new 'static 'skeleton-group
@@ -86,12 +54,10 @@
   (set! *sculptor-sg* v1-2)
   )
 
-;; definition for method 52 of type sculptor
-;; INFO: Return type mismatch int vs none.
 (defmethod dummy-52 sculptor ((obj sculptor))
   (let ((v1-1 (-> obj draw shadow-ctrl)))
    (when v1-1
-    (let ((f0-0 (-> obj root trans y)))
+    (let ((f0-0 (-> obj root-override trans y)))
      (let ((a0-2 v1-1))
       (set! (-> a0-2 settings bot-plane w) (- (+ -2048.0 f0-0)))
       )
@@ -104,8 +70,7 @@
   (none)
   )
 
-;; definition for method 48 of type sculptor
-(defmethod draw-shadow sculptor ((obj sculptor))
+(defmethod draw-npc-shadow sculptor ((obj sculptor))
   (-> obj draw shadow-ctrl)
   (cond
    ((and
@@ -117,7 +82,7 @@
      (set! (-> v1-9 settings flags) (logand -33 (-> v1-9 settings flags)))
      )
     0
-    ((method-of-object (-> obj draw shadow-ctrl) dummy-14))
+    (dummy-14 (-> obj draw shadow-ctrl))
     )
    (else
     (let ((v1-14 (-> obj draw shadow-ctrl)))
@@ -129,7 +94,6 @@
   (none)
   )
 
-;; definition for function muse-to-idle
 (defbehavior muse-to-idle sculptor ((arg0 muse))
   (when (not (handle->process (-> arg0 incomming-attack-id)))
    (let ((s5-0 (get-process *default-dead-pool* manipy #x4000)))
@@ -209,7 +173,6 @@
    )
   )
 
-;; failed to figure out what this is:
 (defstate give-cell (sculptor)
   :virtual #t
   :enter
@@ -219,7 +182,6 @@
    )
   )
 
-;; definition for method 32 of type sculptor
 (defmethod play-anim! sculptor ((obj sculptor) (arg0 symbol))
   (with-pp
    (case (current-status (-> obj tasks)) 
@@ -338,7 +300,7 @@
                                               (run-now-in-process
                                                s5-1
                                                manipy-init
-                                               (-> obj root trans)
+                                               (-> obj root-override trans)
                                                (-> obj entity)
                                                *sculptor-muse-sg*
                                                #f
@@ -395,7 +357,6 @@
    )
   )
 
-;; definition for method 31 of type sculptor
 (defmethod get-art-elem sculptor ((obj sculptor))
   (let ((v1-1 (current-status (-> obj tasks))))
    (if (or (zero? v1-1) (= v1-1 7))
@@ -405,7 +366,6 @@
    )
   )
 
-;; definition for method 43 of type sculptor
 (defmethod TODO-RENAME-43 sculptor ((obj sculptor))
   (when
    (TODO-RENAME-10
@@ -421,33 +381,31 @@
           )
     (cond
      ((< 0.85714287 f0-2)
-      (dummy-11 (-> obj ambient) "SCU-LO01" #f (-> obj root trans))
+      (dummy-11 (-> obj ambient) "SCU-LO01" #f (-> obj root-override trans))
       )
      ((< 0.71428573 f0-2)
-      (dummy-11 (-> obj ambient) "SCU-AM05" #f (-> obj root trans))
+      (dummy-11 (-> obj ambient) "SCU-AM05" #f (-> obj root-override trans))
       )
      ((< 0.5714286 f0-2)
-      (dummy-11 (-> obj ambient) "SCU-AM06" #f (-> obj root trans))
+      (dummy-11 (-> obj ambient) "SCU-AM06" #f (-> obj root-override trans))
       )
      ((< 0.42857143 f0-2)
-      (dummy-11 (-> obj ambient) "SCU-AM03" #f (-> obj root trans))
+      (dummy-11 (-> obj ambient) "SCU-AM03" #f (-> obj root-override trans))
       )
      ((< 0.2857143 f0-2)
-      (dummy-11 (-> obj ambient) "SCU-AM04" #f (-> obj root trans))
+      (dummy-11 (-> obj ambient) "SCU-AM04" #f (-> obj root-override trans))
       )
      ((< 0.14285715 f0-2)
-      (dummy-11 (-> obj ambient) "SCU-AM01" #f (-> obj root trans))
+      (dummy-11 (-> obj ambient) "SCU-AM01" #f (-> obj root-override trans))
       )
      (else
-      (dummy-11 (-> obj ambient) "SCU-AM02" #f (-> obj root trans))
+      (dummy-11 (-> obj ambient) "SCU-AM02" #f (-> obj root-override trans))
       )
      )
     )
    )
-  (none)
   )
 
-;; failed to figure out what this is:
 (defstate idle (sculptor)
   :virtual #t
   :code
@@ -1230,7 +1188,6 @@
    )
   )
 
-;; definition for method 11 of type sculptor
 (defmethod copy-defaults! sculptor ((obj sculptor) (arg0 res-lump))
   (dummy-40 obj arg0 *sculptor-sg* 3 40 (new 'static 'vector :w 4096.0) 5)
   (set! (-> obj tasks) (get-task-control (game-task misty-muse)))
@@ -1240,3 +1197,7 @@
   (dummy-42 obj)
   (none)
   )
+
+
+
+

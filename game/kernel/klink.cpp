@@ -17,6 +17,7 @@
 #include "kprint.h"
 #include "common/symbols.h"
 #include "common/goal_constants.h"
+#include "game/mips2c/mips2c_table.h"
 
 namespace {
 // turn on printf's for debugging linking issues.
@@ -784,6 +785,11 @@ void link_control::finish() {
   ObjectFileHeader* ofh = m_link_block_ptr.cast<ObjectFileHeader>().c();
   if (ofh->object_file_version == 3) {
     // todo check function type of entry
+
+    // setup mips2c functions
+    for (auto& x : Mips2C::gMips2CLinkCallbacks[m_object_name]) {
+      x();
+    }
 
     // execute top level!
     if (m_entry.offset && (m_flags & LINK_FLAG_EXECUTE)) {

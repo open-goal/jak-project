@@ -1,7 +1,7 @@
 #pragma once
 
-#include "decompiler/IR2/Env.h"
 #include "decompiler/Function/Function.h"
+#include "decompiler/IR2/Env.h"
 #include "decompiler/IR2/Form.h"
 
 namespace decompiler {

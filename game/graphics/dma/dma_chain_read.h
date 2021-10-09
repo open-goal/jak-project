@@ -28,6 +28,9 @@ struct DmaTransfer {
 
   u32 vif0() const { return transferred_tag & 0xffffffff; }
   u32 vif1() const { return (transferred_tag >> 32) & 0xffffffff; }
+
+  VifCode vifcode0() const { return VifCode(vif0()); }
+  VifCode vifcode1() const { return VifCode(vif1()); }
 };
 
 class DmaFollower {

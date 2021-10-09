@@ -11,14 +11,21 @@
 void kmemcard_init_globals();
 
 constexpr s32 SAVE_SIZE = 0x2b3;  // likely different by versions!
+constexpr s32 BANK_SIZE = 0x10000;
 
-enum class MemoryCardState : u32 { UNKNOWN = 0, KNOWN = 1, OPEN = 2, FORMATTED = 3 };
+// each card can be in one of these states:
+enum class MemoryCardState : u32 {
+  UNKNOWN = 0,               // we know nothing about the card.
+  KNOWN = 1,                 // we know if the card is there or not
+  OPEN_BUT_UNFORMATTED = 2,  // we checked the status, and its a valid card, but it's not formatted
+  FORMATTED = 3              // the card is formatted
+};
 
 // cached in ee memory so we can preview.
 struct MemoryCardFile {
-  u32 present;
-  u32 pad1;
-  u32 pad2;
+  u32 present;  // todo: enough memory?
+  u32 most_recent_save_count;
+  u32 last_saved_bank;
   u8 data[64];
 };
 
@@ -26,12 +33,51 @@ struct MemoryCardFile {
 struct MemoryCard {
   MemoryCardState state;
   u32 handle;
-  u32 formatted;
+  u32 countdown_to_check;
   u32 inited;
   u32 last_file;
   u32 mem_size;
   MemoryCardFile files[4];
 };
+
+// FORMAT:
+//  args: handle
+//  requirements: handle is for a card that is OPEN_BUT_UNFORMATTED.
+//  formats the memory card.
+// Callbacks:
+//   sceMcGetInfo -> cb_reprobe_format ->
+
+// UNFORMAT:
+//    args: handle
+//    requirements: handle is for a card that is FORMATTED
+//    unformats the memory card (for debug use only)
+// Callbacks:
+//  sceMcUnformat -> cb_unformat
+
+// CREATE_FILE:
+//   args: handle
+//   requirement: handle is for a card that is FORMATTED
+//   creates the Jak and Daxter save directory and files
+// Callbacks:
+//  sceMcGetInfo -> cb_reprobe_createfile
+
+// SAVE_FILE:
+//   args: handle, file_idx (believed)
+//   requirement: handle is for a card that is FORMATTED and has file
+//   saves game data
+// Callbacks:
+//  sceMcGetInfo -> cb_reprobe_save
+
+// LOAD_FILE:
+//   args: handle, file_idx
+//   requirement: handle is for a card that is FORMATTED and has file
+//   loads game data
+// Callbacks:
+//  sceMcGetInfo -> cb_reprobe_load
+
+// probing:
+// sceMcGetInfo -> cb_probe -> sceMcGetDir -> cb_getdir -> sceMcOpen -> cb_check_open ->
+//  -> sceMcRead -> cb_check_read
 
 enum class MemoryCardOperationKind : u32 {
   NO_OP = 0,
@@ -68,7 +114,7 @@ struct MemoryCardOperation {
   uint32_t param;
   uint32_t param2;
   McStatusCode result;
-  uint32_t counter;
+  uint32_t retry_count;
   Ptr<u8> data_ptr;
   Ptr<u8> data_ptr2;
 };

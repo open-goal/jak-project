@@ -24,6 +24,9 @@ void EmptyBucketRenderer::render(DmaFollower& dma, SharedRenderState* render_sta
   // CALL
   auto call_tag = dma.current_tag();
   dma.read_and_advance();
+  if (!(call_tag.kind == DmaTag::Kind::CALL && call_tag.qwc == 0)) {
+    fmt::print("Bucket renderer {} ({}) was supposed to be empty, but wasn't\n", m_my_id, m_name);
+  }
   assert(call_tag.kind == DmaTag::Kind::CALL && call_tag.qwc == 0);
 
   // in the default reg buffer:

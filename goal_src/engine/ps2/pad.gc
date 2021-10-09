@@ -349,11 +349,54 @@
   )
 
 
+(defmacro cpad-pressed (pad-idx)
+  `(-> *cpad-list* cpads ,pad-idx button0-rel 0)
+  )
+
+(defmacro cpad-hold (pad-idx)
+  `(-> *cpad-list* cpads ,pad-idx button0-abs 0)
+  )
+
 (defmacro cpad-pressed? (pad-idx &rest buttons)
   `(logtest? (-> *cpad-list* cpads ,pad-idx button0-rel 0) (pad-buttons ,@buttons))
   )
 
 (defmacro cpad-hold? (pad-idx &rest buttons)
   `(logtest? (-> *cpad-list* cpads ,pad-idx button0-abs 0) (pad-buttons ,@buttons))
+  )
+
+(defmacro cpad-clear-buttons! (pad-idx &rest buttons)
+  `(begin
+      (logclear! (-> *cpad-list* cpads ,pad-idx button0-abs 0) (pad-buttons ,@buttons))
+      (logclear! (-> *cpad-list* cpads ,pad-idx button0-rel 0) (pad-buttons ,@buttons))
+      )
+  )
+
+(defmacro cpad-change-time (pad-idx)
+  `(-> *cpad-list* cpads ,pad-idx change-time)
+  )
+
+(defmacro check-cheat-code (cheat-var pad-idx buttons &rest body)
+  "execute body when a cheat code made up of sequential inputs has been inputted"
+
+  `(when (nonzero? (cpad-pressed ,pad-idx)) ;; only check when some button has been pressed
+    (case ,cheat-var
+      ,@(apply-i
+          (lambda (x i)
+            `((,i)
+              (if (cpad-pressed? ,pad-idx ,x)
+                ,(if (< i (- (length buttons) 1))
+                    `(1+! ,cheat-var)
+                    
+                    `(begin ,@body (set! ,cheat-var 0))
+                    )
+                
+                (set! ,cheat-var 0)
+                )
+              )
+            )
+        buttons)
+      )
+    )
   )
 

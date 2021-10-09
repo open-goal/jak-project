@@ -172,6 +172,7 @@ void* RPC_Ramdisk(unsigned int fno, void* data, int size) {
     memcpy(gReturnBuffer, gMem + offset + gFiles[file_idx].additional_offset, size);
     return gReturnBuffer;
   } else if (fno == RAMDISK_BYPASS_LOAD_FILE) {
+    printf("[OVERLORD RAMDISK] got \"%s\"\n", cmd->name);
     // This is just a normal file load to the EE.
     auto file_record = FindISOFile(cmd->name);
     if (!file_record) {

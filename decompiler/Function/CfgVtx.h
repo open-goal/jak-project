@@ -127,6 +127,8 @@ class CfgVtx {
   void replace_succ_and_check(CfgVtx* old_succ, CfgVtx* new_succ);
   void replace_preds_with_and_check(std::vector<CfgVtx*> old_preds, CfgVtx* new_pred);
 
+  void remove_pred(CfgVtx* to_remove);
+
   std::string links_to_string();
 };
 

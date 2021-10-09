@@ -10,6 +10,7 @@ add_library(
         analysis/inline_asm_rewrite.cpp
         analysis/insert_lets.cpp
         analysis/label_types.cpp
+        analysis/mips2c.cpp
         analysis/reg_usage.cpp
         analysis/stack_spill.cpp
         analysis/static_refs.cpp
@@ -61,6 +62,7 @@ add_library(
         util/data_decompile.cpp
         util/DataParser.cpp
         util/DecompilerTypeSystem.cpp
+        util/sparticle_decompile.cpp
         util/TP_Type.cpp
 
         VuDisasm/VuDisassembler.cpp

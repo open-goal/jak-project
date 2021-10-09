@@ -3,6 +3,8 @@
 #include "common/log/log.h"
 #include "game/graphics/pipelines/opengl.h"
 #include "game/graphics/opengl_renderer/DirectRenderer.h"
+#include "game/graphics/opengl_renderer/SpriteRenderer.h"
+#include "game/graphics/opengl_renderer/TextureUploadHandler.h"
 #include "third-party/imgui/imgui.h"
 
 // for the vif callback
@@ -19,7 +21,7 @@ void GLAPIENTRY opengl_error_callback(GLenum source,
                                       const GLchar* message,
                                       const void* /*userParam*/) {
   if (severity == GL_DEBUG_SEVERITY_NOTIFICATION) {
-    return;
+    lg::debug("OpenGL notification 0x{:X} S{:X} T{:X}: {}", id, source, type, message);
   } else if (severity == GL_DEBUG_SEVERITY_LOW) {
     lg::info("OpenGL message 0x{:X} S{:X} T{:X}: {}", id, source, type, message);
   } else if (severity == GL_DEBUG_SEVERITY_MEDIUM) {
@@ -43,6 +45,8 @@ OpenGLRenderer::OpenGLRenderer(std::shared_ptr<TexturePool> texture_pool)
   glDebugMessageControl(GL_DEBUG_SOURCE_API, GL_DEBUG_TYPE_PERFORMANCE, GL_DONT_CARE, 1,
                         &l_gl_error_ignores[0], GL_FALSE);
 
+  lg::debug("OpenGL context information: {}", (const char*)glGetString(GL_VERSION));
+
   // initialize all renderers
   init_bucket_renderers();
 }
@@ -51,12 +55,18 @@ OpenGLRenderer::OpenGLRenderer(std::shared_ptr<TexturePool> texture_pool)
  * Construct bucket renderers.  We can specify different renderers for different buckets
  */
 void OpenGLRenderer::init_bucket_renderers() {
-  // For example, set up bucket 0:
   init_bucket_renderer<EmptyBucketRenderer>("bucket0", BucketId::BUCKET0);
-
-  // TODO what the heck is drawing to debug-draw-0 on init?
-  init_bucket_renderer<DirectRenderer>("debug-draw-0", BucketId::DEBUG_DRAW_0, 102);
-  init_bucket_renderer<DirectRenderer>("debug-draw-1", BucketId::DEBUG_DRAW_1, 102);
+  init_bucket_renderer<TextureUploadHandler>("tfrag-tex-0", BucketId::TFRAG_TEX_LEVEL0);
+  init_bucket_renderer<TextureUploadHandler>("shrub-tex-0", BucketId::SHRUB_TEX_LEVEL0);
+  init_bucket_renderer<TextureUploadHandler>("alpha-tex-0", BucketId::ALPHA_TEX_LEVEL0);
+  init_bucket_renderer<TextureUploadHandler>("pris-tex-0", BucketId::PRIS_TEX_LEVEL0);
+  init_bucket_renderer<TextureUploadHandler>("water-tex-0", BucketId::WATER_TEX_LEVEL0);
+  init_bucket_renderer<TextureUploadHandler>("pre-sprite-tex", BucketId::PRE_SPRITE_TEX);
+  init_bucket_renderer<SpriteRenderer>("sprite", BucketId::SPRITE);
+  init_bucket_renderer<DirectRenderer>("debug-draw-0", BucketId::DEBUG_DRAW_0, 102,
+                                       DirectRenderer::Mode::NORMAL);
+  init_bucket_renderer<DirectRenderer>("debug-draw-1", BucketId::DEBUG_DRAW_1, 102,
+                                       DirectRenderer::Mode::NORMAL);
 
   // for now, for any unset renderers, just set them to an EmptyBucketRenderer.
   for (size_t i = 0; i < m_bucket_renderers.size(); i++) {
@@ -69,15 +79,34 @@ void OpenGLRenderer::init_bucket_renderers() {
 /*!
  * Main render function. This is called from the gfx loop with the chain passed from the game.
  */
-void OpenGLRenderer::render(DmaFollower dma, int window_width_px, int window_height_px) {
+void OpenGLRenderer::render(DmaFollower dma,
+                            int window_width_px,
+                            int window_height_px,
+                            bool draw_debug_window,
+                            bool dump_playback) {
+  m_render_state.dump_playback = dump_playback;
+  m_render_state.ee_main_memory = dump_playback ? nullptr : g_ee_main_mem;
+  m_render_state.offset_of_s7 = offset_of_s7();
   setup_frame(window_width_px, window_height_px);
+  m_render_state.texture_pool->remove_garbage_textures();
   // draw_test_triangle();
   // render the buckets!
   dispatch_buckets(dma);
 
-  draw_renderer_selection_window();
-  // add a profile bar for the imgui stuff
-  vif_interrupt_callback();
+  if (draw_debug_window) {
+    draw_renderer_selection_window();
+    // add a profile bar for the imgui stuff
+    if (!m_render_state.dump_playback) {
+      vif_interrupt_callback();
+    }
+  }
+}
+
+void OpenGLRenderer::serialize(Serializer& ser) {
+  m_render_state.texture_pool->serialize(ser);
+  for (auto& renderer : m_bucket_renderers) {
+    renderer->serialize(ser);
+  }
 }
 
 void OpenGLRenderer::draw_renderer_selection_window() {
@@ -86,15 +115,17 @@ void OpenGLRenderer::draw_renderer_selection_window() {
     auto renderer = m_bucket_renderers[i].get();
     if (renderer && !renderer->empty()) {
       ImGui::PushID(i);
-      if (ImGui::CollapsingHeader(renderer->name_and_id().c_str())) {
+      if (ImGui::TreeNode(renderer->name_and_id().c_str())) {
         ImGui::Checkbox("Enable", &renderer->enabled());
         renderer->draw_debug_window();
+        ImGui::TreePop();
       }
       ImGui::PopID();
     }
   }
-  if (ImGui::CollapsingHeader("Texture Pool")) {
+  if (ImGui::TreeNode("Texture Pool")) {
     m_render_state.texture_pool->draw_debug_window();
+    ImGui::TreePop();
   }
   ImGui::End();
 }
@@ -104,8 +135,10 @@ void OpenGLRenderer::draw_renderer_selection_window() {
  */
 void OpenGLRenderer::setup_frame(int window_width_px, int window_height_px) {
   glViewport(0, 0, window_width_px, window_height_px);
-  glClearColor(0.5, 0.5, 0.5, 0.0);
-  glClear(GL_COLOR_BUFFER_BIT);
+  glClearColor(0.5, 0.5, 0.5, 1.0);
+  glClearDepth(0.0);
+  glDepthMask(GL_TRUE);
+  glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
   glDisable(GL_BLEND);
 }
 
@@ -143,12 +176,14 @@ void OpenGLRenderer::dispatch_buckets(DmaFollower dma) {
   // loop over the buckets!
   for (int bucket_id = 0; bucket_id < (int)BucketId::MAX_BUCKETS; bucket_id++) {
     auto& renderer = m_bucket_renderers[bucket_id];
-    //    fmt::print("render bucket {} with {}\n", bucket_id, renderer->name_and_id());
     renderer->render(dma, &m_render_state);
     // should have ended at the start of the next chain
     assert(dma.current_tag_offset() == m_render_state.next_bucket);
     m_render_state.next_bucket += 16;
-    vif_interrupt_callback();
+
+    if (!m_render_state.dump_playback) {
+      vif_interrupt_callback();
+    }
   }
 
   // TODO ending data.

@@ -101,7 +101,7 @@
 
 ;; definition for method 39 of type nav-enemy
 ;; INFO: Return type mismatch int vs none.
-(defmethod TODO-RENAME-39 nav-enemy ((obj nav-enemy))
+(defmethod common-post nav-enemy ((obj nav-enemy))
   (when
    (and
     (logtest? (-> obj nav-enemy-flags) 256)
@@ -116,7 +116,7 @@
    (dummy-54 (-> obj collide-info) 2 1)
    (set! (-> obj nav-enemy-flags) (logand -257 (-> obj nav-enemy-flags)))
    )
-  ((method-of-object (-> obj draw shadow-ctrl) dummy-14))
+  (dummy-14 (-> obj draw shadow-ctrl))
   (when *target*
    (if *target*
     (look-at-enemy!
@@ -355,7 +355,7 @@ nav-enemy-default-event-handler
 
 ;; definition for function nav-enemy-common-post
 (defbehavior nav-enemy-common-post nav-enemy ()
-  (TODO-RENAME-39 self)
+  (common-post self)
   (none)
   )
 
@@ -767,17 +767,22 @@ nav-enemy-default-event-handler
   )
 
 ;; definition for function nav-enemy-test-nav-mesh-intersection-xz?
+;; INFO: Return type mismatch nav-poly vs symbol.
 (defbehavior nav-enemy-test-nav-mesh-intersection-xz? nav-enemy ((arg0 vector))
-  (dummy-16 (-> self nav) arg0)
+  (the-as symbol (dummy-16 (-> self nav) arg0))
   )
 
 ;; definition for function nav-enemy-test-point-in-nav-mesh?
+;; INFO: Return type mismatch structure vs symbol.
 (defbehavior nav-enemy-test-point-in-nav-mesh? nav-enemy ((arg0 vector))
-  (and
-   (dummy-16 (-> self nav) arg0)
-   (<
-    (-> arg0 y)
-    (+ (-> self collide-info trans y) (-> self enemy-info notice-top))
+  (the-as
+   symbol
+   (and
+    (dummy-16 (-> self nav) arg0)
+    (<
+     (-> arg0 y)
+     (+ (-> self collide-info trans y) (-> self enemy-info notice-top))
+     )
     )
    )
   )
@@ -931,10 +936,7 @@ nav-enemy-default-event-handler
      (set! (-> v1-14 num-func) num-func-identity)
      (set! (-> v1-14 frame-num) 0.0)
      )
-    (set!
-     (-> self state-time)
-     (the-as seconds (-> *display* base-frame-counter))
-     )
+    (set! (-> self state-time) (-> *display* base-frame-counter))
     (set!
      (-> self collide-info status)
      (logand -8 (-> self collide-info status))
@@ -1100,10 +1102,7 @@ nav-enemy-default-event-handler
   :enter
   (behavior ()
    (nav-enemy-neck-control-inactive)
-   (set!
-    (-> self state-time)
-    (the-as seconds (-> *display* base-frame-counter))
-    )
+   (set! (-> self state-time) (-> *display* base-frame-counter))
    (if (-> self nav-info move-to-ground)
     (dummy-60
      (-> self collide-info)
@@ -1187,10 +1186,7 @@ nav-enemy-default-event-handler
    )
   :enter
   (behavior ()
-   (set!
-    (-> self state-time)
-    (the-as seconds (-> *display* base-frame-counter))
-    )
+   (set! (-> self state-time) (-> *display* base-frame-counter))
    (set!
     (-> self nav flags)
     (the-as
@@ -1638,10 +1634,7 @@ nav-enemy-default-event-handler
    )
   :enter
   (behavior ()
-   (set!
-    (-> self state-time)
-    (the-as seconds (-> *display* base-frame-counter))
-    )
+   (set! (-> self state-time) (-> *display* base-frame-counter))
    (none)
    )
   :trans
@@ -1841,10 +1834,7 @@ nav-enemy-default-event-handler
   :enter
   (behavior ()
    (nav-enemy-neck-control-look-at)
-   (set!
-    (-> self state-time)
-    (the-as seconds (-> *display* base-frame-counter))
-    )
+   (set! (-> self state-time) (-> *display* base-frame-counter))
    (set! (-> self free-time) (-> *display* base-frame-counter))
    (logior! (-> self nav-enemy-flags) 4)
    (set! (-> self target-speed) (-> self nav-info run-travel-speed))
@@ -1949,10 +1939,7 @@ nav-enemy-default-event-handler
    )
   :enter
   (behavior ()
-   (set!
-    (-> self state-time)
-    (the-as seconds (-> *display* base-frame-counter))
-    )
+   (set! (-> self state-time) (-> *display* base-frame-counter))
    (let*
     ((f30-0
       (vector-vector-distance (-> self collide-info trans) (target-pos 0))
@@ -2063,10 +2050,7 @@ nav-enemy-default-event-handler
    )
   :enter
   (behavior ()
-   (set!
-    (-> self state-time)
-    (the-as seconds (-> *display* base-frame-counter))
-    )
+   (set! (-> self state-time) (-> *display* base-frame-counter))
    (set! (-> self nav-enemy-flags) (logand -17 (-> self nav-enemy-flags)))
    (let
     ((f0-0 (vector-vector-distance (-> self collide-info trans) (target-pos 0)))
@@ -2192,10 +2176,7 @@ nav-enemy-default-event-handler
    )
   :enter
   (behavior ()
-   (set!
-    (-> self state-time)
-    (the-as seconds (-> *display* base-frame-counter))
-    )
+   (set! (-> self state-time) (-> *display* base-frame-counter))
    (nav-enemy-neck-control-inactive)
    (set! (-> self nav-enemy-flags) (logand -5 (-> self nav-enemy-flags)))
    (none)
@@ -2749,10 +2730,7 @@ nav-enemy-default-event-handler
   nav-enemy-jump-event-handler
   :enter
   (behavior ()
-   (set!
-    (-> self state-time)
-    (the-as seconds (-> *display* base-frame-counter))
-    )
+   (set! (-> self state-time) (-> *display* base-frame-counter))
    (if
     (and
      (-> self nav-info use-jump-blocked)
@@ -2771,12 +2749,12 @@ nav-enemy-default-event-handler
   :code
   (behavior ()
    (nav-enemy-execute-jump)
-   (let ((a1-0 (the-as structure (-> self nav user-poly))))
-    (if (not (the-as nav-poly a1-0))
+   (let ((a1-0 (-> self nav user-poly)))
+    (if (not a1-0)
      (set! a1-0 (dummy-16 (-> self nav) (-> self jump-dest)))
      )
     (if a1-0
-     (dummy-14 (-> self nav))
+     (set-current-poly! (-> self nav) a1-0)
      )
     )
    (go-virtual nav-enemy-jump-land)
@@ -2859,10 +2837,7 @@ nav-enemy-default-event-handler
    )
   :enter
   (behavior ()
-   (set!
-    (-> self state-time)
-    (the-as seconds (-> *display* base-frame-counter))
-    )
+   (set! (-> self state-time) (-> *display* base-frame-counter))
    (logclear! (-> self nav flags) (nav-control-flags bit19))
    (let ((gp-0 (new 'stack-no-clear 'vector)))
     (set! (-> gp-0 quad) (-> self collide-info transv quad))
@@ -2908,10 +2883,7 @@ nav-enemy-default-event-handler
    )
   :enter
   (behavior ()
-   (set!
-    (-> self state-time)
-    (the-as seconds (-> *display* base-frame-counter))
-    )
+   (set! (-> self state-time) (-> *display* base-frame-counter))
    (none)
    )
   :trans
@@ -2990,10 +2962,7 @@ nav-enemy-default-event-handler
    )
   :code
   (behavior ()
-   (set!
-    (-> self state-time)
-    (the-as seconds (-> *display* base-frame-counter))
-    )
+   (set! (-> self state-time) (-> *display* base-frame-counter))
    (logior! (-> self nav-enemy-flags) 2048)
    (ja-channel-push! 1 30)
    (let ((f30-0 (nav-enemy-rnd-float-range 0.8 1.2)))
@@ -3063,10 +3032,7 @@ nav-enemy-default-event-handler
    )
   :code
   (behavior ()
-   (set!
-    (-> self state-time)
-    (the-as seconds (-> *display* base-frame-counter))
-    )
+   (set! (-> self state-time) (-> *display* base-frame-counter))
    (nav-enemy-initialize-jump (-> self event-param-point))
    (nav-enemy-neck-control-look-at)
    (logior! (-> self nav-enemy-flags) 16)
@@ -3093,7 +3059,7 @@ nav-enemy-default-event-handler
    :settings
    (new 'static 'shadow-settings
     :center
-    (new 'static 'vector :w 0.000000000000000000000000000000000000000000056)
+    (new 'static 'vector :w (the-as float #x28))
     :shadow-dir
     (new 'static 'vector :y -1.0 :w 614400.0)
     :bot-plane (new 'static 'plane :y 1.0 :w 4096.0)
@@ -3198,8 +3164,8 @@ nav-enemy-default-event-handler
 ;; Used lq/sq
 (defbehavior
   nav-enemy-init-by-other nav-enemy
-  ((arg0 nav-enemy) (arg1 vector) (arg2 vector))
-  (TODO-RENAME-47 self)
+  ((arg0 battlecontroller) (arg1 vector) (arg2 vector))
+  (initialize-collision self)
   (logior! (-> self mask) (process-mask actor-pause))
   (set! (-> self collide-info trans quad) (-> arg1 quad))
   (set! (-> self event-param-point quad) (-> arg2 quad))
@@ -3219,7 +3185,7 @@ nav-enemy-default-event-handler
 
 ;; definition for method 47 of type nav-enemy
 ;; INFO: Return type mismatch int vs none.
-(defmethod TODO-RENAME-47 nav-enemy ((obj nav-enemy))
+(defmethod initialize-collision nav-enemy ((obj nav-enemy))
   0
   (none)
   )
@@ -3242,7 +3208,7 @@ nav-enemy-default-event-handler
 ;; definition for method 11 of type nav-enemy
 ;; INFO: Return type mismatch int vs none.
 (defmethod copy-defaults! nav-enemy ((obj nav-enemy) (arg0 res-lump))
-  (TODO-RENAME-47 obj)
+  (initialize-collision obj)
   (process-drawable-from-entity! obj arg0)
   (TODO-RENAME-48 obj)
   (TODO-RENAME-59 obj)

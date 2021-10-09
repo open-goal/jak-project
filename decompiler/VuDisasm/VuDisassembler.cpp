@@ -126,7 +126,7 @@ VuDisassembler::VuDisassembler() {
   add_op(VuInstrK::MUL, "mul").iemdt().dst_mask().dss_fd_fs_ft();
   add_op(VuInstrK::MULq, "mul").iemdt().dst_mask().dst_vfd().src_vfs().src_q().vft_zero();
   add_op(VuInstrK::SUB, "sub").iemdt().dst_mask().dss_fd_fs_ft();
-  add_op(VuInstrK::MSUBbc, "msub").iemdt().dst_mask().dss_fd_fs_ft();
+  add_op(VuInstrK::MSUBbc, "msub").iemdt().dst_mask().dss_fd_fs_ft().bc();
   add_op(VuInstrK::MADDA, "madda").iemdt().dst_mask().dst_acc().src_vfs().src_vft();
   add_op(VuInstrK::MULA, "mula").iemdt().dst_mask().dst_acc().src_vfs().src_vft();
   add_op(VuInstrK::MINIbc, "mini").iemdt().dst_mask().bc().dss_fd_fs_ft();

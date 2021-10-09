@@ -1,9 +1,9 @@
 #include "expression_build.h"
+#include "common/goos/PrettyPrinter.h"
 #include "decompiler/Function/Function.h"
 #include "decompiler/IR2/Form.h"
 #include "decompiler/IR2/FormStack.h"
 #include "decompiler/util/DecompilerTypeSystem.h"
-#include "common/goos/PrettyPrinter.h"
 
 namespace decompiler {
 
@@ -157,15 +157,15 @@ bool convert_to_expressions(
         auto warn = fmt::format(
             "Function {} has a return type of none, but the expression builder found a return "
             "statement.",
-            f.guessed_name.to_string());
+            f.name());
         f.warnings.expression_build_warning(warn);
         lg::warn(warn);
       }
     }
 
   } catch (std::exception& e) {
-    f.warnings.expression_build_warning("In {}: {}", f.guessed_name.to_string(), e.what());
-    lg::warn("In {}: {}", f.guessed_name.to_string(), e.what());
+    f.warnings.expression_build_warning("In {}: {}", f.name(), e.what());
+    lg::warn("In {}: {}", f.name(), e.what());
     return false;
   }
 
