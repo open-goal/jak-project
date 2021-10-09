@@ -1,33 +1,7 @@
 ;;-*-Lisp-*-
 (in-package goal)
 
-;; name: robotboss-weapon.gc
-;; name in dgo: robotboss-weapon
-;; dgos: FIN, L1
-
-(define-extern *redring-sg* skeleton-group)
-(define-extern *greenshot-sg* skeleton-group)
-(define-extern *darkecobomb-sg* skeleton-group)
-
-(declare-type arcing-shot process-drawable)
-(declare-type yellowshot arcing-shot)
-(declare-type redshot arcing-shot)
-(declare-type greenshot arcing-shot)
-(declare-type darkecobomb arcing-shot)
-
-(define-extern yellowshot-idle (state yellowshot)) ;; unknown type
-(define-extern redshot-idle (state redshot)) ;; unknown type
-(define-extern redshot-wait (state redshot)) ;; unknown type
-(define-extern redshot-explode (state redshot)) ;; unknown type
-(define-extern greenshot-idle (state greenshot)) ;; unknown type
-(define-extern darkecobomb-idle (state darkecobomb)) ;; unknown type
-(define-extern darkecobomb-land (state darkecobomb)) ;; unknown type
-(define-extern darkecobomb-countdown (state darkecobomb)) ;; unknown type
-(define-extern darkecobomb-explode (state symbol darkecobomb)) ;; unknown type
-(define-extern arcing-shot-debug-trajectory (state arcing-shot)) ;; unknown type
-
-;; DECOMP BEGINS
-
+;; definition of type torus
 (deftype torus (structure)
   ((origin           vector :inline :offset-assert   0)
    (axis             vector :inline :offset-assert  16)
@@ -45,7 +19,17 @@
     )
   )
 
+;; definition for method 3 of type torus
+(defmethod inspect torus ((obj torus))
+  (format #t "[~8x] ~A~%" obj 'torus)
+  (format #t "~Torigin: #<vector @ #x~X>~%" (-> obj origin))
+  (format #t "~Taxis: #<vector @ #x~X>~%" (-> obj axis))
+  (format #t "~Tradius-primary: ~f~%" (-> obj radius-primary))
+  (format #t "~Tradius-secondary: ~f~%" (-> obj radius-secondary))
+  obj
+  )
 
+;; definition for method 10 of type torus
 (defmethod
   TODO-RENAME-10
   torus
@@ -62,6 +46,7 @@
    )
   )
 
+;; definition for method 11 of type torus
 (defmethod dummy-11 torus ((obj torus) (arg0 vector))
   (let ((s4-0 (-> *target* control root-prim)))
    (when
@@ -86,6 +71,7 @@
   #f
   )
 
+;; definition of type torus-verts
 (deftype torus-verts (structure)
   ((vert vector 8 :inline :offset-assert   0)
    )
@@ -94,7 +80,16 @@
   :flag-assert         #x900000080
   )
 
+;; definition for method 3 of type torus-verts
+(defmethod inspect torus-verts ((obj torus-verts))
+  (format #t "[~8x] ~A~%" obj 'torus-verts)
+  (format #t "~Tvert[8] @ #x~X~%" (-> obj vert))
+  obj
+  )
 
+;; definition for method 9 of type torus
+;; INFO: Return type mismatch int vs none.
+;; Used lq/sq
 (defmethod dummy-9 torus ((obj torus) (arg0 vector))
   (local-vars (sv-256 int) (sv-272 int) (sv-288 int))
   (let ((s0-0 (new 'stack-no-clear 'vector))
@@ -145,6 +140,7 @@
   (none)
   )
 
+;; definition for method 12 of type torus
 (defmethod dummy-12 torus ((obj torus) (arg0 vector))
   (let* ((f30-0 65536.0)
          (v1-1 (/ (the-as int (rand-uint31-gen *random-generator*)) 256))
@@ -178,6 +174,7 @@
   arg0
   )
 
+;; definition of type arcing-shot
 (deftype arcing-shot (process-drawable)
   ((root-override collide-shape-moving         :offset        112)
    (y-vel         float                        :offset-assert 176)
@@ -191,7 +188,20 @@
   :flag-assert         #x14007000e0
   )
 
+;; definition for method 3 of type arcing-shot
+(defmethod inspect arcing-shot ((obj arcing-shot))
+  (let ((t9-0 (method-of-type process-drawable inspect)))
+   (t9-0 obj)
+   )
+  (format #t "~T~Ty-vel: ~f~%" (-> obj y-vel))
+  (format #t "~T~Tgrav: ~f~%" (-> obj grav))
+  (format #t "~T~Tfrom: #<vector @ #x~X>~%" (-> obj from))
+  (format #t "~T~Tto: #<vector @ #x~X>~%" (-> obj to))
+  obj
+  )
 
+;; definition for function arcing-shot-setup
+;; Used lq/sq
 (defbehavior
   arcing-shot-setup arcing-shot
   ((arg0 vector) (arg1 vector) (arg2 float))
@@ -216,6 +226,7 @@
    )
   )
 
+;; definition for function arcing-shot-calculate
 (defbehavior arcing-shot-calculate arcing-shot ((arg0 vector) (arg1 float))
   (let ((s5-0 (fmin 1.0 (fmax 0.0 arg1))))
    (vector-lerp! arg0 (-> self from) (-> self to) s5-0)
@@ -228,6 +239,8 @@
    )
   )
 
+;; definition for function arcing-shot-draw
+;; Used lq/sq
 (defbehavior arcing-shot-draw arcing-shot ()
   (let ((gp-0 (new 'stack-no-clear 'vector))
         (s5-0 (new 'stack-no-clear 'vector))
@@ -252,6 +265,7 @@
   #f
   )
 
+;; failed to figure out what this is:
 (defstate arcing-shot-debug-trajectory (arcing-shot)
   :trans
   (behavior ()
@@ -269,6 +283,7 @@
    )
   )
 
+;; definition of type darkecobomb
 (deftype darkecobomb (arcing-shot)
   ((flight-time    uint64  :offset-assert 224)
    (countdown-time float   :offset-assert 232)
@@ -281,7 +296,19 @@
   :flag-assert         #x14009000f4
   )
 
+;; definition for method 3 of type darkecobomb
+(defmethod inspect darkecobomb ((obj darkecobomb))
+  (let ((t9-0 (method-of-type arcing-shot inspect)))
+   (t9-0 obj)
+   )
+  (format #t "~T~Tflight-time: ~D~%" (-> obj flight-time))
+  (format #t "~T~Tcountdown-time: ~f~%" (-> obj countdown-time))
+  (format #t "~T~Tanim-speed: ~f~%" (-> obj anim-speed))
+  (format #t "~T~Tnext-tick: ~f~%" (-> obj next-tick))
+  obj
+  )
 
+;; failed to figure out what this is:
 (let
   ((v1-8
     (new 'static 'skeleton-group
@@ -299,6 +326,7 @@
   (set! *darkecobomb-sg* v1-8)
   )
 
+;; failed to figure out what this is:
 (defstate darkecobomb-explode (darkecobomb)
   :code
   (behavior ((arg0 symbol))
@@ -433,6 +461,8 @@
   (the-as (function none :behavior darkecobomb) ja-post)
   )
 
+;; definition for function darkecobomb-handler
+;; INFO: Return type mismatch none vs object.
 (defbehavior
   darkecobomb-handler darkecobomb
   ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
@@ -444,6 +474,7 @@
    )
   )
 
+;; definition for function darkecobomb-explode-if-player-high-enough
 (defbehavior darkecobomb-explode-if-player-high-enough darkecobomb ()
   (if
    (and
@@ -456,6 +487,7 @@
   (none)
   )
 
+;; failed to figure out what this is:
 (defstate darkecobomb-countdown (darkecobomb)
   :event
   darkecobomb-handler
@@ -657,6 +689,7 @@
   (the-as (function none :behavior darkecobomb) transform-post)
   )
 
+;; failed to figure out what this is:
 (defstate darkecobomb-land (darkecobomb)
   :event
   darkecobomb-handler
@@ -747,6 +780,7 @@
   (the-as (function none :behavior darkecobomb) transform-post)
   )
 
+;; failed to figure out what this is:
 (defstate darkecobomb-idle (darkecobomb)
   :enter
   (behavior ()
@@ -870,6 +904,8 @@
   (the-as (function none :behavior darkecobomb) transform-post)
   )
 
+;; definition for function darkecobomb-init-by-other
+;; Used lq/sq
 (defbehavior
   darkecobomb-init-by-other darkecobomb
   ((arg0 vector) (arg1 vector) (arg2 float) (arg3 uint) (arg4 float))
@@ -947,6 +983,7 @@
   (none)
   )
 
+;; definition of type greenshot
 (deftype greenshot (arcing-shot)
   ((flight-time uint64  :offset-assert 224)
    )
@@ -956,7 +993,16 @@
   :flag-assert         #x14008000e8
   )
 
+;; definition for method 3 of type greenshot
+(defmethod inspect greenshot ((obj greenshot))
+  (let ((t9-0 (method-of-type arcing-shot inspect)))
+   (t9-0 obj)
+   )
+  (format #t "~T~Tflight-time: ~D~%" (-> obj flight-time))
+  obj
+  )
 
+;; failed to figure out what this is:
 (let
   ((v1-17
     (new 'static 'skeleton-group
@@ -973,6 +1019,7 @@
   (set! *greenshot-sg* v1-17)
   )
 
+;; failed to figure out what this is:
 (defstate greenshot-idle (greenshot)
   :enter
   (behavior ()
@@ -1058,6 +1105,8 @@
   (the-as (function none :behavior greenshot) transform-post)
   )
 
+;; definition for function greenshot-init-by-other
+;; Used lq/sq
 (defbehavior
   greenshot-init-by-other greenshot
   ((arg0 vector) (arg1 vector) (arg2 float) (arg3 uint) (arg4 float))
@@ -1099,6 +1148,7 @@
   (none)
   )
 
+;; definition of type redshot
 (deftype redshot (arcing-shot)
   ((flight-time     uint64                           :offset-assert 224)
    (stall-time      uint64                           :offset-assert 232)
@@ -1114,7 +1164,23 @@
   :flag-assert         #x1400c00130
   )
 
+;; definition for method 3 of type redshot
+(defmethod inspect redshot ((obj redshot))
+  (let ((t9-0 (method-of-type arcing-shot inspect)))
+   (t9-0 obj)
+   )
+  (format #t "~T~Tflight-time: ~D~%" (-> obj flight-time))
+  (format #t "~T~Tstall-time: ~D~%" (-> obj stall-time))
+  (format #t "~T~Tring: #<torus @ #x~X>~%" (-> obj ring))
+  (format #t "~T~Trotation-offset: ~D~%" (-> obj rotation-offset))
+  (format #t "~T~Tpart-track: ~D~%" (-> obj part-track))
+  (format #t "~T~Tshot-particle: ~A~%" (-> obj shot-particle))
+  (format #t "~T~Ttest-particle: ~A~%" (-> obj test-particle))
+  obj
+  )
 
+;; definition for method 7 of type redshot
+;; INFO: Return type mismatch arcing-shot vs redshot.
 (defmethod relocate redshot ((obj redshot) (arg0 int))
   (if (nonzero? (-> obj shot-particle))
    (&+! (-> obj shot-particle) arg0)
@@ -1125,6 +1191,7 @@
   (the-as redshot ((method-of-type arcing-shot relocate) obj arg0))
   )
 
+;; definition for method 10 of type redshot
 (defmethod deactivate redshot ((obj redshot))
   (if (nonzero? (-> obj shot-particle))
    (kill-and-free-particles (-> obj shot-particle))
@@ -1136,6 +1203,8 @@
   (none)
   )
 
+;; definition for function redshot-particle-callback
+;; INFO: Return type mismatch int vs none.
 (defun redshot-particle-callback ((arg0 part-tracker))
   (let ((v1-0 (the-as object (-> arg0 userdata))))
    (set!
@@ -1147,6 +1216,7 @@
   (none)
   )
 
+;; failed to figure out what this is:
 (let
   ((v1-22
     (new 'static 'skeleton-group
@@ -1163,6 +1233,7 @@
   (set! *redring-sg* v1-22)
   )
 
+;; definition for function redshot-trans
 (defbehavior redshot-trans redshot ((arg0 int))
   (let ((s5-0 (new 'stack-no-clear 'matrix)))
    0.0
@@ -1184,6 +1255,7 @@
    )
   )
 
+;; failed to figure out what this is:
 (defstate redshot-explode (redshot)
   :enter
   (behavior ()
@@ -1349,6 +1421,8 @@
   (the-as (function none :behavior redshot) transform-post)
   )
 
+;; definition for function redshot-handler
+;; INFO: Return type mismatch none vs object.
 (defbehavior
   redshot-handler redshot
   ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
@@ -1360,6 +1434,7 @@
    )
   )
 
+;; failed to figure out what this is:
 (defstate redshot-wait (redshot)
   :event
   redshot-handler
@@ -1403,6 +1478,7 @@
   (the-as (function none :behavior redshot) transform-post)
   )
 
+;; failed to figure out what this is:
 (defstate redshot-idle (redshot)
   :event
   redshot-handler
@@ -1445,6 +1521,8 @@
   (the-as (function none :behavior redshot) transform-post)
   )
 
+;; definition for function redshot-init-by-other
+;; Used lq/sq
 (defbehavior
   redshot-init-by-other redshot
   ((arg0 vector) (arg1 vector) (arg2 float) (arg3 uint) (arg4 uint) (arg5 uint))
@@ -1537,6 +1615,7 @@
   (none)
   )
 
+;; definition of type yellowshot
 (deftype yellowshot (arcing-shot)
   ((flight-time uint64  :offset-assert 224)
    )
@@ -1546,7 +1625,16 @@
   :flag-assert         #x14008000e8
   )
 
+;; definition for method 3 of type yellowshot
+(defmethod inspect yellowshot ((obj yellowshot))
+  (let ((t9-0 (method-of-type arcing-shot inspect)))
+   (t9-0 obj)
+   )
+  (format #t "~T~Tflight-time: ~D~%" (-> obj flight-time))
+  obj
+  )
 
+;; failed to figure out what this is:
 (defstate yellowshot-idle (yellowshot)
   :event
   (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
@@ -1618,6 +1706,8 @@
   (the-as (function none :behavior yellowshot) transform-post)
   )
 
+;; definition for function yellowshot-init-by-other
+;; Used lq/sq
 (defbehavior
   yellowshot-init-by-other yellowshot
   ((arg0 vector) (arg1 vector) (arg2 float) (arg3 uint) (arg4 float))
