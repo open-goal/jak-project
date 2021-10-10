@@ -611,8 +611,6 @@ void DirectRenderer::handle_tex1_1(u64 val) {
   if (!(reg.mmin() == 1 || reg.mmin() == 4)) {  // with mipmap off, both of these are linear
                                                 //    lg::error("unsupported mmin");
   }
-
-  //
 }
 
 void DirectRenderer::handle_tex0_1_packed(const u8* data,
@@ -669,12 +667,6 @@ void DirectRenderer::handle_st_packed(const u8* data) {
   memcpy(&m_prim_building.st_reg.x(), data + 0, 4);
   memcpy(&m_prim_building.st_reg.y(), data + 4, 4);
   memcpy(&m_prim_building.Q, data + 8, 4);
-  //  if (m_my_id == BucketId::SKY_DRAW) {
-  //    fmt::print("st: {} {} {}\n", m_prim_building.st_reg.x(), m_prim_building.st_reg.y(),
-  //    m_prim_building.Q);
-  //  }
-
-  // m_prim_building.st_reg /= m_prim_building.Q;
 }
 
 void DirectRenderer::handle_rgbaq_packed(const u8* data) {
@@ -823,10 +815,6 @@ void DirectRenderer::handle_xyzf2_common(u32 x,
     flush_pending(render_state, prof);
   }
 
-  //  assert(f == 0);
-  //  if (m_my_id == BucketId::SKY_DRAW) {
-  //    fmt::print("writing {}\n", m_prim_building.building_idx);
-  //  }
   m_prim_building.building_stq.at(m_prim_building.building_idx) = math::Vector<float, 3>(
       m_prim_building.st_reg.x(), m_prim_building.st_reg.y(), m_prim_building.Q);
   m_prim_building.building_rgba.at(m_prim_building.building_idx) = m_prim_building.rgba_reg;

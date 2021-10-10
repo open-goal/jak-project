@@ -23,6 +23,7 @@ void GLAPIENTRY opengl_error_callback(GLenum source,
                                       const GLchar* message,
                                       const void* /*userParam*/) {
   if (severity == GL_DEBUG_SEVERITY_NOTIFICATION) {
+    // On some drivers this prints on every single texture upload, which is too much spam
     // lg::debug("OpenGL notification 0x{:X} S{:X} T{:X}: {}", id, source, type, message);
   } else if (severity == GL_DEBUG_SEVERITY_LOW) {
     lg::info("OpenGL message 0x{:X} S{:X} T{:X}: {}", id, source, type, message);
@@ -132,6 +133,9 @@ void OpenGLRenderer::serialize(Serializer& ser) {
   }
 }
 
+/*!
+ * Draw the per-renderer debug window
+ */
 void OpenGLRenderer::draw_renderer_selection_window() {
   ImGui::Begin("Renderer Debug");
   for (size_t i = 0; i < m_bucket_renderers.size(); i++) {
@@ -271,6 +275,9 @@ void OpenGLRenderer::draw_test_triangle() {
   glDeleteVertexArrays(1, &vao);
 }
 
+/*!
+ * Take a screenshot!
+ */
 void OpenGLRenderer::finish_screenshot(const std::string& output_name, int width, int height) {
   std::vector<u32> buffer(width * height);
   glPixelStorei(GL_PACK_ALIGNMENT, 1);
@@ -283,6 +290,7 @@ void OpenGLRenderer::finish_screenshot(const std::string& output_name, int width
     }
   }
 
+  // set alpha. For some reason, image viewers do weird stuff with alpha.
   for (auto& x : buffer) {
     x |= 0xff000000;
   }

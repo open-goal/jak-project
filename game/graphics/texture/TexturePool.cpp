@@ -40,7 +40,7 @@ void TextureRecord::serialize(Serializer& ser) {
     assert(on_gpu);
     if (ser.is_saving()) {
       // we should download the texture and save it.
-      data.resize(w * h);
+      data.resize(w * h * 4);
       glBindTexture(GL_TEXTURE_2D, gpu_texture);
       glGetTexImage(GL_TEXTURE_2D, 0, GL_RGBA, GL_UNSIGNED_INT_8_8_8_8_REV, data.data());
     }

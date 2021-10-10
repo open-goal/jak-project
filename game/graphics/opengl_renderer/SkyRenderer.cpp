@@ -28,10 +28,10 @@ SkyTextureHandler::SkyTextureHandler(const std::string& name, BucketId my_id)
   GLint old_framebuffer;
   glGetIntegerv(GL_FRAMEBUFFER_BINDING, &old_framebuffer);
 
+  // setup the framebuffers
   for (int i = 0; i < 2; i++) {
     glBindFramebuffer(GL_FRAMEBUFFER, m_framebuffers[i]);
     glBindTexture(GL_TEXTURE_2D, m_textures[i]);
-    // glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA32F, m_sizes[i], m_sizes[i], 0, GL_RGBA, GL_FLOAT, 0);
     glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, m_sizes[i], m_sizes[i], 0, GL_RGBA,
                  GL_UNSIGNED_INT_8_8_8_8_REV, 0);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
@@ -50,6 +50,7 @@ SkyTextureHandler::SkyTextureHandler(const std::string& name, BucketId my_id)
   glBufferData(GL_ARRAY_BUFFER, sizeof(Vertex) * 6, nullptr, GL_DYNAMIC_DRAW);
   glBindBuffer(GL_ARRAY_BUFFER, old_framebuffer);
 
+  // we only draw squares
   m_vertex_data[0].x = 0;
   m_vertex_data[0].y = 0;
 
@@ -78,6 +79,13 @@ SkyTextureHandler::~SkyTextureHandler() {
 void SkyTextureHandler::handle_sky_copies(DmaFollower& dma,
                                           SharedRenderState* render_state,
                                           ScopedProfilerNode& prof) {
+  if (!m_enabled) {
+    while (dma.current_tag().qwc == 6) {
+      dma.read_and_advance();
+      dma.read_and_advance();
+    }
+    return;
+  }
   GLuint vao;
   glGenVertexArrays(1, &vao);
   glBindVertexArray(vao);
@@ -94,24 +102,29 @@ void SkyTextureHandler::handle_sky_copies(DmaFollower& dma,
     if (render_state->dump_playback) {
       // continue;
     }
+
+    // first is an adgif
     AdgifHelper adgif(setup_data.data + 16);
     assert(adgif.is_normal_adgif());
     assert(adgif.alpha().data == 0x8000000068);  // Cs + Cd
 
-    //    fmt::print("Source: {}\n", adgif.tex0().tbp0());
-
+    // next is the actual draw
     auto draw_data = dma.read_and_advance();
     assert(draw_data.size_bytes == 6 * 16);
 
     GifTag draw_or_blend_tag(draw_data.data);
 
+    // the first draw overwrites the previous frame's draw by disabling alpha blend (ABE = 0)
     bool is_first_draw = !GsPrim(draw_or_blend_tag.prim()).abe();
+
+    // here's we're relying on the format of the drawing to get the alpha/offset.
     u32 coord;
     u32 intensity;
     memcpy(&coord, draw_data.data + (5 * 16), 4);
     memcpy(&intensity, draw_data.data + 16, 4);
-    //    fmt::print("draw: {} {} 0x{:x}\n", is_first_draw, intensity, coord);
 
+    // we didn't parse the render-to-texture setup earlier, so we need a way to tell sky from
+    // clouds. we can look at the drawing coordinates to tell - the sky is smaller than the clouds.
     int buffer_idx = 0;
     if (coord == 0x200) {
       // sky
@@ -122,6 +135,7 @@ void SkyTextureHandler::handle_sky_copies(DmaFollower& dma,
       assert(false);  // bad data
     }
 
+    // look up the source texture
     auto tex = render_state->texture_pool->lookup(adgif.tex0().tbp0());
     assert(tex);
 
@@ -129,16 +143,24 @@ void SkyTextureHandler::handle_sky_copies(DmaFollower& dma,
       render_state->texture_pool->upload_to_gpu(tex);
     }
 
+    // setup for rendering!
     glBindFramebuffer(GL_FRAMEBUFFER, m_framebuffers[buffer_idx]);
     glViewport(0, 0, m_sizes[buffer_idx], m_sizes[buffer_idx]);
     glFramebufferTexture(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, m_textures[buffer_idx], 0);
     render_state->shaders[ShaderId::SKY_BLEND].activate();
+
+    // if the first is set, it disables alpha. we can just clear here, so it's easier to find
+    // in renderdoc.
     if (is_first_draw) {
       float clear[4] = {0, 0, 0, 0};
       glClearBufferfv(GL_COLOR, 0, clear);
     }
 
+    // intensities should be 0-128 (maybe higher is okay, but I don't see how this could be
+    // generated with the GOAL code.)
     assert(intensity <= 128);
+
+    // todo - could do this on the GPU, but probably not worth it for <20 triangles...
     float intensity_float = intensity / 128.f;
     for (auto& vert : m_vertex_data) {
       vert.intensity = intensity_float;
@@ -146,8 +168,11 @@ void SkyTextureHandler::handle_sky_copies(DmaFollower& dma,
 
     glDisable(GL_DEPTH_TEST);
     glEnable(GL_BLEND);
+
+    // will add.
     glBlendFunc(GL_ONE, GL_ONE);
 
+    // setup draw data
     glBindBuffer(GL_ARRAY_BUFFER, m_gl_vertex_buffer);
     glBufferSubData(GL_ARRAY_BUFFER, 0, sizeof(Vertex) * 6, m_vertex_data);
     glEnableVertexAttribArray(0);
@@ -167,15 +192,42 @@ void SkyTextureHandler::handle_sky_copies(DmaFollower& dma,
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
     glUniform1i(glGetUniformLocation(render_state->shaders[ShaderId::SKY_BLEND].id(), "T0"), 0);
 
+    // Draw a sqaure
     glDrawArrays(GL_TRIANGLES, 0, 6);
 
+    // 1 draw, 2 triangles
     prof.add_draw_call(1);
     prof.add_tri(2);
+
+    if (buffer_idx == 0) {
+      if (is_first_draw) {
+        m_stats.sky_draws++;
+      } else {
+        m_stats.sky_blends++;
+      }
+    } else {
+      if (is_first_draw) {
+        m_stats.cloud_draws++;
+      } else {
+        m_stats.cloud_blends++;
+      }
+    }
   }
 
-  // TODO: don't add on very frame
+  // put in pool.
   for (int i = 0; i < 2; i++) {
-    auto tex = std::make_shared<TextureRecord>();
+    // todo - these are hardcoded and rely on the vram layout.
+    u32 tbp = i == 0 ? 8064 : 8096;
+
+    // lookup existing, or create a new entry
+    TextureRecord* tex = render_state->texture_pool->lookup(tbp);
+    if (!tex) {
+      auto tsp = std::make_shared<TextureRecord>();
+      render_state->texture_pool->set_texture(tbp, tsp);
+      tex = tsp.get();
+    }
+
+    // update it
     tex->gpu_texture = m_textures[i];
     tex->on_gpu = true;
     tex->only_on_gpu = true;
@@ -183,7 +235,6 @@ void SkyTextureHandler::handle_sky_copies(DmaFollower& dma,
     tex->w = m_sizes[i];
     tex->h = m_sizes[i];
     tex->name = fmt::format("PC-SKY-{}", i);
-    render_state->texture_pool->set_texture(i == 0 ? 8064 : 8096, tex);
   }
 
   glViewport(old_viewport[0], old_viewport[1], old_viewport[2], old_viewport[3]);
@@ -195,8 +246,7 @@ void SkyTextureHandler::handle_sky_copies(DmaFollower& dma,
 void SkyTextureHandler::render(DmaFollower& dma,
                                SharedRenderState* render_state,
                                ScopedProfilerNode& prof) {
-  m_debug_dma_str.clear();
-
+  m_stats = {};
   // First thing should be a NEXT with two nops. this is a jump from buckets to sprite data
   auto data0 = dma.read_and_advance();
   assert(data0.vif1() == 0);
@@ -218,24 +268,30 @@ void SkyTextureHandler::render(DmaFollower& dma,
 
   handle_sky_copies(dma, render_state, prof);
 
-  while (dma.current_tag_offset() != render_state->next_bucket) {
-    auto tag = dma.current_tag();
-    m_debug_dma_str += fmt::format("@ 0x{:x} tag: {}\n", dma.current_tag_offset(), tag.print());
-    auto data = dma.read_and_advance();
-    VifCode code(data.vif0());
-    m_debug_dma_str += fmt::format(" vif: {}\n", code.print());
-    if (code.kind == VifCode::Kind::NOP || code.kind == VifCode::Kind::FLUSHA) {
-      m_debug_dma_str += fmt::format(" vif: {}\n", VifCode(data.vif1()).print());
-    }
-  }
+  auto reset_alpha = dma.read_and_advance();
+  assert(reset_alpha.size_bytes == 16 * 2);
+
+  auto reset_gs = dma.read_and_advance();
+  assert(reset_gs.size_bytes == 16 * 8);
+
+  auto empty = dma.read_and_advance();
+  assert(empty.size_bytes == 0);
+  assert(empty.vif0() == 0);
+  assert(empty.vif1() == 0);
+
+  assert(dma.current_tag().kind == DmaTag::Kind::CALL);
+  dma.read_and_advance();
+  dma.read_and_advance();  // cnt
+  assert(dma.current_tag().kind == DmaTag::Kind::RET);
+  dma.read_and_advance();  // ret
+  dma.read_and_advance();  // ret
+  assert(dma.current_tag_offset() == render_state->next_bucket);
 }
 
 void SkyTextureHandler::draw_debug_window() {
   ImGui::Separator();
-  ImGui::Checkbox("DMA print", &m_print_debug_dma);
-  if (m_print_debug_dma) {
-    ImGui::Text("%s", m_debug_dma_str.c_str());
-  }
+  ImGui::Text("Draw/Blend ( sky ): %d/%d", m_stats.sky_draws, m_stats.sky_blends);
+  ImGui::Text("Draw/Blend (cloud): %d/%d", m_stats.cloud_draws, m_stats.cloud_blends);
 }
 
 SkyRenderer::SkyRenderer(const std::string& name, BucketId my_id)
@@ -245,8 +301,8 @@ SkyRenderer::SkyRenderer(const std::string& name, BucketId my_id)
 void SkyRenderer::render(DmaFollower& dma,
                          SharedRenderState* render_state,
                          ScopedProfilerNode& prof) {
-  m_debug_dma_str.clear();
   m_direct_renderer.reset_state();
+  m_frame_stats = {};
   // First thing should be a NEXT with two nops. this is a jump from buckets to sprite data
   auto data0 = dma.read_and_advance();
   assert(data0.vif1() == 0);
@@ -276,14 +332,18 @@ void SkyRenderer::render(DmaFollower& dma,
   // drawing.
   int dma_idx = 0;
   while (dma.current_tag().kind == DmaTag::Kind::CNT) {
+    m_frame_stats.gif_packets++;
     auto data = dma.read_and_advance();
     assert(data.vifcode0().kind == VifCode::Kind::NOP);
     assert(data.vifcode1().kind == VifCode::Kind::DIRECT);
     assert(data.vifcode1().immediate == data.size_bytes / 16);
-    m_direct_renderer.render_gif(data.data, data.size_bytes, render_state, prof);
-    m_direct_renderer.flush_pending(render_state, prof);
+    if (m_enabled) {
+      m_direct_renderer.render_gif(data.data, data.size_bytes, render_state, prof);
+    }
     dma_idx++;
   }
+
+  m_direct_renderer.flush_pending(render_state, prof);
 
   auto empty = dma.read_and_advance();
   assert(empty.size_bytes == 0);
@@ -301,10 +361,7 @@ void SkyRenderer::render(DmaFollower& dma,
 
 void SkyRenderer::draw_debug_window() {
   ImGui::Separator();
-  ImGui::Checkbox("DMA print", &m_print_debug_dma);
-  if (m_print_debug_dma) {
-    ImGui::Text("%s", m_debug_dma_str.c_str());
-  }
+  ImGui::Text("GIF packets: %d", m_frame_stats.gif_packets);
 
   if (ImGui::TreeNode("direct")) {
     m_direct_renderer.draw_debug_window();

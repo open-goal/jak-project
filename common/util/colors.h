@@ -3,6 +3,7 @@
 #include "common/common_types.h"
 
 namespace colors {
+// some reasonable colors that are different from each other
 constexpr int COLOR_COUNT = 131;
 u32 common_colors[COLOR_COUNT] = {
     0xF0F8FE, 0xFAEBD7, 0x00FFFF, 0x70DB93, 0xF0FFFF, 0xF5F5DC, 0x000000, 0x0000FF, 0x9F5F9F,
