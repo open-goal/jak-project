@@ -63,6 +63,8 @@ const std::unordered_set<std::string> g_functions_expected_to_reject = {
     // display
     "vblank-handler",  // asm
     "vif1-handler", "vif1-handler-debug",
+    // texture
+    "adgif-shader<-texture-with-update!",  // mips2c
     // sparticle
     "sp-launch-particles-var", "particle-adgif", "sp-init-fields!", "memcpy", "sp-process-block-2d",
     "sp-process-block-3d",
