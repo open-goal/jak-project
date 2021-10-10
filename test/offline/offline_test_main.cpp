@@ -81,7 +81,12 @@ const std::unordered_set<std::string> g_functions_expected_to_reject = {
     "ambient-inspect",  // asm, weird
 
     // background
-    "background-upload-vu0", "draw-node-cull"};
+    "background-upload-vu0", "draw-node-cull",
+
+    // anim-tester
+    "(method 3 anim-tester)",
+    "anim-tester-save-object-seqs"  // anim-tester -- new basic on the stack
+};
 
 const std::unordered_set<std::string> g_functions_to_skip_compiling = {
     /// GCOMMON
@@ -173,7 +178,12 @@ const std::unordered_set<std::string> g_functions_to_skip_compiling = {
     "debug-menu-item-var-make-float",
 
     // decompiler BUG
-    "level-hint-task-process"};
+    "level-hint-task-process",
+
+    // anim-tester
+    "(method 3 anim-tester)",
+    "anim-tester-save-object-seqs"  // anim-tester -- new basic on the stack
+};
 
 // default location for the data. It can be changed with a command line argument.
 std::string g_iso_data_path = "";
@@ -188,11 +198,12 @@ struct decomp_meta {
 
 std::vector<decomp_meta> g_object_files_to_decompile_or_ref_check;
 
-std::vector<std::string> dgos = {
-    "CGO/KERNEL.CGO", "CGO/ENGINE.CGO", "CGO/GAME.CGO", "DGO/BEA.DGO", "DGO/INT.DGO", "DGO/VI1.DGO",
-    "DGO/VI2.DGO",    "DGO/VI3.DGO",    "DGO/CIT.DGO",  "DGO/MIS.DGO", "DGO/JUB.DGO", "DGO/SUN.DGO",
-    "DGO/DEM.DGO",    "DGO/FIN.DGO",    "DGO/JUN.DGO",  "DGO/FIC.DGO", "DGO/SNO.DGO", "DGO/SWA.DGO",
-    "DGO/MAI.DGO",    "DGO/ROB.DGO",    "DGO/LAV.DGO",  "DGO/OGR.DGO", "DGO/TRA.DGO"};
+std::vector<std::string> dgos = {"CGO/KERNEL.CGO", "CGO/ENGINE.CGO", "CGO/GAME.CGO", "DGO/BEA.DGO",
+                                 "DGO/INT.DGO",    "DGO/VI1.DGO",    "DGO/VI2.DGO",  "DGO/VI3.DGO",
+                                 "DGO/CIT.DGO",    "DGO/MIS.DGO",    "DGO/JUB.DGO",  "DGO/SUN.DGO",
+                                 "DGO/DEM.DGO",    "DGO/FIN.DGO",    "DGO/JUN.DGO",  "DGO/FIC.DGO",
+                                 "DGO/SNO.DGO",    "DGO/SWA.DGO",    "DGO/MAI.DGO",  "DGO/ROB.DGO",
+                                 "DGO/LAV.DGO",    "DGO/OGR.DGO",    "DGO/TRA.DGO",  "DGO/ROL.DGO"};
 
 }  // namespace
 
