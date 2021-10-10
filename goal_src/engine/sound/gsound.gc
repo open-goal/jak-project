@@ -583,7 +583,7 @@
              (set! (-> obj spec) spec)
              (set! (-> obj name) name)
              (set! (-> obj playing-id) (new-sound-id))
-             (set! (-> obj params) params)
+             (set! (-> obj params) (the-as (pointer float) params))
              (set! (-> obj param-count) param-count)
              (set! (-> obj entity) #f)
              (set! (-> obj sound-count) 1)
@@ -616,7 +616,6 @@
   )
 
 
-(defun-extern effect-param->sound-spec sound-spec sound-play-parms int sound-spec)
 (define-extern *debug-effect-control* symbol)
 (defmethod update! ambient-sound ((obj ambient-sound))
   "Called once per frame to update the sound playback"
@@ -645,7 +644,11 @@
            (set! (-> spec fo-max) (-> obj falloff-far))
            (set! (-> spec mask) (the-as uint 0))
            (if (-> obj params)
-               (effect-param->sound-spec spec (-> obj params) (-> obj param-count))
+               (effect-param->sound-spec
+                  spec
+                  (the-as (pointer float) (-> obj params))
+                  (-> obj param-count)
+                  )
                )
            )
          (if (and (nonzero? (-> spec fo-max))
