@@ -1,3 +1,5 @@
+#include <algorithm>
+
 #include "Profiler.h"
 
 #include "common/log/log.h"
