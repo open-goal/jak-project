@@ -190,6 +190,13 @@ static void gl_kill_display(GfxDisplay* display) {
   glfwDestroyWindow(display->window_glfw);
 }
 
+namespace {
+std::string make_output_file_name(const std::string& file_name) {
+  file_util::create_dir_if_needed(file_util::get_file_path({"gfx_dumps"}));
+  return file_util::get_file_path({"gfx_dumps", file_name});
+}
+}  // namespace
+
 void make_gfx_dump() {
   Timer ser_timer;
   Serializer ser;
@@ -203,10 +210,8 @@ void make_gfx_dump() {
            ser_timer.getMs(), ((double)result.second) / (1 << 20),
            ((double)compressed.size() / (1 << 20)), compression_timer.getMs());
 
-  file_util::create_dir_if_needed(file_util::get_file_path({"gfx_dumps"}));
-  file_util::write_binary_file(
-      file_util::get_file_path({"gfx_dumps", g_gfx_data->debug_gui.dump_name()}), compressed.data(),
-      compressed.size());
+  file_util::write_binary_file(make_output_file_name(g_gfx_data->debug_gui.dump_name()),
+                               compressed.data(), compressed.size());
 }
 
 void render_game_frame(int width, int height) {
@@ -234,9 +239,17 @@ void render_game_frame(int width, int height) {
 
     auto& chain = g_gfx_data->dma_copier.get_last_result();
     g_gfx_data->frame_idx_of_input_data = g_gfx_data->frame_idx;
-    g_gfx_data->ogl_renderer.render(DmaFollower(chain.data.data(), chain.start_offset), width,
-                                    height, g_gfx_data->debug_gui.should_draw_render_debug(),
-                                    false);
+    RenderOptions options;
+    options.window_height_px = height;
+    options.window_width_px = width;
+    options.draw_render_debug_window = g_gfx_data->debug_gui.should_draw_render_debug();
+    options.draw_profiler_window = g_gfx_data->debug_gui.should_draw_profiler();
+    options.playing_from_dump = false;
+    options.save_screenshot = g_gfx_data->debug_gui.get_screenshot_flag();
+    if (options.save_screenshot) {
+      options.screenshot_path = make_output_file_name(g_gfx_data->debug_gui.screenshot_name());
+    }
+    g_gfx_data->ogl_renderer.render(DmaFollower(chain.data.data(), chain.start_offset), options);
   }
 
   // before vsync, mark the chain as rendered.
@@ -252,8 +265,8 @@ void render_game_frame(int width, int height) {
 void render_dump_frame(int width, int height) {
   Timer deser_timer;
   if (g_gfx_data->debug_gui.want_dump_load()) {
-    auto data = file_util::read_binary_file(
-        file_util::get_file_path({"gfx_dumps", g_gfx_data->debug_gui.dump_name()}));
+    auto data =
+        file_util::read_binary_file(make_output_file_name(g_gfx_data->debug_gui.dump_name()));
     auto decompressed = compression::decompress_zstd(data.data(), data.size());
     g_gfx_data->loaded_dump = Serializer(decompressed.data(), decompressed.size());
   }
@@ -268,8 +281,19 @@ void render_dump_frame(int width, int height) {
   g_gfx_data->debug_gui.want_dump_load() = false;
 
   auto& chain = g_gfx_data->dma_copier.get_last_result();
-  g_gfx_data->ogl_renderer.render(DmaFollower(chain.data.data(), chain.start_offset), width, height,
-                                  g_gfx_data->debug_gui.should_draw_render_debug(), true);
+
+  RenderOptions options;
+  options.window_height_px = height;
+  options.window_width_px = width;
+  options.draw_render_debug_window = g_gfx_data->debug_gui.should_draw_render_debug();
+  options.draw_profiler_window = g_gfx_data->debug_gui.should_draw_profiler();
+  options.playing_from_dump = true;
+  options.save_screenshot = g_gfx_data->debug_gui.get_screenshot_flag();
+  if (options.save_screenshot) {
+    options.screenshot_path = make_output_file_name(g_gfx_data->debug_gui.screenshot_name());
+  }
+
+  g_gfx_data->ogl_renderer.render(DmaFollower(chain.data.data(), chain.start_offset), options);
 }
 
 static void gl_render_display(GfxDisplay* display) {
@@ -314,8 +338,9 @@ static void gl_render_display(GfxDisplay* display) {
 
   // exit if display window was closed
   if (glfwWindowShouldClose(window)) {
-    // Display::KillDisplay(window);
+    std::unique_lock<std::mutex> lock(g_gfx_data->sync_mutex);
     MasterExit = 2;
+    g_gfx_data->sync_cv.notify_all();
   }
 }
 
@@ -330,7 +355,7 @@ u32 gl_vsync() {
 
   std::unique_lock<std::mutex> lock(g_gfx_data->sync_mutex);
   auto init_frame = g_gfx_data->frame_idx_of_input_data;
-  g_gfx_data->sync_cv.wait(lock, [=] { return g_gfx_data->frame_idx > init_frame; });
+  g_gfx_data->sync_cv.wait(lock, [=] { return MasterExit || g_gfx_data->frame_idx > init_frame; });
 
   return g_gfx_data->frame_idx & 1;
 }

@@ -27,7 +27,7 @@ struct SpriteFrameData {
   Vector4f basis_x;
   Vector4f basis_y;
   GifTag sprite_3d_giftag;
-  AdGif screen_shader;
+  AdGifData screen_shader;
   GifTag clipped_giftag;
   Vector4f inv_hmge_scale;
   Vector4f stq_offset;
@@ -117,7 +117,7 @@ enum SpriteDataMem {
  */
 struct SpriteHud2DPacket {
   GifTag adgif_giftag;   // starts the adgif shader. 0
-  AdGif user_adgif;      // the adgif shader 16
+  AdGifData user_adgif;  // the adgif shader 16
   GifTag sprite_giftag;  // 96
   math::Vector<s32, 4> color;
   Vector4f st0;
@@ -146,18 +146,25 @@ static_assert(sizeof(SpriteFrameData) == 0x290, "SpriteFrameData size");
 class SpriteRenderer : public BucketRenderer {
  public:
   SpriteRenderer(const std::string& name, BucketId my_id);
-  void render(DmaFollower& dma, SharedRenderState* render_state) override;
+  void render(DmaFollower& dma, SharedRenderState* render_state, ScopedProfilerNode& prof) override;
   void draw_debug_window() override;
   static constexpr int SPRITES_PER_CHUNK = 48;
 
  private:
-  void render_distorter(DmaFollower& dma, SharedRenderState* render_state);
+  void render_distorter(DmaFollower& dma,
+                        SharedRenderState* render_state,
+                        ScopedProfilerNode& prof);
   void handle_sprite_frame_setup(DmaFollower& dma);
   void render_3d(DmaFollower& dma);
-  void render_2d_group0(DmaFollower& dma);
+  void render_2d_group0(DmaFollower& dma,
+                        SharedRenderState* render_state,
+                        ScopedProfilerNode& prof);
   void render_fake_shadow(DmaFollower& dma);
-  void render_2d_group1(DmaFollower& dma, SharedRenderState* render_state);
-  void do_2d_group1_block_cpu(u32 count, SharedRenderState* render_state);
+  void render_2d_group1(DmaFollower& dma,
+                        SharedRenderState* render_state,
+                        ScopedProfilerNode& prof);
+  void do_2d_group1_block_cpu(u32 count, SharedRenderState* render_state, ScopedProfilerNode& prof);
+  void do_2d_group0_block_cpu(u32 count, SharedRenderState* render_state, ScopedProfilerNode& prof);
 
   u8 m_sprite_distorter_setup[7 * 16];  // direct data
   u8 m_sprite_direct_setup[3 * 16];
@@ -166,9 +173,11 @@ class SpriteRenderer : public BucketRenderer {
   SpriteHudMatrixData m_hud_matrix_data;
 
   SpriteVecData2d m_vec_data_2d[SPRITES_PER_CHUNK];
-  AdGif m_adgif[SPRITES_PER_CHUNK];
+  AdGifData m_adgif[SPRITES_PER_CHUNK];
 
   struct DebugStats {
+    int blocks_2d_grp0 = 0;
+    int count_2d_grp0 = 0;
     int blocks_2d_grp1 = 0;
     int count_2d_grp1 = 0;
   } m_debug_stats;

@@ -126,9 +126,9 @@
   )
 
 (deftype sky-tng-data (basic)
-  ((giftag-base  qword   :inline :offset-assert 16)
-   (giftag-roof  qword   :inline :offset-assert 32)
-   (giftag-ocean qword   :inline :offset-assert 48)
+  ((giftag-base  gs-gif-tag :inline  :offset-assert 16);; changed
+   (giftag-roof  gs-gif-tag   :inline :offset-assert 32)
+   (giftag-ocean gs-gif-tag   :inline :offset-assert 48)
    (fog          vector  :inline :offset-assert 64)
    (sky          uint32 8       :offset-assert 80)
    (time         float           :offset-assert 112)
@@ -146,8 +146,8 @@
   ((adgif-tmpl dma-gif-packet :inline :offset-assert 0)
    (draw-tmpl  dma-gif-packet :inline :offset-assert 32)
    (blend-tmpl dma-gif-packet :inline :offset-assert 64)
-   (sky-data   uint128        5       :offset-assert 96)
-   (cloud-data uint128        5       :offset-assert 176)
+   (sky-data   qword 5 :inline               :offset-assert 96)
+   (cloud-data qword 5 :inline               :offset-assert 176)
    )
   :method-count-assert 9
   :size-assert         #x100
@@ -166,3 +166,9 @@
 
 (define *sky-drawn* #f)
 (define *cloud-drawn* #f)
+
+
+(declare-type time-of-day-context basic)
+(define-extern update-sky-tng-data (function float none))
+(define-extern make-sky-textures (function time-of-day-context int none))
+(define-extern sky-base-polygons (inline-array sky-vertex))

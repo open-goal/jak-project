@@ -273,6 +273,7 @@ goos::Object decompile_value_array(const TypeSpec& elt_type,
       }
       elt_bytes.push_back(word.get_byte(j % 4));
     }
+    assert(elt_type != TypeSpec("uint128"));
     array_def.push_back(decompile_value(elt_type, elt_bytes, ts));
   }
 
@@ -865,6 +866,10 @@ goos::Object bitfield_defs_print(const TypeSpec& type,
     } else if (def.is_signed) {
       result.push_back(
           pretty_print::to_symbol(fmt::format(":{} {}", def.field_name, (s64)def.value)));
+    } else if (def.nested_field) {
+      result.push_back(pretty_print::to_symbol(fmt::format(
+          ":{} {}", def.field_name,
+          bitfield_defs_print(def.nested_field->field_type, def.nested_field->fields).print())));
     } else {
       result.push_back(
           pretty_print::to_symbol(fmt::format(":{} #x{:x}", def.field_name, def.value)));
@@ -1087,6 +1092,7 @@ goos::Object decompile_boxed_array(const DecompilerLabel& label,
         }
         elt_bytes.push_back(word.get_byte(j % 4));
       }
+      assert(content_type != TypeSpec("uint128"));
       result.push_back(decompile_value(content_type, elt_bytes, ts));
     }
     return pretty_print::build_list(result);

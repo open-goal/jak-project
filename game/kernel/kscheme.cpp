@@ -23,6 +23,7 @@
 #include "common/goal_constants.h"
 #include "common/log/log.h"
 #include "common/util/Timer.h"
+#include "game/mips2c/mips2c_table.h"
 
 //! Controls link mode when EnableMethodSet = 0, MasterDebug = 1, DiskBoot = 0. Will enable a
 //! warning message if EnableMethodSet = 1
@@ -1712,6 +1713,8 @@ s32 test_function(s32 arg0, s32 arg1, s32 arg2, s32 arg3) {
  */
 s32 InitHeapAndSymbol() {
   Timer heap_init_timer;
+  // reset all mips2c functions
+  Mips2C::gLinkedFunctionTable = {};
   // allocate memory for the symbol table
   auto symbol_table = kmalloc(kglobalheap, 0x20000, KMALLOC_MEMSET, "symbol-table").cast<u32>();
 

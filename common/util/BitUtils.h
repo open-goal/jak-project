@@ -84,3 +84,13 @@ template <typename T>
 T align64(T in) {
   return (in + 63) & (~T(63));
 }
+
+inline u32 count_leading_zeros_u32(u32 in) {
+#if defined(__GNUC__) || defined(__clang__)
+  return __builtin_clz(in);
+#else
+  unsigned long result;
+  _BitScanReverse(&result, in);
+  return result;
+#endif
+}

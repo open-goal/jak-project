@@ -7,7 +7,9 @@
 TextureUploadHandler::TextureUploadHandler(const std::string& name, BucketId my_id)
     : BucketRenderer(name, my_id) {}
 
-void TextureUploadHandler::render(DmaFollower& dma, SharedRenderState* render_state) {
+void TextureUploadHandler::render(DmaFollower& dma,
+                                  SharedRenderState* render_state,
+                                  ScopedProfilerNode& /*prof*/) {
   m_stats = {};
 
   // this is the data we get from the PC Port modification.

@@ -16,7 +16,8 @@ struct TextureRecord {
   u16 w, h;
   u8 data_segment;
   bool on_gpu = false;
-  bool do_gc = true;
+  bool do_gc = true;  // if set, will be unloaded from GPU when another is upload on top
+  bool only_on_gpu = false;
   std::vector<u8> data;
   u64 gpu_texture = 0;
   u32 dest = -1;
@@ -123,6 +124,8 @@ class TexturePool {
       return nullptr;
     }
   }
+
+  TextureRecord* get_random_texture();
 
   void upload_to_gpu(TextureRecord* rec);
 
