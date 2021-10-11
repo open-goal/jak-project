@@ -122,6 +122,7 @@ class ObjectFileDB {
     for (const auto& name : obj_file_order) {
       for (auto& obj : obj_files_by_name.at(name)) {
         f(obj);
+        lg::debug("Processing object {}", name);
       }
     }
   }
