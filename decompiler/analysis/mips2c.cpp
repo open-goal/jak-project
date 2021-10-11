@@ -632,6 +632,12 @@ Mips2C_Line handle_generic_op2(const Instruction& i0,
           instr_str};
 }
 
+Mips2C_Line handle_plain_op(const Instruction& /*i0*/,
+                            const std::string& instr_str,
+                            const std::string& op_name) {
+  return {fmt::format("c->{}();", op_name), instr_str};
+}
+
 Mips2C_Line handle_or(const Instruction& i0, const std::string& instr_str) {
   if (is_gpr_3(i0, InstructionKind::OR, {}, rs7(), rr0())) {
     // set reg_dest to #f : or reg_dest, s7, r0
@@ -648,7 +654,7 @@ Mips2C_Line handle_or(const Instruction& i0, const std::string& instr_str) {
         instr_str};
   } else {
     // actually do a logical OR of two registers: or a0, a1, a2
-    return handle_unknown(instr_str);
+    return handle_generic_op3(i0, instr_str, "_or");
   }
 }
 
@@ -704,6 +710,8 @@ Mips2C_Line handle_non_likely_branch_bc(const Instruction& i0, const std::string
       return {fmt::format("bc = ((s64){}) <= 0;", reg64_or_zero(i0.get_src(0))), instr_str};
     case InstructionKind::BC1F:
       return {fmt::format("bc = !cop1_bc;"), instr_str};
+    case InstructionKind::BC1T:
+      return {fmt::format("bc = cop1_bc;"), instr_str};
     default:
       return handle_unknown(instr_str);
   }
@@ -849,9 +857,13 @@ Mips2C_Line handle_normal_instr(Mips2C_Output& output,
     case InstructionKind::MULT3:
     case InstructionKind::PMINW:
     case InstructionKind::PMAXW:
+    case InstructionKind::SUBU:
+    case InstructionKind::DSRAV:
       return handle_generic_op3(i0, instr_str, {});
     case InstructionKind::MULS:
       return handle_generic_op3(i0, instr_str, "muls");
+    case InstructionKind::DIVS:
+      return handle_generic_op3(i0, instr_str, "divs");
     case InstructionKind::ADDS:
       return handle_generic_op3(i0, instr_str, "adds");
     case InstructionKind::SUBS:
@@ -893,6 +905,8 @@ Mips2C_Line handle_normal_instr(Mips2C_Output& output,
       return handle_generic_op2(i0, instr_str, "mfc1");
     case InstructionKind::MTC1:
       return handle_generic_op2(i0, instr_str, "mtc1");
+    case InstructionKind::NEGS:
+      return handle_generic_op2(i0, instr_str, "negs");
     case InstructionKind::CVTWS:
       return handle_generic_op2(i0, instr_str, "cvtws");
     case InstructionKind::CVTSW:
@@ -901,11 +915,15 @@ Mips2C_Line handle_normal_instr(Mips2C_Output& output,
       return handle_generic_op2(i0, instr_str, "pexew");
     case InstructionKind::SQRTS:
       return handle_generic_op2(i0, instr_str, "sqrts");
+    case InstructionKind::PLZCW:
+      return handle_generic_op2(i0, instr_str, "plzcw");
     case InstructionKind::LUI:
       return handle_lui(i0, instr_str);
     case InstructionKind::CLTS:
       output.needs_cop1_bc = true;
       return handle_clts(i0, instr_str);
+    case InstructionKind::VWAITQ:
+      return handle_plain_op(i0, instr_str, "vwaitq");
     default:
       unknown_count++;
       return handle_unknown(instr_str);

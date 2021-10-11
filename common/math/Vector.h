@@ -136,6 +136,13 @@ class Vector {
     return *this;
   }
 
+  Vector<T, Size>& operator/=(const T& val) {
+    for (int i = 0; i < Size; i++) {
+      m_data[i] /= val;
+    }
+    return *this;
+  }
+
   Vector<T, Size> cross(const Vector<T, Size>& other) const {
     static_assert(Size == 3, "Size for cross");
     Vector<T, Size> result = {y() * other.z() - z() * other.y(), z() * other.x() - x() * other.z(),
