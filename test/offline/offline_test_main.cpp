@@ -62,6 +62,8 @@ const std::unordered_set<std::string> g_functions_to_skip_decompiling = {
     // display
     "vblank-handler",  // asm
     "vif1-handler", "vif1-handler-debug",
+    // texture
+    "adgif-shader<-texture-with-update!",  // mips2c
     // sparticle
     "sp-launch-particles-var", "particle-adgif", "sp-init-fields!", "memcpy", "sp-process-block-2d",
     "sp-process-block-3d",
@@ -86,7 +88,12 @@ const std::unordered_set<std::string> g_functions_to_skip_decompiling = {
     "ambient-inspect",  // asm, weird
 
     // background
-    "background-upload-vu0", "draw-node-cull"};
+    "background-upload-vu0", "draw-node-cull",
+
+    // anim-tester
+    "(method 3 anim-tester)",
+    "anim-tester-save-object-seqs"  // anim-tester -- new basic on the stack
+};
 
 const std::unordered_set<std::string> g_functions_to_skip_compiling = {
     /// GCOMMON
@@ -187,7 +194,12 @@ const std::unordered_set<std::string> g_functions_to_skip_compiling = {
     "debug-menu-item-var-make-float",
 
     // decompiler BUG
-    "level-hint-task-process"};
+    "level-hint-task-process",
+
+    // anim-tester
+    "(method 3 anim-tester)",
+    "anim-tester-save-object-seqs"  // anim-tester -- new basic on the stack
+};
 
 const std::unordered_map<std::string, std::unordered_set<std::string>>& g_states_to_skip = {
     {"cam-master-active", {"event"}}};
@@ -205,11 +217,12 @@ struct decomp_meta {
 
 std::vector<decomp_meta> g_object_files_to_decompile_or_ref_check;
 
-std::vector<std::string> dgos = {
-    "CGO/KERNEL.CGO", "CGO/ENGINE.CGO", "CGO/GAME.CGO", "DGO/BEA.DGO", "DGO/INT.DGO", "DGO/VI1.DGO",
-    "DGO/VI2.DGO",    "DGO/VI3.DGO",    "DGO/CIT.DGO",  "DGO/MIS.DGO", "DGO/JUB.DGO", "DGO/SUN.DGO",
-    "DGO/DEM.DGO",    "DGO/FIN.DGO",    "DGO/JUN.DGO",  "DGO/FIC.DGO", "DGO/SNO.DGO", "DGO/SWA.DGO",
-    "DGO/MAI.DGO",    "DGO/ROB.DGO",    "DGO/LAV.DGO",  "DGO/OGR.DGO", "DGO/TRA.DGO"};
+std::vector<std::string> dgos = {"CGO/KERNEL.CGO", "CGO/ENGINE.CGO", "CGO/GAME.CGO", "DGO/BEA.DGO",
+                                 "DGO/INT.DGO",    "DGO/VI1.DGO",    "DGO/VI2.DGO",  "DGO/VI3.DGO",
+                                 "DGO/CIT.DGO",    "DGO/MIS.DGO",    "DGO/JUB.DGO",  "DGO/SUN.DGO",
+                                 "DGO/DEM.DGO",    "DGO/FIN.DGO",    "DGO/JUN.DGO",  "DGO/FIC.DGO",
+                                 "DGO/SNO.DGO",    "DGO/SWA.DGO",    "DGO/MAI.DGO",  "DGO/ROB.DGO",
+                                 "DGO/LAV.DGO",    "DGO/OGR.DGO",    "DGO/TRA.DGO",  "DGO/ROL.DGO"};
 
 }  // namespace
 

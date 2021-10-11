@@ -81,6 +81,10 @@ std::string GifTag::print() const {
   return result;
 }
 
+std::string register_address_name(u32 reg) {
+  return register_address_name(GsRegisterAddress(reg));
+}
+
 std::string register_address_name(GsRegisterAddress reg) {
   switch (reg) {
     case GsRegisterAddress::PRIM:

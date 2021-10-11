@@ -20,24 +20,33 @@ class DirectRenderer : public BucketRenderer {
  public:
   // specializations of direct renderer to handle certain outputs.
   enum class Mode {
-    NORMAL,     // use for general debug drawing, font.
-    SPRITE_CPU  // use for sprites (does the appropriate alpha test)
+    NORMAL,      // use for general debug drawing, font.
+    SPRITE_CPU,  // use for sprites (does the appropriate alpha test tricks)
+    SKY          // disables texture perspective correction
   };
   DirectRenderer(const std::string& name, BucketId my_id, int batch_size, Mode mode);
   ~DirectRenderer();
-  void render(DmaFollower& dma, SharedRenderState* render_state) override;
+  void render(DmaFollower& dma, SharedRenderState* render_state, ScopedProfilerNode& prof) override;
 
   /*!
    * Render directly from _VIF_ data.
    * You can optionally provide two vif tags that come in front of data.
    * These can be set to 0 if you don't have these.
    */
-  void render_vif(u32 vif0, u32 vif1, const u8* data, u32 size, SharedRenderState* render_state);
+  void render_vif(u32 vif0,
+                  u32 vif1,
+                  const u8* data,
+                  u32 size,
+                  SharedRenderState* render_state,
+                  ScopedProfilerNode& prof);
 
   /*!
    * Render directly from _GIF_ data.
    */
-  void render_gif(const u8* data, u32 size, SharedRenderState* render_state);
+  void render_gif(const u8* data,
+                  u32 size,
+                  SharedRenderState* render_state,
+                  ScopedProfilerNode& prof);
 
   void reset_state();
 
@@ -49,30 +58,41 @@ class DirectRenderer : public BucketRenderer {
   /*!
    * If you don't use the render interface, call this at the very end.
    */
-  void flush_pending(SharedRenderState* render_state);
+  void flush_pending(SharedRenderState* render_state, ScopedProfilerNode& prof);
 
   void draw_debug_window() override;
 
  private:
-  void handle_ad(const u8* data, SharedRenderState* render_state);
-  void handle_zbuf1(u64 val, SharedRenderState* render_state);
-  void handle_test1(u64 val, SharedRenderState* render_state);
-  void handle_alpha1(u64 val, SharedRenderState* render_state);
+  void handle_ad(const u8* data, SharedRenderState* render_state, ScopedProfilerNode& prof);
+  void handle_zbuf1(u64 val, SharedRenderState* render_state, ScopedProfilerNode& prof);
+  void handle_test1(u64 val, SharedRenderState* render_state, ScopedProfilerNode& prof);
+  void handle_alpha1(u64 val, SharedRenderState* render_state, ScopedProfilerNode& prof);
   void handle_pabe(u64 val);
-  void handle_clamp1(u64 val);
-  void handle_prim(u64 val, SharedRenderState* render_state);
-  void handle_prim_packed(const u8* data, SharedRenderState* render_state);
+  void handle_clamp1(u64 val, SharedRenderState* render_state, ScopedProfilerNode& prof);
+  void handle_prim(u64 val, SharedRenderState* render_state, ScopedProfilerNode& prof);
+  void handle_prim_packed(const u8* data,
+                          SharedRenderState* render_state,
+                          ScopedProfilerNode& prof);
   void handle_rgbaq(u64 val);
-  void handle_xyzf2(u64 val, SharedRenderState* render_state);
+  void handle_xyzf2(u64 val, SharedRenderState* render_state, ScopedProfilerNode& prof);
   void handle_st_packed(const u8* data);
   void handle_rgbaq_packed(const u8* data);
-  void handle_xyzf2_packed(const u8* data, SharedRenderState* render_state);
-  void handle_tex0_1_packed(const u8* data, SharedRenderState* render_state);
-  void handle_tex0_1(u64 val, SharedRenderState* render_state);
+  void handle_xyzf2_packed(const u8* data,
+                           SharedRenderState* render_state,
+                           ScopedProfilerNode& prof);
+  void handle_tex0_1_packed(const u8* data,
+                            SharedRenderState* render_state,
+                            ScopedProfilerNode& prof);
+  void handle_tex0_1(u64 val, SharedRenderState* render_state, ScopedProfilerNode& prof);
   void handle_tex1_1(u64 val);
   void handle_texa(u64 val);
 
-  void handle_xyzf2_common(u32 x, u32 y, u32 z, u8 f, SharedRenderState* render_state);
+  void handle_xyzf2_common(u32 x,
+                           u32 y,
+                           u32 z,
+                           u8 f,
+                           SharedRenderState* render_state,
+                           ScopedProfilerNode& prof);
 
   void update_gl_prim(SharedRenderState* render_state);
   void update_gl_blend();
@@ -110,6 +130,12 @@ class DirectRenderer : public BucketRenderer {
 
   } m_blend_state;
 
+  struct ClampState {
+    void from_register(u64 value);
+    u64 current_register = 0b101;
+    bool clamp = true;
+  } m_clamp_state;
+
   // state set through the prim register that requires changing GL stuff.
   struct PrimGlState {
     void from_register(GsPrim reg);
@@ -141,11 +167,11 @@ class DirectRenderer : public BucketRenderer {
 
     std::array<math::Vector<u8, 4>, 3> building_rgba;
     std::array<math::Vector<u32, 3>, 3> building_vert;
-    std::array<math::Vector<float, 2>, 3> building_st;
+    std::array<math::Vector<float, 3>, 3> building_stq;
     int building_idx = 0;
     int tri_strip_startup = 0;
 
-    float Q = 0;
+    float Q = 1.0;
 
   } m_prim_building;
 
@@ -153,7 +179,7 @@ class DirectRenderer : public BucketRenderer {
     PrimitiveBuffer(int max_triangles);
     std::vector<math::Vector<u8, 4>> rgba_u8;
     std::vector<math::Vector<u32, 3>> verts;
-    std::vector<math::Vector<float, 2>> sts;
+    std::vector<math::Vector<float, 3>> stqs;
     int vert_count = 0;
     int max_verts = 0;
 
@@ -161,7 +187,7 @@ class DirectRenderer : public BucketRenderer {
     bool is_full() { return max_verts < (vert_count + 18); }
     void push(const math::Vector<u8, 4>& rgba,
               const math::Vector<u32, 3>& vert,
-              const math::Vector<float, 2>& st);
+              const math::Vector<float, 3>& stq);
   } m_prim_buffer;
 
   struct {

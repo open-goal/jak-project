@@ -21,7 +21,7 @@ DirectRenderer::DirectRenderer(const std::string& name, BucketId my_id, int batc
   glBufferData(GL_ARRAY_BUFFER, m_ogl.color_buffer_bytes, nullptr, GL_DYNAMIC_DRAW);
 
   glBindBuffer(GL_ARRAY_BUFFER, m_ogl.st_buffer);
-  m_ogl.st_buffer_bytes = batch_size * 3 * 2 * sizeof(float);
+  m_ogl.st_buffer_bytes = batch_size * 3 * 3 * sizeof(float);
   glBufferData(GL_ARRAY_BUFFER, m_ogl.st_buffer_bytes, nullptr, GL_DYNAMIC_DRAW);
   glBindBuffer(GL_ARRAY_BUFFER, 0);
 }
@@ -36,7 +36,9 @@ DirectRenderer::~DirectRenderer() {
 /*!
  * Render from a DMA bucket.
  */
-void DirectRenderer::render(DmaFollower& dma, SharedRenderState* render_state) {
+void DirectRenderer::render(DmaFollower& dma,
+                            SharedRenderState* render_state,
+                            ScopedProfilerNode& prof) {
   // if we're rendering from a bucket, we should start off we a totally reset state:
   reset_state();
   setup_common_state(render_state);
@@ -45,7 +47,7 @@ void DirectRenderer::render(DmaFollower& dma, SharedRenderState* render_state) {
   while (dma.current_tag_offset() != render_state->next_bucket) {
     auto data = dma.read_and_advance();
     if (data.size_bytes && m_enabled) {
-      render_vif(data.vif0(), data.vif1(), data.data, data.size_bytes, render_state);
+      render_vif(data.vif0(), data.vif1(), data.data, data.size_bytes, render_state, prof);
     }
 
     if (dma.current_tag_offset() == render_state->default_regs_buffer) {
@@ -57,7 +59,7 @@ void DirectRenderer::render(DmaFollower& dma, SharedRenderState* render_state) {
   }
 
   if (m_enabled) {
-    flush_pending(render_state);
+    flush_pending(render_state, prof);
   }
 }
 
@@ -91,7 +93,7 @@ float u32_to_sc(u32 in) {
   return (flt - 0.5) * 16.0;
 }
 
-void DirectRenderer::flush_pending(SharedRenderState* render_state) {
+void DirectRenderer::flush_pending(SharedRenderState* render_state, ScopedProfilerNode& prof) {
   if (m_prim_buffer.vert_count == 0) {
     return;
   }
@@ -117,12 +119,6 @@ void DirectRenderer::flush_pending(SharedRenderState* render_state) {
     m_texture_state.needs_gl_update = false;
   }
 
-  if (m_debug_state.wireframe) {
-    glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
-  } else {
-    glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
-  }
-
   if (m_debug_state.disable_texture) {
     // a bit of a hack, this forces the non-textured shader always.
     render_state->shaders[ShaderId::DIRECT_BASIC].activate();
@@ -131,6 +127,8 @@ void DirectRenderer::flush_pending(SharedRenderState* render_state) {
   if (m_debug_state.red) {
     render_state->shaders[ShaderId::DEBUG_RED].activate();
     glDisable(GL_BLEND);
+    m_prim_gl_state_needs_gl_update = true;
+    m_blend_state_needs_gl_update = true;
   }
 
   // hacks
@@ -151,8 +149,8 @@ void DirectRenderer::flush_pending(SharedRenderState* render_state) {
                   m_prim_buffer.rgba_u8.data());
   if (m_prim_gl_state.texture_enable) {
     glBindBuffer(GL_ARRAY_BUFFER, m_ogl.st_buffer);
-    glBufferSubData(GL_ARRAY_BUFFER, 0, m_prim_buffer.sts.size() * sizeof(math::Vector<float, 2>),
-                    m_prim_buffer.sts.data());
+    glBufferSubData(GL_ARRAY_BUFFER, 0, m_prim_buffer.stqs.size() * sizeof(math::Vector<float, 3>),
+                    m_prim_buffer.stqs.data());
   }
 
   // setup attributes:
@@ -179,7 +177,7 @@ void DirectRenderer::flush_pending(SharedRenderState* render_state) {
     glBindBuffer(GL_ARRAY_BUFFER, m_ogl.st_buffer);
     glEnableVertexAttribArray(2);
     glVertexAttribPointer(2,         // location 0 in the shader
-                          2,         // 3 floats per vert
+                          3,         // 3 floats per vert
                           GL_FLOAT,  // floats
                           GL_FALSE,  // normalized, ignored,
                           0,         // tightly packed
@@ -190,8 +188,14 @@ void DirectRenderer::flush_pending(SharedRenderState* render_state) {
 
   int draw_count = 0;
   if (m_mode == Mode::SPRITE_CPU) {
-    assert(m_texture_state.tcc);
-    assert(m_prim_gl_state.texture_enable);
+    if (!m_prim_gl_state.texture_enable) {
+      render_state->shaders[ShaderId::DIRECT_BASIC].activate();
+    } else {
+      assert(m_texture_state.tcc);
+      assert(m_prim_gl_state.texture_enable);
+      render_state->shaders[ShaderId::SPRITE_CPU].activate();
+    }
+
     if (m_sprite_mode.do_first_draw) {
       glDrawArrays(GL_TRIANGLES, 0, m_prim_buffer.vert_count);
       draw_count++;
@@ -201,6 +205,8 @@ void DirectRenderer::flush_pending(SharedRenderState* render_state) {
       glDepthMask(GL_FALSE);
       glDrawArrays(GL_TRIANGLES, 0, m_prim_buffer.vert_count);
       glDepthMask(GL_TRUE);
+      m_prim_gl_state_needs_gl_update = true;
+      m_blend_state_needs_gl_update = true;
       draw_count++;
     }
   } else {
@@ -208,8 +214,20 @@ void DirectRenderer::flush_pending(SharedRenderState* render_state) {
     draw_count++;
   }
 
+  if (m_debug_state.wireframe) {
+    render_state->shaders[ShaderId::DEBUG_RED].activate();
+    glDisable(GL_BLEND);
+    glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
+    glDrawArrays(GL_TRIANGLES, 0, m_prim_buffer.vert_count);
+    glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
+    draw_count++;
+  }
+
   glBindVertexArray(0);
-  m_triangles += draw_count * (m_prim_buffer.vert_count / 3);
+  int n_tris = draw_count * (m_prim_buffer.vert_count / 3);
+  prof.add_tri(n_tris);
+  prof.add_draw_call(draw_count);
+  m_triangles += n_tris;
   m_draw_calls += draw_count;
   m_prim_buffer.vert_count = 0;
 }
@@ -221,6 +239,8 @@ void DirectRenderer::update_gl_prim(SharedRenderState* render_state) {
     if (m_texture_state.tcc) {
       if (m_mode == Mode::SPRITE_CPU) {
         render_state->shaders[ShaderId::SPRITE_CPU].activate();
+      } else if (m_mode == Mode::SKY) {
+        assert(false);
       } else {
         render_state->shaders[ShaderId::DIRECT_BASIC_TEXTURED].activate();
       }
@@ -229,7 +249,11 @@ void DirectRenderer::update_gl_prim(SharedRenderState* render_state) {
     }
     update_gl_texture(render_state);
   } else {
-    render_state->shaders[ShaderId::DIRECT_BASIC].activate();
+    if (m_mode == Mode::SKY) {
+      render_state->shaders[ShaderId::SKY].activate();
+    } else {
+      render_state->shaders[ShaderId::DIRECT_BASIC].activate();
+    }
   }
   if (state.fogging_enable) {
     assert(false);
@@ -255,8 +279,16 @@ void DirectRenderer::update_gl_texture(SharedRenderState* render_state) {
   } else {
     tex = render_state->texture_pool->lookup(m_texture_state.texture_base_ptr);
   }
+
+  if (!tex) {
+    // TODO Add back
+    fmt::print("Failed to find texture at {}, using random\n", m_texture_state.texture_base_ptr);
+    tex = render_state->texture_pool->get_random_texture();
+    if (tex) {
+      // fmt::print("Successful texture lookup! {} {}\n", tex->page_name, tex->name);
+    }
+  }
   assert(tex);
-  // fmt::print("Successful texture lookup! {} {}\n", tex->page_name, tex->name);
 
   // first: do we need to load the texture?
   if (!tex->on_gpu) {
@@ -266,8 +298,14 @@ void DirectRenderer::update_gl_texture(SharedRenderState* render_state) {
   glActiveTexture(GL_TEXTURE0);
   glBindTexture(GL_TEXTURE_2D, tex->gpu_texture);
   // Note: CLAMP and CLAMP_TO_EDGE are different...
-  glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
-  glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+  if (m_clamp_state.clamp) {
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+  } else {
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
+  }
+
   glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
   glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
   glUniform1i(
@@ -327,7 +365,7 @@ void DirectRenderer::update_gl_test() {
   }
 
   if (state.alpha_test_enable) {
-    assert(false);
+    assert(state.alpha_test == GsTest::AlphaTest::ALWAYS);
   }
 
   if (state.depth_writes) {
@@ -371,7 +409,8 @@ void DirectRenderer::render_vif(u32 vif0,
                                 u32 vif1,
                                 const u8* data,
                                 u32 size,
-                                SharedRenderState* render_state) {
+                                SharedRenderState* render_state,
+                                ScopedProfilerNode& prof) {
   // here we process VIF data. Basically we just go forward, looking for DIRECTs.
   // We skip stuff like flush and nops.
 
@@ -395,7 +434,7 @@ void DirectRenderer::render_vif(u32 vif0,
         assert(get_direct_qwc_or_nop(VifCode(vif)) == 0);
       } else {
         // aligned! do a gif transfer!
-        render_gif(data + offset_into_data, gif_qwc * 16, render_state);
+        render_gif(data + offset_into_data, gif_qwc * 16, render_state, prof);
         offset_into_data += gif_qwc * 16;
       }
     } else {
@@ -411,7 +450,10 @@ void DirectRenderer::render_vif(u32 vif0,
 /*!
  * Render GIF data.
  */
-void DirectRenderer::render_gif(const u8* data, u32 size, SharedRenderState* render_state) {
+void DirectRenderer::render_gif(const u8* data,
+                                u32 size,
+                                SharedRenderState* render_state,
+                                ScopedProfilerNode& prof) {
   assert(size >= 16);
   bool eop = false;
 
@@ -433,13 +475,13 @@ void DirectRenderer::render_gif(const u8* data, u32 size, SharedRenderState* ren
     auto format = tag.flg();
     if (format == GifTag::Format::PACKED) {
       if (tag.pre()) {
-        handle_prim(tag.prim(), render_state);
+        handle_prim(tag.prim(), render_state, prof);
       }
       for (u32 loop = 0; loop < tag.nloop(); loop++) {
         for (u32 reg = 0; reg < nreg; reg++) {
           switch (reg_desc[reg]) {
             case GifTag::RegisterDescriptor::AD:
-              handle_ad(data + offset, render_state);
+              handle_ad(data + offset, render_state, prof);
               break;
             case GifTag::RegisterDescriptor::ST:
               handle_st_packed(data + offset);
@@ -448,13 +490,13 @@ void DirectRenderer::render_gif(const u8* data, u32 size, SharedRenderState* ren
               handle_rgbaq_packed(data + offset);
               break;
             case GifTag::RegisterDescriptor::XYZF2:
-              handle_xyzf2_packed(data + offset, render_state);
+              handle_xyzf2_packed(data + offset, render_state, prof);
               break;
             case GifTag::RegisterDescriptor::PRIM:
-              handle_prim_packed(data + offset, render_state);
+              handle_prim_packed(data + offset, render_state, prof);
               break;
             case GifTag::RegisterDescriptor::TEX0_1:
-              handle_tex0_1_packed(data + offset, render_state);
+              handle_tex0_1_packed(data + offset, render_state, prof);
               break;
             default:
               fmt::print("Register {} is not supported in packed mode yet\n",
@@ -473,13 +515,13 @@ void DirectRenderer::render_gif(const u8* data, u32 size, SharedRenderState* ren
           //          reg_descriptor_name(reg_desc[reg]));
           switch (reg_desc[reg]) {
             case GifTag::RegisterDescriptor::PRIM:
-              handle_prim(register_data, render_state);
+              handle_prim(register_data, render_state, prof);
               break;
             case GifTag::RegisterDescriptor::RGBAQ:
               handle_rgbaq(register_data);
               break;
             case GifTag::RegisterDescriptor::XYZF2:
-              handle_xyzf2(register_data, render_state);
+              handle_xyzf2(register_data, render_state, prof);
               break;
             default:
               fmt::print("Register {} is not supported in reglist mode yet\n",
@@ -501,7 +543,9 @@ void DirectRenderer::render_gif(const u8* data, u32 size, SharedRenderState* ren
   //  fmt::print("{}\n", GifTag(data).print());
 }
 
-void DirectRenderer::handle_ad(const u8* data, SharedRenderState* render_state) {
+void DirectRenderer::handle_ad(const u8* data,
+                               SharedRenderState* render_state,
+                               ScopedProfilerNode& prof) {
   u64 value;
   GsRegisterAddress addr;
   memcpy(&value, data, sizeof(u64));
@@ -509,22 +553,22 @@ void DirectRenderer::handle_ad(const u8* data, SharedRenderState* render_state) 
 
   switch (addr) {
     case GsRegisterAddress::ZBUF_1:
-      handle_zbuf1(value, render_state);
+      handle_zbuf1(value, render_state, prof);
       break;
     case GsRegisterAddress::TEST_1:
-      handle_test1(value, render_state);
+      handle_test1(value, render_state, prof);
       break;
     case GsRegisterAddress::ALPHA_1:
-      handle_alpha1(value, render_state);
+      handle_alpha1(value, render_state, prof);
       break;
     case GsRegisterAddress::PABE:
       handle_pabe(value);
       break;
     case GsRegisterAddress::CLAMP_1:
-      handle_clamp1(value);
+      handle_clamp1(value, render_state, prof);
       break;
     case GsRegisterAddress::PRIM:
-      handle_prim(value, render_state);
+      handle_prim(value, render_state, prof);
       break;
 
     case GsRegisterAddress::TEX1_1:
@@ -543,10 +587,12 @@ void DirectRenderer::handle_ad(const u8* data, SharedRenderState* render_state) 
       // TODO
       break;
     case GsRegisterAddress::TEX0_1:
-      handle_tex0_1(value, render_state);
+      handle_tex0_1(value, render_state, prof);
       break;
     case GsRegisterAddress::MIPTBP1_1:
       // TODO this has the address of different mip levels.
+      break;
+    case GsRegisterAddress::TEXFLUSH:
       break;
     default:
       fmt::print("Address {} is not supported\n", register_address_name(addr));
@@ -565,22 +611,25 @@ void DirectRenderer::handle_tex1_1(u64 val) {
   if (!(reg.mmin() == 1 || reg.mmin() == 4)) {  // with mipmap off, both of these are linear
                                                 //    lg::error("unsupported mmin");
   }
-
-  //
 }
 
-void DirectRenderer::handle_tex0_1_packed(const u8* data, SharedRenderState* render_state) {
+void DirectRenderer::handle_tex0_1_packed(const u8* data,
+                                          SharedRenderState* render_state,
+                                          ScopedProfilerNode& prof) {
   u64 val;
   memcpy(&val, data, sizeof(u64));
-  handle_tex0_1(val, render_state);
+  handle_tex0_1(val, render_state, prof);
 }
 
-void DirectRenderer::handle_tex0_1(u64 val, SharedRenderState* render_state) {
+void DirectRenderer::handle_tex0_1(u64 val,
+                                   SharedRenderState* render_state,
+                                   ScopedProfilerNode& prof) {
   GsTex0 reg(val);
 
   // update tbp
   if (m_texture_state.current_register != reg) {
-    flush_pending(render_state);
+    // fmt::print("flush due to tex0\n");
+    flush_pending(render_state, prof);
     m_texture_state.texture_base_ptr = reg.tbp0();
     m_texture_state.using_mt4hh = reg.psm() == GsTex0::PSM::PSMT4HH;
     m_prim_gl_state_needs_gl_update = true;
@@ -628,7 +677,9 @@ void DirectRenderer::handle_rgbaq_packed(const u8* data) {
   m_prim_building.rgba_reg[3] = data[12];
 }
 
-void DirectRenderer::handle_xyzf2_packed(const u8* data, SharedRenderState* render_state) {
+void DirectRenderer::handle_xyzf2_packed(const u8* data,
+                                         SharedRenderState* render_state,
+                                         ScopedProfilerNode& prof) {
   u32 x, y;
   memcpy(&x, data, 4);
   memcpy(&y, data + 4, 4);
@@ -641,42 +692,52 @@ void DirectRenderer::handle_xyzf2_packed(const u8* data, SharedRenderState* rend
   bool adc = upper & (1ull << 47);
   assert(!adc);
   //  assert(!f);
-  handle_xyzf2_common(x, y, z, f, render_state);
+  handle_xyzf2_common(x, y, z, f, render_state, prof);
 }
 
-void DirectRenderer::handle_zbuf1(u64 val, SharedRenderState* render_state) {
+void DirectRenderer::handle_zbuf1(u64 val,
+                                  SharedRenderState* render_state,
+                                  ScopedProfilerNode& prof) {
   // note: we can basically ignore this. There's a single z buffer that's always configured the same
   // way - 24-bit, at offset 448.
   GsZbuf x(val);
   assert(x.psm() == TextureFormat::PSMZ24);
   assert(x.zbp() == 448);
 
-  bool write = !x.zmsk();
+  bool write = x.zmsk();
   //  assert(write);
 
   if (write != m_test_state.depth_writes) {
-    flush_pending(render_state);
+    // fmt::print("flush due to depth write\n");
+    flush_pending(render_state, prof);
     m_test_state_needs_gl_update = true;
-    m_test_state.depth_writes = !write;
+    m_test_state.depth_writes = write;
   }
 }
 
-void DirectRenderer::handle_test1(u64 val, SharedRenderState* render_state) {
+void DirectRenderer::handle_test1(u64 val,
+                                  SharedRenderState* render_state,
+                                  ScopedProfilerNode& prof) {
   GsTest reg(val);
-  assert(!reg.alpha_test_enable());
+  if (reg.alpha_test_enable()) {
+    assert(reg.alpha_test() == GsTest::AlphaTest::ALWAYS);
+  }
   assert(!reg.date());
-  assert(!(val & 1));
   if (m_test_state.current_register != reg) {
-    flush_pending(render_state);
+    // fmt::print("flush due to test\n");
+    flush_pending(render_state, prof);
     m_test_state.from_register(reg);
     m_test_state_needs_gl_update = true;
   }
 }
 
-void DirectRenderer::handle_alpha1(u64 val, SharedRenderState* render_state) {
+void DirectRenderer::handle_alpha1(u64 val,
+                                   SharedRenderState* render_state,
+                                   ScopedProfilerNode& prof) {
   GsAlpha reg(val);
   if (m_blend_state.current_register != reg) {
-    flush_pending(render_state);
+    // fmt::print("flush due to alpha1\n");
+    flush_pending(render_state, prof);
     m_blend_state.from_register(reg);
     m_blend_state_needs_gl_update = true;
   }
@@ -686,17 +747,33 @@ void DirectRenderer::handle_pabe(u64 val) {
   assert(val == 0);  // not really sure how to handle this yet.
 }
 
-void DirectRenderer::handle_clamp1(u64 val) {
-  assert(val == 0b101);  // clamp s and t.
+void DirectRenderer::handle_clamp1(u64 val,
+                                   SharedRenderState* render_state,
+                                   ScopedProfilerNode& prof) {
+  assert(val == 0b101 || val == 0);
+  if (m_clamp_state.current_register != val) {
+    flush_pending(render_state, prof);
+    m_clamp_state.current_register = val;
+    if (val == 0b101) {
+      m_clamp_state.clamp = true;
+    } else {
+      m_clamp_state.clamp = false;
+    }
+    m_texture_state.needs_gl_update = true;
+  }
 }
 
-void DirectRenderer::handle_prim_packed(const u8* data, SharedRenderState* render_state) {
+void DirectRenderer::handle_prim_packed(const u8* data,
+                                        SharedRenderState* render_state,
+                                        ScopedProfilerNode& prof) {
   u64 val;
   memcpy(&val, data, sizeof(u64));
-  handle_prim(val, render_state);
+  handle_prim(val, render_state, prof);
 }
 
-void DirectRenderer::handle_prim(u64 val, SharedRenderState* render_state) {
+void DirectRenderer::handle_prim(u64 val,
+                                 SharedRenderState* render_state,
+                                 ScopedProfilerNode& prof) {
   if (m_prim_building.tri_strip_startup) {
     m_prim_building.tri_strip_startup = 0;
     m_prim_building.building_idx = 0;
@@ -709,7 +786,8 @@ void DirectRenderer::handle_prim(u64 val, SharedRenderState* render_state) {
 
   GsPrim prim(val);
   if (m_prim_gl_state.current_register != prim || m_blend_state.alpha_blend_enable != prim.abe()) {
-    flush_pending(render_state);
+    // fmt::print("flush due to prim\n");
+    flush_pending(render_state, prof);
     m_prim_gl_state.from_register(prim);
     m_blend_state.alpha_blend_enable = prim.abe();
     m_prim_gl_state_needs_gl_update = true;
@@ -728,15 +806,17 @@ void DirectRenderer::handle_xyzf2_common(u32 x,
                                          u32 y,
                                          u32 z,
                                          u8 f,
-                                         SharedRenderState* render_state) {
+                                         SharedRenderState* render_state,
+                                         ScopedProfilerNode& prof) {
   assert(z < (1 << 24));
   (void)f;  // TODO: do something with this.
   if (m_prim_buffer.is_full()) {
-    flush_pending(render_state);
+    // fmt::print("flush due to fill {} {}\n", m_prim_buffer.vert_count, m_prim_buffer.max_verts);
+    flush_pending(render_state, prof);
   }
 
-  //  assert(f == 0);
-  m_prim_building.building_st.at(m_prim_building.building_idx) = m_prim_building.st_reg;
+  m_prim_building.building_stq.at(m_prim_building.building_idx) = math::Vector<float, 3>(
+      m_prim_building.st_reg.x(), m_prim_building.st_reg.y(), m_prim_building.Q);
   m_prim_building.building_rgba.at(m_prim_building.building_idx) = m_prim_building.rgba_reg;
   m_prim_building.building_vert.at(m_prim_building.building_idx) = {x << 16, y << 16, z << 8};
   m_prim_building.building_idx++;
@@ -780,7 +860,7 @@ void DirectRenderer::handle_xyzf2_common(u32 x,
       if (m_prim_building.tri_strip_startup >= 3) {
         for (int i = 0; i < 3; i++) {
           m_prim_buffer.push(m_prim_building.building_rgba[i], m_prim_building.building_vert[i],
-                             m_prim_building.building_st[i]);
+                             m_prim_building.building_stq[i]);
         }
       }
 
@@ -791,7 +871,7 @@ void DirectRenderer::handle_xyzf2_common(u32 x,
         m_prim_building.building_idx = 0;
         for (int i = 0; i < 3; i++) {
           m_prim_buffer.push(m_prim_building.building_rgba[i], m_prim_building.building_vert[i],
-                             m_prim_building.building_st[i]);
+                             m_prim_building.building_stq[i]);
         }
       }
       break;
@@ -807,10 +887,11 @@ void DirectRenderer::handle_xyzf2_common(u32 x,
         }
         for (int i = 0; i < 3; i++) {
           m_prim_buffer.push(m_prim_building.building_rgba[i], m_prim_building.building_vert[i],
-                             m_prim_building.building_st[i]);
+                             m_prim_building.building_stq[i]);
         }
       }
     } break;
+
     case GsPrim::Kind::LINE: {
       if (m_prim_building.building_idx == 2) {
         math::Vector<double, 3> pt0 = m_prim_building.building_vert[0].cast<double>();
@@ -845,13 +926,15 @@ void DirectRenderer::handle_xyzf2_common(u32 x,
   }
 }
 
-void DirectRenderer::handle_xyzf2(u64 val, SharedRenderState* render_state) {
+void DirectRenderer::handle_xyzf2(u64 val,
+                                  SharedRenderState* render_state,
+                                  ScopedProfilerNode& prof) {
   u32 x = val & 0xffff;
   u32 y = (val >> 16) & 0xffff;
   u32 z = (val >> 32) & 0xffffff;
   u32 f = (val >> 56) & 0xff;
 
-  handle_xyzf2_common(x, y, z, f, render_state);
+  handle_xyzf2_common(x, y, z, f, render_state, prof);
 }
 
 void DirectRenderer::reset_state() {
@@ -915,15 +998,15 @@ void DirectRenderer::PrimGlState::from_register(GsPrim reg) {
 DirectRenderer::PrimitiveBuffer::PrimitiveBuffer(int max_triangles) {
   rgba_u8.resize(max_triangles * 3);
   verts.resize(max_triangles * 3);
-  sts.resize(max_triangles * 3);
+  stqs.resize(max_triangles * 3);
   max_verts = max_triangles * 3;
 }
 
 void DirectRenderer::PrimitiveBuffer::push(const math::Vector<u8, 4>& rgba,
                                            const math::Vector<u32, 3>& vert,
-                                           const math::Vector<float, 2>& st) {
+                                           const math::Vector<float, 3>& st) {
   rgba_u8[vert_count] = rgba;
   verts[vert_count] = vert;
-  sts[vert_count] = st;
+  stqs[vert_count] = st;
   vert_count++;
 }

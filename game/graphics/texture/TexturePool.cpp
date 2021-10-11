@@ -36,6 +36,16 @@ std::string GoalTexturePage::print() const {
 }
 
 void TextureRecord::serialize(Serializer& ser) {
+  if (only_on_gpu) {
+    assert(on_gpu);
+    if (ser.is_saving()) {
+      // we should download the texture and save it.
+      data.resize(w * h * 4);
+      glBindTexture(GL_TEXTURE_2D, gpu_texture);
+      glGetTexImage(GL_TEXTURE_2D, 0, GL_RGBA, GL_UNSIGNED_INT_8_8_8_8_REV, data.data());
+    }
+  }
+
   ser.from_str(&page_name);
   ser.from_str(&name);
   ser.from_ptr(&mip_level);
@@ -46,6 +56,7 @@ void TextureRecord::serialize(Serializer& ser) {
   ser.from_ptr(&data_segment);
   ser.from_ptr(&on_gpu);
   ser.from_ptr(&do_gc);
+  ser.from_ptr(&only_on_gpu);
   ser.from_ptr(&gpu_texture);
   ser.from_ptr(&dest);
   ser.from_pod_vector(&data);
@@ -53,6 +64,10 @@ void TextureRecord::serialize(Serializer& ser) {
   ser.from_ptr(&max_a_zero);
   ser.from_ptr(&min_a_nonzero);
   ser.from_ptr(&max_a_nonzero);
+
+  if (ser.is_loading()) {
+    gpu_texture = -1;
+  }
 }
 
 void TextureData::serialize(Serializer& ser) {
@@ -67,6 +82,7 @@ void TextureData::serialize(Serializer& ser) {
     if (mt4hh_texture) {
       ser.save<u8>(1);  // has it.
       mt4hh_texture->serialize(ser);
+
     } else {
       ser.save<u8>(0);
     }
@@ -75,9 +91,7 @@ void TextureData::serialize(Serializer& ser) {
     if (has_normal) {
       normal_texture = std::make_shared<TextureRecord>();
       normal_texture->serialize(ser);
-      // after deserializing, nothing is on the GPU
       normal_texture->on_gpu = false;
-      // there will be a duplicate copy of this texture in the bucket, we want this one to be gc'd
       normal_texture->do_gc = true;
     } else {
       normal_texture.reset();
@@ -284,6 +298,7 @@ void TexturePool::set_texture(u32 location, std::shared_ptr<TextureRecord> recor
     if (m_textures.at(location).normal_texture) {
       if (record->do_gc && m_textures.at(location).normal_texture != record) {
         m_garbage_textures.push_back(std::move(m_textures[location].normal_texture));
+        fmt::print("replace add to garbage list {}\n", m_garbage_textures.back()->name);
       }
     }
     m_textures[location].normal_texture = std::move(record);
@@ -356,8 +371,8 @@ void TexturePool::draw_debug_for_tex(const std::string& name, TextureRecord& tex
     ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(0.3, 0.8, 0.3, 1.0));
   }
   if (ImGui::TreeNode(name.c_str())) {
-    ImGui::Text("P: %s sz: %d x %d mip %d GPU? %d psm %d cpsm %d", tex.page_name.c_str(), tex.w,
-                tex.h, tex.mip_level, tex.on_gpu, tex.psm, tex.cpsm);
+    ImGui::Text("P: %s sz: %d x %d mip %d GPU? %d psm %d cpsm %d dest %d", tex.page_name.c_str(),
+                tex.w, tex.h, tex.mip_level, tex.on_gpu, tex.psm, tex.cpsm, tex.dest);
     if (tex.on_gpu) {
       ImGui::Image((void*)tex.gpu_texture, ImVec2(tex.w, tex.h));
     } else {
@@ -401,6 +416,7 @@ void TexturePool::remove_garbage_textures() {
   for (auto& t : m_garbage_textures) {
     if (t->on_gpu) {
       m_most_recent_gc_count_gpu++;
+      fmt::print("GC {}\n", t->name);
       t->unload_from_gpu();
     }
   }
@@ -409,5 +425,16 @@ void TexturePool::remove_garbage_textures() {
 
 void TexturePool::discard(std::shared_ptr<TextureRecord> tex) {
   assert(!tex->do_gc);
+  fmt::print("discard {}\n", tex->name);
   m_garbage_textures.push_back(tex);
+}
+
+TextureRecord* TexturePool::get_random_texture() {
+  u32 idx = 8;
+  for (u32 i = 0; i < m_textures.size(); i++) {
+    if (m_textures.at((i + idx) % m_textures.size()).normal_texture) {
+      return m_textures.at((i + idx) % m_textures.size()).normal_texture.get();
+    }
+  }
+  return nullptr;
 }

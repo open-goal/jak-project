@@ -1103,7 +1103,7 @@ Val* Compiler::compile_stack_new(const goos::Object& form,
     assert(stride == info.stride);
 
     int size_in_bytes = info.stride * constant_count;
-    auto addr = fe->allocate_aligned_stack_variable(ts, size_in_bytes, stride);
+    auto addr = fe->allocate_aligned_stack_variable(ts, size_in_bytes, 16);
     return addr;
   } else {
     auto ti = m_ts.lookup_type(type_of_object);

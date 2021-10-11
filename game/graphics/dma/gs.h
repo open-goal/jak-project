@@ -59,10 +59,6 @@ struct GifTag {
   u64 data[2];
 };
 
-struct AdGif {
-  GifTag giftag[5];
-};
-
 std::string reg_descriptor_name(GifTag::RegisterDescriptor reg);
 
 enum class GsRegisterAddress : u8 {
@@ -125,6 +121,7 @@ enum class GsRegisterAddress : u8 {
 enum class TextureFormat { PSMZ32, PSMZ24, PSMZ16, PSMZ16S };
 
 std::string register_address_name(GsRegisterAddress reg);
+std::string register_address_name(u32 reg);
 
 struct GsZbuf {
   GsZbuf(u64 val) : data(val) {}
@@ -332,4 +329,18 @@ struct GsTexa {
   std::string print() const;
 
   u64 data = 0;
+};
+
+// not including the giftag
+struct AdGifData {
+  u64 tex0_data;
+  u64 tex0_addr;
+  u64 tex1_data;
+  u64 tex1_addr;
+  u64 mip_data;
+  u64 mip_addr;
+  u64 clamp_data;
+  u64 clamp_addr;
+  u64 alpha_data;
+  u64 alpha_addr;
 };

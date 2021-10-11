@@ -564,6 +564,9 @@ bool Debugger::get_symbol_value(const std::string& sym_name, u32* output) {
  * Starts the debugger watch thread which watches the target process to see if it stops.
  */
 void Debugger::start_watcher() {
+  if (m_watcher_running) {
+    stop_watcher();
+  }
   assert(!m_watcher_running);
   m_watcher_running = true;
   m_watcher_should_stop = false;
@@ -609,6 +612,7 @@ void Debugger::watcher() {
           break;
         case xdbg::SignalInfo::DISAPPEARED:
           printf("Target has disappeared. Maybe it quit or was killed.\n");
+          handle_disappearance();
           break;
         default:
           printf("[Debugger] unhandled signal in watcher: %d\n", int(signal_info.kind));
@@ -627,6 +631,14 @@ void Debugger::watcher() {
       std::this_thread::sleep_for(std::chrono::milliseconds(10));
     }
   }
+}
+
+void Debugger::handle_disappearance() {
+  m_watcher_should_stop = true;
+  xdbg::close_memory(m_debug_context.tid, &m_memory_handle);
+  xdbg::detach_and_resume(m_debug_context.tid);
+  m_context_valid = false;
+  m_attached = false;
 }
 
 Debugger::SignalInfo Debugger::pop_signal() {
