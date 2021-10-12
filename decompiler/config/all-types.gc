@@ -27065,7 +27065,8 @@
   )
 
 (deftype robotboss (process-drawable)
-  ((alts             entity-actor             13      :offset-assert 176)
+  ((root-override    collide-shape-moving :score 100 :offset 112)
+   (alts             entity-actor             13      :offset-assert 176)
    (desired-loc      vector                   :inline :offset-assert 240)
    (old-loc          vector                   :inline :offset-assert 256)
    (loc-t            float                            :offset-assert 272)
@@ -27076,14 +27077,14 @@
    (children-spawned int32                            :offset-assert 304)
    (vulnerable       seconds                          :offset-assert 312)
    (till-next-shot   seconds                          :offset-assert 320)
-   (shot-attractor   uint64                           :offset-assert 328)
+   (shot-attractor   handle                           :offset-assert 328)
    (desired-pool-y   float                            :offset-assert 336)
    (particle         sparticle-launch-control 7       :offset-assert 340)
-   (blue-smoke       basic                            :offset-assert 368)
-   (red-smoke        basic                            :offset-assert 372)
-   (yellow-smoke     basic                            :offset-assert 376)
+   (blue-smoke       symbol                            :offset-assert 368)
+   (red-smoke        symbol                            :offset-assert 372)
+   (yellow-smoke     symbol                            :offset-assert 376)
    (white-eco        handle                           :offset-assert 384)
-   (des-cam-entity   basic                            :offset-assert 392)
+   (des-cam-entity   string                            :offset-assert 392)
    (use-interesting  symbol                           :offset-assert 396)
    (ignore-camera    symbol                           :offset-assert 400)
    (ambient          ambient-control                  :offset        408)
@@ -27100,7 +27101,7 @@
   :size-assert         #x1d0
   :flag-assert         #x15001601d0
   (:methods
-    (dummy-20 () none 20)
+    (ease-loc-t (_type_) float 20)
     )
   )
 
@@ -27168,35 +27169,23 @@
 ;     )
 ;   )
 
-; (deftype light-eco-mother (process-drawable)
-;   ((player-got-eco?   basic   :offset-assert 176)
-;    (angle-mask        uint64  :offset-assert 184)
-;    (delay-til-spawn   int32   :offset-assert 192)
-;    (part2             basic   :offset-assert 196)
-;    (last-update-time  uint64  :offset-assert 200)
-;    (last-spawned-time uint64  :offset-assert 208)
-;    )
-;   :method-count-assert 22
-;   :size-assert         #xd8
-;   :heap-base           #x70
-;   :flag-assert         #x16007000d8
-;   ;; inherited inspect of process-drawable
-;   (:methods
-;     (dummy-9 () none 9)
-;     (dummy-10 () none 10)
-;     (dummy-11 () none 11)
-;     (dummy-12 () none 12)
-;     (dummy-13 () none 13)
-;     (dummy-14 () none 14)
-;     (dummy-15 () none 15)
-;     (dummy-16 () none 16)
-;     (dummy-17 () none 17)
-;     (dummy-18 () none 18)
-;     (dummy-19 () none 19)
-;     (dummy-20 () none 20)
-;     (dummy-21 () none 21)
-;     )
-;   )
+(deftype light-eco-mother (process-drawable)
+  ((player-got-eco?   symbol   :offset-assert 176)
+   (angle-mask        uint64  :offset-assert 184)
+   (delay-til-spawn   int32   :offset-assert 192)
+   (part2             sparticle-launch-control   :offset-assert 196) ;; guess
+   (last-update-time  uint64  :offset-assert 200)
+   (last-spawned-time uint64  :offset-assert 208)
+   )
+  :method-count-assert 22
+  :size-assert         #xd8
+  :heap-base           #x70
+  :flag-assert         #x16007000d8
+  (:methods
+    (dummy-20 () none 20)
+    (dummy-21 () none 21)
+    )
+  )
 
 ;; - Functions
 
@@ -27205,7 +27194,7 @@
 (define-extern check-drop-level-lighteco-pops function)
 (define-extern light-eco-child-default-event-handler function)
 (define-extern light-eco-mother-default-event-handler function)
-(define-extern light-eco-mother-init-by-other function)
+(define-extern light-eco-mother-init-by-other (function entity vector none :behavior light-eco-mother))
 
 ;; - Unknowns
 
@@ -27501,35 +27490,21 @@
 ;     )
 ;   )
 
-; (deftype green-eco-lurker-gen (process-drawable)
-;   ((num-to-spawn int32  :offset-assert 176)
-;    (num-spawned  int32  :offset-assert 180)
-;    (num-alive    int32  :offset-assert 184)
-;    )
-;   :method-count-assert 20
-;   :size-assert         #xbc
-;   :heap-base           #x50
-;   :flag-assert         #x14005000bc
-;   ;; inherited inspect of process-drawable
-;   (:methods
-;     (dummy-9 () none 9)
-;     (dummy-10 () none 10)
-;     (dummy-11 () none 11)
-;     (dummy-12 () none 12)
-;     (dummy-13 () none 13)
-;     (dummy-14 () none 14)
-;     (dummy-15 () none 15)
-;     (dummy-16 () none 16)
-;     (dummy-17 () none 17)
-;     (dummy-18 () none 18)
-;     (dummy-19 () none 19)
-;     )
-;   )
+(deftype green-eco-lurker-gen (process-drawable)
+  ((num-to-spawn int32  :offset-assert 176)
+   (num-spawned  int32  :offset-assert 180)
+   (num-alive    int32  :offset-assert 184)
+   )
+  :method-count-assert 20
+  :size-assert         #xbc
+  :heap-base           #x50
+  :flag-assert         #x14005000bc
+  )
 
 ;; - Functions
 
 (define-extern green-eco-lurker-init-by-other function)
-(define-extern green-eco-lurker-gen-init-by-other function)
+(define-extern green-eco-lurker-gen-init-by-other (function entity vector int none :behavior green-eco-lurker-gen))
 
 ;; - Unknowns
 
@@ -27550,69 +27525,71 @@
 
 ;; - Types
 
-; (deftype redshot-launch-info (UNKNOWN)
-;   ()
-;   :method-count-assert 0
-;   :size-assert         #x0
-;   :flag-assert         #x0
-;   ;; bad get label
-;   )
+(deftype redshot-launch-info (structure)
+  (
+    (dest vector :inline :offset-assert 0)
+    (flight-time int64 :offset-assert 16)
+    (stall-time int64  :offset-assert 24)
+  )
+  :method-count-assert 9
+  :size-assert         #x20
+  :flag-assert         #x900000020
+  )
 
-; (deftype redshot-launch-array (UNKNOWN)
-;   ()
-;   :method-count-assert 0
-;   :size-assert         #x0
-;   :flag-assert         #x0
-;   ;; bad get label
-;   )
+(deftype redshot-launch-array (structure)
+  ((info redshot-launch-info 6 :inline :offset-assert 0))
+  :method-count-assert 9
+  :size-assert         #xc0
+  :flag-assert         #x9000000c0
+  )
 
 ;; - Functions
 
-(define-extern robotboss-always-trans function)
-(define-extern robotboss-shooting-trans function)
-(define-extern robotboss-blue-done function)
-(define-extern robotboss-blue-beam function)
-(define-extern robotboss-position function)
-(define-extern robotboss-cut-cam function)
-(define-extern robotboss-set-dda function)
-(define-extern robotboss-cut-cam-exit function)
-(define-extern robotboss-setup-for-hits function)
-(define-extern robotboss-yellow-eco-on function)
-(define-extern robotboss-yellow-eco-off function)
-(define-extern robotboss-greenshot function)
-(define-extern robotboss-handler function)
-(define-extern robotboss-darkecobomb function)
-(define-extern robotboss-is-red-hit function)
-(define-extern robotboss-redshot-fill-array function)
-(define-extern robotboss-redshot function)
-(define-extern robotboss-time-to-shoot-yellow function)
-(define-extern robotboss-is-yellow-hit function)
-(define-extern robotboss-yellowshot function)
-(define-extern robotboss-bomb-handler function)
-(define-extern robotboss-anim-blend-loop function)
+(define-extern robotboss-always-trans (function symbol none :behavior robotboss)) ;; CFG problems TODO
+(define-extern robotboss-shooting-trans (function int none :behavior robotboss))
+(define-extern robotboss-blue-done (function object :behavior robotboss))
+(define-extern robotboss-blue-beam (function int symbol none :behavior robotboss))
+(define-extern robotboss-position (function object :behavior robotboss))
+(define-extern robotboss-cut-cam (function float float int none :behavior robotboss))
+(define-extern robotboss-set-dda (function none :behavior robotboss)) ;; TODO - what structure type does this return?
+(define-extern robotboss-cut-cam-exit (function symbol :behavior robotboss))
+(define-extern robotboss-setup-for-hits (function seconds int object :behavior robotboss))
+(define-extern robotboss-yellow-eco-on (function entity-perm-status :behavior robotboss))
+(define-extern robotboss-yellow-eco-off (function entity-perm-status :behavior robotboss))
+(define-extern robotboss-greenshot (function vector basic basic symbol none :behavior robotboss))
+(define-extern robotboss-handler (function process int symbol event-message-block object :behavior robotboss))
+(define-extern robotboss-darkecobomb (function vector float (pointer process) :behavior robotboss))
+(define-extern robotboss-is-red-hit (function symbol :behavior robotboss))
+(define-extern robotboss-redshot-fill-array (function redshot-launch-info none :behavior robotboss))
+(define-extern robotboss-redshot (function redshot-launch-info symbol sound-id :behavior robotboss)) ;; run-func-in-process edge-case
+(define-extern robotboss-time-to-shoot-yellow (function symbol :behavior robotboss))
+(define-extern robotboss-is-yellow-hit (function symbol :behavior robotboss))
+(define-extern robotboss-yellowshot (function none :behavior robotboss))
+(define-extern robotboss-bomb-handler (function process int symbol event-message-block object :behavior robotboss))
+(define-extern robotboss-anim-blend-loop (function art-joint-anim none :behavior robotboss))
 
 ;; - Unknowns
 
-;;(define-extern robotboss-blue-wait object) ;; unknown type
-;;(define-extern robotboss-blue-dark-bomb object) ;; unknown type
+(define-extern robotboss-blue-wait (state robotboss)) ;; unknown type
+(define-extern robotboss-blue-dark-bomb (state robotboss)) ;; unknown type
 (define-extern *robotboss-blueeco-sg* skeleton-group)
-;;(define-extern robotboss-blue-dark-bomb-wait object) ;; unknown type
-;;(define-extern robotboss-green object) ;; unknown type
-;;(define-extern robotboss-green-wait object) ;; unknown type
-;;(define-extern robotboss-green-dark-bomb object) ;; unknown type
-;;(define-extern robotboss-green-dark-bomb-wait object) ;; unknown type
-;;(define-extern robotboss-red object) ;; unknown type
-;;(define-extern robotboss-red-wait object) ;; unknown type
-;;(define-extern robotboss-red-dark-bomb object) ;; unknown type
+(define-extern robotboss-blue-dark-bomb-wait (state robotboss)) ;; unknown type
+(define-extern robotboss-green (state robotboss)) ;; unknown type
+(define-extern robotboss-green-wait (state robotboss)) ;; unknown type
+(define-extern robotboss-green-dark-bomb (state robotboss)) ;; unknown type
+(define-extern robotboss-green-dark-bomb-wait (state robotboss)) ;; unknown type
+(define-extern robotboss-red (state robotboss)) ;; unknown type
+(define-extern robotboss-red-wait (state robotboss)) ;; unknown type
+(define-extern robotboss-red-dark-bomb (state robotboss)) ;; unknown type
 (define-extern *robotboss-redeco-sg* skeleton-group)
-;;(define-extern robotboss-red-dark-bomb-wait object) ;; unknown type
-;;(define-extern robotboss-yellow object) ;; unknown type
-;;(define-extern robotboss-yellow-wait object) ;; unknown type
-;;(define-extern robotboss-yellow-dark-bomb object) ;; unknown type
+(define-extern robotboss-red-dark-bomb-wait (state robotboss)) ;; unknown type
+(define-extern robotboss-yellow (state robotboss)) ;; unknown type
+(define-extern robotboss-yellow-wait (state robotboss)) ;; unknown type
+(define-extern robotboss-yellow-dark-bomb (state robotboss)) ;; unknown type
 (define-extern *robotboss-yelloweco-sg* skeleton-group)
-;;(define-extern robotboss-white-eco-movie object) ;; unknown type
-;;(define-extern robotboss-daxter-sacrifice-movie object) ;; unknown type
-;;(define-extern robotboss-yellow-dark-bomb-wait object) ;; unknown type
+(define-extern robotboss-white-eco-movie (state robotboss)) ;; unknown type
+(define-extern robotboss-daxter-sacrifice-movie (state robotboss)) ;; unknown type
+(define-extern robotboss-yellow-dark-bomb-wait (state robotboss)) ;; unknown type
 
 
 ;; ----------------------
