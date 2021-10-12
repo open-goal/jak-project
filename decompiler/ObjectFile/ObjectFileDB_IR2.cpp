@@ -42,18 +42,23 @@ void ObjectFileDB::analyze_functions_ir2(const std::string& output_dir,
   lg::info("Processing top-level functions...");
   ir2_top_level_pass(config);
 
+  int total_file_count = 0;
+  for (auto& f : obj_files_by_name) {
+    total_file_count += f.second.size();
+  }
   int file_idx = 1;
   for_each_obj([&](ObjectFileData& data) {
     Timer file_timer;
-    fmt::print("[{:3d}/{}]------ {}\n", file_idx++, obj_files_by_name.size(),
-               data.to_unique_name());
+    fmt::print("[{:3d}/{}]------ {}\n", file_idx++, total_file_count, data.to_unique_name());
     ir2_do_segment_analysis_phase1(TOP_LEVEL_SEGMENT, config, data);
     ir2_do_segment_analysis_phase1(DEBUG_SEGMENT, config, data);
     ir2_do_segment_analysis_phase1(MAIN_SEGMENT, config, data);
     ir2_setup_labels(config, data);
     ir2_do_segment_analysis_phase2(TOP_LEVEL_SEGMENT, config, data);
     try {
-      run_defstate(data.linked_data.functions_by_seg.at(2).front());
+      if (data.linked_data.functions_by_seg.size() == 3) {
+        run_defstate(data.linked_data.functions_by_seg.at(2).front());
+      }
     } catch (const std::exception& e) {
       lg::error("Failed to find defstates: {}", e.what());
     }
@@ -65,6 +70,8 @@ void ObjectFileDB::analyze_functions_ir2(const std::string& output_dir,
     ir2_insert_anonymous_functions(TOP_LEVEL_SEGMENT, data);
 
     ir2_run_mips2c(config, data);
+
+    ir2_symbol_definition_map(data);
 
     if (!output_dir.empty()) {
       ir2_write_results(output_dir, config, data);
@@ -82,7 +89,10 @@ void ObjectFileDB::analyze_functions_ir2(const std::string& output_dir,
 
   if (config.generate_symbol_definition_map) {
     lg::info("Generating symbol definition map...");
-    ir2_symbol_definition_map(output_dir);
+    map_builder.build_map();
+    std::string result = map_builder.convert_to_json();
+    auto file_name = file_util::combine_path(output_dir, "symbol_map.json");
+    file_util::write_text_file(file_name, result);
   }
 }
 
@@ -306,7 +316,6 @@ void ObjectFileDB::ir2_stack_spill_slot_pass(int seg, ObjectFileData& data) {
     }
     try {
       auto spill_map = build_spill_map(func.instructions, {func.prologue_end, func.epilogue_start});
-      auto map_size = spill_map.size();
       func.ir2.env.set_stack_spills(spill_map);
     } catch (std::exception& e) {
       func.warnings.general_warning("stack spill failed: {}", e.what());
@@ -351,16 +360,8 @@ void ObjectFileDB::ir2_atomic_op_pass(int seg, const Config& config, ObjectFileD
   });
 }
 
-void ObjectFileDB::ir2_symbol_definition_map(const std::string& output_dir) {
-  Timer timer;
-  SymbolMapBuilder map_builder;
-  for_each_obj([&](ObjectFileData& data) { map_builder.add_object(data); });
-  map_builder.build_map();
-  std::string result = map_builder.convert_to_json();
-  auto file_name = file_util::combine_path(output_dir, "symbol_map.json");
-  file_util::write_text_file(file_name, result);
-
-  lg::info("Built symbol map in {:.2f} ms", timer.getMs());
+void ObjectFileDB::ir2_symbol_definition_map(ObjectFileData& data) {
+  map_builder.add_object(data);
 }
 
 template <typename Key, typename Value>

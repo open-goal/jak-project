@@ -14,6 +14,7 @@
 #include "LinkedObjectFile.h"
 #include "decompiler/util/DecompilerTypeSystem.h"
 #include "common/common_types.h"
+#include "decompiler/analysis/symbol_def_map.h"
 
 namespace decompiler {
 /*!
@@ -82,7 +83,7 @@ class ObjectFileDB {
   void ir2_insert_lets(int seg, ObjectFileData& data);
   void ir2_rewrite_inline_asm_instructions(int seg, ObjectFileData& data);
   void ir2_insert_anonymous_functions(int seg, ObjectFileData& data);
-  void ir2_symbol_definition_map(const std::string& output_dir);
+  void ir2_symbol_definition_map(ObjectFileData& data);
   void ir2_write_results(const std::string& output_dir, const Config& config, ObjectFileData& data);
   void ir2_do_segment_analysis_phase1(int seg, const Config& config, ObjectFileData& data);
   void ir2_do_segment_analysis_phase2(int seg, const Config& config, ObjectFileData& data);
@@ -201,6 +202,8 @@ class ObjectFileDB {
 
   std::vector<std::string> obj_file_order;
   std::unordered_map<std::string, std::unordered_map<std::string, std::string>> dgo_obj_name_map;
+
+  SymbolMapBuilder map_builder;
 
   struct {
     uint32_t total_dgo_bytes = 0;
