@@ -653,6 +653,7 @@
   (bit7 7) ;; TODO - nav-enemy::45
   (bit8 8)
   (bit10 10) ;; TODO - nav-enemy::nav-enemy-patrol-post
+  (bit12 12) ;; TODO - rolling-lightning-mole::(enter nav-enemy-chase fleeing-nav-enemy)
   (bit13 13)
   (bit17 17)
   (bit19 19) ;; TODO - nav-enemy::lambda::17
@@ -993,6 +994,8 @@
   (reach-center #x323) ;; task name?
   (rolling-ring-chase-1 #x324)
   (rolling-ring-chase-2 #x325)
+
+  (rolling-lightning-moles-completion #x338)
 
   (sunken-blue-eco-charger-hint #x345)
 
@@ -18823,7 +18826,7 @@
 (define-extern fov->maya function)
 (define-extern cam-layout-entity-volume-info-create function)
 (define-extern clmf-next-volume function)
-(define-extern clmf-input function)
+(define-extern clmf-input (function vector vector int vector))
 (define-extern camera-fov-frame function)
 (define-extern interp-test function)
 (define-extern v-slrp! function)
@@ -18970,7 +18973,7 @@
 (define-extern cam-debug-draw-tris function)
 (define-extern cam-collision-record-step function)
 (define-extern camera-sphere function)
-(define-extern camera-line-rel function)
+(define-extern camera-line-rel (function vector vector rgba none)) ;; TODO - likely is a vector4w
 (define-extern camera-fov-draw function)
 (define-extern cam-line-dma function)
 (define-extern camera-line2d function)
@@ -36314,140 +36317,56 @@
   ;; inherited inspect of nav-enemy
   )
 
-; (deftype lightning-mole (fleeing-nav-enemy)
-;   ((debug-vector vector :inline :offset-assert 528)
-;    (alt-actor    basic          :offset-assert 544)
-;    )
-;   :method-count-assert 76
-;   :size-assert         #x224
-;   :heap-base           #x1c0
-;   :flag-assert         #x4c01c00224
-;   ;; inherited inspect of fleeing-nav-enemy
-;   (:methods
-;     (dummy-9 () none 9)
-;     (dummy-10 () none 10)
-;     (dummy-11 () none 11)
-;     (dummy-12 () none 12)
-;     (dummy-13 () none 13)
-;     (dummy-14 () none 14)
-;     (dummy-15 () none 15)
-;     (dummy-16 () none 16)
-;     (dummy-17 () none 17)
-;     (dummy-18 () none 18)
-;     (dummy-19 () none 19)
-;     (dummy-20 () none 20)
-;     (dummy-21 () none 21)
-;     (dummy-22 () none 22)
-;     (dummy-23 () none 23)
-;     (dummy-24 () none 24)
-;     (dummy-25 () none 25)
-;     (dummy-26 () none 26)
-;     (dummy-27 () none 27)
-;     (dummy-28 () none 28)
-;     (dummy-29 () none 29)
-;     (dummy-30 () none 30)
-;     (dummy-31 () none 31)
-;     (dummy-32 () none 32)
-;     (dummy-33 () none 33)
-;     (dummy-34 () none 34)
-;     (dummy-35 () none 35)
-;     (dummy-36 () none 36)
-;     (dummy-37 () none 37)
-;     (dummy-38 () none 38)
-;     (dummy-39 () none 39)
-;     (dummy-40 () none 40)
-;     (dummy-41 () none 41)
-;     (dummy-42 () none 42)
-;     (dummy-43 () none 43)
-;     (dummy-44 () none 44)
-;     (dummy-45 () none 45)
-;     (dummy-46 () none 46)
-;     (dummy-47 () none 47)
-;     (dummy-48 () none 48)
-;     (dummy-49 () none 49)
-;     (dummy-50 () none 50)
-;     (dummy-51 () none 51)
-;     (dummy-52 () none 52)
-;     (dummy-53 () none 53)
-;     (dummy-54 () none 54)
-;     (dummy-55 () none 55)
-;     (dummy-56 () none 56)
-;     (dummy-57 () none 57)
-;     (dummy-58 () none 58)
-;     (dummy-59 () none 59)
-;     (dummy-60 () none 60)
-;     (dummy-61 () none 61)
-;     (dummy-62 () none 62)
-;     (dummy-63 () none 63)
-;     (dummy-64 () none 64)
-;     (dummy-65 () none 65)
-;     (dummy-66 () none 66)
-;     (dummy-67 () none 67)
-;     (dummy-68 () none 68)
-;     (dummy-69 () none 69)
-;     (dummy-70 () none 70)
-;     (dummy-71 () none 71)
-;     (dummy-72 () none 72)
-;     (dummy-73 () none 73)
-;     (dummy-74 () none 74)
-;     (dummy-75 () none 75)
-;     )
-;   )
+(deftype lightning-mole (fleeing-nav-enemy)
+  ((debug-vector vector :inline :offset-assert 528)
+   (alt-actor    entity-actor          :offset-assert 544)
+   )
+  :method-count-assert 76
+  :size-assert         #x224
+  :heap-base           #x1c0
+  :flag-assert         #x4c01c00224
+  )
 
-; (deftype peeper (process-drawable)
-;   ()
-;   :method-count-assert 20
-;   :size-assert         #xb0
-;   :heap-base           #x40
-;   :flag-assert         #x14004000b0
-;   ;;  not enough basic ops
-;   (:methods
-;     (dummy-9 () none 9)
-;     (dummy-10 () none 10)
-;     (dummy-11 () none 11)
-;     (dummy-12 () none 12)
-;     (dummy-13 () none 13)
-;     (dummy-14 () none 14)
-;     (dummy-15 () none 15)
-;     (dummy-16 () none 16)
-;     (dummy-17 () none 17)
-;     (dummy-18 () none 18)
-;     (dummy-19 () none 19)
-;     )
-;   )
+(deftype peeper (process-drawable)
+  ()
+  :method-count-assert 20
+  :size-assert         #xb0
+  :heap-base           #x40
+  :flag-assert         #x14004000b0
+  )
 
 ;; - Functions
 
-(define-extern lightning-mole-task-complete? function)
-(define-extern fleeing-nav-enemy-clip-travel function)
-(define-extern fleeing-nav-enemy-adjust-travel function)
-(define-extern fleeing-nav-enemy-chase-post-func function)
-(define-extern fleeing-nav-enemy-adjust-nav-info function)
+(define-extern lightning-mole-task-complete? (function symbol :behavior lightning-mole))
+(define-extern fleeing-nav-enemy-clip-travel (function fleeing-nav-enemy vector symbol))
+(define-extern fleeing-nav-enemy-adjust-travel (function fleeing-nav-enemy vector))
+(define-extern fleeing-nav-enemy-chase-post-func (function float :behavior fleeing-nav-enemy))
+(define-extern fleeing-nav-enemy-adjust-nav-info (function float :behavior fleeing-nav-enemy))
 (define-extern find-adjacent-bounds-one function)
-(define-extern find-adjacent-bounds function)
-(define-extern fleeing-nav-enemy-chase-post function)
-(define-extern lightning-mole-hole-post function)
-(define-extern lightning-mole-run-code function)
-(define-extern check-drop-level-rolling-dirt function)
-(define-extern check-drop-level-rolling-dirt-finish function)
+(define-extern find-adjacent-bounds (function basic clip-travel-vector-to-mesh-return-info none))
+(define-extern fleeing-nav-enemy-chase-post (function none :behavior fleeing-nav-enemy))
+(define-extern lightning-mole-hole-post (function none :behavior lightning-mole))
+(define-extern lightning-mole-run-code (function none :behavior lightning-mole))
+(define-extern check-drop-level-rolling-dirt (function sparticle-system sparticle-cpuinfo vector none))
+(define-extern check-drop-level-rolling-dirt-finish (function sparticle-system sparticle-cpuinfo vector none))
 
 ;; - Unknowns
 
 (define-extern *lightning-mole-sg* skeleton-group)
-;;(define-extern peeper-up object) ;; unknown type
-;;(define-extern peeper-down object) ;; unknown type
-;;(define-extern peeper-hide object) ;; unknown type
-;;(define-extern peeper-wait object) ;; unknown type
+(define-extern peeper-up (state peeper)) ;; unknown type
+(define-extern peeper-down (state peeper)) ;; unknown type
+(define-extern peeper-hide (state peeper)) ;; unknown type
+(define-extern peeper-wait (state peeper)) ;; unknown type
 (define-extern *lightning-mole-nav-enemy-info* nav-enemy-info)
-;;(define-extern lightning-mole-gone object) ;; unknown type
-;;(define-extern lightning-mole-hiding object) ;; unknown type
-;;(define-extern lightning-mole-yelp object) ;; unknown type
-;;(define-extern *lightning-mole-hole* object) ;; unknown type
-;;(define-extern lightning-mole-head-for-hole object) ;; unknown type
-;;(define-extern lightning-mole-dive object) ;; unknown type
-;;(define-extern lightning-mole-debug-run object) ;; unknown type
-;;(define-extern fleeing-nav-enemy-debug object) ;; unknown type
-;;(define-extern lightning-mole-debug-blend object) ;; unknown type
+(define-extern lightning-mole-gone (state lightning-mole)) ;; unknown type
+(define-extern lightning-mole-hiding (state lightning-mole)) ;; unknown type
+(define-extern lightning-mole-yelp (state lightning-mole)) ;; unknown type
+(define-extern *lightning-mole-hole* vector) ;; unknown type
+(define-extern lightning-mole-head-for-hole (state lightning-mole)) ;; unknown type
+(define-extern lightning-mole-dive (state lightning-mole)) ;; unknown type
+(define-extern lightning-mole-debug-run (state lightning-mole)) ;; unknown type
+(define-extern fleeing-nav-enemy-debug (state fleeing-nav-enemy)) ;; unknown type
+(define-extern lightning-mole-debug-blend (state lightning-mole)) ;; unknown type
 
 
 ;; ----------------------
