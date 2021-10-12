@@ -358,7 +358,7 @@ class OfflineDecompilation : public ::testing::Test {
     db->process_labels();
 
     // fancy decompilation.
-    db->analyze_functions_ir2({}, *config, true);
+    db->analyze_functions_ir2({}, *config, {});
 
     final_output_cache = std::make_unique<std::unordered_map<std::string, std::string>>();
   }
