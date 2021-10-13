@@ -24,6 +24,7 @@ add_library(common
         util/dgo_util.cpp
         util/DgoReader.cpp
         util/DgoWriter.cpp
+        util/diff.cpp
         util/FileUtil.cpp
         util/json_util.cpp
         util/Timer.cpp

@@ -14,6 +14,7 @@
 #include "LinkedObjectFile.h"
 #include "decompiler/util/DecompilerTypeSystem.h"
 #include "common/common_types.h"
+#include "decompiler/analysis/symbol_def_map.h"
 
 namespace decompiler {
 /*!
@@ -39,6 +40,9 @@ struct ObjectFileData {
   std::string name_from_map;
   std::string to_unique_name() const;
   uint32_t reference_count = 0;  // number of times its used.
+
+  std::string full_output;
+  std::string output_with_skips;
 };
 
 class ObjectFileDB {
@@ -65,26 +69,26 @@ class ObjectFileDB {
   void analyze_functions_ir1(const Config& config);
   void analyze_functions_ir2(const std::string& output_dir,
                              const Config& config,
-                             bool skip_debug_output = false);
+                             const std::unordered_set<std::string>& skip_functions);
   void ir2_top_level_pass(const Config& config);
-  void ir2_stack_spill_slot_pass(int seg);
-  void ir2_basic_block_pass(int seg, const Config& config);
-  void ir2_atomic_op_pass(int seg, const Config& config);
-  void ir2_type_analysis_pass(int seg, const Config& config);
-  void ir2_register_usage_pass(int seg);
-  void ir2_variable_pass(int seg);
-  void ir2_cfg_build_pass(int seg);
+  void ir2_stack_spill_slot_pass(int seg, ObjectFileData& data);
+  void ir2_basic_block_pass(int seg, const Config& config, ObjectFileData& data);
+  void ir2_atomic_op_pass(int seg, const Config& config, ObjectFileData& data);
+  void ir2_type_analysis_pass(int seg, const Config& config, ObjectFileData& data);
+  void ir2_register_usage_pass(int seg, ObjectFileData& data);
+  void ir2_variable_pass(int seg, ObjectFileData& data);
+  void ir2_cfg_build_pass(int seg, ObjectFileData& data);
   void ir2_store_current_forms(int seg);
-  void ir2_build_expressions(int seg, const Config& config);
-  void ir2_insert_lets(int seg);
-  void ir2_rewrite_inline_asm_instructions(int seg);
-  void ir2_insert_anonymous_functions(int seg);
-  void ir2_symbol_definition_map(const std::string& output_dir);
-  void ir2_write_results(const std::string& output_dir, const Config& config);
-  void ir2_do_segment_analysis_phase1(int seg, const Config& config);
-  void ir2_do_segment_analysis_phase2(int seg, const Config& config);
-  void ir2_setup_labels(const Config& config);
-  void ir2_run_mips2c(const Config& config);
+  void ir2_build_expressions(int seg, const Config& config, ObjectFileData& data);
+  void ir2_insert_lets(int seg, ObjectFileData& data);
+  void ir2_rewrite_inline_asm_instructions(int seg, ObjectFileData& data);
+  void ir2_insert_anonymous_functions(int seg, ObjectFileData& data);
+  void ir2_symbol_definition_map(ObjectFileData& data);
+  void ir2_write_results(const std::string& output_dir, const Config& config, ObjectFileData& data);
+  void ir2_do_segment_analysis_phase1(int seg, const Config& config, ObjectFileData& data);
+  void ir2_do_segment_analysis_phase2(int seg, const Config& config, ObjectFileData& data);
+  void ir2_setup_labels(const Config& config, ObjectFileData& data);
+  void ir2_run_mips2c(const Config& config, ObjectFileData& data);
   std::string ir2_to_file(ObjectFileData& data, const Config& config);
   std::string ir2_function_to_string(ObjectFileData& data, Function& function, int seg);
   std::string ir2_final_out(ObjectFileData& data,
@@ -158,6 +162,17 @@ class ObjectFileDB {
   }
 
   template <typename Func>
+  void for_each_function_def_order_in_obj(ObjectFileData& data, Func f) {
+    for (int i = 0; i < int(data.linked_data.segments); i++) {
+      int fn = 0;
+      for (size_t j = data.linked_data.functions_by_seg.at(i).size(); j-- > 0;) {
+        f(data.linked_data.functions_by_seg.at(i).at(j), i);
+        fn++;
+      }
+    }
+  }
+
+  template <typename Func>
   void for_each_function_in_seg(int seg, Func f) {
     for_each_obj([&](ObjectFileData& data) {
       int fn = 0;
@@ -170,12 +185,25 @@ class ObjectFileDB {
     });
   }
 
+  template <typename Func>
+  void for_each_function_in_seg_in_obj(int seg, ObjectFileData& data, Func f) {
+    int fn = 0;
+    if (data.linked_data.segments == 3) {
+      for (size_t j = data.linked_data.functions_by_seg.at(seg).size(); j-- > 0;) {
+        f(data.linked_data.functions_by_seg.at(seg).at(j));
+        fn++;
+      }
+    }
+  }
+
   // Danger: after adding all object files, we assume that the vector never reallocates.
   std::unordered_map<std::string, std::vector<ObjectFileData>> obj_files_by_name;
   std::unordered_map<std::string, std::vector<ObjectFileRecord>> obj_files_by_dgo;
 
   std::vector<std::string> obj_file_order;
   std::unordered_map<std::string, std::unordered_map<std::string, std::string>> dgo_obj_name_map;
+
+  SymbolMapBuilder map_builder;
 
   struct {
     uint32_t total_dgo_bytes = 0;
