@@ -234,7 +234,8 @@ void disassemble(Decompiler& dc) {
 }
 
 void decompile(Decompiler& dc, const OfflineTestConfig& config) {
-  dc.db->analyze_functions_ir2({}, *dc.config, config.skip_compile_functions, config.skip_compile_states);
+  dc.db->analyze_functions_ir2({}, *dc.config, config.skip_compile_functions,
+                               config.skip_compile_states);
 }
 
 std::string strip_trailing_newlines(const std::string& in) {

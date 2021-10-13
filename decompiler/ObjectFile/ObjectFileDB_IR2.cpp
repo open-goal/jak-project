@@ -33,10 +33,11 @@ namespace decompiler {
  * At this point, we assume that the files are loaded and we've run find_code to locate all
  * functions, but nothing else.
  */
-void ObjectFileDB::analyze_functions_ir2(const std::string& output_dir,
-                                         const Config& config,
-                                         const std::unordered_set<std::string>& skip_functions,
-                                         const std::unordered_map<std::string, std::unordered_set<std::string>>& skip_states) {
+void ObjectFileDB::analyze_functions_ir2(
+    const std::string& output_dir,
+    const Config& config,
+    const std::unordered_set<std::string>& skip_functions,
+    const std::unordered_map<std::string, std::unordered_set<std::string>>& skip_states) {
   // First, do basic analysis on the top level:
   lg::info("Using IR2 analysis...");
 
