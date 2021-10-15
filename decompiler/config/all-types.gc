@@ -593,6 +593,7 @@
   (shutdown)
   (list-sounds)
   (unload-music)
+  (set-fps)
   )
 
 ;; - Enums
@@ -1058,7 +1059,7 @@
   (ogre-end #x600)
   (ogre-buzzer #x601)
   (ogre-boss #x603)
-  
+
   (assistant-voicebox-intro-ogre-race #x605)
 
   (sidekick-speech-hint-ogre-race #x61c)
@@ -2887,6 +2888,14 @@
   :flag-assert         #x900000004
   )
 
+(deftype sound-rpc-set-fps (sound-rpc-cmd)
+  ((fps  uint8  :offset-assert 4)
+   )
+  :method-count-assert 9
+  :size-assert         #x5
+  :flag-assert         #x900000005
+  )
+
 (deftype sound-rpc-list-sounds (sound-rpc-cmd)
   ()
   :method-count-assert 9
@@ -2922,6 +2931,7 @@
    (set-reverb        sound-rpc-set-reverb           :offset 0)
    (set-ear-trans     sound-rpc-set-ear-trans        :offset 0)
    (set-flava         sound-rpc-set-flava            :offset 0)
+   (set-fps           sound-rpc-set-fps              :offset 0)
    (shutdown          sound-rpc-shutdown             :offset 0)
    (list-sounds       sound-rpc-list-sounds          :offset 0)
    (unload-music      sound-rpc-unload-music         :offset 0)
@@ -11750,11 +11760,12 @@
    (fp-hud              uint64              :offset-assert 560)
    (no-load-wait        uint64              :offset-assert 568)
    (no-look-around-wait uint64              :offset-assert 576)
+   ;;(burn-proc           handle              :offset-assert 584) ;; PAL only
    )
   :heap-base #x1e0
   :method-count-assert 21
-  :size-assert         #x248
-  :flag-assert         #x1501e00248
+  :size-assert         #x248 ;;#x250
+  :flag-assert         #x1501e00248 ;;#x1501e00250
   ;; inherited inspect of process-drawable
   (:methods
     (dummy-20 (_type_ collide-cache) none 20)
@@ -13488,7 +13499,7 @@
 
 (defenum sp-field-id
   :type uint16
-  
+
   (misc-fields-start 0)
   (spt-texture 1)
   (spt-anim 2)
@@ -13616,6 +13627,7 @@
   (bit1 1)
   (start-dead 2)
   (launch-asap 3)
+  (bit6 6)
   )
 
 (deftype sparticle-group-item (structure)
@@ -15186,6 +15198,7 @@
 (define-extern sound-set-sound-falloff (function sound-name int int int int))
 (define-extern sound-set-flava (function uint int))
 (define-extern sound-volume-off (function int))
+(define-extern sound-set-fps (function uint int))
 (define-extern show-iop-info (function dma-buffer int))
 (define-extern show-iop-memory (function dma-buffer int))
 (define-extern make-sqrt-table (function int))
@@ -20021,6 +20034,7 @@
 (define-extern *master-exit* symbol)
 (define-extern *last-master-mode* symbol)
 (define-extern *screen-filter* screen-filter)
+(define-extern *first-boot* symbol) ;; PAL
 
 ;; - Unknowns
 
