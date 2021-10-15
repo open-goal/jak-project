@@ -436,6 +436,7 @@ bool Debugger::write_memory(const u8* src_buffer, int size, u32 goal_addr) {
  * Read the GOAL Symbol table from an attached and halted target.
  */
 void Debugger::read_symbol_table() {
+  fmt::print("read_symbol_table: {} {} {}\n", is_valid(), is_attached(), is_halted());
   assert(is_valid() && is_attached() && is_halted());
   u32 bytes_read = 0;
   u32 reads = 0;
