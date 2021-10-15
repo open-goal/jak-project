@@ -11753,6 +11753,7 @@
 (declare-type snowball-info basic)
 (declare-type tube-info basic)
 (declare-type racer-info basic)
+(declare-type flut-info basic)
 (deftype target (process-drawable)
   ((self-override       target  :score 100 :offset 28)
    (control             control-info        :score 100 :offset 112)
@@ -11772,7 +11773,7 @@
    (alt-cam-pos         vector      :inline :offset-assert 448)
    (snowball            snowball-info               :offset-assert 464)
    (tube                tube-info               :offset-assert 468)
-   (flut                basic               :offset-assert 472)
+   (flut                flut-info               :offset-assert 472)
    (current-level       level               :offset-assert 476)
    (saved-pos           transformq  :inline :offset-assert 480)
    (saved-owner         uint64              :offset-assert 528)
@@ -19577,7 +19578,7 @@
 (define-extern target-look-around (state target)) ;; unknown type
 (define-extern target-billy-game (state target)) ;; unknown type
 (define-extern target-racing-start (state handle target)) ;; unknown type
-(define-extern target-flut-start (state target)) ;; unknown type
+(define-extern target-flut-start (state handle target)) ;; unknown type
 (define-extern target-snowball-start (state handle target)) ;; unknown type
 (define-extern target-tube-start (state handle target)) ;; unknown type
 (define-extern target-periscope (state target)) ;; unknown type
@@ -30068,7 +30069,8 @@
 ;; - Types
 
 (deftype flutflut (process-drawable)
-  ((root-override collide-shape-moving :score 100 :offset 112)
+  ((parent-override (pointer target) :score 100 :offset 12)
+   (root-override collide-shape-moving :score 100 :offset 112)
    (extra-trans  vector  :inline :offset-assert 176)
    (condition    int32           :offset-assert 192)
    (auto-get-off symbol          :offset-assert 196)
@@ -30110,56 +30112,65 @@
 
 ;; - Types
 
-; (deftype flut-info (UNKNOWN)
-;   ()
-;   :method-count-assert 0
-;   :size-assert         #x0
-;   :flag-assert         #x0
-;   ;; bad get label
-;   )
+(deftype flut-info (basic)
+  ((entity basic :offset-assert 4)
+   (flut-trans vector :inline :offset-assert 16)
+   (flut-quat vector :inline :offset-assert 32)
+   (flut-scale vector :inline :offset-assert 48)
+   (stick-lock basic :offset-assert 64)
+   (flap-sound-id sound-id :offset-assert 68)
+  )
+  :method-count-assert 9
+  :size-assert         #x48
+  :flag-assert         #x900000048
+  )
 
-; (deftype flut-bank (UNKNOWN)
-;   ()
-;   :method-count-assert 0
-;   :size-assert         #x0
-;   :flag-assert         #x0
-;   ;; bad get label
-;   )
+(deftype flut-bank (basic)
+  ((jump-height-min meters :offset-assert 4)
+   (jump-height-max meters :offset-assert 8)
+   (double-jump-height-min meters :offset-assert 12)
+   (double-jump-height-max meters :offset-assert 16)
+   (air-attack-speed meters :offset-assert 20)
+   (ground-timeout int64 :offset-assert 24))
+  :method-count-assert 9
+  :size-assert         #x20
+  :flag-assert         #x900000020
+  )
 
 ;; - Functions
 
-(define-extern target-flut-post-post function)
+(define-extern target-flut-post-post (function none :behavior target))
 (define-extern target-flut-falling-anim-trans function)
-(define-extern target-flut-dangerous-event-handler function)
-(define-extern target-flut-hit-ground-anim function)
-(define-extern target-flut-standard-event-handler function)
-(define-extern target-flut-post function)
+(define-extern target-flut-dangerous-event-handler (function process int symbol event-message-block object :behavior target))
+(define-extern target-flut-hit-ground-anim (function symbol :behavior target))
+(define-extern target-flut-standard-event-handler (function process int symbol event-message-block object :behavior target))
+(define-extern target-flut-post (function none :behavior target))
 
 ;; - Unknowns
 
-;;(define-extern target-flut-stance object) ;; unknown type
-;;(define-extern target-flut-grab object) ;; unknown type
-;;(define-extern target-flut-clone-anim object) ;; unknown type
-;;(define-extern target-flut-get-off-hit-ground object) ;; unknown type
-;;(define-extern target-flut-get-off-jump object) ;; unknown type
-;;(define-extern target-flut-death object) ;; unknown type
-;;(define-extern target-flut-hit-ground object) ;; unknown type
-;;(define-extern *flut-air-attack-mods* object) ;; unknown type
-;;(define-extern target-flut-air-attack-hit-ground object) ;; unknown type
-;;(define-extern target-flut-jump object) ;; unknown type
-;;(define-extern *FLUT-bank* object) ;; unknown type
-;;(define-extern target-flut-falling object) ;; unknown type
-;;(define-extern *flut-run-attack-mods* object) ;; unknown type
-;;(define-extern target-flut-hit object) ;; unknown type
-;;(define-extern *flut-jump-mods* object) ;; unknown type
-;;(define-extern target-flut-walk object) ;; unknown type
-;;(define-extern *flut-walk-mods* object) ;; unknown type
-;;(define-extern target-flut-air-attack object) ;; unknown type
-;;(define-extern *flut-double-jump-mods* object) ;; unknown type
-;;(define-extern target-flut-double-jump object) ;; unknown type
-;;(define-extern target-flut-running-attack object) ;; unknown type
-;;(define-extern target-flut-get-on object) ;; unknown type
-;;(define-extern target-flut-get-off object) ;; unknown type
+(define-extern target-flut-stance (state target)) ;; unknown type
+(define-extern target-flut-grab (state target)) ;; unknown type
+(define-extern target-flut-clone-anim (state target)) ;; unknown type
+(define-extern target-flut-get-off-hit-ground (state target)) ;; unknown type
+(define-extern target-flut-get-off-jump (state target)) ;; unknown type
+(define-extern target-flut-death (state target)) ;; unknown type
+(define-extern target-flut-hit-ground (state target)) ;; unknown type
+(define-extern *flut-air-attack-mods* surface) ;; unknown type
+(define-extern target-flut-air-attack-hit-ground (state target)) ;; unknown type
+(define-extern target-flut-jump (state float float target)) ;; unknown type
+(define-extern *FLUT-bank* flut-bank) ;; unknown type
+(define-extern target-flut-falling (state target)) ;; unknown type
+(define-extern *flut-run-attack-mods* surface) ;; unknown type
+(define-extern target-flut-hit (state target)) ;; unknown type
+(define-extern *flut-jump-mods* surface) ;; unknown type
+(define-extern target-flut-walk (state target)) ;; unknown type
+(define-extern *flut-walk-mods* surface) ;; unknown type
+(define-extern target-flut-air-attack (state target)) ;; unknown type
+(define-extern *flut-double-jump-mods* surface) ;; unknown type
+(define-extern target-flut-double-jump (state float float target)) ;; unknown type
+(define-extern target-flut-running-attack (state target)) ;; unknown type
+(define-extern target-flut-get-on (state target)) ;; unknown type
+(define-extern target-flut-get-off (state target)) ;; unknown type
 
 
 ;; ----------------------
