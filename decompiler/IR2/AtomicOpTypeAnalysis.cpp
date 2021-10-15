@@ -1385,10 +1385,11 @@ TypeState StackSpillLoadOp::propagate_types_internal(const TypeState& input,
                                                      const Env& env,
                                                      DecompilerTypeSystem&) {
   // stack slot load
-  auto info = env.stack_spills().lookup(m_offset);
+  auto& info = env.stack_spills().lookup(m_offset);
   if (info.size != m_size) {
-    env.func->warnings.general_warning("Stack slot load mismatch: defined as size {}, got size {}",
-                                       info.size, m_size);
+    env.func->warnings.general_warning(
+        "Stack slot load at {} mismatch: defined as size {}, got size {}", m_offset, info.size,
+        m_size);
   }
 
   if (info.is_signed != m_is_signed) {
@@ -1404,7 +1405,7 @@ TypeState StackSpillLoadOp::propagate_types_internal(const TypeState& input,
 TypeState StackSpillStoreOp::propagate_types_internal(const TypeState& input,
                                                       const Env& env,
                                                       DecompilerTypeSystem& dts) {
-  auto info = env.stack_spills().lookup(m_offset);
+  auto& info = env.stack_spills().lookup(m_offset);
   if (info.size != m_size) {
     env.func->warnings.general_warning(
         "Stack slot store mismatch: defined as size {}, got size {}\n", info.size, m_size);

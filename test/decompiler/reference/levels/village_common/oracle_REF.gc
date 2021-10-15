@@ -48,7 +48,7 @@
   (with-pp
    (set! (-> obj talk-message) (the-as uint 260))
    (case (current-status (-> obj tasks)) 
-    ((2 3)
+    (((task-status need-hint) (task-status need-introduction))
       (when arg0
        (close-specific-task!
         (the-as game-task (-> obj first-task))
@@ -414,7 +414,7 @@
         )
        )
       )
-    ((5)
+    (((task-status need-reminder))
      (set! (-> obj skippable) #t)
      (case (-> (level-get-target-inside *level*) name) 
       (('village1)
@@ -443,13 +443,10 @@
        )
       )
      )
-    ((6)
+    (((task-status need-reward-speech))
      (cond
       (arg0
-       (set!
-        (-> obj cell-for-task)
-        (the-as game-task (current-task (-> obj tasks)))
-        )
+       (set! (-> obj cell-for-task) (current-task (-> obj tasks)))
        (close-current! (-> obj tasks))
        (let ((a1-5 (new 'stack-no-clear 'event-message-block)))
         (set! (-> a1-5 from) pp)
@@ -549,9 +546,7 @@
        0
        "ERROR: <GMJ>: ~S playing anim for task status ~S~%"
        (-> obj name)
-       (task-status->string
-        (the-as task-status (current-status (-> obj tasks)))
-        )
+       (task-status->string (current-status (-> obj tasks)))
        )
       )
      (-> obj draw art-group data 2)
@@ -603,25 +598,8 @@
       :mask #x80
       :num 1.0
       :group #x1
-      :sound-name-char
-      (new 'static 'array uint8 16
-       #x6f
-       #x72
-       #x61
-       #x63
-       #x6c
-       #x65
-       #x2d
-       #x73
-       #x6c
-       #x65
-       #x65
-       #x70
-       #x0
-       #x0
-       #x0
-       #x0
-       )
+      :sound-name
+      (new 'static 'sound-name :lo #x732d656c6361726f)
       :volume #x400
       :fo-max 50
       )

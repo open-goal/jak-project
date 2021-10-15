@@ -28,12 +28,12 @@
   init!
   gui-query
   ((obj gui-query)
-   (arg0 symbol)
+   (arg0 string)
    (arg1 int)
    (arg2 int)
    (arg3 int)
    (arg4 symbol)
-   (arg5 symbol)
+   (arg5 string)
    )
   (set! (-> obj x-position) arg1)
   (set! (-> obj y-position) arg2)
@@ -47,7 +47,7 @@
   )
 
 ;; definition for method 10 of type gui-query
-(defmethod dummy-10 gui-query ((obj gui-query))
+(defmethod get-response gui-query ((obj gui-query))
   (kill-current-level-hint '() '(sidekick voicebox stinger) 'exit)
   (level-hint-surpress!)
   (hide-hud)
@@ -77,7 +77,7 @@
       (set! (-> v1-6 scale) 0.9)
       )
      (set! (-> a1-2 flags) (font-flags shadow kerning left large))
-     (print-game-text (the-as string (-> obj message)) a1-2 #f 128 22)
+     (print-game-text (-> obj message) a1-2 #f 128 22)
      )
     )
    (cond
@@ -295,16 +295,20 @@
   )
 
 ;; definition for method 34 of type process-taskable
-(defmethod TODO-RENAME-34 process-taskable ((obj process-taskable) (arg0 symbol))
-  #f
+;; INFO: Return type mismatch symbol vs spool-anim.
+(defmethod
+  get-accept-anim
+  process-taskable
+  ((obj process-taskable) (arg0 symbol))
+  (the-as spool-anim #f)
   )
 
 ;; definition for method 35 of type process-taskable
 ;; INFO: Return type mismatch int vs none.
-(defmethod dummy-35 process-taskable ((obj process-taskable))
-  (let ((s5-0 (the-as basic (TODO-RENAME-34 obj #f))))
-   (if (type-type? (-> (the-as symbol s5-0) type) spool-anim)
-    (spool-push *art-control* (-> (the-as spool-anim s5-0) name) 0 obj -99.0)
+(defmethod push-accept-anim process-taskable ((obj process-taskable))
+  (let ((s5-0 (get-accept-anim obj #f)))
+   (if (type-type? (-> s5-0 type) spool-anim)
+    (spool-push *art-control* (-> s5-0 name) 0 obj -99.0)
     )
    )
   0
@@ -312,20 +316,20 @@
   )
 
 ;; definition for method 36 of type process-taskable
-;; INFO: Return type mismatch symbol vs basic.
+;; INFO: Return type mismatch symbol vs spool-anim.
 (defmethod
-  get-spool-anim-or-??
+  get-reject-anim
   process-taskable
   ((obj process-taskable) (arg0 symbol))
-  (the-as basic #f)
+  (the-as spool-anim #f)
   )
 
 ;; definition for method 37 of type process-taskable
 ;; INFO: Return type mismatch int vs none.
-(defmethod spool-push-anim process-taskable ((obj process-taskable))
-  (let ((s5-0 (get-spool-anim-or-?? obj #f)))
+(defmethod push-reject-anim process-taskable ((obj process-taskable))
+  (let ((s5-0 (get-reject-anim obj #f)))
    (if (type-type? (-> s5-0 type) spool-anim)
-    (spool-push *art-control* (-> (the-as spool-anim s5-0) name) 0 obj -99.0)
+    (spool-push *art-control* (-> s5-0 name) 0 obj -99.0)
     )
    )
   0
@@ -441,7 +445,7 @@
       #t
       "ERROR<GMJ>: ~S got into give-cell with give-cell == #f task = ~S~%"
       (-> self name)
-      (game-task->string (the-as game-task (current-task (-> self tasks))))
+      (game-task->string (current-task (-> self tasks)))
       )
      )
     )
@@ -461,10 +465,7 @@
   :virtual #t
   :enter
   (behavior ()
-   (set!
-    (-> self state-time)
-    (the-as seconds (-> *display* base-frame-counter))
-    )
+   (set! (-> self state-time) (-> *display* base-frame-counter))
    (none)
    )
   :trans
@@ -508,7 +509,7 @@
 
 ;; definition for function process-taskable-play-anim-enter
 (defbehavior process-taskable-play-anim-enter process-taskable ()
-  (init! (-> self query) #f 40 150 25 #t #f)
+  (init! (-> self query) (the-as string #f) 40 150 25 #t (the-as string #f))
   (logior! (-> self skel status) 8)
   (let ((gp-0 (get-process *default-dead-pool* othercam #x4000)))
    (set! (-> self camera) (ppointer->handle (when gp-0
@@ -678,7 +679,7 @@
       arg0
       (the-as art-joint-anim (-> self blend-on-exit))
       (lambda ((arg0 process-taskable))
-       (= (dummy-10 (-> arg0 query)) 'no)
+       (= (get-response (-> arg0 query)) 'no)
        )
       )
      (ja-play-spooled-anim
@@ -770,7 +771,7 @@
       )
      )
     (until (ja-done? 0)
-     (when (and *debug-segment* (= (dummy-10 (-> self query)) 'no))
+     (when (and *debug-segment* (= (get-response (-> self query)) 'no))
       (let ((v1-106 (-> self skel root-channel 0)))
        (set! (-> v1-106 num-func) num-func-identity)
        (set!
@@ -818,7 +819,7 @@
   (behavior ()
    (process-taskable-play-anim-code
     (the-as art-joint-anim (get-art-elem self))
-    (TODO-RENAME-34 self #t)
+    (get-accept-anim self #t)
     )
    (while (not (process-release? *target*))
     (suspend)
@@ -850,7 +851,7 @@
   (behavior ()
    (process-taskable-play-anim-code
     (the-as art-joint-anim (get-art-elem self))
-    (get-spool-anim-or-?? self #t)
+    (get-reject-anim self #t)
     )
    (go-virtual release)
    (none)
@@ -866,12 +867,12 @@
   (behavior ()
    (init!
     (-> self query)
-    (the-as symbol (lookup-text! *common-text* (game-text-id confirm-play) #f))
+    (lookup-text! *common-text* (game-text-id confirm-play) #f)
     40
     150
     25
     #f
-    (the-as symbol (lookup-text! *common-text* (game-text-id quit) #f))
+    (lookup-text! *common-text* (game-text-id quit) #f)
     )
    (none)
    )
@@ -880,8 +881,8 @@
   :trans
   (behavior ()
    (case (current-status (-> self tasks)) 
-    ((4)
-      (case (dummy-10 (-> self query)) 
+    (((task-status need-reminder-a))
+      (case (get-response (-> self query)) 
        (('yes)
          (go-virtual play-accept)
          )
@@ -889,10 +890,10 @@
         (go-virtual play-reject)
         )
        )
-      (dummy-35 self)
+      (push-accept-anim self)
       )
     (else
-     (let ((gp-0 (dummy-10 (-> self query))))
+     (let ((gp-0 (get-response (-> self query))))
       (cond
        ((and (= gp-0 'yes) (process-release? *target*))
         (go-virtual enter-playing)
@@ -904,7 +905,7 @@
       )
      )
     )
-   (spool-push-anim self)
+   (push-reject-anim self)
    (set! *camera-look-through-other* 2)
    ((-> self cur-trans-hook))
    (none)
@@ -1018,7 +1019,7 @@
 ;; definition for function process-taskable-hide-enter
 ;; INFO: Return type mismatch none vs int.
 (defbehavior process-taskable-hide-enter process-taskable ()
-  (set! (-> self state-time) (the-as seconds (-> *display* base-frame-counter)))
+  (set! (-> self state-time) (-> *display* base-frame-counter))
   (let ((v1-3 (-> self draw shadow-ctrl)))
    (logior! (-> v1-3 settings flags) 32)
    )
@@ -1324,10 +1325,7 @@
    )
   :enter
   (behavior ()
-   (set!
-    (-> self state-time)
-    (the-as seconds (-> *display* base-frame-counter))
-    )
+   (set! (-> self state-time) (-> *display* base-frame-counter))
    (process-taskable-clean-up-after-talking)
    (none)
    )
@@ -1415,7 +1413,12 @@
      (first-any (-> self tasks) #t)
      (when (target-above-threshold? self)
       (case (current-status (-> self tasks)) 
-       ((2 3 5 4 6)
+       (((task-status need-hint)
+        (task-status need-introduction)
+        (task-status need-reminder)
+        (task-status need-reminder-a)
+        (task-status need-reward-speech)
+        )
          (kill-current-level-hint '() '(sidekick voicebox ambient) 'exit)
          (level-hint-surpress!)
          (hide-hud)
@@ -1639,7 +1642,7 @@
    ((not (should-display? obj))
     (go (method-of-object obj hidden))
     )
-   ((= (current-status (-> obj tasks)) 7)
+   ((= (current-status (-> obj tasks)) (task-status need-resolution))
     (go (method-of-object obj give-cell))
     )
    (else
@@ -1666,10 +1669,7 @@
    (arg2 float)
    (arg3 process-drawable)
    )
-  (set!
-   (-> obj last-ambient-time)
-   (the-as uint (-> *display* game-frame-counter))
-   )
+  (set! (-> obj last-ambient-time) (-> *display* game-frame-counter))
   0
   (none)
   )
@@ -1685,13 +1685,7 @@
    (arg3 process-drawable)
    )
   (when
-   (<
-    (-
-     (-> *display* game-frame-counter)
-     (the-as int (-> obj last-ambient-time))
-     )
-    arg1
-    )
+   (< (- (-> *display* game-frame-counter) (-> obj last-ambient-time)) arg1)
    (set! arg0 (the-as vector #f))
    (goto cfg-6)
    )
@@ -1706,20 +1700,17 @@
 
 ;; definition for method 11 of type ambient-control
 (defmethod
-  dummy-11
+  play-ambient
   ambient-control
   ((obj ambient-control) (arg0 string) (arg1 symbol) (arg2 vector))
   (when
    (and
-    (not (string= arg0 (the-as string (-> obj last-ambient))))
+    (not (string= arg0 (-> obj last-ambient)))
     (or arg1 (can-hint-be-played? 1 (the-as entity #f) (the-as string #f)))
     (= (-> *level* loading-level) (-> *level* level-default))
     (ambient-hint-spawn arg0 arg2 *entity-pool* 'ambient)
     )
-   (set!
-    (-> obj last-ambient-time)
-    (the-as uint (-> *display* game-frame-counter))
-    )
+   (set! (-> obj last-ambient-time) (-> *display* game-frame-counter))
    (set! (-> obj last-ambient) arg0)
    (return #t)
    )

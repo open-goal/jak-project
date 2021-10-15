@@ -82,7 +82,7 @@
   (with-pp
    (set! (-> obj talk-message) (the-as uint 260))
    (case (current-status (-> obj tasks)) 
-    ((2 3)
+    (((task-status need-hint) (task-status need-introduction))
       (if arg0
        (close-status! (-> obj tasks) (task-status need-introduction))
        )
@@ -114,7 +114,7 @@
          )
        )
       )
-    ((5)
+    (((task-status need-reminder))
      (set! (-> obj skippable) #t)
      (cond
       ((zero? (get-reminder (-> obj tasks) 0))
@@ -170,13 +170,10 @@
        )
       )
      )
-    ((6)
+    (((task-status need-reward-speech))
      (cond
       (arg0
-       (set!
-        (-> obj cell-for-task)
-        (the-as game-task (current-task (-> obj tasks)))
-        )
+       (set! (-> obj cell-for-task) (current-task (-> obj tasks)))
        (close-current! (-> obj tasks))
        (let ((a1-7 (new 'stack-no-clear 'event-message-block)))
         (set! (-> a1-7 from) pp)
@@ -211,9 +208,7 @@
        0
        "ERROR: <GMJ>: ~S playing anim for task status ~S~%"
        (-> obj name)
-       (task-status->string
-        (the-as task-status (current-status (-> obj tasks)))
-        )
+       (task-status->string (current-status (-> obj tasks)))
        )
       )
      (-> obj draw art-group data 3)
@@ -241,7 +236,7 @@
           )
     (cond
      ((< 0.85714287 f0-2)
-      (dummy-11 (-> obj ambient) "EXP-AM05" #f (-> obj root-override trans))
+      (play-ambient (-> obj ambient) "EXP-AM05" #f (-> obj root-override trans))
       )
      ((< 0.71428573 f0-2)
       (if
@@ -252,17 +247,22 @@
          (task-status need-reminder)
          )
         )
-       (dummy-11 (-> obj ambient) "EXP-LO02" #f (-> obj root-override trans))
+       (play-ambient
+        (-> obj ambient)
+        "EXP-LO02"
+        #f
+        (-> obj root-override trans)
+        )
        )
       )
      ((< 0.5714286 f0-2)
-      (dummy-11 (-> obj ambient) "EXP-AM04" #f (-> obj root-override trans))
+      (play-ambient (-> obj ambient) "EXP-AM04" #f (-> obj root-override trans))
       )
      ((< 0.42857143 f0-2)
-      (dummy-11 (-> obj ambient) "EXP-AM03" #f (-> obj root-override trans))
+      (play-ambient (-> obj ambient) "EXP-AM03" #f (-> obj root-override trans))
       )
      ((< 0.2857143 f0-2)
-      (dummy-11 (-> obj ambient) "EXP-AM02" #f (-> obj root-override trans))
+      (play-ambient (-> obj ambient) "EXP-AM02" #f (-> obj root-override trans))
       )
      ((< 0.14285715 f0-2)
       (if
@@ -273,11 +273,16 @@
          (task-status need-reminder)
          )
         )
-       (dummy-11 (-> obj ambient) "EXP-AM01" #f (-> obj root-override trans))
+       (play-ambient
+        (-> obj ambient)
+        "EXP-AM01"
+        #f
+        (-> obj root-override trans)
+        )
        )
       )
      (else
-      (dummy-11 (-> obj ambient) "EXP-LO1A" #f (-> obj root-override trans))
+      (play-ambient (-> obj ambient) "EXP-LO1A" #f (-> obj root-override trans))
       )
      )
     )

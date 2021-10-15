@@ -185,7 +185,7 @@
 (defmethod play-anim! sculptor ((obj sculptor) (arg0 symbol))
   (with-pp
    (case (current-status (-> obj tasks)) 
-    ((2 3)
+    (((task-status need-hint) (task-status need-introduction))
       (if arg0
        (close-status! (-> obj tasks) (task-status need-introduction))
        )
@@ -264,7 +264,7 @@
          )
        )
       )
-    ((5)
+    (((task-status need-reminder))
      (set! (-> obj skippable) #t)
      (new 'static 'spool-anim
       :name "sculptor-reminder-1"
@@ -273,12 +273,9 @@
       :command-list '()
       )
      )
-    ((6)
+    (((task-status need-reward-speech))
      (when arg0
-      (set!
-       (-> obj cell-for-task)
-       (the-as game-task (current-task (-> obj tasks)))
-       )
+      (set! (-> obj cell-for-task) (current-task (-> obj tasks)))
       (close-current! (-> obj tasks))
       (let ((s5-1 (get-process *default-dead-pool* manipy #x4000)))
        (set! (-> obj muse) (ppointer->handle (when s5-1
@@ -346,9 +343,7 @@
        0
        "ERROR: <GMJ>: ~S playing anim for task status ~S~%"
        (-> obj name)
-       (task-status->string
-        (the-as task-status (current-status (-> obj tasks)))
-        )
+       (task-status->string (current-status (-> obj tasks)))
        )
       )
      (-> obj draw art-group data 4)
@@ -358,9 +353,11 @@
   )
 
 (defmethod get-art-elem sculptor ((obj sculptor))
-  (let ((v1-1 (current-status (-> obj tasks))))
-   (if (or (zero? v1-1) (= v1-1 7))
-    (-> obj draw art-group data 11)
+  (case (current-status (-> obj tasks)) 
+   (((task-status invalid) (task-status need-resolution))
+     (-> obj draw art-group data 11)
+     )
+   (else
     (-> obj draw art-group data 3)
     )
    )
@@ -381,25 +378,25 @@
           )
     (cond
      ((< 0.85714287 f0-2)
-      (dummy-11 (-> obj ambient) "SCU-LO01" #f (-> obj root-override trans))
+      (play-ambient (-> obj ambient) "SCU-LO01" #f (-> obj root-override trans))
       )
      ((< 0.71428573 f0-2)
-      (dummy-11 (-> obj ambient) "SCU-AM05" #f (-> obj root-override trans))
+      (play-ambient (-> obj ambient) "SCU-AM05" #f (-> obj root-override trans))
       )
      ((< 0.5714286 f0-2)
-      (dummy-11 (-> obj ambient) "SCU-AM06" #f (-> obj root-override trans))
+      (play-ambient (-> obj ambient) "SCU-AM06" #f (-> obj root-override trans))
       )
      ((< 0.42857143 f0-2)
-      (dummy-11 (-> obj ambient) "SCU-AM03" #f (-> obj root-override trans))
+      (play-ambient (-> obj ambient) "SCU-AM03" #f (-> obj root-override trans))
       )
      ((< 0.2857143 f0-2)
-      (dummy-11 (-> obj ambient) "SCU-AM04" #f (-> obj root-override trans))
+      (play-ambient (-> obj ambient) "SCU-AM04" #f (-> obj root-override trans))
       )
      ((< 0.14285715 f0-2)
-      (dummy-11 (-> obj ambient) "SCU-AM01" #f (-> obj root-override trans))
+      (play-ambient (-> obj ambient) "SCU-AM01" #f (-> obj root-override trans))
       )
      (else
-      (dummy-11 (-> obj ambient) "SCU-AM02" #f (-> obj root-override trans))
+      (play-ambient (-> obj ambient) "SCU-AM02" #f (-> obj root-override trans))
       )
      )
     )
@@ -436,58 +433,61 @@
     (suspend)
     (ja-eval)
     )
-   (let ((v1-16 (current-status (-> self tasks))))
-    (when (or (zero? v1-16) (= v1-16 7))
-     (let ((a0-12 (-> self skel root-channel 0)))
-      (set!
-       (-> a0-12 frame-group)
-       (the-as art-joint-anim (-> self draw art-group data 12))
-       )
-      (set!
-       (-> a0-12 param 0)
-       (the
-        float
-        (+
-         (->
-          (the-as art-joint-anim (-> self draw art-group data 12))
-          data
-          0
-          length
+   (case (current-status (-> self tasks)) 
+    (((task-status invalid) (task-status need-resolution))
+      (let ((a0-12 (-> self skel root-channel 0)))
+       (set!
+        (-> a0-12 frame-group)
+        (the-as art-joint-anim (-> self draw art-group data 12))
+        )
+       (set!
+        (-> a0-12 param 0)
+        (the
+         float
+         (+
+          (->
+           (the-as art-joint-anim (-> self draw art-group data 12))
+           data
+           0
+           length
+           )
+          -1
           )
-         -1
          )
         )
-       )
-      (set! (-> a0-12 param 1) 1.0)
-      (set! (-> a0-12 frame-num) 0.0)
-      (joint-control-channel-group!
-       a0-12
-       (the-as art-joint-anim (-> self draw art-group data 12))
-       num-func-seek!
-       )
-      )
-     (until (ja-done? 0)
-      (suspend)
-      (let ((a0-13 (-> self skel root-channel 0)))
-       (set!
-        (-> a0-13 param 0)
-        (the float (+ (-> a0-13 frame-group data 0 length) -1))
-        )
-       (set! (-> a0-13 param 1) 1.0)
-       (joint-control-channel-group-eval!
-        a0-13
-        (the-as art-joint-anim #f)
+       (set! (-> a0-12 param 1) 1.0)
+       (set! (-> a0-12 frame-num) 0.0)
+       (joint-control-channel-group!
+        a0-12
+        (the-as art-joint-anim (-> self draw art-group data 12))
         num-func-seek!
         )
        )
+      (until (ja-done? 0)
+       (suspend)
+       (let ((a0-13 (-> self skel root-channel 0)))
+        (set!
+         (-> a0-13 param 0)
+         (the float (+ (-> a0-13 frame-group data 0 length) -1))
+         )
+        (set! (-> a0-13 param 1) 1.0)
+        (joint-control-channel-group-eval!
+         a0-13
+         (the-as art-joint-anim #f)
+         num-func-seek!
+         )
+        )
+       )
+      (muse-to-idle (the-as muse self))
       )
-     (muse-to-idle (the-as muse self))
-     )
     )
    (while #t
     (let ((v1-43 (current-status (-> self tasks))))
      (cond
-      ((or (zero? v1-43) (= v1-43 7))
+      ((or
+        (= v1-43 (task-status invalid))
+        (= v1-43 (task-status need-resolution))
+        )
        (let ((a0-18 (-> self skel root-channel 0)))
         (set!
          (-> a0-18 frame-group)

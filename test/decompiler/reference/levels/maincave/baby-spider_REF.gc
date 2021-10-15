@@ -137,11 +137,11 @@
    :run-travel-speed (meters 7.0)
    :run-rotate-speed (degrees 7999.9995)
    :run-acceleration (meters 1.0)
-   :run-turn-time #x16
+   :run-turn-time (seconds 0.07333333)
    :walk-travel-speed (meters 2.0)
    :walk-rotate-speed (degrees 7999.9995)
    :walk-acceleration (meters 1.0)
-   :walk-turn-time #x16
+   :walk-turn-time (seconds 0.07333333)
    :attack-shove-back (meters 3.0)
    :attack-shove-up (meters 2.0)
    :shadow-size (meters 1.0)
@@ -193,11 +193,11 @@
    :run-travel-speed (meters 7.0)
    :run-rotate-speed (degrees 7999.9995)
    :run-acceleration (meters 1.0)
-   :run-turn-time #x16
+   :run-turn-time (seconds 0.07333333)
    :walk-travel-speed (meters 2.0)
    :walk-rotate-speed (degrees 7999.9995)
    :walk-acceleration (meters 1.0)
-   :walk-turn-time #x16
+   :walk-turn-time (seconds 0.07333333)
    :attack-shove-back (meters 3.0)
    :attack-shove-up (meters 2.0)
    :shadow-size (meters 1.0)
@@ -345,7 +345,8 @@ baby-spider-default-event-handler
   )
 
 ;; definition for method 51 of type baby-spider
-(defmethod dummy-51 baby-spider ((obj baby-spider))
+;; INFO: Return type mismatch float vs symbol.
+(defmethod dummy-51 baby-spider ((obj baby-spider) (arg0 vector))
   (let* ((f0-0 (rand-vu-float-range 0.0 1.0))
          (f1-1 (+ 1.0 (* 2.0 f0-0)))
          (f2-2 f1-1)
@@ -356,12 +357,13 @@ baby-spider-default-event-handler
    (set! (-> obj wiggle-factor) (* 1.5 f2-4))
    (let ((f0-3 (* 28672.0 f0-2)))
     (set! (-> obj target-speed) f0-3)
-    f0-3
+    (the-as symbol f0-3)
     )
    )
   )
 
 ;; definition for method 52 of type baby-spider
+;; INFO: Return type mismatch vector vs symbol.
 ;; Used lq/sq
 (defmethod dummy-52 baby-spider ((obj baby-spider) (arg0 vector))
   (+! (-> obj wiggle-angle) (-> obj delta-wiggle-angle))
@@ -384,7 +386,7 @@ baby-spider-default-event-handler
          (v0-3 (-> obj nav target-pos))
          )
    (set! (-> v0-3 quad) (-> v1-4 quad))
-   v0-3
+   (the-as symbol v0-3)
    )
   )
 
@@ -500,7 +502,7 @@ baby-spider-default-event-handler
         )
        )
       (>=
-       (- (-> *display* base-frame-counter) (the-as int (-> self state-time)))
+       (- (-> *display* base-frame-counter) (-> self state-time))
        (-> self state-timeout)
        )
       (nonzero? (-> self draw))
@@ -733,7 +735,7 @@ baby-spider-default-event-handler
     )
    (if
     (>=
-     (- (-> *display* base-frame-counter) (the-as int (-> self state-time)))
+     (- (-> *display* base-frame-counter) (-> self state-time))
      (the-as int (-> self chase-rest-time))
      )
     (go-virtual nav-enemy-victory)
@@ -758,33 +760,32 @@ baby-spider-default-event-handler
    (set! (-> self wiggle-angle) 0.0)
    (set! (-> self chase-rest-time) (the-as uint (rand-vu-int-range 300 1200)))
    (ja-channel-push! 1 51)
-   (let ((gp-0 (-> self skel root-channel 0)))
-    (joint-control-channel-group-eval!
-     gp-0
-     (the-as art-joint-anim (-> self draw art-group data 7))
-     num-func-identity
-     )
+   (let* ((gp-0 (-> self skel root-channel 0))
+          (t9-2 joint-control-channel-group-eval!)
+          (a0-2 gp-0)
+          (a1-2 (-> self draw art-group data 7))
+          )
+    (t9-2 a0-2 (the-as art-joint-anim a1-2) num-func-identity)
     (set! (-> gp-0 frame-num) 0.0)
-    )
-   (while #t
-    (when
-     (>=
-      (- (-> *display* base-frame-counter) (the-as int (-> self wiggle-time)))
-      300
+    (while #t
+     (when
+      (>=
+       (- (-> *display* base-frame-counter) (the-as int (-> self wiggle-time)))
+       300
+       )
+      (set!
+       (-> self wiggle-time)
+       (the-as uint (-> *display* base-frame-counter))
+       )
+      (dummy-51 self (the-as vector a1-2))
       )
-     (set!
-      (-> self wiggle-time)
-      (the-as uint (-> *display* base-frame-counter))
-      )
-     (dummy-51 self)
-     )
-    (suspend)
-    (let ((a0-5 (-> self skel root-channel 0)))
-     (set! (-> a0-5 param 0) 1.0)
-     (joint-control-channel-group-eval!
-      a0-5
-      (the-as art-joint-anim #f)
-      num-func-loop!
+     (suspend)
+     (let ((a0-5 (-> self skel root-channel 0)))
+      (set! (-> a0-5 param 0) 1.0)
+      (let ((t9-4 joint-control-channel-group-eval!))
+       (set! a1-2 (the-as art-element #f))
+       (t9-4 a0-5 (the-as art-joint-anim a1-2) num-func-loop!)
+       )
       )
      )
     )
