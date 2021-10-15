@@ -18,8 +18,8 @@ void connect_compiler_and_debugger(Compiler& compiler, bool do_break) {
     if (compiler.get_debugger().is_valid()) {
       break;
     } else {
-      usleep(50000);  // 50ms
-      lg::info("Failed to get debugging context {}/100\n", i);
+      std::this_thread::sleep_for(std::chrono::milliseconds(50));
+      lg::info("Failed to get debugging context {}/100", i);
     }
   }
   ASSERT_TRUE(compiler.get_debugger().is_valid());
