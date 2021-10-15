@@ -95,10 +95,10 @@ bool Debugger::attach_and_break() {
   if (is_valid() && !m_attached) {
     // reset and start the stop watcher
     clear_signal_queue();
-    start_watcher();
 
     // attach and send a break command
     if (xdbg::attach_and_break(m_debug_context.tid)) {
+      start_watcher();
       // wait for the signal queue to get a stop and pop it.
       auto info = pop_signal();
 
