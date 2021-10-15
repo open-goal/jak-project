@@ -12,6 +12,8 @@ void connect_compiler_and_debugger(Compiler& compiler, bool do_break) {
   bool connect_status = compiler.connect_to_target();
   lg::info("connected: {}\n", connect_status);
   ASSERT_TRUE(connect_status);
+  lg::info("poking...\n");
+  compiler.poke_target();
   for (int i = 0; i < 100; i++) {
     if (compiler.get_debugger().is_valid()) {
       break;
@@ -21,8 +23,6 @@ void connect_compiler_and_debugger(Compiler& compiler, bool do_break) {
     }
   }
   ASSERT_TRUE(compiler.get_debugger().is_valid());
-  lg::info("poking...\n");
-  compiler.poke_target();
 
   if (do_break) {
     lg::info("break...\n");
