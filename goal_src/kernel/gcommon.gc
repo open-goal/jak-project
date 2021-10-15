@@ -308,7 +308,7 @@
   ;; as other basics don't require 16-byte aligned sizes.
   ;; - maybe the 16-byte aligned size was a requirement if types were stored in the symbol table?
   ;; - maybe types used to be a little bit larger, they made an effort to pack fields tightly.
-  (logand #xfffffff0 (+ 15 (* 4 (-> type allocated-length)) 28))
+  (logand #xfffffff0 (+ 15 (* 4 (-> obj allocated-length)) 28))
   )
 
 (defun basic-type? ((obj basic) (parent-type type))
@@ -657,6 +657,8 @@
 ;; This is used as base class for boxed inline arrays.
 ;; The heap-base of the _type_ object will be used to store the stride
 ;; This way, you don't pay the price of storing the stride in each object.
+;; however, 250k lines in, we haven't seen anything actually use this...
+
 (deftype inline-array-class (basic)
   ((length           int32  :offset-assert 4)
    (allocated-length int32  :offset-assert 8)
@@ -1082,9 +1084,24 @@
 ;; the column that will be printed to by format.
 (define *print-column* (the binteger 0))
 
+;; note: normal use of print/inspect will have the compiler pick the appropriate method
+;; for non-basics.  However, it may be useful to have print/inpsect available as a function
+;; as well, allowing you to use it as a function pointer.
+;; in this case, we can only do the right thing on boxed objects.
+
 (defun print ((arg0 object))
   "Print out any boxed object. Does NOT insert a newline."
+  ;; note that we use rtype-of, which works for pair, basic, and binteger.
   ((method-of-type (rtype-of arg0) print) arg0)
+  )
+
+(defmacro printl (obj)
+  "Print out a boxed object and a newline"
+  `(begin
+     (print ,obj)
+     (format #t "~%")
+     ,obj
+     )
   )
 
 (defun printl ((arg0 object))
@@ -1366,9 +1383,10 @@
 
 
 ;;;;;;;;;;;;;;;;;;;;;;;;
-;; Branch Macro
+;; Decompiler Macros
 ;;;;;;;;;;;;;;;;;;;;;;;;
 
+;; inserted by the decompiler for assembly branches.
 (defmacro b! (pred destination &key (delay '()) &key (likely-delay '()))
   "Branch!"
   ;; evaluate the predicate
@@ -1391,6 +1409,8 @@
      )
   )
 
+;; inserted by the decompiler if a c->goal bool conversion can't be compacted into a single
+;; expression.
 (defmacro cmove-#f-zero (dest condition src)
   `(if (zero? ,condition)
        (set! ,dest #f)
