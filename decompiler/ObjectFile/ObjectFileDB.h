@@ -125,6 +125,7 @@ class ObjectFileDB {
     assert(obj_files_by_name.size() == obj_file_order.size());
     for (const auto& name : obj_file_order) {
       for (auto& obj : obj_files_by_name.at(name)) {
+        // lg::info("{}...", name);
         f(obj);
       }
     }
