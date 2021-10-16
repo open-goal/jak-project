@@ -955,6 +955,8 @@
 
   (firecanyon-collect-cells-text #x2b3)
 
+  (mistycannon-get-some #x292)
+
   (yakow-owed-powercell #x297)
 
   (village2-gambler-money #x300)
@@ -11114,7 +11116,7 @@
     (dummy-37 () none 37)
     (dummy-38 () none 38)
     (dummy-39 () none 39)
-    (dummy-40 (_type_ structure) none 40) ;; ?? - I've seen overlaps-others-params | collide-edge-hold-list
+    (dummy-40 (_type_ vector2w) none 40) ;; ?? - I've seen overlaps-others-params | collide-edge-hold-list
     (dummy-41 () none 41)
     (dummy-42 () none 42)
     (dummy-43 () none 43)
@@ -14130,7 +14132,7 @@
    (saved-pt                      vector               :inline :offset-assert 2464)
    (spline-tt                     float                        :offset-assert 2480)
    (spline-follow-dist            float                        :offset-assert 2484)
-   (change-event-from             uint32                       :offset-assert 2488)
+   (change-event-from             (pointer process-drawable)   :offset-assert 2488) ;; mistycannon
    (enter-has-run                 symbol                       :offset-assert 2492)
    (blend-from-type               uint64                       :offset-assert 2496)
    (blend-to-type                 uint64                       :offset-assert 2504)
@@ -20367,7 +20369,7 @@
 
 ;; - Functions
 
-(define-extern splash-spawn function)
+(define-extern splash-spawn (function float int none))
 (define-extern part-water-splash-callback function)
 (define-extern ocean-get-height (function vector float))
 (define-extern birth-func-y->userdata function)
@@ -23211,12 +23213,13 @@
   )
 
 (deftype mistycannon-missile (process-drawable)
-  ((muzzle-time  float              :offset-assert 176)
+  ((root-override collide-shape-moving :score 100 :offset 112)
+   (muzzle-time  float              :offset-assert 176)
    (tumble-quat  quaternion :inline :offset-assert 192)
    (blast-radius float              :offset-assert 208)
    (water-height float              :offset-assert 212)
    (sfx          uint32             :offset-assert 216)
-   (part2        basic              :offset-assert 220)
+   (part2        sparticle-launch-control              :offset-assert 220)
    (ground-time  uint64             :offset-assert 224)
    )
   :method-count-assert 21
@@ -23224,7 +23227,7 @@
   :heap-base           #x80
   :flag-assert         #x15008000e8
   (:methods
-    (dummy-20 () none 20)
+    (spawn-part (_type_) none 20)
     )
   )
 
@@ -23242,34 +23245,35 @@
   )
 
 (deftype mistycannon (process-drawable)
-  ((rotate                 angle-tracker :inline :offset-assert 176)
+  ((root-override collide-shape-moving :score 100 :offset 112)(rotate                 angle-tracker :inline :offset-assert 176)
+   (fact-info-override fact-info-enemy :score 100 :offset 144)
    (tilt                   angle-tracker :inline :offset-assert 192)
    (front-wheel            float                 :offset-assert 208)
    (rear-wheel             float                 :offset-assert 212)
    (last-known-rotation    float                 :offset-assert 216)
    (part-timer             uint64                :offset-assert 224)
    (hellmouth              vector        :inline :offset-assert 240)
-   (postbindinfo-ok        basic                 :offset-assert 256)
+   (postbindinfo-ok        symbol                 :offset-assert 256)
    (launch-origin          vector        :inline :offset-assert 272)
    (goggles                vector        :inline :offset-assert 288)
-   (avoid-entity           basic                 :offset-assert 304)
+   (avoid-entity           entity-actor                 :offset-assert 304)
    (center-point           vector        :inline :offset-assert 320)
    (at-point               vector        :inline :offset-assert 336)
    (accuracy-range         float                 :offset-assert 352)
    (target-theta           float                 :offset-assert 356)
    (sound-id               sound-id              :offset-assert 360)
    (aim-sound-id           sound-id              :offset-assert 364)
-   (player-touching-grips? basic                 :offset-assert 368)
+   (player-touching-grips? symbol                 :offset-assert 368)
    )
   :method-count-assert 24
   :size-assert         #x174
   :heap-base           #x110
   :flag-assert         #x1801100174
   (:methods
-    (dummy-20 () none 20)
-    (dummy-21 () none 21)
-    (dummy-22 () none 22)
-    (dummy-23 () none 23)
+    (rotate! (_type_ float) none 20)
+    (tilt! (_type_ float) none 21)
+    (dummy-22 (_type_ float float float) none 22)
+    (dummy-23 (_type_) none 23)
     )
   )
 
@@ -23297,22 +23301,22 @@
 
 ;; - Functions
 
-(define-extern mistycannon-prebind-function function)
-(define-extern mistycannon-postbind-function function)
-(define-extern angle-tracker-init-range! function)
-(define-extern mistycannon-pick-random-target-point function)
-(define-extern angle-tracker-seek! function)
-(define-extern mistycannon-do-aim function)
-(define-extern mistycannon-find-trajectory function)
-(define-extern solve-missile-velocity function)
-(define-extern spawn-mistycannon-missile function)
-(define-extern angle-tracker-apply-move! function)
-(define-extern mistycannon-missile-init-by-other function)
-(define-extern mistycannon-collision-reaction function)
-(define-extern angle-tracker-get-value function)
-(define-extern angle-tracker-set-value function)
-(define-extern solve-missile-tilt function)
-(define-extern mistycannon-find-best-solution function)
+(define-extern mistycannon-prebind-function (function mistycannon object))
+(define-extern mistycannon-postbind-function (function mistycannon none))
+(define-extern angle-tracker-init-range! (function angle-tracker float float float none))
+(define-extern mistycannon-pick-random-target-point (function float :behavior mistycannon))
+(define-extern angle-tracker-seek! (function angle-tracker float symbol))
+(define-extern mistycannon-do-aim (function vector vector none :behavior mistycannon))
+(define-extern mistycannon-find-trajectory (function trajectory-params none :behavior mistycannon))
+(define-extern solve-missile-velocity (function trajectory-params float none))
+(define-extern spawn-mistycannon-missile (function process-tree vector vector float float float float entity none))
+(define-extern angle-tracker-apply-move! (function angle-tracker float float))
+(define-extern mistycannon-missile-init-by-other (function mistycannon-init-data entity none :behavior mistycannon-missile))
+(define-extern mistycannon-collision-reaction (function collide-shape-moving collide-shape-intersect none))
+(define-extern angle-tracker-get-value (function angle-tracker float))
+(define-extern angle-tracker-set-value (function angle-tracker float float))
+(define-extern solve-missile-tilt (function trajectory-params float float float float symbol))
+(define-extern mistycannon-find-best-solution (function quadratic-solution none :behavior mistycannon))
 
 ;; - Unknowns
 
