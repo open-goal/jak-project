@@ -89,17 +89,12 @@
    )
   )
 
-;; definition for function muse-get-path-point
-;; INFO: Return type mismatch int vs none.
 (defbehavior muse-get-path-point muse ((arg0 vector) (arg1 int))
   (eval-path-curve-div! (-> self path) arg0 (the float arg1) 'interp)
   0
   (none)
   )
 
-;; definition for function muse-check-dest-point
-;; INFO: Return type mismatch int vs none.
-;; Used lq/sq
 (defbehavior muse-check-dest-point muse ()
   (let ((gp-0 (new 'stack-no-clear 'point-on-path-segment-info))
         (f26-0 4096000.0)
@@ -177,8 +172,6 @@
   (none)
   )
 
-;; definition for method 51 of type muse
-;; INFO: Return type mismatch int vs float.
 (defmethod dummy-51 muse ((obj muse))
   (dotimes (s5-0 2)
    (let ((v1-2 (rand-vu-int-range 3 (+ (-> obj node-list length) -1))))
@@ -198,7 +191,6 @@
   (the-as float 0)
   )
 
-;; definition for method 39 of type muse
 (defmethod common-post muse ((obj muse))
   (spool-push *art-control* (-> obj anim name) 0 obj -99.0)
   (dummy-51 obj)
@@ -206,7 +198,6 @@
   (none)
   )
 
-;; failed to figure out what this is:
 (let
   ((v1-5
     (new 'static 'skeleton-group
@@ -225,22 +216,16 @@
   (set! *muse-sg* v1-5)
   )
 
-;; definition for method 44 of type muse
-;; INFO: Return type mismatch none vs object.
 (defmethod dummy-44 muse ((obj muse) (arg0 process) (arg1 event-message-block))
   (the-as object (go muse-caught))
   )
 
-;; definition for method 43 of type muse
-;; INFO: Return type mismatch none vs object.
 (defmethod dummy-43 muse ((obj muse) (arg0 process) (arg1 event-message-block))
   (the-as object (go muse-caught))
   )
 
-;; failed to figure out what this is:
 nav-enemy-default-event-handler
 
-;; failed to figure out what this is:
 (defstate muse-idle (muse)
   :event
   (the-as
@@ -405,7 +390,6 @@ nav-enemy-default-event-handler
   (the-as (function none :behavior muse) ja-post)
   )
 
-;; failed to figure out what this is:
 (defstate nav-enemy-chase (muse)
   :virtual #t
   :event
@@ -415,10 +399,7 @@ nav-enemy-default-event-handler
    )
   :enter
   (behavior ()
-   (set!
-    (-> self state-time)
-    (the-as seconds (-> *display* base-frame-counter))
-    )
+   (set! (-> self state-time) (-> *display* base-frame-counter))
    (none)
    )
   :trans
@@ -571,7 +552,6 @@ nav-enemy-default-event-handler
    )
   )
 
-;; failed to figure out what this is:
 (defstate nav-enemy-jump (muse)
   :virtual #t
   :event
@@ -589,7 +569,6 @@ nav-enemy-default-event-handler
   (-> (method-of-type nav-enemy nav-enemy-jump) code)
   )
 
-;; failed to figure out what this is:
 (defstate nav-enemy-jump-land (muse)
   :virtual #t
   :event
@@ -661,7 +640,6 @@ nav-enemy-default-event-handler
    )
   )
 
-;; failed to figure out what this is:
 (defstate muse-caught (muse)
   :event
   (the-as
@@ -710,28 +688,9 @@ nav-enemy-default-event-handler
         )
        )
       )
-     (let ((a1-10 (new 'stack-no-clear 'event-message-block)))
-      (set! (-> a1-10 from) self)
-      (set! (-> a1-10 num-params) 2)
-      (set! (-> a1-10 message) 'trans)
-      (set! (-> a1-10 param 0) (the-as uint 'save))
-      (set! (-> a1-10 param 1) (the-as uint (-> self old-target-pos)))
-      (send-event-function *target* a1-10)
-      )
-     (let ((a1-11 (new 'stack-no-clear 'event-message-block)))
-      (set! (-> a1-11 from) self)
-      (set! (-> a1-11 num-params) 1)
-      (set! (-> a1-11 message) 'matrix)
-      (set! (-> a1-11 param 0) (the-as uint 'play-anim))
-      (send-event-function (ppointer->process (-> *target* sidekick)) a1-11)
-      )
-     (let ((a1-12 (new 'stack-no-clear 'event-message-block)))
-      (set! (-> a1-12 from) self)
-      (set! (-> a1-12 num-params) 1)
-      (set! (-> a1-12 message) 'blend-shape)
-      (set! (-> a1-12 param 0) (the-as uint #t))
-      (send-event-function *target* a1-12)
-      )
+     (send-event *target* 'trans 'save (-> self old-target-pos))
+     (send-event (ppointer->process (-> *target* sidekick)) 'matrix 'play-anim)
+     (send-event *target* 'blend-shape #t)
      (if (!= *kernel-boot-message* 'play)
       (set!
        (-> self trans-hook)
@@ -742,9 +701,30 @@ nav-enemy-default-event-handler
         )
        )
       )
-     (push-setting! *setting-control* self 'music-volume 'rel (-> *setting-control* current music-volume-movie) 0)
-     (push-setting! *setting-control* self 'sfx-volume 'rel (-> *setting-control* current sfx-volume-movie) 0)
-     (push-setting! *setting-control* self 'ambient-volume 'rel (-> *setting-control* current ambient-volume-movie) 0)
+     (push-setting!
+      *setting-control*
+      self
+      'music-volume
+      'rel
+      (-> *setting-control* current music-volume-movie)
+      0
+      )
+     (push-setting!
+      *setting-control*
+      self
+      'sfx-volume
+      'rel
+      (-> *setting-control* current sfx-volume-movie)
+      0
+      )
+     (push-setting!
+      *setting-control*
+      self
+      'ambient-volume
+      'rel
+      (-> *setting-control* current ambient-volume-movie)
+      0
+      )
      (logclear! (-> self mask) (process-mask enemy))
      (let ((gp-2 (get-process *default-dead-pool* othercam #x4000)))
       (when gp-2
@@ -774,26 +754,14 @@ nav-enemy-default-event-handler
       self
       'ambient-volume
       )
-     (let ((a1-24 (new 'stack-no-clear 'event-message-block)))
-      (set! (-> a1-24 from) self)
-      (set! (-> a1-24 num-params) 1)
-      (set! (-> a1-24 message) 'blend-shape)
-      (set! (-> a1-24 param 0) (the-as uint #f))
-      (send-event-function *target* a1-24)
-      )
+     (send-event *target* 'blend-shape #f)
      (cond
       ((!= *kernel-boot-message* 'play)
        (set-blackout-frames 0)
        (ja-channel-set! 0)
        (ja-post)
        (dummy-48 (-> self collide-info))
-       (let ((a1-25 (new 'stack-no-clear 'event-message-block)))
-        (set! (-> a1-25 from) self)
-        (set! (-> a1-25 num-params) 1)
-        (set! (-> a1-25 message) 'trans)
-        (set! (-> a1-25 param 0) (the-as uint 'reset))
-        (send-event-function *target* a1-25)
-        )
+       (send-event *target* 'trans 'reset)
        (let
         ((gp-4
           (ppointer->handle
@@ -808,26 +776,14 @@ nav-enemy-default-event-handler
            )
           )
          )
-        (let ((a1-27 (new 'stack-no-clear 'event-message-block)))
-         (set! (-> a1-27 from) self)
-         (set! (-> a1-27 num-params) 0)
-         (set! (-> a1-27 message) 'pickup)
-         (send-event-function (handle->process (the-as handle gp-4)) a1-27)
-         )
+        (send-event (handle->process (the-as handle gp-4)) 'pickup)
         (while (handle->process (the-as handle gp-4))
          (suspend)
          )
         )
        )
       (else
-       (let ((a1-29 (new 'stack-no-clear 'event-message-block)))
-        (set! (-> a1-29 from) self)
-        (set! (-> a1-29 num-params) 2)
-        (set! (-> a1-29 message) 'trans)
-        (set! (-> a1-29 param 0) (the-as uint 'restore))
-        (set! (-> a1-29 param 1) (the-as uint (-> self old-target-pos)))
-        (send-event-function *target* a1-29)
-        )
+       (send-event *target* 'trans 'restore (-> self old-target-pos))
        (set-blackout-frames 0)
        (set-blackout-frames 30)
        )
@@ -846,7 +802,6 @@ nav-enemy-default-event-handler
    )
   )
 
-;; definition for symbol *muse-nav-enemy-info*, type nav-enemy-info
 (define
   *muse-nav-enemy-info*
   (new 'static 'nav-enemy-info
@@ -903,8 +858,6 @@ nav-enemy-default-event-handler
    )
   )
 
-;; definition for method 11 of type muse
-;; Used lq/sq
 (defmethod copy-defaults! muse ((obj muse) (arg0 res-lump))
   (stack-size-set! (-> obj main-thread) 512)
   (set! (-> obj mask) (logior (process-mask enemy) (-> obj mask)))
@@ -977,3 +930,7 @@ nav-enemy-default-event-handler
   (go muse-idle)
   (none)
   )
+
+
+
+

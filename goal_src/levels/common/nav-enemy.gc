@@ -183,18 +183,10 @@
   )
 
 (defmethod TODO-RENAME-73 nav-enemy ((obj nav-enemy) (arg0 process))
-  (with-pp
-   (let ((v1-0 (new 'stack-no-clear 'event-message-block)))
-    (set! (-> v1-0 from) pp)
-    (set! (-> v1-0 num-params) 1)
-    (set! (-> v1-0 message) 'get-attack-count)
-    (set! (-> v1-0 param 0) (the-as uint 1))
-    (send-event-function arg0 v1-0)
-    )
-   (logclear! (-> obj mask) (process-mask actor-pause attackable))
-   (go (method-of-object obj nav-enemy-die))
-   'die
-   )
+  (send-event arg0 'get-attack-count 1)
+  (logclear! (-> obj mask) (process-mask actor-pause attackable))
+  (go (method-of-object obj nav-enemy-die))
+  'die
   )
 
 ;; WARN: rewrite_to_get_var got a none typed variable. Is there unreachable code?
@@ -202,27 +194,19 @@
   dummy-43
   nav-enemy
   ((obj nav-enemy) (arg0 process) (arg1 event-message-block))
-  (with-pp
-   (the-as object (cond
-                   ((logtest? (-> obj nav-enemy-flags) 32)
-                    (let ((v1-2 (new 'stack-no-clear 'event-message-block)))
-                     (set! (-> v1-2 from) pp)
-                     (set! (-> v1-2 num-params) 1)
-                     (set! (-> v1-2 message) 'get-attack-count)
-                     (set! (-> v1-2 param 0) (the-as uint 1))
-                     (send-event-function arg0 v1-2)
-                     )
-                    (logclear!
-                     (-> obj mask)
-                     (process-mask actor-pause attackable)
-                     )
-                    (go (method-of-object obj nav-enemy-die))
+  (the-as object (cond
+                  ((logtest? (-> obj nav-enemy-flags) 32)
+                   (send-event arg0 'get-attack-count 1)
+                   (logclear!
+                    (-> obj mask)
+                    (process-mask actor-pause attackable)
                     )
-                   (else
-                    (dummy-44 obj arg0 arg1)
-                    )
+                   (go (method-of-object obj nav-enemy-die))
                    )
-    )
+                  (else
+                   (dummy-44 obj arg0 arg1)
+                   )
+                  )
    )
   )
 
@@ -864,10 +848,7 @@ nav-enemy-default-event-handler
      (set! (-> v1-14 num-func) num-func-identity)
      (set! (-> v1-14 frame-num) 0.0)
      )
-    (set!
-     (-> self state-time)
-     (the-as seconds (-> *display* base-frame-counter))
-     )
+    (set! (-> self state-time) (-> *display* base-frame-counter))
     (set!
      (-> self collide-info status)
      (logand -8 (-> self collide-info status))
@@ -1027,10 +1008,7 @@ nav-enemy-default-event-handler
   :enter
   (behavior ()
    (nav-enemy-neck-control-inactive)
-   (set!
-    (-> self state-time)
-    (the-as seconds (-> *display* base-frame-counter))
-    )
+   (set! (-> self state-time) (-> *display* base-frame-counter))
    (if (-> self nav-info move-to-ground)
     (dummy-60
      (-> self collide-info)
@@ -1113,10 +1091,7 @@ nav-enemy-default-event-handler
    )
   :enter
   (behavior ()
-   (set!
-    (-> self state-time)
-    (the-as seconds (-> *display* base-frame-counter))
-    )
+   (set! (-> self state-time) (-> *display* base-frame-counter))
    (set!
     (-> self nav flags)
     (the-as
@@ -1561,10 +1536,7 @@ nav-enemy-default-event-handler
    )
   :enter
   (behavior ()
-   (set!
-    (-> self state-time)
-    (the-as seconds (-> *display* base-frame-counter))
-    )
+   (set! (-> self state-time) (-> *display* base-frame-counter))
    (none)
    )
   :trans
@@ -1758,10 +1730,7 @@ nav-enemy-default-event-handler
   :enter
   (behavior ()
    (nav-enemy-neck-control-look-at)
-   (set!
-    (-> self state-time)
-    (the-as seconds (-> *display* base-frame-counter))
-    )
+   (set! (-> self state-time) (-> *display* base-frame-counter))
    (set! (-> self free-time) (-> *display* base-frame-counter))
    (logior! (-> self nav-enemy-flags) 4)
    (set! (-> self target-speed) (-> self nav-info run-travel-speed))
@@ -1865,10 +1834,7 @@ nav-enemy-default-event-handler
    )
   :enter
   (behavior ()
-   (set!
-    (-> self state-time)
-    (the-as seconds (-> *display* base-frame-counter))
-    )
+   (set! (-> self state-time) (-> *display* base-frame-counter))
    (let*
     ((f30-0
       (vector-vector-distance (-> self collide-info trans) (target-pos 0))
@@ -1978,10 +1944,7 @@ nav-enemy-default-event-handler
    )
   :enter
   (behavior ()
-   (set!
-    (-> self state-time)
-    (the-as seconds (-> *display* base-frame-counter))
-    )
+   (set! (-> self state-time) (-> *display* base-frame-counter))
    (set! (-> self nav-enemy-flags) (logand -17 (-> self nav-enemy-flags)))
    (let
     ((f0-0 (vector-vector-distance (-> self collide-info trans) (target-pos 0)))
@@ -2106,10 +2069,7 @@ nav-enemy-default-event-handler
    )
   :enter
   (behavior ()
-   (set!
-    (-> self state-time)
-    (the-as seconds (-> *display* base-frame-counter))
-    )
+   (set! (-> self state-time) (-> *display* base-frame-counter))
    (nav-enemy-neck-control-inactive)
    (set! (-> self nav-enemy-flags) (logand -5 (-> self nav-enemy-flags)))
    (none)
@@ -2237,12 +2197,7 @@ nav-enemy-default-event-handler
    )
   :enter
   (behavior ()
-   (let ((a1-0 (new 'stack-no-clear 'event-message-block)))
-    (set! (-> a1-0 from) self)
-    (set! (-> a1-0 num-params) 0)
-    (set! (-> a1-0 message) 'child-die)
-    (send-event-function (ppointer->process (-> self parent)) a1-0)
-    )
+   (send-event (ppointer->process (-> self parent)) 'child-die)
    (none)
    )
   :code
@@ -2259,12 +2214,7 @@ nav-enemy-default-event-handler
     1000000000000000.0
     600
     )
-   (let ((a1-2 (new 'stack-no-clear 'event-message-block)))
-    (set! (-> a1-2 from) self)
-    (set! (-> a1-2 num-params) 0)
-    (set! (-> a1-2 message) 'death-end)
-    (send-event-function self a1-2)
-    )
+   (send-event self 'death-end)
    (if (logtest? (-> self enemy-info options) 2)
     (go-virtual nav-enemy-fuel-cell)
     )
@@ -2643,10 +2593,7 @@ nav-enemy-default-event-handler
   nav-enemy-jump-event-handler
   :enter
   (behavior ()
-   (set!
-    (-> self state-time)
-    (the-as seconds (-> *display* base-frame-counter))
-    )
+   (set! (-> self state-time) (-> *display* base-frame-counter))
    (if
     (and
      (-> self nav-info use-jump-blocked)
@@ -2750,10 +2697,7 @@ nav-enemy-default-event-handler
    )
   :enter
   (behavior ()
-   (set!
-    (-> self state-time)
-    (the-as seconds (-> *display* base-frame-counter))
-    )
+   (set! (-> self state-time) (-> *display* base-frame-counter))
    (logclear! (-> self nav flags) (nav-control-flags bit19))
    (let ((gp-0 (new 'stack-no-clear 'vector)))
     (set! (-> gp-0 quad) (-> self collide-info transv quad))
@@ -2798,10 +2742,7 @@ nav-enemy-default-event-handler
    )
   :enter
   (behavior ()
-   (set!
-    (-> self state-time)
-    (the-as seconds (-> *display* base-frame-counter))
-    )
+   (set! (-> self state-time) (-> *display* base-frame-counter))
    (none)
    )
   :trans
@@ -2879,10 +2820,7 @@ nav-enemy-default-event-handler
    )
   :code
   (behavior ()
-   (set!
-    (-> self state-time)
-    (the-as seconds (-> *display* base-frame-counter))
-    )
+   (set! (-> self state-time) (-> *display* base-frame-counter))
    (logior! (-> self nav-enemy-flags) 2048)
    (ja-channel-push! 1 30)
    (let ((f30-0 (nav-enemy-rnd-float-range 0.8 1.2)))
@@ -2951,10 +2889,7 @@ nav-enemy-default-event-handler
    )
   :code
   (behavior ()
-   (set!
-    (-> self state-time)
-    (the-as seconds (-> *display* base-frame-counter))
-    )
+   (set! (-> self state-time) (-> *display* base-frame-counter))
    (nav-enemy-initialize-jump (-> self event-param-point))
    (nav-enemy-neck-control-look-at)
    (logior! (-> self nav-enemy-flags) 16)

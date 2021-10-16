@@ -1846,6 +1846,8 @@ std::string fixed_operator_to_string(FixedOperatorKind kind) {
       return "process->handle";
     case FixedOperatorKind::PPOINTER_TO_PROCESS:
       return "ppointer->process";
+    case FixedOperatorKind::SEND_EVENT:
+      return "send-event";
     default:
       assert(false);
       return "";

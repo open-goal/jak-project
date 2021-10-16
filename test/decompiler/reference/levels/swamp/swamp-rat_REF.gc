@@ -71,41 +71,30 @@
   dummy-44
   swamp-rat
   ((obj swamp-rat) (arg0 process) (arg1 event-message-block))
-  (with-pp
-   (the-as
-    object
+  (the-as
+   object
+   (when
+    ((method-of-type touching-shapes-entry prims-touching?)
+     (the-as touching-shapes-entry (-> arg1 param 0))
+     (-> obj collide-info)
+     (the-as uint 1)
+     )
     (when
-     ((method-of-type touching-shapes-entry prims-touching?)
+     (nav-enemy-send-attack
+      arg0
       (the-as touching-shapes-entry (-> arg1 param 0))
-      (-> obj collide-info)
-      (the-as uint 1)
+      'generic
       )
-     (when
-      (nav-enemy-send-attack
-       arg0
-       (the-as touching-shapes-entry (-> arg1 param 0))
-       'generic
-       )
-      (let* ((s5-1 (-> obj parent))
-             (a0-4
-              (if (and (nonzero? s5-1) (type-type? pointer process-drawable))
-               s5-1
-               )
+     (let* ((s5-1 (-> obj parent))
+            (a0-4
+             (if (and (nonzero? s5-1) (type-type? pointer process-drawable))
+              s5-1
               )
              )
-       (cond
-        (a0-4
-         (let ((a1-4 (new 'stack-no-clear 'event-message-block)))
-          (set! (-> a1-4 from) pp)
-          (set! (-> a1-4 num-params) 0)
-          (set! (-> a1-4 message) 'victory)
-          (send-event-function (the-as process a0-4) a1-4)
-          )
-         )
-        (else
-         (go (method-of-object obj nav-enemy-victory))
-         )
-        )
+            )
+      (if a0-4
+       (send-event (the-as process a0-4) 'victory)
+       (go (method-of-object obj nav-enemy-victory))
        )
       )
      )
