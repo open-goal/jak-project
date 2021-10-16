@@ -60,20 +60,33 @@ Val* Compiler::compile_define_state_hook(const goos::Object& form,
   do_set(form, code_field, code_value->to_gpr(form, env), code_value, env);
 
   // state name
-  TypeSpec state_type("state");
+  auto state_type = get_state_type_from_enter_and_code(enter_value->type(), code_value->type(),
+                                                       state_parent_type, m_ts);
 
-  for (int i = 0; i < (int)code_value->type().arg_count() - 1; i++) {
-    state_type.add_arg(code_value->type().get_arg(i));
-  }
-  state_type.add_arg(state_parent_type);
   auto state_name = args.unnamed.at(0).as_symbol()->name;
   auto existing_var = m_symbol_types.find(state_name);
-  if (existing_var != m_symbol_types.end() && existing_var->second != state_type) {
-    throw_compiler_error(form, "define-state would redefine the type of symbol {} from {} to {}",
-                         state_name, existing_var->second.print(), state_type.print());
+
+  TypeSpec type_to_use;
+  if (existing_var == m_symbol_types.end()) {
+    // we're a new state. we must have a type.
+    if (!state_type) {
+      throw_compiler_error(form,
+                           "define-state doesn't have enough information to determine the type of "
+                           "state {}, and it was not forward declared.",
+                           state_name);
+    }
+    type_to_use = *state_type;
+    m_symbol_types[state_name] = *state_type;
+  } else {
+    type_to_use = existing_var->second;
+    if (state_type) {
+      typecheck(form, existing_var->second, *state_type,
+                fmt::format("type of state {}", state_name));
+    }
   }
-  m_symbol_types[state_name] = state_type;
-  auto sym_val = env->function_env()->alloc_val<SymbolVal>(state_name, state_type);
+
+  auto sym_val = env->function_env()->alloc_val<SymbolVal>(state_name, type_to_use);
+
   env->emit_ir<IR_SetSymbolValue>(form, sym_val, state_object);
 
   return get_none();

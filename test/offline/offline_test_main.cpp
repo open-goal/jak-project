@@ -293,7 +293,7 @@ CompareResult compare(Decompiler& dc, const std::vector<DecompilerFile>& refs, b
       compare_result.failing_files.push_back(file.unique_name);
       compare_result.total_pass = false;
       fmt::print("Reference test failure on {}:\n", file.unique_name);
-      fmt::print("{}\n", diff_strings(result, ref));
+      fmt::print("{}\n", diff_strings(ref, result));
 
       if (dump_mode) {
         file_util::create_dir_if_needed("./failures");
