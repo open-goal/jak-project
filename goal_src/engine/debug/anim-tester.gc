@@ -468,6 +468,7 @@
   :flag-assert         #x1401300198
   )
 
+
 (defun anim-tester-num-print ((arg0 basic) (arg1 float))
   (cond
    ((= arg1 (-> (new 'static 'array float 1 -2.0) 0))
@@ -3146,78 +3147,78 @@
         (s3-0 "saving object ~s to ~s~%")
         (s2-0 (-> arg0 privname))
         )
-   (format (clear *temp-string*) "data/~s.obinf" (-> arg0 privname))
-   (gp-0 s4-0 s3-0 s2-0 *temp-string*)
-   )
-  ;; TODO - manually fixed
+    (format (clear *temp-string*) "data/~s.obinf" (-> arg0 privname))
+    (gp-0 s4-0 s3-0 s2-0 *temp-string*)
+    )
   (format (clear *temp-string*) "data/~s.obinf" (-> arg0 privname))
-   (let ((gp-2 (new 'stack 'file-stream *temp-string* 'write)))
+  ;; TODO: manually fixed
+  (let ((gp-2 (new 'stack 'file-stream *temp-string* 'write)))
     (format gp-2 "major-version 0~%")
     (format gp-2 "minor-version 0~%")
     (format gp-2 "Object \"~S\" ~d~%" (-> arg0 privname) 0)
     (let ((v1-5 (-> arg0 seq-list)))
-     "return the start of the list"
-     (let ((s5-1 (-> v1-5 head)))
-      (while (let ((v1-30 (the-as anim-test-sequence s5-1)))
-              "is this node the end of the list. #t = end"
-              (not (not (-> v1-30 next)))
-              )
-       (set!
-        (-> (the-as anim-test-sequence s5-1) flags)
-        (logand -5 (-> (the-as anim-test-sequence s5-1) flags))
-        )
-       (format
-        gp-2
-        "  ~S \"~S\" ~d~%"
-        (if (logtest? (-> (the-as anim-test-sequence s5-1) flags) 1)
-         "Sequence"
-         "Anim"
-         )
-        (-> (the-as anim-test-sequence s5-1) privname)
-        0
-        )
-       (let ((v1-11 (-> (the-as anim-test-sequence s5-1) item-list)))
-        "return the start of the list"
-        (let ((s4-2 (the-as anim-test-seq-item (-> v1-11 head))))
-         (while (let ((v1-21 s4-2))
+      "return the start of the list"
+      (let ((s5-1 (-> v1-5 head)))
+        (while (let ((v1-30 (the-as anim-test-sequence s5-1)))
                  "is this node the end of the list. #t = end"
-                 (not (not (-> v1-21 next)))
+                 (not (not (-> v1-30 next)))
                  )
-          (when (zero? (logand (-> s4-2 flags) 5))
-           (format
+          (set!
+            (-> (the-as anim-test-sequence s5-1) flags)
+            (logand -5 (-> (the-as anim-test-sequence s5-1) flags))
+            )
+          (format
             gp-2
-            "    Item \"~S\" ~d ~d "
-            (-> s4-2 privname)
-            (-> s4-2 speed)
-            (-> s4-2 blend)
+            "  ~S \"~S\" ~d~%"
+            (if (logtest? (-> (the-as anim-test-sequence s5-1) flags) 1)
+                "Sequence"
+                "Anim"
+                )
+            (-> (the-as anim-test-sequence s5-1) privname)
+            0
             )
-           (anim-tester-num-print gp-2 (-> s4-2 first-frame))
-           (format gp-2 " ")
-           (anim-tester-num-print gp-2 (-> s4-2 last-frame))
-           (format gp-2 " ~S~%" (if (logtest? (-> s4-2 flags) 2)
-                                 "B"
-                                 "-"
-                                 )
+          (let ((v1-11 (-> (the-as anim-test-sequence s5-1) item-list)))
+            "return the start of the list"
+            (let ((s4-2 (the-as anim-test-seq-item (-> v1-11 head))))
+              (while (let ((v1-21 s4-2))
+                       "is this node the end of the list. #t = end"
+                       (not (not (-> v1-21 next)))
+                       )
+                (when (zero? (logand (-> s4-2 flags) 5))
+                  (format
+                    gp-2
+                    "    Item \"~S\" ~d ~d "
+                    (-> s4-2 privname)
+                    (-> s4-2 speed)
+                    (-> s4-2 blend)
+                    )
+                  (anim-tester-num-print gp-2 (-> s4-2 first-frame))
+                  (format gp-2 " ")
+                  (anim-tester-num-print gp-2 (-> s4-2 last-frame))
+                  (format gp-2 " ~S~%" (if (logtest? (-> s4-2 flags) 2)
+                                           "B"
+                                           "-"
+                                           )
+                          )
+                  )
+                "return the next node in the list"
+                (set! s4-2 (the-as anim-test-seq-item (-> s4-2 next)))
+                )
+              )
             )
-           )
+          (format
+            gp-2
+            "  ~S~%"
+            (if (logtest? (-> (the-as anim-test-sequence s5-1) flags) 1)
+                "EndSequence"
+                "EndAnim"
+                )
+            )
           "return the next node in the list"
-          (set! s4-2 (the-as anim-test-seq-item (-> s4-2 next)))
+          (set! s5-1 (-> (the-as anim-test-sequence s5-1) next))
           )
-         )
         )
-       (format
-        gp-2
-        "  ~S~%"
-        (if (logtest? (-> (the-as anim-test-sequence s5-1) flags) 1)
-         "EndSequence"
-         "EndAnim"
-         )
-        )
-       "return the next node in the list"
-       (set! s5-1 (-> (the-as anim-test-sequence s5-1) next))
-       )
       )
-     )
     (format gp-2 "EndObject~%")
     (file-stream-close gp-2)
     )
@@ -3651,6 +3652,8 @@
   )
 
 )
+
+
 
 (defmethod inspect anim-tester ((obj anim-tester))
   (format #t "--anim-tester--~%")
