@@ -18263,7 +18263,7 @@
    (wade-height   meters  :offset-assert 180)
    (swim-height   meters  :offset-assert 184)
    (bottom-height meters  :offset-assert 188)
-   (attack-event  basic   :offset-assert 192)
+   (attack-event  symbol  :offset-assert 192)
    (target        uint64  :offset-assert 200)
    (flags         uint32  :offset-assert 208)
    )
@@ -31698,8 +31698,10 @@
 
 ;; - Types
 
+(declare-type quicksandlurker process-drawable)
 (deftype quicksandlurker-missile (process-drawable)
-  ()
+  ((parent-override (pointer quicksandlurker) :score 100         :offset 12)
+   (root-override collide-shape-moving :score 100 :offset 112))
   :method-count-assert 20
   :size-assert         #xb0
   :heap-base           #x40
@@ -31716,7 +31718,8 @@
   )
 
 (deftype quicksandlurker (process-drawable)
-  ((original-position vector :inline :offset-assert 176)
+  ((root-override     collide-shape :score 100 :offset 112)
+   (original-position vector :inline :offset-assert 176)
    (y-offset          float          :offset-assert 192)
    (theta-angle       float          :offset-assert 196)
    (radial-offset     float          :offset-assert 200)
@@ -31731,16 +31734,16 @@
 
 ;; - Functions
 
-(define-extern orient-to-face-target function)
-(define-extern quicksandlurker-spit function)
-(define-extern spawn-quicksandlurker-missile function)
-(define-extern quicksandlurker-check-hide-transition function)
-(define-extern inc-angle function)
-(define-extern quicksandlurker-missile-init-by-other function)
-(define-extern get-height-over-navmesh! function)
-(define-extern intersects-nav-mesh? function)
-(define-extern quicksandlurker-default-event-handler function)
-(define-extern quicksandlurker-post function)
+(define-extern orient-to-face-target (function quaternion :behavior quicksandlurker))
+(define-extern quicksandlurker-spit (function (pointer process) :behavior quicksandlurker))
+(define-extern spawn-quicksandlurker-missile (function quicksandlurker vector vector entity none))
+(define-extern quicksandlurker-check-hide-transition (function none :behavior quicksandlurker))
+(define-extern inc-angle (function (pointer float) float float))
+(define-extern quicksandlurker-missile-init-by-other (function quicksandlurker-missile-init-data entity none :behavior quicksandlurker-missile))
+(define-extern get-height-over-navmesh! function) ;; unused
+(define-extern intersects-nav-mesh? (function quicksandlurker int (inline-array vector) vector symbol)) ;; unused
+(define-extern quicksandlurker-default-event-handler (function process int symbol event-message-block object :behavior quicksandlurker))
+(define-extern quicksandlurker-post (function none :behavior quicksandlurker))
 
 ;; - Unknowns
 
