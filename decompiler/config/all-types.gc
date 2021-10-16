@@ -1009,7 +1009,10 @@
 
   (sunken-blue-eco-charger-all-hint #x34d)
 
+  (kermit-break-tongue #x357)
   (swamp-rats-nest-hint #x358)
+
+  (kermit-run-away-jak #x35f)
 
   (swamp-bats-hint #x364) ;; maybe we can ???? the bats. lol
   (flutflut-reminder #x368)
@@ -9435,8 +9438,8 @@
    (root-channel            (inline-array joint-control-channel) :offset 16)
    (blend-index             int32            :offset-assert 20)
    (active-channels         int32            :offset-assert 24)
-   (generate-frame-function basic            :offset-assert 28)
-   (prebind-function        basic            :offset-assert 32)
+   (generate-frame-function function            :offset-assert 28)
+   (prebind-function        function            :offset-assert 32)
    (postbind-function       function         :offset-assert 36)
    (effect                  effect-control   :offset-assert 40)
    (channel                 joint-control-channel 3 :inline :offset-assert 48) ;; actually dynamic?
@@ -33180,10 +33183,14 @@
   :method-count-assert 9
   :size-assert         #x3a
   :flag-assert         #x90000003a
+  (:methods (new (symbol type kermit int function int8 int8) _type_ 0))
   )
 
 (deftype kermit-pulse (process-drawable)
-  ((sound-id sound-id  :offset-assert 176)
+  ((parent-override (pointer kermit) :score 100         :offset 12)
+   (self-override kermit-pulse :score 100         :offset 28)
+   (root-override collide-shape-moving :score 100 :offset 112)
+   (sound-id sound-id  :offset-assert 176)
    )
   :method-count-assert 20
   :size-assert         #xb4
@@ -33192,7 +33199,8 @@
   )
 
 (deftype kermit (nav-enemy)
-  ((rotate-dir       vector :inline :offset-assert 400)
+  ((child-override (pointer kermit-pulse) :score 100         :offset 20)
+   (rotate-dir       vector :inline :offset-assert 400)
    (charging-part    sparticle-launch-control         :offset-assert 416)
    (airborne         symbol          :offset-assert 420)
    (tongue-control   joint-mod-tracker          :offset-assert 424)
@@ -33209,28 +33217,28 @@
 
 ;; - Functions
 
-(define-extern kermit-get-tongue-target-callback function)
-(define-extern kermit-disable-tongue function)
-(define-extern kermit-hop function)
-(define-extern kermit-set-nav-mesh-target function)
-(define-extern kermit-set-rotate-dir-to-player function)
-(define-extern kermit-simple-post function)
-(define-extern kermit-player-target-pos function)
-(define-extern kermit-tongue-pos function)
-(define-extern kermit-check-tongue-is-clear? function)
-(define-extern kermit-enable-tongue function)
-(define-extern spawn-kermit-pulse function)
-(define-extern kermit-check-to-hit-player? function)
-(define-extern kermit-get-head-dir-xz function)
-(define-extern kermit-set-rotate-dir-to-nav-target function)
-(define-extern kermit-get-new-patrol-point function)
-(define-extern kermit-long-hop function)
-(define-extern kermit-short-hop function)
-(define-extern kermit-pulse-init-by-other function)
-(define-extern joint-mod-tracker-callback function)
-(define-extern build-matrix-from-up-and-forward-axes! function)
-(define-extern kermit-get-head-dir function)
-(define-extern kermit-post function)
+(define-extern kermit-get-tongue-target-callback (function vector vector))
+(define-extern kermit-disable-tongue (function none :behavior kermit))
+(define-extern kermit-hop (function float symbol :behavior kermit))
+(define-extern kermit-set-nav-mesh-target (function vector vector :behavior kermit))
+(define-extern kermit-set-rotate-dir-to-player (function vector :behavior kermit))
+(define-extern kermit-simple-post (function none :behavior kermit))
+(define-extern kermit-player-target-pos (function vector))
+(define-extern kermit-tongue-pos (function kermit vector))
+(define-extern kermit-check-tongue-is-clear? (function symbol :behavior kermit))
+(define-extern kermit-enable-tongue (function none :behavior kermit))
+(define-extern spawn-kermit-pulse (function kermit vector entity none))
+(define-extern kermit-check-to-hit-player? (function float symbol :behavior kermit))
+(define-extern kermit-get-head-dir-xz (function kermit vector vector))
+(define-extern kermit-set-rotate-dir-to-nav-target (function vector :behavior kermit))
+(define-extern kermit-get-new-patrol-point (function vector :behavior kermit))
+(define-extern kermit-long-hop (function symbol :behavior kermit))
+(define-extern kermit-short-hop (function symbol :behavior kermit))
+(define-extern kermit-pulse-init-by-other (function vector entity none :behavior kermit-pulse))
+(define-extern joint-mod-tracker-callback (function basic vector none)) ;; TODO - no idea what this basic is!
+(define-extern build-matrix-from-up-and-forward-axes! (function matrix none))
+(define-extern kermit-get-head-dir (function kermit vector vector))
+(define-extern kermit-post (function none :behavior kermit))
 
 ;; - Unknowns
 
