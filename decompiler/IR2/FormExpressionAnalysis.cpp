@@ -2700,9 +2700,18 @@ void FunctionCallElement::update_from_stack(const Env& env,
     std::swap(all_pop_vars.at(0), all_pop_vars.at(1));
   }
 
-  if (tp_type.kind == TP_Type::Kind::RUN_FUNCTION_IN_PROCESS_FUNCTION &&
-      unstacked.at(0)->to_string(env) == "run-function-in-process") {
-    unstacked.at(0) = pool.form<ConstantTokenElement>("run-now-in-process");
+  if (tp_type.kind == TP_Type::Kind::RUN_FUNCTION_IN_PROCESS_FUNCTION) {
+    if (unstacked.at(0)->to_string(env) == "run-function-in-process") {
+      unstacked.at(0) = pool.form<ConstantTokenElement>("run-now-in-process");
+    } else {
+      // couldn't pop. need to add a cast.
+      TypeSpec failed_cast("function");
+      for (int i = 0; i < ((int)unstacked.size()) - 1; i++) {
+        failed_cast.add_arg(TypeSpec("object"));
+      }
+      failed_cast.add_arg(TypeSpec("none"));
+      unstacked.at(0) = pool.form<CastElement>(failed_cast, unstacked.at(0));
+    }
   }
 
   if (tp_type.kind == TP_Type::Kind::SET_TO_RUN_FUNCTION) {
