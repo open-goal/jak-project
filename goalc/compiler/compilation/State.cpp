@@ -150,13 +150,9 @@ Val* Compiler::compile_define_virtual_state_hook(const goos::Object& form,
   auto code_value = compile_error_guard(args.named.at("code"), env);
   do_set(form, code_field, code_value->to_gpr(form, env), code_value, env);
 
-  // state name
-  TypeSpec state_type("state");
+  auto state_type = get_state_type_from_enter_and_code(enter_value->type(), code_value->type(),
+                                                       state_parent_type, m_ts);
 
-  for (int i = 0; i < (int)code_value->type().arg_count() - 1; i++) {
-    state_type.add_arg(code_value->type().get_arg(i));
-  }
-  state_type.add_arg(TypeSpec("_type_"));
   auto state_name = args.unnamed.at(0).as_symbol()->name;
 
   MethodInfo child_method_info;
@@ -166,11 +162,14 @@ Val* Compiler::compile_define_virtual_state_hook(const goos::Object& form,
         state_name, state_parent);
   }
 
-  if (state_type != child_method_info.type) {
-    throw_compiler_error(
-        form, "Virtual state {} of {} was declared as {}, but got {}. First declared in type {}.",
-        state_name, state_parent, child_method_info.type.print(), state_type.print(),
-        child_method_info.defined_in_type);
+  if (state_type) {
+    if (state_type !=
+        child_method_info.type.substitute_for_method_call(state_parent_type.base_type())) {
+      throw_compiler_error(
+          form, "Virtual state {} of {} was declared as {}, but got {}. First declared in type {}.",
+          state_name, state_parent, child_method_info.type.print(), state_type->print(),
+          child_method_info.defined_in_type);
+    }
   }
 
   MethodInfo parent_method_info;
