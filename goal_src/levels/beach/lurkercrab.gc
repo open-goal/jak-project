@@ -9,7 +9,8 @@
 (declare-type lurkercrab nav-enemy)
 (define-extern lurkercrab-pushed (state lurkercrab))
 
-;; failed to figure out what this is:
+;; DECOMP BEGINS
+
 (set!
   (-> *part-group-id-table* 159)
   (new 'static 'sparticle-launch-group
@@ -27,7 +28,6 @@
    )
   )
 
-;; failed to figure out what this is:
 (set!
   (-> *part-id-table* 663)
   (new 'static 'sparticle-launcher
@@ -53,7 +53,6 @@
    )
   )
 
-;; failed to figure out what this is:
 (set!
   (-> *part-id-table* 664)
   (new 'static 'sparticle-launcher
@@ -81,7 +80,6 @@
    )
   )
 
-;; definition of type lurkercrab
 (deftype lurkercrab (nav-enemy)
   ((orient basic  :offset-assert 400)
    )
@@ -91,16 +89,7 @@
   :flag-assert         #x4c01300194
   )
 
-;; definition for method 3 of type lurkercrab
-(defmethod inspect lurkercrab ((obj lurkercrab))
-  (let ((t9-0 (method-of-type nav-enemy inspect)))
-   (t9-0 obj)
-   )
-  (format #t "~T~Torient: ~A~%" (-> obj orient))
-  obj
-  )
 
-;; failed to figure out what this is:
 (let
   ((v1-4
     (new 'static 'skeleton-group
@@ -122,8 +111,6 @@
   (set! *lurkercrab-sg* v1-4)
   )
 
-;; definition for method 44 of type lurkercrab
-;; INFO: Return type mismatch none vs object.
 (defmethod
   dummy-44
   lurkercrab
@@ -150,13 +137,10 @@
    )
   )
 
-;; definition for method 43 of type lurkercrab
-;; INFO: Return type mismatch none vs object.
 ;; WARN: rewrite_to_get_var got a none typed variable. Is there unreachable code?
 ;; WARN: rewrite_to_get_var got a none typed variable. Is there unreachable code?
 ;; WARN: rewrite_to_get_var got a none typed variable. Is there unreachable code?
 ;; WARN: rewrite_to_get_var got a none typed variable. Is there unreachable code?
-;; Used lq/sq
 (defmethod
   dummy-43
   lurkercrab
@@ -170,87 +154,57 @@
                      (go (method-of-object obj nav-enemy-die))
                      )
                     ((= v1-1 'punch)
-                     (the-as none (cond
-                                   ((logtest? (-> obj nav-enemy-flags) 32)
-                                    (logclear!
-                                     (-> obj mask)
-                                     (process-mask actor-pause)
-                                     )
-                                    (go (method-of-object obj nav-enemy-die))
-                                    )
-                                   ((begin
-                                     (let ((s4-0 (new 'stack-no-clear 'vector)))
-                                      (let
-                                       ((f30-0
-                                         (quaternion-xz-angle (target-rot))
-                                         )
-                                        )
-                                       (set-vector!
-                                        s4-0
-                                        (* 24576.0 (sin f30-0))
-                                        0.0
-                                        (* 24576.0 (cos f30-0))
-                                        1.0
-                                        )
-                                       )
-                                      (vector+!
-                                       s4-0
-                                       (-> obj collide-info trans)
-                                       s4-0
-                                       )
-                                      (set!
-                                       (-> obj nav target-pos quad)
-                                       (-> s4-0 quad)
-                                       )
-                                      )
-                                     (go lurkercrab-pushed)
-                                     (= s5-0 (-> obj incomming-attack-id))
-                                     )
-                                    'push
-                                    )
-                                   (else
-                                    #t
-                                    )
-                                   )
+                     (cond
+                      ((logtest? (-> obj nav-enemy-flags) 32)
+                       (logclear! (-> obj mask) (process-mask actor-pause))
+                       (go (method-of-object obj nav-enemy-die))
+                       )
+                      ((begin
+                        (let ((s4-0 (new 'stack-no-clear 'vector)))
+                         (let ((f30-0 (quaternion-xz-angle (target-rot))))
+                          (set-vector!
+                           s4-0
+                           (* 24576.0 (sin f30-0))
+                           0.0
+                           (* 24576.0 (cos f30-0))
+                           1.0
+                           )
+                          )
+                         (vector+! s4-0 (-> obj collide-info trans) s4-0)
+                         (set! (-> obj nav target-pos quad) (-> s4-0 quad))
+                         )
+                        (go lurkercrab-pushed)
+                        (= s5-0 (-> obj incomming-attack-id))
+                        )
+                       'push
+                       )
+                      (else
+                       #t
+                       )
                       )
                      )
-                    (else
-                     (the-as none (cond
-                                   ((logtest? (-> obj nav-enemy-flags) 32)
-                                    (logclear!
-                                     (-> obj mask)
-                                     (process-mask actor-pause)
-                                     )
-                                    (go (method-of-object obj nav-enemy-die))
-                                    )
-                                   ((begin
-                                     (let ((s4-1 (new 'stack-no-clear 'vector)))
-                                      (vector-!
-                                       s4-1
-                                       (-> obj collide-info trans)
-                                       (target-pos 0)
-                                       )
-                                      (vector-normalize! s4-1 24576.0)
-                                      (vector+!
-                                       s4-1
-                                       (-> obj collide-info trans)
-                                       s4-1
-                                       )
-                                      (set!
-                                       (-> obj nav target-pos quad)
-                                       (-> s4-1 quad)
-                                       )
-                                      )
-                                     (go lurkercrab-pushed)
-                                     (= s5-0 (-> obj incomming-attack-id))
-                                     )
-                                    'push
-                                    )
-                                   (else
-                                    #t
-                                    )
-                                   )
+                    ((logtest? (-> obj nav-enemy-flags) 32)
+                     (logclear! (-> obj mask) (process-mask actor-pause))
+                     (go (method-of-object obj nav-enemy-die))
+                     )
+                    ((begin
+                      (let ((s4-1 (new 'stack-no-clear 'vector)))
+                       (vector-!
+                        s4-1
+                        (-> obj collide-info trans)
+                        (target-pos 0)
+                        )
+                       (vector-normalize! s4-1 24576.0)
+                       (vector+! s4-1 (-> obj collide-info trans) s4-1)
+                       (set! (-> obj nav target-pos quad) (-> s4-1 quad))
+                       )
+                      (go lurkercrab-pushed)
+                      (= s5-0 (-> obj incomming-attack-id))
                       )
+                     'push
+                     )
+                    (else
+                     #t
                      )
                     )
      )
@@ -258,11 +212,8 @@
    )
   )
 
-;; failed to figure out what this is:
 nav-enemy-default-event-handler
 
-;; definition for method 37 of type lurkercrab
-;; INFO: Return type mismatch int vs none.
 (defmethod TODO-RENAME-37 lurkercrab ((obj lurkercrab))
   (when (-> obj orient)
    (if (logtest? (nav-control-flags bit19) (-> obj nav flags))
@@ -291,8 +242,6 @@ nav-enemy-default-event-handler
   (none)
   )
 
-;; definition for method 38 of type lurkercrab
-;; INFO: Return type mismatch int vs none.
 (defmethod TODO-RENAME-38 lurkercrab ((obj lurkercrab))
   (dummy-59
    (-> obj collide-info)
@@ -307,7 +256,6 @@ nav-enemy-default-event-handler
   (none)
   )
 
-;; failed to figure out what this is:
 (defstate nav-enemy-idle (lurkercrab)
   :virtual #t
   :event
@@ -405,7 +353,6 @@ nav-enemy-default-event-handler
    )
   )
 
-;; definition for function lurkercrab-invulnerable
 (defbehavior lurkercrab-invulnerable lurkercrab ()
   (set! (-> self nav-enemy-flags) (logand -33 (-> self nav-enemy-flags)))
   (let ((v1-3 (dummy-34 (-> self collide-info) (the-as uint 2))))
@@ -418,7 +365,6 @@ nav-enemy-default-event-handler
    )
   )
 
-;; definition for function lurkercrab-vulnerable
 (defbehavior lurkercrab-vulnerable lurkercrab ()
   (logior! (-> self nav-enemy-flags) 32)
   (let ((v1-3 (dummy-34 (-> self collide-info) (the-as uint 2))))
@@ -431,7 +377,6 @@ nav-enemy-default-event-handler
    )
   )
 
-;; failed to figure out what this is:
 (defstate nav-enemy-patrol (lurkercrab)
   :virtual #t
   :event
@@ -705,7 +650,6 @@ nav-enemy-default-event-handler
    )
   )
 
-;; failed to figure out what this is:
 (defstate nav-enemy-notice (lurkercrab)
   :virtual #t
   :event
@@ -720,7 +664,6 @@ nav-enemy-default-event-handler
    )
   )
 
-;; failed to figure out what this is:
 (defstate nav-enemy-chase (lurkercrab)
   :virtual #t
   :event
@@ -1017,7 +960,6 @@ nav-enemy-default-event-handler
    )
   )
 
-;; failed to figure out what this is:
 (defstate nav-enemy-stop-chase (lurkercrab)
   :virtual #t
   :event
@@ -1032,7 +974,6 @@ nav-enemy-default-event-handler
    )
   )
 
-;; failed to figure out what this is:
 (defstate nav-enemy-stare (lurkercrab)
   :virtual #t
   :event
@@ -1047,7 +988,6 @@ nav-enemy-default-event-handler
    )
   )
 
-;; failed to figure out what this is:
 (defstate nav-enemy-victory (lurkercrab)
   :virtual #t
   :event
@@ -1057,10 +997,7 @@ nav-enemy-default-event-handler
    )
   :code
   (behavior ()
-   (set!
-    (-> self state-time)
-    (the-as seconds (-> *display* base-frame-counter))
-    )
+   (set! (-> self state-time) (-> *display* base-frame-counter))
    (ja-channel-push! 1 22)
    (let ((v1-4 (-> self skel root-channel 0)))
     (set!
@@ -1087,7 +1024,6 @@ nav-enemy-default-event-handler
    )
   )
 
-;; failed to figure out what this is:
 (defstate lurkercrab-pushed (lurkercrab)
   :event
   (the-as
@@ -1155,7 +1091,6 @@ nav-enemy-default-event-handler
    )
   )
 
-;; definition for symbol *lurkercrab-nav-enemy-info*, type nav-enemy-info
 (define
   *lurkercrab-nav-enemy-info*
   (new 'static 'nav-enemy-info
@@ -1211,7 +1146,6 @@ nav-enemy-default-event-handler
    )
   )
 
-;; definition for method 11 of type lurkercrab
 (defmethod copy-defaults! lurkercrab ((obj lurkercrab) (arg0 res-lump))
   (let
    ((s4-0

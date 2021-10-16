@@ -778,99 +778,82 @@
     (let ((v1-16 (-> arg3 param 2)))
      (when (!= v1-16 (-> self player-attack-id))
       (set! (-> self player-attack-id) (the-as int v1-16))
-      (the-as vector (cond
-                      ((= (-> arg3 param 1) 'flop)
-                       (when
-                        (>=
-                         (-
-                          (-> *display* base-frame-counter)
-                          (-> self player-bonk-timeout)
-                          )
-                         (the-as int (-> self info player-force-timeout))
-                         )
-                        (set!
-                         (-> self player-bonk-timeout)
-                         (-> *display* base-frame-counter)
-                         )
-                        (let* ((gp-1 arg0)
-                               (v1-24
-                                (if
-                                 (and
-                                  (nonzero? gp-1)
-                                  (type-type? (-> gp-1 type) process-drawable)
-                                  )
-                                 gp-1
-                                 )
-                                )
-                               )
-                         (when v1-24
-                          (set!
-                           (-> self player-impulse)
-                           (the-as collide-shape-prim-mesh #t)
-                           )
-                          (set!
-                           (-> self player-force-position quad)
-                           (-> (the-as process-drawable v1-24) root trans quad)
-                           )
-                          (let
-                           ((f0-9
-                             (fmin
-                              (*
-                               16.0
-                               (-> self info player-weight)
-                               (-> self info player-dive-factor)
-                               )
-                              (-> self info player-force-clamp)
-                              )
-                             )
-                            )
-                           (vector-float*!
-                            (-> self player-force)
-                            *y-vector*
-                            (- f0-9)
-                            )
-                           )
-                          )
-                         )
-                        )
-                       )
-                      ((= (-> arg3 param 1) 'explode)
-                       (let* ((gp-2 arg0)
-                              (v1-34
-                               (if
-                                (and
-                                 (nonzero? gp-2)
-                                 (type-type? (-> gp-2 type) process-drawable)
-                                 )
-                                gp-2
-                                )
-                               )
-                              )
-                        (when v1-34
-                         (set!
-                          (-> self player-impulse)
-                          (the-as collide-shape-prim-mesh #t)
-                          )
-                         (set!
-                          (-> self player-force-position quad)
-                          (-> (the-as process-drawable v1-34) root trans quad)
-                          )
-                         (vector-!
-                          (-> self player-force)
-                          (-> self rbody position)
-                          (-> (the-as process-drawable v1-34) root trans)
-                          )
-                         (vector-normalize!
-                          (-> self player-force)
-                          (-> self info explosion-force)
-                          )
-                         )
-                        )
-                       )
-                      (else
-                       (the-as vector #f)
-                       )
-                      )
+      (cond
+       ((= (-> arg3 param 1) 'flop)
+        (when
+         (>=
+          (- (-> *display* base-frame-counter) (-> self player-bonk-timeout))
+          (the-as int (-> self info player-force-timeout))
+          )
+         (set! (-> self player-bonk-timeout) (-> *display* base-frame-counter))
+         (let* ((gp-1 arg0)
+                (v1-24
+                 (if
+                  (and
+                   (nonzero? gp-1)
+                   (type-type? (-> gp-1 type) process-drawable)
+                   )
+                  gp-1
+                  )
+                 )
+                )
+          (when v1-24
+           (set! (-> self player-impulse) (the-as collide-shape-prim-mesh #t))
+           (set!
+            (-> self player-force-position quad)
+            (-> (the-as process-drawable v1-24) root trans quad)
+            )
+           (let
+            ((f0-9
+              (fmin
+               (*
+                16.0
+                (-> self info player-weight)
+                (-> self info player-dive-factor)
+                )
+               (-> self info player-force-clamp)
+               )
+              )
+             )
+            (vector-float*! (-> self player-force) *y-vector* (- f0-9))
+            )
+           )
+          )
+         )
+        )
+       ((= (-> arg3 param 1) 'explode)
+        (let* ((gp-2 arg0)
+               (v1-34
+                (if
+                 (and
+                  (nonzero? gp-2)
+                  (type-type? (-> gp-2 type) process-drawable)
+                  )
+                 gp-2
+                 )
+                )
+               )
+         (when v1-34
+          (set! (-> self player-impulse) (the-as collide-shape-prim-mesh #t))
+          (set!
+           (-> self player-force-position quad)
+           (-> (the-as process-drawable v1-34) root trans quad)
+           )
+          (vector-!
+           (-> self player-force)
+           (-> self rbody position)
+           (-> (the-as process-drawable v1-34) root trans)
+           )
+          (vector-normalize!
+           (-> self player-force)
+           (-> self info explosion-force)
+           )
+          )
+         )
+        )
+       (else
+        (the-as vector #f)
+        )
        )
       )
      )

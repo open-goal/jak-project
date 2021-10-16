@@ -349,42 +349,6 @@
   :flag-assert         #x900000068
   )
 
-(defmethod
-  inspect
-  rigid-body-platform-constants
-  ((obj rigid-body-platform-constants))
-  (format #t "[~8x] ~A~%" obj 'rigid-body-platform-constants)
-  (format #t "~Tdrag-factor: ~f~%" (-> obj drag-factor))
-  (format #t "~Tbuoyancy-factor: ~f~%" (-> obj buoyancy-factor))
-  (format #t "~Tmax-buoyancy-depth: (meters ~m)~%" (-> obj max-buoyancy-depth))
-  (format #t "~Tgravity-factor: ~f~%" (-> obj gravity-factor))
-  (format #t "~Tgravity: (meters ~m)~%" (-> obj gravity))
-  (format #t "~Tplayer-weight: (meters ~m)~%" (-> obj player-weight))
-  (format #t "~Tplayer-bonk-factor: ~f~%" (-> obj player-bonk-factor))
-  (format #t "~Tplayer-dive-factor: ~f~%" (-> obj player-dive-factor))
-  (format
-   #t
-   "~Tplayer-force-distance: (meters ~m)~%"
-   (-> obj player-force-distance)
-   )
-  (format #t "~Tplayer-force-clamp: (meters ~m)~%" (-> obj player-force-clamp))
-  (format #t "~Tplayer-force-timeout: ~D~%" (-> obj player-force-timeout))
-  (format #t "~Texplosion-force: (meters ~m)~%" (-> obj explosion-force))
-  (format #t "~Tlinear-damping: ~f~%" (-> obj linear-damping))
-  (format #t "~Tangular-damping: ~f~%" (-> obj angular-damping))
-  (format #t "~Tcontrol-point-count: ~D~%" (-> obj control-point-count))
-  (format #t "~Tmass: ~f~%" (-> obj mass))
-  (format #t "~Tinertial-tensor-x: (meters ~m)~%" (-> obj inertial-tensor-x))
-  (format #t "~Tinertial-tensor-y: (meters ~m)~%" (-> obj inertial-tensor-y))
-  (format #t "~Tinertial-tensor-z: (meters ~m)~%" (-> obj inertial-tensor-z))
-  (format #t "~Tcm-joint-x: (meters ~m)~%" (-> obj cm-joint-x))
-  (format #t "~Tcm-joint-y: (meters ~m)~%" (-> obj cm-joint-y))
-  (format #t "~Tcm-joint-z: (meters ~m)~%" (-> obj cm-joint-z))
-  (format #t "~Tidle-distance: (meters ~m)~%" (-> obj idle-distance))
-  (format #t "~Tplatform: ~A~%" (-> obj platform))
-  (format #t "~Tsound-name: ~A~%" (-> obj sound-name))
-  obj
-  )
 
 (deftype rigid-body-control-point-inline-array (inline-array-class)
   ((data rigid-body-control-point :inline :dynamic :offset  16)
@@ -394,16 +358,6 @@
   :flag-assert         #x900000010
   )
 
-(defmethod
-  inspect
-  rigid-body-control-point-inline-array
-  ((obj rigid-body-control-point-inline-array))
-  (format #t "[~8x] ~A~%" obj (-> obj type))
-  (format #t "~Tlength: ~D~%" (-> obj length))
-  (format #t "~Tallocated-length: ~D~%" (-> obj allocated-length))
-  (format #t "~Tdata[0] @ #x~X~%" (-> obj data))
-  obj
-  )
 
 (set! (-> rigid-body-control-point-inline-array heap-base) (the-as uint 48))
 
@@ -696,99 +650,82 @@
     (let ((v1-16 (-> arg3 param 2)))
      (when (!= v1-16 (-> self player-attack-id))
       (set! (-> self player-attack-id) (the-as int v1-16))
-      (the-as vector (cond
-                      ((= (-> arg3 param 1) 'flop)
-                       (when
-                        (>=
-                         (-
-                          (-> *display* base-frame-counter)
-                          (-> self player-bonk-timeout)
-                          )
-                         (the-as int (-> self info player-force-timeout))
-                         )
-                        (set!
-                         (-> self player-bonk-timeout)
-                         (-> *display* base-frame-counter)
-                         )
-                        (let* ((gp-1 arg0)
-                               (v1-24
-                                (if
-                                 (and
-                                  (nonzero? gp-1)
-                                  (type-type? (-> gp-1 type) process-drawable)
-                                  )
-                                 gp-1
-                                 )
-                                )
-                               )
-                         (when v1-24
-                          (set!
-                           (-> self player-impulse)
-                           (the-as collide-shape-prim-mesh #t)
-                           )
-                          (set!
-                           (-> self player-force-position quad)
-                           (-> (the-as process-drawable v1-24) root trans quad)
-                           )
-                          (let
-                           ((f0-9
-                             (fmin
-                              (*
-                               16.0
-                               (-> self info player-weight)
-                               (-> self info player-dive-factor)
-                               )
-                              (-> self info player-force-clamp)
-                              )
-                             )
-                            )
-                           (vector-float*!
-                            (-> self player-force)
-                            *y-vector*
-                            (- f0-9)
-                            )
-                           )
-                          )
-                         )
-                        )
-                       )
-                      ((= (-> arg3 param 1) 'explode)
-                       (let* ((gp-2 arg0)
-                              (v1-34
-                               (if
-                                (and
-                                 (nonzero? gp-2)
-                                 (type-type? (-> gp-2 type) process-drawable)
-                                 )
-                                gp-2
-                                )
-                               )
-                              )
-                        (when v1-34
-                         (set!
-                          (-> self player-impulse)
-                          (the-as collide-shape-prim-mesh #t)
-                          )
-                         (set!
-                          (-> self player-force-position quad)
-                          (-> (the-as process-drawable v1-34) root trans quad)
-                          )
-                         (vector-!
-                          (-> self player-force)
-                          (-> self rbody position)
-                          (-> (the-as process-drawable v1-34) root trans)
-                          )
-                         (vector-normalize!
-                          (-> self player-force)
-                          (-> self info explosion-force)
-                          )
-                         )
-                        )
-                       )
-                      (else
-                       (the-as vector #f)
-                       )
-                      )
+      (cond
+       ((= (-> arg3 param 1) 'flop)
+        (when
+         (>=
+          (- (-> *display* base-frame-counter) (-> self player-bonk-timeout))
+          (the-as int (-> self info player-force-timeout))
+          )
+         (set! (-> self player-bonk-timeout) (-> *display* base-frame-counter))
+         (let* ((gp-1 arg0)
+                (v1-24
+                 (if
+                  (and
+                   (nonzero? gp-1)
+                   (type-type? (-> gp-1 type) process-drawable)
+                   )
+                  gp-1
+                  )
+                 )
+                )
+          (when v1-24
+           (set! (-> self player-impulse) (the-as collide-shape-prim-mesh #t))
+           (set!
+            (-> self player-force-position quad)
+            (-> (the-as process-drawable v1-24) root trans quad)
+            )
+           (let
+            ((f0-9
+              (fmin
+               (*
+                16.0
+                (-> self info player-weight)
+                (-> self info player-dive-factor)
+                )
+               (-> self info player-force-clamp)
+               )
+              )
+             )
+            (vector-float*! (-> self player-force) *y-vector* (- f0-9))
+            )
+           )
+          )
+         )
+        )
+       ((= (-> arg3 param 1) 'explode)
+        (let* ((gp-2 arg0)
+               (v1-34
+                (if
+                 (and
+                  (nonzero? gp-2)
+                  (type-type? (-> gp-2 type) process-drawable)
+                  )
+                 gp-2
+                 )
+                )
+               )
+         (when v1-34
+          (set! (-> self player-impulse) (the-as collide-shape-prim-mesh #t))
+          (set!
+           (-> self player-force-position quad)
+           (-> (the-as process-drawable v1-34) root trans quad)
+           )
+          (vector-!
+           (-> self player-force)
+           (-> self rbody position)
+           (-> (the-as process-drawable v1-34) root trans)
+           )
+          (vector-normalize!
+           (-> self player-force)
+           (-> self info explosion-force)
+           )
+          )
+         )
+        )
+       (else
+        (the-as vector #f)
+        )
        )
       )
      )
