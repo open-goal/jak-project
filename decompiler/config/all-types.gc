@@ -942,6 +942,13 @@
 
   (beach-seagulls-avalanche #x273)
 
+  (daxter-dark-eco-boxes-bad-news #x281)
+  (daxter-metal-box-treasure #x283)
+  (daxter-ground-pound-wooden-metal-box #x284)
+  (daxter-metal-box-tutorial #x285)
+  (daxter-more-orbs #x28e)
+  (daxter-stay-away-dark-eco-boxes #x28f)
+
   (misty-teetertotter-bonk-dax-tutorial #x2a4)
 
   (daxter-blue-eco-plat-tutorial #x2a7)
@@ -989,6 +996,8 @@
   (reach-center #x323) ;; task name?
   (rolling-ring-chase-1 #x324)
   (rolling-ring-chase-2 #x325)
+
+  (daxter-avoid-dark-eco-boxes-ill-say-it-again #x336)
 
   (rolling-ring-hint-one-ring-down #x33f)
   (rolling-ring-hint-be-quick-to-next #x340)
@@ -1054,6 +1063,9 @@
   (fire-canyon-end #x500)
   (fire-canyon-buzzer #x501)
 
+  (daxter-maybe-i-should-drive #x506)
+  (daxter-you-are-trying-to-avoid-dark-eco #x507)
+
   (fire-canyon-level-name #x50c)
 
   (ogre-end #x600)
@@ -1075,6 +1087,8 @@
   (citadel-sage-green #x805)
 
   (misty-battle-finished #x813)
+
+  (training-buzzer-task-greater-force #x917)
 
   (training-gimmie-task-name #x91b)
   (training-buzzer-task-name #x91c)
@@ -20703,14 +20717,15 @@
   )
 
 (deftype crate (process-drawable)
-  ((smush               smush-control :inline :offset-assert 176)
+  ((root-override       collide-shape-moving :score 100 :offset 112)
+   (smush               smush-control :inline :offset-assert 176)
    (base                vector        :inline :offset-assert 208)
-   (look                basic                 :offset-assert 224)
-   (defense             basic                 :offset-assert 228)
+   (look                symbol                 :offset-assert 224)
+   (defense             symbol                 :offset-assert 228)
    (incomming-attack-id uint64                :offset-assert 232)
-   (target              uint64                :offset-assert 240)
+   (target              handle                :offset-assert 240)
    (child-count         int32                 :offset-assert 248)
-   (victory-anim        basic                 :offset-assert 252)
+   (victory-anim        spool-anim                 :offset-assert 252)
    )
   :method-count-assert 30
   :size-assert         #x100
@@ -20719,15 +20734,15 @@
   ;; inherited inspect of process-drawable
   (:methods
     (wait ()  _type_ :state 20) ;; state
-    (unknown-state00 () _type_ :state 21)
-    (dummy-22 () none 22)
+    (die (symbol int) _type_ :state 21)
+    (special-contents-die () _type_ :state 22)
     (bounce-on ()  _type_ :state 23) ;; state
-    (unknown-state01 () _type_ :state 24)
-    (dummy-25 () none 25)
-    (dummy-26 () none 26)
-    (dummy-27 () none 27)
-    (dummy-28 () none 28)
-    (dummy-29 () none 29)
+    (notice-blue (handle) _type_ :state 24)
+    (TODO-RENAME-25 (_type_ res-lump) _type_ 25)
+    (TODO-RENAME-26 (_type_) _type_ 26)
+    (set-look-defense! (_type_ symbol symbol) _type_ 27)
+    (TODO-RENAME-28 (_type_) none 28)
+    (update-smush! (_type_) none 29)
     )
   )
 
@@ -20756,7 +20771,7 @@
   )
 
 (deftype pickup-spawner (crate)
-  ((blocker basic  :offset-assert 256)
+  ((blocker entity-actor  :offset-assert 256)
    )
   :method-count-assert 30
   :heap-base           #xa0
@@ -20768,7 +20783,7 @@
 
 (define-extern crate-post (function int :behavior crate))
 (define-extern crate-standard-event-handler (function process int symbol event-message-block object :behavior crate))
-(define-extern crate-init-by-other function)
+(define-extern crate-init-by-other (function basic vector symbol none :behavior crate))
 
 ;; - Unknowns
 
