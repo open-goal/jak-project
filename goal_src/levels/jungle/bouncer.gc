@@ -11,7 +11,8 @@
 (define-extern bouncer-fire (state springbox)) ;; unknown type
 (define-extern bouncer-smush (state springbox)) ;; unknown type
 
-;; definition of type springbox
+;; DECOMP BEGINS
+
 (deftype springbox (process-drawable)
   ((spring-height meters  :offset-assert 176)
    (smush         float   :offset-assert 180)
@@ -22,10 +23,9 @@
   :flag-assert         #x14005000b8
   )
 
-;; failed to figure out what this is:
+
 (method-set! springbox 12 (method-of-type process run-logic?))
 
-;; failed to figure out what this is:
 (let
   ((v1-2
     (new 'static 'skeleton-group
@@ -42,7 +42,6 @@
   (set! *bouncer-sg* v1-2)
   )
 
-;; failed to figure out what this is:
 (defstate bouncer-wait (springbox)
   :event
   (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
@@ -134,16 +133,12 @@
    )
   )
 
-;; failed to figure out what this is:
 (defstate bouncer-smush (springbox)
   :event
   (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
    (case arg2 
     (('touch)
-      (set!
-       (-> self state-time)
-       (the-as seconds (-> *display* base-frame-counter))
-       )
+      (set! (-> self state-time) (-> *display* base-frame-counter))
       #f
       )
     (else
@@ -153,17 +148,11 @@
    )
   :code
   (behavior ()
-   (set!
-    (-> self state-time)
-    (the-as seconds (-> *display* base-frame-counter))
-    )
+   (set! (-> self state-time) (-> *display* base-frame-counter))
    (set! (-> self smush) 0.0)
    (while #t
     (cond
-     ((>=
-       (- (-> *display* base-frame-counter) (the-as int (-> self state-time)))
-       60
-       )
+     ((>= (- (-> *display* base-frame-counter) (-> self state-time)) 60)
       (let ((a0-1 (-> self skel root-channel 0)))
        (set! (-> a0-1 param 0) 0.0)
        (set! (-> a0-1 param 1) 0.1)
@@ -206,7 +195,6 @@
   (the-as (function none :behavior springbox) transform-post)
   )
 
-;; failed to figure out what this is:
 (defstate bouncer-fire (springbox)
   :code
   (behavior ()
@@ -261,7 +249,6 @@
   (the-as (function none :behavior springbox) transform-post)
   )
 
-;; definition for method 11 of type springbox
 (defmethod copy-defaults! springbox ((obj springbox) (arg0 res-lump))
   (let
    ((s4-0
@@ -304,3 +291,7 @@
   (go bouncer-wait)
   (none)
   )
+
+
+
+

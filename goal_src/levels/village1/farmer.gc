@@ -40,7 +40,7 @@
 
 (defmethod play-anim! farmer ((obj farmer) (arg0 symbol))
   (case (current-status (-> obj tasks)) 
-   ((2 3)
+   (((task-status need-hint) (task-status need-introduction))
      (if arg0
       (close-status! (-> obj tasks) (task-status need-introduction))
       )
@@ -51,7 +51,7 @@
       :command-list '()
       )
      )
-   ((5)
+   (((task-status need-reminder))
     (set! (-> obj skippable) #t)
     (cond
      ((zero? (get-reminder (-> obj tasks) 0))
@@ -78,12 +78,9 @@
       )
      )
     )
-   ((6)
+   (((task-status need-reward-speech))
     (when arg0
-     (set!
-      (-> obj cell-for-task)
-      (the-as game-task (current-task (-> obj tasks)))
-      )
+     (set! (-> obj cell-for-task) (current-task (-> obj tasks)))
      (close-current! (-> obj tasks))
      )
     (new 'static 'spool-anim
@@ -99,7 +96,7 @@
       0
       "ERROR: <GMJ>: ~S playing anim for task status ~S~%"
       (-> obj name)
-      (task-status->string (the-as task-status (current-status (-> obj tasks))))
+      (task-status->string (current-status (-> obj tasks)))
       )
      )
     (-> obj draw art-group data 4)
@@ -108,9 +105,15 @@
   )
 
 (defmethod get-art-elem farmer ((obj farmer))
-  (let ((v1-1 (current-status (-> obj tasks))))
-   (if (or (= v1-1 2) (= v1-1 3) (= v1-1 7) (zero? v1-1))
-    (-> obj draw art-group data 4)
+  (case (current-status (-> obj tasks)) 
+   (((task-status need-hint)
+    (task-status need-introduction)
+    (task-status need-resolution)
+    (task-status invalid)
+    )
+     (-> obj draw art-group data 4)
+     )
+   (else
     (-> obj draw art-group data 5)
     )
    )
@@ -131,19 +134,19 @@
           )
     (cond
      ((< 0.8333333 f0-2)
-      (dummy-11 (-> obj ambient) "FAR-LO1A" #f (-> obj root-override trans))
+      (play-ambient (-> obj ambient) "FAR-LO1A" #f (-> obj root-override trans))
       )
      ((< 0.6666667 f0-2)
-      (dummy-11 (-> obj ambient) "FAR-AM01" #f (-> obj root-override trans))
+      (play-ambient (-> obj ambient) "FAR-AM01" #f (-> obj root-override trans))
       )
      ((< 0.5 f0-2)
       #f
       )
      ((< 0.33333334 f0-2)
-      (dummy-11 (-> obj ambient) "FAR-AM2A" #f (-> obj root-override trans))
+      (play-ambient (-> obj ambient) "FAR-AM2A" #f (-> obj root-override trans))
       )
      ((< 0.16666667 f0-2)
-      (dummy-11 (-> obj ambient) "FAR-AM02" #f (-> obj root-override trans))
+      (play-ambient (-> obj ambient) "FAR-AM02" #f (-> obj root-override trans))
       )
      (else
       #f

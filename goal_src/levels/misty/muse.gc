@@ -89,17 +89,12 @@
    )
   )
 
-;; definition for function muse-get-path-point
-;; INFO: Return type mismatch int vs none.
 (defbehavior muse-get-path-point muse ((arg0 vector) (arg1 int))
   (eval-path-curve-div! (-> self path) arg0 (the float arg1) 'interp)
   0
   (none)
   )
 
-;; definition for function muse-check-dest-point
-;; INFO: Return type mismatch int vs none.
-;; Used lq/sq
 (defbehavior muse-check-dest-point muse ()
   (let ((gp-0 (new 'stack-no-clear 'point-on-path-segment-info))
         (f26-0 4096000.0)
@@ -177,9 +172,7 @@
   (none)
   )
 
-;; definition for method 51 of type muse
-;; INFO: Return type mismatch int vs float.
-(defmethod dummy-51 muse ((obj muse))
+(defmethod dummy-51 muse ((obj muse) (arg0 vector))
   (dotimes (s5-0 2)
    (let ((v1-2 (rand-vu-int-range 3 (+ (-> obj node-list length) -1))))
     (sp-launch-particles-var
@@ -195,18 +188,21 @@
      )
     )
    )
-  (the-as float 0)
+  (the-as object 0)
   )
 
-;; definition for method 39 of type muse
 (defmethod common-post muse ((obj muse))
-  (spool-push *art-control* (-> obj anim name) 0 obj -99.0)
-  (dummy-51 obj)
+  (let* ((a0-1 *art-control*)
+         (t9-0 (method-of-object a0-1 spool-push))
+         (a1-0 (-> obj anim name))
+         )
+   (t9-0 a0-1 a1-0 0 obj -99.0)
+   (dummy-51 obj (the-as vector a1-0))
+   )
   ((method-of-type nav-enemy common-post) obj)
   (none)
   )
 
-;; failed to figure out what this is:
 (let
   ((v1-5
     (new 'static 'skeleton-group
@@ -225,22 +221,16 @@
   (set! *muse-sg* v1-5)
   )
 
-;; definition for method 44 of type muse
-;; INFO: Return type mismatch none vs object.
 (defmethod dummy-44 muse ((obj muse) (arg0 process) (arg1 event-message-block))
   (the-as object (go muse-caught))
   )
 
-;; definition for method 43 of type muse
-;; INFO: Return type mismatch none vs object.
 (defmethod dummy-43 muse ((obj muse) (arg0 process) (arg1 event-message-block))
   (the-as object (go muse-caught))
   )
 
-;; failed to figure out what this is:
 nav-enemy-default-event-handler
 
-;; failed to figure out what this is:
 (defstate muse-idle (muse)
   :event
   (the-as
@@ -382,8 +372,13 @@ nav-enemy-default-event-handler
       )
      )
     (until (ja-done? 0)
-     (spool-push *art-control* (-> self anim name) 0 self -99.0)
-     (dummy-51 self)
+     (let* ((a0-10 *art-control*)
+            (t9-7 (method-of-object a0-10 spool-push))
+            (a1-5 (-> self anim name))
+            )
+      (t9-7 a0-10 a1-5 0 self -99.0)
+      (dummy-51 self (the-as vector a1-5))
+      )
      (suspend)
      (let ((a0-12 (-> self skel root-channel 0)))
       (set!
@@ -405,7 +400,6 @@ nav-enemy-default-event-handler
   (the-as (function none :behavior muse) ja-post)
   )
 
-;; failed to figure out what this is:
 (defstate nav-enemy-chase (muse)
   :virtual #t
   :event
@@ -415,10 +409,7 @@ nav-enemy-default-event-handler
    )
   :enter
   (behavior ()
-   (set!
-    (-> self state-time)
-    (the-as seconds (-> *display* base-frame-counter))
-    )
+   (set! (-> self state-time) (-> *display* base-frame-counter))
    (none)
    )
   :trans
@@ -571,7 +562,6 @@ nav-enemy-default-event-handler
    )
   )
 
-;; failed to figure out what this is:
 (defstate nav-enemy-jump (muse)
   :virtual #t
   :event
@@ -589,7 +579,6 @@ nav-enemy-default-event-handler
   (-> (method-of-type nav-enemy nav-enemy-jump) code)
   )
 
-;; failed to figure out what this is:
 (defstate nav-enemy-jump-land (muse)
   :virtual #t
   :event
@@ -661,7 +650,6 @@ nav-enemy-default-event-handler
    )
   )
 
-;; failed to figure out what this is:
 (defstate muse-caught (muse)
   :event
   (the-as
@@ -742,9 +730,30 @@ nav-enemy-default-event-handler
         )
        )
       )
-     (push-setting! *setting-control* self 'music-volume 'rel (-> *setting-control* current music-volume-movie) 0)
-     (push-setting! *setting-control* self 'sfx-volume 'rel (-> *setting-control* current sfx-volume-movie) 0)
-     (push-setting! *setting-control* self 'ambient-volume 'rel (-> *setting-control* current ambient-volume-movie) 0)
+     (push-setting!
+      *setting-control*
+      self
+      'music-volume
+      'rel
+      (-> *setting-control* current music-volume-movie)
+      0
+      )
+     (push-setting!
+      *setting-control*
+      self
+      'sfx-volume
+      'rel
+      (-> *setting-control* current sfx-volume-movie)
+      0
+      )
+     (push-setting!
+      *setting-control*
+      self
+      'ambient-volume
+      'rel
+      (-> *setting-control* current ambient-volume-movie)
+      0
+      )
      (logclear! (-> self mask) (process-mask enemy))
      (let ((gp-2 (get-process *default-dead-pool* othercam #x4000)))
       (when gp-2
@@ -838,7 +847,8 @@ nav-enemy-default-event-handler
    )
   :post
   (behavior ()
-   (dummy-51 self)
+   (local-vars (a1-0 none))
+   (dummy-51 self (the-as vector a1-0))
    (level-hint-surpress!)
    (kill-current-level-hint '() '() 'exit)
    (ja-post)
@@ -846,7 +856,6 @@ nav-enemy-default-event-handler
    )
   )
 
-;; definition for symbol *muse-nav-enemy-info*, type nav-enemy-info
 (define
   *muse-nav-enemy-info*
   (new 'static 'nav-enemy-info
@@ -865,11 +874,11 @@ nav-enemy-default-event-handler
    :run-travel-speed (meters 10.0)
    :run-rotate-speed (degrees 999.99994)
    :run-acceleration (meters 5.0)
-   :run-turn-time #x2d
+   :run-turn-time (seconds 0.15)
    :walk-travel-speed (meters 10.0)
    :walk-rotate-speed (degrees 999.99994)
    :walk-acceleration (meters 1.0)
-   :walk-turn-time #x2d
+   :walk-turn-time (seconds 0.15)
    :attack-shove-back (meters 3.0)
    :attack-shove-up (meters 2.0)
    :shadow-size (meters 2.0)
@@ -903,8 +912,6 @@ nav-enemy-default-event-handler
    )
   )
 
-;; definition for method 11 of type muse
-;; Used lq/sq
 (defmethod copy-defaults! muse ((obj muse) (arg0 res-lump))
   (stack-size-set! (-> obj main-thread) 512)
   (set! (-> obj mask) (logior (process-mask enemy) (-> obj mask)))
@@ -977,3 +984,7 @@ nav-enemy-default-event-handler
   (go muse-idle)
   (none)
   )
+
+
+
+

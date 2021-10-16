@@ -5,3 +5,893 @@
 ;; name in dgo: robotboss-misc
 ;; dgos: FIN, L1
 
+(define-extern *med-res-snow1-sg* skeleton-group)
+(define-extern *ecoclaw-sg* skeleton-group)
+(define-extern *silodoor-sg* skeleton-group)
+(define-extern *finalbosscam-sg* skeleton-group)
+
+(declare-type ecoclaw process-drawable)
+(define-extern *ecoclaw* (pointer ecoclaw))
+
+;; DECOMP BEGINS
+
+(let
+  ((v1-0
+    (new 'static 'skeleton-group
+     :art-group-name "medres-snowback"
+     :bounds
+     (new 'static 'vector :x -1474560.0 :y 409600.0 :z 409600.0 :w 1556480.0)
+     :longest-edge (meters 0.01)
+     :version #x6
+     )
+    )
+   )
+  (set! (-> v1-0 jgeo) 0)
+  (set! (-> v1-0 janim) 2)
+  (set! (-> v1-0 mgeo 0) (the-as uint 1))
+  (set! (-> v1-0 lod-dist 0) 4095996000.0)
+  (set! *med-res-snow1-sg* v1-0)
+  )
+
+(defstate cam-robotboss (camera-slave)
+  :event
+  (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
+   (case arg2 
+    (('set-pivot)
+      (let ((v0-0 (the-as object (-> self pivot-pt))))
+       (set!
+        (-> (the-as vector v0-0) quad)
+        (-> (the-as vector (-> arg3 param 0)) quad)
+        )
+       v0-0
+       )
+      )
+    (('teleport)
+     #f
+     )
+    (else
+     (cam-standard-event-handler arg0 arg1 arg2 arg3)
+     )
+    )
+   )
+  :enter
+  (behavior ()
+   (cond
+    ((-> self enter-has-run)
+     )
+    (else
+     (set! *camera-base-mode* cam-robotboss)
+     (set! (-> self circular-follow quad) (-> *camera* tpos-curr-adj quad))
+     (set! (-> self pivot-rad) 73728.0)
+     (set! (-> self blend-from-type) (the-as uint 2))
+     (set! (-> self blend-to-type) (the-as uint 2))
+     )
+    )
+   (none)
+   )
+  :trans
+  (behavior ()
+   (when (zero? (logand (-> *camera* master-options) 2))
+    (set! *camera-base-mode* cam-string)
+    (cam-slave-go cam-free-floating)
+    )
+   (none)
+   )
+  :code
+  (behavior ()
+   (while #t
+    (when #t
+     (let ((a2-0 (new-stack-vector0)))
+      (vector-! a2-0 (-> *camera* tpos-curr-adj) (-> self pivot-pt))
+      (vector-!
+       (-> self circular-follow)
+       (-> self circular-follow)
+       (-> self pivot-pt)
+       )
+      (v-slrp3!
+       (-> self circular-follow)
+       (-> self circular-follow)
+       a2-0
+       (-> *camera* local-down)
+       (* 182.04445 (-> *display* time-adjust-ratio))
+       )
+      )
+     (vector+!
+      (-> self circular-follow)
+      (-> self circular-follow)
+      (-> self pivot-pt)
+      )
+     (let ((gp-0 (new 'stack-no-clear 'vector)))
+      (vector-! gp-0 (-> self circular-follow) (-> self pivot-pt))
+      (vector-flatten! gp-0 gp-0 (-> *camera* local-down))
+      (let ((f0-3 (- (vector-length gp-0) (-> self pivot-rad))))
+       (if (>= 0.0 f0-3)
+        (vector-reset! gp-0)
+        (vector-normalize! gp-0 f0-3)
+        )
+       )
+      (vector+! (-> self trans) gp-0 (-> self pivot-pt))
+      )
+     )
+    (suspend)
+    )
+   (none)
+   )
+  )
+
+(deftype ecoclaw-part-info (structure)
+  ((tracker handle         :offset-assert   0)
+   (kind    basic          :offset-assert   8)
+   (trans   vector :inline :offset-assert  16)
+   )
+  :method-count-assert 9
+  :size-assert         #x20
+  :flag-assert         #x900000020
+  )
+
+
+(deftype ecoclaw (process-drawable)
+  ((particles ecoclaw-part-info 3 :inline :offset-assert 176)
+   )
+  :heap-base #xa0
+  :method-count-assert 20
+  :size-assert         #x110
+  :flag-assert         #x1400a00110
+  )
+
+
+(let
+  ((v1-4
+    (new 'static 'skeleton-group
+     :art-group-name "ecoclaw"
+     :bounds
+     (new 'static 'vector :y 8192.0 :w 36864.0)
+     :version #x6
+     )
+    )
+   )
+  (set! (-> v1-4 jgeo) 0)
+  (set! (-> v1-4 janim) 2)
+  (set! (-> v1-4 mgeo 0) (the-as uint 1))
+  (set! (-> v1-4 lod-dist 0) 4095996000.0)
+  (set! *ecoclaw-sg* v1-4)
+  )
+
+(defun ecoclaw-beam-particle-callback ((arg0 part-tracker))
+  (let* ((a0-1 (the-as (pointer projectile) (-> arg0 userdata)))
+         (v1-1 (-> a0-1 0 parent-base))
+         (a0-3 (-> a0-1 0 base-vector))
+         (gp-1 (vector-! (new 'stack-no-clear 'vector) a0-3 v1-1))
+         (f30-0 (vector-y-angle gp-1))
+         (f0-1 (- 16384.0 (vector-x-angle gp-1)))
+         )
+   (set! (-> *part-id-table* 2727 init-specs 14 initial-valuef) f30-0)
+   (set! (-> *part-id-table* 2727 init-specs 13 initial-valuef) f0-1)
+   (set! (-> *part-id-table* 2729 init-specs 14 initial-valuef) f30-0)
+   (set! (-> *part-id-table* 2729 init-specs 13 initial-valuef) f0-1)
+   (set! (-> *part-id-table* 2726 init-specs 14 initial-valuef) f30-0)
+   (set! (-> *part-id-table* 2726 init-specs 13 initial-valuef) f0-1)
+   (set! (-> *part-id-table* 2720 init-specs 14 initial-valuef) f30-0)
+   (set! (-> *part-id-table* 2720 init-specs 13 initial-valuef) f0-1)
+   (set! (-> *part-id-table* 2722 init-specs 14 initial-valuef) f30-0)
+   (set! (-> *part-id-table* 2722 init-specs 13 initial-valuef) f0-1)
+   (set! (-> *part-id-table* 2719 init-specs 14 initial-valuef) f30-0)
+   (set! (-> *part-id-table* 2719 init-specs 13 initial-valuef) f0-1)
+   (set! (-> *part-id-table* 2734 init-specs 14 initial-valuef) f30-0)
+   (set! (-> *part-id-table* 2734 init-specs 13 initial-valuef) f0-1)
+   (set! (-> *part-id-table* 2736 init-specs 14 initial-valuef) f30-0)
+   (set! (-> *part-id-table* 2736 init-specs 13 initial-valuef) f0-1)
+   (set! (-> *part-id-table* 2733 init-specs 14 initial-valuef) f30-0)
+   (set! (-> *part-id-table* 2733 init-specs 13 initial-valuef) f0-1)
+   (set! (-> *part-id-table* 2741 init-specs 14 initial-valuef) f30-0)
+   (set! (-> *part-id-table* 2741 init-specs 13 initial-valuef) f0-1)
+   (set! (-> *part-id-table* 2743 init-specs 14 initial-valuef) f30-0)
+   (set! (-> *part-id-table* 2743 init-specs 13 initial-valuef) f0-1)
+   (set! (-> *part-id-table* 2740 init-specs 14 initial-valuef) f30-0)
+   (set! (-> *part-id-table* 2740 init-specs 13 initial-valuef) f0-1)
+   )
+  0
+  (none)
+  )
+
+;; WARN: rewrite_to_get_var got a none typed variable. Is there unreachable code?
+;; WARN: rewrite_to_get_var got a none typed variable. Is there unreachable code?
+(defbehavior
+  ecoclaw-handler ecoclaw
+  ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
+  (let ((v1-0 arg2))
+   (the-as object (cond
+                   ((= v1-0 'open)
+                    (let ((gp-1 (-> arg3 param 0)))
+                     (set!
+                      (-> self particles 0 kind)
+                      (the-as
+                       basic
+                       (if
+                        (and
+                         (nonzero? gp-1)
+                         (type-type? (rtype-of gp-1) sparticle-launch-group)
+                         )
+                        gp-1
+                        )
+                       )
+                      )
+                     )
+                    (set!
+                     (-> self particles 0 trans quad)
+                     (-> self root trans quad)
+                     )
+                    (let ((f0-1 (+ 12288.0 (-> self particles 0 trans y))))
+                     (set! (-> self particles 0 trans y) f0-1)
+                     f0-1
+                     )
+                    )
+                   ((= v1-0 'beam-on)
+                    (let ((s5-0 (-> arg3 param 0)))
+                     (set!
+                      (-> self particles 1 kind)
+                      (the-as
+                       basic
+                       (if
+                        (and
+                         (nonzero? s5-0)
+                         (type-type? (rtype-of s5-0) sparticle-launch-group)
+                         )
+                        s5-0
+                        )
+                       )
+                      )
+                     )
+                    (set!
+                     (-> self particles 1 trans quad)
+                     (-> self root trans quad)
+                     )
+                    (set!
+                     (-> self particles 1 trans y)
+                     (+ 24576.0 (-> self particles 1 trans y))
+                     )
+                    (let ((s5-1 (-> arg3 param 1)))
+                     (set!
+                      (-> self particles 2 kind)
+                      (the-as
+                       basic
+                       (if
+                        (and
+                         (nonzero? s5-1)
+                         (type-type? (rtype-of s5-1) sparticle-launch-group)
+                         )
+                        s5-1
+                        )
+                       )
+                      )
+                     )
+                    (set!
+                     (-> self particles 2 trans quad)
+                     (-> (the-as vector (-> arg3 param 2)) quad)
+                     )
+                    (let ((f0-5 (+ 81920.0 (-> self particles 2 trans y))))
+                     (set! (-> self particles 2 trans y) f0-5)
+                     f0-5
+                     )
+                    )
+                   ((= v1-0 'beam-off)
+                    (set! (-> self particles 1 kind) #f)
+                    (set! (-> self particles 2 kind) #f)
+                    (let
+                     ((a0-10 (handle->process (-> self particles 1 tracker))))
+                     (if a0-10
+                      (deactivate a0-10)
+                      )
+                     )
+                    (let
+                     ((a0-14 (handle->process (-> self particles 2 tracker))))
+                     (if a0-14
+                      (deactivate a0-14)
+                      )
+                     )
+                    )
+                   )
+    )
+   )
+  )
+
+(defstate ecoclaw-activate (ecoclaw)
+  :event
+  ecoclaw-handler
+  :trans
+  (behavior ()
+   (if (-> self particles 1 kind)
+    (draw-eco-beam
+     (the-as vector (&-> self stack 112))
+     (the-as vector (&-> self stack 144))
+     )
+    )
+   (dotimes (gp-0 2)
+    (cond
+     ((handle->process (-> self particles gp-0 tracker))
+      (set!
+       (->
+        (the-as part-tracker (-> self particles gp-0 tracker process 0))
+        start-time
+        )
+       (the-as uint (-> *display* base-frame-counter))
+       )
+      )
+     ((-> self particles gp-0 kind)
+      (let ((s5-0 (get-process *default-dead-pool* part-tracker #x4000)))
+       (set! (-> self particles gp-0 tracker) (ppointer->handle (when s5-0
+                                                                 (let
+                                                                  ((t9-2
+                                                                    (method-of-type
+                                                                     part-tracker
+                                                                     activate
+                                                                     )
+                                                                    )
+                                                                   )
+                                                                  (t9-2
+                                                                   (the-as
+                                                                    part-tracker
+                                                                    s5-0
+                                                                    )
+                                                                   self
+                                                                   'part-tracker
+                                                                   (the-as
+                                                                    pointer
+                                                                    #x70004000
+                                                                    )
+                                                                   )
+                                                                  )
+                                                                 (run-now-in-process
+                                                                  s5-0
+                                                                  part-tracker-init
+                                                                  (->
+                                                                   self
+                                                                   particles
+                                                                   gp-0
+                                                                   kind
+                                                                   )
+                                                                  -1
+                                                                  ecoclaw-beam-particle-callback
+                                                                  (->
+                                                                   self
+                                                                   ppointer
+                                                                   )
+                                                                  #f
+                                                                  (&+
+                                                                   (&->
+                                                                    self
+                                                                    stack
+                                                                    80
+                                                                    )
+                                                                   (* gp-0 32)
+                                                                   )
+                                                                  )
+                                                                 (->
+                                                                  s5-0
+                                                                  ppointer
+                                                                  )
+                                                                 )
+                                               )
+        )
+       )
+      )
+     )
+    )
+   (none)
+   )
+  :code
+  (behavior ()
+   (let ((a0-0 (-> self skel root-channel 0)))
+    (set! (-> a0-0 frame-group) (if (> (-> self skel active-channels) 0)
+                                 (-> self skel root-channel 0 frame-group)
+                                 )
+     )
+    (set!
+     (-> a0-0 param 0)
+     (the float (+ (-> (if (> (-> self skel active-channels) 0)
+                        (-> self skel root-channel 0 frame-group)
+                        )
+                    data
+                    0
+                    length
+                    )
+                 -1
+                 )
+      )
+     )
+    (set! (-> a0-0 param 1) 1.0)
+    (set! (-> a0-0 frame-num) 0.0)
+    (joint-control-channel-group! a0-0 (if (> (-> self skel active-channels) 0)
+                                        (->
+                                         self
+                                         skel
+                                         root-channel
+                                         0
+                                         frame-group
+                                         )
+                                        )
+     num-func-seek!
+     )
+    )
+   (until (ja-done? 0)
+    (suspend)
+    (let ((a0-1 (-> self skel root-channel 0)))
+     (set!
+      (-> a0-1 param 0)
+      (the float (+ (-> a0-1 frame-group data 0 length) -1))
+      )
+     (set! (-> a0-1 param 1) 1.0)
+     (joint-control-channel-group-eval!
+      a0-1
+      (the-as art-joint-anim #f)
+      num-func-seek!
+      )
+     )
+    )
+   (while #t
+    (suspend)
+    )
+   (none)
+   )
+  :post
+  (the-as (function none :behavior ecoclaw) ja-post)
+  )
+
+(defstate ecoclaw-idle (ecoclaw)
+  :event
+  ecoclaw-handler
+  :code
+  (behavior ()
+   (while #t
+    (if (-> self particles 0 kind)
+     (go ecoclaw-activate)
+     )
+    (suspend)
+    )
+   (none)
+   )
+  :post
+  (the-as (function none :behavior ecoclaw) ja-post)
+  )
+
+(defmethod copy-defaults! ecoclaw ((obj ecoclaw) (arg0 res-lump))
+  (set! (-> obj root) (new 'process 'trsqv))
+  (process-drawable-from-entity! obj arg0)
+  (dummy-14 obj *ecoclaw-sg* '())
+  (dotimes (v1-3 3)
+   (set! (-> obj particles v1-3 kind) #f)
+   (set! (-> obj particles v1-3 tracker) (the-as handle #f))
+   )
+  (set! *ecoclaw* (the-as (pointer ecoclaw) (process->ppointer obj)))
+  (go ecoclaw-idle)
+  (none)
+  )
+
+(deftype silodoor (process-drawable)
+  ((part-opened float  :offset-assert 176)
+   )
+  :heap-base #x50
+  :method-count-assert 22
+  :size-assert         #xb4
+  :flag-assert         #x16005000b4
+  (:methods
+    (idle () _type_ :state 20)
+    (hidden () _type_ :state 21)
+    )
+  )
+
+
+(let
+  ((v1-10
+    (new 'static 'skeleton-group
+     :art-group-name "silodoor"
+     :bounds (new 'static 'vector :w 102400.0)
+     :version #x6
+     )
+    )
+   )
+  (set! (-> v1-10 jgeo) 0)
+  (set! (-> v1-10 janim) 2)
+  (set! (-> v1-10 mgeo 0) (the-as uint 1))
+  (set! (-> v1-10 lod-dist 0) 4095996000.0)
+  (set! *silodoor-sg* v1-10)
+  )
+
+(defstate idle (silodoor)
+  :virtual #t
+  :event
+  (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
+   (let ((v1-0 arg2))
+    (the-as object (cond
+                    ((= v1-0 'open)
+                     (let ((f0-0 (the-as float (-> arg3 param 0))))
+                      (set! (-> self part-opened) f0-0)
+                      f0-0
+                      )
+                     )
+                    ((= v1-0 'hide)
+                     (go-virtual hidden)
+                     )
+                    )
+     )
+    )
+   )
+  :trans
+  (the-as (function none :behavior silodoor) rider-trans)
+  :code
+  (behavior ()
+   (while #t
+    (when (not (movie?))
+     (let ((gp-0 (-> self skel root-channel 0)))
+      (set!
+       (-> gp-0 param 0)
+       (* (-> self part-opened) (the float (ja-num-frames 0)))
+       )
+      (set! (-> gp-0 param 1) 0.01)
+      (joint-control-channel-group-eval!
+       gp-0
+       (the-as art-joint-anim #f)
+       num-func-seek!
+       )
+      )
+     (cond
+      ((<
+        0.01
+        (fabs
+         (-
+          (* (-> self part-opened) (the float (ja-num-frames 0)))
+          (ja-aframe-num 0)
+          )
+         )
+        )
+       (if (nonzero? (-> self sound))
+        (update! (-> self sound))
+        )
+       )
+      ((nonzero? (-> self sound))
+       (stop! (-> self sound))
+       )
+      )
+     )
+    (suspend)
+    )
+   (none)
+   )
+  :post
+  (behavior ()
+   (if
+    (and
+     (< (vector-vector-xz-distance (target-pos 0) (-> self root trans)) 57344.0)
+     (not (ja-min? 0))
+     )
+    (rider-post)
+    (transform-post)
+    )
+   (none)
+   )
+  )
+
+(defstate hidden (silodoor)
+  :virtual #t
+  :code
+  (behavior ()
+   (if (nonzero? (-> self sound))
+    (stop! (-> self sound))
+    )
+   (logior! (-> self draw status) 2)
+   (ja-post)
+   (while
+    (not
+     (task-closed? (game-task finalboss-movies) (task-status need-reminder-a))
+     )
+    (suspend)
+    )
+   (set! (-> self draw status) (logand -3 (-> self draw status)))
+   (let ((v1-12 (-> self skel root-channel 0)))
+    (set! (-> v1-12 num-func) num-func-identity)
+    (set! (-> v1-12 frame-num) 0.0)
+    )
+   (set! (-> self part-opened) 0.0)
+   (go-virtual idle)
+   (none)
+   )
+  )
+
+(defmethod copy-defaults! silodoor ((obj silodoor) (arg0 res-lump))
+  (let
+   ((s4-0
+     (new
+      'process
+      'collide-shape-moving
+      obj
+      (collide-list-enum usually-hit-by-player)
+      )
+     )
+    )
+   (set! (-> s4-0 dynam) (copy *standard-dynamics* 'process))
+   (set! (-> s4-0 reaction) default-collision-reaction)
+   (set! (-> s4-0 no-reaction) nothing)
+   (dummy-29 s4-0 1)
+   (let ((s3-0 (new 'process 'collide-shape-prim-group s4-0 (the-as uint 4) 0)))
+    (set! (-> s3-0 prim-core collide-as) (the-as uint 2048))
+    (set! (-> s3-0 collide-with) (the-as uint 16))
+    (set! (-> s3-0 prim-core action) (the-as uint 3))
+    (set! (-> s3-0 transform-index) 0)
+    (set-vector! (-> s3-0 local-sphere) 0.0 0.0 0.0 102400.0)
+    (dummy-46 s4-0)
+    (let
+     ((s2-0
+       (new
+        'process
+        'collide-shape-prim-mesh
+        s4-0
+        (the-as uint 0)
+        (the-as uint 0)
+        )
+       )
+      )
+     (set! (-> s2-0 prim-core collide-as) (the-as uint 2048))
+     (set! (-> s2-0 collide-with) (the-as uint 16))
+     (set! (-> s2-0 prim-core action) (the-as uint 19))
+     (set! (-> s2-0 prim-core offense) 4)
+     (set! (-> s2-0 transform-index) 5)
+     (set-vector! (-> s2-0 local-sphere) 0.0 0.0 0.0 102400.0)
+     )
+    (dummy-28 s3-0)
+    (let
+     ((s2-1
+       (new
+        'process
+        'collide-shape-prim-mesh
+        s4-0
+        (the-as uint 1)
+        (the-as uint 0)
+        )
+       )
+      )
+     (set! (-> s2-1 prim-core collide-as) (the-as uint 2048))
+     (set! (-> s2-1 collide-with) (the-as uint 16))
+     (set! (-> s2-1 prim-core action) (the-as uint 19))
+     (set! (-> s2-1 prim-core offense) 4)
+     (set! (-> s2-1 transform-index) 4)
+     (set-vector! (-> s2-1 local-sphere) 0.0 0.0 0.0 102400.0)
+     )
+    (dummy-28 s3-0)
+    (let
+     ((s2-2
+       (new
+        'process
+        'collide-shape-prim-mesh
+        s4-0
+        (the-as uint 2)
+        (the-as uint 0)
+        )
+       )
+      )
+     (set! (-> s2-2 prim-core collide-as) (the-as uint 2048))
+     (set! (-> s2-2 collide-with) (the-as uint 16))
+     (set! (-> s2-2 prim-core action) (the-as uint 19))
+     (set! (-> s2-2 prim-core offense) 4)
+     (set! (-> s2-2 transform-index) 7)
+     (set-vector! (-> s2-2 local-sphere) 0.0 0.0 0.0 102400.0)
+     )
+    (dummy-28 s3-0)
+    (let
+     ((s2-3
+       (new
+        'process
+        'collide-shape-prim-mesh
+        s4-0
+        (the-as uint 3)
+        (the-as uint 0)
+        )
+       )
+      )
+     (set! (-> s2-3 prim-core collide-as) (the-as uint 2048))
+     (set! (-> s2-3 collide-with) (the-as uint 16))
+     (set! (-> s2-3 prim-core action) (the-as uint 19))
+     (set! (-> s2-3 prim-core offense) 4)
+     (set! (-> s2-3 transform-index) 6)
+     (set-vector! (-> s2-3 local-sphere) 0.0 0.0 0.0 102400.0)
+     )
+    (dummy-28 s3-0)
+    )
+   (set! (-> s4-0 nav-radius) (* 0.75 (-> s4-0 root-prim local-sphere w)))
+   (dummy-50 s4-0)
+   (set! (-> obj root) s4-0)
+   )
+  (process-drawable-from-entity! obj arg0)
+  (dummy-14 obj *silodoor-sg* '())
+  (logior! (-> obj skel status) 1)
+  (set! (-> obj root pause-adjust-distance) 1228800.0)
+  (set!
+   (-> obj sound)
+   (new
+    'process
+    'ambient-sound
+    (new 'static 'sound-spec
+     :mask #x80
+     :num 1.0
+     :group #x1
+     :sound-name
+     (new 'static 'sound-name :lo #x766f6d2d6f6c6973)
+     :volume #x400
+     :fo-max 80
+     )
+    (-> obj root trans)
+    )
+   )
+  (logclear! (-> obj mask) (process-mask actor-pause crate enemy attackable))
+  (set! (-> obj part-opened) 0.0)
+  (go (method-of-object obj idle))
+  (none)
+  )
+
+(deftype finalbosscam (process-taskable)
+  ((robotboss handle  :offset-assert 384)
+   )
+  :heap-base #x120
+  :method-count-assert 53
+  :size-assert         #x188
+  :flag-assert         #x3501200188
+  )
+
+
+(let
+  ((v1-17
+    (new 'static 'skeleton-group
+     :art-group-name "finalbosscam"
+     :bounds (new 'static 'vector :w 16384.0)
+     :version #x6
+     )
+    )
+   )
+  (set! (-> v1-17 jgeo) 0)
+  (set! (-> v1-17 janim) 2)
+  (set! (-> v1-17 mgeo 0) (the-as uint 1))
+  (set! (-> v1-17 lod-dist 0) 4095996000.0)
+  (set! *finalbosscam-sg* v1-17)
+  )
+
+(defbehavior robotboss-manipy-trans-hook robotboss ()
+  (let ((gp-0 (new 'stack-no-clear 'vector)))
+   (vector<-cspace! gp-0 (-> self node-list data 7))
+   (spawn (-> self part) gp-0)
+   )
+  0
+  (none)
+  )
+
+(defmethod play-anim! finalbosscam ((obj finalbosscam) (arg0 symbol))
+  (with-pp
+   (when arg0
+    (let ((s5-0 (get-process *default-dead-pool* manipy #x4000)))
+     (set! (-> obj robotboss) (ppointer->handle (when s5-0
+                                                 (let
+                                                  ((t9-1
+                                                    (method-of-type
+                                                     manipy
+                                                     activate
+                                                     )
+                                                    )
+                                                   )
+                                                  (t9-1
+                                                   (the-as manipy s5-0)
+                                                   obj
+                                                   'manipy
+                                                   (the-as pointer #x70004000)
+                                                   )
+                                                  )
+                                                 (run-now-in-process
+                                                  s5-0
+                                                  manipy-init
+                                                  (-> obj root-override trans)
+                                                  (-> obj entity)
+                                                  *robotboss-sg*
+                                                  #f
+                                                  )
+                                                 (-> s5-0 ppointer)
+                                                 )
+                               )
+      )
+     )
+    (let ((a1-4 (new 'stack-no-clear 'event-message-block)))
+     (set! (-> a1-4 from) pp)
+     (set! (-> a1-4 num-params) 1)
+     (set! (-> a1-4 message) 'anim-mode)
+     (set! (-> a1-4 param 0) (the-as uint 'clone-anim))
+     (send-event-function (handle->process (-> obj robotboss)) a1-4)
+     )
+    (let ((a1-5 (new 'stack-no-clear 'event-message-block)))
+     (set! (-> a1-5 from) pp)
+     (set! (-> a1-5 num-params) 1)
+     (set! (-> a1-5 message) 'center-joint)
+     (set! (-> a1-5 param 0) (the-as uint 3))
+     (send-event-function (handle->process (-> obj robotboss)) a1-5)
+     )
+    (let ((a1-6 (new 'stack-no-clear 'event-message-block)))
+     (set! (-> a1-6 from) pp)
+     (set! (-> a1-6 num-params) 1)
+     (set! (-> a1-6 message) 'origin-joint-index)
+     (set! (-> a1-6 param 0) (the-as uint 3))
+     (send-event-function (handle->process (-> obj robotboss)) a1-6)
+     )
+    (let ((a1-7 (new 'stack-no-clear 'event-message-block)))
+     (set! (-> a1-7 from) pp)
+     (set! (-> a1-7 num-params) 1)
+     (set! (-> a1-7 message) 'trans-hook)
+     (set! (-> a1-7 param 0) (the-as uint robotboss-manipy-trans-hook))
+     (send-event-function (handle->process (-> obj robotboss)) a1-7)
+     )
+    (let ((a1-8 (new 'stack-no-clear 'event-message-block)))
+     (set! (-> a1-8 from) pp)
+     (set! (-> a1-8 num-params) 1)
+     (set! (-> a1-8 message) 'eval)
+     (set!
+      (-> a1-8 param 0)
+      (the-as
+       uint
+       (lambda :behavior finalbosscam
+        ()
+        (let
+         ((v0-0 (create-launch-control (-> *part-group-id-table* 645) self)))
+         (set! (-> self part) v0-0)
+         v0-0
+         )
+        )
+       )
+      )
+     (send-event-function (handle->process (-> obj robotboss)) a1-8)
+     )
+    (let ((v1-43 (handle->process (-> obj robotboss))))
+     (if v1-43
+      (set! (-> (the-as robotboss v1-43) draw bounds w) 327680.0)
+      )
+     )
+    )
+   (the-as
+    basic
+    (new 'static 'spool-anim
+     :name "finalbosscam-white-eco"
+     :index 3
+     :parts 3
+     :command-list '()
+     )
+    )
+   )
+  )
+
+(defmethod get-art-elem finalbosscam ((obj finalbosscam))
+  (-> obj draw art-group data 2)
+  )
+
+(defmethod should-display? finalbosscam ((obj finalbosscam))
+  #f
+  )
+
+(defstate play-anim (finalbosscam)
+  :virtual #t
+  :exit
+  (behavior ()
+   (let ((a0-1 (handle->process (-> self robotboss))))
+    (if a0-1
+     (deactivate a0-1)
+     )
+    )
+   ((-> (method-of-type process-taskable play-anim) exit))
+   (none)
+   )
+  )
+
+(defbehavior finalbosscam-init-by-other finalbosscam ((arg0 entity))
+  (set! (-> self entity) arg0)
+  (dummy-40 self arg0 *finalbosscam-sg* 4 4 (new 'static 'vector :w 4096.0) 4)
+  (set! (-> self tasks) (get-task-control (game-task finalboss-movies)))
+  (set! (-> self robotboss) (the-as handle #f))
+  (go-virtual hidden)
+  (none)
+  )
+
+
+
+

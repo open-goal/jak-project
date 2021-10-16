@@ -130,12 +130,15 @@
   (with-pp
    (set! (-> obj talk-message) (the-as uint 292))
    (case (current-status (-> obj tasks)) 
-    ((1 2 3)
+    (((task-status unknown)
+     (task-status need-hint)
+     (task-status need-introduction)
+     )
       (if (not arg0)
        (set! (-> obj will-talk) #t)
        )
       (case (current-task (-> obj tasks)) 
-       ((103)
+       (((game-task village2-levitator))
          (when arg0
           (close-status! (-> obj tasks) (task-status need-introduction))
           (let ((a1-5 (new 'stack-no-clear 'event-message-block)))
@@ -783,7 +786,7 @@
             )
           )
          )
-       ((47)
+       (((game-task sunken-room))
         (when arg0
          (let* ((s5-2 (-> obj tasks))
                 (s4-0 (method-of-object s5-2 save-reminder))
@@ -899,7 +902,7 @@
            )
          )
         )
-       ((53)
+       (((game-task rolling-robbers))
         (when arg0
          (let* ((s5-5 (-> obj tasks))
                 (s4-1 (method-of-object s5-5 save-reminder))
@@ -984,7 +987,7 @@
         )
        )
       )
-    ((5)
+    (((task-status need-reminder))
      (set! (-> obj skippable) #t)
      (let ((s4-2 (+ (get-reminder (-> obj tasks) 0) 1)))
       (if (< (the-as uint 2) (the-as uint s4-2))
@@ -1061,9 +1064,7 @@
        0
        "ERROR: <GMJ>: ~S playing anim for task status ~S~%"
        (-> obj name)
-       (task-status->string
-        (the-as task-status (current-status (-> obj tasks)))
-        )
+       (task-status->string (current-status (-> obj tasks)))
        )
       )
      (-> obj draw art-group data 5)
@@ -1176,10 +1177,10 @@
       #f
       )
      ((< 0.5 f30-0)
-      (dummy-11 (-> obj ambient) "ASSTLP23" #f (-> obj root-override trans))
+      (play-ambient (-> obj ambient) "ASSTLP23" #f (-> obj root-override trans))
       )
      (else
-      (dummy-11 (-> obj ambient) "ASSTLP24" #f (-> obj root-override trans))
+      (play-ambient (-> obj ambient) "ASSTLP24" #f (-> obj root-override trans))
       )
      )
     )
@@ -2521,7 +2522,7 @@
   ((obj assistant-levitator) (arg0 symbol))
   (with-pp
    (case (current-status (-> obj tasks)) 
-    ((6)
+    (((task-status need-reward-speech))
       (when arg0
        (close-current! (-> obj tasks))
        (let ((a1-1 (new 'stack-no-clear 'event-message-block)))
@@ -2584,9 +2585,7 @@
        0
        "ERROR: <GMJ>: ~S playing anim for task status ~S~%"
        (-> obj name)
-       (task-status->string
-        (the-as task-status (current-status (-> obj tasks)))
-        )
+       (task-status->string (current-status (-> obj tasks)))
        )
       )
      (-> obj draw art-group data 5)
@@ -2653,10 +2652,7 @@
                 #t
                 )
                (else
-                (set!
-                 (-> self state-time)
-                 (the-as seconds (-> *display* base-frame-counter))
-                 )
+                (set! (-> self state-time) (-> *display* base-frame-counter))
                 #f
                 )
                )
@@ -2681,13 +2677,7 @@
              (logtest? (-> *cpad-list* cpads 0 button0-abs 0) (pad-buttons l3))
              )
             )
-           (<
-            (-
-             (-> *display* base-frame-counter)
-             (the-as int (-> self state-time))
-             )
-            3000
-            )
+           (< (- (-> *display* base-frame-counter) (-> self state-time)) 3000)
            )
           )
     (hide-hud)
@@ -3103,25 +3093,8 @@
      :mask #x80
      :num 1.0
      :group #x1
-     :sound-name-char
-     (new 'static 'array uint8 16
-      #x6c
-      #x65
-      #x76
-      #x2d
-      #x6d
-      #x61
-      #x63
-      #x68
-      #x2d
-      #x69
-      #x64
-      #x6c
-      #x65
-      #x0
-      #x0
-      #x0
-      )
+     :sound-name
+     (new 'static 'sound-name :lo #x6863616d2d76656c)
      :volume #x400
      :fo-max 30
      )

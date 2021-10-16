@@ -7,11 +7,6 @@
 
 (define-extern *baby-spider-sg* skeleton-group)
 
-(declare-type baby-spider nav-enemy)
-(define-extern baby-spider-hatching (state baby-spider)) ;; unknown type
-(define-extern baby-spider-resume (state baby-spider)) ;; unknown type
-(define-extern baby-spider-die-fast (state baby-spider)) ;; unknown type
-
 (declare-type cave-trap process-drawable)
 
 ;; DECOMP BEGINS
@@ -24,14 +19,14 @@
    (pickup                            int32   :offset-assert  16)
    (pickup-amount                     int32   :offset-assert  20)
    (event-death                       symbol  :offset-assert  24)
-   (delay-before-dying-if-not-visible uint64  :offset-assert  32)
+   (delay-before-dying-if-not-visible int64   :offset-assert  32)
    )
   :method-count-assert 11
   :size-assert         #x28
   :flag-assert         #xb00000028
   (:methods
     (init! (_type_ symbol symbol symbol symbol int int symbol) int 9)
-    (set-delay! (_type_ uint) uint 10)
+    (set-delay! (_type_ int) int 10)
     )
   )
 
@@ -44,13 +39,13 @@
    (delta-wiggle-angle                float          :offset-assert 416)
    (wiggle-factor                     float          :offset-assert 420)
    (event-death                       symbol         :offset-assert 424)
-   (delay-before-dying-if-not-visible uint64         :offset-assert 432)
-   (chase-rest-time                   uint64         :offset-assert 440)
-   (target-nav-time                   uint64         :offset-assert 448)
+   (delay-before-dying-if-not-visible int64          :offset-assert 432)
+   (chase-rest-time                   int64          :offset-assert 440)
+   (target-nav-time                   int64          :offset-assert 448)
    (unknown00                         basic          :offset-assert 456)
    (unknown01                         basic          :offset-assert 460)
-   (wiggle-time                       uint64         :offset-assert 464)
-   (last-visible-time                 uint64         :offset-assert 472)
+   (wiggle-time                       int64          :offset-assert 464)
+   (last-visible-time                 int64          :offset-assert 472)
    (up-vector                         vector :inline :offset-assert 480)
    (state-vector                      vector :inline :offset-assert 496)
    )
@@ -58,6 +53,11 @@
   :method-count-assert 76
   :size-assert         #x200
   :flag-assert         #x4c01900200
+  (:states
+    baby-spider-hatching
+    baby-spider-resume
+    baby-spider-die-fast
+    )
   )
 
 
@@ -101,11 +101,11 @@
    :run-travel-speed (meters 7.0)
    :run-rotate-speed (degrees 7999.9995)
    :run-acceleration (meters 1.0)
-   :run-turn-time #x16
+   :run-turn-time (seconds 0.07333333)
    :walk-travel-speed (meters 2.0)
    :walk-rotate-speed (degrees 7999.9995)
    :walk-acceleration (meters 1.0)
-   :walk-turn-time #x16
+   :walk-turn-time (seconds 0.07333333)
    :attack-shove-back (meters 3.0)
    :attack-shove-up (meters 2.0)
    :shadow-size (meters 1.0)
@@ -156,11 +156,11 @@
    :run-travel-speed (meters 7.0)
    :run-rotate-speed (degrees 7999.9995)
    :run-acceleration (meters 1.0)
-   :run-turn-time #x16
+   :run-turn-time (seconds 0.07333333)
    :walk-travel-speed (meters 2.0)
    :walk-rotate-speed (degrees 7999.9995)
    :walk-acceleration (meters 1.0)
-   :walk-turn-time #x16
+   :walk-turn-time (seconds 0.07333333)
    :attack-shove-back (meters 3.0)
    :attack-shove-up (meters 2.0)
    :shadow-size (meters 1.0)
@@ -214,7 +214,7 @@
   (set! (-> obj pickup-amount) arg5)
   (set! (-> obj event-death) arg6)
   (let ((v0-0 600))
-   (set! (-> obj delay-before-dying-if-not-visible) (the-as uint v0-0))
+   (set! (-> obj delay-before-dying-if-not-visible) v0-0)
    v0-0
    )
   )
@@ -222,7 +222,7 @@
 (defmethod
   set-delay!
   baby-spider-spawn-params
-  ((obj baby-spider-spawn-params) (arg0 uint))
+  ((obj baby-spider-spawn-params) (arg0 int))
   (set! (-> obj delay-before-dying-if-not-visible) arg0)
   arg0
   )
@@ -297,7 +297,7 @@ baby-spider-default-event-handler
   (none)
   )
 
-(defmethod dummy-51 baby-spider ((obj baby-spider))
+(defmethod dummy-51 baby-spider ((obj baby-spider) (arg0 vector))
   (let* ((f0-0 (rand-vu-float-range 0.0 1.0))
          (f1-1 (+ 1.0 (* 2.0 f0-0)))
          (f2-2 f1-1)
@@ -308,7 +308,7 @@ baby-spider-default-event-handler
    (set! (-> obj wiggle-factor) (* 1.5 f2-4))
    (let ((f0-3 (* 28672.0 f0-2)))
     (set! (-> obj target-speed) f0-3)
-    f0-3
+    (the-as object f0-3)
     )
    )
   )
@@ -334,28 +334,22 @@ baby-spider-default-event-handler
          (v0-3 (-> obj nav target-pos))
          )
    (set! (-> v0-3 quad) (-> v1-4 quad))
-   v0-3
+   (the-as symbol v0-3)
    )
   )
 
 (defmethod dummy-53 baby-spider ((obj baby-spider))
   (cond
    ((logtest? (-> obj draw status) 8)
-    (set!
-     (-> obj last-visible-time)
-     (the-as uint (-> *display* base-frame-counter))
-     )
+    (set! (-> obj last-visible-time) (-> *display* base-frame-counter))
     (return #f)
     )
    (else
     (if (-> obj die-if-not-visible?)
      (return
       (>=
-       (-
-        (-> *display* base-frame-counter)
-        (the-as int (-> obj last-visible-time))
-        )
-       (the-as int (-> obj delay-before-dying-if-not-visible))
+       (- (-> *display* base-frame-counter) (-> obj last-visible-time))
+       (-> obj delay-before-dying-if-not-visible)
        )
       )
      )
@@ -447,7 +441,7 @@ baby-spider-default-event-handler
         )
        )
       (>=
-       (- (-> *display* base-frame-counter) (the-as int (-> self state-time)))
+       (- (-> *display* base-frame-counter) (-> self state-time))
        (-> self state-timeout)
        )
       (nonzero? (-> self draw))
@@ -676,8 +670,8 @@ baby-spider-default-event-handler
     )
    (if
     (>=
-     (- (-> *display* base-frame-counter) (the-as int (-> self state-time)))
-     (the-as int (-> self chase-rest-time))
+     (- (-> *display* base-frame-counter) (-> self state-time))
+     (-> self chase-rest-time)
      )
     (go-virtual nav-enemy-victory)
     )
@@ -690,44 +684,30 @@ baby-spider-default-event-handler
    )
   :code
   (behavior ()
-   (set!
-    (-> self target-nav-time)
-    (the-as uint (-> *display* base-frame-counter))
-    )
-   (set!
-    (-> self wiggle-time)
-    (the-as uint (+ (-> *display* base-frame-counter) -3000))
-    )
+   (set! (-> self target-nav-time) (-> *display* base-frame-counter))
+   (set! (-> self wiggle-time) (+ (-> *display* base-frame-counter) -3000))
    (set! (-> self wiggle-angle) 0.0)
-   (set! (-> self chase-rest-time) (the-as uint (rand-vu-int-range 300 1200)))
+   (set! (-> self chase-rest-time) (rand-vu-int-range 300 1200))
    (ja-channel-push! 1 51)
-   (let ((gp-0 (-> self skel root-channel 0)))
-    (joint-control-channel-group-eval!
-     gp-0
-     (the-as art-joint-anim (-> self draw art-group data 7))
-     num-func-identity
-     )
+   (let* ((gp-0 (-> self skel root-channel 0))
+          (t9-2 joint-control-channel-group-eval!)
+          (a0-2 gp-0)
+          (a1-2 (-> self draw art-group data 7))
+          )
+    (t9-2 a0-2 (the-as art-joint-anim a1-2) num-func-identity)
     (set! (-> gp-0 frame-num) 0.0)
-    )
-   (while #t
-    (when
-     (>=
-      (- (-> *display* base-frame-counter) (the-as int (-> self wiggle-time)))
-      300
+    (while #t
+     (when (>= (- (-> *display* base-frame-counter) (-> self wiggle-time)) 300)
+      (set! (-> self wiggle-time) (-> *display* base-frame-counter))
+      (dummy-51 self (the-as vector a1-2))
       )
-     (set!
-      (-> self wiggle-time)
-      (the-as uint (-> *display* base-frame-counter))
-      )
-     (dummy-51 self)
-     )
-    (suspend)
-    (let ((a0-5 (-> self skel root-channel 0)))
-     (set! (-> a0-5 param 0) 1.0)
-     (joint-control-channel-group-eval!
-      a0-5
-      (the-as art-joint-anim #f)
-      num-func-loop!
+     (suspend)
+     (let ((a0-5 (-> self skel root-channel 0)))
+      (set! (-> a0-5 param 0) 1.0)
+      (let ((t9-4 joint-control-channel-group-eval!))
+       (set! a1-2 (the-as art-element #f))
+       (t9-4 a0-5 (the-as art-joint-anim a1-2) num-func-loop!)
+       )
       )
      )
     )
@@ -1142,10 +1122,7 @@ baby-spider-default-event-handler
   )
 
 (defmethod TODO-RENAME-48 baby-spider ((obj baby-spider))
-  (set!
-   (-> obj last-visible-time)
-   (the-as uint (-> *display* base-frame-counter))
-   )
+  (set! (-> obj last-visible-time) (-> *display* base-frame-counter))
   (dummy-14 obj *baby-spider-sg* '())
   (if (= (-> obj parent 0 type) cave-trap)
    (TODO-RENAME-45 obj *baby-spider-nav-enemy-info-for-cave-trap*)
@@ -1163,7 +1140,7 @@ baby-spider-default-event-handler
   (set! (-> obj delta-wiggle-angle) 910.2222)
   (set! (-> obj wiggle-factor) 1.5)
   (set! (-> obj reaction-time) (rand-vu-int-range 30 240))
-  (set! (-> obj chase-rest-time) (the-as uint 300))
+  (set! (-> obj chase-rest-time) 300)
   (set! (-> obj up-vector quad) (-> *y-vector* quad))
   0
   (none)
@@ -1220,7 +1197,7 @@ baby-spider-default-event-handler
 
 (defmethod copy-defaults! baby-spider ((obj baby-spider) (arg0 res-lump))
   (set! (-> obj die-if-not-visible?) #f)
-  (set! (-> obj delay-before-dying-if-not-visible) (the-as uint 600))
+  (set! (-> obj delay-before-dying-if-not-visible) 600)
   (set! (-> obj hack-move-above-ground?) #f)
   (set! (-> obj event-death) #f)
   (initialize-collision obj)

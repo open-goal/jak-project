@@ -1,0 +1,1653 @@
+;;-*-Lisp-*-
+(in-package goal)
+
+;; definition of type torus
+(deftype torus (structure)
+  ((origin           vector :inline :offset-assert   0)
+   (axis             vector :inline :offset-assert  16)
+   (radius-primary   float          :offset-assert  32)
+   (radius-secondary float          :offset-assert  36)
+   )
+  :method-count-assert 13
+  :size-assert         #x28
+  :flag-assert         #xd00000028
+  (:methods
+    (dummy-9 (_type_ vector) none 9)
+    (dummy-10 (_type_ vector vector) symbol 10)
+    (dummy-11 (_type_ vector) symbol 11)
+    (dummy-12 (_type_ vector) none 12)
+    )
+  )
+
+;; definition for method 3 of type torus
+(defmethod inspect torus ((obj torus))
+  (format #t "[~8x] ~A~%" obj 'torus)
+  (format #t "~Torigin: #<vector @ #x~X>~%" (-> obj origin))
+  (format #t "~Taxis: #<vector @ #x~X>~%" (-> obj axis))
+  (format #t "~Tradius-primary: ~f~%" (-> obj radius-primary))
+  (format #t "~Tradius-secondary: ~f~%" (-> obj radius-secondary))
+  obj
+  )
+
+;; definition for method 10 of type torus
+(defmethod dummy-10 torus ((obj torus) (arg0 vector) (arg1 vector))
+  (let ((gp-0 (new 'stack-no-clear 'vector))
+        (s5-0 (new 'stack-no-clear 'vector))
+        (f30-0 (+ (-> obj radius-secondary) (-> arg0 w)))
+        )
+   (vector-! gp-0 arg0 (-> obj origin))
+   (vector-flatten! s5-0 gp-0 (-> obj axis))
+   (vector-normalize! s5-0 (-> obj radius-primary))
+   (vector-! arg1 gp-0 s5-0)
+   (< (vector-length-squared arg1) (* f30-0 f30-0))
+   )
+  )
+
+;; definition for method 11 of type torus
+(defmethod dummy-11 torus ((obj torus) (arg0 vector))
+  (let
+   ((s4-0 (the-as collide-shape-prim-group (-> *target* control root-prim))))
+   (when
+    (and
+     (logtest? (-> s4-0 prim-core collide-as) 16)
+     (dummy-10 obj (the-as vector (-> s4-0 prim-core)) arg0)
+     )
+    (countdown (s3-0 (-> s4-0 num-prims))
+     (let ((v1-9 (-> s4-0 prims s3-0)))
+      (if
+       (and
+        (logtest? (-> v1-9 prim-core action) 1)
+        (logtest? (-> v1-9 prim-core collide-as) 16)
+        (dummy-10 obj (the-as vector (-> v1-9 prim-core)) arg0)
+        )
+       (return #t)
+       )
+      )
+     )
+    )
+   )
+  #f
+  )
+
+;; definition of type torus-verts
+(deftype torus-verts (structure)
+  ((vert vector 8 :inline :offset-assert   0)
+   )
+  :method-count-assert 9
+  :size-assert         #x80
+  :flag-assert         #x900000080
+  )
+
+;; definition for method 3 of type torus-verts
+(defmethod inspect torus-verts ((obj torus-verts))
+  (format #t "[~8x] ~A~%" obj 'torus-verts)
+  (format #t "~Tvert[8] @ #x~X~%" (-> obj vert))
+  obj
+  )
+
+;; definition for method 9 of type torus
+;; INFO: Return type mismatch int vs none.
+;; Used lq/sq
+(defmethod dummy-9 torus ((obj torus) (arg0 vector))
+  (local-vars (sv-256 int) (sv-272 int) (sv-288 int))
+  (let ((s0-0 (new 'stack-no-clear 'vector))
+        (s4-0 (new 'stack-no-clear 'vector))
+        (s3-0 (new 'stack-no-clear 'vector))
+        (s2-0 (new 'stack-no-clear 'matrix))
+        (s1-0 (new 'stack-no-clear 'inline-array 'vector 8))
+        )
+   (set-vector! s0-0 0.0 0.0 1.0 1.0)
+   (vector-flatten! s0-0 s0-0 (-> obj axis))
+   (if (= (vector-normalize-ret-len! s0-0 1.0) 0.0)
+    (set-vector! s0-0 0.0 1.0 0.0 1.0)
+    )
+   (vector-cross! s4-0 s0-0 (-> obj axis))
+   (matrix-axis-angle! s2-0 s4-0 8192.0)
+   (vector-float*! (-> s1-0 0) s0-0 (-> obj radius-secondary))
+   (set! sv-256 0)
+   (while (< sv-256 7)
+    (vector-matrix*! (-> s1-0 (+ sv-256 1)) (-> s1-0 sv-256) s2-0)
+    (set! sv-256 (+ sv-256 1))
+    )
+   (vector-float*! s0-0 s0-0 (-> obj radius-primary))
+   (dotimes (v1-21 8)
+    (vector+! (-> s1-0 v1-21) (-> s1-0 v1-21) s0-0)
+    )
+   (matrix-axis-angle! s2-0 (-> obj axis) 4096.0)
+   (dotimes (s0-1 16)
+    (set! sv-272 0)
+    (while (< sv-272 7)
+     (vector+! s4-0 (-> s1-0 sv-272) (-> obj origin))
+     (vector+! s3-0 (-> s1-0 (+ sv-272 1)) (-> obj origin))
+     (camera-line s4-0 s3-0 arg0)
+     (set! sv-272 (+ sv-272 1))
+     )
+    (vector+! s4-0 (-> s1-0 0) (-> obj origin))
+    (camera-line s4-0 s3-0 arg0)
+    (set! sv-288 0)
+    (while (< sv-288 8)
+     (vector+! s4-0 (-> s1-0 sv-288) (-> obj origin))
+     (vector-matrix*! (-> s1-0 sv-288) (-> s1-0 sv-288) s2-0)
+     (vector+! s3-0 (-> s1-0 sv-288) (-> obj origin))
+     (camera-line s4-0 s3-0 arg0)
+     (set! sv-288 (+ sv-288 1))
+     )
+    )
+   )
+  0
+  (none)
+  )
+
+;; definition for method 12 of type torus
+;; INFO: Return type mismatch vector vs none.
+(defmethod dummy-12 torus ((obj torus) (arg0 vector))
+  (let* ((f30-0 65536.0)
+         (v1-1 (/ (the-as int (rand-uint31-gen *random-generator*)) 256))
+         (v1-2 (the-as number (logior #x3f800000 v1-1)))
+         (f30-1 (* f30-0 (+ -1.0 (the-as float v1-2))))
+         )
+   (set! (-> arg0 x) 0.0)
+   (set! (-> arg0 y) (* (-> obj radius-secondary) (sin f30-1)))
+   (set! (-> arg0 z) (* (-> obj radius-secondary) (cos f30-1)))
+   )
+  (+! (-> arg0 z) (-> obj radius-primary))
+  (set! (-> arg0 w) 0.0)
+  (let ((s2-0 (new 'stack-no-clear 'matrix)))
+   (let* ((s4-0 matrix-rotate-y!)
+          (s3-0 s2-0)
+          (f30-2 65536.0)
+          (v1-6 (/ (the-as int (rand-uint31-gen *random-generator*)) 256))
+          (v1-7 (the-as number (logior #x3f800000 v1-6)))
+          )
+    (s4-0 s3-0 (* f30-2 (+ -1.0 (the-as float v1-7))))
+    )
+   (vector-matrix*! arg0 arg0 s2-0)
+   (matrix-from-two-vectors!
+    s2-0
+    (new 'static 'vector :y 1.0 :w 1.0)
+    (-> obj axis)
+    )
+   (vector-matrix*! arg0 arg0 s2-0)
+   )
+  (vector+! arg0 arg0 (-> obj origin))
+  (none)
+  )
+
+;; definition of type arcing-shot
+(deftype arcing-shot (process-drawable)
+  ((y-vel float          :offset-assert 176)
+   (grav  float          :offset-assert 180)
+   (from  vector :inline :offset-assert 192)
+   (to    vector :inline :offset-assert 208)
+   )
+  :heap-base #x70
+  :method-count-assert 20
+  :size-assert         #xe0
+  :flag-assert         #x14007000e0
+  )
+
+;; definition for method 3 of type arcing-shot
+(defmethod inspect arcing-shot ((obj arcing-shot))
+  (let ((t9-0 (method-of-type process-drawable inspect)))
+   (t9-0 obj)
+   )
+  (format #t "~T~Ty-vel: ~f~%" (-> obj y-vel))
+  (format #t "~T~Tgrav: ~f~%" (-> obj grav))
+  (format #t "~T~Tfrom: #<vector @ #x~X>~%" (-> obj from))
+  (format #t "~T~Tto: #<vector @ #x~X>~%" (-> obj to))
+  obj
+  )
+
+;; definition for function arcing-shot-setup
+;; INFO: Return type mismatch float vs none.
+;; Used lq/sq
+(defbehavior
+  arcing-shot-setup arcing-shot
+  ((arg0 vector) (arg1 vector) (arg2 float))
+  (set! (-> self from quad) (-> arg0 quad))
+  (set! (-> self to quad) (-> arg1 quad))
+  (let ((v1-2 (fmax 1.0 arg2)))
+   (if (< (-> arg0 y) (-> arg1 y))
+    (set! v1-2 (+ v1-2 (- (-> arg1 y) (-> arg0 y))))
+    )
+   (let ((f0-6 (* -4.0 v1-2))
+         (f3-1 (* 4.0 v1-2 (- (-> arg1 y) (-> arg0 y))))
+         )
+    (set!
+     (-> self y-vel)
+     (* 0.5 (- (sqrtf (- (* f0-6 f0-6) (* 4.0 f3-1))) f0-6))
+     )
+    )
+   (set!
+    (-> self grav)
+    (/ (- (* (-> self y-vel) (-> self y-vel))) (* 2.0 v1-2))
+    )
+   )
+  (none)
+  )
+
+;; definition for function arcing-shot-calculate
+;; INFO: Return type mismatch float vs none.
+(defbehavior arcing-shot-calculate arcing-shot ((arg0 vector) (arg1 float))
+  (let ((s5-0 (fmin 1.0 (fmax 0.0 arg1))))
+   (vector-lerp! arg0 (-> self from) (-> self to) s5-0)
+   (set! (-> arg0 y) (-> self from y))
+   (+! (-> arg0 y) (* (-> self y-vel) s5-0))
+   (+! (-> arg0 y) (* 0.5 s5-0 s5-0 (-> self grav)))
+   )
+  (none)
+  )
+
+;; definition for function arcing-shot-draw
+;; Used lq/sq
+(defbehavior arcing-shot-draw arcing-shot ()
+  (let ((gp-0 (new 'stack-no-clear 'vector))
+        (s5-0 (new 'stack-no-clear 'vector))
+        )
+   (set! (-> s5-0 quad) (-> self from quad))
+   (dotimes (s4-0 30)
+    (arcing-shot-calculate gp-0 (* 0.033333335 (the float (+ s4-0 1))))
+    (camera-line
+     gp-0
+     s5-0
+     (the-as
+      vector
+      (new 'static 'vector4w
+       :data
+       (new 'static 'array int32 4 #xff #xff 0 #x80)
+       )
+      )
+     )
+    (set! (-> s5-0 quad) (-> gp-0 quad))
+    )
+   )
+  #f
+  )
+
+;; failed to figure out what this is:
+(defstate arcing-shot-debug-trajectory (arcing-shot)
+  :trans
+  (behavior ()
+   (arcing-shot-setup (camera-pos) (-> self entity extra trans) 40960.0)
+   (arcing-shot-draw)
+   (none)
+   )
+  :code
+  (behavior ()
+   (while #t
+    (format *stdcon* "debug trajectory~%")
+    (suspend)
+    )
+   (none)
+   )
+  )
+
+;; definition of type darkecobomb
+(deftype darkecobomb (arcing-shot)
+  ((flight-time    int64  :offset-assert 224)
+   (countdown-time float  :offset-assert 232)
+   (anim-speed     float  :offset-assert 236)
+   (next-tick      float  :offset-assert 240)
+   )
+  :heap-base #x90
+  :method-count-assert 20
+  :size-assert         #xf4
+  :flag-assert         #x14009000f4
+  )
+
+;; definition for method 3 of type darkecobomb
+(defmethod inspect darkecobomb ((obj darkecobomb))
+  (let ((t9-0 (method-of-type arcing-shot inspect)))
+   (t9-0 obj)
+   )
+  (format #t "~T~Tflight-time: ~D~%" (-> obj flight-time))
+  (format #t "~T~Tcountdown-time: ~f~%" (-> obj countdown-time))
+  (format #t "~T~Tanim-speed: ~f~%" (-> obj anim-speed))
+  (format #t "~T~Tnext-tick: ~f~%" (-> obj next-tick))
+  obj
+  )
+
+;; failed to figure out what this is:
+(let
+  ((v1-8
+    (new 'static 'skeleton-group
+     :art-group-name "darkecobomb"
+     :bounds
+     (new 'static 'vector :y 14336.0 :w 24576.0)
+     :version #x6
+     )
+    )
+   )
+  (set! (-> v1-8 jgeo) 0)
+  (set! (-> v1-8 janim) 2)
+  (set! (-> v1-8 mgeo 0) (the-as uint 1))
+  (set! (-> v1-8 lod-dist 0) 4095996000.0)
+  (set! *darkecobomb-sg* v1-8)
+  )
+
+;; failed to figure out what this is:
+(defstate darkecobomb-explode (darkecobomb)
+  :code
+  (behavior ((arg0 symbol))
+   (let ((a1-0 (new 'stack-no-clear 'event-message-block)))
+    (set! (-> a1-0 from) self)
+    (set! (-> a1-0 num-params) 1)
+    (set! (-> a1-0 message) 'reset-pickup)
+    (set! (-> a1-0 param 0) (the-as uint 'eco))
+    (send-event-function *target* a1-0)
+    )
+   (sound-play-by-name
+    (static-sound-name "explod-bomb")
+    (new-sound-id)
+    1024
+    0
+    0
+    (the-as uint 1)
+    (the-as vector #f)
+    )
+   (activate! *camera-smush-control* 819.2 37 600 1.0 0.995)
+   (let ((a1-3 (new 'stack-no-clear 'event-message-block)))
+    (set! (-> a1-3 from) self)
+    (set! (-> a1-3 num-params) 1)
+    (set! (-> a1-3 message) 'flash)
+    (set! (-> a1-3 param 0) (the-as uint 255.0))
+    (send-event-function (ppointer->process (-> self parent)) a1-3)
+    )
+   (let ((s5-1 (get-process *default-dead-pool* part-tracker #x4000)))
+    (when s5-1
+     (let ((t9-6 (method-of-type part-tracker activate)))
+      (t9-6
+       (the-as part-tracker s5-1)
+       *entity-pool*
+       'part-tracker
+       (the-as pointer #x70004000)
+       )
+      )
+     (run-now-in-process
+      s5-1
+      part-tracker-init
+      (-> *part-group-id-table* 619)
+      900
+      #f
+      #f
+      #f
+      (-> self root trans)
+      )
+     (-> s5-1 ppointer)
+     )
+    )
+   (logior! (-> self draw status) 2)
+   (cond
+    ((or
+      arg0
+      (and
+       *target*
+       (< (-> (target-pos 0) y) (+ 40960.0 (-> self entity extra trans y)))
+       )
+      )
+     (if *target*
+      (logior! (-> *target* mask) (process-mask sleep))
+      )
+     (let ((a1-7 (new 'stack-no-clear 'event-message-block)))
+      (set! (-> a1-7 from) self)
+      (set! (-> a1-7 num-params) 0)
+      (set! (-> a1-7 message) 'bomb-going)
+      (send-event-function (ppointer->process (-> self parent)) a1-7)
+      )
+     (let ((a1-8 (new 'stack-no-clear 'event-message-block)))
+      (set! (-> a1-8 from) self)
+      (set! (-> a1-8 num-params) 1)
+      (set! (-> a1-8 message) 'change-to-entity-by-name)
+      (set! (-> a1-8 param 0) (the-as uint "camera-402"))
+      (send-event-function *camera* a1-8)
+      )
+     (set! (-> self state-time) (-> *display* base-frame-counter))
+     (until (>= (- (-> *display* base-frame-counter) (-> self state-time)) 600)
+      (suspend)
+      )
+     (let ((a1-9 (new 'stack-no-clear 'event-message-block)))
+      (set! (-> a1-9 from) self)
+      (set! (-> a1-9 num-params) 1)
+      (set! (-> a1-9 message) 'force-blend)
+      (set! (-> a1-9 param 0) (the-as uint 0))
+      (send-event-function *camera* a1-9)
+      )
+     (let ((a1-10 (new 'stack-no-clear 'event-message-block)))
+      (set! (-> a1-10 from) self)
+      (set! (-> a1-10 num-params) 1)
+      (set! (-> a1-10 message) 'change-state)
+      (set! (-> a1-10 param 0) (the-as uint *camera-base-mode*))
+      (send-event-function *camera* a1-10)
+      )
+     (let ((a1-11 (new 'stack-no-clear 'event-message-block)))
+      (set! (-> a1-11 from) self)
+      (set! (-> a1-11 num-params) 0)
+      (set! (-> a1-11 message) 'clear-entity)
+      (send-event-function *camera* a1-11)
+      )
+     (if *target*
+      (logclear! (-> *target* mask) (process-mask sleep))
+      )
+     (let ((a1-12 (new 'stack-no-clear 'event-message-block)))
+      (set! (-> a1-12 from) self)
+      (set! (-> a1-12 num-params) 2)
+      (set! (-> a1-12 message) 'attack-invinc)
+      (set! (-> a1-12 param 0) (the-as uint #f))
+      (let ((a0-21 (new 'static 'attack-info :mask #x20)))
+       (set! (-> a0-21 mode) 'instant-death)
+       (set! (-> a1-12 param 1) (the-as uint a0-21))
+       )
+      (send-event-function *target* a1-12)
+      )
+     )
+    (else
+     (let ((a1-13 (new 'stack-no-clear 'event-message-block)))
+      (set! (-> a1-13 from) self)
+      (set! (-> a1-13 num-params) 0)
+      (set! (-> a1-13 message) 'bomb-done)
+      (send-event-function (ppointer->process (-> self parent)) a1-13)
+      )
+     )
+    )
+   (deactivate self)
+   (none)
+   )
+  :post
+  (the-as (function none :behavior darkecobomb) ja-post)
+  )
+
+;; definition for function darkecobomb-handler
+;; INFO: Return type mismatch none vs object.
+(defbehavior
+  darkecobomb-handler darkecobomb
+  ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
+  (let ((v1-0 arg2))
+   (the-as object (if (or (= v1-0 'touch) (= v1-0 'attack))
+                   (go darkecobomb-explode #t)
+                   )
+    )
+   )
+  )
+
+;; definition for function darkecobomb-explode-if-player-high-enough
+(defbehavior darkecobomb-explode-if-player-high-enough darkecobomb ()
+  (if
+   (and
+    (not (movie?))
+    *target*
+    (< (+ 409600.0 (-> self entity extra trans y)) (-> (target-pos 0) y))
+    )
+   (go darkecobomb-explode #f)
+   )
+  (none)
+  )
+
+;; failed to figure out what this is:
+(defstate darkecobomb-countdown (darkecobomb)
+  :event
+  darkecobomb-handler
+  :enter
+  (behavior ()
+   (set! (-> self state-time) (-> *display* game-frame-counter))
+   (set! (-> self next-tick) 0.9)
+   (none)
+   )
+  :exit
+  (behavior ()
+   (stop! (-> self sound))
+   (none)
+   )
+  :trans
+  (behavior ()
+   (darkecobomb-explode-if-player-high-enough)
+   (let
+    ((f0-1
+      (fmax
+       0.0
+       (/
+        (-
+         (-> self countdown-time)
+         (the float (- (-> *display* game-frame-counter) (-> self state-time)))
+         )
+        (-> self countdown-time)
+        )
+       )
+      )
+     )
+    (let ((f1-5 (* (- 1.0 f0-1) (- 1.0 f0-1))))
+     (set! (-> self anim-speed) (+ 1.0 f1-5))
+     )
+    (when (< (cos (* 16384.0 (- 1.0 f0-1))) (-> self next-tick))
+     (let ((gp-0 (get-process *default-dead-pool* part-tracker #x4000)))
+      (when gp-0
+       (let ((t9-3 (method-of-type part-tracker activate)))
+        (t9-3
+         (the-as part-tracker gp-0)
+         *entity-pool*
+         'part-tracker
+         (the-as pointer #x70004000)
+         )
+        )
+       (run-now-in-process
+        gp-0
+        part-tracker-init
+        (-> *part-group-id-table* 663)
+        150
+        #f
+        #f
+        #f
+        (-> self root trans)
+        )
+       (-> gp-0 ppointer)
+       )
+      )
+     (set! (-> self next-tick) (+ -0.06 (-> self next-tick)))
+     (sound-play-by-name
+      (static-sound-name "robo-warning")
+      (new-sound-id)
+      1024
+      0
+      0
+      (the-as uint 1)
+      (the-as vector #t)
+      )
+     )
+    )
+   (if
+    (>=
+     (- (-> *display* game-frame-counter) (-> self state-time))
+     (the int (-> self countdown-time))
+     )
+    (go darkecobomb-explode #f)
+    )
+   (when (= (if (> (-> self skel active-channels) 0)
+             (-> self skel root-channel 0 frame-group)
+             )
+          (-> self draw art-group data 5)
+          )
+    (let ((gp-2 (new 'stack-no-clear 'vector)))
+     (vector<-cspace! gp-2 (-> self node-list data 5))
+     (spawn (-> self part) gp-2)
+     )
+    )
+   (none)
+   )
+  :code
+  (behavior ()
+   (sound-play-by-name
+    (static-sound-name "bomb-open")
+    (new-sound-id)
+    1024
+    0
+    0
+    (the-as uint 1)
+    (the-as vector #t)
+    )
+   (let ((a0-2 (-> self skel root-channel 0)))
+    (set!
+     (-> a0-2 frame-group)
+     (the-as art-joint-anim (-> self draw art-group data 4))
+     )
+    (set!
+     (-> a0-2 param 0)
+     (the
+      float
+      (+
+       (->
+        (the-as art-joint-anim (-> self draw art-group data 4))
+        data
+        0
+        length
+        )
+       -1
+       )
+      )
+     )
+    (set! (-> a0-2 param 1) 1.0)
+    (set! (-> a0-2 frame-num) 0.0)
+    (joint-control-channel-group!
+     a0-2
+     (the-as art-joint-anim (-> self draw art-group data 4))
+     num-func-seek!
+     )
+    )
+   (until (ja-done? 0)
+    (suspend)
+    (let ((a0-3 (-> self skel root-channel 0)))
+     (set!
+      (-> a0-3 param 0)
+      (the float (+ (-> a0-3 frame-group data 0 length) -1))
+      )
+     (set! (-> a0-3 param 1) 1.0)
+     (joint-control-channel-group-eval!
+      a0-3
+      (the-as art-joint-anim #f)
+      num-func-seek!
+      )
+     )
+    )
+   (while #t
+    (let ((a0-5 (-> self skel root-channel 0)))
+     (set!
+      (-> a0-5 frame-group)
+      (the-as art-joint-anim (-> self draw art-group data 5))
+      )
+     (set!
+      (-> a0-5 param 0)
+      (the
+       float
+       (+
+        (->
+         (the-as art-joint-anim (-> self draw art-group data 5))
+         data
+         0
+         length
+         )
+        -1
+        )
+       )
+      )
+     (set! (-> a0-5 param 1) (-> self anim-speed))
+     (set! (-> a0-5 frame-num) 0.0)
+     (joint-control-channel-group!
+      a0-5
+      (the-as art-joint-anim (-> self draw art-group data 5))
+      num-func-seek!
+      )
+     )
+    (until (ja-done? 0)
+     (update! (-> self sound))
+     (suspend)
+     (let ((a0-7 (-> self skel root-channel 0)))
+      (set!
+       (-> a0-7 param 0)
+       (the float (+ (-> a0-7 frame-group data 0 length) -1))
+       )
+      (set! (-> a0-7 param 1) (-> self anim-speed))
+      (joint-control-channel-group-eval!
+       a0-7
+       (the-as art-joint-anim #f)
+       num-func-seek!
+       )
+      )
+     )
+    )
+   (none)
+   )
+  :post
+  (the-as (function none :behavior darkecobomb) transform-post)
+  )
+
+;; failed to figure out what this is:
+(defstate darkecobomb-land (darkecobomb)
+  :event
+  darkecobomb-handler
+  :enter
+  (behavior ()
+   (set! (-> self state-time) (-> *display* game-frame-counter))
+   0
+   (none)
+   )
+  :trans
+  (behavior ()
+   (darkecobomb-explode-if-player-high-enough)
+   (if (>= (- (-> *display* game-frame-counter) (-> self state-time)) 150)
+    (go darkecobomb-countdown)
+    )
+   (none)
+   )
+  :code
+  (behavior ()
+   (let ((a0-0 (-> self skel root-channel 0)))
+    (set!
+     (-> a0-0 param 0)
+     (the float (+ (-> a0-0 frame-group data 0 length) -1))
+     )
+    (set! (-> a0-0 param 1) 1.0)
+    (joint-control-channel-group!
+     a0-0
+     (the-as art-joint-anim #f)
+     num-func-seek!
+     )
+    )
+   (while (not (ja-done? 0))
+    (suspend)
+    (ja-eval)
+    )
+   (while #t
+    (let ((a0-2 (-> self skel root-channel 0)))
+     (set!
+      (-> a0-2 frame-group)
+      (the-as art-joint-anim (-> self draw art-group data 2))
+      )
+     (set!
+      (-> a0-2 param 0)
+      (the
+       float
+       (+
+        (->
+         (the-as art-joint-anim (-> self draw art-group data 2))
+         data
+         0
+         length
+         )
+        -1
+        )
+       )
+      )
+     (set! (-> a0-2 param 1) 1.0)
+     (set! (-> a0-2 frame-num) 0.0)
+     (joint-control-channel-group!
+      a0-2
+      (the-as art-joint-anim (-> self draw art-group data 2))
+      num-func-seek!
+      )
+     )
+    (until (ja-done? 0)
+     (suspend)
+     (let ((a0-3 (-> self skel root-channel 0)))
+      (set!
+       (-> a0-3 param 0)
+       (the float (+ (-> a0-3 frame-group data 0 length) -1))
+       )
+      (set! (-> a0-3 param 1) 1.0)
+      (joint-control-channel-group-eval!
+       a0-3
+       (the-as art-joint-anim #f)
+       num-func-seek!
+       )
+      )
+     )
+    )
+   (none)
+   )
+  :post
+  (the-as (function none :behavior darkecobomb) transform-post)
+  )
+
+;; failed to figure out what this is:
+(defstate darkecobomb-idle (darkecobomb)
+  :enter
+  (behavior ()
+   (set! (-> self state-time) (-> *display* game-frame-counter))
+   (none)
+   )
+  :trans
+  (behavior ()
+   (arcing-shot-calculate
+    (-> self root trans)
+    (/
+     (the float (- (-> *display* game-frame-counter) (-> self state-time)))
+     (the float (-> self flight-time))
+     )
+    )
+   (if
+    (>=
+     (- (-> *display* game-frame-counter) (-> self state-time))
+     (-> self flight-time)
+     )
+    (go darkecobomb-land)
+    )
+   (none)
+   )
+  :code
+  (behavior ()
+   (let ((a0-0 (-> self skel root-channel 0)))
+    (set!
+     (-> a0-0 frame-group)
+     (the-as art-joint-anim (-> self draw art-group data 3))
+     )
+    (set!
+     (-> a0-0 param 0)
+     (the
+      float
+      (+
+       (->
+        (the-as art-joint-anim (-> self draw art-group data 3))
+        data
+        0
+        length
+        )
+       -1
+       )
+      )
+     )
+    (set! (-> a0-0 param 1) 1.0)
+    (set! (-> a0-0 frame-num) 0.0)
+    (joint-control-channel-group!
+     a0-0
+     (the-as art-joint-anim (-> self draw art-group data 3))
+     num-func-seek!
+     )
+    )
+   (until (ja-done? 0)
+    (suspend)
+    (let ((a0-1 (-> self skel root-channel 0)))
+     (set!
+      (-> a0-1 param 0)
+      (the float (+ (-> a0-1 frame-group data 0 length) -1))
+      )
+     (set! (-> a0-1 param 1) 1.0)
+     (joint-control-channel-group-eval!
+      a0-1
+      (the-as art-joint-anim #f)
+      num-func-seek!
+      )
+     )
+    )
+   (while #t
+    (let ((a0-3 (-> self skel root-channel 0)))
+     (set!
+      (-> a0-3 frame-group)
+      (the-as art-joint-anim (-> self draw art-group data 2))
+      )
+     (set!
+      (-> a0-3 param 0)
+      (the
+       float
+       (+
+        (->
+         (the-as art-joint-anim (-> self draw art-group data 2))
+         data
+         0
+         length
+         )
+        -1
+        )
+       )
+      )
+     (set! (-> a0-3 param 1) 1.0)
+     (set! (-> a0-3 frame-num) 0.0)
+     (joint-control-channel-group!
+      a0-3
+      (the-as art-joint-anim (-> self draw art-group data 2))
+      num-func-seek!
+      )
+     )
+    (until (ja-done? 0)
+     (suspend)
+     (let ((a0-4 (-> self skel root-channel 0)))
+      (set!
+       (-> a0-4 param 0)
+       (the float (+ (-> a0-4 frame-group data 0 length) -1))
+       )
+      (set! (-> a0-4 param 1) 1.0)
+      (joint-control-channel-group-eval!
+       a0-4
+       (the-as art-joint-anim #f)
+       num-func-seek!
+       )
+      )
+     )
+    )
+   (none)
+   )
+  :post
+  (the-as (function none :behavior darkecobomb) transform-post)
+  )
+
+;; definition for function darkecobomb-init-by-other
+;; Used lq/sq
+(defbehavior
+  darkecobomb-init-by-other darkecobomb
+  ((arg0 vector) (arg1 vector) (arg2 float) (arg3 int) (arg4 float))
+  (let
+   ((s1-0
+     (new
+      'process
+      'collide-shape-moving
+      self
+      (collide-list-enum usually-hit-by-player)
+      )
+     )
+    )
+   (set! (-> s1-0 dynam) (copy *standard-dynamics* 'process))
+   (set! (-> s1-0 reaction) default-collision-reaction)
+   (set! (-> s1-0 no-reaction) nothing)
+   (let ((s0-0 (new 'process 'collide-shape-prim-sphere s1-0 (the-as uint 0))))
+    (set! (-> s0-0 prim-core collide-as) (the-as uint 512))
+    (set! (-> s0-0 collide-with) (the-as uint 16))
+    (set! (-> s0-0 prim-core action) (the-as uint 1))
+    (set! (-> s0-0 prim-core offense) 4)
+    (set! (-> s0-0 transform-index) 3)
+    (set-vector! (-> s0-0 local-sphere) 0.0 0.0 0.0 16384.0)
+    )
+   (dummy-46 s1-0)
+   (set! (-> s1-0 nav-radius) (* 0.75 (-> s1-0 root-prim local-sphere w)))
+   (dummy-50 s1-0)
+   (set! (-> self root) s1-0)
+   )
+  (set! (-> self root trans quad) (-> arg0 quad))
+  (dummy-14 self *darkecobomb-sg* '())
+  (logclear! (-> self mask) (process-mask actor-pause))
+  (set!
+   (-> self part)
+   (create-launch-control (-> *part-group-id-table* 639) self)
+   )
+  (arcing-shot-setup arg0 arg1 arg2)
+  (set! (-> self countdown-time) arg4)
+  (set! (-> self flight-time) arg3)
+  (set!
+   (-> self sound)
+   (new
+    'process
+    'ambient-sound
+    (new 'static 'sound-spec
+     :mask #x80
+     :num 1.0
+     :group #x1
+     :sound-name
+     (new 'static 'sound-name :lo #x6970732d626d6f62)
+     :volume #x400
+     :fo-max 80
+     )
+    (-> self to)
+    )
+   )
+  (go darkecobomb-idle)
+  (none)
+  )
+
+;; definition of type greenshot
+(deftype greenshot (arcing-shot)
+  ((flight-time int64  :offset-assert 224)
+   )
+  :heap-base #x80
+  :method-count-assert 20
+  :size-assert         #xe8
+  :flag-assert         #x14008000e8
+  )
+
+;; definition for method 3 of type greenshot
+(defmethod inspect greenshot ((obj greenshot))
+  (let ((t9-0 (method-of-type arcing-shot inspect)))
+   (t9-0 obj)
+   )
+  (format #t "~T~Tflight-time: ~D~%" (-> obj flight-time))
+  obj
+  )
+
+;; failed to figure out what this is:
+(let
+  ((v1-17
+    (new 'static 'skeleton-group
+     :art-group-name "greenshot"
+     :bounds (new 'static 'vector :w 16384.0)
+     :version #x6
+     )
+    )
+   )
+  (set! (-> v1-17 jgeo) 0)
+  (set! (-> v1-17 janim) 2)
+  (set! (-> v1-17 mgeo 0) (the-as uint 1))
+  (set! (-> v1-17 lod-dist 0) 4095996000.0)
+  (set! *greenshot-sg* v1-17)
+  )
+
+;; failed to figure out what this is:
+(defstate greenshot-idle (greenshot)
+  :enter
+  (behavior ()
+   (set! (-> self state-time) (-> *display* game-frame-counter))
+   (none)
+   )
+  :trans
+  (behavior ()
+   (arcing-shot-calculate
+    (-> self root trans)
+    (/
+     (the float (- (-> *display* game-frame-counter) (-> self state-time)))
+     (the float (-> self flight-time))
+     )
+    )
+   (if
+    (>=
+     (- (-> *display* game-frame-counter) (-> self state-time))
+     (-> self flight-time)
+     )
+    (deactivate self)
+    )
+   (spawn (-> self part) (-> self root trans))
+   (none)
+   )
+  :code
+  (behavior ()
+   (while #t
+    (let ((a0-0 (-> self skel root-channel 0)))
+     (set! (-> a0-0 frame-group) (if (> (-> self skel active-channels) 0)
+                                  (-> self skel root-channel 0 frame-group)
+                                  )
+      )
+     (set!
+      (-> a0-0 param 0)
+      (the float (+ (-> (if (> (-> self skel active-channels) 0)
+                         (-> self skel root-channel 0 frame-group)
+                         )
+                     data
+                     0
+                     length
+                     )
+                  -1
+                  )
+       )
+      )
+     (set! (-> a0-0 param 1) 1.0)
+     (set! (-> a0-0 frame-num) 0.0)
+     (joint-control-channel-group! a0-0 (if (> (-> self skel active-channels) 0)
+                                         (->
+                                          self
+                                          skel
+                                          root-channel
+                                          0
+                                          frame-group
+                                          )
+                                         )
+      num-func-seek!
+      )
+     )
+    (until (ja-done? 0)
+     (suspend)
+     (let ((a0-1 (-> self skel root-channel 0)))
+      (set!
+       (-> a0-1 param 0)
+       (the float (+ (-> a0-1 frame-group data 0 length) -1))
+       )
+      (set! (-> a0-1 param 1) 1.0)
+      (joint-control-channel-group-eval!
+       a0-1
+       (the-as art-joint-anim #f)
+       num-func-seek!
+       )
+      )
+     )
+    )
+   (none)
+   )
+  :post
+  (the-as (function none :behavior greenshot) transform-post)
+  )
+
+;; definition for function greenshot-init-by-other
+;; Used lq/sq
+(defbehavior
+  greenshot-init-by-other greenshot
+  ((arg0 vector) (arg1 vector) (arg2 float) (arg3 uint))
+  (let
+   ((s2-0
+     (new
+      'process
+      'collide-shape-moving
+      self
+      (collide-list-enum usually-hit-by-player)
+      )
+     )
+    )
+   (set! (-> s2-0 dynam) (copy *standard-dynamics* 'process))
+   (set! (-> s2-0 reaction) default-collision-reaction)
+   (set! (-> s2-0 no-reaction) nothing)
+   (let ((s1-0 (new 'process 'collide-shape-prim-sphere s2-0 (the-as uint 0))))
+    (set! (-> s1-0 prim-core collide-as) (the-as uint 256))
+    (set! (-> s1-0 collide-with) (the-as uint 16))
+    (set! (-> s1-0 prim-core offense) 4)
+    (set-vector! (-> s1-0 local-sphere) 0.0 8192.0 0.0 8192.0)
+    )
+   (dummy-46 s2-0)
+   (set! (-> s2-0 nav-radius) (* 0.75 (-> s2-0 root-prim local-sphere w)))
+   (dummy-50 s2-0)
+   (set! (-> self root) s2-0)
+   )
+  (set! (-> self root trans quad) (-> arg0 quad))
+  (dummy-14 self *greenshot-sg* '())
+  (logclear! (-> self mask) (process-mask actor-pause))
+  (arcing-shot-setup arg0 arg1 arg2)
+  (set! (-> self flight-time) (the-as int arg3))
+  (set!
+   (-> self part)
+   (create-launch-control (-> *part-group-id-table* 664) self)
+   )
+  (logior! (-> self draw status) 2)
+  (go greenshot-idle)
+  (none)
+  )
+
+;; definition of type redshot
+(deftype redshot (arcing-shot)
+  ((flight-time     int64                            :offset-assert 224)
+   (stall-time      int64                            :offset-assert 232)
+   (ring            torus                    :inline :offset-assert 240)
+   (rotation-offset int64                            :offset-assert 280)
+   (part-track      handle                           :offset-assert 288)
+   (shot-particle   sparticle-launch-control         :offset-assert 296)
+   (test-particle   sparticle-launch-control         :offset-assert 300)
+   )
+  :heap-base #xc0
+  :method-count-assert 20
+  :size-assert         #x130
+  :flag-assert         #x1400c00130
+  )
+
+;; definition for method 3 of type redshot
+(defmethod inspect redshot ((obj redshot))
+  (let ((t9-0 (method-of-type arcing-shot inspect)))
+   (t9-0 obj)
+   )
+  (format #t "~T~Tflight-time: ~D~%" (-> obj flight-time))
+  (format #t "~T~Tstall-time: ~D~%" (-> obj stall-time))
+  (format #t "~T~Tring: #<torus @ #x~X>~%" (-> obj ring))
+  (format #t "~T~Trotation-offset: ~D~%" (-> obj rotation-offset))
+  (format #t "~T~Tpart-track: ~D~%" (-> obj part-track))
+  (format #t "~T~Tshot-particle: ~A~%" (-> obj shot-particle))
+  (format #t "~T~Ttest-particle: ~A~%" (-> obj test-particle))
+  obj
+  )
+
+;; definition for method 7 of type redshot
+;; INFO: Return type mismatch arcing-shot vs redshot.
+(defmethod relocate redshot ((obj redshot) (arg0 int))
+  (if (nonzero? (-> obj shot-particle))
+   (&+! (-> obj shot-particle) arg0)
+   )
+  (if (nonzero? (-> obj test-particle))
+   (&+! (-> obj test-particle) arg0)
+   )
+  (the-as redshot ((method-of-type arcing-shot relocate) obj arg0))
+  )
+
+;; definition for method 10 of type redshot
+(defmethod deactivate redshot ((obj redshot))
+  (if (nonzero? (-> obj shot-particle))
+   (kill-and-free-particles (-> obj shot-particle))
+   )
+  (if (nonzero? (-> obj test-particle))
+   (kill-and-free-particles (-> obj test-particle))
+   )
+  ((method-of-type arcing-shot deactivate) obj)
+  (none)
+  )
+
+;; definition for function redshot-particle-callback
+;; INFO: Return type mismatch int vs none.
+(defun redshot-particle-callback ((arg0 part-tracker))
+  (let ((v1-0 (the-as object (-> arg0 userdata))))
+   (set!
+    (-> *part-id-table* 2626 init-specs 2 initial-valuef)
+    (* 2.25 (-> (the-as (pointer redshot) v1-0) 0 ring radius-primary))
+    )
+   )
+  0
+  (none)
+  )
+
+;; failed to figure out what this is:
+(let
+  ((v1-22
+    (new 'static 'skeleton-group
+     :art-group-name "redring"
+     :bounds (new 'static 'vector :w 163840.0)
+     :version #x6
+     )
+    )
+   )
+  (set! (-> v1-22 jgeo) 0)
+  (set! (-> v1-22 janim) 2)
+  (set! (-> v1-22 mgeo 0) (the-as uint 1))
+  (set! (-> v1-22 lod-dist 0) 4095996000.0)
+  (set! *redring-sg* v1-22)
+  )
+
+;; definition for function redshot-trans
+(defbehavior redshot-trans redshot ((arg0 int))
+  (let ((s5-0 (new 'stack-no-clear 'matrix)))
+   0.0
+   (matrix-rotate-yx!
+    s5-0
+    (*
+     436.90668
+     (the float (+ (-> self rotation-offset) (-> *display* game-frame-counter)))
+     )
+    (*
+     291.27112
+     (the float (+ (-> self rotation-offset) (-> *display* game-frame-counter)))
+     )
+    )
+   (matrix->quaternion (-> self root quat) s5-0)
+   )
+  (if (< (* 0.006666667 (the float (min 150 arg0))) 1.0)
+   (spawn (-> self part) (-> self root trans))
+   )
+  )
+
+;; failed to figure out what this is:
+(defstate redshot-explode (redshot)
+  :enter
+  (behavior ()
+   (set! (-> self state-time) (-> *display* game-frame-counter))
+   (sound-play-by-name
+    (static-sound-name "red-explode")
+    (new-sound-id)
+    1024
+    0
+    0
+    (the-as uint 1)
+    (the-as vector #t)
+    )
+   (set! (-> self draw status) (logand -3 (-> self draw status)))
+   (quaternion-identity! (-> self root quat))
+   (set! (-> self ring radius-secondary) 3072.0)
+   (set! (-> self ring origin quad) (-> self root trans quad))
+   (+! (-> self ring origin y) (-> self ring radius-secondary))
+   (set-vector! (-> self ring axis) 0.0 1.0 0.0 1.0)
+   (let ((gp-1 (get-process *default-dead-pool* part-tracker #x4000)))
+    (set! (-> self part-track) (ppointer->handle (when gp-1
+                                                  (let
+                                                   ((t9-4
+                                                     (method-of-type
+                                                      part-tracker
+                                                      activate
+                                                      )
+                                                     )
+                                                    )
+                                                   (t9-4
+                                                    (the-as part-tracker gp-1)
+                                                    self
+                                                    'part-tracker
+                                                    (the-as pointer #x70004000)
+                                                    )
+                                                   )
+                                                  (run-now-in-process
+                                                   gp-1
+                                                   part-tracker-init
+                                                   (->
+                                                    *part-group-id-table*
+                                                    648
+                                                    )
+                                                   -1
+                                                   redshot-particle-callback
+                                                   (-> self ppointer)
+                                                   #f
+                                                   (-> self root trans)
+                                                   )
+                                                  (-> gp-1 ppointer)
+                                                  )
+                                )
+     )
+    )
+   (none)
+   )
+  :trans
+  (behavior ()
+   (set!
+    (-> self ring radius-primary)
+    (*
+     204.8
+     (the float (- (-> *display* game-frame-counter) (-> self state-time)))
+     )
+    )
+   (let ((gp-0 (new 'stack-no-clear 'vector)))
+    (when (dummy-11 (-> self ring) gp-0)
+     (vector-normalize! gp-0 16384.0)
+     (let ((a1-2 (new 'stack-no-clear 'event-message-block)))
+      (set! (-> a1-2 from) self)
+      (set! (-> a1-2 num-params) 2)
+      (set! (-> a1-2 message) 'attack)
+      (set! (-> a1-2 param 0) (the-as uint #f))
+      (let ((v1-8 (new 'static 'attack-info :mask #x2)))
+       (set! (-> v1-8 vector quad) (-> gp-0 quad))
+       (set! (-> a1-2 param 1) (the-as uint v1-8))
+       )
+      (send-event-function *target* a1-2)
+      )
+     (let ((a1-3 (new 'stack-no-clear 'event-message-block)))
+      (set! (-> a1-3 from) self)
+      (set! (-> a1-3 num-params) 0)
+      (set! (-> a1-3 message) 'hit-jak)
+      (send-event-function (ppointer->process (-> self parent)) a1-3)
+      )
+     )
+    )
+   (dotimes (gp-1 5)
+    (let ((s5-0 (new 'stack-no-clear 'vector)))
+     (dummy-12 (-> self ring) s5-0)
+     (spawn (-> self test-particle) s5-0)
+     )
+    )
+   (let
+    ((f0-3
+      (fmin
+       1.0
+       (*
+        0.006666667
+        (the
+         float
+         (- 600 (- (-> *display* game-frame-counter) (-> self state-time)))
+         )
+        )
+       )
+      )
+     )
+    (set-vector! (-> self draw color-mult) f0-3 f0-3 f0-3 0.75)
+    )
+   (when (>= (- (-> *display* game-frame-counter) (-> self state-time)) 600)
+    (let ((a1-7 (new 'stack-no-clear 'event-message-block)))
+     (set! (-> a1-7 from) self)
+     (set! (-> a1-7 num-params) 0)
+     (set! (-> a1-7 message) 'missed-jak)
+     (send-event-function (ppointer->process (-> self parent)) a1-7)
+     )
+    (deactivate self)
+    )
+   (none)
+   )
+  :code
+  (behavior ()
+   (while #t
+    (let ((v1-2 (-> self skel root-channel 0)))
+     (set! (-> v1-2 num-func) num-func-identity)
+     (set! (-> v1-2 frame-num) (* 0.000016276043 (-> self ring radius-primary)))
+     )
+    (suspend)
+    )
+   (none)
+   )
+  :post
+  (the-as (function none :behavior redshot) transform-post)
+  )
+
+;; definition for function redshot-handler
+;; INFO: Return type mismatch none vs object.
+(defbehavior
+  redshot-handler redshot
+  ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
+  (let ((v1-0 arg2))
+   (the-as object (if (or (= v1-0 'attack) (= v1-0 'touch))
+                   (go redshot-explode)
+                   )
+    )
+   )
+  )
+
+;; failed to figure out what this is:
+(defstate redshot-wait (redshot)
+  :event
+  redshot-handler
+  :enter
+  (behavior ()
+   (set! (-> self state-time) (-> *display* game-frame-counter))
+   (none)
+   )
+  :trans
+  (behavior ()
+   (redshot-trans
+    (-
+     (-> self stall-time)
+     (- (-> *display* game-frame-counter) (-> self state-time))
+     )
+    )
+   (if
+    (>=
+     (- (-> *display* game-frame-counter) (-> self state-time))
+     (-> self stall-time)
+     )
+    (go redshot-explode)
+    )
+   (spawn (-> self shot-particle) (-> self root trans))
+   (none)
+   )
+  :code
+  (behavior ()
+   (while #t
+    (suspend)
+    )
+   (none)
+   )
+  :post
+  (the-as (function none :behavior redshot) transform-post)
+  )
+
+;; failed to figure out what this is:
+(defstate redshot-idle (redshot)
+  :event
+  redshot-handler
+  :enter
+  (behavior ()
+   (set! (-> self state-time) (-> *display* game-frame-counter))
+   (none)
+   )
+  :trans
+  (behavior ()
+   (redshot-trans 1500)
+   (arcing-shot-calculate
+    (-> self root trans)
+    (/
+     (the float (- (-> *display* game-frame-counter) (-> self state-time)))
+     (the float (-> self flight-time))
+     )
+    )
+   (if
+    (>=
+     (- (-> *display* game-frame-counter) (-> self state-time))
+     (-> self flight-time)
+     )
+    (go redshot-wait)
+    )
+   (spawn (-> self shot-particle) (-> self root trans))
+   (none)
+   )
+  :code
+  (behavior ()
+   (while #t
+    (suspend)
+    )
+   (none)
+   )
+  :post
+  (the-as (function none :behavior redshot) transform-post)
+  )
+
+;; definition for function redshot-init-by-other
+;; Used lq/sq
+(defbehavior
+  redshot-init-by-other redshot
+  ((arg0 vector) (arg1 vector) (arg2 float) (arg3 int) (arg4 int) (arg5 int))
+  (local-vars (sv-16 collide-shape-prim-sphere))
+  (let
+   ((s0-0
+     (new
+      'process
+      'collide-shape-moving
+      self
+      (collide-list-enum usually-hit-by-player)
+      )
+     )
+    )
+   (set! (-> s0-0 dynam) (copy *standard-dynamics* 'process))
+   (set! (-> s0-0 reaction) default-collision-reaction)
+   (set! (-> s0-0 no-reaction) nothing)
+   (set! sv-16 (new 'process 'collide-shape-prim-sphere s0-0 (the-as uint 0)))
+   (set! (-> sv-16 prim-core collide-as) (the-as uint 512))
+   (set! (-> sv-16 collide-with) (the-as uint 16))
+   (set! (-> sv-16 prim-core action) (the-as uint 1))
+   (set! (-> sv-16 prim-core offense) 4)
+   (set! (-> sv-16 transform-index) 4)
+   (set-vector! (-> sv-16 local-sphere) 0.0 0.0 0.0 12288.0)
+   (let* ((a0-9 s0-0)
+          (t9-3 (method-of-object a0-9 dummy-46))
+          )
+    sv-16
+    (t9-3 a0-9)
+    )
+   (set! (-> s0-0 nav-radius) (* 0.75 (-> s0-0 root-prim local-sphere w)))
+   (dummy-50 s0-0)
+   (set! (-> self root) s0-0)
+   )
+  (set! (-> self root trans quad) (-> arg0 quad))
+  (dummy-14 self *redring-sg* '())
+  (logclear! (-> self mask) (process-mask actor-pause))
+  (arcing-shot-setup arg0 arg1 arg2)
+  (set! (-> self flight-time) arg3)
+  (set! (-> self stall-time) arg4)
+  (set! (-> self rotation-offset) arg5)
+  (set!
+   (-> self part)
+   (create-launch-control (-> *part-group-id-table* 647) self)
+   )
+  (set!
+   (-> self shot-particle)
+   (create-launch-control (-> *part-group-id-table* 665) self)
+   )
+  (set!
+   (-> self test-particle)
+   (create-launch-control (-> *part-group-id-table* 679) self)
+   )
+  (logior! (-> self draw status) 2)
+  (set!
+   (-> self sound)
+   (new
+    'process
+    'ambient-sound
+    (new 'static 'sound-spec
+     :mask #x80
+     :num 1.0
+     :group #x1
+     :sound-name
+     (new 'static 'sound-name :lo #x657269662d646572)
+     :volume #x400
+     :fo-max 80
+     )
+    (-> self root trans)
+    )
+   )
+  (go redshot-idle)
+  (none)
+  )
+
+;; definition of type yellowshot
+(deftype yellowshot (arcing-shot)
+  ((flight-time int64  :offset-assert 224)
+   )
+  :heap-base #x80
+  :method-count-assert 20
+  :size-assert         #xe8
+  :flag-assert         #x14008000e8
+  )
+
+;; definition for method 3 of type yellowshot
+(defmethod inspect yellowshot ((obj yellowshot))
+  (let ((t9-0 (method-of-type arcing-shot inspect)))
+   (t9-0 obj)
+   )
+  (format #t "~T~Tflight-time: ~D~%" (-> obj flight-time))
+  obj
+  )
+
+;; failed to figure out what this is:
+(defstate yellowshot-idle (yellowshot)
+  :event
+  (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
+   (case arg2 
+    (('touch 'attack)
+      (when (= (-> arg0 type) target)
+       (let ((a1-3 (new 'stack-no-clear 'event-message-block)))
+        (set! (-> a1-3 from) self)
+        (set! (-> a1-3 num-params) 2)
+        (set! (-> a1-3 message) 'attack)
+        (set! (-> a1-3 param 0) (-> arg3 param 0))
+        (let ((a0-2 (new 'static 'attack-info :mask #x20)))
+         (set! (-> a0-2 mode) 'generic)
+         (set! (-> a1-3 param 1) (the-as uint a0-2))
+         )
+        (send-event-function *target* a1-3)
+        )
+       (let ((a1-4 (new 'stack-no-clear 'event-message-block)))
+        (set! (-> a1-4 from) self)
+        (set! (-> a1-4 num-params) 0)
+        (set! (-> a1-4 message) 'hit-jak)
+        (send-event-function (ppointer->process (-> self parent)) a1-4)
+        )
+       )
+      )
+    )
+   )
+  :enter
+  (behavior ()
+   (set! (-> self state-time) (-> *display* game-frame-counter))
+   (none)
+   )
+  :trans
+  (behavior ()
+   (arcing-shot-calculate
+    (-> self root trans)
+    (/
+     (the float (- (-> *display* game-frame-counter) (-> self state-time)))
+     (the float (-> self flight-time))
+     )
+    )
+   (spawn (-> self part) (-> self root trans))
+   (when
+    (>=
+     (- (-> *display* game-frame-counter) (-> self state-time))
+     (-> self flight-time)
+     )
+    (let ((a1-3 (new 'stack-no-clear 'event-message-block)))
+     (set! (-> a1-3 from) self)
+     (set! (-> a1-3 num-params) 0)
+     (set! (-> a1-3 message) 'missed-jak)
+     (send-event-function (ppointer->process (-> self parent)) a1-3)
+     )
+    (deactivate self)
+    )
+   (none)
+   )
+  :code
+  (behavior ()
+   (while #t
+    (suspend)
+    )
+   (none)
+   )
+  :post
+  (the-as (function none :behavior yellowshot) transform-post)
+  )
+
+;; definition for function yellowshot-init-by-other
+;; Used lq/sq
+(defbehavior
+  yellowshot-init-by-other yellowshot
+  ((arg0 vector) (arg1 vector) (arg2 float) (arg3 uint))
+  (let
+   ((s2-0
+     (new
+      'process
+      'collide-shape-moving
+      self
+      (collide-list-enum usually-hit-by-player)
+      )
+     )
+    )
+   (set! (-> s2-0 dynam) (copy *standard-dynamics* 'process))
+   (set! (-> s2-0 reaction) default-collision-reaction)
+   (set! (-> s2-0 no-reaction) nothing)
+   (let ((s1-0 (new 'process 'collide-shape-prim-sphere s2-0 (the-as uint 0))))
+    (set! (-> s1-0 prim-core collide-as) (the-as uint 512))
+    (set! (-> s1-0 collide-with) (the-as uint 16))
+    (set! (-> s1-0 prim-core action) (the-as uint 1))
+    (set! (-> s1-0 prim-core offense) 4)
+    (set-vector! (-> s1-0 local-sphere) 0.0 0.0 0.0 12288.0)
+    )
+   (dummy-46 s2-0)
+   (set! (-> s2-0 nav-radius) (* 0.75 (-> s2-0 root-prim local-sphere w)))
+   (dummy-50 s2-0)
+   (set! (-> self root) s2-0)
+   )
+  (set! (-> self root trans quad) (-> arg0 quad))
+  (dummy-14 self *redring-sg* '())
+  (logior! (-> self draw status) 2)
+  (arcing-shot-setup arg0 arg1 arg2)
+  (set! (-> self flight-time) (the-as int arg3))
+  (set!
+   (-> self part)
+   (create-launch-control (-> *part-group-id-table* 652) self)
+   )
+  (go yellowshot-idle)
+  (none)
+  )

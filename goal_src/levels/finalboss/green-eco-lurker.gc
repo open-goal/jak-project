@@ -5,3 +5,1356 @@
 ;; name in dgo: green-eco-lurker
 ;; dgos: FIN, L1
 
+(define-extern *green-eco-lurker-sg* skeleton-group)
+
+;; DECOMP BEGINS
+
+(deftype green-eco-lurker (nav-enemy)
+  ((played-sound? symbol             :offset-assert 400)
+   (sound-delay   int32              :offset-assert 404)
+   (appear-dest   vector     :inline :offset-assert 416)
+   (traj          trajectory :inline :offset-assert 432)
+   )
+  :heap-base #x170
+  :method-count-assert 76
+  :size-assert         #x1d8
+  :flag-assert         #x4c017001d8
+  (:states
+    green-eco-lurker-appear
+    green-eco-lurker-appear-land
+    )
+  )
+
+
+(deftype green-eco-lurker-gen (process-drawable)
+  ((num-to-spawn int32  :offset-assert 176)
+   (num-spawned  int32  :offset-assert 180)
+   (num-alive    int32  :offset-assert 184)
+   )
+  :heap-base #x50
+  :method-count-assert 20
+  :size-assert         #xbc
+  :flag-assert         #x14005000bc
+  )
+
+
+(let
+  ((v1-2
+    (new 'static 'skeleton-group
+     :art-group-name "green-eco-lurker"
+     :bounds (new 'static 'vector :w 24371.2)
+     :version #x6
+     :shadow 2
+     )
+    )
+   )
+  (set! (-> v1-2 jgeo) 0)
+  (set! (-> v1-2 janim) -1)
+  (set! (-> v1-2 mgeo 0) (the-as uint 1))
+  (set! (-> v1-2 lod-dist 0) 4095996000.0)
+  (set! *green-eco-lurker-sg* v1-2)
+  )
+
+(define
+  *green-eco-lurker-nav-enemy-info*
+  (new 'static 'nav-enemy-info
+   :idle-anim 3
+   :walk-anim 4
+   :turn-anim 10
+   :notice-anim 9
+   :run-anim 4
+   :jump-anim 7
+   :jump-land-anim 8
+   :victory-anim 5
+   :taunt-anim 5
+   :die-anim 6
+   :neck-joint 5
+   :player-look-at-joint 5
+   :run-travel-speed (meters 6.0)
+   :run-rotate-speed (degrees 360.0)
+   :run-acceleration (meters 1.0)
+   :run-turn-time (seconds 0.1)
+   :walk-travel-speed (meters 3.0)
+   :walk-rotate-speed (degrees 360.0)
+   :walk-acceleration (meters 1.0)
+   :walk-turn-time (seconds 0.5)
+   :attack-shove-back (meters 3.0)
+   :attack-shove-up (meters 2.0)
+   :shadow-size (meters 2.0)
+   :notice-nav-radius (meters 2.5)
+   :nav-nearest-y-threshold (meters 400.0)
+   :notice-distance (meters 300.0)
+   :stop-chase-distance (meters 400.0)
+   :frustration-distance (meters 8.0)
+   :frustration-time #x4b0
+   :die-anim-hold-frame 24.0
+   :jump-anim-start-frame 10.0
+   :jump-land-anim-end-frame 10000000000.0
+   :jump-height-min (meters 3.0)
+   :jump-height-factor 0.5
+   :jump-start-anim-speed 1.0
+   :shadow-max-y (meters 0.5)
+   :shadow-min-y (meters -1.75)
+   :shadow-locus-dist (meters 150.0)
+   :use-align #f
+   :draw-shadow #t
+   :move-to-ground #t
+   :hover-if-no-ground #f
+   :use-momentum #f
+   :use-flee #t
+   :use-proximity-notice #f
+   :use-jump-blocked #t
+   :use-jump-patrol #f
+   :gnd-collide-with #x805
+   :debug-draw-neck #f
+   :debug-draw-jump #f
+   )
+  )
+
+(set!
+  (-> *part-group-id-table* 643)
+  (new 'static 'sparticle-launch-group
+   :length 37
+   :duration #x258
+   :linger-duration #x5dc
+   :flags (sp-group-flag use-local-clock)
+   :name "group-green-eco-lurker-death"
+   :launcher
+   (new 'static 'inline-array sparticle-group-item 37
+    (sp-item 2585 :fade-after (meters 100.0) :period 600 :length 5 :binding 2583)
+    (sp-item 2583 :flags (start-dead launch-asap) :binding 2584)
+    (sp-item 2584 :fade-after (meters 80.0) :falloff-to (meters 100.0) :flags (start-dead))
+    (sp-item 2583 :flags (start-dead launch-asap) :binding 2584)
+    (sp-item 2584 :fade-after (meters 80.0) :falloff-to (meters 100.0) :flags (start-dead))
+    (sp-item 2583 :flags (start-dead launch-asap) :binding 2584)
+    (sp-item 2584 :fade-after (meters 80.0) :falloff-to (meters 100.0) :flags (start-dead))
+    (sp-item 2583 :flags (start-dead launch-asap) :binding 2584)
+    (sp-item 2584 :fade-after (meters 80.0) :falloff-to (meters 100.0) :flags (start-dead))
+    (sp-item 2583 :flags (start-dead launch-asap) :binding 2584)
+    (sp-item 2584 :fade-after (meters 80.0) :falloff-to (meters 100.0) :flags (start-dead))
+    (sp-item 2583 :flags (start-dead launch-asap) :binding 2584)
+    (sp-item 2584 :fade-after (meters 80.0) :falloff-to (meters 100.0) :flags (start-dead))
+    (sp-item 2583 :flags (start-dead launch-asap) :binding 2584)
+    (sp-item 2584 :fade-after (meters 80.0) :falloff-to (meters 100.0) :flags (start-dead))
+    (sp-item 2583 :flags (start-dead launch-asap) :binding 2584)
+    (sp-item 2584 :fade-after (meters 80.0) :falloff-to (meters 100.0) :flags (start-dead))
+    (sp-item 2583 :flags (start-dead launch-asap) :binding 2584)
+    (sp-item 2584 :fade-after (meters 80.0) :falloff-to (meters 100.0) :flags (start-dead))
+    (sp-item 2583 :flags (start-dead launch-asap) :binding 2584)
+    (sp-item 2584 :fade-after (meters 80.0) :falloff-to (meters 100.0) :flags (start-dead))
+    (sp-item 2583 :flags (start-dead launch-asap) :binding 2584)
+    (sp-item 2584 :fade-after (meters 80.0) :falloff-to (meters 100.0) :flags (start-dead))
+    (sp-item 2583 :flags (start-dead launch-asap) :binding 2584)
+    (sp-item 2584 :fade-after (meters 80.0) :falloff-to (meters 100.0) :flags (start-dead))
+    (sp-item 2583 :flags (start-dead launch-asap) :binding 2584)
+    (sp-item 2584 :fade-after (meters 80.0) :falloff-to (meters 100.0) :flags (start-dead))
+    (sp-item 2583 :flags (start-dead launch-asap) :binding 2584)
+    (sp-item 2584 :fade-after (meters 80.0) :falloff-to (meters 100.0) :flags (start-dead))
+    (sp-item 2583 :flags (start-dead launch-asap) :binding 2584)
+    (sp-item 2584 :fade-after (meters 80.0) :falloff-to (meters 100.0) :flags (start-dead))
+    (sp-item 2583 :flags (start-dead launch-asap) :binding 2584)
+    (sp-item 2584 :fade-after (meters 80.0) :falloff-to (meters 100.0) :flags (start-dead))
+    (sp-item 2586 :period 600 :length 5)
+    (sp-item 2587 :fade-after (meters 80.0) :falloff-to (meters 80.0) :period 600 :length 40)
+    (sp-item 2588 :period 600 :length 20)
+    (sp-item 2589 :fade-after (meters 120.0) :falloff-to (meters 120.0) :period 600 :length 20)
+    )
+   :bounds (new 'static 'sphere :w 49152.0)
+   )
+  )
+
+(set!
+  (-> *part-id-table* 2587)
+  (new 'static 'sparticle-launcher
+   :init-specs
+   (new 'static 'inline-array sp-field-init-spec 21
+    (sp-tex spt-texture (new 'static 'texture-id :index #xf :page #x2))
+    (sp-flt spt-num 6.0)
+    (sp-rnd-flt spt-scale-x (meters 0.2) (meters 0.4) 1.0)
+    (sp-copy-from-other spt-scale-y -4)
+    (sp-rnd-flt spt-r 64.0 128.0 1.0)
+    (sp-rnd-flt spt-g 0.0 32.0 1.0)
+    (sp-rnd-flt spt-b 96.0 64.0 1.0)
+    (sp-rnd-flt spt-a 32.0 96.0 1.0)
+    (sp-rnd-flt spt-vel-y (meters 0.026666667) (meters 0.10666667) 1.0)
+    (sp-flt spt-scalevel-x (meters -0.0016666667))
+    (sp-copy-from-other spt-scalevel-y -4)
+    (sp-rnd-flt spt-accel-y -0.68266666 -0.68266666 1.0)
+    (sp-flt spt-friction 0.9)
+    (sp-int spt-timer 300)
+    (sp-cpuinfo-flags bit2 bit14)
+    (sp-int-plain-rnd spt-next-time 30 29 1)
+    (sp-launcher-by-id spt-next-launcher 2590)
+    (sp-rnd-flt spt-conerot-x (degrees 0.0) (degrees 140.0) 1.0)
+    (sp-rnd-flt spt-conerot-y (degrees 0.0) (degrees 360.0) 1.0)
+    (sp-rnd-flt spt-conerot-radius (meters 2.0) (meters 4.0) 1.0)
+    (sp-end)
+    )
+   )
+  )
+
+(set!
+  (-> *part-id-table* 2590)
+  (new 'static 'sparticle-launcher
+   :init-specs
+   (new 'static 'inline-array sp-field-init-spec 5
+    (sp-flt spt-fade-r 0.0)
+    (sp-flt spt-fade-g 0.0)
+    (sp-flt spt-fade-b 0.0)
+    (sp-flt spt-fade-a -1.4222223)
+    (sp-end)
+    )
+   )
+  )
+
+(set!
+  (-> *part-id-table* 2589)
+  (new 'static 'sparticle-launcher
+   :init-specs
+   (new 'static 'inline-array sp-field-init-spec 14
+    (sp-tex spt-texture (new 'static 'texture-id :index #xf :page #x2))
+    (sp-flt spt-num 3.0)
+    (sp-flt spt-scale-x (meters 0.2))
+    (sp-rnd-flt spt-rot-z (degrees 0.0) (degrees 180.0) 1.0)
+    (sp-flt spt-scale-y (meters 8.0))
+    (sp-rnd-flt spt-r 64.0 192.0 1.0)
+    (sp-rnd-flt spt-g 0.0 32.0 1.0)
+    (sp-rnd-flt spt-b 128.0 64.0 1.0)
+    (sp-rnd-flt spt-a 32.0 64.0 1.0)
+    (sp-flt spt-scalevel-y (meters 0.42666668))
+    (sp-flt spt-fade-a -1.6)
+    (sp-int spt-timer 60)
+    (sp-cpuinfo-flags bit2 bit3 bit14)
+    (sp-end)
+    )
+   )
+  )
+
+(set!
+  (-> *part-id-table* 2586)
+  (new 'static 'sparticle-launcher
+   :init-specs
+   (new 'static 'inline-array sp-field-init-spec 12
+    (sp-tex spt-texture (new 'static 'texture-id :index #x12 :page #x2))
+    (sp-flt spt-num 1.0)
+    (sp-flt spt-scale-x (meters 16.0))
+    (sp-copy-from-other spt-scale-y -4)
+    (sp-rnd-flt spt-r 64.0 192.0 1.0)
+    (sp-rnd-flt spt-g 0.0 32.0 1.0)
+    (sp-rnd-flt spt-b 128.0 64.0 1.0)
+    (sp-flt spt-a 96.0)
+    (sp-flt spt-fade-a -1.7454545)
+    (sp-int spt-timer 54)
+    (sp-cpuinfo-flags bit2 bit3 bit14)
+    (sp-end)
+    )
+   )
+  )
+
+(set!
+  (-> *part-id-table* 2588)
+  (new 'static 'sparticle-launcher
+   :init-specs
+   (new 'static 'inline-array sp-field-init-spec 21
+    (sp-tex spt-texture (new 'static 'texture-id :page #x2))
+    (sp-flt spt-num 4.0)
+    (sp-rnd-flt spt-scale-x (meters 2.5) (meters 1.5) 1.0)
+    (sp-rnd-flt spt-rot-z (degrees 0.0) (degrees 360.0) 1.0)
+    (sp-copy-from-other spt-scale-y -4)
+    (sp-rnd-flt spt-r 0.0 96.0 1.0)
+    (sp-rnd-flt spt-g 0.0 32.0 1.0)
+    (sp-rnd-flt spt-b 64.0 32.0 1.0)
+    (sp-rnd-flt spt-a 64.0 64.0 1.0)
+    (sp-rnd-flt spt-vel-y (meters 0.053333335) (meters 0.013333334) 1.0)
+    (sp-flt spt-scalevel-x (meters 0.013333334))
+    (sp-rnd-flt spt-rotvel-z (degrees -0.3) (degrees 0.6) 1.0)
+    (sp-copy-from-other spt-scalevel-y -4)
+    (sp-flt spt-fade-a -0.42666668)
+    (sp-rnd-flt spt-accel-y 0.68266666 0.68266666 1.0)
+    (sp-flt spt-friction 0.8)
+    (sp-int spt-timer 510)
+    (sp-cpuinfo-flags bit2 bit14)
+    (sp-rnd-flt spt-conerot-x (degrees 0.0) (degrees 110.0) 1.0)
+    (sp-rnd-flt spt-conerot-y (degrees 0.0) (degrees 360.0) 1.0)
+    (sp-end)
+    )
+   )
+  )
+
+(set!
+  (-> *part-id-table* 2585)
+  (new 'static 'sparticle-launcher
+   :init-specs
+   (new 'static 'inline-array sp-field-init-spec 14
+    (sp-tex spt-texture (new 'static 'texture-id :index #x12 :page #x2))
+    (sp-flt spt-num 16.0)
+    (sp-flt spt-y (meters 1.0))
+    (sp-flt spt-scale-x (meters 0.1))
+    (sp-copy-from-other spt-scale-y -4)
+    (sp-flt spt-a 0.0)
+    (sp-rnd-flt spt-vel-y (meters 0.053333335) (meters 0.026666667) 1.0)
+    (sp-flt spt-accel-y -1.3653333)
+    (sp-flt spt-friction 0.94)
+    (sp-int spt-timer 240)
+    (sp-cpuinfo-flags bit3)
+    (sp-rnd-flt spt-conerot-x (degrees 0.0) (degrees 140.0) 1.0)
+    (sp-rnd-flt spt-conerot-y (degrees 0.0) (degrees 360.0) 1.0)
+    (sp-end)
+    )
+   )
+  )
+
+(set!
+  (-> *part-id-table* 2583)
+  (new 'static 'sparticle-launcher
+   :init-specs
+   (new 'static 'inline-array sp-field-init-spec 21
+    (sp-tex spt-texture (new 'static 'texture-id :index #xf :page #x2))
+    (sp-flt spt-num 1.0)
+    (sp-rnd-flt spt-y (meters 0.0) (meters 16.0) 1.0)
+    (sp-rnd-flt spt-z 1228.8 1228.8 1.0)
+    (sp-rnd-flt spt-scale-x (meters 0.3) (meters 0.3) 1.0)
+    (sp-rnd-flt spt-rot-z (degrees 0.0) (degrees 360.0) 1.0)
+    (sp-copy-from-other spt-scale-y -4)
+    (sp-rnd-flt spt-r 0.0 96.0 1.0)
+    (sp-rnd-flt spt-g 0.0 32.0 1.0)
+    (sp-rnd-flt spt-b 64.0 32.0 1.0)
+    (sp-rnd-flt spt-a 64.0 64.0 1.0)
+    (sp-rnd-flt spt-omega 0.0 65536.0 1.0)
+    (sp-rnd-flt spt-vel-x (meters 0.026666667) (meters 0.10666667) 1.0)
+    (sp-flt spt-scalevel-x (meters -0.000909091))
+    (sp-rnd-int-flt spt-rotvel-z (degrees -0.3) 1 109.22667)
+    (sp-copy-from-other spt-scalevel-y -4)
+    (sp-flt spt-fade-g -0.26666668)
+    (sp-flt spt-fade-a -0.19393939)
+    (sp-int-plain-rnd spt-timer 90 149 1)
+    (sp-cpuinfo-flags bit2 bit3 bit7)
+    (sp-end)
+    )
+   )
+  )
+
+(set!
+  (-> *part-id-table* 2584)
+  (new 'static 'sparticle-launcher
+   :init-specs
+   (new 'static 'inline-array sp-field-init-spec 17
+    (sp-tex spt-texture (new 'static 'texture-id :index #xf :page #x2))
+    (sp-flt spt-num 1.0)
+    (sp-rnd-flt spt-scale-x (meters 0.3) (meters 0.1) 1.0)
+    (sp-copy-from-other spt-scale-y -4)
+    (sp-rnd-flt spt-r 32.0 96.0 1.0)
+    (sp-rnd-flt spt-g 0.0 32.0 1.0)
+    (sp-rnd-flt spt-b 64.0 32.0 1.0)
+    (sp-rnd-flt spt-a 32.0 32.0 1.0)
+    (sp-flt spt-scalevel-x (meters -0.0006190476))
+    (sp-copy-from-other spt-scalevel-y -4)
+    (sp-flt spt-fade-a -0.01904762)
+    (sp-rnd-flt spt-accel-y -0.40960002 -0.6144 1.0)
+    (sp-int-plain-rnd spt-timer 30 299 1)
+    (sp-cpuinfo-flags bit2 bit3)
+    (sp-int spt-next-time 240)
+    (sp-launcher-by-id spt-next-launcher 198)
+    (sp-end)
+    )
+   )
+  )
+
+(defmethod
+  dummy-43
+  green-eco-lurker
+  ((obj green-eco-lurker) (arg0 process) (arg1 event-message-block))
+  (with-pp
+   (cond
+    ((= (-> arg0 type) target)
+     (when
+      (nav-enemy-send-attack
+       arg0
+       (the-as touching-shapes-entry (-> arg1 param 0))
+       'generic
+       )
+      (let ((a1-2 (new 'stack-no-clear 'event-message-block)))
+       (set! (-> a1-2 from) pp)
+       (set! (-> a1-2 num-params) 0)
+       (set! (-> a1-2 message) 'blob-hit-jak)
+       (send-event-function (ppointer->process (-> obj parent)) a1-2)
+       )
+      )
+     #f
+     )
+    (else
+     (nav-enemy-set-hit-from-direction arg0)
+     ((method-of-type nav-enemy dummy-43) obj arg0 arg1)
+     )
+    )
+   )
+  )
+
+(defmethod
+  nav-enemy-attack-handler
+  green-eco-lurker
+  ((obj green-eco-lurker) (arg0 process) (arg1 event-message-block))
+  (with-pp
+   (cond
+    ((= (-> arg0 type) target)
+     (when
+      (nav-enemy-send-attack
+       arg0
+       (the-as touching-shapes-entry (-> arg1 param 0))
+       'generic
+       )
+      (let ((a1-2 (new 'stack-no-clear 'event-message-block)))
+       (set! (-> a1-2 from) pp)
+       (set! (-> a1-2 num-params) 0)
+       (set! (-> a1-2 message) 'blob-hit-jak)
+       (send-event-function (ppointer->process (-> obj parent)) a1-2)
+       )
+      )
+     #f
+     )
+    (else
+     ((method-of-type nav-enemy nav-enemy-attack-handler) obj arg0 arg1)
+     )
+    )
+   )
+  )
+
+(defmethod
+  dummy-44
+  green-eco-lurker
+  ((obj green-eco-lurker) (arg0 process) (arg1 event-message-block))
+  (with-pp
+   (when
+    (and
+     (logtest? (-> obj nav-enemy-flags) 64)
+     ((method-of-type touching-shapes-entry prims-touching?)
+      (the-as touching-shapes-entry (-> arg1 param 0))
+      (-> obj collide-info)
+      (the-as uint 1)
+      )
+     )
+    (when
+     (nav-enemy-send-attack
+      arg0
+      (the-as touching-shapes-entry (-> arg1 param 0))
+      'generic
+      )
+     (let ((a1-3 (new 'stack-no-clear 'event-message-block)))
+      (set! (-> a1-3 from) pp)
+      (set! (-> a1-3 num-params) 0)
+      (set! (-> a1-3 message) 'blob-hit-jak)
+      (send-event-function (ppointer->process (-> obj parent)) a1-3)
+      )
+     )
+    )
+   )
+  )
+
+(defmethod
+  nav-enemy-touch-handler
+  green-eco-lurker
+  ((obj green-eco-lurker) (arg0 process) (arg1 event-message-block))
+  (with-pp
+   (when
+    (and
+     (logtest? (-> obj nav-enemy-flags) 64)
+     ((method-of-type touching-shapes-entry prims-touching?)
+      (the-as touching-shapes-entry (-> arg1 param 0))
+      (-> obj collide-info)
+      (the-as uint 1)
+      )
+     )
+    (when
+     (nav-enemy-send-attack
+      arg0
+      (the-as touching-shapes-entry (-> arg1 param 0))
+      'generic
+      )
+     (let ((a1-3 (new 'stack-no-clear 'event-message-block)))
+      (set! (-> a1-3 from) pp)
+      (set! (-> a1-3 num-params) 0)
+      (set! (-> a1-3 message) 'blob-hit-jak)
+      (send-event-function (ppointer->process (-> obj parent)) a1-3)
+      )
+     )
+    )
+   )
+  )
+
+(defmethod dummy-51 green-eco-lurker ((obj green-eco-lurker) (arg0 vector))
+  (when
+   (or
+    (not *target*)
+    (>= (vector-vector-xz-distance arg0 (target-pos 0)) 36864.0)
+    )
+   (let ((v1-3 (new 'stack-no-clear 'vector)))
+    (set! (-> v1-3 quad) (-> arg0 quad))
+    (set! (-> v1-3 w) (-> obj collide-info root-prim local-sphere w))
+    )
+   (if (not (TODO-RENAME-50 obj arg0))
+    (return (the-as object #t))
+    )
+   )
+  #f
+  )
+
+(defmethod dummy-52 green-eco-lurker ((obj green-eco-lurker) (arg0 vector))
+  (let ((s4-0 (-> obj path curve num-cverts)))
+   (when (> s4-0 0)
+    (let ((s2-0 (nav-enemy-rnd-int-count s4-0))
+          (s3-0 s4-0)
+          )
+     (while (> s3-0 0)
+      (eval-path-curve-div! (-> obj path) arg0 (the float s2-0) 'interp)
+      (if (dummy-51 obj arg0)
+       (return #t)
+       )
+      (set! s2-0 (mod (+ s2-0 1) s4-0))
+      (+! s3-0 -1)
+      )
+     )
+    )
+   )
+  #f
+  )
+
+(defstate green-eco-lurker-tune-spheres (green-eco-lurker)
+  :trans
+  (behavior ()
+   0
+   (none)
+   )
+  :code
+  (behavior ()
+   0
+   (none)
+   )
+  :post
+  (the-as (function none :behavior green-eco-lurker) transform-post)
+  )
+
+(defstate green-eco-lurker-wait-to-appear (green-eco-lurker)
+  :enter
+  (behavior ()
+   (logior! (-> self draw status) 2)
+   (dummy-48 (-> self collide-info))
+   (none)
+   )
+  :exit
+  (behavior ()
+   (set! (-> self draw status) (logand -3 (-> self draw status)))
+   (dummy-49 (-> self collide-info))
+   (none)
+   )
+  :trans
+  (behavior ()
+   (if (dummy-52 self (-> self appear-dest))
+    (go green-eco-lurker-appear)
+    )
+   (none)
+   )
+  :code
+  (behavior ()
+   (while #t
+    (logior! (-> self mask) (process-mask sleep-code))
+    (suspend)
+    )
+   (none)
+   )
+  )
+
+(defmethod dummy-53 green-eco-lurker ((obj green-eco-lurker))
+  (the-as symbol (cond
+                  ((and
+                    (-> obj draw shadow)
+                    (zero? (-> obj draw cur-lod))
+                    (logtest? (-> obj draw status) 8)
+                    )
+                   (let ((f0-0 (-> obj appear-dest y))
+                         (v1-7 (-> obj draw shadow-ctrl))
+                         )
+                    (let ((a0-1 v1-7))
+                     (set!
+                      (-> a0-1 settings flags)
+                      (logand -33 (-> a0-1 settings flags))
+                      )
+                     )
+                    0
+                    (let ((a0-3 v1-7))
+                     (set! (-> a0-3 settings bot-plane w) (- (+ -6144.0 f0-0)))
+                     )
+                    0
+                    (set! (-> v1-7 settings top-plane w) (- (+ 6144.0 f0-0)))
+                    )
+                   0
+                   )
+                  (else
+                   (let ((v1-9 (-> obj draw shadow-ctrl)))
+                    (logior! (-> v1-9 settings flags) 32)
+                    )
+                   0
+                   )
+                  )
+   )
+  )
+
+(defstate green-eco-lurker-appear (green-eco-lurker)
+  :enter
+  (behavior ()
+   (set! (-> self state-time) (-> *display* base-frame-counter))
+   (set! (-> self played-sound?) #f)
+   (set! (-> self sound-delay) (nav-enemy-rnd-int-range 30 150))
+   (let
+    ((f0-1
+      (-
+       (-> self appear-dest x)
+       (-> (the-as robotboss (-> self parent 0)) root-override trans x)
+       )
+      )
+     )
+    (set!
+     (-> self collide-info trans x)
+     (+
+      (-> (the-as robotboss (-> self parent 0)) root-override trans x)
+      (fmax -32768.0 (fmin 32768.0 f0-1))
+      )
+     )
+    )
+   (logior! (-> self collide-info nav-flags) 2)
+   (set! (-> self nav extra-nav-sphere quad) (-> self appear-dest quad))
+   (set! (-> self nav extra-nav-sphere w) 8192.0)
+   (setup-from-to-duration!
+    (-> self traj)
+    (-> self collide-info trans)
+    (-> self appear-dest)
+    225.0
+    -9.102222
+    )
+   (let ((gp-0 (new 'stack-no-clear 'vector)))
+    (set! (-> gp-0 quad) (-> self collide-info trans quad))
+    (set! (-> gp-0 y) (+ 8192.0 (-> gp-0 y)))
+    (let ((s5-0 (get-process *default-dead-pool* part-tracker #x4000)))
+     (when s5-0
+      (let ((t9-3 (method-of-type part-tracker activate)))
+       (t9-3
+        (the-as part-tracker s5-0)
+        *entity-pool*
+        'part-tracker
+        (the-as pointer #x70004000)
+        )
+       )
+      (run-now-in-process
+       s5-0
+       part-tracker-init
+       (-> *part-group-id-table* 643)
+       -1
+       #f
+       #f
+       #f
+       gp-0
+       )
+      (-> s5-0 ppointer)
+      )
+     )
+    )
+   (let ((gp-1 (new 'stack-no-clear 'vector)))
+    (vector-! gp-1 (-> self appear-dest) (-> self collide-info trans))
+    (set! (-> gp-1 y) 0.0)
+    (vector-normalize! gp-1 1.0)
+    (forward-up->quaternion (-> self collide-info quat) gp-1 *up-vector*)
+    )
+   (none)
+   )
+  :trans
+  (behavior ()
+   (let
+    ((f30-0
+      (fmin
+       (the float (- (-> *display* base-frame-counter) (-> self state-time)))
+       (-> self traj time)
+       )
+      )
+     )
+    (eval-position! (-> self traj) f30-0 (-> self collide-info trans))
+    (when (= f30-0 (-> self traj time))
+     (logior! (-> self collide-info nav-flags) 1)
+     (set!
+      (-> self collide-info nav-flags)
+      (logand -3 (-> self collide-info nav-flags))
+      )
+     (go green-eco-lurker-appear-land)
+     )
+    )
+   (when
+    (and
+     (not (-> self played-sound?))
+     (>=
+      (- (-> *display* base-frame-counter) (-> self state-time))
+      (-> self sound-delay)
+      )
+     )
+    (set! (-> self played-sound?) #t)
+    (sound-play-by-name
+     (static-sound-name "blob-jump")
+     (new-sound-id)
+     1024
+     (the int (* 1524.0 (nav-enemy-rnd-float-range -0.5 0.5)))
+     0
+     (the-as uint 1)
+     (the-as vector #t)
+     )
+    )
+   (dummy-53 self)
+   0
+   (none)
+   )
+  :code
+  (behavior ()
+   (ja-channel-push! 1 60)
+   (sound-play-by-name
+    (static-sound-name "blob-out")
+    (new-sound-id)
+    1024
+    (the int (* 1524.0 (nav-enemy-rnd-float-range -1.0 1.0)))
+    0
+    (the-as uint 1)
+    (the-as vector #t)
+    )
+   (cond
+    ((zero? (nav-enemy-rnd-int-count 2))
+     (let ((a0-4 (-> self skel root-channel 0)))
+      (set!
+       (-> a0-4 frame-group)
+       (the-as art-joint-anim (-> self draw art-group data 11))
+       )
+      (set!
+       (-> a0-4 param 0)
+       (the
+        float
+        (+
+         (->
+          (the-as art-joint-anim (-> self draw art-group data 11))
+          data
+          0
+          length
+          )
+         -1
+         )
+        )
+       )
+      (set! (-> a0-4 param 1) 1.0)
+      (set! (-> a0-4 frame-num) 0.0)
+      (joint-control-channel-group!
+       a0-4
+       (the-as art-joint-anim (-> self draw art-group data 11))
+       num-func-seek!
+       )
+      )
+     (until (ja-done? 0)
+      (suspend)
+      (let ((a0-5 (-> self skel root-channel 0)))
+       (set!
+        (-> a0-5 param 0)
+        (the float (+ (-> a0-5 frame-group data 0 length) -1))
+        )
+       (set! (-> a0-5 param 1) 1.0)
+       (joint-control-channel-group-eval!
+        a0-5
+        (the-as art-joint-anim #f)
+        num-func-seek!
+        )
+       )
+      )
+     )
+    (else
+     (let ((a0-7 (-> self skel root-channel 0)))
+      (set!
+       (-> a0-7 frame-group)
+       (the-as art-joint-anim (-> self draw art-group data 7))
+       )
+      (set!
+       (-> a0-7 param 0)
+       (the
+        float
+        (+
+         (->
+          (the-as art-joint-anim (-> self draw art-group data 7))
+          data
+          0
+          length
+          )
+         -1
+         )
+        )
+       )
+      (set! (-> a0-7 param 1) 1.0)
+      (set! (-> a0-7 frame-num) 0.0)
+      (joint-control-channel-group!
+       a0-7
+       (the-as art-joint-anim (-> self draw art-group data 7))
+       num-func-seek!
+       )
+      )
+     (until (ja-done? 0)
+      (suspend)
+      (let ((a0-8 (-> self skel root-channel 0)))
+       (set!
+        (-> a0-8 param 0)
+        (the float (+ (-> a0-8 frame-group data 0 length) -1))
+        )
+       (set! (-> a0-8 param 1) 1.0)
+       (joint-control-channel-group-eval!
+        a0-8
+        (the-as art-joint-anim #f)
+        num-func-seek!
+        )
+       )
+      )
+     )
+    )
+   (while #t
+    (logior! (-> self mask) (process-mask sleep-code))
+    (suspend)
+    )
+   (none)
+   )
+  :post
+  (the-as (function none :behavior green-eco-lurker) transform-post)
+  )
+
+(defstate green-eco-lurker-appear-land (green-eco-lurker)
+  :event
+  (the-as
+   (function process int symbol event-message-block object :behavior green-eco-lurker)
+   nav-enemy-default-event-handler
+   )
+  :code
+  (behavior ()
+   (activate! *camera-smush-control* 409.6 37 150 1.0 0.99)
+   (sound-play-by-name
+    (static-sound-name "blob-land")
+    (new-sound-id)
+    1024
+    (the int (* 1524.0 (nav-enemy-rnd-float-range -1.0 1.0)))
+    0
+    (the-as uint 1)
+    (the-as vector #t)
+    )
+   (let ((v1-4 (-> self draw shadow-ctrl)))
+    (let ((a0-4 v1-4))
+     (set! (-> a0-4 settings bot-plane w) (- -7168.0))
+     )
+    0
+    (let ((a0-6 v1-4))
+     (set! (-> a0-6 settings top-plane w) (- 2048.0))
+     )
+    0
+    (set! (-> v1-4 settings flags) (logand -9 (-> v1-4 settings flags)))
+    (set! (-> v1-4 settings flags) (logand -5 (-> v1-4 settings flags)))
+    (set! (-> v1-4 settings flags) (logand -33 (-> v1-4 settings flags)))
+    )
+   0
+   (ja-channel-push! 1 60)
+   (let ((a0-15 (-> self skel root-channel 0)))
+    (set!
+     (-> a0-15 frame-group)
+     (the-as art-joint-anim (-> self draw art-group data 8))
+     )
+    (set!
+     (-> a0-15 param 0)
+     (the
+      float
+      (+
+       (->
+        (the-as art-joint-anim (-> self draw art-group data 8))
+        data
+        0
+        length
+        )
+       -1
+       )
+      )
+     )
+    (set! (-> a0-15 param 1) 1.0)
+    (set! (-> a0-15 frame-num) 0.0)
+    (joint-control-channel-group!
+     a0-15
+     (the-as art-joint-anim (-> self draw art-group data 8))
+     num-func-seek!
+     )
+    )
+   (until (ja-done? 0)
+    (suspend)
+    (let ((a0-16 (-> self skel root-channel 0)))
+     (set!
+      (-> a0-16 param 0)
+      (the float (+ (-> a0-16 frame-group data 0 length) -1))
+      )
+     (set! (-> a0-16 param 1) 1.0)
+     (joint-control-channel-group-eval!
+      a0-16
+      (the-as art-joint-anim #f)
+      num-func-seek!
+      )
+     )
+    )
+   (logior! (-> self nav-enemy-flags) 2)
+   (go-virtual nav-enemy-chase)
+   (none)
+   )
+  :post
+  (the-as (function none :behavior green-eco-lurker) transform-post)
+  )
+
+(defstate nav-enemy-patrol (green-eco-lurker)
+  :virtual #t
+  :code
+  (behavior ()
+   (ja-channel-push! 1 60)
+   (let ((t9-1 (-> (method-of-type nav-enemy nav-enemy-patrol) code)))
+    (if t9-1
+     ((the-as (function none) t9-1))
+     )
+    )
+   (none)
+   )
+  )
+
+(defstate nav-enemy-chase (green-eco-lurker)
+  :virtual #t
+  :code
+  (behavior ()
+   (let ((f30-0 (nav-enemy-rnd-float-range 0.9 1.1)))
+    (cond
+     ((= (if (> (-> self skel active-channels) 0)
+          (-> self skel root-channel 0 frame-group)
+          )
+       (-> self draw art-group data 8)
+       )
+      (let ((a0-5 (-> self skel root-channel 0)))
+       (set!
+        (-> a0-5 param 0)
+        (the float (+ (-> a0-5 frame-group data 0 length) -1))
+        )
+       (set! (-> a0-5 param 1) 1.0)
+       (joint-control-channel-group!
+        a0-5
+        (the-as art-joint-anim #f)
+        num-func-seek!
+        )
+       )
+      (ja-channel-push! 1 60)
+      (let ((a0-7 (-> self skel root-channel 0)))
+       (set!
+        (-> a0-7 frame-group)
+        (the-as
+         art-joint-anim
+         (-> self draw art-group data (-> self nav-info run-anim))
+         )
+        )
+       (set!
+        (-> a0-7 param 0)
+        (the
+         float
+         (+
+          (->
+           (the-as
+            art-joint-anim
+            (-> self draw art-group data (-> self nav-info run-anim))
+            )
+           data
+           0
+           length
+           )
+          -1
+          )
+         )
+        )
+       (set! (-> a0-7 param 1) f30-0)
+       (set! (-> a0-7 frame-num) 0.0)
+       (joint-control-channel-group!
+        a0-7
+        (the-as
+         art-joint-anim
+         (-> self draw art-group data (-> self nav-info run-anim))
+         )
+        num-func-seek!
+        )
+       )
+      (until (ja-done? 0)
+       (ja-blend-eval)
+       (suspend)
+       (let ((a0-8 (-> self skel root-channel 0)))
+        (set!
+         (-> a0-8 param 0)
+         (the float (+ (-> a0-8 frame-group data 0 length) -1))
+         )
+        (set! (-> a0-8 param 1) f30-0)
+        (joint-control-channel-group-eval!
+         a0-8
+         (the-as art-joint-anim #f)
+         num-func-seek!
+         )
+        )
+       )
+      )
+     (else
+      (ja-channel-push! 1 60)
+      (let ((v1-42 (-> self skel root-channel 0)))
+       (set!
+        (-> v1-42 frame-group)
+        (the-as
+         art-joint-anim
+         (-> self draw art-group data (-> self nav-info run-anim))
+         )
+        )
+       )
+      (let ((v1-45 (-> self skel root-channel 0)))
+       (set! (-> v1-45 num-func) num-func-identity)
+       (set! (-> v1-45 frame-num) 0.0)
+       )
+      )
+     )
+    (while #t
+     (suspend)
+     (let ((a0-17 (-> self skel root-channel 0)))
+      (set! (-> a0-17 param 0) f30-0)
+      (joint-control-channel-group-eval!
+       a0-17
+       (the-as art-joint-anim #f)
+       num-func-loop!
+       )
+      )
+     )
+    )
+   (none)
+   )
+  )
+
+(defstate nav-enemy-jump-land (green-eco-lurker)
+  :virtual #t
+  :code
+  (behavior ()
+   (let ((a0-0 (-> self skel root-channel 0)))
+    (set!
+     (-> a0-0 param 0)
+     (the float (+ (-> a0-0 frame-group data 0 length) -1))
+     )
+    (set! (-> a0-0 param 1) 1.0)
+    (joint-control-channel-group!
+     a0-0
+     (the-as art-joint-anim #f)
+     num-func-seek!
+     )
+    )
+   (ja-channel-push! 1 22)
+   (let ((gp-0 (-> self skel root-channel 0)))
+    (set!
+     (-> gp-0 frame-group)
+     (the-as
+      art-joint-anim
+      (-> self draw art-group data (-> self nav-info jump-land-anim))
+      )
+     )
+    (set! (-> gp-0 param 0) (ja-aframe 32.0 0))
+    (set! (-> gp-0 param 1) 0.5)
+    (set! (-> gp-0 frame-num) 0.0)
+    (joint-control-channel-group!
+     gp-0
+     (the-as
+      art-joint-anim
+      (-> self draw art-group data (-> self nav-info jump-land-anim))
+      )
+     num-func-seek!
+     )
+    )
+   (until (ja-done? 0)
+    (ja-blend-eval)
+    (suspend)
+    (let ((gp-1 (-> self skel root-channel 0)))
+     (set! (-> gp-1 param 0) (ja-aframe 32.0 0))
+     (set! (-> gp-1 param 1) 0.5)
+     (joint-control-channel-group-eval!
+      gp-1
+      (the-as art-joint-anim #f)
+      num-func-seek!
+      )
+     )
+    )
+   (go-virtual nav-enemy-chase)
+   (none)
+   )
+  )
+
+(defstate nav-enemy-die (green-eco-lurker)
+  :virtual #t
+  :enter
+  (behavior ()
+   (let ((a1-0 (new 'stack-no-clear 'event-message-block)))
+    (set! (-> a1-0 from) self)
+    (set! (-> a1-0 num-params) 0)
+    (set! (-> a1-0 message) 'blob-died)
+    (send-event-function (ppointer->process (-> self parent)) a1-0)
+    )
+   (let ((gp-0 (get-process *default-dead-pool* part-tracker #x4000)))
+    (when gp-0
+     (let ((t9-2 (method-of-type part-tracker activate)))
+      (t9-2
+       (the-as part-tracker gp-0)
+       *entity-pool*
+       'part-tracker
+       (the-as pointer #x70004000)
+       )
+      )
+     (run-now-in-process
+      gp-0
+      part-tracker-init
+      (-> *part-group-id-table* 643)
+      -1
+      #f
+      #f
+      #f
+      (-> self collide-info trans)
+      )
+     (-> gp-0 ppointer)
+     )
+    )
+   (sound-play-by-name
+    (static-sound-name "blob-explode")
+    (new-sound-id)
+    1024
+    0
+    0
+    (the-as uint 1)
+    (the-as vector #t)
+    )
+   (activate! *camera-smush-control* 409.6 37 150 1.0 0.99)
+   (let ((v1-14 (-> self draw shadow-ctrl)))
+    (logior! (-> v1-14 settings flags) 32)
+    )
+   0
+   (let ((t9-7 (-> (method-of-type nav-enemy nav-enemy-die) enter)))
+    (if t9-7
+     (t9-7)
+     )
+    )
+   (none)
+   )
+  )
+
+(defmethod initialize-collision green-eco-lurker ((obj green-eco-lurker))
+  (let
+   ((s5-0
+     (new
+      'process
+      'collide-shape-moving
+      obj
+      (collide-list-enum usually-hit-by-player)
+      )
+     )
+    )
+   (set! (-> s5-0 dynam) (copy *standard-dynamics* 'process))
+   (set! (-> s5-0 reaction) default-collision-reaction)
+   (set! (-> s5-0 no-reaction) nothing)
+   (let ((s4-0 (new 'process 'collide-shape-prim-group s5-0 (the-as uint 7) 0)))
+    (set! (-> s4-0 prim-core collide-as) (the-as uint 256))
+    (set! (-> s4-0 collide-with) (the-as uint 16))
+    (set! (-> s4-0 prim-core action) (the-as uint 1))
+    (set! (-> s4-0 transform-index) 4)
+    (set-vector! (-> s4-0 local-sphere) 0.0 0.0 -4096.0 20480.0)
+    (dummy-46 s5-0)
+    (let ((s3-0 (new 'process 'collide-shape-prim-sphere s5-0 (the-as uint 3))))
+     (set! (-> s3-0 prim-core collide-as) (the-as uint 256))
+     (set! (-> s3-0 collide-with) (the-as uint 16))
+     (set! (-> s3-0 prim-core action) (the-as uint 1))
+     (set! (-> s3-0 prim-core offense) 1)
+     (set-vector! (-> s3-0 local-sphere) 0.0 2785.28 0.0 3276.8)
+     )
+    (dummy-28 s4-0)
+    (let ((s3-1 (new 'process 'collide-shape-prim-sphere s5-0 (the-as uint 3))))
+     (set! (-> s3-1 prim-core collide-as) (the-as uint 256))
+     (set! (-> s3-1 collide-with) (the-as uint 16))
+     (set! (-> s3-1 prim-core action) (the-as uint 1))
+     (set! (-> s3-1 prim-core offense) 1)
+     (set-vector! (-> s3-1 local-sphere) 0.0 6615.04 0.0 3276.8)
+     )
+    (dummy-28 s4-0)
+    (let ((s3-2 (new 'process 'collide-shape-prim-sphere s5-0 (the-as uint 3))))
+     (set! (-> s3-2 prim-core collide-as) (the-as uint 256))
+     (set! (-> s3-2 collide-with) (the-as uint 16))
+     (set! (-> s3-2 prim-core action) (the-as uint 1))
+     (set! (-> s3-2 prim-core offense) 1)
+     (set-vector! (-> s3-2 local-sphere) 0.0 10444.8 0.0 3276.8)
+     )
+    (dummy-28 s4-0)
+    (let ((s3-3 (new 'process 'collide-shape-prim-sphere s5-0 (the-as uint 1))))
+     (set! (-> s3-3 prim-core collide-as) (the-as uint 256))
+     (set! (-> s3-3 collide-with) (the-as uint 16))
+     (set! (-> s3-3 prim-core offense) 2)
+     (set! (-> s3-3 transform-index) 6)
+     (set-vector! (-> s3-3 local-sphere) 0.0 0.0 0.0 3276.8)
+     )
+    (dummy-28 s4-0)
+    (let ((s3-4 (new 'process 'collide-shape-prim-sphere s5-0 (the-as uint 1))))
+     (set! (-> s3-4 prim-core collide-as) (the-as uint 256))
+     (set! (-> s3-4 collide-with) (the-as uint 16))
+     (set! (-> s3-4 prim-core offense) 2)
+     (set! (-> s3-4 transform-index) 4)
+     (set-vector! (-> s3-4 local-sphere) 0.0 -3276.8 -2048.0 5734.4)
+     )
+    (dummy-28 s4-0)
+    (let ((s3-5 (new 'process 'collide-shape-prim-sphere s5-0 (the-as uint 1))))
+     (set! (-> s3-5 prim-core collide-as) (the-as uint 256))
+     (set! (-> s3-5 collide-with) (the-as uint 16))
+     (set! (-> s3-5 prim-core offense) 2)
+     (set! (-> s3-5 transform-index) 12)
+     (set-vector! (-> s3-5 local-sphere) 0.0 0.0 0.0 2457.6)
+     )
+    (dummy-28 s4-0)
+    (let ((s3-6 (new 'process 'collide-shape-prim-sphere s5-0 (the-as uint 1))))
+     (set! (-> s3-6 prim-core collide-as) (the-as uint 256))
+     (set! (-> s3-6 collide-with) (the-as uint 16))
+     (set! (-> s3-6 prim-core offense) 2)
+     (set! (-> s3-6 transform-index) 16)
+     (set-vector! (-> s3-6 local-sphere) 0.0 0.0 0.0 2457.6)
+     )
+    (dummy-28 s4-0)
+    )
+   (set! (-> s5-0 nav-radius) 8192.0)
+   (dummy-50 s5-0)
+   (set! (-> s5-0 max-iteration-count) (the-as uint 2))
+   (set! (-> obj collide-info) s5-0)
+   )
+  0
+  (none)
+  )
+
+(defmethod TODO-RENAME-48 green-eco-lurker ((obj green-eco-lurker))
+  (dummy-14 obj *green-eco-lurker-sg* '())
+  (set! (-> obj draw origin-joint-index) (the-as uint 3))
+  (set!
+   (-> obj collide-info nav-flags)
+   (logand -2 (-> obj collide-info nav-flags))
+   )
+  (TODO-RENAME-45 obj *green-eco-lurker-nav-enemy-info*)
+  (logior! (-> obj draw shadow-ctrl settings flags) 4)
+  (set! (-> obj neck up) (the-as uint 0))
+  (set! (-> obj neck nose) (the-as uint 1))
+  (set! (-> obj neck ear) (the-as uint 2))
+  0
+  (none)
+  )
+
+(defbehavior
+  green-eco-lurker-init-by-other green-eco-lurker
+  ((arg0 entity) (arg1 green-eco-lurker-gen) (arg2 vector))
+  (initialize-collision self)
+  (set! (-> self collide-info trans quad) (-> arg2 quad))
+  (vector-identity! (-> self collide-info scale))
+  (quaternion-identity! (-> self collide-info quat))
+  (set! (-> self entity) (-> arg1 entity))
+  (TODO-RENAME-48 self)
+  (logclear! (-> self mask) (process-mask actor-pause))
+  (go green-eco-lurker-wait-to-appear)
+  (none)
+  )
+
+(defstate spawn-minions (green-eco-lurker-gen)
+  :event
+  (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
+   (case arg2 
+    (('blob-died)
+      (set! (-> self num-alive) (max 0 (+ (-> self num-alive) -1)))
+      (let ((a1-1 (new 'stack-no-clear 'event-message-block)))
+       (set! (-> a1-1 from) self)
+       (set! (-> a1-1 num-params) 0)
+       (set! (-> a1-1 message) 'blob-died)
+       (send-event-function (ppointer->process (-> self parent)) a1-1)
+       )
+      )
+    (('blob-hit-jak)
+     (let ((a1-2 (new 'stack-no-clear 'event-message-block)))
+      (set! (-> a1-2 from) self)
+      (set! (-> a1-2 num-params) 0)
+      (set! (-> a1-2 message) 'blob-hit-jak)
+      (send-event-function (ppointer->process (-> self parent)) a1-2)
+      )
+     )
+    )
+   )
+  :code
+  (behavior ()
+   (while (< (-> self num-spawned) (-> self num-to-spawn))
+    (when (< (-> self num-alive) 3)
+     (when (nonzero? (-> self num-spawned))
+      (set! (-> self state-time) (-> *display* base-frame-counter))
+      (until (>= (- (-> *display* base-frame-counter) (-> self state-time)) 300)
+       (suspend)
+       )
+      )
+     (let ((gp-0 (new 'stack-no-clear 'vector)))
+      (set! (-> gp-0 quad) (-> self root trans quad))
+      (set! (-> gp-0 y) (+ -16384.0 (-> gp-0 y)))
+      (let ((s5-0 (get-process *default-dead-pool* green-eco-lurker #x4000)))
+       (when s5-0
+        (let ((t9-1 (method-of-type green-eco-lurker activate)))
+         (t9-1
+          (the-as green-eco-lurker s5-0)
+          self
+          'green-eco-lurker
+          (the-as pointer #x70004000)
+          )
+         )
+        (run-now-in-process
+         s5-0
+         green-eco-lurker-init-by-other
+         (-> self entity)
+         self
+         gp-0
+         )
+        (-> s5-0 ppointer)
+        )
+       )
+      )
+     (+! (-> self num-spawned) 1)
+     (+! (-> self num-alive) 1)
+     )
+    (suspend)
+    )
+   (while (> (-> self num-alive) 0)
+    (suspend)
+    )
+   (let ((a1-3 (new 'stack-no-clear 'event-message-block)))
+    (set! (-> a1-3 from) self)
+    (set! (-> a1-3 num-params) 0)
+    (set! (-> a1-3 message) 'trigger)
+    (send-event-function (ppointer->process (-> self parent)) a1-3)
+    )
+   (until (not (-> self child))
+    (suspend)
+    )
+   (suspend)
+   0
+   (none)
+   )
+  )
+
+(defbehavior
+  green-eco-lurker-gen-init-by-other green-eco-lurker-gen
+  ((arg0 entity) (arg1 vector) (arg2 int))
+  (set! (-> self num-to-spawn) arg2)
+  (set! (-> self num-spawned) 0)
+  (set! (-> self num-alive) 0)
+  (set! (-> self entity) arg0)
+  (set! (-> self root) (new 'process 'trsqv))
+  (set! (-> self root trans quad) (-> arg1 quad))
+  (vector-identity! (-> self root scale))
+  (quaternion-identity! (-> self root quat))
+  (logclear! (-> self mask) (process-mask actor-pause))
+  (go spawn-minions)
+  (none)
+  )
+
+
+
+

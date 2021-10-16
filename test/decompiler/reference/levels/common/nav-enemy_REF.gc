@@ -169,7 +169,7 @@
 
 ;; definition for method 72 of type nav-enemy
 (defmethod
-  dummy-72
+  nav-enemy-touch-handler
   nav-enemy
   ((obj nav-enemy) (arg0 process) (arg1 event-message-block))
   (if
@@ -190,7 +190,11 @@
   )
 
 ;; definition for method 73 of type nav-enemy
-(defmethod TODO-RENAME-73 nav-enemy ((obj nav-enemy) (arg0 process))
+;; INFO: Return type mismatch symbol vs object.
+(defmethod
+  nav-enemy-attack-handler
+  nav-enemy
+  ((obj nav-enemy) (arg0 process) (arg1 event-message-block))
   (with-pp
    (let ((v1-0 (new 'stack-no-clear 'event-message-block)))
     (set! (-> v1-0 from) pp)
@@ -201,7 +205,7 @@
     )
    (logclear! (-> obj mask) (process-mask actor-pause attackable))
    (go (method-of-object obj nav-enemy-die))
-   'die
+   (the-as object 'die)
    )
   )
 
@@ -324,11 +328,11 @@
   (case arg2 
    (('touch)
      (set! (-> self touch-time) (-> *display* base-frame-counter))
-     (dummy-72 self arg0 arg3)
+     (nav-enemy-touch-handler self arg0 arg3)
      )
    (('attack)
     (nav-enemy-set-hit-from-direction arg0)
-    (TODO-RENAME-73 self arg0)
+    (nav-enemy-attack-handler self arg0 arg3)
     )
    )
   )
@@ -821,38 +825,32 @@ nav-enemy-default-event-handler
        s5-0
        )
       )
-     (s5-1 (the-as object #f))
+     (s5-1 (the-as collide-shape-prim #f))
      )
     (when s4-0
      (dotimes (s3-0 (-> (the-as collide-shape-prim-group s4-0) num-prims))
       (let*
        ((s2-0
-         (the-as
-          object
-          (->
-           (the-as collide-shape-prim-group (+ (* s3-0 4) (the-as int s4-0)))
-           prim
-           0
-           )
+         (->
+          (the-as collide-shape-prim-group (+ (* s3-0 4) (the-as int s4-0)))
+          prims
+          0
           )
          )
         (v1-6
          (if
           (and
-           (nonzero? (the-as uint s2-0))
-           (type-type?
-            (-> (the-as collide-shape-prim s2-0) type)
-            collide-shape-prim-sphere
-            )
+           (nonzero? s2-0)
+           (type-type? (-> s2-0 type) collide-shape-prim-sphere)
            )
-          (the-as uint s2-0)
+          s2-0
           )
          )
         )
-       (when (the-as uint v1-6)
+       (when v1-6
         (if
          (or
-          (not (the-as uint s5-1))
+          (not s5-1)
           (<
            (-> (the-as collide-shape-prim-sphere v1-6) transform-index)
            (-> (the-as collide-shape-prim-group s5-1) transform-index)
@@ -868,13 +866,13 @@ nav-enemy-default-event-handler
             )
            )
           )
-         (set! s5-1 (the-as uint v1-6))
+         (set! s5-1 v1-6)
          )
         )
        )
       )
-     (if (the-as collide-shape-prim s5-1)
-      (set! (-> (the-as collide-shape-prim s5-1) collide-with) arg0)
+     (if s5-1
+      (set! (-> s5-1 collide-with) arg0)
       )
      )
     )
@@ -1131,7 +1129,7 @@ nav-enemy-default-event-handler
        )
       )
      (>=
-      (- (-> *display* base-frame-counter) (the-as int (-> self state-time)))
+      (- (-> *display* base-frame-counter) (-> self state-time))
       (-> self state-timeout)
       )
      (nonzero? (-> self draw))
@@ -1210,14 +1208,10 @@ nav-enemy-default-event-handler
    )
   :trans
   (behavior ()
-   (when
-    (>=
-     (- (-> *display* base-frame-counter) (the-as int (-> self state-time)))
-     30
-     )
+   (when (>= (- (-> *display* base-frame-counter) (-> self state-time)) 30)
     (when
      (>=
-      (- (-> *display* base-frame-counter) (the-as int (-> self state-time)))
+      (- (-> *display* base-frame-counter) (-> self state-time))
       (-> self state-timeout)
       )
      (if (and (nonzero? (-> self draw)) (logtest? (-> self draw status) 8))
@@ -1641,7 +1635,7 @@ nav-enemy-default-event-handler
   (behavior ()
    (when
     (>=
-     (- (-> *display* base-frame-counter) (the-as int (-> self state-time)))
+     (- (-> *display* base-frame-counter) (-> self state-time))
      (-> self reaction-time)
      )
     (if
@@ -1864,7 +1858,7 @@ nav-enemy-default-event-handler
     )
    (when
     (>=
-     (- (-> *display* base-frame-counter) (the-as int (-> self state-time)))
+     (- (-> *display* base-frame-counter) (-> self state-time))
      (-> self reaction-time)
      )
     (if
@@ -1967,11 +1961,7 @@ nav-enemy-default-event-handler
    )
   :trans
   (behavior ()
-   (when
-    (>=
-     (- (-> *display* base-frame-counter) (the-as int (-> self state-time)))
-     30
-     )
+   (when (>= (- (-> *display* base-frame-counter) (-> self state-time)) 30)
     (if (logtest? (-> *target* state-flags) 128)
      (go-virtual nav-enemy-patrol)
      )
@@ -1996,7 +1986,7 @@ nav-enemy-default-event-handler
        )
       (logtest? (nav-control-flags bit17) (-> self nav flags))
       (>=
-       (- (-> *display* base-frame-counter) (the-as int (-> self state-time)))
+       (- (-> *display* base-frame-counter) (-> self state-time))
        (-> self state-timeout)
        )
       )
@@ -2078,11 +2068,7 @@ nav-enemy-default-event-handler
    )
   :trans
   (behavior ()
-   (when
-    (>=
-     (- (-> *display* base-frame-counter) (the-as int (-> self state-time)))
-     30
-     )
+   (when (>= (- (-> *display* base-frame-counter) (-> self state-time)) 30)
     (if (logtest? (-> *target* state-flags) 128)
      (go-virtual nav-enemy-patrol)
      )
@@ -2132,7 +2118,7 @@ nav-enemy-default-event-handler
      (set! (-> self nav-enemy-flags) (logand -5 (-> self nav-enemy-flags)))
      (if
       (>=
-       (- (-> *display* base-frame-counter) (the-as int (-> self state-time)))
+       (- (-> *display* base-frame-counter) (-> self state-time))
        (-> self state-timeout)
        )
       (go-virtual nav-enemy-give-up)
@@ -2183,11 +2169,7 @@ nav-enemy-default-event-handler
    )
   :trans
   (behavior ()
-   (when
-    (>=
-     (- (-> *display* base-frame-counter) (the-as int (-> self state-time)))
-     30
-     )
+   (when (>= (- (-> *display* base-frame-counter) (-> self state-time)) 30)
     (if (TODO-RENAME-46 self (-> self nav-info notice-distance))
      (go-virtual nav-enemy-chase)
      )
@@ -2853,10 +2835,7 @@ nav-enemy-default-event-handler
   (behavior ()
    (if
     (or
-     (>=
-      (- (-> *display* base-frame-counter) (the-as int (-> self state-time)))
-      150
-      )
+     (>= (- (-> *display* base-frame-counter) (-> self state-time)) 150)
      (logtest? (nav-control-flags bit19) (-> self nav flags))
      )
     (go-virtual nav-enemy-chase)
@@ -2888,11 +2867,7 @@ nav-enemy-default-event-handler
    )
   :trans
   (behavior ()
-   (if
-    (>=
-     (- (-> *display* base-frame-counter) (the-as int (-> self state-time)))
-     150
-     )
+   (if (>= (- (-> *display* base-frame-counter) (-> self state-time)) 150)
     (go (-> self jump-return-state))
     )
    (none)
