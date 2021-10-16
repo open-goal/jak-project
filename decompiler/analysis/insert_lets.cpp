@@ -170,6 +170,160 @@ FormElement* rewrite_as_dotimes(LetElement* in, const Env& env, FormPool& pool) 
                                                 mr.maps.forms.at(1), body);
 }
 
+FormElement* rewrite_as_send_event(LetElement* in, const Env& env, FormPool& pool) {
+  if (in->entries().size() != 1) {
+    return nullptr;
+  }
+
+  // (let ((block-var (new 'stack-no-clear 'event-message-block))
+  auto block_var = in->entries().at(0).dest;
+  auto block_var_name = env.get_variable_name(block_var);
+  auto block_src = in->entries().at(0).src->try_as_element<StackStructureDefElement>();
+  if (!block_src) {
+    return nullptr;
+  }
+
+  auto& e = block_src->entry();
+  if (e.ref_type != TypeSpec("event-message-block")) {
+    return nullptr;
+  }
+
+  if (e.hint.container_type != StackStructureHint::ContainerType::NONE) {
+    return nullptr;
+  }
+
+  auto body = in->body();
+  if (body->size() < 4) {  // from, num-params, message, call
+    // fmt::print(" fail: size\n");
+    return nullptr;
+  }
+
+  ////////////////////////////////////////////////////////
+  // (set! (-> block-var from) <something>)
+  Matcher set_from_matcher =
+      Matcher::set(Matcher::deref(Matcher::any_reg(0), false, {DerefTokenMatcher::string("from")}),
+                   Matcher::any_reg(1));
+  Form set_from_hack_body;
+  set_from_hack_body.elts().push_back(body->at(0));
+  auto from_mr = match(set_from_matcher, &set_from_hack_body);
+  if (!from_mr.matched) {
+    // fmt::print(" fail: from1\n");
+    return nullptr;
+  }
+
+  if (env.get_variable_name(*from_mr.maps.regs.at(0)) != block_var_name) {
+    // fmt::print(" fail: from2\n");
+    return nullptr;
+  }
+
+  auto from_var = *from_mr.maps.regs.at(1);
+  if (from_var.reg() != Register(Reg::GPR, Reg::S6)) {
+    // fmt::print(" fail: from3\n");
+    return nullptr;
+  }
+
+  ////////////////////////////////////////////////////////
+  // (set! (-> a1-14 num-params) param-count) where param-count is a constant integer
+  Matcher set_num_params_matcher = Matcher::set(
+      Matcher::deref(Matcher::any_reg(0), false, {DerefTokenMatcher::string("num-params")}),
+      Matcher::any_integer(1));
+  Form set_num_params_hack_body;
+  set_num_params_hack_body.elts().push_back(body->at(1));
+  auto num_params_mr = match(set_num_params_matcher, &set_num_params_hack_body);
+  if (!num_params_mr.matched) {
+    // fmt::print(" fail: pc1\n");
+    return nullptr;
+  }
+  if (env.get_variable_name(*num_params_mr.maps.regs.at(0)) != block_var_name) {
+    // fmt::print(" fail: pc2\n");
+    return nullptr;
+  }
+  int param_count = num_params_mr.maps.ints.at(1);
+  assert(param_count >= 0 && param_count < 7);
+  if (body->size() != 4 + param_count) {
+    // fmt::print(" fail: pc3\n");
+    return nullptr;
+  }
+
+  ////////////////////////////////////////////////////////
+  // (set! (-> a1-14 message) the-message-name)
+  Matcher set_message_matcher = Matcher::set(
+      Matcher::deref(Matcher::any_reg(0), false, {DerefTokenMatcher::string("message")}),
+      Matcher::any(1));
+  Form set_message_hack_body;
+  set_message_hack_body.elts().push_back(body->at(2));
+  auto set_message_mr = match(set_message_matcher, &set_message_hack_body);
+  if (!set_message_mr.matched) {
+    // fmt::print(" fail: msg1\n");
+    return nullptr;
+  }
+  if (env.get_variable_name(*set_message_mr.maps.regs.at(0)) != block_var_name) {
+    // fmt::print(" fail: msg2\n");
+    return nullptr;
+  }
+  Form* message_name = set_message_mr.maps.forms.at(1);
+
+  ////////////////////////////////////////////////////////
+  // (set! (-> a1-14 param X) the-param-value)
+  std::vector<Form*> param_values;
+  for (int param_idx = 0; param_idx < param_count; param_idx++) {
+    auto set_form = body->at(3 + param_idx);
+    Matcher set_param_matcher = Matcher::set(
+        Matcher::deref(Matcher::any_reg(0), false,
+                       {DerefTokenMatcher::string("param"), DerefTokenMatcher::integer(param_idx)}),
+        Matcher::any(1));
+    Form set_param_hack_body;
+    set_param_hack_body.elts().push_back(set_form);
+    auto set_param_mr = match(set_param_matcher, &set_param_hack_body);
+    if (!set_param_mr.matched) {
+      // fmt::print(" fail: pv {} 1: {}\n", param_idx, set_form->to_string(env));
+      return nullptr;
+    }
+    if (env.get_variable_name(*set_param_mr.maps.regs.at(0)) != block_var_name) {
+      // fmt::print(" fail: pv {} 2\n", param_idx);
+      return nullptr;
+    }
+
+    auto param_val = set_param_mr.maps.forms.at(1);
+    auto param_val_cast = param_val->try_as_element<CastElement>();
+    // strip uint cast, if we have it.
+    if (param_val_cast && param_val_cast->type() == TypeSpec("uint")) {
+      param_val = param_val_cast->source();
+    }
+    param_values.push_back(param_val);
+  }
+
+  ////////////////////////////////////////////////////////
+  // (send-event-function <dest> <block-var>)
+  Matcher call_matcher = Matcher::op(GenericOpMatcher::func(Matcher::symbol("send-event-function")),
+                                     {Matcher::any(0), Matcher::any_reg(1)});
+  Form call_hack_body;
+  call_hack_body.elts().push_back(body->at(3 + param_count));
+  auto call_mr = match(call_matcher, &call_hack_body);
+  if (!call_mr.matched) {
+    // fmt::print(" fail: call1: {}\n", body->at(3 + param_count)->to_string(env));
+    return nullptr;
+  }
+
+  if (env.get_variable_name(*call_mr.maps.regs.at(1)) != block_var_name) {
+    // fmt::print(" fail: call2\n");
+    return nullptr;
+  }
+
+  Form* send_destination = call_mr.maps.forms.at(0);
+
+  // time to build the macro!
+  std::vector<Form*> macro_args = {send_destination, message_name};
+  for (int i = 0; i < param_count; i++) {
+    macro_args.push_back(param_values.at(i));
+  }
+
+  auto oper = GenericOperator::make_fixed(FixedOperatorKind::SEND_EVENT);
+  return pool.alloc_element<GenericElement>(oper, macro_args);
+
+  return nullptr;
+}
+
 FormElement* rewrite_as_countdown(LetElement* in, const Env& env, FormPool& pool) {
   // dotimes OpenGOAL:
   /*
@@ -662,6 +816,11 @@ FormElement* rewrite_let(LetElement* in, const Env& env, FormPool& pool) {
   auto as_set_vector2 = rewrite_set_vector_2(in, env, pool);
   if (as_set_vector2) {
     return as_set_vector2;
+  }
+
+  auto as_send_event = rewrite_as_send_event(in, env, pool);
+  if (as_send_event) {
+    return as_send_event;
   }
 
   // nothing matched.

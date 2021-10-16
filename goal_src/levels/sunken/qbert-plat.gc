@@ -212,97 +212,82 @@
   )
 
 (defmethod dummy-33 qbert-plat ((obj qbert-plat))
-  (with-pp
-   (let* ((a1-0 (-> obj master))
-          (v1-0 (if a1-0
-                 (-> a1-0 extra process)
-                 )
-           )
+  (let* ((a1-0 (-> obj master))
+         (v1-0 (if a1-0
+                (-> a1-0 extra process)
+                )
           )
-    (when v1-0
-     (let ((a1-1 (new 'stack-no-clear 'event-message-block)))
-      (set! (-> a1-1 from) pp)
-      (set! (-> a1-1 num-params) 1)
-      (set! (-> a1-1 message) 'trigger)
-      (set! (-> a1-1 param 0) (the-as uint (-> obj plat-id)))
-      (send-event-function v1-0 a1-1)
-      )
-     )
+         )
+   (if v1-0
+    (send-event v1-0 'trigger (-> obj plat-id))
     )
    )
   )
 
 (defmethod dummy-32 qbert-plat ((obj qbert-plat))
-  (with-pp
-   (let* ((v1-0 (-> obj master))
-          (a0-1 (if v1-0
-                 (-> v1-0 extra process)
-                 )
-           )
+  (let* ((v1-0 (-> obj master))
+         (a0-1 (if v1-0
+                (-> v1-0 extra process)
+                )
           )
-    (when (the-as qbert-plat-master a0-1)
-     (let
-      ((v1-3
-        (plat-state-set?
-         (the-as qbert-plat-master a0-1)
-         (the-as uint (-> obj plat-id))
          )
+   (when (the-as qbert-plat-master a0-1)
+    (let
+     ((v1-3
+       (plat-state-set?
+        (the-as qbert-plat-master a0-1)
+        (the-as uint (-> obj plat-id))
         )
        )
-      (when (!= v1-3 (-> obj on?))
-       (set! (-> obj on?) v1-3)
-       (cond
-        (v1-3
-         (let ((s5-0 (get-process *default-dead-pool* qbert-plat-on #x4000)))
-          (when s5-0
-           (let ((t9-2 (method-of-type qbert-plat-on activate)))
-            (t9-2
-             (the-as qbert-plat-on s5-0)
-             obj
-             'qbert-plat-on
-             (the-as pointer #x70004000)
-             )
-            )
-           (run-now-in-process
-            s5-0
-            qbert-plat-on-init-by-other
-            (-> obj entity)
+      )
+     (when (!= v1-3 (-> obj on?))
+      (set! (-> obj on?) v1-3)
+      (cond
+       (v1-3
+        (let ((s5-0 (get-process *default-dead-pool* qbert-plat-on #x4000)))
+         (when s5-0
+          (let ((t9-2 (method-of-type qbert-plat-on activate)))
+           (t9-2
+            (the-as qbert-plat-on s5-0)
             obj
+            'qbert-plat-on
+            (the-as pointer #x70004000)
             )
-           (-> s5-0 ppointer)
            )
-          )
-         (sound-play-by-name
-          (static-sound-name "plat-light-on")
-          (new-sound-id)
-          1024
-          0
-          0
-          (the-as uint 1)
-          (the-as vector #t)
+          (run-now-in-process
+           s5-0
+           qbert-plat-on-init-by-other
+           (-> obj entity)
+           obj
+           )
+          (-> s5-0 ppointer)
           )
          )
-        (else
-         (let ((gp-2 (-> obj child)))
-          (while gp-2
-           (let ((a1-5 (new 'stack-no-clear 'event-message-block)))
-            (set! (-> a1-5 from) pp)
-            (set! (-> a1-5 num-params) 0)
-            (set! (-> a1-5 message) 'die)
-            (send-event-function (ppointer->process gp-2) a1-5)
-            )
-           (set! gp-2 (-> gp-2 0 brother))
-           )
+        (sound-play-by-name
+         (static-sound-name "plat-light-on")
+         (new-sound-id)
+         1024
+         0
+         0
+         (the-as uint 1)
+         (the-as vector #t)
+         )
+        )
+       (else
+        (let ((gp-2 (-> obj child)))
+         (while gp-2
+          (send-event (ppointer->process gp-2) 'die)
+          (set! gp-2 (-> gp-2 0 brother))
           )
-         (sound-play-by-name
-          (static-sound-name "plat-light-off")
-          (new-sound-id)
-          1024
-          0
-          0
-          (the-as uint 1)
-          (the-as vector #t)
-          )
+         )
+        (sound-play-by-name
+         (static-sound-name "plat-light-off")
+         (new-sound-id)
+         1024
+         0
+         0
+         (the-as uint 1)
+         (the-as vector #t)
          )
         )
        )
@@ -549,12 +534,7 @@
                            )
                           )
                          )
-                        (let ((a1-4 (new 'stack-no-clear 'event-message-block)))
-                         (set! (-> a1-4 from) self)
-                         (set! (-> a1-4 num-params) 0)
-                         (set! (-> a1-4 message) 'notify)
-                         (send-event-function arg0 a1-4)
-                         )
+                        (send-event arg0 'notify)
                         (let
                          ((a0-13
                            (=
@@ -913,18 +893,8 @@
       (logclear! (-> s5-0 mask) (process-mask platform))
       (when (-> self puzzle-beaten?)
        (suspend)
-       (let ((a1-0 (new 'stack-no-clear 'event-message-block)))
-        (set! (-> a1-0 from) self)
-        (set! (-> a1-0 num-params) 0)
-        (set! (-> a1-0 message) 'trigger)
-        (send-event-function gp-0 a1-0)
-        )
-       (let ((a1-1 (new 'stack-no-clear 'event-message-block)))
-        (set! (-> a1-1 from) self)
-        (set! (-> a1-1 num-params) 0)
-        (set! (-> a1-1 message) 'trigger)
-        (send-event-function s5-0 a1-1)
-        )
+       (send-event gp-0 'trigger)
+       (send-event s5-0 'trigger)
        )
       (go qbert-plat-master-idle)
       )

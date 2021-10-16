@@ -141,22 +141,11 @@
        (((game-task village2-levitator))
          (when arg0
           (close-status! (-> obj tasks) (task-status need-introduction))
-          (let ((a1-5 (new 'stack-no-clear 'event-message-block)))
-           (set! (-> a1-5 from) pp)
-           (set! (-> a1-5 num-params) 1)
-           (set! (-> a1-5 message) 'clone)
-           (set! (-> a1-5 param 0) (the-as uint (process->handle obj)))
-           (send-event-function (-> obj sage extra process) a1-5)
-           )
-          (let ((s5-1 (new 'stack-no-clear 'event-message-block)))
-           (set! (-> s5-1 from) pp)
-           (set! (-> s5-1 num-params) 1)
-           (set! (-> s5-1 message) 'clone)
-           (set! (-> s5-1 param 0) (the-as uint (process->handle obj)))
-           (send-event-function
-            (-> (entity-by-type flutflut-bluehut) extra process)
-            s5-1
-            )
+          (send-event (-> obj sage extra process) 'clone (process->handle obj))
+          (send-event
+           (-> (entity-by-type flutflut-bluehut) extra process)
+           'clone
+           (process->handle obj)
            )
           )
          (new 'static 'spool-anim
@@ -839,29 +828,12 @@
            (set! (-> (the-as manipy v1-42) draw light-index) (the-as uint 1))
            )
           )
-         (let ((a1-14 (new 'stack-no-clear 'event-message-block)))
-          (set! (-> a1-14 from) pp)
-          (set! (-> a1-14 num-params) 1)
-          (set! (-> a1-14 message) 'anim-mode)
-          (set! (-> a1-14 param 0) (the-as uint 'clone-anim))
-          (send-event-function (handle->process (-> obj jaws)) a1-14)
-          )
-         (let ((a1-15 (new 'stack-no-clear 'event-message-block)))
-          (set! (-> a1-15 from) pp)
-          (set! (-> a1-15 num-params) 1)
-          (set! (-> a1-15 message) 'center-joint)
-          (set! (-> a1-15 param 0) (the-as uint 3))
-          (send-event-function (handle->process (-> obj jaws)) a1-15)
-          )
-         (let ((s5-4 (new 'stack-no-clear 'event-message-block)))
-          (set! (-> s5-4 from) pp)
-          (set! (-> s5-4 num-params) 1)
-          (set! (-> s5-4 message) 'clone)
-          (set! (-> s5-4 param 0) (the-as uint (process->handle obj)))
-          (send-event-function
-           (-> (entity-by-type flutflut-bluehut) extra process)
-           s5-4
-           )
+         (send-event (handle->process (-> obj jaws)) 'anim-mode 'clone-anim)
+         (send-event (handle->process (-> obj jaws)) 'center-joint 3)
+         (send-event
+          (-> (entity-by-type flutflut-bluehut) extra process)
+          'clone
+          (process->handle obj)
           )
          )
         (new 'static 'spool-anim
@@ -947,15 +919,10 @@
        (else
         (when arg0
          (close-status! (-> obj tasks) (task-status need-introduction))
-         (let ((s5-6 (new 'stack-no-clear 'event-message-block)))
-          (set! (-> s5-6 from) pp)
-          (set! (-> s5-6 num-params) 1)
-          (set! (-> s5-6 message) 'clone)
-          (set! (-> s5-6 param 0) (the-as uint (process->handle obj)))
-          (send-event-function
-           (-> (entity-by-type flutflut-bluehut) extra process)
-           s5-6
-           )
+         (send-event
+          (-> (entity-by-type flutflut-bluehut) extra process)
+          'clone
+          (process->handle obj)
           )
          )
         (new 'static 'spool-anim
@@ -1193,12 +1160,7 @@
   (behavior ()
    (case (get-task-status (game-task village2-levitator)) 
     (((task-status need-hint) (task-status need-introduction))
-      (let ((a1-1 (new 'stack-no-clear 'event-message-block)))
-       (set! (-> a1-1 from) self)
-       (set! (-> a1-1 num-params) 0)
-       (set! (-> a1-1 message) 'play-anim)
-       (send-event-function self a1-1)
-       )
+      (send-event self 'play-anim)
       )
     )
    ((-> (method-of-type process-taskable idle) trans))
@@ -1648,21 +1610,8 @@
      (deactivate a0-1)
      )
     )
-   (let ((a1-1 (new 'stack-no-clear 'event-message-block)))
-    (set! (-> a1-1 from) self)
-    (set! (-> a1-1 num-params) 0)
-    (set! (-> a1-1 message) 'end-mode)
-    (send-event-function (-> self sage extra process) a1-1)
-    )
-   (let ((gp-0 (new 'stack-no-clear 'event-message-block)))
-    (set! (-> gp-0 from) self)
-    (set! (-> gp-0 num-params) 0)
-    (set! (-> gp-0 message) 'end-mode)
-    (send-event-function
-     (-> (entity-by-type flutflut-bluehut) extra process)
-     gp-0
-     )
-    )
+   (send-event (-> self sage extra process) 'end-mode)
+   (send-event (-> (entity-by-type flutflut-bluehut) extra process) 'end-mode)
    ((-> (method-of-type process-taskable play-anim) exit))
    (close-specific-task!
     (game-task village2-levitator)
@@ -3093,8 +3042,7 @@
      :mask #x80
      :num 1.0
      :group #x1
-     :sound-name
-     (new 'static 'sound-name :lo #x6863616d2d76656c)
+     :sound-name (static-sound-name "lev-mach-idle")
      :volume #x400
      :fo-max 30
      )

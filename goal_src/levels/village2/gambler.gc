@@ -41,205 +41,193 @@
   )
 
 (defmethod play-anim! gambler ((obj gambler) (arg0 symbol))
-  (with-pp
-   (set! (-> obj talk-message) (the-as uint 260))
-   (case (current-status (-> obj tasks)) 
-    (((task-status need-hint) (task-status need-introduction))
-      (when arg0
-       (close-status! (-> obj tasks) (task-status need-introduction))
-       (close-specific-task!
-        (game-task village2-gambler-money)
-        (task-status need-introduction)
+  (set! (-> obj talk-message) (the-as uint 260))
+  (case (current-status (-> obj tasks)) 
+   (((task-status need-hint) (task-status need-introduction))
+     (when arg0
+      (close-status! (-> obj tasks) (task-status need-introduction))
+      (close-specific-task!
+       (game-task village2-gambler-money)
+       (task-status need-introduction)
+       )
+      )
+     (new 'static 'spool-anim
+      :name "gambler-introduction-1"
+      :index 11
+      :parts 9
+      :command-list
+      '(
+        (0
+          want-levels
+          village2
+          rolling
+          )
+        (0
+         display-level
+         rolling
+         #f
+         )
+        ((the binteger 29)
+         joint
+         "cameraB"
+         )
+        ((the binteger 103)
+         joint
+         "camera"
+         )
+        ((the binteger 231)
+         joint
+         "cameraB"
+         )
+        ((the binteger 730)
+         display-level
+         rolling
+         display
+         )
+        ((the binteger 730)
+         want-force-vis
+         rolling
+         #t
+         )
+        ((the binteger 732)
+         alive
+         "gorge-pusher-5"
+         )
+        ((the binteger 732)
+         alive
+         "gorge-pusher-6"
+         )
+        ((the binteger 732)
+         alive
+         "gorge-start-1"
+         )
+        ((the binteger 732)
+         joint
+         "camera"
+         )
+        ((the binteger 945)
+         joint
+         "cameraB"
+         )
+        ((the binteger 950)
+         dead
+         "gorge-pusher-5"
+         )
+        ((the binteger 950)
+         dead
+         "gorge-pusher-6"
+         )
+        ((the binteger 950)
+         dead
+         "gorge-start-1"
+         )
+        ((the binteger 950)
+         display-level
+         rolling
+         #f
+         )
+        ((the binteger 950) want-force-vis rolling #f)
+        )
+      )
+     )
+   (((task-status need-reminder))
+    (set! (-> obj skippable) #t)
+    (cond
+     ((closed?
+       (-> obj tasks)
+       (game-task rolling-race)
+       (task-status need-reward-speech)
+       )
+      (new 'static 'spool-anim
+       :name "gambler-reminder-money"
+       :index 13
+       :parts 2
+       :command-list '()
+       )
+      )
+     ((closed?
+       (-> obj tasks)
+       (game-task village2-gambler-money)
+       (task-status need-reward-speech)
+       )
+      (new 'static 'spool-anim
+       :name "gambler-reminder-race"
+       :index 12
+       :parts 2
+       :command-list '()
+       )
+      )
+     ((zero? (get-reminder (-> obj tasks) 5))
+      (if arg0
+       (save-reminder (-> obj tasks) 1 5)
+       )
+      (new 'static 'spool-anim
+       :name "gambler-reminder-race"
+       :index 12
+       :parts 2
+       :command-list '()
+       )
+      )
+     (else
+      (if arg0
+       (save-reminder (-> obj tasks) 0 5)
+       )
+      (new 'static 'spool-anim
+       :name "gambler-reminder-money"
+       :index 13
+       :parts 2
+       :command-list '()
+       )
+      )
+     )
+    )
+   (((task-status need-reward-speech))
+    (if (not arg0)
+     (set! (-> obj will-talk) #t)
+     )
+    (case (current-task (-> obj tasks)) 
+     (((game-task rolling-race))
+       (when arg0
+        (set! (-> obj cell-for-task) (current-task (-> obj tasks)))
+        (close-current! (-> obj tasks))
+        )
+       (new 'static 'spool-anim
+        :name "gambler-resolution-race"
+        :index 14
+        :parts 3
+        :command-list '()
+        )
+       )
+     (else
+      (cond
+       (arg0
+        (set! (-> obj cell-for-task) (current-task (-> obj tasks)))
+        (close-current! (-> obj tasks))
+        (send-event *target* 'get-pickup 5 (- (-> *GAME-bank* money-task-inc)))
+        )
+       (else
+        (set! (-> obj talk-message) (the-as uint 282))
         )
        )
       (new 'static 'spool-anim
-       :name "gambler-introduction-1"
-       :index 11
-       :parts 9
-       :command-list
-       '(
-         (0
-           want-levels
-           village2
-           rolling
-           )
-         (0
-          display-level
-          rolling
-          #f
-          )
-         ((the binteger 29)
-          joint
-          "cameraB"
-          )
-         ((the binteger 103)
-          joint
-          "camera"
-          )
-         ((the binteger 231)
-          joint
-          "cameraB"
-          )
-         ((the binteger 730)
-          display-level
-          rolling
-          display
-          )
-         ((the binteger 730)
-          want-force-vis
-          rolling
-          #t
-          )
-         ((the binteger 732)
-          alive
-          "gorge-pusher-5"
-          )
-         ((the binteger 732)
-          alive
-          "gorge-pusher-6"
-          )
-         ((the binteger 732)
-          alive
-          "gorge-start-1"
-          )
-         ((the binteger 732)
-          joint
-          "camera"
-          )
-         ((the binteger 945)
-          joint
-          "cameraB"
-          )
-         ((the binteger 950)
-          dead
-          "gorge-pusher-5"
-          )
-         ((the binteger 950)
-          dead
-          "gorge-pusher-6"
-          )
-         ((the binteger 950)
-          dead
-          "gorge-start-1"
-          )
-         ((the binteger 950)
-          display-level
-          rolling
-          #f
-          )
-         ((the binteger 950) want-force-vis rolling #f)
-         )
-       )
-      )
-    (((task-status need-reminder))
-     (set! (-> obj skippable) #t)
-     (cond
-      ((closed?
-        (-> obj tasks)
-        (game-task rolling-race)
-        (task-status need-reward-speech)
-        )
-       (new 'static 'spool-anim
-        :name "gambler-reminder-money"
-        :index 13
-        :parts 2
-        :command-list '()
-        )
-       )
-      ((closed?
-        (-> obj tasks)
-        (game-task village2-gambler-money)
-        (task-status need-reward-speech)
-        )
-       (new 'static 'spool-anim
-        :name "gambler-reminder-race"
-        :index 12
-        :parts 2
-        :command-list '()
-        )
-       )
-      ((zero? (get-reminder (-> obj tasks) 5))
-       (if arg0
-        (save-reminder (-> obj tasks) 1 5)
-        )
-       (new 'static 'spool-anim
-        :name "gambler-reminder-race"
-        :index 12
-        :parts 2
-        :command-list '()
-        )
-       )
-      (else
-       (if arg0
-        (save-reminder (-> obj tasks) 0 5)
-        )
-       (new 'static 'spool-anim
-        :name "gambler-reminder-money"
-        :index 13
-        :parts 2
-        :command-list '()
-        )
+       :name "gambler-resolution-money"
+       :index 15
+       :parts 2
+       :command-list '()
        )
       )
      )
-    (((task-status need-reward-speech))
-     (if (not arg0)
-      (set! (-> obj will-talk) #t)
-      )
-     (case (current-task (-> obj tasks)) 
-      (((game-task rolling-race))
-        (when arg0
-         (set! (-> obj cell-for-task) (current-task (-> obj tasks)))
-         (close-current! (-> obj tasks))
-         )
-        (new 'static 'spool-anim
-         :name "gambler-resolution-race"
-         :index 14
-         :parts 3
-         :command-list '()
-         )
-        )
-      (else
-       (cond
-        (arg0
-         (set! (-> obj cell-for-task) (current-task (-> obj tasks)))
-         (close-current! (-> obj tasks))
-         (let ((a1-10 (new 'stack-no-clear 'event-message-block)))
-          (set! (-> a1-10 from) pp)
-          (set! (-> a1-10 num-params) 2)
-          (set! (-> a1-10 message) 'get-pickup)
-          (set! (-> a1-10 param 0) (the-as uint 5))
-          (set!
-           (-> a1-10 param 1)
-           (the-as uint (- (-> *GAME-bank* money-task-inc)))
-           )
-          (send-event-function *target* a1-10)
-          )
-         )
-        (else
-         (set! (-> obj talk-message) (the-as uint 282))
-         )
-        )
-       (new 'static 'spool-anim
-        :name "gambler-resolution-money"
-        :index 15
-        :parts 2
-        :command-list '()
-        )
-       )
+    )
+   (else
+    (if arg0
+     (format
+      0
+      "ERROR: <GMJ>: ~S playing anim for task status ~S~%"
+      (-> obj name)
+      (task-status->string (current-status (-> obj tasks)))
       )
      )
-    (else
-     (if arg0
-      (format
-       0
-       "ERROR: <GMJ>: ~S playing anim for task status ~S~%"
-       (-> obj name)
-       (task-status->string (current-status (-> obj tasks)))
-       )
-      )
-     (-> obj draw art-group data 7)
-     )
+    (-> obj draw art-group data 7)
     )
    )
   )

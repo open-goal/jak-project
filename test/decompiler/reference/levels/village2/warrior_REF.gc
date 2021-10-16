@@ -159,26 +159,11 @@
       (arg0
        (set! (-> obj cell-for-task) (current-task (-> obj tasks)))
        (close-current! (-> obj tasks))
-       (let ((a1-4 (new 'stack-no-clear 'event-message-block)))
-        (set! (-> a1-4 from) pp)
-        (set! (-> a1-4 num-params) 2)
-        (set! (-> a1-4 message) 'get-pickup)
-        (set! (-> a1-4 param 0) (the-as uint 5))
-        (set!
-         (-> a1-4 param 1)
-         (the-as uint (- (-> *GAME-bank* money-task-inc)))
-         )
-        (send-event-function *target* a1-4)
-        )
-       (let ((s5-1 (new 'stack-no-clear 'event-message-block)))
-        (set! (-> s5-1 from) pp)
-        (set! (-> s5-1 num-params) 1)
-        (set! (-> s5-1 message) 'clone)
-        (set! (-> s5-1 param 0) (the-as uint (process->handle obj)))
-        (send-event-function
-         (-> (entity-by-type allpontoons) extra process)
-         s5-1
-         )
+       (send-event *target* 'get-pickup 5 (- (-> *GAME-bank* money-task-inc)))
+       (send-event
+        (-> (entity-by-type allpontoons) extra process)
+        'clone
+        (process->handle obj)
         )
        (dotimes (s5-2 (entity-actor-count (-> obj entity) 'alt-actor))
         (entity-birth-no-kill
@@ -244,12 +229,7 @@
   :virtual #t
   :exit
   (behavior ()
-   (let ((gp-0 (new 'stack-no-clear 'event-message-block)))
-    (set! (-> gp-0 from) self)
-    (set! (-> gp-0 num-params) 0)
-    (set! (-> gp-0 message) 'end-mode)
-    (send-event-function (-> (entity-by-type allpontoons) extra process) gp-0)
-    )
+   (send-event (-> (entity-by-type allpontoons) extra process) 'end-mode)
    ((-> (method-of-type process-taskable play-anim) exit))
    (none)
    )

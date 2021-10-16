@@ -186,18 +186,10 @@
   nav-enemy-attack-handler
   nav-enemy
   ((obj nav-enemy) (arg0 process) (arg1 event-message-block))
-  (with-pp
-   (let ((v1-0 (new 'stack-no-clear 'event-message-block)))
-    (set! (-> v1-0 from) pp)
-    (set! (-> v1-0 num-params) 1)
-    (set! (-> v1-0 message) 'get-attack-count)
-    (set! (-> v1-0 param 0) (the-as uint 1))
-    (send-event-function arg0 v1-0)
-    )
-   (logclear! (-> obj mask) (process-mask actor-pause attackable))
-   (go (method-of-object obj nav-enemy-die))
-   (the-as object 'die)
-   )
+  (send-event arg0 'get-attack-count 1)
+  (logclear! (-> obj mask) (process-mask actor-pause attackable))
+  (go (method-of-object obj nav-enemy-die))
+  (the-as object 'die)
   )
 
 ;; WARN: rewrite_to_get_var got a none typed variable. Is there unreachable code?
@@ -205,27 +197,19 @@
   dummy-43
   nav-enemy
   ((obj nav-enemy) (arg0 process) (arg1 event-message-block))
-  (with-pp
-   (the-as object (cond
-                   ((logtest? (-> obj nav-enemy-flags) 32)
-                    (let ((v1-2 (new 'stack-no-clear 'event-message-block)))
-                     (set! (-> v1-2 from) pp)
-                     (set! (-> v1-2 num-params) 1)
-                     (set! (-> v1-2 message) 'get-attack-count)
-                     (set! (-> v1-2 param 0) (the-as uint 1))
-                     (send-event-function arg0 v1-2)
-                     )
-                    (logclear!
-                     (-> obj mask)
-                     (process-mask actor-pause attackable)
-                     )
-                    (go (method-of-object obj nav-enemy-die))
+  (the-as object (cond
+                  ((logtest? (-> obj nav-enemy-flags) 32)
+                   (send-event arg0 'get-attack-count 1)
+                   (logclear!
+                    (-> obj mask)
+                    (process-mask actor-pause attackable)
                     )
-                   (else
-                    (dummy-44 obj arg0 arg1)
-                    )
+                   (go (method-of-object obj nav-enemy-die))
                    )
-    )
+                  (else
+                   (dummy-44 obj arg0 arg1)
+                   )
+                  )
    )
   )
 
@@ -2194,12 +2178,7 @@ nav-enemy-default-event-handler
    )
   :enter
   (behavior ()
-   (let ((a1-0 (new 'stack-no-clear 'event-message-block)))
-    (set! (-> a1-0 from) self)
-    (set! (-> a1-0 num-params) 0)
-    (set! (-> a1-0 message) 'child-die)
-    (send-event-function (ppointer->process (-> self parent)) a1-0)
-    )
+   (send-event (ppointer->process (-> self parent)) 'child-die)
    (none)
    )
   :code
@@ -2216,12 +2195,7 @@ nav-enemy-default-event-handler
     1000000000000000.0
     600
     )
-   (let ((a1-2 (new 'stack-no-clear 'event-message-block)))
-    (set! (-> a1-2 from) self)
-    (set! (-> a1-2 num-params) 0)
-    (set! (-> a1-2 message) 'death-end)
-    (send-event-function self a1-2)
-    )
+   (send-event self 'death-end)
    (if (logtest? (-> self enemy-info options) 2)
     (go-virtual nav-enemy-fuel-cell)
     )

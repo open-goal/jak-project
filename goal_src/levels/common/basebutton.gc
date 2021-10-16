@@ -8,7 +8,8 @@
 (define-extern *generic-button-sg* skeleton-group)
 (define-extern target-warp-out (state vector vector target))
 
-;; definition of type basebutton
+;; DECOMP BEGINS
+
 (deftype basebutton (process-drawable)
   ((root-override     collide-shape-moving         :offset        112)
    (down?             symbol                       :offset-assert 176)
@@ -45,7 +46,7 @@
     )
   )
 
-;; failed to figure out what this is:
+
 (let
   ((v1-1
     (new 'static 'skeleton-group
@@ -62,8 +63,6 @@
   (set! *generic-button-sg* v1-1)
   )
 
-;; definition for method 30 of type basebutton
-;; Used lq/sq
 (defmethod
   move-to-vec-or-quat!
   basebutton
@@ -79,7 +78,6 @@
    )
   )
 
-;; failed to figure out what this is:
 (defstate basebutton-startup (basebutton)
   :virtual #t
   :code
@@ -92,7 +90,6 @@
    )
   )
 
-;; failed to figure out what this is:
 (defstate basebutton-up-idle (basebutton)
   :virtual #t
   :event
@@ -169,7 +166,6 @@
    )
   )
 
-;; failed to figure out what this is:
 (defstate basebutton-going-down (basebutton)
   :virtual #t
   :event
@@ -251,7 +247,6 @@
    )
   )
 
-;; failed to figure out what this is:
 (defstate basebutton-down-idle (basebutton)
   :virtual #t
   :event
@@ -303,7 +298,7 @@
     (else
      (until
       (>=
-       (- (-> *display* base-frame-counter) (the-as int (-> self state-time)))
+       (- (-> *display* base-frame-counter) (-> self state-time))
        (the int (* 300.0 (-> self timeout)))
        )
       (suspend)
@@ -335,7 +330,6 @@
    )
   )
 
-;; failed to figure out what this is:
 (defstate basebutton-going-up (basebutton)
   :virtual #t
   :event
@@ -411,7 +405,6 @@
    )
   )
 
-;; definition for method 31 of type basebutton
 (defmethod press! basebutton ((obj basebutton) (arg0 symbol))
   (set! (-> obj down?) arg0)
   (cond
@@ -428,7 +421,6 @@
    )
   )
 
-;; definition for method 29 of type basebutton
 (defmethod
   TODO-RENAME-29
   basebutton
@@ -461,7 +453,6 @@
    )
   )
 
-;; definition for method 25 of type basebutton
 (defmethod reset! basebutton ((obj basebutton))
   (set! (-> obj down?) #f)
   (set! (-> obj spawned-by-other?) #t)
@@ -478,7 +469,6 @@
    )
   )
 
-;; definition for method 28 of type basebutton
 (defmethod arm-trigger-event! basebutton ((obj basebutton))
   (let ((v0-0 'trigger))
    (set! (-> obj event-going-down) v0-0)
@@ -486,7 +476,6 @@
    )
   )
 
-;; definition for method 26 of type basebutton
 (defmethod TODO-RENAME-26 basebutton ((obj basebutton))
   (dummy-14 obj *generic-button-sg* '())
   (logior! (-> obj skel status) 1)
@@ -533,7 +522,6 @@
   (none)
   )
 
-;; definition for method 27 of type basebutton
 (defmethod TODO-RENAME-27 basebutton ((obj basebutton))
   (let
    ((s5-0
@@ -596,7 +584,6 @@
    )
   )
 
-;; definition for method 11 of type basebutton
 (defmethod copy-defaults! basebutton ((obj basebutton) (arg0 res-lump))
   (reset! obj)
   (set! (-> obj spawned-by-other?) #f)
@@ -649,8 +636,6 @@
   (none)
   )
 
-;; definition for function basebutton-init-by-other
-;; Used lq/sq
 (defbehavior
   basebutton-init-by-other basebutton
   ((arg0 basebutton)
@@ -679,7 +664,6 @@
   (none)
   )
 
-;; definition for symbol *warp-info*, type (array string)
 (define
   *warp-info*
   (the-as (array string)
@@ -696,7 +680,6 @@
    )
   )
 
-;; definition of type warp-gate
 (deftype warp-gate (process-drawable)
   ((level      symbol  :offset-assert 176)
    (level-slot int32   :offset-assert 180)
@@ -715,31 +698,12 @@
     )
   )
 
-;; definition for method 3 of type warp-gate
-(defmethod inspect warp-gate ((obj warp-gate))
-  (let ((t9-0 (method-of-type process-drawable inspect)))
-   (t9-0 obj)
-   )
-  (format #t "~T~Tlevel: ~A~%" (-> obj level))
-  (format #t "~T~Tlevel-slot: ~D~%" (-> obj level-slot))
-  (format #t "~T~Tmin-slot: ~D~%" (-> obj min-slot))
-  (format #t "~T~Tmax-slot: ~D~%" (-> obj max-slot))
-  obj
-  )
 
-;; failed to figure out what this is:
 (defstate use (warp-gate)
   :virtual #t
   :trans
   (behavior ()
-   (let ((a1-0 (new 'stack-no-clear 'event-message-block)))
-    (set! (-> a1-0 from) self)
-    (set! (-> a1-0 num-params) 2)
-    (set! (-> a1-0 message) 'joystick)
-    (set! (-> a1-0 param 0) (the-as uint 0.0))
-    (set! (-> a1-0 param 1) (the-as uint 0.0))
-    (send-event-function *camera* a1-0)
-    )
+   (send-event *camera* 'joystick 0.0 0.0)
    (none)
    )
   :code
@@ -774,10 +738,7 @@
        (not
         (member (level-status *level* (-> arg1 load-name)) '(loaded active))
         )
-       (<
-        (- (-> *display* base-frame-counter) (the-as int (-> self state-time)))
-        600
-        )
+       (< (- (-> *display* base-frame-counter) (-> self state-time)) 600)
        )
       (suspend)
       )
@@ -792,7 +753,6 @@
    )
   )
 
-;; definition for symbol *warp-jump-mods*, type surface
 (define
   *warp-jump-mods*
   (new 'static 'surface
@@ -819,7 +779,6 @@
    )
   )
 
-;; failed to figure out what this is:
 (defstate target-warp-out (target)
   :event
   (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
@@ -859,14 +818,7 @@
    )
   :code
   (behavior ((arg0 vector) (arg1 vector))
-   (let ((a1-1 (new 'stack-no-clear 'event-message-block)))
-    (set! (-> a1-1 from) self)
-    (set! (-> a1-1 num-params) 2)
-    (set! (-> a1-1 message) 'change-state)
-    (set! (-> a1-1 param 0) (the-as uint cam-fixed))
-    (set! (-> a1-1 param 1) (the-as uint 0))
-    (send-event-function *camera* a1-1)
-    )
+   (send-event *camera* 'change-state cam-fixed 0)
    (ja-channel-push! 1 60)
    (let ((gp-0 (-> self skel root-channel 0)))
     (set!
@@ -998,23 +950,14 @@
         )
        )
       (set! (-> gp-2 y) 0.0)
-      (let ((a1-7 (new 'stack-no-clear 'event-message-block)))
-       (set! (-> a1-7 from) self)
-       (set! (-> a1-7 num-params) 1)
-       (set! (-> a1-7 message) 'sidekick)
-       (set! (-> a1-7 param 0) (the-as uint #f))
-       (send-event-function *target* a1-7)
-       )
+      (send-event *target* 'sidekick #f)
       (when
        (and
         (or
          (< (vector-dot gp-2 (-> self control transv)) 0.0)
          (-> self control unknown-symbol20)
          )
-        (>=
-         (- (-> *display* base-frame-counter) (the-as int (-> self state-time)))
-         15
-         )
+        (>= (- (-> *display* base-frame-counter) (-> self state-time)) 15)
         )
        (vector-seek!
         (-> self draw color-mult)
@@ -1024,14 +967,7 @@
        (set! (-> self control transv x) (* 0.95 (-> self control transv x)))
        (set! (-> self control transv z) (* 0.95 (-> self control transv z)))
        (when (not (-> self control unknown-symbol20))
-        (let ((a1-9 (new 'stack-no-clear 'event-message-block)))
-         (set! (-> a1-9 from) self)
-         (set! (-> a1-9 num-params) 2)
-         (set! (-> a1-9 message) 'do-effect)
-         (set! (-> a1-9 param 0) (the-as uint 'death-warp-out))
-         (set! (-> a1-9 param 1) (the-as uint -1.0))
-         (send-event-function self a1-9)
-         )
+        (send-event self 'do-effect 'death-warp-out -1.0)
         (let ((v0-2 #t))
          (set! (-> self control unknown-symbol20) v0-2)
          v0-2
@@ -1073,3 +1009,7 @@
   :post
   target-no-stick-post
   )
+
+
+
+

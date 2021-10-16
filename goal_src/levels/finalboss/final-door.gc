@@ -325,32 +325,18 @@
          (get-task-status (game-task finalboss-movies))
          (task-status need-reward-speech)
          )
-        (let ((gp-0 (new 'stack-no-clear 'event-message-block)))
-         (set! (-> gp-0 from) self)
-         (set! (-> gp-0 num-params) 3)
-         (set! (-> gp-0 message) 'change-mode)
-         (set! (-> gp-0 param 0) (the-as uint 'final-door))
-         (set!
-          (-> gp-0 param 1)
-          (the-as
-           uint
-           (search-process-tree *active-pool* (lambda ((arg0 final-door))
-                                               (= (-> arg0 type) power-right)
-                                               )
-            )
-           )
+        (send-event
+         *target*
+         'change-mode
+         'final-door
+         (search-process-tree *active-pool* (lambda ((arg0 final-door))
+                                             (= (-> arg0 type) power-right)
+                                             )
           )
-         (set!
-          (-> gp-0 param 2)
-          (the-as
-           uint
-           (search-process-tree *active-pool* (lambda ((arg0 final-door))
-                                               (= (-> arg0 type) power-left)
-                                               )
-            )
-           )
+         (search-process-tree *active-pool* (lambda ((arg0 final-door))
+                                             (= (-> arg0 type) power-left)
+                                             )
           )
-         (send-event-function *target* gp-0)
          )
         )
        )
@@ -548,13 +534,7 @@
    )
   :enter
   (behavior ((arg0 basic) (arg1 handle))
-   (let ((a1-1 (new 'stack-no-clear 'event-message-block)))
-    (set! (-> a1-1 from) self)
-    (set! (-> a1-1 num-params) 1)
-    (set! (-> a1-1 message) 'change-to-entity-by-name)
-    (set! (-> a1-1 param 0) (the-as uint "camera-403"))
-    (send-event-function *camera* a1-1)
-    )
+   (send-event *camera* 'change-to-entity-by-name "camera-403")
    (set! (-> self control unknown-surface00) *empty-mods*)
    (logior! (-> self state-flags) 272)
    (set-setting! *setting-control* self 'allow-progress #f 0.0 0)
@@ -562,14 +542,7 @@
    )
   :exit
   (behavior ()
-   (let ((a1-0 (new 'stack-no-clear 'event-message-block)))
-    (set! (-> a1-0 from) self)
-    (set! (-> a1-0 num-params) 2)
-    (set! (-> a1-0 message) 'change-state)
-    (set! (-> a1-0 param 0) (the-as uint *camera-base-mode*))
-    (set! (-> a1-0 param 1) (the-as uint 60))
-    (send-event-function *camera* a1-0)
-    )
+   (send-event *camera* 'change-state *camera-base-mode* 60)
    (set! (-> self state-flags) (logand -273 (-> self state-flags)))
    (target-exit)
    (clear-pending-settings-from-process *setting-control* self 'allow-progress)

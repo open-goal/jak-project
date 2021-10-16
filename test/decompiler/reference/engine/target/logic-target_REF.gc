@@ -1354,18 +1354,12 @@
      (- (-> *display* base-frame-counter) (-> *display* old-base-frame-counter))
      )
     )
-   (when
+   (if
     (and
      (or (not gp-0) (!= (-> gp-0 name) (-> self current-level name)))
      (-> self current-level)
      )
-    (let ((a1-5 (new 'stack-no-clear 'event-message-block)))
-     (set! (-> a1-5 from) self)
-     (set! (-> a1-5 num-params) 1)
-     (set! (-> a1-5 message) 'level-enter)
-     (set! (-> a1-5 param 0) (the-as uint (-> self current-level name)))
-     (send-event-function self a1-5)
-     )
+    (send-event self 'level-enter (-> self current-level name))
     )
    )
   0
@@ -1439,7 +1433,7 @@
     (zero? (-> self control unknown-int40))
     (zero? (logand (-> *kernel-context* prevent-from-run) (process-mask movie)))
     )
-   (when
+   (if
     (and
      (= (-> self cam-user-mode) 'normal)
      (logtest? (-> self control unknown-surface00 flags) 1)
@@ -1459,13 +1453,7 @@
        )
       )
      )
-    (let ((a1-7 (new 'stack-no-clear 'event-message-block)))
-     (set! (-> a1-7 from) self)
-     (set! (-> a1-7 num-params) 1)
-     (set! (-> a1-7 message) 'change-mode)
-     (set! (-> a1-7 param 0) (the-as uint 'look-around))
-     (send-event-function self a1-7)
-     )
+    (send-event self 'change-mode 'look-around)
     )
    )
   (when
@@ -1484,14 +1472,8 @@
     (not *pause-lock*)
     (zero? (logand (-> self state-flags) 768))
     )
-   (when (!= (-> self next-state name) 'target-falling)
-    (let ((a1-8 (new 'stack-no-clear 'event-message-block)))
-     (set! (-> a1-8 from) self)
-     (set! (-> a1-8 num-params) 1)
-     (set! (-> a1-8 message) 'change-mode)
-     (set! (-> a1-8 param 0) (the-as uint 'falling))
-     (send-event-function self a1-8)
-     )
+   (if (!= (-> self next-state name) 'target-falling)
+    (send-event self 'change-mode 'falling)
     )
    (let ((gp-0 (new-stack-vector0)))
     (let
@@ -1548,12 +1530,7 @@
      )
     (TODO-RENAME-30 (-> self control) gp-1)
     )
-   (let ((a1-24 (new 'stack-no-clear 'event-message-block)))
-    (set! (-> a1-24 from) self)
-    (set! (-> a1-24 num-params) 0)
-    (set! (-> a1-24 message) 'reset-follow)
-    (send-event-function *camera* a1-24)
-    )
+   (send-event *camera* 'reset-follow)
    (set! (-> self control surf) *standard-ground-surface*)
    )
   (let
@@ -1785,13 +1762,8 @@
 ;; Used lq/sq
 (defbehavior target-compute-edge target ()
   (let ((s5-0 *edge-grab-info*))
-   (when (not (dummy-9 s5-0))
-    (let ((a1-0 (new 'stack-no-clear 'event-message-block)))
-     (set! (-> a1-0 from) self)
-     (set! (-> a1-0 num-params) 0)
-     (set! (-> a1-0 message) 'end-mode)
-     (send-event-function self a1-0)
-     )
+   (if (not (dummy-9 s5-0))
+    (send-event self 'end-mode)
     )
    (if *display-edge-collision-marks*
     (dummy-10 s5-0)
@@ -1846,7 +1818,7 @@
         (-> self control rider-time)
         (the-as uint (-> *display* base-frame-counter))
         )
-       (when
+       (if
         (and
          (>=
           (-
@@ -1863,12 +1835,7 @@
           150
           )
          )
-        (let ((a1-5 (new 'stack-no-clear 'event-message-block)))
-         (set! (-> a1-5 from) self)
-         (set! (-> a1-5 num-params) 0)
-         (set! (-> a1-5 message) 'end-mode)
-         (send-event-function self a1-5)
-         )
+        (send-event self 'end-mode)
         )
        )
       (else
@@ -1913,13 +1880,8 @@
 ;; Used lq/sq
 (defbehavior target-compute-edge-rider target ()
   (let ((gp-0 *edge-grab-info*))
-   (when (not (dummy-9 gp-0))
-    (let ((a1-0 (new 'stack-no-clear 'event-message-block)))
-     (set! (-> a1-0 from) self)
-     (set! (-> a1-0 num-params) 0)
-     (set! (-> a1-0 message) 'end-mode)
-     (send-event-function self a1-0)
-     )
+   (if (not (dummy-9 gp-0))
+    (send-event self 'end-mode)
     )
    (if *display-edge-collision-marks*
     (dummy-10 gp-0)
@@ -1993,14 +1955,7 @@
       (vector+! v1-8 s3-0 s2-0)
       (vector-float*! v1-8 v1-8 0.5)
       (set! (-> v1-8 y) (+ -6144.0 (-> v1-8 y)))
-      (let ((a1-5 (new 'stack-no-clear 'event-message-block)))
-       (set! (-> a1-5 from) self)
-       (set! (-> a1-5 num-params) 2)
-       (set! (-> a1-5 message) 'ease-in)
-       (set! (-> a1-5 param 0) (the-as uint 0.5))
-       (set! (-> a1-5 param 1) (the-as uint v1-8))
-       (send-event-function *camera* a1-5)
-       )
+      (send-event *camera* 'ease-in 0.5 v1-8)
       )
      (vector-segment-distance-point!
       (the-as vector (&-> (-> self control) unknown-cspace00 bone))

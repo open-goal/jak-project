@@ -43,169 +43,157 @@
 
 ;; definition for method 32 of type geologist
 (defmethod play-anim! geologist ((obj geologist) (arg0 symbol))
-  (with-pp
-   (set! (-> obj talk-message) (the-as uint 260))
-   (case (current-status (-> obj tasks)) 
-    (((task-status need-hint) (task-status need-introduction))
-      (when arg0
-       (close-status! (-> obj tasks) (task-status need-introduction))
-       (close-specific-task!
-        (game-task village2-geologist-money)
-        (task-status need-introduction)
+  (set! (-> obj talk-message) (the-as uint 260))
+  (case (current-status (-> obj tasks)) 
+   (((task-status need-hint) (task-status need-introduction))
+     (when arg0
+      (close-status! (-> obj tasks) (task-status need-introduction))
+      (close-specific-task!
+       (game-task village2-geologist-money)
+       (task-status need-introduction)
+       )
+      )
+     (new 'static 'spool-anim
+      :name "geologist-introduction"
+      :index 6
+      :parts 13
+      :command-list
+      '(
+        (0
+          want-levels
+          village2
+          rolling
+          )
+        ((the binteger 199)
+         joint
+         "cameraB"
+         )
+        ((the binteger 325)
+         joint
+         "camera"
+         )
+        ((the binteger 520)
+         alive
+         "racer-2"
+         )
+        ((the binteger 544)
+         joint
+         "cameraB"
+         )
+        ((the binteger 546)
+         dead
+         "racer-2"
+         )
+        ((the binteger 809)
+         joint
+         "camera"
+         )
+        ((the binteger 1031)
+         joint
+         "cameraB"
+         )
+        ((the binteger 1229) joint "camera")
+        )
+      )
+     )
+   (((task-status need-reminder))
+    (set! (-> obj skippable) #t)
+    (cond
+     ((closed?
+       (-> obj tasks)
+       (game-task rolling-moles)
+       (task-status need-reward-speech)
+       )
+      (new 'static 'spool-anim
+       :name "geologist-reminder-money"
+       :index 8
+       :parts 2
+       :command-list '()
+       )
+      )
+     ((closed?
+       (-> obj tasks)
+       (game-task village2-geologist-money)
+       (task-status need-reward-speech)
+       )
+      (new 'static 'spool-anim
+       :name "geologist-reminder-moles"
+       :index 7
+       :parts 3
+       :command-list '()
+       )
+      )
+     ((zero? (get-reminder (-> obj tasks) 0))
+      (if arg0
+       (save-reminder (-> obj tasks) 1 0)
+       )
+      (new 'static 'spool-anim
+       :name "geologist-reminder-moles"
+       :index 7
+       :parts 3
+       :command-list '()
+       )
+      )
+     (else
+      (if arg0
+       (save-reminder (-> obj tasks) 0 0)
+       )
+      (new 'static 'spool-anim
+       :name "geologist-reminder-money"
+       :index 8
+       :parts 2
+       :command-list '()
+       )
+      )
+     )
+    )
+   (((task-status need-reward-speech))
+    (if (not arg0)
+     (set! (-> obj will-talk) #t)
+     )
+    (case (current-task (-> obj tasks)) 
+     (((game-task rolling-moles))
+       (when arg0
+        (set! (-> obj cell-for-task) (current-task (-> obj tasks)))
+        (close-current! (-> obj tasks))
+        )
+       (new 'static 'spool-anim
+        :name "geologist-resolution-moles"
+        :index 9
+        :parts 3
+        :command-list '()
+        )
+       )
+     (else
+      (cond
+       (arg0
+        (set! (-> obj cell-for-task) (current-task (-> obj tasks)))
+        (close-current! (-> obj tasks))
+        (send-event *target* 'get-pickup 5 (- (-> *GAME-bank* money-task-inc)))
+        )
+       (else
+        (set! (-> obj talk-message) (the-as uint 282))
         )
        )
       (new 'static 'spool-anim
-       :name "geologist-introduction"
-       :index 6
-       :parts 13
-       :command-list
-       '(
-         (0
-           want-levels
-           village2
-           rolling
-           )
-         ((the binteger 199)
-          joint
-          "cameraB"
-          )
-         ((the binteger 325)
-          joint
-          "camera"
-          )
-         ((the binteger 520)
-          alive
-          "racer-2"
-          )
-         ((the binteger 544)
-          joint
-          "cameraB"
-          )
-         ((the binteger 546)
-          dead
-          "racer-2"
-          )
-         ((the binteger 809)
-          joint
-          "camera"
-          )
-         ((the binteger 1031)
-          joint
-          "cameraB"
-          )
-         ((the binteger 1229) joint "camera")
-         )
-       )
-      )
-    (((task-status need-reminder))
-     (set! (-> obj skippable) #t)
-     (cond
-      ((closed?
-        (-> obj tasks)
-        (game-task rolling-moles)
-        (task-status need-reward-speech)
-        )
-       (new 'static 'spool-anim
-        :name "geologist-reminder-money"
-        :index 8
-        :parts 2
-        :command-list '()
-        )
-       )
-      ((closed?
-        (-> obj tasks)
-        (game-task village2-geologist-money)
-        (task-status need-reward-speech)
-        )
-       (new 'static 'spool-anim
-        :name "geologist-reminder-moles"
-        :index 7
-        :parts 3
-        :command-list '()
-        )
-       )
-      ((zero? (get-reminder (-> obj tasks) 0))
-       (if arg0
-        (save-reminder (-> obj tasks) 1 0)
-        )
-       (new 'static 'spool-anim
-        :name "geologist-reminder-moles"
-        :index 7
-        :parts 3
-        :command-list '()
-        )
-       )
-      (else
-       (if arg0
-        (save-reminder (-> obj tasks) 0 0)
-        )
-       (new 'static 'spool-anim
-        :name "geologist-reminder-money"
-        :index 8
-        :parts 2
-        :command-list '()
-        )
+       :name "geologist-resolution-money"
+       :index 10
+       :parts 2
+       :command-list '()
        )
       )
      )
-    (((task-status need-reward-speech))
-     (if (not arg0)
-      (set! (-> obj will-talk) #t)
-      )
-     (case (current-task (-> obj tasks)) 
-      (((game-task rolling-moles))
-        (when arg0
-         (set! (-> obj cell-for-task) (current-task (-> obj tasks)))
-         (close-current! (-> obj tasks))
-         )
-        (new 'static 'spool-anim
-         :name "geologist-resolution-moles"
-         :index 9
-         :parts 3
-         :command-list '()
-         )
-        )
-      (else
-       (cond
-        (arg0
-         (set! (-> obj cell-for-task) (current-task (-> obj tasks)))
-         (close-current! (-> obj tasks))
-         (let ((a1-10 (new 'stack-no-clear 'event-message-block)))
-          (set! (-> a1-10 from) pp)
-          (set! (-> a1-10 num-params) 2)
-          (set! (-> a1-10 message) 'get-pickup)
-          (set! (-> a1-10 param 0) (the-as uint 5))
-          (set!
-           (-> a1-10 param 1)
-           (the-as uint (- (-> *GAME-bank* money-task-inc)))
-           )
-          (send-event-function *target* a1-10)
-          )
-         )
-        (else
-         (set! (-> obj talk-message) (the-as uint 282))
-         )
-        )
-       (new 'static 'spool-anim
-        :name "geologist-resolution-money"
-        :index 10
-        :parts 2
-        :command-list '()
-        )
-       )
+    )
+   (else
+    (if arg0
+     (format
+      0
+      "ERROR: <GMJ>: ~S playing anim for task status ~S~%"
+      (-> obj name)
+      (task-status->string (current-status (-> obj tasks)))
       )
      )
-    (else
-     (if arg0
-      (format
-       0
-       "ERROR: <GMJ>: ~S playing anim for task status ~S~%"
-       (-> obj name)
-       (task-status->string (current-status (-> obj tasks)))
-       )
-      )
-     (-> obj draw art-group data 5)
-     )
+    (-> obj draw art-group data 5)
     )
    )
   )

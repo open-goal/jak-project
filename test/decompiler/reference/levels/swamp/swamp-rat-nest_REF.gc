@@ -953,14 +953,9 @@
                      )
                     )
                    ((= v1-0 'attack)
-                    (let ((a1-1 (new 'stack-no-clear 'event-message-block)))
-                     (set! (-> a1-1 from) self)
-                     (set! (-> a1-1 num-params) 0)
-                     (set! (-> a1-1 message) 'hit)
-                     (send-event-function
-                      (ppointer->process (-> self parent-process))
-                      a1-1
-                      )
+                    (send-event
+                     (ppointer->process (-> self parent-process))
+                     'hit
                      )
                     (let ((v1-7 (-> arg3 param 2)))
                      (when (!= v1-7 (-> self parent-process 0 player-attack-id))
@@ -971,7 +966,7 @@
                       (cond
                        ((and (>= arg1 2) (= (-> arg3 param 1) 'eco-yellow))
                         (swamp-rat-nest-dummy-take-damage 3)
-                        (when
+                        (if
                          (<
                           (vector-vector-distance
                            (target-pos 0)
@@ -979,14 +974,7 @@
                            )
                           (-> self top-sphere w)
                           )
-                         (let
-                          ((a1-3 (new 'stack-no-clear 'event-message-block)))
-                          (set! (-> a1-3 from) self)
-                          (set! (-> a1-3 num-params) 1)
-                          (set! (-> a1-3 message) 'no-look-around)
-                          (set! (-> a1-3 param 0) (the-as uint 75))
-                          (send-event-function *target* a1-3)
-                          )
+                         (send-event *target* 'no-look-around 75)
                          )
                         (go swamp-rat-nest-dummy-hit)
                         )
@@ -1624,12 +1612,7 @@ swamp-rat-nest-default-event-handler
      (- (-> *display* base-frame-counter) (-> self state-time))
      (the int (* (-> self spawn-period-scale) (-> self spawn-period)))
      )
-    (let ((a1-0 (new 'stack-no-clear 'event-message-block)))
-     (set! (-> a1-0 from) self)
-     (set! (-> a1-0 num-params) 0)
-     (set! (-> a1-0 message) 'shake)
-     (send-event-function (ppointer->process (-> self dummy)) a1-0)
-     )
+    (send-event (ppointer->process (-> self dummy)) 'shake)
     (swamp-rat-nest-spawn-rat)
     (go swamp-rat-nest-active)
     )
@@ -1664,13 +1647,8 @@ swamp-rat-nest-default-event-handler
               )
              )
             )
-      (when a0-1
-       (let ((a1-1 (new 'stack-no-clear 'event-message-block)))
-        (set! (-> a1-1 from) self)
-        (set! (-> a1-1 num-params) 0)
-        (set! (-> a1-1 message) 'victory)
-        (send-event-function (the-as process a0-1) a1-1)
-        )
+      (if a0-1
+       (send-event (the-as process a0-1) 'victory)
        )
       )
      (set! gp-0 (-> gp-0 0 brother))

@@ -41,33 +41,25 @@
 ;; definition for method 32 of type evilbro
 ;; INFO: Return type mismatch spool-anim vs basic.
 (defmethod play-anim! evilbro ((obj evilbro) (arg0 symbol))
-  (with-pp
-   (cond
-    (arg0
-     (close-specific-task!
-      (game-task leaving-misty)
-      (task-status need-introduction)
-      )
-     (let ((a1-2 (new 'stack-no-clear 'event-message-block)))
-      (set! (-> a1-2 from) pp)
-      (set! (-> a1-2 num-params) 1)
-      (set! (-> a1-2 message) 'clone)
-      (set! (-> a1-2 param 0) (the-as uint (process->handle obj)))
-      (send-event-function (-> obj evilsis extra process) a1-2)
-      )
+  (cond
+   (arg0
+    (close-specific-task!
+     (game-task leaving-misty)
+     (task-status need-introduction)
      )
-    (else
-     (set! (-> obj will-talk) #t)
-     )
+    (send-event (-> obj evilsis extra process) 'clone (process->handle obj))
     )
-   (the-as
-    basic
-    (new 'static 'spool-anim
-     :name "evilbro-misty-end"
-     :index 5
-     :parts 9
-     :command-list '()
-     )
+   (else
+    (set! (-> obj will-talk) #t)
+    )
+   )
+  (the-as
+   basic
+   (new 'static 'spool-anim
+    :name "evilbro-misty-end"
+    :index 5
+    :parts 9
+    :command-list '()
     )
    )
   )
@@ -82,12 +74,7 @@
   :virtual #t
   :exit
   (behavior ()
-   (let ((a1-0 (new 'stack-no-clear 'event-message-block)))
-    (set! (-> a1-0 from) self)
-    (set! (-> a1-0 num-params) 0)
-    (set! (-> a1-0 message) 'end-mode)
-    (send-event-function (-> self evilsis extra process) a1-0)
-    )
+   (send-event (-> self evilsis extra process) 'end-mode)
    ((-> (method-of-type process-taskable play-anim) exit))
    (none)
    )

@@ -191,16 +191,7 @@
           (task-complete? *game-info* (-> self entity extra perm task))
           (not (handle->process (-> self cell)))
           )
-         (when
-          (and
-           (-> self auto-get-off)
-           (let ((a1-6 (new 'stack-no-clear 'event-message-block)))
-            (set! (-> a1-6 from) self)
-            (set! (-> a1-6 num-params) 0)
-            (set! (-> a1-6 message) 'end-mode)
-            (send-event-function *target* a1-6)
-            )
-           )
+         (when (and (-> self auto-get-off) (send-event *target* 'end-mode))
           (set! (-> self auto-get-off) #f)
           (go-virtual pickup (method-of-object self idle))
           )
@@ -371,14 +362,7 @@
       (if
        (and
         (logtest? (-> *cpad-list* cpads 0 button0-rel 0) (pad-buttons circle))
-        (let ((a1-7 (new 'stack-no-clear 'event-message-block)))
-         (set! (-> a1-7 from) self)
-         (set! (-> a1-7 num-params) 2)
-         (set! (-> a1-7 message) 'change-mode)
-         (set! (-> a1-7 param 0) (the-as uint 'flut))
-         (set! (-> a1-7 param 1) (the-as uint self))
-         (send-event-function *target* a1-7)
-         )
+        (send-event *target* 'change-mode 'flut self)
         )
        (go-virtual pickup (method-of-object self wait-for-return))
        )
@@ -485,15 +469,7 @@
   :event
   (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
    (if
-    (and
-     (or (= arg2 'touch) (= arg2 'attack))
-     (let ((a1-1 (new 'stack-no-clear 'event-message-block)))
-      (set! (-> a1-1 from) self)
-      (set! (-> a1-1 num-params) 0)
-      (set! (-> a1-1 message) 'end-mode)
-      (send-event-function *target* a1-1)
-      )
-     )
+    (and (or (= arg2 'touch) (= arg2 'attack)) (send-event *target* 'end-mode))
     (go-virtual pickup (method-of-object self idle))
     )
    (the-as object (if (= arg2 'trans)
@@ -616,8 +592,7 @@
      :mask #x80
      :num 1.0
      :group #x1
-     :sound-name
-     (new 'static 'sound-name :lo #x6c65742d6d6f6f7a)
+     :sound-name (static-sound-name "zoom-teleport")
      :volume #x400
      :fo-max 30
      )
