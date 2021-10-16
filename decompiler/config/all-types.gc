@@ -15180,7 +15180,7 @@
 (define-extern effect-param->sound-spec (function sound-spec (pointer float) int sound-spec))
 (define-extern ear-trans (function vector))
 (define-extern sound-play-by-spec (function sound-spec sound-id vector sound-id))
-(define-extern sound-play-by-name (function sound-name sound-id int int int uint vector sound-id))
+(define-extern sound-play-by-name (function sound-name sound-id int int int uint vector sound-id)) ;; last arg can be a symbol - see snow-ball::method-21
 (define-extern sound-angle-convert (function float int))
 (define-extern sound-set-ear-trans (function vector vector float int))
 (define-extern activate-progress (function process progress-screen none))
@@ -37849,8 +37849,9 @@
 
 ;; - Types
 
+(declare-type snow-ball-roller process-drawable)
 (deftype snow-ball-shadow (process-drawable)
-  ()
+  ((parent-override (pointer snow-ball-roller) :score 100         :offset 12))
   :method-count-assert 20
   :size-assert         #xb0
   :heap-base           #x40
@@ -37876,7 +37877,8 @@
   )
 
 (deftype snow-ball-roller (process-drawable)
-  ((which-path             int32                       :offset-assert 176)
+  ((root-override       collide-shape-moving :score 100 :offset 112)
+   (which-path             int32                       :offset-assert 176)
    (path-u                 float                       :offset-assert 180)
    (path-speed             float                       :offset-assert 184)
    (path-length            float                       :offset-assert 188)
@@ -37896,9 +37898,9 @@
   :heap-base           #xe0
   :flag-assert         #x1700e00150
   (:methods
-    (dummy-20 () none 20)
-    (dummy-21 () none 21)
-    (dummy-22 () none 22)
+    (follow-path (_type_) float 20)
+    (play-landing-sound (_type_ float) sound-id 21)
+    (dummy-22 (_type_ process-drawable) none 22)
     )
   )
 
@@ -37907,24 +37909,24 @@
    (last-path-picked       int32     :offset-assert 120)
    (same-path-picked-count int32     :offset-assert 124)
    (delay-til-next         int32     :offset-assert 128)
-   (path                   snow-ball-path-info 2 :offset-assert 132)
+   (path                   curve-control 2 :offset-assert 132)
    )
   :method-count-assert 16
   :size-assert         #x8c
   :heap-base           #x20
   :flag-assert         #x100020008c
   (:methods
-    (dummy-14 () none 14)
-    (dummy-15 () none 15)
+    (dummy-14 (_type_ vector float int) none 14) ;; TODO - im pretty sure the 2nd arg is snow-ball-junction related!
+    (dummy-15 (_type_ vector int) none 15) ;; TODO - same type as above
     )
   )
 
 ;; - Functions
 
-(define-extern snow-ball-roller-init-by-other function)
-(define-extern snow-ball-shadow-init-by-other function)
-(define-extern snow-ball-roller-path-update function)
-(define-extern snow-ball-roller-path-init function)
+(define-extern snow-ball-roller-init-by-other (function entity snow-ball float int vector none :behavior snow-ball-roller))
+(define-extern snow-ball-shadow-init-by-other (function none :behavior snow-ball-shadow))
+(define-extern snow-ball-roller-path-update (function none :behavior snow-ball-roller))
+(define-extern snow-ball-roller-path-init (function float :behavior snow-ball-roller))
 
 ;; - Unknowns
 
