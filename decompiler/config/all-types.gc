@@ -1009,13 +1009,20 @@
 
   (sunken-blue-eco-charger-all-hint #x34d)
 
+  (swamp-tethers-advice-hint #x352)
+
   (kermit-break-tongue #x357)
   (swamp-rats-nest-hint #x358)
 
   (kermit-run-away-jak #x35f)
 
-  (swamp-bats-hint #x364) ;; maybe we can ???? the bats. lol
+  (swamp-bats-hint #x364) ;; maybe we can duck the bats
+  (swamp-tethers-three-to-go #x365)
+  (swamp-tethers-two-to-go #x366)
+  (swamp-tethers-lefts-find-the-last #x367)
   (flutflut-reminder #x368)
+
+  (swamp-tethers-completion-sage-precursor-arm #x36b)
 
   (village2-not-enough-cells-levitator #x36c)
   (villlage2-levitator-cell-req-text #x372)
@@ -13767,6 +13774,7 @@
   (bit1 1) ;; village1-part
   (bit2 2)     ;; cleared after an aux has its func set to add-to-sprite-aux-lst
   (bit3 3)
+  (bit4 4) ;; see - swamp-blimp
   (ready-to-launch 6) ;; maybe just just death?
   (bit7 7)
   (aux-list 8)     ;; prevents relaunch, adds to aux
@@ -32346,8 +32354,8 @@
   )
 
 (deftype tetherrock-info (structure)
-  ((rock-camera       basic  :offset-assert 0)
-   (arm-camera        basic  :offset-assert 4)
+  ((rock-camera       string  :offset-assert 0)
+   (arm-camera        string  :offset-assert 4)
    (blimp-rp          int32  :offset-assert 8)
    (other-rp          int32  :offset-assert 12)
    (connected-to-rock basic  :offset-assert 16)
@@ -32370,8 +32378,8 @@
   :size-assert         #x14
   :flag-assert         #xb00000014
   (:methods
-    (dummy-9 () none 9)
-    (dummy-10 () none 10)
+    (init! (_type_ int int float) none 9)
+    (update-timer! (_type_) none 10)
     )
   )
 
@@ -32380,6 +32388,7 @@
    (value   float  :offset-assert 4)
    (vel     float  :offset-assert 8)
    (accel   float  :offset-assert 12)
+   (vector-overlay vector :inline :offset 0)
    (max-vel float  :offset-assert 16)
    (damping float  :offset-assert 20)
    )
@@ -32387,8 +32396,8 @@
   :size-assert         #x18
   :flag-assert         #xb00000018
   (:methods
-    (dummy-9 () none 9)
-    (dummy-10 () none 10)
+    (init! (_type_ float float float float) none 9)
+    (TODO-RENAME-10 (_type_ float) none 10)
     )
   )
 
@@ -32404,8 +32413,8 @@
   :size-assert         #x30
   :flag-assert         #xb00000030
   (:methods
-    (dummy-9 () none 9)
-    (dummy-10 () none 10)
+    (init! (_type_ int int float float) none 9)
+    (update-timer! (_type_) none 10)
     )
   )
 
@@ -32422,15 +32431,16 @@
   :size-assert         #x3c
   :flag-assert         #xb0000003c
   (:methods
-    (dummy-9 () none 9)
-    (dummy-10 () none 10)
+    (init! (_type_ vector float float float) none 9)
+    (TODO-RENAME-10 (_type_ vector) none 10)
     )
   )
 
 (deftype swamp-tetherrock (process-drawable)
-  ((tension     float              :offset-assert 176)
+  ((root-override collide-shape-moving :score 100 :offset 112)
+   (tension     float              :offset-assert 176)
    (tension-pt  vector     :inline :offset-assert 192)
-   (blimp       basic              :offset-assert 208)
+   (blimp       entity-actor              :offset-assert 208)
    (rot-at-init quaternion :inline :offset-assert 224)
    (hits        int32              :offset-assert 240)
    )
@@ -32441,7 +32451,8 @@
   )
 
 (deftype precursor-arm (process-drawable)
-  ((y-init    float          :offset-assert 176)
+  ((root-override collide-shape :score 100 :offset 112)
+   (y-init    float          :offset-assert 176)
    (y-offset  float          :offset-assert 180)
    (rot-speed float          :offset-assert 184)
    (rot-dist  float          :offset-assert 188)
@@ -32456,9 +32467,11 @@
   :flag-assert         #x1400b00114
   )
 
+(declare-type swamp-blimp process-drawable)
 (deftype swamp-rope (process-drawable)
-  ((parent-rp    int32                         :offset-assert 176)
-   (other-entity basic                         :offset-assert 180)
+  ((parent-override (pointer swamp-blimp) :score 100         :offset 12) ;; or is it the tether rock...
+   (parent-rp    int32                         :offset-assert 176)
+   (other-entity entity-actor                         :offset-assert 180)
    (other-rp     int32                         :offset-assert 184)
    (old-scale    float                         :offset-assert 188)
    (frame        swamp-rope-oscillator :inline :offset-assert 192)
@@ -32475,17 +32488,13 @@
   :heap-base           #xb0
   :flag-assert         #x1500b00120
   (:methods
-    (dummy-20 () none 20)
+    (dummy-20 (_type_) basic 20) ;; ret - entity-actor | symbol
     )
   )
 
 (deftype swamp-blimp (process-drawable)
-  ((the-ropes               swamp-rope              5       :offset-assert 176)
-   (unknown00               structure                       :offset-assert 196)
-   (unknown01               structure                       :offset-assert 200)
-   (unknown02               structure                       :offset-assert 204)
-   (unknown03               structure                       :offset-assert 208)
-   (unknown04               structure                       :offset-assert 212)
+  ((root-override collide-shape-moving :score 100 :offset 112)
+   (the-ropes               handle              5      :inline :offset-assert 176)
    (arm-timer               int32                           :offset-assert 216)
    (trans-at-init           vector                  :inline :offset-assert 224)
    (rot-at-init             quaternion              :inline :offset-assert 240)
@@ -32499,8 +32508,8 @@
    (pos-oscillator          swamp-blimp-oscillator  :inline :offset-assert 496)
    (scale-rand              swamp-rope-rand-float   :inline :offset-assert 556)
    (scale-oscillator        swamp-rope-oscillator   :inline :offset-assert 576)
-   (gondola                 basic                           :offset-assert 600)
-   (bag                     basic                           :offset-assert 604)
+   (gondola                 joint-mod                           :offset-assert 600)
+   (bag                     joint-mod                           :offset-assert 604)
    )
   :method-count-assert 20
   :size-assert         #x260
@@ -32510,16 +32519,16 @@
 
 ;; - Functions
 
-(define-extern swamp-rope-init-by-other function)
-(define-extern swamp-blimp-setup function)
-(define-extern tetherrock-get-info function)
-(define-extern swamp-rope-post function)
-(define-extern swamp-rope-break-code function)
-(define-extern swamp-rope-update-bounding-spheres function)
-(define-extern precursor-arm-slip function)
-(define-extern swamp-rope-trans function)
-(define-extern blimp-trans function)
-(define-extern bustarock function)
+(define-extern swamp-rope-init-by-other (function vector entity-actor none :behavior swamp-rope))
+(define-extern swamp-blimp-setup (function none :behavior swamp-blimp))
+(define-extern tetherrock-get-info (function entity tetherrock-info))
+(define-extern swamp-rope-post (function none :behavior swamp-rope))
+(define-extern swamp-rope-break-code (function quaternion :behavior swamp-rope))
+(define-extern swamp-rope-update-bounding-spheres (function none :behavior swamp-rope))
+(define-extern precursor-arm-slip (function float float))
+(define-extern swamp-rope-trans (function none :behavior swamp-rope))
+(define-extern blimp-trans (function float :behavior swamp-blimp))
+(define-extern bustarock (function handle object))
 
 ;; - Unknowns
 
