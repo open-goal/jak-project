@@ -1,28 +1,7 @@
 ;;-*-Lisp-*-
 (in-package goal)
 
-;; name: gnawer.gc
-;; name in dgo: gnawer
-;; dgos: L1, MAI, MAINCAVE
-
-(define-extern *gnawer-sg* skeleton-group)
-(define-extern *gnawer-segment-sg* skeleton-group)
-
-(declare-type gnawer process-drawable)
-
-(define-extern gnawer-put-items-at-dest (state gnawer)) ;; unknown type
-(define-extern gnawer-chewing-on-post (state gnawer)) ;; unknown type
-(define-extern gnawer-give-fuel-cell (state gnawer)) ;; unknown type
-(define-extern gnawer-dying-give-pickups (state gnawer)) ;; unknown type
-(define-extern gnawer-wait-to-run (state gnawer)) ;; unknown type
-(define-extern gnawer-die (state gnawer)) ;; unknown type
-(define-extern gnawer-run (state gnawer)) ;; unknown type
-(define-extern gnawer-retreat-into-post (state gnawer)) ;; unknown type
-
-(define-extern gnawer-joint-callback (function gnawer none))
-
-;; DECOMP BEGINS
-
+;; definition of type gnawer-falling-segment
 (deftype gnawer-falling-segment (process-drawable)
   ((transv      vector :inline :offset-assert 176)
    (facing-rot  vector :inline :offset-assert 192)
@@ -37,7 +16,18 @@
     )
   )
 
+;; definition for method 3 of type gnawer-falling-segment
+(defmethod inspect gnawer-falling-segment ((obj gnawer-falling-segment))
+  (let ((t9-0 (method-of-type process-drawable inspect)))
+   (t9-0 obj)
+   )
+  (format #t "~T~Ttransv: #<vector @ #x~X>~%" (-> obj transv))
+  (format #t "~T~Tfacing-rot: #<vector @ #x~X>~%" (-> obj facing-rot))
+  (format #t "~T~Tfacing-rotv: #<vector @ #x~X>~%" (-> obj facing-rotv))
+  obj
+  )
 
+;; definition of type gnawer-segment-info
 (deftype gnawer-segment-info (structure)
   ((num-joints  int32   :offset-assert   0)
    (joint-index int8  8 :offset-assert   4)
@@ -47,7 +37,15 @@
   :flag-assert         #x90000000c
   )
 
+;; definition for method 3 of type gnawer-segment-info
+(defmethod inspect gnawer-segment-info ((obj gnawer-segment-info))
+  (format #t "[~8x] ~A~%" obj 'gnawer-segment-info)
+  (format #t "~Tnum-joints: ~D~%" (-> obj num-joints))
+  (format #t "~Tjoint-index[8] @ #x~X~%" (-> obj joint-index))
+  obj
+  )
 
+;; definition of type gnawer-segment
 (deftype gnawer-segment (structure)
   ((place                      int32          :offset-assert   0)
    (world-pos                  vector :inline :offset-assert  16)
@@ -59,7 +57,21 @@
   :flag-assert         #x900000070
   )
 
+;; definition for method 3 of type gnawer-segment
+(defmethod inspect gnawer-segment ((obj gnawer-segment))
+  (format #t "[~8x] ~A~%" obj 'gnawer-segment)
+  (format #t "~Tplace: ~D~%" (-> obj place))
+  (format #t "~Tworld-pos: #<vector @ #x~X>~%" (-> obj world-pos))
+  (format
+   #t
+   "~Tanim-to-local-trans-offset: #<vector @ #x~X>~%"
+   (-> obj anim-to-local-trans-offset)
+   )
+  (format #t "~Torient-mat: #<matrix @ #x~X>~%" (-> obj orient-mat))
+  obj
+  )
 
+;; definition of type gnawer-route
 (deftype gnawer-route (structure)
   ((src-pt-index      int32          :offset-assert   0)
    (dest-pt-index     int32          :offset-assert   4)
@@ -78,7 +90,24 @@
   :flag-assert         #x900000060
   )
 
+;; definition for method 3 of type gnawer-route
+(defmethod inspect gnawer-route ((obj gnawer-route))
+  (format #t "[~8x] ~A~%" obj 'gnawer-route)
+  (format #t "~Tsrc-pt-index: ~D~%" (-> obj src-pt-index))
+  (format #t "~Tdest-pt-index: ~D~%" (-> obj dest-pt-index))
+  (format #t "~Ttotal-travel-time: ~D~%" (-> obj total-travel-time))
+  (format #t "~Tsrc-ang: ~f~%" (-> obj src-ang))
+  (format #t "~Tdest-ang: ~f~%" (-> obj dest-ang))
+  (format #t "~Tdelta-ang: ~f~%" (-> obj delta-ang))
+  (format #t "~Tsurface-dist: ~f~%" (-> obj surface-dist))
+  (format #t "~Ttotal-dist: ~f~%" (-> obj total-dist))
+  (format #t "~Tsrc-pt-offset: #<vector @ #x~X>~%" (-> obj src-pt-offset))
+  (format #t "~Tdest-pt-offset: #<vector @ #x~X>~%" (-> obj dest-pt-offset))
+  (format #t "~Tsurface-dir: #<vector @ #x~X>~%" (-> obj surface-dir))
+  obj
+  )
 
+;; definition of type gnawer
 (deftype gnawer (process-drawable)
   ((root-override  collide-shape                       :offset        112)
    (hit-points     int32                               :offset-assert 176)
@@ -118,7 +147,32 @@
     )
   )
 
+;; definition for method 3 of type gnawer
+(defmethod inspect gnawer ((obj gnawer))
+  (let ((t9-0 (method-of-type process-drawable inspect)))
+   (t9-0 obj)
+   )
+  (format #t "~T~Thit-points: ~D~%" (-> obj hit-points))
+  (format #t "~T~Tgnawer-id: ~D~%" (-> obj gnawer-id))
+  (format #t "~T~Ttotal-money: ~D~%" (-> obj total-money))
+  (format #t "~T~Tmoney-mask: ~D~%" (-> obj money-mask))
+  (format #t "~T~Teco-green-mask: ~D~%" (-> obj eco-green-mask))
+  (format #t "~T~Thidden?: ~A~%" (-> obj hidden?))
+  (format #t "~T~Tshow-damage?: ~A~%" (-> obj show-damage?))
+  (format #t "~T~Troute-dist: ~f~%" (-> obj route-dist))
+  (format #t "~T~Tspeed: ~f~%" (-> obj speed))
+  (format #t "~T~Tanim-speed: ~f~%" (-> obj anim-speed))
+  (format #t "~T~Tpart2: ~A~%" (-> obj part2))
+  (format #t "~T~Tsound2: ~A~%" (-> obj sound2))
+  (format #t "~T~Tlast-hit-time: ~D~%" (-> obj last-hit-time))
+  (format #t "~T~Tpost-trans: #<vector @ #x~X>~%" (-> obj post-trans))
+  (format #t "~T~Tfall-trans: #<vector @ #x~X>~%" (-> obj fall-trans))
+  (format #t "~T~Troute: #<gnawer-route @ #x~X>~%" (-> obj route))
+  (format #t "~T~Tsegments[10] @ #x~X~%" (-> obj segments))
+  obj
+  )
 
+;; failed to figure out what this is:
 (let
   ((v1-5
     (new 'static 'skeleton-group
@@ -142,6 +196,7 @@
   (set! *gnawer-sg* v1-5)
   )
 
+;; failed to figure out what this is:
 (let
   ((v1-6
     (new 'static 'skeleton-group
@@ -158,6 +213,7 @@
   (set! *gnawer-segment-sg* v1-6)
   )
 
+;; definition for symbol *gnawer-segment-infos*, type (inline-array gnawer-segment-info)
 (define
   *gnawer-segment-infos*
   (new 'static 'inline-array gnawer-segment-info 10
@@ -214,6 +270,7 @@
    )
   )
 
+;; failed to figure out what this is:
 (set!
   (-> *part-group-id-table* 329)
   (new 'static 'sparticle-launch-group
@@ -305,6 +362,7 @@
    )
   )
 
+;; failed to figure out what this is:
 (set!
   (-> *part-id-table* 2310)
   (new 'static 'sparticle-launcher
@@ -327,6 +385,7 @@
    )
   )
 
+;; failed to figure out what this is:
 (set!
   (-> *part-id-table* 727)
   (new 'static 'sparticle-launcher
@@ -356,6 +415,7 @@
    )
   )
 
+;; failed to figure out what this is:
 (set!
   (-> *part-id-table* 2309)
   (new 'static 'sparticle-launcher
@@ -380,6 +440,7 @@
    )
   )
 
+;; failed to figure out what this is:
 (set!
   (-> *part-group-id-table* 330)
   (new 'static 'sparticle-launch-group
@@ -396,6 +457,7 @@
    )
   )
 
+;; failed to figure out what this is:
 (set!
   (-> *part-id-table* 2141)
   (new 'static 'sparticle-launcher
@@ -423,6 +485,7 @@
    )
   )
 
+;; failed to figure out what this is:
 (defstate falling (gnawer-falling-segment)
   :virtual #t
   :trans
@@ -547,6 +610,8 @@
   (the-as (function none :behavior gnawer-falling-segment) ja-post)
   )
 
+;; definition for function gnawer-falling-segment-init-by-other
+;; Used lq/sq
 (defbehavior
   gnawer-falling-segment-init-by-other gnawer-falling-segment
   ((arg0 gnawer) (arg1 vector) (arg2 vector))
@@ -590,6 +655,9 @@
   (none)
   )
 
+;; definition for method 23 of type gnawer
+;; INFO: Return type mismatch vector vs none.
+;; Used lq/sq
 (defmethod dummy-23 gnawer ((obj gnawer))
   (when (not (-> obj hidden?))
    (set! (-> obj hidden?) #t)
@@ -606,6 +674,8 @@
   (none)
   )
 
+;; definition for method 26 of type gnawer
+;; INFO: Return type mismatch uint vs none.
 (defmethod dummy-26 gnawer ((obj gnawer))
   (when (-> obj hidden?)
    (set! (-> obj hidden?) #f)
@@ -616,6 +686,9 @@
   (none)
   )
 
+;; definition for method 24 of type gnawer
+;; INFO: Return type mismatch int vs none.
+;; Used lq/sq
 (defmethod dummy-24 gnawer ((obj gnawer))
   (local-vars (sv-48 vector) (sv-64 vector))
   (let ((s5-0 0)
@@ -741,6 +814,8 @@
   (none)
   )
 
+;; definition for method 22 of type gnawer
+;; Used lq/sq
 (defmethod dummy-22 gnawer ((obj gnawer) (arg0 float))
   (let ((s4-0 (new 'stack-no-clear 'matrix))
         (a3-0 #t)
@@ -802,6 +877,8 @@
    )
   )
 
+;; definition for method 21 of type gnawer
+;; Used lq/sq
 (defmethod
   dummy-21
   gnawer
@@ -884,6 +961,8 @@
    )
   )
 
+;; definition for method 20 of type gnawer
+;; Used lq/sq
 (defmethod dummy-20 gnawer ((obj gnawer) (arg0 int))
   (let ((v1-3 (-> obj segments arg0))
         (a0-1 (-> obj segments (+ arg0 -1)))
@@ -906,6 +985,7 @@
    )
   )
 
+;; definition for method 25 of type gnawer
 (defmethod dummy-25 gnawer ((obj gnawer))
   (dotimes (s5-0 3)
    (when (> (-> obj hit-points) 0)
@@ -962,6 +1042,8 @@
   (<= (-> obj hit-points) 0)
   )
 
+;; definition for method 28 of type gnawer
+;; INFO: Return type mismatch int vs symbol.
 (defmethod dummy-28 gnawer ((obj gnawer) (arg0 int) (arg1 int))
   (when (> arg0 0)
    (let* ((v1-1 (rand-vu-int-count arg0))
@@ -980,6 +1062,8 @@
   (the-as symbol 0)
   )
 
+;; definition for method 27 of type gnawer
+;; INFO: Return type mismatch int vs none.
 (defmethod dummy-27 gnawer ((obj gnawer))
   (set! (-> obj eco-green-mask) (the-as uint 0))
   (let ((s4-0 (-> obj path curve num-cverts))
@@ -1018,6 +1102,7 @@
   (none)
   )
 
+;; definition for method 29 of type gnawer
 (defmethod dummy-29 gnawer ((obj gnawer) (arg0 int) (arg1 vector) (arg2 vector))
   (let ((s1-0 (-> obj path curve num-cverts))
         (s2-0 (new 'stack-no-clear 'vector))
@@ -1055,6 +1140,8 @@
    )
   )
 
+;; definition for method 30 of type gnawer
+;; Used lq/sq
 (defmethod dummy-30 gnawer ((obj gnawer) (arg0 process-drawable))
   (local-vars (sv-48 vector))
   (let ((gp-0 (-> obj entity extra perm)))
@@ -1093,6 +1180,7 @@
    )
   )
 
+;; failed to figure out what this is:
 (defstate gnawer-chewing-on-post (gnawer)
   :event
   (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
@@ -1495,6 +1583,7 @@
   (the-as (function none :behavior gnawer) transform-post)
   )
 
+;; failed to figure out what this is:
 (defstate gnawer-retreat-into-post (gnawer)
   :exit
   (behavior ()
@@ -1556,6 +1645,7 @@
   (the-as (function none :behavior gnawer) transform-post)
   )
 
+;; failed to figure out what this is:
 (defstate gnawer-wait-to-run (gnawer)
   :code
   (behavior ()
@@ -1576,6 +1666,7 @@
    )
   )
 
+;; failed to figure out what this is:
 (defstate gnawer-run (gnawer)
   :event
   (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
@@ -1766,6 +1857,7 @@
   (the-as (function none :behavior gnawer) transform-post)
   )
 
+;; failed to figure out what this is:
 (defstate gnawer-die (gnawer)
   :enter
   (behavior ()
@@ -1863,6 +1955,7 @@
   (the-as (function none :behavior gnawer) ja-post)
   )
 
+;; failed to figure out what this is:
 (defstate gnawer-dying-give-pickups (gnawer)
   :event
   (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
@@ -1955,6 +2048,7 @@
    )
   )
 
+;; failed to figure out what this is:
 (defstate gnawer-give-fuel-cell (gnawer)
   :event
   (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
@@ -2072,6 +2166,7 @@
    )
   )
 
+;; failed to figure out what this is:
 (defstate gnawer-put-items-at-dest (gnawer)
   :event
   (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
@@ -2137,6 +2232,8 @@
    )
   )
 
+;; definition for function gnawer-joint-callback
+;; INFO: Return type mismatch int vs none.
 (defun gnawer-joint-callback ((arg0 gnawer))
   (dotimes (s5-0 10)
    (let* ((v1-1 (-> *gnawer-segment-infos* s5-0))
@@ -2166,6 +2263,7 @@
   (none)
   )
 
+;; definition for method 10 of type gnawer
 (defmethod deactivate gnawer ((obj gnawer))
   (if (nonzero? (-> obj part2))
    (kill-and-free-particles (-> obj part2))
@@ -2177,6 +2275,8 @@
   (none)
   )
 
+;; definition for method 7 of type gnawer
+;; INFO: Return type mismatch nav-enemy vs gnawer.
 (defmethod relocate gnawer ((obj gnawer) (arg0 int))
   (if (nonzero? (-> obj part2))
    (&+! (-> obj part2) arg0)
@@ -2193,6 +2293,8 @@
    )
   )
 
+;; definition for method 11 of type gnawer
+;; Used lq/sq
 (defmethod copy-defaults! gnawer ((obj gnawer) (arg0 res-lump))
   (local-vars (sv-16 int) (sv-32 int) (sv-48 int))
   (set! (-> obj hidden?) #f)
