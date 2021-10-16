@@ -26,7 +26,14 @@ int main(int argc, char** argv) {
   }
 
   // collect all files to process
-  auto config = read_config_file(argv[1]);
+  Config config;
+  try {
+    config = read_config_file(argv[1]);
+  } catch (const std::exception& e) {
+    lg::error("Failed to parse config");
+    return 1;
+  }
+
   std::string in_folder = argv[2];
   std::string out_folder = argv[3];
 
