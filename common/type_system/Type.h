@@ -27,6 +27,15 @@ struct MethodInfo {
   std::string diff(const MethodInfo& other) const;
 };
 
+struct StateInfo {
+  std::string name;
+  TypeSpec type;
+
+  bool operator==(const StateInfo& other) const;
+  bool operator!=(const StateInfo& other) const { return !((*this) == other); }
+  std::string diff(const StateInfo& other) const;
+};
+
 /*!
  * Parent class of all Types.
  */
@@ -80,12 +89,14 @@ class Type {
   const MethodInfo& add_method(const MethodInfo& info);
   const MethodInfo& add_new_method(const MethodInfo& info);
   std::string print_method_info() const;
+  const StateInfo& add_state(const StateInfo& info);
 
   void disallow_in_runtime() { m_allow_in_runtime = false; }
 
   virtual ~Type() = default;
 
   const std::vector<MethodInfo>& get_methods_defined_for_type() const { return m_methods; }
+  const std::vector<StateInfo>& get_states_declared_for_type() const { return m_states; }
 
   const MethodInfo* get_new_method_defined_for_type() const {
     if (m_new_method_info_defined) {
@@ -105,6 +116,7 @@ class Type {
   std::string incompatible_diff(const Type& other) const;
 
   std::vector<MethodInfo> m_methods;
+  std::vector<StateInfo> m_states;
   MethodInfo m_new_method_info;
   bool m_new_method_info_defined = false;
 

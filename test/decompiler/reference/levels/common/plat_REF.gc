@@ -83,12 +83,12 @@
   :size-assert         #x108
   :flag-assert         #x2100a00108
   (:methods
-    (dummy-27 () none 27)
+    (get-lit-skel (_type_) skeleton-group 27)
     (dummy-28 () none 28)
     (wad () _type_ :state 29)
-    (plat-startup () _type_ :state 30)
+    (plat-startup (plat) _type_ :state 30)
     (plat-idle () _type_ :state 31)
-    (plat-path-active () _type_ :state 32)
+    (plat-path-active (plat) _type_ :state 32)
     )
   )
 
@@ -163,7 +163,7 @@
   )
 
 ;; definition for method 23 of type plat
-(defmethod TODO-RENAME-23 plat ((obj plat))
+(defmethod get-unlit-skel plat ((obj plat))
   (cond
    ((= (-> (if (-> obj entity)
             (-> obj entity extra level)
@@ -276,13 +276,13 @@
 (defstate plat-startup (plat)
   :virtual #t
   :code
-  (behavior ()
+  (behavior ((arg0 plat))
    (cond
     ((logtest? (-> self path flags) (path-control-flag not-found))
      (go-virtual plat-idle)
      )
     ((> (-> self sync period) 0)
-     (go-virtual plat-path-active)
+     (go-virtual plat-path-active arg0)
      )
     (else
      (go-virtual plat-idle)
@@ -373,7 +373,7 @@
    (none)
    )
   :code
-  (the-as (function none :behavior plat) anim-loop)
+  (the-as (function plat none :behavior plat) anim-loop)
   :post
   (the-as (function none :behavior plat) plat-post)
   )
@@ -383,7 +383,7 @@
   (set! (-> obj mask) (logior (process-mask platform) (-> obj mask)))
   (dummy-24 obj)
   (process-drawable-from-entity! obj arg0)
-  (dummy-14 obj (TODO-RENAME-23 obj) '())
+  (dummy-14 obj (get-unlit-skel obj) '())
   (logior! (-> obj skel status) 1)
   (dummy-47 (-> obj root-override))
   (dummy-21 obj)
@@ -408,8 +408,10 @@
   (cond
    ((logtest? (-> obj path flags) (path-control-flag not-found))
     (set! (-> obj path-pos) 0.0)
-    (dummy-26 obj)
-    (go (method-of-object obj plat-startup))
+    (let ((a0-14 obj))
+     (dummy-26 a0-14)
+     (go (method-of-object obj plat-startup) a0-14)
+     )
     )
    ((> (-> obj sync period) 0)
     (set! (-> obj path-pos) (if (logtest? (-> obj fact options) 8)
@@ -423,8 +425,10 @@
      (-> obj path-pos)
      'interp
      )
-    (dummy-26 obj)
-    (go (method-of-object obj plat-startup))
+    (let ((a0-18 obj))
+     (dummy-26 a0-18)
+     (go (method-of-object obj plat-startup) a0-18)
+     )
     )
    (else
     (set! (-> obj path-pos) 0.0)
@@ -434,13 +438,11 @@
      (-> obj path-pos)
      'interp
      )
-    (dummy-26 obj)
-    (go (method-of-object obj plat-startup))
+    (let ((a0-20 obj))
+     (dummy-26 a0-20)
+     (go (method-of-object obj plat-startup) a0-20)
+     )
     )
    )
   (none)
   )
-
-
-
-

@@ -243,6 +243,34 @@ void declare_method(Type* type, TypeSystem* type_system, const goos::Object& def
   });
 }
 
+void declare_state(Type* type, TypeSystem* type_system, const goos::Object& def) {
+  for_each_in_list(def, [&](const goos::Object& _obj) {
+    auto obj = &_obj;
+    if (obj->is_list()) {
+      // (name ,@args)
+      auto state_name = symbol_string(car(obj));
+      auto args = cdr(obj);
+
+      TypeSpec state_typespec("state");
+
+      for_each_in_list(*args, [&](const goos::Object& o) {
+        state_typespec.add_arg(parse_typespec(type_system, o));
+      });
+      state_typespec.add_arg(TypeSpec(type->get_name()));
+
+      type->add_state({state_name, state_typespec});
+    } else {
+      // name
+      auto state_name = symbol_string(*obj);
+
+      TypeSpec state_typespec("state");
+      state_typespec.add_arg(TypeSpec(type->get_name()));
+
+      type->add_state({state_name, state_typespec});
+    }
+  });
+}
+
 struct StructureDefResult {
   TypeFlags flags;
   bool generate_runtime_type = true;
@@ -274,8 +302,11 @@ StructureDefResult parse_structure_def(StructureType* type,
       auto& first = car(opt_list);
       opt_list = cdr(opt_list);
 
-      if (symbol_string(first) == ":methods") {
+      auto list_name = symbol_string(first);
+      if (list_name == ":methods") {
         declare_method(type, ts, *opt_list);
+      } else if (list_name == ":states") {
+        declare_state(type, ts, *opt_list);
       } else {
         throw std::runtime_error("Invalid option list in field specification: " +
                                  car(rest).print());
