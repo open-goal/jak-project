@@ -1056,6 +1056,8 @@
 
   (cave-trap-nest-hint #x440)
 
+  (ram-boss-red-eco-hint #x444)
+
   (ice-cube-hint #x448)
 
   (lavatube-powercell-req-text #x455)
@@ -11706,11 +11708,11 @@
     (projectile-dissipate () _type_ :state 21) ;; state
     (projectile-impact () _type_ :state 22) ;; state
     (projectile-moving () _type_ :state 23) ;; state
-    (dummy-24 (_type_) none 24)
+    (dummy-24 (_type_) uint 24)
     (dummy-25 (_type_) none 25)
     (dummy-26 (_type_) none 26)
     (dummy-27 (_type_) none 27)
-    (dummy-28 (_type_) none 28)
+    (dummy-28 (_type_) vector 28)
     )
   )
 
@@ -22421,13 +22423,13 @@
     (TODO-RENAME-48 (_type_) none 48) ;; - Stubbed
     (TODO-RENAME-49 (_type_ nav-enemy-info) float 49)
     (TODO-RENAME-50 (_type_ vector) symbol 50)
-    (dummy-51 (_type_) float 51)
+    (dummy-51 (_type_ vector) symbol 51) ;; ret - float | symbol
     (dummy-52 (_type_ vector) vector 52)
-    (dummy-53 (_type_) symbol 53)
-    (dummy-54 (_type_) none 54)
-    (dummy-55 (_type_) none 55)
-    (dummy-56 (_type_) none 56)
-    (dummy-57 (_type_) none 57)
+    (dummy-53 (_type_) symbol 53) ;; ret - symbol | none
+    (dummy-54 (_type_ vector) vector 54)
+    (dummy-55 (_type_) symbol 55)
+    (dummy-56 (_type_ symbol) object 56)
+    (dummy-57 (_type_ float) float 57)
     (dummy-58 (_type_) none 58)
     (TODO-RENAME-59 (_type_) none 59)
     (dummy-60 (_type_) none 60)
@@ -38492,9 +38494,11 @@
 
 ;; - Types
 
+(declare-type ram-boss nav-enemy)
 (deftype ram-boss-proj (projectile)
-  ((part2           basic          :offset-assert 412)
-   (launched?       basic          :offset-assert 416)
+  ((parent-override (pointer ram-boss) :score 100         :offset 12)
+   (part2           sparticle-launch-control          :offset-assert 412)
+   (launched?       symbol          :offset-assert 416)
    (growth          float          :offset-assert 420)
    (charge-sound-id sound-id       :offset-assert 424)
    (launch-time     uint64         :offset-assert 432)
@@ -38507,20 +38511,21 @@
   )
 
 (deftype ram-boss (nav-enemy)
-  ((facing-y                 float          :offset-assert 400)
+  ((parent-override (pointer ram) :score 100         :offset 12)
+   (facing-y                 float          :offset-assert 400)
    (player-dir-y             float          :offset-assert 404)
    (last-turn-speed          float          :offset-assert 408)
    (frustration              int32          :offset-assert 412)
-   (dead?                    basic          :offset-assert 416)
-   (has-shield?              basic          :offset-assert 420)
+   (dead?                    symbol          :offset-assert 416)
+   (has-shield?              symbol          :offset-assert 420)
    (proj-stoked              basic          :offset-assert 424)
    (proj-status              uint64         :offset-assert 432)
-   (part2                    basic          :offset-assert 440)
+   (part2                    sparticle-launch-control          :offset-assert 440)
    (proj-last-thrown-time    uint64         :offset-assert 448)
    (nav-enemy-patrol-timeout uint64         :offset-assert 456)
    (proj-launch-vec          vector :inline :offset-assert 464)
    (local-throw-point        vector :inline :offset-assert 480)
-   (shield-jmod              basic          :offset-assert 496)
+   (shield-jmod              joint-mod-set-local          :offset-assert 496)
    )
   :method-count-assert 76
   :size-assert         #x1f4
@@ -38530,28 +38535,28 @@
 
 ;; - Functions
 
-(define-extern snow-ram-proj-update-velocity function)
-(define-extern ram-boss-on-ground-event-handler function)
-(define-extern ram-boss-init-by-other function)
+(define-extern snow-ram-proj-update-velocity (function ram-boss-proj none))
+(define-extern ram-boss-on-ground-event-handler (function process int symbol event-message-block object :behavior ram-boss))
+(define-extern ram-boss-init-by-other (function basic nav-enemy symbol none :behavior ram-boss))
 
 ;; - Unknowns
 
 (define-extern ram-boss-tracking (state ram-boss)) ;; unknown type
-;;(define-extern *ram-boss-nav-enemy-info-no-shield* object) ;; unknown type
+(define-extern *ram-boss-nav-enemy-info-no-shield* nav-enemy-info) ;; unknown type
 (define-extern ram-boss-nav-resume (state ram-boss)) ;; unknown type
 (define-extern ram-boss-throw (state ram-boss)) ;; unknown type
 (define-extern ram-boss-nav-start (state ram-boss)) ;; unknown type
 (define-extern ram-boss-jump-down-hit-ground (state ram-boss)) ;; unknown type
-(define-extern ram-boss-jump-down (state ram-boss)) ;; unknown type
-(define-extern ram-boss-already-down (state ram-boss)) ;; unknown type
+(define-extern ram-boss-jump-down (state basic vector ram-boss)) ;; unknown type
+(define-extern ram-boss-already-down (state basic vector ram-boss)) ;; unknown type
 (define-extern ram-boss-idle (state ram-boss)) ;; unknown type
 (define-extern *ram-boss-sg* skeleton-group)
 (define-extern *ram-boss-nav-enemy-info* nav-enemy-info)
 (define-extern ram-boss-lose-shield (state ram-boss)) ;; unknown type
 (define-extern ram-boss-up-defend-block (state ram-boss)) ;; unknown type
 (define-extern ram-boss-forward-defend-block (state ram-boss)) ;; unknown type
-(define-extern ram-boss-proj-launch (state ram-boss)) ;; unknown type
-(define-extern ram-boss-proj-growing (state ram-boss)) ;; unknown type
+(define-extern ram-boss-proj-launch (state ram-boss-proj)) ;; unknown type
+(define-extern ram-boss-proj-growing (state ram-boss-proj)) ;; unknown type
 (define-extern ram-boss-show-anims (state ram-boss)) ;; unknown type
 
 
