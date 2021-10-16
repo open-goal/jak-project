@@ -713,8 +713,7 @@
      :mask #x80
      :num 1.0
      :group #x1
-     :sound-name
-     (new 'static 'sound-name :lo #x766f6d2d6f6c6973)
+     :sound-name (static-sound-name "silo-moves")
      :volume #x400
      :fo-max 80
      )
@@ -763,100 +762,69 @@
   )
 
 (defmethod play-anim! finalbosscam ((obj finalbosscam) (arg0 symbol))
-  (with-pp
-   (when arg0
-    (let ((s5-0 (get-process *default-dead-pool* manipy #x4000)))
-     (set! (-> obj robotboss) (ppointer->handle (when s5-0
-                                                 (let
-                                                  ((t9-1
-                                                    (method-of-type
-                                                     manipy
-                                                     activate
-                                                     )
+  (when arg0
+   (let ((s5-0 (get-process *default-dead-pool* manipy #x4000)))
+    (set! (-> obj robotboss) (ppointer->handle (when s5-0
+                                                (let
+                                                 ((t9-1
+                                                   (method-of-type
+                                                    manipy
+                                                    activate
                                                     )
                                                    )
-                                                  (t9-1
-                                                   (the-as manipy s5-0)
-                                                   obj
-                                                   'manipy
-                                                   (the-as pointer #x70004000)
-                                                   )
                                                   )
-                                                 (run-now-in-process
-                                                  s5-0
-                                                  manipy-init
-                                                  (-> obj root-override trans)
-                                                  (-> obj entity)
-                                                  *robotboss-sg*
-                                                  #f
+                                                 (t9-1
+                                                  (the-as manipy s5-0)
+                                                  obj
+                                                  'manipy
+                                                  (the-as pointer #x70004000)
                                                   )
-                                                 (-> s5-0 ppointer)
                                                  )
-                               )
-      )
+                                                (run-now-in-process
+                                                 s5-0
+                                                 manipy-init
+                                                 (-> obj root-override trans)
+                                                 (-> obj entity)
+                                                 *robotboss-sg*
+                                                 #f
+                                                 )
+                                                (-> s5-0 ppointer)
+                                                )
+                              )
      )
-    (let ((a1-4 (new 'stack-no-clear 'event-message-block)))
-     (set! (-> a1-4 from) pp)
-     (set! (-> a1-4 num-params) 1)
-     (set! (-> a1-4 message) 'anim-mode)
-     (set! (-> a1-4 param 0) (the-as uint 'clone-anim))
-     (send-event-function (handle->process (-> obj robotboss)) a1-4)
-     )
-    (let ((a1-5 (new 'stack-no-clear 'event-message-block)))
-     (set! (-> a1-5 from) pp)
-     (set! (-> a1-5 num-params) 1)
-     (set! (-> a1-5 message) 'center-joint)
-     (set! (-> a1-5 param 0) (the-as uint 3))
-     (send-event-function (handle->process (-> obj robotboss)) a1-5)
-     )
-    (let ((a1-6 (new 'stack-no-clear 'event-message-block)))
-     (set! (-> a1-6 from) pp)
-     (set! (-> a1-6 num-params) 1)
-     (set! (-> a1-6 message) 'origin-joint-index)
-     (set! (-> a1-6 param 0) (the-as uint 3))
-     (send-event-function (handle->process (-> obj robotboss)) a1-6)
-     )
-    (let ((a1-7 (new 'stack-no-clear 'event-message-block)))
-     (set! (-> a1-7 from) pp)
-     (set! (-> a1-7 num-params) 1)
-     (set! (-> a1-7 message) 'trans-hook)
-     (set! (-> a1-7 param 0) (the-as uint robotboss-manipy-trans-hook))
-     (send-event-function (handle->process (-> obj robotboss)) a1-7)
-     )
-    (let ((a1-8 (new 'stack-no-clear 'event-message-block)))
-     (set! (-> a1-8 from) pp)
-     (set! (-> a1-8 num-params) 1)
-     (set! (-> a1-8 message) 'eval)
-     (set!
-      (-> a1-8 param 0)
-      (the-as
-       uint
-       (lambda :behavior finalbosscam
-        ()
-        (let
-         ((v0-0 (create-launch-control (-> *part-group-id-table* 645) self)))
-         (set! (-> self part) v0-0)
-         v0-0
-         )
-        )
-       )
-      )
-     (send-event-function (handle->process (-> obj robotboss)) a1-8)
-     )
-    (let ((v1-43 (handle->process (-> obj robotboss))))
-     (if v1-43
-      (set! (-> (the-as robotboss v1-43) draw bounds w) 327680.0)
+    )
+   (send-event (handle->process (-> obj robotboss)) 'anim-mode 'clone-anim)
+   (send-event (handle->process (-> obj robotboss)) 'center-joint 3)
+   (send-event (handle->process (-> obj robotboss)) 'origin-joint-index 3)
+   (send-event
+    (handle->process (-> obj robotboss))
+    'trans-hook
+    robotboss-manipy-trans-hook
+    )
+   (send-event
+    (handle->process (-> obj robotboss))
+    'eval
+    (lambda :behavior finalbosscam
+     ()
+     (let ((v0-0 (create-launch-control (-> *part-group-id-table* 645) self)))
+      (set! (-> self part) v0-0)
+      v0-0
       )
      )
     )
-   (the-as
-    basic
-    (new 'static 'spool-anim
-     :name "finalbosscam-white-eco"
-     :index 3
-     :parts 3
-     :command-list '()
+   (let ((v1-43 (handle->process (-> obj robotboss))))
+    (if v1-43
+     (set! (-> (the-as robotboss v1-43) draw bounds w) 327680.0)
      )
+    )
+   )
+  (the-as
+   basic
+   (new 'static 'spool-anim
+    :name "finalbosscam-white-eco"
+    :index 3
+    :parts 3
+    :command-list '()
     )
    )
   )

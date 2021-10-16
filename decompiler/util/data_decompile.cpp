@@ -10,6 +10,7 @@
 #include "decompiler/IR2/Form.h"
 #include "decompiler/analysis/final_output.h"
 #include "decompiler/util/sparticle_decompile.h"
+#include "common/util/assert.h"
 
 namespace decompiler {
 
@@ -890,12 +891,31 @@ goos::Object decompile_value(const TypeSpec& type,
 
   auto as_bitfield = dynamic_cast<BitFieldType*>(ts.lookup_type(type));
   if (as_bitfield) {
-    assert((int)bytes.size() == as_bitfield->get_load_size());
-    assert(bytes.size() <= 8);
-    u64 value = 0;
-    memcpy(&value, bytes.data(), bytes.size());
-    auto defs = decompile_bitfield_from_int(type, ts, value);
-    return bitfield_defs_print(type, defs);
+    if (as_bitfield->get_name() == "sound-name") {
+      assert(bytes.size() == 16);
+      char name[17];
+      memcpy(name, bytes.data(), 16);
+      name[16] = '\0';
+
+      bool got_zero = false;
+      for (int i = 0; i < 16; i++) {
+        if (name[i] == 0) {
+          got_zero = true;
+        } else {
+          if (got_zero) {
+            assert(false);
+          }
+        }
+      }
+      return pretty_print::to_symbol(fmt::format("(static-sound-name \"{}\")", name));
+    } else {
+      assert((int)bytes.size() == as_bitfield->get_load_size());
+      assert(bytes.size() <= 8);
+      u64 value = 0;
+      memcpy(&value, bytes.data(), bytes.size());
+      auto defs = decompile_bitfield_from_int(type, ts, value);
+      return bitfield_defs_print(type, defs);
+    }
   }
 
   // try as common integer types:

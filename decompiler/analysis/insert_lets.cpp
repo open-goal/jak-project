@@ -301,12 +301,12 @@ FormElement* rewrite_as_send_event(LetElement* in, const Env& env, FormPool& poo
   call_hack_body.elts().push_back(body->at(3 + param_count));
   auto call_mr = match(call_matcher, &call_hack_body);
   if (!call_mr.matched) {
-    fmt::print(" fail: call1: {}\n", body->at(3 + param_count)->to_string(env));
+    // fmt::print(" fail: call1: {}\n", body->at(3 + param_count)->to_string(env));
     return nullptr;
   }
 
   if (env.get_variable_name(*call_mr.maps.regs.at(1)) != block_var_name) {
-    fmt::print(" fail: call2\n");
+    // fmt::print(" fail: call2\n");
     return nullptr;
   }
 

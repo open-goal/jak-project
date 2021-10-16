@@ -537,15 +537,10 @@
   (let ((v1-0 arg2))
    (the-as object (when (or (= v1-0 'touch) (= v1-0 'attack))
                    (when (= (-> arg0 type) target)
-                    (let ((a1-3 (new 'stack-no-clear 'event-message-block)))
-                     (set! (-> a1-3 from) self)
-                     (set! (-> a1-3 num-params) 1)
-                     (set! (-> a1-3 message) 'trigger)
-                     (set! (-> a1-3 param 0) (the-as uint (-> self angle-bit)))
-                     (send-event-function
-                      (ppointer->process (-> self parent))
-                      a1-3
-                      )
+                    (send-event
+                     (ppointer->process (-> self parent))
+                     'trigger
+                     (-> self angle-bit)
                      )
                     (go light-eco-child-grabbed)
                     )
@@ -755,12 +750,10 @@
 (defstate light-eco-child-die (light-eco-child)
   :code
   (behavior ()
-   (let ((a1-0 (new 'stack-no-clear 'event-message-block)))
-    (set! (-> a1-0 from) self)
-    (set! (-> a1-0 num-params) 1)
-    (set! (-> a1-0 message) 'untrigger)
-    (set! (-> a1-0 param 0) (the-as uint (-> self angle-bit)))
-    (send-event-function (ppointer->process (-> self parent)) a1-0)
+   (send-event
+    (ppointer->process (-> self parent))
+    'untrigger
+    (-> self angle-bit)
     )
    (dummy-48 (-> self root-override))
    (logior! (-> self draw status) 2)
@@ -1193,8 +1186,7 @@
      :mask #xc0
      :num 1.0
      :group #x1
-     :sound-name
-     (new 'static 'sound-name :lo #x63652d6574696877)
+     :sound-name (static-sound-name "white-eco-lp")
      :volume #x400
      :fo-min #x12c
      :fo-max #x190
