@@ -73,7 +73,8 @@ std::vector<DefstateElement::Entry> get_defstate_entries(
     const RegisterAccess& let_dest_var,
     const TypeSpec& state_type,
     FormPool& pool,
-    const std::optional<std::string>& virtual_child = {}) {
+    const std::optional<std::string>& virtual_child = {},
+    const std::unordered_map<std::string, std::unordered_set<std::string>>& skip_states = {}) {
   std::vector<DefstateElement::Entry> entries;
 
   // next, all the handlers
@@ -151,15 +152,25 @@ std::vector<DefstateElement::Entry> get_defstate_entries(
             pool.alloc_single_element_form<CastElement>(nullptr, expected_type, this_entry.val);
       }
     }
+    // name = code/event/etc
+    if (skip_states.count(state_name) > 0) {
+      if (skip_states.at(state_name).find(name) != skip_states.at(state_name).end()) {
+        env.func->warnings.general_warning("SKIP: skipping '{}' handler for state '{}'", name,
+                                           state_name);
+        continue;
+      }
+    }
     entries.push_back(this_entry);
   }
   return entries;
 }
 
-FormElement* rewrite_nonvirtual_defstate(LetElement* elt,
-                                         const Env& env,
-                                         const std::string& expected_state_name,
-                                         FormPool& pool) {
+FormElement* rewrite_nonvirtual_defstate(
+    LetElement* elt,
+    const Env& env,
+    const std::string& expected_state_name,
+    FormPool& pool,
+    const std::unordered_map<std::string, std::unordered_set<std::string>>& skip_states = {}) {
   // first thing in the body should be something like:
   //  (set! teetertotter-idle (the-as (state none) v1-3))
   assert(elt->body()->size() > 0);
@@ -178,8 +189,9 @@ FormElement* rewrite_nonvirtual_defstate(LetElement* elt,
   }
   body_index++;
 
-  auto entries = get_defstate_entries(elt->body(), body_index, env, info.first,
-                                      elt->entries().at(0).dest, info.second, pool);
+  auto entries =
+      get_defstate_entries(elt->body(), body_index, env, info.first, elt->entries().at(0).dest,
+                           info.second, pool, {}, skip_states);
 
   return pool.alloc_element<DefstateElement>(info.second.last_arg().base_type(), info.first,
                                              entries, false);
@@ -238,10 +250,12 @@ std::string verify_empty_state_and_get_name(DecompiledDataElement* state, const 
   return name_word.symbol_name;
 }
 
-FormElement* rewrite_virtual_defstate(LetElement* elt,
-                                      const Env& env,
-                                      const std::string& expected_state_name,
-                                      FormPool& pool) {
+FormElement* rewrite_virtual_defstate(
+    LetElement* elt,
+    const Env& env,
+    const std::string& expected_state_name,
+    FormPool& pool,
+    const std::unordered_map<std::string, std::unordered_set<std::string>>& skip_states = {}) {
   assert(elt->body()->size() > 1);
   // variable at the top of let, contains the static state with name exptected_state_name
   auto state_var_from_let_def = elt->entries().at(0).dest;
@@ -399,7 +413,7 @@ FormElement* rewrite_virtual_defstate(LetElement* elt,
 
   auto entries = get_defstate_entries(
       elt->body(), body_idx + 1, env, expected_state_name, elt->entries().at(0).dest,
-      method_info.type.substitute_for_method_call(type_name), pool, type_name);
+      method_info.type.substitute_for_method_call(type_name), pool, type_name, skip_states);
 
   return pool.alloc_element<DefstateElement>(type_name, expected_state_name, entries, true);
 }
@@ -410,7 +424,9 @@ bool is_nonvirtual_state(LetElement* elt) {
 
 }  // namespace
 
-void run_defstate(Function& top_level_func) {
+void run_defstate(
+    Function& top_level_func,
+    const std::unordered_map<std::string, std::unordered_set<std::string>>& skip_states) {
   auto& env = top_level_func.ir2.env;
   auto& pool = *top_level_func.ir2.form_pool;
   if (!top_level_func.ir2.top_form) {
@@ -439,12 +455,14 @@ void run_defstate(Function& top_level_func) {
           }
 
           if (is_nonvirtual_state(as_let)) {
-            auto rewritten = rewrite_nonvirtual_defstate(as_let, env, expected_state_name, pool);
+            auto rewritten =
+                rewrite_nonvirtual_defstate(as_let, env, expected_state_name, pool, skip_states);
             if (rewritten) {
               fe = rewritten;
             }
           } else {
-            auto rewritten = rewrite_virtual_defstate(as_let, env, expected_state_name, pool);
+            auto rewritten =
+                rewrite_virtual_defstate(as_let, env, expected_state_name, pool, skip_states);
             if (rewritten) {
               fe = rewritten;
             }

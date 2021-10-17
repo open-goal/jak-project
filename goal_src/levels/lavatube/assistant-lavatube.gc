@@ -40,7 +40,7 @@
   assistant-lavatube-start
   ((obj assistant-lavatube-start) (arg0 symbol))
   (case (current-status (-> obj tasks)) 
-   ((6)
+   (((task-status need-reward-speech))
      (if arg0
       (close-current! (-> obj tasks))
       )
@@ -72,7 +72,7 @@
       0
       "ERROR: <GMJ>: ~S playing anim for task status ~S~%"
       (-> obj name)
-      (task-status->string (the-as task-status (current-status (-> obj tasks))))
+      (task-status->string (current-status (-> obj tasks)))
       )
      )
     (get-art-elem obj)
@@ -103,10 +103,7 @@
                 #t
                 )
                (else
-                (set!
-                 (-> self state-time)
-                 (the-as seconds (-> *display* base-frame-counter))
-                 )
+                (set! (-> self state-time) (-> *display* base-frame-counter))
                 #f
                 )
                )
@@ -126,13 +123,7 @@
              (logtest? (-> *cpad-list* cpads 0 button0-abs 0) (pad-buttons l3))
              )
             )
-           (<
-            (-
-             (-> *display* base-frame-counter)
-             (the-as int (-> self state-time))
-             )
-            3000
-            )
+           (< (- (-> *display* base-frame-counter) (-> self state-time)) 3000)
            )
           )
     (hide-hud)
@@ -315,7 +306,7 @@
   assistant-lavatube-start
   ((obj assistant-lavatube-start))
   (first-any (-> obj tasks) #t)
-  (= (current-status (-> obj tasks)) 6)
+  (= (current-status (-> obj tasks)) (task-status need-reward-speech))
   )
 
 (defmethod

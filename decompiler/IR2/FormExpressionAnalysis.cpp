@@ -3345,6 +3345,9 @@ void CondNoElseElement::push_to_stack(const Env& env, FormPool& pool, FormStack&
         stack.push_value_to_reg(write_as_value, as_ppointer_to_process, true,
                                 env.get_variable_type(final_destination, false));
       } else {
+        //        fmt::print("func {} final destination {} type {}\n", env.func->name(),
+        //                   final_destination.to_string(env),
+        //                   env.get_variable_type(final_destination, false).print());
         stack.push_value_to_reg(write_as_value, pool.alloc_single_form(nullptr, this), true,
                                 env.get_variable_type(final_destination, false));
       }
@@ -3437,7 +3440,9 @@ void CondWithElseElement::push_to_stack(const Env& env, FormPool& pool, FormStac
           rewrite_as_set = false;
           break;
         }
-        source_types.push_back(last_in_body->src_type());
+        // note: we use the dest type here because the rewrite will leave behind a cast to this.
+        auto type = env.get_variable_type(last_in_body->dst(), true);
+        source_types.push_back(type);
       }
       last_var = last_in_body->dst();
     }
@@ -3507,10 +3512,12 @@ void CondWithElseElement::push_to_stack(const Env& env, FormPool& pool, FormStac
       // (set! x (if y z (expr))) and z requires a cast, but the move from z to x is
       // eliminated by GOAL's register allocator.
 
-      //      fmt::print("checking:\n");
-      //      for (auto& t : source_types) {
-      //        fmt::print("  {}\n", t.print());
-      //      }
+      // fmt::print("func: {}\n", env.func->name());
+
+      // fmt::print("checking:\n");
+      // for (auto& t : source_types) {
+      //  fmt::print("  {}\n", t.print());
+      // }
 
       auto expected_type = env.get_variable_type(*last_var, true);
       // fmt::print("The expected type is {}\n", expected_type.print());
@@ -4731,7 +4738,41 @@ void ArrayFieldAccess::update_with_val(Form* new_val,
       auto deref = pool.alloc_element<DerefElement>(base, false, tokens);
       result->push_back(deref);
     } else {
-      throw std::runtime_error("Not power of two case, not yet implemented (no offset)");
+      auto mult_matcher = Matcher::op(
+          GenericOpMatcher::fixed(FixedOperatorKind::MULTIPLICATION),
+          {Matcher::match_or({Matcher::cast("uint", Matcher::integer(m_expected_stride)),
+                              Matcher::integer(m_expected_stride)}),
+           Matcher::any(0)});
+      mult_matcher = Matcher::match_or(
+          {Matcher::cast("uint", mult_matcher), Matcher::cast("int", mult_matcher), mult_matcher});
+
+      auto op_match =
+          GenericOpMatcher::or_match({GenericOpMatcher::fixed(FixedOperatorKind::ADDITION),
+                                      GenericOpMatcher::fixed(FixedOperatorKind::ADDITION_PTR)});
+      auto add_matcher = Matcher::op(op_match, {Matcher::any(1), mult_matcher});
+      add_matcher =
+          Matcher::match_or({add_matcher, Matcher::op(op_match, {mult_matcher, Matcher::any(1)})});
+
+      auto mr = match(add_matcher, new_val);
+      if (!mr.matched) {
+        throw std::runtime_error("Failed to match non-power of two case: " +
+                                 new_val->to_string(env));
+      }
+
+      auto base = strip_int_or_uint_cast(mr.maps.forms.at(1));
+      auto idx = mr.maps.forms.at(0);
+
+      assert(idx && base);
+
+      std::vector<DerefToken> tokens = m_deref_tokens;
+      for (auto& x : tokens) {
+        if (x.kind() == DerefToken::Kind::EXPRESSION_PLACEHOLDER) {
+          x = DerefToken::make_int_expr(idx);
+        }
+      }
+
+      auto deref = pool.alloc_element<DerefElement>(base, false, tokens);
+      result->push_back(deref);
     }
   } else {
     if (m_expected_stride == 1) {

@@ -683,11 +683,7 @@
     (set! (-> self draw color-mult quad) (-> self lit-color-mult quad))
     (set! (-> self draw color-emissive quad) (-> self lit-color-emissive quad))
     (set! (-> self state-time) (-> *display* base-frame-counter))
-    (until
-     (>=
-      (- (-> *display* base-frame-counter) (the-as int (-> self state-time)))
-      30
-      )
+    (until (>= (- (-> *display* base-frame-counter) (-> self state-time)) 30)
      (suspend)
      )
     (set! (-> self draw color-mult quad) (-> self unlit-color-mult quad))
@@ -697,11 +693,7 @@
      )
     (set! (-> self state-time) (-> *display* base-frame-counter))
     (let ((s5-1 (-> *dark-crystal-flash-delays* gp-0)))
-     (until
-      (>=
-       (- (-> *display* base-frame-counter) (the-as int (-> self state-time)))
-       s5-1
-       )
+     (until (>= (- (-> *display* base-frame-counter) (-> self state-time)) s5-1)
       (suspend)
       )
      )
@@ -878,36 +870,26 @@
 ;; INFO: Return type mismatch object vs none.
 ;; Used lq/sq
 (defmethod dummy-20 dark-crystal ((obj dark-crystal))
-  (with-pp
-   (when *target*
-    (let ((s5-0 (new 'stack-no-clear 'vector))
-          (s3-0 (new 'stack-no-clear 'vector))
-          (s4-0 (new 'stack-no-clear 'vector))
-          )
-     (set! (-> s5-0 quad) (-> obj root-override trans quad))
-     (set! (-> s5-0 y) (+ 6144.0 (-> s5-0 y)))
-     (set! (-> s3-0 quad) (-> (target-pos 0) quad))
-     (set! (-> s3-0 y) (+ 6144.0 (-> s3-0 y)))
-     (when
-      (>= (-> obj explode-danger-radius) (vector-vector-distance s5-0 s3-0))
-      (vector-! s4-0 s3-0 s5-0)
-      (let ((t2-0 (new 'stack-no-clear 'collide-mesh-cache-tri)))
-       (when (< (dummy-10 *collide-cache* s5-0 s4-0 819.2 1 obj t2-0 1) 0.0)
-        (let ((a1-2 (new 'stack-no-clear 'event-message-block)))
-         (set! (-> a1-2 from) pp)
-         (set! (-> a1-2 num-params) 2)
-         (set! (-> a1-2 message) 'attack)
-         (set! (-> a1-2 param 0) (the-as uint #f))
-         (set! (-> a1-2 param 1) (the-as uint (new 'static 'attack-info)))
-         (send-event-function *target* a1-2)
+  (when *target*
+   (let ((s5-0 (new 'stack-no-clear 'vector))
+         (s3-0 (new 'stack-no-clear 'vector))
+         (s4-0 (new 'stack-no-clear 'vector))
          )
-        )
+    (set! (-> s5-0 quad) (-> obj root-override trans quad))
+    (set! (-> s5-0 y) (+ 6144.0 (-> s5-0 y)))
+    (set! (-> s3-0 quad) (-> (target-pos 0) quad))
+    (set! (-> s3-0 y) (+ 6144.0 (-> s3-0 y)))
+    (when (>= (-> obj explode-danger-radius) (vector-vector-distance s5-0 s3-0))
+     (vector-! s4-0 s3-0 s5-0)
+     (let ((t2-0 (new 'stack-no-clear 'collide-mesh-cache-tri)))
+      (if (< (dummy-10 *collide-cache* s5-0 s4-0 819.2 1 obj t2-0 1) 0.0)
+       (send-event *target* 'attack #f (new 'static 'attack-info))
        )
       )
      )
     )
-   (none)
    )
+  (none)
   )
 
 ;; definition for method 21 of type dark-crystal
@@ -997,7 +979,3 @@
    )
   (none)
   )
-
-
-
-

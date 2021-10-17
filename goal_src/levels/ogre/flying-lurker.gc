@@ -5,8 +5,14 @@
 ;; name in dgo: flying-lurker
 ;; dgos: L1, OGR
 
+(define-extern *ogrecam-sg* skeleton-group)
+(define-extern *plunger-lurker-sg* skeleton-group)
+(define-extern *flying-lurker-sg* skeleton-group)
+(declare-type flying-lurker process-drawable)
+(define-extern flying-lurker-clone (state handle string flying-lurker))
 
-;; failed to figure out what this is:
+;; DECOMP BEGINS
+
 (let
   ((v1-0
     (new 'static 'skeleton-group
@@ -21,10 +27,9 @@
   (set! (-> v1-0 janim) -1)
   (set! (-> v1-0 mgeo 0) (the-as uint 1))
   (set! (-> v1-0 lod-dist 0) 4095996000.0)
-  (define *ogrecam-sg* v1-0)
+  (set! *ogrecam-sg* v1-0)
   )
 
-;; definition of type plunger-lurker
 (deftype plunger-lurker (process-drawable)
   ((alt-actor entity-actor  :offset-assert 176)
    (got-hit   symbol        :offset-assert 180)
@@ -35,17 +40,7 @@
   :flag-assert         #x14005000b8
   )
 
-;; definition for method 3 of type plunger-lurker
-(defmethod inspect plunger-lurker ((obj plunger-lurker))
-  (let ((t9-0 (method-of-type process-drawable inspect)))
-   (t9-0 obj)
-   )
-  (format #t "~T~Talt-actor: ~A~%" (-> obj alt-actor))
-  (format #t "~T~Tgot-hit: ~A~%" (-> obj got-hit))
-  obj
-  )
 
-;; failed to figure out what this is:
 (let
   ((v1-2
     (new 'static 'skeleton-group
@@ -65,10 +60,9 @@
   (set! (-> v1-2 lod-dist 1) 163840.0)
   (set! (-> v1-2 mgeo 2) (the-as uint 3))
   (set! (-> v1-2 lod-dist 2) 4095996000.0)
-  (define *plunger-lurker-sg* v1-2)
+  (set! *plunger-lurker-sg* v1-2)
   )
 
-;; failed to figure out what this is:
 (defstate plunger-lurker-plunge (plunger-lurker)
   :code
   (behavior ()
@@ -129,24 +123,14 @@
                         )
       )
      )
-    (let ((a1-8 (new 'stack-no-clear 'event-message-block)))
-     (set! (-> a1-8 from) self)
-     (set! (-> a1-8 num-params) 1)
-     (set! (-> a1-8 message) 'eval)
-     (set!
-      (-> a1-8 param 0)
-      (the-as
-       uint
-       (lambda :behavior manipy
-        ()
-        (let ((v0-0 (logior (-> self draw status) 32)))
-         (set! (-> self draw status) v0-0)
-         v0-0
-         )
-        )
-       )
+    (send-event
+     (handle->process gp-1)
+     'eval
+     (lambda :behavior manipy () (let ((v0-0 (logior (-> self draw status) 32)))
+                                  (set! (-> self draw status) v0-0)
+                                  v0-0
+                                  )
       )
-     (send-event-function (handle->process gp-1) a1-8)
      )
     (let ((a1-9 (new 'stack-no-clear 'event-message-block)))
      (set! (-> a1-9 from) self)
@@ -163,20 +147,8 @@
        )
       )
      )
-    (let ((a1-10 (new 'stack-no-clear 'event-message-block)))
-     (set! (-> a1-10 from) self)
-     (set! (-> a1-10 num-params) 1)
-     (set! (-> a1-10 message) 'clone-copy-trans)
-     (set! (-> a1-10 param 0) (the-as uint #f))
-     (send-event-function (-> gp-1 process 0) a1-10)
-     )
-    (let ((a1-11 (new 'stack-no-clear 'event-message-block)))
-     (set! (-> a1-11 from) self)
-     (set! (-> a1-11 num-params) 1)
-     (set! (-> a1-11 message) 'anim-mode)
-     (set! (-> a1-11 param 0) (the-as uint 'clone-anim))
-     (send-event-function (-> gp-1 process 0) a1-11)
-     )
+    (send-event (-> gp-1 process 0) 'clone-copy-trans #f)
+    (send-event (-> gp-1 process 0) 'anim-mode 'clone-anim)
     (ja-play-spooled-anim
      (new 'static 'spool-anim
       :name "plunger-lurker-blowup"
@@ -375,7 +347,6 @@
   (the-as (function none :behavior plunger-lurker) ja-post)
   )
 
-;; failed to figure out what this is:
 (defstate plunger-lurker-flee (plunger-lurker)
   :event
   (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
@@ -529,7 +500,6 @@
   (the-as (function none :behavior plunger-lurker) ja-post)
   )
 
-;; failed to figure out what this is:
 (defstate plunger-lurker-idle (plunger-lurker)
   :event
   (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
@@ -610,7 +580,6 @@
   (the-as (function none :behavior plunger-lurker) ja-post)
   )
 
-;; failed to figure out what this is:
 (defstate plunger-lurker-die (plunger-lurker)
   :code
   (behavior ()
@@ -622,7 +591,6 @@
    )
   )
 
-;; definition for method 11 of type plunger-lurker
 (defmethod copy-defaults! plunger-lurker ((obj plunger-lurker) (arg0 res-lump))
   (stack-size-set! (-> obj main-thread) 512)
   (let
@@ -652,7 +620,6 @@
   (none)
   )
 
-;; definition of type flying-lurker
 (deftype flying-lurker (process-drawable)
   ((curve-position    float                :offset-assert 176)
    (speed             float                :offset-assert 180)
@@ -683,34 +650,7 @@
     )
   )
 
-;; definition for method 3 of type flying-lurker
-(defmethod inspect flying-lurker ((obj flying-lurker))
-  (let ((t9-0 (method-of-type process-drawable inspect)))
-   (t9-0 obj)
-   )
-  (format #t "~T~Tcurve-position: ~f~%" (-> obj curve-position))
-  (format #t "~T~Tspeed: ~f~%" (-> obj speed))
-  (format #t "~T~Ttangent: #<vector @ #x~X>~%" (-> obj tangent))
-  (format #t "~T~Tanim-blend: ~f~%" (-> obj anim-blend))
-  (format #t "~T~Ty-offset: ~f~%" (-> obj y-offset))
-  (format #t "~T~Ty-offset-desired: ~f~%" (-> obj y-offset-desired))
-  (format #t "~T~Ty-vel: ~f~%" (-> obj y-vel))
-  (format #t "~T~Tlast-look-time: ~D~%" (-> obj last-look-time))
-  (format #t "~T~Ttime-to-next-look: ~D~%" (-> obj time-to-next-look))
-  (format #t "~T~Ttake-off: ~A~%" (-> obj take-off))
-  (format #t "~T~Trace-seconds: ~f~%" (-> obj race-seconds))
-  (format #t "~T~Trace-start-time: ~D~%" (-> obj race-start-time))
-  (format #t "~T~Trank: ~D~%" (-> obj rank))
-  (format #t "~T~Talt-actor: ~A~%" (-> obj alt-actor))
-  (format #t "~T~Talt-trans: #<vector @ #x~X>~%" (-> obj alt-trans))
-  (format #t "~T~Tshadow-backup: ~A~%" (-> obj shadow-backup))
-  (format #t "~T~Ttry-count: ~D~%" (-> obj try-count))
-  (format #t "~T~Ttry-counted: ~A~%" (-> obj try-counted))
-  (format #t "~T~Tdefault-bounds: #<vector @ #x~X>~%" (-> obj default-bounds))
-  obj
-  )
 
-;; failed to figure out what this is:
 (let
   ((v1-8
     (new 'static 'skeleton-group
@@ -732,12 +672,9 @@
   (set! (-> v1-8 lod-dist 1) 163840.0)
   (set! (-> v1-8 mgeo 2) (the-as uint 3))
   (set! (-> v1-8 lod-dist 2) 4095996000.0)
-  (define *flying-lurker-sg* v1-8)
+  (set! *flying-lurker-sg* v1-8)
   )
 
-;; definition for method 20 of type flying-lurker
-;; INFO: Return type mismatch int vs none.
-;; Used lq/sq
 (defmethod dummy-20 flying-lurker ((obj flying-lurker))
   (with-pp
    (let ((s5-0 (-> obj draw shadow-ctrl))
@@ -834,8 +771,6 @@
    )
   )
 
-;; definition for function flying-lurker-inc-try-count
-;; INFO: Return type mismatch int vs none.
 (defbehavior flying-lurker-inc-try-count flying-lurker ()
   (when (not (-> self try-counted))
    (set! (-> self try-counted) #t)
@@ -849,12 +784,10 @@
   (none)
   )
 
-;; definition for function play-movie?
 (defun play-movie? ()
   (= (get-task-status (game-task plunger-lurker-hit)) (task-status unknown))
   )
 
-;; failed to figure out what this is:
 (defstate flying-lurker-die (flying-lurker)
   :code
   (behavior ()
@@ -864,7 +797,6 @@
    )
   )
 
-;; failed to figure out what this is:
 (defstate flying-lurker-sleep (flying-lurker)
   :code
   (behavior ()
@@ -877,14 +809,10 @@
    )
   )
 
-;; definition for function first?
 (defbehavior first? flying-lurker ()
   (not (-> self link prev))
   )
 
-;; definition for function flying-lurker-calc-speed
-;; INFO: Return type mismatch float vs none.
-;; Used lq/sq
 (defbehavior
   flying-lurker-calc-speed flying-lurker
   ((arg0 meters) (arg1 meters) (arg2 meters) (arg3 meters))
@@ -944,8 +872,6 @@
   (none)
   )
 
-;; definition for function flying-lurker-move
-;; INFO: Return type mismatch float vs none.
 (defbehavior flying-lurker-move flying-lurker ()
   (+!
    (-> self curve-position)
@@ -1001,7 +927,6 @@
   (none)
   )
 
-;; definition for function flying-lurker-rotate
 (defbehavior flying-lurker-rotate flying-lurker ()
   (let ((gp-0 (new 'stack-no-clear 'matrix)))
    (let ((s5-0 (new 'stack-no-clear 'matrix)))
@@ -1045,7 +970,6 @@
    )
   )
 
-;; definition for function flying-lurker-calc-anim-speed
 (defbehavior flying-lurker-calc-anim-speed flying-lurker ()
   (let* ((f0-1 (fabs (-> self speed)))
          (f0-2 (* 0.07324219 f0-1))
@@ -1056,8 +980,6 @@
    )
   )
 
-(define-extern flying-lurker-clone (state handle string flying-lurker)) 
-;; failed to figure out what this is:
 (defstate flying-lurker-fly (flying-lurker)
   :event
   (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
@@ -1314,8 +1236,6 @@
   (the-as (function none :behavior flying-lurker) ja-post)
   )
 
-;; definition for function flying-lurker-handler
-;; INFO: Return type mismatch none vs object.
 (defbehavior
   flying-lurker-handler flying-lurker
   ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
@@ -1410,8 +1330,6 @@
    )
   )
 
-;; definition for function flying-lurker-play-intro
-;; INFO: Return type mismatch (pointer process) vs none.
 (defbehavior flying-lurker-play-intro flying-lurker ()
   (logclear! (-> self mask) (process-mask actor-pause))
   (close-specific-task! (game-task plunger-lurker-hit) (task-status unknown))
@@ -1485,39 +1403,17 @@
                        )
      )
     )
-   (let ((a1-9 (new 'stack-no-clear 'event-message-block)))
-    (set! (-> a1-9 from) self)
-    (set! (-> a1-9 num-params) 1)
-    (set! (-> a1-9 message) 'eval)
-    (set!
-     (-> a1-9 param 0)
-     (the-as
-      uint
-      (lambda :behavior manipy
-       ()
-       (let ((v0-0 (logior (-> self draw status) 32)))
-        (set! (-> self draw status) v0-0)
-        v0-0
-        )
-       )
-      )
+   (send-event
+    (handle->process gp-1)
+    'eval
+    (lambda :behavior manipy () (let ((v0-0 (logior (-> self draw status) 32)))
+                                 (set! (-> self draw status) v0-0)
+                                 v0-0
+                                 )
      )
-    (send-event-function (handle->process gp-1) a1-9)
     )
-   (let ((a1-10 (new 'stack-no-clear 'event-message-block)))
-    (set! (-> a1-10 from) self)
-    (set! (-> a1-10 num-params) 1)
-    (set! (-> a1-10 message) 'clone-copy-trans)
-    (set! (-> a1-10 param 0) (the-as uint #f))
-    (send-event-function (-> gp-1 process 0) a1-10)
-    )
-   (let ((a1-11 (new 'stack-no-clear 'event-message-block)))
-    (set! (-> a1-11 from) self)
-    (set! (-> a1-11 num-params) 1)
-    (set! (-> a1-11 message) 'anim-mode)
-    (set! (-> a1-11 param 0) (the-as uint 'clone-anim))
-    (send-event-function (-> gp-1 process 0) a1-11)
-    )
+   (send-event (-> gp-1 process 0) 'clone-copy-trans #f)
+   (send-event (-> gp-1 process 0) 'anim-mode 'clone-anim)
    (let ((a1-12 (new 'stack-no-clear 'event-message-block)))
     (set! (-> a1-12 from) self)
     (set! (-> a1-12 num-params) 2)
@@ -1580,7 +1476,6 @@
   (none)
   )
 
-;; failed to figure out what this is:
 (defstate flying-lurker-start (flying-lurker)
   :event
   flying-lurker-handler
@@ -1609,64 +1504,22 @@
           )
     (cond
      ((< 0.8333333 f0-2)
-      (let ((a1-1 (new 'stack-no-clear 'event-message-block)))
-       (set! (-> a1-1 from) self)
-       (set! (-> a1-1 num-params) 2)
-       (set! (-> a1-1 message) 'fly-away)
-       (set! (-> a1-1 param 0) (the-as uint 18))
-       (set! (-> a1-1 param 1) (-> self try-count))
-       (send-event-function self a1-1)
-       )
+      (send-event self 'fly-away 18 (-> self try-count))
       )
      ((< 0.6666667 f0-2)
-      (let ((a1-2 (new 'stack-no-clear 'event-message-block)))
-       (set! (-> a1-2 from) self)
-       (set! (-> a1-2 num-params) 2)
-       (set! (-> a1-2 message) 'fly-away)
-       (set! (-> a1-2 param 0) (the-as uint 33))
-       (set! (-> a1-2 param 1) (-> self try-count))
-       (send-event-function self a1-2)
-       )
+      (send-event self 'fly-away 33 (-> self try-count))
       )
      ((< 0.5 f0-2)
-      (let ((a1-3 (new 'stack-no-clear 'event-message-block)))
-       (set! (-> a1-3 from) self)
-       (set! (-> a1-3 num-params) 2)
-       (set! (-> a1-3 message) 'fly-away)
-       (set! (-> a1-3 param 0) (the-as uint 258))
-       (set! (-> a1-3 param 1) (-> self try-count))
-       (send-event-function self a1-3)
-       )
+      (send-event self 'fly-away 258 (-> self try-count))
       )
      ((< 0.33333334 f0-2)
-      (let ((a1-4 (new 'stack-no-clear 'event-message-block)))
-       (set! (-> a1-4 from) self)
-       (set! (-> a1-4 num-params) 2)
-       (set! (-> a1-4 message) 'fly-away)
-       (set! (-> a1-4 param 0) (the-as uint 288))
-       (set! (-> a1-4 param 1) (-> self try-count))
-       (send-event-function self a1-4)
-       )
+      (send-event self 'fly-away 288 (-> self try-count))
       )
      ((< 0.16666667 f0-2)
-      (let ((a1-5 (new 'stack-no-clear 'event-message-block)))
-       (set! (-> a1-5 from) self)
-       (set! (-> a1-5 num-params) 2)
-       (set! (-> a1-5 message) 'fly-away)
-       (set! (-> a1-5 param 0) (the-as uint 513))
-       (set! (-> a1-5 param 1) (-> self try-count))
-       (send-event-function self a1-5)
-       )
+      (send-event self 'fly-away 513 (-> self try-count))
       )
      (else
-      (let ((a1-6 (new 'stack-no-clear 'event-message-block)))
-       (set! (-> a1-6 from) self)
-       (set! (-> a1-6 num-params) 2)
-       (set! (-> a1-6 message) 'fly-away)
-       (set! (-> a1-6 param 0) (the-as uint 528))
-       (set! (-> a1-6 param 1) (-> self try-count))
-       (send-event-function self a1-6)
-       )
+      (send-event self 'fly-away 528 (-> self try-count))
       )
      )
     )
@@ -1676,7 +1529,6 @@
   (the-as (function none :behavior flying-lurker) ja-post)
   )
 
-;; failed to figure out what this is:
 (defstate flying-lurker-clone (flying-lurker)
   :event
   (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
@@ -1774,7 +1626,6 @@
    )
   )
 
-;; failed to figure out what this is:
 (defstate flying-lurker-idle (flying-lurker)
   :event
   (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
@@ -1912,12 +1763,7 @@
          )
         )
        (process-release? *target*)
-       (let ((a1-1 (new 'stack-no-clear 'event-message-block)))
-        (set! (-> a1-1 from) self)
-        (set! (-> a1-1 num-params) 0)
-        (set! (-> a1-1 message) 'saw-player)
-        (send-event-function self a1-1)
-        )
+       (send-event self 'saw-player)
        )
       (suspend)
       0
@@ -1958,7 +1804,7 @@
         )
        )
       (until (ja-done? 0)
-       (when
+       (if
         (and
          *target*
          (>=
@@ -1969,12 +1815,7 @@
            )
           )
          )
-        (let ((a1-4 (new 'stack-no-clear 'event-message-block)))
-         (set! (-> a1-4 from) self)
-         (set! (-> a1-4 num-params) 0)
-         (set! (-> a1-4 message) 'saw-player)
-         (send-event-function self a1-4)
-         )
+        (send-event self 'saw-player)
         )
        (suspend)
        (let ((a0-12 (-> self skel root-channel 0)))
@@ -2000,8 +1841,6 @@
   (the-as (function none :behavior flying-lurker) ja-post)
   )
 
-;; definition for method 11 of type flying-lurker
-;; Used lq/sq
 (defmethod copy-defaults! flying-lurker ((obj flying-lurker) (arg0 res-lump))
   (stack-size-set! (-> obj main-thread) 512)
   (set! (-> obj root) (new 'process 'trsqv))

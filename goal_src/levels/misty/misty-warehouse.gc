@@ -8,8 +8,13 @@
 (define-extern *rounddoor-sg* skeleton-group)
 (define-extern *silostep-sg* skeleton-group)
 
+(declare-type silostep process-drawable)
+(define-extern silostep-rise (state symbol silostep))
+(define-extern silostep-idle (state silostep))
+(define-extern silostep-camera (state silostep))
 
-;; definition of type silostep
+;; DECOMP BEGINS
+
 (deftype silostep (process-drawable)
   ((anim-limit  float   :offset-assert 176)
    (cam-tracker uint64  :offset-assert 184)
@@ -20,11 +25,7 @@
   :flag-assert         #x14005000c0
   )
 
-(define-extern silostep-rise (state symbol silostep))
-(define-extern silostep-idle (state silostep))
-(define-extern silostep-camera (state silostep))
 
-;; failed to figure out what this is:
 (let
   ((v1-1
     (new 'static 'skeleton-group
@@ -42,7 +43,6 @@
   (set! *silostep-sg* v1-1)
   )
 
-;; failed to figure out what this is:
 (defstate silostep-idle (silostep)
   :event
   (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
@@ -78,8 +78,6 @@
   (the-as (function none :behavior silostep) ja-post)
   )
 
-;; definition for function misty-camera-view
-;; INFO: Return type mismatch int vs handle.
 (defbehavior misty-camera-view silostep ()
   (let* ((gp-0 (get-process *default-dead-pool* camera-tracker #x4000))
          (v1-1 (when gp-0
@@ -130,7 +128,6 @@
    )
   )
 
-;; failed to figure out what this is:
 (defstate silostep-camera (silostep)
   :code
   (behavior ()
@@ -140,10 +137,7 @@
           )
     (save-reminder gp-0 (logior v1-1 2) 0)
     )
-   (set!
-    (-> self state-time)
-    (the-as seconds (-> *display* base-frame-counter))
-    )
+   (set! (-> self state-time) (-> *display* base-frame-counter))
    (let ((gp-1 (-> *display* base-frame-counter)))
     (until (>= (- (-> *display* base-frame-counter) gp-1) 300)
      (suspend)
@@ -166,7 +160,6 @@
   (the-as (function none :behavior silostep) ja-post)
   )
 
-;; failed to figure out what this is:
 (defstate silostep-rise (silostep)
   :code
   (behavior ((arg0 symbol))
@@ -220,7 +213,6 @@
   (the-as (function none :behavior silostep) #f)
   )
 
-;; definition for method 11 of type silostep
 (defmethod copy-defaults! silostep ((obj silostep) (arg0 res-lump))
   (logior! (-> obj mask) (process-mask movie-subject))
   (let
@@ -282,7 +274,6 @@
   (none)
   )
 
-;; failed to figure out what this is:
 (let
   ((v1-6
     (new 'static 'skeleton-group
@@ -302,7 +293,6 @@
   (set! *rounddoor-sg* v1-6)
   )
 
-;; definition of type rounddoor
 (deftype rounddoor (eco-door)
   ()
   :heap-base #xa0
@@ -311,16 +301,7 @@
   :flag-assert         #x1b00a00104
   )
 
-;; definition for method 3 of type rounddoor
-(defmethod inspect rounddoor ((obj rounddoor))
-  (let ((t9-0 (method-of-type eco-door inspect)))
-   (t9-0 obj)
-   )
-  obj
-  )
 
-;; definition for method 24 of type rounddoor
-;; INFO: Return type mismatch int vs none.
 (defmethod TODO-RENAME-24 rounddoor ((obj rounddoor))
   (let
    ((s5-0 (new 'process 'collide-shape obj (collide-list-enum hit-by-others))))
@@ -351,9 +332,6 @@
   (none)
   )
 
-;; definition for method 25 of type rounddoor
-;; INFO: Return type mismatch int vs none.
-;; Used lq/sq
 (defmethod TODO-RENAME-25 rounddoor ((obj rounddoor))
   (dummy-14 obj *rounddoor-sg* '())
   (set! (-> obj open-distance) 69632.0)
@@ -372,3 +350,7 @@
   0
   (none)
   )
+
+
+
+

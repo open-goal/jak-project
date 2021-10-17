@@ -89,7 +89,7 @@
   (with-pp
    (set! (-> obj talk-message) (the-as uint 260))
    (case (current-status (-> obj tasks)) 
-    ((2 3)
+    (((task-status need-hint) (task-status need-introduction))
       (if arg0
        (close-status! (-> obj tasks) (task-status need-introduction))
        )
@@ -145,7 +145,7 @@
          )
        )
       )
-    ((5)
+    (((task-status need-reminder))
      (set! (-> obj skippable) #t)
      (new 'static 'spool-anim
       :name "warrior-reminder-1"
@@ -154,34 +154,16 @@
       :command-list '()
       )
      )
-    ((6)
+    (((task-status need-reward-speech))
      (cond
       (arg0
-       (set!
-        (-> obj cell-for-task)
-        (the-as game-task (current-task (-> obj tasks)))
-        )
+       (set! (-> obj cell-for-task) (current-task (-> obj tasks)))
        (close-current! (-> obj tasks))
-       (let ((a1-4 (new 'stack-no-clear 'event-message-block)))
-        (set! (-> a1-4 from) pp)
-        (set! (-> a1-4 num-params) 2)
-        (set! (-> a1-4 message) 'get-pickup)
-        (set! (-> a1-4 param 0) (the-as uint 5))
-        (set!
-         (-> a1-4 param 1)
-         (the-as uint (- (-> *GAME-bank* money-task-inc)))
-         )
-        (send-event-function *target* a1-4)
-        )
-       (let ((s5-1 (new 'stack-no-clear 'event-message-block)))
-        (set! (-> s5-1 from) pp)
-        (set! (-> s5-1 num-params) 1)
-        (set! (-> s5-1 message) 'clone)
-        (set! (-> s5-1 param 0) (the-as uint (process->handle obj)))
-        (send-event-function
-         (-> (entity-by-type allpontoons) extra process)
-         s5-1
-         )
+       (send-event *target* 'get-pickup 5 (- (-> *GAME-bank* money-task-inc)))
+       (send-event
+        (-> (entity-by-type allpontoons) extra process)
+        'clone
+        (process->handle obj)
         )
        (dotimes (s5-2 (entity-actor-count (-> obj entity) 'alt-actor))
         (entity-birth-no-kill
@@ -228,9 +210,7 @@
        0
        "ERROR: <GMJ>: ~S playing anim for task status ~S~%"
        (-> obj name)
-       (task-status->string
-        (the-as task-status (current-status (-> obj tasks)))
-        )
+       (task-status->string (current-status (-> obj tasks)))
        )
       )
      (-> obj draw art-group data 5)
@@ -249,12 +229,7 @@
   :virtual #t
   :exit
   (behavior ()
-   (let ((gp-0 (new 'stack-no-clear 'event-message-block)))
-    (set! (-> gp-0 from) self)
-    (set! (-> gp-0 num-params) 0)
-    (set! (-> gp-0 message) 'end-mode)
-    (send-event-function (-> (entity-by-type allpontoons) extra process) gp-0)
-    )
+   (send-event (-> (entity-by-type allpontoons) extra process) 'end-mode)
    ((-> (method-of-type process-taskable play-anim) exit))
    (none)
    )
@@ -276,13 +251,13 @@
           )
     (cond
      ((< 0.66 f0-2)
-      (dummy-11 (-> obj ambient) "WAR-LO1A" #f (-> obj root-override trans))
+      (play-ambient (-> obj ambient) "WAR-LO1A" #f (-> obj root-override trans))
       )
      ((< 0.33 f0-2)
-      (dummy-11 (-> obj ambient) "WAR-LO1B" #f (-> obj root-override trans))
+      (play-ambient (-> obj ambient) "WAR-LO1B" #f (-> obj root-override trans))
       )
      (else
-      (dummy-11 (-> obj ambient) "WAR-LO1C" #f (-> obj root-override trans))
+      (play-ambient (-> obj ambient) "WAR-LO1C" #f (-> obj root-override trans))
       )
      )
     )
