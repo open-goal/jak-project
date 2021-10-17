@@ -509,8 +509,9 @@ goos::Object decompile_structure(const TypeSpec& type,
         // want to get the specific function/string/etc implementations.
         return decompile_at_label(actual_type, label, labels, words, ts, file);
       } else {
-        throw std::runtime_error(fmt::format("Basic has the wrong type pointer, got {} expected {}",
-                                             word.symbol_name, actual_type.base_type()));
+        throw std::runtime_error(
+            fmt::format("Basic has the wrong type pointer, got {} expected {} at label {}:{}",
+                        word.symbol_name, actual_type.base_type(), label.name, label.offset));
       }
     }
   }
