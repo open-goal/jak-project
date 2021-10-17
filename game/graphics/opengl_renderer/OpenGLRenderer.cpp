@@ -162,7 +162,7 @@ void OpenGLRenderer::draw_renderer_selection_window() {
  */
 void OpenGLRenderer::setup_frame(int window_width_px, int window_height_px) {
   glViewport(0, 0, window_width_px, window_height_px);
-  glClearColor(0.5, 0.5, 0.5, 1.0);
+  glClearColor(0.5, 0.5, 0.5, 0.0);
   glClearDepth(0.0);
   glDepthMask(GL_TRUE);
   glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
