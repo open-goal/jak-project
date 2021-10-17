@@ -210,8 +210,37 @@
        "out/iso/KERNEL.CGO"
        "out/iso/GAME.CGO"
        "out/iso/VI1.DGO"
+       "out/iso/VI2.DGO"
        "out/iso/VI3.DGO"
+       "out/iso/TRA.DGO"
+       "out/iso/FIN.DGO"
        )
+
+;;;;;;;;;;;;;;;;;;;;;;;;
+;; Common Level Objects
+;;;;;;;;;;;;;;;;;;;;;;;;
+
+;; as we find objects that exist in multiple levels, put them here
+
+(copy-gos
+ "warpgate-ag"
+ "sharkey-ag-BEA-TRA-VI2"
+  )
+
+
+;;;;;;;;;;;;;;;;;;;;;
+;; Common Level Code
+;;;;;;;;;;;;;;;;;;;;;
+
+(goal-src-sequence
+  "levels/"
+   :deps ;; no idea what these depend on, make it depend on the whole engine
+   ("out/obj/default-menu.o")
+
+   "village_common/villagep-obs.gc"
+   "village_common/oracle.gc"
+
+   )
 
 
 ;;;;;;;;;;;;;;;;;;;;;
@@ -229,8 +258,6 @@
  :deps ;; no idea what these depend on, make it depend on the whole engine
  ("out/obj/default-menu.o")
 
- "village_common/villagep-obs.gc"
- "village_common/oracle.gc"
  "village1/farmer.gc"
  "village1/explorer.gc"
  "village1/assistant.gc"
@@ -280,20 +307,111 @@
  "village-cam-ag-VI1"
  "village1cam-ag"
  "warp-gate-switch-ag-VI1-VI3"
- "warpgate-ag"
  "water-anim-village1-ag"
  "windmill-sail-ag"
  "windspinner-ag"
  "yakow-ag"
  "village1-vis"
  )
+
+;;;;;;;;;;;;;;;;;;;;;
+;; Training
+;;;;;;;;;;;;;;;;;;;;;
+
+;; the definition of the DGO package for the level
+(cgo "TRA.DGO"
+     "tra.gd")
+
+;; The code
+(goal-src-sequence
+  "levels/training/"
+  :deps ("out/obj/default-menu.o") ;; makes us depend on the whole engine
+
+  "training-obs.gc"
+  "training-part.gc"
+  )
+
+;; the textures
+(copy-textures 1309 1311 1310 1308 775)
+
+(copy-gos
+  "ecovalve-ag-TRA"
+  "jng-iris-door-ag-TRA"
+  "plat-eco-ag-TRA"
+  "pontoonfive-ag-TRA"
+  "scarecrow-a-ag"
+  "scarecrow-b-ag"
+  "trainingcam-ag"
+  "warp-gate-switch-ag-TRA"
+  "water-anim-training-ag"
+  "training-vis"
+  )
+
+;;;;;;;;;;;;;;;;;;;;;
+;; Village 2
+;;;;;;;;;;;;;;;;;;;;;
+
+(cgo "VI2.DGO" "vi2.gd")
+
+(goal-src-sequence
+ "levels/village2/"
+ :deps ("out/obj/default-menu.o")
+ "village2-part.gc"
+ "village2-obs.gc"
+ "village2-part2.gc"
+ "gambler.gc"
+ "warrior.gc"
+ "geologist.gc"
+ "swamp-blimp.gc"
+ "sage-bluehut.gc"
+ "flutflut-bluehut.gc"
+ "assistant-village2.gc"
+ "sunken-elevator.gc"
+ )
+
+(copy-textures 919 922 920 921 1476)
+
+(copy-gos
+  "allpontoons-ag"
+  "assistant-village2-ag"
+  "barrel-ag-VI2"
+  "ceilingflag-ag"
+  "exit-chamber-dummy-ag"
+  "fireboulder-ag"
+  "flutflut-bluehut-ag"
+  "gambler-ag"
+  "geologist-ag"
+  "jaws-ag"
+  "medres-rolling-ag"
+  "medres-rolling1-ag"
+  "medres-village2-ag"
+  "ogreboss-village2-ag"
+  "oracle-ag-VI2"
+  "orb-cache-top-ag-VI2"
+  "pontoonfive-ag-VI2"
+  "pontoonten-ag"
+  "precursor-arm-ag"
+  "sage-bluehut-ag"
+  "sunken-elevator-ag"
+  "swamp-blimp-ag"
+  "swamp-rope-ag"
+  "swamp-tetherrock-ag"
+  "swamp-tetherrock-explode-ag"
+  "swampcam-ag-VI2"
+  "village-cam-ag-VI2"
+  "village2cam-ag"
+  "warp-gate-switch-ag-VI2"
+  "warrior-ag"
+  "water-anim-village2-ag"
+  "village2-vis"
+  )
  
 ;;;;;;;;;;;;;;;;;;;;;
 ;; Village 3
 ;;;;;;;;;;;;;;;;;;;;;
 
 ;; the definition for the DGO file.
-(cgo "VI3.DGO""vi3.gd")
+(cgo "VI3.DGO" "vi3.gd")
 
 ;; the code
 (goal-src-sequence
@@ -332,6 +450,55 @@
   "village-cam-ag-VI3"
   "water-anim-village3-ag"
   "village3-vis"
+  )
+
+;;;;;;;;;;;;;;;;;;;;;
+;; Final Boss
+;;;;;;;;;;;;;;;;;;;;;
+
+(cgo "FIN.DGO" "fin.gd")
+
+(goal-src-sequence
+  "levels/finalboss/"
+  :deps ("out/obj/default-menu.o")
+
+  "robotboss-h.gc"
+  "robotboss-part.gc"
+  "sage-finalboss-part.gc"
+  "light-eco.gc"
+  "robotboss-weapon.gc"
+  "robotboss-misc.gc"
+  "green-eco-lurker.gc"
+  "robotboss.gc"
+  "final-door.gc"
+  "sage-finalboss-FIN.gc"
+  )
+
+(copy-textures 1419 1420 634 1418 545)
+
+(copy-gos
+  "darkecobomb-ag"
+  "ecoclaw-ag"
+  "ecovalve-ag-FIN"
+  "finalbosscam-ag"
+  "green-eco-lurker-ag"
+  "green-sagecage-ag"
+  "greenshot-ag"
+  "jak-white-ag"
+  "light-eco-ag"
+  "plat-eco-finalboss-ag"
+  "power-left-ag"
+  "power-right-ag"
+  "powercellalt-ag"
+  "redring-ag"
+  "robotboss-ag"
+  "robotboss-blueeco-ag"
+  "robotboss-cinematic-ag"
+  "robotboss-redeco-ag"
+  "robotboss-yelloweco-ag"
+  "silodoor-ag"
+  "water-anim-finalboss-ag"
+  "finalboss-vis"
   )
 
 ;;;;;;;;;;;;;;;;;;;;;

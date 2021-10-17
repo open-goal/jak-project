@@ -225,6 +225,8 @@ std::vector<BacktraceFrame> Debugger::get_backtrace(u64 rip, u64 rsp) {
         frame.rip_info.func_debug->stack_usage) {
       fmt::print("{} from {}\n", frame.rip_info.function_name, frame.rip_info.func_debug->obj_name);
       // we're good!
+      auto disasm = disassemble_at_rip(frame.rip_info);
+      fmt::print("{}\n", disasm.text);
       u64 rsp_at_call = rsp + *frame.rip_info.func_debug->stack_usage;
 
       u64 next_rip = 0;
