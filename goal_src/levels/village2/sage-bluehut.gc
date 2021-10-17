@@ -7,10 +7,11 @@
 
 (define-extern *sage-bluehut-sg* skeleton-group)
 
-;; definition of type assistant-bluehut
+;; DECOMP BEGINS
+
 (deftype assistant-bluehut (process-taskable)
   ((sound-id   sound-id      :offset-assert 380)
-   (jaws       uint64        :offset-assert 384)
+   (jaws       handle        :offset-assert 384)
    (sage       entity-actor  :offset-assert 392)
    (im-talking symbol        :offset-assert 396)
    )
@@ -20,7 +21,7 @@
   :flag-assert         #x3501200190
   )
 
-;; definition of type sage-bluehut
+
 (deftype sage-bluehut (process-taskable)
   ((reminder-played symbol        :offset-assert 380)
    (assistant       entity-actor  :offset-assert 384)
@@ -31,7 +32,7 @@
   :flag-assert         #x3501200184
   )
 
-;; failed to figure out what this is:
+
 (let
   ((v1-2
     (new 'static 'skeleton-group
@@ -49,17 +50,16 @@
   (set! *sage-bluehut-sg* v1-2)
   )
 
-;; definition for method 32 of type sage-bluehut
 (defmethod play-anim! sage-bluehut ((obj sage-bluehut) (arg0 symbol))
   (with-pp
    (set! (-> obj talk-message) (the-as uint 291))
    (case (current-status (-> obj tasks)) 
-    ((2 3)
+    (((task-status need-hint) (task-status need-introduction))
       (if (not arg0)
        (set! (-> obj will-talk) #t)
        )
       (case (current-task (-> obj tasks)) 
-       ((55)
+       (((game-task rolling-plants))
          (when arg0
           (let* ((s5-1 (-> obj tasks))
                  (s4-0 (method-of-object s5-1 save-reminder))
@@ -78,14 +78,8 @@
            )
           (close-status! (-> obj tasks) (task-status need-introduction))
           (let ((s5-2 (-> obj assistant extra process)))
-           (when (and s5-2 (should-display? (the-as assistant-bluehut s5-2)))
-            (let ((a1-6 (new 'stack-no-clear 'event-message-block)))
-             (set! (-> a1-6 from) pp)
-             (set! (-> a1-6 num-params) 1)
-             (set! (-> a1-6 message) 'clone)
-             (set! (-> a1-6 param 0) (the-as uint (process->handle obj)))
-             (send-event-function s5-2 a1-6)
-             )
+           (if (and s5-2 (should-display? (the-as assistant-bluehut s5-2)))
+            (send-event s5-2 'clone (process->handle obj))
             )
            )
           (set! (-> obj draw bounds w) 40960.0)
@@ -161,7 +155,7 @@
         )
        )
       )
-    ((5)
+    (((task-status need-reminder))
      (set! (-> obj skippable) #t)
      (if arg0
       (set! (-> obj reminder-played) #t)
@@ -205,9 +199,7 @@
        0
        "ERROR: <GMJ>: ~S playing anim for task status ~S~%"
        (-> obj name)
-       (task-status->string
-        (the-as task-status (current-status (-> obj tasks)))
-        )
+       (task-status->string (current-status (-> obj tasks)))
        )
       )
      (get-art-elem obj)
@@ -216,13 +208,11 @@
    )
   )
 
-;; definition for method 45 of type sage-bluehut
-;; INFO: Return type mismatch symbol vs none.
 (defmethod dummy-45 sage-bluehut ((obj sage-bluehut))
   (cond
-   ((= (current-status (-> obj tasks)) 1)
+   ((= (current-status (-> obj tasks)) (task-status unknown))
     )
-   ((zero? (current-status (-> obj tasks)))
+   ((= (current-status (-> obj tasks)) (task-status invalid))
     )
    ((and
      (closed?
@@ -242,7 +232,10 @@
     )
    ((and
      (-> obj reminder-played)
-     (< 81920.0 (vector-vector-distance (-> obj root trans) (camera-pos)))
+     (<
+      81920.0
+      (vector-vector-distance (-> obj root-override trans) (camera-pos))
+      )
      )
     #t
     )
@@ -252,23 +245,22 @@
   (none)
   )
 
-;; definition for method 31 of type sage-bluehut
 (defmethod get-art-elem sage-bluehut ((obj sage-bluehut))
   (cond
    ((and
-     (= (current-task (-> obj tasks)) 55)
+     (= (current-task (-> obj tasks)) (game-task rolling-plants))
      (or
-      (= (current-status (-> obj tasks)) 2)
-      (= (current-status (-> obj tasks)) 3)
+      (= (current-status (-> obj tasks)) (task-status need-hint))
+      (= (current-status (-> obj tasks)) (task-status need-introduction))
       )
      )
     (save-reminder (-> obj tasks) 0 0)
     )
    ((and
-     (= (current-task (-> obj tasks)) 104)
+     (= (current-task (-> obj tasks)) (game-task swamp-arm))
      (or
-      (= (current-status (-> obj tasks)) 2)
-      (= (current-status (-> obj tasks)) 3)
+      (= (current-status (-> obj tasks)) (task-status need-hint))
+      (= (current-status (-> obj tasks)) (task-status need-introduction))
       )
      )
     (save-reminder (-> obj tasks) 1 0)
@@ -314,24 +306,17 @@
    )
   )
 
-;; failed to figure out what this is:
 (defstate play-anim (sage-bluehut)
   :virtual #t
   :exit
   (behavior ()
-   (let ((a1-0 (new 'stack-no-clear 'event-message-block)))
-    (set! (-> a1-0 from) self)
-    (set! (-> a1-0 num-params) 0)
-    (set! (-> a1-0 message) 'end-mode)
-    (send-event-function (-> self assistant extra process) a1-0)
-    )
+   (send-event (-> self assistant extra process) 'end-mode)
    (set! (-> self draw bounds w) 10240.0)
    ((-> (method-of-type process-taskable play-anim) exit))
    (none)
    )
   )
 
-;; definition for method 39 of type sage-bluehut
 (defmethod should-display? sage-bluehut ((obj sage-bluehut))
   (and
    (task-closed? (game-task village2-levitator) (task-status need-introduction))
@@ -339,8 +324,6 @@
    )
   )
 
-;; definition for method 44 of type sage-bluehut
-;; INFO: Return type mismatch basic vs symbol.
 (defmethod play-reminder sage-bluehut ((obj sage-bluehut))
   (the-as
    symbol
@@ -353,7 +336,6 @@
    )
   )
 
-;; definition for method 47 of type sage-bluehut
 (defmethod target-above-threshold? sage-bluehut ((obj sage-bluehut))
   (local-vars (v0-1 symbol))
   (if (not (play-reminder obj))
@@ -369,7 +351,6 @@
   v0-1
   )
 
-;; definition for method 43 of type sage-bluehut
 (defmethod TODO-RENAME-43 sage-bluehut ((obj sage-bluehut))
   (when
    (TODO-RENAME-10
@@ -385,27 +366,25 @@
           )
     (cond
      ((< 0.8 f0-2)
-      (dummy-11 (-> obj ambient) "SAGELP20" #f (-> obj root trans))
+      (play-ambient (-> obj ambient) "SAGELP20" #f (-> obj root-override trans))
       )
      ((< 0.6 f0-2)
-      (dummy-11 (-> obj ambient) "SAGELP21" #f (-> obj root trans))
+      (play-ambient (-> obj ambient) "SAGELP21" #f (-> obj root-override trans))
       )
      ((< 0.4 f0-2)
-      (dummy-11 (-> obj ambient) "SAGELP22" #f (-> obj root trans))
+      (play-ambient (-> obj ambient) "SAGELP22" #f (-> obj root-override trans))
       )
      ((< 0.2 f0-2)
-      (dummy-11 (-> obj ambient) "SAGELP23" #f (-> obj root trans))
+      (play-ambient (-> obj ambient) "SAGELP23" #f (-> obj root-override trans))
       )
      ((nonzero? (get-task-status (game-task citadel-sage-blue)))
-      (dummy-11 (-> obj ambient) "SAGELP24" #f (-> obj root trans))
+      (play-ambient (-> obj ambient) "SAGELP24" #f (-> obj root-override trans))
       )
      )
     )
    )
-  (none)
   )
 
-;; failed to figure out what this is:
 (defstate idle (sage-bluehut)
   :virtual #t
   :code
@@ -595,7 +574,6 @@
    )
   )
 
-;; definition for method 11 of type sage-bluehut
 (defmethod copy-defaults! sage-bluehut ((obj sage-bluehut) (arg0 res-lump))
   (dummy-40 obj arg0 *sage-bluehut-sg* 3 40 (new 'static 'vector :w 4505.6) 5)
   (set! (-> obj tasks) (get-task-control (game-task rolling-plants)))
@@ -606,3 +584,7 @@
   (dummy-42 obj)
   (none)
   )
+
+
+
+

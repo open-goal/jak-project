@@ -1,8 +1,37 @@
 #include "gtest/gtest.h"
 #include "goalc/compiler/Compiler.h"
 #include "test/goalc/framework/test_runner.h"
+#include "common/log/log.h"
+#include "common/util/Timer.h"
 
 #ifdef __linux
+
+namespace {
+void connect_compiler_and_debugger(Compiler& compiler, bool do_break) {
+  lg::info("connect_compiler_and_debugger:\n");
+  bool connect_status = compiler.connect_to_target();
+  lg::info("connected: {}\n", connect_status);
+  ASSERT_TRUE(connect_status);
+  lg::info("poking...\n");
+  compiler.poke_target();
+  for (int i = 0; i < 100; i++) {
+    if (compiler.get_debugger().is_valid()) {
+      break;
+    } else {
+      std::this_thread::sleep_for(std::chrono::milliseconds(50));
+      lg::info("Failed to get debugging context {}/100", i);
+    }
+  }
+  ASSERT_TRUE(compiler.get_debugger().is_valid());
+
+  if (do_break) {
+    lg::info("break...\n");
+    compiler.run_test_from_string("(dbg)");
+    lg::info("OK! {} {} {}\n", compiler.get_debugger().is_valid(),
+             compiler.get_debugger().is_attached(), compiler.get_debugger().is_halted());
+  }
+}
+}  // namespace
 TEST(Debugger, DebuggerBasicConnect) {
   Compiler compiler;
   // evidently you can't ptrace threads in your own process, so we need to run the runtime in a
@@ -11,9 +40,7 @@ TEST(Debugger, DebuggerBasicConnect) {
     GoalTest::runtime_no_kernel();
     exit(0);
   } else {
-    compiler.connect_to_target();
-    compiler.poke_target();
-    compiler.run_test_from_string("(dbg)");
+    connect_compiler_and_debugger(compiler, true);
     EXPECT_TRUE(compiler.get_debugger().is_valid());
     EXPECT_TRUE(compiler.get_debugger().is_halted());
     compiler.shutdown_target();  // will detach/unhalt, then send the usual shutdown message
@@ -30,9 +57,7 @@ TEST(Debugger, DebuggerBreakAndContinue) {
     GoalTest::runtime_no_kernel();
     exit(0);
   } else {
-    compiler.connect_to_target();
-    compiler.poke_target();
-    compiler.run_test_from_string("(dbg)");
+    connect_compiler_and_debugger(compiler, true);
     EXPECT_TRUE(compiler.get_debugger().is_valid());
     EXPECT_TRUE(compiler.get_debugger().is_halted());
     for (int i = 0; i < 20; i++) {
@@ -54,9 +79,7 @@ TEST(Debugger, DebuggerReadMemory) {
     GoalTest::runtime_no_kernel();
     exit(0);
   } else {
-    compiler.connect_to_target();
-    compiler.poke_target();
-    compiler.run_test_from_string("(dbg)");
+    connect_compiler_and_debugger(compiler, true);
     EXPECT_TRUE(compiler.get_debugger().do_continue());
     auto result = compiler.run_test_from_string("\"test_string!\"");
     EXPECT_TRUE(compiler.get_debugger().do_break());
@@ -80,9 +103,7 @@ TEST(Debugger, DebuggerWriteMemory) {
     GoalTest::runtime_no_kernel();
     exit(0);
   } else {
-    compiler.connect_to_target();
-    compiler.poke_target();
-    compiler.run_test_from_string("(dbg)");
+    connect_compiler_and_debugger(compiler, true);
     EXPECT_TRUE(compiler.get_debugger().do_continue());
     auto result = compiler.run_test_from_string("(define x (the int 123)) 'x");
     EXPECT_TRUE(compiler.get_debugger().do_break());
@@ -113,9 +134,7 @@ TEST(Debugger, Symbol) {
     GoalTest::runtime_no_kernel();
     exit(0);
   } else {
-    compiler.connect_to_target();
-    compiler.poke_target();
-    compiler.run_test_from_string("(dbg)");
+    connect_compiler_and_debugger(compiler, true);
     EXPECT_TRUE(compiler.get_debugger().do_continue());
     auto result = compiler.run_test_from_string("(define test-symbol (the int 123))");
     EXPECT_TRUE(compiler.get_debugger().do_break());
@@ -145,8 +164,7 @@ TEST(Debugger, SimpleBreakpoint) {
     GoalTest::runtime_no_kernel();
     exit(0);
   } else {
-    compiler.connect_to_target();
-    compiler.poke_target();
+    connect_compiler_and_debugger(compiler, false);
     compiler.run_test_from_string(
         "(defun fake-function () 0) (defun test-function () (+ 1 2 3 4 5 6)) (defun "
         "fake-function-2 () 0)");

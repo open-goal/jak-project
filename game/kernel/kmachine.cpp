@@ -37,6 +37,7 @@
 #include "game/mips2c/mips2c_table.h"
 #include "game/system/vm/vm.h"
 #include "game/system/newpad.h"
+#include "game/sce/libscf.h"
 using namespace ee;
 
 /*!
@@ -692,9 +693,9 @@ u64 DecodeInactiveTimeout() {
   return masterConfig.inactive_timeout;
 }
 
-// TODO DecodeTime
-void DecodeTime() {
-  assert(false);
+void DecodeTime(u32 ptr) {
+  Ptr<sceCdCLOCK> clock(ptr);
+  sceCdReadClock(clock.c());
 }
 
 // TODO PutDisplayEnv
@@ -746,6 +747,13 @@ void vif_interrupt_callback() {
   if (vif1_interrupt_handler && MasterExit == 0) {
     call_goal(Ptr<Function>(vif1_interrupt_handler), 0, 0, 0, s7.offset, g_ee_main_mem);
   }
+}
+
+/*!
+ * Added in PC port.
+ */
+u32 offset_of_s7() {
+  return s7.offset;
 }
 
 /*!

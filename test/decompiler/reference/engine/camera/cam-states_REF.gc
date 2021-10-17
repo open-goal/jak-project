@@ -73,7 +73,7 @@
       )
      (cam-slave-get-rot
       (the-as entity-actor (-> self cam-entity))
-      (the-as quaternion (-> self tracking))
+      (the-as matrix (-> self tracking))
       )
      (set! (-> self fov) (cam-slave-get-fov (-> self cam-entity)))
      (cam-curve-setup (-> self trans))
@@ -84,19 +84,13 @@
      )
     )
    (let ((gp-0 (new 'stack-no-clear 'vector)))
-    (when
+    (if
      (cam-slave-get-vector-with-offset
       (the-as entity-actor (-> self cam-entity))
       gp-0
       'interesting
       )
-     (let ((a1-4 (new 'stack-no-clear 'event-message-block)))
-      (set! (-> a1-4 from) self)
-      (set! (-> a1-4 num-params) 1)
-      (set! (-> a1-4 message) 'point-of-interest)
-      (set! (-> a1-4 param 0) (the-as uint gp-0))
-      (send-event-function *camera* a1-4)
-      )
+     (send-event *camera* 'point-of-interest gp-0)
      )
     )
    (go cam-fixed)
@@ -137,7 +131,7 @@
   (behavior ()
    (when (not (handle->process (-> *camera* pov-handle)))
     (set! (-> self blend-from-type) (the-as uint 0))
-    (cam-slave-go (the-as camera-slave cam-fixed))
+    (cam-slave-go cam-fixed)
     )
    (none)
    )
@@ -208,7 +202,7 @@
   (behavior ()
    (when (not (handle->process (-> *camera* pov-handle)))
     (set! (-> self blend-from-type) (the-as uint 0))
-    (cam-slave-go (the-as camera-slave cam-fixed))
+    (cam-slave-go cam-fixed)
     )
    (none)
    )
@@ -344,19 +338,13 @@
     (set! (-> self blend-to-type) (the-as uint 2))
     )
    (let ((gp-0 (new 'stack-no-clear 'vector)))
-    (when
+    (if
      (cam-slave-get-vector-with-offset
       (the-as entity-actor (-> self cam-entity))
       gp-0
       'interesting
       )
-     (let ((a1-1 (new 'stack-no-clear 'event-message-block)))
-      (set! (-> a1-1 from) self)
-      (set! (-> a1-1 num-params) 1)
-      (set! (-> a1-1 message) 'point-of-interest)
-      (set! (-> a1-1 param 0) (the-as uint gp-0))
-      (send-event-function *camera* a1-1)
-      )
+     (send-event *camera* 'point-of-interest gp-0)
      )
     )
    (none)
@@ -368,7 +356,7 @@
      (not (handle->process (-> *camera* pov-handle)))
      (zero? (logand (-> *camera* master-options) 2))
      )
-    (cam-slave-go (the-as camera-slave cam-free-floating))
+    (cam-slave-go cam-free-floating)
     )
    (none)
    )
@@ -450,7 +438,7 @@
   :trans
   (behavior ()
    (if (zero? (logand (-> *camera* master-options) 2))
-    (cam-slave-go (the-as camera-slave cam-free-floating))
+    (cam-slave-go cam-free-floating)
     )
    (none)
    )
@@ -501,7 +489,7 @@
      (if (logtest? (-> self options) #x8000)
       (cam-slave-get-rot
        (the-as entity-actor (-> self cam-entity))
-       (the-as quaternion (-> self tracking))
+       (the-as matrix (-> self tracking))
        )
       (set!
        (-> self tracking tilt-adjust target)
@@ -519,19 +507,13 @@
      )
     )
    (let ((gp-2 (new 'stack-no-clear 'vector)))
-    (when
+    (if
      (cam-slave-get-vector-with-offset
       (the-as entity-actor (-> self cam-entity))
       gp-2
       'interesting
       )
-     (let ((a1-8 (new 'stack-no-clear 'event-message-block)))
-      (set! (-> a1-8 from) self)
-      (set! (-> a1-8 num-params) 1)
-      (set! (-> a1-8 message) 'point-of-interest)
-      (set! (-> a1-8 param 0) (the-as uint gp-2))
-      (send-event-function *camera* a1-8)
-      )
+     (send-event *camera* 'point-of-interest gp-2)
      )
     )
    (go cam-standoff)
@@ -549,10 +531,10 @@
 
 ;; definition of type cam-eye-bank
 (deftype cam-eye-bank (basic)
-  ((unknown-1 float  :offset-assert   4)
-   (unknown-2 float  :offset-assert   8)
-   (unknown-3 float  :offset-assert  12)
-   (unknown-4 float  :offset-assert  16)
+  ((rot-speed   float  :offset-assert   4)
+   (max-degrees float  :offset-assert   8)
+   (max-fov     float  :offset-assert  12)
+   (min-fov     float  :offset-assert  16)
    )
   :method-count-assert 9
   :size-assert         #x14
@@ -562,10 +544,10 @@
 ;; definition for method 3 of type cam-eye-bank
 (defmethod inspect cam-eye-bank ((obj cam-eye-bank))
   (format #t "[~8x] ~A~%" obj (-> obj type))
-  (format #t "~Trot-speed: ~f~%" (-> obj unknown-1))
-  (format #t "~Tmax-degrees: ~f~%" (-> obj unknown-2))
-  (format #t "~Tmax-fov: ~f~%" (-> obj unknown-3))
-  (format #t "~Tmin-fov: ~f~%" (-> obj unknown-4))
+  (format #t "~Trot-speed: ~f~%" (-> obj rot-speed))
+  (format #t "~Tmax-degrees: ~f~%" (-> obj max-degrees))
+  (format #t "~Tmax-fov: ~f~%" (-> obj max-fov))
+  (format #t "~Tmin-fov: ~f~%" (-> obj min-fov))
   obj
   )
 
@@ -573,10 +555,10 @@
 (define
   *CAM_EYE-bank*
   (new 'static 'cam-eye-bank
-   :unknown-1 364.0889
-   :unknown-2 12743.111
-   :unknown-3 11650.845
-   :unknown-4 6189.511
+   :rot-speed 364.0889
+   :max-degrees 12743.111
+   :max-fov 11650.845
+   :min-fov 6189.511
    )
   )
 
@@ -616,18 +598,13 @@
    )
   :exit
   (behavior ()
-   (when
+   (if
     (and
      *target*
      (logtest? (-> *camera* master-options) 2)
      (logtest? (-> *target* state-flags) 512)
      )
-    (let ((a1-0 (new 'stack-no-clear 'event-message-block)))
-     (set! (-> a1-0 from) self)
-     (set! (-> a1-0 num-params) 0)
-     (set! (-> a1-0 message) 'end-mode)
-     (send-event-function *target* a1-0)
-     )
+    (send-event *target* 'end-mode)
     )
    (none)
    )
@@ -683,28 +660,28 @@
           )
          (set!
           (-> s4-0 y)
-          (- (-> s4-0 y) (* (- f30-0) (-> *CAM_EYE-bank* unknown-1)))
+          (- (-> s4-0 y) (* (- f30-0) (-> *CAM_EYE-bank* rot-speed)))
           )
          (set!
           (-> s4-0 x)
-          (- (-> s4-0 x) (* (- f0-0) (-> *CAM_EYE-bank* unknown-1)))
+          (- (-> s4-0 x) (* (- f0-0) (-> *CAM_EYE-bank* rot-speed)))
           )
          )
         )
        (cond
-        ((< (-> *CAM_EYE-bank* unknown-1) (-> s4-0 x))
-         (set! (-> s4-0 x) (-> *CAM_EYE-bank* unknown-1))
+        ((< (-> *CAM_EYE-bank* rot-speed) (-> s4-0 x))
+         (set! (-> s4-0 x) (-> *CAM_EYE-bank* rot-speed))
          )
-        ((< (-> s4-0 x) (- (-> *CAM_EYE-bank* unknown-1)))
-         (set! (-> s4-0 x) (- (-> *CAM_EYE-bank* unknown-1)))
+        ((< (-> s4-0 x) (- (-> *CAM_EYE-bank* rot-speed)))
+         (set! (-> s4-0 x) (- (-> *CAM_EYE-bank* rot-speed)))
          )
         )
        (cond
-        ((< (-> *CAM_EYE-bank* unknown-1) (-> s4-0 y))
-         (set! (-> s4-0 y) (-> *CAM_EYE-bank* unknown-1))
+        ((< (-> *CAM_EYE-bank* rot-speed) (-> s4-0 y))
+         (set! (-> s4-0 y) (-> *CAM_EYE-bank* rot-speed))
          )
-        ((< (-> s4-0 y) (- (-> *CAM_EYE-bank* unknown-1)))
-         (set! (-> s4-0 y) (- (-> *CAM_EYE-bank* unknown-1)))
+        ((< (-> s4-0 y) (- (-> *CAM_EYE-bank* rot-speed)))
+         (set! (-> s4-0 y) (- (-> *CAM_EYE-bank* rot-speed)))
          )
         )
        (cond
@@ -766,7 +743,7 @@
           )
          )
         (set! (-> (new 'stack-no-clear 'vector) quad) (the-as uint128 0))
-        (when (< (sin (-> *CAM_EYE-bank* unknown-2)) (fabs f30-1))
+        (when (< (sin (-> *CAM_EYE-bank* max-degrees)) (fabs f30-1))
          (vector--float*!
           (-> self tracking inv-mat vector 2)
           (-> self tracking inv-mat vector 2)
@@ -775,20 +752,20 @@
           )
          (vector-normalize!
           (-> self tracking inv-mat vector 2)
-          (cos (-> *CAM_EYE-bank* unknown-2))
+          (cos (-> *CAM_EYE-bank* max-degrees))
           )
          (if (< f30-1 0.0)
           (vector--float*!
            (-> self tracking inv-mat vector 2)
            (-> self tracking inv-mat vector 2)
            (-> *camera* local-down)
-           (sin (-> *CAM_EYE-bank* unknown-2))
+           (sin (-> *CAM_EYE-bank* max-degrees))
            )
           (vector+float*!
            (-> self tracking inv-mat vector 2)
            (-> self tracking inv-mat vector 2)
            (-> *camera* local-down)
-           (sin (-> *CAM_EYE-bank* unknown-2))
+           (sin (-> *CAM_EYE-bank* max-degrees))
            )
           )
          (vector-cross!
@@ -821,8 +798,8 @@
 
 ;; definition of type cam-billy-bank
 (deftype cam-billy-bank (basic)
-  ((unknown-1 float  :offset-assert   4)
-   (unknown-2 float  :offset-assert   8)
+  ((rot-speed    float  :offset-assert   4)
+   (tilt-degrees float  :offset-assert   8)
    )
   :method-count-assert 9
   :size-assert         #xc
@@ -832,15 +809,15 @@
 ;; definition for method 3 of type cam-billy-bank
 (defmethod inspect cam-billy-bank ((obj cam-billy-bank))
   (format #t "[~8x] ~A~%" obj (-> obj type))
-  (format #t "~Trot-speed: ~f~%" (-> obj unknown-1))
-  (format #t "~Ttilt-degrees: ~f~%" (-> obj unknown-2))
+  (format #t "~Trot-speed: ~f~%" (-> obj rot-speed))
+  (format #t "~Ttilt-degrees: ~f~%" (-> obj tilt-degrees))
   obj
   )
 
 ;; definition for symbol *CAM_BILLY-bank*, type cam-billy-bank
 (define
   *CAM_BILLY-bank*
-  (new 'static 'cam-billy-bank :unknown-1 364.0889 :unknown-2 -1820.4445)
+  (new 'static 'cam-billy-bank :rot-speed 364.0889 :tilt-degrees -1820.4445)
   )
 
 ;; failed to figure out what this is:
@@ -922,16 +899,16 @@
          )
         (set!
          (-> s5-0 y)
-         (- (-> s5-0 y) (* (- f1-0) (-> *CAM_BILLY-bank* unknown-1)))
+         (- (-> s5-0 y) (* (- f1-0) (-> *CAM_BILLY-bank* rot-speed)))
          )
         )
        )
       (cond
-       ((< (-> *CAM_BILLY-bank* unknown-1) (-> s5-0 y))
-        (set! (-> s5-0 y) (-> *CAM_BILLY-bank* unknown-1))
+       ((< (-> *CAM_BILLY-bank* rot-speed) (-> s5-0 y))
+        (set! (-> s5-0 y) (-> *CAM_BILLY-bank* rot-speed))
         )
-       ((< (-> s5-0 y) (- (-> *CAM_BILLY-bank* unknown-1)))
-        (set! (-> s5-0 y) (- (-> *CAM_BILLY-bank* unknown-1)))
+       ((< (-> s5-0 y) (- (-> *CAM_BILLY-bank* rot-speed)))
+        (set! (-> s5-0 y) (- (-> *CAM_BILLY-bank* rot-speed)))
         )
        )
       (set! (-> s3-0 x) (sin (the-as float 37319.11)))
@@ -974,11 +951,11 @@
      (set! (-> self tracking inv-mat vector 2 y) 0.0)
      (vector-normalize!
       (-> self tracking inv-mat vector 2)
-      (cos (-> *CAM_BILLY-bank* unknown-2))
+      (cos (-> *CAM_BILLY-bank* tilt-degrees))
       )
      (set!
       (-> self tracking inv-mat vector 2 y)
-      (sin (-> *CAM_BILLY-bank* unknown-2))
+      (sin (-> *CAM_BILLY-bank* tilt-degrees))
       )
      (vector-cross!
       (the-as vector (-> self tracking))
@@ -1023,7 +1000,7 @@
       (if (logtest? (-> self options) #x8000)
        (cam-slave-get-rot
         (the-as entity-actor (-> self cam-entity))
-        (the-as quaternion (-> self tracking))
+        (the-as matrix (-> self tracking))
         )
        (set!
         (-> self tracking tilt-adjust target)
@@ -1120,19 +1097,13 @@
      )
     )
    (let ((gp-2 (new 'stack-no-clear 'vector)))
-    (when
+    (if
      (cam-slave-get-vector-with-offset
       (the-as entity-actor (-> self cam-entity))
       gp-2
       'interesting
       )
-     (let ((a1-19 (new 'stack-no-clear 'event-message-block)))
-      (set! (-> a1-19 from) self)
-      (set! (-> a1-19 num-params) 1)
-      (set! (-> a1-19 message) 'point-of-interest)
-      (set! (-> a1-19 param 0) (the-as uint gp-2))
-      (send-event-function *camera* a1-19)
-      )
+     (send-event *camera* 'point-of-interest gp-2)
      )
     )
    (none)
@@ -1140,7 +1111,7 @@
   :trans
   (behavior ()
    (if (zero? (logand (-> *camera* master-options) 2))
-    (cam-slave-go (the-as camera-slave cam-free-floating))
+    (cam-slave-go cam-free-floating)
     )
    (none)
    )
@@ -1216,12 +1187,7 @@
          (set! (-> *camera* outro-t) (-> *camera* outro-exit-value))
          (set! (-> *camera* outro-t-step) 0.0)
          (vector+! (-> self velocity) (-> self velocity) gp-0)
-         (let ((a1-2 (new 'stack-no-clear 'event-message-block)))
-          (set! (-> a1-2 from) self)
-          (set! (-> a1-2 num-params) 0)
-          (set! (-> a1-2 message) 'outro-done)
-          (send-event-function *camera* a1-2)
-          )
+         (send-event *camera* 'outro-done)
          )
         (else
          (vector+! (-> self trans) (-> self trans) gp-0)
@@ -1668,19 +1634,13 @@
      )
     )
    (let ((gp-3 (new 'stack-no-clear 'vector)))
-    (when
+    (if
      (cam-slave-get-vector-with-offset
       (the-as entity-actor (-> self cam-entity))
       gp-3
       'interesting
       )
-     (let ((a1-18 (new 'stack-no-clear 'event-message-block)))
-      (set! (-> a1-18 from) self)
-      (set! (-> a1-18 num-params) 1)
-      (set! (-> a1-18 message) 'point-of-interest)
-      (set! (-> a1-18 param 0) (the-as uint gp-3))
-      (send-event-function *camera* a1-18)
-      )
+     (send-event *camera* 'point-of-interest gp-3)
      )
     )
    (none)
@@ -1688,7 +1648,7 @@
   :trans
   (behavior ()
    (if (zero? (logand (-> *camera* master-options) 2))
-    (cam-slave-go (the-as camera-slave cam-free-floating))
+    (cam-slave-go cam-free-floating)
     )
    (none)
    )
@@ -1719,7 +1679,7 @@
   :trans
   (behavior ()
    (if (zero? (logand (-> *camera* master-options) 2))
-    (cam-slave-go (the-as camera-slave cam-free-floating))
+    (cam-slave-go cam-free-floating)
     )
    (none)
    )
@@ -1734,8 +1694,8 @@
 
 ;; definition of type cam-string-bank
 (deftype cam-string-bank (basic)
-  ((unknown-1 float  :offset-assert   4)
-   (unknown-2 float  :offset-assert   8)
+  ((los-coll-rad  meters  :offset-assert   4)
+   (los-coll-rad2 meters  :offset-assert   8)
    )
   :method-count-assert 9
   :size-assert         #xc
@@ -1745,15 +1705,18 @@
 ;; definition for method 3 of type cam-string-bank
 (defmethod inspect cam-string-bank ((obj cam-string-bank))
   (format #t "[~8x] ~A~%" obj (-> obj type))
-  (format #t "~Tlos-coll-rad: (meters ~m)~%" (-> obj unknown-1))
-  (format #t "~Tlos-coll-rad2: (meters ~m)~%" (-> obj unknown-2))
+  (format #t "~Tlos-coll-rad: (meters ~m)~%" (-> obj los-coll-rad))
+  (format #t "~Tlos-coll-rad2: (meters ~m)~%" (-> obj los-coll-rad2))
   obj
   )
 
 ;; definition for symbol *CAM_STRING-bank*, type cam-string-bank
 (define
   *CAM_STRING-bank*
-  (new 'static 'cam-string-bank :unknown-1 4096.0 :unknown-2 2048.0)
+  (new 'static 'cam-string-bank
+   :los-coll-rad (meters 1.0)
+   :los-coll-rad2 (meters 0.5)
+   )
   )
 
 ;; definition for function cam-string-find-position-rel!
@@ -1898,9 +1861,15 @@
 
 ;; definition of type collide-los-dist-info
 (deftype collide-los-dist-info (structure)
-  ((unknown-1 vector :inline :offset-assert   0)
-   (unknown-2 vector :inline :offset-assert  16)
-   (unknown-9 int32          :offset-assert  32)
+  ((min-par float  :offset-assert   0)
+   (max-par float  :offset-assert   4)
+   (min-lat float  :offset-assert   8)
+   (max-lat float  :offset-assert  12)
+   (min-vp  float  :offset-assert  16)
+   (max-vp  float  :offset-assert  20)
+   (min-vn  float  :offset-assert  24)
+   (max-vn  float  :offset-assert  28)
+   (count   int32  :offset-assert  32)
    )
   :method-count-assert 9
   :size-assert         #x24
@@ -1910,31 +1879,31 @@
 ;; definition for method 3 of type collide-los-dist-info
 (defmethod inspect collide-los-dist-info ((obj collide-los-dist-info))
   (format #t "[~8x] ~A~%" obj 'collide-los-dist-info)
-  (format #t "~Tmin-par: ~f~%" (-> obj unknown-1 x))
-  (format #t "~Tmax-par: ~f~%" (-> obj unknown-1 y))
-  (format #t "~Tmin-lat: ~f~%" (-> obj unknown-1 z))
-  (format #t "~Tmax-lat: ~f~%" (-> obj unknown-1 w))
-  (format #t "~Tmin-vp: ~f~%" (-> obj unknown-2 x))
-  (format #t "~Tmax-vp: ~f~%" (-> obj unknown-2 y))
-  (format #t "~Tmin-vn: ~f~%" (-> obj unknown-2 z))
-  (format #t "~Tmax-vn: ~f~%" (-> obj unknown-2 w))
-  (format #t "~Tcount: ~D~%" (-> obj unknown-9))
+  (format #t "~Tmin-par: ~f~%" (-> obj min-par))
+  (format #t "~Tmax-par: ~f~%" (-> obj max-par))
+  (format #t "~Tmin-lat: ~f~%" (-> obj min-lat))
+  (format #t "~Tmax-lat: ~f~%" (-> obj max-lat))
+  (format #t "~Tmin-vp: ~f~%" (-> obj min-vp))
+  (format #t "~Tmax-vp: ~f~%" (-> obj max-vp))
+  (format #t "~Tmin-vn: ~f~%" (-> obj min-vn))
+  (format #t "~Tmax-vn: ~f~%" (-> obj max-vn))
+  (format #t "~Tcount: ~D~%" (-> obj count))
   obj
   )
 
 ;; definition for function dist-info-init
 ;; INFO: Return type mismatch int vs none.
 (defun dist-info-init ((arg0 collide-los-dist-info))
-  (set! (-> arg0 unknown-1 x) 1.0)
-  (set! (-> arg0 unknown-1 y) 0.0)
-  (set! (-> arg0 unknown-9) 0)
+  (set! (-> arg0 min-par) 1.0)
+  (set! (-> arg0 max-par) 0.0)
+  (set! (-> arg0 count) 0)
   0
   (none)
   )
 
 ;; definition for function dist-info-valid?
 (defun dist-info-valid? ((arg0 collide-los-dist-info))
-  (>= (-> arg0 unknown-1 y) (-> arg0 unknown-1 x))
+  (>= (-> arg0 max-par) (-> arg0 min-par))
   )
 
 ;; definition for function dist-info-append
@@ -1942,59 +1911,59 @@
 (defun dist-info-append ((arg0 collide-los-dist-info) (arg1 vector))
   (cond
    ((dist-info-valid? arg0)
-    (if (< (-> arg1 x) (-> arg0 unknown-1 x))
-     (set! (-> arg0 unknown-1 x) (-> arg1 x))
+    (if (< (-> arg1 x) (-> arg0 min-par))
+     (set! (-> arg0 min-par) (-> arg1 x))
      )
-    (if (< (-> arg0 unknown-1 y) (-> arg1 x))
-     (set! (-> arg0 unknown-1 y) (-> arg1 x))
+    (if (< (-> arg0 max-par) (-> arg1 x))
+     (set! (-> arg0 max-par) (-> arg1 x))
      )
-    (if (< (-> arg1 y) (-> arg0 unknown-1 z))
-     (set! (-> arg0 unknown-1 z) (-> arg1 y))
+    (if (< (-> arg1 y) (-> arg0 min-lat))
+     (set! (-> arg0 min-lat) (-> arg1 y))
      )
-    (if (< (-> arg0 unknown-1 w) (-> arg1 y))
-     (set! (-> arg0 unknown-1 w) (-> arg1 y))
+    (if (< (-> arg0 max-lat) (-> arg1 y))
+     (set! (-> arg0 max-lat) (-> arg1 y))
      )
     (cond
      ((< (-> arg1 y) 0.0)
-      (if (< (-> arg1 z) (-> arg0 unknown-2 z))
-       (set! (-> arg0 unknown-2 z) (-> arg1 z))
+      (if (< (-> arg1 z) (-> arg0 min-vn))
+       (set! (-> arg0 min-vn) (-> arg1 z))
        )
-      (if (< (-> arg0 unknown-2 w) (-> arg1 z))
-       (set! (-> arg0 unknown-2 w) (-> arg1 z))
+      (if (< (-> arg0 max-vn) (-> arg1 z))
+       (set! (-> arg0 max-vn) (-> arg1 z))
        )
       )
      (else
-      (if (< (-> arg1 z) (-> arg0 unknown-2 x))
-       (set! (-> arg0 unknown-2 x) (-> arg1 z))
+      (if (< (-> arg1 z) (-> arg0 min-vp))
+       (set! (-> arg0 min-vp) (-> arg1 z))
        )
-      (if (< (-> arg0 unknown-2 y) (-> arg1 z))
-       (set! (-> arg0 unknown-2 y) (-> arg1 z))
+      (if (< (-> arg0 max-vp) (-> arg1 z))
+       (set! (-> arg0 max-vp) (-> arg1 z))
        )
       )
      )
     )
    (else
-    (set! (-> arg0 unknown-1 x) (-> arg1 x))
-    (set! (-> arg0 unknown-1 y) (-> arg1 x))
-    (set! (-> arg0 unknown-1 z) (-> arg1 y))
-    (set! (-> arg0 unknown-1 w) (-> arg1 y))
-    (set! (-> arg0 unknown-2 x) 0.0)
-    (set! (-> arg0 unknown-2 y) 0.0)
-    (set! (-> arg0 unknown-2 z) 0.0)
-    (set! (-> arg0 unknown-2 w) 0.0)
+    (set! (-> arg0 min-par) (-> arg1 x))
+    (set! (-> arg0 max-par) (-> arg1 x))
+    (set! (-> arg0 min-lat) (-> arg1 y))
+    (set! (-> arg0 max-lat) (-> arg1 y))
+    (set! (-> arg0 min-vp) 0.0)
+    (set! (-> arg0 max-vp) 0.0)
+    (set! (-> arg0 min-vn) 0.0)
+    (set! (-> arg0 max-vn) 0.0)
     (cond
      ((< (-> arg1 y) 0.0)
-      (set! (-> arg0 unknown-2 z) (-> arg1 z))
-      (set! (-> arg0 unknown-2 w) (-> arg1 z))
+      (set! (-> arg0 min-vn) (-> arg1 z))
+      (set! (-> arg0 max-vn) (-> arg1 z))
       )
      (else
-      (set! (-> arg0 unknown-2 x) (-> arg1 z))
-      (set! (-> arg0 unknown-2 y) (-> arg1 z))
+      (set! (-> arg0 min-vp) (-> arg1 z))
+      (set! (-> arg0 max-vp) (-> arg1 z))
       )
      )
     )
    )
-  (+! (-> arg0 unknown-9) 1)
+  (+! (-> arg0 count) 1)
   (none)
   )
 
@@ -2006,19 +1975,19 @@
      *stdcon*
      "~S ~2,D mn ~,,2M mx ~,,2M mnl ~,,2M mxl ~,,2M~%"
      arg1
-     (-> arg0 unknown-9)
-     (-> arg0 unknown-1 x)
-     (-> arg0 unknown-1 y)
-     (-> arg0 unknown-1 z)
-     (-> arg0 unknown-1 w)
+     (-> arg0 count)
+     (-> arg0 min-par)
+     (-> arg0 max-par)
+     (-> arg0 min-lat)
+     (-> arg0 max-lat)
      )
     (format
      *stdcon*
      "   mnvp ~,,2M mxvp ~,,2M mnvn ~,,2M mxvn ~,,2M~%"
-     (-> arg0 unknown-2 x)
-     (-> arg0 unknown-2 y)
-     (-> arg0 unknown-2 z)
-     (-> arg0 unknown-2 w)
+     (-> arg0 min-vp)
+     (-> arg0 max-vp)
+     (-> arg0 min-vn)
+     (-> arg0 max-vn)
      )
     )
    (else
@@ -2029,44 +1998,11 @@
 
 ;; definition of type collide-los-result
 (deftype collide-los-result (structure)
-  ((unknown-1   basic  :offset-assert   0)
-   (unknown-2   basic  :offset-assert   4)
-   (unknown-3   basic  :offset-assert   8)
-   (unknown-4   basic  :offset-assert  12)
-   (unknown-5   basic  :offset-assert  16)
-   (unknown-6   basic  :offset-assert  20)
-   (unknown-7   basic  :offset-assert  24)
-   (unknown-8   basic  :offset-assert  28)
-   (unknown-9   basic  :offset-assert  32)
-   (unknown-10  basic  :offset-assert  36)
-   (unknown-15  basic  :offset-assert  40)
-   (unknown-25  basic  :offset-assert  44)
-   (unknown-35  basic  :offset-assert  48)
-   (unknown-45  basic  :offset-assert  52)
-   (unknown-55  basic  :offset-assert  56)
-   (unknown-65  basic  :offset-assert  60)
-   (unknown-75  basic  :offset-assert  64)
-   (unknown-85  basic  :offset-assert  68)
-   (unknown-95  basic  :offset-assert  72)
-   (unknown-51  basic  :offset-assert  76)
-   (unknown-52  basic  :offset-assert  80)
-   (unknown-53  basic  :offset-assert  84)
-   (unknown-54  basic  :offset-assert  88)
-   (unknown-552 basic  :offset-assert  92)
-   (unknown-56  basic  :offset-assert  96)
-   (unknown-57  basic  :offset-assert 100)
-   (unknown-58  basic  :offset-assert 104)
-   (unknown-59  basic  :offset-assert 108)
-   (unknown-511 basic  :offset-assert 112)
-   (unknown-522 basic  :offset-assert 116)
-   (unknown-533 basic  :offset-assert 120)
-   (unknown-544 basic  :offset-assert 124)
-   (unknown-555 basic  :offset-assert 128)
-   (unknown-566 basic  :offset-assert 132)
-   (unknown-577 basic  :offset-assert 136)
-   (unknown-588 basic  :offset-assert 140)
-   (unknown-599 basic  :offset-assert 144)
-   (unknown-50  basic  :offset-assert 148)
+  ((lateral       vector                :inline :offset-assert   0)
+   (cw            collide-los-dist-info :inline :offset-assert  16)
+   (ccw           collide-los-dist-info :inline :offset-assert  64)
+   (straddle      collide-los-dist-info :inline :offset-assert 112)
+   (lateral-valid symbol                        :offset-assert 148)
    )
   :method-count-assert 9
   :size-assert         #x98
@@ -2076,15 +2012,11 @@
 ;; definition for method 3 of type collide-los-result
 (defmethod inspect collide-los-result ((obj collide-los-result))
   (format #t "[~8x] ~A~%" obj 'collide-los-result)
-  (format #t "~Tlateral: ~`vector`P~%" (&-> obj unknown-1))
-  (format #t "~Tcw: #<collide-los-dist-info @ #x~X>~%" (&-> obj unknown-5))
-  (format #t "~Tccw: #<collide-los-dist-info @ #x~X>~%" (&-> obj unknown-75))
-  (format
-   #t
-   "~Tstraddle: #<collide-los-dist-info @ #x~X>~%"
-   (&-> obj unknown-511)
-   )
-  (format #t "~Tlateral-valid: ~A~%" (-> obj unknown-50))
+  (format #t "~Tlateral: ~`vector`P~%" (-> obj lateral))
+  (format #t "~Tcw: #<collide-los-dist-info @ #x~X>~%" (-> obj cw))
+  (format #t "~Tccw: #<collide-los-dist-info @ #x~X>~%" (-> obj ccw))
+  (format #t "~Tstraddle: #<collide-los-dist-info @ #x~X>~%" (-> obj straddle))
+  (format #t "~Tlateral-valid: ~A~%" (-> obj lateral-valid))
   obj
   )
 
@@ -2224,7 +2156,7 @@
     s4-0
     arg0
     s5-0
-    (-> *CAM_STRING-bank* unknown-2)
+    (-> *CAM_STRING-bank* los-coll-rad2)
     #x4a09
     (the-as process #f)
     (the-as int arg2)
@@ -2241,7 +2173,7 @@
                        (*
                         3.0
                         (-
-                         (-> *CAM_STRING-bank* unknown-2)
+                         (-> *CAM_STRING-bank* los-coll-rad2)
                          (-> *CAMERA-bank* collide-move-rad)
                          )
                         )
@@ -2265,7 +2197,7 @@
         (moving-sphere-triangle-intersect
          arg0
          s5-0
-         (-> *CAM_STRING-bank* unknown-2)
+         (-> *CAM_STRING-bank* los-coll-rad2)
          (-> s3-0 0)
          s2-0
          s1-0
@@ -2311,13 +2243,13 @@
        (if *display-cam-los-debug*
         (format *stdcon* "straddle stick ccw~%")
         )
-       (vector-normalize! arg1 (+ f28-0 (-> *CAM_STRING-bank* unknown-1)))
+       (vector-normalize! arg1 (+ f28-0 (-> *CAM_STRING-bank* los-coll-rad)))
        )
       ((= (-> self los-state) 1)
        (if *display-cam-los-debug*
         (format *stdcon* "straddle stick cw~%")
         )
-       (vector-normalize! arg1 (- f30-0 (-> *CAM_STRING-bank* unknown-1)))
+       (vector-normalize! arg1 (- f30-0 (-> *CAM_STRING-bank* los-coll-rad)))
        )
       ((and
         (or
@@ -2365,7 +2297,7 @@
         (format *stdcon* "straddle diagonal ccw~%")
         )
        (set! (-> self los-state) (the-as uint 2))
-       (vector-normalize! arg1 (+ f28-0 (-> *CAM_STRING-bank* unknown-1)))
+       (vector-normalize! arg1 (+ f28-0 (-> *CAM_STRING-bank* los-coll-rad)))
        )
       ((and
         (or
@@ -2411,21 +2343,21 @@
         (format *stdcon* "straddle diagonal cw~%")
         )
        (set! (-> self los-state) (the-as uint 1))
-       (vector-normalize! arg1 (- f30-0 (-> *CAM_STRING-bank* unknown-1)))
+       (vector-normalize! arg1 (- f30-0 (-> *CAM_STRING-bank* los-coll-rad)))
        )
       ((< f28-0 (- f30-0))
        (if *display-cam-los-debug*
         (format *stdcon* "straddle ccw~%")
         )
        (set! (-> self los-state) (the-as uint 2))
-       (vector-normalize! arg1 (+ f28-0 (-> *CAM_STRING-bank* unknown-1)))
+       (vector-normalize! arg1 (+ f28-0 (-> *CAM_STRING-bank* los-coll-rad)))
        )
       (else
        (if *display-cam-los-debug*
         (format *stdcon* "straddle cw~%")
         )
        (set! (-> self los-state) (the-as uint 1))
-       (vector-normalize! arg1 (- f30-0 (-> *CAM_STRING-bank* unknown-1)))
+       (vector-normalize! arg1 (- f30-0 (-> *CAM_STRING-bank* los-coll-rad)))
        )
       )
      )
@@ -2446,7 +2378,7 @@
     (set! (-> self los-state) (the-as uint 2))
     (vector-normalize!
      arg1
-     (- (-> *CAM_STRING-bank* unknown-1) (-> arg0 next-normal z))
+     (- (-> *CAM_STRING-bank* los-coll-rad) (-> arg0 next-normal z))
      )
     )
    ((and
@@ -2465,7 +2397,7 @@
     (set! (-> self los-state) (the-as uint 1))
     (vector-normalize!
      arg1
-     (- (-> arg0 intersection z) (-> *CAM_STRING-bank* unknown-1))
+     (- (-> arg0 intersection z) (-> *CAM_STRING-bank* los-coll-rad))
      )
     )
    ((and
@@ -2482,7 +2414,7 @@
     (set! (-> self los-state) (the-as uint 1))
     (vector-normalize!
      arg1
-     (- (-> arg0 intersection z) (-> *CAM_STRING-bank* unknown-1))
+     (- (-> arg0 intersection z) (-> *CAM_STRING-bank* los-coll-rad))
      )
     )
    ((dist-info-valid? (the-as collide-los-dist-info (-> arg0 next-normal)))
@@ -2492,7 +2424,7 @@
     (set! (-> self los-state) (the-as uint 2))
     (vector-normalize!
      arg1
-     (- (-> *CAM_STRING-bank* unknown-1) (-> arg0 next-normal z))
+     (- (-> *CAM_STRING-bank* los-coll-rad) (-> arg0 next-normal z))
      )
     )
    (else
@@ -2555,7 +2487,7 @@
      s0-0
      arg0
      arg1
-     (-> *CAM_STRING-bank* unknown-1)
+     (-> *CAM_STRING-bank* los-coll-rad)
      #x4a09
      (the-as process #f)
      arg3
@@ -2578,7 +2510,7 @@
          (moving-sphere-triangle-intersect
           arg0
           arg1
-          (-> *CAM_STRING-bank* unknown-1)
+          (-> *CAM_STRING-bank* los-coll-rad)
           (-> s1-1 0)
           sv-240
           sv-224
@@ -2610,7 +2542,7 @@
                   (moving-sphere-triangle-intersect
                    arg0
                    arg1
-                   (-> *CAM_STRING-bank* unknown-2)
+                   (-> *CAM_STRING-bank* los-coll-rad2)
                    (-> s1-1 0)
                    t0-2
                    t1-2
@@ -2656,7 +2588,7 @@
                  (moving-sphere-triangle-intersect
                   arg0
                   arg1
-                  (-> *CAM_STRING-bank* unknown-2)
+                  (-> *CAM_STRING-bank* los-coll-rad2)
                   (-> s1-1 0)
                   t0-4
                   t1-4
@@ -3546,12 +3478,12 @@
   )
 
 ;; definition for function cam-string-move
-;; WARN: Stack slot load mismatch: defined as size 4, got size 16
-;; WARN: Stack slot load mismatch: defined as size 4, got size 16
-;; WARN: Stack slot load mismatch: defined as size 4, got size 16
-;; WARN: Stack slot load mismatch: defined as size 4, got size 16
-;; WARN: Stack slot load mismatch: defined as size 4, got size 16
-;; WARN: Stack slot load mismatch: defined as size 4, got size 16
+;; WARN: Stack slot load at 240 mismatch: defined as size 4, got size 16
+;; WARN: Stack slot load at 256 mismatch: defined as size 4, got size 16
+;; WARN: Stack slot load at 240 mismatch: defined as size 4, got size 16
+;; WARN: Stack slot load at 256 mismatch: defined as size 4, got size 16
+;; WARN: Stack slot load at 240 mismatch: defined as size 4, got size 16
+;; WARN: Stack slot load at 256 mismatch: defined as size 4, got size 16
 ;; Used lq/sq
 (defbehavior cam-string-move camera-slave ()
   (local-vars (sv-240 float) (sv-256 float))
@@ -4116,7 +4048,7 @@
   :trans
   (behavior ()
    (if (zero? (logand (-> *camera* master-options) 2))
-    (cam-slave-go (the-as camera-slave cam-free-floating))
+    (cam-slave-go cam-free-floating)
     )
    (none)
    )
@@ -4137,10 +4069,10 @@
 
 ;; definition of type cam-stick-bank
 (deftype cam-stick-bank (basic)
-  ((unknown-1 float  :offset-assert   4)
-   (unknown-2 float  :offset-assert   8)
-   (unknown-3 float  :offset-assert  12)
-   (unknown-4 float  :offset-assert  16)
+  ((max-z meters  :offset-assert   4)
+   (min-z meters  :offset-assert   8)
+   (max-y meters  :offset-assert  12)
+   (min-y meters  :offset-assert  16)
    )
   :method-count-assert 9
   :size-assert         #x14
@@ -4150,10 +4082,10 @@
 ;; definition for method 3 of type cam-stick-bank
 (defmethod inspect cam-stick-bank ((obj cam-stick-bank))
   (format #t "[~8x] ~A~%" obj (-> obj type))
-  (format #t "~Tmax-z: (meters ~m)~%" (-> obj unknown-1))
-  (format #t "~Tmin-z: (meters ~m)~%" (-> obj unknown-2))
-  (format #t "~Tmax-y: (meters ~m)~%" (-> obj unknown-3))
-  (format #t "~Tmin-y: (meters ~m)~%" (-> obj unknown-4))
+  (format #t "~Tmax-z: (meters ~m)~%" (-> obj max-z))
+  (format #t "~Tmin-z: (meters ~m)~%" (-> obj min-z))
+  (format #t "~Tmax-y: (meters ~m)~%" (-> obj max-y))
+  (format #t "~Tmin-y: (meters ~m)~%" (-> obj min-y))
   obj
   )
 
@@ -4161,10 +4093,10 @@
 (define
   *CAM_STICK-bank*
   (new 'static 'cam-stick-bank
-   :unknown-1 122880.0
-   :unknown-2 20480.0
-   :unknown-3 61440.0
-   :unknown-4 8192.0
+   :max-z (meters 30.0)
+   :min-z (meters 5.0)
+   :max-y (meters 15.0)
+   :min-y (meters 2.0)
    )
   )
 
@@ -4258,8 +4190,8 @@
      (let
       ((f0-14
         (/
-         (- (vector-length gp-3) (-> *CAM_STICK-bank* unknown-2))
-         (- (-> *CAM_STICK-bank* unknown-1) (-> *CAM_STICK-bank* unknown-2))
+         (- (vector-length gp-3) (-> *CAM_STICK-bank* min-z))
+         (- (-> *CAM_STICK-bank* max-z) (-> *CAM_STICK-bank* min-z))
          )
         )
        )
@@ -4305,16 +4237,16 @@
     (set!
      (-> self view-off y)
      (lerp
-      (-> *CAM_STICK-bank* unknown-4)
-      (-> *CAM_STICK-bank* unknown-3)
+      (-> *CAM_STICK-bank* min-y)
+      (-> *CAM_STICK-bank* max-y)
       (-> self view-off-param)
       )
      )
     (set!
      (-> self view-off z)
      (lerp
-      (-> *CAM_STICK-bank* unknown-2)
-      (-> *CAM_STICK-bank* unknown-1)
+      (-> *CAM_STICK-bank* min-z)
+      (-> *CAM_STICK-bank* max-z)
       (-> self view-off-param)
       )
      )
@@ -4354,7 +4286,7 @@
   :trans
   (behavior ()
    (if (zero? (logand (-> *camera* master-options) 2))
-    (cam-slave-go (the-as camera-slave cam-free-floating))
+    (cam-slave-go cam-free-floating)
     )
    (when (not (paused?))
     (when *camera-read-analog*
@@ -4385,16 +4317,16 @@
     (set!
      (-> self view-off y)
      (lerp
-      (-> *CAM_STICK-bank* unknown-4)
-      (-> *CAM_STICK-bank* unknown-3)
+      (-> *CAM_STICK-bank* min-y)
+      (-> *CAM_STICK-bank* max-y)
       (-> self view-off-param)
       )
      )
     (set!
      (-> self view-off z)
      (lerp
-      (-> *CAM_STICK-bank* unknown-2)
-      (-> *CAM_STICK-bank* unknown-1)
+      (-> *CAM_STICK-bank* min-z)
+      (-> *CAM_STICK-bank* max-z)
       (-> self view-off-param)
       )
      )
@@ -4456,10 +4388,10 @@
 
 ;; definition of type cam-bike-bank
 (deftype cam-bike-bank (basic)
-  ((unknown-2 float  :offset-assert   4)
-   (unknown-3 float  :offset-assert   8)
-   (unknown-4 float  :offset-assert  12)
-   (unknown-5 float  :offset-assert  16)
+  ((max-z meters  :offset-assert   4)
+   (min-z meters  :offset-assert   8)
+   (max-y meters  :offset-assert  12)
+   (min-y meters  :offset-assert  16)
    )
   :method-count-assert 9
   :size-assert         #x14
@@ -4469,10 +4401,10 @@
 ;; definition for method 3 of type cam-bike-bank
 (defmethod inspect cam-bike-bank ((obj cam-bike-bank))
   (format #t "[~8x] ~A~%" obj (-> obj type))
-  (format #t "~Tmin-z: (meters ~m)~%" (-> obj unknown-2))
-  (format #t "~Tmax-z: (meters ~m)~%" (-> obj unknown-3))
-  (format #t "~Tmin-y: (meters ~m)~%" (-> obj unknown-4))
-  (format #t "~Tmax-y: (meters ~m)~%" (-> obj unknown-5))
+  (format #t "~Tmin-z: (meters ~m)~%" (-> obj max-z))
+  (format #t "~Tmax-z: (meters ~m)~%" (-> obj min-z))
+  (format #t "~Tmin-y: (meters ~m)~%" (-> obj max-y))
+  (format #t "~Tmax-y: (meters ~m)~%" (-> obj min-y))
   obj
   )
 
@@ -4480,10 +4412,10 @@
 (define
   *CAM_BIKE-bank*
   (new 'static 'cam-bike-bank
-   :unknown-2 24576.0
-   :unknown-3 40960.0
-   :unknown-4 12288.0
-   :unknown-5 20480.0
+   :max-z (meters 6.0)
+   :min-z (meters 10.0)
+   :max-y (meters 3.0)
+   :min-y (meters 5.0)
    )
   )
 
@@ -4535,16 +4467,16 @@
     (set!
      (-> self view-off z)
      (lerp-clamp
-      (-> *CAM_BIKE-bank* unknown-2)
-      (-> *CAM_BIKE-bank* unknown-3)
+      (-> *CAM_BIKE-bank* max-z)
+      (-> *CAM_BIKE-bank* min-z)
       (parameter-ease-sin-clamp (* 0.00081380206 (+ -409.6 f30-0)))
       )
      )
     (set!
      (-> self view-off y)
      (lerp-clamp
-      (-> *CAM_BIKE-bank* unknown-4)
-      (-> *CAM_BIKE-bank* unknown-5)
+      (-> *CAM_BIKE-bank* max-y)
+      (-> *CAM_BIKE-bank* min-y)
       (parameter-ease-sin-clamp (* 0.00081380206 (+ -409.6 f30-0)))
       )
      )
@@ -4651,8 +4583,8 @@
     (set! (-> *camera* foot-offset) 4096.0)
     (set! (-> *camera* head-offset) 16384.0)
     (set! (-> self view-off x) 0.0)
-    (set! (-> self view-off y) (-> *CAM_BIKE-bank* unknown-4))
-    (set! (-> self view-off z) (-> *CAM_BIKE-bank* unknown-2))
+    (set! (-> self view-off y) (-> *CAM_BIKE-bank* max-y))
+    (set! (-> self view-off z) (-> *CAM_BIKE-bank* max-z))
     (vector-flatten!
      (-> self view-flat)
      (-> self tracking inv-mat vector 2)
@@ -4689,7 +4621,7 @@
   :trans
   (behavior ()
    (if (zero? (logand (-> *camera* master-options) 2))
-    (cam-slave-go (the-as camera-slave cam-free-floating))
+    (cam-slave-go cam-free-floating)
     )
    (none)
    )

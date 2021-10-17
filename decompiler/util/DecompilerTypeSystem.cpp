@@ -65,6 +65,10 @@ void DecompilerTypeSystem::parse_type_defs(const std::vector<std::string>& file_
         if (dtr.create_runtime_type) {
           add_symbol(dtr.type.base_type(), "type");
         }
+        // declare the type's states globally
+        for (auto& state : dtr.type_info->get_states_declared_for_type()) {
+          add_symbol(state.name, state.type);
+        }
 
       } else if (car(o).as_symbol()->name == "declare-type") {
         auto* rest = &cdr(o);
@@ -475,7 +479,7 @@ bool DecompilerTypeSystem::should_attempt_cast_simplify(const TypeSpec& expected
     return true;
   }
 
-  if (expected == TypeSpec("seconds") && actual == TypeSpec("uint64")) {
+  if (expected == TypeSpec("seconds") && actual == TypeSpec("int64")) {
     return true;
   }
 

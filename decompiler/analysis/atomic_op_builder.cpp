@@ -682,6 +682,17 @@ std::unique_ptr<AtomicOp> convert_sw_1(const Instruction& i0, int idx) {
   }
 }
 
+std::unique_ptr<AtomicOp> convert_swc1_1(const Instruction& i0, int idx) {
+  if (i0.get_src(1).is_sym() && i0.get_src(2).is_reg(rs7())) {
+    // storing a float in the symbol table. It's very rare, but possible
+    return std::make_unique<StoreOp>(4, StoreOp::Kind::FLOAT,
+                                     SimpleAtom::make_sym_val(i0.get_src(1).get_sym()).as_expr(),
+                                     make_src_atom(i0.get_src(0).get_reg(), idx), idx);
+  } else {
+    return make_standard_store(i0, idx, 4, StoreOp::Kind::FLOAT);
+  }
+}
+
 std::unique_ptr<AtomicOp> convert_sd_1(const Instruction& i0, int idx) {
   if (i0.get_src(0).is_reg(rr0()) && i0.get_src(1).is_imm(2) && i0.get_src(2).is_reg(rr0())) {
     return std::make_unique<SpecialOp>(SpecialOp::Kind::CRASH, idx);
@@ -901,7 +912,7 @@ std::unique_ptr<AtomicOp> convert_1(const Instruction& i0,
     case InstructionKind::SQC2:
       return make_standard_store(i0, idx, 16, StoreOp::Kind::VECTOR_FLOAT);
     case InstructionKind::SWC1:
-      return make_standard_store(i0, idx, 4, StoreOp::Kind::FLOAT);
+      return convert_swc1_1(i0, idx);
     case InstructionKind::CVTWS:  // float to int
       return make_2reg_op(i0, SimpleExpression::Kind::FLOAT_TO_INT, idx);
     case InstructionKind::CVTSW:  // int to float

@@ -6,6 +6,7 @@
 #include "decompiler/util/DecompilerTypeSystem.h"
 #include "decompiler/IR2/bitfields.h"
 #include "common/type_system/state.h"
+#include "common/util/BitUtils.h"
 
 namespace decompiler {
 
@@ -319,6 +320,7 @@ TP_Type get_stack_type_at_constant_offset(int offset,
   throw std::runtime_error(
       fmt::format("Failed to find a stack variable or structure at offset {}", offset));
 }
+
 }  // namespace
 
 /*!
@@ -601,7 +603,14 @@ TP_Type SimpleExpression::get_type_int2(const TypeState& input,
   if (m_kind == Kind::ADD && tc(dts, TypeSpec("structure"), arg0_type) &&
       arg1_type.is_integer_constant()) {
     auto type_info = dts.ts.lookup_type(arg0_type.typespec());
+
+    // get next in memory, allow this as &+
     if ((u64)type_info->get_size_in_memory() == arg1_type.get_integer_constant()) {
+      return TP_Type::make_from_ts(arg0_type.typespec());
+    }
+
+    // also allow it, if 16-byte aligned stride.
+    if ((u64)align16(type_info->get_size_in_memory()) == arg1_type.get_integer_constant()) {
       return TP_Type::make_from_ts(arg0_type.typespec());
     }
   }
@@ -663,7 +672,7 @@ TP_Type SimpleExpression::get_type_int2(const TypeState& input,
     }
   }
 
-  // allow shifting non-integers for setting bitfields
+  // allow shifting stuff for setting bitfields
   if (m_kind == Kind::LEFT_SHIFT) {
     return TP_Type::make_from_ts("int");
   }
@@ -1376,10 +1385,11 @@ TypeState StackSpillLoadOp::propagate_types_internal(const TypeState& input,
                                                      const Env& env,
                                                      DecompilerTypeSystem&) {
   // stack slot load
-  auto info = env.stack_spills().lookup(m_offset);
+  auto& info = env.stack_spills().lookup(m_offset);
   if (info.size != m_size) {
-    env.func->warnings.general_warning("Stack slot load mismatch: defined as size {}, got size {}",
-                                       info.size, m_size);
+    env.func->warnings.general_warning(
+        "Stack slot load at {} mismatch: defined as size {}, got size {}", m_offset, info.size,
+        m_size);
   }
 
   if (info.is_signed != m_is_signed) {
@@ -1395,7 +1405,7 @@ TypeState StackSpillLoadOp::propagate_types_internal(const TypeState& input,
 TypeState StackSpillStoreOp::propagate_types_internal(const TypeState& input,
                                                       const Env& env,
                                                       DecompilerTypeSystem& dts) {
-  auto info = env.stack_spills().lookup(m_offset);
+  auto& info = env.stack_spills().lookup(m_offset);
   if (info.size != m_size) {
     env.func->warnings.general_warning(
         "Stack slot store mismatch: defined as size {}, got size {}\n", info.size, m_size);

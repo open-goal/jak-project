@@ -155,7 +155,8 @@ std::vector<DefstateElement::Entry> get_defstate_entries(
     // name = code/event/etc
     if (skip_states.count(state_name) > 0) {
       if (skip_states.at(state_name).find(name) != skip_states.at(state_name).end()) {
-        // anyway to add a comment here?
+        env.func->warnings.general_warning("SKIP: skipping '{}' handler for state '{}'", name,
+                                           state_name);
         continue;
       }
     }

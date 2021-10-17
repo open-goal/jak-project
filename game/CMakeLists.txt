@@ -42,6 +42,7 @@ set(RUNTIME_SOURCE
         sce/libgraph.cpp
         sce/deci2.cpp
         sce/sif_ee.cpp
+        sce/sif_ee_memcard.cpp
         sce/iop.cpp
         sce/stubs.cpp
         kernel/asm_funcs.asm
@@ -60,7 +61,11 @@ set(RUNTIME_SOURCE
         kernel/ksound.cpp
         mips2c/mips2c_table.cpp
         mips2c/functions/draw_string.cpp
+        mips2c/functions/sky_tng.cpp
+        mips2c/functions/sparticle.cpp
+        mips2c/functions/sparticle_launcher.cpp
         mips2c/functions/test_func.cpp
+        mips2c/functions/texture.cpp
         overlord/dma.cpp
         overlord/fake_iso.cpp
         overlord/iso.cpp
@@ -82,9 +87,14 @@ set(RUNTIME_SOURCE
         graphics/dma/dma_copy.cpp
         graphics/dma/gs.cpp
         graphics/opengl_renderer/BucketRenderer.cpp
+        graphics/opengl_renderer/debug_gui.cpp
         graphics/opengl_renderer/DirectRenderer.cpp
         graphics/opengl_renderer/OpenGLRenderer.cpp
+        graphics/opengl_renderer/Profiler.cpp
         graphics/opengl_renderer/Shader.cpp
+        graphics/opengl_renderer/SkyRenderer.cpp
+        graphics/opengl_renderer/SpriteRenderer.cpp
+        graphics/opengl_renderer/TextureUploadHandler.cpp
         graphics/texture/TextureConverter.cpp
         graphics/texture/TexturePool.cpp
         graphics/pipelines/opengl.cpp

@@ -313,12 +313,7 @@
   cam-layout-entity-volume-info-create cam-layout
   ((arg0 entity-camera) (arg1 symbol))
   (local-vars
-   (r0-0 uint128)
-   (v1-135 uint128)
-   (a0-38 uint128)
-   (a0-52 uint128)
-   (a0-66 uint128)
-   (sv-16 int)
+   (sv-16 res-tag)
    (sv-160 vector)
    (sv-164 float)
    (sv-168 int)
@@ -333,7 +328,7 @@
    )
   (let ((s4-0 0))
    (while #t
-    (set! sv-16 0)
+    (set! sv-16 (new 'static 'res-tag))
     (let
      ((s3-0
        (the-as
@@ -344,7 +339,7 @@
          'exact
          (the float s4-0)
          (the-as pointer #f)
-         (the-as (pointer res-tag) (& sv-16))
+         (& sv-16)
          *res-static-buf*
          )
         )
@@ -362,230 +357,166 @@
         (set! (-> s2-0 point-count) 0)
         (set!
          (-> s2-0 first-point)
-         (the-as
-          vector
-          (+ (+ (* *volume-point-current* 16) 12) (the-as int *volume-point*))
-          )
+         (-> *volume-point* data *volume-point-current*)
          )
         (set! (-> s2-0 normal-count) 0)
         (set!
          (-> s2-0 first-normal)
-         (the-as
-          vector
-          (+ (+ (* *volume-normal-current* 16) 12) (the-as int *volume-normal*))
-          )
+         (-> *volume-normal* data *volume-normal-current*)
          )
         (set! *volume-descriptor-current* (+ *volume-descriptor-current* 1))
         (+! (-> self num-volumes) 1)
-        (let ((s1-0 0))
-         (while (begin
-                 (let ((v1-134 (the-as uint128 sv-16)))
-                  (.pcpyud v1-135 v1-134 r0-0)
-                  )
-                 (< s1-0 (shr (* (the-as int v1-135) 2) 49))
-                 )
-          (set! sv-192 (new 'stack-no-clear 'vector))
-          (set! (-> sv-192 quad) (the-as uint128 0))
-          (set! sv-208 (new 'stack-no-clear 'vector))
-          (set! (-> sv-208 quad) (the-as uint128 0))
-          (set! sv-224 (new 'stack-no-clear 'vector))
-          (set! (-> sv-224 quad) (the-as uint128 0))
-          (set! sv-240 (new 'stack-no-clear 'vector))
-          (set! (-> sv-240 quad) (the-as uint128 0))
-          0.0
-          0.0
-          0.0
-          (set! (-> (new 'stack-no-clear 'vector) quad) (the-as uint128 0))
-          (let ((s0-0 (new-stack-vector0)))
-           (set! sv-256 0)
-           (set! sv-272 0)
-           (while (let ((v1-112 sv-272))
-                   (let ((a0-65 (the-as uint128 sv-16)))
-                    (.pcpyud a0-66 a0-65 r0-0)
-                    )
-                   (< v1-112 (shr (* (the-as int a0-66) 2) 49))
-                   )
-            (when (!= s1-0 sv-272)
-             (vector-float*! sv-192 (-> s3-0 sv-272) (-> s3-0 sv-272 w))
-             (vector-cross! sv-208 (-> s3-0 sv-272) (-> s3-0 s1-0))
-             (vector-normalize! sv-208 (-> (new 'static 'array float 1 1.0) 0))
-             (vector-cross! sv-224 sv-208 (-> s3-0 sv-272))
-             (vector-normalize! sv-224 (-> (new 'static 'array float 1 1.0) 0))
-             (let
-              ((f0-6 (cam-layout-intersect-dist (-> s3-0 s1-0) sv-192 sv-224)))
-              (when (!= f0-6 409600000.0)
-               (vector+float*! sv-240 sv-192 sv-224 f0-6)
-               (set! sv-160 (new-stack-vector0))
-               (set! sv-164 0.0)
-               (set! sv-168 0)
-               (set! sv-176 (new-stack-vector0))
-               (set! (-> sv-160 quad) (-> sv-240 quad))
-               (set! sv-288 0)
-               (while (let ((v1-80 sv-288))
-                       (let ((a0-37 (the-as uint128 sv-16)))
-                        (.pcpyud a0-38 a0-37 r0-0)
-                        )
-                       (< v1-80 (shr (* (the-as int a0-38) 2) 49))
-                       )
-                (when (and (!= sv-288 s1-0) (!= sv-288 sv-272))
-                 (let
-                  ((f30-0
-                    (cam-layout-intersect-dist (-> s3-0 sv-288) sv-160 sv-208)
-                    )
-                   )
-                  (cond
-                   ((= f30-0 409600000.0)
-                    )
-                   ((zero? sv-168)
-                    (vector+float*! sv-160 sv-160 sv-208 f30-0)
-                    (set! (-> sv-176 quad) (-> s3-0 sv-288 quad))
-                    (set! sv-164 8192000.0)
-                    (set! sv-168 1)
-                    )
-                   ((begin
-                     (vector-float*! sv-240 sv-208 f30-0)
-                     (>= (vector-dot sv-240 sv-176) 0.0)
-                     )
-                    )
-                   ((>= (vector-dot sv-240 (-> s3-0 sv-288)) 0.0)
-                    (when (< (fabs f30-0) (fabs sv-164))
-                     (set! sv-164 f30-0)
-                     (set! sv-168 (+ sv-168 1))
-                     )
-                    )
-                   (else
-                    (vector+float*! sv-160 sv-160 sv-208 f30-0)
-                    (set! (-> sv-176 quad) (-> s3-0 sv-288 quad))
-                    (set! sv-168 (+ sv-168 1))
-                    (if (< (fabs f30-0) (fabs sv-164))
-                     (set! sv-164 (- sv-164 f30-0))
-                     (set! sv-164 0.0)
-                     )
-                    )
+        (dotimes (s1-0 (the-as int (-> sv-16 elt-count)))
+         (set! sv-192 (new 'stack-no-clear 'vector))
+         (set! (-> sv-192 quad) (the-as uint128 0))
+         (set! sv-208 (new 'stack-no-clear 'vector))
+         (set! (-> sv-208 quad) (the-as uint128 0))
+         (set! sv-224 (new 'stack-no-clear 'vector))
+         (set! (-> sv-224 quad) (the-as uint128 0))
+         (set! sv-240 (new 'stack-no-clear 'vector))
+         (set! (-> sv-240 quad) (the-as uint128 0))
+         0.0
+         0.0
+         0.0
+         (set! (-> (new 'stack-no-clear 'vector) quad) (the-as uint128 0))
+         (let ((s0-0 (new-stack-vector0)))
+          (set! sv-256 0)
+          (set! sv-272 0)
+          (while (< sv-272 (the-as int (-> sv-16 elt-count)))
+           (when (!= s1-0 sv-272)
+            (vector-float*! sv-192 (-> s3-0 sv-272) (-> s3-0 sv-272 w))
+            (vector-cross! sv-208 (-> s3-0 sv-272) (-> s3-0 s1-0))
+            (vector-normalize! sv-208 (-> (new 'static 'array float 1 1.0) 0))
+            (vector-cross! sv-224 sv-208 (-> s3-0 sv-272))
+            (vector-normalize! sv-224 (-> (new 'static 'array float 1 1.0) 0))
+            (let
+             ((f0-6 (cam-layout-intersect-dist (-> s3-0 s1-0) sv-192 sv-224)))
+             (when (!= f0-6 409600000.0)
+              (vector+float*! sv-240 sv-192 sv-224 f0-6)
+              (set! sv-160 (new-stack-vector0))
+              (set! sv-164 0.0)
+              (set! sv-168 0)
+              (set! sv-176 (new-stack-vector0))
+              (set! (-> sv-160 quad) (-> sv-240 quad))
+              (set! sv-288 0)
+              (while (< sv-288 (the-as int (-> sv-16 elt-count)))
+               (when (and (!= sv-288 s1-0) (!= sv-288 sv-272))
+                (let
+                 ((f30-0
+                   (cam-layout-intersect-dist (-> s3-0 sv-288) sv-160 sv-208)
                    )
                   )
-                 )
-                (set! sv-288 (+ sv-288 1))
-                )
-               (cond
-                ((zero? sv-168)
-                 )
-                ((= sv-164 0.0)
-                 )
-                (else
-                 (let ((v1-87 0))
-                  (while (begin
-                          (let ((a0-51 (the-as uint128 sv-16)))
-                           (.pcpyud a0-52 a0-51 r0-0)
-                           )
-                          (< v1-87 (shr (* (the-as int a0-52) 2) 49))
-                          )
-                   (when (and (!= v1-87 s1-0) (!= v1-87 sv-272))
-                    (if
-                     (<
-                      (-> (new 'static 'array float 1 4096.0) 0)
-                      (- (vector-dot sv-160 (-> s3-0 v1-87)) (-> s3-0 v1-87 w))
-                      )
-                     (goto cfg-47)
-                     )
-                    )
-                   (+! v1-87 1)
-                   )
-                  )
-                 (vector+float*! sv-240 sv-160 sv-208 sv-164)
                  (cond
-                  ((>= *volume-point-current* 999)
-                   (format
-                    0
-                    "ERROR <GMJ>: camera editing out of volume points~%"
+                  ((= f30-0 409600000.0)
+                   )
+                  ((zero? sv-168)
+                   (vector+float*! sv-160 sv-160 sv-208 f30-0)
+                   (set! (-> sv-176 quad) (-> s3-0 sv-288 quad))
+                   (set! sv-164 8192000.0)
+                   (set! sv-168 1)
+                   )
+                  ((begin
+                    (vector-float*! sv-240 sv-208 f30-0)
+                    (>= (vector-dot sv-240 sv-176) 0.0)
+                    )
+                   )
+                  ((>= (vector-dot sv-240 (-> s3-0 sv-288)) 0.0)
+                   (when (< (fabs f30-0) (fabs sv-164))
+                    (set! sv-164 f30-0)
+                    (set! sv-168 (+ sv-168 1))
                     )
                    )
                   (else
-                   (set!
-                    (->
-                     (the-as
-                      (pointer uint128)
-                      (+
-                       (+ (* *volume-point-current* 16) 12)
-                       (the-as int *volume-point*)
-                       )
-                      )
-                     )
-                    (-> sv-160 quad)
+                   (vector+float*! sv-160 sv-160 sv-208 f30-0)
+                   (set! (-> sv-176 quad) (-> s3-0 sv-288 quad))
+                   (set! sv-168 (+ sv-168 1))
+                   (if (< (fabs f30-0) (fabs sv-164))
+                    (set! sv-164 (- sv-164 f30-0))
+                    (set! sv-164 0.0)
                     )
-                   (set!
-                    (->
-                     (the-as
-                      (pointer uint128)
-                      (+
-                       (+ (* (+ *volume-point-current* 1) 16) 12)
-                       (the-as int *volume-point*)
-                       )
-                      )
-                     )
-                    (-> sv-240 quad)
-                    )
-                   (set! *volume-point-current* (+ *volume-point-current* 2))
-                   (+! (-> s2-0 point-count) 2)
                    )
                   )
-                 (vector+! s0-0 s0-0 sv-160)
-                 (vector+! s0-0 s0-0 sv-240)
-                 (set! sv-256 (+ sv-256 2))
-                 sv-256
                  )
+                )
+               (set! sv-288 (+ sv-288 1))
+               )
+              (cond
+               ((zero? sv-168)
+                )
+               ((= sv-164 0.0)
+                )
+               (else
+                (dotimes (v1-87 (the-as int (-> sv-16 elt-count)))
+                 (when (and (!= v1-87 s1-0) (!= v1-87 sv-272))
+                  (if
+                   (<
+                    (-> (new 'static 'array float 1 4096.0) 0)
+                    (- (vector-dot sv-160 (-> s3-0 v1-87)) (-> s3-0 v1-87 w))
+                    )
+                   (goto cfg-47)
+                   )
+                  )
+                 )
+                (vector+float*! sv-240 sv-160 sv-208 sv-164)
+                (cond
+                 ((>= *volume-point-current* 999)
+                  (format
+                   0
+                   "ERROR <GMJ>: camera editing out of volume points~%"
+                   )
+                  )
+                 (else
+                  (set!
+                   (-> *volume-point* data *volume-point-current* quad)
+                   (-> sv-160 quad)
+                   )
+                  (set!
+                   (-> *volume-point* data (+ *volume-point-current* 1) quad)
+                   (-> sv-240 quad)
+                   )
+                  (set! *volume-point-current* (+ *volume-point-current* 2))
+                  (+! (-> s2-0 point-count) 2)
+                  )
+                 )
+                (vector+! s0-0 s0-0 sv-160)
+                (vector+! s0-0 s0-0 sv-240)
+                (set! sv-256 (+ sv-256 2))
+                sv-256
                 )
                )
               )
              )
-            (label cfg-47)
-            (set! sv-272 (+ sv-272 1))
             )
-           (when (nonzero? sv-256)
-            (vector-float*!
-             s0-0
-             s0-0
-             (/ (-> (new 'static 'array float 1 1.0) 0) (the float sv-256))
+           (label cfg-47)
+           (set! sv-272 (+ sv-272 1))
+           )
+          (when (nonzero? sv-256)
+           (vector-float*!
+            s0-0
+            s0-0
+            (/ (-> (new 'static 'array float 1 1.0) 0) (the float sv-256))
+            )
+           (cond
+            ((>= *volume-normal-current* 599)
+             (format 0 "ERROR <GMJ>: camera editing out of volume normals~%")
              )
-            (cond
-             ((>= *volume-normal-current* 599)
-              (format 0 "ERROR <GMJ>: camera editing out of volume normals~%")
+            (else
+             (set!
+              (-> *volume-normal* data *volume-normal-current* quad)
+              (-> s0-0 quad)
               )
-             (else
-              (set!
-               (->
-                (the-as
-                 (pointer uint128)
-                 (+
-                  (+ (* *volume-normal-current* 16) 12)
-                  (the-as int *volume-normal*)
-                  )
-                 )
-                )
-               (-> s0-0 quad)
-               )
-              (set!
-               (->
-                (the-as
-                 (pointer uint128)
-                 (+
-                  (+ (* (+ *volume-normal-current* 1) 16) 12)
-                  (the-as int *volume-normal*)
-                  )
-                 )
-                )
-               (-> s3-0 s1-0 quad)
-               )
-              (set! *volume-normal-current* (+ *volume-normal-current* 2))
-              (let ((v1-132 (+ (-> s2-0 normal-count) 2)))
-               (set! (-> s2-0 normal-count) v1-132)
-               v1-132
-               )
+             (set!
+              (-> *volume-normal* data (+ *volume-normal-current* 1) quad)
+              (-> s3-0 s1-0 quad)
+              )
+             (set! *volume-normal-current* (+ *volume-normal-current* 2))
+             (let ((v1-132 (+ (-> s2-0 normal-count) 2)))
+              (set! (-> s2-0 normal-count) v1-132)
+              v1-132
               )
              )
             )
            )
-          (+! s1-0 1)
           )
          )
         )
@@ -613,27 +544,31 @@
      )
     (else
      (let ((s5-0 (-> *volume-descriptor* pos-vol gp-0)))
-      (let ((a0-7 (new 'static 'vector :w (the-as float #x80))))
+      (let
+       ((a0-7
+         (new 'static 'vector4w :data (new 'static 'array int32 4 0 0 0 #x80))
+         )
+        )
        (cond
         ((= (-> s5-0 volume-type) 'vol)
-         (set! (-> a0-7 x) (the-as float 0))
-         (set! (-> a0-7 y) (the-as float 192))
-         (set! (-> a0-7 z) (the-as float 0))
+         (set! (-> a0-7 x) 0)
+         (set! (-> a0-7 y) 192)
+         (set! (-> a0-7 z) 0)
          0
          )
         ((= (-> s5-0 volume-type) 'pvol)
-         (set! (-> a0-7 x) (the-as float 128))
-         (set! (-> a0-7 y) (the-as float 128))
-         (set! (-> a0-7 z) (the-as float 128))
+         (set! (-> a0-7 x) 128)
+         (set! (-> a0-7 y) 128)
+         (set! (-> a0-7 z) 128)
          )
         ((= (-> s5-0 volume-type) 'cutoutvol)
-         (set! (-> a0-7 x) (the-as float 192))
-         (set! (-> a0-7 y) (the-as float 0))
-         (set! (-> a0-7 z) (the-as float 0))
+         (set! (-> a0-7 x) 192)
+         (set! (-> a0-7 y) 0)
+         (set! (-> a0-7 z) 0)
          0
          )
         )
-       (camera-line-setup a0-7)
+       (camera-line-setup (the-as vector a0-7))
        )
       (let ((s4-0 (the-as object (-> s5-0 first-point))))
        (dotimes (s3-0 (/ (-> s5-0 point-count) 2))
@@ -699,7 +634,7 @@
    (origin vector   :inline :offset-assert  32)
    (color  vector4w         :offset-assert  48)
    (axis   vector           :offset-assert  52)
-   (disp   symbol           :offset-assert  56)
+   (disp   string           :offset-assert  56)
    )
   :method-count-assert 9
   :size-assert         #x3c
@@ -722,48 +657,41 @@
 ;; Used lq/sq
 (defun
   interp-test
-  ((arg0 (function vector vector vector int vector none))
+  ((arg0 (function vector vector vector float vector float none))
    (arg1 interp-test-info)
    )
   (let ((s3-0 (new-stack-vector0))
         (gp-0 (new-stack-vector0))
         )
-   (let ((t9-0 arg0)
-         (a0-1 s3-0)
-         (a1-1 (-> arg1 from))
-         (a2-0 (-> arg1 to))
-         (a3-0 (-> (new 'static 'array float 1 0.0) 0))
-         (t0-0 (-> arg1 axis))
-         )
+   (arg0
+    s3-0
+    (-> arg1 from)
+    (-> arg1 to)
+    (-> (new 'static 'array float 1 0.0) 0)
+    (-> arg1 axis)
     (-> (new 'static 'array float 1 65536.0) 0)
-    (t9-0 a0-1 a1-1 a2-0 (the-as int a3-0) t0-0)
     )
    (vector+! s3-0 s3-0 (-> arg1 origin))
    (dotimes (s2-0 10)
     (set! (-> gp-0 quad) (-> s3-0 quad))
-    (let ((t9-1 arg0)
-          (a0-5 s3-0)
-          (a1-4 (-> arg1 from))
-          (a2-1 (-> arg1 to))
-          (a3-1
-           (* 0.1 (+ (-> (new 'static 'array float 1 1.0) 0) (the float s2-0)))
-           )
-          (t0-1 (-> arg1 axis))
-          )
+    (arg0
+     s3-0
+     (-> arg1 from)
+     (-> arg1 to)
+     (* 0.1 (+ (-> (new 'static 'array float 1 1.0) 0) (the float s2-0)))
+     (-> arg1 axis)
      (-> (new 'static 'array float 1 65536.0) 0)
-     (t9-1 a0-5 a1-4 a2-1 (the-as int a3-1) t0-1)
      )
     (vector+! s3-0 s3-0 (-> arg1 origin))
     (camera-line s3-0 gp-0 (-> arg1 color))
     )
-   (let ((a0-8 gp-0)
-         (a1-8 (-> arg1 from))
-         (a2-3 (-> arg1 to))
-         (a3-2 (-> *CAM_LAYOUT-bank* debug-t))
-         (t0-2 (-> arg1 axis))
-         )
+   (arg0
+    gp-0
+    (-> arg1 from)
+    (-> arg1 to)
+    (-> *CAM_LAYOUT-bank* debug-t)
+    (-> arg1 axis)
     (-> (new 'static 'array float 1 65536.0) 0)
-    (arg0 a0-8 a1-8 a2-3 (the-as int a3-2) t0-2)
     )
    (format *stdcon* "~S  ~f~%" (-> arg1 disp) (vector-length gp-0))
    (vector+! gp-0 gp-0 (-> arg1 origin))
@@ -782,7 +710,7 @@
 ;; Used lq/sq
 (defun
   interp-test-deg
-  ((arg0 (function vector vector vector int vector none))
+  ((arg0 (function vector vector vector vector float none))
    (arg1 interp-test-info)
    )
   (let ((s3-0 (new-stack-vector0))
@@ -792,8 +720,8 @@
     s3-0
     (-> arg1 from)
     (-> arg1 to)
-    (the-as int (-> arg1 axis))
-    (the-as vector (-> (new 'static 'array float 1 0.0) 0))
+    (-> arg1 axis)
+    (-> (new 'static 'array float 1 0.0) 0)
     )
    (vector+! s3-0 s3-0 (-> arg1 origin))
    (dotimes (s2-0 10)
@@ -802,13 +730,10 @@
      s3-0
      (-> arg1 from)
      (-> arg1 to)
-     (the-as int (-> arg1 axis))
-     (the-as
-      vector
-      (*
-       182.04445
-       (* 18.0 (+ (-> (new 'static 'array float 1 1.0) 0) (the float s2-0)))
-       )
+     (-> arg1 axis)
+     (*
+      182.04445
+      (* 18.0 (+ (-> (new 'static 'array float 1 1.0) 0) (the float s2-0)))
       )
      )
     (vector+! s3-0 s3-0 (-> arg1 origin))
@@ -818,8 +743,8 @@
     gp-0
     (-> arg1 from)
     (-> arg1 to)
-    (the-as int (-> arg1 axis))
-    (the-as vector (* 182.04445 (* 180.0 (-> *CAM_LAYOUT-bank* debug-t))))
+    (-> arg1 axis)
+    (* 182.04445 (* 180.0 (-> *CAM_LAYOUT-bank* debug-t)))
     )
    (format *stdcon* "~S  ~f~%" (-> arg1 disp) (vector-length gp-0))
    (vector+! gp-0 gp-0 (-> arg1 origin))
@@ -851,14 +776,17 @@
       (logtest? (-> *display* real-actual-frame-counter) 8)
       )
      )
-    (cam-slave-get-rot arg0 (the-as quaternion s5-0))
+    (cam-slave-get-rot arg0 s5-0)
     (camera-fov-frame
      s5-0
      s4-0
      (* 0.5 (cam-slave-get-fov arg0))
      (-> (new 'static 'array float 1 0.75) 0)
      (-> (new 'static 'array float 1 1.0) 0)
-     (new 'static 'vector :z (the-as float #xff) :w (the-as float #x80))
+     (the-as
+      vector
+      (new 'static 'vector4w :data (new 'static 'array int32 4 0 0 #xff #x80))
+      )
      )
     )
    )
@@ -875,7 +803,10 @@
      (new 'static 'vector :y 1024.0)
      (new 'static 'vector :z 1024.0)
      s5-1
-     (new 'static 'vector :x (the-as float #x80) :w (the-as float #x80))
+     (the-as
+      vector
+      (new 'static 'vector4w :data (new 'static 'array int32 4 #x80 0 0 #x80))
+      )
      (-> (new 'static 'array float 1 4096.0) 0)
      )
     )
@@ -893,7 +824,10 @@
      (new 'static 'vector :y 1024.0)
      (new 'static 'vector :z 1024.0)
      s5-2
-     (new 'static 'vector :y (the-as float #x80) :w (the-as float #x80))
+     (the-as
+      vector
+      (new 'static 'vector4w :data (new 'static 'array int32 4 0 #x80 0 #x80))
+      )
      (-> (new 'static 'array float 1 4096.0) 0)
      )
     )
@@ -911,10 +845,12 @@
      (new 'static 'vector :y 1024.0)
      (new 'static 'vector :z 1024.0)
      s5-3
-     (new 'static 'vector
-      :x (the-as float #x80)
-      :z (the-as float #x80)
-      :w (the-as float #x80)
+     (the-as
+      vector
+      (new 'static 'vector4w
+       :data
+       (new 'static 'array int32 4 #x80 0 #x80 #x80)
+       )
       )
      (-> (new 'static 'array float 1 4096.0) 0)
      )
@@ -978,13 +914,9 @@
      (camera-line
       s2-0
       s5-4
-      (the-as
-       vector4w
-       (new 'static 'vector
-        :x (the-as float #xff)
-        :y (the-as float #xff)
-        :w (the-as float #x80)
-        )
+      (new 'static 'vector4w
+       :data
+       (new 'static 'array int32 4 #xff #xff 0 #x80)
        )
       )
      )
@@ -994,10 +926,12 @@
      (new 'static 'vector :y 1024.0)
      (new 'static 'vector :z 1024.0)
      s5-4
-     (new 'static 'vector
-      :x (the-as float #xff)
-      :y (the-as float #xff)
-      :w (the-as float #x80)
+     (the-as
+      vector
+      (new 'static 'vector4w
+       :data
+       (new 'static 'array int32 4 #xff #xff 0 #x80)
+       )
       )
      (-> (new 'static 'array float 1 4096.0) 0)
      )
@@ -1057,10 +991,7 @@
      (camera-line
       s2-1
       s5-5
-      (the-as
-       vector4w
-       (new 'static 'vector :z (the-as float #xff) :w (the-as float #x80))
-       )
+      (new 'static 'vector4w :data (new 'static 'array int32 4 0 0 #xff #x80))
       )
      )
     (curve-get-pos! s5-5 (-> *CAM_LAYOUT-bank* intro-t) s3-2)
@@ -1069,7 +1000,10 @@
      (new 'static 'vector :y 1024.0)
      (new 'static 'vector :z 1024.0)
      s5-5
-     (new 'static 'vector :z (the-as float #xff) :w (the-as float #x80))
+     (the-as
+      vector
+      (new 'static 'vector4w :data (new 'static 'array int32 4 0 0 #xff #x80))
+      )
      (-> (new 'static 'array float 1 4096.0) 0)
      )
     (curve-get-pos!
@@ -1086,7 +1020,10 @@
      (new 'static 'vector :y 1024.0)
      (new 'static 'vector :z 1024.0)
      s5-5
-     (new 'static 'vector :z (the-as float #xff) :w (the-as float #x80))
+     (the-as
+      vector
+      (new 'static 'vector4w :data (new 'static 'array int32 4 0 0 #xff #x80))
+      )
      (-> (new 'static 'array float 1 4096.0) 0)
      )
     )
@@ -1135,20 +1072,19 @@
     (camera-line
      s4-3
      s3-3
-     (the-as
-      vector4w
-      (new 'static 'vector :y (the-as float #x80) :w (the-as float #x80))
-      )
+     (new 'static 'vector4w :data (new 'static 'array int32 4 0 #x80 0 #x80))
      )
     (vector-lerp-clamp! s5-6 s4-3 s3-3 (-> *CAM_LAYOUT-bank* spline-t))
     (camera-cross
      (new 'static 'vector :y 1024.0)
      (new 'static 'vector :z 1024.0)
      s5-6
-     (new 'static 'vector
-      :x (the-as float #xff)
-      :y (the-as float #xff)
-      :w (the-as float #x80)
+     (the-as
+      vector
+      (new 'static 'vector4w
+       :data
+       (new 'static 'array int32 4 #xff #xff 0 #x80)
+       )
       )
      (-> (new 'static 'array float 1 4096.0) 0)
      )
@@ -1177,14 +1113,7 @@
     (camera-line
      (the-as vector (&+ s4-4 0))
      (the-as vector (&+ s4-4 16))
-     (the-as
-      vector4w
-      (new 'static 'vector
-       :y (the-as float #xff)
-       :z (the-as float #xff)
-       :w (the-as float #x80)
-       )
-      )
+     (new 'static 'vector4w :data (new 'static 'array int32 4 0 #xff #xff #x80))
      )
     (vector-lerp-clamp!
      s5-7
@@ -1196,10 +1125,12 @@
      (new 'static 'vector :y 1024.0)
      (new 'static 'vector :z 1024.0)
      s5-7
-     (new 'static 'vector
-      :y (the-as float #xff)
-      :z (the-as float #xff)
-      :w (the-as float #x80)
+     (the-as
+      vector
+      (new 'static 'vector4w
+       :data
+       (new 'static 'array int32 4 0 #xff #xff #x80)
+       )
       )
      (-> (new 'static 'array float 1 4096.0) 0)
      )
@@ -1217,27 +1148,17 @@
     (camera-line
      (-> s5-8 from)
      (-> s5-8 origin)
-     (the-as
-      vector4w
-      (new 'static 'vector
-       :x (the-as float #x80)
-       :y (the-as float #x80)
-       :z (the-as float #x80)
-       :w (the-as float #x80)
-       )
+     (new 'static 'vector4w
+      :data
+      (new 'static 'array int32 4 #x80 #x80 #x80 #x80)
       )
      )
     (camera-line
      (-> s5-8 to)
      (-> s5-8 origin)
-     (the-as
-      vector4w
-      (new 'static 'vector
-       :x (the-as float #x80)
-       :y (the-as float #x80)
-       :z (the-as float #x80)
-       :w (the-as float #x80)
-       )
+     (new 'static 'vector4w
+      :data
+      (new 'static 'array int32 4 #x80 #x80 #x80 #x80)
       )
      )
     (vector-! (-> s5-8 from) (-> s5-8 from) (-> s5-8 origin))
@@ -1248,14 +1169,9 @@
     (camera-line
      (-> s5-8 origin)
      s4-5
-     (the-as
-      vector4w
-      (new 'static 'vector
-       :x (the-as float #x80)
-       :y (the-as float #x80)
-       :z (the-as float #x80)
-       :w (the-as float #x80)
-       )
+     (new 'static 'vector4w
+      :data
+      (new 'static 'array int32 4 #x80 #x80 #x80 #x80)
       )
      )
     (when (not (paused?))
@@ -1266,89 +1182,62 @@
       )
      )
     (set! (-> s5-8 axis) #f)
-    (set! (-> s5-8 disp) (the-as symbol "li"))
+    (set! (-> s5-8 disp) "li")
     (set!
      (-> s5-8 color)
-     (the-as
-      vector4w
-      (new 'static 'vector :x (the-as float #xff) :w (the-as float #x80))
-      )
+     (new 'static 'vector4w :data (new 'static 'array int32 4 #xff 0 0 #x80))
      )
     (interp-test
-     (the-as (function vector vector vector int vector none) vector-lerp!)
+     (the-as
+      (function vector vector vector float vector float none)
+      vector-lerp!
+      )
      s5-8
      )
-    (set! (-> s5-8 disp) (the-as symbol "si"))
+    (set! (-> s5-8 disp) "si")
     (set!
      (-> s5-8 color)
-     (the-as
-      vector4w
-      (new 'static 'vector :y (the-as float #xff) :w (the-as float #x80))
-      )
+     (new 'static 'vector4w :data (new 'static 'array int32 4 0 #xff 0 #x80))
      )
     (interp-test
-     (the-as (function vector vector vector int vector none) v-slrp!)
+     (the-as (function vector vector vector float vector float none) v-slrp!)
      s5-8
      )
-    (set! (-> s5-8 disp) (the-as symbol "si2"))
+    (set! (-> s5-8 disp) "si2")
     (set!
      (-> s5-8 color)
-     (the-as
-      vector4w
-      (new 'static 'vector :z (the-as float #xff) :w (the-as float #x80))
-      )
+     (new 'static 'vector4w :data (new 'static 'array int32 4 0 0 #xff #x80))
      )
     (interp-test
-     (the-as (function vector vector vector int vector none) v-slrp2!)
+     (the-as (function vector vector vector float vector float none) v-slrp2!)
      s5-8
      )
-    (set! (-> s5-8 disp) (the-as symbol "si3"))
+    (set! (-> s5-8 disp) "si3")
     (set!
      (-> s5-8 color)
-     (the-as
-      vector4w
-      (new 'static 'vector
-       :x (the-as float #xff)
-       :z (the-as float #xff)
-       :w (the-as float #x80)
-       )
-      )
+     (new 'static 'vector4w :data (new 'static 'array int32 4 #xff 0 #xff #x80))
      )
     (interp-test-deg
-     (the-as (function vector vector vector int vector none) v-slrp3!)
+     (the-as (function vector vector vector vector float none) v-slrp3!)
      s5-8
      )
     (set! (-> s5-8 axis) (-> *camera* local-down))
-    (set! (-> s5-8 disp) (the-as symbol "si2d"))
+    (set! (-> s5-8 disp) "si2d")
     (set!
      (-> s5-8 color)
-     (the-as
-      vector4w
-      (new 'static 'vector
-       :y (the-as float #xff)
-       :z (the-as float #xff)
-       :w (the-as float #x80)
-       )
-      )
+     (new 'static 'vector4w :data (new 'static 'array int32 4 0 #xff #xff #x80))
      )
     (interp-test
-     (the-as (function vector vector vector int vector none) v-slrp2!)
+     (the-as (function vector vector vector float vector float none) v-slrp2!)
      s5-8
      )
-    (set! (-> s5-8 disp) (the-as symbol "si3d"))
+    (set! (-> s5-8 disp) "si3d")
     (set!
      (-> s5-8 color)
-     (the-as
-      vector4w
-      (new 'static 'vector
-       :x (the-as float #xff)
-       :y (the-as float #xff)
-       :w (the-as float #x80)
-       )
-      )
+     (new 'static 'vector4w :data (new 'static 'array int32 4 #xff #xff 0 #x80))
      )
     (interp-test-deg
-     (the-as (function vector vector vector int vector none) v-slrp3!)
+     (the-as (function vector vector vector vector float none) v-slrp3!)
      s5-8
      )
     )
@@ -1511,7 +1400,7 @@
 ;; definition for function clmf-pos-rot
 ;; Used lq/sq
 (defbehavior clmf-pos-rot cam-layout ((arg0 symbol) (arg1 symbol))
-  (local-vars (s2-0 structure) (s3-1 structure) (sv-192 vector))
+  (local-vars (s2-0 structure) (s3-1 structure) (sv-192 matrix))
   (cam-layout-print
    16
    *camera-layout-message-ypos*
@@ -1635,8 +1524,8 @@
                )
     )
    (let ((s1-1 (new 'stack-no-clear 'matrix)))
-    (set! sv-192 (new 'stack-no-clear 'vector))
-    (let ((s0-1 (new 'stack-no-clear 'matrix)))
+    (set! sv-192 (new 'stack-no-clear 'matrix))
+    (let ((s0-1 (new 'stack-no-clear 'vector)))
      (if (not s3-1)
       (return #f)
       )
@@ -1647,53 +1536,34 @@
       s4-0
       (-> (new 'static 'array float 1 409.6) 0)
       )
-     (the-as quaternion (cond
-                         ((not arg1)
-                          (the-as quaternion #f)
-                          )
-                         ((zero? arg1)
-                          (the-as quaternion #f)
-                          )
-                         (else
-                          (cam-slave-get-rot
-                           (the-as entity-actor (-> self cam-entity))
-                           (the-as quaternion sv-192)
-                           )
-                          (vector-float*! s5-0 s5-0 100.0)
-                          (matrix-rotate-x! s1-1 (- (-> s5-0 x)))
-                          (matrix*!
-                           (the-as matrix sv-192)
-                           s1-1
-                           (the-as matrix sv-192)
-                           )
-                          (matrix-rotate-y! s1-1 (-> s5-0 y))
-                          (matrix*!
-                           (the-as matrix sv-192)
-                           (the-as matrix sv-192)
-                           s1-1
-                           )
-                          (matrix-rotate-z! s1-1 (- (-> s5-0 z)))
-                          (matrix*!
-                           (the-as matrix sv-192)
-                           s1-1
-                           (the-as matrix sv-192)
-                           )
-                          (matrix->quaternion
-                           (the-as quaternion s0-1)
-                           (the-as matrix sv-192)
-                           )
-                          (quaternion-inverse!
-                           (the-as quaternion s2-0)
-                           (the-as quaternion (-> self cam-entity connect))
-                           )
-                          (quaternion*!
-                           (the-as quaternion s2-0)
-                           (the-as quaternion s0-1)
-                           (the-as quaternion s2-0)
-                           )
-                          (quaternion-normalize! (the-as quaternion s2-0))
-                          )
-                         )
+     (cond
+      ((not arg1)
+       (the-as quaternion #f)
+       )
+      ((zero? arg1)
+       (the-as quaternion #f)
+       )
+      (else
+       (cam-slave-get-rot (the-as entity-actor (-> self cam-entity)) sv-192)
+       (vector-float*! s5-0 s5-0 100.0)
+       (matrix-rotate-x! s1-1 (- (-> s5-0 x)))
+       (matrix*! sv-192 s1-1 sv-192)
+       (matrix-rotate-y! s1-1 (-> s5-0 y))
+       (matrix*! sv-192 sv-192 s1-1)
+       (matrix-rotate-z! s1-1 (- (-> s5-0 z)))
+       (matrix*! sv-192 s1-1 sv-192)
+       (matrix->quaternion (the-as quaternion s0-1) sv-192)
+       (quaternion-inverse!
+        (the-as quaternion s2-0)
+        (the-as quaternion (-> self cam-entity connect))
+        )
+       (quaternion*!
+        (the-as quaternion s2-0)
+        (the-as quaternion s0-1)
+        (the-as quaternion s2-0)
+        )
+       (quaternion-normalize! (the-as quaternion s2-0))
+       )
       )
      )
     )
@@ -1872,7 +1742,7 @@
   (set! (-> *camera-other-root* quad) (-> *camera-other-trans* quad))
   (cam-slave-get-rot
    (the-as entity-actor (-> self cam-entity))
-   (the-as quaternion *camera-other-matrix*)
+   *camera-other-matrix*
    )
   (set! *camera-look-through-other* 10)
   (set! *camera-read-analog* #f)
@@ -3921,9 +3791,9 @@
 ;; definition for function clmf-cam-string
 ;; Used lq/sq
 (defbehavior clmf-cam-string cam-layout ((arg0 string) (arg1 symbol))
-  (local-vars (r0-0 uint128) (v1-6 uint128) (sv-16 int))
+  (local-vars (sv-16 res-tag))
   (format arg0 ":")
-  (set! sv-16 0)
+  (set! sv-16 (new 'static 'res-tag))
   (let
    ((s5-1
      (res-lump-data
@@ -3931,23 +3801,15 @@
       arg1
       pointer
       :tag-ptr
-      (the-as (pointer res-tag) (& sv-16))
+      (& sv-16)
       :time
       (-> (new 'static 'array float 1 -1000000000.0) 0)
       )
      )
     )
    (when s5-1
-    (let ((s4-0 0))
-     (while (begin
-             (let ((v1-5 (the-as uint128 sv-16)))
-              (.pcpyud v1-6 v1-5 r0-0)
-              )
-             (< s4-0 (shr (* (the-as int v1-6) 2) 49))
-             )
-      (format arg0 " ~S" (-> (the-as (pointer uint32) (&+ s5-1 (* s4-0 4)))))
-      (+! s4-0 1)
-      )
+    (dotimes (s4-0 (the-as int (-> sv-16 elt-count)))
+     (format arg0 " ~S" (-> (the-as (pointer uint32) (&+ s5-1 (* s4-0 4)))))
      )
     )
    )

@@ -209,9 +209,10 @@
 
 ;; A group of collide-shape-prim's
 (deftype collide-shape-prim-group (collide-shape-prim)
-  ((num-prims       int32                :offset-assert  72)
-   (allocated-prims int32                :offset-assert  76)
-   (prim            collide-shape-prim 1 :offset-assert  80) ; array of references
+  ((num-prims       int32                     :offset-assert 72)
+   (allocated-prims int32                     :offset-assert 76)
+   (prim            collide-shape-prim  1     :offset-assert 80)
+   (prims           collide-shape-prim  :dynamic :score 20 :offset 80) ;; added
    )
   :method-count-assert 30
   :size-assert         #x54
@@ -270,7 +271,7 @@
     (dummy-46 (_type_) none 46)
     (dummy-47 (_type_) none 47)
     (dummy-48 (_type_) none 48)
-    (dummy-49 () none 49)
+    (dummy-49 (_type_) none 49)
     (dummy-50 (_type_) none 50)
     (dummy-51 () none 51)
     (dummy-52 () none 52)
@@ -317,7 +318,7 @@
     (dummy-58 (_type_ vector) none 58)
     (dummy-59 (_type_ vector uint float symbol symbol symbol) none 59)
     (dummy-60 (_type_ float float symbol uint) none 60)
-    (dummy-61 () none 61)
+    (TODO-RENAME-61 (_type_ vector vector vector) none 61)
     (dummy-62 (_type_ vector float) vector 62)
     (dummy-63 () none 63)
     (dummy-64 () none 64)
@@ -375,7 +376,7 @@
     (set! (-> obj prim-core prim-type) 0)
     (while (nonzero? elt-count)
       (+! elt-count -1)
-      (set! (-> obj prim elt-count) #f)
+      (set! (-> obj prim elt-count) (the collide-shape-prim #f))
       (nop!)
       )
     obj
@@ -430,16 +431,16 @@
     ;; add us to right list.
     (case collide-list-kind
       (((collide-list-enum hit-by-player))
-       (add-connection *collide-hit-by-player-list* proc (the (function object object object object object) #f) obj #f #f))
+       (add-connection *collide-hit-by-player-list* proc #f obj #f #f))
 
       (((collide-list-enum usually-hit-by-player))
-       (add-connection *collide-usually-hit-by-player-list* proc (the (function object object object object object) #f) obj #f #f))
+       (add-connection *collide-usually-hit-by-player-list* proc #f obj #f #f))
 
       (((collide-list-enum hit-by-others))
-       (add-connection *collide-hit-by-others-list* proc (the (function object object object object object) #f) obj #f #f))
+       (add-connection *collide-hit-by-others-list* proc #f obj #f #f))
 
       (((collide-list-enum player))
-       (add-connection *collide-player-list* proc (the (function object object object object object) #f) obj #f #f))
+       (add-connection *collide-player-list* proc #f obj #f #f))
 
       (else
        (format 0 "Unsupported collide-list-enum in collide-shape constructor!~%"))

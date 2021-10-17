@@ -7,7 +7,8 @@
 
 (define-extern *sage-sg* skeleton-group)
 
-;; definition of type sage
+;; DECOMP BEGINS
+
 (deftype sage (process-taskable)
   ((reminder-played basic   :offset-assert 380)
    (assistant       handle  :offset-assert 384)
@@ -18,7 +19,7 @@
   :flag-assert         #x3501200188
   )
 
-;; failed to figure out what this is:
+
 (let
   ((v1-1
     (new 'static 'skeleton-group
@@ -36,7 +37,6 @@
   (set! *sage-sg* v1-1)
   )
 
-;; definition for method 32 of type sage
 (defmethod play-anim! sage ((obj sage) (arg0 symbol))
   (with-pp
    (when (!= *kernel-boot-message* 'play)
@@ -90,9 +90,9 @@
      )
     )
    (case (current-status (-> obj tasks)) 
-    ((2 3)
+    (((task-status need-hint) (task-status need-introduction))
       (case (current-task (-> obj tasks)) 
-       ((109)
+       (((game-task intro))
          (when arg0
           (close-status! (-> obj tasks) (task-status need-introduction))
           (set-setting! *setting-control* pp 'music-volume-movie 'abs 0.0 0)
@@ -303,7 +303,7 @@
             )
           )
          )
-       ((15)
+       (((game-task beach-ecorocks))
         (when arg0
          (let* ((s5-1 (-> obj tasks))
                 (s4-0 (method-of-object s5-1 save-reminder))
@@ -506,7 +506,7 @@
         )
        )
       )
-    ((5)
+    (((task-status need-reminder))
      (set! (-> obj skippable) #t)
      (if arg0
       (set! (-> obj reminder-played) #t)
@@ -621,7 +621,7 @@
        )
       )
      )
-    ((6)
+    (((task-status need-reward-speech))
      (when arg0
       (set-setting! *setting-control* pp 'music-volume-movie 'abs 0.0 0)
       (copy-settings-from-target! *setting-control*)
@@ -646,7 +646,7 @@
                                                    (run-now-in-process
                                                     s5-2
                                                     manipy-init
-                                                    (-> obj root trans)
+                                                    (-> obj root-override trans)
                                                     (-> obj entity)
                                                     *assistant-sg*
                                                     #f
@@ -656,27 +656,9 @@
                                  )
         )
        )
-      (let ((a1-16 (new 'stack-no-clear 'event-message-block)))
-       (set! (-> a1-16 from) pp)
-       (set! (-> a1-16 num-params) 1)
-       (set! (-> a1-16 message) 'anim-mode)
-       (set! (-> a1-16 param 0) (the-as uint 'clone-anim))
-       (send-event-function (handle->process (-> obj assistant)) a1-16)
-       )
-      (let ((a1-17 (new 'stack-no-clear 'event-message-block)))
-       (set! (-> a1-17 from) pp)
-       (set! (-> a1-17 num-params) 1)
-       (set! (-> a1-17 message) 'blend-shape)
-       (set! (-> a1-17 param 0) (the-as uint #t))
-       (send-event-function (handle->process (-> obj assistant)) a1-17)
-       )
-      (let ((a1-18 (new 'stack-no-clear 'event-message-block)))
-       (set! (-> a1-18 from) pp)
-       (set! (-> a1-18 num-params) 1)
-       (set! (-> a1-18 message) 'center-joint)
-       (set! (-> a1-18 param 0) (the-as uint 3))
-       (send-event-function (handle->process (-> obj assistant)) a1-18)
-       )
+      (send-event (handle->process (-> obj assistant)) 'anim-mode 'clone-anim)
+      (send-event (handle->process (-> obj assistant)) 'blend-shape #t)
+      (send-event (handle->process (-> obj assistant)) 'center-joint 3)
       (let ((v1-68 (handle->process (-> obj assistant))))
        (if v1-68
         (set! (-> (the-as assistant v1-68) draw light-index) (the-as uint 1))
@@ -981,9 +963,7 @@
        0
        "ERROR: <GMJ>: ~S playing anim for task status ~S~%"
        (-> obj name)
-       (task-status->string
-        (the-as task-status (current-status (-> obj tasks)))
-        )
+       (task-status->string (current-status (-> obj tasks)))
        )
       )
      (get-art-elem obj)
@@ -992,8 +972,6 @@
    )
   )
 
-;; definition for method 45 of type sage
-;; INFO: Return type mismatch symbol vs none.
 (defmethod dummy-45 sage ((obj sage))
   (cond
    ((and
@@ -1018,7 +996,10 @@
     )
    ((and
      (-> obj reminder-played)
-     (< 81920.0 (vector-vector-distance (-> obj root trans) (camera-pos)))
+     (<
+      81920.0
+      (vector-vector-distance (-> obj root-override trans) (camera-pos))
+      )
      )
     #t
     )
@@ -1028,23 +1009,22 @@
   (none)
   )
 
-;; definition for method 31 of type sage
 (defmethod get-art-elem sage ((obj sage))
   (cond
    ((and
-     (= (current-task (-> obj tasks)) 15)
+     (= (current-task (-> obj tasks)) (game-task beach-ecorocks))
      (or
-      (= (current-status (-> obj tasks)) 2)
-      (= (current-status (-> obj tasks)) 3)
+      (= (current-status (-> obj tasks)) (task-status need-hint))
+      (= (current-status (-> obj tasks)) (task-status need-introduction))
       )
      )
     (save-reminder (-> obj tasks) 0 0)
     )
    ((and
-     (= (current-task (-> obj tasks)) 26)
+     (= (current-task (-> obj tasks)) (game-task misty-cannon))
      (or
-      (= (current-status (-> obj tasks)) 2)
-      (= (current-status (-> obj tasks)) 3)
+      (= (current-status (-> obj tasks)) (task-status need-hint))
+      (= (current-status (-> obj tasks)) (task-status need-introduction))
       )
      )
     (save-reminder (-> obj tasks) 1 0)
@@ -1052,7 +1032,7 @@
    ((dummy-45 obj)
     (set! (-> obj reminder-played) #f)
     (cond
-     ((zero? (current-task (-> obj tasks)))
+     ((= (current-task (-> obj tasks)) (game-task none))
       (case (get-reminder (-> obj tasks) 0) 
        ((2)
          (save-reminder (-> obj tasks) 3 0)
@@ -1110,7 +1090,6 @@
    )
   )
 
-;; definition for method 43 of type sage
 (defmethod TODO-RENAME-43 sage ((obj sage))
   (let
    ((s5-0
@@ -1130,43 +1109,62 @@
            )
      (cond
       ((< (-> s5-0 y) -12288.0)
+       #f
        )
       ((< 0.8 f0-2)
-       (dummy-11 (-> obj ambient) "SAGELP03" #f (-> obj root trans))
+       (play-ambient
+        (-> obj ambient)
+        "SAGELP03"
+        #f
+        (-> obj root-override trans)
+        )
        )
       ((< 0.6 f0-2)
-       (dummy-11 (-> obj ambient) "SAGELP04" #f (-> obj root trans))
+       (play-ambient
+        (-> obj ambient)
+        "SAGELP04"
+        #f
+        (-> obj root-override trans)
+        )
        )
       ((< 0.4 f0-2)
-       (dummy-11 (-> obj ambient) "SAGELP05" #f (-> obj root trans))
+       (play-ambient
+        (-> obj ambient)
+        "SAGELP05"
+        #f
+        (-> obj root-override trans)
+        )
        )
       ((< 0.2 f0-2)
-       (dummy-11 (-> obj ambient) "SAGELP06" #f (-> obj root trans))
+       (play-ambient
+        (-> obj ambient)
+        "SAGELP06"
+        #f
+        (-> obj root-override trans)
+        )
        )
       (else
-       (dummy-11 (-> obj ambient) "SAGELP11" #f (-> obj root trans))
+       (play-ambient
+        (-> obj ambient)
+        "SAGELP11"
+        #f
+        (-> obj root-override trans)
+        )
        )
       )
      )
     )
    )
-  (none)
   )
 
-;; failed to figure out what this is:
 (defstate idle (sage)
   :virtual #t
   :trans
   (behavior ()
    (case (get-task-status (game-task intro)) 
     (((task-status need-reward-speech))
-      (when (process-grab? *target*)
-       (let ((a1-0 (new 'stack-no-clear 'event-message-block)))
-        (set! (-> a1-0 from) self)
-        (set! (-> a1-0 num-params) 0)
-        (set! (-> a1-0 message) 'play-anim)
-        (send-event-function self a1-0)
-        )
+      (if (process-grab? *target*)
+       (send-event self 'play-anim)
        )
       )
     )
@@ -1224,7 +1222,10 @@
        (if
         (and
          (-> self reminder-played)
-         (< 81920.0 (vector-vector-distance (-> self root trans) (camera-pos)))
+         (<
+          81920.0
+          (vector-vector-distance (-> self root-override trans) (camera-pos))
+          )
          )
         (go-virtual idle)
         )
@@ -1298,7 +1299,6 @@
    )
   )
 
-;; failed to figure out what this is:
 (defstate play-anim (sage)
   :virtual #t
   :exit
@@ -1335,14 +1335,11 @@
    )
   )
 
-;; definition for method 39 of type sage
 (defmethod should-display? sage ((obj sage))
   (not (sages-kidnapped?))
   )
 
-;; definition for method 41 of type sage
-;; INFO: Return type mismatch int vs none.
-(defmethod initialize-collision sage ((obj sage) (arg0 int))
+(defmethod initialize-collision sage ((obj sage) (arg0 int) (arg1 vector))
   (let
    ((s5-0 (new 'process 'collide-shape obj (collide-list-enum hit-by-player))))
    (let ((s4-0 (new 'process 'collide-shape-prim-group s5-0 (the-as uint 2) 0)))
@@ -1374,13 +1371,12 @@
     )
    (set! (-> s5-0 nav-radius) (* 0.75 (-> s5-0 root-prim local-sphere w)))
    (dummy-50 s5-0)
-   (set! (-> obj root) s5-0)
+   (set! (-> obj root-override) s5-0)
    )
   0
   (none)
   )
 
-;; definition for method 11 of type sage
 (defmethod copy-defaults! sage ((obj sage) (arg0 res-lump))
   (dummy-40 obj arg0 *sage-sg* 3 40 (new 'static 'vector :w 4096.0) 5)
   (set! (-> obj tasks) (get-task-control (game-task misty-cannon)))
@@ -1391,3 +1387,7 @@
   (dummy-42 obj)
   (none)
   )
+
+
+
+

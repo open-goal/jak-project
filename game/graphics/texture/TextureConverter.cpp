@@ -175,3 +175,7 @@ void TextureConverter::download_rgba8888(u8* result,
 
   assert(out_offset == expected_size_bytes);
 }
+
+void TextureConverter::serialize(Serializer& ser) {
+  ser.from_pod_vector(&m_vram);
+}

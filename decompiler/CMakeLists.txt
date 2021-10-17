@@ -62,12 +62,19 @@ add_library(
         util/data_decompile.cpp
         util/DataParser.cpp
         util/DecompilerTypeSystem.cpp
+        util/sparticle_decompile.cpp
         util/TP_Type.cpp
 
         VuDisasm/VuDisassembler.cpp
         VuDisasm/VuInstruction.cpp
 
         config.cpp)
+
+if (UNIX)
+    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -O2")
+elseif (WIN32)
+    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} /O2")
+endif ()
 
 target_link_libraries(decomp
         lzokay

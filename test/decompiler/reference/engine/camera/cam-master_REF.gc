@@ -534,7 +534,7 @@
                     (if *display-cam-los-debug*
                      (format *stdcon* "ride edge~%")
                      )
-                    (let ((s4-2 (new 'stack-no-clear 'bone))
+                    (let ((s4-2 (new 'stack-no-clear 'collide-mesh-cache-tri))
                           (gp-5 (new 'stack-no-clear 'vector))
                           (s5-2 (new 'stack-no-clear 'vector))
                           )
@@ -555,7 +555,7 @@
                          4300.8
                          1
                          (the-as process #f)
-                         (the-as collide-mesh-cache-tri s4-2)
+                         s4-2
                          4098
                          )
                         )
@@ -861,41 +861,22 @@
    (set! (-> self stringMinLength) (-> *CAMERA-bank* default-string-min-z))
    (set! (-> self stringMaxLength) (-> *CAMERA-bank* default-string-max-z))
    (set! (-> self stringCliffHeight) 163840.0)
-   (let ((a1-0 (new 'stack-no-clear 'event-message-block)))
-    (set! (-> a1-0 from) self)
-    (set! (-> a1-0 num-params) 1)
-    (set! (-> a1-0 message) 'point-of-interest)
-    (set! (-> a1-0 param 0) (the-as uint #f))
-    (send-event-function *camera* a1-0)
-    )
+   (send-event *camera* 'point-of-interest #f)
    (set! (-> *camera-combiner* tracking point-of-interest-blend target) 0.0)
    (let ((a1-1 (new 'stack-no-clear 'event-message-block)))
     (set! (-> a1-1 from) self)
     (set! (-> a1-1 num-params) 1)
     (set! (-> a1-1 message) 'query-state)
     (set! (-> a1-1 param 0) (the-as uint *camera-base-mode*))
-    (when (not (send-event-function *camera* a1-1))
-     (let ((a1-2 (new 'stack-no-clear 'event-message-block)))
-      (set! (-> a1-2 from) self)
-      (set! (-> a1-2 num-params) 2)
-      (set! (-> a1-2 message) 'change-state)
-      (set! (-> a1-2 param 0) (the-as uint *camera-base-mode*))
-      (set! (-> a1-2 param 1) (the-as uint 450))
-      (send-event-function *camera* a1-2)
-      )
+    (if (not (send-event-function *camera* a1-1))
+     (send-event *camera* 'change-state *camera-base-mode* 450)
      )
     )
    (set!
     (-> *camera-combiner* tracking tilt-adjust target)
     (-> *CAMERA-bank* default-tilt-adjust)
     )
-   (let ((a1-3 (new 'stack-no-clear 'event-message-block)))
-    (set! (-> a1-3 from) self)
-    (set! (-> a1-3 num-params) 1)
-    (set! (-> a1-3 message) 'clear-slave-option)
-    (set! (-> a1-3 param 0) (the-as uint #x10000))
-    (send-event-function *camera* a1-3)
-    )
+   (send-event *camera* 'clear-slave-option #x10000)
    )
   )
 
@@ -935,19 +916,13 @@
     )
    )
   (let ((s5-0 (new 'stack-no-clear 'vector)))
-   (when
+   (if
     (cam-slave-get-vector-with-offset
      (the-as entity-actor arg0)
      s5-0
      'interesting
      )
-    (let ((a1-5 (new 'stack-no-clear 'event-message-block)))
-     (set! (-> a1-5 from) self)
-     (set! (-> a1-5 num-params) 1)
-     (set! (-> a1-5 message) 'point-of-interest)
-     (set! (-> a1-5 param 0) (the-as uint s5-0))
-     (send-event-function *camera* a1-5)
-     )
+    (send-event *camera* 'point-of-interest s5-0)
     )
    )
   (if (< 405504.0 (-> self stringMaxLength))
@@ -962,25 +937,12 @@
    (set! (-> a1-7 num-params) 1)
    (set! (-> a1-7 message) 'query-state)
    (set! (-> a1-7 param 0) (the-as uint *camera-base-mode*))
-   (when (not (send-event-function *camera* a1-7))
-    (let ((a1-8 (new 'stack-no-clear 'event-message-block)))
-     (set! (-> a1-8 from) self)
-     (set! (-> a1-8 num-params) 2)
-     (set! (-> a1-8 message) 'change-state)
-     (set! (-> a1-8 param 0) (the-as uint *camera-base-mode*))
-     (set! (-> a1-8 param 1) (the-as uint 450))
-     (send-event-function *camera* a1-8)
-     )
+   (if (not (send-event-function *camera* a1-7))
+    (send-event *camera* 'change-state *camera-base-mode* 450)
     )
    )
-  (when (logtest? #x10000 (cam-slave-get-flags (-> self cam-entity) 'flags))
-   (let ((a1-10 (new 'stack-no-clear 'event-message-block)))
-    (set! (-> a1-10 from) self)
-    (set! (-> a1-10 num-params) 1)
-    (set! (-> a1-10 message) 'set-slave-option)
-    (set! (-> a1-10 param 0) (the-as uint #x10000))
-    (send-event-function *camera* a1-10)
-    )
+  (if (logtest? #x10000 (cam-slave-get-flags (-> self cam-entity) 'flags))
+   (send-event *camera* 'set-slave-option #x10000)
    )
   (let
    ((f0-12
@@ -1014,16 +976,16 @@
 ;; definition for function master-is-hopeful-better?
 (defbehavior
   master-is-hopeful-better? camera-master
-  ((arg0 camera-master) (arg1 camera-master))
+  ((arg0 camera-slave) (arg1 camera-slave))
   (if (not *camera-combiner*)
    #f
    (<
     (vector-dot
-     (the-as vector (-> arg0 string-max))
+     (-> arg0 tracking inv-mat vector 2)
      (-> *camera-combiner* inv-camera-rot vector 2)
      )
     (vector-dot
-     (the-as vector (-> arg1 string-max))
+     (-> arg1 tracking inv-mat vector 2)
      (-> *camera-combiner* inv-camera-rot vector 2)
      )
     )
@@ -1043,7 +1005,7 @@
    (sv-16 res-tag)
    (sv-112 process)
    (sv-128 string)
-   (sv-144 uint)
+   (sv-144 string)
    )
   (set! (-> self cam-entity) arg0)
   10
@@ -1086,182 +1048,106 @@
     )
    )
   (set! sv-16 (new 'static 'res-tag))
-  (let ((s4-2 (res-lump-data arg0 'alternates pointer :tag-ptr (& sv-16))))
+  (let
+   ((s4-2 (res-lump-data arg0 'alternates (pointer string) :tag-ptr (& sv-16))))
    (when s4-2
     (dotimes (s3-2 (the-as int (-> sv-16 elt-count)))
-     (let
-      ((s2-0
-        (entity-by-name
-         (the-as string (-> (the-as (pointer uint32) (&+ s4-2 (* s3-2 4)))))
-         )
-        )
-       )
-      (set! v0-21 (the-as none (cond
-                                (s2-0
-                                 (let ((s0-0 (cam-state-from-entity s2-0)))
-                                  (cond
-                                   ((= s0-0 *camera-base-mode*)
-                                    (deactivate (-> gp-0 0))
-                                    (master-base-region s2-0)
-                                    (return #t)
-                                    v0-21
-                                    )
-                                   (else
-                                    (the-as none (cond
-                                                  (s0-0
-                                                   (set!
-                                                    sv-112
-                                                    (get-process
-                                                     *camera-dead-pool*
-                                                     camera-slave
-                                                     #x4000
-                                                     )
-                                                    )
-                                                   (let ((s1-0 (when sv-112
-                                                                (let
-                                                                 ((t9-15
-                                                                   (method-of-type
-                                                                    camera-slave
-                                                                    activate
-                                                                    )
-                                                                   )
-                                                                  )
-                                                                 (t9-15
-                                                                  (the-as
-                                                                   camera-slave
-                                                                   sv-112
-                                                                   )
-                                                                  self
-                                                                  'camera-slave
-                                                                  (the-as
-                                                                   pointer
-                                                                   #x70004000
-                                                                   )
-                                                                  )
-                                                                 )
-                                                                (run-now-in-process
-                                                                 sv-112
-                                                                 cam-slave-init
-                                                                 s0-0
-                                                                 s2-0
-                                                                 )
-                                                                (->
-                                                                 sv-112
-                                                                 ppointer
-                                                                 )
-                                                                )
-                                                          )
-                                                         )
-                                                    (the-as none (cond
-                                                                  (s1-0
-                                                                   (setup-slave-for-hopefull
-                                                                    (the-as
-                                                                     camera-slave
-                                                                     (ppointer->process
-                                                                      s1-0
-                                                                      )
-                                                                     )
-                                                                    )
-                                                                   (cond
-                                                                    ((master-is-hopeful-better?
-                                                                      (the-as
-                                                                       camera-master
-                                                                       (ppointer->process
-                                                                        gp-0
-                                                                        )
-                                                                       )
-                                                                      (the-as
-                                                                       camera-master
-                                                                       (ppointer->process
-                                                                        s1-0
-                                                                        )
-                                                                       )
-                                                                      )
-                                                                     (deactivate
-                                                                      (->
-                                                                       gp-0
-                                                                       0
-                                                                       )
-                                                                      )
-                                                                     (set!
-                                                                      gp-0
-                                                                      s1-0
-                                                                      )
-                                                                     gp-0
-                                                                     )
-                                                                    (else
-                                                                     (deactivate
-                                                                      (->
-                                                                       s1-0
-                                                                       0
-                                                                       )
-                                                                      )
-                                                                     )
-                                                                    )
-                                                                   )
-                                                                  (else
-                                                                   (format
-                                                                    0
-                                                                    "ERROR <GMJ>: alternate region activate failed~%"
-                                                                    )
-                                                                   )
-                                                                  )
-                                                     )
-                                                    )
-                                                   )
-                                                  (else
-                                                   (let ((s1-1 format)
-                                                         (s0-1 0)
-                                                         )
-                                                    (set!
-                                                     sv-128
-                                                     "ERROR <GMJ>: alternate camera region '~S' didn't produce a state~%"
-                                                     )
-                                                    (let
-                                                     ((a2-10
-                                                       (res-lump-struct
-                                                        s2-0
-                                                        'name
-                                                        structure
-                                                        )
-                                                       )
-                                                      )
-                                                     (s1-1 s0-1 sv-128 a2-10)
-                                                     )
-                                                    )
-                                                   )
-                                                  )
-                                     )
-                                    )
-                                   )
-                                  )
-                                 )
-                                (else
-                                 (let ((s2-1 format)
-                                       (s1-2 0)
-                                       (s0-2
-                                        "ERROR <GMJ>: alternate '~S' not found for '~S'~%"
-                                        )
+     (let ((s2-0 (entity-by-name (-> s4-2 s3-2))))
+      (set! v0-21 (cond
+                   (s2-0
+                    (let ((s0-0 (cam-state-from-entity s2-0)))
+                     (cond
+                      ((= s0-0 *camera-base-mode*)
+                       (deactivate (-> gp-0 0))
+                       (master-base-region s2-0)
+                       (return #t)
+                       v0-21
+                       )
+                      (s0-0
+                       (set!
+                        sv-112
+                        (get-process *camera-dead-pool* camera-slave #x4000)
+                        )
+                       (let ((s1-0 (when sv-112
+                                    (let
+                                     ((t9-15
+                                       (method-of-type camera-slave activate)
                                        )
-                                  (set!
-                                   sv-144
-                                   (->
-                                    (the-as
-                                     (pointer uint32)
-                                     (&+ s4-2 (* s3-2 4))
+                                      )
+                                     (t9-15
+                                      (the-as camera-slave sv-112)
+                                      self
+                                      'camera-slave
+                                      (the-as pointer #x70004000)
+                                      )
                                      )
-                                    )
-                                   )
-                                  (let
-                                   ((a3-8
-                                     (res-lump-struct arg0 'name structure)
+                                    (run-now-in-process
+                                     sv-112
+                                     cam-slave-init
+                                     s0-0
+                                     s2-0
                                      )
+                                    (-> sv-112 ppointer)
                                     )
-                                   (s2-1 s1-2 s0-2 sv-144 a3-8)
-                                   )
-                                  )
-                                 )
-                                )
+                              )
+                             )
+                        (cond
+                         (s1-0
+                          (setup-slave-for-hopefull
+                           (the-as camera-slave (ppointer->process s1-0))
+                           )
+                          (cond
+                           ((master-is-hopeful-better?
+                             (the-as camera-slave (ppointer->process gp-0))
+                             (the-as camera-slave (ppointer->process s1-0))
+                             )
+                            (deactivate (-> gp-0 0))
+                            (set! gp-0 s1-0)
+                            gp-0
+                            )
+                           (else
+                            (deactivate (-> s1-0 0))
+                            )
+                           )
+                          )
+                         (else
+                          (format
+                           0
+                           "ERROR <GMJ>: alternate region activate failed~%"
+                           )
+                          )
+                         )
+                        )
+                       )
+                      (else
+                       (let ((s1-1 format)
+                             (s0-1 0)
+                             )
+                        (set!
+                         sv-128
+                         "ERROR <GMJ>: alternate camera region '~S' didn't produce a state~%"
+                         )
+                        (let ((a2-10 (res-lump-struct s2-0 'name structure)))
+                         (s1-1 s0-1 sv-128 a2-10)
+                         )
+                        )
+                       )
+                      )
+                     )
+                    )
+                   (else
+                    (let ((s2-1 format)
+                          (s1-2 0)
+                          (s0-2
+                           "ERROR <GMJ>: alternate '~S' not found for '~S'~%"
+                           )
+                          )
+                     (set! sv-144 (-> s4-2 s3-2))
+                     (let ((a3-8 (res-lump-struct arg0 'name structure)))
+                      (s2-1 s1-2 s0-2 sv-144 a3-8)
+                      )
+                     )
+                    )
                    )
        )
       )
@@ -1284,14 +1170,7 @@
    (if (nonzero? (-> self force-blend))
     (set! v1-48 (min v1-48 (the-as int (-> self force-blend-time))))
     )
-   (let ((a1-16 (new 'stack-no-clear 'event-message-block)))
-    (set! (-> a1-16 from) self)
-    (set! (-> a1-16 num-params) 2)
-    (set! (-> a1-16 message) 'change-state)
-    (set! (-> a1-16 param 0) (the-as uint (ppointer->process gp-0)))
-    (set! (-> a1-16 param 1) (the-as uint v1-48))
-    (send-event-function *camera* a1-16)
-    )
+   (send-event *camera* 'change-state (ppointer->process gp-0) v1-48)
    )
   #t
   )
@@ -1403,14 +1282,7 @@
   :enter
   (behavior ()
    (if (and (nonzero? camera-master-debug) *debug-segment*)
-    (add-connection
-     *debug-engine*
-     self
-     (the-as (function object object object object object) camera-master-debug)
-     self
-     #f
-     #f
-     )
+    (add-connection *debug-engine* self camera-master-debug self #f #f)
     )
    (none)
    )
@@ -1582,12 +1454,7 @@
         (the-as pointer #x70004000)
         )
        )
-      (let ((t9-6 (the-as (function cpu-thread function) set-to-run))
-            (a0-10 (-> gp-1 main-thread))
-            )
-       list-keeper-init
-       (t9-6 a0-10)
-       )
+      (run-next-time-in-process gp-1 list-keeper-init)
       (-> gp-1 ppointer)
       )
      )
@@ -1607,14 +1474,7 @@
         (the-as pointer #x70004000)
         )
        )
-      (let
-       ((t9-10 (the-as (function cpu-thread function object object) set-to-run))
-        (a0-14 (-> gp-2 main-thread))
-        (a1-10 cam-slave-init)
-        (a2-6 cam-free-floating)
-        )
-       (t9-10 a0-14 a1-10 a2-6)
-       )
+      (run-next-time-in-process gp-2 cam-slave-init cam-free-floating #f)
       (-> gp-2 ppointer)
       )
      )
@@ -1628,10 +1488,7 @@
    (create-launch-control group-rain-screend-drop self)
    )
   (set! (-> self water-drip-time) (the-as uint -18000))
-  (let ((t9-13 (the-as (function object) enter-state)))
-   (set! (-> self next-state) cam-master-active)
-   (t9-13)
-   )
+  (go cam-master-active)
   0
   (none)
   )

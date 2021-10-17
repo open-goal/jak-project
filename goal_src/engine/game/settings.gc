@@ -6,8 +6,8 @@
 ;; dgos: GAME, ENGINE
 
 
-(defmethod handle-pending-updates setting-data ((obj setting-data) (arg0 engine))
-  "this goes through the list of pending setting changes in 
+(defmethod update-from-engine setting-data ((obj setting-data) (arg0 engine))
+  "this goes through the list of desired setting changes in 
    the engine/connection list and updates the setting-data"
   (let ((conn (the-as connection (-> arg0 alive-list-end)))
         (s4-0 (-> arg0 alive-list-end prev0))
@@ -204,27 +204,23 @@
   obj
   )
 
-(defmethod push-setting! setting-control ((obj setting-control) (arg0 process) (arg1 (function object object object object object)) (arg2 object) (arg3 object) (arg4 object))
+(defmethod push-setting! setting-control ((obj setting-control) (arg0 process) (arg1 symbol) (arg2 object) (arg3 object) (arg4 object))
+  "Set the setting. The set is linked to this process and will be reverted if the process dies"
   (add-connection (-> obj engine) arg0 arg1 arg2 arg3 arg4)
   0
   (none)
   )
 
 (defmethod set-setting! setting-control ((obj setting-control) (arg0 process) (arg1 symbol) (arg2 symbol) (arg3 float) (arg4 int))
+  "Replace all settings from this process with this one."
   (clear-pending-settings-from-process obj arg0 arg1)
-  (add-connection
-   (-> obj engine)
-   arg0
-   (the-as (function object object object object object) arg1)
-   arg2
-   arg3
-   arg4
-   )
+  (add-connection (-> obj engine) arg0 arg1 arg2 arg3 arg4)
   0
   (none)
   )
 
 (defmethod clear-pending-settings-from-process setting-control ((obj setting-control) (arg0 process) (arg1 symbol))
+  "Remove requests to change settings from the given process."
   (when arg0
    (let ((s5-0 (-> obj engine))
          (s4-0 (-> arg0 connection-list next1))
@@ -250,143 +246,164 @@
 
 
 (defmethod copy-settings-from-target! setting-control ((obj setting-control))
+  "Update the current settings. This only updates settings that are 'safe' to do multiple times per frame."
   (let ((gp-0 (-> obj current)))
-   (let ((s5-0 (-> obj target)))
-    (mem-copy! (the-as pointer s5-0) (the-as pointer (-> obj default)) 196)
-    (set!
-     (-> s5-0 ambient-volume)
-     (* (* 0.01 (-> obj default ambient-volume)) (-> obj default sfx-volume))
-     )
-    (handle-pending-updates s5-0 (-> obj engine))
-    (set! (-> gp-0 border-mode) (-> s5-0 border-mode))
-    (set! (-> gp-0 common-page) (-> s5-0 common-page))
-    (set! (-> gp-0 vibration) (-> s5-0 vibration))
-    (set! (-> gp-0 auto-save) (-> s5-0 auto-save))
-    (set! (-> gp-0 play-hints) (-> s5-0 play-hints))
-    (set! (-> gp-0 movie) (-> s5-0 movie))
-    (set! (-> gp-0 talking) (-> s5-0 talking))
-    (set! (-> gp-0 spooling) (-> s5-0 spooling))
-    (set! (-> gp-0 hint) (-> s5-0 hint))
-    (set! (-> gp-0 ambient) (-> s5-0 ambient))
-    (set! (-> gp-0 allow-pause) (-> s5-0 allow-pause))
-    (set! (-> gp-0 allow-progress) (-> s5-0 allow-progress))
-    (set! (-> gp-0 allow-look-around) (-> s5-0 allow-look-around))
-    (set! (-> gp-0 ocean-off) (-> s5-0 ocean-off))
-    (set! (-> gp-0 ambient-volume-movie) (-> s5-0 ambient-volume-movie))
-    (set! (-> gp-0 music-volume-movie) (-> s5-0 music-volume-movie))
-    (set! (-> gp-0 sfx-volume-movie) (-> s5-0 sfx-volume-movie))
-    (set! (-> gp-0 dialog-volume-hint) (-> s5-0 dialog-volume-hint))
-    (set! (-> gp-0 process-mask) (-> s5-0 process-mask))
+    (let ((s5-0 (-> obj target)))
+      ;; set the settings to default
+      (mem-copy! (the-as pointer s5-0) (the-as pointer (-> obj default)) 196)
+      ;; hack
+      (set! (-> s5-0 ambient-volume)
+            (* (* 0.01 (-> obj default ambient-volume)) (-> obj default sfx-volume))
+            )
+      ;; apply requesting changes
+      (update-from-engine s5-0 (-> obj engine))
+      ;; copy those settings to current.
+      (set! (-> gp-0 border-mode) (-> s5-0 border-mode))
+      (set! (-> gp-0 common-page) (-> s5-0 common-page))
+      (set! (-> gp-0 vibration) (-> s5-0 vibration))
+      (set! (-> gp-0 auto-save) (-> s5-0 auto-save))
+      (set! (-> gp-0 play-hints) (-> s5-0 play-hints))
+      (set! (-> gp-0 movie) (-> s5-0 movie))
+      (set! (-> gp-0 talking) (-> s5-0 talking))
+      (set! (-> gp-0 spooling) (-> s5-0 spooling))
+      (set! (-> gp-0 hint) (-> s5-0 hint))
+      (set! (-> gp-0 ambient) (-> s5-0 ambient))
+      (set! (-> gp-0 allow-pause) (-> s5-0 allow-pause))
+      (set! (-> gp-0 allow-progress) (-> s5-0 allow-progress))
+      (set! (-> gp-0 allow-look-around) (-> s5-0 allow-look-around))
+      (set! (-> gp-0 ocean-off) (-> s5-0 ocean-off))
+      (set! (-> gp-0 ambient-volume-movie) (-> s5-0 ambient-volume-movie))
+      (set! (-> gp-0 music-volume-movie) (-> s5-0 music-volume-movie))
+      (set! (-> gp-0 sfx-volume-movie) (-> s5-0 sfx-volume-movie))
+      (set! (-> gp-0 dialog-volume-hint) (-> s5-0 dialog-volume-hint))
+      (set! (-> gp-0 process-mask) (-> s5-0 process-mask))
+      )
+    (set! (-> *kernel-context* prevent-from-run) (-> gp-0 process-mask))
+    gp-0
     )
-   (set! (-> *kernel-context* prevent-from-run) (-> gp-0 process-mask))
-   gp-0
-   )
   )
 
 
 (defmethod update-per-frame-settings! setting-control ((obj setting-control))
+  "Do a per-frame update of all settings"
+  ;; compute all settings
   (copy-settings-from-target! obj)
+  
+  ;; now handle the special ones.
   (let ((gp-0 (-> obj current)))
-   (let ((s5-1 (-> obj target)))
-    (when *sound-player-enable*
-     (when (!= (-> gp-0 sfx-volume) (-> s5-1 sfx-volume))
-      (seek! (-> gp-0 sfx-volume) (-> s5-1 sfx-volume) (* 100.0 (-> *display* seconds-per-frame)))
-      (sound-set-volume (the-as uint 1) (-> gp-0 sfx-volume))
+    (let ((s5-1 (-> obj target)))
+      ;; the volume change is done slowly
+      (when *sound-player-enable*
+        (when (!= (-> gp-0 sfx-volume) (-> s5-1 sfx-volume))
+          (seek! (-> gp-0 sfx-volume) (-> s5-1 sfx-volume) (* 100.0 (-> *display* seconds-per-frame)))
+          (sound-set-volume (the-as uint 1) (-> gp-0 sfx-volume))
+          )
+        (when (!= (-> gp-0 music-volume) (-> s5-1 music-volume))
+          (seek! (-> gp-0 music-volume) (-> s5-1 music-volume) (* 100.0 (-> *display* seconds-per-frame)))
+          (sound-set-volume (the-as uint 2) (-> gp-0 music-volume))
+          )
+        (when (!= (-> gp-0 dialog-volume) (-> s5-1 dialog-volume))
+          (seek! (-> gp-0 dialog-volume) (-> s5-1 dialog-volume) (* 100.0 (-> *display* seconds-per-frame)))
+          (sound-set-volume (the-as uint 4) (-> gp-0 dialog-volume))
+          )
+        (when (!= (-> gp-0 ambient-volume) (-> s5-1 ambient-volume))
+          (seek! (-> gp-0 ambient-volume) (-> s5-1 ambient-volume) (* 100.0 (-> *display* seconds-per-frame)))
+          (sound-set-volume (the-as uint 16) (-> gp-0 ambient-volume))
+          )
+        )
+      ;; send language change to the IOP.
+      (when (!= (-> gp-0 language) (-> s5-1 language))
+        (set! (-> gp-0 language) (-> s5-1 language))
+        (set-language (-> gp-0 language))
+        )
+      
+      ;; try to load music
+      (when (and (!= (-> s5-1 music) (-> gp-0 music))
+                 (and (< 0.0 (-> *setting-control* current music-volume))
+                      (zero? (rpc-busy? 1))
+                      *sound-bank-1*
+                      *sound-bank-2*
+                      )
+                 )
+        (cond
+          ((-> s5-1 music)
+           (format 0 "Load music ~A~%" (-> s5-1 music))
+           (sound-music-load (string->sound-name (symbol->string (-> s5-1 music))))
+           )
+          (else
+            (format 0 "Unload music~%")
+            (sound-music-unload)
+            )
+          )
+        (set! (-> gp-0 music) (-> s5-1 music))
+        )
+      
+      ;; set sound flava
+      (set! (-> s5-1 sound-flava) (the-as uint (flava-lookup (-> gp-0 music) (the-as int (-> s5-1 sound-flava)))))
+      (set! (-> gp-0 sound-flava) (-> s5-1 sound-flava))
+      (if *sound-player-enable*
+          (sound-set-flava (-> gp-0 sound-flava))
+          )
+      
+      ;; update display settings
+      (when (!= (-> gp-0 aspect-ratio) (-> s5-1 aspect-ratio))
+        (set! (-> gp-0 aspect-ratio) (-> s5-1 aspect-ratio))
+        (set-aspect-ratio (-> gp-0 aspect-ratio))
+        )
+      (when (!= (-> gp-0 video-mode) (-> s5-1 video-mode))
+        (set! (-> gp-0 video-mode) (-> s5-1 video-mode))
+        (set-video-mode (-> gp-0 video-mode))
+        )
+      (when (!= (-> gp-0 screenx) (-> s5-1 screenx))
+        (set! (-> gp-0 screenx) (-> s5-1 screenx))
+        (set! (-> *video-parms* display-dx) (/ (-> s5-1 screenx) 2))
+        (set! (-> *video-parms* set-video-mode) #t)
+        )
+      (when (!= (-> gp-0 screeny) (-> s5-1 screeny))
+        (set! (-> gp-0 screeny) (-> s5-1 screeny))
+        (set! (-> *video-parms* display-dy) (* (/ (-> s5-1 screeny) 2) 2))
+        (set! (-> *video-parms* set-video-mode) #t)
+        )
+      
+      ;; update display bg color
+      (set! (-> gp-0 bg-a-speed) (-> s5-1 bg-a-speed))
+      (set! (-> gp-0 bg-a-force) (-> s5-1 bg-a-force))
+      (set! (-> gp-0 bg-r) (-> s5-1 bg-r))
+      (set! (-> gp-0 bg-g) (-> s5-1 bg-g))
+      (set! (-> gp-0 bg-b) (-> s5-1 bg-b))
+      (seek! (-> gp-0 bg-a) (-> s5-1 bg-a) (* (-> s5-1 bg-a-speed) (-> *display* seconds-per-frame)))
       )
-     (when (!= (-> gp-0 music-volume) (-> s5-1 music-volume))
-      (seek! (-> gp-0 music-volume) (-> s5-1 music-volume) (* 100.0 (-> *display* seconds-per-frame)))
-      (sound-set-volume (the-as uint 2) (-> gp-0 music-volume))
+    (let ((v1-60 (-> *display* frames (-> *display* on-screen) display))
+          (f0-39 (-> gp-0 bg-a))
+          )
+      (if (!= (-> gp-0 bg-a-force) 0.0)
+          (set! f0-39 (-> gp-0 bg-a-force))
+          )
+      (set! (-> v1-60 bgcolor r) (the int (* 255.0 (-> gp-0 bg-r))))
+      (set! (-> v1-60 bgcolor g) (the int (* 255.0 (-> gp-0 bg-g))))
+      (set! (-> v1-60 bgcolor b) (the int (* 255.0 (-> gp-0 bg-b))))
+      (set! (-> v1-60 pmode alp) (the int (* 255.0 (- 1.0 f0-39))))
       )
-     (when (!= (-> gp-0 dialog-volume) (-> s5-1 dialog-volume))
-      (seek! (-> gp-0 dialog-volume) (-> s5-1 dialog-volume) (* 100.0 (-> *display* seconds-per-frame)))
-      (sound-set-volume (the-as uint 4) (-> gp-0 dialog-volume))
-      )
-     (when (!= (-> gp-0 ambient-volume) (-> s5-1 ambient-volume))
-      (seek! (-> gp-0 ambient-volume) (-> s5-1 ambient-volume) (* 100.0 (-> *display* seconds-per-frame)))
-      (sound-set-volume (the-as uint 16) (-> gp-0 ambient-volume))
-      )
-     )
-    (when (!= (-> gp-0 language) (-> s5-1 language))
-     (set! (-> gp-0 language) (-> s5-1 language))
-     (set-language (-> gp-0 language))
-     )
-    (when (and (!= (-> s5-1 music) (-> gp-0 music))
-               (and (< 0.0 (-> *setting-control* current music-volume))
-                    (zero? (rpc-busy? 1))
-                    *sound-bank-1*
-                    *sound-bank-2*
-                    )
-               )
-     (cond
-      ((-> s5-1 music)
-       (format 0 "Load music ~A~%" (-> s5-1 music))
-       (sound-music-load (string->sound-name (symbol->string (-> s5-1 music))))
-       )
-      (else
-       (format 0 "Unload music~%")
-       (sound-music-unload)
-       )
-      )
-     (set! (-> gp-0 music) (-> s5-1 music))
-     )
-    (set! (-> s5-1 sound-flava) (the-as uint (flava-lookup (-> gp-0 music) (the-as int (-> s5-1 sound-flava)))))
-    (set! (-> gp-0 sound-flava) (-> s5-1 sound-flava))
-    (if *sound-player-enable*
-     (sound-set-flava (-> gp-0 sound-flava))
-     )
-    (when (!= (-> gp-0 aspect-ratio) (-> s5-1 aspect-ratio))
-     (set! (-> gp-0 aspect-ratio) (-> s5-1 aspect-ratio))
-     (set-aspect-ratio (-> gp-0 aspect-ratio))
-     )
-    (when (!= (-> gp-0 video-mode) (-> s5-1 video-mode))
-     (set! (-> gp-0 video-mode) (-> s5-1 video-mode))
-     (set-video-mode (-> gp-0 video-mode))
-     )
-    (when (!= (-> gp-0 screenx) (-> s5-1 screenx))
-     (set! (-> gp-0 screenx) (-> s5-1 screenx))
-     (set! (-> *video-parms* display-dx) (/ (-> s5-1 screenx) 2))
-     (set! (-> *video-parms* set-video-mode) #t)
-     )
-    (when (!= (-> gp-0 screeny) (-> s5-1 screeny))
-     (set! (-> gp-0 screeny) (-> s5-1 screeny))
-     (set! (-> *video-parms* display-dy) (* (/ (-> s5-1 screeny) 2) 2))
-     (set! (-> *video-parms* set-video-mode) #t)
-     )
-    (set! (-> gp-0 bg-a-speed) (-> s5-1 bg-a-speed))
-    (set! (-> gp-0 bg-a-force) (-> s5-1 bg-a-force))
-    (set! (-> gp-0 bg-r) (-> s5-1 bg-r))
-    (set! (-> gp-0 bg-g) (-> s5-1 bg-g))
-    (set! (-> gp-0 bg-b) (-> s5-1 bg-b))
-    (seek! (-> gp-0 bg-a) (-> s5-1 bg-a) (* (-> s5-1 bg-a-speed) (-> *display* seconds-per-frame)))
+    
+    ;; ??
+    (set! (-> *level* border?) (-> gp-0 border-mode))
+    ;; common pool texture page mask
+    (set! (-> *texture-pool* common-page-mask) (-> gp-0 common-page))
+    (set! (-> *cpad-list* cpads 0 buzz) (-> gp-0 vibration))
+    
+    (case (-> gp-0 ocean-off) 
+          ((#t)
+           (set! *ocean-off* #t)
+           )
+          (('mid)
+           (set! *ocean-mid-off* #t)
+           )
+          (('near)
+           (set! *ocean-near-off* #t)
+           )
+          )
+    gp-0
     )
-   (let ((v1-60 (-> *display* frames (-> *display* on-screen) display))
-         (f0-39 (-> gp-0 bg-a))
-         )
-    (if (!= (-> gp-0 bg-a-force) 0.0)
-     (set! f0-39 (-> gp-0 bg-a-force))
-     )
-    (set! (-> v1-60 bgcolor r) (the int (* 255.0 (-> gp-0 bg-r))))
-    (set! (-> v1-60 bgcolor g) (the int (* 255.0 (-> gp-0 bg-g))))
-    (set! (-> v1-60 bgcolor b) (the int (* 255.0 (-> gp-0 bg-b))))
-    (set! (-> v1-60 pmode alp) (the int (* 255.0 (- 1.0 f0-39))))
-    )
-   (set! (-> *level* border?) (-> gp-0 border-mode))
-   (set! (-> *texture-pool* common-page-mask) (-> gp-0 common-page))
-   (set! (-> *cpad-list* cpads 0 buzz) (-> gp-0 vibration))
-
-   (case (-> gp-0 ocean-off) 
-    ((#t)
-      (set! *ocean-off* #t)
-      )
-    (('mid)
-     (set! *ocean-mid-off* #t)
-     )
-    (('near)
-     (set! *ocean-near-off* #t)
-     )
-    )
-   gp-0
-   )
   )
 
 

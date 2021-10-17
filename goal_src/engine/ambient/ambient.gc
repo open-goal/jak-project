@@ -5,6 +5,8 @@
 ;; name in dgo: ambient
 ;; dgos: GAME, ENGINE
 
+;; decomp begins
+
 
 ;; definition for method 8 of type drawable-ambient
 ;; INFO: Return type mismatch int vs drawable-ambient.
@@ -300,23 +302,15 @@
    )
   )
 
-;; definition for function level-hint-displayed?
-;; INFO: Return type mismatch basic vs symbol.
-(defun level-hint-displayed? ((arg0 symbol))
-  (let* ((v1-0 *hint-semaphore*)
-         (a0-1 (the-as level-hint (if v1-0
-                                   (the-as level-hint (-> v1-0 0 self))
-                                   )
-                )
-          )
-         )
+(defun level-hint-displayed? ()
+  (let ((a0-0 (ppointer->process *hint-semaphore*)))
    (the-as
     symbol
     (and
-     a0-1
+     (the-as level-hint a0-0)
      (and
-      (= (-> a0-1 next-state name) 'level-hint-normal)
-      (not (dummy-15 a0-1))
+      (= (-> (the-as level-hint a0-0) next-state name) 'level-hint-normal)
+      (not (dummy-15 (the-as level-hint a0-0)))
       )
      )
     )
@@ -432,14 +426,7 @@
   (set! (-> self total-off-time) 0)
   (set! (-> self last-time) (-> *display* base-frame-counter))
   (set! *hint-semaphore* (the-as (pointer level-hint) (process->ppointer self)))
-  (push-setting!
-   *setting-control*
-   self
-   (the-as (function object object object object object) 'hint)
-   (process->ppointer self)
-   0.0
-   0
-   )
+  (push-setting! *setting-control* self 'hint (process->ppointer self) 0.0 0)
   (set! (-> self voicebox) (the-as handle #f))
   (let ((s5-1 (res-lump-struct arg2 'play-mode structure))
         (a0-6
@@ -492,24 +479,10 @@
   (set! (-> self last-time) (-> *display* base-frame-counter))
   (set! (-> self trans) arg1)
   (set! *hint-semaphore* (the-as (pointer level-hint) (process->ppointer self)))
-  (push-setting!
-   *setting-control*
-   self
-   (the-as (function object object object object object) 'hint)
-   (process->ppointer self)
-   0.0
-   0
-   )
+  (push-setting! *setting-control* self 'hint (process->ppointer self) 0.0 0)
   (set! (-> self mode) arg2)
   (if (or (= arg2 'camera) (= arg2 'ambient) (= arg2 'stinger))
-   (push-setting!
-    *setting-control*
-    self
-    (the-as (function object object object object object) 'ambient)
-    (process->ppointer self)
-    0.0
-    0
-    )
+   (push-setting! *setting-control* self 'ambient (process->ppointer self) 0.0 0)
    )
   (copy-settings-from-target! *setting-control*)
   (set!
@@ -742,30 +715,9 @@
        )
       (cond
        ((= (current-str-id) s5-2)
-        (push-setting!
-         *setting-control*
-         self
-         (the-as (function object object object object object) 'music-volume)
-         'rel
-         (-> *setting-control* current music-volume-movie)
-         0
-         )
-        (push-setting!
-         *setting-control*
-         self
-         (the-as (function object object object object object) 'sfx-volume)
-         'rel
-         (-> *setting-control* current sfx-volume-movie)
-         0
-         )
-        (push-setting!
-         *setting-control*
-         self
-         (the-as (function object object object object object) 'dialog-volume)
-         'rel
-         (-> *setting-control* current dialog-volume-hint)
-         0
-         )
+        (push-setting! *setting-control* self 'music-volume 'rel (-> *setting-control* current music-volume-movie) 0)
+        (push-setting! *setting-control* self 'sfx-volume 'rel (-> *setting-control* current sfx-volume-movie) 0)
+        (push-setting! *setting-control* self 'dialog-volume 'rel (-> *setting-control* current dialog-volume-hint) 0)
         (while (= (current-str-id) s5-2)
          (suspend)
          )
@@ -855,22 +807,8 @@
    (cond
     ((= (current-str-id) (-> self sound-id))
      (when (or (= (-> self mode) 'stinger) (= (-> self mode) 'camera))
-      (push-setting!
-       *setting-control*
-       self
-       (the-as (function object object object object object) 'music-volume)
-       'rel
-       (-> *setting-control* current music-volume-movie)
-       0
-       )
-      (push-setting!
-       *setting-control*
-       self
-       (the-as (function object object object object object) 'sfx-volume)
-       'rel
-       (-> *setting-control* current sfx-volume-movie)
-       0
-       )
+      (push-setting! *setting-control* self 'music-volume 'rel (-> *setting-control* current music-volume-movie) 0)
+      (push-setting! *setting-control* self 'sfx-volume 'rel (-> *setting-control* current sfx-volume-movie) 0)
       )
      (while (= (current-str-id) (-> self sound-id))
       (suspend)
@@ -1125,7 +1063,7 @@
         (if a1-7
          (effect-param->sound-spec
           s4-2
-          (the-as sound-play-parms a1-7)
+          (the-as (pointer float) a1-7)
           (the-as int (-> sv-112 elt-count))
           )
          )
@@ -1177,7 +1115,7 @@
           )
      (t9-2
       a0-5
-      (the-as sound-play-parms (&+ (-> v1-8 data-base) (-> a1-2 data-offset)))
+      (the-as (pointer float) (&+ (-> v1-8 data-base) (-> a1-2 data-offset)))
       (the-as int (-> (the-as (pointer res-tag) s3-0) 0 elt-count))
       )
      )
@@ -1437,7 +1375,7 @@
 ;; definition for method 17 of type drawable-ambient
 ;; INFO: Return type mismatch int vs none.
 (defmethod
-  dummy-17
+  collect-ambients
   drawable-ambient
   ((obj drawable-ambient) (arg0 sphere) (arg1 int) (arg2 ambient-list))
   (dotimes (s2-0 arg1)
@@ -1454,14 +1392,19 @@
 ;; definition for method 17 of type drawable-inline-array-ambient
 ;; INFO: Return type mismatch int vs none.
 (defmethod
-  dummy-17
+  collect-ambients
   drawable-inline-array-ambient
   ((obj drawable-inline-array-ambient)
    (arg0 sphere)
    (arg1 int)
    (arg2 ambient-list)
    )
-  (dummy-17 (the-as drawable-ambient (-> obj data)) arg0 (-> obj length) arg2)
+  (collect-ambients
+   (the-as drawable-ambient (-> obj data))
+   arg0
+   (-> obj length)
+   arg2
+   )
   0
   (none)
   )
@@ -1469,10 +1412,10 @@
 ;; definition for method 17 of type drawable-tree-ambient
 ;; INFO: Return type mismatch int vs none.
 (defmethod
-  dummy-17
+  collect-ambients
   drawable-tree-ambient
   ((obj drawable-tree-ambient) (arg0 sphere) (arg1 int) (arg2 ambient-list))
-  (dummy-17 (-> obj data 0) arg0 (-> obj length) arg2)
+  (collect-ambients (-> obj data 0) arg0 (-> obj length) arg2)
   0
   (none)
   )

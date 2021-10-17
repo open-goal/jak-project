@@ -8,7 +8,8 @@
 (define-extern *evilsis-intro-sg* skeleton-group)
 (define-extern *evilbro-intro-sg* skeleton-group)
 
-;; definition of type evilbro
+;; DECOMP BEGINS
+
 (deftype evilbro (process-taskable)
   ((evilsis entity  :offset-assert 380)
    )
@@ -18,7 +19,7 @@
   :flag-assert         #x3501100180
   )
 
-;; failed to figure out what this is:
+
 (let
   ((v1-1
     (new 'static 'skeleton-group
@@ -36,62 +37,44 @@
   (set! *evilbro-intro-sg* v1-1)
   )
 
-;; definition for method 32 of type evilbro
-;; INFO: Return type mismatch spool-anim vs basic.
 (defmethod play-anim! evilbro ((obj evilbro) (arg0 symbol))
-  (with-pp
-   (cond
-    (arg0
-     (close-specific-task!
-      (game-task leaving-misty)
-      (task-status need-introduction)
-      )
-     (let ((a1-2 (new 'stack-no-clear 'event-message-block)))
-      (set! (-> a1-2 from) pp)
-      (set! (-> a1-2 num-params) 1)
-      (set! (-> a1-2 message) 'clone)
-      (set! (-> a1-2 param 0) (the-as uint (process->handle obj)))
-      (send-event-function (-> obj evilsis extra process) a1-2)
-      )
+  (cond
+   (arg0
+    (close-specific-task!
+     (game-task leaving-misty)
+     (task-status need-introduction)
      )
-    (else
-     (set! (-> obj will-talk) #t)
-     )
+    (send-event (-> obj evilsis extra process) 'clone (process->handle obj))
     )
-   (the-as
-    basic
-    (new 'static 'spool-anim
-     :name "evilbro-misty-end"
-     :index 5
-     :parts 9
-     :command-list '()
-     )
+   (else
+    (set! (-> obj will-talk) #t)
+    )
+   )
+  (the-as
+   basic
+   (new 'static 'spool-anim
+    :name "evilbro-misty-end"
+    :index 5
+    :parts 9
+    :command-list '()
     )
    )
   )
 
-;; definition for method 31 of type evilbro
 (defmethod get-art-elem evilbro ((obj evilbro))
   (-> obj draw art-group data 3)
   )
 
-;; failed to figure out what this is:
 (defstate play-anim (evilbro)
   :virtual #t
   :exit
   (behavior ()
-   (let ((a1-0 (new 'stack-no-clear 'event-message-block)))
-    (set! (-> a1-0 from) self)
-    (set! (-> a1-0 num-params) 0)
-    (set! (-> a1-0 message) 'end-mode)
-    (send-event-function (-> self evilsis extra process) a1-0)
-    )
+   (send-event (-> self evilsis extra process) 'end-mode)
    ((-> (method-of-type process-taskable play-anim) exit))
    (none)
    )
   )
 
-;; failed to figure out what this is:
 (defstate idle (evilbro)
   :virtual #t
   :code
@@ -232,7 +215,6 @@
    )
   )
 
-;; definition for method 11 of type evilbro
 (defmethod copy-defaults! evilbro ((obj evilbro) (arg0 res-lump))
   (dummy-40 obj arg0 *evilbro-intro-sg* 3 40 (new 'static 'vector :w 4096.0) 5)
   (set! (-> obj tasks) (get-task-control (game-task leaving-misty)))
@@ -241,7 +223,6 @@
   (none)
   )
 
-;; definition of type evilsis
 (deftype evilsis (process-taskable)
   ()
   :heap-base #x110
@@ -250,7 +231,7 @@
   :flag-assert         #x350110017c
   )
 
-;; failed to figure out what this is:
+
 (let
   ((v1-7
     (new 'static 'skeleton-group
@@ -268,8 +249,6 @@
   (set! *evilsis-intro-sg* v1-7)
   )
 
-;; definition for method 32 of type evilsis
-;; INFO: Return type mismatch art-element vs basic.
 (defmethod play-anim! evilsis ((obj evilsis) (arg0 symbol))
   (if arg0
    (format
@@ -282,12 +261,10 @@
   (the-as basic (get-art-elem obj))
   )
 
-;; definition for method 31 of type evilsis
 (defmethod get-art-elem evilsis ((obj evilsis))
   (-> obj draw art-group data 3)
   )
 
-;; failed to figure out what this is:
 (defstate idle (evilsis)
   :virtual #t
   :trans
@@ -298,10 +275,13 @@
    )
   )
 
-;; definition for method 11 of type evilsis
 (defmethod copy-defaults! evilsis ((obj evilsis) (arg0 res-lump))
   (dummy-40 obj arg0 *evilsis-intro-sg* 3 0 (new 'static 'vector :w 4096.0) 5)
   (set! (-> obj tasks) (get-task-control (game-task leaving-misty)))
   (dummy-42 obj)
   (none)
   )
+
+
+
+

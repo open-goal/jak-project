@@ -981,7 +981,7 @@ void TypeSystem::add_builtin_types() {
       ->set_runtime_type("float");
   add_builtin_value_type("float", "degrees", 4, false, false, RegClass::FLOAT)
       ->set_runtime_type("float");
-  add_builtin_value_type("uint64", "seconds", 8, false, false)->set_runtime_type("uint64");
+  add_builtin_value_type("int64", "seconds", 8, false, true)->set_runtime_type("int64");
 
   auto int_type = add_builtin_value_type("integer", "int", 8, false, true);
   int_type->disallow_in_runtime();
@@ -1383,7 +1383,7 @@ bool TypeSystem::typecheck_base_types(const std::string& input_expected,
     if (actual == "seconds") {
       return true;
     }
-    expected = "uint";
+    expected = "int";
   }
 
   if (expected == "degrees") {
@@ -1690,6 +1690,26 @@ std::string TypeSystem::generate_deftype_footer(const Type* type) const {
     result.append("(:methods\n    ");
     result.append(methods_string);
     result.append(")\n  ");
+  }
+
+  std::string states_string;
+  for (auto& info : type->get_states_declared_for_type()) {
+    if (info.type.arg_count() > 1) {
+      states_string.append(fmt::format("    ({}", info.name));
+      for (size_t i = 0; i < info.type.arg_count() - 1; i++) {
+        states_string.push_back(' ');
+        states_string.append(info.type.get_arg(i).print());
+      }
+      states_string.append(")\n");
+    } else {
+      states_string.append(fmt::format("    {}\n", info.name));
+    }
+  }
+
+  if (!states_string.empty()) {
+    result.append("(:states\n");
+    result.append(states_string);
+    result.append("    )\n  ");
   }
 
   result.append(")\n");

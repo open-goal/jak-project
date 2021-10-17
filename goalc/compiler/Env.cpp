@@ -275,6 +275,9 @@ StackVarAddrVal* FunctionEnv::allocate_aligned_stack_variable(const TypeSpec& ts
                                                               int size_bytes,
                                                               int align_bytes) {
   require_aligned_stack();
+  if (align_bytes > 16) {
+    fmt::print("\n\n\nBad stack align: {} bytes for {}\n\n\n\n", align_bytes, ts.print());
+  }
   assert(align_bytes <= 16);
   int align_slots = (align_bytes + emitter::GPR_SIZE - 1) / emitter::GPR_SIZE;
   while (m_stack_var_slots_used % align_slots) {

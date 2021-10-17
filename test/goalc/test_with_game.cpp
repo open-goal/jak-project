@@ -896,15 +896,31 @@ TEST_F(WithGameTests, MethodCallForwardDeclared) {
                                           {"4 12\n0\n"});
 }
 
+TEST_F(WithGameTests, PointerInStatic) {
+  shared_compiler->runner.run_static_test(env, testCategory, "test-false-in-static-pointer.gc",
+                                          {"#f\n0\n"});
+}
+
 namespace Mips2C {
 namespace test_func {
 extern u64 execute(void*);
 }
+namespace goal_call_test {
+extern u64 execute(void*);
+extern void link();
+}  // namespace goal_call_test
 }  // namespace Mips2C
 
-TEST_F(WithGameTests, Mips2C) {
+TEST_F(WithGameTests, Mips2CBasic) {
   Mips2C::gLinkedFunctionTable.reg("test-func", Mips2C::test_func::execute, 0);
   shared_compiler->runner.run_static_test(env, testCategory, "test-mips2c-call.gc", {"36\n0\n"});
+}
+
+TEST_F(WithGameTests, Mips2C_CallGoal) {
+  Mips2C::gLinkedFunctionTable.reg("test-func2", Mips2C::goal_call_test::execute, 128);
+  Mips2C::goal_call_test::link();
+  shared_compiler->runner.run_static_test(env, testCategory, "test-mips2c-goal.gc",
+                                          {"1 2 3 4 5 6 7 8\n12\n"});
 }
 
 TEST(TypeConsistency, TypeConsistency) {
