@@ -944,6 +944,8 @@
 
   (beach-seagulls-avalanche #x273)
 
+  (misty-daxter-hit-lurkers-not-mines #x27f)
+
   (daxter-dark-eco-boxes-bad-news #x281)
   (daxter-metal-box-treasure #x283)
   (daxter-ground-pound-wooden-metal-box #x284)
@@ -31820,13 +31822,13 @@
 (deftype balloonlurker (rigid-body-platform)
   ((explosion-force-position vector  :inline :offset-assert 736)
    (explosion-force          vector  :inline :offset-assert 752)
-   (explosion                basic           :offset-assert 768)
+   (explosion                basic           :offset-assert 768) ;; ??
    (explosion-joint-index    uint16  2       :offset-assert 772)
-   (vulnerable               basic           :offset-assert 776)
+   (vulnerable               symbol           :offset-assert 776)
    (water-y                  float           :offset-assert 780)
-   (propeller                basic           :offset-assert 784)
-   (rudder                   basic           :offset-assert 788)
-   (mine                     basic   2       :offset-assert 792)
+   (propeller                joint-mod-set-local           :offset-assert 784)
+   (rudder                   joint-mod-set-local           :offset-assert 788)
+   (mine                     joint-mod-set-world   2       :offset-assert 792)
    (buoyancy-factor          float           :offset-assert 800)
    (rudder-control           float           :offset-assert 804)
    (throttle-control         float           :offset-assert 808)
@@ -31834,8 +31836,8 @@
    (dest-point               vector  :inline :offset-assert 816)
    (dest-point-old           vector  :inline :offset-assert 832)
    (dest-index               int8            :offset-assert 848)
-   (auto-pilot               basic           :offset-assert 852)
-   (dead                     basic           :offset-assert 856)
+   (auto-pilot               symbol           :offset-assert 852)
+   (dead                     symbol           :offset-assert 856)
    (anim-frame               float           :offset-assert 860)
    (engine-sound-id          sound-id        :offset-assert 864)
    (pedal-sound-id           sound-id        :offset-assert 868)
@@ -31848,28 +31850,29 @@
   )
 
 (deftype balloonlurker-pilot (process-drawable)
-  ()
+  ((parent-override (pointer balloonlurker) :score 100         :offset 12)
+   (root-override collide-shape-moving :score 100 :offset 112))
   :method-count-assert 22
   :size-assert         #xb0
   :heap-base           #x40
   :flag-assert         #x16004000b0
   (:methods
-    (dummy-20 () none 20)
-    (dummy-21 () none 21)
+    (dummy-20 (_type_) none 20)
+    (dummy-21 (_type_) none 21)
     )
   )
 
 ;; - Functions
 
-(define-extern balloonlurker-pilot-init-by-other function)
-(define-extern balloonlurker-find-nearest-path-point function)
-(define-extern balloonlurker-snap-to-path-point function)
-(define-extern balloonlurker-get-next-path-point function)
-(define-extern balloonlurker-play-sounds function)
-(define-extern balloonlurker-player-impulse function)
-(define-extern balloonlurker-get-path-point function)
-(define-extern balloonlurker-event-handler function)
-(define-extern balloonlurker-post function)
+(define-extern balloonlurker-pilot-init-by-other (function balloonlurker none :behavior balloonlurker-pilot))
+(define-extern balloonlurker-find-nearest-path-point (function none :behavior balloonlurker))
+(define-extern balloonlurker-snap-to-path-point (function int quaternion :behavior balloonlurker))
+(define-extern balloonlurker-get-next-path-point (function none :behavior balloonlurker))
+(define-extern balloonlurker-play-sounds (function none :behavior balloonlurker))
+(define-extern balloonlurker-player-impulse (function vector :behavior balloonlurker))
+(define-extern balloonlurker-get-path-point (function int none :behavior balloonlurker))
+(define-extern balloonlurker-event-handler (function process int symbol event-message-block object :behavior balloonlurker))
+(define-extern balloonlurker-post (function none :behavior balloonlurker))
 
 ;; - Unknowns
 
@@ -31882,7 +31885,7 @@
 (define-extern *BALLOONLURKER-bank* balloonlurker-bank) ;; unknown type
 (define-extern balloonlurker-die (state balloonlurker)) ;; unknown type
 (define-extern *balloonlurker-rudder-joint-home* vector) ;; unknown type
-(define-extern balloonlurker-mine-explode (state balloonlurker)) ;; unknown type
+(define-extern balloonlurker-mine-explode (state int balloonlurker)) ;; unknown type
 
 
 ;; ----------------------
