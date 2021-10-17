@@ -8,33 +8,25 @@
 ;; DECOMP BEGINS
 
 (defmethod TODO-RENAME-25 pov-camera ((obj pov-camera))
-  (with-pp
-   (when
-    (or
-     (and
-      (>=
-       (-
-        (-> *display* base-frame-counter)
-        (the-as int (-> obj debounce-start-time))
-        )
-       60
+  (when
+   (or
+    (and
+     (>=
+      (-
+       (-> *display* base-frame-counter)
+       (the-as int (-> obj debounce-start-time))
        )
-      (logtest? (-> *cpad-list* cpads 0 button0-rel 0) (pad-buttons triangle))
+      60
       )
-     (logtest? (-> obj flags) 2)
+     (logtest? (-> *cpad-list* cpads 0 button0-rel 0) (pad-buttons triangle))
      )
-    (logclear! (-> *cpad-list* cpads 0 button0-abs 0) (pad-buttons triangle))
-    (logclear! (-> *cpad-list* cpads 0 button0-rel 0) (pad-buttons triangle))
-    (when (logtest? (-> obj flags) 1)
-     (let ((a1-18 (new 'stack-no-clear 'event-message-block)))
-      (set! (-> a1-18 from) pp)
-      (set! (-> a1-18 num-params) 1)
-      (set! (-> a1-18 message) 'notify)
-      (set! (-> a1-18 param 0) (the-as uint 'abort-request))
-      (send-event-function (handle->process (-> obj notify-handle)) a1-18)
-      )
-     #t
-     )
+    (logtest? (-> obj flags) 2)
+    )
+   (logclear! (-> *cpad-list* cpads 0 button0-abs 0) (pad-buttons triangle))
+   (logclear! (-> *cpad-list* cpads 0 button0-rel 0) (pad-buttons triangle))
+   (when (logtest? (-> obj flags) 1)
+    (send-event (handle->process (-> obj notify-handle)) 'notify 'abort-request)
+    #t
     )
    )
   )
@@ -91,13 +83,8 @@
                    (-> s5-0 ppointer)
                    )
             )
-           (a1-4 (new 'stack-no-clear 'event-message-block))
            )
-     (set! (-> a1-4 from) self)
-     (set! (-> a1-4 num-params) 1)
-     (set! (-> a1-4 message) 'mask)
-     (set! (-> a1-4 param 0) (-> self mask-to-clear))
-     (send-event-function (ppointer->process v1-10) a1-4)
+     (send-event (ppointer->process v1-10) 'mask (-> self mask-to-clear))
      )
     )
    (go-virtual pov-camera-playing)
@@ -142,13 +129,7 @@
       )
      (when v1-4
       (set! s4-0 #t)
-      (let ((a1-5 (new 'stack-no-clear 'event-message-block)))
-       (set! (-> a1-5 from) self)
-       (set! (-> a1-5 num-params) 1)
-       (set! (-> a1-5 message) 'teleport-to-vector-start-string)
-       (set! (-> a1-5 param 0) (the-as uint arg1))
-       (send-event-function *camera* a1-5)
-       )
+      (send-event *camera* 'teleport-to-vector-start-string arg1)
       )
      )
     (suspend)
@@ -320,13 +301,7 @@
            )
     (suspend)
     )
-   (let ((a1-0 (new 'stack-no-clear 'event-message-block)))
-    (set! (-> a1-0 from) self)
-    (set! (-> a1-0 num-params) 1)
-    (set! (-> a1-0 message) 'notify)
-    (set! (-> a1-0 param 0) (the-as uint 'die))
-    (send-event-function (handle->process (-> self notify-handle)) a1-0)
-    )
+   (send-event (handle->process (-> self notify-handle)) 'notify 'die)
    (suspend)
    (suspend)
    (dummy-18 self)

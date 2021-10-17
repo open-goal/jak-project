@@ -84,19 +84,13 @@
      )
     )
    (let ((gp-0 (new 'stack-no-clear 'vector)))
-    (when
+    (if
      (cam-slave-get-vector-with-offset
       (the-as entity-actor (-> self cam-entity))
       gp-0
       'interesting
       )
-     (let ((a1-4 (new 'stack-no-clear 'event-message-block)))
-      (set! (-> a1-4 from) self)
-      (set! (-> a1-4 num-params) 1)
-      (set! (-> a1-4 message) 'point-of-interest)
-      (set! (-> a1-4 param 0) (the-as uint gp-0))
-      (send-event-function *camera* a1-4)
-      )
+     (send-event *camera* 'point-of-interest gp-0)
      )
     )
    (go cam-fixed)
@@ -137,7 +131,7 @@
   (behavior ()
    (when (not (handle->process (-> *camera* pov-handle)))
     (set! (-> self blend-from-type) (the-as uint 0))
-    (cam-slave-go (the-as camera-slave cam-fixed))
+    (cam-slave-go cam-fixed)
     )
    (none)
    )
@@ -208,7 +202,7 @@
   (behavior ()
    (when (not (handle->process (-> *camera* pov-handle)))
     (set! (-> self blend-from-type) (the-as uint 0))
-    (cam-slave-go (the-as camera-slave cam-fixed))
+    (cam-slave-go cam-fixed)
     )
    (none)
    )
@@ -344,19 +338,13 @@
     (set! (-> self blend-to-type) (the-as uint 2))
     )
    (let ((gp-0 (new 'stack-no-clear 'vector)))
-    (when
+    (if
      (cam-slave-get-vector-with-offset
       (the-as entity-actor (-> self cam-entity))
       gp-0
       'interesting
       )
-     (let ((a1-1 (new 'stack-no-clear 'event-message-block)))
-      (set! (-> a1-1 from) self)
-      (set! (-> a1-1 num-params) 1)
-      (set! (-> a1-1 message) 'point-of-interest)
-      (set! (-> a1-1 param 0) (the-as uint gp-0))
-      (send-event-function *camera* a1-1)
-      )
+     (send-event *camera* 'point-of-interest gp-0)
      )
     )
    (none)
@@ -368,7 +356,7 @@
      (not (handle->process (-> *camera* pov-handle)))
      (zero? (logand (-> *camera* master-options) 2))
      )
-    (cam-slave-go (the-as camera-slave cam-free-floating))
+    (cam-slave-go cam-free-floating)
     )
    (none)
    )
@@ -450,7 +438,7 @@
   :trans
   (behavior ()
    (if (zero? (logand (-> *camera* master-options) 2))
-    (cam-slave-go (the-as camera-slave cam-free-floating))
+    (cam-slave-go cam-free-floating)
     )
    (none)
    )
@@ -519,19 +507,13 @@
      )
     )
    (let ((gp-2 (new 'stack-no-clear 'vector)))
-    (when
+    (if
      (cam-slave-get-vector-with-offset
       (the-as entity-actor (-> self cam-entity))
       gp-2
       'interesting
       )
-     (let ((a1-8 (new 'stack-no-clear 'event-message-block)))
-      (set! (-> a1-8 from) self)
-      (set! (-> a1-8 num-params) 1)
-      (set! (-> a1-8 message) 'point-of-interest)
-      (set! (-> a1-8 param 0) (the-as uint gp-2))
-      (send-event-function *camera* a1-8)
-      )
+     (send-event *camera* 'point-of-interest gp-2)
      )
     )
    (go cam-standoff)
@@ -616,18 +598,13 @@
    )
   :exit
   (behavior ()
-   (when
+   (if
     (and
      *target*
      (logtest? (-> *camera* master-options) 2)
      (logtest? (-> *target* state-flags) 512)
      )
-    (let ((a1-0 (new 'stack-no-clear 'event-message-block)))
-     (set! (-> a1-0 from) self)
-     (set! (-> a1-0 num-params) 0)
-     (set! (-> a1-0 message) 'end-mode)
-     (send-event-function *target* a1-0)
-     )
+    (send-event *target* 'end-mode)
     )
    (none)
    )
@@ -1120,19 +1097,13 @@
      )
     )
    (let ((gp-2 (new 'stack-no-clear 'vector)))
-    (when
+    (if
      (cam-slave-get-vector-with-offset
       (the-as entity-actor (-> self cam-entity))
       gp-2
       'interesting
       )
-     (let ((a1-19 (new 'stack-no-clear 'event-message-block)))
-      (set! (-> a1-19 from) self)
-      (set! (-> a1-19 num-params) 1)
-      (set! (-> a1-19 message) 'point-of-interest)
-      (set! (-> a1-19 param 0) (the-as uint gp-2))
-      (send-event-function *camera* a1-19)
-      )
+     (send-event *camera* 'point-of-interest gp-2)
      )
     )
    (none)
@@ -1140,7 +1111,7 @@
   :trans
   (behavior ()
    (if (zero? (logand (-> *camera* master-options) 2))
-    (cam-slave-go (the-as camera-slave cam-free-floating))
+    (cam-slave-go cam-free-floating)
     )
    (none)
    )
@@ -1216,12 +1187,7 @@
          (set! (-> *camera* outro-t) (-> *camera* outro-exit-value))
          (set! (-> *camera* outro-t-step) 0.0)
          (vector+! (-> self velocity) (-> self velocity) gp-0)
-         (let ((a1-2 (new 'stack-no-clear 'event-message-block)))
-          (set! (-> a1-2 from) self)
-          (set! (-> a1-2 num-params) 0)
-          (set! (-> a1-2 message) 'outro-done)
-          (send-event-function *camera* a1-2)
-          )
+         (send-event *camera* 'outro-done)
          )
         (else
          (vector+! (-> self trans) (-> self trans) gp-0)
@@ -1668,19 +1634,13 @@
      )
     )
    (let ((gp-3 (new 'stack-no-clear 'vector)))
-    (when
+    (if
      (cam-slave-get-vector-with-offset
       (the-as entity-actor (-> self cam-entity))
       gp-3
       'interesting
       )
-     (let ((a1-18 (new 'stack-no-clear 'event-message-block)))
-      (set! (-> a1-18 from) self)
-      (set! (-> a1-18 num-params) 1)
-      (set! (-> a1-18 message) 'point-of-interest)
-      (set! (-> a1-18 param 0) (the-as uint gp-3))
-      (send-event-function *camera* a1-18)
-      )
+     (send-event *camera* 'point-of-interest gp-3)
      )
     )
    (none)
@@ -1688,7 +1648,7 @@
   :trans
   (behavior ()
    (if (zero? (logand (-> *camera* master-options) 2))
-    (cam-slave-go (the-as camera-slave cam-free-floating))
+    (cam-slave-go cam-free-floating)
     )
    (none)
    )
@@ -1719,7 +1679,7 @@
   :trans
   (behavior ()
    (if (zero? (logand (-> *camera* master-options) 2))
-    (cam-slave-go (the-as camera-slave cam-free-floating))
+    (cam-slave-go cam-free-floating)
     )
    (none)
    )
@@ -3518,12 +3478,12 @@
   )
 
 ;; definition for function cam-string-move
-;; WARN: Stack slot load mismatch: defined as size 4, got size 16
-;; WARN: Stack slot load mismatch: defined as size 4, got size 16
-;; WARN: Stack slot load mismatch: defined as size 4, got size 16
-;; WARN: Stack slot load mismatch: defined as size 4, got size 16
-;; WARN: Stack slot load mismatch: defined as size 4, got size 16
-;; WARN: Stack slot load mismatch: defined as size 4, got size 16
+;; WARN: Stack slot load at 240 mismatch: defined as size 4, got size 16
+;; WARN: Stack slot load at 256 mismatch: defined as size 4, got size 16
+;; WARN: Stack slot load at 240 mismatch: defined as size 4, got size 16
+;; WARN: Stack slot load at 256 mismatch: defined as size 4, got size 16
+;; WARN: Stack slot load at 240 mismatch: defined as size 4, got size 16
+;; WARN: Stack slot load at 256 mismatch: defined as size 4, got size 16
 ;; Used lq/sq
 (defbehavior cam-string-move camera-slave ()
   (local-vars (sv-240 float) (sv-256 float))
@@ -4088,7 +4048,7 @@
   :trans
   (behavior ()
    (if (zero? (logand (-> *camera* master-options) 2))
-    (cam-slave-go (the-as camera-slave cam-free-floating))
+    (cam-slave-go cam-free-floating)
     )
    (none)
    )
@@ -4326,7 +4286,7 @@
   :trans
   (behavior ()
    (if (zero? (logand (-> *camera* master-options) 2))
-    (cam-slave-go (the-as camera-slave cam-free-floating))
+    (cam-slave-go cam-free-floating)
     )
    (when (not (paused?))
     (when *camera-read-analog*
@@ -4661,7 +4621,7 @@
   :trans
   (behavior ()
    (if (zero? (logand (-> *camera* master-options) 2))
-    (cam-slave-go (the-as camera-slave cam-free-floating))
+    (cam-slave-go cam-free-floating)
     )
    (none)
    )
