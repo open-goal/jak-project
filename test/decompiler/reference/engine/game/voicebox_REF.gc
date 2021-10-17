@@ -1,16 +1,7 @@
 ;;-*-Lisp-*-
 (in-package goal)
 
-;; name: voicebox.gc
-;; name in dgo: voicebox
-;; dgos: GAME, ENGINE
-
-(define-extern *voicebox-sg* skeleton-group)
-
-(define-extern empty-state (state process))
-
-;; DECOMP BEGINS
-
+;; definition of type camera-voicebox
 (deftype camera-voicebox (camera-slave)
   ()
   :heap-base #x9a0
@@ -19,7 +10,15 @@
   :flag-assert         #xe09a00a04
   )
 
+;; definition for method 3 of type camera-voicebox
+(defmethod inspect camera-voicebox ((obj camera-voicebox))
+  (let ((t9-0 (method-of-type camera-slave inspect)))
+   (t9-0 obj)
+   )
+  obj
+  )
 
+;; definition of type voicebox
 (deftype voicebox (process-drawable)
   ((parent-override (pointer camera-voicebox)         :offset         12)
    (base-trans      vector                    :inline :offset-assert 176)
@@ -39,12 +38,26 @@
     )
   )
 
+;; definition for method 3 of type voicebox
+(defmethod inspect voicebox ((obj voicebox))
+  (let ((t9-0 (method-of-type process-drawable inspect)))
+   (t9-0 obj)
+   )
+  (format #t "~T~Tbase-trans: ~`vector`P~%" (-> obj base-trans))
+  (format #t "~T~Tseeker: #<cam-float-seeker @ #x~X>~%" (-> obj seeker))
+  (format #t "~T~Tblend: ~f~%" (-> obj blend))
+  (format #t "~T~Ttwist: ~f~%" (-> obj twist))
+  (format #t "~T~Thint: ~D~%" (-> obj hint))
+  obj
+  )
 
+;; failed to figure out what this is:
 (defstate empty-state (process)
   :code
   (the-as (function none :behavior process) nothing)
   )
 
+;; failed to figure out what this is:
 (let
   ((v1-3
     (new 'static 'skeleton-group
@@ -61,6 +74,9 @@
   (set! *voicebox-sg* v1-3)
   )
 
+;; definition for function voicebox-track
+;; INFO: Return type mismatch int vs none.
+;; Used lq/sq
 (defbehavior voicebox-track voicebox ()
   (let ((gp-0 (new 'stack-no-clear 'vector))
         (s5-0 (new 'stack-no-clear 'vector))
@@ -158,6 +174,7 @@
   (none)
   )
 
+;; failed to figure out what this is:
 (defstate enter (voicebox)
   :virtual #t
   :event
@@ -213,6 +230,7 @@
   (the-as (function none :behavior voicebox) ja-post)
   )
 
+;; failed to figure out what this is:
 (defstate idle (voicebox)
   :virtual #t
   :event
@@ -238,6 +256,7 @@
   (the-as (function none :behavior voicebox) ja-post)
   )
 
+;; failed to figure out what this is:
 (defstate exit (voicebox)
   :virtual #t
   :trans
@@ -272,6 +291,8 @@
   (the-as (function none :behavior voicebox) ja-post)
   )
 
+;; definition for function voicebox-init-by-other
+;; Used lq/sq
 (defbehavior voicebox-init-by-other voicebox ((arg0 vector) (arg1 handle))
   (set! (-> self root) (new 'process 'trsqv))
   (set! (-> self hint) arg1)
@@ -283,6 +304,7 @@
   (none)
   )
 
+;; failed to figure out what this is:
 (defstate cam-voicebox (camera-voicebox)
   :event
   (-> cam-string event)
@@ -299,6 +321,7 @@
   (-> cam-string code)
   )
 
+;; definition for function voicebox-spawn
 (defun voicebox-spawn ((arg0 process) (arg1 vector))
   (with-pp
    (let* ((s3-0 (get-process *camera-dead-pool* camera-voicebox #x4000))
