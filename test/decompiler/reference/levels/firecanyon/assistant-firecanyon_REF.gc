@@ -42,7 +42,7 @@
   assistant-firecanyon
   ((obj assistant-firecanyon) (arg0 symbol))
   (case (current-status (-> obj tasks)) 
-   ((6)
+   (((task-status need-reward-speech))
      (if arg0
       (close-current! (-> obj tasks))
       )
@@ -108,7 +108,7 @@
       0
       "ERROR: <GMJ>: ~S playing anim for task status ~S~%"
       (-> obj name)
-      (task-status->string (the-as task-status (current-status (-> obj tasks))))
+      (task-status->string (current-status (-> obj tasks)))
       )
      )
     (-> obj draw art-group data 3)
@@ -118,7 +118,7 @@
 
 ;; definition for method 31 of type assistant-firecanyon
 (defmethod get-art-elem assistant-firecanyon ((obj assistant-firecanyon))
-  (if (zero? (current-status (-> obj tasks)))
+  (if (= (current-status (-> obj tasks)) (task-status invalid))
    (-> obj draw art-group data 8)
    (-> obj draw art-group data 3)
    )
@@ -164,13 +164,7 @@
              (logtest? (-> *cpad-list* cpads 0 button0-abs 0) (pad-buttons l3))
              )
             )
-           (<
-            (-
-             (-> *display* base-frame-counter)
-             (the-as int (-> self state-time))
-             )
-            3000
-            )
+           (< (- (-> *display* base-frame-counter) (-> self state-time)) 3000)
            )
           )
     (hide-hud)
@@ -246,7 +240,7 @@
    (while #t
     (let ((gp-0 #t))
      (cond
-      ((zero? (current-status (-> self tasks)))
+      ((= (current-status (-> self tasks)) (task-status invalid))
        (let* ((v1-8 (/ (the-as int (rand-uint31-gen *random-generator*)) 256))
               (v1-9 (the-as number (logior #x3f800000 v1-8)))
               )
@@ -846,7 +840,7 @@
 ;; definition for method 39 of type assistant-firecanyon
 (defmethod should-display? assistant-firecanyon ((obj assistant-firecanyon))
   (first-any (-> obj tasks) #t)
-  (= (current-status (-> obj tasks)) 6)
+  (= (current-status (-> obj tasks)) (task-status need-reward-speech))
   )
 
 ;; definition for method 11 of type assistant-firecanyon

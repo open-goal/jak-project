@@ -106,6 +106,8 @@ struct Config {
 
   bool generate_symbol_definition_map = false;
 
+  bool is_pal = false;
+
   std::unordered_set<std::string> allowed_objects;
   std::unordered_set<std::string> banned_objects;
   std::unordered_map<std::string, std::unordered_map<int, std::vector<RegisterTypeCast>>>

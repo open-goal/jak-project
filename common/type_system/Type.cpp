@@ -246,6 +246,21 @@ std::string Type::common_type_info_diff(const Type& other) const {
       }
     }
   }
+  if (m_states != other.m_states) {
+    if (m_states.size() != other.m_states.size()) {
+      result += fmt::format("Number of additional states {} vs. {}\n", m_states.size(),
+                            other.m_states.size());
+    }
+
+    for (size_t i = 0; i < std::min(m_states.size(), other.m_states.size()); i++) {
+      if (m_states.at(i) != other.m_states.at(i)) {
+        result +=
+            fmt::format("State {} ({}/{}):\n", i, m_states.at(i).name, other.m_states.at(i).name);
+        result += m_states.at(i).diff(other.m_states.at(i));
+        result += "\n";
+      }
+    }
+  }
   if (m_new_method_info != other.m_new_method_info) {
     result += m_new_method_info.diff(other.m_new_method_info);
   }
@@ -378,6 +393,27 @@ std::string Type::print_method_info() const {
     result += "  " + x.print_one_line() + "\n";
   }
 
+  return result;
+}
+
+const StateInfo& Type::add_state(const StateInfo& info) {
+  m_states.push_back(info);
+  return m_states.back();
+}
+
+bool StateInfo::operator==(const StateInfo& other) const {
+  return name == other.name && type == other.type;
+}
+
+std::string StateInfo::diff(const StateInfo& other) const {
+  std::string result;
+  if (name != other.name) {
+    result += fmt::format("name: {} vs. {}\n", name, other.name);
+  }
+
+  if (type != other.type) {
+    result += fmt::format("type: {} vs. {}\n", type.print(), other.type.print());
+  }
   return result;
 }
 

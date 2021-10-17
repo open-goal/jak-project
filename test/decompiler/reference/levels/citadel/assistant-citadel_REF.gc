@@ -42,7 +42,7 @@
   assistant-lavatube-end
   ((obj assistant-lavatube-end) (arg0 symbol))
   (case (current-status (-> obj tasks)) 
-   ((1 2)
+   (((task-status unknown) (task-status need-hint))
      (new 'static 'spool-anim
       :name "assistant-lavatube-end-resolution"
       :index 4
@@ -50,7 +50,7 @@
       :command-list '()
       )
      )
-   ((6)
+   (((task-status need-reward-speech))
     (if arg0
      (close-current! (-> obj tasks))
      )
@@ -120,7 +120,7 @@
       0
       "ERROR: <GMJ>: ~S playing anim for task status ~S~%"
       (-> obj name)
-      (task-status->string (the-as task-status (current-status (-> obj tasks))))
+      (task-status->string (current-status (-> obj tasks)))
       )
      )
     (get-art-elem obj)
@@ -173,12 +173,7 @@
    ((-> (method-of-type process-taskable idle) enter))
    (case (get-task-status (game-task village4-button)) 
     (((task-status need-reward-speech))
-      (let ((a1-0 (new 'stack-no-clear 'event-message-block)))
-       (set! (-> a1-0 from) self)
-       (set! (-> a1-0 num-params) 0)
-       (set! (-> a1-0 message) 'play-anim)
-       (send-event-function self a1-0)
-       )
+      (send-event self 'play-anim)
       )
     )
    (none)
@@ -252,7 +247,10 @@
   (first-any (-> obj tasks) #t)
   (let ((v1-3 (current-status (-> obj tasks))))
    (and
-    (or (= v1-3 6) (= v1-3 0))
+    (or
+     (= v1-3 (task-status need-reward-speech))
+     (= v1-3 (task-status invalid))
+     )
     (not (task-closed? (game-task citadel-sage-green) (task-status need-hint)))
     )
    )

@@ -58,17 +58,17 @@
 ;; bitfield enum to indicate properties about a process-tree
 (defenum process-mask
     :bitfield #t :type uint32
-    (execute         0) ;; 1
-    (draw            1) ;; 2
-    (pause           2) ;; 4
-    (menu            3) ;; 8
-    (progress        4) ;; 16
-    (actor-pause     5) ;; 32
-    (sleep           6) ;; 64
-    (sleep-code      7) ;; 128
-    (process-tree    8) ;; 256        not an actual process, just a "tree node" for organization
-    (heap-shrunk     9) ;; 512
-    (going          10) ;; 1024
+    (execute         0) ;; 1         ?, prevents from running
+    (draw            1) ;; 2         ?
+    (pause           2) ;; 4         shouldn't run when game is paused
+    (menu            3) ;; 8         shouldn't run when debug menu open
+    (progress        4) ;; 16        shouldn't run when progress menu open
+    (actor-pause     5) ;; 32        ?, related to the actor system
+    (sleep           6) ;; 64        do not run this process at all
+    (sleep-code      7) ;; 128       do not run the code of this process (other stuff runs)
+    (process-tree    8) ;; 256       not an actual process, just a "tree node" for organization
+    (heap-shrunk     9) ;; 512       actor heap compactor has already shrunk the heap of this proc
+    (going          10) ;; 1024      there is a next state set that will be entered next time (pending enter-state)
     (movie          11) ;; 2048
     (movie-subject  12) ;; 4096
     (target         13) ;; 8192
@@ -114,8 +114,8 @@
 ;; this stores the current state of the kernel.
 (deftype kernel-context (basic)
   ((prevent-from-run   process-mask  :offset-assert 4)
-   (require-for-run    process-mask  :offset-assert 8)
-   (allow-to-run       process-mask  :offset-assert 12)
+   (require-for-run    process-mask  :offset-assert 8)  ;; seems unused
+   (allow-to-run       process-mask  :offset-assert 12) ;; seems unused
    (next-pid           int32         :offset-assert 16)
    (fast-stack-top     pointer       :offset-assert 20)
    (current-process    process       :offset-assert 24)
@@ -131,11 +131,11 @@
   :flag-assert #x900000030
   )
 
-; A thread belongs to a process and has a reference to a stack.
-; they have an "execution stack", which is where the stack goes when the thread runs.
-; and also a "backup stack", which stores the stack when the thread doesn't run.
-; this means threads can't leak pointers to stack variables to other threads...
-; optionally, threads may know how to suspend/resume themselves.
+;; A thread belongs to a process and has a reference to a stack.
+;; they have an "execution stack", which is where the stack goes when the thread runs.
+;; and optionally a "backup stack", which stores the stack when the thread doesn't run.
+;; this means threads can't leak pointers to stack variables to other threads...
+;; optionally, threads may know how to suspend/resume themselves.
 
 (declare-type process basic)
 (declare-type stack-frame basic)
@@ -144,7 +144,7 @@
 (declare-type dead-pool basic)
 (declare-type event-message-block structure)
 
-; DANGER - this type is created in kscheme.cpp. It has room for 12 methods and size 0x28 bytes.
+;; NOTE! - this type is created in kscheme.cpp. It has room for 12 methods and size 0x28 bytes.
 (deftype thread (basic)
   ((name          basic    :offset-assert 4) ;; name of the thread (usually a symbol?)
    (process       process  :offset-assert 8) ;; process that the thread belongs to
@@ -201,10 +201,18 @@
 (deftype process-tree (basic)
   ((name basic :offset-assert 4)
    (mask process-mask :offset-assert 8)
+   ;; tree
    (parent (pointer process-tree) :offset-assert 12)
    (brother (pointer process-tree) :offset-assert 16)
    (child (pointer process-tree) :offset-assert 20)
+   
+   ;; a process may move in memory.  However, an active process must have a ppointer. The value of the ppointer never changes
+   ;; you can dereference this pointer at any time.
+   ;; you will either get: your original process, another process (with a different PID), or #f.
+   ;; NOTE: the ppointer is like a C++ Process**.
    (ppointer (pointer process) :offset-assert 24)
+   
+   ;; in cases where the process never moves, the kernel will set ppointer to the address of the self field
    (self process-tree :offset-assert 28)
    )
   
@@ -227,24 +235,24 @@
 (declare-type res-lump basic)
 (declare-type entity res-lump)
 (deftype process (process-tree)
-  ((pool dead-pool :offset-assert #x20)
+  ((pool dead-pool :offset-assert #x20)  ;; the memory pool we came from, and should return to when we die
    (status basic :offset-assert #x24)
-   (pid int32 :offset-assert #x28)
-   (main-thread cpu-thread :offset-assert #x2c)
-   (top-thread thread :offset-assert #x30)
-   (entity entity :offset-assert #x34)
-   (state state :offset-assert #x38)
-   (trans-hook function :offset-assert #x3c)
-   (post-hook function :offset-assert #x40)
-   (event-hook (function process int symbol event-message-block object) :offset-assert #x44)
-   (allocated-length int32 :offset-assert #x48)
-   (next-state state :offset-assert #x4c)
-   (heap-base pointer :offset-assert #x50)
+   (pid int32 :offset-assert #x28)       ;; unqiue process ID
+   (main-thread cpu-thread :offset-assert #x2c) ;; our suspendable main thread
+   (top-thread thread :offset-assert #x30)      ;; currently running thread
+   (entity entity :offset-assert #x34)          ;; if we are a process spawned by an entity, our entity
+   (state state :offset-assert #x38)            ;; if we use the state system, our current state
+   (trans-hook function :offset-assert #x3c)    ;; function to call for trans
+   (post-hook function :offset-assert #x40)     ;; function to call for post
+   (event-hook (function process int symbol event-message-block object) :offset-assert #x44) ;; function to call for events
+   (allocated-length int32 :offset-assert #x48) ;; size not included in process (including fields + heap)
+   (next-state state :offset-assert #x4c)       ;; if we are "going", the next state to go to.
+   (heap-base pointer :offset-assert #x50)      ;; process heap
    (heap-top pointer :offset-assert #x54)
    (heap-cur pointer :offset-assert #x58)
-   (stack-frame-top stack-frame :offset-assert #x5c)
-   (connection-list connectable :inline :offset-assert #x60)
-   (stack uint8 :dynamic :offset-assert #x70)
+   (stack-frame-top stack-frame :offset-assert #x5c)  ;; stack frame. top means "closest to current execution"
+   (connection-list connectable :inline :offset-assert #x60) ;; list of engines we're connected to
+   (stack uint8 :dynamic :offset-assert #x70) ;; memory for fields + process heap
    )
   (:methods
     (new (symbol type basic int) _type_ 0)
@@ -271,9 +279,9 @@
   )
 
 ;; A dead-pool-heap-rec is a record for a process which lives on a dead-pool-heap.
-;; these processes can move around in memory, but the records can't.
-;; Therefore a pointer to these can be used as a handle for the process, so you can
-;; find it after it moves
+;; The dead-pool-heap may move processes around in memory, but we need some constant address for each process.
+;; This is a small record that will be updated by the kernel so it always points to the process.
+;; A handle can use a pointer to this type's "process" field as a fixed ppointer.
 (deftype dead-pool-heap-rec (structure)
   ((process process         :offset-assert 0) ;; the process of this record
    (prev dead-pool-heap-rec :offset-assert 4) ;; next rec in the linked list
@@ -287,7 +295,8 @@
   )
 
 ;; This is a pool of dead processes which can be dynamically sized and allocated from a common heap.
-;; Alive processess in a dead-pool-heap can be relocated and compacted to reduce heap fragmentation.
+;; It doesn't quite behave like a tree, so there's some hacks related to child/brother etc.
+;; Alive processes in a dead-pool-heap can be relocated and compacted to reduce heap fragmentation.
 (deftype dead-pool-heap (dead-pool)
   ((allocated-length    int32                           :offset-assert #x20) ;; size of heap
    (compact-time        uint32                          :offset-assert #x24) ;; ??
@@ -340,7 +349,7 @@
 
 
 ;; A catch frame is a frame you can "throw" to, by name.
-;; You can "throw" out of a function and into another function.
+;; You can "throw" out of a function and into a calling function, just like C++ exceptions.
 (deftype catch-frame (stack-frame)
   ((sp int32 :offset 12) ;; where to reset the stack when throwing.
    (ra int32 :offset 16) ;; where to jump when throwing
@@ -402,9 +411,9 @@
   ;; the actual implementation is more clever than this.
   ;; Checks PID.
   `(let ((the-handle ,handle))
-     (if (-> the-handle process)
+     (if (-> the-handle process) ;; if we don't point to a process, kernel sets this to #f
          (let ((proc (-> (-> the-handle process))))
-           (if (= (-> the-handle pid) (-> proc pid))
+           (if (= (-> the-handle pid) (-> proc pid)) ;; make sure it's the same process
                proc
                )
            )
@@ -423,7 +432,7 @@
   )
 
 (defmacro process->ppointer (proc)
-  ;"safely get a (pointer process) from a process, returning #f if invalid."
+  "safely get a (pointer process) from a process, returning #f if invalid."
   `(let ((the-proc ,proc))
      (if the-proc (-> the-proc ppointer))
      )
@@ -452,6 +461,15 @@
   obj
   )
 
+;; A "state" is a collection of 6 functions that describe what code a process should run.
+;; It contains "code", the code that's suspended and resumed,
+;;             "trans", a function called before code is resumed
+;;             "post", a function called after code is suspended
+;;             "enter", a function to call when entering this state
+;;             "event", a function to call to handle events sent to the process
+;;             "exit", a function to call when exiting the state or deactivating the process.
+;; While "state" is technically a stack frame, it's always the base stack frame, and just used for the exit
+;; so if you abort out of a process, it cleans up the state too.
 (deftype state (protect-frame)
   ((code  function         :offset-assert  16)
    (trans (function none)  :offset-assert  20)

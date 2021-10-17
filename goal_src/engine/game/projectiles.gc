@@ -5,7 +5,8 @@
 ;; name in dgo: projectiles
 ;; dgos: GAME, ENGINE
 
-;; definition of type search-info
+;; DECOMP BEGINS
+
 (deftype search-info (structure)
   ((point        vector     :inline :offset-assert   0)
    (best-point   vector     :inline :offset-assert  16)
@@ -24,11 +25,9 @@
   :flag-assert         #x900000054
   )
 
-;; definition for symbol *search-info*, type search-info
+
 (define *search-info* (new 'global 'search-info))
 
-;; definition for function find-nearest-attackable
-;; Used lq/sq
 (defun
   find-nearest-attackable
   ((arg0 vector)
@@ -197,9 +196,6 @@
    )
   )
 
-;; definition for function projectile-collision-reaction
-;; INFO: Return type mismatch int vs none.
-;; Used lq/sq
 (defun
   projectile-collision-reaction
   ((arg0 collide-shape-moving)
@@ -214,111 +210,103 @@
    (sv-80 int)
    (sv-224 symbol)
    )
-  (with-pp
-   (set! sv-64 (new-stack-vector0))
-   (set! sv-68 (new-stack-vector0))
-   (set! sv-72 (new 'stack-no-clear 'matrix))
-   (set! sv-80 0)
-   (set! (-> sv-72 vector 0 quad) (-> arg3 quad))
-   (vector-float*!
-    (new 'stack-no-clear 'vector)
-    (-> arg1 move-vec)
-    (-> arg1 best-u)
-    )
-   (TODO-RENAME-28 arg0)
-   (dummy-56 arg0 (-> arg1 best-tri pat))
-   (case (-> arg1 best-tri pat material) 
-    (((pat-material stopproj))
-      (let ((a1-3 (new 'stack-no-clear 'event-message-block)))
-       (set! (-> a1-3 from) pp)
-       (set! (-> a1-3 num-params) 0)
-       (set! (-> a1-3 message) 'die)
-       (send-event-function (-> arg0 process) a1-3)
-       )
-      )
-    )
-   (vector-!
-    sv-64
-    (the-as vector (-> arg1 best-from-prim prim-core))
-    (-> arg1 best-tri intersect)
-    )
-   (set! (-> sv-64 w) 1.0)
-   (vector-normalize! sv-64 1.0)
-   (set! (-> arg0 coverage) (vector-dot sv-64 (-> arg1 best-tri normal)))
-   (let ((v1-22 (-> sv-64 quad)))
-    (set! (-> sv-68 quad) v1-22)
-    )
-   (when (= (-> arg1 best-u) 0.0)
-    (vector-float*! (new 'stack-no-clear 'vector) sv-68 32.0)
-    (TODO-RENAME-28 arg0)
-    )
-   (set! (-> arg0 surface-normal quad) (-> sv-68 quad))
-   (set! (-> arg0 poly-normal quad) (-> arg1 best-tri normal quad))
-   (set!
-    (-> arg0 surface-angle)
-    (vector-dot sv-68 (-> arg0 dynam gravity-normal))
-    )
-   (set!
-    (-> arg0 poly-angle)
-    (vector-dot (-> arg0 poly-normal) (-> arg0 dynam gravity-normal))
-    )
-   (set!
-    (-> arg0 touch-angle)
-    (vector-dot
-     sv-68
-     (vector-normalize!
-      (vector-negate! (new-stack-vector0) (the-as vector sv-72))
-      1.0
-      )
-     )
-    )
-   (if (< (-> arg0 poly-angle) -0.2)
-    (set! sv-80 (logior sv-80 16))
-    )
-   (set!
-    sv-224
-    (<
-     (fabs (-> arg0 surface-angle))
-     (-> *pat-mode-info* (-> arg0 cur-pat mode) wall-angle)
-     )
-    )
-   (if (zero? (logand (-> arg0 prev-status) 1))
-    (set!
-     (-> arg0 ground-impact-vel)
-     (- (vector-dot (-> arg0 transv) (-> arg0 dynam gravity-normal)))
-     )
-    )
-   (set! sv-80 (logior sv-80 4))
-   (if (-> arg1 best-to-prim)
-    (set! sv-80 (logior sv-80 32))
-    )
-   (cond
-    (sv-224
-     (set! sv-80 (logior sv-80 8))
-     (set! (-> arg0 cur-pat mode) 1)
-     (set! (-> arg0 local-normal quad) (-> sv-68 quad))
-     )
-    (else
-     (set! sv-80 (logior sv-80 1))
-     (set! (-> arg0 local-normal quad) (-> sv-68 quad))
-     )
-    )
-   (vector-reflect-flat-above! arg2 (the-as vector sv-72) sv-68)
-   (when (and (not sv-224) (>= (-> arg0 coverage) 0.9))
-    (set! sv-80 (logior sv-80 2))
-    (set! (-> arg0 ground-poly-normal quad) (-> arg0 poly-normal quad))
-    (when (!= (-> arg0 poly-pat mode) (pat-mode wall))
-     (set! (-> arg0 ground-pat) (-> arg0 poly-pat))
-     (set! (-> arg0 ground-touch-point quad) (-> arg1 best-tri intersect quad))
-     )
-    )
-   (logior! (-> arg0 status) sv-80)
-   sv-80
-   (none)
+  (set! sv-64 (new-stack-vector0))
+  (set! sv-68 (new-stack-vector0))
+  (set! sv-72 (new 'stack-no-clear 'matrix))
+  (set! sv-80 0)
+  (set! (-> sv-72 vector 0 quad) (-> arg3 quad))
+  (vector-float*!
+   (new 'stack-no-clear 'vector)
+   (-> arg1 move-vec)
+   (-> arg1 best-u)
    )
+  (TODO-RENAME-28 arg0)
+  (dummy-56 arg0 (-> arg1 best-tri pat))
+  (case (-> arg1 best-tri pat material) 
+   (((pat-material stopproj))
+     (send-event (-> arg0 process) 'die)
+     )
+   )
+  (vector-!
+   sv-64
+   (the-as vector (-> arg1 best-from-prim prim-core))
+   (-> arg1 best-tri intersect)
+   )
+  (set! (-> sv-64 w) 1.0)
+  (vector-normalize! sv-64 1.0)
+  (set! (-> arg0 coverage) (vector-dot sv-64 (-> arg1 best-tri normal)))
+  (let ((v1-22 (-> sv-64 quad)))
+   (set! (-> sv-68 quad) v1-22)
+   )
+  (when (= (-> arg1 best-u) 0.0)
+   (vector-float*! (new 'stack-no-clear 'vector) sv-68 32.0)
+   (TODO-RENAME-28 arg0)
+   )
+  (set! (-> arg0 surface-normal quad) (-> sv-68 quad))
+  (set! (-> arg0 poly-normal quad) (-> arg1 best-tri normal quad))
+  (set!
+   (-> arg0 surface-angle)
+   (vector-dot sv-68 (-> arg0 dynam gravity-normal))
+   )
+  (set!
+   (-> arg0 poly-angle)
+   (vector-dot (-> arg0 poly-normal) (-> arg0 dynam gravity-normal))
+   )
+  (set!
+   (-> arg0 touch-angle)
+   (vector-dot
+    sv-68
+    (vector-normalize!
+     (vector-negate! (new-stack-vector0) (the-as vector sv-72))
+     1.0
+     )
+    )
+   )
+  (if (< (-> arg0 poly-angle) -0.2)
+   (set! sv-80 (logior sv-80 16))
+   )
+  (set!
+   sv-224
+   (<
+    (fabs (-> arg0 surface-angle))
+    (-> *pat-mode-info* (-> arg0 cur-pat mode) wall-angle)
+    )
+   )
+  (if (zero? (logand (-> arg0 prev-status) 1))
+   (set!
+    (-> arg0 ground-impact-vel)
+    (- (vector-dot (-> arg0 transv) (-> arg0 dynam gravity-normal)))
+    )
+   )
+  (set! sv-80 (logior sv-80 4))
+  (if (-> arg1 best-to-prim)
+   (set! sv-80 (logior sv-80 32))
+   )
+  (cond
+   (sv-224
+    (set! sv-80 (logior sv-80 8))
+    (set! (-> arg0 cur-pat mode) 1)
+    (set! (-> arg0 local-normal quad) (-> sv-68 quad))
+    )
+   (else
+    (set! sv-80 (logior sv-80 1))
+    (set! (-> arg0 local-normal quad) (-> sv-68 quad))
+    )
+   )
+  (vector-reflect-flat-above! arg2 (the-as vector sv-72) sv-68)
+  (when (and (not sv-224) (>= (-> arg0 coverage) 0.9))
+   (set! sv-80 (logior sv-80 2))
+   (set! (-> arg0 ground-poly-normal quad) (-> arg0 poly-normal quad))
+   (when (!= (-> arg0 poly-pat mode) (pat-mode wall))
+    (set! (-> arg0 ground-pat) (-> arg0 poly-pat))
+    (set! (-> arg0 ground-touch-point quad) (-> arg1 best-tri intersect quad))
+    )
+   )
+  (logior! (-> arg0 status) sv-80)
+  sv-80
+  (none)
   )
 
-;; failed to figure out what this is:
 (set!
   (-> *part-group-id-table* 102)
   (new 'static 'sparticle-launch-group
@@ -367,7 +355,6 @@
    )
   )
 
-;; failed to figure out what this is:
 (set!
   (-> *part-id-table* 349)
   (new 'static 'sparticle-launcher
@@ -386,7 +373,6 @@
    )
   )
 
-;; failed to figure out what this is:
 (set!
   (-> *part-id-table* 350)
   (new 'static 'sparticle-launcher
@@ -412,7 +398,6 @@
    )
   )
 
-;; failed to figure out what this is:
 (set!
   (-> *part-id-table* 351)
   (new 'static 'sparticle-launcher
@@ -438,7 +423,6 @@
    )
   )
 
-;; failed to figure out what this is:
 (set!
   (-> *part-id-table* 352)
   (new 'static 'sparticle-launcher
@@ -463,7 +447,6 @@
    )
   )
 
-;; failed to figure out what this is:
 (set!
   (-> *part-id-table* 353)
   (new 'static 'sparticle-launcher
@@ -497,7 +480,6 @@
    )
   )
 
-;; failed to figure out what this is:
 (set!
   (-> *part-id-table* 354)
   (new 'static 'sparticle-launcher
@@ -509,7 +491,6 @@
    )
   )
 
-;; failed to figure out what this is:
 (set!
   (-> *part-group-id-table* 103)
   (new 'static 'sparticle-launch-group
@@ -545,7 +526,6 @@
    )
   )
 
-;; failed to figure out what this is:
 (set!
   (-> *part-id-table* 355)
   (new 'static 'sparticle-launcher
@@ -570,7 +550,6 @@
    )
   )
 
-;; failed to figure out what this is:
 (set!
   (-> *part-id-table* 357)
   (new 'static 'sparticle-launcher
@@ -601,7 +580,6 @@
    )
   )
 
-;; failed to figure out what this is:
 (set!
   (-> *part-id-table* 356)
   (new 'static 'sparticle-launcher
@@ -631,7 +609,6 @@
    )
   )
 
-;; failed to figure out what this is:
 (set!
   (-> *part-id-table* 360)
   (new 'static 'sparticle-launcher
@@ -661,7 +638,6 @@
    )
   )
 
-;; failed to figure out what this is:
 (set!
   (-> *part-id-table* 358)
   (new 'static 'sparticle-launcher
@@ -684,7 +660,6 @@
    )
   )
 
-;; failed to figure out what this is:
 (set!
   (-> *part-id-table* 361)
   (new 'static 'sparticle-launcher
@@ -707,7 +682,6 @@
    )
   )
 
-;; failed to figure out what this is:
 (set!
   (-> *part-id-table* 359)
   (new 'static 'sparticle-launcher
@@ -738,7 +712,6 @@
    )
   )
 
-;; failed to figure out what this is:
 (set!
   (-> *part-group-id-table* 104)
   (new 'static 'sparticle-launch-group
@@ -758,7 +731,6 @@
    )
   )
 
-;; failed to figure out what this is:
 (set!
   (-> *part-id-table* 2060)
   (new 'static 'sparticle-launcher
@@ -789,7 +761,6 @@
    )
   )
 
-;; failed to figure out what this is:
 (set!
   (-> *part-id-table* 2063)
   (new 'static 'sparticle-launcher
@@ -804,7 +775,6 @@
    )
   )
 
-;; failed to figure out what this is:
 (set!
   (-> *part-id-table* 2062)
   (new 'static 'sparticle-launcher
@@ -828,7 +798,6 @@
    )
   )
 
-;; failed to figure out what this is:
 (set!
   (-> *part-id-table* 2059)
   (new 'static 'sparticle-launcher
@@ -850,7 +819,6 @@
    )
   )
 
-;; failed to figure out what this is:
 (set!
   (-> *part-id-table* 2061)
   (new 'static 'sparticle-launcher
@@ -883,7 +851,6 @@
    )
   )
 
-;; failed to figure out what this is:
 (set!
   (-> *part-id-table* 2064)
   (new 'static 'sparticle-launcher
@@ -898,8 +865,6 @@
    )
   )
 
-;; definition for method 24 of type projectile
-;; INFO: Return type mismatch int vs none.
 (defmethod dummy-24 projectile ((obj projectile))
   (spawn
    (-> obj part)
@@ -909,14 +874,11 @@
   (none)
   )
 
-;; definition for method 28 of type projectile
-;; INFO: Return type mismatch int vs none.
 (defmethod dummy-28 projectile ((obj projectile))
   0
   (none)
   )
 
-;; failed to figure out what this is:
 (defstate projectile-moving (projectile)
   :virtual #t
   :event
@@ -968,16 +930,8 @@
                               )
                              )
                        (let ((v1-14 (-> self notify-handle)))
-                        (when (handle->process v1-14)
-                         (let
-                          ((a1-7 (new 'stack-no-clear 'event-message-block)))
-                          (set! (-> a1-7 from) self)
-                          (set! (-> a1-7 num-params) 2)
-                          (set! (-> a1-7 message) 'notify)
-                          (set! (-> a1-7 param 0) (the-as uint 'attack))
-                          (set! (-> a1-7 param 1) (the-as uint arg0))
-                          (send-event-function (-> v1-14 process 0) a1-7)
-                          )
+                        (if (handle->process v1-14)
+                         (send-event (-> v1-14 process 0) 'notify 'attack arg0)
                          )
                         )
                        (+! (-> self hits) 1)
@@ -996,10 +950,7 @@
    )
   :enter
   (behavior ()
-   (set!
-    (-> self state-time)
-    (the-as seconds (-> *display* base-frame-counter))
-    )
+   (set! (-> self state-time) (-> *display* base-frame-counter))
    (none)
    )
   :code
@@ -1007,7 +958,7 @@
    (let ((gp-0 #f))
     (while
      (<
-      (- (-> *display* base-frame-counter) (the-as int (-> self state-time)))
+      (- (-> *display* base-frame-counter) (-> self state-time))
       (the-as int (-> self timeout))
       )
      (let ((s5-0 (the int (-> *display* time-ratio))))
@@ -1087,9 +1038,6 @@
    )
   )
 
-;; definition for function projectile-update-velocity-space-wars
-;; INFO: Return type mismatch int vs none.
-;; Used lq/sq
 (defun projectile-update-velocity-space-wars ((arg0 projectile))
   (let
    ((s5-1
@@ -1151,7 +1099,6 @@
   (none)
   )
 
-;; failed to figure out what this is:
 (defstate projectile-impact (projectile)
   :virtual #t
   :code
@@ -1197,7 +1144,6 @@
    )
   )
 
-;; failed to figure out what this is:
 (defstate projectile-dissipate (projectile)
   :virtual #t
   :code
@@ -1243,15 +1189,11 @@
    )
   )
 
-;; definition for method 27 of type projectile
-;; INFO: Return type mismatch int vs none.
 (defmethod dummy-27 projectile ((obj projectile))
   0
   (none)
   )
 
-;; definition for method 26 of type projectile
-;; INFO: Return type mismatch int vs none.
 (defmethod dummy-26 projectile ((obj projectile))
   (let
    ((s5-0
@@ -1279,28 +1221,19 @@
   (none)
   )
 
-;; definition for method 25 of type projectile
-;; INFO: Return type mismatch int vs none.
 (defmethod dummy-25 projectile ((obj projectile))
   (go (method-of-object obj projectile-moving))
   0
   (none)
   )
 
-;; failed to figure out what this is:
 (defstate projectile-die (projectile)
   :virtual #t
   :code
   (behavior ()
    (let ((v1-0 (-> self notify-handle)))
-    (when (handle->process v1-0)
-     (let ((a1-4 (new 'stack-no-clear 'event-message-block)))
-      (set! (-> a1-4 from) self)
-      (set! (-> a1-4 num-params) 1)
-      (set! (-> a1-4 message) 'notify)
-      (set! (-> a1-4 param 0) (the-as uint 'die))
-      (send-event-function (-> v1-0 process 0) a1-4)
-      )
+    (if (handle->process v1-0)
+     (send-event (-> v1-0 process 0) 'notify 'die)
      )
     )
    (dummy-18 self)
@@ -1308,7 +1241,6 @@
    )
   )
 
-;; definition for method 10 of type projectile
 (defmethod deactivate projectile ((obj projectile))
   (if (nonzero? (-> obj sound-id))
    (sound-stop (-> obj sound-id))
@@ -1317,8 +1249,6 @@
   (none)
   )
 
-;; definition for function projectile-init-by-other
-;; Used lq/sq
 (defbehavior
   projectile-init-by-other projectile
   ((arg0 entity) (arg1 vector) (arg2 vector) (arg3 uint) (arg4 handle))
@@ -1378,9 +1308,6 @@
   (none)
   )
 
-;; definition for method 27 of type projectile-yellow
-;; INFO: Return type mismatch int vs none.
-;; Used lq/sq
 (defmethod dummy-27 projectile-yellow ((obj projectile-yellow))
   (cpad-set-buzz! (-> *cpad-list* cpads 0) 1 204 30)
   (set! (-> obj attack-mode) 'eco-yellow)
@@ -1518,8 +1445,6 @@
   (none)
   )
 
-;; definition for method 26 of type projectile-yellow
-;; INFO: Return type mismatch uint vs none.
 (defmethod dummy-26 projectile-yellow ((obj projectile-yellow))
   (let ((t9-0 (method-of-type projectile dummy-26)))
    (t9-0 obj)
@@ -1528,8 +1453,6 @@
   (none)
   )
 
-;; definition for method 24 of type projectile-yellow
-;; INFO: Return type mismatch int vs none.
 (defmethod dummy-24 projectile-yellow ((obj projectile-yellow))
   (with-pp
    (find-ground-and-draw-shadow
@@ -1558,16 +1481,8 @@
     )
    (cond
     ((logtest? (-> obj options) 32)
-     (when
-      (>=
-       (- (-> *display* base-frame-counter) (the-as int (-> obj state-time)))
-       15
-       )
-      (when
-       (<
-        (- (-> *display* base-frame-counter) (the-as int (-> obj state-time)))
-        150
-        )
+     (when (>= (- (-> *display* base-frame-counter) (-> obj state-time)) 15)
+      (when (< (- (-> *display* base-frame-counter) (-> obj state-time)) 150)
        (set!
         (-> *part-id-table* 353 init-specs 16 initial-valuef)
         (the-as float 0)
@@ -1618,9 +1533,6 @@
    )
   )
 
-;; definition for method 28 of type projectile-yellow
-;; INFO: Return type mismatch int vs none.
-;; Used lq/sq
 (defmethod dummy-28 projectile-yellow ((obj projectile-yellow))
   (cond
    ((or
@@ -1725,9 +1637,6 @@
   (none)
   )
 
-;; definition for method 27 of type projectile-blue
-;; INFO: Return type mismatch int vs none.
-;; Used lq/sq
 (defmethod dummy-27 projectile-blue ((obj projectile-blue))
   (cpad-set-buzz! (-> *cpad-list* cpads 0) 1 204 30)
   (sound-play-by-name
@@ -1780,8 +1689,6 @@
   (none)
   )
 
-;; definition for method 26 of type projectile-blue
-;; INFO: Return type mismatch int vs none.
 (defmethod dummy-26 projectile-blue ((obj projectile-blue))
   (let
    ((s5-0
@@ -1809,9 +1716,6 @@
   (none)
   )
 
-;; definition for function spawn-projectile-blue
-;; INFO: Return type mismatch int vs none.
-;; Used lq/sq
 (defun spawn-projectile-blue ((arg0 target))
   (local-vars (sv-48 entity))
   (with-pp
@@ -1875,8 +1779,6 @@
    )
   )
 
-;; definition for method 28 of type projectile-blue
-;; INFO: Return type mismatch int vs none.
 (defmethod dummy-28 projectile-blue ((obj projectile-blue))
   (let* ((s5-0 (handle->process (-> obj last-target)))
          (v1-4
@@ -1903,8 +1805,6 @@
   (none)
   )
 
-;; definition for method 24 of type projectile-blue
-;; INFO: Return type mismatch int vs none.
 (defmethod dummy-24 projectile-blue ((obj projectile-blue))
   (if (rand-vu-percent? 0.75)
    (eco-blue-glow
@@ -1915,7 +1815,6 @@
   (none)
   )
 
-;; failed to figure out what this is:
 (defstate projectile-impact (projectile-blue)
   :virtual #t
   :code
@@ -1925,7 +1824,6 @@
    )
   )
 
-;; failed to figure out what this is:
 (defstate projectile-dissipate (projectile-blue)
   :virtual #t
   :code
@@ -1934,7 +1832,3 @@
    (none)
    )
   )
-
-
-
-

@@ -85,11 +85,11 @@
    :run-travel-speed (meters 6.0)
    :run-rotate-speed (degrees 2880.0)
    :run-acceleration (meters 1.0)
-   :run-turn-time #x1e
+   :run-turn-time (seconds 0.1)
    :walk-travel-speed (meters 3.0)
    :walk-rotate-speed (degrees 720.0)
    :walk-acceleration (meters 1.0)
-   :walk-turn-time #x96
+   :walk-turn-time (seconds 0.5)
    :attack-shove-back (meters 3.0)
    :attack-shove-up (meters 2.0)
    :shadow-size (meters 2.0)
@@ -275,10 +275,7 @@
   :enter
   (behavior ()
    (nav-enemy-neck-control-inactive)
-   (set!
-    (-> self state-time)
-    (the-as seconds (-> *display* base-frame-counter))
-    )
+   (set! (-> self state-time) (-> *display* base-frame-counter))
    (if (-> self nav-info move-to-ground)
     (dummy-60 (-> self collide-info) 40960.0 40960.0 #t (the-as uint 1))
     )
@@ -1380,17 +1377,14 @@
         )
        (when (< v1-1 (-> self desired-num-children))
         (set! (-> self spawn-delay) (rand-vu-int-range 150 1200))
-        (set!
-         (-> self state-time)
-         (the-as seconds (-> *display* base-frame-counter))
-         )
+        (set! (-> self state-time) (-> *display* base-frame-counter))
         )
        )
       )
      (else
       (when
        (>=
-        (- (-> *display* base-frame-counter) (the-as int (-> self state-time)))
+        (- (-> *display* base-frame-counter) (-> self state-time))
         (-> self spawn-delay)
         )
        (let ((gp-0 (new 'stack-no-clear 'vector))

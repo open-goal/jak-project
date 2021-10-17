@@ -2700,9 +2700,18 @@ void FunctionCallElement::update_from_stack(const Env& env,
     std::swap(all_pop_vars.at(0), all_pop_vars.at(1));
   }
 
-  if (tp_type.kind == TP_Type::Kind::RUN_FUNCTION_IN_PROCESS_FUNCTION &&
-      unstacked.at(0)->to_string(env) == "run-function-in-process") {
-    unstacked.at(0) = pool.form<ConstantTokenElement>("run-now-in-process");
+  if (tp_type.kind == TP_Type::Kind::RUN_FUNCTION_IN_PROCESS_FUNCTION) {
+    if (unstacked.at(0)->to_string(env) == "run-function-in-process") {
+      unstacked.at(0) = pool.form<ConstantTokenElement>("run-now-in-process");
+    } else {
+      // couldn't pop. need to add a cast.
+      TypeSpec failed_cast("function");
+      for (int i = 0; i < ((int)unstacked.size()) - 1; i++) {
+        failed_cast.add_arg(TypeSpec("object"));
+      }
+      failed_cast.add_arg(TypeSpec("none"));
+      unstacked.at(0) = pool.form<CastElement>(failed_cast, unstacked.at(0));
+    }
   }
 
   if (tp_type.kind == TP_Type::Kind::SET_TO_RUN_FUNCTION) {
@@ -3336,6 +3345,9 @@ void CondNoElseElement::push_to_stack(const Env& env, FormPool& pool, FormStack&
         stack.push_value_to_reg(write_as_value, as_ppointer_to_process, true,
                                 env.get_variable_type(final_destination, false));
       } else {
+        //        fmt::print("func {} final destination {} type {}\n", env.func->name(),
+        //                   final_destination.to_string(env),
+        //                   env.get_variable_type(final_destination, false).print());
         stack.push_value_to_reg(write_as_value, pool.alloc_single_form(nullptr, this), true,
                                 env.get_variable_type(final_destination, false));
       }
@@ -3428,7 +3440,9 @@ void CondWithElseElement::push_to_stack(const Env& env, FormPool& pool, FormStac
           rewrite_as_set = false;
           break;
         }
-        source_types.push_back(last_in_body->src_type());
+        // note: we use the dest type here because the rewrite will leave behind a cast to this.
+        auto type = env.get_variable_type(last_in_body->dst(), true);
+        source_types.push_back(type);
       }
       last_var = last_in_body->dst();
     }
@@ -3498,10 +3512,12 @@ void CondWithElseElement::push_to_stack(const Env& env, FormPool& pool, FormStac
       // (set! x (if y z (expr))) and z requires a cast, but the move from z to x is
       // eliminated by GOAL's register allocator.
 
-      //      fmt::print("checking:\n");
-      //      for (auto& t : source_types) {
-      //        fmt::print("  {}\n", t.print());
-      //      }
+      // fmt::print("func: {}\n", env.func->name());
+
+      // fmt::print("checking:\n");
+      // for (auto& t : source_types) {
+      //  fmt::print("  {}\n", t.print());
+      // }
 
       auto expected_type = env.get_variable_type(*last_var, true);
       // fmt::print("The expected type is {}\n", expected_type.print());

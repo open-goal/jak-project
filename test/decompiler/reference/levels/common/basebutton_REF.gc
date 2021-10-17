@@ -317,7 +317,7 @@
     (else
      (until
       (>=
-       (- (-> *display* base-frame-counter) (the-as int (-> self state-time)))
+       (- (-> *display* base-frame-counter) (-> self state-time))
        (the int (* 300.0 (-> self timeout)))
        )
       (suspend)
@@ -746,14 +746,7 @@
   :virtual #t
   :trans
   (behavior ()
-   (let ((a1-0 (new 'stack-no-clear 'event-message-block)))
-    (set! (-> a1-0 from) self)
-    (set! (-> a1-0 num-params) 2)
-    (set! (-> a1-0 message) 'joystick)
-    (set! (-> a1-0 param 0) (the-as uint 0.0))
-    (set! (-> a1-0 param 1) (the-as uint 0.0))
-    (send-event-function *camera* a1-0)
-    )
+   (send-event *camera* 'joystick 0.0 0.0)
    (none)
    )
   :code
@@ -788,10 +781,7 @@
        (not
         (member (level-status *level* (-> arg1 load-name)) '(loaded active))
         )
-       (<
-        (- (-> *display* base-frame-counter) (the-as int (-> self state-time)))
-        600
-        )
+       (< (- (-> *display* base-frame-counter) (-> self state-time)) 600)
        )
       (suspend)
       )
@@ -860,7 +850,7 @@
     (-> self control unknown-vector102 y)
     (+ -4096.0 (-> self control unknown-vector102 y))
     )
-   (set! (-> self control unknown-int11) (the-as int #f))
+   (set! (-> self control unknown-symbol20) #f)
    (vector-reset! (-> self control transv))
    (logior! (-> self state-flags) 1024)
    (set! (-> self alt-cam-pos quad) (-> arg1 quad))
@@ -873,14 +863,7 @@
    )
   :code
   (behavior ((arg0 vector) (arg1 vector))
-   (let ((a1-1 (new 'stack-no-clear 'event-message-block)))
-    (set! (-> a1-1 from) self)
-    (set! (-> a1-1 num-params) 2)
-    (set! (-> a1-1 message) 'change-state)
-    (set! (-> a1-1 param 0) (the-as uint cam-fixed))
-    (set! (-> a1-1 param 1) (the-as uint 0))
-    (send-event-function *camera* a1-1)
-    )
+   (send-event *camera* 'change-state cam-fixed 0)
    (ja-channel-push! 1 60)
    (let ((gp-0 (-> self skel root-channel 0)))
     (set!
@@ -1012,23 +995,14 @@
         )
        )
       (set! (-> gp-2 y) 0.0)
-      (let ((a1-7 (new 'stack-no-clear 'event-message-block)))
-       (set! (-> a1-7 from) self)
-       (set! (-> a1-7 num-params) 1)
-       (set! (-> a1-7 message) 'sidekick)
-       (set! (-> a1-7 param 0) (the-as uint #f))
-       (send-event-function *target* a1-7)
-       )
+      (send-event *target* 'sidekick #f)
       (when
        (and
         (or
          (< (vector-dot gp-2 (-> self control transv)) 0.0)
-         (-> self control unknown-int11)
+         (-> self control unknown-symbol20)
          )
-        (>=
-         (- (-> *display* base-frame-counter) (the-as int (-> self state-time)))
-         15
-         )
+        (>= (- (-> *display* base-frame-counter) (-> self state-time)) 15)
         )
        (vector-seek!
         (-> self draw color-mult)
@@ -1037,17 +1011,10 @@
         )
        (set! (-> self control transv x) (* 0.95 (-> self control transv x)))
        (set! (-> self control transv z) (* 0.95 (-> self control transv z)))
-       (when (not (-> self control unknown-int11))
-        (let ((a1-9 (new 'stack-no-clear 'event-message-block)))
-         (set! (-> a1-9 from) self)
-         (set! (-> a1-9 num-params) 2)
-         (set! (-> a1-9 message) 'do-effect)
-         (set! (-> a1-9 param 0) (the-as uint 'death-warp-out))
-         (set! (-> a1-9 param 1) (the-as uint -1.0))
-         (send-event-function self a1-9)
-         )
+       (when (not (-> self control unknown-symbol20))
+        (send-event self 'do-effect 'death-warp-out -1.0)
         (let ((v0-2 #t))
-         (set! (-> self control unknown-int11) (the-as int v0-2))
+         (set! (-> self control unknown-symbol20) v0-2)
          v0-2
          )
         )
