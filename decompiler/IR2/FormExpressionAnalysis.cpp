@@ -4738,7 +4738,41 @@ void ArrayFieldAccess::update_with_val(Form* new_val,
       auto deref = pool.alloc_element<DerefElement>(base, false, tokens);
       result->push_back(deref);
     } else {
-      throw std::runtime_error("Not power of two case, not yet implemented (no offset)");
+      auto mult_matcher = Matcher::op(
+          GenericOpMatcher::fixed(FixedOperatorKind::MULTIPLICATION),
+          {Matcher::match_or({Matcher::cast("uint", Matcher::integer(m_expected_stride)),
+                              Matcher::integer(m_expected_stride)}),
+           Matcher::any(0)});
+      mult_matcher = Matcher::match_or(
+          {Matcher::cast("uint", mult_matcher), Matcher::cast("int", mult_matcher), mult_matcher});
+
+      auto op_match =
+          GenericOpMatcher::or_match({GenericOpMatcher::fixed(FixedOperatorKind::ADDITION),
+                                      GenericOpMatcher::fixed(FixedOperatorKind::ADDITION_PTR)});
+      auto add_matcher = Matcher::op(op_match, {Matcher::any(1), mult_matcher});
+      add_matcher =
+          Matcher::match_or({add_matcher, Matcher::op(op_match, {mult_matcher, Matcher::any(1)})});
+
+      auto mr = match(add_matcher, new_val);
+      if (!mr.matched) {
+        throw std::runtime_error("Failed to match non-power of two case: " +
+                                 new_val->to_string(env));
+      }
+
+      auto base = strip_int_or_uint_cast(mr.maps.forms.at(1));
+      auto idx = mr.maps.forms.at(0);
+
+      assert(idx && base);
+
+      std::vector<DerefToken> tokens = m_deref_tokens;
+      for (auto& x : tokens) {
+        if (x.kind() == DerefToken::Kind::EXPRESSION_PLACEHOLDER) {
+          x = DerefToken::make_int_expr(idx);
+        }
+      }
+
+      auto deref = pool.alloc_element<DerefElement>(base, false, tokens);
+      result->push_back(deref);
     }
   } else {
     if (m_expected_stride == 1) {

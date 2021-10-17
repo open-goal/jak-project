@@ -35,7 +35,8 @@ bool try_convert_lambda(const Function& parent_function,
             "ignored and is no longer required.",
             lab.name);
       }
-      if (!other_func->ir2.env.has_local_vars() || !other_func->ir2.top_form) {
+      if (!other_func->ir2.env.has_local_vars() || !other_func->ir2.top_form ||
+          !other_func->ir2.expressions_succeeded) {
         // don't bother if we don't even have vars.
         return false;
       }

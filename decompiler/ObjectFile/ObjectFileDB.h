@@ -67,9 +67,11 @@ class ObjectFileDB {
                          bool print_hex);
 
   void analyze_functions_ir1(const Config& config);
-  void analyze_functions_ir2(const std::string& output_dir,
-                             const Config& config,
-                             const std::unordered_set<std::string>& skip_functions);
+  void analyze_functions_ir2(
+      const std::string& output_dir,
+      const Config& config,
+      const std::unordered_set<std::string>& skip_functions,
+      const std::unordered_map<std::string, std::unordered_set<std::string>>& skip_states = {});
   void ir2_top_level_pass(const Config& config);
   void ir2_stack_spill_slot_pass(int seg, ObjectFileData& data);
   void ir2_basic_block_pass(int seg, const Config& config, ObjectFileData& data);

@@ -5,6 +5,34 @@
 ;; name in dgo: camera-h
 ;; dgos: GAME, ENGINE
 
+;; TODO - for cam-layout
+(define-extern v-slrp2! (function vector vector vector float vector float vector))
+(define-extern v-slrp3! (function vector vector vector vector float vector))
+(declare-type camera-slave process)
+(declare-type camera-master process)
+(declare-type tracking-point structure)
+(declare-type cam-rotation-tracker structure)
+(declare-type camera-combiner process)
+;; TODO - for cam-master
+(define-extern cam-eye (state camera-slave))
+;; TODO - for camera
+(define-extern cam-circular (state camera-slave))
+(define-extern cam-standoff-read-entity (state camera-slave))
+(define-extern cam-spline (state camera-slave))
+(define-extern *camera-base-mode* state)
+(define-extern cam-fixed-read-entity (state camera-slave))
+(define-extern camera-line-rel-len (function tracking-point vector float rgba none))
+(define-extern cam-calc-follow! (function cam-rotation-tracker vector symbol vector))
+(define-extern slave-set-rotation! (function cam-rotation-tracker vector float float symbol none))
+;; TODO - for cam-combiner
+(define-extern cam-combiner-active (state camera-combiner))
+(define-extern paused? (function symbol))
+;; TODO - for cam-start
+(define-extern cam-master-init (function none :behavior camera-master))
+
+
+;; decomp begins
+
 ;; definition of type camera-bank
 (deftype camera-bank (basic)
   ((collide-move-rad        float    :offset-assert   4)
@@ -77,7 +105,7 @@
 
 ;; definition of type tracking-spline
 (deftype tracking-spline (structure)
-  ((point tracking-point 32 :inline     :offset-assert 0)
+  ((point              tracking-point 32 :inline     :offset-assert 0)
    (summed-len         float           :offset-assert 1536)
    (free-point         int32           :offset-assert 1540)
    (used-point         int32           :offset-assert 1544)
@@ -98,8 +126,8 @@
   (:methods
     (TODO-RENAME-9 (_type_) none 9)
     (TODO-RENAME-10 (_type_ vector) none 10)
-    (dummy-11 () none 11)
-    (dummy-12 () none 12)
+    (print-nth-point (_type_ int) none 11)
+    (TODO-RENAME-12 (_type_) none 12)
     (TODO-RENAME-13 (_type_ int) none 13)
     (TODO-RENAME-14 (_type_ vector) none 14)
     (TODO-RENAME-15 (_type_) none 15)
@@ -110,7 +138,7 @@
     (TODO-RENAME-20 (_type_ vector int) none 20)
     (TODO-RENAME-21 (_type_ vector float float) vector 21)
     (TODO-RENAME-22 (_type_ float) none 22)
-    (dummy-23 () none 23)
+    (TODO-RENAME-23 (_type_) none 23)
     )
   )
 
@@ -377,7 +405,7 @@
    (slave-options       uint32                    :offset-assert 128)
    (view-off-param-save float                     :offset-assert 132)
    (changer             uint32                    :offset-assert 136)
-   (cam-entity          entity                     :offset-assert 140) ; not totally confirmed yet
+   (cam-entity          entity                    :offset-assert 140) ; not totally confirmed yet
    (stringMinLength     float                     :offset-assert 144)
    (stringMaxLength     float                     :offset-assert 148)
    (stringMinHeight     float                     :offset-assert 152)
@@ -390,15 +418,15 @@
    (force-blend         uint32                    :offset-assert 296)
    (force-blend-time    uint32                    :offset-assert 300)
    (local-down          vector            :inline :offset-assert 304)
-   (drawable-target     uint64                    :offset-assert 320)
+   (drawable-target     handle                    :offset-assert 320) ; likely a `target`?
    (which-bone          int32                     :offset-assert 328)
-   (pov-handle          uint64                    :offset-assert 336)
+   (pov-handle          handle                    :offset-assert 336)
    (pov-bone            int32                     :offset-assert 344)
-   (being-attacked      basic                     :offset-assert 348)
+   (being-attacked      symbol                     :offset-assert 348)
    (attack-start        uint64                    :offset-assert 352)
-   (on-ground           basic                     :offset-assert 360)
+   (on-ground           symbol                     :offset-assert 360)
    (under-water         int32                     :offset-assert 364)
-   (on-pole             basic                     :offset-assert 368)
+   (on-pole             symbol                     :offset-assert 368)
    (tgt-rot-mat         matrix            :inline :offset-assert 384)
    (tgt-face-mat        matrix            :inline :offset-assert 448)
    (tpos-old            vector            :inline :offset-assert 512)
@@ -431,20 +459,3 @@
   :flag-assert         #xe09000964
   ;; inherited inspect of process
   )
-
-;; TODO - for camera
-(define-extern cam-circular state)
-(define-extern cam-standoff-read-entity state)
-(define-extern cam-spline state)
-(define-extern *camera-base-mode* state)
-(define-extern cam-fixed-read-entity state)
-(define-extern camera-line-rel-len (function tracking-point vector float rgba none))
-(define-extern camera-slave-debug (function object object object object object)) ;; passed to engine::method-15
-(define-extern cam-calc-follow! (function cam-rotation-tracker vector symbol vector))
-(define-extern slave-set-rotation! (function cam-rotation-tracker vector float float symbol none))
-;; TODO - for cam-combiner
-(define-extern cam-combiner-active (state camera-combiner))
-(define-extern paused? (function symbol))
-;; TODO - for cam-start
-(define-extern cam-master-init (function none :behavior camera-master))
-(define-extern v-slrp3! (function vector vector vector vector float vector))
