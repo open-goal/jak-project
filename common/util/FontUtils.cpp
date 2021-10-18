@@ -247,8 +247,8 @@ std::vector<ReplaceInfo> g_font_large_string_replace = {
 
     // tildes
     {"N~Y~-22H~-4V<TIL>~Z", "Ñ"},
-    {"A~Y~-21H~-5V<TIL>~Z", "Ã"},
-    {"O~Y~-22H~-4V<TIL>~Z", "Õ"},
+    {"A~Y~-21H~-5V<TIL>~Z", "Ã"},  // custom
+    {"O~Y~-22H~-4V<TIL>~Z", "Õ"},  // custom
 
     // acute accents
     {"A~Y~-21H~-5V'~Z", "Á"},
@@ -258,19 +258,23 @@ std::vector<ReplaceInfo> g_font_large_string_replace = {
     {"U~Y~-24H~-3V'~Z", "Ú"},
 
     // circumflex
+    {"A~Y~-20H~-4V^~Z", "Â"},  // custom
     {"E~Y~-20H~-5V^~Z", "Ê"},
     {"I~Y~-19H~-5V^~Z", "Î"},
+    {"O~Y~-20H~-4V^~Z", "Ô"},  // custom
     {"U~Y~-24H~-3V^~Z", "Û"},
 
     // grave accents
     {"A~Y~-21H~-5V`~Z", "À"},
     {"E~Y~-22H~-5V`~Z", "È"},
     {"I~Y~-19H~-5V`~Z", "Ì"},
+    {"O~Y~-22H~-4V`~Z", "Ò"},  // custom
     {"U~Y~-24H~-3V`~Z", "Ù"},
 
     // umlaut
     {"A~Y~-21H~-5V¨~Z", "Ä"},
     {"E~Y~-20H~-5V¨~Z", "Ë"},
+    {"I~Y~-19H~-5V¨~Z", "Ï"},  // custom
     {"O~Y~-22H~-4V¨~Z", "Ö"},
     {"O~Y~-22H~-3V¨~Z", "ö"},  // dumb
     {"U~Y~-22H~-3V¨~Z", "Ü"},
@@ -341,7 +345,7 @@ std::vector<ReplaceInfo> g_font_large_string_replace = {
     {"~Y~22L<~Z~Y~27L*~Z~Y~1L>~Z~Y~23L[~Z~+26H", "<PAD_X>"},
     {"~Y~22L<~Z~Y~26L;~Z~Y~1L>~Z~Y~23L[~Z~+26H", "<PAD_TRIANGLE>"},
     {"~Y~22L<~Z~Y~25L@~Z~Y~1L>~Z~Y~23L[~Z~+26H", "<PAD_CIRCLE>"},
-    {"~Y~22L<~Z~Y~24L#~Z~Y~1L>~Z~Y~23L[~Z~+26H", "<PAD_SQUARE>"},  // custom!
+    {"~Y~22L<~Z~Y~24L#~Z~Y~1L>~Z~Y~23L[~Z~+26H", "<PAD_SQUARE>"},  // custom
 };
 
 static bool remaps_inited = false;
