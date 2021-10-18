@@ -350,12 +350,15 @@ std::vector<ReplaceInfo> g_font_large_string_replace = {
 
 static bool remaps_inited = false;
 static void init_remaps() {
-  std::sort(g_font_large_char_remap.begin(), g_font_large_char_remap.end(),
-            [](const RemapInfo& a, const RemapInfo& b) { return a.bytes.size() > b.bytes.size(); });
-  std::sort(
-      g_font_large_string_replace.begin(), g_font_large_string_replace.end(),
-      [](const ReplaceInfo& a, const ReplaceInfo& b) { return a.from.size() > b.from.size(); });
-  remaps_inited = true;
+  if (!remaps_inited) {
+    std::sort(
+        g_font_large_char_remap.begin(), g_font_large_char_remap.end(),
+        [](const RemapInfo& a, const RemapInfo& b) { return a.bytes.size() > b.bytes.size(); });
+    std::sort(
+        g_font_large_string_replace.begin(), g_font_large_string_replace.end(),
+        [](const ReplaceInfo& a, const ReplaceInfo& b) { return a.from.size() > b.from.size(); });
+    remaps_inited = true;
+  }
 }
 
 /*!
@@ -409,7 +412,7 @@ std::string& utf8_trans_to_jak1(std::string& str) {
 
 std::string& utf8_bytes_to_jak1(std::string& str) {
   // find all instances of characters and save them
-  std::map<size_t, RemapInfo*, std::greater<size_t>> remap_cache;
+  std::map<size_t, const RemapInfo*, std::greater<size_t>> remap_cache;
   for (auto& info : g_font_large_char_remap) {
     auto pos = str.find(info.chars);
     while (pos != std::string::npos) {
