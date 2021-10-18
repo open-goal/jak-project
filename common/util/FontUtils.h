@@ -33,8 +33,7 @@ extern std::vector<RemapInfo> g_font_large_char_remap;
  */
 extern std::vector<ReplaceInfo> g_font_large_string_replace;
 
-void init_remaps();
-bool jak1_bytes_to_utf8(const char* in, RemapInfo* ptr);
+RemapInfo* jak1_bytes_to_utf8(const char* in);
 std::string& jak1_trans_to_utf8(std::string& str);
 
 std::string convert_to_jak1_encoding(std::string str);

@@ -166,14 +166,27 @@ Reader::Reader() {
   m_valid_source_text_chars[(int)'\r'] = true;
 
   // allow every character that gets transformed to something else
-  init_remaps();
-  for (auto& remap : g_font_large_char_remap) {
-    for (auto c : remap.chars) {
-      m_valid_source_text_chars[(u8)c] = true;
-    }
-  }
+}
 
-  m_valid_source_text_chars[0] = false;
+bool Reader::is_valid_source_char(char c) {
+  if (!m_valid_source_chars_updated) {
+    for (auto& remap : g_font_large_char_remap) {
+      for (auto rc : remap.chars) {
+        m_valid_source_text_chars[(u8)rc] = true;
+      }
+    }
+    for (auto& remap : g_font_large_string_replace) {
+      for (auto rc : remap.to) {
+        m_valid_source_text_chars[(u8)rc] = true;
+      }
+      for (auto rc : remap.from) {
+        m_valid_source_text_chars[(u8)rc] = true;
+      }
+    }
+    m_valid_source_text_chars[0] = false;
+    m_valid_source_chars_updated = true;
+  }
+  return m_valid_source_text_chars[(u8)c];
 }
 
 /*!
@@ -254,7 +267,7 @@ Object Reader::internal_read(std::shared_ptr<SourceText> text,
 
   // validate the input
   for (int offset = check_encoding ? 3 : 0; offset < text->get_size(); offset++) {
-    if (!m_valid_source_text_chars[(u8)text->get_text()[offset]]) {
+    if (!is_valid_source_char(text->get_text()[offset])) {
       // failed.
       int line_number = text->get_line_idx(offset) + 1;
       throw std::runtime_error(fmt::format("Invalid character found on line {} of {}: 0x{:x}",
@@ -837,10 +850,10 @@ std::unordered_set<char> passthrus = {'~', ' ', ',', '.', '-', '+', '(', ')', '!
 std::string get_readable_string_large_font(const char* in) {
   std::string result;
   while (*in) {
-    RemapInfo remap;
-    if (jak1_bytes_to_utf8(in, &remap)) {
-      result.append(remap.chars);
-      in += remap.bytes.size() - 1;
+    auto remap = jak1_bytes_to_utf8(in);
+    if (remap != nullptr) {
+      result.append(remap->chars);
+      in += remap->bytes.size() - 1;
     } else if (((*in >= '0' && *in <= '9') || (*in >= 'A' && *in <= 'Z') ||
                 passthrus.find(*in) != passthrus.end()) &&
                *in != '\\') {
