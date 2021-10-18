@@ -1,4 +1,4 @@
-﻿/*!
+/*!
  * @file FontUtils.cpp
  *
  * Code for handling text and strings in Jak 1's "large font" format.

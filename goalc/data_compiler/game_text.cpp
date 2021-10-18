@@ -218,7 +218,7 @@ void compile(const std::vector<std::unordered_map<int, std::string>>& text,
  */
 void compile_game_text(const std::string& filename) {
   goos::Reader reader;
-  auto code = reader.read_from_file({filename}, true);
+  auto code = reader.read_from_file({filename});
   printf("[Build Game Text] %s\n", filename.c_str());
   std::string group_name;
   auto text_map = parse(code, &group_name);
