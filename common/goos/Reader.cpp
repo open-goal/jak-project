@@ -243,7 +243,8 @@ Object Reader::read_from_file(const std::vector<std::string>& file_path, bool ch
  * Common read for a SourceText
  */
 Object Reader::internal_read(std::shared_ptr<SourceText> text,
-                             bool check_encoding, bool add_top_level) {
+                             bool check_encoding,
+                             bool add_top_level) {
   // verify UTF-8 encoding
   if (check_encoding && (text->get_size() < 3 || (u8)text->get_text()[0] != 0xEF ||
                          (u8)text->get_text()[1] != 0xBB || (u8)text->get_text()[2] != 0xBF)) {

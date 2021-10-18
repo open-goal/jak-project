@@ -81,7 +81,9 @@ class Reader {
   TextDb db;
 
  private:
-  Object internal_read(std::shared_ptr<SourceText> text, bool check_encoding, bool add_top_level = true);
+  Object internal_read(std::shared_ptr<SourceText> text,
+                       bool check_encoding,
+                       bool add_top_level = true);
   Object read_list(TextStream& stream, bool expect_close_paren = true);
   bool read_object(Token& tok, TextStream& ts, Object& obj);
   bool read_array(TextStream& stream, Object& o);

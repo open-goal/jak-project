@@ -348,7 +348,7 @@ std::string& utf8_bytes_to_jak1(std::string& str) {
     auto pos = str.find(info.chars);
     while (pos != std::string::npos) {
       remap_cache[pos] = &info;
-      pos = str.find(info.chars, pos+1);
+      pos = str.find(info.chars, pos + 1);
     }
   }
 
