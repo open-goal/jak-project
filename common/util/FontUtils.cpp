@@ -335,6 +335,9 @@ void init_remaps() {
       {"~Yふ~Z゜", "ぷ"},
       {"~Yへ~Z゜", "ぺ"},
       {"~Yほ~Z゜", "ぽ"},
+      // japanese punctuation
+      {",~+8H", "、"},
+      {"~+8H ", "　"},
 
       // (hack) special case kanji
       {"~~", "世"},
