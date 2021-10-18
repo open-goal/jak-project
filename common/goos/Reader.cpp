@@ -827,6 +827,9 @@ std::string Reader::get_source_dir() {
   return file_util::get_project_path();
 }
 
+std::unordered_set<char> passthrus = {'~', ' ', ',', '.', '-', '+', '(', ')', '!', ':', '?',
+                                      '=', '%', '*', '/', '#', ';', '<', '>', '@', '[', '_'};
+
 /*!
  * Convert any string into one that can be read by the large font.
  * Unprintable characters become escape sequences, including tab and newline.
@@ -838,10 +841,9 @@ std::string get_readable_string_large_font(const char* in) {
     if (jak1_bytes_to_utf8(in, &remap)) {
       result.append(remap.chars);
       in += remap.bytes.size() - 1;
-    } else if (((*in >= '0' && *in <= '9') || (*in >= 'A' && *in <= 'Z') || *in == '~' ||
-                *in == ' ' || *in == ',' || *in == '.' || *in == '-' || *in == '+' || *in == '(' ||
-                *in == ')' || *in == '!' || *in == ':' || *in == '?' || *in == '=') &&
-               *in != '\\' && *in != '"') {
+    } else if (((*in >= '0' && *in <= '9') || (*in >= 'A' && *in <= 'Z') ||
+                passthrus.find(*in) != passthrus.end()) &&
+               *in != '\\') {
       result.push_back(*in);
     } else if (*in == '\n') {
       result += "\\n";
@@ -849,8 +851,6 @@ std::string get_readable_string_large_font(const char* in) {
       result += "\\t";
     } else if (*in == '\\') {
       result += "\\\\";
-    } else if (*in == '"') {
-      result += "\\\"";
     } else {
       result += fmt::format("\\c{:02x}", uint8_t(*in));
     }

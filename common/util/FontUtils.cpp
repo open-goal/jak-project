@@ -25,27 +25,40 @@ std::vector<ReplaceInfo> g_font_large_string_replace;
 
 void init_remaps() {
   g_font_large_char_remap = {
-      // special
-      {"'", {0x12}},  // apostrophe
-
-      {"¿", {0x18}},  // inverted question mark
+      // random
+      {"ˇ", {0x10}},      // caron
+      {"`", {0x11}},      // grave accent
+      {"'", {0x12}},      // apostrophe
+      {"^", {0x13}},      // circumflex
+      {"<TIL>", {0x14}},  // tilde
+      {"¨", {0x15}},      // umlaut
+      {"°", {0x16}},      // degree sign/overring
+      {"¡", {0x17}},      // inverted exclamation mark
+      {"¿", {0x18}},      // inverted question mark
 
       {"海", {0x1a}},  // umi
-
+      {"Æ", {0x1b}},   // aesc
       {"界", {0x1c}},  // kai
       {"Ç", {0x1d}},   // c-cedilla
       {"学", {0x1e}},  // gaku
+      {"ß", {0x1f}},   // eszett
+
+      {"\"", {0x22}},  // double-quotes
 
       {"ワ", {0x24}},  // wa
 
+      {"ヲ", {0x26}},  // wo
       {"ン", {0x27}},  // -n
 
+      {"岩", {0x5c}},  // iwa
       {"旧", {0x5d}},  // kyuu
       {"空", {0x5e}},  // sora
       //{"掘", {0x5f}},  // horu
 
+      {"ヮ", {0x60}},  // -wa
+      {"撃", {0x61}},  // utsu
       {"賢", {0x62}},  // kashikoi
-      {"湖", {0x63}},  // (guess) mizuumi
+      {"湖", {0x63}},  // mizuumi
       {"口", {0x64}},  // kuchi
       {"行", {0x65}},  // iku
       {"合", {0x66}},  // ai
@@ -53,7 +66,7 @@ void init_remaps() {
       {"寺", {0x68}},  // tera
       {"山", {0x69}},  // yama
       {"者", {0x6a}},  // mono
-
+      {"所", {0x6b}},  // tokoro
       {"書", {0x6c}},  // kaku
       {"小", {0x6d}},  // shou
       {"沼", {0x6e}},  // numa
@@ -70,15 +83,17 @@ void init_remaps() {
       {"火", {0x79}},  // hi
       {"花", {0x7a}},  // hana
       {"レ", {0x7b}},  // re
-
+      {"Œ", {0x7c}},   // oe
       {"ロ", {0x7d}},  // ro
 
       {"青", {0x7f}},  // ao
 
+      {"・", {0x90}},  // nakaguro
       {"゛", {0x91}},  // dakuten
       {"゜", {0x92}},  // handakuten
       {"ー", {0x93}},  // chouompu
-
+      {"『", {0x94}},  // nijuukagikakko left
+      {"』", {0x95}},  // nijuukagikakko right
       // hiragana
       {"ぁ", {0x96}},  // -a
       {"あ", {0x97}},  // a
@@ -132,7 +147,7 @@ void init_remaps() {
       {"る", {0xc7}},  // ru
       {"れ", {0xc8}},  // re
       {"ろ", {0xc9}},  // ro
-
+      {"ゎ", {0xca}},  // -wa
       {"わ", {0xcb}},  // wa
       {"を", {0xcc}},  // wo
       {"ん", {0xcd}},  // -n
@@ -188,9 +203,9 @@ void init_remaps() {
       {"リ", {0xfe}},  // ri
       {"ル", {0xff}},  // ru
       // kanji 2
-      //{"宝", {1, 0x01}},  // takara
+      {"宝", {1, 0x01}},  // takara
 
-      //{"石", {1, 0x10}},  // ishi
+      {"石", {1, 0x10}},  // ishi
       {"赤", {1, 0x11}},  // aka
       {"跡", {1, 0x12}},  // ato
       {"川", {1, 0x13}},  // kawa
@@ -203,7 +218,7 @@ void init_remaps() {
       {"艇", {1, 0x1a}},  // tei
       {"洞", {1, 0x1b}},  // hora
       {"道", {1, 0x1c}},  // michi
-      //{"発", {1, 0x1d}},  // hatsu
+      {"発", {1, 0x1d}},  // hatsu
       {"飛", {1, 0x1e}},  // tobu
       {"噴", {1, 0x1f}},  // fuku
 
@@ -228,6 +243,9 @@ void init_remaps() {
   };
 
   g_font_large_string_replace = {
+      // \" -> " (confusing)
+      {"\\\"", "\""},
+
       // dakuten katakana
       {"~Yカ~Z゛", "ガ"},
       {"~Yキ~Z゛", "ギ"},
