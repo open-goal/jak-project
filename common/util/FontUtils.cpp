@@ -246,7 +246,43 @@ void init_remaps() {
       // \" -> " (confusing)
       {"\\\"", "\""},
 
+      // other
+      {"~Y~-6H°~Z~+10H", "°"},
+      {"~Y~-6H°~Z~+10H", "º"}, // easier typing
+      {"A~Y~-21H~-5V°~Z", "Å"},
+
+      // tildes
+      {"N~Y~-22H~-4V<TIL>~Z", "Ñ"},
+      {"A~Y~-21H~-5V<TIL>~Z", "Ã"},
+      {"O~Y~-22H~-4V<TIL>~Z", "Õ"},
+
+      // acute accents
+      {"A~Y~-21H~-5V'~Z", "Á"},
+      {"E~Y~-22H~-5V'~Z", "É"},
+      {"I~Y~-19H~-5V'~Z", "Í"},
+      {"O~Y~-22H~-4V'~Z", "Ó"},
+      {"U~Y~-24H~-3V'~Z", "Ú"},
+
+      // circumflex
+      {"E~Y~-20H~-5V^~Z", "Ê"},
+      {"I~Y~-19H~-5V^~Z", "Î"},
+      {"U~Y~-24H~-3V^~Z", "Û"},
+
+      // grave accents
+      {"A~Y~-21H~-5V`~Z", "À"},
+      {"E~Y~-22H~-5V`~Z", "È"},
+      {"I~Y~-19H~-5V`~Z", "Ì"},
+      {"U~Y~-24H~-3V`~Z", "Ù"},
+
+      // umlaut
+      {"A~Y~-21H~-5V¨~Z", "Ä"},
+      {"E~Y~-20H~-5V¨~Z", "Ë"},
+      {"O~Y~-22H~-4V¨~Z", "Ö"},
+      {"O~Y~-22H~-3V¨~Z", "ö"}, // dumb
+      {"U~Y~-22H~-3V¨~Z", "Ü"},
+
       // dakuten katakana
+      {"~Yウ~Z゛", "ヴ"},
       {"~Yカ~Z゛", "ガ"},
       {"~Yキ~Z゛", "ギ"},
       {"~Yク~Z゛", "グ"},
@@ -303,6 +339,12 @@ void init_remaps() {
 
       // (hack) special case kanji
       {"~~", "世"},
+
+      // playstation buttons
+      {"~Y~22L<~Z~Y~27L*~Z~Y~1L>~Z~Y~23L[~Z~+26H", "<PAD_X>"},
+      {"~Y~22L<~Z~Y~26L;~Z~Y~1L>~Z~Y~23L[~Z~+26H", "<PAD_TRIANGLE>"},
+      {"~Y~22L<~Z~Y~25L@~Z~Y~1L>~Z~Y~23L[~Z~+26H", "<PAD_CIRCLE>"},
+      {"~Y~22L<~Z~Y~24L#~Z~Y~1L>~Z~Y~23L[~Z~+26H", "<PAD_SQUARE>"},
   };
 
   std::sort(g_font_large_char_remap.begin(), g_font_large_char_remap.end(),
@@ -342,8 +384,9 @@ bool jak1_bytes_to_utf8(const char* in, RemapInfo* ptr) {
 std::string& jak1_trans_to_utf8(std::string& str) {
   for (auto& info : g_font_large_string_replace) {
     auto pos = str.find(info.from);
-    if (pos != std::string::npos) {
+    while (pos != std::string::npos) {
       str.replace(pos, info.from.size(), info.to);
+      pos = str.find(info.from);
     }
   }
   return str;
@@ -352,8 +395,9 @@ std::string& jak1_trans_to_utf8(std::string& str) {
 std::string& utf8_trans_to_jak1(std::string& str) {
   for (auto& info : g_font_large_string_replace) {
     auto pos = str.find(info.to);
-    if (pos != std::string::npos) {
+    while (pos != std::string::npos) {
       str.replace(pos, info.to.size(), info.from);
+      pos = str.find(info.to);
     }
   }
   return str;
