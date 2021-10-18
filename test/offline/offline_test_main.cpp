@@ -65,7 +65,7 @@ struct OfflineTestConfig {
  * Read and parse the json config file, config.json, located in test/offline
  */
 OfflineTestConfig parse_config() {
-  auto json_file_path = file_util::get_file_path({"test", "offline", "config.json"});
+  auto json_file_path = file_util::get_file_path({"test", "offline", "config.jsonc"});
   auto json = parse_commented_json(file_util::read_text_file(json_file_path), json_file_path);
   OfflineTestConfig result;
   result.dgos = json["dgos"].get<std::vector<std::string>>();
@@ -75,11 +75,6 @@ OfflineTestConfig parse_config() {
   result.skip_compile_states =
       json["skip_compile_states"]
           .get<std::unordered_map<std::string, std::unordered_set<std::string>>>();
-
-  if (!result.skip_compile_states.empty()) {
-    fmt::print("skip_compile_states wasn't emtpy. It's not implemented in the decompiler yet\n");
-    exit(1);
-  }
   return result;
 }
 
@@ -239,7 +234,8 @@ void disassemble(Decompiler& dc) {
 }
 
 void decompile(Decompiler& dc, const OfflineTestConfig& config) {
-  dc.db->analyze_functions_ir2({}, *dc.config, config.skip_compile_functions);
+  dc.db->analyze_functions_ir2({}, *dc.config, config.skip_compile_functions,
+                               config.skip_compile_states);
 }
 
 std::string strip_trailing_newlines(const std::string& in) {

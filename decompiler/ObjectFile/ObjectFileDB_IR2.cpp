@@ -33,9 +33,11 @@ namespace decompiler {
  * At this point, we assume that the files are loaded and we've run find_code to locate all
  * functions, but nothing else.
  */
-void ObjectFileDB::analyze_functions_ir2(const std::string& output_dir,
-                                         const Config& config,
-                                         const std::unordered_set<std::string>& skip_functions) {
+void ObjectFileDB::analyze_functions_ir2(
+    const std::string& output_dir,
+    const Config& config,
+    const std::unordered_set<std::string>& skip_functions,
+    const std::unordered_map<std::string, std::unordered_set<std::string>>& skip_states) {
   // First, do basic analysis on the top level:
   lg::info("Using IR2 analysis...");
 
@@ -57,7 +59,7 @@ void ObjectFileDB::analyze_functions_ir2(const std::string& output_dir,
     ir2_do_segment_analysis_phase2(TOP_LEVEL_SEGMENT, config, data);
     try {
       if (data.linked_data.functions_by_seg.size() == 3) {
-        run_defstate(data.linked_data.functions_by_seg.at(2).front());
+        run_defstate(data.linked_data.functions_by_seg.at(2).front(), skip_states);
       }
     } catch (const std::exception& e) {
       lg::error("Failed to find defstates: {}", e.what());

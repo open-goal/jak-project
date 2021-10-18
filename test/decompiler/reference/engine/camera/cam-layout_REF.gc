@@ -1,16 +1,12 @@
 ;;-*-Lisp-*-
 (in-package goal)
 
-;; name: cam-layout.gc
-;; name in dgo: cam-layout
-;; dgos: GAME, ENGINE
-
-;; DECOMP BEGINS
-
 ;; this file is debug only
 (when *debug-segment*
+;; definition for symbol *camera-layout-blink*, type symbol
 (define *camera-layout-blink* #f)
 
+;; definition of type cam-layout-bank
 (deftype cam-layout-bank (basic)
   ((spline-t    float  :offset-assert   4)
    (spline-step float  :offset-assert   8)
@@ -24,7 +20,19 @@
   :flag-assert         #x90000001c
   )
 
+;; definition for method 3 of type cam-layout-bank
+(defmethod inspect cam-layout-bank ((obj cam-layout-bank))
+  (format #t "[~8x] ~A~%" obj (-> obj type))
+  (format #t "~Tspline-t: ~f~%" (-> obj spline-t))
+  (format #t "~Tspline-step: ~f~%" (-> obj spline-step))
+  (format #t "~Tintro-t: ~f~%" (-> obj intro-t))
+  (format #t "~Tintro-step: ~f~%" (-> obj intro-step))
+  (format #t "~Tdebug-t: ~f~%" (-> obj debug-t))
+  (format #t "~Tdebug-step: ~f~%" (-> obj debug-step))
+  obj
+  )
 
+;; definition for symbol *CAM_LAYOUT-bank*, type cam-layout-bank
 (define
   *CAM_LAYOUT-bank*
   (new 'static 'cam-layout-bank
@@ -37,8 +45,10 @@
    )
   )
 
+;; definition for symbol *camera-layout-message-ypos*, type int
 (define *camera-layout-message-ypos* 30)
 
+;; definition of type clm-basic
 (deftype clm-basic (basic)
   ()
   :method-count-assert 9
@@ -46,7 +56,13 @@
   :flag-assert         #x900000004
   )
 
+;; definition for method 3 of type clm-basic
+(defmethod inspect clm-basic ((obj clm-basic))
+  (format #t "[~8x] ~A~%" obj (-> obj type))
+  obj
+  )
 
+;; definition of type clm-item-action
 (deftype clm-item-action (structure)
   ((button      uint64  :offset-assert   0)
    (options     uint64  :offset-assert   8)
@@ -61,7 +77,18 @@
   :flag-assert         #x90000001c
   )
 
+;; definition for method 3 of type clm-item-action
+(defmethod inspect clm-item-action ((obj clm-item-action))
+  (format #t "[~8x] ~A~%" obj 'clm-item-action)
+  (format #t "~Tbutton: ~D~%" (-> obj button))
+  (format #t "~Toptions: ~D~%" (-> obj options))
+  (format #t "~Tfunc: ~A~%" (-> obj func))
+  (format #t "~Tparm0: ~A~%" (-> obj parm0))
+  (format #t "~Tparm1: ~A~%" (-> obj parm1-basic))
+  obj
+  )
 
+;; definition of type clm-item
 (deftype clm-item (clm-basic)
   ((description   string                  :offset-assert   4)
    (button-symbol symbol                  :offset-assert   8)
@@ -72,7 +99,16 @@
   :flag-assert         #x90000002c
   )
 
+;; definition for method 3 of type clm-item
+(defmethod inspect clm-item ((obj clm-item))
+  (format #t "[~8x] ~A~%" obj (-> obj type))
+  (format #t "~Tdescription: ~A~%" (-> obj description))
+  (format #t "~Tbutton-symbol: ~A~%" (-> obj button-symbol))
+  (format #t "~Taction: #<clm-item-action @ #x~X>~%" (-> obj action))
+  obj
+  )
 
+;; definition of type clm-list-item
 (deftype clm-list-item (basic)
   ((description     string                   :offset-assert   4)
    (track-val       symbol                   :offset-assert   8)
@@ -88,7 +124,19 @@
   :flag-assert         #x90000001c
   )
 
+;; definition for method 3 of type clm-list-item
+(defmethod inspect clm-list-item ((obj clm-list-item))
+  (format #t "[~8x] ~A~%" obj (-> obj type))
+  (format #t "~Tdescription: ~A~%" (-> obj description))
+  (format #t "~Ttrack-val: ~A~%" (-> obj track-val))
+  (format #t "~Tval-func: ~A~%" (-> obj val-func))
+  (format #t "~Tval-parm0: ~A~%" (-> obj val-parm0))
+  (format #t "~Tval-parm1: ~A~%" (-> obj val-parm1-basic))
+  (format #t "~Tactions: ~A~%" (-> obj actions))
+  obj
+  )
 
+;; definition of type clm-list
 (deftype clm-list (clm-basic)
   ((tracker       symbol                 :offset-assert   4)
    (cur-list-item int32                  :offset-assert   8)
@@ -99,7 +147,16 @@
   :flag-assert         #x900000010
   )
 
+;; definition for method 3 of type clm-list
+(defmethod inspect clm-list ((obj clm-list))
+  (format #t "[~8x] ~A~%" obj (-> obj type))
+  (format #t "~Ttracker: ~A~%" (-> obj tracker))
+  (format #t "~Tcur-list-item: ~D~%" (-> obj cur-list-item))
+  (format #t "~Titems: ~A~%" (-> obj items))
+  obj
+  )
 
+;; definition of type clm
 (deftype clm (basic)
   ((title string             :offset-assert   4)
    (items (array clm-basic)  :offset-assert   8)
@@ -109,15 +166,27 @@
   :flag-assert         #x90000000c
   )
 
+;; definition for method 3 of type clm
+(defmethod inspect clm ((obj clm))
+  (format #t "[~8x] ~A~%" obj (-> obj type))
+  (format #t "~Ttitle: ~A~%" (-> obj title))
+  (format #t "~Titems: ~A~%" (-> obj items))
+  obj
+  )
 
+;; definition for symbol *volume-point-current*, type int
 (define *volume-point-current* 0)
 
+;; definition for symbol *volume-point*, type vector-array
 (define *volume-point* (new 'debug 'vector-array 1000))
 
+;; definition for symbol *volume-normal-current*, type int
 (define *volume-normal-current* 0)
 
+;; definition for symbol *volume-normal*, type vector-array
 (define *volume-normal* (new 'debug 'vector-array 600))
 
+;; definition of type volume-descriptor-array
 (deftype volume-descriptor-array (inline-array-class)
   ((data plane-volume :inline :dynamic :offset  16)
    )
@@ -126,16 +195,28 @@
   :flag-assert         #x900000010
   )
 
+;; definition for method 3 of type volume-descriptor-array
+(defmethod inspect volume-descriptor-array ((obj volume-descriptor-array))
+  (format #t "[~8x] ~A~%" obj (-> obj type))
+  (format #t "~Tlength: ~D~%" (-> obj length))
+  (format #t "~Tallocated-length: ~D~%" (-> obj allocated-length))
+  (format #t "~Tdata[0] @ #x~X~%" (-> obj data))
+  obj
+  )
 
+;; failed to figure out what this is:
 (set! (-> volume-descriptor-array heap-base) (the-as uint 24))
 
+;; definition for symbol *volume-descriptor-current*, type int
 (define *volume-descriptor-current* 0)
 
+;; definition for symbol *volume-descriptor*, type vol-control
 (define
   *volume-descriptor*
   (the-as vol-control (new 'debug 'volume-descriptor-array 100))
   )
 
+;; definition of type cam-layout
 (deftype cam-layout (process)
   ((cam-entity      entity-camera  :offset-assert 112)
    (num-entities    int32          :offset-assert 116)
@@ -152,7 +233,23 @@
   :flag-assert         #xe02000090
   )
 
+;; definition for method 3 of type cam-layout
+(defmethod inspect cam-layout ((obj cam-layout))
+  (let ((t9-0 (method-of-type process inspect)))
+   (t9-0 obj)
+   )
+  (format #t "~T~Tcam-entity: ~A~%" (-> obj cam-entity))
+  (format #t "~T~Tnum-entities: ~D~%" (-> obj num-entities))
+  (format #t "~T~Tcur-entity: ~D~%" (-> obj cur-entity))
+  (format #t "~T~Tnum-volumes: ~D~%" (-> obj num-volumes))
+  (format #t "~T~Tcur-volume: ~D~%" (-> obj cur-volume))
+  (format #t "~T~Tfirst-pvol: ~D~%" (-> obj first-pvol))
+  (format #t "~T~Tfirst-cutoutvol: ~D~%" (-> obj first-cutoutvol))
+  (format #t "~T~Tres-key: ~f~%" (-> obj res-key))
+  obj
+  )
 
+;; definition for function cam-layout-print
 (defun cam-layout-print ((arg0 int) (arg1 int) (arg2 string))
   (let* ((s5-0 (-> *display* frames (-> *display* on-screen) frame debug-buf))
          (gp-0 (-> s5-0 base))
@@ -185,6 +282,8 @@
    )
   )
 
+;; definition for function cam-layout-intersect-dist
+;; INFO: Return type mismatch number vs float.
 (defun cam-layout-intersect-dist ((arg0 vector) (arg1 vector) (arg2 vector))
   (let ((f0-1 (vector-dot arg1 arg0))
         (f1-1 (vector-dot arg2 arg0))
@@ -197,6 +296,7 @@
    )
   )
 
+;; definition for function cam-layout-entity-volume-info-create
 ;; WARN: Stack slot offset 164 signed mismatch
 ;; WARN: Stack slot offset 164 signed mismatch
 ;; WARN: Stack slot offset 164 signed mismatch
@@ -208,6 +308,7 @@
 ;; WARN: Stack slot offset 164 signed mismatch
 ;; WARN: Stack slot offset 164 signed mismatch
 ;; WARN: Stack slot offset 164 signed mismatch
+;; Used lq/sq
 (defbehavior
   cam-layout-entity-volume-info-create cam-layout
   ((arg0 entity-camera) (arg1 symbol))
@@ -431,6 +532,7 @@
   (the-as symbol #f)
   )
 
+;; definition for function cam-layout-entity-volume-info
 (defbehavior cam-layout-entity-volume-info cam-layout ()
   (dotimes (gp-0 (-> self num-volumes))
    (cond
@@ -484,6 +586,8 @@
   #f
   )
 
+;; definition for function v-slrp!
+;; Used lq/sq
 (defun v-slrp! ((arg0 vector) (arg1 vector) (arg2 vector) (arg3 float))
   (let ((s2-0 (new-stack-vector0))
         (s1-0 (new-stack-vector0))
@@ -523,6 +627,7 @@
    )
   )
 
+;; definition of type interp-test-info
 (deftype interp-test-info (structure)
   ((from   vector   :inline :offset-assert   0)
    (to     vector   :inline :offset-assert  16)
@@ -536,7 +641,20 @@
   :flag-assert         #x90000003c
   )
 
+;; definition for method 3 of type interp-test-info
+(defmethod inspect interp-test-info ((obj interp-test-info))
+  (format #t "[~8x] ~A~%" obj 'interp-test-info)
+  (format #t "~Tfrom: #<vector @ #x~X>~%" (-> obj from))
+  (format #t "~Tto: #<vector @ #x~X>~%" (-> obj to))
+  (format #t "~Torigin: #<vector @ #x~X>~%" (-> obj origin))
+  (format #t "~Tcolor: #<vector4w @ #x~X>~%" (-> obj color))
+  (format #t "~Taxis: #<vector @ #x~X>~%" (-> obj axis))
+  (format #t "~Tdisp: ~A~%" (-> obj disp))
+  obj
+  )
 
+;; definition for function interp-test
+;; Used lq/sq
 (defun
   interp-test
   ((arg0 (function vector vector vector float vector float none))
@@ -588,6 +706,8 @@
    )
   )
 
+;; definition for function interp-test-deg
+;; Used lq/sq
 (defun
   interp-test-deg
   ((arg0 (function vector vector vector vector float none))
@@ -639,6 +759,8 @@
    )
   )
 
+;; definition for function cam-layout-entity-info
+;; Used lq/sq
 (defun cam-layout-entity-info ((arg0 entity-actor))
   (if (not arg0)
    (return #f)
@@ -1122,6 +1244,7 @@
    )
   )
 
+;; definition for function clmf-button-test
 (defun clmf-button-test ()
   (cam-layout-print 16 *camera-layout-message-ypos* "button test")
   (set! *camera-layout-message-ypos* (+ *camera-layout-message-ypos* 8))
@@ -1129,6 +1252,7 @@
   #f
   )
 
+;; definition for function clmf-bna
 (defun clmf-bna ()
   (cam-layout-print 16 *camera-layout-message-ypos* "button not applicable")
   (set! *camera-layout-message-ypos* (+ *camera-layout-message-ypos* 8))
@@ -1136,6 +1260,7 @@
   #t
   )
 
+;; definition for function clmf-implement
 (defun clmf-implement ()
   (cam-layout-print
    16
@@ -1147,6 +1272,8 @@
   #t
   )
 
+;; definition for function clmf-input
+;; Used lq/sq
 (defun clmf-input ((arg0 vector) (arg1 vector) (arg2 int))
   (vector-reset! arg0)
   (vector-reset! arg1)
@@ -1270,6 +1397,8 @@
   arg1
   )
 
+;; definition for function clmf-pos-rot
+;; Used lq/sq
 (defbehavior clmf-pos-rot cam-layout ((arg0 symbol) (arg1 symbol))
   (local-vars (s2-0 structure) (s3-1 structure) (sv-192 matrix))
   (cam-layout-print
@@ -1443,6 +1572,7 @@
   #t
   )
 
+;; definition for function clmf-next-volume
 (defbehavior clmf-next-volume cam-layout ((arg0 int))
   (if (zero? (-> self num-volumes))
    (return #f)
@@ -1457,6 +1587,7 @@
   #t
   )
 
+;; definition for function clmf-next-vol-dpad
 (defun clmf-next-vol-dpad ()
   (local-vars (a0-1 int))
   (cam-layout-print 16 *camera-layout-message-ypos* "dpad selects volume")
@@ -1483,14 +1614,17 @@
   #t
   )
 
+;; definition for function clmf-to-edit-cam
 (defun clmf-to-edit-cam ()
   (clmf-next-volume 0)
   (set! *clm* *clm-edit*)
   #t
   )
 
+;; definition for symbol *last-cur-entity*, type int
 (define *last-cur-entity* -1)
 
+;; definition for function clmf-next-entity
 (defbehavior clmf-next-entity cam-layout ((arg0 int))
   (let ((v1-0 (/ arg0 8)))
    (when (zero? (-> self num-entities))
@@ -1551,44 +1685,53 @@
   #t
   )
 
+;; definition for function clmf-to-vol-attr
 (defbehavior clmf-to-vol-attr cam-layout ()
   (set! (-> self res-key) (the float (-> self cur-volume)))
   (set! *clm* *clm-vol-attr*)
   #t
   )
 
+;; definition for function clmf-to-spline-attr
 (defun clmf-to-spline-attr ()
   (set! *clm* *clm-spline-attr*)
   #t
   )
 
+;; definition for function clmf-to-intro-attr
 (defun clmf-to-intro-attr ()
   (set! *clm* *clm-intro-attr*)
   #t
   )
 
+;; definition for function clmf-to-index-attr
 (defun clmf-to-index-attr ()
   (set! *clm* *clm-index-attr*)
   #t
   )
 
+;; definition for function clmf-to-focalpull-attr
 (defun clmf-to-focalpull-attr ()
   (set! *clm* *clm-focalpull-attr*)
   #t
   )
 
+;; definition for function clmf-to-edit
 (defbehavior clmf-to-edit cam-layout ()
   (set! (-> self res-key) (-> (new 'static 'array float 1 -1000000000.0) 0))
   (set! *clm* *clm-edit*)
   #t
   )
 
+;; definition for function clmf-to-select
 (defun clmf-to-select ()
   (set! *camera-layout-blink* #f)
   (set! *clm* *clm-select*)
   #t
   )
 
+;; definition for function clmf-look-through
+;; Used lq/sq
 (defbehavior clmf-look-through cam-layout ()
   (set! (-> *camera-other-fov* data) (cam-slave-get-fov (-> self cam-entity)))
   (cam-slave-get-vector-with-offset
@@ -1606,6 +1749,7 @@
   #f
   )
 
+;; definition for function fov->maya
 (defun fov->maya ((arg0 float))
   (if (= arg0 0.0)
    (-> (new 'static 'array float 1 0.0) 0)
@@ -1613,6 +1757,8 @@
    )
   )
 
+;; definition for function cam-layout-save-cam-rot
+;; INFO: Return type mismatch object vs string.
 (defun cam-layout-save-cam-rot ((arg0 symbol) (arg1 string) (arg2 entity-actor))
   (let ((s3-0 (-> arg2 quat))
         (s5-0
@@ -1659,100 +1805,105 @@
    )
   )
 
-; TODO - fix me!
-; (defun
-;   cam-layout-save-cam-trans
-;   ((arg0 symbol) (arg1 string) (arg2 entity-actor))
-;   (let ((s1-0 (-> arg2 trans))
-;         (s5-0 (method-of-type res-lump get-property-struct))
-;         (s2-0 arg2)
-;         )
-;    (format (clear *res-key-string*) "~S~S" 'trans '-offset)
-;    (let
-;     ((s5-1
-;       (s5-0
-;        s2-0
-;        (string->symbol *res-key-string*)
-;        'interp
-;        (-> (new 'static 'array float 1 -1000000000.0) 0)
-;        #f
-;        (the-as (pointer res-tag) #f)
-;        *res-static-buf*
-;        )
-;       )
-;      )
-;     (let
-;      ((s2-1
-;        (res-lump-struct
-;         arg2
-;         'translation_info
-;         structure
-;         :time
-;         (-> (new 'static 'array float 1 -1000000000.0) 0)
-;         )
-;        )
-;       (s3-1 (new-stack-vector0))
-;       )
-;      (if arg0
-;       (format
-;        #t
-;        "setup trans ~M ~M ~M (maya)~%"
-;        (-> s1-0 x)
-;        (-> s1-0 y)
-;        (-> s1-0 z)
-;        )
-;       )
-;      (set! (-> s3-1 quad) (-> s1-0 quad))
-;      (when s5-1
-;       (if arg0
-;        (format
-;         #t
-;         "offset ~M ~M ~M (added)~%"
-;         (-> (the-as vector s5-1) x)
-;         (-> (the-as vector s5-1) y)
-;         (-> (the-as vector s5-1) z)
-;         )
-;        )
-;       (vector+! s3-1 s3-1 (the-as vector s5-1))
-;       )
-;      (when (the-as vector s2-1)
-;       (if arg0
-;        (format
-;         #t
-;         "level-trans ~M ~M ~M (subtracted)~%"
-;         (-> (the-as vector s2-1) x)
-;         (-> (the-as vector s2-1) y)
-;         (-> (the-as vector s2-1) z)
-;         )
-;        )
-;       (vector-! s3-1 s3-1 (the-as vector s2-1))
-;       )
-;      (set! s2-1 (or (the-as vector s5-1) s2-1))
-;      (set! arg0 (and (the-as vector s2-1) arg0))
-;      (if (the-as structure arg0)
-;       (format
-;        #t
-;        "final trans ~M ~M ~M (maya)~%"
-;        (-> s3-1 x)
-;        (-> s3-1 y)
-;        (-> s3-1 z)
-;        )
-;       )
-;      )
-;     (the-as string (if (the-as vector s5-1)
-;                     (format
-;                      arg1
-;                      "  tag trans-offset           METERS(~M) METERS(~M) METERS(~M) 1.0 // vector~%"
-;                      (-> (the-as vector s5-1) x)
-;                      (-> (the-as vector s5-1) y)
-;                      (-> (the-as vector s5-1) z)
-;                      )
-;                     )
-;      )
-;     )
-;    )
-;   )
+;; definition for function cam-layout-save-cam-trans
+;; INFO: Return type mismatch object vs string.
+;; Used lq/sq
+(defun
+  cam-layout-save-cam-trans
+  ((arg0 symbol) (arg1 string) (arg2 entity-actor))
+  (let ((s1-0 (-> arg2 trans))
+        (s5-0 (method-of-type res-lump get-property-struct))
+        (s2-0 arg2)
+        )
+   (format (clear *res-key-string*) "~S~S" 'trans '-offset)
+   (let
+    ((s5-1
+      (s5-0
+       s2-0
+       (string->symbol *res-key-string*)
+       'interp
+       (-> (new 'static 'array float 1 -1000000000.0) 0)
+       #f
+       (the-as (pointer res-tag) #f)
+       *res-static-buf*
+       )
+      )
+     )
+    (let
+     ((s2-1
+       (res-lump-struct
+        arg2
+        'translation_info
+        structure
+        :time
+        (-> (new 'static 'array float 1 -1000000000.0) 0)
+        )
+       )
+      (s3-1 (new-stack-vector0))
+      )
+     (if arg0
+      (format
+       #t
+       "setup trans ~M ~M ~M (maya)~%"
+       (-> s1-0 x)
+       (-> s1-0 y)
+       (-> s1-0 z)
+       )
+      )
+     (set! (-> s3-1 quad) (-> s1-0 quad))
+     (when s5-1
+      (if arg0
+       (format
+        #t
+        "offset ~M ~M ~M (added)~%"
+        (-> (the-as vector s5-1) x)
+        (-> (the-as vector s5-1) y)
+        (-> (the-as vector s5-1) z)
+        )
+       )
+      (vector+! s3-1 s3-1 (the-as vector s5-1))
+      )
+     (when (the-as vector s2-1)
+      (if arg0
+       (format
+        #t
+        "level-trans ~M ~M ~M (subtracted)~%"
+        (-> (the-as vector s2-1) x)
+        (-> (the-as vector s2-1) y)
+        (-> (the-as vector s2-1) z)
+        )
+       )
+      (vector-! s3-1 s3-1 (the-as vector s2-1))
+      )
+     (set! s2-1 (or (the-as vector s5-1) s2-1))
+     (set! arg0 (and (the-as vector s2-1) arg0))
+     (if (the-as structure arg0)
+      (format
+       #t
+       "final trans ~M ~M ~M (maya)~%"
+       (-> s3-1 x)
+       (-> s3-1 y)
+       (-> s3-1 z)
+       )
+      )
+     )
+    (the-as string (if (the-as vector s5-1)
+                    (format
+                     arg1
+                     "  tag trans-offset           METERS(~M) METERS(~M) METERS(~M) 1.0 // vector~%"
+                     (-> (the-as vector s5-1) x)
+                     (-> (the-as vector s5-1) y)
+                     (-> (the-as vector s5-1) z)
+                     )
+                    )
+     )
+    )
+   )
+  )
 
+;; definition for function cam-layout-save-pivot
+;; INFO: Return type mismatch object vs string.
+;; Used lq/sq
 (defun cam-layout-save-pivot ((arg0 symbol) (arg1 string) (arg2 entity-actor))
   (let
    ((s2-0
@@ -1829,6 +1980,9 @@
    )
   )
 
+;; definition for function cam-layout-save-align
+;; INFO: Return type mismatch object vs string.
+;; Used lq/sq
 (defun cam-layout-save-align ((arg0 symbol) (arg1 string) (arg2 entity-actor))
   (let
    ((s2-0
@@ -1905,6 +2059,9 @@
    )
   )
 
+;; definition for function cam-layout-save-interesting
+;; INFO: Return type mismatch object vs string.
+;; Used lq/sq
 (defun
   cam-layout-save-interesting
   ((arg0 symbol) (arg1 string) (arg2 entity-actor))
@@ -1983,6 +2140,8 @@
    )
   )
 
+;; definition for function cam-layout-save-fov
+;; INFO: Return type mismatch object vs string.
 (defun cam-layout-save-fov ((arg0 symbol) (arg1 string) (arg2 entity-actor))
   (let
    ((f30-0
@@ -2044,6 +2203,8 @@
    )
   )
 
+;; definition for function cam-layout-save-focalpull
+;; INFO: Return type mismatch object vs string.
 (defun
   cam-layout-save-focalpull
   ((arg0 symbol) (arg1 string) (arg2 entity-actor))
@@ -2099,6 +2260,8 @@
    )
   )
 
+;; definition for function cam-layout-save-flags
+;; INFO: Return type mismatch object vs string.
 (defun cam-layout-save-flags ((arg0 symbol) (arg1 string) (arg2 entity-actor))
   (let
    ((s4-0
@@ -2176,6 +2339,8 @@
    )
   )
 
+;; definition for function cam-layout-save-focalpull-flags
+;; INFO: Return type mismatch object vs string.
 (defun
   cam-layout-save-focalpull-flags
   ((arg0 symbol) (arg1 string) (arg2 entity-actor))
@@ -2255,6 +2420,8 @@
    )
   )
 
+;; definition for function cam-layout-save-campoints-flags
+;; INFO: Return type mismatch object vs string.
 (defun
   cam-layout-save-campoints-flags
   ((arg0 symbol) (arg1 string) (arg2 entity-actor))
@@ -2334,6 +2501,8 @@
    )
   )
 
+;; definition for function cam-layout-save-introsplinetime
+;; INFO: Return type mismatch object vs string.
 (defun
   cam-layout-save-introsplinetime
   ((arg0 symbol) (arg1 string) (arg2 entity-actor))
@@ -2392,6 +2561,8 @@
    )
   )
 
+;; definition for function cam-layout-save-introsplineexitval
+;; INFO: Return type mismatch object vs string.
 (defun
   cam-layout-save-introsplineexitval
   ((arg0 symbol) (arg1 string) (arg2 entity-actor))
@@ -2445,6 +2616,8 @@
    )
   )
 
+;; definition for function cam-layout-save-interptime
+;; INFO: Return type mismatch object vs string.
 (defun
   cam-layout-save-interptime
   ((arg0 symbol) (arg1 string) (arg2 entity-actor))
@@ -2495,6 +2668,8 @@
    )
   )
 
+;; definition for function cam-layout-save-splineoffset
+;; INFO: Return type mismatch object vs string.
 (defun
   cam-layout-save-splineoffset
   ((arg0 symbol) (arg1 string) (arg2 entity-actor))
@@ -2553,6 +2728,8 @@
    )
   )
 
+;; definition for function cam-layout-save-spline-follow-dist-offset
+;; INFO: Return type mismatch object vs string.
 (defun
   cam-layout-save-spline-follow-dist-offset
   ((arg0 symbol) (arg1 string) (arg2 entity-actor))
@@ -2607,6 +2784,8 @@
    )
   )
 
+;; definition for function cam-layout-save-campointsoffset
+;; INFO: Return type mismatch object vs string.
 (defun
   cam-layout-save-campointsoffset
   ((arg0 symbol) (arg1 string) (arg2 entity-actor))
@@ -2643,6 +2822,8 @@
    )
   )
 
+;; definition for function cam-layout-save-tiltAdjust
+;; INFO: Return type mismatch object vs string.
 (defun
   cam-layout-save-tiltAdjust
   ((arg0 symbol) (arg1 string) (arg2 entity-actor))
@@ -2693,6 +2874,8 @@
    )
   )
 
+;; definition for function cam-layout-save-stringMinLength
+;; INFO: Return type mismatch object vs string.
 (defun
   cam-layout-save-stringMinLength
   ((arg0 symbol) (arg1 string) (arg2 entity-actor))
@@ -2743,6 +2926,8 @@
    )
   )
 
+;; definition for function cam-layout-save-stringMaxLength
+;; INFO: Return type mismatch object vs string.
 (defun
   cam-layout-save-stringMaxLength
   ((arg0 symbol) (arg1 string) (arg2 entity-actor))
@@ -2793,6 +2978,8 @@
    )
   )
 
+;; definition for function cam-layout-save-stringMinHeight
+;; INFO: Return type mismatch object vs string.
 (defun
   cam-layout-save-stringMinHeight
   ((arg0 symbol) (arg1 string) (arg2 entity-actor))
@@ -2843,6 +3030,8 @@
    )
   )
 
+;; definition for function cam-layout-save-stringMaxHeight
+;; INFO: Return type mismatch object vs string.
 (defun
   cam-layout-save-stringMaxHeight
   ((arg0 symbol) (arg1 string) (arg2 entity-actor))
@@ -2893,6 +3082,8 @@
    )
   )
 
+;; definition for function cam-layout-save-stringCliffHeight
+;; INFO: Return type mismatch object vs string.
 (defun
   cam-layout-save-stringCliffHeight
   ((arg0 symbol) (arg1 string) (arg2 entity-actor))
@@ -2943,6 +3134,8 @@
    )
   )
 
+;; definition for function cam-layout-save-maxAngle
+;; INFO: Return type mismatch object vs string.
 (defun cam-layout-save-maxAngle ((arg0 symbol) (arg1 string) (arg2 entity-actor))
   (let
    ((f30-0
@@ -2991,6 +3184,7 @@
    )
   )
 
+;; definition for function clmf-save-single
 (defbehavior
   clmf-save-single cam-layout
   ((arg0 entity-camera) (arg1 symbol) (arg2 symbol))
@@ -3040,12 +3234,11 @@
     (the-as string s4-2)
     (the-as entity-actor arg0)
     )
-  ; TODO - fix me!
-  ;  (cam-layout-save-cam-trans
-  ;   arg1
-  ;   (the-as string s4-2)
-  ;   (the-as entity-actor arg0)
-  ;   )
+   (cam-layout-save-cam-trans
+    arg1
+    (the-as string s4-2)
+    (the-as entity-actor arg0)
+    )
    (cam-layout-save-pivot arg1 (the-as string s4-2) (the-as entity-actor arg0))
    (cam-layout-save-align arg1 (the-as string s4-2) (the-as entity-actor arg0))
    (cam-layout-save-interesting
@@ -3140,6 +3333,7 @@
    )
   )
 
+;; definition for function clmf-save-one
 (defbehavior clmf-save-one cam-layout ((arg0 symbol))
   (let ((s5-1 (logtest? (the-as int arg0) 8))
         (gp-1 (logtest? (the-as int arg0) 16))
@@ -3168,6 +3362,7 @@
   #t
   )
 
+;; definition for function clmf-save-all
 (defbehavior clmf-save-all cam-layout ((arg0 symbol))
   (let ((s5-1 (logtest? (the-as int arg0) 8))
         (gp-1 (logtest? (the-as int arg0) 16))
@@ -3198,6 +3393,7 @@
   #t
   )
 
+;; definition of type clmf-cam-flag-toggle-info
 (deftype clmf-cam-flag-toggle-info (structure)
   ((key       float  :offset-assert   0)
    (force-on  int32  :offset-assert   4)
@@ -3208,7 +3404,16 @@
   :flag-assert         #x90000000c
   )
 
+;; definition for method 3 of type clmf-cam-flag-toggle-info
+(defmethod inspect clmf-cam-flag-toggle-info ((obj clmf-cam-flag-toggle-info))
+  (format #t "[~8x] ~A~%" obj 'clmf-cam-flag-toggle-info)
+  (format #t "~Tkey: ~f~%" (-> obj key))
+  (format #t "~Tforce-on: ~D~%" (-> obj force-on))
+  (format #t "~Tforce-off: ~D~%" (-> obj force-off))
+  obj
+  )
 
+;; definition for function clmf-cam-flag-toggle
 (defbehavior clmf-cam-flag-toggle cam-layout ((arg0 int) (arg1 int))
   (let ((s4-0 (/ arg0 8))
         (gp-0 (new 'stack 'clmf-cam-flag-toggle-info))
@@ -3381,6 +3586,7 @@
   #t
   )
 
+;; definition for function clmf-cam-flag
 (defbehavior clmf-cam-flag cam-layout ((arg0 string) (arg1 uint) (arg2 uint))
   (let ((s5-0 (/ (the-as int arg1) 8))
         (f30-0 (-> self res-key))
@@ -3464,6 +3670,7 @@
   #t
   )
 
+;; definition for function clmf-cam-float-adjust
 (defbehavior
   clmf-cam-float-adjust cam-layout
   ((arg0 symbol) (arg1 (pointer float)))
@@ -3516,6 +3723,7 @@
   #t
   )
 
+;; definition for function clmf-cam-meters
 (defbehavior clmf-cam-meters cam-layout ((arg0 meters) (arg1 symbol))
   (let
    ((f0-0
@@ -3531,11 +3739,13 @@
   #t
   )
 
+;; definition for function clmf-cam-fov
 (defbehavior clmf-cam-fov cam-layout ((arg0 degrees) (arg1 symbol))
   (format arg0 ": ~R" (cam-slave-get-fov (-> self cam-entity)))
   #t
   )
 
+;; definition for function clmf-cam-deg
 (defbehavior clmf-cam-deg cam-layout ((arg0 degrees) (arg1 symbol))
   (format
    arg0
@@ -3549,6 +3759,7 @@
   #t
   )
 
+;; definition for function clmf-cam-intro-time
 (defbehavior clmf-cam-intro-time cam-layout ((arg0 float) (arg1 symbol))
   (let ((f30-0 (cam-slave-get-intro-step (-> self cam-entity))))
    (format arg0 ": ~f" (/ 0.016666668 f30-0))
@@ -3557,11 +3768,13 @@
   #t
   )
 
+;; definition for function clmf-cam-interp-time
 (defbehavior clmf-cam-interp-time cam-layout ((arg0 float) (arg1 symbol))
   (format arg0 ": ~f" (cam-slave-get-interp-time (-> self cam-entity)))
   #t
   )
 
+;; definition for function clmf-cam-float
 (defbehavior clmf-cam-float cam-layout ((arg0 float) (arg1 symbol))
   (format
    arg0
@@ -3575,6 +3788,8 @@
   #t
   )
 
+;; definition for function clmf-cam-string
+;; Used lq/sq
 (defbehavior clmf-cam-string cam-layout ((arg0 string) (arg1 symbol))
   (local-vars (sv-16 res-tag))
   (format arg0 ":")
@@ -3601,6 +3816,7 @@
   #t
   )
 
+;; definition for symbol *clm-focalpull-attr*, type clm
 (define
   *clm-focalpull-attr*
   (new 'static 'clm
@@ -3679,6 +3895,7 @@
    )
   )
 
+;; definition for symbol *clm-index-attr*, type clm
 (define
   *clm-index-attr*
   (new 'static 'clm
@@ -3757,6 +3974,7 @@
    )
   )
 
+;; definition for symbol *clm-intro-attr*, type clm
 (define
   *clm-intro-attr*
   (new 'static 'clm
@@ -3831,6 +4049,7 @@
    )
   )
 
+;; definition for symbol *clm-spline-attr*, type clm
 (define
   *clm-spline-attr*
   (new 'static 'clm
@@ -3887,6 +4106,7 @@
    )
   )
 
+;; definition for symbol *clm-vol-attr*, type clm
 (define
   *clm-vol-attr*
   (new 'static 'clm
@@ -3945,6 +4165,7 @@
    )
   )
 
+;; definition for symbol *clm-cam-attr*, type clm
 (define
   *clm-cam-attr*
   (new 'static 'clm
@@ -4315,6 +4536,7 @@
    )
   )
 
+;; definition for symbol *clm-cam-lookthrough*, type clm
 (define
   *clm-cam-lookthrough*
   (new 'static 'clm
@@ -4393,6 +4615,7 @@
    )
   )
 
+;; definition for symbol *clm-edit*, type clm
 (define
   *clm-edit*
   (new 'static 'clm
@@ -4636,6 +4859,7 @@
    )
   )
 
+;; definition for symbol *clm-save-all*, type clm
 (define
   *clm-save-all*
   (new 'static 'clm
@@ -4681,6 +4905,7 @@
    )
   )
 
+;; definition for symbol *clm-save-one*, type clm
 (define
   *clm-save-one*
   (new 'static 'clm
@@ -4726,6 +4951,7 @@
    )
   )
 
+;; definition for symbol *clm-select*, type clm
 (define
   *clm-select*
   (new 'static 'clm
@@ -4803,8 +5029,10 @@
    )
   )
 
+;; definition for symbol *clm*, type clm
 (define *clm* *clm-select*)
 
+;; definition for function cam-layout-do-action
 (defbehavior cam-layout-do-action cam-layout ((arg0 clm-item-action))
   (let ((s5-0 (-> arg0 func value)))
    (cond
@@ -4850,6 +5078,7 @@
    )
   )
 
+;; definition for function cam-layout-function-call
 (defbehavior
   cam-layout-function-call cam-layout
   ((arg0 symbol) (arg1 string) (arg2 int) (arg3 basic))
@@ -4867,6 +5096,8 @@
   #f
   )
 
+;; definition for function cam-layout-do-menu
+;; INFO: Return type mismatch symbol vs none.
 (defbehavior cam-layout-do-menu cam-layout ((arg0 clm))
   (set! *camera-layout-message-ypos* 30)
   (+! (-> *CAM_LAYOUT-bank* spline-t) (-> *CAM_LAYOUT-bank* spline-step))
@@ -5055,6 +5286,7 @@
   (none)
   )
 
+;; failed to figure out what this is:
 (defstate cam-layout-active (cam-layout)
   :code
   (behavior ()
@@ -5068,6 +5300,7 @@
    )
   )
 
+;; definition for function cam-layout-init
 (defbehavior cam-layout-init cam-layout ()
   (set! (-> self res-key) (-> (new 'static 'array float 1 -1000000000.0) 0))
   (set! (-> self num-entities) 0)
@@ -5090,11 +5323,14 @@
   (none)
   )
 
+;; definition for function cam-layout-stop
 (defun cam-layout-stop ()
   (set! *cam-layout* #f)
   (kill-by-name 'cam-layout *active-pool*)
   )
 
+;; definition for function cam-layout-start
+;; INFO: Return type mismatch symbol vs none.
 (defun cam-layout-start ()
   (let ((a0-1 (new 'global 'file-stream "dd_next/caminfo/garbage" 'read)))
    (file-stream-close a0-1)
@@ -5139,6 +5375,7 @@
   (none)
   )
 
+;; definition for function cam-layout-restart
 (defun cam-layout-restart ()
   (cam-layout-stop)
   (cam-layout-start)
@@ -5146,6 +5383,3 @@
   )
 
 )
-
-
-
