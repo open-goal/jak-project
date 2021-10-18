@@ -26,15 +26,15 @@ std::vector<ReplaceInfo> g_font_large_string_replace;
 void init_remaps() {
   g_font_large_char_remap = {
       // random
-      {"ˇ", {0x10}},      // caron
-      {"`", {0x11}},      // grave accent
-      {"'", {0x12}},      // apostrophe
-      {"^", {0x13}},      // circumflex
-      {"<TIL>", {0x14}},  // tilde
-      {"¨", {0x15}},      // umlaut
-      {"°", {0x16}},      // degree sign/overring
-      {"¡", {0x17}},      // inverted exclamation mark
-      {"¿", {0x18}},      // inverted question mark
+      {"ˇ", {0x10}},         // caron
+      {"`", {0x11}},         // grave accent
+      {"'", {0x12}},         // apostrophe
+      {"^", {0x13}},         // circumflex
+      {"<TIL>", {0x14}},     // tilde
+      {"¨", {0x15}},         // umlaut
+      {"<NUMERO>", {0x16}},  // numero/overring
+      {"¡", {0x17}},         // inverted exclamation mark
+      {"¿", {0x18}},         // inverted question mark
 
       {"海", {0x1a}},  // umi
       {"Æ", {0x1b}},   // aesc
@@ -247,9 +247,8 @@ void init_remaps() {
       {"\\\"", "\""},
 
       // other
-      {"~Y~-6H°~Z~+10H", "°"},
-      {"~Y~-6H°~Z~+10H", "º"}, // easier typing
-      {"A~Y~-21H~-5V°~Z", "Å"},
+      {"~Y~-6H<NUMERO>~Z~+10H", "º"},
+      {"A~Y~-21H~-5V<NUMERO>~Z", "Å"},
 
       // tildes
       {"N~Y~-22H~-4V<TIL>~Z", "Ñ"},
@@ -278,7 +277,7 @@ void init_remaps() {
       {"A~Y~-21H~-5V¨~Z", "Ä"},
       {"E~Y~-20H~-5V¨~Z", "Ë"},
       {"O~Y~-22H~-4V¨~Z", "Ö"},
-      {"O~Y~-22H~-3V¨~Z", "ö"}, // dumb
+      {"O~Y~-22H~-3V¨~Z", "ö"},  // dumb
       {"U~Y~-22H~-3V¨~Z", "Ü"},
 
       // dakuten katakana
