@@ -19,15 +19,15 @@
  */
 std::vector<RemapInfo> g_font_large_char_remap = {
     // random
-    {"ˇ", {0x10}},         // caron
-    {"`", {0x11}},         // grave accent
-    {"'", {0x12}},         // apostrophe
-    {"^", {0x13}},         // circumflex
-    {"<TIL>", {0x14}},     // tilde
-    {"¨", {0x15}},         // umlaut
-    {"<NUMERO>", {0x16}},  // numero/overring
-    {"¡", {0x17}},         // inverted exclamation mark
-    {"¿", {0x18}},         // inverted question mark
+    {"ˇ", {0x10}},      // caron
+    {"`", {0x11}},      // grave accent
+    {"'", {0x12}},      // apostrophe
+    {"^", {0x13}},      // circumflex
+    {"<TIL>", {0x14}},  // tilde
+    {"¨", {0x15}},      // umlaut
+    {"º", {0x16}},      // numero/overring
+    {"¡", {0x17}},      // inverted exclamation mark
+    {"¿", {0x18}},      // inverted question mark
 
     {"海", {0x1a}},  // umi
     {"Æ", {0x1b}},   // aesc
@@ -242,8 +242,8 @@ std::vector<ReplaceInfo> g_font_large_string_replace = {
     {"\\\"", "\""},
 
     // other
-    {"~Y~-6H<NUMERO>~Z~+10H", "º"},
-    {"A~Y~-21H~-5V<NUMERO>~Z", "Å"},
+    {"A~Y~-21H~-5Vº~Z", "Å"},
+    {"N~Y~-6Hº~Z~+10H", "Nº"},
 
     // tildes
     {"N~Y~-22H~-4V<TIL>~Z", "Ñ"},
@@ -389,7 +389,7 @@ std::string& jak1_trans_to_utf8(std::string& str) {
     auto pos = str.find(info.from);
     while (pos != std::string::npos) {
       str.replace(pos, info.from.size(), info.to);
-      pos = str.find(info.from);
+      pos = str.find(info.from, pos + info.to.size());
     }
   }
   return str;
@@ -401,7 +401,7 @@ std::string& utf8_trans_to_jak1(std::string& str) {
     auto pos = str.find(info.to);
     while (pos != std::string::npos) {
       str.replace(pos, info.to.size(), info.from);
-      pos = str.find(info.to);
+      pos = str.find(info.to, pos + info.from.size());
     }
   }
   return str;
@@ -414,7 +414,7 @@ std::string& utf8_bytes_to_jak1(std::string& str) {
     auto pos = str.find(info.chars);
     while (pos != std::string::npos) {
       remap_cache[pos] = &info;
-      pos = str.find(info.chars, pos + 1);
+      pos = str.find(info.chars, pos + info.chars.size());
     }
   }
 
