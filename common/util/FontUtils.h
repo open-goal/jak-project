@@ -37,3 +37,4 @@ RemapInfo* jak1_bytes_to_utf8(const char* in);
 std::string& jak1_trans_to_utf8(std::string& str);
 
 std::string convert_to_jak1_encoding(std::string str);
+std::string convert_from_jak1_encoding(const char* in);

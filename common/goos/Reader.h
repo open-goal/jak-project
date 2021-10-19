@@ -109,6 +109,5 @@ class Reader {
   std::unordered_map<std::string, std::string> m_reader_macros;
 };
 
-std::string get_readable_string_large_font(const char* in);
 std::string get_readable_string(const char* in);
 }  // namespace goos

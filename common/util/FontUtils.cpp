@@ -8,10 +8,12 @@
  */
 
 #include "FontUtils.h"
+#include "third-party/fmt/core.h"
 
 #include <algorithm>
 #include <functional>
 #include <map>
+#include <unordered_set>
 
 /*!
  * Remaps UTF-8 characters to the appropriate character fit for the game's large font.
@@ -440,4 +442,37 @@ std::string convert_to_jak1_encoding(std::string str) {
   utf8_trans_to_jak1(str);
   utf8_bytes_to_jak1(str);
   return str;
+}
+
+static const std::unordered_set<char> passthrus = {'~', ' ', ',', '.', '-', '+', '(', ')',
+                                                   '!', ':', '?', '=', '%', '*', '/', '#',
+                                                   ';', '<', '>', '@', '[', '_'};
+
+/*!
+ * Convert a string from the Jak 1 large font encoding to something normal.
+ * Unprintable characters become escape sequences, including tab and newline.
+ */
+std::string convert_from_jak1_encoding(const char* in) {
+  std::string result;
+  while (*in) {
+    auto remap = jak1_bytes_to_utf8(in);
+    if (remap != nullptr) {
+      result.append(remap->chars);
+      in += remap->bytes.size() - 1;
+    } else if (((*in >= '0' && *in <= '9') || (*in >= 'A' && *in <= 'Z') ||
+                passthrus.find(*in) != passthrus.end()) &&
+               *in != '\\') {
+      result.push_back(*in);
+    } else if (*in == '\n') {
+      result += "\\n";
+    } else if (*in == '\t') {
+      result += "\\t";
+    } else if (*in == '\\') {
+      result += "\\\\";
+    } else {
+      result += fmt::format("\\c{:02x}", uint8_t(*in));
+    }
+    in++;
+  }
+  return jak1_trans_to_utf8(result);
 }
