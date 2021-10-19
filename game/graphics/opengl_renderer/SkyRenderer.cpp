@@ -322,41 +322,56 @@ void SkyRenderer::render(DmaFollower& dma,
   assert(setup_packet.size_bytes == 16 * 4);
   m_direct_renderer.render_gif(setup_packet.data, setup_packet.size_bytes, render_state, prof);
 
-  auto draw_setup_packet = dma.read_and_advance();
-  assert(draw_setup_packet.size_bytes == 16 * 5);
-  m_direct_renderer.render_gif(draw_setup_packet.data, draw_setup_packet.size_bytes, render_state,
-                               prof);
-  // tex0: tbw = 1, th = 5, hw = 5, sky-base-block
-  // mmag/mmin = 1
-  // clamp
-  // drawing.
-  int dma_idx = 0;
-  while (dma.current_tag().kind == DmaTag::Kind::CNT) {
-    m_frame_stats.gif_packets++;
-    auto data = dma.read_and_advance();
-    assert(data.vifcode0().kind == VifCode::Kind::NOP);
-    assert(data.vifcode1().kind == VifCode::Kind::DIRECT);
-    assert(data.vifcode1().immediate == data.size_bytes / 16);
-    if (m_enabled) {
-      m_direct_renderer.render_gif(data.data, data.size_bytes, render_state, prof);
+  if (dma.current_tag().qwc == 5) {
+    auto draw_setup_packet = dma.read_and_advance();
+    m_direct_renderer.render_gif(draw_setup_packet.data, draw_setup_packet.size_bytes, render_state,
+                                 prof);
+    // tex0: tbw = 1, th = 5, hw = 5, sky-base-block
+    // mmag/mmin = 1
+    // clamp
+    // drawing.
+    int dma_idx = 0;
+    while (dma.current_tag().kind == DmaTag::Kind::CNT) {
+      m_frame_stats.gif_packets++;
+      auto data = dma.read_and_advance();
+      assert(data.vifcode0().kind == VifCode::Kind::NOP);
+      assert(data.vifcode1().kind == VifCode::Kind::DIRECT);
+      assert(data.vifcode1().immediate == data.size_bytes / 16);
+      if (m_enabled) {
+        m_direct_renderer.render_gif(data.data, data.size_bytes, render_state, prof);
+      }
+      dma_idx++;
     }
-    dma_idx++;
+
+    auto empty = dma.read_and_advance();
+    assert(empty.size_bytes == 0);
+    assert(empty.vif0() == 0);
+    assert(empty.vif1() == 0);
+
+    assert(dma.current_tag().kind == DmaTag::Kind::CALL);
+    dma.read_and_advance();
+    dma.read_and_advance();  // cnt
+    assert(dma.current_tag().kind == DmaTag::Kind::RET);
+    dma.read_and_advance();  // ret
+    dma.read_and_advance();  // ret
+    assert(dma.current_tag_offset() == render_state->next_bucket);
+  } else {
+    while (dma.current_tag_offset() != render_state->next_bucket) {
+      auto data = dma.read_and_advance();
+      if (data.size_bytes && m_enabled) {
+        m_direct_renderer.render_vif(data.vif0(), data.vif1(), data.data, data.size_bytes,
+                                     render_state, prof);
+      }
+
+      if (dma.current_tag_offset() == render_state->default_regs_buffer) {
+        dma.read_and_advance();  // cnt
+        assert(dma.current_tag().kind == DmaTag::Kind::RET);
+        dma.read_and_advance();  // ret
+      }
+    }
   }
 
   m_direct_renderer.flush_pending(render_state, prof);
-
-  auto empty = dma.read_and_advance();
-  assert(empty.size_bytes == 0);
-  assert(empty.vif0() == 0);
-  assert(empty.vif1() == 0);
-
-  assert(dma.current_tag().kind == DmaTag::Kind::CALL);
-  dma.read_and_advance();
-  dma.read_and_advance();  // cnt
-  assert(dma.current_tag().kind == DmaTag::Kind::RET);
-  dma.read_and_advance();  // ret
-  dma.read_and_advance();  // ret
-  assert(dma.current_tag_offset() == render_state->next_bucket);
 }
 
 void SkyRenderer::draw_debug_window() {

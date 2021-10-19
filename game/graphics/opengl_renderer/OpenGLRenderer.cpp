@@ -286,7 +286,7 @@ void OpenGLRenderer::finish_screenshot(const std::string& output_name, int width
   // flip upside down in place
   for (int h = 0; h < height / 2; h++) {
     for (int w = 0; w < width; w++) {
-      std::swap(buffer[h * width + w], buffer[(height - h) * width + w]);
+      std::swap(buffer[h * width + w], buffer[(height - h - 1) * width + w]);
     }
   }
 
