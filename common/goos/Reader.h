@@ -102,9 +102,8 @@ class Reader {
 
   bool m_valid_symbols_chars[256];
   bool m_valid_source_text_chars[256];
-  bool m_valid_source_chars_updated = false;
 
-  bool is_valid_source_char(char c);
+  bool is_valid_source_char(char c) const;
 
   std::unordered_map<std::string, std::string> m_reader_macros;
 };

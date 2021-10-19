@@ -166,26 +166,23 @@ Reader::Reader() {
   m_valid_source_text_chars[(int)'\r'] = true;
 
   // allow every character that gets transformed to something else
+  for (auto& remap : g_font_large_char_remap) {
+    for (auto rc : remap.chars) {
+      m_valid_source_text_chars[(u8)rc] = true;
+    }
+  }
+  for (auto& remap : g_font_large_string_replace) {
+    for (auto rc : remap.to) {
+      m_valid_source_text_chars[(u8)rc] = true;
+    }
+    for (auto rc : remap.from) {
+      m_valid_source_text_chars[(u8)rc] = true;
+    }
+  }
+  m_valid_source_text_chars[0] = false;
 }
 
-bool Reader::is_valid_source_char(char c) {
-  if (!m_valid_source_chars_updated) {
-    for (auto& remap : g_font_large_char_remap) {
-      for (auto rc : remap.chars) {
-        m_valid_source_text_chars[(u8)rc] = true;
-      }
-    }
-    for (auto& remap : g_font_large_string_replace) {
-      for (auto rc : remap.to) {
-        m_valid_source_text_chars[(u8)rc] = true;
-      }
-      for (auto rc : remap.from) {
-        m_valid_source_text_chars[(u8)rc] = true;
-      }
-    }
-    m_valid_source_text_chars[0] = false;
-    m_valid_source_chars_updated = true;
-  }
+bool Reader::is_valid_source_char(char c) const {
   return m_valid_source_text_chars[(u8)c];
 }
 
@@ -297,7 +294,7 @@ Object Reader::internal_read(std::shared_ptr<SourceText> text,
 
 bool Reader::check_string_is_valid(const std::string& str) const {
   for (auto c : str) {
-    if (!m_valid_source_text_chars[(u8)c]) {
+    if (!is_valid_source_char(c)) {
       return false;
     }
   }
