@@ -12,6 +12,7 @@
 #include "common/goos/Reader.h"
 #include "DataObjectGenerator.h"
 #include "common/util/FileUtil.h"
+#include "common/util/FontUtils.h"
 #include "third-party/fmt/core.h"
 
 namespace {
@@ -56,7 +57,7 @@ std::string get_string(const goos::Object& x) {
   if (x.is_string()) {
     return x.as_string()->data;
   }
-  throw std::runtime_error(x.print() + " was supposed to be an string, but isn't");
+  throw std::runtime_error(x.print() + " was supposed to be a string, but isn't");
 }
 
 std::string uppercase(const std::string& in) {
@@ -89,7 +90,7 @@ std::vector<std::unordered_map<int, std::string>> parse(const goos::Object& data
 
   for_each_in_list(data.as_pair()->cdr, [&](const goos::Object& obj) {
     if (obj.is_pair()) {
-      auto head = obj.as_pair()->car;
+      auto& head = obj.as_pair()->car;
       if (head.is_symbol() && head.as_symbol()->name == "language-count") {
         if (languages_set) {
           throw std::runtime_error("Languages has been set multiple times.");
@@ -126,7 +127,7 @@ std::vector<std::unordered_map<int, std::string>> parse(const goos::Object& data
               throw std::runtime_error("Entry appears more than once");
             }
 
-            map[id] = entry.as_string()->data;
+            map[id] = convert_to_jak1_encoding(entry.as_string()->data);
           } else {
             throw std::runtime_error("Each entry must be a string");
           }
