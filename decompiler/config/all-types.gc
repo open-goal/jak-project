@@ -19278,7 +19278,7 @@
 (define-extern hide-hud-quick (function none))
 (define-extern command-get-process function)
 (define-extern camera-change-to (function string int symbol none)) ;; TODO - not confirmed yet
-(define-extern camera-look-at function)
+(define-extern camera-look-at (function process int none)) ;; TODO - not confirmed yet
 (define-extern camera-pov-from function)
 (define-extern command-get-trans function)
 (define-extern manipy-init (function vector entity skeleton-group vector none :behavior manipy))
@@ -20463,7 +20463,7 @@
    (bob-offset      uint64         :offset-assert 288)
    (bob-amount      float          :offset-assert 296)
    (pickup-handle   handle         :offset-assert 304) ;; not sure it's a handle
-   (actor-pause     symbol          :offset-assert 312)
+   (actor-pause     symbol         :offset-assert 312)
    )
   (:methods
     (TODO-RENAME-20 (_type_) _type_ 20)
@@ -20483,7 +20483,7 @@
    (collect-effect-time uint64         :offset-assert 328)
    (respawn-delay       uint64         :offset-assert 336)
    (sound-name          sound-spec          :offset-assert 344)
-   (target              uint64         :offset-assert 352)
+   (target              handle         :offset-assert 352)
    (suck-time           uint64         :offset-assert 360)
    (suck-y-offset       float          :offset-assert 368)
    (speed               vector :inline :offset-assert 384)
@@ -20662,14 +20662,14 @@
 
 ;; - Symbols
 
-(define-extern vent-wait-for-touch state) ;; unknown type
-(define-extern vent-pickup state) ;; unknown type
-(define-extern vent-blocked state) ;; unknown type
+(define-extern vent-wait-for-touch (state vent)) ;; unknown type
+(define-extern vent-pickup (state vent)) ;; unknown type
+(define-extern vent-blocked (state vent)) ;; unknown type
 (define-extern *ecovalve-sg* skeleton-group) ;; unknown type
-(define-extern ecovalve-idle state) ;; unknown type
+(define-extern ecovalve-idle (state ecovalve)) ;; unknown type
 (define-extern *eco-pill-count* int) ;; unknown type
 (define-extern *buzzer-sg* skeleton-group) ;; unknown type
-(define-extern fuel-cell-clone-anim state) ;; unknown type
+(define-extern fuel-cell-clone-anim (state fuel-cell)) ;; unknown type
 (define-extern *fuel-cell-tune-pos* vector) ;; unknown type
 (define-extern *fuel-cell-sg* skeleton-group) ;; unknown type
 (define-extern *money-sg* skeleton-group) ;; unknown type
@@ -27925,79 +27925,112 @@
 
 ;; - Types
 
-; (deftype plant-boss-arm (UNKNOWN)
-;   ()
-;   :method-count-assert 0
-;   :size-assert         #x0
-;   :flag-assert         #x0
-;   ;; unrecognized get op: (set! v1 process-drawable) parent was UNKNOWN
-;   )
+(declare-type plant-boss process-drawable)
+(deftype plant-boss-arm (process-drawable)
+  ((parent-override (pointer plant-boss) :score 100 :offset 12)
+   (root-override collide-shape :score 100 :offset 112)
+   (side int32  :offset-assert 176)
+   )
+  :method-count-assert 20
+  :heap-base           #x50
+  :size-assert         #xb4
+  :flag-assert         #x14005000b4
+  (:states
+    (plant-boss-back-arms-hit symbol)
+    (plant-boss-back-arms-die symbol)
+    (plant-boss-arm-die symbol)
+    plant-boss-arm-hit
+    plant-boss-back-arms-idle
+    plant-boss-arm-idle
+    )
+  )
 
-; (deftype plant-boss-leaf (UNKNOWN)
-;   ()
-;   :method-count-assert 0
-;   :size-assert         #x0
-;   :flag-assert         #x0
-;   ;; unrecognized get op: (set! v1 process-drawable) parent was UNKNOWN
-;   )
+(deftype plant-boss-leaf (process-drawable)
+  ((root-override collide-shape-moving :score 100 :offset 112)
+   (side int32  :offset-assert 176)
+   (state-object symbol           :offset-assert 180)
+   (state-time-frame int64           :offset-assert 184)
+   )
+  :method-count-assert 20
+  :heap-base           #x50
+  :size-assert         #xc0
+  :flag-assert         #x14005000c0
+  (:states
+    plant-boss-leaf-idle
+    plant-boss-leaf-die
+    (plant-boss-leaf-open-idle symbol)
+    plant-boss-leaf-close
+    plant-boss-leaf-bounce
+    plant-boss-leaf-open
+    )
+  )
 
-; (deftype plant-boss (UNKNOWN)
-;   ()
-;   :method-count-assert 0
-;   :size-assert         #x0
-;   :flag-assert         #x0
-;   ;; unrecognized get op: (set! v1 process-drawable) parent was UNKNOWN
-;   )
+(deftype plant-boss (process-drawable)
+  ((root-override collide-shape :score 100 :offset 112)
+   (neck joint-mod  :offset-assert 176)
+   (body joint-mod           :offset-assert 180)
+   (leaf (pointer plant-boss-leaf) 2           :offset-assert 184)
+   (energy float           :offset-assert 192)
+   (health float           :offset-assert 196)
+   (ate symbol           :offset-assert 200)
+   (cycle-count int32           :offset-assert 204)
+   (snap-count int32           :offset-assert 208)
+   (attack-prim collide-shape-prim-sphere 3           :offset-assert 212)
+   (death-prim collide-shape-prim-mesh 3           :offset-assert 224)
+   (cam-tracker handle           :offset-assert 240)
+   (want-aphid-count int32           :offset-assert 248)
+   (aphid-count int32           :offset-assert 252)
+   (aphid-spawn-time int64           :offset-assert 256)
+   (interp float           :offset-assert 264)
+   (try int32           :offset-assert 268)
+   (camera handle           :offset-assert 272)
+   (money handle           :offset-assert 280)
+   (try-inc symbol           :offset-assert 288)
+   )
+  :method-count-assert 20
+  :heap-base           #xc0
+  :size-assert         #x124
+  :flag-assert         #x1400c00124
+  (:states
+    plant-boss-root-die
+    (plant-boss-vine-die symbol)
+    plant-boss-vine-hit
+    plant-boss-eat
+    plant-boss-vine-idle
+    plant-boss-root-idle
+    (plant-boss-dead symbol)
+    plant-boss-far-idle
+    plant-boss-dead-idle
+    (plant-boss-dead-bounce float)
+    plant-boss-spawn
+    (plant-boss-attack int)
+    plant-boss-idle
+    (plant-boss-reset int)
+    (plant-boss-hit symbol)
+    plant-boss-vulnerable
+    plant-boss-intro)
+  )
 
 ;; - Functions
 
-(define-extern plant-boss-arm-init function)
-(define-extern plant-boss-back-arms-init function)
-(define-extern plant-boss-vine-init function)
-(define-extern plant-boss-root-init function)
-(define-extern plant-boss-leaf-init function)
-(define-extern plant-boss-generic-event-handler function)
-(define-extern plant-boss-post function)
-(define-extern plant-boss-default-event-handler function)
+(define-extern plant-boss-arm-init (function vector float int none :behavior plant-boss-arm))
+(define-extern plant-boss-back-arms-init (function vector float int none :behavior plant-boss-arm))
+(define-extern plant-boss-vine-init (function vector vector float int none :behavior plant-boss-arm))
+(define-extern plant-boss-root-init (function vector vector vector int none :behavior plant-boss-arm))
+(define-extern plant-boss-leaf-init (function vector float int none :behavior plant-boss-leaf))
+(define-extern plant-boss-generic-event-handler (function process int symbol event-message-block object :behavior plant-boss))
+(define-extern plant-boss-post (function none :behavior plant-boss))
+(define-extern plant-boss-default-event-handler (function process int symbol event-message-block object :behavior plant-boss))
 
 ;; - Unknowns
 
 (define-extern *plant-boss-sg* skeleton-group)
-;;(define-extern *plant-boss-shadow-control* object) ;; unknown type
-;;(define-extern plant-boss-dead object) ;; unknown type
-;;(define-extern plant-boss-far-idle object) ;; unknown type
-;;(define-extern plant-boss-dead-idle object) ;; unknown type
-;;(define-extern plant-boss-dead-bounce object) ;; unknown type
-;;(define-extern plant-boss-spawn object) ;; unknown type
-;;(define-extern plant-boss-attack object) ;; unknown type
-;;(define-extern plant-boss-idle object) ;; unknown type
-;;(define-extern plant-boss-reset object) ;; unknown type
-;;(define-extern plant-boss-hit object) ;; unknown type
-;;(define-extern plant-boss-vulnerable object) ;; unknown type
-;;(define-extern plant-boss-intro object) ;; unknown type
+(define-extern *plant-boss-shadow-control* shadow-control) ;; unknown type
 (define-extern *plant-boss-leaf-sg* skeleton-group)
-;;(define-extern plant-boss-leaf-idle object) ;; unknown type
-;;(define-extern plant-boss-leaf-die object) ;; unknown type
-;;(define-extern plant-boss-leaf-open-idle object) ;; unknown type
-;;(define-extern plant-boss-leaf-close object) ;; unknown type
-;;(define-extern plant-boss-leaf-bounce object) ;; unknown type
-;;(define-extern plant-boss-leaf-open object) ;; unknown type
 (define-extern *plant-boss-root-sg* skeleton-group)
-;;(define-extern plant-boss-root-idle object) ;; unknown type
 (define-extern *plant-boss-vine-sg* skeleton-group)
-;;(define-extern plant-boss-vine-idle object) ;; unknown type
 (define-extern *plant-boss-back-arms-sg* skeleton-group)
-;;(define-extern plant-boss-back-arms-idle object) ;; unknown type
 (define-extern *plant-boss-arm-sg* skeleton-group)
-;;(define-extern plant-boss-arm-idle object) ;; unknown type
-;;(define-extern plant-boss-root-die object) ;; unknown type
-;;(define-extern plant-boss-vine-die object) ;; unknown type
-;;(define-extern plant-boss-vine-hit object) ;; unknown type
-;;(define-extern plant-boss-back-arms-hit object) ;; unknown type
-;;(define-extern plant-boss-back-arms-die object) ;; unknown type
-;;(define-extern plant-boss-arm-die object) ;; unknown type
-;;(define-extern plant-boss-arm-hit object) ;; unknown type
-;;(define-extern plant-boss-eat object) ;; unknown type
 
 
 ;; ----------------------
