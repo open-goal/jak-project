@@ -29,6 +29,7 @@ add_library(common
         util/json_util.cpp
         util/Timer.cpp
         util/print_float.cpp
+        util/FontUtils.cpp
         )
 
 target_link_libraries(common fmt lzokay replxx libzstd_static)

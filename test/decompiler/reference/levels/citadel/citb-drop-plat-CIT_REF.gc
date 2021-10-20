@@ -108,8 +108,8 @@
    (spin-angle    float                        :offset-assert 192)
    (spin-speed    float                        :offset-assert 196)
    (interp        float                        :offset-assert 200)
-   (duration      uint64                       :offset-assert 208)
-   (delay         uint64                       :offset-assert 216)
+   (duration      int64                        :offset-assert 208)
+   (delay         int64                        :offset-assert 216)
    (color         int8                         :offset-assert 224)
    )
   :heap-base #x80
@@ -170,7 +170,7 @@
     (if
      (>=
       (- (-> *display* base-frame-counter) (-> self state-time))
-      (the-as int (-> self duration))
+      (-> self duration)
       )
      (go drop-plat-drop)
      )
@@ -232,7 +232,7 @@
     (when
      (>=
       (- (-> *display* base-frame-counter) (-> self state-time))
-      (the-as int (-> self delay))
+      (-> self delay)
       )
      (let ((v1-14 (logand -3 (-> self draw status)))
            (a0-5 (-> self draw))
@@ -514,7 +514,7 @@
 ;; Used lq/sq
 (defbehavior
   drop-plat-init-by-other drop-plat
-  ((arg0 vector) (arg1 uint) (arg2 uint) (arg3 int))
+  ((arg0 vector) (arg1 int) (arg2 int) (arg3 int))
   (set! (-> self color) arg3)
   (set! (-> self delay) arg1)
   (set! (-> self duration) arg2)
@@ -564,8 +564,8 @@
    (x-spacing         float                       :offset-assert 256)
    (z-spacing         float                       :offset-assert 260)
    (idle-distance     float                       :offset-assert 264)
-   (duration          uint64                      :offset-assert 272)
-   (drop-time         uint64                      :offset-assert 280)
+   (duration          int64                       :offset-assert 272)
+   (drop-time         int64                       :offset-assert 280)
    )
   :heap-base #xb0
   :method-count-assert 20
@@ -701,7 +701,10 @@
                                                                     uint
                                                                     sv-64
                                                                     )
-                                                                   t0-0
+                                                                   (the-as
+                                                                    uint
+                                                                    t0-0
+                                                                    )
                                                                    )
                                                                   )
                                                                  (->
@@ -723,7 +726,7 @@
      )
     )
    )
-  (set! (-> self drop-time) (the-as uint (-> *display* base-frame-counter)))
+  (set! (-> self drop-time) (-> *display* base-frame-counter))
   0
   (none)
   )
@@ -793,15 +796,12 @@
                     ((= v1-0 'player-stepped)
                      (when
                       (>=
-                       (-
-                        (-> *display* base-frame-counter)
-                        (the-as int (-> self drop-time))
-                        )
+                       (- (-> *display* base-frame-counter) (-> self drop-time))
                        60
                        )
                       (set!
                        (-> self drop-time)
-                       (the-as uint (-> *display* base-frame-counter))
+                       (-> *display* base-frame-counter)
                        )
                       (citb-drop-plat-drop-children
                        (the-as int (-> arg3 param 0))
@@ -824,7 +824,7 @@
      (or
       (>=
        (- (-> *display* base-frame-counter) (-> self state-time))
-       (the-as int (+ (-> self duration) 600))
+       (+ (-> self duration) 600)
        )
       (or
        (not *target*)
@@ -879,7 +879,7 @@
    )
   (set!
    (-> obj duration)
-   (the-as uint (the int (* 300.0 (+ 2.0 (the float (-> obj z-count))))))
+   (the int (* 300.0 (+ 2.0 (the float (-> obj z-count)))))
    )
   (let ((f0-7 (res-lump-float arg0 'rotoffset)))
    (quaternion-rotate-y! (-> obj root quat) (-> obj root quat) f0-7)
