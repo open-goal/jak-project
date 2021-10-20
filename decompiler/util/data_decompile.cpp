@@ -536,8 +536,9 @@ goos::Object decompile_structure(const TypeSpec& type,
 
   // check enough room
   if (int(words.at(label.target_segment).size()) < word_count + offset_location / 4) {
-    throw std::runtime_error(fmt::format("Structure type {} takes up {} bytes and doesn't fit.",
-                                         type_info->get_name(), type_info->get_size_in_memory()));
+    throw std::runtime_error(fmt::format(
+        "Structure type {} takes up {} bytes and doesn't fit. {}:{}", type_info->get_name(),
+        type_info->get_size_in_memory(), label.name, offset_location));
   }
 
   // get words for real
