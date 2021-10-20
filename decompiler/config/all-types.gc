@@ -499,7 +499,7 @@
 
     (bucket-1 1)
     (bucket-2 2)
-    (bucket-3 3)
+    (sky-draw 3)
     (tfrag-tex0 5)
     ;; merc0 10
     ;; generic0 11
@@ -9096,7 +9096,7 @@
     (backup-load-state-and-set-cmds (_type_ pair) int 17)
     (restore-load-state-and-cleanup (_type_) int 18)
     (restore-load-state (_type_) int 19)
-    (dummy-20 () none 20)
+    (set-force-inside! (_type_ symbol symbol) none 20)
     )
   )
 
@@ -15536,7 +15536,7 @@
 (define-extern sprite-draw (function display none))
 (define-extern sprite-allocate-user-hvdf (function int))
 (define-extern sprite-release-user-hvdf (function int none))
-(define-extern sprite-get-user-hvdf (function int qword))
+(define-extern sprite-get-user-hvdf (function int vector))
 
 ;; - Symbols
 
@@ -17703,12 +17703,23 @@
   :flag-assert         #x900000010
   )
 
+(defenum load-boundary-cmd
+  :type uint8
+  (invalid 0)
+  (load 1)
+  (cmd2 2)
+  (display 3)
+  (vis 4)
+  (force-vis 5)
+  (checkpt 6)
+  )
+
 (deftype load-boundary-crossing-command (structure)
-  ((cmd        uint8     :offset-assert 0)
+  ((cmd        load-boundary-cmd     :offset-assert 0)
    (bparm      uint8 3 :offset-assert 1)
-   ;(parm       UNKNOWN 2 :offset-assert 4)
-   (lev0       basic     :offset-assert 4)
-   (lev1       basic     :offset-assert 8)
+   (parm       uint32 2 :offset-assert 4)
+   (lev0       basic     :offset 4)
+   (lev1       basic     :offset 8)
    (displev    basic     :offset 4)
    (dispcmd    basic     :offset 8)
    (nick       basic     :offset 4)
@@ -17722,18 +17733,29 @@
   :flag-assert         #x90000000c
   )
 
+(defenum load-boundary-flags
+  :type uint8
+  :bitfield #t
+  (closed 0)
+  (player 1)
+  )
+
 (deftype load-boundary (basic)
   ((num-points uint16                                 :offset-assert 4)
-   (flags      uint8                                  :offset-assert 6)
+   (flags      load-boundary-flags                                  :offset-assert 6)
    (top-plane  float                                  :offset-assert 8)
    (bot-plane  float                                  :offset-assert 12)
    (tri-cnt    int32                                  :offset-assert 16)
-   (next       basic                                  :offset-assert 20)
+   (next       load-boundary                          :offset-assert 20)
    (cmd-fwd    load-boundary-crossing-command :inline :offset-assert 24)
    (cmd-bwd    load-boundary-crossing-command :inline :offset-assert 36)
    (rejector   vector                         :inline :offset-assert 48)
-   (data       uint128                        1       :offset-assert 64)
+   (data       lbvtx                        1    :inline   :offset-assert 64)
+   (data2       lbvtx                        :dynamic    :inline   :offset 64)
    )
+  (:methods
+    (new (symbol type int symbol symbol) _type_ 0)
+    )
   :method-count-assert 9
   :size-assert         #x50
   :flag-assert         #x900000050
@@ -17741,8 +17763,8 @@
 
 ;; - Unknowns
 
-;;(define-extern *load-boundary-list* object) ;; unknown type
-;;(define-extern *load-boundary-target* object) ;; unknown type
+(define-extern *load-boundary-list* load-boundary) ;; guess for now
+(define-extern *load-boundary-target* (inline-array lbvtx)) ;; unknown type
 
 
 ;; ----------------------
@@ -17754,7 +17776,7 @@
 ;; - Types
 
 (deftype lb-editor-parms (basic)
-  ((boundary basic  :offset-assert 4)
+  ((boundary load-boundary  :offset-assert 4)
    (vertex   int32  :offset-assert 8)
    (x-origin float  :offset-assert 12)
    (z-origin float  :offset-assert 16)
@@ -17766,65 +17788,65 @@
 
 ;; - Functions
 
-(define-extern check-closed-boundary function)
-(define-extern check-open-boundary function)
+(define-extern check-closed-boundary (function load-boundary lbvtx lbvtx symbol))
+(define-extern check-open-boundary (function load-boundary lbvtx lbvtx symbol))
 (define-extern load-state-want-vis (function symbol int))
 (define-extern load-state-want-levels (function symbol symbol int))
 (define-extern load-state-want-display-level (function symbol symbol int))
 (define-extern load-state-want-force-vis (function symbol symbol int))
-(define-extern command-get-param (function object symbol symbol))
+(define-extern command-get-param (function object object object))
 (define-extern entity-birth-no-kill (function entity none))
 (define-extern part-tracker-init (function sparticle-launch-group int basic basic basic vector none)) ;; TODO - not confirmed
 (define-extern command-list-get-process (function object process))
-(define-extern command-get-quoted-param (function object symbol symbol))
+(define-extern command-get-quoted-param (function object object object))
 (define-extern command-get-int (function object int int))
 (define-extern ambient-hint-spawn (function string vector process-tree symbol object))
 (define-extern command-get-float (function object float float))
 (define-extern process-by-ename (function string process))
-(define-extern point-in-polygon function)
-(define-extern try-corner function)
-(define-extern split-monotone-polygon function)
-(define-extern fix-boundary-normals function)
-(define-extern triangulate-boundary function)
-(define-extern find-bounding-circle function)
-(define-extern render-boundary function)
-(define-extern check-boundary function)
-(define-extern edit-load-boundaries function)
-(define-extern copy-load-command! function)
-(define-extern copy-load-boundary! function)
-(define-extern lb-add-plane function)
-(define-extern lb-add function)
-(define-extern save-boundary-cmd function)
-(define-extern replace-load-boundary function)
-(define-extern format-boundary-cmd function)
-(define-extern boundary-set-color function)
-(define-extern add-boundary-shader function)
-(define-extern draw-boundary-cap function)
-(define-extern draw-boundary-side function)
-(define-extern init-boundary-regs function)
-(define-extern render-boundary-tri function)
-(define-extern render-boundary-quad function)
+(define-extern point-in-polygon (function load-boundary vector symbol))
+(define-extern try-corner (function object int symbol))
+(define-extern split-monotone-polygon (function load-boundary int none))
+(define-extern fix-boundary-normals (function load-boundary none))
+(define-extern triangulate-boundary (function load-boundary object))
+(define-extern find-bounding-circle (function load-boundary none))
+(define-extern render-boundary (function load-boundary none))
+(define-extern check-boundary (function load-boundary none))
+(define-extern edit-load-boundaries (function none))
+(define-extern copy-load-command! (function load-boundary-crossing-command load-boundary-crossing-command none))
+(define-extern copy-load-boundary! (function load-boundary load-boundary none))
+(define-extern lb-add-plane (function load-boundary))
+(define-extern lb-add (function load-boundary))
+(define-extern save-boundary-cmd (function load-boundary-crossing-command string file-stream none))
+(define-extern replace-load-boundary (function load-boundary load-boundary none))
+(define-extern format-boundary-cmd (function load-boundary-crossing-command none))
+(define-extern boundary-set-color (function lbvtx load-boundary-crossing-command none))
+(define-extern add-boundary-shader (function texture-id dma-buffer none))
+(define-extern draw-boundary-cap (function load-boundary float dma-buffer symbol none))
+(define-extern draw-boundary-side (function load-boundary integer integer dma-buffer symbol none))
+(define-extern init-boundary-regs (function none))
+(define-extern render-boundary-tri (function lbvtx dma-buffer none))
+(define-extern render-boundary-quad (function lbvtx dma-buffer none))
 (define-extern draw-boundary-polygon function)
-(define-extern lb-del function)
-(define-extern lb-add-vtx-before function)
-(define-extern lb-add-vtx-after function)
-(define-extern lb-del-vtx function)
-(define-extern load-boundary-from-template function)
-(define-extern ---lb-save function)
-(define-extern lb-add-load function)
-(define-extern lb-add-load-plane function)
-(define-extern lb-flip function)
-(define-extern lb-set-camera function)
-(define-extern lb-set-player function)
-(define-extern lb-copy function)
+(define-extern lb-del (function none))
+(define-extern lb-add-vtx-before (function none))
+(define-extern lb-add-vtx-after (function none))
+(define-extern lb-del-vtx (function none))
+(define-extern load-boundary-from-template (function (array object) none))
+(define-extern ---lb-save (function none))
+(define-extern lb-add-load (function object object none))
+(define-extern lb-add-load-plane (function object object none))
+(define-extern lb-flip (function none))
+(define-extern lb-set-camera (function none))
+(define-extern lb-set-player (function none))
+(define-extern lb-copy (function none))
 (define-extern render-boundaries (function none))
-(define-extern command-get-time function)
+(define-extern command-get-time (function object int int))
 
 ;; - Unknowns
 
 (define-extern *backup-load-state* load-state)
 (define-extern *display-load-commands* symbol)
-(define-extern *triangulation-buffer* pointer)
+(define-extern *triangulation-buffer* (inline-array lbvtx))
 (define-extern *lb-editor-parms* lb-editor-parms)
 (define-extern *boundary-polygon* (inline-array lbvtx))
 
@@ -17837,7 +17859,7 @@
 
 ;; - Unknowns
 
-;;(define-extern *static-load-boundary-list* object) ;; unknown type
+(define-extern *static-load-boundary-list* (array array)) ;; unknown type
 
 
 ;; ----------------------

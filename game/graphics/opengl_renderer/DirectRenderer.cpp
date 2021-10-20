@@ -236,6 +236,18 @@ void DirectRenderer::update_gl_prim(SharedRenderState* render_state) {
   // currently gouraud is handled in setup.
   const auto& state = m_prim_gl_state;
   if (state.texture_enable) {
+    float alpha_reject = 0.;
+    if (m_test_state.alpha_test_enable) {
+      switch (m_test_state.alpha_test) {
+        case GsTest::AlphaTest::ALWAYS:
+          break;
+        case GsTest::AlphaTest::GEQUAL:
+          alpha_reject = m_test_state.aref / 128.f;
+          break;
+        default:
+          assert(false);
+      }
+    }
     if (m_texture_state.tcc) {
       if (m_mode == Mode::SPRITE_CPU) {
         render_state->shaders[ShaderId::SPRITE_CPU].activate();
@@ -243,9 +255,17 @@ void DirectRenderer::update_gl_prim(SharedRenderState* render_state) {
         assert(false);
       } else {
         render_state->shaders[ShaderId::DIRECT_BASIC_TEXTURED].activate();
+        glUniform1f(
+            glGetUniformLocation(render_state->shaders[ShaderId::DIRECT_BASIC_TEXTURED].id(),
+                                 "alpha_reject"),
+            alpha_reject);
       }
     } else {
       render_state->shaders[ShaderId::DIRECT_BASIC_TEXTURED_TCC0].activate();
+      glUniform1f(
+          glGetUniformLocation(render_state->shaders[ShaderId::DIRECT_BASIC_TEXTURED_TCC0].id(),
+                               "alpha_reject"),
+          alpha_reject);
     }
     update_gl_texture(render_state);
   } else {
@@ -306,8 +326,14 @@ void DirectRenderer::update_gl_texture(SharedRenderState* render_state) {
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
   }
 
-  glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-  glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+  if (m_texture_state.enable_tex_filt) {
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+  } else {
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+  }
+
   glUniform1i(
       glGetUniformLocation(render_state->shaders[ShaderId::DIRECT_BASIC_TEXTURED].id(), "T0"), 0);
 }
@@ -362,10 +388,6 @@ void DirectRenderer::update_gl_test() {
 
   if (state.date) {
     assert(false);
-  }
-
-  if (state.alpha_test_enable) {
-    assert(state.alpha_test == GsTest::AlphaTest::ALWAYS);
   }
 
   if (state.depth_writes) {
@@ -538,7 +560,7 @@ void DirectRenderer::render_gif(const u8* data,
     eop = tag.eop();
   }
 
-  assert(offset == size);
+  assert((offset + 15) / 16 == size / 16);
 
   //  fmt::print("{}\n", GifTag(data).print());
 }
@@ -572,7 +594,7 @@ void DirectRenderer::handle_ad(const u8* data,
       break;
 
     case GsRegisterAddress::TEX1_1:
-      handle_tex1_1(value);
+      handle_tex1_1(value, render_state, prof);
       break;
     case GsRegisterAddress::TEXA:
       handle_texa(value);
@@ -600,17 +622,26 @@ void DirectRenderer::handle_ad(const u8* data,
   }
 }
 
-void DirectRenderer::handle_tex1_1(u64 val) {
+void DirectRenderer::handle_tex1_1(u64 val,
+                                   SharedRenderState* render_state,
+                                   ScopedProfilerNode& prof) {
   GsTex1 reg(val);
   // for now, we aren't going to handle mipmapping. I don't think it's used with direct.
   //   assert(reg.mxl() == 0);
   // if that's true, we can ignore LCM, MTBA, L, K
 
-  // MMAG/MMIN specify texture filtering. For now, assume always linear
-  assert(reg.mmag() == true);
-  if (!(reg.mmin() == 1 || reg.mmin() == 4)) {  // with mipmap off, both of these are linear
-                                                //    lg::error("unsupported mmin");
+  bool want_tex_filt = reg.mmag();
+
+  if (want_tex_filt != m_texture_state.enable_tex_filt) {
+    flush_pending(render_state, prof);
+    m_texture_state.enable_tex_filt = want_tex_filt;
   }
+
+  // MMAG/MMIN specify texture filtering. For now, assume always linear
+  //  assert(reg.mmag() == true);
+  //  if (!(reg.mmin() == 1 || reg.mmin() == 4)) {  // with mipmap off, both of these are linear
+  //                                                //    lg::error("unsupported mmin");
+  //  }
 }
 
 void DirectRenderer::handle_tex0_1_packed(const u8* data,
@@ -720,7 +751,7 @@ void DirectRenderer::handle_test1(u64 val,
                                   ScopedProfilerNode& prof) {
   GsTest reg(val);
   if (reg.alpha_test_enable()) {
-    assert(reg.alpha_test() == GsTest::AlphaTest::ALWAYS);
+    // assert(reg.alpha_test() == GsTest::AlphaTest::ALWAYS);
   }
   assert(!reg.date());
   if (m_test_state.current_register != reg) {
@@ -728,6 +759,7 @@ void DirectRenderer::handle_test1(u64 val,
     flush_pending(render_state, prof);
     m_test_state.from_register(reg);
     m_test_state_needs_gl_update = true;
+    m_prim_gl_state_needs_gl_update = true;
   }
 }
 

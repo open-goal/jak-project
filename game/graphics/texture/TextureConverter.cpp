@@ -169,7 +169,29 @@ void TextureConverter::download_rgba8888(u8* result,
         out_offset += 4;
       }
     }
-  } else {
+  } else if (psm == int(PSM::PSMCT16) && clut_psm == 0) {
+    // plain 16-bit texture
+    // not a clut.
+    // will store output pixels, rgba (8888)
+
+    // width is like the TEX0 register, in 64 texel units.
+    // not sure what the other widths are yet.
+    int read_width = 64 * goal_tex_width;
+
+    // loop over pixels in output texture image
+    for (int y = 0; y < h; y++) {
+      for (int x = 0; x < w; x++) {
+        // read as the PSMT8 type. The dest field tells us a block offset.
+        auto addr8 = psmct16_addr(x, y, read_width) + vram_addr * 256;
+        u16 value = *(u16*)(m_vram.data() + addr8);
+        u32 val32 = rgba16_to_rgba32(value);
+        memcpy(result + out_offset, &val32, 4);
+        out_offset += 4;
+      }
+    }
+  }
+
+  else {
     assert(false);
   }
 

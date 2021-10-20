@@ -109,7 +109,7 @@ goos::Object MakeSystem::handle_defstep(const goos::Object& form,
     m_output_to_step.insert({output, step});
   }
 
-  return goos::EmptyListObject::make_new();
+  return goos::Object::make_empty_list();
 }
 
 /*!
