@@ -963,8 +963,8 @@ goos::Object decompile_value(const TypeSpec& type,
     memcpy(&value, bytes.data(), 8);
 
     // only rewrite if exact.
-    s64 seconds_int = value / TICKS_PER_SECOND;
-    if (seconds_int * TICKS_PER_SECOND == value) {
+    s64 seconds_int = value / (s64)TICKS_PER_SECOND;
+    if (seconds_int * (s64)TICKS_PER_SECOND == value) {
       return pretty_print::to_symbol(fmt::format("(seconds {})", seconds_int));
     }
     double seconds = (double)value / TICKS_PER_SECOND;

@@ -834,14 +834,17 @@ std::string to_string(const goos::Object& obj, int line_length) {
   return pretty;
 }
 
-goos::Reader pretty_printer_reader;
+std::unique_ptr<goos::Reader> pretty_printer_reader;
 
 goos::Reader& get_pretty_printer_reader() {
-  return pretty_printer_reader;
+  if (!pretty_printer_reader) {
+    pretty_printer_reader = std::make_unique<goos::Reader>();
+  }
+  return *pretty_printer_reader;
 }
 
 goos::Object to_symbol(const std::string& str) {
-  return goos::SymbolObject::make_new(pretty_printer_reader.symbolTable, str);
+  return goos::SymbolObject::make_new(get_pretty_printer_reader().symbolTable, str);
 }
 
 goos::Object build_list(const std::string& str) {
@@ -849,12 +852,12 @@ goos::Object build_list(const std::string& str) {
 }
 
 goos::Object build_list(const goos::Object& obj) {
-  return goos::PairObject::make_new(obj, goos::EmptyListObject::make_new());
+  return goos::PairObject::make_new(obj, goos::Object::make_empty_list());
 }
 
 goos::Object build_list(const std::vector<goos::Object>& objects) {
   if (objects.empty()) {
-    return goos::EmptyListObject::make_new();
+    return goos::Object::make_empty_list();
   } else {
     return build_list(objects.data(), objects.size());
   }
@@ -868,7 +871,7 @@ goos::Object build_list(const goos::Object* objects, int count) {
   if (count - 1) {
     cdr = build_list(objects + 1, count - 1);
   } else {
-    cdr = goos::EmptyListObject::make_new();
+    cdr = goos::Object::make_empty_list();
   }
   return goos::PairObject::make_new(car, cdr);
 }
@@ -876,7 +879,7 @@ goos::Object build_list(const goos::Object* objects, int count) {
 // build a list out of a vector of strings that are converted to symbols
 goos::Object build_list(const std::vector<std::string>& symbols) {
   if (symbols.empty()) {
-    return goos::EmptyListObject::make_new();
+    return goos::Object::make_empty_list();
   }
   std::vector<goos::Object> f;
   f.reserve(symbols.size());

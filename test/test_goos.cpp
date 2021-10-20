@@ -957,11 +957,9 @@ TEST(GoosObject, char_to_string) {
  * Test the EmptyListObject
  */
 TEST(GoosObject, EmptyList) {
-// TODO-Windows
-#ifdef __linux__
   // create two empty lists
-  Object nil = EmptyListObject::make_new();
-  Object nil2 = EmptyListObject::make_new();
+  Object nil = Object::make_empty_list();
+  Object nil2 = Object::make_empty_list();
 
   // check type is set
   EXPECT_TRUE(nil.is_empty_list());
@@ -969,16 +967,9 @@ TEST(GoosObject, EmptyList) {
   // check equality operator
   EXPECT_TRUE(nil == nil2);
 
-  // check we get the same heap allocated object
-  auto elo = std::dynamic_pointer_cast<EmptyListObject>(nil.heap_obj);
-  auto elo2 = std::dynamic_pointer_cast<EmptyListObject>(nil2.heap_obj);
-  EXPECT_TRUE(elo);
-  EXPECT_TRUE(elo == elo2);
-
   // check print and inspect
   EXPECT_EQ(nil.print(), "()");
   EXPECT_EQ(nil.inspect(), "[empty list] ()\n");
-#endif
 }
 
 /*!

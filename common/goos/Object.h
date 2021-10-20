@@ -186,6 +186,8 @@ class Object {
         return float_obj.print();
       case ObjectType::CHAR:
         return char_obj.print();
+      case ObjectType::EMPTY_LIST:
+        return "()";
       default:
         return heap_obj->print();
     }
@@ -199,6 +201,8 @@ class Object {
         return float_obj.inspect();
       case ObjectType::CHAR:
         return char_obj.inspect();
+      case ObjectType::EMPTY_LIST:
+        return "[empty list] ()\n";
       default:
         return heap_obj->inspect();
     }
@@ -225,6 +229,12 @@ class Object {
     Object o;
     o.type = ObjectType::CHAR;
     o.char_obj.value = value;
+    return o;
+  }
+
+  static Object make_empty_list() {
+    Object o;
+    o.type = ObjectType::EMPTY_LIST;
     return o;
   }
 
@@ -290,31 +300,6 @@ class Object {
 
   bool operator==(const Object& other) const;
   bool operator!=(const Object& other) const { return !((*this) == other); }
-};
-
-// There is a single heap allocated EmptyListObject.
-class EmptyListObject;
-std::shared_ptr<EmptyListObject>& get_empty_list();
-
-class EmptyListObject : public HeapObject {
- public:
-  EmptyListObject() = default;
-  static Object make_new() {
-    Object obj;
-    obj.type = ObjectType::EMPTY_LIST;
-    obj.heap_obj = get_empty_list();
-    return obj;
-  }
-
-  std::string print() const override { return "()"; }
-
-  std::string inspect() const override {
-    char buff[256];
-    sprintf(buff, "[empty list] ()\n");
-    return std::string(buff);
-  }
-
-  ~EmptyListObject() = default;
 };
 
 class SymbolTable;

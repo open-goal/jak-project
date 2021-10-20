@@ -372,7 +372,7 @@ RemapInfo* jak1_bytes_to_utf8(const char* in) {
     if (info.bytes.size() == 0)
       continue;
     bool found = true;
-    for (int i = 0; found && i < info.bytes.size(); ++i) {
+    for (int i = 0; found && i < (int)info.bytes.size(); ++i) {
       if (uint8_t(in[i]) != info.bytes.at(i)) {
         found = false;
       }
