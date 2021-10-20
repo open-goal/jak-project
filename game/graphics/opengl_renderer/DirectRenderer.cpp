@@ -560,7 +560,6 @@ void DirectRenderer::render_gif(const u8* data,
     eop = tag.eop();
   }
 
-
   assert((offset + 15) / 16 == size / 16);
 
   //  fmt::print("{}\n", GifTag(data).print());
