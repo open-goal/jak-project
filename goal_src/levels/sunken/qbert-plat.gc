@@ -130,11 +130,10 @@
 (defstate qbert-plat-on-mimic (qbert-plat)
   :event
   (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
-   (let ((v1-0 arg2))
-    (the-as object (if (= v1-0 'die)
-                    (go qbert-plat-on-die)
-                    )
-     )
+   (case arg2 
+    (('die)
+      (go qbert-plat-on-die)
+      )
     )
    )
   :code
@@ -500,59 +499,52 @@
 (defstate qbert-plat-master-idle (qbert-plat-master)
   :event
   (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
-   (let ((v1-0 arg2))
-    (the-as object (when (= v1-0 'trigger)
-                    (start-hint-timer (the-as level-hint-control 842))
-                    (close-specific-task!
-                     (game-task sunken-platforms)
-                     (task-status need-hint)
-                     )
-                    (when (not (-> self puzzle-beaten?))
-                     (let ((v1-2 (-> arg3 param 0)))
-                      (when (!= v1-2 (-> self last-plat-triggered))
-                       (set! (-> self last-plat-triggered) (the-as int v1-2))
-                       (let
-                        ((s5-1
-                          (=
-                           (-> self plat-states-needed-to-open-door)
-                           (-> self plat-states)
-                           )
-                          )
-                         )
-                        (let ((v1-3 (ash 1 v1-2)))
-                         (set!
-                          (-> self plat-states)
-                          (logxor (-> self plat-states) (the-as uint v1-3))
-                          )
-                         (if (zero? (logand v1-3 (-> self plat-states)))
-                          (level-hint-spawn
-                           (game-text-id sunken-qbert-hint)
-                           "sksp0130"
-                           (the-as entity #f)
-                           *entity-pool*
-                           (game-task none)
-                           )
-                          )
-                         )
-                        (send-event arg0 'notify)
-                        (let
-                         ((a0-13
-                           (=
-                            (-> self plat-states-needed-to-open-door)
-                            (-> self plat-states)
-                            )
-                           )
-                          )
-                         (if (!= s5-1 a0-13)
-                          (go qbert-plat-master-do-door a0-13)
-                          )
-                         )
-                        )
-                       )
-                      )
-                     )
-                    )
-     )
+   (case arg2 
+    (('trigger)
+      (start-hint-timer (the-as level-hint-control 842))
+      (close-specific-task!
+       (game-task sunken-platforms)
+       (task-status need-hint)
+       )
+      (when (not (-> self puzzle-beaten?))
+       (let ((v1-2 (-> arg3 param 0)))
+        (when (!= v1-2 (-> self last-plat-triggered))
+         (set! (-> self last-plat-triggered) (the-as int v1-2))
+         (let
+          ((s5-1
+            (= (-> self plat-states-needed-to-open-door) (-> self plat-states))
+            )
+           )
+          (let ((v1-3 (ash 1 v1-2)))
+           (set!
+            (-> self plat-states)
+            (logxor (-> self plat-states) (the-as uint v1-3))
+            )
+           (if (zero? (logand v1-3 (-> self plat-states)))
+            (level-hint-spawn
+             (game-text-id sunken-qbert-hint)
+             "sksp0130"
+             (the-as entity #f)
+             *entity-pool*
+             (game-task none)
+             )
+            )
+           )
+          (send-event arg0 'notify)
+          (let
+           ((a0-13
+             (= (-> self plat-states-needed-to-open-door) (-> self plat-states))
+             )
+            )
+           (if (!= s5-1 a0-13)
+            (go qbert-plat-master-do-door a0-13)
+            )
+           )
+          )
+         )
+        )
+       )
+      )
     )
    )
   :code

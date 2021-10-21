@@ -179,8 +179,8 @@ void TextureConverter::download_rgba8888(u8* result,
     int read_width = 64 * goal_tex_width;
 
     // loop over pixels in output texture image
-    for (int y = 0; y < h; y++) {
-      for (int x = 0; x < w; x++) {
+    for (u32 y = 0; y < h; y++) {
+      for (u32 x = 0; x < w; x++) {
         // read as the PSMT8 type. The dest field tells us a block offset.
         auto addr8 = psmct16_addr(x, y, read_width) + vram_addr * 256;
         u16 value = *(u16*)(m_vram.data() + addr8);

@@ -4,14 +4,14 @@
 /*!
  * Convert a (state <blah> ...) to the function required to go. Must be state.
  */
-TypeSpec state_to_go_function(const TypeSpec& state_type) {
+TypeSpec state_to_go_function(const TypeSpec& state_type, const TypeSpec& return_type) {
   assert(state_type.base_type() == "state");
   std::vector<TypeSpec> arg_types;
   for (int i = 0; i < (int)state_type.arg_count() - 1; i++) {
     arg_types.push_back(state_type.get_arg(i));
   }
 
-  arg_types.push_back(TypeSpec("none"));  // none for the return.
+  arg_types.push_back(return_type);  // for the return.
   auto result = TypeSpec("function", arg_types);
   result.add_new_tag("behavior", state_type.last_arg().base_type());
   return result;
@@ -62,8 +62,10 @@ TypeSpec get_state_handler_type(StateHandler kind, const TypeSpec& state_type) {
   TypeSpec result;
   switch (kind) {
     case StateHandler::CODE:
+      result = state_to_go_function(state_type, TypeSpec("none"));
+      break;
     case StateHandler::ENTER:
-      result = state_to_go_function(state_type);
+      result = state_to_go_function(state_type, TypeSpec("none"));
       break;
 
     case StateHandler::TRANS:

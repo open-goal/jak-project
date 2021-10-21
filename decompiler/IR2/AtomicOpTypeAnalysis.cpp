@@ -1051,7 +1051,7 @@ TP_Type LoadVarOp::get_src_type(const TypeState& input,
             rd.tokens.front().kind == FieldReverseLookupOutput::Token::Kind::FIELD &&
             rd.tokens.front().name == "enter" && rd_in.base_type.arg_count() > 0) {
           // special case for accessing the enter field of state
-          return TP_Type::make_from_ts(state_to_go_function(rd_in.base_type));
+          return TP_Type::make_from_ts(state_to_go_function(rd_in.base_type, TypeSpec("none")));
         } else {
           return TP_Type::make_from_ts(coerce_to_reg_type(rd.result_type));
         }
@@ -1219,7 +1219,7 @@ TypeState CallOp::propagate_types_internal(const TypeState& input,
           "state.  The decompiler must know the specific state type.",
           m_my_idx));
     }
-    in_type = state_to_go_function(state_type);
+    in_type = state_to_go_function(state_type, TypeSpec("object"));
   }
 
   if (in_tp.kind == TP_Type::Kind::RUN_FUNCTION_IN_PROCESS_FUNCTION ||

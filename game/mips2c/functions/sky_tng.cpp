@@ -1318,7 +1318,6 @@ u64 execute(void* ctxt) {
   auto* c = (ExecutionContext*)ctxt;
   bool bc = false;
   c->copy_vfs_from_other(&sky_regs_vfs);
-  u32 call_addr = 0;
   c->mov64(v1, a0);                                 // or v1, a0, r0
   c->load_symbol(v1, cache.math_camera);            // lw v1, *math-camera*(s7)
   c->lqc2(vf14, 700, v1);                           // lqc2 vf14, 700(v1)
@@ -1451,7 +1450,6 @@ struct Cache {
 u64 execute(void* ctxt) {
   auto* c = (ExecutionContext*)ctxt;
   bool bc = false;
-  u32 call_addr = 0;
   c->copy_vfs_from_other(&sky_regs_vfs);
   c->mov64(v1, a0);                                 // or v1, a0, r0
 //  c->lui(t4, 28672);                                // lui t4, 28672
