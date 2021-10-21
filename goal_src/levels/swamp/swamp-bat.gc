@@ -107,37 +107,28 @@
   )
 
 
-;; WARN: rewrite_to_get_var got a none typed variable. Is there unreachable code?
 (defbehavior
   swamp-bat-slave-event-handler swamp-bat-slave
   ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
-  (let ((v1-0 arg2))
-   (the-as object (cond
-                   ((= v1-0 'attack)
-                    (logclear! (-> self mask) (process-mask actor-pause))
-                    (go swamp-bat-slave-die (process->handle arg0))
-                    )
-                   ((= v1-0 'touch)
-                    (level-hint-spawn
-                     (game-text-id swamp-bats-hint)
-                     "sksp0156"
-                     (the-as entity #f)
-                     *entity-pool*
-                     (game-task none)
-                     )
-                    (send-event
-                     arg0
-                     'attack
-                     (-> arg3 param 0)
-                     (new 'static 'attack-info)
-                     )
-                    )
-                   ((= v1-0 'launch)
-                    (if (-> self launch-ready)
-                     (go swamp-bat-slave-launch)
-                     )
-                    )
-                   )
+  (case arg2 
+   (('attack)
+     (logclear! (-> self mask) (process-mask actor-pause))
+     (go swamp-bat-slave-die (process->handle arg0))
+     )
+   (('touch)
+    (level-hint-spawn
+     (game-text-id swamp-bats-hint)
+     "sksp0156"
+     (the-as entity #f)
+     *entity-pool*
+     (game-task none)
+     )
+    (send-event arg0 'attack (-> arg3 param 0) (new 'static 'attack-info))
+    )
+   (('launch)
+    (if (-> self launch-ready)
+     (go swamp-bat-slave-launch)
+     )
     )
    )
   )

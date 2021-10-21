@@ -1103,77 +1103,69 @@
   )
 
 ;; definition for function fall-test
-;; INFO: Return type mismatch none vs object.
 (defbehavior fall-test target ((arg0 symbol) (arg1 symbol))
-  (the-as
-   object
+  (when
+   (and
+    (zero? (logand (-> self control status) 1))
+    (>=
+     (- (-> *display* base-frame-counter) (-> self control unknown-dword10))
+     (the-as int (-> *TARGET-bank* ground-timeout))
+     )
+    (>=
+     0.0
+     (vector-dot
+      (-> self control dynam gravity-normal)
+      (-> self control transv)
+      )
+     )
+    (let ((v1-15 (if (> (-> self skel active-channels) 0)
+                  (-> self skel root-channel 0 frame-group)
+                  )
+           )
+          )
+     (or
+      (not
+       (or
+        (= v1-15 (-> self draw art-group data 59))
+        (= v1-15 (-> self draw art-group data 60))
+        (= v1-15 (-> self draw art-group data 61))
+        )
+       )
+      (< 4096.0 (target-height-above-ground))
+      )
+     )
+    )
    (when
     (and
-     (zero? (logand (-> self control status) 1))
-     (>=
-      (- (-> *display* base-frame-counter) (-> self control unknown-dword10))
+     (<
+      (-
+       (-> *display* base-frame-counter)
+       (the-as int (-> self control rider-time))
+       )
       (the-as int (-> *TARGET-bank* ground-timeout))
       )
-     (>=
-      0.0
-      (vector-dot
-       (-> self control dynam gravity-normal)
-       (-> self control transv)
-       )
-      )
-     (let ((v1-15 (if (> (-> self skel active-channels) 0)
-                   (-> self skel root-channel 0 frame-group)
-                   )
-            )
-           )
-      (or
-       (not
-        (or
-         (= v1-15 (-> self draw art-group data 59))
-         (= v1-15 (-> self draw art-group data 60))
-         (= v1-15 (-> self draw art-group data 61))
-         )
-        )
-       (< 4096.0 (target-height-above-ground))
-       )
-      )
+     (logtest? (-> self control unknown-surface01 flags) #x4000)
      )
-    (when
-     (and
-      (<
-       (-
-        (-> *display* base-frame-counter)
-        (the-as int (-> self control rider-time))
-        )
-       (the-as int (-> *TARGET-bank* ground-timeout))
-       )
-      (logtest? (-> self control unknown-surface01 flags) #x4000)
-      )
-     (+! (-> self control transv x) (-> self control rider-last-move x))
-     (+! (-> self control transv z) (-> self control rider-last-move z))
-     )
-    (go target-falling #f)
+    (+! (-> self control transv x) (-> self control rider-last-move x))
+    (+! (-> self control transv z) (-> self control rider-last-move z))
     )
+   (go target-falling #f)
    )
   )
 
 ;; definition for function slide-down-test
-;; INFO: Return type mismatch none vs object.
 (defbehavior slide-down-test target ((arg0 symbol) (arg1 symbol))
-  (the-as
-   object
-   (if
-    (and
-     (zero? (logand (-> self control status) 129))
-     (>=
-      (- (-> *display* base-frame-counter) (-> self control unknown-dword10))
-      (the-as int (-> *TARGET-bank* ground-timeout))
-      )
-     (logtest? (-> self control status) 4)
-     (< 0.5 (-> self control surface-angle))
+  (if
+   (and
+    (zero? (logand (-> self control status) 129))
+    (>=
+     (- (-> *display* base-frame-counter) (-> self control unknown-dword10))
+     (the-as int (-> *TARGET-bank* ground-timeout))
      )
-    (go target-slide-down)
+    (logtest? (-> self control status) 4)
+    (< 0.5 (-> self control surface-angle))
     )
+   (go target-slide-down)
    )
   )
 

@@ -45,64 +45,55 @@
 (defstate bouncer-wait (springbox)
   :event
   (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
-   (let ((v1-0 arg2))
-    (the-as object (cond
-                    ((= v1-0 'bonk)
-                     (let ((a1-3 (new 'stack-no-clear 'event-message-block)))
-                      (set! (-> a1-3 from) self)
-                      (set! (-> a1-3 num-params) 3)
-                      (set! (-> a1-3 message) 'jump)
-                      (set!
-                       (-> a1-3 param 0)
-                       (the-as uint (-> self spring-height))
-                       )
-                      (set!
-                       (-> a1-3 param 1)
-                       (the-as uint (-> self spring-height))
-                       )
-                      (set! (-> a1-3 param 2) (the-as uint #f))
-                      (when (send-event-function arg0 a1-3)
-                       (sound-play-by-name
-                        (static-sound-name "trampoline")
-                        (new-sound-id)
-                        1024
-                        0
-                        0
-                        (the-as uint 1)
-                        (the-as vector #t)
-                        )
-                       (go bouncer-fire)
-                       )
-                      )
-                     )
-                    ((= v1-0 'touch)
-                     (if
-                      (not
-                       (or
-                        (= (-> self next-state name) 'bouncer-smush)
-                        (= (-> self next-state name) 'bouncer-fire)
-                        )
-                       )
-                      (go bouncer-smush)
-                      )
-                     )
-                    ((= v1-0 'attack)
-                     (when
-                      (and
-                       (= (-> arg3 param 1) 'flop)
-                       (send-event
-                        arg0
-                        'jump
-                        (-> self spring-height)
-                        (-> self spring-height)
-                        #f
-                        )
-                       )
-                      (go bouncer-fire)
-                      #f
-                      )
-                     )
-                    )
+   (case arg2 
+    (('bonk)
+      (let ((a1-3 (new 'stack-no-clear 'event-message-block)))
+       (set! (-> a1-3 from) self)
+       (set! (-> a1-3 num-params) 3)
+       (set! (-> a1-3 message) 'jump)
+       (set! (-> a1-3 param 0) (the-as uint (-> self spring-height)))
+       (set! (-> a1-3 param 1) (the-as uint (-> self spring-height)))
+       (set! (-> a1-3 param 2) (the-as uint #f))
+       (when (send-event-function arg0 a1-3)
+        (sound-play-by-name
+         (static-sound-name "trampoline")
+         (new-sound-id)
+         1024
+         0
+         0
+         (the-as uint 1)
+         (the-as vector #t)
+         )
+        (go bouncer-fire)
+        )
+       )
+      )
+    (('touch)
+     (if
+      (not
+       (or
+        (= (-> self next-state name) 'bouncer-smush)
+        (= (-> self next-state name) 'bouncer-fire)
+        )
+       )
+      (go bouncer-smush)
+      )
+     )
+    (('attack)
+     (when
+      (and
+       (= (-> arg3 param 1) 'flop)
+       (send-event
+        arg0
+        'jump
+        (-> self spring-height)
+        (-> self spring-height)
+        #f
+        )
+       )
+      (go bouncer-fire)
+      #f
+      )
      )
     )
    )

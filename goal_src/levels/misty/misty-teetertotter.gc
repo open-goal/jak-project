@@ -5,7 +5,14 @@
 ;; name in dgo: misty-teetertotter
 ;; dgos: L1, MIS
 
-;; definition of type teetertotter
+(declare-type teetertotter process-drawable)
+(define-extern teetertotter-idle (state teetertotter))
+(define-extern teetertotter-launch (state teetertotter))
+(define-extern teetertotter-bend (state teetertotter))
+(define-extern *teetertotter-sg* skeleton-group)
+
+;; DECOMP BEGINS
+
 (deftype teetertotter (process-drawable)
   ((launched-player   basic  :offset-assert 176)
    (in-launch-window  basic  :offset-assert 180)
@@ -17,22 +24,7 @@
   :flag-assert         #x14005000bc
   )
 
-(define-extern teetertotter-idle (state teetertotter))
-(define-extern teetertotter-launch (state teetertotter))
-(define-extern teetertotter-bend (state teetertotter))
 
-;; definition for method 3 of type teetertotter
-(defmethod inspect teetertotter ((obj teetertotter))
-  (let ((t9-0 (method-of-type process-drawable inspect)))
-   (t9-0 obj)
-   )
-  (format #t "~T~Tlaunched-player: ~A~%" (-> obj launched-player))
-  (format #t "~T~Tin-launch-window: ~A~%" (-> obj in-launch-window))
-  (format #t "~T~Trock-is-dangerous: ~A~%" (-> obj rock-is-dangerous))
-  obj
-  )
-
-;; failed to figure out what this is:
 (let
   ((v1-1
     (new 'static 'skeleton-group
@@ -51,11 +43,9 @@
   (set! (-> v1-1 lod-dist 1) 163840.0)
   (set! (-> v1-1 mgeo 2) (the-as uint 3))
   (set! (-> v1-1 lod-dist 2) 4095996000.0)
-  (define *teetertotter-sg* v1-1)
+  (set! *teetertotter-sg* v1-1)
   )
 
-;; definition for function target-on-end-of-teetertotter?
-;; Used lq/sq
 (defun target-on-end-of-teetertotter? ((arg0 teetertotter))
   (let
    ((gp-1
@@ -79,38 +69,32 @@
    )
   )
 
-;; failed to figure out what this is:
 (defstate teetertotter-idle (teetertotter)
   :event
   (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
-   (let ((v1-0 arg2))
-    (the-as object (cond
-                    ((= v1-0 'attack)
-                     (case (-> arg3 param 1) 
-                      (('flop)
-                        (when (target-on-end-of-teetertotter? self)
-                         (set! (-> self in-launch-window) #f)
-                         (increment-success-for-hint
-                          (the-as level-hint-control 676)
-                          )
-                         (go teetertotter-launch)
-                         )
-                        )
-                      )
-                     )
-                    ((= v1-0 'bonk)
-                     (when (target-on-end-of-teetertotter? self)
-                      (level-hint-spawn
-                       (game-text-id misty-teetertotter-bonk-dax-tutorial)
-                       "sksp0070"
-                       (the-as entity #f)
-                       *entity-pool*
-                       (game-task none)
-                       )
-                      (go teetertotter-bend)
-                      )
-                     )
-                    )
+   (case arg2 
+    (('attack)
+      (case (-> arg3 param 1) 
+       (('flop)
+         (when (target-on-end-of-teetertotter? self)
+          (set! (-> self in-launch-window) #f)
+          (increment-success-for-hint (the-as level-hint-control 676))
+          (go teetertotter-launch)
+          )
+         )
+       )
+      )
+    (('bonk)
+     (when (target-on-end-of-teetertotter? self)
+      (level-hint-spawn
+       (game-text-id misty-teetertotter-bonk-dax-tutorial)
+       "sksp0070"
+       (the-as entity #f)
+       *entity-pool*
+       (game-task none)
+       )
+      (go teetertotter-bend)
+      )
      )
     )
    )
@@ -133,7 +117,6 @@
   (the-as (function none :behavior teetertotter) transform-post)
   )
 
-;; failed to figure out what this is:
 (defstate teetertotter-launch (teetertotter)
   :event
   (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
@@ -252,7 +235,6 @@
   (the-as (function none :behavior teetertotter) rider-post)
   )
 
-;; failed to figure out what this is:
 (defstate teetertotter-bend (teetertotter)
   :code
   (behavior ()
@@ -306,7 +288,6 @@
   (the-as (function none :behavior teetertotter) rider-post)
   )
 
-;; definition for method 11 of type teetertotter
 (defmethod copy-defaults! teetertotter ((obj teetertotter) (arg0 res-lump))
   (let
    ((s4-0

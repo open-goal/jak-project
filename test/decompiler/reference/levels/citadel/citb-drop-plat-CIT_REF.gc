@@ -141,22 +141,19 @@
 (defstate drop-plat-idle (drop-plat)
   :event
   (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
-   (let ((v1-0 arg2))
-    (the-as object (cond
-                    ((= v1-0 'drop)
-                     (logclear! (-> self mask) (process-mask actor-pause))
-                     (go drop-plat-drop)
-                     )
-                    ((or (= v1-0 'touch) (= v1-0 'attack))
-                     (send-event *target* 'no-look-around 300)
-                     (send-event
-                      (ppointer->process (-> self parent))
-                      'player-stepped
-                      (-> self color)
-                      )
-                     #f
-                     )
-                    )
+   (case arg2 
+    (('drop)
+      (logclear! (-> self mask) (process-mask actor-pause))
+      (go drop-plat-drop)
+      )
+    (('touch 'attack)
+     (send-event *target* 'no-look-around 300)
+     (send-event
+      (ppointer->process (-> self parent))
+      'player-stepped
+      (-> self color)
+      )
+     #f
      )
     )
    )
@@ -212,11 +209,10 @@
 (defstate drop-plat-spawn (drop-plat)
   :event
   (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
-   (let ((v1-0 arg2))
-    (the-as object (if (= v1-0 'drop)
-                    (go drop-plat-die)
-                    )
-     )
+   (case arg2 
+    (('drop)
+      (go drop-plat-die)
+      )
     )
    )
   :code
@@ -251,11 +247,10 @@
 (defstate drop-plat-rise (drop-plat)
   :event
   (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
-   (let ((v1-0 arg2))
-    (the-as object (if (= v1-0 'drop)
-                    (go drop-plat-drop)
-                    )
-     )
+   (case arg2 
+    (('drop)
+      (go drop-plat-drop)
+      )
     )
    )
   :code
@@ -511,6 +506,7 @@
   )
 
 ;; definition for function drop-plat-init-by-other
+;; INFO: Return type mismatch object vs none.
 ;; Used lq/sq
 (defbehavior
   drop-plat-init-by-other drop-plat
@@ -770,11 +766,10 @@
 (defstate citb-drop-plat-idle (citb-drop-plat)
   :event
   (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
-   (let ((v1-0 arg2))
-    (the-as object (if (= v1-0 'trigger)
-                    (go citb-drop-plat-active)
-                    )
-     )
+   (case arg2 
+    (('trigger)
+      (go citb-drop-plat-active)
+      )
     )
    )
   :code
@@ -847,6 +842,7 @@
   )
 
 ;; definition for method 11 of type citb-drop-plat
+;; INFO: Return type mismatch object vs none.
 ;; Used lq/sq
 (defmethod copy-defaults! citb-drop-plat ((obj citb-drop-plat) (arg0 res-lump))
   (set! (-> obj root) (new 'process 'trsqv))

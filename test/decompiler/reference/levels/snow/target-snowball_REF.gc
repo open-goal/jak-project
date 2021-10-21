@@ -61,22 +61,23 @@
 (defstate target-snowball-start (target)
   :event
   (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
-   (the-as object (cond
-                   ((and (= arg2 'query) (= (-> arg3 param 0) 'mode))
-                    'snowball
-                    )
-                   ((let ((v1-3 arg2))
-                     (= v1-3 'end-mode)
-                     )
-                    enter-state
-                    (-> *TARGET-bank* duck-jump-height-min)
-                    (-> *TARGET-bank* duck-jump-height-max)
-                    (go target-jump)
-                    )
-                   (else
-                    (target-generic-event-handler arg0 arg1 arg2 arg3)
-                    )
-                   )
+   (cond
+    ((and (= arg2 'query) (= (-> arg3 param 0) 'mode))
+     'snowball
+     )
+    ((let ((v1-3 arg2))
+      (= v1-3 'end-mode)
+      )
+     (go
+      target-jump
+      (-> *TARGET-bank* duck-jump-height-min)
+      (-> *TARGET-bank* duck-jump-height-max)
+      #f
+      )
+     )
+    (else
+     (target-generic-event-handler arg0 arg1 arg2 arg3)
+     )
     )
    )
   :exit

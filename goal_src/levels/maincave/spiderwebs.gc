@@ -70,75 +70,62 @@
   (set! *spiderwebs-sg* v1-2)
   )
 
-;; WARN: rewrite_to_get_var got a none typed variable. Is there unreachable code?
 (defbehavior
   spiderwebs-default-event-handler spiderwebs
   ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
-  (let ((v1-0 arg2))
-   (the-as object (cond
-                   ((= v1-0 'bonk)
-                    (let ((a1-1 (new 'stack-no-clear 'event-message-block)))
-                     (set! (-> a1-1 from) self)
-                     (set! (-> a1-1 num-params) 3)
-                     (set! (-> a1-1 message) 'jump)
-                     (set!
-                      (-> a1-1 param 0)
-                      (the-as uint (-> self spring-height))
-                      )
-                     (set!
-                      (-> a1-1 param 1)
-                      (the-as uint (-> self spring-height))
-                      )
-                     (set! (-> a1-1 param 2) (the-as uint *spider-jump-mods*))
-                     (if (send-event-function arg0 a1-1)
-                      (go spiderwebs-bounce)
-                      )
-                     )
-                    )
-                   ((= v1-0 'touch)
-                    (when (= (-> arg0 type) target)
-                     (let* ((a0-8 (target-pos 0))
-                            (f1-1 (- (-> a0-8 y) (-> self root trans y)))
-                            )
-                      (if
-                       (and
-                        (>= 2048.0 (fabs f1-1))
-                        (and
-                         (>=
-                          13516.8
-                          (vector-vector-distance a0-8 (-> self root trans))
-                          )
-                         (send-event
-                          arg0
-                          'jump
-                          (-> self spring-height)
-                          (-> self spring-height)
-                          *spider-jump-mods*
-                          )
-                         )
-                        )
-                       (go spiderwebs-bounce)
-                       )
-                      )
-                     )
-                    )
-                   ((= v1-0 'attack)
-                    (if
-                     (and
-                      (= (-> arg3 param 1) 'flop)
-                      (send-event
-                       arg0
-                       'jump
-                       (-> self spring-height)
-                       (-> self spring-height)
-                       *spider-jump-mods*
-                       )
-                      )
-                     (go spiderwebs-bounce)
-                     )
-                    #f
-                    )
-                   )
+  (case arg2 
+   (('bonk)
+     (let ((a1-1 (new 'stack-no-clear 'event-message-block)))
+      (set! (-> a1-1 from) self)
+      (set! (-> a1-1 num-params) 3)
+      (set! (-> a1-1 message) 'jump)
+      (set! (-> a1-1 param 0) (the-as uint (-> self spring-height)))
+      (set! (-> a1-1 param 1) (the-as uint (-> self spring-height)))
+      (set! (-> a1-1 param 2) (the-as uint *spider-jump-mods*))
+      (if (send-event-function arg0 a1-1)
+       (go spiderwebs-bounce)
+       )
+      )
+     )
+   (('touch)
+    (when (= (-> arg0 type) target)
+     (let* ((a0-8 (target-pos 0))
+            (f1-1 (- (-> a0-8 y) (-> self root trans y)))
+            )
+      (if
+       (and
+        (>= 2048.0 (fabs f1-1))
+        (and
+         (>= 13516.8 (vector-vector-distance a0-8 (-> self root trans)))
+         (send-event
+          arg0
+          'jump
+          (-> self spring-height)
+          (-> self spring-height)
+          *spider-jump-mods*
+          )
+         )
+        )
+       (go spiderwebs-bounce)
+       )
+      )
+     )
+    )
+   (('attack)
+    (if
+     (and
+      (= (-> arg3 param 1) 'flop)
+      (send-event
+       arg0
+       'jump
+       (-> self spring-height)
+       (-> self spring-height)
+       *spider-jump-mods*
+       )
+      )
+     (go spiderwebs-bounce)
+     )
+    #f
     )
    )
   )

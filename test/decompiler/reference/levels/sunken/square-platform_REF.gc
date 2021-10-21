@@ -403,20 +403,16 @@
 (defstate square-platform-lowered (square-platform)
   :event
   (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
-   (let ((v1-0 arg2))
-    (the-as object (when (= v1-0 'trigger)
-                    (if
-                     (and
-                      (= (-> arg0 type) square-platform-master)
-                      (=
-                       (-> (the-as square-platform-master arg0) plat-id)
-                       (-> self plat-id)
-                       )
-                      )
-                     (go square-platform-rising)
-                     )
-                    )
-     )
+   (case arg2 
+    (('trigger)
+      (if
+       (and
+        (= (-> arg0 type) square-platform-master)
+        (= (-> (the-as square-platform-master arg0) plat-id) (-> self plat-id))
+        )
+       (go square-platform-rising)
+       )
+      )
     )
    )
   :code
@@ -627,6 +623,7 @@
   )
 
 ;; definition for method 11 of type square-platform
+;; INFO: Return type mismatch object vs none.
 ;; Used lq/sq
 (defmethod copy-defaults! square-platform ((obj square-platform) (arg0 res-lump))
   (local-vars (sv-16 res-tag) (sv-32 res-tag))
@@ -728,19 +725,18 @@
 (defstate square-platform-master-idle (square-platform-master)
   :event
   (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
-   (let ((v1-0 arg2))
-    (the-as object (when (= v1-0 'trigger)
-                    (when (= (-> arg0 type) square-platform-button)
-                     (set!
-                      (-> self button-id)
-                      (-> (the-as square-platform-button arg0) button-id)
-                      )
-                     (logclear! (-> self mask) (process-mask actor-pause))
-                     (process-entity-status! self (entity-perm-status bit-3) #t)
-                     (go square-platform-master-activate)
-                     )
-                    )
-     )
+   (case arg2 
+    (('trigger)
+      (when (= (-> arg0 type) square-platform-button)
+       (set!
+        (-> self button-id)
+        (-> (the-as square-platform-button arg0) button-id)
+        )
+       (logclear! (-> self mask) (process-mask actor-pause))
+       (process-entity-status! self (entity-perm-status bit-3) #t)
+       (go square-platform-master-activate)
+       )
+      )
     )
    )
   :code
@@ -956,6 +952,7 @@
   )
 
 ;; definition for method 11 of type square-platform-master
+;; INFO: Return type mismatch object vs none.
 (defmethod
   copy-defaults!
   square-platform-master
