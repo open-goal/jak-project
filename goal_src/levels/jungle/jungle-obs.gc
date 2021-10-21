@@ -117,15 +117,8 @@
   :virtual #t
   :event
   (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
-   (when (or (= arg2 'touch) (= arg2 'attack))
-    (let ((a1-2 (new 'stack-no-clear 'event-message-block)))
-     (set! (-> a1-2 from) self)
-     (set! (-> a1-2 num-params) 2)
-     (set! (-> a1-2 message) 'attack)
-     (set! (-> a1-2 param 0) (-> arg3 param 0))
-     (set! (-> a1-2 param 1) (the-as uint (new 'static 'attack-info)))
-     (send-event-function arg0 a1-2)
-     )
+   (if (or (= arg2 'touch) (= arg2 'attack))
+    (send-event arg0 'attack (-> arg3 param 0) (new 'static 'attack-info))
     )
    )
   :code
@@ -1090,12 +1083,7 @@
       )
      )
     )
-   (let ((a1-5 (new 'stack-no-clear 'event-message-block)))
-    (set! (-> a1-5 from) self)
-    (set! (-> a1-5 num-params) 0)
-    (set! (-> a1-5 message) 'go)
-    (send-event-function (ppointer->process (-> self parent)) a1-5)
-    )
+   (send-event (ppointer->process (-> self parent)) 'go)
    (let ((a0-10 (-> self skel root-channel 0)))
     (set!
      (-> a0-10 param 0)
@@ -1280,8 +1268,8 @@
     1024
     0
     0
-    (the-as uint 1)
-    (-> self root-override trans)
+    1
+    (the-as symbol (-> self root-override trans))
     )
    (let ((a0-3 (-> self skel root-channel 0)))
     (set!
@@ -1866,14 +1854,7 @@
           )
          )
         )
-       (let ((a1-5 (new 'stack-no-clear 'event-message-block)))
-        (set! (-> a1-5 from) self)
-        (set! (-> a1-5 num-params) 2)
-        (set! (-> a1-5 message) 'query)
-        (set! (-> a1-5 param 0) (the-as uint 'powerup))
-        (set! (-> a1-5 param 1) (the-as uint 3))
-        (send-event-function *target* a1-5)
-        )
+       (send-event *target* 'query 'powerup 3)
        )
       )
      (sound-play-by-name
@@ -1882,8 +1863,8 @@
       1024
       0
       0
-      (the-as uint 1)
-      (-> self root-override trans)
+      1
+      (the-as symbol (-> self root-override trans))
       )
      (go maindoor-open #f)
      )
@@ -1972,68 +1953,59 @@
   )
 
 (defmethod copy-defaults! maindoor ((obj maindoor) (arg0 res-lump))
-  (with-pp
+  (let
+   ((s4-0 (new 'process 'collide-shape obj (collide-list-enum hit-by-others))))
    (let
-    ((s4-0 (new 'process 'collide-shape obj (collide-list-enum hit-by-others))))
-    (let
-     ((s3-0
-       (new
-        'process
-        'collide-shape-prim-mesh
-        s4-0
-        (the-as uint 0)
-        (the-as uint 0)
-        )
-       )
-      )
-     (set! (-> s3-0 prim-core collide-as) (the-as uint 512))
-     (set! (-> s3-0 collide-with) (the-as uint 16))
-     (set! (-> s3-0 prim-core action) (the-as uint 1))
-     (set! (-> s3-0 prim-core offense) 4)
-     (set! (-> s3-0 transform-index) 0)
-     (set-vector! (-> s3-0 local-sphere) 0.0 0.0 0.0 24576.0)
-     )
-    (dummy-46 s4-0)
-    (set! (-> s4-0 nav-radius) (* 0.75 (-> s4-0 root-prim local-sphere w)))
-    (dummy-50 s4-0)
-    (set! (-> obj root-override) s4-0)
-    )
-   (process-drawable-from-entity! obj arg0)
-   (dummy-14 obj *maindoor-sg* '())
-   (dummy-47 (-> obj root-override))
-   (set! (-> obj thresh w) 61440.0)
-   (if
-    (or
-     (and
-      (-> obj entity)
-      (logtest? (-> obj entity extra perm status) (entity-perm-status complete))
-      )
-     (and
-      (and
-       *target*
-       (>=
-        (-> obj thresh w)
-        (vector-vector-distance
-         (-> obj root-override trans)
-         (-> *target* control trans)
-         )
-        )
-       )
-      (let ((a1-7 (new 'stack-no-clear 'event-message-block)))
-       (set! (-> a1-7 from) pp)
-       (set! (-> a1-7 num-params) 2)
-       (set! (-> a1-7 message) 'query)
-       (set! (-> a1-7 param 0) (the-as uint 'powerup))
-       (set! (-> a1-7 param 1) (the-as uint 3))
-       (send-event-function *target* a1-7)
+    ((s3-0
+      (new
+       'process
+       'collide-shape-prim-mesh
+       s4-0
+       (the-as uint 0)
+       (the-as uint 0)
        )
       )
      )
-    (go maindoor-open #t)
-    (go maindoor-closed #t)
+    (set! (-> s3-0 prim-core collide-as) (the-as uint 512))
+    (set! (-> s3-0 collide-with) (the-as uint 16))
+    (set! (-> s3-0 prim-core action) (the-as uint 1))
+    (set! (-> s3-0 prim-core offense) 4)
+    (set! (-> s3-0 transform-index) 0)
+    (set-vector! (-> s3-0 local-sphere) 0.0 0.0 0.0 24576.0)
     )
-   (none)
+   (dummy-46 s4-0)
+   (set! (-> s4-0 nav-radius) (* 0.75 (-> s4-0 root-prim local-sphere w)))
+   (dummy-50 s4-0)
+   (set! (-> obj root-override) s4-0)
    )
+  (process-drawable-from-entity! obj arg0)
+  (dummy-14 obj *maindoor-sg* '())
+  (dummy-47 (-> obj root-override))
+  (set! (-> obj thresh w) 61440.0)
+  (if
+   (or
+    (and
+     (-> obj entity)
+     (logtest? (-> obj entity extra perm status) (entity-perm-status complete))
+     )
+    (and
+     (and
+      *target*
+      (>=
+       (-> obj thresh w)
+       (vector-vector-distance
+        (-> obj root-override trans)
+        (-> *target* control trans)
+        )
+       )
+      )
+     (send-event *target* 'query 'powerup 3)
+     )
+    )
+   (go maindoor-open #t)
+   (go maindoor-closed #t)
+   )
+  (none)
   )
 
 (deftype sidedoor (eco-door)
