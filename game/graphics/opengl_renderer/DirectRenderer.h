@@ -84,7 +84,7 @@ class DirectRenderer : public BucketRenderer {
                             SharedRenderState* render_state,
                             ScopedProfilerNode& prof);
   void handle_tex0_1(u64 val, SharedRenderState* render_state, ScopedProfilerNode& prof);
-  void handle_tex1_1(u64 val);
+  void handle_tex1_1(u64 val, SharedRenderState* render_state, ScopedProfilerNode& prof);
   void handle_texa(u64 val);
 
   void handle_xyzf2_common(u32 x,
@@ -157,6 +157,8 @@ class DirectRenderer : public BucketRenderer {
     bool using_mt4hh = false;
     bool tcc = false;
     bool needs_gl_update = true;
+
+    bool enable_tex_filt = true;
   } m_texture_state;
 
   // state set through the prim/rgbaq register that doesn't require changing GL stuff

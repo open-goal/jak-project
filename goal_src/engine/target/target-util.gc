@@ -8,7 +8,9 @@
 (define-extern *jchar-sg* skeleton-group)
 (define-extern target-collide-set! (function symbol float int :behavior target))
 
-;; failed to figure out what this is:
+;; note: this file has a modification to let us run with an incompletely constructed target.
+;; if you update the decompilation, you will need to restore this hack.
+
 (let
   ((v1-0
     (new 'static 'skeleton-group
@@ -30,14 +32,13 @@
   (set! *jchar-sg* v1-0)
   )
 
-;; definition for symbol *target-shadow-control*, type shadow-control
 (define
   *target-shadow-control*
   (new 'static 'shadow-control
    :settings
    (new 'static 'shadow-settings
     :center
-    (new 'static 'vector :w 0.000000000000000000000000000000000000000000003)
+    (new 'static 'vector :w (the-as float #x2))
     :shadow-dir
     (new 'static 'vector :x -0.4226 :y -0.9063 :w 409600.0)
     :bot-plane (new 'static 'plane :y 1.0 :w 37683.2)
@@ -46,7 +47,6 @@
    )
   )
 
-;; definition of type target-bank
 (deftype target-bank (basic)
   ((jump-collide-offset          meters          :offset-assert   4)
    (jump-height-min              meters          :offset-assert   8)
@@ -136,7 +136,7 @@
   :flag-assert         #x900000258
   )
 
-;; definition for symbol *TARGET-bank*, type target-bank
+
 (define
   *TARGET-bank*
   (new 'static 'target-bank
@@ -215,7 +215,7 @@
    :flop-radius (meters 1.4)
    :flop0-offset (new 'static 'vector :y 3276.8 :w 1.0)
    :flop1-offset (new 'static 'vector :y 9011.2 :w 1.0)
-   :stuck-time #x5a
+   :stuck-time (seconds 0.3)
    :stuck-timeout (seconds 2)
    :stuck-distance (meters 0.05)
    :tongue-pull-speed-min 0.15
@@ -224,8 +224,6 @@
    )
   )
 
-;; definition for function target-start-attack
-;; INFO: Return type mismatch int vs none.
 (defbehavior target-start-attack target ()
   (+! (-> self control unknown-dword50) 1)
   (set! (-> self control unknown-dword51) 0)
@@ -233,7 +231,6 @@
   (none)
   )
 
-;; definition for function target-danger-set!
 (defbehavior target-danger-set! target ((arg0 symbol) (arg1 symbol))
   (let ((s4-0 (-> self control unknown-sphere00))
         (s5-0 (-> self control unknown-sphere01))
@@ -514,7 +511,6 @@
    )
   )
 
-;; definition for function target-collide-set!
 (defbehavior target-collide-set! target ((arg0 symbol) (arg1 float))
   (let ((gp-0 (-> self control)))
    (set! (-> self control unknown-symbol00) arg0)
@@ -712,12 +708,10 @@
   0
   )
 
-;; definition for method 27 of type control-info
 (defmethod get-quaternion control-info ((obj control-info))
   (-> obj unknown-quaternion00)
   )
 
-;; definition for function target-align-vel-z-adjust
 (defbehavior target-align-vel-z-adjust target ((arg0 float))
   (let ((f1-0 (-> self control unknown-float61)))
    (* arg0 (if (< 0.0 f1-0)
@@ -728,9 +722,6 @@
    )
   )
 
-;; definition for method 16 of type target
-;; INFO: Return type mismatch control-info vs collide-shape.
-;; Used lq/sq
 (defmethod
   dummy-16
   target
@@ -812,7 +803,6 @@
   (the-as collide-shape (-> obj control))
   )
 
-;; definition for function average-turn-angle
 (defun average-turn-angle ((arg0 target))
   (let ((f30-0 0.0))
    (dotimes (s5-0 8)
@@ -833,13 +823,9 @@
    )
   )
 
-;; definition for function can-play-stance-amibent?
 (defbehavior can-play-stance-amibent? target ()
   (and
-   (>=
-    (- (-> *display* base-frame-counter) (the-as int (-> self state-time)))
-    9000
-    )
+   (>= (- (-> *display* base-frame-counter) (-> self state-time)) 9000)
    (not (-> *setting-control* current talking))
    (not (-> *setting-control* current spooling))
    (not (-> *setting-control* current movie))
@@ -849,7 +835,6 @@
    )
   )
 
-;; definition for function can-jump?
 (defbehavior can-jump? target ((arg0 symbol))
   (and
    (or
@@ -878,7 +863,6 @@
    )
   )
 
-;; definition for function move-legs?
 (defbehavior move-legs? target ()
   (!=
    (->
@@ -891,87 +875,75 @@
    )
   )
 
-;; definition for function target-height-above-ground
 (defbehavior target-height-above-ground target ()
   (- (-> self control trans y) (-> self control shadow-pos y))
   )
 
-;; definition for function fall-test
-;; INFO: Return type mismatch none vs object.
 (defbehavior fall-test target ((arg0 symbol) (arg1 symbol))
-  (the-as
-   object
+  (when
+   (and
+    (zero? (logand (-> self control status) 1))
+    (>=
+     (- (-> *display* base-frame-counter) (-> self control unknown-dword10))
+     (the-as int (-> *TARGET-bank* ground-timeout))
+     )
+    (>=
+     0.0
+     (vector-dot
+      (-> self control dynam gravity-normal)
+      (-> self control transv)
+      )
+     )
+    (let ((v1-15 (if (> (-> self skel active-channels) 0)
+                  (-> self skel root-channel 0 frame-group)
+                  )
+           )
+          )
+     (or
+      (not
+       (or
+        (= v1-15 (-> self draw art-group data 59))
+        (= v1-15 (-> self draw art-group data 60))
+        (= v1-15 (-> self draw art-group data 61))
+        )
+       )
+      (< 4096.0 (target-height-above-ground))
+      )
+     )
+    )
    (when
     (and
-     (zero? (logand (-> self control status) 1))
-     (>=
-      (- (-> *display* base-frame-counter) (-> self control unknown-dword10))
+     (<
+      (-
+       (-> *display* base-frame-counter)
+       (the-as int (-> self control rider-time))
+       )
       (the-as int (-> *TARGET-bank* ground-timeout))
       )
-     (>=
-      0.0
-      (vector-dot
-       (-> self control dynam gravity-normal)
-       (-> self control transv)
-       )
-      )
-     (let ((v1-15 (if (> (-> self skel active-channels) 0)
-                   (-> self skel root-channel 0 frame-group)
-                   )
-            )
-           )
-      (or
-       (not
-        (or
-         (= v1-15 (-> self draw art-group data 59))
-         (= v1-15 (-> self draw art-group data 60))
-         (= v1-15 (-> self draw art-group data 61))
-         )
-        )
-       (< 4096.0 (target-height-above-ground))
-       )
-      )
+     (logtest? (-> self control unknown-surface01 flags) #x4000)
      )
-    (when
-     (and
-      (<
-       (-
-        (-> *display* base-frame-counter)
-        (the-as int (-> self control rider-time))
-        )
-       (the-as int (-> *TARGET-bank* ground-timeout))
-       )
-      (logtest? (-> self control unknown-surface01 flags) #x4000)
-      )
-     (+! (-> self control transv x) (-> self control rider-last-move x))
-     (+! (-> self control transv z) (-> self control rider-last-move z))
-     )
-    (go target-falling #f)
+    (+! (-> self control transv x) (-> self control rider-last-move x))
+    (+! (-> self control transv z) (-> self control rider-last-move z))
     )
+   (go target-falling #f)
    )
   )
 
-;; definition for function slide-down-test
-;; INFO: Return type mismatch none vs object.
 (defbehavior slide-down-test target ((arg0 symbol) (arg1 symbol))
-  (the-as
-   object
-   (if
-    (and
-     (zero? (logand (-> self control status) 129))
-     (>=
-      (- (-> *display* base-frame-counter) (-> self control unknown-dword10))
-      (the-as int (-> *TARGET-bank* ground-timeout))
-      )
-     (logtest? (-> self control status) 4)
-     (< 0.5 (-> self control surface-angle))
+  (if
+   (and
+    (zero? (logand (-> self control status) 129))
+    (>=
+     (- (-> *display* base-frame-counter) (-> self control unknown-dword10))
+     (the-as int (-> *TARGET-bank* ground-timeout))
      )
-    (go target-slide-down)
+    (logtest? (-> self control status) 4)
+    (< 0.5 (-> self control surface-angle))
     )
+   (go target-slide-down)
    )
   )
 
-;; definition for function smack-surface?
 (defbehavior smack-surface? target ((arg0 symbol))
   (and
    (< 0.7 (-> self control touch-angle))
@@ -983,7 +955,6 @@
    )
   )
 
-;; definition for function can-wheel?
 (defbehavior can-wheel? target ()
   (and
    (logtest? (-> self control status) 1)
@@ -998,7 +969,6 @@
    )
   )
 
-;; definition for function can-duck?
 (defbehavior can-duck? target ()
   (and
    (logtest? (-> self control status) 1)
@@ -1020,8 +990,6 @@
    )
   )
 
-;; definition for function can-exit-duck?
-;; Used lq/sq
 (defbehavior can-exit-duck? target ()
   (let ((gp-0 (new 'stack-no-clear 'collide-using-spheres-params)))
    (let ((s5-0 (new 'stack-no-clear 'inline-array 'sphere 2)))
@@ -1048,7 +1016,6 @@
    )
   )
 
-;; definition for function can-hands?
 (defbehavior can-hands? target ((arg0 symbol))
   (cond
    ((or
@@ -1120,7 +1087,6 @@
    )
   )
 
-;; definition for function can-feet?
 (defbehavior can-feet? target ()
   (cond
    ((or
@@ -1145,8 +1111,6 @@
    )
   )
 
-;; definition for function vector-local+!
-;; Used lq/sq
 (defbehavior vector-local+! target ((arg0 vector) (arg1 vector))
   (let ((s5-0 (new-stack-vector0)))
    (vector-matrix*! s5-0 arg1 (-> self control unknown-matrix01))
@@ -1154,8 +1118,6 @@
    )
   )
 
-;; definition for function move-forward
-;; Used lq/sq
 (defbehavior move-forward target ((arg0 float))
   (let ((a1-0 (new-stack-vector0))
         (gp-0 (new-stack-vector0))
@@ -1166,8 +1128,6 @@
    )
   )
 
-;; definition for function set-forward-vel
-;; Used lq/sq
 (defbehavior set-forward-vel target ((arg0 float))
   (let ((gp-0 (new-stack-vector0)))
    (vector-matrix*!
@@ -1185,9 +1145,6 @@
    )
   )
 
-;; definition for function delete-back-vel
-;; INFO: Return type mismatch int vs none.
-;; Used lq/sq
 (defbehavior delete-back-vel target ((arg0 float))
   (let ((s5-0 (new-stack-vector0)))
    (vector-z-quaternion! s5-0 (-> self control dir-targ))
@@ -1214,8 +1171,6 @@
   (none)
   )
 
-;; definition for function set-side-vel
-;; Used lq/sq
 (defbehavior set-side-vel target ((arg0 float))
   (let ((gp-0 (new-stack-vector0)))
    (vector-matrix*!
@@ -1233,8 +1188,6 @@
    )
   )
 
-;; definition for function target-timed-invulnerable
-;; INFO: Return type mismatch int vs none.
 (defun target-timed-invulnerable ((arg0 uint64) (arg1 target))
   (logior! (-> arg1 state-flags) 32)
   (set! (-> arg1 control unknown-dword70) (-> *display* base-frame-counter))
@@ -1244,8 +1197,6 @@
   (none)
   )
 
-;; definition for function target-timed-invulnerable-off
-;; INFO: Return type mismatch int vs none.
 (defun target-timed-invulnerable-off ((arg0 target))
   (set! (-> arg0 draw status) (logand -3 (-> arg0 draw status)))
   (set! (-> arg0 state-flags) (logand -33 (-> arg0 state-flags)))
@@ -1254,9 +1205,6 @@
   (none)
   )
 
-;; definition for method 9 of type attack-info
-;; INFO: Return type mismatch attack-info vs none.
-;; Used lq/sq
 (defmethod dummy-9 attack-info ((obj attack-info) (arg0 attack-info))
   (with-pp
    (let ((s4-0 (-> arg0 mask)))
@@ -1361,7 +1309,6 @@
    )
   )
 
-;; definition for function ground-tween-initialize
 (defbehavior
   ground-tween-initialize target
   ((arg0 ground-tween-info)
@@ -1392,8 +1339,6 @@
   arg0
   )
 
-;; definition for function ground-tween-update
-;; INFO: Return type mismatch int vs none.
 (defbehavior
   ground-tween-update target
   ((arg0 ground-tween-info) (arg1 float) (arg2 float))
@@ -1453,7 +1398,6 @@
   (none)
   )
 
-;; definition for function target-pos
 (defun target-pos ((arg0 int))
   (let ((a1-0 *target*))
    (cond
@@ -1470,9 +1414,6 @@
    )
   )
 
-;; definition for function target-cam-pos
-;; INFO: Return type mismatch object vs vector.
-;; Used lq/sq
 (defun target-cam-pos ()
   (let ((gp-0 *target*))
    (the-as vector (cond
@@ -1534,26 +1475,23 @@
    )
   )
 
-;; definition for function target-joint-pos
 (defun target-joint-pos ()
   ;; added hack
   (when (and *target* (zero? (-> *target* draw)))
     ;; just return 0, we have the fake target
     (return (new 'static 'vector))
     )
-  
   (let ((v1-0 *target*))
-   (if v1-0
-    (vector<-cspace!
-     (new 'static 'vector)
-     (-> v1-0 node-list data (-> v1-0 draw origin-joint-index))
-     )
-    (camera-pos)
+    (if v1-0
+        (vector<-cspace!
+          (new 'static 'vector)
+          (-> v1-0 node-list data (-> v1-0 draw origin-joint-index))
+          )
+        (camera-pos)
+        )
     )
-   )
   )
 
-;; definition for function target-rot
 (defun target-rot ()
   (let ((v1-0 *target*))
    (if v1-0
@@ -1562,3 +1500,7 @@
     )
    )
   )
+
+
+
+

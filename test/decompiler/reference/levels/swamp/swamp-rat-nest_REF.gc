@@ -941,59 +941,46 @@
   )
 
 ;; definition for function swamp-rat-nest-dummy-event-handler
-;; INFO: Return type mismatch none vs object.
 (defbehavior
   swamp-rat-nest-dummy-event-handler swamp-rat-nest-dummy
   ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
-  (let ((v1-0 arg2))
-   (the-as object (cond
-                   ((= v1-0 'shake)
-                    (if (= (-> self next-state name) 'swamp-rat-nest-dummy-idle)
-                     (go swamp-rat-nest-dummy-shake)
-                     )
-                    )
-                   ((= v1-0 'attack)
-                    (send-event
-                     (ppointer->process (-> self parent-process))
-                     'hit
-                     )
-                    (let ((v1-7 (-> arg3 param 2)))
-                     (when (!= v1-7 (-> self parent-process 0 player-attack-id))
-                      (set!
-                       (-> self parent-process 0 player-attack-id)
-                       (the-as int v1-7)
-                       )
-                      (cond
-                       ((and (>= arg1 2) (= (-> arg3 param 1) 'eco-yellow))
-                        (swamp-rat-nest-dummy-take-damage 3)
-                        (if
-                         (<
-                          (vector-vector-distance
-                           (target-pos 0)
-                           (-> self top-sphere)
-                           )
-                          (-> self top-sphere w)
-                          )
-                         (send-event *target* 'no-look-around 75)
-                         )
-                        (go swamp-rat-nest-dummy-hit)
-                        )
-                       (else
-                        (level-hint-spawn
-                         (game-text-id swamp-rats-nest-hint)
-                         "sksp0144"
-                         (the-as entity #f)
-                         *entity-pool*
-                         (game-task none)
-                         )
-                        (swamp-rat-nest-dummy-take-damage 0)
-                        (go swamp-rat-nest-dummy-hit)
-                        )
-                       )
-                      )
-                     )
-                    )
-                   )
+  (case arg2 
+   (('shake)
+     (if (= (-> self next-state name) 'swamp-rat-nest-dummy-idle)
+      (go swamp-rat-nest-dummy-shake)
+      )
+     )
+   (('attack)
+    (send-event (ppointer->process (-> self parent-process)) 'hit)
+    (let ((v1-7 (-> arg3 param 2)))
+     (when (!= v1-7 (-> self parent-process 0 player-attack-id))
+      (set! (-> self parent-process 0 player-attack-id) (the-as int v1-7))
+      (cond
+       ((and (>= arg1 2) (= (-> arg3 param 1) 'eco-yellow))
+        (swamp-rat-nest-dummy-take-damage 3)
+        (if
+         (<
+          (vector-vector-distance (target-pos 0) (-> self top-sphere))
+          (-> self top-sphere w)
+          )
+         (send-event *target* 'no-look-around 75)
+         )
+        (go swamp-rat-nest-dummy-hit)
+        )
+       (else
+        (level-hint-spawn
+         (game-text-id swamp-rats-nest-hint)
+         "sksp0144"
+         (the-as entity #f)
+         *entity-pool*
+         (game-task none)
+         )
+        (swamp-rat-nest-dummy-take-damage 0)
+        (go swamp-rat-nest-dummy-hit)
+        )
+       )
+      )
+     )
     )
    )
   )
@@ -1222,6 +1209,7 @@
   )
 
 ;; definition for function swamp-rat-nest-dummy-init-by-other
+;; INFO: Return type mismatch object vs none.
 ;; Used lq/sq
 (defbehavior
   swamp-rat-nest-dummy-init-by-other swamp-rat-nest-dummy
@@ -1261,15 +1249,13 @@
   )
 
 ;; definition for function swamp-rat-nest-default-event-handler
-;; INFO: Return type mismatch none vs object.
 (defbehavior
   swamp-rat-nest-default-event-handler swamp-rat-nest
   ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
-  (let ((v1-0 arg2))
-   (the-as object (if (= v1-0 'victory)
-                   (go swamp-rat-nest-victory)
-                   )
-    )
+  (case arg2 
+   (('victory)
+     (go swamp-rat-nest-victory)
+     )
    )
   )
 
@@ -1511,11 +1497,10 @@ swamp-rat-nest-default-event-handler
 (defstate swamp-rat-nest-idle (swamp-rat-nest)
   :event
   (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
-   (let ((v1-0 arg2))
-    (the-as object (if (= v1-0 'hit)
-                    (go swamp-rat-nest-active)
-                    )
-     )
+   (case arg2 
+    (('hit)
+      (go swamp-rat-nest-active)
+      )
     )
    )
   :enter
@@ -1686,6 +1671,7 @@ swamp-rat-nest-default-event-handler
   )
 
 ;; definition for method 11 of type swamp-rat-nest
+;; INFO: Return type mismatch object vs none.
 (defmethod copy-defaults! swamp-rat-nest ((obj swamp-rat-nest) (arg0 res-lump))
   (set! (-> obj mask) (logior (process-mask enemy) (-> obj mask)))
   (set! (-> obj root) (new 'process 'trsqv))

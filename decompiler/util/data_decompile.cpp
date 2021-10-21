@@ -963,8 +963,8 @@ goos::Object decompile_value(const TypeSpec& type,
     memcpy(&value, bytes.data(), 8);
 
     // only rewrite if exact.
-    s64 seconds_int = value / TICKS_PER_SECOND;
-    if (seconds_int * TICKS_PER_SECOND == value) {
+    s64 seconds_int = value / (s64)TICKS_PER_SECOND;
+    if (seconds_int * (s64)TICKS_PER_SECOND == value) {
       return pretty_print::to_symbol(fmt::format("(seconds {})", seconds_int));
     }
     double seconds = (double)value / TICKS_PER_SECOND;
@@ -1057,7 +1057,7 @@ goos::Object decompile_boxed_array(const DecompilerLabel& label,
   int array_allocated_length = size_word_2.data;
 
   auto content_type_info = ts.lookup_type(content_type);
-  if (content_type_info->is_reference()) {
+  if (content_type_info->is_reference() || content_type == TypeSpec("object")) {
     // easy, stride of 4.
     std::vector<goos::Object> result = {
         pretty_print::to_symbol("new"), pretty_print::to_symbol("'static"),
@@ -1071,14 +1071,25 @@ goos::Object decompile_boxed_array(const DecompilerLabel& label,
       if (word.kind == LinkedWord::PLAIN_DATA && word.data == 0) {
         result.push_back(pretty_print::to_symbol("0"));
       } else if (word.kind == LinkedWord::PTR) {
-        result.push_back(
-            decompile_at_label(content_type, labels.at(word.label_id), labels, words, ts, file));
+        if (content_type == TypeSpec("object")) {
+          result.push_back(
+              decompile_at_label_guess_type(labels.at(word.label_id), labels, words, ts, file));
+        } else {
+          result.push_back(
+              decompile_at_label(content_type, labels.at(word.label_id), labels, words, ts, file));
+        }
       } else if (word.kind == LinkedWord::SYM_PTR) {
         result.push_back(pretty_print::to_symbol(fmt::format("'{}", word.symbol_name)));
       } else {
-        throw std::runtime_error(
-            fmt::format("Unknown content type in boxed array of references, word idx {}",
-                        first_elt_word_idx + elt));
+        if (content_type == TypeSpec("object") && word.kind == LinkedWord::PLAIN_DATA &&
+            (word.data & 0b111) == 0) {
+          s32 val = word.data;
+          result.push_back(pretty_print::to_symbol(fmt::format("(the binteger {})", val / 8)));
+        } else {
+          throw std::runtime_error(
+              fmt::format("Unknown content type in boxed array of references, word idx {}",
+                          first_elt_word_idx + elt));
+        }
       }
     }
 

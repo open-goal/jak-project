@@ -499,7 +499,7 @@
 
     (bucket-1 1)
     (bucket-2 2)
-    (bucket-3 3)
+    (sky-draw 3)
     (tfrag-tex0 5)
     ;; merc0 10
     ;; generic0 11
@@ -5408,12 +5408,12 @@
   (flat-dark-purple 19)
   (flat-yellow 20)
   (blue-white 21)
-  (flat-dark-gray 22)
-  (flat-gray 23)
-  (flat-pink 24)
-  (flat-red 25)
-  (flat-green 26)
-  (flat-purple 27)
+  (pad-back 22)
+  (pad-shine 23)
+  (pad-square 24)
+  (pad-circle 25)
+  (pad-triangle 26)
+  (pad-x 27)
   (lighter-lighter-blue 28)
   (yellow-orange 29)
   (yellow-green-2 30)
@@ -5716,7 +5716,7 @@
 (define-extern *text-group-names* (array string))
 (define-extern kheap type)
 (define-extern *common-text-heap* kheap)
-(define-extern *common-text* game-text-info) ; TODO guess, but its definitely not just a symbol!
+(define-extern *common-text* game-text-info)
 
 
 ;; ----------------------
@@ -5947,7 +5947,6 @@
 (define-extern adgif-shader-login-no-remap (function adgif-shader texture))
 (define-extern adgif-shader-login-fast (function adgif-shader texture))
 (define-extern adgif-shader-login-no-remap-fast (function adgif-shader texture))
-;;;; unknown type
 (define-extern adgif-shader<-texture-simple! (function adgif-shader texture adgif-shader))
 
 ;; - Symbols
@@ -9147,7 +9146,7 @@
     (backup-load-state-and-set-cmds (_type_ pair) int 17)
     (restore-load-state-and-cleanup (_type_) int 18)
     (restore-load-state (_type_) int 19)
-    (dummy-20 () none 20)
+    (set-force-inside! (_type_ symbol symbol) none 20)
     )
   )
 
@@ -15591,7 +15590,7 @@
 (define-extern sprite-draw (function display none))
 (define-extern sprite-allocate-user-hvdf (function int))
 (define-extern sprite-release-user-hvdf (function int none))
-(define-extern sprite-get-user-hvdf (function int qword))
+(define-extern sprite-get-user-hvdf (function int vector))
 
 ;; - Symbols
 
@@ -17758,12 +17757,23 @@
   :flag-assert         #x900000010
   )
 
+(defenum load-boundary-cmd
+  :type uint8
+  (invalid 0)
+  (load 1)
+  (cmd2 2)
+  (display 3)
+  (vis 4)
+  (force-vis 5)
+  (checkpt 6)
+  )
+
 (deftype load-boundary-crossing-command (structure)
-  ((cmd        uint8     :offset-assert 0)
+  ((cmd        load-boundary-cmd     :offset-assert 0)
    (bparm      uint8 3 :offset-assert 1)
-   ;(parm       UNKNOWN 2 :offset-assert 4)
-   (lev0       basic     :offset-assert 4)
-   (lev1       basic     :offset-assert 8)
+   (parm       uint32 2 :offset-assert 4)
+   (lev0       basic     :offset 4)
+   (lev1       basic     :offset 8)
    (displev    basic     :offset 4)
    (dispcmd    basic     :offset 8)
    (nick       basic     :offset 4)
@@ -17777,18 +17787,29 @@
   :flag-assert         #x90000000c
   )
 
+(defenum load-boundary-flags
+  :type uint8
+  :bitfield #t
+  (closed 0)
+  (player 1)
+  )
+
 (deftype load-boundary (basic)
   ((num-points uint16                                 :offset-assert 4)
-   (flags      uint8                                  :offset-assert 6)
+   (flags      load-boundary-flags                                  :offset-assert 6)
    (top-plane  float                                  :offset-assert 8)
    (bot-plane  float                                  :offset-assert 12)
    (tri-cnt    int32                                  :offset-assert 16)
-   (next       basic                                  :offset-assert 20)
+   (next       load-boundary                          :offset-assert 20)
    (cmd-fwd    load-boundary-crossing-command :inline :offset-assert 24)
    (cmd-bwd    load-boundary-crossing-command :inline :offset-assert 36)
    (rejector   vector                         :inline :offset-assert 48)
-   (data       uint128                        1       :offset-assert 64)
+   (data       lbvtx                        1    :inline   :offset-assert 64)
+   (data2       lbvtx                        :dynamic    :inline   :offset 64)
    )
+  (:methods
+    (new (symbol type int symbol symbol) _type_ 0)
+    )
   :method-count-assert 9
   :size-assert         #x50
   :flag-assert         #x900000050
@@ -17796,8 +17817,8 @@
 
 ;; - Unknowns
 
-;;(define-extern *load-boundary-list* object) ;; unknown type
-;;(define-extern *load-boundary-target* object) ;; unknown type
+(define-extern *load-boundary-list* load-boundary) ;; guess for now
+(define-extern *load-boundary-target* (inline-array lbvtx)) ;; unknown type
 
 
 ;; ----------------------
@@ -17809,7 +17830,7 @@
 ;; - Types
 
 (deftype lb-editor-parms (basic)
-  ((boundary basic  :offset-assert 4)
+  ((boundary load-boundary  :offset-assert 4)
    (vertex   int32  :offset-assert 8)
    (x-origin float  :offset-assert 12)
    (z-origin float  :offset-assert 16)
@@ -17821,65 +17842,65 @@
 
 ;; - Functions
 
-(define-extern check-closed-boundary function)
-(define-extern check-open-boundary function)
+(define-extern check-closed-boundary (function load-boundary lbvtx lbvtx symbol))
+(define-extern check-open-boundary (function load-boundary lbvtx lbvtx symbol))
 (define-extern load-state-want-vis (function symbol int))
 (define-extern load-state-want-levels (function symbol symbol int))
 (define-extern load-state-want-display-level (function symbol symbol int))
 (define-extern load-state-want-force-vis (function symbol symbol int))
-(define-extern command-get-param (function object symbol symbol))
+(define-extern command-get-param (function object object object))
 (define-extern entity-birth-no-kill (function entity none))
 (define-extern part-tracker-init (function sparticle-launch-group int basic basic basic vector none)) ;; TODO - not confirmed
 (define-extern command-list-get-process (function object process))
-(define-extern command-get-quoted-param (function object symbol symbol))
+(define-extern command-get-quoted-param (function object object object))
 (define-extern command-get-int (function object int int))
 (define-extern ambient-hint-spawn (function string vector process-tree symbol object))
 (define-extern command-get-float (function object float float))
 (define-extern process-by-ename (function string process))
-(define-extern point-in-polygon function)
-(define-extern try-corner function)
-(define-extern split-monotone-polygon function)
-(define-extern fix-boundary-normals function)
-(define-extern triangulate-boundary function)
-(define-extern find-bounding-circle function)
-(define-extern render-boundary function)
-(define-extern check-boundary function)
-(define-extern edit-load-boundaries function)
-(define-extern copy-load-command! function)
-(define-extern copy-load-boundary! function)
-(define-extern lb-add-plane function)
-(define-extern lb-add function)
-(define-extern save-boundary-cmd function)
-(define-extern replace-load-boundary function)
-(define-extern format-boundary-cmd function)
-(define-extern boundary-set-color function)
-(define-extern add-boundary-shader function)
-(define-extern draw-boundary-cap function)
-(define-extern draw-boundary-side function)
-(define-extern init-boundary-regs function)
-(define-extern render-boundary-tri function)
-(define-extern render-boundary-quad function)
+(define-extern point-in-polygon (function load-boundary vector symbol))
+(define-extern try-corner (function object int symbol))
+(define-extern split-monotone-polygon (function load-boundary int none))
+(define-extern fix-boundary-normals (function load-boundary none))
+(define-extern triangulate-boundary (function load-boundary object))
+(define-extern find-bounding-circle (function load-boundary none))
+(define-extern render-boundary (function load-boundary none))
+(define-extern check-boundary (function load-boundary none))
+(define-extern edit-load-boundaries (function none))
+(define-extern copy-load-command! (function load-boundary-crossing-command load-boundary-crossing-command none))
+(define-extern copy-load-boundary! (function load-boundary load-boundary none))
+(define-extern lb-add-plane (function load-boundary))
+(define-extern lb-add (function load-boundary))
+(define-extern save-boundary-cmd (function load-boundary-crossing-command string file-stream none))
+(define-extern replace-load-boundary (function load-boundary load-boundary none))
+(define-extern format-boundary-cmd (function load-boundary-crossing-command none))
+(define-extern boundary-set-color (function lbvtx load-boundary-crossing-command none))
+(define-extern add-boundary-shader (function texture-id dma-buffer none))
+(define-extern draw-boundary-cap (function load-boundary float dma-buffer symbol none))
+(define-extern draw-boundary-side (function load-boundary integer integer dma-buffer symbol none))
+(define-extern init-boundary-regs (function none))
+(define-extern render-boundary-tri (function lbvtx dma-buffer none))
+(define-extern render-boundary-quad (function lbvtx dma-buffer none))
 (define-extern draw-boundary-polygon function)
-(define-extern lb-del function)
-(define-extern lb-add-vtx-before function)
-(define-extern lb-add-vtx-after function)
-(define-extern lb-del-vtx function)
-(define-extern load-boundary-from-template function)
-(define-extern ---lb-save function)
-(define-extern lb-add-load function)
-(define-extern lb-add-load-plane function)
-(define-extern lb-flip function)
-(define-extern lb-set-camera function)
-(define-extern lb-set-player function)
-(define-extern lb-copy function)
+(define-extern lb-del (function none))
+(define-extern lb-add-vtx-before (function none))
+(define-extern lb-add-vtx-after (function none))
+(define-extern lb-del-vtx (function none))
+(define-extern load-boundary-from-template (function (array object) none))
+(define-extern ---lb-save (function none))
+(define-extern lb-add-load (function object object none))
+(define-extern lb-add-load-plane (function object object none))
+(define-extern lb-flip (function none))
+(define-extern lb-set-camera (function none))
+(define-extern lb-set-player (function none))
+(define-extern lb-copy (function none))
 (define-extern render-boundaries (function none))
-(define-extern command-get-time function)
+(define-extern command-get-time (function object int int))
 
 ;; - Unknowns
 
 (define-extern *backup-load-state* load-state)
 (define-extern *display-load-commands* symbol)
-(define-extern *triangulation-buffer* pointer)
+(define-extern *triangulation-buffer* (inline-array lbvtx))
 (define-extern *lb-editor-parms* lb-editor-parms)
 (define-extern *boundary-polygon* (inline-array lbvtx))
 
@@ -17892,7 +17913,7 @@
 
 ;; - Unknowns
 
-;;(define-extern *static-load-boundary-list* object) ;; unknown type
+(define-extern *static-load-boundary-list* (array array)) ;; unknown type
 
 
 ;; ----------------------
@@ -19669,7 +19690,7 @@
 (define-extern target-bonk-event-handler function)
 (define-extern target-standard-event-handler function)
 (define-extern target-send-attack function)
-(define-extern target-attacked (function symbol uint uint process (state target) none :behavior target)) ;; unconfirmed, target-tube::(event target-tube-start)
+(define-extern target-attacked (function symbol uint uint process (state target) object :behavior target)) ;; unconfirmed, target-tube::(event target-tube-start)
 (define-extern target-apply-tongue function)
 (define-extern get-intersect-point function)
 (define-extern target-powerup-effect function)
@@ -19682,26 +19703,26 @@
 
 ;; - Unknowns
 
-(define-extern target-jump (state target)) ;; unknown type
-;;(define-extern target-hit object) ;; unknown type
-;;(define-extern target-eco-powerup object) ;; unknown type
-;;(define-extern target-load-wait object) ;; unknown type
+(define-extern target-jump (state float float symbol target)) ;; unknown type
+(define-extern target-hit (state target)) ;; unknown type
+(define-extern target-eco-powerup (state target)) ;; unknown type
+(define-extern target-load-wait (state target)) ;; unknown type
 (define-extern target-grab (state target)) ;; unknown type
-;;(define-extern target-look-around object) ;; unknown type
-;;(define-extern target-billy-game object) ;; unknown type
-;;(define-extern target-racing-start object) ;; unknown type
-;;(define-extern target-flut-start object) ;; unknown type
+(define-extern target-look-around (state target)) ;; unknown type
+(define-extern target-billy-game (state target)) ;; unknown type
+(define-extern target-racing-start (state handle target)) ;; unknown type
+(define-extern target-flut-start (state handle target)) ;; unknown type
 (define-extern target-snowball-start (state handle target)) ;; unknown type
 (define-extern target-tube-start (state handle target)) ;; unknown type
 (define-extern target-periscope (state target)) ;; unknown type
 (define-extern target-fishing (state handle target)) ;; unknown type
 (define-extern target-final-door (state basic handle target)) ;; unknown type
-;;(define-extern target-play-anim object) ;; unknown type
-;;(define-extern target-clone-anim object) ;; unknown type
-;;(define-extern target-edge-grab object) ;; unknown type
-;;(define-extern target-pole-cycle object) ;; unknown type
-;;(define-extern target-swim-stance object) ;; unknown type
-;;(define-extern target-wade-stance object) ;; unknown type
+(define-extern target-play-anim (state target)) ;; unknown type
+(define-extern target-clone-anim (state target)) ;; unknown type
+(define-extern target-edge-grab (state target)) ;; unknown type
+(define-extern target-pole-cycle (state target)) ;; unknown type
+(define-extern target-swim-stance (state target)) ;; unknown type
+(define-extern target-wade-stance (state target)) ;; unknown type
 
 
 ;; ----------------------
@@ -19713,46 +19734,45 @@
 ;; - Functions
 
 (define-extern target-land-effect (function none :behavior target))
-(define-extern target-hit-ground-anim function)
-(define-extern mod-var-jump function)
-(define-extern init-var-jump function)
-(define-extern target-falling-anim (function int int none)) ;; TODO - unconfirmed
-(define-extern target-falling-trans function)
+(define-extern target-hit-ground-anim (function symbol symbol :behavior target))
+(define-extern mod-var-jump (function symbol symbol symbol vector vector :behavior target))
+(define-extern init-var-jump (function float float vector vector vector vector :behavior target)) ;; 1st and 2nd vectors may be symbols instead?
+(define-extern target-falling-anim (function int int symbol :behavior target))
+(define-extern target-falling-trans (function basic cpad-list none :behavior target)) ;; todo - power of 2 array access issue (fixed in another PR?)
 (define-extern target-falling-anim-trans function)
 
 ;; - Unknowns
 
-(define-extern target-hit-ground (state target)) ;; unknown type
+(define-extern target-hit-ground (state symbol target)) ;; unknown type
 (define-extern target-stance (state target)) ;; unknown type
-;;(define-extern target-high-jump object) ;; unknown type
-;;(define-extern target-attack-air object) ;; unknown type
-;;(define-extern target-wheel-flip object) ;; unknown type
+(define-extern target-high-jump (state float float symbol target)) ;; unknown type
+(define-extern target-attack-air (state symbol target)) ;; unknown type
+(define-extern target-wheel-flip (state float float target)) ;; unknown type
 (define-extern target-duck-stance (state target)) ;; unknown type
-;;(define-extern target-hit-ground-hard object) ;; unknown type
-;;(define-extern target-flop-hit-ground object) ;; unknown type
-;;(define-extern target-yellow-jump-blast object) ;; unknown type
-;;(define-extern target-swim-down object) ;; unknown type
-;;(define-extern target-flop object) ;; unknown type
-;;(define-extern target-attack-uppercut-jump object) ;; unknown type
+(define-extern target-hit-ground-hard (state target)) ;; unknown type
+(define-extern target-flop-hit-ground (state symbol target)) ;; unknown type
+(define-extern target-yellow-jump-blast (state target)) ;; unknown type
+(define-extern target-swim-down (state target)) ;; unknown type
+(define-extern target-flop (state float float float target)) ;; unknown type
+(define-extern target-attack-uppercut-jump (state float float target)) ;; unknown type
 (define-extern target-attack (state target)) ;; unknown type
-;;(define-extern target-attack-uppercut object) ;; unknown type
-;;(define-extern target-yellow-blast object) ;; unknown type
-;;(define-extern target-wade-walk object) ;; unknown type
-;;(define-extern target-walk object) ;; unknown type
+(define-extern target-attack-uppercut (state float float target)) ;; unknown type
+(define-extern target-yellow-blast (state target)) ;; unknown type
+(define-extern target-wade-walk (state target)) ;; unknown type
+(define-extern target-walk (state target)) ;; unknown type
 (define-extern target-running-attack (state target)) ;; unknown type
-;;(define-extern target-duck-high-jump-jump object) ;; unknown type
-;;(define-extern target-launch object) ;; unknown type
-;;(define-extern target-duck-high-jump object) ;; unknown type
-;;(define-extern target-double-jump object) ;; unknown type
-;;(define-extern target-duck-walk object) ;; unknown type
+(define-extern target-duck-high-jump-jump (state float float symbol target)) ;; unknown type
+(define-extern target-launch (state target)) ;; unknown type
+(define-extern target-duck-high-jump (state float float symbol target)) ;; unknown type
+(define-extern target-double-jump (state float float target)) ;; unknown type
+(define-extern target-duck-walk (state target)) ;; unknown type
 (define-extern target-ice-walk  (state target)) ;; unknown type
-;;(define-extern target-wheel object) ;; unknown type
-;;(define-extern target-turn-around object) ;; unknown type
-;;(define-extern target-stance-ambient object) ;; unknown type
+(define-extern target-wheel (state target)) ;; unknown type
+(define-extern target-turn-around (state target)) ;; unknown type
+(define-extern target-stance-ambient (state target)) ;; unknown type
 (define-extern target-ice-stance (state target)) ;; unknown type
-;;(define-extern target-startup object) ;; unknown type
-;;(define-extern target-jump-forward object) ;; unknown type
-
+(define-extern target-startup (state target)) ;; unknown type
+(define-extern target-jump-forward (state float float target)) ;; unknown type
 
 ;; ----------------------
 ;; File - target2
@@ -25495,8 +25515,8 @@
    (spin-angle float          :offset-assert 192)
    (spin-speed float          :offset-assert 196)
    (interp     float          :offset-assert 200)
-   (duration   uint64         :offset-assert 208)
-   (delay      uint64         :offset-assert 216)
+   (duration   int64          :offset-assert 208)
+   (delay      int64          :offset-assert 216)
    (color      int8           :offset-assert 224)
    )
   :method-count-assert 22
@@ -25529,8 +25549,8 @@
    (x-spacing         float          :offset-assert 256)
    (z-spacing         float          :offset-assert 260)
    (idle-distance     float          :offset-assert 264)
-   (duration          uint64         :offset-assert 272)
-   (drop-time         uint64         :offset-assert 280)
+   (duration          int64          :offset-assert 272)
+   (drop-time         int64          :offset-assert 280)
    )
   :method-count-assert 20
   :size-assert         #x120
@@ -25543,7 +25563,7 @@
 (define-extern citb-drop-plat-spawn-children (function none :behavior citb-drop-plat))
 (define-extern citb-drop-plat-drop-children (function int none :behavior citb-drop-plat))
 (define-extern citb-drop-plat-drop-all-children (function symbol :behavior citb-drop-plat))
-(define-extern drop-plat-init-by-other (function vector uint uint int none :behavior drop-plat))
+(define-extern drop-plat-init-by-other (function vector int int int none :behavior drop-plat))
 (define-extern drop-plat-set-fade (function none :behavior drop-plat))
 
 ;; - Unknowns
@@ -26506,7 +26526,7 @@
 (define-extern check-drop-level-lighteco-big-pops (function sparticle-system sparticle-cpuinfo vector none))
 (define-extern check-drop-level-lighteco-pops (function sparticle-system sparticle-cpuinfo vector none))
 (define-extern light-eco-child-default-event-handler (function process int symbol event-message-block object :behavior light-eco-child))
-(define-extern light-eco-mother-default-event-handler (function process int symbol event-message-block object :behavior light-eco-mother))
+(define-extern light-eco-mother-default-event-handler (function process int symbol event-message-block int :behavior light-eco-mother))
 (define-extern light-eco-mother-init-by-other (function entity vector none :behavior light-eco-mother))
 
 ;; - Unknowns
@@ -28929,9 +28949,9 @@
 
 ;; - Unknowns
 
-;;(define-extern target-racing-smack object) ;; unknown type
-;;(define-extern *racer-mods* object) ;; unknown type
-;;(define-extern *racer-air-mods* object) ;; unknown type
+(define-extern target-racing-smack (state float symbol target)) ;; unknown type
+(define-extern *racer-mods* surface) ;; unknown type
+(define-extern *racer-air-mods* surface) ;; unknown type
 
 
 ;; ----------------------
@@ -28951,22 +28971,22 @@
 
 ;; - Functions
 
-(define-extern target-racing-smack-check function)
+(define-extern target-racing-smack-check (function none :behavior target))
 
 ;; - Unknowns
 
-;;(define-extern target-racing object) ;; unknown type
-;;(define-extern target-racing-grab object) ;; unknown type
-;;(define-extern target-racing-clone-anim object) ;; unknown type
-;;(define-extern target-racing-get-off-hit-ground object) ;; unknown type
-;;(define-extern target-racing-get-off-jump object) ;; unknown type
-;;(define-extern target-racing-death object) ;; unknown type
-;;(define-extern target-racing-jump object) ;; unknown type
-;;(define-extern target-racing-bounce object) ;; unknown type
-;;(define-extern target-racing-falling object) ;; unknown type
-;;(define-extern target-racing-get-on object) ;; unknown type
-;;(define-extern target-racing-get-off object) ;; unknown type
-;;(define-extern target-racing-hit object) ;; unknown type
+(define-extern target-racing (state target)) ;; unknown type
+(define-extern target-racing-grab (state target)) ;; unknown type
+(define-extern target-racing-clone-anim (state handle target)) ;; unknown type
+(define-extern target-racing-get-off-hit-ground (state target)) ;; unknown type
+(define-extern target-racing-get-off-jump (state handle target)) ;; unknown type
+(define-extern target-racing-death (state target)) ;; unknown type
+(define-extern target-racing-jump (state float float symbol target)) ;; unknown type
+(define-extern target-racing-bounce (state float float symbol target)) ;; unknown type
+(define-extern target-racing-falling (state target)) ;; unknown type
+(define-extern target-racing-get-on (state handle target)) ;; unknown type
+(define-extern target-racing-get-off (state handle target)) ;; unknown type
+(define-extern target-racing-hit (state handle attack-info target)) ;; unknown type
 
 
 ;; ----------------------

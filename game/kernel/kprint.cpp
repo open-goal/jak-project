@@ -12,6 +12,7 @@
 #include "common/goal_constants.h"
 #include "common/common_types.h"
 #include "common/cross_os_debug/xdbg.h"
+#include "game/sce/sif_ee.h"
 #include "kprint.h"
 #include "kmachine.h"
 #include "kboot.h"
@@ -1076,7 +1077,13 @@ s32 format_impl(uint64_t* args) {
         *PrintPendingLocal3 = 0;
         return 0;
       } else if (type == *Ptr<Ptr<Type>>(s7.offset + FIX_SYM_FILE_STREAM_TYPE)) {
-        assert(false);  // file stream nyi
+        size_t len = strlen(PrintPendingLocal3);
+        // sceWrite
+        ee::sceWrite(*Ptr<s32>(original_dest + 12), PrintPendingLocal3, len);
+
+        PrintPending = make_ptr(PrintPendingLocal2).cast<u8>();
+        *PrintPendingLocal3 = 0;
+        return 0;
       }
     }
     assert(false);  // unknown destination

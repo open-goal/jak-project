@@ -162,7 +162,7 @@ void OpenGLRenderer::draw_renderer_selection_window() {
  */
 void OpenGLRenderer::setup_frame(int window_width_px, int window_height_px) {
   glViewport(0, 0, window_width_px, window_height_px);
-  glClearColor(0.5, 0.5, 0.5, 1.0);
+  glClearColor(0.0, 0.0, 0.0, 0.0);
   glClearDepth(0.0);
   glDepthMask(GL_TRUE);
   glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
@@ -286,7 +286,7 @@ void OpenGLRenderer::finish_screenshot(const std::string& output_name, int width
   // flip upside down in place
   for (int h = 0; h < height / 2; h++) {
     for (int w = 0; w < width; w++) {
-      std::swap(buffer[h * width + w], buffer[(height - h) * width + w]);
+      std::swap(buffer[h * width + w], buffer[(height - h - 1) * width + w]);
     }
   }
 

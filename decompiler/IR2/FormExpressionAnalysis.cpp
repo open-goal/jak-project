@@ -2665,7 +2665,7 @@ void FunctionCallElement::update_from_stack(const Env& env,
     }
 
     // modify our type for the go.
-    function_type = state_to_go_function(next_state_type.typespec());
+    function_type = state_to_go_function(next_state_type.typespec(), TypeSpec("object"));
 
     // up next, we need to deal with the
     // (set! (-> pp next-state) process-drawable-art-error)
@@ -3512,24 +3512,25 @@ void CondWithElseElement::push_to_stack(const Env& env, FormPool& pool, FormStac
       // (set! x (if y z (expr))) and z requires a cast, but the move from z to x is
       // eliminated by GOAL's register allocator.
 
-      // fmt::print("func: {}\n", env.func->name());
-
-      // fmt::print("checking:\n");
-      // for (auto& t : source_types) {
-      //  fmt::print("  {}\n", t.print());
-      // }
+      //      fmt::print("func: {}\n", env.func->name());
+      //
+      //      fmt::print("checking:\n");
+      //      for (auto& t : source_types) {
+      //        fmt::print("  {}\n", t.print());
+      //      }
 
       auto expected_type = env.get_variable_type(*last_var, true);
-      // fmt::print("The expected type is {}\n", expected_type.print());
+      //       fmt::print("The expected type is {}\n", expected_type.print());
       auto result_type =
           source_types.empty() ? expected_type : env.dts->ts.lowest_common_ancestor(source_types);
-      // fmt::print("but we actually got {}\n", result_type.print());
+      //       fmt::print("but we actually got {}\n", result_type.print());
 
       Form* result_value = pool.alloc_single_form(nullptr, this);
       if (!env.dts->ts.tc(expected_type, result_type)) {
         result_value =
             pool.alloc_single_element_form<CastElement>(nullptr, expected_type, result_value);
       }
+      //      fmt::print("{}\n", result_value->to_string(env));
 
       stack.push_value_to_reg(*last_var, result_value, true,
                               env.get_variable_type(*last_var, false));

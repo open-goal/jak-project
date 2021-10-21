@@ -168,12 +168,11 @@
 (defstate balloon-idle (balloon)
   :event
   (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
-   (let ((v1-0 arg2))
-    (the-as object (when (= v1-0 'attack)
-                    (send-event arg0 'heat -10.0)
-                    (go balloon-popping)
-                    )
-     )
+   (case arg2 
+    (('attack)
+      (send-event arg0 'heat -10.0)
+      (go balloon-popping)
+      )
     )
    )
   :code
@@ -235,6 +234,7 @@
   )
 
 ;; definition for method 11 of type balloon
+;; INFO: Return type mismatch object vs none.
 (defmethod copy-defaults! balloon ((obj balloon) (arg0 res-lump))
   (let
    ((s4-0 (new 'process 'collide-shape obj (collide-list-enum hit-by-player))))
@@ -522,6 +522,7 @@
   )
 
 ;; definition for method 11 of type spike
+;; INFO: Return type mismatch object vs none.
 (defmethod copy-defaults! spike ((obj spike) (arg0 res-lump))
   (let
    ((s4-0 (new 'process 'collide-shape obj (collide-list-enum hit-by-player))))
@@ -916,22 +917,21 @@
   :virtual #t
   :event
   (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
-   (let ((v1-0 arg2))
-    (the-as object (when (or (= v1-0 'attack) (= v1-0 'touch))
-                    (let ((a1-3 (new 'stack-no-clear 'event-message-block)))
-                     (set! (-> a1-3 from) self)
-                     (set! (-> a1-3 num-params) 2)
-                     (set! (-> a1-3 message) 'attack)
-                     (set! (-> a1-3 param 0) (-> arg3 param 0))
-                     (let ((a2-2 (new 'static 'attack-info :mask #x20)))
-                      (set! (-> a2-2 mode) 'darkeco)
-                      (set! (-> a1-3 param 1) (the-as uint a2-2))
-                      )
-                     (send-event-function arg0 a1-3)
-                     )
-                    (go-virtual die)
-                    )
-     )
+   (case arg2 
+    (('attack 'touch)
+      (let ((a1-3 (new 'stack-no-clear 'event-message-block)))
+       (set! (-> a1-3 from) self)
+       (set! (-> a1-3 num-params) 2)
+       (set! (-> a1-3 message) 'attack)
+       (set! (-> a1-3 param 0) (-> arg3 param 0))
+       (let ((a2-2 (new 'static 'attack-info :mask #x20)))
+        (set! (-> a2-2 mode) 'darkeco)
+        (set! (-> a1-3 param 1) (the-as uint a2-2))
+        )
+       (send-event-function arg0 a1-3)
+       )
+      (go-virtual die)
+      )
     )
    )
   :code
@@ -945,6 +945,7 @@
   )
 
 ;; definition for method 11 of type crate-darkeco-cluster
+;; INFO: Return type mismatch object vs none.
 (defmethod
   copy-defaults!
   crate-darkeco-cluster

@@ -564,29 +564,26 @@
   :virtual #t
   :event
   (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
-   (let ((v1-0 arg2))
-    (the-as object (cond
-                    ((= v1-0 'die-big)
-                     (go-virtual die #t)
-                     )
-                    ((= v1-0 'die)
-                     (go-virtual die #f)
-                     )
-                    ((or (= v1-0 'attack) (= v1-0 'touch))
-                     (let ((a1-7 (new 'stack-no-clear 'event-message-block)))
-                      (set! (-> a1-7 from) self)
-                      (set! (-> a1-7 num-params) 2)
-                      (set! (-> a1-7 message) 'attack-invinc)
-                      (set! (-> a1-7 param 0) (-> arg3 param 0))
-                      (let ((a2-2 (new 'static 'attack-info :mask #x20)))
-                       (set! (-> a2-2 mode) 'death)
-                       (set! (-> a1-7 param 1) (the-as uint a2-2))
-                       )
-                      (send-event-function arg0 a1-7)
-                      )
-                     (go-virtual die #f)
-                     )
-                    )
+   (case arg2 
+    (('die-big)
+      (go-virtual die #t)
+      )
+    (('die)
+     (go-virtual die #f)
+     )
+    (('attack 'touch)
+     (let ((a1-7 (new 'stack-no-clear 'event-message-block)))
+      (set! (-> a1-7 from) self)
+      (set! (-> a1-7 num-params) 2)
+      (set! (-> a1-7 message) 'attack-invinc)
+      (set! (-> a1-7 param 0) (-> arg3 param 0))
+      (let ((a2-2 (new 'static 'attack-info :mask #x20)))
+       (set! (-> a2-2 mode) 'death)
+       (set! (-> a1-7 param 1) (the-as uint a2-2))
+       )
+      (send-event-function arg0 a1-7)
+      )
+     (go-virtual die #f)
      )
     )
    )
@@ -601,6 +598,7 @@
   )
 
 ;; definition for method 11 of type tntbarrel
+;; INFO: Return type mismatch object vs none.
 (defmethod copy-defaults! tntbarrel ((obj tntbarrel) (arg0 res-lump))
   (let
    ((s4-0
@@ -1571,24 +1569,17 @@
 (defstate ogre-bridge-activated (ogre-bridge)
   :event
   (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
-   (let ((v1-0 arg2))
-    (the-as object (cond
-                    ((= v1-0 'break)
-                     (+! (-> self dead-joint-count) 4)
-                     (go ogre-bridge-break)
-                     )
-                    ((= v1-0 'break-no-damage)
-                     (go ogre-bridge-break)
-                     )
-                    ((= v1-0 'complete)
-                     (process-entity-status!
-                      self
-                      (entity-perm-status complete)
-                      #t
-                      )
-                     #t
-                     )
-                    )
+   (case arg2 
+    (('break)
+      (+! (-> self dead-joint-count) 4)
+      (go ogre-bridge-break)
+      )
+    (('break-no-damage)
+     (go ogre-bridge-break)
+     )
+    (('complete)
+     (process-entity-status! self (entity-perm-status complete) #t)
+     #t
      )
     )
    )
@@ -1757,6 +1748,7 @@
   )
 
 ;; definition for method 11 of type ogre-bridge
+;; INFO: Return type mismatch object vs none.
 (defmethod copy-defaults! ogre-bridge ((obj ogre-bridge) (arg0 res-lump))
   (stack-size-set! (-> obj main-thread) 512)
   (set! (-> obj mask) (logior (process-mask platform) (-> obj mask)))
@@ -2195,6 +2187,7 @@
   )
 
 ;; definition for method 11 of type ogre-bridgeend
+;; INFO: Return type mismatch object vs none.
 (defmethod copy-defaults! ogre-bridgeend ((obj ogre-bridgeend) (arg0 res-lump))
   (let
    ((s4-0
@@ -2256,37 +2249,29 @@
   :virtual #t
   :event
   (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
-   (let ((v1-0 arg2))
-    (the-as object (cond
-                    ((= v1-0 'submerge1)
-                     (set! (-> self anim) 3)
-                     (go-virtual water-vol-idle)
-                     )
-                    ((= v1-0 'submerge2)
-                     (set! (-> self anim) 5)
-                     (go-virtual water-vol-idle)
-                     )
-                    ((= v1-0 'emerge1)
-                     (set! (-> self anim) 4)
-                     (go-virtual water-vol-idle)
-                     )
-                    ((= v1-0 'emerge2)
-                     (set! (-> self anim) 6)
-                     (go-virtual water-vol-idle)
-                     )
-                    ((= v1-0 'boulder)
-                     (set! (-> self anim) 7)
-                     (go-virtual water-vol-idle)
-                     )
-                    (else
-                     ((-> (method-of-type water-anim water-vol-idle) event)
-                      arg0
-                      arg1
-                      arg2
-                      arg3
-                      )
-                     )
-                    )
+   (case arg2 
+    (('submerge1)
+      (set! (-> self anim) 3)
+      (go-virtual water-vol-idle)
+      )
+    (('submerge2)
+     (set! (-> self anim) 5)
+     (go-virtual water-vol-idle)
+     )
+    (('emerge1)
+     (set! (-> self anim) 4)
+     (go-virtual water-vol-idle)
+     )
+    (('emerge2)
+     (set! (-> self anim) 6)
+     (go-virtual water-vol-idle)
+     )
+    (('boulder)
+     (set! (-> self anim) 7)
+     (go-virtual water-vol-idle)
+     )
+    (else
+     ((-> (method-of-type water-anim water-vol-idle) event) arg0 arg1 arg2 arg3)
      )
     )
    )
@@ -2672,13 +2657,12 @@
 (defstate shortcut-boulder-idle (shortcut-boulder)
   :event
   (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
-   (let ((v1-0 arg2))
-    (the-as object (when (= v1-0 'attack)
-                    (if (and (>= arg1 2) (= (-> arg3 param 1) 'eco-yellow))
-                     (go shortcut-boulder-break)
-                     )
-                    )
-     )
+   (case arg2 
+    (('attack)
+      (if (and (>= arg1 2) (= (-> arg3 param 1) 'eco-yellow))
+       (go shortcut-boulder-break)
+       )
+      )
     )
    )
   :code
@@ -2693,6 +2677,7 @@
   )
 
 ;; definition for method 11 of type shortcut-boulder
+;; INFO: Return type mismatch object vs none.
 (defmethod
   copy-defaults!
   shortcut-boulder

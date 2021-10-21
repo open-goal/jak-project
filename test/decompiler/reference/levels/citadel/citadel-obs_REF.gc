@@ -241,6 +241,7 @@
   )
 
 ;; definition for method 11 of type citb-arm-section
+;; INFO: Return type mismatch object vs none.
 (defmethod
   copy-defaults!
   citb-arm-section
@@ -732,6 +733,7 @@
   )
 
 ;; definition for method 11 of type citb-disc
+;; INFO: Return type mismatch object vs none.
 (defmethod copy-defaults! citb-disc ((obj citb-disc) (arg0 res-lump))
   (init! obj)
   (process-drawable-from-entity! obj arg0)
@@ -1718,6 +1720,7 @@
   )
 
 ;; definition for method 11 of type citb-robotboss
+;; INFO: Return type mismatch object vs none.
 (defmethod copy-defaults! citb-robotboss ((obj citb-robotboss) (arg0 res-lump))
   (let
    ((s4-0 (new 'process 'collide-shape obj (collide-list-enum hit-by-player))))
@@ -1837,11 +1840,10 @@
 (defstate citb-coil-idle (citb-coil)
   :event
   (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
-   (let ((v1-0 arg2))
-    (the-as object (if (= v1-0 'trigger)
-                    (go citb-coil-break)
-                    )
-     )
+   (case arg2 
+    (('trigger)
+      (go citb-coil-break)
+      )
     )
    )
   :code
@@ -2019,6 +2021,7 @@
   )
 
 ;; definition for method 11 of type citb-coil
+;; INFO: Return type mismatch object vs none.
 (defmethod copy-defaults! citb-coil ((obj citb-coil) (arg0 res-lump))
   (set! (-> obj root) (new 'process 'trsqv))
   (process-drawable-from-entity! obj arg0)
@@ -2082,19 +2085,15 @@
   )
 
 ;; definition for function citb-hose-event-handler
-;; INFO: Return type mismatch none vs object.
 (defbehavior
   citb-hose-event-handler citb-hose
   ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
-  (let ((v1-0 arg2))
-   (the-as object (cond
-                   ((= v1-0 'spawn)
-                    (go citb-hose-spawn)
-                    )
-                   ((= v1-0 'trigger)
-                    (go citb-hose-die)
-                    )
-                   )
+  (case arg2 
+   (('spawn)
+     (go citb-hose-spawn)
+     )
+   (('trigger)
+    (go citb-hose-die)
     )
    )
   )
@@ -2272,6 +2271,7 @@
   )
 
 ;; definition for method 11 of type citb-hose
+;; INFO: Return type mismatch object vs none.
 (defmethod copy-defaults! citb-hose ((obj citb-hose) (arg0 res-lump))
   (set! (-> obj root) (new 'process 'trsqv))
   (process-drawable-from-entity! obj arg0)
@@ -2502,23 +2502,16 @@
 (defstate citb-generator-idle (citb-generator)
   :event
   (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
-   (let ((v1-0 arg2))
-    (the-as object (cond
-                    ((= v1-0 'attack)
-                     (if (-> self mushroom)
-                      (increment-success-for-hint
-                       (the-as level-hint-control 2054)
-                       )
-                      (increment-success-for-hint
-                       (the-as level-hint-control 2057)
-                       )
-                      )
-                     (go citb-generator-break)
-                     )
-                    ((= v1-0 'trigger)
-                     #t
-                     )
-                    )
+   (case arg2 
+    (('attack)
+      (if (-> self mushroom)
+       (increment-success-for-hint (the-as level-hint-control 2054))
+       (increment-success-for-hint (the-as level-hint-control 2057))
+       )
+      (go citb-generator-break)
+      )
+    (('trigger)
+     #t
      )
     )
    )
@@ -2792,6 +2785,7 @@
   )
 
 ;; definition for method 11 of type citb-generator
+;; INFO: Return type mismatch object vs none.
 (defmethod copy-defaults! citb-generator ((obj citb-generator) (arg0 res-lump))
   (init! obj)
   (process-drawable-from-entity! obj arg0)
@@ -2847,22 +2841,18 @@
 (defstate citadelcam-idle (citadelcam)
   :event
   (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
-   (let ((v1-0 arg2))
-    (the-as object (when (= v1-0 'trigger)
-                    (when
-                     (and
-                      (task-complete? *game-info* (game-task citadel-sage-blue))
-                      (task-complete? *game-info* (game-task citadel-sage-red))
-                      (task-complete?
-                       *game-info*
-                       (game-task citadel-sage-yellow)
-                       )
-                      )
-                     (logclear! (-> self mask) (process-mask actor-pause))
-                     (go citadelcam-stair-plats)
-                     )
-                    )
-     )
+   (case arg2 
+    (('trigger)
+      (when
+       (and
+        (task-complete? *game-info* (game-task citadel-sage-blue))
+        (task-complete? *game-info* (game-task citadel-sage-red))
+        (task-complete? *game-info* (game-task citadel-sage-yellow))
+        )
+       (logclear! (-> self mask) (process-mask actor-pause))
+       (go citadelcam-stair-plats)
+       )
+      )
     )
    )
   :code
@@ -2950,6 +2940,7 @@
   )
 
 ;; definition for method 11 of type citadelcam
+;; INFO: Return type mismatch object vs none.
 (defmethod copy-defaults! citadelcam ((obj citadelcam) (arg0 res-lump))
   (set! (-> obj root) (new 'process 'trsqv))
   (process-drawable-from-entity! obj arg0)

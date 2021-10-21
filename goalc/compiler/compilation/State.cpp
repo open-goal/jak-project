@@ -244,7 +244,7 @@ Val* Compiler::compile_go_hook(const goos::Object& form, const goos::Object& res
 
   // now we have to call the function.
   auto enter_state_func = compile_get_symbol_value(form, "enter-state", env);
-  enter_state_func->set_type(state_to_go_function(state->type()));
+  enter_state_func->set_type(state_to_go_function(state->type(), TypeSpec("object")));
 
   std::vector<RegVal*> function_arguments;
   for (size_t i = 2; i < args.unnamed.size(); i++) {

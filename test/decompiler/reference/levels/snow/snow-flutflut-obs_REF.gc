@@ -373,43 +373,30 @@
 (defstate snow-button-up-idle (snow-button)
   :event
   (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
-   (local-vars (v0-2 none))
-   (let ((v1-0 arg2))
-    (the-as object (cond
-                    ((or (= v1-0 'touch) (= v1-0 'attack) (= v1-0 'bonk))
-                     (when
-                      (and
-                       (= (-> arg0 type) target)
-                       (logtest?
-                        (-> *target* control root-prim prim-core action)
-                        #x4000
-                        )
-                       (>=
-                        10649.6
-                        (vector-vector-xz-distance
-                         (-> self root-override trans)
-                         (target-pos 0)
-                         )
-                        )
-                       )
-                      (close-specific-task!
-                       (game-task snow-ball)
-                       (task-status need-hint)
-                       )
-                      (logclear! (-> self mask) (process-mask actor-pause))
-                      (process-entity-status!
-                       self
-                       (entity-perm-status bit-3)
-                       #t
-                       )
-                      (go snow-button-activate)
-                      )
-                     )
-                    ((= v1-0 'query)
-                     (return (the-as object #f))
-                     v0-2
-                     )
-                    )
+   (local-vars (v0-2 object))
+   (case arg2 
+    (('touch 'attack 'bonk)
+      (when
+       (and
+        (= (-> arg0 type) target)
+        (logtest? (-> *target* control root-prim prim-core action) #x4000)
+        (>=
+         10649.6
+         (vector-vector-xz-distance
+          (-> self root-override trans)
+          (target-pos 0)
+          )
+         )
+        )
+       (close-specific-task! (game-task snow-ball) (task-status need-hint))
+       (logclear! (-> self mask) (process-mask actor-pause))
+       (process-entity-status! self (entity-perm-status bit-3) #t)
+       (go snow-button-activate)
+       )
+      )
+    (('query)
+     (return #f)
+     v0-2
      )
     )
    )
@@ -435,17 +422,14 @@
 (defstate snow-button-activate (snow-button)
   :event
   (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
-   (local-vars (v0-0 none))
-   (let ((v1-0 arg2))
-    (the-as object (cond
-                    ((= v1-0 'untrigger)
-                     (go snow-button-deactivate)
-                     )
-                    ((= v1-0 'query)
-                     (return (the-as object #t))
-                     v0-0
-                     )
-                    )
+   (local-vars (v0-0 object))
+   (case arg2 
+    (('untrigger)
+      (go snow-button-deactivate)
+      )
+    (('query)
+     (return #t)
+     v0-0
      )
     )
    )
@@ -624,6 +608,7 @@
   )
 
 ;; definition for method 11 of type snow-button
+;; INFO: Return type mismatch object vs none.
 (defmethod copy-defaults! snow-button ((obj snow-button) (arg0 res-lump))
   (let
    ((s4-0
@@ -811,26 +796,25 @@
   :virtual #t
   :event
   (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
-   (let ((v1-0 arg2))
-    (the-as object (when (= v1-0 'trigger)
-                    (when
-                     (or
-                      (!= (-> self plat-type) 1)
-                      (not
-                       (and
-                        (-> self entity)
-                        (logtest?
-                         (-> self entity extra perm status)
-                         (entity-perm-status complete)
-                         )
-                        )
-                       )
-                      )
-                     (logclear! (-> self mask) (process-mask actor-pause))
-                     (go flutflut-plat-appear)
-                     )
-                    )
-     )
+   (case arg2 
+    (('trigger)
+      (when
+       (or
+        (!= (-> self plat-type) 1)
+        (not
+         (and
+          (-> self entity)
+          (logtest?
+           (-> self entity extra perm status)
+           (entity-perm-status complete)
+           )
+          )
+         )
+        )
+       (logclear! (-> self mask) (process-mask actor-pause))
+       (go flutflut-plat-appear)
+       )
+      )
     )
    )
   :code
@@ -876,12 +860,11 @@
 (defstate flutflut-plat-hidden-idle (flutflut-plat)
   :event
   (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
-   (let ((v1-0 arg2))
-    (the-as object (when (= v1-0 'trigger)
-                    (logclear! (-> self mask) (process-mask actor-pause))
-                    (go flutflut-plat-appear)
-                    )
-     )
+   (case arg2 
+    (('trigger)
+      (logclear! (-> self mask) (process-mask actor-pause))
+      (go flutflut-plat-appear)
+      )
     )
    )
   :trans

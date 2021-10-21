@@ -770,6 +770,12 @@ Mips2C_Line handle_por(const Instruction& i0, const std::string& instr_string) {
   }
 }
 
+Mips2C_Line handle_vopmula(const Instruction& i0, const std::string& instr_string) {
+  return {
+      fmt::format("c->vopmula({}, {});", reg_to_name(i0.get_src(0)), reg_to_name(i0.get_src(1))),
+      instr_string};
+}
+
 Mips2C_Line handle_lui(const Instruction& i0, const std::string& instr_string) {
   return {fmt::format("c->lui({}, {});", reg_to_name(i0.get_dst(0)), i0.get_src(0).get_imm()),
           instr_string};
@@ -859,6 +865,7 @@ Mips2C_Line handle_normal_instr(Mips2C_Output& output,
     case InstructionKind::PMAXW:
     case InstructionKind::SUBU:
     case InstructionKind::DSRAV:
+    case InstructionKind::VOPMSUB:
       return handle_generic_op3(i0, instr_str, {});
     case InstructionKind::MULS:
       return handle_generic_op3(i0, instr_str, "muls");
@@ -924,6 +931,8 @@ Mips2C_Line handle_normal_instr(Mips2C_Output& output,
       return handle_clts(i0, instr_str);
     case InstructionKind::VWAITQ:
       return handle_plain_op(i0, instr_str, "vwaitq");
+    case InstructionKind::VOPMULA:
+      return handle_vopmula(i0, instr_str);
     default:
       unknown_count++;
       return handle_unknown(instr_str);
