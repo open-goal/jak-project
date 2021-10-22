@@ -247,24 +247,20 @@
    )
   )
 
-;; WARN: rewrite_to_get_var got a none typed variable. Is there unreachable code?
 (defbehavior
   yeti-slave-default-event-handler yeti-slave
   ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
-  (let ((v1-0 arg2))
-   (the-as object (cond
-                   ((= v1-0 'attack)
-                    (nav-enemy-set-hit-from-direction arg0)
-                    (go-virtual nav-enemy-die)
-                    )
-                   ((= v1-0 'touch)
-                    (nav-enemy-send-attack
-                     arg0
-                     (the-as touching-shapes-entry (-> arg3 param 0))
-                     'generic
-                     )
-                    )
-                   )
+  (case arg2 
+   (('attack)
+     (nav-enemy-set-hit-from-direction arg0)
+     (go-virtual nav-enemy-die)
+     )
+   (('touch)
+    (nav-enemy-send-attack
+     arg0
+     (the-as touching-shapes-entry (-> arg3 param 0))
+     'generic
+     )
     )
    )
   )
@@ -1169,7 +1165,7 @@
   (none)
   )
 
-(defmethod TODO-RENAME-48 yeti-slave ((obj yeti-slave))
+(defmethod TODO-RENAME-48 yeti-slave ((obj yeti-slave) (arg0 object))
   (dummy-14 obj *yeti-sg* '())
   (set! (-> obj draw origin-joint-index) (the-as uint 3))
   (TODO-RENAME-45 obj *yeti-nav-enemy-info*)
@@ -1218,9 +1214,11 @@
   (initialize-collision self)
   (set! (-> self collide-info trans quad) (-> arg2 quad))
   (vector-identity! (-> self collide-info scale))
-  (forward-up->quaternion (-> self collide-info quat) arg3 *up-vector*)
-  (set! (-> self entity) (-> arg1 entity))
-  (TODO-RENAME-48 self)
+  (let ((a1-3 arg3))
+   (forward-up->quaternion (-> self collide-info quat) a1-3 *up-vector*)
+   (set! (-> self entity) (-> arg1 entity))
+   (TODO-RENAME-48 self (the-as object a1-3))
+   )
   (if arg4
    (go-virtual nav-enemy-idle)
    (go yeti-slave-appear-jump-up)

@@ -53,42 +53,38 @@
   (set! *swamp-rat-sg* v1-1)
   )
 
-;; WARN: rewrite_to_get_var got a none typed variable. Is there unreachable code?
 (defmethod
   dummy-44
   swamp-rat
   ((obj swamp-rat) (arg0 process) (arg1 event-message-block))
-  (the-as
-   object
+  (when
+   ((method-of-type touching-shapes-entry prims-touching?)
+    (the-as touching-shapes-entry (-> arg1 param 0))
+    (-> obj collide-info)
+    (the-as uint 1)
+    )
    (when
-    ((method-of-type touching-shapes-entry prims-touching?)
+    (nav-enemy-send-attack
+     arg0
      (the-as touching-shapes-entry (-> arg1 param 0))
-     (-> obj collide-info)
-     (the-as uint 1)
+     'generic
      )
-    (when
-     (nav-enemy-send-attack
-      arg0
-      (the-as touching-shapes-entry (-> arg1 param 0))
-      'generic
-      )
-     (let* ((s5-1 (-> obj parent))
-            (a0-4
-             (if (and (nonzero? s5-1) (type-type? pointer process-drawable))
-              s5-1
-              )
-             )
+    (let* ((s5-1 (-> obj parent))
+           (a0-4 (if (and (nonzero? s5-1) (type-type? pointer process-drawable))
+                  s5-1
+                  )
             )
-      (if a0-4
-       (send-event (the-as process a0-4) 'victory)
-       (go (method-of-object obj nav-enemy-victory))
-       )
+           )
+     (if a0-4
+      (send-event (the-as process a0-4) 'victory)
+      (go (method-of-object obj nav-enemy-victory))
       )
      )
     )
    )
   )
 
+;; WARN: rewrite_to_get_var got a none typed variable. Is there unreachable code?
 (defbehavior
   swamp-rat-default-event-handler swamp-rat
   ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
@@ -854,7 +850,7 @@ swamp-rat-default-event-handler
   (none)
   )
 
-(defmethod TODO-RENAME-48 swamp-rat ((obj swamp-rat))
+(defmethod TODO-RENAME-48 swamp-rat ((obj swamp-rat) (arg0 object))
   (dummy-14 obj *swamp-rat-sg* '())
   (TODO-RENAME-45 obj *swamp-rat-nav-enemy-info*)
   (vector-float*! (-> obj collide-info scale) *identity-vector* 1.5)
@@ -890,11 +886,16 @@ swamp-rat-default-event-handler
    (logior! (-> self mask) (process-mask actor-pause))
    )
   (set! (-> self collide-info trans quad) (-> arg1 quad))
-  (forward-up->quaternion (-> self collide-info quat) arg2 *up-vector*)
-  (vector-float*! (-> self collide-info scale) *identity-vector* 1.5)
-  (vector-float*! (-> self collide-info transv) arg2 49152.0)
-  (set! (-> self entity) (-> arg0 entity))
-  (TODO-RENAME-48 self)
+  (let ((t9-1 forward-up->quaternion)
+        (a0-4 (-> self collide-info quat))
+        (a1-1 arg2)
+        )
+   (t9-1 a0-4 a1-1 *up-vector*)
+   (vector-float*! (-> self collide-info scale) *identity-vector* 1.5)
+   (vector-float*! (-> self collide-info transv) arg2 49152.0)
+   (set! (-> self entity) (-> arg0 entity))
+   (TODO-RENAME-48 self (the-as object a1-1))
+   )
   (set! (-> self enemy-info pickup-type) arg3)
   (go swamp-rat-spawn)
   (none)
