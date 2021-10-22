@@ -376,21 +376,22 @@ Val* Compiler::compile_deftype(const goos::Object& form, const goos::Object& res
 
   // add declared states
   for (auto& state : result.type_info->get_states_declared_for_type()) {
-    auto existing_type = m_symbol_types.find(state.name);
-    if (existing_type != m_symbol_types.end() && existing_type->second != state.type) {
+    auto existing_type = m_symbol_types.find(state.first);
+    if (existing_type != m_symbol_types.end() && existing_type->second != state.second) {
       if (m_throw_on_define_extern_redefinition) {
         throw_compiler_error(form, "deftype would redefine the type of state {} from {} to {}.",
-                             state.name, existing_type->second.print(), state.type.print());
+                             state.first, existing_type->second.print(), state.second.print());
       } else {
         print_compiler_warning(
             "[Warning] deftype has redefined the type of state {}\npreviously: {}\nnow: "
             "{}\n",
-            state.name.c_str(), existing_type->second.print().c_str(), state.type.print().c_str());
+            state.first.c_str(), existing_type->second.print().c_str(),
+            state.second.print().c_str());
       }
     }
 
-    m_symbol_types[state.name] = state.type;
-    m_symbol_info.add_fwd_dec(state.name, form);
+    m_symbol_types[state.first] = state.second;
+    m_symbol_info.add_fwd_dec(state.first, form);
   }
 
   if (result.create_runtime_type) {

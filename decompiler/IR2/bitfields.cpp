@@ -553,6 +553,39 @@ FormElement* BitfieldAccessElement::push_step(const BitfieldManip step,
                                                            std::vector<BitFieldDef>{def});
   }
 
+  if (m_steps.empty() && step.kind == BitfieldManip::Kind::LOGIOR_WITH_CONSTANT_INT) {
+    // this is a rare case of setting a bitfield to a constant.  Usually we clear the field with an
+    // and, then set the bits we want with an or.  In the case where we want to set all the bits to
+    // 1, we can omit the and to clear first.
+
+    // in this case, we expect the value we're oring with to be the appropriate mask for the field.
+
+    fmt::print("Rare bitfield set!\n");
+    u64 value = step.amount;
+    auto type = ts.lookup_type(m_type);
+    auto as_bitfield = dynamic_cast<BitFieldType*>(type);
+    assert(as_bitfield);
+    auto field = find_field_from_mask(ts, as_bitfield, value, m_got_pcpyud);
+    assert(field);
+    bool is_signed =
+        ts.tc(TypeSpec("int"), field->type()) && !ts.tc(TypeSpec("uint"), field->type());
+
+    // use the field to figure out what value is being set.
+    s64 set_value;
+    if (is_signed) {
+      set_value = extract_bitfield<s64>(value, field->offset() - pcpyud_offset, field->size());
+    } else {
+      set_value = extract_bitfield<u64>(value, field->offset() - pcpyud_offset, field->size());
+    }
+
+    BitFieldDef def;
+    def.field_name = field->name();
+    def.value = pool.alloc_single_element_form<SimpleAtomElement>(
+        nullptr, SimpleAtom::make_int_constant(set_value));
+    return pool.alloc_element<ModifiedCopyBitfieldElement>(m_type, m_base, m_got_pcpyud,
+                                                           std::vector<BitFieldDef>{def});
+  }
+
   if (m_steps.size() == 1 && m_steps.at(0).kind == BitfieldManip::Kind::LOGAND_WITH_CONSTANT_INT &&
       step.kind == BitfieldManip::Kind::LOGIOR_WITH_FORM) {
     // this is setting a bitfield to a variable

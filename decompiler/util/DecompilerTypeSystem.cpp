@@ -67,7 +67,7 @@ void DecompilerTypeSystem::parse_type_defs(const std::vector<std::string>& file_
         }
         // declare the type's states globally
         for (auto& state : dtr.type_info->get_states_declared_for_type()) {
-          add_symbol(state.name, state.type);
+          add_symbol(state.first, state.second);
         }
 
       } else if (car(o).as_symbol()->name == "declare-type") {

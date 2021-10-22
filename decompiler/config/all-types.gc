@@ -9873,6 +9873,9 @@
    (nocamera      uint8        :offset   1 :size   1)
    (noedge        uint8        :offset   2 :size   1)
    (nolineofsight uint8        :offset  12 :size   1)
+   
+   ;; this is not in the inspect, but appears to be set.
+   (unknown-bit uint8 :offset 15 :size 1)
    )
   :method-count-assert 9
   :size-assert         #x4
@@ -11284,10 +11287,15 @@
    (unknown-dword40  int64 :offset 2160) ;; from logic-target::target-compute-edge
    (unknown-dword41  int64 :offset 2168) ;; from logic-target::target-compute-edge
    (unknown-handle10  handle :offset 2176) ;; from logic-target::target-compute-pole - probably a swingpole
+   (unknown-float120 float :offset 2184) ;; from target::mod-var-jump
    (unknown-symbol20   symbol          :offset 2184) ;; from (anon-function 1 basebutton)
    (unknown-int20 int32 :offset 2188) ;; from logic-target::target-compute-pole
+   (unknown-float121 float :offset 2188) ;; from target::mod-var-jump
+   (unknown-float123 float :offset 2200) ;; from target::mod-var-jump
    (unknown-vector102  vector :inline :offset 2224) ;; from (anon-function 3 basebutton)
    (unknown-vector103  vector :inline :offset 2240) ;; from (anon-function 3 basebutton)
+   (unknown-quaternion02  quaternion :inline :offset 2256) ;; from racer-states::(code target-racing-get-on)
+   (unknown-quaternion03  quaternion :inline :offset 2272) ;; from racer-states::(code target-racing-get-on)
    (unknown-smush00  smush-control :inline :offset 2288) ;; from (event target-fishing)
    (unknown-vector110  vector :inline :offset 2320) ;; from logic-target::flag-setup
    (unknown-vector111  vector :inline :offset 2336) ;; from logic-target::flag-setup
@@ -11779,6 +11787,24 @@
   ;; inherited inspect of process-drawable
   (:methods
     (dummy-20 (_type_ collide-cache) none 20)
+    )
+  
+  (:states
+    (target-racing-get-off handle)
+    (target-racing-jump float float symbol)
+    (target-racing-hit handle attack-info)
+    (target-racing-grab)
+    (target-racing-clone-anim handle)
+    (target-racing-get-on handle)
+    (target-racing-falling)
+    (target-racing-bounce float float symbol)
+    (target-racing-death symbol)
+    (target-racing-get-off-jump handle)
+    (target-racing-get-off-hit-ground symbol)
+  
+    (target-death)
+    (target-hit-ground symbol)
+    (target-clone-anim)
     )
   )
 
@@ -18116,7 +18142,7 @@
 ;;(define-extern *col-timer-enable* object) ;; unknown type
 ;;(define-extern *frame-timer* object) ;; unknown type
 ;;(define-extern *col-timer* object) ;; unknown type
-;;(define-extern *race-track-surface* object) ;; unknown type
+(define-extern *race-track-surface* surface)
 
 
 ;; ----------------------
@@ -19459,7 +19485,7 @@
 (define-extern set-forward-vel (function float vector :behavior target))
 (define-extern delete-back-vel (function float none :behavior target))
 (define-extern set-side-vel (function float vector :behavior target))
-(define-extern target-timed-invulnerable (function uint64 target none)) ;; TODO - likely useconds
+(define-extern target-timed-invulnerable (function uint target none)) ;; TODO - likely useconds
 (define-extern target-timed-invulnerable-off (function target none))
 (define-extern ground-tween-initialize (function ground-tween-info uint uint uint uint uint uint ground-tween-info :behavior target)) ;; TODO - dealing with inline-array issues
 (define-extern ground-tween-update (function ground-tween-info float float none :behavior target)) ;; TODO - inline array issues as well
@@ -22784,6 +22810,9 @@
    (away-from-rand-transv-y-lo  float          :offset 56)
    (away-from-rand-transv-y-hi  float          :offset 60)
    )
+  (:methods
+    (new (symbol type int) _type_ 0)
+    )
   :method-count-assert 9
   :size-assert         #x40
   :flag-assert         #x900000040
@@ -22873,7 +22902,7 @@
 ;; - Functions
 
 (define-extern joint-exploder-joint-callback (function joint-exploder none))
-(define-extern joint-exploder-init-by-other function)
+(define-extern joint-exploder-init-by-other (function skeleton-group int joint-exploder-static-params joint-exploder-tuning none :behavior joint-exploder))
 
 ;; - Unknowns
 
@@ -29405,7 +29434,7 @@
 ;; - Types
 
 (deftype racer-info (basic)
-  ((entity              basic                 :offset-assert 4)
+  ((entity              entity-actor                 :offset-assert 4)
    (bike-trans          vector        :inline :offset-assert 16)
    (bike-quat           vector        :inline :offset-assert 32)
    (bike-scale          vector        :inline :offset-assert 48)
@@ -29446,14 +29475,14 @@
    (targ-rotx           degrees                   :offset-assert 332)
    (speed-rotx          float                 :offset-assert 336)
    (mult-rotx           degrees                   :offset-assert 340)
-   (front-blade         basic                 :offset-assert 344)
+   (front-blade         joint-mod                 :offset-assert 344)
    (front-rot           degrees                   :offset-assert 348)
    (front-rotv          degrees                   :offset-assert 352)
-   (bottom-blade        basic                 :offset-assert 356)
+   (bottom-blade        joint-mod                 :offset-assert 356)
    (bottom-rot          degrees                   :offset-assert 360)
-   (front               basic                 :offset-assert 364)
+   (front               joint-mod                 :offset-assert 364)
    (front-turn          degrees                   :offset-assert 368)
-   (tail                basic                 :offset-assert 372)
+   (tail                joint-mod                 :offset-assert 372)
    (tail-tilt           degrees                   :offset-assert 376)
    (transv-max          meters                :offset-assert 380)
    (slide-down-time     uint64       2       :offset-assert 384)
@@ -29470,7 +29499,7 @@
    (boost-level         float                 :offset-assert 452)
    (boost-target        float                 :offset-assert 456)
    (boost-output        float                 :offset-assert 460)
-   (hop?                basic                 :offset-assert 464)
+   (hop?                symbol                 :offset-assert 464)
    (hop-start-y         float                 :offset-assert 468)
    (bounce              int32                 :offset-assert 472)
    (bounce-hit          float                 :offset-assert 476)
@@ -29485,10 +29514,10 @@
    (rudd-anim-vel       float                 :offset-assert 512)
    (rudd-anim-frame     float                 :offset-assert 516)
    (racing-time         uint64                :offset-assert 520)
-   (stick-lock          basic                 :offset-assert 528)
-   (stick-off           basic                 :offset-assert 532)
-   (heavy               basic                 :offset-assert 536)
-   (unstuck-time        uint64                :offset-assert 544)
+   (stick-lock          symbol                 :offset-assert 528)
+   (stick-off           symbol                 :offset-assert 532)
+   (heavy               symbol                 :offset-assert 536)
+   (unstuck-time        int64                :offset-assert 544)
    (stuck-count         int32                 :offset-assert 552)
    (scrape-sound-id     sound-id              :offset-assert 556)
    (heat-sound-time     uint64                :offset-assert 560)
@@ -29580,39 +29609,29 @@
 
 ;; - Types
 
-; (deftype racer (process-drawable)
-;   ((extra-trans   vector  :inline :offset-assert 176)
-;    (condition     int32           :offset-assert 192)
-;    (cell          uint64          :offset-assert 200)
-;    (path-data     UNKNOWN 2       :offset-assert 208)
-;    (path-target   basic           :offset-assert 208)
-;    (path-racer    basic           :offset-assert 212)
-;    (auto-get-off  basic           :offset-assert 216)
-;    (shadow-backup basic           :offset-assert 220)
-;    )
-;   :method-count-assert 24
-;   :size-assert         #xe0
-;   :heap-base           #x70
-;   :flag-assert         #x18007000e0
-;   ;; inherited inspect of process-drawable
-;   (:methods
-;     (dummy-9 () none 9)
-;     (dummy-10 () none 10)
-;     (dummy-11 () none 11)
-;     (dummy-12 () none 12)
-;     (dummy-13 () none 13)
-;     (dummy-14 () none 14)
-;     (dummy-15 () none 15)
-;     (dummy-16 () none 16)
-;     (dummy-17 () none 17)
-;     (dummy-18 () none 18)
-;     (dummy-19 () none 19)
-;     (dummy-20 () none 20)
-;     (dummy-21 () none 21)
-;     (dummy-22 () none 22)
-;     (dummy-23 () none 23)
-;     )
-;   )
+(deftype racer (process-drawable)
+  ((parent-override (pointer target) :score 100 :offset 12)
+   (root-override collide-shape-moving :score 100 :offset 112)
+   (extra-trans   vector  :inline :offset-assert 176)
+   (condition     int32           :offset-assert 192)
+   (cell          handle          :offset-assert 200)
+   (path-data     path-control 2       :offset-assert 208)
+   (path-target   curve-control           :offset 208)
+   (path-racer    path-control           :offset 212)
+   (auto-get-off  symbol           :offset-assert 216)
+   (shadow-backup shadow-geo           :offset-assert 220)
+   )
+  :method-count-assert 24
+  :size-assert         #xe0
+  :heap-base           #x70
+  :flag-assert         #x18007000e0
+  (:methods
+    (wait-for-start () _type_ :state 20)
+    (idle () _type_ :state 21)
+    (pickup ((state collectable)) _type_ :state 22)
+    (wait-for-return () _type_ :state 23)
+    )
+  )
 
 ;; - Functions
 
@@ -29623,7 +29642,7 @@
 ;; - Unknowns
 
 (define-extern *racer-sg* skeleton-group)
-;;(define-extern *racer-shadow-control* object) ;; unknown type
+(define-extern *racer-shadow-control* shadow-control)
 (define-extern *racer-explode-sg* skeleton-group)
 
 
@@ -29639,21 +29658,21 @@
 (define-extern racer-service-slide function)
 (define-extern racer-xz function)
 (define-extern racer-thrust function)
-(define-extern racer-calc-gravity function)
+(define-extern racer-calc-gravity (function vector :behavior target))
 (define-extern racer-on-ground? function)
 (define-extern racer-collision function)
 (define-extern racer-integrate function)
 (define-extern racer-effects function)
-(define-extern racer-sounds function)
+(define-extern racer-sounds (function object :behavior target))
 (define-extern racer-bend-gravity function)
 (define-extern racer-find-prop-point function)
 (define-extern racer-cushion function)
-(define-extern racer-buzz function)
-(define-extern target-racing-center-anim function)
-(define-extern target-racing-turn-anim function)
-(define-extern target-racing-jump-anim function)
-(define-extern target-racing-land-anim function)
-(define-extern target-racing-post function)
+(define-extern racer-buzz (function float none :behavior target))
+(define-extern target-racing-center-anim (function none :behavior target))
+(define-extern target-racing-turn-anim (function none :behavior target))
+(define-extern target-racing-jump-anim (function basic int none :behavior target))
+(define-extern target-racing-land-anim (function symbol none :behavior target))
+(define-extern target-racing-post (function none :behavior target))
 
 ;; - Unknowns
 
@@ -29686,9 +29705,8 @@
 (define-extern target-racing (state target)) ;; unknown type
 (define-extern target-racing-grab (state target)) ;; unknown type
 (define-extern target-racing-clone-anim (state handle target)) ;; unknown type
-(define-extern target-racing-get-off-hit-ground (state target)) ;; unknown type
+(define-extern target-racing-get-off-hit-ground (state symbol target)) ;; unknown type
 (define-extern target-racing-get-off-jump (state handle target)) ;; unknown type
-(define-extern target-racing-death (state target)) ;; unknown type
 (define-extern target-racing-jump (state float float symbol target)) ;; unknown type
 (define-extern target-racing-bounce (state float float symbol target)) ;; unknown type
 (define-extern target-racing-falling (state target)) ;; unknown type
