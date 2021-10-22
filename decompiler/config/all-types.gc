@@ -947,6 +947,14 @@
 
   (sidekick-hint-fish-powerup #x278)
 
+  (beach-collectors-unblocked #x288)
+
+  (misty-stopped-lurkers-at-silo #x28a)
+  (misty-stopped-balloon-lurkers #x28b)
+
+  (collectables-scout-flies-red-boxes #x295)
+
+  (found-all-scout-flies #x296)
   (yakow-owed-powercell #x297)
 
   (misty-teetertotter-bonk-dax-tutorial #x2a4)
@@ -1000,6 +1008,10 @@
   (rolling-ring-chase-1 #x324)
   (rolling-ring-chase-2 #x325)
 
+  (rolling-beat-lurkers #x327)
+
+  (swamp-finished-with-flutflut #x328)
+
   (rolling-ring-hint-one-ring-down #x33f)
   (rolling-ring-hint-be-quick-to-next #x340)
   (rolling-ring-hint-be-quick-all #x341)
@@ -1016,6 +1028,8 @@
 
   (swamp-bats-hint #x364) ;; maybe we can ???? the bats. lol
   (flutflut-reminder #x368)
+
+  (sage-golfclap-i-have-low-expectations #x36a) ;; where was this said?
 
   (village2-not-enough-cells-levitator #x36c)
   (villlage2-levitator-cell-req-text #x372)
@@ -1068,13 +1082,19 @@
 
   (fire-canyon-level-name #x50c)
 
+  (fire-canyon-we-made-it #x515)
+
+  (collectables-theres-scout-flys-here-too #x516)
+
   (ogre-end #x600)
   (ogre-buzzer #x601)
   (ogre-boss #x603)
+  (ogre-boss-killed #x604)
 
   (assistant-voicebox-intro-ogre-race #x605)
 
   (sidekick-speech-hint-ogre-race #x61c)
+  (assistant-finished-mountain-pass-race #x61d)
 
   (lavatube-end #x700)
   (lavatube-buzzer #x701)
@@ -1092,7 +1112,11 @@
 
   (misty-battle-finished #x813)
 
+  (training-assistant-found-scout-fly #x903)
+  (training-assistant-found-scout-fly-cell #x904)
+  
   (training-more-eco-more-time #x90a)
+  (training-eco-opened-door #x90c)
 
   (training-gimmie-task-name #x91b)
   (training-buzzer-task-name #x91c)
@@ -10243,8 +10267,8 @@
   ((root             trsqv               :offset-assert 112)
    (part             sparticle-launch-control :offset-assert 116)
    (target           uint64              :offset-assert 120)
-   (callback         basic               :offset-assert 128)
-   (linger-callback  basic               :offset-assert 132)
+   (callback         (function part-tracker vector)               :offset-assert 128)
+   (linger-callback  (function part-tracker vector)               :offset-assert 132)
    (duration         uint64              :offset-assert 136)
    (linger-duration  uint64              :offset-assert 144)
    (start-time       uint64              :offset-assert 152)
@@ -17789,7 +17813,7 @@
 (define-extern load-state-want-force-vis (function symbol symbol int))
 (define-extern command-get-param (function object symbol symbol))
 (define-extern entity-birth-no-kill (function entity none))
-(define-extern part-tracker-init (function sparticle-launch-group int basic basic basic vector none)) ;; TODO - not confirmed
+(define-extern part-tracker-init (function sparticle-launch-group int function int basic collide-prim-core none)) ;; TODO - not confirmed
 (define-extern command-list-get-process (function object process))
 (define-extern command-get-quoted-param (function object symbol symbol))
 (define-extern command-get-int (function object int int))
@@ -20510,7 +20534,7 @@
     (jump () _type_ :state 25)
     (notice-blue (handle) _type_ :state 26) ;; state
     (get-pickup-sound (_type_ pickup-type) ambient-sound 27)
-    (dummy-28 (_type_ basic pickup-type float) none 28)
+    (dummy-28 (_type_ res-lump pickup-type float) object 28)
     (update-sound! (_type_) none 29) ;; something to do with particles too
     (blocked () _type_ :state 30)
     )
@@ -20595,9 +20619,10 @@
   )
 
 (deftype ecovalve (process-drawable)
-  ((offset        vector :inline :offset-assert 176)
+  ((root-override collide-shape-moving :score 100 :offset 112)
+   (offset        vector :inline :offset-assert 176)
    (offset-target vector :inline :offset-assert 192)
-   (block-func function :offset-assert 208))
+   (block-func (function ecovalve symbol) :offset-assert 208))
   :heap-base #x70
   :method-count-assert 20
   :size-assert         #xd4
@@ -20605,16 +20630,17 @@
   )
 
 (deftype vent (process-drawable)
-  ((show-particles      symbol  :offset-assert 176)
+  ((root-override collide-shape :score 100 :offset 112)
+   (show-particles      symbol  :offset-assert 176)
    (collect-effect      sparticle-launch-group  :offset-assert 180)
    (collect-effect2     sparticle-launch-group  :offset-assert 184)
    (collect-effect-time uint64 :offset-assert 192)
    (blocker             entity-actor  :offset-assert 200)
-   (block-func          function  :offset-assert 204)
+   (block-func          (function vent symbol)  :offset-assert 204)
    (pickup-handle       handle :offset-assert 208)) ;; not sure handle
 
   (:methods
-    (dummy-20 () none 20)
+    (dummy-20 (_type_ res-lump pickup-type) none 20)
     )
 
   :heap-base #x70
@@ -20657,32 +20683,32 @@
 
 ;; - Functions
 
-(define-extern vent-standard-event-handler function)
-(define-extern ecovalve-init-by-other function)
-(define-extern birth-pickup-at-point (function vector int float symbol process-drawable symbol (pointer process))) ;; TODO - unconfirmed - see beach-rocks
+(define-extern vent-standard-event-handler (function process int symbol event-message-block object :behavior vent))
+(define-extern ecovalve-init-by-other (function (function vent symbol) none :behavior ecovalve))
+(define-extern birth-pickup-at-point (function vector int float symbol process-drawable fact-info (pointer process))) ;; TODO - unconfirmed - see beach-rocks
 (define-extern fuel-cell-pick-anim (function process-taskable spool-anim))
 (define-extern othercam-init-by-other (function process-taskable symbol symbol symbol none :behavior othercam))
 (define-extern fuel-cell-animate (function none :behavior fuel-cell))
 (define-extern add-blue-motion (function symbol symbol symbol symbol symbol :behavior eco-blue))
 (define-extern check-blue-suck (function eco-blue uint :behavior eco-blue))
-(define-extern initialize-eco-by-other (function eco vector none :behavior eco))
+(define-extern initialize-eco-by-other (function vector vector fact-info none :behavior eco))
 (define-extern add-blue-shake (function vector vector vector vector))
-(define-extern money-init-by-other function)
-(define-extern money-init-by-other-no-bob function)
-(define-extern fuel-cell-init-by-other function)
-(define-extern fuel-cell-init-as-clone (function handle object none)) ;; TODO - unconfirmed - see beach-rocks
-(define-extern buzzer-init-by-other function)
+(define-extern money-init-by-other (function vector vector fact-info entity none :behavior money))
+(define-extern money-init-by-other-no-bob (function vector vector fact-info float entity none :behavior money))
+(define-extern fuel-cell-init-by-other (function vector vector fact-info entity none :behavior fuel-cell))
+(define-extern fuel-cell-init-as-clone (function handle int none :behavior fuel-cell))
+(define-extern buzzer-init-by-other (function vector vector fact-info entity none :behavior buzzer))
 
 ;; - Symbols
 
 (define-extern vent-wait-for-touch (state vent)) ;; unknown type
-(define-extern vent-pickup (state vent)) ;; unknown type
+(define-extern vent-pickup (state handle vent)) ;; unknown type
 (define-extern vent-blocked (state vent)) ;; unknown type
 (define-extern *ecovalve-sg* skeleton-group) ;; unknown type
 (define-extern ecovalve-idle (state ecovalve)) ;; unknown type
 (define-extern *eco-pill-count* int) ;; unknown type
 (define-extern *buzzer-sg* skeleton-group) ;; unknown type
-(define-extern fuel-cell-clone-anim (state fuel-cell)) ;; unknown type
+(define-extern fuel-cell-clone-anim (state handle fuel-cell)) ;; unknown type
 (define-extern *fuel-cell-tune-pos* vector) ;; unknown type
 (define-extern *fuel-cell-sg* skeleton-group) ;; unknown type
 (define-extern *money-sg* skeleton-group) ;; unknown type
