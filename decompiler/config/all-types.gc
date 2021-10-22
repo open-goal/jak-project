@@ -9419,6 +9419,7 @@
     )
   )
 
+(declare-type process-drawable basic)
 (declare-type effect-control basic)
 (deftype joint-control (basic)
   ((status                  uint16           :offset-assert 4)
@@ -9427,8 +9428,8 @@
    (blend-index             int32            :offset-assert 20)
    (active-channels         int32            :offset-assert 24)
    (generate-frame-function basic            :offset-assert 28)
-   (prebind-function        basic            :offset-assert 32)
-   (postbind-function       function         :offset-assert 36)
+   (prebind-function        (function process-drawable none)            :offset-assert 32)
+   (postbind-function       (function process-drawable none) :offset-assert 36)
    (effect                  effect-control   :offset-assert 40)
    (channel                 joint-control-channel 3 :inline :offset-assert 48) ;; actually dynamic?
    (frame-group0            art-joint-anim   :offset 60)
@@ -23958,12 +23959,13 @@
 ;; - Types
 
 (deftype lurkerworm (process-drawable)
-  ((twister      basic  :offset-assert 176)
+  ((root-override collide-shape-moving :score 100 :offset 112)
+   (twister      twister  :offset-assert 176)
    (head-tilt    float  :offset-assert 180)
    (strike-count int32  :offset-assert 184)
    (angle        float  :offset-assert 188)
-   (vulnerable   basic  :offset-assert 192)
-   (part2        basic  :offset-assert 196)
+   (vulnerable   symbol  :offset-assert 192)
+   (part2        sparticle-launch-control  :offset-assert 196)
    )
   :method-count-assert 22
   :heap-base           #x60
@@ -23971,28 +23973,29 @@
   :flag-assert         #x16006000c8
   ;; inherited inspect of process-drawable
   (:methods
-    (dummy-20 () none 20)
-    (dummy-21 () none 21)
+    (TODO-RENAME-20 (_type_) none 20)
+    (particle-effect (_type_) none 21)
     )
+  (:states
+    lurkerworm-idle
+    lurkerworm-rest
+    lurkerworm-strike
+    lurkerworm-sink
+    lurkerworm-rise
+    lurkerworm-spot
+    lurkerworm-die)
   )
 
 ;; - Functions
 
-(define-extern lurkerworm-prebind-function function)
-(define-extern lurkerworm-joint-callback function)
-(define-extern lurkerworm-default-event-handler function)
-(define-extern lurkerworm-default-post-behavior function)
+(define-extern lurkerworm-prebind-function (function process int lurkerworm none :behavior lurkerworm))
+(define-extern lurkerworm-joint-callback (function lurkerworm none))
+(define-extern lurkerworm-default-event-handler (function process int symbol event-message-block object :behavior lurkerworm))
+(define-extern lurkerworm-default-post-behavior (function none :behavior lurkerworm))
 
 ;; - Unknowns
 
 (define-extern *lurkerworm-sg* skeleton-group)
-;;(define-extern lurkerworm-idle object) ;; unknown type
-;;(define-extern lurkerworm-rest object) ;; unknown type
-;;(define-extern lurkerworm-strike object) ;; unknown type
-;;(define-extern lurkerworm-sink object) ;; unknown type
-;;(define-extern lurkerworm-rise object) ;; unknown type
-;;(define-extern lurkerworm-spot object) ;; unknown type
-;;(define-extern lurkerworm-die object) ;; unknown type
 
 
 ;; ----------------------
