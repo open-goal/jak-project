@@ -453,7 +453,10 @@
    )
   )
 
-(defmethod dummy-51 green-eco-lurker ((obj green-eco-lurker) (arg0 vector))
+(defmethod
+  dummy-51
+  green-eco-lurker
+  ((obj green-eco-lurker) (arg0 vector) (arg1 vector))
   (when
    (or
     (not *target*)
@@ -477,9 +480,15 @@
           (s3-0 s4-0)
           )
      (while (> s3-0 0)
-      (eval-path-curve-div! (-> obj path) arg0 (the float s2-0) 'interp)
-      (if (dummy-51 obj arg0)
-       (return #t)
+      (let* ((a0-2 (-> obj path))
+             (t9-1 (method-of-object a0-2 eval-path-curve-div!))
+             (a1-1 arg0)
+             (a2-0 (the float s2-0))
+             )
+       (t9-1 a0-2 a1-1 a2-0 'interp)
+       (if (dummy-51 obj arg0 (the-as vector a2-0))
+        (return #t)
+        )
        )
       (set! s2-0 (mod (+ s2-0 1) s4-0))
       (+! s3-0 -1)
@@ -535,7 +544,10 @@
    )
   )
 
-(defmethod dummy-53 green-eco-lurker ((obj green-eco-lurker))
+(defmethod
+  dummy-53
+  green-eco-lurker
+  ((obj green-eco-lurker) (arg0 vector) (arg1 vector))
   (the-as symbol (cond
                   ((and
                     (-> obj draw shadow)
@@ -639,15 +651,19 @@
    )
   :trans
   (behavior ()
-   (let
+   (let*
     ((f30-0
       (fmin
        (the float (- (-> *display* base-frame-counter) (-> self state-time)))
        (-> self traj time)
        )
       )
+     (a0-1 (-> self traj))
+     (t9-0 (method-of-type trajectory eval-position!))
+     (a1-0 (the-as number f30-0))
+     (a2-0 (the-as object (-> self collide-info trans)))
      )
-    (eval-position! (-> self traj) f30-0 (-> self collide-info trans))
+    (t9-0 a0-1 (the-as float a1-0) (the-as vector a2-0))
     (when (= f30-0 (-> self traj time))
      (logior! (-> self collide-info nav-flags) 1)
      (set!
@@ -656,27 +672,37 @@
       )
      (go green-eco-lurker-appear-land)
      )
-    )
-   (when
-    (and
-     (not (-> self played-sound?))
-     (>=
-      (- (-> *display* base-frame-counter) (-> self state-time))
-      (-> self sound-delay)
+    (when
+     (and
+      (not (-> self played-sound?))
+      (>=
+       (- (-> *display* base-frame-counter) (-> self state-time))
+       (-> self sound-delay)
+       )
+      )
+     (set! (-> self played-sound?) #t)
+     (let ((gp-0 sound-play-by-name)
+           (s5-0 (make-u128 112 (the-as uint #x6d756a2d626f6c62)))
+           )
+      (let ((s4-0 (new-sound-id))
+            (s3-0 1024)
+            )
+       (set! a1-0 s4-0)
+       (set! a2-0 s3-0)
+       )
+      (gp-0
+       (the-as sound-name s5-0)
+       (the-as sound-id a1-0)
+       (the-as int a2-0)
+       (the int (* 1524.0 (nav-enemy-rnd-float-range -0.5 0.5)))
+       0
+       (the-as uint 1)
+       (the-as vector #t)
+       )
       )
      )
-    (set! (-> self played-sound?) #t)
-    (sound-play-by-name
-     (static-sound-name "blob-jump")
-     (new-sound-id)
-     1024
-     (the int (* 1524.0 (nav-enemy-rnd-float-range -0.5 0.5)))
-     0
-     (the-as uint 1)
-     (the-as vector #t)
-     )
+    (dummy-53 self (the-as vector a1-0) (the-as vector a2-0))
     )
-   (dummy-53 self)
    0
    (none)
    )

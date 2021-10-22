@@ -143,48 +143,36 @@
   )
 
 ;; definition for function battlecontroller-default-event-handler
-;; INFO: Return type mismatch none vs object.
-;; WARN: rewrite_to_get_var got a none typed variable. Is there unreachable code?
-;; WARN: rewrite_to_get_var got a none typed variable. Is there unreachable code?
 ;; Used lq/sq
 (defbehavior
   battlecontroller-default-event-handler battlecontroller
   ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
-  (let ((v1-0 arg2))
-   (the-as object (cond
-                   ((= v1-0 'child-die)
-                    (+! (-> self die-count) 1)
-                    (when (= (-> self die-count) (-> self max-spawn-count))
-                     (let ((v1-4 (the-as process-drawable arg0)))
-                      (when v1-4
-                       (set!
-                        (-> self final-pickup-spawn-point quad)
-                        (-> v1-4 root trans quad)
-                        )
-                       (case (-> self final-pickup-type) 
-                        (((pickup-type fuel-cell))
-                          #f
-                          )
-                        (else
-                         (set!
-                          (-> v1-4 fact pickup-type)
-                          (-> self final-pickup-type)
-                          )
-                         (set! (-> v1-4 fact pickup-amount) 1.0)
-                         (let ((f0-1 0.0))
-                          (set! (-> v1-4 fact pickup-spawn-amount) f0-1)
-                          f0-1
-                          )
-                         )
-                        )
-                       )
-                      )
-                     )
-                    )
-                   ((= v1-0 'trigger)
-                    (go-virtual battlecontroller-die)
-                    )
-                   )
+  (case arg2 
+   (('child-die)
+     (+! (-> self die-count) 1)
+     (when (= (-> self die-count) (-> self max-spawn-count))
+      (let ((v1-4 (the-as process-drawable arg0)))
+       (when v1-4
+        (set! (-> self final-pickup-spawn-point quad) (-> v1-4 root trans quad))
+        (case (-> self final-pickup-type) 
+         (((pickup-type fuel-cell))
+           #f
+           )
+         (else
+          (set! (-> v1-4 fact pickup-type) (-> self final-pickup-type))
+          (set! (-> v1-4 fact pickup-amount) 1.0)
+          (let ((f0-1 0.0))
+           (set! (-> v1-4 fact pickup-spawn-amount) f0-1)
+           f0-1
+           )
+          )
+         )
+        )
+       )
+      )
+     )
+   (('trigger)
+    (go-virtual battlecontroller-die)
     )
    )
   )

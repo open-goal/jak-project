@@ -1447,6 +1447,7 @@
   )
 
 ;; definition for function fisher-fish-init-by-other
+;; INFO: Return type mismatch object vs none.
 (defbehavior
   fisher-fish-init-by-other fisher-fish
   ((arg0 symbol) (arg1 float) (arg2 float))
@@ -2255,44 +2256,35 @@
 (defstate fisher-playing (fisher)
   :event
   (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
-   (local-vars (v0-2 none))
-   (let ((v1-0 arg2))
-    (the-as object (cond
-                    ((= v1-0 'fisher-fish-die)
-                     (sound-play-by-name
-                      (static-sound-name "fish-miss")
-                      (new-sound-id)
-                      1024
-                      0
-                      0
-                      (the-as uint 1)
-                      (the-as vector #t)
-                      )
-                     (set!
-                      v0-2
-                      (the-as none (+ (-> self missed) (-> arg3 param 0)))
-                      )
-                     (set! (-> self missed) (the-as int v0-2))
-                     v0-2
-                     )
-                    ((= v1-0 'fisher-fish-caught)
-                     (send-event *target* 'bounce)
-                     (set!
-                      v0-2
-                      (the-as none (+ (-> self caught) (-> arg3 param 0)))
-                      )
-                     (set! (-> self caught) (the-as int v0-2))
-                     v0-2
-                     )
-                    ((= v1-0 'deadly)
-                     (go fisher-done)
-                     )
-                    ((= v1-0 'bad)
-                     (set! v0-2 (the-as none (seekl (-> self caught) 0 10)))
-                     (set! (-> self caught) (the-as int v0-2))
-                     v0-2
-                     )
-                    )
+   (local-vars (v0-2 object))
+   (case arg2 
+    (('fisher-fish-die)
+      (sound-play-by-name
+       (static-sound-name "fish-miss")
+       (new-sound-id)
+       1024
+       0
+       0
+       (the-as uint 1)
+       (the-as vector #t)
+       )
+      (set! v0-2 (+ (-> self missed) (-> arg3 param 0)))
+      (set! (-> self missed) (the-as int v0-2))
+      v0-2
+      )
+    (('fisher-fish-caught)
+     (send-event *target* 'bounce)
+     (set! v0-2 (+ (-> self caught) (-> arg3 param 0)))
+     (set! (-> self caught) (the-as int v0-2))
+     v0-2
+     )
+    (('deadly)
+     (go fisher-done)
+     )
+    (('bad)
+     (set! v0-2 (seekl (-> self caught) 0 10))
+     (set! (-> self caught) (the-as int v0-2))
+     v0-2
      )
     )
    )
