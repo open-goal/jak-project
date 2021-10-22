@@ -6,6 +6,7 @@
  */
 
 #include <string>
+#include <map>
 #include "common/util/assert.h"
 #include <unordered_map>
 #include "common/goal_constants.h"
@@ -25,15 +26,6 @@ struct MethodInfo {
   bool operator!=(const MethodInfo& other) const { return !((*this) == other); }
   std::string print_one_line() const;
   std::string diff(const MethodInfo& other) const;
-};
-
-struct StateInfo {
-  std::string name;
-  TypeSpec type;
-
-  bool operator==(const StateInfo& other) const;
-  bool operator!=(const StateInfo& other) const { return !((*this) == other); }
-  std::string diff(const StateInfo& other) const;
 };
 
 /*!
@@ -89,14 +81,14 @@ class Type {
   const MethodInfo& add_method(const MethodInfo& info);
   const MethodInfo& add_new_method(const MethodInfo& info);
   std::string print_method_info() const;
-  const StateInfo& add_state(const StateInfo& info);
+  void add_state(const std::string& name, const TypeSpec& type);
 
   void disallow_in_runtime() { m_allow_in_runtime = false; }
 
   virtual ~Type() = default;
 
   const std::vector<MethodInfo>& get_methods_defined_for_type() const { return m_methods; }
-  const std::vector<StateInfo>& get_states_declared_for_type() const { return m_states; }
+  const std::map<std::string, TypeSpec>& get_states_declared_for_type() const { return m_states; }
 
   const MethodInfo* get_new_method_defined_for_type() const {
     if (m_new_method_info_defined) {
@@ -116,7 +108,7 @@ class Type {
   std::string incompatible_diff(const Type& other) const;
 
   std::vector<MethodInfo> m_methods;
-  std::vector<StateInfo> m_states;
+  std::map<std::string, TypeSpec> m_states;
   MethodInfo m_new_method_info;
   bool m_new_method_info_defined = false;
 

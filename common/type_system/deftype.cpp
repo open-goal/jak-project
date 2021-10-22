@@ -258,7 +258,7 @@ void declare_state(Type* type, TypeSystem* type_system, const goos::Object& def)
       });
       state_typespec.add_arg(TypeSpec(type->get_name()));
 
-      type->add_state({state_name, state_typespec});
+      type->add_state(state_name, state_typespec);
     } else {
       // name
       auto state_name = symbol_string(*obj);
@@ -266,7 +266,7 @@ void declare_state(Type* type, TypeSystem* type_system, const goos::Object& def)
       TypeSpec state_typespec("state");
       state_typespec.add_arg(TypeSpec(type->get_name()));
 
-      type->add_state({state_name, state_typespec});
+      type->add_state(state_name, state_typespec);
     }
   });
 }
