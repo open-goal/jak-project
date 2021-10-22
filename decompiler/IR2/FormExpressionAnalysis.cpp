@@ -3223,6 +3223,10 @@ Form* try_rewrite_as_process_to_ppointer(CondNoElseElement* value,
   auto repopped = stack.pop_reg(condition_var, {}, env, true);
   if (!repopped) {
     repopped = var_to_form(condition_var, pool);
+  } else {
+    if (!env.dts->ts.tc(TypeSpec("process"), env.get_variable_type(condition_var, true))) {
+      repopped = pool.form<CastElement>(TypeSpec("process"), repopped);
+    }
   }
 
   return pool.alloc_single_element_form<GenericElement>(

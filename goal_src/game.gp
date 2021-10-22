@@ -214,6 +214,7 @@
        "out/iso/VI3.DGO"
        "out/iso/TRA.DGO"
        "out/iso/FIN.DGO"
+       "out/iso/FIC.DGO"
        )
 
 ;;;;;;;;;;;;;;;;;;;;;;;;
@@ -225,6 +226,9 @@
 (copy-gos
  "warpgate-ag"
  "sharkey-ag-BEA-TRA-VI2"
+ "eichar-racer+0-ag"
+
+ "babak-ag"
   )
 
 
@@ -239,6 +243,15 @@
 
    "village_common/villagep-obs.gc"
    "village_common/oracle.gc"
+
+   "common/blocking-plane.gc"
+
+   "racer_common/target-racer-h-FIC-LAV-MIS-OGR-ROL.gc"
+   "racer_common/racer-part.gc"
+   "racer_common/racer.gc"
+   "racer_common/target-racer-FIC-LAV-MIS-OGR-ROL.gc"
+   "racer_common/racer-states-FIC-LAV-MIS-OGR-ROL.gc"
+   "racer_common/collide-reaction-racer.gc"
 
    )
 
@@ -313,6 +326,39 @@
  "yakow-ag"
  "village1-vis"
  )
+
+;;;;;;;;;;;;;;;;;;;;;
+;; Fire Canyon
+;;;;;;;;;;;;;;;;;;;;;
+
+(cgo "FIC.DGO"
+     "fic.gd"
+     )
+
+(copy-textures 1119) ;; might be common/zoomer hud??
+
+(goal-src-sequence
+ "levels/firecanyon/"
+ :deps ;; no idea what these depend on, make it depend on the whole engine
+ ("out/obj/default-menu.o")
+
+ "firecanyon-part.gc"
+ "assistant-firecanyon.gc"
+ "firecanyon-obs.gc"
+
+ )
+
+(copy-textures 815 822 854 1123)
+
+(copy-gos
+  "assistant-firecanyon-ag"
+  "balloon-ag"
+  "crate-darkeco-cluster-ag-FIC"
+  "ecovalve-ag-FIC-OGR"
+  "ef-plane-ag-FIC-LAV-OGR-ROL-SNO-SWA"
+  "racer-ag-FIC-ROL"
+  "spike-ag"
+  "firecanyon-vis")
 
 ;;;;;;;;;;;;;;;;;;;;;
 ;; Training

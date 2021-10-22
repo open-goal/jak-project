@@ -1694,15 +1694,15 @@ std::string TypeSystem::generate_deftype_footer(const Type* type) const {
 
   std::string states_string;
   for (auto& info : type->get_states_declared_for_type()) {
-    if (info.type.arg_count() > 1) {
-      states_string.append(fmt::format("    ({}", info.name));
-      for (size_t i = 0; i < info.type.arg_count() - 1; i++) {
+    if (info.second.arg_count() > 1) {
+      states_string.append(fmt::format("    ({}", info.first));
+      for (size_t i = 0; i < info.second.arg_count() - 1; i++) {
         states_string.push_back(' ');
-        states_string.append(info.type.get_arg(i).print());
+        states_string.append(info.second.get_arg(i).print());
       }
       states_string.append(")\n");
     } else {
-      states_string.append(fmt::format("    {}\n", info.name));
+      states_string.append(fmt::format("    {}\n", info.first));
     }
   }
 
