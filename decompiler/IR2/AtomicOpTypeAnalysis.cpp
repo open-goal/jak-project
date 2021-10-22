@@ -1051,7 +1051,7 @@ TP_Type LoadVarOp::get_src_type(const TypeState& input,
             rd.tokens.front().kind == FieldReverseLookupOutput::Token::Kind::FIELD &&
             rd.tokens.front().name == "enter" && rd_in.base_type.arg_count() > 0) {
           // special case for accessing the enter field of state
-          return TP_Type::make_from_ts(state_to_go_function(rd_in.base_type));
+          return TP_Type::make_from_ts(state_to_go_function(rd_in.base_type, TypeSpec("none")));
         } else {
           return TP_Type::make_from_ts(coerce_to_reg_type(rd.result_type));
         }
@@ -1219,7 +1219,7 @@ TypeState CallOp::propagate_types_internal(const TypeState& input,
           "state.  The decompiler must know the specific state type.",
           m_my_idx));
     }
-    in_type = state_to_go_function(state_type);
+    in_type = state_to_go_function(state_type, TypeSpec("object"));
   }
 
   if (in_tp.kind == TP_Type::Kind::RUN_FUNCTION_IN_PROCESS_FUNCTION ||
@@ -1385,10 +1385,11 @@ TypeState StackSpillLoadOp::propagate_types_internal(const TypeState& input,
                                                      const Env& env,
                                                      DecompilerTypeSystem&) {
   // stack slot load
-  auto info = env.stack_spills().lookup(m_offset);
+  auto& info = env.stack_spills().lookup(m_offset);
   if (info.size != m_size) {
-    env.func->warnings.general_warning("Stack slot load mismatch: defined as size {}, got size {}",
-                                       info.size, m_size);
+    env.func->warnings.general_warning(
+        "Stack slot load at {} mismatch: defined as size {}, got size {}", m_offset, info.size,
+        m_size);
   }
 
   if (info.is_signed != m_is_signed) {
@@ -1404,7 +1405,7 @@ TypeState StackSpillLoadOp::propagate_types_internal(const TypeState& input,
 TypeState StackSpillStoreOp::propagate_types_internal(const TypeState& input,
                                                       const Env& env,
                                                       DecompilerTypeSystem& dts) {
-  auto info = env.stack_spills().lookup(m_offset);
+  auto& info = env.stack_spills().lookup(m_offset);
   if (info.size != m_size) {
     env.func->warnings.general_warning(
         "Stack slot store mismatch: defined as size {}, got size {}\n", info.size, m_size);

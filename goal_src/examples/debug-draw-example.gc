@@ -34,7 +34,11 @@
   (matrix-transpose! (-> *math-camera* camera-rot) (-> *math-camera* inv-camera-rot))
   
   ;; fake some value here
-  (set! (-> *math-camera* fov-correction-factor) 1.0)
+  ;;(set! (-> *math-camera* fov-correction-factor) 1000.0)
+  (set! (-> *math-camera* fov) (degrees 64.0))
+    (let ((f0-28 (fmin 11650.845 (-> *math-camera* fov))))
+     (set! (-> *math-camera* fov-correction-factor) (* 0.00008583069 f0-28))
+     )
   
   ;; do the math
   (set! (-> *math-camera* trans quad) (-> location quad))
@@ -139,10 +143,10 @@
     (set! (-> local-trans z)
           (cond
             ((logtest? (-> *cpad-list* cpads pad-idx button0-abs 0) (pad-buttons down))
-             -800.0
+             -1600.0
              )
             ((logtest? (-> *cpad-list* cpads pad-idx button0-abs 0) (pad-buttons up))
-             800.0
+             1600.0
              )
             (else
               0.0
@@ -171,10 +175,10 @@
     
     ;; global translation
     (if (logtest? (-> *cpad-list* cpads pad-idx button0-abs 0) (pad-buttons l1))
-        (set! (-> trans trans y) (+ 800.0 (-> trans trans y)))
+        (set! (-> trans trans y) (+ 2000.0 (-> trans trans y)))
         )
     (if (logtest? (-> *cpad-list* cpads pad-idx button0-abs 0) (pad-buttons r1))
-        (set! (-> trans trans y) (+ -800.0 (-> trans trans y)))
+        (set! (-> trans trans y) (+ -2000.0 (-> trans trans y)))
         )
     
     ;; rotation (don't allow camera roll)
@@ -185,10 +189,10 @@
         (set! (-> trans rot x) (+ -54.13336 (-> trans rot x)))
         )
     (if (logtest? (-> *cpad-list* cpads pad-idx button0-abs 0) (pad-buttons left))
-        (set! (-> trans rot y) (+ 546.13336 (-> trans rot y)))
+        (set! (-> trans rot y) (+ 150.13336 (-> trans rot y)))
         )
     (if (logtest? (-> *cpad-list* cpads pad-idx button0-abs 0) (pad-buttons right))
-        (set! (-> trans rot y) (+ -546.13336 (-> trans rot y)))
+        (set! (-> trans rot y) (+ -150.13336 (-> trans rot y)))
         )
     
     (set! (-> trans scale x) 1.)

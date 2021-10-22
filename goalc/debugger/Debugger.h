@@ -165,6 +165,7 @@ class Debugger {
   void stop_watcher();
   void watcher();
   void update_continue_info();
+  void handle_disappearance();
 
   struct Breakpoint {
     u32 goal_addr = 0;  // address to break at

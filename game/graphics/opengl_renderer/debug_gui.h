@@ -39,19 +39,32 @@ class OpenGlDebugGui {
   void finish_frame();
   void draw(const DmaStats& dma_stats);
   bool should_draw_render_debug() const { return m_draw_debug; }
+  bool should_draw_profiler() const { return m_draw_profiler; }
   bool& want_save() { return m_want_save; }
   bool& want_dump_replay() { return m_want_replay; }
   bool& want_dump_load() { return m_want_dump_load; }
   const char* dump_name() const { return m_dump_save_name; }
+  const char* screenshot_name() const { return m_screenshot_save_name; }
 
   bool should_advance_frame() { return m_frame_timer.should_advance_frame(); }
+
+  bool get_screenshot_flag() {
+    if (m_want_screenshot) {
+      m_want_screenshot = false;
+      return true;
+    }
+    return false;
+  }
 
  private:
   FrameTimeRecorder m_frame_timer;
   bool m_draw_frame_time = false;
+  bool m_draw_profiler = false;
   bool m_draw_debug = false;
   bool m_want_save = false;
   bool m_want_replay = false;
   bool m_want_dump_load = false;
+  bool m_want_screenshot = false;
   char m_dump_save_name[256] = "dump.bin";
+  char m_screenshot_save_name[256] = "screenshot.png";
 };

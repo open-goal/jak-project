@@ -1452,6 +1452,7 @@ class StackStructureDefElement : public FormElement {
                          std::vector<FormElement*>* result,
                          bool allow_side_effects) override;
   const TypeSpec& type() const { return m_entry.ref_type; }
+  const StackStructureEntry& entry() const { return m_entry; }
 
  private:
   StackStructureEntry m_entry;

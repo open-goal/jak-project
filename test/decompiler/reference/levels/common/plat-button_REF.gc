@@ -92,29 +92,28 @@
   :virtual #t
   :event
   (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
-   (let ((v1-0 arg2))
-    (the-as object (when (= v1-0 'touch)
-                    (when (can-activate? self)
-                     (if
-                      (and
-                       ((method-of-type touching-shapes-entry prims-touching?)
-                        (the-as touching-shapes-entry (-> arg3 param 0))
-                        (-> self root-override)
-                        (the-as uint 1)
-                        )
-                       (or
-                        (not (-> self should-grab-player?))
-                        (let ((v0-3 (process-grab? *target*)))
-                         (set! (-> self grab-player?) v0-3)
-                         v0-3
-                         )
-                        )
-                       )
-                      (go-virtual plat-button-pressed)
-                      )
-                     )
-                    )
-     )
+   (case arg2 
+    (('touch)
+      (when (can-activate? self)
+       (if
+        (and
+         ((method-of-type touching-shapes-entry prims-touching?)
+          (the-as touching-shapes-entry (-> arg3 param 0))
+          (-> self root-override)
+          (the-as uint 1)
+          )
+         (or
+          (not (-> self should-grab-player?))
+          (let ((v0-3 (process-grab? *target*)))
+           (set! (-> self grab-player?) v0-3)
+           v0-3
+           )
+          )
+         )
+        (go-virtual plat-button-pressed)
+        )
+       )
+      )
     )
    )
   :code
@@ -293,14 +292,8 @@
 ;; INFO: Return type mismatch int vs none.
 (defbehavior plat-button-camera-on plat-button ()
   (let ((v1-1 (res-lump-struct (-> self entity) 'camera-name structure)))
-   (when v1-1
-    (let ((a1-1 (new 'stack-no-clear 'event-message-block)))
-     (set! (-> a1-1 from) self)
-     (set! (-> a1-1 num-params) 1)
-     (set! (-> a1-1 message) 'change-to-entity-by-name)
-     (set! (-> a1-1 param 0) (the-as uint v1-1))
-     (send-event-function *camera* a1-1)
-     )
+   (if v1-1
+    (send-event *camera* 'change-to-entity-by-name v1-1)
     )
    )
   0
@@ -310,12 +303,7 @@
 ;; definition for function plat-button-camera-off
 ;; INFO: Return type mismatch int vs none.
 (defbehavior plat-button-camera-off plat-button ()
-  (let ((a1-0 (new 'stack-no-clear 'event-message-block)))
-   (set! (-> a1-0 from) self)
-   (set! (-> a1-0 num-params) 0)
-   (set! (-> a1-0 message) 'clear-entity)
-   (send-event-function *camera* a1-0)
-   )
+  (send-event *camera* 'clear-entity)
   0
   (none)
   )
@@ -360,10 +348,7 @@
      (or
       (not *target*)
       (and
-       (>=
-        (- (-> *display* base-frame-counter) (the-as int (-> self state-time)))
-        1200
-        )
+       (>= (- (-> *display* base-frame-counter) (-> self state-time)) 1200)
        (not
         (and
          (logtest? (-> *target* control unknown-surface00 flags) 2048)
@@ -476,10 +461,7 @@
      (or
       (not *target*)
       (and
-       (>=
-        (- (-> *display* base-frame-counter) (the-as int (-> self state-time)))
-        1200
-        )
+       (>= (- (-> *display* base-frame-counter) (-> self state-time)) 1200)
        (not
         (and
          (logtest? (-> *target* control unknown-surface00 flags) 2048)

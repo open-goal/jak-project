@@ -46,11 +46,6 @@
 
 namespace goos {
 
-std::shared_ptr<EmptyListObject> gEmptyList = std::make_shared<EmptyListObject>();
-std::shared_ptr<EmptyListObject>& get_empty_list() {
-  return gEmptyList;
-}
-
 /*!
  * Convert type to string (name in brackets)
  */
@@ -151,13 +146,13 @@ Object SymbolObject::make_new(SymbolTable& st, const std::string& name) {
  */
 Object build_list(const std::vector<Object>& objects) {
   if (objects.empty()) {
-    return EmptyListObject::make_new();
+    return Object::make_empty_list();
   }
 
   // this is by far the most expensive part of parsing, so this is done a bit carefully.
   // we maintain a std::shared_ptr<PairObject> that represents the list, built from back to front.
   std::shared_ptr<PairObject> head =
-      std::make_shared<PairObject>(objects.back(), EmptyListObject::make_new());
+      std::make_shared<PairObject>(objects.back(), Object::make_empty_list());
 
   s64 idx = ((s64)objects.size()) - 2;
   while (idx >= 0) {
@@ -180,13 +175,13 @@ Object build_list(const std::vector<Object>& objects) {
 
 Object build_list(std::vector<Object>&& objects) {
   if (objects.empty()) {
-    return EmptyListObject::make_new();
+    return Object::make_empty_list();
   }
 
   // this is by far the most expensive part of parsing, so this is done a bit carefully.
   // we maintain a std::shared_ptr<PairObject> that represents the list, built from back to front.
   std::shared_ptr<PairObject> head =
-      std::make_shared<PairObject>(objects.back(), EmptyListObject::make_new());
+      std::make_shared<PairObject>(objects.back(), Object::make_empty_list());
 
   s64 idx = ((s64)objects.size()) - 2;
   while (idx >= 0) {

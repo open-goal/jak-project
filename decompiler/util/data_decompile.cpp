@@ -10,6 +10,7 @@
 #include "decompiler/IR2/Form.h"
 #include "decompiler/analysis/final_output.h"
 #include "decompiler/util/sparticle_decompile.h"
+#include "common/util/assert.h"
 
 namespace decompiler {
 
@@ -273,6 +274,7 @@ goos::Object decompile_value_array(const TypeSpec& elt_type,
       }
       elt_bytes.push_back(word.get_byte(j % 4));
     }
+    assert(elt_type != TypeSpec("uint128"));
     array_def.push_back(decompile_value(elt_type, elt_bytes, ts));
   }
 
@@ -326,15 +328,11 @@ goos::Object decomp_ref_to_inline_array_guess_size(
     int my_seg,
     int field_location,
     const TypeSystem& ts,
-    const Field& data_field,
     const std::vector<std::vector<LinkedWord>>& all_words,
     const LinkedObjectFile* file,
     const TypeSpec& array_elt_type,
     int stride) {
   // fmt::print("Decomp decomp_ref_to_inline_array_guess_size {}\n", array_elt_type.print());
-
-  // verify that the field is the right type.
-  assert(data_field.type() == TypeSpec("inline-array", {array_elt_type}));
 
   // verify the stride matches the type system
   auto elt_type_info = ts.lookup_type(array_elt_type);
@@ -424,12 +422,10 @@ goos::Object ocean_near_indices_decompile(const std::vector<LinkedWord>& words,
                                           int my_seg,
                                           int field_location,
                                           const TypeSystem& ts,
-                                          const Field& data_field,
                                           const std::vector<std::vector<LinkedWord>>& all_words,
                                           const LinkedObjectFile* file) {
-  return decomp_ref_to_inline_array_guess_size(words, labels, my_seg, field_location, ts,
-                                               data_field, all_words, file,
-                                               TypeSpec("ocean-near-index"), 32);
+  return decomp_ref_to_inline_array_guess_size(words, labels, my_seg, field_location, ts, all_words,
+                                               file, TypeSpec("ocean-near-index"), 32);
 }
 
 goos::Object ocean_mid_masks_decompile(const std::vector<LinkedWord>& words,
@@ -437,12 +433,10 @@ goos::Object ocean_mid_masks_decompile(const std::vector<LinkedWord>& words,
                                        int my_seg,
                                        int field_location,
                                        const TypeSystem& ts,
-                                       const Field& data_field,
                                        const std::vector<std::vector<LinkedWord>>& all_words,
                                        const LinkedObjectFile* file) {
-  return decomp_ref_to_inline_array_guess_size(words, labels, my_seg, field_location, ts,
-                                               data_field, all_words, file,
-                                               TypeSpec("ocean-mid-mask"), 8);
+  return decomp_ref_to_inline_array_guess_size(words, labels, my_seg, field_location, ts, all_words,
+                                               file, TypeSpec("ocean-mid-mask"), 8);
 }
 
 goos::Object sp_field_init_spec_decompile(const std::vector<LinkedWord>& words,
@@ -450,12 +444,10 @@ goos::Object sp_field_init_spec_decompile(const std::vector<LinkedWord>& words,
                                           int my_seg,
                                           int field_location,
                                           const TypeSystem& ts,
-                                          const Field& data_field,
                                           const std::vector<std::vector<LinkedWord>>& all_words,
                                           const LinkedObjectFile* file) {
-  return decomp_ref_to_inline_array_guess_size(words, labels, my_seg, field_location, ts,
-                                               data_field, all_words, file,
-                                               TypeSpec("sp-field-init-spec"), 16);
+  return decomp_ref_to_inline_array_guess_size(words, labels, my_seg, field_location, ts, all_words,
+                                               file, TypeSpec("sp-field-init-spec"), 16);
 }
 
 goos::Object sp_launch_grp_launcher_decompile(const std::vector<LinkedWord>& words,
@@ -463,12 +455,10 @@ goos::Object sp_launch_grp_launcher_decompile(const std::vector<LinkedWord>& wor
                                               int my_seg,
                                               int field_location,
                                               const TypeSystem& ts,
-                                              const Field& data_field,
                                               const std::vector<std::vector<LinkedWord>>& all_words,
                                               const LinkedObjectFile* file) {
-  return decomp_ref_to_inline_array_guess_size(words, labels, my_seg, field_location, ts,
-                                               data_field, all_words, file,
-                                               TypeSpec("sparticle-group-item"), 32);
+  return decomp_ref_to_inline_array_guess_size(words, labels, my_seg, field_location, ts, all_words,
+                                               file, TypeSpec("sparticle-group-item"), 32);
 }
 
 }  // namespace
@@ -519,8 +509,9 @@ goos::Object decompile_structure(const TypeSpec& type,
         // want to get the specific function/string/etc implementations.
         return decompile_at_label(actual_type, label, labels, words, ts, file);
       } else {
-        throw std::runtime_error(fmt::format("Basic has the wrong type pointer, got {} expected {}",
-                                             word.symbol_name, actual_type.base_type()));
+        throw std::runtime_error(
+            fmt::format("Basic has the wrong type pointer, got {} expected {} at label {}:{}",
+                        word.symbol_name, actual_type.base_type(), label.name, label.offset));
       }
     }
   }
@@ -657,19 +648,19 @@ goos::Object decompile_structure(const TypeSpec& type,
           // first, get the label:
           field_defs_out.emplace_back(
               field.name(), ocean_near_indices_decompile(obj_words, labels, label.target_segment,
-                                                         field_start, ts, field, words, file));
+                                                         field_start, ts, words, file));
         } else if (field.name() == "data" && type.print() == "ocean-mid-masks") {
           field_defs_out.emplace_back(
               field.name(), ocean_mid_masks_decompile(obj_words, labels, label.target_segment,
-                                                      field_start, ts, field, words, file));
+                                                      field_start, ts, words, file));
         } else if (field.name() == "init-specs" && type.print() == "sparticle-launcher") {
           field_defs_out.emplace_back(
               field.name(), sp_field_init_spec_decompile(obj_words, labels, label.target_segment,
-                                                         field_start, ts, field, words, file));
+                                                         field_start, ts, words, file));
         } else if (field.name() == "launcher" && type.print() == "sparticle-launch-group") {
           field_defs_out.emplace_back(field.name(), sp_launch_grp_launcher_decompile(
                                                         obj_words, labels, label.target_segment,
-                                                        field_start, ts, field, words, file));
+                                                        field_start, ts, words, file));
         } else {
           if (field.type().base_type() == "pointer") {
             if (obj_words.at(field_start / 4).kind != LinkedWord::SYM_PTR) {
@@ -865,6 +856,10 @@ goos::Object bitfield_defs_print(const TypeSpec& type,
     } else if (def.is_signed) {
       result.push_back(
           pretty_print::to_symbol(fmt::format(":{} {}", def.field_name, (s64)def.value)));
+    } else if (def.nested_field) {
+      result.push_back(pretty_print::to_symbol(fmt::format(
+          ":{} {}", def.field_name,
+          bitfield_defs_print(def.nested_field->field_type, def.nested_field->fields).print())));
     } else {
       result.push_back(
           pretty_print::to_symbol(fmt::format(":{} #x{:x}", def.field_name, def.value)));
@@ -897,12 +892,31 @@ goos::Object decompile_value(const TypeSpec& type,
 
   auto as_bitfield = dynamic_cast<BitFieldType*>(ts.lookup_type(type));
   if (as_bitfield) {
-    assert((int)bytes.size() == as_bitfield->get_load_size());
-    assert(bytes.size() <= 8);
-    u64 value = 0;
-    memcpy(&value, bytes.data(), bytes.size());
-    auto defs = decompile_bitfield_from_int(type, ts, value);
-    return bitfield_defs_print(type, defs);
+    if (as_bitfield->get_name() == "sound-name") {
+      assert(bytes.size() == 16);
+      char name[17];
+      memcpy(name, bytes.data(), 16);
+      name[16] = '\0';
+
+      bool got_zero = false;
+      for (int i = 0; i < 16; i++) {
+        if (name[i] == 0) {
+          got_zero = true;
+        } else {
+          if (got_zero) {
+            assert(false);
+          }
+        }
+      }
+      return pretty_print::to_symbol(fmt::format("(static-sound-name \"{}\")", name));
+    } else {
+      assert((int)bytes.size() == as_bitfield->get_load_size());
+      assert(bytes.size() <= 8);
+      u64 value = 0;
+      memcpy(&value, bytes.data(), bytes.size());
+      auto defs = decompile_bitfield_from_int(type, ts, value);
+      return bitfield_defs_print(type, defs);
+    }
   }
 
   // try as common integer types:
@@ -945,15 +959,18 @@ goos::Object decompile_value(const TypeSpec& type,
     }
   } else if (type == TypeSpec("seconds")) {
     assert(bytes.size() == 8);
-    u64 value;
+    s64 value;
     memcpy(&value, bytes.data(), 8);
 
     // only rewrite if exact.
-    u64 seconds = value / TICKS_PER_SECOND;
-    if (seconds * TICKS_PER_SECOND == value) {
-      return pretty_print::to_symbol(fmt::format("(seconds {})", seconds));
+    s64 seconds_int = value / (s64)TICKS_PER_SECOND;
+    if (seconds_int * (s64)TICKS_PER_SECOND == value) {
+      return pretty_print::to_symbol(fmt::format("(seconds {})", seconds_int));
     }
-
+    double seconds = (double)value / TICKS_PER_SECOND;
+    if (seconds * TICKS_PER_SECOND == value) {
+      return pretty_print::build_list("seconds", pretty_print::float_representation(seconds));
+    }
     return pretty_print::to_symbol(fmt::format("#x{:x}", value));
   } else if (ts.tc(TypeSpec("uint64"), type)) {
     assert(bytes.size() == 8);
@@ -1040,7 +1057,7 @@ goos::Object decompile_boxed_array(const DecompilerLabel& label,
   int array_allocated_length = size_word_2.data;
 
   auto content_type_info = ts.lookup_type(content_type);
-  if (content_type_info->is_reference()) {
+  if (content_type_info->is_reference() || content_type == TypeSpec("object")) {
     // easy, stride of 4.
     std::vector<goos::Object> result = {
         pretty_print::to_symbol("new"), pretty_print::to_symbol("'static"),
@@ -1054,15 +1071,43 @@ goos::Object decompile_boxed_array(const DecompilerLabel& label,
       if (word.kind == LinkedWord::PLAIN_DATA && word.data == 0) {
         result.push_back(pretty_print::to_symbol("0"));
       } else if (word.kind == LinkedWord::PTR) {
-        result.push_back(
-            decompile_at_label(content_type, labels.at(word.label_id), labels, words, ts, file));
+        if (content_type == TypeSpec("object")) {
+          result.push_back(
+              decompile_at_label_guess_type(labels.at(word.label_id), labels, words, ts, file));
+        } else {
+          result.push_back(
+              decompile_at_label(content_type, labels.at(word.label_id), labels, words, ts, file));
+        }
       } else if (word.kind == LinkedWord::SYM_PTR) {
         result.push_back(pretty_print::to_symbol(fmt::format("'{}", word.symbol_name)));
       } else {
-        throw std::runtime_error(
-            fmt::format("Unknown content type in boxed array of references, word idx {}",
-                        first_elt_word_idx + elt));
+        if (content_type == TypeSpec("object") && word.kind == LinkedWord::PLAIN_DATA &&
+            (word.data & 0b111) == 0) {
+          s32 val = word.data;
+          result.push_back(pretty_print::to_symbol(fmt::format("(the binteger {})", val / 8)));
+        } else {
+          throw std::runtime_error(
+              fmt::format("Unknown content type in boxed array of references, word idx {}",
+                          first_elt_word_idx + elt));
+        }
       }
+    }
+
+    return pretty_print::build_list(result);
+  } else if (content_type.base_type() == "inline-array") {
+    std::vector<goos::Object> result = {
+        pretty_print::to_symbol("new"), pretty_print::to_symbol("'static"),
+        pretty_print::to_symbol("'boxed-array"),
+        pretty_print::to_symbol(fmt::format(":type {} :length {} :allocated-length {}",
+                                            content_type.print(), array_length,
+                                            array_allocated_length))};
+
+    for (int elt = 0; elt < array_length; elt++) {
+      auto& word = words.at(label.target_segment).at(first_elt_word_idx + elt);
+      auto segment = labels.at(word.label_id).target_segment;
+      result.push_back(decomp_ref_to_inline_array_guess_size(
+          words.at(segment), labels, segment, (first_elt_word_idx + elt) * 4, ts, words, file,
+          content_type.get_single_arg(), ts.get_deref_info(content_type).stride));
     }
 
     return pretty_print::build_list(result);
@@ -1083,10 +1128,12 @@ goos::Object decompile_boxed_array(const DecompilerLabel& label,
       for (int j = start; j < end; j++) {
         auto& word = words.at(label.target_segment).at(j / 4);
         if (word.kind != LinkedWord::PLAIN_DATA) {
-          throw std::runtime_error("Got bad word in kind in array of values");
+          throw std::runtime_error(
+              fmt::format("Got bad word of kind {} in boxed array of values", word.kind));
         }
         elt_bytes.push_back(word.get_byte(j % 4));
       }
+      assert(content_type != TypeSpec("uint128"));
       result.push_back(decompile_value(content_type, elt_bytes, ts));
     }
     return pretty_print::build_list(result);

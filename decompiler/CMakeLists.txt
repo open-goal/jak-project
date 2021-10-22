@@ -70,6 +70,12 @@ add_library(
 
         config.cpp)
 
+if (UNIX)
+    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -O2")
+elseif (WIN32)
+    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} /O2")
+endif ()
+
 target_link_libraries(decomp
         lzokay
         common

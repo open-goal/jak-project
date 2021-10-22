@@ -203,7 +203,7 @@
   )
 
 ;; definition for function cam-slave-get-rot
-(defun cam-slave-get-rot ((arg0 entity-actor) (arg1 quaternion))
+(defun cam-slave-get-rot ((arg0 entity-actor) (arg1 matrix))
   (let ((s4-0 (method-of-type res-lump get-property-struct))
         (s3-0 arg0)
         )
@@ -226,11 +226,11 @@
       (let ((s4-1 (new 'stack-no-clear 'quaternion)))
        (quaternion*! s4-1 (the-as quaternion a1-3) (-> arg0 quat))
        (quaternion-normalize! s4-1)
-       (quaternion->matrix (the-as matrix arg1) s4-1)
+       (quaternion->matrix arg1 s4-1)
        )
       )
      (else
-      (quaternion->matrix (the-as matrix arg1) (-> arg0 quat))
+      (quaternion->matrix arg1 (-> arg0 quat))
       )
      )
     )
@@ -827,16 +827,16 @@
       (< f0-4 1.0)
       )
      (set! (-> arg2 partial-pt) f0-4)
-     (let ((s5-0 (new 'stack-no-clear 'vector)))
+     (let ((s5-0 (new 'stack-no-clear 'tracking-spline-sampler)))
       (let ((a2-5 (-> obj point (-> arg2 cur-pt) next)))
        (vector-lerp!
-        s5-0
+        (the-as vector s5-0)
         (the-as vector (-> obj point (-> arg2 cur-pt)))
         (the-as vector (-> obj point a2-5))
         f0-4
         )
        )
-      (vector+! arg1 arg1 s5-0)
+      (vector+! arg1 arg1 (the-as vector s5-0))
       )
      (return arg1)
      )
@@ -1209,11 +1209,11 @@
 
 ;; definition for function cam-slave-go
 ;; INFO: Return type mismatch int vs none.
-(defun cam-slave-go ((arg0 camera-slave))
+(defun cam-slave-go ((arg0 state))
   (with-pp
    (cam-slave-init-vars)
    (let ((t9-1 (the-as (function object) enter-state)))
-    (set! (-> pp next-state) (the-as state arg0))
+    (set! (-> pp next-state) arg0)
     (t9-1)
     )
    0
@@ -1314,48 +1314,31 @@
                      )
                     )
                    ((= v1-0 'point-of-interest)
-                    (the-as none (cond
-                                  ((-> arg3 param 0)
-                                   (set!
-                                    (-> self tracking use-point-of-interest)
-                                    #t
-                                    )
-                                   (set!
-                                    (-> self tracking point-of-interest quad)
-                                    (-> (the-as vector (-> arg3 param 0)) quad)
-                                    )
-                                   (let ((f0-0 1.0))
-                                    (set!
-                                     (->
-                                      self
-                                      tracking
-                                      point-of-interest-blend
-                                      target
-                                      )
-                                     f0-0
-                                     )
-                                    f0-0
-                                    )
-                                   )
-                                  (else
-                                   (set!
-                                    (-> self tracking use-point-of-interest)
-                                    #f
-                                    )
-                                   (let ((f0-1 0.0))
-                                    (set!
-                                     (->
-                                      self
-                                      tracking
-                                      point-of-interest-blend
-                                      target
-                                      )
-                                     f0-1
-                                     )
-                                    f0-1
-                                    )
-                                   )
-                                  )
+                    (cond
+                     ((-> arg3 param 0)
+                      (set! (-> self tracking use-point-of-interest) #t)
+                      (set!
+                       (-> self tracking point-of-interest quad)
+                       (-> (the-as vector (-> arg3 param 0)) quad)
+                       )
+                      (let ((f0-0 1.0))
+                       (set!
+                        (-> self tracking point-of-interest-blend target)
+                        f0-0
+                        )
+                       f0-0
+                       )
+                      )
+                     (else
+                      (set! (-> self tracking use-point-of-interest) #f)
+                      (let ((f0-1 0.0))
+                       (set!
+                        (-> self tracking point-of-interest-blend target)
+                        f0-1
+                        )
+                       f0-1
+                       )
+                      )
                      )
                     )
                    ((= v1-0 'teleport)

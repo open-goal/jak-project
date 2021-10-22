@@ -92,11 +92,11 @@
    :run-travel-speed (meters 6.0)
    :run-rotate-speed (degrees 2880.0)
    :run-acceleration (meters 1.0)
-   :run-turn-time #x1e
+   :run-turn-time (seconds 0.1)
    :walk-travel-speed (meters 3.0)
    :walk-rotate-speed (degrees 720.0)
    :walk-acceleration (meters 1.0)
-   :walk-turn-time #x96
+   :walk-turn-time (seconds 0.5)
    :attack-shove-back (meters 3.0)
    :attack-shove-up (meters 2.0)
    :shadow-size (meters 2.0)
@@ -260,25 +260,20 @@
   )
 
 ;; definition for function yeti-slave-default-event-handler
-;; INFO: Return type mismatch none vs object.
-;; WARN: rewrite_to_get_var got a none typed variable. Is there unreachable code?
 (defbehavior
   yeti-slave-default-event-handler yeti-slave
   ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
-  (let ((v1-0 arg2))
-   (the-as object (cond
-                   ((= v1-0 'attack)
-                    (nav-enemy-set-hit-from-direction arg0)
-                    (go-virtual nav-enemy-die)
-                    )
-                   ((= v1-0 'touch)
-                    (nav-enemy-send-attack
-                     arg0
-                     (the-as touching-shapes-entry (-> arg3 param 0))
-                     'generic
-                     )
-                    )
-                   )
+  (case arg2 
+   (('attack)
+     (nav-enemy-set-hit-from-direction arg0)
+     (go-virtual nav-enemy-die)
+     )
+   (('touch)
+    (nav-enemy-send-attack
+     arg0
+     (the-as touching-shapes-entry (-> arg3 param 0))
+     'generic
+     )
     )
    )
   )
@@ -1234,6 +1229,7 @@
   )
 
 ;; definition for function yeti-slave-init-by-other
+;; INFO: Return type mismatch object vs none.
 ;; Used lq/sq
 (defbehavior
   yeti-slave-init-by-other yeti-slave
@@ -1420,7 +1416,7 @@
      (else
       (when
        (>=
-        (- (-> *display* base-frame-counter) (the-as int (-> self state-time)))
+        (- (-> *display* base-frame-counter) (-> self state-time))
         (-> self spawn-delay)
         )
        (let ((gp-0 (new 'stack-no-clear 'vector))
@@ -1463,6 +1459,7 @@
   )
 
 ;; definition for method 11 of type yeti
+;; INFO: Return type mismatch object vs none.
 (defmethod copy-defaults! yeti ((obj yeti) (arg0 res-lump))
   (set! (-> obj spawn-delay) 0)
   (set! (-> obj root) (new 'process 'trsqv))

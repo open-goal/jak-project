@@ -139,43 +139,28 @@
   )
 
 ;; definition for function swamp-bat-slave-event-handler
-;; INFO: Return type mismatch none vs object.
-;; WARN: rewrite_to_get_var got a none typed variable. Is there unreachable code?
 (defbehavior
   swamp-bat-slave-event-handler swamp-bat-slave
   ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
-  (let ((v1-0 arg2))
-   (the-as object (cond
-                   ((= v1-0 'attack)
-                    (logclear! (-> self mask) (process-mask actor-pause))
-                    (go swamp-bat-slave-die (process->handle arg0))
-                    )
-                   ((= v1-0 'touch)
-                    (level-hint-spawn
-                     (game-text-id swamp-bats-hint)
-                     "sksp0156"
-                     (the-as entity #f)
-                     *entity-pool*
-                     (game-task none)
-                     )
-                    (let ((a1-2 (new 'stack-no-clear 'event-message-block)))
-                     (set! (-> a1-2 from) self)
-                     (set! (-> a1-2 num-params) 2)
-                     (set! (-> a1-2 message) 'attack)
-                     (set! (-> a1-2 param 0) (-> arg3 param 0))
-                     (set!
-                      (-> a1-2 param 1)
-                      (the-as uint (new 'static 'attack-info))
-                      )
-                     (send-event-function arg0 a1-2)
-                     )
-                    )
-                   ((= v1-0 'launch)
-                    (if (-> self launch-ready)
-                     (go swamp-bat-slave-launch)
-                     )
-                    )
-                   )
+  (case arg2 
+   (('attack)
+     (logclear! (-> self mask) (process-mask actor-pause))
+     (go swamp-bat-slave-die (process->handle arg0))
+     )
+   (('touch)
+    (level-hint-spawn
+     (game-text-id swamp-bats-hint)
+     "sksp0156"
+     (the-as entity #f)
+     *entity-pool*
+     (game-task none)
+     )
+    (send-event arg0 'attack (-> arg3 param 0) (new 'static 'attack-info))
+    )
+   (('launch)
+    (if (-> self launch-ready)
+     (go swamp-bat-slave-launch)
+     )
     )
    )
   )
@@ -370,13 +355,7 @@ swamp-bat-slave-event-handler
        (forward-up->quaternion gp-0 s2-0 (new 'static 'vector :y 1.0 :w 1.0))
        (while #t
         (let
-         ((v1-17
-           (-
-            (-> *display* base-frame-counter)
-            (the-as int (-> self state-time))
-            )
-           )
-          )
+         ((v1-17 (- (-> *display* base-frame-counter) (-> self state-time))))
          (when (>= v1-17 s3-0)
           0
           (goto cfg-10)
@@ -485,11 +464,7 @@ swamp-bat-slave-event-handler
        )
       )
      (while #t
-      (let
-       ((s4-0
-         (- (-> *display* base-frame-counter) (the-as int (-> self state-time)))
-         )
-        )
+      (let ((s4-0 (- (-> *display* base-frame-counter) (-> self state-time))))
        (if (>= s4-0 90)
         (go swamp-bat-slave-swoop)
         )
@@ -712,6 +687,7 @@ swamp-bat-slave-event-handler
   )
 
 ;; definition for function swamp-bat-slave-init-by-other
+;; INFO: Return type mismatch object vs none.
 ;; Used lq/sq
 (defbehavior
   swamp-bat-slave-init-by-other swamp-bat-slave
@@ -903,10 +879,7 @@ swamp-bat-slave-event-handler
    (while #t
     (when
      (and
-      (>=
-       (- (-> *display* base-frame-counter) (the-as int (-> self state-time)))
-       60
-       )
+      (>= (- (-> *display* base-frame-counter) (-> self state-time)) 60)
       *target*
       (>=
        (-> self fact-override idle-distance)
@@ -971,11 +944,7 @@ swamp-bat-slave-event-handler
    (set! (-> self state-time) (-> *display* base-frame-counter))
    (while #t
     (swamp-bat-update-path)
-    (when
-     (>=
-      (- (-> *display* base-frame-counter) (the-as int (-> self state-time)))
-      150
-      )
+    (when (>= (- (-> *display* base-frame-counter) (-> self state-time)) 150)
      (set! (-> self state-time) (-> *display* base-frame-counter))
      (if (not (swamp-bat-launch-slave))
       (go swamp-bat-idle)
@@ -990,6 +959,7 @@ swamp-bat-slave-event-handler
   )
 
 ;; definition for method 11 of type swamp-bat
+;; INFO: Return type mismatch object vs none.
 (defmethod copy-defaults! swamp-bat ((obj swamp-bat) (arg0 res-lump))
   (let
    ((s4-0 (new 'process 'collide-shape obj (collide-list-enum hit-by-player))))

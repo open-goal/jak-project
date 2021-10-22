@@ -7,7 +7,8 @@
 
 (define-extern *plat-button-sg* skeleton-group)
 
-;; definition of type jungle-elevator
+;; DECOMP BEGINS
+
 (deftype jungle-elevator (plat-button)
   ((bottom-height       float  :offset-assert 240)
    (teleport-if-below-y float  :offset-assert 244)
@@ -19,7 +20,7 @@
   :flag-assert         #x21009000fc
   )
 
-;; definition for method 26 of type jungle-elevator
+
 (defmethod can-activate? jungle-elevator ((obj jungle-elevator))
   (and
    ((method-of-type plat-button can-activate?) obj)
@@ -27,7 +28,6 @@
    )
   )
 
-;; failed to figure out what this is:
 (defstate plat-button-move-downward (jungle-elevator)
   :virtual #t
   :enter
@@ -41,13 +41,7 @@
    (set! (-> self draw light-index) (the-as uint 255))
    (set! (-> self bottom-height) (-> jungle bottom-height))
    (set! (-> jungle bottom-height) (-> jungleb bottom-height))
-   (let ((a1-0 (new 'stack-no-clear 'event-message-block)))
-    (set! (-> a1-0 from) self)
-    (set! (-> a1-0 num-params) 1)
-    (set! (-> a1-0 message) 'reset-pickup)
-    (set! (-> a1-0 param 0) (the-as uint 'eco))
-    (send-event-function *target* a1-0)
-    )
+   (send-event *target* 'reset-pickup 'eco)
    (none)
    )
   :exit
@@ -83,12 +77,7 @@
     )
    (when (< (-> self path-pos) 0.9)
     (TODO-RENAME-28 (-> *target* control))
-    (let ((a1-2 (new 'stack-no-clear 'event-message-block)))
-     (set! (-> a1-2 from) self)
-     (set! (-> a1-2 num-params) 0)
-     (set! (-> a1-2 message) 'reset-height)
-     (send-event-function *target* a1-2)
-     )
+    (send-event *target* 'reset-height)
     )
    (if
     (and
@@ -104,7 +93,6 @@
    )
   )
 
-;; failed to figure out what this is:
 (defstate plat-button-move-upward (jungle-elevator)
   :virtual #t
   :enter
@@ -151,7 +139,6 @@
    )
   )
 
-;; failed to figure out what this is:
 (defstate plat-button-at-end (jungle-elevator)
   :virtual #t
   :code
@@ -181,7 +168,6 @@
    )
   )
 
-;; definition for method 30 of type jungle-elevator
 (defmethod should-teleport? jungle-elevator ((obj jungle-elevator))
   (let ((f0-0 (-> (camera-pos) y)))
    (case (-> obj path-pos) 
@@ -202,7 +188,6 @@
   #f
   )
 
-;; definition for method 29 of type jungle-elevator
 (defmethod can-target-move? jungle-elevator ((obj jungle-elevator))
   (let ((s5-0 (new 'stack-no-clear 'vector)))
    (eval-path-curve! (-> obj path) s5-0 0.4 'interp)
@@ -217,3 +202,7 @@
    v0-2
    )
   )
+
+
+
+

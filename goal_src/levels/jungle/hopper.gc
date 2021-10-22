@@ -7,7 +7,8 @@
 
 (define-extern *hopper-sg* skeleton-group)
 
-;; definition of type hopper
+;; DECOMP BEGINS
+
 (deftype hopper (nav-enemy)
   ((jump-length  float  :offset-assert 400)
    (shadow-min-y float  :offset-assert 404)
@@ -18,17 +19,7 @@
   :flag-assert         #x4c01300198
   )
 
-;; definition for method 3 of type hopper
-(defmethod inspect hopper ((obj hopper))
-  (let ((t9-0 (method-of-type nav-enemy inspect)))
-   (t9-0 obj)
-   )
-  (format #t "~T~Tjump-length: ~f~%" (-> obj jump-length))
-  (format #t "~T~Tshadow-min-y: ~f~%" (-> obj shadow-min-y))
-  obj
-  )
 
-;; failed to figure out what this is:
 (let
   ((v1-1
     (new 'static 'skeleton-group
@@ -52,11 +43,8 @@
   (set! *hopper-sg* v1-1)
   )
 
-;; failed to figure out what this is:
 nav-enemy-default-event-handler
 
-;; definition for method 39 of type hopper
-;; INFO: Return type mismatch int vs none.
 (defmethod common-post hopper ((obj hopper))
   (let ((v1-1 (-> obj draw shadow-ctrl)))
    (set!
@@ -70,9 +58,6 @@ nav-enemy-default-event-handler
   (none)
   )
 
-;; definition for function hopper-find-ground
-;; INFO: Return type mismatch int vs object.
-;; Used lq/sq
 (defbehavior hopper-find-ground hopper ((arg0 vector))
   (let ((s5-0 (new 'stack-no-clear 'vector)))
    (let ((t1-0 (new 'stack-no-clear 'collide-tri-result))
@@ -104,9 +89,6 @@ nav-enemy-default-event-handler
   0
   )
 
-;; definition for function hopper-jump-to
-;; INFO: Return type mismatch int vs none.
-;; Used lq/sq
 (defbehavior hopper-jump-to hopper ((arg0 vector))
   (set! (-> self jump-dest quad) (-> arg0 quad))
   (hopper-find-ground (-> self jump-dest))
@@ -144,8 +126,6 @@ nav-enemy-default-event-handler
   (none)
   )
 
-;; definition for function hopper-do-jump
-;; INFO: Return type mismatch int vs none.
 (defbehavior hopper-do-jump hopper ()
   (dummy-11 (-> self nav) (-> self nav target-pos))
   (if (< (-> self jump-length) (vector-length (-> self nav travel)))
@@ -161,7 +141,6 @@ nav-enemy-default-event-handler
   (none)
   )
 
-;; failed to figure out what this is:
 (defstate nav-enemy-idle (hopper)
   :virtual #t
   :event
@@ -266,7 +245,6 @@ nav-enemy-default-event-handler
    )
   )
 
-;; failed to figure out what this is:
 (defstate nav-enemy-patrol (hopper)
   :virtual #t
   :event
@@ -394,10 +372,7 @@ nav-enemy-default-event-handler
       (ja-channel-push! 1 22)
       )
      )
-    (set!
-     (-> self state-time)
-     (the-as seconds (-> *display* base-frame-counter))
-     )
+    (set! (-> self state-time) (-> *display* base-frame-counter))
     (let ((gp-0 (-> self skel root-channel 0)))
      (joint-control-channel-group-eval!
       gp-0
@@ -406,11 +381,7 @@ nav-enemy-default-event-handler
       )
      (set! (-> gp-0 frame-num) 0.0)
      )
-    (until
-     (>=
-      (- (-> *display* base-frame-counter) (the-as int (-> self state-time)))
-      150
-      )
+    (until (>= (- (-> *display* base-frame-counter) (-> self state-time)) 150)
      (suspend)
      (let ((a0-21 (-> self skel root-channel 0)))
       (set! (-> a0-21 param 0) 1.0)
@@ -439,7 +410,6 @@ nav-enemy-default-event-handler
   (the-as (function none :behavior hopper) nav-enemy-jump-post)
   )
 
-;; failed to figure out what this is:
 (defstate nav-enemy-notice (hopper)
   :virtual #t
   :event
@@ -454,7 +424,6 @@ nav-enemy-default-event-handler
    )
   )
 
-;; failed to figure out what this is:
 (defstate nav-enemy-chase (hopper)
   :virtual #t
   :event
@@ -582,10 +551,7 @@ nav-enemy-default-event-handler
       (ja-channel-push! 1 22)
       )
      )
-    (set!
-     (-> self state-time)
-     (the-as seconds (-> *display* base-frame-counter))
-     )
+    (set! (-> self state-time) (-> *display* base-frame-counter))
     (let ((gp-0 (-> self skel root-channel 0)))
      (joint-control-channel-group-eval!
       gp-0
@@ -594,11 +560,7 @@ nav-enemy-default-event-handler
       )
      (set! (-> gp-0 frame-num) 0.0)
      )
-    (until
-     (>=
-      (- (-> *display* base-frame-counter) (the-as int (-> self state-time)))
-      60
-      )
+    (until (>= (- (-> *display* base-frame-counter) (-> self state-time)) 60)
      (suspend)
      (let ((a0-21 (-> self skel root-channel 0)))
       (set! (-> a0-21 param 0) 1.0)
@@ -618,7 +580,6 @@ nav-enemy-default-event-handler
   (the-as (function none :behavior hopper) nav-enemy-jump-post)
   )
 
-;; failed to figure out what this is:
 (defstate nav-enemy-stop-chase (hopper)
   :virtual #t
   :event
@@ -633,7 +594,6 @@ nav-enemy-default-event-handler
    )
   )
 
-;; definition for symbol *hopper-nav-enemy-info*, type nav-enemy-info
 (define
   *hopper-nav-enemy-info*
   (new 'static 'nav-enemy-info
@@ -652,11 +612,11 @@ nav-enemy-default-event-handler
    :run-travel-speed (meters 10.0)
    :run-rotate-speed (degrees 7999.9995)
    :run-acceleration (meters 1.0)
-   :run-turn-time #x1e
+   :run-turn-time (seconds 0.1)
    :walk-travel-speed (meters 6.0)
    :walk-rotate-speed (degrees 7999.9995)
    :walk-acceleration (meters 1.0)
-   :walk-turn-time #x1e
+   :walk-turn-time (seconds 0.1)
    :attack-shove-back (meters 3.0)
    :attack-shove-up (meters 2.0)
    :shadow-size (meters 2.0)
@@ -690,8 +650,6 @@ nav-enemy-default-event-handler
    )
   )
 
-;; definition for method 47 of type hopper
-;; INFO: Return type mismatch int vs none.
 (defmethod initialize-collision hopper ((obj hopper))
   (let
    ((s5-0
@@ -738,8 +696,6 @@ nav-enemy-default-event-handler
   (none)
   )
 
-;; definition for method 48 of type hopper
-;; INFO: Return type mismatch int vs none.
 (defmethod TODO-RENAME-48 hopper ((obj hopper))
   (dummy-14 obj *hopper-sg* '())
   (TODO-RENAME-45 obj *hopper-nav-enemy-info*)

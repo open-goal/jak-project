@@ -1692,6 +1692,26 @@ std::string TypeSystem::generate_deftype_footer(const Type* type) const {
     result.append(")\n  ");
   }
 
+  std::string states_string;
+  for (auto& info : type->get_states_declared_for_type()) {
+    if (info.second.arg_count() > 1) {
+      states_string.append(fmt::format("    ({}", info.first));
+      for (size_t i = 0; i < info.second.arg_count() - 1; i++) {
+        states_string.push_back(' ');
+        states_string.append(info.second.get_arg(i).print());
+      }
+      states_string.append(")\n");
+    } else {
+      states_string.append(fmt::format("    {}\n", info.first));
+    }
+  }
+
+  if (!states_string.empty()) {
+    result.append("(:states\n");
+    result.append(states_string);
+    result.append("    )\n  ");
+  }
+
   result.append(")\n");
   return result;
 }

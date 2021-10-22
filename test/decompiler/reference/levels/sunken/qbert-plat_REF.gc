@@ -160,11 +160,10 @@
 (defstate qbert-plat-on-mimic (qbert-plat)
   :event
   (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
-   (let ((v1-0 arg2))
-    (the-as object (if (= v1-0 'die)
-                    (go qbert-plat-on-die)
-                    )
-     )
+   (case arg2 
+    (('die)
+      (go qbert-plat-on-die)
+      )
     )
    )
   :code
@@ -203,6 +202,7 @@
   )
 
 ;; definition for function qbert-plat-on-init-by-other
+;; INFO: Return type mismatch object vs none.
 ;; Used lq/sq
 (defbehavior
   qbert-plat-on-init-by-other qbert-plat
@@ -247,98 +247,83 @@
 
 ;; definition for method 33 of type qbert-plat
 (defmethod dummy-33 qbert-plat ((obj qbert-plat))
-  (with-pp
-   (let* ((a1-0 (-> obj master))
-          (v1-0 (if a1-0
-                 (-> a1-0 extra process)
-                 )
-           )
+  (let* ((a1-0 (-> obj master))
+         (v1-0 (if a1-0
+                (-> a1-0 extra process)
+                )
           )
-    (when v1-0
-     (let ((a1-1 (new 'stack-no-clear 'event-message-block)))
-      (set! (-> a1-1 from) pp)
-      (set! (-> a1-1 num-params) 1)
-      (set! (-> a1-1 message) 'trigger)
-      (set! (-> a1-1 param 0) (the-as uint (-> obj plat-id)))
-      (send-event-function v1-0 a1-1)
-      )
-     )
+         )
+   (if v1-0
+    (send-event v1-0 'trigger (-> obj plat-id))
     )
    )
   )
 
 ;; definition for method 32 of type qbert-plat
 (defmethod dummy-32 qbert-plat ((obj qbert-plat))
-  (with-pp
-   (let* ((v1-0 (-> obj master))
-          (a0-1 (if v1-0
-                 (-> v1-0 extra process)
-                 )
-           )
+  (let* ((v1-0 (-> obj master))
+         (a0-1 (if v1-0
+                (-> v1-0 extra process)
+                )
           )
-    (when (the-as qbert-plat-master a0-1)
-     (let
-      ((v1-3
-        (plat-state-set?
-         (the-as qbert-plat-master a0-1)
-         (the-as uint (-> obj plat-id))
          )
+   (when (the-as qbert-plat-master a0-1)
+    (let
+     ((v1-3
+       (plat-state-set?
+        (the-as qbert-plat-master a0-1)
+        (the-as uint (-> obj plat-id))
         )
        )
-      (when (!= v1-3 (-> obj on?))
-       (set! (-> obj on?) v1-3)
-       (cond
-        (v1-3
-         (let ((s5-0 (get-process *default-dead-pool* qbert-plat-on #x4000)))
-          (when s5-0
-           (let ((t9-2 (method-of-type qbert-plat-on activate)))
-            (t9-2
-             (the-as qbert-plat-on s5-0)
-             obj
-             'qbert-plat-on
-             (the-as pointer #x70004000)
-             )
-            )
-           (run-now-in-process
-            s5-0
-            qbert-plat-on-init-by-other
-            (-> obj entity)
+      )
+     (when (!= v1-3 (-> obj on?))
+      (set! (-> obj on?) v1-3)
+      (cond
+       (v1-3
+        (let ((s5-0 (get-process *default-dead-pool* qbert-plat-on #x4000)))
+         (when s5-0
+          (let ((t9-2 (method-of-type qbert-plat-on activate)))
+           (t9-2
+            (the-as qbert-plat-on s5-0)
             obj
+            'qbert-plat-on
+            (the-as pointer #x70004000)
             )
-           (-> s5-0 ppointer)
            )
-          )
-         (sound-play-by-name
-          (static-sound-name "plat-light-on")
-          (new-sound-id)
-          1024
-          0
-          0
-          (the-as uint 1)
-          (the-as vector #t)
+          (run-now-in-process
+           s5-0
+           qbert-plat-on-init-by-other
+           (-> obj entity)
+           obj
+           )
+          (-> s5-0 ppointer)
           )
          )
-        (else
-         (let ((gp-2 (-> obj child)))
-          (while gp-2
-           (let ((a1-5 (new 'stack-no-clear 'event-message-block)))
-            (set! (-> a1-5 from) pp)
-            (set! (-> a1-5 num-params) 0)
-            (set! (-> a1-5 message) 'die)
-            (send-event-function (ppointer->process gp-2) a1-5)
-            )
-           (set! gp-2 (-> gp-2 0 brother))
-           )
+        (sound-play-by-name
+         (static-sound-name "plat-light-on")
+         (new-sound-id)
+         1024
+         0
+         0
+         (the-as uint 1)
+         (the-as vector #t)
+         )
+        )
+       (else
+        (let ((gp-2 (-> obj child)))
+         (while gp-2
+          (send-event (ppointer->process gp-2) 'die)
+          (set! gp-2 (-> gp-2 0 brother))
           )
-         (sound-play-by-name
-          (static-sound-name "plat-light-off")
-          (new-sound-id)
-          1024
-          0
-          0
-          (the-as uint 1)
-          (the-as vector #t)
-          )
+         )
+        (sound-play-by-name
+         (static-sound-name "plat-light-off")
+         (new-sound-id)
+         1024
+         0
+         0
+         (the-as uint 1)
+         (the-as vector #t)
          )
         )
        )
@@ -544,6 +529,7 @@
   )
 
 ;; definition for method 11 of type qbert-plat
+;; INFO: Return type mismatch object vs none.
 (defmethod copy-defaults! qbert-plat ((obj qbert-plat) (arg0 res-lump))
   (set! (-> obj mask) (logior (process-mask platform) (-> obj mask)))
   (TODO-RENAME-30 obj)
@@ -565,64 +551,52 @@
 (defstate qbert-plat-master-idle (qbert-plat-master)
   :event
   (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
-   (let ((v1-0 arg2))
-    (the-as object (when (= v1-0 'trigger)
-                    (start-hint-timer (the-as level-hint-control 842))
-                    (close-specific-task!
-                     (game-task sunken-platforms)
-                     (task-status need-hint)
-                     )
-                    (when (not (-> self puzzle-beaten?))
-                     (let ((v1-2 (-> arg3 param 0)))
-                      (when (!= v1-2 (-> self last-plat-triggered))
-                       (set! (-> self last-plat-triggered) (the-as int v1-2))
-                       (let
-                        ((s5-1
-                          (=
-                           (-> self plat-states-needed-to-open-door)
-                           (-> self plat-states)
-                           )
-                          )
-                         )
-                        (let ((v1-3 (ash 1 v1-2)))
-                         (set!
-                          (-> self plat-states)
-                          (logxor (-> self plat-states) (the-as uint v1-3))
-                          )
-                         (if (zero? (logand v1-3 (-> self plat-states)))
-                          (level-hint-spawn
-                           (game-text-id sunken-qbert-hint)
-                           "sksp0130"
-                           (the-as entity #f)
-                           *entity-pool*
-                           (game-task none)
-                           )
-                          )
-                         )
-                        (let ((a1-4 (new 'stack-no-clear 'event-message-block)))
-                         (set! (-> a1-4 from) self)
-                         (set! (-> a1-4 num-params) 0)
-                         (set! (-> a1-4 message) 'notify)
-                         (send-event-function arg0 a1-4)
-                         )
-                        (let
-                         ((a0-13
-                           (=
-                            (-> self plat-states-needed-to-open-door)
-                            (-> self plat-states)
-                            )
-                           )
-                          )
-                         (if (!= s5-1 a0-13)
-                          (go qbert-plat-master-do-door a0-13)
-                          )
-                         )
-                        )
-                       )
-                      )
-                     )
-                    )
-     )
+   (case arg2 
+    (('trigger)
+      (start-hint-timer (the-as level-hint-control 842))
+      (close-specific-task!
+       (game-task sunken-platforms)
+       (task-status need-hint)
+       )
+      (when (not (-> self puzzle-beaten?))
+       (let ((v1-2 (-> arg3 param 0)))
+        (when (!= v1-2 (-> self last-plat-triggered))
+         (set! (-> self last-plat-triggered) (the-as int v1-2))
+         (let
+          ((s5-1
+            (= (-> self plat-states-needed-to-open-door) (-> self plat-states))
+            )
+           )
+          (let ((v1-3 (ash 1 v1-2)))
+           (set!
+            (-> self plat-states)
+            (logxor (-> self plat-states) (the-as uint v1-3))
+            )
+           (if (zero? (logand v1-3 (-> self plat-states)))
+            (level-hint-spawn
+             (game-text-id sunken-qbert-hint)
+             "sksp0130"
+             (the-as entity #f)
+             *entity-pool*
+             (game-task none)
+             )
+            )
+           )
+          (send-event arg0 'notify)
+          (let
+           ((a0-13
+             (= (-> self plat-states-needed-to-open-door) (-> self plat-states))
+             )
+            )
+           (if (!= s5-1 a0-13)
+            (go qbert-plat-master-do-door a0-13)
+            )
+           )
+          )
+         )
+        )
+       )
+      )
     )
    )
   :code
@@ -843,11 +817,7 @@
        (-> s5-0 ppointer)
        )
       )
-     (until
-      (>=
-       (- (-> *display* base-frame-counter) (the-as int (-> self state-time)))
-       420
-       )
+     (until (>= (- (-> *display* base-frame-counter) (-> self state-time)) 420)
       (suspend)
       )
      )
@@ -876,11 +846,7 @@
        (-> s5-1 ppointer)
        )
       )
-     (until
-      (>=
-       (- (-> *display* base-frame-counter) (the-as int (-> self state-time)))
-       300
-       )
+     (until (>= (- (-> *display* base-frame-counter) (-> self state-time)) 300)
       (suspend)
       )
      )
@@ -973,18 +939,8 @@
       (logclear! (-> s5-0 mask) (process-mask platform))
       (when (-> self puzzle-beaten?)
        (suspend)
-       (let ((a1-0 (new 'stack-no-clear 'event-message-block)))
-        (set! (-> a1-0 from) self)
-        (set! (-> a1-0 num-params) 0)
-        (set! (-> a1-0 message) 'trigger)
-        (send-event-function gp-0 a1-0)
-        )
-       (let ((a1-1 (new 'stack-no-clear 'event-message-block)))
-        (set! (-> a1-1 from) self)
-        (set! (-> a1-1 num-params) 0)
-        (set! (-> a1-1 message) 'trigger)
-        (send-event-function s5-0 a1-1)
-        )
+       (send-event gp-0 'trigger)
+       (send-event s5-0 'trigger)
        )
       (go qbert-plat-master-idle)
       )
@@ -996,6 +952,7 @@
   )
 
 ;; definition for method 11 of type qbert-plat-master
+;; INFO: Return type mismatch object vs none.
 (defmethod
   copy-defaults!
   qbert-plat-master

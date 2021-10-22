@@ -2307,6 +2307,19 @@ void StoreInSymbolElement::push_to_stack(const Env& env, FormPool& pool, FormSta
   auto val = pool.alloc_single_element_form<SimpleExpressionElement>(nullptr, m_value, m_my_idx);
   val->update_children_from_stack(env, pool, stack, true);
 
+  if (m_cast_for_set) {
+    // we'd need to cast for set. Let's see if we can simplify it instead:
+    auto simplified = try_cast_simplify(val, *m_cast_for_set, pool, env, false);
+    if (simplified) {
+      if (m_cast_for_define && *m_cast_for_define == *m_cast_for_set) {
+        // if we'd need exactly the same cast for a define, we can drop it too
+        m_cast_for_define = {};
+      }
+      m_cast_for_set = {};
+      val = simplified;
+    }
+  }
+
   auto elt = pool.alloc_element<SetFormFormElement>(sym, val, m_cast_for_set, m_cast_for_define);
   elt->mark_popped();
   stack.push_form_element(elt, true);
@@ -2652,7 +2665,7 @@ void FunctionCallElement::update_from_stack(const Env& env,
     }
 
     // modify our type for the go.
-    function_type = state_to_go_function(next_state_type.typespec());
+    function_type = state_to_go_function(next_state_type.typespec(), TypeSpec("object"));
 
     // up next, we need to deal with the
     // (set! (-> pp next-state) process-drawable-art-error)
@@ -2688,13 +2701,17 @@ void FunctionCallElement::update_from_stack(const Env& env,
   }
 
   if (tp_type.kind == TP_Type::Kind::RUN_FUNCTION_IN_PROCESS_FUNCTION) {
-    if (unstacked.at(0)->to_string(env) != "run-function-in-process") {
-      throw std::runtime_error(
-          fmt::format("Expression pass could not find the run-function-in-process function. Found "
-                      "{} instead. Make sure there are no casts on this function.",
-                      all_pop_vars.at(0).to_string(env)));
+    if (unstacked.at(0)->to_string(env) == "run-function-in-process") {
+      unstacked.at(0) = pool.form<ConstantTokenElement>("run-now-in-process");
+    } else {
+      // couldn't pop. need to add a cast.
+      TypeSpec failed_cast("function");
+      for (int i = 0; i < ((int)unstacked.size()) - 1; i++) {
+        failed_cast.add_arg(TypeSpec("object"));
+      }
+      failed_cast.add_arg(TypeSpec("none"));
+      unstacked.at(0) = pool.form<CastElement>(failed_cast, unstacked.at(0));
     }
-    unstacked.at(0) = pool.form<ConstantTokenElement>("run-now-in-process");
   }
 
   if (tp_type.kind == TP_Type::Kind::SET_TO_RUN_FUNCTION) {
@@ -3206,6 +3223,10 @@ Form* try_rewrite_as_process_to_ppointer(CondNoElseElement* value,
   auto repopped = stack.pop_reg(condition_var, {}, env, true);
   if (!repopped) {
     repopped = var_to_form(condition_var, pool);
+  } else {
+    if (!env.dts->ts.tc(TypeSpec("process"), env.get_variable_type(condition_var, true))) {
+      repopped = pool.form<CastElement>(TypeSpec("process"), repopped);
+    }
   }
 
   return pool.alloc_single_element_form<GenericElement>(
@@ -3328,6 +3349,9 @@ void CondNoElseElement::push_to_stack(const Env& env, FormPool& pool, FormStack&
         stack.push_value_to_reg(write_as_value, as_ppointer_to_process, true,
                                 env.get_variable_type(final_destination, false));
       } else {
+        //        fmt::print("func {} final destination {} type {}\n", env.func->name(),
+        //                   final_destination.to_string(env),
+        //                   env.get_variable_type(final_destination, false).print());
         stack.push_value_to_reg(write_as_value, pool.alloc_single_form(nullptr, this), true,
                                 env.get_variable_type(final_destination, false));
       }
@@ -3420,7 +3444,9 @@ void CondWithElseElement::push_to_stack(const Env& env, FormPool& pool, FormStac
           rewrite_as_set = false;
           break;
         }
-        source_types.push_back(last_in_body->src_type());
+        // note: we use the dest type here because the rewrite will leave behind a cast to this.
+        auto type = env.get_variable_type(last_in_body->dst(), true);
+        source_types.push_back(type);
       }
       last_var = last_in_body->dst();
     }
@@ -3490,22 +3516,25 @@ void CondWithElseElement::push_to_stack(const Env& env, FormPool& pool, FormStac
       // (set! x (if y z (expr))) and z requires a cast, but the move from z to x is
       // eliminated by GOAL's register allocator.
 
+      //      fmt::print("func: {}\n", env.func->name());
+      //
       //      fmt::print("checking:\n");
       //      for (auto& t : source_types) {
       //        fmt::print("  {}\n", t.print());
       //      }
 
       auto expected_type = env.get_variable_type(*last_var, true);
-      // fmt::print("The expected type is {}\n", expected_type.print());
+      //       fmt::print("The expected type is {}\n", expected_type.print());
       auto result_type =
           source_types.empty() ? expected_type : env.dts->ts.lowest_common_ancestor(source_types);
-      // fmt::print("but we actually got {}\n", result_type.print());
+      //       fmt::print("but we actually got {}\n", result_type.print());
 
       Form* result_value = pool.alloc_single_form(nullptr, this);
       if (!env.dts->ts.tc(expected_type, result_type)) {
         result_value =
             pool.alloc_single_element_form<CastElement>(nullptr, expected_type, result_value);
       }
+      //      fmt::print("{}\n", result_value->to_string(env));
 
       stack.push_value_to_reg(*last_var, result_value, true,
                               env.get_variable_type(*last_var, false));
@@ -4714,7 +4743,41 @@ void ArrayFieldAccess::update_with_val(Form* new_val,
       auto deref = pool.alloc_element<DerefElement>(base, false, tokens);
       result->push_back(deref);
     } else {
-      throw std::runtime_error("Not power of two case, not yet implemented (no offset)");
+      auto mult_matcher = Matcher::op(
+          GenericOpMatcher::fixed(FixedOperatorKind::MULTIPLICATION),
+          {Matcher::match_or({Matcher::cast("uint", Matcher::integer(m_expected_stride)),
+                              Matcher::integer(m_expected_stride)}),
+           Matcher::any(0)});
+      mult_matcher = Matcher::match_or(
+          {Matcher::cast("uint", mult_matcher), Matcher::cast("int", mult_matcher), mult_matcher});
+
+      auto op_match =
+          GenericOpMatcher::or_match({GenericOpMatcher::fixed(FixedOperatorKind::ADDITION),
+                                      GenericOpMatcher::fixed(FixedOperatorKind::ADDITION_PTR)});
+      auto add_matcher = Matcher::op(op_match, {Matcher::any(1), mult_matcher});
+      add_matcher =
+          Matcher::match_or({add_matcher, Matcher::op(op_match, {mult_matcher, Matcher::any(1)})});
+
+      auto mr = match(add_matcher, new_val);
+      if (!mr.matched) {
+        throw std::runtime_error("Failed to match non-power of two case: " +
+                                 new_val->to_string(env));
+      }
+
+      auto base = strip_int_or_uint_cast(mr.maps.forms.at(1));
+      auto idx = mr.maps.forms.at(0);
+
+      assert(idx && base);
+
+      std::vector<DerefToken> tokens = m_deref_tokens;
+      for (auto& x : tokens) {
+        if (x.kind() == DerefToken::Kind::EXPRESSION_PLACEHOLDER) {
+          x = DerefToken::make_int_expr(idx);
+        }
+      }
+
+      auto deref = pool.alloc_element<DerefElement>(base, false, tokens);
+      result->push_back(deref);
     }
   } else {
     if (m_expected_stride == 1) {

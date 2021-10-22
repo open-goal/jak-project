@@ -9,7 +9,8 @@
 (define-extern *plat-sunken-sg* skeleton-group)
 (define-extern *plat-sg* skeleton-group)
 
-;; failed to figure out what this is:
+;; DECOMP BEGINS
+
 (set!
   (-> *part-group-id-table* 107)
   (new 'static 'sparticle-launch-group
@@ -27,7 +28,6 @@
    )
   )
 
-;; failed to figure out what this is:
 (set!
   (-> *part-id-table* 363)
   (new 'static 'sparticle-launcher
@@ -51,7 +51,6 @@
    )
   )
 
-;; failed to figure out what this is:
 (set!
   (-> *part-id-table* 364)
   (new 'static 'sparticle-launcher
@@ -80,7 +79,6 @@
    )
   )
 
-;; definition of type plat
 (deftype plat (baseplat)
   ((path-pos float                   :offset-assert 228)
    (sync     sync-info-eased :inline :offset-assert 232)
@@ -91,27 +89,16 @@
   :size-assert         #x108
   :flag-assert         #x2100a00108
   (:methods
-    (dummy-27 () none 27)
+    (get-lit-skel (_type_) skeleton-group 27)
     (dummy-28 () none 28)
     (wad () _type_ :state 29)
-    (plat-startup () _type_ :state 30)
+    (plat-startup (plat) _type_ :state 30)
     (plat-idle () _type_ :state 31)
-    (plat-path-active () _type_ :state 32)
+    (plat-path-active (plat) _type_ :state 32)
     )
   )
 
-;; definition for method 3 of type plat
-(defmethod inspect plat ((obj plat))
-  (let ((t9-0 (method-of-type baseplat inspect)))
-   (t9-0 obj)
-   )
-  (format #t "~T~Tpath-pos: ~f~%" (-> obj path-pos))
-  (format #t "~T~Tsync: #<sync-info-eased @ #x~X>~%" (-> obj sync))
-  (format #t "~T~Tsound-id: ~D~%" (-> obj sound-id))
-  obj
-  )
 
-;; failed to figure out what this is:
 (let
   ((v1-4
     (new 'static 'skeleton-group
@@ -134,7 +121,6 @@
   (set! *plat-sg* v1-4)
   )
 
-;; failed to figure out what this is:
 (let
   ((v1-5
     (new 'static 'skeleton-group
@@ -152,7 +138,6 @@
   (set! *plat-jungleb-sg* v1-5)
   )
 
-;; failed to figure out what this is:
 (let
   ((v1-6
     (new 'static 'skeleton-group
@@ -170,8 +155,7 @@
   (set! *plat-sunken-sg* v1-6)
   )
 
-;; definition for method 23 of type plat
-(defmethod TODO-RENAME-23 plat ((obj plat))
+(defmethod get-unlit-skel plat ((obj plat))
   (cond
    ((= (-> (if (-> obj entity)
             (-> obj entity extra level)
@@ -208,8 +192,6 @@
    )
   )
 
-;; definition for method 24 of type plat
-;; INFO: Return type mismatch int vs none.
 (defmethod dummy-24 plat ((obj plat))
   (let
    ((s5-0
@@ -247,15 +229,11 @@
   (none)
   )
 
-;; definition for method 26 of type plat
-;; INFO: Return type mismatch int vs none.
 (defmethod dummy-26 plat ((obj plat))
   0
   (none)
   )
 
-;; definition for method 25 of type plat
-;; INFO: Return type mismatch sparticle-launch-control vs sparticle-launch-group.
 (defmethod TODO-RENAME-25 plat ((obj plat))
   (the-as sparticle-launch-group (when (!= (-> (if (-> obj entity)
                                                 (-> obj entity extra level)
@@ -280,17 +258,16 @@
    )
   )
 
-;; failed to figure out what this is:
 (defstate plat-startup (plat)
   :virtual #t
   :code
-  (behavior ()
+  (behavior ((arg0 plat))
    (cond
     ((logtest? (-> self path flags) (path-control-flag not-found))
      (go-virtual plat-idle)
      )
     ((> (-> self sync period) 0)
-     (go-virtual plat-path-active)
+     (go-virtual plat-path-active arg0)
      )
     (else
      (go-virtual plat-idle)
@@ -300,7 +277,6 @@
    )
   )
 
-;; failed to figure out what this is:
 (defstate plat-idle (plat)
   :virtual #t
   :event
@@ -336,7 +312,6 @@
    )
   )
 
-;; failed to figure out what this is:
 (defstate plat-path-active (plat)
   :virtual #t
   :event
@@ -381,17 +356,16 @@
    (none)
    )
   :code
-  (the-as (function none :behavior plat) anim-loop)
+  (the-as (function plat none :behavior plat) anim-loop)
   :post
   (the-as (function none :behavior plat) plat-post)
   )
 
-;; definition for method 11 of type plat
 (defmethod copy-defaults! plat ((obj plat) (arg0 res-lump))
   (set! (-> obj mask) (logior (process-mask platform) (-> obj mask)))
   (dummy-24 obj)
   (process-drawable-from-entity! obj arg0)
-  (dummy-14 obj (TODO-RENAME-23 obj) '())
+  (dummy-14 obj (get-unlit-skel obj) '())
   (logior! (-> obj skel status) 1)
   (dummy-47 (-> obj root-override))
   (dummy-21 obj)
@@ -416,8 +390,10 @@
   (cond
    ((logtest? (-> obj path flags) (path-control-flag not-found))
     (set! (-> obj path-pos) 0.0)
-    (dummy-26 obj)
-    (go (method-of-object obj plat-startup))
+    (let ((a0-14 obj))
+     (dummy-26 a0-14)
+     (go (method-of-object obj plat-startup) a0-14)
+     )
     )
    ((> (-> obj sync period) 0)
     (set! (-> obj path-pos) (if (logtest? (-> obj fact options) 8)
@@ -431,8 +407,10 @@
      (-> obj path-pos)
      'interp
      )
-    (dummy-26 obj)
-    (go (method-of-object obj plat-startup))
+    (let ((a0-18 obj))
+     (dummy-26 a0-18)
+     (go (method-of-object obj plat-startup) a0-18)
+     )
     )
    (else
     (set! (-> obj path-pos) 0.0)
@@ -442,8 +420,10 @@
      (-> obj path-pos)
      'interp
      )
-    (dummy-26 obj)
-    (go (method-of-object obj plat-startup))
+    (let ((a0-20 obj))
+     (dummy-26 a0-20)
+     (go (method-of-object obj plat-startup) a0-20)
+     )
     )
    )
   (none)

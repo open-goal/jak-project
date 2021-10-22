@@ -184,6 +184,7 @@
   )
 
 ;; WARN: rewrite_to_get_var got a none typed variable. Is there unreachable code?
+;; WARN: rewrite_to_get_var got a none typed variable. Is there unreachable code?
 (defbehavior
   yakow-default-event-handler yakow
   ((arg0 process-drawable) (arg1 int) (arg2 symbol) (arg3 event-message-block))
@@ -226,20 +227,16 @@
                     )
                    ((= v1-0 'attack)
                     (let ((v1-9 (-> arg3 param 2)))
-                     (the-as none (cond
-                                   ((!= v1-9 (-> self player-attack-id))
-                                    (set!
-                                     (-> self player-attack-id)
-                                     (the-as int v1-9)
-                                     )
-                                    (if (-> self vulnerable)
-                                     (go yakow-kicked)
-                                     )
-                                    )
-                                   (else
-                                    'push
-                                    )
-                                   )
+                     (cond
+                      ((!= v1-9 (-> self player-attack-id))
+                       (set! (-> self player-attack-id) (the-as int v1-9))
+                       (if (-> self vulnerable)
+                        (go yakow-kicked)
+                        )
+                       )
+                      (else
+                       'push
+                       )
                       )
                      )
                     )
@@ -701,10 +698,7 @@ yakow-default-event-handler
   yakow-default-event-handler
   :enter
   (behavior ()
-   (set!
-    (-> self state-time)
-    (the-as seconds (-> *display* base-frame-counter))
-    )
+   (set! (-> self state-time) (-> *display* base-frame-counter))
    (set! (-> self travel-speed) 0.0)
    (none)
    )
@@ -713,7 +707,7 @@ yakow-default-event-handler
    (if
     (and
      (>=
-      (- (-> *display* base-frame-counter) (the-as int (-> self state-time)))
+      (- (-> *display* base-frame-counter) (-> self state-time))
       (the-as int (-> *YAKOW-bank* default-patrol-time))
       )
      (and
@@ -848,10 +842,7 @@ yakow-default-event-handler
   yakow-default-event-handler
   :enter
   (behavior ()
-   (set!
-    (-> self state-time)
-    (the-as seconds (-> *display* base-frame-counter))
-    )
+   (set! (-> self state-time) (-> *display* base-frame-counter))
    (set! (-> self travel-speed) 0.0)
    (none)
    )
@@ -869,10 +860,7 @@ yakow-default-event-handler
   yakow-default-event-handler
   :enter
   (behavior ((arg0 vector))
-   (set!
-    (-> self state-time)
-    (the-as seconds (-> *display* base-frame-counter))
-    )
+   (set! (-> self state-time) (-> *display* base-frame-counter))
    (logior! (-> self nav flags) (nav-control-flags bit10))
    (set! (-> self nav destination-pos quad) (-> arg0 quad))
    (set! (-> self rotate-speed) (-> *YAKOW-bank* walk-rotate-speed))
@@ -884,7 +872,7 @@ yakow-default-event-handler
    (if
     (and
      (>=
-      (- (-> *display* base-frame-counter) (the-as int (-> self state-time)))
+      (- (-> *display* base-frame-counter) (-> self state-time))
       (the-as int (-> *YAKOW-bank* default-patrol-time))
       )
      (not (-> self in-pen))
@@ -902,11 +890,7 @@ yakow-default-event-handler
      )
     (go yakow-notice)
     )
-   (when
-    (>=
-     (- (-> *display* base-frame-counter) (the-as int (-> self state-time)))
-     15
-     )
+   (when (>= (- (-> *display* base-frame-counter) (-> self state-time)) 15)
     (when
      (or
       (logtest? (nav-control-flags bit19) (-> self nav flags))
@@ -958,22 +942,14 @@ yakow-default-event-handler
   yakow-default-event-handler
   :enter
   (behavior ()
-   (set!
-    (-> self state-time)
-    (the-as seconds (-> *display* base-frame-counter))
-    )
+   (set! (-> self state-time) (-> *display* base-frame-counter))
    (set! (-> self travel-speed) 0.0)
    (set! (-> self grazing) #t)
-   (let ((v1-3 (entity-actor-lookup (-> self entity) 'alt-actor 0))
-         (a1-1 (new 'stack-no-clear 'event-message-block))
-         )
-    (set! (-> a1-1 from) self)
-    (set! (-> a1-1 num-params) 0)
-    (set! (-> a1-1 message) 'update)
-    (send-event-function (if v1-3
-                          (-> v1-3 extra process)
-                          )
-     a1-1
+   (let ((v1-3 (entity-actor-lookup (-> self entity) 'alt-actor 0)))
+    (send-event (if v1-3
+                 (-> v1-3 extra process)
+                 )
+     'update
      )
     )
    (none)
@@ -1175,10 +1151,7 @@ yakow-default-event-handler
   yakow-default-event-handler
   :enter
   (behavior ()
-   (set!
-    (-> self state-time)
-    (the-as seconds (-> *display* base-frame-counter))
-    )
+   (set! (-> self state-time) (-> *display* base-frame-counter))
    (logior! (-> self nav flags) (nav-control-flags bit10))
    (set! (-> self rotate-speed) (-> *YAKOW-bank* run-rotate-speed))
    (set! (-> self turn-time) (-> *YAKOW-bank* run-turn-time))
@@ -1251,10 +1224,7 @@ yakow-default-event-handler
    )
   :enter
   (behavior ()
-   (set!
-    (-> self state-time)
-    (the-as seconds (-> *display* base-frame-counter))
-    )
+   (set! (-> self state-time) (-> *display* base-frame-counter))
    (if (-> self grazing)
     (go yakow-graze-kicked)
     )
@@ -1277,11 +1247,7 @@ yakow-default-event-handler
    )
   :trans
   (behavior ()
-   (if
-    (>=
-     (- (-> *display* base-frame-counter) (the-as int (-> self state-time)))
-     60
-     )
+   (if (>= (- (-> *display* base-frame-counter) (-> self state-time)) 60)
     (set!
      (-> self travel-speed)
      (seek

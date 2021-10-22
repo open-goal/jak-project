@@ -880,67 +880,43 @@
 (defbehavior
   swamp-rat-nest-dummy-event-handler swamp-rat-nest-dummy
   ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
-  (let ((v1-0 arg2))
-   (the-as object (cond
-                   ((= v1-0 'shake)
-                    (if (= (-> self next-state name) 'swamp-rat-nest-dummy-idle)
-                     (go swamp-rat-nest-dummy-shake)
-                     )
-                    )
-                   ((= v1-0 'attack)
-                    (let ((a1-1 (new 'stack-no-clear 'event-message-block)))
-                     (set! (-> a1-1 from) self)
-                     (set! (-> a1-1 num-params) 0)
-                     (set! (-> a1-1 message) 'hit)
-                     (send-event-function
-                      (ppointer->process (-> self parent-process))
-                      a1-1
-                      )
-                     )
-                    (let ((v1-7 (-> arg3 param 2)))
-                     (when (!= v1-7 (-> self parent-process 0 player-attack-id))
-                      (set!
-                       (-> self parent-process 0 player-attack-id)
-                       (the-as int v1-7)
-                       )
-                      (cond
-                       ((and (>= arg1 2) (= (-> arg3 param 1) 'eco-yellow))
-                        (swamp-rat-nest-dummy-take-damage 3)
-                        (when
-                         (<
-                          (vector-vector-distance
-                           (target-pos 0)
-                           (-> self top-sphere)
-                           )
-                          (-> self top-sphere w)
-                          )
-                         (let
-                          ((a1-3 (new 'stack-no-clear 'event-message-block)))
-                          (set! (-> a1-3 from) self)
-                          (set! (-> a1-3 num-params) 1)
-                          (set! (-> a1-3 message) 'no-look-around)
-                          (set! (-> a1-3 param 0) (the-as uint 75))
-                          (send-event-function *target* a1-3)
-                          )
-                         )
-                        (go swamp-rat-nest-dummy-hit)
-                        )
-                       (else
-                        (level-hint-spawn
-                         (game-text-id swamp-rats-nest-hint)
-                         "sksp0144"
-                         (the-as entity #f)
-                         *entity-pool*
-                         (game-task none)
-                         )
-                        (swamp-rat-nest-dummy-take-damage 0)
-                        (go swamp-rat-nest-dummy-hit)
-                        )
-                       )
-                      )
-                     )
-                    )
-                   )
+  (case arg2 
+   (('shake)
+     (if (= (-> self next-state name) 'swamp-rat-nest-dummy-idle)
+      (go swamp-rat-nest-dummy-shake)
+      )
+     )
+   (('attack)
+    (send-event (ppointer->process (-> self parent-process)) 'hit)
+    (let ((v1-7 (-> arg3 param 2)))
+     (when (!= v1-7 (-> self parent-process 0 player-attack-id))
+      (set! (-> self parent-process 0 player-attack-id) (the-as int v1-7))
+      (cond
+       ((and (>= arg1 2) (= (-> arg3 param 1) 'eco-yellow))
+        (swamp-rat-nest-dummy-take-damage 3)
+        (if
+         (<
+          (vector-vector-distance (target-pos 0) (-> self top-sphere))
+          (-> self top-sphere w)
+          )
+         (send-event *target* 'no-look-around 75)
+         )
+        (go swamp-rat-nest-dummy-hit)
+        )
+       (else
+        (level-hint-spawn
+         (game-text-id swamp-rats-nest-hint)
+         "sksp0144"
+         (the-as entity #f)
+         *entity-pool*
+         (game-task none)
+         )
+        (swamp-rat-nest-dummy-take-damage 0)
+        (go swamp-rat-nest-dummy-hit)
+        )
+       )
+      )
+     )
     )
    )
   )
@@ -971,10 +947,7 @@
   swamp-rat-nest-dummy-event-handler
   :enter
   (behavior ()
-   (set!
-    (-> self state-time)
-    (the-as seconds (-> *display* base-frame-counter))
-    )
+   (set! (-> self state-time) (-> *display* base-frame-counter))
    (if (<= (-> self parent-process 0 hit-points) 0)
     (go swamp-rat-nest-dummy-die)
     )
@@ -1118,10 +1091,7 @@
    )
   :code
   (behavior ()
-   (set!
-    (-> self state-time)
-    (the-as seconds (-> *display* base-frame-counter))
-    )
+   (set! (-> self state-time) (-> *display* base-frame-counter))
    (set!
     (-> self parent-process 0 dummy)
     (the-as (pointer swamp-rat-nest-dummy) #f)
@@ -1158,11 +1128,7 @@
      (-> gp-0 ppointer)
      )
     )
-   (until
-    (>=
-     (- (-> *display* base-frame-counter) (the-as int (-> self state-time)))
-     30
-     )
+   (until (>= (- (-> *display* base-frame-counter) (-> self state-time)) 30)
     (suspend)
     )
    (ja-channel-set! 0)
@@ -1214,11 +1180,10 @@
 (defbehavior
   swamp-rat-nest-default-event-handler swamp-rat-nest
   ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
-  (let ((v1-0 arg2))
-   (the-as object (if (= v1-0 'victory)
-                   (go swamp-rat-nest-victory)
-                   )
-    )
+  (case arg2 
+   (('victory)
+     (go swamp-rat-nest-victory)
+     )
    )
   )
 
@@ -1276,7 +1241,9 @@ swamp-rat-nest-default-event-handler
    )
   )
 
+;; WARN: Function may read a register that is not set: t2
 (defbehavior swamp-rat-nest-spawn-rat swamp-rat-nest ()
+  (local-vars (t2-0 none))
   (when (and (-> self dummy) (> (-> self dummy 0 spawn-joint-count) 0))
    (let* ((v1-5 (swamp-rat-nest-pick-spawn-joint))
           (v1-8 (-> self dummy 0 node-list data v1-5 bone))
@@ -1307,7 +1274,7 @@ swamp-rat-nest-default-event-handler
         (the-as pointer #x70004000)
         )
        )
-      (run-now-in-process s3-0 swamp-rat-init-by-other self gp-0 s5-0 s4-0)
+      (run-now-in-process s3-0 swamp-rat-init-by-other self gp-0 s5-0 s4-0 t2-0)
       (-> s3-0 ppointer)
       )
      )
@@ -1450,19 +1417,15 @@ swamp-rat-nest-default-event-handler
 (defstate swamp-rat-nest-idle (swamp-rat-nest)
   :event
   (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
-   (let ((v1-0 arg2))
-    (the-as object (if (= v1-0 'hit)
-                    (go swamp-rat-nest-active)
-                    )
-     )
+   (case arg2 
+    (('hit)
+      (go swamp-rat-nest-active)
+      )
     )
    )
   :enter
   (behavior ()
-   (set!
-    (-> self state-time)
-    (the-as seconds (-> *display* base-frame-counter))
-    )
+   (set! (-> self state-time) (-> *display* base-frame-counter))
    (none)
    )
   :trans
@@ -1496,10 +1459,7 @@ swamp-rat-nest-default-event-handler
   swamp-rat-nest-default-event-handler
   :enter
   (behavior ()
-   (set!
-    (-> self state-time)
-    (the-as seconds (-> *display* base-frame-counter))
-    )
+   (set! (-> self state-time) (-> *display* base-frame-counter))
    (none)
    )
   :trans
@@ -1507,13 +1467,10 @@ swamp-rat-nest-default-event-handler
    (swamp-rat-nest-check-dummy)
    (when
     (>=
-     (- (-> *display* base-frame-counter) (the-as int (-> self state-time)))
+     (- (-> *display* base-frame-counter) (-> self state-time))
      (the-as int (-> self test-interval))
      )
-    (set!
-     (-> self state-time)
-     (the-as seconds (-> *display* base-frame-counter))
-     )
+    (set! (-> self state-time) (-> *display* base-frame-counter))
     (set! (-> self test-interval) (the-as uint 60))
     (let ((v1-6 0))
      (let ((a0-2 (the-as (pointer process-tree) (-> self child-process))))
@@ -1547,10 +1504,7 @@ swamp-rat-nest-default-event-handler
   swamp-rat-nest-default-event-handler
   :enter
   (behavior ()
-   (set!
-    (-> self state-time)
-    (the-as seconds (-> *display* base-frame-counter))
-    )
+   (set! (-> self state-time) (-> *display* base-frame-counter))
    (none)
    )
   :trans
@@ -1558,15 +1512,10 @@ swamp-rat-nest-default-event-handler
    (swamp-rat-nest-check-dummy)
    (when
     (>=
-     (- (-> *display* base-frame-counter) (the-as int (-> self state-time)))
+     (- (-> *display* base-frame-counter) (-> self state-time))
      (the int (* (-> self spawn-period-scale) (-> self spawn-period)))
      )
-    (let ((a1-0 (new 'stack-no-clear 'event-message-block)))
-     (set! (-> a1-0 from) self)
-     (set! (-> a1-0 num-params) 0)
-     (set! (-> a1-0 message) 'shake)
-     (send-event-function (ppointer->process (-> self dummy)) a1-0)
-     )
+    (send-event (ppointer->process (-> self dummy)) 'shake)
     (swamp-rat-nest-spawn-rat)
     (go swamp-rat-nest-active)
     )
@@ -1600,13 +1549,8 @@ swamp-rat-nest-default-event-handler
               )
              )
             )
-      (when a0-1
-       (let ((a1-1 (new 'stack-no-clear 'event-message-block)))
-        (set! (-> a1-1 from) self)
-        (set! (-> a1-1 num-params) 0)
-        (set! (-> a1-1 message) 'victory)
-        (send-event-function (the-as process a0-1) a1-1)
-        )
+      (if a0-1
+       (send-event (the-as process a0-1) 'victory)
        )
       )
      (set! gp-0 (-> gp-0 0 brother))

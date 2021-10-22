@@ -745,12 +745,7 @@
                (set! (-> obj eco-pickup-time) (-> *display* game-frame-counter))
                
                ;; send a reset-collide message. Not sure why we do this.
-               (let ((a1-24 (new 'stack-no-clear 'event-message-block)))
-                 (set! (-> a1-24 from) pp)
-                 (set! (-> a1-24 num-params) 0)
-                 (set! (-> a1-24 message) 'reset-collide)
-                 (send-event-function (-> obj process) a1-24)
-                 )
+               (send-event (-> obj process) 'reset-collide)
                )
              
              ;; this logic prevents eco from respawning before you are out.
@@ -814,61 +809,27 @@
                           )
                      
                      ;; send the touch tracker the target
-                     (let ((a1-44 (new 'stack-no-clear 'event-message-block)))
-                       (set! (-> a1-44 from) pp)
-                       (set! (-> a1-44 num-params) 1)
-                       (set! (-> a1-44 message) 'target)
-                       (set! (-> a1-44 param 0) (the-as uint s5-1))
-                       (send-event-function (ppointer->process s4-3) a1-44)
-                       )
+                     (send-event (ppointer->process s4-3) 'target s5-1)
                      ;; tell it we have blue eco.
-                     (let ((a1-45 (new 'stack-no-clear 'event-message-block)))
-                       (set! (-> a1-45 from) pp)
-                       (set! (-> a1-45 num-params) 1)
-                       (set! (-> a1-45 message) 'event)
-                       (set! (-> a1-45 param 0) (the-as uint 'eco-blue))
-                       (send-event-function (ppointer->process s4-3) a1-45)
-                       )
+                     (send-event (ppointer->process s4-3) 'event 'eco-blue)
                      ;; give it a function to call to see if it's time to exit
-                     (let ((a1-46 (new 'stack-no-clear 'event-message-block)))
-                       (set! (-> a1-46 from) pp)
-                       (set! (-> a1-46 num-params) 1)
-                       (set! (-> a1-46 message) 'exit)
-                       (set! (-> a1-46 param 0) 
-                             (the-as uint (lambda ()
-                                            ;; check to see if target has powerup 3.
-                                            (with-pp
-                                              (let ((a1-0 (new 'stack-no-clear 'event-message-block)))
-                                                (set! (-> a1-0 from) pp)
-                                                (set! (-> a1-0 num-params) 2)
-                                                (set! (-> a1-0 message) 'query)
-                                                (set! (-> a1-0 param 0) (the-as uint 'powerup))
-                                                (set! (-> a1-0 param 1) (the-as uint 3))
-                                                (send-event-function *target* a1-0)
-                                                )
-                                              )
-                                            )
-                                     )
-                             )
-                       (send-event-function (ppointer->process s4-3) a1-46)
-                       )
-                     ;; set up some collision thing.
-                     (let ((a1-47 (new 'stack-no-clear 'event-message-block)))
-                       (set! (-> a1-47 from) pp)
-                       (set! (-> a1-47 num-params) 1)
-                       (set! (-> a1-47 message) 'eval)
-                       (set! (-> a1-47 param 0)
-                         (the-as uint
-                           (lambda :behavior process-drawable ()
-                             (set! (-> (the-as collide-shape (-> self root)) root-prim collide-with)
-                               (the-as uint #x800e)
-                               )
-                             (none)
-                             )
-                           )
-                         )
-                       (send-event-function (ppointer->process s4-3) a1-47)
-                       )
+                     (send-event (ppointer->process s4-3) 
+                                 'exit 
+                                 (lambda ()
+                                   (send-event *target* 'query 'powerup 3)
+                                   )
+                                 ;; set up some collision thing.
+                                 (send-event (ppointer->process s4-3)
+                                             'eval
+                                             (lambda :behavior process-drawable
+                                               ()
+                                               (set! (-> (the-as collide-shape (-> self root)) root-prim collide-with)
+                                                     (the-as uint #x800e)
+                                                     )
+                                               (none)
+                                               )
+                                             )
+                                 )
                      )
                    
                    ;; create a process that just keeps sending 'effect 'eco-blue
