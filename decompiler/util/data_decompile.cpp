@@ -600,7 +600,7 @@ goos::Object decompile_structure(const TypeSpec& type,
     }
     idx++;
 
-    // O(N^2)-1 approach to the score system? but I didn't notice many slowdowns and there are
+    // O(N^2)-1 approach to the score system? but I didn't notice any slowdowns and there are
     // ultimately not many static allocs
     bool higher_score_available = false;
     for (auto& other_field : type_info->fields()) {
