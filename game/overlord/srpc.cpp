@@ -71,6 +71,9 @@ void* RPC_Loader(unsigned int /*fno*/, void* data, int size) {
             }
           }
         } break;
+        case SoundCommand::UNLOAD_BANK:
+          printf("ignoring unload bank command!\n");
+          break;
         case SoundCommand::GET_IRX_VERSION: {
           cmd->irx_version.major = IRX_VERSION_MAJOR;
           cmd->irx_version.minor = IRX_VERSION_MINOR;
