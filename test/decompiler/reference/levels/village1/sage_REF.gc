@@ -94,9 +94,9 @@
      )
     )
    (case (current-status (-> obj tasks)) 
-    ((2 3)
+    (((task-status need-hint) (task-status need-introduction))
       (case (current-task (-> obj tasks)) 
-       ((109)
+       (((game-task intro))
          (when arg0
           (close-status! (-> obj tasks) (task-status need-introduction))
           (set-setting! *setting-control* pp 'music-volume-movie 'abs 0.0 0)
@@ -307,7 +307,7 @@
             )
           )
          )
-       ((15)
+       (((game-task beach-ecorocks))
         (when arg0
          (let* ((s5-1 (-> obj tasks))
                 (s4-0 (method-of-object s5-1 save-reminder))
@@ -510,7 +510,7 @@
         )
        )
       )
-    ((5)
+    (((task-status need-reminder))
      (set! (-> obj skippable) #t)
      (if arg0
       (set! (-> obj reminder-played) #t)
@@ -625,62 +625,44 @@
        )
       )
      )
-    ((6)
+    (((task-status need-reward-speech))
      (when arg0
       (set-setting! *setting-control* pp 'music-volume-movie 'abs 0.0 0)
       (copy-settings-from-target! *setting-control*)
       (close-status! (-> obj tasks) (task-status need-reward-speech))
-      (let* ((s5-2 (get-process *default-dead-pool* manipy #x4000))
-             (v1-41 (when s5-2
-                     (let ((t9-15 (method-of-type manipy activate)))
-                      (t9-15
-                       (the-as manipy s5-2)
-                       obj
-                       'manipy
-                       (the-as pointer #x70004000)
-                       )
-                      )
-                     ((the-as
-                       (function process function object object object object object)
-                       run-function-in-process
-                       )
-                      s5-2
-                      manipy-init
-                      (-> obj root trans)
-                      (-> obj entity)
-                      *assistant-sg*
-                      #f
-                      )
-                     (-> s5-2 ppointer)
-                     )
-              )
-             )
-       (set!
-        (-> obj assistant)
-        (new 'static 'handle :process v1-41 :pid (-> v1-41 0 pid))
+      (let ((s5-2 (get-process *default-dead-pool* manipy #x4000)))
+       (set! (-> obj assistant) (ppointer->handle (when s5-2
+                                                   (let
+                                                    ((t9-15
+                                                      (method-of-type
+                                                       manipy
+                                                       activate
+                                                       )
+                                                      )
+                                                     )
+                                                    (t9-15
+                                                     (the-as manipy s5-2)
+                                                     obj
+                                                     'manipy
+                                                     (the-as pointer #x70004000)
+                                                     )
+                                                    )
+                                                   (run-now-in-process
+                                                    s5-2
+                                                    manipy-init
+                                                    (-> obj root-override trans)
+                                                    (-> obj entity)
+                                                    *assistant-sg*
+                                                    #f
+                                                    )
+                                                   (-> s5-2 ppointer)
+                                                   )
+                                 )
         )
        )
-      (let ((a1-16 (new 'stack-no-clear 'event-message-block)))
-       (set! (-> a1-16 from) pp)
-       (set! (-> a1-16 num-params) 1)
-       (set! (-> a1-16 message) 'anim-mode)
-       (set! (-> a1-16 param 0) (the-as uint 'clone-anim))
-       (send-event-function (handle->process (-> obj assistant)) a1-16)
-       )
-      (let ((a1-17 (new 'stack-no-clear 'event-message-block)))
-       (set! (-> a1-17 from) pp)
-       (set! (-> a1-17 num-params) 1)
-       (set! (-> a1-17 message) 'blend-shape)
-       (set! (-> a1-17 param 0) (the-as uint #t))
-       (send-event-function (handle->process (-> obj assistant)) a1-17)
-       )
-      (let ((a1-18 (new 'stack-no-clear 'event-message-block)))
-       (set! (-> a1-18 from) pp)
-       (set! (-> a1-18 num-params) 1)
-       (set! (-> a1-18 message) 'center-joint)
-       (set! (-> a1-18 param 0) (the-as uint 3))
-       (send-event-function (handle->process (-> obj assistant)) a1-18)
-       )
+      (send-event (handle->process (-> obj assistant)) 'anim-mode 'clone-anim)
+      (send-event (handle->process (-> obj assistant)) 'blend-shape #t)
+      (send-event (handle->process (-> obj assistant)) 'center-joint 3)
       (let ((v1-68 (handle->process (-> obj assistant))))
        (if v1-68
         (set! (-> (the-as assistant v1-68) draw light-index) (the-as uint 1))
@@ -985,9 +967,7 @@
        0
        "ERROR: <GMJ>: ~S playing anim for task status ~S~%"
        (-> obj name)
-       (task-status->string
-        (the-as task-status (current-status (-> obj tasks)))
-        )
+       (task-status->string (current-status (-> obj tasks)))
        )
       )
      (get-art-elem obj)
@@ -1022,7 +1002,10 @@
     )
    ((and
      (-> obj reminder-played)
-     (< 81920.0 (vector-vector-distance (-> obj root trans) (camera-pos)))
+     (<
+      81920.0
+      (vector-vector-distance (-> obj root-override trans) (camera-pos))
+      )
      )
     #t
     )
@@ -1036,19 +1019,19 @@
 (defmethod get-art-elem sage ((obj sage))
   (cond
    ((and
-     (= (current-task (-> obj tasks)) 15)
+     (= (current-task (-> obj tasks)) (game-task beach-ecorocks))
      (or
-      (= (current-status (-> obj tasks)) 2)
-      (= (current-status (-> obj tasks)) 3)
+      (= (current-status (-> obj tasks)) (task-status need-hint))
+      (= (current-status (-> obj tasks)) (task-status need-introduction))
       )
      )
     (save-reminder (-> obj tasks) 0 0)
     )
    ((and
-     (= (current-task (-> obj tasks)) 26)
+     (= (current-task (-> obj tasks)) (game-task misty-cannon))
      (or
-      (= (current-status (-> obj tasks)) 2)
-      (= (current-status (-> obj tasks)) 3)
+      (= (current-status (-> obj tasks)) (task-status need-hint))
+      (= (current-status (-> obj tasks)) (task-status need-introduction))
       )
      )
     (save-reminder (-> obj tasks) 1 0)
@@ -1056,7 +1039,7 @@
    ((dummy-45 obj)
     (set! (-> obj reminder-played) #f)
     (cond
-     ((zero? (current-task (-> obj tasks)))
+     ((= (current-task (-> obj tasks)) (game-task none))
       (case (get-reminder (-> obj tasks) 0) 
        ((2)
          (save-reminder (-> obj tasks) 3 0)
@@ -1134,27 +1117,52 @@
            )
      (cond
       ((< (-> s5-0 y) -12288.0)
+       #f
        )
       ((< 0.8 f0-2)
-       (dummy-11 (-> obj ambient) "SAGELP03" #f (-> obj root trans))
+       (play-ambient
+        (-> obj ambient)
+        "SAGELP03"
+        #f
+        (-> obj root-override trans)
+        )
        )
       ((< 0.6 f0-2)
-       (dummy-11 (-> obj ambient) "SAGELP04" #f (-> obj root trans))
+       (play-ambient
+        (-> obj ambient)
+        "SAGELP04"
+        #f
+        (-> obj root-override trans)
+        )
        )
       ((< 0.4 f0-2)
-       (dummy-11 (-> obj ambient) "SAGELP05" #f (-> obj root trans))
+       (play-ambient
+        (-> obj ambient)
+        "SAGELP05"
+        #f
+        (-> obj root-override trans)
+        )
        )
       ((< 0.2 f0-2)
-       (dummy-11 (-> obj ambient) "SAGELP06" #f (-> obj root trans))
+       (play-ambient
+        (-> obj ambient)
+        "SAGELP06"
+        #f
+        (-> obj root-override trans)
+        )
        )
       (else
-       (dummy-11 (-> obj ambient) "SAGELP11" #f (-> obj root trans))
+       (play-ambient
+        (-> obj ambient)
+        "SAGELP11"
+        #f
+        (-> obj root-override trans)
+        )
        )
       )
      )
     )
    )
-  (none)
   )
 
 ;; failed to figure out what this is:
@@ -1164,13 +1172,8 @@
   (behavior ()
    (case (get-task-status (game-task intro)) 
     (((task-status need-reward-speech))
-      (when (process-grab? *target*)
-       (let ((a1-0 (new 'stack-no-clear 'event-message-block)))
-        (set! (-> a1-0 from) self)
-        (set! (-> a1-0 num-params) 0)
-        (set! (-> a1-0 message) 'play-anim)
-        (send-event-function self a1-0)
-        )
+      (if (process-grab? *target*)
+       (send-event self 'play-anim)
        )
       )
     )
@@ -1228,7 +1231,10 @@
        (if
         (and
          (-> self reminder-played)
-         (< 81920.0 (vector-vector-distance (-> self root trans) (camera-pos)))
+         (<
+          81920.0
+          (vector-vector-distance (-> self root-override trans) (camera-pos))
+          )
          )
         (go-virtual idle)
         )
@@ -1346,7 +1352,7 @@
 
 ;; definition for method 41 of type sage
 ;; INFO: Return type mismatch int vs none.
-(defmethod initialize-collision sage ((obj sage) (arg0 int))
+(defmethod initialize-collision sage ((obj sage) (arg0 int) (arg1 vector))
   (let
    ((s5-0 (new 'process 'collide-shape obj (collide-list-enum hit-by-player))))
    (let ((s4-0 (new 'process 'collide-shape-prim-group s5-0 (the-as uint 2) 0)))
@@ -1356,7 +1362,7 @@
     (set! (-> s4-0 prim-core offense) 4)
     (set! (-> s4-0 transform-index) arg0)
     (set-vector! (-> s4-0 local-sphere) 0.0 0.0 0.0 10240.0)
-    ((method-of-object s5-0 dummy-46))
+    (dummy-46 s5-0)
     (let ((s2-0 (new 'process 'collide-shape-prim-sphere s5-0 (the-as uint 0))))
      (set! (-> s2-0 prim-core collide-as) (the-as uint 256))
      (set! (-> s2-0 collide-with) (the-as uint 16))
@@ -1365,7 +1371,7 @@
      (set! (-> s2-0 transform-index) arg0)
      (set-vector! (-> s2-0 local-sphere) 0.0 -2048.0 0.0 5324.8)
      )
-    ((method-of-object s4-0 dummy-28))
+    (dummy-28 s4-0)
     (let ((s2-1 (new 'process 'collide-shape-prim-sphere s5-0 (the-as uint 0))))
      (set! (-> s2-1 prim-core collide-as) (the-as uint 256))
      (set! (-> s2-1 collide-with) (the-as uint 16))
@@ -1374,11 +1380,11 @@
      (set! (-> s2-1 transform-index) arg0)
      (set-vector! (-> s2-1 local-sphere) 0.0 2048.0 0.0 5324.8)
      )
-    ((method-of-object s4-0 dummy-28))
+    (dummy-28 s4-0)
     )
    (set! (-> s5-0 nav-radius) (* 0.75 (-> s5-0 root-prim local-sphere w)))
-   ((method-of-object s5-0 dummy-50))
-   (set! (-> obj root) s5-0)
+   (dummy-50 s5-0)
+   (set! (-> obj root-override) s5-0)
    )
   0
   (none)

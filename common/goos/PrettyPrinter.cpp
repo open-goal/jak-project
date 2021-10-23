@@ -11,6 +11,7 @@
 #include "PrettyPrinter.h"
 #include "Reader.h"
 #include "third-party/fmt/core.h"
+#include "common/log/log.h"
 
 namespace pretty_print {
 
@@ -29,7 +30,12 @@ const std::unordered_map<u32, std::string> const_floats = {{0x40490fda, "PI"},
 goos::Object float_representation(float value) {
   u32 int_value;
   memcpy(&int_value, &value, 4);
-  if (const_floats.find(int_value) != const_floats.end()) {
+  u8 exp = (int_value >> 23) & 0xff;
+  u32 mant = int_value & 0x7fffff;
+  if ((exp == 0 && mant != 0) || exp == 0xff) {
+    // lg::warn("PS2-incompatible float (0x{:08X}) detected! Writing as the-as cast.", int_value);
+    return pretty_print::build_list("the-as", "float", fmt::format("#x{:x}", int_value));
+  } else if (const_floats.find(int_value) != const_floats.end()) {
     return pretty_print::to_symbol(const_floats.at(int_value));
   } else if (banned_floats.find(int_value) == banned_floats.end()) {
     return goos::Object::make_float(value);
@@ -828,14 +834,17 @@ std::string to_string(const goos::Object& obj, int line_length) {
   return pretty;
 }
 
-goos::Reader pretty_printer_reader;
+std::unique_ptr<goos::Reader> pretty_printer_reader;
 
 goos::Reader& get_pretty_printer_reader() {
-  return pretty_printer_reader;
+  if (!pretty_printer_reader) {
+    pretty_printer_reader = std::make_unique<goos::Reader>();
+  }
+  return *pretty_printer_reader;
 }
 
 goos::Object to_symbol(const std::string& str) {
-  return goos::SymbolObject::make_new(pretty_printer_reader.symbolTable, str);
+  return goos::SymbolObject::make_new(get_pretty_printer_reader().symbolTable, str);
 }
 
 goos::Object build_list(const std::string& str) {
@@ -843,12 +852,12 @@ goos::Object build_list(const std::string& str) {
 }
 
 goos::Object build_list(const goos::Object& obj) {
-  return goos::PairObject::make_new(obj, goos::EmptyListObject::make_new());
+  return goos::PairObject::make_new(obj, goos::Object::make_empty_list());
 }
 
 goos::Object build_list(const std::vector<goos::Object>& objects) {
   if (objects.empty()) {
-    return goos::EmptyListObject::make_new();
+    return goos::Object::make_empty_list();
   } else {
     return build_list(objects.data(), objects.size());
   }
@@ -862,7 +871,7 @@ goos::Object build_list(const goos::Object* objects, int count) {
   if (count - 1) {
     cdr = build_list(objects + 1, count - 1);
   } else {
-    cdr = goos::EmptyListObject::make_new();
+    cdr = goos::Object::make_empty_list();
   }
   return goos::PairObject::make_new(car, cdr);
 }
@@ -870,7 +879,7 @@ goos::Object build_list(const goos::Object* objects, int count) {
 // build a list out of a vector of strings that are converted to symbols
 goos::Object build_list(const std::vector<std::string>& symbols) {
   if (symbols.empty()) {
-    return goos::EmptyListObject::make_new();
+    return goos::Object::make_empty_list();
   }
   std::vector<goos::Object> f;
   f.reserve(symbols.size());

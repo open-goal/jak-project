@@ -27,69 +27,29 @@ jobs:
     # Set some sort of timeout in the event of run-away builds.  We are limited on concurrent jobs so, get rid of them.
     timeout-minutes: 20
 
-    steps:
-      # NOTE - useful for debugging
-      # - name: Dump GitHub context
-      #   env:
-      #     GITHUB_CONTEXT: ${{ toJson(github) }}
-      #   run: |
-      #     echo "$GITHUB_CONTEXT"
+    env: # overrides: https://github.com/mbitsnbites/buildcache/blob/master/doc/configuration.md
+      BUILDCACHE_MAX_CACHE_SIZE: 1000000000 # 1gb
+      BUILDCACHE_COMPRESS_FORMAT: ZSTD
+      BUILDCACHE_COMPRESS_LEVEL: 19
+      BUILDCACHE_DIRECT_MODE: true
+      BUILDCACHE_LOG_FILE: ${{ github.workspace }}/buildcache.log
 
+    steps:
       - name: Checkout Repository
         uses: actions/checkout@v2
 
-      - name: Cache Submodules
-        id: cache-submodules
-        uses: actions/cache@v2
-        with:
-          key: submodules-${{ hashFiles('./.gitmodules') }}
-          path: |
-            ./third-party/googletest
-            ./third-party/zydis
-            ./third-party/glfw
-            ./.git/modules/
-
       - name: Checkout Submodules
-        if: steps.cache-submodules.outputs.cache-hit != 'true'
-        run: git submodule update --init --recursive --jobs 2
-
-      - name: Prepare Artifact Git Info
-        id: git-vars
-        shell: bash
-        run: |
-          echo "##[set-output name=branch;]${GITHUB_REF#refs/heads/}"
-          ARTIFACT_NAME="commit-$(git rev-parse --short "$GITHUB_SHA")"
-          if [ ${{ github.event_name == 'pull_request' }} ]; then
-            echo "##[set-output name=short-sha;]$(git rev-parse --short "${{ github.event.pull_request.head.sha }}")"
-            if [ ! -z "${{ github.event.pull_request.number }}" ]; then
-              ARTIFACT_NAME="pr-${{ github.event.pull_request.number }}-commit-$(git rev-parse --short "${{ github.event.pull_request.head.sha }}")"
-            fi
-          else
-            echo "##[set-output name=short-sha;]$(git rev-parse --short "$GITHUB_SHA")"
-          fi
-          echo "##[set-output name=artifact-metadata;]${ARTIFACT_NAME}"
+        run: git submodule update --init --recursive -j 2
 
       - name: Get Package Dependencies
-        run: sudo apt install build-essential cmake ccache clang gcc g++ lcov make nasm libxrandr-dev libxinerama-dev libxcursor-dev libxi-dev
+        run: sudo apt install build-essential cmake clang gcc g++ lcov make nasm libxrandr-dev libxinerama-dev libxcursor-dev libxi-dev
 
-      # # -- SETUP CCACHE - https://cristianadam.eu/20200113/speeding-up-c-plus-plus-github-actions-using-ccache/
-      # - name: Prepare ccache timestamp
-      #   id: ccache_cache_timestamp
-      #   shell: cmake -P {0}
-      #   run: |
-      #     string(TIMESTAMP current_date "%Y-%m-%d-%H;%M;%S" UTC)
-      #     message("::set-output name=timestamp::${current_date}")
+      - name: Setup Buildcache
+        uses: mikehardy/buildcache-action@v1.2.2
+        with:
+          cache_key: ${{ matrix.os }}-${{ matrix.config }}-${{ matrix.compiler }}
 
-      # - name: ccache cache files
-      #   uses: actions/cache@v2
-      #   with:
-      #     path: .ccache
-      #     key: ${{ matrix.config }}-ccache-${{ steps.ccache_cache_timestamp.outputs.timestamp }}
-      #     restore-keys: |
-      #       ${{ matrix.config }}-ccache-
-
-      - name:  CMake Generation
-        # run: cmake -D CMAKE_C_COMPILER_LAUNCHER=ccache -D CMAKE_CXX_COMPILER_LAUNCHER=ccache -B build -DCODE_COVERAGE=ON
+      - name: CMake Generation
         run: |
           if [ "${{ matrix.compiler }}" == 'clang' ]; then
             export CC=clang
@@ -98,22 +58,16 @@ jobs:
           else
             export CC=gcc
             export CXX=g++
-            cmake -B build -DCODE_COVERAGE=ON
+            cmake -B build \
+              -DCMAKE_C_COMPILER_LAUNCHER="${{ github.workspace }}"/buildcache/bin/buildcache \
+              -DCMAKE_CXX_COMPILER_LAUNCHER="${{ github.workspace }}"/buildcache/bin/buildcache \
+              -DCODE_COVERAGE=ON
           fi
 
       - name: Build Project
         working-directory: ./build
-        # env:
-        #   CCACHE_BASEDIR: ${GITHUB_WORKSPACE}
-        #   CCACHE_DIR: ${GITHUB_WORKSPACE}/.ccache
-        #   CCACHE_COMPRESS: "true"
-        #   CCACHE_COMPRESSLEVEL: "6"
-        #   CCACHE_MAXSIZE: "400M"
-        #   ccache -p
-        #   ccache -z
-        #   make -j4
-        #   ccache -s
-        run: make -j4
+        run: |
+          make -j4
 
       - name: Run Tests
         run: |

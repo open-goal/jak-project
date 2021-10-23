@@ -58,7 +58,8 @@ struct BacktraceFrame {
 
 class Debugger {
  public:
-  explicit Debugger(listener::Listener* listener) : m_listener(listener) {}
+  explicit Debugger(listener::Listener* listener, const goos::Reader* reader)
+      : m_listener(listener), m_reader(reader) {}
   ~Debugger();
   bool is_halted() const;
   bool is_valid() const;
@@ -164,6 +165,7 @@ class Debugger {
   void stop_watcher();
   void watcher();
   void update_continue_info();
+  void handle_disappearance();
 
   struct Breakpoint {
     u32 goal_addr = 0;  // address to break at
@@ -206,6 +208,7 @@ class Debugger {
   InstructionPointerInfo m_break_info;
 
   listener::Listener* m_listener = nullptr;
+  const goos::Reader* m_reader = nullptr;
   listener::MemoryMap m_memory_map;
   std::unordered_map<std::string, DebugInfo> m_debug_info;
 };

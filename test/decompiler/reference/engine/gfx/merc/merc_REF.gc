@@ -14,18 +14,19 @@
 ;; INFO: Return type mismatch merc-fragment vs none.
 (defmethod login-adgifs merc-fragment ((obj merc-fragment))
   (let* ((fp-data (merc-fragment-fp-data obj))
-         (eye-ctrl
-          (the-as merc-eye-ctrl (if (nonzero? (-> *merc-ctrl-header* eye-ctrl))
-                                 (-> *merc-ctrl-header* eye-ctrl)
-                                 (the-as merc-eye-ctrl #f)
-                                 )
-           )
+         (eye-ctrl (if (nonzero? (-> *merc-ctrl-header* eye-ctrl))
+                    (-> *merc-ctrl-header* eye-ctrl)
+                    (the-as merc-eye-ctrl #f)
+                    )
           )
          (shader (the-as adgif-shader (&+ fp-data 16)))
          )
    (dotimes (s2-0 (the-as int (-> fp-data shader-cnt)))
     (cond
-     ((and eye-ctrl (= (logand -256 (-> shader texture-id)) #x1cf06f00))
+     ((and
+       eye-ctrl
+       (= (logand (the-as texture-id -256) (-> shader texture-id)) #x1cf06f00)
+       )
       (adgif-shader-login shader)
       (let ((eye-tex-block (get-eye-block (-> eye-ctrl eye-slot) 0)))
        (set! (-> shader tex0 tbp0) eye-tex-block)
@@ -46,7 +47,10 @@
         )
        )
       )
-     ((and eye-ctrl (= (logand -256 (-> shader texture-id)) #x1cf07000))
+     ((and
+       eye-ctrl
+       (= (logand (the-as texture-id -256) (-> shader texture-id)) #x1cf07000)
+       )
       (adgif-shader-login shader)
       (let ((eye-tex-block-2 (get-eye-block (-> eye-ctrl eye-slot) 1)))
        (set! (-> shader tex0 tbp0) eye-tex-block-2)

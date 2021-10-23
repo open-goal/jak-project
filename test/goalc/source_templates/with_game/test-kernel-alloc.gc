@@ -1,0 +1,15 @@
+(let ((proc (get-process *nk-dead-pool* process 1024)))
+  (activate proc *active-pool* 'test *kernel-dram-stack*)
+  (run-now-in-process
+    proc
+    (lambda :behavior process ()
+      ;; (inspect self)
+      (let ((old-heap-cur (-> self heap-cur))
+            (obj (new 'process 'bfloat)))
+        (set! (-> obj data) 12.0)
+        ;; (inspect self)
+        (format #t "diff is ~D~%" (&- (-> self heap-cur) old-heap-cur))
+        )
+      )
+    )
+  )

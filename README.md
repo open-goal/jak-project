@@ -43,6 +43,24 @@ Our objectives are:
 
 We support both Linux and Windows on x86-64.
 
+## Current Status
+So far, we've decompiled around 130,000 lines of GOAL code, out of an estimated 500,000 total lines and we've started work on an OpenGL renderer.  Currently, the main display process (`*dproc*`) runs and sends data to our renderer.  We can load textures, text files, and level files. Using keyboard controls, we can open the debug menu and turn on some simple debug visualizations.
+
+
+Video of debug menu and actor visibility:
+https://www.youtube.com/watch?v=0AoiYY4S7nI
+
+To help with decompiling, we've built a decompiler that can process GOAL code and unpack game assets. We manually specify function types and locations where the original code had type casts until the decompiler succeeds, then we clean up the output of the decompiled code by adding comments and adjusting formatting, then save it in `goal_src`. Our decompiler is designed specifically for processing the output of the original GOAL compiler.  As a result, when given correct casts, it often produces code that can be directly fed into a compiler and works perfectly. This is tested as part of our unit tests, and so far we have around 130,000 lines (220 files) that pass.
+
+We don't save any assets from the game - you must bring your own copy of the game and use the decompiler to extract assets.
+
+## What's Next
+
+We are focusing on three areas:
+
+- Continue decompilation of GOAL code. Recently we have started on the "gameplay" code for creatures and objects in the game world, which is going pretty fast.
+- Improve the decompiler. We are always finding new features in the GOAL language.
+- Investigate more complicated renderers. The font and debug rendering is much simpler than the highly optimized renderers used for characters and backgrounds. We are starting to look at some of these renderers in detail.
 
 ## Getting Started - Linux (Ubuntu)
 
@@ -147,13 +165,52 @@ You may also wish to view the files that pertain to each CMake target, rather th
 
 ![](./docs/markdown/imgs/cmake-target-view.png)
 
+## Building and Running the Game
+
+Getting a running game involves 4 steps:
+1. Build C++ tools (follow steps above)
+2. Extract assets from game
+3. Build game
+4. Run game
+
+### Extract Assets
+Running the decompiler on the entire game is slow and not needed, so it is recommended to just run it on data. Edit `decompiler/config/jak1-ntsc_black_label.jsonc` and disable `decompile_code`.
+```json
+  "decompile_code": false, // change this to false, don't decompile code
+```
+
+Place a copy of the game's files in `iso_data`, then run the decompiler with the `scripts/decomp.sh` script.
+
+### Build Game
+Run the OpenGOAL compiler `build/goalc/goalc`.  Enter `(mi)` to build the `"iso"` target, which contains everything we have so far.
+
+### Run Game
+In a separate terminal, start the runtime with `build/game/gk -fakeiso -debug`.  Then, in the OpenGOAL window, run `(mi)` to create the data for the game and give the REPL information for running code, `(lt)` to connect, `(lg)` to load the game engine and `(test-play)` to start the game engine.  If it all works right, it will look something like this:
+```
+g > (lt)
+[Listener] Socket connected established! (took 0 tries). Waiting for version...
+Got version 0.8 OK!
+[Debugger] Context: valid = true, s7 = 0x147d24, base = 0x2123000000, tid = 2438049
+
+gc> (lg)
+10836466        #xa559f2              0.0000        ("game" "kernel")
+
+gc> (test-play)
+(play :use-vis #t :init-game #f) has been called!
+0        #x0              0.0000        0
+
+gc> 
+```
+Then, in the graphics window, you can use the period key to bring up the debug menu.
+
+Check out the `pc_debug` and `examples` folder under `goal_src` for some examples of GOAL code we wrote.  They have instructions for how to run them.
 
 ## Project Layout
 There are four main components to the project.
 
 The first is `goalc`, which is a GOAL compiler for x86-64. Our implementation of GOAL is called OpenGOAL. All of the compiler source code is in `goalc`. To run the compiler on Linux, there is a script `gc.sh`.  The compiler is controlled through a prompt which can be used to enter commands to compile, connect to a running GOAL program for interaction, run the OpenGOAL debugger, or, if you are connected to a running GOAL program, can be used as a REPL to run code interactively. In addition to compiling code files, the compiler has features to pack and build data files.
 
-The second component to the project is the decompiler. You must have a copy of the PS2 game and place all files from the DVD into the `iso_data` folder. Then run `decomp.sh` to run the decompiler. The decompile will extract assets to the `assets` folder. These assets will be used by the compiler when building the port. The decompiler will output code and other data intended to be inspected by humans in the `decompiler_out` folder. Stuff in this folder will not be used by the compiler.
+The second component to the project is the decompiler. You must have a copy of the PS2 game and place all files from the DVD into the `iso_data` folder. Then run `decomp.sh` (Linux) to run the decompiler. For Windows, it is the `decomp-jak1.bat` file, and it wants your game's DVD files in a `jak1` folder inside `iso_data`. The decompile will extract assets to the `assets` folder. These assets will be used by the compiler when building the port, and you may want to turn asset extraction off after running it once. The decompiler will output code and other data intended to be inspected by humans in the `decompiler_out` folder. Stuff in this folder will not be used by the compiler.
 
 The third is the game source code, written in OpenGOAL. This is located in `goal_src`. All GOAL and GOOS code should be in this folder.  Right now most of this is placeholders, but you can take a look at `kernel/gcommon.gc` or `goal-lib.gc` to see some in-progress source code.
 
@@ -175,29 +232,34 @@ The final component is the "runtime", located in `game`. This is the part of the
 - `assets`: extracted assets (textures, translated game text) generated by the decompiler. Not included in the repository. To be used when building the PC port.
 - `build`: C++ CMake build folder
 - `common`: common C++ code shared between the compiler, decompiler, and game.
+  - `audio`: tools for decoding the audio files
   - `cross_os_debug`: platform-independent library for implementing the OpenGOAL debugger. Linux-only currently
   - `cross_sockets`: platform-independent library for sockets. Used to connect the compiler to a running game. Linux and Windows.
   - `goos`: the compiler-time macro language and parser for OpenGOAL.
   - `type_system`: the OpenGOAL type system
-  - `util`: Random utility functions for accessing files, timers, etc.
+  - `texture`: texture unpacking and format conversion
+  - `util`, `math`, `log`: Random utility functions for accessing files, timers, etc.
 - `decompiler`: Source code for the decompiler
+  - `analysis`: analysis algorithms
   - `config`: JSON config files for the decompiler and type definition file.
   - `data`: utilities to extract assets from the game
   - `Disasm`: MIPS disassembler
   - `Function`: Tools for analyzing GOAL functions
   - `gui`: an early prototype of a Python GUI for reading the output of the decompiler
-  - `IR`: the "Intermediate Representation" for GOAL functions
+  - `IR2`: the "Intermediate Representation" for GOAL functions and expressions
   - `ObjectFile`: Utilities for processing the GOAL object file format.
   - `scripts`: Useful scripts for setting up the decompilation
   - `util`: random utilities
+  - `VuDisasm`: disassembler for VU code
 - `decompiler_out`: output of the decompiler that's not automatically used by the compiler. This is for humans to read and use. Not included in the repository.
-- `doc`: more documentation!
+- `docs`: more documentation!
 - `game`: the source code for the game executable
-  - `common`: shared stuff between the `kernel` and `overlord`
+  - `common`: shared stuff between the `kernel` (EE) and `overlord` (IOP)
+  - `graphic`: PC Port graphics
   - `kernel`: the part of the GOAL kernel written in C. The entry point for the game is in `kboot.cpp`.
   - `overlord`: the I/O processor driver used to get data off of the DVD
   - `sce`: the Sony library implementation
-  - `system`: PC-port specific stuff
+  - `system`: PC-port specific OS-level stuff, like file I/O, threads, controllers, debug network connection
 - `goal_src`: The GOAL code for the game. It's mostly empty now.
   - `build`: info related to the GOAL build system.
   - `engine`: the game engine
@@ -209,52 +271,29 @@ The final component is the "runtime", located in `game`. This is the part of the
   - `debugger`: The OpenGOAL debugger (part of the compiler)
   - `emitter`: x86-64 emitter and object file generator
   - `listener`: The OpenGOAL listener, which connects the compiler to a running GOAL program for the interactive REPL
+  - `make`: The OpenGOAL build system, builds both code and data files
   - `regalloc`: Register allocator
 - `iso_data`: 
 - `out`: Outputs from the build process. Only the `iso` subfolder should contain assets used by the game.
   - `iso`: Final outputs that are used by the game.
   - `obj`: Object files generated by the compiler.
 - `resources`: To be removed. Contains fake versions of some files required to get things booting.
-- `scripts`: Utility scripts.
+- `scripts`: Utility scripts. Windows-specific batch files are in a `batch` folder while Unix shell scripts are in a `shell` folder.
 - `test`: Unit tests (run on GitHub Actions)
 - `third-party`: Third party libraries
   - CMake Code Coverage. For code coverage statistics on GitHub builds
   - `fmt`. String formatting library
   - `googletest`: Test framework
   - `inja`: templating library used for generating test code for compiler tests
-  - `minilzo`: decompression code for Jak 2 and later DGOs
+  - `lzokay`: decompression code for Jak 2 and later DGOs
   - `mman`: Windows library used to emulate `mmap` on Linux
   - `run-clang-format`: Utility to check and enforce code formatting
   - `run-clang-tidy`
   - `zydis`: x86-64 disassembler used in the OpenGOAL debugger
   - `json`: A JSON library
-  - `replxx`: Used for the REPL input. Support history and useful editing shortcuts.
+  - `replxx`: Used for the REPL input. Supports history and useful editing shortcuts.
   - `svpng`: Save a PNG file
 
-
-## More Documentation
-Check out these files for more documentation. Some of it is still in progress
-- `doc/goal_dbg_doc.md`: OpenGOAL debugger
-- `doc/goal_doc.md`: OpenGOAL language
-- `doc/reader.md`: OpenGOAL "reader" documentation (OpenGOAL syntax)
-- `doc/type_system.md`: OpenGOAL type system documentation
-- `doc/porting_to_x86.md`: Summary of changes we're making to port to x86-64
-- `doc/goos.md`: GOOS macro language
-
-## ASan Build
-The project supports building with Address Sanitizer (https://github.com/google/sanitizers/wiki/AddressSanitizer) in Linux.
-```sh
-export CXX=clang++
-cmake .. -DASAN_BUILD=TRUE
-```
-You will have to delete the build folder when changing compilers.  When running `cmake`, you should see something like:
-```
--- The CXX compiler identification is Clang 10.0.0
-...
--- Doing ASAN build
-```
-
-Then you can run the tests, runtime, and compiler as normal and they will abort if ASan finds an error.
 
 ### On Windows / Visual Studio
 

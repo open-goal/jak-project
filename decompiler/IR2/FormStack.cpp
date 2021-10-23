@@ -314,6 +314,7 @@ std::vector<FormElement*> FormStack::rewrite(FormPool& pool, const Env& env) con
 
       // we want to untangle coloring moves here
       auto simplified_source = e.source;
+      auto type = e.set_type;
       auto src_as_var = dynamic_cast<SimpleExpressionElement*>(e.source->try_as_single_element());
       if (src_as_var && src_as_var->expr().is_var() && e.is_compactable) {
         bool keep_going = true;
@@ -331,14 +332,16 @@ std::vector<FormElement*> FormStack::rewrite(FormPool& pool, const Env& env) con
               var_to_get = as_one->expr().var();
             }
             simplified_source = last_op_as_set->src();
+            // because we are eliminating, we need to use the source's cast.
+            // to make the code cleaner, we drop casts that would occur in the middle
+            type = last_op_as_set->src_type();
             // result = last_op_as_set->src()->elts();
           }
         }
       }
 
-      auto type = e.set_type;
       auto expected_type = env.get_variable_type(*e.destination, true);
-      if (!env.dts->ts.tc(expected_type, e.set_type)) {
+      if (!env.dts->ts.tc(expected_type, type)) {
         // we would cast. let's see if we can simplify the source to avoid this.
         auto casted = try_cast_simplify(simplified_source, expected_type, pool, env);
         if (casted) {

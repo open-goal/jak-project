@@ -73,7 +73,7 @@
   (set! (-> mem-use length) (max 58 (-> mem-use length)))
   (set! (-> mem-use data 57 name) "bsp-misc")
   (+! (-> mem-use data 57 count) 1)
-  (let ((v1-56 (* (-> obj unk-data-1-len) 4)))
+  (let ((v1-56 (* (-> obj texture-page-count) 4)))
    (+! (-> mem-use data 57 used) v1-56)
    (+! (-> mem-use data 57 total) (logand -16 (+ v1-56 15)))
    )
@@ -113,7 +113,7 @@
      )
     )
    )
-  (when (nonzero? (-> obj unk-data-6))
+  (when (nonzero? (-> obj actor-birth-order))
    (set! (-> mem-use length) (max 58 (-> mem-use length)))
    (set! (-> mem-use data 57 name) "bsp-misc")
    (+! (-> mem-use data 57 count) 1)
@@ -446,11 +446,14 @@
 
 ;; definition for method 11 of type bsp-header
 ;; INFO: Return type mismatch symbol vs none.
-(defmethod dummy-11 bsp-header ((obj bsp-header) (arg0 int) (arg1 object))
+(defmethod
+  collide-with-box
+  bsp-header
+  ((obj bsp-header) (arg0 int) (arg1 collide-list))
   (+! (-> *collide-stats* calls) 1)
   (let ((s4-0 (-> obj drawable-trees)))
    (dotimes (s3-0 (-> s4-0 length))
-    (dummy-11 (-> s4-0 data s3-0) arg0 arg1)
+    (collide-with-box (-> s4-0 data s3-0) arg0 arg1)
     )
    )
   (none)
@@ -458,11 +461,14 @@
 
 ;; definition for method 12 of type bsp-header
 ;; INFO: Return type mismatch symbol vs none.
-(defmethod dummy-12 bsp-header ((obj bsp-header) (arg0 int) (arg1 object))
+(defmethod
+  collide-y-probe
+  bsp-header
+  ((obj bsp-header) (arg0 int) (arg1 collide-list))
   (+! (-> *collide-stats* calls) 1)
   (let ((s4-0 (-> obj drawable-trees)))
    (dotimes (s3-0 (-> s4-0 length))
-    (dummy-12 (-> s4-0 data s3-0) arg0 arg1)
+    (collide-y-probe (-> s4-0 data s3-0) arg0 arg1)
     )
    )
   (none)
@@ -470,11 +476,14 @@
 
 ;; definition for method 13 of type bsp-header
 ;; INFO: Return type mismatch symbol vs none.
-(defmethod dummy-13 bsp-header ((obj bsp-header) (arg0 int) (arg1 object))
+(defmethod
+  collide-ray
+  bsp-header
+  ((obj bsp-header) (arg0 int) (arg1 collide-list))
   (+! (-> *collide-stats* calls) 1)
   (let ((s4-0 (-> obj drawable-trees)))
    (dotimes (s3-0 (-> s4-0 length))
-    (dummy-13 (-> s4-0 data s3-0) arg0 arg1)
+    (collide-ray (-> s4-0 data s3-0) arg0 arg1)
     )
    )
   (none)
@@ -483,12 +492,12 @@
 ;; definition for method 17 of type bsp-header
 ;; INFO: Return type mismatch symbol vs none.
 (defmethod
-  dummy-17
+  collect-ambients
   bsp-header
   ((obj bsp-header) (arg0 sphere) (arg1 int) (arg2 ambient-list))
   (let ((s3-0 (-> obj drawable-trees)))
    (dotimes (s2-0 (-> s3-0 length))
-    (dummy-17 (-> s3-0 data s2-0) arg0 arg1 arg2)
+    (collect-ambients (-> s3-0 data s2-0) arg0 arg1 arg2)
     )
    )
   (none)
@@ -589,7 +598,9 @@
            (table-data-start (-> bsp-hdr texture-remap-table))
            (table-data-ptr table-data-start)
            (mask1 (the-as uint #xfffffff8))
-           (masked-tex-id (logand (the-as uint #xffffff00) tex-id))
+           (masked-tex-id
+            (logand (new 'static 'texture-id :index #xfff :page #xfff) tex-id)
+            )
            (table-data-end (&+ table-data-ptr (* table-size 8)))
            )
      (label cfg-2)

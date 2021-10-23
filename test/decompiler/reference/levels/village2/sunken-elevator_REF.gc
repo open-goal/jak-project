@@ -95,7 +95,7 @@
                                             (the-as pointer #x70004000)
                                             )
                                            )
-                                          (run-function-in-process
+                                          (run-now-in-process
                                            gp-0
                                            pov-camera-init-by-other
                                            (-> self spawn-pos)
@@ -128,7 +128,7 @@
                       (the-as pointer #x70004000)
                       )
                      )
-                    (run-function-in-process
+                    (run-now-in-process
                      gp-1
                      pov-camera-init-by-other
                      (-> self spawn-pos)
@@ -185,7 +185,7 @@
                     (the-as pointer #x70004000)
                     )
                    )
-                  (run-function-in-process
+                  (run-now-in-process
                    gp-0
                    pov-camera-init-by-other
                    (-> self spawn-pos)
@@ -231,20 +231,16 @@
     (vector-! gp-0 (-> self root-override trans) s5-0)
     )
    (when (< (-> self path-pos) 0.9)
-    ((method-of-object (-> *target* control) dummy-28))
-    (let ((a1-2 (new 'stack-no-clear 'event-message-block)))
-     (set! (-> a1-2 from) self)
-     (set! (-> a1-2 num-params) 0)
-     (set! (-> a1-2 message) 'reset-height)
-     (send-event-function *target* a1-2)
-     )
+    (TODO-RENAME-28 (-> *target* control))
+    (send-event *target* 'reset-height)
     )
    (none)
    )
   )
 
 ;; definition for method 29 of type sunken-elevator
-(defmethod TODO-RENAME-29 sunken-elevator ((obj sunken-elevator))
+;; INFO: Return type mismatch float vs symbol.
+(defmethod can-target-move? sunken-elevator ((obj sunken-elevator))
   (set! (-> obj play-at-top-going-up-camera?) #f)
   (let ((s5-0 (new 'stack-no-clear 'vector)))
    (eval-path-curve! (-> obj path) s5-0 0.4 'interp)
@@ -252,7 +248,7 @@
    (eval-path-curve! (-> obj path) s5-0 0.6 'interp)
    (let ((f0-1 (-> s5-0 y)))
     (set! (-> obj teleport-if-below-y) f0-1)
-    f0-1
+    (the-as symbol f0-1)
     )
    )
   )
@@ -261,7 +257,7 @@
 (defmethod TODO-RENAME-27 sunken-elevator ((obj sunken-elevator))
   (ja-channel-set! 1)
   (cond
-   (((method-of-object obj dummy-26))
+   ((can-activate? obj)
     (let ((s5-0 (-> obj skel root-channel 0)))
      (joint-control-channel-group-eval!
       s5-0

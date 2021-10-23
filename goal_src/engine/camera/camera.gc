@@ -5,11 +5,10 @@
 ;; name in dgo: camera
 ;; dgos: GAME, ENGINE
 
-;; definition for symbol *cam-res-string*, type string
+;; DECOMP BEGINS
+
 (define *cam-res-string* (new 'global 'string 64 (the-as string #f)))
 
-;; definition for function cam-slave-get-vector-with-offset
-;; Used lq/sq
 (defun
   cam-slave-get-vector-with-offset
   ((arg0 entity-actor) (arg1 vector) (arg2 symbol))
@@ -22,18 +21,7 @@
     (set! s3-0 (-> arg0 quat))
     )
    (else
-    (set!
-     s3-0
-     ((method-of-type res-lump get-property-struct)
-      arg0
-      arg2
-      'interp
-      -1000000000.0
-      #f
-      (the-as (pointer res-tag) #f)
-      *res-static-buf*
-      )
-     )
+    (set! s3-0 (res-lump-struct arg0 arg2 structure))
     )
    )
   (let ((s2-0 (method-of-type res-lump get-property-struct)))
@@ -68,23 +56,11 @@
    )
   )
 
-;; definition for function cam-slave-get-flags
 (defun cam-slave-get-flags ((arg0 entity) (arg1 symbol))
-  (let
-   ((gp-0
-     ((method-of-type res-lump get-property-value)
-      arg0
-      arg1
-      'interp
-      -1000000000.0
-      (the-as uint128 0)
-      (the-as (pointer res-tag) #f)
-      *res-static-buf*
-      )
-     )
-    (s3-0 (method-of-type res-lump get-property-value))
-    (s2-0 arg0)
-    )
+  (let ((gp-0 (res-lump-value arg0 arg1 uint128))
+        (s3-0 (method-of-type res-lump get-property-value))
+        (s2-0 arg0)
+        )
    (format (clear *res-key-string*) "~S~S" arg1 '-on)
    (let
     ((s3-1
@@ -120,22 +96,10 @@
    )
   )
 
-;; definition for function cam-slave-get-float
 (defun cam-slave-get-float ((arg0 entity) (arg1 symbol) (arg2 float))
-  (let
-   ((f30-0
-     ((method-of-type res-lump get-property-value-float)
-      arg0
-      arg1
-      'interp
-      -1000000000.0
-      arg2
-      (the-as (pointer res-tag) #f)
-      *res-static-buf*
-      )
-     )
-    (s4-0 (method-of-type res-lump get-property-value-float))
-    )
+  (let ((f30-0 (res-lump-float arg0 arg1 :default arg2))
+        (s4-0 (method-of-type res-lump get-property-value-float))
+        )
    (format (clear *res-key-string*) "~S~S" arg1 '-offset)
    (+
     f30-0
@@ -152,22 +116,10 @@
    )
   )
 
-;; definition for function cam-slave-get-fov
 (defun cam-slave-get-fov ((arg0 entity))
-  (let
-   ((f30-0
-     ((method-of-type res-lump get-property-value-float)
-      arg0
-      'fov
-      'interp
-      -1000000000.0
-      0.0
-      (the-as (pointer res-tag) #f)
-      *res-static-buf*
-      )
-     )
-    (s5-0 (method-of-type res-lump get-property-value-float))
-    )
+  (let ((f30-0 (res-lump-float arg0 'fov))
+        (s5-0 (method-of-type res-lump get-property-value-float))
+        )
    (format (clear *res-key-string*) "~S~S" 'fov '-offset)
    (let
     ((f0-0
@@ -190,22 +142,10 @@
    )
   )
 
-;; definition for function cam-slave-get-intro-step
 (defun cam-slave-get-intro-step ((arg0 entity))
-  (let
-   ((f30-0
-     ((method-of-type res-lump get-property-value-float)
-      arg0
-      'intro-time
-      'interp
-      -1000000000.0
-      0.0
-      (the-as (pointer res-tag) #f)
-      *res-static-buf*
-      )
-     )
-    (s5-0 (method-of-type res-lump get-property-value-float))
-    )
+  (let ((f30-0 (res-lump-float arg0 'intro-time))
+        (s5-0 (method-of-type res-lump get-property-value-float))
+        )
    (format (clear *res-key-string*) "~S~S" 'intro-time '-offset)
    (let
     ((f0-1
@@ -231,22 +171,10 @@
    )
   )
 
-;; definition for function cam-slave-get-interp-time
 (defun cam-slave-get-interp-time ((arg0 entity))
-  (let
-   ((f30-0
-     ((method-of-type res-lump get-property-value-float)
-      arg0
-      'interpTime
-      'interp
-      -1000000000.0
-      0.0
-      (the-as (pointer res-tag) #f)
-      *res-static-buf*
-      )
-     )
-    (s5-0 (method-of-type res-lump get-property-value-float))
-    )
+  (let ((f30-0 (res-lump-float arg0 'interpTime))
+        (s5-0 (method-of-type res-lump get-property-value-float))
+        )
    (format (clear *res-key-string*) "~S~S" 'interpTime '-offset)
    (let
     ((f0-1
@@ -272,8 +200,7 @@
    )
   )
 
-;; definition for function cam-slave-get-rot
-(defun cam-slave-get-rot ((arg0 entity-actor) (arg1 quaternion))
+(defun cam-slave-get-rot ((arg0 entity-actor) (arg1 matrix))
   (let ((s4-0 (method-of-type res-lump get-property-struct))
         (s3-0 arg0)
         )
@@ -296,11 +223,11 @@
       (let ((s4-1 (new 'stack-no-clear 'quaternion)))
        (quaternion*! s4-1 (the-as quaternion a1-3) (-> arg0 quat))
        (quaternion-normalize! s4-1)
-       (quaternion->matrix (the-as matrix arg1) s4-1)
+       (quaternion->matrix arg1 s4-1)
        )
       )
      (else
-      (quaternion->matrix (the-as matrix arg1) (-> arg0 quat))
+      (quaternion->matrix arg1 (-> arg0 quat))
       )
      )
     )
@@ -308,33 +235,16 @@
   arg1
   )
 
-;; definition for function cam-state-from-entity
 (defun cam-state-from-entity ((arg0 entity))
   (let ((s5-0 (new 'stack 'curve)))
    (cond
     ((not arg0)
      (the-as state #f)
      )
-    (((method-of-type res-lump get-property-struct)
-      arg0
-      'pivot
-      'interp
-      -1000000000.0
-      #f
-      (the-as (pointer res-tag) #f)
-      *res-static-buf*
-      )
+    ((res-lump-struct arg0 'pivot structure)
      cam-circular
      )
-    (((method-of-type res-lump get-property-struct)
-      arg0
-      'align
-      'interp
-      -1000000000.0
-      #f
-      (the-as (pointer res-tag) #f)
-      *res-static-buf*
-      )
+    ((res-lump-struct arg0 'align structure)
      cam-standoff-read-entity
      )
     ((get-curve-data! arg0 s5-0 'campath 'campath-k -1000000000.0)
@@ -350,12 +260,10 @@
    )
   )
 
-;; definition for function parameter-ease-none
 (defun parameter-ease-none ((arg0 object))
   arg0
   )
 
-;; definition for function parameter-ease-clamp
 (defun parameter-ease-clamp ((arg0 float))
   (cond
    ((>= arg0 1.0)
@@ -368,7 +276,6 @@
   arg0
   )
 
-;; definition for function parameter-ease-lerp-clamp
 (defun parameter-ease-lerp-clamp ((arg0 float))
   (cond
    ((>= arg0 1.0)
@@ -389,7 +296,6 @@
    )
   )
 
-;; definition for function parameter-ease-sqrt-clamp
 (defun parameter-ease-sqrt-clamp ((arg0 float))
   (cond
    ((>= arg0 1.0)
@@ -407,19 +313,16 @@
    )
   )
 
-;; definition for function fourth-power
 (defun fourth-power ((arg0 float))
   (let ((f0-2 (* arg0 arg0)))
    (* f0-2 f0-2)
    )
   )
 
-;; definition for function third-power
 (defun third-power ((arg0 float))
-  (* (* arg0 arg0) arg0)
+  (* arg0 arg0 arg0)
   )
 
-;; definition for function parameter-ease-sqr-clamp
 (defun parameter-ease-sqr-clamp ((arg0 float))
   (cond
    ((>= arg0 1.0)
@@ -446,7 +349,6 @@
    )
   )
 
-;; definition for function parameter-ease-sin-clamp
 (defun parameter-ease-sin-clamp ((arg0 float))
   (cond
    ((>= arg0 1.0)
@@ -461,8 +363,6 @@
    )
   )
 
-;; definition for method 9 of type cam-index
-;; Used lq/sq
 (defmethod
   dummy-9
   cam-index
@@ -473,20 +373,9 @@
    (-> obj flags)
    (the-as uint (cam-slave-get-flags arg1 (string->symbol *res-key-string*)))
    )
-  (let
-   ((s3-2
-     ((method-of-type res-lump get-property-data)
-      arg1
-      arg0
-      'interp
-      -1000000000.0
-      (the-as pointer #f)
-      (the-as (pointer res-tag) #f)
-      *res-static-buf*
-      )
-     )
-    (s0-1 (method-of-type res-lump get-property-struct))
-    )
+  (let ((s3-2 (res-lump-data arg1 arg0 pointer))
+        (s0-1 (method-of-type res-lump get-property-struct))
+        )
    (set! sv-32 format)
    (let ((a0-7 (clear *res-key-string*))
          (a1-4 "~S~S")
@@ -577,8 +466,6 @@
   #t
   )
 
-;; definition for method 10 of type cam-index
-;; Used lq/sq
 (defmethod dummy-10 cam-index ((obj cam-index) (arg0 vector))
   (let ((s5-0 (new-stack-vector0)))
    0.0
@@ -598,9 +485,6 @@
    )
   )
 
-;; definition for method 10 of type tracking-spline
-;; INFO: Return type mismatch int vs none.
-;; Used lq/sq
 (defmethod TODO-RENAME-10 tracking-spline ((obj tracking-spline) (arg0 vector))
   (set! (-> obj point 0 position quad) (-> arg0 quad))
   (set! (-> obj point 0 next) -134250495)
@@ -625,8 +509,6 @@
   (none)
   )
 
-;; definition for method 13 of type tracking-spline
-;; INFO: Return type mismatch int vs none.
 (defmethod TODO-RENAME-13 tracking-spline ((obj tracking-spline) (arg0 int))
   (let ((v1-3 (-> obj point arg0 next)))
    (cond
@@ -649,10 +531,7 @@
        (- (-> obj summed-len) (-> obj point arg0 tp-length))
        )
       (vector-!
-       (the-as
-        vector
-        (+ (the-as uint (-> obj point 0 direction)) (the-as uint (* 48 arg0)))
-        )
+       (the-as vector (+ (the-as uint (-> obj point 0 direction)) (* 48 arg0)))
        (the-as vector (-> obj point v1-11))
        (the-as vector (-> obj point arg0))
        )
@@ -660,10 +539,7 @@
      (set!
       (-> obj point arg0 tp-length)
       (vector-normalize-ret-len!
-       (the-as
-        vector
-        (+ (the-as uint (-> obj point 0 direction)) (the-as uint (* 48 arg0)))
-        )
+       (the-as vector (+ (the-as uint (-> obj point 0 direction)) (* 48 arg0)))
        1.0
        )
       )
@@ -676,8 +552,6 @@
   (none)
   )
 
-;; definition for method 14 of type tracking-spline
-;; INFO: Return type mismatch int vs none.
 (defmethod TODO-RENAME-14 tracking-spline ((obj tracking-spline) (arg0 vector))
   (let ((v1-0 (-> obj used-point)))
    (set! (-> obj partial-point) (-> arg0 y))
@@ -728,8 +602,6 @@
   (none)
   )
 
-;; definition for method 15 of type tracking-spline
-;; INFO: Return type mismatch int vs none.
 (defmethod TODO-RENAME-15 tracking-spline ((obj tracking-spline))
   (let ((s5-0 (new 'stack-no-clear 'tracking-spline-sampler)))
    (let ((a2-0 (new 'stack-no-clear 'tracking-point)))
@@ -758,16 +630,13 @@
           (vector-dot
            (the-as
             vector
-            (+
-             (the-as uint (-> obj point 0 direction))
-             (the-as uint (* 48 v1-15))
-             )
+            (+ (the-as uint (-> obj point 0 direction)) (* 48 v1-15))
             )
            (the-as
             vector
             (+
              (the-as uint (the-as vector (-> obj point 0 direction)))
-             (the-as uint (* 48 a0-14))
+             (* 48 a0-14)
              )
             )
            )
@@ -792,8 +661,6 @@
   (none)
   )
 
-;; definition for method 16 of type tracking-spline
-;; INFO: Return type mismatch int vs none.
 (defmethod TODO-RENAME-16 tracking-spline ((obj tracking-spline) (arg0 float))
   (let ((s4-0 (new 'stack-no-clear 'tracking-spline-sampler)))
    (let ((a2-0 (new 'stack-no-clear 'vector)))
@@ -822,16 +689,13 @@
            (vector-dot
             (the-as
              vector
-             (+
-              (the-as uint (-> obj point 0 direction))
-              (the-as uint (* 48 s4-1))
-              )
+             (+ (the-as uint (-> obj point 0 direction)) (* 48 s4-1))
              )
             (the-as
              vector
              (+
               (the-as uint (the-as vector (-> obj point 0 direction)))
-              (the-as uint (* 48 v1-11))
+              (* 48 v1-11)
               )
              )
             )
@@ -852,8 +716,6 @@
   (none)
   )
 
-;; definition for method 17 of type tracking-spline
-;; Used lq/sq
 (defmethod
   TODO-RENAME-17
   tracking-spline
@@ -862,20 +724,14 @@
         (s2-0 (-> obj end-point))
         )
    (vector-!
-    (the-as
-     vector
-     (+ (the-as uint (-> obj point 0 direction)) (the-as uint (* 48 s2-0)))
-     )
+    (the-as vector (+ (the-as uint (-> obj point 0 direction)) (* 48 s2-0)))
     arg0
     (the-as vector (-> obj point s2-0))
     )
    (set!
     (-> obj point s2-0 tp-length)
     (vector-normalize-ret-len!
-     (the-as
-      vector
-      (+ (the-as uint (-> obj point 0 direction)) (the-as uint (* 48 s2-0)))
-      )
+     (the-as vector (+ (the-as uint (-> obj point 0 direction)) (* 48 s2-0)))
      1.0
      )
     )
@@ -908,7 +764,6 @@
   0
   )
 
-;; definition for method 18 of type tracking-spline
 (defmethod
   TODO-RENAME-18
   tracking-spline
@@ -942,16 +797,16 @@
       (< f0-4 1.0)
       )
      (set! (-> arg2 partial-pt) f0-4)
-     (let ((s5-0 (new 'stack-no-clear 'vector)))
+     (let ((s5-0 (new 'stack-no-clear 'tracking-spline-sampler)))
       (let ((a2-5 (-> obj point (-> arg2 cur-pt) next)))
        (vector-lerp!
-        s5-0
+        (the-as vector s5-0)
         (the-as vector (-> obj point (-> arg2 cur-pt)))
         (the-as vector (-> obj point a2-5))
         f0-4
         )
        )
-      (vector+! arg1 arg1 s5-0)
+      (vector+! arg1 arg1 (the-as vector s5-0))
       )
      (return arg1)
      )
@@ -974,7 +829,6 @@
   (the-as vector #f)
   )
 
-;; definition for method 19 of type tracking-spline
 (defmethod
   TODO-RENAME-19
   tracking-spline
@@ -988,8 +842,6 @@
   arg1
   )
 
-;; definition for method 20 of type tracking-spline
-;; INFO: Return type mismatch int vs none.
 (defmethod
   TODO-RENAME-20
   tracking-spline
@@ -1035,18 +887,12 @@
       (let ((s1-0 (-> obj point v1-8 next)))
        (vector-!
         s2-0
-        (the-as
-         vector
-         (+ (the-as uint (-> obj point 0 direction)) (the-as uint (* 48 s1-0)))
-         )
-        (the-as
-         vector
-         (+ (the-as uint (-> obj point 0 direction)) (the-as uint (* 48 v1-8)))
-         )
+        (the-as vector (+ (the-as uint (-> obj point 0 direction)) (* 48 s1-0)))
+        (the-as vector (+ (the-as uint (-> obj point 0 direction)) (* 48 v1-8)))
         )
        (let* ((f0-4 (vector-normalize-ret-len! s2-0 1.0))
               (f0-5 (* 0.5 f0-4))
-              (f26-0 (* (* (fmin 1.0 f0-5) f30-0) (vector-dot arg0 s2-0)))
+              (f26-0 (* (fmin 1.0 f0-5) f30-0 (vector-dot arg0 s2-0)))
               )
         (let ((f2-7 (vector-dot s2-0 s3-0)))
          (cond
@@ -1105,8 +951,6 @@
   (none)
   )
 
-;; definition for method 21 of type tracking-spline
-;; Used lq/sq
 (defmethod
   TODO-RENAME-21
   tracking-spline
@@ -1168,8 +1012,6 @@
   arg0
   )
 
-;; definition for method 22 of type tracking-spline
-;; INFO: Return type mismatch int vs none.
 (defmethod TODO-RENAME-22 tracking-spline ((obj tracking-spline) (arg0 float))
   (when (< arg0 (-> obj summed-len))
    (let ((s5-0 (new 'stack-no-clear 'tracking-spline-sampler)))
@@ -1185,8 +1027,6 @@
   (none)
   )
 
-;; definition for method 9 of type tracking-spline
-;; INFO: Return type mismatch int vs none.
 (defmethod TODO-RENAME-9 tracking-spline ((obj tracking-spline))
   (let ((v1-0 (-> obj used-point))
         (s4-0 0)
@@ -1239,8 +1079,6 @@
   (none)
   )
 
-;; definition for function cam-slave-init-vars
-;; Used lq/sq
 (defbehavior cam-slave-init-vars camera-slave ()
   (cond
    (*camera*
@@ -1328,13 +1166,11 @@
   (none)
   )
 
-;; definition for function cam-slave-go
-;; INFO: Return type mismatch int vs none.
-(defun cam-slave-go ((arg0 camera-slave))
+(defun cam-slave-go ((arg0 state))
   (with-pp
    (cam-slave-init-vars)
    (let ((t9-1 (the-as (function object) enter-state)))
-    (set! (-> pp next-state) (the-as state arg0))
+    (set! (-> pp next-state) arg0)
     (t9-1)
     )
    0
@@ -1342,8 +1178,6 @@
    )
   )
 
-;; definition for function cam-slave-init
-;; INFO: Return type mismatch int vs none.
 (defbehavior cam-slave-init camera-slave ((arg0 state) (arg1 entity))
   (stack-size-set! (-> self main-thread) 512)
   (change-to-last-brother self)
@@ -1368,7 +1202,7 @@
       (set! (-> a1-3 param 0) (the-as uint self))
       (let ((t9-4 send-event-function))
        (set! a0-4 *camera*)
-       (t9-4 (the-as process a0-4) a1-3)
+       (t9-4 (the-as camera-master a0-4) a1-3)
        )
       )
      )
@@ -1389,13 +1223,10 @@
   (none)
   )
 
-;; definition for function cam-standard-event-handler
-;; INFO: Return type mismatch none vs object.
 ;; WARN: rewrite_to_get_var got a none typed variable. Is there unreachable code?
 ;; WARN: rewrite_to_get_var got a none typed variable. Is there unreachable code?
 ;; WARN: rewrite_to_get_var got a none typed variable. Is there unreachable code?
 ;; WARN: rewrite_to_get_var got a none typed variable. Is there unreachable code?
-;; Used lq/sq
 (defbehavior
   cam-standard-event-handler camera-slave
   ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
@@ -1435,48 +1266,31 @@
                      )
                     )
                    ((= v1-0 'point-of-interest)
-                    (the-as none (cond
-                                  ((-> arg3 param 0)
-                                   (set!
-                                    (-> self tracking use-point-of-interest)
-                                    #t
-                                    )
-                                   (set!
-                                    (-> self tracking point-of-interest quad)
-                                    (-> (the-as vector (-> arg3 param 0)) quad)
-                                    )
-                                   (let ((f0-0 1.0))
-                                    (set!
-                                     (->
-                                      self
-                                      tracking
-                                      point-of-interest-blend
-                                      target
-                                      )
-                                     f0-0
-                                     )
-                                    f0-0
-                                    )
-                                   )
-                                  (else
-                                   (set!
-                                    (-> self tracking use-point-of-interest)
-                                    #f
-                                    )
-                                   (let ((f0-1 0.0))
-                                    (set!
-                                     (->
-                                      self
-                                      tracking
-                                      point-of-interest-blend
-                                      target
-                                      )
-                                     f0-1
-                                     )
-                                    f0-1
-                                    )
-                                   )
-                                  )
+                    (cond
+                     ((-> arg3 param 0)
+                      (set! (-> self tracking use-point-of-interest) #t)
+                      (set!
+                       (-> self tracking point-of-interest quad)
+                       (-> (the-as vector (-> arg3 param 0)) quad)
+                       )
+                      (let ((f0-0 1.0))
+                       (set!
+                        (-> self tracking point-of-interest-blend target)
+                        f0-0
+                        )
+                       f0-0
+                       )
+                      )
+                     (else
+                      (set! (-> self tracking use-point-of-interest) #f)
+                      (let ((f0-1 0.0))
+                       (set!
+                        (-> self tracking point-of-interest-blend target)
+                        f0-1
+                        )
+                       f0-1
+                       )
+                      )
                      )
                     )
                    ((= v1-0 'teleport)
@@ -1494,8 +1308,6 @@
    )
   )
 
-;; definition for function cam-curve-pos
-;; Used lq/sq
 (defbehavior
   cam-curve-pos camera-slave
   ((arg0 vector) (arg1 vector) (arg2 curve) (arg3 symbol))
@@ -1589,8 +1401,6 @@
   arg0
   )
 
-;; definition for function cam-curve-setup
-;; INFO: Return type mismatch int vs none.
 (defbehavior cam-curve-setup camera-slave ((arg0 vector))
   (when
    (get-curve-data!
@@ -1646,8 +1456,6 @@
   (none)
   )
 
-;; definition for function cam-calc-follow!
-;; Used lq/sq
 (defun cam-calc-follow! ((arg0 cam-rotation-tracker) (arg1 vector) (arg2 symbol))
   (with-pp
    (cond
@@ -1817,8 +1625,6 @@
    )
   )
 
-;; definition for function mat-remove-z-rot
-;; Used lq/sq
 (defun mat-remove-z-rot ((arg0 matrix) (arg1 vector))
   (let ((s4-0 (new-stack-vector0)))
    0.0
@@ -1844,8 +1650,6 @@
   arg0
   )
 
-;; definition for function slave-matrix-blend-2
-;; Used lq/sq
 (defun
   slave-matrix-blend-2
   ((arg0 matrix) (arg1 float) (arg2 vector) (arg3 matrix))
@@ -1876,7 +1680,7 @@
        (set! f0-3 1.0)
        )
       )
-     (let ((f30-0 (* (* 364.0889 (-> *display* time-adjust-ratio)) f0-3)))
+     (let ((f30-0 (* 364.0889 (-> *display* time-adjust-ratio) f0-3)))
       (matrix->quaternion s4-0 arg0)
       (matrix->quaternion s2-0 arg3)
       (quaternion-conjugate! gp-0 s4-0)
@@ -1886,8 +1690,8 @@
        (quaternion-negate! gp-0 gp-0)
        )
       (let ((f28-0 (acos (-> gp-0 w))))
-       (if (< (* (* 0.25 (-> *display* time-adjust-ratio)) f28-0) f30-0)
-        (set! f30-0 (* (* 0.25 (-> *display* time-adjust-ratio)) f28-0))
+       (if (< (* 0.25 (-> *display* time-adjust-ratio) f28-0) f30-0)
+        (set! f30-0 (* 0.25 (-> *display* time-adjust-ratio) f28-0))
         )
        (cond
         ((< (-> gp-0 w) 0.9999999)
@@ -1908,8 +1712,6 @@
    )
   )
 
-;; definition for function vector-into-frustum-nosmooth!
-;; Used lq/sq
 (defun vector-into-frustum-nosmooth! ((arg0 matrix) (arg1 vector) (arg2 float))
   (local-vars
    (sv-112 (inline-array vector))
@@ -2055,12 +1857,10 @@
    )
   )
 
-; ;; definition for function slave-set-rotation!
-; ;; INFO: Return type mismatch int vs none.
-; ;; WARN: Unsupported inline assembly instruction kind - [mula.s f0, f3]
-; ;; WARN: Unsupported inline assembly instruction kind - [madda.s f1, f4]
-; ;; WARN: Unsupported inline assembly instruction kind - [madd.s f0, f2, f5]
-; ;; Used lq/sq
+;; TODO - fix me!
+;; WARN: Unsupported inline assembly instruction kind - [mula.s f0, f3]
+;; WARN: Unsupported inline assembly instruction kind - [madda.s f1, f4]
+;; WARN: Unsupported inline assembly instruction kind - [madd.s f0, f2, f5]
 ; (defun
 ;   slave-set-rotation!
 ;   ((arg0 cam-rotation-tracker)
@@ -2206,13 +2006,11 @@
 ;    )
 ;   )
 
-; ;; definition for function v-slrp2!
 ; ;; WARN: Stack slot offset 144 signed mismatch
 ; ;; WARN: Stack slot offset 144 signed mismatch
 ; ;; WARN: Unsupported inline assembly instruction kind - [mula.s f0, f3]
 ; ;; WARN: Unsupported inline assembly instruction kind - [madda.s f1, f4]
 ; ;; WARN: Unsupported inline assembly instruction kind - [madd.s f0, f2, f5]
-; ;; Used lq/sq
 ; (defun
 ;   v-slrp2!
 ;   ((arg0 vector)
@@ -2327,13 +2125,11 @@
 ;   arg0
 ;   )
 
-; ;; definition for function v-slrp3!
 ; ;; WARN: Stack slot offset 144 signed mismatch
 ; ;; WARN: Stack slot offset 144 signed mismatch
 ; ;; WARN: Unsupported inline assembly instruction kind - [mula.s f0, f3]
 ; ;; WARN: Unsupported inline assembly instruction kind - [madda.s f1, f4]
 ; ;; WARN: Unsupported inline assembly instruction kind - [madd.s f0, f2, f5]
-; ;; Used lq/sq
 ; (defun
 ;   v-slrp3!
 ;   ((arg0 vector) (arg1 vector) (arg2 vector) (arg3 vector) (arg4 float))

@@ -6,9 +6,6 @@
  * DONE!
  */
 
-#ifndef JAK_V2_KDGO_H
-#define JAK_V2_KDGO_H
-
 #include "common/common_types.h"
 #include "Ptr.h"
 #include "kmalloc.h"
@@ -20,6 +17,12 @@ void load_and_link_dgo(u64 name_gstr, u64 heap_info, u64 flag, u64 buffer_size);
 void StopIOP();
 
 u64 RpcCall_wrapper(void* args);
+s32 RpcCall(s32 rpcChannel,
+            u32 fno,
+            bool async,
+            void* sendBuff,
+            s32 sendSize,
+            void* recvBuff,
+            s32 recvSize);
 u32 RpcBusy(s32 channel);
 void LoadDGOTest();
-#endif  // JAK_V2_KDGO_H

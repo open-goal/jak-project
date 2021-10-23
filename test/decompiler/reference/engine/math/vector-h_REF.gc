@@ -513,7 +513,8 @@
 
 ;; definition of type vector-array
 (deftype vector-array (inline-array-class)
-  ()
+  ((data vector :inline :dynamic :offset  16)
+   )
   :method-count-assert 9
   :size-assert         #x10
   :flag-assert         #x900000010
@@ -524,7 +525,7 @@
   (format #t "[~8x] ~A~%" obj (-> obj type))
   (format #t "~Tlength: ~D~%" (-> obj length))
   (format #t "~Tallocated-length: ~D~%" (-> obj allocated-length))
-  (format #t "~Tdata[0] @ #x~X~%" (-> obj _data))
+  (format #t "~Tdata[0] @ #x~X~%" (-> obj data))
   obj
   )
 
@@ -676,7 +677,7 @@
   :size-assert         #x28
   :flag-assert         #xb00000028
   (:methods
-    (debug-draw (_type_ vector) none 9)
+    (debug-draw (_type_ vector4w) none 9)
     (ray-capsule-intersect (_type_ vector vector) float 10)
     )
   )
@@ -702,7 +703,7 @@
   :size-assert         #x28
   :flag-assert         #xb00000028
   (:methods
-    (debug-draw (_type_ vector) none 9)
+    (debug-draw (_type_ vector4w) none 9)
     (ray-flat-cyl-intersect (_type_ vector vector) float 10)
     )
   )
@@ -826,27 +827,8 @@
   )
 
 ;; definition for function vector4-dot
-;; WARN: Unsupported inline assembly instruction kind - [mula.s f0, f4]
-;; WARN: Unsupported inline assembly instruction kind - [madda.s f1, f5]
-;; WARN: Unsupported inline assembly instruction kind - [madda.s f2, f6]
-;; WARN: Unsupported inline assembly instruction kind - [madd.s f0, f3, f7]
 (defun vector4-dot ((arg0 vector) (arg1 vector))
-  (local-vars (f0-1 float))
-  (let ((f0-0 (-> arg0 x))
-        (f1-0 (-> arg0 y))
-        (f2-0 (-> arg0 z))
-        (f3-0 (-> arg0 w))
-        (f4-0 (-> arg1 x))
-        (f5-0 (-> arg1 y))
-        (f6-0 (-> arg1 z))
-        (f7-0 (-> arg1 w))
-        )
-   (.mula.s f0-0 f4-0)
-   (.madda.s f1-0 f5-0)
-   (.madda.s f2-0 f6-0)
-   (.madd.s f0-1 f3-0 f7-0)
-   )
-  f0-1
+  (vector4-dot arg0 arg1)
   )
 
 ;; definition for function vector4-dot-vu

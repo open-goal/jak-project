@@ -218,6 +218,7 @@ std::string Type::get_parent() const {
 bool Type::common_type_info_equal(const Type& other) const {
   // clang-format off
   return m_methods == other.m_methods &&
+         m_states == other.m_states &&
          m_new_method_info == other.m_new_method_info &&
          m_new_method_info_defined == other.m_new_method_info_defined &&
          m_parent == other.m_parent &&
@@ -243,6 +244,25 @@ std::string Type::common_type_info_diff(const Type& other) const {
                               other.m_methods.at(i).name);
         result += m_methods.at(i).diff(other.m_methods.at(i));
         result += "\n";
+      }
+    }
+  }
+  if (m_states != other.m_states) {
+    result += "States are different:\n";
+    for (auto& ours : m_states) {
+      auto theirs = other.m_states.find(ours.first);
+      if (theirs == other.m_states.end()) {
+        result += fmt::format("  {} is in one, but not the other.\n", ours.first);
+      } else if (ours.second != theirs->second) {
+        result += fmt::format("  {} is defined differently: {} vs {}\n", ours.first,
+                              ours.second.print(), theirs->second.print());
+      }
+    }
+
+    for (auto& theirs : other.m_states) {
+      auto ours = m_states.find(theirs.first);
+      if (ours == m_states.end()) {
+        result += fmt::format("  {} is in one, but not the other.\n", theirs.first);
       }
     }
   }
@@ -379,6 +399,12 @@ std::string Type::print_method_info() const {
   }
 
   return result;
+}
+
+void Type::add_state(const std::string& name, const TypeSpec& type) {
+  if (!m_states.insert({name, type}).second) {
+    throw std::runtime_error(fmt::format("State {} is multiply defined", name));
+  }
 }
 
 std::string Type::incompatible_diff(const Type& other) const {

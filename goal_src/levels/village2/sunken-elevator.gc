@@ -5,7 +5,10 @@
 ;; name in dgo: sunken-elevator
 ;; dgos: L1, VI2
 
-;; definition of type sunken-elevator
+(define-extern *sunken-elevator-sg* skeleton-group)
+
+;; DECOMP BEGINS
+
 (deftype sunken-elevator (plat-button)
   ((play-at-top-going-up-camera? symbol  :offset-assert 240)
    (teleport-if-below-y          float   :offset-assert 244)
@@ -17,10 +20,7 @@
   :flag-assert         #x21009000fc
   )
 
-(define-extern *sunken-elevator-sg* skeleton-group)
 
-
-;; failed to figure out what this is:
 (let
   ((v1-1
     (new 'static 'skeleton-group
@@ -38,7 +38,6 @@
   (set! *sunken-elevator-sg* v1-1)
   )
 
-;; definition for method 30 of type sunken-elevator
 (defmethod should-teleport? sunken-elevator ((obj sunken-elevator))
   (let ((f0-0 (-> (camera-pos) y)))
    (case (-> obj path-pos) 
@@ -57,7 +56,6 @@
   #f
   )
 
-;; failed to figure out what this is:
 (defstate plat-button-pressed (sunken-elevator)
   :virtual #t
   :enter
@@ -87,7 +85,7 @@
                                             (the-as pointer #x70004000)
                                             )
                                            )
-                                          (run-function-in-process
+                                          (run-now-in-process
                                            gp-0
                                            pov-camera-init-by-other
                                            (-> self spawn-pos)
@@ -120,7 +118,7 @@
                       (the-as pointer #x70004000)
                       )
                      )
-                    (run-function-in-process
+                    (run-now-in-process
                      gp-1
                      pov-camera-init-by-other
                      (-> self spawn-pos)
@@ -142,7 +140,6 @@
    )
   )
 
-;; failed to figure out what this is:
 (defstate plat-button-move-upward (sunken-elevator)
   :virtual #t
   :enter
@@ -177,7 +174,7 @@
                     (the-as pointer #x70004000)
                     )
                    )
-                  (run-function-in-process
+                  (run-now-in-process
                    gp-0
                    pov-camera-init-by-other
                    (-> self spawn-pos)
@@ -198,7 +195,6 @@
    )
   )
 
-;; failed to figure out what this is:
 (defstate plat-button-move-downward (sunken-elevator)
   :virtual #t
   :trans
@@ -223,20 +219,14 @@
     (vector-! gp-0 (-> self root-override trans) s5-0)
     )
    (when (< (-> self path-pos) 0.9)
-    ((method-of-object (-> *target* control) dummy-28))
-    (let ((a1-2 (new 'stack-no-clear 'event-message-block)))
-     (set! (-> a1-2 from) self)
-     (set! (-> a1-2 num-params) 0)
-     (set! (-> a1-2 message) 'reset-height)
-     (send-event-function *target* a1-2)
-     )
+    (TODO-RENAME-28 (-> *target* control))
+    (send-event *target* 'reset-height)
     )
    (none)
    )
   )
 
-;; definition for method 29 of type sunken-elevator
-(defmethod TODO-RENAME-29 sunken-elevator ((obj sunken-elevator))
+(defmethod can-target-move? sunken-elevator ((obj sunken-elevator))
   (set! (-> obj play-at-top-going-up-camera?) #f)
   (let ((s5-0 (new 'stack-no-clear 'vector)))
    (eval-path-curve! (-> obj path) s5-0 0.4 'interp)
@@ -244,16 +234,15 @@
    (eval-path-curve! (-> obj path) s5-0 0.6 'interp)
    (let ((f0-1 (-> s5-0 y)))
     (set! (-> obj teleport-if-below-y) f0-1)
-    f0-1
+    (the-as symbol f0-1)
     )
    )
   )
 
-;; definition for method 27 of type sunken-elevator
 (defmethod TODO-RENAME-27 sunken-elevator ((obj sunken-elevator))
   (ja-channel-set! 1)
   (cond
-   (((method-of-object obj dummy-26))
+   ((can-activate? obj)
     (let ((s5-0 (-> obj skel root-channel 0)))
      (joint-control-channel-group-eval!
       s5-0
@@ -293,10 +282,12 @@
   (none)
   )
 
-;; definition for method 31 of type sunken-elevator
-;; INFO: Return type mismatch int vs none.
 (defmethod TODO-RENAME-31 sunken-elevator ((obj sunken-elevator))
   (dummy-14 obj *sunken-elevator-sg* '())
   0
   (none)
   )
+
+
+
+

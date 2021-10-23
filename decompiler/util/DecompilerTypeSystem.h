@@ -18,6 +18,8 @@ class DecompilerTypeSystem {
   std::unordered_map<std::string, u64> type_flags;
   std::unordered_map<std::string, std::string> type_parents;
   std::unordered_map<std::string, int> bad_format_strings;
+  std::unordered_map<std::string, std::vector<std::vector<int>>>
+      format_ops_with_dynamic_string_by_func_name;
 
   void add_symbol(const std::string& name) {
     if (symbols.find(name) == symbols.end()) {
@@ -42,6 +44,7 @@ class DecompilerTypeSystem {
   bool tp_lca(TypeState* combined, const TypeState& add);
   int get_format_arg_count(const std::string& str) const;
   int get_format_arg_count(const TP_Type& type) const;
+  int get_dynamic_format_arg_count(const std::string& func_name, int op_idx) const;
   TypeSpec lookup_symbol_type(const std::string& name) const;
   bool should_attempt_cast_simplify(const TypeSpec& expected, const TypeSpec& actual) const;
 

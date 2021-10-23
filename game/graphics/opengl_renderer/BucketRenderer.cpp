@@ -9,7 +9,9 @@ std::string BucketRenderer::name_and_id() const {
 EmptyBucketRenderer::EmptyBucketRenderer(const std::string& name, BucketId my_id)
     : BucketRenderer(name, my_id) {}
 
-void EmptyBucketRenderer::render(DmaFollower& dma, SharedRenderState* render_state) {
+void EmptyBucketRenderer::render(DmaFollower& dma,
+                                 SharedRenderState* render_state,
+                                 ScopedProfilerNode& /*prof*/) {
   // an empty bucket should have 4 things:
   // a NEXT in the bucket buffer
   // a CALL that calls the default register buffer chain
@@ -24,6 +26,9 @@ void EmptyBucketRenderer::render(DmaFollower& dma, SharedRenderState* render_sta
   // CALL
   auto call_tag = dma.current_tag();
   dma.read_and_advance();
+  if (!(call_tag.kind == DmaTag::Kind::CALL && call_tag.qwc == 0)) {
+    fmt::print("Bucket renderer {} ({}) was supposed to be empty, but wasn't\n", m_my_id, m_name);
+  }
   assert(call_tag.kind == DmaTag::Kind::CALL && call_tag.qwc == 0);
 
   // in the default reg buffer:

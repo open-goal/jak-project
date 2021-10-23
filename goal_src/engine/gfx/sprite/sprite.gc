@@ -98,18 +98,15 @@
     )
   )
 
-#|
-;; until we figure out the entry type, we can't have this function.
 (defmethod inspect sprite-aux-list ((obj sprite-aux-list))
   (format #t "[~X] sprite-aux-list:~%" obj)
   (format #t "~Tnum-entries: ~D~%" (-> obj num-entries))
   (format #t "~Tentry: ~D~%" (-> obj entry))
   (dotimes (s5-0 (-> obj entry))
-   (format #t "~T~D : ~X~%" s5-0 (l.wu (+ (+ (* s5-0 4) (the-as int obj)) 8)))
+   (format #t "~T~D : ~X~%" s5-0 (-> obj data s5-0))
    )
   (the-as sprite-aux-list #f)
   )
-|#
 
 (define *sprite-aux-list* (new 'global 'sprite-aux-list 256))
 
@@ -119,7 +116,17 @@
   (none)
   )
 
-;; TODO function add-to-sprite-aux-list
+(defun add-to-sprite-aux-list ((arg0 sparticle-system) (arg1 sparticle-cpuinfo) (arg2 sprite-vec-data-3d))
+  (let ((v1-0 *sprite-aux-list*))
+    (when (< (-> v1-0 entry) (-> v1-0 num-entries))
+      (set! (-> v1-0 data (-> v1-0 entry)) (-> arg1 sprite))
+      (+! (-> v1-0 entry) 1)
+      )
+    )
+  (set! (-> arg2 r-g-b-a w) 0.0)
+  0
+  (none)
+  )
 
 ;; The sprite-frame-data is data transferred to VU1 and remains there for all chunks of sprites.
 (deftype sprite-frame-data (structure)
@@ -372,7 +379,8 @@
   (none)
   )
 
-;;(define sprite-vu1-block (the-as vu-function L58))
+;; we need to at least put something here so dma-buffer-add-vu-function doesn't crash.
+(define sprite-vu1-block (new 'static 'vu-function))
 
 ;;;;;;;;;;;;;;;;;;
 ;; sprite-arrays
@@ -398,15 +406,15 @@
     (set! (-> v0-0 num-valid 1) 0)
 
     ;; internally, we put the vec-data and then the adgif-data
-    (set! (-> v0-0 vec-data) (the-as uint (-> v0-0 data)))
-    (set! (-> v0-0 adgif-data) (the-as uint (&-> v0-0 data vec-data-size)))
+    (set! (-> v0-0 vec-data) (-> v0-0 data))
+    (set! (-> v0-0 adgif-data) (the-as (inline-array adgif-shader) (&-> v0-0 data vec-data-size)))
     v0-0
     )
   )
 
 (defmethod new sprite-array-3d ((allocation symbol) (type-to-make type) (group-0-size int) (group-1-size int))
   "Allocate a sprite-array for 3d sprites.  There are two groups, each can contain the given number of sprites.
-   Group 1 size is zero in practive for 3d."
+   Group 1 size is zero in practice for 3d."
   (let* ((sprite-count (+ group-0-size group-1-size))
          (vec-data-size (* 3 sprite-count))
          (adgif-data-size (* 5 sprite-count))
@@ -419,8 +427,8 @@
    (set! (-> v0-0 num-sprites 1) group-1-size)
    (set! (-> v0-0 num-valid 0) 0)
    (set! (-> v0-0 num-valid 1) 0)
-   (set! (-> v0-0 vec-data) (the-as uint (-> v0-0 data)))
-   (set! (-> v0-0 adgif-data) (the-as uint (&-> v0-0 data vec-data-size)))
+   (set! (-> v0-0 vec-data) (-> v0-0 data))
+   (set! (-> v0-0 adgif-data) (the-as (inline-array adgif-shader) (&-> v0-0 data vec-data-size)))
    v0-0
    )
   )
@@ -569,6 +577,7 @@
   (none)
   )
 
+#|
 (defun sprite-add-frame-data ((dma-buff dma-buffer) (tbp-offset uint))
   "Upload the frame data."
   (let ((s5-0 41)) ;; qwc of frame data.
@@ -585,6 +594,29 @@
      )
     (&+! (-> dma-buff base) (* s5-0 16))
     )
+  (none)
+  )
+|#
+
+(defun sprite-add-frame-data ((dma-buff dma-buffer) (tbp-offset uint))
+  (let ((s5-0 41))
+   (let* ((v1-0 dma-buff)
+          (pkt (the-as dma-packet (-> v1-0 base)))
+          )
+    (set! (-> pkt dma) (new 'static 'dma-tag :id (dma-tag-id cnt) :qwc s5-0))
+    (set! (-> pkt vif0) (new 'static 'vif-tag :imm #x404 :cmd (vif-cmd stcycl)))
+    (set!
+     (-> pkt vif1)
+     (new 'static 'vif-tag :imm #x3d4 :cmd (vif-cmd unpack-v4-32) :num s5-0)
+     )
+    (set! (-> v1-0 base) (&+ (the-as pointer pkt) 16))
+    )
+   (sprite-setup-frame-data
+    (the-as sprite-frame-data (-> dma-buff base))
+    (the-as int tbp-offset)
+    )
+   (&+! (-> dma-buff base) (* s5-0 16))
+   )
   (none)
   )
 
@@ -606,16 +638,33 @@
   ;; second packet is vector data (3 qw / sprite)
   (let ((qwc-pkt2 (* 3 num-sprites)))
     ;; we do a ref to the vec-data and don't actually copy it into the dma-buffer
-    (dma-buffer-add-ref-vif2 dma-buff qwc-pkt2 (+ (-> sprites vec-data) (the-as uint (* 48 start-sprite-idx)))
+    (dma-buffer-add-ref-vif2 dma-buff qwc-pkt2 (&+ (-> sprites vec-data) (* 48 start-sprite-idx))
                (new 'static 'vif-tag :cmd (vif-cmd nop))
                (new 'static 'vif-tag :cmd (vif-cmd unpack-v4-32) :num qwc-pkt2
                                      :imm (new 'static 'vif-unpack-imm :flg 1 :addr 1))
                )
     )
+  
+  #|
+  ;(when (= mscal-addr 3)
+    (dotimes (i num-sprites)
+      (let ((spidx (+ i start-sprite-idx)))
+        ;(when (or (= spidx (-> sprites num-sprites 0)) (= spidx (+ 1 (-> sprites num-sprites 0))))
+          (let ((data (the sprite-vec-data-2d (&+ (-> sprites vec-data) (* 48 (+ i start-sprite-idx))))))
+            (let ((vec (-> data x-y-z-sx)))
+              (format 0 "sp: ~d ~f ~f ~f~%" (+ i start-sprite-idx) (-> vec x) (-> vec y) (-> vec z))
+              )
+            )
+         ; )
+        )
+      )
+   ; )
+   |#
+
 
   ;; third packet is adgif data (5 qw/sprite)
   (let ((qwc-pkt3 (* 5 num-sprites)))
-    (dma-buffer-add-ref-vif2 dma-buff qwc-pkt3 (+ (-> sprites adgif-data) (the-as uint (* 80 start-sprite-idx)))
+    (dma-buffer-add-ref-vif2 dma-buff qwc-pkt3 (&+ (-> sprites adgif-data) (* 80 start-sprite-idx))
                (new 'static 'vif-tag :cmd (vif-cmd nop))
                (new 'static 'vif-tag :cmd (vif-cmd unpack-v4-32) :num qwc-pkt3
                                      :imm (new 'static 'vif-unpack-imm :flg 1 :addr 145))
@@ -643,6 +692,8 @@
         ;; and use the other mpg.
         (set! mscal-addr 109)
         )
+      
+      ;;(format #t "group ~d 2D ~d~%" group-idx (-> sprites num-valid group-idx))
 
       ;; loop over chunks
       (let ((remaining-sprites (-> sprites num-valid group-idx)))
@@ -676,7 +727,7 @@
   ;; second packet is vector data (3 qw / sprite)
   (let ((qwc-pkt2 (* 3 num-sprites)))
     ;; we do a ref to the vec-data and don't actually copy it into the dma-buffer
-    (dma-buffer-add-ref-vif2 dma-buff qwc-pkt2 (+ (-> sprites vec-data) (the-as uint (* 48 start-sprite-idx)))
+    (dma-buffer-add-ref-vif2 dma-buff qwc-pkt2 (&+ (-> sprites vec-data) (* 48 start-sprite-idx))
                (new 'static 'vif-tag :cmd (vif-cmd nop))
                (new 'static 'vif-tag :cmd (vif-cmd unpack-v4-32) :num qwc-pkt2
                                      :imm (new 'static 'vif-unpack-imm :flg 1 :addr 1))
@@ -685,7 +736,7 @@
 
   ;; third packet is adgif data (5 qw/sprite)
   (let ((qwc-pkt3 (* 5 num-sprites)))
-    (dma-buffer-add-ref-vif2 dma-buff qwc-pkt3 (+ (-> sprites adgif-data) (the-as uint (* 80 start-sprite-idx)))
+    (dma-buffer-add-ref-vif2 dma-buff qwc-pkt3 (&+ (-> sprites adgif-data) (* 80 start-sprite-idx))
                (new 'static 'vif-tag :cmd (vif-cmd nop))
                (new 'static 'vif-tag :cmd (vif-cmd unpack-v4-32) :num qwc-pkt3
                                      :imm (new 'static 'vif-unpack-imm :flg 1 :addr 145))
@@ -815,6 +866,7 @@
   (none)
   )
 
+
 (defun sprite-draw ((disp display))
   "Main sprite draw function."
   ;; start of our DMA for all the sprite data
@@ -896,6 +948,8 @@
   (none)
   )
 
+
+
 (defun sprite-allocate-user-hvdf ()
   "Allocate an HVDF entry. Returns the index. Or 0 if it fails"
   (dotimes (v1-0 76)
@@ -917,7 +971,7 @@
 
 (defun sprite-get-user-hvdf ((arg0 int))
   "Get an HVDF entry by index"
-  (-> *sprite-hvdf-data* data arg0)
+  (the-as vector (-> *sprite-hvdf-data* data arg0))
   )
 
 

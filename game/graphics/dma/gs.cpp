@@ -81,6 +81,10 @@ std::string GifTag::print() const {
   return result;
 }
 
+std::string register_address_name(u32 reg) {
+  return register_address_name(GsRegisterAddress(reg));
+}
+
 std::string register_address_name(GsRegisterAddress reg) {
   switch (reg) {
     case GsRegisterAddress::PRIM:
@@ -348,4 +352,8 @@ std::string GsTex0::print() const {
   return fmt::format(
       "tbp0: {} tbw: {} psm: {} tw: {} th: {} tcc: {} tfx: {} cbp: {} cpsm: {} csm: {}\n", tbp0(),
       tbw(), psm(), tw(), th(), tcc(), tfx(), cbp(), cpsm(), csm());
+}
+
+std::string GsPrim::print() const {
+  return fmt::format("0x{:x}, kind {}\n", data, kind());
 }

@@ -127,6 +127,8 @@ void regset_common(emitter::ObjectGenerator* gen,
   } else if (src_class == RegClass::FLOAT && dst_class == RegClass::GPR_64) {
     // xmm 1x -> gpr
     gen->add_instr(IGen::movd_gpr32_xmm32(dst_reg, src_reg), irec);
+    // don't forget to sign extend
+    gen->add_instr(IGen::movsx_r64_r32(dst_reg, dst_reg), irec);
   } else if (src_class == RegClass::GPR_64 && dst_class == RegClass::FLOAT) {
     // gpr -> xmm 1x
     gen->add_instr(IGen::movd_xmm32_gpr32(dst_reg, src_reg), irec);
@@ -983,7 +985,9 @@ void IR_StoreConstOffset::do_codegen(emitter::ObjectGenerator* gen,
         IGen::store_goal_vf(base_reg, value_reg, emitter::gRegInfo.get_offset_reg(), m_offset),
         irec);
   } else {
-    throw std::runtime_error("IR_StoreConstOffset::do_codegen can't handle this");
+    throw std::runtime_error(
+        fmt::format("IR_StoreConstOffset::do_codegen can't handle this (c {} sz {})",
+                    m_value->ireg().reg_class, m_size));
   }
 }
 

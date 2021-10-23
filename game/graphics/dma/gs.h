@@ -54,6 +54,7 @@ struct GifTag {
   std::string print() const;
 
   GifTag(const u8* ptr) { memcpy(data, ptr, 16); }
+  GifTag() = default;
 
   u64 data[2];
 };
@@ -120,6 +121,7 @@ enum class GsRegisterAddress : u8 {
 enum class TextureFormat { PSMZ32, PSMZ24, PSMZ16, PSMZ16S };
 
 std::string register_address_name(GsRegisterAddress reg);
+std::string register_address_name(u32 reg);
 
 struct GsZbuf {
   GsZbuf(u64 val) : data(val) {}
@@ -247,6 +249,8 @@ struct GsPrim {
 
   bool operator==(const GsPrim& other) const { return data == other.data; }
   bool operator!=(const GsPrim& other) const { return data != other.data; }
+
+  std::string print() const;
 };
 
 struct GsTex0 {
@@ -325,4 +329,18 @@ struct GsTexa {
   std::string print() const;
 
   u64 data = 0;
+};
+
+// not including the giftag
+struct AdGifData {
+  u64 tex0_data;
+  u64 tex0_addr;
+  u64 tex1_data;
+  u64 tex1_addr;
+  u64 mip_data;
+  u64 mip_addr;
+  u64 clamp_data;
+  u64 clamp_addr;
+  u64 alpha_data;
+  u64 alpha_addr;
 };

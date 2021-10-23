@@ -4,10 +4,12 @@
 
 #include "common/common_types.h"
 #include "game/graphics/dma/dma_chain_read.h"
+#include "common/util/Serializer.h"
 
 struct DmaData {
   u32 start_offset = 0;
   std::vector<u8> data;
+  DmaStats stats;
 };
 
 /*!
@@ -21,7 +23,13 @@ class FixedChunkDmaCopier {
   FixedChunkDmaCopier(u32 main_memory_size);
 
   const DmaData& run(const void* memory, u32 offset, bool verify = false);
+
+  void serialize_last_result(Serializer& serializer);
+
   const DmaData& get_last_result() const { return m_result; }
+
+  const void* get_last_input_data() const { return m_input_data; }
+  u32 get_last_input_offset() const { return m_input_offset; }
 
  private:
   struct Fixup {
@@ -36,6 +44,9 @@ class FixedChunkDmaCopier {
   u32 m_chunk_count = 0;
   std::vector<u32> m_chunk_mask;
   DmaData m_result;
+
+  u32 m_input_offset = 0;
+  const void* m_input_data = nullptr;
 };
 
 /*!

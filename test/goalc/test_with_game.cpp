@@ -5,6 +5,7 @@
 #include "game/runtime.h"
 #include "goalc/listener/Listener.h"
 #include "goalc/compiler/Compiler.h"
+#include "game/mips2c/mips2c_table.h"
 
 #include "inja.hpp"
 #include "third-party/json.hpp"
@@ -354,7 +355,7 @@ TEST_F(WithGameTests, DebuggerMemoryMap) {
 TEST_F(WithGameTests, DebuggerDisassemble) {
   auto di = shared_compiler->compiler.get_debugger().get_debug_info_for_object("gcommon");
   bool fail = false;
-  auto result = di.disassemble_all_functions(&fail);
+  auto result = di.disassemble_all_functions(&fail, &shared_compiler->compiler.get_goos().reader);
   // printf("Got\n%s\n", result.c_str());
   EXPECT_FALSE(fail);
 }
@@ -374,6 +375,9 @@ TEST_F(WithGameTests, GameCount) {
   shared_compiler->compiler.run_test_from_string("(dgo-load \"game\" global #xf #x200000)");
   shared_compiler->runner.run_static_test(env, testCategory, "test-game-count.gc",
                                           get_test_pass_string("game-count", 4));
+  // don't leave behind a weird version of the game-count file.
+  std::filesystem::remove(file_util::get_file_path({"out", "iso", "GAME.CGO"}));
+  std::filesystem::remove(file_util::get_file_path({"out", "obj", "game-cnt.go"}));
 }
 
 TEST_F(WithGameTests, BitFieldAccess) {
@@ -872,8 +876,51 @@ TEST_F(WithGameTests, GetEnumVals) {
 }
 
 TEST_F(WithGameTests, SetU64FromFloat) {
-  shared_compiler->runner.run_static_test(env, testCategory, "test-set-u64-from-float.gc",
-                                          {"-12.0000 #xc1400000 #xc1400000 #x0\n0\n"});
+  shared_compiler->runner.run_static_test(
+      env, testCategory, "test-set-u64-from-float.gc",
+      {"-12.0000 #xffffffffc1400000 #xc1400000 #xffffffff\n0\n"});
+}
+
+TEST_F(WithGameTests, TrickyFloatBehavior) {
+  shared_compiler->runner.run_static_test(env, testCategory, "tricky-floats.gc",
+                                          {"#x80000000 1.0000 #xffffffffbf800000\n0\n"});
+}
+
+TEST_F(WithGameTests, ProcessAllocation) {
+  shared_compiler->runner.run_static_test(env, testCategory, "test-kernel-alloc.gc",
+                                          {"diff is 16\n0\n"});
+}
+
+TEST_F(WithGameTests, MethodCallForwardDeclared) {
+  shared_compiler->runner.run_static_test(env, testCategory, "test-forward-declared-method.gc",
+                                          {"4 12\n0\n"});
+}
+
+TEST_F(WithGameTests, PointerInStatic) {
+  shared_compiler->runner.run_static_test(env, testCategory, "test-false-in-static-pointer.gc",
+                                          {"#f\n0\n"});
+}
+
+namespace Mips2C {
+namespace test_func {
+extern u64 execute(void*);
+}
+namespace goal_call_test {
+extern u64 execute(void*);
+extern void link();
+}  // namespace goal_call_test
+}  // namespace Mips2C
+
+TEST_F(WithGameTests, Mips2CBasic) {
+  Mips2C::gLinkedFunctionTable.reg("test-func", Mips2C::test_func::execute, 0);
+  shared_compiler->runner.run_static_test(env, testCategory, "test-mips2c-call.gc", {"36\n0\n"});
+}
+
+TEST_F(WithGameTests, Mips2C_CallGoal) {
+  Mips2C::gLinkedFunctionTable.reg("test-func2", Mips2C::goal_call_test::execute, 128);
+  Mips2C::goal_call_test::link();
+  shared_compiler->runner.run_static_test(env, testCategory, "test-mips2c-goal.gc",
+                                          {"1 2 3 4 5 6 7 8\n12\n"});
 }
 
 TEST(TypeConsistency, TypeConsistency) {

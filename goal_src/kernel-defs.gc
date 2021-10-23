@@ -101,19 +101,53 @@
 (define-extern dgo-load (function string kheap int int none))
 (define-extern link-begin (function pointer (pointer uint8) int kheap link-flag int))
 (define-extern link-resume (function int))
+
+(defenum mc-status-code
+  :type uint32
+  (busy 0)
+  (ok 1)
+  (bad-handle 2)
+  (format-failed 3)
+  (internal-error 4)
+  (write-error 5)
+  (read-error 6)
+  (new-game 7)
+  (no-memory 8)
+  (no-card 9)
+  (no-last 10)
+  (no-format 11)
+  (no-file 12)
+  (no-save 13)
+  (no-space 14)
+  (bad-version 15)
+  (no-process 16)
+  (no-auto-save 17)
+  )
+
+(defenum language-enum
+  :type int64
+  (english)
+  (french)
+  (german)
+  (spanish)
+  (italian)
+  (japanese)
+  (uk-english)
+  )
+
 (define-extern mc-run (function none))
-;; mc-format
-;; mc-unformat
-;; mc-create-file
-;; mc-save
-;; mc-load
+(define-extern mc-format (function int mc-status-code))
+(define-extern mc-unformat (function int mc-status-code))
+(define-extern mc-create-file (function int uint mc-status-code))
+(define-extern mc-save (function int int pointer int mc-status-code))
+(define-extern mc-load (function int int pointer mc-status-code))
 (declare-type mc-slot-info structure)
 (define-extern mc-sync (function int))
-(define-extern mc-get-slot-info (function int mc-slot-info))
+(define-extern mc-get-slot-info (function int mc-slot-info none))
 
 (define-extern mc-check-result (function int))
 ;; mc-makefile
-(define-extern kset-language (function int int))
+(define-extern kset-language (function language-enum int))
 
 (define-extern *debug-segment* symbol)
 (define-extern *enable-method-set* int)
@@ -159,16 +193,22 @@
 ;; file-stream-seek
 (define-extern file-stream-read (function file-stream pointer int int))
 (define-extern file-stream-write (function file-stream pointer uint uint))
-(define-extern scf-get-language (function uint))
-;; scf-get-time
+
+(defconstant GAME_TERRITORY_SCEA 0)
+(defconstant GAME_TERRITORY_SCEE 1)
+(defconstant GAME_TERRITORY_SCEI 2)
+
+(define-extern scf-get-language (function language-enum))
+(declare-type scf-time structure)
+(define-extern scf-get-time (function scf-time none))
 (define-extern scf-get-aspect (function uint))
 (define-extern scf-get-volume (function int))
-(define-extern scf-get-territory (function int))
+(define-extern scf-get-territory (function int)) ;; not actually a scf function...
 (define-extern scf-get-timeout (function int))
 (define-extern scf-get-inactive-timeout (function int))
 ;; dma-to-iop
 (define-extern kernel-shutdown (function none))
-;; aybabtu
+(define-extern aybabtu (function int int))
 ;; *stack-top*
 ;; *stack-base*
 ;; *stack-size*
@@ -268,6 +308,7 @@
 (define-extern __send-gfx-dma-chain (function object object none))
 (define-extern __pc-texture-upload-now (function object object none))
 (define-extern __pc-texture-relocate (function object object object none))
+(define-extern __pc-get-mips2c (function string function))
 (define-extern pc-pad-input-mode-set (function symbol none))
 (define-extern pc-pad-input-mode-get (function int))
 (define-extern pc-pad-input-key-get (function int))

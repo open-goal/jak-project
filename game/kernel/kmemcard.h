@@ -11,22 +11,110 @@
 void kmemcard_init_globals();
 
 constexpr s32 SAVE_SIZE = 0x2b3;  // likely different by versions!
+constexpr s32 BANK_SIZE = 0x10000;
 
-enum MemoryCardOperationKind {
+// each card can be in one of these states:
+enum class MemoryCardState : u32 {
+  UNKNOWN = 0,               // we know nothing about the card.
+  KNOWN = 1,                 // we know if the card is there or not
+  OPEN_BUT_UNFORMATTED = 2,  // we checked the status, and its a valid card, but it's not formatted
+  FORMATTED = 3              // the card is formatted
+};
+
+// cached in ee memory so we can preview.
+struct MemoryCardFile {
+  u32 present;  // todo: enough memory?
+  u32 most_recent_save_count;
+  u32 last_saved_bank;
+  u8 data[64];
+};
+
+// type of the mc field.
+struct MemoryCard {
+  MemoryCardState state;
+  u32 handle;
+  u32 countdown_to_check;
+  u32 inited;
+  u32 last_file;
+  u32 mem_size;
+  MemoryCardFile files[4];
+};
+
+// FORMAT:
+//  args: handle
+//  requirements: handle is for a card that is OPEN_BUT_UNFORMATTED.
+//  formats the memory card.
+// Callbacks:
+//   sceMcGetInfo -> cb_reprobe_format ->
+
+// UNFORMAT:
+//    args: handle
+//    requirements: handle is for a card that is FORMATTED
+//    unformats the memory card (for debug use only)
+// Callbacks:
+//  sceMcUnformat -> cb_unformat
+
+// CREATE_FILE:
+//   args: handle
+//   requirement: handle is for a card that is FORMATTED
+//   creates the Jak and Daxter save directory and files
+// Callbacks:
+//  sceMcGetInfo -> cb_reprobe_createfile
+
+// SAVE_FILE:
+//   args: handle, file_idx (believed)
+//   requirement: handle is for a card that is FORMATTED and has file
+//   saves game data
+// Callbacks:
+//  sceMcGetInfo -> cb_reprobe_save
+
+// LOAD_FILE:
+//   args: handle, file_idx
+//   requirement: handle is for a card that is FORMATTED and has file
+//   loads game data
+// Callbacks:
+//  sceMcGetInfo -> cb_reprobe_load
+
+// probing:
+// sceMcGetInfo -> cb_probe -> sceMcGetDir -> cb_getdir -> sceMcOpen -> cb_check_open ->
+//  -> sceMcRead -> cb_check_read
+
+enum class MemoryCardOperationKind : u32 {
   NO_OP = 0,
-  FORMAT = 1,
-  UNFORMAT = 2,
-  CREATE_FILE = 3,
+  FORMAT = 1,       // (handle, unused), (slot, type, free, format)
+  UNFORMAT = 2,     // (handle, unused), (slot)
+  CREATE_FILE = 3,  // (handle, unused)
   SAVE = 4,
   LOAD = 5,
 };
 
+enum class McStatusCode : u32 {
+  BUSY = 0,
+  OK = 1,
+  BAD_HANDLE = 2,
+  FORMAT_FAILED = 3,
+  INTERNAL_ERROR = 4,
+  WRITE_ERROR = 5,
+  READ_ERROR = 6,
+  NEW_GAME = 7,
+  NO_MEMORY = 8,
+  NO_CARD = 9,
+  NO_LAST = 10,
+  NO_FORMAT = 11,
+  NO_FILE = 12,
+  NO_SAVE = 13,
+  NO_SPACE = 14,
+  BAD_VERSION = 15,
+  NO_PROCESS = 16,
+  NO_AUTO_SAVE = 17
+};
+
 struct MemoryCardOperation {
-  uint32_t operation;
+  MemoryCardOperationKind operation;
   uint32_t param;
   uint32_t param2;
-  uint32_t result;
-  uint32_t f_10;
+  McStatusCode result;
+  uint32_t retry_count;
   Ptr<u8> data_ptr;
   Ptr<u8> data_ptr2;
 };
@@ -36,43 +124,24 @@ struct mc_file_info {
   u8 data[64];
 };
 
-struct mc_file_info_2 {
-  u32 present;
-  u32 pad1;
-  u32 pad2;
-  u8 data[64];
-};
-
 struct mc_slot_info {
   u32 handle;
   u32 known;
   u32 formatted;
   u32 initted;
-  u32 last_file;
+  s32 last_file;
   u32 mem_required;
   u32 mem_actual;
   mc_file_info files[4];
 };
 
-struct mc_info {
-  s32 p0;
-  s32 handle;
-  s32 inited;
-  s32 mem_actual;
-  s32 last_file;
-  mc_file_info_2 files[4];
-};
-
-s32 new_mc_handle();
-u32 mc_checksum(Ptr<u8> data, s32 size);
-u32 handle_to_slot(s32 p1, s32 p2);
-void MC_run();
 void MC_set_language(s32 lang);
-u64 MC_format(s32 param);
-u64 MC_unformat(s32 param);
+void MC_run();
+u64 MC_format(s32 card_idx);
+u64 MC_unformat(s32 card_idx);
 u64 MC_createfile(s32 param, Ptr<u8> data);
-u64 MC_save(s32 param, s32 param2, Ptr<u8> data, Ptr<u8> data2);
-u64 MC_load(s32 param, s32 param2, Ptr<u8> data);
+u64 MC_save(s32 card_idx, s32 file_idx, Ptr<u8> save_data, Ptr<u8> save_summary_data);
+u64 MC_load(s32 card_idx, s32 file_idx, Ptr<u8> data);
 void MC_makefile(s32 port, s32 size);
-u32 MC_check_result();
 void MC_get_status(s32 slot, Ptr<mc_slot_info> info);
+u32 MC_check_result();

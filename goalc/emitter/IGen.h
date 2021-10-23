@@ -2056,7 +2056,7 @@ class IGen {
     Instruction instr(0xf3);
     instr.set_op2(0x0f);
     instr.set_op3(0x2c);
-    instr.set_modrm_and_rex(dst.hw_id(), src.hw_id(), 3, true);
+    instr.set_modrm_and_rex(dst.hw_id(), src.hw_id(), 3, false);
     instr.swap_op0_rex();
     return instr;
   }
