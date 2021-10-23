@@ -119,6 +119,9 @@ bool check_stopped(const ThreadID& tid, SignalInfo* out) {
           case SIGTRAP:
             out->kind = SignalInfo::BREAK;
             break;
+          case SIGILL:
+            out->kind = SignalInfo::ILLEGAL_INSTR;
+            break;
 
           default:
             out->kind = SignalInfo::UNKNOWN;

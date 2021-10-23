@@ -594,10 +594,16 @@ TP_Type SimpleExpression::get_type_int2(const TypeState& input,
     return TP_Type::make_from_ts(arg0_type.typespec());
   }
 
-  if ((m_kind == Kind::ADD || m_kind == Kind::SUB) &&
-      arg1_type.typespec().base_type() == "pointer" && tc(dts, TypeSpec("integer"), arg0_type)) {
+  if (m_kind == Kind::ADD && arg1_type.typespec().base_type() == "pointer" &&
+      tc(dts, TypeSpec("integer"), arg0_type)) {
     // plain pointer plus integer = plain pointer
     return TP_Type::make_from_ts(arg1_type.typespec());
+  }
+
+  if (m_kind == Kind::SUB && arg1_type.typespec().base_type() == "pointer" &&
+      tc(dts, TypeSpec("integer"), arg0_type)) {
+    // plain pointer plus integer = plain pointer
+    return TP_Type::make_from_ts(arg0_type.typespec());
   }
 
   if (m_kind == Kind::ADD && tc(dts, TypeSpec("structure"), arg0_type) &&

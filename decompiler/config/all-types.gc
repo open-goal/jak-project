@@ -1646,7 +1646,7 @@
 
 (define-extern enter-state (function object object object object object object object))
 (define-extern inherit-state (function state state state))
-(define-extern send-event-function (function process event-message-block object))
+(define-extern send-event-function (function process-tree event-message-block object))
 (define-extern looping-code (function symbol))
 
 
@@ -5149,19 +5149,19 @@
     (unload! (_type_) _type_ 12)
     (bsp-name (_type_) symbol 13)
     (dummy-14 (_type_ object) memory-usage-block 14)
-    (dummy-15 (_type_ vector) symbol 15)
+    (point-in-boxes? (_type_ vector) symbol 15)
     (update-vis! (_type_ level-vis-info uint uint) symbol 16)
     (load-continue (_type_) _type_ 17)
     (load-begin (_type_) _type_ 18)
-    (login (_type_) _type_ 19)
+    (login-begin (_type_) _type_ 19)
     (vis-load (_type_) uint 20)
     (dummy-21 (_type_) none 21)
-    (activate (_type_) _type_ 22)
+    (birth (_type_) _type_ 22)
     (level-status-set! (_type_ symbol) _type_ 23)
-    (dummy-24 (_type_) _type_ 24)
-    (dummy-25 (_type_) int 25)
+    (load-required-packages (_type_) _type_ 24)
+    (init-vis (_type_) int 25)
     (vis-clear (_type_) int 26)
-    (dummy-27 (_type_ vector string) none 27)
+    (debug-print-splitbox (_type_ vector string) none 27)
     (art-group-get-by-name (_type_ string) art-group 28)
     )
   )
@@ -6203,7 +6203,7 @@
     (collide-y-probe (_type_ int collide-list) none 12)
     (collide-ray (_type_ int collide-list) none 13)
     (dummy-14 (_type_) none 14)
-    (dummy-15 (_type_ object object) none 15) ;; something debugging
+    (debug-draw (_type_ drawable object) none 15)
     (dummy-16 (_type_ object object) object 16)
     (collect-ambients (_type_ sphere int ambient-list) none 17)
     )
@@ -6230,6 +6230,9 @@
   ((length  int16       :offset 6)
    (data    drawable 1  :offset-assert 32)
    )
+  (:methods
+    (new (symbol type int) _type_)
+    )
   :flag-assert #x1200000024
   )
 
@@ -6312,7 +6315,7 @@
   )
 
 (deftype drawable-tree-array (drawable-group)
-  ()
+  ((trees drawable-tree 1 :offset 32 :score 100))
   :flag-assert #x1200000024
   )
 
@@ -7787,7 +7790,7 @@
     (login (_type_) _type_ 9)
     (dummy-10 (_type_ string type) joint 10)
     (dummy-11 (_type_ string type) int 11)
-    (dummy-12 (_type_) symbol 12)
+    (needs-link? (_type_) symbol 12)
     )
   )
 
@@ -12039,7 +12042,7 @@
    (unk-data-5 float :offset-assert 164)
    (adgifs adgif-shader-array :offset-assert 168)
    (actor-birth-order (pointer uint32) :offset-assert 172)
-   (unk-data-7 pointer :offset-assert 176)
+   (split-box-indices (pointer uint16) :offset-assert 176)
    (unk-data-8 uint32 55 :offset-assert 180)
 
    )
@@ -12049,7 +12052,7 @@
   (:methods
     (relocate (_type_ kheap (pointer uint8)) none :replace 7)
     (birth (_type_) none 18)
-    (dummy-19 (_type_) none 19)
+    (deactivate-entities (_type_) none 19)
     )
   )
 
@@ -12758,7 +12761,7 @@
    (dma-base          uint32                       :offset 36)
    (dma-level-1       uint32                       :offset 40)
    (dma-qwc           uint32              4       :offset 44)
-   (shader            uint32                       :offset 48)
+   (shader            (inline-array adgif-shader)                       :offset 48)
    (num-shaders       uint8                        :offset 52)
    (num-base-colors   uint8                        :offset 53)
    (num-level0-colors uint8                        :offset 54)
@@ -13981,13 +13984,52 @@
 ;; Containing DGOs - ['GAME', 'ENGINE']
 ;; Version - 3
 
+;; - Enums
+
+(defenum cam-slave-options
+  :bitfield #t
+  (BUTT_CAM)
+  (SAME_SIDE)
+  (MOVE_SPHERICAL)
+  (ALLOW_Z_ROT)
+  (JUMP_PITCHES)
+  (COLLIDE)
+  (FIND_HIDDEN_TARGET)
+  (DRAG)
+  (PLAYER_MOVING_CAMERA)
+  (LINE_OF_SIGHT)
+  (MOVEMENT_BLOCKED)
+  (SHRINK_MAX_ANGLE)
+  (GOTO_GOOD_POINT)
+  (BLOCK_SHIFT_BUTTONS)
+  (BIKE_MODE)
+  (NO_ROTATE)
+  (STICKY_ANGLE)
+  (AIR_EXIT)
+  )
+
+(defenum cam-index-options
+  :type uint32
+  :bitfield #t
+  (RADIAL)
+  (SPHERICAL)
+  )
+
+(defenum slave-los-state
+  :type uint32
+  (none 0)
+  (cw 1)
+  (ccw 2)
+  (between 3)
+  )
+
 ;; - Types
 
 (deftype camera-bank (basic)
   ((collide-move-rad        float   :offset-assert 4)
    (joypad                  uint32  :offset-assert 8)
    (min-detectable-velocity float   :offset-assert 12)
-   (attack-timeout          uint64  :offset-assert 16)
+   (attack-timeout          seconds :offset-assert 16)
    (default-string-max-y    meters  :offset-assert 24)
    (default-string-min-y    meters  :offset-assert 28)
    (default-string-max-z    meters  :offset-assert 32)
@@ -14001,7 +14043,7 @@
   )
 
 (deftype cam-index (structure)
-  ((flags uint32    :offset-assert 0)
+  ((flags cam-index-options :offset-assert 0)
    (vec   vector  2 :inline :offset 16)
    )
   :method-count-assert 11
@@ -14172,7 +14214,7 @@
    (velocity                      vector               :inline :offset-assert 2208)
    (desired-pos                   vector               :inline :offset-assert 2224)
    (time-dist-too-far             uint32                       :offset-assert 2240)
-   (los-state                     uint32                       :offset-assert 2244)
+   (los-state                     slave-los-state              :offset-assert 2244)
    (good-point                    vector               :inline :offset-assert 2256)
    (los-tgt-spline-pt             int32                        :offset-assert 2272)
    (los-tgt-spline-pt-incarnation int32                        :offset-assert 2276)
@@ -16515,7 +16557,7 @@
 ;; - Functions
 
 (define-extern edge-debug-lines function)
-(define-extern vis-cull function)
+(define-extern vis-cull (function int symbol))
 
 
 ;; ----------------------
@@ -18227,10 +18269,10 @@
 
 ;; - Functions
 
-(define-extern camera-bounding-box-draw (function bounding-box basic rgba none))
+(define-extern camera-bounding-box-draw (function bounding-box none))
 (define-extern collide-planes-test0 function)
 (define-extern collide-planes-test1 function)
-(define-extern camera-cross (function vector vector vector vector float basic))
+(define-extern camera-cross (function vector vector vector vector4w meters basic))
 (define-extern collide-planes-intersect function)
 (define-extern collide-planes function)
 
@@ -18376,8 +18418,8 @@
 (define-extern cam-slave-init-vars (function none :behavior camera-slave))
 (define-extern cam-calc-follow! (function cam-rotation-tracker vector symbol vector))
 (define-extern slave-set-rotation! (function cam-rotation-tracker vector float float symbol none))
-(define-extern camera-slave-debug (function camera-slave object object object object)) ;; passed to engine::method-15
-(define-extern camera-line-rel-len (function tracking-point vector float rgba none))
+(define-extern camera-slave-debug (function camera-slave object)) ;; passed to engine::method-15
+(define-extern camera-line-rel-len (function vector vector float vector4w none))
 (define-extern cam-slave-get-flags (function entity symbol uint128))
 (define-extern cam-slave-get-vector-with-offset (function entity-actor vector symbol symbol))
 (define-extern cam-slave-get-fov (function entity float))
@@ -18463,7 +18505,7 @@
 (define-extern list-keeper-init (function none :behavior camera-master))
 (define-extern master-track-target (function symbol :behavior camera-master)) ;; TODO - go get that collide-cache function
 (define-extern master-check-regions (function object :behavior camera-master))
-(define-extern camera-master-debug (function camera-master symbol symbol none))
+(define-extern camera-master-debug (function camera-master none))
 (define-extern master-unset-region (function object :behavior camera-master))
 (define-extern reset-target-tracking (function symbol :behavior camera-master))
 (define-extern reset-drawable-tracking (function symbol :behavior camera-master))
@@ -18598,7 +18640,7 @@
 (define-extern cam-string-line-of-sight (function vector :behavior camera-slave))
 (define-extern cam-string-joystick (function vector :behavior camera-slave))
 (define-extern cam-string-find-hidden (function none :behavior camera-slave))
-(define-extern cam-collision-record-save (function vector vector int basic camera-slave none))
+(define-extern cam-collision-record-save (function vector vector int symbol camera-slave none))
 (define-extern cam-string-move (function object :behavior camera-slave))
 (define-extern cam-dist-analog-input (function int float float))
 (define-extern cam-los-collide (function vector vector clip-travel-vector-to-mesh-return-info int symbol :behavior camera-slave))
@@ -18607,7 +18649,7 @@
 (define-extern cam-debug-add-los-tri (function (inline-array collide-cache-tri) vector vector none))
 (define-extern cam-los-spline-collide (function vector vector vector float))
 (define-extern cam-los-setup-lateral (function clip-travel-vector-to-mesh-return-info vector vector symbol :behavior camera-slave))
-(define-extern slave-los-state->string (function uint string)) ;; uint comes from 2244 camera-slave
+(define-extern slave-los-state->string (function slave-los-state string))
 (define-extern dist-info-print (function collide-los-dist-info string object))
 (define-extern dist-info-valid? (function collide-los-dist-info symbol))
 (define-extern dist-info-append (function collide-los-dist-info vector none))
@@ -18985,17 +19027,17 @@
 (define-extern cam-layout-save-maxAngle (function symbol string entity-actor string))
 (define-extern cam-layout-save-campoints-flags (function symbol string entity-actor string))
 (define-extern cam-layout-save-focalpull-flags (function symbol string entity-actor string))
-(define-extern cam-index-options->string (function uint string string))
-(define-extern cam-slave-options->string (function uint string string))
+(define-extern cam-index-options->string (function cam-index-options object string))
+(define-extern cam-slave-options->string (function cam-slave-options object string))
 (define-extern fov->maya (function float float))
 (define-extern cam-layout-entity-volume-info-create (function entity-camera symbol symbol :behavior cam-layout)) ;; TODO - decomp crash
 (define-extern clmf-next-volume (function int symbol :behavior cam-layout))
 (define-extern clmf-input (function vector vector int vector))
-(define-extern camera-fov-frame (function matrix vector float float float vector none))
+(define-extern camera-fov-frame (function matrix vector float float float vector4w none))
 (define-extern interp-test (function (function vector vector vector float vector float none) interp-test-info basic))
 (define-extern v-slrp! (function vector vector vector float vector))
 (define-extern interp-test-deg (function (function vector vector vector vector float none) interp-test-info basic))
-(define-extern camera-line-setup (function vector none))
+(define-extern camera-line-setup (function vector4w none))
 (define-extern camera-line-draw (function vector vector symbol))
 (define-extern cam-layout-intersect-dist (function vector vector vector float))
 (define-extern clmf-button-test (function symbol))
@@ -19132,18 +19174,18 @@
 
 (define-extern cam-collision-record-draw (function none))
 (define-extern master-draw-coordinates (function vector none))
-(define-extern cam-debug-draw-tris (function basic basic rgba symbol))
+(define-extern cam-debug-draw-tris (function symbol))
 (define-extern cam-collision-record-step (function int none))
-(define-extern camera-sphere (function vector float rgba none))
-(define-extern camera-line-rel (function vector vector rgba none))
-(define-extern camera-fov-draw (function int int vector float float vector symbol))
+(define-extern camera-sphere (function vector float vector none))
+(define-extern camera-line-rel (function vector vector vector4w none))
+(define-extern camera-fov-draw (function int int vector float float vector4w symbol))
 (define-extern cam-line-dma (function pointer))
 (define-extern camera-line2d (function (pointer vector4w) (pointer vector4w) pointer))
 (define-extern camera-plot-float-func (function float float float float (function float float) vector4w none))
 (define-extern cam-debug-add-coll-tri (function cam-debug-tri vector cam-debug-tri none))
 (define-extern debug-euler (function cam-dbg-scratch object))
 (define-extern bike-cam-limit (function float float))
-(define-extern external-cam-reset! (function none)) ;; TODO - unconfirmed
+(define-extern external-cam-reset! (function none))
 
 ;; - Unknowns
 
@@ -19158,9 +19200,9 @@
 (define-extern *cam-collision-record* cam-collision-record-array) ;; unknown type
 (define-extern *cam-collision-record-last* int) ;; unknown type
 (define-extern *cam-collision-record-first* int) ;; unknown type
-(define-extern *cam-debug-los-tri* (pointer cam-debug-tri)) ;; unknown type
+(define-extern *cam-debug-los-tri* (inline-array cam-debug-tri)) ;; unknown type
 (define-extern *cam-debug-los-tri-current* int) ;; unknown type
-(define-extern *cam-debug-coll-tri* (pointer cam-debug-tri)) ;; unknown type
+(define-extern *cam-debug-coll-tri* (inline-array cam-debug-tri)) ;; unknown type
 (define-extern *cam-debug-coll-tri-current* int) ;; unknown type
 
 
@@ -19446,13 +19488,13 @@
    (swim-jump-height-max         meters           :offset-assert 68)
    (tube-jump-height-min         meters           :offset-assert 72)
    (tube-jump-height-max         meters           :offset-assert 76)
-   (wheel-duration               uint64           :offset-assert 80)
-   (wheel-jump-pre-window        uint64           :offset-assert 88)
-   (wheel-jump-post-window       uint64           :offset-assert 96)
-   (wheel-timeout                uint64           :offset-assert 104)
+   (wheel-duration               seconds           :offset-assert 80)
+   (wheel-jump-pre-window        seconds           :offset-assert 88)
+   (wheel-jump-post-window       seconds           :offset-assert 96)
+   (wheel-timeout                seconds           :offset-assert 104)
    (wheel-speed-min              meters           :offset-assert 112)
    (wheel-speed-inc              meters           :offset-assert 116)
-   (wheel-flip-duration          uint64           :offset-assert 120)
+   (wheel-flip-duration          seconds           :offset-assert 120)
    (wheel-flip-height            meters           :offset-assert 128)
    (wheel-flip-dist              meters           :offset-assert 132)
    (wheel-flip-art-height        meters           :offset-assert 136)
@@ -19460,13 +19502,13 @@
    (duck-slide-distance          meters           :offset-assert 144)
    (fall-far                     meters           :offset-assert 148)
    (fall-far-inc                 meters           :offset-assert 152)
-   (attack-timeout               uint64           :offset-assert 160)
-   (ground-timeout               uint64           :offset-assert 168)
-   (slide-down-timeout           uint64           :offset-assert 176)
-   (fall-timeout                 uint64           :offset-assert 184)
+   (attack-timeout               seconds           :offset-assert 160)
+   (ground-timeout               seconds           :offset-assert 168)
+   (slide-down-timeout           seconds           :offset-assert 176)
+   (fall-timeout                 seconds           :offset-assert 184)
    (fall-stumble-threshold       meters           :offset-assert 192)
    (yellow-projectile-speed      meters           :offset-assert 196)
-   (hit-invulnerable-timeout     uint64           :offset-assert 200)
+   (hit-invulnerable-timeout     seconds           :offset-assert 200)
    (run-cycle-length             float            :offset-assert 208)
    (walk-cycle-dist              meters           :offset-assert 212)
    (walk-up-cycle-dist           meters           :offset-assert 216)
@@ -19508,7 +19550,7 @@
    (stuck-distance               meters           :offset-assert 576)
    (tongue-pull-speed-min        float            :offset-assert 580)
    (tongue-pull-speed-max        float            :offset-assert 584)
-   (yellow-attack-timeout        uint64           :offset-assert 592)
+   (yellow-attack-timeout        seconds           :offset-assert 592)
    )
   :method-count-assert 9
   :size-assert         #x258
@@ -19539,7 +19581,7 @@
 (define-extern set-forward-vel (function float vector :behavior target))
 (define-extern delete-back-vel (function float none :behavior target))
 (define-extern set-side-vel (function float vector :behavior target))
-(define-extern target-timed-invulnerable (function uint target none)) ;; TODO - likely useconds
+(define-extern target-timed-invulnerable (function seconds target none))
 (define-extern target-timed-invulnerable-off (function target none))
 (define-extern ground-tween-initialize (function ground-tween-info uint uint uint uint uint uint ground-tween-info :behavior target)) ;; TODO - dealing with inline-array issues
 (define-extern ground-tween-update (function ground-tween-info float float none :behavior target)) ;; TODO - inline array issues as well

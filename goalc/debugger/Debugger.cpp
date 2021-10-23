@@ -616,6 +616,14 @@ void Debugger::watcher() {
           printf("Target has disappeared. Maybe it quit or was killed.\n");
           handle_disappearance();
           break;
+        case xdbg::SignalInfo::ILLEGAL_INSTR:
+          printf(
+              "Target has crashed due to an illegal instruction. Run (:di) to get more "
+              "information.\n");
+          break;
+        case xdbg::SignalInfo::UNKNOWN:
+          printf("Target has encountered an unknown signal. Run (:di) to get more information.\n");
+          break;
         default:
           printf("[Debugger] unhandled signal in watcher: %d\n", int(signal_info.kind));
           assert(false);

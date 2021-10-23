@@ -215,6 +215,7 @@
        "out/iso/TRA.DGO"
        "out/iso/FIN.DGO"
        "out/iso/FIC.DGO"
+       "out/iso/JUN.DGO"
        )
 
 ;;;;;;;;;;;;;;;;;;;;;;;;
@@ -245,6 +246,7 @@
    "village_common/oracle.gc"
 
    "common/blocking-plane.gc"
+   "common/launcherdoor.gc"
 
    "racer_common/target-racer-h-FIC-LAV-MIS-OGR-ROL.gc"
    "racer_common/racer-part.gc"
@@ -326,6 +328,69 @@
  "yakow-ag"
  "village1-vis"
  )
+
+;;;;;;;;;;;;;;;;;;;;;
+;; Jungle
+;;;;;;;;;;;;;;;;;;;;;
+
+(cgo "JUN.DGO"
+  "jun.gd")
+
+(goal-src-sequence
+ "levels/jungle/"
+ :deps ;; no idea what these depend on, make it depend on the whole engine
+ ("out/obj/default-menu.o")
+
+ "jungle-elevator.gc"
+ "bouncer.gc"
+ "hopper.gc"
+ "junglesnake.gc"
+ "darkvine.gc"
+ "jungle-obs.gc"
+ "jungle-mirrors.gc"
+ "junglefish.gc"
+ "fisher-JUN.gc"
+ "jungle-part.gc"
+ )
+
+(copy-gos
+  "eichar-fish+0-ag-JUN"
+  "accordian-ag"
+  "bounceytarp-ag"
+  "catch-fisha-ag"
+  "catch-fishb-ag"
+  "catch-fishc-ag"
+  "darkvine-ag-JUN"
+  "ecovalve-ag-JUB-JUN"
+  "fish-net-ag"
+  "fisher-ag"
+  "hopper-ag"
+  "junglecam-ag"
+  "junglefish-ag"
+  "junglesnake-ag"
+  "launcherdoor-ag-JUN"
+  "logtrap-ag"
+  "lurkerm-piston-ag"
+  "lurkerm-tall-sail-ag"
+  "maindoor-ag"
+  "medres-firecanyon-ag"
+  "orb-cache-top-ag-JUN"
+  "periscope-ag"
+  "plat-button-ag"
+  "plat-eco-ag-JUN"
+  "precurbridge-ag"
+  "reflector-mirror-ag"
+  "ropebridge-52-ag"
+  "ropebridge-70-ag"
+  "sharkey-ag-JUN-MIS"
+  "sidedoor-ag"
+  "towertop-ag"
+  "water-anim-jungle-ag"
+  "jungle-vis"
+  )
+
+(copy-textures 385 531 386 388 765)
+
 
 ;;;;;;;;;;;;;;;;;;;;;
 ;; Fire Canyon
