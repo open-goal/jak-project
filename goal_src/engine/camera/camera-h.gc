@@ -21,7 +21,7 @@
 (define-extern cam-spline (state camera-slave))
 (define-extern *camera-base-mode* state)
 (define-extern cam-fixed-read-entity (state camera-slave))
-(define-extern camera-line-rel-len (function tracking-point vector float rgba none))
+(define-extern camera-line-rel-len (function vector vector float vector4w none))
 (define-extern cam-calc-follow! (function cam-rotation-tracker vector symbol vector))
 (define-extern slave-set-rotation! (function cam-rotation-tracker vector float float symbol none))
 ;; TODO - for cam-combiner
@@ -31,14 +31,50 @@
 (define-extern cam-master-init (function none :behavior camera-master))
 
 
-;; decomp begins
+(defenum cam-slave-options
+  :bitfield #t
+  (BUTT_CAM)
+  (SAME_SIDE)
+  (MOVE_SPHERICAL)
+  (ALLOW_Z_ROT)
+  (JUMP_PITCHES)
+  (COLLIDE)
+  (FIND_HIDDEN_TARGET)
+  (DRAG)
+  (PLAYER_MOVING_CAMERA)
+  (LINE_OF_SIGHT)
+  (MOVEMENT_BLOCKED)
+  (SHRINK_MAX_ANGLE)
+  (GOTO_GOOD_POINT)
+  (BLOCK_SHIFT_BUTTONS)
+  (BIKE_MODE)
+  (NO_ROTATE)
+  (STICKY_ANGLE)
+  (AIR_EXIT)
+  )
 
-;; definition of type camera-bank
+(defenum cam-index-options
+  :type uint32
+  :bitfield #t
+  (RADIAL)
+  (SPHERICAL)
+  )
+
+(defenum slave-los-state
+  :type uint32
+  (none 0)
+  (cw 1)
+  (ccw 2)
+  (between 3)
+  )
+
+;; DECOMP BEGINS
+
 (deftype camera-bank (basic)
   ((collide-move-rad        float    :offset-assert   4)
    (joypad                  uint32   :offset-assert   8)
    (min-detectable-velocity float    :offset-assert  12)
-   (attack-timeout          uint64   :offset-assert  16)
+   (attack-timeout          seconds  :offset-assert  16)
    (default-string-max-y    meters   :offset-assert  24)
    (default-string-min-y    meters   :offset-assert  28)
    (default-string-max-z    meters   :offset-assert  32)
@@ -51,74 +87,74 @@
   :flag-assert         #x900000030
   )
 
-;; definition for symbol *CAMERA-bank*, type camera-bank
-(define *CAMERA-bank*
-    (new 'static 'camera-bank
-         :collide-move-rad 1638.4
-         :min-detectable-velocity 40.96
-         :attack-timeout #x4b
-         :default-string-max-y (meters 3.0)
-         :default-string-min-y (meters 1.0)
-         :default-string-max-z (meters 12.5)
-         :default-string-min-z (meters 5.0)
-         :default-string-push-z (meters 10.0)
-         :default-tilt-adjust (degrees -6.5000005)
-         )
+
+(define
+  *CAMERA-bank*
+  (new 'static 'camera-bank
+   :collide-move-rad 1638.4
+   :min-detectable-velocity 40.96
+   :attack-timeout (seconds 0.25)
+   :default-string-max-y (meters 3.0)
+   :default-string-min-y (meters 1.0)
+   :default-string-max-z (meters 12.5)
+   :default-string-min-z (meters 5.0)
+   :default-string-push-z (meters 10.0)
+   :default-tilt-adjust (degrees -6.5000005)
+   )
   )
 
-;; definition of type cam-index
 (deftype cam-index (structure)
-  ((flags uint32    :offset-assert 0)
-   (vec   vector  2 :inline :offset 16)
+  ((flags cam-index-options           :offset-assert   0)
+   (vec   vector            2 :inline :offset         16)
    )
   :method-count-assert 11
   :size-assert         #x30
   :flag-assert         #xb00000030
   (:methods
     (dummy-9 (_type_ symbol entity vector curve) symbol 9)
-    (dummy-10 (_type_ vector) float 10) ; inlined vector-dot issue?
+    (dummy-10 (_type_ vector) float 10)
     )
   )
 
-;; definition of type tracking-point
+
 (deftype tracking-point (structure)
-  ((position    vector :inline :offset-assert 0)
-   (direction   vector :inline :offset-assert 16)
-   (tp-length   float          :offset-assert 32)
-   (next        int32          :offset-assert 36)
-   (incarnation int32          :offset-assert 40)
+  ((position    vector :inline :offset-assert   0)
+   (direction   vector :inline :offset-assert  16)
+   (tp-length   float          :offset-assert  32)
+   (next        int32          :offset-assert  36)
+   (incarnation int32          :offset-assert  40)
    )
   :method-count-assert 9
   :size-assert         #x2c
   :flag-assert         #x90000002c
   )
 
-;; definition of type tracking-spline-sampler
+
 (deftype tracking-spline-sampler (structure)
-  ((cur-pt     int32  :offset-assert 0)
-   (partial-pt float  :offset-assert 4)
+  ((cur-pt     int32  :offset-assert   0)
+   (partial-pt float  :offset-assert   4)
    )
   :method-count-assert 9
   :size-assert         #x8
   :flag-assert         #x900000008
   )
 
-;; definition of type tracking-spline
+
 (deftype tracking-spline (structure)
-  ((point              tracking-point 32 :inline     :offset-assert 0)
-   (summed-len         float           :offset-assert 1536)
-   (free-point         int32           :offset-assert 1540)
-   (used-point         int32           :offset-assert 1544)
-   (partial-point      float           :offset-assert 1548)
-   (end-point          int32           :offset-assert 1552)
-   (next-to-last-point int32           :offset-assert 1556)
-   (max-move           float           :offset-assert 1560)
-   (sample-len         float           :offset-assert 1564)
-   (used-count         int32           :offset-assert 1568)
-   (old-position       vector  :inline :offset-assert 1584)
-   (debug-old-position vector  :inline :offset-assert 1600)
-   (debug-out-position vector  :inline :offset-assert 1616)
-   (debug-last-point   int32           :offset-assert 1632)
+  ((point              tracking-point 32 :inline :offset-assert   0)
+   (summed-len         float                     :offset-assert 1536)
+   (free-point         int32                     :offset-assert 1540)
+   (used-point         int32                     :offset-assert 1544)
+   (partial-point      float                     :offset-assert 1548)
+   (end-point          int32                     :offset-assert 1552)
+   (next-to-last-point int32                     :offset-assert 1556)
+   (max-move           float                     :offset-assert 1560)
+   (sample-len         float                     :offset-assert 1564)
+   (used-count         int32                     :offset-assert 1568)
+   (old-position       vector         :inline    :offset-assert 1584)
+   (debug-old-position vector         :inline    :offset-assert 1600)
+   (debug-out-position vector         :inline    :offset-assert 1616)
+   (debug-last-point   int32                     :offset-assert 1632)
    )
   :method-count-assert 24
   :size-assert         #x664
@@ -132,7 +168,7 @@
     (TODO-RENAME-14 (_type_ vector) none 14)
     (TODO-RENAME-15 (_type_) none 15)
     (TODO-RENAME-16 (_type_ float) none 16)
-    (TODO-RENAME-17 (_type_ vector float float symbol) int 17) ; - return value is actually none but they do a manual `return`
+    (TODO-RENAME-17 (_type_ vector float float symbol) int 17)
     (TODO-RENAME-18 (_type_ float vector tracking-spline-sampler) vector 18)
     (TODO-RENAME-19 (_type_ float vector tracking-spline-sampler) vector 19)
     (TODO-RENAME-20 (_type_ vector int) none 20)
@@ -142,121 +178,121 @@
     )
   )
 
-;; cam-float-seeker moves value toward target in a smooth way, with second order dynamics.
-;; The acceleration is proportional to the error.
-;; This isn't stable by itself, so there is a velocity limit (proportional to distance) applied.
+
 (deftype cam-float-seeker (structure)
-  ((target      float  :offset-assert 0)
-   (value       float  :offset-assert 4)
-   (vel         float  :offset-assert 8)
-   (accel       float  :offset-assert 12)
-   (max-vel     float  :offset-assert 16)
-   (max-partial float  :offset-assert 20)
+  ((target      float  :offset-assert   0)
+   (value       float  :offset-assert   4)
+   (vel         float  :offset-assert   8)
+   (accel       float  :offset-assert  12)
+   (max-vel     float  :offset-assert  16)
+   (max-partial float  :offset-assert  20)
    )
   :pack-me
   :method-count-assert 13
   :size-assert         #x18
   :flag-assert         #xd00000018
   (:methods
-   (init-cam-float-seeker (_type_ float float float float) none 9)
-   (copy-cam-float-seeker (_type_ _type_) none 10)
-   (update! (_type_ float) none 11)
-   (jump-to-target! (_type_ float) float 12)
-   )
+    (init-cam-float-seeker (_type_ float float float float) none 9)
+    (copy-cam-float-seeker (_type_ _type_) none 10)
+    (update! (_type_ float) none 11)
+    (jump-to-target! (_type_ float) float 12)
+    )
   )
 
-;; definition for method 9 of type cam-float-seeker
-;; INFO: Return type mismatch int vs none.
-(defmethod init-cam-float-seeker cam-float-seeker ((obj cam-float-seeker) (arg0 float) (arg1 float) (arg2 float) (arg3 float))
+
+(defmethod
+  init-cam-float-seeker
+  cam-float-seeker
+  ((obj cam-float-seeker) (arg0 float) (arg1 float) (arg2 float) (arg3 float))
   (set! (-> obj target) arg0)
   (set! (-> obj value) arg0)
   (set! (-> obj vel) 0.0)
   (set! (-> obj accel) arg1)
   (set! (-> obj max-vel) arg2)
   (set! (-> obj max-partial) arg3)
+  0
   (none)
   )
 
-;; definition for method 10 of type cam-float-seeker
-;; INFO: Return type mismatch int vs none.
-(defmethod copy-cam-float-seeker cam-float-seeker ((obj cam-float-seeker) (arg0 cam-float-seeker))
+(defmethod
+  copy-cam-float-seeker
+  cam-float-seeker
+  ((obj cam-float-seeker) (arg0 cam-float-seeker))
   (set! (-> obj target) (-> arg0 target))
   (set! (-> obj value) (-> arg0 value))
   (set! (-> obj vel) (-> arg0 vel))
   (set! (-> obj accel) (-> arg0 accel))
   (set! (-> obj max-vel) (-> arg0 max-vel))
   (set! (-> obj max-partial) (-> arg0 max-partial))
+  0
   (none)
   )
 
 (defmethod update! cam-float-seeker ((obj cam-float-seeker) (offset float))
-  "Seek toward target + offset"
+  0.0
+  0.0
   (let* ((pos-error (- (+ (-> obj target) offset) (-> obj value)))
-         ;; the velocity limit based on distance to target
          (partial-velocity-limit (* (-> obj max-partial) (fabs pos-error)))
          )
-
-    ;; apply acceleration to velocity
-    (let ((daccel (* pos-error (* (-> obj accel) (-> *display* time-adjust-ratio)))))
-      (+! (-> obj vel) daccel)
-      )
-
-    ;; limit velocity using max-vel and the partial limit
-    (let ((abs-vel (fabs (-> obj vel)))
-          (abs-vel-limit (fmin partial-velocity-limit (-> obj max-vel)))
-          )
-      (if (< abs-vel-limit abs-vel)
-          (set! (-> obj vel) (* (-> obj vel) (/ abs-vel-limit abs-vel)))
-          )
-      )
+   (let
+    ((daccel (* pos-error (* (-> obj accel) (-> *display* time-adjust-ratio)))))
+    (+! (-> obj vel) daccel)
     )
-
-  ;; update position
+   (let ((abs-vel (fabs (-> obj vel)))
+         (abs-vel-limit (fmin partial-velocity-limit (-> obj max-vel)))
+         )
+    (if (< abs-vel-limit abs-vel)
+     (set! (-> obj vel) (* (-> obj vel) (/ abs-vel-limit abs-vel)))
+     )
+    )
+   )
   (let ((dpos (* (-> obj vel) (-> *display* time-adjust-ratio))))
-    (+! (-> obj value) dpos)
-    )
+   (+! (-> obj value) dpos)
+   )
+  0
   (none)
   )
 
 (defmethod jump-to-target! cam-float-seeker ((obj cam-float-seeker) (arg0 float))
-  "Jump to target + arg0 and set velocity to 0"
   (set! (-> obj value) (+ (-> obj target) arg0))
   (let ((f0-2 0.0))
-    (set! (-> obj vel) f0-2)
-    f0-2
-    )
+   (set! (-> obj vel) f0-2)
+   f0-2
+   )
   )
 
-;; very similar to cam-float-seeker but works on an
-;; entire vector.
 (deftype cam-vector-seeker (structure)
-  ((target      vector :inline :offset-assert 0)
-   (value       vector :inline :offset-assert 16)
-   (vel         vector :inline :offset-assert 32)
-   (accel       float          :offset-assert 48)
-   (max-vel     float          :offset-assert 52)
-   (max-partial float          :offset-assert 56)
+  ((target      vector :inline :offset-assert   0)
+   (value       vector :inline :offset-assert  16)
+   (vel         vector :inline :offset-assert  32)
+   (accel       float          :offset-assert  48)
+   (max-vel     float          :offset-assert  52)
+   (max-partial float          :offset-assert  56)
    )
   :method-count-assert 11
   :size-assert         #x3c
   :flag-assert         #xb0000003c
   (:methods
-   (init! (_type_ vector float float float) none 9)
-   (update! (_type_ vector) none 10)
-   )
+    (init! (_type_ vector float float float) none 9)
+    (update! (_type_ vector) none 10)
+    )
   )
 
-(defmethod init! cam-vector-seeker ((obj cam-vector-seeker) (arg0 vector) (arg1 float) (arg2 float) (arg3 float))
+
+(defmethod
+  init!
+  cam-vector-seeker
+  ((obj cam-vector-seeker) (arg0 vector) (arg1 float) (arg2 float) (arg3 float))
   (cond
-    (arg0
-     (set! (-> obj target quad) (-> arg0 quad))
-     (set! (-> obj value quad) (-> arg0 quad))
-     )
-    (else
-     (vector-reset! (-> obj target))
-     (vector-reset! (-> obj value))
-     )
+   (arg0
+    (set! (-> obj target quad) (-> arg0 quad))
+    (set! (-> obj value quad) (-> arg0 quad))
     )
+   (else
+    (vector-reset! (-> obj target))
+    (vector-reset! (-> obj value))
+    )
+   )
   (vector-reset! (-> obj vel))
   (set! (-> obj accel) arg1)
   (set! (-> obj max-vel) arg2)
@@ -267,42 +303,43 @@
 
 (defmethod update! cam-vector-seeker ((obj cam-vector-seeker) (arg0 vector))
   (let ((gp-0 (new 'stack-no-clear 'vector)))
-    (cond
-      (arg0
-       (vector+! gp-0 (-> obj target) arg0)
-       (vector-! gp-0 gp-0 (-> obj value))
-       )
-      (else
-       (vector-! gp-0 (-> obj target) (-> obj value))
-       )
-      )
-    (let ((f30-1 (* (-> obj max-partial) (vector-length gp-0))))
-      (vector-float*!
-       gp-0
-       gp-0
-       (* (-> obj accel) (-> *display* time-adjust-ratio))
-       )
-      (vector+! (-> obj vel) (-> obj vel) gp-0)
-      (let ((f0-4 (vector-length (-> obj vel)))
-            (f1-2 (fmin f30-1 (-> obj max-vel)))
-            )
-        (if (< f1-2 f0-4)
-            (vector-float*! (-> obj vel) (-> obj vel) (/ f1-2 f0-4))
-            )
-        )
-      )
-    (vector-float*! gp-0 (-> obj vel) (-> *display* time-adjust-ratio))
-    (vector+! (-> obj value) (-> obj value) gp-0)
+   0.0
+   (cond
+    (arg0
+     (vector+! gp-0 (-> obj target) arg0)
+     (vector-! gp-0 gp-0 (-> obj value))
+     )
+    (else
+     (vector-! gp-0 (-> obj target) (-> obj value))
+     )
     )
+   (let ((f30-1 (* (-> obj max-partial) (vector-length gp-0))))
+    (vector-float*!
+     gp-0
+     gp-0
+     (* (-> obj accel) (-> *display* time-adjust-ratio))
+     )
+    (vector+! (-> obj vel) (-> obj vel) gp-0)
+    (let ((f0-4 (vector-length (-> obj vel)))
+          (f1-2 (fmin f30-1 (-> obj max-vel)))
+          )
+     (if (< f1-2 f0-4)
+      (vector-float*! (-> obj vel) (-> obj vel) (/ f1-2 f0-4))
+      )
+     )
+    )
+   (vector-float*! gp-0 (-> obj vel) (-> *display* time-adjust-ratio))
+   (vector+! (-> obj value) (-> obj value) gp-0)
+   )
   0
   (none)
   )
 
 (deftype cam-rotation-tracker (structure)
-  ((inv-mat                 matrix           :inline :offset-assert 0)
-   (no-follow               basic                    :offset-assert 64)
-   (follow-pt               vector           :inline :offset-assert 80)
-   (follow-off              vector           :inline :offset-assert 96)
+  ((inv-mat                 matrix           :inline :offset-assert   0)
+   (no-follow               basic                    :offset-assert  64)
+   (follow-pt               vector           :inline :offset-assert  80)
+   (follow-off              vector           :inline :offset-assert  96)
    (follow-blend            float                    :offset-assert 112)
    (tilt-adjust             cam-float-seeker :inline :offset-assert 116)
    (use-point-of-interest   basic                    :offset-assert 140)
@@ -315,7 +352,7 @@
   :flag-assert         #x9000000d0
   )
 
-;; definition of type camera-combiner
+
 (deftype camera-combiner (process)
   ((trans             vector               :inline :offset-assert 112)
    (inv-camera-rot    matrix               :inline :offset-assert 128)
@@ -336,16 +373,16 @@
   :flag-assert         #xe017001e0
   )
 
-;; definition of type camera-slave
+
 (deftype camera-slave (process)
-  ((trans                         vector    :score 999 :inline :offset-assert 112)
+  ((trans                         vector               :inline :offset-assert 112)
    (fov                           float                        :offset-assert 128)
    (fov0                          float                        :offset-assert 132)
    (fov1                          float                        :offset-assert 136)
    (fov-index                     cam-index            :inline :offset-assert 144)
    (tracking                      cam-rotation-tracker :inline :offset-assert 192)
    (view-off-param                float                        :offset-assert 400)
-   (unknown-symbol                symbol                       :offset        412) ;; from - cam-combiner::lambda2 - I'm convinced `camera-slave` is the only matching process in this case
+   (unknown-symbol                symbol                       :offset        412)
    (view-off                      vector               :inline :offset-assert 416)
    (min-z-override                float                        :offset-assert 432)
    (view-flat                     vector               :inline :offset-assert 448)
@@ -358,11 +395,11 @@
    (max-angle-offset              float                        :offset-assert 2192)
    (max-angle-curr                float                        :offset-assert 2196)
    (options                       uint32                       :offset-assert 2200)
-   (cam-entity                    entity                       :offset-assert 2204) ; not totally confirmed yet, could be entity-actor
+   (cam-entity                    entity                       :offset-assert 2204)
    (velocity                      vector               :inline :offset-assert 2208)
    (desired-pos                   vector               :inline :offset-assert 2224)
    (time-dist-too-far             uint32                       :offset-assert 2240)
-   (los-state                     uint32                       :offset-assert 2244)
+   (los-state                     slave-los-state              :offset-assert 2244)
    (good-point                    vector               :inline :offset-assert 2256)
    (los-tgt-spline-pt             int32                        :offset-assert 2272)
    (los-tgt-spline-pt-incarnation int32                        :offset-assert 2276)
@@ -394,68 +431,73 @@
   :method-count-assert 14
   :size-assert         #xa04
   :flag-assert         #xe09a00a04
-  ;; inherited inspect of process
   )
 
-;; definition of type camera-master
+
 (deftype camera-master (process)
-  ((master-options      uint32                    :offset-assert 112)
-   (num-slaves          int32                     :offset-assert 116)
-   (slave               (pointer camera-slave)           2       :offset-assert 120)
-   (slave-options       uint32                    :offset-assert 128)
-   (view-off-param-save float                     :offset-assert 132)
-   (changer             uint32                    :offset-assert 136)
-   (cam-entity          entity                    :offset-assert 140) ; not totally confirmed yet
-   (stringMinLength     float                     :offset-assert 144)
-   (stringMaxLength     float                     :offset-assert 148)
-   (stringMinHeight     float                     :offset-assert 152)
-   (stringMaxHeight     float                     :offset-assert 156)
-   (string-min          cam-vector-seeker :inline :offset-assert 160)
-   (string-max          cam-vector-seeker :inline :offset-assert 224)
-   (string-push-z       float                     :offset-assert 284)
-   (stringCliffHeight   float                     :offset-assert 288)
-   (no-intro            uint32                    :offset-assert 292)
-   (force-blend         uint32                    :offset-assert 296)
-   (force-blend-time    uint32                    :offset-assert 300)
-   (local-down          vector            :inline :offset-assert 304)
-   (drawable-target     handle                    :offset-assert 320) ; likely a `target`?
-   (which-bone          int32                     :offset-assert 328)
-   (pov-handle          handle                    :offset-assert 336)
-   (pov-bone            int32                     :offset-assert 344)
-   (being-attacked      symbol                     :offset-assert 348)
-   (attack-start        uint64                    :offset-assert 352)
-   (on-ground           symbol                     :offset-assert 360)
-   (under-water         int32                     :offset-assert 364)
-   (on-pole             symbol                     :offset-assert 368)
-   (tgt-rot-mat         matrix            :inline :offset-assert 384)
-   (tgt-face-mat        matrix            :inline :offset-assert 448)
-   (tpos-old            vector            :inline :offset-assert 512)
-   (tpos-curr           vector            :inline :offset-assert 528)
-   (target-height       float                     :offset-assert 544)
-   (tpos-old-adj        vector            :inline :offset-assert 560)
-   (tpos-curr-adj       vector            :inline :offset-assert 576)
-   (tpos-tgt            vector            :inline :offset-assert 592)
-   (upspeed             float                     :offset-assert 608)
-   (pitch-off           vector            :inline :offset-assert 624)
-   (foot-offset         float                     :offset-assert 640)
-   (head-offset         float                     :offset-assert 644)
-   (target-spline       tracking-spline   :inline :offset-assert 656)
-   (ease-from           vector            :inline :offset-assert 2304)
-   (ease-t              float                     :offset-assert 2320)
-   (ease-step           float                     :offset-assert 2324)
-   (ease-to             vector            :inline :offset-assert 2336)
-   (outro-curve         curve             :inline :offset-assert 2352)
-   (outro-t             float                     :offset-assert 2372)
-   (outro-t-step        float                     :offset-assert 2376)
-   (outro-exit-value    float                     :offset-assert 2380)
-   (water-drip-time     uint64                    :offset-assert 2384)
-   (water-drip          sparticle-launch-control  :offset-assert 2392)
-   (water-drip-mult     float                     :offset-assert 2396)
-   (water-drip-speed    float                     :offset-assert 2400)
+  ((master-options      uint32                           :offset-assert 112)
+   (num-slaves          int32                            :offset-assert 116)
+   (slave               (pointer camera-slave)   2       :offset-assert 120)
+   (slave-options       uint32                           :offset-assert 128)
+   (view-off-param-save float                            :offset-assert 132)
+   (changer             uint32                           :offset-assert 136)
+   (cam-entity          entity                           :offset-assert 140)
+   (stringMinLength     float                            :offset-assert 144)
+   (stringMaxLength     float                            :offset-assert 148)
+   (stringMinHeight     float                            :offset-assert 152)
+   (stringMaxHeight     float                            :offset-assert 156)
+   (string-min          cam-vector-seeker        :inline :offset-assert 160)
+   (string-max          cam-vector-seeker        :inline :offset-assert 224)
+   (string-push-z       float                            :offset-assert 284)
+   (stringCliffHeight   float                            :offset-assert 288)
+   (no-intro            uint32                           :offset-assert 292)
+   (force-blend         uint32                           :offset-assert 296)
+   (force-blend-time    uint32                           :offset-assert 300)
+   (local-down          vector                   :inline :offset-assert 304)
+   (drawable-target     handle                           :offset-assert 320)
+   (which-bone          int32                            :offset-assert 328)
+   (pov-handle          handle                           :offset-assert 336)
+   (pov-bone            int32                            :offset-assert 344)
+   (being-attacked      symbol                           :offset-assert 348)
+   (attack-start        uint64                           :offset-assert 352)
+   (on-ground           symbol                           :offset-assert 360)
+   (under-water         int32                            :offset-assert 364)
+   (on-pole             symbol                           :offset-assert 368)
+   (tgt-rot-mat         matrix                   :inline :offset-assert 384)
+   (tgt-face-mat        matrix                   :inline :offset-assert 448)
+   (tpos-old            vector                   :inline :offset-assert 512)
+   (tpos-curr           vector                   :inline :offset-assert 528)
+   (target-height       float                            :offset-assert 544)
+   (tpos-old-adj        vector                   :inline :offset-assert 560)
+   (tpos-curr-adj       vector                   :inline :offset-assert 576)
+   (tpos-tgt            vector                   :inline :offset-assert 592)
+   (upspeed             float                            :offset-assert 608)
+   (pitch-off           vector                   :inline :offset-assert 624)
+   (foot-offset         float                            :offset-assert 640)
+   (head-offset         float                            :offset-assert 644)
+   (target-spline       tracking-spline          :inline :offset-assert 656)
+   (ease-from           vector                   :inline :offset-assert 2304)
+   (ease-t              float                            :offset-assert 2320)
+   (ease-step           float                            :offset-assert 2324)
+   (ease-to             vector                   :inline :offset-assert 2336)
+   (outro-curve         curve                    :inline :offset-assert 2352)
+   (outro-t             float                            :offset-assert 2372)
+   (outro-t-step        float                            :offset-assert 2376)
+   (outro-exit-value    float                            :offset-assert 2380)
+   (water-drip-time     uint64                           :offset-assert 2384)
+   (water-drip          sparticle-launch-control         :offset-assert 2392)
+   (water-drip-mult     float                            :offset-assert 2396)
+   (water-drip-speed    float                            :offset-assert 2400)
    )
   :heap-base #x900
   :method-count-assert 14
   :size-assert         #x964
   :flag-assert         #xe09000964
-  ;; inherited inspect of process
   )
+
+
+0
+
+
+
+

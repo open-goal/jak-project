@@ -2144,13 +2144,13 @@
       (set! f30-0 (fmin f30-0 (- (-> arg0 next-normal w))))
       )
      (cond
-      ((= (-> self los-state) 2)
+      ((= (-> self los-state) (slave-los-state ccw))
        (if *display-cam-los-debug*
         (format *stdcon* "straddle stick ccw~%")
         )
        (vector-normalize! arg1 (+ f28-0 (-> *CAM_STRING-bank* los-coll-rad)))
        )
-      ((= (-> self los-state) 1)
+      ((= (-> self los-state) (slave-los-state cw))
        (if *display-cam-los-debug*
         (format *stdcon* "straddle stick cw~%")
         )
@@ -2201,7 +2201,7 @@
        (if *display-cam-los-debug*
         (format *stdcon* "straddle diagonal ccw~%")
         )
-       (set! (-> self los-state) (the-as uint 2))
+       (set! (-> self los-state) (slave-los-state ccw))
        (vector-normalize! arg1 (+ f28-0 (-> *CAM_STRING-bank* los-coll-rad)))
        )
       ((and
@@ -2247,21 +2247,21 @@
        (if *display-cam-los-debug*
         (format *stdcon* "straddle diagonal cw~%")
         )
-       (set! (-> self los-state) (the-as uint 1))
+       (set! (-> self los-state) (slave-los-state cw))
        (vector-normalize! arg1 (- f30-0 (-> *CAM_STRING-bank* los-coll-rad)))
        )
       ((< f28-0 (- f30-0))
        (if *display-cam-los-debug*
         (format *stdcon* "straddle ccw~%")
         )
-       (set! (-> self los-state) (the-as uint 2))
+       (set! (-> self los-state) (slave-los-state ccw))
        (vector-normalize! arg1 (+ f28-0 (-> *CAM_STRING-bank* los-coll-rad)))
        )
       (else
        (if *display-cam-los-debug*
         (format *stdcon* "straddle cw~%")
         )
-       (set! (-> self los-state) (the-as uint 1))
+       (set! (-> self los-state) (slave-los-state cw))
        (vector-normalize! arg1 (- f30-0 (-> *CAM_STRING-bank* los-coll-rad)))
        )
       )
@@ -2280,7 +2280,7 @@
     (if *display-cam-los-debug*
      (format *stdcon* "diagonal ccw~%")
      )
-    (set! (-> self los-state) (the-as uint 2))
+    (set! (-> self los-state) (slave-los-state ccw))
     (vector-normalize!
      arg1
      (- (-> *CAM_STRING-bank* los-coll-rad) (-> arg0 next-normal z))
@@ -2299,7 +2299,7 @@
     (if *display-cam-los-debug*
      (format *stdcon* "diagonal cw~%")
      )
-    (set! (-> self los-state) (the-as uint 1))
+    (set! (-> self los-state) (slave-los-state cw))
     (vector-normalize!
      arg1
      (- (-> arg0 intersection z) (-> *CAM_STRING-bank* los-coll-rad))
@@ -2309,14 +2309,14 @@
      (dist-info-valid? (the-as collide-los-dist-info (-> arg0 intersection)))
      (dist-info-valid? (the-as collide-los-dist-info (-> arg0 next-normal)))
      )
-    (set! (-> self los-state) (the-as uint 3))
+    (set! (-> self los-state) (slave-los-state between))
     (vector-normalize! arg1 (the-as float 0.0001))
     )
    ((dist-info-valid? (the-as collide-los-dist-info (-> arg0 intersection)))
     (if *display-cam-los-debug*
      (format *stdcon* "regular cw~%")
      )
-    (set! (-> self los-state) (the-as uint 1))
+    (set! (-> self los-state) (slave-los-state cw))
     (vector-normalize!
      arg1
      (- (-> arg0 intersection z) (-> *CAM_STRING-bank* los-coll-rad))
@@ -2326,14 +2326,14 @@
     (if *display-cam-los-debug*
      (format *stdcon* "regular ccw~%")
      )
-    (set! (-> self los-state) (the-as uint 2))
+    (set! (-> self los-state) (slave-los-state ccw))
     (vector-normalize!
      arg1
      (- (-> *CAM_STRING-bank* los-coll-rad) (-> arg0 next-normal z))
      )
     )
    (else
-    (set! (-> self los-state) (the-as uint 0))
+    (set! (-> self los-state) (slave-los-state none))
     (vector-reset! arg1)
     )
    )
@@ -2859,9 +2859,15 @@
     )
    ((= (-> self string-vel-dir) 5)
     )
-   ((and (= (-> self string-vel-dir) 2) (= (-> self los-state) 1))
+   ((and
+     (= (-> self string-vel-dir) 2)
+     (= (-> self los-state) (slave-los-state cw))
+     )
     )
-   ((and (= (-> self string-vel-dir) 1) (= (-> self los-state) 2))
+   ((and
+     (= (-> self string-vel-dir) 1)
+     (= (-> self los-state) (slave-los-state ccw))
+     )
     )
    )
   (when *display-cam-los-debug*
@@ -2973,7 +2979,10 @@
       )
      ((and
        (< f30-0 f28-0)
-       (or (= (-> self los-state) 2) (= (-> self los-state) 1))
+       (or
+        (= (-> self los-state) (slave-los-state ccw))
+        (= (-> self los-state) (slave-los-state cw))
+        )
        )
       (vector-normalize! (-> self view-flat) f30-0)
       )
@@ -3006,7 +3015,11 @@
     (vector-! s5-0 s5-0 (-> self string-trans))
     (cam-los-collide (-> self string-trans) s5-0 gp-0 4098)
     (when (-> gp-0 vert-next y)
-     (when (or (= (-> self los-state) 2) (= (-> self los-state) 1))
+     (when
+      (or
+       (= (-> self los-state) (slave-los-state ccw))
+       (= (-> self los-state) (slave-los-state cw))
+       )
       (let ((a0-6 (new 'stack-no-clear 'vector)))
        (vector-! a0-6 (-> *camera* tpos-curr) (-> *camera* tpos-old))
        (if
@@ -3168,7 +3181,10 @@
        )
       ((and
         (< 0.0 f28-0)
-        (or (= (-> self los-state) 2) (= (-> self los-state) 1))
+        (or
+         (= (-> self los-state) (slave-los-state ccw))
+         (= (-> self los-state) (slave-los-state cw))
+         )
         )
        )
       ((< (* 0.05 (- 1.0 f0-16)) f28-0)
@@ -3238,7 +3254,7 @@
       )
      )
     (cond
-     ((and (= (-> self los-state) 2) (< 0.0 f0-29))
+     ((and (= (-> self los-state) (slave-los-state ccw)) (< 0.0 f0-29))
       (let
        ((f0-34
          (fmax
@@ -3257,7 +3273,7 @@
         )
        )
       )
-     ((and (= (-> self los-state) 1) (< f0-29 0.0))
+     ((and (= (-> self los-state) (slave-los-state cw)) (< f0-29 0.0))
       (let
        ((f0-40
          (fmax

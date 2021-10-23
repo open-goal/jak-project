@@ -599,6 +599,24 @@ goos::Object decompile_structure(const TypeSpec& type,
       continue;
     }
     idx++;
+
+    // O(N^2)-1 approach to the score system? but I didn't notice any slowdowns and there are
+    // ultimately not many static allocs
+    bool higher_score_available = false;
+    for (auto& other_field : type_info->fields()) {
+      if (other_field == field)
+        continue;
+      if (other_field.offset() == field.offset() &&
+          other_field.field_score() > field.field_score()) {
+        higher_score_available = true;
+        break;
+      }
+    }
+    if (higher_score_available) {
+      // a higher priority field is available
+      continue;
+    }
+
     // first, let's see if this overlaps with anything:
     auto field_start = field.offset();
     auto field_end = field_start + ts.get_size_in_type(field);

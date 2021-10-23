@@ -322,9 +322,10 @@
 ;; Cheat Codes
 ;;;;;;;;;;;;;;;;;;;;;;
 
-(define *cheat-temp* (the-as (pointer int32) (malloc 'global 16)))
+(define *cheat-temp* (the-as (pointer int32) (malloc 'global 20))) ;; 16 -> 20 (PAL)
 (define *master-exit* #f)
 (define *progress-cheat* #f)
+(define *first-boot* #t) ;; PAL
 
 (defmacro cheats-sound-play (cheat?)
   "play the appropriate sound for inputting a cheat code"
@@ -393,6 +394,29 @@
                                          'pal
                                          ))
             (cheats-sound-play *progress-cheat*)
+          )
+
+      ;; added in PAL
+      (check-cheat-code (-> *cheat-temp* 4) 0 ;; they erroneously used (-> *cheat-temp* 5) here!
+          (triangle x circle square triangle x circle square)
+            (cpad-clear-buttons! 0 r1)
+            (set! *progress-cheat* (if *progress-cheat*
+                                         #f
+                                         'camera
+                                         ))
+            (cond
+             (*cheat-mode*
+              (if (not *external-cam-mode*)
+               (external-cam-reset!)
+               )
+              (set! *external-cam-mode* 'pad-1)
+              (sound-play-by-name (static-sound-name "select-menu") (new-sound-id) 1024 0 0 (the-as uint 1) (the-as vector #t))
+              )
+             (else
+              (set! *external-cam-mode* #f)
+              (sound-play-by-name (static-sound-name "cursor-options") (new-sound-id) 1024 0 0 (the-as uint 1) (the-as vector #t))
+              )
+             )
           )
       )
     )
@@ -643,7 +667,7 @@
                                                (-> disp frames (-> disp on-screen) frame global-buf)
                                                ))
                                      (bucket-id debug-draw0))
-          (if (= *master-mode* 'pause)
+          (if (and (= *master-mode* 'pause) (!= *cheat-mode* 'camera))
               (draw-string-xy (lookup-text! *common-text* (game-text-id pause) #f)
                s3-1 256 160 (font-color orange-red) (font-flags shadow kerning middle large))
               )

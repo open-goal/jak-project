@@ -371,7 +371,10 @@
   (format (clear *cam-res-string*) "~S-flags" arg0)
   (set!
    (-> obj flags)
-   (the-as uint (cam-slave-get-flags arg1 (string->symbol *res-key-string*)))
+   (the-as
+    cam-index-options
+    (cam-slave-get-flags arg1 (string->symbol *res-key-string*))
+    )
    )
   (let ((s3-2 (res-lump-data arg1 arg0 pointer))
         (s0-1 (method-of-type res-lump get-property-struct))
@@ -441,7 +444,7 @@
   (let ((s4-1 (new-stack-vector0)))
    0.0
    (cond
-    ((logtest? (-> obj flags) 2)
+    ((logtest? (-> obj flags) (cam-index-options SPHERICAL))
      (vector-! s4-1 (-> obj vec 1) arg2)
      (set! (-> obj vec 1 w) (vector-length s4-1))
      (vector-! s4-1 (the-as vector (-> obj vec)) arg2)
@@ -449,7 +452,7 @@
      (set! (-> obj vec 1 w) (- (-> obj vec 1 w) (-> obj vec 1 x)))
      (set! (-> obj vec 0 quad) (-> arg2 quad))
      )
-    ((logtest? (-> obj flags) 1)
+    ((logtest? (-> obj flags) (cam-index-options RADIAL))
      (vector-! s4-1 (-> obj vec 1) arg2)
      (set! (-> obj vec 1 w) (vector-length s4-1))
      (vector-! s4-1 (the-as vector (-> obj vec)) arg2)
@@ -471,11 +474,11 @@
    0.0
    (vector-! s5-0 arg0 (the-as vector (-> obj vec)))
    (cond
-    ((logtest? (-> obj flags) 2)
+    ((logtest? (-> obj flags) (cam-index-options SPHERICAL))
      (vector-flatten! s5-0 s5-0 (-> *camera* local-down))
      (/ (- (vector-length s5-0) (-> obj vec 1 x)) (-> obj vec 1 w))
      )
-    ((logtest? (-> obj flags) 1)
+    ((logtest? (-> obj flags) (cam-index-options RADIAL))
      (/ (- (vector-length s5-0) (-> obj vec 1 x)) (-> obj vec 1 w))
      )
     (else
@@ -907,11 +910,11 @@
          ((< f26-0 0.0)
           (if (and *debug-segment* *display-camera-marks*)
            (camera-line-rel-len
-            (-> obj point s1-0)
+            (the-as vector (-> obj point s1-0))
             s2-0
             (* -40.96 f26-0)
             (the-as
-             rgba
+             vector4w
              (new 'static 'inline-array qword 1
               (new 'static 'qword
                :data
@@ -925,11 +928,11 @@
           )
          ((and *debug-segment* *display-camera-marks*)
           (camera-line-rel-len
-           (-> obj point s1-0)
+           (the-as vector (-> obj point s1-0))
            s2-0
            (* 40.96 f26-0)
            (the-as
-            rgba
+            vector4w
             (new 'static 'inline-array qword 1
              (new 'static 'qword
               :data
@@ -1133,7 +1136,7 @@
   (set! (-> self intro-t) 1.0)
   (set! (-> self intro-t-step) 0.0)
   (set! (-> self spline-exists) #f)
-  (set! (-> self los-state) (the-as uint 0))
+  (set! (-> self los-state) (slave-los-state none))
   (set! (-> self enter-has-run) #f)
   (set! (-> self cam-entity) #f)
   (set! (-> self tracking no-follow) #f)
