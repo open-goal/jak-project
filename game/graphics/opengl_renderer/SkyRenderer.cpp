@@ -76,8 +76,8 @@ SkyBlender::~SkyBlender() {
 }
 
 SkyBlender::Stats SkyBlender::do_sky_blends(DmaFollower& dma,
-                               SharedRenderState* render_state,
-                               ScopedProfilerNode& prof) {
+                                            SharedRenderState* render_state,
+                                            ScopedProfilerNode& prof) {
   Stats stats;
   GLuint vao;
   glGenVertexArrays(1, &vao);
