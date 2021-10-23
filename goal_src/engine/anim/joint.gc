@@ -13,3 +13,22 @@
 
 (define-extern joint-control-copy! (function joint-control joint-control joint-control))
 (define-extern joint-control-remap! (function joint-control art-group art-group pair int string object))
+
+
+(defmethod needs-link? art ((obj art))
+  #f
+  )
+
+(defmethod needs-link? art-group ((obj art-group))
+  (the-as
+   symbol
+   (and
+    (-> obj length)
+    (type-type? (-> obj data 0 type) art-joint-anim)
+    (!=
+     (-> obj name)
+     (-> (the-as art-joint-anim (-> obj data 0)) master-art-group-name)
+     )
+    )
+   )
+  )

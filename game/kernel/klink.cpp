@@ -64,7 +64,7 @@ void link_control::begin(Ptr<uint8_t> object_file,
 
     if (link_debug_printfs) {
       char* goal_name = object_file.cast<char>().c();
-      printf("link %s\n", goal_name);
+      printf("link %s\n", m_object_name);
       printf("link_control::begin %c%c%c%c\n", goal_name[0], goal_name[1], goal_name[2],
              goal_name[3]);
     }
