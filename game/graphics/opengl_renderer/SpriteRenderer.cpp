@@ -1014,7 +1014,7 @@ void SpriteRenderer::do_2d_group0_block_cpu(u32 count,
     //  lq.xyzw vf18, 1007(vi00)   |  madday.xyzw ACC, vf26, vf23 (pipeline)
     Vector4f basis_y_vf18 = m_frame_data.basis_y;
 
-    assert(flag_vi07 == 0);
+    // assert(flag_vi07 == 0);
     Vector4f* xy_array = m_frame_data.xy_array + flag_vi07;
     //  lq.xyzw vf19, 980(vi07)    |  ftoi0.xyzw vf11, vf11
     Vector4f xy0_vf19 = xy_array[0];
