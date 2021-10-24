@@ -357,3 +357,7 @@ std::string GsTex0::print() const {
 std::string GsPrim::print() const {
   return fmt::format("0x{:x}, kind {}\n", data, kind());
 }
+
+std::string GsZbuf::print() const {
+  return fmt::format("msk: {}\n", zmsk());
+}

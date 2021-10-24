@@ -204,7 +204,10 @@ void DirectRenderer::flush_pending(SharedRenderState* render_state, ScopedProfil
       render_state->shaders[ShaderId::SPRITE_CPU_AFAIL].activate();
       glDepthMask(GL_FALSE);
       glDrawArrays(GL_TRIANGLES, 0, m_prim_buffer.vert_count);
-      glDepthMask(GL_TRUE);
+      if (m_test_state.depth_writes) {
+        glDepthMask(GL_TRUE);
+      }
+
       m_prim_gl_state_needs_gl_update = true;
       m_blend_state_needs_gl_update = true;
       draw_count++;
@@ -735,7 +738,7 @@ void DirectRenderer::handle_zbuf1(u64 val,
   assert(x.psm() == TextureFormat::PSMZ24);
   assert(x.zbp() == 448);
 
-  bool write = x.zmsk();
+  bool write = !x.zmsk();
   //  assert(write);
 
   if (write != m_test_state.depth_writes) {

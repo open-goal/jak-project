@@ -1,6 +1,7 @@
 #include "third-party/fmt/core.h"
 #include "third-party/imgui/imgui.h"
 #include "SpriteRenderer.h"
+#include "game/graphics/opengl_renderer/AdgifHandler.h"
 
 namespace {
 /*!
@@ -1155,6 +1156,8 @@ void SpriteRenderer::do_2d_group0_block_cpu(u32 count,
     if (m_extra_debug) {
       imgui_vec(vf12_rotated, "vf12", 2);
       imgui_vec(vf13_rotated_trans, "vf13", 2);
+      AdgifHelper adgif_debug((const u8*)&packet.user_adgif);
+      ImGui::Text("%s", adgif_debug.print().c_str());
       ImGui::Separator();
     }
 

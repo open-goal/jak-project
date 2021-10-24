@@ -146,6 +146,8 @@ struct GsZbuf {
 
   bool zmsk() const { return data & (1ull << 32); }
 
+  std::string print() const;
+
   u64 data;
 };
 
