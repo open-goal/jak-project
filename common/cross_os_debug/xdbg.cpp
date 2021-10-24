@@ -21,7 +21,9 @@
 #include <sys/wait.h>
 #include <fcntl.h>
 #elif _WIN32
-
+#include <Windows.h>
+#undef min
+#undef max
 #endif
 
 namespace xdbg {
@@ -297,50 +299,80 @@ bool cont_now(const ThreadID& tid) {
 
 #elif _WIN32
 
-ThreadID::ThreadID() {}  // todo
+ThreadID::ThreadID(DWORD _pid, DWORD _tid) : pid(_pid), tid(_tid) {}
 
 ThreadID::ThreadID(const std::string& str) {
-  // todo
+  // id = std::stoi(str);
 }
 
 std::string ThreadID::to_string() const {
-  // todo
-  return "0";
+  return fmt::format("{}-{}", pid, tid);
 }
 
 ThreadID get_current_thread_id() {
-  // todo
-  return {};
+  return ThreadID(GetCurrentProcessId(), GetCurrentThreadId());
+}
+
+void win_print_last_error(const std::string& msg) {
+  LPTSTR errorText = NULL;
+
+  FormatMessage(
+      FORMAT_MESSAGE_FROM_SYSTEM | FORMAT_MESSAGE_ALLOCATE_BUFFER | FORMAT_MESSAGE_IGNORE_INSERTS,
+      NULL, GetLastError(), MAKELANGID(LANG_NEUTRAL, SUBLANG_DEFAULT), (LPTSTR)&errorText, 0, NULL);
+
+  printf("[Debugger] %s Win Err: %s\n", msg.c_str(), errorText);
 }
 
 bool attach_and_break(const ThreadID& tid) {
-  return false;
+  if (!DebugActiveProcess(tid.pid)) {
+    win_print_last_error(fmt::format("DebugActiveProcess w/ TID {}", tid.to_string()));
+    return false;
+  }
+
+  return true;
 }
 
 bool detach_and_resume(const ThreadID& tid) {
-  return false;
+  if (!DebugActiveProcessStop(tid.pid)) {
+    win_print_last_error("DebugActiveProcessStop");
+    return false;
+  }
+
+  return true;
 }
 
 void allow_debugging() {}
 
 bool break_now(const ThreadID& tid) {
-  return false;
+  HANDLE hProc = OpenProcess(PROCESS_ALL_ACCESS, FALSE, tid.pid);
+
+  auto result = DebugBreakProcess(hProc);
+
+  CloseHandle(hProc);
+
+  if (!result) {
+    win_print_last_error("DebugBreakProcess");
+    return false;
+  }
+
+  return true;
 }
 
 bool cont_now(const ThreadID& tid) {
-  return false;
-}
+  if (!ContinueDebugEvent(tid.pid, tid.tid, DBG_CONTINUE)) {
+    win_print_last_error("ContinueDebugEvent");
+    return false;
+  }
 
-bool get_regs_now(const ThreadID& tid, Regs* out) {
-  return false;
+  return true;
 }
 
 bool open_memory(const ThreadID& tid, MemoryHandle* out) {
-  return false;
+  return true;
 }
 
 bool close_memory(const ThreadID& tid, MemoryHandle* handle) {
-  return false;
+  return true;
 }
 
 bool read_goal_memory(u8* dest_buffer,
@@ -348,7 +380,24 @@ bool read_goal_memory(u8* dest_buffer,
                       u32 goal_addr,
                       const DebugContext& context,
                       const MemoryHandle& mem) {
-  return false;
+  SIZE_T read;
+  HANDLE hProc = OpenProcess(PROCESS_VM_READ, FALSE, context.tid.pid);
+
+  if (hProc == NULL) {
+    win_print_last_error("OpenProcess");
+    return false;
+  }
+
+  auto result =
+      ReadProcessMemory(hProc, (LPCVOID)(context.base + goal_addr), dest_buffer, size, &read);
+
+  CloseHandle(hProc);
+
+  if (!result || read != size) {
+    win_print_last_error("ReadProcessMemory");
+    return false;
+  }
+  return true;
 }
 
 bool write_goal_memory(const u8* src_buffer,
@@ -356,15 +405,133 @@ bool write_goal_memory(const u8* src_buffer,
                        u32 goal_addr,
                        const DebugContext& context,
                        const MemoryHandle& mem) {
-  return false;
+  SIZE_T written;
+  HANDLE hProc = OpenProcess(PROCESS_VM_WRITE, FALSE, context.tid.pid);
+
+  if (hProc == NULL) {
+    win_print_last_error("OpenProcess");
+    return false;
+  }
+
+  auto result =
+      WriteProcessMemory(hProc, (LPVOID)(context.base + goal_addr), src_buffer, size, &written);
+
+  CloseHandle(hProc);
+
+  if (!result || written != size) {
+    win_print_last_error("WriteProcessMemory");
+    return false;
+  }
+  return true;
 }
 
 bool check_stopped(const ThreadID& tid, SignalInfo* out) {
-  return false;
+  DEBUG_EVENT debugEvent;
+
+  if (WaitForDebugEvent(&debugEvent, INFINITE)) {
+    printf("[Debugger] debug event %d\m", debugEvent.dwDebugEventCode);
+    if (!ContinueDebugEvent(tid.pid, tid.tid, DBG_CONTINUE)) {
+      win_print_last_error("ContinueDebugEvent");
+      return false;
+    }
+  } else {
+    win_print_last_error("WaitForDebugEvent");
+    return false;
+  }
+
+  return true;
+}
+
+bool get_regs_now(const ThreadID& tid, Regs* out) {
+  CONTEXT context;
+  HANDLE hThr = OpenThread(THREAD_GET_CONTEXT, FALSE, tid.tid);
+
+  if (hThr == NULL) {
+    win_print_last_error("OpenThread");
+    return false;
+  }
+
+  auto result = GetThreadContext(hThr, &context);
+  CloseHandle(hThr);
+
+  if (!result) {
+    win_print_last_error("GetThreadContext");
+    return false;
+  }
+
+  out->gprs[0] = context.Rax;
+  out->gprs[1] = context.Rcx;
+  out->gprs[2] = context.Rdx;
+  out->gprs[3] = context.Rbx;
+  out->gprs[4] = context.Rsp;
+  out->gprs[5] = context.Rbp;
+  out->gprs[6] = context.Rsi;
+  out->gprs[7] = context.Rdi;
+  out->gprs[8] = context.R8;
+  out->gprs[9] = context.R9;
+  out->gprs[10] = context.R10;
+  out->gprs[11] = context.R11;
+  out->gprs[12] = context.R12;
+  out->gprs[13] = context.R13;
+  out->gprs[14] = context.R14;
+  out->gprs[15] = context.R15;
+  out->rip = context.Rip;
+
+  // todo, get fprs.
+  return true;
 }
 
 bool set_regs_now(const ThreadID& tid, const Regs& out) {
-  return false;
+  CONTEXT context;
+  HANDLE hThr = OpenThread(THREAD_GET_CONTEXT, FALSE, tid.tid);
+
+  if (hThr == NULL) {
+    win_print_last_error("OpenThread");
+    return false;
+  }
+
+  auto result = GetThreadContext(hThr, &context);
+  CloseHandle(hThr);
+
+  if (!result) {
+    win_print_last_error("GetThreadContext");
+    return false;
+  }
+
+  context.Rax = out.gprs[0];
+  context.Rcx = out.gprs[1];
+  context.Rdx = out.gprs[2];
+  context.Rbx = out.gprs[3];
+  context.Rsp = out.gprs[4];
+  context.Rbp = out.gprs[5];
+  context.Rsi = out.gprs[6];
+  context.Rdi = out.gprs[7];
+  context.R8 = out.gprs[8];
+  context.R9 = out.gprs[9];
+  context.R10 = out.gprs[10];
+  context.R11 = out.gprs[11];
+  context.R12 = out.gprs[12];
+  context.R13 = out.gprs[13];
+  context.R14 = out.gprs[14];
+  context.R15 = out.gprs[15];
+  context.Rip = out.rip;
+
+  hThr = OpenThread(THREAD_SET_CONTEXT, FALSE, tid.tid);
+
+  if (hThr == NULL) {
+    win_print_last_error("OpenThread");
+    return false;
+  }
+
+  result = SetThreadContext(hThr, &context);
+  CloseHandle(hThr);
+
+  if (!result) {
+    win_print_last_error("SetThreadContext");
+    return false;
+  }
+  // todo, set fprs.
+  return true;
 }
 #endif
 

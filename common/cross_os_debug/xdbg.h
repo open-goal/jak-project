@@ -13,7 +13,9 @@
 #ifdef __linux
 #include <sys/types.h>
 #elif _WIN32
-// todo - windows includes
+#include <Windows.h>
+#undef min
+#undef max
 #endif
 
 namespace xdbg {
@@ -41,9 +43,13 @@ struct MemoryHandle {
 #elif _WIN32
 struct ThreadID {
   // todo - whatever windows uses to identify a thread
+  DWORD pid = 0;
+  DWORD tid = 0;
+
   std::string to_string() const;
   ThreadID(const std::string& str);
-  ThreadID();  // todo - add id type here, like in linux version
+  ThreadID(DWORD pid, DWORD tid);
+  ThreadID() = default;
 };
 
 struct MemoryHandle {
