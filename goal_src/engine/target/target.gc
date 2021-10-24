@@ -39,7 +39,7 @@
 (define-extern target-dangerous-event-handler (function process int symbol event-message-block object :behavior target))
 (define-extern target-standard-event-handler (function process int symbol event-message-block object :behavior target))
 (define-extern target-jump-event-handler (function process int symbol event-message-block object :behavior target))
-(define-extern target-hit (state target)) ;; unknown type
+(define-extern target-hit (state symbol attack-info target)) ;; unknown type
 (define-extern target-shoved (function meters meters symbol (state target) none :behavior target))
 (define-extern target-send-attack (function process uint uint int int symbol :behavior target)) ;; i suspect the uints are actually structures/basics
 (define-extern target-yellow-blast (state target)) ;; unknown type
@@ -289,10 +289,7 @@
       (pad-buttons x)
       )
      (zero? (logand (-> self water flags) 512))
-     (<
-      (- (-> *display* base-frame-counter) (the-as int (-> self state-time)))
-      900
-      )
+     (< (- (-> *display* base-frame-counter) (-> self state-time)) 900)
      (zero? (logand (-> self state-flags) 2048))
      )
     (go
@@ -315,7 +312,7 @@
       )
      (>= (the-as int arg1) 0)
      (>=
-      (- (-> *display* base-frame-counter) (the-as int (-> self state-time)))
+      (- (-> *display* base-frame-counter) (-> self state-time))
       (the-as int arg1)
       )
      (not
@@ -1942,10 +1939,7 @@
    (when
     (and
      (turn-around?)
-     (>=
-      (- (-> *display* base-frame-counter) (the-as int (-> self state-time)))
-      90
-      )
+     (>= (- (-> *display* base-frame-counter) (-> self state-time)) 90)
      )
     (set!
      (-> self control transv quad)
@@ -2781,7 +2775,7 @@
     (and
      (zero? (logand (-> self control status) 1))
      (>=
-      (- (-> *display* base-frame-counter) (-> self control unknown-dword10))
+      (- (-> *display* base-frame-counter) (-> self control unknown-dword11))
       24
       )
      )
@@ -3035,10 +3029,7 @@
    ((f30-0
      (*
       0.033333335
-      (the
-       float
-       (- (-> *display* base-frame-counter) (the-as int (-> self state-time)))
-       )
+      (the float (- (-> *display* base-frame-counter) (-> self state-time)))
       )
      )
     )
@@ -5333,7 +5324,7 @@
       (-> *TARGET-bank* smack-surface-dist)
       (-> *TARGET-bank* smack-surface-height)
       #f
-      target-hit
+      (the-as (state target) target-hit)
       )
      )
     (if
@@ -5351,10 +5342,7 @@
       (and
        (< 4096.0 (-> self control unknown-float01))
        (or
-        (>=
-         (- (-> *display* base-frame-counter) (the-as int (-> self state-time)))
-         30
-         )
+        (>= (- (-> *display* base-frame-counter) (-> self state-time)) 30)
         (zero?
          (logand
           (->
@@ -5382,10 +5370,7 @@
      (and
       (logtest? (-> self water flags) 512)
       (zero?
-       (mod
-        (- (-> *display* base-frame-counter) (the-as int (-> self state-time)))
-        21
-        )
+       (mod (- (-> *display* base-frame-counter) (-> self state-time)) 21)
        )
       )
      (dummy-13
@@ -5465,7 +5450,7 @@
            (>=
             (-
              (-> *display* base-frame-counter)
-             (-> self control unknown-dword10)
+             (-> self control unknown-dword11)
              )
             (the-as int (-> *TARGET-bank* ground-timeout))
             )
@@ -5535,13 +5520,7 @@
            (pad-buttons square)
            )
           )
-         (>=
-          (-
-           (-> *display* base-frame-counter)
-           (the-as int (-> self state-time))
-           )
-          15
-          )
+         (>= (- (-> *display* base-frame-counter) (-> self state-time)) 15)
          )
         (if (= (-> self control ground-pat material) (pat-material ice))
          (set-forward-vel
@@ -5592,11 +5571,7 @@
        num-func-seek!
        )
       )
-     (if
-      (>=
-       (- (-> *display* base-frame-counter) (the-as int (-> self state-time)))
-       30
-       )
+     (if (>= (- (-> *display* base-frame-counter) (-> self state-time)) 30)
       (set! (-> *run-attack-mods* turnvv) 0.0)
       )
      (if (< 2 gp-2)
@@ -5618,7 +5593,7 @@
     (and
      (zero? (logand (-> self control status) 1))
      (>=
-      (- (-> *display* base-frame-counter) (-> self control unknown-dword10))
+      (- (-> *display* base-frame-counter) (-> self control unknown-dword11))
       (the-as int (-> *TARGET-bank* ground-timeout))
       )
      (>=
@@ -5812,11 +5787,7 @@
     (set-quaternion! (-> self control) (-> self control dir-targ))
     (go target-hit-ground #f)
     )
-   (if
-    (>=
-     (- (-> *display* base-frame-counter) (the-as int (-> self state-time)))
-     150
-     )
+   (if (>= (- (-> *display* base-frame-counter) (-> self state-time)) 150)
     (set!
      (-> self control dynam gravity-length)
      (seek
@@ -5828,10 +5799,7 @@
     )
    (when
     (and
-     (>=
-      (- (-> *display* base-frame-counter) (the-as int (-> self state-time)))
-      15
-      )
+     (>= (- (-> *display* base-frame-counter) (-> self state-time)) 15)
      (<
       (vector-dot
        (-> self control dynam gravity-normal)
@@ -5947,10 +5915,7 @@
       (not
        (or
         (and (< (fabs (/ f0-8 (* 0.0033333334 f1-1))) 150.0) (< f1-1 0.0))
-        (>=
-         (- (-> *display* base-frame-counter) (the-as int (-> self state-time)))
-         510
-         )
+        (>= (- (-> *display* base-frame-counter) (-> self state-time)) 510)
         )
        )
       (quaternion-rotate-y!
@@ -6500,56 +6465,45 @@
                     )
               )
              )
-       (let ((a1-6 (new 'stack-no-clear 'event-message-block)))
-        (set! (-> a1-6 from) self)
-        (set! (-> a1-6 num-params) 2)
-        (set! (-> a1-6 message) 'event)
-        (set! (-> a1-6 param 0) (the-as uint 'attack))
-        (set! (-> a1-6 param 1) (the-as uint 'flop))
-        (send-event-function (ppointer->process s5-1) a1-6)
-        )
-       (let ((a1-7 (new 'stack-no-clear 'event-message-block)))
-        (set! (-> a1-7 from) self)
-        (set! (-> a1-7 num-params) 1)
-        (set! (-> a1-7 message) 'function)
-        (set! (-> a1-7 param 0) (the-as uint (lambda ((arg0 target))
-                                              (let
-                                               ((f0-3
-                                                 (seek
-                                                  (->
-                                                   arg0
-                                                   control
-                                                   root-prim
-                                                   local-sphere
-                                                   w
-                                                   )
-                                                  (the-as float 28672.0)
-                                                  (*
-                                                   286720.0
-                                                   (->
-                                                    *display*
-                                                    seconds-per-frame
-                                                    )
-                                                   )
-                                                  )
-                                                 )
-                                                )
-                                               (set!
-                                                (->
-                                                 arg0
-                                                 control
-                                                 root-prim
-                                                 local-sphere
-                                                 w
-                                                 )
-                                                f0-3
-                                                )
-                                               f0-3
-                                               )
-                                              )
-                                 )
-         )
-        (send-event-function (ppointer->process s5-1) a1-7)
+       (send-event (ppointer->process s5-1) 'event 'attack 'flop)
+       (send-event (ppointer->process s5-1) 'function (lambda ((arg0 target))
+                                                       (let
+                                                        ((f0-3
+                                                          (seek
+                                                           (->
+                                                            arg0
+                                                            control
+                                                            root-prim
+                                                            local-sphere
+                                                            w
+                                                            )
+                                                           (the-as
+                                                            float
+                                                            28672.0
+                                                            )
+                                                           (*
+                                                            286720.0
+                                                            (->
+                                                             *display*
+                                                             seconds-per-frame
+                                                             )
+                                                            )
+                                                           )
+                                                          )
+                                                         )
+                                                        (set!
+                                                         (->
+                                                          arg0
+                                                          control
+                                                          root-prim
+                                                          local-sphere
+                                                          w
+                                                          )
+                                                         f0-3
+                                                         )
+                                                        f0-3
+                                                        )
+                                                       )
         )
        )
       )
@@ -6834,7 +6788,7 @@
       )
      (if
       (>=
-       (- (-> *display* base-frame-counter) (the-as int (-> self state-time)))
+       (- (-> *display* base-frame-counter) (-> self state-time))
        (the-as int (-> *TARGET-bank* fall-timeout))
        )
       (go target-falling #f)
@@ -6936,10 +6890,7 @@
        (-> (new 'static 'array float 1 1.0) 0)
        )
       )
-     (<
-      (- (-> *display* base-frame-counter) (the-as int (-> self state-time)))
-      75
-      )
+     (< (- (-> *display* base-frame-counter) (-> self state-time)) 75)
      )
     (dummy-10
      (-> self skel effect)
@@ -6984,13 +6935,8 @@
 (defstate target-wheel (target)
   :event
   (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
-   (when (= arg2 'touched)
-    (let ((a1-1 (new 'stack-no-clear 'event-message-block)))
-     (set! (-> a1-1 from) self)
-     (set! (-> a1-1 num-params) 0)
-     (set! (-> a1-1 message) 'roll)
-     (send-event-function arg0 a1-1)
-     )
+   (if (= arg2 'touched)
+    (send-event arg0 'roll)
     )
    (target-standard-event-handler arg0 arg1 arg2 arg3)
    )
@@ -7076,17 +7022,14 @@
           )
          (the-as uint 3)
          )
-        (>=
-         (- (-> *display* base-frame-counter) (the-as int (-> self state-time)))
-         1
-         )
+        (>= (- (-> *display* base-frame-counter) (-> self state-time)) 1)
         )
        (if (>= 6.0 (ja-aframe-num 0))
         (target-shoved
          (-> *TARGET-bank* smack-surface-dist)
          (-> *TARGET-bank* smack-surface-height)
          #f
-         target-hit
+         (the-as (state target) target-hit)
          )
         )
        (if (zero? s5-0)
@@ -7324,7 +7267,7 @@
      (-> *TARGET-bank* smack-surface-dist)
      (-> *TARGET-bank* smack-surface-height)
      #f
-     target-hit
+     (the-as (state target) target-hit)
      )
     )
    (if
@@ -7435,11 +7378,7 @@
     )
    (set! (-> self state-time) (-> *display* base-frame-counter))
    (while (zero? (logand (-> self control status) 1))
-    (when
-     (>=
-      (- (-> *display* base-frame-counter) (the-as int (-> self state-time)))
-      3
-      )
+    (when (>= (- (-> *display* base-frame-counter) (-> self state-time)) 3)
      (when (not (= (if (> (-> self skel active-channels) 0)
                     (-> self skel root-channel 0 frame-group)
                     )
