@@ -496,10 +496,11 @@
 (defenum bucket-id
     :type int32
     :bitfield #f
-
+    
     (bucket-1 1)
     (bucket-2 2)
     (sky-draw 3)
+    (bucket-4 4) ;; ocean
     (tfrag-tex0 5)
     ;; merc0 10
     ;; generic0 11
@@ -549,6 +550,7 @@
     (water-tex1 60)
     (bucket-61 61)
     (bucket-62 62)
+    (bucket-63 63) ; ocean
     ;; merc1 61
     ;; generic1 62
     (depth-cue 64)
@@ -7179,8 +7181,8 @@
 (define-extern *ocean-off* symbol)
 (define-extern *ocean-mid-off* symbol)
 (define-extern *ocean-near-off* symbol)
-(define-extern *ocean-heights* symbol)
-(define-extern *ocean-verts* symbol)
+(define-extern *ocean-heights* ocean-wave-info) ;; guess
+(define-extern *ocean-verts* (pointer vector)) ;; ret from ocean-generate-verts
 
 
 ;; ----------------------
@@ -21265,18 +21267,18 @@
 
 ;; - Functions
 
-(define-extern ocean-interp-wave function)
-(define-extern ocean-generate-verts function)
-(define-extern draw-ocean-texture function)
-(define-extern ocean-init-buffer (function dma-buffer none)) ; not confirmed
-(define-extern draw-ocean-far (function dma-buffer none)) ; not confirmed
+(define-extern ocean-interp-wave (function ocean-wave-info uint none)) ;; unconfirmed
+(define-extern ocean-generate-verts (function (pointer vector) ocean-wave-info none)) ;; unconfirmed - pointer is *ocean-verts*
+(define-extern draw-ocean-texture (function dma-buffer (pointer vector) symbol none)) ;; unconfirmed - pointer is *ocean-verts*
+(define-extern ocean-init-buffer (function dma-buffer pointer))
+(define-extern draw-ocean-far (function dma-buffer profile-frame))
 (define-extern draw-ocean-mid (function dma-buffer none)) ; not confirmed
-(define-extern ocean-end-buffer (function dma-buffer none)) ; not confirmed
-(define-extern draw-ocean-near function)
-(define-extern init-ocean-far-regs function)
-(define-extern render-ocean-far function)
-(define-extern render-ocean-quad function)
-(define-extern draw-large-polygon-ocean function)
+(define-extern ocean-end-buffer (function dma-buffer pointer))
+(define-extern draw-ocean-near (function dma-buffer none)) ; not confirmed
+(define-extern init-ocean-far-regs (function none))
+(define-extern render-ocean-far (function dma-buffer int none))
+(define-extern render-ocean-quad (function ocean-mid-upload2 none))
+(define-extern draw-large-polygon-ocean (function none))
 (define-extern draw-ocean (function none))
 (define-extern update-ocean (function none))
 
@@ -21286,7 +21288,7 @@
 
 ;; - Unknowns
 
-;;(define-extern *swamp-low-ocean-marker* object) ;; unknown type
+(define-extern *swamp-low-ocean-marker* vector) ;; unknown type
 
 
 ;; ----------------------
@@ -21309,19 +21311,19 @@
 
 ;; - Functions
 
-(define-extern ocean-texture-add-constants function)
-(define-extern ocean-texture-add-envmap function)
-(define-extern ocean-texture-add-verts function)
-(define-extern ocean-texture-add-call-start function)
-(define-extern ocean-texture-add-call-rest function)
-(define-extern ocean-texture-add-verts-last function)
-(define-extern ocean-texture-add-call-done function)
-(define-extern ocean-texture-setup-constants function)
+(define-extern ocean-texture-add-constants (function dma-buffer pointer))
+(define-extern ocean-texture-add-envmap (function dma-buffer pointer))
+(define-extern ocean-texture-add-verts (function dma-buffer (pointer vector) pointer)) ;; pointer is *ocean-verts*
+(define-extern ocean-texture-add-call-start (function dma-buffer none)) ;; unconfirmed
+(define-extern ocean-texture-add-call-rest (function dma-buffer none)) ;; unconfirmed
+(define-extern ocean-texture-add-verts-last (function dma-buffer (pointer vector) (pointer vector) pointer)) ;; pointer is *ocean-verts* and unconfirmed
+(define-extern ocean-texture-add-call-done (function dma-buffer none)) ;; unconfirmed
+(define-extern ocean-texture-setup-constants (function ocean-texture-constants none))
 
 ;; - Unknowns
 
 (define-extern ocean-texture-vu1-block vu-function)
-;;(define-extern *ocean-texture-work* object) ;; unknown type
+(define-extern *ocean-texture-work* ocean-texture-work) ;; unknown type
 
 
 ;; ----------------------
