@@ -374,6 +374,26 @@ Val* Compiler::compile_deftype(const goos::Object& form, const goos::Object& res
   // remember that this is a type
   m_symbol_types[result.type.base_type()] = m_ts.make_typespec("type");
 
+  // add declared states
+  for (auto& state : result.type_info->get_states_declared_for_type()) {
+    auto existing_type = m_symbol_types.find(state.first);
+    if (existing_type != m_symbol_types.end() && existing_type->second != state.second) {
+      if (m_throw_on_define_extern_redefinition) {
+        throw_compiler_error(form, "deftype would redefine the type of state {} from {} to {}.",
+                             state.first, existing_type->second.print(), state.second.print());
+      } else {
+        print_compiler_warning(
+            "[Warning] deftype has redefined the type of state {}\npreviously: {}\nnow: "
+            "{}\n",
+            state.first.c_str(), existing_type->second.print().c_str(),
+            state.second.print().c_str());
+      }
+    }
+
+    m_symbol_types[state.first] = state.second;
+    m_symbol_info.add_fwd_dec(state.first, form);
+  }
+
   if (result.create_runtime_type) {
     // get the new method of type object. this is new_type in kscheme.cpp
     auto new_type_method = compile_get_method_of_type(form, m_ts.make_typespec("type"), "new", env);
@@ -712,7 +732,7 @@ Val* Compiler::compile_deref(const goos::Object& form, const goos::Object& _rest
           // special case (-> <state> enter) should return the appropriate function type.
           if (in_type.arg_count() > 0 && in_type.base_type() == "state") {
             if (field_name == "enter" || field_name == "code") {
-              result->set_type(state_to_go_function(in_type));
+              result->set_type(state_to_go_function(in_type, TypeSpec("none")));
             }
           }
 
@@ -1103,7 +1123,7 @@ Val* Compiler::compile_stack_new(const goos::Object& form,
     assert(stride == info.stride);
 
     int size_in_bytes = info.stride * constant_count;
-    auto addr = fe->allocate_aligned_stack_variable(ts, size_in_bytes, stride);
+    auto addr = fe->allocate_aligned_stack_variable(ts, size_in_bytes, 16);
     return addr;
   } else {
     auto ti = m_ts.lookup_type(type_of_object);

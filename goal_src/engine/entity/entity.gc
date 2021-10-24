@@ -1319,7 +1319,206 @@
      )
     )
    )
+    
+    (when *display-split-boxes*
+      (dotimes (s5-4 (-> obj length))
+        (let ((s4-4 (-> obj level s5-4)))
+          (when (= (-> s4-4 status) 'active)
+            (when (nonzero? (-> s4-4 bsp boxes))
+              (let ((s3-4 (-> s4-4 bsp boxes)))
+                (countdown (s2-4 (-> s3-4 length))
+                  (add-debug-box
+                    #t
+                    (bucket-id debug-draw0)
+                    (the-as vector (-> s3-4 data s2-4))
+                    (the-as vector (+ (the-as uint (-> s3-4 data 0 max)) (* s2-4 32)))
+                    (the-as rgba (if (zero? (-> s4-4 index))
+                                     (the-as uint #x80808000)
+                                     (the-as uint #x808080ff)
+                                     )
+                            )
+                    )
+                  )
+                )
+              )
+            )
+          )
+        )
+      )
   (none))
+
+;; birth!
+;; entity-deactivate-handler
+;; kill!
+;; birth bsp-header
   
 (define-extern process-drawable-from-entity! (function process-drawable res-lump none))
 (define-extern entity-birth-no-kill (function entity none))
+
+(defmethod run-logic? process-drawable ((obj process-drawable))
+  (or
+   (zero? (logand (-> obj mask) (process-mask actor-pause)))
+   (or
+    (>=
+     (+ (-> *ACTOR-bank* pause-dist) (-> obj root pause-adjust-distance))
+     (vector-vector-distance (-> obj root trans) (math-camera-pos))
+     )
+    (and
+     (nonzero? (-> obj skel))
+     (!= (-> obj skel root-channel 0) (-> obj skel channel))
+     )
+    (and (nonzero? (-> obj draw)) (logtest? (-> obj draw status) 16))
+    )
+   )
+  )
+
+(defmethod deactivate-entities bsp-header ((obj bsp-header))
+  (let ((s5-0 (-> obj actors)))
+   (when (nonzero? s5-0)
+    (dotimes (s4-0 (-> s5-0 length))
+     (let ((s3-0 (-> s5-0 data s4-0 actor)))
+      (kill! s3-0)
+      (remove-from-level! s3-0 *level*)
+      )
+     )
+    )
+   )
+  (let ((s5-1 (-> obj cameras)))
+   (when (nonzero? s5-1)
+    (dotimes (s4-1 (-> s5-1 length))
+     (kill! (-> s5-1 s4-1))
+     )
+    )
+   )
+  (let ((s5-2 (-> *entity-pool* child))
+        (s4-2 (-> obj level heap base))
+        (s3-1 (-> obj level heap top-base))
+        )
+   (while s5-2
+    (let ((s2-0 (ppointer->process s5-2)))
+     (set! s5-2 (-> s5-2 0 brother))
+     (cond
+      ((-> (the-as process s2-0) entity)
+       (when (= (-> (the-as process s2-0) entity extra level) (-> obj level))
+        (format #t "NOTICE: rogue level entity ~A~% still alive~%" s2-0)
+        (deactivate s2-0)
+        )
+       )
+      ((= (-> s2-0 type) part-tracker)
+       (let ((v1-28 (the-as part-tracker s2-0)))
+        (if
+         (and
+          (nonzero? (-> v1-28 part))
+          (>= (the-as int (-> v1-28 part group)) (the-as int s4-2))
+          (< (the-as int (-> v1-28 part group)) (the-as int s3-1))
+          )
+         (deactivate s2-0)
+         )
+        )
+       )
+      (else
+       (let* ((s1-0 s2-0)
+              (v1-34
+               (if
+                (and
+                 (nonzero? s1-0)
+                 (type-type? (-> s1-0 type) process-drawable)
+                 )
+                s1-0
+                )
+               )
+              )
+        (when v1-34
+         (cond
+          ((and
+            (nonzero? (-> (the-as process-drawable v1-34) part))
+            (>=
+             (the-as int (-> (the-as process-drawable v1-34) part group))
+             (the-as int s4-2)
+             )
+            (<
+             (the-as int (-> (the-as process-drawable v1-34) part group))
+             (the-as int s3-1)
+             )
+            )
+           (format
+            #t
+            "NOTICE: rogue null level entity (using part ~A) ~A~% still alive~%"
+            (->
+             (the-as process-drawable (-> (the-as process-drawable v1-34) part))
+             brother
+             )
+            s2-0
+            )
+           (deactivate s2-0)
+           )
+          ((and
+            (nonzero? (-> (the-as process-drawable v1-34) draw))
+            (>=
+             (the-as int (-> (the-as process-drawable v1-34) draw art-group))
+             (the-as int s4-2)
+             )
+            (<
+             (the-as int (-> (the-as process-drawable v1-34) draw art-group))
+             (the-as int s3-1)
+             )
+            )
+           (format
+            #t
+            "NOTICE: rogue null level entity (using art ~A) ~A~% still alive~%"
+            (->
+             (the-as process-drawable (-> (the-as process-drawable v1-34) draw))
+             mask
+             )
+            s2-0
+            )
+           (deactivate s2-0)
+           )
+          )
+         )
+        )
+       )
+      )
+     )
+    )
+   )
+  (none)
+  )
+
+(defmethod
+  update-perm!
+  entity-perm
+  ((obj entity-perm) (arg0 symbol) (arg1 entity-perm-status))
+  (cond
+   ((= arg0 'game)
+    (logclear! (-> obj status) arg1)
+    )
+   ((nonzero? (-> obj task))
+    (logclear!
+     (-> obj status)
+     (logior (if (logtest? (-> obj status) (entity-perm-status bit-4))
+              524
+              0
+              )
+      515
+      )
+     )
+    )
+   (else
+    (logclear!
+     (-> obj status)
+     (logior arg1 (if (logtest? (-> obj status) (entity-perm-status bit-4))
+                   524
+                   0
+                   )
+      )
+     )
+    )
+   )
+  (when
+   (zero? (logand (-> obj status) (entity-perm-status user-set-from-cstage)))
+   (set! (-> obj user-uint64) (the-as uint 0))
+   0
+   )
+  obj
+  )

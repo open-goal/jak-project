@@ -48,14 +48,15 @@
 
 ;; definition for method 11 of type torus
 (defmethod dummy-11 torus ((obj torus) (arg0 vector))
-  (let ((s4-0 (-> *target* control root-prim)))
+  (let
+   ((s4-0 (the-as collide-shape-prim-group (-> *target* control root-prim))))
    (when
     (and
      (logtest? (-> s4-0 prim-core collide-as) 16)
      (TODO-RENAME-10 obj (-> s4-0 prim-core) arg0)
      )
-    (countdown (s3-0 (-> (the-as collide-shape-prim-group s4-0) num-prims))
-     (let ((v1-9 (-> (the-as collide-shape-prim-group s4-0) prim s3-0)))
+    (countdown (s3-0 (-> s4-0 num-prims))
+     (let ((v1-9 (-> s4-0 prims s3-0)))
       (if
        (and
         (logtest? (-> v1-9 prim-core action) 1)
@@ -121,17 +122,17 @@
     (while (< sv-272 7)
      (vector+! s4-0 (-> s1-0 sv-272) (-> obj origin))
      (vector+! s3-0 (-> s1-0 (+ sv-272 1)) (-> obj origin))
-     (camera-line s4-0 s3-0 arg0)
+     (camera-line s4-0 s3-0 (the-as vector4w arg0))
      (set! sv-272 (+ sv-272 1))
      )
     (vector+! s4-0 (-> s1-0 0) (-> obj origin))
-    (camera-line s4-0 s3-0 arg0)
+    (camera-line s4-0 s3-0 (the-as vector4w arg0))
     (set! sv-288 0)
     (while (< sv-288 8)
      (vector+! s4-0 (-> s1-0 sv-288) (-> obj origin))
      (vector-matrix*! (-> s1-0 sv-288) (-> s1-0 sv-288) s2-0)
      (vector+! s3-0 (-> s1-0 sv-288) (-> obj origin))
-     (camera-line s4-0 s3-0 arg0)
+     (camera-line s4-0 s3-0 (the-as vector4w arg0))
      (set! sv-288 (+ sv-288 1))
      )
     )
@@ -248,17 +249,7 @@
    (set! (-> s5-0 quad) (-> self from quad))
    (dotimes (s4-0 30)
     (arcing-shot-calculate gp-0 (* 0.033333335 (the float (+ s4-0 1))))
-    (camera-line
-     gp-0
-     s5-0
-     (the-as
-      vector
-      (new 'static 'vector4w
-       :data
-       (new 'static 'array int32 4 #xff #xff 0 #x80)
-       )
-      )
-     )
+    (camera-line gp-0 s5-0 (new 'static 'vector4w :x #xff :y #xff :w #x80))
     (set! (-> s5-0 quad) (-> gp-0 quad))
     )
    )
@@ -285,10 +276,10 @@
 
 ;; definition of type darkecobomb
 (deftype darkecobomb (arcing-shot)
-  ((flight-time    uint64  :offset-assert 224)
-   (countdown-time float   :offset-assert 232)
-   (anim-speed     float   :offset-assert 236)
-   (next-tick      float   :offset-assert 240)
+  ((flight-time    int64  :offset-assert 224)
+   (countdown-time float  :offset-assert 232)
+   (anim-speed     float  :offset-assert 236)
+   (next-tick      float  :offset-assert 240)
    )
   :heap-base #x90
   :method-count-assert 20
@@ -330,13 +321,7 @@
 (defstate darkecobomb-explode (darkecobomb)
   :code
   (behavior ((arg0 symbol))
-   (let ((a1-0 (new 'stack-no-clear 'event-message-block)))
-    (set! (-> a1-0 from) self)
-    (set! (-> a1-0 num-params) 1)
-    (set! (-> a1-0 message) 'reset-pickup)
-    (set! (-> a1-0 param 0) (the-as uint 'eco))
-    (send-event-function *target* a1-0)
-    )
+   (send-event *target* 'reset-pickup 'eco)
    (sound-play-by-name
     (static-sound-name "explod-bomb")
     (new-sound-id)
@@ -347,13 +332,7 @@
     (the-as vector #f)
     )
    (activate! *camera-smush-control* 819.2 37 600 1.0 0.995)
-   (let ((a1-3 (new 'stack-no-clear 'event-message-block)))
-    (set! (-> a1-3 from) self)
-    (set! (-> a1-3 num-params) 1)
-    (set! (-> a1-3 message) 'flash)
-    (set! (-> a1-3 param 0) (the-as uint 255.0))
-    (send-event-function (ppointer->process (-> self parent)) a1-3)
-    )
+   (send-event (ppointer->process (-> self parent)) 'flash 255.0)
    (let ((s5-1 (get-process *default-dead-pool* part-tracker #x4000)))
     (when s5-1
      (let ((t9-6 (method-of-type part-tracker activate)))
@@ -389,47 +368,15 @@
      (if *target*
       (logior! (-> *target* mask) (process-mask sleep))
       )
-     (let ((a1-7 (new 'stack-no-clear 'event-message-block)))
-      (set! (-> a1-7 from) self)
-      (set! (-> a1-7 num-params) 0)
-      (set! (-> a1-7 message) 'bomb-going)
-      (send-event-function (ppointer->process (-> self parent)) a1-7)
-      )
-     (let ((a1-8 (new 'stack-no-clear 'event-message-block)))
-      (set! (-> a1-8 from) self)
-      (set! (-> a1-8 num-params) 1)
-      (set! (-> a1-8 message) 'change-to-entity-by-name)
-      (set! (-> a1-8 param 0) (the-as uint "camera-402"))
-      (send-event-function *camera* a1-8)
-      )
+     (send-event (ppointer->process (-> self parent)) 'bomb-going)
+     (send-event *camera* 'change-to-entity-by-name "camera-402")
      (set! (-> self state-time) (-> *display* base-frame-counter))
-     (until
-      (>=
-       (- (-> *display* base-frame-counter) (the-as int (-> self state-time)))
-       600
-       )
+     (until (>= (- (-> *display* base-frame-counter) (-> self state-time)) 600)
       (suspend)
       )
-     (let ((a1-9 (new 'stack-no-clear 'event-message-block)))
-      (set! (-> a1-9 from) self)
-      (set! (-> a1-9 num-params) 1)
-      (set! (-> a1-9 message) 'force-blend)
-      (set! (-> a1-9 param 0) (the-as uint 0))
-      (send-event-function *camera* a1-9)
-      )
-     (let ((a1-10 (new 'stack-no-clear 'event-message-block)))
-      (set! (-> a1-10 from) self)
-      (set! (-> a1-10 num-params) 1)
-      (set! (-> a1-10 message) 'change-state)
-      (set! (-> a1-10 param 0) (the-as uint *camera-base-mode*))
-      (send-event-function *camera* a1-10)
-      )
-     (let ((a1-11 (new 'stack-no-clear 'event-message-block)))
-      (set! (-> a1-11 from) self)
-      (set! (-> a1-11 num-params) 0)
-      (set! (-> a1-11 message) 'clear-entity)
-      (send-event-function *camera* a1-11)
-      )
+     (send-event *camera* 'force-blend 0)
+     (send-event *camera* 'change-state *camera-base-mode*)
+     (send-event *camera* 'clear-entity)
      (if *target*
       (logclear! (-> *target* mask) (process-mask sleep))
       )
@@ -446,12 +393,7 @@
       )
      )
     (else
-     (let ((a1-13 (new 'stack-no-clear 'event-message-block)))
-      (set! (-> a1-13 from) self)
-      (set! (-> a1-13 num-params) 0)
-      (set! (-> a1-13 message) 'bomb-done)
-      (send-event-function (ppointer->process (-> self parent)) a1-13)
-      )
+     (send-event (ppointer->process (-> self parent)) 'bomb-done)
      )
     )
    (deactivate self)
@@ -462,19 +404,18 @@
   )
 
 ;; definition for function darkecobomb-handler
-;; INFO: Return type mismatch none vs object.
 (defbehavior
   darkecobomb-handler darkecobomb
   ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
-  (let ((v1-0 arg2))
-   (the-as object (if (or (= v1-0 'touch) (= v1-0 'attack))
-                   (go darkecobomb-explode #t)
-                   )
-    )
+  (case arg2 
+   (('touch 'attack)
+     (go darkecobomb-explode #t)
+     )
    )
   )
 
 ;; definition for function darkecobomb-explode-if-player-high-enough
+;; INFO: Return type mismatch object vs none.
 (defbehavior darkecobomb-explode-if-player-high-enough darkecobomb ()
   (if
    (and
@@ -512,13 +453,7 @@
        (/
         (-
          (-> self countdown-time)
-         (the
-          float
-          (-
-           (-> *display* game-frame-counter)
-           (the-as int (-> self state-time))
-           )
-          )
+         (the float (- (-> *display* game-frame-counter) (-> self state-time)))
          )
         (-> self countdown-time)
         )
@@ -566,7 +501,7 @@
     )
    (if
     (>=
-     (- (-> *display* game-frame-counter) (the-as int (-> self state-time)))
+     (- (-> *display* game-frame-counter) (-> self state-time))
      (the int (-> self countdown-time))
      )
     (go darkecobomb-explode #f)
@@ -702,11 +637,7 @@
   :trans
   (behavior ()
    (darkecobomb-explode-if-player-high-enough)
-   (if
-    (>=
-     (- (-> *display* game-frame-counter) (the-as int (-> self state-time)))
-     150
-     )
+   (if (>= (- (-> *display* game-frame-counter) (-> self state-time)) 150)
     (go darkecobomb-countdown)
     )
    (none)
@@ -792,17 +723,14 @@
    (arcing-shot-calculate
     (-> self root-override trans)
     (/
-     (the
-      float
-      (- (-> *display* game-frame-counter) (the-as int (-> self state-time)))
-      )
+     (the float (- (-> *display* game-frame-counter) (-> self state-time)))
      (the float (-> self flight-time))
      )
     )
    (if
     (>=
-     (- (-> *display* game-frame-counter) (the-as int (-> self state-time)))
-     (the-as int (-> self flight-time))
+     (- (-> *display* game-frame-counter) (-> self state-time))
+     (-> self flight-time)
      )
     (go darkecobomb-land)
     )
@@ -905,6 +833,7 @@
   )
 
 ;; definition for function darkecobomb-init-by-other
+;; INFO: Return type mismatch object vs none.
 ;; Used lq/sq
 (defbehavior
   darkecobomb-init-by-other darkecobomb
@@ -944,7 +873,7 @@
    )
   (arcing-shot-setup arg0 arg1 arg2)
   (set! (-> self countdown-time) arg4)
-  (set! (-> self flight-time) arg3)
+  (set! (-> self flight-time) (the-as int arg3))
   (set!
    (-> self sound)
    (new
@@ -954,25 +883,7 @@
      :mask #x80
      :num 1.0
      :group #x1
-     :sound-name-char
-     (new 'static 'array uint8 16
-      #x62
-      #x6f
-      #x6d
-      #x62
-      #x2d
-      #x73
-      #x70
-      #x69
-      #x6e
-      #x0
-      #x0
-      #x0
-      #x0
-      #x0
-      #x0
-      #x0
-      )
+     :sound-name (static-sound-name "bomb-spin")
      :volume #x400
      :fo-max 80
      )
@@ -985,7 +896,7 @@
 
 ;; definition of type greenshot
 (deftype greenshot (arcing-shot)
-  ((flight-time uint64  :offset-assert 224)
+  ((flight-time int64  :offset-assert 224)
    )
   :heap-base #x80
   :method-count-assert 20
@@ -1031,17 +942,14 @@
    (arcing-shot-calculate
     (-> self root-override trans)
     (/
-     (the
-      float
-      (- (-> *display* game-frame-counter) (the-as int (-> self state-time)))
-      )
+     (the float (- (-> *display* game-frame-counter) (-> self state-time)))
      (the float (-> self flight-time))
      )
     )
    (if
     (>=
-     (- (-> *display* game-frame-counter) (the-as int (-> self state-time)))
-     (the-as int (-> self flight-time))
+     (- (-> *display* game-frame-counter) (-> self state-time))
+     (-> self flight-time)
      )
     (deactivate self)
     )
@@ -1106,6 +1014,7 @@
   )
 
 ;; definition for function greenshot-init-by-other
+;; INFO: Return type mismatch object vs none.
 ;; Used lq/sq
 (defbehavior
   greenshot-init-by-other greenshot
@@ -1138,7 +1047,7 @@
   (dummy-14 self *greenshot-sg* '())
   (logclear! (-> self mask) (process-mask actor-pause))
   (arcing-shot-setup arg0 arg1 arg2)
-  (set! (-> self flight-time) arg3)
+  (set! (-> self flight-time) (the-as int arg3))
   (set!
    (-> self part)
    (create-launch-control (-> *part-group-id-table* 664) self)
@@ -1150,11 +1059,11 @@
 
 ;; definition of type redshot
 (deftype redshot (arcing-shot)
-  ((flight-time     uint64                           :offset-assert 224)
-   (stall-time      uint64                           :offset-assert 232)
+  ((flight-time     int64                            :offset-assert 224)
+   (stall-time      int64                            :offset-assert 232)
    (ring            torus                    :inline :offset-assert 240)
-   (rotation-offset uint64                           :offset-assert 280)
-   (part-track      uint64                           :offset-assert 288)
+   (rotation-offset int64                            :offset-assert 280)
+   (part-track      handle                           :offset-assert 288)
    (shot-particle   sparticle-launch-control         :offset-assert 296)
    (test-particle   sparticle-launch-control         :offset-assert 300)
    )
@@ -1276,54 +1185,37 @@
    (+! (-> self ring origin y) (-> self ring radius-secondary))
    (set-vector! (-> self ring axis) 0.0 1.0 0.0 1.0)
    (let ((gp-1 (get-process *default-dead-pool* part-tracker #x4000)))
-    (set! (-> self part-track) (the-as uint (ppointer->handle (when gp-1
-                                                               (let
-                                                                ((t9-4
-                                                                  (method-of-type
-                                                                   part-tracker
-                                                                   activate
-                                                                   )
-                                                                  )
-                                                                 )
-                                                                (t9-4
-                                                                 (the-as
-                                                                  part-tracker
-                                                                  gp-1
-                                                                  )
-                                                                 self
-                                                                 'part-tracker
-                                                                 (the-as
-                                                                  pointer
-                                                                  #x70004000
-                                                                  )
-                                                                 )
-                                                                )
-                                                               (run-now-in-process
-                                                                gp-1
-                                                                part-tracker-init
-                                                                (->
-                                                                 *part-group-id-table*
-                                                                 648
-                                                                 )
-                                                                -1
-                                                                redshot-particle-callback
-                                                                (->
-                                                                 self
-                                                                 ppointer
-                                                                 )
-                                                                #f
-                                                                (->
-                                                                 self
-                                                                 root-override
-                                                                 trans
-                                                                 )
-                                                                )
-                                                               (->
-                                                                gp-1
-                                                                ppointer
-                                                                )
-                                                               )
-                                             )
+    (set! (-> self part-track) (ppointer->handle (when gp-1
+                                                  (let
+                                                   ((t9-4
+                                                     (method-of-type
+                                                      part-tracker
+                                                      activate
+                                                      )
+                                                     )
+                                                    )
+                                                   (t9-4
+                                                    (the-as part-tracker gp-1)
+                                                    self
+                                                    'part-tracker
+                                                    (the-as pointer #x70004000)
+                                                    )
+                                                   )
+                                                  (run-now-in-process
+                                                   gp-1
+                                                   part-tracker-init
+                                                   (->
+                                                    *part-group-id-table*
+                                                    648
+                                                    )
+                                                   -1
+                                                   redshot-particle-callback
+                                                   (-> self ppointer)
+                                                   #f
+                                                   (-> self root-override trans)
+                                                   )
+                                                  (-> gp-1 ppointer)
+                                                  )
                                 )
      )
     )
@@ -1335,10 +1227,7 @@
     (-> self ring radius-primary)
     (*
      204.8
-     (the
-      float
-      (- (-> *display* game-frame-counter) (the-as int (-> self state-time)))
-      )
+     (the float (- (-> *display* game-frame-counter) (-> self state-time)))
      )
     )
    (let ((gp-0 (new 'stack-no-clear 'vector)))
@@ -1355,12 +1244,7 @@
        )
       (send-event-function *target* a1-2)
       )
-     (let ((a1-3 (new 'stack-no-clear 'event-message-block)))
-      (set! (-> a1-3 from) self)
-      (set! (-> a1-3 num-params) 0)
-      (set! (-> a1-3 message) 'hit-jak)
-      (send-event-function (ppointer->process (-> self parent)) a1-3)
-      )
+     (send-event (ppointer->process (-> self parent)) 'hit-jak)
      )
     )
    (dotimes (gp-1 5)
@@ -1377,13 +1261,7 @@
         0.006666667
         (the
          float
-         (-
-          600
-          (-
-           (-> *display* game-frame-counter)
-           (the-as int (-> self state-time))
-           )
-          )
+         (- 600 (- (-> *display* game-frame-counter) (-> self state-time)))
          )
         )
        )
@@ -1391,17 +1269,8 @@
      )
     (set-vector! (-> self draw color-mult) f0-3 f0-3 f0-3 0.75)
     )
-   (when
-    (>=
-     (- (-> *display* game-frame-counter) (the-as int (-> self state-time)))
-     600
-     )
-    (let ((a1-7 (new 'stack-no-clear 'event-message-block)))
-     (set! (-> a1-7 from) self)
-     (set! (-> a1-7 num-params) 0)
-     (set! (-> a1-7 message) 'missed-jak)
-     (send-event-function (ppointer->process (-> self parent)) a1-7)
-     )
+   (when (>= (- (-> *display* game-frame-counter) (-> self state-time)) 600)
+    (send-event (ppointer->process (-> self parent)) 'missed-jak)
     (deactivate self)
     )
    (none)
@@ -1422,15 +1291,13 @@
   )
 
 ;; definition for function redshot-handler
-;; INFO: Return type mismatch none vs object.
 (defbehavior
   redshot-handler redshot
   ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
-  (let ((v1-0 arg2))
-   (the-as object (if (or (= v1-0 'attack) (= v1-0 'touch))
-                   (go redshot-explode)
-                   )
-    )
+  (case arg2 
+   (('attack 'touch)
+     (go redshot-explode)
+     )
    )
   )
 
@@ -1446,21 +1313,15 @@
   :trans
   (behavior ()
    (redshot-trans
-    (the-as
-     int
-     (-
-      (-> self stall-time)
-      (the-as
-       uint
-       (- (-> *display* game-frame-counter) (the-as int (-> self state-time)))
-       )
-      )
+    (-
+     (-> self stall-time)
+     (- (-> *display* game-frame-counter) (-> self state-time))
      )
     )
    (if
     (>=
-     (- (-> *display* game-frame-counter) (the-as int (-> self state-time)))
-     (the-as int (-> self stall-time))
+     (- (-> *display* game-frame-counter) (-> self state-time))
+     (-> self stall-time)
      )
     (go redshot-explode)
     )
@@ -1493,17 +1354,14 @@
    (arcing-shot-calculate
     (-> self root-override trans)
     (/
-     (the
-      float
-      (- (-> *display* game-frame-counter) (the-as int (-> self state-time)))
-      )
+     (the float (- (-> *display* game-frame-counter) (-> self state-time)))
      (the float (-> self flight-time))
      )
     )
    (if
     (>=
-     (- (-> *display* game-frame-counter) (the-as int (-> self state-time)))
-     (the-as int (-> self flight-time))
+     (- (-> *display* game-frame-counter) (-> self state-time))
+     (-> self flight-time)
      )
     (go redshot-wait)
     )
@@ -1522,6 +1380,7 @@
   )
 
 ;; definition for function redshot-init-by-other
+;; INFO: Return type mismatch object vs none.
 ;; Used lq/sq
 (defbehavior
   redshot-init-by-other redshot
@@ -1561,9 +1420,9 @@
   (dummy-14 self *redring-sg* '())
   (logclear! (-> self mask) (process-mask actor-pause))
   (arcing-shot-setup arg0 arg1 arg2)
-  (set! (-> self flight-time) arg3)
-  (set! (-> self stall-time) arg4)
-  (set! (-> self rotation-offset) arg5)
+  (set! (-> self flight-time) (the-as int arg3))
+  (set! (-> self stall-time) (the-as int arg4))
+  (set! (-> self rotation-offset) (the-as int arg5))
   (set!
    (-> self part)
    (create-launch-control (-> *part-group-id-table* 647) self)
@@ -1586,25 +1445,7 @@
      :mask #x80
      :num 1.0
      :group #x1
-     :sound-name-char
-     (new 'static 'array uint8 16
-      #x72
-      #x65
-      #x64
-      #x2d
-      #x66
-      #x69
-      #x72
-      #x65
-      #x62
-      #x61
-      #x6c
-      #x6c
-      #x0
-      #x0
-      #x0
-      #x0
-      )
+     :sound-name (static-sound-name "red-fireball")
      :volume #x400
      :fo-max 80
      )
@@ -1617,7 +1458,7 @@
 
 ;; definition of type yellowshot
 (deftype yellowshot (arcing-shot)
-  ((flight-time uint64  :offset-assert 224)
+  ((flight-time int64  :offset-assert 224)
    )
   :heap-base #x80
   :method-count-assert 20
@@ -1652,12 +1493,7 @@
          )
         (send-event-function *target* a1-3)
         )
-       (let ((a1-4 (new 'stack-no-clear 'event-message-block)))
-        (set! (-> a1-4 from) self)
-        (set! (-> a1-4 num-params) 0)
-        (set! (-> a1-4 message) 'hit-jak)
-        (send-event-function (ppointer->process (-> self parent)) a1-4)
-        )
+       (send-event (ppointer->process (-> self parent)) 'hit-jak)
        )
       )
     )
@@ -1672,25 +1508,17 @@
    (arcing-shot-calculate
     (-> self root-override trans)
     (/
-     (the
-      float
-      (- (-> *display* game-frame-counter) (the-as int (-> self state-time)))
-      )
+     (the float (- (-> *display* game-frame-counter) (-> self state-time)))
      (the float (-> self flight-time))
      )
     )
    (spawn (-> self part) (-> self root-override trans))
    (when
     (>=
-     (- (-> *display* game-frame-counter) (the-as int (-> self state-time)))
-     (the-as int (-> self flight-time))
+     (- (-> *display* game-frame-counter) (-> self state-time))
+     (-> self flight-time)
      )
-    (let ((a1-3 (new 'stack-no-clear 'event-message-block)))
-     (set! (-> a1-3 from) self)
-     (set! (-> a1-3 num-params) 0)
-     (set! (-> a1-3 message) 'missed-jak)
-     (send-event-function (ppointer->process (-> self parent)) a1-3)
-     )
+    (send-event (ppointer->process (-> self parent)) 'missed-jak)
     (deactivate self)
     )
    (none)
@@ -1707,6 +1535,7 @@
   )
 
 ;; definition for function yellowshot-init-by-other
+;; INFO: Return type mismatch object vs none.
 ;; Used lq/sq
 (defbehavior
   yellowshot-init-by-other yellowshot
@@ -1740,7 +1569,7 @@
   (dummy-14 self *redring-sg* '())
   (logior! (-> self draw status) 2)
   (arcing-shot-setup arg0 arg1 arg2)
-  (set! (-> self flight-time) arg3)
+  (set! (-> self flight-time) (the-as int arg3))
   (set!
    (-> self part)
    (create-launch-control (-> *part-group-id-table* 652) self)
@@ -1748,7 +1577,3 @@
   (go yellowshot-idle)
   (none)
   )
-
-
-
-

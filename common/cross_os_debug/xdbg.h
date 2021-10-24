@@ -83,6 +83,7 @@ struct SignalInfo {
     SEGFAULT,        // access bad memory
     BREAK,           // hit a breakpoint or execute int3
     MATH_EXCEPTION,  // divide by zero
+    ILLEGAL_INSTR,   // bad instruction
     UNKNOWN,         // some other signal that is unsupported
     DISAPPEARED,     // process disappeared (maybe killed by the user)
 

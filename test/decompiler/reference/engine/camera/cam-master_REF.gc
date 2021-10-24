@@ -1,0 +1,1494 @@
+;;-*-Lisp-*-
+(in-package goal)
+
+;; definition of type camera-master-bank
+(deftype camera-master-bank (basic)
+  ((onscreen-head-height            meters  :offset-assert   4)
+   (onscreen-foot-height            meters  :offset-assert   8)
+   (target-height                   meters  :offset-assert  12)
+   (up-move-to-pitch-ratio-in-air   float   :offset-assert  16)
+   (down-move-to-pitch-ratio-in-air float   :offset-assert  20)
+   (up-move-to-pitch-on-ground      float   :offset-assert  24)
+   (down-move-to-pitch-on-ground    float   :offset-assert  28)
+   (pitch-off-blend                 float   :offset-assert  32)
+   )
+  :method-count-assert 9
+  :size-assert         #x24
+  :flag-assert         #x900000024
+  )
+
+;; definition for method 3 of type camera-master-bank
+(defmethod inspect camera-master-bank ((obj camera-master-bank))
+  (format #t "[~8x] ~A~%" obj (-> obj type))
+  (format
+   #t
+   "~Tonscreen-head-height: (meters ~m)~%"
+   (-> obj onscreen-head-height)
+   )
+  (format
+   #t
+   "~Tonscreen-foot-height: (meters ~m)~%"
+   (-> obj onscreen-foot-height)
+   )
+  (format #t "~Ttarget-height: (meters ~m)~%" (-> obj target-height))
+  (format
+   #t
+   "~Tup-move-to-pitch-ratio-in-air: ~f~%"
+   (-> obj up-move-to-pitch-ratio-in-air)
+   )
+  (format
+   #t
+   "~Tdown-move-to-pitch-ratio-in-air: ~f~%"
+   (-> obj down-move-to-pitch-ratio-in-air)
+   )
+  (format
+   #t
+   "~Tup-move-to-pitch-on-ground: ~f~%"
+   (-> obj up-move-to-pitch-on-ground)
+   )
+  (format
+   #t
+   "~Tdown-move-to-pitch-on-ground: ~f~%"
+   (-> obj down-move-to-pitch-on-ground)
+   )
+  (format #t "~Tpitch-off-blend: ~f~%" (-> obj pitch-off-blend))
+  obj
+  )
+
+;; definition for symbol *CAMERA_MASTER-bank*, type camera-master-bank
+(define
+  *CAMERA_MASTER-bank*
+  (new 'static 'camera-master-bank
+   :onscreen-head-height (meters 2.65)
+   :onscreen-foot-height (meters -0.5)
+   :target-height (meters 2.15)
+   :up-move-to-pitch-ratio-in-air 1.0
+   :down-move-to-pitch-ratio-in-air 0.5
+   :up-move-to-pitch-on-ground 0.9
+   :down-move-to-pitch-on-ground 0.9
+   :pitch-off-blend 0.5
+   )
+  )
+
+;; definition for function reset-follow
+;; Used lq/sq
+(defbehavior reset-follow camera-master ()
+  (set! (-> self tpos-old quad) (-> (target-cam-pos) quad))
+  (set! (-> self tpos-curr quad) (-> self tpos-old quad))
+  (set! (-> self tpos-old-adj quad) (-> self tpos-old quad))
+  (set! (-> self tpos-curr-adj quad) (-> self tpos-old quad))
+  (set! (-> self tpos-tgt quad) (-> self tpos-old quad))
+  (let ((f0-0 0.0))
+   (set! (-> self upspeed) f0-0)
+   f0-0
+   )
+  )
+
+;; definition for function reset-target-tracking
+;; INFO: Return type mismatch none vs symbol.
+;; Used lq/sq
+(defbehavior reset-target-tracking camera-master ()
+  (set! (-> self tpos-old quad) (-> (target-cam-pos) quad))
+  (set! (-> self tpos-curr quad) (-> self tpos-old quad))
+  (set! (-> self tpos-old-adj quad) (-> self tpos-old quad))
+  (set! (-> self tpos-curr-adj quad) (-> self tpos-old quad))
+  (set! (-> self tpos-tgt quad) (-> self tpos-old quad))
+  (quaternion->matrix (-> self tgt-rot-mat) (-> *target* control dir-targ))
+  (quaternion->matrix
+   (-> self tgt-face-mat)
+   (-> *target* control unknown-quaternion00)
+   )
+  (vector-reset! (-> self pitch-off))
+  (set! (-> self upspeed) 0.0)
+  (set! (-> self foot-offset) (-> *CAMERA_MASTER-bank* onscreen-foot-height))
+  (set! (-> self head-offset) (-> *CAMERA_MASTER-bank* onscreen-head-height))
+  (set! (-> self target-height) (-> *CAMERA_MASTER-bank* target-height))
+  (set!
+   (-> self on-ground)
+   (not
+    (and
+     (logtest? (-> *target* control unknown-surface00 flags) 2048)
+     (zero? (logand (-> *target* control status) 1))
+     )
+    )
+   )
+  (set! (-> self on-pole) #f)
+  (set! (-> self ease-t) 1.0)
+  (set! (-> self string-max target y) (-> self stringMaxHeight))
+  (set! (-> self string-max target z) (-> self stringMaxLength))
+  (set!
+   (-> self string-push-z)
+   (fmax (-> self string-min value z) (-> *CAMERA-bank* default-string-push-z))
+   )
+  (cond
+   ((>= (- (-> *display* base-frame-counter) (if *target*
+                                              (-> *target* neck notice-time)
+                                              0
+                                              )
+         )
+     (the-as int (-> *CAMERA-bank* attack-timeout))
+     )
+    (set! (-> self being-attacked) #f)
+    )
+   (else
+    (set!
+     (-> self attack-start)
+     (the-as uint (-> *display* base-frame-counter))
+     )
+    (set! (-> self being-attacked) #t)
+    (when
+     (and
+      (zero? (logand (-> self master-options) 64))
+      (or
+       (!= (-> last-try-to-look-at-data horz) 0.0)
+       (!= (-> last-try-to-look-at-data vert) 0.0)
+       )
+      )
+     (set!
+      (-> self string-max target y)
+      (fmax (-> self string-max target y) (-> last-try-to-look-at-data vert))
+      )
+     (set!
+      (-> self string-max target z)
+      (fmax (-> self string-max target z) (-> last-try-to-look-at-data horz))
+      )
+     (set!
+      (-> self string-push-z)
+      (fmax (-> self string-push-z) (-> self string-max target z))
+      )
+     )
+    )
+   )
+  (cond
+   ((and
+     (logtest? (-> *target* water flags) 4096)
+     (zero? (logand (-> *target* water flags) 16))
+     )
+    (set! (-> self under-water) 2)
+    )
+   (else
+    (set! (-> self under-water) 0)
+    0
+    )
+   )
+  (let ((gp-1 (new 'stack-no-clear 'vector)))
+   (vector--float*!
+    gp-1
+    (-> self tpos-curr-adj)
+    (-> self local-down)
+    (-> self target-height)
+    )
+   (the-as symbol (TODO-RENAME-10 (-> self target-spline) gp-1))
+   )
+  )
+
+;; definition for function reset-drawable-follow
+;; Used lq/sq
+(defbehavior reset-drawable-follow camera-master ()
+  (let ((v1-2 (the-as target (-> self drawable-target process 0))))
+   (if (nonzero? (-> v1-2 node-list))
+    (vector<-cspace!
+     (-> self tpos-old)
+     (-> v1-2 node-list data (-> self which-bone))
+     )
+    (set! (-> self tpos-old quad) (-> v1-2 control trans quad))
+    )
+   )
+  (set! (-> self tpos-curr quad) (-> self tpos-old quad))
+  (set! (-> self tpos-old-adj quad) (-> self tpos-old quad))
+  (set! (-> self tpos-curr-adj quad) (-> self tpos-old quad))
+  (let ((f0-0 0.0))
+   (set! (-> self upspeed) f0-0)
+   f0-0
+   )
+  )
+
+;; definition for function reset-drawable-tracking
+;; INFO: Return type mismatch none vs symbol.
+;; Used lq/sq
+(defbehavior reset-drawable-tracking camera-master ()
+  (let ((gp-0 (the-as target (-> self drawable-target process 0))))
+   (cond
+    ((nonzero? (-> gp-0 node-list))
+     (vector<-cspace!
+      (-> self tpos-old)
+      (-> gp-0 node-list data (-> self which-bone))
+      )
+     (let* ((v1-6 (-> self tgt-rot-mat))
+            (a3-0 (-> gp-0 node-list data (-> self which-bone) bone transform))
+            (a0-4 (-> a3-0 vector 0 quad))
+            (a1-4 (-> a3-0 vector 1 quad))
+            (a2-0 (-> a3-0 vector 2 quad))
+            (a3-1 (-> a3-0 vector 3 quad))
+            )
+      (set! (-> v1-6 vector 0 quad) a0-4)
+      (set! (-> v1-6 vector 1 quad) a1-4)
+      (set! (-> v1-6 vector 2 quad) a2-0)
+      (set! (-> v1-6 vector 3 quad) a3-1)
+      )
+     (set! (-> self tgt-rot-mat vector 3 quad) (the-as uint128 0))
+     (let* ((v1-8 (-> self tgt-face-mat))
+            (a3-2 (-> self tgt-rot-mat))
+            (a0-5 (-> a3-2 vector 0 quad))
+            (a1-5 (-> a3-2 vector 1 quad))
+            (a2-1 (-> a3-2 vector 2 quad))
+            (a3-3 (-> a3-2 vector 3 quad))
+            )
+      (set! (-> v1-8 vector 0 quad) a0-5)
+      (set! (-> v1-8 vector 1 quad) a1-5)
+      (set! (-> v1-8 vector 2 quad) a2-1)
+      (set! (-> v1-8 vector 3 quad) a3-3)
+      )
+     )
+    (else
+     (set! (-> self tpos-old quad) (-> gp-0 control trans quad))
+     (quaternion->matrix (-> self tgt-rot-mat) (-> gp-0 control quat))
+     (let* ((v1-11 (-> self tgt-face-mat))
+            (a3-4 (-> self tgt-rot-mat))
+            (a0-10 (-> a3-4 vector 0 quad))
+            (a1-7 (-> a3-4 vector 1 quad))
+            (a2-2 (-> a3-4 vector 2 quad))
+            (a3-5 (-> a3-4 vector 3 quad))
+            )
+      (set! (-> v1-11 vector 0 quad) a0-10)
+      (set! (-> v1-11 vector 1 quad) a1-7)
+      (set! (-> v1-11 vector 2 quad) a2-2)
+      (set! (-> v1-11 vector 3 quad) a3-5)
+      )
+     )
+    )
+   )
+  (set! (-> self tpos-curr quad) (-> self tpos-old quad))
+  (set! (-> self tpos-old-adj quad) (-> self tpos-old quad))
+  (set! (-> self tpos-curr-adj quad) (-> self tpos-old quad))
+  (vector-reset! (-> self pitch-off))
+  (set! (-> self upspeed) 0.0)
+  (set! (-> self foot-offset) (-> *CAMERA_MASTER-bank* onscreen-foot-height))
+  (set! (-> self head-offset) (-> *CAMERA_MASTER-bank* onscreen-head-height))
+  (set! (-> self target-height) (-> *CAMERA_MASTER-bank* target-height))
+  (set! (-> self on-ground) #t)
+  (set! (-> self on-pole) #f)
+  (set! (-> self ease-t) 1.0)
+  (set! (-> self being-attacked) #f)
+  (set! (-> self string-max target y) (-> self stringMaxHeight))
+  (set! (-> self string-max target z) (-> self stringMaxLength))
+  (set!
+   (-> self string-push-z)
+   (fmax (-> self string-min value z) (-> *CAMERA-bank* default-string-push-z))
+   )
+  (set! (-> self under-water) 0)
+  (let ((gp-1 (new 'stack-no-clear 'vector)))
+   (vector--float*!
+    gp-1
+    (-> self tpos-curr-adj)
+    (-> self local-down)
+    (-> self target-height)
+    )
+   (the-as symbol (TODO-RENAME-10 (-> self target-spline) gp-1))
+   )
+  )
+
+;; definition for function master-track-target
+;; INFO: Return type mismatch none vs symbol.
+;; Used lq/sq
+(defbehavior master-track-target camera-master ()
+  (cond
+   ((and
+     (logtest? (-> self master-options) 2)
+     (!= (-> self drawable-target) #f)
+     (not (handle->process (-> self drawable-target)))
+     )
+    (set! (-> self master-options) (logand -3 (-> self master-options)))
+    (set! (-> self drawable-target) (the-as handle #f))
+    )
+   ((and
+     (logtest? (-> self master-options) 2)
+     (handle->process (-> self drawable-target))
+     )
+    (let ((gp-0 (-> self drawable-target process 0)))
+     (if (paused?)
+      (return (the-as symbol #f))
+      )
+     (set! (-> self tpos-old quad) (-> self tpos-curr quad))
+     (set! (-> self tpos-old-adj quad) (-> self tpos-curr-adj quad))
+     (cond
+      ((nonzero? (-> (the-as target gp-0) node-list))
+       (let* ((v1-24 (-> self tgt-rot-mat))
+              (a3-0
+               (->
+                (the-as target gp-0)
+                node-list
+                data
+                (-> self which-bone)
+                bone
+                transform
+                )
+               )
+              (a0-17 (-> a3-0 vector 0 quad))
+              (a1-4 (-> a3-0 vector 1 quad))
+              (a2-0 (-> a3-0 vector 2 quad))
+              (a3-1 (-> a3-0 vector 3 quad))
+              )
+        (set! (-> v1-24 vector 0 quad) a0-17)
+        (set! (-> v1-24 vector 1 quad) a1-4)
+        (set! (-> v1-24 vector 2 quad) a2-0)
+        (set! (-> v1-24 vector 3 quad) a3-1)
+        )
+       (set! (-> self tgt-rot-mat vector 3 quad) (the-as uint128 0))
+       (let* ((a2-1 (-> self tgt-face-mat))
+              (a3-2 (-> self tgt-rot-mat))
+              (v1-26 (-> a3-2 vector 0 quad))
+              (a0-18 (-> a3-2 vector 1 quad))
+              (a1-5 (-> a3-2 vector 2 quad))
+              (a3-3 (-> a3-2 vector 3 quad))
+              )
+        (set! (-> a2-1 vector 0 quad) v1-26)
+        (set! (-> a2-1 vector 1 quad) a0-18)
+        (set! (-> a2-1 vector 2 quad) a1-5)
+        (set! (-> a2-1 vector 3 quad) a3-3)
+        )
+       (vector<-cspace!
+        (-> self tpos-curr)
+        (-> (the-as target gp-0) node-list data (-> self which-bone))
+        )
+       )
+      (else
+       (quaternion->matrix
+        (-> self tgt-rot-mat)
+        (-> (the-as target gp-0) control quat)
+        )
+       (let* ((a2-3 (-> self tgt-face-mat))
+              (a3-4 (-> self tgt-rot-mat))
+              (v1-31 (-> a3-4 vector 0 quad))
+              (a0-21 (-> a3-4 vector 1 quad))
+              (a1-9 (-> a3-4 vector 2 quad))
+              (a3-5 (-> a3-4 vector 3 quad))
+              )
+        (set! (-> a2-3 vector 0 quad) v1-31)
+        (set! (-> a2-3 vector 1 quad) a0-21)
+        (set! (-> a2-3 vector 2 quad) a1-9)
+        (set! (-> a2-3 vector 3 quad) a3-5)
+        )
+       )
+      )
+     )
+    (let ((v1-32 (new-stack-vector0)))
+     0.0
+     (vector-! v1-32 (-> self tpos-curr-adj) (-> self tpos-curr))
+     (let* ((f0-2 (vector-dot v1-32 (-> self local-down)))
+            (f0-3 (if (< 0.0 f0-2)
+                   (* f0-2 (-> *CAMERA_MASTER-bank* up-move-to-pitch-on-ground))
+                   (*
+                    f0-2
+                    (-> *CAMERA_MASTER-bank* down-move-to-pitch-on-ground)
+                    )
+                   )
+             )
+            )
+      (vector+float*!
+       (-> self tpos-curr-adj)
+       (-> self tpos-curr)
+       (-> self local-down)
+       f0-3
+       )
+      )
+     )
+    (let ((gp-1 (new 'stack-no-clear 'vector)))
+     (vector--float*!
+      gp-1
+      (-> self tpos-curr-adj)
+      (-> self local-down)
+      (-> self target-height)
+      )
+     (TODO-RENAME-17 (-> self target-spline) gp-1 2048.0 0.0 #f)
+     )
+    (TODO-RENAME-22 (-> self target-spline) 40960.0)
+    )
+   ((handle->process (-> self drawable-target))
+    (logior! (-> self master-options) 2)
+    (reset-drawable-tracking)
+    )
+   )
+  (the-as symbol (cond
+                  ((handle->process (-> self drawable-target))
+                   #f
+                   )
+                  ((and *target* (logtest? (-> self master-options) 2))
+                   (if (paused?)
+                    (return (the-as symbol #f))
+                    )
+                   (cond
+                    ((>= (- (-> *display* base-frame-counter) (if *target*
+                                                               (->
+                                                                *target*
+                                                                neck
+                                                                notice-time
+                                                                )
+                                                               0
+                                                               )
+                          )
+                      (the-as int (-> *CAMERA-bank* attack-timeout))
+                      )
+                     (set! (-> self being-attacked) #f)
+                     )
+                    (else
+                     (if (not (-> self being-attacked))
+                      (set!
+                       (-> self attack-start)
+                       (the-as uint (-> *display* base-frame-counter))
+                       )
+                      )
+                     (set! (-> self being-attacked) #t)
+                     (when
+                      (and
+                       (zero? (logand (-> self master-options) 64))
+                       (or
+                        (!= (-> last-try-to-look-at-data horz) 0.0)
+                        (!= (-> last-try-to-look-at-data vert) 0.0)
+                        )
+                       )
+                      (set!
+                       (-> self string-max target y)
+                       (fmax
+                        (-> self string-max target y)
+                        (-> last-try-to-look-at-data vert)
+                        )
+                       )
+                      (set!
+                       (-> self string-max target z)
+                       (fmax
+                        (-> self string-max target z)
+                        (-> last-try-to-look-at-data horz)
+                        )
+                       )
+                      (set!
+                       (-> self string-push-z)
+                       (fmax
+                        (-> self string-push-z)
+                        (-> self string-max target z)
+                        )
+                       )
+                      )
+                     )
+                    )
+                   (cond
+                    ((and
+                      (logtest? (-> *target* water flags) 4096)
+                      (zero? (logand (-> *target* water flags) 16))
+                      )
+                     (set! (-> self under-water) 2)
+                     )
+                    ((> (-> self under-water) 0)
+                     (+! (-> self under-water) -1)
+                     )
+                    )
+                   (set! (-> self tpos-old quad) (-> self tpos-curr quad))
+                   (set!
+                    (-> self tpos-old-adj quad)
+                    (-> self tpos-curr-adj quad)
+                    )
+                   (quaternion->matrix
+                    (-> self tgt-rot-mat)
+                    (-> *target* control dir-targ)
+                    )
+                   (quaternion->matrix
+                    (-> self tgt-face-mat)
+                    (-> *target* control unknown-quaternion00)
+                    )
+                   (cond
+                    ((< (-> self ease-t) 1.0)
+                     (new 'stack-no-clear 'vector)
+                     (cond
+                      ((logtest? (-> self master-options) 32)
+                       (vector-lerp!
+                        (-> self tpos-curr)
+                        (-> self ease-from)
+                        (-> self ease-to)
+                        (parameter-ease-sin-clamp (-> self ease-t))
+                        )
+                       (set!
+                        (-> self master-options)
+                        (logand -33 (-> self master-options))
+                        )
+                       )
+                      (else
+                       (vector-lerp!
+                        (-> self tpos-curr)
+                        (-> self ease-from)
+                        (target-cam-pos)
+                        (parameter-ease-sin-clamp (-> self ease-t))
+                        )
+                       )
+                      )
+                     (+! (-> self ease-t) (-> self ease-step))
+                     )
+                    (else
+                     (set! (-> self tpos-curr quad) (-> (target-cam-pos) quad))
+                     )
+                    )
+                   (when
+                    (logtest?
+                     (-> *target* control root-prim prim-core action)
+                     128
+                     )
+                    (if *display-cam-los-debug*
+                     (format *stdcon* "ride edge~%")
+                     )
+                    (let ((s4-2 (new 'stack-no-clear 'collide-mesh-cache-tri))
+                          (gp-5 (new 'stack-no-clear 'vector))
+                          (s5-2 (new 'stack-no-clear 'vector))
+                          )
+                     (vector--float*!
+                      s5-2
+                      (-> self tpos-curr)
+                      (-> self local-down)
+                      (-> self target-height)
+                      )
+                     (vector-float*! gp-5 (-> self tgt-rot-mat vector 2) 4915.2)
+                     (vector-! s5-2 s5-2 gp-5)
+                     (let
+                      ((f0-20
+                        (dummy-10
+                         *collide-cache*
+                         s5-2
+                         gp-5
+                         4300.8
+                         1
+                         (the-as process #f)
+                         s4-2
+                         4098
+                         )
+                        )
+                       )
+                      (if (and (< 0.0 f0-20) (< f0-20 1.0))
+                       (vector+float*!
+                        (-> self tpos-curr)
+                        (-> self tpos-curr)
+                        gp-5
+                        (+ -1.0 f0-20)
+                        )
+                       )
+                      )
+                     )
+                    )
+                   (set!
+                    (-> self on-ground)
+                    (not
+                     (and
+                      (logtest?
+                       (-> *target* control unknown-surface00 flags)
+                       2048
+                       )
+                      (zero? (logand (-> *target* control status) 1))
+                      )
+                     )
+                    )
+                   (let ((gp-6 (new-stack-vector0)))
+                    0.0
+                    (cond
+                     ((and
+                       (and
+                        (logtest?
+                         (-> *target* control unknown-surface00 flags)
+                         2048
+                         )
+                        (zero? (logand (-> *target* control status) 1))
+                        )
+                       (!=
+                        (-> *target* control unknown-surface00 name)
+                        'launch-jump
+                        )
+                       )
+                      (if *display-cam-los-debug*
+                       (format *stdcon* "air tracking~%")
+                       )
+                      (vector+float*!
+                       (-> self tpos-curr-adj)
+                       (-> self tpos-curr-adj)
+                       (-> self local-down)
+                       (-> self upspeed)
+                       )
+                      (vector+float*!
+                       (-> self tpos-tgt)
+                       (-> self tpos-tgt)
+                       (-> self local-down)
+                       (-> self upspeed)
+                       )
+                      (vector-! gp-6 (-> self tpos-curr) (-> self tpos-tgt))
+                      (let ((f30-0 (vector-dot gp-6 (-> self local-down))))
+                       (vector--float*! gp-6 gp-6 (-> self local-down) f30-0)
+                       (if (< 0.0 f30-0)
+                        (set! (-> self upspeed) (* 0.5 (-> self upspeed)))
+                        )
+                       (vector+! (-> self tpos-tgt) (-> self tpos-tgt) gp-6)
+                       (let ((f0-30 (* 0.05 f30-0)))
+                        (vector+float*!
+                         (-> self tpos-tgt)
+                         (-> self tpos-tgt)
+                         (-> self local-down)
+                         f0-30
+                         )
+                        )
+                       )
+                      (vector-! gp-6 (-> self tpos-curr-adj) (-> self tpos-tgt))
+                      (let* ((f0-32 (vector-dot gp-6 (-> self local-down)))
+                             (f0-33 (if (< 0.0 f0-32)
+                                     (*
+                                      f0-32
+                                      (->
+                                       *CAMERA_MASTER-bank*
+                                       up-move-to-pitch-ratio-in-air
+                                       )
+                                      )
+                                     (*
+                                      f0-32
+                                      (->
+                                       *CAMERA_MASTER-bank*
+                                       down-move-to-pitch-ratio-in-air
+                                       )
+                                      )
+                                     )
+                              )
+                             )
+                       (vector+float*!
+                        (-> self tpos-curr-adj)
+                        (-> self tpos-tgt)
+                        (-> self local-down)
+                        f0-33
+                        )
+                       )
+                      (vector-!
+                       gp-6
+                       (-> *target* control shadow-pos)
+                       (-> self tpos-curr-adj)
+                       )
+                      (let* ((f0-35 (vector-dot gp-6 (-> self local-down)))
+                             (f0-36 (* 0.03 f0-35))
+                             )
+                       (if (and (< f0-36 0.0) (< f0-36 (-> self upspeed)))
+                        (set! (-> self upspeed) f0-36)
+                        )
+                       )
+                      )
+                     (else
+                      (if *display-cam-los-debug*
+                       (format *stdcon* "ground tracking~%")
+                       )
+                      (vector-! gp-6 (-> self tpos-curr) (-> self tpos-old))
+                      (let ((f0-38 (vector-dot gp-6 (-> self local-down))))
+                       (cond
+                        ((logtest? (-> *target* water flags) 512)
+                         (set! (-> self upspeed) 0.0)
+                         )
+                        ((< 0.0 f0-38)
+                         (set! (-> self upspeed) 0.0)
+                         )
+                        (else
+                         (set! (-> self upspeed) f0-38)
+                         )
+                        )
+                       )
+                      (set! (-> self tpos-tgt quad) (-> self tpos-curr quad))
+                      (vector-!
+                       gp-6
+                       (-> self tpos-curr-adj)
+                       (-> self tpos-curr)
+                       )
+                      (let* ((f0-42 (vector-dot gp-6 (-> self local-down)))
+                             (f0-43 (if (< 0.0 f0-42)
+                                     (*
+                                      f0-42
+                                      (->
+                                       *CAMERA_MASTER-bank*
+                                       up-move-to-pitch-on-ground
+                                       )
+                                      )
+                                     (*
+                                      f0-42
+                                      (->
+                                       *CAMERA_MASTER-bank*
+                                       down-move-to-pitch-on-ground
+                                       )
+                                      )
+                                     )
+                              )
+                             )
+                       (vector+float*!
+                        (-> self tpos-curr-adj)
+                        (-> self tpos-curr)
+                        (-> self local-down)
+                        f0-43
+                        )
+                       )
+                      )
+                     )
+                    )
+                   (if (zero? (logand (-> self slave-options) 16))
+                    (reset-follow)
+                    )
+                   (let ((v1-196 (-> *target* water flags)))
+                    (when (and (logtest? v1-196 512) (logtest? v1-196 6144))
+                     (let
+                      ((f0-45
+                        (-
+                         (-> *target* water base-height)
+                         (-> self target-height)
+                         )
+                        )
+                       )
+                      (if (< (-> self tpos-curr-adj y) f0-45)
+                       (set! (-> self tpos-curr-adj y) f0-45)
+                       )
+                      )
+                     )
+                    )
+                   (vector+!
+                    (-> self pitch-off)
+                    (-> self pitch-off)
+                    (-> self tpos-curr)
+                    )
+                   (vector-!
+                    (-> self pitch-off)
+                    (-> self pitch-off)
+                    (-> self tpos-old)
+                    )
+                   (vector-float*!
+                    (-> self pitch-off)
+                    (-> self pitch-off)
+                    (-> *CAMERA_MASTER-bank* pitch-off-blend)
+                    )
+                   (let ((gp-7 (new 'stack-no-clear 'vector)))
+                    (vector--float*!
+                     gp-7
+                     (-> self tpos-curr-adj)
+                     (-> self local-down)
+                     (-> self target-height)
+                     )
+                    (let ((v1-207 (new 'stack-no-clear 'vector)))
+                     0.0
+                     (vector-! v1-207 (-> *target* control shadow-pos) gp-7)
+                     (let* ((f0-50 (vector-dot v1-207 (-> self local-down)))
+                            (f0-51 (+ -4096.0 f0-50))
+                            )
+                      (if (< f0-51 0.0)
+                       (vector+float*! gp-7 gp-7 (-> self local-down) f0-51)
+                       )
+                      )
+                     )
+                    (TODO-RENAME-17 (-> self target-spline) gp-7 2048.0 0.0 #f)
+                    )
+                   (the-as
+                    symbol
+                    (TODO-RENAME-22 (-> self target-spline) 40960.0)
+                    )
+                   )
+                  (*target*
+                   (logior! (-> self master-options) 2)
+                   (reset-target-tracking)
+                   )
+                  ((logtest? (-> self master-options) 2)
+                   (let
+                    ((v0-1 (the-as symbol (logand -3 (-> self master-options))))
+                     )
+                    (set! (-> self master-options) (the-as uint v0-1))
+                    v0-1
+                    )
+                   )
+                  )
+   )
+  )
+
+;; definition for function in-cam-entity-volume?
+;; Used lq/sq
+(defun
+  in-cam-entity-volume?
+  ((arg0 vector) (arg1 entity) (arg2 float) (arg3 symbol))
+  (local-vars (sv-16 res-tag))
+  (let ((s2-0 0))
+   (while #t
+    (set! sv-16 (new 'static 'res-tag))
+    (let
+     ((v1-1
+       (the-as
+        object
+        ((method-of-type res-lump get-property-data)
+         arg1
+         arg3
+         'exact
+         (the float s2-0)
+         (the-as pointer #f)
+         (& sv-16)
+         *res-static-buf*
+         )
+        )
+       )
+      )
+     (cond
+      ((not (the-as pointer v1-1))
+       (return #f)
+       )
+      (else
+       (dotimes (a0-2 (the-as int (-> sv-16 elt-count)))
+        (if
+         (<
+          arg2
+          (-
+           (vector-dot arg0 (-> (the-as (inline-array vector) v1-1) a0-2))
+           (-> (the-as (inline-array vector) v1-1) a0-2 w)
+           )
+          )
+         (goto cfg-12)
+         )
+        )
+       (return #t)
+       )
+      )
+     )
+    (label cfg-12)
+    (+! s2-0 1)
+    )
+   )
+  (the-as symbol #f)
+  )
+
+;; definition for function master-unset-region
+(defbehavior master-unset-region camera-master ()
+  (when (-> self cam-entity)
+   (set! (-> self cam-entity) #f)
+   (set! (-> self master-options) (logand -65 (-> self master-options)))
+   (set! (-> self stringMinHeight) (-> *CAMERA-bank* default-string-min-y))
+   (set! (-> self stringMaxHeight) (-> *CAMERA-bank* default-string-max-y))
+   (set! (-> self stringMinLength) (-> *CAMERA-bank* default-string-min-z))
+   (set! (-> self stringMaxLength) (-> *CAMERA-bank* default-string-max-z))
+   (set! (-> self stringCliffHeight) 163840.0)
+   (send-event *camera* 'point-of-interest #f)
+   (set! (-> *camera-combiner* tracking point-of-interest-blend target) 0.0)
+   (let ((a1-1 (new 'stack-no-clear 'event-message-block)))
+    (set! (-> a1-1 from) self)
+    (set! (-> a1-1 num-params) 1)
+    (set! (-> a1-1 message) 'query-state)
+    (set! (-> a1-1 param 0) (the-as uint *camera-base-mode*))
+    (if (not (send-event-function *camera* a1-1))
+     (send-event *camera* 'change-state *camera-base-mode* 450)
+     )
+    )
+   (set!
+    (-> *camera-combiner* tracking tilt-adjust target)
+    (-> *CAMERA-bank* default-tilt-adjust)
+    )
+   (send-event *camera* 'clear-slave-option #x10000)
+   )
+  )
+
+;; definition for function master-base-region
+(defbehavior master-base-region camera-master ((arg0 entity))
+  (logior! (-> self master-options) 64)
+  (set!
+   (-> self stringMinHeight)
+   (cam-slave-get-float
+    arg0
+    'stringMinHeight
+    (-> *CAMERA-bank* default-string-min-y)
+    )
+   )
+  (set!
+   (-> self stringMaxHeight)
+   (cam-slave-get-float
+    arg0
+    'stringMaxHeight
+    (-> *CAMERA-bank* default-string-max-y)
+    )
+   )
+  (set!
+   (-> self stringMinLength)
+   (cam-slave-get-float
+    arg0
+    'stringMinLength
+    (-> *CAMERA-bank* default-string-min-z)
+    )
+   )
+  (set!
+   (-> self stringMaxLength)
+   (cam-slave-get-float
+    arg0
+    'stringMaxLength
+    (-> *CAMERA-bank* default-string-max-z)
+    )
+   )
+  (let ((s5-0 (new 'stack-no-clear 'vector)))
+   (if
+    (cam-slave-get-vector-with-offset
+     (the-as entity-actor arg0)
+     s5-0
+     'interesting
+     )
+    (send-event *camera* 'point-of-interest s5-0)
+    )
+   )
+  (if (< 405504.0 (-> self stringMaxLength))
+   (set! (-> self stringMaxLength) (-> *CAMERA-bank* default-string-max-z))
+   )
+  (set!
+   (-> self stringCliffHeight)
+   (cam-slave-get-float arg0 'stringCliffHeight 163840.0)
+   )
+  (let ((a1-7 (new 'stack-no-clear 'event-message-block)))
+   (set! (-> a1-7 from) self)
+   (set! (-> a1-7 num-params) 1)
+   (set! (-> a1-7 message) 'query-state)
+   (set! (-> a1-7 param 0) (the-as uint *camera-base-mode*))
+   (if (not (send-event-function *camera* a1-7))
+    (send-event *camera* 'change-state *camera-base-mode* 450)
+    )
+   )
+  (if (logtest? #x10000 (cam-slave-get-flags (-> self cam-entity) 'flags))
+   (send-event *camera* 'set-slave-option #x10000)
+   )
+  (let
+   ((f0-12
+     (cam-slave-get-float
+      arg0
+      'tiltAdjust
+      (-> *CAMERA-bank* default-tilt-adjust)
+      )
+     )
+    )
+   (set! (-> *camera-combiner* tracking tilt-adjust target) f0-12)
+   f0-12
+   )
+  )
+
+;; definition for function setup-slave-for-hopefull
+(defun setup-slave-for-hopefull ((arg0 camera-slave))
+  (when (= (-> arg0 blend-to-type) 2)
+   (cam-calc-follow! (-> arg0 tracking) (-> arg0 trans) #f)
+   (slave-set-rotation!
+    (-> arg0 tracking)
+    (-> arg0 trans)
+    (the-as float (-> arg0 options))
+    (-> arg0 fov)
+    #f
+    )
+   )
+  (none)
+  )
+
+;; definition for function master-is-hopeful-better?
+(defbehavior
+  master-is-hopeful-better? camera-master
+  ((arg0 camera-slave) (arg1 camera-slave))
+  (if (not *camera-combiner*)
+   #f
+   (<
+    (vector-dot
+     (-> arg0 tracking inv-mat vector 2)
+     (-> *camera-combiner* inv-camera-rot vector 2)
+     )
+    (vector-dot
+     (-> arg1 tracking inv-mat vector 2)
+     (-> *camera-combiner* inv-camera-rot vector 2)
+     )
+    )
+   )
+  )
+
+;; definition for function master-switch-to-entity
+;; WARN: rewrite_to_get_var got a none typed variable. Is there unreachable code?
+;; WARN: rewrite_to_get_var got a none typed variable. Is there unreachable code?
+;; WARN: rewrite_to_get_var got a none typed variable. Is there unreachable code?
+;; WARN: rewrite_to_get_var got a none typed variable. Is there unreachable code?
+;; Used lq/sq
+(defbehavior master-switch-to-entity camera-master ((arg0 entity))
+  (local-vars
+   (v0-21 none)
+   (gp-0 (pointer process))
+   (sv-16 res-tag)
+   (sv-112 process)
+   (sv-128 string)
+   (sv-144 string)
+   )
+  (set! (-> self cam-entity) arg0)
+  10
+  (let ((s4-0 (cam-state-from-entity arg0)))
+   (cond
+    ((= s4-0 *camera-base-mode*)
+     (master-base-region arg0)
+     (return #t)
+     )
+    (s4-0
+     (let ((s3-0 (get-process *camera-dead-pool* camera-slave #x4000)))
+      (set! gp-0 (when s3-0
+                  (let ((t9-3 (method-of-type camera-slave activate)))
+                   (t9-3
+                    (the-as camera-slave s3-0)
+                    self
+                    'camera-slave
+                    (the-as pointer #x70004000)
+                    )
+                   )
+                  (run-now-in-process s3-0 cam-slave-init s4-0 arg0)
+                  (-> s3-0 ppointer)
+                  )
+       )
+      )
+     (when (not gp-0)
+      (format 0 "ERROR <GMJ>: primary region activate failed~%")
+      (return #f)
+      )
+     (setup-slave-for-hopefull (the-as camera-slave (ppointer->process gp-0)))
+     )
+    (else
+     (format
+      0
+      "ERROR <GMJ>: camera region '~S' didn't produce a state~%"
+      (res-lump-struct arg0 'name structure)
+      )
+     (return #f)
+     )
+    )
+   )
+  (set! sv-16 (new 'static 'res-tag))
+  (let
+   ((s4-2 (res-lump-data arg0 'alternates (pointer string) :tag-ptr (& sv-16))))
+   (when s4-2
+    (dotimes (s3-2 (the-as int (-> sv-16 elt-count)))
+     (let ((s2-0 (entity-by-name (-> s4-2 s3-2))))
+      (set! v0-21 (cond
+                   (s2-0
+                    (let ((s0-0 (cam-state-from-entity s2-0)))
+                     (cond
+                      ((= s0-0 *camera-base-mode*)
+                       (deactivate (-> gp-0 0))
+                       (master-base-region s2-0)
+                       (return #t)
+                       v0-21
+                       )
+                      (s0-0
+                       (set!
+                        sv-112
+                        (get-process *camera-dead-pool* camera-slave #x4000)
+                        )
+                       (let ((s1-0 (when sv-112
+                                    (let
+                                     ((t9-15
+                                       (method-of-type camera-slave activate)
+                                       )
+                                      )
+                                     (t9-15
+                                      (the-as camera-slave sv-112)
+                                      self
+                                      'camera-slave
+                                      (the-as pointer #x70004000)
+                                      )
+                                     )
+                                    (run-now-in-process
+                                     sv-112
+                                     cam-slave-init
+                                     s0-0
+                                     s2-0
+                                     )
+                                    (-> sv-112 ppointer)
+                                    )
+                              )
+                             )
+                        (cond
+                         (s1-0
+                          (setup-slave-for-hopefull
+                           (the-as camera-slave (ppointer->process s1-0))
+                           )
+                          (cond
+                           ((master-is-hopeful-better?
+                             (the-as camera-slave (ppointer->process gp-0))
+                             (the-as camera-slave (ppointer->process s1-0))
+                             )
+                            (deactivate (-> gp-0 0))
+                            (set! gp-0 s1-0)
+                            gp-0
+                            )
+                           (else
+                            (deactivate (-> s1-0 0))
+                            )
+                           )
+                          )
+                         (else
+                          (format
+                           0
+                           "ERROR <GMJ>: alternate region activate failed~%"
+                           )
+                          )
+                         )
+                        )
+                       )
+                      (else
+                       (let ((s1-1 format)
+                             (s0-1 0)
+                             )
+                        (set!
+                         sv-128
+                         "ERROR <GMJ>: alternate camera region '~S' didn't produce a state~%"
+                         )
+                        (let ((a2-10 (res-lump-struct s2-0 'name structure)))
+                         (s1-1 s0-1 sv-128 a2-10)
+                         )
+                        )
+                       )
+                      )
+                     )
+                    )
+                   (else
+                    (let ((s2-1 format)
+                          (s1-2 0)
+                          (s0-2
+                           "ERROR <GMJ>: alternate '~S' not found for '~S'~%"
+                           )
+                          )
+                     (set! sv-144 (-> s4-2 s3-2))
+                     (let ((a3-8 (res-lump-struct arg0 'name structure)))
+                      (s2-1 s1-2 s0-2 sv-144 a3-8)
+                      )
+                     )
+                    )
+                   )
+       )
+      )
+     )
+    )
+   )
+  (let
+   ((v1-48
+     (the
+      int
+      (*
+       300.0
+       (cam-slave-get-interp-time
+        (-> (the-as camera-slave (-> gp-0 0)) cam-entity)
+        )
+       )
+      )
+     )
+    )
+   (if (nonzero? (-> self force-blend))
+    (set! v1-48 (min v1-48 (the-as int (-> self force-blend-time))))
+    )
+   (send-event *camera* 'change-state (ppointer->process gp-0) v1-48)
+   )
+  #t
+  )
+
+;; definition for function master-check-regions
+(defbehavior master-check-regions camera-master ()
+  (let ((a1-0 (new 'stack-no-clear 'event-message-block)))
+   (set! (-> a1-0 from) self)
+   (set! (-> a1-0 num-params) 1)
+   (set! (-> a1-0 message) 'query-state)
+   (set! (-> a1-0 param 0) (the-as uint cam-eye))
+   (cond
+    ((send-event-function *camera* a1-0)
+     #f
+     )
+    ((or (not *target*) (logtest? (-> self master-options) 1))
+     (master-unset-region)
+     )
+    ((and
+      (logtest? (-> self master-options) 4)
+      (not (-> self on-ground))
+      (or
+       (not (-> self cam-entity))
+       (zero?
+        (logand #x20000 (cam-slave-get-flags (-> self cam-entity) 'flags))
+        )
+       )
+      )
+     #f
+     )
+    ((and
+      (-> self cam-entity)
+      (not
+       (in-cam-entity-volume?
+        (target-pos 0)
+        (-> self cam-entity)
+        0.0
+        'cutoutvol
+        )
+       )
+      (or
+       (in-cam-entity-volume? (target-pos 0) (-> self cam-entity) 1024.0 'pvol)
+       (in-cam-entity-volume? (target-pos 0) (-> self cam-entity) 1024.0 'vol)
+       (and
+        (not
+         ((method-of-type res-lump get-property-data)
+          (-> self cam-entity)
+          'pvol
+          'exact
+          0.0
+          (the-as pointer #f)
+          (the-as (pointer res-tag) #f)
+          *res-static-buf*
+          )
+         )
+        (not
+         ((method-of-type res-lump get-property-data)
+          (-> self cam-entity)
+          'vol
+          'exact
+          0.0
+          (the-as pointer #f)
+          (the-as (pointer res-tag) #f)
+          *res-static-buf*
+          )
+         )
+        )
+       )
+      )
+     #f
+     )
+    (else
+     (let ((v1-17 (-> *camera-engine* alive-list next0)))
+      *camera-engine*
+      (let ((gp-5 (-> v1-17 next0)))
+       (while (!= v1-17 (-> *camera-engine* alive-list-end))
+        (let ((s5-1 (-> (the-as connection v1-17) param1)))
+         (when
+          (and
+           (not
+            (in-cam-entity-volume?
+             (target-pos 0)
+             (the-as entity s5-1)
+             1024.0
+             'cutoutvol
+             )
+            )
+           (in-cam-entity-volume? (target-pos 0) (the-as entity s5-1) 0.0 'vol)
+           )
+          (if (master-switch-to-entity (the-as entity s5-1))
+           (return #t)
+           )
+          )
+         )
+        (set! v1-17 gp-5)
+        *camera-engine*
+        (set! gp-5 (-> gp-5 next0))
+        )
+       )
+      )
+     (master-unset-region)
+     )
+    )
+   )
+  )
+
+;; failed to figure out what this is:
+(defstate cam-master-active (camera-master)
+  :enter
+  (behavior ()
+   (if (and (nonzero? camera-master-debug) *debug-segment*)
+    (add-connection *debug-engine* self camera-master-debug self #f #f)
+    )
+   (none)
+   )
+  :trans
+  (behavior ()
+   (when (not (paused?))
+    (vector-negate!
+     (-> self local-down)
+     (vector-normalize-copy!
+      (-> self local-down)
+      (-> *standard-dynamics* gravity)
+      1.0
+      )
+     )
+    (cam-master-effect)
+    )
+   (none)
+   )
+  :code
+  (behavior ()
+   (while #t
+    (if (and *dproc* *debug-segment*)
+     (add-frame
+      (-> *display* frames (-> *display* on-screen) frame profile-bar 0)
+      'camera
+      (new 'static 'rgba :r #x40 :b #x40 :a #x80)
+      )
+     )
+    (set! (-> self string-min target y) (-> self stringMinHeight))
+    (set! (-> self string-max target y) (-> self stringMaxHeight))
+    (set! (-> self string-min target z) (-> self stringMinLength))
+    (set! (-> self string-max target z) (-> self stringMaxLength))
+    (set!
+     (-> self string-push-z)
+     (fmax
+      (-> self string-min value z)
+      (-> *CAMERA-bank* default-string-push-z)
+      )
+     )
+    (master-track-target)
+    (set! (-> last-try-to-look-at-data horz) 0.0)
+    (set! (-> last-try-to-look-at-data vert) 0.0)
+    (let ((a1-1 (new 'stack-no-clear 'event-message-block)))
+     (set! (-> a1-1 from) self)
+     (set! (-> a1-1 num-params) 1)
+     (set! (-> a1-1 message) 'slave-option?)
+     (set! (-> a1-1 param 0) (the-as uint #x4000))
+     (when (send-event-function *camera* a1-1)
+      (set! (-> self string-min target y) 18432.0)
+      (set! (-> self string-max target y) 18432.041)
+      )
+     )
+    (when (not (paused?))
+     (update! (-> self string-min) (the-as vector #f))
+     (update! (-> self string-max) (the-as vector #f))
+     (master-check-regions)
+     )
+    (set!
+     (-> self string-min value x)
+     (fmin (-> self string-min value x) (+ -4.096 (-> self string-max value x)))
+     )
+    (set!
+     (-> self string-min value y)
+     (fmin (-> self string-min value y) (+ -4.096 (-> self string-max value y)))
+     )
+    (set!
+     (-> self string-min value z)
+     (fmin (-> self string-min value z) (+ -4.096 (-> self string-max value z)))
+     )
+    (if (nonzero? (-> self no-intro))
+     (+! (-> self no-intro) -1)
+     )
+    (if (nonzero? (-> self force-blend))
+     (+! (-> self force-blend) -1)
+     )
+    (suspend)
+    )
+   (none)
+   )
+  )
+
+;; definition of type list-keeper
+(deftype list-keeper (process)
+  ((dummy float  :offset-assert 112)
+   )
+  :heap-base #x10
+  :method-count-assert 14
+  :size-assert         #x74
+  :flag-assert         #xe00100074
+  )
+
+;; definition for method 3 of type list-keeper
+(defmethod inspect list-keeper ((obj list-keeper))
+  (let ((t9-0 (method-of-type process inspect)))
+   (t9-0 obj)
+   )
+  (format #t "~T~Tdummy: ~f~%" (-> obj dummy))
+  obj
+  )
+
+;; failed to figure out what this is:
+(defstate list-keeper-active (camera-master)
+  :code
+  (behavior ()
+   (while #t
+    (change-to-last-brother self)
+    (suspend)
+    )
+   (none)
+   )
+  )
+
+;; definition for function list-keeper-init
+;; INFO: Return type mismatch int vs none.
+(defbehavior list-keeper-init camera-master ()
+  (go list-keeper-active)
+  0
+  (none)
+  )
+
+;; definition for function cam-master-init
+;; INFO: Return type mismatch int vs none.
+;; Used lq/sq
+(defbehavior cam-master-init camera-master ()
+  (set! *camera* self)
+  (stack-size-set! (-> self main-thread) 512)
+  (logclear! (-> self mask) (process-mask menu))
+  (set! (-> self master-options) (the-as uint 4))
+  (set! (-> self num-slaves) 0)
+  (dotimes (v1-5 2)
+   (set! (-> self slave v1-5) (the-as (pointer camera-slave) #f))
+   )
+  (set! (-> self slave-options) (the-as uint 560))
+  (set! (-> self view-off-param-save) 1.0)
+  (set! (-> self changer) (the-as uint (process->ppointer self)))
+  (set! (-> self cam-entity) #f)
+  (set! (-> self stringMinHeight) (-> *CAMERA-bank* default-string-min-y))
+  (set! (-> self stringMaxHeight) (-> *CAMERA-bank* default-string-max-y))
+  (set! (-> self stringMinLength) (-> *CAMERA-bank* default-string-min-z))
+  (set! (-> self stringMaxLength) (-> *CAMERA-bank* default-string-max-z))
+  (set! (-> self stringCliffHeight) 163840.0)
+  (set! (-> self no-intro) (the-as uint 0))
+  (set! (-> self force-blend) (the-as uint 0))
+  (set! (-> self string-push-z) (-> *CAMERA-bank* default-string-push-z))
+  (let ((gp-0 (new-stack-vector0)))
+   (set! (-> gp-0 y) (-> *CAMERA-bank* default-string-min-y))
+   (set! (-> gp-0 z) (-> *CAMERA-bank* default-string-min-z))
+   (init! (-> self string-min) gp-0 40.96 409.6 0.9)
+   (set! (-> gp-0 y) (-> *CAMERA-bank* default-string-max-y))
+   (set! (-> gp-0 z) (-> *CAMERA-bank* default-string-max-z))
+   (init! (-> self string-max) gp-0 40.96 409.6 0.9)
+   )
+  (set! (-> self outro-t-step) 0.0)
+  (set! (-> self drawable-target) (the-as handle #f))
+  (set! (-> self which-bone) 0)
+  (let ((a1-3 (new-stack-vector0)))
+   (TODO-RENAME-10 (-> self target-spline) a1-3)
+   )
+  (set! (-> self pov-handle) (the-as handle #f))
+  (set! (-> self pov-bone) 0)
+  (let ((gp-1 (get-process *camera-dead-pool* list-keeper #x4000)))
+   (cond
+    ((when gp-1
+      (let ((t9-5 (method-of-type list-keeper activate)))
+       (t9-5
+        (the-as list-keeper gp-1)
+        self
+        'list-keeper
+        (the-as pointer #x70004000)
+        )
+       )
+      (run-next-time-in-process gp-1 list-keeper-init)
+      (-> gp-1 ppointer)
+      )
+     )
+    (else
+     (format 0 "ERROR <GMJ>: master camera list keeper failed to activate~%")
+     )
+    )
+   )
+  (let ((gp-2 (get-process *camera-dead-pool* camera-slave #x4000)))
+   (cond
+    ((when gp-2
+      (let ((t9-9 (method-of-type camera-slave activate)))
+       (t9-9
+        (the-as camera-slave gp-2)
+        self
+        'camera-slave
+        (the-as pointer #x70004000)
+        )
+       )
+      (run-next-time-in-process gp-2 cam-slave-init cam-free-floating #f)
+      (-> gp-2 ppointer)
+      )
+     )
+    (else
+     (format 0 "ERROR <GMJ>: first slave failed to activate~%")
+     )
+    )
+   )
+  (set!
+   (-> self water-drip)
+   (create-launch-control group-rain-screend-drop self)
+   )
+  (set! (-> self water-drip-time) (the-as uint -18000))
+  (go cam-master-active)
+  0
+  (none)
+  )

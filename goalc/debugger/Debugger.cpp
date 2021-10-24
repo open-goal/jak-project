@@ -95,10 +95,10 @@ bool Debugger::attach_and_break() {
   if (is_valid() && !m_attached) {
     // reset and start the stop watcher
     clear_signal_queue();
-    start_watcher();
 
     // attach and send a break command
     if (xdbg::attach_and_break(m_debug_context.tid)) {
+      start_watcher();
       // wait for the signal queue to get a stop and pop it.
       auto info = pop_signal();
 
@@ -225,6 +225,8 @@ std::vector<BacktraceFrame> Debugger::get_backtrace(u64 rip, u64 rsp) {
         frame.rip_info.func_debug->stack_usage) {
       fmt::print("{} from {}\n", frame.rip_info.function_name, frame.rip_info.func_debug->obj_name);
       // we're good!
+      auto disasm = disassemble_at_rip(frame.rip_info);
+      fmt::print("{}\n", disasm.text);
       u64 rsp_at_call = rsp + *frame.rip_info.func_debug->stack_usage;
 
       u64 next_rip = 0;
@@ -564,6 +566,9 @@ bool Debugger::get_symbol_value(const std::string& sym_name, u32* output) {
  * Starts the debugger watch thread which watches the target process to see if it stops.
  */
 void Debugger::start_watcher() {
+  if (m_watcher_running) {
+    stop_watcher();
+  }
   assert(!m_watcher_running);
   m_watcher_running = true;
   m_watcher_should_stop = false;
@@ -609,6 +614,15 @@ void Debugger::watcher() {
           break;
         case xdbg::SignalInfo::DISAPPEARED:
           printf("Target has disappeared. Maybe it quit or was killed.\n");
+          handle_disappearance();
+          break;
+        case xdbg::SignalInfo::ILLEGAL_INSTR:
+          printf(
+              "Target has crashed due to an illegal instruction. Run (:di) to get more "
+              "information.\n");
+          break;
+        case xdbg::SignalInfo::UNKNOWN:
+          printf("Target has encountered an unknown signal. Run (:di) to get more information.\n");
           break;
         default:
           printf("[Debugger] unhandled signal in watcher: %d\n", int(signal_info.kind));
@@ -627,6 +641,14 @@ void Debugger::watcher() {
       std::this_thread::sleep_for(std::chrono::milliseconds(10));
     }
   }
+}
+
+void Debugger::handle_disappearance() {
+  m_watcher_should_stop = true;
+  xdbg::close_memory(m_debug_context.tid, &m_memory_handle);
+  xdbg::detach_and_resume(m_debug_context.tid);
+  m_context_valid = false;
+  m_attached = false;
 }
 
 Debugger::SignalInfo Debugger::pop_signal() {

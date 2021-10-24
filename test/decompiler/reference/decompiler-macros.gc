@@ -111,7 +111,7 @@
   ;; perhaps when deleting a process you could have it set self to #f?
   ;; I don't see this happen anywhere though, so it's not clear.
   `(let ((the-pp ,ppointer))
-     (the process (if the-pp (-> the-pp 0 self)))
+     (the process-tree (if the-pp (-> the-pp 0 self)))
      )
   )
 
@@ -754,4 +754,27 @@
         :random-mult 1
         :flags (sp-flag copy-from-other-field)
         )
+  )
+
+(defmacro cmove-#f-zero (dest condition src)
+  `(if (zero? ,condition)
+       (set! ,dest #f)
+       (set! ,dest ,src)
+       )
+   )
+
+(defmacro send-event (proc msg &rest params)
+  "Send an event to a process. This should be used over send-event-function"
+
+  `(with-pp
+    (let ((event-data (new 'stack-no-clear 'event-message-block)))
+        (set! (-> event-data from) pp)
+        (set! (-> event-data num-params) ,(length params))
+        (set! (-> event-data message) ,msg)
+        ,@(let ((ep 0))
+          (apply (lambda (x) `(set! (-> event-data param ep) (the-as uint ,x)) (inc! ep)) params)
+          )
+        (send-event-function ,proc event-data)
+        )
+    )
   )

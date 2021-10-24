@@ -271,7 +271,7 @@ std::vector<goos::Object> Compiler::get_list_as_vector(const goos::Object& o,
       n++;
     } else if (cur->is_empty_list()) {
       if (rest_out) {
-        *rest_out = goos::EmptyListObject::make_new();
+        *rest_out = goos::Object::make_empty_list();
       }
       return result;
     }

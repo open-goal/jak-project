@@ -5,6 +5,7 @@
 #include "game/graphics/dma/dma_chain_read.h"
 #include "game/graphics/opengl_renderer/Shader.h"
 #include "game/graphics/texture/TexturePool.h"
+#include "game/graphics/opengl_renderer/Profiler.h"
 
 /*!
  * Matches the bucket-id enum in GOAL
@@ -12,11 +13,19 @@
 enum class BucketId {
   BUCKET0 = 0,
   BUCKET1 = 1,
+  SKY_DRAW = 3,
   TFRAG_TEX_LEVEL0 = 5,
+  TFRAG_TEX_LEVEL1 = 12,
   SHRUB_TEX_LEVEL0 = 19,
+  SHRUB_TEX_LEVEL1 = 25,
   ALPHA_TEX_LEVEL0 = 31,
+  SKY_BLEND_LEVEL0 = 32,
+  ALPHA_TEX_LEVEL1 = 38,
+  SKY_BLEND_LEVEL1 = 39,
   PRIS_TEX_LEVEL0 = 48,
+  PRIS_TEX_LEVEL1 = 51,
   WATER_TEX_LEVEL0 = 57,
+  WATER_TEX_LEVEL1 = 60,
   // ...
   PRE_SPRITE_TEX = 65,  // maybe it's just common textures?
   SPRITE = 66,
@@ -49,7 +58,9 @@ struct SharedRenderState {
 class BucketRenderer {
  public:
   BucketRenderer(const std::string& name, BucketId my_id) : m_name(name), m_my_id(my_id) {}
-  virtual void render(DmaFollower& dma, SharedRenderState* render_state) = 0;
+  virtual void render(DmaFollower& dma,
+                      SharedRenderState* render_state,
+                      ScopedProfilerNode& prof) = 0;
   std::string name_and_id() const;
   virtual ~BucketRenderer() = default;
   bool& enabled() { return m_enabled; }
@@ -69,7 +80,7 @@ class BucketRenderer {
 class EmptyBucketRenderer : public BucketRenderer {
  public:
   EmptyBucketRenderer(const std::string& name, BucketId my_id);
-  void render(DmaFollower& dma, SharedRenderState* render_state) override;
+  void render(DmaFollower& dma, SharedRenderState* render_state, ScopedProfilerNode& prof) override;
   bool empty() const override { return true; }
   void draw_debug_window() override {}
 };

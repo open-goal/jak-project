@@ -29,6 +29,8 @@ enum class ShaderId {
   DEBUG_RED = 4,
   SPRITE_CPU = 5,
   SPRITE_CPU_AFAIL = 6,
+  SKY,
+  SKY_BLEND,
   MAX_SHADERS
 };
 

@@ -213,8 +213,20 @@ void ObjectFileDB::get_objs_from_dgo(const std::string& filename, const Config& 
   // get all obj files...
   for (uint32_t i = 0; i < header.object_count; i++) {
     auto obj_header = reader.read<DgoHeader>();
-    assert(reader.bytes_left() >= obj_header.object_count);
     assert_string_empty_after(obj_header.name, 60);
+    if (i == header.object_count - 1) {
+      if (reader.bytes_left() == obj_header.object_count - 0x30) {
+        if (config.is_pal) {
+          lg::warn("Skipping {} because it is a broken PAL object", obj_header.name);
+          reader.ffwd(reader.bytes_left());
+          continue;
+        } else {
+          assert(false);
+        }
+      }
+    } else {
+      assert(reader.bytes_left() >= obj_header.object_count);
+    }
 
     if (std::string(obj_header.name).find("-ag") != std::string::npos) {
       lg::error(
@@ -368,7 +380,8 @@ std::string ObjectFileDB::generate_obj_listing() {
       std::string dgos = "[";
       for (auto& y : x.dgo_names) {
         assert(y.length() >= 5);
-        dgos += "\"" + y.substr(0, y.length() - 4) + "\", ";
+        std::string new_str = y == "NO-XGO" ? y : y.substr(0, y.length() - 4);
+        dgos += "\"" + new_str + "\", ";
       }
       dgos.pop_back();
       dgos.pop_back();

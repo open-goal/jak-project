@@ -205,8 +205,8 @@
   )
 
 ;; definition for method 51 of type muse
-;; INFO: Return type mismatch int vs float.
-(defmethod dummy-51 muse ((obj muse))
+;; INFO: Return type mismatch int vs object.
+(defmethod dummy-51 muse ((obj muse) (arg0 vector))
   (dotimes (s5-0 2)
    (let ((v1-2 (rand-vu-int-range 3 (+ (-> obj node-list length) -1))))
     (sp-launch-particles-var
@@ -222,13 +222,18 @@
      )
     )
    )
-  (the-as float 0)
+  (the-as object 0)
   )
 
 ;; definition for method 39 of type muse
 (defmethod common-post muse ((obj muse))
-  (spool-push *art-control* (-> obj anim name) 0 obj -99.0)
-  (dummy-51 obj)
+  (let* ((a0-1 *art-control*)
+         (t9-0 (method-of-object a0-1 spool-push))
+         (a1-0 (-> obj anim name))
+         )
+   (t9-0 a0-1 a1-0 0 obj -99.0)
+   (dummy-51 obj (the-as vector a1-0))
+   )
   ((method-of-type nav-enemy common-post) obj)
   (none)
   )
@@ -253,15 +258,13 @@
   )
 
 ;; definition for method 44 of type muse
-;; INFO: Return type mismatch none vs object.
 (defmethod dummy-44 muse ((obj muse) (arg0 process) (arg1 event-message-block))
-  (the-as object (go muse-caught))
+  (go muse-caught)
   )
 
 ;; definition for method 43 of type muse
-;; INFO: Return type mismatch none vs object.
 (defmethod dummy-43 muse ((obj muse) (arg0 process) (arg1 event-message-block))
-  (the-as object (go muse-caught))
+  (go muse-caught)
   )
 
 ;; failed to figure out what this is:
@@ -409,8 +412,13 @@ nav-enemy-default-event-handler
       )
      )
     (until (ja-done? 0)
-     (spool-push *art-control* (-> self anim name) 0 self -99.0)
-     (dummy-51 self)
+     (let* ((a0-10 *art-control*)
+            (t9-7 (method-of-object a0-10 spool-push))
+            (a1-5 (-> self anim name))
+            )
+      (t9-7 a0-10 a1-5 0 self -99.0)
+      (dummy-51 self (the-as vector a1-5))
+      )
      (suspend)
      (let ((a0-12 (-> self skel root-channel 0)))
       (set!
@@ -734,28 +742,9 @@ nav-enemy-default-event-handler
         )
        )
       )
-     (let ((a1-10 (new 'stack-no-clear 'event-message-block)))
-      (set! (-> a1-10 from) self)
-      (set! (-> a1-10 num-params) 2)
-      (set! (-> a1-10 message) 'trans)
-      (set! (-> a1-10 param 0) (the-as uint 'save))
-      (set! (-> a1-10 param 1) (the-as uint (-> self old-target-pos)))
-      (send-event-function *target* a1-10)
-      )
-     (let ((a1-11 (new 'stack-no-clear 'event-message-block)))
-      (set! (-> a1-11 from) self)
-      (set! (-> a1-11 num-params) 1)
-      (set! (-> a1-11 message) 'matrix)
-      (set! (-> a1-11 param 0) (the-as uint 'play-anim))
-      (send-event-function (ppointer->process (-> *target* sidekick)) a1-11)
-      )
-     (let ((a1-12 (new 'stack-no-clear 'event-message-block)))
-      (set! (-> a1-12 from) self)
-      (set! (-> a1-12 num-params) 1)
-      (set! (-> a1-12 message) 'blend-shape)
-      (set! (-> a1-12 param 0) (the-as uint #t))
-      (send-event-function *target* a1-12)
-      )
+     (send-event *target* 'trans 'save (-> self old-target-pos))
+     (send-event (ppointer->process (-> *target* sidekick)) 'matrix 'play-anim)
+     (send-event *target* 'blend-shape #t)
      (if (!= *kernel-boot-message* 'play)
       (set!
        (-> self trans-hook)
@@ -819,26 +808,14 @@ nav-enemy-default-event-handler
       self
       'ambient-volume
       )
-     (let ((a1-24 (new 'stack-no-clear 'event-message-block)))
-      (set! (-> a1-24 from) self)
-      (set! (-> a1-24 num-params) 1)
-      (set! (-> a1-24 message) 'blend-shape)
-      (set! (-> a1-24 param 0) (the-as uint #f))
-      (send-event-function *target* a1-24)
-      )
+     (send-event *target* 'blend-shape #f)
      (cond
       ((!= *kernel-boot-message* 'play)
        (set-blackout-frames 0)
        (ja-channel-set! 0)
        (ja-post)
        (dummy-48 (-> self collide-info))
-       (let ((a1-25 (new 'stack-no-clear 'event-message-block)))
-        (set! (-> a1-25 from) self)
-        (set! (-> a1-25 num-params) 1)
-        (set! (-> a1-25 message) 'trans)
-        (set! (-> a1-25 param 0) (the-as uint 'reset))
-        (send-event-function *target* a1-25)
-        )
+       (send-event *target* 'trans 'reset)
        (let
         ((gp-4
           (ppointer->handle
@@ -848,31 +825,19 @@ nav-enemy-default-event-handler
             (the float (-> self entity extra perm task))
             #f
             self
-            #f
+            (the-as fact-info #f)
             )
            )
           )
          )
-        (let ((a1-27 (new 'stack-no-clear 'event-message-block)))
-         (set! (-> a1-27 from) self)
-         (set! (-> a1-27 num-params) 0)
-         (set! (-> a1-27 message) 'pickup)
-         (send-event-function (handle->process (the-as handle gp-4)) a1-27)
-         )
+        (send-event (handle->process (the-as handle gp-4)) 'pickup)
         (while (handle->process (the-as handle gp-4))
          (suspend)
          )
         )
        )
       (else
-       (let ((a1-29 (new 'stack-no-clear 'event-message-block)))
-        (set! (-> a1-29 from) self)
-        (set! (-> a1-29 num-params) 2)
-        (set! (-> a1-29 message) 'trans)
-        (set! (-> a1-29 param 0) (the-as uint 'restore))
-        (set! (-> a1-29 param 1) (the-as uint (-> self old-target-pos)))
-        (send-event-function *target* a1-29)
-        )
+       (send-event *target* 'trans 'restore (-> self old-target-pos))
        (set-blackout-frames 0)
        (set-blackout-frames 30)
        )
@@ -883,7 +848,8 @@ nav-enemy-default-event-handler
    )
   :post
   (behavior ()
-   (dummy-51 self)
+   (local-vars (a1-0 none))
+   (dummy-51 self (the-as vector a1-0))
    (level-hint-surpress!)
    (kill-current-level-hint '() '() 'exit)
    (ja-post)
@@ -910,11 +876,11 @@ nav-enemy-default-event-handler
    :run-travel-speed (meters 10.0)
    :run-rotate-speed (degrees 999.99994)
    :run-acceleration (meters 5.0)
-   :run-turn-time #x2d
+   :run-turn-time (seconds 0.15)
    :walk-travel-speed (meters 10.0)
    :walk-rotate-speed (degrees 999.99994)
    :walk-acceleration (meters 1.0)
-   :walk-turn-time #x2d
+   :walk-turn-time (seconds 0.15)
    :attack-shove-back (meters 3.0)
    :attack-shove-up (meters 2.0)
    :shadow-size (meters 2.0)
@@ -949,6 +915,7 @@ nav-enemy-default-event-handler
   )
 
 ;; definition for method 11 of type muse
+;; INFO: Return type mismatch object vs none.
 ;; Used lq/sq
 (defmethod copy-defaults! muse ((obj muse) (arg0 res-lump))
   (stack-size-set! (-> obj main-thread) 512)

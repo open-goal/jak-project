@@ -7,6 +7,7 @@
 #include "decompiler/ObjectFile/ObjectFileDB.h"
 #include "common/goos/Reader.h"
 #include "common/util/BitUtils.h"
+#include "common/util/FontUtils.h"
 
 namespace decompiler {
 namespace {
@@ -98,7 +99,7 @@ GameTextResult process_game_text(ObjectFileData& data) {
     }
 
     // escape characters
-    result.text[text_id] = goos::get_readable_string(text.c_str());
+    result.text[text_id] = convert_from_jak1_encoding(text.c_str());
 
     // remember what we read (-1 for the type tag)
     auto string_start = (text_label.offset / 4) - 1;
@@ -146,7 +147,8 @@ std::string write_game_text(
   }
 
   // write!
-  std::string result = fmt::format("(language-count {})\n", langauges.size());
+  std::string result;  // = "\xEF\xBB\xBF";  // UTF-8 encode (don't need this anymore)
+  result += fmt::format("(language-count {})\n", langauges.size());
   result += "(group-name \"common\")\n";
   for (auto& x : text_by_id) {
     result += fmt::format("(#x{:04x}\n  ", x.first);

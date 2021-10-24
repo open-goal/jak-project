@@ -24,10 +24,12 @@ add_library(common
         util/dgo_util.cpp
         util/DgoReader.cpp
         util/DgoWriter.cpp
+        util/diff.cpp
         util/FileUtil.cpp
         util/json_util.cpp
         util/Timer.cpp
         util/print_float.cpp
+        util/FontUtils.cpp
         )
 
 target_link_libraries(common fmt lzokay replxx libzstd_static)
