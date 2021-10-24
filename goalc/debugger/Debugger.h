@@ -160,7 +160,11 @@ class Debugger {
   bool m_watcher_should_stop = false;
   bool m_watcher_running = false;
   bool m_regs_valid = false;
+  bool m_attach_response = false;
+  bool m_attach_return = false;
+  std::condition_variable m_attach_cv;
 
+  bool try_start_watcher();
   void start_watcher();
   void stop_watcher();
   void watcher();

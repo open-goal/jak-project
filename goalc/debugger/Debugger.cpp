@@ -4,6 +4,7 @@
  * Uses xdbg functions to debug an OpenGOAL target.
  */
 
+#include <mutex>
 #include "Debugger.h"
 #include "common/goal_constants.h"
 #include "common/symbols.h"
@@ -13,6 +14,10 @@
 #include "goalc/emitter/Register.h"
 #include "goalc/listener/Listener.h"
 #include "third-party/fmt/core.h"
+
+namespace {
+std::mutex watcher_mutex;
+}
 
 /*!
  * Is the target halted? If we don't know or aren't connected, returns false.
@@ -97,8 +102,7 @@ bool Debugger::attach_and_break() {
     clear_signal_queue();
 
     // attach and send a break command
-    if (xdbg::attach_and_break(m_debug_context.tid)) {
-      start_watcher();
+    if (try_start_watcher()) {
       // wait for the signal queue to get a stop and pop it.
       auto info = pop_signal();
 
@@ -563,6 +567,19 @@ bool Debugger::get_symbol_value(const std::string& sym_name, u32* output) {
 }
 
 /*!
+ * Attempt to start the debugger watch thread and evaluate attach success. Stops if unsuccessful.
+ */
+bool Debugger::try_start_watcher() {
+  start_watcher();
+  std::unique_lock<std::mutex> lk(watcher_mutex);
+  m_attach_cv.wait(lk, [&]() { return m_attach_return; });
+  if (!m_attach_response) {
+    stop_watcher();
+  }
+  return m_attach_response;
+}
+
+/*!
  * Starts the debugger watch thread which watches the target process to see if it stops.
  */
 void Debugger::start_watcher() {
@@ -572,6 +589,7 @@ void Debugger::start_watcher() {
   assert(!m_watcher_running);
   m_watcher_running = true;
   m_watcher_should_stop = false;
+  m_attach_return = false;
   m_watcher_thread = std::thread(&Debugger::watcher, this);
 }
 
@@ -595,6 +613,14 @@ Debugger::~Debugger() {
  * The watcher thread.
  */
 void Debugger::watcher() {
+  // watcher will now attach to target.
+  // linux doesn't require the attachment and watching to be on the same thread, but windows does.
+  m_attach_response = xdbg::attach_and_break(m_debug_context.tid);
+  m_attach_return = true;
+  m_attach_cv.notify_all();
+  if (!m_attach_response)
+    return;
+
   xdbg::SignalInfo signal_info;
   while (!m_watcher_should_stop) {
     // we just sit in a loop, waiting for stops.

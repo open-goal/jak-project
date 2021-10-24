@@ -21,9 +21,8 @@
 #include <sys/wait.h>
 #include <fcntl.h>
 #elif _WIN32
+#define NOMINMAX
 #include <Windows.h>
-#undef min
-#undef max
 #endif
 
 namespace xdbg {
@@ -302,7 +301,9 @@ bool cont_now(const ThreadID& tid) {
 ThreadID::ThreadID(DWORD _pid, DWORD _tid) : pid(_pid), tid(_tid) {}
 
 ThreadID::ThreadID(const std::string& str) {
-  // id = std::stoi(str);
+  auto sep = str.find('-');
+  pid = std::stoi(str.substr(0, sep));
+  tid = std::stoi(str.substr(sep+1));
 }
 
 std::string ThreadID::to_string() const {
@@ -320,7 +321,7 @@ void win_print_last_error(const std::string& msg) {
       FORMAT_MESSAGE_FROM_SYSTEM | FORMAT_MESSAGE_ALLOCATE_BUFFER | FORMAT_MESSAGE_IGNORE_INSERTS,
       NULL, GetLastError(), MAKELANGID(LANG_NEUTRAL, SUBLANG_DEFAULT), (LPTSTR)&errorText, 0, NULL);
 
-  printf("[Debugger] %s Win Err: %s\n", msg.c_str(), errorText);
+  printf("[Debugger] %s Win Err: %s", msg.c_str(), errorText);
 }
 
 bool attach_and_break(const ThreadID& tid) {
@@ -365,6 +366,33 @@ bool cont_now(const ThreadID& tid) {
   }
 
   return true;
+}
+
+bool check_stopped(const ThreadID& tid, SignalInfo* out) {
+  DEBUG_EVENT debugEvent;
+
+  if (WaitForDebugEvent(&debugEvent, INFINITE)) {
+    printf("[Debugger] debug event %d\n", debugEvent.dwDebugEventCode);
+    switch (debugEvent.dwDebugEventCode) {
+      case CREATE_PROCESS_DEBUG_EVENT:
+        out->kind = SignalInfo::BREAK;
+        break;
+      default:
+        out->kind = SignalInfo::UNKNOWN;
+        break;
+    }
+    return true;
+    /*
+    if (!ContinueDebugEvent(debugEvent.dwProcessId, debugEvent.dwThreadId, DBG_CONTINUE)) {
+      win_print_last_error("ContinueDebugEvent");
+      return false;
+    }*/
+  } else {
+    win_print_last_error("WaitForDebugEvent");
+    return false;
+  }
+
+  return false;
 }
 
 bool open_memory(const ThreadID& tid, MemoryHandle* out) {
@@ -422,23 +450,6 @@ bool write_goal_memory(const u8* src_buffer,
     win_print_last_error("WriteProcessMemory");
     return false;
   }
-  return true;
-}
-
-bool check_stopped(const ThreadID& tid, SignalInfo* out) {
-  DEBUG_EVENT debugEvent;
-
-  if (WaitForDebugEvent(&debugEvent, INFINITE)) {
-    printf("[Debugger] debug event %d\m", debugEvent.dwDebugEventCode);
-    if (!ContinueDebugEvent(tid.pid, tid.tid, DBG_CONTINUE)) {
-      win_print_last_error("ContinueDebugEvent");
-      return false;
-    }
-  } else {
-    win_print_last_error("WaitForDebugEvent");
-    return false;
-  }
-
   return true;
 }
 
