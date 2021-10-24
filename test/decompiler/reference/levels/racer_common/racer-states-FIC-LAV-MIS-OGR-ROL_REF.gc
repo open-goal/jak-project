@@ -380,45 +380,32 @@
     (send-event
      (ppointer->process (-> self manipy))
      'trans-hook
-     (lambda :behavior racer () (let* ((a0-0 (-> self parent-override))
-                                       (v1-0 (if a0-0
-                                              (-> a0-0 0 self-override)
-                                              )
-                                        )
-                                       )
-                                 (set!
-                                  (-> self root-override trans quad)
-                                  (-> v1-0 racer bike-trans quad)
-                                  )
-                                 (let ((a0-4 (-> v1-0 racer bike-quat quad)))
-                                  (set!
-                                   (-> self root-override quat vec quad)
-                                   a0-4
-                                   )
-                                  )
-                                 (set!
-                                  (-> self root-override scale quad)
-                                  (-> v1-0 racer bike-scale quad)
-                                  )
-                                 (set!
-                                  (-> self draw light-index)
-                                  (the-as uint 255)
-                                  )
-                                 (let ((a0-9 (-> v1-0 draw color-mult quad)))
-                                  (set! (-> self draw color-mult quad) a0-9)
-                                  )
-                                 (let
-                                  ((a0-11 (-> v1-0 draw color-emissive quad)))
-                                  (set!
-                                   (-> self draw color-emissive quad)
-                                   a0-11
-                                   )
-                                  )
-                                 (let ((f0-0 (-> v1-0 draw secondary-interp)))
-                                  (set! (-> self draw secondary-interp) f0-0)
-                                  f0-0
-                                  )
-                                 )
+     (lambda :behavior manipy
+      ()
+      (let ((v1-0 (ppointer->process (-> self parent))))
+       (set!
+        (-> self root trans quad)
+        (-> (the-as target v1-0) racer bike-trans quad)
+        )
+       (let ((a0-4 (-> (the-as target v1-0) racer bike-quat quad)))
+        (set! (-> self root quat vec quad) a0-4)
+        )
+       (set!
+        (-> self root scale quad)
+        (-> (the-as target v1-0) racer bike-scale quad)
+        )
+       (set! (-> self draw light-index) (the-as uint 255))
+       (let ((a0-9 (-> (the-as target v1-0) draw color-mult quad)))
+        (set! (-> self draw color-mult quad) a0-9)
+        )
+       (let ((a0-11 (-> (the-as target v1-0) draw color-emissive quad)))
+        (set! (-> self draw color-emissive quad) a0-11)
+        )
+       (let ((f0-0 (-> (the-as target v1-0) draw secondary-interp)))
+        (set! (-> self draw secondary-interp) f0-0)
+        f0-0
+        )
+       )
       )
      )
     (send-event (ppointer->process (-> self manipy)) 'anim-mode 'loop)
@@ -431,14 +418,14 @@
     (send-event
      (ppointer->process (-> self manipy))
      'eval
-     (lambda :behavior racer
+     (lambda :behavior manipy
       ()
-      (s.w! (+ self 260) #f)
+      (set! (-> self clone-copy-trans) #f)
       (let ((v1-1 (-> *target-shadow-control* settings shadow-dir quad)))
        (set! (-> *racer-shadow-control* settings shadow-dir quad) v1-1)
        )
       (set! (-> self draw shadow-ctrl) *racer-shadow-control*)
-      (let ((gp-0 (-> self parent-override)))
+      (let ((gp-0 (-> self parent)))
        (set!
         (-> (the-as target (-> gp-0 0)) racer front-blade)
         (new 'process 'joint-mod (joint-mod-handler-mode rotate) self 4)
