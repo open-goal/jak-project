@@ -300,3 +300,41 @@
 (defmethod dummy-9 draw-control ((obj draw-control))
   (&-> (-> obj skeleton) texture-level)
   )
+
+
+(defmacro defskelgroup (name art-name joint-geom joint-anim lods
+                        &key (shadow 0)
+                        &key bounds
+                        &key edge
+                        &key (version 6) ;; do NOT use this!
+                        )
+
+  "define a new static skeleton group"
+
+  `(let ((skel (new 'static 'skeleton-group
+                        :art-group-name ,(symbol->string art-name)
+                        :bounds ,bounds
+                        :longest-edge ,edge
+                        :version ,version
+                        :max-lod ,(length lods)
+                        :shadow ,shadow
+                        )))
+        ;; set joint geometry and joint bones
+        (set! (-> skel jgeo) joint-geom)
+        (set! (-> skel janim) joint-anim)
+        
+        ;; set lods
+        ,@(apply-i (lambda (x i)
+                      `(begin
+                          (set! (-> skel mgeo ,i) ,(car x))
+                          (set! (-> skel lod-dist ,i) ,(cadr x))
+                          )
+                      ) lods)
+
+        ;; define skel group
+        (define ,name skel)
+        )
+  )
+
+
+
