@@ -305,7 +305,7 @@ ThreadID::ThreadID(DWORD _pid, DWORD _tid) : pid(_pid), tid(_tid) {}
 ThreadID::ThreadID(const std::string& str) {
   auto sep = str.find('-');
   pid = std::stoi(str.substr(0, sep));
-  tid = std::stoi(str.substr(sep+1));
+  tid = std::stoi(str.substr(sep + 1));
 }
 
 std::string ThreadID::to_string() const {
