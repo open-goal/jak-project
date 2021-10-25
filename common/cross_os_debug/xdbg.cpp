@@ -332,7 +332,6 @@ void win_print_last_error(const std::string& msg) {
 int cont_status = -1;  // hack? -1 = ignore; 0 = waiting for cont; 1 = cont'd, will resume
 std::mutex m;
 std::condition_variable cv;
-std::vector<ThreadID> threads_to_cont;
 
 bool attach_and_break(const ThreadID& tid) {
   if (!DebugActiveProcess(tid.pid)) {
@@ -448,11 +447,6 @@ bool check_stopped(const ThreadID& tid, SignalInfo* out) {
 
   if (WaitForDebugEvent(&debugEvent, INFINITE)) {
     bool is_other = tid.pid != debugEvent.dwProcessId || tid.tid != debugEvent.dwThreadId;
-    if (is_other) {
-      // printf("[Debugger] got debug event %d on other\n", debugEvent.dwDebugEventCode);
-    } else {
-      // printf("[Debugger] got debug event %d\n", debugEvent.dwDebugEventCode);
-    }
 
     cont_status = 0;
     switch (debugEvent.dwDebugEventCode) {
@@ -461,18 +455,36 @@ bool check_stopped(const ThreadID& tid, SignalInfo* out) {
         auto exc = debugEvent.u.Exception.ExceptionRecord.ExceptionCode;
         if (is_other) {
           if (exc == EXCEPTION_BREAKPOINT) {
-            // printf("breakpoint in other!\n");
             out->kind = SignalInfo::BREAK;
           } else {
-            // don't care
+            // ignore exceptions outside goal thread
             ignore_debug_event();
           }
         } else {
-          if (exc == EXCEPTION_BREAKPOINT) {
-            out->kind = SignalInfo::BREAK;
-          } else {
-            out->kind = SignalInfo::EXCEPTION;
-            out->msg = fmt::format("[{:X}] {}", exc, win32_exception_code_to_charp(exc));
+          switch (exc) {
+            case EXCEPTION_BREAKPOINT:
+              out->kind = SignalInfo::BREAK;
+              break;
+            case EXCEPTION_ILLEGAL_INSTRUCTION:
+              out->kind = SignalInfo::ILLEGAL_INSTR;
+              break;
+            case EXCEPTION_INT_DIVIDE_BY_ZERO:
+            case EXCEPTION_FLT_DENORMAL_OPERAND:
+            case EXCEPTION_FLT_DIVIDE_BY_ZERO:
+            case EXCEPTION_FLT_INEXACT_RESULT:
+            case EXCEPTION_FLT_INVALID_OPERATION:
+            case EXCEPTION_FLT_OVERFLOW:
+            case EXCEPTION_FLT_UNDERFLOW:
+            case EXCEPTION_FLT_STACK_CHECK:
+              out->kind = SignalInfo::MATH_EXCEPTION;
+              break;
+            case EXCEPTION_INT_OVERFLOW:
+              ignore_debug_event();
+              break;
+            default:
+              out->kind = SignalInfo::EXCEPTION;
+              out->msg = fmt::format("[{:X}] {}", exc, win32_exception_code_to_charp(exc));
+              break;
           }
         }
       } break;
@@ -608,6 +620,7 @@ bool get_regs_now(const ThreadID& tid, Regs* out) {
 
 bool set_regs_now(const ThreadID& tid, const Regs& out) {
   CONTEXT context = {};
+  context.ContextFlags = CONTEXT_FULL;
   HANDLE hThr = OpenThread(THREAD_GET_CONTEXT, FALSE, tid.tid);
 
   if (hThr == NULL) {

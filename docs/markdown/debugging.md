@@ -1,6 +1,6 @@
 # OpenGOAL Debugger
 
-Currently the debugger only works on Linux. All the platform specific stuff is in `xdbg.cpp`.
+The debugger works on Windows and Linux. All the platform specific code is in `xdbg.cpp`. When attached to a target, things like exceptions from invalid memory access or divides by zero break into the debugger for inspection on the code or values that caused the break. The technical implementation of the debugger across multiple platforms means there will be a few differences in how it handles or displays certain things. For example, the debugger on Linux will break if the GOAL (EE) thread runs into a breakpoint, but on Windows this can be caused by any thread on the target as the thread that `(:break)` breaks is unspecified.
 
 ## Commands
 
