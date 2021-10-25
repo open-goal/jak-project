@@ -90,7 +90,8 @@ struct SignalInfo {
     ILLEGAL_INSTR,   // bad instruction
     UNKNOWN,         // some other signal that is unsupported
     DISAPPEARED,     // process disappeared (maybe killed by the user)
-    NOTHING,         // nothing of importance. Windows sends many irrelevant (to us) events.
+    NOTHING,         // nothing of importance. Windows sends many irrelevant (to us) events
+    EXCEPTION,       // some unhandled exception
 
   } kind = UNKNOWN;
 };

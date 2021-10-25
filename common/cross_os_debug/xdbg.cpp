@@ -379,62 +379,131 @@ bool cont_now(const ThreadID& tid) {
   return true;
 }
 
+DEBUG_EVENT debugEvent;
+void ignore_debug_event() {
+  if (!ContinueDebugEvent(debugEvent.dwProcessId, debugEvent.dwThreadId, DBG_CONTINUE)) {
+    win_print_last_error("ContinueDebugEvent");
+  }
+  cont_status = -1;
+}
+
+const char* win32_exception_code_to_charp(DWORD exc) {
+  switch (exc) {
+    case EXCEPTION_ACCESS_VIOLATION:
+      return "EXCEPTION_ACCESS_VIOLATION";
+    case EXCEPTION_ARRAY_BOUNDS_EXCEEDED:
+      return "EXCEPTION_ARRAY_BOUNDS_EXCEEDED";
+    case EXCEPTION_BREAKPOINT:
+      return "EXCEPTION_BREAKPOINT";
+    case EXCEPTION_DATATYPE_MISALIGNMENT:
+      return "EXCEPTION_DATATYPE_MISALIGNMENT";
+    case EXCEPTION_FLT_DENORMAL_OPERAND:
+      return "EXCEPTION_FLT_DENORMAL_OPERAND";
+    case EXCEPTION_FLT_DIVIDE_BY_ZERO:
+      return "EXCEPTION_FLT_DIVIDE_BY_ZERO";
+    case EXCEPTION_FLT_INEXACT_RESULT:
+      return "EXCEPTION_FLT_INEXACT_RESULT";
+    case EXCEPTION_FLT_INVALID_OPERATION:
+      return "EXCEPTION_FLT_INVALID_OPERATION";
+    case EXCEPTION_FLT_OVERFLOW:
+      return "EXCEPTION_FLT_OVERFLOW";
+    case EXCEPTION_FLT_STACK_CHECK:
+      return "EXCEPTION_FLT_STACK_CHECK";
+    case EXCEPTION_FLT_UNDERFLOW:
+      return "EXCEPTION_FLT_UNDERFLOW";
+    case EXCEPTION_ILLEGAL_INSTRUCTION:
+      return "EXCEPTION_ILLEGAL_INSTRUCTION";
+    case EXCEPTION_IN_PAGE_ERROR:
+      return "EXCEPTION_IN_PAGE_ERROR";
+    case EXCEPTION_INT_DIVIDE_BY_ZERO:
+      return "EXCEPTION_INT_DIVIDE_BY_ZERO";
+    case EXCEPTION_INT_OVERFLOW:
+      return "EXCEPTION_INT_OVERFLOW";
+    case EXCEPTION_INVALID_DISPOSITION:
+      return "EXCEPTION_INVALID_DISPOSITION";
+    case EXCEPTION_NONCONTINUABLE_EXCEPTION:
+      return "EXCEPTION_NONCONTINUABLE_EXCEPTION";
+    case EXCEPTION_PRIV_INSTRUCTION:
+      return "EXCEPTION_PRIV_INSTRUCTION";
+    case EXCEPTION_SINGLE_STEP:
+      return "EXCEPTION_SINGLE_STEP";
+    case EXCEPTION_STACK_OVERFLOW:
+      return "EXCEPTION_STACK_OVERFLOW";
+    default:
+      return "??????????";
+  }
+}
+
 bool check_stopped(const ThreadID& tid, SignalInfo* out) {
   {
     std::unique_lock<std::mutex> lk(m);
     if (cont_status != -1) {
       cv.wait(lk, [&] { return cont_status == 1; });
-      if (!ContinueDebugEvent(tid.pid, tid.tid, DBG_CONTINUE)) {
+      if (!ContinueDebugEvent(debugEvent.dwProcessId, debugEvent.dwThreadId, DBG_CONTINUE)) {
         win_print_last_error("ContinueDebugEvent");
       }
       cont_status = -1;
     }
   }
 
-  DEBUG_EVENT debugEvent;
-
   if (WaitForDebugEvent(&debugEvent, INFINITE)) {
     bool is_other = tid.pid != debugEvent.dwProcessId || tid.tid != debugEvent.dwThreadId;
     if (is_other) {
-      printf("[Debugger] got debug event %d on other\n", debugEvent.dwDebugEventCode);
+      // printf("[Debugger] got debug event %d on other\n", debugEvent.dwDebugEventCode);
     } else {
-      printf("[Debugger] got debug event %d\n", debugEvent.dwDebugEventCode);
+      // printf("[Debugger] got debug event %d\n", debugEvent.dwDebugEventCode);
     }
 
     cont_status = 0;
     switch (debugEvent.dwDebugEventCode) {
       case EXCEPTION_DEBUG_EVENT:  // 1
-        out->kind = SignalInfo::ILLEGAL_INSTR;
-        break;
+      {
+        auto exc = debugEvent.u.Exception.ExceptionRecord.ExceptionCode;
+        if (is_other) {
+          if (exc == EXCEPTION_BREAKPOINT) {
+            printf("breakpoint in other!\n");
+            out->kind = SignalInfo::BREAK;
+          } else {
+            // don't care
+            ignore_debug_event();
+          }
+        } else {
+          out->kind = SignalInfo::EXCEPTION;
+          printf("exception 0x%X thrown (%s)", exc, win32_exception_code_to_charp(exc));
+          if (exc == EXCEPTION_BREAKPOINT) {
+            out->kind = SignalInfo::BREAK;
+          }
+        }
+      } break;
       case CREATE_PROCESS_DEBUG_EVENT:  // 3
-        out->kind = SignalInfo::BREAK;
+        out->kind = SignalInfo::NOTHING;
+        if (debugEvent.u.CreateProcessInfo.hProcess != NULL &&
+            GetProcessId(debugEvent.u.CreateProcessInfo.hProcess) == debugEvent.dwProcessId) {
+        }
         break;
       case CREATE_THREAD_DEBUG_EVENT:  // 2
+      case EXIT_THREAD_DEBUG_EVENT:    // 4
       case LOAD_DLL_DEBUG_EVENT:       // 6
       case UNLOAD_DLL_DEBUG_EVENT:     // 7
-        // don't care about these
-        out->kind = SignalInfo::NOTHING;
-        if (!ContinueDebugEvent(debugEvent.dwProcessId, debugEvent.dwThreadId, DBG_CONTINUE)) {
-          win_print_last_error("ContinueDebugEvent other 2");
-        }
-        cont_status = 1;
-        return false;
-        break;
-      case EXIT_THREAD_DEBUG_EVENT:    // 4
-      case EXIT_PROCESS_DEBUG_EVENT:   // 5
       case OUTPUT_DEBUG_STRING_EVENT:  // 8
-      case RIP_EVENT:                  // 9
+        // don't care about these
+        // out->kind = SignalInfo::NOTHING;
+        ignore_debug_event();
+        break;
+      case EXIT_PROCESS_DEBUG_EVENT:  // 5
+      case RIP_EVENT:                 // 9
+        out->kind = SignalInfo::DISAPPEARED;
+        break;
       default:
-        // printf("[Debugger] unhandled debug event %d\n", debugEvent.dwDebugEventCode);
+        printf("[Debugger] unhandled debug event %d\n", debugEvent.dwDebugEventCode);
         out->kind = SignalInfo::UNKNOWN;
         break;
     }
-    return true;
   } else if (GetLastError() != 0x79) {  // semaphore timeout error, irrelevant.
     win_print_last_error("WaitForDebugEvent");
   }
 
-  return false;
+  return cont_status != -1;
 }
 
 bool open_memory(const ThreadID& tid, MemoryHandle* out) {
