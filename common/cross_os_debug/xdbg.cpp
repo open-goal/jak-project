@@ -23,6 +23,8 @@
 #elif _WIN32
 #define NOMINMAX
 #include <Windows.h>
+#include <mutex>
+#include <condition_variable>
 #endif
 
 namespace xdbg {
@@ -324,6 +326,16 @@ void win_print_last_error(const std::string& msg) {
   printf("[Debugger] %s Win Err: %s", msg.c_str(), errorText);
 }
 
+/*!
+ * Cross-thread things.
+ */
+int cont_status = -1;  // hack? -1 = ignore; 0 = waiting for cont; 1 = cont'd, will resume
+std::mutex m;
+std::condition_variable cv;
+DEBUG_EVENT debugEvent;
+std::vector<ThreadID> threads_to_cont;
+bool cont = false;
+
 bool attach_and_break(const ThreadID& tid) {
   if (!DebugActiveProcess(tid.pid)) {
     win_print_last_error(fmt::format("DebugActiveProcess w/ TID {}", tid.to_string()));
@@ -360,36 +372,101 @@ bool break_now(const ThreadID& tid) {
 }
 
 bool cont_now(const ThreadID& tid) {
+  /*
+  HANDLE hThr = OpenThread(THREAD_SUSPEND_RESUME, FALSE, tid.tid);
+
+  if (hThr == NULL) {
+    win_print_last_error("OpenThread");
+    return false;
+  }
+
+  auto result = ResumeThread(hThr);
+  CloseHandle(hThr);
+
+  if (!result) {
+    win_print_last_error("ResumeThread");
+    // return false;
+  }
+  */
+  // cont = true;
+  // return threads_to_cont.empty();
+  /*
   if (!ContinueDebugEvent(tid.pid, tid.tid, DBG_CONTINUE)) {
     win_print_last_error("ContinueDebugEvent");
     return false;
   }
+  */
+  if (cont_status != 0) {
+    return false;
+  }
 
+  cont_status = 1;
+  cv.notify_all();
   return true;
 }
 
 bool check_stopped(const ThreadID& tid, SignalInfo* out) {
-  DEBUG_EVENT debugEvent;
+  {
+    std::unique_lock<std::mutex> lk(m);
+    if (cont_status != -1) {
+      cv.wait(lk, [&] { return cont_status == 1; });
+      if (!ContinueDebugEvent(tid.pid, tid.tid, DBG_CONTINUE)) {
+        win_print_last_error("ContinueDebugEvent");
+      }
+      cont_status = -1;
+    }
+  }
+  /*
+  if (cont) {
+    for (auto& th : threads_to_cont) {
+      if (!ContinueDebugEvent(th.pid, th.tid, DBG_CONTINUE)) {
+        win_print_last_error("ContinueDebugEvent");
+      }
+    }
+    threads_to_cont.clear();
+    cont = false;
+  }*/
 
   if (WaitForDebugEvent(&debugEvent, INFINITE)) {
-    printf("[Debugger] debug event %d\n", debugEvent.dwDebugEventCode);
+    bool is_other = tid.pid != debugEvent.dwProcessId || tid.tid != debugEvent.dwThreadId;
+    if (is_other) {
+      printf("[Debugger] got debug event %d on other\n", debugEvent.dwDebugEventCode);
+    } else {
+      printf("[Debugger] got debug event %d\n", debugEvent.dwDebugEventCode);
+    }
+
+    cont_status = 0;
     switch (debugEvent.dwDebugEventCode) {
-      case CREATE_PROCESS_DEBUG_EVENT:
+      case EXCEPTION_DEBUG_EVENT:  // 1
+        out->kind = SignalInfo::ILLEGAL_INSTR;
+        break;
+      case CREATE_PROCESS_DEBUG_EVENT:  // 3
         out->kind = SignalInfo::BREAK;
         break;
+      case CREATE_THREAD_DEBUG_EVENT:  // 2
+      case LOAD_DLL_DEBUG_EVENT:       // 6
+      case UNLOAD_DLL_DEBUG_EVENT:     // 7
+        // don't care about these
+        out->kind = SignalInfo::NOTHING;
+        if (!ContinueDebugEvent(debugEvent.dwProcessId, debugEvent.dwThreadId, DBG_CONTINUE)) {
+          win_print_last_error("ContinueDebugEvent other 2");
+        }
+        cont_status = 1;
+        return false;
+        break;
+      case EXIT_THREAD_DEBUG_EVENT:    // 4
+      case EXIT_PROCESS_DEBUG_EVENT:   // 5
+      case OUTPUT_DEBUG_STRING_EVENT:  // 8
+      case RIP_EVENT:                  // 9
       default:
+        // printf("[Debugger] unhandled debug event %d\n", debugEvent.dwDebugEventCode);
         out->kind = SignalInfo::UNKNOWN;
         break;
     }
+    // threads_to_cont.push_back(ThreadID(debugEvent.dwProcessId, debugEvent.dwThreadId));
     return true;
-    /*
-    if (!ContinueDebugEvent(debugEvent.dwProcessId, debugEvent.dwThreadId, DBG_CONTINUE)) {
-      win_print_last_error("ContinueDebugEvent");
-      return false;
-    }*/
-  } else {
+  } else if (GetLastError() != 0x79) {  // semaphore timeout error, irrelevant.
     win_print_last_error("WaitForDebugEvent");
-    return false;
   }
 
   return false;
@@ -454,7 +531,8 @@ bool write_goal_memory(const u8* src_buffer,
 }
 
 bool get_regs_now(const ThreadID& tid, Regs* out) {
-  CONTEXT context;
+  CONTEXT context = {};
+  context.ContextFlags = CONTEXT_FULL;
   HANDLE hThr = OpenThread(THREAD_GET_CONTEXT, FALSE, tid.tid);
 
   if (hThr == NULL) {
@@ -493,7 +571,7 @@ bool get_regs_now(const ThreadID& tid, Regs* out) {
 }
 
 bool set_regs_now(const ThreadID& tid, const Regs& out) {
-  CONTEXT context;
+  CONTEXT context = {};
   HANDLE hThr = OpenThread(THREAD_GET_CONTEXT, FALSE, tid.tid);
 
   if (hThr == NULL) {

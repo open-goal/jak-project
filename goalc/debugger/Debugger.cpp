@@ -650,6 +650,9 @@ void Debugger::watcher() {
         case xdbg::SignalInfo::UNKNOWN:
           printf("Target has encountered an unknown signal. Run (:di) to get more information.\n");
           break;
+        case xdbg::SignalInfo::NOTHING:
+          // printf("Nothing happened.\n");
+          break;
         default:
           printf("[Debugger] unhandled signal in watcher: %d\n", int(signal_info.kind));
           assert(false);

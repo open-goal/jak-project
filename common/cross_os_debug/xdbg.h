@@ -41,7 +41,6 @@ struct MemoryHandle {
 
 #elif _WIN32
 struct ThreadID {
-  // todo - whatever windows uses to identify a thread
   DWORD pid = 0;
   DWORD tid = 0;
 
@@ -91,6 +90,7 @@ struct SignalInfo {
     ILLEGAL_INSTR,   // bad instruction
     UNKNOWN,         // some other signal that is unsupported
     DISAPPEARED,     // process disappeared (maybe killed by the user)
+    NOTHING,         // nothing of importance. Windows sends many irrelevant (to us) events.
 
   } kind = UNKNOWN;
 };
