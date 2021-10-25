@@ -461,25 +461,27 @@ bool check_stopped(const ThreadID& tid, SignalInfo* out) {
         auto exc = debugEvent.u.Exception.ExceptionRecord.ExceptionCode;
         if (is_other) {
           if (exc == EXCEPTION_BREAKPOINT) {
-            printf("breakpoint in other!\n");
+            // printf("breakpoint in other!\n");
             out->kind = SignalInfo::BREAK;
           } else {
             // don't care
             ignore_debug_event();
           }
         } else {
-          out->kind = SignalInfo::EXCEPTION;
-          printf("exception 0x%X thrown (%s)", exc, win32_exception_code_to_charp(exc));
           if (exc == EXCEPTION_BREAKPOINT) {
             out->kind = SignalInfo::BREAK;
+          } else {
+            out->kind = SignalInfo::EXCEPTION;
+            out->msg = fmt::format("[{:X}] {}", exc, win32_exception_code_to_charp(exc));
           }
         }
       } break;
       case CREATE_PROCESS_DEBUG_EVENT:  // 3
-        out->kind = SignalInfo::NOTHING;
         if (debugEvent.u.CreateProcessInfo.hProcess != NULL &&
             GetProcessId(debugEvent.u.CreateProcessInfo.hProcess) == debugEvent.dwProcessId) {
         }
+        // out->kind = SignalInfo::NOTHING;
+        ignore_debug_event();
         break;
       case CREATE_THREAD_DEBUG_EVENT:  // 2
       case EXIT_THREAD_DEBUG_EVENT:    // 4

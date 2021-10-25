@@ -94,6 +94,8 @@ struct SignalInfo {
     EXCEPTION,       // some unhandled exception
 
   } kind = UNKNOWN;
+
+  std::string msg;
 };
 
 // Functions
