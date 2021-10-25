@@ -332,9 +332,7 @@ void win_print_last_error(const std::string& msg) {
 int cont_status = -1;  // hack? -1 = ignore; 0 = waiting for cont; 1 = cont'd, will resume
 std::mutex m;
 std::condition_variable cv;
-DEBUG_EVENT debugEvent;
 std::vector<ThreadID> threads_to_cont;
-bool cont = false;
 
 bool attach_and_break(const ThreadID& tid) {
   if (!DebugActiveProcess(tid.pid)) {
@@ -372,30 +370,6 @@ bool break_now(const ThreadID& tid) {
 }
 
 bool cont_now(const ThreadID& tid) {
-  /*
-  HANDLE hThr = OpenThread(THREAD_SUSPEND_RESUME, FALSE, tid.tid);
-
-  if (hThr == NULL) {
-    win_print_last_error("OpenThread");
-    return false;
-  }
-
-  auto result = ResumeThread(hThr);
-  CloseHandle(hThr);
-
-  if (!result) {
-    win_print_last_error("ResumeThread");
-    // return false;
-  }
-  */
-  // cont = true;
-  // return threads_to_cont.empty();
-  /*
-  if (!ContinueDebugEvent(tid.pid, tid.tid, DBG_CONTINUE)) {
-    win_print_last_error("ContinueDebugEvent");
-    return false;
-  }
-  */
   if (cont_status != 0) {
     return false;
   }
@@ -416,16 +390,8 @@ bool check_stopped(const ThreadID& tid, SignalInfo* out) {
       cont_status = -1;
     }
   }
-  /*
-  if (cont) {
-    for (auto& th : threads_to_cont) {
-      if (!ContinueDebugEvent(th.pid, th.tid, DBG_CONTINUE)) {
-        win_print_last_error("ContinueDebugEvent");
-      }
-    }
-    threads_to_cont.clear();
-    cont = false;
-  }*/
+
+  DEBUG_EVENT debugEvent;
 
   if (WaitForDebugEvent(&debugEvent, INFINITE)) {
     bool is_other = tid.pid != debugEvent.dwProcessId || tid.tid != debugEvent.dwThreadId;
@@ -463,7 +429,6 @@ bool check_stopped(const ThreadID& tid, SignalInfo* out) {
         out->kind = SignalInfo::UNKNOWN;
         break;
     }
-    // threads_to_cont.push_back(ThreadID(debugEvent.dwProcessId, debugEvent.dwThreadId));
     return true;
   } else if (GetLastError() != 0x79) {  // semaphore timeout error, irrelevant.
     win_print_last_error("WaitForDebugEvent");
