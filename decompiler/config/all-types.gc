@@ -11229,6 +11229,7 @@
    (unknown-vector12  vector :inline  :offset 576)
    (unknown-vector13  vector :inline  :offset 592) ;; from - target::mod-var-jump
    (unknown-vector14  vector :inline  :offset 608) ;; from - logic-target::target-no-move-post
+   (unknown-vector15  vector :inline  :offset 624) ;; from - target-handler::target-exit
    (unknown-dynamics00  dynamics  :offset 656) ;; from - logic-target::bend-gravity
    (unknown-surface00  surface  :offset 660)
    (unknown-surface01  surface  :offset 664) ;; not a symbol - target-util::target-align-vel-z-adjust
@@ -11336,6 +11337,7 @@
    (unknown-int31  uint32 :offset 2384) ;; from target:: (event target-running-attack)
    (unknown-dword50 int64 :offset 2392) ;; from target-util::target-start-attack
    (unknown-dword51 int64 :offset 2400) ;; from target-util::target-start-attack
+   (unknown-pointer00 pointer :offset 2416) ;; from target-handler::target-standard-event-handler
    (unknown-symbol10 symbol :offset 2428) ;; from logic-target::post-flag-setup
    (unknown-dword60 int64 :offset 2432) ;; from target::(enter target-jump)
    (unknown-dword61 int64 :offset 2440) ;; from target::(enter target-jump)
@@ -11392,7 +11394,7 @@
     (dummy-9 () none 9)
     (dummy-10 () none 10)
     (dummy-11 () none 11)
-    (dummy-12 () none 12)
+    (dummy-12 (_type_ control-info process) collide-tri-result 12) ;; args could be wrong!
     )
   )
 
@@ -19625,7 +19627,7 @@
 (define-extern init-sidekick (function none :behavior sidekick))
 (define-extern target-generic-event-handler (function process int symbol event-message-block object :behavior target))
 (define-extern level-setup (function none :behavior target))
-(define-extern target-exit (function none))
+(define-extern target-exit (function none :behavior target))
 (define-extern target-calc-camera-pos (function none :behavior target))
 (define-extern do-target-shadow (function none :behavior target))
 (define-extern target-powerup-process (function none))
@@ -19741,11 +19743,11 @@
 (define-extern target-bonk-event-handler (function process int symbol event-message-block object :behavior target))
 (define-extern target-standard-event-handler (function process int symbol event-message-block object :behavior target))
 (define-extern target-send-attack (function process uint uint int int symbol :behavior target)) ;; i suspect the uints are actually structures/basics
-(define-extern target-attacked (function symbol uint uint process (state target) none :behavior target)) ;; unconfirmed, target-tube::(event target-tube-start)
-(define-extern target-apply-tongue function)
-(define-extern get-intersect-point function)
+(define-extern target-attacked (function symbol attack-info process process (state handle attack-info target) object :behavior target)) ;; unconfirmed, target-tube::(event target-tube-start)
+(define-extern target-apply-tongue (function vector symbol :behavior target))
+(define-extern get-intersect-point (function vector touching-prims-entry control-info process vector))
 (define-extern target-powerup-effect (function symbol none :behavior target))
-(define-extern target-shoved (function meters meters symbol (state target) none :behavior target))
+(define-extern target-shoved (function meters meters process (state target) object :behavior target))
 (define-extern target-dangerous-event-handler (function process int symbol event-message-block object :behavior target))
 (define-extern target-jump-event-handler (function process int symbol event-message-block object :behavior target))
 (define-extern target-walk-event-handler (function process int symbol event-message-block object :behavior target))
@@ -19833,13 +19835,23 @@
 
 ;; - Types
 
-; (deftype first-person-hud (UNKNOWN)
-;   ()
-;   :method-count-assert 0
-;   :size-assert         #x0
-;   :flag-assert         #x0
-;   ;; unrecognized get op: (set! v1 process) parent was UNKNOWN
-;   )
+(deftype first-person-hud (process)
+  (
+    (max-nb-of-particles int32 :offset-assert 112)
+    (nb-of-particles int32 :offset-assert 116)
+    (particles basic 3 :offset-assert 120)
+    (in-out-position int32 :offset-assert 132)
+    (sides-x-scale float :offset-assert 136)
+    (sides-y-scale float :offset-assert 140)
+    (x-offset int32 :offset-assert 144)
+  )
+  :method-count-assert 15
+  :heap-base           #x30
+  :size-assert         #x94
+  :flag-assert         #xf00300094
+  (:methods
+    (dumb-15 (_type_) none))
+  )
 
 ;; - Functions
 
@@ -19855,23 +19867,23 @@
 
 ;; - Unknowns
 
-;;(define-extern target-swim-jump-jump object) ;; unknown type
-;;(define-extern target-swim-up object) ;; unknown type
-;;(define-extern target-swim-jump object) ;; unknown type
-;;(define-extern target-swim-walk object) ;; unknown type
-;;(define-extern *yellow-jump-mods* object) ;; unknown type
-;;(define-extern target-edge-grab-jump object) ;; unknown type
-;;(define-extern target-edge-grab-off object) ;; unknown type
-;;(define-extern target-pole-flip-up-jump object) ;; unknown type
-;;(define-extern target-pole-flip-forward-jump object) ;; unknown type
-;;(define-extern target-pole-flip-up object) ;; unknown type
-;;(define-extern target-pole-flip-forward object) ;; unknown type
-;;(define-extern *fp-hud-stack* object) ;; unknown type
-;;(define-extern target-stance-look-around object) ;; unknown type
-;;(define-extern hud-normal object) ;; unknown type
-;;(define-extern hud-coming-in object) ;; unknown type
-;;(define-extern hud-going-out object) ;; unknown type
-;;(define-extern hud-waiting object) ;; unknown type
+(define-extern target-swim-jump-jump (state target)) ;; unknown type
+(define-extern target-swim-up (state target)) ;; unknown type
+(define-extern target-swim-jump (state target)) ;; unknown type
+(define-extern target-swim-walk (state target)) ;; unknown type
+(define-extern *yellow-jump-mods* surface) ;; unknown type
+(define-extern target-edge-grab-jump (state target)) ;; unknown type
+(define-extern target-edge-grab-off (state target)) ;; unknown type
+(define-extern target-pole-flip-up-jump (state target)) ;; unknown type
+(define-extern target-pole-flip-forward-jump (state target)) ;; unknown type
+(define-extern target-pole-flip-up (state target)) ;; unknown type
+(define-extern target-pole-flip-forward (state target)) ;; unknown type
+(define-extern *fp-hud-stack* pointer) ;; first-person-hud maybe?
+(define-extern target-stance-look-around (state target)) ;; unknown type
+(define-extern hud-normal (state hud)) ;; unknown type
+(define-extern hud-coming-in (state hud)) ;; unknown type
+(define-extern hud-going-out (state hud)) ;; unknown type
+(define-extern hud-waiting (state hud)) ;; unknown type
 
 
 ;; ----------------------
