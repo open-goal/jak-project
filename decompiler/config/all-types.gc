@@ -1021,6 +1021,7 @@
   (sunken-blue-eco-charger-all-hint #x34d)
 
   (swamp-rats-nest-hint #x358)
+  (daxter-you-can-shoot-with-yellow-eco #x359)
 
   (swamp-bats-hint #x364) ;; maybe we can ???? the bats. lol
   (flutflut-reminder #x368)
@@ -1064,6 +1065,8 @@
 
   (snow-frozen-crate #x42b) ;; task name?
   (snow-bumpers #x42c)
+
+  (daxter-maybe-you-can-shoot-better-goggles #x433)
 
   (cave-trap-nest-hint #x440)
 
@@ -7753,7 +7756,7 @@
   :flag-assert         #xd00000014
   (:methods
     (login (_type_) _type_ 9)
-    (dummy-10 (_type_ string type) joint 10)
+    (dummy-10 (_type_ string type) joint 10) ;; can also be art-joint-anim
     (dummy-11 (_type_ string type) int 11)
     (needs-link? (_type_) symbol 12)
     )
@@ -11315,6 +11318,7 @@
    (unknown-dword40  int64 :offset 2160) ;; from logic-target::target-compute-edge
    (unknown-dword41  int64 :offset 2168) ;; from logic-target::target-compute-edge
    (unknown-handle10  handle :offset 2176) ;; from logic-target::target-compute-pole - probably a swingpole
+   (unknown-spoolanim00     spool-anim          :offset 2184) ;; from target2::(trans target-stance-ambient)
    (unknown-int20     int32          :offset 2184) ;; from (anon-function 1 basebutton)
    (unknown-uint20     uint32          :offset 2184) ;; from target::(trans target-running-attack)
    (unknown-symbol20   symbol          :offset 2184) ;; from (anon-function 1 basebutton)
@@ -11351,9 +11355,11 @@
    (unknown-int40 int32 :offset 18880) ;; from logic-target::flag-setup
    (unknown-dword80 int64 :offset 18888) ;; from logic-target::post-flag-setup
    (unknown-dword81 int64 :offset 18896) ;; from logic-target::post-flag-setup
+   (unknown-float130 float :offset 18904) ;; from target2::target-swim-tilt
+   (unknown-float131 float :offset 18908) ;; from target2::target-swim-tilt
    (unknown-dword82 int64 :offset 18912) ;; from logic-target::reset-target-state
    (unknown-vector130 vector :inline :offset 18928) ;; from target::(code target-running-attack)
-   (unknown-float130 float :offset 18944) ;; from target::(code target-running-attack)
+   (unknown-float140 float :offset 18944) ;; from target::(code target-running-attack)
    (pad uint32 7)
    )
   :size-assert #x4a2c
@@ -11819,7 +11825,7 @@
    (saved-pos           transformq  :inline :offset-assert 480)
    (saved-owner         uint64              :offset-assert 528)
    (alt-neck-pos        vector      :inline :offset-assert 544)
-   (fp-hud              uint64              :offset-assert 560)
+   (fp-hud              handle              :offset-assert 560)
    (no-load-wait        uint64              :offset-assert 568)
    (no-look-around-wait uint64              :offset-assert 576)
    ;;(burn-proc           handle              :offset-assert 584) ;; PAL only
@@ -11845,7 +11851,7 @@
     (target-racing-get-off-hit-ground symbol)
     (target-death symbol)
     (target-hit-ground symbol)
-    (target-clone-anim)
+    (target-clone-anim handle)
     )
   )
 
@@ -19758,7 +19764,7 @@
 
 (define-extern target-jump (state float float symbol target)) ;; unknown type
 (define-extern target-hit (state symbol attack-info target)) ;; unknown type
-(define-extern target-eco-powerup (state target)) ;; unknown type
+(define-extern target-eco-powerup (state object float target)) ;; unknown type
 (define-extern target-load-wait (state target)) ;; unknown type
 (define-extern target-grab (state target)) ;; unknown type
 (define-extern target-look-around (state target)) ;; unknown type
@@ -19767,13 +19773,12 @@
 (define-extern target-flut-start (state handle target)) ;; unknown type
 (define-extern target-snowball-start (state handle target)) ;; unknown type
 (define-extern target-tube-start (state handle target)) ;; unknown type
-(define-extern target-periscope (state target)) ;; unknown type
+(define-extern target-periscope (state handle target)) ;; unknown type
 (define-extern target-fishing (state handle target)) ;; unknown type
 (define-extern target-final-door (state basic handle target)) ;; unknown type
-(define-extern target-play-anim (state target)) ;; unknown type
-(define-extern target-clone-anim (state target)) ;; unknown type
+(define-extern target-play-anim (state string handle target)) ;; unknown type
 (define-extern target-edge-grab (state target)) ;; unknown type
-(define-extern target-pole-cycle (state target)) ;; unknown type
+(define-extern target-pole-cycle (state handle target)) ;; unknown type
 (define-extern target-swim-stance (state target)) ;; unknown type
 (define-extern target-wade-stance (state target)) ;; unknown type
 
@@ -19792,7 +19797,7 @@
 (define-extern init-var-jump (function float float vector vector vector vector :behavior target)) ;; 1st and 2nd vectors may be symbols instead?
 (define-extern target-falling-anim (function int int symbol :behavior target))
 (define-extern target-falling-trans (function basic cpad-list none :behavior target)) ;; todo - power of 2 array access issue (fixed in another PR?)
-(define-extern target-falling-anim-trans function)
+(define-extern target-falling-anim-trans (function none :behavior target)) ;; unconfirmed
 
 ;; - Unknowns
 
@@ -19802,7 +19807,7 @@
 (define-extern target-attack-air (state symbol target)) ;; unknown type
 (define-extern target-wheel-flip (state float float target)) ;; unknown type
 (define-extern target-duck-stance (state target)) ;; unknown type
-(define-extern target-hit-ground-hard (state target)) ;; unknown type
+(define-extern target-hit-ground-hard (state float target)) ;; unknown type
 (define-extern target-flop-hit-ground (state symbol target)) ;; unknown type
 (define-extern target-yellow-jump-blast (state target)) ;; unknown type
 (define-extern target-swim-down (state target)) ;; unknown type
@@ -19815,7 +19820,7 @@
 (define-extern target-walk (state target)) ;; unknown type
 (define-extern target-running-attack (state target)) ;; unknown type
 (define-extern target-duck-high-jump-jump (state float float symbol target)) ;; unknown type
-(define-extern target-launch (state target)) ;; unknown type
+(define-extern target-launch (state float symbol vector int target)) ;; unknown type
 (define-extern target-duck-high-jump (state float float symbol target)) ;; unknown type
 (define-extern target-double-jump (state float float target)) ;; unknown type
 (define-extern target-duck-walk (state target)) ;; unknown type
@@ -19839,7 +19844,7 @@
   (
     (max-nb-of-particles int32 :offset-assert 112)
     (nb-of-particles int32 :offset-assert 116)
-    (particles basic 3 :offset-assert 120)
+    (particles hud-particle 3 :offset-assert 120)
     (in-out-position int32 :offset-assert 132)
     (sides-x-scale float :offset-assert 136)
     (sides-y-scale float :offset-assert 140)
@@ -19855,35 +19860,35 @@
 
 ;; - Functions
 
-(define-extern target-swim-tilt function)
+(define-extern target-swim-tilt (function float float float float float :behavior target))
 (define-extern projectile-init-by-other (function entity vector vector uint handle none :behavior projectile)) ;; 4th arg is `options`, 5th is `last-target`
-(define-extern first-person-hud-init-by-other function)
+(define-extern first-person-hud-init-by-other (function none :behavior first-person-hud))
 (define-extern disable-hud (function int none))
 (define-extern enable-hud (function none))
-(define-extern part-first-person-hud-left-func function)
-(define-extern part-first-person-hud-right-func function)
-(define-extern part-first-person-hud-selector-func function)
+(define-extern part-first-person-hud-left-func (function sparticle-system sparticle-cpuinfo matrix none))
+(define-extern part-first-person-hud-right-func (function sparticle-system sparticle-cpuinfo matrix none))
+(define-extern part-first-person-hud-selector-func (function sparticle-system sparticle-cpuinfo matrix none))
 (define-extern look-for-points-of-interest function)
 
 ;; - Unknowns
 
 (define-extern target-swim-jump-jump (state target)) ;; unknown type
 (define-extern target-swim-up (state target)) ;; unknown type
-(define-extern target-swim-jump (state target)) ;; unknown type
+(define-extern target-swim-jump (state float float target)) ;; unknown type
 (define-extern target-swim-walk (state target)) ;; unknown type
 (define-extern *yellow-jump-mods* surface) ;; unknown type
-(define-extern target-edge-grab-jump (state target)) ;; unknown type
+(define-extern target-edge-grab-jump (state float float target)) ;; unknown type
 (define-extern target-edge-grab-off (state target)) ;; unknown type
 (define-extern target-pole-flip-up-jump (state target)) ;; unknown type
-(define-extern target-pole-flip-forward-jump (state target)) ;; unknown type
-(define-extern target-pole-flip-up (state target)) ;; unknown type
-(define-extern target-pole-flip-forward (state target)) ;; unknown type
+(define-extern target-pole-flip-forward-jump (state float float target)) ;; unknown type
+(define-extern target-pole-flip-up (state object object float target)) ;; unknown type
+(define-extern target-pole-flip-forward (state float float float target)) ;; unknown type
 (define-extern *fp-hud-stack* pointer) ;; first-person-hud maybe?
 (define-extern target-stance-look-around (state target)) ;; unknown type
-(define-extern hud-normal (state hud)) ;; unknown type
-(define-extern hud-coming-in (state hud)) ;; unknown type
-(define-extern hud-going-out (state hud)) ;; unknown type
-(define-extern hud-waiting (state hud)) ;; unknown type
+(define-extern hud-normal (state first-person-hud)) ;; unknown type
+(define-extern hud-coming-in (state first-person-hud)) ;; unknown type
+(define-extern hud-going-out (state first-person-hud)) ;; unknown type
+(define-extern hud-waiting (state first-person-hud)) ;; unknown type
 
 
 ;; ----------------------
