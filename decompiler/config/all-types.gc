@@ -496,10 +496,11 @@
 (defenum bucket-id
     :type int32
     :bitfield #f
-
+    
     (bucket-1 1)
     (bucket-2 2)
     (sky-draw 3)
+    (bucket-4 4) ;; ocean
     (tfrag-tex0 5)
     ;; merc0 10
     ;; generic0 11
@@ -549,6 +550,7 @@
     (water-tex1 60)
     (bucket-61 61)
     (bucket-62 62)
+    (bucket-63 63) ; ocean
     ;; merc1 61
     ;; generic1 62
     (depth-cue 64)
@@ -7179,8 +7181,8 @@
 (define-extern *ocean-off* symbol)
 (define-extern *ocean-mid-off* symbol)
 (define-extern *ocean-near-off* symbol)
-(define-extern *ocean-heights* symbol)
-(define-extern *ocean-verts* symbol)
+(define-extern *ocean-heights* ocean-wave-info) ;; guess
+(define-extern *ocean-verts* (pointer vector)) ;; ret from ocean-generate-verts
 
 
 ;; ----------------------
@@ -11302,10 +11304,10 @@
    (unknown-smush00  smush-control :inline :offset 2288) ;; from (event target-fishing)
    (unknown-vector110  vector :inline :offset 2320) ;; from logic-target::flag-setup
    (unknown-vector111  vector :inline :offset 2336) ;; from logic-target::flag-setup
-   (unknown-int30  int32 :offset 2384) ;; from target-util::target-danger-set!
+   (unknown-symbol30  symbol :offset 2384) ;; from target-util::target-danger-set!
    (unknown-dword50 int64 :offset 2392) ;; from target-util::target-start-attack
    (unknown-dword51 int64 :offset 2400) ;; from target-util::target-start-attack
-   (unknown-symbol10 symbol :offset 2428) ;; from logic-target::post-flag-setup
+   (unknown-symbol40 symbol :offset 2428) ;; from logic-target::post-flag-setup
    (unknown-halfword00 int16 :offset 2488) ;; from logic-target::target-move-dist
    ;; these were determined from racer-collision-reaction.
    (history-length int16 :offset 2490)
@@ -11315,7 +11317,9 @@
    (unknown-dword70 int64 :offset 18888) ;; from logic-target::post-flag-setup
    (unknown-dword71 int64 :offset 18896) ;; from logic-target::post-flag-setup
    (unknown-dword72 int64 :offset 18912) ;; from logic-target::reset-target-state
-   (pad uint32 7)
+   (unknown-int50 uint32 :offset 18976) ;; from logic-target::print-target-stats
+   (unknown-soundid00 sound-id :offset 18980) ;; from powerups::target-powerup-process
+   (unknown-float130 float :offset 18984) ;; from powerups::target-powerup-process
    )
   :size-assert #x4a2c
   :method-count-assert 65
@@ -16738,7 +16742,7 @@
 (define-extern sp-adjust-launch (function sparticle-launchinfo sparticle-cpuinfo (inline-array sp-field-init-spec) none))
 (define-extern sp-euler-convert (function sparticle-launchinfo sparticle-cpuinfo none))
 (define-extern sp-rotate-system (function sparticle-launchinfo sparticle-cpuinfo transformq none))
-(define-extern sp-launch-particles-death (function sparticle-system sparticle-launcher sparticle-launchinfo none))
+(define-extern sp-launch-particles-death (function sparticle-system sparticle-launcher vector none))
 (define-extern sp-clear-queue (function none))
 (define-extern sp-relaunch-particle-2d (function object sparticle-launcher sparticle-cpuinfo sprite-vec-data-3d none))
 (define-extern sp-relaunch-particle-3d (function object sparticle-launcher sparticle-cpuinfo sprite-vec-data-3d none))
@@ -18245,17 +18249,17 @@
 
 ;; - Functions
 
-(define-extern birth-func-death-sparks function)
-(define-extern merc-death-spawn function)
+(define-extern birth-func-death-sparks (function none)) ;; does absolutely nothing
+(define-extern merc-death-spawn (function int vector vector none)) ;; i think the int is the id for the particle table
 
 ;; - Unknowns
 
-;;(define-extern *merc-death-globals* object) ;; unknown type
-;;(define-extern death-beach-puppy object) ;; unknown type
-;;(define-extern death-jungle-snake object) ;; unknown type
-;;(define-extern death-default object) ;; unknown type
-;;(define-extern death-warp-in object) ;; unknown type
-;;(define-extern death-warp-out object) ;; unknown type
+(define-extern *merc-death-globals* vector) ;; unknown type
+(define-extern death-beach-puppy death-info) ;; unknown type
+(define-extern death-jungle-snake death-info) ;; unknown type
+(define-extern death-default death-info) ;; unknown type
+(define-extern death-warp-in death-info) ;; unknown type
+(define-extern death-warp-out death-info) ;; unknown type
 
 
 ;; ----------------------
@@ -19383,7 +19387,7 @@
 (define-extern cam-launcher-joystick function)
 (define-extern launcher-init-by-other function)
 (define-extern touch-tracker-init (function object object object none))
-(define-extern process-drawable-pair-random-point! function)
+(define-extern process-drawable-pair-random-point! (function process-drawable process-drawable vector float vector))
 (define-extern birth-func-set-quat function)
 (define-extern draw-eco-beam (function vector vector none))
 
@@ -19591,7 +19595,7 @@
 (define-extern target-exit (function none))
 (define-extern target-calc-camera-pos (function none :behavior target))
 (define-extern do-target-shadow (function none :behavior target))
-(define-extern target-powerup-process (function none))
+(define-extern target-powerup-process (function none :behavior target))
 (define-extern flag-setup (function none :behavior target))
 (define-extern build-conversions (function vector vector :behavior target))
 (define-extern do-rotations1 (function quaternion :behavior target))
@@ -19707,7 +19711,7 @@
 (define-extern target-attacked (function symbol uint uint process (state target) object :behavior target)) ;; unconfirmed, target-tube::(event target-tube-start)
 (define-extern target-apply-tongue function)
 (define-extern get-intersect-point function)
-(define-extern target-powerup-effect function)
+(define-extern target-powerup-effect (function symbol none :behavior target))
 (define-extern target-shoved function)
 (define-extern target-dangerous-event-handler function)
 (define-extern target-jump-event-handler function)
@@ -20845,7 +20849,7 @@
 ;; - Functions
 
 (define-extern eco-blue-glow (function collide-shape-prim none))
-(define-extern cloud-track (function none))
+(define-extern cloud-track (function process-tree process-tree (function vector none) int int int symbol))
 
 
 ;; ----------------------
@@ -21263,18 +21267,18 @@
 
 ;; - Functions
 
-(define-extern ocean-interp-wave function)
-(define-extern ocean-generate-verts function)
-(define-extern draw-ocean-texture function)
-(define-extern ocean-init-buffer (function dma-buffer none)) ; not confirmed
-(define-extern draw-ocean-far (function dma-buffer none)) ; not confirmed
+(define-extern ocean-interp-wave (function ocean-wave-info uint none)) ;; unconfirmed
+(define-extern ocean-generate-verts (function (pointer vector) ocean-wave-info none)) ;; unconfirmed - pointer is *ocean-verts*
+(define-extern draw-ocean-texture (function dma-buffer (pointer vector) symbol none)) ;; unconfirmed - pointer is *ocean-verts*
+(define-extern ocean-init-buffer (function dma-buffer pointer))
+(define-extern draw-ocean-far (function dma-buffer profile-frame))
 (define-extern draw-ocean-mid (function dma-buffer none)) ; not confirmed
-(define-extern ocean-end-buffer (function dma-buffer none)) ; not confirmed
-(define-extern draw-ocean-near function)
-(define-extern init-ocean-far-regs function)
-(define-extern render-ocean-far function)
-(define-extern render-ocean-quad function)
-(define-extern draw-large-polygon-ocean function)
+(define-extern ocean-end-buffer (function dma-buffer pointer))
+(define-extern draw-ocean-near (function dma-buffer none)) ; not confirmed
+(define-extern init-ocean-far-regs (function none))
+(define-extern render-ocean-far (function dma-buffer int none))
+(define-extern render-ocean-quad (function ocean-mid-upload2 none))
+(define-extern draw-large-polygon-ocean (function none))
 (define-extern draw-ocean (function none))
 (define-extern update-ocean (function none))
 
@@ -21284,7 +21288,7 @@
 
 ;; - Unknowns
 
-;;(define-extern *swamp-low-ocean-marker* object) ;; unknown type
+(define-extern *swamp-low-ocean-marker* vector) ;; unknown type
 
 
 ;; ----------------------
@@ -21307,19 +21311,19 @@
 
 ;; - Functions
 
-(define-extern ocean-texture-add-constants function)
-(define-extern ocean-texture-add-envmap function)
-(define-extern ocean-texture-add-verts function)
-(define-extern ocean-texture-add-call-start function)
-(define-extern ocean-texture-add-call-rest function)
-(define-extern ocean-texture-add-verts-last function)
-(define-extern ocean-texture-add-call-done function)
-(define-extern ocean-texture-setup-constants function)
+(define-extern ocean-texture-add-constants (function dma-buffer pointer))
+(define-extern ocean-texture-add-envmap (function dma-buffer pointer))
+(define-extern ocean-texture-add-verts (function dma-buffer (pointer vector) pointer)) ;; pointer is *ocean-verts*
+(define-extern ocean-texture-add-call-start (function dma-buffer none)) ;; unconfirmed
+(define-extern ocean-texture-add-call-rest (function dma-buffer none)) ;; unconfirmed
+(define-extern ocean-texture-add-verts-last (function dma-buffer (pointer vector) (pointer vector) pointer)) ;; pointer is *ocean-verts* and unconfirmed
+(define-extern ocean-texture-add-call-done (function dma-buffer none)) ;; unconfirmed
+(define-extern ocean-texture-setup-constants (function ocean-texture-constants none))
 
 ;; - Unknowns
 
 (define-extern ocean-texture-vu1-block vu-function)
-;;(define-extern *ocean-texture-work* object) ;; unknown type
+(define-extern *ocean-texture-work* ocean-texture-work) ;; unknown type
 
 
 ;; ----------------------
