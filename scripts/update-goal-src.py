@@ -21,7 +21,8 @@ throw_error = False
 # list, it will remind you such a file was touched by making a root file
 # that will be picked up by git to shame you
 files_with_modifications = [
-  "target-util"
+  "target-util",
+  "ambient"
 ]
 
 for file in files:
