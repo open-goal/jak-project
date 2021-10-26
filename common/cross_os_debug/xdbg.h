@@ -51,7 +51,6 @@ struct ThreadID {
 };
 
 struct MemoryHandle {
-  int a;
 };
 #endif
 
