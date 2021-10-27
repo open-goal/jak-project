@@ -13,7 +13,24 @@ files = args.files.split(",")
 
 throw_error = False
 
+# files in this list have manual modifications in in code block
+# sometimes these modifications don't prevent a compiler error
+# and are easy to commit
+#
+# if you know of / add such a modification, you should append to this
+# list, it will remind you such a file was touched by making a root file
+# that will be picked up by git to shame you
+files_with_modifications = [
+  "target-util",
+  "ambient"
+]
+
 for file in files:
+  if file in files_with_modifications:
+    file_name = "{}.manual_restore_reminder".format(file)
+    with open(file_name, 'w') as fp:
+      pass
+
   disasm_path = "./decompiler_out/jak1/{}_disasm.gc".format(file)
   if not os.path.exists(disasm_path):
     print("{} doesn't exist!".format(disasm_path))
