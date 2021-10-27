@@ -390,3 +390,21 @@ Val* Compiler::compile_ubp(const goos::Object& form, const goos::Object& rest, E
 
   return get_none();
 }
+
+Val* Compiler::compile_d_sym_name(const goos::Object& form, const goos::Object& rest, Env* env) {
+  (void)env;
+  auto args = get_va(form, rest);
+  va_check(form, args, {goos::ObjectType::INTEGER}, {});
+  s32 ofs = args.unnamed.at(0).as_int();
+
+  if (!m_debugger.is_halted()) {
+    throw_compiler_error(form,
+                         "Cannot get symbol name from offset, the debugger must be connected and "
+                         "the target must be halted.");
+  }
+
+  fmt::print("symbol name for symbol {:X}h is {}\n", ofs,
+             m_debugger.get_symbol_name_from_offset(ofs));
+
+  return get_none();
+}

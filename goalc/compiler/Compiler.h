@@ -559,6 +559,7 @@ class Compiler {
   Val* compile_disasm(const goos::Object& form, const goos::Object& rest, Env* env);
   Val* compile_bp(const goos::Object& form, const goos::Object& rest, Env* env);
   Val* compile_ubp(const goos::Object& form, const goos::Object& rest, Env* env);
+  Val* compile_d_sym_name(const goos::Object& form, const goos::Object& rest, Env* env);
   u32 parse_address_spec(const goos::Object& form);
 
   // Macro

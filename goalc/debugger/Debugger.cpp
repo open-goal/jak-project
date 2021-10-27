@@ -567,6 +567,18 @@ bool Debugger::get_symbol_value(const std::string& sym_name, u32* output) {
 }
 
 /*!
+ * Get the value of a symbol by name. Returns if the symbol exists and populates output if it does.
+ */
+const char* Debugger::get_symbol_name_from_offset(s32 ofs) {
+  assert(is_valid());
+  auto kv = m_symbol_offset_to_name_map.find(ofs);
+  if (kv != m_symbol_offset_to_name_map.end()) {
+    return kv->second.c_str();
+  }
+  return "<invalid symbol offset>";
+}
+
+/*!
  * Attempt to start the debugger watch thread and evaluate attach success. Stops if unsuccessful.
  */
 bool Debugger::try_start_watcher() {
