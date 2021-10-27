@@ -324,7 +324,7 @@ void win_print_last_error(const std::string& msg) {
       NULL, GetLastError(), MAKELANGID(LANG_NEUTRAL, SUBLANG_DEFAULT), (LPTSTR)&errorText, 0, NULL);
 
   if (errorText == NULL) {
-    printf("[Debugger] %s Win Err", msg.c_str());
+    printf("[Debugger] %s Win Err\n", msg.c_str());
   } else {
     printf("[Debugger] %s Win Err: %s", msg.c_str(), errorText);
   }
@@ -487,7 +487,7 @@ bool check_stopped(const ThreadID& tid, SignalInfo* out) {
               break;
             default:
               out->kind = SignalInfo::EXCEPTION;
-              out->msg = fmt::format("[{:X}] {}", exc, win32_exception_code_to_charp(exc));
+              out->msg = fmt::format("{} [0x{:X}]", exc, win32_exception_code_to_charp(exc));
               break;
           }
         }

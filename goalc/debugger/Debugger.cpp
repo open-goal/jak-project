@@ -582,6 +582,13 @@ const char* Debugger::get_symbol_name_from_offset(s32 ofs) {
  * Attempt to start the debugger watch thread and evaluate attach success. Stops if unsuccessful.
  */
 bool Debugger::try_start_watcher() {
+#ifdef __linux
+  m_attach_response = xdbg::attach_and_break(m_debug_context.tid);
+  if (!m_attach_response)
+    return false;
+  start_watcher();
+  return true;
+#elif defined(_WIN32)
   start_watcher();
   std::unique_lock<std::mutex> lk(watcher_mutex);
   m_attach_cv.wait(lk, [&]() { return m_attach_return; });
@@ -589,6 +596,7 @@ bool Debugger::try_start_watcher() {
     stop_watcher();
   }
   return m_attach_response;
+#endif
 }
 
 /*!
@@ -625,13 +633,15 @@ Debugger::~Debugger() {
  * The watcher thread.
  */
 void Debugger::watcher() {
-  // watcher will now attach to target.
-  // linux doesn't require the attachment and watching to be on the same thread, but windows does.
+// watcher will now attach to target.
+// linux doesn't require the attachment and watching to be on the same thread, but windows does.
+#ifdef _WIN32
   m_attach_response = xdbg::attach_and_break(m_debug_context.tid);
   m_attach_return = true;
   m_attach_cv.notify_all();
   if (!m_attach_response)
     return;
+#endif
 
   xdbg::SignalInfo signal_info;
   while (!m_watcher_should_stop) {
@@ -662,6 +672,7 @@ void Debugger::watcher() {
         case xdbg::SignalInfo::UNKNOWN:
           printf("Target has encountered an unknown signal. Run (:di) to get more information.\n");
           break;
+#ifdef _WIN32
         case xdbg::SignalInfo::EXCEPTION:
           printf("Target raised an exception (%s). Run (:di) to get more information.\n",
                  signal_info.msg.c_str());
@@ -669,6 +680,7 @@ void Debugger::watcher() {
         case xdbg::SignalInfo::NOTHING:
           // printf("Nothing happened.\n");
           break;
+#endif
         default:
           printf("[Debugger] unhandled signal in watcher: %d\n", int(signal_info.kind));
           assert(false);
