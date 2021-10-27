@@ -7735,7 +7735,7 @@
    (fixed-qwc  uint32                        :offset-assert 4)
    (frame-qwc  uint32                        :offset-assert 8)
    (fixed      joint-anim-compressed-fixed   :offset-assert 12)
-   (data       uint32 1                      :offset-assert 16) ;; guess
+   (data       joint-anim-compressed-frame 1 :offset-assert 16)
    )
   :method-count-assert 9
   :size-assert         #x14
@@ -7783,7 +7783,7 @@
    (master-art-group-name string :offset 32)
    (master-art-group-index int32 :offset 36)
    (blerc-data (pointer uint8) :offset 40) ;; todo, this is probably something else
-   (frames pointer :offset 44) ;; this structure doesn't exist? it's a structure with an array of joint-anim-compressed-hdr starting at offset 12
+   (frames joint-anim-compressed-control :offset 44) ;; this structure doesn't exist? it's a structure with an array of joint-anim-compressed-hdr starting at offset 12
    (data joint-anim-compressed :dynamic :offset-assert 48)
    )
   :method-count-assert 13
@@ -7799,6 +7799,7 @@
   :size-assert         #x20
   :flag-assert         #xf00000020
   (:methods
+    (relocate (_type_ kheap (pointer uint8)) none :replace 7)
     (link-art! (_type_) art-group 13)
     (unlink-art! (_type_) int 14)
     )
@@ -10254,12 +10255,12 @@
    (target           uint64              :offset-assert 120)
    (callback         basic               :offset-assert 128)
    (linger-callback  basic               :offset-assert 132)
-   (duration         uint64              :offset-assert 136)
-   (linger-duration  uint64              :offset-assert 144)
-   (start-time       uint64              :offset-assert 152)
+   (duration         int64               :offset-assert 136)
+   (linger-duration  int64               :offset-assert 144)
+   (start-time       int64               :offset-assert 152)
    (offset           vector     :inline  :offset-assert 160)
    (userdata         uint64              :offset-assert 176)
-   (user-time        uint64  2           :offset-assert 184)
+   (user-time        int64   2           :offset-assert 184)
    (user-vector      vector  2  :inline  :offset-assert 208)
    (user-handle      uint32  2           :offset-assert 240)
    )
@@ -10276,11 +10277,11 @@
    (old-global-mask uint32  :offset-assert 136)
    (old-self-mask   uint32  :offset-assert 140)
    (old-parent-mask uint32  :offset-assert 144)
-   (look-at-target  uint64  :offset-assert 152)
-   (pov-target      uint64  :offset-assert 160)
-   (work-process    uint64  :offset-assert 168)
-   (anim-process    uint64  :offset-assert 176)
-   (start-time      uint64  :offset-assert 184)
+   (look-at-target  handle  :offset-assert 152)
+   (pov-target      handle  :offset-assert 160)
+   (work-process    handle  :offset-assert 168)
+   (anim-process    handle  :offset-assert 176)
+   (start-time      int64   :offset-assert 184)
    (callback        basic   :offset-assert 192)
    (userdata        basic   :offset-assert 196)
    (message         basic   :offset-assert 200)
@@ -15364,10 +15365,10 @@
 (define-extern matrix-from-control! (function matrix-stack joint matrix symbol matrix))
 (define-extern matrix-from-control-channel! (function matrix joint joint-control-channel matrix))
 (define-extern matrix-from-control-pair! (function matrix matrix joint matrix))
-(define-extern matrix-from-joint-anim-frame (function pointer int int matrix)) ;; ???
+(define-extern matrix-from-joint-anim-frame (function joint-anim-compressed-control int int matrix)) ;; ???
 (define-extern create-interpolated-joint-animation-frame (function joint-control int process-drawable int))
 (define-extern mem-size (function basic symbol int int))
-(define-extern jacc-mem-usage (function pointer memory-usage-block int int))
+(define-extern jacc-mem-usage (function joint-anim-compressed-control memory-usage-block int joint-anim-compressed-control))
 (define-extern joint-anim-inspect-elt (function joint-anim float joint-anim))
 (define-extern joint-anim-login (function joint-anim-drawable joint-anim-drawable))
 (define-extern joint-control-channel-eval (function joint-control-channel float))
@@ -19191,8 +19192,8 @@
 ;; - Functions
 
 (define-extern process-entity-status! (function process entity-perm-status symbol int))
-(define-extern process-grab? (function process symbol))
-(define-extern process-release? (function process symbol))
+(define-extern process-grab? (function process none :behavior process))
+(define-extern process-release? (function process symbol :behavior process))
 (define-extern ja-post (function none :behavior process-drawable))
 (define-extern make-nodes-from-jg (function art-joint-geo pair symbol cspace-array :behavior process-drawable))
 (define-extern dma-add-process-drawable (function process-drawable draw-control symbol dma-buffer none))
@@ -19203,7 +19204,7 @@
 (define-extern fill-skeleton-cache (function process-drawable int)) ;; idk
 (define-extern execute-math-engine (function int))
 (define-extern draw-joint-spheres (function process-drawable symbol))
-(define-extern anim-loop (function symbol :behavior process-drawable))
+(define-extern anim-loop (function none :behavior process-drawable))
 (define-extern ja-done? (function int symbol :behavior process-drawable))
 (define-extern ja-min? (function int symbol :behavior process-drawable))
 (define-extern ja-max? (function int symbol :behavior process-drawable))
@@ -19382,7 +19383,7 @@
 (define-extern process-drawable-from-entity! (function process-drawable res-lump none))
 (define-extern cam-launcher-long-joystick function)
 (define-extern hide-hud-quick (function none))
-(define-extern command-get-process function)
+(define-extern command-get-process (function basic process-drawable process))
 (define-extern camera-change-to (function string int symbol none)) ;; TODO - not confirmed yet
 (define-extern camera-look-at function)
 (define-extern camera-pov-from function)
