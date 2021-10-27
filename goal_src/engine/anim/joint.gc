@@ -139,8 +139,9 @@
   )
 
 ;; definition for function jacc-mem-usage
-;; INFO: Return type mismatch pointer vs int.
-(defun jacc-mem-usage ((arg0 joint-anim-compressed-control) (arg1 memory-usage-block) (arg2 int))
+(defun
+  jacc-mem-usage
+  ((arg0 joint-anim-compressed-control) (arg1 memory-usage-block) (arg2 int))
   (set! (-> arg1 length) (max 68 (-> arg1 length)))
   (set! (-> arg1 data 67 name) "joint-anim-compressed-control")
   (+! (-> arg1 data 67 count) 1)
@@ -187,6 +188,36 @@
   )
 
 ;; definition for method 0 of type joint-control
+(defmethod new joint-control ((allocation symbol) (type-to-make type) (arg0 int))
+  (let
+   ((v0-0
+     (object-new
+      allocation
+      type-to-make
+      (the-as int (+ (-> type-to-make size) (* 48 arg0)))
+      )
+     )
+    )
+   (set! (-> v0-0 allocated-length) arg0)
+   (set! (-> v0-0 active-channels) 0)
+   (set! (-> v0-0 root-channel) (-> v0-0 channel))
+   (set!
+    (-> v0-0 generate-frame-function)
+    (the-as
+     (function pointer int process-drawable none)
+     create-interpolated-joint-animation-frame
+     )
+    )
+   (set! (-> v0-0 prebind-function) #f)
+   (set! (-> v0-0 postbind-function) #f)
+   (set! (-> v0-0 effect) #f)
+   (dotimes (v1-4 arg0)
+    (set! (-> v0-0 channel v1-4 parent) v0-0)
+    )
+   (set! (-> v0-0 blend-index) -1)
+   v0-0
+   )
+  )
 
 ;; definition for method 9 of type joint-control-channel
 (defmethod dummy-9 joint-control-channel ((obj joint-control-channel))
@@ -533,36 +564,46 @@
   )
 
 ;; definition for method 7 of type art-group
-;; WARN: Function may read a register that is not set: a2
-(defmethod relocate art-group ((obj art-group) (arg0 int))
-  (local-vars (a2-0 none))
+;; INFO: Return type mismatch art-group vs none.
+(defmethod
+  relocate
+  art-group
+  ((obj art-group) (arg0 kheap) (arg1 (pointer uint8)))
   (let ((s4-0 (clear *temp-string*)))
-   (string<-charp s4-0 (the-as (pointer uint8) a2-0))
-   (cond
-    ((not obj)
-     (format 0 "ERROR: art-group ~A is not a valid file.~%" s4-0)
-     (the-as art-group #f)
-     )
-    ((not (type-type? (-> obj type) art-group))
-     (format 0 "ERROR: art-group ~A is not a art-group.~%" s4-0)
-     (the-as art-group #f)
-     )
-    ((not (file-info-correct-version? (-> obj info) (file-kind art-group) 0))
-     (the-as art-group #f)
-     )
-    (else
-     (let ((s5-1 (-> *level* loading-level)))
-      (if (or (not s5-1) (= (-> s5-1 name) 'default))
-       (login obj)
-       )
-      (if s5-1
-       (set-loaded-art (-> s5-1 art-group) obj)
-       )
-      )
-     obj
-     )
+   (string<-charp s4-0 arg1)
+   (set! obj (cond
+              ((not obj)
+               (format 0 "ERROR: art-group ~A is not a valid file.~%" s4-0)
+               (the-as art-group #f)
+               )
+              ((not (type-type? (-> obj type) art-group))
+               (format 0 "ERROR: art-group ~A is not a art-group.~%" s4-0)
+               (the-as art-group #f)
+               )
+              ((not
+                (file-info-correct-version?
+                 (-> obj info)
+                 (file-kind art-group)
+                 0
+                 )
+                )
+               (the-as art-group #f)
+               )
+              (else
+               (let ((s5-1 (-> *level* loading-level)))
+                (if (or (not s5-1) (= (-> s5-1 name) 'default))
+                 (login obj)
+                 )
+                (if s5-1
+                 (set-loaded-art (-> s5-1 art-group) obj)
+                 )
+                )
+               obj
+               )
+              )
     )
    )
+  (none)
   )
 
 ;; definition for method 5 of type art-mesh-geo
@@ -740,6 +781,7 @@
   0
   )
 
+;; definition for function joint-control-copy!
 (defun joint-control-copy! ((arg0 joint-control) (arg1 joint-control))
   (set! (-> arg0 blend-index) (-> arg1 blend-index))
   (set! (-> arg0 active-channels) (-> arg1 active-channels))
@@ -976,6 +1018,76 @@
    )
   )
 
+;; definition for function matrix-from-control!
+;; INFO: Return type mismatch (inline-array matrix) vs matrix.
+;; Used lq/sq
+(defun
+  matrix-from-control!
+  ((arg0 matrix-stack) (arg1 joint) (arg2 joint-control) (arg3 symbol))
+  (set! (-> arg0 top) (the-as matrix (-> arg0 data)))
+  (dotimes (s2-0 (-> arg2 active-channels))
+   (let* ((a2-1 (-> arg2 channel s2-0))
+          (v1-4 (-> a2-1 command))
+          (s1-0 64)
+          )
+    (cond
+     ((and (= arg3 'no-push) (= v1-4 'push1))
+      (matrix-from-control-channel!
+       (the-as matrix (&- (the-as pointer (-> arg0 top)) (the-as uint s1-0)))
+       arg1
+       a2-1
+       )
+      )
+     ((and (= arg3 'no-push) (= v1-4 'stack))
+      (set!
+       (-> arg0 top)
+       (the-as matrix (&- (the-as pointer (-> arg0 top)) (the-as uint s1-0)))
+       )
+      (let*
+       ((v1-10
+         (the-as matrix (&- (the-as pointer (-> arg0 top)) (the-as uint s1-0)))
+         )
+        (a3-1 (-> arg0 top))
+        (a0-10 (-> a3-1 vector 0 quad))
+        (a1-4 (-> a3-1 vector 1 quad))
+        (a2-2 (-> a3-1 vector 2 quad))
+        (a3-2 (-> a3-1 vector 3 quad))
+        )
+       (set! (-> v1-10 vector 0 quad) a0-10)
+       (set! (-> v1-10 vector 1 quad) a1-4)
+       (set! (-> v1-10 vector 2 quad) a2-2)
+       (set! (-> v1-10 vector 3 quad) a3-2)
+       )
+      )
+     ((= v1-4 'push)
+      (matrix-from-control-channel! (-> arg0 top) arg1 a2-1)
+      (set! (-> arg0 top) (the-as matrix (+ (the-as uint (-> arg0 top)) s1-0)))
+      )
+     ((or (= v1-4 'blend) (= v1-4 'push1))
+      (matrix-from-control-pair!
+       (the-as matrix (&- (the-as pointer (-> arg0 top)) (the-as uint s1-0)))
+       (the-as matrix a2-1)
+       arg1
+       )
+      )
+     ((= v1-4 'stack)
+      (set!
+       (-> arg0 top)
+       (the-as matrix (&- (the-as pointer (-> arg0 top)) (the-as uint s1-0)))
+       )
+      (let ((a1-8 (&- (the-as pointer (-> arg0 top)) (the-as uint s1-0)))
+            (v1-19 (-> arg0 top))
+            (f0-0 (-> a2-1 frame-interp))
+            )
+       (matrix-lerp! (the-as matrix a1-8) (the-as matrix a1-8) v1-19 f0-0)
+       )
+      )
+     )
+    )
+   )
+  (the-as matrix (-> arg0 data))
+  )
+
 ;; definition for method 9 of type cspace
 (defmethod dummy-9 cspace ((obj cspace) (arg0 basic))
   (set! (-> obj parent) #f)
@@ -1033,7 +1145,9 @@
   )
 
 ;; definition for function cspace<-transformq+world-trans!
-(defun cspace<-transformq+world-trans! ((arg0 cspace) (arg1 transformq) (arg2 vector))
+(defun
+  cspace<-transformq+world-trans!
+  ((arg0 cspace) (arg1 transformq) (arg2 vector))
   (matrix<-transformq+world-trans! (-> arg0 bone transform) arg1 arg2)
   )
 
@@ -1044,7 +1158,7 @@
 
 ;; definition for function cspace<-matrix-no-push-joint!
 ;; Used lq/sq
-(defun cspace<-matrix-no-push-joint! ((arg0 cspace) (arg1 matrix))
+(defun cspace<-matrix-no-push-joint! ((arg0 cspace) (arg1 joint-control))
   (let
    ((v1-2
      (matrix-from-control!
@@ -1116,6 +1230,14 @@
 ;; ERROR: function was not converted to expressions. Cannot decompile.
 
 ;; definition for function create-interpolated-joint-animation-frame
+(defun
+  create-interpolated-joint-animation-frame
+  ((arg0 joint-control) (arg1 int) (arg2 process-drawable))
+  ;(flatten-joint-control-to-spr (-> arg2 skel))
+  ;(make-joint-jump-tables)
+  ;(calc-animation-from-spr arg0 arg1)
+  0
+  )
 
 
 

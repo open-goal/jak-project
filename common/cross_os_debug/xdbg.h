@@ -50,8 +50,7 @@ struct ThreadID {
   ThreadID() = default;
 };
 
-struct MemoryHandle {
-};
+struct MemoryHandle {};
 #endif
 
 /*!
