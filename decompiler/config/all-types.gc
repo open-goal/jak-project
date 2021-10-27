@@ -10220,7 +10220,7 @@
 
 (declare-type sparticle-launch-group structure)
 (deftype part-spawner (process-drawable)
-  ((mode         sparticle-launch-group         :offset-assert 176) ;; takes a part-spawner as it's first arg in method 9
+  ((mode         (pointer sparticle-launch-group)         :offset-assert 176) ;; takes a part-spawner as it's first arg in method 9
    (enable       symbol         :offset-assert 180)
    (radius       meters         :offset-assert 184)
    (world-sphere sphere :inline :offset-assert 192)
@@ -10256,9 +10256,10 @@
   )
 
 (deftype camera-tracker (process)
-  ((grab-target     handle  :offset 120)
-   (grab-event      basic   :offset-assert 128)
-   (release-event   basic   :offset-assert 132)
+  ((entity-override entity-actor :score 100   :offset 52)
+   (grab-target     handle  :offset 120)
+   (grab-event      symbol   :offset-assert 128)
+   (release-event   symbol   :offset-assert 132)
    (old-global-mask uint32  :offset-assert 136)
    (old-self-mask   uint32  :offset-assert 140)
    (old-parent-mask uint32  :offset-assert 144)
@@ -10272,7 +10273,7 @@
    (message         basic   :offset-assert 200)
    (border-value    basic   :offset-assert 204)
    (mask-to-clear   uint32  :offset-assert 208)
-   (script          basic   :offset-assert 212)
+   (script          pair   :offset-assert 212)
    (script-line     pair   :offset-assert 216)
    (script-func     (function none)   :offset-assert 220) ;; TODO - unconfirmed, see generic-obs::lambda::33
    )
@@ -10280,18 +10281,19 @@
   :method-count-assert 15
   :size-assert         #xe0
   :flag-assert         #xf007000e0
-  ;; field ~Tuserdata is a basic loaded with a signed load
   (:methods
-    (dummy-14 (_type_ pair) none 14) ;; TODO - pair garbage, probably related to the `script`, find the caller
+    (dummy-14 (_type_ pair) process 14)
     )
   )
 
+(declare-type collide-shape-moving basic)
 (deftype touch-tracker (process-drawable)
-  ((duration     uint64  :offset-assert 176)
+  ((root-override collide-shape-moving :score 100 :offset 112)
+   (duration     uint64  :offset-assert 176)
    (target       handle  :offset-assert 184)
    (event        symbol   :offset-assert 192)
-   (run-function function   :offset-assert 196) ;; making this a (function none) is a decomp crash!
-   (callback     basic   :offset-assert 200)
+   (run-function (function none)   :offset-assert 196)
+   (callback     (function touch-tracker none)   :offset-assert 200)
    (event-mode   basic   :offset-assert 204) ;; not a basic!
    )
   :heap-base #x60
@@ -17826,7 +17828,7 @@
 (define-extern load-state-want-force-vis (function symbol symbol int))
 (define-extern command-get-param (function object object object))
 (define-extern entity-birth-no-kill (function entity none))
-(define-extern part-tracker-init (function sparticle-launch-group int (function part-tracker none) (pointer process-drawable) basic vector none :behavior part-tracker)) ;; TODO - basic is ALWAYS none, and yet its used :/
+(define-extern part-tracker-init (function sparticle-launch-group int (function part-tracker none) (pointer process-drawable) process collide-prim-core none :behavior part-tracker))
 (define-extern command-list-get-process (function object process))
 (define-extern command-get-quoted-param (function object object object))
 (define-extern command-get-int (function object int int))
@@ -19350,8 +19352,8 @@
 
 (define-extern *particle-quat* quaternion)
 (define-extern touch-tracker-idle (state touch-tracker))
-(define-extern cam-launcher-longfall (state camera-tracker))
-(define-extern cam-launcher-shortfall (state camera-tracker))
+(define-extern cam-launcher-longfall (state camera-slave))
+(define-extern cam-launcher-shortfall (state camera-slave))
 (define-extern launcher-idle (state launcher))
 (define-extern launcher-deactivated (state launcher))
 (define-extern launcher-active (state launcher))
@@ -19359,7 +19361,7 @@
 (define-extern *lev-string* string)
 (define-extern med-res-level-idle (state med-res-level))
 (define-extern camera-tracker-process (state camera-tracker))
-(define-extern part-tracker-process part-tracker)
+(define-extern part-tracker-process (state part-tracker))
 (define-extern manipy-idle (state manipy))
 (define-extern swingpole-stance (state swingpole))
 (define-extern swingpole-active (state swingpole))
