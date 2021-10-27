@@ -124,9 +124,8 @@ void reset_output() {
     // s7.offset);
 
     // modified for OpenGOAL:
-    sprintf(OutputBufArea.cast<char>().c() + sizeof(ListenerMessageHeader),
-            "reset #x%x #x%llx %s\n", s7.offset, (uintptr_t)g_ee_main_mem,
-            xdbg::get_current_thread_id().to_string().c_str());
+    sprintf(OutputBufArea.cast<char>().c() + sizeof(ListenerMessageHeader), "reset #x%x #x%lx %s\n",
+            s7.offset, (uintptr_t)g_ee_main_mem, xdbg::get_current_thread_id().to_string().c_str());
     OutputPending = OutputBufArea + sizeof(ListenerMessageHeader);
   }
 }

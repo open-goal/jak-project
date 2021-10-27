@@ -323,7 +323,11 @@ void win_print_last_error(const std::string& msg) {
       FORMAT_MESSAGE_FROM_SYSTEM | FORMAT_MESSAGE_ALLOCATE_BUFFER | FORMAT_MESSAGE_IGNORE_INSERTS,
       NULL, GetLastError(), MAKELANGID(LANG_NEUTRAL, SUBLANG_DEFAULT), (LPTSTR)&errorText, 0, NULL);
 
-  printf("[Debugger] %s Win Err: %s", msg.c_str(), errorText);
+  if (errorText == NULL) {
+    printf("[Debugger] %s Win Err", msg.c_str());
+  } else {
+    printf("[Debugger] %s Win Err: %s", msg.c_str(), errorText);
+  }
 }
 
 /*!
