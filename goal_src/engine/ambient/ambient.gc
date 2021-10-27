@@ -5,11 +5,12 @@
 ;; name in dgo: ambient
 ;; dgos: GAME, ENGINE
 
-;; decomp begins
 
+(define-extern level-hint-init-by-other (function game-text-id string entity none :behavior level-hint))
+(define-extern ambient-hint-init-by-other (function string vector symbol none :behavior level-hint))
 
-;; definition for method 8 of type drawable-ambient
-;; INFO: Return type mismatch int vs drawable-ambient.
+;; DECOMP BEGINS
+
 (defmethod
   mem-usage
   drawable-ambient
@@ -25,8 +26,6 @@
   (the-as drawable-ambient 0)
   )
 
-;; definition for method 8 of type drawable-inline-array-ambient
-;; INFO: Return type mismatch int vs drawable-inline-array-ambient.
 (defmethod
   mem-usage
   drawable-inline-array-ambient
@@ -44,10 +43,8 @@
   (the-as drawable-inline-array-ambient 0)
   )
 
-;; definition for symbol *hint-semaphore*, type (pointer level-hint)
 (define *hint-semaphore* (the-as (pointer level-hint) #f))
 
-;; definition for function level-hint-process-cmd
 (defun level-hint-process-cmd ((arg0 (pointer int32)) (arg1 int) (arg2 int))
   (let ((v1-2 (-> arg0 arg1))
         (gp-0 (+ arg1 1))
@@ -210,15 +207,13 @@
    )
   )
 
-;; definition for function level-hint-task-process
-;; Used lq/sq
 (defun level-hint-task-process ((arg0 entity) (arg1 uint128) (arg2 string))
   (local-vars (sv-16 res-tag))
   (let ((gp-0 (res-lump-value arg0 'text-id int :default arg1))
         (s5-0 0)
         )
    (cond
-    ((can-hint-be-played? gp-0 arg0 arg2)
+    ((can-hint-be-played? (the-as game-text-id gp-0) arg0 arg2)
      (set! sv-16 (new 'static 'res-tag))
      (let
       ((s4-1
@@ -267,15 +262,12 @@
    )
   )
 
-;; definition for function level-hint-surpress!
-;; INFO: Return type mismatch int vs none.
 (defun level-hint-surpress! ()
   (set! (-> *game-info* hint-play-time) (-> *display* base-frame-counter))
   0
   (none)
   )
 
-;; definition for function can-grab-display?
 (defun can-grab-display? ((arg0 process-taskable))
   (let ((v1-2 (handle->process (-> *game-info* display-text-handle))))
    (when
@@ -317,9 +309,6 @@
    )
   )
 
-;; definition for function level-hint-spawn
-;; INFO: Return type mismatch int vs none.
-(define-extern level-hint-init-by-other (function game-text-id string entity none :behavior level-hint))
 (defun
   level-hint-spawn
   ((arg0 game-text-id)
@@ -354,9 +343,6 @@
   (none)
   )
 
-;; definition for function ambient-hint-spawn
-;; INFO: Return type mismatch (pointer process) vs object.
-(define-extern ambient-hint-init-by-other (function string vector symbol none :behavior level-hint))
 (defun
   ambient-hint-spawn
   ((arg0 string) (arg1 vector) (arg2 process-tree) (arg3 symbol))
@@ -387,35 +373,22 @@
    )
   )
 
-;; definition for function kill-current-level-hint
-;; INFO: Return type mismatch int vs none.
 (defun kill-current-level-hint ((arg0 pair) (arg1 pair) (arg2 symbol))
-  (with-pp
-   (when *hint-semaphore*
-    (let ((s4-0 (ppointer->process *hint-semaphore*)))
-     (when
-      (and
-       (or (null? arg0) (member (-> (the-as level-hint s4-0) mode) arg0))
-       (not (member (-> (the-as level-hint s4-0) mode) arg1))
-       )
-      (let ((a1-4 (new 'stack-no-clear 'event-message-block)))
-       (set! (-> a1-4 from) pp)
-       (set! (-> a1-4 num-params) 0)
-       (set! (-> a1-4 message) arg2)
-       (send-event-function (the-as process s4-0) a1-4)
-       )
+  (when *hint-semaphore*
+   (let ((s4-0 (ppointer->process *hint-semaphore*)))
+    (if
+     (and
+      (or (null? arg0) (member (-> (the-as level-hint s4-0) mode) arg0))
+      (not (member (-> (the-as level-hint s4-0) mode) arg1))
       )
+     (send-event (the-as level-hint s4-0) arg2)
      )
     )
-   0
-   (none)
    )
+  0
+  (none)
   )
 
-;; definition for function level-hint-init-by-other
-;; INFO: Return type mismatch int vs none.
-(define-extern level-hint-sidekick (state string level-hint))
-(define-extern level-hint-normal (state level-hint))
 (defbehavior
   level-hint-init-by-other level-hint
   ((arg0 game-text-id) (arg1 string) (arg2 entity))
@@ -467,9 +440,6 @@
   (none)
   )
 
-;; definition for function ambient-hint-init-by-other
-;; INFO: Return type mismatch int vs none.
-(define-extern level-hint-ambient-sound (state string level-hint))
 (defbehavior
   ambient-hint-init-by-other level-hint
   ((arg0 string) (arg1 vector) (arg2 symbol))
@@ -482,7 +452,14 @@
   (push-setting! *setting-control* self 'hint (process->ppointer self) 0.0 0)
   (set! (-> self mode) arg2)
   (if (or (= arg2 'camera) (= arg2 'ambient) (= arg2 'stinger))
-   (push-setting! *setting-control* self 'ambient (process->ppointer self) 0.0 0)
+   (push-setting!
+    *setting-control*
+    self
+    'ambient
+    (process->ppointer self)
+    0.0
+    0
+    )
    )
   (copy-settings-from-target! *setting-control*)
   (set!
@@ -505,8 +482,6 @@
   (none)
   )
 
-;; definition for method 14 of type level-hint
-;; INFO: Return type mismatch int vs none.
 (defmethod print-text level-hint ((obj level-hint))
   (when (!= *common-text* #f)
    (let
@@ -543,7 +518,6 @@
   (none)
   )
 
-;; definition for method 15 of type level-hint
 (defmethod dummy-15 level-hint ((obj level-hint))
   (and
    (!= (-> obj next-state name) 'level-hint-sidekick)
@@ -551,9 +525,6 @@
    )
   )
 
-;; failed to figure out what this is:
-(define-extern level-hint-exit (state level-hint))
-(define-extern level-hint-error (state string string level-hint))
 (defstate level-hint-normal (level-hint)
   :event
   (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
@@ -623,7 +594,6 @@
    )
   )
 
-;; failed to figure out what this is:
 (defstate level-hint-sidekick (level-hint)
   :event
   (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
@@ -655,12 +625,7 @@
    (if (= (ppointer->process *hint-semaphore*) self)
     (set! *hint-semaphore* (the-as (pointer level-hint) #f))
     )
-   (let ((a1-3 (new 'stack-no-clear 'event-message-block)))
-    (set! (-> a1-3 from) self)
-    (set! (-> a1-3 num-params) 0)
-    (set! (-> a1-3 message) 'die)
-    (send-event-function (handle->process (-> self voicebox)) a1-3)
-    )
+   (send-event (handle->process (-> self voicebox)) 'die)
    (none)
    )
   :code
@@ -715,9 +680,30 @@
        )
       (cond
        ((= (current-str-id) s5-2)
-        (push-setting! *setting-control* self 'music-volume 'rel (-> *setting-control* current music-volume-movie) 0)
-        (push-setting! *setting-control* self 'sfx-volume 'rel (-> *setting-control* current sfx-volume-movie) 0)
-        (push-setting! *setting-control* self 'dialog-volume 'rel (-> *setting-control* current dialog-volume-hint) 0)
+        (push-setting!
+         *setting-control*
+         self
+         'music-volume
+         'rel
+         (-> *setting-control* current music-volume-movie)
+         0
+         )
+        (push-setting!
+         *setting-control*
+         self
+         'sfx-volume
+         'rel
+         (-> *setting-control* current sfx-volume-movie)
+         0
+         )
+        (push-setting!
+         *setting-control*
+         self
+         'dialog-volume
+         'rel
+         (-> *setting-control* current dialog-volume-hint)
+         0
+         )
         (while (= (current-str-id) s5-2)
          (suspend)
          )
@@ -734,7 +720,6 @@
    )
   )
 
-;; failed to figure out what this is:
 (defstate level-hint-ambient-sound (level-hint)
   :event
   (-> level-hint-sidekick event)
@@ -807,8 +792,22 @@
    (cond
     ((= (current-str-id) (-> self sound-id))
      (when (or (= (-> self mode) 'stinger) (= (-> self mode) 'camera))
-      (push-setting! *setting-control* self 'music-volume 'rel (-> *setting-control* current music-volume-movie) 0)
-      (push-setting! *setting-control* self 'sfx-volume 'rel (-> *setting-control* current sfx-volume-movie) 0)
+      (push-setting!
+       *setting-control*
+       self
+       'music-volume
+       'rel
+       (-> *setting-control* current music-volume-movie)
+       0
+       )
+      (push-setting!
+       *setting-control*
+       self
+       'sfx-volume
+       'rel
+       (-> *setting-control* current sfx-volume-movie)
+       0
+       )
       )
      (while (= (current-str-id) (-> self sound-id))
       (suspend)
@@ -823,7 +822,6 @@
    )
   )
 
-;; failed to figure out what this is:
 (defstate level-hint-error (level-hint)
   :event
   (-> level-hint-normal event)
@@ -874,7 +872,6 @@
    )
   )
 
-;; failed to figure out what this is:
 (defstate level-hint-exit (level-hint)
   :code
   (behavior ()
@@ -885,8 +882,6 @@
    )
   )
 
-;; definition for function ambient-type-error
-;; INFO: Return type mismatch int vs none.
 (defun ambient-type-error ((arg0 drawable-ambient) (arg1 vector))
   (when *display-entity-errors*
    (let ((s2-0 (-> arg0 ambient)))
@@ -912,15 +907,11 @@
   (none)
   )
 
-;; definition for function ambient-type-poi
-;; INFO: Return type mismatch int vs none.
 (defun ambient-type-poi ((arg0 drawable-ambient) (arg1 vector))
   0
   (none)
   )
 
-;; definition for function ambient-type-hint
-;; INFO: Return type mismatch int vs none.
 (defun ambient-type-hint ((arg0 drawable-ambient) (arg1 vector))
   (with-pp
    (let
@@ -996,9 +987,6 @@
    )
   )
 
-;; definition for function ambient-type-sound
-;; INFO: Return type mismatch int vs none.
-;; Used lq/sq
 (defun ambient-type-sound ((arg0 drawable-ambient) (arg1 vector))
   (local-vars (sv-16 string) (sv-112 res-tag))
   (let* ((s5-0 (-> arg0 ambient))
@@ -1093,9 +1081,6 @@
   (none)
   )
 
-;; definition for function ambient-type-sound-loop
-;; INFO: Return type mismatch int vs none.
-;; Used lq/sq
 (defun ambient-type-sound-loop ((arg0 drawable-ambient) (arg1 vector))
   (let* ((s5-0 (-> arg0 ambient))
          (s2-0
@@ -1130,9 +1115,6 @@
   (none)
   )
 
-;; definition for function ambient-type-light
-;; INFO: Return type mismatch int vs none.
-;; Used lq/sq
 (defun ambient-type-light ((arg0 drawable-ambient) (arg1 vector))
   (when *target*
    (let ((s4-0 (-> arg0 ambient))
@@ -1196,9 +1178,6 @@
   (none)
   )
 
-;; definition for function ambient-type-dark
-;; INFO: Return type mismatch int vs none.
-;; Used lq/sq
 (defun ambient-type-dark ((arg0 drawable-ambient) (arg1 vector))
   (when *target*
    (let ((s4-0 (-> arg0 ambient))
@@ -1263,9 +1242,6 @@
   (none)
   )
 
-;; definition for function ambient-type-weather-off
-;; INFO: Return type mismatch int vs none.
-;; Used lq/sq
 (defun ambient-type-weather-off ((arg0 drawable-ambient) (arg1 vector))
   (when *target*
    (let ((s4-0 (-> arg0 ambient))
@@ -1330,24 +1306,18 @@
   (none)
   )
 
-;; definition for function ambient-type-ocean-off
-;; INFO: Return type mismatch int vs none.
 (defun ambient-type-ocean-off ((arg0 drawable-ambient) (arg1 vector))
   (set! *ocean-off* #t)
   0
   (none)
   )
 
-;; definition for function ambient-type-ocean-near-off
-;; INFO: Return type mismatch int vs none.
 (defun ambient-type-ocean-near-off ((arg0 drawable-ambient) (arg1 vector))
   (set! *ocean-near-off* #t)
   0
   (none)
   )
 
-;; definition for function ambient-type-music
-;; INFO: Return type mismatch int vs none.
 (defun ambient-type-music ((arg0 drawable-ambient) (arg1 vector))
   (let ((gp-0 (-> arg0 ambient)))
    (if (-> gp-0 ambient-data user-object 0)
@@ -1372,8 +1342,6 @@
   (none)
   )
 
-;; definition for method 17 of type drawable-ambient
-;; INFO: Return type mismatch int vs none.
 (defmethod
   collect-ambients
   drawable-ambient
@@ -1389,8 +1357,6 @@
   (none)
   )
 
-;; definition for method 17 of type drawable-inline-array-ambient
-;; INFO: Return type mismatch int vs none.
 (defmethod
   collect-ambients
   drawable-inline-array-ambient
@@ -1409,8 +1375,6 @@
   (none)
   )
 
-;; definition for method 17 of type drawable-tree-ambient
-;; INFO: Return type mismatch int vs none.
 (defmethod
   collect-ambients
   drawable-tree-ambient
@@ -1420,9 +1384,6 @@
   (none)
   )
 
-;; definition for method 28 of type entity-ambient
-;; INFO: Return type mismatch entity-ambient vs none.
-;; Used lq/sq
 (defmethod birth-ambient! entity-ambient ((obj entity-ambient))
   (set! (-> obj ambient-data quad) (the-as uint128 0))
   (set! (-> obj ambient-data function) ambient-type-error)
@@ -1567,23 +1528,16 @@
   (none)
   )
 
-;; definition for symbol *execute-ambients*, type symbol
 (define *execute-ambients* #t)
 
-;; definition for method 18 of type drawable-ambient
-;; INFO: Return type mismatch int vs none.
 (defmethod dummy-18 drawable-ambient ((obj drawable-ambient) (arg0 vector))
   ((-> obj ambient ambient-data function) obj arg0)
   0
   (none)
   )
 
-;; definition (debug) for function ambient-inspect
 ;; ERROR: function was not converted to expressions. Cannot decompile.
 
-;; definition for method 27 of type entity-ambient
-;; INFO: Return type mismatch int vs none.
-;; Used lq/sq
 (defmethod draw-debug entity-ambient ((obj entity-ambient))
   (local-vars (sv-16 uint128))
   (let ((gp-0 (-> obj trans))
