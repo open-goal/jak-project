@@ -317,17 +317,13 @@ ThreadID get_current_thread_id() {
 }
 
 void win_print_last_error(const std::string& msg) {
-  LPTSTR errorText = NULL;
+  LPSTR lpMsgBuf;
 
   FormatMessage(
       FORMAT_MESSAGE_FROM_SYSTEM | FORMAT_MESSAGE_ALLOCATE_BUFFER | FORMAT_MESSAGE_IGNORE_INSERTS,
-      NULL, GetLastError(), MAKELANGID(LANG_NEUTRAL, SUBLANG_DEFAULT), (LPTSTR)&errorText, 0, NULL);
+      NULL, GetLastError(), MAKELANGID(LANG_NEUTRAL, SUBLANG_DEFAULT), (LPSTR)&lpMsgBuf, 0, NULL);
 
-  if (errorText == NULL) {
-    printf("[Debugger] %s Win Err\n", msg.c_str());
-  } else {
-    printf("[Debugger] %s Win Err: %s", msg.c_str(), errorText);
-  }
+  printf("[Debugger] %s Win Err: %s", msg.c_str(), lpMsgBuf);
 }
 
 /*!
