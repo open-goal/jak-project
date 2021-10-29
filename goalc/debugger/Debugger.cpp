@@ -4,7 +4,6 @@
  * Uses xdbg functions to debug an OpenGOAL target.
  */
 
-#include <mutex>
 #include "Debugger.h"
 #include "common/goal_constants.h"
 #include "common/symbols.h"
@@ -14,10 +13,6 @@
 #include "goalc/emitter/Register.h"
 #include "goalc/listener/Listener.h"
 #include "third-party/fmt/core.h"
-
-namespace {
-std::mutex watcher_mutex;
-}
 
 /*!
  * Is the target halted? If we don't know or aren't connected, returns false.
@@ -590,7 +585,7 @@ bool Debugger::try_start_watcher() {
   return true;
 #elif defined(_WIN32)
   start_watcher();
-  std::unique_lock<std::mutex> lk(watcher_mutex);
+  std::unique_lock<std::mutex> lk(m_watcher_mutex);
   m_attach_cv.wait(lk, [&]() { return m_attach_return; });
   if (!m_attach_response) {
     stop_watcher();
@@ -609,7 +604,10 @@ void Debugger::start_watcher() {
   assert(!m_watcher_running);
   m_watcher_running = true;
   m_watcher_should_stop = false;
-  m_attach_return = false;
+  {
+    std::unique_lock<std::mutex> lk(m_watcher_mutex);
+    m_attach_return = false;
+  }
   m_watcher_thread = std::thread(&Debugger::watcher, this);
 }
 

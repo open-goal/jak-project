@@ -334,6 +334,8 @@ std::mutex m;
 std::condition_variable cv;
 
 bool attach_and_break(const ThreadID& tid) {
+  cont_status = -1;
+
   if (!DebugActiveProcess(tid.pid)) {
     win_print_last_error(fmt::format("DebugActiveProcess w/ TID {}", tid.to_string()));
     return false;
@@ -373,8 +375,11 @@ bool cont_now(const ThreadID& tid) {
     return false;
   }
 
-  cont_status = 1;
-  cv.notify_all();
+  {
+    std::unique_lock<std::mutex> lk(m);
+    cont_status = 1;
+    cv.notify_all();
+  }
   return true;
 }
 

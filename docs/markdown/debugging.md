@@ -238,7 +238,7 @@ For now, the disassembly is pretty basic, but it should eventually support GOAL 
 Print the name of a symbol from its offset. The name is fetched from memory.
 
 ```lisp
-(:disasm offset)
+(:sym-name offset)
 ```
 
 Example (after doing a `(lt)`, `(blg)`, `(dbg)`):
