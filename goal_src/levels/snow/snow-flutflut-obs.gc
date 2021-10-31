@@ -74,7 +74,7 @@
    )
   (set! (-> v1-2 jgeo) 0)
   (set! (-> v1-2 janim) 2)
-  (set! (-> v1-2 mgeo 0) (the-as uint 1))
+  (set! (-> v1-2 mgeo 0) 1)
   (set! (-> v1-2 lod-dist 0) 4095996000.0)
   (set! *flutflut-plat-small-sg* v1-2)
   )
@@ -91,7 +91,7 @@
    )
   (set! (-> v1-3 jgeo) 0)
   (set! (-> v1-3 janim) 2)
-  (set! (-> v1-3 mgeo 0) (the-as uint 1))
+  (set! (-> v1-3 mgeo 0) 1)
   (set! (-> v1-3 lod-dist 0) 4095996000.0)
   (set! *flutflut-plat-med-sg* v1-3)
   )
@@ -107,7 +107,7 @@
    )
   (set! (-> v1-4 jgeo) 0)
   (set! (-> v1-4 janim) 2)
-  (set! (-> v1-4 mgeo 0) (the-as uint 1))
+  (set! (-> v1-4 mgeo 0) 1)
   (set! (-> v1-4 lod-dist 0) 4095996000.0)
   (set! *flutflut-plat-large-sg* v1-4)
   )
@@ -123,7 +123,7 @@
    )
   (set! (-> v1-5 jgeo) 0)
   (set! (-> v1-5 janim) -1)
-  (set! (-> v1-5 mgeo 0) (the-as uint 1))
+  (set! (-> v1-5 mgeo 0) 1)
   (set! (-> v1-5 lod-dist 0) 4095996000.0)
   (set! *snow-button-sg* v1-5)
   )
@@ -335,43 +335,30 @@
 (defstate snow-button-up-idle (snow-button)
   :event
   (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
-   (local-vars (v0-2 none))
-   (let ((v1-0 arg2))
-    (the-as object (cond
-                    ((or (= v1-0 'touch) (= v1-0 'attack) (= v1-0 'bonk))
-                     (when
-                      (and
-                       (= (-> arg0 type) target)
-                       (logtest?
-                        (-> *target* control root-prim prim-core action)
-                        #x4000
-                        )
-                       (>=
-                        10649.6
-                        (vector-vector-xz-distance
-                         (-> self root-override trans)
-                         (target-pos 0)
-                         )
-                        )
-                       )
-                      (close-specific-task!
-                       (game-task snow-ball)
-                       (task-status need-hint)
-                       )
-                      (logclear! (-> self mask) (process-mask actor-pause))
-                      (process-entity-status!
-                       self
-                       (entity-perm-status bit-3)
-                       #t
-                       )
-                      (go snow-button-activate)
-                      )
-                     )
-                    ((= v1-0 'query)
-                     (return (the-as object #f))
-                     v0-2
-                     )
-                    )
+   (local-vars (v0-2 object))
+   (case arg2 
+    (('touch 'attack 'bonk)
+      (when
+       (and
+        (= (-> arg0 type) target)
+        (logtest? (-> *target* control root-prim prim-core action) #x4000)
+        (>=
+         10649.6
+         (vector-vector-xz-distance
+          (-> self root-override trans)
+          (target-pos 0)
+          )
+         )
+        )
+       (close-specific-task! (game-task snow-ball) (task-status need-hint))
+       (logclear! (-> self mask) (process-mask actor-pause))
+       (process-entity-status! self (entity-perm-status bit-3) #t)
+       (go snow-button-activate)
+       )
+      )
+    (('query)
+     (return #f)
+     v0-2
      )
     )
    )
@@ -396,17 +383,14 @@
 (defstate snow-button-activate (snow-button)
   :event
   (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
-   (local-vars (v0-0 none))
-   (let ((v1-0 arg2))
-    (the-as object (cond
-                    ((= v1-0 'untrigger)
-                     (go snow-button-deactivate)
-                     )
-                    ((= v1-0 'query)
-                     (return (the-as object #t))
-                     v0-0
-                     )
-                    )
+   (local-vars (v0-0 object))
+   (case arg2 
+    (('untrigger)
+      (go snow-button-deactivate)
+      )
+    (('query)
+     (return #t)
+     v0-0
      )
     )
    )
@@ -652,7 +636,7 @@
    )
   (process-drawable-from-entity! obj arg0)
   (set! (-> obj link) (new 'process 'actor-link-info obj))
-  (dummy-14 obj *snow-button-sg* '())
+  (initialize-skeleton obj *snow-button-sg* '())
   (logior! (-> obj skel status) 1)
   (set!
    (-> obj timeout)
@@ -764,26 +748,25 @@
   :virtual #t
   :event
   (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
-   (let ((v1-0 arg2))
-    (the-as object (when (= v1-0 'trigger)
-                    (when
-                     (or
-                      (!= (-> self plat-type) 1)
-                      (not
-                       (and
-                        (-> self entity)
-                        (logtest?
-                         (-> self entity extra perm status)
-                         (entity-perm-status complete)
-                         )
-                        )
-                       )
-                      )
-                     (logclear! (-> self mask) (process-mask actor-pause))
-                     (go flutflut-plat-appear)
-                     )
-                    )
-     )
+   (case arg2 
+    (('trigger)
+      (when
+       (or
+        (!= (-> self plat-type) 1)
+        (not
+         (and
+          (-> self entity)
+          (logtest?
+           (-> self entity extra perm status)
+           (entity-perm-status complete)
+           )
+          )
+         )
+        )
+       (logclear! (-> self mask) (process-mask actor-pause))
+       (go flutflut-plat-appear)
+       )
+      )
     )
    )
   :code
@@ -828,12 +811,11 @@
 (defstate flutflut-plat-hidden-idle (flutflut-plat)
   :event
   (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
-   (let ((v1-0 arg2))
-    (the-as object (when (= v1-0 'trigger)
-                    (logclear! (-> self mask) (process-mask actor-pause))
-                    (go flutflut-plat-appear)
-                    )
-     )
+   (case arg2 
+    (('trigger)
+      (logclear! (-> self mask) (process-mask actor-pause))
+      (go flutflut-plat-appear)
+      )
     )
    )
   :trans
