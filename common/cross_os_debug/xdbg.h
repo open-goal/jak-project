@@ -13,7 +13,8 @@
 #ifdef __linux
 #include <sys/types.h>
 #elif _WIN32
-// todo - windows includes
+#define NOMINMAX
+#include <Windows.h>
 #endif
 
 namespace xdbg {
@@ -40,15 +41,16 @@ struct MemoryHandle {
 
 #elif _WIN32
 struct ThreadID {
-  // todo - whatever windows uses to identify a thread
+  DWORD pid = 0;
+  DWORD tid = 0;
+
   std::string to_string() const;
   ThreadID(const std::string& str);
-  ThreadID();  // todo - add id type here, like in linux version
+  ThreadID(DWORD pid, DWORD tid);
+  ThreadID() = default;
 };
 
-struct MemoryHandle {
-  int a;
-};
+struct MemoryHandle {};
 #endif
 
 /*!
@@ -86,8 +88,12 @@ struct SignalInfo {
     ILLEGAL_INSTR,   // bad instruction
     UNKNOWN,         // some other signal that is unsupported
     DISAPPEARED,     // process disappeared (maybe killed by the user)
+    NOTHING,         // nothing of importance. Windows sends many irrelevant (to us) events
+    EXCEPTION,       // some unhandled exception
 
   } kind = UNKNOWN;
+
+  std::string msg;
 };
 
 // Functions
