@@ -1,6 +1,6 @@
 #pragma once
 
-#include "game/graphics/dma/gs.h"
+#include "common/dma/gs.h"
 
 class AdgifHelper {
  public:

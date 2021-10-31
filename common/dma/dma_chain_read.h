@@ -1,7 +1,7 @@
 #pragma once
 
 #include <cstring>
-#include "game/graphics/dma/dma.h"
+#include "common/dma/dma.h"
 #include "common/util/assert.h"
 
 /*!

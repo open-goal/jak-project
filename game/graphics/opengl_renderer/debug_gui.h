@@ -6,7 +6,7 @@
  */
 
 #include "common/util/Timer.h"
-#include "game/graphics/dma/dma.h"
+#include "common/dma/dma.h"
 
 class FrameTimeRecorder {
  public:

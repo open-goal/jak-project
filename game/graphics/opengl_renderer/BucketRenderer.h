@@ -2,7 +2,7 @@
 
 #include <string>
 #include <memory>
-#include "game/graphics/dma/dma_chain_read.h"
+#include "common/dma/dma_chain_read.h"
 #include "game/graphics/opengl_renderer/Shader.h"
 #include "game/graphics/texture/TexturePool.h"
 #include "game/graphics/opengl_renderer/Profiler.h"

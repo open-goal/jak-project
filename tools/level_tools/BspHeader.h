@@ -33,9 +33,7 @@ struct FileInfo {
   std::string tool_debug;
   std::string mdb_file_name;
 
-  void read_from_file(TypedRef ref,
-                      const decompiler::LinkedObjectFile& file,
-                      const decompiler::DecompilerTypeSystem& dts);
+  void read_from_file(TypedRef ref, const decompiler::DecompilerTypeSystem& dts);
 
   std::string print(int indent = 0) const;
 };
@@ -43,8 +41,10 @@ struct FileInfo {
 struct PrintSettings {
   bool print_tfrag = true;
   bool expand_draw_node = true;
-  bool expand_drawable_tree_tfrag = false;
+  bool expand_drawable_tree_tfrag = true;
   bool expand_drawable_tree_trans_tfrag = false;
+  bool expand_drawable_tree_instance_tie = false;
+  bool expand_drawable_tree_actor = false;
 };
 
 struct Drawable {
@@ -53,8 +53,6 @@ struct Drawable {
   virtual std::string my_type() const = 0;
   virtual ~Drawable() = default;
 };
-
-struct DrawableTree : public Drawable {};
 
 struct DrawableInlineArray : public Drawable {};
 
@@ -69,6 +67,21 @@ struct DrawNode : public Drawable {
   u8 flags = 0;
   std::vector<std::unique_ptr<Drawable>> children;
   float distance = 0;
+};
+
+struct EntityActor {
+
+};
+
+struct DrawableActor : public Drawable {
+  s16 id;
+  Vector bsphere;
+
+  EntityActor actor;
+
+  void read_from_file(TypedRef ref, const decompiler::DecompilerTypeSystem& dts) override;
+  std::string print(const PrintSettings& settings, int indent) const override;
+  std::string my_type() const override { return "drawable-actor"; }
 };
 
 struct TFragmentDebugData {
@@ -108,6 +121,30 @@ struct TFragment : public Drawable {
   //  generic // 60 - 64
 };
 
+struct TieFragment : public Drawable {
+  void read_from_file(TypedRef ref, const decompiler::DecompilerTypeSystem& dts) override;
+  std::string print(const PrintSettings& settings, int indent) const override;
+  std::string my_type() const override { return "tie-fragment"; }
+
+  Vector bsphere;
+  u16 num_tris;
+  u16 num_dverts;
+
+  // todo, lots more
+};
+
+struct InstanceTie : public Drawable {
+  void read_from_file(TypedRef ref, const decompiler::DecompilerTypeSystem& dts) override;
+  std::string print(const PrintSettings& settings, int indent) const override;
+  std::string my_type() const override { return "instance-tie"; }
+
+  // (bucket-index uint16           :offset 6)
+  u16 bucket_index;
+  Vector bsphere;
+
+  // todo, lots more
+};
+
 struct DrawableInlineArrayNode : public DrawableInlineArray {
   s16 id;
   s16 length;
@@ -132,6 +169,18 @@ struct DrawableInlineArrayTFrag : public DrawableInlineArray {
   std::string my_type() const override;
 };
 
+struct DrawableInlineArrayTie : public DrawableInlineArray {
+  s16 id;
+  s16 length;
+  Vector bsphere;
+
+  std::vector<InstanceTie> instances;
+
+  void read_from_file(TypedRef ref, const decompiler::DecompilerTypeSystem& dts) override;
+  std::string print(const PrintSettings& settings, int indent) const override;
+  std::string my_type() const override;
+};
+
 struct DrawableInlineArrayTransTFrag : public DrawableInlineArrayTFrag {
   std::string my_type() const override { return "drawable-inline-array-trans-tfrag"; }
 };
@@ -143,6 +192,8 @@ struct DrawableInlineArrayUnknown : public DrawableInlineArray {
   std::string type_name;
 };
 
+struct DrawableTree : public Drawable {};
+
 struct DrawableTreeTfrag : public DrawableTree {
   void read_from_file(TypedRef ref, const decompiler::DecompilerTypeSystem& dts) override;
   std::string print(const PrintSettings& settings, int indent) const override;
@@ -151,6 +202,91 @@ struct DrawableTreeTfrag : public DrawableTree {
   s16 id;
   s16 length;
   // todo time of day stuff
+  Vector bsphere;
+
+  std::vector<std::unique_ptr<DrawableInlineArray>> arrays;
+};
+
+struct DrawableTreeActor : public DrawableTree {
+  void read_from_file(TypedRef ref, const decompiler::DecompilerTypeSystem& dts) override;
+  std::string print(const PrintSettings& settings, int indent) const override;
+  std::string my_type() const override;
+
+  s16 id;
+  s16 length;
+  // todo time of day stuff
+  Vector bsphere;
+
+  std::vector<std::unique_ptr<DrawableInlineArray>> arrays;
+};
+
+struct PrototypeTie : public DrawableInlineArray {
+  void read_from_file(TypedRef ref, const decompiler::DecompilerTypeSystem& dts) override;
+  std::string print(const PrintSettings& settings, int indent) const override;
+  std::string my_type() const override;
+  s16 id;
+  s16 length;
+
+  Vector bsphere;
+  std::vector<TieFragment> tie_fragments;
+};
+
+struct PrototypeBucketTie {
+  std::string name;  // 4 - 8
+  u32 flags;         // 8 - 12
+  u16 in_level;      // 12 - 14
+  u16 utextures;     // 14 - 16
+  PrototypeTie geometry[4];
+
+  Vector dists;
+  Vector rdists;
+  u32 next[4];
+  u16 count[4];
+
+  u16 generic_count[4];
+  u32 generic_next[4];
+  u8 frag_count[4];
+  u8 index_start[4];
+  u16 base_qw[4];
+
+  float envmap_rfade;
+  float envmap_fade_far;
+
+  // todo envmap shader
+  // todo collide-frag
+  // todo tie-colors
+  // todo data
+
+  void read_from_file(TypedRef ref, const decompiler::DecompilerTypeSystem& dts);
+  std::string print(const PrintSettings& settings, int indent) const;
+};
+
+struct PrototypeArrayTie {
+  u32 length;
+  u32 allocated_length;
+  std::string content_type;
+  std::vector<PrototypeBucketTie> data;
+
+  void read_from_file(TypedRef ref, const decompiler::DecompilerTypeSystem& dts);
+  std::string print(const PrintSettings& settings, int indent) const;
+};
+
+struct ProxyPrototypeArrayTie {
+  void read_from_file(TypedRef ref, const decompiler::DecompilerTypeSystem& dts);
+  std::string print(const PrintSettings& settings, int indent) const;
+
+  PrototypeArrayTie prototype_array_tie;
+  // todo wind vectors.
+};
+
+struct DrawableTreeInstanceTie : public DrawableTree {
+  void read_from_file(TypedRef ref, const decompiler::DecompilerTypeSystem& dts) override;
+  std::string print(const PrintSettings& settings, int indent) const override;
+  std::string my_type() const override;
+
+  s16 id;
+  s16 length;
+  ProxyPrototypeArrayTie prototypes;
   Vector bsphere;
 
   std::vector<std::unique_ptr<DrawableInlineArray>> arrays;
