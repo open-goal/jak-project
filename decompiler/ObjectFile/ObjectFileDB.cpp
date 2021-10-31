@@ -130,7 +130,11 @@ ObjectFileDB::ObjectFileDB(const std::vector<std::string>& _dgos,
 
   lg::info("-Loading {} DGOs...", _dgos.size());
   for (auto& dgo : _dgos) {
-    get_objs_from_dgo(dgo, config);
+    try {
+      get_objs_from_dgo(dgo, config);
+    } catch (std::runtime_error& e) {
+      lg::warn("Error when reading DGOs: {}", e.what());
+    }
   }
 
   lg::info("-Loading {} plain object files...", object_files.size());

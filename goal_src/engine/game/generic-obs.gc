@@ -122,9 +122,43 @@
 
 ;; TODO - for misty-warehouse
 (define-extern camera-tracker-init (function function none)) ;; TODO - not confirmed, see misty-warehouse::camera-view
-(define-extern process-grab? (function process symbol))
+(define-extern command-get-process (function basic process-drawable process))
+(defbehavior process-grab? process ((arg0 process))
+  (let ((gp-0 (command-get-process arg0 *target*)))
+   (the-as symbol (when gp-0
+                   (if (type-type? (-> self type) camera-tracker)
+                    (set!
+                     (-> (the-as camera-tracker self) grab-target)
+                     (process->handle gp-0)
+                     )
+                    )
+                   (send-event gp-0 'change-mode 'grab)
+                   )
+    )
+   )
+  )
+
+(defbehavior process-release? process ((arg0 process))
+  (let ((gp-0 (command-get-process arg0 *target*)))
+   (the-as
+    symbol
+    (if (and gp-0 (let ((a1-1 (new 'stack-no-clear 'event-message-block)))
+                   (set! (-> a1-1 from) self)
+                   (set! (-> a1-1 num-params) 1)
+                   (set! (-> a1-1 message) 'query)
+                   (set! (-> a1-1 param 0) (the-as uint 'mode))
+                   (send-event-function gp-0 a1-1)
+                   )
+         'target-grab
+         )
+     (send-event gp-0 'end-mode)
+     #t
+     )
+    )
+   )
+  )
+
 (define-extern camera-change-to (function string int symbol none)) ;; TODO - not confirmed yet
-(define-extern process-release? (function process symbol))
 ;; TODO - for projectiles | dark-eco-pool
 (define-extern part-tracker-init (function sparticle-launch-group int basic basic basic vector none)) ;; TODO - not confirmed
 ;; TODO - for target-part

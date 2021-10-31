@@ -182,6 +182,7 @@ const std::unordered_map<
         {":disasm", &Compiler::compile_disasm},
         {":bp", &Compiler::compile_bp},
         {":ubp", &Compiler::compile_ubp},
+        {":sym-name", &Compiler::compile_d_sym_name},
 
         // TYPE
         {"deftype", &Compiler::compile_deftype},
