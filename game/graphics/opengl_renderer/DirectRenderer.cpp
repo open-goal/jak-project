@@ -1,5 +1,5 @@
 #include "DirectRenderer.h"
-#include "game/graphics/dma/gs.h"
+#include "common/dma/gs.h"
 #include "common/log/log.h"
 #include "third-party/fmt/core.h"
 #include "game/graphics/pipelines/opengl.h"

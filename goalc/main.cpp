@@ -30,6 +30,7 @@ int main(int argc, char** argv) {
   std::string argument;
   bool verbose = false;
   bool auto_listen = false;
+  bool auto_debug = false;
   for (int i = 1; i < argc; i++) {
     if (std::string("-v") == argv[i]) {
       verbose = true;
@@ -39,6 +40,9 @@ int main(int argc, char** argv) {
     }
     if (std::string("-auto-lt") == argv[i]) {
       auto_listen = true;
+    }
+    if (std::string("-auto-dbg") == argv[i]) {
+      auto_debug = true;
     }
   }
   setup_logging(verbose);
@@ -53,7 +57,7 @@ int main(int argc, char** argv) {
       ReplStatus status = ReplStatus::WANT_RELOAD;
       while (status == ReplStatus::WANT_RELOAD) {
         compiler = std::make_unique<Compiler>(std::make_unique<ReplWrapper>());
-        status = compiler->execute_repl(auto_listen);
+        status = compiler->execute_repl(auto_listen, auto_debug);
         if (status == ReplStatus::WANT_RELOAD) {
           fmt::print("Reloading compiler...\n");
         }

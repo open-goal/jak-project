@@ -26,7 +26,7 @@ enum class ReplStatus { OK, WANT_EXIT, WANT_RELOAD };
 class Compiler {
  public:
   Compiler(std::unique_ptr<ReplWrapper> repl = nullptr);
-  ReplStatus execute_repl(bool auto_listen = false);
+  ReplStatus execute_repl(bool auto_listen = false, bool auto_debug = false);
   goos::Interpreter& get_goos() { return m_goos; }
   FileEnv* compile_object_file(const std::string& name, goos::Object code, bool allow_emit);
   std::unique_ptr<FunctionEnv> compile_top_level_function(const std::string& name,
@@ -559,6 +559,7 @@ class Compiler {
   Val* compile_disasm(const goos::Object& form, const goos::Object& rest, Env* env);
   Val* compile_bp(const goos::Object& form, const goos::Object& rest, Env* env);
   Val* compile_ubp(const goos::Object& form, const goos::Object& rest, Env* env);
+  Val* compile_d_sym_name(const goos::Object& form, const goos::Object& rest, Env* env);
   u32 parse_address_spec(const goos::Object& form);
 
   // Macro

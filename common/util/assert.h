@@ -7,16 +7,18 @@
 
 #if defined NDEBUG && defined _WIN32
 
-#define _OLD_NDEBUG NDEBUG
+#pragma push_macro("NDEBUG")
 
 #undef NDEBUG
+#undef assert
 #include <cassert>
-#define NDEBUG _OLD_NDEBUG
 
-#undef _OLD_NDEBUG
+#pragma pop_macro("NDEBUG")
 
 #else
 
 #include <cassert>
 
 #endif
+
+#define ASSERT assert

@@ -21,7 +21,10 @@
 #include <sys/wait.h>
 #include <fcntl.h>
 #elif _WIN32
-
+#define NOMINMAX
+#include <Windows.h>
+#include <mutex>
+#include <condition_variable>
 #endif
 
 namespace xdbg {
@@ -297,50 +300,237 @@ bool cont_now(const ThreadID& tid) {
 
 #elif _WIN32
 
-ThreadID::ThreadID() {}  // todo
+ThreadID::ThreadID(DWORD _pid, DWORD _tid) : pid(_pid), tid(_tid) {}
 
 ThreadID::ThreadID(const std::string& str) {
-  // todo
+  auto sep = str.find('-');
+  pid = std::stoi(str.substr(0, sep));
+  tid = std::stoi(str.substr(sep + 1));
 }
 
 std::string ThreadID::to_string() const {
-  // todo
-  return "0";
+  return fmt::format("{}-{}", pid, tid);
 }
 
 ThreadID get_current_thread_id() {
-  // todo
-  return {};
+  return ThreadID(GetCurrentProcessId(), GetCurrentThreadId());
 }
 
+void win_print_last_error(const std::string& msg) {
+  LPSTR lpMsgBuf;
+
+  FormatMessage(
+      FORMAT_MESSAGE_FROM_SYSTEM | FORMAT_MESSAGE_ALLOCATE_BUFFER | FORMAT_MESSAGE_IGNORE_INSERTS,
+      NULL, GetLastError(), MAKELANGID(LANG_NEUTRAL, SUBLANG_DEFAULT), (LPSTR)&lpMsgBuf, 0, NULL);
+
+  printf("[Debugger] %s Win Err: %s", msg.c_str(), lpMsgBuf);
+}
+
+/*!
+ * Cross-thread things.
+ */
+int cont_status = -1;  // hack? -1 = ignore; 0 = waiting for cont; 1 = cont'd, will resume
+std::mutex m;
+std::condition_variable cv;
+
 bool attach_and_break(const ThreadID& tid) {
-  return false;
+  cont_status = -1;
+
+  if (!DebugActiveProcess(tid.pid)) {
+    win_print_last_error(fmt::format("DebugActiveProcess w/ TID {}", tid.to_string()));
+    return false;
+  }
+
+  return true;
 }
 
 bool detach_and_resume(const ThreadID& tid) {
-  return false;
+  if (!DebugActiveProcessStop(tid.pid)) {
+    win_print_last_error("DebugActiveProcessStop");
+    return false;
+  }
+
+  return true;
 }
 
 void allow_debugging() {}
 
 bool break_now(const ThreadID& tid) {
-  return false;
+  HANDLE hProc = OpenProcess(PROCESS_ALL_ACCESS, FALSE, tid.pid);
+
+  auto result = DebugBreakProcess(hProc);
+
+  CloseHandle(hProc);
+
+  if (!result) {
+    win_print_last_error("DebugBreakProcess");
+    return false;
+  }
+
+  return true;
 }
 
 bool cont_now(const ThreadID& tid) {
-  return false;
+  if (cont_status != 0) {
+    return false;
+  }
+
+  {
+    std::unique_lock<std::mutex> lk(m);
+    cont_status = 1;
+    cv.notify_all();
+  }
+  return true;
 }
 
-bool get_regs_now(const ThreadID& tid, Regs* out) {
-  return false;
+DEBUG_EVENT debugEvent;
+void ignore_debug_event() {
+  if (!ContinueDebugEvent(debugEvent.dwProcessId, debugEvent.dwThreadId, DBG_CONTINUE)) {
+    win_print_last_error("ContinueDebugEvent");
+  }
+  cont_status = -1;
+}
+
+const char* win32_exception_code_to_charp(DWORD exc) {
+  switch (exc) {
+    case EXCEPTION_ACCESS_VIOLATION:
+      return "EXCEPTION_ACCESS_VIOLATION";
+    case EXCEPTION_ARRAY_BOUNDS_EXCEEDED:
+      return "EXCEPTION_ARRAY_BOUNDS_EXCEEDED";
+    case EXCEPTION_BREAKPOINT:
+      return "EXCEPTION_BREAKPOINT";
+    case EXCEPTION_DATATYPE_MISALIGNMENT:
+      return "EXCEPTION_DATATYPE_MISALIGNMENT";
+    case EXCEPTION_FLT_DENORMAL_OPERAND:
+      return "EXCEPTION_FLT_DENORMAL_OPERAND";
+    case EXCEPTION_FLT_DIVIDE_BY_ZERO:
+      return "EXCEPTION_FLT_DIVIDE_BY_ZERO";
+    case EXCEPTION_FLT_INEXACT_RESULT:
+      return "EXCEPTION_FLT_INEXACT_RESULT";
+    case EXCEPTION_FLT_INVALID_OPERATION:
+      return "EXCEPTION_FLT_INVALID_OPERATION";
+    case EXCEPTION_FLT_OVERFLOW:
+      return "EXCEPTION_FLT_OVERFLOW";
+    case EXCEPTION_FLT_STACK_CHECK:
+      return "EXCEPTION_FLT_STACK_CHECK";
+    case EXCEPTION_FLT_UNDERFLOW:
+      return "EXCEPTION_FLT_UNDERFLOW";
+    case EXCEPTION_ILLEGAL_INSTRUCTION:
+      return "EXCEPTION_ILLEGAL_INSTRUCTION";
+    case EXCEPTION_IN_PAGE_ERROR:
+      return "EXCEPTION_IN_PAGE_ERROR";
+    case EXCEPTION_INT_DIVIDE_BY_ZERO:
+      return "EXCEPTION_INT_DIVIDE_BY_ZERO";
+    case EXCEPTION_INT_OVERFLOW:
+      return "EXCEPTION_INT_OVERFLOW";
+    case EXCEPTION_INVALID_DISPOSITION:
+      return "EXCEPTION_INVALID_DISPOSITION";
+    case EXCEPTION_NONCONTINUABLE_EXCEPTION:
+      return "EXCEPTION_NONCONTINUABLE_EXCEPTION";
+    case EXCEPTION_PRIV_INSTRUCTION:
+      return "EXCEPTION_PRIV_INSTRUCTION";
+    case EXCEPTION_SINGLE_STEP:
+      return "EXCEPTION_SINGLE_STEP";
+    case EXCEPTION_STACK_OVERFLOW:
+      return "EXCEPTION_STACK_OVERFLOW";
+    default:
+      return "??????????";
+  }
+}
+
+bool check_stopped(const ThreadID& tid, SignalInfo* out) {
+  {
+    std::unique_lock<std::mutex> lk(m);
+    if (cont_status != -1) {
+      cv.wait(lk, [&] { return cont_status == 1; });
+      if (!ContinueDebugEvent(debugEvent.dwProcessId, debugEvent.dwThreadId, DBG_CONTINUE)) {
+        win_print_last_error("ContinueDebugEvent");
+      }
+      cont_status = -1;
+    }
+  }
+
+  if (WaitForDebugEvent(&debugEvent, INFINITE)) {
+    bool is_other = tid.pid != debugEvent.dwProcessId || tid.tid != debugEvent.dwThreadId;
+
+    cont_status = 0;
+    switch (debugEvent.dwDebugEventCode) {
+      case EXCEPTION_DEBUG_EVENT:  // 1
+      {
+        auto exc = debugEvent.u.Exception.ExceptionRecord.ExceptionCode;
+        if (is_other) {
+          if (exc == EXCEPTION_BREAKPOINT) {
+            out->kind = SignalInfo::BREAK;
+          } else {
+            // ignore exceptions outside goal thread
+            ignore_debug_event();
+          }
+        } else {
+          switch (exc) {
+            case EXCEPTION_BREAKPOINT:
+              out->kind = SignalInfo::BREAK;
+              break;
+            case EXCEPTION_ILLEGAL_INSTRUCTION:
+              out->kind = SignalInfo::ILLEGAL_INSTR;
+              break;
+            case EXCEPTION_INT_DIVIDE_BY_ZERO:
+            case EXCEPTION_FLT_DENORMAL_OPERAND:
+            case EXCEPTION_FLT_DIVIDE_BY_ZERO:
+            case EXCEPTION_FLT_INEXACT_RESULT:
+            case EXCEPTION_FLT_INVALID_OPERATION:
+            case EXCEPTION_FLT_OVERFLOW:
+            case EXCEPTION_FLT_UNDERFLOW:
+            case EXCEPTION_FLT_STACK_CHECK:
+              out->kind = SignalInfo::MATH_EXCEPTION;
+              break;
+            case EXCEPTION_INT_OVERFLOW:
+              ignore_debug_event();
+              break;
+            default:
+              out->kind = SignalInfo::EXCEPTION;
+              out->msg = fmt::format("{} [0x{:X}]", exc, win32_exception_code_to_charp(exc));
+              break;
+          }
+        }
+      } break;
+      case CREATE_PROCESS_DEBUG_EVENT:  // 3
+        if (debugEvent.u.CreateProcessInfo.hProcess != NULL &&
+            GetProcessId(debugEvent.u.CreateProcessInfo.hProcess) == debugEvent.dwProcessId) {
+        }
+        // out->kind = SignalInfo::NOTHING;
+        ignore_debug_event();
+        break;
+      case CREATE_THREAD_DEBUG_EVENT:  // 2
+      case EXIT_THREAD_DEBUG_EVENT:    // 4
+      case LOAD_DLL_DEBUG_EVENT:       // 6
+      case UNLOAD_DLL_DEBUG_EVENT:     // 7
+      case OUTPUT_DEBUG_STRING_EVENT:  // 8
+        // don't care about these
+        // out->kind = SignalInfo::NOTHING;
+        ignore_debug_event();
+        break;
+      case EXIT_PROCESS_DEBUG_EVENT:  // 5
+      case RIP_EVENT:                 // 9
+        out->kind = SignalInfo::DISAPPEARED;
+        break;
+      default:
+        printf("[Debugger] unhandled debug event %d\n", debugEvent.dwDebugEventCode);
+        out->kind = SignalInfo::UNKNOWN;
+        break;
+    }
+  } else if (GetLastError() != 0x79) {  // semaphore timeout error, irrelevant.
+    win_print_last_error("WaitForDebugEvent");
+  }
+
+  return cont_status != -1;
 }
 
 bool open_memory(const ThreadID& tid, MemoryHandle* out) {
-  return false;
+  return true;
 }
 
 bool close_memory(const ThreadID& tid, MemoryHandle* handle) {
-  return false;
+  return true;
 }
 
 bool read_goal_memory(u8* dest_buffer,
@@ -348,7 +538,24 @@ bool read_goal_memory(u8* dest_buffer,
                       u32 goal_addr,
                       const DebugContext& context,
                       const MemoryHandle& mem) {
-  return false;
+  SIZE_T read;
+  HANDLE hProc = OpenProcess(PROCESS_VM_READ, FALSE, context.tid.pid);
+
+  if (hProc == NULL) {
+    win_print_last_error("OpenProcess");
+    return false;
+  }
+
+  auto result =
+      ReadProcessMemory(hProc, (LPCVOID)(context.base + goal_addr), dest_buffer, size, &read);
+
+  CloseHandle(hProc);
+
+  if (!result || read != size) {
+    win_print_last_error("ReadProcessMemory");
+    return false;
+  }
+  return true;
 }
 
 bool write_goal_memory(const u8* src_buffer,
@@ -356,15 +563,118 @@ bool write_goal_memory(const u8* src_buffer,
                        u32 goal_addr,
                        const DebugContext& context,
                        const MemoryHandle& mem) {
-  return false;
+  SIZE_T written;
+  HANDLE hProc = OpenProcess(PROCESS_VM_WRITE, FALSE, context.tid.pid);
+
+  if (hProc == NULL) {
+    win_print_last_error("OpenProcess");
+    return false;
+  }
+
+  auto result =
+      WriteProcessMemory(hProc, (LPVOID)(context.base + goal_addr), src_buffer, size, &written);
+
+  CloseHandle(hProc);
+
+  if (!result || written != size) {
+    win_print_last_error("WriteProcessMemory");
+    return false;
+  }
+  return true;
 }
 
-bool check_stopped(const ThreadID& tid, SignalInfo* out) {
-  return false;
+bool get_regs_now(const ThreadID& tid, Regs* out) {
+  CONTEXT context = {};
+  context.ContextFlags = CONTEXT_FULL;
+  HANDLE hThr = OpenThread(THREAD_GET_CONTEXT, FALSE, tid.tid);
+
+  if (hThr == NULL) {
+    win_print_last_error("OpenThread");
+    return false;
+  }
+
+  auto result = GetThreadContext(hThr, &context);
+  CloseHandle(hThr);
+
+  if (!result) {
+    win_print_last_error("GetThreadContext");
+    return false;
+  }
+
+  out->gprs[0] = context.Rax;
+  out->gprs[1] = context.Rcx;
+  out->gprs[2] = context.Rdx;
+  out->gprs[3] = context.Rbx;
+  out->gprs[4] = context.Rsp;
+  out->gprs[5] = context.Rbp;
+  out->gprs[6] = context.Rsi;
+  out->gprs[7] = context.Rdi;
+  out->gprs[8] = context.R8;
+  out->gprs[9] = context.R9;
+  out->gprs[10] = context.R10;
+  out->gprs[11] = context.R11;
+  out->gprs[12] = context.R12;
+  out->gprs[13] = context.R13;
+  out->gprs[14] = context.R14;
+  out->gprs[15] = context.R15;
+  out->rip = context.Rip;
+
+  // todo, get fprs.
+  return true;
 }
 
 bool set_regs_now(const ThreadID& tid, const Regs& out) {
-  return false;
+  CONTEXT context = {};
+  context.ContextFlags = CONTEXT_FULL;
+  HANDLE hThr = OpenThread(THREAD_GET_CONTEXT, FALSE, tid.tid);
+
+  if (hThr == NULL) {
+    win_print_last_error("OpenThread");
+    return false;
+  }
+
+  auto result = GetThreadContext(hThr, &context);
+  CloseHandle(hThr);
+
+  if (!result) {
+    win_print_last_error("GetThreadContext");
+    return false;
+  }
+
+  context.Rax = out.gprs[0];
+  context.Rcx = out.gprs[1];
+  context.Rdx = out.gprs[2];
+  context.Rbx = out.gprs[3];
+  context.Rsp = out.gprs[4];
+  context.Rbp = out.gprs[5];
+  context.Rsi = out.gprs[6];
+  context.Rdi = out.gprs[7];
+  context.R8 = out.gprs[8];
+  context.R9 = out.gprs[9];
+  context.R10 = out.gprs[10];
+  context.R11 = out.gprs[11];
+  context.R12 = out.gprs[12];
+  context.R13 = out.gprs[13];
+  context.R14 = out.gprs[14];
+  context.R15 = out.gprs[15];
+  context.Rip = out.rip;
+
+  hThr = OpenThread(THREAD_SET_CONTEXT, FALSE, tid.tid);
+
+  if (hThr == NULL) {
+    win_print_last_error("OpenThread");
+    return false;
+  }
+
+  result = SetThreadContext(hThr, &context);
+  CloseHandle(hThr);
+
+  if (!result) {
+    win_print_last_error("SetThreadContext");
+    return false;
+  }
+  // todo, set fprs.
+  return true;
 }
 #endif
 

@@ -1,6 +1,6 @@
 # OpenGOAL Debugger
 
-Currently the debugger only works on Linux. All the platform specific stuff is in `xdbg.cpp`.
+The debugger works on Windows and Linux. All the platform specific code is in `xdbg.cpp`. When attached to a target, things like exceptions from invalid memory access or divides by zero break into the debugger for inspection on the code or values that caused the break. The technical implementation of the debugger across multiple platforms means there will be a few differences in how it handles or displays certain things. For example, the debugger on Linux will break if the GOAL (EE) thread runs into a breakpoint, but on Windows this can be caused by any thread on the target as the thread that `(:break)` breaks is unspecified.
 
 ## Commands
 
@@ -232,6 +232,37 @@ gc> (:disasm (sym-val basic-type?) 80)
 ```
 
 For now, the disassembly is pretty basic, but it should eventually support GOAL symbols.
+
+### `(:sym-name)`
+
+Print the name of a symbol from its offset. The name is fetched from memory.
+
+```lisp
+(:sym-name offset)
+```
+
+Example (after doing a `(lt)`, `(blg)`, `(dbg)`):
+
+```nasm
+gs> (:sym-name 0)
+symbol name for symbol 0h is #f
+gs> (:sym-name 8)
+symbol name for symbol 8h is #t
+gs> (:sym-name 16)
+symbol name for symbol 10h is function
+gs> (:sym-name #x18)
+symbol name for symbol 18h is basic
+gs> (:sym-name #x20)
+symbol name for symbol 20h is string
+gs> (:sym-name #x30)
+symbol name for symbol 30h is type
+gs> (:sym-name #x80)
+symbol name for symbol 80h is int64
+gs> (:sym-name #x800)
+symbol name for symbol 800h is <invalid symbol offset>
+```
+
+Keep in mind `-#xa8` is not valid syntax for a negative number in hexadecimal.
 
 ## Breakpoints
 

@@ -926,8 +926,8 @@ TEST_F(WithGameTests, Mips2C_CallGoal) {
 TEST(TypeConsistency, TypeConsistency) {
   Compiler compiler;
   compiler.enable_throw_on_redefines();
-  compiler.run_test_no_load("test/goalc/source_templates/with_game/test-build-game.gc");
   compiler.run_test_no_load("decompiler/config/all-types.gc");
+  compiler.run_test_no_load("test/goalc/source_templates/with_game/test-build-game.gc");
 }
 
 struct VectorFloatRegister {

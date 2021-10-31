@@ -3,7 +3,7 @@
 #include <vector>
 
 #include "common/common_types.h"
-#include "game/graphics/dma/dma_chain_read.h"
+#include "common/dma/dma_chain_read.h"
 #include "common/util/Serializer.h"
 
 struct DmaData {

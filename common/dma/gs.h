@@ -1,6 +1,6 @@
 #pragma once
 
-#include "game/graphics/dma/dma.h"
+#include "common/dma/dma.h"
 
 /*!
  * @file gs.h

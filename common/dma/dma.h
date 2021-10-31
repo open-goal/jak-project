@@ -71,6 +71,9 @@ struct VifCode {
     DIRECTHL = 0b1010001,
     UNPACK_MASK = 0b1100000,  // unpack is a bunch of commands.
     UNPACK_V4_32 = 0b1101100,
+    UNPACK_V4_16 = 0b1101101,
+    UNPACK_V3_32 = 0b1101000,
+    UNPACK_V4_8 = 0b1101110,
   };
 
   VifCode(u32 value) {
