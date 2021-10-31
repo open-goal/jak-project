@@ -76,11 +76,14 @@ int main(int argc, char** argv) {
       return 1;
     }
 
+    level_tools::DrawStats draw_stats;
+    // draw_stats.debug_print_dma_data = true;
     level_tools::BspHeader bsp_header;
-    bsp_header.read_from_file(data, dts);
+    bsp_header.read_from_file(data, dts, &draw_stats);
 
     level_tools::PrintSettings settings;
     fmt::print("{}\n", bsp_header.print(settings));
+    fmt::print("Stats:\n{}\n", draw_stats.print());
 
   } catch (const std::exception& e) {
     fmt::print("Error: {}\n", e.what());

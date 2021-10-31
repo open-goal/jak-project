@@ -41,14 +41,30 @@ struct FileInfo {
 struct PrintSettings {
   bool print_tfrag = true;
   bool expand_draw_node = true;
-  bool expand_drawable_tree_tfrag = true;
+  bool expand_drawable_tree_tfrag = false;
   bool expand_drawable_tree_trans_tfrag = false;
+  bool expand_drawable_tree_tie_proto = true;
+  bool expand_drawable_tree_tie_proto_data = false;
   bool expand_drawable_tree_instance_tie = false;
   bool expand_drawable_tree_actor = false;
 };
 
+struct DrawStats {
+  int total_tfrag_tris = 0;
+  int total_tie_prototype_tris = 0;
+  int total_actors = 0;
+  int total_tie_instances = 0;
+  int total_tfragments = 0;
+
+  bool debug_print_dma_data = false;
+
+  std::string print() const;
+};
+
 struct Drawable {
-  virtual void read_from_file(TypedRef ref, const decompiler::DecompilerTypeSystem& dts) = 0;
+  virtual void read_from_file(TypedRef ref,
+                              const decompiler::DecompilerTypeSystem& dts,
+                              DrawStats* stats) = 0;
   virtual std::string print(const PrintSettings& settings, int indent) const = 0;
   virtual std::string my_type() const = 0;
   virtual ~Drawable() = default;
@@ -57,7 +73,9 @@ struct Drawable {
 struct DrawableInlineArray : public Drawable {};
 
 struct DrawNode : public Drawable {
-  void read_from_file(TypedRef ref, const decompiler::DecompilerTypeSystem& dts) override;
+  void read_from_file(TypedRef ref,
+                      const decompiler::DecompilerTypeSystem& dts,
+                      DrawStats* stats) override;
   std::string print(const PrintSettings& settings, int indent) const override;
   std::string my_type() const override;
 
@@ -69,9 +87,7 @@ struct DrawNode : public Drawable {
   float distance = 0;
 };
 
-struct EntityActor {
-
-};
+struct EntityActor {};
 
 struct DrawableActor : public Drawable {
   s16 id;
@@ -79,7 +95,9 @@ struct DrawableActor : public Drawable {
 
   EntityActor actor;
 
-  void read_from_file(TypedRef ref, const decompiler::DecompilerTypeSystem& dts) override;
+  void read_from_file(TypedRef ref,
+                      const decompiler::DecompilerTypeSystem& dts,
+                      DrawStats* stats) override;
   std::string print(const PrintSettings& settings, int indent) const override;
   std::string my_type() const override { return "drawable-actor"; }
 };
@@ -90,11 +108,13 @@ struct TFragmentDebugData {
   bool has_debug_lines;
 
   std::string print(int indent) const;
-  void read_from_file(Ref ref, const decompiler::DecompilerTypeSystem& dts);
+  void read_from_file(Ref ref, const decompiler::DecompilerTypeSystem& dts, DrawStats* stats);
 };
 
 struct TFragment : public Drawable {
-  void read_from_file(TypedRef ref, const decompiler::DecompilerTypeSystem& dts) override;
+  void read_from_file(TypedRef ref,
+                      const decompiler::DecompilerTypeSystem& dts,
+                      DrawStats* stats) override;
   std::string print(const PrintSettings& settings, int indent) const override;
   std::string my_type() const override { return "tfragment"; }
 
@@ -122,7 +142,9 @@ struct TFragment : public Drawable {
 };
 
 struct TieFragment : public Drawable {
-  void read_from_file(TypedRef ref, const decompiler::DecompilerTypeSystem& dts) override;
+  void read_from_file(TypedRef ref,
+                      const decompiler::DecompilerTypeSystem& dts,
+                      DrawStats* stats) override;
   std::string print(const PrintSettings& settings, int indent) const override;
   std::string my_type() const override { return "tie-fragment"; }
 
@@ -134,7 +156,9 @@ struct TieFragment : public Drawable {
 };
 
 struct InstanceTie : public Drawable {
-  void read_from_file(TypedRef ref, const decompiler::DecompilerTypeSystem& dts) override;
+  void read_from_file(TypedRef ref,
+                      const decompiler::DecompilerTypeSystem& dts,
+                      DrawStats* stats) override;
   std::string print(const PrintSettings& settings, int indent) const override;
   std::string my_type() const override { return "instance-tie"; }
 
@@ -152,7 +176,9 @@ struct DrawableInlineArrayNode : public DrawableInlineArray {
 
   std::vector<DrawNode> draw_nodes;
 
-  void read_from_file(TypedRef ref, const decompiler::DecompilerTypeSystem& dts) override;
+  void read_from_file(TypedRef ref,
+                      const decompiler::DecompilerTypeSystem& dts,
+                      DrawStats* stats) override;
   std::string print(const PrintSettings& settings, int indent) const override;
   std::string my_type() const override;
 };
@@ -164,7 +190,9 @@ struct DrawableInlineArrayTFrag : public DrawableInlineArray {
 
   std::vector<TFragment> tfragments;
 
-  void read_from_file(TypedRef ref, const decompiler::DecompilerTypeSystem& dts) override;
+  void read_from_file(TypedRef ref,
+                      const decompiler::DecompilerTypeSystem& dts,
+                      DrawStats* stats) override;
   std::string print(const PrintSettings& settings, int indent) const override;
   std::string my_type() const override;
 };
@@ -176,7 +204,9 @@ struct DrawableInlineArrayTie : public DrawableInlineArray {
 
   std::vector<InstanceTie> instances;
 
-  void read_from_file(TypedRef ref, const decompiler::DecompilerTypeSystem& dts) override;
+  void read_from_file(TypedRef ref,
+                      const decompiler::DecompilerTypeSystem& dts,
+                      DrawStats* stats) override;
   std::string print(const PrintSettings& settings, int indent) const override;
   std::string my_type() const override;
 };
@@ -186,7 +216,9 @@ struct DrawableInlineArrayTransTFrag : public DrawableInlineArrayTFrag {
 };
 
 struct DrawableInlineArrayUnknown : public DrawableInlineArray {
-  void read_from_file(TypedRef ref, const decompiler::DecompilerTypeSystem& dts) override;
+  void read_from_file(TypedRef ref,
+                      const decompiler::DecompilerTypeSystem& dts,
+                      DrawStats* stats) override;
   std::string print(const PrintSettings& settings, int indent) const override;
   std::string my_type() const override;
   std::string type_name;
@@ -195,7 +227,9 @@ struct DrawableInlineArrayUnknown : public DrawableInlineArray {
 struct DrawableTree : public Drawable {};
 
 struct DrawableTreeTfrag : public DrawableTree {
-  void read_from_file(TypedRef ref, const decompiler::DecompilerTypeSystem& dts) override;
+  void read_from_file(TypedRef ref,
+                      const decompiler::DecompilerTypeSystem& dts,
+                      DrawStats* stats) override;
   std::string print(const PrintSettings& settings, int indent) const override;
   std::string my_type() const override;
 
@@ -208,7 +242,9 @@ struct DrawableTreeTfrag : public DrawableTree {
 };
 
 struct DrawableTreeActor : public DrawableTree {
-  void read_from_file(TypedRef ref, const decompiler::DecompilerTypeSystem& dts) override;
+  void read_from_file(TypedRef ref,
+                      const decompiler::DecompilerTypeSystem& dts,
+                      DrawStats* stats) override;
   std::string print(const PrintSettings& settings, int indent) const override;
   std::string my_type() const override;
 
@@ -221,7 +257,9 @@ struct DrawableTreeActor : public DrawableTree {
 };
 
 struct PrototypeTie : public DrawableInlineArray {
-  void read_from_file(TypedRef ref, const decompiler::DecompilerTypeSystem& dts) override;
+  void read_from_file(TypedRef ref,
+                      const decompiler::DecompilerTypeSystem& dts,
+                      DrawStats* stats) override;
   std::string print(const PrintSettings& settings, int indent) const override;
   std::string my_type() const override;
   s16 id;
@@ -257,7 +295,7 @@ struct PrototypeBucketTie {
   // todo tie-colors
   // todo data
 
-  void read_from_file(TypedRef ref, const decompiler::DecompilerTypeSystem& dts);
+  void read_from_file(TypedRef ref, const decompiler::DecompilerTypeSystem& dts, DrawStats* stats);
   std::string print(const PrintSettings& settings, int indent) const;
 };
 
@@ -267,12 +305,12 @@ struct PrototypeArrayTie {
   std::string content_type;
   std::vector<PrototypeBucketTie> data;
 
-  void read_from_file(TypedRef ref, const decompiler::DecompilerTypeSystem& dts);
+  void read_from_file(TypedRef ref, const decompiler::DecompilerTypeSystem& dts, DrawStats* stats);
   std::string print(const PrintSettings& settings, int indent) const;
 };
 
 struct ProxyPrototypeArrayTie {
-  void read_from_file(TypedRef ref, const decompiler::DecompilerTypeSystem& dts);
+  void read_from_file(TypedRef ref, const decompiler::DecompilerTypeSystem& dts, DrawStats* stats);
   std::string print(const PrintSettings& settings, int indent) const;
 
   PrototypeArrayTie prototype_array_tie;
@@ -280,7 +318,9 @@ struct ProxyPrototypeArrayTie {
 };
 
 struct DrawableTreeInstanceTie : public DrawableTree {
-  void read_from_file(TypedRef ref, const decompiler::DecompilerTypeSystem& dts) override;
+  void read_from_file(TypedRef ref,
+                      const decompiler::DecompilerTypeSystem& dts,
+                      DrawStats* stats) override;
   std::string print(const PrintSettings& settings, int indent) const override;
   std::string my_type() const override;
 
@@ -297,7 +337,9 @@ struct DrawableTreeTransTfrag : public DrawableTreeTfrag {
 };
 
 struct DrawableTreeUnknown : public DrawableTree {
-  void read_from_file(TypedRef ref, const decompiler::DecompilerTypeSystem& dts) override;
+  void read_from_file(TypedRef ref,
+                      const decompiler::DecompilerTypeSystem& dts,
+                      DrawStats* stats) override;
   std::string print(const PrintSettings& settings, int indent) const override;
   std::string my_type() const override;
   std::string type_name;
@@ -307,7 +349,7 @@ struct DrawableTreeArray {
   s16 id;
   s16 length;
 
-  void read_from_file(TypedRef ref, const decompiler::DecompilerTypeSystem& dts);
+  void read_from_file(TypedRef ref, const decompiler::DecompilerTypeSystem& dts, DrawStats* stats);
 
   std::string print(const PrintSettings& settings, int indent) const;
 
@@ -363,7 +405,7 @@ struct BspHeader {
   //  (unk-data-8 uint32 55 :offset-assert 180)
 
   void read_from_file(const decompiler::LinkedObjectFile& file,
-                      const decompiler::DecompilerTypeSystem& dts);
+                      const decompiler::DecompilerTypeSystem& dts, DrawStats* stats);
 
   std::string print(const PrintSettings& settings) const;
 };
