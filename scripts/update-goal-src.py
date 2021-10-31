@@ -22,7 +22,9 @@ throw_error = False
 # that will be picked up by git to shame you
 files_with_modifications = [
   "target-util",
-  "ambient"
+  "ambient",
+  "viewer",
+  "sunken-obs"
 ]
 
 for file in files:
