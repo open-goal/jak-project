@@ -303,8 +303,6 @@ void TFragment::read_from_file(TypedRef ref,
   }
   memcpy(dma_qwc, &dma_word.data, 4);
 
-  fmt::print("qwc's: {} {} {} {}\n", dma_qwc[0], dma_qwc[1], dma_qwc[2], dma_qwc[3]);
-
   auto dma_slot = get_field_ref(ref, "dma-chain", dts);
 
   struct DmaInfo {
@@ -320,8 +318,8 @@ void TFragment::read_from_file(TypedRef ref,
     dma_slot.byte_offset += 4;
   }
 
-
   if (stats->debug_print_dma_data) {
+    fmt::print("qwc's: {} {} {} {}\n", dma_qwc[0], dma_qwc[1], dma_qwc[2], dma_qwc[3]);
     // first, common
     fmt::print("DMA COMMON {}, {} qwc:\n", dmas[0].label_name, dma_qwc[0]);
     tfrag_debug_print_unpack(dmas[0].ref, dma_qwc[0]);
@@ -338,8 +336,6 @@ void TFragment::read_from_file(TypedRef ref,
     fmt::print("DMA LEVEL1 {}, {} qwc:\n", dmas[2].label_name, dma_qwc[2]);
     tfrag_debug_print_unpack(dmas[2].ref, dma_qwc[2]);
   }
-
-
 
   // todo dma
   // todo dma
@@ -857,7 +853,8 @@ std::string PrototypeBucketTie::print(const PrintSettings& settings, int indent)
     result += fmt::format("{}rdists: {}", is, rdists.print());
     //  result += fmt::format("{}next: [{}, {}, {}, {}]\n", is, next[0], next[1], next[2], next[3]);
     //  result += fmt::format("{}count: [{}, {}, {}, {}]\n", is, count[0], count[1], count[2],
-    //  count[3]); result += fmt::format("{}generic_count: [{}, {}, {}, {}]\n", is, generic_count[0],
+    //  count[3]); result += fmt::format("{}generic_count: [{}, {}, {}, {}]\n", is,
+    //  generic_count[0],
     //                        generic_count[1], generic_count[2], generic_count[3]);
     //  result += fmt::format("{}generic_next: [{}, {}, {}, {}]\n", is, generic_next[0],
     //  generic_next[1],
@@ -974,7 +971,6 @@ std::string DrawableTreeInstanceTie::print(const PrintSettings& settings, int in
       result += fmt::format("{}arrays [{}] ({}):\n", is, i, arrays[i]->my_type());
       result += arrays[i]->print(settings, next_indent);
     }
-
   }
 
   return result;
