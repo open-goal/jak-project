@@ -35,7 +35,7 @@ std::string VifCode::print() {
       result = "ITOP";
       break;
     case Kind::STMOD:
-      result = "STMOD";
+      result = fmt::format("STMOD 0b{:b}", immediate);
       break;
     case Kind::MSK3PATH:
       result = "MSK3PATH";
@@ -79,6 +79,34 @@ std::string VifCode::print() {
     case Kind::DIRECTHL:
       result = "DIRECTHL";
       break;
+    case Kind::UNPACK_V4_8: {
+      VifCodeUnpack up(*this);
+      result = fmt::format("UNPACK-V4-8: {} addr: {} us: {} tops: {}", num, up.addr_qw,
+                           up.is_unsigned, up.use_tops_flag);
+      break;
+    }
+
+    case Kind::UNPACK_V4_16: {
+      VifCodeUnpack up(*this);
+      result = fmt::format("UNPACK-V4-16: {} addr: {} us: {} tops: {}", num, up.addr_qw,
+                           up.is_unsigned, up.use_tops_flag);
+      break;
+    }
+
+    case Kind::UNPACK_V4_32: {
+      VifCodeUnpack up(*this);
+      result = fmt::format("UNPACK-V4-32: {} addr: {} us: {} tops: {}", num, up.addr_qw,
+                           up.is_unsigned, up.use_tops_flag);
+      break;
+    }
+
+    case Kind::UNPACK_V3_32: {
+      VifCodeUnpack up(*this);
+      result = fmt::format("UNPACK-V3-32: {} addr: {} us: {} tops: {}", num, up.addr_qw,
+                           up.is_unsigned, up.use_tops_flag);
+      break;
+    }
+
     default:
       fmt::print("Unhandled vif code {}", (int)kind);
       result = "???";
