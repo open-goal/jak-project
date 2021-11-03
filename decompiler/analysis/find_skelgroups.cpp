@@ -114,9 +114,6 @@ DefskelgroupElement::Info get_defskelgroup_entries(Form* body,
 
   // next, all the handlers
   for (int i = 0; i < body->size() - 1; ++i) {
-    if (i / 2 - 1 > info.max_lod) {
-      env.func->warnings.warn_and_throw("defskelgroup exceeded max-lod of {}", info.max_lod);
-    }
 
     auto matcher = i < 2 ? Matcher::set(Matcher::deref(Matcher::any_reg(0), false,
                                                        {DerefTokenMatcher::any_string(1)}),
@@ -173,6 +170,12 @@ FormElement* rewrite_defskelgroup(LetElement* elt,
   // last thing in the body should be something like:
   //  (set! *hopper-sg* v1-1)
   assert(elt->body()->size() > 0);
+
+  int last_lod = (elt->body()->size() - 1) / 2 - 1;
+  if (last_lod > skelgroup_info.max_lod) {
+    env.func->warnings.warn_and_throw("defskelgroup exceeds max-lod of {} ({})",
+                                      skelgroup_info.max_lod, last_lod);
+  }
 
   auto rest_info =
       get_defskelgroup_entries(elt->body(), env, skelgroup_info, elt->entries().at(0).dest);
