@@ -13,12 +13,8 @@ namespace {
 
 std::string get_skelgroup_name(FormElement* skel_set, const Env& env) {
   auto sff = dynamic_cast<SetFormFormElement*>(skel_set);
-  if (!sff) {
-    env.func->warnings.warn_and_throw(
-        "Failed to identify defskelgroup. The skeleton-group symbol set was supposed to be: {}, "
-        "but "
-        "this doesn't look like a set.",
-        skel_set->to_string(env));
+  if (!sff || !skel_set) {
+    env.func->warnings.warn_and_throw("Failed to identify defskelgroup.");
   }
 
   auto atom = form_as_atom(sff->dst());
