@@ -114,7 +114,6 @@ DefskelgroupElement::Info get_defskelgroup_entries(Form* body,
 
   // next, all the handlers
   for (int i = 0; i < body->size() - 1; ++i) {
-
     auto matcher = i < 2 ? Matcher::set(Matcher::deref(Matcher::any_reg(0), false,
                                                        {DerefTokenMatcher::any_string(1)}),
                                         Matcher::any(2))
