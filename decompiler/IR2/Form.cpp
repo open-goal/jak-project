@@ -2973,7 +2973,8 @@ void DefskelgroupElement::get_modified_regs(RegSet& regs) const {
 
 goos::Object DefskelgroupElement::to_form_internal(const Env& env) const {
   std::vector<goos::Object> forms;
-  forms.push_back(pretty_print::to_symbol(fmt::format("defskelgroup {} {}", m_name, m_static_info.art_name)));
+  forms.push_back(
+      pretty_print::to_symbol(fmt::format("defskelgroup {} {}", m_name, m_static_info.art_name)));
   forms.push_back(m_info.jgeo->to_form(env));
   forms.push_back(m_info.janim->to_form(env));
 
