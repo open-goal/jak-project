@@ -122,16 +122,21 @@ DefskelgroupElement::Info get_defskelgroup_entries(Form* body,
       env.func->warnings.warn_and_throw("defskelgroup exceeded max-lod of {}", info.max_lod);
     }
 
-    auto& matcher = i < 2 ? Matcher::set(Matcher::deref(Matcher::any_reg(0), false,
-                                                        {DerefTokenMatcher::any_string(1)}),
-                                         Matcher::any(2))
-                          : Matcher::set(Matcher::deref(Matcher::any_reg(0), false,
-                                                        {DerefTokenMatcher::any_string(1),
-                                                         DerefTokenMatcher::integer(i / 2 - 1)}),
-                                         Matcher::any(3));
     Form temp;
     temp.elts().push_back(body->at(i));
-    auto mr = match(matcher, &temp);
+    MatchResult mr;
+    if (i < 2) {
+      auto& matcher = Matcher::set(
+          Matcher::deref(Matcher::any_reg(0), false, {DerefTokenMatcher::any_string(1)}),
+          Matcher::any(2));
+      mr = match(matcher, &temp);
+    } else {
+      auto& matcher = Matcher::set(
+          Matcher::deref(Matcher::any_reg(0), false,
+                         {DerefTokenMatcher::any_string(1), DerefTokenMatcher::integer(i / 2 - 1)}),
+          Matcher::any(3));
+      mr = match(matcher, &temp);
+    }
 
     if (!mr.matched) {
       env.func->warnings.warn_and_throw("defskelgroup set no match");
