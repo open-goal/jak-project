@@ -5,8 +5,6 @@
 ;; name in dgo: bird-lady-beach
 ;; dgos: BEA, L1
 
-(define-extern *bird-lady-beach-sg* skeleton-group)
-
 ;; DECOMP BEGINS
 
 (deftype bird-lady-beach (process-taskable)
@@ -20,21 +18,13 @@
   )
 
 
-(let
-  ((v1-1
-    (new 'static 'skeleton-group
-     :art-group-name "bird-lady-beach"
-     :bounds (new 'static 'vector :w 16384.0)
-     :version #x6
-     :shadow 2
-     )
-    )
-   )
-  (set! (-> v1-1 jgeo) 0)
-  (set! (-> v1-1 janim) 3)
-  (set! (-> v1-1 mgeo 0) 1)
-  (set! (-> v1-1 lod-dist 0) 4095996000.0)
-  (set! *bird-lady-beach-sg* v1-1)
+(defskelgroup *bird-lady-beach-sg* bird-lady-beach
+  0
+  3
+  ((1 (meters 999999)))
+  :bounds (static-spherem 0 0 0 4)
+  :longest-edge (meters 0)
+  :shadow 2
   )
 
 (defstate idle (bird-lady-beach)
@@ -61,12 +51,9 @@
 
 (defmethod play-anim! bird-lady-beach ((obj bird-lady-beach) (arg0 symbol))
   (case (current-status (-> obj tasks)) 
-   ((6)
+   (((task-status need-reward-speech))
      (when arg0
-      (set!
-       (-> obj cell-for-task)
-       (the-as game-task (current-task (-> obj tasks)))
-       )
+      (set! (-> obj cell-for-task) (current-task (-> obj tasks)))
       (close-current! (-> obj tasks))
       (let ((s5-1 (get-process *default-dead-pool* manipy #x4000)))
        (set! (-> obj flutflut) (ppointer->handle (when s5-1
@@ -157,7 +144,7 @@
       0
       "ERROR: <GMJ>: ~S playing anim for task status ~S~%"
       (-> obj name)
-      (task-status->string (the-as task-status (current-status (-> obj tasks))))
+      (task-status->string (current-status (-> obj tasks)))
       )
      )
     (-> obj draw art-group data 3)
@@ -170,7 +157,7 @@
   )
 
 (defmethod should-display? bird-lady-beach ((obj bird-lady-beach))
-  (= (current-status (-> obj tasks)) 6)
+  (= (current-status (-> obj tasks)) (task-status need-reward-speech))
   )
 
 (defmethod copy-defaults! bird-lady-beach ((obj bird-lady-beach) (arg0 res-lump))

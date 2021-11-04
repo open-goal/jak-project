@@ -5,8 +5,6 @@
 ;; name in dgo: assistant-citadel
 ;; dgos: CIT, L1
 
-(define-extern *assistant-lavatube-end-sg* skeleton-group)
-
 ;; DECOMP BEGINS
 
 (deftype assistant-lavatube-end (process-taskable)
@@ -18,21 +16,13 @@
   )
 
 
-(let
-  ((v1-1
-    (new 'static 'skeleton-group
-     :art-group-name "assistant-lavatube-end"
-     :bounds (new 'static 'vector :w 16384.0)
-     :version #x6
-     :shadow 2
-     )
-    )
-   )
-  (set! (-> v1-1 jgeo) 0)
-  (set! (-> v1-1 janim) 3)
-  (set! (-> v1-1 mgeo 0) 1)
-  (set! (-> v1-1 lod-dist 0) 4095996000.0)
-  (set! *assistant-lavatube-end-sg* v1-1)
+(defskelgroup *assistant-lavatube-end-sg* assistant-lavatube-end
+  0
+  3
+  ((1 (meters 999999)))
+  :bounds (static-spherem 0 0 0 4)
+  :longest-edge (meters 0)
+  :shadow 2
   )
 
 (defmethod
@@ -40,7 +30,7 @@
   assistant-lavatube-end
   ((obj assistant-lavatube-end) (arg0 symbol))
   (case (current-status (-> obj tasks)) 
-   ((1 2)
+   (((task-status unknown) (task-status need-hint))
      (new 'static 'spool-anim
       :name "assistant-lavatube-end-resolution"
       :index 4
@@ -48,7 +38,7 @@
       :command-list '()
       )
      )
-   ((6)
+   (((task-status need-reward-speech))
     (if arg0
      (close-current! (-> obj tasks))
      )
@@ -118,7 +108,7 @@
       0
       "ERROR: <GMJ>: ~S playing anim for task status ~S~%"
       (-> obj name)
-      (task-status->string (the-as task-status (current-status (-> obj tasks))))
+      (task-status->string (current-status (-> obj tasks)))
       )
      )
     (get-art-elem obj)
@@ -241,7 +231,10 @@
   (first-any (-> obj tasks) #t)
   (let ((v1-3 (current-status (-> obj tasks))))
    (and
-    (or (= v1-3 6) (= v1-3 0))
+    (or
+     (= v1-3 (task-status need-reward-speech))
+     (= v1-3 (task-status invalid))
+     )
     (not (task-closed? (game-task citadel-sage-green) (task-status need-hint)))
     )
    )

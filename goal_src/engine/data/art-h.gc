@@ -306,7 +306,9 @@
 (defmacro defskelgroup (name art-name joint-geom joint-anim lods
                         &key (shadow 0)
                         &key bounds
-                        &key edge
+                        &key longest-edge
+                        &key (texture-level 0)
+                        &key (sort 0)
                         &key (version 6) ;; do NOT use this!
                         )
 
@@ -315,14 +317,16 @@
   `(let ((skel (new 'static 'skeleton-group
                         :art-group-name ,(symbol->string art-name)
                         :bounds ,bounds
-                        :longest-edge ,edge
+                        :longest-edge ,longest-edge
                         :version ,version
-                        :max-lod ,(length lods)
+                        :max-lod ,(- (length lods) 1)
                         :shadow ,shadow
+                        :texture-level ,texture-level
+                        :sort ,sort
                         )))
         ;; set joint geometry and joint bones
-        (set! (-> skel jgeo) joint-geom)
-        (set! (-> skel janim) joint-anim)
+        (set! (-> skel jgeo) ,joint-geom)
+        (set! (-> skel janim) ,joint-anim)
         
         ;; set lods
         ,@(apply-i (lambda (x i)

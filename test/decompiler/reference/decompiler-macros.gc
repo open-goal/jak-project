@@ -778,3 +778,48 @@
         )
     )
   )
+
+;; vector-h
+(defmacro static-spherem (x y z r)
+  "actually makes a vector"
+  `(new 'static 'vector :x (meters ,x) :y (meters ,y) :z (meters ,z) :w (meters ,r))
+  )
+
+;; art-h
+(defmacro defskelgroup (name art-name joint-geom joint-anim lods
+                        &key (shadow 0)
+                        &key bounds
+                        &key longest-edge
+                        &key (texture-level 0)
+                        &key (sort 0)
+                        &key (version 6) ;; do NOT use this!
+                        )
+
+  "define a new static skeleton group"
+
+  `(let ((skel (new 'static 'skeleton-group
+                        :art-group-name ,(symbol->string art-name)
+                        :bounds ,bounds
+                        :longest-edge ,longest-edge
+                        :version ,version
+                        :max-lod ,(- (length lods) 1)
+                        :shadow ,shadow
+                        :texture-level ,texture-level
+                        :sort ,sort
+                        )))
+        ;; set joint geometry and joint bones
+        (set! (-> skel jgeo) ,joint-geom)
+        (set! (-> skel janim) ,joint-anim)
+        
+        ;; set lods
+        ,@(apply-i (lambda (x i)
+                      `(begin
+                          (set! (-> skel mgeo ,i) ,(car x))
+                          (set! (-> skel lod-dist ,i) ,(cadr x))
+                          )
+                      ) lods)
+
+        ;; define skel group
+        (define ,name skel)
+        )
+  )
