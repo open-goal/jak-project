@@ -11,6 +11,11 @@
 
 #ifdef __linux
 #include <netinet/in.h>
+#elif __APPLE__
+#include <sys/socket.h>
+#include <sys/types.h>
+#include <netinet/in.h>
+
 #elif _WIN32
 #include <Windows.h>
 #endif

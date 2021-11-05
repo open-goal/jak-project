@@ -4,8 +4,12 @@
 #include <mutex>
 #include "third-party/fmt/color.h"
 #include "log.h"
+
 #ifdef _WIN32  // see lg::initialize
 #include <Windows.h>
+#elif __APPLE__
+#include <unistd.h>
+#include <sys/types.h>
 #endif
 
 namespace lg {

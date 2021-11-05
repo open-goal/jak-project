@@ -3,6 +3,10 @@
 #include "DataParser.h"
 #include "third-party/fmt/core.h"
 
+#ifdef __APPLE__
+#include <unordered_map>
+#endif
+
 /*
  * Allowable lines:
  * L123:             - label

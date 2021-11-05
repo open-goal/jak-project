@@ -4,12 +4,13 @@
  * @file BinaryWriter.h
  * Write raw data like a stream.
  */
-
+#include <unistd.h>
 #include "common/util/assert.h"
 #include <stdexcept>
 #include <vector>
 #include <cstdint>
 #include <cstring>
+#include <string>
 
 struct BinaryWriterRef {
   size_t offset;

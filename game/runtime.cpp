@@ -10,6 +10,9 @@
 #include <io.h>
 #include <third-party/mman/mman.h>
 #include <Windows.h>
+#elif __APPLE__
+#include <unistd.h>
+#include <sys/mman.h>
 #endif
 
 #include <chrono>
@@ -121,6 +124,14 @@ void ee_runner(SystemThreadInterface& iface) {
                   MAP_ANONYMOUS | MAP_PRIVATE, 0, 0);
   }
 
+  #elif __APPLE__
+  {
+        g_ee_main_mem =
+        (u8*)mmap((void*)EE_MAIN_MEM_MAP, EE_MAIN_MEM_SIZE, PROT_EXEC | PROT_READ | PROT_WRITE,
+                  MAP_ANONYMOUS | MAP_PRIVATE, 0, 0);
+  }
+  #endif
+  
   if (g_ee_main_mem == (u8*)(-1)) {
     lg::debug("Failed to initialize main memory! {}", strerror(errno));
     iface.initialization_complete();

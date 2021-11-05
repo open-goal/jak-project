@@ -19,6 +19,11 @@
 #include <Windows.h>
 #include <WinSock2.h>
 #include <WS2tcpip.h>
+#elif __APPLE__
+#include <sys/types.h>
+#include <netinet/in.h>
+#include <netinet/tcp.h>
+#include <unistd.h>
 #endif
 
 #include "common/listener_common.h"
@@ -58,6 +63,8 @@ bool Deci2Server::init() {
   int server_socket_opt = SO_REUSEADDR | SO_REUSEPORT;
 #elif _WIN32
   int server_socket_opt = SO_EXCLUSIVEADDRUSE;
+#elif __APPLE__ 
+  int server_socket_opt = SO_REUSEADDR | SO_REUSEPORT;
 #endif
 
   int opt = 1;
