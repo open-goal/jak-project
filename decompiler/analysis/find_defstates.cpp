@@ -45,9 +45,9 @@ std::pair<std::string, TypeSpec> get_state_info(FormElement* state_set, const En
 
   if (type->second.base_type() != "state") {
     env.func->warnings.warn_and_throw(
-        "Identified a defstate for state {}, but our type information thinks it is a "
-        "{}, not a state.",
-        type->second.print());
+        "Identified a defstate for state {}, but our type information thinks it is a {}, not a "
+        "state.",
+        state_name, type->second.print());
   }
 
   if (type->second.arg_count() == 0) {
