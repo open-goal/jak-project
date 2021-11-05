@@ -4,6 +4,12 @@
  */
 
 #include "gzguts.h"
+#include <unistd.h>
+
+#ifdef _LARGEFILE64_SOURCE
+
+#ifndef _LARGEFILE_SOURCE
+#define _LARGEFILE_SOURCE 1
 
 #if defined(_WIN32) && !defined(__BORLANDC__) && !defined(__MINGW32__)
 #  define LSEEK _lseeki64
