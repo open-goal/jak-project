@@ -156,7 +156,7 @@ Val* Compiler::compile_dump_all(const goos::Object& form, const goos::Object& re
 
 namespace {
 
-enum PrintMode { HEX, UNSIGNED_DEC, SIGNED_DEC, FLOAT };
+enum class PrintMode { HEX, UNSIGNED_DEC, SIGNED_DEC, FLOAT };
 
 template <typename T>
 void mem_print(T* data, int count, u32 start_addr, PrintMode mode) {
@@ -167,14 +167,14 @@ void mem_print(T* data, int count, u32 start_addr, PrintMode mode) {
   std::string format_string;
 
   switch (mode) {
-    case HEX:
+    case PrintMode::HEX:
       format_string = "0x{:0" + std::to_string(2 * sizeof(T)) + "x} ";
       break;
-    case UNSIGNED_DEC:
-    case SIGNED_DEC:
+    case PrintMode::UNSIGNED_DEC:
+    case PrintMode::SIGNED_DEC:
       format_string = "{:" + std::to_string(3 * sizeof(T)) + "d} ";
       break;
-    case FLOAT:
+    case PrintMode::FLOAT:
       format_string = "{:8.4f} ";  // todo, is this what we want?
       break;
     default:
@@ -210,18 +210,18 @@ Val* Compiler::compile_pm(const goos::Object& form, const goos::Object& rest, En
   u32 addr = parse_address_spec(args.unnamed.at(1));
   u32 elts = args.unnamed.at(2).as_int();
 
-  PrintMode mode = HEX;
+  PrintMode mode = PrintMode::HEX;
 
   if (args.has_named("print-mode")) {
     auto mode_name = symbol_string(args.get_named("print-mode"));
     if (mode_name == "hex") {
-      mode = HEX;
+      mode = PrintMode::HEX;
     } else if (mode_name == "unsigned-dec") {
-      mode = UNSIGNED_DEC;
+      mode = PrintMode::UNSIGNED_DEC;
     } else if (mode_name == "signed-dec") {
-      mode = SIGNED_DEC;
+      mode = PrintMode::SIGNED_DEC;
     } else if (mode_name == "float") {
-      mode = FLOAT;
+      mode = PrintMode::FLOAT;
     } else {
       throw_compiler_error(form, "Unknown print-mode {} for :pm.", mode_name);
     }
@@ -250,8 +250,8 @@ Val* Compiler::compile_pm(const goos::Object& form, const goos::Object& rest, En
   m_debugger.read_memory(mem.data(), mem_size, addr);
 
   switch (mode) {
-    case HEX:
-    case UNSIGNED_DEC:
+    case PrintMode::HEX:
+    case PrintMode::UNSIGNED_DEC:
       switch (elt_size) {
         case 1:
           mem_print((u8*)mem.data(), elts, addr, mode);
@@ -269,7 +269,7 @@ Val* Compiler::compile_pm(const goos::Object& form, const goos::Object& rest, En
           throw_compiler_error(form, ":pm {} is an invalid element size for unsigned", elt_size);
       }
       break;
-    case SIGNED_DEC:
+    case PrintMode::SIGNED_DEC:
       switch (elt_size) {
         case 1:
           mem_print((s8*)mem.data(), elts, addr, mode);
@@ -287,7 +287,7 @@ Val* Compiler::compile_pm(const goos::Object& form, const goos::Object& rest, En
           throw_compiler_error(form, ":pm {} is a bad element size for signed", elt_size);
       }
       break;
-    case FLOAT:
+    case PrintMode::FLOAT:
       switch (elt_size) {
         case 4:
           mem_print((float*)mem.data(), elts, addr, mode);
@@ -387,6 +387,24 @@ Val* Compiler::compile_ubp(const goos::Object& form, const goos::Object& rest, E
 
   u32 addr = parse_address_spec(args.unnamed.at(0));
   m_debugger.remove_addr_breakpoint(addr);
+
+  return get_none();
+}
+
+Val* Compiler::compile_d_sym_name(const goos::Object& form, const goos::Object& rest, Env* env) {
+  (void)env;
+  auto args = get_va(form, rest);
+  va_check(form, args, {goos::ObjectType::INTEGER}, {});
+  s32 ofs = args.unnamed.at(0).as_int();
+
+  if (!m_debugger.is_halted()) {
+    throw_compiler_error(form,
+                         "Cannot get symbol name from offset, the debugger must be connected and "
+                         "the target must be halted.");
+  }
+
+  fmt::print("symbol name for symbol {:X}h is {}\n", ofs,
+             m_debugger.get_symbol_name_from_offset(ofs));
 
   return get_none();
 }

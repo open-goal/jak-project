@@ -3,7 +3,7 @@
 
 ;; definition of type racer-info
 (deftype racer-info (basic)
-  ((entity              basic                 :offset-assert   4)
+  ((entity              entity-actor          :offset-assert   4)
    (bike-trans          vector        :inline :offset-assert  16)
    (bike-quat           vector        :inline :offset-assert  32)
    (bike-scale          vector        :inline :offset-assert  48)
@@ -44,14 +44,14 @@
    (targ-rotx           degrees               :offset-assert 332)
    (speed-rotx          float                 :offset-assert 336)
    (mult-rotx           degrees               :offset-assert 340)
-   (front-blade         basic                 :offset-assert 344)
+   (front-blade         joint-mod             :offset-assert 344)
    (front-rot           degrees               :offset-assert 348)
    (front-rotv          degrees               :offset-assert 352)
-   (bottom-blade        basic                 :offset-assert 356)
+   (bottom-blade        joint-mod             :offset-assert 356)
    (bottom-rot          degrees               :offset-assert 360)
-   (front               basic                 :offset-assert 364)
+   (front               joint-mod             :offset-assert 364)
    (front-turn          degrees               :offset-assert 368)
-   (tail                basic                 :offset-assert 372)
+   (tail                joint-mod             :offset-assert 372)
    (tail-tilt           degrees               :offset-assert 376)
    (transv-max          meters                :offset-assert 380)
    (slide-down-time     uint64        2       :offset-assert 384)
@@ -68,7 +68,7 @@
    (boost-level         float                 :offset-assert 452)
    (boost-target        float                 :offset-assert 456)
    (boost-output        float                 :offset-assert 460)
-   (hop?                basic                 :offset-assert 464)
+   (hop?                symbol                :offset-assert 464)
    (hop-start-y         float                 :offset-assert 468)
    (bounce              int32                 :offset-assert 472)
    (bounce-hit          float                 :offset-assert 476)
@@ -83,10 +83,10 @@
    (rudd-anim-vel       float                 :offset-assert 512)
    (rudd-anim-frame     float                 :offset-assert 516)
    (racing-time         uint64                :offset-assert 520)
-   (stick-lock          basic                 :offset-assert 528)
-   (stick-off           basic                 :offset-assert 532)
-   (heavy               basic                 :offset-assert 536)
-   (unstuck-time        uint64                :offset-assert 544)
+   (stick-lock          symbol                :offset-assert 528)
+   (stick-off           symbol                :offset-assert 532)
+   (heavy               symbol                :offset-assert 536)
+   (unstuck-time        int64                 :offset-assert 544)
    (stuck-count         int32                 :offset-assert 552)
    (scrape-sound-id     sound-id              :offset-assert 556)
    (heat-sound-time     uint64                :offset-assert 560)
@@ -284,22 +284,10 @@
   )
 
 ;; failed to figure out what this is:
-(let
-  ((v0-4
-    (new 'static 'skeleton-group
-     :art-group-name "balloon"
-     :bounds
-     (new 'static 'vector :y 6963.2 :w 12288.0)
-     :max-lod 1
-     :version #x6
-     )
-    )
-   )
-  (set! (-> v0-4 jgeo) 0)
-  (set! (-> v0-4 janim) 3)
-  (set! (-> v0-4 mgeo 0) (the-as uint 1))
-  (set! (-> v0-4 lod-dist 0) 81920.0)
-  (set! (-> v0-4 mgeo 1) (the-as uint 2))
-  (set! (-> v0-4 lod-dist 1) 4095996000.0)
-  (set! *balloon-sg* v0-4)
+(defskelgroup *balloon-sg* balloon
+  0
+  3
+  ((1 (meters 20)) (2 (meters 999999)))
+  :bounds (static-spherem 0 1.7000000476837158 0 3)
+  :longest-edge (meters 0)
   )

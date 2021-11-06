@@ -97,8 +97,7 @@ bool Debugger::attach_and_break() {
     clear_signal_queue();
 
     // attach and send a break command
-    if (xdbg::attach_and_break(m_debug_context.tid)) {
-      start_watcher();
+    if (try_start_watcher()) {
       // wait for the signal queue to get a stop and pop it.
       auto info = pop_signal();
 
@@ -225,6 +224,8 @@ std::vector<BacktraceFrame> Debugger::get_backtrace(u64 rip, u64 rsp) {
         frame.rip_info.func_debug->stack_usage) {
       fmt::print("{} from {}\n", frame.rip_info.function_name, frame.rip_info.func_debug->obj_name);
       // we're good!
+      auto disasm = disassemble_at_rip(frame.rip_info);
+      fmt::print("{}\n", disasm.text);
       u64 rsp_at_call = rsp + *frame.rip_info.func_debug->stack_usage;
 
       u64 next_rip = 0;
@@ -561,6 +562,39 @@ bool Debugger::get_symbol_value(const std::string& sym_name, u32* output) {
 }
 
 /*!
+ * Get the value of a symbol by name. Returns if the symbol exists and populates output if it does.
+ */
+const char* Debugger::get_symbol_name_from_offset(s32 ofs) {
+  assert(is_valid());
+  auto kv = m_symbol_offset_to_name_map.find(ofs);
+  if (kv != m_symbol_offset_to_name_map.end()) {
+    return kv->second.c_str();
+  }
+  return "<invalid symbol offset>";
+}
+
+/*!
+ * Attempt to start the debugger watch thread and evaluate attach success. Stops if unsuccessful.
+ */
+bool Debugger::try_start_watcher() {
+#ifdef __linux
+  m_attach_response = xdbg::attach_and_break(m_debug_context.tid);
+  if (!m_attach_response)
+    return false;
+  start_watcher();
+  return true;
+#elif defined(_WIN32)
+  start_watcher();
+  std::unique_lock<std::mutex> lk(m_watcher_mutex);
+  m_attach_cv.wait(lk, [&]() { return m_attach_return; });
+  if (!m_attach_response) {
+    stop_watcher();
+  }
+  return m_attach_response;
+#endif
+}
+
+/*!
  * Starts the debugger watch thread which watches the target process to see if it stops.
  */
 void Debugger::start_watcher() {
@@ -570,6 +604,10 @@ void Debugger::start_watcher() {
   assert(!m_watcher_running);
   m_watcher_running = true;
   m_watcher_should_stop = false;
+  {
+    std::unique_lock<std::mutex> lk(m_watcher_mutex);
+    m_attach_return = false;
+  }
   m_watcher_thread = std::thread(&Debugger::watcher, this);
 }
 
@@ -593,6 +631,16 @@ Debugger::~Debugger() {
  * The watcher thread.
  */
 void Debugger::watcher() {
+// watcher will now attach to target.
+// linux doesn't require the attachment and watching to be on the same thread, but windows does.
+#ifdef _WIN32
+  m_attach_response = xdbg::attach_and_break(m_debug_context.tid);
+  m_attach_return = true;
+  m_attach_cv.notify_all();
+  if (!m_attach_response)
+    return;
+#endif
+
   xdbg::SignalInfo signal_info;
   while (!m_watcher_should_stop) {
     // we just sit in a loop, waiting for stops.
@@ -614,6 +662,23 @@ void Debugger::watcher() {
           printf("Target has disappeared. Maybe it quit or was killed.\n");
           handle_disappearance();
           break;
+        case xdbg::SignalInfo::ILLEGAL_INSTR:
+          printf(
+              "Target has crashed due to an illegal instruction. Run (:di) to get more "
+              "information.\n");
+          break;
+        case xdbg::SignalInfo::UNKNOWN:
+          printf("Target has encountered an unknown signal. Run (:di) to get more information.\n");
+          break;
+#ifdef _WIN32
+        case xdbg::SignalInfo::EXCEPTION:
+          printf("Target raised an exception (%s). Run (:di) to get more information.\n",
+                 signal_info.msg.c_str());
+          break;
+        case xdbg::SignalInfo::NOTHING:
+          // printf("Nothing happened.\n");
+          break;
+#endif
         default:
           printf("[Debugger] unhandled signal in watcher: %d\n", int(signal_info.kind));
           assert(false);

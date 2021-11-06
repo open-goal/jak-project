@@ -181,7 +181,7 @@ void Interpreter::throw_eval_error(const Object& o, const std::string& err) {
  */
 Object Interpreter::eval_with_rewind(const Object& obj,
                                      const std::shared_ptr<EnvironmentObject>& env) {
-  Object result = EmptyListObject::make_new();
+  Object result = Object::make_empty_list();
   try {
     result = eval(obj, env);
   } catch (std::runtime_error& e) {
@@ -433,7 +433,7 @@ Object Interpreter::eval_list_return_last(const Object& form,
                                           Object rest,
                                           const std::shared_ptr<EnvironmentObject>& env) {
   Object o = std::move(rest);
-  Object rv = EmptyListObject::make_new();
+  Object rv = Object::make_empty_list();
   for (;;) {
     if (o.is_pair()) {
       auto op = o.as_pair();
@@ -949,7 +949,7 @@ Object Interpreter::eval_exit(const Object& form,
   (void)args;
   (void)env;
   want_exit = true;
-  return EmptyListObject::make_new();
+  return Object::make_empty_list();
 }
 
 /*!
@@ -964,7 +964,7 @@ Object Interpreter::eval_begin(const Object& form,
   }
 
   if (args.unnamed.empty()) {
-    return EmptyListObject::make_new();
+    return Object::make_empty_list();
   } else {
     return args.unnamed.back();
   }
@@ -985,7 +985,7 @@ Object Interpreter::eval_read(const Object& form,
     throw_eval_error(form, std::string("reader error inside of read:\n") + e.what());
   }
 
-  return EmptyListObject::make_new();
+  return Object::make_empty_list();
 }
 
 /*!
@@ -1002,7 +1002,7 @@ Object Interpreter::eval_read_file(const Object& form,
   } catch (std::runtime_error& e) {
     throw_eval_error(form, std::string("reader error inside of read-file:\n") + e.what());
   }
-  return EmptyListObject::make_new();
+  return Object::make_empty_list();
 }
 
 /*!
@@ -1026,7 +1026,7 @@ Object Interpreter::eval_load_file(const Object& form,
   } catch (std::runtime_error& e) {
     throw_eval_error(form, std::string("eval error inside of load-file:\n") + e.what());
   }
-  return EmptyListObject::make_new();
+  return Object::make_empty_list();
 }
 
 /*!
@@ -1042,7 +1042,7 @@ Object Interpreter::eval_print(const Object& form,
   if (!disable_printing) {
     printf("%s\n", args.unnamed.at(0).print().c_str());
   }
-  return EmptyListObject::make_new();
+  return Object::make_empty_list();
 }
 
 /*!
@@ -1059,7 +1059,7 @@ Object Interpreter::eval_inspect(const Object& form,
     printf("%s\n", args.unnamed.at(0).inspect().c_str());
   }
 
-  return EmptyListObject::make_new();
+  return Object::make_empty_list();
 }
 
 /*!
@@ -1157,7 +1157,7 @@ Object Interpreter::eval_plus(const Object& form,
 
     default:
       throw_eval_error(form, "+ must have a numeric argument");
-      return EmptyListObject::make_new();
+      return Object::make_empty_list();
   }
 }
 
@@ -1196,7 +1196,7 @@ Object Interpreter::eval_times(const Object& form,
 
     default:
       throw_eval_error(form, "* must have a numeric argument");
-      return EmptyListObject::make_new();
+      return Object::make_empty_list();
   }
 }
 
@@ -1240,7 +1240,7 @@ Object Interpreter::eval_minus(const Object& form,
 
     default:
       throw_eval_error(form, "- must have a numeric argument");
-      return EmptyListObject::make_new();
+      return Object::make_empty_list();
   }
 }
 
@@ -1273,7 +1273,7 @@ Object Interpreter::eval_divide(const Object& form,
 
     default:
       throw_eval_error(form, "/ must have a numeric argument");
-      return EmptyListObject::make_new();
+      return Object::make_empty_list();
   }
 }
 
@@ -1312,7 +1312,7 @@ Object Interpreter::eval_numequals(const Object& form,
 
     default:
       throw_eval_error(form, "+ must have a numeric argument");
-      return EmptyListObject::make_new();
+      return Object::make_empty_list();
   }
 
   return SymbolObject::make_new(reader.symbolTable, result ? "#t" : "#f");
@@ -1342,7 +1342,7 @@ Object Interpreter::eval_lt(const Object& form,
 
     default:
       throw_eval_error(form, "< must have a numeric argument");
-      return EmptyListObject::make_new();
+      return Object::make_empty_list();
   }
 }
 
@@ -1370,7 +1370,7 @@ Object Interpreter::eval_gt(const Object& form,
 
     default:
       throw_eval_error(form, "> must have a numeric argument");
-      return EmptyListObject::make_new();
+      return Object::make_empty_list();
   }
 }
 
@@ -1398,7 +1398,7 @@ Object Interpreter::eval_leq(const Object& form,
 
     default:
       throw_eval_error(form, "<= must have a numeric argument");
-      return EmptyListObject::make_new();
+      return Object::make_empty_list();
   }
 }
 
@@ -1426,7 +1426,7 @@ Object Interpreter::eval_geq(const Object& form,
 
     default:
       throw_eval_error(form, ">= must have a numeric argument");
-      return EmptyListObject::make_new();
+      return Object::make_empty_list();
   }
 }
 
@@ -1568,7 +1568,7 @@ Object Interpreter::eval_error(const Object& form,
   (void)env;
   vararg_check(form, args, {ObjectType::STRING}, {});
   throw_eval_error(form, "Error: " + args.unnamed.at(0).as_string()->data);
-  return EmptyListObject::make_new();
+  return Object::make_empty_list();
 }
 
 Object Interpreter::eval_string_ref(const Object& form,
@@ -1626,7 +1626,7 @@ Object Interpreter::eval_ash(const Object& form,
     return Object::make_integer(val >> -sa);
   } else {
     throw_eval_error(form, fmt::format("Shift amount {} is out of range", sa));
-    return EmptyListObject::make_new();
+    return Object::make_empty_list();
   }
 }
 

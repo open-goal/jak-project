@@ -5,25 +5,14 @@
 ;; name in dgo: beach-rocks
 ;; dgos: BEA, L1
 
-(define-extern *lrocklrg-sg* skeleton-group)
-
 ;; DECOMP BEGINS
 
-(let
-  ((v1-0
-    (new 'static 'skeleton-group
-     :art-group-name "lrocklrg"
-     :bounds (new 'static 'vector :w 20480.0)
-     :longest-edge (meters 11.0)
-     :version #x6
-     )
-    )
-   )
-  (set! (-> v1-0 jgeo) 0)
-  (set! (-> v1-0 janim) 2)
-  (set! (-> v1-0 mgeo 0) (the-as uint 1))
-  (set! (-> v1-0 lod-dist 0) 4095996000.0)
-  (set! *lrocklrg-sg* v1-0)
+(defskelgroup *lrocklrg-sg* lrocklrg
+  0
+  2
+  ((1 (meters 999999)))
+  :bounds (static-spherem 0 0 0 5)
+  :longest-edge (meters 11)
   )
 
 (set!
@@ -374,16 +363,13 @@
   :virtual #t
   :event
   (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
-   (let ((v1-0 arg2))
-    (the-as object (cond
-                    ((= v1-0 'trigger)
-                     (set! (-> self trigger) #t)
-                     (go-virtual falling)
-                     )
-                    ((= v1-0 'loading)
-                     (go-virtual loading)
-                     )
-                    )
+   (case arg2 
+    (('trigger)
+      (set! (-> self trigger) #t)
+      (go-virtual falling)
+      )
+    (('loading)
+     (go-virtual loading)
      )
     )
    )
@@ -644,7 +630,7 @@
       (the float (the-as int (-> obj entity extra perm task)))
       #f
       obj
-      #f
+      (the-as fact-info #f)
       )
      )
     (go (method-of-object obj fallen))
@@ -699,7 +685,7 @@
    (set! (-> obj root-override) s4-0)
    )
   (process-drawable-from-entity! obj arg0)
-  (dummy-14 obj *lrocklrg-sg* '())
+  (initialize-skeleton obj *lrocklrg-sg* '())
   ((method-of-type beach-rock copy-defaults!) obj arg0)
   (none)
   )

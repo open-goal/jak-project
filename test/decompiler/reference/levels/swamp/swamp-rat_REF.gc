@@ -41,61 +41,40 @@
   )
 
 ;; failed to figure out what this is:
-(let
-  ((v1-1
-    (new 'static 'skeleton-group
-     :art-group-name "swamp-rat"
-     :bounds
-     (new 'static 'vector :y 4096.0 :w 16384.0)
-     :max-lod 2
-     :longest-edge (meters 1.0)
-     :version #x6
-     )
-    )
-   )
-  (set! (-> v1-1 jgeo) 0)
-  (set! (-> v1-1 janim) 4)
-  (set! (-> v1-1 mgeo 0) (the-as uint 1))
-  (set! (-> v1-1 lod-dist 0) 81920.0)
-  (set! (-> v1-1 mgeo 1) (the-as uint 2))
-  (set! (-> v1-1 lod-dist 1) 163840.0)
-  (set! (-> v1-1 mgeo 2) (the-as uint 3))
-  (set! (-> v1-1 lod-dist 2) 4095996000.0)
-  (set! *swamp-rat-sg* v1-1)
+(defskelgroup *swamp-rat-sg* swamp-rat
+  0
+  4
+  ((1 (meters 20)) (2 (meters 40)) (3 (meters 999999)))
+  :bounds (static-spherem 0 1 0 4)
+  :longest-edge (meters 1)
   )
 
 ;; definition for method 44 of type swamp-rat
-;; INFO: Return type mismatch none vs object.
-;; WARN: rewrite_to_get_var got a none typed variable. Is there unreachable code?
 (defmethod
   dummy-44
   swamp-rat
   ((obj swamp-rat) (arg0 process) (arg1 event-message-block))
-  (the-as
-   object
+  (when
+   ((method-of-type touching-shapes-entry prims-touching?)
+    (the-as touching-shapes-entry (-> arg1 param 0))
+    (-> obj collide-info)
+    (the-as uint 1)
+    )
    (when
-    ((method-of-type touching-shapes-entry prims-touching?)
+    (nav-enemy-send-attack
+     arg0
      (the-as touching-shapes-entry (-> arg1 param 0))
-     (-> obj collide-info)
-     (the-as uint 1)
+     'generic
      )
-    (when
-     (nav-enemy-send-attack
-      arg0
-      (the-as touching-shapes-entry (-> arg1 param 0))
-      'generic
-      )
-     (let* ((s5-1 (-> obj parent))
-            (a0-4
-             (if (and (nonzero? s5-1) (type-type? pointer process-drawable))
-              s5-1
-              )
-             )
+    (let* ((s5-1 (-> obj parent))
+           (a0-4 (if (and (nonzero? s5-1) (type-type? pointer process-drawable))
+                  s5-1
+                  )
             )
-      (if a0-4
-       (send-event (the-as process a0-4) 'victory)
-       (go (method-of-object obj nav-enemy-victory))
-       )
+           )
+     (if a0-4
+      (send-event (the-as process-tree a0-4) 'victory)
+      (go (method-of-object obj nav-enemy-victory))
       )
      )
     )
@@ -104,6 +83,7 @@
 
 ;; definition for function swamp-rat-default-event-handler
 ;; INFO: Return type mismatch none vs object.
+;; WARN: rewrite_to_get_var got a none typed variable. Is there unreachable code?
 (defbehavior
   swamp-rat-default-event-handler swamp-rat
   ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
@@ -894,8 +874,13 @@ swamp-rat-default-event-handler
 ;; definition for method 48 of type swamp-rat
 ;; INFO: Return type mismatch int vs none.
 ;; Used lq/sq
+<<<<<<< HEAD
 (defmethod TODO-RENAME-48 swamp-rat ((obj swamp-rat) (arg0 object))
   (dummy-14 obj *swamp-rat-sg* '())
+=======
+(defmethod TODO-RENAME-48 swamp-rat ((obj swamp-rat))
+  (initialize-skeleton obj *swamp-rat-sg* '())
+>>>>>>> master
   (TODO-RENAME-45 obj *swamp-rat-nav-enemy-info*)
   (vector-float*! (-> obj collide-info scale) *identity-vector* 1.5)
   (set! (-> obj neck up) (the-as uint 1))
@@ -917,6 +902,7 @@ swamp-rat-default-event-handler
   )
 
 ;; definition for function swamp-rat-init-by-other
+;; INFO: Return type mismatch object vs none.
 ;; Used lq/sq
 (defbehavior
   swamp-rat-init-by-other swamp-rat

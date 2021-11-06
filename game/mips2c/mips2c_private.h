@@ -701,6 +701,24 @@ struct ExecutionContext {
 
   void vwaitq() {}
 
+  void vopmula(int src0, int src1) {
+    auto s0 = vf_src(src0);
+    auto s1 = vf_src(src1);
+
+    acc.f[0] = s0.f[1] * s1.f[2];
+    acc.f[1] = s0.f[2] * s1.f[0];
+    acc.f[2] = s0.f[0] * s1.f[1];
+  }
+
+  void vopmsub(int dst, int src0, int src1) {
+    auto s0 = vf_src(src0);  // fs
+    auto s1 = vf_src(src1);  // ft
+
+    vfs[dst].f[0] = acc.f[0] - s0.f[1] * s1.f[2];
+    vfs[dst].f[1] = acc.f[1] - s0.f[2] * s1.f[0];
+    vfs[dst].f[2] = acc.f[2] - s0.f[0] * s1.f[1];
+  }
+
   std::string print_vf_float(int vf) {
     auto src = vf_src(vf);
     return fmt::format("{} {} {} {}", src.f[0], src.f[1], src.f[2], src.f[3]);

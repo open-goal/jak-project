@@ -2917,6 +2917,100 @@ goos::Object DefstateElement::to_form_internal(const Env& env) const {
 }
 
 ////////////////////////////////
+// DefskelgroupElement
+////////////////////////////////
+
+DefskelgroupElement::DefskelgroupElement(const std::string& name,
+                                         const DefskelgroupElement::Info& info,
+                                         const StaticInfo& data)
+    : m_name(name), m_static_info(data), m_info(info) {
+  for (auto& e : m_info.lods) {
+    e.mgeo->parent_element = this;
+    e.lod_dist->parent_element = this;
+  }
+  m_info.janim->parent_element = this;
+  m_info.jgeo->parent_element = this;
+}
+
+void DefskelgroupElement::apply(const std::function<void(FormElement*)>& f) {
+  f(this);
+  for (auto& e : m_info.lods) {
+    e.mgeo->apply(f);
+    e.lod_dist->apply(f);
+  }
+  m_info.janim->apply(f);
+  m_info.jgeo->apply(f);
+}
+
+void DefskelgroupElement::apply_form(const std::function<void(Form*)>& f) {
+  for (auto& e : m_info.lods) {
+    e.mgeo->apply_form(f);
+    e.lod_dist->apply_form(f);
+  }
+  m_info.janim->apply_form(f);
+  m_info.jgeo->apply_form(f);
+}
+
+void DefskelgroupElement::collect_vars(RegAccessSet& vars, bool recursive) const {
+  if (recursive) {
+    for (auto& e : m_info.lods) {
+      e.mgeo->collect_vars(vars, recursive);
+      e.lod_dist->collect_vars(vars, recursive);
+    }
+    m_info.janim->collect_vars(vars, recursive);
+    m_info.jgeo->collect_vars(vars, recursive);
+  }
+}
+
+void DefskelgroupElement::get_modified_regs(RegSet& regs) const {
+  for (auto& e : m_info.lods) {
+    e.mgeo->get_modified_regs(regs);
+    e.lod_dist->get_modified_regs(regs);
+  }
+  m_info.janim->get_modified_regs(regs);
+  m_info.jgeo->get_modified_regs(regs);
+}
+
+goos::Object DefskelgroupElement::to_form_internal(const Env& env) const {
+  std::vector<goos::Object> forms;
+  forms.push_back(
+      pretty_print::to_symbol(fmt::format("defskelgroup {} {}", m_name, m_static_info.art_name)));
+  forms.push_back(m_info.jgeo->to_form(env));
+  forms.push_back(m_info.janim->to_form(env));
+
+  std::vector<goos::Object> lod_forms;
+  for (const auto& e : m_info.lods) {
+    auto f_dist = pretty_print::to_symbol(
+        fmt::format("(meters {})", e.lod_dist->to_form(env).as_float() / METER_LENGTH));
+    lod_forms.push_back(pretty_print::build_list(e.mgeo->to_form(env), f_dist));
+  }
+  forms.push_back(pretty_print::build_list(lod_forms));
+
+  forms.push_back(pretty_print::to_symbol(
+      fmt::format(":bounds (static-spherem {} {} {} {})", m_static_info.bounds.x() / METER_LENGTH,
+                  m_static_info.bounds.y() / METER_LENGTH, m_static_info.bounds.z() / METER_LENGTH,
+                  m_static_info.bounds.w() / METER_LENGTH)));
+  forms.push_back(pretty_print::to_symbol(
+      fmt::format(":longest-edge (meters {})", m_static_info.longest_edge / METER_LENGTH)));
+
+  if (m_static_info.shadow != 0) {
+    forms.push_back(pretty_print::to_symbol(fmt::format(":shadow {}", m_static_info.shadow)));
+  }
+  if (m_static_info.tex_level != 0) {
+    forms.push_back(
+        pretty_print::to_symbol(fmt::format(":texture-level {}", m_static_info.tex_level)));
+  }
+  if (m_static_info.sort != 0) {
+    forms.push_back(pretty_print::to_symbol(fmt::format(":sort {}", m_static_info.sort)));
+  }
+  if (m_static_info.version != 6) {
+    forms.push_back(pretty_print::to_symbol(fmt::format(":version {}", m_static_info.version)));
+  }
+
+  return pretty_print::build_list(forms);
+}
+
+////////////////////////////////
 // ResLumpMacroElement
 ////////////////////////////////
 

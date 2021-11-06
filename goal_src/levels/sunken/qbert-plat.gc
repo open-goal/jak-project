@@ -5,9 +5,6 @@
 ;; name in dgo: qbert-plat
 ;; dgos: L1, SUN, SUNKEN
 
-(define-extern *qbert-plat-sg* skeleton-group)
-(define-extern *qbert-plat-on-sg* skeleton-group)
-
 (declare-type qbert-plat-master process-drawable)
 (declare-type qbert-plat rigid-body-platform)
 (define-extern qbert-plat-master-wait-for-door (state qbert-plat-master)) ;; unknown type
@@ -28,21 +25,12 @@
   )
 
 
-(let
-  ((v1-1
-    (new 'static 'skeleton-group
-     :art-group-name "qbert-plat-on"
-     :bounds
-     (new 'static 'vector :y -8192.0 :w 18432.0)
-     :version #x6
-     )
-    )
-   )
-  (set! (-> v1-1 jgeo) 0)
-  (set! (-> v1-1 janim) 2)
-  (set! (-> v1-1 mgeo 0) (the-as uint 1))
-  (set! (-> v1-1 lod-dist 0) 4095996000.0)
-  (set! *qbert-plat-on-sg* v1-1)
+(defskelgroup *qbert-plat-on-sg* qbert-plat-on
+  0
+  2
+  ((1 (meters 999999)))
+  :bounds (static-spherem 0 -2 0 4.5)
+  :longest-edge (meters 0)
   )
 
 (deftype qbert-plat (rigid-body-platform)
@@ -59,21 +47,12 @@
   )
 
 
-(let
-  ((v1-3
-    (new 'static 'skeleton-group
-     :art-group-name "qbert-plat"
-     :bounds
-     (new 'static 'vector :y -8192.0 :w 18432.0)
-     :version #x6
-     )
-    )
-   )
-  (set! (-> v1-3 jgeo) 0)
-  (set! (-> v1-3 janim) 2)
-  (set! (-> v1-3 mgeo 0) (the-as uint 1))
-  (set! (-> v1-3 lod-dist 0) 4095996000.0)
-  (set! *qbert-plat-sg* v1-3)
+(defskelgroup *qbert-plat-sg* qbert-plat
+  0
+  2
+  ((1 (meters 999999)))
+  :bounds (static-spherem 0 -2 0 4.5)
+  :longest-edge (meters 0)
   )
 
 (define
@@ -130,11 +109,10 @@
 (defstate qbert-plat-on-mimic (qbert-plat)
   :event
   (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
-   (let ((v1-0 arg2))
-    (the-as object (if (= v1-0 'die)
-                    (go qbert-plat-on-die)
-                    )
-     )
+   (case arg2 
+    (('die)
+      (go qbert-plat-on-die)
+      )
     )
    )
   :code
@@ -183,7 +161,7 @@
   (set! (-> self root-overlay trans quad) (-> arg1 root-overlay trans quad))
   (quaternion-copy! (-> self root-overlay quat) (-> arg1 root-overlay quat))
   (set! (-> self root-overlay scale quad) (-> arg1 root-overlay scale quad))
-  (dummy-14 self *qbert-plat-on-sg* '())
+  (initialize-skeleton self *qbert-plat-on-sg* '())
   (logior! (-> self skel status) 1)
   (ja-channel-set! 1)
   (let ((gp-1 (-> self skel root-channel 0)))
@@ -269,8 +247,8 @@
          1024
          0
          0
-         (the-as uint 1)
-         (the-as vector #t)
+         1
+         #t
          )
         )
        (else
@@ -286,8 +264,8 @@
          1024
          0
          0
-         (the-as uint 1)
-         (the-as vector #t)
+         1
+         #t
          )
         )
        )
@@ -442,7 +420,7 @@
   )
 
 (defmethod TODO-RENAME-31 qbert-plat ((obj qbert-plat))
-  (dummy-14 obj *qbert-plat-sg* '())
+  (initialize-skeleton obj *qbert-plat-sg* '())
   (set! (-> obj anchor-point quad) (-> obj root-overlay trans quad))
   (logior! (-> obj skel status) 1)
   (dummy-47 (-> obj root-overlay))
@@ -500,59 +478,52 @@
 (defstate qbert-plat-master-idle (qbert-plat-master)
   :event
   (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
-   (let ((v1-0 arg2))
-    (the-as object (when (= v1-0 'trigger)
-                    (start-hint-timer (the-as level-hint-control 842))
-                    (close-specific-task!
-                     (game-task sunken-platforms)
-                     (task-status need-hint)
-                     )
-                    (when (not (-> self puzzle-beaten?))
-                     (let ((v1-2 (-> arg3 param 0)))
-                      (when (!= v1-2 (-> self last-plat-triggered))
-                       (set! (-> self last-plat-triggered) (the-as int v1-2))
-                       (let
-                        ((s5-1
-                          (=
-                           (-> self plat-states-needed-to-open-door)
-                           (-> self plat-states)
-                           )
-                          )
-                         )
-                        (let ((v1-3 (ash 1 v1-2)))
-                         (set!
-                          (-> self plat-states)
-                          (logxor (-> self plat-states) (the-as uint v1-3))
-                          )
-                         (if (zero? (logand v1-3 (-> self plat-states)))
-                          (level-hint-spawn
-                           (game-text-id sunken-qbert-hint)
-                           "sksp0130"
-                           (the-as entity #f)
-                           *entity-pool*
-                           (game-task none)
-                           )
-                          )
-                         )
-                        (send-event arg0 'notify)
-                        (let
-                         ((a0-13
-                           (=
-                            (-> self plat-states-needed-to-open-door)
-                            (-> self plat-states)
-                            )
-                           )
-                          )
-                         (if (!= s5-1 a0-13)
-                          (go qbert-plat-master-do-door a0-13)
-                          )
-                         )
-                        )
-                       )
-                      )
-                     )
-                    )
-     )
+   (case arg2 
+    (('trigger)
+      (start-hint-timer (game-text-id sunken-qbert-plat-hint))
+      (close-specific-task!
+       (game-task sunken-platforms)
+       (task-status need-hint)
+       )
+      (when (not (-> self puzzle-beaten?))
+       (let ((v1-2 (-> arg3 param 0)))
+        (when (!= v1-2 (-> self last-plat-triggered))
+         (set! (-> self last-plat-triggered) (the-as int v1-2))
+         (let
+          ((s5-1
+            (= (-> self plat-states-needed-to-open-door) (-> self plat-states))
+            )
+           )
+          (let ((v1-3 (ash 1 v1-2)))
+           (set!
+            (-> self plat-states)
+            (logxor (-> self plat-states) (the-as uint v1-3))
+            )
+           (if (zero? (logand v1-3 (-> self plat-states)))
+            (level-hint-spawn
+             (game-text-id sunken-qbert-plat-hint)
+             "sksp0130"
+             (the-as entity #f)
+             *entity-pool*
+             (game-task none)
+             )
+            )
+           )
+          (send-event arg0 'notify)
+          (let
+           ((a0-13
+             (= (-> self plat-states-needed-to-open-door) (-> self plat-states))
+             )
+            )
+           (if (!= s5-1 a0-13)
+            (go qbert-plat-master-do-door a0-13)
+            )
+           )
+          )
+         )
+        )
+       )
+      )
     )
    )
   :code
@@ -601,7 +572,7 @@
         (when (not (-> self player-in-water?))
          (set! gp-0 #t)
          (level-hint-spawn
-          (game-text-id sunken-qbert-hint)
+          (game-text-id sunken-qbert-plat-hint)
           "sksp0130"
           (the-as entity #f)
           *entity-pool*
@@ -626,7 +597,7 @@
         (when (and (not s5-2) (-> self player-in-bounds?))
          (set! gp-0 #t)
          (level-hint-spawn
-          (game-text-id sunken-qbert-hint)
+          (game-text-id sunken-qbert-plat-hint)
           "sksp0130"
           (the-as entity #f)
           *entity-pool*

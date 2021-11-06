@@ -5,29 +5,17 @@
 ;; name in dgo: flying-lurker
 ;; dgos: L1, OGR
 
-(define-extern *ogrecam-sg* skeleton-group)
-(define-extern *plunger-lurker-sg* skeleton-group)
-(define-extern *flying-lurker-sg* skeleton-group)
 (declare-type flying-lurker process-drawable)
 (define-extern flying-lurker-clone (state handle string flying-lurker))
 
 ;; DECOMP BEGINS
 
-(let
-  ((v1-0
-    (new 'static 'skeleton-group
-     :art-group-name "ogrecam"
-     :bounds
-     (new 'static 'vector :y 8192.0 :w 24576.0)
-     :version #x6
-     )
-    )
-   )
-  (set! (-> v1-0 jgeo) 0)
-  (set! (-> v1-0 janim) -1)
-  (set! (-> v1-0 mgeo 0) (the-as uint 1))
-  (set! (-> v1-0 lod-dist 0) 4095996000.0)
-  (set! *ogrecam-sg* v1-0)
+(defskelgroup *ogrecam-sg* ogrecam
+  0
+  -1
+  ((1 (meters 999999)))
+  :bounds (static-spherem 0 2 0 6)
+  :longest-edge (meters 0)
   )
 
 (deftype plunger-lurker (process-drawable)
@@ -41,26 +29,12 @@
   )
 
 
-(let
-  ((v1-2
-    (new 'static 'skeleton-group
-     :art-group-name "plunger-lurker"
-     :bounds
-     (new 'static 'vector :x 8192.0 :y 16384.0 :w 49152.0)
-     :max-lod 2
-     :version #x6
-     )
-    )
-   )
-  (set! (-> v1-2 jgeo) 0)
-  (set! (-> v1-2 janim) 4)
-  (set! (-> v1-2 mgeo 0) (the-as uint 1))
-  (set! (-> v1-2 lod-dist 0) 81920.0)
-  (set! (-> v1-2 mgeo 1) (the-as uint 2))
-  (set! (-> v1-2 lod-dist 1) 163840.0)
-  (set! (-> v1-2 mgeo 2) (the-as uint 3))
-  (set! (-> v1-2 lod-dist 2) 4095996000.0)
-  (set! *plunger-lurker-sg* v1-2)
+(defskelgroup *plunger-lurker-sg* plunger-lurker
+  0
+  4
+  ((1 (meters 20)) (2 (meters 40)) (3 (meters 999999)))
+  :bounds (static-spherem 2 4 0 12)
+  :longest-edge (meters 0)
   )
 
 (defstate plunger-lurker-plunge (plunger-lurker)
@@ -503,12 +477,11 @@
 (defstate plunger-lurker-idle (plunger-lurker)
   :event
   (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
-   (let ((v1-0 arg2))
-    (the-as object (when (= v1-0 'plunge)
-                    (logclear! (-> self mask) (process-mask actor-pause))
-                    (go plunger-lurker-plunge)
-                    )
-     )
+   (case arg2 
+    (('plunge)
+      (logclear! (-> self mask) (process-mask actor-pause))
+      (go plunger-lurker-plunge)
+      )
     )
    )
   :trans
@@ -609,7 +582,7 @@
    (set! (-> obj root) s4-0)
    )
   (process-drawable-from-entity! obj arg0)
-  (dummy-14 obj *plunger-lurker-sg* '())
+  (initialize-skeleton obj *plunger-lurker-sg* '())
   (set! (-> obj alt-actor) (entity-actor-lookup arg0 'alt-actor 0))
   (set! (-> obj got-hit) #f)
   (quaternion-rotate-y! (-> obj root quat) (-> obj root quat) -16384.0)
@@ -651,28 +624,13 @@
   )
 
 
-(let
-  ((v1-8
-    (new 'static 'skeleton-group
-     :art-group-name "flying-lurker"
-     :bounds
-     (new 'static 'vector :y 8192.0 :w 24576.0)
-     :max-lod 2
-     :longest-edge (meters 2.3)
-     :version #x6
-     :shadow 4
-     )
-    )
-   )
-  (set! (-> v1-8 jgeo) 0)
-  (set! (-> v1-8 janim) 5)
-  (set! (-> v1-8 mgeo 0) (the-as uint 1))
-  (set! (-> v1-8 lod-dist 0) 81920.0)
-  (set! (-> v1-8 mgeo 1) (the-as uint 2))
-  (set! (-> v1-8 lod-dist 1) 163840.0)
-  (set! (-> v1-8 mgeo 2) (the-as uint 3))
-  (set! (-> v1-8 lod-dist 2) 4095996000.0)
-  (set! *flying-lurker-sg* v1-8)
+(defskelgroup *flying-lurker-sg* flying-lurker
+  0
+  5
+  ((1 (meters 20)) (2 (meters 40)) (3 (meters 999999)))
+  :bounds (static-spherem 0 2 0 6)
+  :longest-edge (meters 2.3)
+  :shadow 4
   )
 
 (defmethod dummy-20 flying-lurker ((obj flying-lurker))
@@ -1239,94 +1197,90 @@
 (defbehavior
   flying-lurker-handler flying-lurker
   ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
-  (let ((v1-0 arg2))
-   (the-as object (when (= v1-0 'fly-away)
-                   (when (-> self link next)
-                    (entity-birth-no-kill (-> self link next))
-                    (let ((a1-1 (new 'stack-no-clear 'event-message-block)))
-                     (set! (-> a1-1 from) self)
-                     (set! (-> a1-1 num-params) 2)
-                     (set! (-> a1-1 message) 'fly-away)
-                     (set!
-                      (-> a1-1 param 0)
-                      (the-as uint (/ (the-as int (-> arg3 param 0)) 16))
-                      )
-                     (set! (-> a1-1 param 1) (-> arg3 param 1))
-                     (let ((t9-1 send-event-function)
-                           (v1-11 (-> self link next))
-                           )
-                      (t9-1 (if v1-11
-                             (-> v1-11 extra process)
-                             )
-                       a1-1
-                       )
-                      )
-                     )
-                    )
-                   (let* ((v1-14 (-> arg3 param 0))
-                          (a0-4 (-> arg3 param 1))
-                          (v1-15 (logand v1-14 3))
-                          )
-                    (set! (-> self rank) (the-as int v1-15))
-                    (cond
-                     ((< 15 (the-as int a0-4))
-                      (cond
-                       ((zero? v1-15)
-                        (set! (-> self race-seconds) 33000.0)
-                        )
-                       ((= v1-15 1)
-                        (set! (-> self race-seconds) 34500.0)
-                        )
-                       (else
-                        (set! (-> self race-seconds) 36000.0)
-                        )
-                       )
-                      )
-                     ((< 10 (the-as int a0-4))
-                      (cond
-                       ((zero? v1-15)
-                        (set! (-> self race-seconds) 31800.0)
-                        )
-                       ((= v1-15 1)
-                        (set! (-> self race-seconds) 33300.0)
-                        )
-                       (else
-                        (set! (-> self race-seconds) 34800.0)
-                        )
-                       )
-                      )
-                     ((< 5 (the-as int a0-4))
-                      (cond
-                       ((zero? v1-15)
-                        (set! (-> self race-seconds) 30600.0)
-                        )
-                       ((= v1-15 1)
-                        (set! (-> self race-seconds) 32100.0)
-                        )
-                       (else
-                        (set! (-> self race-seconds) 33600.0)
-                        )
-                       )
-                      )
-                     ((zero? v1-15)
-                      (set! (-> self race-seconds) 30000.0)
-                      )
-                     ((= v1-15 1)
-                      (set! (-> self race-seconds) 31500.0)
-                      )
-                     (else
-                      (set! (-> self race-seconds) 33000.0)
-                      )
-                     )
-                    )
-                   (logclear! (-> self mask) (process-mask actor-pause))
-                   (set!
-                    (-> self race-start-time)
-                    (-> *display* game-frame-counter)
-                    )
-                   (go flying-lurker-fly)
-                   )
-    )
+  (case arg2 
+   (('fly-away)
+     (when (-> self link next)
+      (entity-birth-no-kill (-> self link next))
+      (let ((a1-1 (new 'stack-no-clear 'event-message-block)))
+       (set! (-> a1-1 from) self)
+       (set! (-> a1-1 num-params) 2)
+       (set! (-> a1-1 message) 'fly-away)
+       (set!
+        (-> a1-1 param 0)
+        (the-as uint (/ (the-as int (-> arg3 param 0)) 16))
+        )
+       (set! (-> a1-1 param 1) (-> arg3 param 1))
+       (let ((t9-1 send-event-function)
+             (v1-11 (-> self link next))
+             )
+        (t9-1 (if v1-11
+               (-> v1-11 extra process)
+               )
+         a1-1
+         )
+        )
+       )
+      )
+     (let* ((v1-14 (-> arg3 param 0))
+            (a0-4 (-> arg3 param 1))
+            (v1-15 (logand v1-14 3))
+            )
+      (set! (-> self rank) (the-as int v1-15))
+      (cond
+       ((< 15 (the-as int a0-4))
+        (cond
+         ((zero? v1-15)
+          (set! (-> self race-seconds) 33000.0)
+          )
+         ((= v1-15 1)
+          (set! (-> self race-seconds) 34500.0)
+          )
+         (else
+          (set! (-> self race-seconds) 36000.0)
+          )
+         )
+        )
+       ((< 10 (the-as int a0-4))
+        (cond
+         ((zero? v1-15)
+          (set! (-> self race-seconds) 31800.0)
+          )
+         ((= v1-15 1)
+          (set! (-> self race-seconds) 33300.0)
+          )
+         (else
+          (set! (-> self race-seconds) 34800.0)
+          )
+         )
+        )
+       ((< 5 (the-as int a0-4))
+        (cond
+         ((zero? v1-15)
+          (set! (-> self race-seconds) 30600.0)
+          )
+         ((= v1-15 1)
+          (set! (-> self race-seconds) 32100.0)
+          )
+         (else
+          (set! (-> self race-seconds) 33600.0)
+          )
+         )
+        )
+       ((zero? v1-15)
+        (set! (-> self race-seconds) 30000.0)
+        )
+       ((= v1-15 1)
+        (set! (-> self race-seconds) 31500.0)
+        )
+       (else
+        (set! (-> self race-seconds) 33000.0)
+        )
+       )
+      )
+     (logclear! (-> self mask) (process-mask actor-pause))
+     (set! (-> self race-start-time) (-> *display* game-frame-counter))
+     (go flying-lurker-fly)
+     )
    )
   )
 
@@ -1629,76 +1583,73 @@
 (defstate flying-lurker-idle (flying-lurker)
   :event
   (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
-   (let ((v1-0 arg2))
-    (the-as object (cond
-                    ((= v1-0 'saw-player)
-                     (set! (-> self take-off) #t)
-                     (when (-> self link prev)
-                      (entity-birth-no-kill (-> self link prev))
-                      (let ((a1-1 (new 'stack-no-clear 'event-message-block)))
-                       (set! (-> a1-1 from) arg0)
-                       (set! (-> a1-1 num-params) arg1)
-                       (set! (-> a1-1 message) arg2)
-                       (set! (-> a1-1 param 0) (-> arg3 param 0))
-                       (set! (-> a1-1 param 1) (-> arg3 param 1))
-                       (set! (-> a1-1 param 2) (-> arg3 param 2))
-                       (set! (-> a1-1 param 3) (-> arg3 param 3))
-                       (set! (-> a1-1 param 4) (-> arg3 param 4))
-                       (set! (-> a1-1 param 5) (-> arg3 param 5))
-                       (set! (-> a1-1 param 6) (-> arg3 param 6))
-                       (let ((t9-1 send-event-function)
-                             (v1-13 (-> self link prev))
-                             )
-                        (t9-1 (if v1-13
-                               (-> v1-13 extra process)
-                               )
-                         a1-1
-                         )
-                        )
-                       )
-                      )
-                     )
-                    ((= v1-0 'clone)
-                     (when (-> self link next)
-                      (entity-birth-no-kill (-> self link next))
-                      (let ((a1-2 (new 'stack-no-clear 'event-message-block)))
-                       (set! (-> a1-2 from) self)
-                       (set! (-> a1-2 num-params) 2)
-                       (set! (-> a1-2 message) 'clone)
-                       (set! (-> a1-2 param 0) (-> arg3 param 0))
-                       (set! (-> a1-2 param 1) (+ (-> arg3 param 1) -1))
-                       (let ((t9-3 send-event-function)
-                             (v1-25 (-> self link next))
-                             )
-                        (t9-3 (if v1-25
-                               (-> v1-25 extra process)
-                               )
-                         a1-2
-                         )
-                        )
-                       )
-                      )
-                     (case (-> arg3 param 1) 
-                      ((2)
-                        (go
-                         flying-lurker-clone
-                         (the-as handle (-> arg3 param 0))
-                         "flying-lurker-b-"
-                         )
-                        )
-                      ((1)
-                       (go
-                        flying-lurker-clone
-                        (the-as handle (-> arg3 param 0))
-                        "flying-lurker-c-"
-                        )
-                       )
-                      )
-                     )
-                    (else
-                     (flying-lurker-handler arg0 arg1 arg2 arg3)
-                     )
-                    )
+   (case arg2 
+    (('saw-player)
+      (set! (-> self take-off) #t)
+      (when (-> self link prev)
+       (entity-birth-no-kill (-> self link prev))
+       (let ((a1-1 (new 'stack-no-clear 'event-message-block)))
+        (set! (-> a1-1 from) arg0)
+        (set! (-> a1-1 num-params) arg1)
+        (set! (-> a1-1 message) arg2)
+        (set! (-> a1-1 param 0) (-> arg3 param 0))
+        (set! (-> a1-1 param 1) (-> arg3 param 1))
+        (set! (-> a1-1 param 2) (-> arg3 param 2))
+        (set! (-> a1-1 param 3) (-> arg3 param 3))
+        (set! (-> a1-1 param 4) (-> arg3 param 4))
+        (set! (-> a1-1 param 5) (-> arg3 param 5))
+        (set! (-> a1-1 param 6) (-> arg3 param 6))
+        (let ((t9-1 send-event-function)
+              (v1-13 (-> self link prev))
+              )
+         (t9-1 (if v1-13
+                (-> v1-13 extra process)
+                )
+          a1-1
+          )
+         )
+        )
+       )
+      )
+    (('clone)
+     (when (-> self link next)
+      (entity-birth-no-kill (-> self link next))
+      (let ((a1-2 (new 'stack-no-clear 'event-message-block)))
+       (set! (-> a1-2 from) self)
+       (set! (-> a1-2 num-params) 2)
+       (set! (-> a1-2 message) 'clone)
+       (set! (-> a1-2 param 0) (-> arg3 param 0))
+       (set! (-> a1-2 param 1) (+ (-> arg3 param 1) -1))
+       (let ((t9-3 send-event-function)
+             (v1-25 (-> self link next))
+             )
+        (t9-3 (if v1-25
+               (-> v1-25 extra process)
+               )
+         a1-2
+         )
+        )
+       )
+      )
+     (case (-> arg3 param 1) 
+      ((2)
+        (go
+         flying-lurker-clone
+         (the-as handle (-> arg3 param 0))
+         "flying-lurker-b-"
+         )
+        )
+      ((1)
+       (go
+        flying-lurker-clone
+        (the-as handle (-> arg3 param 0))
+        "flying-lurker-c-"
+        )
+       )
+      )
+     )
+    (else
+     (flying-lurker-handler arg0 arg1 arg2 arg3)
      )
     )
    )
@@ -1845,7 +1796,7 @@
   (stack-size-set! (-> obj main-thread) 512)
   (set! (-> obj root) (new 'process 'trsqv))
   (process-drawable-from-entity! obj arg0)
-  (dummy-14 obj *flying-lurker-sg* '())
+  (initialize-skeleton obj *flying-lurker-sg* '())
   (set! (-> obj link) (new 'process 'actor-link-info obj))
   (set! (-> obj path) (new 'process 'curve-control obj 'path -1000000000.0))
   (logior!

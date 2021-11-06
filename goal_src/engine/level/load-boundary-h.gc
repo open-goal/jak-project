@@ -5,5 +5,133 @@
 ;; name in dgo: load-boundary-h
 ;; dgos: GAME, ENGINE
 
+;; Load Boundary
+;; This system is responsible for more than just the load boundaries - it also processes the commands
+;; from cutscenes to kill/birth certain objects.
+
+;; It also manages the "load state", which manages what levels are loading.
+;; Crossing load boundaries will change this state.
+;; Cutscene playback can also change this state.
+
+;; the vertex type used for load boundaries
+(deftype lbvtx (structure)
+  ((x    float           :offset-assert   0)
+   (y    float           :offset-assert   4)
+   (z    float           :offset-assert   8)
+   (v0   uint8           :offset-assert  12)
+   (v1   uint8           :offset-assert  13)
+   (v2   uint8           :offset-assert  14)
+   (ix   uint8           :offset-assert  15)
+   (quad uint128         :offset          0)
+   (v    vector  :inline :offset          0)
+   )
+  :method-count-assert 9
+  :size-assert         #x10
+  :flag-assert         #x900000010
+  )
+
+;; the types of commands in load boundaries
+(defenum load-boundary-cmd
+  :type uint8
+  (invalid 0) ;; default value
+  (load 1)    ;; load a level!
+  (cmd2 2)    ;; unused?
+  (display 3) ;; display a level
+  (vis 4)     ;; load the vis data for a level (?)
+  (force-vis 5) ;; force load the vis data (?)
+  (checkpt 6)   ;; assign a checkpoint.
+  )
+
+;; command to execute when crossing.
+;; there are 3 1-byte paramaters and 2 4-byte parameters.
+(deftype load-boundary-crossing-command (structure)
+  ((cmd        load-boundary-cmd   :offset-assert   0)
+   (bparm      uint8             3 :offset-assert   1)
+   (parm       uint32            2 :offset-assert   4)
+   (lev0       basic               :offset          4)
+   (lev1       basic               :offset          8)
+   (displev    basic               :offset          4)
+   (dispcmd    basic               :offset          8)
+   (nick       basic               :offset          4)
+   (forcelev   basic               :offset          4)
+   (forceonoff basic               :offset          8)
+   (checkname  basic               :offset          4)
+   )
+  :pack-me
+  :method-count-assert 9
+  :size-assert         #xc
+  :flag-assert         #x90000000c
+  )
+
+(defenum load-boundary-flags
+  :type uint8
+  :bitfield #t
+  (closed 0) ;; if set, the boundary is a closed area
+  (player 1) ;; if set activate on player cross instead of camera
+  )
+
+;; actual boundary
+;; vertices come after this in memory
+(deftype load-boundary (basic)
+  ((num-points uint16                                          :offset-assert   4)
+   (flags      load-boundary-flags                             :offset-assert   6)
+   (top-plane  float                                           :offset-assert   8)
+   (bot-plane  float                                           :offset-assert  12)
+   (tri-cnt    int32                                           :offset-assert  16)
+   (next       load-boundary                                   :offset-assert  20)
+   (cmd-fwd    load-boundary-crossing-command :inline          :offset-assert  24)
+   (cmd-bwd    load-boundary-crossing-command :inline          :offset-assert  36)
+   (rejector   vector                         :inline          :offset-assert  48)
+   (data       lbvtx                          1 :inline        :offset-assert  64)
+   (data2      lbvtx                          :inline :dynamic :offset         64)
+   )
+  :method-count-assert 9
+  :size-assert         #x50
+  :flag-assert         #x900000050
+  (:methods
+    (new (symbol type int symbol symbol) _type_ 0)
+    )
+  )
+
+;; linked list of all boundaries (gets set up in load-boundary-data)
+(define *load-boundary-list* (the-as load-boundary #f))
+
+;; current tri/quad
+(define *load-boundary-target* (the-as (inline-array lbvtx) (malloc 'global 64)))
+
+(defmethod new load-boundary ((allocation symbol) (type-to-make type) (arg0 int) (arg1 symbol) (arg2 symbol))
+  "Construct a new load-boundary with room for arg0 vertices.  arg1 is closed, arg2 is to add to main list."
+  (let ((v0-0 (object-new allocation type-to-make (the-as int (+ (-> type-to-make size) (* (+ arg0 -1) 16))))))
+    (set! (-> v0-0 num-points) (the-as uint arg0))
+    (cond
+      (arg1
+        (set! (-> v0-0 flags) (load-boundary-flags closed))
+        )
+      (else
+        (set! (-> v0-0 flags) (load-boundary-flags))
+        0
+        )
+      )
+    (set! (-> v0-0 top-plane) 524288.0)
+    (set! (-> v0-0 bot-plane) -524288.0)
+    (dotimes (v1-4 arg0)
+      (set! (-> v0-0 data v1-4 quad) (the-as uint128 0))
+      (set! (-> v0-0 data v1-4 ix) (the-as uint v1-4))
+      )
+    (set! (-> v0-0 tri-cnt) 0)
+    (set-vector! (-> v0-0 rejector) 0.0 0.0 0.0 268435460.0)
+    (set! (-> v0-0 cmd-fwd cmd) (load-boundary-cmd invalid))
+    (set! (-> v0-0 cmd-bwd cmd) (load-boundary-cmd invalid))
+    (when arg2
+      (set! (-> v0-0 next) *load-boundary-list*)
+      (set! *load-boundary-list* v0-0)
+      )
+    (if (not arg2)
+        (set! (-> v0-0 next) #f)
+        )
+    v0-0
+    )
+  )
+
 
 (define-extern *load-state* load-state)

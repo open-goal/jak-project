@@ -3,6 +3,10 @@ add_library(common
         audio/audio_formats.cpp
         cross_os_debug/xdbg.cpp
         cross_sockets/xsocket.cpp
+        dma/dma.cpp
+        dma/dma_copy.cpp
+        dma/gs.cpp
+
         goos/Interpreter.cpp
         goos/Object.cpp
         goos/ParseHelpers.cpp
@@ -29,6 +33,7 @@ add_library(common
         util/json_util.cpp
         util/Timer.cpp
         util/print_float.cpp
+        util/FontUtils.cpp
         )
 
 target_link_libraries(common fmt lzokay replxx libzstd_static)

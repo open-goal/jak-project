@@ -428,14 +428,14 @@ It type checks the arguments for the entry function.
     )
   )
 
-(defun send-event-function ((proc process) (msg event-message-block))
+(defun send-event-function ((proc process-tree) (msg event-message-block))
   "Function to send an event to a process. Please use the send-event macros when possible"
 
   (with-pp
-    (when (and proc (!= (-> proc type) process-tree) (-> proc event-hook))
+    (when (and proc (!= (-> proc type) process-tree) (-> (the process proc) event-hook))
       (let ((pp-backup pp))
-        (set! pp proc)
-        (let ((result ((-> proc event-hook) (-> msg from) (-> msg num-params) (-> msg message) msg)))
+        (set! pp (the process proc))
+        (let ((result ((-> (the process proc) event-hook) (-> msg from) (-> msg num-params) (-> msg message) msg)))
           (set! pp pp-backup)
           result
           )
