@@ -20,13 +20,13 @@
     (particle-effect (_type_) none 21)
     )
   (:states
+    lurkerworm-die
     lurkerworm-idle
     lurkerworm-rest
-    lurkerworm-strike
-    lurkerworm-sink
     lurkerworm-rise
+    lurkerworm-sink
     lurkerworm-spot
-    lurkerworm-die
+    lurkerworm-strike
     )
   )
 
@@ -66,22 +66,12 @@
   )
 
 ;; failed to figure out what this is:
-(let
-  ((v1-1
-    (new 'static 'skeleton-group
-     :art-group-name "lurkerworm"
-     :bounds
-     (new 'static 'vector :y 8192.0 :w 26624.0)
-     :longest-edge (meters 1.5)
-     :version #x6
-     )
-    )
-   )
-  (set! (-> v1-1 jgeo) 0)
-  (set! (-> v1-1 janim) 3)
-  (set! (-> v1-1 mgeo 0) (the-as uint 1))
-  (set! (-> v1-1 lod-dist 0) 4095996000.0)
-  (set! *lurkerworm-sg* v1-1)
+(defskelgroup *lurkerworm-sg* lurkerworm
+  0
+  3
+  ((1 (meters 999999)))
+  :bounds (static-spherem 0 2 0 6.5)
+  :longest-edge (meters 1.5)
   )
 
 ;; failed to figure out what this is:
@@ -410,33 +400,23 @@
   )
 
 ;; definition for function lurkerworm-default-event-handler
-;; INFO: Return type mismatch none vs object.
-;; WARN: rewrite_to_get_var got a none typed variable. Is there unreachable code?
 (defbehavior
   lurkerworm-default-event-handler lurkerworm
   ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
-  (let ((v1-0 arg2))
-   (the-as object (cond
-                   ((= v1-0 'attack)
-                    (-> arg3 param 1)
-                    (go lurkerworm-die)
-                    )
-                   ((= v1-0 'touch)
-                    (if
-                     ((method-of-type touching-shapes-entry prims-touching?)
-                      (the-as touching-shapes-entry (-> arg3 param 0))
-                      (-> self root-override)
-                      (the-as uint 1)
-                      )
-                     (send-event
-                      arg0
-                      'attack
-                      (-> arg3 param 0)
-                      (new 'static 'attack-info)
-                      )
-                     )
-                    )
-                   )
+  (case arg2 
+   (('attack)
+     (-> arg3 param 1)
+     (go lurkerworm-die)
+     )
+   (('touch)
+    (if
+     ((method-of-type touching-shapes-entry prims-touching?)
+      (the-as touching-shapes-entry (-> arg3 param 0))
+      (-> self root-override)
+      (the-as uint 1)
+      )
+     (send-event arg0 'attack (-> arg3 param 0) (new 'static 'attack-info))
+     )
     )
    )
   )
@@ -504,8 +484,8 @@ lurkerworm-default-post-behavior
     1024
     0
     0
-    (the-as uint 1)
-    (the-as vector #t)
+    1
+    #t
     )
    (none)
    )
@@ -915,6 +895,7 @@ lurkerworm-default-post-behavior
   )
 
 ;; definition for method 11 of type lurkerworm
+;; INFO: Return type mismatch object vs none.
 (defmethod copy-defaults! lurkerworm ((obj lurkerworm) (arg0 res-lump))
   (set! (-> obj mask) (logior (process-mask enemy) (-> obj mask)))
   (let
@@ -995,7 +976,7 @@ lurkerworm-default-post-behavior
    (set! (-> obj root-override) s4-0)
    )
   (process-drawable-from-entity! obj arg0)
-  (dummy-14 obj *lurkerworm-sg* '())
+  (initialize-skeleton obj *lurkerworm-sg* '())
   (set!
    (-> obj fact)
    (new
@@ -1033,9 +1014,18 @@ lurkerworm-default-post-behavior
   (set! (-> obj head-tilt) 0.0)
   (set!
    (-> obj skel prebind-function)
-   (the-as (function process-drawable none) lurkerworm-prebind-function)
+   (the-as
+    (function pointer int process-drawable none)
+    lurkerworm-prebind-function
+    )
    )
-  (set! (-> obj skel postbind-function) lurkerworm-joint-callback)
+  (set!
+   (-> obj skel postbind-function)
+   (the-as
+    (function pointer int process-drawable none)
+    lurkerworm-joint-callback
+    )
+   )
   (set! (-> obj root-override nav-radius) 12288.0)
   (nav-mesh-connect obj (-> obj root-override) (the-as nav-control #f))
   (go lurkerworm-idle)

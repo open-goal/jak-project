@@ -35,8 +35,8 @@
   :size-assert         #x1c0
   :flag-assert         #x35015001c0
   (:states
-    billy-playing
     billy-done
+    billy-playing
     )
   )
 
@@ -67,26 +67,18 @@
   :size-assert         #xb4
   :flag-assert         #x14005000b4
   (:states
-    billy-snack-idle
     billy-snack-eat
+    billy-snack-idle
     )
   )
 
 
-(let
-  ((v1-2
-    (new 'static 'skeleton-group
-     :art-group-name "farthy-snack"
-     :bounds (new 'static 'vector :w 16384.0)
-     :version #x6
-     )
-    )
-   )
-  (set! (-> v1-2 jgeo) 0)
-  (set! (-> v1-2 janim) 2)
-  (set! (-> v1-2 mgeo 0) (the-as uint 1))
-  (set! (-> v1-2 lod-dist 0) 4095996000.0)
-  (set! *farthy-snack-sg* v1-2)
+(defskelgroup *farthy-snack-sg* farthy-snack
+  0
+  2
+  ((1 (meters 999999)))
+  :bounds (static-spherem 0 0 0 4)
+  :longest-edge (meters 0)
   )
 
 (defstate billy-snack-eat (billy-snack)
@@ -224,7 +216,7 @@
 (defbehavior billy-snack-init-by-other billy-snack ((arg0 vector))
   (set! (-> self root) (new 'process 'trsqv))
   (set! (-> self root trans quad) (-> arg0 quad))
-  (dummy-14 self *farthy-snack-sg* '())
+  (initialize-skeleton self *farthy-snack-sg* '())
   (set! (-> self num-rats) 0)
   (go billy-snack-idle)
   (none)
@@ -241,8 +233,8 @@
   :size-assert         #x214
   :flag-assert         #x4c01b00214
   (:states
-    billy-rat-salivate
     billy-rat-eat
+    billy-rat-salivate
     )
   )
 
@@ -309,8 +301,8 @@
     1024
     0
     0
-    (the-as uint 1)
-    (the-as vector #t)
+    1
+    #t
     )
    (ja-channel-push! 1 15)
    (let ((v1-8 (-> self skel root-channel 0)))
@@ -391,8 +383,8 @@
      1024
      0
      0
-     (the-as uint 1)
-     (the-as vector #t)
+     1
+     #t
      )
     (let ((f30-0 (nav-enemy-rnd-float-range 0.8 1.2)))
      (let ((a0-3 (-> self skel root-channel 0)))
@@ -542,38 +534,21 @@
   (none)
   )
 
-(let
-  ((v1-23
-    (new 'static 'skeleton-group
-     :art-group-name "billy"
-     :bounds (new 'static 'vector :w 8192.0)
-     :longest-edge (meters 1.0)
-     :version #x6
-     :shadow 2
-     )
-    )
-   )
-  (set! (-> v1-23 jgeo) 0)
-  (set! (-> v1-23 janim) 3)
-  (set! (-> v1-23 mgeo 0) (the-as uint 1))
-  (set! (-> v1-23 lod-dist 0) 4095996000.0)
-  (set! *billy-sg* v1-23)
+(defskelgroup *billy-sg* billy
+  0
+  3
+  ((1 (meters 999999)))
+  :bounds (static-spherem 0 0 0 2)
+  :longest-edge (meters 1)
+  :shadow 2
   )
 
-(let
-  ((v1-24
-    (new 'static 'skeleton-group
-     :art-group-name "billy-sidekick"
-     :bounds (new 'static 'vector :w 16384.0)
-     :version #x6
-     )
-    )
-   )
-  (set! (-> v1-24 jgeo) 0)
-  (set! (-> v1-24 janim) 2)
-  (set! (-> v1-24 mgeo 0) (the-as uint 1))
-  (set! (-> v1-24 lod-dist 0) 4095996000.0)
-  (set! *billy-sidekick-sg* v1-24)
+(defskelgroup *billy-sidekick-sg* billy-sidekick
+  0
+  2
+  ((1 (meters 999999)))
+  :bounds (static-spherem 0 0 0 4)
+  :longest-edge (meters 0)
   )
 
 (defbehavior billy-kill-all-but-farthy billy ()

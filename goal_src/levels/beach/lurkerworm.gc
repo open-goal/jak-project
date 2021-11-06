@@ -27,13 +27,13 @@
     (particle-effect (_type_) none 21)
     )
   (:states
+    lurkerworm-die
     lurkerworm-idle
     lurkerworm-rest
-    lurkerworm-strike
-    lurkerworm-sink
     lurkerworm-rise
+    lurkerworm-sink
     lurkerworm-spot
-    lurkerworm-die
+    lurkerworm-strike
     )
   )
 
@@ -56,22 +56,12 @@
   (none)
   )
 
-(let
-  ((v1-1
-    (new 'static 'skeleton-group
-     :art-group-name "lurkerworm"
-     :bounds
-     (new 'static 'vector :y 8192.0 :w 26624.0)
-     :longest-edge (meters 1.5)
-     :version #x6
-     )
-    )
-   )
-  (set! (-> v1-1 jgeo) 0)
-  (set! (-> v1-1 janim) 3)
-  (set! (-> v1-1 mgeo 0) (the-as uint 1))
-  (set! (-> v1-1 lod-dist 0) 4095996000.0)
-  (set! *lurkerworm-sg* v1-1)
+(defskelgroup *lurkerworm-sg* lurkerworm
+  0
+  3
+  ((1 (meters 999999)))
+  :bounds (static-spherem 0 2 0 6.5)
+  :longest-edge (meters 1.5)
   )
 
 (set!
@@ -460,8 +450,8 @@ lurkerworm-default-post-behavior
     1024
     0
     0
-    (the-as uint 1)
-    (the-as vector #t)
+    1
+    #t
     )
    (none)
    )
@@ -945,7 +935,7 @@ lurkerworm-default-post-behavior
    (set! (-> obj root-override) s4-0)
    )
   (process-drawable-from-entity! obj arg0)
-  (dummy-14 obj *lurkerworm-sg* '())
+  (initialize-skeleton obj *lurkerworm-sg* '())
   (set!
    (-> obj fact)
    (new
@@ -983,9 +973,18 @@ lurkerworm-default-post-behavior
   (set! (-> obj head-tilt) 0.0)
   (set!
    (-> obj skel prebind-function)
-   (the-as (function process-drawable none) lurkerworm-prebind-function)
+   (the-as
+    (function pointer int process-drawable none)
+    lurkerworm-prebind-function
+    )
    )
-  (set! (-> obj skel postbind-function) lurkerworm-joint-callback)
+  (set!
+   (-> obj skel postbind-function)
+   (the-as
+    (function pointer int process-drawable none)
+    lurkerworm-joint-callback
+    )
+   )
   (set! (-> obj root-override nav-radius) 12288.0)
   (nav-mesh-connect obj (-> obj root-override) (the-as nav-control #f))
   (go lurkerworm-idle)
