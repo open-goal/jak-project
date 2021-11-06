@@ -363,30 +363,50 @@
     )
   )
 
-(defun sound-play-by-name ((name sound-name) (id sound-id) (vol int) (pitch int) (bend int) (group uint) (trans vector))
+(defun
+  sound-play-by-name
+  ((name sound-name)
+   (id sound-id)
+   (vol int)
+   (pitch int)
+   (bend int)
+   (group int)
+   (trans symbol)
+   )
   "Play a sound called name with the specified params"
-
-  (#when PC_DEBUG_SOUND_ENABLE
-  (let ((sound-trans trans))
-      (when *sound-player-enable*
-        (let ((cmd (the sound-rpc-play (get-sound-buffer-entry))))
-
-            (set! (-> cmd command) (sound-command play))
-            (set! (-> cmd id) id)
-            (set! (-> cmd name) name)
-            (set! (-> cmd parms mask) (the-as uint 0))
-            (set! (-> cmd parms group) group)
-            (set! (-> cmd parms volume) vol)
-            (set! (-> cmd parms pitch-mod) pitch)
-            (set! (-> cmd parms bend) bend)
-
-            (format 0 "stfp~%")
-            (sound-trans-from-process cmd sound-trans)
-            )
+  (local-vars (sv-16 int))
+  (with-pp
+   (set! sv-16 group)
+   (let ((sound-trans (the-as structure trans)))
+    (when *sound-player-enable*
+     (let ((cmd (the-as sound-rpc-play (get-sound-buffer-entry))))
+      (set! (-> cmd command) (sound-command play))
+      (set! (-> cmd id) id)
+      (set! (-> cmd name) name)
+      (set! (-> cmd parms mask) (the-as uint 0))
+      (set! (-> cmd parms group) (the-as uint sv-16))
+      (set! (-> cmd parms volume) vol)
+      (set! (-> cmd parms pitch-mod) pitch)
+      (set! (-> cmd parms bend) bend)
+      (let ((proc (the-as process-drawable pp)))
+       (when (= (the-as symbol sound-trans) #t)
+        (if
+         (and
+          proc
+          (type-type? (-> proc type) process-drawable)
+          (nonzero? (-> proc root))
+          )
+         (set! sound-trans (-> proc root trans))
+         (set! sound-trans #f)
+         )
         )
+       )
+      (sound-trans-convert (-> cmd parms trans) (the-as vector sound-trans))
       )
-  )
-  id
+     )
+    )
+   id
+   )
   )
 
 (defun sound-play-by-spec ((spec sound-spec) (id sound-id) (sound-trans vector))
@@ -695,8 +715,8 @@
                                    (-> obj volume)
                                    (-> obj pitch)
                                    0
-                                   (the-as uint 1)
-                                   (-> obj trans)))
+                                   1
+                                   (the-as symbol (-> obj trans))))
         )
        (else
         (when (>= (-> *display* base-frame-counter) (-> obj play-time))
@@ -706,8 +726,8 @@
                                      (-> obj volume)
                                      (-> obj pitch)
                                      0
-                                     (the-as uint 1)
-                                     (-> obj trans)))
+                                     1
+                                     (the-as symbol (-> obj trans))))
           (set! (-> obj play-time) (+ (-> *display* base-frame-counter)
                                       (-> obj time-base)
                                       (rand-vu-int-count (-> obj time-random))

@@ -923,6 +923,13 @@ TEST_F(WithGameTests, Mips2C_CallGoal) {
                                           {"1 2 3 4 5 6 7 8\n12\n"});
 }
 
+TEST(TypeConsistency, MANUAL_TEST_TypeConsistencyWithBuildFirst) {
+  Compiler compiler;
+  compiler.enable_throw_on_redefines();
+  compiler.run_test_no_load("test/goalc/source_templates/with_game/test-build-game.gc");
+  compiler.run_test_no_load("decompiler/config/all-types.gc");
+}
+
 TEST(TypeConsistency, TypeConsistency) {
   Compiler compiler;
   compiler.enable_throw_on_redefines();
