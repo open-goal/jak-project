@@ -11,7 +11,8 @@ struct Cache {
 } cache;
 
 // t0 = tfrag work
-// t8 =
+// t8 = tfrags
+// t9 = tfrag count
 // clang-format off
 u64 execute(void* ctxt) {
   auto* c = (ExecutionContext*)ctxt;
@@ -177,6 +178,7 @@ u64 execute(void* ctxt) {
    */
 
 
+  // tfrag bank loop?
   block_13:
   {
     //c->sw(a1, 16, t4);                                // sw a1, 16(t4)
