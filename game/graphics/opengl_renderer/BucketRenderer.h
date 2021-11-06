@@ -15,7 +15,9 @@ enum class BucketId {
   BUCKET1 = 1,
   SKY_DRAW = 3,
   TFRAG_TEX_LEVEL0 = 5,
+  TFRAG_LEVEL0 = 6,
   TFRAG_TEX_LEVEL1 = 12,
+  TFRAG_LEVEL1 = 13,
   SHRUB_TEX_LEVEL0 = 19,
   SHRUB_TEX_LEVEL1 = 25,
   ALPHA_TEX_LEVEL0 = 31,
@@ -80,6 +82,15 @@ class BucketRenderer {
 class EmptyBucketRenderer : public BucketRenderer {
  public:
   EmptyBucketRenderer(const std::string& name, BucketId my_id);
+  void render(DmaFollower& dma, SharedRenderState* render_state, ScopedProfilerNode& prof) override;
+  bool empty() const override { return true; }
+  void draw_debug_window() override {}
+};
+
+
+class SkipRenderer : public BucketRenderer {
+ public:
+  SkipRenderer(const std::string& name, BucketId my_id);
   void render(DmaFollower& dma, SharedRenderState* render_state, ScopedProfilerNode& prof) override;
   bool empty() const override { return true; }
   void draw_debug_window() override {}

@@ -66,6 +66,7 @@ set(RUNTIME_SOURCE
         mips2c/functions/sparticle_launcher.cpp
         mips2c/functions/test_func.cpp
         mips2c/functions/texture.cpp
+        mips2c/functions/tfrag.cpp
         overlord/dma.cpp
         overlord/fake_iso.cpp
         overlord/iso.cpp

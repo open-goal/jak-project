@@ -58,8 +58,13 @@ OpenGLRenderer::OpenGLRenderer(std::shared_ptr<TexturePool> texture_pool)
  * Construct bucket renderers.  We can specify different renderers for different buckets
  */
 void OpenGLRenderer::init_bucket_renderers() {
+  // temp
+  init_bucket_renderer<SkipRenderer>("tfrag0", BucketId::TFRAG_LEVEL0);
+  init_bucket_renderer<SkipRenderer>("tfrag1", BucketId::TFRAG_LEVEL1);
+
   init_bucket_renderer<EmptyBucketRenderer>("bucket0", BucketId::BUCKET0);
   init_bucket_renderer<SkyRenderer>("sky", BucketId::SKY_DRAW);
+
   init_bucket_renderer<TextureUploadHandler>("tfrag-tex-0", BucketId::TFRAG_TEX_LEVEL0);
   init_bucket_renderer<TextureUploadHandler>("tfrag-tex-1", BucketId::TFRAG_TEX_LEVEL1);
   init_bucket_renderer<TextureUploadHandler>("shrub-tex-0", BucketId::SHRUB_TEX_LEVEL0);

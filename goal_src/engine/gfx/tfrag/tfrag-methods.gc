@@ -49,7 +49,6 @@
   
   
   (when (logtest? *vu1-enable-user* (vu1-renderer-mask tfrag))
-    (format 0 "draw-drawable-tree-tfrag: ~A~%" arg0)
     
     ;; first, do draw node culling.
     ;; the culling is done in batches, doing all nodes at one depth before going to the enxt.
@@ -103,10 +102,15 @@
             (set! (-> *tfrag-work* wait-from-spr) (the-as uint 0))
             
             ;; initialize dma buffer
-            (tfrag-init-buffer s1-0 #x5026b 0)
+            (tfrag-init-buffer 
+              s1-0
+              (new 'static 'gs-test :ate #x1 :atst (gs-atest greater-equal) :aref #x26 :zte #x1 :ztst (gs-ztest greater-equal))
+              0
+              )
             
             ;; do the draw!
             (reset! (-> *perf-stats* data 5))
+            ;;(format 0 "DRAW: ~D~%" s3-0)
             (draw-inline-array-tfrag sv-16 (the-as drawable-inline-array s4-1) s3-0 s1-0)
             (read! (-> *perf-stats* data 5))
             
@@ -137,36 +141,40 @@
             )
           
           ;; DMA for TFRAG NEAR
-          (let* ((s1-1 (-> *display* frames (-> *display* on-screen) frame global-buf))
-                 (s2-1 (-> s1-1 base))
-                 )
-            (set! (-> *tfrag-work* near-wait-to-spr) (the-as uint 0))
-            (set! (-> *tfrag-work* near-wait-from-spr) (the-as uint 0))
-            (tfrag-near-init-buffer s1-1 #x5026b 0)
-            (reset! (-> *perf-stats* data 6))
-            (draw-inline-array-tfrag-near sv-16 (the-as drawable-inline-array s4-1) s3-0 s1-1)
-            (read! (-> *perf-stats* data 6))
-            (update-wait-stats (-> *perf-stats* data 6) (the-as uint 0) (-> *tfrag-work* near-wait-to-spr) (-> *tfrag-work* near-wait-from-spr))
-            (tfrag-near-end-buffer s1-1)
-            (let ((a3-6 (-> s1-1 base)))
-              (let ((v1-62 (the-as object (-> s1-1 base))))
-                (set! (-> (the-as dma-packet v1-62) dma) (new 'static 'dma-tag :id (dma-tag-id next)))
-                (set! (-> (the-as dma-packet v1-62) vif0) (new 'static 'vif-tag))
-                (set! (-> (the-as dma-packet v1-62) vif1) (new 'static 'vif-tag))
-                (set! (-> s1-1 base) (&+ (the-as pointer v1-62) 16))
-                )
-              (dma-bucket-insert-tag
-                (-> *display* frames (-> *display* on-screen) frame bucket-group)
-                (the-as bucket-id (if (zero? (-> (scratchpad-object terrain-context) bsp lev-index))
-                                      (bucket-id tfrag-near-0)
-                                      (bucket-id tfrag-near-1)
-                                      )
-                        )
-                s2-1
-                (the-as (pointer dma-tag) a3-6)
-                )
-              )
-            )
+          ; (let* ((s1-1 (-> *display* frames (-> *display* on-screen) frame global-buf))
+          ;        (s2-1 (-> s1-1 base))
+          ;        )
+          ;   (set! (-> *tfrag-work* near-wait-to-spr) (the-as uint 0))
+          ;   (set! (-> *tfrag-work* near-wait-from-spr) (the-as uint 0))
+          ;   (tfrag-near-init-buffer
+          ;     s1-1
+          ;     (new 'static 'gs-test :ate #x1 :atst (gs-atest greater-equal) :aref #x26 :zte #x1 :ztst (gs-ztest greater-equal))
+          ;     0
+          ;     )
+          ;   (reset! (-> *perf-stats* data 6))
+          ;   (draw-inline-array-tfrag-near sv-16 (the-as drawable-inline-array s4-1) s3-0 s1-1)
+          ;   (read! (-> *perf-stats* data 6))
+          ;   (update-wait-stats (-> *perf-stats* data 6) (the-as uint 0) (-> *tfrag-work* near-wait-to-spr) (-> *tfrag-work* near-wait-from-spr))
+          ;   (tfrag-near-end-buffer s1-1)
+          ;   (let ((a3-6 (-> s1-1 base)))
+          ;     (let ((v1-62 (the-as object (-> s1-1 base))))
+          ;       (set! (-> (the-as dma-packet v1-62) dma) (new 'static 'dma-tag :id (dma-tag-id next)))
+          ;       (set! (-> (the-as dma-packet v1-62) vif0) (new 'static 'vif-tag))
+          ;       (set! (-> (the-as dma-packet v1-62) vif1) (new 'static 'vif-tag))
+          ;       (set! (-> s1-1 base) (&+ (the-as pointer v1-62) 16))
+          ;       )
+          ;     (dma-bucket-insert-tag
+          ;       (-> *display* frames (-> *display* on-screen) frame bucket-group)
+          ;       (the-as bucket-id (if (zero? (-> (scratchpad-object terrain-context) bsp lev-index))
+          ;                             (bucket-id tfrag-near-0)
+          ;                             (bucket-id tfrag-near-1)
+          ;                             )
+          ;               )
+          ;       s2-1
+          ;       (the-as (pointer dma-tag) a3-6)
+          ;       )
+          ;     )
+          ;   )
           
           ;; DMA memory stats
           (let ((v1-69 *dma-mem-usage*))
