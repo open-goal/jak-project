@@ -231,24 +231,26 @@
   dummy-44
   baby-spider
   ((obj baby-spider) (arg0 process) (arg1 event-message-block))
-  (when
-   ((method-of-type touching-shapes-entry prims-touching?)
-    (the-as touching-shapes-entry (-> arg1 param 0))
-    (-> obj collide-info)
-    (the-as uint 1)
-    )
-   (if
-    (nav-enemy-send-attack
-     arg0
+  (the-as
+   object
+   (when
+    ((method-of-type touching-shapes-entry prims-touching?)
      (the-as touching-shapes-entry (-> arg1 param 0))
-     'generic
+     (-> obj collide-info)
+     (the-as uint 1)
      )
-    (go (method-of-object obj nav-enemy-victory))
+    (if
+     (nav-enemy-send-attack
+      arg0
+      (the-as touching-shapes-entry (-> arg1 param 0))
+      'generic
+      )
+     (go (method-of-object obj nav-enemy-victory))
+     )
     )
    )
   )
 
-;; WARN: rewrite_to_get_var got a none typed variable. Is there unreachable code?
 (defbehavior
   baby-spider-default-event-handler baby-spider
   ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
@@ -336,7 +338,7 @@ baby-spider-default-event-handler
    )
   )
 
-(defmethod dummy-53 baby-spider ((obj baby-spider) (arg0 vector) (arg1 vector))
+(defmethod dummy-53 baby-spider ((obj baby-spider))
   (cond
    ((logtest? (-> obj draw status) 8)
     (set! (-> obj last-visible-time) (-> *display* base-frame-counter))
@@ -384,28 +386,27 @@ baby-spider-default-event-handler
      )
     (set! (-> a0-1 param 1) 1.0)
     (set! (-> a0-1 frame-num) 0.0)
-    (let ((t9-1 joint-control-channel-group!)
-          (a1-1 (-> self draw art-group data 5))
-          (a2-0 num-func-seek!)
-          )
-     (t9-1 a0-1 (the-as art-joint-anim a1-1) a2-0)
-     (until (ja-done? 0)
-      (if (dummy-53 self (the-as vector a1-1) (the-as vector a2-0))
-       (go baby-spider-die-fast)
-       )
-      (suspend)
-      (let ((a0-3 (-> self skel root-channel 0)))
-       (set!
-        (-> a0-3 param 0)
-        (the float (+ (-> a0-3 frame-group data 0 length) -1))
-        )
-       (set! (-> a0-3 param 1) 1.0)
-       (let ((t9-4 joint-control-channel-group-eval!))
-        (set! a1-1 (the-as art-element #f))
-        (set! a2-0 num-func-seek!)
-        (t9-4 a0-3 (the-as art-joint-anim a1-1) a2-0)
-        )
-       )
+    (joint-control-channel-group!
+     a0-1
+     (the-as art-joint-anim (-> self draw art-group data 5))
+     num-func-seek!
+     )
+    )
+   (until (ja-done? 0)
+    (if (dummy-53 self)
+     (go baby-spider-die-fast)
+     )
+    (suspend)
+    (let ((a0-3 (-> self skel root-channel 0)))
+     (set!
+      (-> a0-3 param 0)
+      (the float (+ (-> a0-3 frame-group data 0 length) -1))
+      )
+     (set! (-> a0-3 param 1) 1.0)
+     (joint-control-channel-group-eval!
+      a0-3
+      (the-as art-joint-anim #f)
+      num-func-seek!
       )
      )
     )
@@ -475,8 +476,7 @@ baby-spider-default-event-handler
    )
   :trans
   (behavior ()
-   (local-vars (a1-0 none) (a2-0 none))
-   (if (dummy-53 self (the-as vector a1-0) (the-as vector a2-0))
+   (if (dummy-53 self)
     (go baby-spider-die-fast)
     )
    (let ((t9-2 (-> (method-of-type nav-enemy nav-enemy-idle) trans)))
@@ -499,8 +499,7 @@ baby-spider-default-event-handler
   baby-spider-default-event-handler
   :trans
   (behavior ()
-   (local-vars (a1-0 none) (a2-0 none))
-   (if (dummy-53 self (the-as vector a1-0) (the-as vector a2-0))
+   (if (dummy-53 self)
     (go baby-spider-die-fast)
     )
    (let ((t9-2 (-> (method-of-type nav-enemy nav-enemy-patrol) trans)))
@@ -578,8 +577,7 @@ baby-spider-default-event-handler
   baby-spider-default-event-handler
   :trans
   (behavior ()
-   (local-vars (a1-0 none) (a2-0 none))
-   (if (dummy-53 self (the-as vector a1-0) (the-as vector a2-0))
+   (if (dummy-53 self)
     (go baby-spider-die-fast)
     )
    (let ((t9-2 (-> (method-of-type nav-enemy nav-enemy-notice) trans)))
@@ -667,8 +665,7 @@ baby-spider-default-event-handler
   baby-spider-default-event-handler
   :trans
   (behavior ()
-   (local-vars (a1-0 none) (a2-0 none))
-   (if (dummy-53 self (the-as vector a1-0) (the-as vector a2-0))
+   (if (dummy-53 self)
     (go baby-spider-die-fast)
     )
    (if
@@ -732,8 +729,7 @@ baby-spider-default-event-handler
   baby-spider-default-event-handler
   :trans
   (behavior ()
-   (local-vars (a1-0 none) (a2-0 none))
-   (if (dummy-53 self (the-as vector a1-0) (the-as vector a2-0))
+   (if (dummy-53 self)
     (go baby-spider-die-fast)
     )
    (let ((t9-2 (-> (method-of-type nav-enemy nav-enemy-stop-chase) trans)))
@@ -753,8 +749,7 @@ baby-spider-default-event-handler
   baby-spider-default-event-handler
   :trans
   (behavior ()
-   (local-vars (a1-0 none) (a2-0 none))
-   (if (dummy-53 self (the-as vector a1-0) (the-as vector a2-0))
+   (if (dummy-53 self)
     (go baby-spider-die-fast)
     )
    (let ((t9-2 (-> (method-of-type nav-enemy nav-enemy-stare) trans)))
@@ -849,8 +844,7 @@ baby-spider-default-event-handler
   baby-spider-default-event-handler
   :trans
   (behavior ()
-   (local-vars (a1-0 none) (a2-0 none))
-   (if (dummy-53 self (the-as vector a1-0) (the-as vector a2-0))
+   (if (dummy-53 self)
     (go baby-spider-die-fast)
     )
    (let ((t9-2 (-> (method-of-type nav-enemy nav-enemy-give-up) trans)))
@@ -968,8 +962,7 @@ baby-spider-default-event-handler
   baby-spider-default-event-handler
   :trans
   (behavior ()
-   (local-vars (a1-0 none) (a2-0 none))
-   (if (dummy-53 self (the-as vector a1-0) (the-as vector a2-0))
+   (if (dummy-53 self)
     (go baby-spider-die-fast)
     )
    (let ((t9-2 (-> (method-of-type nav-enemy nav-enemy-attack) trans)))
@@ -1036,8 +1029,7 @@ baby-spider-default-event-handler
   baby-spider-default-event-handler
   :trans
   (behavior ()
-   (local-vars (a1-0 none) (a2-0 none))
-   (if (dummy-53 self (the-as vector a1-0) (the-as vector a2-0))
+   (if (dummy-53 self)
     (go baby-spider-die-fast)
     )
    (let ((t9-2 (-> (method-of-type nav-enemy nav-enemy-victory) trans)))

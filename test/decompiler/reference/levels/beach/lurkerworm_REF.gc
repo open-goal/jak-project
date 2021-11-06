@@ -410,23 +410,33 @@
   )
 
 ;; definition for function lurkerworm-default-event-handler
+;; INFO: Return type mismatch none vs object.
+;; WARN: rewrite_to_get_var got a none typed variable. Is there unreachable code?
 (defbehavior
   lurkerworm-default-event-handler lurkerworm
   ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
-  (case arg2 
-   (('attack)
-     (-> arg3 param 1)
-     (go lurkerworm-die)
-     )
-   (('touch)
-    (if
-     ((method-of-type touching-shapes-entry prims-touching?)
-      (the-as touching-shapes-entry (-> arg3 param 0))
-      (-> self root-override)
-      (the-as uint 1)
-      )
-     (send-event arg0 'attack (-> arg3 param 0) (new 'static 'attack-info))
-     )
+  (let ((v1-0 arg2))
+   (the-as object (cond
+                   ((= v1-0 'attack)
+                    (-> arg3 param 1)
+                    (go lurkerworm-die)
+                    )
+                   ((= v1-0 'touch)
+                    (if
+                     ((method-of-type touching-shapes-entry prims-touching?)
+                      (the-as touching-shapes-entry (-> arg3 param 0))
+                      (-> self root-override)
+                      (the-as uint 1)
+                      )
+                     (send-event
+                      arg0
+                      'attack
+                      (-> arg3 param 0)
+                      (new 'static 'attack-info)
+                      )
+                     )
+                    )
+                   )
     )
    )
   )
@@ -905,7 +915,6 @@ lurkerworm-default-post-behavior
   )
 
 ;; definition for method 11 of type lurkerworm
-;; INFO: Return type mismatch object vs none.
 (defmethod copy-defaults! lurkerworm ((obj lurkerworm) (arg0 res-lump))
   (set! (-> obj mask) (logior (process-mask enemy) (-> obj mask)))
   (let
