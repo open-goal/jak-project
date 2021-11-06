@@ -681,6 +681,7 @@ std::string VuDisassembler::to_string(const VuProgram& prog) const {
 }
 
 int VuDisassembler::add_label(int instr) {
+  instr = instr & 2047;
   auto existing = m_labels.find(instr);
   if (existing == m_labels.end()) {
     int new_idx = m_labels.size();
