@@ -12757,7 +12757,7 @@
    (dma-level-0       uint32                       :offset 32)
    (dma-base          uint32                       :offset 36)
    (dma-level-1       uint32                       :offset 40)
-   (dma-qwc           uint32              4       :offset 44)
+   (dma-qwc           uint8              4       :offset 44)
    (shader            (inline-array adgif-shader)                       :offset 48)
    (num-shaders       uint8                        :offset 52)
    (num-base-colors   uint8                        :offset 53)
@@ -12847,13 +12847,14 @@
   )
 
 (deftype tfrag-data (structure)
-  ((data        uint32     56      :offset 0)
-   (vector      vector 14 :inline      :offset 0)
+  ((data        uint32     56      :offset 0 :score -1)
+   (vector      vector 14 :inline      :offset 0 :score -1)
    (fog         vector      :inline :offset 0)
    (val         vector      :inline :offset 16)
-   (strgif      qword       :inline :offset 32)
-   (fangif      qword       :inline :offset 48)
-   (adgif       qword       :inline :offset 64)
+
+   (strgif      gs-gif-tag  :inline :offset 32)   ;; was qword
+   (fangif      gs-gif-tag  :inline :offset 48)   ;; was qword
+   (adgif       gs-gif-tag  :inline :offset 64)   ;; was qword
    (hvdf-offset vector      :inline :offset 80)
    (hmge-scale  vector      :inline :offset 96)
    (invh-scale  vector      :inline :offset 112)
@@ -16528,15 +16529,15 @@
 
 ;; - Functions
 
-(define-extern add-tfrag-mtx-0 function)
-(define-extern add-tfrag-mtx-1 function)
-(define-extern add-tfrag-data function)
-(define-extern tfrag-data-setup function)
-(define-extern tfrag-print-stats function)
-(define-extern tfrag-init-buffer (function dma-buffer int int none))
+(define-extern add-tfrag-mtx-0 (function dma-buffer none))
+(define-extern add-tfrag-mtx-1 (function dma-buffer none))
+(define-extern add-tfrag-data (function dma-buffer int none))
+(define-extern tfrag-data-setup (function tfrag-data int none))
+(define-extern tfrag-print-stats (function symbol none))
+(define-extern tfrag-init-buffer (function dma-buffer gs-test int none))
 (define-extern tfrag-end-buffer (function dma-buffer none))
 (define-extern draw-inline-array-tfrag (function pointer drawable-inline-array int dma-buffer none))
-(define-extern tfrag-near-init-buffer (function dma-buffer int int none))
+(define-extern tfrag-near-init-buffer (function dma-buffer gs-test int none))
 (define-extern tfrag-near-end-buffer (function dma-buffer none))
 (define-extern draw-inline-array-tfrag-near (function pointer drawable-inline-array int dma-buffer none))
 (define-extern stats-tfrag-asm (function tfragment none))
@@ -16544,8 +16545,8 @@
 ;; - Unknowns
 
 (define-extern tfrag-vu1-block vu-function)
-;;(define-extern t-stat object) ;; unknown type
-;;(define-extern *tfrag-display-stats* object) ;; unknown type
+(define-extern t-stat tfrag-stats)
+(define-extern *tfrag-display-stats* symbol)
 
 
 ;; ----------------------

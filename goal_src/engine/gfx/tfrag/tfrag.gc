@@ -5,6 +5,23 @@
 ;; name in dgo: tfrag
 ;; dgos: GAME, ENGINE
 
+;; TFRAG drawing procedure
+
+;; - when a level is loaded, it adds a connection from the bsp-header to the *background-draw-engine* with the add-bsp-drawable function.
+;;   this allows the level to be drawn from within drawable.gc
+
+;; - within real-main-draw-hook, background engine is executed, drawing all levels.
+
+;; - the add-bsp-drawable function calls the draw (and debug-draw) methods of the bsp-header.
+
+;; - draw method of the bsp-header calls draw on each of the drawable trees (after settings up vis stuff)
+
+;; - the draw method of drawable-tree-tfrag just adds the tree to the background-work
+
+;; - within real-main-draw-hook, the finish-background function is called, eventually calling draw-drawable-tree-tfrag
+
+;; - the draw-drawable-tree-tfrag function sets up DMA, eventually calls draw-inline-array-tfrag (in this file), which actually does the DMA setup.
+
 (define-extern stats-tfrag-asm (function tfragment none))
 (define-extern edge-debug-lines (function (array vector-array) none))
 
