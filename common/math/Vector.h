@@ -19,7 +19,7 @@ class Vector {
   }
 
   template <typename... Args>
-  Vector(Args... args) : m_data{T(args)...} {}
+  explicit Vector(Args... args) : m_data{T(args)...} {}
 
   T* begin() { return &m_data[0]; }
   T* end() { return &m_data[Size]; }
@@ -101,6 +101,14 @@ class Vector {
     return result;
   }
 
+  Vector<T, Size> operator-(const T& other) const {
+    Vector<T, Size> result;
+    for (int i = 0; i < Size; i++) {
+      result[i] = m_data[i] - other;
+    }
+    return result;
+  }
+
   T dot(const Vector<T, Size>& other) const {
     T result(0);
     for (int i = 0; i < Size; i++) {
@@ -145,8 +153,8 @@ class Vector {
 
   Vector<T, Size> cross(const Vector<T, Size>& other) const {
     static_assert(Size == 3, "Size for cross");
-    Vector<T, Size> result = {y() * other.z() - z() * other.y(), z() * other.x() - x() * other.z(),
-                              x() * other.y() - y() * other.x()};
+    Vector<T, Size> result{y() * other.z() - z() * other.y(), z() * other.x() - x() * other.z(),
+                           x() * other.y() - y() * other.x()};
     return result;
   }
 

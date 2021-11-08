@@ -9,11 +9,17 @@ bool looks_like_tfragment_dma(const DmaFollower& follow) {
 }
 }  // namespace
 
-TFragment::TFragment(const std::string& name, BucketId my_id) : BucketRenderer(name, my_id) {
+TFragment::TFragment(const std::string& name, BucketId my_id)
+    : BucketRenderer(name, my_id),
+      m_direct_renderer(fmt::format("{}.direct", name), my_id, 1024, DirectRenderer::Mode::NORMAL) {
   for (auto& buf : m_buffered_data) {
     for (auto& x : buf.pad) {
       x = 0;
     }
+  }
+
+  for (auto& x : m_kick_data.pad) {
+    x = 0;
   }
 }
 
@@ -22,6 +28,7 @@ void TFragment::render(DmaFollower& dma,
                        ScopedProfilerNode& prof) {
   m_debug_string.clear();
   m_frag_debug.clear();
+  m_direct_renderer.reset_state();
   m_stats = {};
 
   // First thing should be a NEXT with two nops.
@@ -44,21 +51,28 @@ void TFragment::render(DmaFollower& dma,
   if (m_extra_debug) {
     ImGui::Begin(fmt::format("{} extra", m_name).c_str());
   }
+
+  int count = 0;
+  // fmt::print("---------------------------------------START\n");
   while (looks_like_tfragment_dma(dma)) {
     m_stats.tfrag_dma_packets++;
     auto frag = dma.read_and_advance();
     m_stats.tfrag_bytes += frag.size_bytes;
+
     if (m_extra_debug) {
-      handle_tfrag<true>(frag, render_state);
+      handle_tfrag<true>(frag, render_state, prof);
     } else {
-      handle_tfrag<false>(frag, render_state);
+      handle_tfrag<false>(frag, render_state, prof);
     }
+
   }
   if (m_extra_debug) {
     ImGui::End();
   }
 
   m_debug_string += fmt::format("fail: {}\n", dma.current_tag_vifcode0().print());
+
+  m_direct_renderer.flush_pending(render_state, prof);
 
   while (dma.current_tag_offset() != render_state->next_bucket) {
     auto tag = dma.current_tag().print();
@@ -76,6 +90,12 @@ void TFragment::draw_debug_window() {
   for (int prog = 0; prog < 12; prog++) {
     ImGui::Text("  prog %d: %d calls\n", prog, m_stats.per_program[prog].calls);
   }
+
+  if (ImGui::TreeNode("direct")) {
+    m_direct_renderer.draw_debug_window();
+    ImGui::TreePop();
+  }
+
   ImGui::TextUnformatted(m_debug_string.data());
 }
 
@@ -135,7 +155,9 @@ void TFragment::handle_initialization(DmaFollower& dma, SharedRenderState* rende
 }
 
 template <bool DEBUG>
-void TFragment::handle_tfrag(const DmaTransfer& dma, SharedRenderState* render_state) {
+void TFragment::handle_tfrag(const DmaTransfer& dma,
+                             SharedRenderState* render_state,
+                             ScopedProfilerNode& prof) {
   auto first_vif = dma.vifcode0();
   auto second_vif = dma.vifcode1();
   if (DEBUG) {
@@ -168,7 +190,7 @@ void TFragment::handle_tfrag(const DmaTransfer& dma, SharedRenderState* render_s
       offset_into_data = handle_unpack_v4_8_mode0(second_vif, dma, offset_into_data, cl, wl);
       break;
     case VifCode::Kind::MSCAL:
-      handle_mscal<DEBUG>(second_vif);
+        handle_mscal<DEBUG>(second_vif, render_state, prof);
       break;
     default:
       fmt::print("unknown second vif in tfragment: {}\n", second_vif.print());
@@ -182,6 +204,7 @@ void TFragment::handle_tfrag(const DmaTransfer& dma, SharedRenderState* render_s
     offset_into_data += 4;
 
     auto code = VifCode(vif);
+    // fmt::print("vif -> {} (mod {})\n", code.print(), stmod);
     switch (code.kind) {
       case VifCode::Kind::UNPACK_V4_16:
         if (DEBUG) {
@@ -232,6 +255,7 @@ void TFragment::handle_tfrag(const DmaTransfer& dma, SharedRenderState* render_s
           Vector4f vec;
           memcpy(&vec, row, 16);
           ImGui::Text(" row: %s", vec.to_string_aligned().c_str());
+          // fmt::print("  row: {}\n", vec.to_string_aligned().c_str());
         }
         break;
       case VifCode::Kind::STMOD:
@@ -273,7 +297,10 @@ void TFragment::handle_tfrag(const DmaTransfer& dma, SharedRenderState* render_s
   if (!ok) {
     m_stats.error_packets++;
   } else {
-    ImGui::Text("END");
+    if (DEBUG) {
+      ImGui::Text("END");
+    }
+
     assert(stmod == 0);
   }
 }
@@ -294,6 +321,7 @@ int TFragment::handle_unpack_v4_8_mode0(const VifCode& code,
     // note: formulas below assume this!
     assert(cl == 2);
     assert(wl == 1);
+    assert(code.num);
     for (int i = 0; i < code.num; i++) {
       // write every other qw
       int dest_qw = unpack.addr_qw + 2 * i;
@@ -309,6 +337,7 @@ int TFragment::handle_unpack_v4_8_mode0(const VifCode& code,
     // note: formulas below assume this!
     assert(cl == 4);
     assert(wl == 4);
+    assert(code.num);
     for (int i = 0; i < code.num; i++) {
       // write every other qw
       int dest_qw = unpack.addr_qw + i;
@@ -342,6 +371,7 @@ int TFragment::handle_unpack_v4_8_mode1(const VifCode& code,
     // note: formulas below assume this!
     assert(cl == 4);
     assert(wl == 4);
+    assert(code.num);
     for (int i = 0; i < code.num; i++) {
       // write every other qw
       int dest_qw = unpack.addr_qw + i;
@@ -357,6 +387,7 @@ int TFragment::handle_unpack_v4_8_mode1(const VifCode& code,
     // note: formulas below assume this!
     assert(cl == 4);
     assert(wl == 4);
+    assert(code.num);
     for (int i = 0; i < code.num; i++) {
       // write every other qw
       int dest_qw = unpack.addr_qw + i;
@@ -387,6 +418,7 @@ int TFragment::handle_unpack_v4_16_mode0(const VifCode& code,
   assert(wl == 4);
 
   u8* write_base = get_upload_buffer();
+  assert(code.num);
   for (int i = 0; i < code.num; i++) {
     // write every other qw
     int dest_qw = unpack.addr_qw + i;
@@ -405,6 +437,17 @@ int TFragment::handle_unpack_v4_16_mode0(const VifCode& code,
   return offset;
 }
 
+u32 float_2_u32(float x) {
+  u32 y;
+  memcpy(&y, &x, 4);
+  return y;
+}
+
+std::string int_vec_debug(const Vector4f& vec) {
+  return fmt::format("[{:x} {:x} {:x} {:x}]", float_2_u32(vec.x()), float_2_u32(vec.y()),
+                     float_2_u32(vec.z()), float_2_u32(vec.w()));
+}
+
 int TFragment::handle_unpack_v4_16_mode1(const VifCode& code,
                                          const DmaTransfer& dma,
                                          int offset,
@@ -419,20 +462,23 @@ int TFragment::handle_unpack_v4_16_mode1(const VifCode& code,
   assert(cl == 4);
   assert(wl == 4);
 
+  assert(code.num);
   u8* write_base = get_upload_buffer();
   for (int i = 0; i < code.num; i++) {
     // write every other qw
     int dest_qw = unpack.addr_qw + i;
     assert(dest_qw <= 328);
     u32 qw[4];
-    qw[0] = row[0] + dma.read_val<u16>(offset);
+    qw[0] = row[0] + (u32)dma.read_val<u16>(offset);
     offset += 2;
-    qw[1] = row[1] + dma.read_val<u16>(offset);
+    qw[1] = row[1] + (u32)dma.read_val<u16>(offset);
     offset += 2;
-    qw[2] = row[2] + dma.read_val<u16>(offset);
+    qw[2] = row[2] + (u32)dma.read_val<u16>(offset);
     offset += 2;
-    qw[3] = row[3] + dma.read_val<u16>(offset);
+    qw[3] = row[3] + (u32)dma.read_val<u16>(offset);
     offset += 2;
+
+    // fmt::print("  unpack rgba?: {:x} {:x} {:x} {:x}\n", qw[0], qw[1], qw[2], qw[3]);
     memcpy(write_base + (dest_qw * 16), qw, 16);
   }
   return offset;
@@ -451,6 +497,7 @@ int TFragment::handle_unpack_v3_32(const VifCode& code,
   assert(cl == 2);
   assert(wl == 1);
 
+  assert(code.num);
   u8* write_base = get_upload_buffer();
   for (int i = 0; i < code.num; i++) {
     // write every other qw
@@ -463,7 +510,7 @@ int TFragment::handle_unpack_v3_32(const VifCode& code,
     offset += 4;
     qw[2] = dma.read_val<u32>(offset);
     offset += 4;
-    qw[3] = 0;  // this can be anything... but it seems like it tries to load from it sometimes?
+    qw[3] = 0x80;  // this can be anything... but it seems like it tries to load from it sometimes?
     memcpy(write_base + (dest_qw * 16), qw, 16);
   }
   return offset;
@@ -482,9 +529,10 @@ int TFragment::handle_unpack_v4_32(const VifCode& code,
   assert(cl == 4);
   assert(wl == 4);
   u8* write_base = get_upload_buffer();
+  assert(code.num);
   for (int i = 0; i < code.num; i++) {
     // write every other qw
-    int dest_qw = unpack.addr_qw + i * 2;
+    int dest_qw = unpack.addr_qw + i;
     assert(dest_qw <= 328);
     u32 qw[4];
     qw[0] = dma.read_val<u32>(offset);
@@ -505,8 +553,19 @@ int TFragment::handle_unpack_v4_32(const VifCode& code,
   //  return offset + code.num * 16;
 }
 
+std::string debug_print_ad_vec(const Vector4f& val) {
+  u64 data;
+  u8 address;
+  memcpy(&data, val.data(), 8);
+  memcpy(&address, val.data() + 2, 1);
+
+  return fmt::format("AD: 0x{:x} 0x{:x}\n", address, data);
+}
+
 template <bool DEBUG>
-void TFragment::handle_mscal(const VifCode& code) {
+void TFragment::handle_mscal(const VifCode& code,
+                             SharedRenderState* render_state,
+                             ScopedProfilerNode& prof) {
   if (DEBUG) {
     ImGui::TextColored(ImVec4(0.3, 0.8, 0.3, 1.0), "MSCAL: %d", code.immediate);
   }
@@ -520,14 +579,16 @@ void TFragment::handle_mscal(const VifCode& code) {
 
   switch (code.immediate) {
     case 6:
-      exec_program_6<DEBUG>();
+    case 8:
+//    default:
+      exec_program_6<DEBUG>(render_state, prof);
       break;
-    default:
-      if (DEBUG) {
-        ImGui::TextColored(ImVec4(0.8, 0.8, 0.3, 1.0), "  UNHANDLED");
-        m_stats.error_mscals++;
-      }
-      break;
+//    default:
+//      if (DEBUG) {
+//        ImGui::TextColored(ImVec4(0.8, 0.8, 0.3, 1.0), "  UNHANDLED");
+//        m_stats.error_mscals++;
+//      }
+//      break;
   }
 }
 
@@ -570,13 +631,13 @@ u16 TFragment::ilw_kick_zone(int offset, int xyzw) {
   assert(offset < 1024);
   u16 result;
   int mem_offset = (xyzw * 4) + (offset * 16);
-  memcpy(&result, m_kick_data.pad + mem_offset, 2);
+  memcpy(&result, m_kick_data.pad + mem_offset- TFragDataMem::TFragKickZone*16, 2);
   return result;
 }
 
 template <bool DEBUG>
-void TFragment::exec_program_6() {
-  fmt::print("exec 6\n");
+void TFragment::exec_program_6(SharedRenderState* render_state, ScopedProfilerNode& prof) {
+//  fmt::print("exec 6\n");
   flip_buffers();
   // VF02 is VAL always
   // VF05 is ADGIF always
@@ -615,12 +676,13 @@ void TFragment::exec_program_6() {
 
   //  ilw.w vi08, 4(vi14)        |  nop
   vars.vi08 = ilw_data(4 + vars.vi14, 3);
+//  fmt::print("------------- VI08 init: {}\n", vars.vi08);
   //  ilw.z vi09, 4(vi14)        |  nop
   vars.vi09 = ilw_data(4 + vars.vi14, 2);
   //  ilw.y vi03, 3(vi14)        |  nop
   vars.vi03 = ilw_data(3 + vars.vi14, 1);
 
-  fmt::print("-------VI03 init: {}\n", vars.vi03);
+//  fmt::print("-------VI03 init: {}\n", vars.vi03);
 
   if (DEBUG) {
     // small, like 9, 54, 66
@@ -647,7 +709,7 @@ void TFragment::exec_program_6() {
 
   if (m_uploading_buffer == 1) {
     // vi14 = 0 version
-    exec_program_6_process_first<DEBUG>(inputs, vars);
+    exec_program_6_process_first<DEBUG>(inputs, vars, render_state, prof);
   } else {
     // L136
     assert(false);
@@ -661,11 +723,6 @@ void TFragment::exec_program_6() {
 }
 
 namespace {
-u32 float_2_u32(float x) {
-  u32 y;
-  memcpy(&y, &x, 4);
-  return y;
-}
 
 float u32_2_float(u32 x) {
   float y;
@@ -722,13 +779,16 @@ void TFragment::store_u32_kick_zone(u32 value, int qw, int xyzw) {
 }
 
 template <bool DEBUG>
-void TFragment::exec_program_6_process_first(const Prog6Inputs& in, Prog6Vars& vars) {
+void TFragment::exec_program_6_process_first(const Prog6Inputs& in,
+                                             Prog6Vars& vars,
+                                             SharedRenderState* render_state,
+                                             ScopedProfilerNode& prof) {
   // SETUP BLOCK
 
   //  ilwr.x vi02, vi03          |  nop
   assert(vars.vi03 < TFragDataMem::Buffer1_Start);  // should be a buffer 0 addr
   vars.vi02 = ilw_data(vars.vi03, 0);
-  fmt::print("--------- initial vi02.x: {}\n", vars.vi02);
+//  fmt::print("--------- initial vi02.x: {}\n", vars.vi02);
 
   //  lq.xyzw vf09, 8(vi14)      |  nop
   vars.vf09_cam_trans = load_vector_data(vars.vi14 + 8);
@@ -753,10 +813,10 @@ void TFragment::exec_program_6_process_first(const Prog6Inputs& in, Prog6Vars& v
 
   //  ilwr.x vi12, vi09          |  nop
   vars.vi12 = ilw_data(vars.vi09, 0);
-  fmt::print("--------- initial vi12: {}\n", vars.vi12);
+//  fmt::print("--------- initial vi12: {}\n", vars.vi12);
 
   //  ilwr.z vi13, vi09          |  nop
-  vars.vi13 = ilw_data(vars.vi03, 2);
+  vars.vi13 = ilw_data(vars.vi09, 2);
 
   //  mtir vi04, vf28.w          |  subz.xyz vf24, vf28, vf02
   vars.vi04 = float_2_u32(vars.vf28.w());
@@ -770,7 +830,7 @@ void TFragment::exec_program_6_process_first(const Prog6Inputs& in, Prog6Vars& v
 
   //  ilwr.y vi02, vi03          |  nop
   vars.vi02 = ilw_data(vars.vi03, 1);
-  fmt::print("--------- initial vi02.y: {}\n", vars.vi02);
+//  fmt::print("--------- initial vi02.y: {}\n", vars.vi02);
 
   //  lq.xyzw vf12, 0(vi04)      |  nop
   if (DEBUG) {
@@ -794,7 +854,10 @@ void TFragment::exec_program_6_process_first(const Prog6Inputs& in, Prog6Vars& v
   vars.vf28.w() = vf28_load_temp.w();
   vars.vf12_root_pos_0 = itof0(vars.vf12_root_pos_0);
 
-  fmt::print("root 12 setup: {}\n", vars.vf12_root_pos_0.to_string_aligned());
+  // todo
+//  vars.vf12_root_pos_0 *= 0;
+
+//  fmt::print("root 12 setup: {}\n", vars.vf12_root_pos_0.to_string_aligned());
 
   //  mfir.w vf24, vi06          |  nop
   vars.vf24.w() = u32_2_float(vars.vi06_kick_zone_ptr);
@@ -822,6 +885,9 @@ void TFragment::exec_program_6_process_first(const Prog6Inputs& in, Prog6Vars& v
   //  sqi.xyzw vf29, vi06        |  mulaw.xyzw ACC, vf09, vf00
   store_vector_kick_zone(vars.vi06_kick_zone_ptr, vars.vf29);
   vars.vi06_kick_zone_ptr++;
+  if (DEBUG) {
+    fmt::print("@ {} ad (0): {}", vars.vi13, debug_print_ad_vec(vars.vf29));
+  }
   Vector4f acc = vars.vf09_cam_trans;
 
   //  mtir vi04, vf28.w          |  nop
@@ -830,15 +896,21 @@ void TFragment::exec_program_6_process_first(const Prog6Inputs& in, Prog6Vars& v
   //  sqi.xyzw vf30, vi06        |  maddax.xyzw ACC, vf04, vf12
   store_vector_kick_zone(vars.vi06_kick_zone_ptr, vars.vf30);
   vars.vi06_kick_zone_ptr++;
+  if (DEBUG) {
+    fmt::print("ad (1): {}", debug_print_ad_vec(vars.vf30));
+  }
   acc += in.vf04_cam_mat_x * vars.vf12_root_pos_0.x();
 
   //  sqi.xyzw vf31, vi06        |  nop
   store_vector_kick_zone(vars.vi06_kick_zone_ptr, vars.vf31);
   vars.vi06_kick_zone_ptr++;
+  if (DEBUG) {
+    fmt::print("ad (2): {}", debug_print_ad_vec(vars.vf31));
+  }
 
   //  ilwr.z vi02, vi03          |  nop
   vars.vi02 = ilw_data(vars.vi03, 2);
-  fmt::print("--------- initial vi02.z: {}\n", vars.vi02);
+//  fmt::print("--------- initial vi02.z: {}\n", vars.vi02);
 
   //  lq.xyzw vf13, 0(vi04)      |  madday.xyzw ACC, vf07, vf12
   vars.vf13_root_pos_1 = load_vector_data(vars.vi04);
@@ -847,7 +919,7 @@ void TFragment::exec_program_6_process_first(const Prog6Inputs& in, Prog6Vars& v
   //  lq.xyzw vf21, 1(vi04)      |  maddz.xyzw vf12, vf08, vf12
   vars.vf21 = load_vector_data(vars.vi04 + 1);
   vars.vf12_root_pos_0 = acc + in.vf08_cam_mat_z * vars.vf12_root_pos_0.z();
-  fmt::print("root 12 setup cam: {}\n", in.vf08_cam_mat_z.to_string_aligned());
+//  fmt::print("root 12 setup cam: {}\n", in.vf08_cam_mat_z.to_string_aligned());
 
   //  lqi.xyzw vf29, vi13        |  nop
   vars.vf29 = load_vector_data(vars.vi13);
@@ -871,10 +943,16 @@ void TFragment::exec_program_6_process_first(const Prog6Inputs& in, Prog6Vars& v
   //  sqi.xyzw vf29, vi06        |  nop
   store_vector_kick_zone(vars.vi06_kick_zone_ptr, vars.vf29);
   vars.vi06_kick_zone_ptr++;
+  if (DEBUG) {
+    fmt::print("ad (3): {}", debug_print_ad_vec(vars.vf29));
+  }
 
   //  sqi.xyzw vf30, vi06        |  nop
   store_vector_kick_zone(vars.vi06_kick_zone_ptr, vars.vf30);
   vars.vi06_kick_zone_ptr++;
+  if (DEBUG) {
+    fmt::print("ad (4): {}", debug_print_ad_vec(vars.vf30));
+  }
 
   //  iadd vi01, vi12, vi12      |  subz.xyz vf26, vf28, vf02
   m_ptrs.vi01 = vars.vi12 + vars.vi12;
@@ -889,6 +967,7 @@ void TFragment::exec_program_6_process_first(const Prog6Inputs& in, Prog6Vars& v
 
   //  iadd vi05, vi06, vi01      |  maddax.xyzw ACC, vf04, vf13
   vars.vi05 = vars.vi06_kick_zone_ptr + m_ptrs.vi01;
+//  fmt::print("vert count: {}\n", vars.vi12);
   acc += in.vf04_cam_mat_x * vars.vf13_root_pos_1.x();
 
   //  ior vi10, vi06, vi00       |  mul.xyz vf12, vf12, Q
@@ -899,7 +978,7 @@ void TFragment::exec_program_6_process_first(const Prog6Inputs& in, Prog6Vars& v
 
   //  ilwr.w vi02, vi03          |  mul.xyz vf24, vf24, Q
   vars.vi02 = ilw_data(vars.vi03, 3);
-  fmt::print("--------- initial vi02.w: {}\n", vars.vi02);
+//  fmt::print("--------- initial vi02.w: {}\n", vars.vi02);
   vars.vf24.x() *= q;
   vars.vf24.y() *= q;
   vars.vf24.z() *= q;
@@ -928,6 +1007,7 @@ void TFragment::exec_program_6_process_first(const Prog6Inputs& in, Prog6Vars& v
   vars.vf28.x() = vf28_load_temp.x();
   vars.vf28.y() = vf28_load_temp.y();
   vars.vf28.w() = vf28_load_temp.w();
+//  fmt::print("ORIG VF28: {} {}\n", vars.vf28.x(), vars.vf28.y());
   vars.vf14_loop_pos_0 = itof0(vars.vf14_loop_pos_0);
 
   //  div Q, vf01.x, vf13.w      |  mul.xyzw vf17, vf13, vf11
@@ -936,17 +1016,17 @@ void TFragment::exec_program_6_process_first(const Prog6Inputs& in, Prog6Vars& v
 
   //  iaddi vi09, vi09, 0x1      |  miniz.w vf12, vf12, vf01
   vars.vi09++;
+//  fmt::print("VI09 INC (prestart): {}\n", vars.vi09);
   vars.vf12_root_pos_0.w() = std::min(vars.vf12_root_pos_0.w(), m_tfrag_data.fog.z());
 
   //  ilwr.x vi12, vi09          |  clipw.xyz vf16, vf16
   vars.vi12 = ilw_data(vars.vi09, 0);
   m_clip_and_3ffff = clip_xyz_plus_minus(vars.vf16_scaled_pos_0);
-  fmt::print("BEFORE STARTING LOOP: new vi12 is 0x{:x}\n", vars.vi12);
 
   // starting here, the control flow does crazy stuff, so we have this weird state machine:
   m_next_block = TFragJumper::L128_PART0_X;
   while (m_next_block != TFragJumper::END_PROGRAM) {
-    fmt::print("block {}\n", (int)m_next_block);
+//    fmt::print("block {}\n", (int)m_next_block);
     switch (m_next_block) {
       case L128_PART0_X:
         exec_jumper_L128<DEBUG>(in, vars);
@@ -973,7 +1053,7 @@ void TFragment::exec_program_6_process_first(const Prog6Inputs& in, Prog6Vars& v
         exec_jumper_L132<DEBUG>(in, vars);
         break;
       case L122_KICK:
-        exec_jumper_L122<DEBUG>(in, vars);
+        exec_jumper_L122<DEBUG>(in, vars, render_state, prof);
         break;
       default:
         assert(false);
@@ -986,7 +1066,6 @@ void TFragment::exec_jumper_L128(const Prog6Inputs& in, Prog6Vars& vars) {
   // Part 0 for X
   //  iaddi vi03, vi03, 0x1      |  subz.xyz vf27, vf28, vf02
   vars.vi03++;
-  fmt::print("vi03 INC: {}\n", vars.vi03);
   Vector4f vf27_temp = vars.vf28 - m_tfrag_data.val.z();
   vars.vf27.x() = vf27_temp.x();
   vars.vf27.y() = vf27_temp.y();
@@ -1012,12 +1091,10 @@ void TFragment::exec_jumper_L128(const Prog6Inputs& in, Prog6Vars& vars) {
 
   //  ilwr.x vi02, vi03          |  mul.xyz vf25, vf25, Q
   vars.vi02 = ilw_data(vars.vi03, 0);
-  fmt::print("--------- next vi02.x: {}\n", vars.vi02);
   vars.vf25.x() *= m_q;
   vars.vf25.y() *= m_q;
   vars.vf25.z() *= m_q;
 
-  fmt::print("l128 branch: {}\n", m_clip_and_3ffff);
   // skipped if we take the branch
   //  nop                        |  addw.w vf12, vf12, vf01
   if (m_clip_and_3ffff) {
@@ -1056,12 +1133,10 @@ void TFragment::exec_jumper_L6A1(const Prog6Inputs& in, Prog6Vars& vars) {
 
   //  ilwr.y vi02, vi03          |  mul.xyz vf26, vf26, Q
   vars.vi02 = ilw_data(vars.vi03, 1);
-  fmt::print("--------- next vi02.y: {}\n", vars.vi02);
   vars.vf26.x() *= m_q;
   vars.vf26.y() *= m_q;
   vars.vf26.z() *= m_q;
 
-  fmt::print("l6a1 branch: {}\n", m_clip_and_3ffff);
   //  nop                        |  addw.w vf13, vf13, vf0
   if (m_clip_and_3ffff) {
     vars.vf13_root_pos_1.w() += m_tfrag_data.fog.w();
@@ -1098,12 +1173,10 @@ void TFragment::exec_jumper_L6B0(const Prog6Inputs& in, Prog6Vars& vars) {
 
   //  ilwr.z vi02, vi03          |  mul.xyz vf27, vf27, Q
   vars.vi02 = ilw_data(vars.vi03, 2);
-  fmt::print("--------- next vi02.z: {}\n", vars.vi02);
   vars.vf27.x() *= m_q;
   vars.vf27.y() *= m_q;
   vars.vf27.z() *= m_q;
 
-  fmt::print("l6b0 branch: {}\n", m_clip_and_3ffff);
   //  nop                        |  addw.w vf14, vf14, vf01
   if (m_clip_and_3ffff) {
     vars.vf14_loop_pos_0.w() += m_tfrag_data.fog.w();
@@ -1140,12 +1213,10 @@ void TFragment::exec_jumper_L6BF(const Prog6Inputs& in, Prog6Vars& vars) {
 
   //  ilwr.w vi02, vi03          |  mul.xyz vf24, vf24, Q
   vars.vi02 = ilw_data(vars.vi03, 3);
-  fmt::print("--------- next vi02.w: {}\n", vars.vi02);
   vars.vf24.x() *= m_q;
   vars.vf24.y() *= m_q;
   vars.vf24.z() *= m_q;
 
-  fmt::print("l6bf branch: {}\n", m_clip_and_3ffff);
   //  nop                        |  addw.w vf15, vf15, vf01
   if (m_clip_and_3ffff) {
     vars.vf15_loop_pos_1.w() += m_tfrag_data.fog.w();
@@ -1168,20 +1239,24 @@ void TFragment::exec_jumper_L129(const Prog6Inputs& in, Prog6Vars& vars) {
 
   //  sqi.xyz vf24, vi06         |  add.xyzw vf13, vf13, vf10
   store_vector_kick_zone(vars.vi06_kick_zone_ptr, vars.vf24);
+//  fmt::print("A: vf24 store: {}\n", vars.vf24.to_string_aligned());
   vars.vi06_kick_zone_ptr++;
   vars.vf13_root_pos_1 += m_tfrag_data.hvdf_offset;
 
   //  sqi.xyzw vf20, vi06        |  ftoi4.xyzw vf12, vf12
   store_vector_kick_zone(vars.vi06_kick_zone_ptr, vars.vf20);
+//  fmt::print("B: vf20 store: {}\n", int_vec_debug(vars.vf20));
   vars.vi06_kick_zone_ptr++;
   vars.vf12_root_pos_0 = ftoi4(vars.vf12_root_pos_0);
 
   //  lq.xyw vf28, 0(vi02)       |  itof0.xyzw vf15, vf15
-  if (vars.vi05 > vars.vi06_kick_zone_ptr + 9) { // HACK added
+  if (vars.vi02 < Buffer1_Start) {  // HACK added
     auto vf28_load_temp = load_vector_data(vars.vi02);
     vars.vf28.x() = vf28_load_temp.x();
     vars.vf28.y() = vf28_load_temp.y();
-    vars.vf28.w() = vf28_load_temp.w();
+    if (float_2_u32(vf28_load_temp.w()) < Buffer1_Start) {
+      vars.vf28.w() = vf28_load_temp.w();
+    }
   }
   vars.vf15_loop_pos_1 = itof0(vars.vf15_loop_pos_1);
 
@@ -1191,11 +1266,12 @@ void TFragment::exec_jumper_L129(const Prog6Inputs& in, Prog6Vars& vars) {
 
   //  ibeq vi05, vi06, L133      |  miniz.w vf13, vf13, vf01
   bool take_branch = (vars.vi05 == vars.vi06_kick_zone_ptr);
-  fmt::print("L129 prog: {} {}\n", vars.vi05, vars.vi06_kick_zone_ptr);
+//  fmt::print("L129 prog: {} {}\n", vars.vi05, vars.vi06_kick_zone_ptr);
   vars.vf13_root_pos_1.w() = std::min(vars.vf13_root_pos_1.w(), m_tfrag_data.fog.z());
 
   //  sqi.xyzw vf12, vi06        |  clipw.xyz vf17, vf17
   store_vector_kick_zone(vars.vi06_kick_zone_ptr, vars.vf12_root_pos_0);
+//  fmt::print("C: vf12 store: {}\n", int_vec_debug(vars.vf12_root_pos_0));
   vars.vi06_kick_zone_ptr++;
   m_clip_and_3ffff = clip_xyz_plus_minus(vars.vf17_scaled_pos_1);
 
@@ -1217,24 +1293,29 @@ void TFragment::exec_jumper_L130(const Prog6Inputs& in, Prog6Vars& vars) {
 
   //  lq.xyzw vf20, 1(vi04)      |  maddz.xyzw vf15, vf08, vf15
   vars.vf20 = load_vector_data(vars.vi04 + 1);
+//  fmt::print("load vf20 from {}\n", vars.vi04 + 1);
   vars.vf15_loop_pos_1 = m_acc + in.vf08_cam_mat_z * vars.vf15_loop_pos_1.z();
 
   //  sqi.xyzw vf25, vi06        |  add.xyzw vf14, vf14, vf10
   store_vector_kick_zone(vars.vi06_kick_zone_ptr, vars.vf25);
+//  fmt::print("A: vf25 store: {}\n", vars.vf25.to_string_aligned());
   vars.vi06_kick_zone_ptr++;
   vars.vf14_loop_pos_0 += m_tfrag_data.hvdf_offset;
 
   //  sqi.xyzw vf21, vi06        |  ftoi4.xyzw vf13, vf13
   store_vector_kick_zone(vars.vi06_kick_zone_ptr, vars.vf21);
+//  fmt::print("B: vf21 store: {}\n", int_vec_debug(vars.vf21));
   vars.vi06_kick_zone_ptr++;
-  vars.vf12_root_pos_0 = ftoi4(vars.vf12_root_pos_0);
+  vars.vf13_root_pos_1 = ftoi4(vars.vf13_root_pos_1);
 
   //  lq.xyw vf28, 0(vi02)       |  itof0.xyzw vf12, vf12
-  if (vars.vi05 > vars.vi06_kick_zone_ptr + 6) { // HACK added
+  if (vars.vi02 < Buffer1_Start) {  // HACK added
     auto vf28_load_temp = load_vector_data(vars.vi02);
     vars.vf28.x() = vf28_load_temp.x();
     vars.vf28.y() = vf28_load_temp.y();
-    vars.vf28.w() = vf28_load_temp.w();
+    if (float_2_u32(vf28_load_temp.w()) < Buffer1_Start) {
+      vars.vf28.w() = vf28_load_temp.w();
+    }
   }
 
   vars.vf12_root_pos_0 = itof0(vars.vf12_root_pos_0);
@@ -1245,11 +1326,11 @@ void TFragment::exec_jumper_L130(const Prog6Inputs& in, Prog6Vars& vars) {
 
   //  ibeq vi05, vi06, L134      |  miniz.w vf14, vf14, vf01
   bool take_branch = (vars.vi05 == vars.vi06_kick_zone_ptr);
-  fmt::print("L130 prog: {} {}\n", vars.vi05, vars.vi06_kick_zone_ptr);
   vars.vf14_loop_pos_0.w() = std::min(vars.vf14_loop_pos_0.w(), m_tfrag_data.fog.z());
 
   //  sqi.xyzw vf13, vi06        |  clipw.xyz vf18, vf18
   store_vector_kick_zone(vars.vi06_kick_zone_ptr, vars.vf13_root_pos_1);
+//  fmt::print("C: vf13 store: {}\n", int_vec_debug(vars.vf13_root_pos_1));
   vars.vi06_kick_zone_ptr++;
   m_clip_and_3ffff = clip_xyz_plus_minus(vars.vf18_scaled_pos_2);
 
@@ -1271,25 +1352,29 @@ void TFragment::exec_jumper_L131(const Prog6Inputs& in, Prog6Vars& vars) {
 
   //  lq.xyzw vf21, 1(vi04)      |  maddz.xyzw vf12, vf08, vf12
   vars.vf21 = load_vector_data(vars.vi04 + 1);
+//  fmt::print("vf21 load from: {}\n", vars.vi04 + 1);
   vars.vf12_root_pos_0 = m_acc + in.vf08_cam_mat_z * vars.vf12_root_pos_0.z();
 
   //  sqi.xyzw vf26, vi06        |  add.xyzw vf15, vf15, vf10
   store_vector_kick_zone(vars.vi06_kick_zone_ptr, vars.vf26);
+//  fmt::print("A: vf26 store: {}\n", vars.vf26.to_string_aligned());
   vars.vi06_kick_zone_ptr++;
   vars.vf15_loop_pos_1 += m_tfrag_data.hvdf_offset;
 
   //  sqi.xyzw vf22, vi06        |  ftoi4.xyzw vf14, vf14
   store_vector_kick_zone(vars.vi06_kick_zone_ptr, vars.vf22);
+//  fmt::print("B: vf22 store: {}\n", int_vec_debug(vars.vf22));
   vars.vi06_kick_zone_ptr++;
   vars.vf14_loop_pos_0 = ftoi4(vars.vf14_loop_pos_0);
 
   //  lq.xyw vf28, 0(vi02)       |  itof0.xyzw vf13, vf13
-  fmt::print("vi02: 0x{:x}\n", vars.vi02);
-  if (vars.vi05 > vars.vi06_kick_zone_ptr + 3) {  // HACK added
+  if (vars.vi02 < Buffer1_Start) {  // HACK added
     auto vf28_load_temp = load_vector_data(vars.vi02);
     vars.vf28.x() = vf28_load_temp.x();
     vars.vf28.y() = vf28_load_temp.y();
-    vars.vf28.w() = vf28_load_temp.w();
+    if (float_2_u32(vf28_load_temp.w()) < Buffer1_Start) {
+      vars.vf28.w() = vf28_load_temp.w();
+    }
   }
   vars.vf13_root_pos_1 = itof0(vars.vf13_root_pos_1);
 
@@ -1298,12 +1383,12 @@ void TFragment::exec_jumper_L131(const Prog6Inputs& in, Prog6Vars& vars) {
   vars.vf16_scaled_pos_0 = vars.vf12_root_pos_0.elementwise_multiply(m_tfrag_data.hmge_scale);
 
   //  ibeq vi05, vi06, L135      |  miniz.w vf15, vf15, vf01
-  fmt::print("L131 prog: {} {}\n", vars.vi05, vars.vi06_kick_zone_ptr);
   bool take_branch = (vars.vi05 == vars.vi06_kick_zone_ptr);
   vars.vf15_loop_pos_1.w() = std::min(vars.vf15_loop_pos_1.w(), m_tfrag_data.fog.z());
 
   //  sqi.xyzw vf14, vi06        |  clipw.xyz vf19, vf19
   store_vector_kick_zone(vars.vi06_kick_zone_ptr, vars.vf14_loop_pos_0);
+//  fmt::print("C: vf14 store: {}\n", int_vec_debug(vars.vf14_loop_pos_0));
   vars.vi06_kick_zone_ptr++;
   m_clip_and_3ffff = clip_xyz_plus_minus(vars.vf19_scaled_pos_3);
 
@@ -1329,20 +1414,24 @@ void TFragment::exec_jumper_L132(const Prog6Inputs& in, Prog6Vars& vars) {
 
   //  sqi.xyzw vf27, vi06        |  add.xyzw vf12, vf12, vf10
   store_vector_kick_zone(vars.vi06_kick_zone_ptr, vars.vf27);
+//  fmt::print("A: vf27 store: {}\n", vars.vf27.to_string_aligned());
   vars.vi06_kick_zone_ptr++;
   vars.vf12_root_pos_0 += m_tfrag_data.hvdf_offset;
 
   //  sqi.xyzw vf23, vi06        |  ftoi4.xyzw vf15, vf15
   store_vector_kick_zone(vars.vi06_kick_zone_ptr, vars.vf23);
+//  fmt::print("B: vf23 store: {}\n", int_vec_debug(vars.vf23));
   vars.vi06_kick_zone_ptr++;
   vars.vf15_loop_pos_1 = ftoi4(vars.vf15_loop_pos_1);
 
   //  lq.xyw vf28, 0(vi02)       |  itof0.xyzw vf14, vf14
-  if (vars.vi05 > vars.vi06_kick_zone_ptr) {  // HACK added
+  if (vars.vi02 < Buffer1_Start) {  // HACK added
     auto vf28_load_temp = load_vector_data(vars.vi02);
     vars.vf28.x() = vf28_load_temp.x();
     vars.vf28.y() = vf28_load_temp.y();
-    vars.vf28.w() = vf28_load_temp.w();
+    if (float_2_u32(vf28_load_temp.w()) < Buffer1_Start) {
+      vars.vf28.w() = vf28_load_temp.w();
+    }
   }
   vars.vf14_loop_pos_0 = itof0(vars.vf14_loop_pos_0);
 
@@ -1351,13 +1440,14 @@ void TFragment::exec_jumper_L132(const Prog6Inputs& in, Prog6Vars& vars) {
   vars.vf17_scaled_pos_1 = vars.vf13_root_pos_1.elementwise_multiply(m_tfrag_data.hmge_scale);
 
   //  ibne vi05, vi06, L128      |  miniz.w vf12, vf12, vf01
-  fmt::print("L133 prog: {} {}\n", vars.vi05, vars.vi06_kick_zone_ptr);
   bool take_branch = (vars.vi05 != vars.vi06_kick_zone_ptr);
+//  fmt::print("kick check: {} {}\n", vars.vi05, vars.vi06_kick_zone_ptr);
   vars.vf12_root_pos_0.w() = std::min(vars.vf12_root_pos_0.w(), m_tfrag_data.fog.z());
 
   //  sqi.xyzw vf15, vi06        |  clipw.xyz vf16, vf16
   store_vector_kick_zone(vars.vi06_kick_zone_ptr, vars.vf15_loop_pos_1);
   vars.vi06_kick_zone_ptr++;
+//  fmt::print("C: vf15 store: {}\n", int_vec_debug(vars.vf15_loop_pos_1));
   m_clip_and_3ffff = clip_xyz_plus_minus(vars.vf16_scaled_pos_0);
 
   if (take_branch) {
@@ -1374,17 +1464,21 @@ void TFragment::exec_jumper_L132(const Prog6Inputs& in, Prog6Vars& vars) {
 }
 
 template <bool DEBUG>
-void TFragment::exec_jumper_L122(const Prog6Inputs& in, Prog6Vars& vars) {
+void TFragment::exec_jumper_L122(const Prog6Inputs& in,
+                                 Prog6Vars& vars,
+                                 SharedRenderState* render_state,
+                                 ScopedProfilerNode& prof) {
   // KICK ZONE!
   //  L122:
   //  fcset 0x0
   m_clip_and_3ffff = false;  // ??
                              //  iaddi vi07, vi00, -0x1
   vars.vi07 = -1;
-  fmt::print("KICK blocks: vi12 = 0x{:x}\n", vars.vi12);
+//  fmt::print("KICK blocks: vi12 = 0x{:x}\n", vars.vi12);
   //  iblez vi12, L123
   //  iaddi vi09, vi09, 0x1
   vars.vi09++;
+//  fmt::print("VI09 now {}\n", vars.vi09);
   if (((s16)vars.vi12) > 0) {
     //  ior vi10, vi06, vi00
     vars.vi10 = vars.vi06_kick_zone_ptr;
@@ -1402,8 +1496,9 @@ void TFragment::exec_jumper_L122(const Prog6Inputs& in, Prog6Vars& vars) {
     //  jr vi15
     //  ilwr.x vi12, vi09
     vars.vi12 = ilw_data(vars.vi09, 0);
-    fmt::print("didn't kick, vi12 now {}\n", vars.vi12);
+//    fmt::print("didn't kick, vi12 now {}\n", vars.vi12);
     m_next_block = m_ret_block;
+
     return;
   }
 
@@ -1412,8 +1507,10 @@ void TFragment::exec_jumper_L122(const Prog6Inputs& in, Prog6Vars& vars) {
   m_ptrs.vi01 = ilw_data(vars.vi09 - 1, 1);
   //  ilw.z vi13, -1(vi09)
   vars.vi13 = ilw_data(vars.vi09 - 1, 2);
+//  fmt::print("VI09 loads: {} {}\n", m_ptrs.vi01, vars.vi13);
   //  ibeq vi00, vi12, L126
   //  ilwr.x vi14, vi10
+//  fmt::print("val is {}: {}\n", vars.vi10, ilw_kick_zone(vars.vi10, 0));
   vars.vi14 = ilw_kick_zone(vars.vi10, 0);
   if (vars.vi12 != 0) {
     //  ibltz vi01, L124
@@ -1422,6 +1519,9 @@ void TFragment::exec_jumper_L122(const Prog6Inputs& in, Prog6Vars& vars) {
     if (((s16)m_ptrs.vi01) >= 0) {
       //  iadd vi13, vi13, vi08
       vars.vi13 += vars.vi08;
+      if (DEBUG) {
+        fmt::print("vi13 = {}, (after adding {})\n", vars.vi13, vars.vi08);
+      }
       //  lqi.xyzw vf29, vi13
       vars.vf29 = load_vector_data(vars.vi13++);
       //  lqi.xyzw vf30, vi13
@@ -1432,10 +1532,19 @@ void TFragment::exec_jumper_L122(const Prog6Inputs& in, Prog6Vars& vars) {
       store_gif_kick_zone(vars.vi06_kick_zone_ptr++, m_tfrag_data.ad_gif);
       //  sqi.xyzw vf29, vi06
       store_vector_kick_zone(vars.vi06_kick_zone_ptr++, vars.vf29);
+      if (DEBUG) {
+        fmt::print("ad (0): {}", debug_print_ad_vec(vars.vf29));
+      }
       //  sqi.xyzw vf30, vi06
       store_vector_kick_zone(vars.vi06_kick_zone_ptr++, vars.vf30);
+      if (DEBUG) {
+        fmt::print("ad (1): {}", debug_print_ad_vec(vars.vf30));
+      }
       //  sqi.xyzw vf31, vi06
       store_vector_kick_zone(vars.vi06_kick_zone_ptr++, vars.vf31);
+      if (DEBUG) {
+        fmt::print("ad (2): {}", debug_print_ad_vec(vars.vf31));
+      }
       //  lqi.xyzw vf29, vi13
       vars.vf29 = load_vector_data(vars.vi13++);
       //  lqi.xyzw vf30, vi13
@@ -1446,8 +1555,14 @@ void TFragment::exec_jumper_L122(const Prog6Inputs& in, Prog6Vars& vars) {
       m_ptrs.vi01 += vars.vi12;
       //  sqi.xyzw vf29, vi06
       store_vector_kick_zone(vars.vi06_kick_zone_ptr++, vars.vf29);
+      if (DEBUG) {
+        fmt::print("ad (3): {}", debug_print_ad_vec(vars.vf29));
+      }
       //  sqi.xyzw vf30, vi06
       store_vector_kick_zone(vars.vi06_kick_zone_ptr++, vars.vf30);
+      if (DEBUG) {
+        fmt::print("ad (4): {}", debug_print_ad_vec(vars.vf30));
+      }
       //  ior vi10, vi06, vi00
       vars.vi10 = vars.vi06_kick_zone_ptr;
       //  iadd vi05, vi06, vi01
@@ -1459,7 +1574,7 @@ void TFragment::exec_jumper_L122(const Prog6Inputs& in, Prog6Vars& vars) {
       //  jr vi15
       //  ilwr.x vi12, vi09
       vars.vi12 = ilw_data(vars.vi09, 0);
-      fmt::print("didn't kick 2, vi12 now {}\n", vars.vi12);
+//      fmt::print("didn't kick 2, vi12 now {}\n", vars.vi12);
       m_next_block = m_ret_block;
       return;
     }
@@ -1481,10 +1596,11 @@ void TFragment::exec_jumper_L122(const Prog6Inputs& in, Prog6Vars& vars) {
 
     //  ibgez vi13, L125
     //  iswr.x vi14, vi10
+//    fmt::print("kick zone store: {}\n", vars.vi14);
     store_u32_kick_zone(vars.vi14, vars.vi10, 0);
     if (((s16)vars.vi13) < 0) {
       //  xgkick vi01
-      XGKICK<DEBUG>(m_ptrs.vi01);
+      XGKICK<DEBUG>(m_ptrs.vi01, render_state, prof);
       //  ior vi10, vi06, vi00
       vars.vi10 = vars.vi06_kick_zone_ptr;  // xgkick delay slots, doesn't seem to matter.
       //  mfir.w vf24, vi06
@@ -1502,7 +1618,7 @@ void TFragment::exec_jumper_L122(const Prog6Inputs& in, Prog6Vars& vars) {
       //  jr vi15
       //  ilwr.x vi12, vi09
       vars.vi12 = ilw_data(vars.vi09, 0);
-      fmt::print("didn't kick 3, vi12 now {}\n", vars.vi12);
+//      fmt::print("didn't kick 3, vi12 now {}\n", vars.vi12);
       m_next_block = m_ret_block;
       return;
     }
@@ -1511,7 +1627,7 @@ void TFragment::exec_jumper_L122(const Prog6Inputs& in, Prog6Vars& vars) {
     //  iadd vi13, vi13, vi08
     vars.vi13 += vars.vi08;
     //  xgkick vi01
-    XGKICK<DEBUG>(m_ptrs.vi01);
+    XGKICK<DEBUG>(m_ptrs.vi01, render_state, prof);
     //  lqi.xyzw vf29, vi13
     vars.vf29 = load_vector_data(vars.vi13++);
     //  lqi.xyzw vf30, vi13
@@ -1524,10 +1640,19 @@ void TFragment::exec_jumper_L122(const Prog6Inputs& in, Prog6Vars& vars) {
     store_gif_kick_zone(vars.vi06_kick_zone_ptr++, m_tfrag_data.ad_gif);
     //  sqi.xyzw vf29, vi06
     store_vector_kick_zone(vars.vi06_kick_zone_ptr++, vars.vf29);
+    if (DEBUG) {
+      fmt::print("ad (0): {}", debug_print_ad_vec(vars.vf29));
+    }
     //  sqi.xyzw vf30, vi06
     store_vector_kick_zone(vars.vi06_kick_zone_ptr++, vars.vf30);
+    if (DEBUG) {
+      fmt::print("ad (1): {}", debug_print_ad_vec(vars.vf30));
+    }
     //  sqi.xyzw vf31, vi06
     store_vector_kick_zone(vars.vi06_kick_zone_ptr++, vars.vf31);
+    if (DEBUG) {
+      fmt::print("ad (2): {}", debug_print_ad_vec(vars.vf31));
+    }
     //  lqi.xyzw vf29, vi13
     vars.vf29 = load_vector_data(vars.vi13++);
     //  lqi.xyzw vf30, vi13
@@ -1538,8 +1663,14 @@ void TFragment::exec_jumper_L122(const Prog6Inputs& in, Prog6Vars& vars) {
     m_ptrs.vi01 += vars.vi12;
     //  sqi.xyzw vf29, vi06
     store_vector_kick_zone(vars.vi06_kick_zone_ptr++, vars.vf29);
+    if (DEBUG) {
+      fmt::print("ad (3): {}", debug_print_ad_vec(vars.vf29));
+    }
     //  sqi.xyzw vf30, vi06
     store_vector_kick_zone(vars.vi06_kick_zone_ptr++, vars.vf30);
+    if (DEBUG) {
+      fmt::print("ad (4): {}", debug_print_ad_vec(vars.vf30));
+    }
     //  nop
     //  ior vi10, vi06, vi00
     vars.vi10 = vars.vi06_kick_zone_ptr;
@@ -1552,7 +1683,7 @@ void TFragment::exec_jumper_L122(const Prog6Inputs& in, Prog6Vars& vars) {
     //  jr vi15
     //  ilwr.x vi12, vi09
     vars.vi12 = ilw_data(vars.vi09, 0);
-    fmt::print("did kick, vi12 now {}\n", vars.vi12);
+//    fmt::print("did kick, vi12 now {}\n", vars.vi12);
     m_next_block = m_ret_block;
     return;
   }
@@ -1567,12 +1698,14 @@ void TFragment::exec_jumper_L122(const Prog6Inputs& in, Prog6Vars& vars) {
   m_ptrs.vf03_z = m_ptrs.vf03_w;
   m_ptrs.vf03_w = temp;
   //  iadd vi14, vi14, vi11
+//  fmt::print("before add: {}\n", vars.vi14);
   vars.vi14 += vars.vi11;
   //  iswr.x vi14, vi10
+//  fmt::print("kick zone store: {}\n", vars.vi14);
   store_u32_kick_zone(vars.vi14, vars.vi10, 0);
   //  lq.xyzw vf04, 664(vi00)
   // todo don't think I needed that load of ambient
-  XGKICK<DEBUG>(m_ptrs.vi01);
+  XGKICK<DEBUG>(m_ptrs.vi01, render_state, prof);
   //  xgkick vi01
   //  nop                        |  nop :e
   m_next_block = END_PROGRAM;
@@ -1581,10 +1714,16 @@ void TFragment::exec_jumper_L122(const Prog6Inputs& in, Prog6Vars& vars) {
 }
 
 template <bool DEBUG>
-void TFragment::XGKICK(u32 addr) {
+void TFragment::XGKICK(u32 addr, SharedRenderState* render_state, ScopedProfilerNode& prof) {
   if (DEBUG) {
     ImGui::Text("XGKICK: %d", addr);
   }
+
+  assert(addr >= TFragDataMem::TFragKickZone);
+  assert(addr < 1024);
+
+  m_direct_renderer.render_gif(&m_kick_data.pad[(addr - TFragDataMem::TFragKickZone) * 16],
+                               UINT32_MAX, render_state, prof);
 }
 
 template <bool DEBUG>

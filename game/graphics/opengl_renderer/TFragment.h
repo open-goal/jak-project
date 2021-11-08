@@ -45,7 +45,7 @@ class TFragment : public BucketRenderer {
   void handle_initialization(DmaFollower& dma, SharedRenderState* render_state);
 
   template <bool DEBUG>
-  void handle_tfrag(const DmaTransfer& dma, SharedRenderState* render_state);
+  void handle_tfrag(const DmaTransfer& dma, SharedRenderState* render_state, ScopedProfilerNode& prof);
 
   int handle_unpack_v4_8_mode0(const VifCode& code,
                                const DmaTransfer& dma,
@@ -73,13 +73,13 @@ class TFragment : public BucketRenderer {
   int handle_unpack_v3_32(const VifCode& code, const DmaTransfer& dma, int offset, int cl, int wl);
 
   template <bool DEBUG>
-  void handle_mscal(const VifCode& code);
+  void handle_mscal(const VifCode& code, SharedRenderState* render_state, ScopedProfilerNode& prof);
 
   template <bool DEBUG>
-  void exec_program_6();
+  void exec_program_6(SharedRenderState* render_state, ScopedProfilerNode& prof);
 
   template <bool DEBUG>
-  void XGKICK(u32 addr);
+  void XGKICK(u32 addr, SharedRenderState* render_state, ScopedProfilerNode& prof);
 
   struct Prog6Inputs {
     Vector4f vf04_cam_mat_x;
@@ -130,7 +130,7 @@ class TFragment : public BucketRenderer {
   };
 
   template <bool DEBUG>
-  void exec_program_6_process_first(const Prog6Inputs& in, Prog6Vars& vars);
+  void exec_program_6_process_first(const Prog6Inputs& in, Prog6Vars& vars, SharedRenderState* render_state, ScopedProfilerNode& prof);
 
   template <bool DEBUG>
   void exec_program_6_process_second(const Prog6Inputs& in, Prog6Vars& vars);
@@ -160,7 +160,7 @@ class TFragment : public BucketRenderer {
   void exec_jumper_L132(const Prog6Inputs& in, Prog6Vars& vars);
 
   template <bool DEBUG>
-  void exec_jumper_L122(const Prog6Inputs& in, Prog6Vars& vars);
+  void exec_jumper_L122(const Prog6Inputs& in, Prog6Vars& vars, SharedRenderState* render_state, ScopedProfilerNode& prof);
 
 
   std::string m_debug_string;
@@ -249,4 +249,6 @@ class TFragment : public BucketRenderer {
 
     PerProgram per_program[12];  // addr / 2
   } m_stats;
+
+  DirectRenderer m_direct_renderer;
 };
