@@ -69,52 +69,22 @@
   )
 
 
-(let
-  ((v1-1
-    (new 'static 'skeleton-group
-     :art-group-name "puffer"
-     :bounds
-     (new 'static 'vector :y 4096.0 :w 21504.0)
-     :max-lod 2
-     :longest-edge (meters 1.2)
-     :version #x6
-     :shadow 4
-     )
-    )
-   )
-  (set! (-> v1-1 jgeo) 0)
-  (set! (-> v1-1 janim) -1)
-  (set! (-> v1-1 mgeo 0) (the-as uint 1))
-  (set! (-> v1-1 lod-dist 0) 81920.0)
-  (set! (-> v1-1 mgeo 1) (the-as uint 2))
-  (set! (-> v1-1 lod-dist 1) 163840.0)
-  (set! (-> v1-1 mgeo 2) (the-as uint 3))
-  (set! (-> v1-1 lod-dist 2) 4095996000.0)
-  (set! *puffer-sg* v1-1)
+(defskelgroup *puffer-sg* puffer
+  0
+  -1
+  ((1 (meters 20)) (2 (meters 40)) (3 (meters 999999)))
+  :bounds (static-spherem 0 1 0 5.25)
+  :longest-edge (meters 1.2000000476837158)
+  :shadow 4
   )
 
-(let
-  ((v1-2
-    (new 'static 'skeleton-group
-     :art-group-name "puffer"
-     :bounds
-     (new 'static 'vector :y 4096.0 :w 21504.0)
-     :max-lod 2
-     :longest-edge (meters 1.2)
-     :version #x6
-     :shadow 4
-     )
-    )
-   )
-  (set! (-> v1-2 jgeo) 5)
-  (set! (-> v1-2 janim) -1)
-  (set! (-> v1-2 mgeo 0) (the-as uint 6))
-  (set! (-> v1-2 lod-dist 0) 81920.0)
-  (set! (-> v1-2 mgeo 1) (the-as uint 7))
-  (set! (-> v1-2 lod-dist 1) 163840.0)
-  (set! (-> v1-2 mgeo 2) (the-as uint 8))
-  (set! (-> v1-2 lod-dist 2) 4095996000.0)
-  (set! *puffer-mean-sg* v1-2)
+(defskelgroup *puffer-mean-sg* puffer
+  5
+  -1
+  ((6 (meters 20)) (7 (meters 40)) (8 (meters 999999)))
+  :bounds (static-spherem 0 1 0 5.25)
+  :longest-edge (meters 1.2000000476837158)
+  :shadow 4
   )
 
 ;; WARN: rewrite_to_get_var got a none typed variable. Is there unreachable code?
@@ -1077,8 +1047,8 @@
   (when (!= arg0 (-> obj look-mean?))
    (set! (-> obj look-mean?) arg0)
    (if arg0
-    (dummy-11 (-> obj draw) (-> obj mean-look))
-    (dummy-11 (-> obj draw) (-> obj nice-look))
+    (lods-assign! (-> obj draw) (-> obj mean-look))
+    (lods-assign! (-> obj draw) (-> obj nice-look))
     )
    )
   (none)
@@ -1583,25 +1553,21 @@
   (set! (-> obj travel-turn-speed) 16384.0)
   (dummy-21 obj)
   (process-drawable-from-entity! obj (-> obj entity))
-  (dummy-14 obj *puffer-sg* '())
+  (initialize-skeleton obj *puffer-sg* '())
   (set! (-> obj draw origin-joint-index) (the-as uint 3))
   (logclear! (-> obj mask) (process-mask actor-pause))
   (set! (-> obj mask) (logior (process-mask enemy) (-> obj mask)))
-  (let ((a0-7 (-> obj nice-look))
-        (t9-3 (method-of-type lod-set dummy-9))
-        )
+  (dummy-9
+   (-> obj nice-look)
    *puffer-sg*
    (-> obj draw art-group)
    (-> obj entity)
-   (t9-3 a0-7)
    )
-  (let ((a0-8 (-> obj mean-look))
-        (t9-4 (method-of-type lod-set dummy-9))
-        )
+  (dummy-9
+   (-> obj mean-look)
    *puffer-mean-sg*
    (-> obj draw art-group)
    (-> obj entity)
-   (t9-4 a0-8)
    )
   (load-params! (-> obj sync) obj (the-as uint 2400) 0.0 0.15 0.15)
   (set!

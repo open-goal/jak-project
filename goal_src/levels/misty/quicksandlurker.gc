@@ -396,18 +396,19 @@
    )
   )
 
+;; NOTE - Manually added
 (deftype quicksandlurker (process-drawable)
-  ((root-override     collide-shape         :offset        112)
-   (original-position vector        :inline :offset-assert 176)
-   (y-offset          float                 :offset-assert 192)
-   (theta-angle       float                 :offset-assert 196)
-   (radial-offset     float                 :offset-assert 200)
-   (bob-angle         float                 :offset-assert 204)
-   (mud-entity        entity-actor          :offset-assert 208)
+  ((root-override     collide-shape :score 100 :offset 112)
+   (original-position vector :inline :offset-assert 176)
+   (y-offset          float          :offset-assert 192)
+   (theta-angle       float          :offset-assert 196)
+   (radial-offset     float          :offset-assert 200)
+   (bob-angle         float          :offset-assert 204)
+   (mud-entity        entity-actor   :offset-assert 208)
    )
-  :heap-base #x70
   :method-count-assert 20
   :size-assert         #xd4
+  :heap-base           #x70
   :flag-assert         #x14007000d4
   )
 
@@ -425,53 +426,42 @@
 (defstate quicksandlurker-missile-idle (quicksandlurker-missile)
   :event
   (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
-   (let ((v1-0 arg2))
-    (the-as object (when (= v1-0 'touched)
-                    (when (cond
-                           ((= (-> arg0 type) target)
-                            (let
-                             ((a1-3 (new 'stack-no-clear 'event-message-block)))
-                             (set! (-> a1-3 from) self)
-                             (set! (-> a1-3 num-params) 2)
-                             (set! (-> a1-3 message) 'attack)
-                             (set! (-> a1-3 param 0) (-> arg3 param 0))
-                             (let ((a2-1 (new 'static 'attack-info :mask #x20)))
-                              (set! (-> a2-1 mode) 'explode)
-                              (set! (-> a1-3 param 1) (the-as uint a2-1))
-                              )
-                             (send-event-function arg0 a1-3)
-                             )
-                            )
-                           (else
-                            (let
-                             ((a1-4 (new 'stack-no-clear 'event-message-block)))
-                             (set! (-> a1-4 from) self)
-                             (set! (-> a1-4 num-params) 4)
-                             (set! (-> a1-4 message) 'attack)
-                             (set! (-> a1-4 param 0) (-> arg3 param 0))
-                             (set! (-> a1-4 param 1) (the-as uint 'explode))
-                             (let ((v1-12 (+ *global-attack-id* 1)))
-                              (set! *global-attack-id* v1-12)
-                              (set! (-> a1-4 param 2) (the-as uint v1-12))
-                              )
-                             (set! (-> a1-4 param 3) (the-as uint 0))
-                             (send-event-function arg0 a1-4)
-                             )
-                            )
-                           )
-                     (let ((a1-5 (new 'stack-no-clear 'event-message-block)))
-                      (set! (-> a1-5 from) self)
-                      (set! (-> a1-5 num-params) 0)
-                      (set! (-> a1-5 message) 'victory)
-                      (send-event-function
-                       (ppointer->process (-> self parent-override))
-                       a1-5
-                       )
-                      )
-                     (go quicksandlurker-missile-impact)
-                     )
-                    )
-     )
+   (case arg2 
+    (('touched)
+      (when (cond
+             ((= (-> arg0 type) target)
+              (let ((a1-3 (new 'stack-no-clear 'event-message-block)))
+               (set! (-> a1-3 from) self)
+               (set! (-> a1-3 num-params) 2)
+               (set! (-> a1-3 message) 'attack)
+               (set! (-> a1-3 param 0) (-> arg3 param 0))
+               (let ((a2-1 (new 'static 'attack-info :mask #x20)))
+                (set! (-> a2-1 mode) 'explode)
+                (set! (-> a1-3 param 1) (the-as uint a2-1))
+                )
+               (send-event-function arg0 a1-3)
+               )
+              )
+             (else
+              (let ((a1-4 (new 'stack-no-clear 'event-message-block)))
+               (set! (-> a1-4 from) self)
+               (set! (-> a1-4 num-params) 4)
+               (set! (-> a1-4 message) 'attack)
+               (set! (-> a1-4 param 0) (-> arg3 param 0))
+               (set! (-> a1-4 param 1) (the-as uint 'explode))
+               (let ((v1-12 (+ *global-attack-id* 1)))
+                (set! *global-attack-id* v1-12)
+                (set! (-> a1-4 param 2) (the-as uint v1-12))
+                )
+               (set! (-> a1-4 param 3) (the-as uint 0))
+               (send-event-function arg0 a1-4)
+               )
+              )
+             )
+       (send-event (ppointer->process (-> self parent-override)) 'victory)
+       (go quicksandlurker-missile-impact)
+       )
+      )
     )
    )
   :enter
@@ -481,11 +471,7 @@
    )
   :code
   (behavior ()
-   (while
-    (<
-     (- (-> *display* base-frame-counter) (the-as int (-> self state-time)))
-     1200
-     )
+   (while (< (- (-> *display* base-frame-counter) (-> self state-time)) 1200)
     (dummy-33
      (-> self root-override)
      (-> self root-override transv)
@@ -535,8 +521,8 @@
     1024
     0
     0
-    (the-as uint 1)
-    (-> self root-override trans)
+    1
+    (the-as symbol (-> self root-override trans))
     )
    (let ((gp-1 (get-process *default-dead-pool* part-tracker #x4000)))
     (when gp-1
@@ -562,11 +548,7 @@
      )
     )
    (set! (-> self state-time) (-> *display* base-frame-counter))
-   (until
-    (>=
-     (- (-> *display* base-frame-counter) (the-as int (-> self state-time)))
-     300
-     )
+   (until (>= (- (-> *display* base-frame-counter) (-> self state-time)) 300)
     (suspend)
     )
    (dummy-18 self)
@@ -651,20 +633,13 @@
   (none)
   )
 
-(let
-  ((v1-20
-    (new 'static 'skeleton-group
-     :art-group-name "quicksandlurker"
-     :bounds (new 'static 'vector :w 20480.0)
-     :version #x6
-     )
-    )
-   )
-  (set! (-> v1-20 jgeo) 0)
-  (set! (-> v1-20 janim) 2)
-  (set! (-> v1-20 mgeo 0) (the-as uint 1))
-  (set! (-> v1-20 lod-dist 0) 4095996000.0)
-  (set! *quicksandlurker-sg* v1-20)
+
+(defskelgroup *quicksandlurker-sg* quicksandlurker
+  0
+  2
+  ((1 (meters 999999)))
+  :bounds (static-spherem 0 0 0 5)
+  :longest-edge (meters 0)
   )
 
 (defbehavior orient-to-face-target quicksandlurker ()
@@ -691,16 +666,13 @@
 (defbehavior
   quicksandlurker-default-event-handler quicksandlurker
   ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
-  (let ((v1-0 arg2))
-   (the-as object (cond
-                   ((= v1-0 'attack)
-                    enter-state
-                    (go quicksandlurker-die)
-                    )
-                   ((= v1-0 'victory)
-                    (go quicksandlurker-victory)
-                    )
-                   )
+  (case arg2 
+   (('attack)
+     enter-state
+     (go quicksandlurker-die)
+     )
+   (('victory)
+    (go quicksandlurker-victory)
     )
    )
   )
@@ -907,11 +879,7 @@
          )
     (ja-channel-push! 1 30)
     (while #t
-     (when
-      (>=
-       (- (-> *display* base-frame-counter) (the-as int (-> self state-time)))
-       gp-0
-       )
+     (when (>= (- (-> *display* base-frame-counter) (-> self state-time)) gp-0)
       (let ((a0-3 (-> self skel root-channel 0)))
        (set!
         (-> a0-3 frame-group)
@@ -1108,11 +1076,7 @@
          (s4-0 0)
          )
     (while #t
-     (when
-      (>=
-       (- (-> *display* base-frame-counter) (the-as int (-> self state-time)))
-       gp-0
-       )
+     (when (>= (- (-> *display* base-frame-counter) (-> self state-time)) gp-0)
       (let ((a0-2 (-> self skel root-channel 0)))
        (set!
         (-> a0-2 frame-group)
@@ -1439,11 +1403,7 @@
       (set! (-> self state-time) (-> *display* base-frame-counter))
       )
      (else
-      (if
-       (>=
-        (- (-> *display* base-frame-counter) (the-as int (-> self state-time)))
-        600
-        )
+      (if (>= (- (-> *display* base-frame-counter) (-> self state-time)) 600)
        (go quicksandlurker-popup)
        )
       )
@@ -1726,7 +1686,7 @@
    (-> obj root-override)
    (rand-vu-float-range 0.0 65536.0)
    )
-  (dummy-14 obj *quicksandlurker-sg* '())
+  (initialize-skeleton obj *quicksandlurker-sg* '())
   (set!
    (-> obj nav)
    (new 'process 'nav-control (-> obj root-override) 16 40960.0)

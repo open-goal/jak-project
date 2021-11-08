@@ -407,48 +407,42 @@
 (defstate quicksandlurker-missile-idle (quicksandlurker-missile)
   :event
   (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
-   (let ((v1-0 arg2))
-    (the-as object (when (= v1-0 'touched)
-                    (when (cond
-                           ((= (-> arg0 type) target)
-                            (let
-                             ((a1-3 (new 'stack-no-clear 'event-message-block)))
-                             (set! (-> a1-3 from) self)
-                             (set! (-> a1-3 num-params) 2)
-                             (set! (-> a1-3 message) 'attack)
-                             (set! (-> a1-3 param 0) (-> arg3 param 0))
-                             (let ((a2-1 (new 'static 'attack-info :mask #x20)))
-                              (set! (-> a2-1 mode) 'explode)
-                              (set! (-> a1-3 param 1) (the-as uint a2-1))
-                              )
-                             (send-event-function arg0 a1-3)
-                             )
-                            )
-                           (else
-                            (let
-                             ((a1-4 (new 'stack-no-clear 'event-message-block)))
-                             (set! (-> a1-4 from) self)
-                             (set! (-> a1-4 num-params) 4)
-                             (set! (-> a1-4 message) 'attack)
-                             (set! (-> a1-4 param 0) (-> arg3 param 0))
-                             (set! (-> a1-4 param 1) (the-as uint 'explode))
-                             (let ((v1-12 (+ *global-attack-id* 1)))
-                              (set! *global-attack-id* v1-12)
-                              (set! (-> a1-4 param 2) (the-as uint v1-12))
-                              )
-                             (set! (-> a1-4 param 3) (the-as uint 0))
-                             (send-event-function arg0 a1-4)
-                             )
-                            )
-                           )
-                     (send-event
-                      (ppointer->process (-> self parent-override))
-                      'victory
-                      )
-                     (go quicksandlurker-missile-impact)
-                     )
-                    )
-     )
+   (case arg2 
+    (('touched)
+      (when (cond
+             ((= (-> arg0 type) target)
+              (let ((a1-3 (new 'stack-no-clear 'event-message-block)))
+               (set! (-> a1-3 from) self)
+               (set! (-> a1-3 num-params) 2)
+               (set! (-> a1-3 message) 'attack)
+               (set! (-> a1-3 param 0) (-> arg3 param 0))
+               (let ((a2-1 (new 'static 'attack-info :mask #x20)))
+                (set! (-> a2-1 mode) 'explode)
+                (set! (-> a1-3 param 1) (the-as uint a2-1))
+                )
+               (send-event-function arg0 a1-3)
+               )
+              )
+             (else
+              (let ((a1-4 (new 'stack-no-clear 'event-message-block)))
+               (set! (-> a1-4 from) self)
+               (set! (-> a1-4 num-params) 4)
+               (set! (-> a1-4 message) 'attack)
+               (set! (-> a1-4 param 0) (-> arg3 param 0))
+               (set! (-> a1-4 param 1) (the-as uint 'explode))
+               (let ((v1-12 (+ *global-attack-id* 1)))
+                (set! *global-attack-id* v1-12)
+                (set! (-> a1-4 param 2) (the-as uint v1-12))
+                )
+               (set! (-> a1-4 param 3) (the-as uint 0))
+               (send-event-function arg0 a1-4)
+               )
+              )
+             )
+       (send-event (ppointer->process (-> self parent-override)) 'victory)
+       (go quicksandlurker-missile-impact)
+       )
+      )
     )
    )
   :enter
@@ -509,8 +503,8 @@
     1024
     0
     0
-    (the-as uint 1)
-    (-> self root-override trans)
+    1
+    (the-as symbol (-> self root-override trans))
     )
    (let ((gp-1 (get-process *default-dead-pool* part-tracker #x4000)))
     (when gp-1
@@ -566,6 +560,7 @@
   )
 
 ;; definition for function quicksandlurker-missile-init-by-other
+;; INFO: Return type mismatch object vs none.
 ;; Used lq/sq
 (defbehavior
   quicksandlurker-missile-init-by-other quicksandlurker-missile
@@ -671,20 +666,12 @@
   )
 
 ;; failed to figure out what this is:
-(let
-  ((v1-20
-    (new 'static 'skeleton-group
-     :art-group-name "quicksandlurker"
-     :bounds (new 'static 'vector :w 20480.0)
-     :version #x6
-     )
-    )
-   )
-  (set! (-> v1-20 jgeo) 0)
-  (set! (-> v1-20 janim) 2)
-  (set! (-> v1-20 mgeo 0) (the-as uint 1))
-  (set! (-> v1-20 lod-dist 0) 4095996000.0)
-  (set! *quicksandlurker-sg* v1-20)
+(defskelgroup *quicksandlurker-sg* quicksandlurker
+  0
+  2
+  ((1 (meters 999999)))
+  :bounds (static-spherem 0 0 0 5)
+  :longest-edge (meters 0)
   )
 
 ;; definition for function orient-to-face-target
@@ -712,20 +699,16 @@
   )
 
 ;; definition for function quicksandlurker-default-event-handler
-;; INFO: Return type mismatch none vs object.
 (defbehavior
   quicksandlurker-default-event-handler quicksandlurker
   ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
-  (let ((v1-0 arg2))
-   (the-as object (cond
-                   ((= v1-0 'attack)
-                    enter-state
-                    (go quicksandlurker-die)
-                    )
-                   ((= v1-0 'victory)
-                    (go quicksandlurker-victory)
-                    )
-                   )
+  (case arg2 
+   (('attack)
+     enter-state
+     (go quicksandlurker-die)
+     )
+   (('victory)
+    (go quicksandlurker-victory)
     )
    )
   )
@@ -795,6 +778,7 @@
   )
 
 ;; definition for function quicksandlurker-check-hide-transition
+;; INFO: Return type mismatch object vs none.
 (defbehavior quicksandlurker-check-hide-transition quicksandlurker ()
   (when *target*
    (if
@@ -1699,6 +1683,7 @@
   )
 
 ;; definition for method 11 of type quicksandlurker
+;; INFO: Return type mismatch object vs none.
 ;; Used lq/sq
 (defmethod copy-defaults! quicksandlurker ((obj quicksandlurker) (arg0 res-lump))
   (set! (-> obj mask) (logior (process-mask enemy) (-> obj mask)))
@@ -1756,7 +1741,7 @@
    (-> obj root-override)
    (rand-vu-float-range 0.0 65536.0)
    )
-  (dummy-14 obj *quicksandlurker-sg* '())
+  (initialize-skeleton obj *quicksandlurker-sg* '())
   (set!
    (-> obj nav)
    (new 'process 'nav-control (-> obj root-override) 16 40960.0)

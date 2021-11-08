@@ -119,43 +119,20 @@
   )
 
 
-(let
-  ((v1-5
-    (new 'static 'skeleton-group
-     :art-group-name "gnawer"
-     :bounds
-     (new 'static 'vector :y 2048.0 :w 32768.0)
-     :max-lod 2
-     :longest-edge (meters 0.8)
-     :version #x6
-     )
-    )
-   )
-  (set! (-> v1-5 jgeo) 0)
-  (set! (-> v1-5 janim) -1)
-  (set! (-> v1-5 mgeo 0) (the-as uint 1))
-  (set! (-> v1-5 lod-dist 0) 81920.0)
-  (set! (-> v1-5 mgeo 1) (the-as uint 2))
-  (set! (-> v1-5 lod-dist 1) 163840.0)
-  (set! (-> v1-5 mgeo 2) (the-as uint 3))
-  (set! (-> v1-5 lod-dist 2) 4095996000.0)
-  (set! *gnawer-sg* v1-5)
+(defskelgroup *gnawer-sg* gnawer
+  0
+  -1
+  ((1 (meters 20)) (2 (meters 40)) (3 (meters 999999)))
+  :bounds (static-spherem 0 0.5 0 8)
+  :longest-edge (meters 0.800000011920929)
   )
 
-(let
-  ((v1-6
-    (new 'static 'skeleton-group
-     :art-group-name "gnawer"
-     :bounds (new 'static 'vector :w 8192.0)
-     :version #x6
-     )
-    )
-   )
-  (set! (-> v1-6 jgeo) 14)
-  (set! (-> v1-6 janim) -1)
-  (set! (-> v1-6 mgeo 0) (the-as uint 15))
-  (set! (-> v1-6 lod-dist 0) 4095996000.0)
-  (set! *gnawer-segment-sg* v1-6)
+(defskelgroup *gnawer-segment-sg* gnawer
+  14
+  -1
+  ((15 (meters 999999)))
+  :bounds (static-spherem 0 0 0 2)
+  :longest-edge (meters 0)
   )
 
 (define
@@ -585,7 +562,7 @@
    (rand-vu-float-range 16384.0 36408.89)
    1.0
    )
-  (dummy-14 self *gnawer-segment-sg* '())
+  (initialize-skeleton self *gnawer-segment-sg* '())
   (go-virtual falling)
   (none)
   )
@@ -610,7 +587,10 @@
   (when (-> obj hidden?)
    (set! (-> obj hidden?) #f)
    (dummy-49 (-> obj root-override))
-   (set! (-> obj skel postbind-function) gnawer-joint-callback)
+   (set!
+    (-> obj skel postbind-function)
+    (the-as (function pointer int process-drawable none) gnawer-joint-callback)
+    )
    (set! (-> obj draw status) (logand -3 (-> obj draw status)))
    )
   (none)
@@ -1096,38 +1076,35 @@
 (defstate gnawer-chewing-on-post (gnawer)
   :event
   (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
-   (let ((v1-0 arg2))
-    (the-as object (cond
-                    ((= v1-0 'touch)
-                     (when (= (-> arg0 type) target)
-                      (let ((a1-4 (new 'stack-no-clear 'event-message-block)))
-                       (set! (-> a1-4 from) self)
-                       (set! (-> a1-4 num-params) 2)
-                       (set! (-> a1-4 message) 'shove)
-                       (set! (-> a1-4 param 0) (-> arg3 param 0))
-                       (let ((v1-6 (new 'static 'attack-info :mask #xc0)))
-                        (set! (-> v1-6 shove-up) 6144.0)
-                        (set! (-> v1-6 shove-back) 10240.0)
-                        (set! (-> a1-4 param 1) (the-as uint v1-6))
-                        )
-                       (send-event-function arg0 a1-4)
-                       )
-                      )
-                     (go gnawer-retreat-into-post)
-                     )
-                    ((= v1-0 'attack)
-                     (sound-play-by-name
-                      (static-sound-name "gnawer-dies")
-                      (new-sound-id)
-                      1024
-                      -381
-                      0
-                      (the-as uint 1)
-                      (the-as vector #t)
-                      )
-                     (go gnawer-retreat-into-post)
-                     )
-                    )
+   (case arg2 
+    (('touch)
+      (when (= (-> arg0 type) target)
+       (let ((a1-4 (new 'stack-no-clear 'event-message-block)))
+        (set! (-> a1-4 from) self)
+        (set! (-> a1-4 num-params) 2)
+        (set! (-> a1-4 message) 'shove)
+        (set! (-> a1-4 param 0) (-> arg3 param 0))
+        (let ((v1-6 (new 'static 'attack-info :mask #xc0)))
+         (set! (-> v1-6 shove-up) 6144.0)
+         (set! (-> v1-6 shove-back) 10240.0)
+         (set! (-> a1-4 param 1) (the-as uint v1-6))
+         )
+        (send-event-function arg0 a1-4)
+        )
+       )
+      (go gnawer-retreat-into-post)
+      )
+    (('attack)
+     (sound-play-by-name
+      (static-sound-name "gnawer-dies")
+      (new-sound-id)
+      1024
+      -381
+      0
+      1
+      #t
+      )
+     (go gnawer-retreat-into-post)
      )
     )
    )
@@ -1563,11 +1540,7 @@
    (dummy-23 self)
    (set! (-> self state-time) (-> *display* base-frame-counter))
    (let ((gp-0 (rand-vu-int-range 240 360)))
-    (until
-     (>=
-      (- (-> *display* base-frame-counter) (the-as int (-> self state-time)))
-      gp-0
-      )
+    (until (>= (- (-> *display* base-frame-counter) (-> self state-time)) gp-0)
      (suspend)
      )
     )
@@ -1627,10 +1600,10 @@
        (let* ((a2-1 (the-as object (-> arg3 param 0)))
               (v1-19
                (->
-                (dummy-9
+                (touched-prim
                  (-> (the-as touching-shapes-entry a2-1) head)
                  (the-as collide-shape-moving (-> self root-override))
-                 (the-as (pointer collide-shape-moving) a2-1)
+                 (the-as touching-shapes-entry a2-1)
                  )
                 prim-id
                 )
@@ -1914,23 +1887,17 @@
          )
         )
        )
-      (let ((v1-19 (birth-pickup-at-point s4-0 a1-2 1.0 #f self #f))
-            (a1-3 (new 'stack-no-clear 'event-message-block))
-            )
-       (set! (-> a1-3 from) self)
-       (set! (-> a1-3 num-params) 1)
-       (set! (-> a1-3 message) 'jump)
-       (set! (-> a1-3 param 0) (the-as uint s5-0))
-       (send-event-function (ppointer->process v1-19) a1-3)
+      (let
+       ((v1-19
+         (birth-pickup-at-point s4-0 a1-2 1.0 #f self (the-as fact-info #f))
+         )
+        )
+       (send-event (ppointer->process v1-19) 'jump s5-0)
        )
       )
      )
     (set! (-> self state-time) (-> *display* base-frame-counter))
-    (until
-     (>=
-      (- (-> *display* base-frame-counter) (the-as int (-> self state-time)))
-      15
-      )
+    (until (>= (- (-> *display* base-frame-counter) (-> self state-time)) 15)
      (suspend)
      )
     )
@@ -2058,8 +2025,8 @@
      1024
      0
      0
-     (the-as uint 1)
-     (the-as vector #t)
+     1
+     #t
      )
     (until (not (-> self child))
      (suspend)
@@ -2107,7 +2074,7 @@
          (the float (-> self entity extra perm task))
          #f
          self
-         #f
+         (the-as fact-info #f)
          )
         )
        )
@@ -2122,7 +2089,7 @@
               (s3-0 (new 'stack-no-clear 'vector))
               )
          (dummy-29 self s4-0 a2-1 s3-0)
-         (birth-pickup-at-point s3-0 5 1.0 #f self #f)
+         (birth-pickup-at-point s3-0 5 1.0 #f self (the-as fact-info #f))
          )
         )
        )
@@ -2283,7 +2250,7 @@
    )
   (process-drawable-from-entity! obj arg0)
   (quaternion-identity! (-> obj root-override quat))
-  (dummy-14 obj *gnawer-sg* '())
+  (initialize-skeleton obj *gnawer-sg* '())
   (set! (-> obj draw origin-joint-index) (the-as uint 8))
   (set! (-> obj post-trans quad) (-> obj root-override trans quad))
   (let ((f0-40 (res-lump-float (-> obj entity) 'rotoffset)))
@@ -2392,25 +2359,7 @@
      :mask #xc0
      :num 1.0
      :group #x1
-     :sound-name-char
-     (new 'static 'array uint8 16
-      #x67
-      #x6e
-      #x61
-      #x77
-      #x65
-      #x72
-      #x2d
-      #x63
-      #x72
-      #x61
-      #x77
-      #x6c
-      #x0
-      #x0
-      #x0
-      #x0
-      )
+     :sound-name (static-sound-name "gnawer-crawl")
      :volume #x400
      :fo-min 30
      :fo-max 30
@@ -2427,25 +2376,7 @@
      :mask #x80
      :num 1.0
      :group #x1
-     :sound-name-char
-     (new 'static 'array uint8 16
-      #x67
-      #x6e
-      #x61
-      #x77
-      #x65
-      #x72
-      #x2d
-      #x63
-      #x68
-      #x65
-      #x77
-      #x0
-      #x0
-      #x0
-      #x0
-      #x0
-      )
+     :sound-name (static-sound-name "gnawer-chew")
      :volume #x400
      :fo-max 40
      )

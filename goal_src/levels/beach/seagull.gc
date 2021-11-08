@@ -89,10 +89,10 @@
     (dummy-27 (_type_) none 27)
     )
   (:states
-    (seagull-idle seagull)
-    (seagull-soaring seagull)
     (seagull-flying seagull)
+    (seagull-idle seagull)
     (seagull-landing float seagull)
+    (seagull-soaring seagull)
     (seagull-takeoff seagull)
     )
   )
@@ -126,8 +126,8 @@
     (dummy-16 (_type_ seagull) float 16)
     )
   (:states
-    (seagullflock-idle seagullflock)
     (seagullflock-at-waterfall seagullflock)
+    (seagullflock-idle seagullflock)
     )
   )
 
@@ -229,20 +229,12 @@
    )
   )
 
-(let
-  ((v1-6
-    (new 'static 'skeleton-group
-     :art-group-name "seagull"
-     :bounds (new 'static 'vector :w 8192.0)
-     :version #x6
-     )
-    )
-   )
-  (set! (-> v1-6 jgeo) 0)
-  (set! (-> v1-6 janim) 2)
-  (set! (-> v1-6 mgeo 0) (the-as uint 1))
-  (set! (-> v1-6 lod-dist 0) 4095996000.0)
-  (set! *seagull-sg* v1-6)
+(defskelgroup *seagull-sg* seagull
+  0
+  2
+  ((1 (meters 999999)))
+  :bounds (static-spherem 0 0 0 2)
+  :longest-edge (meters 0)
   )
 
 (defmethod dummy-25 seagull ((obj seagull) (arg0 float))
@@ -947,7 +939,10 @@
    )
   :code
   (behavior ((arg0 seagull))
-   (local-vars (a0-66 int) (t9-12 (function int symbol)))
+   (local-vars
+    (a0-66 int)
+    (t9-12 (function int symbol :behavior process-drawable))
+    )
    (set! (-> self max-tilt) 1820.4445)
    (let ((gp-0 0))
     (while #t
@@ -1801,7 +1796,7 @@
    (set! (-> self root-override) s3-0)
    )
   (set! (-> self root-override trans quad) (-> arg0 quad))
-  (dummy-14 self *seagull-sg* '())
+  (initialize-skeleton self *seagull-sg* '())
   (logclear! (-> self mask) (process-mask actor-pause))
   (set! (-> self index) arg1)
   (set!
@@ -1914,8 +1909,8 @@
     1024
     0
     0
-    (the-as uint 1)
-    (the-as vector #t)
+    1
+    #t
     )
    (set! (-> obj alert-time) (the-as uint (-> *display* base-frame-counter)))
    )
@@ -1941,7 +1936,7 @@
    (local-vars
     (a0-3 process)
     (a1-0 event-message-block)
-    (t9-1 (function process event-message-block object))
+    (t9-1 (function process-tree event-message-block object))
     )
    (aybabtu 2)
    (set! (-> self state-time) (the-as uint (-> *display* base-frame-counter)))

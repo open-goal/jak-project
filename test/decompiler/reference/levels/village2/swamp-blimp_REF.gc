@@ -2,97 +2,48 @@
 (in-package goal)
 
 ;; failed to figure out what this is:
-(let
-  ((v1-0
-    (new 'static 'skeleton-group
-     :art-group-name "swamp-tetherrock"
-     :bounds
-     (new 'static 'vector :y 16384.0 :w 24576.0)
-     :version #x6
-     )
-    )
-   )
-  (set! (-> v1-0 jgeo) 0)
-  (set! (-> v1-0 janim) 2)
-  (set! (-> v1-0 mgeo 0) (the-as uint 1))
-  (set! (-> v1-0 lod-dist 0) 4095996000.0)
-  (set! *swamp-tetherrock-sg* v1-0)
+(defskelgroup *swamp-tetherrock-sg* swamp-tetherrock
+  0
+  2
+  ((1 (meters 999999)))
+  :bounds (static-spherem 0 4 0 6)
+  :longest-edge (meters 0)
   )
 
 ;; failed to figure out what this is:
-(let
-  ((v1-1
-    (new 'static 'skeleton-group
-     :art-group-name "swamp-tetherrock-explode"
-     :bounds
-     (new 'static 'vector :y 16384.0 :w 65536.0)
-     :version #x6
-     )
-    )
-   )
-  (set! (-> v1-1 jgeo) 0)
-  (set! (-> v1-1 janim) 2)
-  (set! (-> v1-1 mgeo 0) (the-as uint 1))
-  (set! (-> v1-1 lod-dist 0) 4095996000.0)
-  (set! *swamp-tetherrock-explode-sg* v1-1)
+(defskelgroup *swamp-tetherrock-explode-sg* swamp-tetherrock-explode
+  0
+  2
+  ((1 (meters 999999)))
+  :bounds (static-spherem 0 4 0 16)
+  :longest-edge (meters 0)
   )
 
 ;; failed to figure out what this is:
-(let
-  ((v1-2
-    (new 'static 'skeleton-group
-     :art-group-name "precursor-arm"
-     :bounds
-     (new 'static 'vector :y 61440.0 :w 61440.0)
-     :version #x6
-     )
-    )
-   )
-  (set! (-> v1-2 jgeo) 0)
-  (set! (-> v1-2 janim) 2)
-  (set! (-> v1-2 mgeo 0) (the-as uint 1))
-  (set! (-> v1-2 lod-dist 0) 4095996000.0)
-  (set! *precursor-arm-sg* v1-2)
+(defskelgroup *precursor-arm-sg* precursor-arm
+  0
+  2
+  ((1 (meters 999999)))
+  :bounds (static-spherem 0 15 0 15)
+  :longest-edge (meters 0)
   )
 
 ;; failed to figure out what this is:
-(let
-  ((v1-3
-    (new 'static 'skeleton-group
-     :art-group-name "swamp-rope"
-     :bounds (new 'static 'vector :w 1228800.0)
-     :longest-edge (meters 66.0)
-     :version #x6
-     )
-    )
-   )
-  (set! (-> v1-3 jgeo) 0)
-  (set! (-> v1-3 janim) 2)
-  (set! (-> v1-3 mgeo 0) (the-as uint 1))
-  (set! (-> v1-3 lod-dist 0) 4095996000.0)
-  (set! *swamp-rope-sg* v1-3)
+(defskelgroup *swamp-rope-sg* swamp-rope
+  0
+  2
+  ((1 (meters 999999)))
+  :bounds (static-spherem 0 0 0 300)
+  :longest-edge (meters 66)
   )
 
 ;; failed to figure out what this is:
-(let
-  ((v1-4
-    (new 'static 'skeleton-group
-     :art-group-name "swamp-blimp"
-     :bounds
-     (new 'static 'vector :x 40960.0 :y 245760.0 :w 389120.0)
-     :max-lod 1
-     :longest-edge (meters 40.0)
-     :version #x6
-     )
-    )
-   )
-  (set! (-> v1-4 jgeo) 0)
-  (set! (-> v1-4 janim) 3)
-  (set! (-> v1-4 mgeo 0) (the-as uint 1))
-  (set! (-> v1-4 lod-dist 0) 81920.0)
-  (set! (-> v1-4 mgeo 1) (the-as uint 2))
-  (set! (-> v1-4 lod-dist 1) 4095996000.0)
-  (set! *swamp-blimp-sg* v1-4)
+(defskelgroup *swamp-blimp-sg* swamp-blimp
+  0
+  3
+  ((1 (meters 20)) (2 (meters 999999)))
+  :bounds (static-spherem 10 60 0 95)
+  :longest-edge (meters 40)
   )
 
 ;; failed to figure out what this is:
@@ -1091,7 +1042,7 @@
      (the float (-> self entity extra perm task))
      #f
      self
-     #f
+     (the-as fact-info #f)
      )
     (let ((a1-12 (new 'stack-no-clear 'event-message-block)))
      (set! (-> a1-12 from) self)
@@ -1297,63 +1248,56 @@
 (defstate swamp-tetherrock-idle (swamp-tetherrock)
   :event
   (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
-   (let ((v1-0 arg2))
-    (the-as object (when (= v1-0 'attack)
-                    (when (and (>= arg1 2) (= (-> arg3 param 1) 'eco-yellow))
-                     (+! (-> self hits) 1)
-                     (cond
-                      ((>= (-> self hits) 1)
-                       (go swamp-tetherrock-break)
-                       )
-                      (else
-                       (let* ((s5-0 arg0)
-                              (gp-0
-                               (if
-                                (and
-                                 (nonzero? s5-0)
-                                 (type-type? (-> s5-0 type) process-drawable)
-                                 )
-                                s5-0
-                                )
-                               )
-                              (s5-1
-                               (get-process
-                                *default-dead-pool*
-                                part-tracker
-                                #x4000
-                                )
-                               )
-                              )
-                        (when s5-1
-                         (let ((t9-3 (method-of-type part-tracker activate)))
-                          (t9-3
-                           (the-as part-tracker s5-1)
-                           *entity-pool*
-                           'part-tracker
-                           (the-as pointer #x70004000)
-                           )
-                          )
-                         (run-now-in-process
-                          s5-1
-                          part-tracker-init
-                          (-> *part-group-id-table* 287)
-                          150
-                          #f
-                          #f
-                          #f
-                          (if gp-0
-                           (-> (the-as process-drawable gp-0) root trans)
-                           (-> self root-override trans)
-                           )
-                          )
-                         (-> s5-1 ppointer)
-                         )
-                        )
-                       )
-                      )
-                     )
-                    )
-     )
+   (case arg2 
+    (('attack)
+      (when (and (>= arg1 2) (= (-> arg3 param 1) 'eco-yellow))
+       (+! (-> self hits) 1)
+       (cond
+        ((>= (-> self hits) 1)
+         (go swamp-tetherrock-break)
+         )
+        (else
+         (let* ((s5-0 arg0)
+                (gp-0
+                 (if
+                  (and
+                   (nonzero? s5-0)
+                   (type-type? (-> s5-0 type) process-drawable)
+                   )
+                  s5-0
+                  )
+                 )
+                (s5-1 (get-process *default-dead-pool* part-tracker #x4000))
+                )
+          (when s5-1
+           (let ((t9-3 (method-of-type part-tracker activate)))
+            (t9-3
+             (the-as part-tracker s5-1)
+             *entity-pool*
+             'part-tracker
+             (the-as pointer #x70004000)
+             )
+            )
+           (run-now-in-process
+            s5-1
+            part-tracker-init
+            (-> *part-group-id-table* 287)
+            150
+            #f
+            #f
+            #f
+            (if gp-0
+             (-> (the-as process-drawable gp-0) root trans)
+             (-> self root-override trans)
+             )
+            )
+           (-> s5-1 ppointer)
+           )
+          )
+         )
+        )
+       )
+      )
     )
    )
   :code
@@ -1406,6 +1350,7 @@
   )
 
 ;; definition for method 11 of type swamp-tetherrock
+;; INFO: Return type mismatch object vs none.
 (defmethod
   copy-defaults!
   swamp-tetherrock
@@ -1450,7 +1395,7 @@
    (set! (-> obj root-override) s4-0)
    )
   (process-drawable-from-entity! obj arg0)
-  (dummy-14 obj *swamp-tetherrock-sg* '())
+  (initialize-skeleton obj *swamp-tetherrock-sg* '())
   (set!
    (-> obj fact)
    (new
@@ -1477,7 +1422,7 @@
      (the float (-> obj entity extra perm task))
      #f
      obj
-     #f
+     (the-as fact-info #f)
      )
     (go swamp-tetherrock-hide)
     )
@@ -1570,11 +1515,10 @@
 (defstate precursor-arm-idle (precursor-arm)
   :event
   (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
-   (let ((v1-0 arg2))
-    (the-as object (if (= v1-0 'arm-sink-evt)
-                    (go precursor-arm-sink)
-                    )
-     )
+   (case arg2 
+    (('arm-sink-evt)
+      (go precursor-arm-sink)
+      )
     )
    )
   :trans
@@ -1750,6 +1694,7 @@
   )
 
 ;; definition for method 11 of type precursor-arm
+;; INFO: Return type mismatch object vs none.
 (defmethod copy-defaults! precursor-arm ((obj precursor-arm) (arg0 res-lump))
   (let
    ((s4-0
@@ -1780,7 +1725,7 @@
    (set! (-> obj root-override) s4-0)
    )
   (process-drawable-from-entity! obj arg0)
-  (dummy-14 obj *precursor-arm-sg* '())
+  (initialize-skeleton obj *precursor-arm-sg* '())
   (set! (-> obj rot-speed) 0.0)
   (set! (-> obj rot-dist) 0.0)
   (set! (-> obj rot-base) 0.0)
@@ -2163,13 +2108,14 @@
   )
 
 ;; definition for function swamp-rope-init-by-other
+;; INFO: Return type mismatch object vs none.
 ;; Used lq/sq
 (defbehavior
   swamp-rope-init-by-other swamp-rope
   ((arg0 vector) (arg1 entity-actor))
   (set! (-> self root) (new 'process 'trsqv))
   (set! (-> self root trans quad) (-> arg0 quad))
-  (dummy-14 self *swamp-rope-sg* '())
+  (initialize-skeleton self *swamp-rope-sg* '())
   (logclear! (-> self mask) (process-mask actor-pause))
   (set! (-> self other-entity) arg1)
   (when (-> self other-entity)
@@ -2435,7 +2381,9 @@
   (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
    (let ((v1-0 arg2))
     (the-as object (when (= v1-0 'tetherrock-break-evt)
-                    (increment-success-for-hint (the-as level-hint-control 850))
+                    (increment-success-for-hint
+                     (game-text-id swamp-tethers-advice-hint)
+                     )
                     (swamp-blimp-setup)
                     )
      )
@@ -2514,6 +2462,7 @@
   )
 
 ;; definition for method 11 of type swamp-blimp
+;; INFO: Return type mismatch object vs none.
 ;; Used lq/sq
 (defmethod copy-defaults! swamp-blimp ((obj swamp-blimp) (arg0 res-lump))
   (let
@@ -2549,7 +2498,7 @@
    (set! (-> obj root-override) s4-0)
    )
   (process-drawable-from-entity! obj arg0)
-  (dummy-14 obj *swamp-blimp-sg* '())
+  (initialize-skeleton obj *swamp-blimp-sg* '())
   (quaternion-copy! (-> obj rot-at-init) (-> obj root-override quat))
   (set! (-> obj arm-timer) 0)
   (set! (-> obj trans-at-init quad) (-> obj root-override trans quad))

@@ -59,24 +59,12 @@
   )
 
 ;; failed to figure out what this is:
-(let
-  ((v1-1
-    (new 'static 'skeleton-group
-     :art-group-name "darkvine"
-     :bounds
-     (new 'static 'vector :y 8192.0 :w 14336.0)
-     :max-lod 1
-     :version #x6
-     )
-    )
-   )
-  (set! (-> v1-1 jgeo) 0)
-  (set! (-> v1-1 janim) 3)
-  (set! (-> v1-1 mgeo 0) (the-as uint 1))
-  (set! (-> v1-1 lod-dist 0) 81920.0)
-  (set! (-> v1-1 mgeo 1) (the-as uint 2))
-  (set! (-> v1-1 lod-dist 1) 4095996000.0)
-  (set! *darkvine-sg* v1-1)
+(defskelgroup *darkvine-sg* darkvine
+  0
+  3
+  ((1 (meters 20)) (2 (meters 999999)))
+  :bounds (static-spherem 0 2 0 3.5)
+  :longest-edge (meters 0)
   )
 
 ;; failed to figure out what this is:
@@ -186,6 +174,7 @@
 
 ;; definition for function darkvine-event-handler
 ;; INFO: Return type mismatch none vs object.
+;; WARN: rewrite_to_get_var got a none typed variable. Is there unreachable code?
 ;; WARN: rewrite_to_get_var got a none typed variable. Is there unreachable code?
 (defbehavior
   darkvine-event-handler darkvine
@@ -511,6 +500,7 @@
   )
 
 ;; definition for method 11 of type darkvine
+;; INFO: Return type mismatch object vs none.
 (defmethod copy-defaults! darkvine ((obj darkvine) (arg0 res-lump))
   (set! (-> obj mask) (logior (process-mask enemy) (-> obj mask)))
   (let
@@ -564,7 +554,7 @@
    )
   (set! (-> obj tip-index) 8)
   (process-drawable-from-entity! obj arg0)
-  (dummy-14 obj *darkvine-sg* '())
+  (initialize-skeleton obj *darkvine-sg* '())
   (nav-mesh-connect obj (-> obj root-override) (the-as nav-control #f))
   (set! (-> obj hit-player) #f)
   (set! (-> obj speed) (rand-vu-float-range 0.95 1.05))

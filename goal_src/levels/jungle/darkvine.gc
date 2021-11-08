@@ -56,24 +56,12 @@
    )
   )
 
-(let
-  ((v1-1
-    (new 'static 'skeleton-group
-     :art-group-name "darkvine"
-     :bounds
-     (new 'static 'vector :y 8192.0 :w 14336.0)
-     :max-lod 1
-     :version #x6
-     )
-    )
-   )
-  (set! (-> v1-1 jgeo) 0)
-  (set! (-> v1-1 janim) 3)
-  (set! (-> v1-1 mgeo 0) (the-as uint 1))
-  (set! (-> v1-1 lod-dist 0) 81920.0)
-  (set! (-> v1-1 mgeo 1) (the-as uint 2))
-  (set! (-> v1-1 lod-dist 1) 4095996000.0)
-  (set! *darkvine-sg* v1-1)
+(defskelgroup *darkvine-sg* darkvine
+  0
+  3
+  ((1 (meters 20)) (2 (meters 999999)))
+  :bounds (static-spherem 0 2 0 3.5)
+  :longest-edge (meters 0)
   )
 
 (set!
@@ -178,6 +166,7 @@
   )
 
 ;; WARN: rewrite_to_get_var got a none typed variable. Is there unreachable code?
+;; WARN: rewrite_to_get_var got a none typed variable. Is there unreachable code?
 (defbehavior
   darkvine-event-handler darkvine
   ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
@@ -203,21 +192,17 @@
                     )
                    ((= v1-0 'attack)
                     (let ((v1-10 (-> arg3 param 2)))
-                     (the-as none (cond
-                                   ((!= v1-10 (-> self player-attack-id))
-                                    (set!
-                                     (-> self player-attack-id)
-                                     (the-as int v1-10)
-                                     )
-                                    (when (-> self vulnerable)
-                                     (dummy-45 (-> self root-override))
-                                     (go darkvine-retreat)
-                                     )
-                                    )
-                                   (else
-                                    'push
-                                    )
-                                   )
+                     (cond
+                      ((!= v1-10 (-> self player-attack-id))
+                       (set! (-> self player-attack-id) (the-as int v1-10))
+                       (when (-> self vulnerable)
+                        (dummy-45 (-> self root-override))
+                        (go darkvine-retreat)
+                        )
+                       )
+                      (else
+                       'push
+                       )
                       )
                      )
                     )
@@ -555,7 +540,7 @@
    )
   (set! (-> obj tip-index) 8)
   (process-drawable-from-entity! obj arg0)
-  (dummy-14 obj *darkvine-sg* '())
+  (initialize-skeleton obj *darkvine-sg* '())
   (nav-mesh-connect obj (-> obj root-override) (the-as nav-control #f))
   (set! (-> obj hit-player) #f)
   (set! (-> obj speed) (rand-vu-float-range 0.95 1.05))

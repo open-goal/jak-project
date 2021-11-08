@@ -28,48 +28,20 @@
   )
 
 
-(let
-  ((v1-1
-    (new 'static 'skeleton-group
-     :art-group-name "spider-egg"
-     :bounds
-     (new 'static 'vector :y 4096.0 :w 8192.0)
-     :max-lod 2
-     :version #x6
-     )
-    )
-   )
-  (set! (-> v1-1 jgeo) 0)
-  (set! (-> v1-1 janim) -1)
-  (set! (-> v1-1 mgeo 0) (the-as uint 1))
-  (set! (-> v1-1 lod-dist 0) 81920.0)
-  (set! (-> v1-1 mgeo 1) (the-as uint 2))
-  (set! (-> v1-1 lod-dist 1) 163840.0)
-  (set! (-> v1-1 mgeo 2) (the-as uint 3))
-  (set! (-> v1-1 lod-dist 2) 4095996000.0)
-  (set! *spider-egg-unbroken-sg* v1-1)
+(defskelgroup *spider-egg-unbroken-sg* spider-egg
+  0
+  -1
+  ((1 (meters 20)) (2 (meters 40)) (3 (meters 999999)))
+  :bounds (static-spherem 0 1 0 2)
+  :longest-edge (meters 0)
   )
 
-(let
-  ((v1-2
-    (new 'static 'skeleton-group
-     :art-group-name "spider-egg"
-     :bounds
-     (new 'static 'vector :y 4096.0 :w 8192.0)
-     :max-lod 2
-     :version #x6
-     )
-    )
-   )
-  (set! (-> v1-2 jgeo) 5)
-  (set! (-> v1-2 janim) -1)
-  (set! (-> v1-2 mgeo 0) (the-as uint 6))
-  (set! (-> v1-2 lod-dist 0) 81920.0)
-  (set! (-> v1-2 mgeo 1) (the-as uint 7))
-  (set! (-> v1-2 lod-dist 1) 163840.0)
-  (set! (-> v1-2 mgeo 2) (the-as uint 8))
-  (set! (-> v1-2 lod-dist 2) 4095996000.0)
-  (set! *spider-egg-broken-sg* v1-2)
+(defskelgroup *spider-egg-broken-sg* spider-egg
+  5
+  -1
+  ((6 (meters 20)) (7 (meters 40)) (8 (meters 999999)))
+  :bounds (static-spherem 0 1 0 2)
+  :longest-edge (meters 0)
   )
 
 (defstate spider-egg-idle (spider-egg)
@@ -316,7 +288,7 @@
      (-> gp-0 ppointer)
      )
     )
-   (dummy-11 (-> self draw) (-> self broken-look))
+   (lods-assign! (-> self draw) (-> self broken-look))
    (ja-channel-push! 1 60)
    (let ((a0-8 (-> self skel root-channel 0)))
     (set!
@@ -426,7 +398,7 @@
      (-> gp-0 ppointer)
      )
     )
-   (dummy-11 (-> self draw) (-> self broken-look))
+   (lods-assign! (-> self draw) (-> self broken-look))
    (ja-channel-push! 1 30)
    (dummy-48 (-> self root-override))
    (let ((a0-9 (-> self skel root-channel 0)))
@@ -511,14 +483,12 @@
    (set! (-> obj root-override) s4-0)
    )
   (process-drawable-from-entity! obj arg0)
-  (dummy-14 obj *spider-egg-unbroken-sg* '())
-  (let ((a0-10 (-> obj broken-look))
-        (t9-7 (method-of-type lod-set dummy-9))
-        )
+  (initialize-skeleton obj *spider-egg-unbroken-sg* '())
+  (dummy-9
+   (-> obj broken-look)
    *spider-egg-broken-sg*
    (-> obj draw art-group)
    (-> obj entity)
-   (t9-7 a0-10)
    )
   (set-vector! (-> obj root-override scale) 0.4 0.4 0.4 1.0)
   (if (not (dummy-60 (-> obj root-override) 12288.0 40960.0 #t (the-as uint 1)))

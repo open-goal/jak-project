@@ -2,87 +2,39 @@
 (in-package goal)
 
 ;; failed to figure out what this is:
-(let
-  ((v1-0
-    (new 'static 'skeleton-group
-     :art-group-name "plat-citb"
-     :bounds (new 'static 'vector :w 12288.0)
-     :max-lod 1
-     :version #x6
-     )
-    )
-   )
-  (set! (-> v1-0 jgeo) 0)
-  (set! (-> v1-0 janim) 3)
-  (set! (-> v1-0 mgeo 0) (the-as uint 1))
-  (set! (-> v1-0 lod-dist 0) 81920.0)
-  (set! (-> v1-0 mgeo 1) (the-as uint 2))
-  (set! (-> v1-0 lod-dist 1) 4095996000.0)
-  (set! *plat-citb-sg* v1-0)
+(defskelgroup *plat-citb-sg* plat-citb
+  0
+  3
+  ((1 (meters 20)) (2 (meters 999999)))
+  :bounds (static-spherem 0 0 0 3)
+  :longest-edge (meters 0)
   )
 
 ;; failed to figure out what this is:
-(let
-  ((v1-1
-    (new 'static 'skeleton-group
-     :art-group-name "plat-eco-citb"
-     :bounds (new 'static 'vector :w 12288.0)
-     :max-lod 2
-     :version #x6
-     )
-    )
-   )
-  (set! (-> v1-1 jgeo) 0)
-  (set! (-> v1-1 janim) 8)
-  (set! (-> v1-1 mgeo 0) (the-as uint 1))
-  (set! (-> v1-1 lod-dist 0) 81920.0)
-  (set! (-> v1-1 mgeo 1) (the-as uint 2))
-  (set! (-> v1-1 lod-dist 1) 163840.0)
-  (set! (-> v1-1 mgeo 2) (the-as uint 3))
-  (set! (-> v1-1 lod-dist 2) 4095996000.0)
-  (set! *plat-eco-citb-unlit-sg* v1-1)
+(defskelgroup *plat-eco-citb-unlit-sg* plat-eco-citb
+  0
+  8
+  ((1 (meters 20)) (2 (meters 40)) (3 (meters 999999)))
+  :bounds (static-spherem 0 0 0 3)
+  :longest-edge (meters 0)
   )
 
 ;; failed to figure out what this is:
-(let
-  ((v1-2
-    (new 'static 'skeleton-group
-     :art-group-name "plat-eco-citb"
-     :bounds (new 'static 'vector :w 12288.0)
-     :max-lod 2
-     :version #x6
-     )
-    )
-   )
-  (set! (-> v1-2 jgeo) 4)
-  (set! (-> v1-2 janim) 8)
-  (set! (-> v1-2 mgeo 0) (the-as uint 5))
-  (set! (-> v1-2 lod-dist 0) 81920.0)
-  (set! (-> v1-2 mgeo 1) (the-as uint 6))
-  (set! (-> v1-2 lod-dist 1) 163840.0)
-  (set! (-> v1-2 mgeo 2) (the-as uint 7))
-  (set! (-> v1-2 lod-dist 2) 4095996000.0)
-  (set! *plat-eco-citb-lit-sg* v1-2)
+(defskelgroup *plat-eco-citb-lit-sg* plat-eco-citb
+  4
+  8
+  ((5 (meters 20)) (6 (meters 40)) (7 (meters 999999)))
+  :bounds (static-spherem 0 0 0 3)
+  :longest-edge (meters 0)
   )
 
 ;; failed to figure out what this is:
-(let
-  ((v1-3
-    (new 'static 'skeleton-group
-     :art-group-name "citb-chain-plat"
-     :bounds (new 'static 'vector :w 20480.0)
-     :max-lod 1
-     :version #x6
-     )
-    )
-   )
-  (set! (-> v1-3 jgeo) 0)
-  (set! (-> v1-3 janim) 3)
-  (set! (-> v1-3 mgeo 0) (the-as uint 1))
-  (set! (-> v1-3 lod-dist 0) 81920.0)
-  (set! (-> v1-3 mgeo 1) (the-as uint 2))
-  (set! (-> v1-3 lod-dist 1) 4095996000.0)
-  (set! *citb-chain-plat-sg* v1-3)
+(defskelgroup *citb-chain-plat-sg* citb-chain-plat
+  0
+  3
+  ((1 (meters 20)) (2 (meters 999999)))
+  :bounds (static-spherem 0 0 0 5)
+  :longest-edge (meters 0)
   )
 
 ;; definition of type citb-base-plat
@@ -207,7 +159,7 @@
 ;; definition for method 22 of type citb-base-plat
 ;; INFO: Return type mismatch int vs none.
 (defmethod dummy-22 citb-base-plat ((obj citb-base-plat))
-  (dummy-14 obj *plat-citb-sg* '())
+  (initialize-skeleton obj *plat-citb-sg* '())
   0
   (none)
   )
@@ -352,8 +304,8 @@
      1024
      0
      0
-     (the-as uint 1)
-     (-> self root-override trans)
+     1
+     (the-as symbol (-> self root-override trans))
      )
     )
    (plat-trans)
@@ -570,7 +522,7 @@
 ;; definition for method 22 of type citb-stair-plat
 ;; INFO: Return type mismatch int vs none.
 (defmethod dummy-22 citb-stair-plat ((obj citb-stair-plat))
-  (dummy-14 obj *plat-citb-sg* '())
+  (initialize-skeleton obj *plat-citb-sg* '())
   (set! (-> obj rise-height) (-> obj root-override trans y))
   (set! (-> obj idle-height) (+ -409600.0 (-> obj rise-height)))
   (set! (-> obj root-override trans y) (-> obj idle-height))
@@ -928,7 +880,7 @@
 ;; INFO: Return type mismatch int vs none.
 ;; Used lq/sq
 (defmethod TODO-RENAME-31 citb-chain-plat ((obj citb-chain-plat))
-  (dummy-14 obj *citb-chain-plat-sg* '())
+  (initialize-skeleton obj *citb-chain-plat-sg* '())
   (set! (-> obj orig-trans quad) (-> obj root-overlay trans quad))
   (quaternion-copy! (-> obj orig-quat) (-> obj root-overlay quat))
   (set! (-> obj beam-end quad) (-> obj orig-trans quad))
@@ -973,21 +925,12 @@
   )
 
 ;; failed to figure out what this is:
-(let
-  ((v1-36
-    (new 'static 'skeleton-group
-     :art-group-name "citb-rotatebox"
-     :bounds
-     (new 'static 'vector :y -20480.0 :w 40960.0)
-     :version #x6
-     )
-    )
-   )
-  (set! (-> v1-36 jgeo) 0)
-  (set! (-> v1-36 janim) 2)
-  (set! (-> v1-36 mgeo 0) (the-as uint 1))
-  (set! (-> v1-36 lod-dist 0) 4095996000.0)
-  (set! *citb-rotatebox-sg* v1-36)
+(defskelgroup *citb-rotatebox-sg* citb-rotatebox
+  0
+  2
+  ((1 (meters 999999)))
+  :bounds (static-spherem 0 -5 0 10)
+  :longest-edge (meters 0)
   )
 
 ;; definition of type citb-rotatebox
@@ -1122,29 +1065,18 @@
 ;; definition for method 22 of type citb-rotatebox
 ;; INFO: Return type mismatch int vs none.
 (defmethod dummy-22 citb-rotatebox ((obj citb-rotatebox))
-  (dummy-14 obj *citb-rotatebox-sg* '())
+  (initialize-skeleton obj *citb-rotatebox-sg* '())
   0
   (none)
   )
 
 ;; failed to figure out what this is:
-(let
-  ((v1-41
-    (new 'static 'skeleton-group
-     :art-group-name "citb-donut"
-     :bounds (new 'static 'vector :w 40960.0)
-     :max-lod 1
-     :version #x6
-     )
-    )
-   )
-  (set! (-> v1-41 jgeo) 0)
-  (set! (-> v1-41 janim) 3)
-  (set! (-> v1-41 mgeo 0) (the-as uint 1))
-  (set! (-> v1-41 lod-dist 0) 81920.0)
-  (set! (-> v1-41 mgeo 1) (the-as uint 2))
-  (set! (-> v1-41 lod-dist 1) 4095996000.0)
-  (set! *citb-donut-sg* v1-41)
+(defskelgroup *citb-donut-sg* citb-donut
+  0
+  3
+  ((1 (meters 20)) (2 (meters 999999)))
+  :bounds (static-spherem 0 0 0 10)
+  :longest-edge (meters 0)
   )
 
 ;; definition of type citb-donut
@@ -1226,7 +1158,7 @@
 ;; definition for method 22 of type citb-donut
 ;; INFO: Return type mismatch int vs none.
 (defmethod dummy-22 citb-donut ((obj citb-donut))
-  (dummy-14 obj *citb-donut-sg* '())
+  (initialize-skeleton obj *citb-donut-sg* '())
   (setup-params! (-> obj sync) (the-as uint 9000) 0.0 0.15 0.15)
   (set!
    (-> obj sound)
@@ -1250,24 +1182,12 @@
   )
 
 ;; failed to figure out what this is:
-(let
-  ((v1-45
-    (new 'static 'skeleton-group
-     :art-group-name "citb-stopbox"
-     :bounds
-     (new 'static 'vector :y -8192.0 :w 22528.0)
-     :max-lod 1
-     :version #x6
-     )
-    )
-   )
-  (set! (-> v1-45 jgeo) 0)
-  (set! (-> v1-45 janim) 3)
-  (set! (-> v1-45 mgeo 0) (the-as uint 1))
-  (set! (-> v1-45 lod-dist 0) 81920.0)
-  (set! (-> v1-45 mgeo 1) (the-as uint 2))
-  (set! (-> v1-45 lod-dist 1) 4095996000.0)
-  (set! *citb-stopbox-sg* v1-45)
+(defskelgroup *citb-stopbox-sg* citb-stopbox
+  0
+  3
+  ((1 (meters 20)) (2 (meters 999999)))
+  :bounds (static-spherem 0 -2 0 5.5)
+  :longest-edge (meters 0)
   )
 
 ;; definition of type citb-stopbox
@@ -1310,8 +1230,8 @@
      1024
      0
      0
-     (the-as uint 1)
-     (-> self root-override trans)
+     1
+     (the-as symbol (-> self root-override trans))
      )
     )
    (plat-trans)
@@ -1399,21 +1319,12 @@
   )
 
 ;; failed to figure out what this is:
-(let
-  ((v1-50
-    (new 'static 'skeleton-group
-     :art-group-name "citb-firehose"
-     :bounds
-     (new 'static 'vector :y 12288.0 :w 61440.0)
-     :version #x6
-     )
-    )
-   )
-  (set! (-> v1-50 jgeo) 0)
-  (set! (-> v1-50 janim) 2)
-  (set! (-> v1-50 mgeo 0) (the-as uint 1))
-  (set! (-> v1-50 lod-dist 0) 4095996000.0)
-  (set! *citb-firehose-sg* v1-50)
+(defskelgroup *citb-firehose-sg* citb-firehose
+  0
+  2
+  ((1 (meters 999999)))
+  :bounds (static-spherem 0 3 0 15)
+  :longest-edge (meters 0)
   )
 
 ;; failed to figure out what this is:
@@ -1580,8 +1491,8 @@
     1024
     0
     0
-    (the-as uint 1)
-    (-> self blast-pos)
+    1
+    (the-as symbol (-> self blast-pos))
     )
    (dotimes (gp-1 2)
     (let ((a0-7 (-> self skel root-channel 0)))
@@ -1686,6 +1597,7 @@
   )
 
 ;; definition for method 11 of type citb-firehose
+;; INFO: Return type mismatch object vs none.
 (defmethod copy-defaults! citb-firehose ((obj citb-firehose) (arg0 res-lump))
   (let
    ((s4-0 (new 'process 'collide-shape obj (collide-list-enum hit-by-player))))
@@ -1722,7 +1634,7 @@
    (set! (-> obj root-override) s4-0)
    )
   (process-drawable-from-entity! obj arg0)
-  (dummy-14 obj *citb-firehose-sg* '())
+  (initialize-skeleton obj *citb-firehose-sg* '())
   (load-params! (-> obj sync) obj (the-as uint 900) 0.0 0.15 0.15)
   (set! (-> obj idle-distance) 286720.0)
   (set!
@@ -1735,20 +1647,12 @@
   )
 
 ;; failed to figure out what this is:
-(let
-  ((v1-55
-    (new 'static 'skeleton-group
-     :art-group-name "citb-exit-plat"
-     :bounds (new 'static 'vector :w 122880.0)
-     :version #x6
-     )
-    )
-   )
-  (set! (-> v1-55 jgeo) 0)
-  (set! (-> v1-55 janim) 2)
-  (set! (-> v1-55 mgeo 0) (the-as uint 1))
-  (set! (-> v1-55 lod-dist 0) 4095996000.0)
-  (set! *citb-exit-plat-sg* v1-55)
+(defskelgroup *citb-exit-plat-sg* citb-exit-plat
+  0
+  2
+  ((1 (meters 999999)))
+  :bounds (static-spherem 0 0 0 30)
+  :longest-edge (meters 0)
   )
 
 ;; definition of type citb-exit-plat
@@ -1778,18 +1682,14 @@
 (defstate citb-exit-plat-idle (citb-exit-plat)
   :event
   (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
-   (let ((v1-0 arg2))
-    (the-as object (when (= v1-0 'trigger)
-                    (let ((v1-3 (-> self entity extra perm)))
-                     (logior!
-                      (-> v1-3 status)
-                      (entity-perm-status user-set-from-cstage)
-                      )
-                     (set! (-> v1-3 user-int8 0) 1)
-                     )
-                    (go citb-exit-plat-rise)
-                    )
-     )
+   (case arg2 
+    (('trigger)
+      (let ((v1-3 (-> self entity extra perm)))
+       (logior! (-> v1-3 status) (entity-perm-status user-set-from-cstage))
+       (set! (-> v1-3 user-int8 0) 1)
+       )
+      (go citb-exit-plat-rise)
+      )
     )
    )
   :code
@@ -1924,7 +1824,7 @@
 
 ;; definition for method 31 of type citb-exit-plat
 (defmethod TODO-RENAME-31 citb-exit-plat ((obj citb-exit-plat))
-  (dummy-14 obj *citb-exit-plat-sg* '())
+  (initialize-skeleton obj *citb-exit-plat-sg* '())
   (none)
   )
 

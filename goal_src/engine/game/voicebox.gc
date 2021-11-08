@@ -45,20 +45,12 @@
   (the-as (function none :behavior process) nothing)
   )
 
-(let
-  ((v1-3
-    (new 'static 'skeleton-group
-     :art-group-name "speaker"
-     :bounds (new 'static 'vector :w 16384.0)
-     :version #x6
-     )
-    )
-   )
-  (set! (-> v1-3 jgeo) 0)
-  (set! (-> v1-3 janim) 2)
-  (set! (-> v1-3 mgeo 0) (the-as uint 1))
-  (set! (-> v1-3 lod-dist 0) 4095996000.0)
-  (set! *voicebox-sg* v1-3)
+(defskelgroup *voicebox-sg* speaker
+  0
+  2
+  ((1 (meters 999999)))
+  :bounds (static-spherem 0 0 0 4)
+  :longest-edge (meters 0)
   )
 
 (defbehavior voicebox-track voicebox ()
@@ -162,11 +154,10 @@
   :virtual #t
   :event
   (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
-   (let ((v1-0 arg2))
-    (the-as object (if (= v1-0 'die)
-                    (go-virtual exit)
-                    )
-     )
+   (case arg2 
+    (('die)
+      (go-virtual exit)
+      )
     )
    )
   :trans
@@ -277,7 +268,7 @@
   (set! (-> self hint) arg1)
   (set! (-> self root trans quad) (-> arg0 quad))
   (set! (-> self base-trans quad) (-> arg0 quad))
-  (dummy-14 self *voicebox-sg* '())
+  (initialize-skeleton self *voicebox-sg* '())
   (set! (-> self blend) 1.0)
   (go-virtual enter)
   (none)

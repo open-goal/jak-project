@@ -50,53 +50,30 @@
     (dummy-20 (_type_) float 20)
     )
   (:states
+    (bully-die bully)
     (bully-idle symbol bully)
+    (bully-notice bully)
     (bully-start-spinning bully)
     (bully-stop-spinning bully)
-    (bully-notice bully)
-    (bully-die bully)
     )
   )
 
 
-(let
-  ((v1-2
-    (new 'static 'skeleton-group
-     :art-group-name "bully"
-     :bounds
-     (new 'static 'vector :y 6144.0 :w 12288.0)
-     :max-lod 2
-     :version #x6
-     :shadow 4
-     )
-    )
-   )
-  (set! (-> v1-2 jgeo) 0)
-  (set! (-> v1-2 janim) 5)
-  (set! (-> v1-2 mgeo 0) (the-as uint 1))
-  (set! (-> v1-2 lod-dist 0) 81920.0)
-  (set! (-> v1-2 mgeo 1) (the-as uint 2))
-  (set! (-> v1-2 lod-dist 1) 163840.0)
-  (set! (-> v1-2 mgeo 2) (the-as uint 3))
-  (set! (-> v1-2 lod-dist 2) 4095996000.0)
-  (set! *bully-sg* v1-2)
+(defskelgroup *bully-sg* bully
+  0
+  5
+  ((1 (meters 20)) (2 (meters 40)) (3 (meters 999999)))
+  :bounds (static-spherem 0 1.5 0 3)
+  :longest-edge (meters 0)
+  :shadow 4
   )
 
-(let
-  ((v1-3
-    (new 'static 'skeleton-group
-     :art-group-name "bully"
-     :bounds
-     (new 'static 'vector :y 8192.0 :w 24576.0)
-     :version #x6
-     )
-    )
-   )
-  (set! (-> v1-3 jgeo) 14)
-  (set! (-> v1-3 janim) -1)
-  (set! (-> v1-3 mgeo 0) (the-as uint 15))
-  (set! (-> v1-3 lod-dist 0) 4095996000.0)
-  (set! *bully-broken-cage-sg* v1-3)
+(defskelgroup *bully-broken-cage-sg* bully
+  14
+  -1
+  ((15 (meters 999999)))
+  :bounds (static-spherem 0 2 0 6)
+  :longest-edge (meters 0)
   )
 
 (define
@@ -388,7 +365,7 @@
    (-> self parent-override 0 root-override scale quad)
    )
   (let ((a0-13 self))
-   (dummy-14 a0-13 *bully-broken-cage-sg* '())
+   (initialize-skeleton a0-13 *bully-broken-cage-sg* '())
    (go bully-broken-cage-explode a0-13)
    )
   (none)
@@ -757,7 +734,7 @@
     (let ((t9-1 start-hint-timer)
           (a0-3 843)
           )
-     (t9-1 (the-as level-hint-control a0-3))
+     (t9-1 (the-as game-text-id a0-3))
      (go bully-notice (the-as bully a0-3))
      )
     )
@@ -848,7 +825,10 @@
    )
   :code
   (behavior ((arg0 bully))
-   (local-vars (a0-17 int) (t9-14 (function int symbol)))
+   (local-vars
+    (a0-17 int)
+    (t9-14 (function int symbol :behavior process-drawable))
+    )
    (set! (-> self travel-speed) 0.0)
    (ja-channel-push! 1 22)
    (set-vector!
@@ -1156,8 +1136,8 @@
       (the int (* 10.24 (the float (-> self bounce-volume))))
       0
       0
-      (the-as uint 1)
-      (the-as vector #t)
+      1
+      #t
       )
      (until (not (-> self bounced?))
       (set! (-> self bounced?) #f)
@@ -1295,8 +1275,8 @@
        (the int (* 10.24 (the float (-> self bounce-volume))))
        0
        0
-       (the-as uint 1)
-       (the-as vector #t)
+       1
+       #t
        )
       (set! gp-0 0)
       (until (not (-> self bounced?))
@@ -1433,7 +1413,7 @@
       )
      )
     )
-   (increment-success-for-hint (the-as level-hint-control 843))
+   (increment-success-for-hint (game-text-id sunken-bully-dive-hint))
    (logior! (-> self draw status) 2)
    (while (-> self child)
     (suspend)
@@ -1511,7 +1491,7 @@
   (set! (-> obj root-override event-self) 'touched)
   (set! (-> obj root-override event-other) 'touch)
   (process-drawable-from-entity! obj arg0)
-  (dummy-14 obj *bully-sg* '())
+  (initialize-skeleton obj *bully-sg* '())
   (set! (-> obj draw shadow-ctrl) *bully-shadow-control*)
   (set!
    (-> obj nav)

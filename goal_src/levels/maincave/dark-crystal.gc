@@ -38,38 +38,20 @@
   )
 
 
-(let
-  ((v1-1
-    (new 'static 'skeleton-group
-     :art-group-name "dark-crystal"
-     :bounds
-     (new 'static 'vector :y 13926.4 :w 15564.8)
-     :version #x6
-     )
-    )
-   )
-  (set! (-> v1-1 jgeo) 0)
-  (set! (-> v1-1 janim) -1)
-  (set! (-> v1-1 mgeo 0) (the-as uint 1))
-  (set! (-> v1-1 lod-dist 0) 4095996000.0)
-  (set! *dark-crystal-sg* v1-1)
+(defskelgroup *dark-crystal-sg* dark-crystal
+  0
+  -1
+  ((1 (meters 999999)))
+  :bounds (static-spherem 0 3.4000000953674316 0 3.799999952316284)
+  :longest-edge (meters 0)
   )
 
-(let
-  ((v1-2
-    (new 'static 'skeleton-group
-     :art-group-name "dark-crystal"
-     :bounds
-     (new 'static 'vector :y -61440.0 :w 204800.0)
-     :version #x6
-     )
-    )
-   )
-  (set! (-> v1-2 jgeo) 3)
-  (set! (-> v1-2 janim) -1)
-  (set! (-> v1-2 mgeo 0) (the-as uint 4))
-  (set! (-> v1-2 lod-dist 0) 4095996000.0)
-  (set! *dark-crystal-explode-sg* v1-2)
+(defskelgroup *dark-crystal-explode-sg* dark-crystal
+  3
+  -1
+  ((4 (meters 999999)))
+  :bounds (static-spherem 0 -15 0 50)
+  :longest-edge (meters 0)
   )
 
 (define
@@ -604,24 +586,23 @@
 (defstate dark-crystal-idle (dark-crystal)
   :event
   (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
-   (let ((v1-0 arg2))
-    (the-as object (when (or (= v1-0 'touch) (= v1-0 'attack))
-                    (if (= (-> arg0 type) target)
-                     (level-hint-spawn
-                      (game-text-id dark-crystal-run-away)
-                      "sksp0334"
-                      (the-as entity #f)
-                      *entity-pool*
-                      (game-task none)
-                      )
-                     )
-                    (close-specific-task!
-                     (game-task cave-dark-crystals)
-                     (task-status need-hint)
-                     )
-                    (go dark-crystal-activate)
-                    )
-     )
+   (case arg2 
+    (('touch 'attack)
+      (if (= (-> arg0 type) target)
+       (level-hint-spawn
+        (game-text-id dark-crystal-run-away)
+        "sksp0334"
+        (the-as entity #f)
+        *entity-pool*
+        (game-task none)
+        )
+       )
+      (close-specific-task!
+       (game-task cave-dark-crystals)
+       (task-status need-hint)
+       )
+      (go dark-crystal-activate)
+      )
     )
    )
   :code
@@ -645,17 +626,13 @@
      1024
      0
      0
-     (the-as uint 1)
-     (the-as vector #t)
+     1
+     #t
      )
     (set! (-> self draw color-mult quad) (-> self lit-color-mult quad))
     (set! (-> self draw color-emissive quad) (-> self lit-color-emissive quad))
     (set! (-> self state-time) (-> *display* base-frame-counter))
-    (until
-     (>=
-      (- (-> *display* base-frame-counter) (the-as int (-> self state-time)))
-      30
-      )
+    (until (>= (- (-> *display* base-frame-counter) (-> self state-time)) 30)
      (suspend)
      )
     (set! (-> self draw color-mult quad) (-> self unlit-color-mult quad))
@@ -665,11 +642,7 @@
      )
     (set! (-> self state-time) (-> *display* base-frame-counter))
     (let ((s5-1 (-> *dark-crystal-flash-delays* gp-0)))
-     (until
-      (>=
-       (- (-> *display* base-frame-counter) (the-as int (-> self state-time)))
-       s5-1
-       )
+     (until (>= (- (-> *display* base-frame-counter) (-> self state-time)) s5-1)
       (suspend)
       )
      )
@@ -685,51 +658,39 @@
    (set! (-> self state-time) (-> *display* base-frame-counter))
    (logclear! (-> self mask) (process-mask actor-pause))
    (dummy-48 (-> self root-override))
-   (let ((t9-1 (method-of-type joint-exploder-tuning new))
-         (a0-2 (new 'stack-no-clear 'joint-exploder-tuning))
-         (a1-0 joint-exploder-tuning)
-         )
-    0
-    (let ((gp-0 (t9-1 (the-as symbol a0-2) a1-0)))
-     (when (-> self underwater?)
-      (set! (-> gp-0 duration) (the-as uint 1200))
-      (set! (-> gp-0 gravity) -20480.0)
-      (set! (-> gp-0 rot-speed) 4.2)
-      (set-vector!
-       (-> gp-0 fountain-rand-transv-lo)
-       -40960.0
-       20480.0
-       -40960.0
-       1.0
-       )
-      (set-vector!
-       (-> gp-0 fountain-rand-transv-hi)
-       40960.0
-       49152.0
-       40960.0
-       1.0
-       )
+   (let ((gp-0 (new 'stack 'joint-exploder-tuning 0)))
+    (when (-> self underwater?)
+     (set! (-> gp-0 duration) (the-as uint 1200))
+     (set! (-> gp-0 gravity) -20480.0)
+     (set! (-> gp-0 rot-speed) 4.2)
+     (set-vector!
+      (-> gp-0 fountain-rand-transv-lo)
+      -40960.0
+      20480.0
+      -40960.0
+      1.0
       )
-     (let ((s5-0 (get-process *default-dead-pool* joint-exploder #x4000)))
-      (when s5-0
-       (let ((t9-3 (method-of-type joint-exploder activate)))
-        (t9-3
-         (the-as joint-exploder s5-0)
-         self
-         'joint-exploder
-         (the-as pointer #x70004000)
-         )
+     (set-vector! (-> gp-0 fountain-rand-transv-hi) 40960.0 49152.0 40960.0 1.0)
+     )
+    (let ((s5-0 (get-process *default-dead-pool* joint-exploder #x4000)))
+     (when s5-0
+      (let ((t9-3 (method-of-type joint-exploder activate)))
+       (t9-3
+        (the-as joint-exploder s5-0)
+        self
+        'joint-exploder
+        (the-as pointer #x70004000)
         )
-       (run-now-in-process
-        s5-0
-        joint-exploder-init-by-other
-        *dark-crystal-explode-sg*
-        5
-        gp-0
-        *dark-crystal-exploder-params*
-        )
-       (-> s5-0 ppointer)
        )
+      (run-now-in-process
+       s5-0
+       joint-exploder-init-by-other
+       *dark-crystal-explode-sg*
+       5
+       gp-0
+       *dark-crystal-exploder-params*
+       )
+      (-> s5-0 ppointer)
       )
      )
     )
@@ -747,8 +708,8 @@
       1024
       0
       0
-      (the-as uint 1)
-      (the-as vector #t)
+      1
+      #t
       )
      (sound-play-by-name
       (static-sound-name "crystal-explode")
@@ -756,8 +717,8 @@
       1024
       0
       0
-      (the-as uint 1)
-      (the-as vector #t)
+      1
+      #t
       )
      )
     (let ((s5-3 (get-process *default-dead-pool* part-tracker #x4000)))
@@ -827,7 +788,7 @@
      (the float (-> self entity extra perm task))
      #t
      self
-     #f
+     (the-as fact-info #f)
      )
     )
    (suspend)
@@ -841,36 +802,26 @@
   )
 
 (defmethod dummy-20 dark-crystal ((obj dark-crystal))
-  (with-pp
-   (when *target*
-    (let ((s5-0 (new 'stack-no-clear 'vector))
-          (s3-0 (new 'stack-no-clear 'vector))
-          (s4-0 (new 'stack-no-clear 'vector))
-          )
-     (set! (-> s5-0 quad) (-> obj root-override trans quad))
-     (set! (-> s5-0 y) (+ 6144.0 (-> s5-0 y)))
-     (set! (-> s3-0 quad) (-> (target-pos 0) quad))
-     (set! (-> s3-0 y) (+ 6144.0 (-> s3-0 y)))
-     (when
-      (>= (-> obj explode-danger-radius) (vector-vector-distance s5-0 s3-0))
-      (vector-! s4-0 s3-0 s5-0)
-      (let ((t2-0 (new 'stack-no-clear 'collide-mesh-cache-tri)))
-       (when (< (dummy-10 *collide-cache* s5-0 s4-0 819.2 1 obj t2-0 1) 0.0)
-        (let ((a1-2 (new 'stack-no-clear 'event-message-block)))
-         (set! (-> a1-2 from) pp)
-         (set! (-> a1-2 num-params) 2)
-         (set! (-> a1-2 message) 'attack)
-         (set! (-> a1-2 param 0) (the-as uint #f))
-         (set! (-> a1-2 param 1) (the-as uint (new 'static 'attack-info)))
-         (send-event-function *target* a1-2)
+  (when *target*
+   (let ((s5-0 (new 'stack-no-clear 'vector))
+         (s3-0 (new 'stack-no-clear 'vector))
+         (s4-0 (new 'stack-no-clear 'vector))
          )
-        )
+    (set! (-> s5-0 quad) (-> obj root-override trans quad))
+    (set! (-> s5-0 y) (+ 6144.0 (-> s5-0 y)))
+    (set! (-> s3-0 quad) (-> (target-pos 0) quad))
+    (set! (-> s3-0 y) (+ 6144.0 (-> s3-0 y)))
+    (when (>= (-> obj explode-danger-radius) (vector-vector-distance s5-0 s3-0))
+     (vector-! s4-0 s3-0 s5-0)
+     (let ((t2-0 (new 'stack-no-clear 'collide-mesh-cache-tri)))
+      (if (< (dummy-10 *collide-cache* s5-0 s4-0 819.2 1 obj t2-0 1) 0.0)
+       (send-event *target* 'attack #f (new 'static 'attack-info))
        )
       )
      )
     )
-   (none)
    )
+  (none)
   )
 
 (defmethod dummy-21 dark-crystal ((obj dark-crystal))
@@ -925,7 +876,7 @@
    (set! (-> obj root-override) s4-0)
    )
   (process-drawable-from-entity! obj arg0)
-  (dummy-14 obj *dark-crystal-sg* '())
+  (initialize-skeleton obj *dark-crystal-sg* '())
   (set! (-> obj mask) (logior (process-mask attackable) (-> obj mask)))
   (set! (-> obj draw color-mult quad) (-> obj unlit-color-mult quad))
   (set! (-> obj draw color-emissive quad) (-> obj unlit-color-emissive quad))

@@ -34,43 +34,21 @@
   )
 
 ;; failed to figure out what this is:
-(let
-  ((v1-1
-    (new 'static 'skeleton-group
-     :art-group-name "launcherdoor"
-     :bounds (new 'static 'vector :w 16384.0)
-     :max-lod 1
-     :version #x6
-     )
-    )
-   )
-  (set! (-> v1-1 jgeo) 0)
-  (set! (-> v1-1 janim) -1)
-  (set! (-> v1-1 mgeo 0) (the-as uint 1))
-  (set! (-> v1-1 lod-dist 0) 81920.0)
-  (set! (-> v1-1 mgeo 1) (the-as uint 2))
-  (set! (-> v1-1 lod-dist 1) 4095996000.0)
-  (set! *launcherdoor-sg* v1-1)
+(defskelgroup *launcherdoor-sg* launcherdoor
+  0
+  -1
+  ((1 (meters 20)) (2 (meters 999999)))
+  :bounds (static-spherem 0 0 0 4)
+  :longest-edge (meters 0)
   )
 
 ;; failed to figure out what this is:
-(let
-  ((v1-2
-    (new 'static 'skeleton-group
-     :art-group-name "launcherdoor-maincave"
-     :bounds (new 'static 'vector :w 16384.0)
-     :max-lod 1
-     :version #x6
-     )
-    )
-   )
-  (set! (-> v1-2 jgeo) 0)
-  (set! (-> v1-2 janim) -1)
-  (set! (-> v1-2 mgeo 0) (the-as uint 1))
-  (set! (-> v1-2 lod-dist 0) 81920.0)
-  (set! (-> v1-2 mgeo 1) (the-as uint 2))
-  (set! (-> v1-2 lod-dist 1) 4095996000.0)
-  (set! *launcherdoor-maincave-sg* v1-2)
+(defskelgroup *launcherdoor-maincave-sg* launcherdoor-maincave
+  0
+  -1
+  ((1 (meters 20)) (2 (meters 999999)))
+  :bounds (static-spherem 0 0 0 4)
+  :longest-edge (meters 0)
   )
 
 ;; failed to figure out what this is:
@@ -84,8 +62,8 @@
      1024
      0
      0
-     (the-as uint 1)
-     (the-as vector #t)
+     1
+     #t
      )
     )
    (when *target*
@@ -177,8 +155,8 @@
      1024
      0
      0
-     (the-as uint 1)
-     (the-as vector #t)
+     1
+     #t
      )
     )
    (set! (-> self draw force-lod) 0)
@@ -247,6 +225,7 @@
   )
 
 ;; definition for method 11 of type launcherdoor
+;; INFO: Return type mismatch object vs none.
 (defmethod copy-defaults! launcherdoor ((obj launcherdoor) (arg0 res-lump))
   (set! (-> obj notify-player-passed-thru?) #f)
   (set! (-> obj open-speed) 4.0)
@@ -287,7 +266,7 @@
      'maincave
      )
     (set! (-> obj close-speed) 4.0)
-    (dummy-14 obj *launcherdoor-maincave-sg* '())
+    (initialize-skeleton obj *launcherdoor-maincave-sg* '())
     (ja-channel-set! 1)
     (let ((s5-1 (-> obj skel root-channel 0)))
      (joint-control-channel-group-eval!
@@ -299,7 +278,7 @@
      )
     )
    (else
-    (dummy-14 obj *launcherdoor-sg* '())
+    (initialize-skeleton obj *launcherdoor-sg* '())
     (ja-channel-set! 1)
     (let ((s5-2 (-> obj skel root-channel 0)))
      (joint-control-channel-group-eval!

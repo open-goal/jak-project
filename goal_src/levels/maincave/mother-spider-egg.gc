@@ -42,49 +42,21 @@
   )
 
 
-(let
-  ((v1-1
-    (new 'static 'skeleton-group
-     :art-group-name "spider-egg"
-     :bounds
-     (new 'static 'vector :y 4096.0 :w 8192.0)
-     :max-lod 2
-     :version #x6
-     :shadow 4
-     )
-    )
-   )
-  (set! (-> v1-1 jgeo) 0)
-  (set! (-> v1-1 janim) -1)
-  (set! (-> v1-1 mgeo 0) (the-as uint 1))
-  (set! (-> v1-1 lod-dist 0) 81920.0)
-  (set! (-> v1-1 mgeo 1) (the-as uint 2))
-  (set! (-> v1-1 lod-dist 1) 163840.0)
-  (set! (-> v1-1 mgeo 2) (the-as uint 3))
-  (set! (-> v1-1 lod-dist 2) 4095996000.0)
-  (set! *mother-spider-egg-unbroken-sg* v1-1)
+(defskelgroup *mother-spider-egg-unbroken-sg* spider-egg
+  0
+  -1
+  ((1 (meters 20)) (2 (meters 40)) (3 (meters 999999)))
+  :bounds (static-spherem 0 1 0 2)
+  :longest-edge (meters 0)
+  :shadow 4
   )
 
-(let
-  ((v1-2
-    (new 'static 'skeleton-group
-     :art-group-name "spider-egg"
-     :bounds
-     (new 'static 'vector :y 4096.0 :w 8192.0)
-     :max-lod 2
-     :version #x6
-     )
-    )
-   )
-  (set! (-> v1-2 jgeo) 5)
-  (set! (-> v1-2 janim) -1)
-  (set! (-> v1-2 mgeo 0) (the-as uint 6))
-  (set! (-> v1-2 lod-dist 0) 81920.0)
-  (set! (-> v1-2 mgeo 1) (the-as uint 7))
-  (set! (-> v1-2 lod-dist 1) 163840.0)
-  (set! (-> v1-2 mgeo 2) (the-as uint 8))
-  (set! (-> v1-2 lod-dist 2) 4095996000.0)
-  (set! *mother-spider-egg-broken-sg* v1-2)
+(defskelgroup *mother-spider-egg-broken-sg* spider-egg
+  5
+  -1
+  ((6 (meters 20)) (7 (meters 40)) (8 (meters 999999)))
+  :bounds (static-spherem 0 1 0 2)
+  :longest-edge (meters 0)
   )
 
 (set!
@@ -289,11 +261,10 @@
 (defstate mother-spider-egg-falling (mother-spider-egg)
   :event
   (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
-   (let ((v1-0 arg2))
-    (the-as object (if (or (= v1-0 'touch) (= v1-0 'attack))
-                    (go mother-spider-egg-die-while-falling)
-                    )
-     )
+   (case arg2 
+    (('touch 'attack)
+      (go mother-spider-egg-die-while-falling)
+      )
     )
    )
   :enter
@@ -333,8 +304,8 @@
       1024
       0
       0
-      (the-as uint 1)
-      (the-as vector #t)
+      1
+      #t
       )
      (go mother-spider-egg-on-ground)
      )
@@ -616,7 +587,7 @@
      (-> gp-0 ppointer)
      )
     )
-   (dummy-11 (-> self draw) (-> self broken-look))
+   (lods-assign! (-> self draw) (-> self broken-look))
    (ja-channel-push! 1 60)
    (let ((a0-7 (-> self skel root-channel 0)))
     (set!
@@ -680,7 +651,7 @@
     (logior! (-> v1-3 settings flags) 32)
     )
    0
-   (dummy-11 (-> self draw) (-> self broken-look))
+   (lods-assign! (-> self draw) (-> self broken-look))
    (ja-channel-push! 1 30)
    (dummy-48 (-> self root-override))
    (let ((gp-0 (get-process *default-dead-pool* part-tracker #x4000)))
@@ -808,7 +779,7 @@
      (-> gp-0 ppointer)
      )
     )
-   (dummy-11 (-> self draw) (-> self broken-look))
+   (lods-assign! (-> self draw) (-> self broken-look))
    (ja-channel-push! 1 30)
    (let ((a0-9 (-> self skel root-channel 0)))
     (set!
@@ -925,19 +896,17 @@
   (set-vector! (-> self root-override scale) 0.3 0.3 0.3 1.0)
   (quaternion-copy!
    (-> self root-override quat)
-   (-> self parent-override 0 root quat)
+   (-> self parent-override 0 root-override quat)
    )
   (logior! (-> self mask) (process-mask actor-pause))
   (set! (-> self mask) (logior (process-mask enemy) (-> self mask)))
   (set! (-> self mask) (logior (process-mask attackable) (-> self mask)))
-  (dummy-14 self *mother-spider-egg-unbroken-sg* '())
-  (let ((a0-15 (-> self broken-look))
-        (t9-8 (method-of-type lod-set dummy-9))
-        )
+  (initialize-skeleton self *mother-spider-egg-unbroken-sg* '())
+  (dummy-9
+   (-> self broken-look)
    *mother-spider-egg-broken-sg*
    (-> self draw art-group)
    (-> self entity)
-   (t9-8 a0-15)
    )
   (set!
    (-> self draw shadow-ctrl)
@@ -967,7 +936,7 @@
    )
   (create-connection!
    *cavecrystal-light-control*
-   (the-as cavecrystal self)
+   self
    (-> self entity)
    (the-as
     (function object object object object object)

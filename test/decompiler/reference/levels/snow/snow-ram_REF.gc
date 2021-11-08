@@ -2,27 +2,12 @@
 (in-package goal)
 
 ;; failed to figure out what this is:
-(let
-  ((v1-0
-    (new 'static 'skeleton-group
-     :art-group-name "ram"
-     :bounds
-     (new 'static 'vector :y 20480.0 :w 34816.0)
-     :max-lod 2
-     :longest-edge (meters 7.7)
-     :version #x6
-     )
-    )
-   )
-  (set! (-> v1-0 jgeo) 0)
-  (set! (-> v1-0 janim) 4)
-  (set! (-> v1-0 mgeo 0) (the-as uint 1))
-  (set! (-> v1-0 lod-dist 0) 81920.0)
-  (set! (-> v1-0 mgeo 1) (the-as uint 2))
-  (set! (-> v1-0 lod-dist 1) 163840.0)
-  (set! (-> v1-0 mgeo 2) (the-as uint 3))
-  (set! (-> v1-0 lod-dist 2) 4095996000.0)
-  (set! *ram-sg* v1-0)
+(defskelgroup *ram-sg* ram
+  0
+  4
+  ((1 (meters 20)) (2 (meters 40)) (3 (meters 999999)))
+  :bounds (static-spherem 0 5 0 8.5)
+  :longest-edge (meters 7.699999809265137)
   )
 
 ;; failed to figure out what this is:
@@ -296,8 +281,8 @@
      1024
      0
      0
-     (the-as uint 1)
-     (the-as vector #t)
+     1
+     #t
      )
     (let ((a0-2 (-> self skel root-channel 0)))
      (set!
@@ -349,8 +334,8 @@
       1024
       0
       0
-      (the-as uint 1)
-      (the-as vector #t)
+      1
+      #t
       )
      (logclear! (-> self mask) (process-mask actor-pause))
      (let ((a0-8 (-> self skel root-channel 0)))
@@ -428,15 +413,14 @@
 (defstate ram-fun-idle (ram)
   :event
   (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
-   (let ((v1-0 arg2))
-    (the-as object (when (= v1-0 'notify)
-                    (when (= (-> arg0 type) ram-boss)
-                     (if (dummy-22 self)
-                      (go ram-give-fuel-cell)
-                      )
-                     )
-                    )
-     )
+   (case arg2 
+    (('notify)
+      (when (= (-> arg0 type) ram-boss)
+       (if (dummy-22 self)
+        (go ram-give-fuel-cell)
+        )
+       )
+      )
     )
    )
   :trans
@@ -472,14 +456,12 @@
 (defstate ram-give-fuel-cell (ram)
   :event
   (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
-   (let ((v1-0 arg2))
-    (the-as object (when (= v1-0 'notify)
-                    (if
-                     (and (= (-> arg0 type) snowcam) (= (-> arg3 param 0) 'die))
-                     (go ram-fun-idle)
-                     )
-                    )
-     )
+   (case arg2 
+    (('notify)
+      (if (and (= (-> arg0 type) snowcam) (= (-> arg3 param 0) 'die))
+       (go ram-fun-idle)
+       )
+      )
     )
    )
   :exit
@@ -536,8 +518,8 @@
      1024
      0
      0
-     (the-as uint 1)
-     (the-as vector #t)
+     1
+     #t
      )
     (logior! (-> self mask) (process-mask sleep-code))
     (suspend)
@@ -567,6 +549,7 @@
   )
 
 ;; definition for method 11 of type ram
+;; INFO: Return type mismatch object vs none.
 (defmethod copy-defaults! ram ((obj ram) (arg0 res-lump))
   (set! (-> obj give-fuel-cell?) #f)
   (set! (-> obj link) (new 'process 'actor-link-info obj))
@@ -637,7 +620,7 @@
    (set! (-> obj root-override) s4-0)
    )
   (process-drawable-from-entity! obj arg0)
-  (dummy-14 obj *ram-sg* '())
+  (initialize-skeleton obj *ram-sg* '())
   (logior! (-> obj skel status) 1)
   (ja-post)
   (dummy-47 (-> obj root-override))
@@ -737,7 +720,7 @@
         (the float (-> obj entity extra perm task))
         #f
         obj
-        #f
+        (the-as fact-info #f)
         )
        )
       (go ram-fun-idle)

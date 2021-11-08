@@ -37,24 +37,12 @@
   )
 
 ;; failed to figure out what this is:
-(let
-  ((v1-1
-    (new 'static 'skeleton-group
-     :art-group-name "snow-bumper"
-     :bounds
-     (new 'static 'vector :y 9011.2 :w 13926.4)
-     :max-lod 1
-     :version #x6
-     )
-    )
-   )
-  (set! (-> v1-1 jgeo) 0)
-  (set! (-> v1-1 janim) -1)
-  (set! (-> v1-1 mgeo 0) (the-as uint 1))
-  (set! (-> v1-1 lod-dist 0) 81920.0)
-  (set! (-> v1-1 mgeo 1) (the-as uint 2))
-  (set! (-> v1-1 lod-dist 1) 4095996000.0)
-  (set! *snow-bumper-sg* v1-1)
+(defskelgroup *snow-bumper-sg* snow-bumper
+  0
+  -1
+  ((1 (meters 20)) (2 (meters 999999)))
+  :bounds (static-spherem 0 2.200000047683716 0 3.4000000953674316)
+  :longest-edge (meters 0)
   )
 
 ;; failed to figure out what this is:
@@ -245,35 +233,28 @@
 (defstate snow-bumper-active-close-idle (snow-bumper)
   :event
   (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
-   (let ((v1-0 arg2))
-    (the-as object (when (or (= v1-0 'touch) (= v1-0 'attack) (= v1-0 'bonk))
-                    (when (= (-> arg0 type) target)
-                     (let ((gp-0 (-> arg3 param 0)))
-                      (when
-                       (and
-                        (>=
-                         6144.0
-                         (vector-vector-xz-distance
-                          (-> self root trans)
-                          (target-pos 0)
-                          )
-                         )
-                        ((method-of-type touching-shapes-entry prims-touching?)
-                         (the-as touching-shapes-entry gp-0)
-                         (the-as collide-shape-moving (-> self root))
-                         (the-as uint 1)
-                         )
-                        )
-                       (close-specific-task!
-                        (game-task snow-bumpers)
-                        (task-status need-hint)
-                        )
-                       (go snow-bumper-deactivate)
-                       )
-                      )
-                     )
-                    )
-     )
+   (case arg2 
+    (('touch 'attack 'bonk)
+      (when (= (-> arg0 type) target)
+       (let ((gp-0 (-> arg3 param 0)))
+        (when
+         (and
+          (>=
+           6144.0
+           (vector-vector-xz-distance (-> self root trans) (target-pos 0))
+           )
+          ((method-of-type touching-shapes-entry prims-touching?)
+           (the-as touching-shapes-entry gp-0)
+           (the-as collide-shape-moving (-> self root))
+           (the-as uint 1)
+           )
+          )
+         (close-specific-task! (game-task snow-bumpers) (task-status need-hint))
+         (go snow-bumper-deactivate)
+         )
+        )
+       )
+      )
     )
    )
   :trans
@@ -344,8 +325,8 @@
     1024
     0
     0
-    (the-as uint 1)
-    (the-as vector #t)
+    1
+    #t
     )
    (let ((a0-3 (-> self skel root-channel 0)))
     (set!
@@ -493,7 +474,7 @@
      (the float (-> self entity extra perm task))
      #t
      self
-     #f
+     (the-as fact-info #f)
      )
     )
    (until (not (-> self child))
@@ -569,6 +550,7 @@
   )
 
 ;; definition for method 11 of type snow-bumper
+;; INFO: Return type mismatch object vs none.
 ;; Used lq/sq
 (defmethod copy-defaults! snow-bumper ((obj snow-bumper) (arg0 res-lump))
   (local-vars (sv-16 int))
@@ -631,7 +613,7 @@
    (set! (-> obj root) s4-0)
    )
   (process-drawable-from-entity! obj arg0)
-  (dummy-14 obj *snow-bumper-sg* '())
+  (initialize-skeleton obj *snow-bumper-sg* '())
   (set!
    (-> obj part)
    (create-launch-control (-> *part-group-id-table* 519) obj)

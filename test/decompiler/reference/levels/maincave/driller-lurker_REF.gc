@@ -82,28 +82,13 @@
   )
 
 ;; failed to figure out what this is:
-(let
-  ((v1-1
-    (new 'static 'skeleton-group
-     :art-group-name "driller-lurker"
-     :bounds
-     (new 'static 'vector :y 6144.0 :w 31744.0)
-     :max-lod 2
-     :longest-edge (meters 2.3)
-     :version #x6
-     :shadow 4
-     )
-    )
-   )
-  (set! (-> v1-1 jgeo) 0)
-  (set! (-> v1-1 janim) -1)
-  (set! (-> v1-1 mgeo 0) (the-as uint 1))
-  (set! (-> v1-1 lod-dist 0) 81920.0)
-  (set! (-> v1-1 mgeo 1) (the-as uint 2))
-  (set! (-> v1-1 lod-dist 1) 163840.0)
-  (set! (-> v1-1 mgeo 2) (the-as uint 3))
-  (set! (-> v1-1 lod-dist 2) 4095996000.0)
-  (set! *driller-lurker-sg* v1-1)
+(defskelgroup *driller-lurker-sg* driller-lurker
+  0
+  -1
+  ((1 (meters 20)) (2 (meters 40)) (3 (meters 999999)))
+  :bounds (static-spherem 0 1.5 0 7.75)
+  :longest-edge (meters 2.299999952316284)
+  :shadow 4
   )
 
 ;; definition for symbol *driller-lurker-shadow-control*, type shadow-control
@@ -290,190 +275,156 @@
   )
 
 ;; definition for function driller-lurker-default-event-handler
-;; INFO: Return type mismatch none vs object.
 ;; Used lq/sq
 (defbehavior
   driller-lurker-default-event-handler driller-lurker
   ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
   (local-vars (sv-96 collide-shape-prim))
-  (the-as object (cond
-                  ((= arg2 'attack)
-                   (cond
-                    ((= (-> arg0 type) target)
-                     (let ((v1-3 (-> arg3 param 2)))
-                      (when (!= v1-3 (-> self player-attack-id))
-                       (set! (-> self player-attack-id) v1-3)
-                       (case (-> self mode) 
-                        ((5)
-                          (let ((v1-5 *target*))
-                           (when (!= (-> arg3 param 1) 'flop)
-                            (let
-                             ((f0-4
-                               (atan
-                                (-
-                                 (-> v1-5 control trans x)
-                                 (-> self root-overeride trans x)
-                                 )
-                                (-
-                                 (-> v1-5 control trans z)
-                                 (-> self root-overeride trans z)
-                                 )
-                                )
-                               )
-                              )
-                             (quaternion-axis-angle!
-                              (-> self root-overeride quat)
-                              0.0
-                              1.0
-                              0.0
-                              f0-4
-                              )
-                             )
-                            )
-                           )
-                          (go driller-lurker-die)
-                          )
-                        (else
-                         (let ((s4-0 *target*)
-                               (s2-0 #f)
-                               (s3-0 #f)
-                               )
-                          (let*
-                           ((s1-0
-                             (the-as touching-shapes-entry (-> arg3 param 0))
-                             )
-                            (s0-0 (-> s1-0 head))
-                            )
-                           (while s0-0
-                            (set!
-                             sv-96
-                             (dummy-9
-                              s0-0
-                              (-> self root-overeride)
-                              (the-as (pointer collide-shape-moving) s1-0)
-                              )
-                             )
-                            (if
-                             (and
-                              (logtest?
-                               (->
-                                (dummy-9
-                                 s0-0
-                                 (-> s4-0 control)
-                                 (the-as (pointer collide-shape-moving) s1-0)
-                                 )
-                                prim-core
-                                action
-                                )
-                               1
-                               )
-                              (logtest? (-> sv-96 prim-id) 1)
-                              )
-                             (set! s2-0 #t)
-                             )
-                            (if (logtest? (-> sv-96 prim-id) 2)
-                             (set! s3-0 #t)
-                             )
-                            (set! s0-0 (-> s0-0 next))
-                            )
-                           )
-                          (cond
-                           ((or s2-0 (not s3-0))
-                            (let
-                             ((a1-6 (new 'stack-no-clear 'event-message-block)))
-                             (set! (-> a1-6 from) self)
-                             (set! (-> a1-6 num-params) 2)
-                             (set! (-> a1-6 message) 'attack)
-                             (set! (-> a1-6 param 0) (-> arg3 param 0))
-                             (let
-                              ((v1-34 (new 'static 'attack-info :mask #xc0)))
-                              (set! (-> v1-34 shove-up) 8192.0)
-                              (set! (-> v1-34 shove-back) 12288.0)
-                              (set! (-> a1-6 param 1) (the-as uint v1-34))
-                              )
-                             (when (send-event-function arg0 a1-6)
-                              (set! (-> self hit-player?) #t)
-                              (set!
-                               (-> self hit-player-time)
-                               (the-as uint (-> *display* base-frame-counter))
-                               )
-                              (dummy-54 (-> self root-overeride) 2 0)
-                              (let ((v1-39 (-> self mode)))
-                               (if (or (zero? v1-39) (= v1-39 1) (= v1-39 2))
-                                (go driller-lurker-chase #t)
-                                )
-                               )
-                              )
-                             )
-                            )
-                           (s3-0
-                            (when (!= (-> arg3 param 1) 'flop)
-                             (let
-                              ((f0-11
-                                (atan
-                                 (-
-                                  (-> s4-0 control trans x)
-                                  (-> self root-overeride trans x)
-                                  )
-                                 (-
-                                  (-> s4-0 control trans z)
-                                  (-> self root-overeride trans z)
-                                  )
-                                 )
-                                )
-                               )
-                              (quaternion-axis-angle!
-                               (-> self root-overeride quat)
-                               0.0
-                               1.0
-                               0.0
-                               f0-11
-                               )
-                              )
-                             )
-                            (go driller-lurker-die)
-                            )
-                           )
-                          )
-                         )
-                        )
-                       )
-                      )
-                     )
-                    (else
-                     (go driller-lurker-die)
-                     )
-                    )
-                   )
-                  ((= arg2 'touch)
-                   (when (= (-> arg0 type) target)
-                    (let ((a1-11 (new 'stack-no-clear 'event-message-block)))
-                     (set! (-> a1-11 from) self)
-                     (set! (-> a1-11 num-params) 2)
-                     (set! (-> a1-11 message) 'attack)
-                     (set! (-> a1-11 param 0) (-> arg3 param 0))
-                     (let ((v1-57 (new 'static 'attack-info :mask #xc0)))
-                      (set! (-> v1-57 shove-up) 8192.0)
-                      (set! (-> v1-57 shove-back) 12288.0)
-                      (set! (-> a1-11 param 1) (the-as uint v1-57))
-                      )
-                     (when (send-event-function arg0 a1-11)
-                      (set! (-> self hit-player?) #t)
-                      (set!
-                       (-> self hit-player-time)
-                       (the-as uint (-> *display* base-frame-counter))
-                       )
-                      (dummy-54 (-> self root-overeride) 2 0)
-                      (let ((v1-62 (-> self mode)))
-                       (if (or (zero? v1-62) (= v1-62 1) (= v1-62 2))
-                        (go driller-lurker-chase #t)
-                        )
-                       )
-                      )
-                     )
-                    )
-                   )
+  (cond
+   ((= arg2 'attack)
+    (cond
+     ((= (-> arg0 type) target)
+      (let ((v1-3 (-> arg3 param 2)))
+       (when (!= v1-3 (-> self player-attack-id))
+        (set! (-> self player-attack-id) v1-3)
+        (case (-> self mode) 
+         ((5)
+           (let ((v1-5 *target*))
+            (when (!= (-> arg3 param 1) 'flop)
+             (let
+              ((f0-4
+                (atan
+                 (- (-> v1-5 control trans x) (-> self root-overeride trans x))
+                 (- (-> v1-5 control trans z) (-> self root-overeride trans z))
+                 )
+                )
+               )
+              (quaternion-axis-angle!
+               (-> self root-overeride quat)
+               0.0
+               1.0
+               0.0
+               f0-4
+               )
+              )
+             )
+            )
+           (go driller-lurker-die)
+           )
+         (else
+          (let ((s4-0 *target*)
+                (s2-0 #f)
+                (s3-0 #f)
+                )
+           (let* ((s1-0 (the-as touching-shapes-entry (-> arg3 param 0)))
+                  (s0-0 (-> s1-0 head))
                   )
+            (while s0-0
+             (set! sv-96 (touched-prim s0-0 (-> self root-overeride) s1-0))
+             (if
+              (and
+               (logtest?
+                (-> (touched-prim s0-0 (-> s4-0 control) s1-0) prim-core action)
+                1
+                )
+               (logtest? (-> sv-96 prim-id) 1)
+               )
+              (set! s2-0 #t)
+              )
+             (if (logtest? (-> sv-96 prim-id) 2)
+              (set! s3-0 #t)
+              )
+             (set! s0-0 (-> s0-0 next))
+             )
+            )
+           (cond
+            ((or s2-0 (not s3-0))
+             (let ((a1-6 (new 'stack-no-clear 'event-message-block)))
+              (set! (-> a1-6 from) self)
+              (set! (-> a1-6 num-params) 2)
+              (set! (-> a1-6 message) 'attack)
+              (set! (-> a1-6 param 0) (-> arg3 param 0))
+              (let ((v1-34 (new 'static 'attack-info :mask #xc0)))
+               (set! (-> v1-34 shove-up) 8192.0)
+               (set! (-> v1-34 shove-back) 12288.0)
+               (set! (-> a1-6 param 1) (the-as uint v1-34))
+               )
+              (when (send-event-function arg0 a1-6)
+               (set! (-> self hit-player?) #t)
+               (set!
+                (-> self hit-player-time)
+                (the-as uint (-> *display* base-frame-counter))
+                )
+               (dummy-54 (-> self root-overeride) 2 0)
+               (let ((v1-39 (-> self mode)))
+                (if (or (zero? v1-39) (= v1-39 1) (= v1-39 2))
+                 (go driller-lurker-chase #t)
+                 )
+                )
+               )
+              )
+             )
+            (s3-0
+             (when (!= (-> arg3 param 1) 'flop)
+              (let
+               ((f0-11
+                 (atan
+                  (- (-> s4-0 control trans x) (-> self root-overeride trans x))
+                  (- (-> s4-0 control trans z) (-> self root-overeride trans z))
+                  )
+                 )
+                )
+               (quaternion-axis-angle!
+                (-> self root-overeride quat)
+                0.0
+                1.0
+                0.0
+                f0-11
+                )
+               )
+              )
+             (go driller-lurker-die)
+             )
+            )
+           )
+          )
+         )
+        )
+       )
+      )
+     (else
+      (go driller-lurker-die)
+      )
+     )
+    )
+   ((= arg2 'touch)
+    (when (= (-> arg0 type) target)
+     (let ((a1-11 (new 'stack-no-clear 'event-message-block)))
+      (set! (-> a1-11 from) self)
+      (set! (-> a1-11 num-params) 2)
+      (set! (-> a1-11 message) 'attack)
+      (set! (-> a1-11 param 0) (-> arg3 param 0))
+      (let ((v1-57 (new 'static 'attack-info :mask #xc0)))
+       (set! (-> v1-57 shove-up) 8192.0)
+       (set! (-> v1-57 shove-back) 12288.0)
+       (set! (-> a1-11 param 1) (the-as uint v1-57))
+       )
+      (when (send-event-function arg0 a1-11)
+       (set! (-> self hit-player?) #t)
+       (set!
+        (-> self hit-player-time)
+        (the-as uint (-> *display* base-frame-counter))
+        )
+       (dummy-54 (-> self root-overeride) 2 0)
+       (let ((v1-62 (-> self mode)))
+        (if (or (zero? v1-62) (= v1-62 1) (= v1-62 2))
+         (go driller-lurker-chase #t)
+         )
+        )
+       )
+      )
+     )
+    )
    )
   )
 
@@ -1691,6 +1642,7 @@
   )
 
 ;; definition for method 11 of type driller-lurker
+;; INFO: Return type mismatch object vs none.
 ;; Used lq/sq
 (defmethod copy-defaults! driller-lurker ((obj driller-lurker) (arg0 res-lump))
   (local-vars (sv-16 int))
@@ -1780,7 +1732,7 @@
    (set! (-> obj root-overeride) s4-0)
    )
   (process-drawable-from-entity! obj arg0)
-  (dummy-14 obj *driller-lurker-sg* '())
+  (initialize-skeleton obj *driller-lurker-sg* '())
   (set! (-> obj path) (new 'process 'curve-control obj 'path -1000000000.0))
   (logior!
    (-> obj path flags)
@@ -1906,7 +1858,7 @@
   (transform-post)
   (create-connection!
    *cavecrystal-light-control*
-   (the-as cavecrystal obj)
+   obj
    (-> obj entity)
    (the-as
     (function object object object object object)
