@@ -9330,6 +9330,7 @@
   :flag-assert         #x90000000c
   )
 
+(declare-type drawable-inline-array-collide-fragment drawable-inline-array)
 (deftype prototype-bucket-tie (prototype-bucket)
   ((generic-count       uint16       4        :offset-assert 88)
    (generic-next        uint32       4        :offset-assert 96)
@@ -9339,8 +9340,8 @@
    (envmap-rfade        float                 :offset-assert 128)
    (envmap-fade-far     float                 :offset-assert 132)
    (envmap-shader       adgif-shader          :offset-assert 136)
-   (collide-frag        basic                 :offset-assert 140)
-   (tie-colors          basic                 :offset-assert 144)
+   (collide-frag        drawable-inline-array-collide-fragment                 :offset-assert 140)
+   (tie-colors          time-of-day-palette                 :offset-assert 144)
    (data                uint32       :dynamic :offset-assert 148)
    (color-index-qwc     uint32       :dynamic :offset-assert 148)
    (generic-next-clear  uint128               :offset 96)
@@ -11002,9 +11003,9 @@
     (dummy-9 (_type_ vector) object 9) ;; ret - symbol | float
     (dummy-10 (_type_ uint) collide-shape-prim 10)
     (debug-draw-world-sphere (_type_) symbol 11)
-    (add-fg-prim-using-box (_type_) none 12)
-    (add-fg-prim-using-line-sphere (_type_) none 13)
-    (add-fg-prim-using-y-probe (_type_) none 14)
+    (add-fg-prim-using-box (_type_ process-drawable) none 12)
+    (add-fg-prim-using-line-sphere (_type_ process-drawable) none 13)
+    (add-fg-prim-using-y-probe (_type_ process-drawable) none 14)
     (overlaps-others-test (_type_) symbol 15)
     (dummy-16 () none 16)
     (dummy-17 () none 17)
@@ -12072,12 +12073,12 @@
 ;; - Types
 
 (deftype collide-using-spheres-params (structure)
-  ((spheres      uint32  :offset-assert 0)
+  ((spheres      (pointer sphere)  :offset-assert 0)
    (num-spheres  uint32  :offset-assert 4)
-   (collide-with uint64  :offset-assert 8)
-   (proc         basic   :offset-assert 16)
-   (ignore-pat   uint32  :offset-assert 20)
-   (solid-only   basic   :offset-assert 24)
+   (collide-with handle  :offset-assert 8)
+   (proc         process-drawable   :offset-assert 16)
+   (ignore-pat   uint32  :offset-assert 20) ;; flags / bitfield i bet
+   (solid-only   basic   :offset-assert 24) ;; probably a symbol
    )
   :method-count-assert 9
   :size-assert         #x1c
@@ -12138,7 +12139,7 @@
   ((prim-core    collide-prim-core :inline :offset-assert 0)
    ;;(extra-quad   UNKNOWN           16      :offset-assert 32)
    (ccache       collide-cache             :offset-assert 32)
-   (prim         collide-shape-prim        :offset-assert 36)
+   (prim         (pointer collide-shape-prim)        :offset-assert 36)
    (first-tri    uint16                    :offset-assert 40)
    (num-tris     uint16                    :offset-assert 42)
    (unused       uint8           4       :offset-assert 44)
@@ -12176,25 +12177,25 @@
     (dummy-10 (_type_ vector vector float int process collide-mesh-cache-tri int) float 10)
     (dummy-11 (_type_ collide-using-spheres-params) none 11)
     (fill-and-probe-using-y-probe (_type_ vector float uint process collide-tri-result uint) float 12)
-    (dummy-13 (_type_ int uint process-drawable uint) none 13) ;; the int here is wrong, it comes from the stack, see collide-shape 32
+    (dummy-13 (_type_ bounding-box handle process-drawable uint) none 13)
     (dummy-14 (_type_ vector vector float int process int) none 14)
-    (dummy-15 (_type_ int) none 15)
-    (dummy-16 (_type_ vector float uint process uint) none 16)
+    (dummy-15 (_type_ collide-using-spheres-params) none 15)
+    (dummy-16 (_type_ vector float uint process-drawable uint) none 16)
     (initialize (_type_) none 17)
     (dummy-18 (_type_ vector vector float int collide-mesh-cache-tri int) float 18)
     (probe-using-spheres (_type_) none 19)
     (dummy-20 (_type_ vector float uint collide-tri-result uint) float 20)
-    (dummy-21 (_type_) none 21)
+    (dummy-21 (_type_ (function bsp-header int collide-list none) (function collide-cache none)) none 21) ;; second functiom is method 28
     (dummy-22 (_type_) none 22)
     (dummy-23 (_type_) none 23)
     (dummy-24 (_type_) none 24)
-    (dummy-25 (_type_) none 25)
+    (dummy-25 (_type_ water-control) none 25) ;; or whatever is from 152 in the process passed to 16
     (dummy-26 (_type_) none 26)
     (dummy-27 (_type_) none 27)
     (dummy-28 (_type_) none 28)
-    (dummy-29 (_type_) none 29)
+    (dummy-29 (_type_ collide-frag-mesh) none 29)
     (dummy-30 (_type_) none 30)
-    (dummy-31 (_type_) none 31)
+    (dummy-31 (_type_ collide-puyp-work collide-cache-prim) vector 31)
     (dummy-32 (_type_) none 32)
     )
   )
@@ -12512,7 +12513,7 @@
 
 (deftype instance-tie (instance)
   ((color-indices uint32           :offset 8)
-   (bucket-ptr    basic            :offset 12)
+   (bucket-ptr    prototype-bucket-tie            :offset 12)
    (max-scale     uint16           :offset 38)
    (flags         uint16           :offset 46)
    )
@@ -20182,32 +20183,32 @@
 
 ;; - Types
 
-; (deftype collide-puls-work (structure)
-;   ((ignore-pat uint32                     :offset-assert 0)
-;    (tri-out    collide-tri-result         :offset-assert 4)
-;    (bsphere    sphere             :inline :offset-assert 16)
-;    (move-dist  vector             :inline :offset-assert 32)
-;    )
-;   :method-count-assert 9
-;   :size-assert         #x30
-;   :flag-assert         #x900000030
-;   )
+(deftype collide-puls-work (structure)
+  ((ignore-pat uint32                     :offset-assert 0)
+   (tri-out    collide-tri-result         :offset-assert 4)
+   (bsphere    sphere             :inline :offset-assert 16)
+   (move-dist  vector             :inline :offset-assert 32)
+   )
+  :method-count-assert 9
+  :size-assert         #x30
+  :flag-assert         #x900000030
+  )
 
-; (deftype lsmi-work (structure)
-;   ((best-u      float                      :offset-assert 0)
-;    (orig-best-u float                      :offset-assert 4)
-;    (action      uint32                     :offset-assert 8)
-;    (tri-out     collide-tri-result :inline :offset-assert 16)
-;    )
-;   :method-count-assert 9
-;   :size-assert         #x64
-;   :flag-assert         #x900000064
-;   )
+(deftype lsmi-work (structure)
+  ((best-u      float                      :offset-assert 0)
+   (orig-best-u float                      :offset-assert 4)
+   (action      uint32                     :offset-assert 8)
+   (tri-out     collide-tri-result :inline :offset-assert 16)
+   )
+  :method-count-assert 9
+  :size-assert         #x64
+  :flag-assert         #x900000064
+  )
 
 ;; - Functions
 
-(define-extern make-collide-list-using-line-sphere-inst-test function)
-(define-extern test-closest-pt-in-triangle function)
+(define-extern make-collide-list-using-line-sphere-inst-test (function collide-fragment instance-tie symbol))
+(define-extern test-closest-pt-in-triangle (function collide-cache symbol))
 
 ;; - Unknowns
 
