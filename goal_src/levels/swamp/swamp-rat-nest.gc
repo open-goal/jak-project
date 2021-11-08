@@ -6,9 +6,6 @@
 ;; dgos: L1, SWA
 
 (declare-type swamp-rat-nest-dummy process-drawable)
-(define-extern *swamp-rat-nest-dummy-c-sg* skeleton-group)
-(define-extern *swamp-rat-nest-dummy-b-sg* skeleton-group)
-(define-extern *swamp-rat-nest-dummy-a-sg* skeleton-group)
 
 (declare-type swamp-rat-nest process-drawable)
 (define-extern swamp-rat-nest-idle (state swamp-rat-nest)) ;; unknown type
@@ -880,55 +877,43 @@
 (defbehavior
   swamp-rat-nest-dummy-event-handler swamp-rat-nest-dummy
   ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
-  (let ((v1-0 arg2))
-   (the-as object (cond
-                   ((= v1-0 'shake)
-                    (if (= (-> self next-state name) 'swamp-rat-nest-dummy-idle)
-                     (go swamp-rat-nest-dummy-shake)
-                     )
-                    )
-                   ((= v1-0 'attack)
-                    (send-event
-                     (ppointer->process (-> self parent-process))
-                     'hit
-                     )
-                    (let ((v1-7 (-> arg3 param 2)))
-                     (when (!= v1-7 (-> self parent-process 0 player-attack-id))
-                      (set!
-                       (-> self parent-process 0 player-attack-id)
-                       (the-as int v1-7)
-                       )
-                      (cond
-                       ((and (>= arg1 2) (= (-> arg3 param 1) 'eco-yellow))
-                        (swamp-rat-nest-dummy-take-damage 3)
-                        (if
-                         (<
-                          (vector-vector-distance
-                           (target-pos 0)
-                           (-> self top-sphere)
-                           )
-                          (-> self top-sphere w)
-                          )
-                         (send-event *target* 'no-look-around 75)
-                         )
-                        (go swamp-rat-nest-dummy-hit)
-                        )
-                       (else
-                        (level-hint-spawn
-                         (game-text-id swamp-rats-nest-hint)
-                         "sksp0144"
-                         (the-as entity #f)
-                         *entity-pool*
-                         (game-task none)
-                         )
-                        (swamp-rat-nest-dummy-take-damage 0)
-                        (go swamp-rat-nest-dummy-hit)
-                        )
-                       )
-                      )
-                     )
-                    )
-                   )
+  (case arg2 
+   (('shake)
+     (if (= (-> self next-state name) 'swamp-rat-nest-dummy-idle)
+      (go swamp-rat-nest-dummy-shake)
+      )
+     )
+   (('attack)
+    (send-event (ppointer->process (-> self parent-process)) 'hit)
+    (let ((v1-7 (-> arg3 param 2)))
+     (when (!= v1-7 (-> self parent-process 0 player-attack-id))
+      (set! (-> self parent-process 0 player-attack-id) (the-as int v1-7))
+      (cond
+       ((and (>= arg1 2) (= (-> arg3 param 1) 'eco-yellow))
+        (swamp-rat-nest-dummy-take-damage 3)
+        (if
+         (<
+          (vector-vector-distance (target-pos 0) (-> self top-sphere))
+          (-> self top-sphere w)
+          )
+         (send-event *target* 'no-look-around 75)
+         )
+        (go swamp-rat-nest-dummy-hit)
+        )
+       (else
+        (level-hint-spawn
+         (game-text-id swamp-rats-nest-hint)
+         "sksp0144"
+         (the-as entity #f)
+         *entity-pool*
+         (game-task none)
+         )
+        (swamp-rat-nest-dummy-take-damage 0)
+        (go swamp-rat-nest-dummy-hit)
+        )
+       )
+      )
+     )
     )
    )
   )
@@ -1192,11 +1177,10 @@
 (defbehavior
   swamp-rat-nest-default-event-handler swamp-rat-nest
   ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
-  (let ((v1-0 arg2))
-   (the-as object (if (= v1-0 'victory)
-                   (go swamp-rat-nest-victory)
-                   )
-    )
+  (case arg2 
+   (('victory)
+     (go swamp-rat-nest-victory)
+     )
    )
   )
 
@@ -1430,11 +1414,10 @@ swamp-rat-nest-default-event-handler
 (defstate swamp-rat-nest-idle (swamp-rat-nest)
   :event
   (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
-   (let ((v1-0 arg2))
-    (the-as object (if (= v1-0 'hit)
-                    (go swamp-rat-nest-active)
-                    )
-     )
+   (case arg2 
+    (('hit)
+      (go swamp-rat-nest-active)
+      )
     )
    )
   :enter
@@ -1564,7 +1547,7 @@ swamp-rat-nest-default-event-handler
              )
             )
       (if a0-1
-       (send-event (the-as process a0-1) 'victory)
+       (send-event a0-1 'victory)
        )
       )
      (set! gp-0 (-> gp-0 0 brother))
@@ -1658,58 +1641,28 @@ swamp-rat-nest-default-event-handler
   (none)
   )
 
-(let
-  ((v1-51
-    (new 'static 'skeleton-group
-     :art-group-name "swamp-rat-nest"
-     :bounds (new 'static 'vector :w 32768.0)
-     :max-lod 1
-     :version #x6
-     )
-    )
-   )
-  (set! (-> v1-51 jgeo) 0)
-  (set! (-> v1-51 janim) 3)
-  (set! (-> v1-51 mgeo 0) (the-as uint 1))
-  (set! (-> v1-51 lod-dist 0) 81920.0)
-  (set! (-> v1-51 mgeo 1) (the-as uint 2))
-  (set! (-> v1-51 lod-dist 1) 4095996000.0)
-  (set! *swamp-rat-nest-dummy-a-sg* v1-51)
+(defskelgroup *swamp-rat-nest-dummy-a-sg* swamp-rat-nest
+  0
+  3
+  ((1 (meters 20)) (2 (meters 999999)))
+  :bounds (static-spherem 0 0 0 8)
+  :longest-edge (meters 0)
   )
 
-(let
-  ((v1-52
-    (new 'static 'skeleton-group
-     :art-group-name "swamp-rat-nest"
-     :bounds (new 'static 'vector :w 32768.0)
-     :max-lod 1
-     :version #x6
-     )
-    )
-   )
-  (set! (-> v1-52 jgeo) 4)
-  (set! (-> v1-52 janim) 7)
-  (set! (-> v1-52 mgeo 0) (the-as uint 5))
-  (set! (-> v1-52 lod-dist 0) 81920.0)
-  (set! (-> v1-52 mgeo 1) (the-as uint 6))
-  (set! (-> v1-52 lod-dist 1) 4095996000.0)
-  (set! *swamp-rat-nest-dummy-b-sg* v1-52)
+(defskelgroup *swamp-rat-nest-dummy-b-sg* swamp-rat-nest
+  4
+  7
+  ((5 (meters 20)) (6 (meters 999999)))
+  :bounds (static-spherem 0 0 0 8)
+  :longest-edge (meters 0)
   )
 
-(let
-  ((v1-53
-    (new 'static 'skeleton-group
-     :art-group-name "swamp-rat-nest"
-     :bounds (new 'static 'vector :w 20480.0)
-     :version #x6
-     )
-    )
-   )
-  (set! (-> v1-53 jgeo) 8)
-  (set! (-> v1-53 janim) 11)
-  (set! (-> v1-53 mgeo 0) (the-as uint 9))
-  (set! (-> v1-53 lod-dist 0) 4095996000.0)
-  (set! *swamp-rat-nest-dummy-c-sg* v1-53)
+(defskelgroup *swamp-rat-nest-dummy-c-sg* swamp-rat-nest
+  8
+  11
+  ((9 (meters 999999)))
+  :bounds (static-spherem 0 0 0 5)
+  :longest-edge (meters 0)
   )
 
 (defmethod dummy-20 swamp-rat-nest-dummy-a ((obj swamp-rat-nest-dummy-a))
@@ -1738,7 +1691,7 @@ swamp-rat-nest-default-event-handler
    (dummy-50 s5-0)
    (set! (-> obj root-override) s5-0)
    )
-  (dummy-14 obj *swamp-rat-nest-dummy-a-sg* '())
+  (initialize-skeleton obj *swamp-rat-nest-dummy-a-sg* '())
   (none)
   )
 
@@ -1768,7 +1721,7 @@ swamp-rat-nest-default-event-handler
    (dummy-50 s5-0)
    (set! (-> obj root-override) s5-0)
    )
-  (dummy-14 obj *swamp-rat-nest-dummy-b-sg* '())
+  (initialize-skeleton obj *swamp-rat-nest-dummy-b-sg* '())
   (none)
   )
 
@@ -1798,7 +1751,7 @@ swamp-rat-nest-default-event-handler
    (dummy-50 s5-0)
    (set! (-> obj root-override) s5-0)
    )
-  (dummy-14 obj *swamp-rat-nest-dummy-c-sg* '())
+  (initialize-skeleton obj *swamp-rat-nest-dummy-c-sg* '())
   (none)
   )
 

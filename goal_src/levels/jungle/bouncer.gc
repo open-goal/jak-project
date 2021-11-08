@@ -5,7 +5,6 @@
 ;; name in dgo: bouncer
 ;; dgos: JUN, JUNGLE, L1
 
-(define-extern *bouncer-sg* skeleton-group)
 (declare-type springbox process-drawable)
 (define-extern bouncer-wait (state springbox)) ;; unknown type
 (define-extern bouncer-fire (state springbox)) ;; unknown type
@@ -26,83 +25,66 @@
 
 (method-set! springbox 12 (method-of-type process run-logic?))
 
-(let
-  ((v1-2
-    (new 'static 'skeleton-group
-     :art-group-name "bounceytarp"
-     :bounds (new 'static 'vector :w 16384.0)
-     :version #x6
-     )
-    )
-   )
-  (set! (-> v1-2 jgeo) 0)
-  (set! (-> v1-2 janim) 2)
-  (set! (-> v1-2 mgeo 0) (the-as uint 1))
-  (set! (-> v1-2 lod-dist 0) 4095996000.0)
-  (set! *bouncer-sg* v1-2)
+(defskelgroup *bouncer-sg* bounceytarp
+  0
+  2
+  ((1 (meters 999999)))
+  :bounds (static-spherem 0 0 0 4)
+  :longest-edge (meters 0)
   )
 
 (defstate bouncer-wait (springbox)
   :event
   (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
-   (let ((v1-0 arg2))
-    (the-as object (cond
-                    ((= v1-0 'bonk)
-                     (let ((a1-3 (new 'stack-no-clear 'event-message-block)))
-                      (set! (-> a1-3 from) self)
-                      (set! (-> a1-3 num-params) 3)
-                      (set! (-> a1-3 message) 'jump)
-                      (set!
-                       (-> a1-3 param 0)
-                       (the-as uint (-> self spring-height))
-                       )
-                      (set!
-                       (-> a1-3 param 1)
-                       (the-as uint (-> self spring-height))
-                       )
-                      (set! (-> a1-3 param 2) (the-as uint #f))
-                      (when (send-event-function arg0 a1-3)
-                       (sound-play-by-name
-                        (static-sound-name "trampoline")
-                        (new-sound-id)
-                        1024
-                        0
-                        0
-                        (the-as uint 1)
-                        (the-as vector #t)
-                        )
-                       (go bouncer-fire)
-                       )
-                      )
-                     )
-                    ((= v1-0 'touch)
-                     (if
-                      (not
-                       (or
-                        (= (-> self next-state name) 'bouncer-smush)
-                        (= (-> self next-state name) 'bouncer-fire)
-                        )
-                       )
-                      (go bouncer-smush)
-                      )
-                     )
-                    ((= v1-0 'attack)
-                     (when
-                      (and
-                       (= (-> arg3 param 1) 'flop)
-                       (send-event
-                        arg0
-                        'jump
-                        (-> self spring-height)
-                        (-> self spring-height)
-                        #f
-                        )
-                       )
-                      (go bouncer-fire)
-                      #f
-                      )
-                     )
-                    )
+   (case arg2 
+    (('bonk)
+      (let ((a1-3 (new 'stack-no-clear 'event-message-block)))
+       (set! (-> a1-3 from) self)
+       (set! (-> a1-3 num-params) 3)
+       (set! (-> a1-3 message) 'jump)
+       (set! (-> a1-3 param 0) (the-as uint (-> self spring-height)))
+       (set! (-> a1-3 param 1) (the-as uint (-> self spring-height)))
+       (set! (-> a1-3 param 2) (the-as uint #f))
+       (when (send-event-function arg0 a1-3)
+        (sound-play-by-name
+         (static-sound-name "trampoline")
+         (new-sound-id)
+         1024
+         0
+         0
+         1
+         #t
+         )
+        (go bouncer-fire)
+        )
+       )
+      )
+    (('touch)
+     (if
+      (not
+       (or
+        (= (-> self next-state name) 'bouncer-smush)
+        (= (-> self next-state name) 'bouncer-fire)
+        )
+       )
+      (go bouncer-smush)
+      )
+     )
+    (('attack)
+     (when
+      (and
+       (= (-> arg3 param 1) 'flop)
+       (send-event
+        arg0
+        'jump
+        (-> self spring-height)
+        (-> self spring-height)
+        #f
+        )
+       )
+      (go bouncer-fire)
+      #f
+      )
      )
     )
    )
@@ -274,7 +256,7 @@
    (set! (-> obj root) s4-0)
    )
   (process-drawable-from-entity! obj arg0)
-  (dummy-14 obj *bouncer-sg* '())
+  (initialize-skeleton obj *bouncer-sg* '())
   (nav-mesh-connect obj (-> obj root) (the-as nav-control #f))
   (set!
    (-> obj spring-height)

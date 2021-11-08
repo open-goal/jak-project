@@ -63,9 +63,9 @@
   :size-assert         #x200
   :flag-assert         #x4c01900200
   (:states
+    baby-spider-die-fast
     baby-spider-hatching
     baby-spider-resume
-    baby-spider-die-fast
     )
   )
 
@@ -101,27 +101,13 @@
   )
 
 ;; failed to figure out what this is:
-(let
-  ((v1-2
-    (new 'static 'skeleton-group
-     :art-group-name "baby-spider"
-     :bounds
-     (new 'static 'vector :y 4096.0 :w 9216.0)
-     :max-lod 2
-     :version #x6
-     :shadow 4
-     )
-    )
-   )
-  (set! (-> v1-2 jgeo) 0)
-  (set! (-> v1-2 janim) -1)
-  (set! (-> v1-2 mgeo 0) (the-as uint 1))
-  (set! (-> v1-2 lod-dist 0) 81920.0)
-  (set! (-> v1-2 mgeo 1) (the-as uint 2))
-  (set! (-> v1-2 lod-dist 1) 163840.0)
-  (set! (-> v1-2 mgeo 2) (the-as uint 3))
-  (set! (-> v1-2 lod-dist 2) 4095996000.0)
-  (set! *baby-spider-sg* v1-2)
+(defskelgroup *baby-spider-sg* baby-spider
+  0
+  -1
+  ((1 (meters 20)) (2 (meters 40)) (3 (meters 999999)))
+  :bounds (static-spherem 0 1 0 2.25)
+  :longest-edge (meters 0)
+  :shadow 4
   )
 
 ;; definition for symbol *baby-spider-nav-enemy-info*, type nav-enemy-info
@@ -272,33 +258,30 @@
   )
 
 ;; definition for method 44 of type baby-spider
-;; INFO: Return type mismatch none vs object.
 (defmethod
   dummy-44
   baby-spider
   ((obj baby-spider) (arg0 process) (arg1 event-message-block))
-  (the-as
-   object
-   (when
-    ((method-of-type touching-shapes-entry prims-touching?)
+  (when
+   ((method-of-type touching-shapes-entry prims-touching?)
+    (the-as touching-shapes-entry (-> arg1 param 0))
+    (-> obj collide-info)
+    (the-as uint 1)
+    )
+   (if
+    (nav-enemy-send-attack
+     arg0
      (the-as touching-shapes-entry (-> arg1 param 0))
-     (-> obj collide-info)
-     (the-as uint 1)
+     'generic
      )
-    (if
-     (nav-enemy-send-attack
-      arg0
-      (the-as touching-shapes-entry (-> arg1 param 0))
-      'generic
-      )
-     (go (method-of-object obj nav-enemy-victory))
-     )
+    (go (method-of-object obj nav-enemy-victory))
     )
    )
   )
 
 ;; definition for function baby-spider-default-event-handler
 ;; INFO: Return type mismatch none vs object.
+;; WARN: rewrite_to_get_var got a none typed variable. Is there unreachable code?
 (defbehavior
   baby-spider-default-event-handler baby-spider
   ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
@@ -1189,7 +1172,7 @@ baby-spider-default-event-handler
 ;; Used lq/sq
 (defmethod TODO-RENAME-48 baby-spider ((obj baby-spider))
   (set! (-> obj last-visible-time) (-> *display* base-frame-counter))
-  (dummy-14 obj *baby-spider-sg* '())
+  (initialize-skeleton obj *baby-spider-sg* '())
   (if (= (-> obj parent 0 type) cave-trap)
    (TODO-RENAME-45 obj *baby-spider-nav-enemy-info-for-cave-trap*)
    (TODO-RENAME-45 obj *baby-spider-nav-enemy-info*)
@@ -1213,6 +1196,7 @@ baby-spider-default-event-handler
   )
 
 ;; definition for function baby-spider-init-by-other
+;; INFO: Return type mismatch object vs none.
 ;; Used lq/sq
 (defbehavior
   baby-spider-init-by-other baby-spider
@@ -1240,7 +1224,7 @@ baby-spider-default-event-handler
   (set! (-> self enemy-info pickup-amount) (the float (-> arg3 pickup-amount)))
   (create-connection!
    *cavecrystal-light-control*
-   (the-as cavecrystal self)
+   self
    (-> self entity)
    (the-as
     (function object object object object object)
@@ -1264,6 +1248,7 @@ baby-spider-default-event-handler
   )
 
 ;; definition for method 11 of type baby-spider
+;; INFO: Return type mismatch object vs none.
 (defmethod copy-defaults! baby-spider ((obj baby-spider) (arg0 res-lump))
   (set! (-> obj die-if-not-visible?) #f)
   (set! (-> obj delay-before-dying-if-not-visible) 600)
@@ -1288,7 +1273,7 @@ baby-spider-default-event-handler
    )
   (create-connection!
    *cavecrystal-light-control*
-   (the-as cavecrystal obj)
+   obj
    (-> obj entity)
    (the-as
     (function object object object object object)

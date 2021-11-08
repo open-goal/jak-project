@@ -5,8 +5,6 @@
 ;; name in dgo: plat-button
 ;; dgos: GAME, COMMON, L1
 
-(define-extern *plat-button-sg* skeleton-group)
-
 ;; DECOMP BEGINS
 
 (deftype plat-button (process-drawable)
@@ -43,21 +41,12 @@
   )
 
 
-(let
-  ((v1-1
-    (new 'static 'skeleton-group
-     :art-group-name "plat-button"
-     :bounds
-     (new 'static 'vector :y -4096.0 :w 27033.6)
-     :version #x6
-     )
-    )
-   )
-  (set! (-> v1-1 jgeo) 0)
-  (set! (-> v1-1 janim) 2)
-  (set! (-> v1-1 mgeo 0) (the-as uint 1))
-  (set! (-> v1-1 lod-dist 0) 4095996000.0)
-  (set! *plat-button-sg* v1-1)
+(defskelgroup *plat-button-sg* plat-button
+  0
+  2
+  ((1 (meters 999999)))
+  :bounds (static-spherem 0 -1 0 6.6)
+  :longest-edge (meters 0)
   )
 
 (defmethod should-teleport? plat-button ((obj plat-button))
@@ -75,29 +64,28 @@
   :virtual #t
   :event
   (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
-   (let ((v1-0 arg2))
-    (the-as object (when (= v1-0 'touch)
-                    (when (can-activate? self)
-                     (if
-                      (and
-                       ((method-of-type touching-shapes-entry prims-touching?)
-                        (the-as touching-shapes-entry (-> arg3 param 0))
-                        (-> self root-override)
-                        (the-as uint 1)
-                        )
-                       (or
-                        (not (-> self should-grab-player?))
-                        (let ((v0-3 (process-grab? *target*)))
-                         (set! (-> self grab-player?) v0-3)
-                         v0-3
-                         )
-                        )
-                       )
-                      (go-virtual plat-button-pressed)
-                      )
-                     )
-                    )
-     )
+   (case arg2 
+    (('touch)
+      (when (can-activate? self)
+       (if
+        (and
+         ((method-of-type touching-shapes-entry prims-touching?)
+          (the-as touching-shapes-entry (-> arg3 param 0))
+          (-> self root-override)
+          (the-as uint 1)
+          )
+         (or
+          (not (-> self should-grab-player?))
+          (let ((v0-3 (process-grab? *target*)))
+           (set! (-> self grab-player?) v0-3)
+           v0-3
+           )
+          )
+         )
+        (go-virtual plat-button-pressed)
+        )
+       )
+      )
     )
    )
   :code
@@ -362,8 +350,8 @@
     1024
     0
     0
-    (the-as uint 1)
-    (the-as vector #t)
+    1
+    #t
     )
    (let ((gp-1 (the-as sound-rpc-set-param (get-sound-buffer-entry))))
     (set! (-> gp-1 command) (sound-command set-param))
@@ -474,8 +462,8 @@
     1024
     0
     0
-    (the-as uint 1)
-    (the-as vector #t)
+    1
+    #t
     )
    (let ((gp-1 (the-as sound-rpc-set-param (get-sound-buffer-entry))))
     (set! (-> gp-1 command) (sound-command set-param))
@@ -524,8 +512,8 @@
     1024
     0
     0
-    (the-as uint 1)
-    (the-as vector #t)
+    1
+    #t
     )
    (while #t
     (if
@@ -658,7 +646,7 @@
   )
 
 (defmethod TODO-RENAME-31 plat-button ((obj plat-button))
-  (dummy-14 obj *plat-button-sg* '())
+  (initialize-skeleton obj *plat-button-sg* '())
   0
   (none)
   )

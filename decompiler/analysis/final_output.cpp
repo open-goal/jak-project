@@ -378,8 +378,8 @@ std::string write_from_top_level_form(Form* top_form,
     if (!something_matched) {
       auto debug_match_result = match(defun_debug_matcher, &f);
       if (debug_match_result.matched) {
-        auto first_name = debug_match_result.maps.strings.at(0);
-        auto second_name = debug_match_result.maps.strings.at(2);
+        auto& first_name = debug_match_result.maps.strings.at(0);
+        auto& second_name = debug_match_result.maps.strings.at(2);
         if (first_name == second_name) {
           auto func = file.try_get_function_at_label(debug_match_result.maps.label.at(1));
           if (func) {
@@ -400,7 +400,7 @@ std::string write_from_top_level_form(Form* top_form,
       auto define_match_result = match(define_symbol_matcher, &f);
       if (define_match_result.matched) {
         something_matched = true;
-        auto sym_name = define_match_result.maps.strings.at(0);
+        auto& sym_name = define_match_result.maps.strings.at(0);
         auto symbol_type = dts.lookup_symbol_type(sym_name);
         result +=
             fmt::format(";; definition for symbol {}, type {}\n", sym_name, symbol_type.print());
@@ -419,7 +419,7 @@ std::string write_from_top_level_form(Form* top_form,
           define_perm_match_result.maps.strings.at(0) ==
               define_perm_match_result.maps.strings.at(2)) {
         something_matched = true;
-        auto sym_name = define_perm_match_result.maps.strings.at(0);
+        auto& sym_name = define_perm_match_result.maps.strings.at(0);
         auto symbol_type = dts.lookup_symbol_type(sym_name);
 
         result += fmt::format(";; definition (perm) for symbol {}, type {}\n", sym_name,

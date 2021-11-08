@@ -61,11 +61,18 @@ void OpenGLRenderer::init_bucket_renderers() {
   init_bucket_renderer<EmptyBucketRenderer>("bucket0", BucketId::BUCKET0);
   init_bucket_renderer<SkyRenderer>("sky", BucketId::SKY_DRAW);
   init_bucket_renderer<TextureUploadHandler>("tfrag-tex-0", BucketId::TFRAG_TEX_LEVEL0);
-  init_bucket_renderer<SkyTextureHandler>("sky-tex-0", BucketId::SKY_LEVEL0);
+  init_bucket_renderer<TextureUploadHandler>("tfrag-tex-1", BucketId::TFRAG_TEX_LEVEL1);
   init_bucket_renderer<TextureUploadHandler>("shrub-tex-0", BucketId::SHRUB_TEX_LEVEL0);
+  init_bucket_renderer<TextureUploadHandler>("shrub-tex-1", BucketId::SHRUB_TEX_LEVEL1);
   init_bucket_renderer<TextureUploadHandler>("alpha-tex-0", BucketId::ALPHA_TEX_LEVEL0);
+  init_bucket_renderer<TextureUploadHandler>("alpha-tex-1", BucketId::ALPHA_TEX_LEVEL1);
+  auto sky_blender = std::make_shared<SkyBlender>();
+  init_bucket_renderer<SkyBlendHandler>("sky-blend-0", BucketId::SKY_BLEND_LEVEL0, sky_blender);
+  init_bucket_renderer<SkyBlendHandler>("sky-blend-1", BucketId::SKY_BLEND_LEVEL1, sky_blender);
   init_bucket_renderer<TextureUploadHandler>("pris-tex-0", BucketId::PRIS_TEX_LEVEL0);
+  init_bucket_renderer<TextureUploadHandler>("pris-tex-1", BucketId::PRIS_TEX_LEVEL1);
   init_bucket_renderer<TextureUploadHandler>("water-tex-0", BucketId::WATER_TEX_LEVEL0);
+  init_bucket_renderer<TextureUploadHandler>("water-tex-1", BucketId::WATER_TEX_LEVEL1);
   init_bucket_renderer<TextureUploadHandler>("pre-sprite-tex", BucketId::PRE_SPRITE_TEX);
   init_bucket_renderer<SpriteRenderer>("sprite", BucketId::SPRITE);
   init_bucket_renderer<DirectRenderer>("debug-draw-0", BucketId::DEBUG_DRAW_0, 102,
@@ -162,7 +169,7 @@ void OpenGLRenderer::draw_renderer_selection_window() {
  */
 void OpenGLRenderer::setup_frame(int window_width_px, int window_height_px) {
   glViewport(0, 0, window_width_px, window_height_px);
-  glClearColor(0.5, 0.5, 0.5, 1.0);
+  glClearColor(0.0, 0.0, 0.0, 0.0);
   glClearDepth(0.0);
   glDepthMask(GL_TRUE);
   glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
@@ -286,7 +293,7 @@ void OpenGLRenderer::finish_screenshot(const std::string& output_name, int width
   // flip upside down in place
   for (int h = 0; h < height / 2; h++) {
     for (int w = 0; w < width; w++) {
-      std::swap(buffer[h * width + w], buffer[(height - h) * width + w]);
+      std::swap(buffer[h * width + w], buffer[(height - h - 1) * width + w]);
     }
   }
 

@@ -936,7 +936,7 @@ TEST_F(FormRegressionTest, ExprMethod0DeadPool) {
       "         (v1-5 ((method-of-type process new) arg0 process 'dead arg3))\n"
       "         )\n"
       "    (set! (-> s3-0 child) (process->ppointer v1-5))\n"
-      "    (set! (-> v1-5 parent) (process->ppointer s3-0))\n"
+      "    (set! (-> v1-5 parent) (process->ppointer (the-as process s3-0)))\n"
       "    (set! (-> v1-5 pool) s3-0)\n"
       "    (set! (-> v1-5 brother) s1-0)\n"
       "    )\n"

@@ -17,7 +17,7 @@
 #include "game/graphics/display.h"
 #include "game/graphics/opengl_renderer/OpenGLRenderer.h"
 #include "game/graphics/texture/TexturePool.h"
-#include "game/graphics/dma/dma_copy.h"
+#include "common/dma/dma_copy.h"
 #include "game/system/newpad.h"
 #include "common/log/log.h"
 #include "common/goal_constants.h"

@@ -5,8 +5,6 @@
 ;; name in dgo: swamp-bat
 ;; dgos: L1, SWA
 
-(define-extern *swamp-bat-slave-sg* skeleton-group)
-
 (declare-type swamp-bat-slave process-drawable)
 (define-extern swamp-bat-slave-idle (state swamp-bat-slave)) ;; unknown type
 (define-extern swamp-bat-slave-return (state swamp-bat-slave)) ;; unknown type
@@ -107,37 +105,28 @@
   )
 
 
-;; WARN: rewrite_to_get_var got a none typed variable. Is there unreachable code?
 (defbehavior
   swamp-bat-slave-event-handler swamp-bat-slave
   ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
-  (let ((v1-0 arg2))
-   (the-as object (cond
-                   ((= v1-0 'attack)
-                    (logclear! (-> self mask) (process-mask actor-pause))
-                    (go swamp-bat-slave-die (process->handle arg0))
-                    )
-                   ((= v1-0 'touch)
-                    (level-hint-spawn
-                     (game-text-id swamp-bats-hint)
-                     "sksp0156"
-                     (the-as entity #f)
-                     *entity-pool*
-                     (game-task none)
-                     )
-                    (send-event
-                     arg0
-                     'attack
-                     (-> arg3 param 0)
-                     (new 'static 'attack-info)
-                     )
-                    )
-                   ((= v1-0 'launch)
-                    (if (-> self launch-ready)
-                     (go swamp-bat-slave-launch)
-                     )
-                    )
-                   )
+  (case arg2 
+   (('attack)
+     (logclear! (-> self mask) (process-mask actor-pause))
+     (go swamp-bat-slave-die (process->handle arg0))
+     )
+   (('touch)
+    (level-hint-spawn
+     (game-text-id swamp-bats-hint)
+     "sksp0156"
+     (the-as entity #f)
+     *entity-pool*
+     (game-task none)
+     )
+    (send-event arg0 'attack (-> arg3 param 0) (new 'static 'attack-info))
+    )
+   (('launch)
+    (if (-> self launch-ready)
+     (go swamp-bat-slave-launch)
+     )
     )
    )
   )
@@ -191,25 +180,12 @@ swamp-bat-slave-event-handler
   (swamp-bat-slave-post)
   )
 
-(let
-  ((v1-7
-    (new 'static 'skeleton-group
-     :art-group-name "swamp-bat"
-     :bounds (new 'static 'vector :w 10240.0)
-     :max-lod 2
-     :version #x6
-     )
-    )
-   )
-  (set! (-> v1-7 jgeo) 0)
-  (set! (-> v1-7 janim) 4)
-  (set! (-> v1-7 mgeo 0) (the-as uint 1))
-  (set! (-> v1-7 lod-dist 0) 81920.0)
-  (set! (-> v1-7 mgeo 1) (the-as uint 2))
-  (set! (-> v1-7 lod-dist 1) 163840.0)
-  (set! (-> v1-7 mgeo 2) (the-as uint 3))
-  (set! (-> v1-7 lod-dist 2) 4095996000.0)
-  (set! *swamp-bat-slave-sg* v1-7)
+(defskelgroup *swamp-bat-slave-sg* swamp-bat
+  0
+  4
+  ((1 (meters 20)) (2 (meters 40)) (3 (meters 999999)))
+  :bounds (static-spherem 0 0 0 2.5)
+  :longest-edge (meters 0)
   )
 
 (defbehavior swamp-bat-slave-get-new-path swamp-bat-slave ()
@@ -710,7 +686,7 @@ swamp-bat-slave-event-handler
   (swamp-bat-slave-get-new-path)
   (set! (-> self root-override trans quad) (-> self idle-position quad))
   (setup-params! (-> self sync) (the-as uint 1200) 0.0 0.15 0.15)
-  (dummy-14 self *swamp-bat-slave-sg* '())
+  (initialize-skeleton self *swamp-bat-slave-sg* '())
   (logclear! (-> self mask) (process-mask actor-pause))
   (go swamp-bat-slave-idle)
   (none)

@@ -432,6 +432,10 @@ TP_Type SimpleExpression::get_type_int2(const TypeState& input,
           m_args[1].is_int()) {
         return get_stack_type_at_constant_offset(m_args[1].get_int(), env, dts, input);
       }
+      if (arg0_type.kind == TP_Type::Kind::OBJECT_PLUS_PRODUCT_WITH_CONSTANT &&
+          arg1_type.typespec().base_type() == "pointer") {
+        return TP_Type::make_from_ts(TypeSpec("int"));
+      }
 
       if (arg0_type.is_product_with(4) && tc(dts, TypeSpec("type"), arg1_type)) {
         // dynamic access into the method array with shift, add, offset-load
@@ -449,6 +453,7 @@ TP_Type SimpleExpression::get_type_int2(const TypeState& input,
         return TP_Type::make_from_integer_constant_plus_var(arg1_type.get_integer_constant(),
                                                             arg0_type.typespec());
       }
+
       break;
 
     case Kind::MIN_SIGNED:
@@ -594,10 +599,16 @@ TP_Type SimpleExpression::get_type_int2(const TypeState& input,
     return TP_Type::make_from_ts(arg0_type.typespec());
   }
 
-  if ((m_kind == Kind::ADD || m_kind == Kind::SUB) &&
-      arg1_type.typespec().base_type() == "pointer" && tc(dts, TypeSpec("integer"), arg0_type)) {
+  if (m_kind == Kind::ADD && arg1_type.typespec().base_type() == "pointer" &&
+      tc(dts, TypeSpec("integer"), arg0_type)) {
     // plain pointer plus integer = plain pointer
     return TP_Type::make_from_ts(arg1_type.typespec());
+  }
+
+  if (m_kind == Kind::SUB && arg1_type.typespec().base_type() == "pointer" &&
+      tc(dts, TypeSpec("integer"), arg0_type)) {
+    // plain pointer plus integer = plain pointer
+    return TP_Type::make_from_ts(arg0_type.typespec());
   }
 
   if (m_kind == Kind::ADD && tc(dts, TypeSpec("structure"), arg0_type) &&
@@ -1051,7 +1062,7 @@ TP_Type LoadVarOp::get_src_type(const TypeState& input,
             rd.tokens.front().kind == FieldReverseLookupOutput::Token::Kind::FIELD &&
             rd.tokens.front().name == "enter" && rd_in.base_type.arg_count() > 0) {
           // special case for accessing the enter field of state
-          return TP_Type::make_from_ts(state_to_go_function(rd_in.base_type));
+          return TP_Type::make_from_ts(state_to_go_function(rd_in.base_type, TypeSpec("none")));
         } else {
           return TP_Type::make_from_ts(coerce_to_reg_type(rd.result_type));
         }
@@ -1219,7 +1230,7 @@ TypeState CallOp::propagate_types_internal(const TypeState& input,
           "state.  The decompiler must know the specific state type.",
           m_my_idx));
     }
-    in_type = state_to_go_function(state_type);
+    in_type = state_to_go_function(state_type, TypeSpec("object"));
   }
 
   if (in_tp.kind == TP_Type::Kind::RUN_FUNCTION_IN_PROCESS_FUNCTION ||

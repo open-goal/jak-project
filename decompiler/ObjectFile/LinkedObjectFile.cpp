@@ -841,8 +841,8 @@ goos::Object LinkedObjectFile::to_form_script(int seg, int word_idx, std::vector
 
   // resulting form. we can't have a totally empty list (as an empty list looks like a symbol,
   // so it wouldn't be flagged), so it's safe to make this a pair.
-  auto result = goos::PairObject::make_new(goos::EmptyListObject::make_new(),
-                                           goos::EmptyListObject::make_new());
+  auto result =
+      goos::PairObject::make_new(goos::Object::make_empty_list(), goos::Object::make_empty_list());
 
   // the current pair to fill out.
   auto fill = result;
@@ -859,7 +859,7 @@ goos::Object LinkedObjectFile::to_form_script(int seg, int word_idx, std::vector
 
       if (is_empty_list(seg, cdr_addr)) {
         // the list has ended!
-        fill.as_pair()->cdr = goos::EmptyListObject::make_new();
+        fill.as_pair()->cdr = goos::Object::make_empty_list();
         return result;
       } else {
         // cdr object should be aligned.
@@ -869,8 +869,8 @@ goos::Object LinkedObjectFile::to_form_script(int seg, int word_idx, std::vector
         if (cdr_word.kind == LinkedWord::PTR && (labels.at(cdr_word.label_id).offset & 7) == 2) {
           // yes, proper list. add another pair and link it in to the list.
           goal_print_obj = labels.at(cdr_word.label_id).offset;
-          fill.as_pair()->cdr = goos::PairObject::make_new(goos::EmptyListObject::make_new(),
-                                                           goos::EmptyListObject::make_new());
+          fill.as_pair()->cdr = goos::PairObject::make_new(goos::Object::make_empty_list(),
+                                                           goos::Object::make_empty_list());
           fill = fill.as_pair()->cdr;
         } else {
           // improper list, put the last thing in and end
@@ -936,7 +936,7 @@ goos::Object LinkedObjectFile::to_form_script_object(int seg,
           }
         }
       } else if (word.kind == LinkedWord::EMPTY_PTR) {
-        result = goos::EmptyListObject::make_new();
+        result = goos::Object::make_empty_list();
       } else {
         std::string debug;
         append_word_to_string(debug, word);

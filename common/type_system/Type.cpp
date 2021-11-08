@@ -218,6 +218,7 @@ std::string Type::get_parent() const {
 bool Type::common_type_info_equal(const Type& other) const {
   // clang-format off
   return m_methods == other.m_methods &&
+         m_states == other.m_states &&
          m_new_method_info == other.m_new_method_info &&
          m_new_method_info_defined == other.m_new_method_info_defined &&
          m_parent == other.m_parent &&
@@ -247,17 +248,21 @@ std::string Type::common_type_info_diff(const Type& other) const {
     }
   }
   if (m_states != other.m_states) {
-    if (m_states.size() != other.m_states.size()) {
-      result += fmt::format("Number of additional states {} vs. {}\n", m_states.size(),
-                            other.m_states.size());
+    result += "States are different:\n";
+    for (auto& ours : m_states) {
+      auto theirs = other.m_states.find(ours.first);
+      if (theirs == other.m_states.end()) {
+        result += fmt::format("  {} is in one, but not the other.\n", ours.first);
+      } else if (ours.second != theirs->second) {
+        result += fmt::format("  {} is defined differently: {} vs {}\n", ours.first,
+                              ours.second.print(), theirs->second.print());
+      }
     }
 
-    for (size_t i = 0; i < std::min(m_states.size(), other.m_states.size()); i++) {
-      if (m_states.at(i) != other.m_states.at(i)) {
-        result +=
-            fmt::format("State {} ({}/{}):\n", i, m_states.at(i).name, other.m_states.at(i).name);
-        result += m_states.at(i).diff(other.m_states.at(i));
-        result += "\n";
+    for (auto& theirs : other.m_states) {
+      auto ours = m_states.find(theirs.first);
+      if (ours == m_states.end()) {
+        result += fmt::format("  {} is in one, but not the other.\n", theirs.first);
       }
     }
   }
@@ -396,25 +401,10 @@ std::string Type::print_method_info() const {
   return result;
 }
 
-const StateInfo& Type::add_state(const StateInfo& info) {
-  m_states.push_back(info);
-  return m_states.back();
-}
-
-bool StateInfo::operator==(const StateInfo& other) const {
-  return name == other.name && type == other.type;
-}
-
-std::string StateInfo::diff(const StateInfo& other) const {
-  std::string result;
-  if (name != other.name) {
-    result += fmt::format("name: {} vs. {}\n", name, other.name);
+void Type::add_state(const std::string& name, const TypeSpec& type) {
+  if (!m_states.insert({name, type}).second) {
+    throw std::runtime_error(fmt::format("State {} is multiply defined", name));
   }
-
-  if (type != other.type) {
-    result += fmt::format("type: {} vs. {}\n", type.print(), other.type.print());
-  }
-  return result;
 }
 
 std::string Type::incompatible_diff(const Type& other) const {
