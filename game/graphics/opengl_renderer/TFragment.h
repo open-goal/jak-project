@@ -8,6 +8,8 @@
 using math::Matrix4f;
 using math::Vector4f;
 
+constexpr int KICK_ZONE_END = 1024;
+
 struct TFragData {
   Vector4f fog;          // 0   656 (vf01)
   Vector4f val;          // 1   657 (vf02)
@@ -32,7 +34,7 @@ struct TFragBufferedData {
 static_assert(sizeof(TFragBufferedData) == 328 * 16);
 
 struct TFragKickZone {
-  u8 pad[(1024 - 670) * 16];
+  u8 pad[(KICK_ZONE_END - 670) * 16];
 };
 
 class TFragment : public BucketRenderer {
@@ -139,32 +141,41 @@ class TFragment : public BucketRenderer {
   void exec_jumper_L128(const Prog6Inputs& in, Prog6Vars& vars);
 
   template <bool DEBUG>
-  void exec_jumper_L129(const Prog6Inputs& in, Prog6Vars& vars);
+  bool exec_jumper_L129(const Prog6Inputs& in, Prog6Vars& vars,
+                        SharedRenderState* render_state,
+                        ScopedProfilerNode& prof);
 
   template <bool DEBUG>
   void exec_jumper_L6A1(const Prog6Inputs& in, Prog6Vars& vars);
 
   template <bool DEBUG>
-  void exec_jumper_L130(const Prog6Inputs& in, Prog6Vars& vars);
+  bool exec_jumper_L130(const Prog6Inputs& in, Prog6Vars& vars,
+                        SharedRenderState* render_state,
+                        ScopedProfilerNode& prof);
 
   template <bool DEBUG>
   void exec_jumper_L6B0(const Prog6Inputs& in, Prog6Vars& vars);
 
   template <bool DEBUG>
-  void exec_jumper_L131(const Prog6Inputs& in, Prog6Vars& vars);
+  bool exec_jumper_L131(const Prog6Inputs& in, Prog6Vars& vars,
+                        SharedRenderState* render_state,
+                        ScopedProfilerNode& prof);
 
   template <bool DEBUG>
   void exec_jumper_L6BF(const Prog6Inputs& in, Prog6Vars& vars);
 
   template <bool DEBUG>
-  void exec_jumper_L132(const Prog6Inputs& in, Prog6Vars& vars);
+  bool exec_jumper_L132(const Prog6Inputs& in, Prog6Vars& vars,
+                        SharedRenderState* render_state,
+                        ScopedProfilerNode& prof);
 
   template <bool DEBUG>
-  void exec_jumper_L122(const Prog6Inputs& in, Prog6Vars& vars, SharedRenderState* render_state, ScopedProfilerNode& prof);
+  bool exec_jumper_L122(const Prog6Inputs& in, Prog6Vars& vars, SharedRenderState* render_state, ScopedProfilerNode& prof);
 
 
   std::string m_debug_string;
-  bool m_extra_debug = true;
+  bool m_extra_debug = false;
+  int m_max_draw = 1; // todo hack
   std::string m_frag_debug;
 
   // GS setup data
@@ -237,6 +248,7 @@ class TFragment : public BucketRenderer {
     Vector4f vf04_ambient;
   } m_globals;
 
+  static constexpr int NUM_PROGRAMS = 13;
   struct Stats {
     int tfrag_dma_packets = 0;
     int tfrag_bytes = 0;
@@ -247,7 +259,7 @@ class TFragment : public BucketRenderer {
       int calls = 0;
     };
 
-    PerProgram per_program[12];  // addr / 2
+    PerProgram per_program[NUM_PROGRAMS];  // addr / 2
   } m_stats;
 
   DirectRenderer m_direct_renderer;

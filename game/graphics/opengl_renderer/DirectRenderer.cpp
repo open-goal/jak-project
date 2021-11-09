@@ -721,12 +721,12 @@ void DirectRenderer::handle_rgbaq_packed(const u8* data) {
   m_prim_building.rgba_reg[3] = data[12];
 
   // hack
-  if (m_my_id == BucketId::TFRAG_LEVEL0 || m_my_id == BucketId::TFRAG_LEVEL1) {
-    m_prim_building.rgba_reg[0] = 0x70;
-    m_prim_building.rgba_reg[1] = 0x70;
-    m_prim_building.rgba_reg[2] = 0x70;
-    m_prim_building.rgba_reg[3] = 0x70;
-  }
+//  if (m_my_id == BucketId::TFRAG_LEVEL0 || m_my_id == BucketId::TFRAG_LEVEL1) {
+//    m_prim_building.rgba_reg[0] = 0x70;
+//    m_prim_building.rgba_reg[1] = 0x70;
+//    m_prim_building.rgba_reg[2] = 0x70;
+//    m_prim_building.rgba_reg[3] = 0x70;
+//  }
 }
 
 void DirectRenderer::handle_xyzf2_packed(const u8* data,
