@@ -92,6 +92,7 @@ void TFragment::draw_debug_window() {
     m_max_draw = -1;
   }
   ImGui::Checkbox("Skip MSCAL", &m_skip_mscals);
+  ImGui::Checkbox("Skip XGKICK", &m_skip_xgkick);
   ImGui::Text("packets: %d", m_stats.tfrag_dma_packets);
   ImGui::Text("frag bytes: %d", m_stats.tfrag_bytes);
   ImGui::Text("errors: %d", m_stats.error_packets);
@@ -1749,8 +1750,10 @@ void TFragment::XGKICK(u32 addr, SharedRenderState* render_state, ScopedProfiler
   assert(addr >= TFragDataMem::TFragKickZone);
   assert(addr < KICK_ZONE_END);
 
-  m_direct_renderer.render_gif(&m_kick_data.pad[(addr - TFragDataMem::TFragKickZone) * 16],
-                               UINT32_MAX, render_state, prof);
+  if (!m_skip_xgkick) {
+    m_direct_renderer.render_gif(&m_kick_data.pad[(addr - TFragDataMem::TFragKickZone) * 16],
+                                 UINT32_MAX, render_state, prof);
+  }
 }
 
 template <bool DEBUG>

@@ -584,6 +584,7 @@ std::string ObjectFileDB::process_tpages() {
   std::string tpage_string = "tpage-";
   int total = 0, success = 0;
   int tpage_dir_count = 0;
+  u64 total_px = 0;
   Timer timer;
 
   std::string result;
@@ -592,6 +593,7 @@ std::string ObjectFileDB::process_tpages() {
       auto statistics = process_tpage(data);
       total += statistics.total_textures;
       success += statistics.successful_textures;
+      total_px += statistics.num_px;
     } else if (data.name_in_dgo == "dir-tpages") {
       result = process_dir_tpages(data).to_source();
       tpage_dir_count++;
@@ -605,7 +607,7 @@ std::string ObjectFileDB::process_tpages() {
     return {};
   }
 
-  lg::info("Processed {} / {} textures {:.2f}% in {:.2f} ms", success, total,
+  lg::info("Processed {} / {} textures ({} px) {:.2f}% in {:.2f} ms", success, total, total_px,
            100.f * float(success) / float(total), timer.getMs());
   return result;
 }

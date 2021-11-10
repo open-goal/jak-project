@@ -209,8 +209,19 @@ class DirectRenderer : public BucketRenderer {
     bool always_draw = false;
   } m_debug_state;
 
-  int m_triangles = 0;
-  int m_draw_calls = 0;
+  struct {
+    int triangles = 0;
+    int draw_calls = 0;
+
+    int flush_from_tex_0 = 0;
+    int flush_from_tex_1 = 0;
+    int flush_from_zbuf = 0;
+    int flush_from_test = 0;
+    int flush_from_alpha = 0;
+    int flush_from_clamp = 0;
+    int flush_from_prim = 0;
+  } m_stats;
+
 
   bool m_prim_gl_state_needs_gl_update = true;
   bool m_test_state_needs_gl_update = true;

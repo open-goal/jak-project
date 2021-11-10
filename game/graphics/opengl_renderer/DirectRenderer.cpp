@@ -78,9 +78,23 @@ void DirectRenderer::draw_debug_window() {
     ImGui::Checkbox("draw2", &m_sprite_mode.do_second_draw);
   }
 
-  ImGui::Text("Triangles: %d", m_triangles);
+  ImGui::Text("Triangles: %d", m_stats.triangles);
   ImGui::SameLine();
-  ImGui::Text("Draws: %d", m_draw_calls);
+  ImGui::Text("Draws: %d", m_stats.draw_calls);
+
+  ImGui::Text("Flush from state change:");
+  ImGui::Text("  tex0: %d", m_stats.flush_from_tex_0);
+  ImGui::Text("  tex1: %d", m_stats.flush_from_tex_1);
+  ImGui::Text("  zbuf: %d", m_stats.flush_from_zbuf);
+  ImGui::Text("  test: %d", m_stats.flush_from_test);
+  ImGui::Text("  alph: %d", m_stats.flush_from_alpha);
+  ImGui::Text("  clmp: %d", m_stats.flush_from_clamp);
+  ImGui::Text("  prim: %d", m_stats.flush_from_prim);
+  ImGui::Text(" Total: %d/%d",
+              m_stats.flush_from_prim + m_stats.flush_from_clamp + m_stats.flush_from_alpha +
+                  m_stats.flush_from_test + m_stats.flush_from_zbuf + m_stats.flush_from_tex_1 +
+                  m_stats.flush_from_tex_0,
+              m_stats.draw_calls);
 }
 
 float u32_to_float(u32 in) {
@@ -227,8 +241,8 @@ void DirectRenderer::flush_pending(SharedRenderState* render_state, ScopedProfil
   int n_tris = draw_count * (m_prim_buffer.vert_count / 3);
   prof.add_tri(n_tris);
   prof.add_draw_call(draw_count);
-  m_triangles += n_tris;
-  m_draw_calls += draw_count;
+  m_stats.triangles += n_tris;
+  m_stats.draw_calls += draw_count;
   m_prim_buffer.vert_count = 0;
 }
 
@@ -276,7 +290,7 @@ void DirectRenderer::update_gl_prim(SharedRenderState* render_state) {
     }
   }
   if (state.fogging_enable) {
-//    assert(false);
+    //    assert(false);
   }
   if (state.aa_enable) {
     assert(false);
@@ -480,7 +494,6 @@ void DirectRenderer::render_gif(const u8* data,
                                 u32 size,
                                 SharedRenderState* render_state,
                                 ScopedProfilerNode& prof) {
-
   if (size != UINT32_MAX) {
     assert(size >= 16);
   }
@@ -573,7 +586,6 @@ void DirectRenderer::render_gif(const u8* data,
     assert((offset + 15) / 16 == size / 16);
   }
 
-
   //  fmt::print("{}\n", GifTag(data).print());
 }
 
@@ -647,6 +659,7 @@ void DirectRenderer::handle_tex1_1(u64 val,
 
   if (want_tex_filt != m_texture_state.enable_tex_filt) {
     flush_pending(render_state, prof);
+    m_stats.flush_from_tex_1++;
     m_texture_state.enable_tex_filt = want_tex_filt;
   }
 
@@ -672,12 +685,13 @@ void DirectRenderer::handle_tex0_1(u64 val,
 
   // update tbp
   if (m_texture_state.current_register != reg) {
-    // fmt::print("flush due to tex0\n");
     flush_pending(render_state, prof);
+    m_stats.flush_from_tex_0++;
     m_texture_state.texture_base_ptr = reg.tbp0();
     m_texture_state.using_mt4hh = reg.psm() == GsTex0::PSM::PSMT4HH;
     m_prim_gl_state_needs_gl_update = true;
     m_texture_state.current_register = reg;
+
     if (m_texture_state.tcc != reg.tcc()) {
       m_texture_state.needs_gl_update = true;
     }
@@ -721,12 +735,12 @@ void DirectRenderer::handle_rgbaq_packed(const u8* data) {
   m_prim_building.rgba_reg[3] = data[12];
 
   // hack
-//  if (m_my_id == BucketId::TFRAG_LEVEL0 || m_my_id == BucketId::TFRAG_LEVEL1) {
-//    m_prim_building.rgba_reg[0] = 0x70;
-//    m_prim_building.rgba_reg[1] = 0x70;
-//    m_prim_building.rgba_reg[2] = 0x70;
-//    m_prim_building.rgba_reg[3] = 0x70;
-//  }
+  //  if (m_my_id == BucketId::TFRAG_LEVEL0 || m_my_id == BucketId::TFRAG_LEVEL1) {
+  //    m_prim_building.rgba_reg[0] = 0x70;
+  //    m_prim_building.rgba_reg[1] = 0x70;
+  //    m_prim_building.rgba_reg[2] = 0x70;
+  //    m_prim_building.rgba_reg[3] = 0x70;
+  //  }
 }
 
 void DirectRenderer::handle_xyzf2_packed(const u8* data,
@@ -742,8 +756,8 @@ void DirectRenderer::handle_xyzf2_packed(const u8* data,
 
   u8 f = (upper >> 36);
   bool adc = upper & (1ull << 47);
-  //assert(!adc); todo
-  //  assert(!f);
+  // assert(!adc); todo
+  //   assert(!f);
 
   handle_xyzf2_common(x, y, z, f, render_state, prof, !adc);
 }
@@ -761,7 +775,7 @@ void DirectRenderer::handle_zbuf1(u64 val,
   //  assert(write);
 
   if (write != m_test_state.depth_writes) {
-    // fmt::print("flush due to depth write\n");
+    m_stats.flush_from_zbuf++;
     flush_pending(render_state, prof);
     m_test_state_needs_gl_update = true;
     m_test_state.depth_writes = write;
@@ -777,7 +791,7 @@ void DirectRenderer::handle_test1(u64 val,
   }
   assert(!reg.date());
   if (m_test_state.current_register != reg) {
-    // fmt::print("flush due to test\n");
+    m_stats.flush_from_test++;
     flush_pending(render_state, prof);
     m_test_state.from_register(reg);
     m_test_state_needs_gl_update = true;
@@ -790,7 +804,7 @@ void DirectRenderer::handle_alpha1(u64 val,
                                    ScopedProfilerNode& prof) {
   GsAlpha reg(val);
   if (m_blend_state.current_register != reg) {
-    // fmt::print("flush due to alpha1\n");
+    m_stats.flush_from_alpha++;
     flush_pending(render_state, prof);
     m_blend_state.from_register(reg);
     m_blend_state_needs_gl_update = true;
@@ -804,13 +818,13 @@ void DirectRenderer::handle_pabe(u64 val) {
 void DirectRenderer::handle_clamp1(u64 val,
                                    SharedRenderState* render_state,
                                    ScopedProfilerNode& prof) {
-
   if (!(val == 0b101 || val == 0 || val == 1 || val == 0b100)) {
     fmt::print("clamp: 0x{:x}\n", val);
     assert(false);
   }
 
   if (m_clamp_state.current_register != val) {
+    m_stats.flush_from_clamp++;
     flush_pending(render_state, prof);
     m_clamp_state.current_register = val;
     m_clamp_state.clamp_s = val & 0b001;
@@ -842,7 +856,7 @@ void DirectRenderer::handle_prim(u64 val,
 
   GsPrim prim(val);
   if (m_prim_gl_state.current_register != prim || m_blend_state.alpha_blend_enable != prim.abe()) {
-    // fmt::print("flush due to prim\n");
+    m_stats.flush_from_prim++;
     flush_pending(render_state, prof);
     m_prim_gl_state.from_register(prim);
     m_blend_state.alpha_blend_enable = prim.abe();
@@ -872,12 +886,11 @@ void DirectRenderer::handle_xyzf2_common(u32 x,
     flush_pending(render_state, prof);
   }
 
-
   m_prim_building.building_stq.at(m_prim_building.building_idx) = math::Vector<float, 3>(
       m_prim_building.st_reg.x(), m_prim_building.st_reg.y(), m_prim_building.Q);
   m_prim_building.building_rgba.at(m_prim_building.building_idx) = m_prim_building.rgba_reg;
-  m_prim_building.building_vert.at(m_prim_building.building_idx) = math::Vector<u32, 3>{x << 16, y << 16, z << 8};
-
+  m_prim_building.building_vert.at(m_prim_building.building_idx) =
+      math::Vector<u32, 3>{x << 16, y << 16, z << 8};
 
   m_prim_building.building_idx++;
 
@@ -1013,8 +1026,7 @@ void DirectRenderer::reset_state() {
 
   m_prim_building = PrimBuildState();
 
-  m_triangles = 0;
-  m_draw_calls = 0;
+  m_stats = {};
 }
 
 void DirectRenderer::TestState::from_register(GsTest reg) {

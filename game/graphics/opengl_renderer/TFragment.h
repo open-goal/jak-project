@@ -177,6 +177,7 @@ class TFragment : public BucketRenderer {
   bool m_extra_debug = false;
   int m_max_draw = -1;
   bool m_skip_mscals = false;
+  bool m_skip_xgkick = false;
   std::string m_frag_debug;
 
   // GS setup data
