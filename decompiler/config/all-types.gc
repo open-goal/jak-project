@@ -7918,7 +7918,7 @@
 (deftype pris-mtx (structure)
   ((data   float 32      :offset 0)
    (vector vector 8 :inline       :offset 0)
-   (t-mtx  matrix  :inline :offset 0)
+   (t-mtx  matrix  :inline :score 100 :offset 0)
    (n-mtx  matrix3 :inline :offset 64)
    (scale  vector  :inline :offset 112)
    )
@@ -10824,25 +10824,25 @@
   :flag-assert         #x900000008
   )
 
+(declare-type collide-mesh-cache-tri structure)
 (deftype collide-mesh (basic)
   ((joint-id    int32     :offset-assert 4)
    (num-tris    uint32    :offset-assert 8)
    (num-verts   uint32    :offset-assert 12)
    (vertex-data uint32    :offset-assert 16)
-   ;; todo - this could be wrong
    (tris        collide-mesh-tri 1 :inline :offset 32)
    )
   :method-count-assert 16
   :size-assert         #x28
   :flag-assert         #x1000000028
   (:methods
-    (dummy-9 () none 9)
-    (dummy-10 () none 10)
-    (dummy-11 () none 11)
-    (dummy-12 (_type_ basic collide-tri-result vector float) none 12)
-    (dummy-13 () none 13)
+    (debug-draw-tris (_type_ process-drawable int) none 9)
+    (dummy-10 (_type_ object vector) none 10) ;; what is the second arg!?
+    (dummy-11 (_type_) none 11)
+    (dummy-12 (_type_ collide-mesh-cache-tri collide-tri-result vector float) float 12)
+    (dummy-13 (_type_) none 13)
     (dummy-14 (_type_) none 14)
-    (dummy-15 () none 15)
+    (dummy-15 (_type_) none 15)
     )
   )
 
@@ -10856,7 +10856,7 @@
   :size-assert         #xa020
   :flag-assert         #xc0000a020
   (:methods
-    (dummy-9 () none 9)
+    (dummy-9 (_type_) none 9)
     (is-id? (_type_ int) symbol 10)
     (next-id! (_type_) uint 11)
     )
@@ -10886,9 +10886,10 @@
 
 ;; - Types
 
+(declare-type collide-shape-prim basic)
 (deftype collide-sticky-rider (structure)
   ((rider-handle    handle         :offset-assert 0)
-   (sticky-prim     basic          :offset-assert 8)
+   (sticky-prim     collide-shape-prim          :offset-assert 8)
    (prim-ry         float          :offset-assert 12)
    (rider-local-pos vector :inline :offset-assert 16)
    )
@@ -10910,14 +10911,14 @@
   :flag-assert         #xb00000030
   (:methods
     (new (symbol type int) _type_ 0)
-    (add-rider! (_type_ handle) collide-sticky-rider 9)
+    (add-rider! (_type_ process-drawable) collide-sticky-rider 9)
     (reset! (_type_) int 10)
     )
   )
 
 (deftype pull-rider-info (structure)
   ((rider          collide-sticky-rider         :offset-assert 0)
-   (rider-cshape   basic                        :offset-assert 4)
+   (rider-cshape   collide-shape-prim                        :offset-assert 4) ;; collide-shape-prim fixes some methods...but this is likely a collide-shape...right (it fixes other methods!)
    (rider-delta-ry float                        :offset-assert 8)
    (rider-dest     vector               :inline :offset-assert 16)
    )
@@ -11013,7 +11014,7 @@
     (collide-with-collide-cache-prim-sphere (_type_) none 19)
     (dummy-20 (_type_ uint) symbol 20)
     (num-mesh (_type_ collide-shape-prim) int 21)
-    (on-platform-test (_type_ _type_) none 22)
+    (on-platform-test (_type_ _type_ collide-overlap-result float) pat-surface 22)
     (should-push-away-test () none 23)
     (dummy-24 () none 24)
     (dummy-25 (_type_ process-drawable) symbol 25)
@@ -11093,16 +11094,16 @@
     (dummy-32 (_type_ object uint) none 32)
     (dummy-33 (_type_ vector uint) none 33)
     (dummy-34 (_type_ uint) collide-shape-prim  34)
-    (dummy-35 (_type_) none 35)
+    (dummy-35 (_type_) symbol 35)
     (dummy-36 (_type_ vector vector uint) symbol 36)
     (dummy-37 (_type_ vector) none 37)
     (find-collision-meshes (_type_) symbol 38)
-    (dummy-39 (_type_ collide-shape) none 39)
+    (dummy-39 (_type_ collide-shape collide-overlap-result) symbol 39)
     (dummy-40 (_type_ structure) none 40) ;; ?? - I've seen overlaps-others-params | collide-edge-hold-list
     (dummy-41 (_type_ point-on-path-segment-info float) vector 41) ;; this arg has to be wrong
     (dummy-42 (_type_ collide-shape collide-work) none 42) ; collide-work is a guess
-    (dummy-43 (_type_) none 43)
-    (dummy-44 (_type_) none 44)
+    (dummy-43 (_type_ pull-rider-info) none 43)
+    (dummy-44 (_type_) symbol 44)
     (dummy-45 (_type_) symbol 45)
     (dummy-46 (_type_ collide-shape-prim) collide-shape-prim 46)
     (dummy-47 (_type_) symbol 47)
