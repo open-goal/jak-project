@@ -91,6 +91,7 @@ void TFragment::draw_debug_window() {
   if (ImGui::Button("All")) {
     m_max_draw = -1;
   }
+  ImGui::Checkbox("Skip MSCAL", &m_skip_mscals);
   ImGui::Text("packets: %d", m_stats.tfrag_dma_packets);
   ImGui::Text("frag bytes: %d", m_stats.tfrag_bytes);
   ImGui::Text("errors: %d", m_stats.error_packets);
@@ -198,7 +199,9 @@ void TFragment::handle_tfrag(const DmaTransfer& dma,
       offset_into_data = handle_unpack_v4_8_mode0(second_vif, dma, offset_into_data, cl, wl);
       break;
     case VifCode::Kind::MSCAL:
-      handle_mscal<DEBUG>(second_vif, render_state, prof);
+      if (!m_skip_mscals) {
+        handle_mscal<DEBUG>(second_vif, render_state, prof);
+      }
       break;
     default:
       fmt::print("unknown second vif in tfragment: {}\n", second_vif.print());
@@ -585,11 +588,10 @@ void TFragment::handle_mscal(const VifCode& code,
   }
   m_stats.per_program[prog_id].calls++;
 
-  m_debug_string += fmt::format("prog {}\n", prog_id * 2);
-
   switch (code.immediate) {
+    case 12:
     case 6:
-      //    case 8:
+//    case 8:
       //    default:
       exec_program_6<DEBUG>(render_state, prof);
       break;

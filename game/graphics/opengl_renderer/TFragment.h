@@ -175,7 +175,8 @@ class TFragment : public BucketRenderer {
 
   std::string m_debug_string;
   bool m_extra_debug = false;
-  int m_max_draw = 1; // todo hack
+  int m_max_draw = -1;
+  bool m_skip_mscals = false;
   std::string m_frag_debug;
 
   // GS setup data

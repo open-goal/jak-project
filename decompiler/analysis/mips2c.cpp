@@ -796,6 +796,10 @@ Mips2C_Line handle_clts(const Instruction& i0, const std::string& instr_string) 
           instr_string};
 }
 
+Mips2C_Line handle_pmfhl_lh(const Instruction& i0, const std::string& instr_string) {
+  return {fmt::format("c->pmfhl_lh({});", reg_to_name(i0.get_dst(0))), instr_string};
+}
+
 Mips2C_Line handle_normal_instr(Mips2C_Output& output,
                                 const Instruction& i0,
                                 const std::string& instr_str,
@@ -852,6 +856,8 @@ Mips2C_Line handle_normal_instr(Mips2C_Output& output,
       return handle_generic_op2_mask(i0, instr_str, "vftoi0");
     case InstructionKind::VFTOI4:
       return handle_generic_op2_mask(i0, instr_str, "vftoi4");
+    case InstructionKind::VFTOI12:
+      return handle_generic_op2_mask(i0, instr_str, "vftoi12");
     case InstructionKind::VADDQ:
       return handle_generic_op2_mask(i0, instr_str, "vaddq");
     case InstructionKind::ANDI:
@@ -865,6 +871,8 @@ Mips2C_Line handle_normal_instr(Mips2C_Output& output,
     case InstructionKind::DSRL32:
     case InstructionKind::DSRL:
     case InstructionKind::SRL:
+    case InstructionKind::PSRAW:
+    case InstructionKind::PSRLH:
       return handle_generic_op2_u16(i0, instr_str);
     case InstructionKind::SLL:
       return handle_sll(i0, instr_str);
@@ -881,6 +889,11 @@ Mips2C_Line handle_normal_instr(Mips2C_Output& output,
     case InstructionKind::PCGTW:
     case InstructionKind::PPACB:
     case InstructionKind::PADDW:
+    case InstructionKind::PEXTUB:
+    case InstructionKind::PMULTH:
+    case InstructionKind::PMADDH:
+    case InstructionKind::PADDH:
+    case InstructionKind::PMINH:
     case InstructionKind::MOVZ:
     case InstructionKind::MULT3:
     case InstructionKind::PMINW:
@@ -959,6 +972,8 @@ Mips2C_Line handle_normal_instr(Mips2C_Output& output,
       return handle_plain_op(i0, instr_str, "vwaitq");
     case InstructionKind::VOPMULA:
       return handle_vopmula(i0, instr_str);
+    case InstructionKind::PMFHL_LH:
+      return handle_pmfhl_lh(i0, instr_str);
     default:
       unknown_count++;
       return handle_unknown(instr_str);

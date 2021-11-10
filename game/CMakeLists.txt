@@ -67,6 +67,7 @@ set(RUNTIME_SOURCE
         mips2c/functions/test_func.cpp
         mips2c/functions/texture.cpp
         mips2c/functions/tfrag.cpp
+        mips2c/functions/time_of_day.cpp
         overlord/dma.cpp
         overlord/fake_iso.cpp
         overlord/iso.cpp
