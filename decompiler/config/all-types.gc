@@ -496,7 +496,7 @@
 (defenum bucket-id
     :type int32
     :bitfield #f
-    
+
     (bucket-1 1)
     (bucket-2 2)
     (sky-draw 3)
@@ -939,6 +939,8 @@
 
   (firecanyon-not-enough-cells #x24f)
 
+  (sidekick-hint-orb-cache-top #x251)
+
   (jungle-precursorbridge-hint #x25b)
 
   (beach-gimmie #x262)
@@ -953,7 +955,7 @@
   (beach-seagulls-avalanche #x273)
 
   (beach-flutflutegg-hint #x275)
-  
+
   (sidekick-hint-fish-powerup #x278)
 
   (sidekick-speech-hint-crate-darkeco1 #x281)
@@ -961,14 +963,14 @@
   (sidekick-speech-crate-steel-break1 #x283)
   (sidekick-speech-hint-crate-iron #x284)
   (sidekick-speech-hint-crate-steel #x285)
-  
+
   (jungleb-eco-vents-opened #x289)
 
   (sidekick-speech-crate-steel-break2 #x28e)
   (sidekick-speech-hint-crate-darkeco2 #x28f)
-  
+
   (yakow-owed-powercell #x297)
-  
+
   (misty-teetertotter-bonk-dax-tutorial #x2a4)
 
   (daxter-blue-eco-plat-tutorial #x2a7)
@@ -1032,7 +1034,7 @@
   (rolling-ring-hint-one-ring-down #x33f)
   (rolling-ring-hint-be-quick-to-next #x340)
   (rolling-ring-hint-be-quick-all #x341)
-  
+
   (sunken-blue-eco-charger-hint #x345)
 
   (sunken-qbert-plat-hint #x34a)
@@ -1043,19 +1045,19 @@
 
   (swamp-bats-hint #x364) ;; maybe we can ???? the bats. lol
   (flutflut-reminder #x368)
-  
+
   (village2-warp-gate-reminder #x36f)
   (village2-warp-gate-reminder-annoyed #x370)
   (village2-warp-gate-reminder-very-annoyed #x371)
-  
+
   (village2-not-enough-cells-levitator #x36c)
   (villlage2-levitator-cell-req-text #x372)
-  
+
   (rolling-race-time-string-prefix #x373)
   (rolling-race-record-string-prefix #x374)
   (rolling-race-new-record-string-prefix #x375)
   (rolling-race-try-again-string #x376)
-  
+
   (village3-miner-money #x400)
   (village3-oracle-money #x401)
   (snow-ram-3-left #x402)
@@ -1091,23 +1093,23 @@
   (assistant-lavatube-powercell-hint #x428)
   (village3-gondola-malfunctioning #x429)
   (village3-gondola-reactivated #x42a)
-  
+
   (snow-frozen-crate #x42b) ;; task name?
   (snow-bumpers #x42c)
 
   (darkcave-light-crystal-low-light-hint #x437)
   (darkcave-light-crystal-hint #x438)
-  
+
   (cave-trap-nest-hint #x440)
   (snow-fort-reminder #x443)
-  
+
   (ice-cube-hint #x448)
-  
+
   (village3-warp-gate-reminder #x452)
   (village3-warp-gate-reminder=annoyed #x453)
   (village3-warp-gate-reminder-very-annoyed #x454)
   (lavatube-powercell-req-text #x455)
-  
+
   (fire-canyon-end #x500)
   (fire-canyon-buzzer #x501)
 
@@ -1147,7 +1149,7 @@
   (training-eco-blue #x909)
   (training-precursor-door #x90b)
   (training-double-jump #x90e)
-  
+
   (sage-voicebox-hint-crate-iron #x917)
 
   (training-warp-gate-blocked #x919)
@@ -7803,11 +7805,10 @@
   :flag-assert         #x900000014
   )
 
-(declare-type art-element art)
 (deftype art (basic)
-  ((name   string  :offset 8)
-   (length int32   :offset-assert 12)
-   (extra  entity  :offset-assert 16) ; possible types: [res-lump]
+  ((name   string    :offset 8)
+   (length int32     :offset-assert 12)
+   (extra  res-lump  :offset-assert 16) ; possible types: [res-lump]
                                       ; this field is very strange
    )
   :method-count-assert 13
@@ -8140,8 +8141,8 @@
 
 (deftype merc-fragment-control (structure)
   ((unsigned-four-count uint8            :offset-assert 0)
-   (lump-four-count     uint8            :offset-assert 1)
-   (fp-qwc              uint8            :offset-assert 2)
+   (lump-four-count     uint8            :offset-assert 1) ;; merc-vtx
+   (fp-qwc              uint8            :offset-assert 2) ;; merc-fp-header
    (mat-xfer-count      uint8            :offset-assert 3)
    (mat-dest-data       merc-mat-dest :inline :dynamic :offset-assert 4)
    )
@@ -8196,12 +8197,15 @@
   :flag-assert         #x900000010
   )
 
+;; implicitly also the start of an array of mei (merc extra info's)
+;; this means that an offset of 0 will point to this structure itself
+;; an offset of 1 will point to 16 bytes after this structure, etc.
 (deftype merc-extra-info (structure)
   ((envmap-tint-offset    uint8      :offset-assert 0)
    (shader-offset         uint8      :offset-assert 1)
    (texture-scroll-offset uint8      :offset-assert 2)
    (ripple-offset         uint8      :offset-assert 3)
-   (dummy                 uint8 12 :offset-assert 4)
+   (dummy                 uint8 12 :offset-assert 4) ;; pad size to 16 bytes
    )
   :method-count-assert 9
   :size-assert         #x10
@@ -8212,7 +8216,7 @@
 ;; 1 - swap with last effect.
 
 (deftype merc-effect (structure)
-  ((frag-geo         merc-fragment          :offset-assert 0)
+  ((frag-geo         merc-fragment          :offset-assert 0) ;; ?
    (frag-ctrl        merc-fragment-control  :offset-assert 4)
    (blend-data       merc-blend-data        :offset-assert 8)
    (blend-ctrl       merc-blend-ctrl        :offset-assert 12)
@@ -10913,8 +10917,7 @@
   ((joint-id    int32     :offset-assert 4)
    (num-tris    uint32    :offset-assert 8)
    (num-verts   uint32    :offset-assert 12)
-   (vertex-data uint32    :offset-assert 16)
-   ;; todo - this could be wrong
+   (vertex-data (inline-array vector) :offset-assert 16)
    (tris        collide-mesh-tri 1 :inline :offset 32)
    )
   :method-count-assert 16
@@ -20823,7 +20826,7 @@
 (define-extern initialize-eco-by-other (function eco vector none :behavior eco))
 (define-extern add-blue-shake (function vector vector vector vector))
 (define-extern money-init-by-other function)
-(define-extern money-init-by-other-no-bob function)
+(define-extern money-init-by-other-no-bob (function vector vector int float entity none))
 (define-extern fuel-cell-init-by-other function)
 (define-extern fuel-cell-init-as-clone (function handle object none)) ;; TODO - unconfirmed - see beach-rocks
 (define-extern buzzer-init-by-other function)
@@ -23108,52 +23111,36 @@
 
 ;; - Types
 
-; (deftype orb-cache-top (baseplat)
-;   ((active-distance   float      :offset-assert 228)
-;    (inactive-distance float      :offset-assert 232)
-;    (money-list        UNKNOWN 60 :offset-assert 240)
-;    (money-pos-list    UNKNOWN 60 :offset-assert 720)
-;    (money-pos-actual  UNKNOWN 60 :offset-assert 960)
-;    (platform-pos      float      :offset-assert 1200)
-;    (root-pos          float      :offset-assert 1204)
-;    (money             int32      :offset-assert 1208)
-;    (activated         basic      :offset-assert 1212)
-;    )
-;   :method-count-assert 29
-;   :size-assert         #x4c0
-;   :heap-base           #x450
-;   :flag-assert         #x1d045004c0
-;   ;; inherited inspect of baseplat
-;   (:methods
-;     (dummy-9 () none 9)
-;     (dummy-10 () none 10)
-;     (dummy-11 () none 11)
-;     (dummy-12 () none 12)
-;     (dummy-13 () none 13)
-;     (dummy-14 () none 14)
-;     (dummy-15 () none 15)
-;     (dummy-16 () none 16)
-;     (dummy-17 () none 17)
-;     (dummy-18 () none 18)
-;     (dummy-19 () none 19)
-;     (dummy-20 () none 20)
-;     (dummy-21 () none 21)
-;     (dummy-22 () none 22)
-;     (dummy-23 () none 23)
-;     (dummy-24 () none 24)
-;     (dummy-25 () none 25)
-;     (dummy-26 () none 26)
-;     (dummy-27 () none 27)
-;     (dummy-28 () none 28)
-;     )
-;   )
+(deftype orb-cache-top (baseplat)
+  ((active-distance   float      :offset-assert 228)
+   (inactive-distance float      :offset-assert 232)
+   (money-list        handle  60 :offset-assert 240)
+   (money-pos-list    float   60 :offset-assert 720)
+   (money-pos-actual  float   60 :offset-assert 960)
+   (platform-pos      float      :offset-assert 1200)
+   (root-pos          float      :offset-assert 1204)
+   (money             int32      :offset-assert 1208)
+   (activated         symbol     :offset-assert 1212)
+   )
+  :method-count-assert 29
+  :size-assert         #x4c0
+  :heap-base           #x450
+  :flag-assert         #x1d045004c0
+  ;; inherited inspect of baseplat
+  (:methods
+    (pos-logic (_type_ symbol) symbol 27)
+    (calculate-pos (_type_ symbol) none 28)
+    )
+  (:states
+    (orb-cache-top-complete symbol)
+    (orb-cache-top-activate symbol)
+    )
+  )
 
 ;; - Unknowns
 
 (define-extern *orb-cache-top-sg* skeleton-group)
-;;(define-extern orb-cache-top-complete object) ;; unknown type
-;;(define-extern orb-cache-top-activate object) ;; unknown type
-;;(define-extern orb-cache-top-idle object) ;; unknown type
+(define-extern orb-cache-top-idle (state symbol orb-cache-top))
 
 
 ;; ----------------------
