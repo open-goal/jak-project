@@ -852,6 +852,10 @@ bool Debugger::knows_object(const std::string& object_name) const {
  * symbols. It will attempt to detect symbol dereferences (e.g. *active-pool*), symbol references
  * (e.g. 'dead), and a special case to detect #f (outputted as '#f for correctness).
  */
+static inline constexpr auto sym_val_string = "[r15+r14*1";
+static inline constexpr auto sym_addr_string = "[r14";
+static inline constexpr auto op_mov_string = "] mov ";
+static inline constexpr auto sym_false_string = ", r14";
 std::string Debugger::disassemble_x86_with_symbols(int len, u64 base_addr) const {
   std::vector<u8> mem;
   mem.resize(len);
@@ -861,7 +865,6 @@ std::string Debugger::disassemble_x86_with_symbols(int len, u64 base_addr) const
   auto result = disassemble_x86(mem.data(), mem.size(), get_x86_base_addr() + base_addr);
 
   // find symbol values!
-  const auto sym_val_string = "[r15+r14*1";
   size_t pos = 0;
   while ((pos = result.find(sym_val_string, pos)) != std::string::npos) {
     size_t read;
@@ -881,7 +884,6 @@ std::string Debugger::disassemble_x86_with_symbols(int len, u64 base_addr) const
   }
 
   // find symbol references!
-  const auto sym_addr_string = "[r14";
   pos = 0;
   while ((pos = result.find(sym_addr_string, pos)) != std::string::npos) {
     size_t read;
@@ -899,8 +901,6 @@ std::string Debugger::disassemble_x86_with_symbols(int len, u64 base_addr) const
   }
 
   // find #f references!
-  const auto op_mov_string = "] mov ";
-  const auto sym_false_string = ", r14";
   pos = 0;
   while ((pos = result.find(op_mov_string, pos)) != std::string::npos) {
     pos += strlen(op_mov_string);
