@@ -852,10 +852,6 @@ bool Debugger::knows_object(const std::string& object_name) const {
  * symbols. It will attempt to detect symbol dereferences (e.g. *active-pool*), symbol references
  * (e.g. 'dead), and a special case to detect #f (outputted as '#f for correctness).
  */
-static inline constexpr auto sym_val_string = "[r15+r14*1";
-static inline constexpr auto sym_addr_string = "[r14";
-static inline constexpr auto op_mov_string = "] mov ";
-static inline constexpr auto sym_false_string = ", r14";
 std::string Debugger::disassemble_x86_with_symbols(int len, u64 base_addr) const {
   std::vector<u8> mem;
   mem.resize(len);
@@ -865,15 +861,16 @@ std::string Debugger::disassemble_x86_with_symbols(int len, u64 base_addr) const
   auto result = disassemble_x86(mem.data(), mem.size(), get_x86_base_addr() + base_addr);
 
   // find symbol values!
+  const std::string sym_val_string("[r15+r14*1");
   size_t pos = 0;
   while ((pos = result.find(sym_val_string, pos)) != std::string::npos) {
     size_t read;
-    auto sym_addr = std::stol(result.substr(pos + strlen(sym_val_string), 7), &read,
+    auto sym_addr = std::stol(result.substr(pos + sym_val_string.length(), 7), &read,
                               16);  // -0x1234 is 7 characters
 
     auto sym_name = get_symbol_name_from_offset((s32)sym_addr);
     if (sym_name) {
-      result.replace(pos + 1, read + strlen(sym_val_string) - 1,
+      result.replace(pos + 1, read + sym_val_string.length() - 1,
                      sym_name);  // the [ is ignored (result is something like: [identity])
       pos += strlen(sym_name) + 1;
       assert(result.at(pos) == ']');  // maybe?
@@ -884,15 +881,16 @@ std::string Debugger::disassemble_x86_with_symbols(int len, u64 base_addr) const
   }
 
   // find symbol references!
+  const std::string sym_addr_string("[r14");
   pos = 0;
   while ((pos = result.find(sym_addr_string, pos)) != std::string::npos) {
     size_t read;
-    auto sym_addr = std::stol(result.substr(pos + strlen(sym_addr_string), 7), &read,
+    auto sym_addr = std::stol(result.substr(pos + sym_addr_string.length(), 7), &read,
                               16);  // -0x1234 is 7 characters
 
     auto sym_name = get_symbol_name_from_offset((s32)sym_addr);
     if (sym_name) {
-      result.replace(pos, read + strlen(sym_addr_string) + 1, fmt::format("'{}", sym_name));
+      result.replace(pos, read + sym_addr_string.length() + 1, fmt::format("'{}", sym_name));
       pos += strlen(sym_name);
     } else {
       // symbol not found for whatever reason, just use regular disassembly and skip over
@@ -901,12 +899,14 @@ std::string Debugger::disassemble_x86_with_symbols(int len, u64 base_addr) const
   }
 
   // find #f references!
+  const std::string op_mov_string("] mov ");
+  const std::string sym_false_string(", r14");
   pos = 0;
   while ((pos = result.find(op_mov_string, pos)) != std::string::npos) {
-    pos += strlen(op_mov_string);
+    pos += op_mov_string.length();
     auto r14_pos = result.find(sym_false_string, pos);
     if (r14_pos < result.find(op_mov_string, pos)) {
-      result.replace(r14_pos, strlen(sym_false_string),
+      result.replace(r14_pos, sym_false_string.length(),
                      fmt::format(", '{}", get_symbol_name_from_offset(0)));
     }
   }
