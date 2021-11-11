@@ -870,9 +870,10 @@ std::string Debugger::disassemble_x86_with_symbols(int len, u64 base_addr) const
 
     auto sym_name = get_symbol_name_from_offset((s32)sym_addr);
     if (sym_name) {
+      std::string sym_str(sym_name);
       result.replace(pos + 1, read + sym_val_string.length() - 1,
-                     sym_name);  // the [ is ignored (result is something like: [identity])
-      pos += strlen(sym_name) + 1;
+                     sym_str);  // the [ is ignored (result is something like: [identity])
+      pos += sym_str.length() + 1;
       assert(result.at(pos) == ']');  // maybe?
     } else {
       // symbol not found for whatever reason, just use regular disassembly and skip over
@@ -890,8 +891,9 @@ std::string Debugger::disassemble_x86_with_symbols(int len, u64 base_addr) const
 
     auto sym_name = get_symbol_name_from_offset((s32)sym_addr);
     if (sym_name) {
-      result.replace(pos, read + sym_addr_string.length() + 1, fmt::format("'{}", sym_name));
-      pos += strlen(sym_name);
+      std::string sym_str(sym_name);
+      result.replace(pos, read + sym_addr_string.length() + 1, fmt::format("'{}", sym_str));
+      pos += sym_str.length();
     } else {
       // symbol not found for whatever reason, just use regular disassembly and skip over
       pos += 1;
