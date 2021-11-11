@@ -215,7 +215,8 @@ std::vector<BacktraceFrame> Debugger::get_backtrace(u64 rip, u64 rsp) {
   }
 
   while (true) {
-    fmt::print("   rsp: 0x{:x} rip: 0x{:x} (#x{:x})\n", rsp, rip, rip - m_debug_context.base);
+    fmt::print("   rsp: 0x{:x} (#x{:x}) rip: 0x{:x} (#x{:x})\n", rsp, rsp - m_debug_context.base,
+               rip, rip - m_debug_context.base);
     BacktraceFrame frame;
     frame.rip_info = get_rip_info(rip);
     frame.rsp_at_rip = rsp;
@@ -239,16 +240,25 @@ std::vector<BacktraceFrame> Debugger::get_backtrace(u64 rip, u64 rsp) {
 
     } else {
       if (!frame.rip_info.knows_function) {
-        fmt::print("Unknown Function at 0x{:x}\n", rip);
-        break;
-      }
-      if (!frame.rip_info.func_debug) {
+        fmt::print("Unknown Function at 0x{:x} (#x{:x})\n", rip, rip - m_debug_context.base);
+
+        // attempt to backtrace anyway! if this fails then rip
+        u64 next_rip = 0;
+        if (!read_memory_if_safe<u64>(&next_rip, rsp - m_debug_context.base)) {
+          fmt::print("Invalid return address encountered!\n");
+          break;
+        }
+
+        rip = next_rip;
+        rsp = rsp + 8;  // 8 for the call itself.
+        // break;
+      } else if (!frame.rip_info.func_debug) {
         fmt::print("Function {} has no debug info.\n", frame.rip_info.function_name);
         break;
       } else {
         fmt::print("Function {} with no stack frame data.\n", frame.rip_info.function_name);
+        break;
       }
-      break;
     }
 
     bt.push_back(frame);
