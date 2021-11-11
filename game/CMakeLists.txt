@@ -95,7 +95,8 @@ set(RUNTIME_SOURCE
         graphics/opengl_renderer/SkyRenderer.cpp
         graphics/opengl_renderer/SpriteRenderer.cpp
         graphics/opengl_renderer/TextureUploadHandler.cpp
-        graphics/opengl_renderer/TFragment.cpp
+        graphics/opengl_renderer/tfrag/tfrag_unpack.cpp
+        graphics/opengl_renderer/tfrag/TFragment.cpp
         graphics/texture/TextureConverter.cpp
         graphics/texture/TexturePool.cpp
         graphics/pipelines/opengl.cpp

@@ -502,6 +502,7 @@ Mips2C_Line handle_unknown(const std::string& instr_str) {
 
 Mips2C_Line handle_generic_load(const Instruction& i0, const std::string& instr_str) {
   if (!i0.get_src(0).is_imm()) {
+    // might be a load relative to a label
     return handle_unknown(instr_str);
   }
   return {fmt::format("c->{}({}, {}, {});", i0.op_name_to_string(), reg_to_name(i0.get_dst(0)),

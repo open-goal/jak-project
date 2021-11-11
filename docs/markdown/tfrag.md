@@ -20,9 +20,7 @@ As far as I can tell there are 2 or 3 types of culling:
 - clipping in the VU1 program. This _appears_ to work correctly in my port, but doesn't fully work in the PS2 version - if you turn on "fix frustum", you get garbage.  But this might be a part of tfrag I don't have yet.
 
 # Time of Day
-There's a function `time-of-day-interp-colors-scratch` that computes the time-of-day lighting coloring. Right now it's not implemented at all.
-
-That said, there is something else going wrong.  I see that there is a VU UNPACK operation that seems to be placing RGBA's in memory, but it places them on every other quadword.  The in-between quadwords aren't written at all, but are used as RGBA data, leading to random RGBA flashing if you try to use them.  I suspect one of the programs I'm skipping does some additional color calculations and puts stuff there - I stared at this for a while and couldn't figure it out.
+There's a function `time-of-day-interp-colors-scratch` that computes the time-of-day lighting coloring. The 8 w components of times are the multiplier for the 8 precomputed lighting maps.
 
 # Different TFrag Renderers? Not really
 There are different types of drawable trees that are all tfrag:
@@ -47,6 +45,8 @@ I am not sure, but I believe that both near and far versions are capable of rend
 The "far" render has many subroutines.  Currently I have only ported "program 6" and with a modification to remove about half the code. Internally, on VU1, tfrag double buffers GIF data.  One packed will be getting "XGKICK"ed while another is being built. They have a pretty complicated system for switching this buffer (it's not synced to the XTOP UNPACK double buffering stuff, like it was on sprite), but I removed this feature and could get of half the packet building code, which is mostly a duplicate.
 
 This "program 6" is not capable of interpolating the mesh and just draws at one level of detail.  But it is capable of drawing at _different_ levels of detail (at least 2).  I suspect there are other programs for interpolating the mesh and doing color computations.
+
+Annoyingly, even tfragments that are at a single LOD, but border tfragments of a different LOD must have a special interpolation applied to them.
 
 There is at least one other "drawing" program. I tried using program 6 when the game wanted other programs, and surprisingly it drew more stuff. But every now and then, things go wrong and it generates garbage data when running like this.
 
@@ -83,58 +83,3 @@ Sub List:
 - L48
 - L84
 - L102
-
-# Bugs
-There are unimplemented features (visibility, lighting, other code paths in far, all of near, tfrags other than the main tree), and the performance is quite bad, but as far as I can tell everything works!
-
-The one weird looking thing is the missing slivers in between mesheses with different LODs.  Not missing triangles, but when there's a vertex on the high-detail tfrag that should intesect somewhere in the middle of an edge on the low-detail one, the vertex is slightly in the wrong spot. I've seen both overlaps and holes.  I strongly suspect that the mesh interpolation programs should fix this, but aren't running yet. An adjacent high-detail and low-detail mesh _should_ have holes, if the two high-detail versions are "high-res" on their border.
-
-# Performance
-The EE performance is excellent. The "draw" function uses only 2 or 3% CPU.
-
-The performance is very bad on the VU1/GS side. A wide view of sandover puts graphics at around 170%. A few things we can look at:
-
-- A wide view of sandover is 11k triangles of tfrag and **1000** draw calls! We should figure out how to make this number much smaller. If the current approach does actually require this many draw calls, then we will need to change that. PCSX2 uses fewer draw calls, so it is at least possible.  We should also make better tools to figure out _why_ the draw call count is exploding.
-
-- At least the far renderer always draws strips. We should probably use this to our advantage instead of using the very generic "DirectRenderer".
-
-- The VU1 code is pipelined. It should be un-pipelined and rearranged to be a simple, small loop.
-
-- We create GIF tags. We should go straight from the transformation loop to whatever format our renderer likes.
-
-- Assuming we can do the thing above, we should try to move the transformation stuff to a shader.
-
-- If that's still too slow, it may be possible to double buffer the UNPACK and rendering, and move UNPACK to a separate thread.  But this could get tricky to figure out what UNPACKs need to happen before render.
-
-
-# Color Debug
-It's possible to start with program 6. Which should have colors that aren't junk.
-
-Here's a run with a single run of prog 6.
-
-```
-START vif -> NOP (mod 0)
-vif -> STROW (mod 0)
-vif -> STMOD 0b1 (mod 0)
-vif -> UNPACK-V4-8: 4 addr: 117 us: true tops: true (mod 1)
-vif -> STMOD 0b0 (mod 1)
-vif -> UNPACK-V4-8: 3 addr: 129 us: false tops: true (mod 0)
-vif -> UNPACK-V4-16: 5 addr: 0 us: true tops: true (mod 0)
-vif -> UNPACK-V4-32: 10 addr: 9 us: false tops: true (mod 0)
-vif -> STROW (mod 0)
-vif -> STMOD 0b1 (mod 0)
-vif -> UNPACK-V4-16: 14 addr: 75 us: true tops: true (mod 1)
-vif -> STMOD 0b0 (mod 1)
-vif -> STCYCL cl: 2 wl: 1 (mod 0)
-vif -> UNPACK-V3-32: 8 addr: 19 us: false tops: true (mod 0)
-vif -> STCYCL cl: 4 wl: 4 (mod 0)
-vif -> NOP (mod 0)
-START vif -> UNPACK-V4-8: 8 addr: 20 us: true tops: true (mod 0)
-START vif -> MSCAL (mod 0)
-B: vf20 store: [0 0 7f 43] <-- color stores. These are garbage.
-B: vf21 store: [0 0 0 0]
-B: vf22 store: [0 0 80 42]
-B: vf23 store: [d0 a3 81 48]
-.. garbage continues ...
-
-```

@@ -135,9 +135,6 @@ class TFragment : public BucketRenderer {
   void exec_program_6_process_first(const Prog6Inputs& in, Prog6Vars& vars, SharedRenderState* render_state, ScopedProfilerNode& prof);
 
   template <bool DEBUG>
-  void exec_program_6_process_second(const Prog6Inputs& in, Prog6Vars& vars);
-
-  template <bool DEBUG>
   void exec_jumper_L128(const Prog6Inputs& in, Prog6Vars& vars);
 
   template <bool DEBUG>
@@ -178,6 +175,9 @@ class TFragment : public BucketRenderer {
   int m_max_draw = -1;
   bool m_skip_mscals = false;
   bool m_skip_xgkick = false;
+  bool m_prog8_with_prog6 = true;
+  bool m_prog10_with_prog6 = true;
+  bool m_prog18_with_prog6 = true;
   std::string m_frag_debug;
 
   // GS setup data

@@ -18,7 +18,6 @@ u64 execute(void* ctxt) {
   auto* c = (ExecutionContext*)ctxt;
   load_vfs_from_tf_regs(cache.transform_regs, c);
   bool bc = false;
-  u32 call_addr = 0;
   c->daddiu(sp, sp, -128);                          // daddiu sp, sp, -128
   c->sd(ra, 0, sp);                                 // sd ra, 0(sp)
   c->sq(s0, 16, sp);                                // sq s0, 16(sp)
@@ -152,7 +151,7 @@ u64 execute(void* ctxt) {
 
 
   // this is waiting on spad transfer and incrementing wait counts
-  block_11:
+  // block_11:
   /*
   c->lw(t7, 0, t4);                                 // lw t7, 0(t4)
   // nop                                            // sll r0, r0, 0
@@ -179,7 +178,7 @@ u64 execute(void* ctxt) {
 
 
   // tfrag bank loop?
-  block_13:
+  // block_13:
   {
     //c->sw(a1, 16, t4);                                // sw a1, 16(t4)
     u32 madr = c->sgpr64(a1);
@@ -252,7 +251,7 @@ u64 execute(void* ctxt) {
   if (bc) {goto block_23;}                          // branch non-likely
 
 
-  block_20:
+  // block_20:
   /*
   c->lw(ra, 0, t1);                                 // lw ra, 0(t1)
   // nop                                            // sll r0, r0, 0
@@ -278,7 +277,7 @@ u64 execute(void* ctxt) {
    */
 
 
-  block_22:
+  // block_22:
   {
     //c->sw(a3, 128, t1);                               // sw a3, 128(t1)
     u32 sadr = c->sgpr64(a3);
@@ -467,7 +466,7 @@ u64 execute(void* ctxt) {
   if (bc) {goto block_42;}                          // branch non-likely
 
 
-  block_39:
+  // block_39:
   /*
   c->lw(ra, 0, t1);                                 // lw ra, 0(t1)
   // nop                                            // sll r0, r0, 0
@@ -493,7 +492,7 @@ u64 execute(void* ctxt) {
   */
 
 
-  block_41:
+  // block_41:
   {
     //c->sw(a3, 128, t1);                               // sw a3, 128(t1)
     u32 sadr = c->sgpr64(a3);
@@ -602,7 +601,7 @@ u64 execute(void* ctxt) {
   if (bc) {goto block_53;}                          // branch non-likely
 
 
-  block_50:
+  // block_50:
   /*
   c->lw(a0, 0, t1);                                 // lw a0, 0(t1)
   // nop                                            // sll r0, r0, 0
@@ -628,7 +627,7 @@ u64 execute(void* ctxt) {
   */
 
 
-  block_52:
+  // block_52:
   {
     //c->sw(a3, 128, t1);                               // sw a3, 128(t1)
     u32 sadr = c->sgpr64(a3);
@@ -727,7 +726,6 @@ struct Cache {
 u64 execute(void* ctxt) {
   auto* c = (ExecutionContext*)ctxt;
   bool bc = false;
-  u32 call_addr = 0;
   load_vfs_from_tf_regs(cache.transform_regs, c);
   // nop                                            // sll r0, r0, 0
   // nop                                            // sll r0, r0, 0

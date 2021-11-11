@@ -93,6 +93,9 @@ void TFragment::draw_debug_window() {
   }
   ImGui::Checkbox("Skip MSCAL", &m_skip_mscals);
   ImGui::Checkbox("Skip XGKICK", &m_skip_xgkick);
+  ImGui::Checkbox("Prog8 hack", &m_prog8_with_prog6);
+  ImGui::Checkbox("Prog10 hack", &m_prog10_with_prog6);
+  ImGui::Checkbox("Prog18 hack", &m_prog18_with_prog6);
   ImGui::Text("packets: %d", m_stats.tfrag_dma_packets);
   ImGui::Text("frag bytes: %d", m_stats.tfrag_bytes);
   ImGui::Text("errors: %d", m_stats.error_packets);
@@ -108,7 +111,7 @@ void TFragment::draw_debug_window() {
   ImGui::TextUnformatted(m_debug_string.data());
 }
 
-void TFragment::handle_initialization(DmaFollower& dma, SharedRenderState* render_state) {
+void TFragment::handle_initialization(DmaFollower& dma, SharedRenderState* /*render_state*/) {
   // Set up test (different between different renderers)
   auto setup_test = dma.read_and_advance();
   assert(setup_test.vif0() == 0);
@@ -216,7 +219,7 @@ void TFragment::handle_tfrag(const DmaTransfer& dma,
     offset_into_data += 4;
 
     auto code = VifCode(vif);
-    // fmt::print("vif -> {} (mod {})\n", code.print(), stmod);
+    // fmt::print("vif -> {} (mod {}) {}/{} #x{:x}\n", code.print(), stmod, offset_into_data, dma.size_bytes, dma.data_offset);
     switch (code.kind) {
       case VifCode::Kind::UNPACK_V4_16:
         if (DEBUG) {
@@ -592,10 +595,21 @@ void TFragment::handle_mscal(const VifCode& code,
   switch (code.immediate) {
     case 12:
     case 6:
-//    case 8:
-      //    default:
       exec_program_6<DEBUG>(render_state, prof);
       break;
+    case 8:
+      if (m_prog8_with_prog6) {
+        exec_program_6<DEBUG>(render_state, prof);
+      }
+      break;
+    case 10:
+      if (m_prog10_with_prog6) {
+        exec_program_6<DEBUG>(render_state, prof);
+      } break;
+    case 18:
+      if (m_prog18_with_prog6) {
+        exec_program_6<DEBUG>(render_state, prof);
+      } break;
     default:
       //      exec_program_6<DEBUG>(render_state, prof);
       break;
@@ -705,6 +719,8 @@ void TFragment::exec_program_6(SharedRenderState* render_state, ScopedProfilerNo
     ImGui::Text("ints: %d %d %d", vars.vi08, vars.vi09, vars.vi03);
   }
 
+  // fmt::print("vi09: #x{:x} ({})\n", vars.vi09, vars.vi14);
+
   //  fcset 0x0                  |  nop
   //  iaddi vi07, vi00, -0x1     |  nop
   vars.vi07 = -1;
@@ -729,7 +745,6 @@ void TFragment::exec_program_6(SharedRenderState* render_state, ScopedProfilerNo
   } else {
     // L136
     assert(false);
-    exec_program_6_process_second<DEBUG>(inputs, vars);
   }
 
   // because we're doing everything in-sync (no background kicking or uploading),
@@ -1491,7 +1506,7 @@ bool TFragment::exec_jumper_L132(const Prog6Inputs& in,
 }
 
 template <bool DEBUG>
-bool TFragment::exec_jumper_L122(const Prog6Inputs& in,
+bool TFragment::exec_jumper_L122(const Prog6Inputs& /*in*/,
                                  Prog6Vars& vars,
                                  SharedRenderState* render_state,
                                  ScopedProfilerNode& prof) {
@@ -1755,9 +1770,6 @@ void TFragment::XGKICK(u32 addr, SharedRenderState* render_state, ScopedProfiler
                                  UINT32_MAX, render_state, prof);
   }
 }
-
-template <bool DEBUG>
-void TFragment::exec_program_6_process_second(const Prog6Inputs& in, Prog6Vars& vars) {}
 
 std::string TFragData::print() const {
   std::string result;

@@ -8,7 +8,7 @@
 #include "third-party/imgui/imgui.h"
 #include "common/util/FileUtil.h"
 #include "game/graphics/opengl_renderer/SkyRenderer.h"
-#include "game/graphics/opengl_renderer/TFragment.h"
+#include "game/graphics/opengl_renderer/tfrag/TFragment.h"
 
 // for the vif callback
 #include "game/kernel/kmachine.h"

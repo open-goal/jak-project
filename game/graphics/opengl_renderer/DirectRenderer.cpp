@@ -156,14 +156,14 @@ void DirectRenderer::flush_pending(SharedRenderState* render_state, ScopedProfil
   // render!
   // update buffers:
   glBindBuffer(GL_ARRAY_BUFFER, m_ogl.vertex_buffer);
-  glBufferSubData(GL_ARRAY_BUFFER, 0, m_prim_buffer.verts.size() * sizeof(math::Vector<u32, 3>),
+  glBufferSubData(GL_ARRAY_BUFFER, 0, m_prim_buffer.vert_count * sizeof(math::Vector<u32, 3>),
                   m_prim_buffer.verts.data());
   glBindBuffer(GL_ARRAY_BUFFER, m_ogl.color_buffer);
-  glBufferSubData(GL_ARRAY_BUFFER, 0, m_prim_buffer.rgba_u8.size() * sizeof(math::Vector<u8, 4>),
+  glBufferSubData(GL_ARRAY_BUFFER, 0,m_prim_buffer.vert_count * sizeof(math::Vector<u8, 4>),
                   m_prim_buffer.rgba_u8.data());
   if (m_prim_gl_state.texture_enable) {
     glBindBuffer(GL_ARRAY_BUFFER, m_ogl.st_buffer);
-    glBufferSubData(GL_ARRAY_BUFFER, 0, m_prim_buffer.stqs.size() * sizeof(math::Vector<float, 3>),
+    glBufferSubData(GL_ARRAY_BUFFER, 0, m_prim_buffer.vert_count * sizeof(math::Vector<float, 3>),
                     m_prim_buffer.stqs.data());
   }
 
@@ -281,7 +281,8 @@ void DirectRenderer::update_gl_prim(SharedRenderState* render_state) {
                                "alpha_reject"),
           alpha_reject);
     }
-    update_gl_texture(render_state);
+    //update_gl_texture(render_state);
+    m_texture_state.needs_gl_update = true;
   } else {
     if (m_mode == Mode::SKY) {
       render_state->shaders[ShaderId::SKY].activate();
@@ -733,14 +734,6 @@ void DirectRenderer::handle_rgbaq_packed(const u8* data) {
   m_prim_building.rgba_reg[1] = data[4];
   m_prim_building.rgba_reg[2] = data[8];
   m_prim_building.rgba_reg[3] = data[12];
-
-  // hack
-  //  if (m_my_id == BucketId::TFRAG_LEVEL0 || m_my_id == BucketId::TFRAG_LEVEL1) {
-  //    m_prim_building.rgba_reg[0] = 0x70;
-  //    m_prim_building.rgba_reg[1] = 0x70;
-  //    m_prim_building.rgba_reg[2] = 0x70;
-  //    m_prim_building.rgba_reg[3] = 0x70;
-  //  }
 }
 
 void DirectRenderer::handle_xyzf2_packed(const u8* data,
@@ -756,9 +749,6 @@ void DirectRenderer::handle_xyzf2_packed(const u8* data,
 
   u8 f = (upper >> 36);
   bool adc = upper & (1ull << 47);
-  // assert(!adc); todo
-  //   assert(!f);
-
   handle_xyzf2_common(x, y, z, f, render_state, prof, !adc);
 }
 
