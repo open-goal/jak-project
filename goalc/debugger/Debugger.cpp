@@ -562,15 +562,15 @@ bool Debugger::get_symbol_value(const std::string& sym_name, u32* output) {
 }
 
 /*!
- * Get the value of a symbol by name. Returns if the symbol exists and populates output if it does.
+ * Get the value of a symbol by name. Returns NULL if symbol does not exist.
  */
-const char* Debugger::get_symbol_name_from_offset(s32 ofs) {
+const char* Debugger::get_symbol_name_from_offset(s32 ofs) const {
   assert(is_valid());
   auto kv = m_symbol_offset_to_name_map.find(ofs);
   if (kv != m_symbol_offset_to_name_map.end()) {
     return kv->second.c_str();
   }
-  return "<invalid symbol offset>";
+  return NULL;
 }
 
 /*!
@@ -845,4 +845,71 @@ DebugInfo& Debugger::get_debug_info_for_object(const std::string& object_name) {
 
 bool Debugger::knows_object(const std::string& object_name) const {
   return m_debug_info.find(object_name) != m_debug_info.end();
+}
+
+/*!
+ * Do x86 disassembly at the specified address and then do some basic string replacement for
+ * symbols. It will attempt to detect symbol dereferences (e.g. *active-pool*), symbol references
+ * (e.g. 'dead), and a special case to detect #f (outputted as '#f for correctness).
+ */
+std::string Debugger::disassemble_x86_with_symbols(int len, u64 base_addr) const {
+  std::vector<u8> mem;
+  mem.resize(len);
+
+  read_memory(mem.data(), len, base_addr);
+
+  auto result = disassemble_x86(mem.data(), mem.size(), get_x86_base_addr() + base_addr);
+
+  // find symbol values!
+  const auto sym_val_string = "[r15+r14*1";
+  size_t pos = 0;
+  while ((pos = result.find(sym_val_string, pos)) != std::string::npos) {
+    size_t read;
+    auto sym_addr = std::stol(result.substr(pos + strlen(sym_val_string), 7), &read,
+                              16);  // -0x1234 is 7 characters
+
+    auto sym_name = get_symbol_name_from_offset((s32)sym_addr);
+    if (sym_name) {
+      result.replace(pos + 1, read + strlen(sym_val_string) - 1,
+                     sym_name);  // the [ is ignored (result is something like: [identity])
+      pos += strlen(sym_name) + 1;
+      assert(result.at(pos) == ']');  // maybe?
+    } else {
+      // symbol not found for whatever reason, just use regular disassembly and skip over
+      pos += 1;
+    }
+  }
+
+  // find symbol references!
+  const auto sym_addr_string = "[r14";
+  pos = 0;
+  while ((pos = result.find(sym_addr_string, pos)) != std::string::npos) {
+    size_t read;
+    auto sym_addr = std::stol(result.substr(pos + strlen(sym_addr_string), 7), &read,
+                              16);  // -0x1234 is 7 characters
+
+    auto sym_name = get_symbol_name_from_offset((s32)sym_addr);
+    if (sym_name) {
+      result.replace(pos, read + strlen(sym_addr_string) + 1, fmt::format("'{}", sym_name));
+      pos += strlen(sym_name);
+    } else {
+      // symbol not found for whatever reason, just use regular disassembly and skip over
+      pos += 1;
+    }
+  }
+
+  // find #f references!
+  const auto op_mov_string = "] mov ";
+  const auto sym_false_string = ", r14";
+  pos = 0;
+  while ((pos = result.find(op_mov_string, pos)) != std::string::npos) {
+    pos += strlen(op_mov_string);
+    auto r14_pos = result.find(sym_false_string, pos);
+    if (r14_pos < result.find(op_mov_string, pos)) {
+      result.replace(r14_pos, strlen(sym_false_string),
+                     fmt::format(", '{}", get_symbol_name_from_offset(0)));
+    }
+  }
+
+  return result;
 }
