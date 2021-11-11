@@ -215,7 +215,7 @@ std::vector<BacktraceFrame> Debugger::get_backtrace(u64 rip, u64 rsp) {
   }
 
   while (true) {
-    fmt::print("   rsp: 0x{:x} rip: 0x{:x}\n", rsp, rip);
+    fmt::print("   rsp: 0x{:x} rip: 0x{:x} (#x{:x})\n", rsp, rip, rip - m_debug_context.base);
     BacktraceFrame frame;
     frame.rip_info = get_rip_info(rip);
     frame.rsp_at_rip = rsp;
