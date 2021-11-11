@@ -19,8 +19,7 @@
 
 // size of the sky texture is 64x96, but it's actually a 64x64 (clouds) and a 32x32 (sky)
 
-SkyTextureHandler::SkyTextureHandler(const std::string& name, BucketId my_id)
-    : BucketRenderer(name, my_id) {
+SkyBlender::SkyBlender() {
   // generate textures for sky blending
   glGenFramebuffers(2, m_framebuffers);
   glGenTextures(2, m_textures);
@@ -70,22 +69,16 @@ SkyTextureHandler::SkyTextureHandler(const std::string& name, BucketId my_id)
   m_vertex_data[5].y = 1;
 }
 
-SkyTextureHandler::~SkyTextureHandler() {
+SkyBlender::~SkyBlender() {
   glDeleteFramebuffers(2, m_framebuffers);
   glDeleteBuffers(1, &m_gl_vertex_buffer);
   glDeleteTextures(2, m_textures);
 }
 
-void SkyTextureHandler::handle_sky_copies(DmaFollower& dma,
-                                          SharedRenderState* render_state,
-                                          ScopedProfilerNode& prof) {
-  if (!m_enabled) {
-    while (dma.current_tag().qwc == 6) {
-      dma.read_and_advance();
-      dma.read_and_advance();
-    }
-    return;
-  }
+SkyBlender::Stats SkyBlender::do_sky_blends(DmaFollower& dma,
+                                            SharedRenderState* render_state,
+                                            ScopedProfilerNode& prof) {
+  Stats stats;
   GLuint vao;
   glGenVertexArrays(1, &vao);
   glBindVertexArray(vao);
@@ -201,15 +194,15 @@ void SkyTextureHandler::handle_sky_copies(DmaFollower& dma,
 
     if (buffer_idx == 0) {
       if (is_first_draw) {
-        m_stats.sky_draws++;
+        stats.sky_draws++;
       } else {
-        m_stats.sky_blends++;
+        stats.sky_blends++;
       }
     } else {
       if (is_first_draw) {
-        m_stats.cloud_draws++;
+        stats.cloud_draws++;
       } else {
-        m_stats.cloud_blends++;
+        stats.cloud_blends++;
       }
     }
   }
@@ -241,11 +234,32 @@ void SkyTextureHandler::handle_sky_copies(DmaFollower& dma,
   glBindFramebuffer(GL_FRAMEBUFFER, old_framebuffer);
   glBindVertexArray(0);
   glDeleteVertexArrays(1, &vao);
+
+  return stats;
 }
 
-void SkyTextureHandler::render(DmaFollower& dma,
-                               SharedRenderState* render_state,
-                               ScopedProfilerNode& prof) {
+SkyBlendHandler::SkyBlendHandler(const std::string& name,
+                                 BucketId my_id,
+                                 std::shared_ptr<SkyBlender> shared_blender)
+    : BucketRenderer(name, my_id), m_shared_blender(shared_blender) {}
+
+void SkyBlendHandler::handle_sky_copies(DmaFollower& dma,
+                                        SharedRenderState* render_state,
+                                        ScopedProfilerNode& prof) {
+  if (!m_enabled) {
+    while (dma.current_tag().qwc == 6) {
+      dma.read_and_advance();
+      dma.read_and_advance();
+    }
+    return;
+  } else {
+    m_stats = m_shared_blender->do_sky_blends(dma, render_state, prof);
+  }
+}
+
+void SkyBlendHandler::render(DmaFollower& dma,
+                             SharedRenderState* render_state,
+                             ScopedProfilerNode& prof) {
   m_stats = {};
   // First thing should be a NEXT with two nops. this is a jump from buckets to sprite data
   auto data0 = dma.read_and_advance();
@@ -288,7 +302,7 @@ void SkyTextureHandler::render(DmaFollower& dma,
   assert(dma.current_tag_offset() == render_state->next_bucket);
 }
 
-void SkyTextureHandler::draw_debug_window() {
+void SkyBlendHandler::draw_debug_window() {
   ImGui::Separator();
   ImGui::Text("Draw/Blend ( sky ): %d/%d", m_stats.sky_draws, m_stats.sky_blends);
   ImGui::Text("Draw/Blend (cloud): %d/%d", m_stats.cloud_draws, m_stats.cloud_blends);

@@ -2,7 +2,7 @@
 
 #include <string>
 #include <memory>
-#include "game/graphics/dma/dma_chain_read.h"
+#include "common/dma/dma_chain_read.h"
 #include "game/graphics/opengl_renderer/Shader.h"
 #include "game/graphics/texture/TexturePool.h"
 #include "game/graphics/opengl_renderer/Profiler.h"
@@ -15,11 +15,17 @@ enum class BucketId {
   BUCKET1 = 1,
   SKY_DRAW = 3,
   TFRAG_TEX_LEVEL0 = 5,
+  TFRAG_TEX_LEVEL1 = 12,
   SHRUB_TEX_LEVEL0 = 19,
+  SHRUB_TEX_LEVEL1 = 25,
   ALPHA_TEX_LEVEL0 = 31,
-  SKY_LEVEL0 = 32,
+  SKY_BLEND_LEVEL0 = 32,
+  ALPHA_TEX_LEVEL1 = 38,
+  SKY_BLEND_LEVEL1 = 39,
   PRIS_TEX_LEVEL0 = 48,
+  PRIS_TEX_LEVEL1 = 51,
   WATER_TEX_LEVEL0 = 57,
+  WATER_TEX_LEVEL1 = 60,
   // ...
   PRE_SPRITE_TEX = 65,  // maybe it's just common textures?
   SPRITE = 66,

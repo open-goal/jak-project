@@ -60,20 +60,12 @@
   )
 
 ;; failed to figure out what this is:
-(let
-  ((v1-1
-    (new 'static 'skeleton-group
-     :art-group-name "generic-button"
-     :bounds (new 'static 'vector :w 12288.0)
-     :version #x6
-     )
-    )
-   )
-  (set! (-> v1-1 jgeo) 0)
-  (set! (-> v1-1 janim) 2)
-  (set! (-> v1-1 mgeo 0) (the-as uint 1))
-  (set! (-> v1-1 lod-dist 0) 4095996000.0)
-  (set! *generic-button-sg* v1-1)
+(defskelgroup *generic-button-sg* generic-button
+  0
+  2
+  ((1 (meters 999999)))
+  :bounds (static-spherem 0 0 0 3)
+  :longest-edge (meters 0)
   )
 
 ;; definition for method 30 of type basebutton
@@ -122,8 +114,8 @@
           1024
           0
           0
-          (the-as uint 1)
-          (the-as vector #t)
+          1
+          #t
           )
          (go-virtual basebutton-going-down)
          )
@@ -136,8 +128,8 @@
       1024
       0
       0
-      (the-as uint 1)
-      (the-as vector #t)
+      1
+      #t
       )
      (go-virtual basebutton-going-down)
      )
@@ -189,8 +181,8 @@
        1024
        0
        0
-       (the-as uint 1)
-       (the-as vector #t)
+       1
+       #t
        )
       (go-virtual basebutton-going-up)
       )
@@ -268,8 +260,8 @@
        1024
        0
        0
-       (the-as uint 1)
-       (the-as vector #t)
+       1
+       #t
        )
       (go-virtual basebutton-going-up)
       )
@@ -316,8 +308,8 @@
       1024
       0
       0
-      (the-as uint 1)
-      (the-as vector #t)
+      1
+      #t
       )
      (go-virtual basebutton-going-up)
      )
@@ -356,8 +348,8 @@
       1024
       0
       0
-      (the-as uint 1)
-      (the-as vector #t)
+      1
+      #t
       )
      (go-virtual basebutton-going-down)
      )
@@ -486,7 +478,7 @@
 
 ;; definition for method 26 of type basebutton
 (defmethod TODO-RENAME-26 basebutton ((obj basebutton))
-  (dummy-14 obj *generic-button-sg* '())
+  (initialize-skeleton obj *generic-button-sg* '())
   (logior! (-> obj skel status) 1)
   (ja-channel-set! 1)
   (cond
@@ -708,10 +700,10 @@
   :size-assert         #xc0
   :flag-assert         #x18005000c0
   (:methods
-    (unknown-state00 () _type_ :state 20)
-    (dummy-21 () none 21)
+    (idle () _type_ :state 20)
+    (active () _type_ :state 21)
     (use (int level) _type_ :state 22)
-    (dummy-23 () none 23)
+    (hidden () _type_ :state 23)
     )
   )
 
@@ -740,7 +732,7 @@
    (set! (-> self state-time) (-> *display* base-frame-counter))
    (when (not arg1)
     (process-release? *target*)
-    (go-virtual unknown-state00)
+    (go-virtual idle)
     )
    (let ((s4-0 (new 'stack-no-clear 'event-message-block)))
     (set! (-> s4-0 from) self)
