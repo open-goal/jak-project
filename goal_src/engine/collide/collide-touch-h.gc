@@ -7,24 +7,25 @@
 
 (declare-type touching-shapes-entry structure)
 
-;; decomp begins
+;; DECOMP BEGINS
 
 (deftype touching-prim (structure)
-  ((cprim    collide-shape-prim                      :offset-assert 0) ;; a big guess, there's a few that meet this name
-   (has-tri? symbol                     :offset-assert 4)
-   (tri      collide-tri-result :inline :offset-assert 16)
+  ((cprim    collide-shape-prim         :offset-assert   0)
+   (has-tri? symbol                     :offset-assert   4)
+   (tri      collide-tri-result :inline :offset-assert  16)
    )
   :method-count-assert 9
   :size-assert         #x64
   :flag-assert         #x900000064
   )
 
+
 (deftype touching-prims-entry (structure)
-  ((next       touching-prims-entry         :offset-assert 0)
-   (prev       touching-prims-entry         :offset-assert 4)
-   (allocated? symbol                        :offset-assert 8)
-   (u          float                        :offset-assert 12)
-   (prim1      touching-prim        :inline :offset-assert 16)
+  ((next       touching-prims-entry         :offset-assert   0)
+   (prev       touching-prims-entry         :offset-assert   4)
+   (allocated? symbol                       :offset-assert   8)
+   (u          float                        :offset-assert  12)
+   (prim1      touching-prim        :inline :offset-assert  16)
    (prim2      touching-prim        :inline :offset-assert 128)
    )
   :method-count-assert 13
@@ -38,75 +39,75 @@
     )
   )
 
+
 (deftype touching-prims-entry-pool (structure)
-  ((head  touching-prims-entry    :offset-assert 0)
-   (nodes touching-prims-entry 64 :inline :offset-assert 16)
+  ((head  touching-prims-entry            :offset-assert   0)
+   (nodes touching-prims-entry 64 :inline :offset-assert  16)
    )
   :method-count-assert 13
   :size-assert         #x3c10
   :flag-assert         #xd00003c10
   (:methods
-   (new (symbol type) _type_ 0)
-   (dummy-9 () none 9)
-   (dummy-10 () none 10)
-   (init-list! (_type_) none 11)
-   (dummy-12 () none 12)
-   )
+    (new (symbol type) _type_ 0)
+    (dummy-9 () none 9)
+    (dummy-10 () none 10)
+    (init-list! (_type_) none 11)
+    (dummy-12 () none 12)
+    )
   )
 
+
 (defmethod init-list! touching-prims-entry-pool ((obj touching-prims-entry-pool))
-  "Initialize all entries to be not allocated and in a linked list."
   (let ((prev (the-as touching-prims-entry #f)))
-    (let ((current (the-as touching-prims-entry (-> obj nodes))))
-      (set! (-> obj head) current)
-      (countdown (a0-1 64)
-        (set! (-> current prev) prev)
-        (let ((next (&+ current 240)))
-          (set! (-> current next) (the-as touching-prims-entry next))
-          (set! (-> current allocated?) #f)
-          (set! prev current)
-          (set! current (the-as touching-prims-entry next))
-          )
-        )
+   (let ((current (the-as touching-prims-entry (-> obj nodes))))
+    (set! (-> obj head) current)
+    (countdown (a0-1 64)
+     (set! (-> current prev) prev)
+     (let ((next (&+ current 240)))
+      (set! (-> current next) (the-as touching-prims-entry next))
+      (set! (-> current allocated?) #f)
+      (set! prev current)
+      (set! current (the-as touching-prims-entry next))
       )
-    (set! (-> prev next) #f)
+     )
     )
+   (set! (-> prev next) #f)
+   )
   (none)
   )
 
-(defmethod new touching-prims-entry-pool ((allocation symbol) (type-to-make type))
-  "Allocate a new touching-prims-entry-pool"
-
-  ;; Note - the original code passed (-> type-to-make size) as an argument.
-  ;; however, the new method of structure doesn't have this argument.
-  ;; it uses the same value for the size so it doesn't really matter.
-  (let ((obj (the touching-prims-entry-pool ((method-of-type structure new)
-                                             allocation
-                                             type-to-make
-                                             ;; (-> type-to-make size) see note
-                                             )
-                  )))
-    (init-list! obj)
-    obj
+(defmethod
+  new
+  touching-prims-entry-pool
+  ((allocation symbol) (type-to-make type))
+  (let ((t9-0 (method-of-type structure new))
+        (v1-1 type-to-make)
+        )
+   (-> type-to-make size)
+   (let ((gp-0 (t9-0 allocation v1-1)))
+    ((method-of-type touching-prims-entry-pool init-list!)
+     (the-as touching-prims-entry-pool gp-0)
+     )
+    (the-as touching-prims-entry-pool gp-0)
     )
+   )
   )
 
 (deftype touching-shapes-entry (structure)
-  ((cshape1   collide-shape                 :offset-assert 0)
-   (cshape2   collide-shape                 :offset-assert 4)
-   (resolve-u int8                  :offset-assert 8)
-   (head      touching-prims-entry  :offset-assert 12)
+  ((cshape1   collide-shape         :offset-assert   0)
+   (cshape2   collide-shape         :offset-assert   4)
+   (resolve-u int8                  :offset-assert   8)
+   (head      touching-prims-entry  :offset-assert  12)
    )
-  :allow-misaligned
-  :method-count-assert 18
+  :allow-misaligned  :method-count-assert 18
   :size-assert         #x10
   :flag-assert         #x1200000010
   (:methods
     (dummy-9 () none 9)
     (touched-shape (_type_ collide-shape-moving) collide-shape 10)
     (dummy-11 () none 11)
-    (prims-touching? (_type_ collide-shape-moving uint) touching-prims-entry 12) ; this one!
-    (dummy-13 () none 13)
+    (prims-touching? (_type_ collide-shape-moving uint) touching-prims-entry 12)
+    (dummy-13 (_type_ control-info int int) none 13)
     (dummy-14 () none 14)
     (dummy-15 () none 15)
     (get-head (_type_) touching-prims-entry 16)
@@ -114,10 +115,11 @@
     )
   )
 
+
 (deftype touching-list (structure)
-  ((num-touching-shapes int32      :offset-assert 0)
-   (resolve-u           int8       :offset-assert 4)
-   (touching-shapes     touching-shapes-entry 32 :inline :offset-assert 8)
+  ((num-touching-shapes int32                            :offset-assert   0)
+   (resolve-u           int8                             :offset-assert   4)
+   (touching-shapes     touching-shapes-entry 32 :inline :offset-assert   8)
    )
   :method-count-assert 15
   :size-assert         #x208
@@ -133,29 +135,37 @@
     )
   )
 
+
 (defmethod new touching-list ((allocation symbol) (type-to-make type))
-  "See note in touching-prims-entry-pool"
-  (let ((obj (the touching-list ((method-of-type structure new)
-                                 allocation
-                                 type-to-make
-                                 ;; (-> type-to-make size) see note
-                                 )
-                  )))
+  (let ((t9-0 (method-of-type structure new))
+        (v1-1 type-to-make)
+        )
+   (-> type-to-make size)
+   (let ((obj (the-as touching-list (t9-0 allocation v1-1))))
     (set! (-> obj num-touching-shapes) 0)
     (set! (-> obj resolve-u) 0)
     obj
     )
+   )
   )
 
 (defmethod get-head touching-shapes-entry ((obj touching-shapes-entry))
   (-> obj head)
   )
 
-(defmethod unknown1 touching-shapes-entry ((obj touching-shapes-entry) (arg0 (pointer uint32)))
+(defmethod
+  unknown1
+  touching-shapes-entry
+  ((obj touching-shapes-entry) (arg0 (pointer uint32)))
   (-> arg0 0)
   )
 
+(define-perm *touching-prims-entry-pool* touching-prims-entry-pool
+  (new 'global 'touching-prims-entry-pool)
+  )
 
-(define-perm *touching-prims-entry-pool* touching-prims-entry-pool (new 'global 'touching-prims-entry-pool))
 (define-perm *touching-list* touching-list (new 'global 'touching-list))
+
+
+
 

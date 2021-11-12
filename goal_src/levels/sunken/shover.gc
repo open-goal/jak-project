@@ -38,66 +38,63 @@
    (case arg2 
     (('touch 'attack)
       (when (= (-> arg0 type) target)
-       (-> arg3 param 0)
-       (let ((t9-0 (method-of-type touching-shapes-entry dummy-13)))
-        (-> *target* control)
-        1
-        0
-        (when (t9-0)
-         (let ((s4-0 (new 'stack 'attack-info)))
-          (let ((t9-2 (method-of-object (-> self root-override) dummy-41)))
-           (-> self shove-up)
-           (t9-2)
-           )
-          (level-hint-spawn
-           (game-text-id sunken-take-it-easy-hot-pipes)
-           "sksp0134"
-           (the-as entity #f)
-           *entity-pool*
-           (game-task none)
-           )
-          (cond
-           ((or
-             (= (-> *target* control unknown-surface00 mode) 'air)
-             (>=
-              (+ (-> *display* base-frame-counter) -60)
-              (-> *target* control unknown-dword10)
-              )
-             (< 0.75 (-> *target* control poly-normal y))
+       (when
+        ((method-of-type touching-shapes-entry dummy-13)
+         (the-as touching-shapes-entry (-> arg3 param 0))
+         (-> *target* control)
+         1
+         0
+         )
+        (let ((s4-0 (new 'stack 'attack-info)))
+         (dummy-41 (-> self root-override) s4-0 (-> self shove-up))
+         (level-hint-spawn
+          (game-text-id sunken-take-it-easy-hot-pipes)
+          "sksp0134"
+          (the-as entity #f)
+          *entity-pool*
+          (game-task none)
+          )
+         (cond
+          ((or
+            (= (-> *target* control unknown-surface00 mode) 'air)
+            (>=
+             (+ (-> *display* base-frame-counter) -60)
+             (-> *target* control unknown-dword10)
              )
-            (let ((a1-6 (new 'stack-no-clear 'event-message-block)))
-             (set! (-> a1-6 from) self)
-             (set! (-> a1-6 num-params) 2)
-             (set! (-> a1-6 message) 'attack-or-shove)
-             (set! (-> a1-6 param 0) (-> arg3 param 0))
-             (let ((v1-22 (new 'static 'attack-info :mask #xa2)))
-              (set! (-> v1-22 mode) 'burn)
-              (set! (-> v1-22 vector quad) (-> s4-0 vector quad))
-              (set! (-> v1-22 shove-up) (-> s4-0 shove-up))
-              (set! (-> a1-6 param 1) (the-as uint v1-22))
-              )
-             (send-event-function arg0 a1-6)
-             )
+            (< 0.75 (-> *target* control poly-normal y))
             )
-           (else
-            (let ((a1-7 (new 'stack-no-clear 'event-message-block)))
-             (set! (-> a1-7 from) self)
-             (set! (-> a1-7 num-params) 2)
-             (set! (-> a1-7 message) 'attack-or-shove)
-             (set! (-> a1-7 param 0) (-> arg3 param 0))
-             (let ((v1-26 (new 'static 'attack-info :mask #x8e2)))
-              (set! (-> v1-26 mode) 'burn)
-              (set! (-> v1-26 shove-up) 0.0)
-              (set! (-> v1-26 shove-back) 8192.0)
-              (set!
-               (-> v1-26 vector quad)
-               (-> *target* control poly-normal quad)
-               )
-              (set! (-> v1-26 angle) 'shove)
-              (set! (-> a1-7 param 1) (the-as uint v1-26))
-              )
-             (send-event-function arg0 a1-7)
+           (let ((a1-6 (new 'stack-no-clear 'event-message-block)))
+            (set! (-> a1-6 from) self)
+            (set! (-> a1-6 num-params) 2)
+            (set! (-> a1-6 message) 'attack-or-shove)
+            (set! (-> a1-6 param 0) (-> arg3 param 0))
+            (let ((v1-22 (new 'static 'attack-info :mask #xa2)))
+             (set! (-> v1-22 mode) 'burn)
+             (set! (-> v1-22 vector quad) (-> s4-0 vector quad))
+             (set! (-> v1-22 shove-up) (-> s4-0 shove-up))
+             (set! (-> a1-6 param 1) (the-as uint v1-22))
              )
+            (send-event-function arg0 a1-6)
+            )
+           )
+          (else
+           (let ((a1-7 (new 'stack-no-clear 'event-message-block)))
+            (set! (-> a1-7 from) self)
+            (set! (-> a1-7 num-params) 2)
+            (set! (-> a1-7 message) 'attack-or-shove)
+            (set! (-> a1-7 param 0) (-> arg3 param 0))
+            (let ((v1-26 (new 'static 'attack-info :mask #x8e2)))
+             (set! (-> v1-26 mode) 'burn)
+             (set! (-> v1-26 shove-up) 0.0)
+             (set! (-> v1-26 shove-back) 8192.0)
+             (set!
+              (-> v1-26 vector quad)
+              (-> *target* control poly-normal quad)
+              )
+             (set! (-> v1-26 angle) 'shove)
+             (set! (-> a1-7 param 1) (the-as uint v1-26))
+             )
+            (send-event-function arg0 a1-7)
             )
            )
           )
@@ -112,7 +109,7 @@
   )
 
 (defmethod copy-defaults! shover ((obj shover) (arg0 res-lump))
-  (local-vars (sv-16 int))
+  (local-vars (sv-16 res-tag))
   (set! (-> obj shove-up) (res-lump-float arg0 'shove :default 12288.0))
   (let ((s3-0 (res-lump-value arg0 'collision-mesh-id uint128))
         (s4-0
@@ -154,16 +151,10 @@
     (go process-drawable-art-error "no path")
     )
    )
-  (set! sv-16 0)
+  (set! sv-16 (new 'static 'res-tag))
   (let
    ((v1-23
-     (res-lump-data
-      arg0
-      'trans-offset
-      (pointer float)
-      :tag-ptr
-      (the-as (pointer res-tag) (& sv-16))
-      )
+     (res-lump-data arg0 'trans-offset (pointer float) :tag-ptr (& sv-16))
      )
     )
    (when v1-23
