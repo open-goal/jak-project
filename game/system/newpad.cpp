@@ -237,6 +237,9 @@ void update_gamepads() {
   for (const auto& [button, idx] : gamepad_map) {
     g_gamepad_buttons[(int)button] = state.buttons[idx];
   }
+
+  g_gamepad_buttons[(int)Button::L2] = state.axes[GLFW_GAMEPAD_AXIS_LEFT_TRIGGER] > 0;
+  g_gamepad_buttons[(int)Button::R2] = state.axes[GLFW_GAMEPAD_AXIS_RIGHT_TRIGGER] > 0;
 }
 
 };  // namespace Pad

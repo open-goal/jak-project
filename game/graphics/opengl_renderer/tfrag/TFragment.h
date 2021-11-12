@@ -44,10 +44,14 @@ class TFragment : public BucketRenderer {
   void draw_debug_window() override;
 
  private:
-  void handle_initialization(DmaFollower& dma, SharedRenderState* render_state);
+  void handle_initialization(DmaFollower& dma,
+                             SharedRenderState* render_state,
+                             ScopedProfilerNode& prof);
 
   template <bool DEBUG>
-  void handle_tfrag(const DmaTransfer& dma, SharedRenderState* render_state, ScopedProfilerNode& prof);
+  void handle_tfrag(const DmaTransfer& dma,
+                    SharedRenderState* render_state,
+                    ScopedProfilerNode& prof);
 
   int handle_unpack_v4_8_mode0(const VifCode& code,
                                const DmaTransfer& dma,
@@ -87,8 +91,6 @@ class TFragment : public BucketRenderer {
     Vector4f vf04_cam_mat_x;
     Vector4f vf07_cam_mat_y;
     Vector4f vf08_cam_mat_z;
-
-
   };
 
   struct Prog6Vars {
@@ -110,7 +112,7 @@ class TFragment : public BucketRenderer {
     u16 vi06_kick_zone_ptr;
     u16 vi10;
     u16 vi11;
-    u16 vi12; // seems to be gs loop count (dverts) - 0x80.
+    u16 vi12;  // seems to be gs loop count (dverts) - 0x80.
     u16 vi13;
     Vector4f vf09_cam_trans;
     Vector4f vf12_root_pos_0;  // position a, 0
@@ -132,13 +134,17 @@ class TFragment : public BucketRenderer {
   };
 
   template <bool DEBUG>
-  void exec_program_6_process_first(const Prog6Inputs& in, Prog6Vars& vars, SharedRenderState* render_state, ScopedProfilerNode& prof);
+  void exec_program_6_process_first(const Prog6Inputs& in,
+                                    Prog6Vars& vars,
+                                    SharedRenderState* render_state,
+                                    ScopedProfilerNode& prof);
 
   template <bool DEBUG>
   void exec_jumper_L128(const Prog6Inputs& in, Prog6Vars& vars);
 
   template <bool DEBUG>
-  bool exec_jumper_L129(const Prog6Inputs& in, Prog6Vars& vars,
+  bool exec_jumper_L129(const Prog6Inputs& in,
+                        Prog6Vars& vars,
                         SharedRenderState* render_state,
                         ScopedProfilerNode& prof);
 
@@ -146,7 +152,8 @@ class TFragment : public BucketRenderer {
   void exec_jumper_L6A1(const Prog6Inputs& in, Prog6Vars& vars);
 
   template <bool DEBUG>
-  bool exec_jumper_L130(const Prog6Inputs& in, Prog6Vars& vars,
+  bool exec_jumper_L130(const Prog6Inputs& in,
+                        Prog6Vars& vars,
                         SharedRenderState* render_state,
                         ScopedProfilerNode& prof);
 
@@ -154,7 +161,8 @@ class TFragment : public BucketRenderer {
   void exec_jumper_L6B0(const Prog6Inputs& in, Prog6Vars& vars);
 
   template <bool DEBUG>
-  bool exec_jumper_L131(const Prog6Inputs& in, Prog6Vars& vars,
+  bool exec_jumper_L131(const Prog6Inputs& in,
+                        Prog6Vars& vars,
                         SharedRenderState* render_state,
                         ScopedProfilerNode& prof);
 
@@ -162,13 +170,16 @@ class TFragment : public BucketRenderer {
   void exec_jumper_L6BF(const Prog6Inputs& in, Prog6Vars& vars);
 
   template <bool DEBUG>
-  bool exec_jumper_L132(const Prog6Inputs& in, Prog6Vars& vars,
+  bool exec_jumper_L132(const Prog6Inputs& in,
+                        Prog6Vars& vars,
                         SharedRenderState* render_state,
                         ScopedProfilerNode& prof);
 
   template <bool DEBUG>
-  bool exec_jumper_L122(const Prog6Inputs& in, Prog6Vars& vars, SharedRenderState* render_state, ScopedProfilerNode& prof);
-
+  bool exec_jumper_L122(const Prog6Inputs& in,
+                        Prog6Vars& vars,
+                        SharedRenderState* render_state,
+                        ScopedProfilerNode& prof);
 
   std::string m_debug_string;
   bool m_extra_debug = false;
@@ -233,8 +244,8 @@ class TFragment : public BucketRenderer {
   TFragJumper m_next_block = TFragJumper::INVALID;
   TFragJumper m_ret_block = TFragJumper::INVALID;
   bool m_clip_and_3ffff = false;
-  Vector4f m_acc; // todo, probably rearrange this so acc stays entirely in part0 or part1?
-  float m_q; // todo, probably regroup
+  Vector4f m_acc;  // todo, probably rearrange this so acc stays entirely in part0 or part1?
+  float m_q;       // todo, probably regroup
 
   enum TFragProgMem {
     TFragSetup = 0,

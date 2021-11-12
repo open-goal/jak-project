@@ -120,15 +120,16 @@
 (defun wasd-camera-update ()
   (let ((local-trans (new-stack-vector0))
         (trans *wasd-camera-transform*)
+        (fast-mode (cpad-hold? 0 r2))
         (pad-idx 0))
     ;; circle/square move camera relative x (left and right)
     (set! (-> local-trans x)
           (cond
             ((cpad-hold? 0 circle)
-             -80.0
+             -1600.0
              )
             ((cpad-hold? 0 square)
-             80.0
+             1600.0
              )
             (else
               0.0
@@ -155,6 +156,10 @@
           )
     (set! (-> local-trans w) 1.0)
     
+    (when fast-mode
+      (vector-float*! local-trans local-trans 10.)
+      )
+    
     ;; rotate this into world frame
     (let ((inv-cam-rot (new-stack-vector0))
           (cam-rot-mat (new-stack-matrix0)))
@@ -174,25 +179,28 @@
     (set! (-> trans trans w) 1.0)
     
     ;; global translation
-    (if (cpad-hold? 0 l1)
-        (set! (-> trans trans y) (+ 2000.0 (-> trans trans y)))
-        )
-    (if (cpad-hold? 0 r1)
-        (set! (-> trans trans y) (+ -2000.0 (-> trans trans y)))
-        )
+    (let ((diff (if fast-mode 10000.0 2000.0)))
+      (if (cpad-hold? 0 l1)
+          (set! (-> trans trans y) (+ diff (-> trans trans y)))
+          )
+      (if (cpad-hold? 0 r1)
+          (set! (-> trans trans y) (+ (- diff) (-> trans trans y)))
+          )
+      )
+
     
     ;; rotation (don't allow camera roll)
     (if (cpad-hold? 0 x)
-        (set! (-> trans rot x) (+ 54.13336 (-> trans rot x)))
+        (set! (-> trans rot x) (+ 200. (-> trans rot x)))
         )
     (if (cpad-hold? 0 triangle)
-        (set! (-> trans rot x) (+ -54.13336 (-> trans rot x)))
+        (set! (-> trans rot x) (+ -200. (-> trans rot x)))
         )
     (if (cpad-hold? 0 left)
-        (set! (-> trans rot y) (+ 150.13336 (-> trans rot y)))
+        (set! (-> trans rot y) (+ 300. (-> trans rot y)))
         )
     (if (cpad-hold? 0 right)
-        (set! (-> trans rot y) (+ -150.13336 (-> trans rot y)))
+        (set! (-> trans rot y) (+ -300. (-> trans rot y)))
         )
     
     (set! (-> trans scale x) 1.)
@@ -264,9 +272,9 @@
   )
 
 (set! *display-profile* #t)
-(set! *display-split-boxes* #t)
-(set! *display-level-border* #t)
-(set! *display-split-box-info* #t)
+; (set! *display-split-boxes* #t)
+; (set! *display-level-border* #t)
+; (set! *display-split-box-info* #t)
 (set! *display-deci-count* #t)
 
 (defun text-randomizer ()
@@ -283,4 +291,52 @@
     )
   )
 
+(defun update-subdivide-settings! ((settings subdivide-settings) (math-cam math-camera) (idx int))
+  "Change the subdivide settings."
+  (set! (-> settings meters 0) (meters 20000.0))
+  (set! (-> settings meters 1) (meters 20.0))
+  (set! (-> settings meters 2) (meters 20.0))
+  (set! (-> settings meters 3) (meters 20.0))
+  (set! (-> settings meters 4) (meters 20.0))
+  
+  ; (set! (-> settings meters 0) (-> settings far idx))
+  ; (set! (-> settings meters 4) (-> settings close idx))
+  ; (let ((f0-3 (* 0.14285715 (- (-> settings meters 0) (-> settings meters 4)))))
+  ;   (set! (-> settings meters 3) (+ (-> settings meters 4) (* 0.5 f0-3)))
+  ;   (set! (-> settings meters 2) (+ (-> settings meters 3) f0-3))
+  ;   (set! (-> settings meters 1) (+ (-> settings meters 2) (* 2.0 f0-3)))
+  ;   )
+  (let ((f0-7 (/ (-> math-cam inv-hmge-scale w) (-> math-cam d))))
+    (dotimes (v1-5 5)
+      (set! (-> settings dist v1-5) (* f0-7 (-> settings meters v1-5)))
+      )
+    )
+  (set! (-> *tfrag-work* frag-dists x) (- (-> settings meters 0)))
+  (set! (-> *tfrag-work* frag-dists y) (- (-> settings meters 1)))
+  (set! (-> *tfrag-work* frag-dists z) (- (-> settings meters 2)))
+  (set! (-> *tfrag-work* frag-dists w) (- (-> settings meters 4)))
+  0
+  (none)
+  )
+
 (test-make-target)
+
+
+(define *debug-load-level* #f)
+(defun load-slot-1 ((lev symbol))
+  (load-state-want-levels (-> *load-state* want 0 name) lev)
+  (set! *debug-load-level* lev)
+  (make-function-process 
+    process
+    (lambda () 
+      (suspend)
+      (suspend)
+      
+      (while (!= (-> *level* data 1 status) 'loaded)
+        (format 0 "waiting...~%")
+        (suspend)
+        )
+      (load-state-want-display-level *debug-load-level* #t)
+      )
+     )
+  )

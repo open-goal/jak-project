@@ -7,6 +7,12 @@ namespace {
 bool looks_like_tfragment_dma(const DmaFollower& follow) {
   return follow.current_tag_vifcode0().kind == VifCode::Kind::STCYCL;
 }
+
+bool looks_like_tfrag_init(const DmaFollower& follow) {
+  return follow.current_tag_vifcode0().kind == VifCode::Kind::NOP &&
+         follow.current_tag_vifcode1().kind == VifCode::Kind::DIRECT &&
+         follow.current_tag_vifcode1().immediate == 2;
+}
 }  // namespace
 
 TFragment::TFragment(const std::string& name, BucketId my_id)
@@ -46,34 +52,43 @@ void TFragment::render(DmaFollower& dma,
     return;
   }
 
-  handle_initialization(dma, render_state);
-
   if (m_extra_debug) {
     ImGui::Begin(fmt::format("{} extra", m_name).c_str());
   }
 
-  int count = 0;
-  // fmt::print("---------------------------------------START\n");
-  while (looks_like_tfragment_dma(dma)) {
-    m_stats.tfrag_dma_packets++;
-    auto frag = dma.read_and_advance();
-    m_stats.tfrag_bytes += frag.size_bytes;
+  while (looks_like_tfrag_init(dma)) {
+    m_debug_string += "------------- START!\n";
+    handle_initialization(dma, render_state, prof);
+    int count = 0;
+    // fmt::print("---------------------------------------START\n");
 
+    while (looks_like_tfragment_dma(dma)) {
+      m_stats.tfrag_dma_packets++;
+      auto frag = dma.read_and_advance();
+      m_stats.tfrag_bytes += frag.size_bytes;
+
+      if (m_extra_debug) {
+        handle_tfrag<true>(frag, render_state, prof);
+      } else {
+        handle_tfrag<false>(frag, render_state, prof);
+      }
+      if (m_max_draw >= 0 && count++ > m_max_draw) {
+        break;
+      }
+    }
     if (m_extra_debug) {
-      handle_tfrag<true>(frag, render_state, prof);
-    } else {
-      handle_tfrag<false>(frag, render_state, prof);
+      ImGui::End();
     }
-    if (m_max_draw >= 0 && count++ > m_max_draw) {
-      break;
+
+    if (dma.current_tag().qwc == 3) {
+      dma.read_and_advance();
+    }
+    if (dma.current_tag().qwc == 0) {
+      dma.read_and_advance();
     }
   }
-  if (m_extra_debug) {
-    ImGui::End();
-  }
 
-  m_debug_string += fmt::format("fail: {}\n", dma.current_tag_vifcode0().print());
-
+  m_debug_string += fmt::format("fail: {}\n", dma.current_tag().print());
   m_direct_renderer.flush_pending(render_state, prof);
 
   while (dma.current_tag_offset() != render_state->next_bucket) {
@@ -111,7 +126,9 @@ void TFragment::draw_debug_window() {
   ImGui::TextUnformatted(m_debug_string.data());
 }
 
-void TFragment::handle_initialization(DmaFollower& dma, SharedRenderState* /*render_state*/) {
+void TFragment::handle_initialization(DmaFollower& dma,
+                                      SharedRenderState* render_state,
+                                      ScopedProfilerNode& prof) {
   // Set up test (different between different renderers)
   auto setup_test = dma.read_and_advance();
   assert(setup_test.vif0() == 0);
@@ -119,6 +136,7 @@ void TFragment::handle_initialization(DmaFollower& dma, SharedRenderState* /*ren
   assert(setup_test.vifcode1().immediate == 2);
   assert(setup_test.size_bytes == 32);
   memcpy(m_test_setup, setup_test.data, 32);
+  m_direct_renderer.render_gif(m_test_setup, 32, render_state, prof);
 
   // matrix 0
   auto mat0_upload = dma.read_and_advance();
@@ -219,7 +237,8 @@ void TFragment::handle_tfrag(const DmaTransfer& dma,
     offset_into_data += 4;
 
     auto code = VifCode(vif);
-    // fmt::print("vif -> {} (mod {}) {}/{} #x{:x}\n", code.print(), stmod, offset_into_data, dma.size_bytes, dma.data_offset);
+    // fmt::print("vif -> {} (mod {}) {}/{} #x{:x}\n", code.print(), stmod, offset_into_data,
+    // dma.size_bytes, dma.data_offset);
     switch (code.kind) {
       case VifCode::Kind::UNPACK_V4_16:
         if (DEBUG) {
@@ -605,11 +624,13 @@ void TFragment::handle_mscal(const VifCode& code,
     case 10:
       if (m_prog10_with_prog6) {
         exec_program_6<DEBUG>(render_state, prof);
-      } break;
+      }
+      break;
     case 18:
       if (m_prog18_with_prog6) {
         exec_program_6<DEBUG>(render_state, prof);
-      } break;
+      }
+      break;
     default:
       //      exec_program_6<DEBUG>(render_state, prof);
       break;

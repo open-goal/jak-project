@@ -159,7 +159,7 @@ void DirectRenderer::flush_pending(SharedRenderState* render_state, ScopedProfil
   glBufferSubData(GL_ARRAY_BUFFER, 0, m_prim_buffer.vert_count * sizeof(math::Vector<u32, 3>),
                   m_prim_buffer.verts.data());
   glBindBuffer(GL_ARRAY_BUFFER, m_ogl.color_buffer);
-  glBufferSubData(GL_ARRAY_BUFFER, 0,m_prim_buffer.vert_count * sizeof(math::Vector<u8, 4>),
+  glBufferSubData(GL_ARRAY_BUFFER, 0, m_prim_buffer.vert_count * sizeof(math::Vector<u8, 4>),
                   m_prim_buffer.rgba_u8.data());
   if (m_prim_gl_state.texture_enable) {
     glBindBuffer(GL_ARRAY_BUFFER, m_ogl.st_buffer);
@@ -256,9 +256,12 @@ void DirectRenderer::update_gl_prim(SharedRenderState* render_state) {
         case GsTest::AlphaTest::ALWAYS:
           break;
         case GsTest::AlphaTest::GEQUAL:
-          alpha_reject = m_test_state.aref / 128.f;
+          alpha_reject = m_test_state.aref / 127.f;
+          break;
+        case GsTest::AlphaTest::NEVER:
           break;
         default:
+          fmt::print("unknown alpha test: {}\n", (int)m_test_state.alpha_test);
           assert(false);
       }
     }
@@ -281,7 +284,7 @@ void DirectRenderer::update_gl_prim(SharedRenderState* render_state) {
                                "alpha_reject"),
           alpha_reject);
     }
-    //update_gl_texture(render_state);
+    // update_gl_texture(render_state);
     m_texture_state.needs_gl_update = true;
   } else {
     if (m_mode == Mode::SKY) {
@@ -359,25 +362,29 @@ void DirectRenderer::update_gl_texture(SharedRenderState* render_state) {
 
 void DirectRenderer::update_gl_blend() {
   const auto& state = m_blend_state;
-  if (state.a == GsAlpha::BlendMode::SOURCE && state.b == GsAlpha::BlendMode::DEST &&
-      state.c == GsAlpha::BlendMode::SOURCE && state.d == GsAlpha::BlendMode::DEST) {
-    // (Cs - Cd) * As + Cd
-    // Cs * As  + (1 - As) * Cd
-    glEnable(GL_BLEND);
-    // s, d
-    glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
-  } else if (state.a == GsAlpha::BlendMode::SOURCE &&
-             state.b == GsAlpha::BlendMode::ZERO_OR_FIXED &&
-             state.c == GsAlpha::BlendMode::SOURCE && state.d == GsAlpha::BlendMode::DEST) {
-    // (Cs - 0) * As + Cd
-    // Cs * As + (1) * CD
-    glEnable(GL_BLEND);
-    // s, d
-    glBlendFunc(GL_SRC_ALPHA, GL_ONE);
+  if (!state.alpha_blend_enable) {
+    glDisable(GL_BLEND);
   } else {
-    lg::error("unsupported blend: a {} b {} c {} d {}\n", (int)state.a, (int)state.b, (int)state.c,
-              (int)state.d);
-    assert(false);
+    if (state.a == GsAlpha::BlendMode::SOURCE && state.b == GsAlpha::BlendMode::DEST &&
+        state.c == GsAlpha::BlendMode::SOURCE && state.d == GsAlpha::BlendMode::DEST) {
+      // (Cs - Cd) * As + Cd
+      // Cs * As  + (1 - As) * Cd
+      glEnable(GL_BLEND);
+      // s, d
+      glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+    } else if (state.a == GsAlpha::BlendMode::SOURCE &&
+               state.b == GsAlpha::BlendMode::ZERO_OR_FIXED &&
+               state.c == GsAlpha::BlendMode::SOURCE && state.d == GsAlpha::BlendMode::DEST) {
+      // (Cs - 0) * As + Cd
+      // Cs * As + (1) * CD
+      glEnable(GL_BLEND);
+      // s, d
+      glBlendFunc(GL_SRC_ALPHA, GL_ONE);
+    } else {
+      lg::error("unsupported blend: a {} b {} c {} d {}\n", (int)state.a, (int)state.b,
+                (int)state.c, (int)state.d);
+      assert(false);
+    }
   }
 }
 
