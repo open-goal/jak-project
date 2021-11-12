@@ -530,7 +530,7 @@ void Debugger::read_symbol_table() {
           // to hide this duplicate symbol, we append "-hack-copy" to the end of it.
           str += "-hack-copy";
         } else {
-          fmt::print("Symbol {} appears multiple times!\n", str);
+          fmt::print("Symbol {} (#x{:x}) appears multiple times!\n", str, sym_offset);
           assert(false);
         }
       }
