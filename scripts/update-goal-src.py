@@ -24,7 +24,8 @@ files_with_modifications = [
   "target-util",
   "ambient",
   "viewer",
-  "sunken-obs"
+  "sunken-obs",
+  "generic-obs"
 ]
 
 for file in files:
