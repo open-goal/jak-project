@@ -180,182 +180,180 @@
     If continue-point-override is not #f, will use that."
   
   (local-vars (v0-0 int) (sv-96 symbol))
-  (with-pp
-    (let ((selected-cause cause))
-      (when (= selected-cause 'dead)
-        ;; reload game-info because we died.  Increase death counts
-        (set! (-> obj total-deaths) (+ (-> obj total-deaths) 1))
-        (set! (-> obj continue-deaths) (+ (-> obj continue-deaths) 1))
-        (set! (-> obj fuel-cell-deaths) (+ (-> obj fuel-cell-deaths) 1))
-        (when *target*
-          (let ((lev-info (-> *target* current-level info)))
-            (when (>= (-> *level-task-data-remap* length) (-> lev-info index))
-              ;; update death per level.
-               (set! v0-0
-                     (seekl
-                      (the-as int (-> obj deaths-per-level (-> *level-task-data-remap* (+ (-> lev-info index) -1))))
-                      255
-                      1
-                      )
-                     )
-               (set! (-> obj deaths-per-level (-> *level-task-data-remap* (+ (-> lev-info index) -1))) (the-as uint v0-0))
+  (let ((selected-cause cause))
+    (when (= selected-cause 'dead)
+      ;; reload game-info because we died.  Increase death counts
+      (set! (-> obj total-deaths) (+ (-> obj total-deaths) 1))
+      (set! (-> obj continue-deaths) (+ (-> obj continue-deaths) 1))
+      (set! (-> obj fuel-cell-deaths) (+ (-> obj fuel-cell-deaths) 1))
+      (when *target*
+        (let ((lev-info (-> *target* current-level info)))
+          (when (>= (-> *level-task-data-remap* length) (-> lev-info index))
+            ;; update death per level.
+             (set! v0-0
+                   (seekl
+                    (the-as int (-> obj deaths-per-level (-> *level-task-data-remap* (+ (-> lev-info index) -1))))
+                    255
+                    1
+                    )
+                   )
+             (set! (-> obj deaths-per-level (-> *level-task-data-remap* (+ (-> lev-info index) -1))) (the-as uint v0-0))
+             )
+          )
+        )
+
+      (let ((v1-27 (-> obj mode)))
+        (cond
+          ((= v1-27 'play)
+           ;; now pick between life/try depending on if we ran out of lives or not.
+           (if (< 0.0 (-> obj life))
+               (set! cause 'life)
+               (set! cause 'try)
                )
-            )
-          )
-
-        (let ((v1-27 (-> obj mode)))
-          (cond
-            ((= v1-27 'play)
-             ;; now pick between life/try depending on if we ran out of lives or not.
-             (if (< 0.0 (-> obj life))
-                 (set! cause 'life)
-                 (set! cause 'try)
-                 )
-             )
-            (else
-             ;; not in play mode, we're done.
-             (begin
-              (set! obj obj)
-              (goto cfg-50)
-              )
-             )
-            )
-          )
-        )
-      )
-
-    ;; ?
-    (kill-current-level-hint '() '() 'die)
-
-    (let ((v1-31 cause))
-      (when (= v1-31 'game)
-        ;; we are doing a full restart.
-        ;; reset everything!
-        (reset-all-hint-controls)
-        (set-continue! obj
-                       (cond
-                         (continue-point-override
-                          continue-point-override
-                          )
-                         ((!= *kernel-boot-message* 'play)
-                          "demo-start"
-                          )
-                         (*debug-segment*
-                          "village1-hut"
-                          )
-                         (else
-                          "title-start"
-                          )
-                         )
-                       )
-        (set! (-> obj auto-save-count) 0)
-        (set! (-> *setting-control* default auto-save) #f)
-        (set! (-> obj money) 0.0)
-        (set! (-> obj fuel) 0.0)
-        (set! (-> obj money-total) 0.0)
-        (set! (-> obj buzzer-total) 0.0)
-        (set! (-> obj perm-list length) 0)
-        (clear-all! (-> obj text-ids-seen))
-        (set! (-> obj death-movie-tick) (rand-vu-int-count 10))
-        (set! (-> obj total-deaths) 0)
-        (set! (-> obj continue-deaths) 0)
-        (set! (-> obj fuel-cell-deaths) 0)
-        (set! (-> obj death-pos length) 0)
-        (set! (-> obj game-start-time) (-> *display* base-frame-counter))
-        (set! (-> obj fuel-cell-pickup-time) (-> *display* base-frame-counter))
-        (set! (-> obj continue-time) (-> *display* base-frame-counter))
-        (set! (-> obj death-time) (-> *display* base-frame-counter))
-        (set! (-> obj hit-time) (-> *display* base-frame-counter))
-        (dotimes (v1-50 116)
-          (set! (-> obj fuel-cell-time 0) 0)
-          (nop!)
-          )
-        (dotimes (v1-53 32)
-          (set! (-> obj money-per-level v1-53) 0)
-          (set! (-> obj deaths-per-level v1-53) 0)
-          (set! (-> obj enter-level-time v1-53) 0)
-          (set! (-> obj in-level-time v1-53) 0)
-          (set! (-> obj level-opened v1-53) 0)
-          (nop!)
-          )
-        )
-      )
-
-    (let ((v1-56 cause))
-      (when (or (= v1-56 'game) (= v1-56 'try))
-        ;; full restart, or ran out of lives
-        (let ((v1-59 (-> obj mode)))
-          (when (= v1-59 'play)
-            (set! *display-profile* #f)
-            (set! *display-entity-errors* #f)
-            )
-          )
-        ;; reset lives to default.
-        (set! (-> obj life-max) (-> *GAME-bank* life-max-default))
-        (set! (-> obj life) (-> *GAME-bank* life-start-default))
-        )
-      )
-
-    (let ((v1-65 (-> obj mode)))
-      (cond
-        ((= v1-65 'debug)
-         ;; in debug, we didn't kill things so we don't need to restart them
-         (reset-actors cause)
-         (if save-to-load
-             (load-game! obj save-to-load)
-             )
-         )
-        ((= v1-65 'play)
-         ;; don't allow pausing/start menu
-         (when *target*
-           (set-setting! *setting-control* *target* 'allow-pause #f 0.0 0)
-           (set-setting! *setting-control* *target* 'allow-progress #f 0.0 0)
-           (copy-settings-from-target! *setting-control*)
            )
-
-         ;; send the auto-save process a 'die message
-         (send-event (handle->process (-> *game-info* auto-save-proc)) 'die)
-
-         ;; black screen, stop spawning actors
-         (set! (-> *level* border?) #f)
-         (set! (-> *setting-control* default border-mode) #f)
-         (set! *spawn-actors* #f)
-         (set-blackout-frames 30)
-
-         ;; send target a 'reset message.
-         (send-event *target* 'reset)
-
-         ;; start a temporary process to restart things
-         (let ((proc (get-process *4k-dead-pool* process #x4000)))
-           (when proc
-             (activate proc *default-pool* 'process *scratch-memory-top*)
-             (run-next-time-in-process
-              proc
-              (lambda ((stop-arg symbol) (reset-arg symbol) (c continue-point) (load game-save))
-                (stop stop-arg)
-                (reset-actors reset-arg)
-                (set-continue! *game-info* c)
-                (when load
-                  (load-game! *game-info* load)
-                  (set! c (get-or-create-continue! *game-info*))
-                  )
-                (suspend)
-                (start stop-arg c)
-                )
-              (-> obj mode) ;; play, debug
-              cause
-              (get-or-create-continue! obj)
-              save-to-load
-              )
-             )
+          (else
+           ;; not in play mode, we're done.
+           (begin
+            (set! obj obj)
+            (goto cfg-50)
+            )
            )
-         (set-master-mode 'game)
-         )
+          )
         )
       )
-    (label cfg-50)
-    obj
     )
+
+  ;; ?
+  (kill-current-level-hint '() '() 'die)
+
+  (let ((v1-31 cause))
+    (when (= v1-31 'game)
+      ;; we are doing a full restart.
+      ;; reset everything!
+      (reset-all-hint-controls)
+      (set-continue! obj
+                     (cond
+                       (continue-point-override
+                        continue-point-override
+                        )
+                       ((!= *kernel-boot-message* 'play)
+                        "demo-start"
+                        )
+                       (*debug-segment*
+                        "village1-hut"
+                        )
+                       (else
+                        "title-start"
+                        )
+                       )
+                     )
+      (set! (-> obj auto-save-count) 0)
+      (set! (-> *setting-control* default auto-save) #f)
+      (set! (-> obj money) 0.0)
+      (set! (-> obj fuel) 0.0)
+      (set! (-> obj money-total) 0.0)
+      (set! (-> obj buzzer-total) 0.0)
+      (set! (-> obj perm-list length) 0)
+      (clear-all! (-> obj text-ids-seen))
+      (set! (-> obj death-movie-tick) (rand-vu-int-count 10))
+      (set! (-> obj total-deaths) 0)
+      (set! (-> obj continue-deaths) 0)
+      (set! (-> obj fuel-cell-deaths) 0)
+      (set! (-> obj death-pos length) 0)
+      (set! (-> obj game-start-time) (-> *display* base-frame-counter))
+      (set! (-> obj fuel-cell-pickup-time) (-> *display* base-frame-counter))
+      (set! (-> obj continue-time) (-> *display* base-frame-counter))
+      (set! (-> obj death-time) (-> *display* base-frame-counter))
+      (set! (-> obj hit-time) (-> *display* base-frame-counter))
+      (dotimes (v1-50 116)
+        (set! (-> obj fuel-cell-time 0) 0)
+        (nop!)
+        )
+      (dotimes (v1-53 32)
+        (set! (-> obj money-per-level v1-53) 0)
+        (set! (-> obj deaths-per-level v1-53) 0)
+        (set! (-> obj enter-level-time v1-53) 0)
+        (set! (-> obj in-level-time v1-53) 0)
+        (set! (-> obj level-opened v1-53) 0)
+        (nop!)
+        )
+      )
+    )
+
+  (let ((v1-56 cause))
+    (when (or (= v1-56 'game) (= v1-56 'try))
+      ;; full restart, or ran out of lives
+      (let ((v1-59 (-> obj mode)))
+        (when (= v1-59 'play)
+          (set! *display-profile* #f)
+          (set! *display-entity-errors* #f)
+          )
+        )
+      ;; reset lives to default.
+      (set! (-> obj life-max) (-> *GAME-bank* life-max-default))
+      (set! (-> obj life) (-> *GAME-bank* life-start-default))
+      )
+    )
+
+  (let ((v1-65 (-> obj mode)))
+    (cond
+      ((= v1-65 'debug)
+       ;; in debug, we didn't kill things so we don't need to restart them
+       (reset-actors cause)
+       (if save-to-load
+           (load-game! obj save-to-load)
+           )
+       )
+      ((= v1-65 'play)
+       ;; don't allow pausing/start menu
+       (when *target*
+         (set-setting! *setting-control* *target* 'allow-pause #f 0.0 0)
+         (set-setting! *setting-control* *target* 'allow-progress #f 0.0 0)
+         (copy-settings-from-target! *setting-control*)
+         )
+
+       ;; send the auto-save process a 'die message
+       (send-event (handle->process (-> *game-info* auto-save-proc)) 'die)
+
+       ;; black screen, stop spawning actors
+       (set! (-> *level* border?) #f)
+       (set! (-> *setting-control* default border-mode) #f)
+       (set! *spawn-actors* #f)
+       (set-blackout-frames 30)
+
+       ;; send target a 'reset message.
+       (send-event *target* 'reset)
+
+       ;; start a temporary process to restart things
+       (let ((proc (get-process *4k-dead-pool* process #x4000)))
+         (when proc
+           (activate proc *default-pool* 'process *scratch-memory-top*)
+           (run-next-time-in-process
+            proc
+            (lambda ((stop-arg symbol) (reset-arg symbol) (c continue-point) (load game-save))
+              (stop stop-arg)
+              (reset-actors reset-arg)
+              (set-continue! *game-info* c)
+              (when load
+                (load-game! *game-info* load)
+                (set! c (get-or-create-continue! *game-info*))
+                )
+              (suspend)
+              (start stop-arg c)
+              )
+            (-> obj mode) ;; play, debug
+            cause
+            (get-or-create-continue! obj)
+            save-to-load
+            )
+           )
+         )
+       (set-master-mode 'game)
+       )
+      )
+    )
+  (label cfg-50)
+  obj
   )
 
 

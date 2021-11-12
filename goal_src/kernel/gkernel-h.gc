@@ -200,6 +200,7 @@
 ;; Parent type of all process tree nodes.
 ;; A process-tree is a left-child right-sibling binary tree 
 ;; (except GOAL is old and it looks like they called them left-child right-brother trees back then)
+(declare-type entity-actor basic)
 (deftype process-tree (basic)
   ((name basic :offset-assert 4)
    (mask process-mask :offset-assert 8)
@@ -222,7 +223,7 @@
     (new (symbol type basic) _type_ 0)
     (activate (_type_ process-tree basic pointer) process-tree 9)
     (deactivate  (_type_) none 10)
-    (copy-defaults! (_type_ res-lump) none 11)
+    (init-from-entity! (_type_ entity-actor) none 11)
     (run-logic? (_type_) symbol 12)
     (dummy-method () none 13)
    )  
@@ -339,7 +340,7 @@
 ;; GOAL can create a series of stack frames for unwinding/cleaning up.
 ;; This is the parent type for any stack frame.
 (deftype stack-frame (basic)
-  ((name basic :offset 4)
+  ((name symbol :offset 4)
    (next stack-frame :offset 8) ;; follow this to get to the root frame, away from top.
    )
   
@@ -480,7 +481,7 @@
    (event (function process int symbol event-message-block object)  :offset-assert  32)
    )
   (:methods
-    (new (symbol type basic function
+    (new (symbol type symbol function
           (function none) 
           function
           (function none)
