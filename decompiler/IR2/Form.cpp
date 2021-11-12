@@ -2982,19 +2982,21 @@ goos::Object DefskelgroupElement::to_form_internal(const Env& env) const {
   std::vector<goos::Object> lod_forms;
   for (const auto& e : m_info.lods) {
     auto f_dist = pretty_print::to_symbol(fmt::format(
-        "(meters {})", float_to_string(e.lod_dist->to_form(env).as_float() / METER_LENGTH)));
+        "(meters {})",
+        float_to_string_no_decimal(e.lod_dist->to_form(env).as_float() / METER_LENGTH)));
     lod_forms.push_back(pretty_print::build_list(e.mgeo->to_form(env), f_dist));
   }
   forms.push_back(pretty_print::build_list(lod_forms));
 
   forms.push_back(pretty_print::to_symbol(
       fmt::format(":bounds (static-spherem {} {} {} {})",
-                  float_to_string(m_static_info.bounds.x() / METER_LENGTH),
-                  float_to_string(m_static_info.bounds.y() / METER_LENGTH),
-                  float_to_string(m_static_info.bounds.z() / METER_LENGTH),
-                  float_to_string(m_static_info.bounds.w() / METER_LENGTH))));
-  forms.push_back(pretty_print::to_symbol(fmt::format(
-      ":longest-edge (meters {})", float_to_string(m_static_info.longest_edge / METER_LENGTH))));
+                  float_to_string_no_decimal(m_static_info.bounds.x() / METER_LENGTH),
+                  float_to_string_no_decimal(m_static_info.bounds.y() / METER_LENGTH),
+                  float_to_string_no_decimal(m_static_info.bounds.z() / METER_LENGTH),
+                  float_to_string_no_decimal(m_static_info.bounds.w() / METER_LENGTH))));
+  forms.push_back(pretty_print::to_symbol(
+      fmt::format(":longest-edge (meters {})",
+                  float_to_string_no_decimal(m_static_info.longest_edge / METER_LENGTH))));
 
   if (m_static_info.shadow != 0) {
     forms.push_back(pretty_print::to_symbol(fmt::format(":shadow {}", m_static_info.shadow)));

@@ -19,6 +19,18 @@ std::string float_to_string(float value) {
   return {buff};
 }
 
+/*!
+ * Same as float_to_string but will trim out a trailing '.0'
+ */
+std::string float_to_string_no_decimal(float value) {
+  auto result = float_to_string(value);
+  if (result.size() > 2 && result.at(result.size() - 2) == '.' &&
+      result.at(result.size() - 1) == '0') {
+    return result.substr(0, result.size() - 2);
+  }
+  return result;
+}
+
 int float_to_cstr(float value, char* buffer) {
   assert(std::isfinite(value));
   // dragonbox gives us:
