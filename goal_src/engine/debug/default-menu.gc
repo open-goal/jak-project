@@ -21,12 +21,16 @@
 
 (define *dm-cam-mode-interpolation* (the-as debug-menu 0))
 
-(defun dm-cam-mode-func ((arg0 uint) (arg1 int))
+(defun dm-cam-mode-func ((arg0 (state camera-slave)) (arg1 int))
   (if (and (= arg1 4) arg0)
-   (send-event *camera* 'change-state arg0 *dm-cam-mode-interpolation*)
+   (begin
+    (format 0 "DEBUG <Vaser>: Changing State Arg 0 '~P' Arg 1 '~P'~%" arg0 arg1)
+   (send-event *camera* 'change-state arg0 *dm-cam-mode-interpolation*))
    )
   (if *camera*
-   (send-event *camera* 'query-state arg0)
+   (begin
+   (format 0 "DEBUG <Vaser>: Querying State ~P~%" arg0)
+   (send-event *camera* 'query-state arg0))
    (not arg0)
    )
   )
@@ -202,7 +206,9 @@
       )
      ((= (/ arg0 8) 1)
       (if *camera*
-       (send-event *camera* 'set-fov (* 182.04445 arg2))
+       (begin
+        (format 0 "DEBUG <Vaser>: SEND - Changing FOV Arg 0 '~f'~%" (* 182.04445 arg2))
+        (send-event *camera* 'set-fov (* 182.04445 arg2)))
        )
       )
      )
@@ -2933,144 +2939,6 @@
          (stub-item (new 'debug 'debug-menu-item-submenu "Instance" stub-menu)))
     stub-item
     )
-  ;; TODO - fix me!
-  ; (let* ((gp-0 (new 'debug 'debug-menu arg0 "Instance menu"))
-  ;        (s5-0 (new 'debug 'debug-menu-item-submenu "Instance" gp-0))
-  ;        )
-  ;  (let ((a3-3 (new 'debug 'debug-menu arg0 "Instance shrub menu")))
-  ;   (set! *instance-shrub-menu* a3-3)
-  ;   (let ((a1-4 (new 'debug 'debug-menu-item-submenu "Pick Shrub" a3-3)))
-  ;    (debug-menu-append-item gp-0 a1-4)
-  ;    )
-  ;   )
-  ;  (let ((a3-5 (new 'debug 'debug-menu arg0 "Instance tie menu")))
-  ;   (set! *instance-tie-menu* a3-5)
-  ;   (let ((a1-7 (new 'debug 'debug-menu-item-submenu "Pick Tie" a3-5)))
-  ;    (debug-menu-append-item gp-0 a1-7)
-  ;    )
-  ;   )
-  ;  (let
-  ;   ((a1-9
-  ;     (new
-  ;      'debug
-  ;      'debug-menu-item-function
-  ;      "Refresh"
-  ;      (the-as int #f)
-  ;      (the-as (function int object) build-instance-list)
-  ;      )
-  ;     )
-  ;    )
-  ;   (debug-menu-append-item gp-0 a1-9)
-  ;   )
-  ;  (let
-  ;   ((s3-0
-  ;     (new 'debug 'debug-menu-item-var "near" (the-as int '*edit-instance*) 80)
-  ;     )
-  ;    )
-  ;   (debug-menu-item-var-make-float
-  ;    s3-0
-  ;    (the-as
-  ;     (function int debug-menu-msg float float float)
-  ;     (lambda ((arg0 debug-menu) (arg1 int) (arg2 float) (arg3 float))
-  ;      (let ((gp-0 (find-instance-by-name (-> arg0 name))))
-  ;       (the-as object (cond
-  ;                       (gp-0
-  ;                        (when (= arg1 4)
-  ;                         (set! (-> gp-0 unknown-vector x) (* 4096.0 arg2))
-  ;                         (prototype-bucket-recalc-fields gp-0)
-  ;                         )
-  ;                        (* 0.00024414062 (-> gp-0 unknown-vector x))
-  ;                        )
-  ;                       (else
-  ;                        (empty)
-  ;                        arg3
-  ;                        )
-  ;                       )
-  ;        )
-  ;       )
-  ;      )
-  ;     )
-  ;    (the-as float 1.0)
-  ;    #t
-  ;    (the-as float 10.0)
-  ;    (the-as float 250.0)
-  ;    1
-  ;    )
-  ;   (debug-menu-append-item gp-0 s3-0)
-  ;   )
-  ;  (let
-  ;   ((s3-1
-  ;     (new 'debug 'debug-menu-item-var "far" (the-as int '*edit-instance*) 80)
-  ;     )
-  ;    )
-  ;   (debug-menu-item-var-make-float
-  ;    s3-1
-  ;    (the-as
-  ;     (function int debug-menu-msg float float float)
-  ;     (lambda ((arg0 debug-menu) (arg1 int) (arg2 float) (arg3 float))
-  ;      (let ((gp-0 (find-instance-by-name (-> arg0 name))))
-  ;       (the-as object (cond
-  ;                       (gp-0
-  ;                        (when (= arg1 4)
-  ;                         (set! (-> gp-0 unknown-vector w) (* 4096.0 arg2))
-  ;                         (prototype-bucket-recalc-fields gp-0)
-  ;                         )
-  ;                        (* 0.00024414062 (-> gp-0 unknown-vector w))
-  ;                        )
-  ;                       (else
-  ;                        (empty)
-  ;                        arg3
-  ;                        )
-  ;                       )
-  ;        )
-  ;       )
-  ;      )
-  ;     )
-  ;    (the-as float 1.0)
-  ;    #t
-  ;    (the-as float 10.0)
-  ;    (the-as float 250.0)
-  ;    1
-  ;    )
-  ;   (debug-menu-append-item gp-0 s3-1)
-  ;   )
-  ;  (let
-  ;   ((a1-17
-  ;     (new
-  ;      'debug
-  ;      'debug-menu-item-flag
-  ;      "invisible"
-  ;      1
-  ;      (the-as
-  ;       (function int debug-menu-msg object)
-  ;       dm-edit-instance-toggle-pick-func
-  ;       )
-  ;      )
-  ;     )
-  ;    )
-  ;   (debug-menu-append-item gp-0 a1-17)
-  ;   )
-  ;  (let ((a3-13 (new 'debug 'debug-menu arg0 "Enable Instance Tie Menu")))
-  ;   (set! *enable-instance-tie-menu* a3-13)
-  ;   (let ((a1-20 (new 'debug 'debug-menu-item-submenu "Enable Tie" a3-13)))
-  ;    (debug-menu-append-item gp-0 a1-20)
-  ;    )
-  ;   )
-  ;  (let
-  ;   ((a1-22
-  ;     (new
-  ;      'debug
-  ;      'debug-menu-item-flag
-  ;      "Instance Info"
-  ;      (the-as int '*display-instance-info*)
-  ;      (the-as (function int debug-menu-msg object) dm-boolean-toggle-pick-func)
-  ;      )
-  ;     )
-  ;    )
-  ;   (debug-menu-append-item gp-0 a1-22)
-  ;   )
-  ;  s5-0
-  ;  )
   )
 
 (defun dm-task-unknown ((arg0 int) (arg1 int))
