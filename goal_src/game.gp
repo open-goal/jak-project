@@ -80,11 +80,11 @@
   )
 
 (defmacro copy-texture (tpage-id)
-  `(defstep :in ,(string-append "decompiler_out/raw_obj/" (tpage-name tpage-id))
-     :tool 'copy
-     :out '(,(string-append "out/obj/" (tpage-name tpage-id)))
-     )
-  )
+  (let* ((folder (get-environment-variable "OPENGOAL_DECOMP_DIR" :default ""))
+         (path (string-append "decompiler_out/" folder "raw_obj/" (tpage-name tpage-id))))
+    `(defstep :in ,path
+              :tool 'copy
+              :out '(,(string-append "out/obj/" (tpage-name tpage-id))))))
 
 (defmacro copy-textures (&rest ids)
   `(begin
@@ -93,11 +93,11 @@
   )
 
 (defmacro copy-go (name)
-  `(defstep :in ,(string-append "decompiler_out/raw_obj/" name ".go")
-     :tool 'copy
-     :out '(,(string-append "out/obj/" name ".go"))
-     )
-  )
+  (let* ((folder (get-environment-variable "OPENGOAL_DECOMP_DIR" :default ""))
+         (path (string-append "decompiler_out/" folder "raw_obj/" name ".go")))
+    `(defstep :in ,path
+              :tool 'copy
+              :out '(,(string-append "out/obj/" name ".go")))))
 
 (defmacro copy-gos (&rest gos)
   `(begin
