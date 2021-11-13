@@ -488,7 +488,7 @@ bool check_stopped(const ThreadID& tid, SignalInfo* out) {
               break;
             default:
               out->kind = SignalInfo::EXCEPTION;
-              out->msg = fmt::format("{} [0x{:X}]", exc, win32_exception_code_to_charp(exc));
+              out->msg = fmt::format("{} [0x{:X}]", win32_exception_code_to_charp(exc), exc);
               break;
           }
         }
