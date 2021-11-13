@@ -711,7 +711,6 @@ void link() {
 }  // namespace draw_inline_array_tfrag
 }  // namespace Mips2C
 
-
 // clang-format off
 //--------------------------MIPS2C---------------------
 #include "game/mips2c/mips2c_private.h"

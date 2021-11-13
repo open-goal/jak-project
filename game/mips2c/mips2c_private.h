@@ -550,7 +550,7 @@ struct ExecutionContext {
         gprs[dest].du16[i] = t.ds16[i];
     }
   }
-  
+
   void pmfhl_lh(int dest) {
     gprs[dest].du16[0] = lo.du16[0];
     gprs[dest].du16[1] = lo.du16[2];

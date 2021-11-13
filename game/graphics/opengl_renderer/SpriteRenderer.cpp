@@ -5,7 +5,6 @@
 
 namespace {
 
-
 /*!
  * Does the next DMA transfer look like it could be the start of a 2D group?
  */

@@ -108,7 +108,7 @@ DefskelgroupElement::StaticInfo inspect_skel_group_data(DecompiledDataElement* s
 
 DefskelgroupElement::Info get_defskelgroup_entries(Form* body,
                                                    const Env& env,
-                                                   const DefskelgroupElement::StaticInfo& info,
+                                                   const DefskelgroupElement::StaticInfo& /*info*/,
                                                    const RegisterAccess& let_dest_var) {
   DefskelgroupElement::Info out_info;
 

@@ -222,7 +222,6 @@ class DirectRenderer : public BucketRenderer {
     int flush_from_prim = 0;
   } m_stats;
 
-
   bool m_prim_gl_state_needs_gl_update = true;
   bool m_test_state_needs_gl_update = true;
   bool m_blend_state_needs_gl_update = true;

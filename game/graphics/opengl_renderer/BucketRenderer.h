@@ -89,7 +89,6 @@ class EmptyBucketRenderer : public BucketRenderer {
   void draw_debug_window() override {}
 };
 
-
 class SkipRenderer : public BucketRenderer {
  public:
   SkipRenderer(const std::string& name, BucketId my_id);
