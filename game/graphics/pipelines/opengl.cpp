@@ -10,6 +10,8 @@
 #include "third-party/imgui/imgui.h"
 #include "third-party/imgui/imgui_impl_glfw.h"
 #include "third-party/imgui/imgui_impl_opengl3.h"
+#define STB_IMAGE_IMPLEMENTATION
+#include "third-party/stb_image.h"
 
 #include "opengl.h"
 
@@ -138,6 +140,14 @@ static std::shared_ptr<GfxDisplay> gl_make_main_display(int width,
   }
 
   glfwMakeContextCurrent(window);
+
+  std::string image_path = fmt::format("{}/docs/favicon-nobg.png", file_util::get_project_path());
+
+  GLFWimage images[1];
+  images[0].pixels =
+      stbi_load(image_path.c_str(), &images[0].width, &images[0].height, 0, 4);  // rgba channels
+  glfwSetWindowIcon(window, 1, images);
+  stbi_image_free(images[0].pixels);
 
   if (!gl_inited && !gladLoadGL()) {
     lg::error("GL init fail");
