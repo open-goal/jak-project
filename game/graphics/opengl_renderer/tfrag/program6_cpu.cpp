@@ -47,17 +47,17 @@ Vector4f TFragment::load_vector_data(int offset) {
 }
 
 void TFragment::store_vector_kick_zone(int offset, const Vector4f& vec) {
-  assert(offset >= TFragDataMem::TFragKickZone);
+  assert(offset >= TFragDataMem::TFragKickZoneData);
   assert(offset < KICK_ZONE_END);  // hack increased
-  memcpy(&m_kick_data.pad[(offset - TFragDataMem::TFragKickZone) * 16], &vec.data()[0], 16);
+  memcpy(&m_kick_data.pad[(offset - TFragDataMem::TFragKickZoneData) * 16], &vec.data()[0], 16);
 }
 
 u16 TFragment::ilw_kick_zone(int offset, int xyzw) {
-  assert(offset >= TFragDataMem::TFragKickZone);
+  assert(offset >= TFragDataMem::TFragKickZoneData);
   assert(offset < KICK_ZONE_END);
   u16 result;
   int mem_offset = (xyzw * 4) + (offset * 16);
-  memcpy(&result, m_kick_data.pad + mem_offset - TFragDataMem::TFragKickZone * 16, 2);
+  memcpy(&result, m_kick_data.pad + mem_offset - TFragDataMem::TFragKickZoneData * 16, 2);
   return result;
 }
 
@@ -194,15 +194,15 @@ bool clip_xyz_plus_minus(const Vector4f& pt) {
 }  // namespace
 
 void TFragment::store_gif_kick_zone(int offset, const GifTag& tag) {
-  assert(offset >= TFragDataMem::TFragKickZone);
+  assert(offset >= TFragDataMem::TFragKickZoneData);
   assert(offset < KICK_ZONE_END);
-  memcpy(&m_kick_data.pad[(offset - TFragDataMem::TFragKickZone) * 16], &tag, 16);
+  memcpy(&m_kick_data.pad[(offset - TFragDataMem::TFragKickZoneData) * 16], &tag, 16);
 }
 
 void TFragment::store_u32_kick_zone(u32 value, int qw, int xyzw) {
-  assert(qw >= TFragDataMem::TFragKickZone);
+  assert(qw >= TFragDataMem::TFragKickZoneData);
   assert(qw < KICK_ZONE_END);
-  memcpy(&m_kick_data.pad[(xyzw * 4) + (qw - TFragDataMem::TFragKickZone) * 16], &value, 4);
+  memcpy(&m_kick_data.pad[(xyzw * 4) + (qw - TFragDataMem::TFragKickZoneData) * 16], &value, 4);
 }
 
 template <bool DEBUG>
@@ -1158,11 +1158,11 @@ void TFragment::XGKICK(u32 addr, SharedRenderState* render_state, ScopedProfiler
     ImGui::Text("XGKICK: %d", addr);
   }
 
-  assert(addr >= TFragDataMem::TFragKickZone);
+  assert(addr >= TFragDataMem::TFragKickZoneData);
   assert(addr < KICK_ZONE_END);
 
   if (!m_skip_xgkick) {
-    m_direct_renderer.render_gif(&m_kick_data.pad[(addr - TFragDataMem::TFragKickZone) * 16],
+    m_direct_renderer.render_gif(&m_kick_data.pad[(addr - TFragDataMem::TFragKickZoneData) * 16],
                                  UINT32_MAX, render_state, prof);
   }
 }

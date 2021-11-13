@@ -226,7 +226,7 @@ class TFragment : public BucketRenderer {
     TFragMatrix1 = TFragMatrix0 + Buffer1_Start,
 
     TFragFrameData = 656,
-    TFragKickZone = 670,
+    TFragKickZoneData = 670,
   };
 
   enum TFragJumper {
