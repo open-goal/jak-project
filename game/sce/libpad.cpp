@@ -69,10 +69,10 @@ int scePadRead(int port, int /*slot*/, u8* rdata) {
 
   cpad->status = 0x70 /* (dualshock2) */ | (20 / 2); /* (dualshock2 data size) */
 
-  cpad->rightx = 127;
-  cpad->righty = 127;
-  cpad->leftx = 127;
-  cpad->lefty = 127;
+  cpad->rightx = Gfx::PadAnalogValue(Pad::Analog::Right_X, port);
+  cpad->righty = Gfx::PadAnalogValue(Pad::Analog::Right_Y, port);
+  cpad->leftx = Gfx::PadAnalogValue(Pad::Analog::Left_X, port);
+  cpad->lefty = Gfx::PadAnalogValue(Pad::Analog::Left_Y, port);
 
   // pressure sensitivity. ignore for now.
   for (int i = 0; i < 12; ++i) {
