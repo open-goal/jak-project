@@ -701,7 +701,8 @@ std::string VuDisassembler::to_string(const VuProgram& prog) const {
       result += ':';
       result += '\n';
     }
-    result += fmt::format("{} ;; 0x{:x}", to_string(prog.instructions().at(i)), i);
+    // result += fmt::format("{} ;; 0x{:x}", to_string(prog.instructions().at(i)), i);
+    result += to_string(prog.instructions().at(i));
     result += '\n';
   }
   return result;

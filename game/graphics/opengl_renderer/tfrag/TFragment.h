@@ -39,7 +39,7 @@ struct TFragKickZone {
 
 class TFragment : public BucketRenderer {
  public:
-  TFragment(const std::string& name, BucketId my_id);
+  TFragment(const std::string& name, BucketId my_id, bool child_mode);
   void render(DmaFollower& dma, SharedRenderState* render_state, ScopedProfilerNode& prof) override;
   void draw_debug_window() override;
 
@@ -182,6 +182,7 @@ class TFragment : public BucketRenderer {
                         ScopedProfilerNode& prof);
 
   std::string m_debug_string;
+  bool m_child_mode = false;
   bool m_extra_debug = false;
   int m_max_draw = -1;
   bool m_skip_mscals = false;
@@ -189,6 +190,7 @@ class TFragment : public BucketRenderer {
   bool m_prog8_with_prog6 = true;
   bool m_prog10_with_prog6 = true;
   bool m_prog18_with_prog6 = true;
+  bool m_all_with_prog6 = false;
   std::string m_frag_debug;
 
   // GS setup data
