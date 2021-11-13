@@ -69,10 +69,10 @@ int scePadRead(int port, int /*slot*/, u8* rdata) {
 
   cpad->status = 0x70 /* (dualshock2) */ | (20 / 2); /* (dualshock2 data size) */
 
-  cpad->rightx = 0;
-  cpad->righty = 0;
-  cpad->leftx = 0;
-  cpad->lefty = 0;
+  cpad->rightx = 127;
+  cpad->righty = 127;
+  cpad->leftx = 127;
+  cpad->lefty = 127;
 
   // pressure sensitivity. ignore for now.
   for (int i = 0; i < 12; ++i) {
