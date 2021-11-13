@@ -8,6 +8,10 @@
 ;; TODO - for basebutton
 (define-extern cam-fixed (state camera-slave))
 
+;; Needed here
+(define-extern cam-decel (state camera-slave))
+(define-extern camera-master-debug (function camera-master none))
+
 ;; DECOMP BEGINS
 
 (deftype camera-master-bank (basic)
@@ -943,10 +947,10 @@
    )
   )
 
-;; WARN: rewrite_to_get_var got a none typed variable. Is there unreachable code?
-;; WARN: rewrite_to_get_var got a none typed variable. Is there unreachable code?
-;; WARN: rewrite_to_get_var got a none typed variable. Is there unreachable code?
-;; WARN: rewrite_to_get_var got a none typed variable. Is there unreachable code?
+;; WARN: rewrite_to_get_var got a none typed variable. Is there unreachable code?. [OP: 166]
+;; WARN: rewrite_to_get_var got a none typed variable. Is there unreachable code?. [OP: 176]
+;; WARN: rewrite_to_get_var got a none typed variable. Is there unreachable code?. [OP: 196]
+;; WARN: rewrite_to_get_var got a none typed variable. Is there unreachable code?. [OP: 220]
 (defbehavior master-switch-to-entity camera-master ((arg0 entity))
   (local-vars
    (v0-21 none)
@@ -1225,1183 +1229,1193 @@
    )
   )
 
-;; TODO - fix me
-; (defstate cam-master-active (camera-master)
-;   :event
-;   (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
-;    (local-vars (v0-0 none))
-;    (rlet ((vf0 :class vf))
-;     (init-vf0-vector)
-;     (let ((v1-0 arg2))
-;      (cond
-;       ((= v1-0 'dist-from-interp-src)
-;        (set! v0-0 (the-as none (cond
-;                                 ((not *camera-combiner*)
-;                                  409600.0
-;                                  )
-;                                 ((= (-> *camera-combiner* interp-val) 0.0)
-;                                  0.0
-;                                  )
-;                                 (else
-;                                  (-> *camera-combiner* dist-from-src)
-;                                  )
-;                                 )
-;                    )
-;         )
-;        )
-;       ((= v1-0 'dist-from-interp-dest)
-;        (set! v0-0 (the-as none (cond
-;                                 ((not *camera-combiner*)
-;                                  0.0
-;                                  )
-;                                 ((= (-> *camera-combiner* interp-val) 0.0)
-;                                  409600.0
-;                                  )
-;                                 (else
-;                                  (-> *camera-combiner* dist-from-dest)
-;                                  )
-;                                 )
-;                    )
-;         )
-;        )
-;       ((= v1-0 'level-deactivate)
-;        (set!
-;         v0-0
-;         (if
-;          (and
-;           (-> self cam-entity)
-;           (= (-> (get-level (-> self cam-entity)) name) (-> arg3 param 0))
-;           )
-;          (master-unset-region)
-;          )
-;         )
-;        )
-;       ((= v1-0 'clear-entity)
-;        (set! v0-0 (the-as none (master-unset-region)))
-;        )
-;       ((= v1-0 'no-intro)
-;        (set! v0-0 (the-as none 3))
-;        (set! (-> self no-intro) (the-as uint v0-0))
-;        )
-;       ((= v1-0 'force-blend)
-;        (set! (-> self force-blend) (the-as uint 3))
-;        (set! v0-0 (the-as none (-> arg3 param 0)))
-;        (set! (-> self force-blend-time) (the-as uint v0-0))
-;        )
-;       ((= v1-0 'teleport-to-transformq)
-;        (set! v0-0 (when (> arg1 0)
-;                    (let ((gp-1 (the-as object (-> arg3 param 0))))
-;                     (let ((a1-1 (new 'stack-no-clear 'event-message-block)))
-;                      (set! (-> a1-1 from) self)
-;                      (set! (-> a1-1 num-params) 2)
-;                      (set! (-> a1-1 message) 'change-state)
-;                      (set! (-> a1-1 param 0) (the-as uint cam-free-floating))
-;                      (set! (-> a1-1 param 1) (the-as uint 0))
-;                      (send-event-function self a1-1)
-;                      )
-;                     (dotimes (s5-1 (-> self num-slaves))
-;                      (set!
-;                       (-> self slave s5-1 0 trans quad)
-;                       (-> (the-as matrix gp-1) vector 0 quad)
-;                       )
-;                      (quaternion->matrix
-;                       (the-as matrix (-> self slave s5-1 0 tracking))
-;                       (the-as quaternion (+ (the-as uint gp-1) 16))
-;                       )
-;                      )
-;                     )
-;                    (let ((a1-3 (new 'stack-no-clear 'event-message-block)))
-;                     (set! (-> a1-3 from) self)
-;                     (set! (-> a1-3 num-params) 0)
-;                     (set! (-> a1-3 message) 'teleport)
-;                     (send-event-function self a1-3)
-;                     )
-;                    )
-;         )
-;        )
-;       ((= v1-0 'teleport-to-other-start-string)
-;        (let ((gp-2 (new 'stack-no-clear 'vector)))
-;         (set! (-> *camera-combiner* trans quad) (-> *camera-other-trans* quad))
-;         (vector-! gp-2 (-> self tpos-curr-adj) *camera-other-trans*)
-;         (vector-normalize! gp-2 1.0)
-;         (forward-down->inv-matrix
-;          (-> *camera-combiner* inv-camera-rot)
-;          gp-2
-;          (new 'static 'vector :y -1.0)
-;          )
-;         )
-;        (let ((a1-8 (new 'stack-no-clear 'event-message-block)))
-;         (set! (-> a1-8 from) self)
-;         (set! (-> a1-8 num-params) 2)
-;         (set! (-> a1-8 message) 'change-state)
-;         (set! (-> a1-8 param 0) (the-as uint cam-free-floating))
-;         (set! (-> a1-8 param 1) (the-as uint 0))
-;         (send-event-function self a1-8)
-;         )
-;        (let ((a1-9 (new 'stack-no-clear 'event-message-block)))
-;         (set! (-> a1-9 from) self)
-;         (set! (-> a1-9 num-params) 0)
-;         (set! (-> a1-9 message) 'teleport)
-;         (send-event-function self a1-9)
-;         )
-;        (let ((a1-10 (new 'stack-no-clear 'event-message-block)))
-;         (set! (-> a1-10 from) self)
-;         (set! (-> a1-10 num-params) 2)
-;         (set! (-> a1-10 message) 'change-state)
-;         (set! (-> a1-10 param 0) (the-as uint *camera-base-mode*))
-;         (set! (-> a1-10 param 1) (the-as uint 0))
-;         (set! v0-0 (the-as none (send-event-function self a1-10)))
-;         )
-;        )
-;       ((= v1-0 'teleport-to-vector-start-string)
-;        (set! v0-0 (when (> arg1 0)
-;                    (let ((v1-43 (the-as object (-> arg3 param 0)))
-;                          (gp-3 (new 'stack-no-clear 'vector))
-;                          )
-;                     (set!
-;                      (-> *camera-combiner* trans quad)
-;                      (-> (the-as vector v1-43) quad)
-;                      )
-;                     (vector-!
-;                      gp-3
-;                      (-> self tpos-curr-adj)
-;                      (the-as vector v1-43)
-;                      )
-;                     (vector-normalize! gp-3 1.0)
-;                     (forward-down->inv-matrix
-;                      (-> *camera-combiner* inv-camera-rot)
-;                      gp-3
-;                      (new 'static 'vector :y -1.0)
-;                      )
-;                     )
-;                    (let ((a1-17 (new 'stack-no-clear 'event-message-block)))
-;                     (set! (-> a1-17 from) self)
-;                     (set! (-> a1-17 num-params) 2)
-;                     (set! (-> a1-17 message) 'change-state)
-;                     (set! (-> a1-17 param 0) (the-as uint cam-free-floating))
-;                     (set! (-> a1-17 param 1) (the-as uint 0))
-;                     (send-event-function self a1-17)
-;                     )
-;                    (let ((a1-18 (new 'stack-no-clear 'event-message-block)))
-;                     (set! (-> a1-18 from) self)
-;                     (set! (-> a1-18 num-params) 2)
-;                     (set! (-> a1-18 message) 'change-state)
-;                     (set! (-> a1-18 param 0) (the-as uint *camera-base-mode*))
-;                     (set! (-> a1-18 param 1) (the-as uint 0))
-;                     (send-event-function self a1-18)
-;                     )
-;                    )
-;         )
-;        )
-;       ((= v1-0 'change-pov)
-;        (let ((v1-52 (the-as object (-> arg3 param 0))))
-;         (cond
-;          ((< arg1 2)
-;           (set! (-> self pov-bone) 0)
-;           0
-;           )
-;          (else
-;           (set! (-> self pov-bone) (the-as int (-> arg3 param 1)))
-;           )
-;          )
-;         (set! v0-0 (cond
-;                     ((not (the-as uint v1-52))
-;                      (set! (-> self pov-handle) (the-as handle #f))
-;                      #f
-;                      )
-;                     (else
-;                      (set!
-;                       v0-0
-;                       (the-as none (process->handle (the-as uint v1-52)))
-;                       )
-;                      (set! (-> self pov-handle) (the-as handle v0-0))
-;                      v0-0
-;                      )
-;                     )
-;          )
-;         )
-;        )
-;       ((= v1-0 'change-target-bone)
-;        (set! v0-0 (the-as none (-> arg3 param 0)))
-;        (set! (-> self which-bone) (the-as int v0-0))
-;        )
-;       ((= v1-0 'change-target)
-;        (let ((v1-56 (the-as object (-> arg3 param 0))))
-;         (cond
-;          ((< arg1 2)
-;           (set! (-> self which-bone) 0)
-;           0
-;           )
-;          (else
-;           (set! (-> self which-bone) (the-as int (-> arg3 param 1)))
-;           )
-;          )
-;         (cond
-;          ((not (the-as uint v1-56))
-;           (set! (-> self drawable-target) (the-as handle #f))
-;           (set! (-> self master-options) (logand -3 (-> self master-options)))
-;           )
-;          ((= (the-as uint v1-56) *target*)
-;           (set! (-> self drawable-target) (the-as handle #f))
-;           (logior! (-> self master-options) 2)
-;           (reset-target-tracking)
-;           )
-;          (else
-;           (set! (-> self drawable-target) (process->handle (the-as uint v1-56)))
-;           (logior! (-> self master-options) 2)
-;           (reset-drawable-tracking)
-;           )
-;          )
-;         )
-;        (set! (-> *camera-combiner* tracking no-follow) #f)
-;        (set! v0-0 (the-as none #f))
-;        )
-;       ((= v1-0 'reset-root)
-;        (dotimes (gp-4 (-> self num-slaves))
-;         (set! (-> self slave gp-4 0 trans quad) (the-as uint128 0))
-;         (matrix-identity! (the-as matrix (-> self slave gp-4 0 tracking)))
-;         )
-;        (vector-reset! (-> *camera-combiner* trans))
-;        (set!
-;         v0-0
-;         (the-as
-;          none
-;          (matrix-identity! (the-as matrix (-> *camera-combiner* tracking)))
-;          )
-;         )
-;        )
-;       ((= v1-0 'set-fov)
-;        (set!
-;         (-> *camera-combiner* fov)
-;         (the-as float (gpr->fpr (-> arg3 param 0)))
-;         )
-;        (dotimes (v1-86 (-> self num-slaves))
-;         (set!
-;          (-> self slave v1-86 0 fov)
-;          (the-as float (gpr->fpr (-> arg3 param 0)))
-;          )
-;         )
-;        (set! v0-0 (the-as none #f))
-;        )
-;       ((= v1-0 'query-fov)
-;        (set! v0-0 (the-as none (if (> (-> self num-slaves) 0)
-;                                 (-> self slave 0 0 fov)
-;                                 11650.845
-;                                 )
-;                    )
-;         )
-;        )
-;       ((= v1-0 'intro-done?)
-;        (set! v0-0 (the-as none #t))
-;        (dotimes (v1-91 (-> self num-slaves))
-;         (if (< (-> self slave v1-91 0 intro-t) 1.0)
-;          (set! v0-0 (the-as none #f))
-;          )
-;         )
-;        )
-;       ((= v1-0 'query-state)
-;        (let ((v1-95 (+ (-> self num-slaves) -1)))
-;         (while
-;          (not
-;           (or
-;            (< v1-95 0)
-;            (= (-> self slave v1-95 0 next-state) (-> arg3 param 0))
-;            )
-;           )
-;          (+! v1-95 -1)
-;          )
-;         (set!
-;          v0-0
-;          (and
-;           (>= v1-95 0)
-;           (= (-> self slave v1-95 0 next-state) (-> arg3 param 0))
-;           )
-;          )
-;         )
-;        )
-;       ((= v1-0 'change-to-entity-by-name)
-;        (let ((a0-75 (entity-by-name (the-as string (-> arg3 param 0)))))
-;         (set! v0-0 (the-as none (if a0-75
-;                                  (master-switch-to-entity a0-75)
-;                                  (format
-;                                   0
-;                                   "ERROR <GMJ>: camera entity '~S' not found for change-to-entity-by-name~%"
-;                                   (-> arg3 param 0)
-;                                   )
-;                                  )
-;                     )
-;          )
-;         )
-;        )
-;       ((= v1-0 'change-state)
-;        (let ((s1-0 (the-as uint #f))
-;              (s2-0 (the-as (pointer process) #f))
-;              (s5-2 (the-as (pointer camera-slave) #f))
-;              )
-;         (let ((s3-0 (the-as object #f))
-;               (s4-1 (the-as (pointer camera-slave) #f))
-;               )
-;          (let ((t9-22 type-type?)
-;                (v1-101 (-> arg3 param 0))
-;                )
-;           (cond
-;            ((t9-22 (rtype-of v1-101) state)
-;             (set! s1-0 (-> arg3 param 0))
-;             )
-;            ((let ((t9-23 type-type?)
-;                   (v1-103 (-> arg3 param 0))
-;                   )
-;              (t9-23 (rtype-of v1-103) camera-slave)
-;              )
-;             (set! s2-0 (process->ppointer (-> arg3 param 0)))
-;             )
-;            (else
-;             (let ((t9-24 format)
-;                   (a0-82 0)
-;                   (a1-25
-;                    "ERROR <GMJ>: invalid type '~A' to *camera* change-state~%"
-;                    )
-;                   (v1-106 (-> arg3 param 0))
-;                   )
-;              (t9-24 a0-82 a1-25 (rtype-of v1-106))
-;              )
-;             )
-;            )
-;           )
-;          (if
-;           (and
-;            (> (-> self num-slaves) 0)
-;            (or
-;             (= (-> self slave 0 0 next-state name) 'cam-stick)
-;             (= (-> self slave 0 0 next-state name) 'cam-string)
-;             )
-;            )
-;           (set!
-;            (-> self view-off-param-save)
-;            (-> self slave 0 0 view-off-param)
-;            )
-;           )
-;          (set! (-> self changer) (the-as uint (process->ppointer arg0)))
-;          (cond
-;           ((<= (-> self num-slaves) 0)
-;            (cond
-;             (s2-0
-;              (let ((a1-26 (new 'stack-no-clear 'event-message-block)))
-;               (set! (-> a1-26 from) self)
-;               (set! (-> a1-26 num-params) 1)
-;               (set! (-> a1-26 message) 'slave-activated)
-;               (let ((v1-126 s2-0))
-;                (set! (-> a1-26 param 0) (the-as uint (if v1-126
-;                                                       (->
-;                                                        (the-as
-;                                                         camera-slave
-;                                                         (-> v1-126 0)
-;                                                         )
-;                                                        self
-;                                                        )
-;                                                       )
-;                                          )
-;                 )
-;                )
-;               (send-event-function self a1-26)
-;               )
-;              )
-;             (else
-;              (let
-;               ((gp-5
-;                 (the-as
-;                  camera-slave
-;                  (get-process *camera-dead-pool* camera-slave #x4000)
-;                  )
-;                 )
-;                )
-;               (set! s2-0 (when gp-5
-;                           (let ((t9-27 (method-of-type camera-slave activate)))
-;                            (t9-27
-;                             gp-5
-;                             self
-;                             'camera-slave
-;                             (the-as pointer #x70004000)
-;                             )
-;                            )
-;                           (run-now-in-process gp-5 cam-slave-init s1-0 #f)
-;                           (-> gp-5 ppointer)
-;                           )
-;                )
-;               )
-;              (cond
-;               (s2-0
-;                )
-;               (else
-;                (format 0 "ERROR <GMJ>: replacement slave failed to activate~%")
-;                )
-;               )
-;              )
-;             )
-;            (when s2-0
-;             (let ((a1-31 (new 'stack-no-clear 'event-message-block)))
-;              (set! (-> a1-31 from) self)
-;              (set! (-> a1-31 num-params) 0)
-;              (set! (-> a1-31 message) 'stop-tracking)
-;              (send-event-function *camera-combiner* a1-31)
-;              )
-;             (when (= (-> (the-as camera-slave (-> s2-0 0)) blend-to-type) 2)
-;              (let ((a1-32 (new 'stack-no-clear 'event-message-block)))
-;               (set! (-> a1-32 from) self)
-;               (set! (-> a1-32 num-params) 1)
-;               (set! (-> a1-32 message) 'start-tracking)
-;               (set! (-> a1-32 param 0) (the-as uint (if s2-0
-;                                                      (->
-;                                                       (the-as
-;                                                        camera-slave
-;                                                        (-> s2-0 0)
-;                                                        )
-;                                                       self
-;                                                       )
-;                                                      )
-;                                         )
-;                )
-;               (send-event-function *camera-combiner* a1-32)
-;               )
-;              )
-;             )
-;            )
-;           ((zero? (-> arg3 param 1))
-;            (if *math-camera*
-;             (set! (-> *math-camera* reset) 1)
-;             )
-;            (when (< 1 (-> self num-slaves))
-;             (if (= (-> self changer) (-> self slave 1))
-;              (set! s5-2 (-> self slave 1))
-;              (deactivate (-> self slave 1 0))
-;              )
-;             (set! (-> self slave 1) (the-as (pointer camera-slave) #f))
-;             (+! (-> self num-slaves) -1)
-;             )
-;            (cond
-;             (s2-0
-;              (if (= (-> self changer) (-> self slave 0))
-;               (set! s5-2 (-> self slave 0))
-;               (deactivate (-> self slave 0 0))
-;               )
-;              (set! (-> self slave 0) (the-as (pointer camera-slave) #f))
-;              (+! (-> self num-slaves) -1)
-;              (let ((a1-33 (new 'stack-no-clear 'event-message-block)))
-;               (set! (-> a1-33 from) self)
-;               (set! (-> a1-33 num-params) 1)
-;               (set! (-> a1-33 message) 'slave-activated)
-;               (let ((v1-166 s2-0))
-;                (set! (-> a1-33 param 0) (the-as uint (if v1-166
-;                                                       (->
-;                                                        (the-as
-;                                                         camera-slave
-;                                                         (-> v1-166 0)
-;                                                         )
-;                                                        self
-;                                                        )
-;                                                       )
-;                                          )
-;                 )
-;                )
-;               (send-event-function self a1-33)
-;               )
-;              )
-;             ((not
-;               (and
-;                (= (-> self slave 0 0 next-state) *camera-base-mode*)
-;                (= (-> self slave 0 0 next-state) s1-0)
-;                )
-;               )
-;              (let ((a1-34 (new 'stack-no-clear 'event-message-block)))
-;               (set! (-> a1-34 from) self)
-;               (set! (-> a1-34 num-params) 1)
-;               (set! (-> a1-34 message) 'change-state-no-go)
-;               (set! (-> a1-34 param 0) s1-0)
-;               (send-event-function (ppointer->process (-> self slave 0)) a1-34)
-;               )
-;              (set! s4-1 (-> self slave 0))
-;              (set! s3-0 s1-0)
-;              (set! s2-0 (-> self slave 0))
-;              )
-;             )
-;            (when s2-0
-;             (let ((a1-35 (new 'stack-no-clear 'event-message-block)))
-;              (set! (-> a1-35 from) self)
-;              (set! (-> a1-35 num-params) 0)
-;              (set! (-> a1-35 message) 'stop-tracking)
-;              (send-event-function *camera-combiner* a1-35)
-;              )
-;             (when (= (-> (the-as camera-slave (-> s2-0 0)) blend-to-type) 2)
-;              (let ((a1-36 (new 'stack-no-clear 'event-message-block)))
-;               (set! (-> a1-36 from) self)
-;               (set! (-> a1-36 num-params) 1)
-;               (set! (-> a1-36 message) 'start-tracking)
-;               (let ((v1-191 s2-0))
-;                (set! (-> a1-36 param 0) (the-as uint (if v1-191
-;                                                       (->
-;                                                        (the-as
-;                                                         camera-slave
-;                                                         (-> v1-191 0)
-;                                                         )
-;                                                        self
-;                                                        )
-;                                                       )
-;                                          )
-;                 )
-;                )
-;               (send-event-function *camera-combiner* a1-36)
-;               )
-;              )
-;             )
-;            )
-;           (else
-;            (when (< 1 (-> self num-slaves))
-;             (if (= (-> self changer) (-> self slave 0))
-;              (set! s5-2 (-> self slave 0))
-;              (deactivate (-> self slave 0 0))
-;              )
-;             (set! (-> self slave 0) (-> self slave 1))
-;             (set! (-> self slave 1) (the-as (pointer camera-slave) #f))
-;             (+! (-> self num-slaves) -1)
-;             )
-;            (when (< 0.0 (-> self slave 0 0 intro-t-step))
-;             (set! (-> self outro-t) (-> self slave 0 0 intro-t))
-;             (set! (-> self outro-t-step) (/ -5.0 (the float (-> arg3 param 1))))
-;             (set!
-;              (-> self outro-exit-value)
-;              (-> self slave 0 0 outro-exit-value)
-;              )
-;             (curve-copy! (-> self outro-curve) (-> self slave 0 0 intro-curve))
-;             )
-;            (if (nonzero? (-> self no-intro))
-;             (set! (-> self outro-t) 0.0)
-;             )
-;            (when
-;             (not
-;              (and
-;               (= (-> self slave 0 0 next-state) *camera-base-mode*)
-;               (= (-> self slave 0 0 next-state) s1-0)
-;               )
-;              )
-;             (cond
-;              (s2-0
-;               (let ((a1-38 (new 'stack-no-clear 'event-message-block)))
-;                (set! (-> a1-38 from) self)
-;                (set! (-> a1-38 num-params) 1)
-;                (set! (-> a1-38 message) 'slave-activated)
-;                (let ((v1-228 s2-0))
-;                 (set! (-> a1-38 param 0) (the-as uint (if v1-228
-;                                                        (->
-;                                                         (the-as
-;                                                          camera-slave
-;                                                          (-> v1-228 0)
-;                                                          )
-;                                                         self
-;                                                         )
-;                                                        )
-;                                           )
-;                  )
-;                 )
-;                (send-event-function self a1-38)
-;                )
-;               )
-;              (else
-;               (let ((s2-1 (get-process *camera-dead-pool* camera-slave #x4000)))
-;                (set! s2-0 (when s2-1
-;                            (let ((t9-42 (method-of-type camera-slave activate)))
-;                             (t9-42
-;                              (the-as camera-slave s2-1)
-;                              self
-;                              'camera-slave
-;                              (the-as pointer #x70004000)
-;                              )
-;                             )
-;                            (run-now-in-process s2-1 cam-slave-init s1-0 #f)
-;                            (-> s2-1 ppointer)
-;                            )
-;                 )
-;                )
-;               (cond
-;                (s2-0
-;                 )
-;                (else
-;                 (format #t "ERROR <GMJ>: secondary slave activate failed~%")
-;                 )
-;                )
-;               )
-;              )
-;             (when s2-0
-;              (let ((a1-43 (new 'stack-no-clear 'event-message-block)))
-;               (set! (-> a1-43 from) self)
-;               (set! (-> a1-43 num-params) 1)
-;               (set! (-> a1-43 message) 'set-interpolation)
-;               (set! (-> a1-43 param 0) (-> arg3 param 1))
-;               (send-event-function *camera-combiner* a1-43)
-;               )
-;              (set! s4-1 (-> self slave 0))
-;              (cond
-;               ((zero? (-> self slave 0 0 blend-from-type))
-;                (let ((a1-44 (new 'stack-no-clear 'event-message-block)))
-;                 (set! (-> a1-44 from) self)
-;                 (set! (-> a1-44 num-params) 1)
-;                 (set! (-> a1-44 message) 'change-state-no-go)
-;                 (set! (-> a1-44 param 0) (the-as uint cam-fixed))
-;                 (send-event-function
-;                  (ppointer->process (-> self slave 0))
-;                  a1-44
-;                  )
-;                 )
-;                (let ((a1-45 (new 'stack-no-clear 'event-message-block)))
-;                 (set! (-> a1-45 from) self)
-;                 (set! (-> a1-45 num-params) 0)
-;                 (set! (-> a1-45 message) 'stop-tracking)
-;                 (send-event-function *camera-combiner* a1-45)
-;                 )
-;                (set! s3-0 cam-fixed)
-;                )
-;               (else
-;                (let ((a1-46 (new 'stack-no-clear 'event-message-block)))
-;                 (set! (-> a1-46 from) self)
-;                 (set! (-> a1-46 num-params) 1)
-;                 (set! (-> a1-46 message) 'change-state-no-go)
-;                 (set! (-> a1-46 param 0) (the-as uint cam-decel))
-;                 (send-event-function
-;                  (ppointer->process (-> self slave 0))
-;                  a1-46
-;                  )
-;                 )
-;                (set! s3-0 cam-decel)
-;                )
-;               )
-;              (let ((v1-261 (-> *camera-combiner* tracking-status)))
-;               (cond
-;                ((zero? v1-261)
-;                 (let
-;                  ((v1-263 (-> (the-as camera-slave (-> s2-0 0)) blend-to-type)))
-;                  (cond
-;                   ((zero? v1-263)
-;                    )
-;                   ((= v1-263 1)
-;                    )
-;                   ((= v1-263 2)
-;                    (cond
-;                     ((= (-> self slave 0 0 blend-from-type) 1)
-;                      (let ((a1-47 (new 'stack-no-clear 'event-message-block)))
-;                       (set! (-> a1-47 from) self)
-;                       (set! (-> a1-47 num-params) 1)
-;                       (set! (-> a1-47 message) 'copy-tracking)
-;                       (set!
-;                        (-> a1-47 param 0)
-;                        (the-as uint (ppointer->process (-> self slave 0)))
-;                        )
-;                       (send-event-function *camera-combiner* a1-47)
-;                       )
-;                      )
-;                     (else
-;                      (let ((a1-48 (new 'stack-no-clear 'event-message-block)))
-;                       (set! (-> a1-48 from) self)
-;                       (set! (-> a1-48 num-params) 1)
-;                       (set! (-> a1-48 message) 'start-tracking)
-;                       (set!
-;                        (-> a1-48 param 0)
-;                        (the-as uint (ppointer->process (-> self slave 0)))
-;                        )
-;                       (send-event-function *camera-combiner* a1-48)
-;                       )
-;                      )
-;                     )
-;                    (set! (-> *camera-combiner* tracking-status) (the-as uint 2))
-;                    )
-;                   )
-;                  )
-;                 )
-;                ((= v1-261 1)
-;                 (let
-;                  ((v1-280 (-> (the-as camera-slave (-> s2-0 0)) blend-to-type)))
-;                  (cond
-;                   ((zero? v1-280)
-;                    (set! (-> *camera-combiner* tracking-status) (the-as uint 3))
-;                    )
-;                   ((= v1-280 1)
-;                    (set! (-> *camera-combiner* tracking-status) (the-as uint 3))
-;                    )
-;                   ((= v1-280 2)
-;                    )
-;                   )
-;                  )
-;                 )
-;                ((= v1-261 2)
-;                 (let
-;                  ((v1-286 (-> (the-as camera-slave (-> s2-0 0)) blend-to-type)))
-;                  (cond
-;                   ((zero? v1-286)
-;                    (set! (-> *camera-combiner* tracking-status) (the-as uint 0))
-;                    0
-;                    )
-;                   ((= v1-286 1)
-;                    (set! (-> *camera-combiner* tracking-status) (the-as uint 0))
-;                    0
-;                    )
-;                   ((= v1-286 2)
-;                    )
-;                   )
-;                  )
-;                 )
-;                ((= v1-261 3)
-;                 (let
-;                  ((v1-295 (-> (the-as camera-slave (-> s2-0 0)) blend-to-type)))
-;                  (cond
-;                   ((zero? v1-295)
-;                    (set! (-> *camera-combiner* tracking-status) (the-as uint 0))
-;                    0
-;                    )
-;                   ((= v1-295 1)
-;                    (set! (-> *camera-combiner* tracking-status) (the-as uint 0))
-;                    0
-;                    )
-;                   ((= v1-295 2)
-;                    (set! (-> *camera-combiner* tracking-status) (the-as uint 2))
-;                    )
-;                   )
-;                  )
-;                 )
-;                )
-;               )
-;              )
-;             )
-;            )
-;           )
-;          (when s4-1
-;           (let ((a1-49 (new 'stack-no-clear 'event-message-block)))
-;            (set! (-> a1-49 from) self)
-;            (set! (-> a1-49 num-params) 1)
-;            (set! (-> a1-49 message) 'go)
-;            (set! (-> a1-49 param 0) (the-as uint s3-0))
-;            (send-event-function (the-as process (if s4-1
-;                                                  (->
-;                                                   (the-as
-;                                                    camera-slave
-;                                                    (-> s4-1 0)
-;                                                    )
-;                                                   self
-;                                                   )
-;                                                  )
-;                                  )
-;             a1-49
-;             )
-;            )
-;           )
-;          )
-;         (if s5-2
-;          (deactivate (-> s5-2 0))
-;          )
-;         )
-;        (set! v0-0 (the-as none #t))
-;        )
-;       ((= v1-0 'slave-activated)
-;        (set! v0-0 (cond
-;                    ((< (-> self num-slaves) 2)
-;                     (set!
-;                      (-> self slave (-> self num-slaves))
-;                      (the-as
-;                       (pointer camera-slave)
-;                       (process->ppointer (-> arg3 param 0))
-;                       )
-;                      )
-;                     (+! (-> self num-slaves) 1)
-;                     (logior! (-> self master-options) 8)
-;                     (let
-;                      ((f0-15
-;                        (-> (the-as projectile (-> arg3 param 0)) max-turn)
-;                        )
-;                       )
-;                      (set!
-;                       (-> *camera-combiner* tracking tilt-adjust target)
-;                       f0-15
-;                       )
-;                      f0-15
-;                      )
-;                     )
-;                    (else
-;                     (format
-;                      0
-;                      "ERROR: ERROR <GMJ>: Exceeded maximum number of camera slaves!~%"
-;                      )
-;                     (deactivate (-> arg3 param 0))
-;                     )
-;                    )
-;         )
-;        )
-;       ((= v1-0 'ease-in)
-;        (cond
-;         ((< arg1 1)
-;          (set! (-> self ease-t) 0.0)
-;          (set! (-> self master-options) (logand -33 (-> self master-options)))
-;          )
-;         ((< arg1 2)
-;          (if (< (the-as float (gpr->fpr (-> arg3 param 0))) (-> self ease-t))
-;           (set! (-> self ease-t) (the-as float (gpr->fpr (-> arg3 param 0))))
-;           )
-;          (set! (-> self master-options) (logand -33 (-> self master-options)))
-;          )
-;         (else
-;          (if (< (the-as float (gpr->fpr (-> arg3 param 0))) (-> self ease-t))
-;           (set! (-> self ease-t) (the-as float (gpr->fpr (-> arg3 param 0))))
-;           )
-;          (set!
-;           (-> self ease-to quad)
-;           (-> (the-as vector (-> arg3 param 1)) quad)
-;           )
-;          (logior! (-> self master-options) 32)
-;          )
-;         )
-;        (set! (-> self ease-step) 0.033333335)
-;        (set! v0-0 (the-as none (-> self ease-from)))
-;        (set! (-> (the-as vector v0-0) quad) (-> self tpos-curr-adj quad))
-;        )
-;       ((= v1-0 'damp-up)
-;        (let ((f0-22 0.0))
-;         (set! (-> self upspeed) f0-22)
-;         (set! v0-0 (the-as none f0-22))
-;         )
-;        )
-;       ((= v1-0 'reset-follow)
-;        (set! v0-0 (the-as none (if (handle->process (-> self drawable-target))
-;                                 (reset-drawable-follow)
-;                                 (reset-follow)
-;                                 )
-;                    )
-;         )
-;        )
-;       ((= v1-0 'teleport)
-;        (cond
-;         ((and
-;           (logtest? (-> self master-options) 2)
-;           (handle->process (-> self drawable-target))
-;           )
-;          (reset-drawable-tracking)
-;          )
-;         ((and *target* (logtest? (-> self master-options) 2))
-;          (reset-target-tracking)
-;          )
-;         )
-;        (countdown (gp-6 (-> self num-slaves))
-;         (let ((a1-53 (new 'stack-no-clear 'event-message-block)))
-;          (set! (-> a1-53 from) self)
-;          (set! (-> a1-53 num-params) 0)
-;          (set! (-> a1-53 message) arg2)
-;          (send-event-function (ppointer->process (-> self slave gp-6)) a1-53)
-;          )
-;         )
-;        (let ((a1-54 (new 'stack-no-clear 'event-message-block)))
-;         (set! (-> a1-54 from) self)
-;         (set! (-> a1-54 num-params) 0)
-;         (set! (-> a1-54 message) arg2)
-;         (set! v0-0 (the-as none (send-event-function *camera-combiner* a1-54)))
-;         )
-;        )
-;       ((= v1-0 'toggle-slave-option)
-;        (set!
-;         (-> self slave-options)
-;         (logxor (-> self slave-options) (-> arg3 param 0))
-;         )
-;        (let ((a0-193 (-> self slave 0))
-;              (v1-360 (-> self slave 1))
-;              )
-;         (if a0-193
-;          (set!
-;           (-> a0-193 0 options)
-;           (logxor (-> a0-193 0 options) (-> arg3 param 0))
-;           )
-;          )
-;         (set! v0-0 (when v1-360
-;                     (set!
-;                      v0-0
-;                      (the-as
-;                       none
-;                       (logxor (-> v1-360 0 options) (-> arg3 param 0))
-;                       )
-;                      )
-;                     (set! (-> v1-360 0 options) (the-as uint v0-0))
-;                     v0-0
-;                     )
-;          )
-;         )
-;        )
-;       (else
-;        (set! v0-0 (cond
-;                    ((= v1-0 'slave-option?)
-;                     (if (nonzero? (-> self num-slaves))
-;                      (logtest?
-;                       (-> self slave (+ (-> self num-slaves) -1) 0 options)
-;                       (-> arg3 param 0)
-;                       )
-;                      )
-;                     )
-;                    ((= v1-0 'set-slave-option)
-;                     (when (nonzero? (-> self num-slaves))
-;                      (set!
-;                       v0-0
-;                       (the-as
-;                        none
-;                        (logior
-;                         (-> self slave (+ (-> self num-slaves) -1) 0 options)
-;                         (-> arg3 param 0)
-;                         )
-;                        )
-;                       )
-;                      (set!
-;                       (-> self slave (+ (-> self num-slaves) -1) 0 options)
-;                       (the-as uint v0-0)
-;                       )
-;                      v0-0
-;                      )
-;                     )
-;                    ((= v1-0 'clear-slave-option)
-;                     (when (nonzero? (-> self num-slaves))
-;                      (set!
-;                       v0-0
-;                       (the-as
-;                        none
-;                        (logclear
-;                         (-> self slave (+ (-> self num-slaves) -1) 0 options)
-;                         (-> arg3 param 0)
-;                         )
-;                        )
-;                       )
-;                      (set!
-;                       (-> self slave (+ (-> self num-slaves) -1) 0 options)
-;                       (the-as uint v0-0)
-;                       )
-;                      v0-0
-;                      )
-;                     )
-;                    ((= v1-0 'no-follow)
-;                     (when (nonzero? (-> self num-slaves))
-;                      (set!
-;                       (->
-;                        self
-;                        slave
-;                        (+ (-> self num-slaves) -1)
-;                        0
-;                        tracking
-;                        no-follow
-;                        )
-;                       #t
-;                       )
-;                      (vector-reset!
-;                       (->
-;                        self
-;                        slave
-;                        (+ (-> self num-slaves) -1)
-;                        0
-;                        tracking
-;                        follow-off
-;                        )
-;                       )
-;                      )
-;                     (set! (-> *camera-combiner* tracking no-follow) #t)
-;                     (set!
-;                      v0-0
-;                      (the-as none (-> *camera-combiner* tracking follow-off))
-;                      )
-;                     (.svf (&-> (the-as vector v0-0) quad) vf0)
-;                     v0-0
-;                     )
-;                    ((= v1-0 'yes-follow)
-;                     (if (nonzero? (-> self num-slaves))
-;                      (set!
-;                       (->
-;                        self
-;                        slave
-;                        (+ (-> self num-slaves) -1)
-;                        0
-;                        tracking
-;                        no-follow
-;                        )
-;                       #f
-;                       )
-;                      )
-;                     (set! (-> *camera-combiner* tracking no-follow) #f)
-;                     #f
-;                     )
-;                    ((= v1-0 'blend-from-as-fixed)
-;                     (when (nonzero? (-> self num-slaves))
-;                      (set!
-;                       (->
-;                        self
-;                        slave
-;                        (+ (-> self num-slaves) -1)
-;                        0
-;                        blend-from-type
-;                        )
-;                       (the-as uint 0)
-;                       )
-;                      0
-;                      )
-;                     )
-;                    ((= v1-0 'point-of-interest)
-;                     (when (nonzero? (-> self num-slaves))
-;                      (let ((a1-60 (new 'stack-no-clear 'event-message-block)))
-;                       (set! (-> a1-60 from) arg0)
-;                       (set! (-> a1-60 num-params) arg1)
-;                       (set! (-> a1-60 message) arg2)
-;                       (set! (-> a1-60 param 0) (-> arg3 param 0))
-;                       (set! (-> a1-60 param 1) (-> arg3 param 1))
-;                       (set! (-> a1-60 param 2) (-> arg3 param 2))
-;                       (set! (-> a1-60 param 3) (-> arg3 param 3))
-;                       (set! (-> a1-60 param 4) (-> arg3 param 4))
-;                       (set! (-> a1-60 param 5) (-> arg3 param 5))
-;                       (set! (-> a1-60 param 6) (-> arg3 param 6))
-;                       (send-event-function
-;                        (ppointer->process
-;                         (-> self slave (+ (-> self num-slaves) -1))
-;                         )
-;                        a1-60
-;                        )
-;                       )
-;                      )
-;                     (let ((a1-61 (new 'stack-no-clear 'event-message-block)))
-;                      (set! (-> a1-61 from) arg0)
-;                      (set! (-> a1-61 num-params) arg1)
-;                      (set! (-> a1-61 message) arg2)
-;                      (set! (-> a1-61 param 0) (-> arg3 param 0))
-;                      (set! (-> a1-61 param 1) (-> arg3 param 1))
-;                      (set! (-> a1-61 param 2) (-> arg3 param 2))
-;                      (set! (-> a1-61 param 3) (-> arg3 param 3))
-;                      (set! (-> a1-61 param 4) (-> arg3 param 4))
-;                      (set! (-> a1-61 param 5) (-> arg3 param 5))
-;                      (set! (-> a1-61 param 6) (-> arg3 param 6))
-;                      (send-event-function *camera-combiner* a1-61)
-;                      )
-;                     )
-;                    ((= v1-0 'part-water-drip)
-;                     (set!
-;                      (-> self water-drip-time)
-;                      (the-as uint (-> *display* base-frame-counter))
-;                      )
-;                     (set!
-;                      (-> self water-drip-mult)
-;                      (the-as float (gpr->fpr (-> arg3 param 0)))
-;                      )
-;                     (let ((f0-24 (the-as float (-> arg3 param 1))))
-;                      (set! (-> self water-drip-speed) f0-24)
-;                      f0-24
-;                      )
-;                     )
-;                    (else
-;                     (countdown (s3-1 (-> self num-slaves))
-;                      (let ((a1-62 (new 'stack-no-clear 'event-message-block)))
-;                       (set! (-> a1-62 from) arg0)
-;                       (set! (-> a1-62 num-params) arg1)
-;                       (set! (-> a1-62 message) arg2)
-;                       (set! (-> a1-62 param 0) (-> arg3 param 0))
-;                       (set! (-> a1-62 param 1) (-> arg3 param 1))
-;                       (set! (-> a1-62 param 2) (-> arg3 param 2))
-;                       (set! (-> a1-62 param 3) (-> arg3 param 3))
-;                       (set! (-> a1-62 param 4) (-> arg3 param 4))
-;                       (set! (-> a1-62 param 5) (-> arg3 param 5))
-;                       (set! (-> a1-62 param 6) (-> arg3 param 6))
-;                       (send-event-function
-;                        (ppointer->process (-> self slave s3-1))
-;                        a1-62
-;                        )
-;                       )
-;                      )
-;                     #f
-;                     )
-;                    )
-;         )
-;        )
-;       )
-;      )
-;     (the-as object v0-0)
-;     )
-;    )
-;   :enter
-;   (behavior ()
-;    (if (and (nonzero? camera-master-debug) *debug-segment*)
-;     (add-connection *debug-engine* self camera-master-debug self #f #f)
-;     )
-;    (none)
-;    )
-;   :trans
-;   (behavior ()
-;    (when (not (paused?))
-;     (vector-negate!
-;      (-> self local-down)
-;      (vector-normalize-copy!
-;       (-> self local-down)
-;       (-> *standard-dynamics* gravity)
-;       1.0
-;       )
-;      )
-;     (cam-master-effect)
-;     )
-;    (none)
-;    )
-;   :code
-;   (behavior ()
-;    (while #t
-;     (if (and *dproc* *debug-segment*)
-;      (add-frame
-;       (-> *display* frames (-> *display* on-screen) frame profile-bar 0)
-;       'camera
-;       (new 'static 'rgba :r #x40 :b #x40 :a #x80)
-;       )
-;      )
-;     (set! (-> self string-min target y) (-> self stringMinHeight))
-;     (set! (-> self string-max target y) (-> self stringMaxHeight))
-;     (set! (-> self string-min target z) (-> self stringMinLength))
-;     (set! (-> self string-max target z) (-> self stringMaxLength))
-;     (set!
-;      (-> self string-push-z)
-;      (fmax
-;       (-> self string-min value z)
-;       (-> *CAMERA-bank* default-string-push-z)
-;       )
-;      )
-;     (master-track-target)
-;     (set! (-> last-try-to-look-at-data horz) 0.0)
-;     (set! (-> last-try-to-look-at-data vert) 0.0)
-;     (let ((a1-1 (new 'stack-no-clear 'event-message-block)))
-;      (set! (-> a1-1 from) self)
-;      (set! (-> a1-1 num-params) 1)
-;      (set! (-> a1-1 message) 'slave-option?)
-;      (set! (-> a1-1 param 0) (the-as uint #x4000))
-;      (when (send-event-function *camera* a1-1)
-;       (set! (-> self string-min target y) 18432.0)
-;       (set! (-> self string-max target y) 18432.041)
-;       )
-;      )
-;     (when (not (paused?))
-;      (update! (-> self string-min) (the-as vector #f))
-;      (update! (-> self string-max) (the-as vector #f))
-;      (master-check-regions)
-;      )
-;     (set!
-;      (-> self string-min value x)
-;      (fmin (-> self string-min value x) (+ -4.096 (-> self string-max value x)))
-;      )
-;     (set!
-;      (-> self string-min value y)
-;      (fmin (-> self string-min value y) (+ -4.096 (-> self string-max value y)))
-;      )
-;     (set!
-;      (-> self string-min value z)
-;      (fmin (-> self string-min value z) (+ -4.096 (-> self string-max value z)))
-;      )
-;     (if (nonzero? (-> self no-intro))
-;      (+! (-> self no-intro) -1)
-;      )
-;     (if (nonzero? (-> self force-blend))
-;      (+! (-> self force-blend) -1)
-;      )
-;     (suspend)
-;     )
-;    (none)
-;    )
-;   )
+(defstate cam-master-active (camera-master)
+  :event
+  (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
+   (local-vars (v0-0 object)) ;; hack
+   (rlet ((vf0 :class vf))
+    (init-vf0-vector)
+    (let ((v1-0 arg2))
+     (cond
+      ((= v1-0 'dist-from-interp-src)
+       (set! v0-0 (the-as object (cond
+                                  ((not *camera-combiner*)
+                                   409600.0
+                                   )
+                                  ((= (-> *camera-combiner* interp-val) 0.0)
+                                   0.0
+                                   )
+                                  (else
+                                   (-> *camera-combiner* dist-from-src)
+                                   )
+                                  )
+                   )
+        )
+       )
+      ((= v1-0 'dist-from-interp-dest)
+       (set! v0-0 (the-as object (cond
+                                  ((not *camera-combiner*)
+                                   0.0
+                                   )
+                                  ((= (-> *camera-combiner* interp-val) 0.0)
+                                   409600.0
+                                   )
+                                  (else
+                                   (-> *camera-combiner* dist-from-dest)
+                                   )
+                                  )
+                   )
+        )
+       )
+      ((= v1-0 'level-deactivate)
+       (set!
+        v0-0
+        (the-as
+         object
+         (if
+          (and
+           (-> self cam-entity)
+           (= (-> (get-level (-> self cam-entity)) name) (-> arg3 param 0))
+           )
+          (master-unset-region)
+          )
+         )
+        )
+       )
+      ((= v1-0 'clear-entity)
+       (set! v0-0 (master-unset-region))
+       )
+      ((= v1-0 'no-intro)
+       (set! v0-0 3)
+       (set! (-> self no-intro) (the-as uint v0-0))
+       )
+      ((= v1-0 'force-blend)
+       (set! (-> self force-blend) (the-as uint 3))
+       (set! v0-0 (-> arg3 param 0))
+       (set! (-> self force-blend-time) (the-as uint v0-0))
+       )
+      ((= v1-0 'teleport-to-transformq)
+       (set! v0-0 (the-as object (when (> arg1 0)
+                                  (let
+                                   ((gp-1 (the-as object (-> arg3 param 0))))
+                                   (send-event
+                                    self
+                                    'change-state
+                                    cam-free-floating
+                                    0
+                                    )
+                                   (dotimes (s5-1 (-> self num-slaves))
+                                    (set!
+                                     (-> self slave s5-1 0 trans quad)
+                                     (-> (the-as matrix gp-1) vector 0 quad)
+                                     )
+                                    (quaternion->matrix
+                                     (the-as
+                                      matrix
+                                      (-> self slave s5-1 0 tracking)
+                                      )
+                                     (the-as
+                                      quaternion
+                                      (+ (the-as uint gp-1) 16)
+                                      )
+                                     )
+                                    )
+                                   )
+                                  (send-event self 'teleport)
+                                  )
+                   )
+        )
+       )
+      ((= v1-0 'teleport-to-other-start-string)
+       (let ((gp-2 (new 'stack-no-clear 'vector)))
+        (set! (-> *camera-combiner* trans quad) (-> *camera-other-trans* quad))
+        (vector-! gp-2 (-> self tpos-curr-adj) *camera-other-trans*)
+        (vector-normalize! gp-2 1.0)
+        (forward-down->inv-matrix
+         (-> *camera-combiner* inv-camera-rot)
+         gp-2
+         (new 'static 'vector :y -1.0)
+         )
+        )
+       (send-event self 'change-state cam-free-floating 0)
+       (send-event self 'teleport)
+       (let ((a1-10 (new 'stack-no-clear 'event-message-block)))
+        (set! (-> a1-10 from) self)
+        (set! (-> a1-10 num-params) 2)
+        (set! (-> a1-10 message) 'change-state)
+        (set! (-> a1-10 param 0) (the-as uint *camera-base-mode*))
+        (set! (-> a1-10 param 1) (the-as uint 0))
+        (set! v0-0 (send-event-function self a1-10))
+        )
+       )
+      ((= v1-0 'teleport-to-vector-start-string)
+       (set! v0-0 (the-as object (when (> arg1 0)
+                                  (let
+                                   ((v1-43 (the-as object (-> arg3 param 0)))
+                                    (gp-3 (new 'stack-no-clear 'vector))
+                                    )
+                                   (set!
+                                    (-> *camera-combiner* trans quad)
+                                    (-> (the-as vector v1-43) quad)
+                                    )
+                                   (vector-!
+                                    gp-3
+                                    (-> self tpos-curr-adj)
+                                    (the-as vector v1-43)
+                                    )
+                                   (vector-normalize! gp-3 1.0)
+                                   (forward-down->inv-matrix
+                                    (-> *camera-combiner* inv-camera-rot)
+                                    gp-3
+                                    (new 'static 'vector :y -1.0)
+                                    )
+                                   )
+                                  (send-event
+                                   self
+                                   'change-state
+                                   cam-free-floating
+                                   0
+                                   )
+                                  (send-event
+                                   self
+                                   'change-state
+                                   *camera-base-mode*
+                                   0
+                                   )
+                                  )
+                   )
+        )
+       )
+      ((= v1-0 'change-pov)
+      (let ((v1-52 (the-as object (-> arg3 param 0))))
+       (cond
+        ((< arg1 2)
+         (set! (-> self pov-bone) 0)
+         0
+         )
+        (else
+         (set! (-> self pov-bone) (the-as int (-> arg3 param 1)))
+         )
+        )
+       (set! v0-0 (the-as object (cond
+                                  ((not (the-as handle v1-52))
+                                   (set!
+                                    (-> self pov-handle)
+                                    (the-as handle #f)
+                                    )
+                                   #f
+                                   )
+                                  (else
+                                   (set!
+                                    v0-0
+                                    (process->handle (the-as process v1-52))
+                                    )
+                                   (set!
+                                    (-> self pov-handle)
+                                    (the-as handle v0-0)
+                                    )
+                                   v0-0
+                                   )
+                                  )
+                   )
+        )
+       )
+      )
+      ((= v1-0 'change-target-bone)
+       (set! v0-0 (-> arg3 param 0))
+       (set! (-> self which-bone) (the-as int v0-0))
+       )
+           ((= v1-0 'change-target)
+      (let ((v1-56 (the-as object (-> arg3 param 0))))
+       (cond
+        ((< arg1 2)
+         (set! (-> self which-bone) 0)
+         0
+         )
+        (else
+         (set! (-> self which-bone) (the-as int (-> arg3 param 1)))
+         )
+        )
+       (cond
+        ((not (the-as process v1-56))
+         (set! (-> self drawable-target) (the-as handle #f))
+         (set! (-> self master-options) (logand -3 (-> self master-options)))
+         )
+        ((= (the-as process v1-56) *target*)
+         (set! (-> self drawable-target) (the-as handle #f))
+         (logior! (-> self master-options) 2)
+         (reset-target-tracking)
+         )
+        (else
+         (set!
+          (-> self drawable-target)
+          (process->handle (the-as process v1-56))
+          )
+         (logior! (-> self master-options) 2)
+         (reset-drawable-tracking)
+         )
+        )
+       )
+      (set! (-> *camera-combiner* tracking no-follow) #f)
+      (set! v0-0 #f)
+      )
+      ((= v1-0 'reset-root)
+       (dotimes (gp-4 (-> self num-slaves))
+        (set! (-> self slave gp-4 0 trans quad) (the-as uint128 0))
+        (matrix-identity! (the-as matrix (-> self slave gp-4 0 tracking)))
+        )
+       (vector-reset! (-> *camera-combiner* trans))
+       (set!
+        v0-0
+        (matrix-identity! (the-as matrix (-> *camera-combiner* tracking)))
+        )
+       )
+      ((= v1-0 'set-fov)
+      (set! (-> *camera-combiner* fov) (the-as float (-> arg3 param 0)))
+      (dotimes (v1-86 (-> self num-slaves))
+       (set! (-> self slave v1-86 0 fov) (the-as float (-> arg3 param 0)))
+       )
+      (set! v0-0 #f)
+      )
+      ((= v1-0 'query-fov)
+       (set! v0-0 (the-as object (if (> (-> self num-slaves) 0)
+                                  (-> self slave 0 0 fov)
+                                  11650.845
+                                  )
+                   )
+        )
+       )
+      ((= v1-0 'intro-done?)
+       (set! v0-0 #t)
+       (dotimes (v1-91 (-> self num-slaves))
+        (if (< (-> self slave v1-91 0 intro-t) 1.0)
+         (set! v0-0 #f)
+         )
+        )
+       )
+      ((= v1-0 'query-state)
+       (let ((v1-95 (+ (-> self num-slaves) -1)))
+        (while
+         (not
+          (or
+           (< v1-95 0)
+           (= (-> self slave v1-95 0 next-state) (-> arg3 param 0))
+           )
+          )
+         (+! v1-95 -1)
+         )
+        (set!
+         v0-0
+         (the-as
+          object
+          (and
+           (>= v1-95 0)
+           (= (-> self slave v1-95 0 next-state) (-> arg3 param 0))
+           )
+          )
+         )
+        )
+       )
+      ((= v1-0 'change-to-entity-by-name)
+       (let ((a0-75 (entity-by-name (the-as string (-> arg3 param 0)))))
+        (set! v0-0 (the-as object (if a0-75
+                                   (master-switch-to-entity a0-75)
+                                   (format
+                                    0
+                                    "ERROR <GMJ>: camera entity '~S' not found for change-to-entity-by-name~%"
+                                    (-> arg3 param 0)
+                                    )
+                                   )
+                    )
+         )
+        )
+       )
+      ((= v1-0 'change-state)
+       (let ((s1-0 (the-as uint #f))
+             (s2-0 (the-as (pointer process) #f))
+             (s5-2 (the-as (pointer camera-slave) #f))
+             )
+        (let ((s3-0 (the-as object #f))
+              (s4-1 (the-as (pointer camera-slave) #f))
+              )
+         (let ((t9-22 type-type?)
+               (v1-101 (-> arg3 param 0))
+               )
+          (cond
+           ((t9-22 (rtype-of v1-101) state)
+            (set! s1-0 (-> arg3 param 0))
+            )
+           ((let ((t9-23 type-type?)
+                  (v1-103 (-> arg3 param 0))
+                  )
+             (t9-23 (rtype-of v1-103) camera-slave)
+             )
+            (set! s2-0 (process->ppointer (the-as process (-> arg3 param 0))))
+            )
+           (else
+            (let ((t9-24 format)
+                  (a0-82 0)
+                  (a1-25
+                   "ERROR <GMJ>: invalid type '~A' to *camera* change-state~%"
+                   )
+                  (v1-106 (-> arg3 param 0))
+                  )
+             (t9-24 a0-82 a1-25 (rtype-of v1-106))
+             )
+            )
+           )
+          )
+         (if
+          (and
+           (> (-> self num-slaves) 0)
+           (or
+            (= (-> self slave 0 0 next-state name) 'cam-stick)
+            (= (-> self slave 0 0 next-state name) 'cam-string)
+            )
+           )
+          (set!
+           (-> self view-off-param-save)
+           (-> self slave 0 0 view-off-param)
+           )
+          )
+         (set! (-> self changer) (the-as uint (process->ppointer arg0)))
+         (cond
+          ((<= (-> self num-slaves) 0)
+           (cond
+            (s2-0
+             (let ((a1-26 (new 'stack-no-clear 'event-message-block)))
+              (set! (-> a1-26 from) self)
+              (set! (-> a1-26 num-params) 1)
+              (set! (-> a1-26 message) 'slave-activated)
+              (let ((v1-126 s2-0))
+               (set! (-> a1-26 param 0) (the-as uint (if v1-126
+                                                      (->
+                                                       (the-as
+                                                        camera-slave
+                                                        (-> v1-126 0)
+                                                        )
+                                                       self
+                                                       )
+                                                      )
+                                         )
+                )
+               )
+              (send-event-function self a1-26)
+              )
+             )
+            (else
+             (let
+              ((gp-5
+                (the-as
+                 camera-slave
+                 (get-process *camera-dead-pool* camera-slave #x4000)
+                 )
+                )
+               )
+              (set! s2-0 (when gp-5
+                          (let ((t9-27 (method-of-type camera-slave activate)))
+                           (t9-27
+                            gp-5
+                            self
+                            'camera-slave
+                            (the-as pointer #x70004000)
+                            )
+                           )
+                          (run-now-in-process gp-5 cam-slave-init s1-0 #f)
+                          (-> gp-5 ppointer)
+                          )
+               )
+              )
+             (cond
+              (s2-0
+               )
+              (else
+               (format 0 "ERROR <GMJ>: replacement slave failed to activate~%")
+               )
+              )
+             )
+            )
+           (when s2-0
+            (send-event *camera-combiner* 'stop-tracking)
+            (if (= (-> (the-as camera-slave (-> s2-0 0)) blend-to-type) 2)
+             (send-event *camera-combiner* 'start-tracking (if s2-0
+                                                            (->
+                                                             (the-as
+                                                              camera-slave
+                                                              (-> s2-0 0)
+                                                              )
+                                                             self
+                                                             )
+                                                            )
+              )
+             )
+            )
+           )
+          ((zero? (-> arg3 param 1))
+           (if *math-camera*
+            (set! (-> *math-camera* reset) 1)
+            )
+           (when (< 1 (-> self num-slaves))
+            (if (= (-> self changer) (-> self slave 1))
+             (set! s5-2 (-> self slave 1))
+             (deactivate (-> self slave 1 0))
+             )
+            (set! (-> self slave 1) (the-as (pointer camera-slave) #f))
+            (+! (-> self num-slaves) -1)
+            )
+           (cond
+            (s2-0
+             (if (= (-> self changer) (-> self slave 0))
+              (set! s5-2 (-> self slave 0))
+              (deactivate (-> self slave 0 0))
+              )
+             (set! (-> self slave 0) (the-as (pointer camera-slave) #f))
+             (+! (-> self num-slaves) -1)
+             (let ((a1-33 (new 'stack-no-clear 'event-message-block)))
+              (set! (-> a1-33 from) self)
+              (set! (-> a1-33 num-params) 1)
+              (set! (-> a1-33 message) 'slave-activated)
+              (let ((v1-166 s2-0))
+               (set! (-> a1-33 param 0) (the-as uint (if v1-166
+                                                      (->
+                                                       (the-as
+                                                        camera-slave
+                                                        (-> v1-166 0)
+                                                        )
+                                                       self
+                                                       )
+                                                      )
+                                         )
+                )
+               )
+              (send-event-function self a1-33)
+              )
+             )
+            ((not
+              (and
+               (= (-> self slave 0 0 next-state) *camera-base-mode*)
+               (= (-> self slave 0 0 next-state) s1-0)
+               )
+              )
+             (send-event
+              (ppointer->process (-> self slave 0))
+              'change-state-no-go
+              s1-0
+              )
+             (set! s4-1 (-> self slave 0))
+             (set! s3-0 s1-0)
+             (set! s2-0 (-> self slave 0))
+             )
+            )
+           (when s2-0
+            (send-event *camera-combiner* 'stop-tracking)
+            (when (= (-> (the-as camera-slave (-> s2-0 0)) blend-to-type) 2)
+             (let ((a1-36 (new 'stack-no-clear 'event-message-block)))
+              (set! (-> a1-36 from) self)
+              (set! (-> a1-36 num-params) 1)
+              (set! (-> a1-36 message) 'start-tracking)
+              (let ((v1-191 s2-0))
+               (set! (-> a1-36 param 0) (the-as uint (if v1-191
+                                                      (->
+                                                       (the-as
+                                                        camera-slave
+                                                        (-> v1-191 0)
+                                                        )
+                                                       self
+                                                       )
+                                                      )
+                                         )
+                )
+               )
+              (send-event-function *camera-combiner* a1-36)
+              )
+             )
+            )
+           )
+          (else
+           (when (< 1 (-> self num-slaves))
+            (if (= (-> self changer) (-> self slave 0))
+             (set! s5-2 (-> self slave 0))
+             (deactivate (-> self slave 0 0))
+             )
+            (set! (-> self slave 0) (-> self slave 1))
+            (set! (-> self slave 1) (the-as (pointer camera-slave) #f))
+            (+! (-> self num-slaves) -1)
+            )
+           (when (< 0.0 (-> self slave 0 0 intro-t-step))
+            (set! (-> self outro-t) (-> self slave 0 0 intro-t))
+            (set! (-> self outro-t-step) (/ -5.0 (the float (-> arg3 param 1))))
+            (set!
+             (-> self outro-exit-value)
+             (-> self slave 0 0 outro-exit-value)
+             )
+            (curve-copy! (-> self outro-curve) (-> self slave 0 0 intro-curve))
+            )
+           (if (nonzero? (-> self no-intro))
+            (set! (-> self outro-t) 0.0)
+            )
+           (when
+            (not
+             (and
+              (= (-> self slave 0 0 next-state) *camera-base-mode*)
+              (= (-> self slave 0 0 next-state) s1-0)
+              )
+             )
+            (cond
+             (s2-0
+              (let ((a1-38 (new 'stack-no-clear 'event-message-block)))
+               (set! (-> a1-38 from) self)
+               (set! (-> a1-38 num-params) 1)
+               (set! (-> a1-38 message) 'slave-activated)
+               (let ((v1-228 s2-0))
+                (set! (-> a1-38 param 0) (the-as uint (if v1-228
+                                                       (->
+                                                        (the-as
+                                                         camera-slave
+                                                         (-> v1-228 0)
+                                                         )
+                                                        self
+                                                        )
+                                                       )
+                                          )
+                 )
+                )
+               (send-event-function self a1-38)
+               )
+              )
+             (else
+              (let ((s2-1 (get-process *camera-dead-pool* camera-slave #x4000)))
+               (set! s2-0 (when s2-1
+                           (let ((t9-42 (method-of-type camera-slave activate)))
+                            (t9-42
+                             (the-as camera-slave s2-1)
+                             self
+                             'camera-slave
+                             (the-as pointer #x70004000)
+                             )
+                            )
+                           (run-now-in-process s2-1 cam-slave-init s1-0 #f)
+                           (-> s2-1 ppointer)
+                           )
+                )
+               )
+              (cond
+               (s2-0
+                )
+               (else
+                (format #t "ERROR <GMJ>: secondary slave activate failed~%")
+                )
+               )
+              )
+             )
+            (when s2-0
+             (send-event *camera-combiner* 'set-interpolation (-> arg3 param 1))
+             (set! s4-1 (-> self slave 0))
+             (cond
+              ((zero? (-> self slave 0 0 blend-from-type))
+               (send-event
+                (ppointer->process (-> self slave 0))
+                'change-state-no-go
+                cam-fixed
+                )
+               (send-event *camera-combiner* 'stop-tracking)
+               (set! s3-0 cam-fixed)
+               )
+              (else
+               (send-event
+                (ppointer->process (-> self slave 0))
+                'change-state-no-go
+                cam-decel
+                )
+               (set! s3-0 cam-decel)
+               )
+              )
+             (let ((v1-261 (-> *camera-combiner* tracking-status)))
+              (cond
+               ((zero? v1-261)
+                (let
+                 ((v1-263 (-> (the-as camera-slave (-> s2-0 0)) blend-to-type)))
+                 (cond
+                  ((zero? v1-263)
+                   )
+                  ((= v1-263 1)
+                   )
+                  ((= v1-263 2)
+                   (if (= (-> self slave 0 0 blend-from-type) 1)
+                    (send-event
+                     *camera-combiner*
+                     'copy-tracking
+                     (ppointer->process (-> self slave 0))
+                     )
+                    (send-event
+                     *camera-combiner*
+                     'start-tracking
+                     (ppointer->process (-> self slave 0))
+                     )
+                    )
+                   (set! (-> *camera-combiner* tracking-status) (the-as uint 2))
+                   )
+                  )
+                 )
+                )
+               ((= v1-261 1)
+                (let
+                 ((v1-280 (-> (the-as camera-slave (-> s2-0 0)) blend-to-type)))
+                 (cond
+                  ((zero? v1-280)
+                   (set! (-> *camera-combiner* tracking-status) (the-as uint 3))
+                   )
+                  ((= v1-280 1)
+                   (set! (-> *camera-combiner* tracking-status) (the-as uint 3))
+                   )
+                  ((= v1-280 2)
+                   )
+                  )
+                 )
+                )
+               ((= v1-261 2)
+                (let
+                 ((v1-286 (-> (the-as camera-slave (-> s2-0 0)) blend-to-type)))
+                 (cond
+                  ((zero? v1-286)
+                   (set! (-> *camera-combiner* tracking-status) (the-as uint 0))
+                   0
+                   )
+                  ((= v1-286 1)
+                   (set! (-> *camera-combiner* tracking-status) (the-as uint 0))
+                   0
+                   )
+                  ((= v1-286 2)
+                   )
+                  )
+                 )
+                )
+               ((= v1-261 3)
+                (let
+                 ((v1-295 (-> (the-as camera-slave (-> s2-0 0)) blend-to-type)))
+                 (cond
+                  ((zero? v1-295)
+                   (set! (-> *camera-combiner* tracking-status) (the-as uint 0))
+                   0
+                   )
+                  ((= v1-295 1)
+                   (set! (-> *camera-combiner* tracking-status) (the-as uint 0))
+                   0
+                   )
+                  ((= v1-295 2)
+                   (set! (-> *camera-combiner* tracking-status) (the-as uint 2))
+                   )
+                  )
+                 )
+                )
+               )
+              )
+             )
+            )
+           )
+          )
+         (if s4-1
+          (send-event (if s4-1
+                       (-> (the-as camera-slave (-> s4-1 0)) self)
+                       )
+           'go
+           s3-0
+           )
+          )
+         )
+        (if s5-2
+         (deactivate (-> s5-2 0))
+         )
+        )
+       (set! v0-0 #t)
+       )
+      ((= v1-0 'slave-activated)
+       (set! v0-0 (the-as object (cond
+                                  ((< (-> self num-slaves) 2)
+                                   (set!
+                                    (-> self slave (-> self num-slaves))
+                                    (the-as
+                                     (pointer camera-slave)
+                                     (process->ppointer
+                                      (the-as process (-> arg3 param 0))
+                                      )
+                                     )
+                                    )
+                                   (+! (-> self num-slaves) 1)
+                                   (logior! (-> self master-options) 8)
+                                   (let
+                                    ((f0-15
+                                      (->
+                                       (the-as projectile (-> arg3 param 0))
+                                       max-turn
+                                       )
+                                      )
+                                     )
+                                    (set!
+                                     (->
+                                      *camera-combiner*
+                                      tracking
+                                      tilt-adjust
+                                      target
+                                      )
+                                     f0-15
+                                     )
+                                    f0-15
+                                    )
+                                   )
+                                  (else
+                                   (format
+                                    0
+                                    "ERROR: ERROR <GMJ>: Exceeded maximum number of camera slaves!~%"
+                                    )
+                                   (the-as
+                                    object
+                                    (deactivate
+                                    (the-as camera-slave (-> arg3 param 0))
+                                    )
+                                    )
+                                   )
+                                  )
+                   )
+        )
+       )
+      ((= v1-0 'ease-in)
+      (cond
+       ((< arg1 1)
+        (set! (-> self ease-t) 0.0)
+        (set! (-> self master-options) (logand -33 (-> self master-options)))
+        )
+       ((< arg1 2)
+        (if (< (the-as float (-> arg3 param 0)) (-> self ease-t))
+         (set! (-> self ease-t) (the-as float (-> arg3 param 0)))
+         )
+        (set! (-> self master-options) (logand -33 (-> self master-options)))
+        )
+       (else
+        (if (< (the-as float (-> arg3 param 0)) (-> self ease-t))
+         (set! (-> self ease-t) (the-as float (-> arg3 param 0)))
+         )
+        (set!
+         (-> self ease-to quad)
+         (-> (the-as vector (-> arg3 param 1)) quad)
+         )
+        (logior! (-> self master-options) 32)
+        )
+       )
+      (set! (-> self ease-step) 0.033333335)
+      (set! v0-0 (-> self ease-from))
+      (set! (-> (the-as vector v0-0) quad) (-> self tpos-curr-adj quad))
+      )
+      ((= v1-0 'damp-up)
+       (let ((f0-22 0.0))
+        (set! (-> self upspeed) f0-22)
+        (set! v0-0 f0-22)
+        )
+       )
+      ((= v1-0 'reset-follow)
+       (set! v0-0 (the-as object (if (handle->process (-> self drawable-target))
+                                  (reset-drawable-follow)
+                                  (reset-follow)
+                                  )
+                   )
+        )
+       )
+      ((= v1-0 'teleport)
+       (cond
+        ((and
+          (logtest? (-> self master-options) 2)
+          (handle->process (-> self drawable-target))
+          )
+         (reset-drawable-tracking)
+         )
+        ((and *target* (logtest? (-> self master-options) 2))
+         (reset-target-tracking)
+         )
+        )
+       (countdown (gp-6 (-> self num-slaves))
+        (send-event (ppointer->process (-> self slave gp-6)) arg2)
+        )
+       (let ((a1-54 (new 'stack-no-clear 'event-message-block)))
+        (set! (-> a1-54 from) self)
+        (set! (-> a1-54 num-params) 0)
+        (set! (-> a1-54 message) arg2)
+        (set! v0-0 (send-event-function *camera-combiner* a1-54))
+        )
+       )
+      ((= v1-0 'toggle-slave-option)
+       (set!
+        (-> self slave-options)
+        (logxor (-> self slave-options) (-> arg3 param 0))
+        )
+       (let ((a0-193 (-> self slave 0))
+             (v1-360 (-> self slave 1))
+             )
+        (if a0-193
+         (set!
+          (-> a0-193 0 options)
+          (logxor (-> a0-193 0 options) (-> arg3 param 0))
+          )
+         )
+        (set! v0-0 (the-as object (when v1-360
+                                   (set!
+                                    v0-0
+                                    (logxor
+                                     (-> v1-360 0 options)
+                                     (-> arg3 param 0)
+                                     )
+                                    )
+                                   (set!
+                                    (-> v1-360 0 options)
+                                    (the-as uint v0-0)
+                                    )
+                                   v0-0
+                                   )
+                    )
+         )
+        )
+       )
+      (else
+       (set! v0-0 (the-as object (cond
+                                  ((= v1-0 'slave-option?)
+                                   (the-as
+                                    object
+                                    (if (nonzero? (-> self num-slaves))
+                                     (logtest?
+                                      (->
+                                       self
+                                       slave
+                                       (+ (-> self num-slaves) -1)
+                                       0
+                                       options
+                                       )
+                                      (-> arg3 param 0)
+                                      )
+                                     )
+                                    )
+                                   )
+                                  ((= v1-0 'set-slave-option)
+                                   (the-as
+                                    object
+                                    (when (nonzero? (-> self num-slaves))
+                                     (set!
+                                      v0-0
+                                      (logior
+                                       (->
+                                        self
+                                        slave
+                                        (+ (-> self num-slaves) -1)
+                                        0
+                                        options
+                                        )
+                                       (-> arg3 param 0)
+                                       )
+                                      )
+                                     (set!
+                                      (->
+                                       self
+                                       slave
+                                       (+ (-> self num-slaves) -1)
+                                       0
+                                       options
+                                       )
+                                      (the-as uint v0-0)
+                                      )
+                                     v0-0
+                                     )
+                                    )
+                                   )
+                                  ((= v1-0 'clear-slave-option)
+                                   (the-as
+                                    object
+                                    (when (nonzero? (-> self num-slaves))
+                                     (set!
+                                      v0-0
+                                      (logclear
+                                       (->
+                                        self
+                                        slave
+                                        (+ (-> self num-slaves) -1)
+                                        0
+                                        options
+                                        )
+                                       (-> arg3 param 0)
+                                       )
+                                      )
+                                     (set!
+                                      (->
+                                       self
+                                       slave
+                                       (+ (-> self num-slaves) -1)
+                                       0
+                                       options
+                                       )
+                                      (the-as uint v0-0)
+                                      )
+                                     v0-0
+                                     )
+                                    )
+                                   )
+                                  ((= v1-0 'no-follow)
+                                   (when (nonzero? (-> self num-slaves))
+                                    (set!
+                                     (->
+                                      self
+                                      slave
+                                      (+ (-> self num-slaves) -1)
+                                      0
+                                      tracking
+                                      no-follow
+                                      )
+                                     #t
+                                     )
+                                    (vector-reset!
+                                     (->
+                                      self
+                                      slave
+                                      (+ (-> self num-slaves) -1)
+                                      0
+                                      tracking
+                                      follow-off
+                                      )
+                                     )
+                                    )
+                                   (set!
+                                    (-> *camera-combiner* tracking no-follow)
+                                    #t
+                                    )
+                                   (set!
+                                    v0-0
+                                    (-> *camera-combiner* tracking follow-off)
+                                    )
+                                   (.svf (&-> (the-as vector v0-0) quad) vf0)
+                                   v0-0
+                                   )
+                                  ((= v1-0 'yes-follow)
+                                   (if (nonzero? (-> self num-slaves))
+                                    (set!
+                                     (->
+                                      self
+                                      slave
+                                      (+ (-> self num-slaves) -1)
+                                      0
+                                      tracking
+                                      no-follow
+                                      )
+                                     #f
+                                     )
+                                    )
+                                   (set!
+                                    (-> *camera-combiner* tracking no-follow)
+                                    #f
+                                    )
+                                   #f
+                                   )
+                                  ((= v1-0 'blend-from-as-fixed)
+                                   (the-as
+                                    object
+                                    (when (nonzero? (-> self num-slaves))
+                                     (set!
+                                      (->
+                                       self
+                                       slave
+                                       (+ (-> self num-slaves) -1)
+                                       0
+                                       blend-from-type
+                                       )
+                                      (the-as uint 0)
+                                      )
+                                     0
+                                     )
+                                    )
+                                   )
+                                  ((= v1-0 'point-of-interest)
+                                   (when (nonzero? (-> self num-slaves))
+                                    (let
+                                     ((a1-60
+                                       (new 'stack-no-clear 'event-message-block
+                                        )
+                                       )
+                                      )
+                                     (set! (-> a1-60 from) arg0)
+                                     (set! (-> a1-60 num-params) arg1)
+                                     (set! (-> a1-60 message) arg2)
+                                     (set! (-> a1-60 param 0) (-> arg3 param 0))
+                                     (set! (-> a1-60 param 1) (-> arg3 param 1))
+                                     (set! (-> a1-60 param 2) (-> arg3 param 2))
+                                     (set! (-> a1-60 param 3) (-> arg3 param 3))
+                                     (set! (-> a1-60 param 4) (-> arg3 param 4))
+                                     (set! (-> a1-60 param 5) (-> arg3 param 5))
+                                     (set! (-> a1-60 param 6) (-> arg3 param 6))
+                                     (send-event-function
+                                      (ppointer->process
+                                       (->
+                                        self
+                                        slave
+                                        (+ (-> self num-slaves) -1)
+                                        )
+                                       )
+                                      a1-60
+                                      )
+                                     )
+                                    )
+                                   (let
+                                    ((a1-61
+                                      (new 'stack-no-clear 'event-message-block)
+                                      )
+                                     )
+                                    (set! (-> a1-61 from) arg0)
+                                    (set! (-> a1-61 num-params) arg1)
+                                    (set! (-> a1-61 message) arg2)
+                                    (set! (-> a1-61 param 0) (-> arg3 param 0))
+                                    (set! (-> a1-61 param 1) (-> arg3 param 1))
+                                    (set! (-> a1-61 param 2) (-> arg3 param 2))
+                                    (set! (-> a1-61 param 3) (-> arg3 param 3))
+                                    (set! (-> a1-61 param 4) (-> arg3 param 4))
+                                    (set! (-> a1-61 param 5) (-> arg3 param 5))
+                                    (set! (-> a1-61 param 6) (-> arg3 param 6))
+                                    (send-event-function
+                                     *camera-combiner*
+                                     a1-61
+                                     )
+                                    )
+                                   )
+                                  ((= v1-0 'part-water-drip)
+                                    (set!
+                                     (-> self water-drip-time)
+                                     (the-as
+                                      uint
+                                      (-> *display* base-frame-counter)
+                                      )
+                                     )
+                                    (set!
+                                     (-> self water-drip-mult)
+                                     (the-as float (-> arg3 param 0))
+                                     )
+                                    (let
+                                     ((f0-24 (the-as float (-> arg3 param 1))))
+                                     (set! (-> self water-drip-speed) f0-24)
+                                     f0-24
+                                     )
+                                    )
+                                  (else
+                                   (countdown (s3-1 (-> self num-slaves))
+                                    (let
+                                     ((a1-62
+                                       (new 'stack-no-clear 'event-message-block
+                                        )
+                                       )
+                                      )
+                                     (set! (-> a1-62 from) arg0)
+                                     (set! (-> a1-62 num-params) arg1)
+                                     (set! (-> a1-62 message) arg2)
+                                     (set! (-> a1-62 param 0) (-> arg3 param 0))
+                                     (set! (-> a1-62 param 1) (-> arg3 param 1))
+                                     (set! (-> a1-62 param 2) (-> arg3 param 2))
+                                     (set! (-> a1-62 param 3) (-> arg3 param 3))
+                                     (set! (-> a1-62 param 4) (-> arg3 param 4))
+                                     (set! (-> a1-62 param 5) (-> arg3 param 5))
+                                     (set! (-> a1-62 param 6) (-> arg3 param 6))
+                                     (send-event-function
+                                      (ppointer->process (-> self slave s3-1))
+                                      a1-62
+                                      )
+                                     )
+                                    )
+                                   #f
+                                   )
+                                  )
+                   )
+        )
+       )
+      )
+     )
+    (the-as object v0-0)
+    )
+   )
+  :enter
+  (behavior ()
+   (if (and (nonzero? camera-master-debug) *debug-segment*)
+    (add-connection *debug-engine* self camera-master-debug self #f #f)
+    )
+   (none)
+   )
+  :trans
+  (behavior ()
+   (when (not (paused?))
+    (vector-negate!
+     (-> self local-down)
+     (vector-normalize-copy!
+      (-> self local-down)
+      (-> *standard-dynamics* gravity)
+      1.0
+      )
+     )
+    (cam-master-effect)
+    )
+   (none)
+   )
+  :code
+  (behavior ()
+   (while #t
+    (if (and *dproc* *debug-segment*)
+     (add-frame
+      (-> *display* frames (-> *display* on-screen) frame profile-bar 0)
+      'camera
+      (new 'static 'rgba :r #x40 :b #x40 :a #x80)
+      )
+     )
+    (set! (-> self string-min target y) (-> self stringMinHeight))
+    (set! (-> self string-max target y) (-> self stringMaxHeight))
+    (set! (-> self string-min target z) (-> self stringMinLength))
+    (set! (-> self string-max target z) (-> self stringMaxLength))
+    (set!
+     (-> self string-push-z)
+     (fmax
+      (-> self string-min value z)
+      (-> *CAMERA-bank* default-string-push-z)
+      )
+     )
+    (master-track-target)
+    (set! (-> last-try-to-look-at-data horz) 0.0)
+    (set! (-> last-try-to-look-at-data vert) 0.0)
+    (let ((a1-1 (new 'stack-no-clear 'event-message-block)))
+     (set! (-> a1-1 from) self)
+     (set! (-> a1-1 num-params) 1)
+     (set! (-> a1-1 message) 'slave-option?)
+     (set! (-> a1-1 param 0) (the-as uint #x4000))
+     (when (send-event-function *camera* a1-1)
+      (set! (-> self string-min target y) 18432.0)
+      (set! (-> self string-max target y) 18432.041)
+      )
+     )
+    (when (not (paused?))
+     (update! (-> self string-min) (the-as vector #f))
+     (update! (-> self string-max) (the-as vector #f))
+     (master-check-regions)
+     )
+    (set!
+     (-> self string-min value x)
+     (fmin (-> self string-min value x) (+ -4.096 (-> self string-max value x)))
+     )
+    (set!
+     (-> self string-min value y)
+     (fmin (-> self string-min value y) (+ -4.096 (-> self string-max value y)))
+     )
+    (set!
+     (-> self string-min value z)
+     (fmin (-> self string-min value z) (+ -4.096 (-> self string-max value z)))
+     )
+    (if (nonzero? (-> self no-intro))
+     (+! (-> self no-intro) -1)
+     )
+    (if (nonzero? (-> self force-blend))
+     (+! (-> self force-blend) -1)
+     )
+    (suspend)
+    )
+   (none)
+   )
+  )
 
 (deftype list-keeper (process)
   ((dummy float  :offset-assert 112)
