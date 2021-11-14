@@ -10,8 +10,6 @@
 #include "third-party/imgui/imgui.h"
 #include "third-party/imgui/imgui_impl_glfw.h"
 #include "third-party/imgui/imgui_impl_opengl3.h"
-#define STB_IMAGE_IMPLEMENTATION
-#include "third-party/stb_image.h"
 
 #include "opengl.h"
 
@@ -23,6 +21,7 @@
 #include "game/system/newpad.h"
 #include "common/log/log.h"
 #include "common/goal_constants.h"
+#include "common/util/image_loading.h"
 #include "game/runtime.h"
 #include "common/util/Timer.h"
 #include "game/graphics/opengl_renderer/debug_gui.h"

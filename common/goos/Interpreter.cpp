@@ -1653,7 +1653,7 @@ Object Interpreter::eval_get_env(const Object& form,
   const char* env_p = std::getenv(var_name.c_str());
   if (env_p == NULL) {
     if (args.has_named("default")) {
-      return StringObject::make_new(args.get_named("default").as_string()->data);
+      return args.get_named("default");
     } else {
       throw_eval_error(form, fmt::format("env-var {} not found and no default provided", var_name));
     }
