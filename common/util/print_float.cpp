@@ -12,14 +12,14 @@
  * and, if you trust the dragonbox library, should be the shortest possible representation
  * that round-trips through a properly implemented string -> float conversion.
  */
-std::string float_to_string(float value) {
+std::string float_to_string(float value, bool append_trailing_decimal) {
   constexpr int buff_size = 128;
   char buff[buff_size];
-  float_to_cstr(value, buff);
+  float_to_cstr(value, buff, append_trailing_decimal);
   return {buff};
 }
 
-int float_to_cstr(float value, char* buffer) {
+int float_to_cstr(float value, char* buffer, bool append_trailing_decimal) {
   assert(std::isfinite(value));
   // dragonbox gives us:
   //  - an integer, representing the decimal value
@@ -32,8 +32,10 @@ int float_to_cstr(float value, char* buffer) {
   // so just handle that as a special case
   if (value == 0) {
     buffer[i++] = '0';
-    buffer[i++] = '.';
-    buffer[i++] = '0';
+    if (append_trailing_decimal) {
+      buffer[i++] = '.';
+      buffer[i++] = '0';
+    }
     buffer[i++] = '\0';
   }
 
@@ -70,8 +72,10 @@ int float_to_cstr(float value, char* buffer) {
     }
 
     // part 4
-    buffer[i++] = '.';
-    buffer[i++] = '0';
+    if (append_trailing_decimal) {
+      buffer[i++] = '.';
+      buffer[i++] = '0';
+    }
     buffer[i++] = '\0';
   } else {
     // some nonzero digits after decimal.
