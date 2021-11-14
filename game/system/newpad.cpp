@@ -203,14 +203,20 @@ struct GamepadState {
   int gamepad_idx = -1;
 } g_gamepads;
 
-void initialize() {
-  for (int i = GLFW_JOYSTICK_1; i <= GLFW_JOYSTICK_LAST; i++) {
-    if (glfwJoystickPresent(i) && glfwJoystickIsGamepad(i)) {
-      g_gamepads.gamepad_idx = i;
-      lg::info("Using joystick {}: {}, {}", i, glfwGetJoystickName(i), glfwGetGamepadName(i));
-      break;
+void check_gamepad() {
+  if (g_gamepads.gamepad_idx == -1) {
+    for (int i = GLFW_JOYSTICK_1; i <= GLFW_JOYSTICK_LAST; i++) {
+      if (glfwJoystickPresent(i) && glfwJoystickIsGamepad(i)) {
+        g_gamepads.gamepad_idx = i;
+        lg::info("Using joystick {}: {}, {}", i, glfwGetJoystickName(i), glfwGetGamepadName(i));
+        break;
+      }
     }
   }
+}
+
+void initialize() {
+  check_gamepad();
   if (g_gamepads.gamepad_idx == -1) {
     lg::info("No joysticks found.");
   }
@@ -227,6 +233,8 @@ void clear_gamepads() {
 
 void update_gamepads() {
   clear_gamepads();
+
+  check_gamepad();
 
   if (g_gamepads.gamepad_idx == -1) {
     return;
