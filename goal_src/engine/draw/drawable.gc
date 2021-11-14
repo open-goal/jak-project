@@ -37,6 +37,27 @@
    )
   )
 
+(defun vis-cull ((id int))
+  "Is this thing visible? By draw-node id."
+  ;; todo
+  #t
+  
+  #|
+  (let* ((addr (scratchpad-ptr int8 :offset (+ #x3b80 (/ id 8)))) ;; address of the vis data
+         (vis-byte (-> addr 0)) ;; vis byte
+         (shift-amount (+ 56 (logand id 7)))
+         (shifted (shl vis-byte shift-amount))
+         )
+    (< shifted 0)
+    )
+    |#
+  )
+
+(defun sphere-cull ((arg0 vector))
+  #t
+  ;; todo
+  )
+
 (defun real-main-draw-hook ()
   (when *slow-frame-rate*
     (dotimes (v1-2 #xc3500)
@@ -176,9 +197,36 @@
   ;; ocean
   ;; merc
   ;; init bg
+  (init-background)
+
   ;; exec bg
-  ;; finish bg
-  ;; stats
+  (execute-connections *background-draw-engine* (-> *display* frames (-> *display* on-screen) frame))
+
+  ;; finish bg (most of the work is here)
+  (reset! (-> *perf-stats* data 3))
+  (finish-background)
+  (read! (-> *perf-stats* data 3))
+  (update-wait-stats (-> *perf-stats* data 3) (-> *background-work* wait-to-vu0) (the-as uint 0) (the-as uint 0))
+  
+  ;; 
+  (end-perf-stat-collection)
+  (when (not (paused?))
+    (when *stats-poly*
+      (dotimes (gp-8 (-> *level* length))
+        (let ((v1-193 (-> *level* level gp-8)))
+          (if (= (-> v1-193 status) 'active)
+              (collect-stats (-> v1-193 bsp))
+              )
+          )
+        )
+      (print-terrain-stats)
+      )
+    (if *display-perf-stats*
+        (print-perf-stats)
+        )
+    )
+  (start-perf-stat-collection)
+
   ;; fg engine
   ;; bones
   ;; gmerc

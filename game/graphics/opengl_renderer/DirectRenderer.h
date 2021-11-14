@@ -92,7 +92,8 @@ class DirectRenderer : public BucketRenderer {
                            u32 z,
                            u8 f,
                            SharedRenderState* render_state,
-                           ScopedProfilerNode& prof);
+                           ScopedProfilerNode& prof,
+                           bool advance);
 
   void update_gl_prim(SharedRenderState* render_state);
   void update_gl_blend();
@@ -133,7 +134,8 @@ class DirectRenderer : public BucketRenderer {
   struct ClampState {
     void from_register(u64 value);
     u64 current_register = 0b101;
-    bool clamp = true;
+    bool clamp_s = true;
+    bool clamp_t = true;
   } m_clamp_state;
 
   // state set through the prim register that requires changing GL stuff.
@@ -164,7 +166,7 @@ class DirectRenderer : public BucketRenderer {
   // state set through the prim/rgbaq register that doesn't require changing GL stuff
   struct PrimBuildState {
     GsPrim::Kind kind = GsPrim::Kind::PRIM_7;
-    math::Vector<u8, 4> rgba_reg = {0, 0, 0, 0};
+    math::Vector<u8, 4> rgba_reg = math::Vector<u8, 4>{0, 0, 0, 0};
     math::Vector<float, 2> st_reg;
 
     std::array<math::Vector<u8, 4>, 3> building_rgba;
@@ -207,8 +209,18 @@ class DirectRenderer : public BucketRenderer {
     bool always_draw = false;
   } m_debug_state;
 
-  int m_triangles = 0;
-  int m_draw_calls = 0;
+  struct {
+    int triangles = 0;
+    int draw_calls = 0;
+
+    int flush_from_tex_0 = 0;
+    int flush_from_tex_1 = 0;
+    int flush_from_zbuf = 0;
+    int flush_from_test = 0;
+    int flush_from_alpha = 0;
+    int flush_from_clamp = 0;
+    int flush_from_prim = 0;
+  } m_stats;
 
   bool m_prim_gl_state_needs_gl_update = true;
   bool m_test_state_needs_gl_update = true;

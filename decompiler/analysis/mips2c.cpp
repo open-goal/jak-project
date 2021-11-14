@@ -501,6 +501,10 @@ Mips2C_Line handle_unknown(const std::string& instr_str) {
 }
 
 Mips2C_Line handle_generic_load(const Instruction& i0, const std::string& instr_str) {
+  if (!i0.get_src(0).is_imm()) {
+    // might be a load relative to a label
+    return handle_unknown(instr_str);
+  }
   return {fmt::format("c->{}({}, {}, {});", i0.op_name_to_string(), reg_to_name(i0.get_dst(0)),
                       i0.get_src(0).get_imm(), reg_to_name(i0.get_src(1))),
           instr_str};
@@ -678,6 +682,12 @@ Mips2C_Line handle_vmadda_bc(const Instruction& i0, const std::string& instr_str
           instr_str};
 }
 
+Mips2C_Line handle_vmsuba_bc(const Instruction& i0, const std::string& instr_str) {
+  return {fmt::format("c->vmsuba_bc(DEST::{}, BC::{}, {}, {});", dest_to_char(i0.cop2_dest),
+                      i0.cop2_bc_to_char(), reg_to_name(i0.get_src(0)), reg_to_name(i0.get_src(1))),
+          instr_str};
+}
+
 std::string reg64_or_zero(const InstructionAtom& atom) {
   if (atom.is_reg(Register(Reg::GPR, Reg::R0))) {
     return "0";
@@ -787,6 +797,10 @@ Mips2C_Line handle_clts(const Instruction& i0, const std::string& instr_string) 
           instr_string};
 }
 
+Mips2C_Line handle_pmfhl_lh(const Instruction& i0, const std::string& instr_string) {
+  return {fmt::format("c->pmfhl_lh({});", reg_to_name(i0.get_dst(0))), instr_string};
+}
+
 Mips2C_Line handle_normal_instr(Mips2C_Output& output,
                                 const Instruction& i0,
                                 const std::string& instr_str,
@@ -795,6 +809,7 @@ Mips2C_Line handle_normal_instr(Mips2C_Output& output,
   switch (i0.kind) {
     case InstructionKind::LW:
       return handle_lw(output, i0, instr_str);
+    case InstructionKind::LB:
     case InstructionKind::LBU:
     case InstructionKind::LWU:
     case InstructionKind::LQ:
@@ -809,6 +824,7 @@ Mips2C_Line handle_normal_instr(Mips2C_Output& output,
     case InstructionKind::SQC2:
     case InstructionKind::SH:
     case InstructionKind::SD:
+    case InstructionKind::SB:
     case InstructionKind::SWC1:
       return handle_generic_store(output, i0, instr_str);
     case InstructionKind::VADD_BC:
@@ -827,6 +843,8 @@ Mips2C_Line handle_normal_instr(Mips2C_Output& output,
       return handle_generic_op3_mask(i0, instr_str, "vadd");
     case InstructionKind::VSUB:
       return handle_generic_op3_mask(i0, instr_str, "vsub");
+    case InstructionKind::VMINI:
+      return handle_generic_op3_mask(i0, instr_str, "vmini");
     case InstructionKind::OR:
       return handle_or(i0, instr_str);
     case InstructionKind::SW:
@@ -839,15 +857,23 @@ Mips2C_Line handle_normal_instr(Mips2C_Output& output,
       return handle_generic_op2_mask(i0, instr_str, "vftoi0");
     case InstructionKind::VFTOI4:
       return handle_generic_op2_mask(i0, instr_str, "vftoi4");
+    case InstructionKind::VFTOI12:
+      return handle_generic_op2_mask(i0, instr_str, "vftoi12");
     case InstructionKind::VADDQ:
       return handle_generic_op2_mask(i0, instr_str, "vaddq");
     case InstructionKind::ANDI:
     case InstructionKind::ORI:
+    case InstructionKind::XORI:
     case InstructionKind::SRA:
     case InstructionKind::DSLL:
     case InstructionKind::DSLL32:
     case InstructionKind::DSRA:
     case InstructionKind::DSRA32:
+    case InstructionKind::DSRL32:
+    case InstructionKind::DSRL:
+    case InstructionKind::SRL:
+    case InstructionKind::PSRAW:
+    case InstructionKind::PSRLH:
       return handle_generic_op2_u16(i0, instr_str);
     case InstructionKind::SLL:
       return handle_sll(i0, instr_str);
@@ -859,6 +885,16 @@ Mips2C_Line handle_normal_instr(Mips2C_Output& output,
     case InstructionKind::MOVN:
     case InstructionKind::PEXTUW:
     case InstructionKind::PCPYUD:
+    case InstructionKind::PPACH:
+    case InstructionKind::PINTEH:
+    case InstructionKind::PCGTW:
+    case InstructionKind::PPACB:
+    case InstructionKind::PADDW:
+    case InstructionKind::PEXTUB:
+    case InstructionKind::PMULTH:
+    case InstructionKind::PMADDH:
+    case InstructionKind::PADDH:
+    case InstructionKind::PMINH:
     case InstructionKind::MOVZ:
     case InstructionKind::MULT3:
     case InstructionKind::PMINW:
@@ -890,8 +926,12 @@ Mips2C_Line handle_normal_instr(Mips2C_Output& output,
       return handle_vmula_bc(i0, instr_str);
     case InstructionKind::VMADDA_BC:
       return handle_vmadda_bc(i0, instr_str);
+    case InstructionKind::VMSUBA_BC:
+      return handle_vmsuba_bc(i0, instr_str);
     case InstructionKind::VMADD_BC:
       return handle_generic_op3_bc_mask(i0, instr_str, "vmadd_bc");
+    case InstructionKind::VMSUB_BC:
+      return handle_generic_op3_bc_mask(i0, instr_str, "vmsub_bc");
     case InstructionKind::VDIV:
       return handle_vdiv(i0, instr_str);
     case InstructionKind::VSQRT:
@@ -933,6 +973,8 @@ Mips2C_Line handle_normal_instr(Mips2C_Output& output,
       return handle_plain_op(i0, instr_str, "vwaitq");
     case InstructionKind::VOPMULA:
       return handle_vopmula(i0, instr_str);
+    case InstructionKind::PMFHL_LH:
+      return handle_pmfhl_lh(i0, instr_str);
     default:
       unknown_count++;
       return handle_unknown(instr_str);

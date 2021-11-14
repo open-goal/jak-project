@@ -20,6 +20,15 @@ namespace Pad {
 
 static constexpr int CONTROLLER_COUNT = 2;  // support 2 controllers.
 
+enum class Analog {
+  Left_X = 0,
+  Left_Y,
+  Right_X,
+  Right_Y,
+
+  Max
+};
+
 // mirrors goal enum pad-buttons. used as indices to an array!
 enum class Button {
   Select = 0,
@@ -70,6 +79,7 @@ void ClearKeys();
 
 void DefaultMapping(MappingInfo& mapping);
 int IsPressed(MappingInfo& mapping, Button button, int pad);
+int AnalogValue(MappingInfo& mapping, Analog analog, int pad);
 void MapButton(MappingInfo& mapping, Button button, int pad, int key);
 
 // this enum is also in pc-pad-utils.gc

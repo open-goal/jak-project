@@ -50,16 +50,22 @@ struct VuDecodeStep {
 
 class VuDisassembler {
  public:
-  VuDisassembler();
+  enum VuKind {
+    VU0,
+    VU1,
+  };
+  VuDisassembler(VuKind kind);
   VuProgram disassemble(void* data, int size_bytes, bool debug_print = false);
   std::string to_string(const VuInstruction& instr) const;
   std::string to_string(const VuInstructionPair& pair) const;
   std::string to_string(const VuProgram& prog) const;
 
  private:
+  VuKind m_kind;
   VuInstrK upper_kind(u32 in);
   VuInstrK lower_kind(u32 in);
   VuInstruction decode(VuInstrK kind, u32 data, int instr_idx);
+  s32 get_instruction_index_mask();
 
   struct VuUpperOp6 {
     bool goto_11 = false;
