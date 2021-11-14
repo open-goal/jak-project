@@ -195,8 +195,8 @@ std::string disassemble_x86_function(u8* data,
   }
 
   for (auto& line : lines) {
-    if (rip_src_idx == -1 || (line.first >= rip_src_idx - FORM_DUMP_SIZE_REV &&
-                              line.first < rip_src_idx + FORM_DUMP_SIZE_FWD)) {
+    if (line.first >= rip_src_idx - FORM_DUMP_SIZE_REV &&
+        line.first < rip_src_idx + FORM_DUMP_SIZE_FWD) {
       result.append(line.second);
     }
   }
