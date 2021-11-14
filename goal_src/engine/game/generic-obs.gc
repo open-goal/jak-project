@@ -24,6 +24,8 @@
 (define-extern launcher-idle (state launcher))
 (define-extern launcher-deactivated (state launcher))
 
+(define-extern command-get-camera (function object state object)) ;; ret - (state camera) | string | symbol
+
 ;; DECOMP BEGINS
 
 (defbehavior
@@ -197,7 +199,7 @@
   (vector-normalize! (-> obj dir) 1.0)
   (set! (-> obj range) 12288.0)
   (set! (-> obj edge-length) 8192.0)
-  (go (the-as (state none) swingpole-stance))
+  (go swingpole-stance)
   (none)
   )
 
@@ -210,7 +212,7 @@
 (defmethod copy-defaults! process-hidden ((obj process-hidden) (arg0 res-lump))
   "Copy defaults from the entity."
   (process-entity-status! obj (entity-perm-status dead) #t)
-  (go (the-as (state none) (method-of-object obj die)))
+  (go (method-of-object obj die))
   (none)
   )
 
@@ -581,128 +583,130 @@
    (none)
    )
   :code
-  (behavior () (none))
-  ;  (logclear! (-> self mask) (process-mask heap-shrunk))
-  ;  (while #t
-  ;   ((-> self cur-post-hook))
-  ;   (if (!= (-> self anim-mode) 'clone-anim)
-  ;    (ja-post)
-  ;    )
-  ;   (suspend)
-  ;   (case (-> self anim-mode) 
-  ;    (('loop)
-  ;      (let ((a0-4 (-> self skel root-channel 0)))
-  ;       (set! (-> a0-4 param 0) 1.0)
-  ;       (joint-control-channel-group-eval!
-  ;        a0-4
-  ;        (the-as art-joint-anim #f)
-  ;        num-func-loop!
-  ;        )
-  ;       )
-  ;      )
-  ;    (('play)
-  ;     (let ((a0-7 (-> self skel root-channel 0)))
-  ;      (set!
-  ;       (-> a0-7 param 0)
-  ;       (the float (+ (-> a0-7 frame-group data 0 length) -1))
-  ;       )
-  ;      (set! (-> a0-7 param 1) 1.0)
-  ;      (joint-control-channel-group-eval!
-  ;       a0-7
-  ;       (the-as art-joint-anim #f)
-  ;       num-func-seek!
-  ;       )
-  ;      )
-  ;     )
-  ;    (('copy-parent)
-  ;     (let ((v1-18 (-> self skel root-channel 0)))
-  ;      (set! (-> v1-18 num-func) num-func-identity)
-  ;      (set!
-  ;       (-> v1-18 frame-num)
-  ;       (->
-  ;        (the-as process-drawable (ppointer->process (-> self parent)))
-  ;        skel
-  ;        root-channel
-  ;        0
-  ;        frame-num
-  ;        )
-  ;       )
-  ;      )
-  ;     )
-  ;    (('clone-parent)
-  ;     (let ((gp-0 (ppointer->process (-> self parent))))
-  ;      (set! (-> self post-hook) #f)
-  ;      (joint-control-copy!
-  ;       (-> self skel)
-  ;       (-> (the-as process-drawable gp-0) skel)
-  ;       )
-  ;      (joint-control-remap!
-  ;       (-> self skel)
-  ;       (-> self draw art-group)
-  ;       (-> (the-as process-drawable gp-0) draw art-group)
-  ;       '()
-  ;       0
-  ;       ""
-  ;       )
-  ;      )
-  ;     (dummy-17 self)
-  ;     )
-  ;    (('clone-anim)
-  ;     (clone-anim-once (the-as handle (cond
-  ;                                      ((handle->process
-  ;                                        (-> self cur-target-handle)
-  ;                                        )
-  ;                                       (the-as int (-> self cur-target-handle))
-  ;                                       )
-  ;                                      (else
-  ;                                       (let ((v1-29 (-> self parent)))
-  ;                                        (logior
-  ;                                         (shl
-  ;                                          (->
-  ;                                           (the-as
-  ;                                            process-drawable
-  ;                                            (-> v1-29 0)
-  ;                                            )
-  ;                                           pid
-  ;                                           )
-  ;                                          32
-  ;                                          )
-  ;                                         (.asm.sllv.r0 v1-29)
-  ;                                         )
-  ;                                        )
-  ;                                       )
-  ;                                      )
-  ;                       )
-  ;      (the-as
-  ;       int
-  ;       (-> self draw origin-joint-index)
-  ;       )
-  ;      (the-as symbol (-> self clone-copy-trans)) ""
-  ;      )
-  ;     )
-  ;    (('still)
-  ;     )
-  ;    (('play1)
-  ;     (let ((a0-33 (-> self skel root-channel 0)))
-  ;      (set!
-  ;       (-> a0-33 param 0)
-  ;       (the float (+ (-> a0-33 frame-group data 0 length) -1))
-  ;       )
-  ;      (set! (-> a0-33 param 1) 1.0)
-  ;      (joint-control-channel-group-eval!
-  ;       a0-33
-  ;       (the-as art-joint-anim #f)
-  ;       num-func-seek!
-  ;       )
-  ;      )
-  ;     (if (ja-done? 0)
-  ;      (deactivate self)
-  ;      )
-  ;     )
-  ;    )
-  ;   )
-  ;  (none)
-  ;  )
+  (behavior ()
+   ;; TODO - fix me
+   (loop (suspend))
+  ;;  (logclear! (-> self mask) (process-mask heap-shrunk))
+  ;;  (while #t
+  ;;   ((-> self cur-post-hook))
+  ;;   (if (!= (-> self anim-mode) 'clone-anim)
+  ;;    (ja-post)
+  ;;    )
+  ;;   (suspend)
+  ;;   (case (-> self anim-mode) 
+  ;;    (('loop)
+  ;;      (let ((a0-4 (-> self skel root-channel 0)))
+  ;;       (set! (-> a0-4 param 0) 1.0)
+  ;;       (joint-control-channel-group-eval!
+  ;;        a0-4
+  ;;        (the-as art-joint-anim #f)
+  ;;        num-func-loop!
+  ;;        )
+  ;;       )
+  ;;      )
+  ;;    (('play)
+  ;;     (let ((a0-7 (-> self skel root-channel 0)))
+  ;;      (set!
+  ;;       (-> a0-7 param 0)
+  ;;       (the float (+ (-> a0-7 frame-group data 0 length) -1))
+  ;;       )
+  ;;      (set! (-> a0-7 param 1) 1.0)
+  ;;      (joint-control-channel-group-eval!
+  ;;       a0-7
+  ;;       (the-as art-joint-anim #f)
+  ;;       num-func-seek!
+  ;;       )
+  ;;      )
+  ;;     )
+  ;;    (('copy-parent)
+  ;;     (let ((v1-18 (-> self skel root-channel 0)))
+  ;;      (set! (-> v1-18 num-func) num-func-identity)
+  ;;      (set!
+  ;;       (-> v1-18 frame-num)
+  ;;       (->
+  ;;        (the-as process-drawable (ppointer->process (-> self parent)))
+  ;;        skel
+  ;;        root-channel
+  ;;        0
+  ;;        frame-num
+  ;;        )
+  ;;       )
+  ;;      )
+  ;;     )
+  ;;    (('clone-parent)
+  ;;     (let ((gp-0 (ppointer->process (-> self parent))))
+  ;;      (set! (-> self post-hook) #f)
+  ;;      (joint-control-copy!
+  ;;       (-> self skel)
+  ;;       (-> (the-as process-drawable gp-0) skel)
+  ;;       )
+  ;;      (joint-control-remap!
+  ;;       (-> self skel)
+  ;;       (-> self draw art-group)
+  ;;       (-> (the-as process-drawable gp-0) draw art-group)
+  ;;       '()
+  ;;       0
+  ;;       ""
+  ;;       )
+  ;;      )
+  ;;     (dummy-17 self)
+  ;;     )
+  ;;    (('clone-anim)
+  ;;     (clone-anim-once (the-as handle (cond
+  ;;                                      ((handle->process
+  ;;                                        (-> self cur-target-handle)
+  ;;                                        )
+  ;;                                       (the-as int (-> self cur-target-handle))
+  ;;                                       )
+  ;;                                      (else
+  ;;                                       (let ((v1-29 (-> self parent)))
+  ;;                                        (logior
+  ;;                                         (shl
+  ;;                                          (->
+  ;;                                           (the-as
+  ;;                                            process-drawable
+  ;;                                            (-> v1-29 0)
+  ;;                                            )
+  ;;                                           pid
+  ;;                                           )
+  ;;                                          32
+  ;;                                          )
+  ;;                                         (.asm.sllv.r0 v1-29)
+  ;;                                         )
+  ;;                                        )
+  ;;                                       )
+  ;;                                      )
+  ;;                       )
+  ;;      (the-as
+  ;;       int
+  ;;       (-> self draw origin-joint-index)
+  ;;       )
+  ;;      (the-as symbol (-> self clone-copy-trans)) ""
+  ;;      )
+  ;;     )
+  ;;    (('still)
+  ;;     )
+  ;;    (('play1)
+  ;;     (let ((a0-33 (-> self skel root-channel 0)))
+  ;;      (set!
+  ;;       (-> a0-33 param 0)
+  ;;       (the float (+ (-> a0-33 frame-group data 0 length) -1))
+  ;;       )
+  ;;      (set! (-> a0-33 param 1) 1.0)
+  ;;      (joint-control-channel-group-eval!
+  ;;       a0-33
+  ;;       (the-as art-joint-anim #f)
+  ;;       num-func-seek!
+  ;;       )
+  ;;      )
+  ;;     (if (ja-done? 0)
+  ;;      (deactivate self)
+  ;;      )
+  ;;     )
+  ;;    )
+  ;;   )
+  ;;  (none)
+   )
   )
 
 (defbehavior
@@ -918,122 +922,122 @@
 ;; WARN: disable def twice: 82. This may happen when a cond (no else) is nested inside of another conditional, but it should be rare.
 ;; WARN: disable def twice: 96. This may happen when a cond (no else) is nested inside of another conditional, but it should be rare.
 ;; WARN: disable def twice: 110. This may happen when a cond (no else) is nested inside of another conditional, but it should be rare.
-; (defbehavior
-;   command-get-process camera-tracker
-;   ((arg0 object) (arg1 process-drawable))
-;   (the-as process (cond
-;                    ((null? arg0)
-;                     (empty)
-;                     arg1
-;                     )
-;                    ((type-type? (rtype-of arg0) process)
-;                     (the-as process-drawable arg0)
-;                     )
-;                    ((= arg0 'target)
-;                     *target*
-;                     )
-;                    ((= arg0 'sidekick)
-;                     (when *target*
-;                      (let ((v1-6 (-> *target* sidekick)))
-;                       (if v1-6
-;                        (the-as process-drawable (-> v1-6 0 self))
-;                        )
-;                       )
-;                      )
-;                     )
-;                    ((= arg0 'parent)
-;                     (let ((v1-9 (-> self parent)))
-;                      (if v1-9
-;                       (the-as process-drawable (-> v1-9 0 self))
-;                       )
-;                      )
-;                     )
-;                    ((= arg0 'camera)
-;                     (the-as process-drawable *camera*)
-;                     )
-;                    ((type-type? (rtype-of arg0) string)
-;                     (the-as
-;                      process-drawable
-;                      (process-by-ename (the-as string arg0))
-;                      )
-;                     )
-;                    ((type-type? (-> self type) camera-tracker)
-;                     (let ((v1-13 self))
-;                      (cond
-;                       ((= arg0 'work)
-;                        (let ((v1-14 (-> v1-13 work-process)))
-;                         (and
-;                          (nonzero? (l32-false-check v1-14))
-;                          (let ((a0-8 (-> v1-14 process 0)))
-;                           (if (= (-> v1-14 pid) (-> a0-8 pid))
-;                            (the-as process-drawable a0-8)
-;                            )
-;                           )
-;                          )
-;                         )
-;                        )
-;                       ((= arg0 'grab)
-;                        (let ((v1-17 (-> v1-13 grab-target)))
-;                         (and
-;                          (nonzero? (l32-false-check v1-17))
-;                          (let ((a0-12 (-> v1-17 process 0)))
-;                           (if (= (-> v1-17 pid) (-> a0-12 pid))
-;                            (the-as process-drawable a0-12)
-;                            )
-;                           )
-;                          )
-;                         )
-;                        )
-;                       ((= arg0 'look-at)
-;                        (let ((v1-20 (-> v1-13 look-at-target)))
-;                         (and
-;                          (nonzero? (l32-false-check v1-20))
-;                          (let ((a0-16 (-> v1-20 process 0)))
-;                           (if (= (-> v1-20 pid) (-> a0-16 pid))
-;                            (the-as process-drawable a0-16)
-;                            )
-;                           )
-;                          )
-;                         )
-;                        )
-;                       ((= arg0 'pov)
-;                        (let ((v1-23 (-> v1-13 pov-target)))
-;                         (and
-;                          (nonzero? (l32-false-check v1-23))
-;                          (let ((a0-20 (-> v1-23 process 0)))
-;                           (if (= (-> v1-23 pid) (-> a0-20 pid))
-;                            (the-as process-drawable a0-20)
-;                            )
-;                           )
-;                          )
-;                         )
-;                        )
-;                       ((= arg0 'anim)
-;                        (let ((v1-26 (-> v1-13 anim-process)))
-;                         (and
-;                          (nonzero? (l32-false-check v1-26))
-;                          (let ((a0-24 (-> v1-26 process 0)))
-;                           (if (= (-> v1-26 pid) (-> a0-24 pid))
-;                            (the-as process-drawable a0-24)
-;                            )
-;                           )
-;                          )
-;                         )
-;                        )
-;                       (else
-;                        (empty)
-;                        arg1
-;                        )
-;                       )
-;                      )
-;                     )
-;                    (else
-;                     (empty)
-;                     arg1
-;                     )
-;                    )
-;    )
-;   )
+;; (defbehavior
+;;   command-get-process camera-tracker
+;;   ((arg0 object) (arg1 process-drawable))
+;;   (the-as process (cond
+;;                    ((null? arg0)
+;;                     (empty)
+;;                     arg1
+;;                     )
+;;                    ((type-type? (rtype-of arg0) process)
+;;                     (the-as process-drawable arg0)
+;;                     )
+;;                    ((= arg0 'target)
+;;                     *target*
+;;                     )
+;;                    ((= arg0 'sidekick)
+;;                     (when *target*
+;;                      (let ((v1-6 (-> *target* sidekick)))
+;;                       (if v1-6
+;;                        (the-as process-drawable (-> v1-6 0 self))
+;;                        )
+;;                       )
+;;                      )
+;;                     )
+;;                    ((= arg0 'parent)
+;;                     (let ((v1-9 (-> self parent)))
+;;                      (if v1-9
+;;                       (the-as process-drawable (-> v1-9 0 self))
+;;                       )
+;;                      )
+;;                     )
+;;                    ((= arg0 'camera)
+;;                     (the-as process-drawable *camera*)
+;;                     )
+;;                    ((type-type? (rtype-of arg0) string)
+;;                     (the-as
+;;                      process-drawable
+;;                      (process-by-ename (the-as string arg0))
+;;                      )
+;;                     )
+;;                    ((type-type? (-> self type) camera-tracker)
+;;                     (let ((v1-13 self))
+;;                      (cond
+;;                       ((= arg0 'work)
+;;                        (let ((v1-14 (-> v1-13 work-process)))
+;;                         (and
+;;                          (nonzero? (l32-false-check v1-14))
+;;                          (let ((a0-8 (-> v1-14 process 0)))
+;;                           (if (= (-> v1-14 pid) (-> a0-8 pid))
+;;                            (the-as process-drawable a0-8)
+;;                            )
+;;                           )
+;;                          )
+;;                         )
+;;                        )
+;;                       ((= arg0 'grab)
+;;                        (let ((v1-17 (-> v1-13 grab-target)))
+;;                         (and
+;;                          (nonzero? (l32-false-check v1-17))
+;;                          (let ((a0-12 (-> v1-17 process 0)))
+;;                           (if (= (-> v1-17 pid) (-> a0-12 pid))
+;;                            (the-as process-drawable a0-12)
+;;                            )
+;;                           )
+;;                          )
+;;                         )
+;;                        )
+;;                       ((= arg0 'look-at)
+;;                        (let ((v1-20 (-> v1-13 look-at-target)))
+;;                         (and
+;;                          (nonzero? (l32-false-check v1-20))
+;;                          (let ((a0-16 (-> v1-20 process 0)))
+;;                           (if (= (-> v1-20 pid) (-> a0-16 pid))
+;;                            (the-as process-drawable a0-16)
+;;                            )
+;;                           )
+;;                          )
+;;                         )
+;;                        )
+;;                       ((= arg0 'pov)
+;;                        (let ((v1-23 (-> v1-13 pov-target)))
+;;                         (and
+;;                          (nonzero? (l32-false-check v1-23))
+;;                          (let ((a0-20 (-> v1-23 process 0)))
+;;                           (if (= (-> v1-23 pid) (-> a0-20 pid))
+;;                            (the-as process-drawable a0-20)
+;;                            )
+;;                           )
+;;                          )
+;;                         )
+;;                        )
+;;                       ((= arg0 'anim)
+;;                        (let ((v1-26 (-> v1-13 anim-process)))
+;;                         (and
+;;                          (nonzero? (l32-false-check v1-26))
+;;                          (let ((a0-24 (-> v1-26 process 0)))
+;;                           (if (= (-> v1-26 pid) (-> a0-24 pid))
+;;                            (the-as process-drawable a0-24)
+;;                            )
+;;                           )
+;;                          )
+;;                         )
+;;                        )
+;;                       (else
+;;                        (empty)
+;;                        arg1
+;;                        )
+;;                       )
+;;                      )
+;;                     )
+;;                    (else
+;;                     (empty)
+;;                     arg1
+;;                     )
+;;                    )
+;;    )
+;;   )
 
 (defun command-get-camera ((arg0 object) (arg1 state))
   (cond
@@ -1739,11 +1743,11 @@
 (define *lev-string* (new 'global 'string 64 (the-as string #f)))
 
 (defmethod copy-defaults! med-res-level ((obj med-res-level) (arg0 res-lump))
-  (local-vars (sv-16 int))
+  (local-vars (sv-16 res-tag))
   (stack-size-set! (-> obj main-thread) 128)
   "#f"
   (let ((s4-0 (the-as (pointer sparticle-launch-group) #f)))
-   (set! sv-16 0)
+   (set! sv-16 (new 'static 'res-tag))
    (let*
     ((s3-0
       (res-lump-data
@@ -1751,7 +1755,7 @@
        'art-name
        (pointer (pointer sparticle-launch-group))
        :tag-ptr
-       (the-as (pointer res-tag) (& sv-16))
+       (& sv-16)
        )
       )
      (s2-0 (-> s3-0 0))
@@ -1855,7 +1859,7 @@
   )
 
 (defmethod copy-defaults! part-spawner ((obj part-spawner) (arg0 res-lump))
-  (local-vars (sv-16 int))
+  (local-vars (sv-16 res-tag))
   (stack-size-set! (-> obj main-thread) 128)
   (set! (-> obj mask) (logior (process-mask ambient) (-> obj mask)))
   (set! (-> obj root) (new 'process 'trsqv))
@@ -1877,7 +1881,7 @@
    )
   (let ((s4-0 (the-as object "#f")))
    (let ((s3-0 (the-as (pointer sparticle-launch-group) #f)))
-    (set! sv-16 0)
+    (set! sv-16 (new 'static 'res-tag))
     (let*
      ((s5-1
        (res-lump-data
@@ -1885,7 +1889,7 @@
         'art-name
         (pointer (pointer sparticle-launch-group))
         :tag-ptr
-        (the-as (pointer res-tag) (& sv-16))
+        (& sv-16)
         )
        )
       (s2-0 (-> s5-1 0))
