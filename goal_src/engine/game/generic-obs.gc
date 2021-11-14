@@ -5,30 +5,6 @@
 ;; name in dgo: generic-obs
 ;; dgos: GAME, ENGINE
 
-;; ;; TODO - temporary, for citadel-obs
-;; (deftype launcher (process-drawable)
-;;   ((spring-height   meters         :offset-assert 176)
-;;    (camera          basic          :offset-assert 180)
-;;    (active-distance float          :offset-assert 184)
-;;    (seek-time       int64          :offset-assert 192)
-;;    (dest            vector :inline :offset-assert 208)
-;;    (sound-id        sound-id       :offset-assert 224)
-;;    )
-;;   :method-count-assert 20
-;;   :size-assert         #xe4
-;;   :heap-base           #x80
-;;   :flag-assert         #x14008000e4
-;;   )
-;; (define-extern launcher-init-by-other (function vector float vector float none :behavior launcher))
-
-;; ;; TODO - for village-obs
-;; (define-extern draw-eco-beam (function vector vector none)) ;; TODO - not confirmed
-
-;; ;; TODO - for jungleb-obs
-;; (define-extern camera-look-at (function process int none)) ;; TODO - process is likely a target
-
-(define-extern camera-tracker-init (function function none)) ;; TODO - nested SC
-
 (declare-type swingpole process)
 (define-extern swingpole-stance (state swingpole))
 (define-extern swingpole-active (state swingpole))
@@ -36,8 +12,7 @@
 (define-extern convert-to-hud-object (function process-drawable hud none :behavior hud))
 
 ;; TODO - temporary
-(define-extern command-get-process (function object process-drawable process))
-(define-extern command-get-camera (function string state object))
+(define-extern command-get-process (function object process-drawable process :behavior camera-tracker))
 
 (define-extern process-drawable-from-entity! (function process-drawable res-lump none))
 
@@ -48,6 +23,8 @@
 (define-extern launcher-active (state launcher))
 (define-extern launcher-idle (state launcher))
 (define-extern launcher-deactivated (state launcher))
+
+(define-extern command-get-camera (function object state object)) ;; ret - (state camera) | string | symbol
 
 ;; DECOMP BEGINS
 
@@ -209,7 +186,7 @@
    )
   )
 
-(defmethod init-from-entity! swingpole ((obj swingpole) (arg0 entity-actor))
+(defmethod copy-defaults! swingpole ((obj swingpole) (arg0 res-lump))
   "Copy defaults from the entity."
   (stack-size-set! (-> obj main-thread) 128)
   (logior! (-> obj mask) (process-mask actor-pause))
@@ -222,7 +199,7 @@
   (vector-normalize! (-> obj dir) 1.0)
   (set! (-> obj range) 12288.0)
   (set! (-> obj edge-length) 8192.0)
-  (go (the-as (state none) swingpole-stance))
+  (go swingpole-stance)
   (none)
   )
 
@@ -232,10 +209,10 @@
   (the-as (function none :behavior process-hidden) nothing)
   )
 
-(defmethod init-from-entity! process-hidden ((obj process-hidden) (arg0 entity-actor))
+(defmethod copy-defaults! process-hidden ((obj process-hidden) (arg0 res-lump))
   "Copy defaults from the entity."
   (process-entity-status! obj (entity-perm-status dead) #t)
-  (go (the-as (state none) (method-of-object obj die)))
+  (go (method-of-object obj die))
   (none)
   )
 
@@ -255,7 +232,7 @@
   )
 
 
-(defstate manipy-idle (manipy)#|
+(defstate manipy-idle (manipy)
   :event
   (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
    (local-vars (v0-0 none))
@@ -604,10 +581,11 @@
     )
    ((-> self cur-trans-hook))
    (none)
-   )|#
+   )
   :code
-  (behavior () (loop (suspend)))
-  ;; (behavior ()
+  (behavior ()
+   ;; TODO - fix me
+   (loop (suspend))
   ;;  (logclear! (-> self mask) (process-mask heap-shrunk))
   ;;  (while #t
   ;;   ((-> self cur-post-hook))
@@ -728,7 +706,7 @@
   ;;    )
   ;;   )
   ;;  (none)
-  ;;  )
+   )
   )
 
 (defbehavior
@@ -857,11 +835,11 @@
 (defstate part-tracker-process (part-tracker)
   :code
   (behavior ()
-   (set! (-> self start-time) (-> *display* base-frame-counter))
+   (set! (-> self start-time) (the-as uint (-> *display* base-frame-counter)))
    (while
     (<
-     (- (-> *display* base-frame-counter) (-> self start-time))
-     (-> self duration)
+     (- (-> *display* base-frame-counter) (the-as int (-> self start-time)))
+     (the-as int (-> self duration))
      )
     (let ((gp-0 (handle->process (-> self target))))
      (when gp-0
@@ -889,7 +867,10 @@
     )
    (let ((gp-2 (-> *display* base-frame-counter)))
     (until
-     (>= (- (-> *display* base-frame-counter) gp-2) (-> self linger-duration))
+     (>=
+      (- (-> *display* base-frame-counter) gp-2)
+      (the-as int (-> self linger-duration))
+      )
      (if (-> self linger-callback)
       ((-> self linger-callback) self)
       )
@@ -919,7 +900,7 @@
   (set! (-> self root) (new 'process 'trsqv))
   (set! (-> self root trans quad) (-> arg5 world-sphere quad))
   (set! (-> self offset quad) (-> arg5 world-sphere quad))
-  (set! (-> self callback) arg2)
+  (set! (-> self callback) (the-as (function part-tracker vector) arg2))
   (set! (-> self linger-callback) #f)
   (set! (-> self userdata) (the-as uint arg3))
   (set! (-> self target) (process->handle arg4))
@@ -933,8 +914,8 @@
                )
               )
    )
-  (set! (-> self duration) arg1)
-  (set! (-> self linger-duration) (the-as int (-> arg0 linger-duration)))
+  (set! (-> self duration) (the-as uint arg1))
+  (set! (-> self linger-duration) (-> arg0 linger-duration))
   (set! (-> self part) (create-launch-control arg0 self))
   (go part-tracker-process)
   (none)
@@ -944,141 +925,155 @@
 ;; WARN: disable def twice: 82. This may happen when a cond (no else) is nested inside of another conditional, but it should be rare.
 ;; WARN: disable def twice: 96. This may happen when a cond (no else) is nested inside of another conditional, but it should be rare.
 ;; WARN: disable def twice: 110. This may happen when a cond (no else) is nested inside of another conditional, but it should be rare.
-;; (defun command-get-process ((arg0 pair) (arg1 process-drawable))
-;;   (with-pp
-;;    (the-as process (cond
-;;                     ((null? arg0)
-;;                      (empty)
-;;                      arg1
-;;                      )
-;;                     ((type-type? (rtype-of arg0) process)
-;;                      (the-as process-drawable arg0)
-;;                      )
-;;                     ((= arg0 'target)
-;;                      *target*
-;;                      )
-;;                     ((= arg0 'sidekick)
-;;                      (when *target*
-;;                       (let ((v1-6 (-> *target* sidekick)))
-;;                        (if v1-6
-;;                         (the-as process-drawable (-> v1-6 0 self))
-;;                         )
+;; (defbehavior
+;;   command-get-process camera-tracker
+;;   ((arg0 object) (arg1 process-drawable))
+;;   (the-as process (cond
+;;                    ((null? arg0)
+;;                     (empty)
+;;                     arg1
+;;                     )
+;;                    ((type-type? (rtype-of arg0) process)
+;;                     (the-as process-drawable arg0)
+;;                     )
+;;                    ((= arg0 'target)
+;;                     *target*
+;;                     )
+;;                    ((= arg0 'sidekick)
+;;                     (when *target*
+;;                      (let ((v1-6 (-> *target* sidekick)))
+;;                       (if v1-6
+;;                        (the-as process-drawable (-> v1-6 0 self))
 ;;                        )
 ;;                       )
-;;                      )
-;;                     ((= arg0 'parent)
-;;                      (let ((v1-9 (-> pp parent)))
-;;                       (if v1-9
-;;                        (the-as process-drawable (-> v1-9 0 self))
-;;                        )
-;;                       )
-;;                      )
-;;                     ((= arg0 'camera)
-;;                      (the-as process-drawable *camera*)
-;;                      )
-;;                     ((type-type? (rtype-of arg0) string)
-;;                      (the-as
-;;                       process-drawable
-;;                       (process-by-ename (the-as string arg0))
-;;                       )
-;;                      )
-;;                     ((type-type? (-> pp type) camera-tracker)
-;;                      (let ((v1-13 pp))
-;;                       (cond
-;;                        ((= arg0 'work)
-;;                         (let
-;;                          ((v1-14
-;;                            (-> (the-as camera-tracker v1-13) work-process)
-;;                            )
-;;                           )
-;;                          (and
-;;                           (nonzero? (l32-false-check v1-14))
-;;                           (let ((a0-8 (-> v1-14 process 0)))
-;;                            (if (= (-> v1-14 pid) (-> a0-8 pid))
-;;                             (the-as process-drawable a0-8)
-;;                             )
-;;                            )
-;;                           )
-;;                          )
-;;                         )
-;;                        ((= arg0 'grab)
-;;                         (let
-;;                          ((v1-17 (-> (the-as camera-tracker v1-13) grab-target))
-;;                           )
-;;                          (and
-;;                           (nonzero? (l32-false-check v1-17))
-;;                           (let ((a0-12 (-> v1-17 process 0)))
-;;                            (if (= (-> v1-17 pid) (-> a0-12 pid))
-;;                             (the-as process-drawable a0-12)
-;;                             )
-;;                            )
-;;                           )
-;;                          )
-;;                         )
-;;                        ((= arg0 'look-at)
-;;                         (let
-;;                          ((v1-20
-;;                            (-> (the-as camera-tracker v1-13) look-at-target)
-;;                            )
-;;                           )
-;;                          (and
-;;                           (nonzero? (l32-false-check v1-20))
-;;                           (let ((a0-16 (-> v1-20 process 0)))
-;;                            (if (= (-> v1-20 pid) (-> a0-16 pid))
-;;                             (the-as process-drawable a0-16)
-;;                             )
-;;                            )
-;;                           )
-;;                          )
-;;                         )
-;;                        ((= arg0 'pov)
-;;                         (let
-;;                          ((v1-23 (-> (the-as camera-tracker v1-13) pov-target)))
-;;                          (and
-;;                           (nonzero? (l32-false-check v1-23))
-;;                           (let ((a0-20 (-> v1-23 process 0)))
-;;                            (if (= (-> v1-23 pid) (-> a0-20 pid))
-;;                             (the-as process-drawable a0-20)
-;;                             )
-;;                            )
-;;                           )
-;;                          )
-;;                         )
-;;                        ((= arg0 'anim)
-;;                         (let
-;;                          ((v1-26
-;;                            (-> (the-as camera-tracker v1-13) anim-process)
-;;                            )
-;;                           )
-;;                          (and
-;;                           (nonzero? (l32-false-check v1-26))
-;;                           (let ((a0-24 (-> v1-26 process 0)))
-;;                            (if (= (-> v1-26 pid) (-> a0-24 pid))
-;;                             (the-as process-drawable a0-24)
-;;                             )
-;;                            )
-;;                           )
-;;                          )
-;;                         )
-;;                        (else
-;;                         (empty)
-;;                         arg1
-;;                         )
-;;                        )
-;;                       )
-;;                      )
-;;                     (else
-;;                      (empty)
-;;                      arg1
 ;;                      )
 ;;                     )
-;;     )
+;;                    ((= arg0 'parent)
+;;                     (let ((v1-9 (-> self parent)))
+;;                      (if v1-9
+;;                       (the-as process-drawable (-> v1-9 0 self))
+;;                       )
+;;                      )
+;;                     )
+;;                    ((= arg0 'camera)
+;;                     (the-as process-drawable *camera*)
+;;                     )
+;;                    ((type-type? (rtype-of arg0) string)
+;;                     (the-as
+;;                      process-drawable
+;;                      (process-by-ename (the-as string arg0))
+;;                      )
+;;                     )
+;;                    ((type-type? (-> self type) camera-tracker)
+;;                     (let ((v1-13 self))
+;;                      (cond
+;;                       ((= arg0 'work)
+;;                        (let ((v1-14 (-> v1-13 work-process)))
+;;                         (and
+;;                          (nonzero? (l32-false-check v1-14))
+;;                          (let ((a0-8 (-> v1-14 process 0)))
+;;                           (if (= (-> v1-14 pid) (-> a0-8 pid))
+;;                            (the-as process-drawable a0-8)
+;;                            )
+;;                           )
+;;                          )
+;;                         )
+;;                        )
+;;                       ((= arg0 'grab)
+;;                        (let ((v1-17 (-> v1-13 grab-target)))
+;;                         (and
+;;                          (nonzero? (l32-false-check v1-17))
+;;                          (let ((a0-12 (-> v1-17 process 0)))
+;;                           (if (= (-> v1-17 pid) (-> a0-12 pid))
+;;                            (the-as process-drawable a0-12)
+;;                            )
+;;                           )
+;;                          )
+;;                         )
+;;                        )
+;;                       ((= arg0 'look-at)
+;;                        (let ((v1-20 (-> v1-13 look-at-target)))
+;;                         (and
+;;                          (nonzero? (l32-false-check v1-20))
+;;                          (let ((a0-16 (-> v1-20 process 0)))
+;;                           (if (= (-> v1-20 pid) (-> a0-16 pid))
+;;                            (the-as process-drawable a0-16)
+;;                            )
+;;                           )
+;;                          )
+;;                         )
+;;                        )
+;;                       ((= arg0 'pov)
+;;                        (let ((v1-23 (-> v1-13 pov-target)))
+;;                         (and
+;;                          (nonzero? (l32-false-check v1-23))
+;;                          (let ((a0-20 (-> v1-23 process 0)))
+;;                           (if (= (-> v1-23 pid) (-> a0-20 pid))
+;;                            (the-as process-drawable a0-20)
+;;                            )
+;;                           )
+;;                          )
+;;                         )
+;;                        )
+;;                       ((= arg0 'anim)
+;;                        (let ((v1-26 (-> v1-13 anim-process)))
+;;                         (and
+;;                          (nonzero? (l32-false-check v1-26))
+;;                          (let ((a0-24 (-> v1-26 process 0)))
+;;                           (if (= (-> v1-26 pid) (-> a0-24 pid))
+;;                            (the-as process-drawable a0-24)
+;;                            )
+;;                           )
+;;                          )
+;;                         )
+;;                        )
+;;                       (else
+;;                        (empty)
+;;                        arg1
+;;                        )
+;;                       )
+;;                      )
+;;                     )
+;;                    (else
+;;                     (empty)
+;;                     arg1
+;;                     )
+;;                    )
 ;;    )
 ;;   )
 
-;; ERROR: function was not converted to expressions. Cannot decompile.
+(defun command-get-camera ((arg0 object) (arg1 state))
+  (cond
+   ((null? arg0)
+    (empty)
+    arg1
+    )
+   ((= arg0 'base)
+    *camera-base-mode*
+    )
+   ((= arg0 'string)
+    cam-string
+    )
+   ((= arg0 'fixed)
+    cam-fixed
+    )
+   ((type-type? (rtype-of arg0) symbol)
+    (the-as state (-> (the-as symbol arg0) value))
+    )
+   ((type-type? (rtype-of arg0) string)
+    (the-as state arg0)
+    )
+   ((type-type? (rtype-of arg0) state)
+    (the-as state arg0)
+    )
+   (else
+    (empty)
+    arg1
+    )
+   )
+  )
 
-(defun command-get-trans ((arg0 pair) (arg1 vector))
+(defun command-get-trans ((arg0 object) (arg1 vector))
   (cond
    ((null? arg0)
     (empty)
@@ -1091,7 +1086,7 @@
     (target-pos 0)
     )
    ((pair? arg0)
-    (let ((s4-0 (command-get-process (the-as pair (car arg0)) *target*))
+    (let ((s4-0 (command-get-process (car arg0) *target*))
           (v1-4 (command-get-int (car (cdr arg0)) 0))
           )
      (cond
@@ -1113,7 +1108,7 @@
   )
 
 (defbehavior process-grab? process ((arg0 process))
-  (let ((gp-0 (command-get-process (the-as pair arg0) *target*)))
+  (let ((gp-0 (command-get-process arg0 *target*)))
    (the-as symbol (when gp-0
                    (if (type-type? (-> self type) camera-tracker)
                     (set!
@@ -1128,7 +1123,7 @@
   )
 
 (defbehavior process-release? process ((arg0 process))
-  (let ((gp-0 (command-get-process (the-as pair arg0) *target*)))
+  (let ((gp-0 (command-get-process arg0 *target*)))
    (the-as
     symbol
     (if (and gp-0 (let ((a1-1 (new 'stack-no-clear 'event-message-block)))
@@ -1168,7 +1163,7 @@
    )
   )
 
-(defbehavior camera-look-at camera-tracker ((arg0 object) (arg1 int))
+(defbehavior camera-look-at camera-tracker ((arg0 pair) (arg1 uint))
   (let ((gp-0 (command-get-process arg0 *target*)))
    (when gp-0
     (if (type-type? (-> self type) camera-tracker)
@@ -1180,8 +1175,6 @@
    )
   )
 
-(define-extern ja-anim-done? (function process symbol))
-#|
 (defun ja-anim-done? ((arg0 pair))
   (with-pp
    (let ((gp-0 (command-get-process arg0 *target*)))
@@ -1214,7 +1207,7 @@
      )
     )
    )
-  )|#
+  )
 
 (defbehavior camera-pov-from camera-tracker ((arg0 pair) (arg1 uint))
   (let ((gp-0 (command-get-process arg0 *target*)))
@@ -1357,7 +1350,7 @@
           )
          )
         (('send-event)
-         (let ((s5-2 (command-get-process (the-as pair (car s4-0)) *target*))
+         (let ((s5-2 (command-get-process (car s4-0) *target*))
                (s3-2 (car (cdr s4-0)))
                (s4-2 (cdr (cdr s4-0)))
                )
@@ -1400,7 +1393,7 @@
          (set! (-> obj work-process) (the-as handle gp-0))
          )
         (('grab)
-         (let ((a0-38 (command-get-process (the-as pair (car s4-0)) *target*)))
+         (let ((a0-38 (command-get-process (car s4-0) *target*)))
           (set! gp-0 (process-grab? a0-38))
           )
          )
@@ -1408,10 +1401,10 @@
          (set! gp-0 (process-release? (handle->process (-> obj grab-target))))
          )
         (('alive?)
-         (set! gp-0 (command-get-process (the-as pair (car s4-0)) *target*))
+         (set! gp-0 (command-get-process (car s4-0) *target*))
          )
         (('draw)
-         (set! gp-0 (command-get-process (the-as pair (car s4-0)) *target*))
+         (set! gp-0 (command-get-process (car s4-0) *target*))
          (when (the-as target gp-0)
           (if (car (cdr s4-0))
            (set!
@@ -1445,7 +1438,7 @@
           gp-0
           (camera-look-at
            (the-as pair (car s4-0))
-           (command-get-int (car (cdr s4-0)) 0)
+           (the-as uint (command-get-int (car (cdr s4-0)) 0))
            )
           )
          )
@@ -1461,12 +1454,7 @@
         (('camera-anim)
          (let ((s2-2 (car s4-0))
                (s3-3 (car (cdr s4-0)))
-               (s4-4
-                (command-get-trans
-                 (the-as pair (car (cdr (cdr s4-0))))
-                 *null-vector*
-                 )
-                )
+               (s4-4 (command-get-trans (car (cdr (cdr s4-0))) *null-vector*))
                (s1-0 string->symbol)
                )
           (format (clear *temp-string*) "*~S-sg*" s2-2)
@@ -1612,7 +1600,58 @@
    )
   )
 
-;; ERROR: function was not converted to expressions. Cannot decompile.
+(defbehavior camera-tracker-init camera-tracker ((arg0 object))
+  (stack-size-set! (-> self main-thread) 512)
+  (logclear!
+   (-> self mask)
+   (process-mask actor-pause movie enemy platform projectile)
+   )
+  (set! (-> self mask-to-clear) (the-as uint #x4a0800))
+  (set! (-> self grab-target) (the-as handle #f))
+  (set! (-> self grab-event) 'grab)
+  (set! (-> self release-event) 'end-mode)
+  (set! (-> self look-at-target) (the-as handle #f))
+  (set! (-> self pov-target) (the-as handle #f))
+  (set! (-> self callback) #f)
+  (set! (-> self userdata) #f)
+  (set! (-> self start-time) (-> *display* base-frame-counter))
+  (set! (-> self script) '())
+  (set! (-> self script-line) '())
+  (set! (-> self script-func) #f)
+  (set! (-> self message) #f)
+  (set! (-> self border-value) #f)
+  (cond
+   ((pair? arg0)
+    (set! (-> self script) (the-as pair arg0))
+    (set! (-> self script-line) (the-as pair arg0))
+    )
+   ((type-type? (rtype-of arg0) function)
+    (set! (-> self script-func) (the-as (function none) arg0))
+    )
+   (else
+    (format
+     0
+     "ERROR: camera-tracker requires a pair as a script, not ~A.~%"
+     arg0
+     )
+    )
+   )
+  (let* ((gp-1 (ppointer->process (-> self parent)))
+         (v1-17 (if (and (nonzero? gp-1) (type-type? (-> gp-1 type) process))
+                 gp-1
+                 )
+          )
+         )
+   (if v1-17
+    (set!
+     (-> self entity-override)
+     (the-as entity-actor (-> (the-as process v1-17) entity))
+     )
+    )
+   )
+  (set! (-> self event-hook) (-> camera-tracker-process event))
+  (go camera-tracker-process)
+  )
 
 (deftype med-res-level (process-drawable)
   ((level     symbol  :offset-assert 176)
@@ -1706,12 +1745,12 @@
 
 (define *lev-string* (new 'global 'string 64 (the-as string #f)))
 
-(defmethod init-from-entity! med-res-level ((obj med-res-level) (arg0 entity-actor))
-  (local-vars (sv-16 int))
+(defmethod copy-defaults! med-res-level ((obj med-res-level) (arg0 res-lump))
+  (local-vars (sv-16 res-tag))
   (stack-size-set! (-> obj main-thread) 128)
   "#f"
   (let ((s4-0 (the-as (pointer sparticle-launch-group) #f)))
-   (set! sv-16 0)
+   (set! sv-16 (new 'static 'res-tag))
    (let*
     ((s3-0
       (res-lump-data
@@ -1719,7 +1758,7 @@
        'art-name
        (pointer (pointer sparticle-launch-group))
        :tag-ptr
-       (the-as (pointer res-tag) (& sv-16))
+       (& sv-16)
        )
       )
      (s2-0 (-> s3-0 0))
@@ -1822,7 +1861,7 @@
    )
   )
 
-(defmethod init-from-entity! part-spawner ((obj part-spawner) (arg0 entity-actor))
+(defmethod copy-defaults! part-spawner ((obj part-spawner) (arg0 res-lump))
   (local-vars (sv-16 res-tag))
   (stack-size-set! (-> obj main-thread) 128)
   (set! (-> obj mask) (logior (process-mask ambient) (-> obj mask)))
@@ -2721,7 +2760,7 @@
   (the-as (function none :behavior launcher) anim-loop)
   )
 
-(defmethod init-from-entity! launcher ((obj launcher) (arg0 entity-actor))
+(defmethod copy-defaults! launcher ((obj launcher) (arg0 res-lump))
   (stack-size-set! (-> obj main-thread) 128)
   (let
    ((s4-0 (new 'process 'collide-shape obj (collide-list-enum hit-by-player))))
@@ -3181,7 +3220,7 @@
   )
 
 (defun draw-eco-beam ((arg0 vector) (arg1 vector))
-  (when #f ;;(line-in-view-frustum? arg0 arg1)
+  (when (line-in-view-frustum? arg0 arg1)
    (let ((s2-1 (vector-! (new 'stack-no-clear 'vector) arg1 arg0))
          (gp-1 (new 'stack-no-clear 'vector))
          (s4-0 (new 'stack-no-clear 'vector))

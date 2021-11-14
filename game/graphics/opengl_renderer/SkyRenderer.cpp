@@ -241,7 +241,9 @@ SkyBlender::Stats SkyBlender::do_sky_blends(DmaFollower& dma,
 SkyBlendHandler::SkyBlendHandler(const std::string& name,
                                  BucketId my_id,
                                  std::shared_ptr<SkyBlender> shared_blender)
-    : BucketRenderer(name, my_id), m_shared_blender(shared_blender) {}
+    : BucketRenderer(name, my_id),
+      m_shared_blender(shared_blender),
+      m_tfrag_renderer(fmt::format("tfrag-{}", name), my_id, true) {}
 
 void SkyBlendHandler::handle_sky_copies(DmaFollower& dma,
                                         SharedRenderState* render_state,
@@ -293,19 +295,29 @@ void SkyBlendHandler::render(DmaFollower& dma,
   assert(empty.vif0() == 0);
   assert(empty.vif1() == 0);
 
-  assert(dma.current_tag().kind == DmaTag::Kind::CALL);
-  dma.read_and_advance();
-  dma.read_and_advance();  // cnt
-  assert(dma.current_tag().kind == DmaTag::Kind::RET);
-  dma.read_and_advance();  // ret
-  dma.read_and_advance();  // ret
-  assert(dma.current_tag_offset() == render_state->next_bucket);
+  if (dma.current_tag().kind != DmaTag::Kind::CALL) {
+    auto tfrag_prof = prof.make_scoped_child("tfrag-trans");
+    m_tfrag_renderer.render(dma, render_state, tfrag_prof);
+  } else {
+    assert(dma.current_tag().kind == DmaTag::Kind::CALL);
+    dma.read_and_advance();
+    dma.read_and_advance();  // cnt
+    assert(dma.current_tag().kind == DmaTag::Kind::RET);
+    dma.read_and_advance();  // ret
+    dma.read_and_advance();  // ret
+    assert(dma.current_tag_offset() == render_state->next_bucket);
+  }
 }
 
 void SkyBlendHandler::draw_debug_window() {
   ImGui::Separator();
   ImGui::Text("Draw/Blend ( sky ): %d/%d", m_stats.sky_draws, m_stats.sky_blends);
   ImGui::Text("Draw/Blend (cloud): %d/%d", m_stats.cloud_draws, m_stats.cloud_blends);
+
+  if (ImGui::TreeNode("tfrag")) {
+    m_tfrag_renderer.draw_debug_window();
+    ImGui::TreePop();
+  }
 }
 
 SkyRenderer::SkyRenderer(const std::string& name, BucketId my_id)

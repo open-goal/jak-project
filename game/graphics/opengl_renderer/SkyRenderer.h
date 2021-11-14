@@ -2,6 +2,7 @@
 #pragma once
 #include "game/graphics/opengl_renderer/BucketRenderer.h"
 #include "game/graphics/opengl_renderer/DirectRenderer.h"
+#include "game/graphics/opengl_renderer/tfrag/TFragment.h"
 
 class SkyBlender {
  public:
@@ -51,6 +52,7 @@ class SkyBlendHandler : public BucketRenderer {
 
   std::shared_ptr<SkyBlender> m_shared_blender;
   SkyBlender::Stats m_stats;
+  TFragment m_tfrag_renderer;
 };
 
 /*!

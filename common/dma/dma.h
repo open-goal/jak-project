@@ -43,6 +43,12 @@ struct DmaTag {
   bool spr = false;
   Kind kind;
 
+  bool operator==(const DmaTag& other) const {
+    return qwc == other.qwc && addr == other.addr && spr == other.spr && kind == other.kind;
+  }
+
+  bool operator!=(const DmaTag& other) const { return !((*this) == other); }
+
   std::string print();
 };
 

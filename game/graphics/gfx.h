@@ -79,5 +79,6 @@ void input_mode_save();
 s64 get_mapped_button(s64 pad, s64 button);
 
 int PadIsPressed(Pad::Button button, int port);
+int PadAnalogValue(Pad::Analog analog, int port);
 
 }  // namespace Gfx
