@@ -21,6 +21,7 @@
 #include "game/system/newpad.h"
 #include "common/log/log.h"
 #include "common/goal_constants.h"
+#include "common/util/image_loading.h"
 #include "game/runtime.h"
 #include "common/util/Timer.h"
 #include "game/graphics/opengl_renderer/debug_gui.h"
@@ -138,6 +139,14 @@ static std::shared_ptr<GfxDisplay> gl_make_main_display(int width,
   }
 
   glfwMakeContextCurrent(window);
+
+  std::string image_path = fmt::format("{}/docs/favicon-nobg.png", file_util::get_project_path());
+
+  GLFWimage images[1];
+  images[0].pixels =
+      stbi_load(image_path.c_str(), &images[0].width, &images[0].height, 0, 4);  // rgba channels
+  glfwSetWindowIcon(window, 1, images);
+  stbi_image_free(images[0].pixels);
 
   if (!gl_inited && !gladLoadGL()) {
     lg::error("GL init fail");

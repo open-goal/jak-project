@@ -395,7 +395,8 @@ std::optional<RegisterAccess> rewrite_to_get_var(std::vector<FormElement*>& defa
       auto cast = last_op_as_set->required_cast(env);
       if (cast && cast == TypeSpec("none")) {
         env.func->warnings.general_warning(
-            "rewrite_to_get_var got a none typed variable. Is there unreachable code?");
+            "rewrite_to_get_var got a none typed variable. Is there unreachable code?. [OP: {}]",
+            last_op_as_set->dst().idx());
         cast = std::nullopt;
       }
       if (cast) {

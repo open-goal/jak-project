@@ -5,3 +5,107 @@
 ;; name in dgo: joint-exploder
 ;; dgos: GAME, COMMON, L1
 
+;; TODO - for racer-states
+(deftype joint-exploder-tuning (structure)
+  ((explosion                   uint64         :offset-assert 0)
+   (duration                    uint64         :offset-assert 8)
+   (gravity                     float          :offset-assert 16)
+   (rot-speed                   float          :offset-assert 20)
+   (fountain-rand-transv-lo     vector :inline :offset-assert 32)
+   (fountain-rand-transv-hi     vector :inline :offset-assert 48)
+   (away-from-focal-pt          vector :inline :offset 32)
+   (away-from-rand-transv-xz-lo float          :offset 48)
+   (away-from-rand-transv-xz-hi float          :offset 52)
+   (away-from-rand-transv-y-lo  float          :offset 56)
+   (away-from-rand-transv-y-hi  float          :offset 60)
+   )
+  (:methods
+    (new (symbol type int) _type_ 0)
+    )
+  :method-count-assert 9
+  :size-assert         #x40
+  :flag-assert         #x900000040
+  )
+
+(deftype joint-exploder-static-joint-params (structure)
+  ((joint-index        int16  :offset-assert 0)
+   (parent-joint-index int16  :offset-assert 2)
+   )
+  :method-count-assert 9
+  :size-assert         #x4
+  :flag-assert         #x900000004
+  )
+
+(deftype joint-exploder-static-params (basic)
+  ((joints array  :offset-assert 4) ;; an array of...what?
+   )
+  :method-count-assert 9
+  :size-assert         #x8
+  :flag-assert         #x900000008
+  )
+
+(deftype joint-exploder-joint (structure)
+  ((next        int16          :offset-assert 0)
+   (prev        int16          :offset-assert 2)
+   (joint-index int16          :offset-assert 4)
+   (rspeed      float          :offset-assert 8)
+   (mat         matrix :inline :offset-assert 16)
+   (rmat        matrix :inline :offset-assert 80)
+   (transv      vector :inline :offset-assert 144)
+   (prev-pos    vector :inline :offset-assert 160)
+   )
+  :method-count-assert 9
+  :size-assert         #xb0
+  :flag-assert         #x9000000b0
+  )
+
+(deftype joint-exploder-joints (basic)
+  ((num-joints int32            :offset-assert 4)
+   (joint      joint-exploder-joint :dynamic :offset 16)
+   )
+  :method-count-assert 9
+  :size-assert         #x10
+  :flag-assert         #x900000010
+  (:methods
+    (new (symbol _type_ int) _type_ 0))
+  )
+
+(deftype joint-exploder-list (structure)
+  ((head        int32                :offset-assert 0)
+   (pre-moved?  symbol                :offset-assert 4)
+   (bbox-valid? symbol                :offset-assert 8)
+   (bbox        bounding-box :inline :offset-assert 16)
+   )
+  :method-count-assert 9
+  :size-assert         #x30
+  :flag-assert         #x900000030
+  )
+
+(deftype joint-exploder (process-drawable)
+  ((die-if-below-y             float                         :offset-assert 176)
+   (die-if-beyond-xz-dist-sqrd float                         :offset-assert 180)
+   (joints                     joint-exploder-joints                         :offset-assert 184)
+   (static-params              joint-exploder-static-params                         :offset-assert 188)
+   (anim                       art-joint-anim                         :offset-assert 192)
+   (scale-vector               vector                :inline :offset-assert 208)
+   (tuning                     joint-exploder-tuning :inline :offset-assert 224)
+   (lists                      joint-exploder-list               5      :inline :offset-assert 288)
+   )
+  :method-count-assert 29
+  :size-assert         #x210
+  :heap-base           #x1a0
+  :flag-assert         #x1d01a00210
+  (:methods
+    (dummy-20 (_type_) none 20)
+    (dummy-21 (_type_) none 21)
+    (dummy-22 () none 22)
+    (dummy-23 () none 23)
+    (dummy-24 (_type_) none 24)
+    (dummy-25 () none 25)
+    (dummy-26 (_type_) none 26)
+    (dummy-27 (_type_) none 27)
+    (dummy-28 () none 28)
+    )
+  )
+
+(define-extern joint-exploder-init-by-other (function skeleton-group int joint-exploder-static-params joint-exploder-tuning none :behavior joint-exploder))

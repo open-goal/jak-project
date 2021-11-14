@@ -74,7 +74,8 @@ Interpreter::Interpreter() {
                    {"string-append", &Interpreter::eval_string_append},
                    {"ash", &Interpreter::eval_ash},
                    {"symbol->string", &Interpreter::eval_symbol_to_string},
-                   {"string->symbol", &Interpreter::eval_string_to_symbol}};
+                   {"string->symbol", &Interpreter::eval_string_to_symbol},
+                   {"get-environment-variable", &Interpreter::eval_get_env}};
 
   string_to_type = {{"empty-list", ObjectType::EMPTY_LIST},
                     {"integer", ObjectType::INTEGER},
@@ -1642,5 +1643,21 @@ Object Interpreter::eval_string_to_symbol(const Object& form,
                                           const std::shared_ptr<EnvironmentObject>&) {
   vararg_check(form, args, {ObjectType::STRING}, {});
   return SymbolObject::make_new(reader.symbolTable, args.unnamed.at(0).as_string()->data);
+}
+
+Object Interpreter::eval_get_env(const Object& form,
+                                 Arguments& args,
+                                 const std::shared_ptr<EnvironmentObject>&) {
+  vararg_check(form, args, {ObjectType::STRING}, {{"default", {false, ObjectType::STRING}}});
+  const std::string var_name = args.unnamed.at(0).as_string()->data;
+  const char* env_p = std::getenv(var_name.c_str());
+  if (env_p == NULL) {
+    if (args.has_named("default")) {
+      return args.get_named("default");
+    } else {
+      throw_eval_error(form, fmt::format("env-var {} not found and no default provided", var_name));
+    }
+  }
+  return StringObject::make_new(env_p);
 }
 }  // namespace goos
