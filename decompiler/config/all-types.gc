@@ -954,9 +954,8 @@
   (firecanyon-not-enough-cells #x24f)
 
   (sidekick-hint-orb-cache-top #x251)
-
+  (daxter-launcher-no-eco #x25c)
   (jungle-precursorbridge-hint #x25b)
-
   (beach-gimmie #x262)
   (beach-sentinel #x263)
   (jungle-canyon-end #x264)
@@ -10312,10 +10311,11 @@
 
 ;; - Types
 
+;; NOTE - root can also be a collide-shape
 (deftype manipy (process-drawable)
-  ((new-trans-hook       function        :offset-assert 176)
-   (cur-trans-hook       function        :offset-assert 180)
-   (cur-event-hook       function        :offset-assert 184)
+  ((new-trans-hook       (function none)        :offset-assert 176) ;; TODO - no idea on these types
+   (cur-trans-hook       (function none)        :offset-assert 180) ;; TODO - no idea on these types
+   (cur-event-hook       (function none)        :offset-assert 184) ;; TODO - no idea on these types
    (new-joint-anim       art-joint-anim  :offset-assert 188)
    (new-joint-anim-blend uint64          :offset-assert 192)
    (anim-mode            symbol          :offset-assert 200)
@@ -10323,8 +10323,8 @@
    (cur-target-handle    handle          :offset-assert 216)
    (old-grab-pos         vector  :inline :offset-assert 224)
    (joint                process-drawable 4 :offset-assert 240)
-   (new-post-hook        function        :offset-assert 256)
-   (cur-post-hook        function        :offset-assert 260)
+   (new-post-hook        (function none)        :offset-assert 256) ;; TODO - no idea on these types
+   (cur-post-hook        (function none)        :offset-assert 260) ;; TODO - no idea on these types
    (clone-copy-trans     basic           :offset-assert 264)
    (shadow-backup        basic           :offset-assert 268)
    (draw?                symbol          :offset-assert 272)
@@ -10335,9 +10335,10 @@
   :flag-assert         #x1400b00114
   )
 
+(declare-type sparticle-launch-group structure)
 (deftype part-spawner (process-drawable)
-  ((mode         uint32         :offset-assert 176)
-   (enable       basic          :offset-assert 180)
+  ((mode         (pointer sparticle-launch-group)         :offset-assert 176) ;; takes a part-spawner as it's first arg in method 9
+   (enable       symbol         :offset-assert 180)
    (radius       meters         :offset-assert 184)
    (world-sphere sphere :inline :offset-assert 192)
    )
@@ -10346,19 +10347,19 @@
   :size-assert         #xd0
   :flag-assert         #x15006000d0
   (:methods
-    (dummy-20 () none 20)
+    (dummy-20 (_type_) none 20)
     )
   )
 
 (deftype part-tracker (process)
-  ((root             trsqv               :offset-assert 112)
-   (part             sparticle-launch-control :offset-assert 116)
-   (target           uint64              :offset-assert 120)
-   (callback         basic               :offset-assert 128)
-   (linger-callback  basic               :offset-assert 132)
-   (duration         int64               :offset-assert 136)
-   (linger-duration  int64               :offset-assert 144)
-   (start-time       int64               :offset-assert 152)
+  ((root    trsqv               :offset-assert 112)
+   (part             sparticle-launch-control               :offset-assert 116)
+   (target           handle              :offset-assert 120)
+   (callback         (function part-tracker none)               :offset-assert 128)
+   (linger-callback  (function part-tracker none)               :offset-assert 132)
+   (duration         int64              :offset-assert 136)
+   (linger-duration  int64              :offset-assert 144)
+   (start-time       int64              :offset-assert 152)
    (offset           vector     :inline  :offset-assert 160)
    (userdata         uint64              :offset-assert 176)
    (user-time        int64   2           :offset-assert 184)
@@ -10372,9 +10373,10 @@
   )
 
 (deftype camera-tracker (process)
-  ((grab-target     handle  :offset 120)
-   (grab-event      basic   :offset-assert 128)
-   (release-event   basic   :offset-assert 132)
+  ((entity-override entity-actor :score 100   :offset 52)
+   (grab-target     handle  :offset 120)
+   (grab-event      symbol   :offset-assert 128)
+   (release-event   symbol   :offset-assert 132)
    (old-global-mask uint32  :offset-assert 136)
    (old-self-mask   uint32  :offset-assert 140)
    (old-parent-mask uint32  :offset-assert 144)
@@ -10388,27 +10390,28 @@
    (message         basic   :offset-assert 200)
    (border-value    basic   :offset-assert 204)
    (mask-to-clear   uint32  :offset-assert 208)
-   (script          basic   :offset-assert 212)
-   (script-line     basic   :offset-assert 216)
-   (script-func     basic   :offset-assert 220)
+   (script          pair   :offset-assert 212)
+   (script-line     pair   :offset-assert 216)
+   (script-func     (function none)   :offset-assert 220) ;; TODO - unconfirmed, see generic-obs::lambda::33
    )
   :heap-base #x70
   :method-count-assert 15
   :size-assert         #xe0
   :flag-assert         #xf007000e0
-  ;; field ~Tuserdata is a basic loaded with a signed load
   (:methods
-    (dummy-14 () none 14)
+    (dummy-14 (_type_ pair) process 14)
     )
   )
 
+(declare-type collide-shape-moving basic)
 (deftype touch-tracker (process-drawable)
-  ((duration     uint64  :offset-assert 176)
-   (target       uint64  :offset-assert 184)
-   (event        basic   :offset-assert 192)
-   (run-function basic   :offset-assert 196)
-   (callback     basic   :offset-assert 200)
-   (event-mode   basic   :offset-assert 204)
+  ((root-override collide-shape-moving :score 100 :offset 112)
+   (duration     uint64  :offset-assert 176)
+   (target       handle  :offset-assert 184)
+   (event        symbol   :offset-assert 192)
+   (run-function (function none)   :offset-assert 196)
+   (callback     (function touch-tracker none)   :offset-assert 200)
+   (event-mode   basic   :offset-assert 204) ;; not a basic!
    )
   :heap-base #x60
   :method-count-assert 20
@@ -17991,7 +17994,7 @@
 (define-extern load-state-want-force-vis (function symbol symbol int))
 (define-extern command-get-param (function object object object))
 (define-extern entity-birth-no-kill (function entity none))
-(define-extern part-tracker-init (function sparticle-launch-group int basic basic basic vector none)) ;; TODO - not confirmed
+(define-extern part-tracker-init (function sparticle-launch-group int (function part-tracker none) (pointer process-drawable) process collide-prim-core none :behavior part-tracker))
 (define-extern command-list-get-process (function object process))
 (define-extern command-get-quoted-param (function object object object))
 (define-extern command-get-int (function object int int))
@@ -18598,10 +18601,6 @@
 (define-extern cam-master-active (state camera-master))
 (define-extern list-keeper-active (state camera-master))
 (define-extern *CAMERA_MASTER-bank* camera-master-bank)
-
-
-;; - Unknowns
-
 (define-extern cam-fixed (state camera-slave))
 (define-extern cam-decel (state camera-slave))
 (define-extern cam-eye (state camera-slave))
@@ -19456,8 +19455,8 @@
   )
 
 (deftype med-res-level (process-drawable)
-  ((level     basic  :offset-assert 176)
-   (part-mode basic  :offset-assert 180)
+  ((level     symbol  :offset-assert 176)
+   (part-mode basic  :offset-assert 180) ;; sometimes a sound-mode, but too low a sample size to know for sure
    (index     int32  :offset-assert 184)
    )
   :method-count-assert 20
@@ -19467,10 +19466,11 @@
   )
 
 (deftype launcher (process-drawable)
-  ((spring-height   meters         :offset-assert 176)
-   (camera          basic          :offset-assert 180)
+  ((root-override   collide-shape  :score 100 :offset 112)
+   (spring-height   meters         :offset-assert 176)
+   (camera          state          :offset-assert 180)
    (active-distance float          :offset-assert 184)
-   (seek-time       int64          :offset-assert 192)
+   (seek-time       uint64         :offset-assert 192)
    (dest            vector :inline :offset-assert 208)
    (sound-id        sound-id       :offset-assert 224)
    )
@@ -19482,47 +19482,47 @@
 
 ;; - Functions
 
-(define-extern line-in-view-frustum? function)
+(define-extern line-in-view-frustum? (function vector vector symbol)) ;; TODO - not confirmed
 (define-extern process-drawable-random-point! (function process-drawable vector vector))
 (define-extern process-drawable-from-entity! (function process-drawable res-lump none))
-(define-extern cam-launcher-long-joystick function)
+(define-extern cam-launcher-long-joystick (function vector :behavior camera-slave))
 (define-extern hide-hud-quick (function none))
-(define-extern command-get-process (function basic process-drawable process))
-(define-extern camera-change-to (function string int symbol none)) ;; TODO - not confirmed yet
-(define-extern camera-look-at (function process int none)) ;; TODO - process is likely a target
-(define-extern camera-pov-from function)
-(define-extern command-get-trans function)
-(define-extern manipy-init (function vector entity skeleton-group vector none :behavior manipy))
-(define-extern part-tracker-notify function)
+(define-extern command-get-process (function object process-drawable process :behavior camera-tracker))
+(define-extern camera-change-to (function string int symbol symbol))
+(define-extern camera-look-at (function pair uint process :behavior camera-tracker))
+(define-extern camera-pov-from (function pair uint process :behavior camera-tracker))
+(define-extern command-get-trans (function object vector vector)) ;; object types - null | symbol (null | target) | pair
+(define-extern manipy-init (function vector entity skeleton-group vector none :behavior manipy)) ;; TODO - not confirmed yet
+(define-extern part-tracker-notify (function object :behavior part-tracker))
 (define-extern clone-anim-once (function handle int symbol string none :behavior process-drawable))
-(define-extern merc-eye-anim (function process-drawable none))
-(define-extern clone-anim (function handle int symbol string none :behavior process-drawable))
 (define-extern convert-to-hud-object (function process-drawable hud none :behavior hud))
-(define-extern command-get-camera function)
-(define-extern ja-anim-done? (function symbol)) ;; TODO - not confirmed
-(define-extern camera-anim function)
-(define-extern camera-tracker-init (function function none)) ;; TODO - not confirmed, see misty-warehouse::camera-view
-(define-extern cam-launcher-joystick function)
-(define-extern launcher-init-by-other (function vector float vector float none :behavior launcher))
-(define-extern touch-tracker-init (function object object object none))
+(define-extern clone-anim (function handle int symbol string none :behavior process-drawable))
+(define-extern merc-eye-anim (function process-drawable none))
+(define-extern ja-anim-done? (function pair symbol)) ;; TODO - has a behavior, no idea what it is
+(define-extern command-get-camera (function object state object)) ;; ret - (state camera) | string | symbol
+(define-extern camera-anim (function symbol basic entity (pointer process) :behavior camera-tracker)) ;; unused
+(define-extern camera-tracker-init (function object object :behavior camera-tracker)) ;; TODO - nested SC
+(define-extern cam-launcher-joystick (function vector :behavior camera-slave))
+(define-extern launcher-init-by-other (function vector float int float none :behavior launcher))
+(define-extern touch-tracker-init (function vector float uint none :behavior touch-tracker)) ;; last arg is a handle to `target`
 (define-extern process-drawable-pair-random-point! (function process-drawable process-drawable vector float vector))
-(define-extern birth-func-set-quat function)
+(define-extern birth-func-set-quat (function int sparticle-cpuinfo sparticle-launchinfo none))
 (define-extern draw-eco-beam (function vector vector none))
 
 ;; - Unknowns
 
 (define-extern *particle-quat* quaternion)
 (define-extern touch-tracker-idle (state touch-tracker))
-(define-extern cam-launcher-longfall (state camera-tracker))
-(define-extern cam-launcher-shortfall (state camera-tracker))
+(define-extern cam-launcher-longfall (state camera-slave))
+(define-extern cam-launcher-shortfall (state camera-slave))
 (define-extern launcher-idle (state launcher))
 (define-extern launcher-deactivated (state launcher))
 (define-extern launcher-active (state launcher))
 (define-extern part-spawner-active (state part-spawner))
 (define-extern *lev-string* string)
 (define-extern med-res-level-idle (state med-res-level))
-(define-extern camera-tracker-process camera-tracker)
-(define-extern part-tracker-process part-tracker)
+(define-extern camera-tracker-process (state camera-tracker))
+(define-extern part-tracker-process (state part-tracker))
 (define-extern manipy-idle (state manipy))
 (define-extern swingpole-stance (state swingpole))
 (define-extern swingpole-active (state swingpole))
@@ -21938,7 +21938,7 @@
 (define-extern dm-cam-settings-func (function int int symbol))
 (define-extern dm-cam-settings-func-int (function int int debug-menu debug-menu debug-menu))
 (define-extern debug-create-cam-restore (function none)) ;; TODO - level-group type isn't complete
-(define-extern dm-cam-mode-func (function (state camera-slave) int symbol))
+(define-extern dm-cam-mode-func (function (state camera-slave) int object))
 (define-extern dm-instance-pick-func (function string int basic))
 (define-extern dm-enable-instance-func (function string int symbol))
 (define-extern dm-shader-pick-func (function texture-id int object)) ;; TODO - more texture stuff...
