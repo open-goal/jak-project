@@ -216,6 +216,7 @@
        "out/iso/FIN.DGO"
        "out/iso/FIC.DGO"
        "out/iso/JUN.DGO"
+       "out/iso/MAI.DGO"
        )
 
 ;;;;;;;;;;;;;;;;;;;;;;;;
@@ -562,6 +563,59 @@
   "water-anim-village3-ag"
   "village3-vis"
   )
+
+;;;;;;;;;;;;;;;;;;;;;
+;; Spider Cave
+;;;;;;;;;;;;;;;;;;;;;
+
+(cgo "MAI.DGO" "mai.gd")
+
+(goal-src-sequence
+ "levels/"
+ :deps ;; no idea what these depend on, make it depend on the whole engine
+ ("out/obj/default-menu.o"
+  ;;"out/obj/darkcave-obs.o"
+  )
+ "maincave/cavecrystal-light.gc"
+ "maincave/maincave-obs.gc"
+ "maincave/maincave-part.gc"
+ "maincave/spiderwebs.gc"
+ "maincave/dark-crystal.gc"
+ "maincave/baby-spider.gc"
+ "maincave/mother-spider-h.gc"
+ "maincave/mother-spider-egg.gc"
+ "maincave/mother-spider-proj.gc"
+ "maincave/mother-spider.gc"
+ "maincave/gnawer.gc"
+ "maincave/driller-lurker.gc"
+ )
+
+(copy-textures 1313 1315 1314 1312 767)
+
+(copy-gos
+  "baby-spider-ag-MAI"
+  "cavetrapdoor-ag-MAI"
+  "dark-crystal-ag"
+  "driller-lurker-ag"
+  "ecovalve-ag-MAI"
+  "gnawer-ag"
+  "launcherdoor-maincave-ag"
+  "maincavecam-ag"
+  "mother-spider-ag"
+  "plat-ag-MAI"
+  "spider-egg-ag-DAR-MAI"
+  "spiderwebs-ag"
+  "water-anim-maincave-ag"
+  "water-anim-maincave-water-ag"
+  "maincave-vis"
+  )
+
+; (goal-src-sequence
+;  "levels/"
+;  :deps ;; no idea what these depend on, make it depend on the whole engine
+;  ("out/obj/default-menu.o" "out/obj/cavecrystal-light.o")
+;  "darkcave/darkcave-obs.gc"
+;  )
 
 ;;;;;;;;;;;;;;;;;;;;;
 ;; Final Boss

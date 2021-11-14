@@ -42,8 +42,8 @@ struct PrintSettings {
   bool print_tfrag = true;
   bool expand_draw_node = true;
   bool expand_drawable_tree_tfrag = true;
-  bool expand_drawable_tree_trans_tfrag = false;
-  bool expand_drawable_tree_tie_proto = false;
+  bool expand_drawable_tree_trans_tfrag = true;
+  bool expand_drawable_tree_tie_proto = true;
   bool expand_drawable_tree_tie_proto_data = false;
   bool expand_drawable_tree_instance_tie = false;
   bool expand_drawable_tree_actor = false;

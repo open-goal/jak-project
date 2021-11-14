@@ -826,6 +826,13 @@ std::optional<std::vector<BitFieldDef>> get_field_defs_from_expr(const BitFieldT
         }
       }
 
+      auto field_type_as_bitfield =
+          dynamic_cast<BitFieldType*>(env.dts->ts.lookup_type(field_info.type()));
+      if (field_type_as_bitfield) {
+        maybe_field->value = cast_to_bitfield(field_type_as_bitfield, field_info.type(), pool, env,
+                                              maybe_field->value);
+      }
+
       field_defs.push_back(*maybe_field);
     }
     return field_defs;
@@ -845,6 +852,7 @@ Form* cast_to_bitfield(const BitFieldType* type_info,
                        Form* in) {
   in = strip_int_or_uint_cast(in);
 
+  // special case for sound-name bitfield to string
   if (type_info->get_name() == "sound-name") {
     auto as_sound_name = cast_sound_name(pool, env, in);
     if (as_sound_name) {
@@ -853,6 +861,7 @@ Form* cast_to_bitfield(const BitFieldType* type_info,
     // just do a normal cast if that failed.
     return pool.alloc_single_element_form<CastElement>(nullptr, typespec, in);
   }
+
   // check if it's just a constant:
   auto in_as_atom = form_as_atom(in);
   if (in_as_atom && in_as_atom->is_int()) {
@@ -887,6 +896,7 @@ Form* cast_to_bitfield(const BitFieldType* type_info,
     }
     return pool.alloc_single_element_form<CastElement>(nullptr, typespec, in);
   } else {
+    // dynamic bitfield def
     auto field_defs = get_field_defs_from_expr(type_info, in, typespec, pool, env, {});
     if (field_defs) {
       return pool.alloc_single_element_form<BitfieldStaticDefElement>(nullptr, typespec,

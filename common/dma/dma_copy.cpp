@@ -29,6 +29,39 @@ std::vector<u8> flatten_dma(const DmaFollower& in) {
   return result;
 }
 
+void diff_dma_chains(DmaFollower ref, DmaFollower dma) {
+  while (!ref.ended() && !dma.ended()) {
+    auto ref_tag = ref.current_tag();
+    auto dma_tag = dma.current_tag();
+    if (ref_tag.kind != dma_tag.kind) {
+      fmt::print("Bad dma tag kinds\n");
+    }
+
+    if (ref_tag.qwc != dma_tag.qwc) {
+      fmt::print("Bad dma tag qwc: {} {}\n", ref_tag.qwc, dma_tag.qwc);
+    }
+
+    auto ref_result = ref.read_and_advance();
+    auto dma_result = dma.read_and_advance();
+
+    for (int i = 0; i < ref_result.size_bytes; i++) {
+      if (ref_result.data[i] != dma_result.data[i]) {
+        fmt::print("Bad data ({} vs {}) at {} into transfer: {} {}\n", ref_result.data[i],
+                   dma_result.data[i], i, ref_tag.print(), dma_tag.print());
+        return;
+      }
+    }
+  }
+
+  if (!ref.ended()) {
+    fmt::print("dma ended early\n");
+  }
+
+  if (!dma.ended()) {
+    fmt::print("dma had extra data\n");
+  }
+}
+
 void FixedChunkDmaCopier::serialize_last_result(Serializer& serializer) {
   serializer.from_ptr(&m_result.start_offset);
   serializer.from_pod_vector(&m_result.data);
@@ -81,13 +114,13 @@ const DmaData& FixedChunkDmaCopier::run(const void* memory, u32 offset, bool ver
     if (transfer.size_bytes) {
       m_result.stats.num_data_bytes += transfer.size_bytes;
       u32 initial_chunk = transfer.data_offset / chunk_size;
+      u32 end_addr = transfer.data_offset + transfer.size_bytes;
       m_chunk_mask.at(initial_chunk) = true;
-      s32 bytes_remaining = transfer.size_bytes;
-      bytes_remaining -= chunk_size - (transfer.size_bytes % chunk_size);
       u32 chunk = initial_chunk + 1;
-      while (bytes_remaining >= 0) {
-        bytes_remaining -= transfer.size_bytes;
-        m_chunk_mask.at(chunk) = true;
+      u32 current_address = chunk_size * chunk;
+      while (current_address < end_addr) {
+        current_address += chunk_size;
+        m_chunk_mask.at(chunk++) = true;
       }
     }
   }
@@ -129,8 +162,20 @@ const DmaData& FixedChunkDmaCopier::run(const void* memory, u32 offset, bool ver
   if (verify) {
     auto ref = flatten_dma(DmaFollower(memory, offset));
     auto v2 = flatten_dma(DmaFollower(m_result.data.data(), m_result.start_offset));
+
     if (ref != v2) {
       fmt::print("Verification has failed.\n");
+      fmt::print("size diff: {} {}\n", ref.size(), v2.size());
+
+      for (size_t i = 0; i < std::min(ref.size(), v2.size()); i++) {
+        if (ref[i] != v2[i]) {
+          fmt::print("first diff at {}\n", i);
+          break;
+        }
+      }
+      diff_dma_chains(DmaFollower(memory, offset),
+                      DmaFollower(m_result.data.data(), m_result.start_offset));
+      assert(false);
     } else {
       fmt::print("verification ok: {} bytes\n", ref.size());
     }

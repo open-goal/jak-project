@@ -502,12 +502,16 @@
     (sky-draw 3)
     (bucket-4 4) ;; ocean
     (tfrag-tex0 5)
+    (tfrag-0 6)
+    (tfrag-near-0 7)
     ;; merc0 10
     ;; generic0 11
     (bucket-10 10)
     (bucket-11 11)
 
     (tfrag-tex1 12)
+    (tfrag-1 13)
+    (tfrag-near-1 14)
     ;; merc1 17
     ;; generic1 18
     (bucket-17 17)
@@ -519,10 +523,20 @@
 
     (generic-foreground 30) ;; ?
     (alpha-tex0 31)
-    (sky-tex0 32)
+    (tfrag-trans-0 32) ;; also sky blend
+    (tfrag-trans-near-0 33)
+    (tfrag-dirt-0 34)
+    (tfrag-dirt-near-0 35)
+    (tfrag-ice-0 36)
+    (tfrag-ice-near-0 37)
 
     (alpha-tex1 38)
-    (sky-tex1 39)
+    (tfrag-trans-1 39) ;; also sky blend
+    (tfrag-trans-near-1 40)
+    (tfrag-dirt-1 41)
+    (tfrag-dirt-near-1 42)
+    (tfrag-ice-1 43)
+    (tfrag-ice-near-1 44)
 
     (bucket-45 45)
     (bucket-46 46)
@@ -3565,8 +3579,30 @@
 
 ;; - Symbols
 
-(define-extern *vu1-enable-user-menu* int)
-(define-extern *vu1-enable-user* int)
+(defenum vu1-renderer-mask
+  :bitfield #t
+  (sky 3)
+  (ocean 4)
+  (ocean-wave 5)
+  (tfrag 6)
+  (tie-near 7)
+  (tie 8)
+  (generic 9)
+  (merc 10)
+  (shrubbery 11)
+  (shrub-near 12)
+  (billboard 13)
+  (trans-shrubbery 14)
+  (trans-frag 15)
+  (sprite 16)
+  (shadow 17)
+  (depth-cue 18)
+  (nineteen 19)
+  (twenty 20)
+  )
+
+(define-extern *vu1-enable-user-menu* vu1-renderer-mask)
+(define-extern *vu1-enable-user* vu1-renderer-mask)
 
 
 ;; ----------------------
@@ -6224,8 +6260,8 @@
     (collide-with-box (_type_ int collide-list) none 11)
     (collide-y-probe (_type_ int collide-list) none 12)
     (collide-ray (_type_ int collide-list) none 13)
-    (dummy-14 (_type_) none 14)
-    (debug-draw (_type_ drawable object) none 15)
+    (collect-stats (_type_) none 14)
+    (debug-draw (_type_ drawable display-frame) none 15)
     (dummy-16 (_type_ object object) object 16)
     (collect-ambients (_type_ sphere int ambient-list) none 17)
     )
@@ -12767,7 +12803,7 @@
 
 (deftype tfragment-debug-data (structure)
   ((stats       tfragment-stats :inline :offset-assert 0)
-   (debug-lines basic                   :offset-assert 16)
+   (debug-lines (array vector-array)    :offset-assert 16)
    )
   :method-count-assert 9
   :size-assert         #x14
@@ -12793,7 +12829,7 @@
    (dma-level-0       uint32                       :offset 32)
    (dma-base          uint32                       :offset 36)
    (dma-level-1       uint32                       :offset 40)
-   (dma-qwc           uint32              4       :offset 44)
+   (dma-qwc           uint8              4       :offset 44)
    (shader            (inline-array adgif-shader)                       :offset 48)
    (num-shaders       uint8                        :offset 52)
    (num-base-colors   uint8                        :offset 53)
@@ -12828,7 +12864,9 @@
   )
 
 (deftype drawable-tree-tfrag (drawable-tree)
-  ((time-of-day-pal time-of-day-palette :offset 12))
+  ((time-of-day-pal time-of-day-palette :offset 12)
+   (arrays    drawable-inline-array 1  :offset 32 :score 100) ;; either drawable-inline-array-node or drawable-inline-array-tfrag
+   )
   :method-count-assert #x12
   :size-assert #x24
   :flag-assert #x1200000024
@@ -12870,10 +12908,10 @@
   )
 
 (deftype tfrag-dists (structure)
-  ((data   uint32 16 :offset-assert 0)
-   (vector vector 4 :inline  :offset 0)
-   (k0s    uint128 2  :offset 0)
-   (k1s    uint128 2  :offset 32)
+  ((data   uint32 16 :offset-assert 0 :score -1)
+   (vector vector 4 :inline  :offset 0 :score -1)
+   (k0s    vector 2 :inline  :offset 0)
+   (k1s    vector 2 :inline  :offset 32)
    )
   :method-count-assert 9
   :size-assert         #x40
@@ -12881,13 +12919,14 @@
   )
 
 (deftype tfrag-data (structure)
-  ((data        uint32     56      :offset 0)
-   (vector      vector 14 :inline      :offset 0)
+  ((data        uint32     56      :offset 0 :score -1)
+   (vector      vector 14 :inline      :offset 0 :score -1)
    (fog         vector      :inline :offset 0)
    (val         vector      :inline :offset 16)
-   (strgif      qword       :inline :offset 32)
-   (fangif      qword       :inline :offset 48)
-   (adgif       qword       :inline :offset 64)
+
+   (strgif      gs-gif-tag  :inline :offset 32)   ;; was qword
+   (fangif      gs-gif-tag  :inline :offset 48)   ;; was qword
+   (adgif       gs-gif-tag  :inline :offset 64)   ;; was qword
    (hvdf-offset vector      :inline :offset 80)
    (hmge-scale  vector      :inline :offset 96)
    (invh-scale  vector      :inline :offset 112)
@@ -15552,7 +15591,7 @@
 (define-extern clear-tr-stat (function tr-stat none))
 (define-extern print-terrain-stats (function none))
 (define-extern update-subdivide-settings! (function subdivide-settings math-camera int none))
-(define-extern set-tfrag-dists! (function (pointer float) none))
+(define-extern set-tfrag-dists! (function tfrag-dists none))
 (define-extern start-perf-stat-collection (function none))
 (define-extern end-perf-stat-collection (function none))
 (define-extern print-perf-stats (function none))
@@ -16498,7 +16537,7 @@
 (define-extern collide-cache-using-line-sphere-test (function vector symbol))
 (define-extern collide-cache-using-y-probe-test (function vector symbol))
 (define-extern collide-cache-using-box-test (function vector symbol))
-(define-extern draw-node-cull function)
+(define-extern draw-node-cull (function pointer pointer (inline-array draw-node) int none))
 
 
 ;; ----------------------
@@ -16562,24 +16601,24 @@
 
 ;; - Functions
 
-(define-extern add-tfrag-mtx-0 function)
-(define-extern add-tfrag-mtx-1 function)
-(define-extern add-tfrag-data function)
-(define-extern tfrag-data-setup function)
-(define-extern tfrag-print-stats function)
-(define-extern tfrag-init-buffer function)
-(define-extern tfrag-end-buffer function)
-(define-extern draw-inline-array-tfrag function)
-(define-extern tfrag-near-init-buffer function)
-(define-extern tfrag-near-end-buffer function)
-(define-extern draw-inline-array-tfrag-near function)
-(define-extern stats-tfrag-asm function)
+(define-extern add-tfrag-mtx-0 (function dma-buffer none))
+(define-extern add-tfrag-mtx-1 (function dma-buffer none))
+(define-extern add-tfrag-data (function dma-buffer int none))
+(define-extern tfrag-data-setup (function tfrag-data int none))
+(define-extern tfrag-print-stats (function symbol none))
+(define-extern tfrag-init-buffer (function dma-buffer gs-test int none))
+(define-extern tfrag-end-buffer (function dma-buffer none))
+(define-extern draw-inline-array-tfrag (function pointer drawable-inline-array int dma-buffer none))
+(define-extern tfrag-near-init-buffer (function dma-buffer gs-test int none))
+(define-extern tfrag-near-end-buffer (function dma-buffer none))
+(define-extern draw-inline-array-tfrag-near (function pointer drawable-inline-array int dma-buffer none))
+(define-extern stats-tfrag-asm (function tfragment none))
 
 ;; - Unknowns
 
 (define-extern tfrag-vu1-block vu-function)
-;;(define-extern t-stat object) ;; unknown type
-;;(define-extern *tfrag-display-stats* object) ;; unknown type
+(define-extern t-stat tfrag-stats)
+(define-extern *tfrag-display-stats* symbol)
 
 
 ;; ----------------------
@@ -16590,7 +16629,7 @@
 
 ;; - Functions
 
-(define-extern edge-debug-lines function)
+(define-extern edge-debug-lines (function (array vector-array) none))
 (define-extern vis-cull (function int symbol))
 
 

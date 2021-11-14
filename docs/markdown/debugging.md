@@ -212,23 +212,22 @@ Disassembly instructions in memory
 Example (after doing a `(lt)`, `(blg)`, `(dbg)`):
 
 ```nasm
-gc> (:disasm (sym-val basic-type?) 80)
-[0x2000162ae4] mov eax, [r15+rdi*1-0x04]
-[0x2000162ae9] mov ecx, [r15+r14*1+0x38]
-[0x2000162af1] mov rdx, rax
-[0x2000162af4] cmp rdx, rsi
-[0x2000162af7] jnz 0x0000002000162B0F
-[0x2000162afd] mov eax, [r15+r14*1+0x08]
-[0x2000162b05] jmp 0x0000002000162B32
-[0x2000162b0a] jmp 0x0000002000162B19
-[0x2000162b0f] mov rax, r14
-[0x2000162b12] add rax, 0x00
-[0x2000162b19] mov eax, [r15+rdx*1+0x04]
-[0x2000162b1e] mov rdx, rax
-[0x2000162b21] cmp rax, rcx
-[0x2000162b24] jnz 0x0000002000162AF4
-[0x2000162b2a] mov eax, [r15+r14*1]
-[0x2000162b32] ret
+gs> (:disasm (sym-val basic-type?) 59)
+Object: gcommon
+
+[0x28eb4c631c4] mov r9d, [r15+rdi*1-0x04]
+[0x28eb4c631c9] mov r8d, [object]
+[0x28eb4c631d1] cmp r9, rsi
+[0x28eb4c631d4] jnz 0x0000028EB4C631E9
+[0x28eb4c631da] lea rax, '#t
+[0x28eb4c631df] jmp 0x0000028EB4C631FD
+[0x28eb4c631e4] jmp 0x0000028EB4C631EC
+[0x28eb4c631e9] mov rcx, '#f
+[0x28eb4c631ec] mov r9d, [r15+r9*1+0x04]
+[0x28eb4c631f1] cmp r9, r8
+[0x28eb4c631f4] jnz 0x0000028EB4C631D1
+[0x28eb4c631fa] mov rax, '#f
+[0x28eb4c631fd] ret
 ```
 
 For now, the disassembly is pretty basic, but it should eventually support GOAL symbols.
@@ -259,7 +258,7 @@ symbol name for symbol 30h is type
 gs> (:sym-name #x80)
 symbol name for symbol 80h is int64
 gs> (:sym-name #x800)
-symbol name for symbol 800h is <invalid symbol offset>
+symbol 800h is not loaded or is invalid
 ```
 
 Keep in mind `-#xa8` is not valid syntax for a negative number in hexadecimal.

@@ -66,6 +66,8 @@ set(RUNTIME_SOURCE
         mips2c/functions/sparticle_launcher.cpp
         mips2c/functions/test_func.cpp
         mips2c/functions/texture.cpp
+        mips2c/functions/tfrag.cpp
+        mips2c/functions/time_of_day.cpp
         overlord/dma.cpp
         overlord/fake_iso.cpp
         overlord/iso.cpp
@@ -86,12 +88,16 @@ set(RUNTIME_SOURCE
         graphics/opengl_renderer/BucketRenderer.cpp
         graphics/opengl_renderer/debug_gui.cpp
         graphics/opengl_renderer/DirectRenderer.cpp
+        graphics/opengl_renderer/dma_helpers.cpp
         graphics/opengl_renderer/OpenGLRenderer.cpp
         graphics/opengl_renderer/Profiler.cpp
         graphics/opengl_renderer/Shader.cpp
         graphics/opengl_renderer/SkyRenderer.cpp
         graphics/opengl_renderer/SpriteRenderer.cpp
         graphics/opengl_renderer/TextureUploadHandler.cpp
+        graphics/opengl_renderer/tfrag/program6_cpu.cpp
+        graphics/opengl_renderer/tfrag/tfrag_unpack.cpp
+        graphics/opengl_renderer/tfrag/TFragment.cpp
         graphics/texture/TextureConverter.cpp
         graphics/texture/TexturePool.cpp
         graphics/pipelines/opengl.cpp
