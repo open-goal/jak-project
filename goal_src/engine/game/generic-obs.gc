@@ -835,11 +835,11 @@
 (defstate part-tracker-process (part-tracker)
   :code
   (behavior ()
-   (set! (-> self start-time) (-> *display* base-frame-counter))
+   (set! (-> self start-time) (the-as uint (-> *display* base-frame-counter)))
    (while
     (<
-     (- (-> *display* base-frame-counter) (-> self start-time))
-     (-> self duration)
+     (- (-> *display* base-frame-counter) (the-as int (-> self start-time)))
+     (the-as int (-> self duration))
      )
     (let ((gp-0 (handle->process (-> self target))))
      (when gp-0
@@ -867,7 +867,10 @@
     )
    (let ((gp-2 (-> *display* base-frame-counter)))
     (until
-     (>= (- (-> *display* base-frame-counter) gp-2) (-> self linger-duration))
+     (>=
+      (- (-> *display* base-frame-counter) gp-2)
+      (the-as int (-> self linger-duration))
+      )
      (if (-> self linger-callback)
       ((-> self linger-callback) self)
       )
@@ -897,7 +900,7 @@
   (set! (-> self root) (new 'process 'trsqv))
   (set! (-> self root trans quad) (-> arg5 world-sphere quad))
   (set! (-> self offset quad) (-> arg5 world-sphere quad))
-  (set! (-> self callback) arg2)
+  (set! (-> self callback) (the-as (function part-tracker vector) arg2))
   (set! (-> self linger-callback) #f)
   (set! (-> self userdata) (the-as uint arg3))
   (set! (-> self target) (process->handle arg4))
@@ -911,8 +914,8 @@
                )
               )
    )
-  (set! (-> self duration) arg1)
-  (set! (-> self linger-duration) (the-as int (-> arg0 linger-duration)))
+  (set! (-> self duration) (the-as uint arg1))
+  (set! (-> self linger-duration) (-> arg0 linger-duration))
   (set! (-> self part) (create-launch-control arg0 self))
   (go part-tracker-process)
   (none)
