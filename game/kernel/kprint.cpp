@@ -119,13 +119,19 @@ void clear_print() {
  */
 void reset_output() {
   if (MasterDebug) {
-    // original GOAL:
-    // sprintf(OutputBufArea.cast<char>().c() + sizeof(ListenerMessageHeader), "reset #x%x\n",
-    // s7.offset);
+// original GOAL:
+// sprintf(OutputBufArea.cast<char>().c() + sizeof(ListenerMessageHeader), "reset #x%x\n",
+// s7.offset);
 
-    // modified for OpenGOAL:
+// modified for OpenGOAL:
+#ifdef _WIN32
+    sprintf(OutputBufArea.cast<char>().c() + sizeof(ListenerMessageHeader),
+            "reset #x%x #x%llx %s\n", s7.offset, (unsigned long long)g_ee_main_mem,  // grr
+            xdbg::get_current_thread_id().to_string().c_str());
+#else
     sprintf(OutputBufArea.cast<char>().c() + sizeof(ListenerMessageHeader), "reset #x%x #x%lx %s\n",
             s7.offset, (uintptr_t)g_ee_main_mem, xdbg::get_current_thread_id().to_string().c_str());
+#endif
     OutputPending = OutputBufArea + sizeof(ListenerMessageHeader);
   }
 }

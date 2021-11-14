@@ -391,7 +391,7 @@ void ignore_debug_event() {
   cont_status = -1;
 }
 
-const char* win32_exception_code_to_charp(DWORD exc) {
+std::string win32_exception_code_to_charp(DWORD exc) {
   switch (exc) {
     case EXCEPTION_ACCESS_VIOLATION:
       return "EXCEPTION_ACCESS_VIOLATION";
@@ -434,7 +434,7 @@ const char* win32_exception_code_to_charp(DWORD exc) {
     case EXCEPTION_STACK_OVERFLOW:
       return "EXCEPTION_STACK_OVERFLOW";
     default:
-      return "??????????";
+      return "UNHANDLED_WIN32_EXCEPTION";
   }
 }
 
@@ -488,7 +488,7 @@ bool check_stopped(const ThreadID& tid, SignalInfo* out) {
               break;
             default:
               out->kind = SignalInfo::EXCEPTION;
-              out->msg = fmt::format("{} [0x{:X}]", exc, win32_exception_code_to_charp(exc));
+              out->msg = fmt::format("{} [0x{:X}]", win32_exception_code_to_charp(exc), exc);
               break;
           }
         }

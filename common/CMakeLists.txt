@@ -34,7 +34,7 @@ add_library(common
         util/Timer.cpp
         util/print_float.cpp
         util/FontUtils.cpp
-        )
+        util/image_loading.h)
 
 target_link_libraries(common fmt lzokay replxx libzstd_static)
 

@@ -17,7 +17,7 @@
 
 (deftype tfragment-debug-data (structure)
   ((stats       tfragment-stats :inline :offset-assert 0)
-   (debug-lines basic                   :offset-assert 16)
+   (debug-lines (array vector-array)    :offset-assert 16)
    )
   :method-count-assert 9
   :size-assert         #x14
@@ -42,7 +42,7 @@
    (dma-level-0       uint32               :offset  32)
    (dma-base          uint32               :offset  36)
    (dma-level-1       uint32               :offset  40)
-   (dma-qwc           uint32               4           :offset-assert 44)
+   (dma-qwc           uint8                4           :offset-assert 44)
    (shader            (inline-array adgif-shader)               :offset  48)
    (num-shaders       uint8                :offset  52)
    (num-base-colors   uint8                :offset  53)
@@ -78,7 +78,9 @@
   )
 
 (deftype drawable-tree-tfrag (drawable-tree)
-  ((time-of-day-pal time-of-day-palette :offset 12))
+  ((time-of-day-pal time-of-day-palette :offset 12)
+   (arrays    drawable-inline-array 1  :offset 32) ;; either drawable-inline-array-node or drawable-inline-array-tfrag
+   )
   :method-count-assert 18
   :size-assert         #x24
   :flag-assert         #x1200000024
@@ -122,8 +124,8 @@
 (deftype tfrag-dists (structure)
   ((data   uint32  16                    :offset-assert 0)
    (vector vector  4 :inline :offset   0)
-   (k0s    uint128 2 :offset   0)
-   (k1s    uint128 2 :offset  32)
+   (k0s    vector 2 :inline  :offset 0)
+   (k1s    vector 2 :inline  :offset 32)
    )
   :method-count-assert 9
   :size-assert         #x40
@@ -135,9 +137,9 @@
    (vector      vector      14 :inline :offset   0)
    (fog         vector      :inline :offset   0)
    (val         vector      :inline :offset  16)
-   (strgif      qword       :inline :offset  32)
-   (fangif      qword       :inline :offset  48)
-   (adgif       qword       :inline :offset  64)
+   (strgif      gs-gif-tag  :inline :offset 32)   ;; was qword
+   (fangif      gs-gif-tag  :inline :offset 48)   ;; was qword
+   (adgif       gs-gif-tag  :inline :offset 64)   ;; was qword
    (hvdf-offset vector      :inline :offset  80)
    (hmge-scale  vector      :inline :offset  96)
    (invh-scale  vector      :inline :offset 112)

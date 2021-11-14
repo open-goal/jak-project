@@ -31,6 +31,13 @@ struct DmaTransfer {
 
   VifCode vifcode0() const { return VifCode(vif0()); }
   VifCode vifcode1() const { return VifCode(vif1()); }
+
+  template <typename T>
+  T read_val(u32 offset) const {
+    T result;
+    memcpy(&result, (const u8*)data + offset, sizeof(T));
+    return result;
+  }
 };
 
 class DmaFollower {
@@ -99,6 +106,10 @@ class DmaFollower {
   }
 
   DmaTag current_tag() const { return DmaTag(read_val<u64>(m_tag_offset)); }
+  u32 current_tag_vif0() const { return read_val<u32>(m_tag_offset + 8); }
+  u32 current_tag_vif1() const { return read_val<u32>(m_tag_offset + 12); }
+  VifCode current_tag_vifcode0() const { return VifCode(current_tag_vif0()); }
+  VifCode current_tag_vifcode1() const { return VifCode(current_tag_vif1()); }
   u32 current_tag_offset() const { return m_tag_offset; }
   bool ended() const { return m_ended; }
 
