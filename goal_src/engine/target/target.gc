@@ -30,17 +30,17 @@
 (define-extern target-attack-uppercut (state float float target)) ;; unknown type
 (define-extern target-double-jump (state float float target)) ;; unknown type
 (define-extern target-flop (state float float float target)) ;; unknown type
-(define-extern target-launch (state target)) ;; unknown type
+(define-extern target-launch (state float symbol vector int target)) ;; unknown type
 (define-extern target-duck-high-jump (state float float symbol target)) ;; unknown type
 (define-extern target-duck-high-jump-jump (state float float symbol target)) ;; unknown type
 (define-extern target-wade-walk (state target)) ;; unknown type
-(define-extern target-hit-ground-hard (state target)) ;; unknown type
+(define-extern target-hit-ground-hard (state float target)) ;; unknown type
 (define-extern target-land-effect (function none :behavior target))
 (define-extern target-dangerous-event-handler (function process int symbol event-message-block object :behavior target))
 (define-extern target-standard-event-handler (function process int symbol event-message-block object :behavior target))
 (define-extern target-jump-event-handler (function process int symbol event-message-block object :behavior target))
 (define-extern target-hit (state symbol attack-info target)) ;; unknown type
-(define-extern target-shoved (function meters meters symbol (state target) none :behavior target))
+(define-extern target-shoved (function meters meters process (state target) object :behavior target))
 (define-extern target-send-attack (function process uint uint int int symbol :behavior target)) ;; i suspect the uints are actually structures/basics
 (define-extern target-yellow-blast (state target)) ;; unknown type
 (define-extern target-bonk-event-handler (function process int symbol event-message-block object :behavior target))
@@ -469,7 +469,7 @@
            (and
             (>= (ja-aframe-num 0) 21.0)
             (= (-> self next-state name) 'target-flop-hit-ground)
-            (!= (-> self control unknown-int20) 'stuck)
+            (!= (-> self control unknown-spoolanim00) 'stuck)
             )
            )
           (set! (-> self event-hook) target-jump-event-handler)
@@ -2975,8 +2975,8 @@
   (cond
    (arg3
     (set!
-     (-> self control unknown-int20)
-     (the-as int (- arg0 (+ -409.6 (-> *TARGET-bank* jump-collide-offset))))
+     (-> self control unknown-uint20)
+     (the-as uint (- arg0 (+ -409.6 (-> *TARGET-bank* jump-collide-offset))))
      )
     (set!
      (-> self control unknown-int21)
@@ -2984,7 +2984,7 @@
      )
     )
    (else
-    (set! (-> self control unknown-int20) (the-as int arg0))
+    (set! (-> self control unknown-uint20) (the-as uint arg0))
     (set! (-> self control unknown-int21) (the-as int arg1))
     )
    )
@@ -3681,25 +3681,25 @@
        )
      )
     enter-state
-    (-> self control unknown-dword60)
-    (-> self control unknown-dword61)
-    (set!
-     (-> self control unknown-vector102 quad)
-     (-> (the-as vector (-> self control unknown-dword62)) quad)
+    (let ((a0-9 (-> self control unknown-dword60))
+          (a1-5 (-> self control unknown-dword61))
+          (a2-5 (-> self control unknown-vector102))
+          )
+     (set!
+      (-> a2-5 quad)
+      (-> (the-as vector (-> self control unknown-dword62)) quad)
+      )
+     (go
+      target-launch
+      (the-as float a0-9)
+      (the-as symbol a1-5)
+      a2-5
+      (-> self control unknown-dword63)
+      )
      )
-    (-> self control unknown-dword63)
-    (go target-launch)
     )
    (set! (-> self state-time) (-> *display* base-frame-counter))
-   (sound-play-by-name
-    (static-sound-name "jump")
-    (new-sound-id)
-    716
-    0
-    0
-    (the-as uint 1)
-    (the-as vector #t)
-    )
+   (sound-play-by-name (static-sound-name "jump") (new-sound-id) 716 0 0 1 #t)
    (init-var-jump
     arg0
     arg1
@@ -3742,7 +3742,7 @@
    (none)
    )
   :exit
-  (the-as (function none :behavior target) target-exit)
+  target-exit
   :trans
   (behavior ()
    (set!
@@ -4021,7 +4021,7 @@
    (none)
    )
   :exit
-  (the-as (function none :behavior target) target-exit)
+  target-exit
   :trans
   (-> target-jump trans)
   :code
@@ -4115,14 +4115,22 @@
   (behavior ((arg0 float) (arg1 float))
    (when (= (-> self control unknown-symbol10) 'launch)
     enter-state
-    (-> self control unknown-dword60)
-    (-> self control unknown-dword61)
-    (set!
-     (-> self control unknown-vector102 quad)
-     (-> (the-as vector (-> self control unknown-dword62)) quad)
+    (let ((a0-3 (-> self control unknown-dword60))
+          (a1-1 (-> self control unknown-dword61))
+          (a2-0 (-> self control unknown-vector102))
+          )
+     (set!
+      (-> a2-0 quad)
+      (-> (the-as vector (-> self control unknown-dword62)) quad)
+      )
+     (go
+      target-launch
+      (the-as float a0-3)
+      (the-as symbol a1-1)
+      a2-0
+      (-> self control unknown-dword63)
+      )
      )
-    (-> self control unknown-dword63)
-    (go target-launch)
     )
    (set! (-> self state-time) (-> *display* base-frame-counter))
    (init-var-jump
@@ -4137,7 +4145,7 @@
    (none)
    )
   :exit
-  (the-as (function none :behavior target) target-exit)
+  target-exit
   :trans
   (behavior ()
    (target-falling-trans
@@ -4329,14 +4337,22 @@
   (behavior ((arg0 float) (arg1 float) (arg2 symbol))
    (when (and (= (-> self control unknown-symbol10) 'launch) (!= arg2 'launch))
     enter-state
-    (-> self control unknown-dword60)
-    (-> self control unknown-dword61)
-    (set!
-     (-> self control unknown-vector102 quad)
-     (-> (the-as vector (-> self control unknown-dword62)) quad)
+    (let ((a0-3 (-> self control unknown-dword60))
+          (a1-1 (-> self control unknown-dword61))
+          (a2-1 (-> self control unknown-vector102))
+          )
+     (set!
+      (-> a2-1 quad)
+      (-> (the-as vector (-> self control unknown-dword62)) quad)
+      )
+     (go
+      target-launch
+      (the-as float a0-3)
+      (the-as symbol a1-1)
+      a2-1
+      (-> self control unknown-dword63)
+      )
      )
-    (-> self control unknown-dword63)
-    (go target-launch)
     )
    (set! (-> self control unknown-uint31) (the-as uint arg2))
    (if (or (= arg2 'duck) (= arg2 'launch))
@@ -4350,8 +4366,8 @@
     1024
     457
     0
-    (the-as uint 1)
-    (the-as vector #t)
+    1
+    #t
     )
    (init-var-jump
     arg0
@@ -4382,7 +4398,7 @@
    (none)
    )
   :exit
-  (the-as (function none :behavior target) target-exit)
+  target-exit
   :trans
   (behavior ()
    (target-falling-trans
@@ -4520,7 +4536,7 @@
    (none)
    )
   :exit
-  (the-as (function none :behavior target) target-exit)
+  target-exit
   :code
   (behavior ((arg0 float) (arg1 float) (arg2 symbol))
    (if (not (and (= (if (> (-> self skel active-channels) 0)
@@ -4610,8 +4626,8 @@
     819
     -609
     0
-    (the-as uint 1)
-    (the-as vector #t)
+    1
+    #t
     )
    (init-var-jump
     arg0
@@ -4633,7 +4649,7 @@
    (none)
    )
   :exit
-  (the-as (function none :behavior target) target-exit)
+  target-exit
   :trans
   (-> target-high-jump trans)
   :code
@@ -4772,15 +4788,15 @@
   :enter
   (behavior ((arg0 symbol))
    (set! (-> self control unknown-surface00) *jump-mods*)
-   (set! (-> self control unknown-int20) (the-as int arg0))
+   (set! (-> self control unknown-uint20) (the-as uint arg0))
    (set! (-> self state-time) (-> *display* base-frame-counter))
    (none)
    )
   :trans
   (behavior ()
    (target-falling-trans
-    (the-as basic (-> self control unknown-int20))
-    (the-as cpad-list (if (= (-> self control unknown-int20) #f)
+    (-> self control unknown-spoolanim00)
+    (the-as cpad-list (if (= (-> self control unknown-spoolanim00) #f)
                        0
                        (/ (the-as int (-> *TARGET-bank* stuck-time)) 2)
                        )
@@ -4841,7 +4857,7 @@
         (< (-> *TARGET-bank* fall-far) f0-1)
         (zero? (logand (-> self control status) 1024))
         )
-       (go target-hit-ground-hard)
+       (go target-hit-ground-hard f0-1)
        )
       )
      )
@@ -5149,8 +5165,8 @@
           )
          (when gp-1
           (set!
-           (-> self control unknown-int20)
-           (-> *display* base-frame-counter)
+           (-> self control unknown-uint20)
+           (the-as uint (-> *display* base-frame-counter))
            )
           (let
            ((v1-9
@@ -5223,7 +5239,7 @@
     (go target-yellow-blast)
     )
    (set! (-> self state-time) (-> *display* base-frame-counter))
-   (set! (-> self control unknown-int20) 0)
+   (set! (-> self control unknown-uint20) (the-as uint 0))
    (set! (-> self control unknown-int21) 0)
    (set! (-> self control unknown-uint31) (the-as uint 0))
    (set! (-> self control unknown-surface00) *run-attack-mods*)
@@ -5323,7 +5339,7 @@
      (target-shoved
       (-> *TARGET-bank* smack-surface-dist)
       (-> *TARGET-bank* smack-surface-height)
-      #f
+      (the-as process #f)
       (the-as (state target) target-hit)
       )
      )
@@ -5419,8 +5435,8 @@
      1024
      0
      0
-     (the-as uint 1)
-     (the-as vector #t)
+     1
+     #t
      )
     )
    (ja-channel-push! 1 6)
@@ -5581,7 +5597,7 @@
         f30-0
         (fmin
          (-> (new 'static 'array float 1 1.0) 0)
-         (-> self control unknown-float130)
+         (-> self control unknown-float140)
          )
         )
        )
@@ -6030,7 +6046,7 @@
    (none)
    )
   :exit
-  (the-as (function none :behavior target) target-exit)
+  target-exit
   :code
   (behavior ((arg0 float) (arg1 float))
    (let ((s3-0 (= (if (> (-> self skel active-channels) 0)
@@ -6104,7 +6120,7 @@
    (none)
    )
   :exit
-  (the-as (function none :behavior target) target-exit)
+  target-exit
   :trans
   (behavior ()
    (if (logtest? (-> self control status) 1)
@@ -6343,7 +6359,7 @@
    (set! (-> self state-time) (-> *display* base-frame-counter))
    (set! (-> self control status) (logand -8 (-> self control status)))
    (set! (-> self control unknown-surface00) *flop-mods*)
-   (set! (-> self control unknown-int20) 0)
+   (set! (-> self control unknown-uint20) (the-as uint 0))
    (set! (-> self control dynam gravity-max) 245760.0)
    (set! (-> self control dynam gravity-length) 245760.0)
    (let ((gp-1 (new-stack-vector0)))
@@ -6715,10 +6731,7 @@
      )
     (suspend)
     (while #t
-     (set!
-      (-> self control unknown-int20)
-      (the-as int (+ (-> self control unknown-uint20) 1))
-      )
+     (+! (-> self control unknown-uint20) 1)
      (let ((a0-30 (-> self skel root-channel 0)))
       (set! (-> a0-30 param 0) (-> (new 'static 'array float 1 1.0) 0))
       (joint-control-channel-group-eval!
@@ -6751,7 +6764,7 @@
        f30-0
        (fmin
         (-> (new 'static 'array float 1 1.0) 0)
-        (-> self control unknown-float130)
+        (-> self control unknown-float140)
         )
        )
       )
@@ -6846,13 +6859,13 @@
       )
      )
     (if (< (-> *TARGET-bank* fall-far) f0-1)
-     (go target-hit-ground-hard)
+     (go target-hit-ground-hard f0-1)
      )
     )
    (target-land-effect)
    (cpad-set-buzz! (-> *cpad-list* cpads 0) 1 255 30)
    (set! (-> self state-time) (-> *display* base-frame-counter))
-   (set! (-> self control unknown-int20) (the-as int arg0))
+   (set! (-> self control unknown-uint20) (the-as uint arg0))
    (set-forward-vel (-> (new 'static 'array float 1 0.0) 0))
    (set! (-> self control unknown-surface00) *flop-land-mods*)
    (set! (-> *flop-land-mods* flags) (logand -1025 (-> *flop-land-mods* flags)))
@@ -6860,10 +6873,10 @@
    (none)
    )
   :exit
-  (the-as (function none :behavior target) target-exit)
+  target-exit
   :trans
   (behavior ()
-   (when (!= (-> self control unknown-int20) 'stuck)
+   (when (!= (-> self control unknown-spoolanim00) 'stuck)
     (if
      (and
       (logtest?
@@ -6965,7 +6978,7 @@
      (-> (new 'static 'array float 1 1.0) 0)
      )
     )
-   (set! (-> self control unknown-int20) 0)
+   (set! (-> self control unknown-uint20) (the-as uint 0))
    (set! (-> self control unknown-int21) 0)
    0
    (none)
@@ -7028,7 +7041,7 @@
         (target-shoved
          (-> *TARGET-bank* smack-surface-dist)
          (-> *TARGET-bank* smack-surface-height)
-         #f
+         (the-as process #f)
          (the-as (state target) target-hit)
          )
         )
@@ -7095,7 +7108,7 @@
         f30-0
         (fmin
          (-> (new 'static 'array float 1 1.0) 0)
-         (-> self control unknown-float130)
+         (-> self control unknown-float140)
          )
         )
        )
@@ -7249,7 +7262,7 @@
    (none)
    )
   :exit
-  (the-as (function none :behavior target) target-exit)
+  target-exit
   :trans
   (behavior ()
    (if
@@ -7266,7 +7279,7 @@
     (target-shoved
      (-> *TARGET-bank* smack-surface-dist)
      (-> *TARGET-bank* smack-surface-height)
-     #f
+     (the-as process #f)
      (the-as (state target) target-hit)
      )
     )
@@ -7370,7 +7383,7 @@
        f30-0
        (fmin
         (-> (new 'static 'array float 1 1.0) 0)
-        (-> self control unknown-float130)
+        (-> self control unknown-float140)
         )
        )
       )

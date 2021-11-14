@@ -75,8 +75,8 @@
      1024
      0
      0
-     (the-as uint 1)
-     s5-0
+     1
+     (the-as symbol s5-0)
      )
     (sp-launch-particles-var
      *sp-particle-system-3d*
@@ -1240,7 +1240,7 @@
                 (<
                  (-
                   (-> *display* base-frame-counter)
-                  (-> (the-as control-info v1-146) unknown-dword10)
+                  (-> (the-as control-info v1-146) unknown-dword11)
                   )
                  150
                  )
@@ -1316,12 +1316,7 @@
            (-> obj swim-time)
            (the-as uint (-> *display* base-frame-counter))
            )
-          (let ((a1-21 (new 'stack-no-clear 'event-message-block)))
-           (set! (-> a1-21 from) pp)
-           (set! (-> a1-21 num-params) 0)
-           (set! (-> a1-21 message) 'swim)
-           (send-event-function (-> obj process) a1-21)
-           )
+          (send-event (-> obj process) 'swim)
           (logior! (-> obj flags) 2048)
           (if (zero? (logand s5-0 2048))
            (set!
@@ -1370,8 +1365,8 @@
                   )
                  )
                 (vector-float*! a1-27 a1-27 (-> *display* frames-per-second))
+                (dummy-37 (the-as collide-shape-moving s4-4) a1-27)
                 )
-               ((method-of-object (the-as collide-shape-moving s4-4) dummy-37))
                (logior! (-> (the-as collide-shape-moving s4-4) status) 1031)
                )
               )
@@ -1412,12 +1407,7 @@
            (-> obj wade-time)
            (the-as uint (-> *display* base-frame-counter))
            )
-          (let ((a1-29 (new 'stack-no-clear 'event-message-block)))
-           (set! (-> a1-29 from) pp)
-           (set! (-> a1-29 num-params) 0)
-           (set! (-> a1-29 message) 'wade)
-           (send-event-function (-> obj process) a1-29)
-           )
+          (send-event (-> obj process) 'wade)
           (logior! (-> obj flags) 1024)
           )
          )
@@ -1480,13 +1470,7 @@
           )
          )
         (when (< (-> obj process root trans y) -409.6)
-         (let ((a1-31 (new 'stack-no-clear 'event-message-block)))
-          (set! (-> a1-31 from) pp)
-          (set! (-> a1-31 num-params) 1)
-          (set! (-> a1-31 message) 'no-look-around)
-          (set! (-> a1-31 param 0) (the-as uint 450))
-          (send-event-function (-> obj process) a1-31)
-          )
+         (send-event (-> obj process) 'no-look-around 450)
          (when
           (zero?
            (logand
@@ -2056,22 +2040,12 @@
    (set! (-> obj target) (the-as handle #f))
    (iterate-process-tree *entity-pool* (lambda ((arg0 water-vol))
                                         (with-pp
-                                         (when
+                                         (if
                                           (and
                                            (type-type? (-> arg0 type) water-vol)
                                            (!= arg0 pp)
                                            )
-                                          (let
-                                           ((a1-1
-                                             (new 'stack-no-clear 'event-message-block
-                                              )
-                                             )
-                                            )
-                                           (set! (-> a1-1 from) pp)
-                                           (set! (-> a1-1 num-params) 0)
-                                           (set! (-> a1-1 message) 'update)
-                                           (send-event-function arg0 a1-1)
-                                           )
+                                          (send-event arg0 'update)
                                           )
                                          )
                                         )
@@ -2106,15 +2080,10 @@
             ((#f)
               )
             (('heat)
-             (let ((a1-4 (new 'stack-no-clear 'event-message-block)))
-              (set! (-> a1-4 from) pp)
-              (set! (-> a1-4 num-params) 1)
-              (set! (-> a1-4 message) 'heat)
-              (set!
-               (-> a1-4 param 0)
-               (the-as uint (* 10.0 (-> *display* seconds-per-frame)))
-               )
-              (send-event-function (handle->process (-> obj target)) a1-4)
+             (send-event
+              (handle->process (-> obj target))
+              'heat
+              (* 10.0 (-> *display* seconds-per-frame))
               )
              )
             (('drown-death 'lava 'dark-eco-pool)
@@ -2127,14 +2096,8 @@
                (set! (-> a0-19 mode) v1-18)
                (set! (-> a1-8 param 1) (the-as uint a0-19))
                )
-              (when (send-event-function (handle->process (-> obj target)) a1-8)
-               (let ((a1-9 (new 'stack-no-clear 'event-message-block)))
-                (set! (-> a1-9 from) pp)
-                (set! (-> a1-9 num-params) 1)
-                (set! (-> a1-9 message) 'notify)
-                (set! (-> a1-9 param 0) (the-as uint 'attack))
-                (send-event-function obj a1-9)
-                )
+              (if (send-event-function (handle->process (-> obj target)) a1-8)
+               (send-event obj 'notify 'attack)
                )
               )
              )
@@ -2148,15 +2111,8 @@
                (set! (-> a0-27 mode) v1-18)
                (set! (-> a1-10 param 1) (the-as uint a0-27))
                )
-              (when
-               (send-event-function (handle->process (-> obj target)) a1-10)
-               (let ((a1-11 (new 'stack-no-clear 'event-message-block)))
-                (set! (-> a1-11 from) pp)
-                (set! (-> a1-11 num-params) 1)
-                (set! (-> a1-11 message) 'notify)
-                (set! (-> a1-11 param 0) (the-as uint 'attack))
-                (send-event-function obj a1-11)
-                )
+              (if (send-event-function (handle->process (-> obj target)) a1-10)
+               (send-event obj 'notify 'attack)
                )
               )
              )
@@ -2312,22 +2268,21 @@
     )
    )
   (set! (-> obj flags) (logior #x800000 (-> obj flags)))
-  (the-as uint (cond
-                ((zero? (-> obj flags))
-                 (if (< 0.0 (-> obj wade-height))
-                  (logior! (-> obj flags) 4)
-                  )
-                 (when (< 0.0 (-> obj swim-height))
-                  (let ((v0-4 (logior (-> obj flags) 8)))
-                   (set! (-> obj flags) v0-4)
-                   v0-4
-                   )
-                  )
-                 )
-                (else
-                 (the-as uint #f)
-                 )
-                )
+  (cond
+   ((zero? (-> obj flags))
+    (if (< 0.0 (-> obj wade-height))
+     (logior! (-> obj flags) 4)
+     )
+    (when (< 0.0 (-> obj swim-height))
+     (let ((v0-4 (logior (-> obj flags) 8)))
+      (set! (-> obj flags) v0-4)
+      v0-4
+      )
+     )
+    )
+   (else
+    (the-as uint #f)
+    )
    )
   )
 
