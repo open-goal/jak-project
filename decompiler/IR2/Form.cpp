@@ -7,6 +7,7 @@
 #include "common/type_system/TypeSystem.h"
 #include "decompiler/util/DecompilerTypeSystem.h"
 #include "decompiler/util/data_decompile.h"
+#include "common/util/print_float.h"
 
 namespace decompiler {
 
@@ -2987,11 +2988,14 @@ goos::Object DefskelgroupElement::to_form_internal(const Env& env) const {
   forms.push_back(pretty_print::build_list(lod_forms));
 
   forms.push_back(pretty_print::to_symbol(
-      fmt::format(":bounds (static-spherem {} {} {} {})", m_static_info.bounds.x() / METER_LENGTH,
-                  m_static_info.bounds.y() / METER_LENGTH, m_static_info.bounds.z() / METER_LENGTH,
-                  m_static_info.bounds.w() / METER_LENGTH)));
+      fmt::format(":bounds (static-spherem {} {} {} {})",
+                  float_to_string(m_static_info.bounds.x() / METER_LENGTH, false),
+                  float_to_string(m_static_info.bounds.y() / METER_LENGTH, false),
+                  float_to_string(m_static_info.bounds.z() / METER_LENGTH, false),
+                  float_to_string(m_static_info.bounds.w() / METER_LENGTH, false))));
   forms.push_back(pretty_print::to_symbol(
-      fmt::format(":longest-edge (meters {})", m_static_info.longest_edge / METER_LENGTH)));
+      fmt::format(":longest-edge (meters {})",
+                  float_to_string(m_static_info.longest_edge / METER_LENGTH, false))));
 
   if (m_static_info.shadow != 0) {
     forms.push_back(pretty_print::to_symbol(fmt::format(":shadow {}", m_static_info.shadow)));

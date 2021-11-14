@@ -217,6 +217,7 @@
        "out/iso/FIC.DGO"
        "out/iso/JUN.DGO"
        "out/iso/MAI.DGO"
+       "out/iso/BEA.DGO"
        )
 
 ;;;;;;;;;;;;;;;;;;;;;;;;
@@ -248,6 +249,8 @@
 
    "common/blocking-plane.gc"
    "common/launcherdoor.gc"
+   "common/mistycannon.gc"
+   "common/babak-with-cannon.gc"
 
    "racer_common/target-racer-h-FIC-LAV-MIS-OGR-ROL.gc"
    "racer_common/racer-part.gc"
@@ -392,6 +395,66 @@
 
 (copy-textures 385 531 386 388 765)
 
+
+;;;;;;;;;;;;;;;;;;;;;
+;; Beach
+;;;;;;;;;;;;;;;;;;;;;
+
+(cgo "BEA.DGO"
+  "bea.gd"
+  )
+
+(goal-src-sequence
+  "levels/beach/"
+  :deps ("out/obj/default-menu.o")
+  "air-h.gc"
+  "air.gc"
+  "wobbler.gc"
+  "twister.gc"
+  "beach-obs.gc"
+  "bird-lady.gc"
+  "bird-lady-beach.gc"
+  "mayor.gc"
+  "sculptor.gc"
+  "pelican.gc"
+  "lurkerworm.gc"
+  "lurkercrab.gc"
+  "lurkerpuppy.gc"
+  "beach-rocks.gc"
+  "seagull.gc"
+  "beach-part.gc"
+  )
+
+(copy-textures 212 214 213 215)
+
+(copy-gos
+  "barrel-ag-BEA"
+  "beachcam-ag"
+  "bird-lady-ag"
+  "bird-lady-beach-ag"
+  "bladeassm-ag"
+  "ecovalve-ag-BEA"
+  "ecoventrock-ag"
+  "flutflut-ag"
+  "flutflutegg-ag"
+  "grottopole-ag"
+  "harvester-ag"
+  "kickrock-ag"
+  "lrocklrg-ag"
+  "lurkercrab-ag"
+  "lurkerpuppy-ag"
+  "lurkerworm-ag"
+  "mayor-ag"
+  "mistycannon-ag"
+  "orb-cache-top-ag-BEA"
+  "pelican-ag"
+  "sack-ag-BEA"
+  "sculptor-ag"
+  "sculptor-muse-ag"
+  "seagull-ag"
+  "windmill-one-ag"
+  "beach-vis"
+  )
 
 ;;;;;;;;;;;;;;;;;;;;;
 ;; Fire Canyon
