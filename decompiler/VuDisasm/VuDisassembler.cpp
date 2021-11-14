@@ -48,7 +48,9 @@ int upper_imm15_unsigned(u32 in) {
 }
 
 }  // namespace
-VuDisassembler::VuDisassembler() {
+
+VuDisassembler::VuDisassembler(VuKind kind) : m_kind(kind) {
+  // build the decode tables
   m_upper_op6_table[0b000000].set(VuInstrK::ADDbc);   // 0
   m_upper_op6_table[0b000001].set(VuInstrK::ADDbc);   // 1
   m_upper_op6_table[0b000010].set(VuInstrK::ADDbc);   // 2
@@ -220,6 +222,9 @@ VuDisassembler::VuDisassembler() {
   add_op(VuInstrK::MFP, "mfp").dst_mask().dst_vft().src_p();
 }
 
+/*!
+ * Add a VU operation to the decode table
+ */
 VuDisassembler::OpInfo& VuDisassembler::add_op(VuInstrK kind, const std::string& name) {
   assert((int)kind < (int)VuInstrK::INVALID);
   auto& elt = m_op_info[(int)kind];
@@ -228,6 +233,9 @@ VuDisassembler::OpInfo& VuDisassembler::add_op(VuInstrK kind, const std::string&
   return elt;
 }
 
+/*!
+ * Decode a lower instruction kind
+ */
 VuInstrK VuDisassembler::lower_kind(u32 in) {
   auto op = lower_op(in);
   if (in == 0b10000000000000000000000000110000) {
@@ -296,6 +304,9 @@ VuInstrK VuDisassembler::lower_kind(u32 in) {
   }
 }
 
+/*!
+ * Decode an upper instruction kind
+ */
 VuInstrK VuDisassembler::upper_kind(u32 in) {
   auto& upper_info = m_upper_op6_table[upper_op6(in)];
   if (upper_info.goto_11) {
@@ -359,6 +370,20 @@ VuInstrK VuDisassembler::upper_kind(u32 in) {
     assert(false);
   }
   return upper_info.kind;
+}
+
+/*!
+ * Get the mask applied to instruction offsets.
+ */
+s32 VuDisassembler::get_instruction_index_mask() {
+  switch (m_kind) {
+    case VU0:
+      return (4096 / 8) - 1;
+    case VU1:
+      return (16384 / 8) - 1;
+    default:
+      assert(false);
+  }
 }
 
 VuProgram VuDisassembler::disassemble(void* data, int size_bytes, bool debug_print) {
@@ -430,7 +455,9 @@ VuInstruction VuDisassembler::decode(VuInstrK kind, u32 data, int instr_idx) {
       case VuDecodeStep::FieldK::IMM11_BRANCH: {
         s32 signed_11 = upper_op11(data) << 21;
         signed_11 >>= 21;
-        value = add_label(signed_11 + instr_idx + 1);
+        s32 offset = signed_11 + instr_idx + 1;
+        offset &= 2047;
+        value = add_label(offset);
       } break;
       case VuDecodeStep::FieldK::IMM11_SIGNED: {
         s32 signed_value = (data << 21);
@@ -674,6 +701,7 @@ std::string VuDisassembler::to_string(const VuProgram& prog) const {
       result += ':';
       result += '\n';
     }
+    // result += fmt::format("{} ;; 0x{:x}", to_string(prog.instructions().at(i)), i);
     result += to_string(prog.instructions().at(i));
     result += '\n';
   }

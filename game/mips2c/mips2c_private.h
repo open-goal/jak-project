@@ -163,6 +163,8 @@ struct ExecutionContext {
 
   float Q;
 
+  u128 hi, lo;
+
   void copy_vfs_from_other(const ExecutionContext* other) {
     for (int i = 0; i < 32; i++) {
       vfs[i] = other->vfs[i];
@@ -209,6 +211,12 @@ struct ExecutionContext {
     gprs[dst].du64[0] = val;
   }
 
+  void lb(int dst, int offset, int src) {
+    s8 val;
+    memcpy(&val, g_ee_main_mem + gpr_src(src).du32[0] + offset, 1);
+    gprs[dst].du64[0] = val;
+  }
+
   void lqc2(int vf, int offset, int gpr) {
     memcpy(&vfs[vf], g_ee_main_mem + gpr_src(gpr).du32[0] + offset, 16);
   }
@@ -242,7 +250,7 @@ struct ExecutionContext {
   }
 
   void lq(int dst, int offset, int src) {
-    memcpy(&gprs[dst].du64[0], g_ee_main_mem + gpr_addr(src) + offset, 16);
+    memcpy(&gprs[dst].du64[0], g_ee_main_mem + ((gpr_addr(src) + offset) & (~15)), 16);
   }
 
   void ld(int dst, int offset, int src) {
@@ -267,6 +275,11 @@ struct ExecutionContext {
 #endif
   }
 
+  void sb(int src, int offset, int addr) {
+    auto s = gpr_src(src);
+    memcpy(g_ee_main_mem + gpr_addr(addr) + offset, &s.du32[0], 1);
+  }
+
   void sh(int src, int offset, int addr) {
     auto s = gpr_src(src);
     memcpy(g_ee_main_mem + gpr_addr(addr) + offset, &s.du32[0], 2);
@@ -279,6 +292,7 @@ struct ExecutionContext {
 
   void sq(int src, int offset, int addr) {
     auto s = gpr_src(src);
+    assert((offset & 15) == 0);
     memcpy(g_ee_main_mem + gpr_addr(addr) + offset, &s.du32[0], 16);
   }
 
@@ -349,6 +363,201 @@ struct ExecutionContext {
     gprs[dst].du32[3] = s.du32[3];
   }
 
+  void pcgtw(int rd, int rs, int rt) {
+    auto s = gpr_src(rs);
+    auto t = gpr_src(rt);
+    for (int i = 0; i < 4; i++) {
+      if (s.ds32[i] > t.ds32[i]) {
+        gprs[rd].du32[i] = 0xffffffff;
+      } else {
+        gprs[rd].du32[i] = 0;
+      }
+    }
+  }
+
+  void ppach(int rd, int rs, int rt) {
+    auto s = gpr_src(rs);
+    auto t = gpr_src(rt);
+    gprs[rd].du16[0] = t.du16[0];
+    gprs[rd].du16[1] = t.du16[2];
+    gprs[rd].du16[2] = t.du16[4];
+    gprs[rd].du16[3] = t.du16[6];
+    gprs[rd].du16[4] = s.du16[0];
+    gprs[rd].du16[5] = s.du16[2];
+    gprs[rd].du16[6] = s.du16[4];
+    gprs[rd].du16[7] = s.du16[6];
+  }
+
+  void pinteh(int rd, int rs, int rt) {
+    auto s = gpr_src(rs);
+    auto t = gpr_src(rt);
+    gprs[rd].du16[0] = t.du16[0];
+    gprs[rd].du16[1] = s.du16[0];
+    gprs[rd].du16[2] = t.du16[2];
+    gprs[rd].du16[3] = s.du16[2];
+    gprs[rd].du16[4] = t.du16[4];
+    gprs[rd].du16[5] = s.du16[4];
+    gprs[rd].du16[6] = t.du16[6];
+    gprs[rd].du16[7] = s.du16[6];
+  }
+
+  void ppacb(int rd, int rs, int rt) {
+    auto s = gpr_src(rs);
+    auto t = gpr_src(rt);
+    gprs[rd].du8[0] = t.du8[0];
+    gprs[rd].du8[1] = t.du8[2];
+    gprs[rd].du8[2] = t.du8[4];
+    gprs[rd].du8[3] = t.du8[6];
+
+    gprs[rd].du8[4] = t.du8[8];
+    gprs[rd].du8[5] = t.du8[10];
+    gprs[rd].du8[6] = t.du8[12];
+    gprs[rd].du8[7] = t.du8[14];
+
+    gprs[rd].du8[8] = s.du8[0];
+    gprs[rd].du8[9] = s.du8[2];
+    gprs[rd].du8[10] = s.du8[4];
+    gprs[rd].du8[11] = s.du8[6];
+
+    gprs[rd].du8[12] = s.du8[8];
+    gprs[rd].du8[13] = s.du8[10];
+    gprs[rd].du8[14] = s.du8[12];
+    gprs[rd].du8[15] = s.du8[14];
+  }
+
+  void paddw(int rd, int rs, int rt) {
+    auto s = gpr_src(rs);
+    auto t = gpr_src(rt);
+    for (int i = 0; i < 4; i++) {
+      gprs[rd].du32[i] = s.du32[i] + t.du32[i];
+    }
+  }
+
+  void pextub(int rd, int rs, int rt) {
+    auto s = gpr_src(rs);
+    auto t = gpr_src(rt);
+    gprs[rd].du8[0] = t.du8[8];
+    gprs[rd].du8[1] = s.du8[8];
+    gprs[rd].du8[2] = t.du8[9];
+    gprs[rd].du8[3] = s.du8[9];
+    gprs[rd].du8[4] = t.du8[10];
+    gprs[rd].du8[5] = s.du8[10];
+    gprs[rd].du8[6] = t.du8[11];
+    gprs[rd].du8[7] = s.du8[11];
+    gprs[rd].du8[8] = t.du8[12];
+    gprs[rd].du8[9] = s.du8[12];
+    gprs[rd].du8[10] = t.du8[13];
+    gprs[rd].du8[11] = s.du8[13];
+    gprs[rd].du8[12] = t.du8[14];
+    gprs[rd].du8[13] = s.du8[14];
+    gprs[rd].du8[14] = t.du8[15];
+    gprs[rd].du8[15] = s.du8[15];
+  }
+
+  void pmulth(int rd, int rs, int rt) {
+    assert(rd == 0);
+    s32 temp;
+
+    auto s = gpr_src(rs);
+    auto t = gpr_src(rt);
+
+    temp = (s32)s.ds16[0] * (s32)t.ds16[0];
+    lo.du32[0] = temp;
+    /*if (_Rd_) cpuRegs.GPR.r[_Rd_].UL[0] = temp;*/
+
+    temp = (s32)s.ds16[1] * (s32)t.ds16[1];
+    lo.du32[1] = temp;
+
+    temp = (s32)s.ds16[2] * (s32)t.ds16[2];
+    hi.du32[0] = temp;
+    /*if (_Rd_) cpuRegs.GPR.r[_Rd_].UL[1] = temp;*/
+
+    temp = (s32)s.ds16[3] * (s32)t.ds16[3];
+    hi.du32[1] = temp;
+
+    temp = (s32)s.ds16[4] * (s32)t.ds16[4];
+    lo.du32[2] = temp;
+    /*if (_Rd_) cpuRegs.GPR.r[_Rd_].UL[2] = temp;*/
+
+    temp = (s32)s.ds16[5] * (s32)t.ds16[5];
+    lo.du32[3] = temp;
+
+    temp = (s32)s.ds16[6] * (s32)t.ds16[6];
+    hi.du32[2] = temp;
+    /*if (_Rd_) cpuRegs.GPR.r[_Rd_].UL[3] = temp;*/
+
+    temp = (s32)s.ds16[7] * (s32)t.ds16[7];
+    hi.du32[3] = temp;
+  }
+
+  void pmaddh(int rd, int rs, int rt) {
+    assert(rd == 0);
+    s32 temp;
+
+    auto s = gpr_src(rs);
+    auto t = gpr_src(rt);
+    temp = lo.du32[0] + (s32)s.ds16[0] * (s32)t.ds16[0];
+    lo.du32[0] = temp;
+
+    temp = lo.du32[1] + (s32)s.ds16[1] * (s32)t.ds16[1];
+    lo.du32[1] = temp;
+
+    temp = hi.du32[0] + (s32)s.ds16[2] * (s32)t.ds16[2];
+    hi.du32[0] = temp;
+
+    temp = hi.du32[1] + (s32)s.ds16[3] * (s32)t.ds16[3];
+    hi.du32[1] = temp;
+
+    temp = lo.du32[2] + (s32)s.ds16[4] * (s32)t.ds16[4];
+    lo.du32[2] = temp;
+
+    temp = lo.du32[3] + (s32)s.ds16[5] * (s32)t.ds16[5];
+    lo.du32[3] = temp;
+
+    temp = hi.du32[2] + (s32)s.ds16[6] * (s32)t.ds16[6];
+    hi.du32[2] = temp;
+
+    temp = hi.du32[3] + (s32)s.ds16[7] * (s32)t.ds16[7];
+    hi.du32[3] = temp;
+  }
+
+  void psrlh(int dest, int src, int sa) {
+    auto s = gpr_src(src);
+    for (int i = 0; i < 8; i++) {
+      gprs[dest].du16[i] = s.du16[i] >> (sa & 0xf);
+    }
+  }
+
+  void paddh(int dest, int rs, int rt) {
+    auto s = gpr_src(rs);
+    auto t = gpr_src(rt);
+    for (int i = 0; i < 8; i++) {
+      gprs[dest].du16[i] = s.du16[i] + t.du16[i];
+    }
+  }
+
+  void pminh(int dest, int rs, int rt) {
+    auto s = gpr_src(rs);
+    auto t = gpr_src(rt);
+    for (int i = 0; i < 8; i++) {
+      if (s.ds16[i] < t.ds16[i])
+        gprs[dest].du16[i] = s.ds16[i];
+      else
+        gprs[dest].du16[i] = t.ds16[i];
+    }
+  }
+
+  void pmfhl_lh(int dest) {
+    gprs[dest].du16[0] = lo.du16[0];
+    gprs[dest].du16[1] = lo.du16[2];
+    gprs[dest].du16[2] = hi.du16[0];
+    gprs[dest].du16[3] = hi.du16[2];
+    gprs[dest].du16[4] = lo.du16[4];
+    gprs[dest].du16[5] = lo.du16[6];
+    gprs[dest].du16[6] = hi.du16[4];
+    gprs[dest].du16[7] = hi.du16[6];
+  }
+
   void vsub_bc(DEST mask, BC bc, int dest, int src0, int src1) {
     auto s0 = vf_src(src0);
     auto s1 = vf_src(src1);
@@ -393,6 +602,17 @@ struct ExecutionContext {
     }
   }
 
+  void vmini(DEST mask, int dest, int src0, int src1) {
+    auto s0 = vf_src(src0);
+    auto s1 = vf_src(src1);
+
+    for (int i = 0; i < 4; i++) {
+      if ((u64)mask & (1 << i)) {
+        vfs[dest].f[i] = std::min(s0.f[i], s1.f[i]);
+      }
+    }
+  }
+
   void vsub(DEST mask, int dest, int src0, int src1) {
     auto s0 = vf_src(src0);
     auto s1 = vf_src(src1);
@@ -426,6 +646,17 @@ struct ExecutionContext {
     }
   }
 
+  void vmsuba_bc(DEST mask, BC bc, int src0, int src1) {
+    auto s0 = vf_src(src0);
+    auto s1 = vf_src(src1);
+
+    for (int i = 0; i < 4; i++) {
+      if ((u64)mask & (1 << i)) {
+        acc.f[i] -= s0.f[i] * s1.f[(int)bc];
+      }
+    }
+  }
+
   void vmadd_bc(DEST mask, BC bc, int dst, int src0, int src1) {
     auto s0 = vf_src(src0);
     auto s1 = vf_src(src1);
@@ -433,6 +664,17 @@ struct ExecutionContext {
     for (int i = 0; i < 4; i++) {
       if ((u64)mask & (1 << i)) {
         vfs[dst].f[i] = acc.f[i] + s0.f[i] * s1.f[(int)bc];
+      }
+    }
+  }
+
+  void vmsub_bc(DEST mask, BC bc, int dst, int src0, int src1) {
+    auto s0 = vf_src(src0);
+    auto s1 = vf_src(src1);
+
+    for (int i = 0; i < 4; i++) {
+      if ((u64)mask & (1 << i)) {
+        vfs[dst].f[i] = acc.f[i] - s0.f[i] * s1.f[(int)bc];
       }
     }
   }
@@ -501,11 +743,19 @@ struct ExecutionContext {
     gprs[dst].ds64[0] = value_signed;
   }
 
+  void srl(int dst, int src, int sa) {
+    u32 value = gpr_src(src).du32[0] >> sa;
+    s32 value_signed = value;
+    gprs[dst].ds64[0] = value_signed;
+  }
+
   void dsra(int dst, int src, int sa) { gprs[dst].ds64[0] = gpr_src(src).ds64[0] >> sa; }
+  void dsrl(int dst, int src, int sa) { gprs[dst].du64[0] = gpr_src(src).du64[0] >> sa; }
   void dsrav(int dst, int src, int sa) {
     gprs[dst].ds64[0] = gpr_src(src).ds64[0] >> gpr_src(sa).du32[0];
   }
   void dsra32(int dst, int src, int sa) { gprs[dst].ds64[0] = gpr_src(src).ds64[0] >> (32 + sa); }
+  void dsrl32(int dst, int src, int sa) { gprs[dst].du64[0] = gpr_src(src).du64[0] >> (32 + sa); }
   void sra(int dst, int src, int sa) { gprs[dst].ds64[0] = gpr_src(src).ds32[0] >> sa; }
   void dsll(int dst, int src0, int sa) { gprs[dst].du64[0] = gpr_src(src0).du64[0] << sa; }
   void dsll32(int dst, int src0, int sa) { gprs[dst].du64[0] = gpr_src(src0).du64[0] << (32 + sa); }
@@ -552,6 +802,7 @@ struct ExecutionContext {
     gprs[dst].ds64[0] = sresult;
   }
 
+  void xori(int dest, int src, u64 imm) { gprs[dest].du64[0] = gpr_src(src).du64[0] ^ imm; }
   void andi(int dest, int src, u64 imm) { gprs[dest].du64[0] = gpr_src(src).du64[0] & imm; }
   void ori(int dest, int src, u64 imm) { gprs[dest].du64[0] = gpr_src(src).du64[0] | imm; }
   void and_(int dest, int src0, int src1) {
@@ -643,6 +894,15 @@ struct ExecutionContext {
     }
   }
 
+  void vftoi12(DEST mask, int dst, int src) {
+    auto s = vf_src(src);
+    for (int i = 0; i < 4; i++) {
+      if ((u64)mask & (1 << i)) {
+        vfs[dst].ds32[i] = s.f[i] * 4096.f;
+      }
+    }
+  }
+
   void vftoi4(DEST mask, int dst, int src) {
     auto s = vf_src(src);
     for (int i = 0; i < 4; i++) {
@@ -725,4 +985,47 @@ struct ExecutionContext {
   }
 };
 
+inline void get_fake_spad_addr(int dst, void* sym_addr, u32 offset, ExecutionContext* c) {
+  u32 val;
+  memcpy(&val, sym_addr, 4);
+  c->gprs[dst].du64[0] = val + offset;
+}
+
+inline void spad_to_dma(void* spad_sym_addr, u32 madr, u32 sadr, u32 qwc) {
+  u32 spad_addr_goal;
+  memcpy(&spad_addr_goal, spad_sym_addr, 4);
+  sadr -= spad_addr_goal;
+
+  assert((madr & 0xf) == 0);
+  assert((sadr & 0xf) == 0);
+  assert(sadr < 0x4000);
+  assert((sadr + 16 * qwc) <= 0x4000);
+  assert(qwc <= 0x4000);
+
+  void* spad_addr_c = g_ee_main_mem + spad_addr_goal + sadr;
+
+  memcpy(spad_addr_c, g_ee_main_mem + madr, qwc * 16);
+}
+
+inline void spad_from_dma(void* spad_sym_addr, u32 madr, u32 sadr, u32 qwc) {
+  u32 spad_addr_goal;
+  memcpy(&spad_addr_goal, spad_sym_addr, 4);
+  sadr -= spad_addr_goal;
+  assert((madr & 0xf) == 0);
+  assert((sadr & 0xf) == 0);
+  assert(sadr < 0x4000);
+  assert((sadr + 16 * qwc) <= 0x4000);
+  assert(qwc <= 0x4000);
+
+  void* spad_addr_c = g_ee_main_mem + spad_addr_goal + sadr;
+
+  memcpy(g_ee_main_mem + madr, spad_addr_c, qwc * 16);
+}
+
+inline void load_vfs_from_tf_regs(const void* tf_regs_sym, ExecutionContext* c) {
+  u32 goal_addr_of_vf1;
+  memcpy(&goal_addr_of_vf1, tf_regs_sym, 4);
+  u8* c_addr_of_vf1 = g_ee_main_mem + goal_addr_of_vf1;
+  memcpy(&c->vfs[1], c_addr_of_vf1, 31 * 16);
+}
 }  // namespace Mips2C

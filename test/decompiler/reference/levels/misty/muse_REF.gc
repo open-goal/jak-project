@@ -239,22 +239,13 @@
   )
 
 ;; failed to figure out what this is:
-(let
-  ((v1-5
-    (new 'static 'skeleton-group
-     :art-group-name "muse"
-     :bounds
-     (new 'static 'vector :y 8192.0 :w 12288.0)
-     :version #x6
-     :shadow 2
-     )
-    )
-   )
-  (set! (-> v1-5 jgeo) 0)
-  (set! (-> v1-5 janim) 3)
-  (set! (-> v1-5 mgeo 0) (the-as uint 1))
-  (set! (-> v1-5 lod-dist 0) 4095996000.0)
-  (set! *muse-sg* v1-5)
+(defskelgroup *muse-sg* muse
+  0
+  3
+  ((1 (meters 999999)))
+  :bounds (static-spherem 0 2 0 3)
+  :longest-edge (meters 0)
+  :shadow 2
   )
 
 ;; definition for method 44 of type muse
@@ -713,8 +704,8 @@ nav-enemy-default-event-handler
     1024
     0
     0
-    (the-as uint 1)
-    (the-as vector #t)
+    1
+    #t
     )
    (close-specific-task! (game-task misty-muse) (task-status need-reminder))
    (process-entity-status! self (entity-perm-status dead) #t)
@@ -941,7 +932,7 @@ nav-enemy-default-event-handler
    (set! (-> obj collide-info) s4-0)
    )
   (process-drawable-from-entity! obj arg0)
-  (dummy-14 obj *muse-sg* '())
+  (initialize-skeleton obj *muse-sg* '())
   (logclear! (-> obj mask) (process-mask actor-pause))
   (TODO-RENAME-45 obj *muse-nav-enemy-info*)
   (set!
@@ -982,10 +973,7 @@ nav-enemy-default-event-handler
       )
     )
    )
-  (set!
-   (-> obj victory-anim)
-   (the-as spool-anim (fuel-cell-pick-anim (the-as process-taskable obj)))
-   )
+  (set! (-> obj victory-anim) (fuel-cell-pick-anim obj))
   (go muse-idle)
   (none)
   )

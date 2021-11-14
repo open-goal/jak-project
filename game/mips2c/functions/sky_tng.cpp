@@ -5,11 +5,7 @@
 namespace Mips2C {
 
 ExecutionContext sky_regs_vfs;
-void get_fake_spad_addr(int dst, void* sym_addr, u32 offset, ExecutionContext* c) {
-  u32 val;
-  memcpy(&val, sym_addr, 4);
-  c->gprs[dst].du64[0] = val + offset;
-}
+
 }  // namespace Mips2C
 
 // clang-format off

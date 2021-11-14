@@ -118,12 +118,12 @@ AudioDir read_audio_dir(const std::string& path) {
     for (auto c : entries[i].name) {
       // padded with spaces, no null terminator.
       e.name.push_back(c);
-      e.start_byte = AUDIO_PAGE_SIZE * entries[i].value;
-      if (i + 1 < (entries.size())) {
-        e.end_byte = AUDIO_PAGE_SIZE * entries[i + 1].value;
-      } else {
-        e.end_byte = -1;
-      }
+    }
+    e.start_byte = AUDIO_PAGE_SIZE * entries[i].value;
+    if (i + 1 < (entries.size())) {
+      e.end_byte = AUDIO_PAGE_SIZE * entries[i + 1].value;
+    } else {
+      e.end_byte = -1;
     }
     result.entries.push_back(e);
   }
@@ -204,7 +204,7 @@ void process_streamed_audio(const std::string& dir, const std::vector<std::strin
     auto suffix = std::filesystem::path(file).extension().u8string().substr(1);
     langs.push_back(suffix);
     dir_data.set_file_size(wad_data.size());
-    for (int i = 3; i < dir_data.entry_count(); i++) {
+    for (int i = 0; i < dir_data.entry_count(); i++) {
       auto audio_data = read_entry(dir_data, wad_data, i);
       lg::info("File {}, total {:.2f} minutes", dir_data.entries.at(i).name, audio_len / 60.0);
       auto info = process_audio_file(audio_data, dir_data.entries.at(i).name, suffix);

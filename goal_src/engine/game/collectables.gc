@@ -6,10 +6,8 @@
 ;; dgos: GAME, ENGINE
 
 ;; TODO - for nav-enemy
-(define-extern birth-pickup-at-point (function vector int float symbol process-drawable fact-info (pointer process))) ;; TODO - unconfirmed - see beach-rocks
-;; TODO - for oracle
-(define-extern *fuel-cell-sg* skeleton-group) ;; unknown type
-(define-extern *money-sg* skeleton-group) ;; unknown type
+(define-extern birth-pickup-at-point (function vector int float symbol process-drawable fact-info (pointer process)))
+
 ;; TODO - for entity and beach-rocks
 (deftype collectable (process-drawable)
   ((root-override   collide-shape-moving :score 100 :offset 112)
@@ -46,7 +44,7 @@
    (collect-effect-time uint64         :offset-assert 328)
    (respawn-delay       uint64         :offset-assert 336)
    (sound-name          sound-spec          :offset-assert 344)
-   (target              uint64         :offset-assert 352)
+   (target              handle         :offset-assert 352)
    (suck-time           uint64         :offset-assert 360)
    (suck-y-offset       float          :offset-assert 368)
    (speed               vector :inline :offset-assert 384)
@@ -54,12 +52,12 @@
    )
   (:methods
     (wait () _type_ :state 22) ;; state
-    (pickup () _type_ :state 23) ;; state
+    (pickup (object handle) _type_ :state 23) ;; state
     (die () _type_ :state 24) ;; state
     (jump () _type_ :state 25)
-    (notice-blue () _type_ :state 26) ;; state
+    (notice-blue (handle) _type_ :state 26) ;; state
     (get-pickup-sound (_type_ pickup-type) ambient-sound 27)
-    (dummy-28 (_type_ basic pickup-type float) none 28)
+    (dummy-28 (_type_ res-lump pickup-type float) object 28)
     (update-sound! (_type_) none 29) ;; something to do with particles too
     (blocked () _type_ :state 30)
     )
@@ -76,5 +74,36 @@
   :size-assert         #x19c
   :flag-assert         #x1f0130019c
   )
-(define-extern fuel-cell-init-as-clone (function handle object none))
-(define-extern fuel-cell-pick-anim (function process-taskable none))
+(define-extern fuel-cell-init-as-clone (function handle int none :behavior fuel-cell))
+(define-extern fuel-cell-pick-anim (function process-drawable spool-anim))
+
+(defskelgroup *money-sg* money
+  0
+  4
+  ((1 (meters 20)) (2 (meters 40)) (3 (meters 999999)))
+  :bounds (static-spherem 0 0 0 0.6000000238418579)
+  :longest-edge (meters 0)
+  :texture-level 2
+  )
+
+;; failed to figure out what this is:
+(defskelgroup *fuel-cell-sg* fuel-cell
+  0
+  2
+  ((1 (meters 999999)))
+  :bounds (static-spherem 0 1 0 1.600000023841858)
+  :longest-edge (meters 0)
+  :texture-level 2
+  )
+
+;; definition of type money
+(deftype money (eco-collectable)
+  ()
+  :heap-base #x130
+  :method-count-assert 31
+  :size-assert         #x194
+  :flag-assert         #x1f01300194
+  )
+
+;; TODO - for orb-cache
+(define-extern money-init-by-other-no-bob (function vector vector fact-info float entity none :behavior money))

@@ -7,6 +7,7 @@ add_library(
         analysis/expression_build.cpp
         analysis/final_output.cpp
         analysis/find_defstates.cpp
+        analysis/find_skelgroups.cpp
         analysis/inline_asm_rewrite.cpp
         analysis/insert_lets.cpp
         analysis/label_types.cpp

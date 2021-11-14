@@ -5,12 +5,6 @@
 ;; name in dgo: fisher
 ;; dgos: JUN
 
-(define-extern *catch-fisha-sg* skeleton-group)
-(define-extern *catch-fishb-sg* skeleton-group)
-(define-extern *catch-fishc-sg* skeleton-group)
-(define-extern *fish-net-sg* skeleton-group)
-(define-extern *fisher-sg* skeleton-group)
-
 (declare-type fisher-fish process-drawable)
 (define-extern fisher-fish-caught (state fisher-fish))
 (define-extern fisher-fish-die (state fisher-fish))
@@ -844,91 +838,45 @@
   )
 
 
-(let
-  ((v1-16
-    (new 'static 'skeleton-group
-     :art-group-name "catch-fisha"
-     :bounds (new 'static 'vector :w 16384.0)
-     :version #x6
-     )
-    )
-   )
-  (set! (-> v1-16 jgeo) 0)
-  (set! (-> v1-16 janim) 2)
-  (set! (-> v1-16 mgeo 0) (the-as uint 1))
-  (set! (-> v1-16 lod-dist 0) 4095996000.0)
-  (set! *catch-fisha-sg* v1-16)
+(defskelgroup *catch-fisha-sg* catch-fisha
+  0
+  2
+  ((1 (meters 999999)))
+  :bounds (static-spherem 0 0 0 4)
+  :longest-edge (meters 0)
   )
 
-(let
-  ((v1-17
-    (new 'static 'skeleton-group
-     :art-group-name "catch-fishb"
-     :bounds (new 'static 'vector :w 16384.0)
-     :version #x6
-     )
-    )
-   )
-  (set! (-> v1-17 jgeo) 0)
-  (set! (-> v1-17 janim) 2)
-  (set! (-> v1-17 mgeo 0) (the-as uint 1))
-  (set! (-> v1-17 lod-dist 0) 4095996000.0)
-  (set! *catch-fishb-sg* v1-17)
+(defskelgroup *catch-fishb-sg* catch-fishb
+  0
+  2
+  ((1 (meters 999999)))
+  :bounds (static-spherem 0 0 0 4)
+  :longest-edge (meters 0)
   )
 
-(let
-  ((v1-18
-    (new 'static 'skeleton-group
-     :art-group-name "catch-fishc"
-     :bounds (new 'static 'vector :w 16384.0)
-     :version #x6
-     )
-    )
-   )
-  (set! (-> v1-18 jgeo) 0)
-  (set! (-> v1-18 janim) 2)
-  (set! (-> v1-18 mgeo 0) (the-as uint 1))
-  (set! (-> v1-18 lod-dist 0) 4095996000.0)
-  (set! *catch-fishc-sg* v1-18)
+(defskelgroup *catch-fishc-sg* catch-fishc
+  0
+  2
+  ((1 (meters 999999)))
+  :bounds (static-spherem 0 0 0 4)
+  :longest-edge (meters 0)
   )
 
-(let
-  ((v1-19
-    (new 'static 'skeleton-group
-     :art-group-name "fish-net"
-     :bounds (new 'static 'vector :w 16384.0)
-     :version #x6
-     )
-    )
-   )
-  (set! (-> v1-19 jgeo) 0)
-  (set! (-> v1-19 janim) 2)
-  (set! (-> v1-19 mgeo 0) (the-as uint 1))
-  (set! (-> v1-19 lod-dist 0) 4095996000.0)
-  (set! *fish-net-sg* v1-19)
+(defskelgroup *fish-net-sg* fish-net
+  0
+  2
+  ((1 (meters 999999)))
+  :bounds (static-spherem 0 0 0 4)
+  :longest-edge (meters 0)
   )
 
-(let
-  ((v1-20
-    (new 'static 'skeleton-group
-     :art-group-name "fisher"
-     :bounds
-     (new 'static 'vector :y -24576.0 :w 57344.0)
-     :max-lod 2
-     :version #x6
-     :shadow 4
-     )
-    )
-   )
-  (set! (-> v1-20 jgeo) 0)
-  (set! (-> v1-20 janim) 6)
-  (set! (-> v1-20 mgeo 0) (the-as uint 1))
-  (set! (-> v1-20 lod-dist 0) 81920.0)
-  (set! (-> v1-20 mgeo 1) (the-as uint 2))
-  (set! (-> v1-20 lod-dist 1) 163840.0)
-  (set! (-> v1-20 mgeo 2) (the-as uint 3))
-  (set! (-> v1-20 lod-dist 2) 4095996000.0)
-  (set! *fisher-sg* v1-20)
+(defskelgroup *fisher-sg* fisher
+  0
+  6
+  ((1 (meters 20)) (2 (meters 40)) (3 (meters 999999)))
+  :bounds (static-spherem 0 -6 0 14)
+  :longest-edge (meters 0)
+  :shadow 4
   )
 
 (defmethod dummy-52 fisher ((obj fisher))
@@ -1135,8 +1083,8 @@
        1024
        0
        0
-       (the-as uint 1)
-       (the-as vector #t)
+       1
+       #t
        )
       (ambient-hint-spawn
        "sksp0a42"
@@ -1176,8 +1124,8 @@
       1024
       0
       0
-      (the-as uint 1)
-      (the-as vector #t)
+      1
+      #t
       )
      (send-event (ppointer->process (-> self parent)) 'fisher-fish-caught 5)
      )
@@ -1211,8 +1159,8 @@
       1024
       0
       0
-      (the-as uint 1)
-      (the-as vector #t)
+      1
+      #t
       )
      (send-event (ppointer->process (-> self parent)) 'fisher-fish-caught 1)
      )
@@ -1370,33 +1318,42 @@
   (logclear! (-> self mask) (process-mask actor-pause))
   (set! (-> self root) (new 'process 'trsqv))
   (set! (-> self size) 3276.8)
-  (dummy-14 self (cond
-                  ((or (= arg0 'deadly) (= arg0 'bad))
-                   (set! (-> self size) 409.6)
-                   (set-vector! (-> self root scale) 0.9 0.9 0.7 1.0)
-                   (set!
-                    (-> self part)
-                    (create-launch-control (-> *part-group-id-table* 177) self)
-                    )
-                   *catch-fishc-sg*
-                   )
-                  ((= arg0 'powerup)
-                   (set-vector! (-> self root scale) 0.4 0.4 0.4 1.0)
-                   (set!
-                    (-> self part)
-                    (create-launch-control (-> *part-group-id-table* 178) self)
-                    )
-                   *catch-fishb-sg*
-                   )
-                  (else
-                   (set-vector! (-> self root scale) 0.3 0.3 0.3 1.0)
-                   (set!
-                    (-> self part)
-                    (create-launch-control (-> *part-group-id-table* 178) self)
-                    )
-                   *catch-fisha-sg*
-                   )
-                  )
+  (initialize-skeleton self (cond
+                             ((or (= arg0 'deadly) (= arg0 'bad))
+                              (set! (-> self size) 409.6)
+                              (set-vector! (-> self root scale) 0.9 0.9 0.7 1.0)
+                              (set!
+                               (-> self part)
+                               (create-launch-control
+                                (-> *part-group-id-table* 177)
+                                self
+                                )
+                               )
+                              *catch-fishc-sg*
+                              )
+                             ((= arg0 'powerup)
+                              (set-vector! (-> self root scale) 0.4 0.4 0.4 1.0)
+                              (set!
+                               (-> self part)
+                               (create-launch-control
+                                (-> *part-group-id-table* 178)
+                                self
+                                )
+                               )
+                              *catch-fishb-sg*
+                              )
+                             (else
+                              (set-vector! (-> self root scale) 0.3 0.3 0.3 1.0)
+                              (set!
+                               (-> self part)
+                               (create-launch-control
+                                (-> *part-group-id-table* 178)
+                                self
+                                )
+                               )
+                              *catch-fisha-sg*
+                              )
+                             )
    '()
    )
   (set! (-> self pos) 1.0)
@@ -2096,8 +2053,8 @@
      716
      0
      0
-     (the-as uint 1)
-     (the-as vector #t)
+     1
+     #t
      )
     (fisher-spawn-ambient)
     (let ((s5-1 (get-process *default-dead-pool* fisher-fish #x4000)))
@@ -2167,8 +2124,8 @@
        1024
        0
        0
-       (the-as uint 1)
-       (the-as vector #t)
+       1
+       #t
        )
       (set! v0-2 (+ (-> self missed) (-> arg3 param 0)))
       (set! (-> self missed) (the-as int v0-2))
@@ -2895,7 +2852,7 @@
      (activate! (-> self control unknown-smush00) 1.0 120 210 0.3 1.0)
      )
     ((= arg2 'lose)
-     (set! (-> self control unknown-symbol20) arg2)
+     (set! (-> self control unknown-float120) (the-as float arg2))
      arg2
      )
     (else
@@ -2908,7 +2865,7 @@
    (set! (-> self control unknown-surface00) *empty-mods*)
    (logior! (-> self state-flags) 16)
    (set-zero! (-> self control unknown-smush00))
-   (set! (-> self control unknown-symbol20) #f)
+   (set! (-> self control unknown-float120) (the-as float #f))
    (none)
    )
   :exit
@@ -3025,7 +2982,7 @@
     (set! (-> s5-1 frame-num) (ja-aframe 15.0 0))
     )
    (let ((s5-2 (new 'stack-no-clear 'vector)))
-    (until (-> self control unknown-symbol20)
+    (until (-> self control unknown-float120)
      (let ((v1-42 (handle->process arg0)))
       (when v1-42
        (let ((a0-28 (-> self skel root-channel 0)))
@@ -3061,13 +3018,17 @@
          (quaternion-rotate-y! s3-0 s3-0 (* 5461.3335 f30-0))
          (set-vector! s2-0 1.0 1.0 1.0 1.0)
          (set-vector! s4-0 0.0 (* 2048.0 (-> s5-2 y)) (* 819.2 (-> s5-2 y)) 1.0)
-         (dummy-14 (-> self manipy 0 joint 0) (the-as skeleton-group s4-0) s3-0)
+         (initialize-skeleton
+          (-> self manipy 0 joint 0)
+          (the-as skeleton-group s4-0)
+          (the-as pair s3-0)
+          )
          (set-vector! s4-0 0.0 (* -614.4 f30-0) 0.0 1.0)
          (let* ((a0-34 (-> self manipy 0 joint 1))
-                (t9-16 (method-of-object a0-34 dummy-14))
+                (t9-16 (method-of-object a0-34 initialize-skeleton))
                 (a2-7 #f)
                 )
-          (t9-16 a0-34 (the-as skeleton-group s4-0) a2-7)
+          (t9-16 a0-34 (the-as skeleton-group s4-0) (the-as pair a2-7))
           )
          (set! (-> s5-2 y) (-> s5-2 x))
          (set! (-> s5-2 x) f30-0)
@@ -3078,7 +3039,7 @@
      (suspend)
      )
     )
-   (case (-> self control unknown-symbol20) 
+   (case (-> self control unknown-float120) 
     (('lose)
       (ja-channel-push! 1 30)
       (let ((a0-38 (-> self skel root-channel 0)))

@@ -41,27 +41,12 @@
   )
 
 ;; failed to figure out what this is:
-(let
-  ((v1-1
-    (new 'static 'skeleton-group
-     :art-group-name "swamp-rat"
-     :bounds
-     (new 'static 'vector :y 4096.0 :w 16384.0)
-     :max-lod 2
-     :longest-edge (meters 1.0)
-     :version #x6
-     )
-    )
-   )
-  (set! (-> v1-1 jgeo) 0)
-  (set! (-> v1-1 janim) 4)
-  (set! (-> v1-1 mgeo 0) (the-as uint 1))
-  (set! (-> v1-1 lod-dist 0) 81920.0)
-  (set! (-> v1-1 mgeo 1) (the-as uint 2))
-  (set! (-> v1-1 lod-dist 1) 163840.0)
-  (set! (-> v1-1 mgeo 2) (the-as uint 3))
-  (set! (-> v1-1 lod-dist 2) 4095996000.0)
-  (set! *swamp-rat-sg* v1-1)
+(defskelgroup *swamp-rat-sg* swamp-rat
+  0
+  4
+  ((1 (meters 20)) (2 (meters 40)) (3 (meters 999999)))
+  :bounds (static-spherem 0 1 0 4)
+  :longest-edge (meters 1)
   )
 
 ;; definition for method 44 of type swamp-rat
@@ -98,7 +83,7 @@
 
 ;; definition for function swamp-rat-default-event-handler
 ;; INFO: Return type mismatch none vs object.
-;; WARN: rewrite_to_get_var got a none typed variable. Is there unreachable code?
+;; WARN: rewrite_to_get_var got a none typed variable. Is there unreachable code?. [OP: 7]
 (defbehavior
   swamp-rat-default-event-handler swamp-rat
   ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
@@ -890,7 +875,7 @@ swamp-rat-default-event-handler
 ;; INFO: Return type mismatch int vs none.
 ;; Used lq/sq
 (defmethod TODO-RENAME-48 swamp-rat ((obj swamp-rat))
-  (dummy-14 obj *swamp-rat-sg* '())
+  (initialize-skeleton obj *swamp-rat-sg* '())
   (TODO-RENAME-45 obj *swamp-rat-nav-enemy-info*)
   (vector-float*! (-> obj collide-info scale) *identity-vector* 1.5)
   (set! (-> obj neck up) (the-as uint 1))
@@ -916,12 +901,7 @@ swamp-rat-default-event-handler
 ;; Used lq/sq
 (defbehavior
   swamp-rat-init-by-other swamp-rat
-  ((arg0 swamp-rat-nest)
-   (arg1 vector)
-   (arg2 vector)
-   (arg3 pickup-type)
-   (arg4 symbol)
-   )
+  ((arg0 billy) (arg1 vector) (arg2 vector) (arg3 pickup-type) (arg4 symbol))
   (initialize-collision self)
   (if arg4
    (logclear! (-> self mask) (process-mask actor-pause))

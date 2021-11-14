@@ -87,6 +87,7 @@ class Debugger {
   void read_symbol_table();
   u32 get_symbol_address(const std::string& sym_name);
   bool get_symbol_value(const std::string& sym_name, u32* output);
+  const char* get_symbol_name_from_offset(s32 ofs) const;
   void add_addr_breakpoint(u32 addr);
   void remove_addr_breakpoint(u32 addr);
   void update_break_info();
@@ -99,6 +100,8 @@ class Debugger {
   Disassembly disassemble_at_rip(const InstructionPointerInfo& info);
 
   std::vector<BacktraceFrame> get_backtrace(u64 rip, u64 rsp);
+
+  std::string disassemble_x86_with_symbols(int len, u64 base_addr) const;
 
   /*!
    * Get the x86 address of GOAL memory
@@ -160,7 +163,11 @@ class Debugger {
   bool m_watcher_should_stop = false;
   bool m_watcher_running = false;
   bool m_regs_valid = false;
+  bool m_attach_response = false;
+  bool m_attach_return = false;
+  std::condition_variable m_attach_cv;
 
+  bool try_start_watcher();
   void start_watcher();
   void stop_watcher();
   void watcher();

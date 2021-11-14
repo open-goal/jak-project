@@ -432,6 +432,10 @@ TP_Type SimpleExpression::get_type_int2(const TypeState& input,
           m_args[1].is_int()) {
         return get_stack_type_at_constant_offset(m_args[1].get_int(), env, dts, input);
       }
+      if (arg0_type.kind == TP_Type::Kind::OBJECT_PLUS_PRODUCT_WITH_CONSTANT &&
+          arg1_type.typespec().base_type() == "pointer") {
+        return TP_Type::make_from_ts(TypeSpec("int"));
+      }
 
       if (arg0_type.is_product_with(4) && tc(dts, TypeSpec("type"), arg1_type)) {
         // dynamic access into the method array with shift, add, offset-load
@@ -449,6 +453,7 @@ TP_Type SimpleExpression::get_type_int2(const TypeState& input,
         return TP_Type::make_from_integer_constant_plus_var(arg1_type.get_integer_constant(),
                                                             arg0_type.typespec());
       }
+
       break;
 
     case Kind::MIN_SIGNED:

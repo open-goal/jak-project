@@ -5,170 +5,159 @@
 (defstate target-racing-start (target)
   :event
   (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
-   (the-as object (cond
-                   ((and (= arg2 'query) (= (-> arg3 param 0) 'mode))
-                    'racer
-                    )
-                   ((and (= arg2 'get-pickup) (= (-> arg3 param 0) 3))
-                    (if
-                     (>=
-                      (-
-                       (-> *display* base-frame-counter)
-                       (the-as int (-> self racer boost-time))
-                       )
-                      300
-                      )
-                     (send-event
-                      self
-                      'boost
-                      (fmax 1.0 (fmin 2.0 (the-as float (-> arg3 param 1))))
-                      )
-                     )
-                    )
-                   (else
-                    (case arg2 
-                     (('end-mode)
-                       (go target-racing-get-off (process->handle arg0))
-                       )
-                     (('touched)
-                      (send-event arg0 'attack (-> arg3 param 0) 'racer 0 0)
-                      (when
-                       (and
-                        (type-type? (-> arg0 type) babak)
-                        (< 40960.0 (-> self control unknown-float01))
-                        )
-                       (let
-                        ((f0-5
-                          (lerp-scale
-                           16384.0
-                           32768.0
-                           (-> self control unknown-float01)
-                           40960.0
-                           (-> self racer transv-max)
-                           )
-                          )
-                         )
-                        (go target-racing-jump f0-5 f0-5 #f)
-                        )
-                       )
-                      )
-                     (('attack 'attack-or-shove 'attack-invinc)
-                      (let ((v1-27 (the-as attack-info (-> arg3 param 1))))
-                       (if
-                        (not
-                         (and
-                          (logtest? (-> v1-27 mask) 32)
-                          (or
-                           (= (-> v1-27 mode) 'burn)
-                           (= (-> v1-27 mode) 'burnup)
-                           )
-                          )
-                         )
-                        (target-attacked
-                         arg2
-                         (-> arg3 param 1)
-                         (the-as uint arg0)
-                         (the-as process (-> arg3 param 0))
-                         (the-as (state target) target-racing-hit)
-                         )
-                        )
-                       )
-                      )
-                     (('heat)
-                      (let
-                       ((f0-7
-                         (fmax
-                          0.0
-                          (fmin
-                           (+
-                            (-> self racer heat)
-                            (the-as float (-> arg3 param 0))
-                            )
-                           (-> *RACER-bank* heat-max)
-                           )
-                          )
-                         )
-                        )
-                       (set! (-> self racer heat) f0-7)
-                       f0-7
-                       )
-                      )
-                     (('boost)
-                      (sound-play-by-name
-                       (static-sound-name "get-blue-eco")
-                       (new-sound-id)
-                       1024
-                       0
-                       0
-                       (the-as uint 1)
-                       (the-as vector #t)
-                       )
-                      (set!
-                       (-> self racer boost-sound-id)
-                       (sound-play-by-name
-                        (static-sound-name "zoom-boost")
-                        (new-sound-id)
-                        1024
-                        0
-                        0
-                        (the-as uint 1)
-                        (the-as vector #t)
-                        )
-                       )
-                      (set!
-                       (-> self racer boost-time)
-                       (the-as uint (-> *display* base-frame-counter))
-                       )
-                      (let
-                       ((f0-12
-                         (seek
-                          (-> self racer boost-level)
-                          (-> *RACER-bank* boost-level-max)
-                          (*
-                           (-> *RACER-bank* boost-level-inc)
-                           (the-as float (-> arg3 param 0))
-                           )
-                          )
-                         )
-                        )
-                       (set! (-> self racer boost-level) f0-12)
-                       f0-12
-                       )
-                      )
-                     (('smack)
-                      (go
-                       target-racing-smack
-                       (-> self control unknown-float01)
-                       #t
-                       )
-                      )
-                     (('jump)
-                      (go
-                       target-racing-jump
-                       (the-as float (-> arg3 param 0))
-                       (the-as float (-> arg3 param 1))
-                       #f
-                       )
-                      )
-                     (('change-mode)
-                      (case (-> arg3 param 0) 
-                       (('grab)
-                         (go target-racing-grab)
-                         )
-                       )
-                      )
-                     (('clone-anim)
-                      (go
-                       target-racing-clone-anim
-                       (process->handle (the-as process (-> arg3 param 0)))
-                       )
-                      )
-                     (else
-                      (target-generic-event-handler arg0 arg1 arg2 arg3)
-                      )
-                     )
-                    )
-                   )
+   (cond
+    ((and (= arg2 'query) (= (-> arg3 param 0) 'mode))
+     'racer
+     )
+    ((and (= arg2 'get-pickup) (= (-> arg3 param 0) 3))
+     (if
+      (>=
+       (-
+        (-> *display* base-frame-counter)
+        (the-as int (-> self racer boost-time))
+        )
+       300
+       )
+      (send-event
+       self
+       'boost
+       (fmax 1.0 (fmin 2.0 (the-as float (-> arg3 param 1))))
+       )
+      )
+     )
+    (else
+     (case arg2 
+      (('end-mode)
+        (go target-racing-get-off (process->handle arg0))
+        )
+      (('touched)
+       (send-event arg0 'attack (-> arg3 param 0) 'racer 0 0)
+       (when
+        (and
+         (type-type? (-> arg0 type) babak)
+         (< 40960.0 (-> self control unknown-float01))
+         )
+        (let
+         ((f0-5
+           (lerp-scale
+            16384.0
+            32768.0
+            (-> self control unknown-float01)
+            40960.0
+            (-> self racer transv-max)
+            )
+           )
+          )
+         (go target-racing-jump f0-5 f0-5 #f)
+         )
+        )
+       )
+      (('attack 'attack-or-shove 'attack-invinc)
+       (let ((v1-27 (the-as attack-info (-> arg3 param 1))))
+        (if
+         (not
+          (and
+           (logtest? (-> v1-27 mask) 32)
+           (or (= (-> v1-27 mode) 'burn) (= (-> v1-27 mode) 'burnup))
+           )
+          )
+         (target-attacked
+          arg2
+          (-> arg3 param 1)
+          (the-as uint arg0)
+          (the-as process (-> arg3 param 0))
+          (the-as (state target) target-racing-hit)
+          )
+         )
+        )
+       )
+      (('heat)
+       (let
+        ((f0-7
+          (fmax
+           0.0
+           (fmin
+            (+ (-> self racer heat) (the-as float (-> arg3 param 0)))
+            (-> *RACER-bank* heat-max)
+            )
+           )
+          )
+         )
+        (set! (-> self racer heat) f0-7)
+        f0-7
+        )
+       )
+      (('boost)
+       (sound-play-by-name
+        (static-sound-name "get-blue-eco")
+        (new-sound-id)
+        1024
+        0
+        0
+        1
+        #t
+        )
+       (set!
+        (-> self racer boost-sound-id)
+        (sound-play-by-name
+         (static-sound-name "zoom-boost")
+         (new-sound-id)
+         1024
+         0
+         0
+         1
+         #t
+         )
+        )
+       (set!
+        (-> self racer boost-time)
+        (the-as uint (-> *display* base-frame-counter))
+        )
+       (let
+        ((f0-12
+          (seek
+           (-> self racer boost-level)
+           (-> *RACER-bank* boost-level-max)
+           (*
+            (-> *RACER-bank* boost-level-inc)
+            (the-as float (-> arg3 param 0))
+            )
+           )
+          )
+         )
+        (set! (-> self racer boost-level) f0-12)
+        f0-12
+        )
+       )
+      (('smack)
+       (go target-racing-smack (-> self control unknown-float01) #t)
+       )
+      (('jump)
+       (go
+        target-racing-jump
+        (the-as float (-> arg3 param 0))
+        (the-as float (-> arg3 param 1))
+        #f
+        )
+       )
+      (('change-mode)
+       (case (-> arg3 param 0) 
+        (('grab)
+          (go target-racing-grab)
+          )
+        )
+       )
+      (('clone-anim)
+       (go
+        target-racing-clone-anim
+        (process->handle (the-as process (-> arg3 param 0)))
+        )
+       )
+      (else
+       (target-generic-event-handler arg0 arg1 arg2 arg3)
+       )
+      )
+     )
     )
    )
   :exit
@@ -748,8 +737,8 @@
       819
       0
       0
-      (the-as uint 1)
-      (the-as vector #t)
+      1
+      #t
       )
      (sound-play-by-name
       (static-sound-name "zoomer-rev2")
@@ -757,8 +746,8 @@
       819
       0
       0
-      (the-as uint 1)
-      (the-as vector #t)
+      1
+      #t
       )
      )
     )
@@ -931,8 +920,8 @@
     1024
     0
     0
-    (the-as uint 1)
-    (the-as vector #t)
+    1
+    #t
     )
    (set! (-> self state-time) (-> *display* base-frame-counter))
    (when arg2
@@ -1215,8 +1204,8 @@
     1024
     0
     0
-    (the-as uint 1)
-    (the-as vector #t)
+    1
+    #t
     )
    (set! (-> self state-time) (-> *display* base-frame-counter))
    (racer-calc-gravity)
@@ -1420,8 +1409,8 @@
     1024
     0
     0
-    (the-as uint 1)
-    (the-as vector #t)
+    1
+    #t
     )
    (cpad-set-buzz! (-> *cpad-list* cpads 0) 1 255 150)
    (set! (-> self racer heavy) arg1)
@@ -1473,8 +1462,8 @@
     1024
     0
     0
-    (the-as uint 1)
-    (the-as vector #t)
+    1
+    #t
     )
    (ja-channel-push! 2 15)
    (let ((a0-4 (-> self skel root-channel 0)))
@@ -1624,15 +1613,7 @@
    (when (!= (-> self attack-info mode) 'endlessfall)
     (dummy-10 (-> self skel effect) 'group-target-hit -1.0 -1)
     (cpad-set-buzz! (-> *cpad-list* cpads 0) 1 255 90)
-    (sound-play-by-name
-     (static-sound-name "oof")
-     (new-sound-id)
-     1024
-     0
-     0
-     (the-as uint 1)
-     (the-as vector #t)
-     )
+    (sound-play-by-name (static-sound-name "oof") (new-sound-id) 1024 0 0 1 #t)
     )
    (set! (-> self game hit-time) (-> *display* base-frame-counter))
    (logior! (-> self state-flags) 8)
@@ -1783,8 +1764,8 @@
        1024
        0
        0
-       (the-as uint 1)
-       (the-as vector #t)
+       1
+       #t
        )
       (let ((gp-1 (get-process *default-dead-pool* part-tracker #x4000)))
        (when gp-1
@@ -2076,8 +2057,8 @@
       1024
       0
       0
-      (the-as uint 1)
-      (the-as vector #t)
+      1
+      #t
       )
      (let ((gp-5 (get-process *default-dead-pool* part-tracker #x4000)))
       (when gp-5
@@ -2119,8 +2100,8 @@
       1024
       0
       0
-      (the-as uint 1)
-      (the-as vector #t)
+      1
+      #t
       )
      (camera-change-to (the-as string cam-endlessfall) 30 #f)
      (set! (-> self control pat-ignore-mask unknown-bit) 1)
@@ -2320,8 +2301,8 @@
         1024
         0
         0
-        (the-as uint 1)
-        (the-as vector #t)
+        1
+        #t
         )
        (set! gp-1 #t)
        )
@@ -2674,8 +2655,8 @@
     1024
     0
     0
-    (the-as uint 1)
-    (the-as vector #t)
+    1
+    #t
     )
    (set! (-> self state-time) (-> *display* base-frame-counter))
    (set! (-> self control transv quad) (the-as uint128 0))

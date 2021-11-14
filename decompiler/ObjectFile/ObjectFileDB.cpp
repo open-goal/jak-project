@@ -130,7 +130,11 @@ ObjectFileDB::ObjectFileDB(const std::vector<std::string>& _dgos,
 
   lg::info("-Loading {} DGOs...", _dgos.size());
   for (auto& dgo : _dgos) {
-    get_objs_from_dgo(dgo, config);
+    try {
+      get_objs_from_dgo(dgo, config);
+    } catch (std::runtime_error& e) {
+      lg::warn("Error when reading DGOs: {}", e.what());
+    }
   }
 
   lg::info("-Loading {} plain object files...", object_files.size());
@@ -580,6 +584,7 @@ std::string ObjectFileDB::process_tpages() {
   std::string tpage_string = "tpage-";
   int total = 0, success = 0;
   int tpage_dir_count = 0;
+  u64 total_px = 0;
   Timer timer;
 
   std::string result;
@@ -588,6 +593,7 @@ std::string ObjectFileDB::process_tpages() {
       auto statistics = process_tpage(data);
       total += statistics.total_textures;
       success += statistics.successful_textures;
+      total_px += statistics.num_px;
     } else if (data.name_in_dgo == "dir-tpages") {
       result = process_dir_tpages(data).to_source();
       tpage_dir_count++;
@@ -601,7 +607,7 @@ std::string ObjectFileDB::process_tpages() {
     return {};
   }
 
-  lg::info("Processed {} / {} textures {:.2f}% in {:.2f} ms", success, total,
+  lg::info("Processed {} / {} textures ({} px) {:.2f}% in {:.2f} ms", success, total, total_px,
            100.f * float(success) / float(total), timer.getMs());
   return result;
 }

@@ -5,9 +5,6 @@
 ;; name in dgo: yakow
 ;; dgos: L1, VI1
 
-(define-extern *yakow-sg* skeleton-group)
-(define-extern *village1cam-sg* skeleton-group)
-
 (declare-type yakow process-drawable)
 (define-extern yakow-graze (state yakow))
 (define-extern yakow-idle (state yakow))
@@ -20,20 +17,12 @@
 
 ;; DECOMP BEGINS
 
-(let
-  ((v1-0
-    (new 'static 'skeleton-group
-     :art-group-name "village1cam"
-     :bounds (new 'static 'vector :w 16384.0)
-     :version #x6
-     )
-    )
-   )
-  (set! (-> v1-0 jgeo) 0)
-  (set! (-> v1-0 janim) 2)
-  (set! (-> v1-0 mgeo 0) (the-as uint 1))
-  (set! (-> v1-0 lod-dist 0) 4095996000.0)
-  (set! *village1cam-sg* v1-0)
+(defskelgroup *village1cam-sg* village1cam
+  0
+  2
+  ((1 (meters 999999)))
+  :bounds (static-spherem 0 0 0 4)
+  :longest-edge (meters 0)
   )
 
 (defun yakow-cam ()
@@ -161,30 +150,17 @@
   )
 
 
-(let
-  ((v1-5
-    (new 'static 'skeleton-group
-     :art-group-name "yakow"
-     :bounds
-     (new 'static 'vector :y 10240.0 :w 18022.4)
-     :max-lod 1
-     :longest-edge (meters 1.3)
-     :version #x6
-     :shadow 3
-     )
-    )
-   )
-  (set! (-> v1-5 jgeo) 0)
-  (set! (-> v1-5 janim) 4)
-  (set! (-> v1-5 mgeo 0) (the-as uint 1))
-  (set! (-> v1-5 lod-dist 0) 81920.0)
-  (set! (-> v1-5 mgeo 1) (the-as uint 2))
-  (set! (-> v1-5 lod-dist 1) 4095996000.0)
-  (set! *yakow-sg* v1-5)
+(defskelgroup *yakow-sg* yakow
+  0
+  4
+  ((1 (meters 20)) (2 (meters 999999)))
+  :bounds (static-spherem 0 2.5 0 4.4)
+  :longest-edge (meters 1.3)
+  :shadow 3
   )
 
-;; WARN: rewrite_to_get_var got a none typed variable. Is there unreachable code?
-;; WARN: rewrite_to_get_var got a none typed variable. Is there unreachable code?
+;; WARN: rewrite_to_get_var got a none typed variable. Is there unreachable code?. [OP: 52]
+;; WARN: rewrite_to_get_var got a none typed variable. Is there unreachable code?. [OP: 54]
 (defbehavior
   yakow-default-event-handler yakow
   ((arg0 process-drawable) (arg1 int) (arg2 symbol) (arg3 event-message-block))
@@ -456,7 +432,11 @@ yakow-default-event-handler
    (set! (-> gp-1 y) 0.0)
    (set! (-> self nav travel quad) (-> gp-1 quad))
    (vector-normalize! (-> self nav travel) 409600.0)
-   (dummy-24 (-> self nav) 204.8 #f)
+   (dummy-24
+    (-> self nav)
+    204.8
+    (the-as clip-travel-vector-to-mesh-return-info #f)
+    )
    (when (not (-> self enable-turn-around))
     (set! (-> gp-1 quad) (-> self nav travel quad))
     (let ((f30-0 (vector-length gp-1)))
@@ -467,7 +447,11 @@ yakow-default-event-handler
      )
     (set! (-> self nav travel quad) (-> s5-1 quad))
     (vector-normalize! (-> self nav travel) 409600.0)
-    (dummy-24 (-> self nav) 204.8 #f)
+    (dummy-24
+     (-> self nav)
+     204.8
+     (the-as clip-travel-vector-to-mesh-return-info #f)
+     )
     (vector-length (-> self nav travel))
     )
    )
@@ -1440,7 +1424,7 @@ yakow-default-event-handler
    (-> obj fact-override idle-distance)
    (-> *YAKOW-bank* default-idle-distance)
    )
-  (dummy-14 obj *yakow-sg* '())
+  (initialize-skeleton obj *yakow-sg* '())
   (set!
    (-> obj draw shadow-ctrl)
    (new

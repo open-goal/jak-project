@@ -198,4 +198,8 @@ int PadIsPressed(Pad::Button button, int port) {
   return Pad::IsPressed(g_settings.pad_mapping_info, button, port);
 }
 
+int PadAnalogValue(Pad::Analog analog, int port) {
+  return Pad::AnalogValue(g_settings.pad_mapping_info, analog, port);
+}
+
 }  // namespace Gfx

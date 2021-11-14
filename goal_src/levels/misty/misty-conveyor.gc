@@ -5,10 +5,6 @@
 ;; name in dgo: misty-conveyor
 ;; dgos: L1, MIS
 
-(define-extern *keg-conveyor-sg* skeleton-group)
-(define-extern *keg-conveyor-paddle-sg* skeleton-group)
-(define-extern *keg-sg* skeleton-group)
-
 (declare-type keg-conveyor process-drawable)
 (declare-type keg-conveyor-paddle process-drawable)
 (declare-type keg process-drawable)
@@ -120,60 +116,29 @@
   )
 
 
-(let
-  ((v1-6
-    (new 'static 'skeleton-group
-     :art-group-name "keg-conveyor"
-     :bounds
-     (new 'static 'vector :y -24576.0 :w 32768.0)
-     :version #x6
-     )
-    )
-   )
-  (set! (-> v1-6 jgeo) 0)
-  (set! (-> v1-6 janim) 2)
-  (set! (-> v1-6 mgeo 0) (the-as uint 1))
-  (set! (-> v1-6 lod-dist 0) 4095996000.0)
-  (set! *keg-conveyor-sg* v1-6)
+(defskelgroup *keg-conveyor-sg* keg-conveyor
+  0
+  2
+  ((1 (meters 999999)))
+  :bounds (static-spherem 0 -6 0 8)
+  :longest-edge (meters 0)
   )
 
-(let
-  ((v1-7
-    (new 'static 'skeleton-group
-     :art-group-name "keg-conveyor-paddle"
-     :bounds
-     (new 'static 'vector :y -24576.0 :w 32768.0)
-     :version #x6
-     )
-    )
-   )
-  (set! (-> v1-7 jgeo) 0)
-  (set! (-> v1-7 janim) 2)
-  (set! (-> v1-7 mgeo 0) (the-as uint 1))
-  (set! (-> v1-7 lod-dist 0) 4095996000.0)
-  (set! *keg-conveyor-paddle-sg* v1-7)
+(defskelgroup *keg-conveyor-paddle-sg* keg-conveyor-paddle
+  0
+  2
+  ((1 (meters 999999)))
+  :bounds (static-spherem 0 -6 0 8)
+  :longest-edge (meters 0)
   )
 
-(let
-  ((v1-8
-    (new 'static 'skeleton-group
-     :art-group-name "keg"
-     :bounds (new 'static 'vector :w 16384.0)
-     :max-lod 2
-     :version #x6
-     :shadow 4
-     )
-    )
-   )
-  (set! (-> v1-8 jgeo) 0)
-  (set! (-> v1-8 janim) 5)
-  (set! (-> v1-8 mgeo 0) (the-as uint 1))
-  (set! (-> v1-8 lod-dist 0) 81920.0)
-  (set! (-> v1-8 mgeo 1) (the-as uint 2))
-  (set! (-> v1-8 lod-dist 1) 163840.0)
-  (set! (-> v1-8 mgeo 2) (the-as uint 3))
-  (set! (-> v1-8 lod-dist 2) 4095996000.0)
-  (set! *keg-sg* v1-8)
+(defskelgroup *keg-sg* keg
+  0
+  5
+  ((1 (meters 20)) (2 (meters 40)) (3 (meters 999999)))
+  :bounds (static-spherem 0 0 0 4)
+  :longest-edge (meters 0)
+  :shadow 4
   )
 
 (defun keg-update-smush ((arg0 keg) (arg1 float))
@@ -205,8 +170,8 @@
                       1024
                       0
                       0
-                      (the-as uint 1)
-                      (the-as vector #t)
+                      1
+                      #t
                       )
                      (let
                       ((gp-1
@@ -260,8 +225,8 @@
       1024
       0
       0
-      (the-as uint 1)
-      (-> self root-override trans)
+      1
+      (the-as symbol (-> self root-override trans))
       )
      )
     )
@@ -525,8 +490,8 @@
             819
             0
             0
-            (the-as uint 1)
-            (the-as vector #t)
+            1
+            #t
             )
            (let ((s4-1 (get-process *default-dead-pool* part-tracker #x4000)))
             (when s4-1
@@ -688,7 +653,7 @@
    (set! (-> self root-override) s4-0)
    )
   (set! (-> self root-override trans quad) (-> arg0 root-override trans quad))
-  (dummy-14 self *keg-sg* '())
+  (initialize-skeleton self *keg-sg* '())
   (set!
    (-> self draw shadow-ctrl)
    (new 'process 'shadow-control 0.0 0.0 614400.0 (the-as float 60) 245760.0)
@@ -869,9 +834,9 @@
           (let ((t9-8 send-event-function)
                 (v1-42 (-> self object-on-paddle))
                 )
-           (t9-8 (the-as process (if v1-42
-                                  (-> v1-42 0 max-value)
-                                  )
+           (t9-8 (the-as process-tree (if v1-42
+                                       (-> v1-42 0 max-value)
+                                       )
                   )
             a1-2
             )
@@ -947,7 +912,7 @@
    (-> arg0 root-override quat vec quad)
    )
   (set! (-> self root-override scale quad) (-> arg0 root-override scale quad))
-  (dummy-14 self *keg-conveyor-paddle-sg* '())
+  (initialize-skeleton self *keg-conveyor-paddle-sg* '())
   (setup-params! (-> self sync) (the-as uint 4800) 0.0 0.15 0.15)
   (logclear! (-> self mask) (process-mask actor-pause enemy))
   (set! (-> self object-on-paddle) (the-as (pointer bouncing-float) #f))
@@ -976,7 +941,7 @@
   (set! (-> obj mask) (logior (process-mask enemy death) (-> obj mask)))
   (set! (-> obj root) (new 'process 'trsqv))
   (process-drawable-from-entity! obj arg0)
-  (dummy-14 obj *keg-conveyor-sg* '())
+  (initialize-skeleton obj *keg-conveyor-sg* '())
   (set! (-> obj path) (new 'process 'curve-control obj 'path -1000000000.0))
   (logior!
    (-> obj path flags)

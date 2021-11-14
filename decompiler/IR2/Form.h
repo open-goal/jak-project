@@ -11,6 +11,7 @@
 #include "decompiler/Disasm/DecompilerLabel.h"
 #include "common/type_system/state.h"
 #include "decompiler/IR2/LabelDB.h"
+#include "common/math/Vector.h"
 
 namespace decompiler {
 class Form;
@@ -1629,6 +1630,46 @@ class DefstateElement : public FormElement {
   std::string m_state_name;
   std::vector<Entry> m_entries;
   bool m_is_virtual = false;
+};
+
+class DefskelgroupElement : public FormElement {
+ public:
+  struct StaticInfo {
+    std::string art_name;
+    math::Vector4f bounds;
+    int max_lod;
+    float longest_edge;
+    s8 tex_level;
+    s8 version;
+    s8 shadow;
+    s8 sort;
+  };
+  struct Entry {
+    Form* mgeo = nullptr;
+    Form* lod_dist = nullptr;
+  };
+  struct Info {
+    Form* jgeo;
+    Form* janim;
+    std::vector<Entry> lods;
+  };
+  DefskelgroupElement(const std::string& name, const Info& info, const StaticInfo& data);
+
+  goos::Object to_form_internal(const Env& env) const override;
+  void apply(const std::function<void(FormElement*)>& f) override;
+  void apply_form(const std::function<void(Form*)>& f) override;
+  void collect_vars(RegAccessSet& vars, bool recursive) const override;
+  void update_from_stack(const Env& env,
+                         FormPool& pool,
+                         FormStack& stack,
+                         std::vector<FormElement*>* result,
+                         bool allow_side_effects) override;
+  void get_modified_regs(RegSet& regs) const override;
+
+ private:
+  std::string m_name;
+  StaticInfo m_static_info;
+  Info m_info;
 };
 
 class ResLumpMacroElement : public FormElement {
