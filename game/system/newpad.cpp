@@ -216,7 +216,18 @@ void initialize() {
   }
 }
 
+void clear_gamepads() {
+  for (int i = 0; i < (int)Button::Max; ++i) {
+    g_gamepad_buttons[i] = false;
+  }
+  for (int i = 0; i < 4; ++i) {
+    g_gamepad_analogs[i] = 127;
+  }
+}
+
 void update_gamepads() {
+  clear_gamepads();
+
   if (g_gamepads.gamepad_idx == -1) {
     return;
   }
