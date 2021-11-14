@@ -96,7 +96,18 @@ void TextureUploadHandler::render(DmaFollower& dma,
       assert(ok);
     }
 
-  } else if (uploads.empty()) {
+  } else if (uploads.size() == 1 && uploads[0].mode == 0) {
+    bool has_segment[3] = {true, true, true};
+    if (!try_to_populate_from_cache(uploads[0].page, has_segment, render_state)) {
+      populate_cache(render_state->texture_pool->convert_textures(
+                         ee_mem + uploads[0].page, 0, ee_mem, render_state->offset_of_s7),
+                     render_state);
+      bool ok = try_to_populate_from_cache(uploads[0].page, has_segment, render_state);
+      assert(ok);
+    }
+  }
+
+  else if (uploads.empty()) {
     // do nothing.
   } else {
     fmt::print("unhandled upload sequence in {}:\n", m_name);

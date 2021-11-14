@@ -184,6 +184,14 @@ std::vector<std::shared_ptr<TextureRecord>> TexturePool::convert_textures(const 
     u32 size = ((sizes[0] + sizes[1] + 2047) / 256) * 256;
     m_tex_converter.upload(memory_base + texture_page.segment[0].block_data_ptr,
                            texture_page.segment[0].dest, size);
+  } else if (mode == 0) {
+    has_segment[1] = false;
+    has_segment[2] = false;
+    u32 size = ((sizes[0] + 255) / 256) * 256;
+
+    // dest is in 4-byte vram words
+    m_tex_converter.upload(memory_base + texture_page.segment[0].block_data_ptr,
+                           texture_page.segment[0].dest, size);
   } else {
     // no reason to skip this, other than
     lg::error("TexturePool skipping upload now with mode {}.", mode);
