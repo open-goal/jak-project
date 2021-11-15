@@ -71,6 +71,8 @@ void DirectRenderer::draw_debug_window() {
   ImGui::Checkbox("red", &m_debug_state.red);
   ImGui::SameLine();
   ImGui::Checkbox("always", &m_debug_state.always_draw);
+  ImGui::SameLine();
+  ImGui::Checkbox("no mip", &m_debug_state.disable_mipmap);
 
   if (m_mode == Mode::SPRITE_CPU) {
     ImGui::Checkbox("draw1", &m_sprite_mode.do_first_draw);
@@ -128,6 +130,7 @@ void DirectRenderer::flush_pending(SharedRenderState* render_state, ScopedProfil
     m_test_state_needs_gl_update = false;
   }
 
+  // I think it's important that this comes last.
   if (m_texture_state.needs_gl_update) {
     update_gl_texture(render_state);
     m_texture_state.needs_gl_update = false;
@@ -349,7 +352,7 @@ void DirectRenderer::update_gl_texture(SharedRenderState* render_state) {
   }
 
   if (m_texture_state.enable_tex_filt) {
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, m_debug_state.disable_mipmap ? GL_LINEAR : GL_LINEAR_MIPMAP_LINEAR);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
   } else {
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);

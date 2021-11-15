@@ -2,6 +2,7 @@
 
 #include "game/graphics/opengl_renderer/BucketRenderer.h"
 #include "game/graphics/opengl_renderer/DirectRenderer.h"
+#include "game/graphics/opengl_renderer/tfrag/BufferedRenderer.h"
 #include "common/dma/gs.h"
 #include "common/math/Vector.h"
 
@@ -191,6 +192,7 @@ class TFragment : public BucketRenderer {
   bool m_prog10_with_prog6 = true;
   bool m_prog18_with_prog6 = true;
   bool m_all_with_prog6 = false;
+  bool m_use_buffered_renderer = true;
   std::string m_frag_debug;
 
   // GS setup data
@@ -278,4 +280,5 @@ class TFragment : public BucketRenderer {
   } m_stats;
 
   DirectRenderer m_direct_renderer;
+  BufferedRenderer::Builder m_buffered_renderer;
 };
