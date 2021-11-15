@@ -628,7 +628,7 @@ std::string ObjectFileDB::ir2_to_file(ObjectFileData& data, const Config& config
       try {
         result += ir2_function_to_string(data, func, seg);
       } catch (std::exception& e) {
-        result += "Failed to write";
+        result += "Failed to write ";
         result += func.name();
         result += ": ";
         result += e.what();

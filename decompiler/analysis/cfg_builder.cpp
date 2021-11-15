@@ -163,9 +163,8 @@ void clean_up_return_final(const Function& f, ReturnElement* ir) {
   }
 
   if (!dead) {
-    lg::error("failed to recognize dead code after return, got {}",
-              ir->dead_code->to_string(f.ir2.env));
-    throw std::runtime_error("failed to recognize dead code");
+    throw std::runtime_error(fmt::format("failed to recognize dead code after return, got {}",
+                                         ir->dead_code->to_string(f.ir2.env)));
   }
   assert(dead);
   auto src = dynamic_cast<SimpleExpressionElement*>(dead->src()->try_as_single_element());
