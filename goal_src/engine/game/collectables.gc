@@ -6,6 +6,19 @@
 ;; dgos: GAME, ENGINE
 
 (declare-type vent process-drawable)
+
+(defenum collectable-flags
+  :bitfield #t
+  :type uint32
+  (trans 0)
+  (fade 1)
+  (can-collect 2)
+  (fading 3)
+  (suck 4)
+  (ignore-blue 5)
+  (anim 6)
+  )
+
 ;; DECOMP BEGINS
 
 (define *eco-pill-count* 0)
@@ -873,10 +886,9 @@
    (set! (-> self speed quad) (the-as uint128 0))
    (set!
     (-> self speed z)
-    (the-as float (gpr->fpr (if (rand-vu-percent? (the-as float 0.5))
-                             1.0
-                             -1.0
-                             )
+    (the-as float (if (rand-vu-percent? (the-as float 0.5))
+                   1.0
+                   -1.0
                    )
      )
     )
@@ -946,39 +958,51 @@
                         (res-lump-struct
                          (-> self entity)
                          'movie-pos
-                         structure
+                         vector
                          :time
                          (the-as float -1000000000.0)
                          )
                         )
                        )
-                      (when v1-3
-                       (let ((a0-5 (-> (the-as vector (-> arg3 param 0)) quad)))
-                        (s.q! v1-3 a0-5)
-                        )
-                       v1-3
+                      (the-as symbol (when v1-3
+                                      (set!
+                                       (-> v1-3 quad)
+                                       (->
+                                        (the-as vector (-> arg3 param 0))
+                                        quad
+                                        )
+                                       )
+                                      (the-as symbol v1-3)
+                                      )
                        )
                       )
                      )
                     ((= v1-0 'actor-pause)
-                     (cond
-                      ((-> arg3 param 0)
-                       (logior! (-> self mask) (process-mask actor-pause))
-                       (let ((v0-1 (the-as none #t)))
-                        (set! (-> self actor-pause) (the-as symbol v0-1))
-                        v0-1
-                        )
-                       )
-                      (else
-                       (logclear! (-> self mask) (process-mask actor-pause))
-                       (set! (-> self actor-pause) #f)
-                       #f
-                       )
+                     (the-as symbol (cond
+                                     ((-> arg3 param 0)
+                                      (logior!
+                                       (-> self mask)
+                                       (process-mask actor-pause)
+                                       )
+                                      (let ((v0-1 #t))
+                                       (set! (-> self actor-pause) v0-1)
+                                       v0-1
+                                       )
+                                      )
+                                     (else
+                                      (logclear!
+                                       (-> self mask)
+                                       (process-mask actor-pause)
+                                       )
+                                      (set! (-> self actor-pause) #f)
+                                      #f
+                                      )
+                                     )
                       )
                      )
                     ((= v1-0 'fade)
                      (process-entity-status! self (entity-perm-status dead) #t)
-                     (deactivate self)
+                     (the-as symbol (deactivate self))
                      )
                     )
      )

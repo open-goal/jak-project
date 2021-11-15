@@ -757,7 +757,7 @@ Val* Compiler::compile_deref(const goos::Object& form, const goos::Object& _rest
     if (!has_constant_idx) {
       index_value = compile_error_guard(field_obj, env)->to_gpr(form, env);
       if (!is_integer(index_value->type())) {
-        throw_compiler_error(form, "Cannot use -> with {}.", field_obj.print());
+        throw_compiler_error(form, "Cannot use -> with field {}.", field_obj.print());
       }
     }
 
