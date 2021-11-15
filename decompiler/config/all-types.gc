@@ -996,6 +996,7 @@
   (yakow-owed-powercell #x297)
 
   (misty-teetertotter-bonk-dax-tutorial #x2a4)
+  (sidekick-hint-misty-get-red-eco #x2a5)
 
   (daxter-blue-eco-plat-tutorial #x2a7)
   (misty-bone-bridge-hint #x2aa)
@@ -10064,6 +10065,31 @@
 
 ;; - Types
 
+(defenum fact-options
+  :bitfield #t
+  :type uint64
+  (vent-blocked 0)
+  (fop1 1)
+  (vent-valve 2)
+  (fop3 3)
+  (fop4 4)
+  (fop5 5)
+  (fop6 6)
+  (fop7 7)
+  (can-collect 8)
+  (fade 9)
+  (large 10)
+  (fop11 11)
+  (powerup 12)
+  (fop13 13)
+  (fop14 14)
+  (fop15 15)
+  (fop16 16)
+  (fop17 17)
+  (eco-blocked 18)
+  (respawn 19)
+  )
+
 (deftype fact-bank (basic)
   ((eco-level-max        float     :offset-assert 4)
    (eco-single-inc       float     :offset-assert 8)
@@ -10091,15 +10117,15 @@
    (pickup-type         pickup-type   :offset-assert 8)
    (pickup-amount       float   :offset-assert 12)
    (pickup-spawn-amount float   :offset-assert 16)
-   (options             uint64  :offset-assert 24)
-   (fade-time           uint64  :offset-assert 32)
+   (options             fact-options  :offset-assert 24)
+   (fade-time           int64   :offset-assert 32)
    )
   :method-count-assert 12
   :size-assert         #x28
   :flag-assert         #xc00000028
   (:methods
     (new (symbol type process-drawable pickup-type float) _type_ 0)
-    (TODO-RENAME-9 (_type_ symbol process-tree fact-info int) uint 9) ;; See nav-enemy::process-drawable-death-event-handler
+    (drop-pickup (_type_ symbol process-tree fact-info int) none 9)
     (reset! (_type_ symbol) none 10)
     (pickup-collectable! (_type_ pickup-type float handle) float 11)
     )
@@ -20696,6 +20722,18 @@
 
 ;; - Types
 
+(defenum collectable-flags
+  :bitfield #t
+  :type uint32
+  (trans 0)
+  (fade 1)
+  (can-collect 2)
+  (fading 3)
+  (suck 4)
+  (ignore-blue 5)
+  (anim 6)
+  )
+
 (deftype collectable (process-drawable)
   ((root-override   collide-shape-moving :score 100 :offset 112)
    (pickup-type     pickup-type          :offset-assert 176)
@@ -20705,18 +20743,18 @@
    (base            vector :inline :offset-assert 208)
    (extra-trans     vector :inline :offset-assert 224)
    (jump-pos        vector :inline :offset-assert 240)
-   (flags           uint32         :offset-assert 256)
-   (birth-time      uint64         :offset-assert 264)
-   (collect-timeout uint64         :offset-assert 272)
-   (fadeout-timeout uint64         :offset-assert 280)
-   (bob-offset      uint64         :offset-assert 288)
+   (flags           collectable-flags  :offset-assert 256)
+   (birth-time      int64          :offset-assert 264)
+   (collect-timeout int64          :offset-assert 272)
+   (fadeout-timeout int64          :offset-assert 280)
+   (bob-offset      int64          :offset-assert 288)
    (bob-amount      float          :offset-assert 296)
    (pickup-handle   handle         :offset-assert 304) ;; not sure it's a handle
    (actor-pause     symbol         :offset-assert 312)
    )
   (:methods
-    (TODO-RENAME-20 (_type_) _type_ 20)
-    (dummy-21 (_type_ uint float) none 21) ;; TODO - weird math issue
+    (initialize (_type_) _type_ 20)
+    (initialize-params (_type_ int float) none 21)
     )
   :heap-base #xd0
 
@@ -20729,11 +20767,11 @@
   ((eco-effect          sparticle-launch-group          :offset-assert 316)
    (collect-effect      sparticle-launch-group          :offset-assert 320)
    (collect-effect2     sparticle-launch-group          :offset-assert 324)
-   (collect-effect-time uint64         :offset-assert 328)
-   (respawn-delay       uint64         :offset-assert 336)
-   (sound-name          sound-spec          :offset-assert 344)
+   (collect-effect-time seconds        :offset-assert 328)
+   (respawn-delay       int64          :offset-assert 336)
+   (sound-name          sound-spec     :offset-assert 344)
    (target              handle         :offset-assert 352)
-   (suck-time           uint64         :offset-assert 360)
+   (suck-time           int64          :offset-assert 360)
    (suck-y-offset       float          :offset-assert 368)
    (speed               vector :inline :offset-assert 384)
    (movie-pos-index     int32          :offset-assert 400)
@@ -20745,8 +20783,8 @@
     (jump () _type_ :state 25)
     (notice-blue (handle) _type_ :state 26) ;; state
     (get-pickup-sound (_type_ pickup-type) ambient-sound 27)
-    (dummy-28 (_type_ res-lump pickup-type float) object 28)
-    (update-sound! (_type_) none 29) ;; something to do with particles too
+    (initialize-eco (_type_ entity-actor pickup-type float) object 28)
+    (animate (_type_) none 29)
     (blocked () _type_ :state 30)
     )
   :heap-base #x130
@@ -20829,11 +20867,12 @@
   :flag-assert         #x1f01300198
   )
 
+(declare-type vent process-drawable)
 (deftype ecovalve (process-drawable)
   ((root-override collide-shape-moving :score 100 :offset 112)
    (offset        vector :inline :offset-assert 176)
    (offset-target vector :inline :offset-assert 192)
-   (block-func (function ecovalve symbol) :offset-assert 208))
+   (block-func (function vent symbol) :offset-assert 208))
   :heap-base #x70
   :method-count-assert 20
   :size-assert         #xd4
@@ -20848,10 +20887,10 @@
    (collect-effect-time uint64 :offset-assert 192)
    (blocker             entity-actor  :offset-assert 200)
    (block-func          (function vent symbol)  :offset-assert 204)
-   (pickup-handle       handle :offset-assert 208)) ;; not sure handle
-
+   (pickup-handle       handle :offset-assert 208)
+   )
   (:methods
-    (dummy-20 (_type_ res-lump pickup-type) none 20)
+    (initialize (_type_ entity-actor pickup-type) none 20)
     )
 
   :heap-base #x70
@@ -20896,12 +20935,12 @@
 
 (define-extern vent-standard-event-handler (function process int symbol event-message-block object :behavior vent))
 (define-extern ecovalve-init-by-other (function (function vent symbol) none :behavior ecovalve))
-(define-extern birth-pickup-at-point (function vector int float symbol process-drawable fact-info (pointer process)))
+(define-extern birth-pickup-at-point (function vector pickup-type float symbol process-drawable fact-info (pointer process) :behavior process))
 (define-extern fuel-cell-pick-anim (function process-drawable spool-anim))
 (define-extern othercam-init-by-other (function process-taskable symbol symbol symbol none :behavior othercam))
 (define-extern fuel-cell-animate (function none :behavior fuel-cell))
 (define-extern add-blue-motion (function symbol symbol symbol symbol symbol :behavior eco-blue))
-(define-extern check-blue-suck (function eco-blue uint :behavior eco-blue))
+(define-extern check-blue-suck (function process-drawable none :behavior eco-blue))
 (define-extern initialize-eco-by-other (function vector vector fact-info none :behavior eco))
 (define-extern add-blue-shake (function vector vector vector vector))
 (define-extern money-init-by-other (function vector vector fact-info entity none :behavior money))
@@ -22800,7 +22839,7 @@
 (define-extern nav-enemy-rnd-percent? (function float symbol))
 (define-extern nav-enemy-default-event-handler (function process int symbol event-message-block none :behavior nav-enemy)) ;; TODO - last arg is definitely a vector...but also not?
 (define-extern nav-enemy-jump-event-handler (function process int symbol event-message-block object :behavior nav-enemy))
-(define-extern process-drawable-death-event-handler (function process int symbol event-message-block uint :behavior process-drawable)) ;; First two args are unused
+(define-extern process-drawable-death-event-handler (function process int symbol event-message-block none :behavior process-drawable)) ;; First two args are unused
 (define-extern nav-enemy-patrol-post (function none :behavior nav-enemy))
 (define-extern nav-enemy-chase-post (function none :behavior nav-enemy))
 (define-extern nav-enemy-flee-post (function none :behavior nav-enemy))
