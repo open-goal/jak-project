@@ -6279,8 +6279,6 @@
 (declare-type drawable-error drawable)
 (deftype drawable (basic)
   ((id      int16          :offset-assert 4)
-   (length  int16       :offset 6)
-   (error   (pointer drawable-error)          :offset-assert 8) ;; - from default-menu::build-instance-list
    (bsphere vector :inline :offset-assert 16)
    )
   :method-count-assert 18
@@ -6288,7 +6286,7 @@
   :flag-assert         #x1200000020
   (:methods
     (login (_type_) _type_ 9) ;; probably login or init.
-    (draw (_type_ _type_ display-frame) _type_ 10) ;; display-frame is from the method inspect tool
+    (draw (_type_ drawable display-frame) none 10) ;; display-frame is from the method inspect tool
     (collide-with-box (_type_ int collide-list) none 11)
     (collide-y-probe (_type_ int collide-list) none 12)
     (collide-ray (_type_ int collide-list) none 13)
@@ -6317,7 +6315,8 @@
 ;; - Types
 
 (deftype drawable-group (drawable)
-  ((data    drawable 1  :offset-assert 32)
+  ((length  int16       :offset 6)
+   (data    drawable 1  :offset-assert 32)
    )
   (:methods
     (new (symbol type int) _type_)
@@ -6339,7 +6338,8 @@
 ;; - Types
 
 (deftype drawable-inline-array (drawable)
-  ()
+  ((length  int16          :offset 6) ;; this is kinda weird.
+   )
   :method-count-assert 18
   :size-assert         #x20
   :flag-assert         #x1200000020
@@ -9465,7 +9465,8 @@
   )
 
 (deftype prototype-inline-array-shrub (drawable)
-  ((data    prototype-bucket-shrub 1 :inline :offset 32)
+  ((length  int16                     :offset 6)
+   (data    prototype-bucket-shrub 1 :inline :offset 32)
    (_pad uint32)
    )
   :method-count-assert 18
@@ -9526,6 +9527,7 @@
 
 (deftype instance (drawable)
   ((bucket-index uint16           :offset 6)
+   (error   (pointer drawable-error) :offset 8) ;; - from default-menu::build-instance-list
    (origin       matrix4h :inline :offset-assert 32) ; TODO - this can also be a float, default-menu::lambda_62
    (unknown-vector vector :inline :offset 32) ;; todo, this might not be right.
    (wind-index   uint16           :offset 62)
@@ -9936,7 +9938,7 @@
    (slope-up-traction float      :offset-assert 88)
    (align-speed       float      :offset-assert 92)
    ;; hook went here
-   (active-hook       (function surface object object int float)      :offset 128) ;; from logic-target::flag-setup not 100% sure but seems to pass no args WRONG it passes FOUR. See collide-edge-grab::lambda0
+   (active-hook       (function none)      :offset 128) ;; from logic-target::flag-setup not 100% sure but seems to pass no args
    (touch-hook        (function none)      :offset-assert 132) ;; from logic-target::flag-setup not 100% sure but seems to pass no args
    (impact-hook       function      :offset-assert 136)
    (mult-hook         (function surface surface surface int none)     :offset-assert 140)
@@ -11156,7 +11158,7 @@
 
 (deftype collide-prim-core (structure)
   ((world-sphere vector  :inline :offset-assert 0)
-   (collide-as   handle          :offset-assert 16) ; handle is assumed
+   (collide-as   uint64          :offset-assert 16)
    (action       uint32          :offset-assert 24)
    (offense      int8            :offset-assert 28)
    (prim-type    int8            :offset-assert 29)
@@ -11169,14 +11171,14 @@
   )
 
 (deftype collide-shape-prim (basic)
-  ((cshape          collide-shape                     :offset-assert 4)
+  ((cshape          collide-shape             :offset-assert 4)
    (prim-id         uint32                    :offset-assert 8)
    (transform-index int8                      :offset-assert 12)
    (prim-core       collide-prim-core :inline :offset-assert 16)
    (local-sphere    vector            :inline :offset-assert 48)
-   (collide-with    handle                    :offset-assert 64) ;; assumed its a handle
+   (collide-with    uint64                    :offset-assert 64)
    (world-sphere    vector            :inline :offset 16)
-   (collide-as      handle                    :offset 32) ;; assumed its a handle
+   (collide-as      uint64                    :offset 32)
    (action          uint32                    :offset 40)
    (offense         int8                      :offset 44)
    (prim-type       int8                      :offset 45)
@@ -11186,7 +11188,7 @@
   :size-assert         #x48
   :flag-assert         #x1c00000048
   (:methods
-    (new (symbol type basic uint int) _type_ 0)
+    (new (symbol type collide-shape uint int) _type_ 0)
     (dummy-9 (_type_ vector) object 9) ;; ret - symbol | float
     (dummy-10 (_type_ uint) collide-shape-prim 10)
     (debug-draw-world-sphere (_type_) symbol 11)
@@ -11216,7 +11218,7 @@
   :size-assert         #x4c
   :flag-assert         #x1c0000004c
   (:methods
-    (new (symbol type basic uint) _type_ 0)
+    (new (symbol type collide-shape uint) _type_ 0)
     )
   )
 
@@ -11230,7 +11232,7 @@
   :size-assert         #x5c
   :flag-assert         #x1d0000005c
   (:methods
-    (new (symbol type basic uint uint) _type_ 0)
+    (new (symbol type collide-shape uint uint) _type_ 0)
     (change-mesh (_type_ int) none 28)
     )
   )
@@ -11245,7 +11247,7 @@
   :size-assert         #x54
   :flag-assert         #x1e00000054
   (:methods
-    (new (symbol type basic uint int) _type_ 0)
+    (new (symbol type collide-shape uint int) _type_ 0)
     (append-prim (_type_ collide-shape-prim) none 28)
     (dummy-29 (_type_ uint) none 29)
     )
@@ -11265,14 +11267,14 @@
    (event-other           basic              :offset-assert 156)
    (root-prim             collide-shape-prim              :offset-assert 160)
    (riders                collide-sticky-rider-group              :offset-assert 164)
-   (backup-collide-as     handle             :offset-assert 168) ;; assumed
-   (backup-collide-with   handle             :offset-assert 176) ;; assumed
+   (backup-collide-as     uint64             :offset-assert 168)
+   (backup-collide-with   uint64             :offset-assert 176)
    )
   :method-count-assert 56
   :size-assert         #xb8
   :flag-assert         #x38000000b8
   (:methods
-    (new (symbol type process collide-list-enum) _type_)
+    (new (symbol type process-drawable collide-list-enum) _type_)
     (TODO-RENAME-28 (_type_ vector) none 28)
     (dummy-29 (_type_ int) none 29)
     (TODO-RENAME-30 (_type_ vector) none 30)
@@ -12265,7 +12267,7 @@
 (deftype collide-using-spheres-params (structure)
   ((spheres      (pointer sphere)  :offset-assert 0)
    (num-spheres  uint32  :offset-assert 4)
-   (collide-with handle  :offset-assert 8)
+   (collide-with uint64  :offset-assert 8)
    (proc         process-drawable   :offset-assert 16)
    (ignore-pat   uint32  :offset-assert 20) ;; flags / bitfield i bet
    (solid-only   basic   :offset-assert 24) ;; probably a symbol
@@ -18425,7 +18427,7 @@
 (define-extern camera-bounding-box-draw (function bounding-box basic rgba none))
 (define-extern collide-planes-test0 (function vector float float vector vector bounding-box vector float))
 (define-extern collide-planes-test1 (function vector float vector (inline-array vector) vector float))
-(define-extern camera-cross (function vector vector vector vector4w float basic))
+(define-extern camera-cross (function vector vector vector vector4w meters basic))
 (define-extern collide-planes-intersect (function vector (inline-array bounding-box) vector float))
 (define-extern collide-planes (function (inline-array vector) int vector (inline-array vector) symbol))
 
