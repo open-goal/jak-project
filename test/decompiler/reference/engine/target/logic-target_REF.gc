@@ -561,7 +561,7 @@
     arg1
     "~0ky:~,,2M t:~d cy: ~,,2M my: ~,,2M impv:~,,2M "
     (-> arg0 control unknown-vector52 y)
-    (- (-> *display* base-frame-counter) (-> arg0 control unknown-dword10))
+    (- (-> *display* base-frame-counter) (-> arg0 control unknown-dword11))
     (- (-> arg0 control trans y) (-> arg0 control unknown-vector52 y))
     (-
      (-> arg0 control unknown-vector111 y)
@@ -1382,7 +1382,7 @@
   ((-> self control unknown-surface01 active-hook))
   (cond
    ((logtest? (-> self control status) 1)
-    (set! (-> self control unknown-dword10) (-> *display* base-frame-counter))
+    (set! (-> self control unknown-dword11) (-> *display* base-frame-counter))
     (set! (-> self control unknown-vector52 quad) (-> self control trans quad))
     (if
      (and
@@ -1603,7 +1603,7 @@
    (when
     (and
      (>=
-      (- (-> *display* base-frame-counter) (-> self control unknown-dword10))
+      (- (-> *display* base-frame-counter) (-> self control unknown-dword11))
       600
       )
      (and
@@ -1801,7 +1801,7 @@
        (vector-!
         (new-stack-vector0)
         (-> s5-0 center-hold)
-        (the-as vector (&-> (-> self control) unknown-cspace00 bone))
+        (-> self control unknown-vector90)
         )
        )
       )
@@ -1815,7 +1815,7 @@
          )
         )
        (vector-normalize! s4-1 1228.8)
-       (TODO-RENAME-28 (-> self control))
+       (TODO-RENAME-28 (-> self control) s4-1)
        (vector-float*!
         (-> self control rider-last-move)
         s4-1
@@ -1920,19 +1920,20 @@
      a1-7
      (-> *display* frames-per-second)
      )
+    (set!
+     (-> self control rider-time)
+     (the-as uint (-> *display* base-frame-counter))
+     )
+    (TODO-RENAME-28 (-> self control) a1-7)
     )
    )
-  (set!
-   (-> self control rider-time)
-   (the-as uint (-> *display* base-frame-counter))
-   )
-  (TODO-RENAME-28 (-> self control))
   (set! (-> self control unknown-float110) 0.0)
   (dummy-17 self)
   (none)
   )
 
 ;; definition for function target-compute-pole
+;; INFO: Return type mismatch symbol vs none.
 ;; Used lq/sq
 (defbehavior target-compute-pole target ()
   (let* ((s4-0 (handle->process (-> self control unknown-handle10)))
@@ -1965,7 +1966,7 @@
       (send-event *camera* 'ease-in 0.5 v1-8)
       )
      (vector-segment-distance-point!
-      (the-as vector (&-> (-> self control) unknown-cspace00 bone))
+      (-> self control unknown-vector90)
       s3-0
       s2-0
       s5-0
@@ -1989,7 +1990,7 @@
       (add-debug-sphere
        #t
        (bucket-id debug-draw0)
-       (the-as vector (&-> (-> self control) unknown-cspace00 bone))
+       (-> self control unknown-vector90)
        819.2
        (new 'static 'rgba :r #xff :a #x80)
        )
@@ -2018,11 +2019,7 @@
      )
     (let
      ((s4-2
-       (vector-!
-        (new-stack-vector0)
-        s5-0
-        (the-as vector (&-> (-> self control) unknown-cspace00 bone))
-        )
+       (vector-! (new-stack-vector0) s5-0 (-> self control unknown-vector90))
        )
       )
      (cond
@@ -2030,12 +2027,7 @@
         (< 2457.6 (vector-length s4-2))
         (not (-> self control unknown-int20))
         )
-       (let* ((s5-1 (-> self control))
-              (s3-1 (method-of-object s5-1 TODO-RENAME-28))
-              )
-        (vector-normalize! s4-2 2457.6)
-        (s3-1 s5-1)
-        )
+       (TODO-RENAME-28 (-> self control) (vector-normalize! s4-2 2457.6))
        )
       (else
        (set! (-> self control unknown-int20) (the-as int #t))
@@ -2257,15 +2249,11 @@
     s5-0
     (the-as cspace (-> self control unknown-cspace00 joint))
     )
-   (vector-average!
-    (the-as vector (&-> (-> self control) unknown-cspace00 bone))
-    gp-0
-    s5-0
-    )
+   (vector-average! (-> self control unknown-vector90) gp-0 s5-0)
    )
   (vector-!
    (-> self control unknown-vector91)
-   (the-as vector (&-> (-> self control) unknown-cspace00 bone))
+   (-> self control unknown-vector90)
    (-> self control trans)
    )
   (cond
@@ -2552,7 +2540,7 @@
     (vector-!
      (-> self control unknown-vector12)
      (-> self control unknown-vector11)
-     (-> self control unknown-vector13)
+     (-> self control unknown-vector14)
      )
     (let ((a1-3 (new 'stack-no-clear 'collide-edge-hold-list)))
      (set! (-> a1-3 num-allocs) (the-as uint 1))
@@ -2679,7 +2667,7 @@
   (vector-!
    (-> self control unknown-vector12)
    (-> self control unknown-vector11)
-   (-> self control unknown-vector13)
+   (-> self control unknown-vector14)
    )
   (let ((a1-2 (new 'stack-no-clear 'collide-edge-hold-list)))
    (set! (-> a1-2 num-allocs) (the-as uint 1))
@@ -2717,7 +2705,7 @@
    )
   (quaternion-identity! (-> self control unknown-quaternion01))
   (set! (-> self control unknown-float00) 0.0)
-  (set! (-> self control unknown-dword10) (-> *display* base-frame-counter))
+  (set! (-> self control unknown-dword11) (-> *display* base-frame-counter))
   (set! (-> self control unknown-float80) 0.0)
   (set! (-> self control unknown-float82) 32.0)
   (set! (-> self cam-user-mode) 'normal)
@@ -2754,13 +2742,13 @@
     (set! (-> s4-0 collide-with) (the-as uint #x2bef))
     (set! (-> s4-0 prim-core offense) 1)
     (set! (-> s4-0 prim-core action) (the-as uint 5))
-    (dummy-46 s5-0)
+    (set-root-prim! s5-0 s4-0)
     (let ((s3-0 (new 'process 'collide-shape-prim-sphere s5-0 (the-as uint 6))))
      (set! (-> s3-0 prim-core action) (the-as uint 5))
      (set! (-> s3-0 prim-core collide-as) (the-as uint 16))
      (set! (-> s3-0 collide-with) (the-as uint #x2bef))
      (set! (-> s3-0 prim-core offense) 1)
-     (dummy-28 s4-0)
+     (append-prim s4-0 s3-0)
      (set! (-> s5-0 unknown-sphere-array00 0) s3-0)
      )
     (let
@@ -2769,7 +2757,7 @@
      (set! (-> s3-1 prim-core collide-as) (the-as uint 16))
      (set! (-> s3-1 collide-with) (the-as uint #x2bef))
      (set! (-> s3-1 prim-core offense) 1)
-     (dummy-28 s4-0)
+     (append-prim s4-0 s3-1)
      (set! (-> s5-0 unknown-sphere-array00 1) s3-1)
      )
     (let
@@ -2778,28 +2766,28 @@
      (set! (-> s3-2 prim-core collide-as) (the-as uint 16))
      (set! (-> s3-2 collide-with) (the-as uint #x2bef))
      (set! (-> s3-2 prim-core offense) 1)
-     (dummy-28 s4-0)
+     (append-prim s4-0 s3-2)
      (set! (-> s5-0 unknown-sphere-array00 2) s3-2)
      )
     (let
      ((s3-3 (new 'process 'collide-shape-prim-sphere s5-0 (the-as uint 32))))
-     (dummy-28 s4-0)
+     (append-prim s4-0 s3-3)
      (set! (-> s5-0 unknown-sphere00) s3-3)
      )
     (let
      ((s3-4 (new 'process 'collide-shape-prim-sphere s5-0 (the-as uint 64))))
-     (dummy-28 s4-0)
+     (append-prim s4-0 s3-4)
      (set! (-> s5-0 unknown-sphere01) s3-4)
      )
     (let
      ((s3-5 (new 'process 'collide-shape-prim-sphere s5-0 (the-as uint 128))))
-     (dummy-28 s4-0)
+     (append-prim s4-0 s3-5)
      (set! (-> s5-0 unknown-sphere02) s3-5)
      )
     )
    )
   (target-collide-set! 'normal 0.0)
-  (dummy-50 (-> self control))
+  (backup-collide-with-as (-> self control))
   (set! (-> self game) *game-info*)
   (TODO-RENAME-30 (-> self control) (-> arg0 trans))
   (set! (-> (&-> (-> self control) unknown-qword00) 0) (-> arg0 trans quad))
