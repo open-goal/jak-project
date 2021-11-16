@@ -18,7 +18,8 @@ bool looks_like_tfrag_init(const DmaFollower& follow) {
 TFragment::TFragment(const std::string& name, BucketId my_id, bool child_mode)
     : BucketRenderer(name, my_id),
       m_child_mode(child_mode),
-      m_direct_renderer(fmt::format("{}.direct", name), my_id, 1024, DirectRenderer::Mode::NORMAL) {
+      m_direct_renderer(fmt::format("{}.direct", name), my_id, 1024, DirectRenderer::Mode::NORMAL),
+      m_buffered_renderer(my_id) {
   for (auto& buf : m_buffered_data) {
     for (auto& x : buf.pad) {
       x = 0xff;
@@ -166,7 +167,7 @@ void TFragment::handle_initialization(DmaFollower& dma,
   assert(setup_test.size_bytes == 32);
   memcpy(m_test_setup, setup_test.data, 32);
   if (m_use_buffered_renderer) {
-    m_buffered_renderer.add_gif_data_sized(m_test_setup, 32, render_state, prof);
+    m_buffered_renderer.add_gif_data_sized(m_test_setup, 32);
   } else {
     m_direct_renderer.render_gif(m_test_setup, 32, render_state, prof);
   }

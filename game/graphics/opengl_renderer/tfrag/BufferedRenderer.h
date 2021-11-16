@@ -246,7 +246,7 @@ struct DrawList {
 
 class Renderer {
  public:
-  Renderer();
+  Renderer(BucketId my_id);
   ~Renderer();
   void render_list(const DrawList& list,
                    SharedRenderState* render_state,
@@ -261,9 +261,11 @@ class Renderer {
 
   void draw_debug_window();
   void clear_stats();
+  BucketId my_id() const { return m_my_id; }
 
  private:
   static constexpr int MAX_VERTS = 400000;
+  BucketId m_my_id;
 
   struct {
     int triangles = 0;
@@ -282,17 +284,15 @@ class Renderer {
 
 class Builder {
  public:
-  u32 add_gif_data(const void* data, SharedRenderState* render_state, ScopedProfilerNode& prof);
-  void add_gif_data_sized(const void* data,
-                          u32 expected_size,
-                          SharedRenderState* render_state,
-                          ScopedProfilerNode& prof);
+  Builder(BucketId my_id);
+  u32 add_gif_data(const void* data);
+  void add_gif_data_sized(const void* data, u32 expected_size);
   void flush(SharedRenderState* render_state, ScopedProfilerNode& prof);
   void draw_debug_window();
   void reset_state();
 
  private:
-  void handle_ad(const u8* data, SharedRenderState* render_state, ScopedProfilerNode& prof);
+  void handle_ad(const u8* data);
   void handle_test1(u64 val);
   void handle_tex0_1(u64 val);
   void handle_tex1_1(u64 val);
@@ -302,20 +302,15 @@ class Builder {
 
   void handle_st_packed(const u8* data);
   void handle_rgbaq_packed(const u8* data);
-  void handle_xyzf2_packed(const u8* data,
-                           SharedRenderState* render_state,
-                           ScopedProfilerNode& prof);
-  void handle_xyzf2_common(u32 x,
-                           u32 y,
-                           u32 z,
-                           u8 f,
-                           SharedRenderState* render_state,
-                           ScopedProfilerNode& prof,
-                           bool advance);
+  void handle_xyzf2_packed(const u8* data);
+  void handle_xyzf2_common(u32 x, u32 y, u32 z, u8 f, bool advance);
   bool handle_tri_strip_add(u32 new_vertex, bool advance);
-  void add_prim_now(Triangle tri, SharedRenderState* render_state, ScopedProfilerNode& prof);
+  void add_prim_now(Triangle tri);
 
   u32 create_vertex_now(u32 x, u32 y, u32 z);
+  BucketId my_id() const { return m_my_id; }
+
+  BucketId m_my_id;
 
   DrawList m_list;
   Renderer m_renderer;

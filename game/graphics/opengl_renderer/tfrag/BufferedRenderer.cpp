@@ -80,7 +80,7 @@ std::string DrawMode::to_string() const {
   return result;
 }
 
-Renderer::Renderer() {
+Renderer::Renderer(BucketId my_id) : m_my_id(my_id) {
   glGenBuffers(1, &m_ogl.vertex_buffer);
   glGenBuffers(1, &m_ogl.index_buffer);
   glGenVertexArrays(1, &m_ogl.vao);
@@ -254,19 +254,14 @@ void Renderer::setup_opengl_excluding_textures(SharedRenderState* render_state, 
 void Renderer::render_group(const DrawGroup& group,
                             SharedRenderState* render_state,
                             ScopedProfilerNode& prof,
-                            const std::vector<Vertex>& vertices) {
-  // todo
+                            const std::vector<Vertex>& /*vertices*/) {
   TextureRecord* tex = nullptr;
 
   tex = render_state->texture_pool->lookup(group.tbp);
 
   if (!tex) {
-    // TODO Add back
     fmt::print("Failed to find texture at {}, using random\n", group.tbp);
     tex = render_state->texture_pool->get_random_texture();
-    if (tex) {
-      // fmt::print("Successful texture lookup! {} {}\n", tex->page_name, tex->name);
-    }
   }
   assert(tex);
 
@@ -296,20 +291,6 @@ void Renderer::render_group(const DrawGroup& group,
 
       glBufferSubData(GL_ELEMENT_ARRAY_BUFFER, 0, draw.triangles.size() * sizeof(u32) * 3,
                       draw.triangles.data());
-
-      //      fmt::print("drawing: {}\n", draw.triangles.size());
-      //      for (auto x : draw.triangles) {
-      //        fmt::print(" {} {} {}\n", x.verts[0], x.verts[1], x.verts[2]);
-      //        for (auto vert : x.verts) {
-      //          auto& v = vertices.at(vert);
-      //          fmt::print(" {} {} {}", v.xyz.x(), v.xyz.y(), v.xyz.z());
-      //        }
-      //        fmt::print("\n");
-      //      }
-      //      glDisable(GL_DEPTH_TEST);
-      //      glDepthFunc(GL_ALWAYS);
-      glDisable(GL_BLEND);
-
       glDrawElements(GL_TRIANGLES, draw.triangles.size() * 3, GL_UNSIGNED_INT, (void*)0);
     }
   }
@@ -324,11 +305,10 @@ void Renderer::clear_stats() {
   m_stats = {};
 }
 
-void Builder::add_gif_data_sized(const void* data,
-                                 u32 expected_size,
-                                 SharedRenderState* render_state,
-                                 ScopedProfilerNode& prof) {
-  if (expected_size != add_gif_data(data, render_state, prof)) {
+Builder::Builder(BucketId my_id) : m_my_id(my_id), m_renderer(my_id) {}
+
+void Builder::add_gif_data_sized(const void* data, u32 expected_size) {
+  if (expected_size != add_gif_data(data)) {
     assert(false);  // todo, might be too strict due to alignment crap
   }
 }
@@ -354,11 +334,12 @@ void Builder::reset_state() {
   m_renderer.clear_stats();
   m_vertex_queue = {};
   m_current_mode.enable_depth_write();
+  m_current_mode.enable_ab();
+  m_current_mode.enable_at();
+  m_current_mode.set_alpha_blend(DrawMode::AlphaBlend::SRC_DST_SRC_DST);
 }
 
-u32 Builder::add_gif_data(const void* data_in,
-                          SharedRenderState* render_state,
-                          ScopedProfilerNode& prof) {
+u32 Builder::add_gif_data(const void* data_in) {
   bool eop = false;
   auto* data = (const u8*)data_in;
 
@@ -384,7 +365,7 @@ u32 Builder::add_gif_data(const void* data_in,
         for (u32 reg = 0; reg < nreg; reg++) {
           switch (reg_desc[reg]) {
             case GifTag::RegisterDescriptor::AD:
-              handle_ad(data + offset, render_state, prof);
+              handle_ad(data + offset);
               break;
             case GifTag::RegisterDescriptor::ST:
               handle_st_packed(data + offset);
@@ -393,7 +374,7 @@ u32 Builder::add_gif_data(const void* data_in,
               handle_rgbaq_packed(data + offset);
               break;
             case GifTag::RegisterDescriptor::XYZF2:
-              handle_xyzf2_packed(data + offset, render_state, prof);
+              handle_xyzf2_packed(data + offset);
               break;
               //            case GifTag::RegisterDescriptor::PRIM:
               //              handle_prim_packed(data + offset, render_state, prof);
@@ -443,7 +424,7 @@ u32 Builder::add_gif_data(const void* data_in,
   return offset;
 }
 
-void Builder::handle_ad(const u8* data, SharedRenderState* render_state, ScopedProfilerNode& prof) {
+void Builder::handle_ad(const u8* data) {
   u64 value;
   GsRegisterAddress addr;
   memcpy(&value, data, sizeof(u64));
@@ -660,9 +641,7 @@ void Builder::handle_rgbaq_packed(const u8* data) {
   m_rgba[3] = data[12];
 }
 
-void Builder::handle_xyzf2_packed(const u8* data,
-                                  SharedRenderState* render_state,
-                                  ScopedProfilerNode& prof) {
+void Builder::handle_xyzf2_packed(const u8* data) {
   u32 x, y;
   memcpy(&x, data, 4);
   memcpy(&y, data + 4, 4);
@@ -673,16 +652,10 @@ void Builder::handle_xyzf2_packed(const u8* data,
 
   u8 f = (upper >> 36);
   bool adc = upper & (1ull << 47);
-  handle_xyzf2_common(x, y, z, f, render_state, prof, !adc);
+  handle_xyzf2_common(x, y, z, f, !adc);
 }
 
-void Builder::handle_xyzf2_common(u32 x,
-                                  u32 y,
-                                  u32 z,
-                                  u8 f,
-                                  SharedRenderState* render_state,
-                                  ScopedProfilerNode& prof,
-                                  bool advance) {
+void Builder::handle_xyzf2_common(u32 x, u32 y, u32 z, u8 /*f*/, bool advance) {
   // first, create a vertex:
   u32 new_vertex = create_vertex_now(x, y, z);
 
@@ -698,15 +671,11 @@ void Builder::handle_xyzf2_common(u32 x,
 
   if (new_prim) {
     // todo, winding order?
-    add_prim_now({m_vertex_queue.verts[0], m_vertex_queue.verts[1], m_vertex_queue.verts[2]},
-                 render_state, prof);
+    add_prim_now({m_vertex_queue.verts[0], m_vertex_queue.verts[1], m_vertex_queue.verts[2]});
   }
 }
 
-void Builder::add_prim_now(Triangle tri,
-                           SharedRenderState* render_state,
-                           ScopedProfilerNode& prof) {
-  // todo: this is slow and should be cached, probably for a big speedup.
+void Builder::add_prim_now(Triangle tri) {
   if (m_cache.last_tbp == m_current_tbp && m_cache.last_mode == m_current_mode.as_int()) {
     m_cache.draw->triangles.push_back(tri);
   } else {
@@ -721,11 +690,9 @@ void Builder::add_prim_now(Triangle tri,
     m_cache.last_mode = m_current_mode.as_int();
     m_cache.last_tbp = m_current_tbp;
     m_cache.draw = draw;
-
   }
 
   m_stats.m_tri++;
-
 }
 
 u32 Builder::create_vertex_now(u32 x, u32 y, u32 z) {

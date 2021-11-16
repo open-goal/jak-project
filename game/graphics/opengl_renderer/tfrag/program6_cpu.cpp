@@ -1164,7 +1164,7 @@ void TFragment::XGKICK(u32 addr, SharedRenderState* render_state, ScopedProfiler
   if (!m_skip_xgkick) {
     if (m_use_buffered_renderer) {
       m_buffered_renderer.add_gif_data(
-          &m_kick_data.pad[(addr - TFragDataMem::TFragKickZoneData) * 16], render_state, prof);
+          &m_kick_data.pad[(addr - TFragDataMem::TFragKickZoneData) * 16]);
     } else {
       m_direct_renderer.render_gif(&m_kick_data.pad[(addr - TFragDataMem::TFragKickZoneData) * 16],
                                    UINT32_MAX, render_state, prof);

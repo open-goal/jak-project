@@ -119,7 +119,7 @@ int IsPressed(MappingInfo& mapping, Button button, int pad = 0) {
 
 // returns the value of the analog axis (in the future, likely pressure sensitive if we support it?)
 // if invalid or otherwise -- returns 127 (analog stick neutral position)
-int AnalogValue(MappingInfo& mapping, Analog analog, int pad = 0) {
+int AnalogValue(MappingInfo& /*mapping*/, Analog analog, int pad = 0) {
   if (CheckPadIdx(pad) == -1) {
     return 127;
   }
