@@ -640,10 +640,7 @@ std::string ValueType::diff_impl(const Type& other_) const {
 // This means this type behaves like a C pointer - the thing that's passed around is a reference
 // to some memory somewhere.
 
-ReferenceType::ReferenceType(std::string parent,
-                             std::string name,
-                             bool is_boxed,
-                             int heap_base)
+ReferenceType::ReferenceType(std::string parent, std::string name, bool is_boxed, int heap_base)
     : Type(std::move(parent), std::move(name), is_boxed, heap_base) {}
 
 /*!
