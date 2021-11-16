@@ -14,6 +14,7 @@ struct DeftypeResult {
   TypeSpec type;
   Type* type_info = nullptr;
   bool create_runtime_type = true;
+  bool generate_inspect = true;
 };
 
 DeftypeResult parse_deftype(const goos::Object& deftype, TypeSystem* ts);
