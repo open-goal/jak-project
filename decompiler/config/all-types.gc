@@ -954,8 +954,10 @@
   (firecanyon-not-enough-cells #x24f)
 
   (sidekick-hint-orb-cache-top #x251)
-  (daxter-launcher-no-eco #x25c)
+
   (jungle-precursorbridge-hint #x25b)
+  (daxter-launcher-no-eco #x25c)
+
   (beach-gimmie #x262)
   (beach-sentinel #x263)
   (jungle-canyon-end #x264)
@@ -1225,10 +1227,9 @@
 
 ;; - Types
 
-(declare-type res-lump basic)
 (define-extern process-tree type) ; deftype provided by C Kernel
 (declare-type process basic)
-(declare-type res-lump basic)
+(declare-type entity-actor basic)
 (deftype process-tree (basic)
   ((name basic :offset-assert 4)
    (mask process-mask :offset-assert 8)
@@ -1242,7 +1243,7 @@
     (new (symbol type basic) _type_ 0)
     (activate (_type_ process-tree basic pointer) process-tree 9)
     (deactivate  (_type_) none 10)
-    (copy-defaults! (_type_ res-lump) none 11)
+    (init-from-entity! (_type_ entity-actor) none 11)
     (run-logic? (_type_) symbol 12)
     (dummy-method () none 13)
     )
@@ -1252,7 +1253,7 @@
   )
 
 (deftype stack-frame (basic)
-  ((name basic :offset 4)
+  ((name symbol :offset 4)
    (next stack-frame :offset 8) ;; which way does this point?
    )
   :size-assert #xc
@@ -1423,7 +1424,7 @@
    (event (function process int symbol event-message-block object)  :offset-assert  32)
    )
   (:methods
-    (new (symbol type basic function
+    (new (symbol type symbol function
           (function none)
           function
           (function none)
@@ -5285,7 +5286,7 @@
     (activate-levels! (_type_) int 12)
     (debug-print-entities (_type_ symbol type) none 13)
     (debug-draw-actors (_type_ symbol) none 14)
-    (dummy-15 (_type_) object 15)
+    (actors-update (_type_) object 15)
     (level-update (_type_) int 16)
     (level-get-target-inside (_type_) level 17)
     (alloc-levels! (_type_ symbol) int 18)
@@ -6159,7 +6160,7 @@
 (define-extern *display-vol-marks* symbol)
 (define-extern *display-water-marks* symbol)
 (define-extern *display-actor-anim* symbol)
-(define-extern *display-process-anim* symbol)
+(define-extern *display-process-anim* (pointer process))
 (define-extern *display-actor-vis* symbol)
 (define-extern *display-actor-graph* symbol)
 (define-extern *display-level-border* symbol)
@@ -13358,7 +13359,7 @@
   :size-assert         #x40
   :flag-assert         #xa00000040
   (:methods
-    (dummy-9 (_type_ vector) none 9)
+    (birth? (_type_ vector) symbol 9)
     )
   )
 
@@ -13447,7 +13448,7 @@
   (
     (nav-mesh nav-mesh :offset-assert 52)
     (etype type :offset-assert 56) ;; probably type
-    (task uint8 :offset-assert 60)
+    (task game-task :offset-assert 60)
     (vis-id uint16 :offset-assert 62)
     (vis-id-signed int16 :offset 62) ;; added
     (quat quaternion :inline :offset-assert 64)
@@ -14842,6 +14843,12 @@
     (draw-bad-disc (_type_ font-context) none 57)
     (draw-quit (_type_ font-context) none 58)
     )
+  (:states
+    progress-gone
+    progress-coming-in
+    progress-going-out
+    progress-waiting
+    )
   )
 
 ;; - Symbols
@@ -15169,7 +15176,7 @@
   :flag-assert         #x24000000e0
   (:methods
     (new (symbol type collide-shape int float) _type_)
-    (dummy-9 () none 9)
+    (dummy-9 (_type_) none 9)
     (point-in-bounds? (_type_ vector) symbol 10)
     (dummy-11 (_type_ vector) none 11)
     (dummy-12 () none 12)
@@ -18946,7 +18953,7 @@
   :flag-assert         #xc0000061c
   (:methods
     (new (symbol type process-drawable) _type_ 0)
-    (dummy-9 () none 9)
+    (dummy-9 (_type_) none 9)
     (dummy-10 () none 10)
     (TODO-RENAME-11 (_type_) symbol 11)
     )
@@ -19318,7 +19325,7 @@
 
 ;; - Functions
 
-(define-extern cam-stop (function state))
+(define-extern cam-stop (function none))
 (define-extern reset-cameras (function none)) ;; defined in entity.gc
 (define-extern cam-start (function symbol none))
 
@@ -19516,7 +19523,7 @@
 
 (define-extern line-in-view-frustum? (function vector vector symbol)) ;; TODO - not confirmed
 (define-extern process-drawable-random-point! (function process-drawable vector vector))
-(define-extern process-drawable-from-entity! (function process-drawable res-lump none))
+(define-extern process-drawable-from-entity! (function process-drawable entity-actor none))
 (define-extern cam-launcher-long-joystick (function vector :behavior camera-slave))
 (define-extern hide-hud-quick (function none))
 (define-extern command-get-process (function object process-drawable process :behavior camera-tracker))
@@ -19530,7 +19537,7 @@
 (define-extern convert-to-hud-object (function process-drawable hud none :behavior hud))
 (define-extern clone-anim (function handle int symbol string none :behavior process-drawable))
 (define-extern merc-eye-anim (function process-drawable none))
-(define-extern ja-anim-done? (function pair symbol)) ;; TODO - has a behavior, no idea what it is
+(define-extern ja-anim-done? (function process symbol))
 (define-extern command-get-camera (function object state object)) ;; ret - (state camera) | string | symbol
 (define-extern camera-anim (function symbol basic entity (pointer process) :behavior camera-tracker)) ;; unused
 (define-extern camera-tracker-init (function object object :behavior camera-tracker)) ;; TODO - nested SC
@@ -22828,7 +22835,7 @@
   ((root-override collide-shape-moving :score 100 :offset 112)
    (smush     smush-control :inline :offset-assert 176)
    (basetrans vector        :inline :offset-assert 208)
-   (bouncing  basic                 :offset-assert 224)
+   (bouncing  symbol                :offset-assert 224)
    )
   :method-count-assert 27
   :size-assert         #xe4
