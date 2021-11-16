@@ -12,13 +12,13 @@ void Compiler::compile_state_handler_set(StructureType* state_type_info,
                                          Env* env) {
   // do not set state handler field if handler is #f, that's already the value in the static data
   auto& arg = args.named.at(name);
-  if (arg.as_symbol()->name != "#f") {
+  if (!(arg.is_symbol() && arg.as_symbol()->name == "#f")) {
     auto field = get_field_of_structure(state_type_info, state_object, name, env);
     auto value = compile_error_guard(arg, env);
     // we need to save these for typechecking later
-    if (arg.as_symbol()->name == "code") {
+    if (name == "code") {
       m_defstate_code_value = value;
-    } else if (arg.as_symbol()->name == "enter") {
+    } else if (name == "enter") {
       m_defstate_enter_value = value;
     }
     do_set(form, field, value->to_gpr(form, env), value, env);
@@ -87,7 +87,7 @@ Val* Compiler::compile_define_state_hook(const goos::Object& form,
         m_defstate_enter_value->type(), m_defstate_code_value->type(), state_parent_type, m_ts);
   } else if (m_defstate_code_value || m_defstate_enter_value) {
     state_type = get_state_type_from_func(
-        m_defstate_code_value ? m_defstate_enter_value->type() : m_defstate_code_value->type(),
+        m_defstate_code_value ? m_defstate_code_value->type() : m_defstate_enter_value->type(),
         state_parent_type);
   }
 
@@ -210,7 +210,7 @@ Val* Compiler::compile_define_virtual_state_hook(const goos::Object& form,
         m_defstate_enter_value->type(), m_defstate_code_value->type(), state_parent_type, m_ts);
   } else if (m_defstate_code_value || m_defstate_enter_value) {
     state_type = get_state_type_from_func(
-        m_defstate_code_value ? m_defstate_enter_value->type() : m_defstate_code_value->type(),
+        m_defstate_code_value ? m_defstate_code_value->type() : m_defstate_enter_value->type(),
         state_parent_type);
   }
 
