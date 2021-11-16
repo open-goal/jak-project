@@ -1443,7 +1443,7 @@
   (set! (-> proc entity) ent)
   (set! (-> ent extra process) proc)
   
-  (birth-log "activated: ~A ~A, now doing init ~A~%" proc ent (method-of-object proc init-from-entity!))
+  ;;(birth-log "activated: ~A ~A, now doing init ~A~%" proc ent (method-of-object proc init-from-entity!))
   
   ;; run the initializer
   (run-now-in-process proc (method-of-object proc init-from-entity!) proc ent)
@@ -1456,6 +1456,7 @@
 (define-extern birth-viewer (function process entity object))
 
 (declare-type collectable basic)
+(declare-type ecovalve basic)
 (defmethod birth! entity-actor ((obj entity-actor))
   "Create a process for this entity and start it."
   
@@ -1463,13 +1464,14 @@
   (unless (or (type-type? (-> obj etype) part-spawner)
               (type-type? (-> obj etype) collectable)
               (type-type? (-> obj etype) vent)
+              (type-type? (-> obj etype) ecovalve)
               )
-    ;(birth-log "rejecting ~A birth because yes (was ~A)~%" obj (-> obj etype))
+    ;;(birth-log "rejecting ~A birth because yes (was ~A)~%" obj (-> obj etype))
     (logior! (-> obj extra perm status) (entity-perm-status bit-0))
     (return obj)
     )
   
-  (birth-log "call to birth! on ~A~%" obj)
+  ;;(birth-log "call to birth! on ~A~%" obj)
 
   (let* ((entity-type (-> obj etype))
          (info (entity-info-lookup entity-type))
