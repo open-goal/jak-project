@@ -243,11 +243,13 @@ void Renderer::setup_opengl_excluding_textures(SharedRenderState* render_state, 
     glUniform1f(
         glGetUniformLocation(render_state->shaders[ShaderId::BUFFERED_TCC1].id(), "alpha_reject"),
         alpha_reject);
+    glUniform1i(glGetUniformLocation(render_state->shaders[ShaderId::BUFFERED_TCC1].id(), "T0"), 0);
   } else {
     render_state->shaders[ShaderId::BUFFERED_TCC0].activate();
     glUniform1f(
         glGetUniformLocation(render_state->shaders[ShaderId::BUFFERED_TCC0].id(), "alpha_reject"),
         alpha_reject);
+    glUniform1i(glGetUniformLocation(render_state->shaders[ShaderId::BUFFERED_TCC0].id(), "T0"), 0);
   }
 }
 
@@ -273,7 +275,7 @@ void Renderer::render_group(const DrawGroup& group,
   glActiveTexture(GL_TEXTURE0);
   glBindTexture(GL_TEXTURE_2D, tex->gpu_texture);
 
-  glUniform1i(glGetUniformLocation(render_state->shaders[ShaderId::BUFFERED_TCC0].id(), "T0"), 0);
+
 
   for (auto& draw : group.draws) {
     if (draw.mode.is_valid()) {

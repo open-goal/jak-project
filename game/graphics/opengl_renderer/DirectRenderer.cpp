@@ -221,7 +221,10 @@ void DirectRenderer::flush_pending(SharedRenderState* render_state, ScopedProfil
       render_state->shaders[ShaderId::SPRITE_CPU_AFAIL].activate();
       glDepthMask(GL_FALSE);
       glDrawArrays(GL_TRIANGLES, 0, m_prim_buffer.vert_count);
-      glDepthMask(GL_TRUE);
+      if (m_test_state.depth_writes) {
+        glDepthMask(GL_TRUE);
+      }
+
       m_prim_gl_state_needs_gl_update = true;
       m_blend_state_needs_gl_update = true;
       draw_count++;
@@ -395,8 +398,9 @@ void DirectRenderer::update_gl_blend() {
 
 void DirectRenderer::update_gl_test() {
   const auto& state = m_test_state;
-  glEnable(GL_DEPTH_TEST);
+
   if (state.zte) {
+    glEnable(GL_DEPTH_TEST);
     switch (state.ztst) {
       case GsTest::ZTest::NEVER:
         glDepthFunc(GL_NEVER);
@@ -773,13 +777,14 @@ void DirectRenderer::handle_zbuf1(u64 val,
   assert(x.psm() == TextureFormat::PSMZ24);
   assert(x.zbp() == 448);
 
-  bool write = x.zmsk();
+  bool write = !x.zmsk();
   //  assert(write);
 
   if (write != m_test_state.depth_writes) {
     m_stats.flush_from_zbuf++;
     flush_pending(render_state, prof);
     m_test_state_needs_gl_update = true;
+    m_prim_gl_state_needs_gl_update = true;
     m_test_state.depth_writes = write;
   }
 }
@@ -1046,9 +1051,7 @@ void DirectRenderer::TestState::from_register(GsTest reg) {
   }
 
   zte = reg.zte();
-  if (zte) {
-    ztst = reg.ztest();
-  }
+  ztst = reg.ztest();
 }
 
 void DirectRenderer::BlendState::from_register(GsAlpha reg) {
