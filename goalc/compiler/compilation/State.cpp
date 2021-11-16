@@ -2,6 +2,30 @@
 #include "common/type_system/state.h"
 
 /*!
+ * Helper func for compiling the set!'s within defstates
+ */
+void Compiler::compile_state_handler_set(StructureType* state_type_info,
+                                         RegVal* state_object,
+                                         const std::string& name,
+                                         goos::Arguments& args,
+                                         const goos::Object& form,
+                                         Env* env) {
+  // do not set state handler field if handler is #f, that's already the value in the static data
+  auto& arg = args.named.at(name);
+  if (arg.as_symbol()->name != "#f") {
+    auto field = get_field_of_structure(state_type_info, state_object, name, env);
+    auto value = compile_error_guard(arg, env);
+    // we need to save these for typechecking later
+    if (arg.as_symbol()->name == "code") {
+      m_defstate_code_value = value;
+    } else if (arg.as_symbol()->name == "enter") {
+      m_defstate_enter_value = value;
+    }
+    do_set(form, field, value->to_gpr(form, env), value, env);
+  }
+}
+
+/*!
  * The define-state-hook compiler form is used from a macro in gstate.gc.
  * Args:
  *  - state_name, a symbol of the state's name.
@@ -27,8 +51,12 @@ Val* Compiler::compile_define_state_hook(const goos::Object& form,
                {"code", {true, {}}},
            });
 
+  // clear previous saved compiled vals
+  m_defstate_code_value = NULL;
+  m_defstate_enter_value = NULL;
+
   // check parent
-  auto state_parent = args.unnamed.at(1).as_symbol()->name;
+  auto& state_parent = args.unnamed.at(1).as_symbol()->name;
   auto state_parent_type = m_ts.make_typespec(state_parent);
   if (!m_ts.tc(TypeSpec("process"), state_parent_type)) {
     throw_compiler_error(form, "define-state got a type {} which is not a child of process",
@@ -46,24 +74,24 @@ Val* Compiler::compile_define_state_hook(const goos::Object& form,
 
   // set the easy ones
   for (auto name : {"exit", "trans", "post", "event"}) {
-    auto field = get_field_of_structure(state_type_info, state_object, name, env);
-    auto value = compile_error_guard(args.named.at(name), env);
-    do_set(form, field, value->to_gpr(form, env), value, env);
+    compile_state_handler_set(state_type_info, state_object, name, args, form, env);
   }
 
-  auto enter_field = get_field_of_structure(state_type_info, state_object, "enter", env);
-  auto enter_value = compile_error_guard(args.named.at("enter"), env);
-  do_set(form, enter_field, enter_value->to_gpr(form, env), enter_value, env);
+  compile_state_handler_set(state_type_info, state_object, "enter", args, form, env);
+  compile_state_handler_set(state_type_info, state_object, "code", args, form, env);
 
-  auto code_field = get_field_of_structure(state_type_info, state_object, "code", env);
-  auto code_value = compile_error_guard(args.named.at("code"), env);
-  do_set(form, code_field, code_value->to_gpr(form, env), code_value, env);
+  // typecheck state
+  std::optional<TypeSpec> state_type;
+  if (m_defstate_code_value && m_defstate_enter_value) {
+    state_type = get_state_type_from_enter_and_code(
+        m_defstate_enter_value->type(), m_defstate_code_value->type(), state_parent_type, m_ts);
+  } else if (m_defstate_code_value || m_defstate_enter_value) {
+    state_type = get_state_type_from_func(
+        m_defstate_code_value ? m_defstate_enter_value->type() : m_defstate_code_value->type(),
+        state_parent_type);
+  }
 
-  // state name
-  auto state_type = get_state_type_from_enter_and_code(enter_value->type(), code_value->type(),
-                                                       state_parent_type, m_ts);
-
-  auto state_name = args.unnamed.at(0).as_symbol()->name;
+  auto& state_name = args.unnamed.at(0).as_symbol()->name;
   auto existing_var = m_symbol_types.find(state_name);
 
   TypeSpec type_to_use;
@@ -118,8 +146,12 @@ Val* Compiler::compile_define_virtual_state_hook(const goos::Object& form,
                {"code", {true, {}}},
            });
 
+  // clear previous saved compiled vals
+  m_defstate_code_value = NULL;
+  m_defstate_enter_value = NULL;
+
   // check parent
-  auto state_parent = args.unnamed.at(1).as_symbol()->name;
+  auto& state_parent = args.unnamed.at(1).as_symbol()->name;
   auto state_parent_type = m_ts.make_typespec(state_parent);
   if (!m_ts.tc(TypeSpec("process"), state_parent_type)) {
     throw_compiler_error(form, "define-state got a type {} which is not a child of process",
@@ -133,43 +165,13 @@ Val* Compiler::compile_define_virtual_state_hook(const goos::Object& form,
                          state_object->type().print());
   }
 
-  auto state_type_info = m_ts.get_type_of_type<StructureType>("state");
-
-  // set the easy ones
-  for (auto name : {"exit", "trans", "post", "event"}) {
-    auto field = get_field_of_structure(state_type_info, state_object, name, env);
-    auto value = compile_error_guard(args.named.at(name), env);
-    do_set(form, field, value->to_gpr(form, env), value, env);
-  }
-
-  auto enter_field = get_field_of_structure(state_type_info, state_object, "enter", env);
-  auto enter_value = compile_error_guard(args.named.at("enter"), env);
-  do_set(form, enter_field, enter_value->to_gpr(form, env), enter_value, env);
-
-  auto code_field = get_field_of_structure(state_type_info, state_object, "code", env);
-  auto code_value = compile_error_guard(args.named.at("code"), env);
-  do_set(form, code_field, code_value->to_gpr(form, env), code_value, env);
-
-  auto state_type = get_state_type_from_enter_and_code(enter_value->type(), code_value->type(),
-                                                       state_parent_type, m_ts);
-
-  auto state_name = args.unnamed.at(0).as_symbol()->name;
+  auto& state_name = args.unnamed.at(0).as_symbol()->name;
 
   MethodInfo child_method_info;
   if (!m_ts.try_lookup_method(state_parent, state_name, &child_method_info)) {
     throw_compiler_error(
         form, "Tried to define a virtual state {} for type {}, but the state was not declared.",
         state_name, state_parent);
-  }
-
-  if (state_type) {
-    if (state_type !=
-        child_method_info.type.substitute_for_method_call(state_parent_type.base_type())) {
-      throw_compiler_error(
-          form, "Virtual state {} of {} was declared as {}, but got {}. First declared in type {}.",
-          state_name, state_parent, child_method_info.type.print(), state_type->print(),
-          child_method_info.defined_in_type);
-    }
   }
 
   MethodInfo parent_method_info;
@@ -190,6 +192,37 @@ Val* Compiler::compile_define_virtual_state_hook(const goos::Object& form,
   auto type_obj = compile_get_symbol_value(form, state_parent, env)->to_gpr(form, env);
   auto method_id = compile_integer(child_method_info.id, env)->to_gpr(form, env);
   compile_real_function_call(form, method_set_func, {type_obj, method_id, state_object}, env);
+
+  auto state_type_info = m_ts.get_type_of_type<StructureType>("state");
+
+  // set the easy ones
+  for (auto name : {"exit", "trans", "post", "event"}) {
+    compile_state_handler_set(state_type_info, state_object, name, args, form, env);
+  }
+
+  compile_state_handler_set(state_type_info, state_object, "enter", args, form, env);
+  compile_state_handler_set(state_type_info, state_object, "code", args, form, env);
+
+  // typecheck state
+  std::optional<TypeSpec> state_type;
+  if (m_defstate_code_value && m_defstate_enter_value) {
+    state_type = get_state_type_from_enter_and_code(
+        m_defstate_enter_value->type(), m_defstate_code_value->type(), state_parent_type, m_ts);
+  } else if (m_defstate_code_value || m_defstate_enter_value) {
+    state_type = get_state_type_from_func(
+        m_defstate_code_value ? m_defstate_enter_value->type() : m_defstate_code_value->type(),
+        state_parent_type);
+  }
+
+  if (state_type) {
+    if (state_type !=
+        child_method_info.type.substitute_for_method_call(state_parent_type.base_type())) {
+      throw_compiler_error(
+          form, "Virtual state {} of {} was declared as {}, but got {}. First declared in type {}.",
+          state_name, state_parent, child_method_info.type.print(), state_type->print(),
+          child_method_info.defined_in_type);
+    }
+  }
 
   return get_none();
 }

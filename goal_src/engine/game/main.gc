@@ -654,9 +654,16 @@
               )
 
             ;; added
-            ; (format *stdcon* "~3Lglobal heap at ~,,2fK remaining~0L~%"
-            ;                   (* (1/ 1024) (&- (-> global top) (-> global current))))
-            (format *stdcon* "~3Lglob: ~d free debug: ~d free~0L~%"
+            (let (
+                  (remain (&- (-> global top) (-> global current)))
+                  (total (&- (-> global top) (-> global base)))
+                  )
+                (format *stdcon* "~3Lglobal heap ~,,2fK/~,,2fK (~,,2f%) remain~0L~%"
+                                  (* (1/ 1024) remain) (* (1/ 1024) total)
+                                  (* 100.0 (/ (the float remain) (the float total)))
+                                  )
+                )
+            (format *stdcon* "~3LDMA global: ~d debug: ~d~0L~%"
                     (dma-buffer-free (-> disp frames (-> disp on-screen) frame global-buf))
                     (dma-buffer-free (-> disp frames (-> disp on-screen) frame debug-buf))
                     )

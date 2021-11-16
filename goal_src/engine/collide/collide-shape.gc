@@ -388,7 +388,7 @@
           (->
            (new 'static 'attack-info
             :trans (new 'static 'vector :y 40960.0 :w 1.0)
-            :speed (meters (the-as float #x1))
+            :speed (the-as float #x1)
             )
            trans
            quad
@@ -989,7 +989,7 @@
     (set! (-> obj unknown-vector61 quad) (-> s4-1 quad))
     )
    )
-  (let*
+  (let
    ((s5-1
      (vector-normalize-copy!
       (new 'stack-no-clear 'vector)
@@ -998,13 +998,15 @@
       )
      )
     (f0-32 (vector-length (the-as vector (&-> obj unknown-vector120))))
-    (f0-35 (if (= f0-32 0.0)
-            0.0
-            (fmax 0.0 (/ (vector-dot (-> obj transv) s5-1) f0-32))
-            )
-     )
     )
-   (s.f! (+ obj #x49fc) f0-35)
+   (set! (-> obj unknown-float140) (if (= f0-32 0.0)
+                                    0.0
+                                    (fmax
+                                     0.0
+                                     (/ (vector-dot (-> obj transv) s5-1) f0-32)
+                                     )
+                                    )
+    )
    )
   (stopwatch-stop (-> *collide-stats* total-target))
   0
@@ -1319,12 +1321,12 @@
   )
 
 (defmethod dummy-32 collide-shape ((obj collide-shape) (arg0 object) (arg1 uint))
-  (let ((s5-0 (new 'stack-no-clear 'vector)))
+  (let ((s5-0 (new 'stack-no-clear 'bounding-box)))
    (cond
-    ((dummy-36 obj s5-0 (the-as vector arg0) arg1)
+    ((dummy-36 obj s5-0 (the-as float arg0) arg1)
      (dummy-13
       *collide-cache*
-      (the-as bounding-box s5-0)
+      s5-0
       arg1
       (-> obj process)
       (the-as uint (-> obj pat-ignore-mask))
@@ -1344,7 +1346,7 @@
 (defmethod
   dummy-36
   collide-shape
-  ((obj collide-shape) (arg0 vector) (arg1 vector) (arg2 uint))
+  ((obj collide-shape) (arg0 bounding-box) (arg1 float) (arg2 uint))
   (rlet ((vf0 :class vf)
          (vf1 :class vf)
          (vf29 :class vf)
@@ -1364,8 +1366,8 @@
        ((dummy-20 a0-1 arg2)
         (.mov.vf vf29 vf0 :mask #b1000)
         (.mov.vf vf30 vf0 :mask #b1000)
-        (.svf (&-> arg0 quad) vf29)
-        (s.vf! (+ arg0 16) vf30)
+        (.svf (&-> arg0 min quad) vf29)
+        (.svf (&-> arg0 max quad) vf30)
         (return #t)
         )
        (else
@@ -1469,7 +1471,7 @@
            )
           )
          )
-        (dummy-31 s5-1)
+        (dummy-31 (the-as collide-shape s5-1))
         )
        )
       (set! v1-4 gp-1)
@@ -1498,7 +1500,7 @@
            )
           )
          )
-        (dummy-31 s5-2)
+        (dummy-31 (the-as collide-shape s5-2))
         )
        )
       (set! v1-19 gp-2)
@@ -1527,7 +1529,7 @@
            )
           )
          )
-        (dummy-31 s5-3)
+        (dummy-31 (the-as collide-shape s5-3))
         )
        )
       (set! v1-34 gp-3)
@@ -1556,7 +1558,7 @@
            )
           )
          )
-        (dummy-31 s5-4)
+        (dummy-31 (the-as collide-shape s5-4))
         )
        )
       (set! v1-49 gp-4)
