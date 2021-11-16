@@ -275,8 +275,6 @@ void Renderer::render_group(const DrawGroup& group,
   glActiveTexture(GL_TEXTURE0);
   glBindTexture(GL_TEXTURE_2D, tex->gpu_texture);
 
-
-
   for (auto& draw : group.draws) {
     if (draw.mode.is_valid()) {
       m_stats.draw_calls++;
