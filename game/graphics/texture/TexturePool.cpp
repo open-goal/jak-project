@@ -60,10 +60,6 @@ void TextureRecord::serialize(Serializer& ser) {
   ser.from_ptr(&gpu_texture);
   ser.from_ptr(&dest);
   ser.from_pod_vector(&data);
-  ser.from_ptr(&min_a_zero);
-  ser.from_ptr(&max_a_zero);
-  ser.from_ptr(&min_a_nonzero);
-  ser.from_ptr(&max_a_nonzero);
 
   if (ser.is_loading()) {
     gpu_texture = -1;
@@ -242,10 +238,6 @@ std::vector<std::shared_ptr<TextureRecord>> TexturePool::convert_textures(const 
               min_a_zero = std::min(min_a_zero, a);
             }
           }
-          texture_record->max_a_zero = max_a_zero;
-          texture_record->min_a_zero = min_a_zero;
-          texture_record->max_a_nonzero = max_a_nonzero;
-          texture_record->min_a_nonzero = min_a_nonzero;
 
           // Debug output.
           if (dump_textures_to_file) {
@@ -409,6 +401,12 @@ void TexturePool::upload_to_gpu(TextureRecord* tex) {
   // we have to set these, imgui won't do it automatically
   glActiveTexture(GL_TEXTURE0);
   glBindTexture(GL_TEXTURE_2D, tex->gpu_texture);
+  glGenerateMipmap(GL_TEXTURE_2D);
+
+  float aniso = 0.0f;
+  glGetFloatv(GL_MAX_TEXTURE_MAX_ANISOTROPY, &aniso);
+  glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_MAX_ANISOTROPY, aniso);
+
   glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
   glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
   glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);

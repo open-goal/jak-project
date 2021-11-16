@@ -207,6 +207,7 @@ class DirectRenderer : public BucketRenderer {
     bool wireframe = false;
     bool red = false;
     bool always_draw = false;
+    bool disable_mipmap = true;
   } m_debug_state;
 
   struct {
