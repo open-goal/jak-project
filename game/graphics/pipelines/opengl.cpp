@@ -139,6 +139,7 @@ static std::shared_ptr<GfxDisplay> gl_make_main_display(int width,
   }
 
   glfwMakeContextCurrent(window);
+  gladLoadGLLoader((GLADloadproc)glfwGetProcAddress);
 
   std::string image_path = fmt::format("{}/docs/favicon-nobg.png", file_util::get_project_path());
 

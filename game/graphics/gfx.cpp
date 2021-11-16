@@ -50,6 +50,7 @@ namespace Gfx {
 GfxSettings g_settings;
 // const std::vector<const GfxRendererModule*> renderers = {&moduleOpenGL};
 
+// TODO serialize
 void LoadSettings() {
   const auto filename = file_util::get_file_path({GAME_CONFIG_DIR_NAME, SETTINGS_GFX_FILE_NAME});
   if (std::filesystem::exists(filename)) {

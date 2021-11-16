@@ -223,6 +223,7 @@ std::vector<BacktraceFrame> Debugger::get_backtrace(u64 rip, u64 rsp) {
 
     if (frame.rip_info.knows_function && frame.rip_info.func_debug &&
         frame.rip_info.func_debug->stack_usage) {
+      fmt::print("<<<==================== CALL STACK ====================>>>\n");
       fmt::print("{} from {}\n", frame.rip_info.function_name, frame.rip_info.func_debug->obj_name);
       // we're good!
       auto disasm = disassemble_at_rip(frame.rip_info);
@@ -529,7 +530,7 @@ void Debugger::read_symbol_table() {
           // to hide this duplicate symbol, we append "-hack-copy" to the end of it.
           str += "-hack-copy";
         } else {
-          fmt::print("Symbol {} appears multiple times!\n", str);
+          fmt::print("Symbol {} (#x{:x}) appears multiple times!\n", str, sym_offset);
           assert(false);
         }
       }

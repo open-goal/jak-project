@@ -160,7 +160,9 @@ void SpriteRenderer::render_2d_group0(DmaFollower& dma,
     auto run = dma.read_and_advance();
     assert(run.vifcode0().kind == VifCode::Kind::NOP);
     assert(run.vifcode1().kind == VifCode::Kind::MSCAL);
-    assert(run.vifcode1().immediate == SpriteProgMem::Sprites2dGrp0);
+
+    // HACK: this renderers 3D sprites with the 2D renderer. amazingly, it almost works.
+    // assert(run.vifcode1().immediate == SpriteProgMem::Sprites2dGrp0);
     if (m_enabled) {
       do_2d_group0_block_cpu(sprite_count, render_state, prof);
     }
@@ -733,7 +735,7 @@ void SpriteRenderer::do_2d_group0_block_cpu(u32 count,
     memset(&packet, 0, sizeof(packet));
     //  ilw.y vi08, 1(vi02)        |  nop                          vi08 = matrix
     u32 offset_selector = m_vec_data_2d[sprite_idx].matrix();
-    assert(offset_selector == 0 || offset_selector == 1);
+    // assert(offset_selector == 0 || offset_selector == 1);
     // moved this out of the loop.
     //  lq.xyzw vf25, 900(vi00)    |  nop                          vf25 = cam_mat
     //  lq.xyzw vf26, 901(vi00)    |  nop

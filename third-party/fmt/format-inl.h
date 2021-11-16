@@ -2684,7 +2684,10 @@ FMT_FUNC detail::utf8_to_utf16::utf8_to_utf16(string_view s) {
     auto cp = uint32_t();
     auto error = 0;
     p = utf8_decode(p, &cp, &error);
-    if (error != 0) FMT_THROW(std::runtime_error("invalid utf8"));
+    if (error != 0) {
+      printf("%s\n", p);
+      FMT_THROW(std::runtime_error("invalid utf8"));
+    }
     if (cp <= 0xFFFF) {
       buffer_.push_back(static_cast<wchar_t>(cp));
     } else {

@@ -44,7 +44,7 @@ void diff_dma_chains(DmaFollower ref, DmaFollower dma) {
     auto ref_result = ref.read_and_advance();
     auto dma_result = dma.read_and_advance();
 
-    for (int i = 0; i < ref_result.size_bytes; i++) {
+    for (int i = 0; i < (int)ref_result.size_bytes; i++) {
       if (ref_result.data[i] != dma_result.data[i]) {
         fmt::print("Bad data ({} vs {}) at {} into transfer: {} {}\n", ref_result.data[i],
                    dma_result.data[i], i, ref_tag.print(), dma_tag.print());

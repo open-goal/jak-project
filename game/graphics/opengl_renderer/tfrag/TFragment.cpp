@@ -18,7 +18,8 @@ bool looks_like_tfrag_init(const DmaFollower& follow) {
 TFragment::TFragment(const std::string& name, BucketId my_id, bool child_mode)
     : BucketRenderer(name, my_id),
       m_child_mode(child_mode),
-      m_direct_renderer(fmt::format("{}.direct", name), my_id, 1024, DirectRenderer::Mode::NORMAL) {
+      m_direct_renderer(fmt::format("{}.direct", name), my_id, 1024, DirectRenderer::Mode::NORMAL),
+      m_buffered_renderer(my_id) {
   for (auto& buf : m_buffered_data) {
     for (auto& x : buf.pad) {
       x = 0xff;
@@ -35,7 +36,12 @@ void TFragment::render(DmaFollower& dma,
                        ScopedProfilerNode& prof) {
   m_debug_string.clear();
   m_frag_debug.clear();
-  m_direct_renderer.reset_state();
+  if (m_use_buffered_renderer) {
+    m_buffered_renderer.reset_state();
+  } else {
+    m_direct_renderer.reset_state();
+  }
+
   m_stats = {};
 
   if (!m_enabled) {
@@ -101,7 +107,12 @@ void TFragment::render(DmaFollower& dma,
   }
 
   m_debug_string += fmt::format("fail: {}\n", dma.current_tag().print());
-  m_direct_renderer.flush_pending(render_state, prof);
+
+  if (m_use_buffered_renderer) {
+    m_buffered_renderer.flush(render_state, prof);
+  } else {
+    m_direct_renderer.flush_pending(render_state, prof);
+  }
 
   while (dma.current_tag_offset() != render_state->next_bucket) {
     auto tag = dma.current_tag().print();
@@ -124,6 +135,7 @@ void TFragment::draw_debug_window() {
   ImGui::Checkbox("Prog10 hack", &m_prog10_with_prog6);
   ImGui::Checkbox("Prog18 hack", &m_prog18_with_prog6);
   ImGui::Checkbox("Others with prog6", &m_all_with_prog6);
+  ImGui::Checkbox("Use Buffered Renderer", &m_use_buffered_renderer);
   ImGui::Text("packets: %d", m_stats.tfrag_dma_packets);
   ImGui::Text("frag bytes: %d", m_stats.tfrag_bytes);
   ImGui::Text("errors: %d", m_stats.error_packets);
@@ -131,8 +143,13 @@ void TFragment::draw_debug_window() {
     ImGui::Text("  prog %d: %d calls\n", prog, m_stats.per_program[prog].calls);
   }
 
-  if (ImGui::TreeNode("direct")) {
+  if (!m_use_buffered_renderer && ImGui::TreeNode("direct")) {
     m_direct_renderer.draw_debug_window();
+    ImGui::TreePop();
+  }
+
+  if (m_use_buffered_renderer && ImGui::TreeNode("buffered")) {
+    m_buffered_renderer.draw_debug_window();
     ImGui::TreePop();
   }
 
@@ -149,7 +166,11 @@ void TFragment::handle_initialization(DmaFollower& dma,
   assert(setup_test.vifcode1().immediate == 2);
   assert(setup_test.size_bytes == 32);
   memcpy(m_test_setup, setup_test.data, 32);
-  m_direct_renderer.render_gif(m_test_setup, 32, render_state, prof);
+  if (m_use_buffered_renderer) {
+    m_buffered_renderer.add_gif_data_sized(m_test_setup, 32);
+  } else {
+    m_direct_renderer.render_gif(m_test_setup, 32, render_state, prof);
+  }
 
   // matrix 0
   auto mat0_upload = dma.read_and_advance();

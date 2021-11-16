@@ -2981,8 +2981,8 @@ goos::Object DefskelgroupElement::to_form_internal(const Env& env) const {
 
   std::vector<goos::Object> lod_forms;
   for (const auto& e : m_info.lods) {
-    auto f_dist = pretty_print::to_symbol(
-        fmt::format("(meters {})", e.lod_dist->to_form(env).as_float() / METER_LENGTH));
+    auto f_dist = pretty_print::to_symbol(fmt::format(
+        "(meters {})", float_to_string(e.lod_dist->to_form(env).as_float() / METER_LENGTH, false)));
     lod_forms.push_back(pretty_print::build_list(e.mgeo->to_form(env), f_dist));
   }
   forms.push_back(pretty_print::build_list(lod_forms));

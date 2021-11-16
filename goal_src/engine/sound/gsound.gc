@@ -363,17 +363,10 @@
     )
   )
 
-(defun
-  sound-play-by-name
-  ((name sound-name)
-   (id sound-id)
-   (vol int)
-   (pitch int)
-   (bend int)
-   (group int)
-   (trans symbol)
-   )
+(defun sound-play-by-name ((name sound-name) (id sound-id) (vol int) (pitch int) (bend int) (group int) (trans symbol))
   "Play a sound called name with the specified params"
+
+  (#when PC_DEBUG_SOUND_ENABLE
   (local-vars (sv-16 int))
   (with-pp
    (set! sv-16 group)
@@ -405,8 +398,9 @@
       )
      )
     )
-   id
    )
+  )
+  id
   )
 
 (defun sound-play-by-spec ((spec sound-spec) (id sound-id) (sound-trans vector))
@@ -749,6 +743,8 @@
 
 (defmethod update-trans! ambient-sound ((obj ambient-sound) (sound-trans vector))
   "Update the position of the thing playing the sound"
+
+  (#when PC_DEBUG_SOUND_ENABLE
   (set! (-> obj trans quad) (-> sound-trans quad))
   (when (nonzero? (-> obj playing-id))
     (let ((cmd (the sound-rpc-set-param (get-sound-buffer-entry))))
@@ -761,11 +757,14 @@
         (-> cmd id)
         )
     )
+  )
   0
   )
 
 (defmethod update-vol! ambient-sound ((obj ambient-sound) (arg0 int))
   "Update the volume of the sound"
+
+  (#when PC_DEBUG_SOUND_ENABLE
   (when (nonzero? (-> obj playing-id))
     (let ((cmd (the-as sound-rpc-set-param (get-sound-buffer-entry))))
       (set! (-> cmd command) (sound-command set-param))
@@ -776,6 +775,7 @@
       )
     )
   (set! (-> obj volume) (the int (* 10.24 (the float arg0))))
+  )
   0
   )
 

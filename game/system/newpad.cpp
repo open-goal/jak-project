@@ -119,7 +119,7 @@ int IsPressed(MappingInfo& mapping, Button button, int pad = 0) {
 
 // returns the value of the analog axis (in the future, likely pressure sensitive if we support it?)
 // if invalid or otherwise -- returns 127 (analog stick neutral position)
-int AnalogValue(MappingInfo& mapping, Analog analog, int pad = 0) {
+int AnalogValue(MappingInfo& /*mapping*/, Analog analog, int pad = 0) {
   if (CheckPadIdx(pad) == -1) {
     return 127;
   }
@@ -203,20 +203,39 @@ struct GamepadState {
   int gamepad_idx = -1;
 } g_gamepads;
 
-void initialize() {
-  for (int i = GLFW_JOYSTICK_1; i <= GLFW_JOYSTICK_LAST; i++) {
-    if (glfwJoystickPresent(i) && glfwJoystickIsGamepad(i)) {
-      g_gamepads.gamepad_idx = i;
-      lg::info("Using joystick {}: {}, {}", i, glfwGetJoystickName(i), glfwGetGamepadName(i));
-      break;
+void check_gamepad() {
+  if (g_gamepads.gamepad_idx == -1) {
+    for (int i = GLFW_JOYSTICK_1; i <= GLFW_JOYSTICK_LAST; i++) {
+      if (glfwJoystickPresent(i) && glfwJoystickIsGamepad(i)) {
+        g_gamepads.gamepad_idx = i;
+        lg::info("Using joystick {}: {}, {}", i, glfwGetJoystickName(i), glfwGetGamepadName(i));
+        break;
+      }
     }
   }
+}
+
+void initialize() {
+  check_gamepad();
   if (g_gamepads.gamepad_idx == -1) {
     lg::info("No joysticks found.");
   }
 }
 
+void clear_gamepads() {
+  for (int i = 0; i < (int)Button::Max; ++i) {
+    g_gamepad_buttons[i] = false;
+  }
+  for (int i = 0; i < 4; ++i) {
+    g_gamepad_analogs[i] = 127;
+  }
+}
+
 void update_gamepads() {
+  clear_gamepads();
+
+  check_gamepad();
+
   if (g_gamepads.gamepad_idx == -1) {
     return;
   }
