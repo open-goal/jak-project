@@ -14,7 +14,7 @@
 ;; TODO - temporary
 (define-extern command-get-process (function object process-drawable process :behavior camera-tracker))
 
-(define-extern process-drawable-from-entity! (function process-drawable res-lump none))
+(define-extern process-drawable-from-entity! (function process-drawable entity-actor none))
 
 (declare-type beach-part part-spawner)
 (define-extern beach-part-grotto-1 (state beach-part))
@@ -186,8 +186,8 @@
    )
   )
 
-(defmethod copy-defaults! swingpole ((obj swingpole) (arg0 res-lump))
-  "Copy defaults from the entity."
+(defmethod init-from-entity! swingpole ((obj swingpole) (arg0 entity-actor))
+
   (stack-size-set! (-> obj main-thread) 128)
   (logior! (-> obj mask) (process-mask actor-pause))
   (set! (-> obj root) (new 'process 'trsq))
@@ -209,8 +209,8 @@
   (the-as (function none :behavior process-hidden) nothing)
   )
 
-(defmethod copy-defaults! process-hidden ((obj process-hidden) (arg0 res-lump))
-  "Copy defaults from the entity."
+(defmethod init-from-entity! process-hidden ((obj process-hidden) (arg0 entity-actor))
+
   (process-entity-status! obj (entity-perm-status dead) #t)
   (go (method-of-object obj die))
   (none)
@@ -1175,38 +1175,34 @@
    )
   )
 
-(defun ja-anim-done? ((arg0 pair))
-  (with-pp
+(defun ja-anim-done? ((arg0 process))
    (let ((gp-0 (command-get-process arg0 *target*)))
-    (the-as symbol (when gp-0
-                    (cond
-                     ((type-type? (-> gp-0 type) manipy)
-                      (send-event gp-0 'query 'done)
-                      )
-                     ((type-type? (-> gp-0 type) process-drawable)
-                      (when
-                       (zero?
-                        (logand
-                         (-> (the-as process-drawable gp-0) skel status)
-                         4
-                         )
-                        )
-                       (let ((s5-0 pp))
-                        (let ((s6-1 gp-0))
-                         )
-                        (let ((v0-1 (the-as object (ja-done? 0))))
-                         (let ((s6-2 s5-0))
-                          )
-                         v0-1
-                         )
-                        )
-                       )
-                      )
-                     )
-                    )
+    (when gp-0
+      (cond
+       ((type-type? (-> gp-0 type) manipy)
+        (the-as symbol (send-event gp-0 'query 'done))
+        )
+       ((type-type? (-> gp-0 type) process-drawable)
+        (when (zero? (logand (-> (the-as process-drawable gp-0) skel status) 4))
+
+          (rlet ((pp :reg r13 :type process))
+              (let* ((old-pp pp)
+                     (ret-val (begin
+                                ;; set the process
+                                (set! pp gp-0)
+                                ;; run!
+                                (ja-done? 0)
+                                )))
+                ;; restore the old pp
+                (set! pp old-pp)
+                ret-val
+                )
+              )
+          )
+        )
+       )
+      )
      )
-    )
-   )
   )
 
 (defbehavior camera-pov-from camera-tracker ((arg0 pair) (arg1 uint))
@@ -1745,7 +1741,7 @@
 
 (define *lev-string* (new 'global 'string 64 (the-as string #f)))
 
-(defmethod copy-defaults! med-res-level ((obj med-res-level) (arg0 res-lump))
+(defmethod init-from-entity! med-res-level ((obj med-res-level) (arg0 entity-actor))
   (local-vars (sv-16 res-tag))
   (stack-size-set! (-> obj main-thread) 128)
   "#f"
@@ -1861,7 +1857,7 @@
    )
   )
 
-(defmethod copy-defaults! part-spawner ((obj part-spawner) (arg0 res-lump))
+(defmethod init-from-entity! part-spawner ((obj part-spawner) (arg0 entity-actor))
   (local-vars (sv-16 res-tag))
   (stack-size-set! (-> obj main-thread) 128)
   (set! (-> obj mask) (logior (process-mask ambient) (-> obj mask)))
@@ -2760,7 +2756,7 @@
   (the-as (function none :behavior launcher) anim-loop)
   )
 
-(defmethod copy-defaults! launcher ((obj launcher) (arg0 res-lump))
+(defmethod init-from-entity! launcher ((obj launcher) (arg0 entity-actor))
   (stack-size-set! (-> obj main-thread) 128)
   (let
    ((s4-0 (new 'process 'collide-shape obj (collide-list-enum hit-by-player))))

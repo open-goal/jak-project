@@ -391,7 +391,7 @@ void ignore_debug_event() {
   cont_status = -1;
 }
 
-std::string win32_exception_code_to_charp(DWORD exc) {
+const char* win32_exception_code_to_charp(DWORD exc) {
   switch (exc) {
     case EXCEPTION_ACCESS_VIOLATION:
       return "EXCEPTION_ACCESS_VIOLATION";
@@ -433,8 +433,14 @@ std::string win32_exception_code_to_charp(DWORD exc) {
       return "EXCEPTION_SINGLE_STEP";
     case EXCEPTION_STACK_OVERFLOW:
       return "EXCEPTION_STACK_OVERFLOW";
+    case STATUS_STACK_BUFFER_OVERRUN:
+      return "STATUS_STACK_BUFFER_OVERRUN";
+    case STATUS_HEAP_CORRUPTION:
+      return "STATUS_HEAP_CORRUPTION";
+    case STATUS_GUARD_PAGE_VIOLATION:
+      return "STATUS_GUARD_PAGE_VIOLATION";
     default:
-      return "UNHANDLED_WIN32_EXCEPTION";
+      return "UNKNOWN (please contact developers)";
   }
 }
 

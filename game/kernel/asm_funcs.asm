@@ -588,10 +588,18 @@ _call_goal_on_stack_asm_win32:
   push r14    ; 96
   push r15    ; 104
 
-  sub rsp, 16
-  movups [rsp], xmm6
-  sub rsp, 16
-  movups [rsp], xmm7
+
+  sub rsp, 160
+  movaps [rsp], xmm8
+  movaps [rsp + 16], xmm9
+  movaps [rsp + 32], xmm10
+  movaps [rsp + 48], xmm11
+  movaps [rsp + 64], xmm12
+  movaps [rsp + 80], xmm13
+  movaps [rsp + 96], xmm14
+  movaps [rsp + 112], xmm15
+  movaps [rsp + 128], xmm7
+  movaps [rsp + 144], xmm6
 
   ;; stack swap
   mov rsi, rsp
@@ -608,10 +616,17 @@ _call_goal_on_stack_asm_win32:
   pop rsi
   mov rsp, rsi
 
-  movups xmm7, [rsp]
-  add rsp, 16
-  movups xmm6, [rsp]
-  add rsp, 16
+  movaps xmm8, [rsp]
+  movaps xmm9, [rsp + 16]
+  movaps xmm10, [rsp + 32]
+  movaps xmm11, [rsp + 48]
+  movaps xmm12, [rsp + 64]
+  movaps xmm13, [rsp + 80]
+  movaps xmm14, [rsp + 96]
+  movaps xmm15, [rsp + 112]
+  movaps xmm7, [rsp + 128]
+  movaps xmm6, [rsp + 144]
+  add rsp, 160
 
   pop r15
   pop r14
