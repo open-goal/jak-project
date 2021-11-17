@@ -550,15 +550,11 @@
 (defmacro suspend ()
   ;; suspend the current process.
   `(rlet ((pp :reg r13 :reset-here #t))
-         ;; we pass the current thread to the kernel with the pp register.
-         ;; so it should be backed up on the stack here.
-         (.push pp)
          ;; set to the current thread
          (set! pp (-> (the process pp) top-thread))
          ;; call the suspend hook (put nothing as the argument)
          ((-> (the cpu-thread pp) suspend-hook) (the cpu-thread 0))
-         ;; now we've been resumed, restore pp.
-         (.pop pp)
+         ;; the kernel will set pp (possibly to a new value) on resume.
          )
   )
 
