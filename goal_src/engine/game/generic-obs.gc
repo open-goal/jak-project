@@ -187,12 +187,12 @@
   )
 
 (defmethod init-from-entity! swingpole ((obj swingpole) (arg0 entity-actor))
-
+  "Copy defaults from the entity."
   (stack-size-set! (-> obj main-thread) 128)
   (logior! (-> obj mask) (process-mask actor-pause))
   (set! (-> obj root) (new 'process 'trsq))
   (set! (-> obj root trans quad) (-> arg0 extra trans quad))
-  (quaternion-copy! (-> obj root quat) (-> (the-as entity-actor arg0) quat))
+  (quaternion-copy! (-> obj root quat) (-> arg0 quat))
   (vector-identity! (-> obj root scale))
   (vector-y-quaternion! (-> obj dir) (-> obj root quat))
   (set! (-> obj dir y) 0.0)
@@ -209,8 +209,11 @@
   (the-as (function none :behavior process-hidden) nothing)
   )
 
-(defmethod init-from-entity! process-hidden ((obj process-hidden) (arg0 entity-actor))
-
+(defmethod
+  init-from-entity!
+  process-hidden
+  ((obj process-hidden) (arg0 entity-actor))
+  "Copy defaults from the entity."
   (process-entity-status! obj (entity-perm-status dead) #t)
   (go (method-of-object obj die))
   (none)
@@ -730,17 +733,11 @@
      (set! (-> s4-1 dynam) (copy *standard-dynamics* 'process))
      (set! (-> s4-1 reaction) default-collision-reaction)
      (set! (-> s4-1 no-reaction) nothing)
-     (set-vector!
-      (->
-       (new 'process 'collide-shape-prim-sphere s4-1 (the-as uint 0))
-       local-sphere
-       )
-      0.0
-      0.0
-      0.0
-      4096.0
+     (let
+      ((s3-1 (new 'process 'collide-shape-prim-sphere s4-1 (the-as uint 0))))
+      (set-vector! (-> s3-1 local-sphere) 0.0 0.0 0.0 4096.0)
+      (dummy-46 s4-1 s3-1)
       )
-     (dummy-46 s4-1)
      (set! (-> s4-1 nav-radius) (* 0.75 (-> s4-1 root-prim local-sphere w)))
      (dummy-50 s4-1)
      (set! (-> self root) s4-1)
@@ -763,8 +760,8 @@
        (-> arg3 z)
        (-> arg3 w)
        )
+      (dummy-46 s4-2 s2-0)
       )
-     (dummy-46 s4-2)
      (set! (-> s4-2 nav-radius) (* 0.75 (-> s4-2 root-prim local-sphere w)))
      (dummy-50 s4-2)
      (set! (-> self root) s4-2)
@@ -1176,33 +1173,37 @@
   )
 
 (defun ja-anim-done? ((arg0 process))
+  (with-pp
    (let ((gp-0 (command-get-process arg0 *target*)))
-    (when gp-0
-      (cond
-       ((type-type? (-> gp-0 type) manipy)
-        (the-as symbol (send-event gp-0 'query 'done))
-        )
-       ((type-type? (-> gp-0 type) process-drawable)
-        (when (zero? (logand (-> (the-as process-drawable gp-0) skel status) 4))
-
-          (rlet ((pp :reg r13 :type process))
-              (let* ((old-pp pp)
-                     (ret-val (begin
-                                ;; set the process
-                                (set! pp gp-0)
-                                ;; run!
-                                (ja-done? 0)
-                                )))
-                ;; restore the old pp
-                (set! pp old-pp)
-                ret-val
-                )
-              )
-          )
-        )
-       )
-      )
+    (the-as symbol (when gp-0
+                    (cond
+                     ((type-type? (-> gp-0 type) manipy)
+                      (send-event gp-0 'query 'done)
+                      )
+                     ((type-type? (-> gp-0 type) process-drawable)
+                      (when
+                       (zero?
+                        (logand
+                         (-> (the-as process-drawable gp-0) skel status)
+                         4
+                         )
+                        )
+                       (let ((s5-0 pp))
+                        (let ((s6-1 gp-0))
+                         )
+                        (let ((v0-1 (the-as object (ja-done? 0))))
+                         (let ((s6-2 s5-0))
+                          )
+                         v0-1
+                         )
+                        )
+                       )
+                      )
+                     )
+                    )
      )
+    )
+   )
   )
 
 (defbehavior camera-pov-from camera-tracker ((arg0 pair) (arg1 uint))
@@ -1741,7 +1742,10 @@
 
 (define *lev-string* (new 'global 'string 64 (the-as string #f)))
 
-(defmethod init-from-entity! med-res-level ((obj med-res-level) (arg0 entity-actor))
+(defmethod
+  init-from-entity!
+  med-res-level
+  ((obj med-res-level) (arg0 entity-actor))
   (local-vars (sv-16 res-tag))
   (stack-size-set! (-> obj main-thread) 128)
   "#f"
@@ -1857,7 +1861,10 @@
    )
   )
 
-(defmethod init-from-entity! part-spawner ((obj part-spawner) (arg0 entity-actor))
+(defmethod
+  init-from-entity!
+  part-spawner
+  ((obj part-spawner) (arg0 entity-actor))
   (local-vars (sv-16 res-tag))
   (stack-size-set! (-> obj main-thread) 128)
   (set! (-> obj mask) (logior (process-mask ambient) (-> obj mask)))
@@ -2764,8 +2771,8 @@
     (set! (-> s3-0 prim-core collide-as) (the-as uint 256))
     (set! (-> s3-0 collide-with) (the-as uint 16))
     (set-vector! (-> s3-0 local-sphere) 0.0 0.0 0.0 12288.0)
+    (dummy-46 s4-0 s3-0)
     )
-   (dummy-46 s4-0)
    (set! (-> s4-0 nav-radius) 13926.4)
    (dummy-50 s4-0)
    (set! (-> obj root-override) s4-0)
@@ -2830,8 +2837,8 @@
     (set! (-> s1-0 prim-core collide-as) (the-as uint 256))
     (set! (-> s1-0 collide-with) (the-as uint 16))
     (set-vector! (-> s1-0 local-sphere) 0.0 0.0 0.0 12288.0)
+    (dummy-46 s2-0 s1-0)
     )
-   (dummy-46 s2-0)
    (set! (-> s2-0 nav-radius) (* 0.75 (-> s2-0 root-prim local-sphere w)))
    (dummy-50 s2-0)
    (set! (-> self root-override) s2-0)
@@ -3084,8 +3091,8 @@
     (set! (-> s2-0 collide-with) (the-as uint 3022))
     (set! (-> s2-0 prim-core offense) 4)
     (set-vector! (-> s2-0 local-sphere) 0.0 0.0 0.0 arg1)
+    (dummy-46 s4-0 s2-0)
     )
-   (dummy-46 s4-0)
    (set! (-> s4-0 nav-radius) (* 0.75 (-> s4-0 root-prim local-sphere w)))
    (dummy-50 s4-0)
    (set! (-> s4-0 event-self) 'touched)

@@ -2124,59 +2124,61 @@
   (with-pp
    (cond
     ((handle->process (-> obj target))
-     (let ((t9-0 (method-of-object (-> obj vol) dummy-10)))
-      (-> (the-as target (-> obj target process 0)) control trans)
-      (cond
-       ((not (t9-0))
-        (dummy-27 obj)
+     (cond
+      ((not
+        (dummy-10
+         (-> obj vol)
+         (-> (the-as target (-> obj target process 0)) control trans)
+         )
         )
-       (else
-        (let ((v1-15 (-> (the-as target (-> obj target process 0)) water)))
-         (when
-          (and
-           (logtest? #x80000 (-> obj flags))
-           (logtest? (-> v1-15 flags) 512)
-           (>= (-> v1-15 surface-height) (-> v1-15 bottom 0 y))
-           )
-          (let ((v1-18 (-> obj attack-event)))
-           (case v1-18 
-            ((#f)
+       (dummy-27 obj)
+       )
+      (else
+       (let ((v1-15 (-> (the-as target (-> obj target process 0)) water)))
+        (when
+         (and
+          (logtest? #x80000 (-> obj flags))
+          (logtest? (-> v1-15 flags) 512)
+          (>= (-> v1-15 surface-height) (-> v1-15 bottom 0 y))
+          )
+         (let ((v1-18 (-> obj attack-event)))
+          (case v1-18 
+           ((#f)
+             )
+           (('heat)
+            (send-event
+             (handle->process (-> obj target))
+             'heat
+             (* 10.0 (-> *display* seconds-per-frame))
+             )
+            )
+           (('drown-death 'lava 'dark-eco-pool)
+            (let ((a1-8 (new 'stack-no-clear 'event-message-block)))
+             (set! (-> a1-8 from) pp)
+             (set! (-> a1-8 num-params) 2)
+             (set! (-> a1-8 message) 'attack-invinc)
+             (set! (-> a1-8 param 0) (the-as uint #f))
+             (let ((a0-19 (new 'static 'attack-info :mask #x20)))
+              (set! (-> a0-19 mode) v1-18)
+              (set! (-> a1-8 param 1) (the-as uint a0-19))
               )
-            (('heat)
-             (send-event
-              (handle->process (-> obj target))
-              'heat
-              (* 10.0 (-> *display* seconds-per-frame))
+             (if (send-event-function (handle->process (-> obj target)) a1-8)
+              (send-event obj 'notify 'attack)
               )
              )
-            (('drown-death 'lava 'dark-eco-pool)
-             (let ((a1-8 (new 'stack-no-clear 'event-message-block)))
-              (set! (-> a1-8 from) pp)
-              (set! (-> a1-8 num-params) 2)
-              (set! (-> a1-8 message) 'attack-invinc)
-              (set! (-> a1-8 param 0) (the-as uint #f))
-              (let ((a0-19 (new 'static 'attack-info :mask #x20)))
-               (set! (-> a0-19 mode) v1-18)
-               (set! (-> a1-8 param 1) (the-as uint a0-19))
-               )
-              (if (send-event-function (handle->process (-> obj target)) a1-8)
-               (send-event obj 'notify 'attack)
-               )
+            )
+           (else
+            (let ((a1-10 (new 'stack-no-clear 'event-message-block)))
+             (set! (-> a1-10 from) pp)
+             (set! (-> a1-10 num-params) 2)
+             (set! (-> a1-10 message) 'attack)
+             (set! (-> a1-10 param 0) (the-as uint #f))
+             (let ((a0-27 (new 'static 'attack-info :mask #x20)))
+              (set! (-> a0-27 mode) v1-18)
+              (set! (-> a1-10 param 1) (the-as uint a0-27))
               )
-             )
-            (else
-             (let ((a1-10 (new 'stack-no-clear 'event-message-block)))
-              (set! (-> a1-10 from) pp)
-              (set! (-> a1-10 num-params) 2)
-              (set! (-> a1-10 message) 'attack)
-              (set! (-> a1-10 param 0) (the-as uint #f))
-              (let ((a0-27 (new 'static 'attack-info :mask #x20)))
-               (set! (-> a0-27 mode) v1-18)
-               (set! (-> a1-10 param 1) (the-as uint a0-27))
-               )
-              (if (send-event-function (handle->process (-> obj target)) a1-10)
-               (send-event obj 'notify 'attack)
-               )
+             (if (send-event-function (handle->process (-> obj target)) a1-10)
+              (send-event obj 'notify 'attack)
               )
              )
             )
@@ -2191,10 +2193,7 @@
       *target*
       (and
        (not (handle->process (-> *target* water volume)))
-       (let ((t9-7 (method-of-object (-> obj vol) dummy-10)))
-        (-> *target* control trans)
-        (t9-7)
-        )
+       (dummy-10 (-> obj vol) (-> *target* control trans))
        )
       )
      (let ((s5-0 (-> *target* water)))
@@ -2282,7 +2281,7 @@
 ;; WARN: disable def twice: 85. This may happen when a cond (no else) is nested inside of another conditional, but it should be rare.
 ;; Used lq/sq
 (defmethod TODO-RENAME-29 water-vol ((obj water-vol))
-  (local-vars (r0-0 uint128) (a0-9 uint128) (a0-15 uint128) (sv-16 int))
+  (local-vars (sv-16 res-tag))
   (set!
    (-> obj attack-event)
    (the-as
@@ -2304,7 +2303,7 @@
   (logior! (-> obj vol flags) 3)
   (set! (-> obj bottom-height) 32768.0)
   (set! (-> obj target) (the-as handle #f))
-  (set! sv-16 0)
+  (set! sv-16 (new 'static 'res-tag))
   (let
    ((v1-8
      (the-as
@@ -2315,7 +2314,7 @@
        'exact
        -1000000000.0
        (the-as pointer #f)
-       (the-as (pointer res-tag) (& sv-16))
+       (& sv-16)
        *res-static-buf*
        )
       )
@@ -2325,16 +2324,10 @@
     (set! (-> obj water-height) (-> v1-8 0))
     (set! (-> obj wade-height) (-> v1-8 1))
     (set! (-> obj swim-height) (-> v1-8 2))
-    (let ((a0-8 (the-as uint128 sv-16)))
-     (.pcpyud a0-9 a0-8 r0-0)
-     )
-    (if (>= (the-as uint (shr (* (the-as int a0-9) 2) 49)) (the-as uint 4))
+    (if (>= (-> sv-16 elt-count) (the-as uint 4))
      (set! (-> obj flags) (the-as uint (the int (-> v1-8 3))))
      )
-    (let ((a0-14 (the-as uint128 sv-16)))
-     (.pcpyud a0-15 a0-14 r0-0)
-     )
-    (if (>= (the-as uint (shr (* (the-as int a0-15) 2) 49)) (the-as uint 5))
+    (if (>= (-> sv-16 elt-count) (the-as uint 5))
      (set! (-> obj bottom-height) (-> v1-8 4))
      )
     )
