@@ -274,7 +274,6 @@ void declare_state(Type* type, TypeSystem* type_system, const goos::Object& def)
 struct StructureDefResult {
   TypeFlags flags;
   bool generate_runtime_type = true;
-  bool generate_inspect = true;
   bool pack_me = false;
   bool allow_misaligned = false;
   bool final = false;
@@ -337,7 +336,7 @@ StructureDefResult parse_structure_def(StructureType* type,
       } else if (opt_name == ":no-runtime-type") {
         result.generate_runtime_type = false;
       } else if (opt_name == ":no-inspect") {
-        result.generate_inspect = false;
+        type->set_gen_inspect(false);
       } else if (opt_name == ":pack-me") {
         result.pack_me = true;
       } else if (opt_name == ":heap-base") {
@@ -390,7 +389,6 @@ StructureDefResult parse_structure_def(StructureType* type,
 struct BitFieldTypeDefResult {
   TypeFlags flags;
   bool generate_runtime_type = true;
-  bool generate_inspect = true;
 };
 
 BitFieldTypeDefResult parse_bitfield_type_def(BitFieldType* type,
@@ -446,7 +444,7 @@ BitFieldTypeDefResult parse_bitfield_type_def(BitFieldType* type,
       } else if (opt_name == ":no-runtime-type") {
         result.generate_runtime_type = false;
       } else if (opt_name == ":no-inspect") {
-        result.generate_inspect = false;
+        type->set_gen_inspect(false);
       } else if (opt_name == ":heap-base") {
         u16 hb = get_int(car(rest));
         rest = cdr(rest);
@@ -564,7 +562,6 @@ DeftypeResult parse_deftype(const goos::Object& deftype, TypeSystem* ts) {
     auto sr = parse_structure_def(new_type.get(), ts, field_list_obj, options_obj);
     result.flags = sr.flags;
     result.create_runtime_type = sr.generate_runtime_type;
-    result.generate_inspect = sr.generate_inspect;
     if (sr.pack_me) {
       new_type->set_pack(true);
     }
@@ -575,7 +572,6 @@ DeftypeResult parse_deftype(const goos::Object& deftype, TypeSystem* ts) {
           name);
       throw std::runtime_error("invalid pack option on basic");
     }
-    new_type->set_gen_inspect(sr.generate_inspect);
     new_type->set_heap_base(result.flags.heap_base);
     if (sr.final) {
       new_type->set_final();
@@ -590,7 +586,6 @@ DeftypeResult parse_deftype(const goos::Object& deftype, TypeSystem* ts) {
     auto sr = parse_structure_def(new_type.get(), ts, field_list_obj, options_obj);
     result.flags = sr.flags;
     result.create_runtime_type = sr.generate_runtime_type;
-    result.generate_inspect = sr.generate_inspect;
     if (sr.pack_me) {
       new_type->set_pack(true);
     }
@@ -601,7 +596,6 @@ DeftypeResult parse_deftype(const goos::Object& deftype, TypeSystem* ts) {
       throw std::runtime_error(
           fmt::format("[TypeSystem] :final option cannot be used on structure type {}", name));
     }
-    new_type->set_gen_inspect(sr.generate_inspect);
     new_type->set_heap_base(result.flags.heap_base);
     ts->add_type(name, std::move(new_type));
   } else if (is_type("integer", parent_type, ts)) {
@@ -616,8 +610,6 @@ DeftypeResult parse_deftype(const goos::Object& deftype, TypeSystem* ts) {
     auto sr = parse_bitfield_type_def(new_type.get(), ts, field_list_obj, options_obj);
     result.flags = sr.flags;
     result.create_runtime_type = sr.generate_runtime_type;
-    result.generate_inspect = sr.generate_inspect;
-    new_type->set_gen_inspect(sr.generate_inspect);
     ts->add_type(name, std::move(new_type));
   } else {
     throw std::runtime_error("Creating a child type from " + parent_type.print() +

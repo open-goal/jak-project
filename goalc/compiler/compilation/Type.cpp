@@ -407,7 +407,7 @@ Val* Compiler::compile_deftype(const goos::Object& form, const goos::Object& res
   }
 
   // Auto-generate (inspect) method
-  if (result.generate_inspect) {
+  if (result.type_info->gen_inspect()) {
     auto as_structure_type = dynamic_cast<StructureType*>(result.type_info);
     if (as_structure_type) {  // generate the inspect method
       generate_inspector_for_structure_type(form, env, as_structure_type);
