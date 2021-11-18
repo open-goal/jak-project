@@ -355,12 +355,16 @@
   )
 
 (defsmacro user? (&rest users)
-  (if (null? users)
-    #f
-    (if (eq? *user* (car users))
-      #t
-      `(user? ,@(cdr users))
-      )
+  (cond
+    ((null? users)
+     #f
+     )
+    ((eq? *user* (car users))
+     #t
+     )
+    (#t
+     `(user? ,@(cdr users))
+     )
     )
   )
 
