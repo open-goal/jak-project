@@ -356,15 +356,9 @@
 
 (defsmacro user? (&rest users)
   (cond
-    ((null? users)
-     #f
-     )
-    ((eq? *user* (car users))
-     #t
-     )
-    (#t
-     `(user? ,@(cdr users))
-     )
+    ((null? users)            #f)
+    ((eq? *user* (car users)) #t)
+    (#t   `(user? ,@(cdr users)))
     )
   )
 

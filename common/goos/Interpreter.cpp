@@ -26,10 +26,10 @@ Interpreter::Interpreter(const std::string& username) {
   define_var_in_env(goal_env, goal_env, "*goal-env*");
   define_var_in_env(goal_env, global_environment, "*global-env*");
 
-  // set user profile bool
-  define_var_in_env(global_environment, SymbolObject::make_new(reader.symbolTable, username),
-                    "*user*");
-  define_var_in_env(goal_env, SymbolObject::make_new(reader.symbolTable, username), "*user*");
+  // set user profile name
+  auto user = SymbolObject::make_new(reader.symbolTable, username);
+  define_var_in_env(global_environment, user, "*user*");
+  define_var_in_env(goal_env, user, "*user*");
 
   // setup maps
   special_forms = {
