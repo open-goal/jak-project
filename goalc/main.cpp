@@ -36,7 +36,7 @@ int main(int argc, char** argv) {
     if (std::string("-v") == argv[i]) {
       verbose = true;
     }
-    if (std::string("-cmd") == argv[i] && i < argc - 1) {
+    if (std::string("-cmd") == argv[i] && i + 1 < argc) {
       argument = argv[++i];
     }
     if (std::string("-auto-lt") == argv[i]) {
@@ -45,7 +45,7 @@ int main(int argc, char** argv) {
     if (std::string("-auto-dbg") == argv[i]) {
       auto_debug = true;
     }
-    if (std::string("-user") == argv[i] && i < argc - 1) {
+    if (std::string("-user") == argv[i] && i + 1 < argc) {
       username = argv[++i];
     }
     if (std::string("-user-auto") == argv[i]) {
@@ -67,7 +67,7 @@ int main(int argc, char** argv) {
         if (username.empty()) {
           username = "#f";
         }
-      } catch (std::runtime_error e) {
+      } catch (std::exception& e) {
         printf("error opening user desc file: %s\n", e.what());
         username = "#f";
       }
