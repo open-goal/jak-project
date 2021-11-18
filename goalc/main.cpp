@@ -28,6 +28,7 @@ int main(int argc, char** argv) {
   (void)argv;
 
   std::string argument;
+  std::string username = "#f";
   bool verbose = false;
   bool auto_listen = false;
   bool auto_debug = false;
@@ -44,6 +45,33 @@ int main(int argc, char** argv) {
     if (std::string("-auto-dbg") == argv[i]) {
       auto_debug = true;
     }
+    if (std::string("-user") == argv[i] && i < argc - 1) {
+      username = argv[++i];
+    }
+    if (std::string("-user-auto") == argv[i]) {
+      try {
+        auto text = std::make_shared<goos::FileText>(
+            file_util::get_file_path({"goal_src", "user", "user.txt"}), "goal_src/user/user.txt");
+        goos::TextStream ts(text);
+        ts.seek_past_whitespace_and_comments();
+        username.clear();
+        while (ts.text_remains()) {
+          char c = ts.read();
+          if ((c >= '0' && c <= '9') || (c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z') ||
+              c == '-' || c == '.' || c == '!' || c == '?' || c == '<' || c == '>') {
+            username.push_back(c);
+          } else {
+            break;
+          }
+        }
+        if (username.empty()) {
+          username = "#f";
+        }
+      } catch (std::runtime_error e) {
+        printf("error opening user desc file: %s\n", e.what());
+        username = "#f";
+      }
+    }
   }
   setup_logging(verbose);
 
@@ -56,7 +84,7 @@ int main(int argc, char** argv) {
     if (argument.empty()) {
       ReplStatus status = ReplStatus::WANT_RELOAD;
       while (status == ReplStatus::WANT_RELOAD) {
-        compiler = std::make_unique<Compiler>(std::make_unique<ReplWrapper>());
+        compiler = std::make_unique<Compiler>(username, std::make_unique<ReplWrapper>());
         status = compiler->execute_repl(auto_listen, auto_debug);
         if (status == ReplStatus::WANT_RELOAD) {
           fmt::print("Reloading compiler...\n");

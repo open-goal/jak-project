@@ -288,7 +288,6 @@
   `(seval (desfun ,name ,args ,@body))
   )
 
-
 ;;;;;;;;;;;;;;;;;;;
 ;; enum stuff
 ;;;;;;;;;;;;;;;;;;;
@@ -341,3 +340,28 @@
 
 ;; this is checked in a test to see if this file is loaded.
 (define __goos-lib-loaded__ #t)
+
+
+;;;;;;;;;;;;;;;;;;;;;;;;
+;; USER PROFILES      ;;
+;;;;;;;;;;;;;;;;;;;;;;;;
+
+;; *user* is defined when goos starts!
+(when *user*
+  (fmt #t "Loading user scripts for user: {}...\n" *user*)
+  ;; i'm not sure what naming scheme to sue here. user/<name>/user.gs?
+  ;; the GOAL one is loaded in Compiler.cpp
+  (load-file (fmt #f "goal_src/user/{}/user.gs" *user*))
+  )
+
+(defsmacro user? (&rest users)
+  (if (null? users)
+    #f
+    (if (eq? *user* (car users))
+      #t
+      `(user? ,@(cdr users))
+      )
+    )
+  )
+
+
