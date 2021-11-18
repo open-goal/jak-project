@@ -10,3 +10,5 @@ The rest of the directory can be used however you please!
 To automatically log in as a specific user, create a `user.txt` file in this directory
 which contains just the username you want to log in as. That way you don't have to
 modify multiple scripts when you want to change users.
+
+If you want to make your profile public, edit the .gitignore in this directory.
