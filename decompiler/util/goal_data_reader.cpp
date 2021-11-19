@@ -3,7 +3,7 @@
 #include "decompiler/util/DecompilerTypeSystem.h"
 #include "decompiler/ObjectFile/LinkedObjectFile.h"
 
-#include "tools/level_tools/Error.h"
+#include "decompiler/util/Error.h"
 
 void read_plain_data_field(const TypedRef& object,
                            const std::string& field_name,

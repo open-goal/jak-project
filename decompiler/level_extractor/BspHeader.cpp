@@ -2,8 +2,8 @@
 
 #include "decompiler/ObjectFile/LinkedObjectFile.h"
 #include "decompiler/util/DecompilerTypeSystem.h"
-#include "tools/level_tools/goal_data_reader.h"
-#include "tools/level_tools/Error.h"
+#include "decompiler/util/goal_data_reader.h"
+#include "decompiler/util/Error.h"
 #include "common/dma/dma.h"
 
 namespace level_tools {
@@ -286,6 +286,16 @@ void tfrag_debug_print_unpack(Ref start, int qwc_total) {
   fmt::print("-------------------------------------------\n");
 }
 
+std::vector<u8> read_dma_chain(Ref& start, u32 qwc) {
+  std::vector<u8> result;
+  result.resize(qwc * 16);
+  for (u32 word = 0; word < qwc * 4; word++) {
+    u32 x = deref_u32(start, word);
+    memcpy(result.data() + (word * 4), &x, 4);
+  }
+  return result;
+}
+
 void TFragment::read_from_file(TypedRef ref,
                                const decompiler::DecompilerTypeSystem& dts,
                                DrawStats* stats) {
@@ -319,7 +329,6 @@ void TFragment::read_from_file(TypedRef ref,
   }
 
   if (stats->debug_print_dma_data) {
-    fmt::print("qwc's: {} {} {} {}\n", dma_qwc[0], dma_qwc[1], dma_qwc[2], dma_qwc[3]);
     // first, common
     fmt::print("DMA COMMON {}, {} qwc:\n", dmas[0].label_name, dma_qwc[0]);
     tfrag_debug_print_unpack(dmas[0].ref, dma_qwc[0]);
@@ -335,22 +344,31 @@ void TFragment::read_from_file(TypedRef ref,
     // next "level1"
     fmt::print("DMA LEVEL1 {}, {} qwc:\n", dmas[2].label_name, dma_qwc[2]);
     tfrag_debug_print_unpack(dmas[2].ref, dma_qwc[2]);
+
+    fmt::print("qwc's: {} {} {} {}\n", dma_qwc[0], dma_qwc[1], dma_qwc[2], dma_qwc[3]);
   }
 
-  // todo dma
-  // todo dma
-  // todo dma
-
-  // todo shader
-  num_shaders = read_plain_data_field<u8>(ref, "num-shaders", dts);
   num_base_colors = read_plain_data_field<u8>(ref, "num-base-colors", dts);
   num_level0_colors = read_plain_data_field<u8>(ref, "num-level0-colors", dts);
   num_level1_colors = read_plain_data_field<u8>(ref, "num-level1-colors", dts);
+
+  dma_base = read_dma_chain(dmas[1].ref, dma_qwc[1]);
+
+  if (num_level0_colors > 0 || num_level1_colors > 0) {
+    // if we're base only, this has junk in it, and it wouldn't be used anyway.
+    dma_common_and_level0 = read_dma_chain(dmas[0].ref, std::max(dma_qwc[3], dma_qwc[0]));
+  }
+
+  dma_level1 = read_dma_chain(dmas[2].ref, dma_qwc[2]);
+
+  // todo shader
+  num_shaders = read_plain_data_field<u8>(ref, "num-shaders", dts);
   color_offset = read_plain_data_field<u8>(ref, "color-offset", dts);
   color_count = read_plain_data_field<u8>(ref, "color-count", dts);
+  // fmt::print("colors: {} {} {}\n", num_base_colors, num_level0_colors, num_level1_colors);
   assert(read_plain_data_field<u8>(ref, "pad0", dts) == 0);
   assert(read_plain_data_field<u8>(ref, "pad1", dts) == 0);
-  // todo generic
+  assert(read_plain_data_field<u32>(ref, "generic-u32", dts) == 0);
 }
 
 std::string TFragment::print(const PrintSettings& settings, int indent) const {
@@ -991,6 +1009,18 @@ std::unique_ptr<DrawableTree> make_drawable_tree(TypedRef ref,
 
   if (ref.type->get_name() == "drawable-tree-trans-tfrag") {
     auto tree = std::make_unique<DrawableTreeTransTfrag>();
+    tree->read_from_file(ref, dts, stats);
+    return tree;
+  }
+
+  if (ref.type->get_name() == "drawable-tree-lowres-tfrag") {
+    auto tree = std::make_unique<DrawableTreeLowresTfrag>();
+    tree->read_from_file(ref, dts, stats);
+    return tree;
+  }
+
+  if (ref.type->get_name() == "drawable-tree-dirt-tfrag") {
+    auto tree = std::make_unique<DrawableTreeDirtTfrag>();
     tree->read_from_file(ref, dts, stats);
     return tree;
   }

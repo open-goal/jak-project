@@ -4,8 +4,8 @@
 #include "decompiler/ObjectFile/LinkedObjectFileCreation.h"
 #include "common/util/DgoReader.h"
 
-#include "tools/level_tools/goal_data_reader.h"
-#include "tools/level_tools/BspHeader.h"
+#include "decompiler/util/goal_data_reader.h"
+#include "decompiler/level_extractor/BspHeader.h"
 
 
 #include "common/util/assert.h"

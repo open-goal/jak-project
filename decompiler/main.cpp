@@ -7,6 +7,7 @@
 #include "common/util/FileUtil.h"
 #include "common/versions.h"
 #include "decompiler/data/streamed_audio.h"
+#include "decompiler/level_extractor/extract_level.h"
 
 int main(int argc, char** argv) {
   using namespace decompiler;
@@ -30,7 +31,7 @@ int main(int argc, char** argv) {
   try {
     config = read_config_file(argv[1]);
   } catch (const std::exception& e) {
-    lg::error("Failed to parse config");
+    lg::error("Failed to parse config: {}", e.what());
     return 1;
   }
 
@@ -125,6 +126,10 @@ int main(int argc, char** argv) {
     if (!result.empty()) {
       file_util::write_text_file(file_util::get_file_path({"assets", "game_count.txt"}), result);
     }
+  }
+
+  for (auto& lev : config.levels_to_extract) {
+    extract_from_level(db, lev);
   }
 
   if (!config.audio_dir_file_name.empty()) {

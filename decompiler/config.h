@@ -125,6 +125,8 @@ struct Config {
 
   std::unordered_map<std::string, int> bad_format_strings;
 
+  std::vector<std::string> levels_to_extract;
+
   DecompileHacks hacks;
 };
 

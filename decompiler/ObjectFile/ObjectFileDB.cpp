@@ -428,7 +428,7 @@ void ObjectFileDB::process_link_data(const Config& config) {
   });
 
   lg::info("Processed Link Data");
-  lg::info(" Total {} ms\n", process_link_timer.getMs());
+  lg::info(" Total {:.2f} ms\n", process_link_timer.getMs());
   // printf("\n");
 }
 
@@ -443,7 +443,7 @@ void ObjectFileDB::process_labels() {
 
   lg::info("Processed Labels:");
   lg::info(" Total {} labels", total);
-  lg::info(" Total {} ms\n", process_label_timer.getMs());
+  lg::info(" Total {:.2f} ms\n", process_label_timer.getMs());
 }
 
 /*!
@@ -602,13 +602,13 @@ std::string ObjectFileDB::process_tpages() {
 
   assert(tpage_dir_count <= 1);
 
+  lg::info("Processed {} / {} textures ({} px) {:.2f}% in {:.2f} ms", success, total, total_px,
+           100.f * float(success) / float(total), timer.getMs());
+
   if (tpage_dir_count == 0) {
     lg::warn("Did not find tpage-dir.");
     return {};
   }
-
-  lg::info("Processed {} / {} textures ({} px) {:.2f}% in {:.2f} ms", success, total, total_px,
-           100.f * float(success) / float(total), timer.getMs());
   return result;
 }
 

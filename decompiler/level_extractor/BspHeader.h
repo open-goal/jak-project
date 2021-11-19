@@ -5,7 +5,7 @@
 #include <memory>
 #include <vector>
 
-#include "tools/level_tools/goal_data_reader.h"
+#include "decompiler/util/goal_data_reader.h"
 
 namespace decompiler {
 class LinkedObjectFile;
@@ -126,8 +126,11 @@ struct TFragment : public Drawable {
   // u32 color_indices;  // 12 - 16 (or colors?)
   Vector bsphere;  // 16 - 32
   // dma common/level0 // 32 - 36
+  std::vector<u8> dma_common_and_level0;
   // dma base // 36 - 40
+  std::vector<u8> dma_base;
   // dma level 1 // 40 - 44
+  std::vector<u8> dma_level1;
   u8 dma_qwc[4];
   // shader // 48 - 52
   u8 num_shaders;        // 52
@@ -334,6 +337,14 @@ struct DrawableTreeInstanceTie : public DrawableTree {
 
 struct DrawableTreeTransTfrag : public DrawableTreeTfrag {
   std::string my_type() const override { return "drawable-tree-trans-tfrag"; }
+};
+
+struct DrawableTreeLowresTfrag : public DrawableTreeTfrag {
+  std::string my_type() const override { return "drawable-tree-lowres-tfrag"; }
+};
+
+struct DrawableTreeDirtTfrag : public DrawableTreeTfrag {
+  std::string my_type() const override { return "drawable-tree-dirt-tfrag"; }
 };
 
 struct DrawableTreeUnknown : public DrawableTree {

@@ -194,6 +194,7 @@ Config read_config_file(const std::string& path_to_config_file) {
 
   config.bad_format_strings =
       hacks_json.at("bad_format_strings").get<std::unordered_map<std::string, int>>();
+  config.levels_to_extract = cfg.at("levels_to_extract").get<std::vector<std::string>>();
   return config;
 }
 
