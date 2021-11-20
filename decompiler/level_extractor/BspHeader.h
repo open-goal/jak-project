@@ -348,6 +348,10 @@ struct DrawableTreeDirtTfrag : public DrawableTreeTfrag {
   std::string my_type() const override { return "drawable-tree-dirt-tfrag"; }
 };
 
+struct DrawableTreeIceTfrag : public DrawableTreeTfrag {
+  std::string my_type() const override { return "drawable-tree-ice-tfrag"; }
+};
+
 struct DrawableTreeUnknown : public DrawableTree {
   void read_from_file(TypedRef ref,
                       const decompiler::DecompilerTypeSystem& dts,

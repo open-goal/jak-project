@@ -3,6 +3,7 @@
 #include "common/util/assert.h"
 #include "decompiler/util/Error.h"
 #include "decompiler/ObjectFile/LinkedObjectFile.h"
+#include "common/util/FileUtil.h"
 
 namespace decompiler {
 namespace {
@@ -1173,7 +1174,7 @@ void emulate_chain(UnpackState& state, u32 max_words, const u32* start, u8* vu_m
   while (word < max_words) {
     VifCode code(start[word]);
     word++;
-    fmt::print("{}\n", code.print());
+    // fmt::print("{}\n", code.print());
     switch (code.kind) {
       case VifCode::Kind::STROW:
         state.row_init = true;
@@ -1400,6 +1401,7 @@ struct TFragVertexData {
   Vector4f pre_cam_trans_pos;
   Vector3f stq;  // stq?
   Vector4f rgba;
+  bool end_of_strip = false;
 
   // pos = cam.rot * pctp.xyz + cam.trans
   // q = fog.x / pctp.w
@@ -1468,6 +1470,8 @@ bool emulate_kick_subroutine(VuMemWrapper& mem,
                  vi12_vert_count, vi06_kick_zone_ptr);
     }
     //    fmt::print("didn't kick, vi12 now {}\n", vars.vi12);
+    all_draws.push_back(current_draw);
+    current_draw.verts.clear();
     return false;
   }
 
@@ -1540,8 +1544,10 @@ bool emulate_kick_subroutine(VuMemWrapper& mem,
       //  jr vi15
       //  ilwr.x vi12, vi09
       vi12_vert_count = mem.ilw_data(vi09_draw_addr_book, 0);
-      fmt::print("done with adgifs but not packet, now moving on to another with {}\n",
-                 (s16)vi12_vert_count);
+      if (DEBUG) {
+        fmt::print("done with adgifs but not packet, now moving on to another with {}\n",
+                   (s16)vi12_vert_count);
+      }
       //      fmt::print("didn't kick 2, vi12 now {}\n", vars.vi12);
       return false;
     }
@@ -1675,11 +1681,11 @@ bool emulate_kick_subroutine(VuMemWrapper& mem,
 }
 
 template <bool DEBUG>
-void emulate_tfrag_execution(const level_tools::TFragment& frag,
-                             VuMemWrapper& mem,
-                             TFragColorUnpack& color_indices,
-                             TFragExtractStats* stats) {
-  fmt::print("tfrag exec. offset of colors = {}\n", color_indices.unpack_qw_addr);
+std::vector<TFragDraw> emulate_tfrag_execution(const level_tools::TFragment& frag,
+                                               VuMemWrapper& mem,
+                                               TFragColorUnpack& color_indices,
+                                               TFragExtractStats* stats) {
+  // fmt::print("tfrag exec. offset of colors = {}\n", color_indices.unpack_qw_addr);
   std::vector<TFragDraw> all_draws;
   TFragDraw current_draw;
 
@@ -1922,7 +1928,6 @@ void emulate_tfrag_execution(const level_tools::TFragment& frag,
 
   //  iadd vi05, vi06, vi01      |  maddax.xyzw ACC, vf04, vf13
   u16 vi05_end_of_vert_kick_data = vi06_kick_zone_ptr + vi01;
-  fmt::print("num verts in chunk: {}\n", vi12_vert_count);
 
   //  ior vi10, vi06, vi00       |  mul.xyz vf12, vf12, Q
   u16 vi10_start_of_vert_kick_data = vi06_kick_zone_ptr;
@@ -1967,7 +1972,6 @@ void emulate_tfrag_execution(const level_tools::TFragment& frag,
 
   //  ilwr.x vi12, vi09          |  clipw.xyz vf16, vf16
   vi12_vert_count = mem.ilw_data(vi09_draw_addr_book, 0);
-  fmt::print("next block (out of warmup) dvert: {}\n", vi12_vert_count);
   // m_clip_and_3ffff = clip_xyz_plus_minus(vars.vf16_scaled_pos_0);
 
   Vector4f vf27_vtx_stq_3;
@@ -2070,11 +2074,10 @@ void emulate_tfrag_execution(const level_tools::TFragment& frag,
                                          vi06_kick_zone_ptr, vi07, vi08_adgif_base,
                                          vi09_draw_addr_book, vi10_start_of_vert_kick_data,
                                          vi12_vert_count, vi13_adgifs, vf24_w_u16)) {
-        return;
+        goto end;
       }
     }
 
-    fmt::print("6a1 {} / {}\n", vi05_end_of_vert_kick_data, vi06_kick_zone_ptr);
     //////////////////////// L6A1
 
     // part 1 for 1
@@ -2172,10 +2175,9 @@ void emulate_tfrag_execution(const level_tools::TFragment& frag,
                                          vi06_kick_zone_ptr, vi07, vi08_adgif_base,
                                          vi09_draw_addr_book, vi10_start_of_vert_kick_data,
                                          vi12_vert_count, vi13_adgifs, vf24_w_u16)) {
-        return;
+        goto end;
       }
     }
-    fmt::print("6b0 {} / {}\n", vi05_end_of_vert_kick_data, vi06_kick_zone_ptr);
 
     /////////////////// L6B0
     //  nop                        |  subz.xyz vf25, vf28, vf02
@@ -2271,11 +2273,9 @@ void emulate_tfrag_execution(const level_tools::TFragment& frag,
                                          vi06_kick_zone_ptr, vi07, vi08_adgif_base,
                                          vi09_draw_addr_book, vi10_start_of_vert_kick_data,
                                          vi12_vert_count, vi13_adgifs, vf24_w_u16)) {
-        return;
+        goto end;
       };
     }
-
-    fmt::print("6bf {} / {}\n", vi05_end_of_vert_kick_data, vi06_kick_zone_ptr);
 
     ///////////////////// 6bf
     //  nop                        |  subz.xyz vf26, vf28, vf02
@@ -2371,31 +2371,102 @@ void emulate_tfrag_execution(const level_tools::TFragment& frag,
                                          vi06_kick_zone_ptr, vi07, vi08_adgif_base,
                                          vi09_draw_addr_book, vi10_start_of_vert_kick_data,
                                          vi12_vert_count, vi13_adgifs, vf24_w_u16)) {
-        return;
+        goto end;
       }
     }
 
-    //assert(false);
+    // assert(false);
   }
+
+end:
+  int total_dvert = 0;
+  for (auto& draw : all_draws) {
+    total_dvert += draw.verts.size();
+  }
+
+  return all_draws;
 }
 
-void emulate_tfrags(const std::vector<level_tools::TFragment>& frags) {
+std::string debug_dump_to_obj(const std::vector<TFragDraw>& draws) {
+  std::vector<Vector4f> verts;
+  std::vector<math::Vector<float, 2>> tcs;
+  std::vector<math::Vector<int, 3>> faces;
+
+  for (auto& draw : draws) {
+    // add verts...
+    assert(draw.verts.size() >= 3);
+
+    int vert_idx = 0;
+
+    int vtx_idx_queue[3];
+    Vector4f vtx_queue[3];
+    math::Vector<float, 2> tc_queue[3];
+
+    int q_idx = 0;
+    int startup = 0;
+    while (vert_idx < (int)draw.verts.size()) {
+      verts.push_back(draw.verts.at(vert_idx).pre_cam_trans_pos / 65536);
+      tcs.push_back(math::Vector<float, 2>{draw.verts.at(vert_idx).stq.x(), draw.verts.at(vert_idx).stq.y()});
+      vert_idx++;
+      vtx_idx_queue[q_idx++] = verts.size();
+
+      // wrap the index
+      if (q_idx == 3) {
+        q_idx = 0;
+      }
+
+      // bump the startup
+      if (startup < 3) {
+        startup++;
+      }
+
+      if (startup >= 3) {
+        faces.push_back(math::Vector<int, 3>{vtx_idx_queue[0], vtx_idx_queue[1], vtx_idx_queue[2]});
+      }
+    }
+  }
+
+  std::string result;
+  for (auto& vert : verts) {
+    result += fmt::format("v {} {} {}\n", vert.x(), vert.y(), vert.z());
+  }
+  for (auto& tc : tcs) {
+    result += fmt::format("vt {} {}\n", tc.x(), tc.y());
+  }
+  for (auto& face : faces) {
+    result += fmt::format("f {}/{} {}/{} {}/{}\n", face.x(), face.x(), face.y(), face.y(), face.z(),
+                          face.z());
+  }
+
+  return result;
+}
+
+void emulate_tfrags(const std::vector<level_tools::TFragment>& frags,
+                    const std::string& debug_name) {
   TFragExtractStats stats;
 
   std::vector<u8> vu_mem;
   vu_mem.resize(16 * 1024);
 
+  std::vector<TFragDraw> all_draws;
+
   for (auto& frag : frags) {
     TFragColorUnpack color_indices;
     emulate_dma_building_for_tfrag(frag, vu_mem, color_indices, &stats);
     VuMemWrapper mem(vu_mem);
-    emulate_tfrag_execution<true>(frag, mem, color_indices, &stats);
+    auto draws = emulate_tfrag_execution<false>(frag, mem, color_indices, &stats);
+    all_draws.insert(all_draws.end(), draws.begin(), draws.end());
   }
   fmt::print("l1: {}, l0: {}, base: {}\n", stats.num_l1, stats.num_l0, stats.num_base);
+
+  auto debug_out = debug_dump_to_obj(all_draws);
+  file_util::write_text_file(
+      file_util::get_file_path({"debug_out", fmt::format("tfrag-{}.obj", debug_name)}), debug_out);
 }
 }  // namespace
 
-ExtractedTFragmentTree extract_tfrag(const level_tools::DrawableTreeTfrag* tree) {
+ExtractedTFragmentTree extract_tfrag(const level_tools::DrawableTreeTfrag* tree,
+                                     const std::string& debug_name) {
   ExtractedTFragmentTree result;
   assert(tree->length == (int)tree->arrays.size());
   fmt::print("tree has {} arrays\n", tree->length);
@@ -2417,9 +2488,9 @@ ExtractedTFragmentTree extract_tfrag(const level_tools::DrawableTreeTfrag* tree)
   assert(ok);
 
   result.vis_nodes = extract_vis_data(tree, as_tfrag_array->tfragments.front().id);
-  assert(result.vis_nodes.last_child_node + 1 == idx);
+  // assert(result.vis_nodes.last_child_node + 1 == idx);
 
-  emulate_tfrags(as_tfrag_array->tfragments);
+  emulate_tfrags(as_tfrag_array->tfragments, debug_name);
   return result;
 }
 }  // namespace decompiler

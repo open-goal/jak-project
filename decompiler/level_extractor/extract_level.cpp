@@ -63,13 +63,14 @@ void extract_from_level(ObjectFileDB& db, const std::string& dgo_name) {
   const std::set<std::string> tfrag_trees = {
       "drawable-tree-tfrag",     "drawable-tree-trans-tfrag",  "drawable-tree-dirt-tfrag",
       "drawable-tree-ice-tfrag", "drawable-tree-lowres-tfrag", "drawable-tree-lowres-trans-tfrag"};
+  int i = 0;
   for (auto& draw_tree : bsp_header.drawable_tree_array.trees) {
     fmt::print("tree: {}\n", draw_tree->my_type());
     if (tfrag_trees.count(draw_tree->my_type())) {
       auto as_tfrag_tree = dynamic_cast<level_tools::DrawableTreeTfrag*>(draw_tree.get());
       fmt::print("  Is a tfrag tree!\n");
       assert(as_tfrag_tree);
-      extract_tfrag(as_tfrag_tree);
+      extract_tfrag(as_tfrag_tree, fmt::format("{}-{}", dgo_name, i++));
     }
   }
 }

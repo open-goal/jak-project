@@ -1038,6 +1038,12 @@ std::unique_ptr<DrawableTree> make_drawable_tree(TypedRef ref,
     return tree;
   }
 
+  if (ref.type->get_name() == "drawable-tree-ice-tfrag") {
+    auto tree = std::make_unique<DrawableTreeIceTfrag>();
+    tree->read_from_file(ref, dts, stats);
+    return tree;
+  }
+
   if (ref.type->get_name() == "drawable-tree-instance-tie") {
     auto tree = std::make_unique<DrawableTreeInstanceTie>();
     tree->read_from_file(ref, dts, stats);

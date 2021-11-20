@@ -12,10 +12,10 @@ enum class TFragmentKind { NORMAL, TRANS, DIRT, ICE, LOWRES, LOWRES_TRANS, INVAL
 // There is a tree of bspheres. Each has at most 8 children. All leaves are at the same depth and
 // are tfrags.  Each node is identified by a u16.  They are sorted by depth.
 struct DrawVisNode {
-  math::Vector<float, 4> bsphere; // the bounding sphere, in meters (4096 = 1 game meter). w = rad
-  u16 child_id = 0xffff; // the ID of our first child.
-  u8 num_kids = 0xff; // number of children. The children are consecutive in memory
-  u8 flags = 0; // flags.  If 1, we have a DrawVisNode child, otherwise a Tfrag.
+  math::Vector<float, 4> bsphere;  // the bounding sphere, in meters (4096 = 1 game meter). w = rad
+  u16 child_id = 0xffff;           // the ID of our first child.
+  u8 num_kids = 0xff;              // number of children. The children are consecutive in memory
+  u8 flags = 0;                    // flags.  If 1, we have a DrawVisNode child, otherwise a Tfrag.
 };
 
 // This is the actual tree data, minus the tfrags themselves.
@@ -34,6 +34,7 @@ struct ExtractedTFragmentTree {
   u16 tfrag_base_idx = 0;
 };
 
-ExtractedTFragmentTree extract_tfrag(const level_tools::DrawableTreeTfrag* tree);
+ExtractedTFragmentTree extract_tfrag(const level_tools::DrawableTreeTfrag* tree,
+                                     const std::string& debug_name);
 
 }  // namespace decompiler
