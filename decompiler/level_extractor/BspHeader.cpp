@@ -351,7 +351,9 @@ void TFragment::read_from_file(TypedRef ref,
   num_base_colors = read_plain_data_field<u8>(ref, "num-base-colors", dts);
   num_level0_colors = read_plain_data_field<u8>(ref, "num-level0-colors", dts);
   num_level1_colors = read_plain_data_field<u8>(ref, "num-level1-colors", dts);
-
+  num_shaders = read_plain_data_field<u8>(ref, "num-shaders", dts);
+  color_offset = read_plain_data_field<u8>(ref, "color-offset", dts);
+  color_count = read_plain_data_field<u8>(ref, "color-count", dts);
   dma_base = read_dma_chain(dmas[1].ref, dma_qwc[1]);
 
   if (num_level0_colors > 0 || num_level1_colors > 0) {
@@ -361,10 +363,21 @@ void TFragment::read_from_file(TypedRef ref,
 
   dma_level1 = read_dma_chain(dmas[2].ref, dma_qwc[2]);
 
+  // color indices
+  int num_actual_colors = std::max(num_base_colors, std::max(num_level0_colors, num_level1_colors));
+  int num_colors = ((num_actual_colors + 3) / 4) * 4;
+  // each color is a u64 (4x u16 indices)
+  color_indices.resize(2 * num_colors);
+
+  auto color_idx_start = deref_label(get_field_ref(ref, "color-indices", dts));
+  int color_words = num_actual_colors / 2;
+  for (int i = 0; i < color_words; i++) {
+    color_indices[i] = deref_u32(color_idx_start, i);
+  }
+
   // todo shader
-  num_shaders = read_plain_data_field<u8>(ref, "num-shaders", dts);
-  color_offset = read_plain_data_field<u8>(ref, "color-offset", dts);
-  color_count = read_plain_data_field<u8>(ref, "color-count", dts);
+
+  assert(num_colors / 4 == color_count);
   // fmt::print("colors: {} {} {}\n", num_base_colors, num_level0_colors, num_level1_colors);
   assert(read_plain_data_field<u8>(ref, "pad0", dts) == 0);
   assert(read_plain_data_field<u8>(ref, "pad1", dts) == 0);

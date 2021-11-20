@@ -131,6 +131,7 @@ struct TFragment : public Drawable {
   std::vector<u8> dma_base;
   // dma level 1 // 40 - 44
   std::vector<u8> dma_level1;
+  std::vector<u32> color_indices;  // note actually u64's
   u8 dma_qwc[4];
   // shader // 48 - 52
   u8 num_shaders;        // 52
@@ -416,7 +417,8 @@ struct BspHeader {
   //  (unk-data-8 uint32 55 :offset-assert 180)
 
   void read_from_file(const decompiler::LinkedObjectFile& file,
-                      const decompiler::DecompilerTypeSystem& dts, DrawStats* stats);
+                      const decompiler::DecompilerTypeSystem& dts,
+                      DrawStats* stats);
 
   std::string print(const PrintSettings& settings) const;
 };

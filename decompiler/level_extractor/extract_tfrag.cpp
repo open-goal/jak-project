@@ -5,6 +5,7 @@
 #include "decompiler/ObjectFile/LinkedObjectFile.h"
 
 namespace decompiler {
+namespace {
 /*!
  * Get the index of the first draw node in an array. Works for node or tfrag.
  */
@@ -144,6 +145,12 @@ VisNodeTree extract_vis_data(const level_tools::DrawableTreeTfrag* tree, u16 fir
 // draw-inline-array-tfrag functions.  But we don't want any of that.
 
 /*
+
+// The actual "tfrag" type. This only lives on the EE and gets converted to DMA data.
+// some of the DMA data is pointers to chains that live in the static level data.
+// other is colors that are looked up from the palette (on the EE!) then thrown in the
+// double-buffered frame global buffer.
+
 (deftype tfragment (drawable)
   (
    (color-index       uint16                       :offset 6)
@@ -173,6 +180,7 @@ VisNodeTree extract_vis_data(const level_tools::DrawableTreeTfrag* tree, u16 fir
   :flag-assert         #x1200000040
   )
 
+// This is the temp/debug structure used for the EE code
 
 (deftype tfrag-work (structure)
   ((base-tmpl             dma-packet :inline :offset-assert 0)
@@ -548,7 +556,7 @@ B25:
     qmfc2.i s3, vf7          ;; dist
     lbu s4, 56(t8)           ;; s4 = color-offset
     pcgtw s2, r0, gp         ;; dist
-    lw gp, 12(t8)            ;; gp = colors-ptr
+    lw gp, 12(t8)            ;; gp = colors-indices
     pcgtw s3, r0, s3         ;; dist
     sb s4, 76(t0)            ;; store color-offset
     pinteh s4, s2, s3        ;; dist
@@ -702,24 +710,24 @@ L59:
 B42:
 
 L60:
-    daddu t6, t6, s4   ;; add color imm's
-    sw t8, 168(t0)     ;; back up tfrag... not enough regs
-    ld s4, 0(gp)       ;; colors ptr
-    daddiu t8, gp, 8   ;; t8 = colors + 8
-    daddiu gp, s5, -4  ;; colors + 3 - 4
-    lq s5, 128(t0)     ;; color-ptr
-    pextlh s4, r0, s4  ;; expand
+    daddu t6, t6, s4      ;; add color imm's to dma buffer length
+    sw t8, 168(t0)        ;; back up tfrag... not enough regs
+    ld s4, 0(gp)          ;; load color-indices (u64 = u16 x 4)
+    daddiu t8, gp, 8      ;; inc colors ptr
+    daddiu gp, s5, -4     ;; gp is color counter. we're using the rounded up to 4 color count.
+    lq s5, 128(t0)        ;; color-ptr x4
+    pextlh s4, r0, s4     ;; expand packed u16's to u32's
+    mfc1 r0, f31          ;; nop
+    paddw s2, s4, s5      ;; add to color pointers
     mfc1 r0, f31
-    paddw s2, s4, s5   ;; add to colors ptr
-    mfc1 r0, f31
-    lw s4, 0(s2)       ;;
+    lw s4, 0(s2)          ;; s4 = colors[0]
     dsra32 s3, s2, 0
-    lw s3, 0(s3)
+    lw s3, 0(s3)          ;; s5 = colors[1]
     pcpyud s1, s2, s2
-    lw s2, 0(s1)
+    lw s2, 0(s1)          ;; s2 = colors[2]
     dsra32 s1, s1, 0
     blez gp, L62
-    lw s1, 0(s1)
+    lw s1, 0(s1)          ;; s1 = colors[3]
 
 B43:
 L61:
@@ -867,6 +875,24 @@ L69_CLEANUP:
     sll r0, r0, 0
     sll r0, r0, 0
     sll r0, r0, 0
+
+
+    Notes on the VU program
+  vi03 is a pointer to an "address book" - a sequence of addresses
+  vi02 contains addresses in this book
+  from these xyw are loaded for vf28 (v3-32, with 2, 1)
+    xy are floats. w is address of next vertex data.
+
+  vi08 is a pointer to adgifs?
+  vi09 is a pointer to some data like [vi12, ?, ?, vi13] ??
+
+  vi12 counter, started negative?
+  vi13 is adgif offset?
+
+  vi04 is a pointer to tri-data:
+    - vertex (w = 128.0?)
+    - ?? (vf20)
+
  */
 
 struct TFragExtractStats {
@@ -1147,6 +1173,7 @@ void emulate_chain(UnpackState& state, u32 max_words, const u32* start, u8* vu_m
   while (word < max_words) {
     VifCode code(start[word]);
     word++;
+    fmt::print("{}\n", code.print());
     switch (code.kind) {
       case VifCode::Kind::STROW:
         state.row_init = true;
@@ -1208,33 +1235,1147 @@ void emulate_chain(UnpackState& state, u32 max_words, const u32* start, u8* vu_m
         throw Error("unknown vif: {}", code.print());
     }
   }
+
+  assert(word == max_words);
+  assert(state.stmod == 0);
 }
+
+struct TFragColorUnpack {
+  std::vector<math::Vector<u16, 4>> data;
+  u32 unpack_qw_addr = 0;
+};
 
 void emulate_dma_building_for_tfrag(const level_tools::TFragment& frag,
                                     std::vector<u8>& vu_mem,
+                                    TFragColorUnpack& color_indices,
                                     TFragExtractStats* stats) {
   UnpackState state;
   // all the templates do this...
   state.wl = 4;
   state.cl = 4;
 
+  // do the "canned" unpacks
   if (frag.num_level0_colors == 0) {
     // we're using base
     assert(frag.num_level1_colors == 0);
     stats->num_base++;
-    emulate_chain(state, frag.dma_qwc[1], (const u32*)frag.dma_base.data(), vu_mem.data());
+    emulate_chain(state, frag.dma_qwc[1] * 4, (const u32*)frag.dma_base.data(), vu_mem.data());
 
   } else if (frag.num_level1_colors == 0) {
     stats->num_l0++;
-    emulate_chain(state, frag.dma_qwc[3], (const u32*)frag.dma_common_and_level0.data(),
+    emulate_chain(state, frag.dma_qwc[3] * 4, (const u32*)frag.dma_common_and_level0.data(),
                   vu_mem.data());
   } else {
     stats->num_l1++;
     // common
-    emulate_chain(state, frag.dma_qwc[0], (const u32*)frag.dma_common_and_level0.data(),
+    emulate_chain(state, frag.dma_qwc[0] * 4, (const u32*)frag.dma_common_and_level0.data(),
                   vu_mem.data());
+
+    state.wl = 4;
+    state.cl = 4;
     // l1
-    emulate_chain(state, frag.dma_qwc[2], (const u32*)frag.dma_level1.data(), vu_mem.data());
+    emulate_chain(state, frag.dma_qwc[2] * 4, (const u32*)frag.dma_level1.data(), vu_mem.data());
+  }
+
+  // the colors are copied to the dma-buffer directly.
+  // these change per-frame based on time of day lighting.
+  // 64 = color-tmp
+
+  // sb 12, color-offset
+  // sh 0, color qwc (round up, divide by 4)
+  // sb 14, num-colors
+
+  // the actual colors go in
+  // color-tmpl is
+  // :dma (new 'static 'dma-tag :id (dma-tag-id cnt))
+  // :vif0 (new 'static 'vif-tag :imm #x102 :cmd (vif-cmd stcycl))       ;; cl = 2, wl = 1
+
+  // :vif1 (new 'static 'vif-tag :imm #xc000 :cmd (vif-cmd unpack-v4-8)) ;; flg, unsigned
+  color_indices.data.resize(frag.color_indices.size() / 2);
+  color_indices.unpack_qw_addr = frag.color_offset;
+  int i = 0;
+
+  // we don't actually know the colors, so for now just put them like this.
+  for (auto& color : color_indices.data) {
+    color[0] = frag.color_indices.at(i) & 0xffff;
+    color[1] = frag.color_indices.at(i) >> 16;
+    i++;
+    color[2] = frag.color_indices.at(i) & 0xffff;
+    color[3] = frag.color_indices.at(i) >> 16;
+    i++;
+  }
+}
+
+/*
+
+ // val = [0.5, 1.0, 2048.0 0.0]
+ // adgif = gif tag for 5x a+d's
+ // strgif = the gif tag for drawing
+ //   pre = (new 'static 'gs-prim :prim (gs-prim-type tri-strip) :iip #x1 :tme #x1 :fge #x1 :abe
+ arg1)
+ //   regs = st, rgbaq, xyzf2
+ // hvdf = changes
+ // hmge = changes
+ // fog = changes
+
+ // common tfrag setup
+  lq.xyzw vf02, 657(vi00)    |  nop                              ;;
+  lq.xyzw vf05, 660(vi00)    |  addw.z vf28, vf00, vf00
+  lq.xyzw vf06, 658(vi00)    |  nop
+  lq.xyzw vf10, 661(vi00)    |  nop
+  lq.xyzw vf11, 662(vi00)    |  nop
+  lq.xyzw vf01, 656(vi00)    |  addz.z vf28, vf28, vf02
+  ilw.w vi08, 4(vi14)        |  nop
+  ilw.z vi09, 4(vi14)        |  nop
+  ilw.y vi03, 3(vi14)        |  nop
+  fcset 0x0                  |  nop
+  iaddi vi07, vi00, -0x1     |  nop
+  lq.xyzw vf04, 5(vi14)      |  mulw.xyzw vf16, vf00, vf00
+  lq.xyzw vf07, 6(vi14)      |  mulw.xyzw vf17, vf00, vf00
+  ibne vi00, vi14, L136      |  mulw.xyzw vf18, vf00, vf00
+  lq.xyzw vf08, 7(vi14)      |  mulw.xyzw vf19, vf00, vf00
+
+ */
+
+struct VuMemWrapper {
+  VuMemWrapper(const std::vector<u8>& vu_mem) : mem(&vu_mem) {}
+  const std::vector<u8>* mem = nullptr;
+  u16 ilw_data(int offset, int xyzw) {
+    u16 result;
+
+    assert(offset < 328);
+    assert(offset >= 0);
+    int mem_offset = (xyzw * 4) + (offset * 16);
+    memcpy(&result, mem->data() + mem_offset, 2);
+    return result;
+  }
+
+  math::Vector4f load_vector_data(int offset) {
+    math::Vector4f result;
+    // offset = offset & 0x3ff;  // not super happy with this...
+    assert(offset < 328);
+    assert(offset >= 0);
+    memcpy(&result, mem->data() + (offset * 16), 16);
+    return result;
+  }
+};
+
+using math::Vector3f;
+using math::Vector4f;
+
+float u32_2_float(u32 x) {
+  float y;
+  memcpy(&y, &x, 4);
+  return y;
+}
+
+u32 float_2_u32(float x) {
+  u32 y;
+  memcpy(&y, &x, 4);
+  return y;
+}
+
+Vector4f itof0(const Vector4f& vec) {
+  Vector4f result;
+  for (int i = 0; i < 4; i++) {
+    s32 val;
+    memcpy(&val, vec.data() + i, 4);
+    result[i] = val;
+  }
+  return result;
+}
+
+Vector4f ftoi4(const Vector4f& vec) {
+  Vector4f result;
+  for (int i = 0; i < 4; i++) {
+    s32 f = vec[i] * 16.f;
+    float val;
+    memcpy(&val, &f, 4);
+    result[i] = val;
+  }
+  return result;
+}
+
+struct TFragVertexData {
+  Vector4f pre_cam_trans_pos;
+  Vector3f stq;  // stq?
+  Vector4f rgba;
+
+  // pos = cam.rot * pctp.xyz + cam.trans
+  // q = fog.x / pctp.w
+  // pos *= q
+  // pos += hvdf_offset
+  // pos.w = min(pos.w, fog.z)
+  // pos.w = max(pow.w, fog.y)
+  // pos.w += fog.w
+
+  // unk *= q
+};
+
+struct TFragDraw {
+  u8 adgif_data[16 * 5];
+  u32 dvert = 0;
+  std::vector<TFragVertexData> verts;
+};
+
+template <bool DEBUG>
+bool emulate_kick_subroutine(VuMemWrapper& mem,
+                             TFragDraw& current_draw,
+                             std::vector<TFragDraw>& all_draws,
+                             u16& vi05_end_of_vert_kick_data,
+                             u16& vi06_kick_zone_ptr,
+                             u16& vi07,
+                             u16& vi08_adgif_base,
+                             u16& vi09_draw_addr_book,
+                             u16& vi10_start_of_vert_kick_data,
+                             u16& vi12_vert_count,
+                             u16& vi13_adgifs,
+                             u16& vf24_u16) {
+  // KICK ZONE!
+  // we reach here if we need to issue strgif/adgifs before the next vertex.
+
+  //  L122:
+  //  fcset 0x0
+  // m_clip_and_3ffff = false;  // ??
+  //  iaddi vi07, vi00, -0x1
+  vi07 = -1;  // not actually used?
+  //  iblez vi12, L123
+  //  iaddi vi09, vi09, 0x1
+  vi09_draw_addr_book++;  // on to the next chunk
+  //  fmt::print("VI09 now {}\n", vars.vi09);
+
+  // no need for new adgifs, just a new strgif.
+  if (((s16)vi12_vert_count) > 0) {
+    //  ior vi10, vi06, vi00
+    vi10_start_of_vert_kick_data = vi06_kick_zone_ptr;  // start of next chunk
+    //  iadd vi01, vi12, vi12
+    u16 vi01 = vi12_vert_count + vi12_vert_count;
+    //  iadd vi01, vi01, vi12
+    vi01 += vi12_vert_count;  // qw of verts (not including 1 qw of strgif)
+    //  iadd vi05, vi06, vi01
+    vi05_end_of_vert_kick_data = vi06_kick_zone_ptr + vi01;  // last qw to write before coming here
+    //  sqi.xyzw vf06, vi06
+    // store_gif_kick_zone(vars.vi06_kick_zone_ptr, m_tfrag_data.str_gif);
+    vi06_kick_zone_ptr++;
+    //  isw.x vi12, -1(vi06)
+    // store_u32_kick_zone(vars.vi12, vars.vi06_kick_zone_ptr - 1, 0); // store verts
+    current_draw.dvert = vi12_vert_count;
+    //  jr vi15
+    //  ilwr.x vi12, vi09
+    vi12_vert_count = mem.ilw_data(vi09_draw_addr_book, 0);  // next vert count!
+    if (DEBUG) {
+      fmt::print("continue with this adgif, but new strgif. next {} verts (kick zone now {})\n",
+                 vi12_vert_count, vi06_kick_zone_ptr);
+    }
+    //    fmt::print("didn't kick, vi12 now {}\n", vars.vi12);
+    return false;
+  }
+
+  //  L123:
+  //  ilw.y vi01, -1(vi09)
+  u16 vi01 = mem.ilw_data(vi09_draw_addr_book - 1, 1);  // ?
+  //  ilw.z vi13, -1(vi09)
+  vi13_adgifs = mem.ilw_data(vi09_draw_addr_book - 1, 2);  // load new adgif addr
+  //  fmt::print("VI09 loads: {} {}\n", m_ptrs.vi01, vars.vi13);
+  //  ibeq vi00, vi12, L126
+  //  ilwr.x vi14, vi10
+  //  fmt::print("val is {}: {}\n", vars.vi10, ilw_kick_zone(vars.vi10, 0));
+  // vars.vi14 = mem.ilw_kick_zone(vi10_start_of_vert_kick_data, 0); old vert count
+  if (vi12_vert_count != 0) {
+    //  ibltz vi01, L124
+    //  iaddiu vi12, vi12, 0x80
+    vi12_vert_count += 0x80;
+    if (((s16)vi01) >= 0) {
+      all_draws.push_back(current_draw);
+      current_draw.verts.clear();
+      //  iadd vi13, vi13, vi08
+      vi13_adgifs += vi08_adgif_base;
+      //  lqi.xyzw vf29, vi13
+      auto vf29_adg0 = mem.load_vector_data(vi13_adgifs++);
+      //  lqi.xyzw vf30, vi13
+      auto vf30_adg1 = mem.load_vector_data(vi13_adgifs++);
+      //  lqi.xyzw vf31, vi13
+      auto vf31_adg2 = mem.load_vector_data(vi13_adgifs++);
+      //  sqi.xyzw vf05, vi06
+      // store_gif_kick_zone(vars.vi06_kick_zone_ptr++, m_tfrag_data.ad_gif);
+      vi06_kick_zone_ptr++;
+
+      //  sqi.xyzw vf29, vi06
+      // store_vector_kick_zone(vars.vi06_kick_zone_ptr++, vars.vf29);
+      memcpy(current_draw.adgif_data, vf29_adg0.data(), 16);
+      vi06_kick_zone_ptr++;
+
+      //  sqi.xyzw vf30, vi06
+      memcpy(current_draw.adgif_data + 16, vf30_adg1.data(), 16);
+      vi06_kick_zone_ptr++;
+
+      //  sqi.xyzw vf31, vi06
+      memcpy(current_draw.adgif_data + 32, vf31_adg2.data(), 16);
+      vi06_kick_zone_ptr++;
+
+      //  lqi.xyzw vf29, vi13
+      vf29_adg0 = mem.load_vector_data(vi13_adgifs++);
+      //  lqi.xyzw vf30, vi13
+      vf30_adg1 = mem.load_vector_data(vi13_adgifs++);
+      //  iadd vi01, vi12, vi12
+      vi01 = vi12_vert_count + vi12_vert_count;
+      //  iadd vi01, vi01, vi12
+      vi01 += vi12_vert_count;
+      //  sqi.xyzw vf29, vi06
+      memcpy(current_draw.adgif_data + (16 * 3), vf29_adg0.data(), 16);
+      vi06_kick_zone_ptr++;
+      //  sqi.xyzw vf30, vi06
+      memcpy(current_draw.adgif_data + (16 * 4), vf30_adg1.data(), 16);
+      vi06_kick_zone_ptr++;
+      //  ior vi10, vi06, vi00
+      vi10_start_of_vert_kick_data = vi06_kick_zone_ptr;
+      //  iadd vi05, vi06, vi01
+      vi05_end_of_vert_kick_data = vi06_kick_zone_ptr + vi01;
+      //  sqi.xyzw vf06, vi06
+      // store_gif_kick_zone(vars.vi06_kick_zone_ptr++, m_tfrag_data.str_gif);
+      vi06_kick_zone_ptr++;
+      //  isw.x vi12, -1(vi06)
+      // store_u32_kick_zone(vars.vi12, vars.vi06_kick_zone_ptr - 1, 0);
+      current_draw.dvert = vi12_vert_count;
+      //  jr vi15
+      //  ilwr.x vi12, vi09
+      vi12_vert_count = mem.ilw_data(vi09_draw_addr_book, 0);
+      fmt::print("done with adgifs but not packet, now moving on to another with {}\n",
+                 (s16)vi12_vert_count);
+      //      fmt::print("didn't kick 2, vi12 now {}\n", vars.vi12);
+      return false;
+    }
+
+    //  L124:
+    //  mtir vi01, vf24.w
+    vi01 = vf24_u16;
+    //  mtir vi06, vf03.y
+    vi06_kick_zone_ptr = 0;
+    //  mr32.xyzw vf03, vf03
+
+    //  iadd vi14, vi14, vi11
+    // vars.vi14 += vars.vi11; sets eop, ignore.
+
+    //  ibgez vi13, L125
+    //  iswr.x vi14, vi10
+    //    fmt::print("kick zone store: {}\n", vars.vi14);
+    // store_u32_kick_zone(vars.vi14, vars.vi10, 0); set eop.
+    if (((s16)vi13_adgifs) < 0) {
+      //  xgkick vi01
+      all_draws.push_back(current_draw);
+      current_draw.verts.clear();
+      //  ior vi10, vi06, vi00
+      vi10_start_of_vert_kick_data =
+          vi06_kick_zone_ptr;  // xgkick delay slots, doesn't seem to matter.
+      //  mfir.w vf24, vi06
+      vf24_u16 = vi06_kick_zone_ptr;
+      //  iadd vi01, vi12, vi12
+      vi01 = vi12_vert_count + vi12_vert_count;
+      //  iadd vi01, vi01, vi12
+      vi01 += vi12_vert_count;
+      //  iadd vi05, vi06, vi01
+      vi05_end_of_vert_kick_data = vi06_kick_zone_ptr + vi01;
+      //  sqi.xyzw vf06, vi06
+      // store_gif_kick_zone(vars.vi06_kick_zone_ptr++, m_tfrag_data.str_gif);
+      vi06_kick_zone_ptr++;
+      //  isw.x vi12, -1(vi06)
+      // store_u32_kick_zone(vars.vi12, vars.vi06_kick_zone_ptr - 1, 0);
+      //  jr vi15
+      //  ilwr.x vi12, vi09
+      vi12_vert_count = mem.ilw_data(vi09_draw_addr_book, 0);
+      return false;
+    }
+
+    //  L125:
+    //  iadd vi13, vi13, vi08
+    vi13_adgifs += vi08_adgif_base;
+    //  xgkick vi01
+    all_draws.push_back(current_draw);
+    current_draw.verts.clear();
+
+    //  lqi.xyzw vf29, vi13
+    auto vf29_adg0 = mem.load_vector_data(vi13_adgifs++);
+    //  lqi.xyzw vf30, vi13
+    auto vf30_adg1 = mem.load_vector_data(vi13_adgifs++);
+    //  lqi.xyzw vf31, vi13
+    auto vf31_adg2 = mem.load_vector_data(vi13_adgifs++);
+    //  mfir.w vf24, vi06
+    vf24_u16 = vi06_kick_zone_ptr;
+    //  sqi.xyzw vf05, vi06
+    // store_gif_kick_zone(vars.vi06_kick_zone_ptr++, m_tfrag_data.ad_gif);
+    vi06_kick_zone_ptr++;
+
+    //  sqi.xyzw vf29, vi06
+    // store_vector_kick_zone(vars.vi06_kick_zone_ptr++, vars.vf29);
+    memcpy(current_draw.adgif_data, vf29_adg0.data(), 16);
+    vi06_kick_zone_ptr++;
+
+    //  sqi.xyzw vf30, vi06
+    memcpy(current_draw.adgif_data + 16, vf30_adg1.data(), 16);
+    vi06_kick_zone_ptr++;
+
+    //  sqi.xyzw vf31, vi06
+    memcpy(current_draw.adgif_data + 32, vf31_adg2.data(), 16);
+    vi06_kick_zone_ptr++;
+
+    //  lqi.xyzw vf29, vi13
+    vf29_adg0 = mem.load_vector_data(vi13_adgifs++);
+    //  lqi.xyzw vf30, vi13
+    vf30_adg1 = mem.load_vector_data(vi13_adgifs++);
+    //  iadd vi01, vi12, vi12
+    vi01 = vi12_vert_count + vi12_vert_count;
+    //  iadd vi01, vi01, vi12
+    vi01 += vi12_vert_count;
+    //  sqi.xyzw vf29, vi06
+    memcpy(current_draw.adgif_data + (16 * 3), vf29_adg0.data(), 16);
+    vi06_kick_zone_ptr++;
+    //  sqi.xyzw vf30, vi06
+    memcpy(current_draw.adgif_data + (16 * 4), vf30_adg1.data(), 16);
+    vi06_kick_zone_ptr++;
+    //  nop
+    //  ior vi10, vi06, vi00
+    vi10_start_of_vert_kick_data = vi06_kick_zone_ptr;
+    //  iadd vi05, vi06, vi01
+    vi05_end_of_vert_kick_data = vi06_kick_zone_ptr + vi01;
+    //  sqi.xyzw vf06, vi06
+    // store_gif_kick_zone(vars.vi06_kick_zone_ptr++, m_tfrag_data.str_gif);
+    vi06_kick_zone_ptr++;
+    //  isw.x vi12, -1(vi06)
+    // store_u32_kick_zone(vars.vi12, vars.vi06_kick_zone_ptr - 1, 0);
+    //  jr vi15
+    //  ilwr.x vi12, vi09
+    vi12_vert_count = mem.ilw_data(vi09_draw_addr_book, 0);
+    //    fmt::print("did kick, vi12 now {}\n", vars.vi12);
+    return false;
+  }
+
+  //  L126:
+  //  mtir vi01, vf24.w
+  // m_ptrs.vi01 = float_2_u32(vars.vf24.w());
+  //  mr32.xyzw vf03, vf03
+  //  auto temp = m_ptrs.vf03_x;
+  //  m_ptrs.vf03_x = m_ptrs.vf03_y;
+  //  m_ptrs.vf03_y = m_ptrs.vf03_z;
+  //  m_ptrs.vf03_z = m_ptrs.vf03_w;
+  //  m_ptrs.vf03_w = temp;
+  all_draws.push_back(current_draw);
+  current_draw.verts.clear();
+  //  iadd vi14, vi14, vi11
+  //  fmt::print("before add: {}\n", vars.vi14);
+  //  vars.vi14 += vars.vi11;
+  //  iswr.x vi14, vi10
+  //  fmt::print("kick zone store: {}\n", vars.vi14);
+  //  store_u32_kick_zone(vars.vi14, vars.vi10, 0);
+  //  lq.xyzw vf04, 664(vi00)
+  // todo don't think I needed that load of ambient
+  //  XGKICK<DEBUG>(m_ptrs.vi01, render_state, prof);
+  //  xgkick vi01
+  //  nop                        |  nop :e
+  return true;
+}
+
+template <bool DEBUG>
+void emulate_tfrag_execution(const level_tools::TFragment& frag,
+                             VuMemWrapper& mem,
+                             TFragColorUnpack& color_indices,
+                             TFragExtractStats* stats) {
+  fmt::print("tfrag exec. offset of colors = {}\n", color_indices.unpack_qw_addr);
+  std::vector<TFragDraw> all_draws;
+  TFragDraw current_draw;
+
+  TFragVertexData vertex_pipeline[4];
+
+  u16 vi14 = 0;
+
+  float vf28_z = 2049;
+
+  //  ilw.w vi08, 4(vi14)        |  nop
+  u16 vi08_adgif_base = mem.ilw_data(4 + vi14, 3);  // is an address, v4/32 unpack.
+  //  fmt::print("------------- VI08 init: {}\n", vars.vi08);
+  //  ilw.z vi09, 4(vi14)        |  nop
+  u16 vi09_draw_addr_book =
+      mem.ilw_data(4 + vi14, 2);  // is an input address, v4/8 unpack (seems small?)
+  //  ilw.y vi03, 3(vi14)        |  nop
+  u16 vi03_vert_addr_book = mem.ilw_data(
+      3 + vi14,
+      1);  // is an input address (v4-8 with strow). a list of addresses for v4-16's with strow
+
+  //  fmt::print("-------VI03 init: {}\n", vars.vi03);
+
+  if (DEBUG) {
+    // small, like 9, 54, 66
+    level_tools::PrintSettings settings;
+    settings.print_tfrag = true;
+    fmt::print("{}\n", frag.print(settings, 0));
+    fmt::print("ints: {} {} {}\n", vi08_adgif_base, vi09_draw_addr_book, vi03_vert_addr_book);
+  }
+
+  // fmt::print("vi09: #x{:x} ({})\n", vars.vi09, vars.vi14);
+
+  //  fcset 0x0                  |  nop
+  //  iaddi vi07, vi00, -0x1     |  nop
+  u16 vi07 = -1;
+
+  //  lq.xyzw vf04, 5(vi14)      |  mulw.xyzw vf16, vf00, vf00
+  // inputs.vf04_cam_mat_x = load_vector_data(vars.vi14 + 5);
+  Vector4f vf16_scaled_pos_0 = Vector4f(0, 0, 0, 1);
+
+  //  lq.xyzw vf07, 6(vi14)      |  mulw.xyzw vf17, vf00, vf00
+  // inputs.vf07_cam_mat_y = load_vector_data(vars.vi14 + 6);
+  Vector4f vf17_scaled_pos_1 = Vector4f(0, 0, 0, 1);
+
+  //  ibne vi00, vi14, L136      |  mulw.xyzw vf18, vf00, vf00
+  Vector4f vf18_scaled_pos_2 = Vector4f(0, 0, 0, 1);
+  //  lq.xyzw vf08, 7(vi14)      |  mulw.xyzw vf19, vf00, vf00
+  Vector4f vf19_scaled_pos_3 = Vector4f(0, 0, 0, 1);
+  // inputs.vf08_cam_mat_z = load_vector_data(vars.vi14 + 7);
+
+  ////////////////////////////////////////////////////////////////////////////////////////
+
+  //  ilwr.x vi02, vi03          |  nop
+  assert(vi03_vert_addr_book < 328);                            // should be a buffer 0 addr
+  u16 vi02_pre_vtx_ptr = mem.ilw_data(vi03_vert_addr_book, 0);  // is an addr? v4/16 with strom
+  if (DEBUG) {
+    fmt::print("vi02-warmup 0: {}\n", vi02_pre_vtx_ptr);
+  }
+
+  //  lq.xyzw vf09, 8(vi14)      |  nop
+  // vars.vf09_cam_trans = load_vector_data(vars.vi14 + 8);
+
+  // correct addrs
+  //  iadd vi08, vi08, vi14      |  nop
+  //  iadd vi09, vi09, vi14      |  nop
+
+  //  lq.xyw vf28, 0(vi02)       |  nop
+  auto vf28_load_temp = mem.load_vector_data(vi02_pre_vtx_ptr);
+  float vf28_x = vf28_load_temp.x();
+  float vf28_y = vf28_load_temp.y();
+  float vf28_w_addr_of_next_vtx = vf28_load_temp.w();  // addr, of v3-32, with 2, 1
+
+  if (DEBUG) {
+    fmt::print("vf28 load 0: x_f {} y_f {} z_u32 {}\n", vf28_x, vf28_y,
+               float_2_u32(vf28_w_addr_of_next_vtx));
+  };
+
+  // they rotate vi06 to alternate the kick zone buffer.
+  // it's loaded with [a, b, a, b]
+  //  mtir vi06, vf03.x          |  nop
+  // vars.vi06_kick_zone_ptr = m_ptrs.vf03_x;
+  u16 vi06_kick_zone_ptr = 0;  // moving kick zone to 0.
+
+  //  ilwr.x vi12, vi09          |  nop
+  u16 vi12_vert_count = mem.ilw_data(vi09_draw_addr_book, 0);  // some sort of counter?
+  if (DEBUG) {
+    fmt::print("vi12: 0x{:x}\n", vi12_vert_count);
+  }
+
+  //  ilwr.z vi13, vi09          |  nop
+  u16 vi13_adgifs = mem.ilw_data(vi09_draw_addr_book, 2);
+  if (DEBUG) {
+    fmt::print("vi13: 0x{:x}\n", vi13_adgifs);
+  }
+
+  //  mtir vi04, vf28.w          |  subz.xyz vf24, vf28, vf02
+  u16 vi04_vtx_ptr =
+      float_2_u32(vf28_w_addr_of_next_vtx);  // addr, of v3-32, with 2, 1 VERTEX POINTER
+  Vector4f vf24_stq_0;
+  vf24_stq_0.x() = vf28_x - 2048.f;
+  vf24_stq_0.y() = vf28_y - 2048.f;
+  vf24_stq_0.z() = vf28_z - 2048.f;
+  vf24_stq_0.w() = 0;  // set later.
+
+  //  iaddiu vi11, vi00, 0x4000  |  nop
+  u16 vi11 = 0x4000;
+
+  //  iaddiu vi11, vi11, 0x4000  |  nop
+  vi11 += 0x4000;
+
+  //  ilwr.y vi02, vi03          |  nop
+  vi02_pre_vtx_ptr = mem.ilw_data(vi03_vert_addr_book, 1);
+  if (DEBUG) {
+    fmt::print("vi02-warmup 1: {}\n", vi02_pre_vtx_ptr);
+  }
+
+  // vertex load
+  //  lq.xyzw vf12, 0(vi04)      |  nop
+  // integer vertex position
+  Vector4f vf12_vtx_pos_0 = mem.load_vector_data(vi04_vtx_ptr);
+
+  //  lq.xyzw vf20, 1(vi04)      |  nop
+  // ??? something with the vertex.
+  Vector4f vf20_vtx_rgba_0 = mem.load_vector_data(vi04_vtx_ptr + 1);
+
+  //  iaddiu vi12, vi12, 0x80    |  nop
+  vi12_vert_count += 0x80;  // ??
+
+  //  iadd vi13, vi13, vi08      |  nop
+  vi13_adgifs += vi08_adgif_base;
+
+  //  lq.xyw vf28, 0(vi02)       |  itof0.xyzw vf12, vf12
+  vf28_load_temp = mem.load_vector_data(vi02_pre_vtx_ptr);
+  vf28_x = vf28_load_temp.x();
+  vf28_y = vf28_load_temp.y();
+  vf28_w_addr_of_next_vtx = vf28_load_temp.w();  // addr, of v3-32, with 2, 1
+  vf12_vtx_pos_0 = itof0(vf12_vtx_pos_0);
+
+  if (DEBUG) {
+    fmt::print("vf28 load 0: x_f {} y_f {} w_u32 {}\n", vf28_x, vf28_y,
+               float_2_u32(vf28_w_addr_of_next_vtx));
+    fmt::print("vtx w0: {}\n", vf12_vtx_pos_0.to_string_aligned());
+  };
+
+  //  mfir.w vf24, vi06          |  nop
+  // remember the start of the kick zone, I guess?
+  u16 vf24_w_u16 = vi06_kick_zone_ptr;
+
+  //  lqi.xyzw vf29, vi13        |  nop
+  auto vf29_adgif0 = mem.load_vector_data(vi13_adgifs);
+  vi13_adgifs++;
+
+  //  lqi.xyzw vf30, vi13        |  nop
+  auto vf30_adgif1 = mem.load_vector_data(vi13_adgifs);
+  vi13_adgifs++;
+
+  //  lqi.xyzw vf31, vi13        |  nop
+  auto vf31_adgif2 = mem.load_vector_data(vi13_adgifs);
+  vi13_adgifs++;
+
+  //  sqi.xyzw vf05, vi06        |  subz.xyz vf25, vf28, vf02
+  // store_gif_kick_zone(vars.vi06_kick_zone_ptr, m_tfrag_data.ad_gif); sets the adgif header.
+  vi06_kick_zone_ptr++;
+  Vector4f vf25_stq_1;
+  vf25_stq_1.x() = vf28_x - 2048.f;
+  vf25_stq_1.y() = vf28_y - 2048.f;
+  vf25_stq_1.z() = vf28_z - 2048.f;
+  vf25_stq_1.w() = 0;  // set later.
+
+  //  sqi.xyzw vf29, vi06        |  mulaw.xyzw ACC, vf09, vf00
+  // store_vector_kick_zone(vars.vi06_kick_zone_ptr, vars.vf29);
+  memcpy(current_draw.adgif_data, vf29_adgif0.data(), 16);
+  vi06_kick_zone_ptr++;
+
+  //  mtir vi04, vf28.w          |  nop
+  vi04_vtx_ptr = float_2_u32(vf28_w_addr_of_next_vtx);
+
+  //  sqi.xyzw vf30, vi06        |  maddax.xyzw ACC, vf04, vf12
+  memcpy(current_draw.adgif_data + 16, vf30_adgif1.data(), 16);
+  vi06_kick_zone_ptr++;
+
+  //  sqi.xyzw vf31, vi06        |  nop
+  memcpy(current_draw.adgif_data + 32, vf31_adgif2.data(), 16);
+  vi06_kick_zone_ptr++;
+
+  //  ilwr.z vi02, vi03          |  nop
+  vi02_pre_vtx_ptr = mem.ilw_data(vi03_vert_addr_book, 2);
+  if (DEBUG) {
+    fmt::print("pre-vtx-vi02-warmup 2: {}\n", vi02_pre_vtx_ptr);
+  }
+
+  //  lq.xyzw vf13, 0(vi04)      |  madday.xyzw ACC, vf07, vf12
+  Vector4f vf13_vtx_pos_1 = mem.load_vector_data(vi04_vtx_ptr);
+  // acc += in.vf07_cam_mat_y * vars.vf12_root_pos_0.y();
+
+  //  lq.xyzw vf21, 1(vi04)      |  maddz.xyzw vf12, vf08, vf12
+  Vector4f vf21_vtx_unk_1 = mem.load_vector_data(vi04_vtx_ptr + 1);
+  // vars.vf12_root_pos_0 = acc + in.vf08_cam_mat_z * vars.vf12_root_pos_0.z();
+
+  //  lqi.xyzw vf29, vi13        |  nop
+  vf29_adgif0 = mem.load_vector_data(vi13_adgifs);
+  vi13_adgifs++;
+
+  //  lqi.xyzw vf30, vi13        |  nop
+  vf30_adgif1 = mem.load_vector_data(vi13_adgifs);
+  vi13_adgifs++;
+
+  //  lq.xyw vf28, 0(vi02)       |  itof0.xyzw vf13, vf13
+  vf28_load_temp = mem.load_vector_data(vi02_pre_vtx_ptr);
+  vf28_x = vf28_load_temp.x();
+  vf28_y = vf28_load_temp.y();
+  vf28_w_addr_of_next_vtx = vf28_load_temp.w();  // addr, of v3-32, with 2, 1
+  vf13_vtx_pos_1 = itof0(vf13_vtx_pos_1);
+
+  //  div Q, vf01.x, vf12.w      |  mul.xyzw vf16, vf12, vf11
+  // float q = m_tfrag_data.fog.x() / vars.vf12_root_pos_0.w();
+  // vars.vf16_scaled_pos_0 = vars.vf12_root_pos_0.elementwise_multiply(m_tfrag_data.hmge_scale);
+
+  //  sqi.xyzw vf29, vi06        |  nop
+  memcpy(current_draw.adgif_data + (16 * 3), vf29_adgif0.data(), 16);
+  vi06_kick_zone_ptr++;
+
+  //  sqi.xyzw vf30, vi06        |  nop
+  memcpy(current_draw.adgif_data + (16 * 4), vf30_adgif1.data(), 16);
+  vi06_kick_zone_ptr++;
+
+  //  iadd vi01, vi12, vi12      |  subz.xyz vf26, vf28, vf02
+  u16 vi01 = vi12_vert_count + vi12_vert_count;
+  Vector4f vf26_stq_2;
+  vf26_stq_2.x() = vf28_x - 2048.f;
+  vf26_stq_2.y() = vf28_y - 2048.f;
+  vf26_stq_2.z() = vf28_z - 2048.f;
+  vf26_stq_2.w() = 0;  // set later.
+
+  //  iadd vi01, vi01, vi12      |  mulaw.xyzw ACC, vf09, vf00
+  vi01 += vi12_vert_count;  // vi01 is now vi12 * 3, so qwc for gs vert data (3 regs/vert)
+
+  //  mtir vi04, vf28.w          |  nop
+  vi04_vtx_ptr = float_2_u32(vf28_w_addr_of_next_vtx);
+
+  //  iadd vi05, vi06, vi01      |  maddax.xyzw ACC, vf04, vf13
+  u16 vi05_end_of_vert_kick_data = vi06_kick_zone_ptr + vi01;
+  fmt::print("num verts in chunk: {}\n", vi12_vert_count);
+
+  //  ior vi10, vi06, vi00       |  mul.xyz vf12, vf12, Q
+  u16 vi10_start_of_vert_kick_data = vi06_kick_zone_ptr;
+  //  vars.vf12_root_pos_0.x() *= q;
+  //  vars.vf12_root_pos_0.y() *= q;
+  //  vars.vf12_root_pos_0.z() *= q;
+
+  //  ilwr.w vi02, vi03          |  mul.xyz vf24, vf24, Q
+  vi02_pre_vtx_ptr = mem.ilw_data(vi03_vert_addr_book, 3);
+  if (DEBUG) {
+    fmt::print("pre-vtx-vi02-warmup 3: {}\n", vi02_pre_vtx_ptr);
+  }
+
+  //  lq.xyzw vf14, 0(vi04)      |  madday.xyzw ACC, vf07, vf13
+  Vector4f vf14_vtx_pos_2 = mem.load_vector_data(vi04_vtx_ptr);
+
+  //  lq.xyzw vf22, 1(vi04)      |  maddz.xyzw vf13, vf08, vf13
+  Vector4f vf22_vtx_rgba_2 = mem.load_vector_data(vi04_vtx_ptr + 1);
+
+  //  sqi.xyzw vf06, vi06        |  add.xyzw vf12, vf12, vf10
+  vi06_kick_zone_ptr++;
+  // vars.vf12_root_pos_0 += m_tfrag_data.hvdf_offset; not precomputed
+
+  //  isw.x vi12, -1(vi06)       |  nop
+  // store_u32_kick_zone(vars.vi12, vars.vi06_kick_zone_ptr - 1, 0);
+  // stores dvert count
+  current_draw.dvert = vi12_vert_count;
+
+  //  lq.xyw vf28, 0(vi02)       |  itof0.xyzw vf14, vf14
+  vf28_load_temp = mem.load_vector_data(vi02_pre_vtx_ptr);
+  vf28_x = vf28_load_temp.x();
+  vf28_y = vf28_load_temp.y();
+  vf28_w_addr_of_next_vtx = vf28_load_temp.w();  // addr, of v3-32, with 2, 1
+  vf14_vtx_pos_2 = itof0(vf14_vtx_pos_2);
+
+  //  div Q, vf01.x, vf13.w      |  mul.xyzw vf17, vf13, vf11
+  // m_q = m_tfrag_data.fog.x() / vars.vf13_root_pos_1.w();
+  // vars.vf17_scaled_pos_1 = vars.vf13_root_pos_1.elementwise_multiply(m_tfrag_data.hmge_scale);
+
+  //  iaddi vi09, vi09, 0x1      |  miniz.w vf12, vf12, vf01
+  vi09_draw_addr_book++;
+
+  //  ilwr.x vi12, vi09          |  clipw.xyz vf16, vf16
+  vi12_vert_count = mem.ilw_data(vi09_draw_addr_book, 0);
+  fmt::print("next block (out of warmup) dvert: {}\n", vi12_vert_count);
+  // m_clip_and_3ffff = clip_xyz_plus_minus(vars.vf16_scaled_pos_0);
+
+  Vector4f vf27_vtx_stq_3;
+  Vector4f vf23_vtx_rgba_3;
+  Vector4f vf15_vtx_pos_3;
+
+  while (true) {
+    //////////// L128
+
+    // Part 0 for X
+    //  iaddi vi03, vi03, 0x1      |  subz.xyz vf27, vf28, vf02
+    vi03_vert_addr_book++;
+    vf27_vtx_stq_3.x() = vf28_x - 2048.f;
+    vf27_vtx_stq_3.y() = vf28_y - 2048.f;
+    vf27_vtx_stq_3.z() = vf28_z - 2048.f;
+
+    //  iaddi vi07, vi07, 0x1      |  mulaw.xyzw ACC, vf09, vf00
+    vi07++;  // ?
+    // m_acc = vars.vf09_cam_trans;
+
+    //  mtir vi04, vf28.w          |  maxy.w vf12, vf12, vf01
+    vi04_vtx_ptr = float_2_u32(vf28_w_addr_of_next_vtx);
+    // vars.vf12_root_pos_0.w() = std::max(vars.vf12_root_pos_0.w(), m_tfrag_data.fog.y());
+
+    //  fcand vi01, 0x3ffff        |  maddax.xyzw ACC, vf04, vf14
+    // m_acc += in.vf04_cam_mat_x * vars.vf14_loop_pos_0.x();
+    // fcand already calculated
+
+    //  ibeq vi00, vi01, L129      |  mul.xyz vf13, vf13, Q
+    // branch made after next instr
+    //    vars.vf13_root_pos_1.x() *= m_q;
+    //    vars.vf13_root_pos_1.y() *= m_q;
+    //    vars.vf13_root_pos_1.z() *= m_q;
+
+    //  ilwr.x vi02, vi03          |  mul.xyz vf25, vf25, Q
+    vi02_pre_vtx_ptr = mem.ilw_data(vi03_vert_addr_book, 0);
+
+    // skipped if we take the branch
+    //  nop                        |  addw.w vf12, vf12, vf01
+    //    if (m_clip_and_3ffff) {
+    //      vars.vf12_root_pos_0.w() += m_tfrag_data.fog.w();
+    //    }
+
+    //////////////////  L129
+
+    // Part 1 for X
+    //  lq.xyzw vf15, 0(vi04)      |  madday.xyzw ACC, vf07, vf14
+    vf15_vtx_pos_3 = mem.load_vector_data(vi04_vtx_ptr);
+    // m_acc += in.vf07_cam_mat_y * vars.vf14_loop_pos_0.y();
+
+    //  lq.xyzw vf23, 1(vi04)      |  maddz.xyzw vf14, vf08, vf14
+    vf23_vtx_rgba_3 = mem.load_vector_data(vi04_vtx_ptr + 1);
+    // vars.vf14_loop_pos_0 = m_acc + in.vf08_cam_mat_z * vars.vf14_loop_pos_0.z();
+
+    //  sqi.xyz vf24, vi06         |  add.xyzw vf13, vf13, vf10
+    // store_vector_kick_zone(vars.vi06_kick_zone_ptr, vars.vf24);
+    vertex_pipeline[0].stq[0] = vf24_stq_0.x();
+    vertex_pipeline[0].stq[1] = vf24_stq_0.y();
+    vertex_pipeline[0].stq[2] = vf24_stq_0.z();
+    vi06_kick_zone_ptr++;
+    // vars.vf13_root_pos_1 += m_tfrag_data.hvdf_offset;
+
+    //  sqi.xyzw vf20, vi06        |  ftoi4.xyzw vf12, vf12
+    // store_vector_kick_zone(vars.vi06_kick_zone_ptr, vars.vf20);
+    vertex_pipeline[0].rgba = vf20_vtx_rgba_0;
+    // leaving out ftoi4
+    vi06_kick_zone_ptr++;
+    // vars.vf12_root_pos_0 = ftoi4(vars.vf12_root_pos_0);
+
+    //  lq.xyw vf28, 0(vi02)       |  itof0.xyzw vf15, vf15
+    if (vi02_pre_vtx_ptr < 328) {  // HACK added
+      vf28_load_temp = mem.load_vector_data(vi02_pre_vtx_ptr);
+      vf28_x = vf28_load_temp.x();
+      vf28_y = vf28_load_temp.y();
+      if (float_2_u32(vf28_load_temp.w()) < 328) {
+        vf28_w_addr_of_next_vtx = vf28_load_temp.w();
+      }
+    }
+    vf15_vtx_pos_3 = itof0(vf15_vtx_pos_3);
+
+    //  div Q, vf01.x, vf14.w      |  mul.xyzw vf18, vf14, vf11
+    // m_q = m_tfrag_data.fog.x() / vars.vf14_loop_pos_0.w();
+    // vars.vf18_scaled_pos_2 = vars.vf14_loop_pos_0.elementwise_multiply(m_tfrag_data.hmge_scale);
+
+    //  ibeq vi05, vi06, L133      |  miniz.w vf13, vf13, vf01
+    bool take_branch = (vi05_end_of_vert_kick_data == vi06_kick_zone_ptr);
+    //  fmt::print("L129 prog: {} {}\n", vars.vi05, vars.vi06_kick_zone_ptr);
+    // vars.vf13_root_pos_1.w() = std::min(vars.vf13_root_pos_1.w(), m_tfrag_data.fog.z());
+
+    //  sqi.xyzw vf12, vi06        |  clipw.xyz vf17, vf17
+    vertex_pipeline[0].pre_cam_trans_pos = vf12_vtx_pos_0;  // todo move down?
+    //  fmt::print("C: vf12 store: {}\n", int_vec_debug(vars.vf12_root_pos_0));
+    current_draw.verts.push_back(vertex_pipeline[0]);
+    vi06_kick_zone_ptr++;
+    // m_clip_and_3ffff = clip_xyz_plus_minus(vars.vf17_scaled_pos_1);
+
+    if (take_branch) {
+      // kick zone is full, time for another kick
+      if (emulate_kick_subroutine<DEBUG>(mem, current_draw, all_draws, vi05_end_of_vert_kick_data,
+                                         vi06_kick_zone_ptr, vi07, vi08_adgif_base,
+                                         vi09_draw_addr_book, vi10_start_of_vert_kick_data,
+                                         vi12_vert_count, vi13_adgifs, vf24_w_u16)) {
+        return;
+      }
+    }
+
+    fmt::print("6a1 {} / {}\n", vi05_end_of_vert_kick_data, vi06_kick_zone_ptr);
+    //////////////////////// L6A1
+
+    // part 1 for 1
+    //  nop                        |  subz.xyz vf24, vf28, vf02
+    vf24_stq_0.x() = vf28_x - 2048.f;
+    vf24_stq_0.y() = vf28_y - 2048.f;
+    vf24_stq_0.z() = vf28_z - 2048.f;
+
+    //  iaddi vi07, vi07, 0x1      |  mulaw.xyzw ACC, vf09, vf00
+    vi07++;
+    // m_acc = vars.vf09_cam_trans;
+
+    //  mtir vi04, vf28.w          |  maxy.w vf13, vf13, vf01
+    vi04_vtx_ptr = float_2_u32(vf28_w_addr_of_next_vtx);
+    // vars.vf13_root_pos_1.w() = std::max(vars.vf13_root_pos_1.w(), m_tfrag_data.fog.y());
+
+    //  fcand vi01, 0x3ffff        |  maddax.xyzw ACC, vf04, vf15
+    // m_acc += in.vf04_cam_mat_x * vars.vf15_loop_pos_1.x();
+    // fcand already calculated
+
+    //  ibeq vi00, vi01, L130      |  mul.xyz vf14, vf14, Q
+    //    vars.vf14_loop_pos_0.x() *= m_q;
+    //    vars.vf14_loop_pos_0.y() *= m_q;
+    //    vars.vf14_loop_pos_0.z() *= m_q;
+
+    //  ilwr.y vi02, vi03          |  mul.xyz vf26, vf26, Q
+    vi02_pre_vtx_ptr = mem.ilw_data(vi03_vert_addr_book, 1);
+    //    vars.vf26.x() *= m_q;
+    //    vars.vf26.y() *= m_q;
+    //    vars.vf26.z() *= m_q;
+
+    //  nop                        |  addw.w vf13, vf13, vf0
+    //    if (m_clip_and_3ffff) {
+    //      vars.vf13_root_pos_1.w() += m_tfrag_data.fog.w();
+    //    }
+
+    //////////////////////////////// L130
+
+    //  lq.xyzw vf12, 0(vi04)      |  madday.xyzw ACC, vf07, vf15
+    vf12_vtx_pos_0 = mem.load_vector_data(vi04_vtx_ptr);
+    // m_acc += in.vf07_cam_mat_y * vars.vf15_loop_pos_1.y();
+
+    //  lq.xyzw vf20, 1(vi04)      |  maddz.xyzw vf15, vf08, vf15
+    vf20_vtx_rgba_0 = mem.load_vector_data(vi04_vtx_ptr + 1);
+    // vars.vf15_loop_pos_1 = m_acc + in.vf08_cam_mat_z * vars.vf15_loop_pos_1.z();
+
+    //  sqi.xyzw vf25, vi06        |  add.xyzw vf14, vf14, vf10
+    // store_vector_kick_zone(vars.vi06_kick_zone_ptr, vars.vf25);
+    vertex_pipeline[1].stq[0] = vf25_stq_1[0];
+    vertex_pipeline[1].stq[1] = vf25_stq_1[1];
+    vertex_pipeline[1].stq[2] = vf25_stq_1[2];
+    //  fmt::print("A: vf25 store: {}\n", vars.vf25.to_string_aligned());
+    vi06_kick_zone_ptr++;
+    // vf14 += m_tfrag_data.hvdf_offset;
+
+    //  sqi.xyzw vf21, vi06        |  ftoi4.xyzw vf13, vf13
+    // store_vector_kick_zone(vars.vi06_kick_zone_ptr, vars.vf21);
+    vertex_pipeline[1].rgba = vf21_vtx_unk_1;
+    // fmt::print("B: vf21 store: {}\n", int_vec_debug(vars.vf21));
+    vi06_kick_zone_ptr++;
+    // vars.vf13_root_pos_1 = ftoi4(vars.vf13_root_pos_1);
+
+    //  lq.xyw vf28, 0(vi02)       |  itof0.xyzw vf12, vf12
+    if (vi02_pre_vtx_ptr < 328) {  // HACK added
+      vf28_load_temp = mem.load_vector_data(vi02_pre_vtx_ptr);
+      vf28_x = vf28_load_temp.x();
+      vf28_y = vf28_load_temp.y();
+      if (float_2_u32(vf28_load_temp.w()) < 328) {
+        vf28_w_addr_of_next_vtx = vf28_load_temp.w();
+      }
+    }
+
+    // vars.vf12_root_pos_0 = itof0(vars.vf12_root_pos_0);
+    vf12_vtx_pos_0 = itof0(vf12_vtx_pos_0);
+
+    //  div Q, vf01.x, vf15.w      |  mul.xyzw vf19, vf15, vf11
+    // m_q = m_tfrag_data.fog.x() / vars.vf15_loop_pos_1.w();
+    // vars.vf19_scaled_pos_3 = vars.vf15_loop_pos_1.elementwise_multiply(m_tfrag_data.hmge_scale);
+
+    //  ibeq vi05, vi06, L134      |  miniz.w vf14, vf14, vf01
+    take_branch = (vi05_end_of_vert_kick_data == vi06_kick_zone_ptr);
+    // vars.vf14_loop_pos_0.w() = std::min(vars.vf14_loop_pos_0.w(), m_tfrag_data.fog.z());
+
+    //  sqi.xyzw vf13, vi06        |  clipw.xyz vf18, vf18
+    // store_vector_kick_zone(vars.vi06_kick_zone_ptr, vars.vf13_root_pos_1);
+    vertex_pipeline[1].pre_cam_trans_pos = vf13_vtx_pos_1;
+    current_draw.verts.push_back(vertex_pipeline[1]);
+    //  fmt::print("C: vf13 store: {}\n", int_vec_debug(vars.vf13_root_pos_1));
+    vi06_kick_zone_ptr++;
+    // m_clip_and_3ffff = clip_xyz_plus_minus(vars.vf18_scaled_pos_2);
+
+    if (take_branch) {
+      // kick zone is full, time for another kick
+      if (emulate_kick_subroutine<DEBUG>(mem, current_draw, all_draws, vi05_end_of_vert_kick_data,
+                                         vi06_kick_zone_ptr, vi07, vi08_adgif_base,
+                                         vi09_draw_addr_book, vi10_start_of_vert_kick_data,
+                                         vi12_vert_count, vi13_adgifs, vf24_w_u16)) {
+        return;
+      }
+    }
+    fmt::print("6b0 {} / {}\n", vi05_end_of_vert_kick_data, vi06_kick_zone_ptr);
+
+    /////////////////// L6B0
+    //  nop                        |  subz.xyz vf25, vf28, vf02
+    vf25_stq_1.x() = vf28_x - 2048.f;
+    vf25_stq_1.y() = vf28_y - 2048.f;
+    vf25_stq_1.z() = vf28_z - 2048.f;
+
+    //  iaddi vi07, vi07, 0x1      |  mulaw.xyzw ACC, vf09, vf00
+    vi07++;
+    // m_acc = vars.vf09_cam_trans;
+
+    //  mtir vi04, vf28.w          |  maxy.w vf14, vf14, vf01
+    vi04_vtx_ptr = float_2_u32(vf28_w_addr_of_next_vtx);
+    // vars.vf14_loop_pos_0.w() = std::max(vars.vf14_loop_pos_0.w(), m_tfrag_data.fog.y());
+
+    //  fcand vi01, 0x3ffff        |  maddax.xyzw ACC, vf04, vf12
+    // m_acc += in.vf04_cam_mat_x * vars.vf12_root_pos_0.x();
+    // fcand already calculated
+
+    //  ibeq vi00, vi01, L131      |  mul.xyz vf15, vf15, Q
+    //    vars.vf15_loop_pos_1.x() *= m_q;
+    //    vars.vf15_loop_pos_1.y() *= m_q;
+    //    vars.vf15_loop_pos_1.z() *= m_q;
+
+    //  ilwr.z vi02, vi03          |  mul.xyz vf27, vf27, Q
+    vi02_pre_vtx_ptr = mem.ilw_data(vi03_vert_addr_book, 2);
+    //    vars.vf27.x() *= m_q;
+    //    vars.vf27.y() *= m_q;
+    //    vars.vf27.z() *= m_q;
+
+    //  nop                        |  addw.w vf14, vf14, vf01
+    //    if (m_clip_and_3ffff) {
+    //      vars.vf14_loop_pos_0.w() += m_tfrag_data.fog.w();
+    //    }
+
+    ///////////////////// L131
+    //  lq.xyzw vf13, 0(vi04)      |  madday.xyzw ACC, vf07, vf12
+    vf13_vtx_pos_1 = mem.load_vector_data(vi04_vtx_ptr);
+    // m_acc += in.vf07_cam_mat_y * vars.vf12_root_pos_0.y();
+
+    //  lq.xyzw vf21, 1(vi04)      |  maddz.xyzw vf12, vf08, vf12
+    vf21_vtx_unk_1 = mem.load_vector_data(vi04_vtx_ptr + 1);
+    //  fmt::print("vf21 load from: {}\n", vars.vi04 + 1);
+    // vars.vf12_root_pos_0 = m_acc + in.vf08_cam_mat_z * vars.vf12_root_pos_0.z();
+
+    //  sqi.xyzw vf26, vi06        |  add.xyzw vf15, vf15, vf10
+    // store_vector_kick_zone(vars.vi06_kick_zone_ptr, vars.vf26);
+    vertex_pipeline[2].stq[0] = vf26_stq_2[0];
+    vertex_pipeline[2].stq[1] = vf26_stq_2[1];
+    vertex_pipeline[2].stq[2] = vf26_stq_2[2];
+    //  fmt::print("A: vf26 store: {}\n", vars.vf26.to_string_aligned());
+    vi06_kick_zone_ptr++;
+    // vars.vf15_loop_pos_1 += m_tfrag_data.hvdf_offset;
+
+    //  sqi.xyzw vf22, vi06        |  ftoi4.xyzw vf14, vf14
+    // store_vector_kick_zone(vars.vi06_kick_zone_ptr, vars.vf22);
+    vertex_pipeline[2].rgba = vf22_vtx_rgba_2;
+    // fmt::print("B: vf22 store: {}\n", int_vec_debug(vars.vf22));
+    vi06_kick_zone_ptr++;
+    // vars.vf14_loop_pos_0 = ftoi4(vars.vf14_loop_pos_0);
+
+    //  lq.xyw vf28, 0(vi02)       |  itof0.xyzw vf13, vf13
+    if (vi02_pre_vtx_ptr < 328) {  // HACK added
+      vf28_load_temp = mem.load_vector_data(vi02_pre_vtx_ptr);
+      vf28_x = vf28_load_temp.x();
+      vf28_y = vf28_load_temp.y();
+      if (float_2_u32(vf28_load_temp.w()) < 328) {
+        vf28_w_addr_of_next_vtx = vf28_load_temp.w();
+      }
+    }
+    vf13_vtx_pos_1 = itof0(vf13_vtx_pos_1);
+
+    //  div Q, vf01.x, vf12.w      |  mul.xyzw vf16, vf12, vf11
+    // m_q = m_tfrag_data.fog.x() / vars.vf12_root_pos_0.w();
+    // vars.vf16_scaled_pos_0 = vars.vf12_root_pos_0.elementwise_multiply(m_tfrag_data.hmge_scale);
+
+    //  ibeq vi05, vi06, L135      |  miniz.w vf15, vf15, vf01
+    take_branch = (vi05_end_of_vert_kick_data == vi06_kick_zone_ptr);
+    // vars.vf15_loop_pos_1.w() = std::min(vars.vf15_loop_pos_1.w(), m_tfrag_data.fog.z());
+
+    //  sqi.xyzw vf14, vi06        |  clipw.xyz vf19, vf19
+    // store_vector_kick_zone(vars.vi06_kick_zone_ptr, vars.vf14_loop_pos_0);
+    vertex_pipeline[2].pre_cam_trans_pos = vf14_vtx_pos_2;
+    current_draw.verts.push_back(vertex_pipeline[2]);
+
+    //  fmt::print("C: vf14 store: {}\n", int_vec_debug(vars.vf14_loop_pos_0));
+    vi06_kick_zone_ptr++;
+    // m_clip_and_3ffff = clip_xyz_plus_minus(vars.vf19_scaled_pos_3);
+
+    if (take_branch) {
+      // kick zone is full, time for another kick
+      if (emulate_kick_subroutine<DEBUG>(mem, current_draw, all_draws, vi05_end_of_vert_kick_data,
+                                         vi06_kick_zone_ptr, vi07, vi08_adgif_base,
+                                         vi09_draw_addr_book, vi10_start_of_vert_kick_data,
+                                         vi12_vert_count, vi13_adgifs, vf24_w_u16)) {
+        return;
+      };
+    }
+
+    fmt::print("6bf {} / {}\n", vi05_end_of_vert_kick_data, vi06_kick_zone_ptr);
+
+    ///////////////////// 6bf
+    //  nop                        |  subz.xyz vf26, vf28, vf02
+    vf26_stq_2.x() = vf28_x - 2048.f;
+    vf26_stq_2.y() = vf28_y - 2048.f;
+    vf26_stq_2.z() = vf28_z - 2048.f;
+
+    //  iaddi vi07, vi07, 0x1      |  mulaw.xyzw ACC, vf09, vf00
+    vi07++;
+    // m_acc = vars.vf09_cam_trans;
+
+    //  mtir vi04, vf28.w          |  maxy.w vf15, vf15, vf01
+    vi04_vtx_ptr = float_2_u32(vf28_w_addr_of_next_vtx);  // L131 previously
+    // assert(vars.vi04 != 0xbeef);             // hit
+    // vars.vf15_loop_pos_1.w() = std::max(vars.vf15_loop_pos_1.w(), m_tfrag_data.fog.y());
+
+    //  fcand vi01, 0x3ffff        |  maddax.xyzw ACC, vf04, vf13
+    // m_acc += in.vf04_cam_mat_x * vars.vf13_root_pos_1.x();
+
+    //  ibeq vi00, vi01, L132      |  mul.xyz vf12, vf12, Q
+    //    vars.vf12_root_pos_0.x() *= m_q;
+    //    vars.vf12_root_pos_0.y() *= m_q;
+    //    vars.vf12_root_pos_0.z() *= m_q;
+
+    //  ilwr.w vi02, vi03          |  mul.xyz vf24, vf24, Q
+    vi02_pre_vtx_ptr = mem.ilw_data(vi03_vert_addr_book, 3);
+    //    vars.vf24.x() *= m_q;
+    //    vars.vf24.y() *= m_q;
+    //    vars.vf24.z() *= m_q;
+
+    //  nop                        |  addw.w vf15, vf15, vf01
+    //    if (m_clip_and_3ffff) {
+    //      vars.vf15_loop_pos_1.w() += m_tfrag_data.fog.w();
+    //    }
+    //
+    ///////////////////////////////  L132
+    //  lq.xyzw vf14, 0(vi04)      |  madday.xyzw ACC, vf07, vf13
+    // vars.vf14_loop_pos_0 = load_vector_data(vars.vi04);  // bad here, in L0x6BF_PART0_W prev
+    vf14_vtx_pos_2 = mem.load_vector_data(vi04_vtx_ptr);
+    // m_acc += in.vf07_cam_mat_y * vars.vf13_root_pos_1.y();
+
+    //  lq.xyzw vf22, 1(vi04)      |  maddz.xyzw vf13, vf08, vf13
+    vf22_vtx_rgba_2 = mem.load_vector_data(vi04_vtx_ptr + 1);
+    // vars.vf13_root_pos_1 = m_acc + in.vf08_cam_mat_z * vars.vf13_root_pos_1.z();
+
+    //  sqi.xyzw vf27, vi06        |  add.xyzw vf12, vf12, vf10
+    // store_vector_kick_zone(vars.vi06_kick_zone_ptr, vars.vf27);
+    vertex_pipeline[3].stq[0] = vf27_vtx_stq_3[0];
+    vertex_pipeline[3].stq[1] = vf27_vtx_stq_3[1];
+    vertex_pipeline[3].stq[2] = vf27_vtx_stq_3[2];
+    //  fmt::print("A: vf27 store: {}\n", vars.vf27.to_string_aligned());
+    vi06_kick_zone_ptr++;
+    // vars.vf12_root_pos_0 += m_tfrag_data.hvdf_offset;
+
+    //  sqi.xyzw vf23, vi06        |  ftoi4.xyzw vf15, vf15
+    // store_vector_kick_zone(vars.vi06_kick_zone_ptr, vars.vf23);
+    vertex_pipeline[3].rgba = vf23_vtx_rgba_3;
+
+    // fmt::print("B: vf23 store: {}\n", int_vec_debug(vars.vf23));
+    vi06_kick_zone_ptr++;
+    // vars.vf15_loop_pos_1 = ftoi4(vars.vf15_loop_pos_1);
+
+    //  lq.xyw vf28, 0(vi02)       |  itof0.xyzw vf14, vf14
+    if (vi02_pre_vtx_ptr < 328) {  // HACK added
+      vf28_load_temp = mem.load_vector_data(vi02_pre_vtx_ptr);
+      vf28_x = vf28_load_temp.x();
+      vf28_y = vf28_load_temp.y();
+      if (float_2_u32(vf28_load_temp.w()) < 328) {
+        vf28_w_addr_of_next_vtx = vf28_load_temp.w();
+      }
+    }
+    vf14_vtx_pos_2 = itof0(vf14_vtx_pos_2);
+
+    //  div Q, vf01.x, vf13.w      |  mul.xyzw vf17, vf13, vf11
+    // m_q = m_tfrag_data.fog.x() / vars.vf13_root_pos_1.w();
+    // vars.vf17_scaled_pos_1 = vars.vf13_root_pos_1.elementwise_multiply(m_tfrag_data.hmge_scale);
+
+    //  ibne vi05, vi06, L128      |  miniz.w vf12, vf12, vf01
+    take_branch = (vi05_end_of_vert_kick_data != vi06_kick_zone_ptr);
+    //  fmt::print("kick check: {} {}\n", vars.vi05, vars.vi06_kick_zone_ptr);
+    // vars.vf12_root_pos_0.w() = std::min(vars.vf12_root_pos_0.w(), m_tfrag_data.fog.z());
+
+    //  sqi.xyzw vf15, vi06        |  clipw.xyz vf16, vf16
+    // store_vector_kick_zone(vars.vi06_kick_zone_ptr, vars.vf15_loop_pos_1);
+    vertex_pipeline[3].pre_cam_trans_pos = vf15_vtx_pos_3;
+    current_draw.verts.push_back(vertex_pipeline[3]);
+    vi06_kick_zone_ptr++;
+    //  fmt::print("C: vf15 store: {}\n", int_vec_debug(vars.vf15_loop_pos_1));
+    // m_clip_and_3ffff = clip_xyz_plus_minus(vars.vf16_scaled_pos_0);
+
+    if (!take_branch) {
+      if (emulate_kick_subroutine<DEBUG>(mem, current_draw, all_draws, vi05_end_of_vert_kick_data,
+                                         vi06_kick_zone_ptr, vi07, vi08_adgif_base,
+                                         vi09_draw_addr_book, vi10_start_of_vert_kick_data,
+                                         vi12_vert_count, vi13_adgifs, vf24_w_u16)) {
+        return;
+      }
+    }
+
+    //assert(false);
   }
 }
 
@@ -1245,10 +2386,14 @@ void emulate_tfrags(const std::vector<level_tools::TFragment>& frags) {
   vu_mem.resize(16 * 1024);
 
   for (auto& frag : frags) {
-    emulate_dma_building_for_tfrag(frag, vu_mem, &stats);
+    TFragColorUnpack color_indices;
+    emulate_dma_building_for_tfrag(frag, vu_mem, color_indices, &stats);
+    VuMemWrapper mem(vu_mem);
+    emulate_tfrag_execution<true>(frag, mem, color_indices, &stats);
   }
   fmt::print("l1: {}, l0: {}, base: {}\n", stats.num_l1, stats.num_l0, stats.num_base);
 }
+}  // namespace
 
 ExtractedTFragmentTree extract_tfrag(const level_tools::DrawableTreeTfrag* tree) {
   ExtractedTFragmentTree result;
