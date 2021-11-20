@@ -185,7 +185,7 @@ u32 deref_u32(const Ref& ref, int word_offset) {
   }
   const auto& word = ref.data->words_by_seg.at(ref.seg).at(word_offset + (ref.byte_offset / 4));
   if (word.kind != decompiler::LinkedWord::PLAIN_DATA) {
-    throw Error("deref_u32 bad kind");
+    throw Error("deref_u32 bad kind: {}", (int)word.kind);
   }
   return word.data;
 }
@@ -1113,6 +1113,19 @@ void BspHeader::read_from_file(const decompiler::LinkedObjectFile& file,
 
   drawable_tree_array.read_from_file(
       get_and_check_ref_to_basic(ref, "drawable-trees", "drawable-tree-array", dts), dts, stats);
+
+  auto tex_remap_data = deref_label(get_field_ref(ref, "texture-remap-table", dts));
+  s32 tex_remap_len = read_plain_data_field<s32>(ref, "texture-remap-table-len", dts);
+
+  texture_remap_table.clear();
+  for (int entry = 0; entry < tex_remap_len; entry++) {
+    u64 low = deref_u32(tex_remap_data, 2 * entry);
+    u64 high = deref_u32(tex_remap_data, 2 * entry + 1);
+    TextureRemap remap;
+    remap.original_texid = low;
+    remap.new_texid = high;
+    texture_remap_table.push_back(remap);
+  }
 }
 
 std::string BspHeader::print(const PrintSettings& settings) const {

@@ -8,6 +8,7 @@
 #include "common/versions.h"
 #include "decompiler/data/streamed_audio.h"
 #include "decompiler/level_extractor/extract_level.h"
+#include "decompiler/data/TextureDB.h"
 
 int main(int argc, char** argv) {
   using namespace decompiler;
@@ -114,8 +115,9 @@ int main(int argc, char** argv) {
     }
   }
 
+  decompiler::TextureDB tex_db;
   if (config.process_tpages) {
-    auto result = db.process_tpages();
+    auto result = db.process_tpages(tex_db);
     if (!result.empty()) {
       file_util::write_text_file(file_util::get_file_path({"assets", "tpage-dir.txt"}), result);
     }
@@ -129,7 +131,7 @@ int main(int argc, char** argv) {
   }
 
   for (auto& lev : config.levels_to_extract) {
-    extract_from_level(db, lev);
+    extract_from_level(db, tex_db, lev);
   }
 
   if (!config.audio_dir_file_name.empty()) {

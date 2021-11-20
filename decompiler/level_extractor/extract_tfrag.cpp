@@ -4,6 +4,7 @@
 #include "decompiler/util/Error.h"
 #include "decompiler/ObjectFile/LinkedObjectFile.h"
 #include "common/util/FileUtil.h"
+#include "common/dma/gs.h"
 
 namespace decompiler {
 namespace {
@@ -144,757 +145,6 @@ VisNodeTree extract_vis_data(const level_tools::DrawableTreeTfrag* tree, u16 fir
 // our strategy is to figure out how the game would generate the highest LOD upload for all tfrags
 // normally there's culling/not drawing near ones with the far renderer/etc decided in the
 // draw-inline-array-tfrag functions.  But we don't want any of that.
-
-/*
-
-// The actual "tfrag" type. This only lives on the EE and gets converted to DMA data.
-// some of the DMA data is pointers to chains that live in the static level data.
-// other is colors that are looked up from the palette (on the EE!) then thrown in the
-// double-buffered frame global buffer.
-
-(deftype tfragment (drawable)
-  (
-   (color-index       uint16                       :offset 6)
-   (debug-data        tfragment-debug-data         :offset 8)
-   (color-indices     uint32                       :offset 12)
-   (colors            uint32                       :offset 12)
-   (dma-chain         uint32              3       :offset-assert 32)
-   (dma-common        uint32                       :offset 32)
-   (dma-level-0       uint32                       :offset 32)
-   (dma-base          uint32                       :offset 36)
-   (dma-level-1       uint32                       :offset 40)
-   (dma-qwc           uint8              4       :offset 44)
-   (shader            (inline-array adgif-shader)                       :offset 48)
-   (num-shaders       uint8                        :offset 52)
-   (num-base-colors   uint8                        :offset 53)
-   (num-level0-colors uint8                        :offset 54)
-   (num-level1-colors uint8                        :offset 55)
-   (color-offset      uint8                        :offset 56)
-   (color-count       uint8                        :offset 57)
-   (pad0              uint8                        :offset 58)
-   (pad1              uint8                        :offset 59)
-   (generic           generic-tfragment            :offset-assert 60)
-   (generic-u32       uint32            :offset 60) ;; added
-   )
-  :method-count-assert 18
-  :size-assert         #x40
-  :flag-assert         #x1200000040
-  )
-
-// This is the temp/debug structure used for the EE code
-
-(deftype tfrag-work (structure)
-  ((base-tmpl             dma-packet :inline :offset-assert 0)
-   (level-0-tmpl          dma-packet :inline :offset-assert 16)
-   (common-tmpl           dma-packet :inline :offset-assert 32)
-   (level-1-tmpl          dma-packet :inline :offset-assert 48)
-   (color-tmpl            dma-packet :inline :offset-assert 64)
-   (frag-dists            vector     :inline :offset-assert 80)
-   (max-dist              vector     :inline :offset-assert 96)
-   (min-dist              vector     :inline :offset-assert 112)
-   (color-ptr             vector4w   :inline :offset-assert 128)
-   (tr-stat-tfrag         tr-stat            :offset-assert 144)
-   (tr-stat-tfrag-near    tr-stat            :offset-assert 148)
-   (vu1-enable-tfrag      int32              :offset-assert 152)
-   (vu1-enable-tfrag-near int32              :offset-assert 156)
-   (cur-vis-bits          uint32             :offset-assert 160)
-   (end-vis-bits          uint32             :offset-assert 164)
-   (src-ptr               uint32             :offset-assert 168)
-   (last-call             uint32             :offset-assert 172)
-   (dma-buffer            basic              :offset-assert 176)
-   (test-id               uint32             :offset-assert 180)
-   (wait-from-spr         uint32             :offset-assert 184)
-   (wait-to-spr           uint32             :offset-assert 188)
-   (near-wait-from-spr    uint32             :offset-assert 192)
-   (near-wait-to-spr      uint32             :offset-assert 196)
-   )
-  :method-count-assert 9
-  :size-assert         #xc8
-  :flag-assert         #x9000000c8
-  )
- */
-
-// base vifs:
-// ??
-// t3
-
-// l0:
-// ??
-// t3
-
-// common:
-// ??
-// t3
-
-// color
-// ??
-// 12 sb color-offset
-// 14 sb num colors, 4 aligned.
-
-/*
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-; .function draw-inline-array-tfrag
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-
- ;; there's two double-buffered spad buffers + culling data
-
-   ;; arguments:
-   ;; a0 - occlusion cull list (on spad)
-   ;; a1 - tfrags
-   ;; a2 - num tfrags
-   ;; a3 - dma buf
-
-   ;; constants:
-   ;; t0 = *tfrag-work*
-   ;; t1 = SPR FROM
-   ;; t2 = 0x14000000 ??
-   ;; t4 = SPR TO
-
-   ;; vars:
-   ;; v1 = ptr to dma buffer data
-   ;; t5 = SPR BUFFER 0 (tfrags)
-   ;; a3 = SPR BUFFER 1
-   ;; t3 = ?? (init to 0)
-   ;; t6 = spr buffer 1 use (qwc)
-
-   ;; vf3 = frag-dists
-   ;; vf1 = (1, 1, 1, 1)
-   ;; vf2 = bsphere
-B0:
-L40:
-TFRAG INITIALIZE
- ;; set up constants
-    daddiu sp, sp, -128
-    sd ra, 0(sp)
-    sq s0, 16(sp)
-    sq s1, 32(sp)
-    sq s2, 48(sp)
-    sq s3, 64(sp)
-    sq s4, 80(sp)
-    sq s5, 96(sp)
-    sq gp, 112(sp)
-    lui t2, 5120     = (0x14000000), a constant (mscal)
-    lw v1, 4(a3)     (-> dma-buf base)
-    lui t3, 4096     = (0x10000000)
-    lui t1, 4096     = (0x10000000)
-    sync.l
-    cache dxwbin v1, 0
-    sync.l
-    cache dxwbin v1, 1
-    sync.l
-    lw t0, *tfrag-work*(s7)
-    ori t4, t3, 54272           = (0x1000D400) SPR TO
-    ori t1, t1, 53248           = (0x1000D000) SPR FROM
-    lui t5, 28672               = (0x70000000)
-    lqc2 vf3, 80(t0)            = (-> *tfrag-work* frag-dists)
-    sw a3, 176(t0)              (set! (-> *tfrag-work* dma-buffer) dma-ptr)
-    ori a3, t5, 2064            setup buffer 1
-    addiu t3, r0, 0             t3 = 0
-    ori t5, t5, 1040            setup buffer 0
-    vmaxw.xyzw vf1, vf0, vf0    vf1 = (1, 1, 1, 1)
-    lh t7, 0(a0)                vis cull load
-    lqc2 vf4, 96(t0)            max-dist
-    addiu a1, a1, -4            remove basic offset
-    addiu t6, r0, 0             t6 = 0
-    or ra, a3, r0               ra = SPAD BUFFER 1
-
-
-SKIP TO FIRST VISIBLE
- ;; skips ahead until we find some visible tfrags.
-B1:
-L41:
-    bne t7, r0, L42
-    sll r0, r0, 0
-
-B2:
-    addiu a0, a0, 2     ;; + 16 bits in the vis list
-    addiu a1, a1, 1024  ;; 16 * 0x40 = 1024 bytes in tfrag list
-    daddiu a2, a2, -16  ;; num tfrags -= 16
-    lh t7, 0(a0)        ;; next vis
-    blez a2, L69_CLEANUP ;; no visible tfrags, abort!
-    sll r0, r0, 0
-
-B3:
-    beq r0, r0, L41 ;; keep looking
-    sll r0, r0, 0
-
-WAIT_FOR_PREV_DMA
- ;; waits for any previously running spad dma transfer to end
-B4:
-L42:
-    lw t7, 0(t4)
-    sll r0, r0, 0
-    sll r0, r0, 0
-    sll r0, r0, 0
-    andi t7, t7, 256
-    sll r0, r0, 0
-    bne t7, r0, L42
-    sll r0, r0, 0
-
-INIT_FIRST_SPAD_TO
- ;; initializes the first scratchpad upload of tfrags
-B5:
-    sw a1, 16(t4)       ;; madr = a1
-    xori t7, t5, 1024   ;; t7 = upload addr of tfrags double buffer
-    sw t7, 128(t4)      ;; sadr
-    addiu t7, r0, 64    ;; 64 qw = 16 tfrags
-    sw t7, 32(t4)       ;; qwc
-    addiu t7, r0, 256   ;; go
-    sw t7, 0(t4)        ;; go!
-    sll r0, r0, 0
-
-TFRAG MAIN LOOP TOP
-B6:
-L43:
-    or gp, a0, r0                     ;; gp = temp addr of vis list
-    xori t5, t5, 1024                 ;; toggle to addr of upload tfrags
-    daddiu a0, a0, 2                  ;; advance vis list ptr (16 tfrags)
-    or t9, a0, r0                     ;; t9 = temp addr of next vis list
-    or t8, t5, r0                     ;; t8 = tfrags to use
-
-  ;; next, let's find next block of visible tfrags so we can start it's dma early
-    daddiu t7, a2, -16                ;; t7 = tfrags left after this loop
-    bgtz t7, L45                      ;; if we have them left, jump
-    lh t7, 0(a0)                      ;; and load their vis
-
-B7:
-    beq r0, r0, L48                   ;; none left, skip dma kickoff.
-    sll r0, r0, 0
-
-B8:
-L44:
-    daddiu a2, a2, -16                ;; skip invisible block (dec tfrag counter)
-    addiu a0, a0, 2                   ;; increment vis list
-    blez a2, L48                      ;; did we get to the end of the tfrag list?
-    lh t7, 0(a0)                      ;; check vis again.
-
-B9:
-    sll r0, r0, 0
-    sll r0, r0, 0
-B10:
-L45:
-    beq t7, r0, L44                  ;; we have tfrags left. if 0, they are all hidden, so loop
-    addiu a1, a1, 1024               ;; and advance upload pointer (not done at all yet)
-
- ;; we reach here if we have tfrags left after this block.
- ;; so let's upload the next ones to the scratchpad so they are ready by next time.
-B11:
-L46:
-    lw t7, 0(t4)      ;; make sure to-spr is done
-    sll r0, r0, 0
-    sll r0, r0, 0
-    sll r0, r0, 0
-    andi t7, t7, 256
-    sll r0, r0, 0
-    beq t7, r0, L47
-    sll r0, r0, 0
-
-B12:
-    sll r0, r0, 0
-    lw t7, 188(t0)
-    sll r0, r0, 0
-    sll r0, r0, 0
-    sll r0, r0, 0
-    daddiu t7, t7, 1 ;; counting how many times we wait
-    sll r0, r0, 0
-    sw t7, 188(t0)
-    beq r0, r0, L46
-    sll r0, r0, 0
-
-B13:
-L47:
-    sw a1, 16(t4)     ;; start the to!
-    xori t7, t5, 1024
-    sw t7, 128(t4)
-    addiu t7, r0, 64
-    sw t7, 32(t4)
-    addiu t7, r0, 256
-    beq r0, r0, L49 ;; skip ahead
-    sw t7, 0(t4)
-
- ;; only reach here if we dont have any more spr to's
- ;; still need to sync the to for the block we're about to process
-B14:
-L48:
-    lw t7, 0(t4)
-    sll r0, r0, 0
-    sll r0, r0, 0
-    sll r0, r0, 0
-    andi t7, t7, 256
-    sll r0, r0, 0
-    beq t7, r0, L49
-    sll r0, r0, 0
-
-B15:
-    sll r0, r0, 0
-    lw t7, 188(t0)
-    sll r0, r0, 0
-    sll r0, r0, 0
-    sll r0, r0, 0
-    daddiu t7, t7, 1
-    sll r0, r0, 0
-    sw t7, 188(t0)
-    beq r0, r0, L48
-    sll r0, r0, 0
-
- ;; common op start
- ;; at this point:
- ;;  t8 is our spad tfrag buffer, with 16 tfrags. at least 1 is visible.
- ;;  gp is our vis-list pointer
- ;; we run through this loop 2x, each time doing 8 tfrags.
-
-B16:
-L49:
-    lb t7, 0(gp)      ;; load first 8 frag vis bits
-    addiu gp, gp, 1   ;; inc vis bit ptr.
-    sll r0, r0, 0
-    sw gp, 160(t0)    ;; store cur-vis-bits
-    bne t7, r0, L50   ;; are any visible in the first 8?
-    sw t9, 164(t0)    ;; set end-vis-bits (why?)
-
-B17: ;; none are visible
-    daddiu a2, a2, -8  ;; dec tfrags
-    addiu t8, t8, 512  ;; skip tfrags
-    beq r0, r0, L65    ;; skip ahead!
-    sll r0, r0, 0
-
-B18:
-L50:
-    addiu t9, r0, 128    ;; vis mask init (gets shifted in each run of the 8-loop)
-    lqc2 vf2, 16(t8)     ;; bsphere load
-B19:
-L51:
-    daddiu gp, t6, -124  ;; are we full of stuff in buffer 1?
-    sll r0, r0, 0
-    blez gp, L54
-    sll r0, r0, 0
-
-B20:
-L52:
-    lw ra, 0(t1)       ;; wait for spr-from
-    sll r0, r0, 0
-    sll r0, r0, 0
-    sll r0, r0, 0
-    andi ra, ra, 256
-    sll r0, r0, 0
-    beq ra, r0, L53
-    sll r0, r0, 0
-
-B21:
-    sll r0, r0, 0     ;; count it
-    lw ra, 184(t0)
-    sll r0, r0, 0
-    sll r0, r0, 0
-    sll r0, r0, 0
-    daddiu ra, ra, 1
-    sll r0, r0, 0
-    sw ra, 184(t0)
-    beq r0, r0, L52
-    sll r0, r0, 0
-
-B22:
-L53:
-    sw a3, 128(t1)       ;; kick off the next spr-from.
-    xori a3, a3, 6144
-    sw v1, 16(t1)        ;; to the dma-buf
-    sll ra, t6, 4
-    addu v1, v1, ra      ;; add qwc
-    or ra, a3, r0        ;; ra is the spad-side dma buffer to write to
-    sw t6, 32(t1)        ;; qwc
-    addiu t6, r0, 256
-    sw t6, 0(t1)         ;; go!
-    addiu t6, r0, 0      ;; reset use.
-
- ;; actually building dma.
-B23:
-L54:
-    and gp, t7, t9               ;; vis check
-    vmulax.xyzw acc, vf16, vf2   ;; plane ?
-    beq gp, r0, L64_8loop_reject ;; vis check failed, reject!
-    lwu gp, 36(t8)                      ;; DMA BASE (chain) -------------
-
-B24:
-    vmadday.xyzw acc, vf17, vf2 ;; plane
-    lbu s5, 45(t8)                     ;; DMA QWC1
-    vmaddaz.xyzw acc, vf18, vf2 ;; plane
-    sw gp, 4(t0)                       ;; base tmpl set addr
-    vmsubaw.xyzw acc, vf19, vf0 ;; plane
-    sh s5, 0(t0)                       ;; base tmpl set qwc
-    vmaddw.xyzw vf5, vf1, vf2   ;; plane
-    lwu gp, 32(t8)                     ;; DMA level0 -------------
-    vmulaw.xyzw acc, vf27, vf0  ;; camrot
-    lbu s5, 47(t8)                     ;; DMA QWC3
-    vmaddax.xyzw acc, vf24, vf2 ;; camrot
-    sw gp, 20(t0)                      ;; l0 tmpl set addr
-    vmadday.xyzw acc, vf25, vf2 ;; camrot
-    sh s5, 16(t0)                      ;; l0 tmpl set qwc
-    vmaddaz.xyzw acc, vf26, vf2 ;; camrot
-    lwu gp, 32(t8)                     ;; DMA common --------------
-    qmfc2.i s5, vf5             ;; plane
-    lbu s4, 44(t8)                     ;; DMA QWC0
-    vmaddw.xyzw vf6, vf1, vf2   ;; ??
-    sw gp, 36(t0)                      ;; common tmpl set addr
-    vmsubw.xyzw vf8, vf1, vf2   ;; ??
-    sh s4, 32(t0)                      ;; common tmpl set qwc
-    pcgtw s5, r0, s5            ;; plane check
-    lwu gp, 40(t8)                     ;; DMA level1 -------------
-    ppach s5, r0, s5            ;; plane check
-    lbu s4, 46(t8)                     ;; DMA QWC2
-    vaddz.xyzw vf6, vf3, vf6    ;; dist
-    sw gp, 52(t0)                      ;; l1 tmpl addr
-    vaddz.xyzw vf7, vf3, vf8    ;; dist
-    sw t3, 12(t0)                      ;; !!! set a vif on base, 0 on the first round, at least.
-    bne s5, r0, L63_8loop_reject_tog_vis
-    sh s4, 48(t0)                      ;; l1 tmpl qwc
-
-B25:
-    vmini.xyzw vf4, vf4, vf8 ;; max dist
-    sw t3, 28(t0)            ;; !!! set a vif on l0
-    sll r0, r0, 0
-    lbu s5, 53(t8)           ;; s5 = num-base-colors
-    qmfc2.i gp, vf6          ;; dist
-    sw t3, 44(t0)            ;; !!! set a vif on common
-    qmfc2.i s3, vf7          ;; dist
-    lbu s4, 56(t8)           ;; s4 = color-offset
-    pcgtw s2, r0, gp         ;; dist
-    lw gp, 12(t8)            ;; gp = colors-indices
-    pcgtw s3, r0, s3         ;; dist
-    sb s4, 76(t0)            ;; store color-offset
-    pinteh s4, s2, s3        ;; dist
-    lbu s2, 54(t8)           ;; s2 = num-level0-colors
-    ppacb s3, r0, s4         ;; dist
-    lbu s1, 55(t8)           ;; s1 = num-level1-colors
-    beq s3, r0, L56          ;; jump if dist fails?
-    dsrl32 s4, s3, 8         ;; s4 is the level or something?
-
-B26:
-    beq s2, r0, L56          ;; if we have no level0 colors, use base
-    sll r0, r0, 0
-
-B27:
-    beq s1, r0, L55          ;; if we have no level1 colors, use level0
-    dsrl s5, s3, 16
-
-B28:
-    beq s5, r0, L55          ;; possible l1 skip based on lod
-    dsrl32 s5, s3, 24
-
-B29:
-    bne s5, r0, L64_8loop_reject     ;; possible all skip based on lod.
-    addiu s5, s1, 3                  ;; s5 = num-level1-colors + 3
-
-B30:                  ;; level 1 color setup
-    sra s4, s5, 2   ;; s4  = (num_color + 3) >> 4
-    or s5, s1, r0   ;; s5  = (num_color)
-    sll t3, s4, 2   ;; t3 = num colors, 4 aligned
-    sh s4, 64(t0)   ;; color-tmpl qwc.
-    sll r0, r0, 0
-    sb t3, 78(t0)   ;; vif store
-    daddiu t6, t6, 3 ;; use 3 qw's of global dma.
-    lq s2, 32(t0) ;; load the common-tmpl!
-    sll r0, r0, 0
-    lq s1, 48(t0) ;; load the l1 tmpl!
-    sll r0, r0, 0
-    lq t3, 64(t0) ;; load the color tmpl!
-    sq s2, 0(ra)  ;; store the common!
-    sll r0, r0, 0
-    sq s1, 16(ra) ;; store the l1!
-    dsrl32 s2, s3, 16
-    sq t3, 32(ra) ;; store the color
-    daddiu ra, ra, 48 ;; advance the dma buffer pointer
-    bne s2, r0, L57
-    ori t3, t2, 18    ;; is this.. program 18?
-
-B31:
-    dsrl32 t3, s3, 8
-    sll r0, r0, 0
-    bne t3, r0, L57
-    ori t3, t2, 16
-
-B32:
-    beq r0, r0, L57
-    ori t3, t2, 14
-
-B33:
-L55:
-    bne s4, r0, L64_8loop_reject
-    addiu s5, s2, 3 ;; l0 colors + 3
-
-B34:  l0 color setup
-    sra s4, s5, 2 ;;  >> 2
-    or s5, s2, r0 ;; s5 = qwc
-    sll t3, s4, 2 ;; << 2
-    sh s4, 64(t0) ;; color-tmpl qwc
-    sll r0, r0, 0
-    sb t3, 78(t0)  ;; vif store for unpack??
-    daddiu t6, t6, 2 ;; only 2 qw's
-    lq s2, 16(t0) ;; l0 tmpl
-    sll r0, r0, 0
-    lq t3, 64(t0) ;; color tmp
-    sq s2, 0(ra)
-    dsrl s3, s3, 8
-    sq t3, 16(ra)
-    daddiu ra, ra, 32
-    bne s3, r0, L57
-    ori t3, t2, 10
-
-B35:
-    beq r0, r0, L57
-    ori t3, t2, 8
-
-B36:
-L56:
-    bne s4, r0, L64_8loop_reject
-    addiu s4, s5, 3 ;; base colors + 3
-
-B37:
-    sra s4, s4, 2
-    sll r0, r0, 0
-    sll t3, s4, 2
-    sh s4, 64(t0)
-    sll r0, r0, 0
-    sb t3, 78(t0)
-    ori t3, t2, 6
-    lq s3, 0(t0) ;; base
-    daddiu t6, t6, 2
-    lq s2, 64(t0)  ;; color
-    sq s3, 0(ra)
-    sll r0, r0, 0
-    sq s2, 16(ra)
-    daddiu ra, ra, 32
-
-;; END of the color setup
-B38:
-L57: ;; another opportunity to do some spad swappin
-    addiu s3, r0, 127 ;; s3 = 127
-    daddu s2, t6, s4  ;; s2 = dma-use + color qwc
-    dsubu s3, s3, s2
-    sll r0, r0, 0
-    bgez s3, L60
-    sll r0, r0, 0
-
-B39:
-L58:
-    lw ra, 0(t1)
-    sll r0, r0, 0
-    sll r0, r0, 0
-    sll r0, r0, 0
-    andi ra, ra, 256
-    sll r0, r0, 0
-    beq ra, r0, L59
-    sll r0, r0, 0
-
-B40:
-    sll r0, r0, 0
-    lw ra, 184(t0)
-    sll r0, r0, 0
-    sll r0, r0, 0
-    sll r0, r0, 0
-    daddiu ra, ra, 1
-    sll r0, r0, 0
-    sw ra, 184(t0)
-    beq r0, r0, L58
-    sll r0, r0, 0
-
-B41:
-L59:
-    sw a3, 128(t1)
-    xori a3, a3, 6144
-    sw v1, 16(t1)
-    sll ra, t6, 4
-    addu v1, v1, ra
-    or ra, a3, r0
-    sw t6, 32(t1)
-    addiu t6, r0, 256
-    sw t6, 0(t1)
-    addiu t6, r0, 0
-B42:
-
-L60:
-    daddu t6, t6, s4      ;; add color imm's to dma buffer length
-    sw t8, 168(t0)        ;; back up tfrag... not enough regs
-    ld s4, 0(gp)          ;; load color-indices (u64 = u16 x 4)
-    daddiu t8, gp, 8      ;; inc colors ptr
-    daddiu gp, s5, -4     ;; gp is color counter. we're using the rounded up to 4 color count.
-    lq s5, 128(t0)        ;; color-ptr x4
-    pextlh s4, r0, s4     ;; expand packed u16's to u32's
-    mfc1 r0, f31          ;; nop
-    paddw s2, s4, s5      ;; add to color pointers
-    mfc1 r0, f31
-    lw s4, 0(s2)          ;; s4 = colors[0]
-    dsra32 s3, s2, 0
-    lw s3, 0(s3)          ;; s5 = colors[1]
-    pcpyud s1, s2, s2
-    lw s2, 0(s1)          ;; s2 = colors[2]
-    dsra32 s1, s1, 0
-    blez gp, L62
-    lw s1, 0(s1)          ;; s1 = colors[3]
-
-B43:
-L61:
-    ld s0, 0(t8)
-    daddiu ra, ra, 16
-    daddiu t8, t8, 8
-    sw s4, -16(ra)
-    daddiu gp, gp, -4
-    sw s3, -12(ra)
-    pextlh s4, r0, s0
-    sw s2, -8(ra)
-    paddw s2, s4, s5
-    sw s1, -4(ra)
-    lw s4, 0(s2)
-    dsra32 s3, s2, 0
-    lw s3, 0(s3)
-    pcpyud s1, s2, s2
-    lw s2, 0(s1)
-    dsra32 s1, s1, 0
-    bgtz gp, L61
-    lw s1, 0(s1)
-
-B44:
-L62:
-    daddiu ra, ra, 16
-    lw t8, 168(t0)
-    sll r0, r0, 0
-    sw s4, -16(ra)
-    sll r0, r0, 0
-    sw s3, -12(ra)
-    sll r0, r0, 0
-    sw s2, -8(ra)
-    sll r0, r0, 0
-    sw s1, -4(ra)
-B45:
-L63_8loop_reject_tog_vis:
-    xor t7, t7, t9 ;; update vis
-    sll r0, r0, 0
-B46:
-L64_8loop_reject:
-    daddiu t8, t8, 64
-    srl t9, t9, 1
-    addiu a2, a2, -1
-    sll r0, r0, 0
-    bne t9, r0, L51
-    lqc2 vf2, 16(t8)
-
-B47:
-L65:
-    sll r0, r0, 0
-    lw gp, 160(t0)
-    sll r0, r0, 0
-    lw t9, 164(t0)
-    bne gp, t9, L49
-    sb t7, -1(gp)
-
-B48:
-    bgtz a2, L43_MAIN_LOOP_TOP
-    sll r0, r0, 0
-
-B49:
-    beq t6, r0, L68
-    sll r0, r0, 0
-
-B50:
-L66:
-    lw a0, 0(t1)
-    sll r0, r0, 0
-    sll r0, r0, 0
-    sll r0, r0, 0
-    andi a0, a0, 256
-    sll r0, r0, 0
-    beq a0, r0, L67
-    sll r0, r0, 0
-
-B51:
-    sll r0, r0, 0
-    lw a0, 184(t0)
-    sll r0, r0, 0
-    sll r0, r0, 0
-    sll r0, r0, 0
-    daddiu a0, a0, 1
-    sll r0, r0, 0
-    sw a0, 184(t0)
-    beq r0, r0, L66
-    sll r0, r0, 0
-
-B52:
-L67:
-    sw a3, 128(t1)
-    xori a0, a3, 6144
-    sw v1, 16(t1)
-    sll a1, t6, 4
-    addu v1, v1, a1
-    or a0, a0, r0
-    sw t6, 32(t1)
-    addiu a0, r0, 256
-    sw a0, 0(t1)
-    addiu a0, r0, 0
-B53:
-L68:
-    lw a0, 0(t1)
-    sll r0, r0, 0
-    sll r0, r0, 0
-    sll r0, r0, 0
-    andi a0, a0, 256
-    sll r0, r0, 0
-    beq a0, r0, L69_CLEANUP
-    sll r0, r0, 0
-
-B54:
-    sll r0, r0, 0
-    lw a0, 184(t0)
-    sll r0, r0, 0
-    sll r0, r0, 0
-    sll r0, r0, 0
-    daddiu a0, a0, 1
-    sll r0, r0, 0
-    sw a0, 184(t0)
-    beq r0, r0, L68
-    sll r0, r0, 0
-
-B55:
-L69_CLEANUP:
-    lw a0, 176(t0)
-    sll r0, r0, 0
-    sw t3, 172(t0)
-    sll r0, r0, 0
-    sqc2 vf4, 112(t0)
-    sll r0, r0, 0
-    sw v1, 4(a0)
-    sll r0, r0, 0
-    or v0, r0, r0
-    ld ra, 0(sp)
-    lq gp, 112(sp)
-    lq s5, 96(sp)
-    lq s4, 80(sp)
-    lq s3, 64(sp)
-    lq s2, 48(sp)
-    lq s1, 32(sp)
-    lq s0, 16(sp)
-    jr ra
-    daddiu sp, sp, 128
-
-    sll r0, r0, 0
-    sll r0, r0, 0
-    sll r0, r0, 0
-
-
-    Notes on the VU program
-  vi03 is a pointer to an "address book" - a sequence of addresses
-  vi02 contains addresses in this book
-  from these xyw are loaded for vf28 (v3-32, with 2, 1)
-    xy are floats. w is address of next vertex data.
-
-  vi08 is a pointer to adgifs?
-  vi09 is a pointer to some data like [vi12, ?, ?, vi13] ??
-
-  vi12 counter, started negative?
-  vi13 is adgif offset?
-
-  vi04 is a pointer to tri-data:
-    - vertex (w = 128.0?)
-    - ?? (vf20)
-
- */
 
 struct TFragExtractStats {
   int num_l1 = 0;
@@ -1244,6 +494,20 @@ void emulate_chain(UnpackState& state, u32 max_words, const u32* start, u8* vu_m
 struct TFragColorUnpack {
   std::vector<math::Vector<u16, 4>> data;
   u32 unpack_qw_addr = 0;
+
+  math::Vector<u16, 4> load_color_idx(u32 qw) {
+    if (qw < unpack_qw_addr) {
+      return math::Vector<u16, 4>{0, 0, 0, 0};
+    }
+    int past = qw - unpack_qw_addr;
+    past /= 2;
+    if (past < (int)data.size()) {
+      return data.at(past);
+    } else {
+      int overflow = past - data.size();
+      return math::Vector<u16, 4>{0, 0, 0, 0};
+    }
+  }
 };
 
 void emulate_dma_building_for_tfrag(const level_tools::TFragment& frag,
@@ -1386,21 +650,10 @@ Vector4f itof0(const Vector4f& vec) {
   return result;
 }
 
-Vector4f ftoi4(const Vector4f& vec) {
-  Vector4f result;
-  for (int i = 0; i < 4; i++) {
-    s32 f = vec[i] * 16.f;
-    float val;
-    memcpy(&val, &f, 4);
-    result[i] = val;
-  }
-  return result;
-}
-
 struct TFragVertexData {
   Vector4f pre_cam_trans_pos;
-  Vector3f stq;  // stq?
-  Vector4f rgba;
+  Vector3f stq;               // stq?
+  math::Vector<u16, 4> rgba;  // unlike actual tfrag, these are still indices
   bool end_of_strip = false;
 
   // pos = cam.rot * pctp.xyz + cam.trans
@@ -1416,6 +669,30 @@ struct TFragVertexData {
 
 struct TFragDraw {
   u8 adgif_data[16 * 5];
+
+  u16 tpage = 0;
+  u16 tex_in_page = 0;
+
+  u16 tfrag_id = 0;
+
+  DrawMode mode;
+
+  u64 get_adgif_val(int adgif) {
+    u64 result;
+    memcpy(&result, adgif_data + (adgif * 16), 8);
+    return result;
+  }
+
+  u64 get_adgif_upper(int adgif) {
+    u64 result;
+    memcpy(&result, adgif_data + (adgif * 16) + 8, 8);
+    return result;
+  }
+
+  GsRegisterAddress get_adgif_addr(int adgif) {
+    return (GsRegisterAddress)(u8)get_adgif_upper(adgif);
+  }
+
   u32 dvert = 0;
   std::vector<TFragVertexData> verts;
 };
@@ -1809,7 +1086,8 @@ std::vector<TFragDraw> emulate_tfrag_execution(const level_tools::TFragment& fra
 
   //  lq.xyzw vf20, 1(vi04)      |  nop
   // ??? something with the vertex.
-  Vector4f vf20_vtx_rgba_0 = mem.load_vector_data(vi04_vtx_ptr + 1);
+  // Vector4f vf20_vtx_rgba_0 = mem.load_vector_data(vi04_vtx_ptr + 1);
+  math::Vector<u16, 4> vf20_vtx_rgba_0 = color_indices.load_color_idx(vi04_vtx_ptr + 1);
 
   //  iaddiu vi12, vi12, 0x80    |  nop
   vi12_vert_count += 0x80;  // ??
@@ -1882,7 +1160,9 @@ std::vector<TFragDraw> emulate_tfrag_execution(const level_tools::TFragment& fra
   // acc += in.vf07_cam_mat_y * vars.vf12_root_pos_0.y();
 
   //  lq.xyzw vf21, 1(vi04)      |  maddz.xyzw vf12, vf08, vf12
-  Vector4f vf21_vtx_unk_1 = mem.load_vector_data(vi04_vtx_ptr + 1);
+  // Vector4f vf21_vtx_unk_1 = mem.load_vector_data(vi04_vtx_ptr + 1);
+  math::Vector<u16, 4> vf21_vtx_rgba_1 = color_indices.load_color_idx(vi04_vtx_ptr + 1);
+
   // vars.vf12_root_pos_0 = acc + in.vf08_cam_mat_z * vars.vf12_root_pos_0.z();
 
   //  lqi.xyzw vf29, vi13        |  nop
@@ -1945,7 +1225,8 @@ std::vector<TFragDraw> emulate_tfrag_execution(const level_tools::TFragment& fra
   Vector4f vf14_vtx_pos_2 = mem.load_vector_data(vi04_vtx_ptr);
 
   //  lq.xyzw vf22, 1(vi04)      |  maddz.xyzw vf13, vf08, vf13
-  Vector4f vf22_vtx_rgba_2 = mem.load_vector_data(vi04_vtx_ptr + 1);
+  // Vector4f vf22_vtx_rgba_2 = mem.load_vector_data(vi04_vtx_ptr + 1);
+  math::Vector<u16, 4> vf22_vtx_rgba_2 = color_indices.load_color_idx(vi04_vtx_ptr + 1);
 
   //  sqi.xyzw vf06, vi06        |  add.xyzw vf12, vf12, vf10
   vi06_kick_zone_ptr++;
@@ -1975,7 +1256,7 @@ std::vector<TFragDraw> emulate_tfrag_execution(const level_tools::TFragment& fra
   // m_clip_and_3ffff = clip_xyz_plus_minus(vars.vf16_scaled_pos_0);
 
   Vector4f vf27_vtx_stq_3;
-  Vector4f vf23_vtx_rgba_3;
+  math::Vector<u16, 4> vf23_vtx_rgba_3;
   Vector4f vf15_vtx_pos_3;
 
   while (true) {
@@ -2023,7 +1304,7 @@ std::vector<TFragDraw> emulate_tfrag_execution(const level_tools::TFragment& fra
     // m_acc += in.vf07_cam_mat_y * vars.vf14_loop_pos_0.y();
 
     //  lq.xyzw vf23, 1(vi04)      |  maddz.xyzw vf14, vf08, vf14
-    vf23_vtx_rgba_3 = mem.load_vector_data(vi04_vtx_ptr + 1);
+    vf23_vtx_rgba_3 = color_indices.load_color_idx(vi04_vtx_ptr + 1);
     // vars.vf14_loop_pos_0 = m_acc + in.vf08_cam_mat_z * vars.vf14_loop_pos_0.z();
 
     //  sqi.xyz vf24, vi06         |  add.xyzw vf13, vf13, vf10
@@ -2121,7 +1402,7 @@ std::vector<TFragDraw> emulate_tfrag_execution(const level_tools::TFragment& fra
     // m_acc += in.vf07_cam_mat_y * vars.vf15_loop_pos_1.y();
 
     //  lq.xyzw vf20, 1(vi04)      |  maddz.xyzw vf15, vf08, vf15
-    vf20_vtx_rgba_0 = mem.load_vector_data(vi04_vtx_ptr + 1);
+    vf20_vtx_rgba_0 = color_indices.load_color_idx(vi04_vtx_ptr + 1);
     // vars.vf15_loop_pos_1 = m_acc + in.vf08_cam_mat_z * vars.vf15_loop_pos_1.z();
 
     //  sqi.xyzw vf25, vi06        |  add.xyzw vf14, vf14, vf10
@@ -2135,7 +1416,7 @@ std::vector<TFragDraw> emulate_tfrag_execution(const level_tools::TFragment& fra
 
     //  sqi.xyzw vf21, vi06        |  ftoi4.xyzw vf13, vf13
     // store_vector_kick_zone(vars.vi06_kick_zone_ptr, vars.vf21);
-    vertex_pipeline[1].rgba = vf21_vtx_unk_1;
+    vertex_pipeline[1].rgba = vf21_vtx_rgba_1;
     // fmt::print("B: vf21 store: {}\n", int_vec_debug(vars.vf21));
     vi06_kick_zone_ptr++;
     // vars.vf13_root_pos_1 = ftoi4(vars.vf13_root_pos_1);
@@ -2219,7 +1500,7 @@ std::vector<TFragDraw> emulate_tfrag_execution(const level_tools::TFragment& fra
     // m_acc += in.vf07_cam_mat_y * vars.vf12_root_pos_0.y();
 
     //  lq.xyzw vf21, 1(vi04)      |  maddz.xyzw vf12, vf08, vf12
-    vf21_vtx_unk_1 = mem.load_vector_data(vi04_vtx_ptr + 1);
+    vf21_vtx_rgba_1 = color_indices.load_color_idx(vi04_vtx_ptr + 1);
     //  fmt::print("vf21 load from: {}\n", vars.vi04 + 1);
     // vars.vf12_root_pos_0 = m_acc + in.vf08_cam_mat_z * vars.vf12_root_pos_0.z();
 
@@ -2318,7 +1599,7 @@ std::vector<TFragDraw> emulate_tfrag_execution(const level_tools::TFragment& fra
     // m_acc += in.vf07_cam_mat_y * vars.vf13_root_pos_1.y();
 
     //  lq.xyzw vf22, 1(vi04)      |  maddz.xyzw vf13, vf08, vf13
-    vf22_vtx_rgba_2 = mem.load_vector_data(vi04_vtx_ptr + 1);
+    vf22_vtx_rgba_2 = color_indices.load_color_idx(vi04_vtx_ptr + 1);
     // vars.vf13_root_pos_1 = m_acc + in.vf08_cam_mat_z * vars.vf13_root_pos_1.z();
 
     //  sqi.xyzw vf27, vi06        |  add.xyzw vf12, vf12, vf10
@@ -2382,6 +1663,7 @@ end:
   int total_dvert = 0;
   for (auto& draw : all_draws) {
     total_dvert += draw.verts.size();
+    draw.tfrag_id = frag.id;
   }
 
   return all_draws;
@@ -2399,14 +1681,13 @@ std::string debug_dump_to_obj(const std::vector<TFragDraw>& draws) {
     int vert_idx = 0;
 
     int vtx_idx_queue[3];
-    Vector4f vtx_queue[3];
-    math::Vector<float, 2> tc_queue[3];
 
     int q_idx = 0;
     int startup = 0;
     while (vert_idx < (int)draw.verts.size()) {
       verts.push_back(draw.verts.at(vert_idx).pre_cam_trans_pos / 65536);
-      tcs.push_back(math::Vector<float, 2>{draw.verts.at(vert_idx).stq.x(), draw.verts.at(vert_idx).stq.y()});
+      tcs.push_back(
+          math::Vector<float, 2>{draw.verts.at(vert_idx).stq.x(), draw.verts.at(vert_idx).stq.y()});
       vert_idx++;
       vtx_idx_queue[q_idx++] = verts.size();
 
@@ -2441,8 +1722,276 @@ std::string debug_dump_to_obj(const std::vector<TFragDraw>& draws) {
   return result;
 }
 
+void update_mode_from_alpha1(u64 val, DrawMode& mode) {
+  GsAlpha reg(val);
+  if (reg.a_mode() == GsAlpha::BlendMode::SOURCE && reg.b_mode() == GsAlpha::BlendMode::DEST &&
+      reg.c_mode() == GsAlpha::BlendMode::SOURCE && reg.d_mode() == GsAlpha::BlendMode::DEST) {
+    // (Cs - Cd) * As + Cd
+    // Cs * As  + (1 - As) * Cd
+    mode.set_alpha_blend(DrawMode::AlphaBlend::SRC_DST_SRC_DST);
+
+  } else if (reg.a_mode() == GsAlpha::BlendMode::SOURCE &&
+             reg.b_mode() == GsAlpha::BlendMode::ZERO_OR_FIXED &&
+             reg.c_mode() == GsAlpha::BlendMode::SOURCE &&
+             reg.d_mode() == GsAlpha::BlendMode::DEST) {
+    // (Cs - 0) * As + Cd
+    // Cs * As + (1) * CD
+    mode.set_alpha_blend(DrawMode::AlphaBlend::SRC_0_SRC_DST);
+  } else {
+    // unsupported blend: a 0 b 2 c 2 d 1
+    fmt::print("unsupported blend: a {} b {} c {} d {}\n", (int)reg.a_mode(), (int)reg.b_mode(),
+               (int)reg.c_mode(), (int)reg.d_mode());
+    assert(false);
+  }
+}
+
+void update_mode_from_test1(u64 val, DrawMode& mode) {
+  // ate, atst, aref, afail, date, datm, zte, ztest
+  GsTest test(val);
+
+  // ATE
+  mode.set_at(test.alpha_test_enable());
+
+  // ATST
+  switch (test.alpha_test()) {
+    case GsTest::AlphaTest::ALWAYS:
+      mode.set_alpha_test(DrawMode::AlphaTest::ALWAYS);
+      break;
+    case GsTest::AlphaTest::GEQUAL:
+      mode.set_alpha_test(DrawMode::AlphaTest::GEQUAL);
+      break;
+    case GsTest::AlphaTest::NEVER:
+      mode.set_alpha_test(DrawMode::AlphaTest::NEVER);
+      break;
+    default:
+      fmt::print("Alpha test: {} not supported\n", (int)test.alpha_test());
+      assert(false);
+  }
+
+  // AREF
+  mode.set_aref(test.aref());
+
+  // AFAIL
+  mode.set_alpha_fail(test.afail());
+
+  // DATE
+  assert(test.date() == false);
+
+  // DATM
+  // who cares, if date is off
+
+  // ZTE
+  mode.set_zt(test.zte());
+
+  // ZTST
+  mode.set_depth_test(test.ztest());
+}
+
+u32 remap_texture(u32 original, const std::vector<level_tools::TextureRemap>& map) {
+  auto masked = original & 0xffffff00;
+  for (auto& t : map) {
+    if (t.original_texid == masked) {
+      fmt::print("OKAY! remapped!\n");
+      return t.new_texid | 20;
+    }
+  }
+  return original;
+}
+
+void process_draw_mode(std::vector<TFragDraw>& all_draws,
+                       const std::vector<level_tools::TextureRemap>& map) {
+  DrawMode mode;
+  mode.enable_depth_write();
+  mode.enable_ab();
+  mode.enable_at();
+  mode.set_alpha_blend(DrawMode::AlphaBlend::SRC_DST_SRC_DST);
+
+  for (auto& draw : all_draws) {
+    for (int ad_idx = 0; ad_idx < 5; ad_idx++) {
+      auto addr = draw.get_adgif_addr(ad_idx);
+      u64 val = draw.get_adgif_val(ad_idx);
+      switch (addr) {
+        case GsRegisterAddress::TEST_1:
+          assert(false);
+          update_mode_from_test1(val, mode);
+          break;
+        case GsRegisterAddress::TEX0_1:
+          assert(val == 0);
+          break;
+        case GsRegisterAddress::TEX1_1:
+          assert(val == 0x120);  // some flag
+          {
+            u32 original_tex = draw.get_adgif_upper(ad_idx);
+            u32 new_tex = remap_texture(original_tex, map);
+            if (original_tex != new_tex) {
+              fmt::print("map from 0x{:x} to 0x{:x}\n", original_tex, new_tex);
+            }
+            u32 tpage = new_tex >> 20;
+            u32 tidx = (new_tex >> 8) & 0b1111'1111'1111;
+            // fmt::print("texture: {} : {}\n", tpage, tidx);
+            draw.tpage = tpage;
+            draw.tex_in_page = tidx;
+          }
+
+          break;
+        case GsRegisterAddress::MIPTBP1_1:
+          break;
+        case GsRegisterAddress::CLAMP_1:
+          if (!(val == 0b101 || val == 0 || val == 1 || val == 0b100)) {
+            fmt::print("clamp: 0x{:x}\n", val);
+            assert(false);
+          }
+
+          // this isn't quite right, but I'm hoping it's enough!
+          mode.set_clamp_enable(val == 0b101);
+          break;
+        case GsRegisterAddress::ALPHA_1:
+          update_mode_from_alpha1(val, mode);
+          break;
+        default:
+          fmt::print("Address {} ({}) is not supported in process_draw_mode\n",
+                     register_address_name(addr), ad_idx);
+      }
+    }
+    draw.mode = mode;
+  }
+}
+
+struct TFragStrip {
+  std::vector<TFragVertexData> verts;
+  u16 tfrag_id = 0;
+};
+
+struct GroupedDraw {
+  DrawMode mode;
+  u16 tpage;
+  u16 tex_id;
+  std::vector<TFragStrip> strips;
+};
+
+std::map<u32, std::vector<GroupedDraw>> make_draw_groups(std::vector<TFragDraw>& all_draws) {
+  std::map<u32, std::vector<GroupedDraw>> result;
+
+  for (auto& draw : all_draws) {
+    u32 tex_combo = (((u32)draw.tpage) << 16) | draw.tex_in_page;
+    auto& group_list = result[tex_combo];
+
+    bool added = false;
+    for (auto& existing_group : group_list) {
+      if (draw.mode == existing_group.mode) {
+        existing_group.strips.push_back({draw.verts, draw.tfrag_id});
+        added = true;
+        break;
+      }
+    }
+    if (!added) {
+      GroupedDraw new_group;
+      new_group.mode = draw.mode;
+      new_group.tpage = draw.tpage;
+      new_group.tex_id = draw.tex_in_page;
+      new_group.strips.push_back({draw.verts, draw.tfrag_id});
+      group_list.push_back(new_group);
+    }
+  }
+
+  int dc = 0;
+  for (auto& group_list : result) {
+    for (auto& group : group_list.second) {
+      dc++;
+    }
+  }
+
+  fmt::print("grouped to get {} draw calls\n", dc);
+
+  return result;
+}
+
+void make_tfrag3_data(std::map<u32, std::vector<GroupedDraw>>& draws,
+                      tfrag3::Tree& tree_out,
+                      std::vector<tfrag3::Texture>& texture_pool,
+                      const TextureDB& tdb) {
+  // we will set:
+  // draws
+  // color_indices_per_vertex
+  // and link textures.
+
+  for (auto& [combo_tex_id, draw_list] : draws) {
+    // first, let's see if we have a texture for this.
+    u32 tfrag3_tex_id = UINT32_MAX;
+    for (u32 i = 0; i < texture_pool.size(); i++) {
+      if (texture_pool[i].combo_id == combo_tex_id) {
+        tfrag3_tex_id = i;
+        break;
+      }
+    }
+
+    if (tfrag3_tex_id == UINT32_MAX) {
+      // nope. we are a new texture.
+      auto tex_it = tdb.textures.find(combo_tex_id);
+      if (tex_it == tdb.textures.end()) {
+        fmt::print(
+            "texture {} wasn't found. make sure it is loaded somehow. You may need to include "
+            "ART.DGO or GAME.DGO in addition to the level DGOs for shared textures.\n",
+            combo_tex_id);
+        fmt::print("tpage is {}\n", combo_tex_id >> 16);
+        fmt::print("id is {} (0x{:x})\n", combo_tex_id & 0xffff, combo_tex_id & 0xffff);
+        assert(false);
+      }
+      tfrag3_tex_id = texture_pool.size();
+      texture_pool.emplace_back();
+      auto& new_tex = texture_pool.back();
+      new_tex.combo_id = combo_tex_id;
+      new_tex.w = tex_it->second.w;
+      new_tex.h = tex_it->second.h;
+      new_tex.debug_name = tex_it->second.name;
+      new_tex.debug_tpage_name = tdb.tpage_names.at(tex_it->second.page);
+      new_tex.data = tex_it->second.rgba_bytes;
+    }
+
+    // now, add draws
+    for (auto& draw : draw_list) {
+      tfrag3::Draw tdraw;
+      tdraw.mode = draw.mode;
+      tdraw.tree_tex_id = tfrag3_tex_id;
+
+      for (auto& strip : draw.strips) {
+        tfrag3::Draw::VisGroup vgroup;
+        vgroup.tfrag_idx = strip.tfrag_id;    // associate with the tfrag for culling
+        vgroup.num = strip.verts.size() + 1;  // one for the primitive restart!
+
+        for (auto& vert : strip.verts) {
+          // convert vert.
+          tfrag3::PreloadedVertex vtx;
+          vtx.x = vert.pre_cam_trans_pos.x();
+          vtx.y = vert.pre_cam_trans_pos.y();
+          vtx.z = vert.pre_cam_trans_pos.z();
+          vtx.s = vert.stq.x();
+          vtx.t = vert.stq.y();
+          vtx.q = vert.stq.z();
+          for (int i = 0; i < 4; i++) {
+            vtx.color_indices[i] = vert.rgba[i];
+          }
+
+          size_t vert_idx = tree_out.vertices.size();
+          tree_out.vertices.push_back(vtx);
+          tdraw.vertex_index_stream.push_back(vert_idx);
+        }
+        tdraw.vertex_index_stream.push_back(UINT32_MAX);  // prim restart
+
+        tdraw.vis_groups.push_back(vgroup);
+      }
+
+      tree_out.draws.push_back(tdraw);
+    }
+  }
+}
+
 void emulate_tfrags(const std::vector<level_tools::TFragment>& frags,
-                    const std::string& debug_name) {
+                    const std::string& debug_name,
+                    const std::vector<level_tools::TextureRemap>& map,
+                    tfrag3::Level& level_out,
+                    tfrag3::Tree& tree_out,
+                    const TextureDB& tdb) {
   TFragExtractStats stats;
 
   std::vector<u8> vu_mem;
@@ -2457,7 +2006,11 @@ void emulate_tfrags(const std::vector<level_tools::TFragment>& frags,
     auto draws = emulate_tfrag_execution<false>(frag, mem, color_indices, &stats);
     all_draws.insert(all_draws.end(), draws.begin(), draws.end());
   }
-  fmt::print("l1: {}, l0: {}, base: {}\n", stats.num_l1, stats.num_l0, stats.num_base);
+
+  process_draw_mode(all_draws, map);
+  auto groups = make_draw_groups(all_draws);
+
+  make_tfrag3_data(groups, tree_out, level_out.textures, tdb);
 
   auto debug_out = debug_dump_to_obj(all_draws);
   file_util::write_text_file(
@@ -2465,9 +2018,27 @@ void emulate_tfrags(const std::vector<level_tools::TFragment>& frags,
 }
 }  // namespace
 
-ExtractedTFragmentTree extract_tfrag(const level_tools::DrawableTreeTfrag* tree,
-                                     const std::string& debug_name) {
-  ExtractedTFragmentTree result;
+void extract_tfrag(const level_tools::DrawableTreeTfrag* tree,
+                   const std::string& debug_name,
+                   const std::vector<level_tools::TextureRemap>& map,
+                   const TextureDB& tex_db,
+                   tfrag3::Level& out) {
+  tfrag3::Tree this_tree;
+  if (tree->my_type() == "drawable-tree-tfrag") {
+    this_tree.kind = tfrag3::TFragmentTreeKind::NORMAL;
+  } else if (tree->my_type() == "drawable-tree-dirt-tfrag") {
+    this_tree.kind = tfrag3::TFragmentTreeKind::DIRT;
+  } else if (tree->my_type() == "drawable-tree-ice-tfrag") {
+    this_tree.kind = tfrag3::TFragmentTreeKind::ICE;
+  } else if (tree->my_type() == "drawable-tree-lowres-tfrag") {
+    this_tree.kind = tfrag3::TFragmentTreeKind::LOWRES;
+  } else if (tree->my_type() == "drawable-tree-trans-tfrag") {
+    this_tree.kind = tfrag3::TFragmentTreeKind::TRANS;
+  } else {
+    fmt::print("unknown tfrag tree kind: {}\n", tree->my_type());
+    assert(false);
+  }
+
   assert(tree->length == (int)tree->arrays.size());
   fmt::print("tree has {} arrays\n", tree->length);
   assert(tree->length > 0);
@@ -2487,10 +2058,13 @@ ExtractedTFragmentTree extract_tfrag(const level_tools::DrawableTreeTfrag* tree,
   bool ok = verify_node_indices(tree);
   assert(ok);
 
-  result.vis_nodes = extract_vis_data(tree, as_tfrag_array->tfragments.front().id);
-  // assert(result.vis_nodes.last_child_node + 1 == idx);
+  auto vis_nodes = extract_vis_data(tree, as_tfrag_array->tfragments.front().id);
+  this_tree.first_leaf_node = vis_nodes.first_child_node;
+  this_tree.last_leaf_node = vis_nodes.last_child_node;
+  this_tree.vis_nodes = std::move(vis_nodes.vis_nodes);
+  //  assert(result.vis_nodes.last_child_node + 1 == idx);
 
-  emulate_tfrags(as_tfrag_array->tfragments, debug_name);
-  return result;
+  emulate_tfrags(as_tfrag_array->tfragments, debug_name, map, out, this_tree, tex_db);
+  out.trees.push_back(this_tree);
 }
 }  // namespace decompiler

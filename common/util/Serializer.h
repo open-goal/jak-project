@@ -151,7 +151,7 @@ class Serializer {
     } else {
       vec->resize(load<size_t>());
     }
-    from_raw_data(vec->data(), vec->size());
+    from_raw_data(vec->data(), sizeof(T) * vec->size());
   }
 
   /*!

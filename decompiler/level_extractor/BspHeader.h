@@ -372,6 +372,11 @@ struct DrawableTreeArray {
   std::vector<std::unique_ptr<DrawableTree>> trees;
 };
 
+struct TextureRemap {
+  u32 original_texid;
+  u32 new_texid;
+};
+
 struct BspHeader {
   //  (info file-info :offset 4)
   FileInfo file_info;
@@ -393,6 +398,7 @@ struct BspHeader {
   //  ;; some osrt of texture remapping info
   //      (texture-remap-table (pointer uint64) :offset-assert 52)
   //  (texture-remap-table-len int32 :offset-assert 56)
+  std::vector<TextureRemap> texture_remap_table;
   //
   //  (texture-ids (pointer texture-id) :offset-assert 60)
   //  (texture-page-count int32 :offset-assert 64)

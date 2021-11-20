@@ -3,6 +3,7 @@
 #include "extract_level.h"
 #include "decompiler/level_extractor/BspHeader.h"
 #include "decompiler/level_extractor/extract_tfrag.h"
+#include "common/util/FileUtil.h"
 
 namespace decompiler {
 
@@ -46,7 +47,7 @@ bool is_valid_bsp(const decompiler::LinkedObjectFile& file) {
   return true;
 }
 
-void extract_from_level(ObjectFileDB& db, const std::string& dgo_name) {
+void extract_from_level(ObjectFileDB& db, TextureDB& tex_db, const std::string& dgo_name) {
   fmt::print("Extract from {}\n", dgo_name);
   auto bsp_rec = get_bsp_file(db.obj_files_by_dgo.at(dgo_name));
   fmt::print("found bsp file: {}\n", bsp_rec.name);
@@ -64,14 +65,26 @@ void extract_from_level(ObjectFileDB& db, const std::string& dgo_name) {
       "drawable-tree-tfrag",     "drawable-tree-trans-tfrag",  "drawable-tree-dirt-tfrag",
       "drawable-tree-ice-tfrag", "drawable-tree-lowres-tfrag", "drawable-tree-lowres-trans-tfrag"};
   int i = 0;
+  tfrag3::Level tfrag_level;
+
   for (auto& draw_tree : bsp_header.drawable_tree_array.trees) {
     fmt::print("tree: {}\n", draw_tree->my_type());
     if (tfrag_trees.count(draw_tree->my_type())) {
       auto as_tfrag_tree = dynamic_cast<level_tools::DrawableTreeTfrag*>(draw_tree.get());
       fmt::print("  Is a tfrag tree!\n");
       assert(as_tfrag_tree);
-      extract_tfrag(as_tfrag_tree, fmt::format("{}-{}", dgo_name, i++));
+      extract_tfrag(as_tfrag_tree, fmt::format("{}-{}", dgo_name, i++),
+                    bsp_header.texture_remap_table, tex_db, tfrag_level);
+    } else {
+      tfrag_level.trees.emplace_back();
+      tfrag_level.trees.back().kind = tfrag3::TFragmentTreeKind::INVALID;
     }
   }
+
+  Serializer ser;
+  tfrag_level.serialize(ser);
+  file_util::write_binary_file(file_util::get_file_path({fmt::format(
+                                   "assets/{}.fr3", dgo_name.substr(0, dgo_name.length() - 4))}),
+                               ser.get_save_result().first, ser.get_save_result().second);
 }
 }  // namespace decompiler

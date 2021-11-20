@@ -24,6 +24,7 @@ add_library(
         data/game_text.cpp
         data/streamed_audio.cpp
         data/StrFileReader.cpp
+        data/TextureDB.cpp
         data/tpage.cpp
 
         Disasm/Instruction.cpp
