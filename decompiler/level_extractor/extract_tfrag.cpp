@@ -1800,7 +1800,9 @@ u32 remap_texture(u32 original, const std::vector<level_tools::TextureRemap>& ma
 
 void process_draw_mode(std::vector<TFragDraw>& all_draws,
                        const std::vector<level_tools::TextureRemap>& map) {
+  // TODO: these should change per tree type.
   DrawMode mode;
+  mode.set_alpha_test(DrawMode::AlphaTest::GEQUAL);
   mode.enable_depth_write();
   mode.enable_ab();
   mode.enable_at();

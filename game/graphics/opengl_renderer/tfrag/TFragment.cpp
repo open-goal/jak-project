@@ -120,6 +120,30 @@ void TFragment::render(DmaFollower& dma,
     m_debug_string +=
         fmt::format("DMA {} {} bytes, {}\n", tag, data.size_bytes, data.vifcode0().print());
   }
+
+  if (m_hack_test_tfrag3) {
+    m_tfrag3.setup_for_level("mai", render_state);
+    Tfrag3::RenderSettings settings;
+    u32 hvdf[4] = {0x45000000, 0x45000000, 0x4affbf9b, 0x43852d45};
+    u32 fog = 0xbd52b3bd;
+    u32 mathcam[16] = {0x3ecc584f, 0xbb8f62b6, 0xc40c47fb, 0xb6239419, 0x0,        0xbe668b1c,
+                       0x4506eac2, 0x371d52d1, 0x3ce8fb45, 0x3d7b85ed, 0x45f613d5, 0x380f78f7,
+                       0x4816e78e, 0xc601e6b4, 0xcfedb347, 0xc20ae12a};
+    //memcpy(settings.hvdf_offset.data(), hvdf, 16);
+    settings.hvdf_offset = m_tfrag_data.hvdf_offset;
+    //memcpy(&settings.fog_x, &fog, 4);
+    settings.fog_x = m_tfrag_data.fog.x();
+    //memcpy(settings.math_camera.data(), mathcam, 64);
+    memcpy(settings.math_camera.data(), &m_buffered_data[0].pad[TFragDataMem::TFragMatrix0 * 16], 64);
+    settings.tree_idx = 0;
+    std::vector<u8> colors;
+    colors.reserve(1024);
+    for (int i = 0; i < 1024; i++) {
+      colors.push_back(0x80);  // idk
+    }
+    auto t3prof = prof.make_scoped_child("t3");
+    m_tfrag3.render_tree(settings, render_state, t3prof);
+  }
 }
 void TFragment::draw_debug_window() {
   ImGui::Separator();
@@ -136,6 +160,7 @@ void TFragment::draw_debug_window() {
   ImGui::Checkbox("Prog18 hack", &m_prog18_with_prog6);
   ImGui::Checkbox("Others with prog6", &m_all_with_prog6);
   ImGui::Checkbox("Use Buffered Renderer", &m_use_buffered_renderer);
+  ImGui::Checkbox("Hack Test TFRAG3 (danger)", &m_hack_test_tfrag3);
   ImGui::Text("packets: %d", m_stats.tfrag_dma_packets);
   ImGui::Text("frag bytes: %d", m_stats.tfrag_bytes);
   ImGui::Text("errors: %d", m_stats.error_packets);

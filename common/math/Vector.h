@@ -211,6 +211,9 @@ struct Matrix {
     return result;
   }
 
+  T* data() { return m_data; }
+  const T* data() const { return m_data; }
+
   std::string to_string_aligned() const {
     std::string result;
     for (int row = 0; row < Rows; row++) {
