@@ -196,6 +196,7 @@ class TFragment : public BucketRenderer {
   bool m_all_with_prog6 = false;
   bool m_use_buffered_renderer = true;
   bool m_hack_test_tfrag3 = false;
+  bool m_hack_test_many_levels = false;
   std::string m_frag_debug;
 
   // GS setup data
@@ -285,4 +286,19 @@ class TFragment : public BucketRenderer {
   DirectRenderer m_direct_renderer;
   BufferedRenderer::Builder m_buffered_renderer;
   Tfrag3 m_tfrag3;
+
+  struct HackManyLevels {
+    enum LevelName {
+      VI1,
+      FIC,
+      JUN,
+      BEA,
+      VI2,
+      SWA,
+      ROL,
+      NUM_LEVELS
+    };
+
+    Tfrag3 level_renderers[NUM_LEVELS];
+  } m_many_level_render;
 };

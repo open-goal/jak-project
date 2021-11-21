@@ -8,6 +8,7 @@ void Draw::serialize(Serializer& ser) {
   ser.from_ptr(&tree_tex_id);
   ser.from_pod_vector(&vertex_index_stream);
   ser.from_pod_vector(&vis_groups);
+  ser.from_ptr(&num_triangles);
 }
 
 void Tree::serialize(Serializer& ser) {

@@ -504,7 +504,6 @@ struct TFragColorUnpack {
     if (past < (int)data.size()) {
       return data.at(past);
     } else {
-      int overflow = past - data.size();
       return math::Vector<u16, 4>{0, 0, 0, 0};
     }
   }
@@ -627,12 +626,6 @@ struct VuMemWrapper {
 
 using math::Vector3f;
 using math::Vector4f;
-
-float u32_2_float(u32 x) {
-  float y;
-  memcpy(&y, &x, 4);
-  return y;
-}
 
 u32 float_2_u32(float x) {
   u32 y;
@@ -961,7 +954,7 @@ template <bool DEBUG>
 std::vector<TFragDraw> emulate_tfrag_execution(const level_tools::TFragment& frag,
                                                VuMemWrapper& mem,
                                                TFragColorUnpack& color_indices,
-                                               TFragExtractStats* stats) {
+                                               TFragExtractStats* /*stats*/) {
   // fmt::print("tfrag exec. offset of colors = {}\n", color_indices.unpack_qw_addr);
   std::vector<TFragDraw> all_draws;
   TFragDraw current_draw;
@@ -1799,14 +1792,60 @@ u32 remap_texture(u32 original, const std::vector<level_tools::TextureRemap>& ma
 }
 
 void process_draw_mode(std::vector<TFragDraw>& all_draws,
-                       const std::vector<level_tools::TextureRemap>& map) {
-  // TODO: these should change per tree type.
+                       const std::vector<level_tools::TextureRemap>& map,
+                       tfrag3::TFragmentTreeKind tree_kind) {
+  // set up the draw mode based on the code in background.gc and tfrag-methods.gc
   DrawMode mode;
   mode.set_alpha_test(DrawMode::AlphaTest::GEQUAL);
   mode.enable_depth_write();
-  mode.enable_ab();
+
   mode.enable_at();
   mode.set_alpha_blend(DrawMode::AlphaBlend::SRC_DST_SRC_DST);
+
+  // note: includes the test reg, and also the str-gif template prim abe.
+  switch (tree_kind) {
+    case tfrag3::TFragmentTreeKind::NORMAL:
+    case tfrag3::TFragmentTreeKind::LOWRES:
+      mode.enable_at();                                  // :ate #x1
+      mode.set_alpha_test(DrawMode::AlphaTest::GEQUAL);  // :atst (gs-atest greater-equal)
+      mode.set_aref(0x26);                               // :aref #x26
+      mode.set_alpha_fail(GsTest::AlphaFail::KEEP);
+      mode.enable_zt();                            // :zte #x1
+      mode.set_depth_test(GsTest::ZTest::GEQUAL);  // :ztst (gs-ztest greater-equal))
+      mode.disable_ab();
+      break;
+    case tfrag3::TFragmentTreeKind::TRANS:
+    case tfrag3::TFragmentTreeKind::LOWRES_TRANS:
+      mode.enable_at();                                  // :ate #x1
+      mode.set_alpha_test(DrawMode::AlphaTest::GEQUAL);  // :atst (gs-atest greater-equal)
+      mode.set_aref(0x7e);                               // :aref #x7e
+      mode.set_alpha_fail(GsTest::AlphaFail::FB_ONLY);
+      mode.enable_zt();                            // :zte #x1
+      mode.set_depth_test(GsTest::ZTest::GEQUAL);  // :ztst (gs-ztest greater-equal))
+      mode.enable_ab();
+      break;
+    case tfrag3::TFragmentTreeKind::DIRT:
+      // (new 'static 'gs-test :ate #x1 :afail #x1 :zte #x1 :ztst (gs-ztest greater-equal))
+      mode.enable_at();
+      mode.set_alpha_test(DrawMode::AlphaTest::NEVER);
+      mode.set_alpha_fail(GsTest::AlphaFail::FB_ONLY);
+      mode.set_aref(0);
+      mode.enable_zt();
+      mode.set_depth_test(GsTest::ZTest::GEQUAL);
+      mode.enable_ab();
+      break;
+    case tfrag3::TFragmentTreeKind::ICE:
+      mode.enable_at();                                  // :ate #x1
+      mode.set_alpha_test(DrawMode::AlphaTest::ALWAYS);  // :atst (gs-atest always)
+      mode.set_alpha_fail(GsTest::AlphaFail::FB_ONLY);   // :afail #x1
+      mode.set_aref(0);
+      mode.enable_zt();                            // :zte #x1
+      mode.set_depth_test(GsTest::ZTest::GEQUAL);  // :ztst (gs-ztest greater-equal)
+      mode.enable_ab();
+      break;
+    default:
+      assert(false);
+  }
 
   for (auto& draw : all_draws) {
     for (int ad_idx = 0; ad_idx < 5; ad_idx++) {
@@ -1899,6 +1938,7 @@ std::map<u32, std::vector<GroupedDraw>> make_draw_groups(std::vector<TFragDraw>&
   int dc = 0;
   for (auto& group_list : result) {
     for (auto& group : group_list.second) {
+      (void)group;
       dc++;
     }
   }
@@ -1961,6 +2001,7 @@ void make_tfrag3_data(std::map<u32, std::vector<GroupedDraw>>& draws,
         vgroup.tfrag_idx = strip.tfrag_id;    // associate with the tfrag for culling
         vgroup.num = strip.verts.size() + 1;  // one for the primitive restart!
 
+        tdraw.num_triangles += strip.verts.size() - 2;
         for (auto& vert : strip.verts) {
           // convert vert.
           tfrag3::PreloadedVertex vtx;
@@ -1973,6 +2014,8 @@ void make_tfrag3_data(std::map<u32, std::vector<GroupedDraw>>& draws,
           for (int i = 0; i < 4; i++) {
             vtx.color_indices[i] = vert.rgba[i];
           }
+//          fmt::print("{} {} {} {}\n", vtx.color_indices[0], vtx.color_indices[1],
+//                     vtx.color_indices[2], vtx.color_indices[3]);
 
           size_t vert_idx = tree_out.vertices.size();
           tree_out.vertices.push_back(vtx);
@@ -2009,7 +2052,7 @@ void emulate_tfrags(const std::vector<level_tools::TFragment>& frags,
     all_draws.insert(all_draws.end(), draws.begin(), draws.end());
   }
 
-  process_draw_mode(all_draws, map);
+  process_draw_mode(all_draws, map, tree_out.kind);
   auto groups = make_draw_groups(all_draws);
 
   make_tfrag3_data(groups, tree_out, level_out.textures, tdb);
@@ -2046,7 +2089,6 @@ void extract_tfrag(const level_tools::DrawableTreeTfrag* tree,
   assert(tree->length > 0);
 
   auto last_array = tree->arrays.back().get();
-  fmt::print("last_array: {}\n", last_array->my_type());
 
   auto as_tfrag_array = dynamic_cast<level_tools::DrawableInlineArrayTFrag*>(last_array);
   assert(as_tfrag_array);

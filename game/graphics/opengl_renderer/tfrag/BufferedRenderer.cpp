@@ -129,6 +129,8 @@ void Renderer::setup_opengl_excluding_textures(SharedRenderState* render_state, 
       default:
         assert(false);
     }
+  } else {
+    glDisable(GL_BLEND);
   }
 
   if (mode.get_clamp_enable()) {

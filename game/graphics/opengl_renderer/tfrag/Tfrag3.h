@@ -19,6 +19,10 @@ class Tfrag3 {
 
   Tfrag3();
   ~Tfrag3();
+
+  void debug_render_all_trees(const RenderSettings& settings,
+                              SharedRenderState* render_state,
+                              ScopedProfilerNode& prof);
   void render_tree(const RenderSettings& settings,
                    SharedRenderState* render_state,
                    ScopedProfilerNode& prof);
@@ -26,7 +30,7 @@ class Tfrag3 {
   void discard_tree_cache();
 
  private:
-  void first_draw_setup(const RenderSettings& settings,SharedRenderState* render_state);
+  void first_draw_setup(const RenderSettings& settings, SharedRenderState* render_state);
   void setup_shader(const RenderSettings& settings, SharedRenderState* render_state, DrawMode mode);
 
   std::string m_level_name;

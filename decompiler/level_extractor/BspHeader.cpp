@@ -718,6 +718,16 @@ void DrawableTreeTfrag::read_from_file(TypedRef ref,
     throw Error("misaligned data array");
   }
 
+  auto palette = deref_label(get_field_ref(ref, "time-of-day-pal", dts));
+  time_of_day.width = deref_u32(palette, 0);
+
+  assert(time_of_day.width == 8);
+  time_of_day.height = deref_u32(palette, 1);
+  time_of_day.pad = deref_u32(palette, 2);
+  assert(time_of_day.pad == 0);
+  fmt::print("time of day {} at {}\n", time_of_day.height, inspect_ref(get_field_ref(ref, "time-of-day-pal", dts)));
+
+
   for (int idx = 0; idx < length; idx++) {
     Ref array_slot_ref = data_ref;
     array_slot_ref.byte_offset += idx * 4;

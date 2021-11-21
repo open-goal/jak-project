@@ -230,6 +230,13 @@ struct DrawableInlineArrayUnknown : public DrawableInlineArray {
 
 struct DrawableTree : public Drawable {};
 
+struct TimeOfDayPalette {
+  u32 width;
+  u32 height;
+  u32 pad;
+  std::vector<u32> colors;
+};
+
 struct DrawableTreeTfrag : public DrawableTree {
   void read_from_file(TypedRef ref,
                       const decompiler::DecompilerTypeSystem& dts,
@@ -240,6 +247,7 @@ struct DrawableTreeTfrag : public DrawableTree {
   s16 id;
   s16 length;
   // todo time of day stuff
+  TimeOfDayPalette time_of_day;
   Vector bsphere;
 
   std::vector<std::unique_ptr<DrawableInlineArray>> arrays;

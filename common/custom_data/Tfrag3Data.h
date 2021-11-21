@@ -10,7 +10,7 @@
 
 namespace tfrag3 {
 
-constexpr int TFRAG3_VERSION = 1;
+constexpr int TFRAG3_VERSION = 2;
 
 // These vertices should be uploaded to the GPU at load time and don't change
 struct PreloadedVertex {
@@ -39,6 +39,7 @@ struct Draw {
     u32 tfrag_idx = 0;
   };
   std::vector<VisGroup> vis_groups;
+  u32 num_triangles = 0;
 
   void serialize(Serializer& ser);
 };

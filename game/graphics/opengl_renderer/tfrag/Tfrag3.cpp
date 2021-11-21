@@ -105,7 +105,7 @@ void Tfrag3::first_draw_setup(const RenderSettings& settings, SharedRenderState*
               settings.fog_x);
 }
 
-void Tfrag3::setup_shader(const RenderSettings& settings,
+void Tfrag3::setup_shader(const RenderSettings& /*settings*/,
                           SharedRenderState* render_state,
                           DrawMode mode) {
   if (mode.get_depth_write_enable()) {
@@ -148,6 +148,8 @@ void Tfrag3::setup_shader(const RenderSettings& settings,
       default:
         assert(false);
     }
+  } else {
+    glDisable(GL_BLEND);
   }
 
   if (mode.get_clamp_enable()) {
@@ -188,9 +190,6 @@ void Tfrag3::setup_shader(const RenderSettings& settings,
 void Tfrag3::render_tree(const RenderSettings& settings,
                          SharedRenderState* render_state,
                          ScopedProfilerNode& prof) {
-  glClearColor(0.0, 0.0, 0.0, 0.0);
-  glClearDepth(0.0);
-  glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
   auto& tree = m_cached_trees.at(settings.tree_idx);
   assert(tree.kind != tfrag3::TFragmentTreeKind::INVALID);
 
@@ -203,23 +202,43 @@ void Tfrag3::render_tree(const RenderSettings& settings,
   glEnable(GL_PRIMITIVE_RESTART);
   glPrimitiveRestartIndex(UINT32_MAX);
 
-
   for (const auto& draw : *tree.draws) {
     glBindTexture(GL_TEXTURE_2D, m_textures.at(draw.tree_tex_id));
     setup_shader(settings, render_state, draw.mode);
     prof.add_draw_call();
+    prof.add_tri(draw.num_triangles);
     glBufferSubData(GL_ELEMENT_ARRAY_BUFFER, 0, draw.vertex_index_stream.size() * sizeof(u32),
                     draw.vertex_index_stream.data());
 
     // hack:
-//    glDisable(GL_DEPTH_TEST);
-//    glDepthFunc(GL_ALWAYS);
-//    // glDisable(GL_ALPHA_TEST);
-//    glDisable(GL_BLEND);
+    //    glDisable(GL_DEPTH_TEST);
+    //    glDepthFunc(GL_ALWAYS);
+    //    // glDisable(GL_ALPHA_TEST);
+    //    glDisable(GL_BLEND);
 
     glDrawElements(GL_TRIANGLE_STRIP, draw.vertex_index_stream.size(), GL_UNSIGNED_INT, (void*)0);
   }
   glBindVertexArray(0);
+}
+
+/*!
+ * Render all trees with settings for the given tree.
+ * This is intended to be used only for debugging when we can't easily get commands for all trees
+ * working.
+ */
+void Tfrag3::debug_render_all_trees(const RenderSettings& settings,
+                                    SharedRenderState* render_state,
+                                    ScopedProfilerNode& prof) {
+  glClearColor(0.0, 0.0, 0.0, 0.0);
+  glClearDepth(0.0);
+  glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+  RenderSettings settings_copy = settings;
+  for (size_t i = 0; i < m_cached_trees.size(); i++) {
+    if (m_cached_trees[i].kind != tfrag3::TFragmentTreeKind::INVALID) {
+      settings_copy.tree_idx = i;
+      render_tree(settings_copy, render_state, prof);
+    }
+  }
 }
 
 void Tfrag3::discard_tree_cache() {

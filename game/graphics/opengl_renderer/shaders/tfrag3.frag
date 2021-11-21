@@ -13,7 +13,7 @@ void main() {
     color = fragment_color * T0 * 2.0;
 
     // todo hack put back
-//    if (color.a <= alpha_reject) {
-//        discard;
-//    }
+    if (color.a <= alpha_reject) {
+        discard;
+    }
 }
