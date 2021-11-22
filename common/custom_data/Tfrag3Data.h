@@ -10,7 +10,7 @@
 
 namespace tfrag3 {
 
-constexpr int TFRAG3_VERSION = 2;
+constexpr int TFRAG3_VERSION = 3;
 
 // These vertices should be uploaded to the GPU at load time and don't change
 struct PreloadedVertex {
@@ -19,7 +19,8 @@ struct PreloadedVertex {
   // texture coordinates
   float s, t, q;
   // currently unused, color table indices.
-  u16 color_indices[4];
+  u16 color_index;
+  u16 pad[3];
 };
 static_assert(sizeof(PreloadedVertex) == 32, "PreloadedVertex size");
 
@@ -53,12 +54,17 @@ struct VisNode {
 
 enum class TFragmentTreeKind { NORMAL, TRANS, DIRT, ICE, LOWRES, LOWRES_TRANS, INVALID };
 
+struct TimeOfDayColor {
+  math::Vector<u8, 4> rgba[8];
+};
+
 struct Tree {
   TFragmentTreeKind kind;
   std::vector<Draw> draws;
   std::vector<u16> color_indices_per_vertex;
   std::vector<VisNode> vis_nodes;
   std::vector<PreloadedVertex> vertices;
+  std::vector<TimeOfDayColor> colors;
   u16 first_leaf_node = 0;
   u16 last_leaf_node = 0;
 

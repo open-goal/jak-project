@@ -367,13 +367,20 @@ void TFragment::read_from_file(TypedRef ref,
   int num_actual_colors = std::max(num_base_colors, std::max(num_level0_colors, num_level1_colors));
   int num_colors = ((num_actual_colors + 3) / 4) * 4;
   // each color is a u64 (4x u16 indices)
-  color_indices.resize(2 * num_colors);
+  //color_indices.resize(4 * num_colors);
 
+  // 24 = 12 * u32
   auto color_idx_start = deref_label(get_field_ref(ref, "color-indices", dts));
-  int color_words = num_actual_colors / 2;
-  for (int i = 0; i < color_words; i++) {
-    color_indices[i] = deref_u32(color_idx_start, i);
+  for (int i = 0; i < num_colors / 4; i++) {
+    u32 low = deref_u32(color_idx_start, i*2);
+    u32 high = deref_u32(color_idx_start, i*2 + 1);
+    color_indices.push_back(low & 0xffff);
+    color_indices.push_back(low >> 16);
+    color_indices.push_back(high & 0xffff);
+    color_indices.push_back(high >> 16);
   }
+  assert((int)color_indices.size() == num_colors);
+
 
   // todo shader
 
@@ -726,6 +733,9 @@ void DrawableTreeTfrag::read_from_file(TypedRef ref,
   time_of_day.pad = deref_u32(palette, 2);
   assert(time_of_day.pad == 0);
   fmt::print("time of day {} at {}\n", time_of_day.height, inspect_ref(get_field_ref(ref, "time-of-day-pal", dts)));
+  for (int i = 0; i < int(8 * time_of_day.height); i++) {
+    time_of_day.colors.push_back(deref_u32(palette, 3 + i));
+  }
 
 
   for (int idx = 0; idx < length; idx++) {

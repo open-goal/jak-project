@@ -5,6 +5,7 @@ out vec4 color;
 in vec4 fragment_color;
 in vec3 tex_coord;
 uniform sampler2D tex_T0;
+
 uniform float alpha_reject;
 
 void main() {

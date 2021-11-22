@@ -7,7 +7,6 @@
 #include "common/dma/gs.h"
 #include "common/math/Vector.h"
 
-
 using math::Matrix4f;
 using math::Vector4f;
 
@@ -197,6 +196,7 @@ class TFragment : public BucketRenderer {
   bool m_use_buffered_renderer = true;
   bool m_hack_test_tfrag3 = false;
   bool m_hack_test_many_levels = false;
+  float m_time_of_days[8] = {0};
   std::string m_frag_debug;
 
   // GS setup data
@@ -288,17 +288,8 @@ class TFragment : public BucketRenderer {
   Tfrag3 m_tfrag3;
 
   struct HackManyLevels {
-    enum LevelName {
-      VI1,
-      FIC,
-      JUN,
-      BEA,
-      VI2,
-      SWA,
-      ROL,
-      NUM_LEVELS
-    };
-
+    static constexpr int NUM_LEVELS = 23;
     Tfrag3 level_renderers[NUM_LEVELS];
+    bool level_enables[NUM_LEVELS];
   } m_many_level_render;
 };

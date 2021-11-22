@@ -31,6 +31,10 @@ TFragment::TFragment(const std::string& name, BucketId my_id, bool child_mode)
   }
 }
 
+constexpr const char* level_names[] = {"bea", "cit", "dar", "fin", "int", "jub", "jun", "fic",
+                                       "lav", "mai", "mis", "ogr", "rob", "rol", "sno", "sub",
+                                       "sun", "swa", "tit", "tra", "vi1", "vi2", "vi3"};
+
 void TFragment::render(DmaFollower& dma,
                        SharedRenderState* render_state,
                        ScopedProfilerNode& prof) {
@@ -129,10 +133,8 @@ void TFragment::render(DmaFollower& dma,
     memcpy(settings.math_camera.data(), &m_buffered_data[0].pad[TFragDataMem::TFragMatrix0 * 16],
            64);
     settings.tree_idx = 0;
-    std::vector<u8> colors;
-    colors.reserve(1024);
-    for (int i = 0; i < 1024; i++) {
-      colors.push_back(0x80);  // idk
+    for (int i = 0; i < 8; i++) {
+      settings.time_of_day_weights[i] = m_time_of_days[i];
     }
     auto t3prof = prof.make_scoped_child("t3");
     // m_tfrag3.render_tree(settings, render_state, t3prof);
@@ -140,26 +142,27 @@ void TFragment::render(DmaFollower& dma,
   }
 
   if (m_hack_test_many_levels) {
-    std::string names[] = {"vi1", "fic", "jun", "bea", "vi2", "swa", "rol"};
-    glClearColor(0.0, 0.0, 0.0, 0.0);
-    glClearDepth(0.0);
-    glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+//    glClearColor(0.0, 0.0, 0.0, 0.0);
+//    glClearDepth(0.0);
+//    glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
     for (int i = 0; i < HackManyLevels::NUM_LEVELS; i++) {
-      m_many_level_render.level_renderers[i].setup_for_level(names[i], render_state);
-      Tfrag3::RenderSettings settings;
-      settings.hvdf_offset = m_tfrag_data.hvdf_offset;
-      settings.fog_x = m_tfrag_data.fog.x();
-      memcpy(settings.math_camera.data(), &m_buffered_data[0].pad[TFragDataMem::TFragMatrix0 * 16],
-             64);
-      settings.tree_idx = 0;
-      std::vector<u8> colors;
-      colors.reserve(1024);
-      for (int i = 0; i < 1024; i++) {
-        colors.push_back(0x80);  // idk
+      if (m_many_level_render.level_enables[i]) {
+        m_many_level_render.level_renderers[i].setup_for_level(level_names[i], render_state);
+        Tfrag3::RenderSettings settings;
+        settings.hvdf_offset = m_tfrag_data.hvdf_offset;
+        settings.fog_x = m_tfrag_data.fog.x();
+        memcpy(settings.math_camera.data(),
+               &m_buffered_data[0].pad[TFragDataMem::TFragMatrix0 * 16], 64);
+        settings.tree_idx = 0;
+        for (int i = 0; i < 8; i++) {
+          settings.time_of_day_weights[i] = m_time_of_days[i];
+        }
+
+        auto t3prof = prof.make_scoped_child(level_names[i]);
+
+        m_many_level_render.level_renderers[i].render_tree(settings, render_state, t3prof);
+        m_tfrag3.debug_render_all_trees_nolores(settings, render_state, t3prof);
       }
-      auto t3prof = prof.make_scoped_child(names[i]);
-      m_many_level_render.level_renderers[i].render_tree(settings, render_state, t3prof);
-      // m_tfrag3.render_tree(settings, render_state, t3prof);
     }
   }
 }
@@ -170,6 +173,12 @@ void TFragment::draw_debug_window() {
   ImGui::SameLine();
   if (ImGui::Button("All")) {
     m_max_draw = -1;
+  }
+  for (int i = 0; i < 8; i++) {
+    ImGui::SliderFloat(fmt::format("{}", i).c_str(), m_time_of_days + i, 0.f, 1.f);
+  }
+  for (int i = 0; i < HackManyLevels::NUM_LEVELS; i++) {
+    ImGui::Checkbox(level_names[i], &m_many_level_render.level_enables[i]);
   }
   ImGui::Checkbox("Skip MSCAL", &m_skip_mscals);
   ImGui::Checkbox("Skip XGKICK", &m_skip_xgkick);

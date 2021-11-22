@@ -175,7 +175,7 @@ class Vector {
   const T* data() const { return m_data; }
 
   template <typename U>
-  Vector<U, Size> cast() {
+  Vector<U, Size> cast() const {
     Vector<U, Size> result;
     for (int i = 0; i < Size; i++) {
       result[i] = (U)m_data[i];

@@ -20,6 +20,7 @@ void Tfrag3::setup_for_level(const std::string& level, SharedRenderState* render
     m_cached_trees.resize(lev_data->trees.size());
 
     size_t idx_buffer_len = 0;
+    size_t time_of_day_count = 0;
 
     for (size_t tree_idx = 0; tree_idx < lev_data->trees.size(); tree_idx++) {
       const auto& tree = lev_data->trees[tree_idx];
@@ -28,6 +29,7 @@ void Tfrag3::setup_for_level(const std::string& level, SharedRenderState* render
         for (auto& draw : tree.draws) {
           idx_buffer_len = std::max(idx_buffer_len, draw.vertex_index_stream.size());
         }
+        time_of_day_count = std::max(tree.colors.size(), time_of_day_count);
         u32 verts = tree.vertices.size();
         fmt::print("  tree {} has {} verts ({} kB) and {} draws\n", tree_idx, verts,
                    verts * sizeof(tfrag3::PreloadedVertex) / 1024.f, tree.draws.size());
@@ -36,11 +38,13 @@ void Tfrag3::setup_for_level(const std::string& level, SharedRenderState* render
         glGenBuffers(1, &m_cached_trees[tree_idx].vertex_buffer);
         m_cached_trees[tree_idx].vert_count = verts;
         m_cached_trees[tree_idx].draws = &tree.draws;  // todo - should we just copy this?
+        m_cached_trees[tree_idx].colors = &tree.colors;
         glBindBuffer(GL_ARRAY_BUFFER, m_cached_trees[tree_idx].vertex_buffer);
         glBufferData(GL_ARRAY_BUFFER, verts * sizeof(tfrag3::PreloadedVertex), nullptr,
                      GL_DYNAMIC_DRAW);
         glEnableVertexAttribArray(0);
         glEnableVertexAttribArray(1);
+        glEnableVertexAttribArray(2);
 
         glBufferSubData(GL_ARRAY_BUFFER, 0, verts * sizeof(tfrag3::PreloadedVertex),
                         tree.vertices.data());
@@ -53,12 +57,20 @@ void Tfrag3::setup_for_level(const std::string& level, SharedRenderState* render
                               (void*)offsetof(tfrag3::PreloadedVertex, x)  // offset (0)
         );
 
-        glVertexAttribPointer(1,                                // location 2 in the shader
+        glVertexAttribPointer(1,                                // location 1 in the shader
                               3,                                // 3 values per vert
                               GL_FLOAT,                         // floats
                               GL_FALSE,                         // normalized
                               sizeof(tfrag3::PreloadedVertex),  // stride
                               (void*)offsetof(tfrag3::PreloadedVertex, s)  // offset (0)
+        );
+
+        glVertexAttribPointer(2,                                // location 2 in the shader
+                              1,                                // 1 values per vert
+                              GL_UNSIGNED_SHORT,                // u16
+                              GL_FALSE,                         // don't normalize
+                              sizeof(tfrag3::PreloadedVertex),  // stride
+                              (void*)offsetof(tfrag3::PreloadedVertex, color_index)  // offset (0)
         );
         glBindVertexArray(0);
       }
@@ -86,8 +98,24 @@ void Tfrag3::setup_for_level(const std::string& level, SharedRenderState* render
     fmt::print("level max index stream: {}\n", idx_buffer_len);
     m_has_index_buffer = true;
     glGenBuffers(1, &m_index_buffer);
+    glActiveTexture(GL_TEXTURE1);
     glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, m_index_buffer);
     glBufferData(GL_ELEMENT_ARRAY_BUFFER, idx_buffer_len * sizeof(u32), nullptr, GL_DYNAMIC_DRAW);
+
+    fmt::print("level max time of day: {}\n", time_of_day_count);
+    assert(time_of_day_count <= TIME_OF_DAY_COLOR_COUNT);
+    // regardless of how many we use some fixed max
+    // we won't actually interp or upload to gpu the unused ones, but we need a fixed maximum so
+    // indexing works properly.
+    m_color_result.resize(TIME_OF_DAY_COLOR_COUNT);
+    glGenTextures(1, &m_time_of_day_texture);
+    m_has_time_of_day_texture = true;
+    glBindTexture(GL_TEXTURE_1D, m_time_of_day_texture);
+    // just fill with zeros. this lets use use the faster texsubimage later
+    glTexImage1D(GL_TEXTURE_1D, 0, GL_RGBA, TIME_OF_DAY_COLOR_COUNT, 0, GL_RGBA,
+                 GL_UNSIGNED_INT_8_8_8_8, m_color_result.data());
+    glTexParameteri(GL_TEXTURE_1D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+    glTexParameteri(GL_TEXTURE_1D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
 
     m_level_name = level;
   }
@@ -95,7 +123,8 @@ void Tfrag3::setup_for_level(const std::string& level, SharedRenderState* render
 
 void Tfrag3::first_draw_setup(const RenderSettings& settings, SharedRenderState* render_state) {
   render_state->shaders[ShaderId::TFRAG3].activate();
-  glUniform1i(glGetUniformLocation(render_state->shaders[ShaderId::TFRAG3].id(), "T0"), 0);
+  glUniform1i(glGetUniformLocation(render_state->shaders[ShaderId::TFRAG3].id(), "tex_T0"), 0);
+  glUniform1i(glGetUniformLocation(render_state->shaders[ShaderId::TFRAG3].id(), "tex_T1"), 1);
   glUniformMatrix4fv(glGetUniformLocation(render_state->shaders[ShaderId::TFRAG3].id(), "camera"),
                      1, GL_FALSE, settings.math_camera.data());
   glUniform4f(glGetUniformLocation(render_state->shaders[ShaderId::TFRAG3].id(), "hvdf_offset"),
@@ -108,6 +137,7 @@ void Tfrag3::first_draw_setup(const RenderSettings& settings, SharedRenderState*
 void Tfrag3::setup_shader(const RenderSettings& /*settings*/,
                           SharedRenderState* render_state,
                           DrawMode mode) {
+  glActiveTexture(GL_TEXTURE0);
   if (mode.get_depth_write_enable()) {
     glDepthMask(GL_TRUE);
   } else {
@@ -193,6 +223,15 @@ void Tfrag3::render_tree(const RenderSettings& settings,
   auto& tree = m_cached_trees.at(settings.tree_idx);
   assert(tree.kind != tfrag3::TFragmentTreeKind::INVALID);
 
+  if (m_color_result.size() < tree.colors->size()) {
+    m_color_result.resize(tree.colors->size());
+  }
+  interp_time_of_day_slow(settings.time_of_day_weights, *tree.colors, m_color_result.data());
+  glActiveTexture(GL_TEXTURE1);
+  glBindTexture(GL_TEXTURE_1D, m_time_of_day_texture);
+  glTexSubImage1D(GL_TEXTURE_1D, 0, 0, tree.colors->size(), GL_RGBA, GL_UNSIGNED_INT_8_8_8_8_REV,
+                  m_color_result.data());
+
   first_draw_setup(settings, render_state);
 
   glBindVertexArray(tree.vao);
@@ -214,7 +253,7 @@ void Tfrag3::render_tree(const RenderSettings& settings,
     //    glDisable(GL_DEPTH_TEST);
     //    glDepthFunc(GL_ALWAYS);
     //    // glDisable(GL_ALPHA_TEST);
-    //    glDisable(GL_BLEND);
+        glDisable(GL_BLEND);
 
     glDrawElements(GL_TRIANGLE_STRIP, draw.vertex_index_stream.size(), GL_UNSIGNED_INT, (void*)0);
   }
@@ -241,6 +280,20 @@ void Tfrag3::debug_render_all_trees(const RenderSettings& settings,
   }
 }
 
+void Tfrag3::debug_render_all_trees_nolores(const RenderSettings& settings,
+                                            SharedRenderState* render_state,
+                                            ScopedProfilerNode& prof) {
+  RenderSettings settings_copy = settings;
+  for (size_t i = 0; i < m_cached_trees.size(); i++) {
+    if (m_cached_trees[i].kind != tfrag3::TFragmentTreeKind::INVALID &&
+        m_cached_trees[i].kind != tfrag3::TFragmentTreeKind::LOWRES_TRANS &&
+        m_cached_trees[i].kind != tfrag3::TFragmentTreeKind::LOWRES) {
+      settings_copy.tree_idx = i;
+      render_tree(settings_copy, render_state, prof);
+    }
+  }
+}
+
 void Tfrag3::discard_tree_cache() {
   for (auto tex : m_textures) {
     glBindTexture(GL_TEXTURE_2D, tex);
@@ -260,6 +313,31 @@ void Tfrag3::discard_tree_cache() {
     m_has_index_buffer = false;
   }
 
+  if (m_has_time_of_day_texture) {
+    glBindTexture(GL_TEXTURE_1D, m_time_of_day_texture);
+    glDeleteTextures(1, &m_time_of_day_texture);
+    m_has_time_of_day_texture = false;
+  }
+
   // delete textures and stuff.
   m_cached_trees.clear();
+}
+
+void Tfrag3::interp_time_of_day_slow(const float weights[8],
+                                     const std::vector<tfrag3::TimeOfDayColor>& in,
+                                     math::Vector<u8, 4>* out) {
+  // Timer interp_timer;
+  for (size_t color = 0; color < in.size(); color++) {
+    math::Vector4f result = math::Vector4f::zero();
+    for (int component = 0; component < 8; component++) {
+      result += in[color].rgba[component].cast<float>() * weights[component];
+    }
+    result[0] = std::min(result[0], 255.f);
+    result[1] = std::min(result[1], 255.f);
+    result[2] = std::min(result[2], 255.f);
+    result[3] = std::min(result[3], 128.f);  // note: different for alpha!
+    out[color] = result.cast<u8>();
+  }
+  // about 70 us, not bad.
+  // fmt::print("interp {} colors {:.2f} ms\n", in.size(), interp_timer.getMs());
 }

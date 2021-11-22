@@ -492,19 +492,20 @@ void emulate_chain(UnpackState& state, u32 max_words, const u32* start, u8* vu_m
 }
 
 struct TFragColorUnpack {
-  std::vector<math::Vector<u16, 4>> data;
+  // std::vector<math::Vector<u16, 4>> data;
+  std::vector<u16> indices;
   u32 unpack_qw_addr = 0;
 
-  math::Vector<u16, 4> load_color_idx(u32 qw) {
+  u16 load_color_idx(u32 qw) {
     if (qw < unpack_qw_addr) {
-      return math::Vector<u16, 4>{0, 0, 0, 0};
+      return 0xffff;
     }
     int past = qw - unpack_qw_addr;
     past /= 2;
-    if (past < (int)data.size()) {
-      return data.at(past);
+    if (past < (int)indices.size()) {
+      return indices.at(past);
     } else {
-      return math::Vector<u16, 4>{0, 0, 0, 0};
+      return 0xffff;
     }
   }
 };
@@ -555,19 +556,8 @@ void emulate_dma_building_for_tfrag(const level_tools::TFragment& frag,
   // :vif0 (new 'static 'vif-tag :imm #x102 :cmd (vif-cmd stcycl))       ;; cl = 2, wl = 1
 
   // :vif1 (new 'static 'vif-tag :imm #xc000 :cmd (vif-cmd unpack-v4-8)) ;; flg, unsigned
-  color_indices.data.resize(frag.color_indices.size() / 2);
+  color_indices.indices = frag.color_indices;
   color_indices.unpack_qw_addr = frag.color_offset;
-  int i = 0;
-
-  // we don't actually know the colors, so for now just put them like this.
-  for (auto& color : color_indices.data) {
-    color[0] = frag.color_indices.at(i) & 0xffff;
-    color[1] = frag.color_indices.at(i) >> 16;
-    i++;
-    color[2] = frag.color_indices.at(i) & 0xffff;
-    color[3] = frag.color_indices.at(i) >> 16;
-    i++;
-  }
 }
 
 /*
@@ -645,8 +635,8 @@ Vector4f itof0(const Vector4f& vec) {
 
 struct TFragVertexData {
   Vector4f pre_cam_trans_pos;
-  Vector3f stq;               // stq?
-  math::Vector<u16, 4> rgba;  // unlike actual tfrag, these are still indices
+  Vector3f stq;  // stq?
+  u16 rgba;      // unlike actual tfrag, these are still indices
   bool end_of_strip = false;
 
   // pos = cam.rot * pctp.xyz + cam.trans
@@ -1080,7 +1070,7 @@ std::vector<TFragDraw> emulate_tfrag_execution(const level_tools::TFragment& fra
   //  lq.xyzw vf20, 1(vi04)      |  nop
   // ??? something with the vertex.
   // Vector4f vf20_vtx_rgba_0 = mem.load_vector_data(vi04_vtx_ptr + 1);
-  math::Vector<u16, 4> vf20_vtx_rgba_0 = color_indices.load_color_idx(vi04_vtx_ptr + 1);
+  u16 vf20_vtx_rgba_0 = color_indices.load_color_idx(vi04_vtx_ptr + 1);
 
   //  iaddiu vi12, vi12, 0x80    |  nop
   vi12_vert_count += 0x80;  // ??
@@ -1154,7 +1144,7 @@ std::vector<TFragDraw> emulate_tfrag_execution(const level_tools::TFragment& fra
 
   //  lq.xyzw vf21, 1(vi04)      |  maddz.xyzw vf12, vf08, vf12
   // Vector4f vf21_vtx_unk_1 = mem.load_vector_data(vi04_vtx_ptr + 1);
-  math::Vector<u16, 4> vf21_vtx_rgba_1 = color_indices.load_color_idx(vi04_vtx_ptr + 1);
+  u16 vf21_vtx_rgba_1 = color_indices.load_color_idx(vi04_vtx_ptr + 1);
 
   // vars.vf12_root_pos_0 = acc + in.vf08_cam_mat_z * vars.vf12_root_pos_0.z();
 
@@ -1219,7 +1209,7 @@ std::vector<TFragDraw> emulate_tfrag_execution(const level_tools::TFragment& fra
 
   //  lq.xyzw vf22, 1(vi04)      |  maddz.xyzw vf13, vf08, vf13
   // Vector4f vf22_vtx_rgba_2 = mem.load_vector_data(vi04_vtx_ptr + 1);
-  math::Vector<u16, 4> vf22_vtx_rgba_2 = color_indices.load_color_idx(vi04_vtx_ptr + 1);
+  u16 vf22_vtx_rgba_2 = color_indices.load_color_idx(vi04_vtx_ptr + 1);
 
   //  sqi.xyzw vf06, vi06        |  add.xyzw vf12, vf12, vf10
   vi06_kick_zone_ptr++;
@@ -1249,7 +1239,7 @@ std::vector<TFragDraw> emulate_tfrag_execution(const level_tools::TFragment& fra
   // m_clip_and_3ffff = clip_xyz_plus_minus(vars.vf16_scaled_pos_0);
 
   Vector4f vf27_vtx_stq_3;
-  math::Vector<u16, 4> vf23_vtx_rgba_3;
+  u16 vf23_vtx_rgba_3;
   Vector4f vf15_vtx_pos_3;
 
   while (true) {
@@ -1734,6 +1724,7 @@ void update_mode_from_alpha1(u64 val, DrawMode& mode) {
     // unsupported blend: a 0 b 2 c 2 d 1
     fmt::print("unsupported blend: a {} b {} c {} d {}\n", (int)reg.a_mode(), (int)reg.b_mode(),
                (int)reg.c_mode(), (int)reg.d_mode());
+    mode.set_alpha_blend(DrawMode::AlphaBlend::SRC_DST_SRC_DST);
     assert(false);
   }
 }
@@ -1758,7 +1749,8 @@ void update_mode_from_test1(u64 val, DrawMode& mode) {
       break;
     default:
       fmt::print("Alpha test: {} not supported\n", (int)test.alpha_test());
-      assert(false);
+      mode.set_alpha_test(DrawMode::AlphaTest::ALWAYS);
+       assert(false);
   }
 
   // AREF
@@ -1977,6 +1969,7 @@ void make_tfrag3_data(std::map<u32, std::vector<GroupedDraw>>& draws,
             combo_tex_id);
         fmt::print("tpage is {}\n", combo_tex_id >> 16);
         fmt::print("id is {} (0x{:x})\n", combo_tex_id & 0xffff, combo_tex_id & 0xffff);
+
         assert(false);
       }
       tfrag3_tex_id = texture_pool.size();
@@ -2011,11 +2004,9 @@ void make_tfrag3_data(std::map<u32, std::vector<GroupedDraw>>& draws,
           vtx.s = vert.stq.x();
           vtx.t = vert.stq.y();
           vtx.q = vert.stq.z();
-          for (int i = 0; i < 4; i++) {
-            vtx.color_indices[i] = vert.rgba[i];
-          }
-//          fmt::print("{} {} {} {}\n", vtx.color_indices[0], vtx.color_indices[1],
-//                     vtx.color_indices[2], vtx.color_indices[3]);
+          vtx.color_index = vert.rgba;
+          // assert((vert.rgba >> 2) < 1024); spider cave has 2048?
+          assert((vert.rgba & 3) == 0);
 
           size_t vert_idx = tree_out.vertices.size();
           tree_out.vertices.push_back(vtx);
@@ -2060,6 +2051,15 @@ void emulate_tfrags(const std::vector<level_tools::TFragment>& frags,
   auto debug_out = debug_dump_to_obj(all_draws);
   file_util::write_text_file(
       file_util::get_file_path({"debug_out", fmt::format("tfrag-{}.obj", debug_name)}), debug_out);
+}
+
+void extract_time_of_day(const level_tools::DrawableTreeTfrag* tree, tfrag3::Tree& out) {
+  out.colors.resize(tree->time_of_day.height);
+  for (int i = 0; i < (int)tree->time_of_day.height; i++) {
+    for (int j = 0; j < 8; j++) {
+      memcpy(out.colors[i].rgba[j].data(), &tree->time_of_day.colors[i * 8 + j], 4);
+    }
+  }
 }
 }  // namespace
 
@@ -2109,6 +2109,7 @@ void extract_tfrag(const level_tools::DrawableTreeTfrag* tree,
   //  assert(result.vis_nodes.last_child_node + 1 == idx);
 
   emulate_tfrags(as_tfrag_array->tfragments, debug_name, map, out, this_tree, tex_db);
+  extract_time_of_day(tree, this_tree);
   out.trees.push_back(this_tree);
 }
 }  // namespace decompiler
