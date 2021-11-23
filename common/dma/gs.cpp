@@ -392,7 +392,7 @@ std::string DrawMode::to_string() const {
     default:
       assert(false);
   }
-  result += fmt::format(" clamp: {}\n", get_clamp_enable());
+  result += fmt::format(" clamp: s {} t {}\n", get_clamp_s_enable(), get_clamp_t_enable());
   result += fmt::format(" filt: {}\n", get_filt_enable());
   result += fmt::format(" tcc: {}\n", get_tcc_enable());
   result += fmt::format(" aref: {}\n", get_aref());

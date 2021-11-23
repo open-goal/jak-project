@@ -133,11 +133,15 @@ void Renderer::setup_opengl_excluding_textures(SharedRenderState* render_state, 
     glDisable(GL_BLEND);
   }
 
-  if (mode.get_clamp_enable()) {
+  if (mode.get_clamp_s_enable()) {
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
   } else {
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
+  }
+
+  if (mode.get_clamp_t_enable()) {
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+  } else {
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
   }
 
@@ -492,8 +496,8 @@ void Builder::handle_clamp1(u64 val) {
     assert(false);
   }
 
-  // this isn't quite right, but I'm hoping it's enough!
-  m_current_mode.set_clamp_enable(val == 0b101);
+  m_current_mode.set_clamp_s_enable(val & 0b1);
+  m_current_mode.set_clamp_t_enable(val & 0b100);
 }
 
 void Builder::handle_alpha1(u64 val) {

@@ -384,16 +384,16 @@ class DrawMode {
   bool is_valid() const { return !is_invalid(); }
   void set_invalid() { m_val = UINT32_MAX; }
 
-  bool get_clamp_enable() const { return m_val & (1 << 5); }
-  void set_clamp_enable(bool en) {
+  bool get_clamp_s_enable() const { return m_val & (1 << 5); }
+  void set_clamp_s_enable(bool en) {
     if (en) {
-      enable_clamp();
+      enable_s_clamp();
     } else {
-      disable_clamp();
+      disable_s_clamp();
     }
   }
-  void enable_clamp() { m_val = m_val | (1 << 5); }
-  void disable_clamp() { m_val = m_val & (~(1 << 5)); }
+  void enable_s_clamp() { m_val = m_val | (1 << 5); }
+  void disable_s_clamp() { m_val = m_val & (~(1 << 5)); }
 
   bool get_filt_enable() const { return m_val & (1 << 6); }
   void enable_filt() { m_val = m_val | (1 << 6); }
@@ -450,6 +450,17 @@ class DrawMode {
     }
   }
 
+  bool get_clamp_t_enable() const { return m_val & (1 << 23); }
+  void set_clamp_t_enable(bool en) {
+    if (en) {
+      enable_t_clamp();
+    } else {
+      disable_t_clamp();
+    }
+  }
+  void enable_t_clamp() { m_val = m_val | (1 << 23); }
+  void disable_t_clamp() { m_val = m_val & (~(1 << 23)); }
+
   u32& as_int() { return m_val; }
 
   bool operator==(const DrawMode& other) const { return m_val == other.m_val; }
@@ -470,5 +481,6 @@ class DrawMode {
   // 19 - zte
   // 20 - abe
   // 21, 22 - afail
+  // 23 t clamp
   u32 m_val = UINT32_MAX;
 };

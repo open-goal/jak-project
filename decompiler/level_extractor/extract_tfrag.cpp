@@ -1876,7 +1876,9 @@ void process_draw_mode(std::vector<TFragDraw>& all_draws,
           }
 
           // this isn't quite right, but I'm hoping it's enough!
-          mode.set_clamp_enable(val == 0b101);
+          //mode.set_clamp_enable(val == 0b101);
+          mode.set_clamp_s_enable(val & 0b1);
+          mode.set_clamp_t_enable(val & 0b100);
           break;
         case GsRegisterAddress::ALPHA_1:
           update_mode_from_alpha1(val, mode);

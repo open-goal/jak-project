@@ -160,8 +160,7 @@ void TFragment::render(DmaFollower& dma,
 
         auto t3prof = prof.make_scoped_child(level_names[i]);
 
-        m_many_level_render.level_renderers[i].render_tree(settings, render_state, t3prof);
-        m_tfrag3.debug_render_all_trees_nolores(settings, render_state, t3prof);
+        m_many_level_render.level_renderers[i].debug_render_all_trees_nolores(settings, render_state, t3prof);
       }
     }
   }

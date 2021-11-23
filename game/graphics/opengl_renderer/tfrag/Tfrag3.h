@@ -36,7 +36,16 @@ class Tfrag3 {
 
  private:
   void first_draw_setup(const RenderSettings& settings, SharedRenderState* render_state);
-  void setup_shader(const RenderSettings& settings, SharedRenderState* render_state, DrawMode mode);
+  enum class DoubleDrawKind { NONE, AFAIL_NO_DEPTH_WRITE };
+  struct DoubleDraw {
+    DoubleDrawKind kind = DoubleDrawKind::NONE;
+    float aref = 0.;
+  };
+
+
+  DoubleDraw setup_shader(const RenderSettings& settings,
+                              SharedRenderState* render_state,
+                              DrawMode mode);
   void interp_time_of_day_slow(const float weights[8],
                                const std::vector<tfrag3::TimeOfDayColor>& in,
                                math::Vector<u8, 4>* out);

@@ -134,15 +134,10 @@ void Tfrag3::first_draw_setup(const RenderSettings& settings, SharedRenderState*
               settings.fog_x);
 }
 
-void Tfrag3::setup_shader(const RenderSettings& /*settings*/,
-                          SharedRenderState* render_state,
-                          DrawMode mode) {
+Tfrag3::DoubleDraw Tfrag3::setup_shader(const RenderSettings& /*settings*/,
+                                        SharedRenderState* render_state,
+                                        DrawMode mode) {
   glActiveTexture(GL_TEXTURE0);
-  if (mode.get_depth_write_enable()) {
-    glDepthMask(GL_TRUE);
-  } else {
-    glDepthMask(GL_FALSE);
-  }
 
   if (mode.get_zt_enable()) {
     glEnable(GL_DEPTH_TEST);
@@ -182,11 +177,15 @@ void Tfrag3::setup_shader(const RenderSettings& /*settings*/,
     glDisable(GL_BLEND);
   }
 
-  if (mode.get_clamp_enable()) {
+  if (mode.get_clamp_s_enable()) {
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
   } else {
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
+  }
+
+  if (mode.get_clamp_t_enable()) {
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+  } else {
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
   }
 
@@ -198,23 +197,54 @@ void Tfrag3::setup_shader(const RenderSettings& /*settings*/,
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
   }
 
-  float alpha_reject = 0.;
+  // for some reason, they set atest NEVER + FB_ONLY to disable depth writes
+  bool alpha_hack_to_disable_z_write = false;
+  DoubleDraw double_draw;
+
+  float alpha_min = 0.;
   if (mode.get_at_enable()) {
     switch (mode.get_alpha_test()) {
       case DrawMode::AlphaTest::ALWAYS:
         break;
       case DrawMode::AlphaTest::GEQUAL:
-        alpha_reject = mode.get_aref() / 127.f;
+        alpha_min = mode.get_aref() / 127.f;
+        switch (mode.get_alpha_fail()) {
+          case GsTest::AlphaFail::KEEP:
+            // ok, no need for double draw
+            break;
+          case GsTest::AlphaFail::FB_ONLY:
+            // darn, we need to draw twice
+            double_draw.kind = DoubleDrawKind::AFAIL_NO_DEPTH_WRITE;
+            double_draw.aref = alpha_min;
+            break;
+          default:
+            assert(false);
+        }
         break;
       case DrawMode::AlphaTest::NEVER:
+        if (mode.get_alpha_fail() == GsTest::AlphaFail::FB_ONLY) {
+          alpha_hack_to_disable_z_write = true;
+        } else {
+          assert(false);
+        }
         break;
       default:
         assert(false);
     }
   }
 
-  glUniform1f(glGetUniformLocation(render_state->shaders[ShaderId::TFRAG3].id(), "alpha_reject"),
-              alpha_reject);
+  if (mode.get_depth_write_enable()) {
+    glDepthMask(GL_TRUE);
+  } else {
+    glDepthMask(GL_FALSE);
+  }
+
+  glUniform1f(glGetUniformLocation(render_state->shaders[ShaderId::TFRAG3].id(), "alpha_min"),
+              alpha_min);
+  glUniform1f(glGetUniformLocation(render_state->shaders[ShaderId::TFRAG3].id(), "alpha_max"),
+              10.f);
+
+  return double_draw;
 }
 
 void Tfrag3::render_tree(const RenderSettings& settings,
@@ -243,19 +273,31 @@ void Tfrag3::render_tree(const RenderSettings& settings,
 
   for (const auto& draw : *tree.draws) {
     glBindTexture(GL_TEXTURE_2D, m_textures.at(draw.tree_tex_id));
-    setup_shader(settings, render_state, draw.mode);
+    auto double_draw = setup_shader(settings, render_state, draw.mode);
     prof.add_draw_call();
     prof.add_tri(draw.num_triangles);
     glBufferSubData(GL_ELEMENT_ARRAY_BUFFER, 0, draw.vertex_index_stream.size() * sizeof(u32),
                     draw.vertex_index_stream.data());
 
-    // hack:
-    //    glDisable(GL_DEPTH_TEST);
-    //    glDepthFunc(GL_ALWAYS);
-    //    // glDisable(GL_ALPHA_TEST);
-        glDisable(GL_BLEND);
-
     glDrawElements(GL_TRIANGLE_STRIP, draw.vertex_index_stream.size(), GL_UNSIGNED_INT, (void*)0);
+
+    switch (double_draw.kind) {
+      case DoubleDrawKind::NONE:
+        break;
+      case DoubleDrawKind::AFAIL_NO_DEPTH_WRITE:
+        prof.add_draw_call();
+        prof.add_tri(draw.num_triangles);
+        glUniform1f(glGetUniformLocation(render_state->shaders[ShaderId::TFRAG3].id(), "alpha_min"),
+                    -10.f);
+        glUniform1f(glGetUniformLocation(render_state->shaders[ShaderId::TFRAG3].id(), "alpha_max"),
+                    double_draw.aref);
+        glDepthMask(GL_FALSE);
+        glDrawElements(GL_TRIANGLE_STRIP, draw.vertex_index_stream.size(), GL_UNSIGNED_INT,
+                       (void*)0);
+        break;
+      default:
+        assert(false);
+    }
   }
   glBindVertexArray(0);
 }
