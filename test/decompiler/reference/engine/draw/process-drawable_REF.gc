@@ -462,7 +462,7 @@
 ;; INFO: Return type mismatch int vs none.
 (defmethod dummy-18 process-drawable ((obj process-drawable))
   (if (type-type? (-> obj root type) collide-shape)
-   (dummy-48 (the-as collide-shape (-> obj root)))
+   (clear-collide-with-as (the-as collide-shape (-> obj root)))
    )
   (if (nonzero? (-> obj skel))
    (ja-channel-set! 0)
@@ -753,7 +753,7 @@
   (let
    ((gp-1 (the-as collide-shape (-> (the-as collide-shape obj) dir-targ x))))
    (if (and gp-1 (nonzero? gp-1) (type-type? (-> gp-1 type) collide-shape))
-    ((method-of-object gp-1 dummy-38))
+    (find-collision-meshes gp-1)
     )
    )
   (label cfg-59)
@@ -1360,13 +1360,20 @@
    (let ((s5-0 (-> v1-0 extra perm task))
          (s4-0 (new 'static 'fact-info))
          )
-    (set! (-> s4-0 options) (the-as uint 0))
+    (set! (-> s4-0 options) (fact-options))
     (if arg2
-     (set! (-> s4-0 options) (the-as uint 64))
+     (set! (-> s4-0 options) (fact-options fop6))
      )
     (when (and (nonzero? s5-0) (not (task-complete? *game-info* s5-0)))
      (label cfg-12)
-     (birth-pickup-at-point gp-0 6 (the float s5-0) #f self s4-0)
+     (birth-pickup-at-point
+      gp-0
+      (pickup-type fuel-cell)
+      (the float s5-0)
+      #f
+      self
+      s4-0
+      )
      (when (not (-> self child))
       (suspend)
       (goto cfg-12)

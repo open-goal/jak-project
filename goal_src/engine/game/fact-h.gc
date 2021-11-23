@@ -65,6 +65,31 @@
   (enum->string pickup-type arg0)
   )
 
+(defenum fact-options
+  :bitfield #t
+  :type uint64
+  (vent-blocked 0)
+  (fop1 1)
+  (vent-valve 2)
+  (fop3 3)
+  (fop4 4)
+  (fop5 5)
+  (fop6 6)
+  (fop7 7)
+  (can-collect 8)
+  (fade 9)
+  (large 10)
+  (fop11 11)
+  (powerup 12)
+  (fop13 13)
+  (fop14 14)
+  (fop15 15)
+  (fop16 16)
+  (fop17 17)
+  (eco-blocked 18)
+  (respawn 19)
+  )
+
 ;; Each individual enemy and pickup process will allocate a fact-info on its process heap
 ;; The settings may be different per object - for example some eco pickups may have different
 ;; amounts or timings
@@ -74,15 +99,15 @@
    (pickup-type         pickup-type   :offset-assert 8)
    (pickup-amount       float   :offset-assert 12)      ;; eco increment on pickup
    (pickup-spawn-amount float   :offset-assert 16)
-   (options             uint64  :offset-assert 24)      ;; actually bitfield enum
-   (fade-time           uint64  :offset-assert 32)
+   (options             fact-options  :offset-assert 24)
+   (fade-time           int64   :offset-assert 32)
    )
   :method-count-assert 12
   :size-assert         #x28
   :flag-assert         #xc00000028
   (:methods
     (new (symbol type process-drawable pickup-type float) _type_ 0)
-    (TODO-RENAME-9 (_type_ symbol process-tree fact-info int) uint 9) ;; See nav-enemy::process-drawable-death-event-handler
+    (drop-pickup (_type_ symbol process-tree fact-info int) none 9)
     (reset! (_type_ symbol) none 10)
     (pickup-collectable! (_type_ pickup-type float handle) float 11)
     )
@@ -179,11 +204,11 @@
         )
 
       ;; read the options
-      (set! (-> obj options) (res-lump-value ent 'options uint))
+      (set! (-> obj options) (res-lump-value ent 'options fact-options))
 
       ;; TODO - some enum bitfield here.
       (if (nonzero? (logand #x80200 (the-as int (-> obj options))))
-          (set! (-> obj fade-time) (the-as uint (the int (* 300.0 (res-lump-float ent 'timeout)))))
+          (set! (-> obj fade-time) (the int (* 300.0 (res-lump-float ent 'timeout))))
           )
       )
 

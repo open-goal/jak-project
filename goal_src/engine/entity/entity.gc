@@ -1443,7 +1443,7 @@
   (set! (-> proc entity) ent)
   (set! (-> ent extra process) proc)
   
-  (birth-log "activated: ~A ~A, now doing init ~A~%" proc ent (method-of-object proc init-from-entity!))
+  ;;(birth-log "activated: ~A ~A, now doing init ~A~%" proc ent (method-of-object proc init-from-entity!))
   
   ;; run the initializer
   (run-now-in-process proc (method-of-object proc init-from-entity!) proc ent)
@@ -1455,17 +1455,26 @@
 ;; TODO
 (define-extern birth-viewer (function process entity object))
 
+(declare-type collectable process-drawable)
+(declare-type ecovalve basic)
+(declare-type eco-collectable process-drawable)
+(declare-type eco eco-collectable)
 (defmethod birth! entity-actor ((obj entity-actor))
   "Create a process for this entity and start it."
   
   ;; temp
-  (unless (type-type? (-> obj etype) part-spawner)
-    (birth-log "rejecting ~A birth because it is not a part-spawner (was ~A)~%" obj (-> obj etype))
+  (unless (or (type-type? (-> obj etype) part-spawner)
+              (type-type? (-> obj etype) collectable)
+              (type-type? (-> obj etype) vent)
+              (type-type? (-> obj etype) ecovalve)
+              ;(type-type? (-> obj etype) eco)
+              )
+    ;;(birth-log "rejecting ~A birth because yes (was ~A)~%" obj (-> obj etype))
     (logior! (-> obj extra perm status) (entity-perm-status bit-0))
     (return obj)
     )
   
-  (birth-log "call to birth! on ~A~%" obj)
+  ;;(birth-log "call to birth! on ~A~%" obj)
 
   (let* ((entity-type (-> obj etype))
          (info (entity-info-lookup entity-type))
@@ -1565,12 +1574,12 @@
   ;; NOTE: we don't actually birth the actors. It is too slow.
   ;; so it gets spread over multiple frames later.
   (when (nonzero? (-> obj actors))
-    (birth-log "add-to-level! for ~D actors for ~A~%" (-> obj actors length) obj)
+    ;;(birth-log "add-to-level! for ~D actors for ~A~%" (-> obj actors length) obj)
     (dotimes (birth-idx (-> obj actors length))
       (let* ((idx-to-birth (-> obj actor-birth-order birth-idx))
              (actor-to-birth (-> obj actors data (logand idx-to-birth #xffff) actor))
              )
-        (birth-log "now adding to level: ~D ~D ~A~%" birth-idx idx-to-birth actor-to-birth)
+        ;;(birth-log "now adding to level: ~D ~D ~A~%" birth-idx idx-to-birth actor-to-birth)
         (add-to-level! actor-to-birth *level* (-> obj level) (the-as actor-id (-> actor-to-birth aid)))
         )
       )
@@ -1622,7 +1631,7 @@
   (let ((cams (-> obj cameras)))
     (when (nonzero? cams)
       (dotimes (s3-1 (-> cams length))
-        (birth-log "birth cam: ~A~%" (-> cams s3-1))
+        ;;(birth-log "birth cam: ~A~%" (-> cams s3-1))
         (birth! (-> cams s3-1))
         )
       )

@@ -51,7 +51,7 @@
    (set! (-> self extended-amount) 0.0)
    (TODO-RENAME-30 (-> self root-override) (-> self in-trans))
    (transform-post)
-   (dummy-48 (-> self root-override))
+   (clear-collide-with-as (-> self root-override))
    (while #t
     (logior! (-> self mask) (process-mask sleep-code))
     (suspend)
@@ -88,7 +88,7 @@
   (the-as (function none :behavior wall-plat) rider-trans)
   :code
   (behavior ()
-   (dummy-49 (-> self root-override))
+   (restore-collide-with-as (-> self root-override))
    (set! (-> self state-time) (-> *display* base-frame-counter))
    (while #t
     (set!
@@ -234,11 +234,11 @@
       (cond
        ((= f30-0 0.0)
         (set! gp-0 #f)
-        (dummy-48 (-> self root-override))
+        (clear-collide-with-as (-> self root-override))
         )
        ((= f30-0 1.0)
         (set! gp-0 #f)
-        (dummy-49 (-> self root-override))
+        (restore-collide-with-as (-> self root-override))
         )
        (else
         (when (not gp-0)
@@ -253,7 +253,7 @@
           )
          (set! gp-0 #t)
          )
-        (dummy-49 (-> self root-override))
+        (restore-collide-with-as (-> self root-override))
         )
        )
       )
@@ -276,7 +276,13 @@
     )
    (set! (-> s4-0 dynam) (copy *standard-dynamics* 'process))
    (set! (-> s4-0 reaction) default-collision-reaction)
-   (set! (-> s4-0 no-reaction) nothing)
+   (set!
+    (-> s4-0 no-reaction)
+    (the-as
+     (function collide-shape-moving collide-shape-intersect vector vector none)
+     nothing
+     )
+    )
    (dummy-29 s4-0 1)
    (let
     ((s3-0
@@ -295,10 +301,10 @@
     (set! (-> s3-0 prim-core offense) 4)
     (set! (-> s3-0 transform-index) 2)
     (set-vector! (-> s3-0 local-sphere) 0.0 -6144.0 -12288.0 19456.0)
+    (set-root-prim! s4-0 s3-0)
     )
-   (dummy-46 s4-0)
    (set! (-> s4-0 nav-radius) (* 0.75 (-> s4-0 root-prim local-sphere w)))
-   (dummy-50 s4-0)
+   (backup-collide-with-as s4-0)
    (set! (-> obj root-override) s4-0)
    )
   (process-drawable-from-entity! obj arg0)

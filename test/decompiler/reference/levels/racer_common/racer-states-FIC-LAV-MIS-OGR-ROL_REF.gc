@@ -269,7 +269,13 @@
      )
     )
    (set! (-> self control surf) *race-track-surface*)
-   (set! (-> self control reaction) racer-collision-reaction)
+   (set!
+    (-> self control reaction)
+    (the-as
+     (function collide-shape-moving collide-shape-intersect vector vector none)
+     racer-collision-reaction
+     )
+    )
    (vector-reset! (-> self racer rot))
    (set! (-> self racer rot y) (y-angle (-> self control)))
    (target-collide-set! 'racer 0.0)
@@ -536,7 +542,7 @@
       )
      (or
       (<
-       (- (-> *display* base-frame-counter) (-> self control unknown-dword10))
+       (- (-> *display* base-frame-counter) (-> self control unknown-dword11))
        30
        )
       (<
@@ -572,7 +578,7 @@
       (zero? (logand (-> self control status) 1))
       (or
        (>=
-        (- (-> *display* base-frame-counter) (-> self control unknown-dword10))
+        (- (-> *display* base-frame-counter) (-> self control unknown-dword11))
         (the-as int (* (-> *TARGET-bank* ground-timeout) 2))
         )
        (< 75 v1-28)
@@ -1288,7 +1294,7 @@
       )
      (or
       (<
-       (- (-> *display* base-frame-counter) (-> self control unknown-dword10))
+       (- (-> *display* base-frame-counter) (-> self control unknown-dword11))
        60
        )
       (<
@@ -1743,7 +1749,7 @@
     (-> self control pat-ignore-mask)
     (new 'static 'pat-surface :skip #x1 :noentity #x1)
     )
-   (dummy-49 (-> self control))
+   (restore-collide-with-as (-> self control))
    ((-> target-racing-start exit))
    (target-exit)
    (set! (-> self racer stick-off) #f)
@@ -2086,7 +2092,7 @@
        (-> gp-5 ppointer)
        )
       )
-     (dummy-48 (-> self control))
+     (clear-collide-with-as (-> self control))
      (set! (-> self post-hook) target-no-ja-move-post)
      (ja-channel-set! 0)
      (ja-post)

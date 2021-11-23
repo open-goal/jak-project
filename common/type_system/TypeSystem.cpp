@@ -1633,6 +1633,9 @@ std::string TypeSystem::generate_deftype_footer(const Type* type) const {
   flags.methods = method_count;
 
   result.append(fmt::format("  :flag-assert         #x{:x}\n  ", flags.flag));
+  if (!type->gen_inspect()) {
+    result.append(":no-inspect\n  ");
+  }
 
   std::string methods_string;
   auto new_info = type->get_new_method_defined_for_type();

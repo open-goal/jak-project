@@ -214,8 +214,8 @@
 
 ;; definition for function yakow-default-event-handler
 ;; INFO: Return type mismatch none vs object.
-;; WARN: rewrite_to_get_var got a none typed variable. Is there unreachable code?. [OP: 52]
-;; WARN: rewrite_to_get_var got a none typed variable. Is there unreachable code?. [OP: 54]
+;; WARN: rewrite_to_get_var got a none typed variable. Is there unreachable code? [OP: 52]
+;; WARN: rewrite_to_get_var got a none typed variable. Is there unreachable code? [OP: 54]
 (defbehavior
   yakow-default-event-handler yakow
   ((arg0 process-drawable) (arg1 int) (arg2 symbol) (arg3 event-message-block))
@@ -248,7 +248,7 @@
                       (dummy-55
                        (-> self root-override)
                        arg0
-                       (-> arg3 param 0)
+                       (the-as touching-shapes-entry (-> arg3 param 0))
                        0.7
                        6144.0
                        16384.0
@@ -356,6 +356,7 @@ yakow-default-event-handler
   )
 
 ;; definition for function yakow-simple-post
+;; INFO: Return type mismatch symbol vs none.
 (defbehavior yakow-simple-post yakow ()
   (yakow-common-post)
   (dummy-47 (-> self root-override))
@@ -1442,7 +1443,7 @@ yakow-default-event-handler
     (set! (-> v1-1 prim-core collide-as) (the-as uint 0))
     )
    0
-   (TODO-RENAME-9
+   (drop-pickup
     (-> self fact-override)
     #t
     *entity-pool*
@@ -1466,17 +1467,23 @@ yakow-default-event-handler
     )
    (set! (-> s4-0 dynam) (copy *standard-dynamics* 'process))
    (set! (-> s4-0 reaction) default-collision-reaction)
-   (set! (-> s4-0 no-reaction) nothing)
+   (set!
+    (-> s4-0 no-reaction)
+    (the-as
+     (function collide-shape-moving collide-shape-intersect vector vector none)
+     nothing
+     )
+    )
    (let ((s3-0 (new 'process 'collide-shape-prim-sphere s4-0 (the-as uint 0))))
     (set! (-> s3-0 prim-core collide-as) (the-as uint 256))
     (set! (-> s3-0 collide-with) (the-as uint 16))
     (set! (-> s3-0 prim-core action) (the-as uint 3073))
     (set! (-> s3-0 prim-core offense) 4)
     (set-vector! (-> s3-0 local-sphere) 0.0 4096.0 0.0 10240.0)
+    (set-root-prim! s4-0 s3-0)
     )
-   (dummy-46 s4-0)
    (set! (-> s4-0 nav-radius) (* 0.75 (-> s4-0 root-prim local-sphere w)))
-   (dummy-50 s4-0)
+   (backup-collide-with-as s4-0)
    (set! (-> obj root-override) s4-0)
    )
   (process-drawable-from-entity! obj arg0)

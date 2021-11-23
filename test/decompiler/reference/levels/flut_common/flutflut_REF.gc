@@ -216,7 +216,7 @@
              (-> self root-override trans)
              (new 'static 'vector :y 8192.0 :w 1.0)
              )
-            6
+            (pickup-type fuel-cell)
             (the float (-> self entity extra perm task))
             #f
             self
@@ -510,15 +510,21 @@
     )
    (set! (-> s4-0 dynam) (copy *standard-dynamics* 'process))
    (set! (-> s4-0 reaction) default-collision-reaction)
-   (set! (-> s4-0 no-reaction) nothing)
+   (set!
+    (-> s4-0 no-reaction)
+    (the-as
+     (function collide-shape-moving collide-shape-intersect vector vector none)
+     nothing
+     )
+    )
    (let ((s3-0 (new 'process 'collide-shape-prim-sphere s4-0 (the-as uint 0))))
     (set! (-> s3-0 prim-core collide-as) (the-as uint 512))
     (set! (-> s3-0 collide-with) (the-as uint 16))
     (set-vector! (-> s3-0 local-sphere) 0.0 6144.0 0.0 6144.0)
+    (set-root-prim! s4-0 s3-0)
     )
-   (dummy-46 s4-0)
    (set! (-> s4-0 nav-radius) (* 0.75 (-> s4-0 root-prim local-sphere w)))
-   (dummy-50 s4-0)
+   (backup-collide-with-as s4-0)
    (set! (-> obj root-override) s4-0)
    )
   (process-drawable-from-entity! obj arg0)

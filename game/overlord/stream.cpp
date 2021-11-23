@@ -156,6 +156,6 @@ void* RPC_STR(unsigned int fno, void* _cmd, int y) {
 void* RPC_PLAY(unsigned int fno, void* _cmd, int y) {
   (void)fno;
   (void)y;
-  printf("[RPC_PLAY] ignoring...\n");
+  // printf("[RPC_PLAY] ignoring...\n");
   return _cmd;
 }

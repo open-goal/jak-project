@@ -407,13 +407,15 @@ Val* Compiler::compile_deftype(const goos::Object& form, const goos::Object& res
   }
 
   // Auto-generate (inspect) method
-  auto as_structure_type = dynamic_cast<StructureType*>(result.type_info);
-  if (as_structure_type) {  // generate the inspect method
-    generate_inspector_for_structure_type(form, env, as_structure_type);
-  } else {
-    auto as_bitfield_type = dynamic_cast<BitFieldType*>(result.type_info);
-    if (as_bitfield_type && as_bitfield_type->get_load_size() <= 8) {  // Avoid 128-bit bitfields
-      generate_inspector_for_bitfield_type(form, env, as_bitfield_type);
+  if (result.type_info->gen_inspect()) {
+    auto as_structure_type = dynamic_cast<StructureType*>(result.type_info);
+    if (as_structure_type) {  // generate the inspect method
+      generate_inspector_for_structure_type(form, env, as_structure_type);
+    } else {
+      auto as_bitfield_type = dynamic_cast<BitFieldType*>(result.type_info);
+      if (as_bitfield_type && as_bitfield_type->get_load_size() <= 8) {  // Avoid 128-bit bitfields
+        generate_inspector_for_bitfield_type(form, env, as_bitfield_type);
+      }
     }
   }
 
@@ -757,7 +759,7 @@ Val* Compiler::compile_deref(const goos::Object& form, const goos::Object& _rest
     if (!has_constant_idx) {
       index_value = compile_error_guard(field_obj, env)->to_gpr(form, env);
       if (!is_integer(index_value->type())) {
-        throw_compiler_error(form, "Cannot use -> with {}.", field_obj.print());
+        throw_compiler_error(form, "Cannot use -> with field {}.", field_obj.print());
       }
     }
 
