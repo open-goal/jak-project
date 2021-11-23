@@ -15,7 +15,7 @@ void Compiler::compile_state_handler_set(StructureType* state_type_info,
   // do not set state handler field if handler is #f, that's already the value in the static data
   // but what if it's ACTUALLY setting it to #f??? see crate-buzzer wait
   auto& arg = args.named.at(name);
-  if (!(arg.is_symbol() && arg.as_symbol()->name == "#f")) {
+  if (!(arg.is_symbol() && arg.as_symbol()->name == "*no-state*")) {
     auto field = get_field_of_structure(state_type_info, state_object, name, env);
     auto value = compile_error_guard(arg, env);
     // we need to save these for typechecking later
@@ -215,7 +215,7 @@ Val* Compiler::compile_define_virtual_state_hook(const goos::Object& form,
     state_type = get_state_type_from_enter_and_code(enter_value->type(), code_value->type(),
                                                     state_parent_type, m_ts);
   } else if (code_value || enter_value) {
-    state_type = get_state_type_from_func(enter_value ? code_value->type() : enter_value->type(),
+    state_type = get_state_type_from_func(code_value ? code_value->type() : enter_value->type(),
                                           state_parent_type);
   }
 
