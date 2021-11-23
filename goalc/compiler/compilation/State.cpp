@@ -9,17 +9,20 @@ void Compiler::compile_state_handler_set(StructureType* state_type_info,
                                          const std::string& name,
                                          goos::Arguments& args,
                                          const goos::Object& form,
-                                         Env* env) {
+                                         Env* env,
+                                         Val*& code_val,
+                                         Val*& enter_val) {
   // do not set state handler field if handler is #f, that's already the value in the static data
+  // but what if it's ACTUALLY setting it to #f??? see crate-buzzer wait
   auto& arg = args.named.at(name);
   if (!(arg.is_symbol() && arg.as_symbol()->name == "#f")) {
     auto field = get_field_of_structure(state_type_info, state_object, name, env);
     auto value = compile_error_guard(arg, env);
     // we need to save these for typechecking later
     if (name == "code") {
-      m_defstate_code_value = value;
+      code_val = value;
     } else if (name == "enter") {
-      m_defstate_enter_value = value;
+      enter_val = value;
     }
     do_set(form, field, value->to_gpr(form, env), value, env);
   }
@@ -51,9 +54,8 @@ Val* Compiler::compile_define_state_hook(const goos::Object& form,
                {"code", {true, {}}},
            });
 
-  // clear previous saved compiled vals
-  m_defstate_code_value = NULL;
-  m_defstate_enter_value = NULL;
+  Val* code_value = NULL;
+  Val* enter_value = NULL;
 
   // check parent
   auto& state_parent = args.unnamed.at(1).as_symbol()->name;
@@ -74,21 +76,23 @@ Val* Compiler::compile_define_state_hook(const goos::Object& form,
 
   // set the easy ones
   for (auto name : {"exit", "trans", "post", "event"}) {
-    compile_state_handler_set(state_type_info, state_object, name, args, form, env);
+    compile_state_handler_set(state_type_info, state_object, name, args, form, env, code_value,
+                              enter_value);
   }
 
-  compile_state_handler_set(state_type_info, state_object, "enter", args, form, env);
-  compile_state_handler_set(state_type_info, state_object, "code", args, form, env);
+  compile_state_handler_set(state_type_info, state_object, "enter", args, form, env, code_value,
+                            enter_value);
+  compile_state_handler_set(state_type_info, state_object, "code", args, form, env, code_value,
+                            enter_value);
 
   // typecheck state
   std::optional<TypeSpec> state_type;
-  if (m_defstate_code_value && m_defstate_enter_value) {
-    state_type = get_state_type_from_enter_and_code(
-        m_defstate_enter_value->type(), m_defstate_code_value->type(), state_parent_type, m_ts);
-  } else if (m_defstate_code_value || m_defstate_enter_value) {
-    state_type = get_state_type_from_func(
-        m_defstate_code_value ? m_defstate_code_value->type() : m_defstate_enter_value->type(),
-        state_parent_type);
+  if (code_value && enter_value) {
+    state_type = get_state_type_from_enter_and_code(enter_value->type(), code_value->type(),
+                                                    state_parent_type, m_ts);
+  } else if (code_value || enter_value) {
+    state_type = get_state_type_from_func(code_value ? code_value->type() : enter_value->type(),
+                                          state_parent_type);
   }
 
   auto& state_name = args.unnamed.at(0).as_symbol()->name;
@@ -146,9 +150,8 @@ Val* Compiler::compile_define_virtual_state_hook(const goos::Object& form,
                {"code", {true, {}}},
            });
 
-  // clear previous saved compiled vals
-  m_defstate_code_value = NULL;
-  m_defstate_enter_value = NULL;
+  Val* code_value = NULL;
+  Val* enter_value = NULL;
 
   // check parent
   auto& state_parent = args.unnamed.at(1).as_symbol()->name;
@@ -197,21 +200,23 @@ Val* Compiler::compile_define_virtual_state_hook(const goos::Object& form,
 
   // set the easy ones
   for (auto name : {"exit", "trans", "post", "event"}) {
-    compile_state_handler_set(state_type_info, state_object, name, args, form, env);
+    compile_state_handler_set(state_type_info, state_object, name, args, form, env, code_value,
+                              enter_value);
   }
 
-  compile_state_handler_set(state_type_info, state_object, "enter", args, form, env);
-  compile_state_handler_set(state_type_info, state_object, "code", args, form, env);
+  compile_state_handler_set(state_type_info, state_object, "enter", args, form, env, code_value,
+                            enter_value);
+  compile_state_handler_set(state_type_info, state_object, "code", args, form, env, code_value,
+                            enter_value);
 
   // typecheck state
   std::optional<TypeSpec> state_type;
-  if (m_defstate_code_value && m_defstate_enter_value) {
-    state_type = get_state_type_from_enter_and_code(
-        m_defstate_enter_value->type(), m_defstate_code_value->type(), state_parent_type, m_ts);
-  } else if (m_defstate_code_value || m_defstate_enter_value) {
-    state_type = get_state_type_from_func(
-        m_defstate_code_value ? m_defstate_code_value->type() : m_defstate_enter_value->type(),
-        state_parent_type);
+  if (code_value && enter_value) {
+    state_type = get_state_type_from_enter_and_code(enter_value->type(), code_value->type(),
+                                                    state_parent_type, m_ts);
+  } else if (code_value || enter_value) {
+    state_type = get_state_type_from_func(enter_value ? code_value->type() : enter_value->type(),
+                                          state_parent_type);
   }
 
   if (state_type) {

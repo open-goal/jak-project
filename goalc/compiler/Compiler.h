@@ -78,8 +78,6 @@ class Compiler {
   SymbolInfoMap m_symbol_info;
   std::unique_ptr<ReplWrapper> m_repl;
   MakeSystem m_make;
-  Val* m_defstate_code_value;
-  Val* m_defstate_enter_value;
 
   struct DebugStats {
     int num_spills = 0;
@@ -403,7 +401,9 @@ class Compiler {
                                  const std::string& name,
                                  goos::Arguments& args,
                                  const goos::Object& form,
-                                 Env* env);
+                                 Env* env,
+                                 Val*& code_val,
+                                 Val*& enter_val);
 
  public:
   // Asm
