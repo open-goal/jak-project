@@ -164,7 +164,13 @@
     )
    (set! (-> s5-0 dynam) (copy *standard-dynamics* 'process))
    (set! (-> s5-0 reaction) default-collision-reaction)
-   (set! (-> s5-0 no-reaction) nothing)
+   (set!
+    (-> s5-0 no-reaction)
+    (the-as
+     (function collide-shape-moving collide-shape-intersect vector vector none)
+     nothing
+     )
+    )
    (dummy-29 s5-0 1)
    (let
     ((s4-0
@@ -183,10 +189,10 @@
     (set! (-> s4-0 prim-core offense) 4)
     (set! (-> s4-0 transform-index) 0)
     (set-vector! (-> s4-0 local-sphere) 0.0 0.0 0.0 13107.2)
+    (set-root-prim! s5-0 s4-0)
     )
-   (dummy-46 s5-0)
    (set! (-> s5-0 nav-radius) (* 0.75 (-> s5-0 root-prim local-sphere w)))
-   (dummy-50 s5-0)
+   (backup-collide-with-as s5-0)
    (set! (-> obj root-override) s5-0)
    )
   0
@@ -290,10 +296,12 @@
    )
   :trans
   (behavior ()
-   (set! (-> self path-pos) (if (logtest? (-> self fact options) 8)
-                             (get-current-phase (-> self sync))
-                             (get-current-phase-with-mirror (-> self sync))
-                             )
+   (set!
+    (-> self path-pos)
+    (if (logtest? (-> self fact options) (fact-options fop3))
+     (get-current-phase (-> self sync))
+     (get-current-phase-with-mirror (-> self sync))
+     )
     )
    (eval-path-curve!
     (-> self path)
@@ -360,10 +368,12 @@
      )
     )
    ((> (-> obj sync period) 0)
-    (set! (-> obj path-pos) (if (logtest? (-> obj fact options) 8)
-                             (get-current-phase (-> obj sync))
-                             (get-current-phase-with-mirror (-> obj sync))
-                             )
+    (set!
+     (-> obj path-pos)
+     (if (logtest? (-> obj fact options) (fact-options fop3))
+      (get-current-phase (-> obj sync))
+      (get-current-phase-with-mirror (-> obj sync))
+      )
      )
     (eval-path-curve!
      (-> obj path)

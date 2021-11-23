@@ -805,14 +805,14 @@ nav-enemy-default-event-handler
        (set-blackout-frames 0)
        (ja-channel-set! 0)
        (ja-post)
-       (dummy-48 (-> self collide-info))
+       (clear-collide-with-as (-> self collide-info))
        (send-event *target* 'trans 'reset)
        (let
         ((gp-4
           (ppointer->handle
            (birth-pickup-at-point
             (target-pos 0)
-            6
+            (pickup-type fuel-cell)
             (the float (-> self entity extra perm task))
             #f
             self
@@ -918,17 +918,23 @@ nav-enemy-default-event-handler
     )
    (set! (-> s4-0 dynam) (copy *standard-dynamics* 'process))
    (set! (-> s4-0 reaction) default-collision-reaction)
-   (set! (-> s4-0 no-reaction) nothing)
+   (set!
+    (-> s4-0 no-reaction)
+    (the-as
+     (function collide-shape-moving collide-shape-intersect vector vector none)
+     nothing
+     )
+    )
    (let ((s3-0 (new 'process 'collide-shape-prim-sphere s4-0 (the-as uint 0))))
     (set! (-> s3-0 prim-core collide-as) (the-as uint 256))
     (set! (-> s3-0 collide-with) (the-as uint 16))
     (set! (-> s3-0 prim-core action) (the-as uint 1))
     (set! (-> s3-0 prim-core offense) 4)
     (set-vector! (-> s3-0 local-sphere) 0.0 2457.6 0.0 2457.6)
+    (set-root-prim! s4-0 s3-0)
     )
-   (dummy-46 s4-0)
    (set! (-> s4-0 nav-radius) (* 0.75 (-> s4-0 root-prim local-sphere w)))
-   (dummy-50 s4-0)
+   (backup-collide-with-as s4-0)
    (set! (-> obj collide-info) s4-0)
    )
   (process-drawable-from-entity! obj arg0)

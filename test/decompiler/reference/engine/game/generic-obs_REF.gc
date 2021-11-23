@@ -118,13 +118,13 @@
       (<
        (vector-vector-distance
         (-> self root trans)
-        (the-as vector (&-> (-> *target* control) unknown-cspace00 bone))
+        (-> *target* control unknown-vector90)
         )
        (-> self range)
        )
       (logtest? (-> *target* control root-prim prim-core action) 64)
       (<
-       (the-as float (-> *target* control unknown-cspace00 param0))
+       (-> *target* control unknown-vector90 y)
        (+ (-> self root trans y) (* 0.5 (-> self range)))
        )
       )
@@ -610,23 +610,15 @@
    (let ((v1-20 (handle->process (-> self cur-grab-handle))))
     (when v1-20
      (let ((gp-1 (-> (the-as process-drawable v1-20) root trans)))
-      (cond
-       ((type-type? (-> self root type) collide-shape)
-        (let* ((a0-13 (-> self root))
-               (t9-3
-                (method-of-object (the-as collide-shape a0-13) TODO-RENAME-28)
-                )
-               )
-         (vector-! (new 'stack-no-clear 'vector) gp-1 (-> self old-grab-pos))
-         (t9-3 (the-as collide-shape a0-13))
-         )
+      (if (type-type? (-> self root type) collide-shape)
+       (TODO-RENAME-28
+        (the-as collide-shape (-> self root))
+        (vector-! (new 'stack-no-clear 'vector) gp-1 (-> self old-grab-pos))
         )
-       (else
-        (vector+!
-         (-> self root trans)
-         (-> self root trans)
-         (vector-! (new 'stack-no-clear 'vector) gp-1 (-> self old-grab-pos))
-         )
+       (vector+!
+        (-> self root trans)
+        (-> self root trans)
+        (vector-! (new 'stack-no-clear 'vector) gp-1 (-> self old-grab-pos))
         )
        )
       (set! (-> self old-grab-pos quad) (-> gp-1 quad))
@@ -661,20 +653,20 @@
       )
      (set! (-> s4-1 dynam) (copy *standard-dynamics* 'process))
      (set! (-> s4-1 reaction) default-collision-reaction)
-     (set! (-> s4-1 no-reaction) nothing)
-     (set-vector!
-      (->
-       (new 'process 'collide-shape-prim-sphere s4-1 (the-as uint 0))
-       local-sphere
+     (set!
+      (-> s4-1 no-reaction)
+      (the-as
+       (function collide-shape-moving collide-shape-intersect vector vector none)
+       nothing
        )
-      0.0
-      0.0
-      0.0
-      4096.0
       )
-     (dummy-46 s4-1)
+     (let
+      ((s3-1 (new 'process 'collide-shape-prim-sphere s4-1 (the-as uint 0))))
+      (set-vector! (-> s3-1 local-sphere) 0.0 0.0 0.0 4096.0)
+      (set-root-prim! s4-1 s3-1)
+      )
      (set! (-> s4-1 nav-radius) (* 0.75 (-> s4-1 root-prim local-sphere w)))
-     (dummy-50 s4-1)
+     (backup-collide-with-as s4-1)
      (set! (-> self root) s4-1)
      )
     )
@@ -695,10 +687,10 @@
        (-> arg3 z)
        (-> arg3 w)
        )
+      (set-root-prim! s4-2 s2-0)
       )
-     (dummy-46 s4-2)
      (set! (-> s4-2 nav-radius) (* 0.75 (-> s4-2 root-prim local-sphere w)))
-     (dummy-50 s4-2)
+     (backup-collide-with-as s4-2)
      (set! (-> self root) s4-2)
      )
     )
@@ -2567,19 +2559,13 @@
 (defstate launcher-idle (launcher)
   :event
   (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
-   (let ((v1-0 arg2))
-    (the-as object (cond
-                    ((= v1-0 'instant-death)
-                     (go launcher-deactivated)
-                     )
-                    ((= v1-0 'trans)
-                     (TODO-RENAME-30
-                      (-> self root-override)
-                      (the-as vector (-> arg3 param 0))
-                      )
-                     (dummy-47 (-> self root-override))
-                     )
-                    )
+   (case arg2 
+    (('instant-death)
+      (go launcher-deactivated)
+      )
+    (('trans)
+     (TODO-RENAME-30 (-> self root-override) (the-as vector (-> arg3 param 0)))
+     (dummy-47 (-> self root-override))
      )
     )
    )
@@ -2672,18 +2658,14 @@
      (-> self seek-time)
      )
     )
-   (the-as object (cond
-                   ((= arg2 'instant-death)
-                    (go launcher-deactivated)
-                    )
-                   ((= arg2 'trans)
-                    (TODO-RENAME-30
-                     (-> self root-override)
-                     (the-as vector (-> arg3 param 0))
-                     )
-                    (dummy-47 (-> self root-override))
-                    )
-                   )
+   (cond
+    ((= arg2 'instant-death)
+     (go launcher-deactivated)
+     )
+    ((= arg2 'trans)
+     (TODO-RENAME-30 (-> self root-override) (the-as vector (-> arg3 param 0)))
+     (dummy-47 (-> self root-override))
+     )
     )
    )
   :exit
@@ -2791,10 +2773,10 @@
     (set! (-> s3-0 prim-core collide-as) (the-as uint 256))
     (set! (-> s3-0 collide-with) (the-as uint 16))
     (set-vector! (-> s3-0 local-sphere) 0.0 0.0 0.0 12288.0)
+    (set-root-prim! s4-0 s3-0)
     )
-   (dummy-46 s4-0)
    (set! (-> s4-0 nav-radius) 13926.4)
-   (dummy-50 s4-0)
+   (backup-collide-with-as s4-0)
    (set! (-> obj root-override) s4-0)
    )
   (process-drawable-from-entity! obj arg0)
@@ -2860,10 +2842,10 @@
     (set! (-> s1-0 prim-core collide-as) (the-as uint 256))
     (set! (-> s1-0 collide-with) (the-as uint 16))
     (set-vector! (-> s1-0 local-sphere) 0.0 0.0 0.0 12288.0)
+    (set-root-prim! s2-0 s1-0)
     )
-   (dummy-46 s2-0)
    (set! (-> s2-0 nav-radius) (* 0.75 (-> s2-0 root-prim local-sphere w)))
-   (dummy-50 s2-0)
+   (backup-collide-with-as s2-0)
    (set! (-> self root-override) s2-0)
    )
   (set! (-> self root-override trans quad) (-> arg0 quad))
@@ -3092,7 +3074,7 @@
      )
     (suspend)
     )
-   (dummy-48 (-> self root-override))
+   (clear-collide-with-as (-> self root-override))
    (suspend)
    0
    (none)
@@ -3112,16 +3094,22 @@
     )
    (set! (-> s4-0 dynam) (copy *standard-dynamics* 'process))
    (set! (-> s4-0 reaction) default-collision-reaction)
-   (set! (-> s4-0 no-reaction) nothing)
+   (set!
+    (-> s4-0 no-reaction)
+    (the-as
+     (function collide-shape-moving collide-shape-intersect vector vector none)
+     nothing
+     )
+    )
    (let ((s2-0 (new 'process 'collide-shape-prim-sphere s4-0 (the-as uint 0))))
     (set! (-> s2-0 prim-core collide-as) (the-as uint 272))
     (set! (-> s2-0 collide-with) (the-as uint 3022))
     (set! (-> s2-0 prim-core offense) 4)
     (set-vector! (-> s2-0 local-sphere) 0.0 0.0 0.0 arg1)
+    (set-root-prim! s4-0 s2-0)
     )
-   (dummy-46 s4-0)
    (set! (-> s4-0 nav-radius) (* 0.75 (-> s4-0 root-prim local-sphere w)))
-   (dummy-50 s4-0)
+   (backup-collide-with-as s4-0)
    (set! (-> s4-0 event-self) 'touched)
    (set! (-> self root-override) s4-0)
    )

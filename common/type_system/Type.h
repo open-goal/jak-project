@@ -102,6 +102,8 @@ class Type {
 
   int heap_base() const { return m_heap_base; }
 
+  bool gen_inspect() const { return m_generate_inspect; }
+
  protected:
   Type(std::string parent, std::string name, bool is_boxed, int heap_base);
   virtual std::string diff_impl(const Type& other) const = 0;
@@ -111,6 +113,7 @@ class Type {
   std::map<std::string, TypeSpec> m_states;
   MethodInfo m_new_method_info;
   bool m_new_method_info_defined = false;
+  bool m_generate_inspect = true;
 
   std::string m_parent;  // the parent type (is empty for none and object)
   std::string m_name;
@@ -276,6 +279,7 @@ class StructureType : public ReferenceType {
   bool is_packed() const { return m_pack; }
   bool is_allowed_misalign() const { return m_allow_misalign; };
   void set_allow_misalign(bool misalign) { m_allow_misalign = misalign; }
+  void set_gen_inspect(bool gen_inspect) { m_generate_inspect = gen_inspect; }
 
  protected:
   friend class TypeSystem;
@@ -343,6 +347,7 @@ class BitFieldType : public ValueType {
   bool operator==(const Type& other) const override;
   const std::vector<BitField>& fields() const { return m_fields; }
   std::string diff_impl(const Type& other) const override;
+  void set_gen_inspect(bool gen_inspect) { m_generate_inspect = gen_inspect; }
 
  private:
   friend class TypeSystem;

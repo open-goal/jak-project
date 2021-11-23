@@ -322,15 +322,13 @@
   ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
   (case arg2 
    (('death-start)
-     (TODO-RENAME-9 (-> self fact) #t *entity-pool* (-> self fact) 0)
+     (drop-pickup (-> self fact) #t *entity-pool* (-> self fact) 0)
      )
    (('death-end)
-    (let ((v0-0 (logior (-> self draw status) 2)))
-     (set! (-> self draw status) v0-0)
-     v0-0
-     )
+    (logior! (-> self draw status) 2)
     )
    )
+  (none)
   )
 
 ;; failed to figure out what this is:
@@ -2278,7 +2276,7 @@ nav-enemy-default-event-handler
   :code
   (behavior ()
    (ja-channel-push! 1 22)
-   (dummy-48 (-> self collide-info))
+   (clear-collide-with-as (-> self collide-info))
    (nav-enemy-fall-and-play-death-anim
     (the-as
      art-joint-anim
@@ -2290,7 +2288,7 @@ nav-enemy-default-event-handler
     600
     )
    (send-event self 'death-end)
-   (if (logtest? (-> self enemy-info options) 2)
+   (if (logtest? (-> self enemy-info options) (fact-options fop1))
     (go-virtual nav-enemy-fuel-cell)
     )
    (while (-> self child)
@@ -2314,14 +2312,14 @@ nav-enemy-default-event-handler
   :code
   (behavior ()
    (ja-channel-set! 0)
-   (dummy-48 (-> self collide-info))
+   (clear-collide-with-as (-> self collide-info))
    (ja-post)
    (process-entity-status! self (entity-perm-status complete) #t)
    (when (not (task-complete? *game-info* (-> self entity extra perm task)))
     (label cfg-1)
     (birth-pickup-at-point
      (-> self collide-info trans)
-     6
+     (pickup-type fuel-cell)
      (the float (the-as int (-> self entity extra perm task)))
      #f
      self

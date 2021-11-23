@@ -5,3 +5,66 @@
 ;; name in dgo: collide-probe
 ;; dgos: GAME, ENGINE
 
+
+(defun
+  interpolate
+  ((arg0 float) (arg1 float) (arg2 float) (arg3 float) (arg4 float))
+  (let ((f0-1 (- arg3 arg1))
+        (f1-2 (- arg4 arg2))
+        (f3-1 (- arg0 arg1))
+        )
+   (+ arg2 (/ (* f3-1 f1-2) f0-1))
+   )
+  )
+
+(defun distc ((arg0 vector) (arg1 vector))
+  (let* ((f0-1 (- (-> arg0 x) (-> arg1 x)))
+         (f0-3 (* f0-1 f0-1))
+         (f1-2 (- (-> arg0 z) (-> arg1 z)))
+         )
+   (sqrtf (+ f0-3 (* f1-2 f1-2)))
+   )
+  )
+
+(defun misty-ambush-height ((arg0 vector))
+  (let* ((a1-0 (new 'static 'vector :x -808960.0 :y 111656.96 :z 3924992.0))
+         (f0-0 (distc arg0 a1-0))
+         )
+   (cond
+    ((< f0-0 52019.2)
+     111656.96
+     )
+    ((>= 58982.4 f0-0)
+     (interpolate f0-0 52019.2 111656.96 58982.4 116776.96)
+     )
+    ((>= 124436.48 f0-0)
+     (interpolate f0-0 58982.4 116776.96 124436.48 114688.0)
+     )
+    ((>= 219217.92 f0-0)
+     (interpolate f0-0 124436.48 114688.0 219217.92 113254.4)
+     )
+    (else
+     113254.4
+     )
+    )
+   )
+  )
+
+(defun misty-ambush-height-probe ((arg0 vector) (arg1 float))
+  (let ((f0-0 (misty-ambush-height arg0)))
+   (cond
+    ((< f0-0 (-> arg0 y))
+     (/ (- (-> arg0 y) f0-0) arg1)
+     )
+    (else
+     (format
+      0
+      "WARNING: ~%height = ~f, pos.y = ~f"
+      (* 0.00024414062 f0-0)
+      (* 0.00024414062 (-> arg0 y))
+      )
+     -1.0
+     )
+    )
+   )
+  )

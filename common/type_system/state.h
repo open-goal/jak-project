@@ -21,3 +21,5 @@ std::optional<TypeSpec> get_state_type_from_enter_and_code(const TypeSpec& enter
                                                            const TypeSpec& code_func_type,
                                                            const TypeSpec& proc_type,
                                                            const TypeSystem& ts);
+std::optional<TypeSpec> get_state_type_from_func(const TypeSpec& func_type,
+                                                 const TypeSpec& proc_type);

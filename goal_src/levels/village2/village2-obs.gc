@@ -218,13 +218,13 @@
   :enter
   (behavior ()
    (logior! (-> self draw status) 2)
-   (dummy-48 (-> self root-overlay))
+   (clear-collide-with-as (-> self root-overlay))
    (none)
    )
   :exit
   (behavior ()
    (set! (-> self draw status) (logand -3 (-> self draw status)))
-   (dummy-49 (-> self root-overlay))
+   (restore-collide-with-as (-> self root-overlay))
    (none)
    )
   :trans
@@ -436,7 +436,13 @@
     )
    (set! (-> s5-0 dynam) (copy *standard-dynamics* 'process))
    (set! (-> s5-0 reaction) default-collision-reaction)
-   (set! (-> s5-0 no-reaction) nothing)
+   (set!
+    (-> s5-0 no-reaction)
+    (the-as
+     (function collide-shape-moving collide-shape-intersect vector vector none)
+     nothing
+     )
+    )
    (dummy-29 s5-0 1)
    (let
     ((s4-0
@@ -455,10 +461,10 @@
     (set! (-> s4-0 prim-core offense) 4)
     (set! (-> s4-0 transform-index) 0)
     (set-vector! (-> s4-0 local-sphere) 0.0 0.0 0.0 18432.0)
+    (set-root-prim! s5-0 s4-0)
     )
-   (dummy-46 s5-0)
    (set! (-> s5-0 nav-radius) (* 0.75 (-> s5-0 root-prim local-sphere w)))
-   (dummy-50 s5-0)
+   (backup-collide-with-as s5-0)
    (set! (-> obj root-overlay) s5-0)
    )
   0
@@ -508,7 +514,13 @@
     )
    (set! (-> s5-0 dynam) (copy *standard-dynamics* 'process))
    (set! (-> s5-0 reaction) default-collision-reaction)
-   (set! (-> s5-0 no-reaction) nothing)
+   (set!
+    (-> s5-0 no-reaction)
+    (the-as
+     (function collide-shape-moving collide-shape-intersect vector vector none)
+     nothing
+     )
+    )
    (dummy-29 s5-0 1)
    (let
     ((s4-0
@@ -527,10 +539,10 @@
     (set! (-> s4-0 prim-core offense) 4)
     (set! (-> s4-0 transform-index) 0)
     (set-vector! (-> s4-0 local-sphere) 0.0 0.0 0.0 25395.2)
+    (set-root-prim! s5-0 s4-0)
     )
-   (dummy-46 s5-0)
    (set! (-> s5-0 nav-radius) (* 0.75 (-> s5-0 root-prim local-sphere w)))
-   (dummy-50 s5-0)
+   (backup-collide-with-as s5-0)
    (set! (-> obj root-overlay) s5-0)
    )
   0
@@ -1149,7 +1161,7 @@
     (set! (-> s3-0 prim-core action) (the-as uint 1))
     (set! (-> s3-0 prim-core offense) 4)
     (set-vector! (-> s3-0 local-sphere) -24576.0 18432.0 0.0 49152.0)
-    (dummy-46 s4-0)
+    (set-root-prim! s4-0 s3-0)
     (let
      ((s2-0
        (new
@@ -1167,8 +1179,8 @@
      (set! (-> s2-0 prim-core offense) 4)
      (set! (-> s2-0 transform-index) 4)
      (set-vector! (-> s2-0 local-sphere) 0.0 0.0 0.0 24576.0)
+     (append-prim s3-0 s2-0)
      )
-    (dummy-28 s3-0)
     (let
      ((s2-1
        (new
@@ -1186,11 +1198,11 @@
      (set! (-> s2-1 prim-core offense) 4)
      (set! (-> s2-1 transform-index) 4)
      (set-vector! (-> s2-1 local-sphere) 0.0 0.0 -24576.0 49152.0)
+     (append-prim s3-0 s2-1)
      )
-    (dummy-28 s3-0)
     )
    (set! (-> s4-0 nav-radius) (* 0.75 (-> s4-0 root-prim local-sphere w)))
-   (dummy-50 s4-0)
+   (backup-collide-with-as s4-0)
    (set! (-> obj root-override) s4-0)
    )
   (process-drawable-from-entity! obj arg0)
@@ -1370,7 +1382,16 @@
      (set! (-> a0-3 quad) (-> self root trans quad))
      (set! (-> a0-3 y) (+ 67584.0 (-> a0-3 y)))
      (let
-      ((v1-12 (birth-pickup-at-point a0-3 6 47.0 #f self (the-as fact-info #f)))
+      ((v1-12
+        (birth-pickup-at-point
+         a0-3
+         (pickup-type fuel-cell)
+         47.0
+         #f
+         self
+         (the-as fact-info #f)
+         )
+        )
        )
       (set! (-> self fcell-handle) (ppointer->handle v1-12))
       (send-event (ppointer->process v1-12) 'collide-shape #f)
@@ -2577,18 +2598,18 @@
     (set! (-> s3-0 collide-with) (the-as uint 16))
     (set! (-> s3-0 prim-core action) (the-as uint 1))
     (set-vector! (-> s3-0 local-sphere) 0.0 40960.0 0.0 40960.0)
-    (dummy-46 s4-0)
+    (set-root-prim! s4-0 s3-0)
     (let ((s2-0 (new 'process 'collide-shape-prim-sphere s4-0 (the-as uint 3))))
      (set! (-> s2-0 prim-core collide-as) (the-as uint 256))
      (set! (-> s2-0 collide-with) (the-as uint 16))
      (set! (-> s2-0 prim-core action) (the-as uint 1))
      (set! (-> s2-0 prim-core offense) 1)
      (set-vector! (-> s2-0 local-sphere) 0.0 34816.0 0.0 14336.0)
+     (append-prim s3-0 s2-0)
      )
-    (dummy-28 s3-0)
     )
    (set! (-> s4-0 nav-radius) (* 0.75 (-> s4-0 root-prim local-sphere w)))
-   (dummy-50 s4-0)
+   (backup-collide-with-as s4-0)
    (set! (-> obj root) s4-0)
    )
   (process-drawable-from-entity! obj arg0)

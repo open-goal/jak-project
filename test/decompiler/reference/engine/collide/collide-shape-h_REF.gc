@@ -3,10 +3,10 @@
 
 ;; definition of type collide-sticky-rider
 (deftype collide-sticky-rider (structure)
-  ((rider-handle    handle         :offset-assert   0)
-   (sticky-prim     basic          :offset-assert   8)
-   (prim-ry         float          :offset-assert  12)
-   (rider-local-pos vector :inline :offset-assert  16)
+  ((rider-handle    handle                     :offset-assert   0)
+   (sticky-prim     collide-shape-prim         :offset-assert   8)
+   (prim-ry         float                      :offset-assert  12)
+   (rider-local-pos vector             :inline :offset-assert  16)
    )
   :method-count-assert 10
   :size-assert         #x20
@@ -47,7 +47,7 @@
   :flag-assert         #xb00000030
   (:methods
     (new (symbol type int) _type_ 0)
-    (dummy-9 () none 9)
+    (add-rider! (_type_ process-drawable) collide-sticky-rider 9)
     (reset! (_type_) int 10)
     )
   )
@@ -70,7 +70,7 @@
 ;; definition of type pull-rider-info
 (deftype pull-rider-info (structure)
   ((rider          collide-sticky-rider         :offset-assert   0)
-   (rider-cshape   basic                        :offset-assert   4)
+   (rider-cshape   collide-shape-prim           :offset-assert   4)
    (rider-delta-ry float                        :offset-assert   8)
    (rider-dest     vector               :inline :offset-assert  16)
    )
@@ -101,7 +101,7 @@
   :size-assert         #x8c
   :flag-assert         #xa0000008c
   (:methods
-    (dummy-9 () none 9)
+    (init! (_type_ vector) symbol 9)
     )
   )
 
@@ -223,7 +223,7 @@
 
 ;; definition of type collide-shape-prim
 (deftype collide-shape-prim (basic)
-  ((cshape          basic                     :offset-assert   4)
+  ((cshape          collide-shape             :offset-assert   4)
    (prim-id         uint32                    :offset-assert   8)
    (transform-index int8                      :offset-assert  12)
    (prim-core       collide-prim-core :inline :offset-assert  16)
@@ -240,26 +240,26 @@
   :size-assert         #x48
   :flag-assert         #x1c00000048
   (:methods
-    (new (symbol type basic uint int) _type_ 0)
-    (dummy-9 () none 9)
+    (new (symbol type collide-shape uint int) _type_ 0)
+    (dummy-9 (_type_ vector) object 9)
     (dummy-10 (_type_ uint) collide-shape-prim 10)
-    (dummy-11 () none 11)
-    (add-fg-prim-using-box (_type_) none 12)
-    (add-fg-prim-using-line-sphere (_type_) none 13)
-    (add-fg-prim-using-y-probe (_type_) none 14)
-    (dummy-15 () none 15)
+    (debug-draw-world-sphere (_type_) symbol 11)
+    (add-fg-prim-using-box (_type_ process-drawable) none 12)
+    (add-fg-prim-using-line-sphere (_type_ process-drawable) none 13)
+    (add-fg-prim-using-y-probe (_type_ process-drawable) none 14)
+    (overlaps-others-test (_type_) symbol 15)
     (dummy-16 () none 16)
     (dummy-17 () none 17)
-    (dummy-18 () none 18)
-    (dummy-19 () none 19)
-    (dummy-20 () none 20)
-    (dummy-21 () none 21)
-    (dummy-22 () none 22)
-    (dummy-23 () none 23)
+    (collide-with-collide-cache-prim-mesh (_type_ collide-shape-intersect collide-cache-prim) none 18)
+    (collide-with-collide-cache-prim-sphere (_type_ collide-shape-intersect collide-cache-prim) none 19)
+    (dummy-20 (_type_ uint) symbol 20)
+    (num-mesh (_type_ collide-shape-prim) int 21)
+    (on-platform-test (_type_ _type_ collide-overlap-result float) pat-surface 22)
+    (should-push-away-test () none 23)
     (dummy-24 () none 24)
-    (dummy-25 () none 25)
-    (dummy-26 () none 26)
-    (dummy-27 () none 27)
+    (dummy-25 (_type_ process-drawable) symbol 25)
+    (set-collide-as! (_type_ handle) none 26)
+    (set-collide-with! (_type_ handle) none 27)
     )
   )
 
@@ -289,7 +289,7 @@
   :size-assert         #x4c
   :flag-assert         #x1c0000004c
   (:methods
-    (new (symbol type basic uint) _type_ 0)
+    (new (symbol type collide-shape uint) _type_ 0)
     )
   )
 
@@ -323,8 +323,8 @@
   :size-assert         #x5c
   :flag-assert         #x1d0000005c
   (:methods
-    (new (symbol type basic uint uint) _type_ 0)
-    (dummy-28 (_type_ int) none 28)
+    (new (symbol type collide-shape uint uint) _type_ 0)
+    (change-mesh (_type_ int) none 28)
     )
   )
 
@@ -361,9 +361,9 @@
   :size-assert         #x54
   :flag-assert         #x1e00000054
   (:methods
-    (new (symbol type basic uint int) _type_ 0)
-    (dummy-28 (_type_) none 28)
-    (dummy-29 () none 29)
+    (new (symbol type collide-shape uint int) _type_ 0)
+    (append-prim (_type_ collide-shape-prim) none 28)
+    (dummy-29 (_type_ uint) none 29)
     )
   )
 
@@ -390,7 +390,7 @@
 
 ;; definition of type collide-shape
 (deftype collide-shape (trsqv)
-  ((process             process                      :offset-assert 140)
+  ((process             process-drawable             :offset-assert 140)
    (max-iteration-count uint8                        :offset-assert 144)
    (nav-flags           uint8                        :offset-assert 145)
    (pad-byte            uint8                      2 :offset-assert 146)
@@ -406,35 +406,35 @@
   :size-assert         #xb8
   :flag-assert         #x38000000b8
   (:methods
-    (new (symbol type process collide-list-enum) _type_ 0)
-    (TODO-RENAME-28 (_type_) none 28)
+    (new (symbol type process-drawable collide-list-enum) _type_ 0)
+    (TODO-RENAME-28 (_type_ vector) none 28)
     (dummy-29 (_type_ int) none 29)
     (TODO-RENAME-30 (_type_ vector) none 30)
-    (dummy-31 () none 31)
-    (dummy-32 (_type_ float uint) none 32)
+    (dummy-31 (_type_) none 31)
+    (dummy-32 (_type_ object uint) none 32)
     (dummy-33 (_type_ vector uint) none 33)
     (dummy-34 (_type_ uint) collide-shape-prim 34)
-    (dummy-35 (_type_) none 35)
-    (dummy-36 () none 36)
+    (dummy-35 (_type_) symbol 35)
+    (dummy-36 (_type_ bounding-box float uint) symbol 36)
     (dummy-37 (_type_ vector) none 37)
-    (dummy-38 () none 38)
-    (dummy-39 () none 39)
+    (find-collision-meshes (_type_) symbol 38)
+    (dummy-39 (_type_ collide-shape collide-overlap-result) symbol 39)
     (dummy-40 (_type_ structure) none 40)
-    (dummy-41 (_type_ attack-info float) none 41)
-    (dummy-42 () none 42)
-    (dummy-43 () none 43)
-    (dummy-44 (_type_) none 44)
-    (dummy-45 (_type_) none 45)
-    (dummy-46 (_type_) none 46)
-    (dummy-47 (_type_) none 47)
-    (dummy-48 (_type_) none 48)
-    (dummy-49 (_type_) none 49)
-    (dummy-50 (_type_) none 50)
-    (dummy-51 () none 51)
-    (dummy-52 () none 52)
+    (dummy-41 (_type_ attack-info float) vector 41)
+    (dummy-42 (_type_ collide-shape collide-work) none 42)
+    (dummy-43 (_type_ pull-rider-info) none 43)
+    (dummy-44 (_type_) symbol 44)
+    (dummy-45 (_type_) symbol 45)
+    (set-root-prim! (_type_ collide-shape-prim) collide-shape-prim 46)
+    (dummy-47 (_type_) symbol 47)
+    (clear-collide-with-as (_type_) none 48)
+    (restore-collide-with-as (_type_) none 49)
+    (backup-collide-with-as (_type_) none 50)
+    (set-root-prim-collide-with! (_type_ handle) none 51)
+    (set-root-prim-collide-as! (_type_ handle) none 52)
     (dummy-53 (_type_ int int int) none 53)
     (dummy-54 (_type_ int int) none 54)
-    (dummy-55 (_type_ process uint float float float) none 55)
+    (dummy-55 (_type_ process touching-shapes-entry float float float) none 55)
     )
   )
 
@@ -473,31 +473,31 @@
 
 ;; definition of type collide-shape-moving
 (deftype collide-shape-moving (collide-shape)
-  ((rider-time         uint64                :offset-assert 184)
-   (rider-last-move    vector      :inline   :offset-assert 192)
-   (trans-old          vector      3 :inline :offset-assert 208)
-   (poly-pat           pat-surface           :offset-assert 256)
-   (cur-pat            pat-surface           :offset-assert 260)
-   (ground-pat         pat-surface           :offset-assert 264)
-   (status             uint64                :offset-assert 272)
-   (old-status         uint64                :offset-assert 280)
-   (prev-status        uint64                :offset-assert 288)
-   (reaction-flag      uint32                :offset-assert 296)
-   (reaction           function              :offset-assert 300)
-   (no-reaction        function              :offset-assert 304)
-   (local-normal       vector      :inline   :offset-assert 320)
-   (surface-normal     vector      :inline   :offset-assert 336)
-   (poly-normal        vector      :inline   :offset-assert 352)
-   (ground-poly-normal vector      :inline   :offset-assert 368)
-   (ground-touch-point vector      :inline   :offset-assert 384)
-   (shadow-pos         vector      :inline   :offset-assert 400)
-   (ground-impact-vel  meters                :offset-assert 416)
-   (surface-angle      float                 :offset-assert 420)
-   (poly-angle         float                 :offset-assert 424)
-   (touch-angle        float                 :offset-assert 428)
-   (coverage           float                 :offset-assert 432)
-   (dynam              dynamics              :offset-assert 436)
-   (surf               surface               :offset-assert 440)
+  ((rider-time         uint64                                                                               :offset-assert 184)
+   (rider-last-move    vector                                                                     :inline   :offset-assert 192)
+   (trans-old          vector                                                                     3 :inline :offset-assert 208)
+   (poly-pat           pat-surface                                                                          :offset-assert 256)
+   (cur-pat            pat-surface                                                                          :offset-assert 260)
+   (ground-pat         pat-surface                                                                          :offset-assert 264)
+   (status             uint64                                                                               :offset-assert 272)
+   (old-status         uint64                                                                               :offset-assert 280)
+   (prev-status        uint64                                                                               :offset-assert 288)
+   (reaction-flag      uint32                                                                               :offset-assert 296)
+   (reaction           (function collide-shape-moving collide-shape-intersect vector vector none)           :offset-assert 300)
+   (no-reaction        (function collide-shape-moving collide-shape-intersect vector vector none)           :offset-assert 304)
+   (local-normal       vector                                                                     :inline   :offset-assert 320)
+   (surface-normal     vector                                                                     :inline   :offset-assert 336)
+   (poly-normal        vector                                                                     :inline   :offset-assert 352)
+   (ground-poly-normal vector                                                                     :inline   :offset-assert 368)
+   (ground-touch-point vector                                                                     :inline   :offset-assert 384)
+   (shadow-pos         vector                                                                     :inline   :offset-assert 400)
+   (ground-impact-vel  meters                                                                               :offset-assert 416)
+   (surface-angle      float                                                                                :offset-assert 420)
+   (poly-angle         float                                                                                :offset-assert 424)
+   (touch-angle        float                                                                                :offset-assert 428)
+   (coverage           float                                                                                :offset-assert 432)
+   (dynam              dynamics                                                                             :offset-assert 436)
+   (surf               surface                                                                              :offset-assert 440)
    )
   :method-count-assert 65
   :size-assert         #x1bc
@@ -505,13 +505,13 @@
   (:methods
     (dummy-56 (_type_ pat-surface) none 56)
     (dummy-57 (_type_ vector) none 57)
-    (dummy-58 (_type_ vector) none 58)
+    (dummy-58 (_type_ vector) symbol 58)
     (dummy-59 (_type_ vector uint float symbol symbol symbol) none 59)
-    (dummy-60 (_type_ float float symbol uint) none 60)
+    (dummy-60 (_type_ float float symbol uint) symbol 60)
     (TODO-RENAME-61 (_type_ vector vector vector) none 61)
     (dummy-62 (_type_ vector float) vector 62)
-    (dummy-63 () none 63)
-    (dummy-64 () none 64)
+    (dummy-63 (_type_ vector vector float) float 63)
+    (dummy-64 (_type_ collide-tri-result vector) none 64)
     )
   )
 
@@ -579,7 +579,7 @@
   collide-shape-prim
   ((allocation symbol)
    (type-to-make type)
-   (cshape basic)
+   (cshape collide-shape)
    (prim-id uint)
    (size-bytes int)
    )
@@ -601,7 +601,11 @@
 (defmethod
   new
   collide-shape-prim-sphere
-  ((allocation symbol) (type-to-make type) (cshape basic) (prim-id uint))
+  ((allocation symbol)
+   (type-to-make type)
+   (cshape collide-shape)
+   (prim-id uint)
+   )
   (let
    ((obj
      (the-as
@@ -629,7 +633,7 @@
   collide-shape-prim-mesh
   ((allocation symbol)
    (type-to-make type)
-   (cshape basic)
+   (cshape collide-shape)
    (mesh-id uint)
    (prim-id uint)
    )
@@ -662,7 +666,7 @@
   collide-shape-prim-group
   ((allocation symbol)
    (type-to-make type)
-   (cshape basic)
+   (cshape collide-shape)
    (elt-count uint)
    (prim-id int)
    )
@@ -709,7 +713,7 @@
   collide-shape
   ((allocation symbol)
    (type-to-make type)
-   (proc process)
+   (proc process-drawable)
    (collide-list-kind collide-list-enum)
    )
   (let
