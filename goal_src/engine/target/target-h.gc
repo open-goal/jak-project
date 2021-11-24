@@ -11,35 +11,47 @@
 (defun-extern start symbol continue-point target)
 ;; TODO - for mood
 (define-extern target-joint-pos (function vector)) ;; TODO - unconfirmed
-;; TODO - for target-util
-(define-extern target-falling (state symbol none))
-(define-extern target-slide-down (state none))
 ;; TODO - for logic-target - defined in shadow
 (define-extern do-target-shadow (function none :behavior target))
 ;; TODO - for logic-target - defined in powerups
 (define-extern target-powerup-process (function none :behavior target))
 ;; TODO - for logic-target - defined in target-handler
-(define-extern target-exit (function none))
-(define-extern target-generic-event-handler (function process int symbol event-message-block object))
+(define-extern target-exit (function none :behavior target))
+(define-extern target-generic-event-handler (function process int symbol event-message-block object :behavior target))
 ;; TODO - for logic-target - defined in sidekick
-(define-extern init-sidekick (function none)) ;; TODO - not finished
+(declare-type sidekick process-drawable)
+(define-extern init-sidekick (function none :behavior sidekick))
 ;; TODO - for logic-target - defined in target-death
-(define-extern target-continue (state continue-point none))
-(define-extern target-periscope (state target))
+(define-extern target-continue (state continue-point target))
+(define-extern target-periscope (state handle target)) ;; unknown type
 (define-extern mod-var-jump (function symbol symbol symbol vector vector :behavior target))
 (define-extern init-var-jump (function float float vector vector vector vector :behavior target)) ;; 1st and 2nd vectors may be symbols instead?
-(define-extern target-standard-event-handler function)
+;; TODO - for target-util
+(define-extern target-falling (state symbol target))
+(define-extern target-slide-down (state target))
+;; TODO - for target-tube
+(define-extern target-attacked (function symbol attack-info process process (state handle attack-info target) object :behavior target)) ;; unconfirmed, target-tube::(event target-tube-start)
+;; TODO - for racer-states
+(define-extern racer-collision-reaction (function control-info collide-shape-intersect vector vector none))
+;; TODO -for target2
+(define-extern target-falling-anim-trans (function none :behavior target)) ;; unconfirmed
 
-(declare-type sidekick basic)
 (declare-type collide-cache basic)
 (declare-type snowball-info basic)
 (declare-type tube-info basic)
 (declare-type racer-info basic)
+(declare-type flut-info basic)
+(declare-type target process-drawable)
+(defun-extern start symbol continue-point target)
+
+;; NOTE - for logic-target - defined in sidekick
+(declare-type sidekick process-drawable)
 
 ;; DECOMP BEGINS
 
 (deftype target (process-drawable)
-  ((control             control-info                             :offset        112)
+  ((self-override       target                                   :offset         28)
+   (control             control-info                             :offset        112)
    (fact-info-target    fact-info-target                         :offset        144)
    (skel2               basic                                    :offset-assert 176)
    (racer               racer-info                               :offset-assert 180)
@@ -56,12 +68,12 @@
    (alt-cam-pos         vector                           :inline :offset-assert 448)
    (snowball            snowball-info                            :offset-assert 464)
    (tube                tube-info                                :offset-assert 468)
-   (flut                basic                                    :offset-assert 472)
+   (flut                flut-info                                :offset-assert 472)
    (current-level       level                                    :offset-assert 476)
    (saved-pos           transformq                       :inline :offset-assert 480)
    (saved-owner         uint64                                   :offset-assert 528)
    (alt-neck-pos        vector                           :inline :offset-assert 544)
-   (fp-hud              uint64                                   :offset-assert 560)
+   (fp-hud              handle                                   :offset-assert 560)
    (no-load-wait        uint64                                   :offset-assert 568)
    (no-look-around-wait uint64                                   :offset-assert 576)
    )
@@ -73,8 +85,8 @@
     (dummy-20 (_type_ collide-cache) object 20)
     )
   (:states
-    target-clone-anim
-    target-death
+    (target-clone-anim handle)
+    (target-death symbol)
     (target-hit-ground symbol)
     (target-racing-bounce float float symbol)
     (target-racing-clone-anim handle)
@@ -94,9 +106,10 @@
 (define-perm *target* target #f)
 
 (deftype sidekick (process-drawable)
-  ((control          control-info  :offset        112)
-   (anim-seed        uint64        :offset        192)
-   (shadow-in-movie? symbol        :offset-assert 200)
+  ((parent-override  (pointer target)  :offset         12)
+   (control          control-info      :offset        112)
+   (anim-seed        uint64            :offset        192)
+   (shadow-in-movie? symbol            :offset-assert 200)
    )
   :heap-base #x60
   :method-count-assert 20
@@ -106,4 +119,9 @@
 
 
 (define-perm *sidekick* sidekick #f)
-(define-extern target-attacked (function symbol uint uint process (state target) object :behavior target)) ;; unconfirmed, target-tube::(event target-tube-start)
+
+0
+
+
+
+

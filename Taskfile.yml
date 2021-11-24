@@ -77,18 +77,17 @@ tasks:
   type-test:
     cmds:
       - ./out/build/Release/bin/goalc-test.exe --gtest_brief=0 --gtest_filter="*MANUAL_TEST_TypeConsistencyWithBuildFirst*"
+  check-gsrc-file:
+    cmds:
+      - python ./scripts/check-gsrc-file.py --files "{{.FILES}}"
   update-gsrc:
     cmds:
       - python ./scripts/next-decomp-file.py --files "{{.FILES}}"
       - task: decomp
+      - task: find-label-types
       - python ./scripts/update-goal-src.py --files "{{.FILES}}"
       - task: type-test
-  # TODO - make a script that checks for function/method splits
-  file-good?:
-    cmds:
-      - task: type-test
-      - task: offline-tests
-      - task: find-label-types
+      - task: check-gsrc-file
   cast-repl:
     cmds:
       - cmd: python ./scripts/cast-repl.py

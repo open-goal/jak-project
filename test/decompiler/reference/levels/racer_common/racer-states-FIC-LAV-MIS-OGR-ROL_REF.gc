@@ -63,10 +63,10 @@
           )
          (target-attacked
           arg2
-          (-> arg3 param 1)
-          (the-as uint arg0)
+          (the-as attack-info (-> arg3 param 1))
+          arg0
           (the-as process (-> arg3 param 0))
-          (the-as (state target) target-racing-hit)
+          target-racing-hit
           )
          )
         )
@@ -269,13 +269,7 @@
      )
     )
    (set! (-> self control surf) *race-track-surface*)
-   (set!
-    (-> self control reaction)
-    (the-as
-     (function collide-shape-moving collide-shape-intersect vector vector none)
-     racer-collision-reaction
-     )
-    )
+   (set! (-> self control reaction) racer-collision-reaction)
    (vector-reset! (-> self racer rot))
    (set! (-> self racer rot y) (y-angle (-> self control)))
    (target-collide-set! 'racer 0.0)
@@ -1573,10 +1567,7 @@
 ;; failed to figure out what this is:
 (defstate target-racing-hit (target)
   :event
-  (the-as
-   (function process int symbol event-message-block object :behavior target)
-   target-generic-event-handler
-   )
+  target-generic-event-handler
   :enter
   (behavior ((arg0 handle) (arg1 attack-info))
    (let ((v1-0 (-> self attack-info)))
@@ -2219,10 +2210,7 @@
 ;; failed to figure out what this is:
 (defstate target-racing-get-on (target)
   :event
-  (the-as
-   (function process int symbol event-message-block object :behavior target)
-   target-generic-event-handler
-   )
+  target-generic-event-handler
   :exit
   (-> target-racing-start exit)
   :code
@@ -2247,8 +2235,8 @@
       (-> self control unknown-quaternion00)
       )
      (set!
-      (-> self control unknown-float120)
-      (-> self control unknown-vector11 y)
+      (-> self control unknown-uint20)
+      (the-as uint (-> self control unknown-vector11 y))
       )
      (let* ((s3-0 (handle->process arg0))
             (s4-1
@@ -2271,7 +2259,7 @@
         )
        (set! (-> self racer bike-scale quad) (-> s4-1 root-override scale quad))
        (set!
-        (-> self control unknown-int20)
+        (-> self control unknown-int21)
         (the-as int (-> self racer bike-trans y))
         )
        )
@@ -2536,7 +2524,7 @@
     (set!
      (-> self control unknown-vector11 y)
      (lerp
-      (-> self control unknown-float120)
+      (the-as float (-> self control unknown-uint20))
       (-> self racer cushion-base)
       f30-1
       )
@@ -2544,8 +2532,8 @@
     (set!
      (-> self racer bike-trans y)
      (lerp
-      (-> self control unknown-float121)
-      (+ 4096.0 (-> self control unknown-float121))
+      (the-as float (-> self control unknown-uint30))
+      (+ 4096.0 (the-as float (-> self control unknown-uint30)))
       f30-1
       )
      )
@@ -2559,10 +2547,7 @@
 ;; failed to figure out what this is:
 (defstate target-racing-get-off (target)
   :event
-  (the-as
-   (function process int symbol event-message-block object :behavior target)
-   target-generic-event-handler
-   )
+  target-generic-event-handler
   :exit
   (-> target-racing-start exit)
   :code
@@ -2659,10 +2644,7 @@
 ;; failed to figure out what this is:
 (defstate target-racing-get-off-jump (target)
   :event
-  (the-as
-   (function process int symbol event-message-block object :behavior target)
-   target-generic-event-handler
-   )
+  target-generic-event-handler
   :exit
   (-> target-racing-start exit)
   :code
@@ -2691,8 +2673,8 @@
       (-> self control unknown-quaternion00)
       )
      (set!
-      (-> self control unknown-float120)
-      (-> self control unknown-vector11 y)
+      (-> self control unknown-uint20)
+      (the-as uint (-> self control unknown-vector11 y))
       )
      (let* ((s2-0 (handle->process arg0))
             (s3-0
@@ -2719,7 +2701,7 @@
         )
        (set! (-> self racer bike-scale quad) (-> s3-0 root-override scale quad))
        (set!
-        (-> self control unknown-int20)
+        (-> self control unknown-int21)
         (the-as int (-> self racer bike-trans y))
         )
        )
@@ -2927,7 +2909,11 @@
      )
     (set!
      (-> self control unknown-vector11 y)
-     (lerp (-> self control unknown-float120) 6144.0 (fmin 1.0 (* 2.0 f30-0)))
+     (lerp
+      (the-as float (-> self control unknown-uint20))
+      6144.0
+      (fmin 1.0 (* 2.0 f30-0))
+      )
      )
     )
    (vector+!
@@ -2949,10 +2935,7 @@
 ;; failed to figure out what this is:
 (defstate target-racing-get-off-hit-ground (target)
   :event
-  (the-as
-   (function process int symbol event-message-block object :behavior target)
-   target-standard-event-handler
-   )
+  target-standard-event-handler
   :enter
   (-> target-hit-ground enter)
   :trans
@@ -3130,7 +3113,7 @@
   :event
   (behavior ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
    (if (and (= arg2 'trans) (= (-> arg3 param 0) 'restore))
-    (set! (-> self control unknown-float120) (the-as float #f))
+    (set! (-> self control unknown-uint20) (the-as uint #f))
     )
    ((-> target-racing-grab event) arg0 arg1 arg2 arg3)
    )
@@ -3140,7 +3123,7 @@
   (behavior ()
    (set!
     (-> self control unknown-vector11 y)
-    (-> self control unknown-float120)
+    (the-as float (-> self control unknown-uint20))
     )
    (set!
     (-> self control unknown-vector12 y)
@@ -3155,8 +3138,8 @@
   :code
   (behavior ((arg0 handle))
    (set!
-    (-> self control unknown-float120)
-    (-> self control unknown-vector11 y)
+    (-> self control unknown-uint20)
+    (the-as uint (-> self control unknown-vector11 y))
     )
    (set! (-> self control unknown-vector11 y) 0.0)
    (send-event (ppointer->process (-> self sidekick)) 'matrix 'play-anim)
