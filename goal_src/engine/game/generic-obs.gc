@@ -1170,38 +1170,35 @@
    )
   )
 
+;; TODO modified!
 (defun ja-anim-done? ((arg0 process))
-  (with-pp
    (let ((gp-0 (command-get-process arg0 *target*)))
-    (the-as symbol (when gp-0
-                    (cond
-                     ((type-type? (-> gp-0 type) manipy)
-                      (send-event gp-0 'query 'done)
-                      )
-                     ((type-type? (-> gp-0 type) process-drawable)
-                      (when
-                       (zero?
-                        (logand
-                         (-> (the-as process-drawable gp-0) skel status)
-                         4
-                         )
-                        )
-                       (let ((s5-0 pp))
-                        (let ((s6-1 gp-0))
-                         )
-                        (let ((v0-1 (the-as object (ja-done? 0))))
-                         (let ((s6-2 s5-0))
-                          )
-                         v0-1
-                         )
-                        )
-                       )
-                      )
-                     )
-                    )
+    (when gp-0
+      (cond
+       ((type-type? (-> gp-0 type) manipy)
+        (the-as symbol (send-event gp-0 'query 'done))
+        )
+       ((type-type? (-> gp-0 type) process-drawable)
+        (when (zero? (logand (-> (the-as process-drawable gp-0) skel status) 4))
+
+          (rlet ((pp :reg r13 :type process))
+              (let* ((old-pp pp)
+                     (ret-val (begin
+                                ;; set the process
+                                (set! pp gp-0)
+                                ;; run!
+                                (ja-done? 0)
+                                )))
+                ;; restore the old pp
+                (set! pp old-pp)
+                ret-val
+                )
+              )
+          )
+        )
+       )
+      )
      )
-    )
-   )
   )
 
 (defbehavior camera-pov-from camera-tracker ((arg0 pair) (arg1 uint))
