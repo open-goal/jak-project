@@ -544,17 +544,22 @@
       ;; blerc
       ;; texscroll
       ;; ripple
-      ;; music pick
-      ;; sound/flava
+      (set! *weather-off* #f)
+      ;; music
+      (set! (-> *setting-control* default sound-flava) (the-as uint 49))
+      (set! (-> *setting-control* default sound-flava-priority) 0.0)
       ;; do ambients
 
-      ;; math engine.
-
+      (add-ee-profile-frame 'draw :r #x40 :b #x40)
+      (execute-math-engine)
       ;; DEBUG PROF
+      (add-ee-profile-frame 'draw :r #x80)
       (add-ee-profile-frame 'draw :r #x40 :b #x40)
       ;; debug hook
       (main-cheats)
+      (add-ee-profile-frame 'draw :r #x20 :g #x20)
       (update-camera)
+      (add-ee-profile-frame 'draw :r #x40 :b #x40)
       (*draw-hook*)
       (add-ee-profile-frame 'draw :g #x80)
 
@@ -654,9 +659,16 @@
               )
 
             ;; added
-            ; (format *stdcon* "~3Lglobal heap at ~,,2fK remaining~0L~%"
-            ;                   (* (1/ 1024) (&- (-> global top) (-> global current))))
-            (format *stdcon* "~3Lglob: ~d free debug: ~d free~0L~%"
+            (let (
+                  (remain (&- (-> global top) (-> global current)))
+                  (total (&- (-> global top) (-> global base)))
+                  )
+                (format *stdcon* "~3Lglobal heap ~,,2fK/~,,2fK (~,,2f%) remain~0L~%"
+                                  (* (1/ 1024) remain) (* (1/ 1024) total)
+                                  (* 100.0 (/ (the float remain) (the float total)))
+                                  )
+                )
+            (format *stdcon* "~3LDMA global: ~d debug: ~d~0L~%"
                     (dma-buffer-free (-> disp frames (-> disp on-screen) frame global-buf))
                     (dma-buffer-free (-> disp frames (-> disp on-screen) frame debug-buf))
                     )

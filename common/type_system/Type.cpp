@@ -226,6 +226,7 @@ bool Type::common_type_info_equal(const Type& other) const {
          m_allow_in_runtime == other.m_allow_in_runtime &&
          m_runtime_name == other.m_runtime_name &&
          m_is_boxed == other.m_is_boxed &&
+         m_generate_inspect == other.m_generate_inspect &&
          m_heap_base == other.m_heap_base;
   // clang-format on
 }
@@ -291,6 +292,10 @@ std::string Type::common_type_info_diff(const Type& other) const {
   }
   if (m_heap_base != other.m_heap_base) {
     result += fmt::format("heap_base: {} vs. {}\n", m_heap_base, other.m_heap_base);
+  }
+  if (m_generate_inspect != other.m_generate_inspect) {
+    result +=
+        fmt::format("generate_inspect: {} vs. {}\n", m_generate_inspect, other.m_generate_inspect);
   }
   return result;
 }

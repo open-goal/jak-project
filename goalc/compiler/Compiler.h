@@ -396,6 +396,15 @@ class Compiler {
     }
   }
 
+  void compile_state_handler_set(StructureType* state_type_info,
+                                 RegVal* state_object,
+                                 const std::string& name,
+                                 goos::Arguments& args,
+                                 const goos::Object& form,
+                                 Env* env,
+                                 Val*& code_val,
+                                 Val*& enter_val);
+
  public:
   // Asm
   Val* compile_rlet(const goos::Object& form, const goos::Object& rest, Env* env);

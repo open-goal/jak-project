@@ -15,6 +15,7 @@
 ;; In many cases, "draw" simply adds data to a buffer that must later be converted to dma in finish-background
 ;; or similar.
 
+(declare-type drawable-error drawable)
 (deftype drawable (basic)
   ((id      int16          :offset-assert 4)  ;; ID number (not always used)
    (bsphere vector :inline :offset-assert 16) ;; bounding sphere
@@ -24,7 +25,7 @@
   :flag-assert         #x1200000020
   (:methods
     (login (_type_) _type_ 9)
-    (draw (_type_ drawable display-frame) none 10)
+    (draw (_type_ drawable display-frame) none 10) ;; display-frame is from the method inspect tool
     (collide-with-box (_type_ int collide-list) none 11)
     (collide-y-probe (_type_ int collide-list) none 12)
     (collide-ray (_type_ int collide-list) none 13)
@@ -39,7 +40,7 @@
 
 ;; A drawable that simply draws a sphere and an error message at the origin of the bounding sphere.
 (deftype drawable-error (drawable)
-  ((name    basic          :offset-assert 32)
+  ((name    string          :offset-assert 32)
    )
   :method-count-assert 18
   :size-assert         #x24
