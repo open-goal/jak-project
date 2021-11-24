@@ -20,7 +20,7 @@
   :flag-assert         #x1600e00150
   (:methods
     (dummy-20 (_type_) none 20)
-    (draw-shadow (_type_) symbol 21)
+    (draw-egg-shadow (_type_ vector symbol) symbol 21)
     )
   )
 
@@ -219,7 +219,10 @@
 
 ;; definition for method 21 of type mother-spider-egg
 ;; Used lq/sq
-(defmethod draw-shadow mother-spider-egg ((obj mother-spider-egg))
+(defmethod
+  draw-egg-shadow
+  mother-spider-egg
+  ((obj mother-spider-egg) (arg0 vector) (arg1 symbol))
   (cond
    ((and
      (-> obj draw shadow)
@@ -227,14 +230,14 @@
      (logtest? (-> obj draw status) 8)
      )
     (let ((s5-0 (new 'stack-no-clear 'collide-mesh-cache-tri))
-          (a1-0 (new 'stack-no-clear 'vector))
-          (a2-0 (new 'stack-no-clear 'vector))
+          (a1-1 (new 'stack-no-clear 'vector))
+          (a2-1 (new 'stack-no-clear 'vector))
           )
-     (set! (-> a1-0 quad) (-> obj root-override trans quad))
-     (set! (-> a1-0 y) (+ 1228.8 (-> a1-0 y)))
-     (set-vector! a2-0 0.0 -61440.0 0.0 1.0)
+     (set! (-> a1-1 quad) (-> obj root-override trans quad))
+     (set! (-> a1-1 y) (+ 1228.8 (-> a1-1 y)))
+     (set-vector! a2-1 0.0 -61440.0 0.0 1.0)
      (cond
-      ((>= (dummy-10 *collide-cache* a1-0 a2-0 7372.8 1 obj s5-0 1) 0.0)
+      ((>= (dummy-10 *collide-cache* a1-1 a2-1 7372.8 1 obj s5-0 1) 0.0)
        (let ((v1-11 (-> obj draw shadow-ctrl)))
         (set! (-> v1-11 settings flags) (logand -33 (-> v1-11 settings flags)))
         )
@@ -324,13 +327,7 @@
      (go mother-spider-egg-on-ground)
      )
     )
-   (let* ((a0-5 self)
-          (t9-5 (method-of-object a0-5 draw-shadow))
-          )
-    (-> self shadow-pos)
-    #t
-    (t9-5 a0-5)
-    )
+   (draw-egg-shadow self (-> self shadow-pos) #t)
    (none)
    )
   :code
@@ -413,14 +410,8 @@
   :enter
   (behavior ()
    (set! (-> self state-time) (-> *display* base-frame-counter))
-   (let* ((a0-0 self)
-          (t9-0 (method-of-object a0-0 draw-shadow))
-          )
-    (-> self shadow-pos)
-    #t
-    (if (not (t9-0 a0-0))
-     (set! (-> self shadow-pos quad) (-> self fall-dest quad))
-     )
+   (if (not (draw-egg-shadow self (-> self shadow-pos) #t))
+    (set! (-> self shadow-pos quad) (-> self fall-dest quad))
     )
    (none)
    )
@@ -429,12 +420,7 @@
    (if (>= (- (-> *display* base-frame-counter) (-> self state-time)) 600)
     (go mother-spider-egg-hatch)
     )
-   (let* ((a0-1 self)
-          (t9-1 (method-of-object a0-1 draw-shadow))
-          )
-    (-> self shadow-pos)
-    (t9-1 a0-1)
-    )
+   (draw-egg-shadow self (-> self shadow-pos) #f)
    (none)
    )
   :code
