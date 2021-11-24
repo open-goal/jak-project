@@ -305,15 +305,13 @@
   ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
   (case arg2 
    (('death-start)
-     (TODO-RENAME-9 (-> self fact) #t *entity-pool* (-> self fact) 0)
+     (drop-pickup (-> self fact) #t *entity-pool* (-> self fact) 0)
      )
    (('death-end)
-    (let ((v0-0 (logior (-> self draw status) 2)))
-     (set! (-> self draw status) v0-0)
-     v0-0
-     )
+    (logior! (-> self draw status) 2)
     )
    )
+  (none)
   )
 
 nav-enemy-default-event-handler
@@ -526,7 +524,11 @@ nav-enemy-default-event-handler
    (set! (-> self nav travel quad) (-> gp-1 quad))
    )
   (vector-normalize! (-> self nav travel) 409600.0)
-  (dummy-24 (-> self nav) 204.8 #f)
+  (dummy-24
+   (-> self nav)
+   204.8
+   (the-as clip-travel-vector-to-mesh-return-info #f)
+   )
   (vector+!
    (-> self nav target-pos)
    (-> self collide-info trans)
@@ -2179,7 +2181,7 @@ nav-enemy-default-event-handler
   :code
   (behavior ()
    (ja-channel-push! 1 22)
-   (dummy-48 (-> self collide-info))
+   (clear-collide-with-as (-> self collide-info))
    (nav-enemy-fall-and-play-death-anim
     (the-as
      art-joint-anim
@@ -2191,7 +2193,7 @@ nav-enemy-default-event-handler
     600
     )
    (send-event self 'death-end)
-   (if (logtest? (-> self enemy-info options) 2)
+   (if (logtest? (-> self enemy-info options) (fact-options fop1))
     (go-virtual nav-enemy-fuel-cell)
     )
    (while (-> self child)
@@ -2214,14 +2216,14 @@ nav-enemy-default-event-handler
   :code
   (behavior ()
    (ja-channel-set! 0)
-   (dummy-48 (-> self collide-info))
+   (clear-collide-with-as (-> self collide-info))
    (ja-post)
    (process-entity-status! self (entity-perm-status complete) #t)
    (when (not (task-complete? *game-info* (-> self entity extra perm task)))
     (label cfg-1)
     (birth-pickup-at-point
      (-> self collide-info trans)
-     6
+     (pickup-type fuel-cell)
      (the float (the-as int (-> self entity extra perm task)))
      #f
      self
@@ -3019,7 +3021,7 @@ nav-enemy-default-event-handler
   (none)
   )
 
-(defmethod copy-defaults! nav-enemy ((obj nav-enemy) (arg0 res-lump))
+(defmethod init-from-entity! nav-enemy ((obj nav-enemy) (arg0 entity-actor))
   (initialize-collision obj)
   (process-drawable-from-entity! obj arg0)
   (TODO-RENAME-48 obj)

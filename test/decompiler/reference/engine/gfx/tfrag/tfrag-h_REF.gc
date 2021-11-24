@@ -21,8 +21,8 @@
 
 ;; definition of type tfragment-debug-data
 (deftype tfragment-debug-data (structure)
-  ((stats       tfragment-stats :inline :offset-assert   0)
-   (debug-lines basic                   :offset-assert  16)
+  ((stats       tfragment-stats      :inline :offset-assert   0)
+   (debug-lines (array vector-array)         :offset-assert  16)
    )
   :method-count-assert 9
   :size-assert         #x14
@@ -64,7 +64,7 @@
    (dma-level-0       uint32                        :offset         32)
    (dma-base          uint32                        :offset         36)
    (dma-level-1       uint32                        :offset         40)
-   (dma-qwc           uint32                      4 :offset         44)
+   (dma-qwc           uint8                       4 :offset         44)
    (shader            (inline-array adgif-shader)   :offset         48)
    (num-shaders       uint8                         :offset         52)
    (num-base-colors   uint8                         :offset         53)
@@ -135,7 +135,8 @@
 
 ;; definition of type drawable-tree-tfrag
 (deftype drawable-tree-tfrag (drawable-tree)
-  ((time-of-day-pal time-of-day-palette  :offset  12)
+  ((time-of-day-pal time-of-day-palette     :offset  12)
+   (arrays          drawable-inline-array 1 :offset  32)
    )
   :method-count-assert 18
   :size-assert         #x24
@@ -184,10 +185,10 @@
 
 ;; definition of type tfrag-dists
 (deftype tfrag-dists (structure)
-  ((data   uint32  16        :offset-assert   0)
-   (vector vector  4 :inline :offset          0)
-   (k0s    uint128 2         :offset          0)
-   (k1s    uint128 2         :offset         32)
+  ((data   uint32 16        :offset-assert   0)
+   (vector vector 4 :inline :offset          0)
+   (k0s    vector 2 :inline :offset          0)
+   (k1s    vector 2 :inline :offset         32)
    )
   :method-count-assert 9
   :size-assert         #x40
@@ -197,9 +198,9 @@
 ;; definition for method 3 of type tfrag-dists
 (defmethod inspect tfrag-dists ((obj tfrag-dists))
   (format #t "[~8x] ~A~%" obj 'tfrag-dists)
-  (format #t "~Tdata[16] @ #x~X~%" (-> obj data))
-  (format #t "~Tvector[4] @ #x~X~%" (-> obj data))
-  (format #t "~Tk0s[2] @ #x~X~%" (-> obj data))
+  (format #t "~Tdata[16] @ #x~X~%" (-> obj k0s))
+  (format #t "~Tvector[4] @ #x~X~%" (-> obj k0s))
+  (format #t "~Tk0s[2] @ #x~X~%" (-> obj k0s))
   (format #t "~Tk1s[2] @ #x~X~%" (-> obj k1s))
   obj
   )
@@ -210,9 +211,9 @@
    (vector      vector      14 :inline :offset   0)
    (fog         vector      :inline    :offset   0)
    (val         vector      :inline    :offset  16)
-   (strgif      qword       :inline    :offset  32)
-   (fangif      qword       :inline    :offset  48)
-   (adgif       qword       :inline    :offset  64)
+   (strgif      gs-gif-tag  :inline    :offset  32)
+   (fangif      gs-gif-tag  :inline    :offset  48)
+   (adgif       gs-gif-tag  :inline    :offset  64)
    (hvdf-offset vector      :inline    :offset  80)
    (hmge-scale  vector      :inline    :offset  96)
    (invh-scale  vector      :inline    :offset 112)
@@ -230,9 +231,9 @@
 ;; definition for method 3 of type tfrag-data
 (defmethod inspect tfrag-data ((obj tfrag-data))
   (format #t "[~8x] ~A~%" obj 'tfrag-data)
-  (format #t "~Tdata[56] @ #x~X~%" (-> obj data))
-  (format #t "~Tvector[14] @ #x~X~%" (-> obj data))
-  (format #t "~Tfog: #<vector @ #x~X>~%" (-> obj data))
+  (format #t "~Tdata[56] @ #x~X~%" (-> obj fog))
+  (format #t "~Tvector[14] @ #x~X~%" (-> obj fog))
+  (format #t "~Tfog: #<vector @ #x~X>~%" (-> obj fog))
   (format #t "~Tval: #<vector @ #x~X>~%" (-> obj val))
   (format #t "~Tstrgif: #<qword @ #x~X>~%" (-> obj strgif))
   (format #t "~Tfangif: #<qword @ #x~X>~%" (-> obj fangif))

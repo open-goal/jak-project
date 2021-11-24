@@ -10,7 +10,7 @@
 (define *dm-cam-mode-interpolation* (the-as debug-menu 0))
 
 ;; definition for function dm-cam-mode-func
-(defun dm-cam-mode-func ((arg0 uint) (arg1 int))
+(defun dm-cam-mode-func ((arg0 (state camera-slave)) (arg1 int))
   (if (and (= arg1 4) arg0)
    (send-event *camera* 'change-state arg0 *dm-cam-mode-interpolation*)
    )
@@ -454,7 +454,10 @@
 ;; definition for function dm-vu1-user-toggle-pick-func
 (defun dm-vu1-user-toggle-pick-func ((arg0 int) (arg1 int))
   (if (= arg1 4)
-   (set! *vu1-enable-user-menu* (logxor *vu1-enable-user-menu* arg0))
+   (set!
+    *vu1-enable-user-menu*
+    (logxor *vu1-enable-user-menu* (the-as uint arg0))
+    )
    )
   (logtest? *vu1-enable-user-menu* arg0)
   )
@@ -462,7 +465,7 @@
 ;; definition for function dm-vu1-user-set-pick-func
 (defun dm-vu1-user-set-pick-func ((arg0 int) (arg1 int))
   (if (= arg1 4)
-   (set! *vu1-enable-user-menu* arg0)
+   (set! *vu1-enable-user-menu* (the-as vu1-renderer-mask arg0))
    )
   (= *vu1-enable-user-menu* arg0)
   )
@@ -504,9 +507,9 @@
   (let ((v1-0 (find-instance-by-name *edit-instance*)))
    (when v1-0
     (if (= arg1 4)
-     (set! (-> v1-0 unknown) (logxor (-> v1-0 unknown) (the-as uint arg0)))
+     (set! (-> v1-0 flags) (logxor (-> v1-0 flags) (the-as uint arg0)))
      )
-    (logtest? (-> v1-0 unknown) arg0)
+    (logtest? (-> v1-0 flags) arg0)
     )
    )
   )
@@ -627,9 +630,9 @@
    (cond
     (v1-0
      (if (= arg1 4)
-      (set! (-> v1-0 unknown) (logxor (-> v1-0 unknown) 1))
+      (set! (-> v1-0 flags) (logxor (-> v1-0 flags) 1))
       )
-     (zero? (logand (-> v1-0 unknown) 1))
+     (zero? (logand (-> v1-0 flags) 1))
      )
     (else
      #f
@@ -3008,10 +3011,12 @@
         (the-as object (cond
                         (gp-0
                          (when (= arg1 4)
-                          (set! (-> gp-0 unknown-vector x) (* 4096.0 arg2))
-                          (prototype-bucket-recalc-fields gp-0)
+                          (set! (-> gp-0 dists x) (* 4096.0 arg2))
+                          (prototype-bucket-recalc-fields
+                           (the-as instance gp-0)
+                           )
                           )
-                         (* 0.00024414062 (-> gp-0 unknown-vector x))
+                         (* 0.00024414062 (-> gp-0 dists x))
                          )
                         (else
                          (empty)
@@ -3044,10 +3049,12 @@
         (the-as object (cond
                         (gp-0
                          (when (= arg1 4)
-                          (set! (-> gp-0 unknown-vector w) (* 4096.0 arg2))
-                          (prototype-bucket-recalc-fields gp-0)
+                          (set! (-> gp-0 dists w) (* 4096.0 arg2))
+                          (prototype-bucket-recalc-fields
+                           (the-as instance gp-0)
+                           )
                           )
-                         (* 0.00024414062 (-> gp-0 unknown-vector w))
+                         (* 0.00024414062 (-> gp-0 dists w))
                          )
                         (else
                          (empty)

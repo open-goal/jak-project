@@ -1,114 +1,9 @@
 #include "third-party/fmt/core.h"
 #include "third-party/imgui/imgui.h"
 #include "SpriteRenderer.h"
+#include "game/graphics/opengl_renderer/dma_helpers.h"
 
 namespace {
-/*!
- * Make sure that the DMA Transfer is a VIF unpack (copy data to VIF memory) with the given
- * setup. This is for a transfer with STCYCL followed by UNPACK.
- */
-bool verify_unpack_with_stcycl(const DmaTransfer& transfer,
-                               VifCode::Kind unpack_kind,
-                               u16 cl,
-                               u16 wl,
-                               u32 qwc,
-                               u32 addr,
-                               bool usn,
-                               bool flg) {
-  if (transfer.size_bytes != qwc * 16) {
-    fmt::print("verify_unpack: bad size {} vs {}\n", transfer.size_bytes, qwc * 16);
-    return false;
-  }
-
-  if (transfer.vifcode0().kind != VifCode::Kind::STCYCL) {
-    fmt::print("verify_unpack: bad vifcode 0\n");
-    return false;
-  }
-
-  if (transfer.vifcode1().kind != unpack_kind) {
-    fmt::print("verify_unpack: bad vifcode 1\n");
-    return false;
-  }
-
-  VifCodeStcycl stcycl(transfer.vifcode0());
-  VifCodeUnpack unpack(transfer.vifcode1());
-
-  if (stcycl.cl != cl || stcycl.wl != wl) {
-    fmt::print("verify_unpack: bad cl/wl {}/{} vs {}/{}\n", stcycl.cl, stcycl.wl, cl, wl);
-    return false;
-  }
-
-  if (unpack.addr_qw != addr || unpack.use_tops_flag != flg || unpack.is_unsigned != usn) {
-    fmt::print("verify_unpack: bad unpack {}/{}/{} vs {}/{}/{}", unpack.addr_qw,
-               unpack.use_tops_flag, unpack.is_unsigned, addr, flg, usn);
-    return false;
-  }
-
-  if (transfer.vifcode1().num != qwc) {
-    fmt::print("verify_unpack: bad num {} vs {}\n", transfer.vifcode1().num, qwc);
-    return false;
-  }
-
-  return true;
-}
-
-/*!
- * Make sure that the DMA transfer is a VIF unpack with the given setup.
- * This is for when there's just an UNPACK.
- */
-bool verify_unpack_no_stcycl(const DmaTransfer& transfer,
-                             VifCode::Kind unpack_kind,
-                             u32 qwc,
-                             u32 addr,
-                             bool usn,
-                             bool flg) {
-  if (transfer.size_bytes != qwc * 16) {
-    fmt::print("verify_unpack: bad size {} vs {}\n", transfer.size_bytes, qwc * 16);
-    return false;
-  }
-
-  if (transfer.vifcode0().kind != VifCode::Kind::NOP) {
-    fmt::print("verify_unpack: bad vifcode 0\n");
-    return false;
-  }
-
-  if (transfer.vifcode1().kind != unpack_kind) {
-    fmt::print("verify_unpack: bad vifcode 1\n");
-    return false;
-  }
-
-  VifCodeUnpack unpack(transfer.vifcode1());
-
-  if (unpack.addr_qw != addr || unpack.use_tops_flag != flg || unpack.is_unsigned != usn) {
-    fmt::print("verify_unpack: bad unpack {}/{}/{} vs {}/{}/{}", unpack.addr_qw,
-               unpack.use_tops_flag, unpack.is_unsigned, addr, flg, usn);
-    return false;
-  }
-
-  if (transfer.vifcode1().num != qwc) {
-    fmt::print("verify_unpack: bad num {} vs {}\n", transfer.vifcode1().num, qwc);
-    return false;
-  }
-
-  return true;
-}
-
-/*!
- * Verify the DMA transfer is a VIF unpack (with no STCYCL tag).
- * Then, unpack the data to dst.
- */
-void unpack_to_no_stcycl(void* dst,
-                         const DmaTransfer& transfer,
-                         VifCode::Kind unpack_kind,
-                         u32 size_bytes,
-                         u32 addr,
-                         bool usn,
-                         bool flg) {
-  bool ok = verify_unpack_no_stcycl(transfer, unpack_kind, size_bytes / 16, addr, usn, flg);
-  assert(ok);
-  assert((size_bytes & 0xf) == 0);
-  memcpy(dst, transfer.data, size_bytes);
-}
 
 /*!
  * Does the next DMA transfer look like it could be the start of a 2D group?
@@ -265,7 +160,9 @@ void SpriteRenderer::render_2d_group0(DmaFollower& dma,
     auto run = dma.read_and_advance();
     assert(run.vifcode0().kind == VifCode::Kind::NOP);
     assert(run.vifcode1().kind == VifCode::Kind::MSCAL);
-    assert(run.vifcode1().immediate == SpriteProgMem::Sprites2dGrp0);
+
+    // HACK: this renderers 3D sprites with the 2D renderer. amazingly, it almost works.
+    // assert(run.vifcode1().immediate == SpriteProgMem::Sprites2dGrp0);
     if (m_enabled) {
       do_2d_group0_block_cpu(sprite_count, render_state, prof);
     }
@@ -838,7 +735,7 @@ void SpriteRenderer::do_2d_group0_block_cpu(u32 count,
     memset(&packet, 0, sizeof(packet));
     //  ilw.y vi08, 1(vi02)        |  nop                          vi08 = matrix
     u32 offset_selector = m_vec_data_2d[sprite_idx].matrix();
-    assert(offset_selector == 0 || offset_selector == 1);
+    // assert(offset_selector == 0 || offset_selector == 1);
     // moved this out of the loop.
     //  lq.xyzw vf25, 900(vi00)    |  nop                          vf25 = cam_mat
     //  lq.xyzw vf26, 901(vi00)    |  nop

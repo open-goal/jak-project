@@ -488,7 +488,7 @@
     (+! (-> self scared) -1)
     (when (zero? (-> self scared))
      (let ((a0-0 (-> self root-override)))
-      (dummy-49 a0-0)
+      (restore-collide-with-as a0-0)
       (go seagull-takeoff (the-as seagull a0-0))
       )
      )
@@ -524,7 +524,7 @@
     )
    (dummy-60 (-> self root-override) 40960.0 40960.0 #t (the-as uint 1))
    (dummy-47 (-> self root-override))
-   (dummy-48 (-> self root-override))
+   (clear-collide-with-as (-> self root-override))
    (let ((gp-0 (-> self skel root-channel 0)))
     (joint-control-channel-group-eval!
      gp-0
@@ -797,8 +797,8 @@
     )
    (vector-! s5-0 s5-0 (-> obj root-override trans))
    (vector-float*! s5-0 s5-0 0.9)
+   (TODO-RENAME-28 (-> obj root-override) s5-0)
    )
-  (TODO-RENAME-28 (-> obj root-override))
   (set! (-> obj teleport) #f)
   #f
   )
@@ -1815,8 +1815,8 @@
    (let ((a1-1 (new 'stack-no-clear 'vector)))
     (vector-float*! a1-1 (-> arg1 move-vec) (-> arg1 best-u))
     (set! (-> a1-1 y) (-> arg1 move-vec y))
+    (TODO-RENAME-28 arg0 a1-1)
     )
-   (TODO-RENAME-28 arg0)
    (let ((f0-3 (vector-dot (-> arg0 transv) (-> arg1 best-tri normal)))
          (v1-6 (new 'stack-no-clear 'vector))
          )
@@ -1849,18 +1849,30 @@
      )
     )
    (set! (-> s3-0 dynam) (copy *standard-dynamics* 'process))
-   (set! (-> s3-0 reaction) seagull-reaction)
-   (set! (-> s3-0 no-reaction) nothing)
+   (set!
+    (-> s3-0 reaction)
+    (the-as
+     (function collide-shape-moving collide-shape-intersect vector vector none)
+     seagull-reaction
+     )
+    )
+   (set!
+    (-> s3-0 no-reaction)
+    (the-as
+     (function collide-shape-moving collide-shape-intersect vector vector none)
+     nothing
+     )
+    )
    (let ((s2-0 (new 'process 'collide-shape-prim-sphere s3-0 (the-as uint 0))))
     (set! (-> s2-0 prim-core collide-as) (the-as uint 0))
     (set! (-> s2-0 collide-with) (the-as uint 1))
     (set! (-> s2-0 prim-core action) (the-as uint 1))
     (set! (-> s2-0 prim-core offense) 4)
     (set-vector! (-> s2-0 local-sphere) 0.0 2048.0 0.0 2048.0)
+    (set-root-prim! s3-0 s2-0)
     )
-   (dummy-46 s3-0)
    (set! (-> s3-0 nav-radius) (* 0.75 (-> s3-0 root-prim local-sphere w)))
-   (dummy-50 s3-0)
+   (backup-collide-with-as s3-0)
    (set! (-> self root-override) s3-0)
    )
   (set! (-> self root-override trans quad) (-> arg0 quad))
@@ -2106,7 +2118,10 @@
 ;; definition for method 11 of type seagullflock
 ;; INFO: Return type mismatch object vs none.
 ;; Used lq/sq
-(defmethod copy-defaults! seagullflock ((obj seagullflock) (arg0 res-lump))
+(defmethod
+  init-from-entity!
+  seagullflock
+  ((obj seagullflock) (arg0 entity-actor))
   (logclear! (-> obj mask) (process-mask actor-pause))
   (set! (-> obj path) (new 'process 'path-control obj 'path 0.0))
   (logior!

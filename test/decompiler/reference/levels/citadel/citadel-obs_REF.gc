@@ -163,9 +163,9 @@
 ;; definition for method 11 of type citb-arm-section
 ;; INFO: Return type mismatch object vs none.
 (defmethod
-  copy-defaults!
+  init-from-entity!
   citb-arm-section
-  ((obj citb-arm-section) (arg0 res-lump))
+  ((obj citb-arm-section) (arg0 entity-actor))
   (init-root! obj)
   (process-drawable-from-entity! obj arg0)
   (setup-new-process! obj)
@@ -199,8 +199,8 @@
   :post
   (behavior ()
    (if (logtest? (-> self draw status) 2)
-    (dummy-48 (-> self root-override))
-    (dummy-49 (-> self root-override))
+    (clear-collide-with-as (-> self root-override))
+    (restore-collide-with-as (-> self root-override))
     )
    (rider-post)
    (none)
@@ -217,7 +217,13 @@
     )
    (set! (-> s5-0 dynam) (copy *standard-dynamics* 'process))
    (set! (-> s5-0 reaction) default-collision-reaction)
-   (set! (-> s5-0 no-reaction) nothing)
+   (set!
+    (-> s5-0 no-reaction)
+    (the-as
+     (function collide-shape-moving collide-shape-intersect vector vector none)
+     nothing
+     )
+    )
    (dummy-29 s5-0 1)
    (let
     ((s4-0
@@ -236,10 +242,10 @@
     (set! (-> s4-0 prim-core offense) 4)
     (set! (-> s4-0 transform-index) 3)
     (set-vector! (-> s4-0 local-sphere) 0.0 0.0 0.0 40960.0)
+    (set-root-prim! s5-0 s4-0)
     )
-   (dummy-46 s5-0)
    (set! (-> s5-0 nav-radius) (* 0.75 (-> s5-0 root-prim local-sphere w)))
-   (dummy-50 s5-0)
+   (backup-collide-with-as s5-0)
    (set! (-> obj root-override) s5-0)
    )
   0
@@ -561,7 +567,13 @@
     )
    (set! (-> s5-0 dynam) (copy *standard-dynamics* 'process))
    (set! (-> s5-0 reaction) default-collision-reaction)
-   (set! (-> s5-0 no-reaction) nothing)
+   (set!
+    (-> s5-0 no-reaction)
+    (the-as
+     (function collide-shape-moving collide-shape-intersect vector vector none)
+     nothing
+     )
+    )
    (dummy-29 s5-0 1)
    (let
     ((s4-0
@@ -580,10 +592,10 @@
     (set! (-> s4-0 prim-core offense) 4)
     (set! (-> s4-0 transform-index) 0)
     (set-vector! (-> s4-0 local-sphere) 0.0 0.0 0.0 49152.0)
+    (set-root-prim! s5-0 s4-0)
     )
-   (dummy-46 s5-0)
    (set! (-> s5-0 nav-radius) (* 0.75 (-> s5-0 root-prim local-sphere w)))
-   (dummy-50 s5-0)
+   (backup-collide-with-as s5-0)
    (set! (-> obj root-override) s5-0)
    )
   0
@@ -599,7 +611,7 @@
 
 ;; definition for method 11 of type citb-disc
 ;; INFO: Return type mismatch object vs none.
-(defmethod copy-defaults! citb-disc ((obj citb-disc) (arg0 res-lump))
+(defmethod init-from-entity! citb-disc ((obj citb-disc) (arg0 entity-actor))
   (init! obj)
   (process-drawable-from-entity! obj arg0)
   (logclear! (-> obj mask) (process-mask actor-pause))
@@ -785,10 +797,10 @@
     (set! (-> s4-0 prim-core offense) 4)
     (set! (-> s4-0 transform-index) 0)
     (set-vector! (-> s4-0 local-sphere) 0.0 0.0 0.0 16384.0)
+    (set-root-prim! s5-0 s4-0)
     )
-   (dummy-46 s5-0)
    (set! (-> s5-0 nav-radius) (* 0.75 (-> s5-0 root-prim local-sphere w)))
-   (dummy-50 s5-0)
+   (backup-collide-with-as s5-0)
    (set! (-> obj root-override) s5-0)
    )
   0
@@ -844,7 +856,13 @@
     )
    (set! (-> s5-0 dynam) (copy *standard-dynamics* 'process))
    (set! (-> s5-0 reaction) default-collision-reaction)
-   (set! (-> s5-0 no-reaction) nothing)
+   (set!
+    (-> s5-0 no-reaction)
+    (the-as
+     (function collide-shape-moving collide-shape-intersect vector vector none)
+     nothing
+     )
+    )
    (let
     ((s4-0
       (new
@@ -862,10 +880,10 @@
     (set! (-> s4-0 prim-core offense) 4)
     (set! (-> s4-0 transform-index) 3)
     (set-vector! (-> s4-0 local-sphere) 0.0 0.0 0.0 12288.0)
+    (set-root-prim! s5-0 s4-0)
     )
-   (dummy-46 s5-0)
    (set! (-> s5-0 nav-radius) (* 0.75 (-> s5-0 root-prim local-sphere w)))
-   (dummy-50 s5-0)
+   (backup-collide-with-as s5-0)
    (set! (-> obj root-override) s5-0)
    )
   (the-as collide-shape-moving 0)
@@ -1470,7 +1488,10 @@
 
 ;; definition for method 11 of type citb-robotboss
 ;; INFO: Return type mismatch object vs none.
-(defmethod copy-defaults! citb-robotboss ((obj citb-robotboss) (arg0 res-lump))
+(defmethod
+  init-from-entity!
+  citb-robotboss
+  ((obj citb-robotboss) (arg0 entity-actor))
   (let
    ((s4-0 (new 'process 'collide-shape obj (collide-list-enum hit-by-player))))
    (let
@@ -1490,10 +1511,10 @@
     (set! (-> s3-0 prim-core offense) 4)
     (set! (-> s3-0 transform-index) 3)
     (set-vector! (-> s3-0 local-sphere) 0.0 81920.0 0.0 143360.0)
+    (set-root-prim! s4-0 s3-0)
     )
-   (dummy-46 s4-0)
    (set! (-> s4-0 nav-radius) (* 0.75 (-> s4-0 root-prim local-sphere w)))
-   (dummy-50 s4-0)
+   (backup-collide-with-as s4-0)
    (set! (-> obj root-override) s4-0)
    )
   (process-drawable-from-entity! obj arg0)
@@ -1760,7 +1781,7 @@
 
 ;; definition for method 11 of type citb-coil
 ;; INFO: Return type mismatch object vs none.
-(defmethod copy-defaults! citb-coil ((obj citb-coil) (arg0 res-lump))
+(defmethod init-from-entity! citb-coil ((obj citb-coil) (arg0 entity-actor))
   (set! (-> obj root) (new 'process 'trsqv))
   (process-drawable-from-entity! obj arg0)
   (initialize-skeleton obj *citb-coil-sg* '())
@@ -1999,7 +2020,7 @@
 
 ;; definition for method 11 of type citb-hose
 ;; INFO: Return type mismatch object vs none.
-(defmethod copy-defaults! citb-hose ((obj citb-hose) (arg0 res-lump))
+(defmethod init-from-entity! citb-hose ((obj citb-hose) (arg0 entity-actor))
   (set! (-> obj root) (new 'process 'trsqv))
   (process-drawable-from-entity! obj arg0)
   (initialize-skeleton obj *citb-hose-sg* '())
@@ -2400,10 +2421,10 @@
     (set! (-> s4-0 prim-core action) (the-as uint 1))
     (set! (-> s4-0 prim-core offense) 4)
     (set-vector! (-> s4-0 local-sphere) 0.0 4096.0 0.0 4096.0)
+    (set-root-prim! s5-0 s4-0)
     )
-   (dummy-46 s5-0)
    (set! (-> s5-0 nav-radius) (* 0.75 (-> s5-0 root-prim local-sphere w)))
-   (dummy-50 s5-0)
+   (backup-collide-with-as s5-0)
    (set! (-> obj root-override) s5-0)
    )
   0
@@ -2495,7 +2516,10 @@
 
 ;; definition for method 11 of type citb-generator
 ;; INFO: Return type mismatch object vs none.
-(defmethod copy-defaults! citb-generator ((obj citb-generator) (arg0 res-lump))
+(defmethod
+  init-from-entity!
+  citb-generator
+  ((obj citb-generator) (arg0 entity-actor))
   (init! obj)
   (process-drawable-from-entity! obj arg0)
   (dummy-21 obj)
@@ -2642,7 +2666,7 @@
 
 ;; definition for method 11 of type citadelcam
 ;; INFO: Return type mismatch object vs none.
-(defmethod copy-defaults! citadelcam ((obj citadelcam) (arg0 res-lump))
+(defmethod init-from-entity! citadelcam ((obj citadelcam) (arg0 entity-actor))
   (set! (-> obj root) (new 'process 'trsqv))
   (process-drawable-from-entity! obj arg0)
   (logclear! (-> obj mask) (process-mask actor-pause))

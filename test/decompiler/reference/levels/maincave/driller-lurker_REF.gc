@@ -87,7 +87,7 @@
   -1
   ((1 (meters 20)) (2 (meters 40)) (3 (meters 999999)))
   :bounds (static-spherem 0 1.5 0 7.75)
-  :longest-edge (meters 2.299999952316284)
+  :longest-edge (meters 2.3)
   :shadow 4
   )
 
@@ -320,11 +320,26 @@
                   (s0-0 (-> s1-0 head))
                   )
             (while s0-0
-             (set! sv-96 (touched-prim s0-0 (-> self root-overeride) s1-0))
+             (set!
+              sv-96
+              (get-touched-prim
+               s0-0
+               (-> self root-overeride)
+               (the-as touching-prims-entry s1-0)
+               )
+              )
              (if
               (and
                (logtest?
-                (-> (touched-prim s0-0 (-> s4-0 control) s1-0) prim-core action)
+                (->
+                 (get-touched-prim
+                  s0-0
+                  (-> s4-0 control)
+                  (the-as touching-prims-entry s1-0)
+                  )
+                 prim-core
+                 action
+                 )
                 1
                 )
                (logtest? (-> sv-96 prim-id) 1)
@@ -1553,7 +1568,7 @@
    (shut-down! (-> self neck))
    (logclear! (-> self mask) (process-mask actor-pause))
    (ja-channel-push! 1 60)
-   (dummy-48 (-> self root-overeride))
+   (clear-collide-with-as (-> self root-overeride))
    (let ((a0-4 (-> self skel root-channel 0)))
     (set!
      (-> a0-4 frame-group)
@@ -1644,7 +1659,10 @@
 ;; definition for method 11 of type driller-lurker
 ;; INFO: Return type mismatch object vs none.
 ;; Used lq/sq
-(defmethod copy-defaults! driller-lurker ((obj driller-lurker) (arg0 res-lump))
+(defmethod
+  init-from-entity!
+  driller-lurker
+  ((obj driller-lurker) (arg0 entity-actor))
   (local-vars (sv-16 int))
   (set! (-> obj hit-player?) #f)
   (set! (-> obj played-drill-sound?) #f)
@@ -1670,65 +1688,71 @@
     )
    (set! (-> s4-0 dynam) (copy *standard-dynamics* 'process))
    (set! (-> s4-0 reaction) default-collision-reaction)
-   (set! (-> s4-0 no-reaction) nothing)
+   (set!
+    (-> s4-0 no-reaction)
+    (the-as
+     (function collide-shape-moving collide-shape-intersect vector vector none)
+     nothing
+     )
+    )
    (let ((s3-0 (new 'process 'collide-shape-prim-group s4-0 (the-as uint 6) 0)))
     (set! (-> s3-0 prim-core collide-as) (the-as uint 256))
     (set! (-> s3-0 collide-with) (the-as uint 16))
     (set! (-> s3-0 prim-core action) (the-as uint 3073))
     (set! (-> s3-0 prim-core offense) 2)
     (set-vector! (-> s3-0 local-sphere) 0.0 11264.0 0.0 22528.0)
-    (dummy-46 s4-0)
+    (set-root-prim! s4-0 s3-0)
     (let ((s2-0 (new 'process 'collide-shape-prim-sphere s4-0 (the-as uint 2))))
      (set! (-> s2-0 prim-core collide-as) (the-as uint 256))
      (set! (-> s2-0 collide-with) (the-as uint 16))
      (set! (-> s2-0 prim-core action) (the-as uint 3073))
      (set! (-> s2-0 prim-core offense) 1)
      (set-vector! (-> s2-0 local-sphere) 0.0 3276.8 0.0 4505.6)
+     (append-prim s3-0 s2-0)
      )
-    (dummy-28 s3-0)
     (let ((s2-1 (new 'process 'collide-shape-prim-sphere s4-0 (the-as uint 2))))
      (set! (-> s2-1 prim-core collide-as) (the-as uint 256))
      (set! (-> s2-1 collide-with) (the-as uint 16))
      (set! (-> s2-1 prim-core action) (the-as uint 3073))
      (set! (-> s2-1 prim-core offense) 1)
      (set-vector! (-> s2-1 local-sphere) 0.0 7372.8 0.0 4505.6)
+     (append-prim s3-0 s2-1)
      )
-    (dummy-28 s3-0)
     (let ((s2-2 (new 'process 'collide-shape-prim-sphere s4-0 (the-as uint 2))))
      (set! (-> s2-2 prim-core collide-as) (the-as uint 256))
      (set! (-> s2-2 collide-with) (the-as uint 16))
      (set! (-> s2-2 prim-core action) (the-as uint 3073))
      (set! (-> s2-2 prim-core offense) 1)
      (set-vector! (-> s2-2 local-sphere) 0.0 11468.8 0.0 4505.6)
+     (append-prim s3-0 s2-2)
      )
-    (dummy-28 s3-0)
     (let ((s2-3 (new 'process 'collide-shape-prim-sphere s4-0 (the-as uint 1))))
      (set! (-> s2-3 prim-core collide-as) (the-as uint 256))
      (set! (-> s2-3 collide-with) (the-as uint 16))
      (set! (-> s2-3 prim-core offense) 2)
      (set! (-> s2-3 transform-index) 25)
      (set-vector! (-> s2-3 local-sphere) 0.0 0.0 4096.0 3276.8)
+     (append-prim s3-0 s2-3)
      )
-    (dummy-28 s3-0)
     (let ((s2-4 (new 'process 'collide-shape-prim-sphere s4-0 (the-as uint 1))))
      (set! (-> s2-4 prim-core collide-as) (the-as uint 256))
      (set! (-> s2-4 collide-with) (the-as uint 16))
      (set! (-> s2-4 prim-core offense) 2)
      (set! (-> s2-4 transform-index) 25)
      (set-vector! (-> s2-4 local-sphere) 0.0 0.0 5734.4 3686.4)
+     (append-prim s3-0 s2-4)
      )
-    (dummy-28 s3-0)
     (let ((s2-5 (new 'process 'collide-shape-prim-sphere s4-0 (the-as uint 1))))
      (set! (-> s2-5 prim-core collide-as) (the-as uint 256))
      (set! (-> s2-5 collide-with) (the-as uint 16))
      (set! (-> s2-5 prim-core offense) 2)
      (set! (-> s2-5 transform-index) 25)
      (set-vector! (-> s2-5 local-sphere) 0.0 0.0 9420.8 2457.6)
+     (append-prim s3-0 s2-5)
      )
-    (dummy-28 s3-0)
     )
    (set! (-> s4-0 nav-radius) (* 0.75 (-> s4-0 root-prim local-sphere w)))
-   (dummy-50 s4-0)
+   (backup-collide-with-as s4-0)
    (set! (-> obj root-overeride) s4-0)
    )
   (process-drawable-from-entity! obj arg0)

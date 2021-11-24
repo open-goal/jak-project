@@ -212,6 +212,9 @@ class Interpreter {
   Object eval_string_to_symbol(const Object& form,
                                Arguments& args,
                                const std::shared_ptr<EnvironmentObject>& env);
+  Object eval_get_env(const Object& form,
+                      Arguments& args,
+                      const std::shared_ptr<EnvironmentObject>& env);
 
   // specials
   Object eval_define(const Object& form,

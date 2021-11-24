@@ -298,37 +298,41 @@
         )
     )
 
-  ;; run the foreground system
-  (let ((s5-1 (-> *display* frames (-> *display* on-screen) frame)))
-    ;; 0
-    (foreground-engine-execute
-     (-> obj level foreground-draw-engine 0)
-     s5-1
-     (-> (scratchpad-object terrain-bsp :offset TERRAIN_BSP_SCRATCHPAD) lev-index)
-     0
-     )
-    ;; 1
-    (foreground-engine-execute
-     (-> obj level foreground-draw-engine 1)
-     s5-1
-     (-> (scratchpad-object terrain-bsp :offset TERRAIN_BSP_SCRATCHPAD) lev-index)
-     1
-     )
-
-    ;; 2
-    (foreground-engine-execute
-     (-> obj level foreground-draw-engine 2)
-     s5-1
-     (-> (scratchpad-object terrain-bsp :offset TERRAIN_BSP_SCRATCHPAD) lev-index)
-     2
-     )
+  ;; run the foreground system (0 check added)
+  (when (nonzero? foreground-engine-execute)
+    (let ((s5-1 (-> *display* frames (-> *display* on-screen) frame)))
+      ;; 0
+      (foreground-engine-execute
+        (-> obj level foreground-draw-engine 0)
+        s5-1
+        (-> (scratchpad-object terrain-bsp :offset TERRAIN_BSP_SCRATCHPAD) lev-index)
+        0
+        )
+      ;; 1
+      (foreground-engine-execute
+        (-> obj level foreground-draw-engine 1)
+        s5-1
+        (-> (scratchpad-object terrain-bsp :offset TERRAIN_BSP_SCRATCHPAD) lev-index)
+        1
+        )
+      
+      ;; 2
+      (foreground-engine-execute
+        (-> obj level foreground-draw-engine 2)
+        s5-1
+        (-> (scratchpad-object terrain-bsp :offset TERRAIN_BSP_SCRATCHPAD) lev-index)
+        2
+        )
+      )
     )
+
   (none)
   )
 
-(defmethod debug-draw bsp-header ((obj bsp-header) (arg0 drawable) (arg1 object))
+(defmethod debug-draw bsp-header ((obj bsp-header) (arg0 drawable) (arg1 display-frame))
   "This is some sort of debugging thing. It calls debug-draw on the drawables
    with the scratchpad and vfs set up."
+   
   (let ((s4-0 (-> obj level)))
     ;; set up some stuff in the scratchpad
     (set! (-> (scratchpad-object terrain-bsp :offset TERRAIN_BSP_SCRATCHPAD) lev-index) (-> s4-0 index))
@@ -384,10 +388,8 @@
   (none)
   )
 
-(defmethod dummy-14 bsp-header ((obj bsp-header))
-  "Also some sort of debug thing.
-   Calls dummy-14 on children with visible list and vfs set up
-   but no terrain-bsp"
+(defmethod collect-stats bsp-header ((obj bsp-header))
+  "Collect drawing statistics"
   (let ((v1-0 (-> obj level))
         (a2-0 (/ (+ (-> obj visible-list-length) 15) 16))
         )
@@ -420,7 +422,7 @@
       )
     )
   (if (nonzero? (-> obj drawable-trees))
-      (dummy-14 (-> obj drawable-trees))
+      (collect-stats (-> obj drawable-trees))
       )
   (none)
   )

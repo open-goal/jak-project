@@ -536,8 +536,9 @@ goos::Object decompile_structure(const TypeSpec& type,
 
   // check enough room
   if (int(words.at(label.target_segment).size()) < word_count + offset_location / 4) {
-    throw std::runtime_error(fmt::format("Structure type {} takes up {} bytes and doesn't fit.",
-                                         type_info->get_name(), type_info->get_size_in_memory()));
+    throw std::runtime_error(fmt::format(
+        "Structure type {} takes up {} bytes and doesn't fit. {}:{}", type_info->get_name(),
+        type_info->get_size_in_memory(), label.name, offset_location));
   }
 
   // get words for real
@@ -1009,7 +1010,13 @@ goos::Object decompile_value(const TypeSpec& type,
     float value;
     memcpy(&value, bytes.data(), 4);
     double meters = (double)value / METER_LENGTH;
-    return pretty_print::build_list("meters", pretty_print::float_representation(meters));
+    auto rep = pretty_print::float_representation(meters);
+    if (rep.print().find("the-as") != std::string::npos) {
+      return rep;
+      // return pretty_print::build_list("the-as", "meters", rep);
+    } else {
+      return pretty_print::build_list("meters", rep);
+    }
   } else if (type == TypeSpec("degrees")) {
     assert(bytes.size() == 4);
     float value;

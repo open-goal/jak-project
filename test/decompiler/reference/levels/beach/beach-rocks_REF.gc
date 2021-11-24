@@ -624,7 +624,7 @@
 
 ;; definition for method 11 of type beach-rock
 ;; INFO: Return type mismatch object vs none.
-(defmethod copy-defaults! beach-rock ((obj beach-rock) (arg0 res-lump))
+(defmethod init-from-entity! beach-rock ((obj beach-rock) (arg0 entity-actor))
   (set! (-> obj link) (new 'process 'actor-link-info obj))
   (set! (-> obj align) (new 'process 'align-control obj))
   (set! (-> obj trigger) #f)
@@ -653,7 +653,7 @@
      (vector<-cspace! s5-0 (-> obj node-list data 8))
      (birth-pickup-at-point
       s5-0
-      6
+      (pickup-type fuel-cell)
       (the float (the-as int (-> obj entity extra perm task)))
       #f
       obj
@@ -687,7 +687,7 @@
   )
 
 ;; definition for method 11 of type lrocklrg
-(defmethod copy-defaults! lrocklrg ((obj lrocklrg) (arg0 res-lump))
+(defmethod init-from-entity! lrocklrg ((obj lrocklrg) (arg0 entity-actor))
   (stack-size-set! (-> obj main-thread) 512)
   (let
    ((s4-0
@@ -696,7 +696,13 @@
     )
    (set! (-> s4-0 dynam) (copy *standard-dynamics* 'process))
    (set! (-> s4-0 reaction) default-collision-reaction)
-   (set! (-> s4-0 no-reaction) nothing)
+   (set!
+    (-> s4-0 no-reaction)
+    (the-as
+     (function collide-shape-moving collide-shape-intersect vector vector none)
+     nothing
+     )
+    )
    (let
     ((s3-0
       (new
@@ -714,14 +720,14 @@
     (set! (-> s3-0 prim-core offense) 4)
     (set! (-> s3-0 transform-index) 4)
     (set-vector! (-> s3-0 local-sphere) 0.0 0.0 0.0 24576.0)
+    (set-root-prim! s4-0 s3-0)
     )
-   (dummy-46 s4-0)
    (set! (-> s4-0 nav-radius) (* 0.75 (-> s4-0 root-prim local-sphere w)))
-   (dummy-50 s4-0)
+   (backup-collide-with-as s4-0)
    (set! (-> obj root-override) s4-0)
    )
   (process-drawable-from-entity! obj arg0)
   (initialize-skeleton obj *lrocklrg-sg* '())
-  ((method-of-type beach-rock copy-defaults!) obj arg0)
+  ((method-of-type beach-rock init-from-entity!) obj arg0)
   (none)
   )

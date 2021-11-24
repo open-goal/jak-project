@@ -5,22 +5,7 @@
 ;; name in dgo: joint-exploder
 ;; dgos: GAME, COMMON, L1
 
-;; TODO - for dark-crystal
-(deftype joint-exploder-static-params (basic)
-  ((joints array  :offset-assert 4) ;; an array of...what?
-   )
-  :method-count-assert 9
-  :size-assert         #x8
-  :flag-assert         #x900000008
-  )
-(deftype joint-exploder-static-joint-params (structure)
-  ((joint-index        int16  :offset-assert 0)
-   (parent-joint-index int16  :offset-assert 2)
-   )
-  :method-count-assert 9
-  :size-assert         #x4
-  :flag-assert         #x900000004
-  )
+;; TODO - for racer-states
 (deftype joint-exploder-tuning (structure)
   ((explosion                   uint64         :offset-assert 0)
    (duration                    uint64         :offset-assert 8)
@@ -41,6 +26,24 @@
   :size-assert         #x40
   :flag-assert         #x900000040
   )
+
+(deftype joint-exploder-static-joint-params (structure)
+  ((joint-index        int16  :offset-assert 0)
+   (parent-joint-index int16  :offset-assert 2)
+   )
+  :method-count-assert 9
+  :size-assert         #x4
+  :flag-assert         #x900000004
+  )
+
+(deftype joint-exploder-static-params (basic)
+  ((joints array  :offset-assert 4) ;; an array of...what?
+   )
+  :method-count-assert 9
+  :size-assert         #x8
+  :flag-assert         #x900000008
+  )
+
 (deftype joint-exploder-joint (structure)
   ((next        int16          :offset-assert 0)
    (prev        int16          :offset-assert 2)
@@ -55,6 +58,7 @@
   :size-assert         #xb0
   :flag-assert         #x9000000b0
   )
+
 (deftype joint-exploder-joints (basic)
   ((num-joints int32            :offset-assert 4)
    (joint      joint-exploder-joint :dynamic :offset 16)
@@ -65,6 +69,7 @@
   (:methods
     (new (symbol _type_ int) _type_ 0))
   )
+
 (deftype joint-exploder-list (structure)
   ((head        int32                :offset-assert 0)
    (pre-moved?  symbol                :offset-assert 4)
@@ -75,6 +80,7 @@
   :size-assert         #x30
   :flag-assert         #x900000030
   )
+
 (deftype joint-exploder (process-drawable)
   ((die-if-below-y             float                         :offset-assert 176)
    (die-if-beyond-xz-dist-sqrd float                         :offset-assert 180)
@@ -97,8 +103,9 @@
     (dummy-24 (_type_) none 24)
     (dummy-25 () none 25)
     (dummy-26 (_type_) none 26)
-    (dummy-27 (_type_) none 27)
-    (dummy-28 () none 28)
+    (dummy-27 (_type_ joint-exploder-list) none 27)
+    (dummy-28 (_type_) none 28)
     )
   )
+
 (define-extern joint-exploder-init-by-other (function skeleton-group int joint-exploder-static-params joint-exploder-tuning none :behavior joint-exploder))

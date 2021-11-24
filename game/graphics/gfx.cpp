@@ -50,6 +50,7 @@ namespace Gfx {
 GfxSettings g_settings;
 // const std::vector<const GfxRendererModule*> renderers = {&moduleOpenGL};
 
+// TODO serialize
 void LoadSettings() {
   const auto filename = file_util::get_file_path({GAME_CONFIG_DIR_NAME, SETTINGS_GFX_FILE_NAME});
   if (std::filesystem::exists(filename)) {
@@ -196,6 +197,10 @@ s64 get_mapped_button(s64 pad, s64 button) {
 
 int PadIsPressed(Pad::Button button, int port) {
   return Pad::IsPressed(g_settings.pad_mapping_info, button, port);
+}
+
+int PadAnalogValue(Pad::Analog analog, int port) {
+  return Pad::AnalogValue(g_settings.pad_mapping_info, analog, port);
 }
 
 }  // namespace Gfx

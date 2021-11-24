@@ -471,6 +471,7 @@ TPageResultStats process_tpage(ObjectFileData& data) {
     }
 
     stats.total_textures++;
+    stats.num_px += tex.w * tex.h;
 
     if (tex.psm == int(PSM::PSMT8) && tex.clutpsm == int(CPSM::PSMCT32)) {
       // this is the only supported texture format for now.

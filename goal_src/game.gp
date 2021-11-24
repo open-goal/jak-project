@@ -67,7 +67,7 @@
     )
   )
 
-(defmacro cgo (output-name desc-file-name &rest objs)
+(defmacro cgo (output-name desc-file-name)
   "Add a CGO with the given output name (in out/iso) and input name (in goal_src/dgos)"
   `(defstep :in ,(string-append "goal_src/dgos/" desc-file-name)
      :tool 'dgo
@@ -80,11 +80,11 @@
   )
 
 (defmacro copy-texture (tpage-id)
-  `(defstep :in ,(string-append "decompiler_out/raw_obj/" (tpage-name tpage-id))
-     :tool 'copy
-     :out '(,(string-append "out/obj/" (tpage-name tpage-id)))
-     )
-  )
+  (let* ((folder (get-environment-variable "OPENGOAL_DECOMP_DIR" :default ""))
+         (path (string-append "decompiler_out/" folder "raw_obj/" (tpage-name tpage-id))))
+    `(defstep :in ,path
+              :tool 'copy
+              :out '(,(string-append "out/obj/" (tpage-name tpage-id))))))
 
 (defmacro copy-textures (&rest ids)
   `(begin
@@ -93,11 +93,11 @@
   )
 
 (defmacro copy-go (name)
-  `(defstep :in ,(string-append "decompiler_out/raw_obj/" name ".go")
-     :tool 'copy
-     :out '(,(string-append "out/obj/" name ".go"))
-     )
-  )
+  (let* ((folder (get-environment-variable "OPENGOAL_DECOMP_DIR" :default ""))
+         (path (string-append "decompiler_out/" folder "raw_obj/" name ".go")))
+    `(defstep :in ,path
+              :tool 'copy
+              :out '(,(string-append "out/obj/" name ".go")))))
 
 (defmacro copy-gos (&rest gos)
   `(begin
@@ -216,6 +216,26 @@
        "out/iso/FIN.DGO"
        "out/iso/FIC.DGO"
        "out/iso/JUN.DGO"
+       "out/iso/MAI.DGO"
+       "out/iso/BEA.DGO"
+       "out/iso/CIT.DGO"
+       )
+
+
+;;;;;;;;;;;;;;;;;;;;;
+;; hub1 Group
+;;;;;;;;;;;;;;;;;;;;;
+;; the hub1 group is a group of files required to play the first hub (village1, jungle, beach, misty, training, firecanyon)
+
+(group "hub1"
+       "out/iso/0COMMON.TXT"
+       "out/iso/KERNEL.CGO"
+       "out/iso/GAME.CGO"
+       "out/iso/VI1.DGO"
+       "out/iso/TRA.DGO"
+       "out/iso/FIC.DGO"
+       "out/iso/JUN.DGO"
+       "out/iso/BEA.DGO"
        )
 
 ;;;;;;;;;;;;;;;;;;;;;;;;
@@ -247,6 +267,10 @@
 
    "common/blocking-plane.gc"
    "common/launcherdoor.gc"
+   "common/mistycannon.gc"
+   "common/babak-with-cannon.gc"
+   "common/snow-bunny.gc"
+   "common/battlecontroller.gc"
 
    "racer_common/target-racer-h-FIC-LAV-MIS-OGR-ROL.gc"
    "racer_common/racer-part.gc"
@@ -391,6 +415,66 @@
 
 (copy-textures 385 531 386 388 765)
 
+
+;;;;;;;;;;;;;;;;;;;;;
+;; Beach
+;;;;;;;;;;;;;;;;;;;;;
+
+(cgo "BEA.DGO"
+  "bea.gd"
+  )
+
+(goal-src-sequence
+  "levels/beach/"
+  :deps ("out/obj/default-menu.o")
+  "air-h.gc"
+  "air.gc"
+  "wobbler.gc"
+  "twister.gc"
+  "beach-obs.gc"
+  "bird-lady.gc"
+  "bird-lady-beach.gc"
+  "mayor.gc"
+  "sculptor.gc"
+  "pelican.gc"
+  "lurkerworm.gc"
+  "lurkercrab.gc"
+  "lurkerpuppy.gc"
+  "beach-rocks.gc"
+  "seagull.gc"
+  "beach-part.gc"
+  )
+
+(copy-textures 212 214 213 215)
+
+(copy-gos
+  "barrel-ag-BEA"
+  "beachcam-ag"
+  "bird-lady-ag"
+  "bird-lady-beach-ag"
+  "bladeassm-ag"
+  "ecovalve-ag-BEA"
+  "ecoventrock-ag"
+  "flutflut-ag"
+  "flutflutegg-ag"
+  "grottopole-ag"
+  "harvester-ag"
+  "kickrock-ag"
+  "lrocklrg-ag"
+  "lurkercrab-ag"
+  "lurkerpuppy-ag"
+  "lurkerworm-ag"
+  "mayor-ag"
+  "mistycannon-ag"
+  "orb-cache-top-ag-BEA"
+  "pelican-ag"
+  "sack-ag-BEA"
+  "sculptor-ag"
+  "sculptor-muse-ag"
+  "seagull-ag"
+  "windmill-one-ag"
+  "beach-vis"
+  )
 
 ;;;;;;;;;;;;;;;;;;;;;
 ;; Fire Canyon
@@ -564,6 +648,118 @@
   )
 
 ;;;;;;;;;;;;;;;;;;;;;
+;; Spider Cave
+;;;;;;;;;;;;;;;;;;;;;
+
+(cgo "MAI.DGO" "mai.gd")
+
+(goal-src-sequence
+ "levels/"
+ :deps ;; no idea what these depend on, make it depend on the whole engine
+ ("out/obj/default-menu.o"
+  ;;"out/obj/darkcave-obs.o"
+  )
+ "maincave/cavecrystal-light.gc"
+ "maincave/maincave-obs.gc"
+ "maincave/maincave-part.gc"
+ "maincave/spiderwebs.gc"
+ "maincave/dark-crystal.gc"
+ "maincave/baby-spider.gc"
+ "maincave/mother-spider-h.gc"
+ "maincave/mother-spider-egg.gc"
+ "maincave/mother-spider-proj.gc"
+ "maincave/mother-spider.gc"
+ "maincave/gnawer.gc"
+ "maincave/driller-lurker.gc"
+ )
+
+(copy-textures 1313 1315 1314 1312 767)
+
+(copy-gos
+  "baby-spider-ag-MAI"
+  "cavetrapdoor-ag-MAI"
+  "dark-crystal-ag"
+  "driller-lurker-ag"
+  "ecovalve-ag-MAI"
+  "gnawer-ag"
+  "launcherdoor-maincave-ag"
+  "maincavecam-ag"
+  "mother-spider-ag"
+  "plat-ag-MAI"
+  "spider-egg-ag-DAR-MAI"
+  "spiderwebs-ag"
+  "water-anim-maincave-ag"
+  "water-anim-maincave-water-ag"
+  "maincave-vis"
+  )
+
+; (goal-src-sequence
+;  "levels/"
+;  :deps ;; no idea what these depend on, make it depend on the whole engine
+;  ("out/obj/default-menu.o" "out/obj/cavecrystal-light.o")
+;  "darkcave/darkcave-obs.gc"
+;  )
+
+;;;;;;;;;;;;;;;;;;;;;
+;; citadel
+;;;;;;;;;;;;;;;;;;;;;
+
+(cgo "CIT.DGO" "cit.gd")
+
+(goal-src-sequence
+  "levels/citadel/"
+  :deps ("out/obj/default-menu.o")
+
+  "citadel-part.gc"
+  "citadel-obs.gc"
+  "citb-plat.gc"
+  "citadel-sages.gc"
+  "citb-bunny.gc"
+  "citb-drop-plat-CIT.gc"
+  "assistant-citadel.gc"
+  )
+
+(copy-textures 1415 1417 1416 1414)
+
+(copy-gos
+  "babak-ag-CIT"
+  "ecovalve-ag-CIT"
+  "orb-cache-top-ag-CIT"
+  "assistant-lavatube-end-ag"
+  "bluesage-ag"
+  "citadelcam-ag"
+  "citb-arm-ag"
+  "citb-arm-shoulder-ag"
+  "citb-bunny-ag"
+  "citb-button-ag"
+  "citb-chain-plat-ag"
+  "citb-chains-ag"
+  "citb-coil-ag"
+  "citb-disc-ag"
+  "citb-donut-ag"
+  "citb-drop-plat-ag"
+  "citb-exit-plat-ag"
+  "citb-firehose-ag"
+  "citb-generator-ag"
+  "citb-hose-ag"
+  "citb-iris-door-ag"
+  "citb-launcher-ag"
+  "citb-robotboss-ag"
+  "citb-rotatebox-ag"
+  "citb-sagecage-ag"
+  "citb-stopbox-ag"
+  "evilbro-citadel-ag"
+  "evilsis-citadel-ag"
+  "green-sagecage-ag"
+  "plat-citb-ag"
+  "plat-eco-citb-ag"
+  "redsage-ag"
+  "warp-gate-switch-ag-CIT"
+  "yellowsage-ag"
+  "citadel-vis"
+  )
+
+;;;;;;;;;;;;;;;;;;;;;
 ;; Final Boss
 ;;;;;;;;;;;;;;;;;;;;;
 
@@ -593,7 +789,6 @@
   "ecovalve-ag-FIN"
   "finalbosscam-ag"
   "green-eco-lurker-ag"
-  "green-sagecage-ag"
   "greenshot-ag"
   "jak-white-ag"
   "light-eco-ag"

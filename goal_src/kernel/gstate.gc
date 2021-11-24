@@ -140,14 +140,15 @@ It type checks the arguments for the entry function.
   (set! *defstate-type-stack* '())
   `(none)
   )
+;; *no-state* is just used for the compiler to know whether a handler was actually set or not
 (defmacro defstate (state-name parents
                                &key (virtual #f)
-                               &key (event #f)
-                               &key (enter #f)
-                               &key (trans #f)
-                               &key (exit #f)
-                               &key (code #f)
-                               &key (post #f)
+                               &key (event *no-state*)
+                               &key (enter *no-state*)
+                               &key (trans *no-state*)
+                               &key (exit *no-state*)
+                               &key (code *no-state*)
+                               &key (post *no-state*)
                                )
   "Define a new state!"
   
@@ -240,7 +241,7 @@ It type checks the arguments for the entry function.
 (defmethod new state
   ((allocation symbol)
    (type-to-make type)
-   (name basic)
+   (name symbol)
    (code function)
    (trans (function none))
    (enter function)
@@ -452,9 +453,7 @@ It type checks the arguments for the entry function.
         (set! (-> event-data from) pp)
         (set! (-> event-data num-params) ,(length params))
         (set! (-> event-data message) ,msg)
-        ,@(let ((ep 0))
-          (apply (lambda (x) `(set! (-> event-data param ep) (the-as uint ,x)) (inc! ep)) params)
-          )
+        ,@(apply-i (lambda (x i) `(set! (-> event-data param ,i) (the-as uint ,x))) params)
         (send-event-function ,proc event-data)
         )
     )

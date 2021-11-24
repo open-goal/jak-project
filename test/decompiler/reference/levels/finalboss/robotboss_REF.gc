@@ -3972,10 +3972,12 @@
 
 ;; definition for function robotboss-greenshot
 ;; INFO: Return type mismatch sound-id vs none.
+;; WARN: Function may read a register that is not set: t2
 ;; Used lq/sq
 (defbehavior
   robotboss-greenshot robotboss
   ((arg0 vector) (arg1 basic) (arg2 basic) (arg3 symbol))
+  (local-vars (t2-0 none))
   (+! (-> self children-spawned) 1)
   (let ((gp-0 (new 'stack-no-clear 'vector)))
    (let ((s2-0 (new 'stack-no-clear 'vector)))
@@ -3993,7 +3995,7 @@
         (the-as pointer #x70004000)
         )
        )
-      (run-now-in-process s1-1 greenshot-init-by-other gp-0 s2-0 arg1 arg2)
+      (run-now-in-process s1-1 greenshot-init-by-other gp-0 s2-0 arg1 arg2 t2-0)
       (-> s1-1 ppointer)
       )
      )
@@ -5684,7 +5686,7 @@
 ;; definition for method 11 of type robotboss
 ;; INFO: Return type mismatch object vs none.
 ;; Used lq/sq
-(defmethod copy-defaults! robotboss ((obj robotboss) (arg0 res-lump))
+(defmethod init-from-entity! robotboss ((obj robotboss) (arg0 entity-actor))
   (stack-size-set! (-> obj main-thread) 512)
   (let
    ((s4-0
@@ -5698,7 +5700,13 @@
     )
    (set! (-> s4-0 dynam) (copy *standard-dynamics* 'process))
    (set! (-> s4-0 reaction) default-collision-reaction)
-   (set! (-> s4-0 no-reaction) nothing)
+   (set!
+    (-> s4-0 no-reaction)
+    (the-as
+     (function collide-shape-moving collide-shape-intersect vector vector none)
+     nothing
+     )
+    )
    (let
     ((s3-0 (new 'process 'collide-shape-prim-group s4-0 (the-as uint 19) 0)))
     (set! (-> s3-0 prim-core collide-as) (the-as uint 2048))
@@ -5706,7 +5714,7 @@
     (set! (-> s3-0 prim-core action) (the-as uint 1))
     (set! (-> s3-0 transform-index) 0)
     (set-vector! (-> s3-0 local-sphere) 0.0 0.0 0.0 368640.0)
-    (dummy-46 s4-0)
+    (set-root-prim! s4-0 s3-0)
     (let
      ((s2-0
        (new
@@ -5724,8 +5732,8 @@
      (set! (-> s2-0 prim-core offense) 4)
      (set! (-> s2-0 transform-index) 7)
      (set-vector! (-> s2-0 local-sphere) 0.0 0.0 0.0 32768.0)
+     (append-prim s3-0 s2-0)
      )
-    (dummy-28 s3-0)
     (let
      ((s2-1
        (new
@@ -5743,8 +5751,8 @@
      (set! (-> s2-1 prim-core offense) 4)
      (set! (-> s2-1 transform-index) 6)
      (set-vector! (-> s2-1 local-sphere) 0.0 0.0 0.0 57344.0)
+     (append-prim s3-0 s2-1)
      )
-    (dummy-28 s3-0)
     (let
      ((s2-2
        (new
@@ -5762,8 +5770,8 @@
      (set! (-> s2-2 prim-core offense) 4)
      (set! (-> s2-2 transform-index) 6)
      (set-vector! (-> s2-2 local-sphere) 0.0 -57344.0 61440.0 73728.0)
+     (append-prim s3-0 s2-2)
      )
-    (dummy-28 s3-0)
     (let
      ((s2-3
        (new
@@ -5781,8 +5789,8 @@
      (set! (-> s2-3 prim-core offense) 4)
      (set! (-> s2-3 transform-index) 16)
      (set-vector! (-> s2-3 local-sphere) 0.0 -20480.0 69632.0 237568.0)
+     (append-prim s3-0 s2-3)
      )
-    (dummy-28 s3-0)
     (let
      ((s2-4
        (new
@@ -5800,8 +5808,8 @@
      (set! (-> s2-4 prim-core offense) 4)
      (set! (-> s2-4 transform-index) 14)
      (set-vector! (-> s2-4 local-sphere) 0.0 0.0 0.0 81920.0)
+     (append-prim s3-0 s2-4)
      )
-    (dummy-28 s3-0)
     (let
      ((s2-5
        (new
@@ -5819,8 +5827,8 @@
      (set! (-> s2-5 prim-core offense) 4)
      (set! (-> s2-5 transform-index) 39)
      (set-vector! (-> s2-5 local-sphere) 0.0 0.0 0.0 69632.0)
+     (append-prim s3-0 s2-5)
      )
-    (dummy-28 s3-0)
     (let
      ((s2-6
        (new
@@ -5838,8 +5846,8 @@
      (set! (-> s2-6 prim-core offense) 4)
      (set! (-> s2-6 transform-index) 31)
      (set-vector! (-> s2-6 local-sphere) 0.0 -57344.0 0.0 90112.0)
+     (append-prim s3-0 s2-6)
      )
-    (dummy-28 s3-0)
     (let
      ((s2-7
        (new
@@ -5857,8 +5865,8 @@
      (set! (-> s2-7 prim-core offense) 4)
      (set! (-> s2-7 transform-index) 30)
      (set-vector! (-> s2-7 local-sphere) 0.0 24576.0 0.0 81920.0)
+     (append-prim s3-0 s2-7)
      )
-    (dummy-28 s3-0)
     (let
      ((s2-8
        (new
@@ -5876,8 +5884,8 @@
      (set! (-> s2-8 prim-core offense) 4)
      (set! (-> s2-8 transform-index) 57)
      (set-vector! (-> s2-8 local-sphere) 0.0 0.0 0.0 81920.0)
+     (append-prim s3-0 s2-8)
      )
-    (dummy-28 s3-0)
     (let
      ((s2-9
        (new
@@ -5895,8 +5903,8 @@
      (set! (-> s2-9 prim-core offense) 4)
      (set! (-> s2-9 transform-index) 68)
      (set-vector! (-> s2-9 local-sphere) 0.0 0.0 0.0 49152.0)
+     (append-prim s3-0 s2-9)
      )
-    (dummy-28 s3-0)
     (let
      ((s2-10
        (new
@@ -5914,8 +5922,8 @@
      (set! (-> s2-10 prim-core offense) 4)
      (set! (-> s2-10 transform-index) 4)
      (set-vector! (-> s2-10 local-sphere) 0.0 24576.0 0.0 102400.0)
+     (append-prim s3-0 s2-10)
      )
-    (dummy-28 s3-0)
     (let
      ((s2-11
        (new
@@ -5933,8 +5941,8 @@
      (set! (-> s2-11 prim-core offense) 4)
      (set! (-> s2-11 transform-index) 77)
      (set-vector! (-> s2-11 local-sphere) 0.0 0.0 0.0 73728.0)
+     (append-prim s3-0 s2-11)
      )
-    (dummy-28 s3-0)
     (let
      ((s2-12
        (new
@@ -5952,8 +5960,8 @@
      (set! (-> s2-12 prim-core offense) 4)
      (set! (-> s2-12 transform-index) 75)
      (set-vector! (-> s2-12 local-sphere) 0.0 24576.0 0.0 81920.0)
+     (append-prim s3-0 s2-12)
      )
-    (dummy-28 s3-0)
     (let
      ((s2-13
        (new
@@ -5971,8 +5979,8 @@
      (set! (-> s2-13 prim-core offense) 4)
      (set! (-> s2-13 transform-index) 74)
      (set-vector! (-> s2-13 local-sphere) 0.0 40960.0 0.0 73728.0)
+     (append-prim s3-0 s2-13)
      )
-    (dummy-28 s3-0)
     (let
      ((s2-14
        (new
@@ -5990,8 +5998,8 @@
      (set! (-> s2-14 prim-core offense) 4)
      (set! (-> s2-14 transform-index) 73)
      (set-vector! (-> s2-14 local-sphere) 0.0 32768.0 0.0 61440.0)
+     (append-prim s3-0 s2-14)
      )
-    (dummy-28 s3-0)
     (let
      ((s2-15
        (new
@@ -6009,8 +6017,8 @@
      (set! (-> s2-15 prim-core offense) 4)
      (set! (-> s2-15 transform-index) 84)
      (set-vector! (-> s2-15 local-sphere) 0.0 40960.0 -8192.0 98304.0)
+     (append-prim s3-0 s2-15)
      )
-    (dummy-28 s3-0)
     (let
      ((s2-16
        (new
@@ -6028,8 +6036,8 @@
      (set! (-> s2-16 prim-core offense) 4)
      (set! (-> s2-16 transform-index) 83)
      (set-vector! (-> s2-16 local-sphere) 0.0 65536.0 0.0 73728.0)
+     (append-prim s3-0 s2-16)
      )
-    (dummy-28 s3-0)
     (let
      ((s2-17
        (new
@@ -6047,8 +6055,8 @@
      (set! (-> s2-17 prim-core offense) 4)
      (set! (-> s2-17 transform-index) 82)
      (set-vector! (-> s2-17 local-sphere) 0.0 32768.0 0.0 61440.0)
+     (append-prim s3-0 s2-17)
      )
-    (dummy-28 s3-0)
     (let
      ((s2-18
        (new
@@ -6066,11 +6074,11 @@
      (set! (-> s2-18 prim-core offense) 4)
      (set! (-> s2-18 transform-index) 3)
      (set-vector! (-> s2-18 local-sphere) 0.0 0.0 0.0 61440.0)
+     (append-prim s3-0 s2-18)
      )
-    (dummy-28 s3-0)
     )
    (set! (-> s4-0 nav-radius) 4096.0)
-   (dummy-50 s4-0)
+   (backup-collide-with-as s4-0)
    (set! (-> obj root-override) s4-0)
    )
   (process-drawable-from-entity! obj arg0)

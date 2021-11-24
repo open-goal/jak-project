@@ -73,4 +73,7 @@ ShaderLibrary::ShaderLibrary() {
   at(ShaderId::SPRITE_CPU_AFAIL) = {"sprite_cpu_afail"};
   at(ShaderId::SKY) = {"sky"};
   at(ShaderId::SKY_BLEND) = {"sky_blend"};
+  at(ShaderId::DEBUG_BUFFERED) = {"debug_buffered"};
+  at(ShaderId::BUFFERED_TCC0) = {"buffered_tcc0"};
+  at(ShaderId::BUFFERED_TCC1) = {"buffered_tcc1"};
 }

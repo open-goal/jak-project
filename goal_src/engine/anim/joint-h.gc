@@ -6,19 +6,27 @@
 ;; dgos: GAME, ENGINE
 
 (declare-type joint-control basic)
+(declare-type effect-control basic)
+
+(define-extern cspace<-parented-transformq-joint! (function cspace transformq none))
+(define-extern cspace<-transformq! (function cspace transformq matrix))
+(define-extern vector<-cspace! (function vector cspace vector))
+
+;; DECOMP BEGINS
+
 (deftype joint-control-channel (structure)
-  ((parent           joint-control     :offset-assert 0)
-   (command          symbol    :offset-assert 4)
-   (frame-interp     float     :offset-assert 8)
-   (frame-group      art-joint-anim     :offset-assert 12)
-   (frame-num        float     :offset-assert 16)
-   (num-func         (function joint-control-channel float float float)  :offset-assert 20)
-   (param            float  2  :offset-assert 24)
-   (group-sub-index  int16     :offset-assert 32)
-   (group-size       int16     :offset-assert 34)
-   (dist             meters    :offset-assert 36)
-   (eval-time        uint32    :offset-assert 40)
-   (inspector-amount float     :offset-assert 44)
+  ((parent           joint-control                                        :offset-assert   0)
+   (command          symbol                                               :offset-assert   4)
+   (frame-interp     float                                                :offset-assert   8)
+   (frame-group      art-joint-anim                                       :offset-assert  12)
+   (frame-num        float                                                :offset-assert  16)
+   (num-func         (function joint-control-channel float float float)   :offset-assert  20)
+   (param            float                                              2 :offset-assert  24)
+   (group-sub-index  int16                                                :offset-assert  32)
+   (group-size       int16                                                :offset-assert  34)
+   (dist             meters                                               :offset-assert  36)
+   (eval-time        uint32                                               :offset-assert  40)
+   (inspector-amount float                                                :offset-assert  44)
    )
   :method-count-assert 10
   :size-assert         #x30
@@ -28,7 +36,7 @@
     )
   )
 
-(declare-type effect-control basic)
+
 (deftype joint-control (basic)
   ((status                  uint16           :offset-assert 4)
    (allocated-length        int16            :offset-assert 6)
@@ -55,27 +63,29 @@
   :flag-assert         #xb000000c0
   (:methods
     (new (symbol type int) _type_ 0)
-    (dummy-9 (_type_) none 9)
+    (dummy-9 (_type_) float 9)
     (dummy-10 (_type_ symbol) int 10)
     )
   )
 
+
 (deftype matrix-stack (structure)
-  ((top  matrix     :offset-assert 0)
-   (data matrix 24 :inline :offset-assert 16)
+  ((top  matrix            :offset-assert   0)
+   (data matrix 24 :inline :offset-assert  16)
    )
   :method-count-assert 9
   :size-assert         #x610
   :flag-assert         #x900000610
   )
 
+
 (deftype channel-upload-info (structure)
-  ((fixed     joint-anim-compressed-fixed  :offset-assert 0)
-   (fixed-qwc int32                        :offset-assert 4)
-   (frame     joint-anim-compressed-frame  :offset-assert 8)
-   (frame-qwc int32                        :offset-assert 12)
-   (amount    float                        :offset-assert 16)
-   (interp    float                        :offset-assert 20)
+  ((fixed     joint-anim-compressed-fixed  :offset-assert   0)
+   (fixed-qwc int32                        :offset-assert   4)
+   (frame     joint-anim-compressed-frame  :offset-assert   8)
+   (frame-qwc int32                        :offset-assert  12)
+   (amount    float                        :offset-assert  16)
+   (interp    float                        :offset-assert  20)
    )
   :pack-me
   :method-count-assert 9
@@ -83,21 +93,20 @@
   :flag-assert         #x900000018
   )
 
+
 (deftype joint-work (structure)
-  ((temp-mtx       matrix                      :inline :offset-assert 0)
-   (joint-stack    matrix-stack                :inline :offset-assert 64)
-   (fix-jmp-table  (function none)             16      :offset-assert 1616)
-   (frm-jmp-table  (function none)             16      :offset-assert 1680)
-   (pair-jmp-table (function none)             16      :offset-assert 1744)
-   (uploads        channel-upload-info      24 :inline :offset-assert 1808)
-   (num-uploads    int32                               :offset-assert 2384)
-   (mtx-acc        matrix                    2 :inline :offset-assert 2400)
-   (tq-acc         transformq              100 :inline :offset-assert 2528)
-   (jacp-hdr       joint-anim-compressed-hdr   :inline :offset-assert 7328)
-   (fixed-data     joint-anim-compressed-fixed :inline :offset-assert 7392)
-   (frame-data     joint-anim-compressed-frame 2 :inline :offset-assert 9600)
-   ;(flatten-array  UNKNOWN                     576     :offset-assert 2400) no clue!
-   ;(flattened      UNKNOWN                     24      :offset-assert 2400) no clue!
+  ((temp-mtx       matrix                      :inline     :offset-assert   0)
+   (joint-stack    matrix-stack                :inline     :offset-assert  64)
+   (fix-jmp-table  (function none)             16          :offset-assert 1616)
+   (frm-jmp-table  (function none)             16          :offset-assert 1680)
+   (pair-jmp-table (function none)             16          :offset-assert 1744)
+   (uploads        channel-upload-info         24 :inline  :offset-assert 1808)
+   (num-uploads    int32                                   :offset-assert 2384)
+   (mtx-acc        matrix                      2 :inline   :offset-assert 2400)
+   (tq-acc         transformq                  100 :inline :offset-assert 2528)
+   (jacp-hdr       joint-anim-compressed-hdr   :inline     :offset-assert 7328)
+   (fixed-data     joint-anim-compressed-fixed :inline     :offset-assert 7392)
+   (frame-data     joint-anim-compressed-frame 2 :inline   :offset-assert 9600)
    )
   :method-count-assert 9
   :size-assert         #x3640

@@ -225,12 +225,13 @@
   )
 
 ;; definition for function swamp-spike-post
+;; INFO: Return type mismatch symbol vs none.
 (defbehavior swamp-spike-post swamp-spike ()
   (transform-post)
   (let ((a1-0 (new 'stack-no-clear 'event-message-block)))
    (set! (-> a1-0 to) (the-as process 1))
    (set! (-> a1-0 from) (the-as process *touching-list*))
-   (if (dummy-40 (-> self root-override) (the-as vector2w a1-0))
+   (if (dummy-40 (-> self root-override) a1-0)
     (dummy-45 (-> self root-override))
     )
    )
@@ -636,7 +637,7 @@
     (set! (-> s4-0 collide-with) (the-as uint 16))
     (set! (-> s4-0 prim-core action) (the-as uint 1))
     (set-vector! (-> s4-0 local-sphere) 0.0 20480.0 0.0 24576.0)
-    (dummy-46 s5-0)
+    (set-root-prim! s5-0 s4-0)
     (let
      ((s3-0
        (new
@@ -654,8 +655,8 @@
      (set! (-> s3-0 prim-core offense) 4)
      (set! (-> s3-0 transform-index) 3)
      (set-vector! (-> s3-0 local-sphere) 0.0 20480.0 0.0 24576.0)
+     (append-prim s4-0 s3-0)
      )
-    (dummy-28 s4-0)
     (let
      ((s3-1
        (new
@@ -673,14 +674,14 @@
      (set! (-> s3-1 prim-core offense) 4)
      (set! (-> s3-1 transform-index) 3)
      (set-vector! (-> s3-1 local-sphere) 0.0 20480.0 0.0 24576.0)
+     (append-prim s4-0 s3-1)
      )
-    (dummy-28 s4-0)
     )
    (set! (-> s5-0 nav-radius) (* 0.75 (-> s5-0 root-prim local-sphere w)))
-   (dummy-50 s5-0)
+   (backup-collide-with-as s5-0)
    (set! (-> obj root-override) s5-0)
    )
-  (process-drawable-from-entity! obj (-> obj entity))
+  (process-drawable-from-entity! obj (the-as entity-actor (-> obj entity)))
   (initialize-skeleton obj *swamp-spike-sg* '())
   (set! (-> obj draw origin-joint-index) (the-as uint 3))
   (load-params! (-> obj sync) obj (the-as uint 1500) 0.0 0.15 0.15)
@@ -691,7 +692,7 @@
 
 ;; definition for method 11 of type swamp-spike
 ;; INFO: Return type mismatch object vs none.
-(defmethod copy-defaults! swamp-spike ((obj swamp-spike) (arg0 res-lump))
+(defmethod init-from-entity! swamp-spike ((obj swamp-spike) (arg0 entity-actor))
   (init! obj)
   (go swamp-spike-idle)
   (none)
@@ -716,7 +717,7 @@
 
 ;; definition for method 11 of type swampgate
 ;; INFO: Return type mismatch object vs none.
-(defmethod copy-defaults! swampgate ((obj swampgate) (arg0 res-lump))
+(defmethod init-from-entity! swampgate ((obj swampgate) (arg0 entity-actor))
   (init! obj)
   (if (logtest? (-> arg0 extra perm status) (entity-perm-status complete))
    (go swamp-spike-gate-down)
@@ -862,7 +863,10 @@
 
 ;; definition for method 11 of type balance-plat
 ;; INFO: Return type mismatch object vs none.
-(defmethod copy-defaults! balance-plat ((obj balance-plat) (arg0 res-lump))
+(defmethod
+  init-from-entity!
+  balance-plat
+  ((obj balance-plat) (arg0 entity-actor))
   (set! (-> obj mask) (logior (process-mask platform) (-> obj mask)))
   (let
    ((s4-0
@@ -876,7 +880,13 @@
     )
    (set! (-> s4-0 dynam) (copy *standard-dynamics* 'process))
    (set! (-> s4-0 reaction) default-collision-reaction)
-   (set! (-> s4-0 no-reaction) nothing)
+   (set!
+    (-> s4-0 no-reaction)
+    (the-as
+     (function collide-shape-moving collide-shape-intersect vector vector none)
+     nothing
+     )
+    )
    (dummy-29 s4-0 1)
    (let
     ((s3-0
@@ -895,10 +905,10 @@
     (set! (-> s3-0 prim-core offense) 4)
     (set! (-> s3-0 transform-index) 3)
     (set-vector! (-> s3-0 local-sphere) 0.0 0.0 0.0 40960.0)
+    (set-root-prim! s4-0 s3-0)
     )
-   (dummy-46 s4-0)
    (set! (-> s4-0 nav-radius) (* 0.75 (-> s4-0 root-prim local-sphere w)))
-   (dummy-50 s4-0)
+   (backup-collide-with-as s4-0)
    (set! (-> obj root-override) s4-0)
    )
   (process-drawable-from-entity! obj arg0)
@@ -1125,7 +1135,7 @@
 
 ;; definition for method 11 of type swamp-rock
 ;; INFO: Return type mismatch object vs none.
-(defmethod copy-defaults! swamp-rock ((obj swamp-rock) (arg0 res-lump))
+(defmethod init-from-entity! swamp-rock ((obj swamp-rock) (arg0 entity-actor))
   (set! (-> obj mask) (logior (process-mask attackable) (-> obj mask)))
   (let ((f30-0 (res-lump-float arg0 'scale-factor :default 1.0)))
    (let
@@ -1161,10 +1171,10 @@
       0.0
       (* 4096.0 (* 3.0 f30-0))
       )
+     (set-root-prim! s4-0 s3-0)
      )
-    (dummy-46 s4-0)
     (set! (-> s4-0 nav-radius) (* 0.75 (-> s4-0 root-prim local-sphere w)))
-    (dummy-50 s4-0)
+    (backup-collide-with-as s4-0)
     (set! (-> obj root) s4-0)
     )
    (process-drawable-from-entity! obj arg0)
@@ -1197,7 +1207,13 @@
     )
    (set! (-> s5-0 dynam) (copy *standard-dynamics* 'process))
    (set! (-> s5-0 reaction) default-collision-reaction)
-   (set! (-> s5-0 no-reaction) nothing)
+   (set!
+    (-> s5-0 no-reaction)
+    (the-as
+     (function collide-shape-moving collide-shape-intersect vector vector none)
+     nothing
+     )
+    )
    (dummy-29 s5-0 1)
    (let
     ((s4-0
@@ -1216,10 +1232,10 @@
     (set! (-> s4-0 prim-core offense) 4)
     (set! (-> s4-0 transform-index) 3)
     (set-vector! (-> s4-0 local-sphere) 0.0 0.0 0.0 12288.0)
+    (set-root-prim! s5-0 s4-0)
     )
-   (dummy-46 s5-0)
    (set! (-> s5-0 nav-radius) (* 0.75 (-> s5-0 root-prim local-sphere w)))
-   (dummy-50 s5-0)
+   (backup-collide-with-as s5-0)
    (set! (-> self root) s5-0)
    )
   (set! (-> self root trans quad) (-> arg0 quad))
@@ -1421,7 +1437,13 @@
     )
    (set! (-> s5-0 dynam) (copy *standard-dynamics* 'process))
    (set! (-> s5-0 reaction) default-collision-reaction)
-   (set! (-> s5-0 no-reaction) nothing)
+   (set!
+    (-> s5-0 no-reaction)
+    (the-as
+     (function collide-shape-moving collide-shape-intersect vector vector none)
+     nothing
+     )
+    )
    (dummy-29 s5-0 1)
    (let
     ((s4-0
@@ -1440,10 +1462,10 @@
     (set! (-> s4-0 prim-core offense) 4)
     (set! (-> s4-0 transform-index) 3)
     (set-vector! (-> s4-0 local-sphere) 0.0 0.0 0.0 20480.0)
+    (set-root-prim! s5-0 s4-0)
     )
-   (dummy-46 s5-0)
    (set! (-> s5-0 nav-radius) (* 0.75 (-> s5-0 root-prim local-sphere w)))
-   (dummy-50 s5-0)
+   (backup-collide-with-as s5-0)
    (set! (-> obj root-overlay) s5-0)
    )
   0

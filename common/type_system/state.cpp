@@ -132,3 +132,19 @@ std::optional<TypeSpec> get_state_type_from_enter_and_code(const TypeSpec& enter
     return {};
   }
 }
+
+std::optional<TypeSpec> get_state_type_from_func(const TypeSpec& func_type,
+                                                 const TypeSpec& proc_type) {
+  bool real_func = func_type.base_type() == "function" && func_type.arg_count() > 0;
+
+  if (real_func) {
+    TypeSpec result("state");
+    for (int i = 0; i < (int)func_type.arg_count() - 1; i++) {
+      result.add_arg(func_type.get_arg(i));
+    }
+    result.add_arg(proc_type);
+    return result;
+  } else {
+    return {};
+  }
+}

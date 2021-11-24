@@ -831,7 +831,7 @@
    (or
     (logtest? (-> self control status) 1)
     (<
-     (- (-> *display* base-frame-counter) (-> self control unknown-dword10))
+     (- (-> *display* base-frame-counter) (-> self control unknown-dword11))
      (the-as int (-> *TARGET-bank* ground-timeout))
      )
     (and
@@ -870,12 +870,12 @@
   (- (-> self control trans y) (-> self control shadow-pos y))
   )
 
-(defbehavior fall-test target ((arg0 symbol) (arg1 symbol))
+(defbehavior fall-test target ()
   (when
    (and
     (zero? (logand (-> self control status) 1))
     (>=
-     (- (-> *display* base-frame-counter) (-> self control unknown-dword10))
+     (- (-> *display* base-frame-counter) (-> self control unknown-dword11))
      (the-as int (-> *TARGET-bank* ground-timeout))
      )
     (>=
@@ -918,14 +918,15 @@
     )
    (go target-falling #f)
    )
+  (none)
   )
 
-(defbehavior slide-down-test target ((arg0 symbol) (arg1 symbol))
+(defbehavior slide-down-test target ()
   (if
    (and
     (zero? (logand (-> self control status) 129))
     (>=
-     (- (-> *display* base-frame-counter) (-> self control unknown-dword10))
+     (- (-> *display* base-frame-counter) (-> self control unknown-dword11))
      (the-as int (-> *TARGET-bank* ground-timeout))
      )
     (logtest? (-> self control status) 4)
@@ -933,6 +934,7 @@
     )
    (go target-slide-down)
    )
+  (none)
   )
 
 (defbehavior smack-surface? target ((arg0 symbol))
@@ -993,7 +995,7 @@
     (set! (-> s5-0 1 quad) (-> self control trans quad))
     (set! (-> s5-0 1 y) (+ 2867.2 (-> *TARGET-bank* body-radius) (-> s5-0 1 y)))
     (set! (-> s5-0 1 w) (-> *TARGET-bank* body-radius))
-    (set! (-> gp-0 spheres) (the-as uint s5-0))
+    (set! (-> gp-0 spheres) (the-as (pointer sphere) s5-0))
     )
    (set! (-> gp-0 num-spheres) (the-as uint 2))
    (set! (-> gp-0 collide-with) (-> self control root-prim collide-with))
@@ -1045,7 +1047,7 @@
       (not arg0)
       (and
        (<
-        (- (-> *display* base-frame-counter) (-> self control unknown-dword10))
+        (- (-> *display* base-frame-counter) (-> self control unknown-dword11))
         (the-as int (-> *TARGET-bank* ground-timeout))
         )
        (< (-> self control unknown-float61) 0.7)
@@ -1066,13 +1068,13 @@
          )
         )
        )
-      (-> self control unknown-dword30)
+      (-> self control unknown-dword31)
       )
      )
     #t
     )
    (else
-    (set! (-> self control unknown-dword31) (-> *display* base-frame-counter))
+    (set! (-> self control unknown-dword32) (-> *display* base-frame-counter))
     #f
     )
    )
@@ -1091,12 +1093,12 @@
       (-> *display* base-frame-counter)
       (the-as int (-> *TARGET-bank* attack-timeout))
       )
-     (-> self control unknown-dword32)
+     (-> self control unknown-dword33)
      )
     #t
     )
    (else
-    (set! (-> self control unknown-dword33) (-> *display* base-frame-counter))
+    (set! (-> self control unknown-dword34) (-> *display* base-frame-counter))
     #f
     )
    )
@@ -1136,7 +1138,7 @@
    )
   )
 
-(defbehavior delete-back-vel target ((arg0 float))
+(defbehavior delete-back-vel target ()
   (let ((s5-0 (new-stack-vector0)))
    (vector-z-quaternion! s5-0 (-> self control dir-targ))
    (let ((gp-0 (new-stack-vector0))
@@ -1181,8 +1183,8 @@
 
 (defun target-timed-invulnerable ((arg0 seconds) (arg1 target))
   (logior! (-> arg1 state-flags) 32)
-  (set! (-> arg1 control unknown-dword70) (-> *display* base-frame-counter))
-  (set! (-> arg1 control unknown-dword71) (the-as int arg0))
+  (set! (-> arg1 control unknown-dword80) (-> *display* base-frame-counter))
+  (set! (-> arg1 control unknown-dword81) (the-as int arg0))
   (dummy-53 (-> arg1 control) 2 4096 0)
   0
   (none)

@@ -573,17 +573,23 @@
     )
    (set! (-> s5-0 dynam) (copy *standard-dynamics* 'process))
    (set! (-> s5-0 reaction) default-collision-reaction)
-   (set! (-> s5-0 no-reaction) nothing)
+   (set!
+    (-> s5-0 no-reaction)
+    (the-as
+     (function collide-shape-moving collide-shape-intersect vector vector none)
+     nothing
+     )
+    )
    (let ((s4-0 (new 'process 'collide-shape-prim-sphere s5-0 (the-as uint 0))))
     (set! (-> s4-0 prim-core collide-as) (the-as uint 256))
     (set! (-> s4-0 collide-with) (the-as uint 2973))
     (set! (-> s4-0 prim-core action) (the-as uint 1))
     (set! (-> s4-0 prim-core offense) 4)
     (set-vector! (-> s4-0 local-sphere) 0.0 0.0 0.0 2867.2)
+    (set-root-prim! s5-0 s4-0)
     )
-   (dummy-46 s5-0)
    (set! (-> s5-0 nav-radius) (* 0.75 (-> s5-0 root-prim local-sphere w)))
-   (dummy-50 s5-0)
+   (backup-collide-with-as s5-0)
    (set! (-> s5-0 max-iteration-count) (the-as uint 1))
    (set! (-> s5-0 event-self) 'touched)
    (set! (-> self root-override) s5-0)
@@ -1424,7 +1430,7 @@
    )
   :exit
   (behavior ()
-   (dummy-49 (-> self root-override))
+   (restore-collide-with-as (-> self root-override))
    (none)
    )
   :trans
@@ -1530,7 +1536,7 @@
      (-> gp-0 ppointer)
      )
     )
-   (dummy-48 (-> self root-override))
+   (clear-collide-with-as (-> self root-override))
    (while #t
     (orient-to-face-target)
     (suspend)
@@ -1685,7 +1691,10 @@
 ;; definition for method 11 of type quicksandlurker
 ;; INFO: Return type mismatch object vs none.
 ;; Used lq/sq
-(defmethod copy-defaults! quicksandlurker ((obj quicksandlurker) (arg0 res-lump))
+(defmethod
+  init-from-entity!
+  quicksandlurker
+  ((obj quicksandlurker) (arg0 entity-actor))
   (set! (-> obj mask) (logior (process-mask enemy) (-> obj mask)))
   (let
    ((s4-0
@@ -1697,7 +1706,7 @@
     (set! (-> s3-0 collide-with) (the-as uint 16))
     (set! (-> s3-0 prim-core action) (the-as uint 1))
     (set-vector! (-> s3-0 local-sphere) 0.0 0.0 0.0 8192.0)
-    (dummy-46 s4-0)
+    (set-root-prim! s4-0 s3-0)
     (let ((s2-0 (new 'process 'collide-shape-prim-sphere s4-0 (the-as uint 0))))
      (set! (-> s2-0 prim-core collide-as) (the-as uint 256))
      (set! (-> s2-0 collide-with) (the-as uint 16))
@@ -1705,8 +1714,8 @@
      (set! (-> s2-0 prim-core offense) 1)
      (set! (-> s2-0 transform-index) 3)
      (set-vector! (-> s2-0 local-sphere) 0.0 0.0 0.0 4096.0)
+     (append-prim s3-0 s2-0)
      )
-    (dummy-28 s3-0)
     (let ((s2-1 (new 'process 'collide-shape-prim-sphere s4-0 (the-as uint 0))))
      (set! (-> s2-1 prim-core collide-as) (the-as uint 256))
      (set! (-> s2-1 collide-with) (the-as uint 16))
@@ -1714,17 +1723,17 @@
      (set! (-> s2-1 prim-core offense) 1)
      (set! (-> s2-1 transform-index) 5)
      (set-vector! (-> s2-1 local-sphere) 0.0 0.0 0.0 4096.0)
+     (append-prim s3-0 s2-1)
      )
-    (dummy-28 s3-0)
     (let ((s2-2 (new 'process 'collide-shape-prim-sphere s4-0 (the-as uint 1))))
      (set! (-> s2-2 prim-core offense) 2)
      (set! (-> s2-2 transform-index) 5)
      (set-vector! (-> s2-2 local-sphere) 0.0 -2048.0 0.0 5324.8)
+     (append-prim s3-0 s2-2)
      )
-    (dummy-28 s3-0)
     )
    (set! (-> s4-0 nav-radius) (* 0.75 (-> s4-0 root-prim local-sphere w)))
-   (dummy-50 s4-0)
+   (backup-collide-with-as s4-0)
    (set! (-> obj root-override) s4-0)
    )
   (process-drawable-from-entity! obj arg0)

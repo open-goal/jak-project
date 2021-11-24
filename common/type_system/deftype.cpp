@@ -335,6 +335,8 @@ StructureDefResult parse_structure_def(StructureType* type,
         rest = cdr(rest);
       } else if (opt_name == ":no-runtime-type") {
         result.generate_runtime_type = false;
+      } else if (opt_name == ":no-inspect") {
+        type->set_gen_inspect(false);
       } else if (opt_name == ":pack-me") {
         result.pack_me = true;
       } else if (opt_name == ":heap-base") {
@@ -441,6 +443,8 @@ BitFieldTypeDefResult parse_bitfield_type_def(BitFieldType* type,
         rest = cdr(rest);
       } else if (opt_name == ":no-runtime-type") {
         result.generate_runtime_type = false;
+      } else if (opt_name == ":no-inspect") {
+        type->set_gen_inspect(false);
       } else if (opt_name == ":heap-base") {
         u16 hb = get_int(car(rest));
         rest = cdr(rest);

@@ -232,7 +232,7 @@
    )
   )
 
-;; WARN: rewrite_to_get_var got a none typed variable. Is there unreachable code?
+;; WARN: rewrite_to_get_var got a none typed variable. Is there unreachable code? [OP: 7]
 (defbehavior
   baby-spider-default-event-handler baby-spider
   ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
@@ -1076,17 +1076,23 @@ baby-spider-default-event-handler
     )
    (set! (-> s5-0 dynam) (copy *standard-dynamics* 'process))
    (set! (-> s5-0 reaction) default-collision-reaction)
-   (set! (-> s5-0 no-reaction) nothing)
+   (set!
+    (-> s5-0 no-reaction)
+    (the-as
+     (function collide-shape-moving collide-shape-intersect vector vector none)
+     nothing
+     )
+    )
    (let ((s4-0 (new 'process 'collide-shape-prim-sphere s5-0 (the-as uint 3))))
     (set! (-> s4-0 prim-core collide-as) (the-as uint 256))
     (set! (-> s4-0 collide-with) (the-as uint 16))
     (set! (-> s4-0 prim-core action) (the-as uint 1))
     (set! (-> s4-0 prim-core offense) 2)
     (set-vector! (-> s4-0 local-sphere) 0.0 0.0 0.0 4096.0)
+    (set-root-prim! s5-0 s4-0)
     )
-   (dummy-46 s5-0)
    (set! (-> s5-0 nav-radius) 4096.0)
-   (dummy-50 s5-0)
+   (backup-collide-with-as s5-0)
    (set! (-> obj collide-info) s5-0)
    )
   0
@@ -1144,7 +1150,7 @@ baby-spider-default-event-handler
   (set! (-> self enemy-info pickup-amount) (the float (-> arg3 pickup-amount)))
   (create-connection!
    *cavecrystal-light-control*
-   (the-as cavecrystal self)
+   self
    (-> self entity)
    (the-as
     (function object object object object object)
@@ -1167,7 +1173,7 @@ baby-spider-default-event-handler
   (none)
   )
 
-(defmethod copy-defaults! baby-spider ((obj baby-spider) (arg0 res-lump))
+(defmethod init-from-entity! baby-spider ((obj baby-spider) (arg0 entity-actor))
   (set! (-> obj die-if-not-visible?) #f)
   (set! (-> obj delay-before-dying-if-not-visible) 600)
   (set! (-> obj hack-move-above-ground?) #f)
@@ -1191,7 +1197,7 @@ baby-spider-default-event-handler
    )
   (create-connection!
    *cavecrystal-light-control*
-   (the-as cavecrystal obj)
+   obj
    (-> obj entity)
    (the-as
     (function object object object object object)

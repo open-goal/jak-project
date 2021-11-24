@@ -37,6 +37,27 @@
    )
   )
 
+(defun vis-cull ((id int))
+  "Is this thing visible? By draw-node id."
+  ;; todo
+  #t
+  
+  #|
+  (let* ((addr (scratchpad-ptr int8 :offset (+ #x3b80 (/ id 8)))) ;; address of the vis data
+         (vis-byte (-> addr 0)) ;; vis byte
+         (shift-amount (+ 56 (logand id 7)))
+         (shifted (shl vis-byte shift-amount))
+         )
+    (< shifted 0)
+    )
+    |#
+  )
+
+(defun sphere-cull ((arg0 vector))
+  #t
+  ;; todo
+  )
+
 (defun real-main-draw-hook ()
   (when *slow-frame-rate*
     (dotimes (v1-2 #xc3500)
@@ -51,7 +72,7 @@
   "Function to be executed to set up for engine dma"
   (set! *vu1-enable-user* *vu1-enable-user-menu*)
   (set! *texture-enable-user* *texture-enable-user-menu*)
-  
+
   (when *debug-segment*
    (when (or *stats-memory* *stats-memory-short*)
     (dotimes (gp-0 (-> *level* length))
@@ -64,15 +85,15 @@
     )
    (reset! *dma-mem-usage*)
    )
-  
+
   ;; todo debug memory
   ;; todo shrub matrix
   ;; todo generic init
-  
+
   ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
   ;; texture uploads
   ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-  
+
   ;; tfrag
 
   (when (logtest? *texture-enable-user* 1)
@@ -84,7 +105,7 @@
      )
     )
    )
-  
+
   ;; pris
 
   (when (logtest? *texture-enable-user* 2)
@@ -96,7 +117,7 @@
      )
     )
    )
-  
+
   ;; shrub
 
   (when (logtest? *texture-enable-user* 4)
@@ -108,7 +129,7 @@
      )
     )
    )
-  
+
   ;; alpha and common.
   (when (logtest? *texture-enable-user* 8)
    (let ((uploaded-common #f))
@@ -129,7 +150,7 @@
      )
     )
    )
-  
+
   ;; water.
   (when (logtest? *texture-enable-user* 16)
    (dotimes (gp-5 (-> *level* length))
@@ -140,7 +161,7 @@
      )
     )
    )
-  
+
   ;; sky
   ;; todo - disabled sky
   (when (zero? (logand *vu1-enable-user* 8))
@@ -150,7 +171,7 @@
                              (test-1 (new 'static 'gs-test :ate #x1 :atst (gs-atest always) :zte #x1 :ztst (gs-ztest always)))
                              (alpha-1 (new 'static 'gs-alpha :b #x1 :d #x1))
                              )
-      (screen-gradient 
+      (screen-gradient
         dma-buf
         (-> *display* bg-clear-color 0)
         (-> *display* bg-clear-color 1)
@@ -169,16 +190,43 @@
         )
       )
     )
-  
+
   ;; tod update
   (update-time-of-day *time-of-day-context*)
   ;; closest
   ;; ocean
   ;; merc
   ;; init bg
+  (init-background)
+
   ;; exec bg
-  ;; finish bg
-  ;; stats
+  (execute-connections *background-draw-engine* (-> *display* frames (-> *display* on-screen) frame))
+
+  ;; finish bg (most of the work is here)
+  (reset! (-> *perf-stats* data 3))
+  (finish-background)
+  (read! (-> *perf-stats* data 3))
+  (update-wait-stats (-> *perf-stats* data 3) (-> *background-work* wait-to-vu0) (the-as uint 0) (the-as uint 0))
+  
+  ;; 
+  (end-perf-stat-collection)
+  (when (not (paused?))
+    (when *stats-poly*
+      (dotimes (gp-8 (-> *level* length))
+        (let ((v1-193 (-> *level* level gp-8)))
+          (if (= (-> v1-193 status) 'active)
+              (collect-stats (-> v1-193 bsp))
+              )
+          )
+        )
+      (print-terrain-stats)
+      )
+    (if *display-perf-stats*
+        (print-perf-stats)
+        )
+    )
+  (start-perf-stat-collection)
+
   ;; fg engine
   ;; bones
   ;; gmerc
@@ -196,8 +244,10 @@
   (render-boundaries)
   ;; boundaries
   ;; touching
-  ;; method15 level
+  (actors-update *level*)
   ;; collide stats
+
+  (none)
   )
 
 (defun main-draw-hook ()
@@ -281,7 +331,7 @@
   "Set up a new frame. Call this before drawing anything.
    new-frame-idx is the display frame that will be set up.
    odd-even is the odd-even of the new frame"
-   
+
 
   ;; due to a HW bug in the PS2, you must set this.
   ;;(set! (-> (the-as vif-bank #x10003c00) err me0) 1)
@@ -772,7 +822,7 @@
      (.lvf vf28 (&-> arg1 color-mult quad))
      (.lvf vf29 (&-> arg1 color-emissive quad))
      (when (sphere-in-view-frustum? (the-as sphere s4-0))
-      (case (-> arg1 global-effect) 
+      (case (-> arg1 global-effect)
        ((3)
          (when (not (-> s3-0 title-updated))
           (set! (-> s3-0 title-updated) #t)

@@ -41,7 +41,7 @@
   0
   -1
   ((1 (meters 20)) (2 (meters 999999)))
-  :bounds (static-spherem 0 2.200000047683716 0 3.4000000953674316)
+  :bounds (static-spherem 0 2.2 0 3.4)
   :longest-edge (meters 0)
   )
 
@@ -470,7 +470,7 @@
    (if (not (task-complete? *game-info* (-> self entity extra perm task)))
     (birth-pickup-at-point
      (-> self root trans)
-     6
+     (pickup-type fuel-cell)
      (the float (-> self entity extra perm task))
      #t
      self
@@ -552,7 +552,7 @@
 ;; definition for method 11 of type snow-bumper
 ;; INFO: Return type mismatch object vs none.
 ;; Used lq/sq
-(defmethod copy-defaults! snow-bumper ((obj snow-bumper) (arg0 res-lump))
+(defmethod init-from-entity! snow-bumper ((obj snow-bumper) (arg0 entity-actor))
   (local-vars (sv-16 int))
   (set! (-> obj last-shoved-player-time) (the-as uint 0))
   (let
@@ -562,13 +562,19 @@
     )
    (set! (-> s4-0 dynam) (copy *standard-dynamics* 'process))
    (set! (-> s4-0 reaction) default-collision-reaction)
-   (set! (-> s4-0 no-reaction) nothing)
+   (set!
+    (-> s4-0 no-reaction)
+    (the-as
+     (function collide-shape-moving collide-shape-intersect vector vector none)
+     nothing
+     )
+    )
    (let ((s3-0 (new 'process 'collide-shape-prim-group s4-0 (the-as uint 2) 0)))
     (set! (-> s3-0 prim-core collide-as) (the-as uint 2048))
     (set! (-> s3-0 collide-with) (the-as uint 16))
     (set! (-> s3-0 prim-core action) (the-as uint 3))
     (set-vector! (-> s3-0 local-sphere) 0.0 9011.2 0.0 13926.4)
-    (dummy-46 s4-0)
+    (set-root-prim! s4-0 s3-0)
     (let
      ((s2-0
        (new
@@ -586,8 +592,8 @@
      (set! (-> s2-0 prim-core offense) 4)
      (set! (-> s2-0 transform-index) 6)
      (set-vector! (-> s2-0 local-sphere) 0.0 0.0 0.0 4915.2)
+     (append-prim s3-0 s2-0)
      )
-    (dummy-28 s3-0)
     (let
      ((s2-1
        (new
@@ -605,11 +611,11 @@
      (set! (-> s2-1 prim-core offense) 4)
      (set! (-> s2-1 transform-index) 3)
      (set-vector! (-> s2-1 local-sphere) 0.0 8192.0 0.0 11878.4)
+     (append-prim s3-0 s2-1)
      )
-    (dummy-28 s3-0)
     )
    (set! (-> s4-0 nav-radius) 20480.0)
-   (dummy-50 s4-0)
+   (backup-collide-with-as s4-0)
    (set! (-> obj root) s4-0)
    )
   (process-drawable-from-entity! obj arg0)

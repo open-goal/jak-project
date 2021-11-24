@@ -338,9 +338,6 @@ Val* Compiler::compile_disasm(const goos::Object& form, const goos::Object& rest
             ":disasm used on over 1 MB of memory, this probably isn't what you meant to do."));
   }
 
-  std::vector<u8> mem;
-  mem.resize(size);
-
   if (addr < EE_MAIN_MEM_LOW_PROTECT || (addr + size) > EE_MAIN_MEM_SIZE) {
     throw_compiler_error(form,
                          ":disasm memory out of range. Wanted to print 0x{:x} to 0x{:x}, but valid "
@@ -348,11 +345,8 @@ Val* Compiler::compile_disasm(const goos::Object& form, const goos::Object& rest
                          addr, addr + size, EE_MAIN_MEM_LOW_PROTECT, EE_MAIN_MEM_SIZE);
   }
 
-  m_debugger.read_memory(mem.data(), size, addr);
-
   fmt::print("{}\n", m_debugger.get_info_about_addr(addr));
-  fmt::print("{}\n",
-             disassemble_x86(mem.data(), mem.size(), m_debugger.get_x86_base_addr() + addr));
+  fmt::print("{}\n", m_debugger.disassemble_x86_with_symbols(size, addr));
 
   return get_none();
 }
@@ -403,8 +397,12 @@ Val* Compiler::compile_d_sym_name(const goos::Object& form, const goos::Object& 
                          "the target must be halted.");
   }
 
-  fmt::print("symbol name for symbol {:X}h is {}\n", ofs,
-             m_debugger.get_symbol_name_from_offset(ofs));
+  auto sym_name = m_debugger.get_symbol_name_from_offset(ofs);
+  if (sym_name) {
+    fmt::print("symbol name for symbol {:X}h is {}\n", ofs, sym_name);
+  } else {
+    fmt::print("symbol {:X}h is not loaded or is invalid\n", ofs);
+  }
 
   return get_none();
 }

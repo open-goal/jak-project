@@ -94,7 +94,7 @@
   -1
   ((1 (meters 20)) (2 (meters 40)) (3 (meters 999999)))
   :bounds (static-spherem 0 1 0 5.25)
-  :longest-edge (meters 1.2000000476837158)
+  :longest-edge (meters 1.2)
   :shadow 4
   )
 
@@ -104,13 +104,13 @@
   -1
   ((6 (meters 20)) (7 (meters 40)) (8 (meters 999999)))
   :bounds (static-spherem 0 1 0 5.25)
-  :longest-edge (meters 1.2000000476837158)
+  :longest-edge (meters 1.2)
   :shadow 4
   )
 
 ;; definition for function puffer-default-event-handler
 ;; INFO: Return type mismatch none vs object.
-;; WARN: rewrite_to_get_var got a none typed variable. Is there unreachable code?
+;; WARN: rewrite_to_get_var got a none typed variable. Is there unreachable code? [OP: 56]
 (defbehavior
   puffer-default-event-handler puffer
   ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
@@ -532,7 +532,7 @@
        )
       (let ((s3-1 (new 'stack 'clip-travel-vector-to-mesh-return-info)))
        (set! (-> obj nav travel quad) (-> s4-0 quad))
-       (dummy-24 (-> obj nav) f28-0 (the-as symbol s3-1))
+       (dummy-24 (-> obj nav) f28-0 s3-1)
        (if (-> s3-1 found-boundary)
         (set!
          f26-0
@@ -543,19 +543,27 @@
          )
         )
        )
-      )
-     (let ((s3-2 (new 'stack-no-clear 'matrix)))
-      (when (>= ((method-of-object (-> obj nav) dummy-23)) 0.0)
-       (let
-        ((f0-26
-          (vector-vector-xz-distance
-           (-> s3-2 vector 1)
-           (-> obj root-override trans)
+      (let ((s3-2 (new 'stack-no-clear 'matrix)))
+       (when
+        (>=
+         (dummy-23
+          (-> obj nav)
+          s4-0
+          (the-as check-vector-collision-with-nav-spheres-info s3-2)
+          )
+         0.0
+         )
+        (let
+         ((f0-26
+           (vector-vector-xz-distance
+            (-> s3-2 vector 1)
+            (-> obj root-override trans)
+            )
            )
           )
-         )
-        (if (or (< f26-0 0.0) (< f0-26 f26-0))
-         (set! f26-0 f0-26)
+         (if (or (< f26-0 0.0) (< f0-26 f26-0))
+          (set! f26-0 f0-26)
+          )
          )
         )
        )
@@ -978,12 +986,15 @@
    (let ((v1-0 arg2))
     (the-as object (cond
                     ((= v1-0 'death-start)
-                     (TODO-RENAME-9
-                      (-> self fact-info-override)
-                      #t
-                      *entity-pool*
-                      (-> self fact-info-override)
-                      0
+                     (the-as
+                      uint
+                      (drop-pickup
+                       (-> self fact-info-override)
+                       #t
+                       *entity-pool*
+                       (-> self fact-info-override)
+                       0
+                       )
                       )
                      )
                     ((= v1-0 'death-end)
@@ -1002,7 +1013,7 @@
    (shut-down! (-> self neck))
    (logclear! (-> self mask) (process-mask actor-pause))
    (ja-channel-push! 1 22)
-   (dummy-48 (-> self root-override))
+   (clear-collide-with-as (-> self root-override))
    (let ((a0-5 (-> self skel root-channel 0)))
     (set!
      (-> a0-5 frame-group)
@@ -1062,39 +1073,45 @@
     )
    (set! (-> s5-0 dynam) (copy *standard-dynamics* 'process))
    (set! (-> s5-0 reaction) default-collision-reaction)
-   (set! (-> s5-0 no-reaction) nothing)
+   (set!
+    (-> s5-0 no-reaction)
+    (the-as
+     (function collide-shape-moving collide-shape-intersect vector vector none)
+     nothing
+     )
+    )
    (let ((s4-0 (new 'process 'collide-shape-prim-group s5-0 (the-as uint 3) 0)))
     (set! (-> s4-0 prim-core collide-as) (the-as uint 256))
     (set! (-> s4-0 collide-with) (the-as uint 16))
     (set-vector! (-> s4-0 local-sphere) 0.0 6144.0 0.0 18432.0)
-    (dummy-46 s5-0)
+    (set-root-prim! s5-0 s4-0)
     (let ((s3-0 (new 'process 'collide-shape-prim-sphere s5-0 (the-as uint 3))))
      (set! (-> s3-0 prim-core collide-as) (the-as uint 256))
      (set! (-> s3-0 collide-with) (the-as uint 16))
      (set! (-> s3-0 prim-core offense) 1)
      (set! (-> s3-0 transform-index) 5)
      (set-vector! (-> s3-0 local-sphere) 0.0 0.0 0.0 4096.0)
+     (append-prim s4-0 s3-0)
      )
-    (dummy-28 s4-0)
     (let ((s3-1 (new 'process 'collide-shape-prim-sphere s5-0 (the-as uint 3))))
      (set! (-> s3-1 prim-core collide-as) (the-as uint 256))
      (set! (-> s3-1 collide-with) (the-as uint 16))
      (set! (-> s3-1 prim-core offense) 1)
      (set! (-> s3-1 transform-index) 3)
      (set-vector! (-> s3-1 local-sphere) 0.0 0.0 0.0 4096.0)
+     (append-prim s4-0 s3-1)
      )
-    (dummy-28 s4-0)
     (let ((s3-2 (new 'process 'collide-shape-prim-sphere s5-0 (the-as uint 3))))
      (set! (-> s3-2 prim-core collide-as) (the-as uint 256))
      (set! (-> s3-2 collide-with) (the-as uint 16))
      (set! (-> s3-2 prim-core offense) 1)
      (set! (-> s3-2 transform-index) 9)
      (set-vector! (-> s3-2 local-sphere) 0.0 0.0 0.0 3072.0)
+     (append-prim s4-0 s3-2)
      )
-    (dummy-28 s4-0)
     )
    (set! (-> s5-0 nav-radius) 12288.0)
-   (dummy-50 s5-0)
+   (backup-collide-with-as s5-0)
    (set! (-> obj root-override) s5-0)
    )
   (dummy-30 obj)
@@ -1612,7 +1629,7 @@
 ;; definition for method 11 of type puffer
 ;; INFO: Return type mismatch object vs none.
 ;; Used lq/sq
-(defmethod copy-defaults! puffer ((obj puffer) (arg0 res-lump))
+(defmethod init-from-entity! puffer ((obj puffer) (arg0 entity-actor))
   (local-vars (sv-16 int))
   (set! (-> obj cprims-type) (the-as uint 0))
   (set! (-> obj attacking?) #f)
@@ -1621,7 +1638,7 @@
   (set! (-> obj look-mean?) #f)
   (set! (-> obj travel-turn-speed) 16384.0)
   (dummy-21 obj)
-  (process-drawable-from-entity! obj (-> obj entity))
+  (process-drawable-from-entity! obj (the-as entity-actor (-> obj entity)))
   (initialize-skeleton obj *puffer-sg* '())
   (set! (-> obj draw origin-joint-index) (the-as uint 3))
   (logclear! (-> obj mask) (process-mask actor-pause))

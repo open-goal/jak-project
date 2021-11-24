@@ -21,6 +21,7 @@
 #include "game/system/newpad.h"
 #include "common/log/log.h"
 #include "common/goal_constants.h"
+#include "common/util/image_loading.h"
 #include "game/runtime.h"
 #include "common/util/Timer.h"
 #include "game/graphics/opengl_renderer/debug_gui.h"
@@ -138,6 +139,15 @@ static std::shared_ptr<GfxDisplay> gl_make_main_display(int width,
   }
 
   glfwMakeContextCurrent(window);
+  gladLoadGLLoader((GLADloadproc)glfwGetProcAddress);
+
+  std::string image_path = fmt::format("{}/docs/favicon-nobg.png", file_util::get_project_path());
+
+  GLFWimage images[1];
+  images[0].pixels =
+      stbi_load(image_path.c_str(), &images[0].width, &images[0].height, 0, 4);  // rgba channels
+  glfwSetWindowIcon(window, 1, images);
+  stbi_image_free(images[0].pixels);
 
   if (!gl_inited && !gladLoadGL()) {
     lg::error("GL init fail");
@@ -227,10 +237,6 @@ void render_game_frame(int width, int height) {
 
   // render that chain.
   if (got_chain) {
-    //      g_gfx_data->ogl_renderer.render(DmaFollower(g_gfx_data->dma_copier.get_last_input_data(),
-    //                                                  g_gfx_data->dma_copier.get_last_input_offset()),
-    //                                      width, height);
-
     // we want to serialize before rendering
     if (g_gfx_data->debug_gui.want_save()) {
       make_gfx_dump();
@@ -250,6 +256,9 @@ void render_game_frame(int width, int height) {
       options.screenshot_path = make_output_file_name(g_gfx_data->debug_gui.screenshot_name());
     }
     g_gfx_data->ogl_renderer.render(DmaFollower(chain.data.data(), chain.start_offset), options);
+    //          g_gfx_data->ogl_renderer.render(DmaFollower(g_gfx_data->dma_copier.get_last_input_data(),
+    //                                                      g_gfx_data->dma_copier.get_last_input_offset()),
+    //                                          options);
   }
 
   // before vsync, mark the chain as rendered.

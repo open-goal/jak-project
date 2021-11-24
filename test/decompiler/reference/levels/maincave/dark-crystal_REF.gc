@@ -54,7 +54,7 @@
   0
   -1
   ((1 (meters 999999)))
-  :bounds (static-spherem 0 3.4000000953674316 0 3.799999952316284)
+  :bounds (static-spherem 0 3.4 0 3.8)
   :longest-edge (meters 0)
   )
 
@@ -690,7 +690,7 @@
   (behavior ()
    (set! (-> self state-time) (-> *display* base-frame-counter))
    (logclear! (-> self mask) (process-mask actor-pause))
-   (dummy-48 (-> self root-override))
+   (clear-collide-with-as (-> self root-override))
    (let ((gp-0 (new 'stack 'joint-exploder-tuning 0)))
     (when (-> self underwater?)
      (set! (-> gp-0 duration) (the-as uint 1200))
@@ -804,7 +804,7 @@
   :code
   (behavior ()
    (logclear! (-> self mask) (process-mask actor-pause))
-   (dummy-48 (-> self root-override))
+   (clear-collide-with-as (-> self root-override))
    (level-hint-spawn
     (game-text-id dark-crystal-last-one)
     "sksp0327"
@@ -818,7 +818,7 @@
    (if (not (task-complete? *game-info* (-> self entity extra perm task)))
     (birth-pickup-at-point
      (-> self root-override trans)
-     6
+     (pickup-type fuel-cell)
      (the float (-> self entity extra perm task))
      #t
      self
@@ -882,7 +882,10 @@
 ;; definition for method 11 of type dark-crystal
 ;; INFO: Return type mismatch object vs none.
 ;; Used lq/sq
-(defmethod copy-defaults! dark-crystal ((obj dark-crystal) (arg0 res-lump))
+(defmethod
+  init-from-entity!
+  dark-crystal
+  ((obj dark-crystal) (arg0 entity-actor))
   (set-vector! (-> obj unlit-color-mult) 0.5 0.5 0.5 1.0)
   (set-vector! (-> obj unlit-color-emissive) 0.0 0.0 0.0 0.0)
   (set-vector! (-> obj lit-color-mult) 1.0 1.0 1.0 1.0)
@@ -910,10 +913,10 @@
     (set! (-> s3-0 prim-core offense) 4)
     (set! (-> s3-0 transform-index) 0)
     (set-vector! (-> s3-0 local-sphere) 0.0 6963.2 0.0 15564.8)
+    (set-root-prim! s4-0 s3-0)
     )
-   (dummy-46 s4-0)
    (set! (-> s4-0 nav-radius) (* 0.75 (-> s4-0 root-prim local-sphere w)))
-   (dummy-50 s4-0)
+   (backup-collide-with-as s4-0)
    (set! (-> obj root-override) s4-0)
    )
   (process-drawable-from-entity! obj arg0)

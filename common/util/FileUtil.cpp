@@ -92,6 +92,7 @@ void write_binary_file(const std::string& name, const void* data, size_t size) {
   }
 
   if (fwrite(data, size, 1, fp) != 1) {
+    fclose(fp);
     throw std::runtime_error("couldn't write file " + name);
   }
 
@@ -147,6 +148,7 @@ std::vector<uint8_t> read_binary_file(const std::string& filename) {
   data.resize(len);
 
   if (fread(data.data(), len, 1, fp) != 1) {
+    fclose(fp);
     throw std::runtime_error("File " + filename + " cannot be read");
   }
   fclose(fp);

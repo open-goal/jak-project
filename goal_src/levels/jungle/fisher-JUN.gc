@@ -8,7 +8,6 @@
 (declare-type fisher-fish process-drawable)
 (define-extern fisher-fish-caught (state fisher-fish))
 (define-extern fisher-fish-die (state fisher-fish))
-(define-extern cspace<-cspace+quaternion! (function cspace quaternion cspace))
 
 ;; DECOMP BEGINS
 
@@ -2153,7 +2152,7 @@
    (set-setting! *setting-control* self 'ambient-volume 'rel 50.0 0)
    (send-event *target* 'reset-pickup 'eco)
    (ja-channel-set! 0)
-   (dummy-48 (-> self root-override))
+   (clear-collide-with-as (-> self root-override))
    (let ((gp-0 (get-process *default-dead-pool* process #x4000)))
     (when gp-0
      (let ((t9-5 (method-of-type process activate)))
@@ -2206,7 +2205,7 @@
    (set! (-> *camera-other-fov* data) (-> *camera-combiner* fov))
    (set! (-> *camera-other-trans* quad) (-> *camera-combiner* trans quad))
    (set! (-> *camera-other-root* quad) (-> self root-override trans quad))
-   (dummy-49 (-> self root-override))
+   (restore-collide-with-as (-> self root-override))
    (send-event *camera* 'blend-from-as-fixed)
    (send-event *camera* 'change-state *camera-base-mode* 0)
    (send-event *camera* 'clear-entity)
@@ -2777,7 +2776,7 @@
     (set! (-> s4-0 prim-core action) (the-as uint 1))
     (set! (-> s4-0 prim-core offense) 4)
     (set-vector! (-> s4-0 local-sphere) 6144.0 0.0 4096.0 14336.0)
-    (dummy-46 s5-0)
+    (set-root-prim! s5-0 s4-0)
     (let ((s2-0 (new 'process 'collide-shape-prim-sphere s5-0 (the-as uint 0))))
      (set! (-> s2-0 prim-core collide-as) (the-as uint 256))
      (set! (-> s2-0 collide-with) (the-as uint 16))
@@ -2785,8 +2784,8 @@
      (set! (-> s2-0 prim-core offense) 4)
      (set! (-> s2-0 transform-index) arg0)
      (set-vector! (-> s2-0 local-sphere) 0.0 0.0 0.0 6553.6)
+     (append-prim s4-0 s2-0)
      )
-    (dummy-28 s4-0)
     (let ((s3-1 (new 'process 'collide-shape-prim-sphere s5-0 (the-as uint 0))))
      (set! (-> s3-1 prim-core collide-as) (the-as uint 256))
      (set! (-> s3-1 collide-with) (the-as uint 16))
@@ -2794,11 +2793,11 @@
      (set! (-> s3-1 prim-core offense) 4)
      (set! (-> s3-1 transform-index) 57)
      (set-vector! (-> s3-1 local-sphere) 0.0 4096.0 0.0 4096.0)
+     (append-prim s4-0 s3-1)
      )
-    (dummy-28 s4-0)
     )
    (set! (-> s5-0 nav-radius) (* 0.75 (-> s5-0 root-prim local-sphere w)))
-   (dummy-50 s5-0)
+   (backup-collide-with-as s5-0)
    (set! (-> obj root-override) s5-0)
    )
   0
@@ -2812,7 +2811,7 @@
    )
   )
 
-(defmethod copy-defaults! fisher ((obj fisher) (arg0 res-lump))
+(defmethod init-from-entity! fisher ((obj fisher) (arg0 entity-actor))
   (dummy-40 obj arg0 *fisher-sg* 3 49 (new 'static 'vector :w 4096.0) 33)
   (set! (-> obj tasks) (get-task-control (game-task jungle-fishgame)))
   (set! (-> obj path) (new 'process 'curve-control obj 'path -1000000000.0))
@@ -2853,7 +2852,7 @@
      (activate! (-> self control unknown-smush00) 1.0 120 210 0.3 1.0)
      )
     ((= arg2 'lose)
-     (set! (-> self control unknown-float120) (the-as float arg2))
+     (set! (-> self control unknown-uint20) (the-as uint arg2))
      arg2
      )
     (else
@@ -2866,7 +2865,7 @@
    (set! (-> self control unknown-surface00) *empty-mods*)
    (logior! (-> self state-flags) 16)
    (set-zero! (-> self control unknown-smush00))
-   (set! (-> self control unknown-float120) (the-as float #f))
+   (set! (-> self control unknown-uint20) (the-as uint #f))
    (none)
    )
   :exit
@@ -2983,7 +2982,7 @@
     (set! (-> s5-1 frame-num) (ja-aframe 15.0 0))
     )
    (let ((s5-2 (new 'stack-no-clear 'vector)))
-    (until (-> self control unknown-float120)
+    (until (-> self control unknown-spoolanim00)
      (let ((v1-42 (handle->process arg0)))
       (when v1-42
        (let ((a0-28 (-> self skel root-channel 0)))
@@ -3040,7 +3039,7 @@
      (suspend)
      )
     )
-   (case (-> self control unknown-float120) 
+   (case (-> self control unknown-spoolanim00) 
     (('lose)
       (ja-channel-push! 1 30)
       (let ((a0-38 (-> self skel root-channel 0)))
