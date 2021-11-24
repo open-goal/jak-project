@@ -35,20 +35,15 @@ int main(int argc, char** argv) {
   for (int i = 1; i < argc; i++) {
     if (std::string("-v") == argv[i]) {
       verbose = true;
-    }
-    if (std::string("-cmd") == argv[i] && i + 1 < argc) {
+    } else if (std::string("-cmd") == argv[i] && i + 1 < argc) {
       argument = argv[++i];
-    }
-    if (std::string("-auto-lt") == argv[i]) {
+    } else if (std::string("-auto-lt") == argv[i]) {
       auto_listen = true;
-    }
-    if (std::string("-auto-dbg") == argv[i]) {
+    } else if (std::string("-auto-dbg") == argv[i]) {
       auto_debug = true;
-    }
-    if (std::string("-user") == argv[i] && i + 1 < argc) {
+    } else if (std::string("-user") == argv[i] && i + 1 < argc) {
       username = argv[++i];
-    }
-    if (std::string("-user-auto") == argv[i]) {
+    } else if (std::string("-user-auto") == argv[i]) {
       try {
         auto text = std::make_shared<goos::FileText>(
             file_util::get_file_path({"goal_src", "user", "user.txt"}), "goal_src/user/user.txt");
