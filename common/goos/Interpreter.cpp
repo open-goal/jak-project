@@ -6,10 +6,11 @@
 #include <utility>
 #include "Interpreter.h"
 #include "ParseHelpers.h"
+#include "common/util/FileUtil.h"
 #include <third-party/fmt/core.h>
 
 namespace goos {
-Interpreter::Interpreter() {
+Interpreter::Interpreter(const std::string& username) {
   // Interpreter startup:
   goal_to_goos.reset();
 
@@ -21,9 +22,14 @@ Interpreter::Interpreter() {
 
   // make both environments available in both.
   define_var_in_env(global_environment, global_environment, "*global-env*");
+  define_var_in_env(global_environment, goal_env, "*goal-env*");
   define_var_in_env(goal_env, goal_env, "*goal-env*");
   define_var_in_env(goal_env, global_environment, "*global-env*");
-  define_var_in_env(global_environment, goal_env, "*goal-env*");
+
+  // set user profile name
+  auto user = SymbolObject::make_new(reader.symbolTable, username);
+  define_var_in_env(global_environment, user, "*user*");
+  define_var_in_env(goal_env, user, "*user*");
 
   // setup maps
   special_forms = {
@@ -47,6 +53,7 @@ Interpreter::Interpreter() {
                    {"print", &Interpreter::eval_print},
                    {"inspect", &Interpreter::eval_inspect},
                    {"load-file", &Interpreter::eval_load_file},
+                   {"try-load-file", &Interpreter::eval_try_load_file},
                    {"eq?", &Interpreter::eval_equals},
                    {"gensym", &Interpreter::eval_gensym},
                    {"eval", &Interpreter::eval_eval},
@@ -1028,6 +1035,35 @@ Object Interpreter::eval_load_file(const Object& form,
     throw_eval_error(form, std::string("eval error inside of load-file:\n") + e.what());
   }
   return Object::make_empty_list();
+}
+
+/*!
+ * Combines read-file and eval to load in a file. Return #f if it doesn't exist.
+ */
+Object Interpreter::eval_try_load_file(const Object& form,
+                                       Arguments& args,
+                                       const std::shared_ptr<EnvironmentObject>& env) {
+  (void)env;
+  vararg_check(form, args, {ObjectType::STRING}, {});
+
+  auto path = {args.unnamed.at(0).as_string()->data};
+  if (!std::filesystem::exists(file_util::get_file_path(path))) {
+    return SymbolObject::make_new(reader.symbolTable, "#f");
+  }
+
+  Object o;
+  try {
+    o = reader.read_from_file(path);
+  } catch (std::runtime_error& e) {
+    throw_eval_error(form, std::string("reader error inside of try-load-file:\n") + e.what());
+  }
+
+  try {
+    return eval_with_rewind(o, global_environment.as_env_ptr());
+  } catch (std::runtime_error& e) {
+    throw_eval_error(form, std::string("eval error inside of try-load-file:\n") + e.what());
+  }
+  return SymbolObject::make_new(reader.symbolTable, "#t");
 }
 
 /*!
