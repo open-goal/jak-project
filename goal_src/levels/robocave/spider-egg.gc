@@ -54,7 +54,7 @@
                      (dummy-55
                       (-> self root-override)
                       arg0
-                      (-> arg3 param 0)
+                      (the-as touching-shapes-entry (-> arg3 param 0))
                       0.7
                       6144.0
                       16384.0
@@ -264,7 +264,7 @@
   (behavior ()
    (dummy-18 self)
    (logclear! (-> self mask) (process-mask actor-pause))
-   (dummy-48 (-> self root-override))
+   (clear-collide-with-as (-> self root-override))
    (let ((gp-0 (get-process *default-dead-pool* part-tracker #x4000)))
     (when gp-0
      (let ((t9-3 (method-of-type part-tracker activate)))
@@ -400,7 +400,7 @@
     )
    (lods-assign! (-> self draw) (-> self broken-look))
    (ja-channel-push! 1 30)
-   (dummy-48 (-> self root-override))
+   (clear-collide-with-as (-> self root-override))
    (let ((a0-9 (-> self skel root-channel 0)))
     (set!
      (-> a0-9 frame-group)
@@ -454,7 +454,7 @@
   (the-as (function none :behavior spider-egg) ja-post)
   )
 
-(defmethod copy-defaults! spider-egg ((obj spider-egg) (arg0 res-lump))
+(defmethod init-from-entity! spider-egg ((obj spider-egg) (arg0 entity-actor))
   (set! (-> obj mask) (logior (process-mask enemy) (-> obj mask)))
   (set! (-> obj mask) (logior (process-mask attackable) (-> obj mask)))
   (let
@@ -469,17 +469,23 @@
     )
    (set! (-> s4-0 dynam) (copy *standard-dynamics* 'process))
    (set! (-> s4-0 reaction) default-collision-reaction)
-   (set! (-> s4-0 no-reaction) nothing)
+   (set!
+    (-> s4-0 no-reaction)
+    (the-as
+     (function collide-shape-moving collide-shape-intersect vector vector none)
+     nothing
+     )
+    )
    (let ((s3-0 (new 'process 'collide-shape-prim-sphere s4-0 (the-as uint 0))))
     (set! (-> s3-0 prim-core collide-as) (the-as uint 256))
     (set! (-> s3-0 collide-with) (the-as uint 16))
     (set! (-> s3-0 prim-core action) (the-as uint 1))
     (set! (-> s3-0 prim-core offense) 1)
     (set-vector! (-> s3-0 local-sphere) 0.0 2048.0 0.0 3686.4)
+    (set-root-prim! s4-0 s3-0)
     )
-   (dummy-46 s4-0)
    (set! (-> s4-0 nav-radius) 4096.0)
-   (dummy-50 s4-0)
+   (backup-collide-with-as s4-0)
    (set! (-> obj root-override) s4-0)
    )
   (process-drawable-from-entity! obj arg0)

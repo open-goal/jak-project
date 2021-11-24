@@ -28,6 +28,7 @@ files_with_modifications = [
   "cam-master",
   "generic-obs",
   "target-snowball",
+  "quicksandlurker",
   "default-menu"
 ]
 

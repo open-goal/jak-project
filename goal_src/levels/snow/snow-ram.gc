@@ -20,7 +20,7 @@
   4
   ((1 (meters 20)) (2 (meters 40)) (3 (meters 999999)))
   :bounds (static-spherem 0 5 0 8.5)
-  :longest-edge (meters 7.699999809265137)
+  :longest-edge (meters 7.7)
   )
 
 (set!
@@ -546,7 +546,7 @@
   (the-as ram ((method-of-type process-drawable relocate) obj arg0))
   )
 
-(defmethod copy-defaults! ram ((obj ram) (arg0 res-lump))
+(defmethod init-from-entity! ram ((obj ram) (arg0 entity-actor))
   (set! (-> obj give-fuel-cell?) #f)
   (set! (-> obj link) (new 'process 'actor-link-info obj))
   (let
@@ -556,14 +556,20 @@
     )
    (set! (-> s4-0 dynam) (copy *standard-dynamics* 'process))
    (set! (-> s4-0 reaction) default-collision-reaction)
-   (set! (-> s4-0 no-reaction) nothing)
+   (set!
+    (-> s4-0 no-reaction)
+    (the-as
+     (function collide-shape-moving collide-shape-intersect vector vector none)
+     nothing
+     )
+    )
    (dummy-29 s4-0 1)
    (let ((s3-0 (new 'process 'collide-shape-prim-group s4-0 (the-as uint 3) 0)))
     (set! (-> s3-0 prim-core collide-as) (the-as uint 2048))
     (set! (-> s3-0 collide-with) (the-as uint 16))
     (set! (-> s3-0 prim-core action) (the-as uint 3))
     (set-vector! (-> s3-0 local-sphere) 0.0 20480.0 0.0 34816.0)
-    (dummy-46 s4-0)
+    (set-root-prim! s4-0 s3-0)
     (let
      ((s2-0
        (new
@@ -581,8 +587,8 @@
      (set! (-> s2-0 prim-core offense) 4)
      (set! (-> s2-0 transform-index) 8)
      (set-vector! (-> s2-0 local-sphere) 0.0 0.0 0.0 20480.0)
+     (append-prim s3-0 s2-0)
      )
-    (dummy-28 s3-0)
     (let
      ((s2-1
        (new
@@ -600,19 +606,19 @@
      (set! (-> s2-1 prim-core offense) 4)
      (set! (-> s2-1 transform-index) 3)
      (set-vector! (-> s2-1 local-sphere) 0.0 20480.0 0.0 34816.0)
+     (append-prim s3-0 s2-1)
      )
-    (dummy-28 s3-0)
     (let ((s2-2 (new 'process 'collide-shape-prim-sphere s4-0 (the-as uint 4))))
      (set! (-> s2-2 prim-core collide-as) (the-as uint 256))
      (set! (-> s2-2 collide-with) (the-as uint 16))
      (set! (-> s2-2 prim-core offense) 0)
      (set! (-> s2-2 transform-index) 3)
      (set-vector! (-> s2-2 local-sphere) -4096.0 28672.0 12288.0 2252.8)
+     (append-prim s3-0 s2-2)
      )
-    (dummy-28 s3-0)
     )
    (set! (-> s4-0 nav-radius) 20480.0)
-   (dummy-50 s4-0)
+   (backup-collide-with-as s4-0)
    (set! (-> obj root-override) s4-0)
    )
   (process-drawable-from-entity! obj arg0)
@@ -712,7 +718,7 @@
         )
        (birth-pickup-at-point
         (-> obj fuel-cell-dest-pos)
-        6
+        (pickup-type fuel-cell)
         (the float (-> obj entity extra perm task))
         #f
         obj
@@ -723,7 +729,7 @@
       )
      )
     (cond
-     ((and (not s3-1) (has-nav-mesh? (the-as entity-actor arg0)))
+     ((and (not s3-1) (has-nav-mesh? arg0))
       (cond
        (s4-1
         (let ((s5-1 (get-process *default-dead-pool* ram-boss #x4000)))

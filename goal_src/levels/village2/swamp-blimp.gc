@@ -772,7 +772,7 @@
 (defstate swamp-tetherrock-hide (swamp-tetherrock)
   :code
   (behavior ()
-   (dummy-48 (-> self root-override))
+   (clear-collide-with-as (-> self root-override))
    (logior! (-> self draw status) 2)
    (while #t
     (when
@@ -854,7 +854,7 @@
      )
     (birth-pickup-at-point
      (-> self root-override trans)
-     6
+     (pickup-type fuel-cell)
      (the float (-> self entity extra perm task))
      #f
      self
@@ -1165,9 +1165,9 @@
   )
 
 (defmethod
-  copy-defaults!
+  init-from-entity!
   swamp-tetherrock
-  ((obj swamp-tetherrock) (arg0 res-lump))
+  ((obj swamp-tetherrock) (arg0 entity-actor))
   (set! (-> obj mask) (logior (process-mask attackable) (-> obj mask)))
   (process-entity-status! obj (entity-perm-status bit-7) #t)
   (let
@@ -1182,7 +1182,13 @@
     )
    (set! (-> s4-0 dynam) (copy *standard-dynamics* 'process))
    (set! (-> s4-0 reaction) default-collision-reaction)
-   (set! (-> s4-0 no-reaction) nothing)
+   (set!
+    (-> s4-0 no-reaction)
+    (the-as
+     (function collide-shape-moving collide-shape-intersect vector vector none)
+     nothing
+     )
+    )
    (dummy-29 s4-0 1)
    (let
     ((s3-0
@@ -1201,10 +1207,10 @@
     (set! (-> s3-0 prim-core offense) 4)
     (set! (-> s3-0 transform-index) 3)
     (set-vector! (-> s3-0 local-sphere) 0.0 12288.0 0.0 24576.0)
+    (set-root-prim! s4-0 s3-0)
     )
-   (dummy-46 s4-0)
    (set! (-> s4-0 nav-radius) (* 0.75 (-> s4-0 root-prim local-sphere w)))
-   (dummy-50 s4-0)
+   (backup-collide-with-as s4-0)
    (set! (-> obj root-override) s4-0)
    )
   (process-drawable-from-entity! obj arg0)
@@ -1231,7 +1237,7 @@
    (((task-status need-resolution))
     (birth-pickup-at-point
      (-> obj root-override trans)
-     6
+     (pickup-type fuel-cell)
      (the float (-> obj entity extra perm task))
      #f
      obj
@@ -1502,7 +1508,10 @@
   (the-as (function none :behavior precursor-arm) transform-post)
   )
 
-(defmethod copy-defaults! precursor-arm ((obj precursor-arm) (arg0 res-lump))
+(defmethod
+  init-from-entity!
+  precursor-arm
+  ((obj precursor-arm) (arg0 entity-actor))
   (let
    ((s4-0
      (new 'process 'collide-shape obj (collide-list-enum usually-hit-by-player))
@@ -1525,10 +1534,10 @@
     (set! (-> s3-0 prim-core action) (the-as uint 1))
     (set! (-> s3-0 prim-core offense) 4)
     (set-vector! (-> s3-0 local-sphere) 0.0 61440.0 0.0 61440.0)
+    (set-root-prim! s4-0 s3-0)
     )
-   (dummy-46 s4-0)
    (set! (-> s4-0 nav-radius) (* 0.75 (-> s4-0 root-prim local-sphere w)))
-   (dummy-50 s4-0)
+   (backup-collide-with-as s4-0)
    (set! (-> obj root-override) s4-0)
    )
   (process-drawable-from-entity! obj arg0)
@@ -2247,7 +2256,7 @@
   (the-as (function none :behavior swamp-blimp) transform-post)
   )
 
-(defmethod copy-defaults! swamp-blimp ((obj swamp-blimp) (arg0 res-lump))
+(defmethod init-from-entity! swamp-blimp ((obj swamp-blimp) (arg0 entity-actor))
   (let
    ((s4-0
      (new 'process 'collide-shape-moving obj (collide-list-enum hit-by-player))
@@ -2255,7 +2264,13 @@
     )
    (set! (-> s4-0 dynam) (copy *standard-dynamics* 'process))
    (set! (-> s4-0 reaction) default-collision-reaction)
-   (set! (-> s4-0 no-reaction) nothing)
+   (set!
+    (-> s4-0 no-reaction)
+    (the-as
+     (function collide-shape-moving collide-shape-intersect vector vector none)
+     nothing
+     )
+    )
    (dummy-29 s4-0 1)
    (let
     ((s3-0
@@ -2274,10 +2289,10 @@
     (set! (-> s3-0 prim-core offense) 4)
     (set! (-> s3-0 transform-index) 3)
     (set-vector! (-> s3-0 local-sphere) 0.0 0.0 0.0 409600.0)
+    (set-root-prim! s4-0 s3-0)
     )
-   (dummy-46 s4-0)
    (set! (-> s4-0 nav-radius) (* 0.75 (-> s4-0 root-prim local-sphere w)))
-   (dummy-50 s4-0)
+   (backup-collide-with-as s4-0)
    (set! (-> obj root-override) s4-0)
    )
   (process-drawable-from-entity! obj arg0)

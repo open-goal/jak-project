@@ -124,7 +124,7 @@
   -1
   ((1 (meters 20)) (2 (meters 40)) (3 (meters 999999)))
   :bounds (static-spherem 0 0.5 0 8)
-  :longest-edge (meters 0.800000011920929)
+  :longest-edge (meters 0.8)
   )
 
 (defskelgroup *gnawer-segment-sg* gnawer
@@ -574,7 +574,7 @@
    (logclear! (-> obj mask) (process-mask attackable))
    (set! (-> obj skel postbind-function) #f)
    (set! (-> obj root-override trans quad) (-> obj post-trans quad))
-   (dummy-48 (-> obj root-override))
+   (clear-collide-with-as (-> obj root-override))
    (dotimes (v1-12 10)
     (set! (-> obj segments v1-12 world-pos quad) (-> obj post-trans quad))
     )
@@ -586,7 +586,7 @@
 (defmethod dummy-26 gnawer ((obj gnawer))
   (when (-> obj hidden?)
    (set! (-> obj hidden?) #f)
-   (dummy-49 (-> obj root-override))
+   (restore-collide-with-as (-> obj root-override))
    (set!
     (-> obj skel postbind-function)
     (the-as (function pointer int process-drawable none) gnawer-joint-callback)
@@ -1600,10 +1600,10 @@
        (let* ((a2-1 (the-as object (-> arg3 param 0)))
               (v1-19
                (->
-                (touched-prim
+                (get-touched-prim
                  (-> (the-as touching-shapes-entry a2-1) head)
-                 (the-as collide-shape-moving (-> self root-override))
-                 (the-as touching-shapes-entry a2-1)
+                 (-> self root-override)
+                 (the-as touching-prims-entry a2-1)
                  )
                 prim-id
                 )
@@ -1785,7 +1785,7 @@
    (logclear! (-> self mask) (process-mask actor-pause))
    (process-entity-status! self (entity-perm-status bit-3) #t)
    (ja-channel-push! 1 30)
-   (dummy-48 (-> self root-override))
+   (clear-collide-with-as (-> self root-override))
    (let ((a0-4 (-> self skel root-channel 0)))
     (set!
      (-> a0-4 frame-group)
@@ -1860,7 +1860,7 @@
   :code
   (behavior ()
    (local-vars (sv-128 symbol))
-   (dummy-48 (-> self root-override))
+   (clear-collide-with-as (-> self root-override))
    (set! (-> self skel postbind-function) #f)
    (ja-channel-set! 0)
    (ja-post)
@@ -1889,7 +1889,14 @@
        )
       (let
        ((v1-19
-         (birth-pickup-at-point s4-0 a1-2 1.0 #f self (the-as fact-info #f))
+         (birth-pickup-at-point
+          s4-0
+          (the-as pickup-type a1-2)
+          1.0
+          #f
+          self
+          (the-as fact-info #f)
+          )
          )
         )
        (send-event (ppointer->process v1-19) 'jump s5-0)
@@ -2058,7 +2065,7 @@
   :code
   (behavior ()
    (set! (-> self draw origin-joint-index) (the-as uint 0))
-   (dummy-48 (-> self root-override))
+   (clear-collide-with-as (-> self root-override))
    (set! (-> self skel postbind-function) #f)
    (ja-channel-set! 0)
    (ja-post)
@@ -2070,7 +2077,7 @@
         (set-vector! a0-7 4485903.0 51184.027 -12815461.0 1.0)
         (birth-pickup-at-point
          a0-7
-         6
+         (pickup-type fuel-cell)
          (the float (-> self entity extra perm task))
          #f
          self
@@ -2089,7 +2096,14 @@
               (s3-0 (new 'stack-no-clear 'vector))
               )
          (dummy-29 self s4-0 a2-1 s3-0)
-         (birth-pickup-at-point s3-0 5 1.0 #f self (the-as fact-info #f))
+         (birth-pickup-at-point
+          s3-0
+          (pickup-type money)
+          1.0
+          #f
+          self
+          (the-as fact-info #f)
+          )
          )
         )
        )
@@ -2160,7 +2174,7 @@
    )
   )
 
-(defmethod copy-defaults! gnawer ((obj gnawer) (arg0 res-lump))
+(defmethod init-from-entity! gnawer ((obj gnawer) (arg0 entity-actor))
   (local-vars (sv-16 int) (sv-32 int) (sv-48 int))
   (set! (-> obj hidden?) #f)
   (set! (-> obj show-damage?) #f)
@@ -2178,74 +2192,74 @@
     (set! (-> s3-0 prim-core collide-as) (the-as uint 256))
     (set! (-> s3-0 collide-with) (the-as uint 16))
     (set-vector! (-> s3-0 local-sphere) 0.0 32768.0 0.0 53248.0)
-    (dummy-46 s4-0)
+    (set-root-prim! s4-0 s3-0)
     (let ((s2-0 (new 'process 'collide-shape-prim-sphere s4-0 (the-as uint 2))))
      (set! (-> s2-0 prim-core collide-as) (the-as uint 256))
      (set! (-> s2-0 collide-with) (the-as uint 16))
      (set! (-> s2-0 prim-core offense) 0)
      (set! (-> s2-0 transform-index) 13)
      (set-vector! (-> s2-0 local-sphere) 0.0 0.0 0.0 6144.0)
+     (append-prim s3-0 s2-0)
      )
-    (dummy-28 s3-0)
     (let ((s2-1 (new 'process 'collide-shape-prim-sphere s4-0 (the-as uint 2))))
      (set! (-> s2-1 prim-core collide-as) (the-as uint 256))
      (set! (-> s2-1 collide-with) (the-as uint 16))
      (set! (-> s2-1 prim-core offense) 0)
      (set! (-> s2-1 transform-index) 6)
      (set-vector! (-> s2-1 local-sphere) 0.0 0.0 0.0 6144.0)
+     (append-prim s3-0 s2-1)
      )
-    (dummy-28 s3-0)
     (let ((s2-2 (new 'process 'collide-shape-prim-sphere s4-0 (the-as uint 3))))
      (set! (-> s2-2 prim-core collide-as) (the-as uint 256))
      (set! (-> s2-2 collide-with) (the-as uint 16))
      (set! (-> s2-2 prim-core offense) 0)
      (set! (-> s2-2 transform-index) 7)
      (set-vector! (-> s2-2 local-sphere) 0.0 -409.6 1228.8 6144.0)
+     (append-prim s3-0 s2-2)
      )
-    (dummy-28 s3-0)
     (let ((s2-3 (new 'process 'collide-shape-prim-sphere s4-0 (the-as uint 4))))
      (set! (-> s2-3 prim-core collide-as) (the-as uint 256))
      (set! (-> s2-3 collide-with) (the-as uint 16))
      (set! (-> s2-3 prim-core offense) 0)
      (set! (-> s2-3 transform-index) 8)
      (set-vector! (-> s2-3 local-sphere) 0.0 0.0 0.0 6144.0)
+     (append-prim s3-0 s2-3)
      )
-    (dummy-28 s3-0)
     (let ((s2-4 (new 'process 'collide-shape-prim-sphere s4-0 (the-as uint 5))))
      (set! (-> s2-4 prim-core collide-as) (the-as uint 256))
      (set! (-> s2-4 collide-with) (the-as uint 16))
      (set! (-> s2-4 prim-core offense) 0)
      (set! (-> s2-4 transform-index) 9)
      (set-vector! (-> s2-4 local-sphere) 0.0 0.0 0.0 6144.0)
+     (append-prim s3-0 s2-4)
      )
-    (dummy-28 s3-0)
     (let ((s2-5 (new 'process 'collide-shape-prim-sphere s4-0 (the-as uint 6))))
      (set! (-> s2-5 prim-core collide-as) (the-as uint 256))
      (set! (-> s2-5 collide-with) (the-as uint 16))
      (set! (-> s2-5 prim-core offense) 0)
      (set! (-> s2-5 transform-index) 10)
      (set-vector! (-> s2-5 local-sphere) 0.0 0.0 0.0 6144.0)
+     (append-prim s3-0 s2-5)
      )
-    (dummy-28 s3-0)
     (let ((s2-6 (new 'process 'collide-shape-prim-sphere s4-0 (the-as uint 7))))
      (set! (-> s2-6 prim-core collide-as) (the-as uint 256))
      (set! (-> s2-6 collide-with) (the-as uint 16))
      (set! (-> s2-6 prim-core offense) 0)
      (set! (-> s2-6 transform-index) 11)
      (set-vector! (-> s2-6 local-sphere) 0.0 0.0 0.0 6144.0)
+     (append-prim s3-0 s2-6)
      )
-    (dummy-28 s3-0)
     (let ((s2-7 (new 'process 'collide-shape-prim-sphere s4-0 (the-as uint 7))))
      (set! (-> s2-7 prim-core collide-as) (the-as uint 256))
      (set! (-> s2-7 collide-with) (the-as uint 16))
      (set! (-> s2-7 prim-core offense) 0)
      (set! (-> s2-7 transform-index) 12)
      (set-vector! (-> s2-7 local-sphere) 0.0 0.0 0.0 6144.0)
+     (append-prim s3-0 s2-7)
      )
-    (dummy-28 s3-0)
     )
    (set! (-> s4-0 nav-radius) (* 0.75 (-> s4-0 root-prim local-sphere w)))
-   (dummy-50 s4-0)
+   (backup-collide-with-as s4-0)
    (set! (-> obj root-override) s4-0)
    )
   (process-drawable-from-entity! obj arg0)
