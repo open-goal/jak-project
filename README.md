@@ -48,8 +48,8 @@ We support both Linux and Windows on x86-64.
 So far, we've decompiled around 341,233 lines of GOAL code, out of an estimated 500,000 total lines and we've started work on an OpenGL renderer.  Currently, the main display process (`*dproc*`) runs and sends data to our renderer.  We can load textures, text files, and level files. Using keyboard controls, we can open the debug menu and turn on some simple debug visualizations.
 
 Here are some screenshots of the renderer:
-![](./docs/img/screenshot_hut.jpg)
-![](./docs/img/screenshot_vi1.jpg)
+![](./docs/markdown/imgs/screenshot_hut.jpg)
+![](./docs/markdown/imgs/screenshot_vi1.jpg)
 
 YouTube playlist:
 https://www.youtube.com/playlist?list=PLWx9T30aAT50cLnCTY1SAbt2TtWQzKfXX
