@@ -108,7 +108,6 @@ DefskelgroupElement::StaticInfo inspect_skel_group_data(DecompiledDataElement* s
 
 DefskelgroupElement::Info get_defskelgroup_entries(Form* body,
                                                    const Env& env,
-                                                   const DefskelgroupElement::StaticInfo& /*info*/,
                                                    const RegisterAccess& let_dest_var) {
   DefskelgroupElement::Info out_info;
 
@@ -176,8 +175,7 @@ FormElement* rewrite_defskelgroup(LetElement* elt,
                                       skelgroup_info.max_lod, last_lod);
   }
 
-  auto rest_info =
-      get_defskelgroup_entries(elt->body(), env, skelgroup_info, elt->entries().at(0).dest);
+  auto rest_info = get_defskelgroup_entries(elt->body(), env, elt->entries().at(0).dest);
 
   return pool.alloc_element<DefskelgroupElement>(get_skelgroup_name(elt->body()->back(), env),
                                                  rest_info, skelgroup_info);

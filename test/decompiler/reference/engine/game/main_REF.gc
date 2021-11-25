@@ -175,26 +175,14 @@
                          'pause
                          )
                         )
-                       ((logtest?
-                         (-> *cpad-list* cpads 0 button0-abs 0)
-                         (pad-buttons r3)
-                         )
+                       ((cpad-hold? 0 r3)
                         (if *debug-segment*
                          'menu
                          *master-mode*
                          )
                         )
                        ((and
-                         (or
-                          (logtest?
-                           (-> *cpad-list* cpads 0 button0-abs 0)
-                           (pad-buttons select)
-                           )
-                          (logtest?
-                           (-> *cpad-list* cpads 0 button0-abs 0)
-                           (pad-buttons r2)
-                           )
-                          )
+                         (or (cpad-hold? 0 select) (cpad-hold? 0 r2))
                          *debug-segment*
                          )
                         'pause
@@ -216,10 +204,7 @@
                          *master-mode*
                          )
                         )
-                       ((logtest?
-                         (-> *cpad-list* cpads 0 button0-abs 0)
-                         (pad-buttons start)
-                         )
+                       ((cpad-hold? 0 start)
                         (if *progress-process*
                          'game
                          'progress
@@ -233,16 +218,10 @@
      )
    (('menu)
     (set-master-mode (cond
-                      ((logtest?
-                        (-> *cpad-list* cpads 0 button0-abs 0)
-                        (pad-buttons r3)
-                        )
+                      ((cpad-hold? 0 r3)
                        *last-master-mode*
                        )
-                      ((logtest?
-                        (-> *cpad-list* cpads 0 button0-abs 0)
-                        (pad-buttons select r2)
-                        )
+                      ((cpad-hold? 0 select r2)
                        (if *debug-segment*
                         'pause
                         *master-mode*
@@ -259,39 +238,21 @@
                        )
                       )
      )
-    (set!
-     *pause-lock*
-     (and
-      *cheat-mode*
-      (logtest? (-> *cpad-list* cpads 0 button0-abs 0) (pad-buttons r2))
-      )
-     )
+    (set! *pause-lock* (and *cheat-mode* (cpad-hold? 0 r2)))
     )
    (('pause)
     (set! *last-master-mode* *master-mode*)
     (set-master-mode (cond
-                      ((logtest?
-                        (-> *cpad-list* cpads 0 button0-abs 0)
-                        (pad-buttons r3)
-                        )
+                      ((cpad-hold? 0 r3)
                        (if *debug-segment*
                         'menu
                         *master-mode*
                         )
                        )
-                      ((and
-                        *cheat-mode*
-                        (logtest?
-                         (-> *cpad-list* cpads 0 button0-abs 0)
-                         (pad-buttons select r2)
-                         )
-                        )
+                      ((and *cheat-mode* (cpad-hold? 0 select r2))
                        'game
                        )
-                      ((logtest?
-                        (-> *cpad-list* cpads 0 button0-abs 0)
-                        (pad-buttons start)
-                        )
+                      ((cpad-hold? 0 start)
                        'game
                        )
                       (else
@@ -299,29 +260,17 @@
                        )
                       )
      )
-    (set!
-     *pause-lock*
-     (and
-      *cheat-mode*
-      (logtest? (-> *cpad-list* cpads 0 button0-abs 0) (pad-buttons r2))
-      )
-     )
+    (set! *pause-lock* (and *cheat-mode* (cpad-hold? 0 r2)))
     )
    (('progress)
     (set-master-mode (cond
-                      ((logtest?
-                        (-> *cpad-list* cpads 0 button0-abs 0)
-                        (pad-buttons r3)
-                        )
+                      ((cpad-hold? 0 r3)
                        (if *debug-segment*
                         'menu
                         *master-mode*
                         )
                        )
-                      ((logtest?
-                        (-> *cpad-list* cpads 0 button0-abs 0)
-                        (pad-buttons start)
-                        )
+                      ((cpad-hold? 0 start)
                        *last-master-mode*
                        )
                       (else
@@ -329,13 +278,7 @@
                        )
                       )
      )
-    (set!
-     *pause-lock*
-     (and
-      *cheat-mode*
-      (logtest? (-> *cpad-list* cpads 0 button0-abs 0) (pad-buttons r2))
-      )
-     )
+    (set! *pause-lock* (and *cheat-mode* (cpad-hold? 0 r2)))
     )
    )
   0
@@ -395,16 +338,13 @@
 ;; definition for function main-cheats
 (defun main-cheats ()
   (when
-   (and
-    (logtest? (-> *cpad-list* cpads 0 button0-abs 0) (pad-buttons l3))
-    (or *cheat-mode* (= *kernel-boot-message* 'play))
-    )
+   (and (cpad-hold? 0 l3) (or *cheat-mode* (= *kernel-boot-message* 'play)))
    (when (nonzero? (-> *cpad-list* cpads 0 button0-rel 0))
     (let ((cheatmode-state (-> *cheat-temp* 0)))
      (cond
       ((zero? cheatmode-state)
        (cond
-        ((logtest? (-> *cpad-list* cpads 0 button0-rel 0) (pad-buttons up))
+        ((cpad-pressed? 0 up)
          (+! (-> *cheat-temp* 0) 1)
          )
         (else
@@ -415,7 +355,7 @@
        )
       ((= cheatmode-state 1)
        (cond
-        ((logtest? (-> *cpad-list* cpads 0 button0-rel 0) (pad-buttons up))
+        ((cpad-pressed? 0 up)
          (+! (-> *cheat-temp* 0) 1)
          )
         (else
@@ -426,7 +366,7 @@
        )
       ((= cheatmode-state 2)
        (cond
-        ((logtest? (-> *cpad-list* cpads 0 button0-rel 0) (pad-buttons down))
+        ((cpad-pressed? 0 down)
          (+! (-> *cheat-temp* 0) 1)
          )
         (else
@@ -437,7 +377,7 @@
        )
       ((= cheatmode-state 3)
        (cond
-        ((logtest? (-> *cpad-list* cpads 0 button0-rel 0) (pad-buttons down))
+        ((cpad-pressed? 0 down)
          (+! (-> *cheat-temp* 0) 1)
          )
         (else
@@ -448,7 +388,7 @@
        )
       ((= cheatmode-state 4)
        (cond
-        ((logtest? (-> *cpad-list* cpads 0 button0-rel 0) (pad-buttons left))
+        ((cpad-pressed? 0 left)
          (+! (-> *cheat-temp* 0) 1)
          )
         (else
@@ -459,7 +399,7 @@
        )
       ((= cheatmode-state 5)
        (cond
-        ((logtest? (-> *cpad-list* cpads 0 button0-rel 0) (pad-buttons right))
+        ((cpad-pressed? 0 right)
          (+! (-> *cheat-temp* 0) 1)
          )
         (else
@@ -470,7 +410,7 @@
        )
       ((= cheatmode-state 6)
        (cond
-        ((logtest? (-> *cpad-list* cpads 0 button0-rel 0) (pad-buttons left))
+        ((cpad-pressed? 0 left)
          (+! (-> *cheat-temp* 0) 1)
          )
         (else
@@ -481,7 +421,7 @@
        )
       ((= cheatmode-state 7)
        (cond
-        ((logtest? (-> *cpad-list* cpads 0 button0-rel 0) (pad-buttons right))
+        ((cpad-pressed? 0 right)
          (+! (-> *cheat-temp* 0) 1)
          )
         (else
@@ -492,7 +432,7 @@
        )
       ((= cheatmode-state 8)
        (cond
-        ((logtest? (-> *cpad-list* cpads 0 button0-rel 0) (pad-buttons x))
+        ((cpad-pressed? 0 x)
          (+! (-> *cheat-temp* 0) 1)
          )
         (else
@@ -503,7 +443,7 @@
        )
       ((= cheatmode-state 9)
        (cond
-        ((logtest? (-> *cpad-list* cpads 0 button0-rel 0) (pad-buttons x))
+        ((cpad-pressed? 0 x)
          (+! (-> *cheat-temp* 0) 1)
          )
         (else
@@ -514,7 +454,7 @@
        )
       ((= cheatmode-state 10)
        (cond
-        ((logtest? (-> *cpad-list* cpads 0 button0-rel 0) (pad-buttons square))
+        ((cpad-pressed? 0 square)
          (+! (-> *cheat-temp* 0) 1)
          )
         (else
@@ -525,7 +465,7 @@
        )
       ((= cheatmode-state 11)
        (cond
-        ((logtest? (-> *cpad-list* cpads 0 button0-rel 0) (pad-buttons circle))
+        ((cpad-pressed? 0 circle)
          (+! (-> *cheat-temp* 0) 1)
          )
         (else
@@ -536,7 +476,7 @@
        )
       ((= cheatmode-state 12)
        (cond
-        ((logtest? (-> *cpad-list* cpads 0 button0-rel 0) (pad-buttons square))
+        ((cpad-pressed? 0 square)
          (+! (-> *cheat-temp* 0) 1)
          )
         (else
@@ -547,7 +487,7 @@
        )
       ((= cheatmode-state 13)
        (cond
-        ((logtest? (-> *cpad-list* cpads 0 button0-rel 0) (pad-buttons circle))
+        ((cpad-pressed? 0 circle)
          (logclear! (-> *cpad-list* cpads 0 button0-abs 0) (pad-buttons r1))
          (logclear! (-> *cpad-list* cpads 0 button0-rel 0) (pad-buttons r1))
          (set! *cheat-mode* (not *cheat-mode*))
@@ -589,7 +529,7 @@
       (cond
        ((zero? cheatmode-debug-state)
         (cond
-         ((logtest? (-> *cpad-list* cpads 0 button0-rel 0) (pad-buttons circle))
+         ((cpad-pressed? 0 circle)
           (+! (-> *cheat-temp* 1) 1)
           )
          (else
@@ -600,7 +540,7 @@
         )
        ((= cheatmode-debug-state 1)
         (cond
-         ((logtest? (-> *cpad-list* cpads 0 button0-rel 0) (pad-buttons square))
+         ((cpad-pressed? 0 square)
           (+! (-> *cheat-temp* 1) 1)
           )
          (else
@@ -611,7 +551,7 @@
         )
        ((= cheatmode-debug-state 2)
         (cond
-         ((logtest? (-> *cpad-list* cpads 0 button0-rel 0) (pad-buttons circle))
+         ((cpad-pressed? 0 circle)
           (+! (-> *cheat-temp* 1) 1)
           )
          (else
@@ -622,7 +562,7 @@
         )
        ((= cheatmode-debug-state 3)
         (cond
-         ((logtest? (-> *cpad-list* cpads 0 button0-rel 0) (pad-buttons square))
+         ((cpad-pressed? 0 square)
           (+! (-> *cheat-temp* 1) 1)
           )
          (else
@@ -633,7 +573,7 @@
         )
        ((= cheatmode-debug-state 4)
         (cond
-         ((logtest? (-> *cpad-list* cpads 0 button0-rel 0) (pad-buttons x))
+         ((cpad-pressed? 0 x)
           (+! (-> *cheat-temp* 1) 1)
           )
          (else
@@ -644,7 +584,7 @@
         )
        ((= cheatmode-debug-state 5)
         (cond
-         ((logtest? (-> *cpad-list* cpads 0 button0-rel 0) (pad-buttons x))
+         ((cpad-pressed? 0 x)
           (+! (-> *cheat-temp* 1) 1)
           )
          (else
@@ -655,7 +595,7 @@
         )
        ((= cheatmode-debug-state 6)
         (cond
-         ((logtest? (-> *cpad-list* cpads 0 button0-rel 0) (pad-buttons right))
+         ((cpad-pressed? 0 right)
           (+! (-> *cheat-temp* 1) 1)
           )
          (else
@@ -666,7 +606,7 @@
         )
        ((= cheatmode-debug-state 7)
         (cond
-         ((logtest? (-> *cpad-list* cpads 0 button0-rel 0) (pad-buttons left))
+         ((cpad-pressed? 0 left)
           (+! (-> *cheat-temp* 1) 1)
           )
          (else
@@ -677,7 +617,7 @@
         )
        ((= cheatmode-debug-state 8)
         (cond
-         ((logtest? (-> *cpad-list* cpads 0 button0-rel 0) (pad-buttons right))
+         ((cpad-pressed? 0 right)
           (+! (-> *cheat-temp* 1) 1)
           )
          (else
@@ -688,7 +628,7 @@
         )
        ((= cheatmode-debug-state 9)
         (cond
-         ((logtest? (-> *cpad-list* cpads 0 button0-rel 0) (pad-buttons left))
+         ((cpad-pressed? 0 left)
           (+! (-> *cheat-temp* 1) 1)
           )
          (else
@@ -699,7 +639,7 @@
         )
        ((= cheatmode-debug-state 10)
         (cond
-         ((logtest? (-> *cpad-list* cpads 0 button0-rel 0) (pad-buttons down))
+         ((cpad-pressed? 0 down)
           (+! (-> *cheat-temp* 1) 1)
           )
          (else
@@ -710,7 +650,7 @@
         )
        ((= cheatmode-debug-state 11)
         (cond
-         ((logtest? (-> *cpad-list* cpads 0 button0-rel 0) (pad-buttons down))
+         ((cpad-pressed? 0 down)
           (+! (-> *cheat-temp* 1) 1)
           )
          (else
@@ -721,7 +661,7 @@
         )
        ((= cheatmode-debug-state 12)
         (cond
-         ((logtest? (-> *cpad-list* cpads 0 button0-rel 0) (pad-buttons up))
+         ((cpad-pressed? 0 up)
           (+! (-> *cheat-temp* 1) 1)
           )
          (else
@@ -732,7 +672,7 @@
         )
        ((= cheatmode-debug-state 13)
         (cond
-         ((logtest? (-> *cpad-list* cpads 0 button0-rel 0) (pad-buttons up))
+         ((cpad-pressed? 0 up)
           (logclear! (-> *cpad-list* cpads 0 button0-abs 0) (pad-buttons r1))
           (logclear! (-> *cpad-list* cpads 0 button0-rel 0) (pad-buttons r1))
           (set! *cheat-mode* (if (= *cheat-mode* 'debug)
@@ -780,7 +720,7 @@
         (cond
          ((zero? cheat-language-state)
           (cond
-           ((logtest? (-> *cpad-list* cpads 0 button0-rel 0) (pad-buttons l1))
+           ((cpad-pressed? 0 l1)
             (+! (-> *cheat-temp* 2) 1)
             )
            (else
@@ -791,7 +731,7 @@
           )
          ((= cheat-language-state 1)
           (cond
-           ((logtest? (-> *cpad-list* cpads 0 button0-rel 0) (pad-buttons r1))
+           ((cpad-pressed? 0 r1)
             (+! (-> *cheat-temp* 2) 1)
             )
            (else
@@ -802,7 +742,7 @@
           )
          ((= cheat-language-state 2)
           (cond
-           ((logtest? (-> *cpad-list* cpads 0 button0-rel 0) (pad-buttons l1))
+           ((cpad-pressed? 0 l1)
             (+! (-> *cheat-temp* 2) 1)
             )
            (else
@@ -813,7 +753,7 @@
           )
          ((= cheat-language-state 3)
           (cond
-           ((logtest? (-> *cpad-list* cpads 0 button0-rel 0) (pad-buttons r1))
+           ((cpad-pressed? 0 r1)
             (+! (-> *cheat-temp* 2) 1)
             )
            (else
@@ -824,10 +764,7 @@
           )
          ((= cheat-language-state 4)
           (cond
-           ((logtest?
-             (-> *cpad-list* cpads 0 button0-rel 0)
-             (pad-buttons triangle)
-             )
+           ((cpad-pressed? 0 triangle)
             (+! (-> *cheat-temp* 2) 1)
             )
            (else
@@ -838,10 +775,7 @@
           )
          ((= cheat-language-state 5)
           (cond
-           ((logtest?
-             (-> *cpad-list* cpads 0 button0-rel 0)
-             (pad-buttons circle)
-             )
+           ((cpad-pressed? 0 circle)
             (+! (-> *cheat-temp* 2) 1)
             )
            (else
@@ -852,7 +786,7 @@
           )
          ((= cheat-language-state 6)
           (cond
-           ((logtest? (-> *cpad-list* cpads 0 button0-rel 0) (pad-buttons x))
+           ((cpad-pressed? 0 x)
             (+! (-> *cheat-temp* 2) 1)
             )
            (else
@@ -863,10 +797,7 @@
           )
          ((= cheat-language-state 7)
           (cond
-           ((logtest?
-             (-> *cpad-list* cpads 0 button0-rel 0)
-             (pad-buttons square)
-             )
+           ((cpad-pressed? 0 square)
             (logclear! (-> *cpad-list* cpads 0 button0-abs 0) (pad-buttons r1))
             (logclear! (-> *cpad-list* cpads 0 button0-rel 0) (pad-buttons r1))
             (set! *progress-cheat* (if *progress-cheat*
@@ -914,7 +845,7 @@
       (cond
        ((zero? cheat-pal-state)
         (cond
-         ((logtest? (-> *cpad-list* cpads 0 button0-rel 0) (pad-buttons x))
+         ((cpad-pressed? 0 x)
           (+! (-> *cheat-temp* 3) 1)
           )
          (else
@@ -925,7 +856,7 @@
         )
        ((= cheat-pal-state 1)
         (cond
-         ((logtest? (-> *cpad-list* cpads 0 button0-rel 0) (pad-buttons square))
+         ((cpad-pressed? 0 square)
           (+! (-> *cheat-temp* 3) 1)
           )
          (else
@@ -936,10 +867,7 @@
         )
        ((= cheat-pal-state 2)
         (cond
-         ((logtest?
-           (-> *cpad-list* cpads 0 button0-rel 0)
-           (pad-buttons triangle)
-           )
+         ((cpad-pressed? 0 triangle)
           (+! (-> *cheat-temp* 3) 1)
           )
          (else
@@ -950,7 +878,7 @@
         )
        ((= cheat-pal-state 3)
         (cond
-         ((logtest? (-> *cpad-list* cpads 0 button0-rel 0) (pad-buttons circle))
+         ((cpad-pressed? 0 circle)
           (+! (-> *cheat-temp* 3) 1)
           )
          (else
@@ -961,7 +889,7 @@
         )
        ((= cheat-pal-state 4)
         (cond
-         ((logtest? (-> *cpad-list* cpads 0 button0-rel 0) (pad-buttons x))
+         ((cpad-pressed? 0 x)
           (+! (-> *cheat-temp* 3) 1)
           )
          (else
@@ -972,7 +900,7 @@
         )
        ((= cheat-pal-state 5)
         (cond
-         ((logtest? (-> *cpad-list* cpads 0 button0-rel 0) (pad-buttons square))
+         ((cpad-pressed? 0 square)
           (+! (-> *cheat-temp* 3) 1)
           )
          (else
@@ -983,10 +911,7 @@
         )
        ((= cheat-pal-state 6)
         (cond
-         ((logtest?
-           (-> *cpad-list* cpads 0 button0-rel 0)
-           (pad-buttons triangle)
-           )
+         ((cpad-pressed? 0 triangle)
           (+! (-> *cheat-temp* 3) 1)
           )
          (else
@@ -997,7 +922,7 @@
         )
        ((= cheat-pal-state 7)
         (cond
-         ((logtest? (-> *cpad-list* cpads 0 button0-rel 0) (pad-buttons circle))
+         ((cpad-pressed? 0 circle)
           (logclear! (-> *cpad-list* cpads 0 button0-abs 0) (pad-buttons r1))
           (logclear! (-> *cpad-list* cpads 0 button0-rel 0) (pad-buttons r1))
           (set! *progress-cheat* (if *progress-cheat*
@@ -1042,28 +967,23 @@
   (when (and (= *cheat-mode* 'debug) (not *debug-segment*))
    (when
     (and
-     (logtest? (-> *cpad-list* cpads 0 button0-abs 0) (pad-buttons l1))
-     (logtest? (-> *cpad-list* cpads 0 button0-abs 0) (pad-buttons l2))
-     (logtest? (-> *cpad-list* cpads 0 button0-abs 0) (pad-buttons r1))
-     (logtest? (-> *cpad-list* cpads 0 button0-rel 0) (pad-buttons r2))
+     (cpad-hold? 0 l1)
+     (cpad-hold? 0 l2)
+     (cpad-hold? 0 r1)
+     (cpad-pressed? 0 r2)
      )
     (if *target*
      (stop 'debug)
      (start 'play (get-or-create-continue! *game-info*))
      )
     )
-   (if
-    (and
-     (logtest? (-> *cpad-list* cpads 0 button0-abs 0) (pad-buttons left))
-     (logtest? (-> *cpad-list* cpads 0 button0-abs 0) (pad-buttons up))
-     (logtest? (-> *cpad-list* cpads 0 button0-rel 0) (pad-buttons select))
-     )
+   (if (and (cpad-hold? 0 left) (cpad-hold? 0 up) (cpad-pressed? 0 select))
     (initialize! *game-info* 'game (the-as game-save #f) "title-start")
     )
-   (if (logtest? (-> *cpad-list* cpads 1 button0-rel 0) (pad-buttons r3))
+   (if (cpad-pressed? 1 r3)
     (inspect global)
     )
-   (when (logtest? (-> *cpad-list* cpads 1 button0-abs 0) (pad-buttons r3))
+   (when (cpad-hold? 1 r3)
     (let* ((dma-buff (if *debug-segment*
                       (->
                        *display*
@@ -1100,7 +1020,7 @@
       )
      )
     )
-   (if (logtest? (-> *cpad-list* cpads 1 button0-rel 0) (pad-buttons triangle))
+   (if (cpad-pressed? 1 triangle)
     (set! *display-level-border* (not *display-level-border*))
     )
    )
