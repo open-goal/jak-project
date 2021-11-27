@@ -1,10 +1,5 @@
 #pragma once
 
-/*!
- * @file PrettyPrinter.h
- * A Pretty Printer for GOOS.
- * It is not very good, but significantly better than putting everything on one line
- */
 
 #include <string>
 #include <vector>
@@ -14,6 +9,6 @@
 
 namespace pretty_print {
 // main pretty print function
-std::string to_string(const goos::Object& obj, int line_length = 80);
+std::string to_string_v2(const goos::Object& obj, int line_length = 110);
 
 }  // namespace pretty_print
