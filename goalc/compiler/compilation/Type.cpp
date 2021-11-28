@@ -733,7 +733,7 @@ Val* Compiler::compile_deref(const goos::Object& form, const goos::Object& _rest
 
           // special case (-> <state> enter) should return the appropriate function type.
           if (in_type.arg_count() > 0 && in_type.base_type() == "state") {
-            if (field_name == "enter") {
+            if (field_name == "enter" || field_name == "code") {
               result->set_type(state_to_go_function(in_type, TypeSpec("none")));
             }
           }

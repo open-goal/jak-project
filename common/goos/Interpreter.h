@@ -13,7 +13,7 @@
 namespace goos {
 class Interpreter {
  public:
-  Interpreter();
+  Interpreter(const std::string& user_profile = "#f");
   ~Interpreter();
   void execute_repl(ReplWrapper& repl);
   void throw_eval_error(const Object& o, const std::string& err);
@@ -128,6 +128,9 @@ class Interpreter {
   Object eval_load_file(const Object& form,
                         Arguments& args,
                         const std::shared_ptr<EnvironmentObject>& env);
+  Object eval_try_load_file(const Object& form,
+                            Arguments& args,
+                            const std::shared_ptr<EnvironmentObject>& env);
   Object eval_print(const Object& form,
                     Arguments& args,
                     const std::shared_ptr<EnvironmentObject>& env);
