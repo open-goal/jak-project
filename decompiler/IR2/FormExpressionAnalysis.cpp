@@ -3850,7 +3850,7 @@ FormElement* try_make_logtest_cpad_macro(Form* in, FormPool& pool) {
         for (auto elt : buttons_form->elts()) {
           GenericElement* form = dynamic_cast<GenericElement*>(elt);
           if (form != nullptr) {
-            v.insert(v.end(), form->elts().begin(), form->elts().end());
+            v.push_back(form->elts().at(0));  // the form itself
           }
         }
         return pool.alloc_element<GenericElement>(
