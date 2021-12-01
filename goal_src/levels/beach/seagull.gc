@@ -89,11 +89,11 @@
     (dummy-27 (_type_) none 27)
     )
   (:states
-    (seagull-flying seagull)
-    (seagull-idle seagull)
-    (seagull-landing float seagull)
-    (seagull-soaring seagull)
-    (seagull-takeoff seagull)
+    seagull-flying
+    seagull-idle
+    (seagull-landing float)
+    seagull-soaring
+    seagull-takeoff
     )
   )
 
@@ -126,8 +126,8 @@
     (dummy-16 (_type_ seagull) float 16)
     )
   (:states
-    (seagullflock-at-waterfall seagullflock)
-    (seagullflock-idle seagullflock)
+    seagullflock-at-waterfall
+    seagullflock-idle
     )
   )
 
@@ -404,7 +404,7 @@
 
 (defstate seagull-idle (seagull)
   :enter
-  (behavior ((arg0 seagull))
+  (behavior ()
    (let* ((v1-0 (-> self flock))
           (f30-0 (dummy-16 (if v1-0
                             (-> v1-0 0 self-override)
@@ -438,10 +438,8 @@
    (when (nonzero? (-> self scared))
     (+! (-> self scared) -1)
     (when (zero? (-> self scared))
-     (let ((a0-0 (-> self root-override)))
-      (restore-collide-with-as a0-0)
-      (go seagull-takeoff (the-as seagull a0-0))
-      )
+     (restore-collide-with-as (-> self root-override))
+     (go seagull-takeoff)
      )
     )
    (when *target*
@@ -468,7 +466,7 @@
    (none)
    )
   :code
-  (behavior ((arg0 seagull))
+  (behavior ()
    (set!
     (-> self root-override trans y)
     (+ 20480.0 (-> self root-override trans y))
@@ -831,7 +829,7 @@
    (none)
    )
   :code
-  (behavior ((arg0 seagull))
+  (behavior ()
    (set! (-> self part-time) (the-as uint (-> *display* base-frame-counter)))
    (let ((gp-0 (-> self skel root-channel 0)))
     (set!
@@ -854,11 +852,11 @@
       (>= (ja-aframe 3.0 0) (ja-frame-num 0))
       )
      (let* ((v1-13 self)
-            (a0-8 #t)
+            (a0-7 #t)
             (f0-5 (-> v1-13 root-override transv y))
             )
       (set! f0-5 (cond
-                  (a0-8
+                  (a0-7
                    (if (< f0-5 (-> v1-13 flock 0 max-lift))
                     (set! f0-5 (+ 12288.0 f0-5))
                     )
@@ -900,24 +898,20 @@
       )
      )
     )
-   (let ((a0-20 (-> self skel root-channel 0)))
+   (let ((a0-19 (-> self skel root-channel 0)))
     (set!
-     (-> a0-20 param 0)
-     (the float (+ (-> a0-20 frame-group data 0 length) -1))
+     (-> a0-19 param 0)
+     (the float (+ (-> a0-19 frame-group data 0 length) -1))
      )
-    (set! (-> a0-20 param 1) 1.0)
+    (set! (-> a0-19 param 1) 1.0)
     (joint-control-channel-group!
-     a0-20
+     a0-19
      (the-as art-joint-anim #f)
      num-func-seek!
      )
     )
-   (let ((t9-14 ja-channel-push!)
-         (a0-21 1)
-         )
-    (t9-14 a0-21 20)
-    (go seagull-flying (the-as seagull a0-21))
-    )
+   (ja-channel-push! 1 20)
+   (go seagull-flying)
    (none)
    )
   :post
@@ -938,21 +932,17 @@
    (none)
    )
   :code
-  (behavior ((arg0 seagull))
-   (local-vars
-    (a0-66 int)
-    (t9-12 (function int symbol :behavior process-drawable))
-    )
+  (behavior ()
    (set! (-> self max-tilt) 1820.4445)
    (let ((gp-0 0))
     (while #t
-     (let ((a0-1 (-> self skel root-channel 0)))
+     (let ((a0-0 (-> self skel root-channel 0)))
       (set!
-       (-> a0-1 frame-group)
+       (-> a0-0 frame-group)
        (the-as art-joint-anim (-> self draw art-group data 4))
        )
       (set!
-       (-> a0-1 param 0)
+       (-> a0-0 param 0)
        (the
         float
         (+
@@ -966,15 +956,15 @@
          )
         )
        )
-      (set! (-> a0-1 param 1) 1.0)
-      (set! (-> a0-1 frame-num) 0.0)
+      (set! (-> a0-0 param 1) 1.0)
+      (set! (-> a0-0 frame-num) 0.0)
       (joint-control-channel-group!
-       a0-1
+       a0-0
        (the-as art-joint-anim (-> self draw art-group data 4))
        num-func-seek!
        )
       )
-     (until (t9-12 a0-66)
+     (until (ja-done? 0)
       (ja-blend-eval)
       (when (-> self teleport)
        (dummy-26 self)
@@ -1105,11 +1095,11 @@
        (cond
         ((and v1-42 (>= (ja-aframe 9.0 0) (ja-frame-num 0)))
          (let* ((v1-44 self)
-                (a0-50 #t)
+                (a0-49 #t)
                 (f0-38 (-> v1-44 root-override transv y))
                 )
           (set! f0-38 (cond
-                       (a0-50
+                       (a0-49
                         (if (< f0-38 (-> v1-44 flock 0 max-lift))
                          (set! f0-38 (+ 12288.0 f0-38))
                          )
@@ -1126,11 +1116,11 @@
          )
         (else
          (let* ((v1-48 self)
-                (a0-56 #f)
+                (a0-55 #f)
                 (f0-39 (-> v1-48 root-override transv y))
                 )
           (set! f0-39 (cond
-                       (a0-56
+                       (a0-55
                         (if (< f0-39 (-> v1-48 flock 0 max-lift))
                          (set! f0-39 (+ 12288.0 f0-39))
                          )
@@ -1164,35 +1154,32 @@
       0
       (dummy-27 self)
       (suspend)
-      (let ((a0-65 (-> self skel root-channel 0)))
+      (let ((a0-64 (-> self skel root-channel 0)))
        (set!
-        (-> a0-65 param 0)
-        (the float (+ (-> a0-65 frame-group data 0 length) -1))
+        (-> a0-64 param 0)
+        (the float (+ (-> a0-64 frame-group data 0 length) -1))
         )
-       (set! (-> a0-65 param 1) 1.0)
+       (set! (-> a0-64 param 1) 1.0)
        (joint-control-channel-group-eval!
-        a0-65
+        a0-64
         (the-as art-joint-anim #f)
         num-func-seek!
         )
        )
-      (set! t9-12 ja-done?)
-      (set! a0-66 0)
       )
      (+! gp-0 1)
      (when (>= gp-0 0)
       (when (>= (-> self angletan) 0.1)
        (if (< 204800.0 (-> self root-override trans y))
-        (go seagull-soaring (the-as seagull a0-66))
+        (go seagull-soaring)
         )
        (when (< 57344.0 (-> self root-override trans y))
         (let* ((f30-3 0.8)
                (v1-77 (/ (the-as int (rand-uint31-gen *random-generator*)) 256))
-               (a0-68 #x3f800000)
-               (v1-78 (the-as number (logior a0-68 v1-77)))
+               (v1-78 (the-as number (logior #x3f800000 v1-77)))
                )
          (if (< f30-3 (+ -1.0 (the-as float v1-78)))
-          (go seagull-soaring (the-as seagull a0-68))
+          (go seagull-soaring)
           )
          )
         )
@@ -1220,17 +1207,17 @@
    (none)
    )
   :code
-  (behavior ((arg0 seagull))
+  (behavior ()
    (set! (-> self state-time) (-> *display* base-frame-counter))
    (set! (-> self max-tilt) 4551.1113)
    (while #t
-    (let ((a0-1 (-> self skel root-channel 0)))
+    (let ((a0-0 (-> self skel root-channel 0)))
      (set!
-      (-> a0-1 frame-group)
+      (-> a0-0 frame-group)
       (the-as art-joint-anim (-> self draw art-group data 5))
       )
      (set!
-      (-> a0-1 param 0)
+      (-> a0-0 param 0)
       (the
        float
        (+
@@ -1244,10 +1231,10 @@
         )
        )
       )
-     (set! (-> a0-1 param 1) 1.0)
-     (set! (-> a0-1 frame-num) 0.0)
+     (set! (-> a0-0 param 1) 1.0)
+     (set! (-> a0-0 frame-num) 0.0)
      (joint-control-channel-group!
-      a0-1
+      a0-0
       (the-as art-joint-anim (-> self draw art-group data 5))
       num-func-seek!
       )
@@ -1259,13 +1246,10 @@
       (suspend)
       0
       )
-     (let* ((gp-0 self)
-            (s5-0 (new 'stack-no-clear 'vector))
-            (v1-21 s5-0)
-            (a0-5 (-> gp-0 flock 0 target))
-            (a1-2 (the-as object (-> gp-0 root-override trans)))
-            )
-      (vector-! v1-21 a0-5 (the-as vector a1-2))
+     (let ((gp-0 self)
+           (s5-0 (new 'stack-no-clear 'vector))
+           )
+      (vector-! s5-0 (-> gp-0 flock 0 target) (-> gp-0 root-override trans))
       (when (< (vector-dot s5-0 s5-0) 6710886400.0)
        (let ((v1-26 (ash 1 (-> gp-0 index))))
         (when (zero? (logand v1-26 (-> gp-0 flock 0 bird-at-waterfall)))
@@ -1327,50 +1311,45 @@
         0
         )
        (else
-        (let ((t9-3 atan)
-              (a0-33 (-> s5-0 x))
-              )
-         (set! a1-2 (-> s5-0 z))
-         (let* ((f0-20 (t9-3 a0-33 (the-as float a1-2)))
-                (v1-39 gp-0)
-                (f1-12
-                 (the
-                  float
-                  (sar (shl (the int (- f0-20 (-> v1-39 heading))) 48) 48)
-                  )
+        (let* ((f0-20 (atan (-> s5-0 x) (-> s5-0 z)))
+               (v1-39 gp-0)
+               (f1-12
+                (the
+                 float
+                 (sar (shl (the int (- f0-20 (-> v1-39 heading))) 48) 48)
                  )
-                (f0-25 (- (-> v1-39 tilt)))
                 )
-          (let ((f2-2 (-> v1-39 max-tilt)))
-           (set! f0-25 (cond
-                        ((< f1-12 -364.0889)
-                         (if (< (- f2-2) f0-25)
-                          (set! f0-25 (+ -91.022224 f0-25))
-                          )
-                         f0-25
+               (f0-25 (- (-> v1-39 tilt)))
+               )
+         (let ((f2-2 (-> v1-39 max-tilt)))
+          (set! f0-25 (cond
+                       ((< f1-12 -364.0889)
+                        (if (< (- f2-2) f0-25)
+                         (set! f0-25 (+ -91.022224 f0-25))
                          )
-                        ((< 364.0889 f1-12)
-                         (if (< f0-25 f2-2)
-                          (set! f0-25 (+ 91.022224 f0-25))
-                          )
-                         f0-25
-                         )
-                        ((< f0-25 0.0)
-                         (+ 91.022224 f0-25)
-                         )
-                        (else
-                         (+ -91.022224 f0-25)
-                         )
+                        f0-25
                         )
-            )
+                       ((< 364.0889 f1-12)
+                        (if (< f0-25 f2-2)
+                         (set! f0-25 (+ 91.022224 f0-25))
+                         )
+                        f0-25
+                        )
+                       ((< f0-25 0.0)
+                        (+ 91.022224 f0-25)
+                        )
+                       (else
+                        (+ -91.022224 f0-25)
+                        )
+                       )
            )
-          (set! (-> v1-39 tilt) (- f0-25))
-          (set!
-           (-> v1-39 heading)
-           (the
-            float
-            (sar (shl (the int (+ (-> v1-39 heading) (* 0.05 f0-25))) 48) 48)
-            )
+          )
+         (set! (-> v1-39 tilt) (- f0-25))
+         (set!
+          (-> v1-39 heading)
+          (the
+           float
+           (sar (shl (the int (+ (-> v1-39 heading) (* 0.05 f0-25))) 48) 48)
            )
           )
          )
@@ -1384,94 +1363,71 @@
         (sqrtf (+ f0-33 (* (-> s5-0 y) (-> s5-0 y))))
         )
        )
-      0
-      (let ((v1-44 self))
-       (set! (-> v1-44 root-override transv y) -8192.0)
+      )
+     0
+     (let ((v1-44 self))
+      (set! (-> v1-44 root-override transv y) -8192.0)
+      )
+     0
+     (let* ((gp-1 self)
+            (f28-0 (-> self thrust))
+            (f30-0 (* f28-0 (sin (-> gp-1 heading))))
+            (f0-41 (* f28-0 (cos (-> gp-1 heading))))
+            )
+      (set!
+       (-> gp-1 root-override transv x)
+       (+ (* 0.8 (-> gp-1 root-override transv x)) (* 0.2 f30-0))
        )
-      0
-      (let* ((gp-1 self)
-             (f28-0 (-> self thrust))
-             (f30-0 (* f28-0 (sin (-> gp-1 heading))))
-             (f0-41 (* f28-0 (cos (-> gp-1 heading))))
-             )
-       (set!
-        (-> gp-1 root-override transv x)
-        (+ (* 0.8 (-> gp-1 root-override transv x)) (* 0.2 f30-0))
-        )
-       (set!
-        (-> gp-1 root-override transv z)
-        (+ (* 0.8 (-> gp-1 root-override transv z)) (* 0.2 f0-41))
-        )
+      (set!
+       (-> gp-1 root-override transv z)
+       (+ (* 0.8 (-> gp-1 root-override transv z)) (* 0.2 f0-41))
        )
-      0
-      (let ((a0-48 (the-as object self)))
-       ((method-of-object self dummy-27) (the-as seagull a0-48))
-       (when (< (-> self angletan) 0.2)
-        (if (< (-> self root-override trans y) 40960.0)
-         (go seagull-flying (the-as seagull a0-48))
-         )
-        (when (< (-> self root-override trans y) 204800.0)
-         (set!
-          a0-48
-          (>= (- (-> *display* base-frame-counter) (-> self state-time)) 150)
-          )
-         (if (and (the-as symbol a0-48) (let ((f30-1 0.99)
-                                              (v1-67
-                                               (/
-                                                (the-as
-                                                 int
-                                                 (rand-uint31-gen
-                                                  *random-generator*
-                                                  )
-                                                 )
-                                                256
-                                                )
-                                               )
-                                              )
-                                         (set! a0-48 #x3f800000)
-                                         (let
-                                          ((v1-68
-                                            (the-as
-                                             number
-                                             (logior (the-as int a0-48) v1-67)
-                                             )
-                                            )
-                                           )
-                                          (<
-                                           f30-1
-                                           (+ -1.0 (the-as float v1-68))
-                                           )
-                                          )
-                                         )
-              )
-          (go seagull-flying (the-as seagull a0-48))
+      )
+     0
+     (dummy-27 self)
+     (when (< (-> self angletan) 0.2)
+      (if (< (-> self root-override trans y) 40960.0)
+       (go seagull-flying)
+       )
+      (when (< (-> self root-override trans y) 204800.0)
+       (if
+        (and
+         (>= (- (-> *display* base-frame-counter) (-> self state-time)) 150)
+         (let* ((f30-1 0.99)
+                (v1-67
+                 (/ (the-as int (rand-uint31-gen *random-generator*)) 256)
+                 )
+                (v1-68 (the-as number (logior #x3f800000 v1-67)))
+                )
+          (< f30-1 (+ -1.0 (the-as float v1-68)))
           )
          )
-        )
-       (when (< (-> self target-dist) 81920.0)
-        (when (< 1.0 (-> self angletan))
-         (if (< (-> self target-dist) 20480.0)
-          (go seagull-flying (the-as seagull a0-48))
-          )
-         )
-        (if (and (< 0.4 (-> self angletan)) (>= 1.0 (-> self angletan)))
-         (go seagull-landing 10.0 (the-as seagull a1-2))
-         )
-        (if (and (>= (-> self angletan) 0.2) (>= 0.4 (-> self angletan)))
-         (go seagull-landing 5.0 (the-as seagull a1-2))
-         )
+        (go seagull-flying)
         )
        )
       )
-     (suspend)
-     (let ((a0-53 (-> self skel root-channel 0)))
-      (set!
-       (-> a0-53 param 0)
-       (the float (+ (-> a0-53 frame-group data 0 length) -1))
+     (when (< (-> self target-dist) 81920.0)
+      (when (< 1.0 (-> self angletan))
+       (if (< (-> self target-dist) 20480.0)
+        (go seagull-flying)
+        )
        )
-      (set! (-> a0-53 param 1) 1.0)
+      (if (and (< 0.4 (-> self angletan)) (>= 1.0 (-> self angletan)))
+       (go seagull-landing 10.0)
+       )
+      (if (and (>= (-> self angletan) 0.2) (>= 0.4 (-> self angletan)))
+       (go seagull-landing 5.0)
+       )
+      )
+     (suspend)
+     (let ((a0-54 (-> self skel root-channel 0)))
+      (set!
+       (-> a0-54 param 0)
+       (the float (+ (-> a0-54 frame-group data 0 length) -1))
+       )
+      (set! (-> a0-54 param 1) 1.0)
       (joint-control-channel-group-eval!
-       a0-53
+       a0-54
        (the-as art-joint-anim #f)
        num-func-seek!
        )
@@ -1486,46 +1442,29 @@
 
 (defstate seagull-landing (seagull)
   :code
-  (behavior ((arg0 float) (arg1 seagull))
-   (local-vars (v1-7 symbol) (a0-55 int))
+  (behavior ((arg0 float))
    (let ((s5-0 (new 'stack 'collide-tri-result)))
     0.0
     (let ((gp-0 (new 'stack-no-clear 'vector)))
      (set! (-> self root-override transv y) (* 4096.0 (- arg0)))
      (set! (-> gp-0 quad) (-> self root-override transv quad))
-     (let* ((a0-5 (the-as object *collide-cache*))
-            (f30-0
-             (dummy-10
-              (the-as collide-cache a0-5)
-              (-> self root-override trans)
-              gp-0
-              409.6
-              1
-              self
-              (the-as collide-mesh-cache-tri s5-0)
-              1
-              )
-             )
-            )
-      (when (or (< f30-0 0.0) (or (< 1.0 f30-0) (begin
-                                                 (let ((v1-9 #t))
-                                                  (set! a0-5 (-> s5-0 pat mode))
-                                                  (set!
-                                                   a0-5
-                                                   (the-as pat-mode a0-5)
-                                                   )
-                                                  (cmove-#f-zero
-                                                   v1-7
-                                                   (the-as pat-mode a0-5)
-                                                   v1-9
-                                                   )
-                                                  )
-                                                 v1-7
-                                                 )
-                               )
-             )
+     (let
+      ((f30-0
+        (dummy-10
+         *collide-cache*
+         (-> self root-override trans)
+         gp-0
+         409.6
+         1
+         self
+         (the-as collide-mesh-cache-tri s5-0)
+         1
+         )
+        )
+       )
+      (when (or (< f30-0 0.0) (or (< 1.0 f30-0) (nonzero? (-> s5-0 pat mode))))
        (suspend)
-       (go seagull-soaring (the-as seagull a0-5))
+       (go seagull-soaring)
        )
       (vector-float*! gp-0 gp-0 f30-0)
       (vector+! gp-0 gp-0 (-> self root-override trans))
@@ -1583,14 +1522,14 @@
         )
        0
        )
-      (let ((a0-24 (-> self skel root-channel 0)))
+      (let ((a0-25 (-> self skel root-channel 0)))
        (set!
-        (-> a0-24 param 0)
-        (the float (+ (-> a0-24 frame-group data 0 length) -1))
+        (-> a0-25 param 0)
+        (the float (+ (-> a0-25 frame-group data 0 length) -1))
         )
-       (set! (-> a0-24 param 1) 1.0)
+       (set! (-> a0-25 param 1) 1.0)
        (joint-control-channel-group!
-        a0-24
+        a0-25
         (the-as art-joint-anim #f)
         num-func-seek!
         )
@@ -1606,14 +1545,14 @@
        )
       (while (< 0.0 f30-0)
        (suspend)
-       (let ((a0-28 (-> self skel root-channel 0)))
+       (let ((a0-29 (-> self skel root-channel 0)))
         (set!
-         (-> a0-28 param 0)
-         (the float (+ (-> a0-28 frame-group data 0 length) -1))
+         (-> a0-29 param 0)
+         (the float (+ (-> a0-29 frame-group data 0 length) -1))
          )
-        (set! (-> a0-28 param 1) 1.0)
+        (set! (-> a0-29 param 1) 1.0)
         (joint-control-channel-group-eval!
-         a0-28
+         a0-29
          (the-as art-joint-anim #f)
          num-func-seek!
          )
@@ -1673,19 +1612,16 @@
       )
      )
     )
-   (while (let ((t9-11 ja-done?))
-           (set! a0-55 0)
-           (not (t9-11 a0-55))
-           )
+   (while (not (ja-done? 0))
     (suspend)
-    (let ((a0-42 (-> self skel root-channel 0)))
+    (let ((a0-43 (-> self skel root-channel 0)))
      (set!
-      (-> a0-42 param 0)
-      (the float (+ (-> a0-42 frame-group data 0 length) -1))
+      (-> a0-43 param 0)
+      (the float (+ (-> a0-43 frame-group data 0 length) -1))
       )
-     (set! (-> a0-42 param 1) 1.0)
+     (set! (-> a0-43 param 1) 1.0)
      (joint-control-channel-group-eval!
-      a0-42
+      a0-43
       (the-as art-joint-anim #f)
       num-func-seek!
       )
@@ -1736,7 +1672,7 @@
      )
     0
     )
-   (go seagull-idle (the-as seagull a0-55))
+   (go seagull-idle)
    (none)
    )
   :post
@@ -1817,17 +1753,15 @@
    )
   (set! (-> self heading) 0.0)
   (set! (-> self tilt) 0.0)
-  (let ((f30-0 51200.0)
-        (f28-0 20480.0)
-        (v1-23 (/ (the-as int (rand-uint31-gen *random-generator*)) 256))
-        (a0-10 #x3f800000)
-        )
-   (let ((v1-24 (the-as number (logior a0-10 v1-23))))
-    (set! (-> self thrust) (+ f30-0 (* f28-0 (+ -1.0 (the-as float v1-24)))))
-    )
-   (set! (-> self teleport) #f)
-   (go seagull-idle (the-as seagull a0-10))
+  (let* ((f30-0 51200.0)
+         (f28-0 20480.0)
+         (v1-23 (/ (the-as int (rand-uint31-gen *random-generator*)) 256))
+         (v1-24 (the-as number (logior #x3f800000 v1-23)))
+         )
+   (set! (-> self thrust) (+ f30-0 (* f28-0 (+ -1.0 (the-as float v1-24)))))
    )
+  (set! (-> self teleport) #f)
+  (go seagull-idle)
   (none)
   )
 
@@ -1944,16 +1878,16 @@
 
 (defstate seagullflock-at-waterfall (seagullflock)
   :code
-  (behavior ((arg0 seagullflock))
+  (behavior ()
    (local-vars
-    (a0-3 process)
+    (a0-2 process)
     (a1-0 event-message-block)
     (t9-1 (function process-tree event-message-block object))
     )
    (aybabtu 2)
    (set! (-> self state-time) (the-as uint (-> *display* base-frame-counter)))
    (-> self link next)
-   (until (t9-1 a0-3 a1-0)
+   (until (t9-1 a0-2 a1-0)
     (suspend)
     (let ((v1-5 (-> self link next)))
      (set! a1-0 (new 'stack-no-clear 'event-message-block))
@@ -1961,7 +1895,7 @@
      (set! (-> a1-0 num-params) 0)
      (set! (-> a1-0 message) 'loading)
      (set! t9-1 send-event-function)
-     (set! a0-3 (if v1-5
+     (set! a0-2 (if v1-5
                  (-> v1-5 extra process)
                  )
       )
@@ -2007,33 +1941,25 @@
 
 (defstate seagullflock-idle (seagullflock)
   :code
-  (behavior ((arg0 seagullflock))
+  (behavior ()
    (while #t
     (if (> (-> self teleport-frames) 0)
-     (go seagullflock-at-waterfall arg0)
+     (go seagullflock-at-waterfall)
      )
-    (when (and *target* (let ((f30-0 102400.0)
-                              (t9-1 vector-vector-distance)
-                              )
-                         (set! arg0 (the-as seagullflock (-> self trans)))
-                         (>=
-                          f30-0
-                          (t9-1
-                           (the-as vector arg0)
-                           (-> *target* control trans)
-                           )
-                          )
-                         )
-           )
-     (let ((t9-2 level-hint-spawn))
-      (set! arg0 (the-as seagullflock 0))
-      (t9-2
-       (the-as game-text-id arg0)
-       (the-as string #f)
-       (-> self entity)
-       *entity-pool*
-       (game-task none)
+    (if
+     (and
+      *target*
+      (>=
+       102400.0
+       (vector-vector-distance (-> self trans) (-> *target* control trans))
        )
+      )
+     (level-hint-spawn
+      (game-text-id zero)
+      (the-as string #f)
+      (-> self entity)
+      *entity-pool*
+      (game-task none)
       )
      )
     (suspend)
@@ -2101,12 +2027,8 @@
    (new 'process 'ambient-sound sound-seagull-squall (-> obj trans))
    )
   (set! (-> obj teleport-frames) 0)
-  (let ((v1-34 #x20000)
-        (a0-17 (-> obj mask))
-        )
-   (set! (-> obj mask) (logior (the-as process-mask v1-34) a0-17))
-   (go seagullflock-idle (the-as seagullflock a0-17))
-   )
+  (set! (-> obj mask) (logior (process-mask enemy) (-> obj mask)))
+  (go seagullflock-idle)
   (none)
   )
 

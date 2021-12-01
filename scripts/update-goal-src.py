@@ -29,6 +29,7 @@ files_with_modifications = [
   "generic-obs",
   "target-snowball",
   "quicksandlurker",
+  "logic-target",
   "default-menu"
 ]
 
