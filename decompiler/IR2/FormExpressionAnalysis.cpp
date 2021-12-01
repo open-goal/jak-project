@@ -3842,25 +3842,22 @@ FormElement* try_make_logtest_cpad_macro(Form* in, FormPool& pool) {
     }
 
     if (t != NIL) {
-      auto jank = dynamic_cast<GenericElement*>(
-          pool.alloc_element<GenericElement>(
-                  GenericOperator::make_fixed(FixedOperatorKind::LOGTEST), in)
-              ->elts()
-              .at(0)
-              ->at(0));
-      auto buttons_form = jank->elts().at(1);
-      std::vector<Form*> v = {
-          pool.form<SimpleAtomElement>(SimpleAtom::make_int_constant(mr.maps.ints.at(0)))};
-      int i = 2;
-      buttons_form->apply_form([&](Form* form) {
-        if (i-- <= 0) {
-          v.push_back(form);
+      auto logtest_elt = dynamic_cast<GenericElement*>(in->at(0));
+      if (logtest_elt != nullptr) {
+        auto buttons_form = logtest_elt->elts().at(1);
+        std::vector<Form*> v = {
+            pool.form<SimpleAtomElement>(SimpleAtom::make_int_constant(mr.maps.ints.at(0)))};
+        for (auto elt : buttons_form->elts()) {
+          GenericElement* form = dynamic_cast<GenericElement*>(elt);
+          if (form != nullptr) {
+            v.insert(v.end(), form->elts().begin(), form->elts().end());
+          }
         }
-      });
-      return pool.alloc_element<GenericElement>(
-          GenericOperator::make_fixed(t == ABS ? FixedOperatorKind::CPAD_HOLD_P
-                                               : FixedOperatorKind::CPAD_PRESSED_P),
-          v);
+        return pool.alloc_element<GenericElement>(
+            GenericOperator::make_fixed(t == ABS ? FixedOperatorKind::CPAD_HOLD_P
+                                                 : FixedOperatorKind::CPAD_PRESSED_P),
+            v);
+      }
     }
   }
   return nullptr;
