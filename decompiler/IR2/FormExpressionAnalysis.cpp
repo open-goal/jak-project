@@ -3847,12 +3847,12 @@ FormElement* try_make_logtest_cpad_macro(Form* in, FormPool& pool) {
         auto buttons_form = logtest_elt->elts().at(1);
         std::vector<Form*> v = {
             pool.form<SimpleAtomElement>(SimpleAtom::make_int_constant(mr.maps.ints.at(0)))};
-        for (auto elt : buttons_form->elts()) {
-          GenericElement* form = dynamic_cast<GenericElement*>(elt);
-          if (form != nullptr) {
-            v.push_back(form->elts().at(0));  // the form itself
-          }
+        GenericElement* butts =
+            dynamic_cast<GenericElement*>(buttons_form->at(0));  // the form with the buttons itself
+        if (butts != nullptr) {
+          v.insert(v.end(), butts->elts().begin(), butts->elts().end());
         }
+
         return pool.alloc_element<GenericElement>(
             GenericOperator::make_fixed(t == ABS ? FixedOperatorKind::CPAD_HOLD_P
                                                  : FixedOperatorKind::CPAD_PRESSED_P),
