@@ -504,6 +504,28 @@
 
 ;; the load-boundary-data.gc file can be re-generated after editing load boundaries.
 
+(defmacro static-lb-list (&rest lbs)
+  `(new 'static 'boxed-array :type array :length ,(length lbs) :allocated-length ,(length lbs)
+      ,@(reverse lbs)
+      )
+  )
+
+(defmacro static-load-boundary (&key flags
+                                &key top &key bot
+                                &key points
+                                &key (fwd (invalid #f #f))
+                                &key (bwd (invalid #f #f)))
+  `(new 'static 'boxed-array :type object :length 4 :allocated-length 4
+    (the binteger (load-boundary-flags ,@flags))
+    (new 'static 'boxed-array :type float :length ,(+ 2 (length points)) :allocated-length ,(+ 2 (length points))
+      ,top ,bot
+      ,@points
+      )
+    '((the binteger (load-boundary-cmd ,(first fwd))) ,(second fwd) ,(third fwd))
+    '((the binteger (load-boundary-cmd ,(first bwd))) ,(second bwd) ,(third bwd))
+    )
+  )
+
 (defun-debug format-boundary-cmd ((arg0 load-boundary-crossing-command))
   (case (-> arg0 cmd) 
    (((load-boundary-cmd load))
@@ -883,7 +905,7 @@
   (none)
   )
 
-(defun-debug save-boundary-cmd ((arg0 load-boundary-crossing-command) (arg1 string) (arg2 file-stream))
+(defun-debug save-boundary-cmd ((arg0 load-boundary-crossing-command) (arg1 string) (arg2 object))
   (case (-> arg0 cmd) 
    (((load-boundary-cmd load))
      (format arg2 "  :~S (load ~A ~A)~%" arg1 (-> arg0 lev0) (-> arg0 lev1))

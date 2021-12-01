@@ -25,7 +25,7 @@ enum class ReplStatus { OK, WANT_EXIT, WANT_RELOAD };
 
 class Compiler {
  public:
-  Compiler(std::unique_ptr<ReplWrapper> repl = nullptr);
+  Compiler(const std::string& user_profile = "#f", std::unique_ptr<ReplWrapper> repl = nullptr);
   ReplStatus execute_repl(bool auto_listen = false, bool auto_debug = false);
   goos::Interpreter& get_goos() { return m_goos; }
   FileEnv* compile_object_file(const std::string& name, goos::Object code, bool allow_emit);

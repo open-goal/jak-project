@@ -64,6 +64,7 @@ void TextStream::seek_past_whitespace_and_comments() {
       case ' ':
       case '\t':
       case '\n':
+      case '\r':
         // just a whitespace, eat it!
         read();
         break;
